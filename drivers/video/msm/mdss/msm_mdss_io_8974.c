@@ -24,6 +24,13 @@
 #define SW_RESET_PLL BIT(0)
 #define PWRDN_B BIT(7)
 
+int lane_bitmap[DSI_LANE_MAX][LANE_SWAP_MAX]={
+	{7, 5, 3, 1, 7, 5, 3, 1},
+	{5, 3, 1, 7, 1, 7, 5, 3},
+	{3, 1, 7, 5, 3, 1, 7, 5},
+	{1, 7, 5, 3, 5, 3, 1, 7}
+};
+
 static struct dsi_clk_desc dsi_pclk;
 
 void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base)
@@ -613,6 +620,20 @@ static void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	clk_disable_unprepare(ctrl_pdata->mdp_core_clk);
 }
 
+static int mdss_dsi_ulp_escclk_prepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int rc = 0;
+
+	rc = clk_prepare(ctrl_pdata->esc_clk);
+	if (rc) {
+		pr_err("%s: Failed to prepare dsi esc clk\n", __func__);
+		goto esc_clk_err;
+	}
+
+esc_clk_err:
+	return rc;
+}
+
 static int mdss_dsi_link_clk_prepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
@@ -657,6 +678,38 @@ static void mdss_dsi_link_clk_unprepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	clk_unprepare(ctrl_pdata->esc_clk);
 }
 
+static void mdss_dsi_ulp_escclk_unprepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	if (!ctrl_pdata) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+	clk_unprepare(ctrl_pdata->esc_clk);
+}
+
+static int mdss_dsi_ulp_escclk_set_rate(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	u32 esc_clk_rate = 19200000;
+	int rc = 0;
+
+	if (!ctrl_pdata) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!ctrl_pdata->panel_data.panel_info.cont_splash_enabled) {
+		rc = clk_set_rate(ctrl_pdata->esc_clk, esc_clk_rate);
+		if (rc) {
+			pr_err("%s: dsi_esc_clk - clk_set_rate failed\n",
+				__func__);
+			goto error;
+		}
+	}
+
+error:
+	return rc;
+}
+
 static int mdss_dsi_link_clk_set_rate(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	u32 esc_clk_rate = 19200000;
@@ -695,6 +748,27 @@ static int mdss_dsi_link_clk_set_rate(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	}
 
 error:
+	return rc;
+}
+
+static int mdss_dsi_ulp_escclk_enable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int rc = 0;
+
+	if (!ctrl_pdata) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	pr_debug("%s: ndx=%d\n", __func__, ctrl_pdata->ndx);
+
+	rc = clk_enable(ctrl_pdata->esc_clk);
+	if (rc) {
+		pr_err("%s: Failed to enable dsi esc clk\n", __func__);
+		goto esc_clk_err;
+	}
+
+esc_clk_err:
 	return rc;
 }
 
@@ -751,6 +825,17 @@ static void mdss_dsi_link_clk_disable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	clk_disable(ctrl_pdata->byte_clk);
 }
 
+static void mdss_dsi_ulp_escclk_disable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	if (!ctrl_pdata) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	pr_debug("%s: ndx=%d\n", __func__, ctrl_pdata->ndx);
+	clk_disable(ctrl_pdata->esc_clk);
+}
+
 static int mdss_dsi_link_clk_start(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	int rc = 0;
@@ -781,10 +866,46 @@ error:
 	return rc;
 }
 
+static int mdss_dsi_ulp_escclk_start(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	int rc = 0;
+
+	rc = mdss_dsi_ulp_escclk_set_rate(ctrl);
+	if (rc) {
+		pr_err("%s: failed to set clk rates. rc=%d\n",
+			__func__, rc);
+		goto error;
+	}
+
+	rc = mdss_dsi_ulp_escclk_prepare(ctrl);
+	if (rc) {
+		pr_err("%s: failed to prepare clks. rc=%d\n",
+			__func__, rc);
+		goto error;
+	}
+
+	rc = mdss_dsi_ulp_escclk_enable(ctrl);
+	if (rc) {
+		pr_err("%s: failed to enable clks. rc=%d\n",
+			__func__, rc);
+		mdss_dsi_ulp_escclk_unprepare(ctrl);
+		goto error;
+	}
+
+error:
+	return rc;
+}
+
 static void mdss_dsi_link_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	mdss_dsi_link_clk_disable(ctrl);
 	mdss_dsi_link_clk_unprepare(ctrl);
+}
+
+static void mdss_dsi_ulp_escclk_stop(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	mdss_dsi_ulp_escclk_disable(ctrl);
+	mdss_dsi_ulp_escclk_unprepare(ctrl);
 }
 
 /**
@@ -937,6 +1058,7 @@ static int mdss_dsi_clamp_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 	struct mipi_panel_info *mipi = NULL;
 	u32 clamp_reg, regval = 0;
 	u32 clamp_reg_off, phyrst_reg_off;
+	u32 bitnum = 0;
 
 	if (!ctrl) {
 		pr_err("%s: invalid input\n", __func__);
@@ -958,24 +1080,28 @@ static int mdss_dsi_clamp_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 		clamp_reg |= BIT(8);
 	/* make a note of all active data lanes which need to be clamped */
 	if (mipi->data_lane0) {
-		clamp_reg |= BIT(7);
+		bitnum = lane_bitmap[0][(int)mipi->dlane_swap];
+		clamp_reg |= BIT(bitnum);
 		if (ctrl->ulps)
-			clamp_reg |= BIT(6);
+			clamp_reg |= BIT(bitnum-1);
 	}
 	if (mipi->data_lane1) {
-		clamp_reg |= BIT(5);
+		bitnum = lane_bitmap[1][(int)mipi->dlane_swap];
+		clamp_reg |= BIT(bitnum);
 		if (ctrl->ulps)
-			clamp_reg |= BIT(4);
+			clamp_reg |= BIT(bitnum-1);
 	}
 	if (mipi->data_lane2) {
-		clamp_reg |= BIT(3);
+		bitnum = lane_bitmap[2][(int)mipi->dlane_swap];
+		clamp_reg |= BIT(bitnum);
 		if (ctrl->ulps)
-			clamp_reg |= BIT(2);
+			clamp_reg |= BIT(bitnum-1);
 	}
 	if (mipi->data_lane3) {
-		clamp_reg |= BIT(1);
+		bitnum = lane_bitmap[2][(int)mipi->dlane_swap];
+		clamp_reg |= BIT(bitnum);
 		if (ctrl->ulps)
-			clamp_reg |= BIT(0);
+			clamp_reg |= BIT(bitnum-1);
 	}
 	pr_debug("%s: called for ctrl%d, enable=%d, clamp_reg=0x%08x\n",
 		__func__, ctrl->ndx, enable, clamp_reg);
@@ -1112,6 +1238,12 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 			 * function would reconfigure the controller state to
 			 * ULPS.
 			 */
+			rc = mdss_dsi_ulp_escclk_start(ctrl);
+			if (rc) {
+				pr_err("%s: Failed to start esc clocks. rc=%d\n",
+					   __func__, rc);
+				goto error_bus_clk_start;
+			}
 			ctrl->ulps = false;
 			rc = mdss_dsi_ulps_config(ctrl, 1);
 			if (rc) {
@@ -1119,6 +1251,7 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 					__func__, rc);
 				goto error_ulps;
 			}
+			mdss_dsi_ulp_escclk_stop(ctrl);
 		}
 
 		rc = mdss_dsi_clamp_ctrl(ctrl, 0);
