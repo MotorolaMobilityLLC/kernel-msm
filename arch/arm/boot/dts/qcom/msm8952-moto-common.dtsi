@@ -1008,3 +1008,8 @@
 		};
 	};
 };
+
+&pm8950_s5 {
+	/* Force VDD_APC supply (S5-S6) in PWM mode */
+	qcom,mode = "pwm";
+};
