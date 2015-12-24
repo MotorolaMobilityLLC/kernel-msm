@@ -2602,7 +2602,6 @@ VL53L010_EXTERNAL uint32_t VL53L010_calc_macro_period_ps(VL53L0_DEV Dev,
 VL53L010_EXTERNAL uint16_t VL53L010_encode_timeout(uint32_t timeout_mclks);
 VL53L010_EXTERNAL uint32_t VL53L010_decode_timeout(uint16_t encoded_timeout);
 
-
 VL53L010_EXTERNAL VL53L0_Error VL53L010_get_vcsel_pulse_period(VL53L0_DEV Dev, uint8_t
 	*pVCSELPulsePeriod, uint8_t RangeIndex)
 {
