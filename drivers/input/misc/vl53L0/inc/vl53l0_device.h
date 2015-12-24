@@ -63,7 +63,8 @@ typedef uint8_t VL53L0_DeviceError;
 #define VL53L0_DEVICEERROR_ALGOOVERFLOW                 ((VL53L0_DeviceError)   13)   /*!< 13 0b1101  */
 #define VL53L0_DEVICEERROR_RANGEIGNORETHRESHOLD         ((VL53L0_DeviceError)   14)   /*!< 14 0b1110  */
 
-/** @} */ /* end of VL53L0_DeviceError_group */
+/** @} */ // end of VL53L0_DeviceError_group
+
 
 /** @defgroup VL53L0_CheckEnable_group Check Enable list
  *  @brief Check Enable code
@@ -77,10 +78,11 @@ typedef uint8_t VL53L0_DeviceError;
 #define VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE           0
 #define VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE     1
 #define VL53L0_CHECKENABLE_SIGNAL_REF_CLIP             2
+#define VL53L0_CHECKENABLE_RANGE_IGNORE_THRESHOLD      3
 
-#define VL53L0_CHECKENABLE_NUMBER_OF_CHECKS            3
+#define VL53L0_CHECKENABLE_NUMBER_OF_CHECKS            4
 
-/** @} */ /* end of VL53L0_CheckEnable_group */
+/** @} */ // end of VL53L0_CheckEnable_group
 
 
 /** @defgroup VL53L0_GpioFunctionality_group Gpio Functionality
@@ -148,6 +150,7 @@ typedef uint8_t VL53L0_GpioFunctionality;
 
 #define VL53L0_REG_GPIO_HV_MUX_ACTIVE_HIGH          0x0084
 
+
 #define VL53L0_REG_SYSTEM_INTERRUPT_CLEAR	0x000B
 
 /* Result registers */
@@ -198,6 +201,7 @@ typedef uint8_t VL53L0_GpioFunctionality;
 #define VL53L0_REG_FINAL_RANGE_CONFIG_TIMEOUT_MACROP_LO          0x0072
 #define VL53L0_REG_CROSSTALK_COMPENSATION_PEAK_RATE_MCPS         0x0020
 
+#define VL53L0_REG_MSRC_CONFIG_TIMEOUT_MACROP                    0x0046
 
 
 #define VL53L0_REG_SOFT_RESET_GO2_SOFT_RESET_N	  0x00bf
