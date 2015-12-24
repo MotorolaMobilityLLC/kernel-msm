@@ -26,11 +26,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************************************************/
 
-/*
- * $Date: 2014-12-05 15:06:01 +0100 (Fri, 05 Dec 2014) $
- * $Revision: 1915 $
- */
-
 /**
  * @file VL53L0_def.h
  *
@@ -53,7 +48,7 @@ extern "C" {
 /** PAL SPECIFICATION minor version */
 #define VL53L010_SPECIFICATION_VER_MINOR   2
 /** PAL SPECIFICATION sub version */
-#define VL53L010_SPECIFICATION_VER_SUB     8
+#define VL53L010_SPECIFICATION_VER_SUB     7
 /** PAL SPECIFICATION sub version */
 #define VL53L010_SPECIFICATION_VER_REVISION 1440
 
@@ -64,7 +59,7 @@ extern "C" {
 /** VL53L0 PAL IMPLEMENTATION sub version */
 #define VL53L010_IMPLEMENTATION_VER_SUB     8
 /** VL53L0 PAL IMPLEMENTATION sub version */
-#define VL53L010_IMPLEMENTATION_VER_REVISION    3123
+#define VL53L010_IMPLEMENTATION_VER_REVISION    3239
 
 /** PAL SPECIFICATION major version */
 #define VL53L0_SPECIFICATION_VER_MAJOR   1
@@ -80,9 +75,9 @@ extern "C" {
 /** VL53L0 PAL IMPLEMENTATION minor version */
 #define VL53L0_IMPLEMENTATION_VER_MINOR   1
 /** VL53L0 PAL IMPLEMENTATION sub version */
-#define VL53L0_IMPLEMENTATION_VER_SUB     7
+#define VL53L0_IMPLEMENTATION_VER_SUB     11
 /** VL53L0 PAL IMPLEMENTATION sub version */
-#define VL53L0_IMPLEMENTATION_VER_REVISION    3123
+#define VL53L0_IMPLEMENTATION_VER_REVISION    3460
 #define VL53L0_DEFAULT_MAX_LOOP 1000
 #define VL53L0_MAX_STRING_LENGTH 32
 
@@ -118,7 +113,7 @@ typedef struct {
     uint8_t ProductType; /*!< Product Type, VL53L0 = 1, VL53L1 = 2 */
     uint8_t ProductRevisionMajor; /*!< Product revision major */
     uint8_t ProductRevisionMinor; /*!< Product revision minor */
-} VL53L0_DeviceInfo_t ;
+} VL53L0_DeviceInfo_t;
 
 
 /** @defgroup VL53L0_define_Error_group PAL Error and Warning code returned by API
@@ -222,6 +217,9 @@ typedef struct{
 
 	uint8_t LimitChecksEnable[VL53L0_CHECKENABLE_NUMBER_OF_CHECKS];
     /*!< This Array store all the Limit Check enable for this device. */
+	uint8_t LimitChecksStatus[VL53L0_CHECKENABLE_NUMBER_OF_CHECKS];
+    /*!< This Array store all the Status of the check linked to last
+     * measurement. */
 	FixPoint1616_t LimitChecksValue[VL53L0_CHECKENABLE_NUMBER_OF_CHECKS];
     /*!< This Array store all the Limit Check value for this device */
 
@@ -276,7 +274,7 @@ typedef struct{
 
 	uint8_t ZoneId;                       /*!< Denotes which zone and range scheduler stage the range data relates to. */
 	uint8_t RangeFractionalPart;          /*!< Fractional part of range distance. Final value is a FixPoint168 value. */
-	uint8_t RangeStatus;                  /*!< Range Status for the current measurement. This is device dependent. Value = 11 means value is valid. */
+	uint8_t RangeStatus;                  /*!< Range Status for the current measurement. This is device dependent. Value = 0 means value is valid. See \ref RangeStatusPage */
 } VL53L0_RangingMeasurementData_t;
 
 
@@ -331,6 +329,8 @@ typedef struct{
     char ProductId[VL53L0_MAX_STRING_LENGTH]; /* Product Identifier String  */
     uint8_t ReferenceSpadCount; /* used for ref spad management */
     uint8_t ReferenceSpadType;  /* used for ref spad management */
+    uint32_t PartUIDUpper; /*!< Unique Part ID Upper */
+    uint32_t PartUIDLower; /*!< Unique Part ID Lower */
 
 } VL53L0_DeviceSpecificParameters_t;
     
@@ -345,8 +345,10 @@ typedef struct{
 typedef struct {
 	VL53L0_DMaxData_t DMaxData;
 	/*!< Dmax Data */
-	int16_t  Part2PartOffsetNVMMicroMeter;
+	int32_t  Part2PartOffsetNVMMicroMeter;
 	/*!< backed up NVM value */
+	int32_t  Part2PartOffsetAdjustmentNVMMicroMeter;
+	/*!< backed up NVM value representing additional offset adjustment */
 	VL53L0_DeviceParameters_t CurrentParameters;
 	/*!< Current Device Parameter */
 	VL53L0_RangingMeasurementData_t LastRangeMeasure;
@@ -410,6 +412,55 @@ typedef uint8_t VL53L0_InterruptPolarity;
 
 /** @} */ // end of VL53L0_define_InterruptPolarity_group
 
+
+/** @defgroup VL53L0_define_VcselPeriod_group Vcsel Period Defines
+ *  Defines the range measurement for which to access the vcsel period.
+ *  @{
+ */
+typedef uint8_t VL53L0_VcselPeriod;
+
+#define VL53L0_VCSEL_PERIOD_PRE_RANGE   ((VL53L0_VcselPeriod) 0)
+/*!<Identifies the pre-range vcsel period. */
+#define VL53L0_VCSEL_PERIOD_FINAL_RANGE ((VL53L0_VcselPeriod) 1)
+/*!<Identifies the final range vcsel period. */
+
+/** @} */ // end of VL53L0_define_VcselPeriod_group
+
+/** @defgroup VL53L0_define_SchedulerSequence_group Defines the steps
+ * carried out by the scheduler during a range measurement.
+ *  @{
+ *  Defines the states of all the steps in the scheduler
+ *  i.e. enabled/disabled.
+ */
+typedef struct{
+    uint8_t      TccOn;        /*!<Reports if Target Centre Check On  */
+    uint8_t      MsrcOn;       /*!<Reports if MSRC On  */
+    uint8_t      DssOn;        /*!<Reports if DSS On  */
+    uint8_t      PreRangeOn;   /*!<Reports if Pre-Range On  */
+    uint8_t      FinalRangeOn; /*!<Reports if Final-Range On  */
+} VL53L0_SchedulerSequenceSteps_t;
+
+/** @} */ // end of VL53L0_define_SchedulerSequence_group
+
+/** @defgroup VL53L0_define_SequenceStepId_group Defines the Polarity
+ * of the Interrupt
+ *  Defines the the sequence steps performed during ranging..
+ *  @{
+ */
+typedef uint8_t VL53L0_SequenceStepId;
+
+#define  VL53L0_SEQUENCESTEP_TCC         ((VL53L0_VcselPeriod) 0)
+/*!<Target CentreCheck identifier. */
+#define  VL53L0_SEQUENCESTEP_DSS         ((VL53L0_VcselPeriod) 1)
+/*!<Dynamic Spad Selection function Identifier. */
+#define  VL53L0_SEQUENCESTEP_MSRC        ((VL53L0_VcselPeriod) 2)
+/*!<Minimum Signal Rate Check function Identifier. */
+#define  VL53L0_SEQUENCESTEP_PRE_RANGE   ((VL53L0_VcselPeriod) 3)
+/*!<Pre-Range check Identifier. */
+#define  VL53L0_SEQUENCESTEP_FINAL_RANGE ((VL53L0_VcselPeriod) 4)
+/*!<Final Range Check Identifier. */
+
+/** @} */ // end of VL53L0_define_SequenceStepId_group
 
 #ifdef __cplusplus
 }
