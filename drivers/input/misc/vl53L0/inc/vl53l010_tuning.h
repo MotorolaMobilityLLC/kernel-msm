@@ -25,13 +25,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
-/*
- * @file vl53l0_api.h
- * $Date: 2014-12-04 16:15:06 +0100 (Thu, 04 Dec 2014) $
- * $Revision: 1906 $
- */
-
-
 
 #ifndef _VL53L010_TUNING_H_
 #define _VL53L010_TUNING_H_
