@@ -25,13 +25,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
-/*
- * @file vl53l0_api.h
- * $Date: 2014-12-04 16:15:06 +0100 (Thu, 04 Dec 2014) $
- * $Revision: 1906 $
- */
-
-
 
 #ifndef _VL53L0_API_H_
 #define _VL53L0_API_H_
@@ -88,13 +81,30 @@ VL53L0_API VL53L0_Error VL53L0_GetPalSpecVersion(
 
 
 /**
+ * @brief Reads the Product Revision for a for given Device
+ * This function can be used to distinguish cut1.0 from cut1.1.
+ *
+ * @note This function Access to the device
+ *
+ * @param   Dev                 Device Handle
+ * @param   pProductRevisionMajor  Pointer to Product Revision Major
+ * for a given Device
+ * @param   pProductRevisionMinor  Pointer to Product Revision Minor
+ * for a given Device
+ * @return  VL53L0_ERROR_NONE      Success
+ * @return  "Other error code"  See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_GetProductRevision(VL53L0_DEV Dev,
+									uint8_t* pProductRevisionMajor,
+									uint8_t* pProductRevisionMinor);
+
+/**
  * @brief Reads the Device information for given Device
  *
  * @note This function Access to the device
  *
  * @param   Dev                 Device Handle
- * @param   pVL53L0_DeviceInfo     Pointer to current device info for a given
- * Device
+ * @param   pVL53L0_DeviceInfo     Pointer to current device info for a given Device
  * @return  VL53L0_ERROR_NONE      Success
  * @return  "Other error code"  See ::VL53L0_Error
  */
@@ -116,14 +126,26 @@ VL53L0_API VL53L0_Error VL53L0_GetDeviceErrorStatus(VL53L0_DEV Dev,
 			VL53L0_DeviceError * pDeviceErrorStatus);
 
 /**
+ * @brief Human readable Range Status string for a given RangeStatus
+ *
+ * @note This function doesn't access to the device
+ *
+ * @param   RangeStatus         The RangeStatus code as stored on
+ * 								@a VL53L0_RangingMeasurementData_t
+ * @param   pRangeStatusString  The returned RangeStatus string.
+ * @return  VL53L0_ERROR_NONE   Success
+ * @return  "Other error code"  See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_GetRangeStatusString(uint8_t RangeStatus,
+				char* pRangeStatusString);
+
+/**
  * @brief Human readable error string for a given Error Code
  *
  * @note This function doesn't access to the device
  *
- * @param   ErrorCode             The error code as stored on
- * ::VL53L0_DeviceError
- * @param   pDeviceErrorString    The error string corresponding to the
- * ErrorCode
+ * @param   ErrorCode             The error code as stored on ::VL53L0_DeviceError
+ * @param   pDeviceErrorString    The error string corresponding to the ErrorCode
  * @return  VL53L0_ERROR_NONE        Success
  * @return  "Other error code"    See ::VL53L0_Error
  */
@@ -137,8 +159,7 @@ VL53L0_API VL53L0_Error VL53L0_GetDeviceErrorString(
  * @note This function doesn't access to the device
  *
  * @param   PalErrorCode          The error code as stored on @a VL53L0_Error
- * @param   pPalErrorString       The error string corresponding to the
- * PalErrorCode
+ * @param   pPalErrorString       The error string corresponding to the PalErrorCode
  * @return  VL53L0_ERROR_NONE        Success
  * @return  "Other error code"    See ::VL53L0_Error
  */
@@ -152,8 +173,7 @@ VL53L0_API VL53L0_Error VL53L0_GetPalErrorString(VL53L0_Error PalErrorCode,
  * @note This function doesn't access to the device
  *
  * @param   Dev                   Device Handle
- * @param   pPalState             Pointer to current state of the PAL for a
- * given Device
+ * @param   pPalState             Pointer to current state of the PAL for a given Device
  * @return  VL53L0_ERROR_NONE     Success
  * @return  "Other error code"    See ::VL53L0_Error
  */
@@ -163,19 +183,16 @@ VL53L0_API VL53L0_Error VL53L0_GetPalState(VL53L0_DEV Dev,
 
 /**
  * @brief Set the power mode for a given Device
- * The power mode can be Standby or Idle. Different level of both Standby and
- * Idle can exists.
+ * The power mode can be Standby or Idle. Different level of both Standby and Idle can exists.
  * This function should not be used when device is in Ranging state.
  *
  * @note This function Access to the device
  *
  * @param   Dev                   Device Handle
- * @param   PowerMode             The value of the power mode to set.
- * see ::VL53L0_PowerModes Valid values are:
- * VL53L0_POWERMODE_STANDBY_LEVEL1, VL53L0_POWERMODE_IDLE_LEVEL1
+ * @param   PowerMode             The value of the power mode to set. see ::VL53L0_PowerModes
+ *                                Valid values are: VL53L0_POWERMODE_STANDBY_LEVEL1, VL53L0_POWERMODE_IDLE_LEVEL1
  * @return  VL53L0_ERROR_NONE                  Success
- * @return  VL53L0_ERROR_MODE_NOT_SUPPORTED    This error occurs when PowerMode
- * is not in the supported list
+ * @return  VL53L0_ERROR_MODE_NOT_SUPPORTED    This error occurs when PowerMode is not in the supported list
  * @return  "Other error code"    See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_SetPowerMode(VL53L0_DEV Dev,
@@ -187,9 +204,8 @@ VL53L0_API VL53L0_Error VL53L0_SetPowerMode(VL53L0_DEV Dev,
  * @note This function Access to the device
  *
  * @param   Dev                   Device Handle
- * @param   pPowerMode            Pointer to the current value of the power
- * mode. see ::VL53L0_PowerModes. Valid values are:
- * VL53L0_POWERMODE_STANDBY_LEVEL1, VL53L0_POWERMODE_IDLE_LEVEL1
+ * @param   pPowerMode            Pointer to the current value of the power mode. see ::VL53L0_PowerModes
+ *                                Valid values are: VL53L0_POWERMODE_STANDBY_LEVEL1, VL53L0_POWERMODE_IDLE_LEVEL1
  * @return  VL53L0_ERROR_NONE     Success
  * @return  "Other error code"    See ::VL53L0_Error
  */
@@ -216,14 +232,12 @@ VL53L0_API VL53L0_Error VL53L0_SetOffsetCalibrationDataMicroMeter(
  * @brief Get part to part calibration offset
  *
  * @par Function Description
- * Should only be used after a successful call to @a VL53L0_DataInit to backup
- * device NVM value
+ * Should only be used after a successful call to @a VL53L0_DataInit to backup device NVM value
  *
  * @note This function Access to the device
  *
  * @param   Dev                                Device Handle
- * @param   pOffsetCalibrationDataMicroMeter   Return part to part calibration
- * offset from device (microns)
+ * @param   pOffsetCalibrationDataMicroMeter   Return part to part calibration offset from device (microns)
  * @return  VL53L0_ERROR_NONE                  Success
  * @return  "Other error code"                 See ::VL53L0_Error
  */
@@ -249,19 +263,16 @@ VL53L0_API VL53L0_Error VL53L0_SetGroupParamHold(VL53L0_DEV Dev,
 /**
  * @brief Get the maximal distance for actual setup
  * @par Function Description
- * Device must be initialized through @a VL53L0_SetParameters() prior calling
- * this function.
+ * Device must be initialized through @a VL53L0_SetParameters() prior calling this function.
  *
- * Any range value more than the value returned is to be considered as "no
- * target detected"
- * or "no target in detectable range"\n
+ * Any range value more than the value returned is to be considered as "no target detected"
+ * or "no target in detectable range" \n
  * @warning The maximal distance depends on the setup
  *
  * @note This function is not Implemented
  *
  * @param   Dev      Device Handle
- * @param   pUpperLimitMilliMeter   The maximal range limit for actual setup
- * (in millimeter)
+ * @param   pUpperLimitMilliMeter   The maximal range limit for actual setup (in millimeter)
  * @return  VL53L0_ERROR_NOT_IMPLEMENTED        Not implemented
  */
 VL53L0_API VL53L0_Error VL53L0_GetUpperLimitMilliMeter(VL53L0_DEV Dev,
@@ -278,8 +289,8 @@ VL53L0_API VL53L0_Error VL53L0_GetUpperLimitMilliMeter(VL53L0_DEV Dev,
 /**
  * @brief Set new device address
  *
- * After completion the device will answer to the new address programmed. This
- * function should be called when several devices are used in parallel
+ * After completion the device will answer to the new address programmed.
+ * This function should be called when several devices are used in parallel
  * before start programming the sensor.
  * When a single device us used, there is no need to call this function.
  *
@@ -297,19 +308,17 @@ VL53L0_API VL53L0_Error VL53L0_SetDeviceAddress(VL53L0_DEV Dev,
  *
  * @brief One time device initialization
  *
- * To be called once and only once after device is brought out of reset (Chip
- * enable) and booted see @a VL53L0_WaitDeviceBooted()
+ * To be called once and only once after device is brought out of reset
+ * (Chip enable) and booted see @a VL53L0_WaitDeviceBooted()
  *
  * @par Function Description
- * When not used after a fresh device "power up" or reset, it may return @a
- * #VL53L0_ERROR_CALIBRATION_WARNING
- * meaning wrong calibration data may have been fetched from device that can
- * result in ranging offset error\n
+ * When not used after a fresh device "power up" or reset, it may return
+ * @a #VL53L0_ERROR_CALIBRATION_WARNING meaning wrong calibration data
+ * may have been fetched from device that can result in ranging offset error\n
  * If application cannot execute device reset or need to run VL53L0_DataInit
- * multiple time
- * then it  must ensure proper offset calibration saving and restore on its own
- * by using @a VL53L0_GetOffsetCalibrationData() on first power up and then @a
- * VL53L0_SetOffsetCalibrationData() in all subsequent init
+ * multiple time then it  must ensure proper offset calibration saving and
+ * restore on its own by using @a VL53L0_GetOffsetCalibrationData() on first
+ * power up and then @a VL53L0_SetOffsetCalibrationData() in all subsequent init
  * This function will change the VL53L0_State from VL53L0_STATE_POWERDOWN to
  * VL53L0_STATE_WAIT_STATICINIT.
  *
@@ -369,7 +378,7 @@ VL53L0_Error VL53L0_GetTuningSettingBuffer(VL53L0_DEV Dev,
  * @brief Do basic device init (and eventually patch loading)
  * This function will change the VL53L0_State from
  * VL53L0_STATE_WAIT_STATICINIT to VL53L0_STATE_IDLE.
- * In this stage all defalut setting will be applied.
+ * In this stage all default setting will be applied.
  *
  * @note This function Access to the device
  *
@@ -392,10 +401,8 @@ VL53L0_API VL53L0_Error VL53L0_StaticInit(VL53L0_DEV Dev);
 VL53L0_API VL53L0_Error VL53L0_WaitDeviceBooted(VL53L0_DEV Dev);
 
 /**
- * @brief Do an hard reset or soft reset (depending on implementation) of the
- * device \n
- * After call of this function, device must be in same state as right after a
- * power-up sequence.
+ * @brief Do an hard reset or soft reset (depending on implementation) of the device \n
+ * After call of this function, device must be in same state as right after a power-up sequence.
  * This function will change the VL53L0_State to VL53L0_STATE_POWERDOWN.
  *
  * @note This function Access to the device
@@ -546,28 +553,23 @@ VL53L0_API VL53L0_Error VL53L0_GetHistogramMode(VL53L0_DEV Dev,
  * @brief Set Ranging Timing Budget in microseconds
  *
  * @par Function Description
- * Defines the maximum time allowed by the user to the device to run a full
- * ranging sequence
- * for the current mode (ranging, histogram, ASL ...)
+ * Defines the maximum time allowed by the user to the device to run a
+ * full ranging sequence for the current mode (ranging, histogram, ASL ...)
  *
  * @note This function Access to the device
  *
  * @param   Dev                                Device Handle
- * @param MeasurementTimingBudgetMicroSeconds  Max measurement time in
- * microseconds.
+ * @param MeasurementTimingBudgetMicroSeconds  Max measurement time in microseconds.
  *                                             Valid values are:
- *                                             >= 17000 microseconds when
- * wraparound enabled
- *                                             >= 12000 microseconds when
- * wraparound disabled
- * @return  VL53L0_ERROR_NONE                  Success
- * @return  VL53L0_ERROR_INVALID_PARAMS        This error is returned if
- * MeasurementTimingBudgetMicroSeconds is out of range
- * @return  "Other error code"                 See ::VL53L0_Error
+ *                                         >= 17000 microsecs when wraparound enabled
+ *                                         >= 12000 microsecs when wraparound disabled
+ * @return  VL53L0_ERROR_NONE             Success
+ * @return  VL53L0_ERROR_INVALID_PARAMS   This error is returned if
+                                          MeasurementTimingBudgetMicroSeconds out of range
+ * @return  "Other error code"            See ::VL53L0_Error
  */
-VL53L0_API VL53L0_Error VL53L0_SetMeasurementTimingBudgetMicroSeconds(
-			VL53L0_DEV Dev,
-			uint32_t MeasurementTimingBudgetMicroSeconds);
+VL53L0_API VL53L0_Error VL53L0_SetMeasurementTimingBudgetMicroSeconds(VL53L0_DEV Dev,
+                         uint32_t  MeasurementTimingBudgetMicroSeconds);
 
 /**
  * @brief Get Ranging Timing Budget in microseconds
@@ -580,19 +582,186 @@ VL53L0_API VL53L0_Error VL53L0_SetMeasurementTimingBudgetMicroSeconds(
  * @note This function Access to the device
  *
  * @param   Dev                                    Device Handle
- * @param   pMeasurementTimingBudgetMicroSeconds   Max measurement time in
- * microseconds.
+ * @param   pMeasurementTimingBudgetMicroSeconds   Max measurement time in microseconds.
  *                                                 Valid values are:
- *                                                 >= 17000 microseconds when
- * wraparound enabled
- *                                                 >= 12000 microseconds when
- * wraparound disabled
+ *                                          >= 17000 microsecs when wraparound enabled
+ *                                          >= 12000 microsecs when wraparound disabled
  * @return  VL53L0_ERROR_NONE                      Success
  * @return  "Other error code"                     See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_GetMeasurementTimingBudgetMicroSeconds(
 			VL53L0_DEV Dev,
 			uint32_t *pMeasurementTimingBudgetMicroSeconds);
+
+/**
+ * @brief Gets the VCSEL pulse period.
+ *
+ * @par Function Description
+ * This function retrieves the VCSEL pulse period for the given period type.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev    			             Device Handle
+ * @param   VcselPeriodType	             VCSEL period identifier (pre-range|final).
+ * @param   pVCSELPulsePeriod            Pointer to VCSEL period value.
+ * @return  VL53L0_ERROR_NONE            Success
+ * @return  VL53L0_ERROR_INVALID_PARAMS  Error VcselPeriodType parameter not
+ *                                       supported.
+ * @return  "Other error code"           See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_GetVcselPulsePeriod(VL53L0_DEV Dev,
+                    VL53L0_VcselPeriod VcselPeriodType, uint8_t* pVCSELPulsePeriod);
+
+/**
+ * @brief Sets the VCSEL pulse period.
+ *
+ * @par Function Description
+ * This function retrieves the VCSEL pulse period for the given period type.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev    			             Device Handle
+ * @param   VcselPeriodType	             VCSEL period identifier (pre-range|final).
+ * @param   VCSELPulsePeriod             VCSEL period value
+ * @return  VL53L0_ERROR_NONE            Success
+ * @return  VL53L0_ERROR_INVALID_PARAMS  Error VcselPeriodType parameter not
+ *                                       supported.
+ * @return  "Other error code"           See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_SetVcselPulsePeriod(VL53L0_DEV Dev,
+                    VL53L0_VcselPeriod VcselPeriodType, uint8_t VCSELPulsePeriod);
+
+/**
+ * @brief Sets the (on/off) state of a requested sequence step.
+ *
+ * @par Function Description
+ * This function enables/disables a requested sequence step.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev    			             Device Handle
+ * @param   SequenceStepId	             Sequence step identifier.
+ * @param   SequenceStepEnabled          Demanded state {0=Off,1=On}
+ *                                       is enabled.
+ * @return  VL53L0_ERROR_NONE            Success
+ * @return  VL53L0_ERROR_INVALID_PARAMS  Error SequenceStepId parameter not
+ *                                       supported.
+ * @return  "Other error code"           See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_SetSequenceStepEnable(VL53L0_DEV Dev,
+                    VL53L0_SequenceStepId SequenceStepId, uint8_t SequenceStepEnabled);
+
+/**
+ * @brief Gets the (on/off) state of a requested sequence step.
+ *
+ * @par Function Description
+ * This function retrieves the state of a requested sequence step, i.e. on/off.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev    			             Device Handle
+ * @param   SequenceStepId	             Sequence step identifier.
+ * @param   pSequenceStepEnabled         Out parameter reporting if the sequence step
+ *                                       is enabled {0=Off,1=On}.
+ * @return  VL53L0_ERROR_NONE            Success
+ * @return  VL53L0_ERROR_INVALID_PARAMS  Error SequenceStepId parameter not
+ *                                       supported.
+ * @return  "Other error code"           See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_GetSequenceStepEnable(VL53L0_DEV Dev,
+                    VL53L0_SequenceStepId SequenceStepId, uint8_t* pSequenceStepEnabled);
+
+/**
+ * @brief Gets the (on/off) state of all sequence steps.
+ *
+ * @par Function Description
+ * This function retrieves the state of all sequence step in the scheduler.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev    			             Device Handle
+ * @param   pSchedulerSequenceSteps	     Pointer to struct containing result.
+ * @return  VL53L0_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_GetSequenceStepEnables(VL53L0_DEV Dev,
+                    VL53L0_SchedulerSequenceSteps_t *pSchedulerSequenceSteps);
+
+/**
+ * @brief Sets the timeout of a requested sequence step.
+ *
+ * @par Function Description
+ * This function sets the timeout of a requested sequence step.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev    			             Device Handle
+ * @param   SequenceStepId	             Sequence step identifier.
+ * @param   TimeOutMilliSecs             Demanded timeout
+ * @return  VL53L0_ERROR_NONE            Success
+ * @return  VL53L0_ERROR_INVALID_PARAMS  Error SequenceStepId parameter not
+ *                                       supported.
+ * @return  "Other error code"           See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_SetSequenceStepTimeout(VL53L0_DEV Dev,
+                    VL53L0_SequenceStepId SequenceStepId, FixPoint1616_t TimeOutMilliSecs);
+
+/**
+ * @brief Gets the timeout of a requested sequence step.
+ *
+ * @par Function Description
+ * This function retrieves the timeout of a requested sequence step.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev    			             Device Handle
+ * @param   SequenceStepId	             Sequence step identifier.
+ * @param   pTimeOutMilliSecs            Out parameter reporting the timeout value.
+ * @return  VL53L0_ERROR_NONE            Success
+ * @return  VL53L0_ERROR_INVALID_PARAMS  Error SequenceStepId parameter not
+ *                                       supported.
+ * @return  "Other error code"           See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_GetSequenceStepTimeout(VL53L0_DEV Dev,
+                    VL53L0_SequenceStepId SequenceStepId, FixPoint1616_t *pTimeOutMilliSecs);
+
+/**
+ * @brief Gets number of sequence steps currently enabled.
+ *
+ * @par Function Description
+ * This function retrieves the number of sequence steps currently enabled during range
+ * meaaurements.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev    			             Device Handle
+ * @param   pNumberOfSequenceSteps       Out parameter reporting the number of sequence
+ *                                       steps enabled.
+ * @return  VL53L0_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_GetNumberOfSequenceSteps(VL53L0_DEV Dev,
+                    uint8_t* pNumberOfSequenceSteps);
+
+/**
+ * @brief Gets number of sequence steps currently enabled.
+ *
+ * @par Function Description
+ * This function retrieves the number of sequence steps currently enabled during range
+ * meaaurements.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev    			             Device Handle
+ * @param   SequenceStepId	             Sequence step identifier.
+ * @param   pSequenceStepsString         Pointer to Info string
+ *
+ * @return  VL53L0_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_GetSequenceStepsInfo(VL53L0_DEV Dev,
+                    VL53L0_SequenceStepId SequenceStepId,
+                    char* pSequenceStepsString);
 
 /**
  * Program continuous mode Inter-Measurement period in milliseconds
@@ -621,7 +790,7 @@ VL53L0_API VL53L0_Error VL53L0_SetInterMeasurementPeriodMilliSeconds(
  *
  * @param   Dev                                  Device Handle
  * @param   pInterMeasurementPeriodMilliSeconds  Pointer to programmed
- * Inter-Measurement Period in milliseconds.
+ *  Inter-Measurement Period in milliseconds.
  * @return  VL53L0_ERROR_NONE                    Success
  * @return  "Other error code"                   See ::VL53L0_Error
  */
@@ -735,6 +904,33 @@ VL53L0_API VL53L0_Error VL53L0_GetLimitCheckInfo(VL53L0_DEV Dev,
 
 
 /**
+ * @brief  Return a the Status of the specified check limit
+ *
+ * @par Function Description
+ * This function returns the Status of the specified check limit.
+ * The value indicate if the check is fail or not.
+ * The limit check is identified with the LimitCheckId.
+ *
+ * @note This function doesn't Access to the device
+ *
+ * @param   Dev                           Device Handle
+ * @param   LimitCheckId                  Limit Check ID
+    (0<= LimitCheckId < VL53L0_GetNumberOfLimitCheck() ).
+ * @param   pLimitCheckStatus             Pointer to the
+    Limit Check Status of the given check limit.
+ * LimitCheckStatus : 0 the check is not fail
+ * 					  1 the check if fail or not enabled
+ *
+ * @return  VL53L0_ERROR_NONE             Success
+ * @return  VL53L0_ERROR_INVALID_PARAMS   This error is
+    returned when LimitCheckId value is out of range.
+ * @return  "Other error code"            See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_GetLimitCheckStatus(VL53L0_DEV Dev,
+            uint16_t LimitCheckId, uint8_t* pLimitCheckStatus);
+
+
+/**
  * @brief  Enable/Disable a specific limit check
  *
  * @par Function Description
@@ -769,9 +965,9 @@ VL53L0_API VL53L0_Error VL53L0_SetLimitCheckEnable(VL53L0_DEV Dev,
  * @note This function Access to the device
  *
  * @param   Dev                           Device Handle
+ * @param   LimitCheckId                  Limit Check ID
  *  (0<= LimitCheckId < VL53L0_GetNumberOfLimitCheck() ).
- * @param   pLimitCheckEnable             Pointer to the check limit enable
- * value.
+ * @param   pLimitCheckEnable             Pointer to the check limit enable value.
  *                                        if 1 the check limit
  *  corresponding to LimitCheckId is Enabled
  *                                        if 0 the check limit
@@ -944,6 +1140,7 @@ VL53L0_API VL53L0_Error VL53L0_PerformRefCalibration(VL53L0_DEV Dev);
  * This function will clear the interrupt generated automatically.
  * This function will program a new value for the XTalk compensation 
  * and it will enable the cross talk before exit.
+ * This function will disable the VL53L0_CHECKENABLE_RANGE_IGNORE_THRESHOLD.
  *
  * @warning This function is a blocking function
  *
@@ -953,15 +1150,16 @@ VL53L0_API VL53L0_Error VL53L0_PerformRefCalibration(VL53L0_DEV Dev);
  * VL53L0_DEVICEMODE_SINGLE_RANGING
  *
  * @param   Dev                  Device Handle
- * @param   XTalkCalDistance               XTalkCalDistance value used for the
- * XTalk computation.
- * @param   pXTalkCompensationRateMegaCps  Pointer to new XTalkCompensation
- * value.
+ * @param   XTalkCalDistance     XTalkCalDistance value used for the XTalk
+ * computation.
+ * @param   pXTalkCompensationRateMegaCps  Pointer to new
+ * XTalkCompensation value.
  * @return  VL53L0_ERROR_NONE    Success
  * @return  "Other error code"   See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_PerformXTalkCalibration(VL53L0_DEV Dev,
-            FixPoint1616_t XTalkCalDistance, FixPoint1616_t* pXTalkCompensationRateMegaCps);
+            FixPoint1616_t XTalkCalDistance,
+            FixPoint1616_t* pXTalkCompensationRateMegaCps);
 
 /**
  * @brief Perform Offset Calibration
@@ -970,7 +1168,8 @@ VL53L0_API VL53L0_Error VL53L0_PerformXTalkCalibration(VL53L0_DEV Dev,
  * This function will launch a ranging measurement, if interrupts are 
  * enabled an interrupt will be done.
  * This function will clear the interrupt generated automatically.
- * This function will program a new value for the Offset calibration value and
+ * This function will program a new value for the Offset calibration value
+ * This function will disable the VL53L0_CHECKENABLE_RANGE_IGNORE_THRESHOLD.
  *
  * @warning This function is a blocking function
  *
@@ -1005,11 +1204,12 @@ VL53L0_API VL53L0_Error VL53L0_PerformOffsetCalibration(VL53L0_DEV Dev,
  * @param   Dev                  Device Handle
  * @return  VL53L0_ERROR_NONE                  Success
  * @return  VL53L0_ERROR_MODE_NOT_SUPPORTED    This error occurs when 
- * DeviceMode programmed with @a VL53L0_SetDeviceMode is not in the supported list:
- *                                             Supported mode are:
- *                                             VL53L0_DEVICEMODE_SINGLE_RANGING, 
- *                                             VL53L0_DEVICEMODE_CONTINUOUS_RANGING, 
- *                                             VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING
+ * DeviceMode programmed with @a VL53L0_SetDeviceMode is not in the supported
+ * list:
+ *                                   Supported mode are:
+ *                                   VL53L0_DEVICEMODE_SINGLE_RANGING,
+ *                                   VL53L0_DEVICEMODE_CONTINUOUS_RANGING,
+ *                                   VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING
  * @return  VL53L0_ERROR_TIME_OUT    Time out on start measurement
  * @return  "Other error code"   See ::VL53L0_Error
  */
@@ -1038,9 +1238,9 @@ VL53L0_API VL53L0_Error VL53L0_StopMeasurement(VL53L0_DEV Dev);
  * @par Function Description
  * This function indicate that a measurement data is ready.
  * This function check if interrupt mode is used then check is done accordingly.
- * If perform function clear the interrupt, this function will not work, like
- * in case of @a VL53L0_PerformSingleRangingMeasurement().
- * The previous function is blocking function, VL53L0_GetMeasurementDataReady
+ * If perform function clear the interrupt, this function will not work, 
+ * like in case of @a VL53L0_PerformSingleRangingMeasurement().
+ * The previous function is blocking function, VL53L0_GetMeasurementDataReady 
  * is used for non-blocking capture.
  *
  * @note This function Access to the device
@@ -1052,11 +1252,10 @@ VL53L0_API VL53L0_Error VL53L0_StopMeasurement(VL53L0_DEV Dev);
  * @return  "Other error code"     See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_GetMeasurementDataReady(VL53L0_DEV Dev,
-			uint8_t *pMeasurementDataReady);
+            uint8_t *pMeasurementDataReady);
 
 /**
- * @brief Wait for device ready for a new measurement command. Blocking
- * function.
+ * @brief Wait for device ready for a new measurement command. Blocking function.
  *
  * @note This function is not Implemented
  *
@@ -1101,42 +1300,42 @@ VL53L0_API VL53L0_Error VL53L0_GetRangingMeasurementData(VL53L0_DEV Dev,
  * @note This function is not Implemented
  *
  * @param   Dev    			            Device Handle
- * @param	  pHistogramMeasurementData	Pointer to the data structure to fill
- * up.
+ * @param   pHistogramMeasurementData   Pointer to the data structure to fill up.
  * @return  VL53L0_ERROR_NOT_IMPLEMENTED   Not implemented
  */
 VL53L0_API VL53L0_Error VL53L0_GetHistogramMeasurementData(VL53L0_DEV Dev,
 		VL53L0_HistogramMeasurementData_t *pHistogramMeasurementData);
 
+
 /**
- * @brief Performs a single ranging measurement and retrieve the ranging
+ * @brief Performs a single ranging measurement and retrieve the ranging 
  * measurement data
  *
  * @par Function Description
- * This function will change the device mode to
- * VL53L0_DEVICEMODE_SINGLE_RANGING with @a VL53L0_SetDeviceMode(),
+ * This function will change the device mode to VL53L0_DEVICEMODE_SINGLE_RANGING
+ * with @a VL53L0_SetDeviceMode(),
  * It performs measurement with @a VL53L0_PerformSingleMeasurement()
- * It get data from last successful Ranging measurement with @a
- * VL53L0_GetRangingMeasurementData.
+ * It get data from last successful Ranging measurement with 
+ * @a VL53L0_GetRangingMeasurementData.
  * Finally it clear the interrupt with @a VL53L0_ClearInterruptMask().
+ *
  * @note This function Access to the device
  *
- * @note This function change the device mode to
- * VL53L0_DEVICEMODE_SINGLE_RANGING
+ * @note This function change the device mode to VL53L0_DEVICEMODE_SINGLE_RANGING
  *
- * @param   Dev							Device Handle
- * @param   pRangingMeasurementData		Pointer to the data structure to fill up.
- * @return  VL53L0_ERROR_NONE			Success
- * @return  "Other error code"			See ::VL53L0_Error
+ * @param   Dev    			          Device Handle
+ * @param   pRangingMeasurementData   Pointer to the data structure to fill up.
+ * @return  VL53L0_ERROR_NONE         Success
+ * @return  "Other error code"        See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_PerformSingleRangingMeasurement(VL53L0_DEV Dev,
 		VL53L0_RangingMeasurementData_t *pRangingMeasurementData);
 
+
 /**
- * @brief Performs a single histogram measurement and retrieve the histogram
+ * @brief Performs a single histogram measurement and retrieve the histogram 
  * measurement data
- *        Is equivalent to VL53L0_PerformSingleMeasurement +
- * VL53L0_GetHistogramMeasurementData
+ *   Is equivalent to VL53L0_PerformSingleMeasurement + VL53L0_GetHistogramMeasurementData
  *
  * @par Function Description
  * Get data from last successful Ranging measurement.
@@ -1144,9 +1343,8 @@ VL53L0_API VL53L0_Error VL53L0_PerformSingleRangingMeasurement(VL53L0_DEV Dev,
  *
  * @note This function is not Implemented
  *
- * @param   Dev							Device Handle
- * @param   pHistogramMeasurementData	Pointer to the data structure to fill
- * up.
+ * @param   Dev    			            Device Handle
+ * @param   pHistogramMeasurementData   Pointer to the data structure to fill up.
  * @return  VL53L0_ERROR_NOT_IMPLEMENTED   Not implemented
  */
 VL53L0_API VL53L0_Error VL53L0_PerformSingleHistogramMeasurement(
@@ -1160,16 +1358,15 @@ VL53L0_API VL53L0_Error VL53L0_PerformSingleHistogramMeasurement(
  *
  * @par Function Description
  * Set the number of ROI Zones to be used for a specific Device.
- * The programmed value should be less than the max number of ROI Zones given
- * with  @a VL53L0_GetMaxNumberOfROIZones().
+ * The programmed value should be less than the max number of ROI Zones given with
+ * @a VL53L0_GetMaxNumberOfROIZones().
  * This version of API manage only one zone.
  *
- * @param   Dev							Device Handle
+ * @param   Dev    			            Device Handle
  * @param   NumberOfROIZones            Number of ROI Zones to be used for a
- * specific Device.
+ *  specific Device.
  * @return  VL53L0_ERROR_NONE             Success
- * @return  VL53L0_ERROR_INVALID_PARAMS   This error is returned if
- * NumberOfROIZones != 1
+ * @return  VL53L0_ERROR_INVALID_PARAMS   This error is returned if NumberOfROIZones != 1
  */
 VL53L0_API VL53L0_Error VL53L0_SetNumberOfROIZones(VL53L0_DEV Dev,
 			uint8_t NumberOfROIZones);
@@ -1186,9 +1383,8 @@ VL53L0_API VL53L0_Error VL53L0_SetNumberOfROIZones(VL53L0_DEV Dev,
  *
  * @note This function doesn't Access to the device
  *
- * @param   Dev							Device Handle
- * @param   pNumberOfROIZones           Pointer to the Number of ROI Zones
- * value.
+ * @param   Dev    			            Device Handle
+ * @param   pNumberOfROIZones           Pointer to the Number of ROI Zones value.
  * @return  VL53L0_ERROR_NONE           Success
  */
 VL53L0_API VL53L0_Error VL53L0_GetNumberOfROIZones(VL53L0_DEV Dev,
@@ -1243,10 +1439,11 @@ VL53L0_API VL53L0_Error VL53L0_GetMaxNumberOfROIZones(VL53L0_DEV Dev,
  *                               VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY
  * @return  "Other error code"    See ::VL53L0_Error
  */
-VL53L0_API VL53L0_Error VL53L0_SetGpioConfig(VL53L0_DEV Dev, uint8_t Pin,
-				VL53L0_DeviceModes DeviceMode,
-				VL53L0_GpioFunctionality Functionality,
-				VL53L0_InterruptPolarity Polarity);
+VL53L0_API VL53L0_Error VL53L0_SetGpioConfig(VL53L0_DEV Dev,
+            uint8_t Pin,
+            VL53L0_DeviceModes DeviceMode,
+            VL53L0_GpioFunctionality Functionality,
+            VL53L0_InterruptPolarity Polarity);
 
 
 /**
@@ -1258,28 +1455,31 @@ VL53L0_API VL53L0_Error VL53L0_SetGpioConfig(VL53L0_DEV Dev, uint8_t Pin,
  * @param   Pin                   ID of the GPIO Pin
  * @param   pDeviceMode           Pointer to Device Mode associated to the Gpio.
  * @param   pFunctionality        Pointer to Pin functionality.
- * Refer to ::VL53L0_GpioFunctionality
- * @param   pPolarity             Pointer to interrupt polarity. Active high or
- * active low see ::VL53L0_InterruptPolarity
- * @return  VL53L0_ERROR_NONE                            Success
- * @return  VL53L0_ERROR_GPIO_NOT_EXISTING               Only Pin=0 is accepted.
- * @return  VL53L0_ERROR_GPIO_FUNCTIONALITY_NOT_SUPPORTED    This error occurs
- * when Functionality programmed is not in the supported list:
- * Supported value are:
- * VL53L0_GPIOFUNCTIONALITY_OFF, VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
- * VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH,
- * VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_OUT,
- * VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY
+ *  Refer to ::VL53L0_GpioFunctionality
+ * @param   pPolarity             Pointer to interrupt polarity. 
+ *  Active high or active low see ::VL53L0_InterruptPolarity
+ * @return  VL53L0_ERROR_NONE                                Success
+ * @return  VL53L0_ERROR_GPIO_NOT_EXISTING                   Only Pin=0 is accepted.
+ * @return  VL53L0_ERROR_GPIO_FUNCTIONALITY_NOT_SUPPORTED    This error occurs when 
+ *  Functionality programmed is not in the supported list:
+ *                               Supported value are:
+ *                                VL53L0_GPIOFUNCTIONALITY_OFF, 
+ *                                VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
+ *                                VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH,
+ *                                VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_OUT,
+ *                                VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY
  * @return  "Other error code"    See ::VL53L0_Error
  */
-VL53L0_API VL53L0_Error VL53L0_GetGpioConfig(VL53L0_DEV Dev, uint8_t Pin,
-			VL53L0_DeviceModes * pDeviceMode,
-			VL53L0_GpioFunctionality * pFunctionality,
-			VL53L0_InterruptPolarity * pPolarity);
+VL53L0_API VL53L0_Error VL53L0_GetGpioConfig(VL53L0_DEV Dev,
+            uint8_t Pin,
+            VL53L0_DeviceModes* pDeviceMode,
+            VL53L0_GpioFunctionality* pFunctionality,
+            VL53L0_InterruptPolarity* pPolarity);
+
 
 /**
- * @brief Set low and high Interrupt thresholds for a given mode (ranging, ALS,
- * ...) for a given device
+ * @brief Set low and high Interrupt thresholds for a given mode (ranging, ALS, ...)
+ *  for a given device
  *
  * @par Function Description
  * Set low and high Interrupt thresholds for a given mode (ranging, ALS, ...)
@@ -1291,21 +1491,19 @@ VL53L0_API VL53L0_Error VL53L0_GetGpioConfig(VL53L0_DEV Dev, uint8_t Pin,
  *
  * @param   Dev                  Device Handle
  * @param   DeviceMode           Device Mode for which change thresholds
- * @param   ThresholdLow         Low threshold (mm, lux ..., depending on the
- * mode)
- * @param   ThresholdHigh        High threshold (mm, lux ..., depending on the
- * mode)
+ * @param   ThresholdLow         Low threshold (mm, lux ..., depending on the mode)
+ * @param   ThresholdHigh        High threshold (mm, lux ..., depending on the mode)
  * @return  VL53L0_ERROR_NONE    Success
  * @return  "Other error code"   See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_SetInterruptThresholds(VL53L0_DEV Dev,
-			VL53L0_DeviceModes DeviceMode,
-			FixPoint1616_t ThresholdLow,
-			FixPoint1616_t ThresholdHigh);
+            VL53L0_DeviceModes DeviceMode,
+            FixPoint1616_t ThresholdLow,
+            FixPoint1616_t ThresholdHigh);
 
 /**
- * @brief  Get high and low Interrupt thresholds for a given mode (ranging,
- * ALS, ...) for a given device
+ * @brief  Get high and low Interrupt thresholds for a given mode (ranging, ALS, ...)
+ *  for a given device
  *
  * @par Function Description
  * Get high and low Interrupt thresholds for a given mode (ranging, ALS, ...)
@@ -1317,17 +1515,15 @@ VL53L0_API VL53L0_Error VL53L0_SetInterruptThresholds(VL53L0_DEV Dev,
  *
  * @param   Dev                 Device Handle
  * @param   DeviceMode          Device Mode from which read thresholds
- * @param   pThresholdLow       Low threshold (mm, lux ..., depending on the
- * mode)
- * @param   pThresholdHigh      High threshold (mm, lux ..., depending on the
- * mode)
+ * @param   pThresholdLow       Low threshold (mm, lux ..., depending on the mode)
+ * @param   pThresholdHigh      High threshold (mm, lux ..., depending on the mode)
  * @return  VL53L0_ERROR_NONE   Success
  * @return  "Other error code"  See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_GetInterruptThresholds(VL53L0_DEV Dev,
-			VL53L0_DeviceModes DeviceMode,
-			FixPoint1616_t *pThresholdLow,
-			FixPoint1616_t *pThresholdHigh);
+            VL53L0_DeviceModes DeviceMode,
+            FixPoint1616_t* pThresholdLow,
+            FixPoint1616_t* pThresholdHigh);
 
 /**
  * @brief Clear given system interrupt condition
@@ -1342,8 +1538,7 @@ VL53L0_API VL53L0_Error VL53L0_GetInterruptThresholds(VL53L0_DEV Dev,
  * @return  VL53L0_ERROR_NONE    Success
  * @return  "Other error code"   See ::VL53L0_Error
  */
-VL53L0_API VL53L0_Error VL53L0_ClearInterruptMask(VL53L0_DEV Dev,
-			uint32_t InterruptMask);
+VL53L0_API VL53L0_Error VL53L0_ClearInterruptMask(VL53L0_DEV Dev, uint32_t InterruptMask);
 
 /**
  * @brief Return device interrupt status
@@ -1361,7 +1556,7 @@ VL53L0_API VL53L0_Error VL53L0_ClearInterruptMask(VL53L0_DEV Dev,
  * @return  "Other error code"     See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_GetInterruptMaskStatus(VL53L0_DEV Dev,
-			uint32_t *pInterruptMaskStatus);
+            uint32_t *pInterruptMaskStatus);
 
 
 /**
@@ -1369,13 +1564,12 @@ VL53L0_API VL53L0_Error VL53L0_GetInterruptMaskStatus(VL53L0_DEV Dev,
  *
  * @note This function is not Implemented
  *
- * @param   Dev					Device Handle
- * @param	InterruptMask		Mask of interrupt to Enable/disable
- * (0:interrupt disabled or 1: interrupt enabled)
+ * @param   Dev    			     Device Handle
+ * @param   InterruptMask 		 Mask of interrupt to Enable/disable
+ *  (0:interrupt disabled or 1: interrupt enabled)
  * @return  VL53L0_ERROR_NOT_IMPLEMENTED   Not implemented
  */
-VL53L0_API VL53L0_Error VL53L0_EnableInterruptMask(VL53L0_DEV Dev,
-			uint32_t InterruptMask);
+VL53L0_API VL53L0_Error VL53L0_EnableInterruptMask(VL53L0_DEV Dev, uint32_t InterruptMask);
 
 
 /** @} VL53L0_interrupt_group */
@@ -1402,7 +1596,7 @@ VL53L0_API VL53L0_Error VL53L0_EnableInterruptMask(VL53L0_DEV Dev,
  * @return  "Other error code"            See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_SetSpadAmbientDamperThreshold(VL53L0_DEV Dev,
-					uint16_t SpadAmbientDamperThreshold);
+            uint16_t SpadAmbientDamperThreshold);
 
 /**
  * @brief  Get the current SPAD Ambient Damper Threshold value
@@ -1413,13 +1607,13 @@ VL53L0_API VL53L0_Error VL53L0_SetSpadAmbientDamperThreshold(VL53L0_DEV Dev,
  * @note This function Access to the device
  *
  * @param   Dev                           Device Handle
- * @param   pSpadAmbientDamperThreshold   Pointer to programmed SPAD Ambient
- * Damper Threshold value
+ * @param   pSpadAmbientDamperThreshold   Pointer to programmed
+ *                                        SPAD Ambient Damper Threshold value
  * @return  VL53L0_ERROR_NONE             Success
  * @return  "Other error code"            See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_GetSpadAmbientDamperThreshold(VL53L0_DEV Dev,
-					uint16_t *pSpadAmbientDamperThreshold);
+            uint16_t* pSpadAmbientDamperThreshold);
 
 
 /**
@@ -1436,7 +1630,7 @@ VL53L0_API VL53L0_Error VL53L0_GetSpadAmbientDamperThreshold(VL53L0_DEV Dev,
  * @return  "Other error code"            See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_SetSpadAmbientDamperFactor(VL53L0_DEV Dev,
-					uint16_t SpadAmbientDamperFactor);
+            uint16_t SpadAmbientDamperFactor);
 
 /**
  * @brief  Get the current SPAD Ambient Damper Factor value
