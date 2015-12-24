@@ -26,12 +26,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
-/*
- * @file vl53l0_string.h
- * $Date: 2014-12-04 16:15:06 +0100 (Thu, 04 Dec 2014) $
- * $Revision: 1906 $
- */
-
 #ifndef VL53L010_STRINGS_H_
 #define VL53L010_STRINGS_H_
 
