@@ -236,7 +236,7 @@ VL53L0_Error VL53L0_PollingDelay(VL53L0_DEV Dev)
 	VL53L0_Error status = VL53L0_ERROR_NONE;
 
 	LOG_FUNCTION_START("");
-	msleep(20);
+	msleep(1);
 	LOG_FUNCTION_END(status);
 	return status;
 }
