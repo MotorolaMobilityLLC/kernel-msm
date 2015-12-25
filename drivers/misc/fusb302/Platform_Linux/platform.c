@@ -14,6 +14,7 @@
 void platform_set_vbus_lvl_enable(VBUS_LVL level, FSC_BOOL blnEnable,
 				  FSC_BOOL blnDisableOthers)
 {
+#ifdef FPGA_BOARD
 	FSC_U32 i;
 
 	// Additional VBUS levels can be added here as needed.
@@ -45,12 +46,13 @@ void platform_set_vbus_lvl_enable(VBUS_LVL level, FSC_BOOL blnEnable,
 			platform_set_vbus_lvl_enable(i, FALSE, FALSE);
 		} while (++i < VBUS_LVL_COUNT);
 	}
-
+#endif
 	return;
 }
 
 FSC_BOOL platform_get_vbus_lvl_enable(VBUS_LVL level)
 {
+#ifdef FPGA_BOARD
 	// Additional VBUS levels can be added here as needed.
 	switch (level) {
 	case VBUS_LVL_5V:
@@ -65,6 +67,8 @@ FSC_BOOL platform_get_vbus_lvl_enable(VBUS_LVL level)
 		// Otherwise, return FALSE.
 		return FALSE;
 	}
+#endif
+	return TRUE;
 }
 
 /*******************************************************************************
@@ -89,6 +93,31 @@ void platform_set_vbus_discharge(FSC_BOOL blnEnable)
 FSC_BOOL platform_get_device_irq_state(void)
 {
 	return fusb_GPIO_Get_IntN()? TRUE : FALSE;
+}
+
+/*dump usbpd fifo log*/
+#define regFIFO 0x43
+void dump_usbpdlog(unsigned long RegisterAddress,
+		   unsigned char DataLength,
+		   unsigned char *Data, FSC_BOOL b_read)
+{
+	char log[256];
+	char pd_read_mark[] = "\n[fusbpd]<<<<<";
+	char pd_write_mark[] = "\n[fusbpd]>>>>>";
+	int i, s_ret = 0;
+
+	if (DataLength > ((sizeof(log) - sizeof(pd_read_mark)) / 3))
+		return;
+	if (regFIFO == RegisterAddress) {
+		if (b_read)
+			s_ret = snprintf(log, sizeof(log), "%s", pd_read_mark);
+		else
+			s_ret = snprintf(log, sizeof(log), "%s", pd_write_mark);
+		for (i = 0; i < DataLength; i++)
+			s_ret += snprintf(log + s_ret, sizeof(log) - s_ret,
+					  " %2x", Data[i]);
+		pr_debug("%s\n", log);
+	}
 }
 
 /*******************************************************************************
@@ -117,6 +146,7 @@ FSC_BOOL platform_i2c_write(FSC_U8 SlaveAddress,
 	} else
 	    if (fusb_I2C_WriteData((FSC_U8) RegisterAddress, DataLength, Data))
 	{
+		dump_usbpdlog(RegisterAddress, DataLength, Data, FALSE);
 		ret = TRUE;
 	} else			// I2C Write failure
 	{
@@ -161,6 +191,7 @@ FSC_BOOL platform_i2c_read(FSC_U8 SlaveAddress,
 		if (!fusb_I2C_ReadBlockData(RegisterAddress, DataLength, Data)) {
 			ret = FALSE;
 		} else {
+			dump_usbpdlog(RegisterAddress, DataLength, Data, TRUE);
 			ret = TRUE;
 		}
 	} else {
