@@ -30,7 +30,8 @@
  * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
  *
  *****************************************************************************/
-
+#include <linux/printk.h>
+#include <linux/kernel.h>
 #include "TypeC.h"
 #include "fusb30X.h"
 #include "AlternateModes.h"
@@ -293,7 +294,6 @@ void EnableTypeCStateMachine(void)
 	Timer_S = 0;
 #endif // FSC_DEBUG
 }
-
 /*******************************************************************************
  * Function:        StateMachineTypeC
  * Input:           None
@@ -329,7 +329,8 @@ void StateMachineTypeC(void)
 			USBPDPolicyEngine();	// Once we have handled any Type-C and protocol events, call the USB PD Policy Engine
 
 		}
-
+		pr_debug("ConnState is %d USBPDActive is %d\n",
+				 ConnState, USBPDActive);
 		switch (ConnState) {
 		case Disabled:
 			StateMachineDisabled();
@@ -1000,6 +1001,10 @@ void SetStateErrorRecovery(void)
 
 void SetStateDelayUnattached(void)
 {
+
+	platform_disableSuperspeedUSB();
+	if (AudioAccessory == ConnState)
+		platform_toggleAudioSwitch(false);
 #ifndef FPGA_BOARD
 	SetStateUnattached();
 	return;
@@ -1278,6 +1283,7 @@ void SetStateAttachedSource(void)
 		setDebounceVariablesCC2(CCTypeUndefined);
 	}
 	DeviceWrite(regSwitches0, 1, &Registers.Switches.byte[0]);	// Commit the switch state
+	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 
 	USBPDEnable(TRUE, TRUE);	// Enable the USB PD state machine if applicable (no need to write to Device again), set as DFP
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
@@ -1328,6 +1334,7 @@ void SetStateAttachedSink(void)
 		Registers.Switches.byte[0] = 0x0B;
 	}
 	DeviceWrite(regSwitches0, 1, &Registers.Switches.byte[0]);	// Commit the switch state
+	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	USBPDEnable(TRUE, FALSE);	// Enable the USB PD state machine (no need to write Device again since we are doing it here)
 	SinkCurrent = utccDefault;	// Set the current advertisment variable to the default until we detect something different
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
@@ -1658,6 +1665,7 @@ void SetStateAudioAccessory(void)
 	PDDebounce = tCCDebounce;	// Once in this state, we are waiting for the lines to be stable for tCCDebounce before changing states
 	CCDebounce = T_TIMER_DISABLE;	// Disable the 2nd level debouncing initially to force completion of a 1st level debouncing
 	ToggleTimer = T_TIMER_DISABLE;	// Once we are in the audio.accessory state, we are going to stop toggling and only monitor CC1
+	platform_toggleAudioSwitch(true);
 #ifdef FSC_DEBUG
 	WriteStateLog(&TypeCStateLog, ConnState, Timer_tms, Timer_S);
 #endif // FSC_DEBUG
