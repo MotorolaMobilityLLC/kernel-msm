@@ -41,18 +41,141 @@ const char *FUSB_DT_INTERRUPT_INTN = "fsc_interrupt_int_n";	// Name of the INT_N
 static irqreturn_t _fusb_isr_intn(int irq, void *dev_id);
 #endif // FSC_INTERRUPT_TRIGGERED
 
+static int fusb_toggleAudioSwitch(bool enable)
+{
+	int aud_det_gpio, aud_sw_sel_gpio;
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
+				 __func__);
+		return -ENOMEM;
+	}
+	aud_det_gpio = chip->gpios[FUSB_AUD_DET_INDEX];
+	aud_sw_sel_gpio = chip->gpios[FUSB_AUD_SW_SEL_INDEX];
+	if (!(gpio_is_valid(aud_det_gpio) &&
+		gpio_is_valid(aud_sw_sel_gpio)))
+		return -ENODEV;
+	pr_debug("%sabling, Audio Switch\n", enable ? "En" : "Dis");
+	if (enable) {
+		gpio_set_value(aud_sw_sel_gpio, 1);
+		gpio_set_value(aud_det_gpio, 0);
+	} else {
+		gpio_set_value(aud_sw_sel_gpio, 0);
+		gpio_set_value(aud_det_gpio, 1);
+	}
+	return 0;
+}
+
+static int fusb_enableSuperspeedUSB(int CC1, int CC2)
+{
+	int ss_output_en_gpio, ss_sw_sel_gpio;
+	int sw_val  = 0;
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
+				 __func__);
+		return -ENOMEM;
+	}
+	ss_output_en_gpio = chip->gpios[FUSB_SS_OE_EN_INDEX];
+	ss_sw_sel_gpio = chip->gpios[FUSB_SS_SW_SEL_INDEX];
+	if (!(gpio_is_valid(ss_output_en_gpio) &&
+		gpio_is_valid(ss_sw_sel_gpio)))
+		return -ENODEV;
+	/* Default switch position to 0 for all other values of CC */
+	if (CC2 && !CC1)
+		sw_val = 1;
+	pr_debug("Setting SS_SW_SEL to %d\n", sw_val);
+	gpio_set_value(ss_sw_sel_gpio, sw_val);
+	pr_debug("Setting SS_OE_EN to enabled\n");
+	gpio_set_value(ss_output_en_gpio, 0);
+	return 0;
+}
+static int fusb_disableSuperspeedUSB(void)
+{
+	int ss_output_en_gpio;
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
+			   __func__);
+		return -ENOMEM;
+	}
+	ss_output_en_gpio = chip->gpios[FUSB_SS_OE_EN_INDEX];
+	if (gpio_is_valid(ss_output_en_gpio)) {
+		pr_debug("Setting SS OE EN Switch to disabled\n");
+		gpio_set_value(ss_output_en_gpio, 1);
+		return 0;
+	}
+	return -ENODEV;
+}
+void platform_disableSuperspeedUSB(void)
+{
+	fusb_disableSuperspeedUSB();
+}
+void platform_enableSuperspeedUSB(int CC1, int CC2)
+{
+	fusb_enableSuperspeedUSB(CC1, CC2);
+}
+void platform_toggleAudioSwitch(bool enable)
+{
+	fusb_toggleAudioSwitch(enable);
+}
 FSC_S32 fusb_InitializeGPIO(void)
 {
 	FSC_S32 ret = 0;
+	int i, gpio_cnt, label_cnt;
+	const char *label_prop = "fusb,gpio-labels";
 	struct device_node *node;
 	struct fusb30x_chip *chip = fusb30x_GetChip();
 	if (!chip) {
-		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
+		pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
+		       __func__);
 		return -ENOMEM;
 	}
 	/* Get our device tree node */
 	node = chip->client->dev.of_node;
+	gpio_cnt = of_gpio_count(node);
+	label_cnt = of_property_count_strings(node, label_prop);
+	if (gpio_cnt > ARRAY_SIZE(chip->gpios)) {
+		dev_err(&chip->client->dev,
+			"%s:%d gpio count is greater than %zu.\n", __func__,
+			__LINE__, ARRAY_SIZE(chip->gpios));
+		return -EINVAL;
+	}
+	if (label_cnt != gpio_cnt) {
+		dev_err(&chip->client->dev,
+			"%s:%d label count does not match gpio count.\n",
+			__func__, __LINE__);
+		return -EINVAL;
+	}
+	for (i = 0; i < gpio_cnt; i++) {
+		enum of_gpio_flags flags = 0;
+		int gpio;
+		const char *label = NULL;
 
+		gpio = of_get_gpio_flags(node, i, &flags);
+		if (gpio < 0) {
+			dev_err(&chip->client->dev,
+				"%s:%d of_get_gpio failed: %d\n", __func__,
+				__LINE__, gpio);
+			return gpio;
+		}
+		if (i < label_cnt)
+			of_property_read_string_index(node, label_prop,
+						      i, &label);
+		gpio_request_one(gpio, flags, label);
+		gpio_export(gpio, true);
+		gpio_export_link(&chip->client->dev, label, gpio);
+		dev_dbg(&chip->client->dev,
+			"%s: gpio=%d, flags=0x%x, label=%s\n", __func__, gpio,
+			flags, label);
+		chip->gpios[i] = gpio;
+	}
+	chip->gpio_IntN = chip->gpios[FUSB_INT_INDEX];
+	pr_debug("irq_gpio number is %d\n", chip->gpios[FUSB_INT_INDEX]);
+#ifdef FPGA_BOARD
 	/* Get our GPIO pins from the device tree, allocate them, and then set their direction (input/output) */
 	chip->gpio_IntN = of_get_named_gpio(node, FUSB_DT_GPIO_INTN, 0);
 	if (!gpio_is_valid(chip->gpio_IntN)) {
@@ -77,13 +200,14 @@ FSC_S32 fusb_InitializeGPIO(void)
 			__func__, ret);
 		return ret;
 	}
+#endif
 #ifdef FSC_DEBUG
 	/* Export to sysfs */
 	gpio_export(chip->gpio_IntN, false);
 	gpio_export_link(&chip->client->dev, FUSB_DT_GPIO_INTN,
 			 chip->gpio_IntN);
 #endif // FSC_DEBUG
-
+#ifdef FPGA_BOARD
 	pr_info("FUSB  %s - INT_N GPIO initialized as pin '%d'\n", __func__,
 		chip->gpio_IntN);
 
@@ -160,7 +284,7 @@ FSC_S32 fusb_InitializeGPIO(void)
 
 		}
 	}
-
+#endif
 #ifdef FSC_DEBUG
 	// State Machine Debug Notification
 	// Optional GPIO - toggles each time the state machine is called
@@ -212,6 +336,7 @@ FSC_S32 fusb_InitializeGPIO(void)
 
 void fusb_GPIO_Set_VBus5v(FSC_BOOL set)
 {
+#ifdef FPGA_BOARD
 	struct fusb30x_chip *chip = fusb30x_GetChip();
 	if (!chip) {
 		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
@@ -230,10 +355,12 @@ void fusb_GPIO_Set_VBus5v(FSC_BOOL set)
 
 	pr_debug("FUSB  %s - VBus 5V set to: %d\n", __func__,
 		 chip->gpio_VBus5V_value ? 1 : 0);
+#endif
 }
 
 void fusb_GPIO_Set_VBusOther(FSC_BOOL set)
 {
+#ifdef FPGA_BOARD
 	struct fusb30x_chip *chip = fusb30x_GetChip();
 	if (!chip) {
 		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
@@ -252,10 +379,12 @@ void fusb_GPIO_Set_VBusOther(FSC_BOOL set)
 		}
 	}
 	chip->gpio_VBusOther_value = set;
+#endif
 }
 
 FSC_BOOL fusb_GPIO_Get_VBus5v(void)
 {
+#ifdef FPGA_BOARD
 	struct fusb30x_chip *chip = fusb30x_GetChip();
 	if (!chip) {
 		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
@@ -269,6 +398,8 @@ FSC_BOOL fusb_GPIO_Get_VBus5v(void)
 	}
 
 	return chip->gpio_VBus5V_value;
+#endif
+	return true;
 }
 
 FSC_BOOL fusb_GPIO_Get_VBusOther(void)
@@ -1552,8 +1683,12 @@ void fusb_StartTimers(void)
 	chip->dbgTimerRollovers = 0;
 #endif // FSC_DEBUG
 
+	mutex_lock(&chip->lock);
+
 	ktime = ktime_set(0, g_fusb_timer_tick_period_ns);	// Convert our timer period (in ns) to ktime
 	hrtimer_start(&chip->timer_state_machine, ktime, HRTIMER_MODE_REL);	// Start the timer
+
+	mutex_unlock(&chip->lock);
 }
 
 void fusb_StopTimers(void)
@@ -4839,6 +4974,9 @@ FSC_S32 fusb_EnableInterrupts(void)
 		fusb_GPIO_Cleanup();
 		return ret;
 	}
+	device_init_wakeup(&chip->client->dev, true);
+	enable_irq_wake(chip->gpio_IntN_irq);
+	enable_irq(chip->gpio_IntN_irq);
 
 	return 0;
 }
@@ -4866,8 +5004,11 @@ static irqreturn_t _fusb_isr_intn(FSC_S32 irq, void *dev_id)
 	}
 #endif // FSC_DEBUG
 
+	pm_stay_awake(&chip->client->dev);
+
 	core_state_machine();	// Run the state machine
 
+	pm_relax(&chip->client->dev);
 	return IRQ_HANDLED;
 }
 
