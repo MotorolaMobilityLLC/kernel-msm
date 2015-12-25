@@ -141,4 +141,8 @@ void platform_enable_timer(FSC_BOOL enable);
  ******************************************************************************/
 void platform_delay_10us(FSC_U32 delayCount);
 
+void platform_disableSuperspeedUSB(void);
+void platform_enableSuperspeedUSB(int CC1, int CC2);
+void platform_toggleAudioSwitch(bool enable);
+
 #endif // _FSC_PLATFORM_H_
