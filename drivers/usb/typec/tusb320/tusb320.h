@@ -39,6 +39,9 @@ struct tusb320_device_info {
 	bool clean_retry_count;
 	struct completion reverse_completion;
 	struct mutex mutex;
+	struct delayed_work g_current_work;
+	enum typec_current_mode current_mode;
+	struct mutex current_mutex;
 };
 
 #define REVERSE_ATTEMPT 1
@@ -88,5 +91,22 @@ struct tusb320_device_info {
 #define TUSB320_REG_SET_DRP						(BIT(5) | BIT(4))
 #define TUSB320_REG_SET_SOFT_RESET				BIT(3)
 #define TUSB320_REG_SET_DISABLE_RD_RP			BIT(2)
+
+/* Debug register address for dynamically detecting current */
+#define TUSB320_REG_CC_COMPARE_EN                   0x42
+#define TUSB320_REG_CC_STAT_DBG_CTRL_A              0x7C
+#define TUSB320_REG_CC_STAT_DBG_CTRL_B              0x7D
+#define TUSB320_REG_CC_DBG_STAT_OUT                 0x80
+
+#define TUSB320_CC1_DEFAULT_CUR_MODE_DETECTION      0x81
+#define TUSB320_CC1_MID_CUR_MODE_DETECTION          0x84
+#define TUSB320_CC1_HIGH_CUR_MODE_DETECTION         0x90
+
+#define TUSB320_CC2_DEFAULT_CUR_MODE_DETECTION      0x01
+#define TUSB320_CC2_MID_CUR_MODE_DETECTION          0x04
+#define TUSB320_CC2_HIGH_CUR_MODE_DETECTION         0x10
+
+#define TUSB320_CC1_CUR_MODE_DETECTION              0x00
+#define TUSB320_CC2_CUR_MODE_DETECTION              0x01
 
 #endif /*_TYPEC_TUSB320_H_*/
