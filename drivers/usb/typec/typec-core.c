@@ -143,7 +143,8 @@ int add_typec_device(struct device *parent, struct typec_device_ops *typec_ops)
 	    || !typec_ops->attached_state_detect
 	    || !typec_ops->current_advertise_get
 	    || !typec_ops->current_advertise_set || !typec_ops->port_mode_get
-	    || !typec_ops->port_mode_set || !typec_ops->dump_regs) {
+	    || !typec_ops->port_mode_set || !typec_ops->dump_regs
+	    || !typec_ops->dynamic_current_detect) {
 		pr_err("%s: ops is NULL\n", __func__);
 		return -1;
 	}
@@ -186,7 +187,7 @@ enum typec_current_mode typec_current_mode_detect(void)
 	}
 
 	typec_ops = dev_get_drvdata(typec_dev);
-	current_mode = typec_ops->current_detect();
+	current_mode = typec_ops->dynamic_current_detect();
 	return current_mode;
 }
 
@@ -200,6 +201,30 @@ int typec_sink_detected_handler(enum typec_event typec_event)
 	power_supply_set_usb_otg(usb_psy,
 				 (typec_event == TYPEC_SINK_DETECTED) ? 1 : 0);
 	return 0;
+}
+
+#define HIGH_CURRENT_UA         1800000
+#define MEDIUM_CURRENT_UA       1500000
+#define DEFAULT_CURRENT_UA      500000
+void typec_current_changed(enum typec_current_mode current_mode)
+{
+	int limit = DEFAULT_CURRENT_UA;
+	if (!usb_psy) {
+		pr_err("%s USB supply not found\n", __func__);
+	}
+
+	switch (current_mode) {
+	case TYPEC_CURRENT_MODE_MID:
+		limit = MEDIUM_CURRENT_UA;
+		break;
+	case TYPEC_CURRENT_MODE_HIGH:
+		limit = HIGH_CURRENT_UA;
+		break;
+	default:
+		return;
+	}
+
+	power_supply_set_current_limit(usb_psy, limit);
 }
 
 static int __init typec_init(void)

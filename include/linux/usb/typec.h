@@ -52,6 +52,9 @@ struct typec_device_ops {
 	/* to get the Type-C Current mode */
 	enum typec_current_mode (*current_detect) (void);
 
+	/* to get the Type-C Current mode dynamically */
+	enum typec_current_mode (*dynamic_current_detect) (void);
+
 	/* to get the attached state and determine what was attached */
 	enum typec_attached_state (*attached_state_detect) (void);
 
@@ -73,5 +76,6 @@ extern int add_typec_device(struct device *parent,
 			    struct typec_device_ops *typec_ops);
 extern enum typec_current_mode typec_current_mode_detect(void);
 extern int typec_sink_detected_handler(enum typec_event typec_event);
+extern void typec_current_changed(enum typec_current_mode current_mode);
 
 #endif /* _TYPEC_H_ */

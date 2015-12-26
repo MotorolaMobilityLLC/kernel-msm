@@ -49,6 +49,8 @@
 #define TUSB320_IRQ_CLEAN_MAX_RETRY  3
 #define DUAL_ROLE_SET_MODE_WAIT_MS 1500
 
+#define DYNAMIC_CURRENT_DETECTION_DELAY 1000
+
 static enum typec_current_mode tusb320_current_mode_detect(void);
 static enum typec_current_mode tusb320_current_advertise_get(void);
 static int tusb320_current_advertise_set(enum typec_current_mode current_mode);
@@ -56,11 +58,13 @@ static enum typec_attached_state tusb320_attatched_state_detect(void);
 static enum typec_port_mode tusb320_port_mode_get(void);
 static int tusb320_port_mode_set(enum typec_port_mode port_mode);
 static ssize_t tusb320_dump_regs(char *buf);
+static enum typec_current_mode tusb320_dynamic_current_detect(void);
 
 static struct tusb320_device_info *g_tusb320_dev;
 
 struct typec_device_ops tusb320_ops = {
 	.current_detect = tusb320_current_mode_detect,
+	.dynamic_current_detect = tusb320_dynamic_current_detect,
 	.attached_state_detect = tusb320_attatched_state_detect,
 	.current_advertise_get = tusb320_current_advertise_get,
 	.current_advertise_set = tusb320_current_advertise_set,
@@ -140,6 +144,200 @@ static int tusb320_int_clear(void)
 	}
 
 	return ret;
+}
+
+/*
+ * software workaround for dynamically detecting current advertisement.
+ * scheduled every 20s when tusb320 is attached as UFP.
+ */
+static void tusb320_dynamic_current_detect_work(struct work_struct *w)
+{
+	struct tusb320_device_info *di = g_tusb320_dev;
+	enum typec_attached_state attached_state = TYPEC_NOT_ATTACHED;
+	enum typec_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
+	u8 CC_connected_pin = 0x01;
+	u8 CC_0pt20V_sample = 0x00;
+	u8 CC_0pt66V_sample = 0x00;
+	u8 CC_1pt23V_sample = 0x00;
+	u8 CC_current_ad = 0x01;
+	u8 reg_val = 0;
+	int ret = 0;
+
+	attached_state = tusb320_attatched_state_detect();
+	pr_debug("%s: attached_state is %d\n", __func__, attached_state);
+	if (attached_state != TYPEC_ATTACHED_AS_UFP) {
+		pr_err("%s: attached state is %d, not as UFP\n", __func__,
+		       attached_state);
+		mutex_lock(&di->current_mutex);
+		di->current_mode = current_mode;
+		mutex_unlock(&di->current_mutex);
+		return;
+	}
+
+	ret = tusb320_read_reg(0x4C, &reg_val);
+	if (ret < 0) {
+		pr_err("%s: read 0x4C error\n", __func__);
+		goto detect_error;
+	}
+	CC_connected_pin = reg_val & 0x03;
+
+	if (CC_connected_pin == 0x01) {
+		ret = tusb320_write_reg(TUSB320_REG_CC_STAT_DBG_CTRL_B,
+					TUSB320_CC1_CUR_MODE_DETECTION);
+		if (ret < 0) {
+			pr_err("%s: write 0x7D error\n", __func__);
+			goto detect_error;
+		}
+		ret = tusb320_write_reg(TUSB320_REG_CC_STAT_DBG_CTRL_A,
+					TUSB320_CC1_DEFAULT_CUR_MODE_DETECTION);
+		if (ret < 0) {
+			pr_err("%s: write 0x7C error\n", __func__);
+			goto detect_error;
+		}
+		ret = tusb320_write_reg(TUSB320_REG_CC_COMPARE_EN, 0x01);
+		if (ret < 0) {
+			pr_err("%s: write 0x42 error\n", __func__);
+			goto detect_error;
+		}
+		ret = tusb320_read_reg(TUSB320_REG_CC_DBG_STAT_OUT, &reg_val);
+		if (ret < 0) {
+			pr_err("%s: read 0x80 error\n", __func__);
+			goto detect_error;
+		}
+		CC_0pt20V_sample = (reg_val & 0x80) >> 7;
+
+		ret = tusb320_write_reg(TUSB320_REG_CC_STAT_DBG_CTRL_A,
+					TUSB320_CC1_MID_CUR_MODE_DETECTION);
+		if (ret < 0) {
+			pr_err("%s: write 0x7C error\n", __func__);
+			goto detect_error;
+		}
+		ret = tusb320_read_reg(TUSB320_REG_CC_DBG_STAT_OUT, &reg_val);
+		if (ret < 0) {
+			pr_err("%s: read 0x80 error\n", __func__);
+			goto detect_error;
+		}
+		CC_0pt66V_sample = (reg_val & 0x80) >> 6;
+
+		ret = tusb320_write_reg(TUSB320_REG_CC_STAT_DBG_CTRL_A,
+					TUSB320_CC1_HIGH_CUR_MODE_DETECTION);
+		if (ret < 0) {
+			pr_err("%s: write 0x7C error\n", __func__);
+			goto detect_error;
+		}
+		ret = tusb320_read_reg(TUSB320_REG_CC_DBG_STAT_OUT, &reg_val);
+		if (ret < 0) {
+			pr_err("%s: read 0x80 error\n", __func__);
+			goto detect_error;
+		}
+		CC_1pt23V_sample = (reg_val & 0x80) >> 5;
+	} else {
+		ret = tusb320_write_reg(TUSB320_REG_CC_STAT_DBG_CTRL_B,
+					TUSB320_CC2_CUR_MODE_DETECTION);
+		if (ret < 0) {
+			pr_err("%s: write 0x7D error\n", __func__);
+			goto detect_error;
+		}
+		ret = tusb320_write_reg(TUSB320_REG_CC_STAT_DBG_CTRL_A,
+					TUSB320_CC2_DEFAULT_CUR_MODE_DETECTION);
+		if (ret < 0) {
+			pr_err("%s: write 0x7C error\n", __func__);
+			goto detect_error;
+		}
+		ret = tusb320_write_reg(TUSB320_REG_CC_COMPARE_EN, 0x01);
+		if (ret < 0) {
+			pr_err("%s: write 0x42 error\n", __func__);
+			goto detect_error;
+		}
+		ret = tusb320_read_reg(TUSB320_REG_CC_DBG_STAT_OUT, &reg_val);
+		if (ret < 0) {
+			pr_err("%s: read 0x80 error\n", __func__);
+			goto detect_error;
+		}
+		CC_0pt20V_sample = (reg_val & 0x80) >> 7;
+
+		ret = tusb320_write_reg(TUSB320_REG_CC_STAT_DBG_CTRL_A,
+					TUSB320_CC2_MID_CUR_MODE_DETECTION);
+		if (ret < 0) {
+			pr_err("%s: write 0x7C error\n", __func__);
+			goto detect_error;
+		}
+		ret = tusb320_read_reg(TUSB320_REG_CC_DBG_STAT_OUT, &reg_val);
+		if (ret < 0) {
+			pr_err("%s: read 0x80 error\n", __func__);
+			goto detect_error;
+		}
+		CC_0pt66V_sample = (reg_val & 0x80) >> 6;
+
+		ret = tusb320_write_reg(TUSB320_REG_CC_STAT_DBG_CTRL_A,
+					TUSB320_CC2_HIGH_CUR_MODE_DETECTION);
+		if (ret < 0) {
+			pr_err("%s: write 0x7C error\n", __func__);
+			goto detect_error;
+		}
+		ret = tusb320_read_reg(TUSB320_REG_CC_DBG_STAT_OUT, &reg_val);
+		if (ret < 0) {
+			pr_err("%s: read 0x80 error\n", __func__);
+			goto detect_error;
+		}
+		CC_1pt23V_sample = (reg_val & 0x80) >> 5;
+	}
+
+	/* Put back to default */
+	tusb320_write_reg(TUSB320_REG_CC_COMPARE_EN, 0x00);
+	tusb320_write_reg(TUSB320_REG_CC_STAT_DBG_CTRL_B, 0x00);
+	tusb320_write_reg(TUSB320_REG_CC_STAT_DBG_CTRL_A, 0x00);
+
+	/*
+	 * Default current: 0x01
+	 * Middle current: 0x03
+	 * High current: 0x07
+	 */
+	CC_current_ad = CC_1pt23V_sample | CC_0pt66V_sample | CC_0pt20V_sample;
+	pr_debug("%s: CC_current_ad is 0x%x\n", __func__, CC_current_ad);
+
+	switch (CC_current_ad) {
+	case 0x01:
+		current_mode = TYPEC_CURRENT_MODE_DEFAULT;
+		break;
+	case 0x03:
+		current_mode = TYPEC_CURRENT_MODE_MID;
+		break;
+	case 0x07:
+		current_mode = TYPEC_CURRENT_MODE_HIGH;
+		break;
+	default:
+		current_mode = TYPEC_CURRENT_MODE_UNSPPORTED;
+	}
+
+	pr_debug("%s: current mode is %d\n", __func__, current_mode);
+
+	mutex_lock(&di->current_mutex);
+	if (di->current_mode != current_mode) {
+		di->current_mode = current_mode;
+		pr_info("%s: current mode changed to %d\n", __func__,
+			current_mode);
+		typec_current_changed(current_mode);
+	}
+	mutex_unlock(&di->current_mutex);
+
+detect_error:
+	schedule_delayed_work(&di->g_current_work,
+			      msecs_to_jiffies
+			      (DYNAMIC_CURRENT_DETECTION_DELAY));
+}
+
+static enum typec_current_mode tusb320_dynamic_current_detect(void)
+{
+	struct tusb320_device_info *di = g_tusb320_dev;
+	enum typec_current_mode current_mode;
+
+	mutex_lock(&di->current_mutex);
+	current_mode = di->current_mode;
+	mutex_unlock(&di->current_mutex);
+
+	pr_debug("%s: current mode is %d\n", __func__, current_mode);
+	return current_mode;
 }
 
 static enum typec_current_mode tusb320_current_mode_detect(void)
@@ -264,7 +462,7 @@ static enum typec_attached_state tusb320_attatched_state_detect(void)
 		return attached_state;
 	}
 
-	pr_info("%s: REG_ATTACH_STATUS 09H is 0x%x\n", __func__, reg_val);
+	pr_debug("%s: REG_ATTACH_STATUS 09H is 0x%x\n", __func__, reg_val);
 
 	mask_val = reg_val & TUSB320_REG_STATUS_MODE;
 	switch (mask_val) {
@@ -281,7 +479,7 @@ static enum typec_attached_state tusb320_attatched_state_detect(void)
 		attached_state = TYPEC_NOT_ATTACHED;
 	}
 
-	pr_info("%s: attached state is %d\n", __func__, attached_state);
+	pr_debug("%s: attached state is %d\n", __func__, attached_state);
 
 	return attached_state;
 }
@@ -528,8 +726,8 @@ static void tusb320_intb_work(struct work_struct *work)
 				      (TUSB320_IRQ_CLEAN_DELAY_MS));
 	}
 
-	current_mode = tusb320_current_mode_detect();
 	attached_state = tusb320_attatched_state_detect();
+	pr_info("%s: attached_state is %d\n", __func__, attached_state);
 
 	mutex_lock(&di->mutex);
 
@@ -615,6 +813,15 @@ static void tusb320_intb_work(struct work_struct *work)
 
 		/* notify the attached state */
 		complete(&di->reverse_completion);
+
+		current_mode = tusb320_current_mode_detect();
+		mutex_lock(&di->current_mutex);
+		di->current_mode = current_mode;
+		mutex_unlock(&di->current_mutex);
+		pr_info("%s: current mode is %d\n", __func__, current_mode);
+		schedule_delayed_work(&di->g_current_work,
+				      msecs_to_jiffies
+				      (DYNAMIC_CURRENT_DETECTION_DELAY));
 	} else if (TYPEC_NOT_ATTACHED == attached_state) {
 
 		/* set current advertisement to high */
@@ -634,6 +841,12 @@ static void tusb320_intb_work(struct work_struct *work)
 			tusb320_port_mode_set(TYPEC_MODE_ACCORDING_TO_PROT);
 			di->reverse_state = 0;
 		}
+
+		/* stop dynamically detecting */
+		mutex_lock(&di->current_mutex);
+		di->current_mode = TYPEC_CURRENT_MODE_DEFAULT;
+		mutex_unlock(&di->current_mutex);
+		cancel_delayed_work(&di->g_current_work);
 	}
 
 	mutex_unlock(&di->mutex);
@@ -962,8 +1175,11 @@ static int tusb320_probe(struct i2c_client *client,
 	}
 
 	mutex_init(&di->mutex);
+	mutex_init(&di->current_mutex);
 	INIT_WORK(&di->g_intb_work, tusb320_intb_work);
 	INIT_DELAYED_WORK(&di->g_wdog_work, tusb320_wdog_work);
+	INIT_DELAYED_WORK(&di->g_current_work,
+			  tusb320_dynamic_current_detect_work);
 	init_completion(&di->reverse_completion);
 
 	ret = request_irq(di->irq_intb,
