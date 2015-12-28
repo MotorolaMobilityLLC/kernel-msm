@@ -31,7 +31,7 @@
 #define STMVL53L0_DRV_NAME	"stmvl53l0"
 #define STMVL53L0_SLAVE_ADDR	(0x52>>1)
 
-#define DRIVER_VERSION		"1.0.8"
+#define DRIVER_VERSION		"1.1.11"
 #define I2C_M_WR			0x00
 /* #define INT_POLLING_DELAY	20 */
 
@@ -136,7 +136,8 @@ struct stmvl53l0_data {
 
 	/* Range Data */
 	VL53L0_RangingMeasurementData_t rangeData;
-
+	int offset;
+	int xtalk;
 
 	/* delay time in miniseconds*/
 	unsigned int delay_ms;
@@ -153,6 +154,8 @@ struct stmvl53l0_data {
 	uint8_t bus_type;
 	uint32_t lowv;
 	uint32_t highv;
+	wait_queue_head_t range_data_wait;
+	uint8_t d_ready;
 };
 
 /*
