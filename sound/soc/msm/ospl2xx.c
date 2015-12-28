@@ -149,7 +149,7 @@ int ospl2xx_afe_set_single_param(uint32_t param_id, int32_t arg1)
 		pr_err("%s: set_param for port %d failed with code %d\n",
 			 __func__, port_id, result);
 	} else {
-		pr_info("%s: set_param packet param 0x%08X to module 0x%08X\n",
+		pr_debug("%s: set_param packet param 0x%08X to module 0x%08X\n",
 			__func__, param_id, module_id);
 	}
 	kfree(config);
@@ -230,7 +230,7 @@ int ospl2xx_afe_set_tri_param(uint32_t param_id,
 		pr_err("%s: set_param for port %d failed with code %d\n",
 			__func__, port_id, result);
 	} else {
-		pr_info("%s: set_param packet param 0x%08X to module 0x%08X\n",
+		pr_debug("%s: set_param packet param 0x%08X to module 0x%08X\n",
 			__func__, param_id, module_id);
 	}
 	kfree(config);
@@ -337,7 +337,7 @@ int ospl2xx_afe_set_ext_config_param(const char *string, uint32_t param_id)
 			pr_err("%s: set_param for port %d failed, code %d\n",
 				__func__, port_id, result);
 		} else {
-			pr_info("%s: set_param param 0x%08X to module 0x%08X\n",
+			pr_debug("%s: set_param param 0x%08X to module 0x%08X\n",
 				 __func__, param_id, module_id);
 		}
 		sent += chars_to_send;
@@ -415,7 +415,7 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 		pr_err("%s: get_param for port %d failed with code %d\n",
 			__func__, port_id, result);
 	} else {
-		pr_info("%s: get_param packet param 0x%08X to module 0x%08X\n",
+		pr_debug("%s: get_param packet param 0x%08X to module 0x%08X\n",
 			__func__, param_id, module_id);
 	}
 
@@ -448,13 +448,13 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 			case PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE:
 				afe_cb_payload32_data[0] = payload32[4];
 				afe_cb_payload32_data[1] = payload32[5];
-				pr_info("%s, payload-module_id = 0x%08X, ",
+				pr_debug("%s, payload-module_id = 0x%08X, ",
 					__func__, (int) payload32[1]);
-				pr_info("payload-param_id = 0x%08X, ",
+				pr_debug("payload-param_id = 0x%08X, ",
 					(int) payload32[2]);
-				pr_info("afe_cb_payload32_data[0] = %d, ",
+				pr_debug("afe_cb_payload32_data[0] = %d, ",
 					(int) afe_cb_payload32_data[0]);
-				pr_info("afe_cb_payload32_data[1] = %d\n",
+				pr_debug("afe_cb_payload32_data[1] = %d\n",
 					(int) afe_cb_payload32_data[1]);
 				break;
 			default:
@@ -486,10 +486,13 @@ static int ospl2xx_rx_enable_put(struct snd_kcontrol *kcontrol,
 static int ospl2xx_rx_enable_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
+	mutex_lock(&mr_lock);
 	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
 	ospl2xx_afe_get_param(AFE_CUSTOM_OPALUM_RX_MODULE);
 
 	ucontrol->value.integer.value[0] = afe_cb_payload32_data[0];
+	mutex_unlock(&mr_lock);
+
 	return 0;
 }
 static const char *const ospl2xx_rx_enable_text[] = {"Disable", "Enable"};
@@ -501,15 +504,21 @@ static const struct soc_enum ospl2xx_rx_enable_enum[] = {
 static int ospl2xx_rx_int_config_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
+	mutex_lock(&mr_lock);
 	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
 	ospl2xx_afe_get_param(PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET);
 
 	ucontrol->value.integer.value[0] = afe_cb_payload32_data[0];
+	mutex_unlock(&mr_lock);
+
 	return 0;
 }
 static int ospl2xx_rx_int_config_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
+	pr_info("%s: set configuration index = %d\n",
+		__func__, (int)ucontrol->value.integer.value[0]);
+
 	ospl2xx_afe_set_single_param(
 		PARAM_ID_OPALUM_RX_SET_USE_CASE,
 		(int)ucontrol->value.integer.value[0]);
@@ -634,7 +643,7 @@ static int ospl2xx_rx_put_temp_cal(struct snd_kcontrol *kcontrol,
 	int32_t temperature = ucontrol->value.integer.value[2];
 
 	mutex_lock(&mr_lock);
-	pr_debug("%s, acc[%d], cnt[%d], tmpr[%d]\n", __func__,
+	pr_info("%s, acc[%d], cnt[%d], tmpr[%d]\n", __func__,
 			accumulated, count, temperature);
 	ospl2xx_afe_set_tri_param(
 			PARAM_ID_OPALUM_RX_TEMP_CAL_DATA,
@@ -660,10 +669,13 @@ static int ospl2xx_tx_enable_put(struct snd_kcontrol *kcontrol,
 static int ospl2xx_tx_enable_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
+	mutex_lock(&mr_lock);
 	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
 	ospl2xx_afe_get_param(AFE_CUSTOM_OPALUM_TX_MODULE);
 
 	ucontrol->value.integer.value[0] = afe_cb_payload32_data[0];
+	mutex_unlock(&mr_lock);
+
 	return 0;
 }
 static const char *const ospl2xx_tx_enable_text[] = {"Disable", "Enable"};
