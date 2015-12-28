@@ -216,6 +216,7 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		    payload32[1] == AFE_CUSTOM_OPALUM_TX_MODULE) {
 			if (ospl2xx_callback != NULL)
 				ospl2xx_callback(data);
+			atomic_set(&this_afe.state, 0);
 		} else {
 #endif
 		if (rtac_make_afe_callback(data->payload, data->payload_size))
