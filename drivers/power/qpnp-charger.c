@@ -1426,7 +1426,7 @@ qpnp_chg_vbatdet_set(struct qpnp_chg_chip *chip, int vbatdet_mv)
 static void
 qpnp_chg_set_appropriate_vbatdet(struct qpnp_chg_chip *chip)
 {
-	if (chip->bat_is_cool)
+	if (chip->bat_is_cool && chip->chg_done == true)
 		qpnp_chg_vbatdet_set(chip, chip->cool_bat_mv
 			+ chip->resume_delta_mv);
 	else if (chip->bat_is_warm)
@@ -2654,7 +2654,7 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 			gpio_set_value(chip->chg_gpio, 0);
 		if (lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))
 			return POWER_SUPPLY_CHARGE_TYPE_FAST;
-		else if (lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000))
+		else if (lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2850000))
 			return POWER_SUPPLY_CHARGE_TYPE_FAST;
 		else if (lastTimeCableType == 3)
 			return POWER_SUPPLY_CHARGE_TYPE_FAST;
@@ -2683,7 +2683,7 @@ get_prop_usb_type(struct qpnp_chg_chip *chip)
 			pr_debug("POWER_SUPPLY_USB_TYPE_AC_FAST\n");
 			return POWER_SUPPLY_USB_TYPE_AC_FAST;
 		}
-		else if (lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000)) {
+		else if (lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2850000)) {
 			pr_debug("POWER_SUPPLY_USB_TYPE_POWER_BANK\n");
 			return POWER_SUPPLY_USB_TYPE_POWER_BANK;
 		}
@@ -4166,7 +4166,7 @@ qpnp_eoc_work(struct work_struct *work)
 						qpnp_chg_ibatmax_set(chip, 1050);
 						printk("[CDP]3C charging mode, modify the charging current to 1050 mA\n");
 					}
-					else if ((lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000)) ||
+					else if ((lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2850000)) ||
 							(lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))) {
 						qpnp_chg_iusbmax_set(chip, 1400);
 						qpnp_chg_ibatmax_set(chip, 1050);
@@ -4211,7 +4211,7 @@ qpnp_eoc_work(struct work_struct *work)
 						qpnp_chg_ibatmax_set(chip, 800);
 						printk("[CDP]3C charging mode, modify the charging current to 800 mA\n");
 					}
-					else if ((lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000)) ||
+					else if ((lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2850000)) ||
 							(lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))) {
 						qpnp_chg_iusbmax_set(chip, 1400);
 						qpnp_chg_ibatmax_set(chip, 800);
@@ -4463,19 +4463,36 @@ asus_bat_is_warmer_check_work(struct work_struct *work)
 
 	mutex_lock(&chip->bat_is_warmer_lock);
 	temp = get_prop_batt_temp(chip);
-	if ((temp >= 450) && (g_bat_is_warmer == false)){
-		g_bat_is_warmer = true;
-		qpnp_chg_set_appropriate_battery_current(chip);
-		pr_debug("g_bat_is_warmer is true!\n");
-	}else if ((temp <= 420) && (g_bat_is_warmer == true)){
-		g_bat_is_warmer = false;
-		qpnp_chg_set_appropriate_battery_current(chip);
-		pr_debug("g_bat_is_warmer is false!\n");
-	}else if (!chip->bat_is_warm){
-		g_bat_is_warmer = false;
-		pr_debug("g_bat_is_warmer is cancelled!\n");
-		mutex_unlock(&chip->bat_is_warmer_lock);
-		return;
+	if (ASUS_hwID == SPARROW_PR3) {
+		if ((temp >= 440) && (g_bat_is_warmer == false)){
+			g_bat_is_warmer = true;
+			qpnp_chg_set_appropriate_battery_current(chip);
+			pr_debug("g_bat_is_warmer is true!\n");
+		}else if ((temp <= 400) && (g_bat_is_warmer == true)){
+			g_bat_is_warmer = false;
+			qpnp_chg_set_appropriate_battery_current(chip);
+			pr_debug("g_bat_is_warmer is false!\n");
+		}else if (!chip->bat_is_warm){
+			g_bat_is_warmer = false;
+			pr_debug("g_bat_is_warmer is cancelled!\n");
+			mutex_unlock(&chip->bat_is_warmer_lock);
+			return;
+		}
+	} else {
+		if ((temp >= 450) && (g_bat_is_warmer == false)){
+			g_bat_is_warmer = true;
+			qpnp_chg_set_appropriate_battery_current(chip);
+			pr_debug("g_bat_is_warmer is true!\n");
+		}else if ((temp <= 420) && (g_bat_is_warmer == true)){
+			g_bat_is_warmer = false;
+			qpnp_chg_set_appropriate_battery_current(chip);
+			pr_debug("g_bat_is_warmer is false!\n");
+		}else if (!chip->bat_is_warm){
+			g_bat_is_warmer = false;
+			pr_debug("g_bat_is_warmer is cancelled!\n");
+			mutex_unlock(&chip->bat_is_warmer_lock);
+			return;
+		}
 	}
 
 	schedule_delayed_work(&chip->bat_is_warmer_check_work,

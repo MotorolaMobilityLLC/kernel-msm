@@ -2083,6 +2083,8 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 		chip->calculated_soc = 100;
 		charge_full = true;
 	}
+	if (chip->calculated_soc == 100)
+		soc = 100;
 
 	pr_debug("last_soc = %d, calculated_soc = %d, soc = %d, time since last change = %d\n",
 			chip->last_soc, chip->calculated_soc,
