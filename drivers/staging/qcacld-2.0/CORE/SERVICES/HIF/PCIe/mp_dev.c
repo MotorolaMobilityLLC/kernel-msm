@@ -57,6 +57,13 @@
 #define BB_watchdog_ctrl_2       0x1a7c8
 #define BB_watchdog_status_B     0x1a7e0
 
+#define PHY_BB_CHN_TABLES_INTF_ADDR 0x19894
+#define PHY_BB_CHN_TABLES_INTF_DATA 0x19898
+
+#define PHY_BB_CHN1_TABLES_INTF_ADDR 0x1a894
+#define PHY_BB_CHN1_TABLES_INTF_DATA 0x1a898
+
+
 struct priv_ctrl_ctx {
     u_int32_t chaninfo_ctrl_orig;
     u_int32_t gain_min_offsets_orig;
@@ -216,6 +223,9 @@ void priv_dump_agc(struct hif_pci_softc* hif_sc)
 {
     int i, len = 30;  //check this value for Rome and Peregrine
     u_int32_t chain0, chain1, chain_mask, val;
+    A_target_id_t targid = TARGID(hif_sc);
+
+    A_TARGET_ACCESS_BEGIN(targid);
 
     chain_mask = get_target_reg_bits(hif_sc, BB_multichain_enable, MULTICHAIN_ENABLE_RX_CHAIN_MASK_MASK);
     chain0 = chain_mask & 1;
@@ -229,7 +239,9 @@ void priv_dump_agc(struct hif_pci_softc* hif_sc)
     printk("AGC history buffer dump:\n");
     if (chain0) {
         for (i = 0; i < len; i++) {
-            val = A_PCI_READ32(hif_sc->mem + BB_chaninfo_tab_b0 + i*4);
+            A_PCI_WRITE32(hif_sc->mem + PHY_BB_CHN_TABLES_INTF_ADDR,
+                  BB_chaninfo_tab_b0 + i*4);
+            val = A_PCI_READ32(hif_sc->mem + PHY_BB_CHN_TABLES_INTF_DATA);
             printk("0x%x\t", val);
             if (i%4 == 0)
                 printk("\n");
@@ -237,7 +249,9 @@ void priv_dump_agc(struct hif_pci_softc* hif_sc)
     }
     if (chain1) {
         for (i = 0; i < len; i++) {
-            val = A_PCI_READ32(hif_sc->mem + BB_chaninfo_tab_b1 + i*4);
+            A_PCI_WRITE32(hif_sc->mem + PHY_BB_CHN1_TABLES_INTF_ADDR,
+                  BB_chaninfo_tab_b0 + i*4);
+            val = A_PCI_READ32(hif_sc->mem + PHY_BB_CHN1_TABLES_INTF_DATA);
             printk("0x%x\t", val);
             if (i%4 == 0)
                 printk("\n");
@@ -246,6 +260,9 @@ void priv_dump_agc(struct hif_pci_softc* hif_sc)
     printk("\nAGC history buffer dump complete\n");
     //restore original value
     A_PCI_WRITE32(hif_sc->mem + BB_gains_min_offsets, g_Priv_Dump_Ctx.gain_min_offsets_orig);
+
+    A_TARGET_ACCESS_END(targid);
+
     return;
 }
 
