@@ -835,8 +835,11 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 	}
 
 	if ((pdata->panel_info.type == MIPI_CMD_PANEL) &&
-		mipi->vsync_enable && mipi->hw_vsync_mode)
+		mipi->vsync_enable && mipi->hw_vsync_mode) {
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 		mdss_dsi_set_tear_off(ctrl_pdata);
+		mdss_dsi_clk_ctrl(ctrl_pdata,DSI_ALL_CLKS, 0);
+	}
 
 	if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
 		if (!pdata->panel_info.dynamic_switch_pending) {
