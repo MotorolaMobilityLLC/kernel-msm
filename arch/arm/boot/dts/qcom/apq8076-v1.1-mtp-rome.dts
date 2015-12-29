@@ -36,3 +36,7 @@
                 qca,bt-vdd-io-voltage-level = <1800000 1800000>;
         };
 };
+
+&blsp1_uart0 {
+        status = "ok";
+};
