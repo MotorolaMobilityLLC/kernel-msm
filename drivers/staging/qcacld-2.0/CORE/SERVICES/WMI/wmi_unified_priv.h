@@ -94,6 +94,7 @@ struct wmi_unified {
 #ifdef FEATURE_RUNTIME_PM
 	adf_os_atomic_t runtime_pm_inprogress;
 #endif
+	bool tgt_force_assert_enable;
 	void (*wma_wow_tx_complete_cbk)(ol_scn_t scn_handle);
 #ifdef FEATURE_WLAN_D0WOW
 	A_BOOL in_d0wow;

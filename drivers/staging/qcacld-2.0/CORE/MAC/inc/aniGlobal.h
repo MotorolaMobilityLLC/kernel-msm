@@ -1120,6 +1120,7 @@ typedef struct sMacOpenParameters
 
     bool      tx_chain_mask_cck;
     uint16_t  self_gen_frm_pwr;
+    bool force_target_assert_enabled;
 } tMacOpenParameters;
 
 typedef struct sHalMacStartParameters

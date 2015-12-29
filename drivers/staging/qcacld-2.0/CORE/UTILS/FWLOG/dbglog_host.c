@@ -63,6 +63,7 @@ static bool kd_nl_init = FALSE;
 static int cnss_diag_pid = INVALID_PID;
 static int get_version = 0;
 static int gprint_limiter = 0;
+static bool tgt_assert_enable = 0;
 
 static ATH_DEBUG_MASK_DESCRIPTION g_fwlogDebugDescription[] = {
     {FWLOG_DEBUG,"fwlog"},
@@ -4017,6 +4018,11 @@ int cnss_diag_msg_callback(struct sk_buff *skb)
             AR_DEBUG_PRINTF(ATH_DEBUG_INFO,
                            ("%s : DIAG_TYPE_CRASH_INJECT: %d %d\n", __func__,
                            slot->payload[0], slot->payload[1]));
+            if (!tgt_assert_enable) {
+                AR_DEBUG_PRINTF(ATH_DEBUG_INFO,
+                               ("%s: tgt Assert Disabled\n", __func__));
+                return 0;
+            }
             process_wma_set_command_twoargs(0,
                                            (int)GEN_PARAM_CRASH_INJECT,
                                            slot->payload[0],
@@ -4203,7 +4209,7 @@ dbglog_init(wmi_unified_t wmi_handle)
     dbglog_reg_modprint(WLAN_MODULE_PCIELP, dbglog_pcielp_print_handler);
     dbglog_reg_modprint(WLAN_MODULE_IBSS_PWRSAVE,
                         dbglog_ibss_powersave_print_handler);
-
+    tgt_assert_enable = wmi_handle->tgt_force_assert_enable;
     /* Register handler for F3 or debug messages */
     res = wmi_unified_register_event_handler(wmi_handle, WMI_DEBUG_MESG_EVENTID,
                        dbglog_parse_debug_logs);
@@ -4250,6 +4256,7 @@ dbglog_deinit(wmi_unified_t wmi_handle)
     dbglog_debugfs_remove(wmi_handle);
 #endif /* WLAN_OPEN_SOURCE */
 
+    tgt_assert_enable = 0;
     res = wmi_unified_unregister_event_handler(wmi_handle, WMI_DEBUG_MESG_EVENTID);
     if(res != 0)
         return res;

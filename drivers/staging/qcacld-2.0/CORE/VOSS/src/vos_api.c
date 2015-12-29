@@ -463,6 +463,8 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
    macOpenParms.IsRArateLimitEnabled = pHddCtx->cfg_ini->IsRArateLimitEnabled;
 #endif
 
+   macOpenParms.force_target_assert_enabled =
+               pHddCtx->cfg_ini->crash_inject_enabled;
    macOpenParms.apMaxOffloadPeers = pHddCtx->cfg_ini->apMaxOffloadPeers;
 
    macOpenParms.apMaxOffloadReorderBuffs =

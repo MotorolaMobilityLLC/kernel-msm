@@ -1629,6 +1629,15 @@ typedef enum
 #define CFG_ENABLE_GREEN_AP_FEATURE_DEFAULT ( 1 )
 #endif
 
+/*
+ * This INI item is used to control subsystem restart(SSR) test framework
+ * Set its value to 1 to enable APPS trigerred SSR testing
+ */
+#define CFG_ENABLE_CRASH_INJECT         "gEnableForceTargetAssert"
+#define CFG_ENABLE_CRASH_INJECT_MIN     (0)
+#define CFG_ENABLE_CRASH_INJECT_MAX     (1)
+#define CFG_ENABLE_CRASH_INJECT_DEFAULT (0)
+
 #ifdef FEATURE_WLAN_FORCE_SAP_SCC
 #define CFG_SAP_SCC_CHAN_AVOIDANCE         "gSapSccChanAvoidance"
 #define CFG_SAP_SCC_CHAN_AVOIDANCE_MIN     ( 0 )
@@ -3617,6 +3626,7 @@ typedef struct
    v_BOOL_t                    enableGreenAP;
 #endif
 
+   bool                        crash_inject_enabled;
    v_S31_t                     dfsRadarPriMultiplier;
    v_U8_t                      reorderOffloadSupport;
 
