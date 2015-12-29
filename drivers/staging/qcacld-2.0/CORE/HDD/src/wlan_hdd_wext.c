@@ -8302,6 +8302,13 @@ static int __iw_set_var_ints_getnone(struct net_device *dev,
             {
                 p2p_app_setP2pPs_t p2pNoA;
 
+                if (pAdapter->device_mode != WLAN_HDD_P2P_GO) {
+                    hddLog(LOGE,
+                        FL("Setting NoA is not allowed in Device mode: %d"),
+                        pAdapter->device_mode);
+                    return -EINVAL;
+                }
+
                 p2pNoA.opp_ps = apps_args[0];
                 p2pNoA.ctWindow = apps_args[1];
                 p2pNoA.duration = apps_args[2];
