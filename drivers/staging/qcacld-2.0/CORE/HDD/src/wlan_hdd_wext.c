@@ -189,7 +189,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_TXRX_FWSTATS_RESET           41
 #define WE_SET_MAX_TX_POWER_2_4   42
 #define WE_SET_MAX_TX_POWER_5_0   43
-#define WE_SET_POWER_GATING       44
+/* 44 is unused */
 /* Private ioctl for packet power save */
 #define  WE_PPS_PAID_MATCH              45
 #define  WE_PPS_GID_MATCH               46
@@ -271,7 +271,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_GET_AMSDU         28
 #define WE_GET_TXPOW_2G      29
 #define WE_GET_TXPOW_5G      30
-#define WE_GET_POWER_GATING  31
+/* 31 is unused */
 #define WE_GET_PPS_PAID_MATCH           32
 #define WE_GET_PPS_GID_MATCH            33
 #define WE_GET_PPS_EARLY_TIM_CLEAR      34
@@ -6334,16 +6334,6 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
              break;
          }
 
-         case WE_SET_POWER_GATING:
-         {
-              hddLog(LOG1, "WMI_PDEV_PARAM_POWER_GATING_SLEEP val %d",
-                     set_value);
-              ret = process_wma_set_command((int)pAdapter->sessionId,
-                                        (int)WMI_PDEV_PARAM_POWER_GATING_SLEEP,
-                                        (set_value)? true:false, PDEV_CMD);
-              break;
-         }
-
          /* Firmware debug log */
          case WE_DBGLOG_LOG_LEVEL:
          {
@@ -7369,16 +7359,6 @@ static int iw_setnone_getint(struct net_device *dev, struct iw_request_info *inf
                  return -EIO;
             }
             hddLog(LOG1, "5G tx_power %d", txpow5g);
-            break;
-        }
-
-        case WE_GET_POWER_GATING:
-        {
-            hddLog(LOG1, "GET WMI_PDEV_PARAM_POWER_GATING_SLEEP");
-            *value = wma_cli_get_command(wmapvosContext,
-                                         (int)pAdapter->sessionId,
-                                        (int)WMI_PDEV_PARAM_POWER_GATING_SLEEP,
-                                        PDEV_CMD);
             break;
         }
 
@@ -10713,11 +10693,6 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         "txpow5g" },
 
-    {   WE_SET_POWER_GATING,
-        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
-        0,
-        "pwrgating" },
-
     /* Sub-cmds DBGLOG specific commands */
     {   WE_DBGLOG_LOG_LEVEL ,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
@@ -11067,11 +11042,6 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         "get_txpow5g" },
-
-    {   WE_GET_POWER_GATING,
-        0,
-        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
-        "get_pwrgating" },
 
     {   WE_GET_PPS_PAID_MATCH,
 	0,

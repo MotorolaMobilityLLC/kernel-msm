@@ -396,7 +396,6 @@ typedef struct {
 	u_int32_t rxchainmask;
 	u_int32_t txpow2g;
 	u_int32_t txpow5g;
-	u_int32_t pwrgating;
 	u_int32_t burst_enable;
 	u_int32_t burst_dur;
 } pdev_cli_config_t;
