@@ -730,6 +730,7 @@ retry_vsync:
 			goto retry_vsync;
 		    }
 		    rc = -1;
+
 		}
 		ATRACE_END("mdp3_wait_for_vsync_comp");
 	}

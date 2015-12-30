@@ -588,22 +588,6 @@ static void mdp3_clk_remove(void)
 
 }
 
-u64 mdp3_clk_round_off(u64 clk_rate)
-{
-	u64 clk_round_off = 0;
-
-	if (clk_rate <= MDP_CORE_CLK_RATE_SVS)
-		clk_round_off = MDP_CORE_CLK_RATE_SVS;
-	else if (clk_rate <= MDP_CORE_CLK_RATE_SUPER_SVS)
-		clk_round_off = MDP_CORE_CLK_RATE_SUPER_SVS;
-	else
-		clk_round_off = MDP_CORE_CLK_RATE_MAX;
-
-	pr_debug("clk = %llu rounded to = %llu\n",
-		clk_rate, clk_round_off);
-	return clk_round_off;
-}
-
 int mdp3_clk_enable(int enable, int dsi_clk)
 {
 	int rc = 0;
@@ -692,24 +676,6 @@ void mdp3_bus_bw_iommu_enable(int enable, int client)
 	if (ref_cnt < 0) {
 		pr_err("Ref count < 0, bus client=%d, ref_cnt=%d",
 				client_idx, ref_cnt);
-	}
-}
-
-void mdp3_calc_dma_res(struct mdss_panel_info *panel_info, u64 *clk_rate,
-		u64 *ab, u64 *ib, uint32_t bpp)
-{
-	u32 vtotal = mdss_panel_get_vtotal(panel_info);
-	u32 htotal = mdss_panel_get_htotal(panel_info, 0);
-	u64 clk    = htotal * vtotal * panel_info->mipi.frame_rate;
-	pr_debug("clk_rate for dma = %llu, bpp = %d\n", clk, bpp);
-
-	if (clk_rate)
-		*clk_rate = mdp3_clk_round_off(clk);
-
-	/* ab and ib vote should be same for honest voting */
-	if (ab || ib) {
-		*ab = clk * bpp;
-		*ib = *ab;
 	}
 }
 
@@ -2238,25 +2204,30 @@ static int mdp3_continuous_splash_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_panel_info *panel_info = &pdata->panel_info;
 	struct mdp3_bus_handle_map *bus_handle;
-	u64 ab = 0;
-	u64 ib = 0;
-	u64 mdp_clk_rate = 0;
-	int rc = 0;
+	u64 ab, ib;
+	u32 vtotal;
+	int rc;
 
 	pr_debug("mdp3__continuous_splash_on\n");
+
+	mdp3_clk_set_rate(MDP3_CLK_VSYNC, MDP_VSYNC_CLK_RATE,
+			MDP3_CLIENT_DMA_P);
+
+	mdp3_clk_set_rate(MDP3_CLK_MDP_SRC, MDP_CORE_CLK_RATE_SVS,
+			MDP3_CLIENT_DMA_P);
 
 	bus_handle = &mdp3_res->bus_handle[MDP3_BUS_HANDLE];
 	if (bus_handle->handle < 1) {
 		pr_err("invalid bus handle %d\n", bus_handle->handle);
 		return -EINVAL;
 	}
-	mdp3_calc_dma_res(panel_info, &mdp_clk_rate, &ab, &ib, panel_info->bpp);
+	vtotal = panel_info->yres + panel_info->lcdc.v_back_porch +
+		panel_info->lcdc.v_front_porch +
+		panel_info->lcdc.v_pulse_width;
 
-	mdp3_clk_set_rate(MDP3_CLK_VSYNC, MDP_VSYNC_CLK_RATE,
-			MDP3_CLIENT_DMA_P);
-	mdp3_clk_set_rate(MDP3_CLK_MDP_SRC, mdp_clk_rate,
-			MDP3_CLIENT_DMA_P);
-
+	ab = panel_info->xres * vtotal * 4;
+	ab *= panel_info->mipi.frame_rate;
+	ib = ab;
 	rc = mdp3_bus_scale_set_quota(MDP3_CLIENT_DMA_P, ab, ib);
 	bus_handle->restore_ab[MDP3_CLIENT_DMA_P] = ab;
 	bus_handle->restore_ib[MDP3_CLIENT_DMA_P] = ib;
