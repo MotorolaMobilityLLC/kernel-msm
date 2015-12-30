@@ -95,7 +95,7 @@
 			qcom,chg-adc_tm = <&pm8226_adc_tm>;
 			qcom,pmic-revid = <&pm8226_revid>;
 			qcom,ibatmax-warm-ma = <700>;
-			qcom,warm-bat-decidegc = <420>;
+			qcom,warm-bat-decidegc = <400>;
 			qcom,warm-bat-mv = <4350>;
 			qcom,warmer-bat-mv = <4100>;
 			qcom,cool-bat-decidegc = <220>;
