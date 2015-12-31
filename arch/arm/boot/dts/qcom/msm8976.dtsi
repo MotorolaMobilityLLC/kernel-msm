@@ -2727,6 +2727,7 @@
 		subsys-name = "AR6320";
 		vdd-wlan-supply = <&rome_vreg>;
 		vdd-wlan-io-supply = <&pm8950_l5>;
+		qcom,wlan-ramdump-dynamic = <0x200000>;
 	};
 
 	cpu-pmu {
