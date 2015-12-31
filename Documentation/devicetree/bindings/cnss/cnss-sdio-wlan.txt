@@ -16,6 +16,8 @@ Required properties:
   - vdd-wlan-dsrc-supply: phandle to the WLAN dsrc vdd regulator device tree node.
   - vdd-wlan-io-supply: phandle to the WLAN IO regulator device tree node.
   - vdd-wlan-xtal-supply: phandle to the WLAM XTAL regulator device tree node.
+  - qcom,wlan-ramdump-dynamic: To enable CNSS RAMDUMP collection
+    by providing the size of CNSS DUMP
 
 Example:
 	qcom,cnss-sdio {
@@ -25,4 +27,5 @@ Example:
                 subsys-name = "AR6320";
 		vdd-wlan-supply = <&rome_vreg>;
 		vdd-wlan-io-supply = <&pm8950_l5>;
+		qcom,wlan-ramdump-dynamic = <0x200000>;
 	};
