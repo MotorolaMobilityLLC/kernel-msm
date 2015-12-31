@@ -85,8 +85,8 @@
 #define ALS_LOW_THRESHOLD		1000
 #define ALS_HIGH_THRESHOLD		3000
 
-#define PS_LOW_THRESHOLD		500 // PS low threshold
-#define PS_HIGH_THRESHOLD		800 // PS high threshold
+#define PS_LOW_THRESHOLD		2073 /*PS low threshold*/
+#define PS_HIGH_THRESHOLD		7525 /*PS high threshold*/
 
 #define LUX_PER_COUNT			400 //ALS lux per count, 400/1000=0.4
 #define ALS_LEVEL    16
@@ -233,8 +233,8 @@ int epl_sensor_als_dyn_report(bool report_flag);
 #if PS_DYN_K_ONE
 static bool ps_dyn_flag = false;
 #define PS_MAX_CT	10000
-#define PS_DYN_H_OFFSET 800
-#define PS_DYN_L_OFFSET 500
+#define PS_DYN_H_OFFSET 6943
+#define PS_DYN_L_OFFSET 2024
 u32 dynk_thd_low = 0;
 u32 dynk_thd_high = 0;
 #endif
