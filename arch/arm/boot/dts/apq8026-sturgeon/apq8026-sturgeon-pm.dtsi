@@ -68,7 +68,7 @@
 	qcom,pm8226@0 {
 		qcom,power-on@800 {
 			compatible = "qcom,qpnp-power-on";
-			qcom,s3-debounce = <16>;
+			qcom,s3-debounce = <32>;
 			/*set s3 source type to kpdpwr */
 			qcom,s3-src = "kpdpwr";
 
