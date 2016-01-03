@@ -2180,6 +2180,7 @@ int ubi_wl_init(struct ubi_device *ubi, struct ubi_attach_info *ai)
 			ubi_err(ubi->ubi_num,
 				"%d PEBs are corrupted and not used",
 				ubi->corr_peb_count);
+		err = -ENOSPC;
 		goto out_free;
 	}
 	ubi->avail_pebs -= reserved_pebs;
