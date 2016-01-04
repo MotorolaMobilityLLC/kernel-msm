@@ -422,6 +422,21 @@ static int32_t msm_flash_off(struct msm_flash_ctrl_t *flash_ctrl,
 	CDBG("Exit\n");
 	return 0;
 }
+static int32_t msm_flash_i2c_read_setting_array(
+	struct msm_flash_ctrl_t *flash_ctrl,
+	struct msm_flash_cfg_data_t *flash_data)
+{
+	if (!flash_data->cfg.read_config) {
+		pr_err("%s:%d failed: Null pointer\n", __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	return flash_ctrl->flash_i2c_client.i2c_func_tbl->i2c_read(
+		&flash_ctrl->flash_i2c_client,
+		flash_data->cfg.read_config->reg_addr,
+		&flash_data->cfg.read_config->data,
+		MSM_CAMERA_I2C_BYTE_DATA);
+}
 
 static int32_t msm_flash_i2c_write_setting_array(
 	struct msm_flash_ctrl_t *flash_ctrl,
@@ -735,6 +750,16 @@ static int32_t msm_flash_config(struct msm_flash_ctrl_t *flash_ctrl,
 			CDBG(pr_fmt("Invalid state : %d\n"),
 				flash_ctrl->flash_state);
 		}
+		break;
+	case CFG_FLASH_READ_I2C:
+		if (flash_ctrl->flash_state == MSM_CAMERA_FLASH_INIT)
+			rc = flash_ctrl->func_tbl->camera_flash_read(
+				flash_ctrl, flash_data);
+		break;
+	case CFG_FLASH_WRITE_I2C:
+		if (flash_ctrl->flash_state == MSM_CAMERA_FLASH_INIT)
+			rc = flash_ctrl->func_tbl->camera_flash_write(
+				flash_ctrl, flash_data);
 		break;
 	default:
 		rc = -EFAULT;
@@ -1084,6 +1109,8 @@ static long msm_flash_subdev_do_ioctl(
 		case CFG_FLASH_OFF:
 		case CFG_FLASH_LOW:
 		case CFG_FLASH_HIGH:
+		case CFG_FLASH_READ_I2C:
+		case CFG_FLASH_WRITE_I2C:
 			flash_data.cfg.settings = compat_ptr(u32->cfg.settings);
 			break;
 		case CFG_FLASH_INIT:
@@ -1359,6 +1386,8 @@ static struct msm_flash_table msm_i2c_flash_table = {
 		.camera_flash_off = msm_flash_i2c_write_setting_array,
 		.camera_flash_low = msm_flash_i2c_write_setting_array,
 		.camera_flash_high = msm_flash_i2c_write_setting_array,
+		.camera_flash_read = msm_flash_i2c_read_setting_array,
+		.camera_flash_write = msm_flash_i2c_write_setting_array,
 	},
 };
 
