@@ -1179,6 +1179,10 @@
 	regulator-always-on;
 };
 
+&pm8994_l22 {
+        regulator-always-on;
+};
+
 /* 3.3V QCA Supply */
 &rome_vreg {
 	gpio = <&pm8994_gpios 9 0>;
