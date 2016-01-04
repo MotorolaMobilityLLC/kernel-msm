@@ -942,8 +942,10 @@ retry:
 
 		if (io_data->aio) {
 			req = usb_ep_alloc_request(ep->ep, GFP_ATOMIC);
-			if (unlikely(!req))
+			if (unlikely(!req)) {
+				ret = -ENOMEM;
 				goto error_lock;
+			}
 
 			req->buf      = data;
 			req->length   = data_len;
