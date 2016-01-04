@@ -551,7 +551,7 @@
 				qcom,max-current = <1000>;
 				qcom,duration = <1280>;
 				qcom,id = <0>;
-				qcom,current = <625>;
+				qcom,current = <1000>;
 			};
 
 			pmi8950_flash1: qcom,flash_1 {
@@ -562,7 +562,7 @@
 				qcom,max-current = <1000>;
 				qcom,duration = <1280>;
 				qcom,id = <1>;
-				qcom,current = <625>;
+				qcom,current = <1000>;
 			};
 
 			pmi8950_torch0: qcom,torch_0 {
@@ -572,7 +572,7 @@
 						"torch0_trigger";
 				qcom,max-current = <200>;
 				qcom,id = <0>;
-				qcom,current = <120>;
+				qcom,current = <75>;
 			};
 
 			pmi8950_torch1: qcom,torch_1 {
@@ -582,7 +582,7 @@
 						"torch1_trigger";
 				qcom,max-current = <200>;
 				qcom,id = <1>;
-				qcom,current = <120>;
+				qcom,current = <75>;
 			};
 
 			pmi8950_switch: qcom,switch {
@@ -593,7 +593,7 @@
 				qcom,max-current = <1000>;
 				qcom,duration = <1280>;
 				qcom,id = <2>;
-				qcom,current = <625>;
+				qcom,current = <1000>;
 			};
 		};
 
