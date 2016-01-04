@@ -40,13 +40,14 @@
 &pmi8994_haptics {
 	status = "okay";
 	qcom,actuator-type = "lra";
-	qcom,vmax-mv = <1160>;
-	qcom,vmax-mv-ind = <1972>;
+	qcom,vmax-mv = <1500>;
+	qcom,vmax-mv-ind = <2500>;
 	qcom,ilim-ma = <400>;
 	qcom,wave-play-rate-us = <4347>;
 	qcom,correct-lra-drive-freq;
 	qcom,en-brake;
 	qcom,brake-pattern = [03 03 03 03];
+	qcom,wave-shape = "sine";
 };
 
 &spi_fpc {
