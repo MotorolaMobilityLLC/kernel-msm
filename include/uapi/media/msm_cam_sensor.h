@@ -540,6 +540,7 @@ struct msm_flash_cfg_data_t {
 	union {
 		struct msm_flash_init_info_t *flash_init_info;
 		struct msm_camera_i2c_reg_setting_array *settings;
+		struct msm_camera_i2c_read_config *read_config;
 	} cfg;
 };
 
