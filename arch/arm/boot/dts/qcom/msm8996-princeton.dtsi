@@ -224,6 +224,9 @@
 	cs35l34@41 {
 		reg = <0x40>;
 	};
+	fusb302@22 {
+		/delete-property/ fsa321-audio-switch;
+	};
 };
 
 &i2c_8 {

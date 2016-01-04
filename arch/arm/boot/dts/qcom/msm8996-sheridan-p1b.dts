@@ -69,3 +69,9 @@
 		mmi,wake-deassert-seq = <6 1 0>;
 	};
 };
+
+&i2c_7 {
+	fusb302@22 {
+		/delete-property/ fsa321-audio-switch;
+	};
+};
