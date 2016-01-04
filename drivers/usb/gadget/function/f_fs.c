@@ -912,13 +912,13 @@ retry:
 	if (epfile->ep != ep) {
 		/* In the meantime, endpoint got disabled or changed. */
 		ret = -ESHUTDOWN;
-		spin_unlock_irq(&epfile->ffs->eps_lock);
+		goto error_lock;
 	} else if (halt) {
 		/* Halt */
 		if (likely(epfile->ep == ep) && !WARN_ON(!ep->ep))
 			usb_ep_set_halt(ep->ep);
-		spin_unlock_irq(&epfile->ffs->eps_lock);
 		ret = -EBADMSG;
+		goto error_lock;
 	} else {
 		/* Fire the request */
 		struct usb_request *req;
