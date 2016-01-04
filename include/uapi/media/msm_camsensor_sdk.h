@@ -180,6 +180,8 @@ enum msm_flash_cfg_type_t {
 	CFG_FLASH_OFF,
 	CFG_FLASH_LOW,
 	CFG_FLASH_HIGH,
+	CFG_FLASH_READ_I2C,
+	CFG_FLASH_WRITE_I2C,
 };
 
 enum msm_sensor_output_format_t {
