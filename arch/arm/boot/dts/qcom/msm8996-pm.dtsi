@@ -337,6 +337,8 @@
 			<0xff 165>, /* usb30_hs_phy_irq */
 			<0xff 166>, /* sdc1_pwr_cmd_irq */
 			<0xff 170>, /* sdcc_pwr_cmd_irq */
+			<0xff 171>, /* USB2 msm_hs_phy_irq */
+			<0xff 172>, /* USB2 msm_dwc3 */
 			<0xff 173>, /* sdc1_irq[0] */
 			<0xff 174>, /* o_wcss_apss_smd_med */
 			<0xff 175>, /* o_wcss_apss_smd_low */
