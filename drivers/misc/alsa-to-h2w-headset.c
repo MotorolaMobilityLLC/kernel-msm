@@ -183,7 +183,7 @@ static ssize_t headset_print_state(struct switch_dev *sdev, char *buf)
 {
 	if (!buf)
 		return -EINVAL;
-	return snprintf(buf, 3, "%d\n", switch_get_state(sdev));
+	return snprintf(buf, 4, "%d\n", switch_get_state(sdev));
 }
 
 static int alsa_to_h2w_probe(struct platform_device *pdev)
