@@ -981,7 +981,7 @@
 		label = "host_det";
 		reg = <0x20>;
 		qcom,decimation = <0>;
-		qcom,pre-div-channel-scaling = <1>;
+		qcom,pre-div-channel-scaling = <0>;
 		qcom,calibration-type = "absolute";
 		qcom,scale-function = <0>;
 		qcom,hw-settle-time = <0>;
