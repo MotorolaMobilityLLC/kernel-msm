@@ -818,7 +818,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
-static void mdss_dsi_panel_forced_tx_mode_set(struct mdss_panel_info *pinfo,
+void mdss_dsi_panel_forced_tx_mode_set(struct mdss_panel_info *pinfo,
 					bool enable)
 {
 	if (!pinfo->forced_tx_mode_ftr_enabled)
@@ -1143,10 +1143,6 @@ void mdss_dsi_panel_parse_forced_tx_mode(struct device_node *np,
 			pinfo->forced_tx_mode_ftr_enabled = CMD_REQ_HS_MODE;
 		else
 			pinfo->forced_tx_mode_ftr_enabled = CMD_REQ_LP_MODE;
-
-		if (pinfo->cont_splash_enabled)
-			pinfo->forced_tx_mode_state =
-				pinfo->forced_tx_mode_ftr_enabled;
 	}
 }
 
