@@ -48,3 +48,7 @@
 &ibb_regulator {
 	qcom,qpnp-ibb-discharge-resistor = <32>;
 };
+
+&sdhc_2 {
+	cd-gpios = <&msm_gpio 67 0x0>;
+};
