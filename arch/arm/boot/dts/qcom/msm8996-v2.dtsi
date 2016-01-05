@@ -303,6 +303,12 @@
 	qcom,cpr-enable;
 
 	/delete-property/ qcom,cpr-aging-ref-voltage;
+	/delete-property/ mem-acc-supply;
+	/delete-property/ qcom,mem-acc-voltage;
+};
+
+&gfx_mem_acc_vreg {
+	status = "disabled";
 };
 
 &gfx_vreg {
