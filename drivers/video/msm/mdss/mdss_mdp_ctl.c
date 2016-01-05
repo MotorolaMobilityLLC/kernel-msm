@@ -1231,7 +1231,6 @@ static struct mdss_mdp_ctl *mdss_mdp_ctl_alloc(struct mdss_data_type *mdata,
 			mutex_init(&ctl->lock);
 			spin_lock_init(&ctl->spin_lock);
 			BLOCKING_INIT_NOTIFIER_HEAD(&ctl->notifier_head);
-			INIT_LIST_HEAD(&ctl->saved_vsync_handlers);
 			pr_debug("alloc ctl_num=%d\n", ctl->num);
 			break;
 		}
@@ -2096,8 +2095,6 @@ int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff)
 	int ret = 0;
 
 	pr_debug("ctl_num=%d, power_state=%d\n", ctl->num, ctl->power_state);
-
-
 
 	if (mdss_mdp_ctl_is_power_on_interactive(ctl)) {
 		pr_debug("%d: panel already on!\n", __LINE__);

@@ -73,7 +73,6 @@
 
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
-struct msm_fb_data_type *g_mfd;
 
 static u32 mdss_fb_pseudo_palette[16] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -692,29 +691,25 @@ static int interactive_notify(struct notifier_block *this,
 {
 	static bool first_display_on = true;
 
-	printk(KERN_DEBUG "[PF]%s +\n", __func__);
 	switch (code) {
 		case FB_BLANK_ENTER_NON_INTERACTIVE:
-			if(g_mfd != NULL)
-				g_display_first_frame = false;
-				mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_ON,0);
+			printk("MDSS:AMB:interactive_notify (NON_INTERACTIVE) +++\n");
+			g_display_first_frame = false;
 			break;
 
 		case FB_BLANK_ENTER_INTERACTIVE:
+			printk("MDSS:AMB:interactive_notify (ENTER_INTERACTIVE) +++\n");
 			if(first_display_on && mdss_panel_get_boot_cfg()){
 				first_display_on = false;
 			}else{
-				if(g_mfd != NULL){
-					g_display_first_frame = true;
-					mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
-				}
+				g_display_first_frame = true;
 			}
 			break;
 
 		default:
 			break;
 	}
-	printk(KERN_DEBUG "[PF]%s -\n", __func__);
+	printk("MDSS:AMB:interactive_notify ---\n");
 	return 0;
 }
 
@@ -825,7 +820,6 @@ static int mdss_fb_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
 
-	g_mfd = mfd;
 	if(register_mode_notifier(&interactive_mode_notifier))
 		pr_err("Error: fail to register ambient notifier\n");
 	return rc;
@@ -1223,12 +1217,10 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 
 	mfd->op_enable = false;
 	mutex_lock(&mfd->bl_lock);
-
 	if (mdss_panel_is_power_off(req_power_state)) {
 		mdss_fb_set_backlight(mfd, 0);
 		mfd->bl_updated = 0;
 	}
-
 	mfd->panel_power_state = req_power_state;
 	mutex_unlock(&mfd->bl_lock);
 
@@ -1307,6 +1299,9 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 	cur_power_state = mfd->panel_power_state;
 
+	//dump_stack();
+	printk("MDSS:AMB:mdss_fb_blank_sub(blank_mode=%d) called\n",blank_mode);
+
 	/*
 	 * Low power (lp) and ultra low pwoer (ulp) modes are currently only
 	 * supported for command mode panels. For all other panel, treat lp
@@ -1328,11 +1323,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		}
 	}
 
-	// ASUS: we go our way...
-	if (BLANK_FLAG_ULP == blank_mode)
-		blank_mode = FB_BLANK_POWERDOWN;
-       else if(BLANK_FLAG_LP == blank_mode)
-               blank_mode = FB_BLANK_UNBLANK;
+	mfd->cur_blank_mode = blank_mode; //ASUS_BSP Josh ++
 
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
@@ -1346,7 +1337,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			pr_debug("Unsupp transition: off --> ulp\n");
 			return 0;
 		}
-
 		ret = mdss_fb_blank_blank(mfd, req_power_state);
 		break;
 	case BLANK_FLAG_LP:
@@ -1362,9 +1352,14 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			ret = mdss_fb_blank_unblank(mfd);
 			if (ret)
 				break;
+			ret = mdss_fb_blank_blank(mfd, req_power_state);
+		} else if (mdss_fb_is_power_on_ulp(mfd)) {
+			pr_debug("ulp --> lp. need to get mdp status back\n");
+			ret = mdss_fb_blank_blank(mfd, req_power_state);
+		} else {
+			ret = mdss_fb_blank_blank(mfd, req_power_state);
 		}
 
-		ret = mdss_fb_blank_blank(mfd, req_power_state);
 		break;
 	case FB_BLANK_HSYNC_SUSPEND:
 	case FB_BLANK_POWERDOWN:
@@ -1389,6 +1384,8 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct mdss_panel_data *pdata;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+
+	printk("MDSS:AMB:mdss_fb_blank(blank_mode=%d) called\n",blank_mode);
 
 	mdss_fb_pan_idle(mfd);
 	if (mfd->op_enable == 0) {
@@ -2288,8 +2285,6 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 
 	if (!mfd->ref_cnt) {
 		if (mfd->disp_thread) {
-			//Fix issue:mdss crash when android restart in ambient mode
-			reset_ambient_status();
 			kthread_stop(mfd->disp_thread);
 			mfd->disp_thread = NULL;
 		}

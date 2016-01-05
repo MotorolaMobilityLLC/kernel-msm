@@ -56,7 +56,6 @@ struct mdss_mdp_cmd_ctx {
 struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
 
 static int mdss_mdp_cmd_do_notifier(struct mdss_mdp_cmd_ctx *ctx);
-static int mdss_mdp_cmd_restore_vsync_handler(struct mdss_mdp_ctl *ctl);
 
 static bool __mdss_mdp_cmd_is_panel_power_off(struct mdss_mdp_cmd_ctx *ctx)
 {
@@ -825,7 +824,6 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 		pr_err("invalid ctx session: %d\n", session);
 		return -ENODEV;
 	}
-	ctx->ref_cnt--;
 
 	/* intf stopped,  no more kickoff */
 	ctx->intf_stopped = 1;
@@ -958,7 +956,6 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 	pr_debug("%s: turn off interface clocks\n", __func__);
 	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list)
 		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
-
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 				ctx->rdptr_enabled, XLOG_FUNC_ENTRY);
 
@@ -1082,8 +1079,6 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 					ctx->rdptr_enabled);
 
-	mdss_mdp_cmd_restore_vsync_handler(ctl);
-
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 		ctx->pp_num, mdss_mdp_cmd_readptr_done, ctl);
 
@@ -1098,17 +1093,6 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 
 	return 0;
 }
-
-static int mdss_mdp_cmd_restore_vsync_handler(struct mdss_mdp_ctl *ctl)
-{
-	struct mdss_mdp_vsync_handler *tmp, *handle;
-	list_for_each_entry_safe(handle, tmp, &ctl->saved_vsync_handlers, saved_list) {
-		mdss_mdp_cmd_add_vsync_handler(ctl, handle);
-		list_del_init(&handle->saved_list);
-	}
-	return 0;
-}
-
 int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 {
 	int ret, session = 0;
@@ -1130,7 +1114,6 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
 	ctl->restore_fnc = mdss_mdp_cmd_restore;
-	//ctl->restore_vsync_handler = mdss_mdp_cmd_restore_vsync_handler;
 	pr_debug("%s:-\n", __func__);
 
 	return 0;

@@ -49,8 +49,3 @@ config ASUS_MDSS_DEBUG_UTILITY
 	default n
 	---help---
 		Many Utilities added for debug.
-config MDSS_ULPS_BEFORE_PANEL_OFF
-	bool 'config mipi to ULPS before panel off'
-	default n
-	---help---
-		Panel used by ROBIN need mipi in ULPS before OFF

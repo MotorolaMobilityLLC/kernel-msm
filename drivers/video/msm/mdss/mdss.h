@@ -258,7 +258,6 @@ void mdss_disable_irq_nosync(struct mdss_hw *hw);
 void mdss_bus_bandwidth_ctrl(int enable);
 int mdss_iommu_ctrl(int enable);
 int mdss_bus_scale_set_quota(int client, u64 ab_quota, u64 ib_quota);
-int is_ambient_on(void);
 
 static inline struct ion_client *mdss_get_ionclient(void)
 {
