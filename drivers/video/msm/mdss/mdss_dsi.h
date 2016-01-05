@@ -369,6 +369,10 @@ struct mdss_dsi_ctrl_pdata {
 	/* ASUS_BSP Josh: add for query panel version */
 	struct delayed_work panel_version_work;
 
+#ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
+	int dis_off_with_ulps;
+#endif
+
 };
 
 struct dsi_status_data {
