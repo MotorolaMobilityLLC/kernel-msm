@@ -74,6 +74,7 @@ struct fusb302_i2c_data {
 	int irq;
 	spinlock_t lock;
 	struct power_supply usbc_psy;
+	bool fsa321_switch;
 };
 
 struct fusb302_i2c_data *fusb_i2c_data;
@@ -168,6 +169,34 @@ static int FUSB300Int_PIN_LVL(void)
 	int ret = gpio_get_value(fusb_i2c_data->gpios[FUSB_INT_INDEX]);
 	FUSB_LOG("gpio irq_gpio value = %d\n", ret);
 	return ret;
+}
+
+static int FSA321_setSwitchState(FSASwitchState state)
+{
+	int aud_det_gpio = fusb_i2c_data->gpios[FUSB_AUD_DET_INDEX];
+	int aud_sw_sel_gpio = fusb_i2c_data->gpios[FUSB_AUD_SW_SEL_INDEX];
+
+	if (!(gpio_is_valid(aud_det_gpio) && gpio_is_valid(aud_sw_sel_gpio)))
+		return -ENODEV;
+
+	FUSB_LOG("Set Audio Switch to state %d\n", state);
+
+	switch (state) {
+	case fsa_lpm:
+		gpio_set_value(aud_sw_sel_gpio, 1);
+		gpio_set_value(aud_det_gpio, 1);
+		break;
+	case fsa_audio_mode:
+		gpio_set_value(aud_sw_sel_gpio, 0);
+		gpio_set_value(aud_det_gpio, 0);
+	case fsa_usb_mode:
+		gpio_set_value(aud_sw_sel_gpio, 0);
+		gpio_set_value(aud_det_gpio, 1);
+	default:
+		break;
+	}
+
+	return 0;
 }
 
 static int FUSB302_toggleAudioSwitch(bool enable)
@@ -1002,7 +1031,6 @@ void StateMachineDebugAccessory(void)
 		SetStateDelayUnattached();	// Go to the unattached state
 	else if (CC1TermDeb == CCTypeRa)
 		SetStateUnattached();
-
 }
 
 void StateMachineAudioAccessory(void)
@@ -1021,7 +1049,6 @@ void StateMachineAudioAccessory(void)
 	if (CC1TermDeb == CCTypeNone)	// If we have detected an open for > tCCDebounce
 		SetStateDelayUnattached();	// Go to the unattached state
 	else if (CC1TermDeb > CCTypeRa) {
-		FUSB302_toggleAudioSwitch(false);
 		SetStateUnattached();
 	}
 }
@@ -1145,7 +1172,9 @@ void SetStateDelayUnattached(void)
 #endif
 	/* Default Switches to OFF state */
 	FUSB302_disableSuperspeedUSB();
-	if (ConnState == AudioAccessory)
+	if (fusb_i2c_data->fsa321_switch)
+		FSA321_setSwitchState(fsa_lpm);
+	else
 		FUSB302_toggleAudioSwitch(false);
 	CC1TermDeb = CCTypeNone;	// Clear the debounced CC1 state
 	CC2TermDeb = CCTypeNone;	// Clear the debounced CC2 state
@@ -1204,6 +1233,10 @@ void SetStateUnattached(void)
 	DebounceTimer1 = USHRT_MAX;	// Disable the 1st level debounce timer, not used in this state
 	DebounceTimer2 = USHRT_MAX;	// Disable the 2nd level debounce timer, not used in this state
 	ToggleTimer = USHRT_MAX;	// Disable the toggle timer, not used in this state
+	if (fusb_i2c_data->fsa321_switch)
+		FSA321_setSwitchState(fsa_lpm);
+	else
+		FUSB302_toggleAudioSwitch(false);
 	wake_up_statemachine();
 }
 
@@ -1358,6 +1391,8 @@ void SetStateAttachedSrc(void)
 	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SRC;
 	/* Enable SSUSB Switch and set orientation */
 	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
+	if (fusb_i2c_data->fsa321_switch)
+		FSA321_setSwitchState(fsa_usb_mode);
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
 	DebounceTimer1 = tPDDebounceMin;	// Set the debounce timer to tPDDebounceMin for detecting a detach
@@ -1395,6 +1430,8 @@ void SetStateAttachedSink(void)
 	SinkCurrent = utccDefault;	// Set the current advertisment variable to the default until we detect something different
 	/* Enable SSUSB Switch and set orientation */
 	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
+	if (fusb_i2c_data->fsa321_switch)
+		FSA321_setSwitchState(fsa_usb_mode);
 	// Maintain the existing CC term values from the wait state
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
 	DebounceTimer1 = tPDDebounceMin;	// Set the debounce timer to tPDDebounceMin for detecting changes in advertised current
@@ -1575,6 +1612,8 @@ void SetStateDebugAccessory(void)
 	FUSB302_start_timer(&debounce_hrtimer1, DebounceTimer1);
 	DebounceTimer2 = USHRT_MAX;	// Disable the 2nd level debouncing initially to force completion of a 1st level debouncing
 	ToggleTimer = USHRT_MAX;	// Once we are in the debug.accessory state, we are going to stop toggling and only monitor CC1
+	if (fusb_i2c_data->fsa321_switch)
+		FSA321_setSwitchState(fsa_usb_mode);
 	wake_up_statemachine();
 }
 
@@ -1601,7 +1640,10 @@ void SetStateAudioAccessory(void)
 	DebounceTimer2 = USHRT_MAX;	// Disable the 2nd level debouncing initially to force completion of a 1st level debouncing
 	ToggleTimer = USHRT_MAX;	// Once we are in the audio.accessory state, we are going to stop toggling and only monitor CC1
 	/* Turn on Audio Switch and notify headset detection */
-	FUSB302_toggleAudioSwitch(true);
+	if (fusb_i2c_data->fsa321_switch)
+		FSA321_setSwitchState(fsa_audio_mode);
+	else
+		FUSB302_toggleAudioSwitch(true);
 	wake_up_statemachine();
 }
 
@@ -2045,6 +2087,8 @@ static int fusb302_parse_dt(struct device *dev, struct fusb302_i2c_data *fusb)
 	fusb->irq = gpio_to_irq(fusb->gpios[FUSB_INT_INDEX]);
 	FUSB_LOG("irq_gpio number is %d, irq = %d\n",
 		 fusb->gpios[FUSB_INT_INDEX], fusb->irq);
+	fusb->fsa321_switch = of_property_read_bool(dev->of_node,
+					"fsa321-audio-switch");
 	return 0;
 }
 #else
@@ -2184,6 +2228,10 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	/* Disable the SS Switch if param is disabled at boot */
 	if (disable_ss_switch)
 		FUSB302_disableSuperspeedUSB();
+
+	/* Set the FSA switch to lpm initially */
+	if (fusb_i2c_data->fsa321_switch)
+		FSA321_setSwitchState(fsa_lpm);
 
 	ret_device_file = device_create_file(&(i2c->dev), &dev_attr_reg_dump);
 	ret_device_file = device_create_file(&(i2c->dev), &dev_attr_state);
