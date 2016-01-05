@@ -123,6 +123,13 @@ typedef enum {
 	utcc3p0A
 } USBTypeCCurrent;
 
+typedef enum {
+	fsa_lpm = 0,
+	fsa_audio_mode,
+	fsa_usb_mode,
+	fsa_audio_override
+} FSASwitchState;
+
 typedef union {
 	u8 byte;
 	struct {
