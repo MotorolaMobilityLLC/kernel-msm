@@ -474,11 +474,18 @@ static int mdp3_ctrl_clk_enable(struct msm_fb_data_type *mfd, int enable)
 static int mdp3_ctrl_res_req_bus(struct msm_fb_data_type *mfd, int status)
 {
 	int rc = 0;
+	u32 vtotal = 0;
 	if (status) {
+		struct mdss_panel_info *panel_info = mfd->panel_info;
 		u64 ab = 0;
 		u64 ib = 0;
-		mdp3_calc_dma_res(mfd->panel_info, NULL, &ab, &ib,
-			ppp_bpp(mfd->fb_imgType));
+		vtotal = panel_info->yres + panel_info->lcdc.v_back_porch +
+			panel_info->lcdc.v_front_porch +
+			panel_info->lcdc.v_pulse_width;
+		ab = panel_info->xres * vtotal * ppp_bpp(mfd->fb_imgType);
+		ab *= panel_info->mipi.frame_rate;
+		/* ab and ib vote should be same for honest voting */
+		ib = ab;
 		rc = mdp3_bus_scale_set_quota(MDP3_CLIENT_DMA_P, ab, ib);
 	} else {
 		rc = mdp3_bus_scale_set_quota(MDP3_CLIENT_DMA_P, 0, 0);
@@ -490,11 +497,8 @@ static int mdp3_ctrl_res_req_clk(struct msm_fb_data_type *mfd, int status)
 {
 	int rc = 0;
 	if (status) {
-		u64 mdp_clk_rate = 0;
-		mdp3_calc_dma_res(mfd->panel_info, &mdp_clk_rate,
-			NULL, NULL, 0);
 
-		mdp3_clk_set_rate(MDP3_CLK_MDP_SRC, mdp_clk_rate,
+		mdp3_clk_set_rate(MDP3_CLK_MDP_SRC, MDP_CORE_CLK_RATE_SVS,
 				MDP3_CLIENT_DMA_P);
 		mdp3_clk_set_rate(MDP3_CLK_VSYNC, MDP_VSYNC_CLK_RATE,
 				MDP3_CLIENT_DMA_P);
