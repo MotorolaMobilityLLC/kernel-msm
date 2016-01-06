@@ -764,6 +764,9 @@
 		dma-names = "tx", "rx";
 	};
 
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
 };
 
 &sdhc_1 {
