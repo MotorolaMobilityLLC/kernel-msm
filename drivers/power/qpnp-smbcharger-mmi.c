@@ -1346,7 +1346,7 @@ static int smbchg_calc_batt_capacity(struct smbchg_chip *chip)
 	eb_cap = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
 	eb_size = get_eb_prop(chip, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN);
 
-	if ((eb_cap == -EINVAL) || (eb_size == -EINVAL) || (eb_size == 0))
+	if ((eb_cap < 0) || (eb_size <= 0))
 		return batt_cap;
 
 	eb_uah = (eb_cap * eb_size) / 100;
