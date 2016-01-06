@@ -29,7 +29,7 @@
 #include <linux/of_batterydata.h>
 #include <linux/wakelock.h>
 #include <linux/asusdebug.h>
-
+#include <linux/reboot.h>
 //ASUS_BSP lenter +++
 #include <linux/proc_fs.h>
 #include <linux/asus_bat.h>
@@ -377,7 +377,7 @@ static int g_bms_cc;
 #endif
 //ASUS_BSP lenter ---
 extern unsigned int cpu_max_loading;
-
+static int therm_power_off = 0;
 static int qpnp_read_wrapper(struct qpnp_bms_chip *chip, u8 *val,
 			u16 base, int count)
 {
@@ -2081,10 +2081,11 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	if (get_battery_status(chip) == POWER_SUPPLY_STATUS_FULL) {
 		soc = 100;
 		chip->calculated_soc = 100;
+	}
+	if (chip->calculated_soc == 100) {
+		soc = 100;
 		charge_full = true;
 	}
-	if (chip->calculated_soc == 100)
-		soc = 100;
 
 	pr_debug("last_soc = %d, calculated_soc = %d, soc = %d, time since last change = %d\n",
 			chip->last_soc, chip->calculated_soc,
@@ -2093,10 +2094,12 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	backup_soc_and_iavg(chip, batt_temp, chip->last_soc);
 	pr_debug("Reported SOC = %d\n", chip->last_soc);
 	mutex_unlock(&chip->last_soc_mutex);
-	if ((soc == 99) && (time_since_last_change_sec <= 60) && (charge_full == true))
+	if ((chip->last_soc >= 99) && (chip->calculated_soc >= 98) && (time_since_last_change_sec <= 60)
+		&& (get_battery_status(chip) == POWER_SUPPLY_STATUS_DISCHARGING) && charge_full == true)
 		return soc_temp;
 	else {
-		charge_full = false;
+		if ((time_since_last_change_sec > 60) && (chip->last_soc < 99))
+			charge_full = false;
 		return soc;
 	}
 }
@@ -2580,8 +2583,11 @@ static int calculate_state_of_charge(struct qpnp_bms_chip *chip,
 
 	calculate_soc_params(chip, raw, &params, batt_temp);
 	if (!is_battery_present(chip)) {
-		pr_debug("battery gone, reporting 100\n");
+		printk("battery gone, reporting 100\n");
 		new_calculated_soc = 100;
+		therm_power_off++;
+		if (therm_power_off > 5 && g_qpnp_bms_chip != NULL)
+			kernel_power_off();
 		goto done_calculating;
 	}
 
