@@ -20,6 +20,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/wakelock.h>
 #include <linux/gpio.h>
+#include <linux/alarmtimer.h>
 
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
@@ -371,6 +372,7 @@ struct mdss_dsi_ctrl_pdata {
 
 	struct work_struct idle_on_work;
 	struct wake_lock idle_on_wakelock;
+	struct alarm idle_on_alarm;
 
 	unsigned long dma_size;
 	dma_addr_t dma_addr;
