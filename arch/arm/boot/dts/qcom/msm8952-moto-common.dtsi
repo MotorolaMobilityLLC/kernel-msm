@@ -977,11 +977,11 @@
 };
 
 &pmi8950_vadc {
-	chan@20 {
+	chan@10 {
 		label = "host_det";
-		reg = <0x20>;
+		reg = <0x10>;
 		qcom,decimation = <0>;
-		qcom,pre-div-channel-scaling = <0>;
+		qcom,pre-div-channel-scaling = <1>;
 		qcom,calibration-type = "absolute";
 		qcom,scale-function = <0>;
 		qcom,hw-settle-time = <0>;
