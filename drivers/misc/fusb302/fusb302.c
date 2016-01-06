@@ -81,6 +81,7 @@ struct fusb302_i2c_data *fusb_i2c_data;
 
 static DECLARE_WAIT_QUEUE_HEAD(fusb_thread_wq);
 bool state_changed;
+bool suspended;
 
 static struct hrtimer state_hrtimer;
 static struct hrtimer debounce_hrtimer1;
@@ -395,6 +396,7 @@ void InitializeFUSB300Variables(void)
 	PRSwapTimer = 0;	// Clear the PR Swap timer
 
 	//
+	suspended = false;
 	state_changed = false;
 	hrtimer_init(&state_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	state_hrtimer.function = func_hrtimer;
@@ -1945,10 +1947,10 @@ int fusb302_state_kthread(void *x)
 	sched_setscheduler(current, SCHED_RR, &param);
 
 	while (1) {
-		if (FUSB300Int_PIN_LVL()) {
+		if (FUSB300Int_PIN_LVL() || suspended) {
 			set_current_state(TASK_INTERRUPTIBLE);
 			wait_event_interruptible(fusb_thread_wq,
-						 state_changed == true);
+				state_changed == true && suspended == false);
 			state_changed = false;
 			set_current_state(TASK_RUNNING);
 		}
@@ -2309,6 +2311,7 @@ static int fusb302_suspend(struct device *dev)
 {
 	struct fusb302_i2c_data *fusb = dev_get_drvdata(dev);
 
+	suspended = true;
 	/*
 	 * disable the irq and enable irq_wake
 	 * capability to the interrupt line.
@@ -2329,6 +2332,10 @@ static int fusb302_resume(struct device *dev)
 		disable_irq_wake(fusb->irq);
 		enable_irq(fusb->irq);
 	}
+
+	suspended = false;
+	if (state_changed == true)
+		wake_up_interruptible(&fusb_thread_wq);
 
 	return 0;
 }
