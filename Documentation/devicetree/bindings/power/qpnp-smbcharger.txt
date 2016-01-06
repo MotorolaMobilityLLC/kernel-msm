@@ -18,7 +18,7 @@ end of this file.
 			limiting configuration.
 - qcom,dc-chgpth:	DC charge path detection and input current
 			limiting configuration.
-- qcom,chg-misc:	Miscellaneous features such as watchdog timers
+- qcom,chg-misc:	Miscellaneous features such as safety timers
 			and SYSOK pin control
 - qcom,chg-otg:		OTG configuration control.
 
@@ -86,7 +86,7 @@ Sub node required properties:
 						valid threshold.
 
 			qcom,chgr-misc:
-			 - wdog-timeout-mins:	Charger watchdog timer
+			 - safety-timeout-mins:	Charger watchdog timer
 						interrupt.
 			 - temp-shutdown:	Triggers when charger goes
 						overtemp and causes a shutdown.
@@ -404,7 +404,7 @@ Example:
 
 			interrupt-names =	"power-ok",
 						"temp-shutdown",
-						"wdog-timeout",
+						"safety-timeout",
 						"flash-fail",
 						"otst2",
 						"otst3";
