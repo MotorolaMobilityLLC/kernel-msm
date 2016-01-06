@@ -579,6 +579,12 @@ static int msm_ispif_config(struct ispif_device *ispif,
 	BUG_ON(!ispif);
 	BUG_ON(!params);
 
+	if (!ispif->base) {
+		pr_err("%s: ispif base is NULL\n", __func__);
+		rc = -EPERM;
+		return rc;
+	}
+
 	if (ispif->ispif_state != ISPIF_POWER_UP) {
 		pr_err("%s: ispif invalid state %d\n", __func__,
 			ispif->ispif_state);
@@ -1279,6 +1285,8 @@ static void msm_ispif_release(struct ispif_device *ispif)
 		return;
 	}
 
+	msm_ispif_clk_ahb_enable(ispif, 1);
+
 	/* make sure no streaming going on */
 	msm_ispif_reset_hw(ispif, 1);
 
@@ -1365,8 +1373,11 @@ static long msm_ispif_subdev_ioctl(struct v4l2_subdev *sd,
 	case MSM_SD_SHUTDOWN: {
 		struct ispif_device *ispif =
 			(struct ispif_device *)v4l2_get_subdevdata(sd);
-		if (ispif && ispif->base)
+		if (ispif && ispif->base) {
+			mutex_lock(&ispif->mutex);
 			msm_ispif_release(ispif);
+			mutex_unlock(&ispif->mutex);
+		}
 		return 0;
 	}
 	default:
