@@ -316,7 +316,7 @@ struct smbchg_chip {
 	bool				demo_mode;
 	bool				batt_therm_wa;
 	struct notifier_block		smb_reboot;
-	struct notifier_block		usbc_notifier;
+	struct notifier_block		smb_psy_notifier;
 	int				aicl_wait_retries;
 	bool				hvdcp_det_done;
 	enum ebchg_state		ebchg_state;
@@ -4143,14 +4143,28 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 
 }
 
-static int usbc_notifier_call(struct notifier_block *nb, unsigned long val,
-			void *v)
+static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
+				 void *v)
 {
 	struct smbchg_chip *chip = container_of(nb,
-				struct smbchg_chip, usbc_notifier);
+				struct smbchg_chip, smb_psy_notifier);
 	struct power_supply *psy = v;
 	int rc, online, disabled;
 	union power_supply_propval prop = {0,};
+
+	if (!chip) {
+		dev_warn(chip->dev, "called before chip valid!\n");
+		return NOTIFY_DONE;
+	}
+
+	if ((val == PSY_EVENT_PROP_ADDED) ||
+	    (val == PSY_EVENT_PROP_REMOVED)) {
+		dev_warn(chip->dev, "PSY Added/Removed run HB!\n");
+		cancel_delayed_work(&chip->heartbeat_work);
+		schedule_delayed_work(&chip->heartbeat_work,
+				      msecs_to_jiffies(0));
+		return NOTIFY_OK;
+	}
 
 	/* Disregard type C in factory mode since we use src det*/
 	if (chip->factory_mode)
@@ -8956,15 +8970,15 @@ static int smbchg_probe(struct spmi_device *spmi)
 	}
 
 	/* Register the notifier for the Type C psy */
-	chip->usbc_notifier.notifier_call = usbc_notifier_call;
-	rc = power_supply_reg_notifier(&chip->usbc_notifier);
+	chip->smb_psy_notifier.notifier_call = smb_psy_notifier_call;
+	rc = power_supply_reg_notifier(&chip->smb_psy_notifier);
 	if (rc) {
 		dev_err(&spmi->dev, "failed to reg notifier: %d\n", rc);
 		goto unregister_dc_psy;
 	}
 
 	/* Query for initial reported state*/
-	usbc_notifier_call(&chip->usbc_notifier, PSY_EVENT_PROP_CHANGED,
+	smb_psy_notifier_call(&chip->smb_psy_notifier, PSY_EVENT_PROP_CHANGED,
 				chip->usbc_psy);
 
 	chip->psy_registered = true;
@@ -9122,8 +9136,7 @@ static int smbchg_remove(struct spmi_device *spmi)
 				   &dev_attr_force_chg_usb_otg_ctl);
 	}
 
-	if (chip->usbc_psy)
-		power_supply_unreg_notifier(&chip->usbc_notifier);
+	power_supply_unreg_notifier(&chip->smb_psy_notifier);
 	power_supply_put(chip->usb_psy);
 	power_supply_put(chip->bms_psy);
 	power_supply_put(chip->max_psy);
