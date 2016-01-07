@@ -745,20 +745,29 @@ void StateMachineAttachWaitSrc(void)
 	if ((CC1TermDeb == CCTypeNone) && (CC2TermDeb == CCTypeNone))	// If our debounced signals are both open, go to the unattached state
 	{
 		SetStateDelayUnattached();
-	} else if ((CC1TermDeb == CCTypeNone) && (CC2TermDeb == CCTypeRa))	// If exactly one pin is open and the other is Ra, go to the unattached state
-	{
-		SetStateDelayUnattached();
-	} else if ((CC1TermDeb == CCTypeRa) && (CC2TermDeb == CCTypeNone))	// If exactly one pin is open and the other is Ra, go to the unattached state
-	{
-		SetStateDelayUnattached();
 	} else if (DebounceTimer2 == 0)	// Otherwise, we are checking to see if we have had a solid state for tCCDebounce
 	{
 		if ((CC1TermDeb == CCTypeRa) && (CC2TermDeb == CCTypeRa))	// If both pins are Ra, it's an audio accessory
 			SetStateAudioAccessory();
 		else if ((CC1TermDeb > CCTypeRa) && (CC2TermDeb > CCTypeRa))	// If both pins are Rd, it's a debug accessory
 			SetStateDebugAccessory();
-		else if (CC1TermDeb > CCTypeRa)	// If CC1 is Rd and CC2 is not...
+		else if ((CC1TermDeb == CCTypeNone)
+				&& (CC2TermDeb == CCTypeRa)) {
+			/*
+			 * If exactly one pin is open and the other is Ra,
+			 * go to the unattached state.
+			 */
+			SetStateDelayUnattached();
+		} else if ((CC1TermDeb == CCTypeRa)
+				&& (CC2TermDeb == CCTypeNone)) {
+			/*
+			 * If exactly one pin is open and the other is Ra,
+			 * go to the unattached state.
+			 */
+			SetStateDelayUnattached();
+		} else if (CC1TermDeb > CCTypeRa)
 		{
+			/* If CC1 is Rd and CC2 is not... */
 			blnCCPinIsCC1 = true;	// Set the CC pin to CC1
 			blnCCPinIsCC2 = false;
 			SetStateAttachedSrc();	// Go to the Attached.Src state
