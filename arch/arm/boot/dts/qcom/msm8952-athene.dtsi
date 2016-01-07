@@ -49,3 +49,12 @@
 &ibb_regulator {
 	qcom,qpnp-ibb-discharge-resistor = <32>;
 };
+
+&i2c_3 { /* BLSP1 QUP3 */
+	synaptics@20 {
+		synaptics,use-in-progress-event-blank;
+		default_suspended: touchstate_aod_suspended {
+			patch-data = "F12@20:1=2;F1@0=1&7";
+		};
+	};
+};
