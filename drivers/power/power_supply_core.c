@@ -902,6 +902,8 @@ static int __power_supply_register(struct device *parent,
 	if (rc)
 		goto create_triggers_failed;
 
+	atomic_notifier_call_chain(&power_supply_notifier,
+				   PSY_EVENT_PROP_ADDED, psy);
 	power_supply_changed(psy);
 
 	return 0;
@@ -935,6 +937,8 @@ EXPORT_SYMBOL_GPL(power_supply_register_no_ws);
 void power_supply_unregister(struct power_supply *psy)
 {
 	WARN_ON(atomic_dec_return(&psy->use_cnt));
+	atomic_notifier_call_chain(&power_supply_notifier,
+				   PSY_EVENT_PROP_REMOVED, psy);
 	cancel_work_sync(&psy->changed_work);
 	sysfs_remove_link(&psy->dev->kobj, "powers");
 	power_supply_remove_triggers(psy);

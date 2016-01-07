@@ -398,6 +398,8 @@ enum power_supply_typec_power_role {
 
 enum power_supply_notifier_events {
 	PSY_EVENT_PROP_CHANGED,
+	PSY_EVENT_PROP_ADDED,
+	PSY_EVENT_PROP_REMOVED,
 };
 
 union power_supply_propval {
