@@ -1000,7 +1000,7 @@ int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 
 	if (from_mdp)	/* from mdp kickoff */
 		mutex_lock(&ctrl->cmd_mutex);
-	req = mdss_dsi_cmdlist_get(ctrl);
+	req = mdss_dsi_cmdlist_get(ctrl, from_mdp);
 
 	if (!req) {
 		mutex_unlock(&ctrl->cmd_mutex);

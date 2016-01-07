@@ -725,7 +725,8 @@ void mdss_dsi_set_tear_off(struct mdss_dsi_ctrl_pdata *ctrl)
 /*
  * mdss_dsi_cmd_get: ctrl->cmd_mutex acquired by caller
  */
-struct dcs_cmd_req *mdss_dsi_cmdlist_get(struct mdss_dsi_ctrl_pdata *ctrl)
+struct dcs_cmd_req *mdss_dsi_cmdlist_get(struct mdss_dsi_ctrl_pdata *ctrl,
+					int from_mdp)
 {
 	struct dcs_cmd_list *clist;
 	struct dcs_cmd_req *req = NULL;
@@ -734,6 +735,11 @@ struct dcs_cmd_req *mdss_dsi_cmdlist_get(struct mdss_dsi_ctrl_pdata *ctrl)
 	clist = &ctrl->cmdlist;
 	if (clist->get != clist->put) {
 		req = &clist->list[clist->get];
+		/* don't let commit thread steal non-commit thread's command */
+		if (from_mdp && (req->flags & CMD_REQ_COMMIT)) {
+			mutex_unlock(&ctrl->cmdlist_mutex);
+			return NULL;
+		}
 		clist->get++;
 		clist->get %= CMD_REQ_MAX;
 		clist->tot--;
