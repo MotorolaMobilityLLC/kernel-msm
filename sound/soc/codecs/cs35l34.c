@@ -608,6 +608,16 @@ static int cs35l34_probe(struct snd_soc_codec *codec)
 				   AMP_DRV_SEL_MASK,
 				cs35l34->pdata.amp_drv_sel <<
 				AMP_DRV_SEL_SHIFT);
+
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "SDIN");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "SDOUT");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "SPK");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "VP");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "VPST");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "ISENSE");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "VSENSE");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "Main AMP");
+
 	return ret;
 }
 
