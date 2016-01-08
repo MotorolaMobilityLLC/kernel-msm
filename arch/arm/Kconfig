@@ -81,6 +81,18 @@ config ARM_DMA_USE_IOMMU
 	select ARM_HAS_SG_CHAIN
 	select NEED_SG_DMA_LENGTH
 
+config SPEAKER_EXT_PA
+    default y
+    bool "Speaker external PA"
+    help
+        Support for external PA.
+
+config SPEAKER_EXT_PA_AW8738
+    default y
+    bool "Speaker external PA AW8738"
+    help
+        Support for the AW8738.
+
 if ARM_DMA_USE_IOMMU
 
 config ARM_DMA_IOMMU_ALIGNMENT

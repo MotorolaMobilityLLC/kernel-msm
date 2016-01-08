@@ -218,6 +218,18 @@ struct msm8916_asoc_mach_data {
 	int ext_audio_switch_gpio;
 	u32 ext_audio_switch_active_high;
 	struct regulator *ext_audio_switch_supply;
+#if defined(CONFIG_SPEAKER_EXT_PA)
+	int spk_ext_pa_gpio_lc;
+	struct delayed_work pa_gpio_work;
+	struct delayed_work pa_gpio_work_close;
+	unsigned char pa_is_on;
+#endif
+#if defined(CONFIG_SND_SOC_TPA6130A2)
+	int hph_ext_pa_gpio_lc;
+	struct delayed_work hph_pa_gpio_work;
+	struct delayed_work hph_pa_gpio_work_close;
+	unsigned char hph_pa_is_on;
+#endif
 	int mclk_freq;
 	int lb_mode;
 	u8 micbias1_cap_mode;
