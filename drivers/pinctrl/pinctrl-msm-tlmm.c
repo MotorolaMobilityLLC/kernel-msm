@@ -735,6 +735,22 @@ int tlmm_set_config(unsigned config)
 	return 0;
 }
 
+int tlmm_set_config_pullup(unsigned gpio, unsigned enable)
+{
+	int res;
+	unsigned cfg;
+	tlmm_get_config(gpio, &cfg);
+	cfg &= ~(TLMM_GP_PULL_MASK<<15);
+
+	if (enable) {
+		res = tlmm_set_config(cfg | (TLMM_PULL_UP<<15));
+	} else {
+		res = tlmm_set_config(cfg | (TLMM_NO_PULL<<15));
+	}
+
+	return res;
+}
+
 static int msm_tlmm_gp_dir_in(struct gpio_chip *gc, unsigned offset)
 {
 	unsigned int val;
