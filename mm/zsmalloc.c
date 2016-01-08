@@ -1640,6 +1640,7 @@ static int migrate_zspage(struct zs_pool *pool, struct size_class *class,
 		used_obj = handle_to_obj(handle);
 		free_obj = obj_malloc(d_page, class, handle);
 		zs_object_copy(free_obj, used_obj, class);
+		free_obj |= (1 << HANDLE_PIN_BIT);
 		index++;
 		record_obj(handle, free_obj);
 		unpin_tag(handle);
