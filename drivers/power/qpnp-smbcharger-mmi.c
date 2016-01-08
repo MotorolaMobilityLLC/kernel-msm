@@ -1150,6 +1150,9 @@ static int get_property_from_fg(struct smbchg_chip *chip,
 		rc = chip->max_psy->get_property(chip->max_psy, prop, &ret);
 		if (rc == 0) {
 			*val = ret.intval;
+			/* current now polarity is flipped on max17050 */
+			if (prop == POWER_SUPPLY_PROP_CURRENT_NOW)
+			    *val *= -1;
 			return rc;
 		}
 	}
