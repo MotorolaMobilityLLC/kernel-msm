@@ -515,14 +515,22 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	}
 	/* check for a reset request */
 	if (irq_status & M_HUB_RESET) {
-		unsigned char status = 0x01;
+		err = stml0xx_spi_send_read_reg(RESET_REASON, buf, 1);
+		if (err < 0) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Unable to read reset reason %d",
+				err);
+			/* Unknown error reason since the read failed. */
+			buf[0] = RESET_REASON_UNKNOWN;
+		}
 
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_RESET, &status, 1,
+		stml0xx_as_data_buffer_write(ps_stml0xx, DT_RESET, buf, 1,
 					     0, stm_ws->ts_ns);
 
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"Sensor Hub requested a reset %d", buf[0]);
+
 		stml0xx_reset(stml0xx_misc_data->pdata);
-		dev_info(&stml0xx_misc_data->spi->dev,
-			"STML0XX requested a reset");
 	}
 
 EXIT:
