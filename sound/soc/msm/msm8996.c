@@ -500,11 +500,6 @@ static int msm8996_mclk_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 #ifdef CONFIG_SND_SOC_FLORIDA
-		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1_REFCLK,
-			ARIZONA_FLL_SRC_SLIMCLK, 1536000, FLORIDA_SYSCLK_RATE);
-		if (ret != 0)
-			dev_err(w->codec->dev, "set PLL refclk failed\n");
-
 		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
 			ARIZONA_FLL_SRC_SLIMCLK, 1536000, FLORIDA_SYSCLK_RATE);
 		if (ret != 0)
@@ -516,11 +511,6 @@ static int msm8996_mclk_event(struct snd_soc_dapm_widget *w,
 #endif
 	case SND_SOC_DAPM_POST_PMD:
 #ifdef CONFIG_SND_SOC_FLORIDA
-		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1_REFCLK,
-			ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
-		if (ret != 0)
-			dev_err(w->codec->dev, "set PLL refclk failed\n");
-
 		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
 			ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
 		if (ret != 0)
@@ -2110,11 +2100,6 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 
 	if (ret != 0)
 		dev_err(codec->dev, "Failed to set FLL1REFCLK\n");
-
-	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1_REFCLK,
-		ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
-	if (ret != 0)
-		dev_err(codec->dev, "set PLL refclk failed\n");
 
 	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1,
 		ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
