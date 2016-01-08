@@ -1116,6 +1116,26 @@
 };
 
 &pmi8994_gpios {
+	gpio@c000 {     /* GPIO 1 - RF_BOOST_BYP_EN */
+		qcom,mode = <1>;        /* Digital Output */
+		qcom,pull = <5>;        /* No Pull */
+		qcom,vin-sel = <2>;     /* 1.8 */
+		qcom,src-sel = <0>;     /* GPIO */
+		qcom,invert = <1>;      /* Output high */
+		qcom,master-en = <1>;   /* ENABLE GPIO */
+		status = "okay";
+	};
+
+	gpio@c100 { /* GPIO 2 - RF_BOOST_BYP_MODE */
+		qcom,mode = <1>;	/* Digital Output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,out-strength = <1>;
+		qcom,master-en = <1>;	/* ENABLE GPIO */
+		status = "okay";
+	};
+
 	gpio@c800 { /* GPIO 9 - AP_VIB_EN */
 		qcom,mode = <1>;         /* Digital output*/
 		qcom,vin-sel = <2>;      /* VIN2 */
