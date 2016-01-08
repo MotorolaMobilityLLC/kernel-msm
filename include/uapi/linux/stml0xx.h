@@ -248,6 +248,19 @@
 #define SH_HEADSET_BUTTON_3_DOWN  0x10
 #define SH_HEADSET_BUTTON_4_DOWN  0x20
 
+/* Sensor Hub failure error codes */
+#define RESET_REASON_UNKNOWN              0
+#define RESET_REASON_WATCHDOG             1
+#define RESET_REASON_MODALITY_ENGINE      2
+#define RESET_REASON_MODALITY_EVENT       3
+#define RESET_REASON_MODALITY_ACCUM_EVENT 4
+#define RESET_REASON_ALGO_ENGINE          5
+#define RESET_REASON_IOEXPANDER           6
+#define RESET_REASON_PANIC                7
+#define RESET_REASON_EXIT                 8
+#define RESET_REASON_HEAP_ACCESS          9
+#define RESET_REASON_MAX_CODE             9 /* Must match highest value above */
+
 struct stml0xx_android_sensor_data {
 	int64_t timestamp;
 	unsigned char type;
