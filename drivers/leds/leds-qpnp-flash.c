@@ -72,7 +72,7 @@
 #define FLASH_TMR_SAFETY					0x00
 #define FLASH_SAFETY_TIMER_MASK					0x7F
 #define FLASH_MODULE_ENABLE_MASK				0xE0
-#define FLASH_STROBE_MASK					0xC0
+#define FLASH_STROBE_MASK					0xC7
 #define FLASH_CURRENT_RAMP_MASK					0xBF
 #define FLASH_VPH_PWR_DROOP_MASK				0xF3
 #define FLASH_LED_HDRM_SNS_ENABLE_MASK				0x81
@@ -126,6 +126,10 @@
 #define	FLASH_LED_MIN_CURRENT_MA				13
 #define FLASH_SUBTYPE_DUAL					0x01
 #define FLASH_SUBTYPE_SINGLE					0x02
+
+#define FLASH_LED_HW_STROBE_SEL					0x04
+#define FLASH_LED_HW_STROBE_TRIG_EDGE				0x02
+#define FLASH_LED_HW_STROBE_ACT_HIGH				0x01
 
 /*
  * ID represents physical LEDs for individual control purpose.
@@ -1302,6 +1306,11 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			rc = qpnp_led_masked_write(led->spmi_dev,
 					led->current2_addr,
 					FLASH_CURRENT_MASK, val);
+
+			/* Set to 1280ms max duration to allow software to
+			   control the expiration */
+			flash_node->duration = 1280;
+
 			if (rc) {
 				dev_err(&led->spmi_dev->dev,
 					"Torch reg write failed\n");
@@ -1478,6 +1487,16 @@ static void qpnp_flash_led_work(struct work_struct *work)
 				flash_node->prgm_current2 *=
 					max_curr_avail_ma / total_curr_ma;
 			}
+
+			/* Enable HW strobe control for switch trigger,
+			   for main flash, not preflash.
+			   Leds will be on for the duration of
+			   flash_node->duration (safety timer).
+			   Set duration of strobe to be 70ms */
+			flash_node->trigger |= (FLASH_LED_HW_STROBE_SEL |
+						FLASH_LED_HW_STROBE_TRIG_EDGE |
+						FLASH_LED_HW_STROBE_ACT_HIGH);
+			flash_node->duration = 70;
 
 			val = (u8)(flash_node->prgm_current *
 				FLASH_MAX_LEVEL / flash_node->max_current);
