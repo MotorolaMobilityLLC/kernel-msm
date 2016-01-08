@@ -708,6 +708,16 @@ static int32_t msm_flash_get_gpio_dt_data(struct device_node *of_node,
 	uint16_t *gpio_array = NULL;
 	int16_t gpio_array_size = 0;
 	struct msm_camera_gpio_conf *gconf = NULL;
+	enum flash_type flashtype;
+
+	rc = of_property_read_u32(of_node,
+			"qcom,flash-type", &flashtype);
+
+	if (rc == 0 && flashtype == GPIO_FLASH) {
+		fctrl->flash_driver_type = FLASH_DRIVER_GPIO;
+		CDBG("%s:%d x fctrl->flash_driver_type = %d", __func__, __LINE__,
+			fctrl->flash_driver_type);
+	}
 
 	gpio_array_size = of_gpio_count(of_node);
 	CDBG("%s gpio count %d\n", __func__, gpio_array_size);
