@@ -233,6 +233,7 @@ int epl_sensor_als_dyn_report(bool report_flag);
 #if PS_DYN_K_ONE
 static bool ps_dyn_flag = false;
 #define PS_MAX_CT	10000
+#define PS_MAX_IR	50000
 #define PS_DYN_H_OFFSET 6943
 #define PS_DYN_L_OFFSET 2024
 u32 dynk_thd_low = 0;
@@ -484,34 +485,34 @@ static int set_lsensor_intr_threshold(uint16_t low_thd, uint16_t high_thd)
 
 static void epl_sensor_report_lux(int report_lux)
 {
-    struct epl_sensor_priv *epld = epl_sensor_obj;
+	struct epl_sensor_priv *epld = epl_sensor_obj;
 
-    if(epl_sensor.als.report_type == CMC_BIT_DYN_INT)
-    {
-        LOG_INFO("-------------------  ALS raw = %d, lux = %d\n\n", epl_sensor.als.dyn_intt_raw,  report_lux);
-    }
-    else
-    {
-        LOG_INFO("-------------------  ALS raw = %d, lux = %d\n\n", epl_sensor.als.data.channels[1],  report_lux);
-    }
+	if (epl_sensor.als.report_type == CMC_BIT_DYN_INT) {
+		LOG_INFO("ALS raw = %d, lux = %d\n\n", epl_sensor.als.dyn_intt_raw,  report_lux);
+	} else {
+		LOG_INFO("ALS raw = %d, lux = %d\n\n", epl_sensor.als.data.channels[1],  report_lux);
+	}
 
 #if SPREAD
-    input_report_abs(epld->ps_input_dev, ABS_MISC, report_lux);
-    input_sync(epld->ps_input_dev);
+	input_report_abs(epld->ps_input_dev, ABS_MISC, report_lux);
+	input_sync(epld->ps_input_dev);
 #else
-    input_report_abs(epld->als_input_dev, ABS_MISC, report_lux);
-    input_sync(epld->als_input_dev);
+	input_report_abs(epld->als_input_dev, ABS_MISC, report_lux);
+	input_sync(epld->als_input_dev);
 #endif
 }
 
 static void epl_sensor_report_ps_status(void)
 {
-    struct epl_sensor_priv *epld = epl_sensor_obj;
+	struct epl_sensor_priv *epld = epl_sensor_obj;
+	ktime_t	timestamp;
+	timestamp = ktime_get();
+	LOG_INFO("epl_sensor.ps.data.data=%d, value=%d\n", epl_sensor.ps.data.data, epl_sensor.ps.compare_low >> 3);
 
-    LOG_INFO("------------------- epl_sensor.ps.data.data=%d, value=%d \n\n", epl_sensor.ps.data.data, epl_sensor.ps.compare_low >> 3);
-
-    input_report_abs(epld->ps_input_dev, ABS_DISTANCE, epl_sensor.ps.compare_low >> 3);
-    input_sync(epld->ps_input_dev);
+	input_report_abs(epld->ps_input_dev, ABS_DISTANCE, epl_sensor.ps.compare_low >> 3);
+	input_event(epld->ps_input_dev, EV_SYN, SYN_TIME_SEC, ktime_to_timespec(timestamp).tv_sec);
+	input_event(epld->ps_input_dev, EV_SYN, SYN_TIME_NSEC, ktime_to_timespec(timestamp).tv_nsec);
+	input_sync(epld->ps_input_dev);
 }
 
 static void set_als_ps_intr_type(struct i2c_client *client, bool ps_polling, bool als_polling)
@@ -1181,33 +1182,30 @@ int factory_als_data(void)
 
 void epl_sensor_enable_ps(int enable)
 {
-    struct epl_sensor_priv *epld = epl_sensor_obj;
+	struct epl_sensor_priv *epld = epl_sensor_obj;
 
-    LOG_INFO("[%s]: ps enable=%d \r\n", __func__, enable);
+	LOG_INFO("[%s]: ps enable=%d \r\n", __func__, enable);
 
-    if(epld->enable_pflag != enable)
-    {
-        epld->enable_pflag = enable;
-        if(enable)
-        {
-            //wake_lock(&ps_lock);
+	if (epld->enable_pflag != enable) {
+		epld->enable_pflag = enable;
+		if (enable) {
+			/*wake_lock(&ps_lock);*/
 #if PS_FIRST_REPORT
-            ps_frist_flag = true;
+			ps_frist_flag = true;
+			set_psensor_intr_threshold(epl_sensor.ps.high_threshold, epl_sensor.ps.high_threshold + 1);
 #endif
 #if PS_DYN_K_ONE
-            ps_dyn_flag = true;
+			ps_dyn_flag = true;
 #endif
-        }
-        else
-        {
-            //wake_unlock(&ps_lock);
-        }
-        epl_sensor_fast_update(epld->client);
-        epl_sensor_update_mode(epld->client);
+		} else {
+			/*wake_unlock(&ps_lock);*/
+		}
+		epl_sensor_fast_update(epld->client);
+		epl_sensor_update_mode(epld->client);
 #if PS_DYN_K_ONE
-        epl_sensor_do_ps_auto_k_one();
+		epl_sensor_do_ps_auto_k_one();
 #endif
-    }
+	}
 }
 
 void epl_sensor_enable_als(int enable)
@@ -1378,39 +1376,32 @@ int epl_sensor_als_dyn_report(bool report_flag)
 void epl_sensor_do_ps_auto_k_one(void)
 {
 #if !PS_FIRST_REPORT
-    struct epl_sensor_priv *epld = epl_sensor_obj;
-    int ps_time = ps_sensing_time(epl_sensor.ps.integration_time, epl_sensor.ps.adc, epl_sensor.ps.cycle);
+	struct epl_sensor_priv *epld = epl_sensor_obj;
+	int ps_time = ps_sensing_time(epl_sensor.ps.integration_time, epl_sensor.ps.adc, epl_sensor.ps.cycle);
 #endif
-    if(ps_dyn_flag == true)
-    {
+	if (ps_dyn_flag == true) {
 #if !PS_FIRST_REPORT
-        msleep(ps_time);
-        LOG_INFO("[%s]: msleep(%d)\r\n", __func__, ps_time);
-        epl_sensor_read_ps(epld->client);
+		msleep(ps_time);
+		LOG_INFO("[%s]: msleep(%d)\r\n", __func__, ps_time);
+		epl_sensor_read_ps(epld->client);
 #endif
-        if(epl_sensor.ps.data.data < PS_MAX_CT && (epl_sensor.ps.saturation == 0))
-        {
-    	    LOG_INFO("[%s]: epl_sensor.ps.data.data=%d \r\n", __func__, epl_sensor.ps.data.data);
-    	    dynk_thd_low = epl_sensor.ps.data.data + PS_DYN_L_OFFSET;
-    		dynk_thd_high = epl_sensor.ps.data.data + PS_DYN_H_OFFSET;
-    		set_psensor_intr_threshold(dynk_thd_low, dynk_thd_high);
-        }
-        else
-        {
-            if((epl_sensor.ps.high_threshold ==0)||(epl_sensor.ps.low_threshold==0))
-            {
-    	        epl_sensor.ps.high_threshold = PS_HIGH_THRESHOLD;
-                epl_sensor.ps.low_threshold = PS_LOW_THRESHOLD;
-                LOG_INFO("[%s]:threshold is err; epl_sensor.ps.data.data=%d \r\n", __func__, epl_sensor.ps.data.data);
-            }
-            set_psensor_intr_threshold(epl_sensor.ps.low_threshold, epl_sensor.ps.high_threshold);
-            dynk_thd_low = epl_sensor.ps.low_threshold;
-            dynk_thd_high = epl_sensor.ps.high_threshold;
-        }
+		if (epl_sensor.ps.data.data < PS_MAX_CT && (epl_sensor.ps.saturation == 0) && (epl_sensor.ps.data.ir_data < PS_MAX_IR)) {
+			LOG_INFO("[%s]: epl_sensor.ps.data.data=%d \r\n", __func__, epl_sensor.ps.data.data);
+			dynk_thd_low = epl_sensor.ps.data.data + PS_DYN_L_OFFSET;
+			dynk_thd_high = epl_sensor.ps.data.data + PS_DYN_H_OFFSET;
+			set_psensor_intr_threshold(dynk_thd_low, dynk_thd_high);
+		} else {
+			LOG_INFO("[%s]:threshold is err; epl_sensor.ps.data.data=%d \r\n", __func__, epl_sensor.ps.data.data);
+			epl_sensor.ps.high_threshold = PS_HIGH_THRESHOLD;
+			epl_sensor.ps.low_threshold = PS_LOW_THRESHOLD;
+			set_psensor_intr_threshold(epl_sensor.ps.low_threshold, epl_sensor.ps.high_threshold);
+			dynk_thd_low = epl_sensor.ps.low_threshold;
+			dynk_thd_high = epl_sensor.ps.high_threshold;
+		}
 
-        ps_dyn_flag = false;
-        LOG_INFO("[%s]: reset ps_dyn_flag ........... \r\n", __func__);
-    }
+		ps_dyn_flag = false;
+		LOG_INFO("[%s]: reset ps_dyn_flag ........... \r\n", __func__);
+	}
 }
 #endif
 
@@ -1526,13 +1517,6 @@ void epl_sensor_update_mode(struct i2c_client *client)
 
         msleep(ps_time);
         LOG_INFO("[%s] PS msleep(%dms)\r\n", __func__, ps_time);
-        epl_sensor_read_ps(obj->client);
-        if((epl_sensor.ps.data.data<=epl_sensor.ps.high_threshold) && (epl_sensor.ps.data.data>=epl_sensor.ps.low_threshold))
-        {
-            LOG_INFO("[%s]: direct report FAR(%d) \r\n", __func__, epl_sensor.ps.data.data);
-            epl_sensor.ps.compare_low = 0x08;
-            epl_sensor_report_ps_status();
-        }
     }
 #endif
 
