@@ -104,9 +104,6 @@ MODULE_PARM_DESC(floated_charger_enable,
 	"Whether to enable floated charger");
 
 static bool host_mode_disable;
-module_param(host_mode_disable , bool, S_IRUGO | S_IWUSR);
-MODULE_PARM_DESC(host_mode_disable,
-	"Whether to disable Host Mode");
 
 /* by default debugging is enabled */
 static unsigned int enable_dbg_log = 1;
@@ -4459,6 +4456,55 @@ out:
 	}
 }
 
+int tlmm_set_config_pullup(unsigned gpio, unsigned enable);
+static int msm_otg_enable_ext_id(struct msm_otg *motg, int enable)
+{
+	int res;
+	unsigned gpio;
+
+	if (!motg->ext_id_irq)
+		return -ENODEV;
+	gpio = motg->pdata->usb_id_gpio_hw;
+	if (enable) {
+		res = tlmm_set_config_pullup(gpio, 1);
+		enable_irq(motg->ext_id_irq);
+	} else {
+		disable_irq(motg->ext_id_irq);
+		res = tlmm_set_config_pullup(gpio, 0);
+	}
+	return res;
+}
+
+static int set_host_mode_disable(const char *val, const struct kernel_param *kp)
+{
+	int res;
+	int rv = param_set_bool(val, kp);
+	struct msm_otg *motg = the_msm_otg;
+
+	if (!motg || !motg->ext_id_irq)
+		return 0;
+
+	if (host_mode_disable)
+		res = msm_otg_enable_ext_id(motg, 0);
+	else
+		res = msm_otg_enable_ext_id(motg, 1);
+
+	if (res) {
+		pr_err("%s:host_mode_disable:%d fail \n", __func__, host_mode_disable);
+	}
+
+	return rv;
+}
+
+static struct kernel_param_ops host_mode_disable_param_ops = {
+	.set = set_host_mode_disable,
+	.get = param_get_bool,
+};
+
+module_param_cb(host_mode_disable, &host_mode_disable_param_ops,
+			&host_mode_disable, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(host_mode_disable, "Whether to disable Host Mode");
+
 static void msm_id_status_w(struct work_struct *w)
 {
 	struct msm_otg *motg = container_of(w, struct msm_otg,
@@ -5681,6 +5727,10 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 			of_get_named_gpio(node, "qcom,usbid-gpio", 0);
 	if (pdata->usb_id_gpio < 0)
 		pr_debug("usb_id_gpio is not available\n");
+
+	of_property_read_u32(node, "qcom,usbid-gpio-hw", &pdata->usb_id_gpio_hw);
+	if (pdata->usb_id_gpio_hw < 0)
+		pr_debug("usb_id_gpio_hw is not available\n");
 
 	pdata->l1_supported = of_property_read_bool(node,
 				"qcom,hsusb-l1-supported");
