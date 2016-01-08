@@ -389,6 +389,7 @@
 	qcom,usbin-vadc = <&pmi8950_vadc>;
 	qcom,hsusb-otg-mode = <3>;
 	qcom,usbid-gpio = <&msm_gpio 62 0>;
+	qcom,usbid-gpio-hw = <62>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&usbid_default>;
 	vbus_otg-supply = <&smbcharger_charger_otg>;
