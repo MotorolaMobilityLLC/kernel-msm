@@ -1231,6 +1231,7 @@ void SetStateUnattached(void)
 #endif
 	ConnState = Unattached;	// Set the state machine variable to unattached
 	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
+	power_supply_changed(&fusb_i2c_data->usbc_psy);
 	SinkCurrent = utccNone;
 	CC1TermDeb = CCTypeNone;	// Clear the termination for this state
 	CC2TermDeb = CCTypeNone;	// Clear the termination for this state
@@ -1398,6 +1399,7 @@ void SetStateAttachedSrc(void)
 	// Maintain the existing CC term values from the wait state
 	ConnState = AttachedSource;	// Set the state machine variable to Attached.Src
 	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SRC;
+	power_supply_changed(&fusb_i2c_data->usbc_psy);
 	/* Enable SSUSB Switch and set orientation */
 	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	if (fusb_i2c_data->fsa321_switch)
@@ -1436,6 +1438,7 @@ void SetStateAttachedSink(void)
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = AttachedSink;	// Set the state machine variable to Attached.Sink
 	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SINK;
+	power_supply_changed(&fusb_i2c_data->usbc_psy);
 	SinkCurrent = utccDefault;	// Set the current advertisment variable to the default until we detect something different
 	/* Enable SSUSB Switch and set orientation */
 	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
@@ -1614,6 +1617,7 @@ void SetStateDebugAccessory(void)
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = DebugAccessory;	// Set the state machine variable to Debug.Accessory
 	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_DBG;
+	power_supply_changed(&fusb_i2c_data->usbc_psy);
 	SinkCurrent = utccNone;	// Not used in accessories
 	// Maintain the existing CC term values from the wait state
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
@@ -1641,6 +1645,7 @@ void SetStateAudioAccessory(void)
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = AudioAccessory;	// Set the state machine variable to Audio.Accessory
 	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_AUDIO;
+	power_supply_changed(&fusb_i2c_data->usbc_psy);
 	SinkCurrent = utccNone;	// Not used in accessories
 	// Maintain the existing CC term values from the wait state
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
@@ -1675,6 +1680,7 @@ void SetStatePoweredAccessory(void)
 	// USBPDEnable(true, true);
 	ConnState = PoweredAccessory;	// Set the state machine variable to powered.accessory
 	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_PWR;
+	power_supply_changed(&fusb_i2c_data->usbc_psy);
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
 	StateTimer = tAMETimeout;	// Set the state timer to tAMETimeout (need to enter alternate mode by this time)
 	FUSB302_start_timer(&state_hrtimer, StateTimer);
@@ -1699,6 +1705,7 @@ void SetStateUnsupportedAccessory(void)
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = UnsupportedAccessory;	// Set the state machine variable to unsupported.accessory
 	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_UNSUPP;
+	power_supply_changed(&fusb_i2c_data->usbc_psy);
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
 	DebounceTimer1 = tPDDebounceMin;	// Set the debounce timer to the minimum tPDDebounce to check for detaches
@@ -1801,6 +1808,7 @@ void UpdateSinkCurrent(CCTermType Termination)
 		SinkCurrent = utccNone;
 		break;
 	}
+	power_supply_changed(&fusb_i2c_data->usbc_psy);
 }
 
 /////////////////////////////////////////////////////////////////////////////
