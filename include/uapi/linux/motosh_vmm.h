@@ -43,9 +43,9 @@ VMM_ENTRY(0x03, LOWPOWER_REG,						TRUE,
 VMM_ENTRY(0x04, INIT_COMPLETE,						TRUE,
 		&vmm_init_complete,
 		sizeof(vmm_init_complete))
-VMM_ENTRY(0x05, UNUSED_05,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x05, RESET_REASON,						FALSE,
+		&vmm_reset_reason,
+		sizeof(vmm_reset_reason))
 VMM_ENTRY(0x06, ACCEL_ORIENTATION,					TRUE,
 		vmm_accel_orientation,
 		sizeof(vmm_accel_orientation))
