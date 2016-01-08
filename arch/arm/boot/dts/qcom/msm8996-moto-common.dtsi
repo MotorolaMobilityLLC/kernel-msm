@@ -1136,6 +1136,16 @@
 		status = "okay";
 	};
 
+	gpio@c200 { /* GPIO 3 - ANX_CHIP_PD */
+		qcom,mode = <1>;	/* Digital output*/
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>;	/* VIN2 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <1>;	/* Output high */
+		status = "okay";
+	};
+
 	gpio@c800 { /* GPIO 9 - AP_VIB_EN */
 		qcom,mode = <1>;         /* Digital output*/
 		qcom,vin-sel = <2>;      /* VIN2 */
