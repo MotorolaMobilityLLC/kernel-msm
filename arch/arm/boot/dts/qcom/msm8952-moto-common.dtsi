@@ -197,7 +197,7 @@
 		label = "stml0xx-inputs";
 
 		stml0xx_inputs_default: stml0xx-inputs {
-			bias-disable;	 /* no pull */
+			bias-pull-down;	/* pull down */
 			drive-strength = <2>;
 		};
 	};
