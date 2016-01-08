@@ -315,6 +315,7 @@ struct smbchg_chip {
 	bool				demo_mode;
 	bool				batt_therm_wa;
 	struct notifier_block		smb_reboot;
+	struct notifier_block		usbc_notifier;
 	int				aicl_wait_retries;
 	bool				hvdcp_det_done;
 	enum ebchg_state		ebchg_state;
@@ -324,7 +325,8 @@ struct smbchg_chip {
 	struct delayed_work		warn_irq_work;
 	int				warn_irq;
 	bool				factory_cable;
-	int				usbc_check_cnt;
+	int				cl_usbc;
+	bool				usbc_online;
 };
 
 static struct smbchg_chip *the_chip;
@@ -4132,22 +4134,22 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 
 }
 
-static int smbchg_check_usbc(struct power_supply *psy, int *current_limit)
+static int usbc_notifier_call(struct notifier_block *nb, unsigned long val,
+			void *v)
 {
-	struct smbchg_chip *chip = container_of(psy,
-				struct smbchg_chip, batt_psy);
+	struct smbchg_chip *chip = container_of(nb,
+				struct smbchg_chip, usbc_notifier);
+	struct power_supply *psy = v;
 	int rc, online;
 	union power_supply_propval prop = {0,};
 
-	rc = psy->get_property(psy,
-			       POWER_SUPPLY_PROP_PRESENT,
-			       &prop);
-	if (rc < 0) {
-		dev_err(chip->dev,
-			"could not read USBC present property, rc=%d\n", rc);
-		return rc;
-	} else if (!prop.intval)
-		return -EINVAL;
+	if (val != PSY_EVENT_PROP_CHANGED)
+		return NOTIFY_OK;
+
+	if (!psy || psy != chip->usbc_psy)
+		return NOTIFY_OK;
+
+	pr_smb(PR_MISC, "usbc notifier call was called\n");
 
 	prop.intval = 0;
 	rc = psy->get_property(psy,
@@ -4156,7 +4158,7 @@ static int smbchg_check_usbc(struct power_supply *psy, int *current_limit)
 	if (rc < 0) {
 		dev_err(chip->dev,
 			"could not read USBC online property, rc=%d\n", rc);
-		return rc;
+		return NOTIFY_DONE;
 	} else
 		online = prop.intval;
 
@@ -4167,15 +4169,34 @@ static int smbchg_check_usbc(struct power_supply *psy, int *current_limit)
 	if (rc < 0) {
 		dev_err(chip->dev,
 			"couldn't read USBC current_max rc=%d\n", rc);
-		return rc;
+		return NOTIFY_DONE;
 	} else
-		*current_limit = prop.intval / 1000;
+		chip->cl_usbc = prop.intval / 1000;
 
-	/* USBC State Machine is done Detecting */
-	if (online)
-		return 1;
+	prop.intval = 0;
+	rc = psy->get_property(psy,
+			       POWER_SUPPLY_PROP_TYPE,
+			       &prop);
+	if (rc < 0) {
+		dev_err(chip->dev,
+			"couldn't read USBC type rc=%d\n", rc);
+		return NOTIFY_DONE;
+	}
 
-	return 0;
+	if (online && prop.intval == POWER_SUPPLY_TYPE_USBC_SINK) {
+		/* Skip notifying insertion if already done */
+		if (!chip->usbc_online) {
+			chip->usbc_online = true;
+			schedule_delayed_work(&chip->usb_insertion_work,
+				      msecs_to_jiffies(100));
+		}
+	} else {
+		/* Clear the BC 1.2 detection flag when type C goes offline */
+		chip->usbc_online = false;
+		chip->usb_insert_bc1_2 = false;
+	}
+
+	return NOTIFY_OK;
 }
 
 #define UNKNOWN_BATT_TYPE	"Unknown Battery"
@@ -4186,7 +4207,6 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 				struct smbchg_chip, batt_psy);
 	union power_supply_propval prop = {0,};
 	int rc, current_limit = 0, soc;
-	int cl_usbc = 0;
 #ifdef QCOM_BASE
 	bool en;
 	bool unused;
@@ -4244,11 +4264,8 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 	if (!chip->usbc_psy)
 		chip->usbc_psy = power_supply_get_by_name("usbc");
 
-	if (chip->usbc_psy) {
-		rc = smbchg_check_usbc(chip->usbc_psy, &cl_usbc);
-		if ((rc == 1) && (cl_usbc > 500))
-			current_limit = cl_usbc;
-	}
+	if (chip->usbc_psy && chip->usbc_online && chip->cl_usbc > 500)
+			current_limit = chip->cl_usbc;
 
 	pr_smb(PR_MISC, "current_limit = %d\n", current_limit);
 	mutex_lock(&chip->current_change_lock);
@@ -5101,38 +5118,25 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 
 #define APSD_CFG			0xF5
 #define APSD_EN_BIT			BIT(0)
-#define USBC_CHECK_MAX			10
 static void usb_insertion_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip =
 		container_of(work, struct smbchg_chip,
 			     usb_insertion_work.work);
 	int rc, health;
-	int cl_usbc = 0;
 
-	if (!chip->usbc_psy)
-		chip->usbc_psy = power_supply_get_by_name("usbc");
+	if (chip->usbc_psy && !chip->usbc_online) {
+		pr_smb(PR_MISC, "USBC not online\n");
+		return;
+	}
 
-	if (chip->usbc_psy && (chip->usbc_check_cnt < USBC_CHECK_MAX)) {
-		dev_dbg(chip->dev, "Checking USBC\n");
-		rc = smbchg_check_usbc(chip->usbc_psy, &cl_usbc);
-		if (rc <= 0) {
-			chip->usbc_check_cnt++;
-			schedule_delayed_work(&chip->usb_insertion_work,
-					      msecs_to_jiffies(100));
-			return;
-		}
-	} else
-		cl_usbc = 500;
-
-	chip->usbc_check_cnt = 0;
 	if (chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy dp=f dm=f\n");
 		power_supply_set_dp_dm(chip->usb_psy,
 				       POWER_SUPPLY_DP_DM_DPF_DMF);
 	}
 
-	if (cl_usbc == 500) {
+	if (chip->cl_usbc < 3000) {
 		dev_dbg(chip->dev, "Setup BC1.2 Detection\n");
 		chip->usb_insert_bc1_2 = true;
 		chip->usb_present = 0;
@@ -5154,6 +5158,8 @@ static void usb_insertion_work(struct work_struct *work)
 				"Couldn't rerun apsd rc = %d\n", rc);
 	} else {
 		dev_dbg(chip->dev, "Running USBC Detection\n");
+		/* Set usb present to type c online, if we don't run BC1.2 */
+		chip->usb_present = chip->usbc_online;
 		smbchg_aicl_deglitch_wa_check(chip);
 		if (!chip->usb_psy)
 			return;
@@ -5181,10 +5187,7 @@ static void usb_insertion_work(struct work_struct *work)
 		schedule_work(&chip->usb_set_online_work);
 		chip->hvdcp_det_done = true;
 
-		if (cl_usbc == 3000)
-			chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_TURBO;
-		else
-			chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NORMAL;
+		chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_TURBO;
 
 		smbchg_stay_awake(chip, PM_HEARTBEAT);
 		cancel_delayed_work(&chip->heartbeat_work);
@@ -5201,8 +5204,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 
 	cancel_delayed_work(&chip->usb_insertion_work);
 	dev_dbg(chip->dev, "Running USB Removal\n");
-	chip->usb_insert_bc1_2 = false;
-	chip->usbc_check_cnt = 0;
+	chip->cl_usbc = 0;
 	rc = smbchg_sec_masked_write(chip,
 				     chip->usb_chgpth_base + CHGPTH_CFG,
 				     HVDCP_EN_BIT, 0);
@@ -5289,10 +5291,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 
 
 	if (!chip->usb_insert_bc1_2) {
-		dev_dbg(chip->dev, "Start USBC Detection\n");
-		chip->usbc_check_cnt = 0;
-		schedule_delayed_work(&chip->usb_insertion_work,
-				      msecs_to_jiffies(0));
+		dev_err(chip->dev, "Wait for USBC Detection\n");
 		return;
 	}
 	dev_dbg(chip->dev, "Running BC1.2 Detection\n");
@@ -5467,6 +5466,10 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 
 	dev_err(chip->dev, "chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
+
+	/* Skip insertion handling if BC1.2 is not enabled */
+	if (chip->usbc_psy && !chip->usb_insert_bc1_2 && usb_present)
+		return IRQ_HANDLED;
 
 	mutex_lock(&chip->usb_set_present_lock);
 	if (!chip->usb_present && usb_present) {
@@ -5683,7 +5686,8 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	batt_cold_handler(0, chip);
 	chg_term_handler(0, chip);
 	usbid_change_handler(0, chip);
-	src_detect_handler(0, chip);
+	if (!chip->usbc_psy)
+		src_detect_handler(0, chip);
 	smbchg_charging_en(chip, 0);
 #ifdef QCOM_BASE
 	mutex_lock(&chip->usb_set_present_lock);
@@ -8225,6 +8229,10 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 	u8 reg = 0;
 	int rc;
 
+	/* If BC 1.2 Detection wasn't triggered , skip USB sync */
+	if (!chip->usb_insert_bc1_2)
+		goto sync_dc;
+
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't read usb rt status rc = %d\n", rc);
@@ -8244,6 +8252,9 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 	}
 	mutex_unlock(&chip->usb_set_present_lock);
 
+	if (chip->usb_present != chip->usb_online)
+		schedule_work(&chip->usb_set_online_work);
+sync_dc:
 	mutex_lock(&chip->dc_set_present_lock);
 	if (!chip->dc_present && dc_present) {
 		/* dc inserted */
@@ -8257,8 +8268,6 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 	mutex_unlock(&chip->dc_set_present_lock);
 
 	/* DCIN online status is determined based on GPIO status. */
-	if (chip->usb_present != chip->usb_online)
-		schedule_work(&chip->usb_set_online_work);
 }
 
 #define AICL_WAIT_COUNT 3
@@ -8709,12 +8718,18 @@ static int smbchg_probe(struct spmi_device *spmi)
 {
 	int rc;
 	struct smbchg_chip *chip;
-	struct power_supply *usb_psy;
+	struct power_supply *usb_psy, *usbc_psy;
 	struct qpnp_vadc_chip *vadc_dev;
 
 	usb_psy = power_supply_get_by_name("usb");
 	if (!usb_psy) {
 		pr_smb(PR_STATUS, "USB supply not found, deferring probe\n");
+		return -EPROBE_DEFER;
+	}
+
+	usbc_psy = power_supply_get_by_name("usbc");
+	if (!usbc_psy) {
+		pr_smb(PR_STATUS, "USBC supply not found, deferring probe\n");
 		return -EPROBE_DEFER;
 	}
 
@@ -8755,6 +8770,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->spmi = spmi;
 	chip->dev = &spmi->dev;
 	chip->usb_psy = usb_psy;
+	chip->usbc_psy = usbc_psy;
 	chip->demo_mode = false;
 	chip->hvdcp_det_done = false;
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
@@ -8873,6 +8889,18 @@ static int smbchg_probe(struct spmi_device *spmi)
 		}
 	}
 
+	/* Register the notifier for the Type C psy */
+	chip->usbc_notifier.notifier_call = usbc_notifier_call;
+	rc = power_supply_reg_notifier(&chip->usbc_notifier);
+	if (rc) {
+		dev_err(&spmi->dev, "failed to reg notifier: %d\n", rc);
+		goto unregister_dc_psy;
+	}
+
+	/* Query for initial reported state*/
+	usbc_notifier_call(&chip->usbc_notifier, PSY_EVENT_PROP_CHANGED,
+				chip->usbc_psy);
+
 	chip->psy_registered = true;
 
 	rc = smbchg_request_irqs(chip);
@@ -8894,6 +8922,9 @@ static int smbchg_probe(struct spmi_device *spmi)
 	} else
 		dev_err(&spmi->dev, "IRQ for Warn doesn't exist\n");
 
+	/* Set initial value of usb present to type C status since src detect
+	 * cannot run until type C detection is done*/
+	chip->usb_present = chip->usbc_online;
 	power_supply_set_present(chip->usb_psy, chip->usb_present);
 
 	chip->smb_reboot.notifier_call = smbchg_reboot;
@@ -9024,12 +9055,16 @@ static int smbchg_remove(struct spmi_device *spmi)
 				   &dev_attr_force_chg_usb_otg_ctl);
 	}
 
+	if (chip->usbc_psy)
+		power_supply_unreg_notifier(&chip->usbc_notifier);
 	power_supply_put(chip->usb_psy);
 	power_supply_put(chip->bms_psy);
 	power_supply_put(chip->max_psy);
+	power_supply_put(chip->usbc_psy);
 	chip->usb_psy = NULL;
 	chip->bms_psy = NULL;
 	chip->max_psy = NULL;
+	chip->usbc_psy = NULL;
 
 	power_supply_unregister(&chip->batt_psy);
 	power_supply_unregister(&chip->wls_psy);
