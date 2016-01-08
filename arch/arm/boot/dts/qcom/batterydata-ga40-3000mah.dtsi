@@ -1,0 +1,60 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,ga40-3000mah {
+	/* #2265165_Moto_Athene_GA40_3000mAh_averaged_MasterSlave_Dec18th2015*/
+	qcom,max-voltage-uv = <4350000>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,batt-id-kohm = <243>;
+	qcom,battery-beta = <3900>;
+	qcom,battery-type = "GA40-3000mAh";
+	qcom,chg-rslow-comp-c1 = <2456357>;
+	qcom,chg-rslow-comp-c2 = <2731891>;
+	qcom,chg-rs-to-rslow = <746576>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,checksum = <0xA2E0>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.15";
+	qcom,fg-profile-data = [
+		DA 83 4D 7C
+		67 80 F0 75
+		3C 83 57 6A
+		5D 78 B6 84
+		1B 82 43 99
+		A3 B7 AE C3
+		58 0F AB 82
+		D5 79 D0 7C
+		F7 71 23 83
+		30 7A 4D 87
+		E7 82 22 82
+		C9 99 E5 BC
+		F6 C9 83 0D
+		D5 0B 34 60
+		CE 6E 64 FC
+		2C 0B 2D 46
+		93 41 00 00
+		CE 46 6E 33
+		FE 2A 00 00
+		00 00 00 00
+		00 00 00 00
+		66 6B 0F 6A
+		A9 75 2E 81
+		B7 7C AF 70
+		44 74 78 80
+		72 7C 34 70
+		94 6E BB A8
+		1D 27 59 2C
+		4E A0 71 0C
+		28 00 FF 36
+		F0 11 30 03
+		00 00 00 0C
+	];
+};

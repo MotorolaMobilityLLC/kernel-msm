@@ -441,13 +441,7 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <100>;
-		#include "batterydata-fx30-lg.dtsi"
-	};
-};
-
-&mot_batterydata {
-	qcom,fx30-lg {
-		qcom,max-voltage-uv = <435000>;
+		#include "batterydata-ga40-3000mah.dtsi"
 	};
 };
 
