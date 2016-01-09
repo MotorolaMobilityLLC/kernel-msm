@@ -364,6 +364,7 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 		VL53L0_REG_IDENTIFICATION_REVISION_ID, &revision);
 	vl53l0_errmsg("read REVISION_ID: 0x%x\n", revision);
 	revision = (revision & 0xF0) >> 4;
+	data->cut_v = revision;
 	if (revision == 1) {
 		/*cut 1.1*/
 		vl53l0_errmsg("to setup API cut 1.1\n");
@@ -1611,6 +1612,11 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 				SetLimitCheckValue(vl53l0_dev,
 				VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
 				(FixPoint1616_t)parameter.value);
+			else
+				parameter.status = papi_func_tbl->
+				GetLimitCheckValue(vl53l0_dev,
+				VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+				(FixPoint1616_t *)&parameter.value);
 			break;
 
 		case (SIGMACTL_PRA):
@@ -1619,6 +1625,11 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 				papi_func_tbl->SetLimitCheckEnable(vl53l0_dev,
 				VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
 				(uint8_t)parameter.value);
+			else
+				parameter.status =
+				papi_func_tbl->GetLimitCheckEnable(vl53l0_dev,
+				VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+				(uint8_t *)&parameter.value);
 			break;
 		case (SGLVAL_PRA):
 			if (!parameter.is_read)
@@ -1626,6 +1637,11 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 				SetLimitCheckValue(vl53l0_dev,
 				VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
 				(FixPoint1616_t)parameter.value);
+			else
+				parameter.status = papi_func_tbl->
+				GetLimitCheckValue(vl53l0_dev,
+				VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+				(FixPoint1616_t *)&parameter.value);
 			break;
 
 		case (SGLCTL_PRA):
@@ -1634,6 +1650,11 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 				papi_func_tbl->SetLimitCheckEnable(vl53l0_dev,
 				VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
 				(uint8_t)parameter.value);
+			else
+				parameter.status =
+				papi_func_tbl->GetLimitCheckEnable(vl53l0_dev,
+				VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+				(uint8_t *)&parameter.value);
 			break;
 
 		case (WRAPAROUNDCTL_PRA):
@@ -1656,6 +1677,10 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 				parameter.status =
 				VL53L0_SetMeasurementTimingBudgetMicroSeconds(
 				vl53l0_dev, (uint32_t)parameter.value);
+			break;
+		case (CUTV_PRA):
+			if (parameter.is_read)
+				parameter.value = vl53l0_dev->cut_v;
 			break;
 		}
 		if (copy_to_user((struct stmvl53l0_parameter *)p, &parameter,
@@ -1782,7 +1807,6 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 	VL53L0_Error Status = VL53L0_ERROR_NONE;
 	VL53L0_DeviceInfo_t DeviceInfo;
 	VL53L0_DEV vl53l0_dev = data;
-	FixPoint1616_t	SigmaLimitValue;
 
 	vl53l0_dbgmsg("Enter\n");
 
@@ -1858,31 +1882,6 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 			VL53L0_DEVICEMODE_SINGLE_RANGING);
 		/* Setup in	single ranging mode */
 	}
-
-	if (Status == VL53L0_ERROR_NONE) {
-		pr_err("set LimitCheckValue SIGMA_FINAL_RANGE\n");
-		SigmaLimitValue = 32 << 16;
-		Status = papi_func_tbl->SetLimitCheckValue(vl53l0_dev,
-			VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
-			SigmaLimitValue);
-	}
-
-	if (Status == VL53L0_ERROR_NONE) {
-		pr_err("set LimitCheckValue SIGNAL_RATE_FINAL_RANGE\n");
-		SigmaLimitValue = 94743; /* 1.44567500 * 65536 */
-		Status = papi_func_tbl->SetLimitCheckValue(vl53l0_dev,
-			VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
-			SigmaLimitValue);
-	}
-
-	/*  Enable/Disable Sigma and Signal check */
-	if (Status == VL53L0_ERROR_NONE)
-		Status = papi_func_tbl->SetLimitCheckEnable(vl53l0_dev,
-		VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE, 1);
-
-	if (Status == VL53L0_ERROR_NONE)
-		Status = papi_func_tbl->SetLimitCheckEnable(vl53l0_dev,
-		VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE, 1);
 
 	if (Status == VL53L0_ERROR_NONE)
 		Status = papi_func_tbl->SetWrapAroundCheckEnable(vl53l0_dev, 1);
