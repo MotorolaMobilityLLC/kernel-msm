@@ -877,6 +877,7 @@ void StateMachineAttachedSink(void)
 void StateMachineAttachedSource(void)
 {
 	CCTermType CCValue = DecodeCCTermination();	// Grab the latest CC termination value
+	struct power_supply *usb_psy = power_supply_get_by_name("usb");
 	if (Registers.Switches.MEAS_CC1)	// Did we detect CC1 as the CC pin?
 	{
 		if (CC1TermAct != CCValue)	// If the CC voltage has changed...
@@ -891,6 +892,10 @@ void StateMachineAttachedSource(void)
 		}
 		if ((CC1TermDeb == CCTypeNone) && (!PRSwapTimer))	// If the debounced CC pin is detected as open and we aren't in the middle of a PR_Swap
 		{
+			/* Notify USB driver to exit host mode */
+			if (usb_psy)
+				power_supply_set_usb_otg(usb_psy, 0);
+
 			if ((PortType == USBTypeC_DRP) && blnSrcPreferred)	// Check to see if we need to go to the TryWait.SNK state...
 				SetStateTryWaitSnk();
 			else	// Otherwise we are going to the unattached state
@@ -910,6 +915,9 @@ void StateMachineAttachedSource(void)
 		}
 		if ((CC2TermDeb == CCTypeNone) && (!PRSwapTimer))	// If the debounced CC pin is detected as open and we aren't in the middle of a PR_Swap
 		{
+			/* Notify USB driver to exit host mode */
+			if (usb_psy)
+				power_supply_set_usb_otg(usb_psy, 0);
 			if ((PortType == USBTypeC_DRP) && blnSrcPreferred)	// Check to see if we need to go to the TryWait.SNK state...
 				SetStateTryWaitSnk();
 			else	// Otherwise we are going to the unattached state
@@ -1381,6 +1389,7 @@ void SetStateAttachWaitAcc(void)
 
 void SetStateAttachedSrc(void)
 {
+	struct power_supply *usb_psy = power_supply_get_by_name("usb");
 	FUSB_LOG("enter:%s\n", __func__);
 	VBUS_5V_EN = 1;		// Enable the 5V output...
 	VBUS_12V_EN = 0;	// Disable the 12V output
@@ -1406,6 +1415,9 @@ void SetStateAttachedSrc(void)
 	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	if (fusb_i2c_data->fsa321_switch)
 		FSA321_setSwitchState(fsa_usb_mode);
+	/* Notify USB driver to switch to host mode */
+	if (usb_psy)
+		power_supply_set_usb_otg(usb_psy, 1);
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
 	DebounceTimer1 = tPDDebounceMin;	// Set the debounce timer to tPDDebounceMin for detecting a detach
