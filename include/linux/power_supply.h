@@ -327,6 +327,7 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_PTP_POWER_REQUIRED,
 	POWER_SUPPLY_PROP_MAIN_STATUS,
 	POWER_SUPPLY_PROP_EXTERN_STATE,
+	POWER_SUPPLY_PROP_DISABLE_USB,
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_PROP_CHARGE_COUNTER_EXT,
 	/* Properties of type `const char *' */
