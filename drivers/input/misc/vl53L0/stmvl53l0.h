@@ -72,7 +72,7 @@
 #define	MEASUREMENTTIMINGBUDGET_PAR 7
 #define	SGLVAL_PRA 8
 #define	SGLCTL_PRA 9
-
+#define CUTV_PRA 10
 
 #define	CCI_BUS  0
 #define	I2C_BUS  1
@@ -156,6 +156,7 @@ struct stmvl53l0_data {
 	uint32_t highv;
 	wait_queue_head_t range_data_wait;
 	uint8_t d_ready;
+	uint8_t cut_v;
 };
 
 /*
