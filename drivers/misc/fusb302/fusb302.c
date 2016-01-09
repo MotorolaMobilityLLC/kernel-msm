@@ -112,6 +112,7 @@ ConnectionState ConnState;	// Variable indicating the current connection state
 static bool blnSrcPreferred;	// Flag to indicate whether we prefer the Src role when in DRP
 static bool blnAccSupport;	// Flag to indicate whether the port supports accessories
 static bool blnINTActive;	// Flag to indicate that an interrupt occurred that needs to be handled
+static bool usbDataDisabled;    /* Flag to indicate Data lines on USB are disabled */
 static u16 StateTimer;		// Timer used to validate proceeding to next state
 static u16 DebounceTimer1;	// Timer used for first level debouncing
 static u16 DebounceTimer2;	// Timer used for second level debouncing
@@ -2136,6 +2137,7 @@ static enum power_supply_property fusb_power_supply_props[] = {
 	POWER_SUPPLY_PROP_AUTHENTIC,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_TYPE,
+	POWER_SUPPLY_PROP_DISABLE_USB,
 };
 
 static int fusb_power_supply_set_property(struct power_supply *psy,
@@ -2145,10 +2147,13 @@ static int fusb_power_supply_set_property(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		break;
+	case POWER_SUPPLY_PROP_DISABLE_USB:
+		usbDataDisabled = !!val->intval;
+		break;
 	default:
 		return -EINVAL;
 	}
-
+	power_supply_changed(&fusb_i2c_data->usbc_psy);
 	return 0;
 }
 
@@ -2159,6 +2164,7 @@ static int fusb_power_supply_is_writeable(struct power_supply *psy,
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
+	case POWER_SUPPLY_PROP_DISABLE_USB:
 		rc = 1;
 		break;
 	default:
@@ -2205,6 +2211,9 @@ static int fusb_power_supply_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = psy->type;
+		break;
+	case POWER_SUPPLY_PROP_DISABLE_USB:
+		val->intval = usbDataDisabled;
 		break;
 	default:
 		return -EINVAL;
