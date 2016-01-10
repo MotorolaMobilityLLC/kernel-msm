@@ -309,6 +309,7 @@ struct smbchg_chip {
 	unsigned int			stepchg_state_holdoff;
 	struct wakeup_source		smbchg_wake_source;
 	struct delayed_work		usb_insertion_work;
+	struct delayed_work		usb_removal_work;
 	bool				usb_insert_bc1_2;
 	int				charger_rate;
 	bool				usbid_disabled;
@@ -327,6 +328,7 @@ struct smbchg_chip {
 	bool				factory_cable;
 	int				cl_usbc;
 	bool				usbc_online;
+	bool				usbc_disabled;
 };
 
 static struct smbchg_chip *the_chip;
@@ -377,6 +379,7 @@ enum wake_reason {
 static void smbchg_rate_check(struct smbchg_chip *chip);
 static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp);
 static int get_prop_batt_capacity(struct smbchg_chip *chip);
+static void handle_usb_removal(struct smbchg_chip *chip);
 
 static int smbchg_debug_mask;
 module_param_named(
@@ -779,6 +782,9 @@ static bool is_usb_present(struct smbchg_chip *chip)
 {
 	int rc;
 	u8 reg;
+
+	if (chip->usbc_disabled)
+		return false;
 
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
@@ -4140,18 +4146,47 @@ static int usbc_notifier_call(struct notifier_block *nb, unsigned long val,
 	struct smbchg_chip *chip = container_of(nb,
 				struct smbchg_chip, usbc_notifier);
 	struct power_supply *psy = v;
-	int rc, online;
+	int rc, online, disabled;
 	union power_supply_propval prop = {0,};
 
 	if (val != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
 
-	if (!psy || psy != chip->usbc_psy)
+	if (!psy || (psy != chip->usbc_psy))
 		return NOTIFY_OK;
 
 	pr_smb(PR_MISC, "usbc notifier call was called\n");
 
 	prop.intval = 0;
+	rc = psy->get_property(psy,
+			       POWER_SUPPLY_PROP_DISABLE_USB,
+			       &prop);
+	if (rc < 0) {
+		dev_err(chip->dev,
+			"could not read Disable USB property, rc=%d\n", rc);
+		return NOTIFY_DONE;
+	} else
+		disabled = prop.intval;
+
+	if (disabled && !chip->usbc_disabled) {
+		chip->usbc_disabled = true;
+		if (chip->usbc_online) {
+			chip->usbc_online = false;
+			chip->usb_insert_bc1_2 = false;
+			chip->usb_present = false;
+			schedule_delayed_work(&chip->usb_removal_work,
+					      msecs_to_jiffies(0));
+		}
+		return NOTIFY_OK;
+	} else if (!disabled && chip->usbc_disabled) {
+		chip->usbc_disabled = false;
+	} else if (disabled) {
+		return NOTIFY_OK;
+	}
+
+
+	prop.intval = 0;
+
 	rc = psy->get_property(psy,
 			       POWER_SUPPLY_PROP_ONLINE,
 			       &prop);
@@ -4293,6 +4328,9 @@ static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 	int rc = 0;
 	struct smbchg_chip *chip = rdev_get_drvdata(rdev);
 
+	if (chip->usbc_disabled)
+		return 0;
+
 	chip->otg_retries = 0;
 	rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
 			OTG_EN, OTG_EN);
@@ -4309,6 +4347,9 @@ static int smbchg_otg_regulator_disable(struct regulator_dev *rdev)
 	int rc = 0;
 	struct smbchg_chip *chip = rdev_get_drvdata(rdev);
 
+	if (chip->usbc_disabled)
+		return 0;
+
 	rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
 			OTG_EN, 0);
 	if (rc < 0)
@@ -4322,6 +4363,9 @@ static int smbchg_otg_regulator_is_enable(struct regulator_dev *rdev)
 	int rc = 0;
 	u8 reg = 0;
 	struct smbchg_chip *chip = rdev_get_drvdata(rdev);
+
+	if (chip->usbc_disabled)
+		return 0;
 
 	rc = smbchg_read(chip, &reg, chip->bat_if_base + CMD_CHG_REG, 1);
 	if (rc < 0) {
@@ -5114,6 +5158,15 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 	mutex_unlock(&chip->dc_set_present_lock);
 
 	return IRQ_HANDLED;
+}
+
+static void usb_removal_work(struct work_struct *work)
+{
+	struct smbchg_chip *chip =
+		container_of(work, struct smbchg_chip,
+			     usb_removal_work.work);
+
+	handle_usb_removal(chip);
 }
 
 #define APSD_CFG			0xF5
@@ -8765,6 +8818,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 			  smbchg_heartbeat_work);
 	INIT_DELAYED_WORK(&chip->usb_insertion_work,
 			  usb_insertion_work);
+	INIT_DELAYED_WORK(&chip->usb_removal_work,
+			  usb_removal_work);
 	INIT_DELAYED_WORK(&chip->warn_irq_work, warn_irq_w);
 	chip->vadc_dev = vadc_dev;
 	chip->spmi = spmi;
