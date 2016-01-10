@@ -508,9 +508,9 @@
 			};
 		};
 	};
-	fusb302_ss_sw_sel{
+	hd3ss460_amsel{
 
-		fusb302_ss_sw_sel_default: default {
+		hd3ss460_amsel_default: default {
 			mux {
 				pins = "gpio120";
 				function = "gpio";
@@ -524,7 +524,7 @@
 			};
 		};
 
-		fusb302_ss_sw_sel_active: active {
+		hd3ss460_amsel_active: active {
 			mux {
 				pins = "gpio120";
 				function = "gpio";
@@ -532,6 +532,36 @@
 
 			config {
 				pins = "gpio120";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+			};
+		};
+	};
+
+	hd3ss460_en{
+
+		hd3ss460_en_default: default {
+			mux {
+				pins = "gpio136";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio136";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+				output-low;
+			};
+		};
+
+		hd3ss460_en_active: active {
+			mux {
+				pins = "gpio136";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio136";
 				drive-strength = <2>;
 				bias-pull-up; /* pull-up */
 			};
