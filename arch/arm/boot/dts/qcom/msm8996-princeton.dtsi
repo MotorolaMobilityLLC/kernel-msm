@@ -344,6 +344,10 @@
 		mmi,wake-assert-seq = <6 0 0>;
 		mmi,wake-deassert-seq = <6 1 0>;
 	};
+
+	hd3ss460 {
+		hd3-is-fusb340;
+	};
 };
 
 &cci {
