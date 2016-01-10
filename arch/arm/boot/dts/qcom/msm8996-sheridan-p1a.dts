@@ -42,6 +42,10 @@
 		mmi,wake-deassert-seq = <6 1 0>;
 	};
 
+	hd3ss460 {
+		hd3-is-fusb340;
+	};
+
 	sound {
 		mot,old-l34;
 	};
