@@ -656,6 +656,13 @@ config MODS_CODEC_BUS
 	  This enables bus interface for mods shim sound codec to talk to
 	  greybus sound codec module.
 
+config HD3SS460_MUX
+	tristate "HD3SS460 4 x 6 Channel MUX"
+	default n
+	help
+	  This option enables a device driver for the HD3SS460 which is a
+	  4 x 6 Channel Alternate Mode MUX for Type C Ecosystem.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
