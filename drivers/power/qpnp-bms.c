@@ -1605,7 +1605,8 @@ static int calculate_unusable_charge_uah(struct qpnp_bms_chip *chip,
 
 	ASUS_hwID = get_hardware_id();
 
-	if ((ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
+	if ((ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR) ||
+		(ASUS_hwID == SPARROW_PR3) || (ASUS_hwID == WREN_PR3)) {
 		if (batt_temp > 0)
 			uuc_iavg_ma = MIN_IAVG_MA;
 		else
