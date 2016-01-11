@@ -1,3 +1,10 @@
+GOOGLE nanohub sensorhub
+
+Required properties:
+- compatible : should be "nanohub"
+
+Example:
+
 &spi_7 {
 	sensorhub@0 {
 		compatible = "nanohub";
@@ -21,13 +28,8 @@
 			<4 0x08010000 0x10000>,
 			<5 0x08020000 0x20000>;
 		sensorhub,num-flash-banks = <4>;
-		sensorhub,shared-flash-banks = <6 0x08040000 0x20000>,
-			<7 0x08060000 0x20000>;
-		sensorhub,num-shared-flash-banks = <2>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&sensorhub_ctrl_active
 				&sensorhub_int1_active
 				&sensorhub_int2_active>;
-	};
-};
