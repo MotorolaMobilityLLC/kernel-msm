@@ -426,3 +426,11 @@
 		st,sensorthreshold = <40 50>;
 	};
 };
+
+&i2c_freq_100Khz {
+	qcom,hw-scl-stretch-en = <1>;
+};
+
+&i2c_freq_400Khz {
+	qcom,hw-scl-stretch-en = <1>;
+};
