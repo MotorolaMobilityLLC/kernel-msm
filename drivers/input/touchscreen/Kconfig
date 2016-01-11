@@ -1040,6 +1040,19 @@ config TOUCHSCREEN_GT9XX
 
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 
+config TOUCHSCREEN_HIMAX852X
+	tristate "Himax touchscreens"
+	depends on I2C
+	help
+		Say Y here if you have a hx852x touchscreen.
+		hx852x controllers are multi touch controllers which can
+		report 5 touches at a time.
+
+		If unsure, say N.
+
+		To compile this driver as a module, choose M here: the
+		module will be called hx852x.
+
 config TOUCHSCREEN_BU21150
 	tristate "JDI AFE BU21150"
 	depends on SPI_MASTER
