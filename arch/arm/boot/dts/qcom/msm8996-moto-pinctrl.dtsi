@@ -49,6 +49,17 @@
 				drive-strength = <16>;
 			};
 		};
+
+		spi_0_sleep: spi_0_sleep {
+			mux {
+				function = "gpio";
+			};
+
+			config {
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
 	};
 
 	/* Princeton uses CS2 on GPIO28 to talk to SPI Flash */
