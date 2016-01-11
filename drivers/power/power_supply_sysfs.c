@@ -342,6 +342,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(main_status),
 	POWER_SUPPLY_ATTR(extern_state),
 	POWER_SUPPLY_ATTR(disable_usbc),
+	POWER_SUPPLY_ATTR(switch_state),
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */
