@@ -50,12 +50,10 @@ int VBUS_12V_EN;
 
 #define FUSB_MS_TO_NS(x) (x * 1000 * 1000)
 #define Delay10us(x) udelay(x*10);
-#define FUSB_NUM_GPIOS (5)
+#define FUSB_NUM_GPIOS (3)
 #define FUSB_INT_INDEX 0
-#define FUSB_SS_SW_SEL_INDEX 1
-#define FUSB_AUD_SW_SEL_INDEX 2
-#define FUSB_SS_OE_EN_INDEX 3
-#define FUSB_AUD_DET_INDEX 4
+#define FUSB_AUD_SW_SEL_INDEX 1
+#define FUSB_AUD_DET_INDEX 2
 
 #define FUSB302_DEBUG
 
@@ -74,6 +72,7 @@ struct fusb302_i2c_data {
 	int irq;
 	spinlock_t lock;
 	struct power_supply usbc_psy;
+	struct power_supply switch_psy;
 	bool fsa321_switch;
 };
 
@@ -123,6 +122,7 @@ static CCTermType CC1TermDeb;	// Debounced CC1 termination value
 static CCTermType CC2TermDeb;	// Debounced CC2 termination value
 static USBTypeCCurrent SinkCurrent;	// Variable to indicate the current capability we have received
 static USBTypeCCurrent SourceCurrent;	// Variable to indicate the current capability we are broadcasting
+static u16 SwitchState; /* Variable to indicate switch state for SS lines */
 
 /////////////////////////////////////////////////////////////////////////////
 //                        FUSB300 I2C Routines
@@ -225,40 +225,22 @@ static int FUSB302_toggleAudioSwitch(bool enable)
 static bool disable_ss_switch;
 static int FUSB302_enableSuperspeedUSB(int CC1, int CC2)
 {
-	int ss_output_en_gpio = fusb_i2c_data->gpios[FUSB_SS_OE_EN_INDEX];
-	int ss_sw_sel_gpio = fusb_i2c_data->gpios[FUSB_SS_SW_SEL_INDEX];
-	int sw_val = 0;
-
 	if (disable_ss_switch)
 		return 0;
 
-	if (!(gpio_is_valid(ss_output_en_gpio) &&
-	      gpio_is_valid(ss_sw_sel_gpio)))
-		return -ENODEV;
+	SwitchState = CC1 ? 1 : 2;
 
-	/* Default switch position to 0 for all other values of CC */
-	if (CC2 && !CC1)
-		sw_val = 1;
-
-	FUSB_LOG("Setting SS_SW_SEL to %d\n", sw_val);
-	gpio_set_value(ss_sw_sel_gpio, sw_val);
-
-	FUSB_LOG("Setting SS_OE_EN to enabled\n");
-	gpio_set_value(ss_output_en_gpio, 0);
+	FUSB_LOG("Enabling SS lines for CC%d\n", SwitchState);
+	power_supply_changed(&fusb_i2c_data->switch_psy);
 
 	return 0;
 }
 
 static int FUSB302_disableSuperspeedUSB(void)
 {
-	int ss_output_en_gpio = fusb_i2c_data->gpios[FUSB_SS_OE_EN_INDEX];
-
-	if (gpio_is_valid(ss_output_en_gpio)) {
-		FUSB_LOG("Setting SS OE EN Switch to disabled\n");
-		gpio_set_value(ss_output_en_gpio, 1);
-		return 0;
-	}
-	return -ENODEV;
+	SwitchState = 0;
+	power_supply_changed(&fusb_i2c_data->switch_psy);
+	return 0;
 }
 
 static int set_disable_ss_switch(const char *val, const struct kernel_param *kp)
@@ -366,6 +348,7 @@ void InitializeFUSB300Variables(void)
 	blnINTActive = false;	// Clear the handle interrupt flag
 	blnCCPinIsCC1 = false;	// Clear the flag to indicate CC1 is CC
 	blnCCPinIsCC2 = false;	// Clear the flag to indicate CC2 is CC
+	SwitchState = 0;	/* Set the Switch to OFF State */
 
 	StateTimer = USHRT_MAX;	// Disable the state timer
 	DebounceTimer1 = USHRT_MAX;	// Disable the 1st debounce timer
@@ -2131,6 +2114,29 @@ static inline int fusb302_parse_dt(struct device *dev,
 }
 #endif
 
+static enum power_supply_property switch_power_supply_props[] = {
+	POWER_SUPPLY_PROP_TYPE,
+	POWER_SUPPLY_PROP_SWITCH_STATE,
+};
+
+static int switch_power_supply_get_property(struct power_supply *psy,
+			    enum power_supply_property psp,
+			    union power_supply_propval *val)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_TYPE:
+		val->intval = psy->type;
+		break;
+	case POWER_SUPPLY_PROP_SWITCH_STATE:
+		val->intval = SwitchState;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+
 static enum power_supply_property fusb_power_supply_props[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
@@ -2265,9 +2271,6 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	i2c_set_clientdata(i2c, fusb);
 	fusb->client = i2c;
 
-	/* Disable the SS Switch if param is disabled at boot */
-	if (disable_ss_switch)
-		FUSB302_disableSuperspeedUSB();
 
 	/* Set the FSA switch to lpm initially */
 	if (fusb_i2c_data->fsa321_switch)
@@ -2278,6 +2281,31 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	ret_device_file = device_create_file(&(i2c->dev), &dev_attr_CC_state);
 	ret_device_file = device_create_file(&(i2c->dev),
 					     &dev_attr_enable_vconn);
+
+
+	fusb->usbc_psy.name		= "usbc";
+	fusb->usbc_psy.type		= POWER_SUPPLY_TYPE_USBC;
+	fusb->usbc_psy.get_property	= fusb_power_supply_get_property;
+	fusb->usbc_psy.set_property	= fusb_power_supply_set_property;
+	fusb->usbc_psy.properties	= fusb_power_supply_props;
+	fusb->usbc_psy.num_properties	= ARRAY_SIZE(fusb_power_supply_props);
+	fusb->usbc_psy.property_is_writeable = fusb_power_supply_is_writeable;
+	retval = power_supply_register(&i2c->dev, &fusb->usbc_psy);
+	if (retval) {
+		dev_err(&i2c->dev, "failed to register usbc_psy\n");
+		return retval;
+	}
+
+	fusb->switch_psy.name		= "usbc_switch";
+	fusb->switch_psy.type		= POWER_SUPPLY_TYPE_SWITCH;
+	fusb->switch_psy.get_property	= switch_power_supply_get_property;
+	fusb->switch_psy.properties	= switch_power_supply_props;
+	fusb->switch_psy.num_properties	= ARRAY_SIZE(switch_power_supply_props);
+	retval = power_supply_register(&i2c->dev, &fusb->switch_psy);
+	if (retval) {
+		dev_err(&i2c->dev, "failed to register switch_psy\n");
+		goto unregister_usbcpsy;
+	}
 
 	fusb302_device_check();
 	//Initialize FUSB302
@@ -2297,32 +2325,33 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	if (retval < 0) {
 		dev_err(&i2c->dev,
 			"%s: Failed to create irq thread\n", __func__);
-		return retval;
+		goto unregister_switchpsy;
 	}
 
-	fusb->usbc_psy.name 		= "usbc";
-	fusb->usbc_psy.type		= POWER_SUPPLY_TYPE_USBC;
-	fusb->usbc_psy.get_property	= fusb_power_supply_get_property;
-	fusb->usbc_psy.set_property	= fusb_power_supply_set_property;
-	fusb->usbc_psy.properties	= fusb_power_supply_props;
-	fusb->usbc_psy.num_properties	= ARRAY_SIZE(fusb_power_supply_props);
-	fusb->usbc_psy.property_is_writeable = fusb_power_supply_is_writeable;
-	retval = power_supply_register(&i2c->dev, &fusb->usbc_psy);
-	if (retval) {
-		dev_err(&i2c->dev, "failed: power supply register\n");
-		return retval;
-	}
-
+	/* Initialize the Switch */
+	power_supply_changed(&fusb->switch_psy);
 	FUSB_LOG("probe successfully!\n");
 	return 0;
+
+unregister_switchpsy:
+	power_supply_unregister(&fusb->switch_psy);
+unregister_usbcpsy:
+	power_supply_unregister(&fusb->usbc_psy);
+	return retval;
 }
 
 static int fusb302_remove(struct i2c_client *i2c)
 {
 	struct fusb302_i2c_data *fusb = i2c_get_clientdata(i2c);
 
+	device_remove_file(&(i2c->dev), &dev_attr_reg_dump);
+	device_remove_file(&(i2c->dev), &dev_attr_state);
+	device_remove_file(&(i2c->dev), &dev_attr_CC_state);
+	device_remove_file(&(i2c->dev), &dev_attr_enable_vconn);
 	if (fusb->irq)
 		free_irq(fusb->irq, fusb);
+	power_supply_unregister(&fusb->switch_psy);
+	power_supply_unregister(&fusb->usbc_psy);
 	kfree(fusb);
 	return 0;
 }
