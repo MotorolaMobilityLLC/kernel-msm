@@ -826,8 +826,9 @@
 					<1 1 100>, <2 1 20>,
 					<2 0 20>;
 
-		pinctrl-names = "default";
-		pinctrl-0 = <&muc_attach>;
+		pinctrl-names = "disconnected", "spi_active";
+		pinctrl-0 = <&muc_attach &spi_0_sleep>;
+		pinctrl-1 = <&muc_attach &spi_0_active>;
 	};
 
 	muc_svc@0 {
@@ -1310,8 +1311,11 @@
 };
 
 &spi_0 {
-	pinctrl-0 = <&spi_0_active>;
-	pinctrl-1 = <&spi_0_sleep>;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+	/delete-property/ pinctrl-names;
+	/delete-property/ qcom,use-pinctrl;
+
 	spi-max-frequency = <50000000>;
 
 	qcom,rt-priority;
