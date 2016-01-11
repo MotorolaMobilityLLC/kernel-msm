@@ -322,6 +322,7 @@ struct smbchg_chip {
 	enum ebchg_state		ebchg_state;
 	struct gpio			ebchg_gpio;
 	bool				force_eb_chrg;
+	bool				eb_hotplug;
 	struct gpio			warn_gpio;
 	struct delayed_work		warn_irq_work;
 	int				warn_irq;
@@ -8382,6 +8383,11 @@ static bool smbchg_check_and_kick_aicl(struct smbchg_chip *chip)
 		return false;
 }
 
+static int eb_rechrg_start_soc = 80;
+module_param(eb_rechrg_start_soc, int, 0644);
+static int eb_rechrg_stop_soc = 100;
+module_param(eb_rechrg_stop_soc, int, 0644);
+
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
 #define STEPCHG_MAX_FV_COMP 60
@@ -8405,6 +8411,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_ext_lvl;
 	int prev_step;
 	int index;
+	int eb_max_soc, eb_min_soc;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	if (smbchg_check_and_kick_aicl(chip))
@@ -8412,12 +8419,15 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
 
-	if (eb_soc == -ENODEV)
+	if (eb_soc == -ENODEV) {
+		chip->eb_hotplug = false;
 		smbchg_set_extbat_state(chip, EB_DISCONN);
-	else if (eb_soc == -EINVAL)
+	} else if (eb_soc == -EINVAL)
 		eb_soc = 0;
-	else if (chip->ebchg_state == EB_DISCONN)
+	else if (chip->ebchg_state == EB_DISCONN) {
+		chip->eb_hotplug = true;
 		smbchg_set_extbat_state(chip, EB_OFF);
+	}
 
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_UPDATE_NOW, 1);
 	batt_mv = get_prop_batt_voltage_now(chip) / 1000;
@@ -8508,28 +8518,67 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	} else if ((chip->stepchg_state == STEP_TAPER) &&
 		   (batt_ma < 0) && (chip->usb_present)) {
 		batt_ma *= -1;
-
-		if ((batt_soc >= 100) &&
+		if ((chip->ebchg_state != EB_DISCONN) &&
+		    (eb_soc < 100)) {
+			smbchg_set_extbat_state(chip, EB_SINK);
+			chip->stepchg_state = STEP_EB;
+		} else if ((batt_soc >= 100) &&
 		    (batt_ma <= chip->stepchg_iterm_ma) &&
 		    (chip->allowed_fastchg_current_ma >=
-		     chip->stepchg_iterm_ma))
+		     chip->stepchg_iterm_ma)) {
 			if (chip->stepchg_state_holdoff >= 2) {
 				chip->stepchg_state = STEP_FULL;
 				chip->stepchg_state_holdoff = 0;
 			} else
 				chip->stepchg_state_holdoff++;
-		else
+		} else {
 			chip->stepchg_state_holdoff = 0;
+		}
 	} else if ((chip->stepchg_state == STEP_FULL) &&
-		    (chip->usb_present) && (batt_soc < 100)) {
-		chip->stepchg_state = STEP_TAPER;
+		    (chip->usb_present)) {
+		if ((chip->ebchg_state != EB_DISCONN) &&
+		    (eb_soc < 100)) {
+			smbchg_set_extbat_state(chip, EB_SINK);
+			chip->stepchg_state = STEP_EB;
+		} else if (batt_soc < 100)
+			chip->stepchg_state = STEP_TAPER;
 	} else if (!chip->usb_present) {
 		chip->stepchg_state = STEP_NONE;
-		if ((chip->ebchg_state != EB_DISCONN)) {
-			if (eb_soc > 0)
-				smbchg_set_extbat_state(chip, EB_SRC);
-			else
+
+		/* Sanitize the Thresholds */
+		eb_max_soc = eb_rechrg_stop_soc;
+		eb_min_soc = eb_rechrg_start_soc;
+		if (eb_max_soc > 100)
+			eb_max_soc = 100;
+		if (eb_min_soc > 100)
+			eb_min_soc = 100;
+		if (eb_min_soc < 0)
+			eb_min_soc = 0;
+		if (eb_max_soc < 75)
+			eb_max_soc = 75;
+		if (eb_min_soc > eb_max_soc)
+			eb_min_soc = eb_max_soc - 1;
+
+		switch (chip->ebchg_state) {
+		case EB_SRC:
+			if (eb_soc <= 0)
 				smbchg_set_extbat_state(chip, EB_OFF);
+			else if ((chip->eb_hotplug) && (batt_soc >= 100)) {
+				chip->eb_hotplug = false;
+				smbchg_set_extbat_state(chip, EB_OFF);
+			} else if (batt_soc >= eb_max_soc)
+				smbchg_set_extbat_state(chip, EB_OFF);
+			break;
+		case EB_SINK:
+		case EB_OFF:
+			if (eb_soc <= 0)
+				smbchg_set_extbat_state(chip, EB_OFF);
+			else if ((chip->eb_hotplug) || (batt_soc < eb_min_soc))
+				smbchg_set_extbat_state(chip, EB_SRC);
+			break;
+		case EB_DISCONN:
+		default:
+			break;
 		}
 		chip->stepchg_state_holdoff = 0;
 	} else
