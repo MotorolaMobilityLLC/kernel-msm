@@ -1,0 +1,25 @@
+MMI utags driver provides procfs access to the utags partition.
+Use unique names for device nodes: /sys/devices/utags etc.
+
+Required properties:
+- compatible		: string should be "mmi,utags"
+- mmi,utoags-main	: string, path to the utags main partition
+Optional properties:
+- mmi,utags-backup	: string, path to the utags backup partition
+- mmi,dir-name		: string, override for directory in procfs root to be used
+
+Example:
+
+utags {
+	compatible = "mmi,utags";
+	status = "okay";
+	mmi,utags-main = "/dev/block/bootdevice/by-name/utags";
+	mmi,utags-backup = "/dev/block/bootdevice/by-name/utagsBackup";
+};
+
+hw {
+	compatible = "mmi,utags";
+	status = "okay";
+	mmi,dir-name = "hw";
+	mmi,utags-main = "/dev/block/bootdevice/by-name/hw";
+};
