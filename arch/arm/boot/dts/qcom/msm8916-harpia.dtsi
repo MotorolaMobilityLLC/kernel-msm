@@ -17,6 +17,16 @@
 	compatible = "qcom,msm8916-harpia", "qcom,msm8916-moto", "qcom,msm8916";
 };
 
+&tlmm_pinmux {
+	touch_reset_n {
+		qcom,pins = <&gp 12>;
+	};
+
+	touch_int_n {
+		qcom,pins = <&gp 13>;
+	};
+};
+
 &i2c_1 {
 
 	fan54046: fan54046-charger@6b {
@@ -37,5 +47,13 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&fan5404x_int_default>;
+	};
+};
+
+&i2c_2 {
+	synaptics_dsx_i2c@20 {
+		interrupts = <13 0>;
+		gpios = <&msm_gpio 13 0>, /* IRQ */
+			<&msm_gpio 12 0>; /* RESET */
 	};
 };
