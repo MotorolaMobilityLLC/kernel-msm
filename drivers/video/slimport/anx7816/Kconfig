@@ -10,3 +10,9 @@ config SLIMPORT_DYNAMIC_HPD
 	  Slimport set HPD when cable is connected,
 	  HDMI clk is off during slimport cable is not connected
 
+config SLIMPORT_ANX7816_MOD_DISPLAY
+	select MOD_DISPLAY
+	bool "Slimport ANX7816 mod display"
+	default n
+	---help---
+	  ANX7816 support for mod display framework
