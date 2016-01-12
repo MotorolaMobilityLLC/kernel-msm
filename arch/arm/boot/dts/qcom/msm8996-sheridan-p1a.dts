@@ -120,6 +120,7 @@
 	fusb302@22 {
 		/delete-property/ fsa321-audio-switch;
 	};
+	/delete-node/ usb3813@2D;
 };
 
 &muc {
