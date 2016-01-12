@@ -90,6 +90,9 @@
 &muc {
 	gpios = <&tlmm  73 1>,   /* gpio_muc_det_n,    input */
 		<&tlmm 130 0>,   /* gpio_muc_bplus_en, output-low */
+		<&tlmm  34 1>,   /* gpio_muc_int_n,    input */
+		<&tlmm  74 2>,   /* gpio_muc_wake_n,   output-high */
+		<&tlmm  82 1>,   /* gpio_muc_rdy_n,    input */
 		<0>;             /* gpio_muc_ff,       not used */
 };
 
