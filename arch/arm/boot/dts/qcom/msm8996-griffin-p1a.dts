@@ -145,4 +145,5 @@
 	};
 
 	/delete-node/ stmvl53l0@29;
+	/delete-node/ usb3813@2D;
 };
