@@ -224,6 +224,7 @@
 	cs35l34@41 {
 		reg = <0x40>;
 	};
+	/delete-node/ usb3813@2D;
 };
 
 &i2c_8 {
