@@ -40,6 +40,9 @@
 #include <linux/of_platform.h>
 #include <linux/pinctrl/consumer.h>
 
+#include <linux/mod_display.h>
+#include <linux/mod_display_ops.h>
+
 /* Enable or Disable HDCP by default */
 /* hdcp_enable = 1: Enable,  0: Disable */
 int hdcp_disable;
@@ -1599,6 +1602,72 @@ static int anx7816_parse_dt(
 }
 #endif
 
+
+static int slimport_mod_display_handle_available(void *data)
+{
+	struct anx7816_data *anx7816;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7816 = (struct anx7816_data *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int slimport_mod_display_handle_unavailable(void *data)
+{
+	struct anx7816_data *anx7816;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7816 = (struct anx7816_data *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int slimport_mod_display_handle_connect(void *data)
+{
+	struct anx7816_data *anx7816;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7816 = (struct anx7816_data *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int slimport_mod_display_handle_disconnect(void *data)
+{
+	struct anx7816_data *anx7816;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7816 = (struct anx7816_data *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static struct mod_display_ops slimport_mod_display_ops = {
+	.handle_available = slimport_mod_display_handle_available,
+	.handle_unavailable = slimport_mod_display_handle_unavailable,
+	.handle_connect = slimport_mod_display_handle_connect,
+	.handle_disconnect = slimport_mod_display_handle_disconnect,
+	.data = NULL,
+};
+
+static struct mod_display_impl_data slimport_mod_display_impl = {
+	.mod_display_type = MOD_DISPLAY_TYPE_DP,
+	.ops = &slimport_mod_display_ops,
+};
+
 /*
 int anx7816_get_sbl_cable_type(void)
 {
@@ -1753,6 +1822,10 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		}
 	}
 #endif
+
+	slimport_mod_display_ops.data = (void *)anx7816;
+	mod_display_register_impl(&slimport_mod_display_impl);
+
 	pr_debug("%s %s end\n", LOG_TAG, __func__);
 	goto exit;
 
