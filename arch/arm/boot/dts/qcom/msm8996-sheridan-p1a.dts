@@ -117,17 +117,7 @@
 	};
 
 	/delete-node/ stmvl53l0@29;
-<<<<<<< HEAD
-||||||| parent of d2f92b6... IKKRNBSP-3613: arm/dt: msm8996-moto: Add USB3813 Hub
-	fusb302@22 {
-		/delete-property/ fsa321-audio-switch;
-	};
-=======
-	fusb302@22 {
-		/delete-property/ fsa321-audio-switch;
-	};
 	/delete-node/ usb3813@2D;
->>>>>>> d2f92b6... IKKRNBSP-3613: arm/dt: msm8996-moto: Add USB3813 Hub
 };
 
 &muc {
