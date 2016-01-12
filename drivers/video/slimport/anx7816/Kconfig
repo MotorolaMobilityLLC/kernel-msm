@@ -3,3 +3,10 @@ config SLIMPORT_ANX7816
 	help
 	  Slimport Transmitter is a 2K/4K video transmitter chip
 	  over micro-USB connector for smartphone device.
+
+config SLIMPORT_ANX7816_MOD_DISPLAY
+	select MOD_DISPLAY
+	bool "Slimport ANX7816 mod display"
+	default n
+	---help---
+	  ANX7816 support for mod display framework
