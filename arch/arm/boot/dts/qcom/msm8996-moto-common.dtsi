@@ -816,9 +816,15 @@
 
 		gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
 			<&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
+			<&tlmm 34 1>,   /* gpio_muc_int_n,    input */
+			<&tlmm 74 2>,   /* gpio_muc_wake_n,   output-high */
+			<&tlmm 82 1>,   /* gpio_muc_rdy_n,    input */
 			<&tlmm 143 0>;  /* gpio_muc_ff,       output-low */
 		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
 					"gpio_muc_bplus_en",
+					"gpio_muc_int_n",
+					"gpio_muc_wake_n",
+					"gpio_muc_rdy_n",
 					"gpio_muc_ff";
 
 		mmi,muc-ctrl-det-hysteresis = <500>;
@@ -835,8 +841,8 @@
 					<2 0 20>;
 
 		pinctrl-names = "disconnected", "spi_active";
-		pinctrl-0 = <&muc_attach &spi_0_sleep>;
-		pinctrl-1 = <&muc_attach &spi_0_active>;
+		pinctrl-0 = <&muc_attach &spi_0_sleep &muc_spi_ctrl>;
+		pinctrl-1 = <&muc_attach &spi_0_active &muc_spi_ctrl>;
 	};
 
 	muc_svc@0 {
@@ -1348,11 +1354,6 @@
 		interrupt-parent = <&tlmm>;
 		interrupts = <34 0>;
 		spi-max-frequency = <4800000>;
-		gpios = <&tlmm 74 0>, /* WAKE_N */
-			<&tlmm 82 0>; /* RDY_N  */
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&muc_spi_ctrl>;
 
 		mmi,intf-id = /bits/ 8 <3>;
 	};
