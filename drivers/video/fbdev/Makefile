@@ -157,3 +157,5 @@ obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 
 #framebuffer quickdraw driver
 obj-$(CONFIG_FB_QUICKDRAW) += fb_quickdraw.o
+
+obj-$(CONFIG_MOD_DISPLAY) += mod_display.o
