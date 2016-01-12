@@ -559,6 +559,7 @@ static const struct soc_enum ospl2xx_rx_run_diagnostic_enum[] = {
 };
 
 /* PARAM_ID_OPALUM_RX_SET_EXTERNAL_CONFIG */
+#define NUM_RX_CONFIGS 3
 static int ospl2xx_rx_ext_config_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
@@ -568,9 +569,22 @@ static int ospl2xx_rx_ext_config_get(struct snd_kcontrol *kcontrol,
 static int ospl2xx_rx_ext_config_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	int i = ucontrol->value.integer.value[0];
-	int size = ospl2xx_config[i]->size;
-	char config[size+1];
+	int i = 0, size = 0;
+	char *config = NULL;
+
+	mutex_lock(&lr_lock);
+	i = ucontrol->value.integer.value[0];
+	if (i < 0 || i >= NUM_RX_CONFIGS)
+		goto error_return;
+
+	if (ospl2xx_config[i] == NULL)
+		goto error_return;
+
+	size = ospl2xx_config[i]->size;
+
+	config = kzalloc(sizeof(char) * (size+1), GFP_KERNEL);
+	if (config == NULL || ospl2xx_config[i]->data == NULL)
+		goto error_return;
 
 	memcpy(config, ospl2xx_config[i]->data, size);
 	config[size] = '\0';
@@ -581,9 +595,15 @@ static int ospl2xx_rx_ext_config_put(struct snd_kcontrol *kcontrol,
 	ospl2xx_afe_set_ext_config_param(config,
 		PARAM_ID_OPALUM_RX_SET_EXTERNAL_CONFIG);
 
+	kfree(config);
+	mutex_unlock(&lr_lock);
+	return 0;
+
+error_return:
+	kfree(config);
+	mutex_unlock(&lr_lock);
 	return 0;
 }
-#define NUM_RX_CONFIGS 3
 static char const *ospl2xx_rx_ext_config_text[] = {
 	"opalum.rx.ext.config.0",
 	"opalum.rx.ext.config.1",
@@ -747,9 +767,22 @@ static int ospl2xx_tx_ext_config_get(struct snd_kcontrol *kcontrol,
 static int ospl2xx_tx_ext_config_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	int i = ucontrol->value.integer.value[0] + NUM_RX_CONFIGS;
-	int size = ospl2xx_config[i]->size;
-	char config[size+1];
+	int i = 0, size = 0;
+	char *config = NULL;
+
+	mutex_lock(&lr_lock);
+	i = ucontrol->value.integer.value[0] + NUM_RX_CONFIGS;
+	if (i < NUM_RX_CONFIGS || i >= ARRAY_SIZE(ospl2xx_ext_config_tables))
+		goto error_return;
+
+	if (ospl2xx_config[i] == NULL)
+		goto error_return;
+
+	size = ospl2xx_config[i]->size;
+
+	config = kzalloc(sizeof(char) * (size+1), GFP_KERNEL);
+	if (config == NULL || ospl2xx_config[i]->data == NULL)
+		goto error_return;
 
 	memcpy(config, ospl2xx_config[i]->data, size);
 	config[size] = '\0';
@@ -760,6 +793,13 @@ static int ospl2xx_tx_ext_config_put(struct snd_kcontrol *kcontrol,
 	ospl2xx_afe_set_ext_config_param(config,
 		PARAM_ID_OPALUM_TX_SET_EXTERNAL_CONFIG);
 
+	kfree(config);
+	mutex_unlock(&lr_lock);
+	return 0;
+
+error_return:
+	kfree(config);
+	mutex_unlock(&lr_lock);
 	return 0;
 }
 static char const *ospl2xx_tx_ext_config_text[] = {
