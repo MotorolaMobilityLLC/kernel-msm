@@ -25,6 +25,8 @@
 #include <linux/uaccess.h>
 #include <linux/msm_mdp.h>
 
+#include <linux/mod_display.h>
+#include <linux/mod_display_ops.h>
 
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
@@ -2747,6 +2749,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 			MSM_DBA_CHIP_NAME_MAX_LEN);
 	}
 
+	pinfo->is_mod_panel = of_property_read_bool(np,
+		"mmi,mdss-is-mod-panel");
+	pr_info("%s: is_mod_panel %s\n", __func__,
+		pinfo->is_mod_panel ? "enabled" : "disabled");
+
 	return 0;
 
 error:
@@ -2921,6 +2928,71 @@ int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
 	return rc;
 }
 
+static int mdss_mod_display_dsi_handle_available(void *data)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
+
+	pr_debug("%s+\n", __func__);
+
+	ctrl_pdata = (struct mdss_dsi_ctrl_pdata *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int mdss_mod_display_dsi_handle_unavailable(void *data)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
+
+	pr_debug("%s+\n", __func__);
+
+	ctrl_pdata = (struct mdss_dsi_ctrl_pdata *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int mdss_mod_display_dsi_handle_connect(void *data)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
+
+	pr_debug("%s+\n", __func__);
+
+	ctrl_pdata = (struct mdss_dsi_ctrl_pdata *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int mdss_mod_display_dsi_handle_disconnect(void *data)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
+
+	pr_debug("%s+\n", __func__);
+
+	ctrl_pdata = (struct mdss_dsi_ctrl_pdata *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static struct mod_display_ops mdss_mod_display_dsi_ops = {
+	.handle_available = mdss_mod_display_dsi_handle_available,
+	.handle_unavailable = mdss_mod_display_dsi_handle_unavailable,
+	.handle_connect = mdss_mod_display_dsi_handle_connect,
+	.handle_disconnect = mdss_mod_display_dsi_handle_disconnect,
+	.data = NULL,
+};
+
+static struct mod_display_impl_data mdss_mod_display_dsi_impl = {
+	.mod_display_type = MOD_DISPLAY_TYPE_DSI,
+	.ops = &mdss_mod_display_dsi_ops,
+};
+
 int mdss_dsi_panel_init(struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	int ndx)
@@ -2963,6 +3035,12 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 	ctrl_pdata->panel_data.set_param = mdss_dsi_panel_set_param;
+
+	if (pinfo->is_mod_panel) {
+		mdss_mod_display_dsi_ops.data = (void *)ctrl_pdata;
+
+		mod_display_register_impl(&mdss_mod_display_dsi_impl);
+	}
 
 	return 0;
 }

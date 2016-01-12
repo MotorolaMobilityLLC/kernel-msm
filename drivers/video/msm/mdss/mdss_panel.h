@@ -748,6 +748,8 @@ struct mdss_panel_info {
 	struct panel_param *param[PARAM_ID_NUM];
 	u32 forced_tx_mode_ftr_enabled;
 	u32 forced_tx_mode_state;
+
+	bool is_mod_panel;
 };
 
 struct mdss_panel_timing {
