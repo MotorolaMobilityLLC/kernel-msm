@@ -530,6 +530,15 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&tmp108_irq_default>;
 	};
+
+	usb3813@2D {
+		compatible = "microchip,usb3813";
+		reg = <0x2D>;
+		gpios = <&pmi8994_gpios 5 0x20>;   /* HUB_RESET_EN */
+		gpio-labels = "gpio_hub_reset_n";
+		clock-names = "hub_clk";
+		clocks = <&clock_gcc clk_bb_clk2_ao>;
+	};
 };
 
 &soc {
@@ -1148,6 +1157,16 @@
 	};
 
 	gpio@c200 { /* GPIO 3 - ANX_CHIP_PD */
+		qcom,mode = <1>;	/* Digital output*/
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>;	/* VIN2 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <1>;	/* Output high */
+		status = "okay";
+	};
+
+	gpio@c400 { /* GPIO 5 - HUB_RESET_N */
 		qcom,mode = <1>;	/* Digital output*/
 		qcom,pull = <5>;	/* No Pull */
 		qcom,vin-sel = <2>;	/* VIN2 */
