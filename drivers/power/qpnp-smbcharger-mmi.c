@@ -7124,6 +7124,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_ext_lvl;
 	int prev_step;
 	int index;
+	bool src_present;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	if (smbchg_check_and_kick_aicl(chip) || !smbchg_fg_ready(chip))
@@ -7139,6 +7140,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	smbchg_sync_accy_property_status(chip);
 
 	prev_step = chip->stepchg_state;
+	src_present = (chip->usb_present || chip->dc_present);
 
 	if (chip->demo_mode) {
 		chip->stepchg_state = STEP_NONE;
@@ -7153,14 +7155,14 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			smbchg_usb_en(chip, true, REASON_DEMO);
 			smbchg_dc_en(chip, true, REASON_DEMO);
 		}
-	} else if ((chip->stepchg_state == STEP_NONE) && (chip->usb_present)) {
+	} else if ((chip->stepchg_state == STEP_NONE) && (src_present)) {
 		if (batt_mv >= chip->stepchg_voltage_mv)
 			chip->stepchg_state = STEP_ONE;
 		else
 			chip->stepchg_state = STEP_MAX;
 		chip->stepchg_state_holdoff = 0;
 	} else if ((chip->stepchg_state == STEP_MAX) &&
-		   (batt_ma < 0) && (chip->usb_present) &&
+		   (batt_ma < 0) && (src_present) &&
 		   ((batt_mv + HYST_STEP_MV) >= chip->stepchg_voltage_mv)) {
 		batt_ma *= -1;
 
@@ -7180,7 +7182,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		else
 			chip->stepchg_state_holdoff = 0;
 	} else if ((chip->stepchg_state == STEP_ONE) &&
-		   (batt_ma < 0) && (chip->usb_present) &&
+		   (batt_ma < 0) && (src_present) &&
 		   ((batt_mv + HYST_STEP_MV) >=
 		    chip->stepchg_max_voltage_mv)) {
 		batt_ma *= -1;
@@ -7195,7 +7197,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		else
 			chip->stepchg_state_holdoff = 0;
 	} else if ((chip->stepchg_state == STEP_TAPER) &&
-		   (batt_ma < 0) && (chip->usb_present)) {
+		   (batt_ma < 0) && (src_present)) {
 		batt_ma *= -1;
 		if ((batt_soc >= 100) &&
 		    (batt_ma <= chip->stepchg_iterm_ma) &&
@@ -7209,9 +7211,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		else
 			chip->stepchg_state_holdoff = 0;
 	}  else if ((chip->stepchg_state == STEP_FULL) &&
-		    (chip->usb_present) && (batt_soc < 100)) {
+		    (src_present) && (batt_soc < 100)) {
 		chip->stepchg_state = STEP_TAPER;
-	} else if (!chip->usb_present) {
+	} else if (!src_present) {
 		chip->stepchg_state = STEP_NONE;
 		chip->stepchg_state_holdoff = 0;
 	} else
