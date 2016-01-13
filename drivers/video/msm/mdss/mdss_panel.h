@@ -32,8 +32,15 @@ struct panel_id {
 /* worst case prefill lines for all chipsets including all vertical blank */
 #define MDSS_MDP_MAX_PREFILL_FETCH 25
 
+enum hbm_state {
+	HBM_OFF_STATE = 0,
+	HBM_ON_STATE,
+	HBM_STATE_NUM
+};
+
 enum panel_param_id {
-	PARAM_ID_NUM = 0,
+	PARAM_HBM_ID = 0,
+	PARAM_ID_NUM
 };
 
 struct panel_param_val_map {

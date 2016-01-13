@@ -982,6 +982,9 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
+	mdss_dsi_panel_set_param(pdata,
+		PARAM_HBM_ID, HBM_OFF_STATE, true);
+
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
@@ -1129,8 +1132,13 @@ exit_free:
 	return -ENOMEM;
 }
 
+static struct panel_param_val_map hbm_map[HBM_STATE_NUM] = {
+	{"0", "qcom,mdss-dsi-hbm-off-command"},
+	{"1", "qcom,mdss-dsi-hbm-on-command"},
+};
+
 static struct panel_param mdss_dsi_panel_param[PARAM_ID_NUM] = {
-	/* parameters to be added */
+	{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE, false},
 };
 
 static int mdss_panel_parse_param_prop(struct device_node *np,
