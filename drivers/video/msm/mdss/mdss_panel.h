@@ -38,8 +38,18 @@ enum hbm_state {
 	HBM_STATE_NUM
 };
 
+enum cabc_mode {
+	CABC_UI_MODE = 0,
+	CABC_ST_MODE,
+	CABC_MV_MODE,
+	CABC_DIS_MODE,
+	CABC_OFF_MODE,
+	CABC_MODE_NUM
+};
+
 enum panel_param_id {
 	PARAM_HBM_ID = 0,
+	PARAM_CABC_ID,
 	PARAM_ID_NUM
 };
 
