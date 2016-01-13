@@ -72,3 +72,11 @@ config FB_MSM_MDSS_FRC_DEBUG
 	frame rate control (FRC) debugging features to: Collect video frame
 	statistics and check whether its output pattern matches expected
 	cadence.
+
+config FB_MSM_MDSS_PANEL_STATS_OPR
+	depends on FB_MSM_MDSS && DEBUG_FS
+	bool "Enable MDSS Panel OPR statistics"
+	default n
+	---help---
+	Collects OPR statics from the panel and exported to a plain-text file
+	in debugfs.

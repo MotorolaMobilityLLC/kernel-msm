@@ -692,6 +692,7 @@ int mdss_dsi_pinctrl_set_state(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 u32 mdss_dsi_panel_forced_tx_mode_get(struct mdss_panel_info *pinfo);
 void mdss_dsi_panel_forced_tx_mode_set(struct mdss_panel_info *pinfo,
 				bool enable);
+void mdss_dsi_read_panel_stats_opr(struct mdss_dsi_ctrl_pdata *ctrl);
 
 static inline const char *__mdss_dsi_pm_name(enum dsi_pm_type module)
 {
