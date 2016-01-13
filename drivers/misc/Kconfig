@@ -663,6 +663,13 @@ config HD3SS460_MUX
 	  This option enables a device driver for the HD3SS460 which is a
 	  4 x 6 Channel Alternate Mode MUX for Type C Ecosystem.
 
+config USB3813
+	tristate "Microchip USB3813 Hub Controller"
+	default n
+	help
+	  This option enables a device driver for the USB3813 which is a
+	  3-Port Hub Controller.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

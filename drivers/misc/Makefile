@@ -85,3 +85,4 @@ obj-$(CONFIG_DROPBOX) += dropbox.o
 obj-$(CONFIG_FUSB302) += fusb302/
 obj-$(CONFIG_MODS_CODEC_BUS) += mods_codec_bus.o
 obj-$(CONFIG_HD3SS460_MUX) += hd3ss460_mux.o
+obj-$(CONFIG_USB3813) += usb3813_hub.o
