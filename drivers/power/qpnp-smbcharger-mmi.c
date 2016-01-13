@@ -4149,6 +4149,10 @@ static int usbc_notifier_call(struct notifier_block *nb, unsigned long val,
 	int rc, online, disabled;
 	union power_supply_propval prop = {0,};
 
+	/* Disregard type C in factory mode since we use src det*/
+	if (chip->factory_mode)
+		return NOTIFY_OK;
+
 	if (val != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
 
@@ -5178,7 +5182,8 @@ static void usb_insertion_work(struct work_struct *work)
 			     usb_insertion_work.work);
 	int rc, health;
 
-	if (chip->usbc_psy && !chip->usbc_online) {
+	/* If USB C is not online, bail out unless we are in factory mode */
+	if (chip->usbc_psy && !chip->usbc_online && !chip->factory_mode) {
 		pr_smb(PR_MISC, "USBC not online\n");
 		return;
 	}
@@ -5343,7 +5348,8 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	cancel_delayed_work(&chip->usb_insertion_work);
 
 
-	if (!chip->usb_insert_bc1_2) {
+	/* Disregard insertions until type C is online or in factory mode */
+	if (!chip->usb_insert_bc1_2 && !chip->factory_mode) {
 		dev_err(chip->dev, "Wait for USBC Detection\n");
 		return;
 	}
@@ -5520,8 +5526,9 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 	dev_err(chip->dev, "chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
 
-	/* Skip insertion handling if BC1.2 is not enabled */
-	if (chip->usbc_psy && !chip->usb_insert_bc1_2 && usb_present)
+	/* Skip insertion handling if BC1.2 is not enabled or factory mode */
+	if (chip->usbc_psy && !chip->usb_insert_bc1_2 && usb_present
+						&& !chip->factory_mode)
 		return IRQ_HANDLED;
 
 	mutex_lock(&chip->usb_set_present_lock);
@@ -5739,7 +5746,8 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	batt_cold_handler(0, chip);
 	chg_term_handler(0, chip);
 	usbid_change_handler(0, chip);
-	if (!chip->usbc_psy)
+	/* Trigger src detect only if in factory mode */
+	if (!chip->usbc_psy || chip->factory_mode)
 		src_detect_handler(0, chip);
 	smbchg_charging_en(chip, 0);
 #ifdef QCOM_BASE
@@ -8979,7 +8987,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 
 	/* Set initial value of usb present to type C status since src detect
 	 * cannot run until type C detection is done*/
-	chip->usb_present = chip->usbc_online;
+	if (!chip->factory_mode)
+		chip->usb_present = chip->usbc_online;
 	power_supply_set_present(chip->usb_psy, chip->usb_present);
 
 	chip->smb_reboot.notifier_call = smbchg_reboot;
