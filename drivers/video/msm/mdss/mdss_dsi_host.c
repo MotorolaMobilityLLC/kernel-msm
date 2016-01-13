@@ -1428,8 +1428,10 @@ int mdss_dsi_reg_status_check_dropbox(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			mdss_dropbox_report_event(MDSS_DROPBOX_MSG_ESD, 1);
 			dropbox_sent = true;
 		}
-	} else
+	} else {
 		dropbox_sent = false;
+		mdss_dsi_read_panel_stats_opr(ctrl_pdata);
+	}
 
 	return ret;
 }
