@@ -795,6 +795,7 @@ struct mdss_panel_info {
 	struct panel_param *param[PARAM_ID_NUM];
 	u32 forced_tx_mode_ftr_enabled;
 	u32 forced_tx_mode_state;
+	bool opr_stats_enabled;
 };
 
 struct mdss_panel_timing {
@@ -867,13 +868,41 @@ struct mdss_panel_data {
 	struct completion te_done;
 };
 
+/*
+ * Start OPR buffer size to hold 3 hours of screen on time with 8 second
+ * polling.  Max size is 24 hours of data
+ */
+#define OPR_REC_NUM_PER_HR 450
+#define OPR_REC_NUM_INIT (OPR_REC_NUM_PER_HR * 3)
+#define OPR_REC_NUM_MAX (OPR_REC_NUM_PER_HR * 24)
+
+struct __attribute__((__packed__)) mdss_panel_debugfs_stats_opr_record {
+	time_t time_secs;
+	u8 w;
+	u8 r;
+	u8 g;
+	u8 b;
+	u8 brightness;
+};
+
+struct mdss_panel_debugfs_stats_opr {
+	struct mutex opr_lock;
+	int collected_recs;
+	int max_recs;
+	int alloc_recs;
+	struct mdss_panel_debugfs_stats_opr_record *recs;
+};
+
 struct mdss_panel_debugfs_stats {
+	struct mdss_panel_debugfs_stats_opr *opr;
 	u32 wait4pingpong_timeout_cnt;
 	u32 wait4pingpong_timeout_cnt_prev;
 	u32 fifo_err_cnt_prev;
 	u32 phy_err_cnt_prev;
 	u32 err_cnt_prev;
 };
+int mdss_panel_debufs_stats_opr_alloc(struct mdss_panel_debugfs_stats_opr *opr,
+				int new_alloc, bool copy);
 
 struct mdss_panel_debugfs_info {
 	struct dentry *root;
