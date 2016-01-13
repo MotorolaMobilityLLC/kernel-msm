@@ -74,6 +74,7 @@ struct fusb302_i2c_data {
 	struct power_supply usbc_psy;
 	struct power_supply switch_psy;
 	bool fsa321_switch;
+	bool factory_mode;
 };
 
 struct fusb302_i2c_data *fusb_i2c_data;
@@ -2052,6 +2053,19 @@ static ssize_t fusb302_enable_vconn(struct device *dev,
 
 static DEVICE_ATTR(enable_vconn, S_IWUSR | S_IWGRP, NULL, fusb302_enable_vconn);
 
+static bool fusb302_mmi_factory(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
+}
+
 #define IRQ_GPIO_NAME "fusb_irq"
 #ifdef CONFIG_OF
 static int fusb302_parse_dt(struct device *dev, struct fusb302_i2c_data *fusb)
@@ -2102,8 +2116,11 @@ static int fusb302_parse_dt(struct device *dev, struct fusb302_i2c_data *fusb)
 	fusb->irq = gpio_to_irq(fusb->gpios[FUSB_INT_INDEX]);
 	FUSB_LOG("irq_gpio number is %d, irq = %d\n",
 		 fusb->gpios[FUSB_INT_INDEX], fusb->irq);
-	fusb->fsa321_switch = of_property_read_bool(dev->of_node,
-					"fsa321-audio-switch");
+
+	fusb->factory_mode = fusb302_mmi_factory();
+	if (!fusb->factory_mode)
+		fusb->fsa321_switch = of_property_read_bool(dev->of_node,
+							"fsa321-audio-switch");
 	return 0;
 }
 #else
