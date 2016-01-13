@@ -501,7 +501,7 @@ static int msm8996_mclk_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 #ifdef CONFIG_SND_SOC_FLORIDA
 		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
-			ARIZONA_FLL_SRC_SLIMCLK, 1536000, FLORIDA_SYSCLK_RATE);
+			ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
 		if (ret != 0)
 			dev_err(w->codec->dev, "set PLL clk failed\n");
 
@@ -515,7 +515,6 @@ static int msm8996_mclk_event(struct snd_soc_dapm_widget *w,
 			ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
 		if (ret != 0)
 			dev_err(w->codec->dev, "set PLL clk failed\n");
-
 
 		break;
 #else
