@@ -215,9 +215,9 @@ dhd_pno_set_mac_addr(dhd_pub_t *dhd, struct ether_addr *macaddr)
 
 	err = dhd_iovar(dhd, 0, "pfn_macaddr", (char *)&cfg, sizeof(cfg), 1);
 	if (err < 0)
-		DHD_ERROR(("%s : failed to execute pfn_macaddr\n", __FUNCTION__));
-
-	return err;
+		DHD_PNO(("%s : failed to execute pfn_macaddr\n", __FUNCTION__));
+	/* just ignore the return value because some firmware do not support this setting */
+	return 0;
 }
 
 static int
