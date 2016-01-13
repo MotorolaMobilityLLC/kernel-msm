@@ -1924,6 +1924,10 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 				__func__,
 				ctl->num, rc, ctx->pp_timeout_report_cnt,
 				atomic_read(&ctx->koff_cnt));
+		if (pdata->panel_info.debugfs_info)
+			pdata->panel_info.debugfs_info->
+				stats.wait4pingpong_timeout_cnt++;
+
 		if (ctx->pp_timeout_report_cnt == 0) {
 			MDSS_XLOG(0xbad);
 			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0_ctrl", "dsi0_phy",
