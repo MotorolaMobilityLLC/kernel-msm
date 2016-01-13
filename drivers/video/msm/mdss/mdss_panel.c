@@ -18,8 +18,10 @@
 #include <linux/slab.h>
 #include <linux/fb.h>
 #include <linux/uaccess.h>
+#include <linux/vmalloc.h>
 
 #include "mdss_panel.h"
+#include "mdss_dsi.h"
 
 #define NUM_INTF 2
 
@@ -40,6 +42,167 @@ static char dsc_rc_range_max_qp_1_1_scr1[] = {4, 4, 5, 6, 7, 7, 7, 8, 9, 10, 10,
 			 11, 11, 12, 13};
 static char dsc_rc_range_bpg_offset[] = {2, 0, 0, -2, -4, -6, -8, -8,
 			-8, -10, -10, -12, -12, -12, -12};
+
+struct mdss_panel_debugfs_stats_dump {
+	struct mdss_panel_debugfs_info *dfs;
+	struct mutex fop_lock;
+	bool file_open;
+	char *buf;
+	size_t buf_len;
+};
+
+static int mdss_panel_debugfs_stats_open(struct inode *inode, struct file *file)
+{
+	int ret = -EPERM;
+	struct mdss_panel_debugfs_stats_dump *dbg = inode->i_private;
+
+	if (dbg) {
+		mutex_lock(&dbg->fop_lock);
+		if (dbg->file_open) {
+			pr_err("File already opened\n");
+		} else {
+			dbg->file_open = 1;
+			/* non-seekable */
+			file->f_mode &=
+				~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE);
+			file->private_data = inode->i_private;
+			ret = 0;
+		}
+		mutex_unlock(&dbg->fop_lock);
+	}
+	return ret;
+}
+
+static int mdss_panel_debugfs_stats_release(struct inode *inode,
+					struct file *file)
+{
+	struct mdss_panel_debugfs_stats_dump *dbg = file->private_data;
+
+	if (dbg) {
+		mutex_lock(&dbg->fop_lock);
+		if (dbg->buf) {
+			vfree(dbg->buf);
+			dbg->buf_len = 0;
+			dbg->buf = NULL;
+		}
+		dbg->file_open = 0;
+		mutex_unlock(&dbg->fop_lock);
+	}
+	return 0;
+}
+
+#define stats_print(dbg, len, fmt, ...) \
+	(len += scnprintf(dbg->buf + len, dbg->buf_len - len,\
+			fmt, ##__VA_ARGS__))
+
+static ssize_t mdss_panel_debugfs_stats_read(struct file *file,
+			char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct mdss_panel_debugfs_stats_dump *dbg = file->private_data;
+	size_t len;
+
+	if (!dbg || !dbg->dfs || !dbg->dfs->rt_pdata) {
+		pr_err("%s: invalid handle\n", __func__);
+		return -ENODEV;
+	}
+
+	if (!dbg->buf) {
+		struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+		struct mdss_panel_info *pinfo = NULL;
+		struct mdss_panel_debugfs_stats *stats = &dbg->dfs->stats;
+
+		pinfo = &dbg->dfs->rt_pdata->panel_info;
+		ctrl_pdata = container_of(dbg->dfs->rt_pdata,
+					struct mdss_dsi_ctrl_pdata,
+					panel_data);
+		dbg->buf_len = 512;
+
+		dbg->buf = vmalloc(dbg->buf_len);
+		if (!dbg->buf)
+			return -ENOMEM;
+
+		len = 0;
+		/* Panel basic info */
+		stats_print(dbg, len, "panel_name=%s\n", pinfo->panel_name);
+		stats_print(dbg, len, "panel_ver=0x%08x\n", pinfo->panel_ver);
+
+		/* DSI FIFO Errors */
+		stats_print(dbg, len, "dsi_fifo_error_count_new=%u\n",
+			(ctrl_pdata->err_cont.fifo_err_cnt -
+				stats->fifo_err_cnt_prev));
+		stats->fifo_err_cnt_prev = ctrl_pdata->err_cont.fifo_err_cnt;
+		stats_print(dbg, len, "dsi_fifo_error_count_accumulate=%u\n",
+			stats->fifo_err_cnt_prev);
+
+		/* DSI PHY Errors */
+		stats_print(dbg, len, "dsi_phy_error_count_new=%u\n",
+			(ctrl_pdata->err_cont.phy_err_cnt -
+				stats->phy_err_cnt_prev));
+		stats->phy_err_cnt_prev = ctrl_pdata->err_cont.phy_err_cnt;
+		stats_print(dbg, len, "dsi_phy_error_count_accumulate=%u\n",
+			stats->phy_err_cnt_prev);
+
+		/* DSI Errors */
+		stats_print(dbg, len, "dsi_error_count_new=%u\n",
+			(ctrl_pdata->err_cont.err_cnt -
+				stats->err_cnt_prev));
+		stats->err_cnt_prev = ctrl_pdata->err_cont.err_cnt;
+		stats_print(dbg, len, "dsi_error_count_accumulate=%u\n",
+			stats->err_cnt_prev);
+
+		/* Ping pong timeout */
+		stats_print(dbg, len, "wait4pingpong_timeout_count_new=%u\n",
+			(stats->wait4pingpong_timeout_cnt -
+				stats->wait4pingpong_timeout_cnt_prev));
+		stats->wait4pingpong_timeout_cnt_prev =
+			stats->wait4pingpong_timeout_cnt;
+		stats_print(dbg, len,
+			"wait4pingpong_timeout_count_accumulate=%u\n",
+			stats->wait4pingpong_timeout_cnt_prev);
+
+		dbg->buf_len = len;
+	}
+
+	return simple_read_from_buffer(user_buf, count, ppos,
+				dbg->buf, dbg->buf_len);
+}
+
+
+static const struct file_operations mdss_panel_debugfs_stats_fops = {
+	.open = mdss_panel_debugfs_stats_open,
+	.release = mdss_panel_debugfs_stats_release,
+	.read = mdss_panel_debugfs_stats_read,
+};
+
+int mdss_panel_debugfs_stats_setup(struct mdss_panel_debugfs_info *debugfs_info,
+				struct mdss_panel_info *panel_info,
+				struct dentry *parent)
+{
+	struct mdss_panel_debugfs_stats_dump *dbg;
+	struct dentry *ent;
+
+	if (!debugfs_info || !panel_info || !parent)
+		return -ENODEV;
+
+	dbg = kzalloc(sizeof(struct mdss_panel_debugfs_stats_dump), GFP_KERNEL);
+	if (!dbg)
+		return -ENOMEM;
+
+	mutex_init(&dbg->fop_lock);
+	ent = debugfs_create_file("stats", 0444, parent, dbg,
+				&mdss_panel_debugfs_stats_fops);
+	if (IS_ERR_OR_NULL(ent)) {
+		pr_err("failed to create stats file\n");
+		goto err_file;
+	}
+
+	dbg->dfs = debugfs_info;
+	return 0;
+err_file:
+	mutex_destroy(&dbg->fop_lock);
+	kfree(dbg);
+	return -ENODEV;
+}
 
 int mdss_panel_debugfs_fbc_setup(struct mdss_panel_debugfs_info *debugfs_info,
 	struct mdss_panel_info *panel_info, struct dentry *parent)
@@ -445,8 +608,9 @@ int mdss_panel_debugfs_panel_setup(struct mdss_panel_debugfs_info *debugfs_info,
 	return 0;
 }
 
-int mdss_panel_debugfs_setup(struct mdss_panel_info *panel_info, struct dentry
-		*parent, char *intf_str)
+int mdss_panel_debugfs_setup(struct mdss_panel_data *pdata,
+			struct mdss_panel_info *panel_info, struct dentry
+			*parent, char *intf_str)
 {
 	struct mdss_panel_debugfs_info *debugfs_info;
 	debugfs_info = kzalloc(sizeof(*debugfs_info), GFP_KERNEL);
@@ -464,12 +628,15 @@ int mdss_panel_debugfs_setup(struct mdss_panel_info *panel_info, struct dentry
 		return -ENODEV;
 	}
 
+	debugfs_info->rt_pdata = pdata;
 	debugfs_create_u32("override_flag", 0644, parent,
 			(u32 *)&debugfs_info->override_flag);
 
 	mdss_panel_debugfs_fbc_setup(debugfs_info, panel_info,
 				debugfs_info->root);
 	mdss_panel_debugfs_panel_setup(debugfs_info, panel_info,
+				debugfs_info->root);
+	mdss_panel_debugfs_stats_setup(debugfs_info, panel_info,
 				debugfs_info->root);
 
 	debugfs_info->override_flag = 0;
@@ -501,8 +668,9 @@ int mdss_panel_debugfs_init(struct mdss_panel_info *panel_info,
 
 	do {
 		snprintf(intf_str, sizeof(intf_str), "intf%d", intf_index++);
-		rc = mdss_panel_debugfs_setup(&pdata->panel_info, parent,
-				intf_str);
+		rc = mdss_panel_debugfs_setup(pdata,
+					&pdata->panel_info, parent,
+					intf_str);
 		if (rc) {
 			pr_err("error in initilizing panel debugfs\n");
 			mdss_panel_debugfs_cleanup(&pdata->panel_info);
