@@ -867,12 +867,22 @@ struct mdss_panel_data {
 	struct completion te_done;
 };
 
+struct mdss_panel_debugfs_stats {
+	u32 wait4pingpong_timeout_cnt;
+	u32 wait4pingpong_timeout_cnt_prev;
+	u32 fifo_err_cnt_prev;
+	u32 phy_err_cnt_prev;
+	u32 err_cnt_prev;
+};
+
 struct mdss_panel_debugfs_info {
 	struct dentry *root;
 	struct dentry *parent;
 	struct mdss_panel_info panel_info;
 	u32 override_flag;
 	struct mdss_panel_debugfs_info *next;
+	struct mdss_panel_data *rt_pdata;
+	struct mdss_panel_debugfs_stats stats;
 };
 
 /**
