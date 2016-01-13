@@ -29,6 +29,23 @@ struct panel_id {
 #define MDSS_DSI_RST_SEQ_LEN	10
 #define MDSS_MDP_MAX_FETCH 12
 
+enum panel_param_id {
+	PARAM_ID_NUM = 0,
+};
+
+struct panel_param_val_map {
+	char *name;
+	char *prop;
+};
+
+struct panel_param {
+	char *param_name;
+	struct panel_param_val_map *val_map;
+	u16 val_max;
+	u16 value;
+	bool is_supported;
+};
+
 /* panel type list */
 #define NO_PANEL		0xffff	/* No Panel */
 #define MDDI_PANEL		1	/* MDDI */
@@ -431,11 +448,14 @@ struct mdss_panel_info {
 	struct edp_panel_info edp;
 
 	bool blank_progress_notify_enabled;
+	struct panel_param *param[PARAM_ID_NUM];
 };
 
 struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
+	int (*set_param)(struct mdss_panel_data *pdata,
+		u16 id, u16 value, bool sent_cmd);
 	unsigned char *mmss_cc_base;
 
 	/**
@@ -633,4 +653,15 @@ int mdss_panel_get_boot_cfg(void);
  * returns true if mdss is ready, else returns false.
  */
 bool mdss_is_ready(void);
+
+static inline bool mdss_panel_param_is_supported(struct mdss_panel_info *p,
+	u16 id)
+{
+	if (id < PARAM_ID_NUM && p && p->param[id] &&
+		p->param[id]->is_supported)
+		return true;
+
+	return false;
+};
+
 #endif /* MDSS_PANEL_H */

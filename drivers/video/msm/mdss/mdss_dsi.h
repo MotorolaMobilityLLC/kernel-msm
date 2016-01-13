@@ -373,6 +373,8 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds video2cmd;
 	struct dsi_panel_cmds cmd2video;
 
+	struct dsi_panel_cmds *param_cmds[PARAM_ID_NUM];
+
 	struct dcs_cmd_list cmdlist;
 	struct completion dma_comp;
 	struct completion mdp_comp;
