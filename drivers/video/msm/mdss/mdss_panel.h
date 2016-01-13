@@ -46,8 +46,15 @@ enum fps_resolution {
 #define SIM_SW_TE_PANEL	"sim-swte"
 #define SIM_HW_TE_PANEL	"sim-hwte"
 
+enum hbm_state {
+	HBM_OFF_STATE = 0,
+	HBM_ON_STATE,
+	HBM_STATE_NUM
+};
+
 enum panel_param_id {
-	PARAM_ID_NUM = 0,
+	PARAM_HBM_ID = 0,
+	PARAM_ID_NUM
 };
 
 struct panel_param_val_map {
