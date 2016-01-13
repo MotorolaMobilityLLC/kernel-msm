@@ -69,3 +69,11 @@ config MDSS_DSI_MOD_DISPLAY
 	default n
 	---help---
 	  MDSS DSI support for mod display framework
+
+config FB_MSM_MDSS_PANEL_STATS_OPR
+	depends on FB_MSM_MDSS && DEBUG_FS
+	bool "Enable MDSS Panel OPR statistics"
+	default n
+	---help---
+	Collects OPR statics from the panel and exported to a plain-text file
+	in debugfs.
