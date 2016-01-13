@@ -1093,8 +1093,31 @@ static int __maybe_unused mdss_fb_get_param(struct device *dev,
 	return 0;
 }
 
+static ssize_t hbm_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	const char *name;
+	ssize_t ret;
+
+	ret = mdss_fb_get_param(dev, PARAM_HBM_ID, &name);
+	if (ret < 0)
+		return ret;
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", name);
+}
+
+static ssize_t hbm_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	ssize_t ret;
+
+	ret = mdss_fb_set_param(dev, PARAM_HBM_ID, buf);
+	return ret ? ret : count;
+}
+
 static struct device_attribute param_attrs[PARAM_ID_NUM] = {
-	/* attributes to be added */
+	__ATTR(hbm, S_IWUSR | S_IWGRP | S_IRUSR | S_IRGRP, hbm_show, hbm_store),
 };
 
 static int mdss_fb_create_param_sysfs(struct msm_fb_data_type *mfd)
