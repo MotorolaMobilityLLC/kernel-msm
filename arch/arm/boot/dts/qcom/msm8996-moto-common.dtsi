@@ -748,11 +748,10 @@
 		spi-max-frequency = <50000000>;
 
 		qcom,infinite-mode = <0>;
-		/* TODO: undo when QCom TZ issues resolved */
-		/* qcom,use-bam; */
+		qcom,use-bam;
 		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <12>;
-		qcom,bam-producer-pipe-index = <13>;
+		qcom,bam-consumer-pipe-index = <16>;
+		qcom,bam-producer-pipe-index = <17>;
 		qcom,master-id = <84>;
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
