@@ -741,8 +741,8 @@ extern int dhd_ifidx2hostidx(struct dhd_info *dhd, int ifidx);
 extern int dhd_net2idx(struct dhd_info *dhd, struct net_device *net);
 extern struct net_device * dhd_idx2net(void *pub, int ifidx);
 extern int net_os_send_hang_message(struct net_device *dev);
-extern int wl_host_event(dhd_pub_t *dhd_pub, int *idx, void *pktdata,
-                         wl_event_msg_t *, void **data_ptr,  void *);
+extern int wl_host_event(dhd_pub_t *dhd_pub, int *idx, void *pktdata, uint16 pktlen,
+	wl_event_msg_t *, void **data_ptr,  void *);
 extern void wl_event_to_host_order(wl_event_msg_t * evt);
 
 extern int dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *buf, int len);

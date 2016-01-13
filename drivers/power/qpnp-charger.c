@@ -2645,27 +2645,11 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 		return POWER_SUPPLY_CHARGE_TYPE_NONE;
 	}
 
-	if ((ASUS_hwID == SPARROW_PR3) || (ASUS_hwID == WREN_PR3)) {
-		MPP4_read = get_prop_mpp4_voltage(chip);
-		pr_debug("lastTimeCableType:%d, ADC: %d\n", lastTimeCableType, MPP4_read);
-		if (lastTimeCableType == 4)
-			gpio_set_value(chip->chg_gpio, 1);
-		else
-			gpio_set_value(chip->chg_gpio, 0);
-		if (lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))
-			return POWER_SUPPLY_CHARGE_TYPE_FAST;
-		else if (lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2850000))
-			return POWER_SUPPLY_CHARGE_TYPE_FAST;
-		else if (lastTimeCableType == 3)
-			return POWER_SUPPLY_CHARGE_TYPE_FAST;
-		else if (lastTimeCableType == 2 || lastTimeCableType == 4)
-			return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
-		else
-			return POWER_SUPPLY_CHARGE_TYPE_NONE;
-	}
-	else
-		if (chgr_sts & TRKL_CHG_ON_IRQ || chgr_sts & FAST_CHG_ON_IRQ)
-			return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
+	if (chgr_sts & TRKL_CHG_ON_IRQ)
+		return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
+	if (chgr_sts & FAST_CHG_ON_IRQ)
+		return POWER_SUPPLY_CHARGE_TYPE_FAST;
+
 	return POWER_SUPPLY_CHARGE_TYPE_NONE;
 }
 
@@ -2684,8 +2668,8 @@ get_prop_usb_type(struct qpnp_chg_chip *chip)
 			return POWER_SUPPLY_USB_TYPE_AC_FAST;
 		}
 		else if (lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2850000)) {
-			pr_debug("POWER_SUPPLY_USB_TYPE_POWER_BANK\n");
-			return POWER_SUPPLY_USB_TYPE_POWER_BANK;
+			pr_debug("POWER_SUPPLY_USB_TYPE_AC_FAST\n");
+			return POWER_SUPPLY_USB_TYPE_AC_FAST;
 		}
 		else if (lastTimeCableType == 2) {
 			pr_debug("POWER_SUPPLY_USB_TYPE_USB_SDP\n");
@@ -2702,6 +2686,17 @@ get_prop_usb_type(struct qpnp_chg_chip *chip)
 		else {
 		pr_debug("POWER_SUPPLY_USB_TYPE_UNKNOWN\n");
 		return POWER_SUPPLY_USB_TYPE_UNKNOWN;
+		}
+	} else {
+		if (lastTimeCableType == 4) {
+			pr_debug("POWER_SUPPLY_USB_TYPE_USB_DCP\n");
+			return POWER_SUPPLY_USB_TYPE_AC_NORMAL;
+		} else if (lastTimeCableType == 2) {
+			pr_debug("POWER_SUPPLY_USB_TYPE_USB_SDP\n");
+			return POWER_SUPPLY_USB_TYPE_USB_NORMAL;
+		} else {
+			pr_debug("POWER_SUPPLY_USB_TYPE_UNKNOWN\n");
+			return POWER_SUPPLY_USB_TYPE_UNKNOWN;
 		}
 	}
 	pr_debug("POWER_SUPPLY_USB_TYPE_UNKNOWN\n");
@@ -4138,13 +4133,13 @@ qpnp_eoc_work(struct work_struct *work)
 		if ((ASUS_hwID == SPARROW_SR2) || (ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
 			if (!chip->bat_is_warm && !chip->bat_is_cool) {
 				if (get_prop_battery_voltage_now(chip) > 4200000) {
-					printk("VBAT is larger than 4.2V, modify the charging current to 150 mA\n");
+					pr_debug("VBAT is larger than 4.2V, modify the charging current to 150 mA\n");
 					qpnp_chg_ibatmax_set(chip, 150);
 				} else if(get_prop_battery_voltage_now(chip) < 3200000 ) {
-					printk("VBAT is smaller than 3.2V, modify the charging current to 50 mA\n");
+					pr_debug("VBAT is smaller than 3.2V, modify the charging current to 50 mA\n");
 					qpnp_chg_ibatmax_set(chip, 50);
 				} else {
-					printk("VBAT is between 3.2V and 4.2V, modify the charging current to 350 mA\n");
+					pr_debug("VBAT is between 3.2V and 4.2V, modify the charging current to 350 mA\n");
 					qpnp_chg_ibatmax_set(chip, 350);
 				}
 			}
@@ -4152,29 +4147,29 @@ qpnp_eoc_work(struct work_struct *work)
 		if (ASUS_hwID == SPARROW_PR3) {
 			if (!chip->bat_is_warm && !chip->bat_is_cool) {
 				MPP4_read = get_prop_mpp4_voltage(chip);
-				printk("MPP4_read: %d\n", MPP4_read);
+				pr_debug("MPP4_read: %d\n", MPP4_read);
 				if (lastTimeCableType == 4)
 					gpio_set_value(chip->chg_gpio, 1);
 				else
 					gpio_set_value(chip->chg_gpio, 0);
 				if (get_prop_battery_voltage_now(chip) < 3000000) {
-					printk("VBAT is smaller than 3V, modify the charging current to 50 mA\n\n");
+					pr_debug("VBAT is smaller than 3V, modify the charging current to 50 mA\n\n");
 					qpnp_chg_ibatmax_set(chip, 50);
 				} else {
 					if (lastTimeCableType == 3) {
 						qpnp_chg_iusbmax_set(chip, 1400);
 						qpnp_chg_ibatmax_set(chip, 1050);
-						printk("[CDP]3C charging mode, modify the charging current to 1050 mA\n");
+						pr_debug("[CDP]3C charging mode, modify the charging current to 1050 mA\n");
 					}
 					else if ((lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2850000)) ||
 							(lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))) {
 						qpnp_chg_iusbmax_set(chip, 1400);
 						qpnp_chg_ibatmax_set(chip, 1050);
-						printk("[DCP]3C charging mode, modify the charging current to 1050 mA\n");
+						pr_debug("[DCP]3C charging mode, modify the charging current to 1050 mA\n");
 					}
 					else {
 						qpnp_chg_ibatmax_set(chip, 350);
-						printk("1C charging mode, modify the charging current to 350 mA\n");
+						pr_debug("1C charging mode, modify the charging current to 350 mA\n");
 					}
 				}
 			}
@@ -4183,13 +4178,13 @@ qpnp_eoc_work(struct work_struct *work)
 		if ((ASUS_hwID == WREN_EVB_SR) || (ASUS_hwID == WREN_ER) || (ASUS_hwID == WREN_PR)){
 			if (!chip->bat_is_warm && !chip->bat_is_cool) {
 				if (get_prop_battery_voltage_now(chip) > 4200000) {
-					printk("VBAT is larger than 4.2V, modify the charging current to 150 mA\n");
+					pr_debug("VBAT is larger than 4.2V, modify the charging current to 150 mA\n");
 					qpnp_chg_ibatmax_set(chip, 150);
 				} else if(get_prop_battery_voltage_now(chip) < 3200000 ) {
-					printk("VBAT is smaller than 3.2V, modify the charging current to 50 mA\n");
+					pr_debug("VBAT is smaller than 3.2V, modify the charging current to 50 mA\n");
 					qpnp_chg_ibatmax_set(chip, 50);
 				} else {
-					printk("VBAT is between 3.2V and 4.2V, modify the charging current to 250 mA\n");
+					pr_debug("VBAT is between 3.2V and 4.2V, modify the charging current to 250 mA\n");
 					qpnp_chg_ibatmax_set(chip, 250);
 				}
 			}
@@ -4197,29 +4192,29 @@ qpnp_eoc_work(struct work_struct *work)
 		if (ASUS_hwID == WREN_PR3) {
 			if (!chip->bat_is_warm && !chip->bat_is_cool) {
 				MPP4_read = get_prop_mpp4_voltage(chip);
-				printk("MPP4_read: %d\n", MPP4_read);
+				pr_debug("MPP4_read: %d\n", MPP4_read);
 				if (lastTimeCableType == 4)
 					gpio_set_value(chip->chg_gpio, 1);
 				else
 					gpio_set_value(chip->chg_gpio, 0);
 				if (get_prop_battery_voltage_now(chip) < 3000000) {
-					printk("VBAT is smaller than 3V, modify the charging current to 50 mA\n");
+					pr_debug("VBAT is smaller than 3V, modify the charging current to 50 mA\n");
 					qpnp_chg_ibatmax_set(chip, 50);
 				} else {
 					if (lastTimeCableType == 3) {
 						qpnp_chg_iusbmax_set(chip, 1400);
 						qpnp_chg_ibatmax_set(chip, 800);
-						printk("[CDP]3C charging mode, modify the charging current to 800 mA\n");
+						pr_debug("[CDP]3C charging mode, modify the charging current to 800 mA\n");
 					}
 					else if ((lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2850000)) ||
 							(lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))) {
 						qpnp_chg_iusbmax_set(chip, 1400);
 						qpnp_chg_ibatmax_set(chip, 800);
-						printk("[DCP]3C charging mode, modify the charging current to 800 mA\n");
+						pr_debug("[DCP]3C charging mode, modify the charging current to 800 mA\n");
 					}
 					else {
 						qpnp_chg_ibatmax_set(chip, 250);
-						printk("1C charging mode, modify the charging current to 250 mA\n");
+						pr_debug("1C charging mode, modify the charging current to 250 mA\n");
 					}
 				}
 			}
