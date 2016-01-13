@@ -1380,6 +1380,18 @@ void mdss_dsi_panel_parse_forced_tx_mode(struct device_node *np,
 	}
 }
 
+static void mdss_dsi_panel_parse_stats(struct device_node *np,
+				struct mdss_panel_info *pinfo)
+{
+	/* Only enable OPR stat collection on panels and builds that
+	   support it */
+	pinfo->opr_stats_enabled = false;
+#ifdef CONFIG_FB_MSM_MDSS_PANEL_STATS_OPR
+	pinfo->opr_stats_enabled =
+		of_property_read_bool(np, "qcom,mdss-panel-opr-stats-enabled");
+#endif
+}
+
 static struct panel_param_val_map hbm_map[HBM_STATE_NUM] = {
 	{"0", "qcom,mdss-dsi-hbm-off-command"},
 	{"1", "qcom,mdss-dsi-hbm-on-command"},
@@ -2328,6 +2340,8 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 
 	mdss_dsi_panel_parse_forced_tx_mode(np, pinfo);
 
+	mdss_dsi_panel_parse_stats(np, pinfo);
+
 	return 0;
 }
 
@@ -3256,6 +3270,65 @@ int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
 	kfree(reg_access_buf);
 
 	return rc;
+}
+
+void mdss_dsi_read_panel_stats_opr(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+#ifdef CONFIG_FB_MSM_MDSS_PANEL_STATS_OPR
+	struct mdss_panel_debugfs_info *dfs;
+	struct mdss_panel_debugfs_stats_opr *stats;
+	char opr_buf[15] = {0};
+	char brightness;
+	int ret = 0;
+
+	if (!ctrl)
+		return;
+	dfs = ctrl->panel_data.panel_info.debugfs_info;
+	if (!dfs || !dfs->stats.opr || !dfs->stats.opr->recs)
+		return;
+	stats = dfs->stats.opr;
+
+	mutex_lock(&stats->opr_lock);
+	/* Stop collecting if we are full */
+	if (stats->collected_recs >= stats->alloc_recs) {
+		ret = mdss_panel_debufs_stats_opr_alloc(stats,
+							stats->alloc_recs * 2,
+							true);
+	}
+	mutex_unlock(&stats->opr_lock);
+	if (ret)
+		return;
+
+	/* Read OPR register */
+	ret = mdss_dsi_panel_cmd_read(ctrl, 0xb2, 0x00,
+				NULL, opr_buf, sizeof(opr_buf));
+	if (ret != sizeof(opr_buf)) {
+		pr_err("%s: failed to read OPR, ret = %d\n", __func__, ret);
+	} else {
+		/* Read brightness register */
+		ret = mdss_dsi_panel_cmd_read(ctrl, 0x52, 0x00,
+					NULL, &brightness, 1);
+		if (ret != 1) {
+			pr_err("%s: failed to read brightness, ret = %d\n",
+				__func__, ret);
+		} else {
+			struct mdss_panel_debugfs_stats_opr_record *rp;
+			struct timeval time;
+
+			mutex_lock(&stats->opr_lock);
+			rp = &stats->recs[stats->collected_recs];
+			do_gettimeofday(&time);
+			rp->time_secs = (time_t)(time.tv_sec);
+			rp->w = opr_buf[11];
+			rp->r = opr_buf[12];
+			rp->g = opr_buf[13];
+			rp->b = opr_buf[14];
+			rp->brightness = brightness;
+			stats->collected_recs++;
+			mutex_unlock(&stats->opr_lock);
+		}
+	}
+#endif
 }
 
 int mdss_dsi_panel_init(struct device_node *node,
