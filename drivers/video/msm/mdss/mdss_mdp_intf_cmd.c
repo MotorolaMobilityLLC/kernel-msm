@@ -1950,6 +1950,10 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 				ctl->num, rc, ctx->pp_timeout_report_cnt,
 				atomic_read(&ctx->koff_cnt));
 
+		if (pdata->panel_info.debugfs_info)
+			pdata->panel_info.debugfs_info->
+				stats.wait4pingpong_timeout_cnt++;
+
 		/* enable TE irq to check if it is coming from the panel */
 		te_irq = gpio_to_irq(pdata->panel_te_gpio);
 		enable_irq(te_irq);
