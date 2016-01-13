@@ -1004,6 +1004,115 @@ static struct attribute_group panel_id_attr_group = {
 	.attrs = panel_id_attrs,
 };
 
+static struct panel_param *mdss_fb_dev_to_param(struct device *dev, u16 id)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_info *pinfo = mfd->panel_info;
+	struct panel_param *param;
+
+	if (!pinfo) {
+		pr_err("pinfo is null\n");
+		return NULL;
+	}
+
+	if (id >= PARAM_ID_NUM) {
+		pr_err("panel param id %d not available\n", id);
+		return NULL;
+	}
+
+	param = pinfo->param[id];
+	if (!param)
+		pr_err("panel param is null\n");
+
+	return param;
+}
+
+static int __maybe_unused mdss_fb_set_param(struct device *dev,
+		u16 id, const char *name)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	struct mdss_panel_data *pdata = dev_get_platdata(&mfd->pdev->dev);
+	struct panel_param *param;
+	int ret = -EINVAL;
+	u16 value;
+	const char *param_name, *val_name;
+
+	if (!ctl || !pdata || !pdata->set_param) {
+		pr_err("mdp or panel data is null\n");
+		return -EINVAL;
+	}
+
+	param = mdss_fb_dev_to_param(dev, id);
+	if (!param)
+		return -EINVAL;
+
+	param_name = param->param_name;
+	for (value = 0; value < param->val_max; value++) {
+		val_name = param->val_map[value].name;
+		if (val_name && !strncmp(name, val_name, strlen(val_name)))
+			break;
+	}
+
+	if (value >= param->val_max) {
+		pr_err("invalid value name %s for %s\n", name, param_name);
+		return -EINVAL;
+	}
+
+	mutex_lock(&ctl->offlock);
+	if (mdss_fb_is_power_off(mfd)) {
+		pr_warn("panel is not powered\n");
+		ret = -EPERM;
+		goto unlock;
+	}
+
+	ret = pdata->set_param(pdata, id, value, true);
+	if (ret)
+		pr_err("failed to set %s at %s\n", param_name, val_name);
+	else
+		pr_info("succeeded to set %s at %s\n", param_name, val_name);
+
+unlock:
+	mutex_unlock(&ctl->offlock);
+	return ret;
+}
+
+static int __maybe_unused mdss_fb_get_param(struct device *dev,
+		u16 id, const char **name)
+{
+	struct panel_param *param = mdss_fb_dev_to_param(dev, id);
+
+	if (!param || !name) {
+		pr_err("param or name is null\n");
+		return -EINVAL;
+	}
+
+	*name = param->val_map[param->value].name;
+	return 0;
+}
+
+static struct device_attribute param_attrs[PARAM_ID_NUM] = {
+	/* attributes to be added */
+};
+
+static int mdss_fb_create_param_sysfs(struct msm_fb_data_type *mfd)
+{
+	int i, rc = 0;
+
+	for (i = 0; i < PARAM_ID_NUM; i++) {
+		if (!mdss_panel_param_is_supported(mfd->panel_info, i))
+			continue;
+		rc = device_create_file(mfd->fbi->dev, &param_attrs[i]);
+		if (rc) {
+			pr_err("failed to create sysfs for id %d\n", i);
+			break;
+		}
+	}
+	return rc;
+}
+
 static int mdss_fb_create_sysfs(struct msm_fb_data_type *mfd)
 {
 	int rc;
@@ -1017,6 +1126,10 @@ static int mdss_fb_create_sysfs(struct msm_fb_data_type *mfd)
 	rc = sysfs_create_group(&mfd->fbi->dev->kobj, &panel_id_attr_group);
 	if (rc)
 		pr_err("panel id group creation failed, rc=%d\n", rc);
+
+	rc = mdss_fb_create_param_sysfs(mfd);
+	if (rc)
+		pr_err("panel parameter sysfs creation failed, rc=%d\n", rc);
 
 err:
 	return rc;
