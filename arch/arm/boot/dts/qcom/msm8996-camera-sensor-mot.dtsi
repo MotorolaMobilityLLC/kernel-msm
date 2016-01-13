@@ -19,6 +19,12 @@
 		label = "sky81298";
 		qcom,flash-name = "sky81298";
 		qcom,flash-type = <1>;
+		cam_vio-supply = <&pm8994_lvs1>;
+		cam_vaf-supply = <&pm8994_l23>;
+		qcom,cam-vreg-name = "cam_vaf", "cam_vio";
+		qcom,cam-vreg-min-voltage = <1800000 0>;
+		qcom,cam-vreg-max-voltage = <1800000 0>;
+		qcom,cam-vreg-op-mode = <100000 0>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_flash_active>;
