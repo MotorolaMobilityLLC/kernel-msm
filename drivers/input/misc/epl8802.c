@@ -506,10 +506,18 @@ static void epl_sensor_report_ps_status(void)
 {
 	struct epl_sensor_priv *epld = epl_sensor_obj;
 	ktime_t	timestamp;
+	int distance;
 	timestamp = ktime_get();
 	LOG_INFO("epl_sensor.ps.data.data=%d, value=%d\n", epl_sensor.ps.data.data, epl_sensor.ps.compare_low >> 3);
 
-	input_report_abs(epld->ps_input_dev, ABS_DISTANCE, epl_sensor.ps.compare_low >> 3);
+	if (epl_sensor.ps.compare_low >> 3 == 0)
+		distance = 10;
+	else if (epl_sensor.ps.compare_low >> 3 == 1)
+		distance = 100;
+	else
+		distance = -1;
+
+	input_report_abs(epld->ps_input_dev, ABS_DISTANCE, distance);
 	input_event(epld->ps_input_dev, EV_SYN, SYN_TIME_SEC, ktime_to_timespec(timestamp).tv_sec);
 	input_event(epld->ps_input_dev, EV_SYN, SYN_TIME_NSEC, ktime_to_timespec(timestamp).tv_nsec);
 	input_sync(epld->ps_input_dev);
@@ -3200,7 +3208,7 @@ static int epl_sensor_setup_psensor(struct epl_sensor_priv *epld)
     epld->ps_input_dev->name = ElanPsensorName;
 
     set_bit(EV_ABS, epld->ps_input_dev->evbit);
-    input_set_abs_params(epld->ps_input_dev, ABS_DISTANCE, 0, 1, 0, 0);
+	input_set_abs_params(epld->ps_input_dev, ABS_DISTANCE, 0, 100, 0, 0);
 #if SPREAD
     set_bit(EV_ABS, epld->ps_input_dev->evbit);
     input_set_abs_params(epld->ps_input_dev, ABS_MISC, 0, 9, 0, 0);
