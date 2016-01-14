@@ -409,6 +409,7 @@ static int inv_set_master_delay(struct inv_mpu_state *st)
 		case COMPASS_ID_AK8972:
 		case COMPASS_ID_AK8963:
 		case COMPASS_ID_AK09911:
+		case COMPASS_ID_AK09912:
 			delay = (BIT_SLV0_DLY_EN | BIT_SLV1_DLY_EN);
 			break;
 		case COMPASS_ID_MLX90399:
@@ -578,11 +579,6 @@ static int reset_fifo_itg(struct iio_dev *indio_dev)
 	st->left_over_size = 0;
 	for (i = 0; i < SENSOR_NUM_MAX; i++)
 		st->sensor[i].ts = st->last_ts;
-
-    st->ts_reset = 1;
-    st->int_cnt = 0;
-	for (i = 0; i < SENSOR_NUM_MAX; i++)
-		st->sensor[i].sen_cnt = 0;
 
 	result = inv_lpa_mode(st, st->chip_config.lpa_mode);
 	if (result)
@@ -951,7 +947,6 @@ int set_inv_enable(struct iio_dev *indio_dev, bool enable)
 {
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 	struct inv_reg_map_s *reg;
-	u8 data[2];
 	int result;
 
 	reg = &st->reg;
@@ -1014,17 +1009,8 @@ int set_inv_enable(struct iio_dev *indio_dev, bool enable)
 			result = inv_read_time_and_ticks(st, false);
 			if (result)
 				return result;
-			result = inv_i2c_read(st, reg->fifo_count_h,
-						FIFO_COUNT_BYTE, data);
-			if (result)
-				return result;
-			st->fifo_count = be16_to_cpup((__be16 *)(data));
-			if (st->fifo_count) {
-				result = inv_process_batchmode(st);
-				if (result)
-					return result;
-			}
 		}
+		inv_push_marker_to_buffer(st, END_MARKER);
 		/* disable fifo reading */
 		if (INV_MPU3050 != st->chip_type) {
 			result = inv_i2c_single_write(st, reg->int_enable, 0);
@@ -1068,9 +1054,11 @@ static irqreturn_t inv_irq_handler(int irq, void *dev_id)
 	struct inv_mpu_state *st = (struct inv_mpu_state *)dev_id;
 	u64 ts;
 
-	ts = get_time_ns();
-	kfifo_in_spinlocked(&st->timestamps, &ts, 1, &st->time_stamp_lock);
-    st->int_cnt++;
+	if (!st->chip_config.dmp_on) {
+		ts = get_time_ns();
+		kfifo_in_spinlocked(&st->timestamps, &ts, 1,
+						&st->time_stamp_lock);
+	}
 
 	return IRQ_WAKE_THREAD;
 }
@@ -1116,7 +1104,7 @@ irqreturn_t inv_read_fifo_mpu3050(int irq, void *dev_id)
 	struct inv_reg_map_s *reg;
 
 	reg = &st->reg;
-	mutex_lock(&st->suspend_resume_lock);
+	down(&st->suspend_resume_lock);
 	mutex_lock(&indio_dev->mlock);
 	if (st->chip_config.dmp_on)
 		bytes_per_datum = HEADERED_NORMAL_BYTES;
@@ -1176,8 +1164,7 @@ irqreturn_t inv_read_fifo_mpu3050(int irq, void *dev_id)
 
 end_session:
 	mutex_unlock(&indio_dev->mlock);
-	mutex_unlock(&st->suspend_resume_lock);
-
+	up(&st->suspend_resume_lock);
 	return IRQ_HANDLED;
 
 flush_fifo:
@@ -1185,7 +1172,7 @@ flush_fifo:
 	inv_reset_fifo(indio_dev);
 	inv_clear_kfifo(st);
 	mutex_unlock(&indio_dev->mlock);
-	mutex_unlock(&st->suspend_resume_lock);
+	up(&st->suspend_resume_lock);
 
 	return IRQ_HANDLED;
 }
@@ -1233,26 +1220,43 @@ static void inv_process_motion(struct inv_mpu_state *st)
 
 static int inv_get_timestamp(struct inv_mpu_state *st, int count)
 {
-	s32 result;
+	u32 *dur;
+	u32 thresh;
+	s32 diff, result, counter;
 	u64 ts;
-	unsigned long flags;
 
 	/* goal of algorithm is to estimate the true frequency of the chip */
 	if (st->chip_config.dmp_on && st->chip_config.dmp_event_int_on)
 		return 0;
-	spin_lock_irqsave(&st->time_stamp_lock, flags);
-    if (kfifo_len(&st->timestamps) >= count) {
+	dur = &st->irq_dur_ns;
+	counter = 1;
+	thresh = min((u32)((*dur) >> 2), (u32)(10 * NSEC_PER_MSEC));
+	while (kfifo_len(&st->timestamps) >= count) {
 		result = kfifo_out(&st->timestamps, &ts, 1);
-		if (result != 1) {
-            spin_unlock_irqrestore(&st->time_stamp_lock, flags);
+		if (result != 1)
 			return -EINVAL;
-        }
-        if (time_after64(ts, st->last_ts))
-            st->last_ts = ts;
-    } else {
-        st->last_ts += st->irq_dur_ns;
-    }
-	spin_unlock_irqrestore(&st->time_stamp_lock, flags);
+		/* first time since reset fifo, just take it */
+		if (!st->ts_counter) {
+			st->last_ts = ts;
+			st->prev_ts = ts;
+			st->ts_counter++;
+			return 0;
+		}
+		diff = (s32)(ts - st->prev_ts);
+		st->prev_ts = ts;
+		if (abs(diff - (*dur)) < thresh) {
+			st->diff_accumulater >>= 1;
+			if (*dur > diff)
+				st->diff_accumulater -= (((*dur) - diff) >> 7);
+			else
+				st->diff_accumulater += ((diff - (*dur)) >> 7);
+			*dur += st->diff_accumulater;
+		}
+	}
+	ts = *dur;
+	ts *= counter;
+	st->last_ts += ts;
+
 	return 0;
 }
 
@@ -1274,7 +1278,7 @@ static int inv_process_dmp_interrupt(struct inv_mpu_state *st)
 	if (r)
 		return r;
 	if (d[0] & DMP_INT_SMD) {
-                wake_lock_timeout(&st->smd_wakelock, SMD_WAKELOCK_HOLD_MS);
+		wake_lock_timeout(&st->smd_wakelock, SMD_WAKELOCK_HOLD_MS);
 		sysfs_notify(&indio_dev->dev.kobj, NULL, "event_smd");
 		st->chip_config.smd_enable = false;
 		st->chip_config.smd_triggered = true;
@@ -1389,47 +1393,6 @@ static int inv_parse_header(u16 hdr)
 		return SENSOR_INVALID;
 	}
 }
-
-static int inv_prescan_data(struct inv_mpu_state *st, u8 *dptr, int len)
-{
-	int i, target_bytes;
-	int sensor_ind;
-	u8 *d;
-	u16 hdr;
-	bool done_flag;
-
-	for (i = 0; i < SENSOR_NUM_MAX; i++) {
-		st->sensor[i].count = 0;
-		st->sensor[i].ts_idx = 0;
-    }
-
-	done_flag = false;
-    target_bytes = len;
-    d = dptr;
-	while ((dptr - d <= target_bytes - HEADERED_NORMAL_BYTES) &&
-							(!done_flag)) {
-		hdr = (u16)be16_to_cpup((__be16 *)(dptr));
-		hdr &= (~STEP_INDICATOR_MASK);
-		sensor_ind = inv_parse_header(hdr);
-		/* error packet */
-		if ((sensor_ind == SENSOR_INVALID) ||
-				(!st->sensor[sensor_ind].on)) {
-			dptr += HEADERED_NORMAL_BYTES;
-			continue;
-		}
-		/* incomplete packet */
-		if (target_bytes - (dptr - d) <
-					st->sensor[sensor_ind].sample_size) {
-			done_flag = true;
-			continue;
-		}
-        st->sensor[sensor_ind].count++;
-		dptr += st->sensor[sensor_ind].sample_size;
-	}
-
-    return 0;
-}
-
 #define FEATURE_IKR_PANIC 1
 
 static int inv_process_batchmode(struct inv_mpu_state *st)
@@ -1441,12 +1404,6 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 	s16 sen[3];
 	u64 t;
 	bool done_flag;
-    int interrupt_sync;
-	int first_cnt;
-	u64 *ts_buf;
-    u64 ts_buf_addr;
-    u8 *ts_buf_org = NULL;
-    u64 new_ts;
 
 #if FEATURE_IKR_PANIC
 	if (1024 <= st->fifo_count) {
@@ -1493,59 +1450,6 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 	done_flag = false;
 	target_bytes = st->fifo_count + st->left_over_size;
 	counter = 0;
-
-
-    inv_prescan_data(st, dptr, target_bytes);
-    if (st->batch.on == 1)
-        interrupt_sync = 0;
-    else
-    {
-        first_cnt = 0;
-        interrupt_sync = 1;
-        for (i=0; i<SENSOR_NUM_MAX; i++) {
-            if (st->sensor[i].on && st->sensor[i].count){
-                if (first_cnt == 0)
-                    first_cnt = st->sensor[i].count;
-                else
-                {
-                    if (st->sensor[i].count != first_cnt) {
-                        interrupt_sync = 0;
-                        break;
-                    }
-                }
-            }
-        }
-        if (st->timestamp_cnt < first_cnt) {
-            //interrupt lost
-            interrupt_sync = 0;
-        }
-        if (interrupt_sync == 1) {
-            ts_buf_org = kzalloc((first_cnt + 1) * sizeof(*ts_buf), GFP_KERNEL);
-    		if (ts_buf_org) {
-                ts_buf_addr = (u64)(uintptr_t)ts_buf_org;
-                ts_buf = (u64 *)(((uintptr_t)ts_buf_addr/sizeof(u64) + 1) * sizeof(u64));
-        		res = kfifo_out_spinlocked(&st->timestamps, ts_buf, first_cnt, &st->time_stamp_lock);
-        		if (res != first_cnt) {
-                    interrupt_sync = 0;
-                    kfree(ts_buf_org);
-                    ts_buf_org = NULL;
-                }
-            } else {
-                interrupt_sync = 0;
-            }
-        }
-
-        if (interrupt_sync == 0) {
-            //clear timestamp kfifo
-            for (i=0; i<st->timestamp_cnt; i++) {
-                u64 dummy;
-                res = kfifo_out_spinlocked(&st->timestamps, &dummy, 1, &st->time_stamp_lock);
-                //if (res != 1) {
-                //}
-            }
-        }
-    }
-
 	while ((dptr - d <= target_bytes - HEADERED_NORMAL_BYTES) &&
 							(!done_flag)) {
 		hdr = (u16)be16_to_cpup((__be16 *)(dptr));
@@ -1574,22 +1478,10 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 		}
 		if (steps > 1)
 			inv_push_step_indicator(st, sensor_ind, steps);
-
-        st->sensor[sensor_ind].sen_cnt++;
-        
-        if (interrupt_sync == 1) {
-            new_ts = ts_buf[st->sensor[sensor_ind].ts_idx];
-            st->sensor[sensor_ind].ts_idx++;
-        } else {
-		    new_ts = st->sensor[sensor_ind].ts + (u64)st->sensor[sensor_ind].dur;
-        }
-
-        if (new_ts > st->last_ts)
-            new_ts = st->sensor[sensor_ind].ts;
-
-        t = new_ts;
-        st->sensor[sensor_ind].ts = t;
-
+		st->sensor[sensor_ind].ts += (u64)st->sensor[sensor_ind].dur;
+		if (st->sensor[sensor_ind].ts > st->last_ts)
+			st->sensor[sensor_ind].ts -= (u64)st->sensor[sensor_ind].dur;
+		t = st->sensor[sensor_ind].ts;
 		if (sensor_ind == SENSOR_COMPASS) {
 			if (!st->chip_config.normal_compass_measure) {
 				st->chip_config.normal_compass_measure = 1;
@@ -1646,9 +1538,6 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 		memcpy(st->left_over, dptr, st->left_over_size);
 	}
 
-    if (ts_buf_org != NULL)
-        kfree(ts_buf_org);
-    
 	return 0;
 }
 
@@ -1704,7 +1593,7 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 #define DMP_MIN_RUN_TIME (37 * NSEC_PER_MSEC)
 	if (st->suspend_state)
 		return IRQ_HANDLED;
-	mutex_lock(&st->suspend_resume_lock);
+	down(&st->suspend_resume_lock);
 	mutex_lock(&indio_dev->mlock);
 	if (st->chip_config.dmp_on) {
 		pts1 = get_time_ns();
@@ -1712,6 +1601,9 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 		if (result || st->chip_config.dmp_event_int_on)
 			goto end_session;
 		if (!st->chip_config.smd_triggered) {
+			if (pts1 - st->last_run_time < DMP_MIN_RUN_TIME)
+				goto end_session;
+			else
 				st->last_run_time = pts1;
 		} else {
 			st->chip_config.smd_triggered = false;
@@ -1760,12 +1652,6 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 		if (fifo_count == 0)
 			goto end_session;
 		st->fifo_count = fifo_count;
-        {
-        unsigned long flags;
-        spin_lock_irqsave(&st->time_stamp_lock, flags);
-        st->timestamp_cnt = kfifo_len(&st->timestamps);
-        spin_unlock_irqrestore(&st->time_stamp_lock, flags);
-        }
 	}
 
 	if (st->chip_config.dmp_on) {
@@ -1799,7 +1685,7 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 	}
 end_session:
 	mutex_unlock(&indio_dev->mlock);
-	mutex_unlock(&st->suspend_resume_lock);
+	up(&st->suspend_resume_lock);
 
 	return IRQ_HANDLED;
 flush_fifo:
@@ -1807,7 +1693,7 @@ flush_fifo:
 	inv_reset_fifo(indio_dev);
 	inv_clear_kfifo(st);
 	mutex_unlock(&indio_dev->mlock);
-	mutex_unlock(&st->suspend_resume_lock);
+	up(&st->suspend_resume_lock);
 
 	return IRQ_HANDLED;
 }

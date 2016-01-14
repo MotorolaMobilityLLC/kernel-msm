@@ -57,8 +57,6 @@ int inv_mpu_probe_trigger(struct iio_dev *indio_dev)
 	if (st->trig == NULL)
 		return -ENOMEM;
 	st->trig->dev.parent = &st->client->dev;
-//--yd 	st->trig->private_data = indio_dev;
-	iio_trigger_set_drvdata(st->trig, indio_dev);
 	st->trig->ops = &inv_mpu_trigger_ops;
 	ret = iio_trigger_register(st->trig);
 

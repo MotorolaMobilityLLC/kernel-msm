@@ -20,6 +20,7 @@
 #include <linux/spinlock.h>
 #include <linux/mpu.h>
 #include <linux/wakelock.h>
+#include <linux/semaphore.h>
 
 #include <linux/iio/iio.h>
 #include <linux/iio/buffer.h>
@@ -196,7 +197,7 @@
 #define MPU3050_FOOTER_SIZE      2
 #define FIFO_COUNT_BYTE          2
 #define FIFO_THRESHOLD           800
-#define FIFO_SIZE                800//992
+#define FIFO_SIZE                992
 #define HARDWARE_FIFO_SIZE       1024
 #define MAX_READ_SIZE            64
 #define POWER_UP_TIME            100
@@ -278,6 +279,9 @@
 /* ----MPU9350 ----*/
 #define MPU9350_ID               0x72
 
+#define MPU9255_ID               0x73
+
+
 #define THREE_AXIS               3
 #define GYRO_CONFIG_FSR_SHIFT    3
 #define ACCEL_CONFIG_FSR_SHIFT    3
@@ -287,7 +291,7 @@
 #define CRC_FIRMWARE_SEED        0
 #define SELF_TEST_SUCCESS        1
 #define MS_PER_DMP_TICK          20
-#define DMP_IMAGE_SIZE           2943
+#define DMP_IMAGE_SIZE           3035
 
 /* init parameters */
 #define INIT_FIFO_RATE           50
@@ -427,6 +431,7 @@ enum inv_devices {
 	INV_MPU9150,
 	INV_MPU6500,
 	INV_MPU9250,
+	INV_MPU9255,
 	INV_MPU6XXX,
 	INV_MPU9350,
 	INV_MPU6515,
@@ -477,9 +482,6 @@ struct inv_sensor {
 	u8 sample_size;
 	int (*send_data)(struct inv_mpu_state *st, bool on);
 	int (*set_rate)(struct inv_mpu_state *st);
-	int count;
-	int ts_idx;
-	int sen_cnt;
 };
 
 /**
@@ -734,7 +736,7 @@ struct inv_mpu_state {
 	const struct inv_hw_s *hw;
 	enum   inv_devices chip_type;
 	spinlock_t time_stamp_lock;
-	struct mutex suspend_resume_lock;
+	struct semaphore suspend_resume_lock;
 	struct i2c_client *client;
 	struct mpu_platform_data plat_data;
 	struct inv_mpu_slave *slave_accel;
@@ -784,9 +786,6 @@ struct inv_mpu_state {
 	u8 secondary_name[20];
         struct wake_lock smd_wakelock;
         struct wake_lock ped_wakelock;
-	u8 ts_reset;
-	u32 int_cnt;
-    u32 timestamp_cnt;
 };
 
 /* produces an unique identifier for each device based on the

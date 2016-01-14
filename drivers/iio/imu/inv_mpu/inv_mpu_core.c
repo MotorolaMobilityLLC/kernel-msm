@@ -73,7 +73,7 @@ static struct mpu_platform_data gyro_platform_data = {
 s64 get_time_ns(void)
 {
 	struct timespec ts;
-       get_monotonic_boottime(&ts);             //fix first timestamp always wrong after resume
+    get_monotonic_boottime(&ts);             //fix first timestamp always wrong after resume
 	return timespec_to_ns(&ts);
 }
 
@@ -88,6 +88,7 @@ static const struct inv_hw_s hw_info[INV_NUM_PARTS] = {
 	{118, "MPU9150"},
 	{128, "MPU6500"},
 	{128, "MPU9250"},
+	{128, "MPU9255"},
 	{128, "MPU9350"},
 	{128, "MPU6515"},
 };
@@ -1314,7 +1315,7 @@ static ssize_t inv_attr_show(struct device *dev,
 	case ATTR_SECONDARY_NAME:
 	{
 		const char *n[] = {"NULL", "AK8975", "AK8972", "AK8963",
-					"BMA250", "MLX90399", "AK09911"};
+					"BMA250", "MLX90399", "AK09911", "AK09912"};
 		switch (st->plat_data.sec_slave_id) {
 		case COMPASS_ID_AK8975:
 			return sprintf(buf, "%s\n", n[1]);
@@ -1328,6 +1329,8 @@ static ssize_t inv_attr_show(struct device *dev,
 			return sprintf(buf, "%s\n", n[5]);
 		case COMPASS_ID_AK09911:
 			return sprintf(buf, "%s\n", n[6]);
+		case COMPASS_ID_AK09912:
+			return sprintf(buf, "%s\n", n[7]);
 		default:
 			return sprintf(buf, "%s\n", n[0]);
 		}
@@ -1492,7 +1495,7 @@ static ssize_t inv_flush_batch_show(struct device *dev,
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	int result;
-	bool has_data;
+	bool has_data = false;
 
 	mutex_lock(&indio_dev->mlock);
 	result = inv_flush_batch_data(indio_dev, &has_data);
@@ -2699,7 +2702,7 @@ static int inv_setup_vddio(struct inv_mpu_state *st)
  *  inv_check_chip_type() - check and setup chip type.
  */
 static int inv_check_chip_type(struct inv_mpu_state *st,
-		const struct i2c_device_id *id)
+		const struct i2c_device_id *id, bool reset_needed)
 {
 	struct inv_reg_map_s *reg;
 	int result;
@@ -2725,6 +2728,10 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 		st->chip_type = INV_MPU6500;
 		plat->sec_slave_type = SECONDARY_SLAVE_TYPE_COMPASS;
 		plat->sec_slave_id = COMPASS_ID_AK8963;
+	} else if (!strcmp(id->name, "mpu9255")) {
+		st->chip_type = INV_MPU6500;
+		plat->sec_slave_type = SECONDARY_SLAVE_TYPE_COMPASS;
+		plat->sec_slave_id = COMPASS_ID_AK8963;
 	} else if (!strcmp(id->name, "mpu6xxx")) {
 		st->chip_type = INV_MPU6050;
 	} else if (!strcmp(id->name, "mpu9350")) {
@@ -2744,11 +2751,14 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 	st->hw  = &hw_info[st->chip_type];
 	reg = &st->reg;
 	st->setup_reg(reg);
-	/* reset to make sure previous state are not there */
-	result = inv_i2c_single_write(st, reg->pwr_mgmt_1, BIT_H_RESET);
-	if (result)
-		return result;
-	msleep(POWER_UP_TIME);
+
+	if (reset_needed) {
+		/* reset to make sure previous state are not there */
+		result = inv_i2c_single_write(st, reg->pwr_mgmt_1, BIT_H_RESET);
+		if (result)
+			return result;
+		msleep(POWER_UP_TIME);
+	}
 {
 	u8 d;
 	result = inv_i2c_read(st, REG_WHOAMI, 1, &d);
@@ -2888,6 +2898,7 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 		if (st->plat_data.sec_slave_id == COMPASS_ID_AK8975 ||
 		    st->plat_data.sec_slave_id == COMPASS_ID_AK8972 ||
 		    st->plat_data.sec_slave_id == COMPASS_ID_AK09911 ||
+		    st->plat_data.sec_slave_id == COMPASS_ID_AK09912 ||
 		    st->plat_data.sec_slave_id == COMPASS_ID_AK8963) {
 			memcpy(&inv_attributes[t_ind], inv_akxxxx_attributes,
 			       sizeof(inv_akxxxx_attributes));
@@ -3000,6 +3011,13 @@ static int inv_mpu_probe(struct i2c_client *client,
 	struct inv_mpu_state *st;
 	struct iio_dev *indio_dev;
 	int result;
+	/*
+	 * If we're not coming from a power-off condition, we need to
+	 * reset the chip as we may have gotten here via a watchdog
+	 * reboot, in which case the status of the chip is unknown
+	 * (i.e. chip is not reset by hardware on a watchdog reboot).
+	 */
+	bool reset_needed = true;
 
 	printk("[sensor] %s +++\n", __func__);
 
@@ -3037,6 +3055,12 @@ static int inv_mpu_probe(struct i2c_client *client,
 					"power_on failed: %d\n", result);
 			return result;
 		}
+		msleep(POWER_UP_TIME);
+		/*
+		 * We don't need subsequent reset of chip as it's coming
+		 * from a power-off condition
+		 */
+		reset_needed = false;
 	}
 
 msleep(100);
@@ -3045,7 +3069,7 @@ msleep(100);
 	//st->plat_data = *(struct mpu_platform_data *)dev_get_platdata(&client->dev);
  	st->plat_data = gyro_platform_data;			//ASUS_BSP +++ Maggie_Lee "fill platform data"
 #endif
-	result = inv_check_chip_type(st, id);
+	result = inv_check_chip_type(st, id, reset_needed);
 	if (result)
 		goto out_free;
 
@@ -3107,7 +3131,7 @@ msleep(100);
 	spin_lock_init(&st->time_stamp_lock);
         wake_lock_init(&st->smd_wakelock, WAKE_LOCK_SUSPEND, SMD_LOCK_NAME);
         wake_lock_init(&st->ped_wakelock, WAKE_LOCK_SUSPEND, PED_LOCK_NAME);
-	mutex_init(&st->suspend_resume_lock);
+	sema_init(&st->suspend_resume_lock,1);
 	result = st->set_power_state(st, false);
 	if (result) {
 		dev_err(&client->adapter->dev, "%s could not be turned off.\n", st->hw->name);
@@ -3205,7 +3229,6 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 
 	if (st->chip_config.dmp_on &&
 		st->chip_config.enable &&
-		st->batch.on &&
 		(!st->chip_config.dmp_event_int_on)) {
 		/* turn off data interrupt in suspend mode;turn on resume */
 		result = inv_set_interrupt_on_gesture_event(st, suspend);
@@ -3227,7 +3250,7 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 
 /* Uncomment to utilize suspend_noirq.
    It is platform dependent whether or not suspend_irq is called */
-// #define USE_SUSPEND_NOIRQ
+#define USE_SUSPEND_NOIRQ
 
 /*
  * inv_mpu_resume(): resume method for this driver.
@@ -3278,8 +3301,7 @@ static int inv_mpu_resume(struct device *dev)
 	mutex_unlock(&indio_dev->mlock);
 	/* add code according to different request End */
 
-	mutex_unlock(&st->suspend_resume_lock);
-
+	up(&st->suspend_resume_lock);
 	return result;
 }
 
@@ -3335,7 +3357,8 @@ static int inv_mpu_suspend_noirq(struct device *dev)
 	struct iio_dev *indio_dev = i2c_get_clientdata(to_i2c_client(dev));
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 
-	mutex_lock(&st->suspend_resume_lock);
+    pr_err("inv_mpu_suspend_noirq\n");
+	down(&st->suspend_resume_lock);
 	st->suspend_state = false;
 
 	return 0;
@@ -3364,6 +3387,7 @@ static const struct i2c_device_id inv_mpu_id[] = {
 	{"mpu9150", INV_MPU9150},
 	{"mpu6500", INV_MPU6500},
 	{"mpu9250", INV_MPU9250},
+	{"mpu9255", INV_MPU9255},
 	{"mpu6xxx", INV_MPU6XXX},
 	{"mpu9350", INV_MPU9350},
 	{"mpu6515", INV_MPU6515},

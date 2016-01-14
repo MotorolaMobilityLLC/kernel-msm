@@ -182,6 +182,10 @@ int inv_parse_secondary(struct device *dev, struct mpu_platform_data *pdata)
 		pdata->sec_slave_id = COMPASS_ID_AK8975;
 	else if (!strcmp(name, "ak8972"))
 		pdata->sec_slave_id = COMPASS_ID_AK8972;
+	else if (!strcmp(name, "ak09911"))
+		pdata->sec_slave_id = COMPASS_ID_AK09911;
+	else if (!strcmp(name, "ak09912"))
+		pdata->sec_slave_id = COMPASS_ID_AK09912;
 	else
 		return -EINVAL;
 	rc = of_property_read_u32(np, "inven,secondary_reg", &temp_val);
