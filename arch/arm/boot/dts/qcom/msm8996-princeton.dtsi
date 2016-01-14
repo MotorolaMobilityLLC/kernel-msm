@@ -459,6 +459,27 @@
 };
 
 &pm8994_gpios {
+	gpio@c800 { /* GPIO 9 - NFC_ENABLE_N */
+		status = "okay";
+		qcom,mode = <1>; /* Output */
+		qcom,pull = <5>; /* None */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,master-en = <1>;
+	};
+
+	gpio@ca00 { /* GPIO 11 - REG_3P3_ENABLE */
+		qcom,mode = <1>;                /* Digital output */
+		qcom,output-type = <0>;         /* MOS logic */
+		qcom,invert = <1>;              /* Output high */
+		qcom,vin-sel = <0>;             /* VPH_PWR */
+		qcom,src-sel = <0>;             /* Constant */
+		qcom,out-strength = <1>;        /* High drive strength */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "okay";
+	};
+
 	gpio@cb00 { /* GPIO 12 - AP_VIB_EN */
 		qcom,mode = <1>;         /* Digital output*/
 		qcom,vin-sel = <2>;      /* VIN2 */
