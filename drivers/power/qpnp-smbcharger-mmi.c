@@ -930,14 +930,10 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 	int rc, status = POWER_SUPPLY_STATUS_DISCHARGING;
 	u8 reg = 0, chg_type;
 	bool charger_present, chg_inhibit;
-	int batt_soc, eb_soc, eb_state;
+	int batt_soc, eb_soc;
 
 	batt_soc = get_prop_batt_capacity(chip);
 	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
-	eb_state = get_eb_prop(chip, POWER_SUPPLY_PROP_STATUS);
-
-	if (eb_state == POWER_SUPPLY_STATUS_CHARGING)
-		return POWER_SUPPLY_STATUS_CHARGING;
 
 	rc = smbchg_read(chip, &reg, chip->chgr_base + RT_STS, 1);
 	if (rc < 0) {
@@ -954,6 +950,9 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD)
 	    && ((eb_soc == -ENODEV) || (eb_soc >= 100)))
 		return POWER_SUPPLY_STATUS_FULL;
+
+	if (is_usb_present(chip) && (chip->ebchg_state == EB_SINK))
+		return POWER_SUPPLY_STATUS_CHARGING;
 
 	charger_present = is_usb_present(chip) | is_wls_present(chip);
 	if (!charger_present)
