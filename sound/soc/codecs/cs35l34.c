@@ -61,7 +61,6 @@ static const struct reg_default cs35l34_reg[] = {
 	{CS35L34_AMP_KEEP_ALIVE_CTL, 0x04},
 	{CS35L34_BST_CVTR_V_CTL, 0x00},
 	{CS35L34_BST_PEAK_I, 0x10},
-	{CS35L34_BST_LIMITING, 0x00},
 	{CS35L34_BST_RAMP_CTL, 0x06},
 	{CS35L34_BST_CONV_COEF_1, 0x0F},
 	{CS35L34_BST_CONV_COEF_2, 0x0C},
@@ -161,7 +160,6 @@ static bool cs35l34_readable_register(struct device *dev, unsigned int reg)
 	case	CS35L34_AMP_KEEP_ALIVE_CTL:
 	case	CS35L34_BST_CVTR_V_CTL:
 	case	CS35L34_BST_PEAK_I:
-	case	CS35L34_BST_LIMITING:
 	case	CS35L34_BST_RAMP_CTL:
 	case	CS35L34_BST_CONV_COEF_1:
 	case	CS35L34_BST_CONV_COEF_2:
@@ -580,20 +578,8 @@ static int cs35l34_probe(struct snd_soc_codec *codec)
 	/* Set Platform Data */
 	if (cs35l34->pdata.boost_ctl)
 		regmap_update_bits(cs35l34->regmap, CS35L34_BST_CVTR_V_CTL,
-				   CS35L34_BST_CTL_MASK,
-				cs35l34->pdata.boost_ctl);
-
-	if (cs35l34->pdata.gain_zc)
-		regmap_update_bits(cs35l34->regmap, CS35L34_CLASS_H_CTL,
-				   GAIN_CHG_ZC_MASK ,
-				cs35l34->pdata.gain_zc <<
-				GAIN_CHG_ZC_SHIFT);
-
-	if (cs35l34->pdata.amp_drv_sel)
-		regmap_update_bits(cs35l34->regmap, CS35L34_CLASS_H_CTL,
-				   AMP_DRV_SEL_MASK,
-				cs35l34->pdata.amp_drv_sel <<
-				AMP_DRV_SEL_SHIFT);
+			CS35L34_BST_CTL_MASK,
+			cs35l34->pdata.boost_ctl);
 
 	snd_soc_dapm_ignore_suspend(&codec->dapm, "SDIN");
 	snd_soc_dapm_ignore_suspend(&codec->dapm, "SDOUT");
@@ -603,6 +589,11 @@ static int cs35l34_probe(struct snd_soc_codec *codec)
 	snd_soc_dapm_ignore_suspend(&codec->dapm, "ISENSE");
 	snd_soc_dapm_ignore_suspend(&codec->dapm, "VSENSE");
 	snd_soc_dapm_ignore_suspend(&codec->dapm, "Main AMP");
+
+	if (cs35l34->pdata.gain_zc)
+		regmap_update_bits(cs35l34->regmap, CS35L34_PROTECT_CTL,
+			AMP_GAIN_ZC_MASK,
+			cs35l34->pdata.gain_zc << AMP_GAIN_ZC_SHIFT);
 
 	return ret;
 }
@@ -659,10 +650,8 @@ static int cs35l34_handle_of_data(struct i2c_client *i2c_client,
 
 	if (of_property_read_u32(np, "cirrus,boost-ctl", &val) >= 0)
 		pdata->boost_ctl = val;
-	if (of_property_read_u32(np, "cirrus,gain_zc", &val) >= 0)
+	if (of_property_read_u32(np, "cirrus,gain-zc", &val) >= 0)
 		pdata->gain_zc = val;
-	if (of_property_read_u32(np, "cirrus,amp_drv_sel", &val) >= 0)
-		pdata->amp_drv_sel = val;
 	if (of_property_read_u32(np, "cirrus,pred-brownout", &val) >= 0)
 		pdata->pred_brownout = val;
 	if (of_property_read_u32(np, "cirrus,vpbr-thld1", &val) >= 0)
@@ -715,10 +704,6 @@ static int cs35l34_handle_of_data(struct i2c_client *i2c_client,
 		pdata->boost_peak = val;
 	if (of_property_read_u32(np, "cirrus,boost-limit", &val) >= 0)
 		pdata->boost_limit = val;
-	if (of_property_read_u32(np, "cirrus,pdm-audio", &val) >= 0)
-		pdata->pdm_audio = val;
-	if (of_property_read_u32(np, "cirrus,pdm-chsel", &val) >= 0)
-		pdata->pdm_chsel = val;
 
 	return 0;
 }
@@ -804,7 +789,7 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 
 	dev_info(&i2c_client->dev,
 		"Cirrus Logic CS35l34 (%x), Revision: %02X\n",
-			devid, ret & 0xFF);
+		devid, ret & 0xFF);
 
 	/* Predictive and reactive brownout flags,inverted 0 is on 1 is off */
 	if (cs35l34->pdata.pred_brownout > 0) {
@@ -937,21 +922,6 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 		regmap_update_bits(cs35l34->regmap, CS35L34_BST_PEAK_I,
 				0x3F, cs35l34->pdata.boost_peak);
 	}
-	if (cs35l34->pdata.boost_limit > 0 &&
-				cs35l34->pdata.boost_limit <= 0xB7) {
-		regmap_update_bits(cs35l34->regmap, CS35L34_BST_LIMITING,
-				0xB7, cs35l34->pdata.boost_limit);
-	}
-	if (cs35l34->pdata.pdm_chsel >= 0 && cs35l34->pdata.pdm_audio >= 0) {
-		regmap_update_bits(cs35l34->regmap, CS35L34_AMP_INP_DRV_CTL,
-				0x80,
-				cs35l34->pdata.pdm_chsel > 1 ? 0x80 : 0x00);
-	}
-	if (cs35l34->pdata.pdm_audio >= 0) {
-		regmap_update_bits(cs35l34->regmap, CS35L34_AMP_INP_DRV_CTL,
-				0x40,
-				cs35l34->pdata.pdm_audio > 1 ? 0x40 : 0x00);
-	}
 
 	ret =  snd_soc_register_codec(&i2c_client->dev,
 			&soc_codec_dev_cs35l34, &cs35l34_dai, 1);
@@ -960,9 +930,7 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 			"%s: Register codec failed\n", __func__);
 		goto err;
 	}
-
 	return 0;
-
 err:
 	return ret;
 }
