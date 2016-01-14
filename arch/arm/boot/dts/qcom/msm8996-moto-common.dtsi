@@ -488,6 +488,7 @@
 		compatible = "cirrus,cs35l34";
 		reg = <0x41>;
 
+		cirrus,gain-zc = <1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&cs35l34_reset_default>;
 	};
