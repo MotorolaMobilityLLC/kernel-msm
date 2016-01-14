@@ -97,13 +97,8 @@ qcom,mdss-dsi-off-command = [
 	/* enter sleep mode */
 	05 01 00 00 78 00 01 10];
 
-/* Disable HBM for now*/
-//qcom,mdss-dsi-hbm-on-command = [
-//	/* PWM set to 100% */
-//	15 01 00 00 00 00 02 51 ff];
-//qcom,mdss-dsi-hbm-off-command = [
-//	/* PWM set to 80% */
-//	15 01 00 00 00 00 02 51 cc];
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 53 e0];
+qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 53 20];
 
 qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
