@@ -19,14 +19,13 @@
 #include <linux/slimport.h>
 #include "slimport7816_tx_drv.h"
 #include "slimport7816_tx_reg.h"
-#ifdef CONFIG_MACH_LGE
-#include <soc/qcom/lge/board_lge.h>
-#endif
+#include "../../msm/mdss/mdss_hdmi_slimport.h"
 
 #define SLIMPORT_DRV_DEBUG
 
 #ifndef XTAL_CLK_DEF
-#define XTAL_CLK_DEF XTAL_27M
+/*#define XTAL_CLK_DEF XTAL_27M */
+#define XTAL_CLK_DEF XTAL_19D2M
 #endif
 
 #define XTAL_CLK_M10 pXTAL_data[XTAL_CLK_DEF].xtal_clk_m10
@@ -159,7 +158,7 @@ static void hdmi_rx_new_vsi_int(void);
 	reg_bit_ctl(TX_P0, AUX_CTRL2, ADDR_ONLY_BIT, enable)
 
 #define sp_tx_set_link_bw(bw) \
-	sp_write_reg(TX_P0, SP_TX_LINK_BW_SET_REG, bw);
+	sp_write_reg(TX_P0, SP_TX_LINK_BW_SET_REG, bw)
 #define sp_tx_get_link_bw() \
 	__i2c_read_byte(TX_P0, SP_TX_LINK_BW_SET_REG)
 
@@ -197,7 +196,7 @@ static void hdmi_rx_new_vsi_int(void);
 #ifdef NEW_HDCP_CONTROL_LOGIC
 unsigned char g_hdcp_cap_bak;
 #endif
-//=====================================================================	=======
+/*=====================================================================*/
 #define write_dpcd_addr(addrh, addrm, addrl) \
 	do { \
 		unchar temp; \
@@ -272,16 +271,19 @@ static unsigned char __i2c_read_byte(unsigned char dev, unsigned char offset)
 
 void hardware_power_ctl(unchar enable)
 {
-	//static unsigned char supply_power = 0;
-	//if(supply_power != enable)
-	//	supply_power = enable;
-	//else
-	//	return;
+	/*
+	static unsigned char supply_power = 0;
 
-	if(enable == 0) sp_tx_hardware_powerdown();
-	else sp_tx_hardware_poweron();
+	if(supply_power != enable)
+		supply_power = enable;
+	else
+		return;
+	*/
+	if (enable == 0)
+		sp_tx_hardware_powerdown();
+	else
+		sp_tx_hardware_poweron();
 }
-void wait_aux_op_finish(unchar * err_flag)
 {
 	unchar cnt;
 	unchar c;
@@ -304,7 +306,7 @@ void wait_aux_op_finish(unchar * err_flag)
 	}
 }
 
-//=====================================================================	=======
+/*============================================================================*/
 void print_sys_state(unchar ss)
 {
 	switch (ss) {
@@ -603,6 +605,8 @@ void hdmi_rx_initialization(void)
 	*/
 	sp_write_reg_or(RX_P0, RX_VID_DATA_RNG, R2Y_INPUT_LIMIT);
 	#ifdef CEC_ENABLE
+	/* TODO.. Analogix call cec_variable_init() but this call the
+	 * folowing lines */
 	sp_write_reg(RX_P0, RX_CEC_CTRL, 0x09);
 	sp_write_reg(RX_P0, RX_CEC_SPEED, CEC_SPEED_27M);
 	sp_write_reg(TX_P0, SP_TX_DP_POLLING_PERIOD, 0x32);    //50ms polling period
@@ -646,7 +650,8 @@ static void sp_tx_link_phy_initialization(void)
 #else
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG0, 0x01);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG1, 0x03);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG2, 0x57);
+/*	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG2, 0x57); */
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG2, 0x07);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG3, 0x7f);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG4, 0x71);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG5, 0x6b);
@@ -656,7 +661,8 @@ static void sp_tx_link_phy_initialization(void)
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG9, 0x7F);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG10, 0x00);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG11, 0x00);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG12, 0x02);
+/*	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG12, 0x02); */
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG12, 0x00);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG13, 0x00);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG14, 0x0c);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG15, 0x42);
@@ -666,8 +672,6 @@ static void sp_tx_link_phy_initialization(void)
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG19, 0x7e);
 #endif
 }
-
-
 
 struct clock_Data const pXTAL_data[XTAL_CLK_NUM] = {
 	{19, 192},
@@ -700,6 +704,19 @@ void sp_tx_initialization(void)
 {
 	sp_write_reg(TX_P0, AUX_CTRL2, 0x30);  /* xjh add set terminal reistor to 50ohm */
 
+#if 0
+/* TODO.. Analogix has these but LG doesn't have ..
+  these code as as HDCP_AUTO_EN  below */
+	if (!HDCP_REPEATER_MODE) {
+		sp_write_reg_and(TX_P0, TX_HDCP_CTRL,
+						(~AUTO_EN) & (~AUTO_START));
+		sp_write_reg(TX_P0, OTP_KEY_PROTECT1, OTP_PSW1);
+		sp_write_reg(TX_P0, OTP_KEY_PROTECT2, OTP_PSW2);
+		sp_write_reg(TX_P0, OTP_KEY_PROTECT3, OTP_PSW3);
+		sp_write_reg_or(TX_P0, HDCP_KEY_CMD, DISABLE_SYNC_HDCP);
+	} else
+		sp_write_reg_or(TX_P0, 0x1D, 0xC0);
+#endif
 	#ifndef HDCP_AUTO_EN
 	sp_write_reg_and(TX_P0, TX_HDCP_CTRL, (~AUTO_EN) & (~AUTO_START));
 	sp_write_reg(TX_P0, OTP_KEY_PROTECT1, OTP_PSW1);
@@ -738,11 +755,7 @@ void sp_tx_initialization(void)
 	sp_write_reg(TX_P0, SP_TX_LINK_CHK_TIMER, 0x1d);
 	sp_write_reg_or(TX_P0, TX_MISC, EQ_TRAINING_LOOP);
 
-	if (lge_get_boot_mode() != LGE_BOOT_MODE_QEM_56K) {
-		//power down main link by default
-		pr_err("%s: !LGE_BOOT_MODE_QEM_56K \n", __func__);
-		sp_write_reg_or(TX_P0, SP_TX_ANALOG_PD_REG, CH0_PD);
-	}
+	sp_write_reg_or(TX_P0, SP_TX_ANALOG_PD_REG, CH0_PD);
 
 	/*
 	sp_write_reg(TX_P2, SP_COMMON_INT_MASK1, 0X00);
@@ -891,20 +904,59 @@ static unchar sp_tx_get_cable_type(enum CABLE_TYPE_STATUS det_cable_type_state, 
 	return cur_cable_type;
 }
 
+/********************************************/
+/* Check if it is ANALOGIX dongle.
+*/
+/********************************************/
+unchar sp_tx_get_dp_connection(void);
+unsigned char ANX_OUI[3] = {0x00, 0x22, 0xB9};
+unsigned char is_anx_dongle(void)
+{
+	unsigned char buf[3];
+
+	sp_tx_aux_dpcdread_bytes(0x00, 0x04, 0x00, 3, buf);
+	if (buf[0] == ANX_OUI[0] && buf[1] == ANX_OUI[1]
+				&& buf[2] == ANX_OUI[2]) {
+		pr_debug("%s: DPCD 400 show ANX-dongle\n", __func__);
+		return 1;
+	}
+	sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x00, 3, buf);/*just for ANX7730*/
+	if (buf[0] == ANX_OUI[0] && buf[1] == ANX_OUI[1]
+				&& buf[2] == ANX_OUI[2]) {
+		pr_debug("%s: DPCD 500 show ANX-dongle\n", __func__);
+		return 1;
+	}
+	return 0;
+}
+
 unchar sp_tx_get_hdmi_connection(void)
 {
 	unchar c;
 	/* msleep(200); */ /* why delay here? 20130217? */
 
-	if (AUX_OK != sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x18, 1, &c)) {
+#if 0
+	if (AUX_OK != sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x18, 1, &c))
 		return 0;
-	}
 
 	if ((c & 0x41) == 0x41)
 		return 1;
-	 else
+	else
 		return 0;
+#else
+	if (is_anx_dongle()) {
+		if (AUX_OK != sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x18,
+								1, &c)) {
+			return 0;
+		}
 
+		if ((c & 0x41) == 0x41)
+			return 1;
+		else
+			return 0;
+	} else
+		return sp_tx_get_dp_connection();
+
+#endif
 }
 
 unchar sp_tx_get_vga_connection(void)
@@ -1114,7 +1166,7 @@ unchar sp_tx_get_edid_block(void)
 	sp_tx_aux_wr(0x7e);
 	sp_tx_aux_rd(0x01);
 	sp_read_reg(TX_P0, BUF_DATA_0, &c);
-	pr_info("%s %s : EDID Block = %d\n", LOG_TAG, __func__, (int)(c + 1));
+	pr_debug("%s %s : EDID Block = %d\n", LOG_TAG, __func__, (int)(c + 1));
 
 	if (c > 3)
 		c = 1;
@@ -1436,7 +1488,7 @@ void slimport_edid_process(void)
 	unchar temp_value, temp_value1;
 	unchar i;
 
-	pr_info("%s %s : edid_process\n", LOG_TAG, __func__);
+	pr_debug("%s %s : edid_process\n", LOG_TAG, __func__);
 
 	/* mdelay(200); */
 	if (g_read_edid_flag == 1) {
@@ -1665,7 +1717,7 @@ void sp_tx_enhancemode_set(void)
 		sp_tx_aux_dpcdwrite_byte(0x00, 0x01,
 			DPCD_LANE_COUNT_SET, c);
 
-		pr_info("%s %s : Enhance mode enabled\n", LOG_TAG, __func__);
+		pr_debug("%s %s : Enhance mode enabled\n", LOG_TAG, __func__);
 	} else {
 
 		sp_write_reg_and(TX_P0, SP_TX_SYS_CTRL4_REG, ~ENHANCED_MODE);
@@ -1676,7 +1728,7 @@ void sp_tx_enhancemode_set(void)
 		sp_tx_aux_dpcdwrite_byte(0x00, 0x01,
 			DPCD_LANE_COUNT_SET, c);
 
-		pr_info("%s %s : Enhance mode disabled\n", LOG_TAG, __func__);
+		pr_debug("%s %s : Enhance mode disabled\n", LOG_TAG, __func__);
 	}
 }
 uint sp_tx_link_err_check(void)
@@ -1695,7 +1747,8 @@ uint sp_tx_link_err_check(void)
 		errl = errh + errl;
 	}
 
-	pr_err("%s %s :  Err of Lane = %d\n", LOG_TAG, __func__, errl);
+	if (errl)
+		pr_err("%s %s :  Err of Lane = %d\n", LOG_TAG, __func__, errl);
 	return errl;
 }
 static void serdes_fifo_reset(void)
@@ -1758,15 +1811,21 @@ void slimport_link_training(void)
 				}
 			}
 
+#if 0
 			if (lge_get_boot_mode() != LGE_BOOT_MODE_QEM_56K) {
-				//power on main link before link training
-				pr_err("%s: LGE_BOOT_MODE_QEM_56K - 4000PPM\n", __func__);
-				sp_write_reg_and(TX_P0, SP_TX_ANALOG_PD_REG, ~CH0_PD);
-				sp_tx_config_ssc(SSC_DEP_4000PPM);
+				pr_err("%s: LGE_BOOT_MODE_QEM_56K - LT_SET_REG = 0x0\n",
+							__func__);
+
+				sp_write_reg(TX_P0, SP_TX_LT_SET_REG, 0x0);
 			} else {
-				pr_err("%s: LGE_BOOT_MODE_QEM_56K - 5000PPM\n", __func__);
-				sp_tx_config_ssc(SSC_DEP_5000PPM);
+				pr_err("%s: LGE_BOOT_MODE_QEM_56K - LT_SET_REG = xxx\n",
+							__func__);
 			}
+		}
+#else
+			sp_write_reg(TX_P0, SP_TX_LT_SET_REG, 0x0);
+#endif
+		}
 
 			sp_tx_set_link_bw(g_changed_bandwidth);
 			sp_tx_enhancemode_set();
@@ -2476,7 +2535,8 @@ static void sp_tx_config_audio(void)
 	int i;
 	ulong M_AUD, LS_Clk = 0;
 	ulong AUD_Freq = 0;
-	pr_info("%s %s : **Config audio **\n", LOG_TAG, __func__);
+
+	pr_debug("%s %s : **Config audio **\n", LOG_TAG, __func__);
 	slimport_block_power_ctrl(SP_TX_PWR_AUDIO, SP_POWER_ON);
 	sp_read_reg(RX_P0, 0xCA, &c);
 
