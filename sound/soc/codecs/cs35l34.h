@@ -36,7 +36,6 @@
 #define CS35L34_AMP_KEEP_ALIVE_CTL	0x1A	/* Amplifier Keep Alive Ctl */
 #define CS35L34_BST_CVTR_V_CTL		0x1D	/* Boost Conv Voltage Ctl */
 #define CS35L34_BST_PEAK_I		0x1E	/* Boost Conv Peak Current */
-#define CS35L34_BST_LIMITING		0x1F	/* Boost Conv L BST Limiting */
 #define CS35L34_BST_RAMP_CTL		0x20	/* Boost Conv Soft Ramp Ctl */
 #define CS35L34_BST_CONV_COEF_1		0x21	/* Boost Conv Coefficients 1 */
 #define CS35L34_BST_CONV_COEF_2		0x22	/* Boost Conv Coefficients 2 */
@@ -133,8 +132,6 @@
 #define PDN_TDM			1
 
 /* CS35L34_AMP_INP_DRV_CTL */
-#define PDM_CH_SEL		(1 << 7)
-#define PDM_AUDIO		(1 << 6)
 #define AMP_DRV_STR_SRC		(1 << 1)
 #define AMP_DRV_STR		1
 
@@ -145,9 +142,11 @@
 #define AMP_DIGSFT		(1 << 1)
 #define AMP_INV			1
 
-/* CS35L34_AMP_ANLG_GAIN_CTL */
+/* CS35L34_PROTECT_CTL */
 #define AMP_MUTE		(1 << 5)
 #define AMP_GAIN_ZC		(1 << 4)
+#define AMP_GAIN_ZC_MASK	0x10
+#define AMP_GAIN_ZC_SHIFT	4
 
 /* CS35L34_CLK_CTL */
 #define MCLKDIS			(1 << 7)
@@ -156,8 +155,8 @@
 #define INT_FS_RATE		(1 << 4)
 #define ADSP_FS			0xF
 
-/* CS35L34_PROTECT_CTL */
-#define ALIVE_WD_DIS		(3 << 2)
+/* CS35L34_AMP_KEEP_ALIVE_CTL */
+#define ALIVE_WD_DIS		(1 << 2)
 
 /* CS35L34_BST_CTL */
 #define BST_CTL_SRC		(1 << 7)
@@ -182,16 +181,6 @@
 #define DAC_NOTCH_DIS		(1 << 5)
 #define DIGSFT			(1 << 4)
 #define DSR_RATE		0xF
-
-/* CS35L34_CLASSD_CTL */
-#define AMP_SD			(1 << 6)
-#define AMP_DRV_SEL_SRC		(1 << 5)
-#define AMP_DRV_SEL_MASK	0x10
-#define AMP_DRV_SEL_SHIFT	4
-#define AMP_CAL			(1 << 3)
-#define GAIN_CHG_ZC_MASK	0x04
-#define GAIN_CHG_ZC_SHIFT	2
-#define CLASS_D_CTL_MASK	0x3F
 
 /* CS35L34_AMP_CTL */
 #define AMP_GAIN		0xF0
