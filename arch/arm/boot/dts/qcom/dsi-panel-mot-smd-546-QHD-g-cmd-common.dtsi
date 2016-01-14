@@ -23,7 +23,6 @@ qcom,mdss-pan-physical-width-dimension = <68>;
 qcom,mdss-pan-physical-height-dimension = <121>;
 
 qcom,mdss-dsi-panel-clockrate = <527000000>;
-//todo: Ask QCOM what the F they want us to do with the porches
 qcom,mdss-dsi-h-front-porch = <120>;
 qcom,mdss-dsi-h-back-porch = <44>;
 qcom,mdss-dsi-h-pulse-width = <16>;
@@ -83,7 +82,7 @@ qcom,mdss-dsi-on-command = [
 	05 01 00 00 78 00 01 11
 	15 01 00 00 00 00 02 35 00
 	39 01 00 00 00 00 14 C2 00 08 D8 D8 00 80 2B 05 08 0E 07 0B 05 0D 0A 15 13 20 1E
-	15 01 00 00 00 00 02 53 28
+	15 01 00 00 00 00 02 53 20
 	15 01 00 00 00 00 02 51 00
 	15 01 00 00 00 00 02 55 03
 	05 01 00 00 00 00 01 29
@@ -119,7 +118,7 @@ dsc_cfg_mot_smd_546_QHD_g_cmd: config0 {
 	qcom,mdss-dsc-encoders = <1>;
 	qcom,mdss-dsc-slice-height = <16>;
 	qcom,mdss-dsc-slice-width = <1440>;
-	qcom,mdss-dsc-slice-per-pkt = <1>; //todo
+	qcom,mdss-dsc-slice-per-pkt = <1>;
 	qcom,mdss-dsc-bit-per-component = <8>;
 	qcom,mdss-dsc-bit-per-pixel = <8>;
 	qcom,mdss-dsc-block-prediction-enable;
