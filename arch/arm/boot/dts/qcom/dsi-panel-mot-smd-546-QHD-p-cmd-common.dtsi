@@ -95,6 +95,8 @@ qcom,mdss-dsi-off-command = [
 //qcom,mdss-dsi-hbm-off-command = [
 //	/* PWM set to 80% */
 //	15 01 00 00 00 00 02 51 cc];
+qcom,mdss-dsi-acl-on-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-acl-off-command = [15 01 00 00 00 00 02 55 00];
 
 qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
