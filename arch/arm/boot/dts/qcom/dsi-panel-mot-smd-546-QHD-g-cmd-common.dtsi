@@ -99,6 +99,8 @@ qcom,mdss-dsi-off-command = [
 
 qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 53 e0];
 qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 53 20];
+qcom,mdss-dsi-acl-on-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-acl-off-command = [15 01 00 00 00 00 02 55 00];
 
 qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
