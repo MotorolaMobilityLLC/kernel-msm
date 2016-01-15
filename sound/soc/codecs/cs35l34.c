@@ -279,11 +279,17 @@ static int cs35l34_main_amp_event(struct snd_soc_dapm_widget *w,
 			CS35L34_BST_CTL_MASK,
 			0x30);
 		usleep_range(5000, 5000);
+		regmap_update_bits(priv->regmap, CS35L34_PROTECT_CTL,
+			AMP_MUTE,
+			0);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		regmap_update_bits(priv->regmap, CS35L34_BST_CVTR_V_CTL,
 			CS35L34_BST_CTL_MASK,
 			0x00);
+		regmap_update_bits(priv->regmap, CS35L34_PROTECT_CTL,
+			AMP_MUTE,
+			AMP_MUTE);
 		usleep_range(5000, 5000);
 		break;
 	default:
@@ -461,33 +467,6 @@ static int cs35l34_pcm_hw_params(struct snd_pcm_substream *substream,
 	return ret;
 }
 
-static int cs35l34_digital_mute(struct snd_soc_dai *codec_dai, int mute)
-{
-	struct snd_soc_codec *codec = codec_dai->codec;
-	struct cs35l34_private *priv = snd_soc_codec_get_drvdata(codec);
-	int ret;
-
-	if (mute == 1) {
-		ret = regmap_update_bits(priv->regmap,
-			CS35L34_PROTECT_CTL,
-			AMP_MUTE,
-			AMP_MUTE);
-	} else if (mute == 0) {
-		ret = regmap_update_bits(priv->regmap,
-			CS35L34_PROTECT_CTL,
-			AMP_MUTE,
-			0);
-	} else {
-		dev_err(codec->dev, "Invalid mute input %d\n", mute);
-		return -EINVAL;
-	}
-
-	if (ret != 0)
-		dev_err(codec->dev, "Failed to set mute bit %d\n", ret);
-
-	return ret;
-}
-
 static int cs35l34_set_tristate(struct snd_soc_dai *dai, int tristate)
 {
 
@@ -551,7 +530,6 @@ static const struct snd_soc_dai_ops cs35l34_ops = {
 	.set_fmt = cs35l34_set_dai_fmt,
 	.hw_params = cs35l34_pcm_hw_params,
 	.set_sysclk = cs35l34_codec_set_sysclk,
-	.digital_mute = cs35l34_digital_mute,
 };
 
 static struct snd_soc_dai_driver cs35l34_dai = {
@@ -593,6 +571,11 @@ static int cs35l34_probe(struct snd_soc_codec *codec)
 	*/
 	regmap_write(cs35l34->regmap, CS35L34_PWRCTL2, 0xFD);
 	regmap_write(cs35l34->regmap, CS35L34_PWRCTL3, 0x1F);
+
+	/* Set mute bit at startup */
+	regmap_update_bits(cs35l34->regmap, CS35L34_PROTECT_CTL,
+		AMP_MUTE,
+		AMP_MUTE);
 
 	/* Set Platform Data */
 	if (cs35l34->pdata.boost_ctl)
