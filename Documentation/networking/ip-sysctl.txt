@@ -806,6 +806,13 @@ log_martians - BOOLEAN
 	conf/{all,interface}/log_martians is set to TRUE,
 	it will be disabled otherwise
 
+accept_ra_mtu - BOOLEAN
+	Apply the MTU value specified in RA option 5 (RFC4861). If
+	disabled, the MTU specified in the RA will be ignored.
+
+	Functional default: enabled if accept_ra is enabled.
+			    disabled if accept_ra is disabled.
+
 accept_redirects - BOOLEAN
 	Accept ICMP redirect messages.
 	accept_redirects for the interface will be enabled if:
