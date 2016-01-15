@@ -396,50 +396,50 @@
 #define F_VALID 0x02
 #define VALID_CTRL  0x01
 
-#define SP_TX_SYS_CTRL4_REG 0x83
-#define ENHANCED_MODE 	0x08
+#define SP_TX_SYS_CTRL4_REG	0x83
+#define ENHANCED_MODE		0x08
 
-#define SP_TX_VID_CTRL 0x84
+#define SP_TX_VID_CTRL		0x84
 
-#define SP_TX_AUD_CTRL	0x87
-#define AUD_EN 0x01
+#define SP_TX_AUD_CTRL		0x87
+#define AUD_EN			0x01
 
 #define  I2C_GEN_10US_TIMER0	0x88
 #define  I2C_GEN_10US_TIMER1	0x89
 
-#define SP_TX_PKT_EN_REG 0x90
-#define AUD_IF_UP 0x80
-#define AVI_IF_UD 0x40
-#define MPEG_IF_UD 0x20
-#define SPD_IF_UD 0x10
-#define AUD_IF_EN 0x08
-#define AVI_IF_EN 0x04
-#define MPEG_IF_EN 0x02
-#define SPD_IF_EN 0x01
+#define SP_TX_PKT_EN_REG	0x90
+#define AUD_IF_UP		0x80
+#define AVI_IF_UD		0x40
+#define MPEG_IF_UD		0x20
+#define SPD_IF_UD		0x10
+#define AUD_IF_EN		0x08
+#define AVI_IF_EN		0x04
+#define MPEG_IF_EN		0x02
+#define SPD_IF_EN		0x01
 
-#define TX_HDCP_CTRL 0x92
-#define AUTO_EN	0x80
-#define AUTO_START 0x20
-#define LINK_POLLING 0x02
+#define TX_HDCP_CTRL		0x92
+#define AUTO_EN			0x80
+#define AUTO_START		0x20
+#define LINK_POLLING		0x02
 
-#define SP_TX_LINK_BW_SET_REG 0xA0
-#define LINK_6P75G 0x19
-#define LINK_5P4G 0x14
-#define LINK_2P7G 0x0A
-#define LINK_1P62G 0x06
+#define SP_TX_LINK_BW_SET_REG	0xA0
+#define LINK_6P75G		0x19
+#define LINK_5P4G		0x14
+#define LINK_2P7G		0x0A
+#define LINK_1P62G		0x06
 
 #define SP_TX_TRAINING_PTN_SET_REG 0xA2
-#define SCRAMBLE_DISABLE 0x20
+#define SCRAMBLE_DISABLE	0x20
 
-#define SP_TX_LT_SET_REG 0xA3
-#define MAX_PRE_REACH 0x20
-#define MAX_DRIVE_REACH 0x04
-#define DRVIE_CURRENT_LEVEL1 0x01
-#define PRE_EMP_LEVEL1 0x08
+#define SP_TX_LT_SET_REG	0xA3
+#define MAX_PRE_REACH		0x20
+#define MAX_DRIVE_REACH		0x04
+#define DRVIE_CURRENT_LEVEL1	0x01
+#define PRE_EMP_LEVEL1		0x08
 
-/* #define SSC_CTRL_REG1 0xA7
-#define SPREAD_AMP 0x10
-#define MODULATION_FREQ 0x01 */
+/* #define SSC_CTRL_REG1	0xA7
+#define SPREAD_AMP		0x10
+#define MODULATION_FREQ		0x01 */
 
 #define LT_CTRL 0xA8
 #define SP_TX_LT_EN	0x01
@@ -778,51 +778,51 @@
 #define DPCD_TEST_EDID_Checksum 0x61
 
 
-#define DPCD_SPECIFIC_INTERRUPT1 0x10
-#define DPCD_USER_COMM1 0x22
+#define DPCD_SPECIFIC_INTERRUPT1		0x10
+#define DPCD_USER_COMM1				0x22
 
-#define DPCD_SPECIFIC_INTERRUPT2 0x11
+#define DPCD_SPECIFIC_INTERRUPT2		0x11
 
-#define DPCD_TEST_REQUEST                               0x18
-#define DPCD_TEST_LINK_RATE                             0x19
+#define DPCD_TEST_REQUEST			0x18
+#define DPCD_TEST_LINK_RATE			0x19
 
-#define DPCD_TEST_LANE_COUNT                            0x20
+#define DPCD_TEST_LANE_COUNT			0x20
 
-#define DPCD_PHY_TEST_PATTERN                            0x48
+#define DPCD_PHY_TEST_PATTERN			0x48
 
 
 #ifdef ANX7730_DEBUG
 /* for analogix  downstream DP RX */
 
-#define DP_RX_LINK_BW_SET               0x0a
+#define DP_RX_LINK_BW_SET			0x0a
 
-#define  DP_RX_H_RES_LOW        			0x90
-#define  DP_RX_H_RES_HIGH        			0x91
+#define  DP_RX_H_RES_LOW			0x90
+#define  DP_RX_H_RES_HIGH			0x91
 
-#define  DP_RX_V_RES_LOW        			0x92
-#define  DP_RX_V_RES_HIGH        			0x93
+#define  DP_RX_V_RES_LOW			0x92
+#define  DP_RX_V_RES_HIGH			0x93
 
-#define  DP_RX_ACT_PIX_LOW        			0x94
-#define  DP_RX_ACT_PIX_HIGH        			0x95
+#define  DP_RX_ACT_PIX_LOW			0x94
+#define  DP_RX_ACT_PIX_HIGH			0x95
 
-#define  DP_RX_ACT_LINE_LOW        			0x96
-#define  DP_RX_ACT_LINE_HIGH        		0x97
+#define  DP_RX_ACT_LINE_LOW			0x96
+#define  DP_RX_ACT_LINE_HIGH			0x97
 
-#define  DP_RX_VSYNC_TO_ACT_LINE        	0x98
-#define  DP_RX_ACT_LINE_TO_VSYNC        	0x99
+#define  DP_RX_VSYNC_TO_ACT_LINE		0x98
+#define  DP_RX_ACT_LINE_TO_VSYNC		0x99
 
-#define  DP_RX_H_F_PORCH_LOW        		0x9b
-#define  DP_RX_H_F_PORCH_HIGH        		0x9c
+#define  DP_RX_H_F_PORCH_LOW			0x9b
+#define  DP_RX_H_F_PORCH_HIGH			0x9c
 
-#define  DP_RX_HSYNC_WIDTH_LOW        		0x9d
-#define  DP_RX_HSYNC_WIDTH_HIGH        		0x9e
+#define  DP_RX_HSYNC_WIDTH_LOW			0x9d
+#define  DP_RX_HSYNC_WIDTH_HIGH			0x9e
 
-#define DP_RX_M_FORCE_VALUE_3     			0x0d
-#define DP_RX_M_FORCE_VALUE_2     			0x0e
-#define DP_RX_M_FORCE_VALUE_1     			0x0F
-#define DP_RX_N_FORCE_VALUE_3     			0x10
-#define DP_RX_N_FORCE_VALUE_2     			0x11
-#define DP_RX_N_FORCE_VALUE_1     			0x12
+#define DP_RX_M_FORCE_VALUE_3			0x0d
+#define DP_RX_M_FORCE_VALUE_2			0x0e
+#define DP_RX_M_FORCE_VALUE_1			0x0F
+#define DP_RX_N_FORCE_VALUE_3			0x10
+#define DP_RX_N_FORCE_VALUE_2			0x11
+#define DP_RX_N_FORCE_VALUE_1			0x12
 
 
 #define DP_TX_HDCP_LINK_CHK_FRAME_NUM                     0x03
