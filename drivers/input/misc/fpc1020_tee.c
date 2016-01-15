@@ -96,26 +96,27 @@ int FPS_unregister_notifier(struct notifier_block *nb,
 
 	return error;
 }
+EXPORT_SYMBOL_GPL(FPS_unregister_notifier);
 
 void FPS_notify(unsigned long stype, int state)
 {
 	struct FPS_data *mdata = fpsData;
 
-	pr_err("%s: Enter", __func__);
+	pr_debug("%s: Enter", __func__);
 
 	if (!mdata) {
 		pr_err("%s: FPS notifier not initialized yet\n", __func__);
 		return;
 	}
 
-	pr_err("%s: FPS current state %d -> (0x%x)\n", __func__,
+	pr_debug("%s: FPS current state %d -> (0x%x)\n", __func__,
 	       mdata->state, state);
 
 	if (mdata->enabled && mdata->state != state) {
 		mdata->state = state;
 		blocking_notifier_call_chain(&mdata->nhead,
 					     stype, (void *)&state);
-		pr_err("%s: FPS notification sent\n", __func__);
+		pr_debug("%s: FPS notification sent\n", __func__);
 	} else if (!mdata->enabled) {
 		pr_err("%s: !mdata->enabled", __func__);
 	} else {
@@ -204,12 +205,13 @@ static int set_clks(struct fpc1020_data *fpc1020, bool enable)
 	int rc = 0;
 
 	if (enable == fpc1020->clocks_enabled) {
-		dev_info(fpc1020->dev, "enable == clocks_enabled\n");
+		dev_dbg(fpc1020->dev, "%s: clocks already %s, no change\n",
+			__func__, enable ? "enabled" : "disabled");
 		goto out;
 	}
 
 	if (enable) {
-		dev_info(fpc1020->dev, "setting clk rates\n");
+		dev_dbg(fpc1020->dev, "setting clk rates\n");
 		wake_lock(&fpc1020->wlock);
 		rc = clk_set_rate(fpc1020->core_clk,
 				fpc1020->spi->max_speed_hz);
@@ -220,7 +222,7 @@ static int set_clks(struct fpc1020_data *fpc1020, bool enable)
 					rc);
 			return rc;
 		}
-		dev_info(fpc1020->dev, "enabling core_clk\n");
+		dev_dbg(fpc1020->dev, "enabling core_clk\n");
 		rc = clk_prepare_enable(fpc1020->core_clk);
 		if (rc) {
 			dev_err(fpc1020->dev,
@@ -229,7 +231,7 @@ static int set_clks(struct fpc1020_data *fpc1020, bool enable)
 			goto out;
 		}
 
-		dev_info(fpc1020->dev, "enabling iface_clk\n");
+		dev_dbg(fpc1020->dev, "enabling iface_clk\n");
 		rc = clk_prepare_enable(fpc1020->iface_clk);
 		if (rc) {
 			dev_err(fpc1020->dev,
@@ -243,7 +245,7 @@ static int set_clks(struct fpc1020_data *fpc1020, bool enable)
 
 		fpc1020->clocks_enabled = true;
 	} else {
-		dev_info(fpc1020->dev, "disabling clks\n");
+		dev_dbg(fpc1020->dev, "disabling clks\n");
 		clk_disable_unprepare(fpc1020->iface_clk);
 		clk_disable_unprepare(fpc1020->core_clk);
 		fpc1020->clocks_enabled = false;
@@ -261,11 +263,10 @@ static ssize_t dev_enable_set(struct device *dev,
 
 	int state = (*buf == '1') ? 1 : 0;
 
-	dev_err(fpc1020->dev, "%s state=%d...\n", __func__, state);
 	FPS_notify(0xbeef, state);
+	dev_dbg(fpc1020->dev, "%s state = %d\n", __func__, state);
 	return 1;
 }
-
 static DEVICE_ATTR(dev_enable, S_IWUSR | S_IWGRP, NULL, dev_enable_set);
 
 static ssize_t clk_enable_set(struct device *dev,
@@ -275,7 +276,6 @@ static ssize_t clk_enable_set(struct device *dev,
 
 	return set_clks(fpc1020, (*buf == '1')) ? : count;
 }
-
 static DEVICE_ATTR(clk_enable, S_IWUSR | S_IWGRP, NULL, clk_enable_set);
 
 static ssize_t irq_get(struct device *device,
@@ -304,7 +304,7 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 {
 	struct fpc1020_data *fpc1020 = handle;
 
-	dev_err(fpc1020->dev, "%s\n", __func__);
+	dev_dbg(fpc1020->dev, "%s\n", __func__);
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 	return IRQ_HANDLED;
 }
@@ -322,7 +322,7 @@ static int fpc1020_request_named_gpio(struct fpc1020_data *fpc1020,
 		dev_err(dev, "failed to request gpio %d\n", *gpio);
 		return rc;
 	}
-	dev_info(dev, "%s %d\n", label, *gpio);
+	dev_dbg(dev, "%s %d\n", label, *gpio);
 	return 0;
 }
 
@@ -401,7 +401,7 @@ static int fpc1020_probe(struct spi_device *spi)
 	}
 
 	if (of_property_read_bool(dev->of_node, "fpc,enable-on-boot")) {
-		dev_info(dev, "Enabling hardware\n");
+		dev_dbg(dev, "Enabling hardware\n");
 		set_clks(fpc1020, true);
 	}
 
@@ -467,7 +467,7 @@ static int __init fpc1020_init(void)
 	int rc = spi_register_driver(&fpc1020_driver);
 
 	if (!rc)
-		pr_info("%s OK\n", __func__);
+		pr_debug("%s OK\n", __func__);
 	else
 		pr_err("%s %d\n", __func__, rc);
 	return rc;
@@ -475,7 +475,7 @@ static int __init fpc1020_init(void)
 
 static void __exit fpc1020_exit(void)
 {
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	spi_unregister_driver(&fpc1020_driver);
 }
 
