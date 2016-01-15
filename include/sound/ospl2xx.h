@@ -21,6 +21,8 @@
 #define AFE_CUSTOM_OPALUM_TX_MODULE                    0x00A1BF00
 
 /* RX module parameter IDs */
+/* Get Module status */
+#define PARAM_ID_OPALUM_RX_ENABLE                      0x00A1AF01
 /* Switch between internal config strings */
 #define PARAM_ID_OPALUM_RX_SET_USE_CASE                0x00A1AF02
 /* Run production line test */
@@ -39,6 +41,8 @@
 
 
 /* TX module parameter IDs */
+/* Get Module status */
+#define PARAM_ID_OPALUM_TX_ENABLE                      0x00A1BF01
 /* Run production line test */
 #define PARAM_ID_OPALUM_TX_RUN_CALIBRATION             0x00A1BF03
 /* Get f0 calibration values */
