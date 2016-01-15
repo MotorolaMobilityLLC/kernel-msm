@@ -479,10 +479,12 @@ static void q6asm_session_free(struct audio_client *ac)
 	ac->priv = NULL;
 
 	spin_lock(&ac->no_wait_que_spinlock);
-	list_for_each_safe(ptr, next, &ac->no_wait_que) {
-		node = list_entry(ptr, struct asm_no_wait_node, list);
-		list_del(&node->list);
-		kfree(node);
+	if (ac->no_wait_que.prev && ac->no_wait_que.next) {
+		list_for_each_safe(ptr, next, &ac->no_wait_que) {
+			node = list_entry(ptr, struct asm_no_wait_node, list);
+			list_del(&node->list);
+			kfree(node);
+		}
 	}
 	spin_unlock(&ac->no_wait_que_spinlock);
 
