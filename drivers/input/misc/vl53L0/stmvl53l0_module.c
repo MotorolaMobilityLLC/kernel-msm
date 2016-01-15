@@ -975,8 +975,6 @@ data->rangeData.MeasurementTimeUsec = tv.tv_usec;
 wake_up(&data->range_data_wait);
 	if (CAM_MODE == data->w_mode) {
 		vl53l0_dbgmsg("CAM_MODE\n");
-		papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
-			data, 120000);
 
 		if (data->enableDebug)
 			vl53l0_errmsg("range:%d, signalRateRtnMegaCps:%d, \
