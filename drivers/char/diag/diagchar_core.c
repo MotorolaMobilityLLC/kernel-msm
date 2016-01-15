@@ -171,6 +171,7 @@ uint16_t diag_debug_mask;
 void *diag_ipc_log;
 #endif
 
+extern uint16_t md_support;
 static void diag_md_session_close(int pid);
 
 /*
@@ -1973,6 +1974,15 @@ static int diag_ioctl_hdlc_toggle(unsigned long ioarg)
 	return 0;
 }
 
+static int diag_ioctl_md_support_list(unsigned long ioarg)
+{
+	if (copy_to_user((void __user *)ioarg, &md_support,
+			sizeof(md_support)))
+		return -EFAULT;
+	else
+		return 0;
+}
+
 static int diag_ioctl_register_callback(unsigned long ioarg)
 {
 	int err = 0;
@@ -2212,6 +2222,9 @@ long diagchar_compat_ioctl(struct file *filp,
 	case DIAG_IOCTL_HDLC_TOGGLE:
 		result = diag_ioctl_hdlc_toggle(ioarg);
 		break;
+	case DIAG_IOCTL_MD_SUPPORT_LIST:
+		result = diag_ioctl_md_support_list(ioarg);
+		break;
 	}
 	return result;
 }
@@ -2336,6 +2349,9 @@ long diagchar_ioctl(struct file *filp,
 		break;
 	case DIAG_IOCTL_HDLC_TOGGLE:
 		result = diag_ioctl_hdlc_toggle(ioarg);
+		break;
+	case DIAG_IOCTL_MD_SUPPORT_LIST:
+		result = diag_ioctl_md_support_list(ioarg);
 		break;
 	}
 	return result;
