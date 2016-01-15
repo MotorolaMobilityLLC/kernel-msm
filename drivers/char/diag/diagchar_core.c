@@ -170,6 +170,7 @@ void *diag_ipc_log;
 #endif
 
 static void diag_md_session_close(int pid);
+extern uint16_t md_support;
 
 /*
  * Returns the next delayed rsp id. If wrapping is enabled,
@@ -2460,6 +2461,15 @@ static void diag_ioctl_query_session_pid(struct diag_query_pid_t *param)
 	"diag: Pid for the active ODL session: %d\n", param->pid);
 }
 
+static int diag_ioctl_md_support_list(unsigned long ioarg)
+{
+	if (copy_to_user((void __user *)ioarg, &md_support,
+			sizeof(md_support)))
+		return -EFAULT;
+	else
+		return 0;
+}
+
 static int diag_ioctl_register_callback(unsigned long ioarg)
 {
 	int err = 0;
@@ -2715,6 +2725,10 @@ long diagchar_compat_ioctl(struct file *filp,
 		else
 			result = 0;
 		break;
+	case DIAG_IOCTL_MD_SUPPORT_LIST:
+		result = diag_ioctl_md_support_list(ioarg);
+
+		break;
 	case DIAG_IOCTL_QUERY_MD_PID:
 		if (copy_from_user((void *)&pid_query, (void __user *)ioarg,
 				   sizeof(pid_query))) {
@@ -2890,6 +2904,9 @@ long diagchar_ioctl(struct file *filp,
 			result = -EFAULT;
 		else
 			result = 0;
+		break;
+	case DIAG_IOCTL_MD_SUPPORT_LIST:
+		result = diag_ioctl_md_support_list(ioarg);
 		break;
 	}
 	return result;
