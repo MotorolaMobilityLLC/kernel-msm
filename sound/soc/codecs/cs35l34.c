@@ -310,7 +310,7 @@ static const struct snd_kcontrol_new cs35l34_snd_controls[] = {
 	SOC_SINGLE_SX_TLV("Digital Volume", CS35L34_AMP_DIG_VOL,
 				0, 0x34, 0x18, dig_vol_tlv),
 	SOC_ENUM("AMP Gain", amp_gain),
-	SOC_SINGLE("Mute Switch", CS35L34_AMP_ANLG_GAIN_CTL, 5, 1, 0),
+	SOC_SINGLE("Mute Switch", CS35L34_PROTECT_CTL, 5, 1, 0),
 };
 
 static const struct snd_soc_dapm_widget cs35l34_dapm_widgets[] = {
@@ -470,12 +470,12 @@ static int cs35l34_digital_mute(struct snd_soc_dai *codec_dai, int mute)
 
 	if (mute == 1) {
 		ret = regmap_update_bits(priv->regmap,
-			CS35L34_AMP_ANLG_GAIN_CTL,
+			CS35L34_PROTECT_CTL,
 			AMP_MUTE,
 			AMP_MUTE);
 	} else if (mute == 0) {
 		ret = regmap_update_bits(priv->regmap,
-			CS35L34_AMP_ANLG_GAIN_CTL,
+			CS35L34_PROTECT_CTL,
 			AMP_MUTE,
 			0);
 	} else {
