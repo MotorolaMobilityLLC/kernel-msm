@@ -3275,6 +3275,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	if (rc)
 		goto error;
 
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->lp_on_cmds,
+		"qcom,mdss-dsi-lp-mode-on", NULL);
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->lp_off_cmds,
+		"qcom,mdss-dsi-lp-mode-off", NULL);
+
 	return 0;
 
 error:
