@@ -3962,6 +3962,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 	default:
 		MSM_FB_INFO("MDP: unknown ioctl (cmd=%x) received!\n", cmd);
+		pr_err("MDP: unknown ioctl (cmd=%u received!\n", cmd);
 		ret = -EINVAL;
 		break;
 	}
