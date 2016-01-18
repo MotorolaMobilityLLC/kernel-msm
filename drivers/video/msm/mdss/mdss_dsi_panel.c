@@ -322,6 +322,11 @@ static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
 				ns_to_ktime((u64)MDSS_IDLE_ON_DELAY_MS *
 					NSEC_PER_MSEC));
 	} else {
+		/* off the display. it will be on during setting
+		 * backlight level later
+		 */
+		mdss_dsi_panel_bklt_dcs(ctrl, 0);
+
 		if (ctrl->idle_off_cmds.cmd_cnt) {
 			alarm_cancel(&ctrl->idle_on_alarm);
 			cancel_work_sync(&ctrl->idle_on_work);
@@ -831,10 +836,12 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		enable);
 
 	/* Any panel specific low power commands/config */
-	if (enable)
+	if (enable) {
+		pinfo->display_committed = false;
 		pinfo->blank_state = MDSS_PANEL_BLANK_LOW_POWER;
-	else
+	} else {
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
+	}
 
 	/* Control idle mode for panel */
 	mdss_dsi_panel_set_idle_mode(pdata, enable);

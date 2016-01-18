@@ -1074,8 +1074,11 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	int ret = -EINVAL;
 	bool is_bl_changed = (bkl_lvl != mfd->bl_level);
 
-	if (((mdss_fb_is_power_off(mfd) && mfd->dcm_state != DCM_ENTER)
-		|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd)) {
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	if ((((mdss_fb_is_power_off(mfd) && mfd->dcm_state != DCM_ENTER)
+		|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd))
+		|| (pdata && !pdata->panel_info.display_committed)) {
 		mfd->unset_bl_level = bkl_lvl;
 		return;
 	} else if (mdss_fb_is_power_on(mfd) && mfd->panel_info->panel_dead) {
@@ -1083,8 +1086,6 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	} else {
 		mfd->unset_bl_level = 0;
 	}
-
-	pdata = dev_get_platdata(&mfd->pdev->dev);
 
 	if ((pdata) && (pdata->set_backlight)) {
 		if (mfd->mdp.ad_attenuate_bl) {
@@ -1250,7 +1251,8 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 			if (!IS_CALIB_MODE_BL(mfd))
 				mdss_fb_scale_bl(mfd, &temp);
 
-			if (mfd->bl_level)
+			if (mfd->bl_level &&
+			    pdata->panel_info.display_committed)
 				pdata->set_backlight(pdata, temp);
 		}
 	}
@@ -3164,12 +3166,26 @@ static int mdss_fb_display_commit(struct fb_info *info,
 {
 	int ret;
 	struct mdp_display_commit disp_commit;
+	struct msm_fb_data_type *mfd;
+	struct mdss_panel_data *pdata;
+
+	if (!info || !info->par)
+		return -EINVAL;
+
 	ret = copy_from_user(&disp_commit, argp,
 			sizeof(disp_commit));
 	if (ret) {
 		pr_err("%s:copy_from_user failed\n", __func__);
 		return ret;
 	}
+
+	mfd = (struct msm_fb_data_type *)info->par;
+	if (mfd && mfd->index == 0) {
+		pdata = dev_get_platdata(&mfd->pdev->dev);
+		if (pdata && mfd->panel_power_state == MDSS_PANEL_POWER_ON)
+			pdata->panel_info.display_committed = true;
+	}
+
 	ret = mdss_fb_pan_display_ex(info, &disp_commit);
 	return ret;
 }

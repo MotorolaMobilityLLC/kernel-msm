@@ -395,6 +395,7 @@ struct mdss_panel_info {
 	bool dynamic_switch_pending;
 	bool is_lpm_mode;
 	bool is_split_display;
+	bool display_committed;
 
 	struct mdss_mdp_pp_tear_check te;
 
