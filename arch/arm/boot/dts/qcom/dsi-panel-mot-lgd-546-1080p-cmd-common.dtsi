@@ -102,7 +102,7 @@ qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-panel-status-value = <0x1c>;
 qcom,mdss-dsi-panel-on-check-value = <0x1c>;
 qcom,partial-update-enabled;
-qcom,panel-roi-alignment = <8 2 8 2 0 0>;
+qcom,panel-roi-alignment = <16 2 16 2 320 0>;
 
 qcom,panel-supply-entries {
 	#address-cells = <1>;
