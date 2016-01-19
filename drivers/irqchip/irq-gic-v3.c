@@ -28,6 +28,7 @@
 
 #include <linux/irqchip/arm-gic-v3.h>
 #include <linux/syscore_ops.h>
+#include <linux/wakeup_reason.h>
 
 #include <asm/cputype.h>
 #include <asm/exception.h>
