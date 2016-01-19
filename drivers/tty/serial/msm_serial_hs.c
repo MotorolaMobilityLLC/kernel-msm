@@ -257,6 +257,8 @@ struct msm_hs_port {
 	struct pinctrl_state *gpio_state_suspend;
 	bool flow_control;
 	bool obs;
+	wake_peer_fn wake_peer;
+	bool tx_pending;
 };
 
 static struct of_device_id msm_hs_match_table[] = {
@@ -997,6 +999,7 @@ static void msm_hs_enable_flow_control(struct uart_port *uport)
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	unsigned int data;
 
+	MSM_HS_DBG("%s\n", __func__);
 	if (msm_uport->flow_control) {
 		/* Enable RFR line */
 		msm_hs_write(uport, UART_DM_CR, RFR_LOW);
@@ -1019,6 +1022,7 @@ static void msm_hs_disable_flow_control(struct uart_port *uport)
 	 * data while we change the parameters
 	 */
 
+	MSM_HS_DBG("%s\n", __func__);
 	if (msm_uport->flow_control) {
 		data = msm_hs_read(uport, UART_DM_MR1);
 		/* disable auto ready-for-receiving */
@@ -1734,9 +1738,12 @@ static void msm_hs_start_tx_locked(struct uart_port *uport )
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
-		MSM_HS_WARN("%s: Failed.Clocks are OFF\n", __func__);
+		msm_uport->tx_pending = true;
+		MSM_HS_DBG("%s: Clock not on; tx pending clock on\n", __func__);
 		return;
 	}
+
+	msm_uport->tx_pending = false;
 	if ((msm_uport->tx.tx_ready_int_en == 0) &&
 		(msm_uport->tx.dma_in_flight == 0))
 			msm_hs_submit_tx_locked(uport);
@@ -1874,6 +1881,20 @@ static void msm_hs_sps_rx_callback(struct sps_event_notify *notify)
 		tasklet_schedule(&msm_uport->rx.tlet);
 		MSM_HS_DBG("%s(): Scheduled rx_tlet", __func__);
 	}
+}
+
+void msm_hs_set_wake_peer(struct uart_port *uport, wake_peer_fn wake_peer)
+{
+	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
+	msm_uport->wake_peer = wake_peer;
+}
+
+static void msm_hs_wake_peer(struct uart_port *uport)
+{
+	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
+
+	if (msm_uport->wake_peer)
+		msm_uport->wake_peer(uport);
 }
 
 /*
@@ -3516,11 +3537,14 @@ static int msm_hs_runtime_resume(struct device *dev)
 						    platform_device, dev);
 	struct msm_hs_port *msm_uport = get_matching_hs_port(pdev);
 	int ret;
+	unsigned long flags;
 
+	MSM_HS_DBG("%s\n", __func__);
 	/* This check should not fail
 	 * During probe, we set uport->line to either pdev->id or userid */
 	if (msm_uport) {
 		msm_hs_request_clock_on(&msm_uport->uport);
+		msm_hs_set_mctrl(&msm_uport->uport, TIOCM_RTS);
 		if (msm_uport->use_pinctrl) {
 			ret = pinctrl_select_state(msm_uport->pinctrl,
 						msm_uport->gpio_state_active);
@@ -3528,6 +3552,15 @@ static int msm_hs_runtime_resume(struct device *dev)
 				MSM_HS_ERR("%s(): error select active state",
 					__func__);
 		}
+
+		msm_hs_clock_vote(msm_uport);
+		spin_lock_irqsave(&msm_uport->uport.lock, flags);
+		if (msm_uport->tx_pending) {
+			MSM_HS_DBG("%s sending pending tx\n", __func__);
+			msm_hs_start_tx_locked(&msm_uport->uport);
+		}
+		spin_unlock_irqrestore(&msm_uport->uport.lock, flags);
+		msm_hs_clock_unvote(msm_uport);
 	}
 	return 0;
 }
@@ -3539,9 +3572,11 @@ static int msm_hs_runtime_suspend(struct device *dev)
 	struct msm_hs_port *msm_uport = get_matching_hs_port(pdev);
 	int ret;
 
+	MSM_HS_DBG("%s\n", __func__);
 	/* This check should not fail
 	 * During probe, we set uport->line to either pdev->id or userid */
 	if (msm_uport) {
+		msm_hs_set_mctrl(&msm_uport->uport, 0);
 		msm_hs_request_clock_off(&msm_uport->uport);
 		if (msm_uport->use_pinctrl) {
 			ret = pinctrl_select_state(msm_uport->pinctrl,
@@ -3595,6 +3630,7 @@ static struct uart_ops msm_hs_ops = {
 	.config_port = msm_hs_config_port,
 	.flush_buffer = NULL,
 	.ioctl = msm_hs_ioctl,
+	.wake_peer = msm_hs_wake_peer,
 };
 
 module_init(msm_serial_hs_init);
