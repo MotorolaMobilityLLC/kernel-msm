@@ -6707,7 +6707,7 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 				return 0;
 			synaptics_dsx_display_off(&rmi4_data->i2c_client->dev);
 		} else if (*blank == FB_BLANK_UNBLANK ||
-			(*blank == FB_BLANK_VSYNC_SUSPEND &&
+			(*blank == FB_BLANK_NORMAL &&
 			atomic_read(&rmi4_data->touch_stopped))) {
 			synaptics_dsx_display_on(&rmi4_data->i2c_client->dev);
 		}
