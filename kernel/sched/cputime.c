@@ -147,10 +147,8 @@ void account_user_time(struct task_struct *p, cputime_t cputime,
 	/* Add user time to cpustat. */
 	task_group_account_field(p, index, (__force u64) cputime);
 
-#ifdef CONFIG_CPU_FREQ_STAT
 	/* Account for user time used */
 	acct_account_cputime(p);
-#endif
 }
 
 /*
@@ -199,10 +197,8 @@ void __account_system_time(struct task_struct *p, cputime_t cputime,
 	/* Add system time to cpustat. */
 	task_group_account_field(p, index, (__force u64) cputime);
 
-#ifdef CONFIG_CPU_FREQ_STAT
 	/* Account for system time used */
 	acct_account_cputime(p);
-#endif
 }
 
 /*
