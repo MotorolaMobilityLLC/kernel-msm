@@ -188,6 +188,7 @@
 #define M_UNCALIB_MAG           0x010000
 #define M_ACCEL2                0x020000
 #define M_QUAT_9AXIS            0x040000
+#define M_QUEUE_OVERFLOW        0x080000
 
 /* wake sensor status */
 #define M_DOCK                  0x000001
@@ -351,8 +352,9 @@ enum lowpower_mode {
 enum sh_log_level {
 	SH_LOG_DISABLE,
 	SH_LOG_ERROR,
-	SH_LOG_VERBOSE,
-	SH_LOG_DEBUG
+	SH_LOG_WARN,
+	SH_LOG_DEBUG,
+	SH_LOG_VERBOSE
 };
 
 struct stm_response {
