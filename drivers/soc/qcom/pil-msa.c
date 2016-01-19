@@ -574,6 +574,8 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	if (!mba_dp_virt) {
 		dev_err(pil->dev, "MBA metadata buffer allocation failed\n");
 		ret = -ENOMEM;
+		pr_err("PANIC!!! MBA buffer alloc failed, mba_dp_size: %d\n",  (int)drv->mba_dp_size);
+		BUG_ON(1);
 		goto err_invalid_fw;
 	}
 
@@ -656,6 +658,8 @@ static int pil_msa_auth_modem_mdt(struct pil_desc *pil, const u8 *metadata,
 	if (!mdata_virt) {
 		dev_err(pil->dev, "MBA metadata buffer allocation failed\n");
 		ret = -ENOMEM;
+		pr_err("PANIC!!! MBA buffer alloc failed, size: %d\n", (int)size);
+		BUG_ON(1);
 		goto fail;
 	}
 	memcpy(mdata_virt, metadata, size);
