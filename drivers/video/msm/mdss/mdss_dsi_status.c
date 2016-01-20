@@ -31,8 +31,9 @@
 #include "mdss_mdp.h"
 
 #define STATUS_CHECK_INTERVAL_MS 5000
-#define STATUS_CHECK_INTERVAL_MIN_MS 50
+#define STATUS_CHECK_INTERVAL_MIN_MS 1000
 #define DSI_STATUS_CHECK_DISABLE 0
+#define STATUS_REPORT_AFTER_MS 500
 
 static uint32_t interval = STATUS_CHECK_INTERVAL_MS;
 static uint32_t dsi_status_disable = DSI_STATUS_CHECK_DISABLE;
@@ -46,6 +47,8 @@ struct dsi_status_data *pstatus_data;
 static void check_dsi_ctrl_status(struct work_struct *work)
 {
 	struct dsi_status_data *pdsi_status = NULL;
+	struct mdss_panel_data *pdata = NULL;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
 	pdsi_status = container_of(to_delayed_work(work),
 		struct dsi_status_data, check_status);
@@ -58,6 +61,75 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 	if (!pdsi_status->mfd) {
 		pr_err("%s: FB data not available\n", __func__);
 		return;
+	}
+
+	pdata = dev_get_platdata(&pdsi_status->mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("%s: PANEL data not available\n", __func__);
+		return;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+	if (!ctrl_pdata) {
+		pr_err("%s: DSI ctrl not available\n", __func__);
+		return;
+	}
+
+	if (mdss_dsi_is_te_based_esd(ctrl_pdata)) {
+		if (!atomic_read(&ctrl_pdata->te_irq_enabled)) {
+			atomic_inc(&ctrl_pdata->te_irq_enabled);
+			enable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
+			schedule_delayed_work(&pstatus_data->report_status,
+					msecs_to_jiffies(STATUS_REPORT_AFTER_MS));
+
+		}
+		mod_delayed_work(system_wq, &pstatus_data->check_status,
+				msecs_to_jiffies(interval));
+		return;
+	} else {
+		pdsi_status->mfd->mdp.check_dsi_status(work, interval);
+	}
+}
+
+/*
+ * report_dsi_ctrl_status()
+ */
+static void report_dsi_ctrl_status(struct work_struct *work)
+{
+	struct dsi_status_data *pdsi_status = NULL;
+	struct mdss_panel_data *pdata = NULL;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	pdsi_status = container_of(to_delayed_work(work),
+		struct dsi_status_data, check_status);
+
+	if (!pdsi_status) {
+		pr_err("%s: DSI status data not available\n", __func__);
+		return;
+	}
+
+	if (!pdsi_status->mfd) {
+		pr_err("%s: FB data not available\n", __func__);
+		return;
+	}
+
+	pdata = dev_get_platdata(&pdsi_status->mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("%s: PANEL data not available\n", __func__);
+		return;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+	if (!ctrl_pdata) {
+		pr_err("%s: DSI ctrl not available\n", __func__);
+		return;
+	}
+
+	if (atomic_read(&ctrl_pdata->te_irq_enabled)) {
+		atomic_dec(&ctrl_pdata->te_irq_enabled);
+		disable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
 
 	pdsi_status->mfd->mdp.check_dsi_status(work, interval);
@@ -82,8 +154,7 @@ irqreturn_t hw_vsync_handler(int irq, void *data)
 	}
 
 	if (pstatus_data)
-		mod_delayed_work(system_wq, &pstatus_data->check_status,
-			msecs_to_jiffies(interval));
+		cancel_delayed_work(&pstatus_data->report_status);
 	else
 		pr_err("Pstatus data is NULL\n");
 
@@ -91,6 +162,11 @@ irqreturn_t hw_vsync_handler(int irq, void *data)
 		atomic_inc(&ctrl_pdata->te_irq_ready);
 
 	ctrl_pdata->panel_data.panel_info.panel_dead = false;
+
+	if (atomic_read(&ctrl_pdata->te_irq_enabled)) {
+		atomic_dec(&ctrl_pdata->te_irq_enabled);
+		disable_irq_nosync(gpio_to_irq(ctrl_pdata->disp_te_gpio));
+	}
 
 	return IRQ_HANDLED;
 }
@@ -222,6 +298,7 @@ int __init mdss_dsi_status_init(void)
 
 	pr_info("%s: DSI status check interval:%d\n", __func__,	interval);
 
+	INIT_DELAYED_WORK(&pstatus_data->report_status, report_dsi_ctrl_status);
 	INIT_DELAYED_WORK(&pstatus_data->check_status, check_dsi_ctrl_status);
 
 	wake_lock_init(&pstatus_data->status_wakelock, WAKE_LOCK_SUSPEND,
@@ -237,6 +314,7 @@ void __exit mdss_dsi_status_exit(void)
 	wake_lock_destroy(&pstatus_data->status_wakelock);
 	fb_unregister_client(&pstatus_data->fb_notifier);
 	cancel_delayed_work_sync(&pstatus_data->check_status);
+	cancel_delayed_work_sync(&pstatus_data->report_status);
 	kfree(pstatus_data);
 	pr_debug("%s: DSI ctrl status work queue removed\n", __func__);
 }

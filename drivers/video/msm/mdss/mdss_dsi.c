@@ -796,8 +796,12 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 	if ((pdata->panel_info.type == MIPI_CMD_PANEL) &&
 		mipi->vsync_enable && mipi->hw_vsync_mode) {
 		mdss_dsi_set_tear_on(ctrl_pdata);
-		if (mdss_dsi_is_te_based_esd(ctrl_pdata))
-			enable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
+		if (mdss_dsi_is_te_based_esd(ctrl_pdata)) {
+			if (!atomic_read(&ctrl_pdata->te_irq_enabled)) {
+				atomic_inc(&ctrl_pdata->te_irq_enabled);
+				enable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
+			}
+		}
 	}
 
 error:
@@ -856,9 +860,12 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 	if ((pdata->panel_info.type == MIPI_CMD_PANEL) &&
 		mipi->vsync_enable && mipi->hw_vsync_mode) {
 		if (mdss_dsi_is_te_based_esd(ctrl_pdata)) {
+			if (atomic_read(&ctrl_pdata->te_irq_enabled)) {
+				atomic_dec(&ctrl_pdata->te_irq_enabled);
 				disable_irq(gpio_to_irq(
 					ctrl_pdata->disp_te_gpio));
-				atomic_add_unless(&ctrl_pdata->te_irq_ready, -1, 0);
+			}
+			atomic_add_unless(&ctrl_pdata->te_irq_ready, -1, 0);
 		}
 		mdss_dsi_set_tear_off(ctrl_pdata);
 	}
@@ -1483,6 +1490,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 			pr_err("TE request_irq failed.\n");
 			goto error_pan_node;
 		}
+		atomic_set(&ctrl_pdata->te_irq_enabled, 0);
 		disable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
