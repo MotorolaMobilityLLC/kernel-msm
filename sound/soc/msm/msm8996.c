@@ -66,6 +66,7 @@
 #define WSA8810_NAME_2 "wsa881x.20170212"
 
 #define FLORIDA_SYSCLK_RATE (48000 * 1024 * 3)
+#define CS35L34_MCLK_RATE	6144000
 
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_tx_sample_rate = SAMPLING_RATE_48KHZ;
@@ -2112,7 +2113,7 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to set SYSCLK: %d\n", ret);
 
 	ret = snd_soc_codec_set_sysclk(codec, ARIZONA_CLK_OPCLK,
-				0, FLORIDA_SYSCLK_RATE,
+				0, CS35L34_MCLK_RATE,
 				SND_SOC_CLOCK_OUT);
 	if (ret != 0)
 		dev_err(codec->dev, "Failed to set OPCLK: %d\n", ret);
@@ -2182,7 +2183,7 @@ static int florida_cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
 		return ret;
 	}
-	ret = snd_soc_dai_set_sysclk(cs35l34_left, 0, 6144000, 0);
+	ret = snd_soc_dai_set_sysclk(cs35l34_left, 0, CS35L34_MCLK_RATE, 0);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set MCLK %d\n", ret);
 		return ret;
