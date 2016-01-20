@@ -963,6 +963,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 			"%s: Stopping LSM client session\n",
 			__func__);
 		if (prtd->lsm_client->started) {
+			int i;
 			if (prtd->lsm_client->lab_enable) {
 				atomic_set(&prtd->read_abort, 1);
 				if (prtd->lsm_client->lab_started) {
@@ -972,6 +973,9 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 							"%s: stop lab failed ret %d\n",
 							__func__, ret);
 					prtd->lsm_client->lab_started = false;
+					for (i = 0; i < prtd->lsm_client->hw_params.period_count; i++)
+						memset(prtd->lsm_client->lab_buffer[i].data, 0,
+							prtd->lsm_client->lab_buffer[i].size);
 				}
 			}
 			ret = q6lsm_stop(prtd->lsm_client, true);
@@ -1035,6 +1039,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 		dev_dbg(rtd->dev, "%s: stopping LAB\n", __func__);
 		if (prtd->lsm_client->lab_enable &&
 			prtd->lsm_client->lab_started) {
+			int i;
 			atomic_set(&prtd->read_abort, 1);
 			rc = q6lsm_stop_lab(prtd->lsm_client);
 			if (rc)
@@ -1043,6 +1048,9 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 					__func__,
 					prtd->lsm_client->session, rc);
 			prtd->lsm_client->lab_started = false;
+			for (i = 0; i < prtd->lsm_client->hw_params.period_count; i++)
+				memset(prtd->lsm_client->lab_buffer[i].data, 0,
+					prtd->lsm_client->lab_buffer[i].size);
 		}
 	break;
 	default:
@@ -1875,7 +1883,7 @@ static int msm_lsm_pcm_copy(struct snd_pcm_substream *substream, int ch,
 		return 0;
 	}
 	rc = wait_event_timeout(prtd->period_wait,
-		(atomic_read(&prtd->buf_count) |
+		(atomic_read(&prtd->buf_count) ||
 		atomic_read(&prtd->read_abort)), (2 * HZ));
 	if (!rc) {
 		dev_err(rtd->dev,
