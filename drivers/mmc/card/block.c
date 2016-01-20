@@ -2950,6 +2950,9 @@ static int mmc_blk_cmdq_issue_rw_rq(struct mmc_queue *mq, struct request *req)
 		spin_unlock_bh(&host->clk_scaling.lock);
 	}
 
+	if (!blk_rq_tagged(req))
+		return 0;
+
 	BUG_ON(test_and_set_bit(req->tag, &host->cmdq_ctx.data_active_reqs));
 	BUG_ON((req->tag < 0) || (req->tag > card->ext_csd.cmdq_depth));
 	BUG_ON(test_and_set_bit(req->tag, &host->cmdq_ctx.active_reqs));
@@ -3699,7 +3702,7 @@ static int mmc_blk_cmdq_issue_rq(struct mmc_queue *mq, struct request *req)
 			ret = mmc_blk_cmdq_issue_discard_rq(mq, req);
 	} else if (cmd_flags & REQ_FLUSH) {
 		ret = mmc_blk_cmdq_issue_flush_rq(mq, req);
-	} else {
+	} else if (cmd_flags & REQ_QUEUED) {
 		ret = mmc_blk_cmdq_issue_rw_rq(mq, req);
 	}
 
