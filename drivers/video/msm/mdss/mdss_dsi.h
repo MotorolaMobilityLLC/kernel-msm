@@ -314,6 +314,7 @@ struct mdss_dsi_ctrl_pdata {
 	bool bklt_off;
 	bool panel_bias_vreg;
 	atomic_t te_irq_ready;
+	atomic_t te_irq_enabled;
 
 	bool cmd_sync_wait_broadcast;
 	bool cmd_sync_wait_trigger;
@@ -385,6 +386,7 @@ struct mdss_dsi_ctrl_pdata {
 struct dsi_status_data {
 	struct notifier_block fb_notifier;
 	struct delayed_work check_status;
+	struct delayed_work report_status;
 	struct msm_fb_data_type *mfd;
 	struct wake_lock status_wakelock;
 };
