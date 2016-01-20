@@ -16,5 +16,5 @@
 #include "msm8952-addison.dtsi"
 #include "msm8952-moto-fps.dtsi"
 / {
-	qcom,board-id = <0x51 0x8000>;
+	qcom,board-id = <0x51 0x8000>, <0x51 0x800a>;
 };
