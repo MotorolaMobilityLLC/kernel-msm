@@ -73,6 +73,7 @@
 #define EXP_FN_DET_INTERVAL 1000 /* ms */
 #define POLLING_PERIOD 1 /* ms */
 #define SYN_I2C_RETRY_TIMES 10
+#define SYN_FPS_REGISTERED_RETRY_TIMES 15
 #define MAX_ABS_MT_TOUCH_MAJOR 15
 #define SYN_MAX_BUTTONS 4
 
@@ -5749,6 +5750,7 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 {
 	struct synaptics_rmi4_exp_fn *exp_fhandler, *next_list_entry;
 	struct synaptics_rmi4_data *rmi4_data;
+	static unsigned char fps_registered_retry;
 	int state, error;
 
 	mutex_lock(&exp_fn_ctrl_mutex);
@@ -5763,16 +5765,19 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 		return;
 	}
 
-	if (!rmi4_data->is_fps_registered) {
+	if (!rmi4_data->is_fps_registered &&
+		fps_registered_retry < SYN_FPS_REGISTERED_RETRY_TIMES) {
 		error = FPS_register_notifier(
 				&rmi4_data->fps_notif, 0xBEEF, false);
 		if (error) {
+			fps_registered_retry++;
 			if (exp_fn_ctrl.det_workqueue)
 				queue_delayed_work(
 					exp_fn_ctrl.det_workqueue,
 					&exp_fn_ctrl.det_work,
 					msecs_to_jiffies(EXP_FN_DET_INTERVAL));
-			pr_err("Failed to register fps_notifier\n");
+			pr_err("Failed to register fps_notifier retry %d\n",
+				fps_registered_retry);
 		} else
 			rmi4_data->is_fps_registered = true;
 	}
