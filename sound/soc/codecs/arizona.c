@@ -5151,6 +5151,53 @@ static void arizona_disable_fll(struct arizona_fll *fll)
 		pm_runtime_put_autosuspend(arizona->dev);
 }
 
+static int arizona_set_slim_clkgear(struct arizona *arizona, unsigned int Fref)
+{
+	switch (Fref) {
+	case ARIZONA_SLIMCLK_384kHZ: /* Clock gear 4 */
+		regmap_update_bits(arizona->regmap,
+			ARIZONA_SLIMBUS_FRAMER_REF_GEAR,
+			ARIZONA_SLIMCLK_GEAR_MASK,
+			0x4);
+		break;
+	case ARIZONA_SLIMCLK_768kHZ: /* Clock gear 5 */
+		regmap_update_bits(arizona->regmap,
+			ARIZONA_SLIMBUS_FRAMER_REF_GEAR,
+			ARIZONA_SLIMCLK_GEAR_MASK,
+			0x5);
+		break;
+	case ARIZONA_SLIMCLK_1P536MHZ: /* Clock gear 6 */
+		regmap_update_bits(arizona->regmap,
+			ARIZONA_SLIMBUS_FRAMER_REF_GEAR,
+			ARIZONA_SLIMCLK_GEAR_MASK,
+			0x6);
+		break;
+	case ARIZONA_SLIMCLK_3P072MHZ: /* Clock gear 7 */
+		regmap_update_bits(arizona->regmap,
+			ARIZONA_SLIMBUS_FRAMER_REF_GEAR,
+			ARIZONA_SLIMCLK_GEAR_MASK,
+			0x7);
+		break;
+	case ARIZONA_SLIMCLK_6P144MHZ: /* Clock gear 8 */
+		regmap_update_bits(arizona->regmap,
+			ARIZONA_SLIMBUS_FRAMER_REF_GEAR,
+			ARIZONA_SLIMCLK_GEAR_MASK,
+			0x8);
+		break;
+	case ARIZONA_SLIMCLK_12P288MHZ: /* Clock gear 9 */
+		regmap_update_bits(arizona->regmap,
+			ARIZONA_SLIMBUS_FRAMER_REF_GEAR,
+			ARIZONA_SLIMCLK_GEAR_MASK,
+			0x9);
+		break;
+	default:
+		dev_err(arizona->dev, "%s Invalid SLIMBUS Frequency %d\n",
+			__func__, Fref);
+		return -EINVAL;
+	}
+	return 0;
+}
+
 int arizona_set_fll_refclk(struct arizona_fll *fll, int source,
 			   unsigned int Fref, unsigned int Fout)
 {
@@ -5201,6 +5248,15 @@ int arizona_set_fll(struct arizona_fll *fll, int source,
 	if (fll->sync_src == source &&
 	    fll->sync_freq == Fref && fll->fout == Fout)
 		return 0;
+
+	if (source == ARIZONA_FLL_SRC_SLIMCLK) {
+		arizona_set_slim_clkgear(fll->arizona, Fref);
+		if (ret != 0) {
+			arizona_fll_err(fll,
+				"%s Can't set slimclk gear\n", __func__);
+			return ret;
+		}
+	}
 
 	if (Fout) {
 		div = fll->min_outdiv;
