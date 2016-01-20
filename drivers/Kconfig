@@ -82,6 +82,8 @@ source "drivers/ssb/Kconfig"
 
 source "drivers/bcma/Kconfig"
 
+source "drivers/BCM_LPM/Kconfig"
+
 source "drivers/mfd/Kconfig"
 
 source "drivers/regulator/Kconfig"
