@@ -1000,6 +1000,11 @@
 		vdd-voltage-level = <3300000 3300000>;
 		vdd-current-level = <200 30000>;
 	};
+
+	android_usb@66bf0c8 {
+		/* Disable CPU idle power collapse for factory */
+		mmi,pm-qos-latency-factory = <2 2 2>;
+	};
 };
 
 &pmi8994_charger {
