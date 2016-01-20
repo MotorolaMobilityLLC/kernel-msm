@@ -162,27 +162,32 @@ void dropbox_queue_event_binary(char *name, void *data, size_t size)
 {
 	dropbox_queue_event(name, data, size, 0);
 }
+EXPORT_SYMBOL(dropbox_queue_event_binary);
 
 void dropbox_queue_event_text(char *name, void *data, size_t size)
 {
 	dropbox_queue_event(name, data, size, DROPBOX_TEXT_FLAG);
 }
+EXPORT_SYMBOL(dropbox_queue_event_text);
 
 void dropbox_queue_event_binaryfile(char *name, char *path)
 {
 	dropbox_queue_event(name, path, strlen(path), DROPBOX_FILE_FLAG);
 }
+EXPORT_SYMBOL(dropbox_queue_event_binaryfile);
 
 void dropbox_queue_event_textfile(char *name, char *path)
 {
 	dropbox_queue_event(name, path, strlen(path),
 		DROPBOX_TEXT_FLAG | DROPBOX_FILE_FLAG);
 }
+EXPORT_SYMBOL(dropbox_queue_event_textfile);
 
 void dropbox_queue_event_empty(char *name)
 {
 	dropbox_queue_event(name, name, strlen(name), DROPBOX_TEXT_FLAG);
 }
+EXPORT_SYMBOL(dropbox_queue_event_empty);
 
 struct dropbox_trigger_callback {
 	char name[EVENT_NAME_LENGTH];
@@ -223,6 +228,7 @@ void dropbox_register_trigger_callback(const char *name,
 		pr_err("%s: Failed to allocate new trigger callback", __func__);
 	}
 }
+EXPORT_SYMBOL(dropbox_register_trigger_callback);
 
 static void do_dropbox_trigger_callback(const char *name)
 {
