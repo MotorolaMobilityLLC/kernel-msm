@@ -65,7 +65,8 @@
 #define WSA8810_NAME_1 "wsa881x.20170211"
 #define WSA8810_NAME_2 "wsa881x.20170212"
 
-#define FLORIDA_SYSCLK_RATE (48000 * 1024 * 3)
+#define FLORIDA_SYSCLK_RATE	(48000 * 1024 * 3)
+#define FLORIDA_SLIMCLK_RATE	1536000
 #define CS35L34_MCLK_RATE	6144000
 
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
@@ -502,7 +503,8 @@ static int msm8996_mclk_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 #ifdef CONFIG_SND_SOC_FLORIDA
 		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
-			ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
+			ARIZONA_FLL_SRC_SLIMCLK, FLORIDA_SLIMCLK_RATE,
+			FLORIDA_SYSCLK_RATE);
 		if (ret != 0)
 			dev_err(w->codec->dev, "set PLL clk failed\n");
 
