@@ -1010,3 +1010,8 @@
 	/* Force VDD_APC supply (S5-S6) in PWM mode */
 	qcom,mode = "pwm";
 };
+
+&android_usb {
+	/* Disable CPU idle power collapse for factory */
+	mmi,pm-qos-latency-factory = <2 2 2>;
+};
