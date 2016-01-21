@@ -43,21 +43,17 @@
 		qcom,msm-obs;
 	};
 
-	bt_rfkill {
-		compatible = "lge,bluetooth_rfkill";
-		gpio-bt-reset = <&msmgpio 20 0>;
-		gpio-bt-on = <&msmgpio 45 0>;
-	};
-
-
-	/* To register BT wake-up devices for BT sleep */
-	bt_sleep {
-		compatible = "lge,bcm_bluesleep";
+	bt_nitrous {
+		compatible = "goog,nitrous";
+		uart-port = <99>;
+		power-gpio = <&msmgpio 45 0>;
+		reset-gpio = <&msmgpio 20 0>;
 		host-wake-gpio = <&msmgpio 48 0>;
-		ext-wake-gpio = <&msmgpio 47 0>;
+		host-wake-polarity = <0>;
+		dev-wake-gpio = <&msmgpio 47 0>;
+		dev-wake-polarity = <0>;
 		interrupt-parent = <&msmgpio>;
 		interrupts = <48 0>;
 		interrupt-names = "host_wake";
-		tx-timer-interval = <1>;
 	};
 };
