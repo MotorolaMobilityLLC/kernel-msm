@@ -26,3 +26,11 @@
 &sdhc_3 {
 	status = "ok";
 };
+
+&rome_vreg {
+	status = "ok";
+};
+
+&cnss_sdio {
+	status = "ok";
+};

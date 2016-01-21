@@ -694,5 +694,6 @@
 		enable-active-high;
 		gpio = <&pm8950_gpios 5 0>;
 		regulator-name = "rome_vreg";
+		status = "disabled";
 	};
 };
