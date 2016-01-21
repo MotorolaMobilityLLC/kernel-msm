@@ -389,9 +389,13 @@ slowpath:
 
 		/* didn't get the lock, go to sleep: */
 		spin_unlock_mutex(&lock->wait_lock, flags);
+#ifndef CONFIG_UML
         task_thread_info(task)->pWaitingMutex = lock;  //adbg++
+#endif
 		schedule_preempt_disabled();
+#ifndef CONFIG_UML
         task_thread_info(task)->pWaitingMutex = &fake_mutex;  //adb++
+#endif
 		spin_lock_mutex(&lock->wait_lock, flags);
 	}
 

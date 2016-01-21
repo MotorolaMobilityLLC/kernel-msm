@@ -47,6 +47,7 @@
 #include <linux/utsname.h>
 
 #include <asm/uaccess.h>
+#ifndef CONFIG_UML
 //adbg++
 #include <linux/asus_global.h>
 #include <linux/asusdebug.h>
@@ -66,7 +67,9 @@ static size_t asus_print_time(u64 ts, char *buf);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 //adbg--
-
+#else
+#define ASUS_LAST_KMSG  0
+#endif
 #define CREATE_TRACE_POINTS
 #include <trace/events/printk.h>
 
@@ -330,8 +333,10 @@ static struct log *asus_log_from_idx(u32 idx, bool logbuf, int mode)
 		buf = log_buf;
 		BUG_ON(!logbuf);
 #endif
+#ifndef CONFIG_UML
 	}else{
 		buf = g_printk_log_buf;
+#endif
 	}
 
 	msg = (struct log *)(buf + idx);
@@ -363,8 +368,10 @@ static u32 asus_log_next(u32 idx, bool logbuf, int mode)
 		buf = log_buf;
 		BUG_ON(!logbuf);
 #endif
+#ifndef CONFIG_UML
 	}else{
 		buf = g_printk_log_buf;
+#endif
 	}
 
 	msg = (struct log *)(buf + idx);
@@ -959,6 +966,7 @@ void log_buf_kexec_setup(void)
 /* requested log_buf_len from kernel cmdline */
 static unsigned long __initdata new_log_buf_len;
 
+#ifndef CONFIG_UML
 //adbg++
 struct _asus_global asus_global =
 {
@@ -1032,7 +1040,7 @@ out:
 }
 EXPORT_SYMBOL(printk_buffer_rebase);
 //adbg--
-
+#endif
 
 /* save requested log_buf_len since it's too early to process it */
 static int __init log_buf_len_setup(char *str)
@@ -2354,8 +2362,10 @@ MODULE_PARM_DESC(console_suspend, "suspend console during suspend"
  */
 void suspend_console(void)
 {
+#ifndef CONFIG_UML
 	ASUSEvtlog("[UTS] System Suspend");
 	suspend_in_progress = 1;
+#endif
 	if (!console_suspend_enabled)
 		return;
 	printk("Suspending console(s) (use no_console_suspend to debug)\n");
@@ -2366,6 +2376,7 @@ void suspend_console(void)
 
 void resume_console(void)
 {
+#ifndef CONFIG_UML
 	int i;
 	suspend_in_progress = 0;
 	ASUSEvtlog("[UTS] System Resume");
@@ -2384,6 +2395,7 @@ void resume_console(void)
 		}
 		pm_pwrcs_ret=0;
 	}
+#endif
 
 	if (!console_suspend_enabled)
 		return;

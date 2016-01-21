@@ -86,11 +86,13 @@
 #include "sched.h"
 #include "../workqueue_internal.h"
 #include "../smpboot.h"
+#ifndef CONFIG_UML
 //adbg++
 #include <linux/asus_global.h>
 extern struct _asus_global asus_global;
 extern struct completion fake_completion;
 //adbg--
+#endif
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
@@ -3947,6 +3949,7 @@ need_resched:
 		rq->nr_switches++;
 		rq->curr = next;
 		++*switch_count;
+#ifndef CONFIG_UML
         //adbg++
         /* Save CPU prev/next task pointers into asus global */
         switch (cpu) {
@@ -3972,6 +3975,7 @@ need_resched:
             break;
         }
         //adbg--
+#endif
 		context_switch(rq, prev, next); /* unlocks the rq */
 		/*
 		 * The context switch have flipped the stack from under us
@@ -4267,7 +4271,9 @@ do_wait_for_common(struct completion *x,
 
 		__add_wait_queue_tail_exclusive(&x->wait, &wait);
 		do {
+#ifndef CONFIG_UML
             task_thread_info(current)->pWaitingCompletion = x;  //adbg++
+#endif
 			if (signal_pending_state(state, current)) {
 				timeout = -ERESTARTSYS;
 				break;
@@ -4277,7 +4283,9 @@ do_wait_for_common(struct completion *x,
 			timeout = action(timeout);
 			spin_lock_irq(&x->wait.lock);
 		} while (!x->done && timeout);
+#ifndef CONFIG_UML
         task_thread_info(current)->pWaitingCompletion = &fake_completion;  //adbg++
+#endif
 		__remove_wait_queue(&x->wait, &wait);
 		if (!x->done)
 			return timeout;
