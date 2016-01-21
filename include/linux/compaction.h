@@ -1,6 +1,9 @@
 #ifndef _LINUX_COMPACTION_H
 #define _LINUX_COMPACTION_H
 
+#include <linux/page-flags.h>
+#include <linux/pagemap.h>
+
 /* Return values for compact_zone() and try_to_compact_pages() */
 /* compaction didn't start as it was deferred due to past failures */
 #define COMPACT_DEFERRED	0
@@ -28,6 +31,10 @@ extern int sysctl_compaction_handler(struct ctl_table *table, int write,
 extern int sysctl_extfrag_threshold;
 extern int sysctl_extfrag_handler(struct ctl_table *table, int write,
 			void __user *buffer, size_t *length, loff_t *ppos);
+extern int sysctl_mobile_page_compaction;
+extern int sysctl_mobile_page_compaction_handler(struct ctl_table *table,
+			int write, void __user *buffer, size_t *length,
+			loff_t *ppos);
 
 extern int fragmentation_index(struct zone *zone, unsigned int order);
 extern unsigned long try_to_compact_pages(struct zonelist *zonelist,
@@ -101,6 +108,78 @@ static inline bool compaction_restarting(struct zone *zone, int order)
 		zone->compact_considered >= 1UL << zone->compact_defer_shift;
 }
 
+static inline bool mobile_page(struct page *page)
+{
+	return sysctl_mobile_page_compaction &&
+		page->mapping && PageMobile(page);
+}
+
+static inline int mobilepage_isolate(struct page *page)
+{
+	int err = -EINVAL;
+
+	/*
+	 * Avoid burning cycles with pages that are yet under __free_pages(),
+	 * or just got freed under us.
+	 *
+	 * In case we 'win' a race for a mobile page being freed under us and
+	 * raise its refcount preventing __free_pages() from doing its job
+	 * the put_page() at the end of this block will take care of
+	 * release this page, thus avoiding a nasty leakage.
+	 */
+	if (unlikely(!get_page_unless_zero(page)))
+		goto out;
+
+	/*
+	 * As mobile pages are not isolated from LRU lists, concurrent
+	 * compaction threads can race against page migration functions
+	 * as well as race against the releasing a page.
+	 *
+	 * In order to avoid having an already isolated mobile page
+	 * being (wrongly) re-isolated while it is under migration,
+	 * or to avoid attempting to isolate pages being released,
+	 * lets be sure we have the page lock
+	 * before proceeding with the mobile page isolation steps.
+	 */
+	if (unlikely(!trylock_page(page)))
+		goto out_putpage;
+
+	if (!(mobile_page(page) && page->mapping->a_ops->isolatepage))
+		goto out_not_isolated;
+	err = page->mapping->a_ops->isolatepage(page);
+	if (err)
+		goto out_not_isolated;
+	unlock_page(page);
+	return err;
+
+out_not_isolated:
+	unlock_page(page);
+out_putpage:
+	put_page(page);
+out:
+	return err;
+}
+
+static inline void mobilepage_putback(struct page *page)
+{
+	/*
+	 * 'lock_page()' stabilizes the page and prevents races against
+	 * concurrent isolation threads attempting to re-isolate it.
+	 */
+	lock_page(page);
+	if (page->mapping && page->mapping->a_ops->putbackpage)
+		page->mapping->a_ops->putbackpage(page);
+	unlock_page(page);
+	/* drop the extra ref count taken for mobile page isolation */
+	put_page(page);
+}
+
+static inline void mobilepage_free(struct page *page)
+{
+	/* drop the extra ref count taken for mobile page isolation */
+	put_page(page);
+	__free_page(page);
+}
 #else
 static inline unsigned long try_to_compact_pages(struct zonelist *zonelist,
 			int order, gfp_t gfp_mask, nodemask_t *nodemask,
@@ -134,6 +213,22 @@ static inline bool compaction_deferred(struct zone *zone, int order)
 	return true;
 }
 
+static inline bool mobile_page(struct page *page)
+{
+	return false;
+}
+
+static inline bool mobilepage_isolate(struct page *page)
+{
+	return false;
+}
+
+static inline void mobilepage_putback(struct page *page)
+{
+}
+static inline void mobilepage_free(struct page *page)
+{
+}
 #endif /* CONFIG_COMPACTION */
 
 #if defined(CONFIG_COMPACTION) && defined(CONFIG_SYSFS) && defined(CONFIG_NUMA)
