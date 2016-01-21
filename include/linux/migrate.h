@@ -15,6 +15,8 @@ typedef void free_page_t(struct page *page, unsigned long private);
  * - zero on page migration success;
  */
 #define MIGRATEPAGE_SUCCESS		0
+#define MIGRATEPAGE_BALLOON_SUCCESS	1 /* special ret codes for balloon */
+#define MIGRATEPAGE_MOBILE_SUCCESS	2 /* and mobile page migration */
 
 enum migrate_reason {
 	MR_COMPACTION,
