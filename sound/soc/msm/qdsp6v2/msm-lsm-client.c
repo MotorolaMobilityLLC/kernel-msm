@@ -34,7 +34,7 @@
 #include "msm-pcm-routing-v2.h"
 
 #define CAPTURE_MIN_NUM_PERIODS     2
-#define CAPTURE_MAX_NUM_PERIODS     8
+#define CAPTURE_MAX_NUM_PERIODS     32
 #define CAPTURE_MAX_PERIOD_SIZE     4096
 #define CAPTURE_MIN_PERIOD_SIZE     320
 
