@@ -374,8 +374,10 @@ struct address_space_operations {
 	 * migrate the contents of a page to the specified target. If
 	 * migrate_mode is MIGRATE_ASYNC, it must not block.
 	 */
-	int (*migratepage) (struct address_space *,
+	int (*migratepage)(struct address_space *,
 			struct page *, struct page *, enum migrate_mode);
+	int (*isolatepage)(struct page *);
+	void (*putbackpage)(struct page *);
 	int (*launder_page) (struct page *);
 	int (*is_partially_uptodate) (struct page *, unsigned long,
 					unsigned long);
