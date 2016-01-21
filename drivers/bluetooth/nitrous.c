@@ -41,7 +41,8 @@ static const int UART_TIMEOUT_SEC = 1;
 struct nitrous_bt_lpm {
 	int gpio_dev_wake;           /* host -> dev wake gpio */
 	int gpio_host_wake;          /* dev -> host wake gpio */
-	int gpio_power;              /* gpio to control power */
+	int gpio_power;              /* power gpio */
+	int gpio_reset;              /* optional reset gpio */
 	int irq_host_wake;           /* IRQ associated with host wake gpio */
 	int dev_wake_pol;            /* 0: active low; 1: active high */
 	int host_wake_pol;           /* 0: active low; 1: active high */
@@ -291,9 +292,19 @@ static int nitrous_rfkill_set_power(void *data, bool blocked)
 		 * Power up the BT chip. Datasheet of BCM4343W suggests at
 		 * least a 10ms time delay between consecutive toggles.
 		 */
+		if (gpio_is_valid(lpm->gpio_reset))
+			gpio_set_value(lpm->gpio_reset, 0);
+
 		gpio_set_value(lpm->gpio_power, 0);
 		msleep(30);
 		gpio_set_value(lpm->gpio_power, 1);
+
+
+		if (gpio_is_valid(lpm->gpio_reset)) {
+			usleep(10 * 1000);
+			gpio_set_value(lpm->gpio_reset, 1);
+			usleep(10 * 1000);
+		}
 
 		/* Enable host_wake irq to get ready */
 		rc = irq_set_irq_type(lpm->irq_host_wake,
@@ -312,6 +323,8 @@ static int nitrous_rfkill_set_power(void *data, bool blocked)
 		nitrous_wake_uart(lpm, false);
 
 		/* Power down the BT chip */
+		if (gpio_is_valid(lpm->gpio_reset))
+			gpio_set_value(lpm->gpio_reset, 0);
 		gpio_set_value(lpm->gpio_power, 0);
 	}
 
@@ -328,6 +341,15 @@ static int nitrous_rfkill_init(struct platform_device *pdev,
 	struct nitrous_bt_lpm *lpm)
 {
 	int rc;
+
+	/* This GPIO only exists on some boards.  Make it optional */
+	rc = read_and_request_gpio(
+		pdev,
+		"reset-gpio",
+		&lpm->gpio_reset,
+		GPIOF_OUT_INIT_LOW,
+		"reset_gpio"
+	);
 
 	rc = read_and_request_gpio(
 		pdev,
@@ -369,6 +391,10 @@ err_rfkill_alloc:
 	gpio_free(lpm->gpio_power);
 err_gpio_power_reg:
 	lpm->gpio_power = 0;
+	if (gpio_is_valid(lpm->gpio_reset)) {
+		gpio_free(lpm->gpio_reset);
+		lpm->gpio_reset = -1;  /* invalid gpio */
+	}
 	return rc;
 }
 
@@ -380,6 +406,10 @@ static void nitrous_rfkill_cleanup(struct nitrous_bt_lpm *lpm)
 	lpm->rfkill = NULL;
 	gpio_free(lpm->gpio_power);
 	lpm->gpio_power = 0;
+	if (gpio_is_valid(lpm->gpio_reset)) {
+		gpio_free(lpm->gpio_reset);
+		lpm->gpio_reset = -1;  /* invalid gpio */
+	}
 }
 
 static int nitrous_probe(struct platform_device *pdev)
