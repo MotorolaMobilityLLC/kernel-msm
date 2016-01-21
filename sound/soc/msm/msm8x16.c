@@ -1,4 +1,4 @@
- /* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ /* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -372,8 +372,10 @@ static const struct snd_soc_dapm_widget msm8x16_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Handset Mic", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
 	SND_SOC_DAPM_MIC("Secondary Mic", NULL),
+	SND_SOC_DAPM_MIC("Digital Mic0", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic2", NULL),
+	SND_SOC_DAPM_MIC("Digital Mic3", NULL),
 };
 
 static char const *rx_bit_format_text[] = {"S16_LE", "S24_LE"};
@@ -1698,6 +1700,19 @@ static int msm_audrx_init_wcd(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_new_controls(dapm, msm8x16_dapm_widgets,
 				ARRAY_SIZE(msm8x16_dapm_widgets));
 
+	snd_soc_dapm_ignore_suspend(dapm, "Headset Mic");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic0");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic1");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic2");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic3");
+
+	snd_soc_dapm_ignore_suspend(dapm, "AMIC2");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC0");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC1");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC2");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC3");
+	snd_soc_dapm_ignore_suspend(dapm, "SPK1 OUT");
+	snd_soc_dapm_ignore_suspend(dapm, "SPK2 OUT");
 	snd_soc_dapm_sync(dapm);
 
 	/* start mbhc */
