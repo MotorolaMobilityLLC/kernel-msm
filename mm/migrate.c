@@ -38,6 +38,8 @@
 #include <linux/balloon_compaction.h>
 #include <linux/mmu_notifier.h>
 #include <linux/ptrace.h>
+#include <linux/compaction.h>
+#include <trace/events/kmem.h>
 
 #include <asm/tlbflush.h>
 
@@ -93,7 +95,9 @@ void putback_movable_pages(struct list_head *l)
 		list_del(&page->lru);
 		dec_zone_page_state(page, NR_ISOLATED_ANON +
 				page_is_file_cache(page));
-		if (unlikely(isolated_balloon_page(page)))
+		if (unlikely(mobile_page(page)))
+			mobilepage_putback(page);
+		else if (unlikely(isolated_balloon_page(page)))
 			balloon_page_putback(page);
 		else
 			putback_lru_page(page);
@@ -879,6 +883,21 @@ static int __unmap_and_move(struct page *page, struct page *newpage,
 		}
 	}
 
+	if (unlikely(mobile_page(page))) {
+		/*
+		 * A mobile page does not need any special attention from
+		 * physical to virtual reverse mapping procedures.
+		 * Skip any attempt to unmap PTEs or to remap swap cache,
+		 * in order to avoid burning cycles at rmap level, and perform
+		 * the page migration right away (proteced by page lock).
+		 */
+		lock_page(newpage);
+		rc = page->mapping->a_ops->migratepage(page->mapping,
+						       newpage, page, mode);
+		unlock_page(newpage);
+		goto out_unlock;
+	}
+
 	if (unlikely(isolated_balloon_page(page))) {
 		/*
 		 * A ballooned page does not need any special attention from
@@ -959,6 +978,18 @@ static int unmap_and_move(new_page_t get_new_page, free_page_t put_new_page,
 
 	rc = __unmap_and_move(page, newpage, force, mode);
 
+	if (unlikely(rc == MIGRATEPAGE_MOBILE_SUCCESS)) {
+		/*
+		 * A mobile page has been migrated already.
+		 * Now, it's the time to wrap-up counters,
+		 * handle the page back to Buddy and return.
+		 */
+		dec_zone_page_state(page, NR_ISOLATED_ANON +
+				    page_is_file_cache(page));
+		mobilepage_free(page);
+		rc = MIGRATEPAGE_SUCCESS;
+		goto complete;
+	}
 out:
 	if (rc != -EAGAIN) {
 		/*
@@ -986,7 +1017,7 @@ out:
 		put_page(newpage);
 	} else
 		putback_lru_page(newpage);
-
+complete:
 	if (result) {
 		if (rc)
 			*result = rc;

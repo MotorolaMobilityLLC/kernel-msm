@@ -176,6 +176,9 @@ struct compact_control {
 					 * contention detected during
 					 * compaction
 					 */
+#define COMPACTION_PASSES_MAX 4
+	int passes;			/* Number of passes for this search */
+	bool retry;			/* True if another pass is suggested */
 };
 
 unsigned long
