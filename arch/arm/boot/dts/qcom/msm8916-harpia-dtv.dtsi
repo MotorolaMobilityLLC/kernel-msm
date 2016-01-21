@@ -1,0 +1,65 @@
+/* Copyright (c) 2015, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&spi_5 {
+	/delete-node/ nmi326@0;
+	/delete-node/ fc8300@0;
+};
+
+&tlmm_pinmux {
+
+	dtv_enable_reset {
+		qcom,pins = <&gp 51>, <&gp 50>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <0>;
+		label = "dtv-outputs";
+
+		dtv_output_default: dtv-outputs {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			output-low;
+		};
+	};
+
+	dtv_irq {
+		qcom,pins = <&gp 52>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "dtv-irq";
+
+		dtv_input_default: dtv-irq {
+			bias-pull-up; /* pull up */
+		};
+	};
+};
+
+&spi_5 {
+	status = "ok";
+	fci_dtv: fc8180@0 {
+		status = "ok";
+		compatible = "fci,isdbt";
+		reg = <0>;
+		spi-max-frequency = <19200000>;
+		irq-gpio = <&msm_gpio 52 0>;
+		anten-gpio = <&msm_gpio 50 0>;
+		enable-gpio = <&msm_gpio 51 0>;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&dtv_output_default &dtv_input_default>;
+		clocks = <&clock_rpm clk_bb_clk2_pin>;
+		clock-name = "dtv_refclk";
+		isdbt_vdd-supply = <&pm8916_l6>;
+		isdbt_ant-supply = <&pm8916_l18>;
+		qcom,bbm-xtal-freq = <37400>;
+	};
+};
+
