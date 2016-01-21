@@ -1,0 +1,83 @@
+Synaptics DSX touch controller MMI implementation
+
+Required properties:
+
+ - compatible		: should be "synaptics,synaptics_dsx_i2c"
+ - reg			: i2c slave address of the device
+ - interrupt-parent	: parent of interrupt
+ - interrupts		: touch sample interrupt to indicate presense or release
+				of fingers on the panel.
+ - gpios		: irq and reset gpios
+ - pinctrl-names	: This should be defined if a target uses pinctrl framework.
+			  See "pinctrl" in Documentation/devicetree/bindings/pinctrl/msm-pinctrl.txt.
+			  It should specify the names of the configs that pinctrl can install in
+			  driver. Following are the pinctrl configs that can be installed:
+			  "active" : Active configuration of pins, this should specify active
+			  config defined in pin groups of interrupt and reset gpio.
+			  "default" : Disabled configuration of pins, this should specify sleep
+			  config defined in pin groups of interrupt and reset gpio.
+Optional property:
+ - touch_vdd-supply		: digital voltage power supply needed to power device
+ - synaptics,key-buttons	: virtual key code mappings to be used
+ - synaptics,aod-multi-touch	: number of fingers to support in AoD (control access block feature)
+ - synaptics,x-flip		: modify orientation of the x axis
+ - synaptics,y-flip		: modify orientation of the y axis
+ - synaptics,gpio-config	: execute gpio configuration function in probe
+ - synaptics,purge-enabled	: purge touch events received prior frame buffer resume notification
+ - config_modifier-names	: list of modifiers names used in current setup
+				  Typically, modifier is a set of configuration (register) and/or
+				  functional (clipping) restrictions.
+				  Following names are defined: "aod", "folio", "charger", "fps",
+				  "wakeup" and "stats". Where:
+				   * aod     - Always On Display (not AP controlled)
+				   * folio   - cover with access window
+				   * charger - charger insertion/removal
+				   * fps     - finger print sensor
+				   * wakeup  - wakeup gesture
+				   * stats   - touch noise mitigation statistics (if supported by FW)
+
+Optional properties inside config_modifier-modname child node:
+ - enable-notification		: modifier has a switch notifier
+ - modname-active		: modier has active restrictions
+ - modname-suspended		: modifier has suspended restrictions
+ - patch-data			: modifier specific touch IC registers values
+ - touch-clip-area		: modifier specific touch events clipping
+
+Example:
+	i2c@f9927000 {
+		synaptics@20 {
+			compatible = "synaptics,synaptics_dsx_i2c"
+			reg = <0x20>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <40 0>;
+			gpios = <&tlmm 40 0>,
+				<&tlmm 39 0>;
+			touch_vdd-supply = <&pm8994_l22>;
+			synaptics,gpio-config;
+			synaptics,x-flip;
+			synaptics,y-flip;
+			pinctrl-names = "default","active";
+			pinctrl-0 = <&touch_int_default &touch_reset_active>;
+			pinctrl-1 = <&touch_int_active &touch_reset_active>;
+			config_modifier-names = "folio", "charger";
+			config_modifier-folio {
+				enable-notification;
+				folio-active {
+					/* Saturation cap; Force update; */
+					patch-data = "F54@2=B400;F12@10=1E1F;U";
+					touch-clip-area = <64 0 1015 1014 0>;
+				};
+				folio-suspended {
+					/* Saturation cap; Force update; Power->sleep; */
+					patch-data = "F54@2=9000;U;S";
+				};
+			};
+			config_modifier-charger {
+				enable-notification;
+				charger-active {
+					/* Charger bit; */
+					patch-data = "F1@0=1&20";
+				};
+			};
+		};
+	};
