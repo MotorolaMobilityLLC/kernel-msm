@@ -2691,7 +2691,7 @@ get_prop_usb_type(struct qpnp_chg_chip *chip)
 		if (lastTimeCableType == 4) {
 			pr_debug("POWER_SUPPLY_USB_TYPE_USB_DCP\n");
 			return POWER_SUPPLY_USB_TYPE_AC_NORMAL;
-		} else if (lastTimeCableType == 2) {
+		} else if (lastTimeCableType == 2 || lastTimeCableType == 3) {
 			pr_debug("POWER_SUPPLY_USB_TYPE_USB_SDP\n");
 			return POWER_SUPPLY_USB_TYPE_USB_NORMAL;
 		} else {
