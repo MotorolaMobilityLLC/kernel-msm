@@ -5,9 +5,9 @@ ifndef TARGET_BOARD_PLATFORM
 $(error TARGET_BOARD_PLATFORM is not defined)
 endif
 
-ifneq ($(wildcard kernel/$(TARGET_BOARD_PLATFORM)),)
-KERNEL:=kernel/$(TARGET_BOARD_PLATFORM)/
-BASE:=../../
+ifneq ($(wildcard kernel/qcom/$(TARGET_BOARD_PLATFORM)),)
+KERNEL:=kernel/qcom/$(TARGET_BOARD_PLATFORM)/
+BASE:=../../../
 else
 KERNEL=kernel/
 BASE:=../
