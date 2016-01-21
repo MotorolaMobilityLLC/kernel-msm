@@ -6602,7 +6602,11 @@ int alloc_contig_range(unsigned long start, unsigned long end,
 
 	cc.zone->cma_alloc = 1;
 
-	ret = __alloc_contig_migrate_range(&cc, start, end);
+	do {
+		cc.retry = false;
+		ret = __alloc_contig_migrate_range(&cc, start, end);
+	} while (cc.retry && cc.passes++ < COMPACTION_PASSES_MAX);
+
 	if (ret)
 		goto done;
 
