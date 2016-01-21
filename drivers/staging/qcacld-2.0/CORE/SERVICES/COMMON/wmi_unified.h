@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -5845,6 +5845,7 @@ typedef struct {
     /* The TLVs will follow.
      * wmi_roam_scan_extended_threshold_param extended_param;
      * wmi_roam_earlystop_rssi_thres_param earlystop_param;
+     * wmi_roam_dense_thres_param dense_param;
      */
 } wmi_roam_scan_rssi_threshold_fixed_param;
 
@@ -6005,6 +6006,19 @@ typedef struct {
     /* Maminum RSSI threshold value for early stop, unit is dB above NF. */
     A_UINT32 roam_earlystop_thres_max;
 } wmi_roam_earlystop_rssi_thres_param;
+
+typedef struct {
+    /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_roam_dense_thres_param */
+    A_UINT32 tlv_header;
+    /** rssi threshold offset under trffic and dense env */
+    A_UINT32 roam_dense_rssi_thres_offset;
+    /** minimum number of APs to determine dense env */
+    A_UINT32 roam_dense_min_aps;
+    /** initial dense status detected by host at the time of initial connection */
+    A_UINT32 roam_dense_status;
+    /* traffic threshold to enable aggressive roaming in dense env; units are percent of medium occupancy, 0 - 100 */
+    A_UINT32 roam_dense_traffic_thres;
+} wmi_roam_dense_thres_param;
 
 /** Beacon filter wmi command info */
 
@@ -7453,6 +7467,7 @@ typedef enum _WMI_NLO_SSID_BcastNwType
 /* This bit is used to indicate if EPNO or supplicant PNO is enabled. Only one of them can be enabled at a given time */
 #define WMI_NLO_CONFIG_ENLO             (0x1 << 7)
 #define WMI_NLO_CONFIG_SCAN_PASSIVE     (0x1 << 8)
+#define WMI_NLO_CONFIG_ENLO_RESET       (0x1 << 9)
 
 /* Whether directed scan needs to be performed (for hidden SSIDs) */
 #define WMI_ENLO_FLAG_DIRECTED_SCAN      1
@@ -7540,6 +7555,21 @@ typedef struct nlo_channel_prediction_cfg {
     A_UINT32 full_scan_period_ms;
 } nlo_channel_prediction_cfg;
 
+typedef struct enlo_candidate_score_params_t {
+    A_UINT32 tlv_header;   /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_enlo_candidate_score_param */
+    A_INT32 min5GHz_rssi;  /* minimum 5GHz RSSI for a BSSID to be considered (units = dBm) */
+    A_INT32 min24GHz_rssi; /* minimum 2.4GHz RSSI for a BSSID to be considered (units = dBm) */
+    A_UINT32 initial_score_max; /* the maximum score that a network can have before bonuses */
+    /* current_connection_bonus:
+     * only report when there is a network's score this much higher
+     * than the current connection
+     */
+    A_UINT32 current_connection_bonus;
+    A_UINT32 same_network_bonus; /* score bonus for all networks with the same network flag */
+    A_UINT32 secure_bonus; /* score bonus for networks that are not open */
+    A_UINT32 band5GHz_bonus; /* 5GHz RSSI score bonus (applied to all 5GHz networks) */
+} enlo_candidate_score_params;
+
 typedef struct wmi_nlo_config {
     A_UINT32    tlv_header;     /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_nlo_config_cmd_fixed_param */
     A_UINT32    flags;
@@ -7560,6 +7590,7 @@ typedef struct wmi_nlo_config {
         * nlo_configured_parameters nlo_list[];
         * A_UINT32 channel_list[];
         * nlo_channel_prediction_cfg ch_prediction_cfg;
+        * enlo_candidate_score_params candidate_score_params;
         */
 
 } wmi_nlo_config_cmd_fixed_param;
@@ -8769,6 +8800,7 @@ typedef struct
 #define LPI_IE_BITMAP_SCAN_ID                0x00100000     // extscan inserts the scan cycle count for this value; other scan clients can insert the scan id of the scan, if needed.
 #define LPI_IE_BITMAP_FLAGS                  0x00200000     // reserved as a bitmap to indicate more scan information; one such use being to indicate if the on-going scan is interrupted or not
 #define LPI_IE_BITMAP_CACHING_REQD           0x00400000     // extscan will use this field to indicate if this frame info needs to be cached in LOWI LP or not
+#define LPI_IE_BITMAP_REPORT_CONTEXT_HUB     0x00800000     // extscan will use this field to indicate to LOWI LP whether to report result to context hub or not.
 #define LPI_IE_BITMAP_ALL                    0xFFFFFFFF
 
 typedef struct {
@@ -9767,6 +9799,8 @@ typedef enum {
     WMI_EXTSCAN_BUCKET_COMPLETED_EVENT  = 0x0008,
     WMI_EXTSCAN_BUCKET_FAILED_EVENT     = 0x0010,
     WMI_EXTSCAN_BUCKET_OVERRUN_EVENT    = 0x0020,
+    WMI_EXTSCAN_THRESHOLD_NUM_SCANS     = 0x0040,
+    WMI_EXTSCAN_THRESHOLD_PERCENT       = 0x0080,
 
     WMI_EXTSCAN_EVENT_MAX               = 0x8000
 } wmi_extscan_event_type;
@@ -9791,6 +9825,7 @@ typedef enum {
 
 typedef enum {
     WMI_EXTSCAN_BUCKET_CACHE_RESULTS    = 0x0001,    // Cache the results of bucket whose configuration flags has this bit set
+    WMI_EXTSCAN_REPORT_EVENT_CONTEXT_HUB = 0x0002,   // Report ext scan results to context hub or not.
 } wmi_extscan_bucket_configuration_flags;
 
 typedef enum {
@@ -10319,6 +10354,8 @@ typedef struct {
     A_UINT32     first_entry_index;
     /**number of bssids in this page */
     A_UINT32     num_entries_in_page;
+    /** number of buckets scanned**/
+    A_UINT32     buckets_scanned;
     /* Followed by the variable length TLVs
      *     wmi_extscan_wlan_descriptor    bssid_list[]
      *     wmi_extscan_rssi_info          rssi_list[]
@@ -11630,6 +11667,7 @@ typedef enum {
     TSF_TSTAMP_CAPTURE_REQ = 1,
     TSF_TSTAMP_CAPTURE_RESET = 2,
     TSF_TSTAMP_READ_VALUE = 3,
+    TSF_TSTAMP_QTIMER_CAPTURE_REQ = 4,
 } wmi_tsf_tstamp_action;
 
 typedef struct {
@@ -11640,6 +11678,10 @@ typedef struct {
     A_UINT32 vdev_id;
     /* action type, refer to wmi_tsf_tstamp_action */
     A_UINT32 tsf_action;
+    /* low 32 bits of qtimer */
+    A_UINT32 qtimer_low;
+    /* high 32 bits of qtimer */
+    A_UINT32 qtimer_high;
 } wmi_vdev_tsf_tstamp_action_cmd_fixed_param;
 
 typedef struct {

@@ -3953,6 +3953,17 @@ sapFsm
                          "In %s, Sending DFS eWNI_SME_CHANNEL_CHANGE_REQ",
                          __func__);
             }
+            else if (msg == eWNI_SME_CHANNEL_CHANGE_RSP)
+            {
+                VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_MED,
+                          "In %s, in state %s, event msg %d result %d",
+                          __func__, "eSAP_DISCONNECTING ", msg, sapEvent->u2);
+
+                if (sapEvent->u2 == eCSR_ROAM_RESULT_CHANNEL_CHANGE_FAILURE)
+                {
+                    vosStatus = sapGotoDisconnecting(sapContext);
+                }
+            }
             else
             {
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,

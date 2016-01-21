@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -359,6 +359,7 @@ VOS_STATUS vos_flush_logs(uint32_t is_fatal,
 		uint32_t indicator,
 		uint32_t reason_code);
 void vos_logging_set_fw_flush_complete(void);
+void vos_probe_threads(void);
 bool vos_is_crash_indication_pending(void);
 void vos_set_crash_indication_pending(bool value);
 #endif // if !defined __VOS_API_H

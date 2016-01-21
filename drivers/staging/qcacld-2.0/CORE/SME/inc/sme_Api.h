@@ -1754,6 +1754,28 @@ eHalStatus sme_GenericChangeCountryCode( tHalHandle hHal,
 
 /* ---------------------------------------------------------------------------
 
+    \fn sme_TXFailMonitorStartStopInd
+
+    \brief Indicate FW about TX Fail Monitor Indication`
+
+    \param hHal - The handle returned by macOpen.
+
+    \param tx_fail_count number of failures after which the firmware sends
+                         an indication to host
+
+    \param txFailIndCallback function to be called after receiving TX Fail
+                             indication
+    \return eHalStatus  SUCCESS.
+
+                         FAILURE or RESOURCES  The API finished and failed.
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_TXFailMonitorStartStopInd(tHalHandle hHal,
+                                         tANI_U8 tx_fail_count,
+                                         void * txFailIndCallback);
+
+/* ---------------------------------------------------------------------------
+
     \fn sme_DHCPStartInd
 
     \brief Indicate FW about DHCP start event.
@@ -3578,6 +3600,33 @@ eHalStatus sme_DelPeriodicTxPtrn(tHalHandle hHal, tSirDelPeriodicTxPtrn
 void sme_enable_disable_split_scan (tHalHandle hHal, tANI_U8 nNumStaChan,
                                     tANI_U8 nNumP2PChan);
 
+/**
+ * sme_enable_rmc() - enable RMC
+ * @hHal: handle
+ * @sessionId: session id
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_enable_rmc(tHalHandle hHal, tANI_U32 sessionId);
+
+/**
+ * sme_disable_rmc() - disable RMC
+ * @hHal: handle
+ * @sessionId: session id
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_disable_rmc(tHalHandle hHal, tANI_U32 sessionId);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SendRmcActionPeriod
+    \brief  Used to send RMC action period param to fw
+    \param  hHal
+    \param  sessionId
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_SendRmcActionPeriod(tHalHandle hHal, tANI_U32 sessionId);
+
 /* ---------------------------------------------------------------------------
     \fn sme_SendRateUpdateInd
     \brief  API to Update rate
@@ -3586,6 +3635,28 @@ void sme_enable_disable_split_scan (tHalHandle hHal, tANI_U8 nNumStaChan,
     \return eHalStatus
   ---------------------------------------------------------------------------*/
 eHalStatus sme_SendRateUpdateInd(tHalHandle hHal, tSirRateUpdateInd *rateUpdateParams);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_GetIBSSPeerInfo
+    \brief  Used to disable RMC
+    setting will not persist over reboots
+    \param  hHal
+    \param  ibssPeerInfoReq  multicast Group IP address
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_RequestIBSSPeerInfo(tHalHandle hHal, void *pUserData,
+                                            pIbssPeerInfoCb peerInfoCbk,
+                                            tANI_BOOLEAN allPeerInfoReqd,
+                                            tANI_U8 staIdx);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SendCesiumEnableInd
+    \brief  Used to send proprietary cesium enable indication to fw
+    \param  hHal
+    \param  sessionId
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_SendCesiumEnableInd(tHalHandle hHal, tANI_U32 sessionId);
 
 /*
  * sme API to trigger fast BSS roam to a given BSSID independent of RSSI
@@ -4021,6 +4092,10 @@ eHalStatus sme_ExtScanRegisterCallback (tHalHandle hHal,
 
 #endif /* FEATURE_WLAN_EXTSCAN */
 
+eHalStatus sme_bpf_offload_register_callback(tHalHandle hal,
+			void (*pbpf_get_offload_cb)(void *,
+			struct sir_bpf_get_offload *));
+
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 /* ---------------------------------------------------------------------------
     \fn sme_abortRoamScan
@@ -4411,6 +4486,10 @@ static inline VOS_STATUS sme_send_egap_conf_params(uint32_t enable,
 }
 #endif
 
+eHalStatus sme_set_dense_roam_params(tHalHandle hal,
+					uint32_t rssi_thresh_offset,
+					uint32_t min_aps, uint32_t status,
+					uint32_t traffic_thresh);
 #ifdef WLAN_FEATURE_WOW_PULSE
 VOS_STATUS sme_set_wow_pulse(struct wow_pulse_mode *wow_pulse_set_info);
 #endif
@@ -4427,4 +4506,7 @@ eHalStatus sme_update_mimo_power_save(tHalHandle hHal,
 
 bool sme_is_sta_smps_allowed(tHalHandle hHal, uint8_t session_id);
 
+eHalStatus sme_get_bpf_offload_capabilities(tHalHandle hal);
+eHalStatus sme_set_bpf_instructions(tHalHandle hal,
+			struct sir_bpf_set_offload *);
 #endif //#if !defined( __SME_API_H )

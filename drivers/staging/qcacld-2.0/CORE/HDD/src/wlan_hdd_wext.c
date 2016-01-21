@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -341,6 +341,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_GET_11W_INFO      9
 #endif
 #define WE_GET_STATES        10
+#define WE_GET_IBSS_STA_INFO 11
 #define WE_GET_PHYMODE       12
 #ifdef FEATURE_OEM_DATA_SUPPORT
 #define WE_GET_OEM_DATA_CAP  13
@@ -353,6 +354,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_DISPLAY_DXE_SNAP_SHOT   7
 #define WE_SET_REASSOC_TRIGGER     8
 #define WE_DISPLAY_DATAPATH_SNAP_SHOT    9
+#define WE_IBSS_GET_PEER_INFO_ALL 10
 #define WE_DUMP_AGC_START          11
 #define WE_DUMP_AGC                12
 #define WE_DUMP_CHANINFO_START     13
@@ -375,7 +377,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #ifdef FEATURE_WLAN_TDLS
 #define WE_TDLS_CONFIG_PARAMS   5
 #endif
-
+#define WE_IBSS_GET_PEER_INFO   6
 #define WE_UNIT_TEST_CMD   7
 
 #define WE_MTRACE_DUMP_CMD    8
@@ -570,7 +572,7 @@ static const struct qwlan_hw qwlan_hw_list[] = {
     {
         .id = QCA9377_REV1_1_VERSION,
         .subid = 0x1,
-        .name = "QCA9377_REV1_1",
+        .name = "QCA93x7_REV1_1",
     }
 };
 
@@ -861,6 +863,116 @@ void hdd_wlan_get_version(hdd_adapter_t *pAdapter, union iwreq_data *wrqu,
     }
 error:
     return;
+}
+
+v_MACADDR_t* hdd_wlan_get_ibss_mac_addr_from_staid(hdd_adapter_t *pAdapter, v_U8_t staIdx)
+{
+   v_U8_t idx;
+   hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
+   for ( idx = 0; idx < HDD_MAX_NUM_IBSS_STA; idx++ )
+   {
+      if ( 0 != pHddStaCtx->conn_info.staId[ idx ] &&
+           staIdx == pHddStaCtx->conn_info.staId[ idx ])
+      {
+         return (&pHddStaCtx->conn_info.peerMacAddress[ idx ]);
+      }
+   }
+   return NULL;
+}
+
+eHalStatus hdd_wlan_get_ibss_peer_info(hdd_adapter_t *pAdapter, v_U8_t staIdx)
+{
+    eHalStatus status = eHAL_STATUS_FAILURE;
+    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    hdd_station_ctx_t *pStaCtx =  WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    tSirPeerInfoRspParams *pPeerInfo = &pStaCtx->ibss_peer_info;
+
+    status = sme_RequestIBSSPeerInfo(hHal, pAdapter, hdd_get_ibss_peer_info_cb,
+                                     VOS_FALSE, staIdx);
+
+    INIT_COMPLETION(pAdapter->ibss_peer_info_comp);
+
+    if (eHAL_STATUS_SUCCESS == status)
+    {
+       unsigned long rc;
+       rc  = wait_for_completion_timeout
+                (&pAdapter->ibss_peer_info_comp,
+                msecs_to_jiffies(IBSS_PEER_INFO_REQ_TIMOEUT));
+       if (!rc) {
+          hddLog(VOS_TRACE_LEVEL_ERROR,
+                  FL("failed wait on ibss_peer_info_comp"));
+          return eHAL_STATUS_FAILURE;
+       }
+
+       /** Print the peer info */
+       pr_info("pPeerInfo->numIBSSPeers = %d ", pPeerInfo->numPeers);
+       pr_info("============================================================");
+       {
+          uint8_t mac_addr[VOS_MAC_ADDR_SIZE];
+          uint32_t tx_rate = pPeerInfo->peerInfoParams[0].txRate;
+
+          vos_mem_copy(mac_addr, pPeerInfo->peerInfoParams[0].mac_addr,
+               sizeof(mac_addr));
+          pr_info("PEER ADDR : %pM TxRate: %d Mbps  RSSI: %d",
+             mac_addr, (int)tx_rate, (int)pPeerInfo->peerInfoParams[0].rssi);
+       }
+    }
+    else
+    {
+       hddLog(VOS_TRACE_LEVEL_WARN,
+              "%s: Warning: sme_RequestIBSSPeerInfo Request failed", __func__);
+    }
+
+    return status;
+}
+
+eHalStatus hdd_wlan_get_ibss_peer_info_all(hdd_adapter_t *pAdapter)
+{
+    eHalStatus status = eHAL_STATUS_FAILURE;
+    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    hdd_station_ctx_t *pStaCtx =  WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    tSirPeerInfoRspParams *pPeerInfo = &pStaCtx->ibss_peer_info;
+    int i;
+
+    status = sme_RequestIBSSPeerInfo(hHal, pAdapter, hdd_get_ibss_peer_info_cb,
+                                     VOS_TRUE, 0xFF);
+    INIT_COMPLETION(pAdapter->ibss_peer_info_comp);
+
+    if (eHAL_STATUS_SUCCESS == status)
+    {
+       unsigned long rc;
+       rc  = wait_for_completion_timeout
+                (&pAdapter->ibss_peer_info_comp,
+                 msecs_to_jiffies(IBSS_PEER_INFO_REQ_TIMOEUT));
+       if (!rc) {
+          hddLog(VOS_TRACE_LEVEL_ERROR,
+                  FL("failed wait on ibss_peer_info_comp"));
+          return eHAL_STATUS_FAILURE;
+       }
+
+       /** Print the peer info */
+       pr_info("pPeerInfo->numIBSSPeers = %d ", (int)pPeerInfo->numPeers);
+       pr_info("============================================================");
+       for (i = 0; i < pPeerInfo->numPeers; i++) {
+          uint8_t mac_addr[VOS_MAC_ADDR_SIZE];
+          uint32_t tx_rate;
+
+          tx_rate = pPeerInfo->peerInfoParams[i].txRate;
+          vos_mem_copy(mac_addr, pPeerInfo->peerInfoParams[i].mac_addr,
+              sizeof(mac_addr));
+
+          pr_info(" PEER ADDR : %pM TxRate: %d Mbps RSSI: %d",
+            mac_addr, (int)tx_rate, (int)pPeerInfo->peerInfoParams[i].rssi);
+       }
+    }
+    else
+    {
+       hddLog(VOS_TRACE_LEVEL_WARN,
+              "%s: Warning: sme_RequestIBSSPeerInfo Request failed", __func__);
+    }
+
+    return status;
 }
 
 int hdd_wlan_get_rts_threshold(hdd_adapter_t *pAdapter, union iwreq_data *wrqu)
@@ -8343,6 +8455,35 @@ static int __iw_get_char_setnone(struct net_device *dev,
            break;
        }
 #endif
+        case WE_GET_IBSS_STA_INFO:
+        {
+            hdd_station_ctx_t *pHddStaCtx =
+                WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+            int idx = 0;
+            int length = 0, buf = 0;
+
+            for (idx = 0; idx < HDD_MAX_NUM_IBSS_STA; idx++)
+            {
+               if (0 != pHddStaCtx->conn_info.staId[ idx ])
+               {
+                   buf = snprintf
+                             (
+                             (extra + length), WE_MAX_STR_LEN - length,
+                             "\n%d .%02x:%02x:%02x:%02x:%02x:%02x\n",
+                             pHddStaCtx->conn_info.staId[ idx ],
+                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[0],
+                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[1],
+                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[2],
+                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[3],
+                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[4],
+                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[5]
+                             );
+                   length += buf;
+               }
+            }
+            wrqu->data.length = strlen(extra)+1;
+            break;
+        }
         case WE_GET_PHYMODE:
         {
            v_BOOL_t ch_bond24 = VOS_FALSE, ch_bond5g = VOS_FALSE;
@@ -8531,6 +8672,12 @@ static int __iw_setnone_getnone(struct net_device *dev,
         {
             tHalHandle hal = WLAN_HDD_GET_HAL_CTX(pAdapter);
             sme_getRecoveryStats(hal);
+            break;
+        }
+
+        case WE_IBSS_GET_PEER_INFO_ALL:
+        {
+            hdd_wlan_get_ibss_peer_info_all(pAdapter);
             break;
         }
 
@@ -8746,6 +8893,12 @@ static int __iw_set_var_ints_getnone(struct net_device *dev,
 
             }
             break;
+        case WE_IBSS_GET_PEER_INFO:
+             {
+                pr_info ( "Station ID = %d\n",apps_args[0]);
+                hdd_wlan_get_ibss_peer_info(pAdapter, apps_args[0]);
+             }
+              break;
 
         case WE_P2P_NOA_CMD:
             {
@@ -12032,6 +12185,11 @@ static const struct iw_priv_args we_private_args[] = {
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getPMFInfo" },
 #endif
+    {
+        WE_GET_IBSS_STA_INFO,
+        0,
+        IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
+        "getIbssSTAs" },
     {   WE_GET_PHYMODE,
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
@@ -12054,6 +12212,11 @@ static const struct iw_priv_args we_private_args[] = {
         "" },
 
     /* handlers for sub-ioctl */
+    {
+        WE_IBSS_GET_PEER_INFO_ALL,
+        0,
+        0,
+       "ibssPeerInfoAll" },
     {   WE_GET_RECOVERY_STAT,
         0,
         0,
@@ -12116,6 +12279,10 @@ static const struct iw_priv_args we_private_args[] = {
         IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
         0,
         "dump" },
+    {   WE_IBSS_GET_PEER_INFO,
+        IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
+        0,
+        "ibssPeerInfo" },
 
     /* handlers for sub-ioctl */
     {   WE_MTRACE_SELECTIVE_MODULE_LOG_ENABLE_CMD,

@@ -118,6 +118,11 @@ typedef enum {
     eTDLS_SUPPORT_EXTERNAL_CONTROL
 } eTDLSSupportMode;
 
+enum tdls_spatial_streams {
+    TDLS_NSS_1x1_MODE = 0,
+    TDLS_NSS_2x2_MODE = 0xff,
+};
+
 typedef enum eTDLSCapType{
     eTDLS_CAP_NOT_SUPPORTED = -1,
     eTDLS_CAP_UNKNOWN = 0,
@@ -229,6 +234,7 @@ typedef struct _hddTdlsPeer_t {
     tANI_U8       op_class_for_pref_off_chan;
     tANI_U8       pref_off_chan_num;
     tANI_U8       op_class_for_pref_off_chan_is_set;
+    uint8_t     spatial_streams;
     /* EXT TDLS */
     tTDLSLinkReason reason;
     cfg80211_exttdls_callback state_change_notification;
@@ -407,7 +413,8 @@ void wlan_hdd_update_tdls_info(hdd_adapter_t *adapter, bool tdls_prohibited,
                                bool tdls_chan_swit_prohibited);
 int hdd_set_tdls_scan_type(hdd_context_t *hdd_ctx, int val);
 int wlan_hdd_tdls_antenna_switch(hdd_context_t *hdd_ctx,
-					hdd_adapter_t *adapter);
+					hdd_adapter_t *adapter,
+					uint32_t mode);
 
 
 #else
@@ -427,7 +434,8 @@ wlan_hdd_tdls_implicit_send_discovery_request(void *pHddTdlsCtx)
 {
 }
 static inline int wlan_hdd_tdls_antenna_switch(hdd_context_t *hdd_ctx,
-						      hdd_adapter_t *adapter)
+						      hdd_adapter_t *adapter,
+						      uint32_t mode)
 {
 	return 0;
 }

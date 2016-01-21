@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -88,6 +88,7 @@ enum ol_ath_tx_ecodes  {
 #define MAX_FILE_NAME     20
 struct ol_fw_files {
     char image_file[MAX_FILE_NAME];
+    char ibss_image_file[MAX_FILE_NAME];
     char board_data[MAX_FILE_NAME];
     char otp_data[MAX_FILE_NAME];
     char utf_file[MAX_FILE_NAME];

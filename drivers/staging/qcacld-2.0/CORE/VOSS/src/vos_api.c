@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -2752,4 +2752,24 @@ void vos_set_crash_indication_pending(bool value)
 	}
 
 	gpVosContext->crash_indication_pending = value;
+}
+
+/**
+ * vos_probe_threads() - VOS API to post messages
+ * to all the threads to detect if they are active or not
+ *
+ * Return: None
+ *
+ */
+void vos_probe_threads(void)
+{
+	vos_msg_t msg;
+
+	msg.callback = vos_wd_reset_thread_stuck_count;
+	/* Post Message to MC Thread */
+	sysBuildMessageHeader(SYS_MSG_ID_MC_THR_PROBE, &msg);
+	if (VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MQ_ID_SYS, &msg)) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+			  FL("Unable to post SYS_MSG_ID_MC_THR_PROBE message to MC thread"));
+	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -408,7 +408,14 @@ static eHalStatus oem_process_data_req_msg(int oemDataLen, char *oemData)
 
    vos_mem_zero(&oemDataReqConfig, sizeof(tOemDataReqConfig));
 
-   vos_mem_copy((&oemDataReqConfig)->oemDataReq, oemData, oemDataLen);
+   oemDataReqConfig.data = vos_mem_malloc(oemDataLen);
+   if (!oemDataReqConfig.data) {
+      hddLog(LOGE, FL("malloc failed for data req buffer"));
+      return eHAL_STATUS_FAILED_ALLOC;
+   }
+
+   oemDataReqConfig.data_len = oemDataLen;
+   vos_mem_copy(oemDataReqConfig.data, oemData, oemDataLen);
 
    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
              "%s: calling sme_OemDataReq", __func__);
@@ -417,6 +424,8 @@ static eHalStatus oem_process_data_req_msg(int oemDataLen, char *oemData)
                            pAdapter->sessionId,
                            &oemDataReqConfig,
                            &oemDataReqID);
+
+   vos_mem_free(oemDataReqConfig.data);
    return status;
 }
 

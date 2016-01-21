@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -765,6 +765,9 @@ typedef struct wma_handle {
 
    /*DFS umac interface information*/
    struct ieee80211com *dfs_ic;
+
+        txFailIndCallback hddTxFailCb;
+
 #ifdef FEATURE_WLAN_SCAN_PNO
 	vos_wake_lock_t pno_wake_lock;
 #endif
@@ -805,6 +808,10 @@ typedef struct wma_handle {
 	u_int8_t staModDtim;
 	u_int8_t staDynamicDtim;
 
+	u_int8_t enable_mhf_offload;
+	/* timestamp when last entries where set */
+	v_TIME_t last_mhf_entries_timestamp;
+
 	int32_t dfs_pri_multiplier;
 
 	u_int32_t hw_bd_id;
@@ -844,6 +851,8 @@ typedef struct wma_handle {
 	uint16_t max_mgmt_tx_fail_count;
 
 	struct wma_runtime_pm_context runtime_context;
+	uint32_t fine_time_measurement_cap;
+	bool bpf_enabled;
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014,2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -627,6 +627,12 @@ static A_STATUS HIFDevIssueRecvPacketBundle(HIF_SDIO_DEVICE *pDev,
 
     int bundleSpaceRemaining = 0;
     target = (HTC_TARGET *)pDev->pTarget;
+
+    if (!pSyncCompletionQueue) {
+        AR_DEBUG_PRINTF(ATH_DEBUG_ERROR,
+                  ("%s: pSyncCompletionQueue is NULL\n", __func__));
+        return A_ERROR;
+    }
 
     if((HTC_PACKET_QUEUE_DEPTH(pRecvPktQueue) - HTC_MAX_MSG_PER_BUNDLE_RX) > 0){
         PartialBundle = TRUE;

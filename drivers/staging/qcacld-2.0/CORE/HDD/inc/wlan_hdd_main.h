@@ -51,9 +51,6 @@
 #include <wlan_hdd_wmm.h>
 #include <wlan_hdd_cfg.h>
 #include <linux/spinlock.h>
-#if defined(WLAN_OPEN_SOURCE) && defined(CONFIG_HAS_WAKELOCK)
-#include <linux/wakelock.h>
-#endif
 #include <wlan_hdd_ftm.h>
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
@@ -154,6 +151,8 @@
 
 /* Scan Req Timeout */
 #define WLAN_WAIT_TIME_SCAN_REQ 100
+
+#define WLAN_WAIT_TIME_BPF     1000
 
 #define MAX_NUMBER_OF_ADAPTERS 4
 
@@ -304,6 +303,7 @@ extern spinlock_t hdd_context_lock;
 #define LINK_STATUS_MAGIC   0x4C4B5354   //LINKSTATUS(LNST)
 #define TEMP_CONTEXT_MAGIC 0x74656d70   // TEMP (temperature)
 #define FW_STATUS_MAGIC 0x46575354 /* FWSTATUS(FWST) */
+#define BPF_CONTEXT_MAGIC 0x4575354    /* BPF */
 
 #ifdef QCA_LL_TX_FLOW_CT
 /* MAX OS Q block time value in msec
@@ -710,6 +710,8 @@ struct hdd_station_ctx
 
    /*Save the wep/wpa-none keys*/
    tCsrRoamSetKey ibss_enc_key;
+   tSirPeerInfoRspParams ibss_peer_info;
+
    v_BOOL_t hdd_ReassocScenario;
 
    /* STA ctx debug variables */
@@ -1013,6 +1015,8 @@ struct hdd_adapter_s
    eHalStatus tdlsAddStaStatus;
 #endif
 
+   struct completion ibss_peer_info_comp;
+
    /* Track whether the linkup handling is needed  */
    v_BOOL_t isLinkUpSvcNeeded;
 
@@ -1303,6 +1307,7 @@ enum smps_mode {
  * @response_status: Status returned by FW in response to a request
  * @ignore_cached_results: Flag to ignore cached results or not
  * @capability_response: Ext scan capability response data from target
+ * @buckets_scanned: bitmask of buckets scanned in extscan cycle
  */
 struct hdd_ext_scan_context {
 	uint32_t request_id;
@@ -1310,6 +1315,7 @@ struct hdd_ext_scan_context {
 	bool ignore_cached_results;
 	struct completion response_event;
 	struct ext_scan_capabilities_response capability_response;
+	uint32_t buckets_scanned;
 };
 #endif /* End of FEATURE_WLAN_EXTSCAN */
 
@@ -1350,6 +1356,18 @@ struct hdd_offloaded_packets_ctx {
 	struct mutex op_lock;
 };
 #endif
+
+/**
+ * struct hdd_bpf_context - hdd Context for bpf
+ * @magic: magic number
+ * @completion: Completion variable for BPF Get Capability
+ * @capability_response: capabilities response received from fw
+ */
+struct hdd_bpf_context {
+	unsigned int magic;
+	struct completion completion;
+	struct sir_bpf_get_offload capability_response;
+};
 
 /** Adapter stucture definition */
 
@@ -1690,6 +1708,7 @@ struct hdd_context_s
     uint8_t supp_5g_chain_mask;
     /* Current number of TX X RX chains being used */
     enum antenna_mode current_antenna_mode;
+    bool bpf_enabled;
 };
 
 /*---------------------------------------------------------------------------
@@ -1795,6 +1814,7 @@ int wlan_hdd_setIPv6Filter(hdd_context_t *pHddCtx, tANI_U8 filterType, tANI_U8 s
 void hdd_ipv6_notifier_work_queue(struct work_struct *work);
 #endif
 
+v_MACADDR_t* hdd_wlan_get_ibss_mac_addr_from_staid(hdd_adapter_t *pAdapter, v_U8_t staIdx);
 
 void hdd_checkandupdate_phymode( hdd_context_t *pHddCtx);
 
@@ -2000,5 +2020,8 @@ static inline void wlan_hdd_set_egap_support(hdd_context_t *hdd_ctx,
 
 int wlan_hdd_update_txrx_chain_mask(hdd_context_t *hdd_ctx,
 				    uint8_t chain_mask);
+void
+hdd_get_ibss_peer_info_cb(v_VOID_t *pUserData,
+                                    tSirPeerInfoRspParams *pPeerInfo);
 
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

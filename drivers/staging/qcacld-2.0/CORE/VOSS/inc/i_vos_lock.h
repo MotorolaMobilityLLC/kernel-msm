@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -46,9 +46,6 @@
 #include <linux/spinlock.h>
 #include <linux/sched.h>
 #include <linux/device.h>
-#if defined(WLAN_OPEN_SOURCE) && defined(CONFIG_HAS_WAKELOCK)
-#include <linux/wakelock.h>
-#endif
 
 /*--------------------------------------------------------------------------
   Preprocessor definitions and constants
@@ -72,13 +69,7 @@ typedef struct vos_lock_s
 typedef spinlock_t vos_spin_lock_t;
 
 typedef struct wlan_wake_lock {
-#if defined CONFIG_CNSS
 	struct wakeup_source lock;
-#elif defined(WLAN_OPEN_SOURCE) && defined(CONFIG_HAS_WAKELOCK)
-	struct wake_lock lock;
-#else
-	int lock;
-#endif
 } vos_wake_lock_t;
 
 typedef void *runtime_pm_context_t;

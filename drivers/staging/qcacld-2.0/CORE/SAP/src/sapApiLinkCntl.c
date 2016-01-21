@@ -1382,9 +1382,16 @@ WLANSAP_RoamCallback
              * channel due to the presence of radar but our channel change
              * failed, stop the BSS operation completely and inform hostapd
              */
-            sapContext->sapsMachine = eSAP_DISCONNECTED;
+            sapEvent.event = eWNI_SME_CHANNEL_CHANGE_RSP;
+            sapEvent.params = 0;
+            sapEvent.u1 = eCSR_ROAM_INFRA_IND;
+            sapEvent.u2 = eCSR_ROAM_RESULT_CHANNEL_CHANGE_FAILURE;
 
-            /* Inform cfg80211 and hostapd that BSS is not alive anymore */
+            vosStatus = sapFsm(sapContext, &sapEvent);
+            if (!VOS_IS_STATUS_SUCCESS(vosStatus)) {
+                halStatus = eHAL_STATUS_FAILURE;
+            }
+            break;
         }
         case eCSR_ROAM_EXT_CHG_CHNL_UPDATE_IND:
         {

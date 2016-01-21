@@ -563,6 +563,19 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
            (tANI_U32) pRxAuthFrameBody->authTransactionSeqNumber,
            (tANI_U32) pRxAuthFrameBody->authStatusCode,(tANI_U32)pMac->lim.gLimNumPreAuthContexts);)
 
+    // IOT Workaround: with invalid WEP password, some APs reply AUTH frame 4
+    // with invalid seqNumber. This AUTH frame will be dropped by driver,
+    // thus driver sends the generic status code instead of protocol status code.
+    // As a workaround, assign the correct seqNumber for the AUTH frame 4.
+    if (psessionEntry->limMlmState == eLIM_MLM_WT_AUTH_FRAME4_STATE &&
+        pRxAuthFrameBody->authTransactionSeqNumber != SIR_MAC_AUTH_FRAME_1 &&
+        pRxAuthFrameBody->authTransactionSeqNumber != SIR_MAC_AUTH_FRAME_2 &&
+        pRxAuthFrameBody->authTransactionSeqNumber != SIR_MAC_AUTH_FRAME_3) {
+        PELOGE(limLog(pMac, LOGE, FL("Workaround: Assign a correct seqNumber=4 "
+                "for AUTH frame 4"));)
+        pRxAuthFrameBody->authTransactionSeqNumber = SIR_MAC_AUTH_FRAME_4;
+    }
+
     switch (pRxAuthFrameBody->authTransactionSeqNumber)
     {
         case SIR_MAC_AUTH_FRAME_1:

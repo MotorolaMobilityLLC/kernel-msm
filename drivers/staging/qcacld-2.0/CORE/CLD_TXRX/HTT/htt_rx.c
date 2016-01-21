@@ -2410,15 +2410,15 @@ htt_list_remove(htt_list_node * node)
 
 /* Hash count related macros */
 #define HTT_RX_HASH_COUNT_INCR(hash_bucket)\
-    hash_bucket.count++
+    hash_bucket->count++
 
 #define HTT_RX_HASH_COUNT_DECR(hash_bucket)\
-    hash_bucket.count--
+    hash_bucket->count--
 
-#define HTT_RX_HASH_COUNT_RESET(hash_bucket) hash_bucket.count = 0
+#define HTT_RX_HASH_COUNT_RESET(hash_bucket) hash_bucket->count = 0
 
 #define HTT_RX_HASH_COUNT_PRINT(hash_bucket)\
-    RX_HASH_LOG(adf_os_print(" count %d\n", hash_bucket.count))
+    RX_HASH_LOG(adf_os_print(" count %d\n", hash_bucket->count))
 #else /* RX_HASH_DEBUG */
 /* Hash cookie related macros */
 #define HTT_RX_HASH_COOKIE_SET(hash_element) /* no-op */
@@ -2450,19 +2450,19 @@ htt_rx_hash_list_insert(struct htt_pdev_t *pdev, u_int32_t paddr,
     i = RX_HASH_FUNCTION(paddr);
 
     /* Check if there are any entries in the pre-allocated free list */
-    if( pdev->rx_ring.hash_table[i].freepool.next !=
-         &pdev->rx_ring.hash_table[i].freepool) {
+    if( pdev->rx_ring.hash_table[i]->freepool.next !=
+         &pdev->rx_ring.hash_table[i]->freepool) {
 
         hash_element =
             (struct htt_rx_hash_entry *)((char *)pdev->rx_ring.hash_table[i]
-                                         .freepool.next -
+                                         ->freepool.next -
                                           pdev->rx_ring.listnode_offset);
         if (adf_os_unlikely(NULL == hash_element)) {
             HTT_ASSERT_ALWAYS(0);
             return 1;
         }
 
-        htt_list_remove(pdev->rx_ring.hash_table[i].freepool.next);
+        htt_list_remove(pdev->rx_ring.hash_table[i]->freepool.next);
     }
     else {
         hash_element = adf_os_mem_alloc(pdev->osdev,
@@ -2478,7 +2478,7 @@ htt_rx_hash_list_insert(struct htt_pdev_t *pdev, u_int32_t paddr,
     hash_element->paddr = paddr;
     HTT_RX_HASH_COOKIE_SET(hash_element);
 
-    htt_list_add_tail(&pdev->rx_ring.hash_table[i].listhead,
+    htt_list_add_tail(&pdev->rx_ring.hash_table[i]->listhead,
                        &hash_element->listnode);
 
     RX_HASH_LOG(adf_os_print("rx hash: %s: paddr 0x%x netbuf %p bucket %d\n",
@@ -2503,7 +2503,7 @@ htt_rx_hash_list_lookup(struct htt_pdev_t *pdev, u_int32_t paddr)
 
     i = RX_HASH_FUNCTION(paddr);
 
-    HTT_LIST_ITER_FWD(list_iter, &pdev->rx_ring.hash_table[i].listhead)
+    HTT_LIST_ITER_FWD(list_iter, &pdev->rx_ring.hash_table[i]->listhead)
     {
         hash_entry = (struct htt_rx_hash_entry *)
         ((char *)list_iter - pdev->rx_ring.listnode_offset);
@@ -2520,7 +2520,7 @@ htt_rx_hash_list_lookup(struct htt_pdev_t *pdev, u_int32_t paddr)
             HTT_RX_HASH_COUNT_DECR(pdev->rx_ring.hash_table[i]);
             /* if the rx entry is from the pre-allocated list, return it */
             if (hash_entry->fromlist) {
-                htt_list_add_tail(&pdev->rx_ring.hash_table[i].freepool,
+                htt_list_add_tail(&pdev->rx_ring.hash_table[i]->freepool,
                                    &hash_entry->listnode);
             }
             else {
@@ -2561,8 +2561,9 @@ htt_rx_hash_init(struct htt_pdev_t *pdev)
 
     HTT_ASSERT2(IS_PWR2(RX_NUM_HASH_BUCKETS));
 
+    /* hash table is array of bucket pointers */
     pdev->rx_ring.hash_table = adf_os_mem_alloc(
-       pdev->osdev, RX_NUM_HASH_BUCKETS * sizeof(struct htt_rx_hash_bucket));
+       pdev->osdev, RX_NUM_HASH_BUCKETS * sizeof(struct htt_rx_hash_bucket *));
 
     if ( NULL == pdev->rx_ring.hash_table) {
         adf_os_print("rx hash table allocation failed!\n");
@@ -2570,24 +2571,30 @@ htt_rx_hash_init(struct htt_pdev_t *pdev)
     }
 
     for (i = 0; i < RX_NUM_HASH_BUCKETS; i++) {
+
+        /* pre-allocate bucket and pool of entries for this bucket */
+        pdev->rx_ring.hash_table[i] = adf_os_mem_alloc(
+           pdev->osdev, (sizeof(struct htt_rx_hash_bucket) +
+           (RX_ENTRIES_SIZE * sizeof(struct htt_rx_hash_entry))));
+
         HTT_RX_HASH_COUNT_RESET(pdev->rx_ring.hash_table[i]);
 
         /* initialize the hash table buckets */
-        htt_list_init(&pdev->rx_ring.hash_table[i].listhead);
+        htt_list_init(&pdev->rx_ring.hash_table[i]->listhead);
 
         /* initialize the hash table free pool per bucket */
-        htt_list_init(&pdev->rx_ring.hash_table[i].freepool);
+        htt_list_init(&pdev->rx_ring.hash_table[i]->freepool);
 
-        /* pre-allocate a pool of entries for this bucket */
-        pdev->rx_ring.hash_table[i].entries = adf_os_mem_alloc(
-           pdev->osdev, RX_ENTRIES_SIZE * sizeof(struct htt_rx_hash_entry));
+        pdev->rx_ring.hash_table[i]->entries = (struct htt_rx_hash_entry *)
+            ((uint8_t *)pdev->rx_ring.hash_table[i] +
+            sizeof(struct htt_rx_hash_bucket));
 
-        if (NULL == pdev->rx_ring.hash_table[i].entries) {
+        if (NULL == pdev->rx_ring.hash_table[i]->entries) {
             adf_os_print("rx hash entries allocation for bucket %d failed!\n",
                           (int)i);
             while (i) {
                 i--;
-                adf_os_mem_free(pdev->rx_ring.hash_table[i].entries);
+                adf_os_mem_free(pdev->rx_ring.hash_table[i]);
             }
             adf_os_mem_free(pdev->rx_ring.hash_table);
             pdev->rx_ring.hash_table = NULL;
@@ -2596,9 +2603,9 @@ htt_rx_hash_init(struct htt_pdev_t *pdev)
 
         /* initialize the free list with pre-allocated entries */
         for (j = 0; j < RX_ENTRIES_SIZE; j++) {
-            pdev->rx_ring.hash_table[i].entries[j].fromlist = 1;
-            htt_list_add_tail(&pdev->rx_ring.hash_table[i].freepool,
-                              &pdev->rx_ring.hash_table[i].entries[j].listnode);
+            pdev->rx_ring.hash_table[i]->entries[j].fromlist = 1;
+            htt_list_add_tail(&pdev->rx_ring.hash_table[i]->freepool,
+                             &pdev->rx_ring.hash_table[i]->entries[j].listnode);
         }
     }
 
@@ -2624,8 +2631,8 @@ htt_rx_hash_deinit(struct htt_pdev_t *pdev)
 
     for (i = 0; i < RX_NUM_HASH_BUCKETS; i++) {
         /* Free the hash entries in hash bucket i */
-        list_iter = pdev->rx_ring.hash_table[i].listhead.next;
-        while (list_iter != &pdev->rx_ring.hash_table[i].listhead) {
+        list_iter = pdev->rx_ring.hash_table[i]->listhead.next;
+        while (list_iter != &pdev->rx_ring.hash_table[i]->listhead) {
             hash_entry =
                  (struct htt_rx_hash_entry *)((char *)list_iter -
                                                pdev->rx_ring.listnode_offset);
@@ -2647,7 +2654,7 @@ htt_rx_hash_deinit(struct htt_pdev_t *pdev)
             }
         }
 
-        adf_os_mem_free(pdev->rx_ring.hash_table[i].entries);
+        adf_os_mem_free(pdev->rx_ring.hash_table[i]);
 
     }
     if (NULL != pdev->rx_ring.hash_table) {
@@ -2664,7 +2671,7 @@ htt_rx_hash_dump_table(struct htt_pdev_t *pdev)
     htt_list_node * list_iter = NULL;
 
     for (i = 0; i < RX_NUM_HASH_BUCKETS; i++) {
-        HTT_LIST_ITER_FWD(list_iter, &pdev->rx_ring.hash_table[i].listhead)
+        HTT_LIST_ITER_FWD(list_iter, &pdev->rx_ring.hash_table[i]->listhead)
         {
             hash_entry =
                  (struct htt_rx_hash_entry *)((char *)list_iter -

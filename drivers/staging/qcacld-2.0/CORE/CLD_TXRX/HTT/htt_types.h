@@ -336,7 +336,7 @@ struct htt_pdev_t {
         int rx_reset;
         u_int8_t htt_rx_restore;
 #endif
-        struct htt_rx_hash_bucket * hash_table;
+        struct htt_rx_hash_bucket **hash_table;
         u_int32_t listnode_offset;
     } rx_ring;
     int rx_desc_size_hl;

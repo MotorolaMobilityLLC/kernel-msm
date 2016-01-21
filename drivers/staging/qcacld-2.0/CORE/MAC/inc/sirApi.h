@@ -967,16 +967,18 @@ typedef struct sSirSmeScanChanReq
 
 typedef struct sSirOemDataReq
 {
-    tANI_U16              messageType; //eWNI_SME_OEM_DATA_REQ
+    tANI_U16              messageType; /* eWNI_SME_OEM_DATA_REQ */
     tANI_U16              messageLen;
     tSirMacAddr           selfMacAddr;
-    tANI_U8               oemDataReq[OEM_DATA_REQ_SIZE];
+    uint8_t               data_len;
+    uint8_t               *data;
 } tSirOemDataReq, *tpSirOemDataReq;
 
 typedef struct sSirOemDataRsp
 {
     tANI_U16             messageType;
     tANI_U16             length;
+    bool                 target_rsp;
     tANI_U8              oemDataRsp[OEM_DATA_RSP_SIZE];
 } tSirOemDataRsp, *tpSirOemDataRsp;
 
@@ -2279,6 +2281,14 @@ typedef struct sAniDHCPStopInd
     tSirMacAddr             peerMacAddr; // MAC address of the connected peer
 
 } tAniDHCPInd, *tpAniDHCPInd;
+
+typedef struct sAniTXFailMonitorInd
+{
+    tANI_U16                msgType; // message type is same as the request type
+    tANI_U16                msgLen;  // length of the entire request
+    tANI_U8                 tx_fail_count;
+    void                    *txFailIndCallback;
+} tAniTXFailMonitorInd, *tpAniTXFailMonitorInd;
 
 typedef struct sAniSummaryStatsInfo
 {
@@ -3787,6 +3797,10 @@ struct roam_ext_params {
 	int rssi_diff;
 	int good_rssi_roam;
 	bool is_5g_pref_enabled;
+	int dense_rssi_thresh_offset;
+	int dense_min_aps_cnt;
+	int initial_dense_status;
+	int traffic_threshold;
 };
 
 typedef struct sSirRoamOffloadScanReq
@@ -4584,6 +4598,48 @@ typedef struct sSirDelPeriodicTxPtrn
    tANI_U8  ucPtrnId;           // Pattern ID
 } tSirDelPeriodicTxPtrn, *tpSirDelPeriodicTxPtrn;
 
+/*---------------------------------------------------------------------------
+* tSirIbssGetPeerInfoReqParams
+*--------------------------------------------------------------------------*/
+typedef struct
+{
+    tANI_BOOLEAN    allPeerInfoReqd; // If set, all IBSS peers stats are reported
+    tANI_U8         staIdx;          // If allPeerInfoReqd is not set, only stats
+                                     // of peer with staIdx is reported
+}tSirIbssGetPeerInfoReqParams, *tpSirIbssGetPeerInfoReqParams;
+
+/**
+ * typedef struct - tSirIbssGetPeerInfoParams
+ * @mac_addr: mac address received from target
+ * @txRate: TX rate
+ * @mcsIndex: MCS index
+ * @txRateFlags: TX rate flags
+ * @rssi: RSSI
+ */
+typedef struct {
+   uint8_t  mac_addr[VOS_MAC_ADDR_SIZE];
+   uint32_t txRate;
+   uint32_t mcsIndex;
+   uint32_t txRateFlags;
+   int8_t  rssi;
+}tSirIbssPeerInfoParams;
+
+typedef struct
+{
+   tANI_U32   status;
+   tANI_U8    numPeers;
+   tSirIbssPeerInfoParams  peerInfoParams[32];
+}tSirPeerInfoRspParams, *tpSirIbssPeerInfoRspParams;
+
+/*---------------------------------------------------------------------------
+* tSirIbssGetPeerInfoRspParams
+*--------------------------------------------------------------------------*/
+typedef struct
+{
+   tANI_U16   mesgType;
+   tANI_U16   mesgLen;
+   tSirPeerInfoRspParams ibssPeerInfoRspParams;
+} tSirIbssGetPeerInfoRspParams, *tpSirIbssGetPeerInfoRspParams;
 
 typedef struct
 {
@@ -4729,6 +4785,7 @@ typedef struct sSirModifyIE
    tANI_U8          ieIDLen;   /*ie length as per spec*/
    tANI_U16         ieBufferlength;
    tANI_U8         *pIEBuffer;
+   int32_t          oui_length;
 
 }tSirModifyIE,    *tpSirModifyIE;
 
@@ -4942,8 +4999,35 @@ typedef enum
 /* wifi scan related events */
 typedef enum
 {
-   WIFI_SCAN_BUFFER_FULL,
-   WIFI_SCAN_COMPLETE,
+	/*
+	 * reported when REPORT_EVENTS_EACH_SCAN is set and a scan
+	 * completes. WIFI_SCAN_THRESHOLD_NUM_SCANS or
+	 * WIFI_SCAN_THRESHOLD_PERCENT can be reported instead if the
+	 * reason for the event is available; however, at most one of
+	 * these events should be reported per scan.
+	 */
+	WIFI_EXTSCAN_RESULTS_AVAILABLE,
+	/*
+	 * can be reported when REPORT_EVENTS_EACH_SCAN is not set and
+	 * report_threshold_num_scans is reached.
+	 */
+	WIFI_EXTSCAN_THRESHOLD_NUM_SCANS,
+	/*
+	 * can be reported when REPORT_EVENTS_EACH_SCAN is not set and
+	 * report_threshold_percent is reached
+	 */
+	WIFI_EXTSCAN_THRESHOLD_PERCENT,
+	/*
+	 * reported when currently executing gscans are disabled
+	 * start_gscan will need to be called again in order to continue
+	 * scanning
+	 */
+	WIFI_SCAN_DISABLED,
+
+	/* Below events are consumed in driver only */
+	WIFI_EXTSCAN_BUCKET_STARTED_EVENT = 0x10,
+	WIFI_EXTSCAN_CYCLE_STARTED_EVENT,
+	WIFI_EXTSCAN_CYCLE_COMPLETED_EVENT,
 } tWifiScanEventType;
 
 /**
@@ -5125,6 +5209,7 @@ typedef struct
  * @more_data: 0 - for last fragment
  *	       1 - still more fragment(s) coming
  * @num_scan_ids: number of scan ids
+ * @buckets_scanned: bitmask of buckets scanned in current extscan cycle
  * @result: wifi scan result
  */
 struct extscan_cached_scan_results
@@ -5132,6 +5217,7 @@ struct extscan_cached_scan_results
 	uint32_t    request_id;
 	bool        more_data;
 	uint32_t    num_scan_ids;
+	uint32_t    buckets_scanned;
 	struct extscan_cached_scan_result  *result;
 };
 
@@ -5403,34 +5489,51 @@ typedef struct
     tANI_U32   requestId;
     tANI_U32   status;
     tANI_U8    scanEventType;
+    tANI_U32   buckets_scanned;
 } tSirExtScanOnScanEventIndParams,
   *tpSirExtScanOnScanEventIndParams;
+
+#define MAX_EPNO_NETWORKS 64
 
 /**
  * struct wifi_epno_network - enhanced pno network block
  * @ssid: ssid
- * @rssi_threshold: threshold for considering this SSID as found, required
- *		    granularity for this threshold is 4dBm to 8dBm
  * @flags: WIFI_PNO_FLAG_XXX
  * @auth_bit_field: auth bit field for matching WPA IE
  */
 struct wifi_epno_network
 {
 	tSirMacSSid  ssid;
-	int8_t       rssi_threshold;
 	uint8_t      flags;
 	uint8_t      auth_bit_field;
 };
 
 /**
  * struct wifi_epno_params - enhanced pno network params
+ * @request_id: request id number
+ * @session_id: session_id number
+ * @min_5ghz_rssi: minimum 5GHz RSSI for a BSSID to be considered
+ * @min_24ghz_rssi: minimum 2.4GHz RSSI for a BSSID to be considered
+ * @initial_score_max: maximum score that a network can have before bonuses
+ * @current_connection_bonus: only report when there is a network's score this
+ *    much higher than the current connection
+ * @same_network_bonus: score bonus for all n/w with the same network flag
+ * @secure_bonus: score bonus for networks that are not open
+ * @band_5ghz_bonus: 5GHz RSSI score bonus (applied to all 5GHz networks)
  * @num_networks: number of ssids
- * @networks: PNO networks
+ * @networks: EPNO networks
  */
 struct wifi_epno_params
 {
 	uint32_t    request_id;
 	uint32_t    session_id;
+	uint32_t    min_5ghz_rssi;
+	uint32_t    min_24ghz_rssi;
+	uint32_t    initial_score_max;
+	uint32_t    current_connection_bonus;
+	uint32_t    same_network_bonus;
+	uint32_t    secure_bonus;
+	uint32_t    band_5ghz_bonus;
 	uint32_t    num_networks;
 	struct wifi_epno_network networks[];
 };
@@ -6560,4 +6663,39 @@ struct sir_smps_force_mode_event {
 	uint8_t    status;
 };
 
+/**
+ * struct sir_bpf_set_offload - set bpf filter instructions
+ * @session_id: session identifier
+ * @version: host bpf version
+ * @filter_id: Filter ID for BPF filter
+ * @total_length: The total length of the full instruction
+ *                total_length equal to 0 means reset
+ * @current_offset: current offset, 0 means start a new setting
+ * @current_length: Length of current @program
+ * @program: BPF instructions
+ */
+struct sir_bpf_set_offload {
+	uint8_t  session_id;
+	uint32_t version;
+	uint32_t filter_id;
+	uint32_t total_length;
+	uint32_t current_offset;
+	uint32_t current_length;
+	uint8_t  *program;
+};
+
+/**
+ * struct sir_bpf_offload_capabilities - get bpf Capabilities
+ * @bpf_version: fw's implement version
+ * @max_bpf_filters: max filters that fw supports
+ * @max_bytes_for_bpf_inst: the max bytes that can be used as bpf instructions
+ * @remaining_bytes_for_bpf_inst: remaining bytes for bpf instructions
+ *
+ */
+struct sir_bpf_get_offload {
+	uint32_t bpf_version;
+	uint32_t max_bpf_filters;
+	uint32_t max_bytes_for_bpf_inst;
+	uint32_t remaining_bytes_for_bpf_inst;
+};
 #endif /* __SIR_API_H */

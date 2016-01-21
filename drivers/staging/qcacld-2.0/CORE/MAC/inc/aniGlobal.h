@@ -289,6 +289,13 @@ enum wifi_logging_ring_id {
 	RING_ID_FIRMWARE_DEBUG,
 };
 
+/* vendor element ID */
+#define IE_EID_VENDOR        (221) /* 0xDD */
+#define IE_LEN_SIZE          (1)
+#define IE_EID_SIZE          (1)
+/* Minimum size of vendor IE = 3 bytes of oui_data + 1 byte of data */
+#define IE_VENDOR_OUI_SIZE   (4)
+
 // -------------------------------------------------------------------
 // Change channel generic scheme
 typedef void (*CHANGE_CHANNEL_CALLBACK)(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data,

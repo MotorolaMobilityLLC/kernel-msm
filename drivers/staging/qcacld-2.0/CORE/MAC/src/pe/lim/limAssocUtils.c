@@ -1617,7 +1617,7 @@ tSirRetStatus limPopulateVhtMcsSet(tpAniSirGlobal pMac,
                     }
                 }
             } else {
-                if (psessionEntry->vdev_nss == NSS_2x2_MODE)
+                if (psessionEntry && (psessionEntry->vdev_nss == NSS_2x2_MODE))
                     mcsMapMask2x2 = MCSMAPMASK2x2;
             }
 
@@ -1660,11 +1660,13 @@ tSirRetStatus limPopulateVhtMcsSet(tpAniSirGlobal pMac,
                         pMac->roam.configParam.enable2x2, nss,
                         pRates->vhtRxMCSMap, pRates->vhtTxMCSMap);
 
-            psessionEntry->supported_nss_1x1 =
-                ((pRates->vhtTxMCSMap & VHT_MCS_1x1) ==
-                 VHT_MCS_1x1) ? true : false;
-            limLog(pMac, LOG1, FL("VHT supported nss 1x1 : %d "),
-                   psessionEntry->supported_nss_1x1);
+            if (psessionEntry) {
+                    psessionEntry->supported_nss_1x1 =
+                        ((pRates->vhtTxMCSMap & VHT_MCS_1x1) ==
+                         VHT_MCS_1x1) ? true : false;
+                    limLog(pMac, LOG1, FL("VHT supported nss 1x1 : %d "),
+                           psessionEntry->supported_nss_1x1);
+            }
         }
     }
     return eSIR_SUCCESS;

@@ -744,14 +744,14 @@ limProcessMlmAuthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             cfgAuthType = pMac->lim.gLimPreAuthType;
 
         if ((cfgAuthType == eSIR_AUTO_SWITCH) &&
-                (((tLimMlmAuthCnf *) pMsgBuf)->authType == eSIR_OPEN_SYSTEM)
+                (((tLimMlmAuthCnf *) pMsgBuf)->authType == eSIR_SHARED_KEY)
                 && (eSIR_MAC_AUTH_ALGO_NOT_SUPPORTED_STATUS == ((tLimMlmAuthCnf *) pMsgBuf)->protStatusCode))
         {
             /**
-             * When Open authentication fails with reason code "13" and
-             * authType set to 'auto switch', Try with Shared Authentication
+             * When Shared authentication fails with reason code "13" and
+             * authType set to 'auto switch', Try with Open Authentication
              */
-            authMode = eSIR_SHARED_KEY;
+            authMode = eSIR_OPEN_SYSTEM;
             // Trigger MAC based Authentication
             pMlmAuthReq = vos_mem_malloc(sizeof(tLimMlmAuthReq));
             if ( NULL == pMlmAuthReq )
@@ -2865,7 +2865,7 @@ limProcessStaMlmAddBssRspPreAssoc( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ, tpPES
                        FL("could not retrieve AuthType"));
             }
             if (cfgAuthType == eSIR_AUTO_SWITCH)
-                authMode = eSIR_OPEN_SYSTEM; // Try Open Authentication first
+                authMode = eSIR_SHARED_KEY; // Try Shared Authentication first
             else
                 authMode = cfgAuthType;
 

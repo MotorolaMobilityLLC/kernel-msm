@@ -1183,18 +1183,18 @@ PopulateDot11fExtCap(tpAniSirGlobal   pMac,
        return eSIR_FAILURE;
     }
 
-    if (val)   // If set to true then set RTTv3
+    if (val)
     {
         if (!psessionEntry || LIM_IS_STA_ROLE(psessionEntry)) {
             p_ext_cap->fine_time_meas_initiator =
-              (pMac->fine_time_meas_cap & FINE_TIME_MEAS_STA_INITIATOR) ? 1 : 0;
+              (pMac->fine_time_meas_cap & WMI_FW_STA_RTT_INITR) ? 1 : 0;
             p_ext_cap->fine_time_meas_responder =
-              (pMac->fine_time_meas_cap & FINE_TIME_MEAS_STA_RESPONDER) ? 1 : 0;
+              (pMac->fine_time_meas_cap & WMI_FW_STA_RTT_RESPR) ? 1 : 0;
         } else if (LIM_IS_AP_ROLE(psessionEntry)) {
             p_ext_cap->fine_time_meas_initiator =
-              (pMac->fine_time_meas_cap & FINE_TIME_MEAS_SAP_INITIATOR) ? 1 : 0;
+              (pMac->fine_time_meas_cap & WMI_FW_AP_RTT_INITR) ? 1 : 0;
             p_ext_cap->fine_time_meas_responder =
-              (pMac->fine_time_meas_cap & FINE_TIME_MEAS_SAP_RESPONDER) ? 1 : 0;
+              (pMac->fine_time_meas_cap & WMI_FW_AP_RTT_RESPR) ? 1 : 0;
         }
     }
 

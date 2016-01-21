@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -517,16 +517,13 @@ VOS_STATUS vos_wake_lock_init(vos_wake_lock_t *pLock, const char *name)
  * Return: Pointer to the name if it is valid or a default string
  *
  */
+
 static const char* vos_wake_lock_name(vos_wake_lock_t *pLock)
 {
-#if defined CONFIG_CNSS
 	if (pLock->lock.name)
 		return pLock->lock.name;
-#elif defined(WLAN_OPEN_SOURCE) && defined(CONFIG_HAS_WAKELOCK)
-	if (pLock->lock.ws.name)
-		return pLock->lock.ws.name;
-#endif
-	return "UNNAMED_WAKELOCK";
+	else
+		return "UNNAMED_WAKELOCK";
 }
 
 /*--------------------------------------------------------------------------

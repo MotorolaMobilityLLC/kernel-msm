@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -3499,6 +3499,38 @@ enum dot11p_mode {
 #define CFG_SAP_TX_LEAKAGE_THRESHOLD_MAX     (1000)
 #define CFG_SAP_TX_LEAKAGE_THRESHOLD_DEFAULT (310)
 
+/*
+ * Dense traffic threshold
+ * traffic threshold required for dense roam scan
+ * not used currently
+ */
+#define CFG_ROAM_DENSE_TRAFFIC_THRESHOLD         "gtraffic_threshold"
+#define CFG_ROAM_DENSE_TRAFFIC_THRESHOLD_MIN     (0)
+#define CFG_ROAM_DENSE_TRAFFIC_THRESHOLD_MAX     (100)
+#define CFG_ROAM_DENSE_TRAFFIC_THRESHOLD_DEFAULT (0)
+
+/*
+ * Dense Roam RSSI Threshold diff
+ * offset value from normal RSSI threshold to dense RSSI threshold
+ * Fw will optimize roaming based on new RSSI threshold once it detects
+ * dense enviournment.
+ */
+#define CFG_ROAM_DENSE_RSSI_THRE_OFFSET         "groam_dense_rssi_thresh_offset"
+#define CFG_ROAM_DENSE_RSSI_THRE_OFFSET_MIN     (0)
+#define CFG_ROAM_DENSE_RSSI_THRE_OFFSET_MAX     (20)
+#define CFG_ROAM_DENSE_RSSI_THRE_OFFSET_DEFAULT (0)
+
+/*
+ * Dense Roam Min APs
+ * minimum number of AP required for roam dense
+ * FW will consider enviournment as dense once it detects #APs
+ * operating is more than CFG_ROAM_DENSE_MIN_APS.
+ */
+#define CFG_ROAM_DENSE_MIN_APS         "groam_dense_min_aps"
+#define CFG_ROAM_DENSE_MIN_APS_MIN     (1)
+#define CFG_ROAM_DENSE_MIN_APS_MAX     (5)
+#define CFG_ROAM_DENSE_MIN_APS_DEFAULT (1)
+
 /*---------------------------------------------------------------------------
   Type declarations
   -------------------------------------------------------------------------*/
@@ -4207,6 +4239,9 @@ typedef struct
    uint8_t                     ht_mpdu_density;
    bool                        indoor_channel_support;
    uint16_t                    sap_tx_leakage_threshold;
+   uint32_t                    roam_dense_traffic_thresh;
+   uint32_t                    roam_dense_rssi_thresh_offset;
+   uint32_t                    roam_dense_min_aps;
 } hdd_config_t;
 
 #ifdef WLAN_FEATURE_MBSSID

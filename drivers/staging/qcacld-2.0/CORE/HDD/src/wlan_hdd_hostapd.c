@@ -80,9 +80,6 @@
 #include "wniCfgAp.h"
 #include "wlan_hdd_misc.h"
 #include <vos_utils.h>
-#ifdef CONFIG_CNSS_SDIO
-#include <net/cnss.h>
-#endif
 #include "vos_cnss.h"
 
 #include "wma.h"
@@ -1249,25 +1246,6 @@ static VOS_STATUS hdd_wlan_get_dfs_nol(void *pdfs_list, u16 sdfs_list)
 		return VOS_STATUS_E_FAULT;
 	}
 }
-#elif defined(CONFIG_CNSS_SDIO)
-static VOS_STATUS hdd_wlan_get_dfs_nol(void *pdfs_list, u16 sdfs_list)
-{
-	int ret;
-
-	/* get the dfs nol from cnss */
-	ret = cnss_wlan_get_dfs_nol(pdfs_list, sdfs_list);
-	if (ret > 0) {
-		hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
-			"%s: Get %d bytes of dfs nol from cnss",
-			__func__, ret);
-		return VOS_STATUS_SUCCESS;
-	} else {
-		hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
-			"%s: No dfs nol entry in CNSS, ret: %d",
-			__func__, ret);
-		return VOS_STATUS_E_FAULT;
-	}
-}
 #else
 static VOS_STATUS hdd_wlan_get_dfs_nol(void *pdfs_list, u16 sdfs_list)
 {
@@ -1282,25 +1260,6 @@ static VOS_STATUS hdd_wlan_set_dfs_nol(const void *pdfs_list, u16 sdfs_list)
 
 	/* set the dfs nol from cnss */
 	ret = vos_wlan_set_dfs_nol(pdfs_list, sdfs_list);
-	if (ret) {
-		hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
-			"%s: Failed to set dfs nol - ret: %d",
-			__func__, ret);
-	} else {
-		hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
-			"%s: Set %d bytes dfs nol to cnss",
-			__func__, sdfs_list);
-	}
-
-	return VOS_STATUS_SUCCESS;
-}
-#elif defined(CONFIG_CNSS_SDIO)
-static VOS_STATUS hdd_wlan_set_dfs_nol(const void *pdfs_list, u16 sdfs_list)
-{
-	int ret;
-
-	/* set the dfs nol from cnss */
-	ret = cnss_wlan_set_dfs_nol(pdfs_list, sdfs_list);
 	if (ret) {
 		hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
 			"%s: Failed to set dfs nol - ret: %d",

@@ -2757,6 +2757,10 @@ static void hdd_ipa_send_skb_to_network(adf_nbuf_t skb, hdd_adapter_t *adapter)
 {
 	int result;
 
+#ifndef QCA_CONFIG_SMP
+	static atomic_t softirq_mitigation_cntr =
+		ATOMIC_INIT(IPA_WLAN_RX_SOFTIRQ_THRESH);
+#endif
 	struct hdd_ipa_priv *hdd_ipa = ghdd_ipa;
 	unsigned int cpu_index;
 
@@ -2785,10 +2789,16 @@ static void hdd_ipa_send_skb_to_network(adf_nbuf_t skb, hdd_adapter_t *adapter)
 #ifdef QCA_CONFIG_SMP
 	result = netif_rx_ni(skb);
 #else
-	if (hdd_ipa->stats.num_rx_excep % IPA_WLAN_RX_SOFTIRQ_THRESH == 0)
+	/* Call netif_rx_ni for every IPA_WLAN_RX_SOFTIRQ_THRESH packets to
+	 * avoid excessive softirq's.
+	 */
+	if (atomic_dec_and_test(&softirq_mitigation_cntr)) {
 		result = netif_rx_ni(skb);
-	else
+		atomic_set(&softirq_mitigation_cntr,
+			   IPA_WLAN_RX_SOFTIRQ_THRESH);
+	} else {
 		result = netif_rx(skb);
+	}
 #endif
 	if (result == NET_RX_SUCCESS)
 		++adapter->hdd_stats.hddTxRxStats.rxDelivered[cpu_index];
@@ -5022,6 +5032,9 @@ VOS_STATUS hdd_ipa_cleanup(hdd_context_t *hdd_ctx)
 
 #ifdef IPA_UC_OFFLOAD
 	if (hdd_ipa_uc_is_enabled(hdd_ipa)) {
+		if (ipa_uc_dereg_rdyCB())
+			HDD_IPA_LOG(VOS_TRACE_LEVEL_ERROR,
+				"UC Ready CB deregister fail");
 		hdd_ipa_uc_rt_debug_deinit(hdd_ctx);
 		if (VOS_TRUE == hdd_ipa->uc_loaded) {
 			HDD_IPA_LOG(VOS_TRACE_LEVEL_INFO,

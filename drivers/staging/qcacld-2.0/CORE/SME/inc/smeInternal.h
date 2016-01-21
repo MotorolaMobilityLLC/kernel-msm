@@ -111,6 +111,18 @@ typedef enum eSmeState
 #define SME_IS_START(pMac)  (SME_STATE_STOP != (pMac)->sme.state)
 #define SME_IS_READY(pMac)  (SME_STATE_READY == (pMac)->sme.state)
 
+/* HDD Callback function */
+typedef void(*pIbssPeerInfoCb)(void *pUserData,
+                               tSirPeerInfoRspParams *infoParam);
+
+/* Peer info */
+typedef struct tagSmePeerInfoHddCbkInfo
+{
+   void *pUserData;
+   pIbssPeerInfoCb peerInfoCbk;
+}tSmePeerInfoHddCbkInfo;
+
+
 typedef struct sStatsExtEvent {
     tANI_U32 vdev_id;
     tANI_U32 event_data_len;
@@ -153,6 +165,7 @@ typedef struct tagSmeStruct
     tDblLinkList smeScanCmdPendingList;
     //active scan command list
     tDblLinkList smeScanCmdActiveList;
+    tSmePeerInfoHddCbkInfo peerInfoParams;
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_CSR
     vos_event_wlan_status_payload_type eventPayload;
 #endif
@@ -216,6 +229,7 @@ typedef struct tagSmeStruct
 			      struct sir_lost_link_info *lost_link_info);
     void (*smps_force_mode_cb)(void *context,
 			struct sir_smps_force_mode_event *smps_force_mode_info);
+    void (*pbpf_get_offload_cb)(void *context, struct sir_bpf_get_offload *);
 } tSmeStruct, *tpSmeStruct;
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -33,9 +33,7 @@
 #include <linux/mmc/sdio.h>
 #include <linux/mmc/sd.h>
 #include <linux/kthread.h>
-#ifdef CONFIG_CNSS_SDIO
-#include <net/cnss.h>
-#endif
+#include "vos_cnss.h"
 #include "if_ath_sdio.h"
 #include "regtable.h"
 #include "vos_api.h"
@@ -476,14 +474,22 @@ __HIFReadWrite(HIF_DEVICE *device,
 #else
             tbuffer = buffer;
 #endif
-            if (opcode == CMD53_FIXED_ADDRESS && tbuffer != NULL) {
-                ret = sdio_writesb(device->func, address, tbuffer, length);
-                AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: writesb ret=%d address: 0x%X, len: %d, 0x%X\n",
-                          ret, address, length, *(int *)tbuffer));
+            if (tbuffer != NULL) {
+                if (opcode == CMD53_FIXED_ADDRESS) {
+                    ret = sdio_writesb(device->func, address, tbuffer, length);
+                    AR_DEBUG_PRINTF(ATH_DEBUG_TRACE,
+                              ("AR6000: writesb ret=%d address: 0x%X, len: %d, 0x%X\n",
+                              ret, address, length, *(int *)tbuffer));
+                } else {
+                    ret = sdio_memcpy_toio(device->func, address, tbuffer, length);
+                    AR_DEBUG_PRINTF(ATH_DEBUG_TRACE,
+                              ("AR6000: writeio ret=%d address: 0x%X, len: %d, 0x%X\n",
+                              ret, address, length, *(int *)tbuffer));
+                }
             } else {
-                ret = sdio_memcpy_toio(device->func, address, tbuffer, length);
-                AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: writeio ret=%d address: 0x%X, len: %d, 0x%X\n",
-                          ret, address, length, *(int *)tbuffer));
+                AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("AR6000: tbuffer is NULL"));
+                status = A_ERROR;
+                break;
             }
         } else if (request & HIF_READ) {
 #if HIF_USE_DMA_BOUNCE_BUFFER
@@ -503,14 +509,22 @@ __HIFReadWrite(HIF_DEVICE *device,
 #else
             tbuffer = buffer;
 #endif
-            if (opcode == CMD53_FIXED_ADDRESS && tbuffer != NULL) {
-                ret = sdio_readsb(device->func, tbuffer, address, length);
-                AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: readsb ret=%d address: 0x%X, len: %d, 0x%X\n",
-                          ret, address, length, *(int *)tbuffer));
+            if (tbuffer != NULL) {
+                if (opcode == CMD53_FIXED_ADDRESS) {
+                    ret = sdio_readsb(device->func, tbuffer, address, length);
+                    AR_DEBUG_PRINTF(ATH_DEBUG_TRACE,
+                              ("AR6000: readsb ret=%d address: 0x%X, len: %d, 0x%X\n",
+                              ret, address, length, *(int *)tbuffer));
+                } else {
+                    ret = sdio_memcpy_fromio(device->func, tbuffer, address, length);
+                    AR_DEBUG_PRINTF(ATH_DEBUG_TRACE,
+                              ("AR6000: readio ret=%d address: 0x%X, len: %d, 0x%X\n",
+                              ret, address, length, *(int *)tbuffer));
+                }
             } else {
-                ret = sdio_memcpy_fromio(device->func, tbuffer, address, length);
-                AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: readio ret=%d address: 0x%X, len: %d, 0x%X\n",
-                          ret, address, length, *(int *)tbuffer));
+                AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("AR6000: tbuffer is NULL"));
+                status = A_ERROR;
+                break;
             }
 #if HIF_USE_DMA_BOUNCE_BUFFER
             if (bounced) {
@@ -2400,24 +2414,37 @@ bool hif_is_80211_fw_wow_required(void)
 #ifdef CONFIG_CNSS_SDIO
 static int hif_sdio_device_inserted(struct sdio_func *func, const struct sdio_device_id * id)
 {
-	return hifDeviceInserted(func, id);
+	if ((func != NULL) && (id != NULL))
+		return hifDeviceInserted(func, id);
+	else
+		printk("%s: Invalid sdio func and device id. Card removed?\n", __func__);
+
+	return -ENODEV;
 }
 
 static void hif_sdio_device_removed(struct sdio_func *func)
 {
-	hifDeviceRemoved(func);
+	if (func != NULL)
+		hifDeviceRemoved(func);
 }
 
 static int hif_sdio_device_reinit(struct sdio_func *func, const struct sdio_device_id * id)
 {
-	vos_set_crash_indication_pending(true);
-	return hifDeviceInserted(func, id);
+	if ((func != NULL) && (id != NULL))
+		return hifDeviceInserted(func, id);
+	else
+		printk("%s: Invalid sdio func and device id. Card removed?\n", __func__);
+
+	return -ENODEV;
 }
 
 static void hif_sdio_device_shutdown(struct sdio_func *func)
 {
 	vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, FALSE);
-	hifDeviceRemoved(func);
+	vos_set_crash_indication_pending(true);
+
+	if (func != NULL)
+		hifDeviceRemoved(func);
 }
 
 static void hif_sdio_crash_shutdown(struct sdio_func *func)

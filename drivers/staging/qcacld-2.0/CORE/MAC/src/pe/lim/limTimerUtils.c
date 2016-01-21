@@ -777,7 +777,7 @@ limCreateTimers(tpAniSirGlobal pMac)
 
         if(NULL != pMac->lim.gLimPreAuthTimerTable.pTable)
         {
-            for (i = 0; i < cfgValue; i++)
+            for (i = 0; i < pMac->lim.gLimPreAuthTimerTable.numEntry; i++)
                 vos_mem_free(pMac->lim.gLimPreAuthTimerTable.pTable[i]);
             vos_mem_free(pMac->lim.gLimPreAuthTimerTable.pTable);
             pMac->lim.gLimPreAuthTimerTable.pTable = NULL;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -84,27 +84,27 @@ static u_int32_t refclk_speed_to_hz[] = {
 #endif
 
 static struct ol_fw_files FW_FILES_QCA6174_FW_1_1 = {
-	PREFIX "qwlan11.bin", PREFIX "bdwlan11.bin",
+	PREFIX "qwlan11.bin", "", PREFIX "bdwlan11.bin",
 	PREFIX "otp11.bin", PREFIX "utf11.bin",
 	PREFIX "utfbd11.bin", PREFIX "qsetup11.bin",
 	PREFIX "epping11.bin"};
 static struct ol_fw_files FW_FILES_QCA6174_FW_2_0 = {
-	PREFIX "qwlan20.bin", PREFIX "bdwlan20.bin",
+	PREFIX "qwlan20.bin", "", PREFIX "bdwlan20.bin",
 	PREFIX "otp20.bin", PREFIX "utf20.bin",
 	PREFIX "utfbd20.bin", PREFIX "qsetup20.bin",
 	PREFIX "epping20.bin"};
 static struct ol_fw_files FW_FILES_QCA6174_FW_1_3 = {
-	PREFIX "qwlan13.bin", PREFIX "bdwlan13.bin",
+	PREFIX "qwlan13.bin", "", PREFIX "bdwlan13.bin",
 	PREFIX "otp13.bin", PREFIX "utf13.bin",
 	PREFIX "utfbd13.bin", PREFIX "qsetup13.bin",
 	PREFIX "epping13.bin"};
 static struct ol_fw_files FW_FILES_QCA6174_FW_3_0 = {
-	PREFIX "qwlan30.bin", PREFIX "bdwlan30.bin",
+	PREFIX "qwlan30.bin", PREFIX "qwlan30i.bin", PREFIX "bdwlan30.bin",
 	PREFIX "otp30.bin", PREFIX "utf30.bin",
 	PREFIX "utfbd30.bin", PREFIX "qsetup30.bin",
 	PREFIX "epping30.bin"};
 static struct ol_fw_files FW_FILES_DEFAULT = {
-	PREFIX "qwlan.bin", PREFIX "bdwlan.bin",
+	PREFIX "qwlan.bin", "", PREFIX "bdwlan.bin",
 	PREFIX "otp.bin", PREFIX "utf.bin",
 	PREFIX "utfbd.bin", PREFIX "qsetup.bin",
 	PREFIX "epping.bin"};
@@ -507,6 +507,47 @@ static char *ol_board_id_to_filename(struct ol_softc *scn, uint16_t board_id)
 }
 #endif
 
+#if defined(CONFIG_HL_SUPPORT)
+#define MAX_SUPPORTED_PEERS_REV1_1 9
+#ifdef HIF_SDIO
+#define MAX_SUPPORTED_PEERS 32
+#else
+#define MAX_SUPPORTED_PEERS 10
+#endif
+#else
+#define MAX_SUPPORTED_PEERS_REV1_1 14
+#define MAX_SUPPORTED_PEERS 32
+#endif
+
+#if defined(CONFIG_CNSS)
+const char* ol_get_fw_name(struct ol_softc *scn)
+{
+	return scn->fw_files.image_file;
+}
+#elif defined(HIF_SDIO)
+const char* ol_get_fw_name(struct ol_softc *scn)
+{
+	const char *filename = NULL;
+
+	if (vos_get_conparam() == VOS_IBSS_MODE) {
+		filename = scn->fw_files.ibss_image_file;
+		if (filename[0] != '\0') {
+			scn->max_no_of_peers = MAX_SUPPORTED_PEERS;
+		} else {
+			filename = scn->fw_files.image_file;
+		}
+	} else {
+		filename = scn->fw_files.image_file;
+	}
+	return filename;
+}
+#else
+const char* ol_get_fw_name(struct ol_softc *scn)
+{
+	return QCA_FIRMWARE_FILE;
+}
+#endif
+
 static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 				u_int32_t address, bool compressed)
 {
@@ -579,11 +620,8 @@ static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 			break;
 		}
 #endif
-#if defined(CONFIG_CNSS) || defined(HIF_SDIO)
-		filename = scn->fw_files.image_file;
-#else
-		filename = QCA_FIRMWARE_FILE;
-#endif
+
+		filename = ol_get_fw_name(scn);
 #ifdef QCA_SIGNED_SPLIT_BINARY_SUPPORT
 		bin_sign = TRUE;
 #endif
@@ -955,6 +993,9 @@ int ol_copy_ramdump(struct ol_softc *scn)
 {
 	int ret;
 
+	if (!vos_is_ssr_fw_dump_required())
+		return 0;
+
 	if (!scn->ramdump_base || !scn->ramdump_size) {
 		pr_info("%s: No RAM dump will be collected since ramdump_base "
 			"is NULL or ramdump_size is 0!\n", __func__);
@@ -1032,7 +1073,7 @@ static void ramdump_work_handler(struct work_struct *ramdump)
 
 	ramdump_scn->ramdump_size = DRAM_SIZE + IRAM_SIZE + AXI_SIZE;
 	ramdump_scn->ramdump_base =
-		vmalloc(ramdump_scn->ramdump_size);
+		vos_mem_malloc(ramdump_scn->ramdump_size);
 
 	if (!ramdump_scn->ramdump_base) {
 		pr_err("%s: fail to alloc mem for FW RAM dump\n",
@@ -2546,19 +2587,6 @@ int ol_target_coredump(void *inst, void *memoryBlock, u_int32_t blockLength)
 	}
 	return ret;
 }
-#endif
-
-
-#if defined(CONFIG_HL_SUPPORT)
-#define MAX_SUPPORTED_PEERS_REV1_1 9
-#ifdef HIF_SDIO
-#define MAX_SUPPORTED_PEERS 32
-#else
-#define MAX_SUPPORTED_PEERS 10
-#endif
-#else
-#define MAX_SUPPORTED_PEERS_REV1_1 14
-#define MAX_SUPPORTED_PEERS 32
 #endif
 
 u_int8_t ol_get_number_of_peers_supported(struct ol_softc *scn)

@@ -674,7 +674,8 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
              }
         }
 #endif
-        pr_info("wlan: " MAC_ADDRESS_STR " connected to " MAC_ADDRESS_STR "\n",
+        hddLog(VOS_TRACE_LEVEL_ERROR, MAC_ADDRESS_STR " connected to "
+                MAC_ADDRESS_STR,
                 MAC_ADDR_ARRAY(pAdapter->macAddressCurrent.bytes),
                 MAC_ADDR_ARRAY(wrqu.ap_addr.sa_data));
         hdd_SendUpdateBeaconIEsEvent(pAdapter, pCsrRoamInfo);
@@ -842,8 +843,9 @@ static VOS_STATUS hdd_roamDeregisterSTA( hdd_adapter_t *pAdapter, tANI_U8 staId 
        // Need to cleanup all queues only if the last peer leaves
        if (eConnectionState_IbssDisconnected == pHddStaCtx->conn_info.connState)
        {
-          netif_tx_disable(pAdapter->dev);
-          netif_carrier_off(pAdapter->dev);
+       /* Do not set the carrier off when the last peer leaves.
+        * We will set the carrier off while stopping the IBSS.
+        */
           hdd_disconnect_tx_rx(pAdapter);
        }
        else
@@ -2283,6 +2285,10 @@ static void hdd_RoamIbssIndicationHandler( hdd_adapter_t *pAdapter,
                        pAdapter->dev->name,
                        (int)pRoamInfo->pBssDesc->channelId);
 #else
+
+            netif_carrier_on(pAdapter->dev);
+            netif_tx_start_all_queues(pAdapter->dev);
+
             cfg80211_ibss_joined(pAdapter->dev, bss->bssid, GFP_KERNEL);
 #endif
             cfg80211_put_bss(
@@ -2522,10 +2528,21 @@ static eHalStatus hdd_RoamSetKeyCompleteHandler( hdd_adapter_t *pAdapter, tCsrRo
           * At this time we don't handle the state in detail.
           * Related CR: 174048 - TL not in authenticated state
           */
-      if (eCSR_ROAM_RESULT_AUTHENTICATED == roamResult)
+      if (eCSR_ROAM_RESULT_AUTHENTICATED == roamResult) {
           pHddStaCtx->conn_info.gtk_installed = true;
-      else
+          /*
+           * PTK exchange happens in preauthentication itself if key_mgmt is
+           * FT-PSK, ptk_installed was false as there is no set PTK after
+           * roaming. STA TL state moves to athenticated only if ptk_installed
+           * is true. So, make ptk_installed to true in case of 11R roaming.
+           */
+#ifdef WLAN_FEATURE_VOWIFI_11R
+          if (pRoamInfo->is11rAssoc)
+              pHddStaCtx->conn_info.ptk_installed = true;
+#endif
+      } else {
           pHddStaCtx->conn_info.ptk_installed = true;
+      }
 
          /* In WPA case move STA to authenticated when ptk is installed.
           * Earlier in WEP case STA was moved to AUTHENTICATED prior to

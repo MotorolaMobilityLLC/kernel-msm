@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -42,7 +42,7 @@
 #include <kthread.h>
 #include <adf_os_time.h>
 #include "pktlog_ac.h"
-
+#include <linux/rtc.h>
 #define LOGGING_TRACE(level, args...) \
 		VOS_TRACE(VOS_MODULE_ID_HDD, level, ## args)
 
@@ -273,8 +273,9 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 	unsigned int *pfilled_length;
 	bool wake_up_thread = false;
 	unsigned long flags;
-	uint64_t ts;
-	uint32_t rem;
+	struct timeval tv;
+	struct rtc_time tm;
+	unsigned long local_time;
 
 	if (!vos_is_multicast_logging()) {
 		/*
@@ -288,12 +289,15 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 		pr_info("%s\n", to_be_sent);
 	} else {
 
-		/* Format the Log time [Seconds.microseconds] */
-		ts = adf_get_boottime();
-		rem = do_div(ts, VOS_TIMER_TO_SEC_UNIT);
-		tlen = snprintf(tbuf, sizeof(tbuf), "[%s][%lu.%06lu] ",
-				current->comm,
-				(unsigned long) ts, (unsigned long)rem);
+		/* Format the Log time [hr:min:sec.microsec] */
+		do_gettimeofday(&tv);
+		/* Convert rtc to local time */
+		local_time = (u32)(tv.tv_sec - (sys_tz.tz_minuteswest * 60));
+		rtc_time_to_tm(local_time, &tm);
+		tlen = snprintf(tbuf, sizeof(tbuf),
+				"[%s][%02d:%02d:%02d.%06lu] ",
+				current->comm, tm.tm_hour, tm.tm_min, tm.tm_sec,
+				tv.tv_usec);
 
 		/* 1+1 indicate '\n'+'\0' */
 		total_log_len = length + tlen + 1 + 1;

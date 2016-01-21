@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -46,6 +46,7 @@
 #include <limPropExtsUtils.h>
 #include <limAssocUtils.h>
 #include <limSession.h>
+#include <limSessionUtils.h>
 #include <limAdmitControl.h>
 #include "wmmApsd.h"
 
@@ -307,9 +308,10 @@ int limProcessFTPreAuthReq(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
                        psessionEntry, 0, 0);
 #endif
 
-    /* Dont need to suspend if APs are in same channel */
-    if (psessionEntry->currentOperChannel !=
-        psessionEntry->ftPEContext.pFTPreAuthReq->preAuthchannelNum) {
+    /* Dont need to suspend if APs are in same channel and DUT is not in MCC state*/
+    if ((psessionEntry->currentOperChannel !=
+        psessionEntry->ftPEContext.pFTPreAuthReq->preAuthchannelNum)
+        || limIsInMCC(pMac)) {
        /* Need to suspend link only if the channels are different */
        PELOG2(limLog(pMac, LOG2, FL("Performing pre-auth on different"
                " channel (session %p)"), psessionEntry);)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -239,7 +239,7 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_OFFLOADED_PACKETS = 79,
     QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI = 80,
 
-
+	QCA_NL80211_VENDOR_SUBCMD_PACKET_FILTER = 83,
 	/* OCB commands */
 	QCA_NL80211_VENDOR_SUBCMD_OCB_SET_CONFIG = 92,
 	QCA_NL80211_VENDOR_SUBCMD_OCB_SET_UTC_TIME = 93,
@@ -533,9 +533,9 @@ enum qca_wlan_vendor_attr_extscan_config_params
      */
     QCA_WLAN_VENDOR_ATTR_EXTSCAN_BUCKET_SPEC_MAX_PERIOD,
     /* Unsigned 32-bit value. */
-    QCA_WLAN_VENDOR_ATTR_EXTSCAN_BUCKET_SPEC_EXPONENT,
+    QCA_WLAN_VENDOR_ATTR_EXTSCAN_BUCKET_SPEC_BASE,
     /* Unsigned 32-bit value. For exponential back off bucket, number of scans
-     * performed at a given period and until the exponent is applied.
+     * to performed for a given period.
      */
     QCA_WLAN_VENDOR_ATTR_EXTSCAN_BUCKET_SPEC_STEP_COUNT,
     /* Unsigned 8-bit value; in number of scans, wake up AP after these
@@ -773,6 +773,13 @@ enum qca_wlan_vendor_attr_extscan_results
     /* Use attr QCA_WLAN_VENDOR_ATTR_EXTSCAN_NUM_RESULTS_AVAILABLE
      * to indicate number of results.
      */
+    /* Unsigned 32bit value, Bit mask of all buckets scanned in the
+     * current EXTSCAN CYCLE. For e.g. If fw scan is going to scan
+     * following buckets 0, 1, 2 in current cycle then it will be
+     * (0x111).
+     */
+    QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_BUCKETS_SCANNED,
+
 
     /* keep last */
     QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_AFTER_LAST,
@@ -1217,6 +1224,7 @@ enum qca_wlan_vendor_attr_pno_config_params {
 	QCA_WLAN_VENDOR_ATTR_PNO_SET_LIST_PARAM_EPNO_NETWORK_SSID = 9,
 	/* Signed 8-bit value; threshold for considering this SSID as found,
 	 * required granularity for this threshold is 4dBm to 8dBm
+	 * This attribute is obsolete.
 	 */
 	QCA_WLAN_VENDOR_ATTR_PNO_SET_LIST_PARAM_EPNO_NETWORK_RSSI_THRESHOLD = 10,
 	/* Unsigned 8-bit value; WIFI_PNO_FLAG_XXX */
@@ -1228,6 +1236,43 @@ enum qca_wlan_vendor_attr_pno_config_params {
 	 * It takes values from qca_wlan_epno_type
 	 */
 	QCA_WLAN_VENDOR_ATTR_PNO_SET_LIST_PARAM_EPNO_TYPE = 13,
+
+	/* Nested attribute to send the channel list */
+	QCA_WLAN_VENDOR_ATTR_PNO_SET_LIST_PARAM_EPNO_CHANNEL_LIST = 14,
+
+	/* Unsigned 32-bit value; indicates the Interval between PNO scan
+	 * cycles in msec
+	 */
+	QCA_WLAN_VENDOR_ATTR_PNO_SET_LIST_PARAM_EPNO_SCAN_INTERVAL = 15,
+	/* Signed 32-bit value; minimum 5GHz RSSI for a BSSID to be
+	 * considered
+	 */
+	QCA_WLAN_VENDOR_ATTR_EPNO_MIN5GHZ_RSSI = 16,
+	/* Signed 32-bit value; minimum 2.4GHz RSSI for a BSSID to
+	 * be considered
+	 */
+	QCA_WLAN_VENDOR_ATTR_EPNO_MIN24GHZ_RSSI = 17,
+	/* Signed 32-bit value; the maximum score that a network
+	 * can have before bonuses
+	 */
+	QCA_WLAN_VENDOR_ATTR_EPNO_INITIAL_SCORE_MAX = 18,
+	/* Signed 32-bit value; only report when there is a network's
+	 * score this much higher han the current connection
+	 */
+	QCA_WLAN_VENDOR_ATTR_EPNO_CURRENT_CONNECTION_BONUS = 19,
+	/* Signed 32-bit value; score bonus for all networks with
+	 * the same network flag
+	 */
+	QCA_WLAN_VENDOR_ATTR_EPNO_SAME_NETWORK_BONUS = 20,
+	/* Signed 32-bit value; score bonus for networks that are
+	 * not open
+	 */
+	QCA_WLAN_VENDOR_ATTR_EPNO_SECURE_BONUS = 21,
+	/* Signed 32-bit value; 5GHz RSSI score bonus
+	 * applied to all 5GHz networks
+	 */
+	QCA_WLAN_VENDOR_ATTR_EPNO_BAND5GHZ_BONUS = 22,
+
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_PNO_AFTER_LAST,
@@ -1592,6 +1637,40 @@ enum qca_wlan_vendor_attr_rssi_monitoring {
 		QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_AFTER_LAST - 1,
 };
 
+/**
+ * enum set_reset_packet_filter - set packet filter control commands
+ * @QCA_WLAN_SET_PACKET_FILTER: Set Packet Filter
+ * @QCA_WLAN_GET_PACKET_FILTER: Get Packet filter
+ */
+enum set_reset_packet_filter {
+	QCA_WLAN_SET_PACKET_FILTER = 1,
+	QCA_WLAN_GET_PACKET_FILTER = 2,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_packet_filter - BPF control commands
+ * @QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_INVALID: Invalid
+ * @QCA_WLAN_VENDOR_ATTR_SET_RESET_PACKET_FILTER: Filter ID
+ * @QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_VERSION: Filter Version
+ * @QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_SIZE: Total Length
+ * @QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_CURRENT_OFFSET: Current offset
+ * @QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_PROGRAM: length of BPF instructions
+ */
+enum qca_wlan_vendor_attr_packet_filter {
+	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_SET_RESET_PACKET_FILTER,
+	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_VERSION,
+	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_ID,
+	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_SIZE,
+	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_CURRENT_OFFSET,
+	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_PROGRAM,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_MAX =
+	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_AFTER_LAST - 1,
+};
+
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,
                                       tCsrRoamInfo *pRoamInfo
                                       );
@@ -1738,4 +1817,6 @@ backported_cfg80211_vendor_event_alloc(struct wiphy *wiphy,
 #define cfg80211_vendor_event_alloc backported_cfg80211_vendor_event_alloc
 #endif
 
+void hdd_get_bpf_offload_cb(void *hdd_context, struct sir_bpf_get_offload *);
+void hdd_init_bpf_completion(void);
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -108,6 +108,8 @@ struct hdd_tgt_cfg {
 #ifdef FEATURE_GREEN_AP
         bool egap_support;
 #endif
+        uint32_t fine_time_measurement_cap;
+        bool bpf_enabled;
 };
 
 struct hdd_dfs_radar_ind {

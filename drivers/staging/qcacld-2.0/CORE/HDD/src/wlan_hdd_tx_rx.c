@@ -97,6 +97,11 @@ static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter);
 #define HDD_EAPOL_KEY_INFO_OFFSET        (19)
 #define HDD_EAPOL_DEST_MAC_OFFSET        (0)
 #define HDD_EAPOL_SRC_MAC_OFFSET         (6)
+#define EAPOL_MASK                       0x8013
+#define EAPOL_M1_BIT_MASK                0x8000
+#define EAPOL_M2_BIT_MASK                0x0001
+#define EAPOL_M3_BIT_MASK                0x8013
+#define EAPOL_M4_BIT_MASK                0x0003
 #endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
 /*---------------------------------------------------------------------------
@@ -1602,6 +1607,32 @@ void wlan_hdd_log_eapol(struct sk_buff *skb,
 	ret = wlan_hdd_get_eapol_params(skb, &eapol_params, event_type);
 	if (!ret) {
 		wlan_hdd_event_eapol_log(eapol_params);
+	}
+
+	if ((eapol_params.eapol_key_info & EAPOL_MASK) == EAPOL_M1_BIT_MASK) {
+		hddLog(LOG1,
+			FL("%s: M1 packet"), eapol_params.event_sub_type ==
+				WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED ?
+								"RX" : "TX");
+	} else if ((eapol_params.eapol_key_info & EAPOL_MASK) ==
+						EAPOL_M2_BIT_MASK) {
+		hddLog(LOG1,
+			FL("%s: M2 packet"), eapol_params.event_sub_type ==
+				WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED ?
+								"RX" : "TX");
+
+	} else if ((eapol_params.eapol_key_info & EAPOL_MASK) ==
+						EAPOL_M3_BIT_MASK) {
+		hddLog(LOG1,
+			FL("%s: M3 packet"), eapol_params.event_sub_type ==
+				WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED ?
+								"RX" : "TX");
+	} else if ((eapol_params.eapol_key_info & EAPOL_MASK) ==
+						EAPOL_M4_BIT_MASK) {
+		hddLog(LOG1,
+			FL("%s: M4 packet"), eapol_params.event_sub_type ==
+				WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED ?
+								"RX" : "TX");
 	}
 }
 #endif /* FEATURE_WLAN_DIAG_SUPPORT */

@@ -291,6 +291,7 @@ static void __limInitVars(tpAniSirGlobal pMac)
     /* Init SAP deffered Q Head */
     lim_init_sap_deferred_msg_queue(pMac);
 #endif
+    pMac->lim.gpLimMlmOemDataReq = NULL;
 }
 
 static void __limInitAssocVars(tpAniSirGlobal pMac)
@@ -722,6 +723,7 @@ limCleanup(tpAniSirGlobal pMac)
 {
 //Before destroying the list making sure all the nodes have been deleted.
 //Which should be the normal case, but a memory leak has been reported.
+    uint8_t i;
 
     tpLimMgmtFrameRegistration pLimMgmtRegistration = NULL;
 
@@ -742,6 +744,8 @@ limCleanup(tpAniSirGlobal pMac)
     // free up preAuth table
     if (pMac->lim.gLimPreAuthTimerTable.pTable != NULL)
     {
+        for (i = 0; i < pMac->lim.gLimPreAuthTimerTable.numEntry; i++)
+            vos_mem_free(pMac->lim.gLimPreAuthTimerTable.pTable[i]);
         vos_mem_free(pMac->lim.gLimPreAuthTimerTable.pTable);
         pMac->lim.gLimPreAuthTimerTable.pTable = NULL;
         pMac->lim.gLimPreAuthTimerTable.numEntry = 0;
@@ -1044,6 +1048,10 @@ tSirRetStatus peClose(tpAniSirGlobal pMac)
     pMac->lim.limTimers.gpLimCnfWaitTimer = NULL;
 
     if (pMac->lim.gpLimMlmOemDataReq) {
+        if (pMac->lim.gpLimMlmOemDataReq->data) {
+            vos_mem_free(pMac->lim.gpLimMlmOemDataReq->data);
+            pMac->lim.gpLimMlmOemDataReq->data = NULL;
+        }
         vos_mem_free(pMac->lim.gpLimMlmOemDataReq);
         pMac->lim.gpLimMlmOemDataReq = NULL;
     }

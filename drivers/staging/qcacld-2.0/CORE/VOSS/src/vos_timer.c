@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, 2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, 2015-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -186,20 +186,24 @@ static void vos_linux_timer_callback (unsigned long data)
                  __func__);
        return;
    }
-   else
-   {
-      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-          "TIMER callback: running on MC thread");
-
-      // Serialize to the MC thread
-      sysBuildMessageHeader( SYS_MSG_ID_MC_TIMER, &msg );
-      msg.callback = callback;
-      msg.bodyptr  = userData;
-      msg.bodyval  = 0;
-
-      if(vos_mq_post_message( VOS_MQ_ID_SYS, &msg ) == VOS_STATUS_SUCCESS)
-        return;
+   if (vos_is_wd_thread(threadId)) {
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                "TIMER callback: running on wd thread");
+      callback(NULL);
+      return;
    }
+
+   VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+       "TIMER callback: running on MC thread");
+
+   /* Serialize to MC thread */
+   sysBuildMessageHeader( SYS_MSG_ID_MC_TIMER, &msg );
+   msg.callback = callback;
+   msg.bodyptr  = userData;
+   msg.bodyval  = 0;
+
+   if(vos_mq_post_message( VOS_MQ_ID_SYS, &msg ) == VOS_STATUS_SUCCESS)
+     return;
 
    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
              "%s: Could not enqueue timer to any queue", __func__);

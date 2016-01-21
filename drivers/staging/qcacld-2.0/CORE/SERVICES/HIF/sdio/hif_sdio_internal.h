@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014,2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -52,6 +52,7 @@
 #define HTC_TARGET_DEBUG_INTR_MASK         0x01
 #define HTC_TARGET_CREDIT_INTR_MASK        0xF0
 
+#define INVALID_MAILBOX_NUMBER 0xFF
 #define MAILBOX_COUNT 4
 #define MAILBOX_FOR_BLOCK_SIZE 1
 #define MAILBOX_USED_COUNT 2

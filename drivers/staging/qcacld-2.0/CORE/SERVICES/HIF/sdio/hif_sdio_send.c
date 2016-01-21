@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014,2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -93,6 +93,9 @@ A_STATUS HIFDevSendBuffer(HIF_SDIO_DEVICE *pDev, unsigned int transferID, a_uint
     unsigned char *pData;
     A_UINT32 request = HIF_WR_ASYNC_BLOCK_INC;
     A_UINT8 mboxIndex = HIFDevMapPipeToMailBox(pDev, pipe);
+
+    if (mboxIndex == INVALID_MAILBOX_NUMBER)
+        return A_ERROR;
 
     paddedLength = DEV_CALC_SEND_PADDED_LEN(pDev, nbytes);
 #ifdef ENABLE_MBOX_DUMMY_SPACE_FEATURE

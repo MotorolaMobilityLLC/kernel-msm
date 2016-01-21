@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -68,12 +68,10 @@
 #include <vos_event.h>
 #include "i_vos_types.h"
 #include <linux/wait.h>
-#if defined(WLAN_OPEN_SOURCE) && defined(CONFIG_HAS_WAKELOCK)
-#include <linux/wakelock.h>
-#endif
 #include <vos_mq.h>
 #include <adf_os_types.h>
 #include <vos_lock.h>
+#include <vos_timer.h>
 
 #define TX_POST_EVENT_MASK               0x001
 #define TX_SUSPEND_EVENT_MASK            0x002
@@ -89,6 +87,7 @@
 #define WD_CHIP_RESET_EVENT_MASK         0x004
 #define WD_WLAN_SHUTDOWN_EVENT_MASK      0x008
 #define WD_WLAN_REINIT_EVENT_MASK        0x010
+#define WD_WLAN_DETECT_THREAD_STUCK_MASK 0x020
 
 
 
@@ -283,6 +282,12 @@ typedef struct _VosWatchdogContext
 
    /* Lock for preventing multiple reset being triggered simultaneously */
    spinlock_t wdLock;
+   /* Timer to detect thread stuck issue */
+   vos_timer_t thread_stuck_timer;
+   /* Count to determine thread stuck */
+   unsigned int mc_thread_stuck_count;
+   /* lock to synchronize access to the thread stuck counts */
+   spinlock_t thread_stuck_lock;
 
 } VosWatchdogContext, *pVosWatchdogContext;
 
@@ -625,6 +630,9 @@ void vos_ssr_protect(const char *caller_func);
 void vos_ssr_unprotect(const char *caller_func);
 bool vos_is_ssr_ready(const char *caller_func);
 int vos_get_gfp_flags(void);
+void vos_wd_reset_thread_stuck_count(int thread_id);
+bool vos_is_wd_thread(int thread_id);
+int vos_sched_is_mc_thread(int thread_id);
 
 #define vos_wait_for_work_thread_completion(func) vos_is_ssr_ready(func)
 
