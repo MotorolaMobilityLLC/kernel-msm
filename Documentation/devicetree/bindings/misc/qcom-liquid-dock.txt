@@ -1,0 +1,22 @@
+QTI LiQUID Docking Station
+
+This device describes the interface used when connecting a Qualcomm
+Technology LiQUID Mobile Development Platform to its docking station.
+This particular device describe's the dock's USB hub and Ethernet ports.
+The interface consists of GPIOs used for controlling the main power
+supply and reset lines.
+
+Required properties:
+ - compatible: Should be "qcom,liquid-dock". "qcom,apq8084-dock" is
+	       also supported but deprecated.
+ - qcom,dock-detect-gpio: phandle to a GPIO node corresponding to the input
+                         signal indicating when the dock is connected
+ - qcom,usb-host: phandle to the USB host controller connected to the dock port
+
+Optional properties:
+ - qcom,dock-enable-gpio: phandle to a GPIO node corresponding to the output
+                         signal that turns on/off power to the ports
+ - qcom,dock-hub-reset-gpio: phandle to a GPIO node corresponding to the output
+                            signal that resets the USB ports
+ - qcom,dock-eth-reset-gpio: phandle to a GPIO node corresponding to the output
+                            signal that resets the Ethernet ports

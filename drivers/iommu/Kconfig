@@ -1,0 +1,416 @@
+# IOMMU_API always gets selected by whoever wants it.
+config IOMMU_API
+	bool
+
+menuconfig IOMMU_SUPPORT
+	bool "IOMMU Hardware Support"
+	default y
+	---help---
+	  Say Y here if you want to compile device drivers for IO Memory
+	  Management Units into the kernel. These devices usually allow to
+	  remap DMA requests and/or remap interrupts from other devices on the
+	  system.
+
+if IOMMU_SUPPORT
+
+config OF_IOMMU
+       def_bool y
+       depends on OF
+
+# MSM IOMMU support
+
+# MSM_IOMMU always gets selected by whoever wants it.
+config MSM_IOMMU
+	bool
+	select ARM_DMA_USE_IOMMU if ARM
+	select ARM64_DMA_USE_IOMMU if ARM64
+
+# MSM IOMMUv0 support
+config MSM_IOMMU_V0
+	bool "MSM IOMMUv0 Support"
+	depends on ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_APQ8064 || ARCH_MSM8610
+	select IOMMU_API
+	select MSM_IOMMU
+	help
+	  Support for the IOMMUs (v0) found on certain Qualcomm SOCs.
+	  These IOMMUs allow virtualization of the address space used by most
+	  cores within the multimedia subsystem.
+
+	  If unsure, say N here.
+
+# MSM IOMMUv1 support
+config MSM_IOMMU_V1
+	bool "MSM IOMMUv1 Support"
+	depends on ARCH_MSM8974 || ARCH_MSM8226 || ARCH_APQ8084 || ARCH_MSM8916 || ARCH_MSM8994 || ARCH_MSM8992 || ARCH_MSM8909
+	select IOMMU_API
+	select MSM_IOMMU
+	help
+	  Support for the IOMMUs (v1) found on certain Qualcomm SOCs.
+	  These IOMMUs allow virtualization of the address space used by most
+	  cores within the multimedia subsystem.
+
+	  If unsure, say N here.
+
+# MSM IOMMU sync lock support
+config MSM_IOMMU_SYNC
+	bool "MSM IOMMU Sync Lock Support"
+	depends on (ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_APQ8064 || ARCH_MSM8930 || ARCH_MSM8610) && MSM_IOMMU_V0
+	help
+	  Say Y here if you want the IOMMU to grab a remote spinlock to ensure
+	  synchronization between IOMMU accesses by CPU and other exectution
+	  environments in the SoC.
+
+	  If unsure, say N here.
+
+# MSM IOMMU CPU-GPU sync programming support
+config MSM_IOMMU_GPU_SYNC
+	bool "MSM IOMMU CPU-GPU Sync Support"
+	depends on (ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_APQ8064 || ARCH_MSM8930) && MSM_IOMMU_V0
+	select  MSM_IOMMU_SYNC
+	help
+	  Say Y here if you want to synchronize access to IOMMU configuration
+	  port between CPU and GPU. CPU will grab a remote spinlock before
+	  accessing IOMMU configuration registers and GPU will do the same.
+
+	  If unsure, say N here.
+
+config MSM_IOMMU_PMON
+	bool "MSM IOMMU Perfomance Monitoring Support"
+	depends on (ARCH_MSM8974 || ARCH_MSM8610 || ARCH_MSM8226 || ARCH_APQ8084) && MSM_IOMMU
+	help
+	  Support for monitoring IOMMUs performance on certain Qualcomm SOCs.
+	  It captures TLB statistics per context bank of the IOMMU as an
+	  indication of its performance metric.
+
+	  If unsure, say N here.
+
+config IOMMU_PGTABLES_L2
+	bool "Allow SMMU page tables in the L2 cache (Experimental)"
+	depends on MSM_IOMMU && MMU && SMP && CPU_DCACHE_DISABLE=n
+        help
+         Improves TLB miss latency at the expense of potential L2 pollution.
+         However, with large multimedia buffers, the TLB should mostly contain
+         section mappings and TLB misses should be quite infrequent.
+         Most people can probably say Y here.
+
+config IOMMU_LPAE
+	bool "Enable support for LPAE in IOMMU"
+	depends on MSM_IOMMU
+	help
+	  Enables Large Physical Address Extension (LPAE) for IOMMU. This allows
+	  clients of IOMMU to access physical addresses that are greater than
+	  32 bits.
+
+	  If unsure, say N here.
+
+config IOMMU_AARCH64
+	bool "Enable support for AARCH64 in IOMMU"
+	depends on (MSM_IOMMU && (!IOMMU_LPAE))
+	help
+	  Enables AARCH64 format page tables for IOMMU. This allows clients of
+	  IOMMUs to use Virtual and physical addresses up-to 48 bits. This will
+	  also support the clients who can't generate addresses of more than 32
+	  bits. Presently, this config assumes that if SMMU global space is
+	  programmed by some secure environment, they configure all the CBs of
+	  all the SMMUs as AARCH64 formatted.
+
+	  If unsure, say N here.
+
+config MSM_IOMMU_VBIF_CHECK
+	bool "Enable support for VBIF check when IOMMU gets stuck"
+	depends on MSM_IOMMU
+	help
+	  Enables an extra check in the IOMMU driver that logs debugging
+	  information when TLB sync or iommu halt issue occurs. This helps
+	  in debugging such issues.
+
+	  If unsure, say N here.
+
+config IOMMU_NON_SECURE
+	bool "Turns on programming of secure SMMU by kernel"
+	depends on MSM_IOMMU
+        help
+         Say Y here if you want the kernel to program all SMMUs regardless of
+         whether SMMUs are secure or not. A secure SMMU is an SMMU that has
+         its global address space programmed by the secure environment. In
+         addition some of the context banks might be owned/programmed by the
+         secure environment for a secure SMMU. Enabling this feature can be
+         used during testing when the secure environment is not available
+         and the kernel needs to program all the SMMUs.
+
+         If unsure, say N here.
+
+config IOMMU_FORCE_4K_MAPPINGS
+	bool "Turns off mapping optimization and map only 4K pages"
+	depends on MSM_IOMMU
+        help
+         Say Y here if you want the IOMMU driver to map buffers with
+         4KB mapping only. With this, we don't get performance gains
+         by optimizing mapping. This is a debug feature and should be
+         used only when we want to profile the performance in the
+         worst case scenario.
+
+         If unsure, say N here.
+
+config MMU500_ACTIVE_PREFETCH_BUG_WITH_SECTION_MAPPING
+	bool "Don't align Virtual address at 1MB boundary"
+	depends on MSM_IOMMU
+	help
+	 Say Y here if the MMU500 revision has a bug in active prefetch
+         which can cause TLB corruptions due to 1MB alignment of a buffer.
+         Here is the sequence which will surface this BUG.
+	 1) Create a 2-level mapping in v7S format for 1MB buffer. Start of
+	    the buffer should be at even MB boundary.
+	 2) Create a section mapping for 1MB buffer adjacent to previous
+	    mapping in step 1.
+	 3) Access last page from 2 level mapping followed by an access into
+	    section mapped area.
+	 4) Step 3 will result into TLB corruption and this corruption can
+	    lead to any misbehavior (like Permission fault) for sub-sequent
+	    transactions.
+
+	 If unsure, say Y here if IOMMU mapping will not exhaust the VA space.
+
+# AMD IOMMU support
+config AMD_IOMMU
+	bool "AMD IOMMU support"
+	select SWIOTLB
+	select PCI_MSI
+	select PCI_ATS
+	select PCI_PRI
+	select PCI_PASID
+	select IOMMU_API
+	depends on X86_64 && PCI && ACPI && X86_IO_APIC
+	---help---
+	  With this option you can enable support for AMD IOMMU hardware in
+	  your system. An IOMMU is a hardware component which provides
+	  remapping of DMA memory accesses from devices. With an AMD IOMMU you
+	  can isolate the DMA memory of different devices and protect the
+	  system from misbehaving device drivers or hardware.
+
+	  You can find out if your system has an AMD IOMMU if you look into
+	  your BIOS for an option to enable it or if you have an IVRS ACPI
+	  table.
+
+config AMD_IOMMU_STATS
+	bool "Export AMD IOMMU statistics to debugfs"
+	depends on AMD_IOMMU
+	select DEBUG_FS
+	---help---
+	  This option enables code in the AMD IOMMU driver to collect various
+	  statistics about whats happening in the driver and exports that
+	  information to userspace via debugfs.
+	  If unsure, say N.
+
+config AMD_IOMMU_V2
+	tristate "AMD IOMMU Version 2 driver"
+	depends on AMD_IOMMU && PROFILING
+	select MMU_NOTIFIER
+	---help---
+	  This option enables support for the AMD IOMMUv2 features of the IOMMU
+	  hardware. Select this option if you want to use devices that support
+	  the PCI PRI and PASID interface.
+
+# Intel IOMMU support
+config DMAR_TABLE
+	bool
+
+config INTEL_IOMMU
+	bool "Support for Intel IOMMU using DMA Remapping Devices"
+	depends on PCI_MSI && ACPI && (X86 || IA64_GENERIC)
+	select IOMMU_API
+	select DMAR_TABLE
+	help
+	  DMA remapping (DMAR) devices support enables independent address
+	  translations for Direct Memory Access (DMA) from devices.
+	  These DMA remapping devices are reported via ACPI tables
+	  and include PCI device scope covered by these DMA
+	  remapping devices.
+
+config INTEL_IOMMU_DEFAULT_ON
+	def_bool y
+	prompt "Enable Intel DMA Remapping Devices by default"
+	depends on INTEL_IOMMU
+	help
+	  Selecting this option will enable a DMAR device at boot time if
+	  one is found. If this option is not selected, DMAR support can
+	  be enabled by passing intel_iommu=on to the kernel.
+
+config INTEL_IOMMU_BROKEN_GFX_WA
+	bool "Workaround broken graphics drivers (going away soon)"
+	depends on INTEL_IOMMU && BROKEN && X86
+	---help---
+	  Current Graphics drivers tend to use physical address
+	  for DMA and avoid using DMA APIs. Setting this config
+	  option permits the IOMMU driver to set a unity map for
+	  all the OS-visible memory. Hence the driver can continue
+	  to use physical addresses for DMA, at least until this
+	  option is removed in the 2.6.32 kernel.
+
+config INTEL_IOMMU_FLOPPY_WA
+	def_bool y
+	depends on INTEL_IOMMU && X86
+	---help---
+	  Floppy disk drivers are known to bypass DMA API calls
+	  thereby failing to work when IOMMU is enabled. This
+	  workaround will setup a 1:1 mapping for the first
+	  16MiB to make floppy (an ISA device) work.
+
+config IRQ_REMAP
+	bool "Support for Interrupt Remapping"
+	depends on X86_64 && X86_IO_APIC && PCI_MSI && ACPI
+	select DMAR_TABLE
+	---help---
+	  Supports Interrupt remapping for IO-APIC and MSI devices.
+	  To use x2apic mode in the CPU's which support x2APIC enhancements or
+	  to support platforms with CPU's having > 8 bit APIC ID, say Y.
+
+# OMAP IOMMU support
+config OMAP_IOMMU
+	bool "OMAP IOMMU Support"
+	depends on ARCH_OMAP2PLUS
+	select IOMMU_API
+
+config OMAP_IOVMM
+	tristate "OMAP IO Virtual Memory Manager Support"
+	depends on OMAP_IOMMU
+
+config OMAP_IOMMU_DEBUG
+       tristate "Export OMAP IOMMU/IOVMM internals in DebugFS"
+       depends on OMAP_IOVMM && DEBUG_FS
+       help
+         Select this to see extensive information about
+         the internal state of OMAP IOMMU/IOVMM in debugfs.
+
+         Say N unless you know you need this.
+
+config TEGRA_IOMMU_GART
+	bool "Tegra GART IOMMU Support"
+	depends on ARCH_TEGRA_2x_SOC
+	select IOMMU_API
+	help
+	  Enables support for remapping discontiguous physical memory
+	  shared with the operating system into contiguous I/O virtual
+	  space through the GART (Graphics Address Relocation Table)
+	  hardware included on Tegra SoCs.
+
+config TEGRA_IOMMU_SMMU
+	bool "Tegra SMMU IOMMU Support"
+	depends on ARCH_TEGRA && TEGRA_AHB
+	select IOMMU_API
+	help
+	  Enables support for remapping discontiguous physical memory
+	  shared with the operating system into contiguous I/O virtual
+	  space through the SMMU (System Memory Management Unit)
+	  hardware included on Tegra SoCs.
+
+config EXYNOS_IOMMU
+	bool "Exynos IOMMU Support"
+	depends on ARCH_EXYNOS && EXYNOS_DEV_SYSMMU
+	select IOMMU_API
+	help
+	  Support for the IOMMU(System MMU) of Samsung Exynos application
+	  processor family. This enables H/W multimedia accellerators to see
+	  non-linear physical memory chunks as a linear memory in their
+	  address spaces
+
+	  If unsure, say N here.
+
+config EXYNOS_IOMMU_DEBUG
+	bool "Debugging log for Exynos IOMMU"
+	depends on EXYNOS_IOMMU
+	help
+	  Select this to see the detailed log message that shows what
+	  happens in the IOMMU driver
+
+	  Say N unless you need kernel log message for IOMMU debugging
+
+config SHMOBILE_IPMMU
+	bool
+
+config SHMOBILE_IPMMU_TLB
+	bool
+
+config SHMOBILE_IOMMU
+	bool "IOMMU for Renesas IPMMU/IPMMUI"
+	default n
+	depends on (ARM && ARCH_SHMOBILE)
+	select IOMMU_API
+	select ARM_DMA_USE_IOMMU
+	select SHMOBILE_IPMMU
+	select SHMOBILE_IPMMU_TLB
+	help
+	  Support for Renesas IPMMU/IPMMUI. This option enables
+	  remapping of DMA memory accesses from all of the IP blocks
+	  on the ICB.
+
+	  Warning: Drivers (including userspace drivers of UIO
+	  devices) of the IP blocks on the ICB *must* use addresses
+	  allocated from the IPMMU (iova) for DMA with this option
+	  enabled.
+
+	  If unsure, say N.
+
+choice
+	prompt "IPMMU/IPMMUI address space size"
+	default SHMOBILE_IOMMU_ADDRSIZE_2048MB
+	depends on SHMOBILE_IOMMU
+	help
+	  This option sets IPMMU/IPMMUI address space size by
+	  adjusting the 1st level page table size. The page table size
+	  is calculated as follows:
+
+	      page table size = number of page table entries * 4 bytes
+	      number of page table entries = address space size / 1 MiB
+
+	  For example, when the address space size is 2048 MiB, the
+	  1st level page table size is 8192 bytes.
+
+	config SHMOBILE_IOMMU_ADDRSIZE_2048MB
+		bool "2 GiB"
+
+	config SHMOBILE_IOMMU_ADDRSIZE_1024MB
+		bool "1 GiB"
+
+	config SHMOBILE_IOMMU_ADDRSIZE_512MB
+		bool "512 MiB"
+
+	config SHMOBILE_IOMMU_ADDRSIZE_256MB
+		bool "256 MiB"
+
+	config SHMOBILE_IOMMU_ADDRSIZE_128MB
+		bool "128 MiB"
+
+	config SHMOBILE_IOMMU_ADDRSIZE_64MB
+		bool "64 MiB"
+
+	config SHMOBILE_IOMMU_ADDRSIZE_32MB
+		bool "32 MiB"
+
+endchoice
+
+config SHMOBILE_IOMMU_L1SIZE
+	int
+	default 8192 if SHMOBILE_IOMMU_ADDRSIZE_2048MB
+	default 4096 if SHMOBILE_IOMMU_ADDRSIZE_1024MB
+	default 2048 if SHMOBILE_IOMMU_ADDRSIZE_512MB
+	default 1024 if SHMOBILE_IOMMU_ADDRSIZE_256MB
+	default 512 if SHMOBILE_IOMMU_ADDRSIZE_128MB
+	default 256 if SHMOBILE_IOMMU_ADDRSIZE_64MB
+	default 128 if SHMOBILE_IOMMU_ADDRSIZE_32MB
+
+config ARM_SMMU
+	bool "ARM Ltd. System MMU (SMMU) Support"
+	depends on ARM64 || (ARM_LPAE && OF)
+	select IOMMU_API
+	select ARM_DMA_USE_IOMMU if ARM
+	select ARM64_DMA_USE_IOMMU if ARM64
+	help
+	  Support for implementations of the ARM System MMU architecture
+	  versions 1 and 2. The driver supports both v7l and v8l table
+	  formats with 4k and 64k page sizes.
+
+	  Say Y here if your SoC includes an IOMMU device implementing
+	  the ARM SMMU architecture.
+
+endif # IOMMU_SUPPORT

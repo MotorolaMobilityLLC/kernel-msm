@@ -1,0 +1,726 @@
+QTI MSM Clock controller
+
+QTI MSM Clock controller devices contain subnodes describing PLLs, root
+clock generators and other clock hardware blocks that provide stable, low
+power clock signals to a QTI SOC.
+
+Required Properties:
+- compatible:		Must be "qcom,msm-clock-controller"
+- reg:			Pairs of physical base addresses and region sizes of
+			memory mapped registers.
+- reg-names:		"cc-base" is expected.
+
+Optional Properties:
+- <regulator_name>-supply:
+			A regulator phandle. Multiple such properties may exist.
+
+- qcom,regulator-names: A list of regulator_name for iterating through all
+			<regulator_name>-supply properties.
+
+Example:
+
+clock-gcc: gcc-cc {
+	compatible = "qcom,msm-clock-controller";
+	reg = <0xfc400000 0x4000>;
+	reg-names = "cc-base";
+	#clock-cells = <1>;
+
+	gcc-vdd-dig-supply = <&pma8084_s2_corner>;
+	qcom,regulator-names = "gcc-vdd-dig";
+
+	GCC-vdd-dig: gcc-vdd-dig {
+		compatible = "qcom,simple-vdd-class";
+		qcom,regulators = <&pma8084_s2_corner>;
+		qcom,levels =
+				<RPM_REGULATOR_CORNER_NONE>,
+				<RPM_REGULATOR_CORNER_SVS_SOC>,
+				<RPM_REGULATOR_CORNER_NOMINAL>,
+				<RPM_REGULATOR_CORNER_SUPER_TURBO>;
+	};
+
+	xo: xo {
+		compatible = "qcom,rpm-clk";
+		qcom,res-type = "clk0";
+		qcom,res-id = <0>;
+		qcom,key = "Enable";
+		qcom,rpm-peer = <&xo_a_clk_src>;
+		qcom,rate = <19200000>;
+	};
+
+	xo_a_clk_src: xo_a_clk_src {
+		compatible = "qcom,rpm-a-clk";
+		qcom,res-type = "clk0";
+		qcom,res-id = <0>;
+		qcom,key = "Enable";
+		qcom,rpm-peer = <&xo>;
+		qcom,rate = <19200000>;
+	};
+
+	gpll0: gpll0 {
+		compatible = "qcom,alpha-pll-20p";
+		qcom,base-offset = <GCC_APCS_GPLL_ENA_VOTE>;
+		qcom,config-rate = <600000000>;
+	};
+
+	usb30_master_clk_src {
+		qcom,freq-tbl =
+			<  19200000    1    0    0    0  &xo>,
+			< 125000000    1    0    5    24 &gpll0>;
+	};
+
+	usb30_master_clk_src: usb30_master_clk_src {
+		compatible = "qcom,rcg-mn";
+		qcom,base-offset = <GCC_USB30_MASTER_CMD_RCGR>;
+		qcom,parents =
+			<    0 &xo>,
+			<    1 &gpll0>;
+
+		qcom,supply-group = <&GCC_vdd_dig>;
+		qcom,clk-fmax =
+			<FMAX_LOW 100000000>,
+			<FMAX_NOM 125000000>,
+			<FMAX_TURBO 125000000>;
+	};
+};
+
+*****************************************************************************
+"qcom,simple-vdd-class"
+
+On QTI MSMs, voting for device frequency/voltage requirements is done by
+the clock driver. This subnode describes a set of regulator configurations.
+
+Required Properties:
+- compatible		Must be "qcom,simple-vdd-class"
+
+- qcom,regulators:	List of regulator_phandle.
+			The regulators for which these perfomance levels will be
+			applied to. The regulators must have corresponding
+			<regulator_name>-supply and qcom,regulator-names
+			properties in the parent qcom,msm-clock-controller node.
+
+- qcom,uV-levels:	2d array of voltage(uV) values.
+
+Optional Properties:
+- qcom,uA-levels:	2d array of current(uA) values.
+			If this property is present, it must have the same length
+			as the qcom,uV-levels array.
+
+GCC-vdd-dig: gcc-vdd-dig {
+	compatible = "qcom,simple-vdd-class";
+	qcom,regulators = <&pma8084_s2_corner &pma8082_s3>;
+	qcom,uV-levels =
+		/*pma 8084_s2_corner*/		/*pma8082_s3*/
+		<LOWEST_VOLTAGE_LEVEL		LOW>,
+		<MED_VOLTAGE_LEVEL		MED>,
+		<HIGH_VOLTAGE_LEVEL		HIGH>;
+	qcom,uA-levels =
+		<LOWEST_CURRENT_LEVEL		LOW>,
+		<MED_CURRENT_LEVEL		MED>,
+		<HIGH_CURRENT_LEVEL		HIGH>;
+};
+
+*****************************************************************************
+General Optional Properties available to any Clock Subnode
+
+- qcom,clk-flags:	Refer to include/linux/clk/msm-clock.h
+
+- qcom,parent:		Phandle.
+			This property is used by clocks with a single parent.
+			Clocks with multiple parents may not use this property.
+
+- qcom,supply-group:	Phandle.
+			Reference to a vdd_class subnode.
+
+- qcom,clk-fmax:	List of <vdd_class_performance_level  maximum_frequency>.
+			If this property is defined, qcom,supply-group must
+			also be defined and vice-versa.
+			When a clock changes frequency, the MSM clock framework
+			will look through this table to find the minimum supply
+			group level required.
+
+- qcom,depends:		Phandle.
+			Some clocks may require other clocks other than their parent
+			clocks to be turned on to operate properly.
+
+- qcom,config-rate:	Integer.
+			Configure a clock to a specific rate(Hz) at boot.
+
+- qcom,always-on:	Boolean.
+			Enable a clock at boot, and leave it on all the time.
+
+mmssnoc_axi: mmssnoc_axi {
+	qcom,clk-flags = <0x1000>;
+	qcom,parent = <&xo>;
+	qcom,supply-group = <&MMSS_vdd_dig>;
+	qcom,clk-fmax =
+		<FMAX_LOW 150000000>,
+		<FMAX_NOM 333430000>,
+		<FMAX_TURBO 400000000>;
+	qcom,depends = <&mmss_mmssnoc_axi_clk>;
+};
+
+*****************************************************************************
+"qcom,dummy-clk"
+
+This clock serves as a placeholder for a clock which is yet to be implemented.
+It has no unique devicetree properties.
+
+clk_dummy {
+	compatible = "qcom,dummy-clk";
+	qcom,parent = <&xo_clk>;
+};
+
+*****************************************************************************
+"qcom,rpm-clk"
+
+RPM clocks are logical entities representing clocks controlled by the RPM processor.
+RPM clocks come in pairs: a clock representing the active set, and another clock
+representing the active and sleep set.
+The rate for RPM branch clocks is not configurable.
+
+Required Properties:
+- compatible: 		"qcom,rpm-clk", "qcom,rpm-a-clk",
+			"qcom,rpm-branch-clk", "qcom,rpm-branch-a-clk"
+
+- qcom,res-type: 	String; only the first 4 chars are significant.
+			Type of RPM resource.
+
+- qcom,res-id:		Integer.
+			Identifies a particular resource of a given type.
+
+- qcom,key:		String; only the first 4 chars are significant.
+			Identifier to use for the type of data that will be
+			given to the rpm resource.
+
+- qcom,rpm-peer:	Phandle.
+			A reference to the other clock in the pair.
+
+Optional Properties:
+- qcom,rcg-init-rate:	Integer.
+			Configure the initial rate for "qcom,rpm-branch-clk"
+			and "qcom,rpm-branch-a-clk".
+
+
+bb_clk2: bb_clk2 {
+	compatible = "qcom,rpm-branch-clk";
+	qcom,res-type = "clka";
+	qcom,res-id = <2>;
+	qcom,key = "swen";
+	qcom,rpm-peer = <&bb_clk2_a>;
+	qcom,rcg-init-rate = <1000>;
+};
+bb_clk2_a: bb_clk2_a {
+	compatible = "qcom,rpm-branch-a-clk";
+	qcom,res-type = "clka";
+	qcom,res-id = <2>;
+	qcom,key = "swen";
+	qcom,rpm-peer = <&bb_clk2>;
+	qcom,rcg-init-rate = <1000>;
+};
+
+*****************************************************************************
+"qcom,cbc"
+
+CBC clocks are a set of hw registers which can gate a clock signal. Additionally,
+a feedback signal is available which indicates whether the clock is actually on or
+off. This signal can be used by software to determine how much time to delay after
+requesting that the clock be turned on/off.
+
+Required Properties:
+- compatible		Must be "qcom,cbc".
+
+- qcom,base-offset:	Offset from the register region described in the parent
+			clock controller.
+
+Recommended Properties:
+- qcom,parent:		See "General Optional Properties"
+
+Optional Properties:
+- qcom,bcr-offset:	Offset from the register region described in the parent
+			clock controller for the reset.
+
+- qcom,has-sibling:	Boolean.
+			This clock does not have permission to change its parent's rate.
+			For example, there may be several cbc clocks which share the
+			same parent. Thus changing the rate of one of the cbcs would
+			affect all.
+
+ocmemcx_ahb_clk: ocmemcx_ahb_clk {
+	compatible = "qcom,cbc";
+	qcom,base-offset = <MMSS_OCMEMCX_AHB_CBCR>;
+	qcom,has-sibling;
+	qcom,parent = <&mmssnoc_ahb_clk>;
+};
+
+*****************************************************************************
+
+"qcom,local-vote-clk"
+
+Some branch clocks are shared between different processors and execution environments
+(TZ, APPS, RPM, MODEM). The votes from each of these masters are logically or'd in
+hardware and control whether the clock is gated.
+
+Required Properties:
+- compatible:		Must be "qcom,local-vote-clk"
+
+- qcom,base-offset:	Offset for the branch clock registers
+
+- qcom,en-offset:	Offset for the APPS master voting register
+
+- qcom,en-bit:		Bit in the APPS master voting register to set/unset
+
+Recommended Properties:
+- qcom,parent:		See "General Optional Properties"
+
+Optional Properties:
+- qcom,bcr-offset:	Offset from the register region described in the parent
+			clock controller for the reset.
+
+gcc_bam_dma_ahb_clk: gcc_bam_dma_ahb_clk {
+	compatible = "qcom,local-vote-clk";
+	qcom,base-offset = <GCC_BAM_DMA_AHB_CBCR>;
+	qcom,en-offset = <GCC_APCS_CLOCK_BRANCH_ENA_VOTE>;
+	qcom,en-bit = <12>;
+	qcom,parent = <&pnoc_clk>;
+};
+
+*****************************************************************************
+
+"qcom,gate-clk"
+
+A simple clock which can only turn on or off.
+
+Required Properties:
+- compatible:		"qcom,gate-clk"
+- qcom,en-offset:	Register offset from the region described in parent
+			clock controller.
+- qcom,en-bit:		Bit used to enable the clock
+
+Recommended Properties:
+- qcom,parent:		See "General Optional Properties"
+
+Optional Properties:
+- qcom,delay:		Delay(us) to use before/after turning on/off the clock.
+
+mmss_gpll0_clk_src: mmss_gpll0_clk_src {
+	compatible = "qcom,gate-clk";
+	qcom,en-offset = <GCC_APCS_CLOCK_BRANCH_ENA_VOTE>;
+	qcom,en-bit = <26>;
+	qcom,parent = <&gpll0>;
+	qcom,delay = <1>;
+};
+
+*****************************************************************************
+
+"qcom,votable-pll"
+
+A software construct defining a PLL (Phase-locked Loop) which can be voted for.
+
+Required Properties:
+- compatible:		Must be "qcom,votable-pll"
+- qcom,en-offset:	Register offset from the region described in parent
+			clock controller.
+- qcom,en-bit:		Bit used to enable the clock
+- qcom,status-offset:	Register offset from the region described in parent
+			clock controller.
+- qcom,status-bit:	Status bit indicating the clock is on
+- qcom,pll-config-rate:	The rate this clock runs at. This rate is not changeable.
+
+Recommended Properties:
+- qcom,parent:		See "General Optional Properties"
+- qcom,supply-group:	See "General Optional Properties"
+- qcom,clk-fmax:	See "General Optional Properties"
+
+gpll4: gpll4 {
+	compatible = "qcom,votable-pll";
+	qcom,en-offset = <GCC_APCS_GPLL_ENA_VOTE>;
+	qcom,en-bit = <4>;
+	qcom,status-offset = <GCC_GPLL4_MODE>;
+	qcom,status-bit = <30>;
+	qcom,pll-config-rate = <1536000000>;
+	qcom,parent = <&gcc_xo>;
+	qcom,supply-group = <&gcc_vdd_dig>;
+	qcom,clk-fmax =
+			<FMAX_LOWER 400000000>,
+			<FMAX_LOW 800000000>,
+			<FMAX_NOM 1600000000>,
+			<FMAX_TURBO 1600000000>;
+};
+
+*****************************************************************************
+
+"qcom,sleep-active-pll"
+
+A software construct wrapping the normal votable pll hw. Like rpm_clocks,
+these clocks also support "active" and "sleep" modes of operation.
+
+Required Properties:
+- compatible:		"qcom,active-only-pll", "qcom,sleep-active-pll"
+- qcom,en-offset:	Register offset from the region described in parent
+			clock controller.
+- qcom,en-bit:		Bit used to enable the clock
+- qcom,status-offset:	Register offset from the region described in parent
+			clock controller.
+- qcom,status-bit:	Status bit indicating the clock is on
+- qcom,peer:		Phandle to the other clock in the pair
+- qcom,pll-config-rate:	The rate this clock runs at. This rate is not changeable.
+
+Recommended Properties:
+- qcom,parent:		See "General Optional Properties"
+- qcom,clk-fmax:	See "General Optional Properties"
+
+gpll0: gpll0 {
+	compatible = "qcom,sleep-active-pll";
+	qcom,en-offset = <GCC_APCS_GPLL_ENA_VOTE>;
+	qcom,en-bit = <0>;
+	qcom,status-offset = <GCC_GPLL0_MODE>;
+	qcom,status-bit = <30>;
+	qcom,pll-config-rate = <600000000>;
+	qcom,parent = <&gcc_xo>;
+	qcom,peer = <&gpll0_ao>;
+};
+
+gpll0_ao: gpll0_ao {
+	compatible = "qcom,active-only-pll";
+	qcom,en-offset = <GCC_APCS_GPLL_ENA_VOTE>;
+	qcom,en-bit = <0>;
+	qcom,status-offset = <GCC_GPLL0_MODE>;
+	qcom,status-bit = <30>;
+	qcom,pll-config-rate = <600000000>;
+	qcom,parent = <&gcc_xo_ao>;
+	qcom,peer = <&gpll0>;
+};
+
+*****************************************************************************
+"qcom,rcg"
+
+Root Clock Generators act as both muxes and dividers. They support half-integer division,
+and may optionally support fractional (M/N) division as well.
+
+output rate = input_rate * (M/N) * (1 / divider)
+
+This particular software implementation uses a table of legal frequencies, rather
+than attempt to dynamically calculate the required register configuration.
+
+Required Properties:
+- compatible:		"qcom,rcg-mn", "qcom,rcg-hid".
+
+- qcom,base-offset:	Offset from the register region described in the parent
+			clock controller.
+- qcom,parents:		array of <mux_selection parent_phandle>.
+- qcom,freq-tbl:	Contains the possible configuration values.
+			Array of <freq, div_int, div_frac, m_val, n_val, parent_phandle>.
+			Since device tree does not support floating point, we separate
+			the fractional divider into two parts. div_int = 2 and div_frac = 50
+			means a divider of 2.5 (div_int + div_frac/100).
+
+Recommended Properties:
+- qcom,clk-fmax:	See "General Optional Properties"
+- qcom,supply-group:	See "General Optional Properties"
+
+axi_clk_src {
+	qcom,freq-tbl =
+		<  19200000    1    0    0     0 &mmss_xo>,
+		<  37500000   16    0    0     0 &mmss_gpll0>,
+		<  50000000   12    0    0     0 &mmss_gpll0>,
+		<  75000000    8    0    0     0 &mmss_gpll0>,
+		< 100000000    6    0    0     0 &mmss_gpll0>,
+		< 150000000    4    0    0     0 &mmss_gpll0>,
+		< 333430000    3   50    0     0 &mmpll1_pll>,
+		< 400000000    2    0    0     0 &mmpll0_pll>,
+		< 466800000    2   50    0     0 &mmpll1_pll>;
+};
+
+axi_clk_src: axi_clk_src {
+	compatible = "qcom,rcg-hid";
+	qcom,base-offset = <MMSS_AXI_CMD_RCGR>;
+	qcom,parents =
+		<    0 &mmss_xo>,
+		<    1 &mmpll0_pll>,
+		<    2 &mmpll1_pll>,
+		<    5 &mmss_gpll0>;
+
+	qcom,supply-group = <&MMSS_vdd_dig>;
+	qcom,clk-fmax =
+		<FMAX_LOW 150000000>,
+		<FMAX_NOM 333430000>,
+		<FMAX_TURBO 400000000>;
+};
+
+*****************************************************************************
+
+"qcom,mux-reg"
+
+Represents a mux which may optionally have gating capability.
+
+Required Properties:
+- compatible:		Must be "qcom,mux-reg".
+
+- qcom,offset:		Register selecting the input clk.
+- qcom,mask:		Bitmask for the mux src select register.
+- qcom,shift:		Shift applied to mask and src sel.
+- qcom,parents:		Array of <mux_selection  parent_phandle>.
+
+Optional Properties:
+- qcom,en-offset:	Register controlling gating functionality.
+- qcom,en-mask:		Bitmask for the enable register.
+- qcom,recursive-parents:
+			Array of phandles.
+			Suppose the following clock-tree.
+			A -> B --> C
+			       \-> D
+			It may be desireable to change the grandparent
+			of A to D instead of C directly from clk_set_parent(A, D),
+			as opposed to calling clk_set_parent(B, D). Including B on
+			this list will allow this behavior.
+			Any clocks on this list must also be on the qcom,parents.
+
+mmss_gcc_dbg_clk: mmss_gcc_dbg_clk {
+	compatible = "qcom,mux-reg";
+	qcom,recursive-parents = <&debug_clk_src>;
+	qcom,offset = <MMSS_MMSS_DEBUG_CLK_CTL>;
+	qcom,mask = <0xFFF>;
+	qcom,shift = <0>;
+	qcom,en-offset = <MMSS_MMSS_DEBUG_CLK_CTL>;
+	qcom,en-mask = <0x10000>;
+	qcom,parents =
+		<    0 &gcc_xo>,
+		<    1 &gpll0>,
+		<    2 &debug_clk_src>,
+		<>;
+};
+
+*****************************************************************************
+
+"qcom,measure-mux"
+
+Represents a mux which has the ability to measure its input clock.
+
+Required Properties:
+- compatible:		Must be "qcom,measure-mux".
+
+- qcom,offset:		Register selecting the input clk.
+- qcom,mask:		Bitmask for the mux src select register.
+- qcom,shift:		Shift applied to mask and src sel.
+- qcom,parents:		Array of <mux_selection  parent_phandle>.
+- qcom,cxo:		CXO is required to be enabled for proper operation.
+- qcom,xo-div4-cbcr:	Control register for the CXO clock.
+- qcom,test-pad-cfg:	Settings for gpio drive strength, polarity, and pulldown.
+
+Recommended Properties:
+- qcom,clk-flags:	CLKFLAG_MEASURE and CLKFLAG_NO_RATE_CACHE should be set
+			in most cases.
+
+Optional Properties:
+- qcom,en-offset:	Register controlling gating functionality.
+- qcom,en-mask:		Bitmask for the enable register.
+- qcom,recursive-parents:
+			Refer to the description under "qcom,mux-reg"
+
+ mmss_gcc_dbg_clk: mmss_gcc_dbg_clk {
+	compatible = "qcom,measure-mux";
+	qcom,recursive-parents = <&debug_clk_src>;
+	qcom,offset = <MMSS_MMSS_DEBUG_CLK_CTL>;
+	qcom,mask = <0xFFF>;
+	qcom,shift = <0>;
+	qcom,en-offset = <MMSS_MMSS_DEBUG_CLK_CTL>;
+	qcom,en-mask = <0x10000>;
+	qcom,parents =
+		<    0 &gcc_xo>,
+		<    1 &gpll0>,
+		<    2 &debug_clk_src>,
+		<>;
+	qcom,cxo = <&gcc_xo>;
+	qcom,xo-div4-cbcr = <GCC_GCC_XO_DIV4_CBCR>;
+	qcom,test-pad-cfg = <0x51A00>;
+};
+
+*****************************************************************************
+
+"qcom,sw-vote-clk"
+
+This clock, like RPM clocks, is a logical rather than physical entity. When several
+drivers are clients of a clock which is able to change rate, avoiding a "last vote
+wins" scenario is desirable. Several voter clocks are created with the original clock
+as their parent, one per client driver. When one client requests to change rate, the
+rates of all the "sibling" voter clocks are examined and the maximum rate is passed
+on to the parent clock.
+
+Required Properties:
+- compatible: 		Must be "qcom,sw-vote-clk".
+- qcom,parent:		Phandle reference to the clock which the rate requests are for.
+- qcom,config-rate:	Initial rate setting.
+
+snoc_msmbus_clk: snoc_msmbus_clk {
+	compatible = "qcom,sw-vote-clk";
+	qcom,parent = <&snoc_clk>;
+	qcom,config-rate = <100000000>;
+};
+
+*****************************************************************************
+
+"qcom,ext-clk"
+
+A logical entity representing a clock defined outside of the current clock controller.
+A clock controller can only manage ordering dependencies within itself. Having an
+ext_clk whose parent is the actual external clock allows us to initialize the
+necessary clock data structures with the assumption that the missing dependency will
+be filled in later. During __handoff() this clock type will call clk_get() to fix the
+dependency.
+
+Required Properties:
+- compatible:		Must be "qcom,ext-clk"
+
+Optional Properties:
+- qcom,clock-names:	String argument for clk_get().
+
+Recommended Properties:
+- qcom,parent:		See "General Optional Properties"
+
+gcc_xo: gcc_xo {
+	compatible = "qcom,ext-clk";
+	qcom,clock-names = "xo";
+};
+
+*****************************************************************************
+
+"qcom,div-clk"
+
+A clock which can divide its input frequency values. Fractional division isnt
+supported.
+
+Required Properties:
+- compatible:		Must be "qcom,div-clk"
+- qcom,base-offset:	Register offset.
+- qcom,min-div:		The minimum supported divider
+- qcom,max-div:		The maximum supported divider
+- qcom,mask:		The bit mask to be applied
+- qcom,shift:		The shift to be applied
+
+Optional Properties:
+- qcom,slave-div:	This clock may not change its parent's rate.
+
+Recommended Properties:
+- qcom,parent:		See "General Optional Properties"
+
+cci_clk: cci_clk {
+	compatible = "qcom,div-clk";
+	qcom,base-offset = <CCI_MUX_OFFSET>;
+	qcom,min-div = <1>;
+	qcom,max-div = <4>;
+	qcom,mask = <3>;
+	qcom,shift = <5>;
+	qcom,parent = <&cci_hf_mux>;
+};
+
+*****************************************************************************
+
+"qcom,fixed-div-clk"
+
+A fixed, nonconfigurable divider.
+
+Required Properties:
+- compatible:		Must be "qcom,fixed-div-clk"
+- qcom,div:		The fixed divider
+
+Optional Properties:
+- qcom,slave-div:	This clock may not change its parent's rate.
+
+Recommended Properties:
+- qcom,parent:		See "General Optional Properties"
+
+ahb_div_clk: ahb_div_clk {
+	compatible = "qcom,fixed-div-clk";
+	qcom,parent = <&ahb_clk_src>;
+	qcom,div = <16>;
+};
+
+*****************************************************************************
+
+"qcom,reset-clk"
+
+We have not yet been able to move our current reset implementation to the linux
+reset framework. As a result, this clock type is not actually a clock, but
+rather just a random register containing a reset signal. The clock APIs are
+reused to match reset consumers with reset providers.
+
+Required Properties:
+- compatible:		Must be "qcom,reset-clk"
+- qcom,base-offset:	Offset from the register region described in the parent
+			clock controller.
+
+pcie0_reset_clk: pcie0_reset_clk {
+	compatible = "qcom,reset-clk";
+	qcom,base-offset = <GCC_PCIE0_BCR>;
+};
+
+*****************************************************************************
+
+"qcom,alpha-pll"
+
+Alpha PLL clocks are a type of PLL which produces an output rate of
+output = input * ( L + a * 2 ^-40).
+
+Required Properties:
+- compatible:		"qcom,alpha-pll-20t", "qcom,alpha-pll-20p"
+- qcom,base-offset:	Register offset from top level clock controller.
+
+Recommended Properties:
+- qcom,clk-fmax:	See "General Optional Properties"
+- qcom,supply-group:	See "General Optional Properties"
+- qcom,parent:		See "General Optional Properties"
+
+Optional Properties:
+- qcom,output-enable:	Masked PLL output setting.
+- qcom,post-div-config:	Masked post divider setting.
+
+cci_pll: cci_pll {
+	compatible = "qcom,alpha-pll-20p";
+	qcom,base-offset = <CCI_PLL_MODE>;
+	qcom,parent = <&ao_xo>;
+	qcom,supply-group = <&mmss_vdd_dig>;
+	qcom,clk-fmax =
+		<FMAX_LOW 1000000000>;
+	qcom,output-enable = <0x9>;
+	qcom,post-div-config = <0x100>;
+};
+
+*****************************************************************************
+
+"qcom,fixed-alpha-pll"
+
+This particular instance of alpha-pll allows setting a rate once at bootup, after
+which the rate is immutable.
+
+Required Properties:
+- compatible:		"qcom,fixed-alpha-pll-20t", "qcom,fixed-alpha-pll-20p"
+- qcom,base-offset:	Register offset from top level clock controller.
+- qcom,pll-config-rate:	Indicates that the pll should be configured to a fixed rate
+			at initialization.
+- qcom,output-enable:	Masked PLL output setting.
+
+Recommended Properties:
+- qcom,clk-fmax:	See "General Optional Properties"
+- qcom,supply-group:	See "General Optional Properties"
+- qcom,parent:		See "General Optional Properties"
+
+Optional Properties:
+- qcom,fsm-en-bit:	Indicates that the pll is votable; the timing between
+			the steps to enable the pll is handled by a fsm.
+- qcom,fsm-en-offset:	Register offset for the vote register.
+			If fsm-en-bit is defined, this property is required.
+- qcom,post-div-config:	Masked post divider setting.
+
+mmpll8: mmpll8 {
+	compatible = "qcom,fixed-alpha-pll-20p";
+	qcom,base-offset = <MMSS_MMPLL8_MODE>;
+	qcom,pll-config-rate = <1050000000>;
+	qcom,parent = <&mmsscc_xo>;
+	qcom,supply-group = <&mmss_vdd_dig>;
+	qcom,clk-fmax =
+		<FMAX_LOWER 650000000>,
+		<FMAX_LOW 650000000>,
+		<FMAX_NOM 1300000000>,
+		<FMAX_TURBO 1300000000>;
+	qcom,output-enable = <0x1>;
+};

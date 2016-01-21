@@ -1,0 +1,327 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*
+ * As a general rule, only version-specific property overrides should be placed
+ * inside this file. However, device definitions should be placed inside the
+ * msm8974.dtsi file.
+ */
+
+#include "msm8974.dtsi"
+
+#include "msm-pm8x41-rpm-regulator.dtsi"
+#include "msm-pm8841.dtsi"
+&spmi_bus {
+	pm8941_lsid0: qcom,pm8941@0 {
+		reg = <0x0>;
+	};
+	pm8941_lsid1: qcom,pm8941@1 {
+		reg = <0x1>;
+	};
+};
+#include "msm-pm8941.dtsi"
+#include "msm8974-regulator.dtsi"
+#include "msm8974-clock.dtsi"
+
+#include "msm8974-v2-iommu.dtsi"
+#include "msm8974-v2-iommu-domains.dtsi"
+#include "msm8974-v2-pm.dtsi"
+
+&soc {
+	android_usb@fe8050c8 {
+		compatible = "qcom,android-usb";
+		reg = <0xfe8050c8 0xc8>;
+		qcom,pm-qos-latency = <2 1001 30001>;
+		qcom,android-usb-uicc-nluns = /bits/ 8 <1>;
+	};
+
+	qcom,msm-imem@fe805000 {
+		compatible = "qcom,msm-imem";
+		reg = <0xfe805000 0x1000>; /* Address and size of IMEM */
+		ranges = <0x0 0xfe805000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		download_mode@0 {
+			compatible = "qcom,msm-imem-download_mode";
+			reg = <0x0 8>;
+		};
+
+		mem_dump_table@14 {
+			compatible = "qcom,msm-imem-mem_dump_table";
+			reg = <0x14 4>;
+		};
+
+		restart_reason@65c {
+			compatible = "qcom,msm-imem-restart_reason";
+			reg = <0x65c 4>;
+		};
+
+		imem_cache_erp: cache_erp@6a4 {
+			compatible = "qcom,msm-imem-cache_erp";
+			reg = <0x6a4 4>;
+		};
+
+		boot_stats@6b0 {
+			compatible = "qcom,msm-imem-boot_stats";
+			reg = <0x6b0 32>;
+		};
+
+		pil@94c {
+			compatible = "qcom,msm-imem-pil";
+			reg = <0x94c 200>;
+		};
+
+		emergency_download_mode@fe0 {
+			compatible = "qcom,msm-imem-emergency_download_mode";
+			reg = <0xfe0 12>;
+		};
+	};
+
+	qcom,gcc@fc400000 {
+		compatible = "qcom,gcc-8974v2";
+	};
+
+	qcom,mmsscc@fd8c0000 {
+		compatible = "qcom,mmsscc-8974v2";
+	};
+};
+
+&usb3 {
+	qcom,usbin-vadc = <&pm8941_vadc>;
+};
+
+/* GPU overrides */
+&msm_gpu {
+	/* Updated chip ID */
+	qcom,chipid = <0x03030001>;
+
+	/* Updated bus bandwidth requirements */
+	qcom,msm-bus,vectors-KBps =
+		/* Off */
+		<26 512 0 0>, <89 604 0 0>,
+		/* Sub-SVS / SVS */
+		<26 512 0 1600000>, <89 604 0 3000000>,
+		/* SVS */
+		<26 512 0 2400000>, <89 604 0 3000000>,
+		/* Nominal / SVS */
+		<26 512 0 4912000>, <89 604 0 3000000>,
+		/* SVS / Nominal */
+		<26 512 0 2400000>, <89 604 0 5120000>,
+		/* Nominal */
+		<26 512 0 4912000>, <89 604 0 5120000>,
+		/* Turbo / Nominal */
+		<26 512 0 7464000>, <89 604 0 5120000>,
+		/* Nominal / Turbo */
+		<26 512 0 4912000>, <89 604 0 6400000>,
+		/* Turbo */
+		<26 512 0 7464000>, <89 604 0 6400000>;
+};
+
+&mdss_mdp {
+	qcom,vbif-settings = <0x0004 0x00000001>;
+
+	qcom,mdss-wb-off = <0x00011100 0x00011500
+			    0x00011900 0x00011D00 0x00012100>;
+	qcom,mdss-intf-off = <0x00012500 0x00012700
+			      0x00012900 0x00012b00>;
+	qcom,mdss-pingpong-off = <0x00012D00 0x00012E00 0x00012F00>;
+	qcom,mdss-has-bwc;
+	qcom,mdss-has-decimation;
+	qcom,mdss-ad-off = <0x0013100 0x00013300>;
+	vdd-cx-supply = <&pm8841_s2_corner>;
+	qcom,mdp-settings = <0x000002E0 0x000000E9>,
+			    <0x000002E4 0x00000055>,
+			    <0x000003AC 0xC0000CCC>,
+			    <0x000003B4 0xC0000CCC>,
+			    <0x000003BC 0x00CCCCCC>,
+			    <0x000004A8 0x0CCCC0C0>,
+			    <0x000004B0 0xCCCCC0C0>,
+			    <0x000004B8 0xCCCCC000>,
+			    <0x00011148 0x00000058>,
+			    <0x00011548 0x00000058>,
+			    <0x00011948 0x00000058>,
+			    <0x00011D48 0x00000058>,
+			    <0x00012148 0x00000058>;
+};
+
+&mdss_hdmi_tx {
+	reg =	<0xfd922100 0x370>,
+		<0xfd922500 0x7C>,
+		<0xfc4b8000 0x60F0>;
+	reg-names = "core_physical", "phy_physical", "qfprom_physical";
+};
+
+&msm_vidc {
+	qcom,load-freq-tbl = <979200 465000000 0xffffffff>,
+		<979200 465000000 0x55555555>,
+		<783360 465000000 0xffffffff>,
+		<783360 465000000 0x55555555>,
+		<489600 266670000 0xffffffff>,
+		<489600 266670000 0x55555555>,
+		<244800 133330000 0xffffffff>,
+		<244800 133330000 0x55555555>;
+	qcom,reg-presets = <0x80004 0x1>,
+		<0x80070 0x11FFF>,
+		<0x80074 0xA4>,
+		<0x800A8 0x1FFF>,
+		<0x80124 0x3>,
+		<0xE0020 0x5555556>,
+		<0xE0024 0x0>;
+	qcom,qdss-presets = <0xfc307000 0x1000>,
+		<0xfc322000 0x1000>,
+		<0xfc319000 0x1000>,
+		<0xfc31a000 0x1000>,
+		<0xfc31b000 0x1000>,
+		<0xfc321000 0x1000>,
+		<0xfa180000 0x1000>,
+		<0xfa181000 0x1000>;
+	qcom,vidc-iommu-domains {
+		qcom,domain-ns {
+			qcom,vidc-domain-phandle = <&venus_domain_ns>;
+			qcom,vidc-partition-buffer-types = <0x7ff>,
+				<0x800>;
+		};
+		qcom,domain-sec-bs {
+			qcom,vidc-domain-phandle = <&venus_domain_sec_bitstream>;
+			qcom,vidc-partition-buffer-types = <0x241>;
+		};
+		qcom,domain-sec-px {
+			qcom,vidc-domain-phandle = <&venus_domain_sec_pixel>;
+			qcom,vidc-partition-buffer-types = <0x106>;
+		};
+		qcom,domain-sec-np {
+			qcom,vidc-domain-phandle = <&venus_domain_sec_non_pixel>;
+			qcom,vidc-partition-buffer-types = <0x480>;
+		};
+	};
+	qcom,msm-bus-clients {
+		qcom,msm-bus-client@0 {
+			qcom,msm-bus,name = "venc-ddr";
+			qcom,msm-bus,num-cases = <10>;
+			qcom,msm-bus,num-paths = <1>;
+			qcom,msm-bus,vectors-KBps =
+				<63 512 0 0>,
+				<63 512 120000 302000>, /* VGA 30 fps */
+				<63 512 364000 302000>, /* VGA 60 fps */
+				<63 512 364000 302000>, /* 720p 30 fps */
+				<63 512 804000 302000>, /* 720p 60 fps */
+				<63 512 804000 302000>, /* 1080p 30 fps */
+				<63 512 1608000 604000>, /* 1080p 60 fps */
+				<63 512 2576000 967000>,
+				<63 512 4680000 1404000>,
+				<63 512 4988000 1496000>;
+			qcom,bus-configs = <0x1000414>;
+		};
+
+		qcom,msm-bus-client@1 {
+			qcom,msm-bus,name = "vdec-ddr";
+			qcom,msm-bus,num-cases = <10>;
+			qcom,msm-bus,num-paths = <1>;
+			qcom,msm-bus,vectors-KBps =
+				<63 512 0 0>,
+				<63 512 208000 303000>, /* VGA 30 fps */
+				<63 512 536000 1600000>, /* VGA 60 fps */
+				<63 512 536000 1600000>, /* 720p 30 fps */
+				<63 512 1012000 1600000>, /* 720p 60 fps */
+				<63 512 1012000 1600000>, /* 1080p 30 fps */
+				<63 512 2024000 1600000>, /* 1080p 60 fps */
+				<63 512 3240000 1600000>,
+				<63 512 4048000 1600000>,
+				<63 512 4264000 1600000>;
+			qcom,bus-configs = <0x30fcfff>;
+		};
+
+		qcom,msm-bus-client@2 {
+			qcom,msm-bus,name = "venc-ocmem";
+			qcom,msm-bus,num-cases = <10>;
+			qcom,msm-bus,num-paths = <1>;
+			qcom,msm-bus,vectors-KBps =
+				<68 604 0 0>,
+				<68 604 138000 1034000>, /* VGA 30 fps */
+				<68 604 414000 1034000>, /* VGA 60 fps */
+				<68 604 414000 1034000>, /* 720p 30 fps */
+				<68 604 940000 1034000>, /* 720p 60 fps */
+				<68 604 940000 1034000>, /* 1080p 30 fps */
+				<68 604 1880000 2068000>, /* 1080p 60 fps */
+				<68 604 3008000 3309000>,
+				<68 604 3760000 4136000>,
+				<68 604 4468000 2457000>;
+			qcom,bus-configs = <0x1000414>;
+		};
+
+		qcom,msm-bus-client@3 {
+			qcom,msm-bus,name = "vdec-ocmem";
+			qcom,msm-bus,num-cases = <10>;
+			qcom,msm-bus,num-paths = <1>;
+			qcom,msm-bus,vectors-KBps =
+				<68 604 0 0>,
+				<68 604 176000 519000>, /* VGA 30 fps */
+				<68 604 456000 519000>, /* VGA 60 fps */
+				<68 604 456000 519000>, /* 720p 30 fps */
+				<68 604 864000 629000>, /* 720p 60 fps */
+				<68 604 864000 629000>, /* 1080p 30 fps */
+				<68 604 1728000 1038000>, /* 1080p 60 fps */
+				<68 604 2766000 1661000>,
+				<68 604 3456000 2076000>,
+				<68 604 3662000 2198000>;
+			qcom,bus-configs = <0x30fcfff>;
+		};
+	};
+};
+
+&krait_pdn {
+	qcom,use-phase-switching;
+};
+
+&tspp {
+	vdd_cx-supply = <&pm8841_s2_corner>;
+};
+
+&krait_regulator_pmic {
+	status = "ok";
+
+	qcom,ctl@2000 {
+		status = "ok";
+	};
+
+	qcom,ps@2100 {
+		status = "ok";
+	};
+
+	qcom,freq@2200 {
+		status = "ok";
+	};
+};
+
+&cci {
+
+	qcom,camera@0 {
+		qcom,vdd-cx-supply = <&pm8841_s2>;
+		qcom,vdd-cx-name = "qcom,vdd-cx";
+	};
+
+	qcom,camera@1 {
+		qcom,vdd-cx-supply = <&pm8841_s2>;
+		qcom,vdd-cx-name = "qcom,vdd-cx";
+	};
+
+	qcom,camera@2 {
+		qcom,vdd-cx-supply = <&pm8841_s2>;
+		qcom,vdd-cx-name = "qcom,vdd-cx";
+	};
+
+	qcom,camera@90 {
+		qcom,vdd-cx-supply = <&pm8841_s2>;
+		qcom,vdd-cx-name = "qcom,vdd-cx";
+	};
+};

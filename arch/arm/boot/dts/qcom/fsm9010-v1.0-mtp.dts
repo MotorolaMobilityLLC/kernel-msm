@@ -1,0 +1,99 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "fsm9010.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. FSM9010 MTP";
+	compatible = "qcom,fsm9010-mtp", "qcom,fsm9010", "qcom,mtp";
+	qcom,board-id = <0x00010008 0>;
+};
+
+&sdhc_1 {
+	status = "ok";
+};
+
+&soc {
+	blsp1_uart3: serial@f9920000 {
+		status = "ok";
+	};
+
+	qcom,qfpfuse@fc4b8000 {
+		status = "ok";
+		vdd-blow-supply = <&dummy_vreg>;
+	};
+
+	pcie0: qcom,pcie@fc520000 {
+		status = "disabled";
+	};
+
+	pcie1: qcom,pcie@fc528000 {
+		status = "disabled";
+	};
+
+	i2c@f9924000 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c_0_active>;
+		status = "ok";
+	};
+
+	qfec0: qcom,qfec@0xe7000000 {
+		phy-addr = <0>;
+		phy-mode = "sgmii";
+		pinctrl-names = "active", "deactive";
+		pinctrl-0 = <&qfec0_mdio_default>;
+		pinctrl-1 = <&gp_mdio_default>;
+		status = "ok";
+	};
+
+	android_usb {
+		status= "ok";
+	};
+
+	usb3: ssusb@f9200000 {
+		qcom,vbus-present;
+		qcom,skip-charger-detection;
+		status = "ok";
+		usb_dwc3: dwc3@f9200000 {
+		usb-phy = <&hsphy>, <&usb_nop_phy>;
+			maximum-speed = "high-speed";
+		};
+	};
+
+	hsphy:  hsphy@f92f8800 {
+		status = "ok";
+	};
+
+	usb_nop_phy: usb_nop_phy {
+		compatible = "usb-nop-xceiv";
+	};
+
+	gmac0: ethernet@e7000000 {
+		status = "ok";
+	};
+
+	gmac1: ethernet@e7200000 {
+		status = "disabled";
+	};
+
+	mdio0: mdio {
+		phy0: ethernet-phy@0 {
+			status = "ok";
+		};
+
+		phy1: ethernet-phy@1 {
+			status = "disabled";
+		};
+	};
+};

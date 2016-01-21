@@ -1,0 +1,62 @@
+config IRQCHIP
+	def_bool y
+	depends on OF_IRQ
+
+config ARM_GIC
+	bool
+	select IRQ_DOMAIN
+	select MULTI_IRQ_HANDLER
+	select MSM_SHOW_RESUME_IRQ
+
+config GIC_NON_BANKED
+	bool
+
+config GIC_SECURE
+	bool
+	depends on ARM_GIC
+
+config ARM_VIC
+	bool
+	select IRQ_DOMAIN
+	select MULTI_IRQ_HANDLER
+
+config ARM_VIC_NR
+	int
+	default 4 if ARCH_S5PV210
+	default 3 if ARCH_S5PC100
+	default 2
+	depends on ARM_VIC
+	help
+	  The maximum number of VICs available in the system, for
+	  power management.
+
+config MSM_SHOW_RESUME_IRQ
+	bool "Enable logging of interrupts that could have caused resume"
+	depends on ARM_GIC
+	default n
+	help
+	  This option logs wake up interrupts that have triggered just before
+	  the resume loop unrolls. It helps to debug to know any unnecessary
+	  wake up interrupts that causes system to come out of low power modes.
+	  Say Y if you want to debug why the system resumed.
+
+config RENESAS_INTC_IRQPIN
+	bool
+	select IRQ_DOMAIN
+
+config RENESAS_IRQC
+	bool
+	select IRQ_DOMAIN
+
+config VERSATILE_FPGA_IRQ
+	bool
+	select IRQ_DOMAIN
+
+config VERSATILE_FPGA_IRQ_NR
+       int
+       default 4
+       depends on VERSATILE_FPGA_IRQ
+
+config MSM_IRQ
+	bool
+	select IRQ_DOMAIN

@@ -1,0 +1,26 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*
+ * As a general rule, only version-specific property overrides should be placed
+ * inside this file. However, device definitions should be placed inside the
+ * msm8610.dtsi file.
+ */
+
+#include "msm8610.dtsi"
+#include "msm8610-v1-pm.dtsi"
+
+/ {
+	qcom,msm-id = <147 1000>, <165 1000>, <161 1000>, <162 1000>,
+		      <163 1000>, <164 1000>, <166 1000>, <225 1000>,
+                      <226 1000>;
+};

@@ -1,0 +1,210 @@
+/*
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/*
+ * NOTE:
+ * As a general rule, only version-specific property overrides should be placed
+ * inside this file. However, device definitions should be placed inside the
+ * msm8976.dtsi file.
+ */
+
+#include "msm8976.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM 8976v1.1";
+	compatible = "qcom,msm8976";
+	qcom,msm-id = <278 0x10001>;
+};
+
+/*Overwrite with V1.1 spec*/
+&soc {
+	/* APC0 / APC 1 / GFX CPR nodes */
+	apc0_vreg_corner: regulator@b018000 {
+
+		/delete-property/ qcom,cpr-fuse-version-map;
+		/delete-property/ qcom,cpr-quotient-adjustment;
+
+		qcom,cpr-speed-bin-max-corners =
+				<0 0 2 4 8>;
+	};
+
+	apc1_vreg_corner: regulator@b118000 {
+
+		/delete-property/ qcom,cpr-fuse-version-map;
+		/delete-property/ qcom,cpr-quotient-adjustment;
+
+		qcom,cpr-speed-bin-max-corners =
+				<0 0 2 4 7>;
+	};
+
+	gfx_vreg_corner: regulator@98000 {
+		qcom,foundry-id-fuse = <37 40 3>;
+		qcom,cpr-fuse-version-map =
+			<0 (-1) (-1)>,
+			<4 (-1) (-1)>;
+		qcom,cpr-init-voltage-adjustment =
+			<(-55000) 0 (-60000) 0 (60000) 0 (60000) 0 (50000)>,
+			<(-55000) 0 (-60000) 0 (60000) 0 (60000) 0 (50000)>;
+		qcom,cpr-target-quotients =
+			<376  368  483  453  149 173 78  100>,
+			<562  536  675  627  264 303 163 199>,
+			<794  749  907  842  419 473 283 336>,
+			<780  752  902  854  412 459 283 330>,
+			<892  858  1014 960  498 544 357 407>,
+			<1010 971  1138 1080 579 626 428 479>,
+			<1074 1028 1198 1135 635 675 483 531>,
+			<1213 1157 1342 1268 736 771 574 619>,
+			<1326 1256 1455 1367 808 852 628 682>,
+			<413  401  520  486  173 200  96 121>,
+			<575  547  688  638  272 312 169 206>,
+			<644  617  757  710  323 365 211 252>,
+			<755  730  877  832  396 441 271 316>,
+			<829  803  951  905  458 499 327 372>,
+			<960  927  1088 1036 547 590 404 451>,
+			<1011 973  1135 1080 595 630 453 496>,
+			<1188 1135 1317 1246 720 753 562 605>,
+			<1301 1234 1430 1345 792 834 616 668>;
+	};
+};
+
+&clock_gcc {
+	compatible = "qcom,gcc-8976-v1";
+};
+
+&clock_gcc_mdss {
+	compatible = "qcom,gcc-mdss-8976-v1";
+};
+
+&soc {
+	/delete-node/ qcom,cpu-clock-8976@b016000;
+
+	clock_cpu: qcom,cpu-clock-8976@b016000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "qcom,cpu-clock-8976";
+		reg =   <0xb114000  0x68>,
+			<0xb014000  0x68>,
+			<0xb116000  0x40>,
+			<0xb016000  0x40>,
+			<0xb1d0000  0x40>,
+			<0xb111050  0x08>,
+			<0xb011050  0x08>,
+			<0xb1d1050  0x08>,
+			<0x00a412c  0x08>;
+		reg-names = "rcgwr-c0-base", "rcgwr-c1-base",
+			    "c0-pll", "c1-pll", "cci-pll",
+			    "c0-mux", "c1-mux", "cci-mux",
+			    "efuse";
+
+		/* RCGwR settings */
+		qcom,num-clusters = <2>;
+		qcom,lmh-sid-c0  = < 0x30 0x077706db>,
+				   < 0x34 0x05550249>,
+				   < 0x38 0x00000111>;
+		qcom,link-sid-c0 = < 0x40 0x000fc987>;
+		qcom,dfs-sid-c0  = < 0x10 0xfefebff7>,
+				   < 0x14 0xfdff7fef>,
+				   < 0x18 0xfbffdefb>,
+				   < 0x1c 0xb69b5555>,
+				   < 0x20 0x24929249>,
+				   < 0x24 0x49241112>,
+				   < 0x28 0x11112111>,
+				   < 0x2c 0x00008102>;
+		qcom,lmh-sid-c1  = < 0x30 0x077706db>,
+				   < 0x34 0x05550249>,
+				   < 0x38 0x00000111>;
+		qcom,link-sid-c1 = < 0x40 0x000fc987>;
+		qcom,dfs-sid-c1  = < 0x10 0xfefebff7>,
+				   < 0x14 0xfdff7fef>,
+				   < 0x18 0xfbffdefb>,
+				   < 0x1c 0xb69b5555>,
+				   < 0x20 0x24929249>,
+				   < 0x24 0x49241112>,
+				   < 0x28 0x11112111>,
+				   < 0x2c 0x00008102>;
+
+		vdd_mx_hf-supply = <&pm8950_s6_level_ao>;
+		vdd_hf_pll-supply = <&pm8950_l7_ao>;
+		vdd_mx_sr-supply = <&pm8950_s6_level_ao>;
+		vdd_a72-supply = <&apc1_vreg_corner>;
+		vdd_a53-supply = <&apc0_vreg_corner>;
+		vdd_cci-supply = <&apc0_vreg_corner>;
+		clocks = <&clock_gcc clk_xo_a_clk_src>,
+			 <&clock_gcc clk_gpll4_clk_src>,
+			 <&clock_gcc clk_gpll0_ao_clk_src>;
+		clock-names = "xo_a", "aux_clk_2", "aux_clk_3";
+		qcom,speed0-bin-v0-c0 =
+			<          0 0>,
+			<  400000000 1>,
+			<  691200000 2>,
+			<  806400000 3>,
+			< 1017600000 4>,
+			< 1190400000 5>,
+			< 1305600000 6>,
+			< 1382400000 7>,
+			< 1401600000 8>;
+		qcom,speed0-bin-v0-c1 =
+			<          0 0>,
+			<  400000000 1>,
+			<  883200000 2>,
+			< 1190400000 3>,
+			< 1382400000 4>,
+			< 1612800000 5>,
+			< 1747200000 6>,
+			< 1804800000 7>;
+		qcom,speed0-bin-v0-cci =
+			<          0 0>,
+			<  307200000 1>,
+			<  403200000 3>,
+			<  441600000 4>,
+			<  556800000 5>,
+			<  614400000 6>;
+		#clock-cells = <1>;
+		ranges;
+		qcom,spm@0 {
+			compatible = "qcom,cpu-spm-8976";
+			reg = <0x0b111200 0x100>,
+			      <0x0b011200 0x100>,
+			      <0x0b1d4000 0x100>;
+			reg-names = "spm_c0_base", "spm_c1_base",
+				     "spm_cci_base";
+		};
+	};
+
+	qcom,vidc@1d00000 {
+		/delete-property/ qcom,reset-clock-control;
+		/delete-property/ qcom,regulator-scaling;
+	};
+
+	qcom,msm-thermal {
+		vdd-mx-st-supply = <&pm8950_s6_floor_level>;
+
+		qcom,vdd-mx-rstr {
+			qcom,vdd-rstr-reg = "vdd-mx-st";
+			qcom,levels = <RPM_SMD_REGULATOR_LEVEL_TURBO_HIGH
+					RPM_SMD_REGULATOR_LEVEL_BINNING
+					RPM_SMD_REGULATOR_LEVEL_BINNING>;
+			qcom,min-level = <RPM_SMD_REGULATOR_LEVEL_RETENTION>;
+		};
+	};
+};
+
+&mdss_dsi {
+	/delete-property/ qcom,split-dsi-independent-pll;
+};
+
+&sdhc_1 {
+	qcom,clk-rates = <400000 25000000 50000000 100000000
+					186400000 372800000>;
+};

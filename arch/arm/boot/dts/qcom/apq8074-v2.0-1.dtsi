@@ -1,0 +1,96 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*
+ * As a general rule, only version-specific property overrides should be placed
+ * inside this file. However, device definitions should be placed inside the
+ * msm8974.dtsi file.
+ */
+
+#include "msm8974-v2.0-1.dtsi"
+#include "apq8074-v2.0-1-ion.dtsi"
+
+/ {
+        memory {
+                alt_peripheral_mem: peripheral_region@a700000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+                        reg = <0x0a700000 0x2b00000>;
+			label = "peripheral_mem";
+		};
+
+		adsp_venus_mem: adsp_venus_region@0xd000000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+                        reg = <0x0dc00000 0x1e00000>;
+			label = "adsp_venus_mem";
+
+		};
+
+        };
+};
+
+&peripheral_mem {
+	status = "disabled";
+};
+
+&soc {
+	qcom,qseecom@a700000 {
+		compatible = "qcom,qseecom";
+		reg = <0x0a700000 0x500000>;
+		reg-names = "secapp-region";
+		qcom,disk-encrypt-pipe-pair = <2>;
+		qcom,hlos-ce-hw-instance = <1>;
+		qcom,qsee-ce-hw-instance = <0>;
+		qcom,msm-bus,name = "qseecom-noc";
+		qcom,msm-bus,num-cases = <4>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,support-bus-scaling;
+		qcom,msm-bus,vectors-KBps =
+				<55 512 0 0>,
+				<55 512 0 0>,
+				<55 512 120000 1200000>,
+				<55 512 393600 3936000>;
+		qcom,ce-opp-freq = <100000000>;
+	};
+
+	qcom,lpass@fe200000 {
+		linux,contiguous-region = <&adsp_venus_mem>;
+	};
+
+	qcom,mss@fc880000 {
+		linux,contiguous-region = <&alt_peripheral_mem>;
+	};
+
+	qcom,venus@fdce0000 {
+		linux,contiguous-region = <&adsp_venus_mem>;
+	};
+
+	qcom,pronto@fb21b000 {
+		linux,contiguous-region = <&alt_peripheral_mem>;
+	};
+
+
+};
+
+&qseecom {
+	status = "disabled";
+};
+
+&ehci {
+	hsusb_vdd_dig-supply = <&pm8841_s2_corner>;
+	qcom,vdd-voltage-level = <1 2 3 5 7>;
+};
+

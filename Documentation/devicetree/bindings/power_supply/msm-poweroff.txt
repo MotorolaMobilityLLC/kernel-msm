@@ -1,0 +1,30 @@
+MSM Restart Driver
+
+A power supply hold (ps-hold) bit is set to power the msm chipsets.
+Clearing that bit allows us to restart/poweroff. The difference
+between poweroff and restart is determined by unique power manager IC
+settings.
+
+Required Properties:
+-compatible: "qcom,pshold"
+-reg: Specifies the physical address of the ps-hold register
+      This value must correspond to "pshold-base" as defined in reg-names
+-reg-names: must contain "pshold-base"
+	    may also contain "tcsr-boot-misc-detect"
+
+Optional Properties:
+-reg: A secondary reg address/size pair may be provided, to specify the address
+      of the TCSR_BOOT_MISC_DETECT register. This address is typically used to
+      configure the type of reset desired. Omitting this address implies that
+      the reset type shall be configured by means of a call to the secure
+      environment. This value must correspond to "tcsr-boot-misc-detect" as
+      defined in reg-names
+-reg-names: must contain "tcsr-boot-misc-detect" if the secondary address/size
+      pair described above is defined.
+
+Example:
+
+	restart@fc4ab000 {
+		compatible = "qcom,pshold";
+		reg = <0xfc4ab000 0x4>;
+	};

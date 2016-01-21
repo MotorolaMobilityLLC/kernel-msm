@@ -1,0 +1,187 @@
+/* Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+        msm_bus: qcom,kgsl-busmon{
+                label = "kgsl-busmon";
+                compatible = "qcom,kgsl-busmon";
+        };
+
+        gpubw: qcom,gpubw {
+                compatible = "qcom,devbw";
+                governor = "bw_vbif";
+                qcom,src-dst-ports = <26 512>;
+                qcom,bw-tbl =
+			<     0 /*  off     */ >,
+			<   762 /*  100 MHz */ >,
+			<  1144 /*  150 MHz */ >,
+			<  1525 /*  200 MHz */ >,
+			<  2288 /*  300 MHz */ >,
+			<  3509 /*  460 MHz */ >,
+			<  4173 /*  547 MHz */ >,
+			<  5271 /*  691 MHz */ >,
+			<  5928 /*  777 MHz */ >,
+			<  7102 /*  931 MHz */ >;
+        };
+
+	msm_gpu: qcom,kgsl-3d0@fdb00000 {
+		label = "kgsl-3d0";
+		compatible = "qcom,kgsl-3d0", "qcom,kgsl-3d";
+		reg = <0xfdb00000 0x40000>;
+		reg-names = "kgsl_3d0_reg_memory";
+		interrupts = <0 33 0>;
+		interrupt-names = "kgsl_3d0_irq";
+		qcom,id = <0>;
+
+		qcom,chipid = <0x04010800>;
+
+		qcom,initial-pwrlevel = <4>;
+
+		qcom,idle-timeout = <8>; //<HZ/12>
+		qcom,strtstp-sleepwake;
+
+		/*
+		 * Clocks = KGSL_CLK_CORE | KGSL_CLK_IFACE
+		 * KGSL_CLK_RBBMTIMER
+		 */
+		qcom,clk-map = <0x00000086>;
+
+		clocks = <&clock_mmss clk_oxili_gfx3d_clk>,
+			<&clock_mmss clk_oxilicx_ahb_clk>,
+			<&clock_mmss clk_oxili_rbbmtimer_clk>;
+		clock-names = "core_clk", "iface_clk", "rbbmtimer_clk";
+
+		/* Bus Scale Settings */
+                qcom,gpubw-dev = <&gpubw>;
+		qcom,bus-control;
+                /*
+                 * qcom,msm-bus structures below define
+                 * GPU msm client and its vote data for
+                 * each of available power levels
+                 * (gpu-bus frequency combination)
+                 */
+		qcom,msm-bus,name = "grp3d";
+		qcom,msm-bus,num-cases = <8>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<26 512 0 0>,
+				<26 512 0 1600000>,  /*1 bus=200 */
+				<26 512 0 2400000>,  /*2 bus=300 */
+				<26 512 0 3680000>,  /*3 bus=460 */
+				<26 512 0 4376000>,  /*4 bus=547 */
+				<26 512 0 5528000>,  /*5 bus=691 */
+				<26 512 0 6216000>,  /*6 bus=777 */
+				<26 512 0 7448000>;  /*7 bus=931 */
+
+		/* GDSC oxili regulators */
+		vddcx-supply = <&gdsc_oxili_cx>;
+		vdd-supply = <&gdsc_oxili_gx>;
+
+		/* IOMMU Data */
+		iommu = <&kgsl_iommu>;
+
+		/* Trace bus */
+		coresight-id = <67>;
+		coresight-name = "coresight-gfx";
+		coresight-nr-inports = <0>;
+		coresight-outports = <0>;
+		coresight-child-list = <&funnel_in0>;
+		coresight-child-ports = <4>;
+
+		/* Enable POPP */
+		qcom,popp-enable;
+
+		/* Power levels  */
+		qcom,gpu-pwrlevels {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			compatible = "qcom,gpu-pwrlevels";
+
+			qcom,gpu-pwrlevel@0 {
+				reg = <0>;
+				qcom,gpu-freq = <600000000>;
+				qcom,bus-freq = <7>;
+				qcom,bus-min = <6>;
+				qcom,bus-max = <7>;
+			};
+
+                        qcom,gpu-pwrlevel@1 {
+                                reg = <1>;
+                                qcom,gpu-freq = <490000000>;
+                                qcom,bus-freq = <6>;
+				qcom,bus-min = <5>;
+				qcom,bus-max = <7>;
+                        };
+
+			qcom,gpu-pwrlevel@2 {
+				reg = <2>;
+				qcom,gpu-freq = <450000000>;
+				qcom,bus-freq = <5>;
+				qcom,bus-min = <4>;
+				qcom,bus-max = <6>;
+			};
+
+                        qcom,gpu-pwrlevel@3 {
+                                reg = <3>;
+                                qcom,gpu-freq = <367000000>;
+                                qcom,bus-freq = <4>;
+				qcom,bus-min = <3>;
+				qcom,bus-max = <5>;
+                        };
+
+			qcom,gpu-pwrlevel@4 {
+				reg = <4>;
+				qcom,gpu-freq = <300000000>;
+				qcom,bus-freq = <3>;
+				qcom,bus-min = <2>;
+				qcom,bus-max = <4>;
+			};
+
+			qcom,gpu-pwrlevel@5 {
+				reg = <5>;
+				qcom,gpu-freq = <180000000>;
+				qcom,bus-freq = <2>;
+				qcom,bus-min = <1>;
+				qcom,bus-max = <3>;
+			};
+
+			qcom,gpu-pwrlevel@6 {
+				reg = <6>;
+				qcom,gpu-freq = <27000000>;
+				qcom,bus-freq = <0>;
+				qcom,bus-min = <0>;
+				qcom,bus-max = <0>;
+			};
+		};
+
+                /*
+                 * qcom,ocmem-bus-client defines
+                 * ocmem msm client and its vote data for
+                 * each of available power levels -
+                 * the same levels that grp3d above uses
+                 */
+                qcom,ocmem-bus-client {
+                        qcom,msm-bus,name = "gpu-ocmem";
+                        qcom,msm-bus,num-cases = <7>;
+                        qcom,msm-bus,num-paths = <1>;
+                        qcom,msm-bus,vectors-KBps =
+				<89 662 0 9600000>,     /* gpu=600 */
+				<89 662 0 7840000>,     /* gpu=490 */
+				<89 662 0 7200000>,     /* gpu=450 */
+				<89 662 0 5872000>,     /* gpu=367 */
+				<89 662 0 4800000>,     /* gpu=300 */
+				<89 662 0 2880000>,     /* gpu=180 */
+                                <89 662 0 0>;
+                };
+	};
+};

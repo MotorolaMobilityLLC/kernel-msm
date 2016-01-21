@@ -1,0 +1,92 @@
+Device tree binding vendor prefix registry.  Keep list in alphabetical order.
+
+This isn't an exhaustive list, but you should add new prefixes to it before
+using them to avoid name-space collisions.
+
+ad	Avionic Design GmbH
+adi	Analog Devices, Inc.
+aeroflexgaisler	Aeroflex Gaisler AB
+ak	Asahi Kasei Corp.
+amcc	Applied Micro Circuits Corporation (APM, formally AMCC)
+apm	Applied Micro Circuits Corporation (APM)
+arm	ARM Ltd.
+atmel	Atmel Corporation
+avago	Avago Technologies
+awinic	AWINIC Technology Co.Ltd
+bosch	Bosch Sensortec GmbH
+brcm	Broadcom Corporation
+capella	Capella Microsystems, Inc.
+cavium	Cavium, Inc.
+chrp	Common Hardware Reference Platform
+cirrus	Cirrus Logic, Inc.
+cortina	Cortina Systems, Inc.
+dallas	Maxim Integrated Products (formerly Dallas Semiconductor)
+denx	Denx Software Engineering
+di	Dyna Image Corporation
+emmicro	EM Microelectronic
+epson	Seiko Epson Corp.
+est	ESTeem Wireless Modems
+fairchild	Fairchild Semiconductor International, Inc.
+focaltech Focaltech systems
+fsl	Freescale Semiconductor
+GEFanuc	GE Fanuc Intelligent Platforms Embedded Systems, Inc.
+goodix	Goodix. Ltd.
+gef	GE Fanuc Intelligent Platforms Embedded Systems, Inc.
+hp	Hewlett Packard
+ibm	International Business Machines (IBM)
+idt	Integrated Device Technologies, Inc.
+img	Imagination Technologies Ltd.
+intercontrol	Inter Control Group
+invn	InvenSense Inc.
+intersil	Intersil Corp.
+ite	ITE Tech. Inc.
+jdi	Japan Display Inc.
+lattice	Lattice Semiconductor.
+linux	Linux-specific binding
+liteon	Lite-On Technology Corporation
+kionix	Kionix Inc.
+marvell	Marvell Technology Group Ltd.
+maxim	Maxim Integrated Products
+mcube	mCube, Inc.
+memsic	MEMSIC, Inc
+mosaixtech	Mosaix Technologies, Inc.
+national	National Semiconductor
+nintendo	Nintendo
+nvidia	NVIDIA
+nxp	NXP Semiconductors
+onnn	ON Semiconductor Corp.
+ovti	OmniVision Technologies, Inc.
+pericom	Pericom Semiconductor Corp.
+picochip	Picochip Ltd
+powervr	PowerVR (deprecated, use img)
+qca	Qualcomm Atheros, Inc.
+qcom	Qualcomm Technologies, Inc
+ralink	Mediatek/Ralink Technology Corp.
+ramtron	Ramtron International
+realtek Realtek Semiconductor Corp.
+renesas	Renesas Electronics Corporation
+samsung	Samsung Semiconductor
+sbs	Smart Battery System
+schindler	Schindler
+smartv SmartV Ltd
+stk	Sensortek Technology Corporation.(formerly Sitronix Technology Co., Ltd.)
+shinetech	Shine Tech Corporation, Ltd.
+sil	Silicon Image
+silabs	Silicon Laboratories
+silergy	Silergy Corp.
+simtek
+sirf	SiRF Technology, Inc.
+sne	Sony
+snps 	Synopsys, Inc.
+st	STMicroelectronics
+ste	ST-Ericsson
+stericsson	ST-Ericsson
+synaptics	Synaptics Inc.
+synopsys 	Synopsys, Inc. (deprecated, use snps)
+ti	Texas Instruments
+toshiba	Toshiba Corporation
+via	VIA Technologies, Inc.
+wlf	Wolfson Microelectronics
+wm	Wondermedia Technologies, Inc.
+winbond Winbond Electronics corp.
+xlnx	Xilinx

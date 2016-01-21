@@ -1,0 +1,35 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "fsm9900-mtp.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. FSM9900 MTP";
+	compatible = "qcom,fsm9900-mtp", "qcom,fsm9900", "qcom,mtp";
+	qcom,board-id = <0x00010008 0>;
+};
+
+&soc {
+	pcie0: qcom,pcie@fc520000 {
+		qcom,ext-ref-clk;
+	};
+
+	pcie1: qcom,pcie@fc528000 {
+		qcom,ext-ref-clk;
+	};
+
+	emac1:qcom,emac@feb00000 {
+		qcom,no-external-phy;
+	};
+};

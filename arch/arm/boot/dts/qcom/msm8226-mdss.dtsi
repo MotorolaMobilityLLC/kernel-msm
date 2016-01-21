@@ -1,0 +1,214 @@
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	mdss_mdp: qcom,mdss_mdp@fd900000 {
+		compatible = "qcom,mdss_mdp";
+		reg = <0xfd900000 0x22100>,
+			<0xfd924000 0x1000>;
+		reg-names = "mdp_phys", "vbif_phys";
+		interrupts = <0 72 0>;
+		vdd-supply = <&gdsc_mdss>;
+
+		/* Bus Scale Settings */
+		qcom,msm-bus,name = "mdss_mdp";
+		qcom,msm-bus,num-cases = <3>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			<22 512 0 0>,
+			<22 512 0 6400000>,
+			<22 512 0 6400000>;
+
+		/* Fudge factors */
+		qcom,mdss-ab-factor = <1 1>;		/* 1 times    */
+		qcom,mdss-ib-factor = <2 1>;		/* 2 times  */
+		qcom,mdss-clk-factor = <5 4>;		/* 1.25 times */
+
+		/* Clock levels */
+		qcom,mdss-clk-levels = <92310000 100000000
+				    133330000 177780000 200000000>;
+		qcom,max-mixer-width = <2048>;
+		qcom,mdss-mdp-reg-offset = <0x00000100>;
+		qcom,max-bandwidth-low-kbps = <1100000>;
+		qcom,max-bandwidth-high-kbps = <1660000>;
+		qcom,max-clk-rate = <200000000>;
+		qcom,mdss-pipe-vig-off = <0x00001200>;
+		qcom,mdss-pipe-rgb-off = <0x00001E00>;
+		qcom,mdss-pipe-dma-off = <0x00002A00>;
+		qcom,mdss-pipe-vig-fetch-id = <1>;
+		qcom,mdss-pipe-rgb-fetch-id = <7>;
+		qcom,mdss-pipe-dma-fetch-id = <4>;
+
+		qcom,mdss-pipe-vig-xin-id = <0>;
+		qcom,mdss-pipe-rgb-xin-id = <1>;
+		qcom,mdss-pipe-dma-xin-id = <2>;
+
+		qcom,mdss-pipe-vig-clk-ctrl-offsets = <0x2AC 0 0>;
+		qcom,mdss-pipe-rgb-clk-ctrl-offsets = <0x2AC 4 8>;
+		qcom,mdss-pipe-dma-clk-ctrl-offsets = <0x2AC 8 12>;
+
+		qcom,mdss-pipe-sw-reset-off = <0x00A8>;
+		qcom,mdss-pipe-vig-sw-reset-map = <0>;
+		qcom,mdss-pipe-rgb-sw-reset-map = <1>;
+		qcom,mdss-pipe-dma-sw-reset-map = <2>;
+
+		qcom,mdss-smp-data = <7 4096>;
+
+		qcom,mdss-no-lut-read;
+
+		qcom,mdss-ctl-off = <0x00000600 0x00000700>;
+		qcom,mdss-mixer-intf-off = <0x00003200>;
+		qcom,mdss-mixer-wb-off = <0x00003E00>;
+		qcom,mdss-dspp-off = <0x00004600>;
+		qcom,mdss-pingpong-off = <0x00021B00>;
+		qcom,mdss-wb-off = <0x00011100 0x00013100>;
+		qcom,mdss-intf-off = <0x00000000 0x00021300>;
+		qcom,mdss-rot-block-size = <64>;
+		qcom,mdss-default-ot-wr-limit = <2>;
+		qcom,mdss-wfd-mode = "shared";
+		qcom,mdss-smp-mb-per-pipe = <3>;
+		vdd-cx-supply = <&pm8226_s1_corner>;
+
+		qcom,vbif-settings = <0x004 0x00000001>,
+				     <0x0D8 0x00000707>,
+				     <0x124 0x00000003>;
+		qcom,mdp-settings = <0x000002E0 0x000000A5>,
+				    <0x000002E4 0x00000055>,
+				    <0x000003AC 0xC0000CCC>,
+				    <0x000003B4 0xC0000000>,
+				    <0x000003BC 0x00C00C00>,
+				    <0x000004A8 0x0CCCC000>,
+				    <0x000004B0 0xC0000000>,
+				    <0x000004B8 0xC0000000>,
+				    <0x00011148 0x00000058>,
+				    <0x00013148 0x00000058>;
+
+		/* buffer parameters to calculate prefill bandwidth */
+		qcom,mdss-prefill-outstanding-buffer-bytes = <1024>;
+		qcom,mdss-prefill-y-buffer-bytes = <0>;
+		qcom,mdss-prefill-scaler-buffer-lines-bilinear = <2>;
+		qcom,mdss-prefill-scaler-buffer-lines-caf = <4>;
+		qcom,mdss-prefill-post-scaler-buffer-pixels = <0>;
+		qcom,mdss-prefill-pingpong-buffer-pixels = <4096>;
+		qcom,mdss-prefill-fbc-lines = <0>;
+
+		mdss_fb0: qcom,mdss_fb_primary {
+			cell-index = <0>;
+			compatible = "qcom,mdss-fb";
+			qcom,memblock-reserve = <0x03200000 0xFA0000>;
+		};
+
+		mdss_fb1: qcom,mdss_fb_wfd {
+			cell-index = <1>;
+			compatible = "qcom,mdss-fb";
+		};
+	};
+
+	mdss_dsi: qcom,mdss_dsi@0 {
+		compatible = "qcom,mdss-dsi";
+		hw-config = "single_dsi";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		qcom,mdss-fb-map-prim = <&mdss_fb0>;
+		gdsc-supply = <&gdsc_mdss>;
+		vddio-supply = <&pm8226_l8>;
+		vdda-supply = <&pm8226_l4>;
+		ranges = <0xfd922800 0xfd922800 0x1f8
+			0xfd922b00 0xfd922b00 0x280
+			0xfd922d80 0xfd922d80 0x30
+			0xfd828000 0xfd828000 0x108>;
+
+		qcom,mmss-ulp-clamp-ctrl-offset = <0x14>;
+		qcom,mmss-phyreset-ctrl-offset = <0x108>;
+
+		qcom,core-supply-entries {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,core-supply-entry@0 {
+				reg = <0>;
+				qcom,supply-name = "gdsc";
+				qcom,supply-min-voltage = <0>;
+				qcom,supply-max-voltage = <0>;
+				qcom,supply-enable-load = <0>;
+				qcom,supply-disable-load = <0>;
+			};
+		};
+
+		qcom,ctrl-supply-entries {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,ctrl-supply-entry@0 {
+				reg = <0>;
+				qcom,supply-name = "vdda";
+				qcom,supply-min-voltage = <1200000>;
+				qcom,supply-max-voltage = <1200000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+				qcom,supply-post-on-sleep = <20>;
+			};
+		};
+
+		qcom,phy-supply-entries {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,phy-supply-entry@0 {
+				reg = <0>;
+				qcom,supply-name = "vddio";
+				qcom,supply-min-voltage = <1800000>;
+				qcom,supply-max-voltage = <1800000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+			};
+		};
+
+		mdss_dsi0: qcom,mdss_dsi_ctrl0@fd922800 {
+			compatible = "qcom,mdss-dsi-ctrl";
+			label = "MDSS DSI CTRL->0";
+			cell-index = <0>;
+			reg = 	<0xfd922800 0x1f8>,
+				<0xfd922b00 0x280>,
+				<0xfd922d80 0x30>,
+				<0xfd828000 0x108>;
+			reg-names = "dsi_ctrl", "dsi_phy",
+				"dsi_phy_regulator", "mmss_misc_phys";
+
+			qcom,mdss-mdp = <&mdss_mdp>;
+			vdd-supply = <&pm8226_l15>;
+			vddio-supply = <&pm8226_l8>;
+
+			qcom,platform-reset-gpio = <&msmgpio 25 0>;
+			qcom,platform-te-gpio = <&msmgpio 24 0>;
+
+			qcom,platform-strength-ctrl = [ff 06];
+			qcom,platform-bist-ctrl = [00 00 b1 ff 00 00];
+			qcom,platform-regulator-settings = [07 08 07 00 20 07 01];
+			qcom,platform-lane-config = [00 00 00 00 00 00 00 01 97
+				00 00 00 00 05 00 00 01 97
+				00 00 00 00 0a 00 00 01 97
+				00 00 00 00 0f 00 00 01 97
+				00 c0 00 00 00 00 00 01 bb];
+
+		};
+	};
+
+	qcom,mdss_wb_panel {
+		compatible = "qcom,mdss_wb";
+		qcom,mdss_pan_res = <1280 720>;
+		qcom,mdss_pan_bpp = <24>;
+		qcom,mdss-fb-map = <&mdss_fb1>;
+	};
+};
+
+#include "msm8226-mdss-panels.dtsi"

@@ -1,0 +1,8 @@
+
+
+genhdr-y += unistd_32.h
+genhdr-y += unistd_64.h
+genhdr-y += unistd_x32.h
+
+generic-y += clkdev.h
+generic-y += mcs_spinlock.h

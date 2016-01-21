@@ -1,0 +1,245 @@
+Qualcomm mdss-dsi
+
+mdss-dsi is the master DSI device which supports multiple DSI host controllers that
+are compatible with MIPI display serial interface specification.
+
+Required properties:
+- compatible:				Must be "qcom,mdss-dsi"
+- hw-config:				Specifies the DSI host setup configuration
+					"hw-config" = "single_dsi"
+					"hw-config" = "dual_dsi"
+					"hw-config" = "split_dsi"
+- ranges:				The standard property which specifies the child address
+					space, parent address space and the length.
+- vdda-supply:				Phandle for vreg regulator device node.
+
+Optional properties:
+- vcca-supply:				Phandle for vcca regulator device node.
+- pll-src-config			Specified the source PLL for the DSI
+					link clocks:
+					"PLL0" - Clocks sourced out of DSI PLL0
+					"PLL1" - Clocks sourced out of DSI PLL1
+					This property is only valid for
+					certain DSI hardware configurations
+					mentioned in the "hw-config" binding above.
+					For split_dsi config, the clocks can
+					only be sourced out of PLL0. For
+					dual_dsi, both PLL would be active.
+					For single DSI, it is possible to
+					select either PLL. If no value is specified,
+					the default value for single DSI is set as PLL0.
+- qcom,ctrl-supply-entries:		A node that lists the elements of the supply used by the
+					DSI controller. There can be more than one instance
+					of this binding, in which case the entry would be appended
+					with the supply entry index.
+					e.g. qcom,ctrl-supply-entry@0
+					-- qcom,supply-name: name of the supply (vdd/vdda/vddio)
+					-- qcom,supply-min-voltage: minimum voltage level (uV)
+					-- qcom,supply-max-voltage: maximum voltage level (uV)
+					-- qcom,supply-enable-load: load drawn (uA) from enabled supply
+					-- qcom,supply-disable-load: load drawn (uA) from disabled supply
+					-- qcom,supply-pre-on-sleep: time to sleep (ms) before turning on
+					-- qcom,supply-post-on-sleep: time to sleep (ms) after turning on
+					-- qcom,supply-pre-off-sleep: time to sleep (ms) before turning off
+					-- qcom,supply-post-off-sleep: time to sleep (ms) after turning off
+- qcom,phy-supply-entries:		A node that lists the elements of the supply used by the
+					DSI PHY. There can be more than one instance
+					of this binding, in which case the entry would be appended
+					with the supply entry index.
+					e.g. qcom,ctrl-supply-entry@0
+					-- qcom,supply-name: name of the supply (vdd/vdda/vddio)
+					-- qcom,supply-min-voltage: minimum voltage level (uV)
+					-- qcom,supply-max-voltage: maximum voltage level (uV)
+					-- qcom,supply-enable-load: load drawn (uA) from enabled supply
+					-- qcom,supply-disable-load: load drawn (uA) from disabled supply
+					-- qcom,supply-pre-on-sleep: time to sleep (ms) before turning on
+					-- qcom,supply-post-on-sleep: time to sleep (ms) after turning on
+					-- qcom,supply-pre-off-sleep: time to sleep (ms) before turning off
+					-- qcom,supply-post-off-sleep: time to sleep (ms) after turning off
+- qcom,core-supply-entries:		A node that lists the elements of the supply used to
+					power the DSI core. There can be more than one instance
+					of this binding, in which case the entry would be appended
+					with the supply entry index. For a detailed description of
+					fields in the supply entry, refer to the qcom,ctrl-supply-entries
+					binding above.
+- qcom,mmss-ulp-clamp-ctrl-offset:	Specifies the offset for dsi ulps clamp control register.
+- qcom,mmss-phyreset-ctrl-offset:	Specifies the offset for dsi phy reset control register.
+- qcom,timing-db-mode:			Boolean specifies dsi timing mode registers are supported or not.
+- qcom,dsi-clk-ln-recovery:		Boolean which enables the clk lane recovery
+- qcom,split-dsi-independent-pll:	Boolean which specifies if the individual DSI controllers need to be
+					driven by respective DSI PLLs for split DSI use-cases which is required
+					on specific MSM revisions. This property supersedes the default configuration
+					of using a shared PLL for split DSI configuration and is not applicable to
+					single/dual DSI configurations.
+
+mdss-dsi-ctrl is a dsi controller device which is treated as a subnode of the mdss-dsi device.
+
+Required properties:
+- compatible:				Must be "qcom,mdss-dsi-ctrl"
+- cell-index:				Specifies the controller used among the two controllers.
+- reg: 					Base address and length of the different register
+					regions(s) required for DSI device functionality.
+- reg-names: 				A list of strings that map in order to the list of regs.
+					"dsi_ctrl" - MDSS DSI controller register region
+					"dsi_phy" - MDSS DSI PHY register region
+					"dsi_phy_regulator" - MDSS DSI PHY REGULATOR region
+					"mmss_misc_phys" - Register region for MMSS DSI clamps
+- vdd-supply:				Phandle for vdd regulator device node.
+- vddio-supply:				Phandle for vdd-io regulator device node.
+- qcom,mdss-fb-map:			pHandle that specifies the framebuffer to which the
+					interface is mapped.
+- qcom,mdss-mdp:			pHandle that specifies the mdss-mdp device.
+- qcom,platform-regulator-settings:	An array of length 7 that specifies the PHY
+					regulator settings.
+- qcom,platform-strength-ctrl:		An array of length 2 that specifies the PHY
+					strengthCtrl settings.
+- qcom,platform-bist-ctrl:		An array of length 6 that specifies the PHY
+					BIST ctrl settings.
+- qcom,platform-lane-config:		An array of length 45 that specifies the PHY
+					lane configuration settings.
+- qcom,dsi-pref-prim-pan:		phandle that specifies the primary panel to be used
+					with the controller.
+
+Optional properties:
+- label:		        	A string used to describe the controller used.
+- qcom,platform-enable-gpio:		Specifies the panel lcd/display enable gpio.
+- qcom,platform-reset-gpio:		Specifies the panel reset gpio.
+- qcom,platform-te-gpio:		Specifies the gpio used for TE.
+- qcom,platform-bklight-en-gpio:	Specifies the gpio used to enable display back-light
+- qcom,panel-mode-gpio:			Select video/command/DSC/non-DSC mode of
+					panel through gpio when it supports
+					these modes.
+- pinctrl-names:			List of names to assign mdss pin states defined in pinctrl device node
+					Refer to pinctrl-bindings.txt
+- pinctrl-<0..n>:			Lists phandles each pointing to the pin configuration node within a pin
+					controller. These pin configurations are installed in the pinctrl
+					device node. Refer to pinctrl-bindings.txt
+- qcom,regulator-ldo-mode:		Boolean to enable ldo mode for the dsi phy regulator
+- qcom,dsi-irq-line:			Boolean specifies if DSI has a different irq line than mdp.
+- qcom,lane-map:			Specifies the data lane swap configuration.
+					"lane_map_0123" = <0 1 2 3> (default value)
+					"lane_map_3012" = <3 0 1 2>
+					"lane_map_2301" = <2 3 0 1>
+					"lane_map_1230" = <1 2 3 0>
+					"lane_map_0321" = <0 3 2 1>
+					"lane_map_1032" = <1 0 3 2>
+					"lane_map_2103" = <2 1 0 3>
+					"lane_map_3210" = <3 2 1 0>
+
+Example:
+	mdss_dsi: qcom,mdss_dsi@0 {
+		compatible = "qcom,mdss-dsi";
+		hw-config = "single_dsi";
+		pll-src-config = "PLL0";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		vdda-supply = <&pm8226_l4>;
+		vcca-supply = <&pm8226_l28>;
+		reg = <0x1a98000 0x1a98000 0x25c
+		      0x1a98500 0x1a98500 0x280
+		      0x1a98780 0x1a98780 0x30
+		      0x193e000 0x193e000 0x30>;
+
+		qcom,timing-db-mode;
+		qcom,dsi-clk-ln-recovery;
+		qcom,split-dsi-independent-pll;
+
+		qcom,core-supply-entries {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,core-supply-entry@0 {
+				reg = <0>;
+				qcom,supply-name = "gdsc";
+				qcom,supply-min-voltage = <0>;
+				qcom,supply-max-voltage = <0>;
+				qcom,supply-enable-load = <0>;
+				qcom,supply-disable-load = <0>;
+				qcom,supply-pre-on-sleep = <0>;
+				qcom,supply-post-on-sleep = <0>;
+				qcom,supply-pre-off-sleep = <0>;
+				qcom,supply-post-off-sleep = <0>;
+			};
+		};
+
+		qcom,phy-supply-entries {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,phy-supply-entry@0 {
+				reg = <0>;
+				qcom,supply-name = "vddio";
+				qcom,supply-min-voltage = <1800000>;
+				qcom,supply-max-voltage = <1800000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+				qcom,supply-pre-on-sleep = <0>;
+				qcom,supply-post-on-sleep = <20>;
+				qcom,supply-pre-off-sleep = <0>;
+				qcom,supply-post-off-sleep = <0>;
+			};
+		};
+
+		qcom,ctrl-supply-entries {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,ctrl-supply-entry@0 {
+				reg = <0>;
+				qcom,supply-name = "vdda";
+				qcom,supply-min-voltage = <1200000>;
+				qcom,supply-max-voltage = <1200000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+				qcom,supply-pre-on-sleep = <0>;
+				qcom,supply-post-on-sleep = <20>;
+				qcom,supply-pre-off-sleep = <0>;
+				qcom,supply-post-off-sleep = <0>;
+			};
+		};
+
+		mdss_dsi0: mdss_dsi_ctrl0@fd922800 {
+			compatible = "qcom,mdss-dsi-ctrl";
+			label = "MDSS DSI CTRL->0";
+			cell-index = <0>;
+			reg = 	<0xfd922800 0x1f8>,
+				<0xfd922b00 0x2b0>,
+				<0xfd998780 0x30>,
+				<0xfd828000 0x108>;
+			reg-names = "dsi_ctrl", "dsi_phy",
+				"dsi_phy_regulator", "mmss_misc_phys";
+
+			vdd-supply = <&pm8226_l15>;
+			vddio-supply = <&pm8226_l8>;
+			qcom,mdss-fb-map = <&mdss_fb0>;
+			qcom,mdss-mdp = <&mdss_mdp>;
+
+			qcom,dsi-pref-prim-pan = <&dsi_tosh_720_vid>;
+
+			qcom,platform-strength-ctrl = [ff 06];
+			qcom,platform-bist-ctrl = [00 00 b1 ff 00 00];
+			qcom,platform-regulator-settings = [07 09 03 00 20 00 01];
+			qcom,platform-lane-config = [00 00 00 00 00 00 00 01 97
+				00 00 00 00 05 00 00 01 97
+				00 00 00 00 0a 00 00 01 97
+				00 00 00 00 0f 00 00 01 97
+				00 c0 00 00 00 00 00 01 bb];
+
+			qcom,mmss-ulp-clamp-ctrl-offset = <0x20>;
+			qcom,mmss-phyreset-ctrl-offset = <0x24>;
+			qcom,regulator-ldo-mode;
+
+			pinctrl-names = "mdss_default", "mdss_sleep";
+			pinctrl-0 = <&mdss_dsi_active>;
+			pinctrl-1 = <&mdss_dsi_suspend>;
+			qcom,platform-reset-gpio = <&msmgpio 25 1>;
+			qcom,platform-te-gpio = <&msmgpio 24 0>;
+			qcom,platform-enable-gpio = <&msmgpio 58 1>;
+			qcom,platform-bklight-en-gpio = <&msmgpio 86 0>;
+			qcom,panel-mode-gpio = <&msmgpio 107 0>;
+			qcom,dsi-irq-line;
+			qcom,lane-map = "lane_map_3012";
+
+
+	        };
+	};

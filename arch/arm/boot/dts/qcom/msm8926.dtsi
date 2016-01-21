@@ -1,0 +1,245 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*
+ * Only 8926-specific property overrides should be placed inside this
+ * file. Device definitions should be placed inside the msm8226.dtsi
+ * file.
+ */
+
+#include "msm8226.dtsi"
+#include "msm8226-memory.dtsi"
+#include "msm8226-qseecom.dtsi"
+#include "msm8226-sharedmem.dtsi"
+#include "msm8226-v2-pm.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM 8926";
+	compatible = "qcom,msm8926";
+
+	memory {
+		alt_peripheral_mem: peripheral_region@8000000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x08000000 0x5c00000>;
+			label = "peripheral_mem";
+		};
+	};
+
+};
+
+&modem_mem {
+	status = "disabled";
+};
+
+&peripheral_mem {
+	status = "disabled";
+};
+
+&qsecom_mem {
+	linux,memory-limit = <0x0>;
+};
+
+&clock_gcc {
+	compatible = "qcom,gcc-8226-v2";
+};
+
+&soc {
+	qcom,mss@fc880000 {
+		reg = <0xfc880000 0x100>,
+		      <0xfd485000 0x400>,
+		      <0xfc820000 0x20>,
+		      <0xfc401680 0x4>;
+		reg-names = "qdsp6_base", "halt_base", "rmb_base",
+			    "restart_reg";
+		vdd_mss-supply = <&pm8226_s5>;
+	};
+
+	qcom,clock-a7@f9011050 {
+		reg =	<0xf9011050 0x8>,
+			<0xfc4b80b0 0x8>;
+		reg-names = "rcg-base", "efuse";
+		qcom,speed0-bin-v0 =
+			<         0 0>,
+			< 384000000 2>,
+			< 787200000 4>,
+			<1190400000 7>;
+		qcom,speed0-bin-v1 =
+			<         0 0>,
+			< 384000000 2>,
+			< 787200000 4>,
+			< 998400000 5>,
+			<1094400000 6>,
+			<1190400000 7>;
+		qcom,speed2-bin-v1 =
+			<         0 0>,
+			< 384000000 2>,
+			< 787200000 4>,
+			< 998400000 5>,
+			<1094400000 6>,
+			<1190400000 7>,
+			<1305600000 8>,
+			<1344000000 9>,
+			<1401600000 10>;
+		qcom,speed1-bin-v1 =
+			<         0 0>,
+			< 384000000 2>,
+			< 787200000 4>,
+			< 998400000 5>,
+			<1094400000 6>,
+			<1190400000 7>,
+			<1305600000 8>,
+			<1344000000 9>,
+			<1401600000 10>,
+			<1497600000 11>,
+			<1593600000 12>;
+		qcom,speed5-bin-v1 =
+			<         0 0>,
+			< 384000000 2>,
+			< 787200000 4>,
+			< 998400000 5>,
+			<1094400000 6>,
+			<1190400000 7>,
+			<1305600000 8>,
+			<1344000000 9>,
+			<1401600000 10>,
+			<1497600000 11>,
+			<1593600000 12>,
+			<1689600000 13>,
+			<1785600000 14>;
+	};
+
+	qcom,msm-thermal {
+		qcom,cpu-sensors = "tsens_tz_sensor5", "tsens_tz_sensor5",
+				"tsens_tz_sensor1", "tsens_tz_sensor1";
+	};
+
+	qcom,mpm@fc4281d0 {
+		qcom,gpio-map = <3  1>,
+			<4  4 >,
+			<5  5 >,
+			<6  9 >,
+			<7  13>,
+			<8  17>,
+			<9  21>,
+			<10  27>,
+			<11  29>,
+			<12  31>,
+			<13  33>,
+			<14  35>,
+			<15  37>,
+			<16  38>,
+			<17  39>,
+			<18  41>,
+			<19  46>,
+			<20  48>,
+			<21  49>,
+			<22  50>,
+			<23  51>,
+			<24  52>,
+			<25  54>,
+			<26  62>,
+			<27  63>,
+			<28  64>,
+			<29  65>,
+			<30  66>,
+			<31  67>,
+			<32  68>,
+			<33  69>,
+			<34  71>,
+			<35  72>,
+			<36  106>,
+			<37  107>,
+			<38  108>,
+			<39  109>,
+			<40  110>,
+			<41  119>,
+			<54  111>,
+			<55  113>;
+	};
+
+	qcom,lpass@fe200000 {
+		linux,contiguous-region = <&adsp_venus_mem>;
+	};
+
+	qcom,mss@fc880000 {
+		linux,contiguous-region = <&modem_mem>;
+	};
+
+	qcom,venus@fdce0000 {
+		linux,contiguous-region = <&adsp_venus_mem>;
+	};
+
+	qcom,pronto@fb21b000 {
+		linux,contiguous-region = <&alt_peripheral_mem>;
+	};
+};
+
+&tlmm_pinmux {
+	gp: gp {
+		qcom,num-pins = <120>;
+	};
+};
+
+&apc_vreg_corner {
+	qcom,cpr-up-threshold = <0>;
+	qcom,cpr-down-threshold = <2>;
+	regulator-min-microvolt = <1>;
+	regulator-max-microvolt = <14>;
+	qcom,cpr-corner-map = <1 1 2 2 3 3 3 3 3 3 3 3 3 3>;
+	qcom,cpr-quotient-adjustment = <0 72 72>;
+	qcom,pvs-version-fuse-sel = <22 4 2 0>;
+	qcom,cpr-corner-frequency-map =
+			<1 300000000>,
+			<2 384000000>,
+			<3 600000000>,
+			<4 787200000>,
+			<5 998400000>,
+			<6 1094400000>,
+			<7 1190400000>,
+			<8 1305600000>,
+			<9 1344000000>,
+			<10 1401600000>,
+			<11 1497600000>,
+			<12 1593600000>,
+			<13 1689600000>,
+			<14 1785600000>;
+	qcom,cpr-speed-bin-max-corners =
+			<0 1 2 4 7>,
+			<1 1 2 4 12>,
+			<2 1 2 4 10>,
+			<5 1 2 4 14>;
+	qcom,cpr-quot-adjust-scaling-factor-max = <650>;
+};
+
+&tsens {
+	qcom,sensors = <6>;
+	qcom,slope = <2901 2846 3038 2955 2901 2846>;
+};
+
+&msmgpio {
+	ngpio = <121>;
+};
+
+&hsic_host {
+	interrupt-map = <0 &intc 0 136 0
+		1 &intc 0 148 0
+		2 &msmgpio 119 0x8>;
+	hsic,strobe-gpio = <&msmgpio 119 0x00>;
+	hsic,data-gpio = <&msmgpio 120 0x00>;
+};
+
+&usb_otg {
+	/delete-property/ qcom,hsusb-otg-disable-reset;
+	qcom,ahb-async-bridge-bypass;
+};

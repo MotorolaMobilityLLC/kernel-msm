@@ -1,0 +1,6 @@
+t-base is an operating system being shipped with TZBSP
+on msm chipsets. t-base consists of several components in
+the secure world(TrustZone) and non-secure world(linux
+kernel, Android user space). The t-base driver
+communicates with the t-base kernel that exists in
+TrustZone.

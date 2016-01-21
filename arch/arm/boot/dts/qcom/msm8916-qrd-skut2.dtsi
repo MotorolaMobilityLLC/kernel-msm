@@ -1,0 +1,90 @@
+/*
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8916-qrd-skut1.dtsi"
+
+&soc {
+	gpio-leds {
+		status = "disabled";
+	};
+};
+
+&pm8916_vadc {
+	chan@30 {
+		qcom,scale-function = <1>;
+	};
+};
+
+&pm8916_adc_tm {
+	chan@30 {
+		qcom,scale-function = <1>;
+	};
+};
+
+&pmx_mdss {
+	qcom,num-grp-pins = <2>;
+	qcom,pins = <&gp 22>, <&gp 25>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_samsung_wxga_video>;
+
+	qcom,platform-enable-gpio = <&msm_gpio 22 0>;
+	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
+};
+
+&dsi_samsung_wxga_video {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
+	qcom,mdss-dsi-bl-pmic-pwm-frequency = <50>;
+	qcom,mdss-dsi-bl-pmic-bank-select = <0>;
+	qcom,mdss-dsi-pwm-gpio = <&pm8916_mpps 4 0>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&i2c_0 { /* BLSP1 QUP2 */
+	/delete-node/ mcube@4c;
+	/delete-node/ intersil@44;
+
+	mpu6050@68 { /* Gyroscope and accelerometer sensor combo */
+		compatible = "invn,mpu6880", "invn,mpu6050";
+		reg = <0x68>;
+		pinctrl-names = "mpu_default","mpu_sleep";
+		pinctrl-0 = <&mpu6050_default>;
+		pinctrl-1 = <&mpu6050_sleep>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <115 0x2>;
+		vlogic-supply = <&pm8916_l6>;
+		vdd-supply = <&pm8916_l6>;
+		vi2c-supply = <&pm8916_l6>;
+		invn,place = "Landscape Right Back Side";
+		invn,gpio-int = <&msm_gpio 115 0x2>;
+		invn,vdd-min-uv = <1750000>;
+	};
+
+	capella@60 { /* Ambient light and proximity sensor */
+		compatible = "capella,cm36682", "capella,cm36283";
+		reg = <0x60>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <113 0x2>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		capella,use-polling;
+		capella,interrupt-gpio = <&msm_gpio 113 0x2>;
+		capella,levels = <0x0A 0xA0 0xE1 0x140 0x280 0x500 0xA28 0x16A8 0x1F40 0x2800>;
+		capella,ps_close_thd_set = <0x26>;
+		capella,ps_away_thd_set = <0x5>;
+		capella,ls_cmd = <0x04>; /* ALS_IT=80ms, INT_PERS=2 */
+		capella,ps_conf1_val = <0x0006>;
+		capella,ps_conf3_val = <0x3010>;
+	};
+};

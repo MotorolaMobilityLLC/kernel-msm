@@ -1,0 +1,246 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*
+ * As a general rule, only version-specific property overrides should be placed
+ * inside this file. However, device definitions should be placed inside the
+ * msm8994.dtsi file.
+ */
+
+#include "msm8994.dtsi"
+#include "msm8994-coresight-v1.dtsi"
+#include "msm8994-v1-pm.dtsi"
+#include "msm8994-camera-v1.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM 8994";
+	compatible = "qcom,msm8994";
+	qcom,msm-id = <207 0x10000>;
+
+};
+
+&soc {
+	arm64-cpu-erp@f9100000 {
+		compatible = "arm,arm64-cpu-erp";
+		reg = <0xf9100000 0x1000>;
+		reg-names = "cci";
+		interrupts = <0 328 0>,
+			     <0 329 0>,
+			     <0 330 0>,
+			     <0 331 0>,
+			     <0 22 0>,
+			     <1 14 0>;
+		interrupt-names = "pri-dbe-irq",
+				  "sec-dbe-irq",
+				  "pri-ext-irq",
+				  "sec-ext-irq",
+				  "cci-irq",
+				  "sbe-irq";
+		qcom,apply-cti-pmu-wa;
+		poll-delay-ms = <5000>;
+	};
+
+	cpu-pmu {
+		compatible = "arm,armv8-pmuv3";
+		qcom,irq-is-percpu;
+		interrupts = <1 14 0xff00>;
+		qcom,apply-cti-pmu-wa;
+	};
+
+	cci@f9100000 {
+		pmu@a000 {
+			interrupts = <0 7 0>,
+				     <0 7 0>,
+				     <0 7 0>,
+				     <0 7 0>,
+				     <0 7 0>;
+		};
+	};
+};
+
+&pm8994_s8 {
+	regulator-min-microvolt = <725000>;
+	regulator-max-microvolt = <1115000>;
+};
+
+&pm8994_s11 {
+	regulator-min-microvolt = <725000>;
+	regulator-max-microvolt = <1225000>;
+};
+
+&ufs1 {
+	freq-table-hz =
+	<100000000 171430000>, <0 0>, <0 0>, <0 0>, <0 0>, <0 0>, <0 0>, <0 0>, <0 0>;
+};
+
+&mem_acc0_vreg_corner {
+	regulator-min-microvolt = <1>;
+	regulator-max-microvolt = <3>;
+	qcom,corner-acc-map = <1 0 0>;
+};
+
+&mem_acc1_vreg_corner {
+	regulator-min-microvolt = <1>;
+	regulator-max-microvolt = <3>;
+	qcom,corner-acc-map = <1 0 0>;
+};
+
+&apc0_vreg_corner {
+	qcom,cpr-fuse-corners = <3>;
+	regulator-min-microvolt = <1>;
+	regulator-max-microvolt = <9>;
+	qcom,vdd-mx-corner-map = <4 5 7>;
+
+	qcom,cpr-voltage-ceiling = <900000 1000000 1115000>;
+	qcom,cpr-voltage-floor =   <725000  840000  940000>;
+
+	qcom,cpr-step-quotient = <16>;
+	qcom,cpr-timer-cons-up = <0>;
+	qcom,cpr-timer-cons-down = <2>;
+	qcom,cpr-up-threshold = <2>;
+	qcom,cpr-down-threshold = <4>;
+
+	qcom,cpr-fuse-row = <137 0>;
+	qcom,cpr-fuse-target-quot = <39 47 55>;
+	qcom,cpr-fuse-target-quot-size = <8 8 8>;
+	qcom,cpr-fuse-target-quot-scale =
+				<0 10>,
+				<0 10>,
+				<0 10>;
+	qcom,cpr-quotient-adjustment = <116 0 73>;
+	qcom,cpr-fuse-ro-sel = <82 82 82>;
+	qcom,cpr-fuse-init-voltage =
+				<138  0 6 0>,
+				<138  6 6 0>,
+				<138 12 6 0>;
+	qcom,cpr-fuse-revision = <62 48 2 0>;
+
+	qcom,fuse-remap-base-row = <1000>;
+	qcom,fuse-remap-source =
+				<56 21 43 0>,
+				<57 55 4 0>;
+	qcom,cpr-fuse-redun-sel = <140 61 3 1 0>;
+	qcom,cpr-fuse-redun-row = <1000 0>;
+	qcom,cpr-fuse-redun-target-quot = <8 16 24>;
+	qcom,cpr-fuse-redun-ro-sel = <44 44 44>;
+	qcom,cpr-fuse-redun-init-voltage =
+				<1000 32 6 0>,
+				<1000 38 6 0>,
+				<1000 38 6 0>;
+
+	qcom,cpr-init-voltage-ref = <900000 1000000 1225000>;
+	qcom,cpr-init-voltage-step = <10000>;
+
+	qcom,cpr-corner-map = <1 2 2 3 3 3 3 3 3>;
+	/delete-property/ qcom,cpr-voltage-ceiling-override;
+	qcom,cpr-voltage-floor-override =
+			<0xFFFFFFFF 0 725000 800000 840000 860000 860000
+				      900000 900000 940000 940000>;
+
+	/delete-property/ qcom,cpr-fuse-version-map;
+	/delete-property/ qcom,cpr-init-voltage-adjustment;
+
+	qcom,cpr-voltage-scaling-factor-max = <0 2000 2000>;
+	qcom,cpr-quot-adjust-scaling-factor-max = <0 2000 2000>;
+	qcom,cpr-corner-frequency-map =
+			<1 199200000>,
+			<2 302400000>,
+			<3 384000000>,
+			<4 600000000>,
+			<5 691200000>,
+			<6 768000000>,
+			<7 844800000>,
+			<8 921600000>,
+			<9 940800000>;
+	qcom,cpr-speed-bin-max-corners =
+			<0xFFFFFFFF 0 1 3 9>;
+	qcom,cpr-enable;
+};
+
+&apc1_vreg_corner {
+	qcom,cpr-fuse-corners = <3>;
+	regulator-min-microvolt = <1>;
+	regulator-max-microvolt = <8>;
+	qcom,vdd-mx-corner-map = <4 5 7>;
+
+	qcom,cpr-voltage-ceiling = <900000 1000000 1225000>;
+	qcom,cpr-voltage-floor =   <725000  840000  940000>;
+
+	qcom,cpr-step-quotient = <10>;
+	qcom,cpr-timer-cons-up = <0>;
+	qcom,cpr-timer-cons-down = <2>;
+	qcom,cpr-up-threshold = <2>;
+	qcom,cpr-down-threshold = <4>;
+
+	qcom,cpr-fuse-row = <138 0>;
+	qcom,cpr-fuse-target-quot = <29 37 45>;
+	qcom,cpr-fuse-target-quot-size = <8 8 8>;
+	qcom,cpr-fuse-target-quot-scale =
+				<0 10>,
+				<0 10>,
+				<0 10>;
+	qcom,cpr-quotient-adjustment = <36 45 0>;
+	qcom,cpr-fuse-ro-sel = <72 72 72>;
+	qcom,cpr-fuse-init-voltage =
+				<138 54 6 0>,
+				<138 60 6 0>,
+				<139  2 6 0>;
+	qcom,cpr-fuse-revision = <62 48 2 0>;
+
+	qcom,fuse-remap-base-row = <1000>;
+	qcom,fuse-remap-source =
+				<57 59 5 0>,
+				<136 0 42 0>;
+	qcom,cpr-fuse-redun-sel = <140 61 3 1 0>;
+	qcom,cpr-fuse-redun-row = <1000 0>;
+	qcom,cpr-fuse-redun-target-quot = <8 16 24>;
+	qcom,cpr-fuse-redun-ro-sel = <44 44 44>;
+	qcom,cpr-fuse-redun-init-voltage =
+				<1000 32 6 0>,
+				<1000 38 6 0>,
+				<1000 38 6 0>;
+
+	qcom,cpr-init-voltage-ref = <900000 1000000 1225000>;
+	qcom,cpr-init-voltage-step = <10000>;
+
+	qcom,cpr-corner-map = <1 2 2 3 3 3 3 3>;
+	/delete-property/ qcom,cpr-voltage-ceiling-override;
+	qcom,cpr-voltage-floor-override =
+			<0xFFFFFFFF 0 725000 790000 840000 840000 860000
+				      890000 920000 940000>;
+
+	/delete-property/ qcom,cpr-fuse-version-map;
+	/delete-property/ qcom,cpr-init-voltage-adjustment;
+
+	qcom,cpr-voltage-scaling-factor-max = <0 2000 2000>;
+	qcom,cpr-quot-adjust-scaling-factor-max = <0 2000 2000>;
+	qcom,cpr-corner-frequency-map =
+			<1 199200000>,
+			<2 302400000>,
+			<3 384000000>,
+			<4 600000000>,
+			<5 691200000>,
+			<6 768000000>,
+			<7 844800000>,
+			<8 921600000>;
+	qcom,cpr-speed-bin-max-corners =
+			<0xFFFFFFFF 0 1 3 8>;
+	qcom,cpr-enable;
+};
+
+&soc {
+	qcom,usbbam@f9304000 {
+		qcom,pipe0 {
+			qcom,pipe-connection-type = <1>; /* USB_BAM_PIPE_SYS2BAM */
+		};
+	};
+};

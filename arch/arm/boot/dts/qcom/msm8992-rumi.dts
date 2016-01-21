@@ -1,0 +1,103 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+
+/memreserve/ 0x06000000 0x00001000;
+
+#include "msm8992.dtsi"
+#include "msm8992-pinctrl.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. Technologies, Inc. MSM8992 RUMI";
+	compatible = "qcom,msm8992-rumi", "qcom,msm8992", "qcom,rumi";
+	qcom,board-id = <15 0>;
+};
+
+&blsp1_uart5 {
+	status = "ok";
+};
+
+&pcie0 {
+	status = "disabled";
+};
+
+&spi_0 {
+	ethernet-controller@2 {
+		compatible = "micrel,ks8851";
+		interrupt-parent = <&msm_gpio>;
+		reg = <2>;
+		spi-max-frequency = <2400000>;
+		interrupts = <75 0>;
+		vdd-io-supply = <&dummy_vreg>;
+		vdd-phy-supply = <&dummy_vreg>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&eth_irq_default &spi0_unused_cs_default>;
+	};
+};
+
+&clock_gcc {
+	compatible = "qcom,dummycc";
+	#clock-cells = <1>;
+};
+
+&clock_rpm {
+	compatible = "qcom,dummycc";
+	#clock-cells = <1>;
+};
+
+&clock_mmss {
+	compatible = "qcom,dummycc";
+	#clock-cells = <1>;
+};
+
+&clock_debug {
+	status = "disabled";
+};
+
+&sdhc_1 {
+	vdd-supply = <&pm8994_l20>;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <200 570000>;
+
+	vdd-io-supply = <&pm8994_s4>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <200 325000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off>;
+
+	qcom,clk-rates = <400000 20000000 25000000 50000000>;
+	qcom,nonremovable;
+	status = "ok";
+};
+
+&sdhc_2 {
+	vdd-supply = <&pm8994_l21>;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <200 800000>;
+
+	vdd-io-supply = <&pm8994_l13>;
+	qcom,vdd-io-voltage-level = <1800000 2950000>;
+	qcom,vdd-io-current-level = <200 22000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off>;
+
+	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 200000000>;
+	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
+	status = "ok";
+};

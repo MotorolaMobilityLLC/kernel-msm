@@ -1,0 +1,48 @@
+Summit smb350 battery charger
+
+The smb350 charger supports stack-cell battery charging.
+
+The smb350 interface is via I2C bus.
+The i2c slave 7-bit address is programmable at manufacture.
+
+Node required properties:
+- compatible:		Must be "summit,smb350-charger".
+- reg:			The device 7-bit I2C address.
+- interrupt-parent		phandle to the interrupt parent device
+- interrupts			the interrupt number on which the STAT interrupt
+				output is connected.
+Node optional properties:
+- summit,chg-en-n-gpio		gpio which control charging enable.
+- summit,chg-shdn-n-gpio	gpio which control device shutdown
+- summit,chg-current-ma		charging current in milliamps.
+- summit,term-current-ma	charging termination current in milliamps.
+				valid values are 200/300/400/500/600/700.
+				A value of zero means no termination current.
+- summit,fuel-gauge-name	A string specify the name of the fuel gauge part.
+
+Example:
+	i2c@f9967000 {
+		cell-index = <0>;
+		compatible = "qcom,i2c-qup";
+		reg = <0Xf9967000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 105 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <24000000>;
+		label = "blsp_11";
+
+		smb350-charger@2b {
+			compatible = "summit,smb350-charger";
+			reg = <0x2b>; /* 0x56/0x57 */
+			interrupt-parent = <&spmi_bus>;
+			interrupts = <0x0 0xdd 0x0>;
+			summit,chg-en-n-gpio = <&pm8941_gpios 10 0x00>;
+			summit,chg-shdn-n-gpio = <&pm8941_gpios 13 0x00>;
+			summit,chg-current-ma = <1600>;
+			summit,term-current-ma = <200>;
+			summit,fuel-gauge-name = "bq28400_battery";
+		};
+	};

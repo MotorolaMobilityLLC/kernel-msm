@@ -1,0 +1,445 @@
+/*
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8939.dtsi"
+#include "msm8929-bus.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM8929";
+	compatible = "qcom,msm8929";
+	qcom,msm-id =	<268 0>,
+			<269 0>,
+			<270 0>,
+			<271 0>;
+};
+
+&soc {
+	/delete-node/ qcom,cpu-clock-8939@b111050;
+
+	clock_cpu:  qcom,cpu-clock-8939@b111050 {
+		compatible = "qcom,cpu-clock-8939";
+		reg =	<0xb111050 0x8>,
+			<0xb011050 0x8>,
+			<0xb1d1050 0x8>,
+			<0x5800c   0x8>,
+			<0x58000   0x8>,
+			<0x58004   0x8>;
+		reg-names = "apcs-c0-rcg-base", "apcs-c1-rcg-base",
+				"apcs-cci-rcg-base", "efuse", "efuse1",
+				"efuse2";
+		vdd-c0-supply = <&apc_vreg_corner>;
+		vdd-c1-supply = <&apc_vreg_corner>;
+		vdd-cci-supply = <&apc_vreg_corner>;
+		clocks = <&clock_gcc clk_gpll0_ao>,
+			 <&clock_gcc clk_a53ss_c0_pll>,
+			 <&clock_gcc clk_gpll0_ao>,
+			 <&clock_gcc clk_a53ss_c1_pll>,
+			 <&clock_gcc clk_gpll0_ao>,
+			 <&clock_gcc clk_a53ss_cci_pll>;
+		clock-names = "clk-c0-4", "clk-c0-5",
+				"clk-c1-4", "clk-c1-5",
+				"clk-cci-4", "clk-cci-5";
+		qcom,speed0-bin-v0-c0 =
+			<          0 0>,
+			<  250000000 3>,
+			<  500000000 9>,
+			<  800000000 12>,
+			<  998400000 17>;
+
+		qcom,speed0-bin-v0-c1 =
+			<          0 0>,
+			<  400000000 3>,
+			<  800000000 9>,
+			<  960000000 12>,
+			< 1113600000 14>,
+			< 1363200000 17>;
+
+		qcom,speed0-bin-v0-cci =
+			<          0 0>,
+			<  200000000 3>,
+			<  300000000 11>,
+			<  400000000 15>,
+			<  600000000 17>;
+
+		qcom,speed0-bin-v4-c0 =
+			<          0 0>,
+			<  250000000 3>,
+			<  500000000 9>,
+			<  800000000 12>,
+			<  998400000 17>;
+
+		qcom,speed0-bin-v4-c1 =
+			<          0 0>,
+			<  400000000 3>,
+			<  800000000 9>,
+			<  960000000 12>,
+			< 1113600000 14>,
+			< 1363200000 17>;
+
+		qcom,speed0-bin-v4-cci =
+			<          0 0>,
+			<  200000000 3>,
+			<  300000000 11>,
+			<  400000000 15>,
+			<  600000000 17>;
+
+		qcom,speed2-bin-v4-c0 =
+			<          0 0>,
+			<  250000000 3>,
+			<  500000000 9>,
+			<  800000000 12>,
+			<  998400000 17>;
+
+		qcom,speed2-bin-v4-c1 =
+			<          0 0>,
+			<  400000000 3>,
+			<  800000000 9>,
+			<  960000000 12>,
+			< 1113600000 14>,
+			< 1363200000 17>;
+
+		qcom,speed2-bin-v4-cci =
+			<          0 0>,
+			<  200000000 3>,
+			<  300000000 11>,
+			<  400000000 15>,
+			<  600000000 17>;
+
+		qcom,speed2-bin-v5-c0 =
+			<          0 0>,
+			<  250000000 3>,
+			<  500000000 9>,
+			<  800000000 12>,
+			<  998400000 17>,
+			< 1113600000 22>;
+
+		qcom,speed2-bin-v5-c1 =
+			<          0 0>,
+			<  400000000 3>,
+			<  800000000 9>,
+			<  960000000 12>,
+			< 1113600000 14>,
+			< 1363200000 17>;
+
+		qcom,speed2-bin-v5-cci =
+			<          0 0>,
+			<  200000000 3>,
+			<  300000000 11>,
+			<  400000000 15>,
+			<  600000000 17>;
+
+		qcom,speed4-bin-v4-c0 =
+			<          0 0>,
+			<  250000000 3>,
+			<  500000000 9>,
+			<  800000000 12>,
+			<  998400000 17>;
+
+		qcom,speed4-bin-v4-c1 =
+			<          0 0>,
+			<  400000000 3>,
+			<  800000000 9>,
+			<  960000000 12>,
+			< 1113600000 14>,
+			< 1363200000 17>;
+
+		qcom,speed4-bin-v4-cci =
+			<          0 0>,
+			<  200000000 3>,
+			<  300000000 11>,
+			<  400000000 15>,
+			<  600000000 17>;
+
+		qcom,speed5-bin-v4-c0 =
+			<          0 0>,
+			<  250000000 3>,
+			<  500000000 9>,
+			<  800000000 12>,
+			<  998400000 17>;
+
+		qcom,speed5-bin-v4-c1 =
+			<          0 0>,
+			<  400000000 3>,
+			<  800000000 9>,
+			<  960000000 12>,
+			< 1113600000 14>,
+			< 1363200000 17>;
+
+		qcom,speed5-bin-v4-cci =
+			<          0 0>,
+			<  200000000 3>,
+			<  300000000 11>,
+			<  400000000 15>,
+			<  600000000 17>;
+
+		qcom,speed5-bin-v5-c0 =
+			<          0 0>,
+			<  250000000 3>,
+			<  500000000 9>,
+			<  800000000 12>,
+			<  998400000 17>,
+			< 1113600000 22>;
+
+		qcom,speed5-bin-v5-c1 =
+			<          0 0>,
+			<  400000000 3>,
+			<  800000000 9>,
+			<  960000000 12>,
+			< 1113600000 14>,
+			< 1363200000 17>;
+
+		qcom,speed5-bin-v5-cci =
+			<          0 0>,
+			<  200000000 3>,
+			<  300000000 11>,
+			<  400000000 15>,
+			<  600000000 17>;
+
+		#clock-cells = <1>;
+	};
+
+	qcom,msm-cpufreq {
+		compatible = "qcom,msm-cpufreq";
+		clock-names = "l2_clk", "cpu0_clk", "cpu1_clk", "cpu2_clk",
+				"cpu3_clk", "cpu4_clk", "cpu5_clk",
+				"cpu6_clk", "cpu7_clk";
+		clocks = <&clock_cpu clk_a53ssmux_cci>,
+			 <&clock_cpu clk_a53ssmux_bc>,
+			 <&clock_cpu clk_a53ssmux_bc>,
+			 <&clock_cpu clk_a53ssmux_bc>,
+			 <&clock_cpu clk_a53ssmux_bc>,
+			 <&clock_cpu clk_a53ssmux_lc>,
+			 <&clock_cpu clk_a53ssmux_lc>,
+			 <&clock_cpu clk_a53ssmux_lc>,
+			 <&clock_cpu clk_a53ssmux_lc>;
+
+		qcom,governor-per-policy;
+
+		qcom,cpufreq-table-0 =
+			 <  200000 >,
+			 <  345600 >,
+			 <  400000 >,
+			 <  533330 >,
+			 <  800000 >,
+                         <  960000 >,
+			 < 1113600 >,
+			 < 1363200 >;
+		qcom,cpufreq-table-4 =
+			 <  200000 >,
+			 <  249600 >,
+			 <  499200 >,
+			 <  800000 >,
+			 <  998400 >,
+			 < 1113600 >;
+	};
+	qcom,vidc@1d00000 {
+		qcom,load-freq-tbl =
+			<352800 200000000 0x00000004>, /* WFD : 720p 30fps + 1080p 30fps */
+			<244800 133330000 0x0c000000>, /* HEVC decoder 1080p 30fps   */
+			<244800 133330000 0x030ccfff>, /* Legacy decoder 1080p 30fps   */
+			<244800 200000000 0x00030000>, /* VC1 decoder 1080p 30fps  */
+			<244800 200000000 0x01000414>, /* Legacy encoder 1080p 30fps   */
+			<220800 133330000 0x0c000000>, /* HEVC  decoder 720p 60fps  */
+			<220800 133330000 0x030fcfff>, /* Legacy decoder 720p 60fps  */
+			<108000 133330000 0x0c000000>, /* HEVC decoder 720p 30fps   */
+			<108000 133330000 0x030fcfff>, /* Legacy decoder 720p 30fps   */
+			<108000 200000000 0x01000414>, /* Legacy encoder 720p 30fps   */
+			<72000 133330000 0x0c000000>, /* HEVC decoder VGA 60fps   */
+			<72000 133330000 0x030fcfff>, /* Legacy decoder VGA 60fps   */
+			<36000 133330000 0x0c000000>, /* HEVC VGA 30 fps  */
+			<36000 133330000 0x030fcfff>, /* Legacy decoder VGA 30 fps  */
+			<36000 133330000 0x01000414>; /* Legacy encoder VGA 30 fps   */
+		qcom,max-hw-load = <352800>; /* 720p @ 30 + 1080p @ 30 */
+	};
+};
+
+&apc_vreg_corner {
+		qcom,cpr-corner-map = <1 1 1 2 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3
+					3 3 3 3 3 3>;
+		qcom,cpr-corner-frequency-map =
+			<1 200000000>,
+			<2 345600000>,
+			<3 400000000>,
+			<4 422400000>,
+			<5 499200000>,
+			<6 533330000>,
+			<7 652800000>,
+			<8 729600000>,
+			<9 800000000>,
+			<10 806400000>,
+			<11 883200000>,
+			<12 960000000>,
+			<13 1036800000>,
+			<14 1113600000>,
+			<15 1190400000>,
+			<16 1267200000>,
+			<17 1363200000>,
+			<18 1420800000>,
+			<19 1497600000>,
+			<20 1536000000>,
+			<21 1574400000>,
+			<22 1612800000>,
+			<23 1632000000>,
+			<24 1651200000>,
+			<25 1689600000>,
+			<26 1708800000>;
+		qcom,cpr-speed-bin-max-corners =
+					<0 0 3 14 17>,
+					<0 4 3 14 19>,
+					<2 4 3 14 19>,
+					<2 5 3 14 19>,
+					<4 4 3 14 26>,
+					<5 4 3 14 24>,
+					<5 5 3 14 24>;
+		qcom,fuse-remap-base-row = <1000>;
+		qcom,fuse-remap-source =
+					<0 29 1 0>, /* speed bit[0] 	*/
+					<0 50 2 0>, /* speed bit[2:1]	*/
+					<0 45 1 0>, /* CPR Rev[0] 	*/
+					<0 56 1 0>; /* CPR Rev[1]	*/
+		qcom,pvs-version-fuse-sel = <1000 0 3 0>;
+		qcom,cpr-fuse-revision = <1000 3 2 0>;
+		qcom,cpr-fuse-version-map =
+		/* <Speed_bits PVS_version CPR_Rev - - -> */
+			<0          4          0 0xffffffff 0xffffffff 0xffffffff>,
+			<0          4          1 0xffffffff 0xffffffff 0xffffffff>,
+			<0          4          2 0xffffffff 0xffffffff 0xffffffff>,
+			<0          4          3 0xffffffff 0xffffffff 0xffffffff>,
+			<2          4          0 0xffffffff 0xffffffff 0xffffffff>,
+			<2          4          1 0xffffffff 0xffffffff 0xffffffff>,
+			<2          4          2 0xffffffff 0xffffffff 0xffffffff>,
+			<2          4          3 0xffffffff 0xffffffff 0xffffffff>,
+			<2          5          0 0xffffffff 0xffffffff 0xffffffff>,
+			<2          5          1 0xffffffff 0xffffffff 0xffffffff>,
+			<2          5          2 0xffffffff 0xffffffff 0xffffffff>,
+			<2          5          3 0xffffffff 0xffffffff 0xffffffff>,
+			<0xffffffff 0xffffffff 0 0xffffffff 0xffffffff 0xffffffff>,
+			<0xffffffff 0xffffffff 1 0xffffffff 0xffffffff 0xffffffff>,
+			<0xffffffff 0xffffffff 2 0xffffffff 0xffffffff 0xffffffff>,
+			<0xffffffff 0xffffffff 3 0xffffffff 0xffffffff 0xffffffff>;
+		qcom,cpr-init-voltage-adjustment =
+					<0 50000 0>,
+					<0 20000 0>,
+					<0 50000 0>,
+					<0 20000 0>,
+					<0 50000 0>,
+					<0 20000 0>,
+					<0 50000 0>,
+					<0 20000 0>,
+					<0 50000 0>,
+					<0 20000 0>,
+					<0 50000 0>,
+					<0 20000 0>,
+					<0 50000 0>,
+					<0 20000 0>,
+					<0 50000 0>,
+					<0 20000 0>;
+		qcom,cpr-quotient-adjustment =
+					<0   41  (-83)>, /* NOM + 20mv, TURBO - 40mv */
+					<0 (-20) (-83)>, /* NOM - 10mv, TURBO - 40mv */
+					<0  104  (-83)>, /* NOM + 50mv, TURBO - 40mv */
+					<0   41  (-83)>, /* NOM + 20mv, TURBO - 40mv */
+					<0   41  (-83)>, /* NOM + 20mv, TURBO - 40mv */
+					<0 (-20) (-83)>, /* NOM - 10mv, TURBO - 40mv */
+					<0  104  (-83)>, /* NOM + 50mv, TURBO - 40mv */
+					<0   41  (-83)>, /* NOM + 20mv, TURBO - 40mv */
+					<0   41  (-41)>, /* NOM + 20mv, TURBO - 20mv */
+					<0 (-20) (-41)>, /* NOM - 10mv, TURBO - 20mv */
+					<0  104  (-41)>, /* NOM + 50mv, TURBO - 20mv */
+					<0   41  (-41)>, /* NOM + 20mv, TURBO - 20mv */
+					<0   41  (-41)>, /* NOM + 20mv, TURBO - 20mv */
+					<0 (-20) (-41)>, /* NOM - 10mv, TURBO - 20mv */
+					<0  104  (-41)>, /* NOM + 50mv, TURBO - 20mv */
+					<0   41  (-41)>; /* NOM + 20mv, TURBO - 20mv */
+		qcom,cpr-fuse-min-quot-diff = <0 0 0>;
+		qcom,cpr-min-quot-diff-adjustment =
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>,
+					<0 0 40>;
+		qcom,cpr-virtual-corner-quotient-adjustment =
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-104) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-41) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-104) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-41) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-104) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-41) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-104) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-41) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-104) (-41) 0 0 0 0 0 0 0 0 113 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-41) (-41) 0 0 0 0 0 0 0 0 113 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-104) (-41) 0 0 0 0 0 0 0 0 113 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-41) (-41) 0 0 0 0 0 0 0 0 113 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-104) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-41) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-104) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>,
+			<0 0 0 (-104) (-104) (-104) (-104) (-104) (-104) (-104)
+			 (-104) (-41) (-41) 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+		qcom,cpr-virtual-corner-init-voltage-adjustment =
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 35000 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 35000 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 35000 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 35000 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
+			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>;
+		qcom,cpr-voltage-floor-override =
+			<0xffffffff          5 1050000 1050000 1050000 1050000
+			1050000 1050000 1050000 1050000 1050000 1050000 1050000
+			1050000 1050000 1100000 1162500 1162500 1162500 1162500
+			1162500 1162500 1162500 1162500 1162500 1162500 1162500
+			1162500>,
+			<0xffffffff 0xffffffff 1050000 1050000 1050000 1050000
+			1050000 1050000 1050000 1050000 1050000 1050000 1050000
+			1050000 1050000 1100000 1137500 1137500 1137500 1137500
+			1137500 1137500 1137500 1137500 1137500 1137500 1137500
+			1137500>;
+};
+
+#include "msm8929-gpu.dtsi"

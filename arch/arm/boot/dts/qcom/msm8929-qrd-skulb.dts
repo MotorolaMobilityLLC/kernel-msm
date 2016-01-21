@@ -1,0 +1,226 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "msm8929.dtsi"
+#include "msm8939-qrd-skul.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM8929 QRD SKULB";
+	compatible = "qcom,msm8929-qrd-skulb", "qcom,msm8929-qrd", "qcom,msm8929", "qcom,qrd";
+	qcom,board-id = <0x22000b 5>;
+};
+
+&tlmm_pinmux {
+	tps65132-en-pin {
+		qcom,pins = <&gp 97>, <&gp 98>;
+		qcom,num-grp-pins = <2>;
+		label = "tps65132_en_pins";
+		qcom,pin-func = <0>;
+
+		tps65132_en_default: en-default {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+};
+
+&i2c_0 { /* BLSP1 QUP2 */
+	tps65132@3e {
+		compatible = "ti,tps65132";
+		reg = <0x3e>;
+		i2c-pwr-supply = <&pm8916_l6>;
+		ti,en-gpio-lpm;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps65132_en_default>;
+
+		regulators {
+			tps65132_pos: pos-boost {
+				regulator-name = "tps65132-pos";
+				regulator-min-microvolt = <5800000>;
+				regulator-max-microvolt = <5800000>;
+				ti,discharge-enable;
+				ti,enable-time = <800>;
+				ti,current-limit = <200000>;
+				ti,en-gpio = <&msm_gpio 97 0>;
+			};
+
+			tps65132_neg: neg-boost {
+				regulator-name = "tps65132-neg";
+				regulator-min-microvolt = <5800000>;
+				regulator-max-microvolt = <5800000>;
+				ti,discharge-enable;
+				ti,enable-time = <800>;
+				ti,current-limit = <40000>;
+				ti,en-gpio = <&msm_gpio 98 0>;
+			};
+		};
+	};
+};
+
+&i2c_0 {
+	bosch@18 { /* Accelerometer sensor */
+		bosch,place = <5>;
+	};
+
+	mpu6050@68 { /* Gyroscope and accelerometer sensor combo */
+		invn,place = "Landscape Left";
+	};
+
+	memsic@30 { /* Magnetic field sensor */
+		memsic,dir = "reverse-x-axis-rightward";
+	};
+};
+
+&i2c_5 {
+	focaltech@38 {
+		compatible = "focaltech,5x06";
+		reg = <0x38>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <13 0x2>;
+		vdd-supply = <&pm8916_l17>;
+		vcc_i2c-supply = <&pm8916_l6>;
+		/* pins used by touchscreen */
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-2 = <&ts_release>;
+		focaltech,name = "ft5336";
+		focaltech,family-id = <0x14>;
+		focaltech,reset-gpio = <&msm_gpio 12 0x0>;
+		focaltech,irq-gpio = <&msm_gpio 13 0x0>;
+		focaltech,display-coords = <0 0 1080 1920>;
+		focaltech,panel-coords = <0 0 1080 2098>;
+		focaltech,button-map= <139 102 158>;
+		focaltech,no-force-update;
+		focaltech,i2c-pull-up;
+		focaltech,group-id = <1>;
+		focaltech,hard-reset-delay-ms = <20>;
+		focaltech,soft-reset-delay-ms = <200>;
+		focaltech,num-max-touches = <5>;
+		focaltech,fw-delay-aa-ms = <30>;
+		focaltech,fw-delay-55-ms = <30>;
+		focaltech,fw-upgrade-id1 = <0x11>;
+		focaltech,fw-upgrade-id2 = <0x11>;
+		focaltech,fw-delay-readid-ms = <10>;
+		focaltech,fw-delay-era-flsh-ms = <2000>;
+		focaltech,fw-auto-cal;
+		focaltech,ignore-id-check;
+	};
+};
+
+&soc {
+	gen-vkeys {
+		compatible = "qcom,gen-vkeys";
+		label = "ft5x06_ts";
+		qcom,disp-maxx = <1080>;
+		qcom,disp-maxy = <1920>;
+		qcom,panel-maxx = <1080>;
+		qcom,panel-maxy = <2098>;
+		qcom,key-codes = <139 172 158>;
+		qcom,y-offset = <0>;
+	};
+};
+
+&i2c_4 {
+	smb1357_otg_vreg: smb1357-charger@57 {
+		compatible = "qcom,smb1357-charger";
+		reg = <0x57>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <62 8>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&smb_int_default>;
+
+		qcom,bmd-algo-disabled;
+		qcom,float-voltage-mv = <4400>;
+		qcom,charging-timeout = <1536>;
+		qcom,recharge-thresh-mv = <100>;
+		qcom,fastchg-ma = <2500>;
+		regulator-name = "smb1357_otg_vreg";
+		qcom,soft-vfloat-comp-disabled;
+		qcom,soft-current-comp-disabled;
+		qcom,thermal-mitigation = <1500 700 600 0>;
+		qcom,gamma-setting = <3 2 0 2>;
+		usb-pullup-supply = <&pm8916_l13>;
+
+		qcom,bms-psy-name = "bms";
+		qcom,iterm-disabled;
+		qcom,inhibit-disabled;
+		qcom,bms-controlled-charging;
+	};
+
+	sy8827: sy8827-regulator@70 {
+		compatible = "silergy,sy8827-regulator";
+		reg = <0x70>;
+		fairchild,backup-vsel = <1>;
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1350000>;
+		regulator-ramp-delay = <1250>;
+		pintrl-names = "default";
+		pinctrl-0 = <&ext_buck_vsel_default>;
+		fairchild,vsel-gpio = <&msm_gpio 111 1>;
+		fairchild,restore-reg;
+		fairchild,disable-suspend;
+	};
+};
+
+&apc_vreg_corner {
+	vdd-apc-optional-prim-supply = <&sy8827>;
+};
+
+&pm8916_chg {
+	status = "ok";
+	qcom,use-external-charger;
+};
+
+/ {
+	qrd_batterydata: qcom,battery-data {
+		qcom,rpull-up-kohm = <100>;
+		qcom,vref-batt-therm = <1800000>;
+		#include "batterydata-qrd-skul-4v4-2920mah.dtsi"
+	};
+};
+
+&pm8916_bms {
+	status = "ok";
+	qcom,resume-soc = <99>;
+	qcom,battery-data = <&qrd_batterydata>;
+};
+
+&pm8916_vadc {
+	chan@30 {
+		qcom,scale-function = <15>;
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_r63417_1080p_video>;
+
+	vsp-supply = <&tps65132_pos>;
+	vsn-supply = <&tps65132_neg>;
+};
+
+&dsi_r63417_1080p_video {
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-pan-enable-dynamic-fps;
+	qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode_vfp";
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_qrd_skuk>;
+};
+
+&usb_otg {
+	qcom,hsusb-otg-mode = <3>;
+	qcom,usbid-gpio = <&msm_gpio 110 0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&usbid_default>;
+	vbus_otg-supply = <&smb1357_otg_vreg>;
+};

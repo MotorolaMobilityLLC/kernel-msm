@@ -1,0 +1,5804 @@
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/memreserve/ 0x00000000 0x00001000;
+/memreserve/ 0xac1c0000 0x00001000;
+
+#include "skeleton64.dtsi"
+#include <dt-bindings/clock/msm-clocks-krait.h>
+
+/ {
+	model = "Qualcomm Technologies, Inc. APQ 8084";
+	compatible = "qcom,apq8084";
+	qcom,msm-id = <178 0x10000>;
+	interrupt-parent = <&intc>;
+
+	aliases {
+		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
+		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
+		spi0 = &spi_0;
+	};
+
+	cpus {
+		#size-cells = <0>;
+		#address-cells = <1>;
+
+		CPU0: cpu@0 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x0>;
+			qcom,sleep-status = <&cpu0_slp_sts>;
+		};
+
+		CPU1: cpu@1 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x1>;
+			qcom,sleep-status = <&cpu1_slp_sts>;
+		};
+
+		CPU2: cpu@2 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x2>;
+			qcom,sleep-status = <&cpu2_slp_sts>;
+		};
+
+		CPU3: cpu@3 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x3>;
+			qcom,sleep-status = <&cpu3_slp_sts>;
+		};
+	};
+
+	soc: soc { };
+
+	memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+
+		qsecom_mem: qsecom_region@0 {
+			linux,reserve-contiguous-region;
+			reg = <0 0 0 0x1100000>;
+			label = "qseecom_mem";
+                };
+
+		secure_mem: secure_region@0 {
+			linux,reserve-contiguous-region;
+			reg = <0 0 0 0xfc00000>;
+			label = "secure_mem";
+		};
+
+		tz_apps_and_debug_mem: tz_apps_and_debug_region@d400000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0xd400000 0x0 0x700000>;
+			label = "tz_apps_and_debug_mem";
+		};
+
+		peripheral_mem: peripheral_region@0xdb00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0x0db00000 0x0 0x1d00000>;
+			label = "peripheral_mem";
+		};
+
+		external_image_mem: external_image_region@f800000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0x0f800000 0x0 0x800000>;
+			label = "external_image_mem";
+		};
+        };
+};
+
+#include "msm-gdsc.dtsi"
+#include "apq8084-ion.dtsi"
+#include "apq8084-iommu.dtsi"
+#include "apq8084-iommu-domains.dtsi"
+#include "apq8084-smp2p.dtsi"
+#include "apq8084-coresight.dtsi"
+#include "apq8084-mdss.dtsi"
+#include "apq8084-gpu.dtsi"
+#include "apq8084-pm.dtsi"
+#include "apq8084-bus.dtsi"
+#include "apq8084-iommu-domains.dtsi"
+#include "apq8084-pinctrl.dtsi"
+#include "apq8084-camera.dtsi"
+#include "apq8084-ipcrouter.dtsi"
+#include "msm-rdbg.dtsi"
+
+&soc {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	ranges = <0 0 0 0xffffffff>;
+
+	intc: interrupt-controller@f9000000 {
+		compatible = "qcom,msm-qgic2";
+		interrupt-controller;
+		#interrupt-cells = <3>;
+		reg = <0xF9000000 0x1000>,
+		      <0xF9002000 0x1000>;
+	};
+
+	msmgpio: gpio@fd510000 {
+		compatible = "qcom,msm-gpio";
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		reg = <0xfd510000 0x4000>;
+		ngpio = <147>;
+		interrupts = <0 208 0>;
+		qcom,direct-connect-irqs = <8>;
+		qcom,subsys-id = <3>;
+	};
+
+	restart@fc4ab000 {
+		compatible = "qcom,pshold";
+		reg = <0xfc4ab000 0x4>;
+		reg-names = "pshold-base";
+	};
+
+	timer {
+		compatible = "arm,armv7-timer";
+		interrupts = <1 2 0xf08>,
+			     <1 3 0xf08>,
+			     <1 4 0xf08>,
+			     <1 1 0xf08>;
+		clock-frequency = <19200000>;
+	};
+
+	timer@f9020000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		compatible = "arm,armv7-timer-mem";
+		reg = <0xf9020000 0x1000>;
+		clock-frequency = <19200000>;
+
+		frame@f9021000 {
+			frame-number = <0>;
+			interrupts = <0 8 0x4>,
+				     <0 7 0x4>;
+			reg = <0xf9021000 0x1000>,
+			      <0xf9022000 0x1000>;
+		};
+
+		frame@f9023000 {
+			frame-number = <1>;
+			interrupts = <0 9 0x4>;
+			reg = <0xf9023000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9024000 {
+			frame-number = <2>;
+			interrupts = <0 10 0x4>;
+			reg = <0xf9024000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9025000 {
+			frame-number = <3>;
+			interrupts = <0 11 0x4>;
+			reg = <0xf9025000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9026000 {
+			frame-number = <4>;
+			interrupts = <0 12 0x4>;
+			reg = <0xf9026000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9027000 {
+			frame-number = <5>;
+			interrupts = <0 13 0x4>;
+			reg = <0xf9027000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9028000 {
+			frame-number = <6>;
+			interrupts = <0 14 0x4>;
+			reg = <0xf9028000 0x1000>;
+			status = "disabled";
+		};
+	};
+
+	qcom,mpm2-sleep-counter@fc4a3000 {
+		compatible = "qcom,mpm2-sleep-counter";
+		reg = <0xfc4a3000 0x1000>;
+		clock-frequency = <32768>;
+	};
+
+        blsp1_uart1: serial@f991e000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf991e000 0x1000>;
+		interrupts = <0 108 0>;
+		status = "disabled";
+	};
+
+	blsp2_uart1: serial@f995e000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf995e000 0x1000>;
+		interrupts = <0 114 0>;
+		status = "disabled";
+	};
+
+	blsp2_uart0: uart@f995d000 {
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0xf995d000 0x1000>,
+			<0xf9944000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		status = "disabled";
+
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#address-cells = <0>;
+		interrupt-parent = <&blsp2_uart0>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 113 0
+						1 &intc 0 239 0
+						2 &msmgpio 131 0>;
+
+		qcom,tx-gpio = <&msmgpio 130 0>;
+		qcom,rx-gpio = <&msmgpio 131 0>;
+		qcom,inject-rx-on-wakeup;
+		qcom,rx-char-to-inject = <0x18>;
+
+		qcom,wakeup_irq = <2>;
+		qcom,bam-tx-ep-pipe-index = <0>;
+		qcom,bam-rx-ep-pipe-index = <1>;
+		qcom,msm-bus,name = "blsp2_uart0";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<84 512 0 0>,
+				<84 512 500 800>;
+	};
+
+	serial@f991f000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf991f000 0x1000>;
+		interrupts = <0 109 0>;
+		status = "disabled";
+	};
+
+	uart6: uart@f9922000 { /* BLSP1 UART6 */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0xf9922000 0x1000>,
+			<0xf9904000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#address-cells = <0>;
+		interrupt-parent = <&uart6>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 112 0
+						1 &intc 0 238 0
+						2 &msmgpio 44 0>;
+
+		qcom,tx-gpio = <&msmgpio 43 0x00>;
+		qcom,rx-gpio = <&msmgpio 44 0x00>;
+		qcom,cts-gpio = <&msmgpio 45 0x00>;
+		qcom,rfr-gpio = <&msmgpio 46 0x00>;
+
+		qcom,bam-tx-ep-pipe-index = <10>;
+		qcom,bam-rx-ep-pipe-index = <11>;
+		qcom,msm-bus,name = "uart6";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<86 512 0 0>,
+				<86 512 500 800>;
+		status = "disabled";
+	};
+
+	blsp2_uart4: uart@f9961000 { /* BLSP2 UART4 */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0xf9961000 0x1000>,
+				<0xf9944000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#address-cells = <0>;
+		interrupt-parent = <&blsp2_uart4>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 117 0
+						1 &intc 0 239 0
+						2 &msmgpio 113 0>;
+
+		qcom,tx-gpio = <&msmgpio 112 0>;
+		qcom,rx-gpio = <&msmgpio 113 0>;
+
+		qcom,wakeup_irq = <2>;
+		qcom,bam-tx-ep-pipe-index = <8>;
+		qcom,bam-rx-ep-pipe-index = <9>;
+		qcom,msm-bus,name = "blsp2_uart4";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<84 512 0 0>,
+				<84 512 500 800>;
+
+		status = "disabled";
+	};
+
+	qcom,cache_erp {
+		compatible = "qcom,cache_erp";
+		interrupts = <1 9 0>, <0 2 0>;
+		interrupt-names = "l1_irq", "l2_irq";
+		qcom,msm-imem-phandle = <&imem_cache_erp>;
+	};
+
+	qcom,cache_dump {
+		compatible = "qcom,cache_dump";
+		qcom,l1-dump-size = <0x100000>;
+		qcom,l2-dump-size = <0x500000>;
+	};
+
+	rpm_bus: qcom,rpm-smd {
+		compatible = "qcom,rpm-smd";
+		rpm-channel-name = "rpm_requests";
+		rpm-channel-type = <15>; /* SMD_APPS_RPM */
+	};
+
+        qcom,msm-imem@fe805000 {
+		compatible = "qcom,msm-imem";
+		reg = <0xfe805000 0x1000>; /* Address and size of IMEM */
+		ranges = <0x0 0xfe805000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		download_mode@0 {
+			compatible = "qcom,msm-imem-download_mode";
+			reg = <0x0 8>;
+		};
+
+		mem_dump_table@14 {
+			compatible = "qcom,msm-imem-mem_dump_table";
+			reg = <0x14 4>;
+		};
+
+		restart_reason@65c {
+			compatible = "qcom,msm-imem-restart_reason";
+			reg = <0x65c 4>;
+		};
+
+		imem_cache_erp: cache_erp@6a4 {
+			compatible = "qcom,msm-imem-cache_erp";
+			reg = <0x6a4 4>;
+		};
+
+		boot_stats@6b0 {
+			compatible = "qcom,msm-imem-boot_stats";
+			reg = <0x6b0 32>;
+		};
+
+		pil@94c {
+			compatible = "qcom,msm-imem-pil";
+			reg = <0x94c 200>;
+		};
+
+		emergency_download_mode@fe0 {
+			compatible = "qcom,msm-imem-emergency_download_mode";
+			reg = <0xfe0 12>;
+		};
+	};
+
+	qcom,msm-rtb {
+		compatible = "qcom,msm-rtb";
+		qcom,rtb-size = <0x100000>;
+	};
+
+	qcom,vpu@fde0b000 {
+		compatible = "qcom,vpu";
+		reg = <0xfde0b000 0x1000>,
+			<0x0f800000 0x200000>,
+			<0xfdee0000 0x1000>;
+		reg-names = "vpu_csr", "vpu_smem", "vpu_vbif";
+		interrupts = <0 24 0>, <0 26 0>;
+		interrupt-names = "vpu_wdog", "vpu_hfi";
+		qcom,clock-names = "vdp_bus_clk", "core_clk", "vdp_clk",
+			"iface_clk", "bus_clk", "sleep_clk", "cxo_clk",
+			"maple_bus_clk", "prng_clk";
+		qcom,bus-load-vector-tbl = <0 0 0>,
+			<4000000   4000000  4000000>,
+			<8000000   8000000  8000000>,
+			<16000000 16000000 16000000>,
+			<20000000 20000000 20000000>,
+			<24000000 24000000 24000000>,
+			<28000000 28000000 28000000>,
+			<33600000 33600000 33600000>,
+			<48000000 48000000 48000000>;
+		qcom,vbif-reg-presets = <0x00b0 0x10101010>,
+			<0x00b4 0x00001010>,
+			<0x00b8 0x00000000>,
+			<0x00c0 0x00000000>,
+			<0x00c4 0x10100000>,
+			<0x00c8 0x00101010>,
+			<0x0124 0x00000003>;
+		qcom,enabled-iommu-maps = "vpu_nonsecure", "vpu_secure";
+		vdd-supply = <&gdsc_vpu>;
+	};
+
+	qcom,dsp_sharedmem@fd80000 {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0x0fd80000 0x00020000>;
+		reg-names = "rfsa_dsp";
+		qcom,client-id = <0x011013ec>;
+	};
+
+	qcom,mdm_sharedmem@fda0000 {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0x0fda0000 0x00020000>;
+		reg-names = "rfsa_mdm";
+		qcom,client-id = <0x011013ed>;
+	};
+
+	sdhc_1: sdhci@f9824900 {
+		compatible = "qcom,sdhci-msm";
+		reg = <0xf9824900 0x1a0>, <0xf9824000 0x800>;
+		reg-names = "hc_mem", "core_mem";
+
+		interrupts = <0 123 0>, <0 138 0>;
+		interrupt-names = "hc_irq", "pwr_irq";
+
+		qcom,bus-width = <8>;
+		qcom,cpu-dma-latency-us = <701>;
+
+		qcom,msm-bus,name = "sdhc1";
+		qcom,msm-bus,num-cases = <9>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps = <78 512 0 0>, /* No vote */
+				<78 512 1600 3200>,    /* 400 KB/s*/
+				<78 512 80000 160000>, /* 20 MB/s */
+				<78 512 100000 200000>, /* 25 MB/s */
+				<78 512 200000 400000>, /* 50 MB/s */
+				<78 512 400000 800000>, /* 100 MB/s */
+				<78 512 400000 800000>, /* 200 MB/s */
+				<78 512 400000 800000>, /* 400 MB/s */
+				<78 512 2048000 4096000>; /* Max. bandwidth */
+		qcom,bus-bw-vectors-bps = <0 400000 20000000 25000000 50000000
+						100000000 200000000 400000000
+						4294967295>;
+
+		status = "disabled";
+	};
+
+	sdhc_2: sdhci@f98a4900 {
+		compatible = "qcom,sdhci-msm";
+		reg = <0xf98a4900 0x11c>, <0xf98a4000 0x800>;
+		reg-names = "hc_mem", "core_mem";
+
+		interrupts = <0 125 0>, <0 221 0>;
+		interrupt-names = "hc_irq", "pwr_irq";
+
+		qcom,bus-width = <4>;
+		qcom,cpu-dma-latency-us = <701>;
+
+		qcom,msm-bus,name = "sdhc2";
+		qcom,msm-bus,num-cases = <8>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps = <81 512 0 0>, /* No vote */
+				<81 512 1600 3200>,    /* 400 KB/s*/
+				<81 512 80000 160000>, /* 20 MB/s */
+				<81 512 100000 200000>, /* 25 MB/s */
+				<81 512 200000 400000>, /* 50 MB/s */
+				<81 512 400000 800000>, /* 100 MB/s */
+				<81 512 800000 800000>, /* 200 MB/s */
+				<81 512 2048000 4096000>; /* Max. bandwidth */
+		qcom,bus-bw-vectors-bps = <0 400000 20000000 25000000 50000000
+						100000000 200000000 4294967295>;
+		status = "disabled";
+	};
+
+	qcom,sps@f9980000 {
+		compatible = "qcom,msm_sps";
+		reg = <0xf9984000 0x15000>,
+		      <0xf9999000 0xb000>;
+		interrupts = <0 94 0>;
+		qcom,pipe-attr-ee;
+	};
+
+	pcie0: qcom,pcie@fc520000 {
+		compatible = "qcom,msm_pcie";
+		cell-index = <0>;
+		qcom,ctrl-amt = <2>;
+
+		reg = <0xfc520000 0x2000>,
+		      <0xfc526000 0x1000>,
+		      <0xff000000 0x1000>,
+		      <0xff001000 0x1000>,
+		      <0xff100000 0x1000>,
+		      <0xff200000 0x100000>,
+		      <0xff300000 0xd00000>;
+
+		reg-names = "parf", "phy", "dm_core", "elbi",
+				"conf", "io", "bars";
+
+		#address-cells = <0>;
+		interrupt-parent = <&pcie0>;
+		interrupts = <0 1 2 3 4 5 6 7 8 9 10 11 12>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 243 0
+				1 &intc 0 244 0
+				2 &intc 0 245 0
+				3 &intc 0 247 0
+				4 &intc 0 248 0
+				5 &intc 0 249 0
+				6 &intc 0 250 0
+				7 &intc 0 251 0
+				8 &intc 0 252 0
+				9 &intc 0 253 0
+				10 &intc 0 254 0
+				11 &intc 0 255 0
+				12 &msmgpio 69 0x2>;
+		interrupt-names = "int_msi", "int_a", "int_b", "int_c", "int_d",
+				"int_pls_pme", "int_pme_legacy", "int_pls_err",
+				"int_aer_legacy", "int_pls_link_up",
+				"int_pls_link_down", "int_bridge_flush_n",
+				"int_wake";
+
+		perst-gpio = <&msmgpio 70 0>;
+		wake-gpio = <&msmgpio 69 0>;
+		clkreq-gpio = <&msmgpio 68 0>;
+
+		gdsc-vdd-supply = <&gdsc_pcie_0>;
+		vreg-1.8-supply = <&pma8084_l12>;
+		vreg-0.9-supply = <&pma8084_l3>;
+		vreg-3.3-supply = <&wlan_vreg>;
+
+		qcom,l1ss-supported;
+		qcom,n-fts = <0x50>;
+		qcom,ep-latency = <10>;
+
+		qcom,msi-gicm-addr = <0xf9040040>;
+		qcom,msi-gicm-base = <0x160>;
+
+		qcom,msm-bus,name = "pcie0";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<45 512 0 0>,
+				<45 512 500 800>;
+	};
+
+	pcie1: qcom,pcie@fc528000 {
+		compatible = "qcom,msm_pcie";
+		cell-index = <1>;
+		qcom,ctrl-amt = <2>;
+
+		reg = <0xfc528000 0x2000>,
+		    <0xfc52e000  0x1000>,
+		    <0xfb000000 0x1000>,
+		    <0xfb001000 0x1000>,
+		    <0xfb100000 0x1000>,
+		    <0xfb200000 0x100000>,
+		    <0xfb300000 0xd00000>;
+
+		reg-names = "parf", "phy", "dm_core", "elbi",
+				"conf", "io", "bars";
+
+		#address-cells = <0>;
+		interrupt-parent = <&pcie1>;
+		interrupts = <0 1 2 3 4 5 6 7 8 9 10 11 12>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 271 0
+				1 &intc 0 272 0
+				2 &intc 0 273 0
+				3 &intc 0 274 0
+				4 &intc 0 275 0
+				5 &intc 0 276 0
+				6 &intc 0 277 0
+				7 &intc 0 278 0
+				8 &intc 0 279 0
+				9 &intc 0 280 0
+				10 &intc 0 281 0
+				11 &intc 0 282 0
+				12 &msmgpio 139 0x2>;
+
+		interrupt-names = "int_msi", "int_a", "int_b", "int_c", "int_d",
+				"int_pls_pme", "int_pme_legacy", "int_pls_err",
+				"int_aer_legacy", "int_pls_link_up",
+				"int_pls_link_down", "int_bridge_flush_n",
+				"int_wake";
+
+		perst-gpio = <&msmgpio 140 0>;
+		wake-gpio = <&msmgpio 139 0>;
+		clkreq-gpio = <&msmgpio 141 0>;
+
+		gdsc-vdd-supply = <&gdsc_pcie_1>;
+		vreg-1.8-supply = <&pma8084_l12>;
+		vreg-0.9-supply = <&pma8084_l3>;
+
+		qcom,n-fts = <0x50>;
+
+		qcom,l1ss-supported;
+
+		qcom,msi-gicm-addr = <0xF9041040>;
+		qcom,msi-gicm-base = <0x180>;
+
+		qcom,msm-bus,name = "pcie1";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<100 512 0 0>,
+				<100 512 500 800>;
+	};
+
+	mhi: qcom,mhi {
+		compatible = "qcom,mhi";
+	};
+
+	spmi_bus: qcom,spmi@fc4c0000 {
+		cell-index = <0>;
+		compatible = "qcom,spmi-pmic-arb";
+		reg-names = "core", "intr", "cnfg";
+		reg = <0xfc4cf000 0x1000>,
+		      <0Xfc4cb000 0x1000>,
+		      <0Xfc4ca000 0x1000>;
+		/* 190,ee0_krait_hlos_spmi_periph_irq */
+		/* 187,channel_0_krait_hlos_trans_done_irq */
+		interrupts = <0 190 0>, <0 187 0>;
+		qcom,pmic-arb-ee = <0>;
+		qcom,pmic-arb-channel = <0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt-controller;
+		#interrupt-cells = <3>;
+	};
+
+       qcom,qcedev@fd440000 {
+		compatible = "qcom,qcedev";
+		reg = <0xfd440000 0x20000>,
+		      <0xfd444000 0x8000>;
+		reg-names = "crypto-base","crypto-bam-base";
+		interrupts = <0 236 0>;
+		qcom,bam-pipe-pair = <1>;
+		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <0>;
+                qcom,msm-bus,name = "qcedev-noc";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<56 512 0 0>,
+				<56 512 3936000 393600>;
+		qcom,ce-opp-freq = <100000000>;
+	};
+
+        qcom,qcrypto@fd444000 {
+		compatible = "qcom,qcrypto";
+		reg = <0xfd440000 0x20000>,
+		      <0xfd444000 0x8000>;
+		reg-names = "crypto-base","crypto-bam-base";
+		interrupts = <0 236 0>;
+		qcom,bam-pipe-pair = <2>;
+		qcom,ce-hw-instance = <1>;
+		qcom,ce-device = <0>;
+		qcom,clk-mgmt-sus-res;
+                qcom,msm-bus,name = "qcrypto-noc";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,use-sw-aes-cbc-ecb-ctr-algo;
+		qcom,use-sw-aes-xts-algo;
+		qcom,use-sw-ahash-algo;
+		qcom,msm-bus,vectors-KBps =
+				<56 512 0 0>,
+				<56 512 3936000 393600>;
+		qcom,ce-opp-freq = <100000000>;
+	};
+
+	wcd9xxx_intc: wcd9xxx-irq {
+		compatible = "qcom,wcd9xxx-irq";
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <104 0>;
+		interrupt-names = "cdc-int";
+	};
+
+	tspp: msm_tspp@f99d8000 {
+		compatible = "qcom,msm_tspp";
+		reg = <0xf99d8000 0x1000>, /* MSM_TSIF0_PHYS */
+		      <0xf99d9000 0x1000>, /* MSM_TSIF1_PHYS */
+		      <0xf99da000 0x1000>, /* MSM_TSPP_PHYS  */
+		      <0xf99c4000 0x11000>; /* MSM_TSPP_BAM_PHYS */
+		reg-names = "MSM_TSIF0_PHYS",
+			"MSM_TSIF1_PHYS",
+			"MSM_TSPP_PHYS",
+			"MSM_TSPP_BAM_PHYS";
+		interrupts = <0 121 0>, /* TSIF_TSPP_IRQ */
+			<0 119 0>, /* TSIF0_IRQ */
+			<0 120 0>, /* TSIF1_IRQ */
+			<0 122 0>; /* TSIF_BAM_IRQ */
+		interrupt-names = "TSIF_TSPP_IRQ",
+			"TSIF0_IRQ",
+			"TSIF1_IRQ",
+			"TSIF_BAM_IRQ";
+
+		qcom,msm-bus,name = "tsif";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<82 512 0 0>, /* No vote */
+				<82 512 12288 24576>; /* Max. bandwidth, 2xTSIF, each max of 96Mbps */
+
+		pinctrl-names = "disabled",
+			"tsif0-mode1", "tsif0-mode2",
+			"tsif1-mode1", "tsif1-mode2",
+			"dual-tsif-mode1", "dual-tsif-mode2";
+
+		pinctrl-0 = <>;				/* disabled */
+		pinctrl-1 = <&tsif0_signals_active>;	/* tsif0-mode1 */
+		pinctrl-2 = <&tsif0_signals_active
+			&tsif0_sync_active>;		/* tsif0-mode2 */
+		pinctrl-3 = <&tsif1_signals_active>;	/* tsif1-mode1 */
+		pinctrl-4 = <&tsif1_signals_active
+			&tsif1_sync_active>;		/* tsif1-mode2 */
+		pinctrl-5 = <&tsif0_signals_active
+			&tsif1_signals_active>;		/* dual-tsif-mode1 */
+		pinctrl-6 = <&tsif0_signals_active
+			&tsif0_sync_active
+			&tsif1_signals_active
+			&tsif1_sync_active>;		/* dual-tsif-mode2 */
+	};
+
+	slim_msm: slim@fe1af000 {
+		cell-index = <1>;
+		compatible = "qcom,slim-ngd";
+		reg = <0xfe1af000 0x35000>,
+		      <0xfe184000 0x20000>;
+		reg-names = "slimbus_physical", "slimbus_bam_physical";
+		interrupts = <0 163 0>, <0 164 0>;
+		interrupt-names = "slimbus_irq", "slimbus_bam_irq";
+		qcom,apps-ch-pipes = <0x60000000>;
+		qcom,ea-pc = <0xb0>;
+		qcom,slim-mdm = "esoc0";
+
+		audio_slimslave {
+			compatible = "qcom,audio-slimslave";
+			elemental-addr = [ff ff ff ff 17 02];
+		};
+
+		taiko_codec {
+			compatible = "qcom,taiko-slim-pgd";
+			elemental-addr = [00 01 A0 00 17 02];
+
+			interrupt-parent = <&wcd9xxx_intc>;
+			interrupts = <0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+				      17 18 19 20 21 22 23 24 25 26 27 28>;
+
+			qcom,cdc-reset-gpio = <&msmgpio 101 0>;
+
+			cdc-vdd-buck-supply = <&pma8084_s5>;
+			qcom,cdc-vdd-buck-voltage = <2150000 2150000>;
+			qcom,cdc-vdd-buck-current = <650000>;
+
+			cdc-vdd-tx-h-supply = <&pma8084_s4>;
+			qcom,cdc-vdd-tx-h-voltage = <1800000 1800000>;
+			qcom,cdc-vdd-tx-h-current = <25000>;
+
+			cdc-vdd-rx-h-supply = <&pma8084_s4>;
+			qcom,cdc-vdd-rx-h-voltage = <1800000 1800000>;
+			qcom,cdc-vdd-rx-h-current = <25000>;
+
+			cdc-vddpx-1-supply = <&pma8084_s4>;
+			qcom,cdc-vddpx-1-voltage = <1800000 1800000>;
+			qcom,cdc-vddpx-1-current = <10000>;
+
+			cdc-vdd-a-1p2v-supply = <&pma8084_l1>;
+			qcom,cdc-vdd-a-1p2v-voltage = <1225000 1225000>;
+			qcom,cdc-vdd-a-1p2v-current = <10000>;
+
+			cdc-vddcx-1-supply = <&pma8084_l1>;
+			qcom,cdc-vddcx-1-voltage = <1225000 1225000>;
+			qcom,cdc-vddcx-1-current = <10000>;
+
+			cdc-vddcx-2-supply = <&pma8084_l1>;
+			qcom,cdc-vddcx-2-voltage = <1225000 1225000>;
+			qcom,cdc-vddcx-2-current = <10000>;
+
+			qcom,cdc-static-supplies = "cdc-vdd-buck",
+						   "cdc-vdd-tx-h",
+						   "cdc-vdd-rx-h",
+						   "cdc-vddpx-1",
+						   "cdc-vdd-a-1p2v",
+						   "cdc-vddcx-1",
+						   "cdc-vddcx-2";
+
+			qcom,cdc-micbias-ldoh-v = <0x3>;
+			qcom,cdc-micbias-cfilt1-mv = <1800>;
+			qcom,cdc-micbias-cfilt2-mv = <2700>;
+			qcom,cdc-micbias-cfilt3-mv = <1800>;
+			qcom,cdc-micbias1-cfilt-sel = <0x0>;
+			qcom,cdc-micbias2-cfilt-sel = <0x1>;
+			qcom,cdc-micbias3-cfilt-sel = <0x2>;
+			qcom,cdc-micbias4-cfilt-sel = <0x2>;
+			qcom,cdc-mclk-clk-rate = <9600000>;
+			qcom,cdc-slim-ifd = "taiko-slim-ifd";
+			qcom,cdc-slim-ifd-elemental-addr = [00 00 A0 00 17 02];
+			qcom,cdc-dmic-sample-rate = <4800000>;
+		};
+
+		tomtom_codec {
+			compatible = "qcom,tomtom-slim-pgd";
+			elemental-addr = [00 01 30 01 17 02];
+
+			interrupt-parent = <&wcd9xxx_intc>;
+			interrupts = <0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+				      17 18 19 20 21 22 23 24 25 26 27 28 30 31>;
+
+			qcom,cdc-reset-gpio = <&msmgpio 101 0>;
+
+			cdc-vdd-buck-supply = <&pma8084_s5>;
+			qcom,cdc-vdd-buck-voltage = <2150000 2150000>;
+			qcom,cdc-vdd-buck-current = <650000>;
+
+			cdc-vdd-tx-h-supply = <&pma8084_s4>;
+			qcom,cdc-vdd-tx-h-voltage = <1800000 1800000>;
+			qcom,cdc-vdd-tx-h-current = <25000>;
+
+			cdc-vdd-rx-h-supply = <&pma8084_s4>;
+			qcom,cdc-vdd-rx-h-voltage = <1800000 1800000>;
+			qcom,cdc-vdd-rx-h-current = <25000>;
+
+			cdc-vddpx-1-supply = <&pma8084_s4>;
+			qcom,cdc-vddpx-1-voltage = <1800000 1800000>;
+			qcom,cdc-vddpx-1-current = <10000>;
+
+			cdc-vdd-a-1p2v-supply = <&pma8084_l1>;
+			qcom,cdc-vdd-a-1p2v-voltage = <1225000 1225000>;
+			qcom,cdc-vdd-a-1p2v-current = <10000>;
+
+			cdc-vddcx-1-supply = <&pma8084_l1>;
+			qcom,cdc-vddcx-1-voltage = <1225000 1225000>;
+			qcom,cdc-vddcx-1-current = <10000>;
+
+			cdc-vddcx-2-supply = <&pma8084_l1>;
+			qcom,cdc-vddcx-2-voltage = <1225000 1225000>;
+			qcom,cdc-vddcx-2-current = <10000>;
+
+			qcom,cdc-static-supplies = "cdc-vdd-buck",
+						   "cdc-vdd-tx-h",
+						   "cdc-vdd-rx-h",
+						   "cdc-vddpx-1",
+						   "cdc-vdd-a-1p2v",
+						   "cdc-vddcx-1",
+						   "cdc-vddcx-2";
+
+			qcom,cdc-micbias-ldoh-v = <0x3>;
+			qcom,cdc-micbias-cfilt1-mv = <1800>;
+			qcom,cdc-micbias-cfilt2-mv = <2700>;
+			qcom,cdc-micbias-cfilt3-mv = <1800>;
+			qcom,cdc-micbias1-cfilt-sel = <0x0>;
+			qcom,cdc-micbias2-cfilt-sel = <0x1>;
+			qcom,cdc-micbias3-cfilt-sel = <0x2>;
+			qcom,cdc-micbias4-cfilt-sel = <0x2>;
+			qcom,cdc-mclk-clk-rate = <9600000>;
+			qcom,cdc-slim-ifd = "tomtom-slim-ifd";
+			qcom,cdc-slim-ifd-elemental-addr = [00 00 30 01 17 02];
+			qcom,cdc-dmic-sample-rate = <4800000>;
+			qcom,cdc-variant = "WCD9330";
+		};
+	};
+
+	i2c_0: i2c@f9925000 { /* BLSP1 QUP3 */
+		cell-index = <0>;
+		compatible = "qcom,i2c-qup";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0xf9925000 0x1000>;
+		interrupt-names = "qup_err_intr";
+		interrupts = <0 97 0>;
+		qcom,noise-rjct-scl = <1>;
+		qcom,noise-rjct-sda = <1>;
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 10 0>;
+		qcom,scl-gpio = <&msmgpio 11 0>;
+		qcom,master-id = <86>;
+		qcom,clk-ctl-xfer;
+	};
+
+	i2c@f9926000 { /* BLSP-1 QUP-4 */
+		cell-index = <3>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9926000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 98 0>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 29 0>;
+		qcom,scl-gpio = <&msmgpio 30 0>;
+		qcom,master-id = <86>;
+		qcom,clk-ctl-xfer;
+	};
+
+	i2c_2: i2c@f9927000 { /* BLSP1 QUP5 */
+		cell-index = <2>;
+		compatible = "qcom,i2c-qup";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0xf9927000 0x1000>;
+		interrupt-names = "qup_err_intr";
+		interrupts = <0 99 0>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 41 0>;
+		qcom,scl-gpio = <&msmgpio 42 0>;
+		qcom,master-id = <86>;
+	};
+
+	i2c_1: i2c@f9966000 { /* BLSP2 QUP4 */
+		cell-index = <1>;
+		compatible = "qcom,i2c-qup";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0xf9966000 0x1000>;
+		interrupt-names = "qup_err_intr";
+		interrupts = <0 104 0>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 61 0>;
+		qcom,scl-gpio = <&msmgpio 62 0>;
+		qcom,master-id = <84>;
+	};
+
+	clock_gcc: qcom,gcc@fc400000 {
+		compatible = "qcom,gcc-8084";
+		reg = <0xfc400000 0x4000>,
+			<0xfd8c0000 0x40000>,
+			<0xf9011000 0x1000>;
+		reg-names = "cc_base", "mmss_base", "apcs_base";
+		vdd_dig-supply = <&pma8084_s2_corner>;
+		#clock-cells = <1>;
+	};
+
+	clock_krait: qcom,clock-krait@f9016000 {
+		compatible = "qcom,clock-krait-8974";
+		reg = <0xf9016000 0x20>,
+			<0xf908a000 0x20>,
+			<0xf909a000 0x20>,
+			<0xf90aa000 0x20>,
+			<0xf90ba000 0x20>,
+			<0xfc4b80b0 0x08>,
+			<0xfc4b8458 0x04>,
+			<0xf9011000 0x50>;
+		reg-names = "hfpll_l2_clk", "hfpll0_clk",
+				"hfpll1_clk", "hfpll2_clk",
+				"hfpll3_clk", "efuse", "efuse_svs", "meas";
+		cpu0-supply = <&krait0_vreg>;
+		cpu1-supply = <&krait1_vreg>;
+		cpu2-supply = <&krait2_vreg>;
+		cpu3-supply = <&krait3_vreg>;
+		l2-dig-supply = <&pma8084_s2_corner_ao>;
+		hfpll-dig-supply = <&pma8084_s2_corner_ao>;
+		hfpll-analog-supply = <&pma8084_l12_ao>;
+		qcom,hfpll-config-val = <0x04D0405D>;
+		qcom,hfpll-user-vco-mask = <0x00100000>;
+		qcom,pvs-config-ver = <3>;
+		#clock-cells = <1>;
+
+		qcom,l2-fmax =
+			<          0 0			 >,
+			<  576000000 4 /* SVS_SOC */	 >,
+			< 1036800000 5 /* NORMAL */	 >,
+			< 1728000000 7 /* SUPER_TURBO */ >;
+
+		qcom,svs-fmax = <883200000>;
+
+		/*   2.7GHz RC1   */
+		qcom,speed2-pvs0-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  810000   76 >,
+			<  345600000  820000   88 >,
+			<  422400000  830000  109 >,
+			<  499200000  840000  130 >,
+			<  576000000  850000  151 >,
+			<  652800000  860000  172 >,
+			<  729600000  870000  194 >,
+			<  806400000  880000  217 >,
+			<  883200000  890000  239 >,
+			<  960000000  890000  260 >,
+			< 1036800000  900000  282 >,
+			< 1113600000  910000  306 >,
+			< 1190400000  920000  330 >,
+			< 1267200000  930000  354 >,
+			< 1344000000  940000  378 >,
+			< 1420800000  950000  402 >,
+			< 1497600000  960000  428 >,
+			< 1574400000  970000  453 >,
+			< 1651200000  980000  479 >,
+			< 1728000000  990000  504 >,
+			< 1804800000 1000000  531 >,
+			< 1881600000 1010000  558 >,
+			< 1958400000 1020000  585 >,
+			< 2035200000 1030000  613 >,
+			< 2112000000 1045000  642 >,
+			< 2188800000 1060000  675 >,
+			< 2265600000 1075000  708 >,
+			< 2342400000 1090000  742 >,
+			< 2419200000 1105000  777 >,
+			< 2496000000 1120000  813 >,
+			< 2572800000 1135000  849 >,
+			< 2649600000 1150000  886 >;
+
+		qcom,speed2-pvs1-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  810000   88 >,
+			<  422400000  820000  109 >,
+			<  499200000  830000  130 >,
+			<  576000000  840000  151 >,
+			<  652800000  850000  172 >,
+			<  729600000  860000  194 >,
+			<  806400000  870000  217 >,
+			<  883200000  880000  239 >,
+			<  960000000  880000  260 >,
+			< 1036800000  890000  282 >,
+			< 1113600000  900000  306 >,
+			< 1190400000  910000  330 >,
+			< 1267200000  920000  354 >,
+			< 1344000000  930000  378 >,
+			< 1420800000  940000  402 >,
+			< 1497600000  950000  428 >,
+			< 1574400000  960000  453 >,
+			< 1651200000  970000  479 >,
+			< 1728000000  980000  504 >,
+			< 1804800000  990000  531 >,
+			< 1881600000 1000000  558 >,
+			< 1958400000 1010000  585 >,
+			< 2035200000 1020000  613 >,
+			< 2112000000 1035000  642 >,
+			< 2188800000 1050000  675 >,
+			< 2265600000 1065000  708 >,
+			< 2342400000 1080000  742 >,
+			< 2419200000 1095000  777 >,
+			< 2496000000 1110000  813 >,
+			< 2572800000 1125000  849 >,
+			< 2649600000 1140000  886 >;
+
+		qcom,speed2-pvs2-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  790000   76 >,
+			<  345600000  800000   88 >,
+			<  422400000  810000  109 >,
+			<  499200000  820000  130 >,
+			<  576000000  830000  151 >,
+			<  652800000  840000  172 >,
+			<  729600000  850000  194 >,
+			<  806400000  860000  217 >,
+			<  883200000  870000  239 >,
+			<  960000000  870000  260 >,
+			< 1036800000  880000  282 >,
+			< 1113600000  890000  306 >,
+			< 1190400000  900000  330 >,
+			< 1267200000  910000  354 >,
+			< 1344000000  920000  378 >,
+			< 1420800000  930000  402 >,
+			< 1497600000  940000  428 >,
+			< 1574400000  950000  453 >,
+			< 1651200000  960000  479 >,
+			< 1728000000  970000  504 >,
+			< 1804800000  980000  531 >,
+			< 1881600000  990000  558 >,
+			< 1958400000 1000000  585 >,
+			< 2035200000 1010000  613 >,
+			< 2112000000 1025000  642 >,
+			< 2188800000 1040000  675 >,
+			< 2265600000 1055000  708 >,
+			< 2342400000 1070000  742 >,
+			< 2419200000 1085000  777 >,
+			< 2496000000 1100000  813 >,
+			< 2572800000 1115000  849 >,
+			< 2649600000 1130000  886 >;
+
+		qcom,speed2-pvs3-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  780000   76 >,
+			<  345600000  790000   88 >,
+			<  422400000  800000  109 >,
+			<  499200000  810000  130 >,
+			<  576000000  820000  151 >,
+			<  652800000  830000  172 >,
+			<  729600000  840000  194 >,
+			<  806400000  850000  217 >,
+			<  883200000  860000  239 >,
+			<  960000000  860000  260 >,
+			< 1036800000  870000  282 >,
+			< 1113600000  880000  306 >,
+			< 1190400000  890000  330 >,
+			< 1267200000  900000  354 >,
+			< 1344000000  910000  378 >,
+			< 1420800000  920000  402 >,
+			< 1497600000  930000  428 >,
+			< 1574400000  940000  453 >,
+			< 1651200000  950000  479 >,
+			< 1728000000  960000  504 >,
+			< 1804800000  970000  531 >,
+			< 1881600000  980000  558 >,
+			< 1958400000  990000  585 >,
+			< 2035200000 1000000  613 >,
+			< 2112000000 1015000  642 >,
+			< 2188800000 1030000  675 >,
+			< 2265600000 1045000  708 >,
+			< 2342400000 1060000  742 >,
+			< 2419200000 1075000  777 >,
+			< 2496000000 1090000  813 >,
+			< 2572800000 1105000  849 >,
+			< 2649600000 1120000  886 >;
+
+		qcom,speed2-pvs4-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  770000   76 >,
+			<  345600000  780000   88 >,
+			<  422400000  790000  109 >,
+			<  499200000  800000  130 >,
+			<  576000000  810000  151 >,
+			<  652800000  820000  172 >,
+			<  729600000  830000  194 >,
+			<  806400000  840000  217 >,
+			<  883200000  850000  239 >,
+			<  960000000  850000  260 >,
+			< 1036800000  860000  282 >,
+			< 1113600000  870000  306 >,
+			< 1190400000  880000  330 >,
+			< 1267200000  890000  354 >,
+			< 1344000000  900000  378 >,
+			< 1420800000  910000  402 >,
+			< 1497600000  920000  428 >,
+			< 1574400000  930000  453 >,
+			< 1651200000  940000  479 >,
+			< 1728000000  950000  504 >,
+			< 1804800000  960000  531 >,
+			< 1881600000  970000  558 >,
+			< 1958400000  980000  585 >,
+			< 2035200000  990000  613 >,
+			< 2112000000 1005000  642 >,
+			< 2188800000 1020000  675 >,
+			< 2265600000 1035000  708 >,
+			< 2342400000 1050000  742 >,
+			< 2419200000 1065000  777 >,
+			< 2496000000 1080000  813 >,
+			< 2572800000 1095000  849 >,
+			< 2649600000 1110000  886 >;
+
+		qcom,speed2-pvs5-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  760000   76 >,
+			<  345600000  770000   88 >,
+			<  422400000  780000  109 >,
+			<  499200000  790000  130 >,
+			<  576000000  800000  151 >,
+			<  652800000  810000  172 >,
+			<  729600000  820000  194 >,
+			<  806400000  830000  217 >,
+			<  883200000  840000  239 >,
+			<  960000000  840000  260 >,
+			< 1036800000  850000  282 >,
+			< 1113600000  860000  306 >,
+			< 1190400000  870000  330 >,
+			< 1267200000  880000  354 >,
+			< 1344000000  890000  378 >,
+			< 1420800000  900000  402 >,
+			< 1497600000  910000  428 >,
+			< 1574400000  920000  453 >,
+			< 1651200000  930000  479 >,
+			< 1728000000  940000  504 >,
+			< 1804800000  950000  531 >,
+			< 1881600000  960000  558 >,
+			< 1958400000  970000  585 >,
+			< 2035200000  980000  613 >,
+			< 2112000000  995000  642 >,
+			< 2188800000 1010000  675 >,
+			< 2265600000 1025000  708 >,
+			< 2342400000 1040000  742 >,
+			< 2419200000 1055000  777 >,
+			< 2496000000 1070000  813 >,
+			< 2572800000 1085000  849 >,
+			< 2649600000 1100000  886 >;
+
+		qcom,speed2-pvs6-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  760000   88 >,
+			<  422400000  770000  109 >,
+			<  499200000  780000  130 >,
+			<  576000000  790000  151 >,
+			<  652800000  800000  172 >,
+			<  729600000  810000  194 >,
+			<  806400000  820000  217 >,
+			<  883200000  830000  239 >,
+			<  960000000  830000  260 >,
+			< 1036800000  840000  282 >,
+			< 1113600000  850000  306 >,
+			< 1190400000  860000  330 >,
+			< 1267200000  870000  354 >,
+			< 1344000000  880000  378 >,
+			< 1420800000  890000  402 >,
+			< 1497600000  900000  428 >,
+			< 1574400000  910000  453 >,
+			< 1651200000  920000  479 >,
+			< 1728000000  930000  504 >,
+			< 1804800000  940000  531 >,
+			< 1881600000  950000  558 >,
+			< 1958400000  960000  585 >,
+			< 2035200000  970000  613 >,
+			< 2112000000  985000  642 >,
+			< 2188800000 1000000  675 >,
+			< 2265600000 1015000  708 >,
+			< 2342400000 1030000  742 >,
+			< 2419200000 1045000  777 >,
+			< 2496000000 1060000  813 >,
+			< 2572800000 1075000  849 >,
+			< 2649600000 1090000  886 >;
+
+		qcom,speed2-pvs7-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  740000   76 >,
+			<  345600000  750000   88 >,
+			<  422400000  760000  109 >,
+			<  499200000  770000  130 >,
+			<  576000000  780000  151 >,
+			<  652800000  790000  172 >,
+			<  729600000  800000  194 >,
+			<  806400000  810000  217 >,
+			<  883200000  820000  239 >,
+			<  960000000  820000  260 >,
+			< 1036800000  830000  282 >,
+			< 1113600000  840000  306 >,
+			< 1190400000  850000  330 >,
+			< 1267200000  860000  354 >,
+			< 1344000000  870000  378 >,
+			< 1420800000  880000  402 >,
+			< 1497600000  890000  428 >,
+			< 1574400000  900000  453 >,
+			< 1651200000  910000  479 >,
+			< 1728000000  920000  504 >,
+			< 1804800000  930000  531 >,
+			< 1881600000  940000  558 >,
+			< 1958400000  950000  585 >,
+			< 2035200000  960000  613 >,
+			< 2112000000  975000  642 >,
+			< 2188800000  990000  675 >,
+			< 2265600000 1005000  708 >,
+			< 2342400000 1020000  742 >,
+			< 2419200000 1035000  777 >,
+			< 2496000000 1050000  813 >,
+			< 2572800000 1065000  849 >,
+			< 2649600000 1080000  886 >;
+
+		qcom,speed2-pvs8-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  730000   76 >,
+			<  345600000  740000   88 >,
+			<  422400000  750000  109 >,
+			<  499200000  760000  130 >,
+			<  576000000  770000  151 >,
+			<  652800000  780000  172 >,
+			<  729600000  790000  194 >,
+			<  806400000  800000  217 >,
+			<  883200000  810000  239 >,
+			<  960000000  810000  260 >,
+			< 1036800000  820000  282 >,
+			< 1113600000  830000  306 >,
+			< 1190400000  840000  330 >,
+			< 1267200000  850000  354 >,
+			< 1344000000  860000  378 >,
+			< 1420800000  870000  402 >,
+			< 1497600000  880000  428 >,
+			< 1574400000  890000  453 >,
+			< 1651200000  900000  479 >,
+			< 1728000000  910000  504 >,
+			< 1804800000  920000  531 >,
+			< 1881600000  930000  558 >,
+			< 1958400000  940000  585 >,
+			< 2035200000  950000  613 >,
+			< 2112000000  965000  642 >,
+			< 2188800000  980000  675 >,
+			< 2265600000  995000  708 >,
+			< 2342400000 1010000  742 >,
+			< 2419200000 1025000  777 >,
+			< 2496000000 1040000  813 >,
+			< 2572800000 1055000  849 >,
+			< 2649600000 1070000  886 >;
+
+		qcom,speed2-pvs9-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  720000   76 >,
+			<  345600000  730000   88 >,
+			<  422400000  740000  109 >,
+			<  499200000  750000  130 >,
+			<  576000000  760000  151 >,
+			<  652800000  770000  172 >,
+			<  729600000  780000  194 >,
+			<  806400000  790000  217 >,
+			<  883200000  800000  239 >,
+			<  960000000  800000  260 >,
+			< 1036800000  810000  282 >,
+			< 1113600000  820000  306 >,
+			< 1190400000  830000  330 >,
+			< 1267200000  840000  354 >,
+			< 1344000000  850000  378 >,
+			< 1420800000  860000  402 >,
+			< 1497600000  870000  428 >,
+			< 1574400000  880000  453 >,
+			< 1651200000  890000  479 >,
+			< 1728000000  900000  504 >,
+			< 1804800000  910000  531 >,
+			< 1881600000  920000  558 >,
+			< 1958400000  930000  585 >,
+			< 2035200000  940000  613 >,
+			< 2112000000  955000  642 >,
+			< 2188800000  970000  675 >,
+			< 2265600000  985000  708 >,
+			< 2342400000 1000000  742 >,
+			< 2419200000 1015000  777 >,
+			< 2496000000 1030000  813 >,
+			< 2572800000 1045000  849 >,
+			< 2649600000 1060000  886 >;
+
+		qcom,speed2-pvs10-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  710000   76 >,
+			<  345600000  720000   88 >,
+			<  422400000  730000  109 >,
+			<  499200000  740000  130 >,
+			<  576000000  750000  151 >,
+			<  652800000  760000  172 >,
+			<  729600000  770000  194 >,
+			<  806400000  780000  217 >,
+			<  883200000  790000  239 >,
+			<  960000000  790000  260 >,
+			< 1036800000  800000  282 >,
+			< 1113600000  810000  306 >,
+			< 1190400000  820000  330 >,
+			< 1267200000  830000  354 >,
+			< 1344000000  840000  378 >,
+			< 1420800000  850000  402 >,
+			< 1497600000  860000  428 >,
+			< 1574400000  870000  453 >,
+			< 1651200000  880000  479 >,
+			< 1728000000  890000  504 >,
+			< 1804800000  900000  531 >,
+			< 1881600000  910000  558 >,
+			< 1958400000  920000  585 >,
+			< 2035200000  930000  613 >,
+			< 2112000000  945000  642 >,
+			< 2188800000  960000  675 >,
+			< 2265600000  975000  708 >,
+			< 2342400000  990000  742 >,
+			< 2419200000 1005000  777 >,
+			< 2496000000 1020000  813 >,
+			< 2572800000 1035000  849 >,
+			< 2649600000 1050000  886 >;
+
+		qcom,speed2-pvs11-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  700000   76 >,
+			<  345600000  710000   88 >,
+			<  422400000  720000  109 >,
+			<  499200000  730000  130 >,
+			<  576000000  740000  151 >,
+			<  652800000  750000  172 >,
+			<  729600000  760000  194 >,
+			<  806400000  770000  217 >,
+			<  883200000  780000  239 >,
+			<  960000000  780000  260 >,
+			< 1036800000  790000  282 >,
+			< 1113600000  800000  306 >,
+			< 1190400000  810000  330 >,
+			< 1267200000  820000  354 >,
+			< 1344000000  830000  378 >,
+			< 1420800000  840000  402 >,
+			< 1497600000  850000  428 >,
+			< 1574400000  860000  453 >,
+			< 1651200000  870000  479 >,
+			< 1728000000  880000  504 >,
+			< 1804800000  890000  531 >,
+			< 1881600000  900000  558 >,
+			< 1958400000  910000  585 >,
+			< 2035200000  920000  613 >,
+			< 2112000000  935000  642 >,
+			< 2188800000  950000  675 >,
+			< 2265600000  965000  708 >,
+			< 2342400000  980000  742 >,
+			< 2419200000  995000  777 >,
+			< 2496000000 1010000  813 >,
+			< 2572800000 1025000  849 >,
+			< 2649600000 1040000  886 >;
+
+		qcom,speed2-pvs12-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  690000   76 >,
+			<  345600000  700000   88 >,
+			<  422400000  710000  109 >,
+			<  499200000  720000  130 >,
+			<  576000000  730000  151 >,
+			<  652800000  740000  172 >,
+			<  729600000  750000  194 >,
+			<  806400000  760000  217 >,
+			<  883200000  770000  239 >,
+			<  960000000  770000  260 >,
+			< 1036800000  780000  282 >,
+			< 1113600000  790000  306 >,
+			< 1190400000  800000  330 >,
+			< 1267200000  810000  354 >,
+			< 1344000000  820000  378 >,
+			< 1420800000  830000  402 >,
+			< 1497600000  840000  428 >,
+			< 1574400000  850000  453 >,
+			< 1651200000  860000  479 >,
+			< 1728000000  870000  504 >,
+			< 1804800000  880000  531 >,
+			< 1881600000  890000  558 >,
+			< 1958400000  900000  585 >,
+			< 2035200000  910000  613 >,
+			< 2112000000  925000  642 >,
+			< 2188800000  940000  675 >,
+			< 2265600000  955000  708 >,
+			< 2342400000  970000  742 >,
+			< 2419200000  985000  777 >,
+			< 2496000000 1000000  813 >,
+			< 2572800000 1015000  849 >,
+			< 2649600000 1030000  886 >;
+
+		qcom,speed2-pvs13-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  680000   76 >,
+			<  345600000  690000   88 >,
+			<  422400000  700000  109 >,
+			<  499200000  710000  130 >,
+			<  576000000  720000  151 >,
+			<  652800000  730000  172 >,
+			<  729600000  740000  194 >,
+			<  806400000  750000  217 >,
+			<  883200000  760000  239 >,
+			<  960000000  760000  260 >,
+			< 1036800000  770000  282 >,
+			< 1113600000  780000  306 >,
+			< 1190400000  790000  330 >,
+			< 1267200000  800000  354 >,
+			< 1344000000  810000  378 >,
+			< 1420800000  820000  402 >,
+			< 1497600000  830000  428 >,
+			< 1574400000  840000  453 >,
+			< 1651200000  850000  479 >,
+			< 1728000000  860000  504 >,
+			< 1804800000  870000  531 >,
+			< 1881600000  880000  558 >,
+			< 1958400000  890000  585 >,
+			< 2035200000  900000  613 >,
+			< 2112000000  915000  642 >,
+			< 2188800000  930000  675 >,
+			< 2265600000  945000  708 >,
+			< 2342400000  960000  742 >,
+			< 2419200000  975000  777 >,
+			< 2496000000  990000  813 >,
+			< 2572800000 1005000  849 >,
+			< 2649600000 1020000  886 >;
+
+		qcom,speed2-pvs14-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  670000   76 >,
+			<  345600000  680000   88 >,
+			<  422400000  690000  109 >,
+			<  499200000  700000  130 >,
+			<  576000000  710000  151 >,
+			<  652800000  720000  172 >,
+			<  729600000  730000  194 >,
+			<  806400000  740000  217 >,
+			<  883200000  750000  239 >,
+			<  960000000  750000  260 >,
+			< 1036800000  760000  282 >,
+			< 1113600000  770000  306 >,
+			< 1190400000  780000  330 >,
+			< 1267200000  790000  354 >,
+			< 1344000000  800000  378 >,
+			< 1420800000  810000  402 >,
+			< 1497600000  820000  428 >,
+			< 1574400000  830000  453 >,
+			< 1651200000  840000  479 >,
+			< 1728000000  850000  504 >,
+			< 1804800000  860000  531 >,
+			< 1881600000  870000  558 >,
+			< 1958400000  880000  585 >,
+			< 2035200000  890000  613 >,
+			< 2112000000  905000  642 >,
+			< 2188800000  920000  675 >,
+			< 2265600000  935000  708 >,
+			< 2342400000  950000  742 >,
+			< 2419200000  965000  777 >,
+			< 2496000000  980000  813 >,
+			< 2572800000  995000  849 >,
+			< 2649600000 1010000  886 >;
+
+		qcom,speed2-pvs15-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  660000   76 >,
+			<  345600000  670000   88 >,
+			<  422400000  680000  109 >,
+			<  499200000  690000  130 >,
+			<  576000000  700000  151 >,
+			<  652800000  710000  172 >,
+			<  729600000  720000  194 >,
+			<  806400000  730000  217 >,
+			<  883200000  740000  239 >,
+			<  960000000  740000  260 >,
+			< 1036800000  750000  282 >,
+			< 1113600000  760000  306 >,
+			< 1190400000  770000  330 >,
+			< 1267200000  780000  354 >,
+			< 1344000000  790000  378 >,
+			< 1420800000  800000  402 >,
+			< 1497600000  810000  428 >,
+			< 1574400000  820000  453 >,
+			< 1651200000  830000  479 >,
+			< 1728000000  840000  504 >,
+			< 1804800000  850000  531 >,
+			< 1881600000  860000  558 >,
+			< 1958400000  870000  585 >,
+			< 2035200000  880000  613 >,
+			< 2112000000  895000  642 >,
+			< 2188800000  910000  675 >,
+			< 2265600000  925000  708 >,
+			< 2342400000  940000  742 >,
+			< 2419200000  955000  777 >,
+			< 2496000000  970000  813 >,
+			< 2572800000  985000  849 >,
+			< 2649600000 1000000  886 >;
+
+		/*   2.7GHz RC0   */
+		qcom,speed2-pvs0-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  805000  126 >,
+			<  576000000  815000  146 >,
+			<  652800000  825000  167 >,
+			<  729600000  835000  189 >,
+			<  806400000  845000  210 >,
+			<  883200000  855000  232 >,
+			<  960000000  865000  254 >,
+			< 1036800000  875000  277 >,
+			< 1113600000  885000  300 >,
+			< 1190400000  895000  323 >,
+			< 1267200000  905000  346 >,
+			< 1344000000  915000  371 >,
+			< 1420800000  925000  395 >,
+			< 1497600000  935000  419 >,
+			< 1574400000  945000  444 >,
+			< 1651200000  955000  469 >,
+			< 1728000000  970000  497 >,
+			< 1804800000  985000  525 >,
+			< 1881600000 1000000  554 >,
+			< 1958400000 1015000  583 >,
+			< 2035200000 1030000  613 >,
+			< 2112000000 1045000  642 >,
+			< 2188800000 1060000  675 >,
+			< 2265600000 1075000  708 >,
+			< 2342400000 1090000  742 >,
+			< 2419200000 1105000  777 >,
+			< 2496000000 1120000  813 >,
+			< 2572800000 1135000  849 >,
+			< 2649600000 1150000  886 >;
+
+		qcom,speed2-pvs1-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  126 >,
+			<  576000000  805000  146 >,
+			<  652800000  815000  167 >,
+			<  729600000  825000  189 >,
+			<  806400000  835000  210 >,
+			<  883200000  845000  232 >,
+			<  960000000  855000  254 >,
+			< 1036800000  865000  277 >,
+			< 1113600000  875000  300 >,
+			< 1190400000  885000  323 >,
+			< 1267200000  895000  346 >,
+			< 1344000000  905000  371 >,
+			< 1420800000  915000  395 >,
+			< 1497600000  925000  419 >,
+			< 1574400000  935000  444 >,
+			< 1651200000  945000  469 >,
+			< 1728000000  960000  497 >,
+			< 1804800000  975000  525 >,
+			< 1881600000  990000  554 >,
+			< 1958400000 1005000  583 >,
+			< 2035200000 1020000  613 >,
+			< 2112000000 1035000  642 >,
+			< 2188800000 1050000  675 >,
+			< 2265600000 1065000  708 >,
+			< 2342400000 1080000  742 >,
+			< 2419200000 1095000  777 >,
+			< 2496000000 1110000  813 >,
+			< 2572800000 1125000  849 >,
+			< 2649600000 1140000  886 >;
+
+		qcom,speed2-pvs2-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  126 >,
+			<  576000000  800000  146 >,
+			<  652800000  805000  167 >,
+			<  729600000  815000  189 >,
+			<  806400000  825000  210 >,
+			<  883200000  835000  232 >,
+			<  960000000  845000  254 >,
+			< 1036800000  855000  277 >,
+			< 1113600000  865000  300 >,
+			< 1190400000  875000  323 >,
+			< 1267200000  885000  346 >,
+			< 1344000000  895000  371 >,
+			< 1420800000  905000  395 >,
+			< 1497600000  915000  419 >,
+			< 1574400000  925000  444 >,
+			< 1651200000  935000  469 >,
+			< 1728000000  950000  497 >,
+			< 1804800000  965000  525 >,
+			< 1881600000  980000  554 >,
+			< 1958400000  995000  583 >,
+			< 2035200000 1010000  613 >,
+			< 2112000000 1025000  642 >,
+			< 2188800000 1040000  675 >,
+			< 2265600000 1055000  708 >,
+			< 2342400000 1070000  742 >,
+			< 2419200000 1085000  777 >,
+			< 2496000000 1100000  813 >,
+			< 2572800000 1115000  849 >,
+			< 2649600000 1130000  886 >;
+
+		qcom,speed2-pvs3-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  126 >,
+			<  576000000  800000  146 >,
+			<  652800000  800000  167 >,
+			<  729600000  805000  189 >,
+			<  806400000  815000  210 >,
+			<  883200000  825000  232 >,
+			<  960000000  835000  254 >,
+			< 1036800000  845000  277 >,
+			< 1113600000  855000  300 >,
+			< 1190400000  865000  323 >,
+			< 1267200000  875000  346 >,
+			< 1344000000  885000  371 >,
+			< 1420800000  895000  395 >,
+			< 1497600000  905000  419 >,
+			< 1574400000  915000  444 >,
+			< 1651200000  925000  469 >,
+			< 1728000000  940000  497 >,
+			< 1804800000  955000  525 >,
+			< 1881600000  970000  554 >,
+			< 1958400000  985000  583 >,
+			< 2035200000 1000000  613 >,
+			< 2112000000 1015000  642 >,
+			< 2188800000 1030000  675 >,
+			< 2265600000 1045000  708 >,
+			< 2342400000 1060000  742 >,
+			< 2419200000 1075000  777 >,
+			< 2496000000 1090000  813 >,
+			< 2572800000 1105000  849 >,
+			< 2649600000 1120000  886 >;
+
+		qcom,speed2-pvs4-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  126 >,
+			<  576000000  800000  146 >,
+			<  652800000  800000  167 >,
+			<  729600000  800000  189 >,
+			<  806400000  805000  210 >,
+			<  883200000  815000  232 >,
+			<  960000000  825000  254 >,
+			< 1036800000  835000  277 >,
+			< 1113600000  845000  300 >,
+			< 1190400000  855000  323 >,
+			< 1267200000  865000  346 >,
+			< 1344000000  875000  371 >,
+			< 1420800000  885000  395 >,
+			< 1497600000  895000  419 >,
+			< 1574400000  905000  444 >,
+			< 1651200000  915000  469 >,
+			< 1728000000  930000  497 >,
+			< 1804800000  945000  525 >,
+			< 1881600000  960000  554 >,
+			< 1958400000  975000  583 >,
+			< 2035200000  990000  613 >,
+			< 2112000000 1005000  642 >,
+			< 2188800000 1020000  675 >,
+			< 2265600000 1035000  708 >,
+			< 2342400000 1050000  742 >,
+			< 2419200000 1065000  777 >,
+			< 2496000000 1080000  813 >,
+			< 2572800000 1095000  849 >,
+			< 2649600000 1110000  886 >;
+
+		qcom,speed2-pvs5-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  126 >,
+			<  576000000  800000  146 >,
+			<  652800000  800000  167 >,
+			<  729600000  800000  189 >,
+			<  806400000  800000  210 >,
+			<  883200000  805000  232 >,
+			<  960000000  815000  254 >,
+			< 1036800000  825000  277 >,
+			< 1113600000  835000  300 >,
+			< 1190400000  845000  323 >,
+			< 1267200000  855000  346 >,
+			< 1344000000  865000  371 >,
+			< 1420800000  875000  395 >,
+			< 1497600000  885000  419 >,
+			< 1574400000  895000  444 >,
+			< 1651200000  905000  469 >,
+			< 1728000000  920000  497 >,
+			< 1804800000  935000  525 >,
+			< 1881600000  950000  554 >,
+			< 1958400000  965000  583 >,
+			< 2035200000  980000  613 >,
+			< 2112000000  995000  642 >,
+			< 2188800000 1010000  675 >,
+			< 2265600000 1025000  708 >,
+			< 2342400000 1040000  742 >,
+			< 2419200000 1055000  777 >,
+			< 2496000000 1070000  813 >,
+			< 2572800000 1085000  849 >,
+			< 2649600000 1100000  886 >;
+
+		qcom,speed2-pvs6-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  146 >,
+			<  652800000  775000  167 >,
+			<  729600000  780000  189 >,
+			<  806400000  790000  210 >,
+			<  883200000  800000  232 >,
+			<  960000000  810000  254 >,
+			< 1036800000  820000  277 >,
+			< 1113600000  830000  300 >,
+			< 1190400000  840000  323 >,
+			< 1267200000  850000  346 >,
+			< 1344000000  860000  371 >,
+			< 1420800000  870000  395 >,
+			< 1497600000  880000  419 >,
+			< 1574400000  890000  444 >,
+			< 1651200000  900000  469 >,
+			< 1728000000  910000  497 >,
+			< 1804800000  925000  525 >,
+			< 1881600000  940000  554 >,
+			< 1958400000  955000  583 >,
+			< 2035200000  970000  613 >,
+			< 2112000000  985000  642 >,
+			< 2188800000 1000000  675 >,
+			< 2265600000 1015000  708 >,
+			< 2342400000 1030000  742 >,
+			< 2419200000 1045000  777 >,
+			< 2496000000 1060000  813 >,
+			< 2572800000 1075000  849 >,
+			< 2649600000 1090000  886 >;
+
+		qcom,speed2-pvs7-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  146 >,
+			<  652800000  775000  167 >,
+			<  729600000  775000  189 >,
+			<  806400000  785000  210 >,
+			<  883200000  795000  232 >,
+			<  960000000  805000  254 >,
+			< 1036800000  815000  277 >,
+			< 1113600000  825000  300 >,
+			< 1190400000  835000  323 >,
+			< 1267200000  845000  346 >,
+			< 1344000000  855000  371 >,
+			< 1420800000  865000  395 >,
+			< 1497600000  875000  419 >,
+			< 1574400000  885000  444 >,
+			< 1651200000  895000  469 >,
+			< 1728000000  905000  497 >,
+			< 1804800000  915000  525 >,
+			< 1881600000  930000  554 >,
+			< 1958400000  945000  583 >,
+			< 2035200000  960000  613 >,
+			< 2112000000  975000  642 >,
+			< 2188800000  990000  675 >,
+			< 2265600000 1005000  708 >,
+			< 2342400000 1020000  742 >,
+			< 2419200000 1035000  777 >,
+			< 2496000000 1050000  813 >,
+			< 2572800000 1065000  849 >,
+			< 2649600000 1080000  886 >;
+
+		qcom,speed2-pvs8-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  146 >,
+			<  652800000  775000  167 >,
+			<  729600000  775000  189 >,
+			<  806400000  775000  210 >,
+			<  883200000  785000  232 >,
+			<  960000000  795000  254 >,
+			< 1036800000  805000  277 >,
+			< 1113600000  815000  300 >,
+			< 1190400000  825000  323 >,
+			< 1267200000  835000  346 >,
+			< 1344000000  845000  371 >,
+			< 1420800000  855000  395 >,
+			< 1497600000  865000  419 >,
+			< 1574400000  875000  444 >,
+			< 1651200000  885000  469 >,
+			< 1728000000  895000  497 >,
+			< 1804800000  905000  525 >,
+			< 1881600000  920000  554 >,
+			< 1958400000  935000  583 >,
+			< 2035200000  950000  613 >,
+			< 2112000000  965000  642 >,
+			< 2188800000  980000  675 >,
+			< 2265600000  995000  708 >,
+			< 2342400000 1010000  742 >,
+			< 2419200000 1025000  777 >,
+			< 2496000000 1040000  813 >,
+			< 2572800000 1055000  849 >,
+			< 2649600000 1070000  886 >;
+
+		qcom,speed2-pvs9-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  146 >,
+			<  652800000  775000  167 >,
+			<  729600000  775000  189 >,
+			<  806400000  775000  210 >,
+			<  883200000  780000  232 >,
+			<  960000000  790000  254 >,
+			< 1036800000  800000  277 >,
+			< 1113600000  810000  300 >,
+			< 1190400000  820000  323 >,
+			< 1267200000  830000  346 >,
+			< 1344000000  840000  371 >,
+			< 1420800000  850000  395 >,
+			< 1497600000  860000  419 >,
+			< 1574400000  870000  444 >,
+			< 1651200000  880000  469 >,
+			< 1728000000  890000  497 >,
+			< 1804800000  900000  525 >,
+			< 1881600000  910000  554 >,
+			< 1958400000  925000  583 >,
+			< 2035200000  940000  613 >,
+			< 2112000000  955000  642 >,
+			< 2188800000  970000  675 >,
+			< 2265600000  985000  708 >,
+			< 2342400000 1000000  742 >,
+			< 2419200000 1015000  777 >,
+			< 2496000000 1030000  813 >,
+			< 2572800000 1045000  849 >,
+			< 2649600000 1060000  886 >;
+
+		qcom,speed2-pvs10-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  146 >,
+			<  652800000  775000  167 >,
+			<  729600000  775000  189 >,
+			<  806400000  775000  210 >,
+			<  883200000  775000  232 >,
+			<  960000000  785000  254 >,
+			< 1036800000  795000  277 >,
+			< 1113600000  805000  300 >,
+			< 1190400000  815000  323 >,
+			< 1267200000  825000  346 >,
+			< 1344000000  835000  371 >,
+			< 1420800000  845000  395 >,
+			< 1497600000  855000  419 >,
+			< 1574400000  865000  444 >,
+			< 1651200000  875000  469 >,
+			< 1728000000  885000  497 >,
+			< 1804800000  895000  525 >,
+			< 1881600000  905000  554 >,
+			< 1958400000  915000  583 >,
+			< 2035200000  930000  613 >,
+			< 2112000000  945000  642 >,
+			< 2188800000  960000  675 >,
+			< 2265600000  975000  708 >,
+			< 2342400000  990000  742 >,
+			< 2419200000 1005000  777 >,
+			< 2496000000 1020000  813 >,
+			< 2572800000 1035000  849 >,
+			< 2649600000 1050000  886 >;
+
+		qcom,speed2-pvs11-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  146 >,
+			<  652800000  775000  167 >,
+			<  729600000  775000  189 >,
+			<  806400000  775000  210 >,
+			<  883200000  775000  232 >,
+			<  960000000  780000  254 >,
+			< 1036800000  790000  277 >,
+			< 1113600000  800000  300 >,
+			< 1190400000  810000  323 >,
+			< 1267200000  820000  346 >,
+			< 1344000000  830000  371 >,
+			< 1420800000  840000  395 >,
+			< 1497600000  850000  419 >,
+			< 1574400000  860000  444 >,
+			< 1651200000  870000  469 >,
+			< 1728000000  880000  497 >,
+			< 1804800000  890000  525 >,
+			< 1881600000  900000  554 >,
+			< 1958400000  910000  583 >,
+			< 2035200000  920000  613 >,
+			< 2112000000  935000  642 >,
+			< 2188800000  950000  675 >,
+			< 2265600000  965000  708 >,
+			< 2342400000  980000  742 >,
+			< 2419200000  995000  777 >,
+			< 2496000000 1010000  813 >,
+			< 2572800000 1025000  849 >,
+			< 2649600000 1040000  886 >;
+
+		qcom,speed2-pvs12-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  146 >,
+			<  652800000  775000  167 >,
+			<  729600000  775000  189 >,
+			<  806400000  775000  210 >,
+			<  883200000  775000  232 >,
+			<  960000000  775000  254 >,
+			< 1036800000  785000  277 >,
+			< 1113600000  795000  300 >,
+			< 1190400000  805000  323 >,
+			< 1267200000  815000  346 >,
+			< 1344000000  825000  371 >,
+			< 1420800000  835000  395 >,
+			< 1497600000  845000  419 >,
+			< 1574400000  855000  444 >,
+			< 1651200000  865000  469 >,
+			< 1728000000  875000  497 >,
+			< 1804800000  885000  525 >,
+			< 1881600000  895000  554 >,
+			< 1958400000  905000  583 >,
+			< 2035200000  915000  613 >,
+			< 2112000000  925000  642 >,
+			< 2188800000  940000  675 >,
+			< 2265600000  955000  708 >,
+			< 2342400000  970000  742 >,
+			< 2419200000  985000  777 >,
+			< 2496000000 1000000  813 >,
+			< 2572800000 1015000  849 >,
+			< 2649600000 1030000  886 >;
+
+		qcom,speed2-pvs13-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  146 >,
+			<  652800000  775000  167 >,
+			<  729600000  775000  189 >,
+			<  806400000  775000  210 >,
+			<  883200000  775000  232 >,
+			<  960000000  775000  254 >,
+			< 1036800000  780000  277 >,
+			< 1113600000  790000  300 >,
+			< 1190400000  800000  323 >,
+			< 1267200000  810000  346 >,
+			< 1344000000  820000  371 >,
+			< 1420800000  830000  395 >,
+			< 1497600000  840000  419 >,
+			< 1574400000  850000  444 >,
+			< 1651200000  860000  469 >,
+			< 1728000000  870000  497 >,
+			< 1804800000  880000  525 >,
+			< 1881600000  890000  554 >,
+			< 1958400000  900000  583 >,
+			< 2035200000  910000  613 >,
+			< 2112000000  920000  642 >,
+			< 2188800000  930000  675 >,
+			< 2265600000  945000  708 >,
+			< 2342400000  960000  742 >,
+			< 2419200000  975000  777 >,
+			< 2496000000  990000  813 >,
+			< 2572800000 1005000  849 >,
+			< 2649600000 1020000  886 >;
+
+		qcom,speed2-pvs14-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  750000   87 >,
+			<  422400000  750000  106 >,
+			<  499200000  750000  126 >,
+			<  576000000  750000  146 >,
+			<  652800000  750000  167 >,
+			<  729600000  750000  189 >,
+			<  806400000  750000  210 >,
+			<  883200000  755000  232 >,
+			<  960000000  765000  254 >,
+			< 1036800000  775000  277 >,
+			< 1113600000  785000  300 >,
+			< 1190400000  795000  323 >,
+			< 1267200000  805000  346 >,
+			< 1344000000  815000  371 >,
+			< 1420800000  825000  395 >,
+			< 1497600000  835000  419 >,
+			< 1574400000  845000  444 >,
+			< 1651200000  855000  469 >,
+			< 1728000000  865000  497 >,
+			< 1804800000  875000  525 >,
+			< 1881600000  885000  554 >,
+			< 1958400000  895000  583 >,
+			< 2035200000  905000  613 >,
+			< 2112000000  915000  642 >,
+			< 2188800000  925000  675 >,
+			< 2265600000  935000  708 >,
+			< 2342400000  950000  742 >,
+			< 2419200000  965000  777 >,
+			< 2496000000  980000  813 >,
+			< 2572800000  995000  849 >,
+			< 2649600000 1010000  886 >;
+
+		qcom,speed2-pvs15-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  750000   87 >,
+			<  422400000  750000  106 >,
+			<  499200000  750000  126 >,
+			<  576000000  750000  146 >,
+			<  652800000  750000  167 >,
+			<  729600000  750000  189 >,
+			<  806400000  750000  210 >,
+			<  883200000  750000  232 >,
+			<  960000000  760000  254 >,
+			< 1036800000  770000  277 >,
+			< 1113600000  780000  300 >,
+			< 1190400000  790000  323 >,
+			< 1267200000  800000  346 >,
+			< 1344000000  810000  371 >,
+			< 1420800000  820000  395 >,
+			< 1497600000  830000  419 >,
+			< 1574400000  840000  444 >,
+			< 1651200000  850000  469 >,
+			< 1728000000  860000  497 >,
+			< 1804800000  870000  525 >,
+			< 1881600000  880000  554 >,
+			< 1958400000  890000  583 >,
+			< 2035200000  900000  613 >,
+			< 2112000000  910000  642 >,
+			< 2188800000  920000  675 >,
+			< 2265600000  930000  708 >,
+			< 2342400000  940000  742 >,
+			< 2419200000  955000  777 >,
+			< 2496000000  970000  813 >,
+			< 2572800000  985000  849 >,
+			< 2649600000 1000000  886 >;
+
+		/*   2.5GHz RC1   */
+		qcom,speed1-pvs0-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  810000   76 >,
+			<  345600000  820000   88 >,
+			<  422400000  830000  109 >,
+			<  499200000  840000  130 >,
+			<  576000000  850000  151 >,
+			<  652800000  860000  172 >,
+			<  729600000  870000  194 >,
+			<  806400000  880000  217 >,
+			<  883200000  890000  239 >,
+			<  960000000  930000  268 >,
+			< 1036800000  940000  291 >,
+			< 1113600000  950000  315 >,
+			< 1190400000  960000  340 >,
+			< 1267200000  970000  365 >,
+			< 1344000000  980000  390 >,
+			< 1420800000  990000  415 >,
+			< 1497600000 1000000  441 >,
+			< 1574400000 1010000  467 >,
+			< 1651200000 1020000  494 >,
+			< 1728000000 1030000  520 >,
+			< 1804800000 1040000  547 >,
+			< 1881600000 1050000  574 >,
+			< 1958400000 1060000  603 >,
+			< 2035200000 1070000  632 >,
+			< 2112000000 1085000  665 >,
+			< 2188800000 1100000  699 >,
+			< 2265600000 1115000  733 >,
+			< 2342400000 1130000  768 >,
+			< 2419200000 1145000  804 >,
+			< 2457600000 1150000  820 >;
+
+		qcom,speed1-pvs1-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  810000   88 >,
+			<  422400000  820000  109 >,
+			<  499200000  830000  130 >,
+			<  576000000  840000  151 >,
+			<  652800000  850000  172 >,
+			<  729600000  860000  194 >,
+			<  806400000  870000  217 >,
+			<  883200000  880000  239 >,
+			<  960000000  920000  268 >,
+			< 1036800000  930000  291 >,
+			< 1113600000  940000  315 >,
+			< 1190400000  950000  340 >,
+			< 1267200000  960000  365 >,
+			< 1344000000  970000  390 >,
+			< 1420800000  980000  415 >,
+			< 1497600000  990000  441 >,
+			< 1574400000 1000000  467 >,
+			< 1651200000 1010000  494 >,
+			< 1728000000 1020000  520 >,
+			< 1804800000 1030000  547 >,
+			< 1881600000 1040000  574 >,
+			< 1958400000 1050000  603 >,
+			< 2035200000 1060000  632 >,
+			< 2112000000 1075000  665 >,
+			< 2188800000 1090000  699 >,
+			< 2265600000 1105000  733 >,
+			< 2342400000 1120000  768 >,
+			< 2419200000 1135000  804 >,
+			< 2457600000 1140000  820 >;
+
+		qcom,speed1-pvs2-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  790000   76 >,
+			<  345600000  800000   88 >,
+			<  422400000  810000  109 >,
+			<  499200000  820000  130 >,
+			<  576000000  830000  151 >,
+			<  652800000  840000  172 >,
+			<  729600000  850000  194 >,
+			<  806400000  860000  217 >,
+			<  883200000  870000  239 >,
+			<  960000000  910000  268 >,
+			< 1036800000  920000  291 >,
+			< 1113600000  930000  315 >,
+			< 1190400000  940000  340 >,
+			< 1267200000  950000  365 >,
+			< 1344000000  960000  390 >,
+			< 1420800000  970000  415 >,
+			< 1497600000  980000  441 >,
+			< 1574400000  990000  467 >,
+			< 1651200000 1000000  494 >,
+			< 1728000000 1010000  520 >,
+			< 1804800000 1020000  547 >,
+			< 1881600000 1030000  574 >,
+			< 1958400000 1040000  603 >,
+			< 2035200000 1050000  632 >,
+			< 2112000000 1065000  665 >,
+			< 2188800000 1080000  699 >,
+			< 2265600000 1095000  733 >,
+			< 2342400000 1110000  768 >,
+			< 2419200000 1125000  804 >,
+			< 2457600000 1130000  820 >;
+
+		qcom,speed1-pvs3-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  780000   76 >,
+			<  345600000  790000   88 >,
+			<  422400000  800000  109 >,
+			<  499200000  810000  130 >,
+			<  576000000  820000  151 >,
+			<  652800000  830000  172 >,
+			<  729600000  840000  194 >,
+			<  806400000  850000  217 >,
+			<  883200000  860000  239 >,
+			<  960000000  900000  268 >,
+			< 1036800000  910000  291 >,
+			< 1113600000  920000  315 >,
+			< 1190400000  930000  340 >,
+			< 1267200000  940000  365 >,
+			< 1344000000  950000  390 >,
+			< 1420800000  960000  415 >,
+			< 1497600000  970000  441 >,
+			< 1574400000  980000  467 >,
+			< 1651200000  990000  494 >,
+			< 1728000000 1000000  520 >,
+			< 1804800000 1010000  547 >,
+			< 1881600000 1020000  574 >,
+			< 1958400000 1030000  603 >,
+			< 2035200000 1040000  632 >,
+			< 2112000000 1055000  665 >,
+			< 2188800000 1070000  699 >,
+			< 2265600000 1085000  733 >,
+			< 2342400000 1100000  768 >,
+			< 2419200000 1115000  804 >,
+			< 2457600000 1120000  820 >;
+
+		qcom,speed1-pvs4-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  770000   76 >,
+			<  345600000  780000   88 >,
+			<  422400000  790000  109 >,
+			<  499200000  800000  130 >,
+			<  576000000  810000  151 >,
+			<  652800000  820000  172 >,
+			<  729600000  830000  194 >,
+			<  806400000  840000  217 >,
+			<  883200000  850000  239 >,
+			<  960000000  890000  268 >,
+			< 1036800000  900000  291 >,
+			< 1113600000  910000  315 >,
+			< 1190400000  920000  340 >,
+			< 1267200000  930000  365 >,
+			< 1344000000  940000  390 >,
+			< 1420800000  950000  415 >,
+			< 1497600000  960000  441 >,
+			< 1574400000  970000  467 >,
+			< 1651200000  980000  494 >,
+			< 1728000000  990000  520 >,
+			< 1804800000 1000000  547 >,
+			< 1881600000 1010000  574 >,
+			< 1958400000 1020000  603 >,
+			< 2035200000 1030000  632 >,
+			< 2112000000 1045000  665 >,
+			< 2188800000 1060000  699 >,
+			< 2265600000 1075000  733 >,
+			< 2342400000 1090000  768 >,
+			< 2419200000 1105000  804 >,
+			< 2457600000 1110000  820 >;
+
+		qcom,speed1-pvs5-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  760000   76 >,
+			<  345600000  770000   88 >,
+			<  422400000  780000  109 >,
+			<  499200000  790000  130 >,
+			<  576000000  800000  151 >,
+			<  652800000  810000  172 >,
+			<  729600000  820000  194 >,
+			<  806400000  830000  217 >,
+			<  883200000  840000  239 >,
+			<  960000000  880000  268 >,
+			< 1036800000  890000  291 >,
+			< 1113600000  900000  315 >,
+			< 1190400000  910000  340 >,
+			< 1267200000  920000  365 >,
+			< 1344000000  930000  390 >,
+			< 1420800000  940000  415 >,
+			< 1497600000  950000  441 >,
+			< 1574400000  960000  467 >,
+			< 1651200000  970000  494 >,
+			< 1728000000  980000  520 >,
+			< 1804800000  990000  547 >,
+			< 1881600000 1000000  574 >,
+			< 1958400000 1010000  603 >,
+			< 2035200000 1020000  632 >,
+			< 2112000000 1035000  665 >,
+			< 2188800000 1050000  699 >,
+			< 2265600000 1065000  733 >,
+			< 2342400000 1080000  768 >,
+			< 2419200000 1095000  804 >,
+			< 2457600000 1100000  820 >;
+
+		qcom,speed1-pvs6-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  760000   88 >,
+			<  422400000  770000  109 >,
+			<  499200000  780000  130 >,
+			<  576000000  790000  151 >,
+			<  652800000  800000  172 >,
+			<  729600000  810000  194 >,
+			<  806400000  820000  217 >,
+			<  883200000  830000  239 >,
+			<  960000000  870000  268 >,
+			< 1036800000  880000  291 >,
+			< 1113600000  890000  315 >,
+			< 1190400000  900000  340 >,
+			< 1267200000  910000  365 >,
+			< 1344000000  920000  390 >,
+			< 1420800000  930000  415 >,
+			< 1497600000  940000  441 >,
+			< 1574400000  950000  467 >,
+			< 1651200000  960000  494 >,
+			< 1728000000  970000  520 >,
+			< 1804800000  980000  547 >,
+			< 1881600000  990000  574 >,
+			< 1958400000 1000000  603 >,
+			< 2035200000 1010000  632 >,
+			< 2112000000 1025000  665 >,
+			< 2188800000 1040000  699 >,
+			< 2265600000 1055000  733 >,
+			< 2342400000 1070000  768 >,
+			< 2419200000 1085000  804 >,
+			< 2457600000 1090000  820 >;
+
+		qcom,speed1-pvs7-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  740000   76 >,
+			<  345600000  750000   88 >,
+			<  422400000  760000  109 >,
+			<  499200000  770000  130 >,
+			<  576000000  780000  151 >,
+			<  652800000  790000  172 >,
+			<  729600000  800000  194 >,
+			<  806400000  810000  217 >,
+			<  883200000  820000  239 >,
+			<  960000000  860000  268 >,
+			< 1036800000  870000  291 >,
+			< 1113600000  880000  315 >,
+			< 1190400000  890000  340 >,
+			< 1267200000  900000  365 >,
+			< 1344000000  910000  390 >,
+			< 1420800000  920000  415 >,
+			< 1497600000  930000  441 >,
+			< 1574400000  940000  467 >,
+			< 1651200000  950000  494 >,
+			< 1728000000  960000  520 >,
+			< 1804800000  970000  547 >,
+			< 1881600000  980000  574 >,
+			< 1958400000  990000  603 >,
+			< 2035200000 1000000  632 >,
+			< 2112000000 1015000  665 >,
+			< 2188800000 1030000  699 >,
+			< 2265600000 1045000  733 >,
+			< 2342400000 1060000  768 >,
+			< 2419200000 1075000  804 >,
+			< 2457600000 1080000  820 >;
+
+		qcom,speed1-pvs8-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  730000   76 >,
+			<  345600000  740000   88 >,
+			<  422400000  750000  109 >,
+			<  499200000  760000  130 >,
+			<  576000000  770000  151 >,
+			<  652800000  780000  172 >,
+			<  729600000  790000  194 >,
+			<  806400000  800000  217 >,
+			<  883200000  810000  239 >,
+			<  960000000  850000  268 >,
+			< 1036800000  860000  291 >,
+			< 1113600000  870000  315 >,
+			< 1190400000  880000  340 >,
+			< 1267200000  890000  365 >,
+			< 1344000000  900000  390 >,
+			< 1420800000  910000  415 >,
+			< 1497600000  920000  441 >,
+			< 1574400000  930000  467 >,
+			< 1651200000  940000  494 >,
+			< 1728000000  950000  520 >,
+			< 1804800000  960000  547 >,
+			< 1881600000  970000  574 >,
+			< 1958400000  980000  603 >,
+			< 2035200000  990000  632 >,
+			< 2112000000 1005000  665 >,
+			< 2188800000 1020000  699 >,
+			< 2265600000 1035000  733 >,
+			< 2342400000 1050000  768 >,
+			< 2419200000 1065000  804 >,
+			< 2457600000 1070000  820 >;
+
+		qcom,speed1-pvs9-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  720000   76 >,
+			<  345600000  730000   88 >,
+			<  422400000  740000  109 >,
+			<  499200000  750000  130 >,
+			<  576000000  760000  151 >,
+			<  652800000  770000  172 >,
+			<  729600000  780000  194 >,
+			<  806400000  790000  217 >,
+			<  883200000  800000  239 >,
+			<  960000000  840000  268 >,
+			< 1036800000  850000  291 >,
+			< 1113600000  860000  315 >,
+			< 1190400000  870000  340 >,
+			< 1267200000  880000  365 >,
+			< 1344000000  890000  390 >,
+			< 1420800000  900000  415 >,
+			< 1497600000  910000  441 >,
+			< 1574400000  920000  467 >,
+			< 1651200000  930000  494 >,
+			< 1728000000  940000  520 >,
+			< 1804800000  950000  547 >,
+			< 1881600000  960000  574 >,
+			< 1958400000  970000  603 >,
+			< 2035200000  980000  632 >,
+			< 2112000000  995000  665 >,
+			< 2188800000 1010000  699 >,
+			< 2265600000 1025000  733 >,
+			< 2342400000 1040000  768 >,
+			< 2419200000 1055000  804 >,
+			< 2457600000 1060000  820 >;
+
+		qcom,speed1-pvs10-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  710000   76 >,
+			<  345600000  720000   88 >,
+			<  422400000  730000  109 >,
+			<  499200000  740000  130 >,
+			<  576000000  750000  151 >,
+			<  652800000  760000  172 >,
+			<  729600000  770000  194 >,
+			<  806400000  780000  217 >,
+			<  883200000  790000  239 >,
+			<  960000000  830000  268 >,
+			< 1036800000  840000  291 >,
+			< 1113600000  850000  315 >,
+			< 1190400000  860000  340 >,
+			< 1267200000  870000  365 >,
+			< 1344000000  880000  390 >,
+			< 1420800000  890000  415 >,
+			< 1497600000  900000  441 >,
+			< 1574400000  910000  467 >,
+			< 1651200000  920000  494 >,
+			< 1728000000  930000  520 >,
+			< 1804800000  940000  547 >,
+			< 1881600000  950000  574 >,
+			< 1958400000  960000  603 >,
+			< 2035200000  970000  632 >,
+			< 2112000000  985000  665 >,
+			< 2188800000 1000000  699 >,
+			< 2265600000 1015000  733 >,
+			< 2342400000 1030000  768 >,
+			< 2419200000 1045000  804 >,
+			< 2457600000 1050000  820 >;
+
+		qcom,speed1-pvs11-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  700000   76 >,
+			<  345600000  710000   88 >,
+			<  422400000  720000  109 >,
+			<  499200000  730000  130 >,
+			<  576000000  740000  151 >,
+			<  652800000  750000  172 >,
+			<  729600000  760000  194 >,
+			<  806400000  770000  217 >,
+			<  883200000  780000  239 >,
+			<  960000000  820000  268 >,
+			< 1036800000  830000  291 >,
+			< 1113600000  840000  315 >,
+			< 1190400000  850000  340 >,
+			< 1267200000  860000  365 >,
+			< 1344000000  870000  390 >,
+			< 1420800000  880000  415 >,
+			< 1497600000  890000  441 >,
+			< 1574400000  900000  467 >,
+			< 1651200000  910000  494 >,
+			< 1728000000  920000  520 >,
+			< 1804800000  930000  547 >,
+			< 1881600000  940000  574 >,
+			< 1958400000  950000  603 >,
+			< 2035200000  960000  632 >,
+			< 2112000000  975000  665 >,
+			< 2188800000  990000  699 >,
+			< 2265600000 1005000  733 >,
+			< 2342400000 1020000  768 >,
+			< 2419200000 1035000  804 >,
+			< 2457600000 1040000  820 >;
+
+		qcom,speed1-pvs12-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  690000   76 >,
+			<  345600000  700000   88 >,
+			<  422400000  710000  109 >,
+			<  499200000  720000  130 >,
+			<  576000000  730000  151 >,
+			<  652800000  740000  172 >,
+			<  729600000  750000  194 >,
+			<  806400000  760000  217 >,
+			<  883200000  770000  239 >,
+			<  960000000  810000  268 >,
+			< 1036800000  820000  291 >,
+			< 1113600000  830000  315 >,
+			< 1190400000  840000  340 >,
+			< 1267200000  850000  365 >,
+			< 1344000000  860000  390 >,
+			< 1420800000  870000  415 >,
+			< 1497600000  880000  441 >,
+			< 1574400000  890000  467 >,
+			< 1651200000  900000  494 >,
+			< 1728000000  910000  520 >,
+			< 1804800000  920000  547 >,
+			< 1881600000  930000  574 >,
+			< 1958400000  940000  603 >,
+			< 2035200000  950000  632 >,
+			< 2112000000  965000  665 >,
+			< 2188800000  980000  699 >,
+			< 2265600000  995000  733 >,
+			< 2342400000 1010000  768 >,
+			< 2419200000 1025000  804 >,
+			< 2457600000 1030000  820 >;
+
+		qcom,speed1-pvs13-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  680000   76 >,
+			<  345600000  690000   88 >,
+			<  422400000  700000  109 >,
+			<  499200000  710000  130 >,
+			<  576000000  720000  151 >,
+			<  652800000  730000  172 >,
+			<  729600000  740000  194 >,
+			<  806400000  750000  217 >,
+			<  883200000  760000  239 >,
+			<  960000000  800000  268 >,
+			< 1036800000  810000  291 >,
+			< 1113600000  820000  315 >,
+			< 1190400000  830000  340 >,
+			< 1267200000  840000  365 >,
+			< 1344000000  850000  390 >,
+			< 1420800000  860000  415 >,
+			< 1497600000  870000  441 >,
+			< 1574400000  880000  467 >,
+			< 1651200000  890000  494 >,
+			< 1728000000  900000  520 >,
+			< 1804800000  910000  547 >,
+			< 1881600000  920000  574 >,
+			< 1958400000  930000  603 >,
+			< 2035200000  940000  632 >,
+			< 2112000000  955000  665 >,
+			< 2188800000  970000  699 >,
+			< 2265600000  985000  733 >,
+			< 2342400000 1000000  768 >,
+			< 2419200000 1015000  804 >,
+			< 2457600000 1020000  820 >;
+
+		qcom,speed1-pvs14-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  670000   76 >,
+			<  345600000  680000   88 >,
+			<  422400000  690000  109 >,
+			<  499200000  700000  130 >,
+			<  576000000  710000  151 >,
+			<  652800000  720000  172 >,
+			<  729600000  730000  194 >,
+			<  806400000  740000  217 >,
+			<  883200000  750000  239 >,
+			<  960000000  790000  268 >,
+			< 1036800000  800000  291 >,
+			< 1113600000  810000  315 >,
+			< 1190400000  820000  340 >,
+			< 1267200000  830000  365 >,
+			< 1344000000  840000  390 >,
+			< 1420800000  850000  415 >,
+			< 1497600000  860000  441 >,
+			< 1574400000  870000  467 >,
+			< 1651200000  880000  494 >,
+			< 1728000000  890000  520 >,
+			< 1804800000  900000  547 >,
+			< 1881600000  910000  574 >,
+			< 1958400000  920000  603 >,
+			< 2035200000  930000  632 >,
+			< 2112000000  945000  665 >,
+			< 2188800000  960000  699 >,
+			< 2265600000  975000  733 >,
+			< 2342400000  990000  768 >,
+			< 2419200000 1005000  804 >,
+			< 2457600000 1010000  820 >;
+
+		qcom,speed1-pvs15-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  660000   76 >,
+			<  345600000  670000   88 >,
+			<  422400000  680000  109 >,
+			<  499200000  690000  130 >,
+			<  576000000  700000  151 >,
+			<  652800000  710000  172 >,
+			<  729600000  720000  194 >,
+			<  806400000  730000  217 >,
+			<  883200000  740000  239 >,
+			<  960000000  780000  268 >,
+			< 1036800000  790000  291 >,
+			< 1113600000  800000  315 >,
+			< 1190400000  810000  340 >,
+			< 1267200000  820000  365 >,
+			< 1344000000  830000  390 >,
+			< 1420800000  840000  415 >,
+			< 1497600000  850000  441 >,
+			< 1574400000  860000  467 >,
+			< 1651200000  870000  494 >,
+			< 1728000000  880000  520 >,
+			< 1804800000  890000  547 >,
+			< 1881600000  900000  574 >,
+			< 1958400000  910000  603 >,
+			< 2035200000  920000  632 >,
+			< 2112000000  935000  665 >,
+			< 2188800000  950000  699 >,
+			< 2265600000  965000  733 >,
+			< 2342400000  980000  768 >,
+			< 2419200000  995000  804 >,
+			< 2457600000 1000000  820 >;
+
+		/*   2.5GHz RC0   */
+		qcom,speed1-pvs0-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  125 >,
+			<  576000000  805000  145 >,
+			<  652800000  815000  166 >,
+			<  729600000  825000  187 >,
+			<  806400000  835000  208 >,
+			<  883200000  845000  230 >,
+			<  960000000  855000  252 >,
+			< 1036800000  865000  275 >,
+			< 1113600000  875000  298 >,
+			< 1190400000  885000  321 >,
+			< 1267200000  895000  344 >,
+			< 1344000000  905000  367 >,
+			< 1420800000  915000  392 >,
+			< 1497600000  925000  416 >,
+			< 1574400000  935000  441 >,
+			< 1651200000  945000  465 >,
+			< 1728000000  960000  493 >,
+			< 1804800000  975000  521 >,
+			< 1881600000  990000  549 >,
+			< 1958400000 1005000  579 >,
+			< 2035200000 1020000  608 >,
+			< 2112000000 1035000  638 >,
+			< 2188800000 1050000  667 >,
+			< 2265600000 1065000  700 >,
+			< 2342400000 1080000  734 >,
+			< 2419200000 1095000  769 >,
+			< 2457600000 1100000  785 >;
+
+		qcom,speed1-pvs1-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  125 >,
+			<  576000000  800000  145 >,
+			<  652800000  805000  166 >,
+			<  729600000  815000  187 >,
+			<  806400000  825000  208 >,
+			<  883200000  835000  230 >,
+			<  960000000  845000  252 >,
+			< 1036800000  855000  275 >,
+			< 1113600000  865000  298 >,
+			< 1190400000  875000  321 >,
+			< 1267200000  885000  344 >,
+			< 1344000000  895000  367 >,
+			< 1420800000  905000  392 >,
+			< 1497600000  915000  416 >,
+			< 1574400000  925000  441 >,
+			< 1651200000  935000  465 >,
+			< 1728000000  950000  493 >,
+			< 1804800000  965000  521 >,
+			< 1881600000  980000  549 >,
+			< 1958400000  995000  579 >,
+			< 2035200000 1010000  608 >,
+			< 2112000000 1025000  638 >,
+			< 2188800000 1040000  667 >,
+			< 2265600000 1055000  700 >,
+			< 2342400000 1070000  734 >,
+			< 2419200000 1085000  769 >,
+			< 2457600000 1090000  785 >;
+
+		qcom,speed1-pvs2-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  125 >,
+			<  576000000  800000  145 >,
+			<  652800000  800000  166 >,
+			<  729600000  805000  187 >,
+			<  806400000  815000  208 >,
+			<  883200000  825000  230 >,
+			<  960000000  835000  252 >,
+			< 1036800000  845000  275 >,
+			< 1113600000  855000  298 >,
+			< 1190400000  865000  321 >,
+			< 1267200000  875000  344 >,
+			< 1344000000  885000  367 >,
+			< 1420800000  895000  392 >,
+			< 1497600000  905000  416 >,
+			< 1574400000  915000  441 >,
+			< 1651200000  925000  465 >,
+			< 1728000000  940000  493 >,
+			< 1804800000  955000  521 >,
+			< 1881600000  970000  549 >,
+			< 1958400000  985000  579 >,
+			< 2035200000 1000000  608 >,
+			< 2112000000 1015000  638 >,
+			< 2188800000 1030000  667 >,
+			< 2265600000 1045000  700 >,
+			< 2342400000 1060000  734 >,
+			< 2419200000 1075000  769 >,
+			< 2457600000 1080000  785 >;
+
+		qcom,speed1-pvs3-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  125 >,
+			<  576000000  800000  145 >,
+			<  652800000  800000  166 >,
+			<  729600000  800000  187 >,
+			<  806400000  805000  208 >,
+			<  883200000  815000  230 >,
+			<  960000000  825000  252 >,
+			< 1036800000  835000  275 >,
+			< 1113600000  845000  298 >,
+			< 1190400000  855000  321 >,
+			< 1267200000  865000  344 >,
+			< 1344000000  875000  367 >,
+			< 1420800000  885000  392 >,
+			< 1497600000  895000  416 >,
+			< 1574400000  905000  441 >,
+			< 1651200000  915000  465 >,
+			< 1728000000  930000  493 >,
+			< 1804800000  945000  521 >,
+			< 1881600000  960000  549 >,
+			< 1958400000  975000  579 >,
+			< 2035200000  990000  608 >,
+			< 2112000000 1005000  638 >,
+			< 2188800000 1020000  667 >,
+			< 2265600000 1035000  700 >,
+			< 2342400000 1050000  734 >,
+			< 2419200000 1065000  769 >,
+			< 2457600000 1070000  785 >;
+
+		qcom,speed1-pvs4-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  125 >,
+			<  576000000  775000  145 >,
+			<  652800000  775000  166 >,
+			<  729600000  785000  187 >,
+			<  806400000  795000  208 >,
+			<  883200000  805000  230 >,
+			<  960000000  815000  252 >,
+			< 1036800000  825000  275 >,
+			< 1113600000  835000  298 >,
+			< 1190400000  845000  321 >,
+			< 1267200000  855000  344 >,
+			< 1344000000  865000  367 >,
+			< 1420800000  875000  392 >,
+			< 1497600000  885000  416 >,
+			< 1574400000  895000  441 >,
+			< 1651200000  905000  465 >,
+			< 1728000000  920000  493 >,
+			< 1804800000  935000  521 >,
+			< 1881600000  950000  549 >,
+			< 1958400000  965000  579 >,
+			< 2035200000  980000  608 >,
+			< 2112000000  995000  638 >,
+			< 2188800000 1010000  667 >,
+			< 2265600000 1025000  700 >,
+			< 2342400000 1040000  734 >,
+			< 2419200000 1055000  769 >,
+			< 2457600000 1060000  785 >;
+
+		qcom,speed1-pvs5-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  125 >,
+			<  576000000  775000  145 >,
+			<  652800000  775000  166 >,
+			<  729600000  780000  187 >,
+			<  806400000  790000  208 >,
+			<  883200000  800000  230 >,
+			<  960000000  810000  252 >,
+			< 1036800000  820000  275 >,
+			< 1113600000  830000  298 >,
+			< 1190400000  840000  321 >,
+			< 1267200000  850000  344 >,
+			< 1344000000  860000  367 >,
+			< 1420800000  870000  392 >,
+			< 1497600000  880000  416 >,
+			< 1574400000  890000  441 >,
+			< 1651200000  900000  465 >,
+			< 1728000000  910000  493 >,
+			< 1804800000  925000  521 >,
+			< 1881600000  940000  549 >,
+			< 1958400000  955000  579 >,
+			< 2035200000  970000  608 >,
+			< 2112000000  985000  638 >,
+			< 2188800000 1000000  667 >,
+			< 2265600000 1015000  700 >,
+			< 2342400000 1030000  734 >,
+			< 2419200000 1045000  769 >,
+			< 2457600000 1050000  785 >;
+
+		qcom,speed1-pvs6-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  125 >,
+			<  576000000  775000  145 >,
+			<  652800000  775000  166 >,
+			<  729600000  775000  187 >,
+			<  806400000  785000  208 >,
+			<  883200000  795000  230 >,
+			<  960000000  805000  252 >,
+			< 1036800000  815000  275 >,
+			< 1113600000  825000  298 >,
+			< 1190400000  835000  321 >,
+			< 1267200000  845000  344 >,
+			< 1344000000  855000  367 >,
+			< 1420800000  865000  392 >,
+			< 1497600000  875000  416 >,
+			< 1574400000  885000  441 >,
+			< 1651200000  895000  465 >,
+			< 1728000000  905000  493 >,
+			< 1804800000  915000  521 >,
+			< 1881600000  930000  549 >,
+			< 1958400000  945000  579 >,
+			< 2035200000  960000  608 >,
+			< 2112000000  975000  638 >,
+			< 2188800000  990000  667 >,
+			< 2265600000 1005000  700 >,
+			< 2342400000 1020000  734 >,
+			< 2419200000 1035000  769 >,
+			< 2457600000 1040000  785 >;
+
+		qcom,speed1-pvs7-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  125 >,
+			<  576000000  775000  145 >,
+			<  652800000  775000  166 >,
+			<  729600000  775000  187 >,
+			<  806400000  775000  208 >,
+			<  883200000  785000  230 >,
+			<  960000000  795000  252 >,
+			< 1036800000  805000  275 >,
+			< 1113600000  815000  298 >,
+			< 1190400000  825000  321 >,
+			< 1267200000  835000  344 >,
+			< 1344000000  845000  367 >,
+			< 1420800000  855000  392 >,
+			< 1497600000  865000  416 >,
+			< 1574400000  875000  441 >,
+			< 1651200000  885000  465 >,
+			< 1728000000  895000  493 >,
+			< 1804800000  905000  521 >,
+			< 1881600000  920000  549 >,
+			< 1958400000  935000  579 >,
+			< 2035200000  950000  608 >,
+			< 2112000000  965000  638 >,
+			< 2188800000  980000  667 >,
+			< 2265600000  995000  700 >,
+			< 2342400000 1010000  734 >,
+			< 2419200000 1025000  769 >,
+			< 2457600000 1030000  785 >;
+
+		qcom,speed1-pvs8-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  125 >,
+			<  576000000  775000  145 >,
+			<  652800000  775000  166 >,
+			<  729600000  775000  187 >,
+			<  806400000  775000  208 >,
+			<  883200000  780000  230 >,
+			<  960000000  790000  252 >,
+			< 1036800000  800000  275 >,
+			< 1113600000  810000  298 >,
+			< 1190400000  820000  321 >,
+			< 1267200000  830000  344 >,
+			< 1344000000  840000  367 >,
+			< 1420800000  850000  392 >,
+			< 1497600000  860000  416 >,
+			< 1574400000  870000  441 >,
+			< 1651200000  880000  465 >,
+			< 1728000000  890000  493 >,
+			< 1804800000  900000  521 >,
+			< 1881600000  910000  549 >,
+			< 1958400000  925000  579 >,
+			< 2035200000  940000  608 >,
+			< 2112000000  955000  638 >,
+			< 2188800000  970000  667 >,
+			< 2265600000  985000  700 >,
+			< 2342400000 1000000  734 >,
+			< 2419200000 1015000  769 >,
+			< 2457600000 1020000  785 >;
+
+		qcom,speed1-pvs9-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  125 >,
+			<  576000000  775000  145 >,
+			<  652800000  775000  166 >,
+			<  729600000  775000  187 >,
+			<  806400000  775000  208 >,
+			<  883200000  775000  230 >,
+			<  960000000  785000  252 >,
+			< 1036800000  795000  275 >,
+			< 1113600000  805000  298 >,
+			< 1190400000  815000  321 >,
+			< 1267200000  825000  344 >,
+			< 1344000000  835000  367 >,
+			< 1420800000  845000  392 >,
+			< 1497600000  855000  416 >,
+			< 1574400000  865000  441 >,
+			< 1651200000  875000  465 >,
+			< 1728000000  885000  493 >,
+			< 1804800000  895000  521 >,
+			< 1881600000  905000  549 >,
+			< 1958400000  915000  579 >,
+			< 2035200000  930000  608 >,
+			< 2112000000  945000  638 >,
+			< 2188800000  960000  667 >,
+			< 2265600000  975000  700 >,
+			< 2342400000  990000  734 >,
+			< 2419200000 1005000  769 >,
+			< 2457600000 1010000  785 >;
+
+		qcom,speed1-pvs10-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  125 >,
+			<  576000000  775000  145 >,
+			<  652800000  775000  166 >,
+			<  729600000  775000  187 >,
+			<  806400000  775000  208 >,
+			<  883200000  775000  230 >,
+			<  960000000  780000  252 >,
+			< 1036800000  790000  275 >,
+			< 1113600000  800000  298 >,
+			< 1190400000  810000  321 >,
+			< 1267200000  820000  344 >,
+			< 1344000000  830000  367 >,
+			< 1420800000  840000  392 >,
+			< 1497600000  850000  416 >,
+			< 1574400000  860000  441 >,
+			< 1651200000  870000  465 >,
+			< 1728000000  880000  493 >,
+			< 1804800000  890000  521 >,
+			< 1881600000  900000  549 >,
+			< 1958400000  910000  579 >,
+			< 2035200000  920000  608 >,
+			< 2112000000  935000  638 >,
+			< 2188800000  950000  667 >,
+			< 2265600000  965000  700 >,
+			< 2342400000  980000  734 >,
+			< 2419200000  995000  769 >,
+			< 2457600000 1000000  785 >;
+
+		qcom,speed1-pvs11-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  125 >,
+			<  576000000  775000  145 >,
+			<  652800000  775000  166 >,
+			<  729600000  775000  187 >,
+			<  806400000  775000  208 >,
+			<  883200000  775000  230 >,
+			<  960000000  775000  252 >,
+			< 1036800000  785000  275 >,
+			< 1113600000  795000  298 >,
+			< 1190400000  805000  321 >,
+			< 1267200000  815000  344 >,
+			< 1344000000  825000  367 >,
+			< 1420800000  835000  392 >,
+			< 1497600000  845000  416 >,
+			< 1574400000  855000  441 >,
+			< 1651200000  865000  465 >,
+			< 1728000000  875000  493 >,
+			< 1804800000  885000  521 >,
+			< 1881600000  895000  549 >,
+			< 1958400000  905000  579 >,
+			< 2035200000  915000  608 >,
+			< 2112000000  925000  638 >,
+			< 2188800000  940000  667 >,
+			< 2265600000  955000  700 >,
+			< 2342400000  970000  734 >,
+			< 2419200000  985000  769 >,
+			< 2457600000  990000  785 >;
+
+		qcom,speed1-pvs12-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  750000   87 >,
+			<  422400000  750000  106 >,
+			<  499200000  750000  125 >,
+			<  576000000  750000  145 >,
+			<  652800000  750000  166 >,
+			<  729600000  750000  187 >,
+			<  806400000  750000  208 >,
+			<  883200000  760000  230 >,
+			<  960000000  770000  252 >,
+			< 1036800000  780000  275 >,
+			< 1113600000  790000  298 >,
+			< 1190400000  800000  321 >,
+			< 1267200000  810000  344 >,
+			< 1344000000  820000  367 >,
+			< 1420800000  830000  392 >,
+			< 1497600000  840000  416 >,
+			< 1574400000  850000  441 >,
+			< 1651200000  860000  465 >,
+			< 1728000000  870000  493 >,
+			< 1804800000  880000  521 >,
+			< 1881600000  890000  549 >,
+			< 1958400000  900000  579 >,
+			< 2035200000  910000  608 >,
+			< 2112000000  920000  638 >,
+			< 2188800000  930000  667 >,
+			< 2265600000  945000  700 >,
+			< 2342400000  960000  734 >,
+			< 2419200000  975000  769 >,
+			< 2457600000  980000  785 >;
+
+		qcom,speed1-pvs13-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  750000   87 >,
+			<  422400000  750000  106 >,
+			<  499200000  750000  125 >,
+			<  576000000  750000  145 >,
+			<  652800000  750000  166 >,
+			<  729600000  750000  187 >,
+			<  806400000  750000  208 >,
+			<  883200000  755000  230 >,
+			<  960000000  765000  252 >,
+			< 1036800000  775000  275 >,
+			< 1113600000  785000  298 >,
+			< 1190400000  795000  321 >,
+			< 1267200000  805000  344 >,
+			< 1344000000  815000  367 >,
+			< 1420800000  825000  392 >,
+			< 1497600000  835000  416 >,
+			< 1574400000  845000  441 >,
+			< 1651200000  855000  465 >,
+			< 1728000000  865000  493 >,
+			< 1804800000  875000  521 >,
+			< 1881600000  885000  549 >,
+			< 1958400000  895000  579 >,
+			< 2035200000  905000  608 >,
+			< 2112000000  915000  638 >,
+			< 2188800000  925000  667 >,
+			< 2265600000  935000  700 >,
+			< 2342400000  950000  734 >,
+			< 2419200000  965000  769 >,
+			< 2457600000  970000  785 >;
+
+		qcom,speed1-pvs14-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  750000   87 >,
+			<  422400000  750000  106 >,
+			<  499200000  750000  125 >,
+			<  576000000  750000  145 >,
+			<  652800000  750000  166 >,
+			<  729600000  750000  187 >,
+			<  806400000  750000  208 >,
+			<  883200000  750000  230 >,
+			<  960000000  760000  252 >,
+			< 1036800000  770000  275 >,
+			< 1113600000  780000  298 >,
+			< 1190400000  790000  321 >,
+			< 1267200000  800000  344 >,
+			< 1344000000  810000  367 >,
+			< 1420800000  820000  392 >,
+			< 1497600000  830000  416 >,
+			< 1574400000  840000  441 >,
+			< 1651200000  850000  465 >,
+			< 1728000000  860000  493 >,
+			< 1804800000  870000  521 >,
+			< 1881600000  880000  549 >,
+			< 1958400000  890000  579 >,
+			< 2035200000  900000  608 >,
+			< 2112000000  910000  638 >,
+			< 2188800000  920000  667 >,
+			< 2265600000  930000  700 >,
+			< 2342400000  940000  734 >,
+			< 2419200000  955000  769 >,
+			< 2457600000  960000  785 >;
+
+		qcom,speed1-pvs15-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  750000   87 >,
+			<  422400000  750000  106 >,
+			<  499200000  750000  125 >,
+			<  576000000  750000  145 >,
+			<  652800000  750000  166 >,
+			<  729600000  750000  187 >,
+			<  806400000  750000  208 >,
+			<  883200000  750000  230 >,
+			<  960000000  755000  252 >,
+			< 1036800000  765000  275 >,
+			< 1113600000  775000  298 >,
+			< 1190400000  785000  321 >,
+			< 1267200000  795000  344 >,
+			< 1344000000  805000  367 >,
+			< 1420800000  815000  392 >,
+			< 1497600000  825000  416 >,
+			< 1574400000  835000  441 >,
+			< 1651200000  845000  465 >,
+			< 1728000000  855000  493 >,
+			< 1804800000  865000  521 >,
+			< 1881600000  875000  549 >,
+			< 1958400000  885000  579 >,
+			< 2035200000  895000  608 >,
+			< 2112000000  905000  638 >,
+			< 2188800000  915000  667 >,
+			< 2265600000  925000  700 >,
+			< 2342400000  935000  734 >,
+			< 2419200000  945000  769 >,
+			< 2457600000  950000  785 >;
+
+		/*   2.3GHz RC1   */
+		qcom,speed0-pvs0-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  810000   76 >,
+			<  345600000  820000   88 >,
+			<  422400000  830000  109 >,
+			<  499200000  840000  130 >,
+			<  576000000  850000  151 >,
+			<  652800000  860000  172 >,
+			<  729600000  870000  194 >,
+			<  806400000  880000  217 >,
+			<  883200000  890000  239 >,
+			<  960000000  915000  265 >,
+			< 1036800000  925000  288 >,
+			< 1113600000  935000  312 >,
+			< 1190400000  945000  336 >,
+			< 1267200000  955000  360 >,
+			< 1344000000  965000  385 >,
+			< 1420800000  975000  410 >,
+			< 1497600000  985000  436 >,
+			< 1574400000  995000  461 >,
+			< 1651200000 1005000  488 >,
+			< 1728000000 1015000  515 >,
+			< 1804800000 1025000  541 >,
+			< 1881600000 1035000  568 >,
+			< 1958400000 1045000  595 >,
+			< 2035200000 1055000  624 >,
+			< 2112000000 1070000  657 >,
+			< 2188800000 1085000  691 >,
+			< 2265600000 1100000  725 >;
+
+		qcom,speed0-pvs1-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  810000   88 >,
+			<  422400000  820000  109 >,
+			<  499200000  830000  130 >,
+			<  576000000  840000  151 >,
+			<  652800000  850000  172 >,
+			<  729600000  860000  194 >,
+			<  806400000  870000  217 >,
+			<  883200000  880000  239 >,
+			<  960000000  905000  265 >,
+			< 1036800000  915000  288 >,
+			< 1113600000  925000  312 >,
+			< 1190400000  935000  336 >,
+			< 1267200000  945000  360 >,
+			< 1344000000  955000  385 >,
+			< 1420800000  965000  410 >,
+			< 1497600000  975000  436 >,
+			< 1574400000  985000  461 >,
+			< 1651200000  995000  488 >,
+			< 1728000000 1005000  515 >,
+			< 1804800000 1015000  541 >,
+			< 1881600000 1025000  568 >,
+			< 1958400000 1035000  595 >,
+			< 2035200000 1045000  624 >,
+			< 2112000000 1060000  657 >,
+			< 2188800000 1075000  691 >,
+			< 2265600000 1090000  725 >;
+
+		qcom,speed0-pvs2-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  790000   76 >,
+			<  345600000  800000   88 >,
+			<  422400000  810000  109 >,
+			<  499200000  820000  130 >,
+			<  576000000  830000  151 >,
+			<  652800000  840000  172 >,
+			<  729600000  850000  194 >,
+			<  806400000  860000  217 >,
+			<  883200000  870000  239 >,
+			<  960000000  895000  265 >,
+			< 1036800000  905000  288 >,
+			< 1113600000  915000  312 >,
+			< 1190400000  925000  336 >,
+			< 1267200000  935000  360 >,
+			< 1344000000  945000  385 >,
+			< 1420800000  955000  410 >,
+			< 1497600000  965000  436 >,
+			< 1574400000  975000  461 >,
+			< 1651200000  985000  488 >,
+			< 1728000000  995000  515 >,
+			< 1804800000 1005000  541 >,
+			< 1881600000 1015000  568 >,
+			< 1958400000 1025000  595 >,
+			< 2035200000 1035000  624 >,
+			< 2112000000 1050000  657 >,
+			< 2188800000 1065000  691 >,
+			< 2265600000 1080000  725 >;
+
+		qcom,speed0-pvs3-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  780000   76 >,
+			<  345600000  790000   88 >,
+			<  422400000  800000  109 >,
+			<  499200000  810000  130 >,
+			<  576000000  820000  151 >,
+			<  652800000  830000  172 >,
+			<  729600000  840000  194 >,
+			<  806400000  850000  217 >,
+			<  883200000  860000  239 >,
+			<  960000000  885000  265 >,
+			< 1036800000  895000  288 >,
+			< 1113600000  905000  312 >,
+			< 1190400000  915000  336 >,
+			< 1267200000  925000  360 >,
+			< 1344000000  935000  385 >,
+			< 1420800000  945000  410 >,
+			< 1497600000  955000  436 >,
+			< 1574400000  965000  461 >,
+			< 1651200000  975000  488 >,
+			< 1728000000  985000  515 >,
+			< 1804800000  995000  541 >,
+			< 1881600000 1005000  568 >,
+			< 1958400000 1015000  595 >,
+			< 2035200000 1025000  624 >,
+			< 2112000000 1040000  657 >,
+			< 2188800000 1055000  691 >,
+			< 2265600000 1070000  725 >;
+
+		qcom,speed0-pvs4-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  770000   76 >,
+			<  345600000  780000   88 >,
+			<  422400000  790000  109 >,
+			<  499200000  800000  130 >,
+			<  576000000  810000  151 >,
+			<  652800000  820000  172 >,
+			<  729600000  830000  194 >,
+			<  806400000  840000  217 >,
+			<  883200000  850000  239 >,
+			<  960000000  875000  265 >,
+			< 1036800000  885000  288 >,
+			< 1113600000  895000  312 >,
+			< 1190400000  905000  336 >,
+			< 1267200000  915000  360 >,
+			< 1344000000  925000  385 >,
+			< 1420800000  935000  410 >,
+			< 1497600000  945000  436 >,
+			< 1574400000  955000  461 >,
+			< 1651200000  965000  488 >,
+			< 1728000000  975000  515 >,
+			< 1804800000  985000  541 >,
+			< 1881600000  995000  568 >,
+			< 1958400000 1005000  595 >,
+			< 2035200000 1015000  624 >,
+			< 2112000000 1030000  657 >,
+			< 2188800000 1045000  691 >,
+			< 2265600000 1060000  725 >;
+
+		qcom,speed0-pvs5-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  760000   76 >,
+			<  345600000  770000   88 >,
+			<  422400000  780000  109 >,
+			<  499200000  790000  130 >,
+			<  576000000  800000  151 >,
+			<  652800000  810000  172 >,
+			<  729600000  820000  194 >,
+			<  806400000  830000  217 >,
+			<  883200000  840000  239 >,
+			<  960000000  865000  265 >,
+			< 1036800000  875000  288 >,
+			< 1113600000  885000  312 >,
+			< 1190400000  895000  336 >,
+			< 1267200000  905000  360 >,
+			< 1344000000  915000  385 >,
+			< 1420800000  925000  410 >,
+			< 1497600000  935000  436 >,
+			< 1574400000  945000  461 >,
+			< 1651200000  955000  488 >,
+			< 1728000000  965000  515 >,
+			< 1804800000  975000  541 >,
+			< 1881600000  985000  568 >,
+			< 1958400000  995000  595 >,
+			< 2035200000 1005000  624 >,
+			< 2112000000 1020000  657 >,
+			< 2188800000 1035000  691 >,
+			< 2265600000 1050000  725 >;
+
+		qcom,speed0-pvs6-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  760000   88 >,
+			<  422400000  770000  109 >,
+			<  499200000  780000  130 >,
+			<  576000000  790000  151 >,
+			<  652800000  800000  172 >,
+			<  729600000  810000  194 >,
+			<  806400000  820000  217 >,
+			<  883200000  830000  239 >,
+			<  960000000  855000  265 >,
+			< 1036800000  865000  288 >,
+			< 1113600000  875000  312 >,
+			< 1190400000  885000  336 >,
+			< 1267200000  895000  360 >,
+			< 1344000000  905000  385 >,
+			< 1420800000  915000  410 >,
+			< 1497600000  925000  436 >,
+			< 1574400000  935000  461 >,
+			< 1651200000  945000  488 >,
+			< 1728000000  955000  515 >,
+			< 1804800000  965000  541 >,
+			< 1881600000  975000  568 >,
+			< 1958400000  985000  595 >,
+			< 2035200000  995000  624 >,
+			< 2112000000 1010000  657 >,
+			< 2188800000 1025000  691 >,
+			< 2265600000 1040000  725 >;
+
+		qcom,speed0-pvs7-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  740000   76 >,
+			<  345600000  750000   88 >,
+			<  422400000  760000  109 >,
+			<  499200000  770000  130 >,
+			<  576000000  780000  151 >,
+			<  652800000  790000  172 >,
+			<  729600000  800000  194 >,
+			<  806400000  810000  217 >,
+			<  883200000  820000  239 >,
+			<  960000000  845000  265 >,
+			< 1036800000  855000  288 >,
+			< 1113600000  865000  312 >,
+			< 1190400000  875000  336 >,
+			< 1267200000  885000  360 >,
+			< 1344000000  895000  385 >,
+			< 1420800000  905000  410 >,
+			< 1497600000  915000  436 >,
+			< 1574400000  925000  461 >,
+			< 1651200000  935000  488 >,
+			< 1728000000  945000  515 >,
+			< 1804800000  955000  541 >,
+			< 1881600000  965000  568 >,
+			< 1958400000  975000  595 >,
+			< 2035200000  985000  624 >,
+			< 2112000000 1000000  657 >,
+			< 2188800000 1015000  691 >,
+			< 2265600000 1030000  725 >;
+
+		qcom,speed0-pvs8-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  730000   76 >,
+			<  345600000  740000   88 >,
+			<  422400000  750000  109 >,
+			<  499200000  760000  130 >,
+			<  576000000  770000  151 >,
+			<  652800000  780000  172 >,
+			<  729600000  790000  194 >,
+			<  806400000  800000  217 >,
+			<  883200000  810000  239 >,
+			<  960000000  835000  265 >,
+			< 1036800000  845000  288 >,
+			< 1113600000  855000  312 >,
+			< 1190400000  865000  336 >,
+			< 1267200000  875000  360 >,
+			< 1344000000  885000  385 >,
+			< 1420800000  895000  410 >,
+			< 1497600000  905000  436 >,
+			< 1574400000  915000  461 >,
+			< 1651200000  925000  488 >,
+			< 1728000000  935000  515 >,
+			< 1804800000  945000  541 >,
+			< 1881600000  955000  568 >,
+			< 1958400000  965000  595 >,
+			< 2035200000  975000  624 >,
+			< 2112000000  990000  657 >,
+			< 2188800000 1005000  691 >,
+			< 2265600000 1020000  725 >;
+
+		qcom,speed0-pvs9-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  720000   76 >,
+			<  345600000  730000   88 >,
+			<  422400000  740000  109 >,
+			<  499200000  750000  130 >,
+			<  576000000  760000  151 >,
+			<  652800000  770000  172 >,
+			<  729600000  780000  194 >,
+			<  806400000  790000  217 >,
+			<  883200000  800000  239 >,
+			<  960000000  825000  265 >,
+			< 1036800000  835000  288 >,
+			< 1113600000  845000  312 >,
+			< 1190400000  855000  336 >,
+			< 1267200000  865000  360 >,
+			< 1344000000  875000  385 >,
+			< 1420800000  885000  410 >,
+			< 1497600000  895000  436 >,
+			< 1574400000  905000  461 >,
+			< 1651200000  915000  488 >,
+			< 1728000000  925000  515 >,
+			< 1804800000  935000  541 >,
+			< 1881600000  945000  568 >,
+			< 1958400000  955000  595 >,
+			< 2035200000  965000  624 >,
+			< 2112000000  980000  657 >,
+			< 2188800000  995000  691 >,
+			< 2265600000 1010000  725 >;
+
+		qcom,speed0-pvs10-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  710000   76 >,
+			<  345600000  720000   88 >,
+			<  422400000  730000  109 >,
+			<  499200000  740000  130 >,
+			<  576000000  750000  151 >,
+			<  652800000  760000  172 >,
+			<  729600000  770000  194 >,
+			<  806400000  780000  217 >,
+			<  883200000  790000  239 >,
+			<  960000000  815000  265 >,
+			< 1036800000  825000  288 >,
+			< 1113600000  835000  312 >,
+			< 1190400000  845000  336 >,
+			< 1267200000  855000  360 >,
+			< 1344000000  865000  385 >,
+			< 1420800000  875000  410 >,
+			< 1497600000  885000  436 >,
+			< 1574400000  895000  461 >,
+			< 1651200000  905000  488 >,
+			< 1728000000  915000  515 >,
+			< 1804800000  925000  541 >,
+			< 1881600000  935000  568 >,
+			< 1958400000  945000  595 >,
+			< 2035200000  955000  624 >,
+			< 2112000000  970000  657 >,
+			< 2188800000  985000  691 >,
+			< 2265600000 1000000  725 >;
+
+		qcom,speed0-pvs11-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  700000   76 >,
+			<  345600000  710000   88 >,
+			<  422400000  720000  109 >,
+			<  499200000  730000  130 >,
+			<  576000000  740000  151 >,
+			<  652800000  750000  172 >,
+			<  729600000  760000  194 >,
+			<  806400000  770000  217 >,
+			<  883200000  780000  239 >,
+			<  960000000  805000  265 >,
+			< 1036800000  815000  288 >,
+			< 1113600000  825000  312 >,
+			< 1190400000  835000  336 >,
+			< 1267200000  845000  360 >,
+			< 1344000000  855000  385 >,
+			< 1420800000  865000  410 >,
+			< 1497600000  875000  436 >,
+			< 1574400000  885000  461 >,
+			< 1651200000  895000  488 >,
+			< 1728000000  905000  515 >,
+			< 1804800000  915000  541 >,
+			< 1881600000  925000  568 >,
+			< 1958400000  935000  595 >,
+			< 2035200000  945000  624 >,
+			< 2112000000  960000  657 >,
+			< 2188800000  975000  691 >,
+			< 2265600000  990000  725 >;
+
+		qcom,speed0-pvs12-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  690000   76 >,
+			<  345600000  700000   88 >,
+			<  422400000  710000  109 >,
+			<  499200000  720000  130 >,
+			<  576000000  730000  151 >,
+			<  652800000  740000  172 >,
+			<  729600000  750000  194 >,
+			<  806400000  760000  217 >,
+			<  883200000  770000  239 >,
+			<  960000000  795000  265 >,
+			< 1036800000  805000  288 >,
+			< 1113600000  815000  312 >,
+			< 1190400000  825000  336 >,
+			< 1267200000  835000  360 >,
+			< 1344000000  845000  385 >,
+			< 1420800000  855000  410 >,
+			< 1497600000  865000  436 >,
+			< 1574400000  875000  461 >,
+			< 1651200000  885000  488 >,
+			< 1728000000  895000  515 >,
+			< 1804800000  905000  541 >,
+			< 1881600000  915000  568 >,
+			< 1958400000  925000  595 >,
+			< 2035200000  935000  624 >,
+			< 2112000000  950000  657 >,
+			< 2188800000  965000  691 >,
+			< 2265600000  980000  725 >;
+
+		qcom,speed0-pvs13-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  680000   76 >,
+			<  345600000  690000   88 >,
+			<  422400000  700000  109 >,
+			<  499200000  710000  130 >,
+			<  576000000  720000  151 >,
+			<  652800000  730000  172 >,
+			<  729600000  740000  194 >,
+			<  806400000  750000  217 >,
+			<  883200000  760000  239 >,
+			<  960000000  785000  265 >,
+			< 1036800000  795000  288 >,
+			< 1113600000  805000  312 >,
+			< 1190400000  815000  336 >,
+			< 1267200000  825000  360 >,
+			< 1344000000  835000  385 >,
+			< 1420800000  845000  410 >,
+			< 1497600000  855000  436 >,
+			< 1574400000  865000  461 >,
+			< 1651200000  875000  488 >,
+			< 1728000000  885000  515 >,
+			< 1804800000  895000  541 >,
+			< 1881600000  905000  568 >,
+			< 1958400000  915000  595 >,
+			< 2035200000  925000  624 >,
+			< 2112000000  940000  657 >,
+			< 2188800000  955000  691 >,
+			< 2265600000  970000  725 >;
+
+		qcom,speed0-pvs14-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  670000   76 >,
+			<  345600000  680000   88 >,
+			<  422400000  690000  109 >,
+			<  499200000  700000  130 >,
+			<  576000000  710000  151 >,
+			<  652800000  720000  172 >,
+			<  729600000  730000  194 >,
+			<  806400000  740000  217 >,
+			<  883200000  750000  239 >,
+			<  960000000  775000  265 >,
+			< 1036800000  785000  288 >,
+			< 1113600000  795000  312 >,
+			< 1190400000  805000  336 >,
+			< 1267200000  815000  360 >,
+			< 1344000000  825000  385 >,
+			< 1420800000  835000  410 >,
+			< 1497600000  845000  436 >,
+			< 1574400000  855000  461 >,
+			< 1651200000  865000  488 >,
+			< 1728000000  875000  515 >,
+			< 1804800000  885000  541 >,
+			< 1881600000  895000  568 >,
+			< 1958400000  905000  595 >,
+			< 2035200000  915000  624 >,
+			< 2112000000  930000  657 >,
+			< 2188800000  945000  691 >,
+			< 2265600000  960000  725 >;
+
+		qcom,speed0-pvs15-bin-v1 =
+			<          0       0    0 >,
+			<  300000000  660000   76 >,
+			<  345600000  670000   88 >,
+			<  422400000  680000  109 >,
+			<  499200000  690000  130 >,
+			<  576000000  700000  151 >,
+			<  652800000  710000  172 >,
+			<  729600000  720000  194 >,
+			<  806400000  730000  217 >,
+			<  883200000  740000  239 >,
+			<  960000000  765000  265 >,
+			< 1036800000  775000  288 >,
+			< 1113600000  785000  312 >,
+			< 1190400000  795000  336 >,
+			< 1267200000  805000  360 >,
+			< 1344000000  815000  385 >,
+			< 1420800000  825000  410 >,
+			< 1497600000  835000  436 >,
+			< 1574400000  845000  461 >,
+			< 1651200000  855000  488 >,
+			< 1728000000  865000  515 >,
+			< 1804800000  875000  541 >,
+			< 1881600000  885000  568 >,
+			< 1958400000  895000  595 >,
+			< 2035200000  905000  624 >,
+			< 2112000000  920000  657 >,
+			< 2188800000  935000  691 >,
+			< 2265600000  950000  725 >;
+
+		/*   2.3GHz RC0   */
+		qcom,speed0-pvs0-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  810000  126 >,
+			<  576000000  820000  147 >,
+			<  652800000  830000  168 >,
+			<  729600000  840000  189 >,
+			<  806400000  850000  211 >,
+			<  883200000  860000  233 >,
+			<  960000000  870000  256 >,
+			< 1036800000  880000  278 >,
+			< 1113600000  890000  301 >,
+			< 1190400000  900000  324 >,
+			< 1267200000  910000  348 >,
+			< 1344000000  920000  372 >,
+			< 1420800000  935000  398 >,
+			< 1497600000  950000  424 >,
+			< 1574400000  965000  451 >,
+			< 1651200000  980000  479 >,
+			< 1728000000  995000  506 >,
+			< 1804800000 1010000  535 >,
+			< 1881600000 1025000  564 >,
+			< 1958400000 1040000  593 >,
+			< 2035200000 1055000  626 >,
+			< 2112000000 1070000  658 >,
+			< 2188800000 1085000  692 >,
+			< 2265600000 1100000  726 >;
+
+		qcom,speed0-pvs1-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  126 >,
+			<  576000000  810000  147 >,
+			<  652800000  820000  168 >,
+			<  729600000  830000  189 >,
+			<  806400000  840000  211 >,
+			<  883200000  850000  233 >,
+			<  960000000  860000  256 >,
+			< 1036800000  870000  278 >,
+			< 1113600000  880000  301 >,
+			< 1190400000  890000  324 >,
+			< 1267200000  900000  348 >,
+			< 1344000000  910000  372 >,
+			< 1420800000  925000  398 >,
+			< 1497600000  940000  424 >,
+			< 1574400000  955000  451 >,
+			< 1651200000  970000  479 >,
+			< 1728000000  985000  506 >,
+			< 1804800000 1000000  535 >,
+			< 1881600000 1015000  564 >,
+			< 1958400000 1030000  593 >,
+			< 2035200000 1045000  626 >,
+			< 2112000000 1060000  658 >,
+			< 2188800000 1075000  692 >,
+			< 2265600000 1090000  726 >;
+
+		qcom,speed0-pvs2-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  126 >,
+			<  576000000  800000  147 >,
+			<  652800000  810000  168 >,
+			<  729600000  820000  189 >,
+			<  806400000  830000  211 >,
+			<  883200000  840000  233 >,
+			<  960000000  850000  256 >,
+			< 1036800000  860000  278 >,
+			< 1113600000  870000  301 >,
+			< 1190400000  880000  324 >,
+			< 1267200000  890000  348 >,
+			< 1344000000  900000  372 >,
+			< 1420800000  915000  398 >,
+			< 1497600000  930000  424 >,
+			< 1574400000  945000  451 >,
+			< 1651200000  960000  479 >,
+			< 1728000000  975000  506 >,
+			< 1804800000  990000  535 >,
+			< 1881600000 1005000  564 >,
+			< 1958400000 1020000  593 >,
+			< 2035200000 1035000  626 >,
+			< 2112000000 1050000  658 >,
+			< 2188800000 1065000  692 >,
+			< 2265600000 1080000  726 >;
+
+		qcom,speed0-pvs3-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  800000   76 >,
+			<  345600000  800000   87 >,
+			<  422400000  800000  106 >,
+			<  499200000  800000  126 >,
+			<  576000000  800000  147 >,
+			<  652800000  800000  168 >,
+			<  729600000  810000  189 >,
+			<  806400000  820000  211 >,
+			<  883200000  830000  233 >,
+			<  960000000  840000  256 >,
+			< 1036800000  850000  278 >,
+			< 1113600000  860000  301 >,
+			< 1190400000  870000  324 >,
+			< 1267200000  880000  348 >,
+			< 1344000000  890000  372 >,
+			< 1420800000  905000  398 >,
+			< 1497600000  920000  424 >,
+			< 1574400000  935000  451 >,
+			< 1651200000  950000  479 >,
+			< 1728000000  965000  506 >,
+			< 1804800000  980000  535 >,
+			< 1881600000  995000  564 >,
+			< 1958400000 1010000  593 >,
+			< 2035200000 1025000  626 >,
+			< 2112000000 1040000  658 >,
+			< 2188800000 1055000  692 >,
+			< 2265600000 1070000  726 >;
+
+		qcom,speed0-pvs4-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  785000  147 >,
+			<  652800000  795000  168 >,
+			<  729600000  805000  189 >,
+			<  806400000  815000  211 >,
+			<  883200000  825000  233 >,
+			<  960000000  835000  256 >,
+			< 1036800000  845000  278 >,
+			< 1113600000  855000  301 >,
+			< 1190400000  865000  324 >,
+			< 1267200000  875000  348 >,
+			< 1344000000  885000  372 >,
+			< 1420800000  895000  398 >,
+			< 1497600000  910000  424 >,
+			< 1574400000  925000  451 >,
+			< 1651200000  940000  479 >,
+			< 1728000000  955000  506 >,
+			< 1804800000  970000  535 >,
+			< 1881600000  985000  564 >,
+			< 1958400000 1000000  593 >,
+			< 2035200000 1015000  626 >,
+			< 2112000000 1030000  658 >,
+			< 2188800000 1045000  692 >,
+			< 2265600000 1060000  726 >;
+
+		qcom,speed0-pvs5-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  780000  147 >,
+			<  652800000  790000  168 >,
+			<  729600000  800000  189 >,
+			<  806400000  810000  211 >,
+			<  883200000  820000  233 >,
+			<  960000000  830000  256 >,
+			< 1036800000  840000  278 >,
+			< 1113600000  850000  301 >,
+			< 1190400000  860000  324 >,
+			< 1267200000  870000  348 >,
+			< 1344000000  880000  372 >,
+			< 1420800000  890000  398 >,
+			< 1497600000  900000  424 >,
+			< 1574400000  915000  451 >,
+			< 1651200000  930000  479 >,
+			< 1728000000  945000  506 >,
+			< 1804800000  960000  535 >,
+			< 1881600000  975000  564 >,
+			< 1958400000  990000  593 >,
+			< 2035200000 1005000  626 >,
+			< 2112000000 1020000  658 >,
+			< 2188800000 1035000  692 >,
+			< 2265600000 1050000  726 >;
+
+		qcom,speed0-pvs6-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  147 >,
+			<  652800000  780000  168 >,
+			<  729600000  790000  189 >,
+			<  806400000  800000  211 >,
+			<  883200000  810000  233 >,
+			<  960000000  820000  256 >,
+			< 1036800000  830000  278 >,
+			< 1113600000  840000  301 >,
+			< 1190400000  850000  324 >,
+			< 1267200000  860000  348 >,
+			< 1344000000  870000  372 >,
+			< 1420800000  880000  398 >,
+			< 1497600000  890000  424 >,
+			< 1574400000  905000  451 >,
+			< 1651200000  920000  479 >,
+			< 1728000000  935000  506 >,
+			< 1804800000  950000  535 >,
+			< 1881600000  965000  564 >,
+			< 1958400000  980000  593 >,
+			< 2035200000  995000  626 >,
+			< 2112000000 1010000  658 >,
+			< 2188800000 1025000  692 >,
+			< 2265600000 1040000  726 >;
+
+		qcom,speed0-pvs7-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  147 >,
+			<  652800000  775000  168 >,
+			<  729600000  785000  189 >,
+			<  806400000  795000  211 >,
+			<  883200000  805000  233 >,
+			<  960000000  815000  256 >,
+			< 1036800000  825000  278 >,
+			< 1113600000  835000  301 >,
+			< 1190400000  845000  324 >,
+			< 1267200000  855000  348 >,
+			< 1344000000  865000  372 >,
+			< 1420800000  875000  398 >,
+			< 1497600000  885000  424 >,
+			< 1574400000  895000  451 >,
+			< 1651200000  910000  479 >,
+			< 1728000000  925000  506 >,
+			< 1804800000  940000  535 >,
+			< 1881600000  955000  564 >,
+			< 1958400000  970000  593 >,
+			< 2035200000  985000  626 >,
+			< 2112000000 1000000  658 >,
+			< 2188800000 1015000  692 >,
+			< 2265600000 1030000  726 >;
+
+		qcom,speed0-pvs8-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  147 >,
+			<  652800000  775000  168 >,
+			<  729600000  780000  189 >,
+			<  806400000  790000  211 >,
+			<  883200000  800000  233 >,
+			<  960000000  810000  256 >,
+			< 1036800000  820000  278 >,
+			< 1113600000  830000  301 >,
+			< 1190400000  840000  324 >,
+			< 1267200000  850000  348 >,
+			< 1344000000  860000  372 >,
+			< 1420800000  870000  398 >,
+			< 1497600000  880000  424 >,
+			< 1574400000  890000  451 >,
+			< 1651200000  900000  479 >,
+			< 1728000000  915000  506 >,
+			< 1804800000  930000  535 >,
+			< 1881600000  945000  564 >,
+			< 1958400000  960000  593 >,
+			< 2035200000  975000  626 >,
+			< 2112000000  990000  658 >,
+			< 2188800000 1005000  692 >,
+			< 2265600000 1020000  726 >;
+
+		qcom,speed0-pvs9-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  147 >,
+			<  652800000  775000  168 >,
+			<  729600000  775000  189 >,
+			<  806400000  785000  211 >,
+			<  883200000  795000  233 >,
+			<  960000000  805000  256 >,
+			< 1036800000  815000  278 >,
+			< 1113600000  825000  301 >,
+			< 1190400000  835000  324 >,
+			< 1267200000  845000  348 >,
+			< 1344000000  855000  372 >,
+			< 1420800000  865000  398 >,
+			< 1497600000  875000  424 >,
+			< 1574400000  885000  451 >,
+			< 1651200000  895000  479 >,
+			< 1728000000  905000  506 >,
+			< 1804800000  920000  535 >,
+			< 1881600000  935000  564 >,
+			< 1958400000  950000  593 >,
+			< 2035200000  965000  626 >,
+			< 2112000000  980000  658 >,
+			< 2188800000  995000  692 >,
+			< 2265600000 1010000  726 >;
+
+		qcom,speed0-pvs10-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  147 >,
+			<  652800000  775000  168 >,
+			<  729600000  775000  189 >,
+			<  806400000  780000  211 >,
+			<  883200000  790000  233 >,
+			<  960000000  800000  256 >,
+			< 1036800000  810000  278 >,
+			< 1113600000  820000  301 >,
+			< 1190400000  830000  324 >,
+			< 1267200000  840000  348 >,
+			< 1344000000  850000  372 >,
+			< 1420800000  860000  398 >,
+			< 1497600000  870000  424 >,
+			< 1574400000  880000  451 >,
+			< 1651200000  890000  479 >,
+			< 1728000000  900000  506 >,
+			< 1804800000  910000  535 >,
+			< 1881600000  925000  564 >,
+			< 1958400000  940000  593 >,
+			< 2035200000  955000  626 >,
+			< 2112000000  970000  658 >,
+			< 2188800000  985000  692 >,
+			< 2265600000 1000000  726 >;
+
+		qcom,speed0-pvs11-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  775000   76 >,
+			<  345600000  775000   87 >,
+			<  422400000  775000  106 >,
+			<  499200000  775000  126 >,
+			<  576000000  775000  147 >,
+			<  652800000  775000  168 >,
+			<  729600000  775000  189 >,
+			<  806400000  775000  211 >,
+			<  883200000  785000  233 >,
+			<  960000000  795000  256 >,
+			< 1036800000  805000  278 >,
+			< 1113600000  815000  301 >,
+			< 1190400000  825000  324 >,
+			< 1267200000  835000  348 >,
+			< 1344000000  845000  372 >,
+			< 1420800000  855000  398 >,
+			< 1497600000  865000  424 >,
+			< 1574400000  875000  451 >,
+			< 1651200000  885000  479 >,
+			< 1728000000  895000  506 >,
+			< 1804800000  905000  535 >,
+			< 1881600000  915000  564 >,
+			< 1958400000  930000  593 >,
+			< 2035200000  945000  626 >,
+			< 2112000000  960000  658 >,
+			< 2188800000  975000  692 >,
+			< 2265600000  990000  726 >;
+
+		qcom,speed0-pvs12-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  750000   87 >,
+			<  422400000  750000  106 >,
+			<  499200000  750000  126 >,
+			<  576000000  750000  147 >,
+			<  652800000  750000  168 >,
+			<  729600000  760000  189 >,
+			<  806400000  770000  211 >,
+			<  883200000  780000  233 >,
+			<  960000000  790000  256 >,
+			< 1036800000  800000  278 >,
+			< 1113600000  810000  301 >,
+			< 1190400000  820000  324 >,
+			< 1267200000  830000  348 >,
+			< 1344000000  840000  372 >,
+			< 1420800000  850000  398 >,
+			< 1497600000  860000  424 >,
+			< 1574400000  870000  451 >,
+			< 1651200000  880000  479 >,
+			< 1728000000  890000  506 >,
+			< 1804800000  900000  535 >,
+			< 1881600000  910000  564 >,
+			< 1958400000  920000  593 >,
+			< 2035200000  935000  626 >,
+			< 2112000000  950000  658 >,
+			< 2188800000  965000  692 >,
+			< 2265600000  980000  726 >;
+
+		qcom,speed0-pvs13-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  750000   87 >,
+			<  422400000  750000  106 >,
+			<  499200000  750000  126 >,
+			<  576000000  750000  147 >,
+			<  652800000  750000  168 >,
+			<  729600000  755000  189 >,
+			<  806400000  765000  211 >,
+			<  883200000  775000  233 >,
+			<  960000000  785000  256 >,
+			< 1036800000  795000  278 >,
+			< 1113600000  805000  301 >,
+			< 1190400000  815000  324 >,
+			< 1267200000  825000  348 >,
+			< 1344000000  835000  372 >,
+			< 1420800000  845000  398 >,
+			< 1497600000  855000  424 >,
+			< 1574400000  865000  451 >,
+			< 1651200000  875000  479 >,
+			< 1728000000  885000  506 >,
+			< 1804800000  895000  535 >,
+			< 1881600000  905000  564 >,
+			< 1958400000  915000  593 >,
+			< 2035200000  925000  626 >,
+			< 2112000000  940000  658 >,
+			< 2188800000  955000  692 >,
+			< 2265600000  970000  726 >;
+
+		qcom,speed0-pvs14-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  750000   87 >,
+			<  422400000  750000  106 >,
+			<  499200000  750000  126 >,
+			<  576000000  750000  147 >,
+			<  652800000  750000  168 >,
+			<  729600000  750000  189 >,
+			<  806400000  760000  211 >,
+			<  883200000  770000  233 >,
+			<  960000000  780000  256 >,
+			< 1036800000  790000  278 >,
+			< 1113600000  800000  301 >,
+			< 1190400000  810000  324 >,
+			< 1267200000  820000  348 >,
+			< 1344000000  830000  372 >,
+			< 1420800000  840000  398 >,
+			< 1497600000  850000  424 >,
+			< 1574400000  860000  451 >,
+			< 1651200000  870000  479 >,
+			< 1728000000  880000  506 >,
+			< 1804800000  890000  535 >,
+			< 1881600000  900000  564 >,
+			< 1958400000  910000  593 >,
+			< 2035200000  920000  626 >,
+			< 2112000000  930000  658 >,
+			< 2188800000  945000  692 >,
+			< 2265600000  960000  726 >;
+
+		qcom,speed0-pvs15-bin-v0 =
+			<          0       0    0 >,
+			<  300000000  750000   76 >,
+			<  345600000  750000   87 >,
+			<  422400000  750000  106 >,
+			<  499200000  750000  126 >,
+			<  576000000  750000  147 >,
+			<  652800000  750000  168 >,
+			<  729600000  750000  189 >,
+			<  806400000  755000  211 >,
+			<  883200000  765000  233 >,
+			<  960000000  775000  256 >,
+			< 1036800000  785000  278 >,
+			< 1113600000  795000  301 >,
+			< 1190400000  805000  324 >,
+			< 1267200000  815000  348 >,
+			< 1344000000  825000  372 >,
+			< 1420800000  835000  398 >,
+			< 1497600000  845000  424 >,
+			< 1574400000  855000  451 >,
+			< 1651200000  865000  479 >,
+			< 1728000000  875000  506 >,
+			< 1804800000  885000  535 >,
+			< 1881600000  895000  564 >,
+			< 1958400000  905000  593 >,
+			< 2035200000  915000  626 >,
+			< 2112000000  925000  658 >,
+			< 2188800000  935000  692 >,
+			< 2265600000  950000  726 >;
+
+	};
+
+	cache: qcom,cache {
+		compatible = "devfreq-simple-dev";
+		clock-names = "devfreq_clk";
+		clocks = <&clock_krait clk_l2_clk>;
+		governor = "cpufreq";
+		freq-tbl-khz =
+			<  300000 >,
+			<  345600 >,
+			<  422400 >,
+			<  499200 >,
+			<  576000 >,
+			<  652800 >,
+			<  729600 >,
+			<  806400 >,
+			<  883200 >,
+			<  960000 >,
+			< 1036800 >,
+			< 1113600 >,
+			< 1190400 >,
+			< 1267200 >,
+			< 1344000 >,
+			< 1420800 >,
+			< 1497600 >,
+			< 1574400 >,
+			< 1651200 >,
+			< 1728000 >;
+	};
+
+	cpubw: qcom,cpubw {
+		compatible = "qcom,devbw";
+		governor = "cpufreq";
+		qcom,src-dst-ports = <1 512>;
+		qcom,active-only;
+		qcom,bw-tbl =
+			<   762 /*   50 MHz */ >,
+			<  1144 /*   75 MHz */ >,
+			<  1525 /*  100 MHz */ >,
+			<  2288 /*  150 MHz */ >,
+			<  3051 /*  200 MHz */ >,
+			<  3952 /*  259 MHz */ >,
+			<  4684 /*  307 MHz */ >,
+			<  5859 /*  384 MHz */ >,
+			<  7019 /*  460 MHz */ >,
+			<  8056 /*  528 MHz */ >,
+			< 10101 /*  662 MHz */ >,
+			< 12145 /*  796 MHz */ >,
+			< 16250 /* 1065 MHz */ >;
+	};
+
+	qcom,kraitbw-l2pm {
+		compatible = "qcom,kraitbw-l2pm";
+		interrupts = <0 1 1>;
+		qcom,bytes-per-beat = <16>;
+		qcom,target-dev = <&cache>;
+	};
+
+	devfreq-cpufreq {
+		cpubw-cpufreq {
+			target-dev = <&cpubw>;
+			cpu-to-dev-map =
+				<  300000  1144 >,
+				<  422400  2288 >,
+				<  652800  3051 >,
+				<  883200  5859 >,
+				< 1190400  8056 >,
+				< 1497600 10101 >,
+				< 1728000 12145 >,
+				< 2649600 16250 >;
+		};
+		cache-cpufreq {
+			target-dev = <&cache>;
+			cpu-to-dev-map =
+				<  300000  300000 >,
+				<  422400  422400 >,
+				<  652800  499200 >,
+				<  883200  576000 >,
+				<  960000  960000 >,
+				< 1497600 1036800 >,
+				< 1574400 1574400 >,
+				< 1728000 1651200 >,
+				< 2649600 1728000 >;
+		};
+	};
+
+	qcom,msm-cpufreq {
+		compatible = "qcom,msm-cpufreq";
+		clock-names = "l2_clk", "cpu0_clk", "cpu1_clk", "cpu2_clk",
+				"cpu3_clk";
+		clocks = <&clock_krait clk_l2_clk>,
+			 <&clock_krait clk_krait0_clk>,
+			 <&clock_krait clk_krait1_clk>,
+			 <&clock_krait clk_krait2_clk>,
+			 <&clock_krait clk_krait3_clk>;
+		qcom,cpufreq-table =
+			<  300000 >,
+			<  422400 >,
+			<  652800 >,
+			<  729600 >,
+			<  883200 >,
+			<  960000 >,
+			< 1036800 >,
+			< 1190400 >,
+			< 1267200 >,
+			< 1497600 >,
+			< 1574400 >,
+			< 1728000 >,
+			< 1958400 >,
+			< 2265600 >,
+			< 2457600 >,
+			< 2496000 >,
+			< 2572800 >,
+			< 2649600 >;
+	};
+
+	usb_otg: usb@f9a55000 {
+		status = "disabled";
+		compatible = "qcom,hsusb-otg";
+
+		reg = <0xf9a55000 0x400>;
+		reg-names = "core";
+		interrupts = <0 134 0 0 140 0>;
+		interrupt-names = "core_irq", "async_irq";
+		HSUSB_VDDCX-supply = <&pma8084_s1>;
+		HSUSB_1p8-supply = <&pma8084_l6>;
+		HSUSB_3p3-supply = <&pma8084_l24>;
+		qcom,vdd-voltage-level = <0 900000 1050000>;
+
+		qcom,hsusb-otg-phy-type = <2>;
+		qcom,hsusb-otg-mode = <1>;
+		qcom,hsusb-otg-otg-control = <3>;
+		qcom,hsusb-otg-default-mode = <1>;
+		qcom,dp-manual-pullup;
+
+		qcom,msm-bus,name = "usb2";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<87 512 0 0>,
+				<87 512 60000 960000>;
+	};
+
+	qcom,usbbam@f9304000 {
+		compatible = "qcom,usb-bam-msm";
+		reg = <0xf9304000 0x5000>,
+		      <0xf92f880c 0x4>;
+		reg-names = "ssusb", "qscratch_ram1_reg";
+		interrupts = <0 132 0>;
+		interrupt-names = "ssusb";
+		qcom,usb-bam-num-pipes = <16>;
+		qcom,usb-bam-fifo-baseaddr = <0xf9200000>;
+		qcom,ignore-core-reset-ack;
+		qcom,disable-clk-gating;
+
+		qcom,pipe0 {
+			label = "ssusb-qdss-in-0";
+			qcom,usb-bam-mem-type = <1>;
+			qcom,bam-type = <0>;
+			qcom,dir = <1>;
+			qcom,pipe-num = <0>;
+			qcom,peer-bam = <1>;
+			qcom,src-bam-physical-address = <0xfc37C000>;
+			qcom,src-bam-pipe-index = <0>;
+			qcom,dst-bam-physical-address = <0xf9304000>;
+			qcom,dst-bam-pipe-index = <2>;
+			qcom,data-fifo-offset = <0xf0000>;
+			qcom,data-fifo-size = <0x1800>;
+			qcom,descriptor-fifo-offset = <0xf4000>;
+			qcom,descriptor-fifo-size = <0x1400>;
+			qcom,reset-bam-on-connect;
+		};
+	};
+
+	spi_0: spi_epm: spi@f9923000 { /* BLSP1 QUP1 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xf9923000 0x1000>,
+		      <0xf9904000 0xf000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 95 0>, <0 238 0>;
+		spi-max-frequency = <19200000>;
+		qcom,gpio-mosi = <&msmgpio 0 0>;
+		qcom,gpio-miso = <&msmgpio 1 0>;
+		qcom,gpio-clk  = <&msmgpio 3 0>;
+		qcom,gpio-cs0  = <&msmgpio 2 0>;
+		qcom,gpio-cs1  = <&msmgpio 116 0>;
+		qcom,gpio-cs3  = <&msmgpio 117 0>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
+		qcom,master-id = <86>;
+	};
+
+	usb3: ssusb@f9200000 {
+		compatible = "qcom,dwc-usb3-msm";
+		reg = <0xf9200000 0xfc000>,
+			 <0xfd4ab000 0x4>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		interrupt-parent = <&usb3>;
+		interrupts = <0 1>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0x0 0xffffffff>;
+		interrupt-map = <0x0 0 &intc 0 133 0
+				 0x0 1 &spmi_bus 0x0 0x0 0x9 0x0>;
+		interrupt-names = "hs_phy_irq", "pmic_id_irq";
+
+		USB3_GDSC-supply = <&gdsc_usb30>;
+		vdda33-supply = <&pma8084_l24>;
+		vdda18-supply = <&pma8084_l6>;
+		qcom,dwc-usb3-msm-tx-fifo-size = <29696>;
+		qcom,dwc-usb3-msm-qdss-tx-fifo-size = <8192>;
+		qcom,misc-ref = <&pma8084_misc>;
+		qcom,restore-sec-cfg-for-scm-dev-id = <9>;
+		qcom,usb-dbm = <&dbm0_1p4>;
+		qcom,power-collapse-on-cable-disconnect;
+		qcom,por-after-power-collapse;
+
+		qcom,msm-bus,name = "usb3";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<61 512 0 0>,
+				<61 512 240000 1920000>;
+
+		dwc3@f9200000 {
+			compatible = "synopsys,dwc3";
+			reg = <0xf9200000 0xfc000>;
+			interrupt-parent = <&intc>;
+			interrupts = <0 131 0>;
+			tx-fifo-resize;
+			usb-phy = <&hsphy0>, <&ssphy0>;
+		};
+	};
+
+	usb3_sec: ssusb@f9400000 {
+		compatible = "qcom,dwc-usb3-msm";
+		reg = <0xf9400000 0xfc000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		interrupt-parent = <&intc>;
+		interrupts = <0 261 4>;
+		interrupt-names = "hs_phy_irq";
+		USB3_GDSC-supply = <&gdsc_usb30_sec>;
+		qcom,restore-sec-cfg-for-scm-dev-id = <10>;
+		qcom,charging-disabled;
+		qcom,power-collapse-on-cable-disconnect;
+		qcom,por-after-power-collapse;
+		status = "disabled";
+
+		qcom,msm-bus,name = "usb3_sec";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<61 512 0 0>,
+				<61 512 240000 1920000>;
+
+		dwc3@f9400000 {
+			compatible = "synopsys,dwc3";
+			reg = <0xf9400000 0xfc000>;
+			interrupt-parent = <&intc>;
+			interrupts = <0 258 4>;
+			usb-phy = <&hsphy1>, <&ssphy0>;
+			snps,host-only-mode;
+		};
+	};
+
+	android_usb@fe8050c8 {
+		compatible = "qcom,android-usb";
+		reg = <0xfe8050c8 0xc8>;
+		qcom,pm-qos-latency = <2 1001 30001>;
+	};
+
+	hsphy0: hsphy@f92f8800 {
+		compatible = "qcom,usb-hsphy";
+		reg = <0xf92f8800 0x3ff>,
+			<0xfd4ab204 0x4>;
+		reg-names = "core", "tcsr";
+		qcom,hsphy-init = <0x00D191A4>;
+		vdd-supply = <&pma8084_s1>;
+		vdda18-supply = <&pma8084_l6>;
+		vdda33-supply = <&pma8084_l24>;
+		qcom,vdd-voltage-level = <0 900000 1050000>;
+		qcom,ext-vbus-id;
+		qcom,vbus-valid-override;
+	};
+
+	ssphy0: ssphy@f92f8800 {
+		compatible = "qcom,usb-ssphy";
+		reg = <0xf92f8800 0x3ff>;
+		vdd-supply = <&pma8084_s1>;
+		vdda18-supply = <&pma8084_l6>;
+		qcom,vdd-voltage-level = <0 900000 1050000>;
+		qcom,vbus-valid-override;
+	};
+
+	dbm0_1p4: dbm@f92f8000 {
+		compatible = "qcom,usb-dbm-1p4";
+		reg = <0xf92f8000 0x1000>;
+	};
+
+	hsphy1: hsphy@f94f8800 {
+		compatible = "qcom,usb-hsphy";
+		reg = <0xf94f8800 0x3ff>;
+		reg-names = "core";
+		qcom,hsphy-init = <0x00D191A4>;
+		vdd-supply = <&pma8084_s1>;
+		vdda18-supply = <&pma8084_l6>;
+		vdda33-supply = <&pma8084_l24>;
+		qcom,vdd-voltage-level = <0 900000 1050000>;
+		qcom,ext-vbus-id;
+		qcom,num-ports = <3>;
+		qcom,primary-phy = <&hsphy0>;
+		status = "disabled";
+	};
+
+	tsens: tsens@fc4a8000 {
+		compatible = "qcom,msm-tsens";
+		reg = <0xfc4a8000 0x2000>,
+		      <0xfc4bc000 0x1000>;
+		reg-names = "tsens_physical", "tsens_eeprom_physical";
+		interrupts = <0 184 0>;
+		interrupt-names = "tsens-upper-lower";
+		qcom,sensors = <11>;
+		qcom,slope = <3200 3200 3200 3200 3200 3200 3200 3200 3200
+				3200 3200>;
+	};
+
+	xhci_hsic_host: qcom,xhci-msm-hsic@0xf9c00000 {
+		compatible = "qcom,xhci-msm-hsic";
+		reg = <0xf9c00000 0xfc000>;
+		#address-cells = <0>;
+		interrupt-parent = <&xhci_hsic_host>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 32 0
+				1 &intc 0 29 0
+				2 &msmgpio 107 0x4>;
+		interrupt-names = "core_irq", "pwr_event_irq", "wakeup_irq";
+		hsic-vdd-dig-supply = <&pma8084_s2_corner>;
+		hsic-gdsc-supply = <&gdsc_usb_hsic>;
+		hsic,strobe-gpio = <&msmgpio 134 0x00>;
+		hsic,data-gpio = <&msmgpio 135 0x00>;
+		qcom,host-ready-gpio = <&msmgpio 106 0x00>;
+		qcom,vdd-voltage-level = <1 4 7>; /* none svs turbo */
+		qcom,disable-hw-clk-gating;
+
+		qcom,msm-bus,name = "hsic";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<85 512 0 0>,
+			<85 512 40000 160000>;
+
+		status = "disabled";
+	};
+
+	qcom,ocmem@fdd00000 {
+		compatible = "qcom,msm-ocmem";
+		reg = <0xfdd00000 0x2000>,
+		      <0xfdd02000 0x2000>,
+		      <0xfe070000 0x400>,
+		      <0xfec00000 0x200000>;
+		reg-names = "ocmem_ctrl_physical", "dm_ctrl_physical", "br_ctrl_physical", "ocmem_physical";
+		interrupts = <0 76 0 0 77 0>;
+		interrupt-names = "ocmem_irq", "dm_irq";
+		qcom,ocmem-num-regions = <0x4>;
+		qcom,ocmem-num-macros = <0x20>;
+		qcom,resource-type = <0x706d636f>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0x0 0xfec00000 0x200000>;
+
+		partition@0 {
+			reg = <0x0 0x180000>;
+			qcom,ocmem-part-name = "graphics";
+			qcom,ocmem-part-min = <0x80000>;
+		};
+
+		partition@80000 {
+			reg = <0x180000 0x80000>;
+			qcom,ocmem-part-name = "lp_audio";
+			qcom,ocmem-part-min = <0x80000>;
+		};
+
+		partition@100000 {
+			reg = <0x180000 0x80000>;
+			qcom,ocmem-part-name = "video";
+			qcom,ocmem-part-min = <0x55000>;
+		};
+
+	};
+
+	qcom,ipc-spinlock@fd484000 {
+		compatible = "qcom,ipc-spinlock-sfpb";
+		reg = <0xfd484000 0x400>;
+		qcom,num-locks = <8>;
+	};
+
+	qcom,smem@fa00000 {
+		compatible = "qcom,smem";
+		reg = <0xfa00000 0x200000>,
+			<0xf9011000 0x1000>,
+			<0xfc428000 0x4000>;
+		reg-names = "smem", "irq-reg-base", "aux-mem1";
+		qcom,mpu-enabled;
+
+		qcom,smd-adsp {
+			compatible = "qcom,smd";
+			qcom,smd-edge = <1>;
+			qcom,smd-irq-offset = <0x8>;
+			qcom,smd-irq-bitmask = <0x100>;
+			interrupts = <0 156 1>;
+			label = "adsp";
+		};
+
+		qcom,smsm-adsp {
+			compatible = "qcom,smsm";
+			qcom,smsm-edge = <1>;
+			qcom,smsm-irq-offset = <0x8>;
+			qcom,smsm-irq-bitmask = <0x200>;
+			interrupts = <0 157 1>;
+		};
+
+		qcom,smd-rpm {
+			compatible = "qcom,smd";
+			qcom,smd-edge = <15>;
+			qcom,smd-irq-offset = <0x8>;
+			qcom,smd-irq-bitmask = <0x1>;
+			interrupts = <0 168 1>;
+			label = "rpm";
+			qcom,irq-no-suspend;
+			qcom,not-loadable;
+		};
+	};
+
+	qcom,venus@fdce0000 {
+		compatible = "qcom,pil-tz-generic";
+		reg = <0xfdce0000 0x4000>;
+
+		vdd-supply = <&gdsc_venus>;
+		qcom,proxy-reg-names = "vdd";
+		clock-names = "core_clk", "iface_clk", "bus_clk", "mem_clk",
+				"scm_core_clk", "scm_iface_clk", "scm_bus_clk",
+				"scm_core_clk_src";
+		qcom,proxy-clock-names = "core_clk", "iface_clk", "bus_clk",
+				"mem_clk", "scm_core_clk", "scm_iface_clk",
+				"scm_bus_clk", "scm_core_clk_src";
+		qcom,scm_core_clk_src-freq = <85710000>;
+
+		qcom,msm-bus,name = "pil-venus";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<63 512 0 0>,
+				<63 512 0 304000>;
+
+		qcom,pas-id = <9>;
+		qcom,proxy-timeout-ms = <5000>;
+		qcom,firmware-name = "venus";
+		linux,contiguous-region = <&peripheral_mem>;
+	};
+
+	pil_lpass: qcom,lpass@fe200000 {
+		compatible = "qcom,pil-tz-generic";
+		reg = <0xfe200000 0x00100>;
+		interrupts = <0 162 1>;
+
+		vdd_cx-supply = <&pma8084_s2_corner>;
+		qcom,proxy-reg-names = "vdd_cx";
+		qcom,vdd_cx-uV-uA = <7 100000>;
+		clock-names = "bus_clk", "xo", "scm_core_clk", "scm_iface_clk",
+				"scm_bus_clk", "scm_core_clk_src";
+		qcom,active-clock-names = "bus_clk";
+		qcom,proxy-clock-names = "xo", "scm_core_clk", "scm_iface_clk",
+				"scm_bus_clk", "scm_core_clk_src";
+		qcom,scm_core_clk_src-freq = <85710000>;
+
+		qcom,pas-id = <1>;
+		qcom,proxy-timeout-ms = <10000>;
+		qcom,smem-id = <423>;
+		qcom,sysmon-id = <1>;
+		qcom,ssctl-instance-id = <0x14>;
+		qcom,firmware-name = "adsp";
+
+		/* GPIO inputs from lpass */
+		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_2_in 0 0>;
+		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_2_in 2 0>;
+		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_2_in 1 0>;
+		qcom,gpio-stop-ack = <&smp2pgpio_ssr_smp2p_2_in 3 0>;
+
+		/* GPIO output to lpass */
+		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_2_out 0 0>;
+		linux,contiguous-region = <&peripheral_mem>;
+	};
+
+	ufsphy1: ufsphy@0xfc597000 {
+		compatible = "qcom,ufs-phy-qmp-28nm";
+		reg = <0xfc597000 0x87c>;
+		#phy-cells = <0>;
+		vdda-phy-supply = <&pma8084_l3>;
+		vdda-pll-supply = <&pma8084_l12>;
+		vdda-phy-max-microamp = <50000>;
+		vdda-pll-max-microamp = <1000>;
+
+		status = "disabled";
+	};
+
+	ufs1: ufshc@0xfc594000 {
+		compatible = "qcom,ufshc";
+		reg = <0xfc594000 0x800>;
+		interrupts = <0 28 0>;
+		phys = <&ufsphy1>;
+		phy-names = "ufsphy";
+		vcc-supply = <&pma8084_l19>;
+		vccq-supply = <&pma8084_l4>;
+		vccq2-supply = <&pma8084_s4>;
+		vcc-max-microamp = <460000>;
+		vccq-max-microamp = <450000>;
+		vccq2-max-microamp = <145000>;
+
+		clock-names = "core_clk_src", "core_clk", "bus_clk", "iface_clk",
+				"ref_clk";
+		freq-table-hz = <100000000 200000000>, <0 0>, <0 0>,
+						<0 0>, <0 0>;
+
+		qcom,msm-bus,name = "ufs1";
+		qcom,msm-bus,num-cases = <22>;
+		qcom,msm-bus,num-paths = <2>;
+		qcom,msm-bus,vectors-KBps =
+				<95 512 0 0>, <1 650 0 0>,         /* No vote */
+
+				<95 512 922 0>, <1 650 1000 0>,   /* PWM G1 */
+				<95 512 1844 0>, <1 650 1000 0>, /* PWM G2 */
+				<95 512 3688 0>, <1 650 1000 0>, /* PWM G3 */
+				<95 512 7376 0>, <1 650 1000 0>,  /* PWM G4 */
+				<95 512 1844 0>, <1 650 1000 0>, /* PWM G1 L2 */
+				<95 512 3688 0>, <1 650 1000 0>, /* PWM G2 L2 */
+				<95 512 7376 0>, <1 650 1000 0>,  /* PWM G3 L2 */
+				<95 512 14752 0>, <1 650 1000 0>,  /* PWM G4 L2 */
+
+				<95 512 127796 0>, <1 650 1000 0>,  /* HS G1 RA */
+				<95 512 255591 0>, <1 650 1000 0>, /* HS G2 RA */
+				<95 512 511181 0>, <1 650 1000 0>, /* HS G3 RA */
+				<95 512 255591 0>, <1 650 1000 0>, /* HS G1 RA L2 */
+				<95 512 511181 0>, <1 650 1000 0>, /* HS G2 RA L2 */
+				<95 512 1022362 0>, <1 650 1000 0>, /* HS G3 RA L2 */
+
+				<95 512 149422 0>, <1 650 1000 0>,  /* HS G1 RB */
+				<95 512 298189 0>, <1 650 1000 0>, /* HS G2 RB */
+				<95 512 596378 0>, <1 650 1000 0>, /* HS G3 RB */
+				<95 512 298189 0>, <1 650 1000 0>, /* HS G1 RB L2 */
+				<95 512 596378 0>, <1 650 1000 0>, /* HS G2 RB L2 */
+				<95 512 1192756 0>, <1 650 1000 0>, /* HS G3 RB L2 */
+
+				<95 512 4096000 0>, <1 650 1000 0>; /* Max. bandwidth */
+
+		qcom,bus-vector-names = "MIN",
+					"PWM_G1_L1", "PWM_G2_L1", "PWM_G3_L1", "PWM_G4_L1",
+					"PWM_G1_L2", "PWM_G2_L2", "PWM_G3_L2", "PWM_G4_L2",
+					"HS_RA_G1_L1", "HS_RA_G2_L1", "HS_RA_G3_L1",
+					"HS_RA_G1_L2", "HS_RA_G2_L2", "HS_RA_G3_L2",
+					"HS_RB_G1_L1", "HS_RB_G2_L1", "HS_RB_G3_L1",
+					"HS_RB_G1_L2", "HS_RB_G2_L2", "HS_RB_G3_L2",
+					"MAX";
+
+		status = "disabled";
+	};
+
+	sataphy0: sataphy@0xfc581000 {
+		compatible = "qcom,sataphy";
+		reg = <0xfc581000 0x400>, <0xfd4ab20c 0x4>;
+		reg-names = "phy_mem", "phy_sel";
+		#phy-cells = <0>;
+		vdda-phy-supply = <&pma8084_l3>;
+		vdda-pll-supply = <&pma8084_l12>;
+		vdda-phy-max-microamp = <50000>;
+		vdda-pll-max-microamp = <1000>;
+
+		status = "disabled";
+	};
+
+	sata0: sata@0xfc580000 {
+		compatible = "qcom,msm-ahci";
+		reg = <0xfc580000 0x400>;
+		interrupts = <0 31 0>;
+
+		phys = <&sataphy0>;
+		phy-names = "sata-6g";
+		clock-names = "core_clk", "iface_clk", "pmalive_clk",
+				"rxoob_clk", "asic0_clk", "rbc0_clk";
+		max-clock-frequency-hz = <0 0 100000000
+					100000000 300000000 300000000>;
+		status = "disabled";
+	};
+
+	qcom,wdt@f9017000 {
+		compatible = "qcom,msm-watchdog";
+		reg = <0xf9017000 0x1000>;
+		reg-names = "wdt-base";
+		interrupts = <0 3 0>, <0 4 0>;
+		qcom,bark-time = <11000>;
+		qcom,pet-time = <10000>;
+		qcom,ipi-ping;
+	};
+
+	qcom,tz-log@fe805720 {
+		compatible = "qcom,tz-log";
+		reg = <0xfe805720 0x1000>;
+	};
+
+	qcom,msm-rng@f9bff000{
+		compatible = "qcom,msm-rng";
+		reg = <0xf9bff000 0x200>;
+		qcom,msm-rng-iface-clk;
+	};
+
+	qseecom: qcom,qseecom@d600000 {
+		compatible = "qcom,qseecom";
+		reg = <0xd600000 0x500000>;
+		reg-names = "secapp-region";
+		qcom,disk-encrypt-pipe-pair = <2>;
+		qcom,hlos-ce-hw-instance = <1>;
+		qcom,qsee-ce-hw-instance = <0>;
+		qcom,msm-bus,name = "qseecom-noc";
+		qcom,msm-bus,num-cases = <4>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,support-bus-scaling;
+		qcom,support-fde;
+		qcom,msm-bus,vectors-KBps =
+				<55 512 0 0>,
+				<55 512 0 0>,
+				<55 512 120000 1200000>,
+				<55 512 393600 3936000>;
+		qcom,ce-opp-freq = <100000000>;
+	};
+
+	jtag_fuse: jtagfuse@fc4be024 {
+		compatible = "qcom,jtag-fuse";
+		reg = <0xfc4be024 0x8>;
+		reg-names = "fuse-base";
+	};
+
+	qcom,bcl {
+		compatible = "qcom,bcl";
+		qcom,ibat-vadc = <&pma8084_vadc>;
+		qcom,ibat-threshold-adc_tm = <&pma8084_adc_tm>;
+		qcom,ibat-monitor {
+			qcom,high-threshold-uamp = <3000000>;
+			qcom,low-threshold-uamp = <1000000>;
+			qcom,mitigation-freq-khz = <1958400>;
+			qcom,ibat-channel = <0x15>;
+			qcom,adc-interval-usec = <3900>;
+			qcom,uv-to-ua-numerator = <2>;
+			qcom,uv-to-ua-denominator = <1>;
+			qcom,vph-channel = <0x07>;
+			qcom,vph-high-threshold-uv = <3750000>;
+			qcom,vph-low-threshold-uv = <3500000>;
+			qcom,thermal-handle = <&msm_thermal_freq>;
+		};
+	};
+
+	qcom,msm-mct {
+		compatible = "qcom,max-current-throttling";
+		qcom,mct-wr-weight = <0x14221120>;
+		qcom,mct-vxwr-weight = <0xf8436430>;
+		qcom,mct-vlswr-weight = <0xa5846330>;
+		qcom,mct-vaw-energy = <0x1>;
+		qcom,mct-ulim = <0x007f>;
+		qcom,mct-dcnt = <0x0c>;
+		krait0-mct-supply = <&krait0_adj_reg>;
+		krait1-mct-supply = <&krait1_adj_reg>;
+		krait2-mct-supply = <&krait2_adj_reg>;
+		krait3-mct-supply = <&krait3_adj_reg>;
+		qcom,mct-regulators = "krait0-mct", "krait1-mct",
+					"krait2-mct", "krait3-mct";
+	};
+
+	qcom,msm-thermal {
+		compatible = "qcom,msm-thermal";
+		qcom,sensor-id = <5>;
+		qcom,poll-ms = <250>;
+		qcom,limit-temp = <60>;
+		qcom,temp-hysteresis = <10>;
+		qcom,therm-reset-temp = <115>;
+		qcom,freq-step = <2>;
+		qcom,freq-control-list = <&CPU0 &CPU1 &CPU2 &CPU3>;
+		qcom,core-limit-temp = <80>;
+		qcom,core-temp-hysteresis = <10>;
+		qcom,core-control-list = <&CPU1 &CPU2 &CPU3>;
+		qcom,hotplug-temp = <110>;
+		qcom,hotplug-temp-hysteresis = <20>;
+		qcom,cpu-sensors = "tsens_tz_sensor5", "tsens_tz_sensor6",
+				"tsens_tz_sensor7", "tsens_tz_sensor8";
+		qcom,freq-mitigation-temp = <110>;
+		qcom,freq-mitigation-temp-hysteresis = <20>;
+		qcom,freq-mitigation-value = <960000>;
+		qcom,freq-mitigation-control-list = <&CPU0>;
+		qcom,rpm-phase-resource-type = "misc";
+		qcom,rpm-phase-resource-id = <0>;
+		qcom,cx-phase-resource-key = "tmpc";
+		qcom,cx-phase-hot-crit-temp = <85>;
+		qcom,cx-phase-hot-crit-temp-hyst = <15>;
+		qcom,gfx-phase-hot-crit-temp = <85>;
+		qcom,gfx-phase-hot-crit-temp-hyst = <15>;
+		qcom,gfx-sensor-id = <4>;
+		qcom,gfx-phase-resource-key = "tmpg";
+		qcom,vdd-restriction-temp = <5>;
+		qcom,vdd-restriction-temp-hysteresis = <10>;
+
+		vdd-dig-supply = <&pma8084_s2_floor_corner>;
+		vdd-gfx-supply = <&pma8084_s6_floor_corner>;
+
+		qcom,vdd-dig-rstr{
+			qcom,vdd-rstr-reg = "vdd-dig";
+			qcom,levels = <5 7 7>; /* Nominal, Super Turbo, Super Turbo */
+			qcom,min-level = <1>; /* No Request */
+		};
+
+		qcom,vdd-gfx-rstr{
+			qcom,vdd-rstr-reg = "vdd-gfx";
+			qcom,levels = <5 7 7>; /* Nominal, Super Turbo, Super Turbo */
+			qcom,min-level = <1>; /* No Request */
+		};
+
+		msm_thermal_freq: qcom,vdd-apps-rstr{
+			qcom,vdd-rstr-reg = "vdd-apps";
+			qcom,levels = <1958400 2150400 2150400>;
+			qcom,freq-req;
+		};
+	};
+
+	msm_vidc: qcom,vidc@fdc00000 {
+		compatible = "qcom,msm-vidc";
+		reg = <0xfdc00000 0xff000>;
+		interrupts = <0 44 0>;
+		qcom,hfi = "venus";
+		qcom,ocmem-size = <524288>; /* 512 * 1024*/
+		qcom,max-hw-load = <1281600>; /* Full 4k @ 30 + 1080p @ 30 */
+		qcom,dcvs-min-load = <489600>; /* 1080p @ 60fps */
+		qcom,dcvs-min-mbperframe = <32400>; /* 4K */
+		venus-supply = <&gdsc_venus>;
+		venus-core0-supply = <&gdsc_venus_core0>;
+		venus-core1-supply = <&gdsc_venus_core1>;
+		clock-names= "core_clk", "core0_clk", "core1_clk", "iface_clk", "bus_clk", "mem_clk";
+		qcom,clock-configs = <0x3 0x0 0x0 0x0 0x0 0x0>;
+		qcom,sw-power-collapse;
+		qcom,load-freq-tbl = <979200 465000000 0xffffffff>,
+			<979200 465000000 0x55555555>,
+			<783360 465000000 0xffffffff>,
+			<783360 465000000 0x55555555>,
+			<489600 266670000 0xffffffff>,
+			<489600 266670000 0x55555555>,
+			<244800 133330000 0xffffffff>,
+			<244800 133330000 0x55555555>;
+		qcom,reg-presets = <0x800B0 0x00101001>,
+			<0x800B0 0x00101001>,
+			<0x800B4 0x00101010>,
+			<0x800B8 0x10100010>,
+			<0x800BC 0x00001010>,
+			<0x800C0 0x1000100f>,
+			<0x800C4 0x10000000>,
+			<0x800C8 0x10001000>,
+			<0x800CC 0x00001000>,
+			<0x80070 0x00013FFF>,
+			<0x80074 0x000000A4>,
+			<0x800A8 0x00003FFF>,
+			<0xe0020 0x5555556>,
+			<0xe0024 0x5555556>,
+			<0x80124 0x3>;
+		qcom,qdss-presets = <0xfc325000 0x1000>,
+			<0xfc326000 0x1000>,
+			<0xfc321000 0x1000>,
+			<0xfc322000 0x1000>,
+			<0xfc323000 0x1000>,
+			<0xfc302000 0x1000>,
+			<0xfa180000 0x1000>,
+			<0xfa181000 0x1000>;
+		qcom,vidc-iommu-domains {
+			qcom,domain-ns {
+				qcom,vidc-domain-phandle = <&venus_domain_ns>;
+				qcom,vidc-partition-buffer-types = <0x7ff>,
+					<0x800>;
+			};
+			qcom,domain-sec-bs {
+				qcom,vidc-domain-phandle = <&venus_domain_sec_bitstream>;
+				qcom,vidc-partition-buffer-types = <0x241>;
+			};
+			qcom,domain-sec-px {
+				qcom,vidc-domain-phandle = <&venus_domain_sec_pixel>;
+				qcom,vidc-partition-buffer-types = <0x106>;
+			};
+			qcom,domain-sec-np {
+				qcom,vidc-domain-phandle = <&venus_domain_sec_non_pixel>;
+				qcom,vidc-partition-buffer-types = <0x480>;
+			};
+		};
+		qcom,msm-bus-clients {
+			qcom,msm-bus-client@0 {
+				qcom,msm-bus,name = "venc-ddr";
+				qcom,msm-bus,num-cases = <10>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<63 512 0 0>,
+					<63 512 120000 302000>, /* VGA 30 fps */
+					<63 512 364000 302000>, /* VGA 60 fps */
+					<63 512 364000 302000>, /* 720p 30 fps */
+					<63 512 804000 302000>, /* 720p 60 fps */
+					<63 512 804000 302000>, /* 1080p 30 fps */
+					<63 512 1608000 604000>, /* 1080p 60 fps */
+					<63 512 2576000 967000>,
+					<63 512 4680000 1404000>,
+					<63 512 4988000 1496000>;
+				qcom,bus-configs = <0x1000414>;
+			};
+
+			qcom,msm-bus-client@1 {
+				qcom,msm-bus,name = "vdec-core0-ddr";
+				qcom,msm-bus,num-cases = <10>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<63 512 0 0>,
+					<63 512 208000 303000>, /* VGA 30 fps */
+					<63 512 536000 303000>, /* VGA 60 fps */
+					<63 512 536000 303000>, /* 720p 30 fps */
+					<63 512 1012000 303000>, /* 720p 60 fps */
+					<63 512 1012000 303000>, /* 1080p 30 fps */
+					<63 512 2024000 606000>, /* 1080p 60 fps */
+					<63 512 3240000 970000>,
+					<63 512 4048000 1212000>,
+					<63 512 4264000 1279000>;
+				qcom,bus-configs = <0xc000000>;
+			};
+
+			qcom,msm-bus-client@2 {
+				qcom,msm-bus,name = "vdec-core1-ddr";
+				qcom,msm-bus,num-cases = <10>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<63 512 0 0>,
+					<63 512 208000 303000>, /* VGA 30 fps */
+					<63 512 536000 303000>, /* VGA 60 fps */
+					<63 512 536000 303000>, /* 720p 30 fps */
+					<63 512 1012000 303000>, /* 720p 60 fps */
+					<63 512 1012000 303000>, /* 1080p 30 fps */
+					<63 512 2024000 606000>, /* 1080p 60 fps */
+					<63 512 3240000 970000>,
+					<63 512 4048000 1212000>,
+					<63 512 4264000 1279000>;
+				qcom,bus-configs = <0x30fcfff>;
+			};
+
+			qcom,msm-bus-client@3 {
+				qcom,msm-bus,name = "venc-ocmem";
+				qcom,msm-bus,num-cases = <10>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<68 604 0 0>,
+					<68 604 138000 1034000>, /* VGA 30 fps */
+					<68 604 414000 1034000>, /* VGA 60 fps */
+					<68 604 414000 1034000>, /* 720p 30 fps */
+					<68 604 940000 1034000>, /* 720p 60 fps */
+					<68 604 940000 1034000>, /* 1080p 30 fps */
+					<68 604 1880000 2068000>, /* 1080p 60 fps */
+					<68 604 3008000 3309000>,
+					<68 604 3760000 4136000>,
+					<68 604 4468000 2457000>;
+				qcom,bus-configs = <0x1000414>;
+			};
+
+			qcom,msm-bus-client@4 {
+				qcom,msm-bus,name = "vdec-core0-ocmem";
+				qcom,msm-bus,num-cases = <10>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<68 604 0 0>,
+					<68 604 176000 519000>, /* VGA 30 fps */
+					<68 604 456000 519000>, /* VGA 60 fps */
+					<68 604 456000 519000>, /* 720p 30 fps */
+					<68 604 864000 519000>, /* 720p 60 fps */
+					<68 604 864000 519000>, /* 1080p 30 fps */
+					<68 604 1728000 1038000>, /* 1080p 60 fps */
+					<68 604 2766000 1661000>,
+					<68 604 3456000 2076000>,
+					<68 604 3662000 2198000>;
+				qcom,bus-configs = <0xc000000>;
+			};
+
+			qcom,msm-bus-client@5 {
+				qcom,msm-bus,name = "vdec-core1-ocmem";
+				qcom,msm-bus,num-cases = <10>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<68 604 0 0>,
+					<68 604 176000 519000>, /* VGA 30 fps */
+					<68 604 456000 519000>, /* VGA 60 fps */
+					<68 604 456000 519000>, /* 720p 30 fps */
+					<68 604 864000 519000>, /* 720p 60 fps */
+					<68 604 864000 519000>, /* 1080p 30 fps */
+					<68 604 1728000 3640000>, /* 1080p 60 fps */
+					<68 604 2766000 3640000>,
+					<68 604 3456000 3640000>,
+					<68 604 3662000 3640000>;
+				qcom,bus-configs = <0x30fcfff>;
+			};
+		};
+	};
+
+	qcom,wfd {
+		compatible = "qcom,msm-wfd";
+	};
+
+	qcom,msm-ssc-sensors {
+		compatible = "qcom,msm-ssc-sensors";
+	};
+
+	sound {
+		compatible = "qcom,apq8084-audio-taiko";
+		qcom,model = "apq8084-taiko-snd-card";
+
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+			"AIF4 MAD", "MCLK",
+			"AMIC1", "MIC BIAS1 Internal1",
+			"MIC BIAS1 Internal1", "Handset Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC3", "MIC BIAS2 External",
+			"MIC BIAS2 External", "ANCRight Headset Mic",
+			"AMIC4", "MIC BIAS2 External",
+			"MIC BIAS2 External", "ANCLeft Headset Mic",
+			"DMIC1", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic1",
+			"DMIC2", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Digital Mic2",
+			"DMIC3", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic3",
+			"DMIC4", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic4",
+			"DMIC5", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic5",
+			"DMIC6", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic6";
+
+		qcom,taiko-mclk-clk-freq = <9600000>;
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 87 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 88 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 89 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 90 0>;
+		qcom,prim-auxpcm-gpio-set = "prim-gpio-tert";
+		qcom,sec-auxpcm-gpio-clk  = <&msmgpio 82 0>;
+		qcom,sec-auxpcm-gpio-sync = <&msmgpio 83 0>;
+		qcom,sec-auxpcm-gpio-din  = <&msmgpio 84 0>;
+		qcom,sec-auxpcm-gpio-dout = <&msmgpio 85 0>;
+		asoc-platform = <&pcm0>, <&pcm1>, <&lpa>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&cpe>, <&compr>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1", "msm-pcm-lpa",
+				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
+				"msm-lsm-client", "msm-pcm-routing", "msm-cpe-lsm",
+				"msm-compr-dsp";
+		asoc-cpu = <&dai_pri_auxpcm>, <&dai_sec_auxpcm>, <&dai_hdmi>, <&dai_mi2s>,
+				<&stub_rx>, <&stub_tx>, <&stub_1_tx>,
+				<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+				<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
+				<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>, <&bt_sco_rx>,
+				<&bt_sco_tx>, <&int_fm_rx>, <&int_fm_tx>, <&afe_pcm_rx>,
+				<&afe_pcm_tx>, <&afe_proxy_rx>, <&afe_proxy_tx>,
+				<&incall_record_rx>, <&incall_record_tx>, <&incall_music_rx>,
+				<&sb_6_rx>, <&sb_6_tx>;
+		asoc-cpu-names = "msm-dai-q6-auxpcm.1", "msm-dai-q6-auxpcm.2",
+				"msm-dai-q6-hdmi.8", "msm-dai-q6-mi2s.0",
+				"msm-dai-stub-dev.0", "msm-dai-stub-dev.1",
+				"msm-dai-stub-dev.3", "msm-dai-q6-dev.16384",
+				"msm-dai-q6-dev.16385", "msm-dai-q6-dev.16386",
+				"msm-dai-q6-dev.16387", "msm-dai-q6-dev.16388",
+				"msm-dai-q6-dev.16389", "msm-dai-q6-dev.16390",
+				"msm-dai-q6-dev.16391", "msm-dai-q6-dev.16392",
+				"msm-dai-q6-dev.16393", "msm-dai-q6-dev.16395",
+				"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289",
+				"msm-dai-q6-dev.12292", "msm-dai-q6-dev.12293",
+				"msm-dai-q6-dev.224", "msm-dai-q6-dev.225",
+				"msm-dai-q6-dev.241", "msm-dai-q6-dev.240",
+				"msm-dai-q6-dev.32771", "msm-dai-q6-dev.32772",
+				"msm-dai-q6-dev.32773", "msm-dai-q6-dev.16396",
+				"msm-dai-q6-dev.16397";
+		asoc-codec = <&stub_codec>;
+		asoc-codec-names = "msm-stub-codec.1";
+	};
+
+	sound-9330 {
+		compatible = "qcom,apq8084-audio-tomtom";
+		qcom,model = "apq8084-tomtom-snd-card";
+
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+			"AIF4 MAD", "MCLK",
+			"AMIC1", "MIC BIAS1 Internal1",
+			"MIC BIAS1 Internal1", "Handset Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC3", "MIC BIAS2 External",
+			"MIC BIAS2 External", "ANCRight Headset Mic",
+			"AMIC4", "MIC BIAS2 External",
+			"MIC BIAS2 External", "ANCLeft Headset Mic",
+			"DMIC1", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic1",
+			"DMIC2", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Digital Mic2",
+			"DMIC3", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic3",
+			"DMIC4", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic4",
+			"DMIC5", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic5",
+			"DMIC6", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic6";
+
+		qcom,tomtom-mclk-clk-freq = <9600000>;
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 87 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 88 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 89 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 90 0>;
+		qcom,prim-auxpcm-gpio-set = "prim-gpio-tert";
+		qcom,sec-auxpcm-gpio-clk  = <&msmgpio 82 0>;
+		qcom,sec-auxpcm-gpio-sync = <&msmgpio 83 0>;
+		qcom,sec-auxpcm-gpio-din  = <&msmgpio 84 0>;
+		qcom,sec-auxpcm-gpio-dout = <&msmgpio 85 0>;
+		asoc-platform = <&pcm0>, <&pcm1>, <&lpa>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&cpe>, <&compr>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1", "msm-pcm-lpa",
+				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
+				"msm-lsm-client", "msm-pcm-routing", "msm-cpe-lsm",
+				"msm-compr-dsp";
+		asoc-cpu = <&dai_pri_auxpcm>, <&dai_sec_auxpcm>, <&dai_hdmi>, <&dai_mi2s>,
+				<&stub_rx>, <&stub_tx>, <&stub_1_tx>,
+				<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+				<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
+				<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>, <&bt_sco_rx>,
+				<&bt_sco_tx>, <&int_fm_rx>, <&int_fm_tx>, <&afe_pcm_rx>,
+				<&afe_pcm_tx>, <&afe_proxy_rx>, <&afe_proxy_tx>,
+				<&incall_record_rx>, <&incall_record_tx>, <&incall_music_rx>,
+				<&sb_6_rx>, <&sb_6_tx>;
+		asoc-cpu-names = "msm-dai-q6-auxpcm.1", "msm-dai-q6-auxpcm.2",
+				"msm-dai-q6-hdmi.8", "msm-dai-q6-mi2s.0",
+				"msm-dai-stub-dev.0", "msm-dai-stub-dev.1",
+				"msm-dai-stub-dev.3", "msm-dai-q6-dev.16384",
+				"msm-dai-q6-dev.16385", "msm-dai-q6-dev.16386",
+				"msm-dai-q6-dev.16387", "msm-dai-q6-dev.16388",
+				"msm-dai-q6-dev.16389", "msm-dai-q6-dev.16390",
+				"msm-dai-q6-dev.16391", "msm-dai-q6-dev.16392",
+				"msm-dai-q6-dev.16393", "msm-dai-q6-dev.16395",
+				"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289",
+				"msm-dai-q6-dev.12292", "msm-dai-q6-dev.12293",
+				"msm-dai-q6-dev.224", "msm-dai-q6-dev.225",
+				"msm-dai-q6-dev.241", "msm-dai-q6-dev.240",
+				"msm-dai-q6-dev.32771", "msm-dai-q6-dev.32772",
+				"msm-dai-q6-dev.32773", "msm-dai-q6-dev.16396",
+				"msm-dai-q6-dev.16397";
+		asoc-codec = <&stub_codec>;
+		asoc-codec-names = "msm-stub-codec.1";
+	};
+
+	qcom,msmapr-audio {
+		compatible = "qcom,msmapr-audio";
+		qcom,apr-dest-type = "ADSP";
+	};
+
+	qcom,msm-adsp-loader {
+		compatible = "qcom,adsp-loader";
+		qcom,adsp-state = <0>;
+	};
+
+	qcom,msm-audio-ion {
+		compatible = "qcom,msm-audio-ion";
+		qcom,smmu-enabled;
+	};
+
+	pcm0: qcom,msm-pcm {
+		compatible = "qcom,msm-pcm-dsp";
+		qcom,msm-pcm-dsp-id = <0>;
+	};
+
+	pcm1: qcom,msm-pcm-low-latency {
+		compatible = "qcom,msm-pcm-dsp";
+		qcom,msm-pcm-dsp-id = <1>;
+		qcom,msm-pcm-low-latency;
+		qcom,latency-level = "regular";
+	};
+
+	routing: qcom,msm-pcm-routing {
+		compatible = "qcom,msm-pcm-routing";
+	};
+
+	lpa: qcom,msm-pcm-lpa {
+		compatible = "qcom,msm-pcm-lpa";
+	};
+
+	compr: qcom,msm-compr-dsp {
+		compatible = "qcom,msm-compr-dsp";
+	};
+
+	compress: qcom,msm-compress-dsp {
+		compatible = "qcom,msm-compress-dsp";
+	};
+
+	voip: qcom,msm-voip-dsp {
+		compatible = "qcom,msm-voip-dsp";
+	};
+
+	voice: qcom,msm-pcm-voice {
+		compatible = "qcom,msm-pcm-voice";
+	};
+
+	stub_codec: qcom,msm-stub-codec {
+		compatible = "qcom,msm-stub-codec";
+	};
+
+	qcom,msm-dai-fe {
+		compatible = "qcom,msm-dai-fe";
+	};
+
+	afe: qcom,msm-pcm-afe {
+		compatible = "qcom,msm-pcm-afe";
+	};
+
+	dai_hdmi: qcom,msm-dai-q6-hdmi {
+		compatible = "qcom,msm-dai-q6-hdmi";
+		qcom,msm-dai-q6-dev-id = <8>;
+	};
+
+	lsm: qcom,msm-lsm-client {
+		compatible = "qcom,msm-lsm-client";
+	};
+
+	loopback: qcom,msm-pcm-loopback {
+		compatible = "qcom,msm-pcm-loopback";
+	};
+
+	cpe: qcom,msm-cpe-lsm {
+		compatible = "qcom,msm-cpe-lsm";
+	};
+
+	qcom,msm-voice-svc {
+		compatible = "qcom,msm-voice-svc";
+	};
+
+	qcom,msm-dai-stub {
+		compatible = "qcom,msm-dai-stub";
+		stub_rx: qcom,msm-dai-stub-rx {
+			compatible = "qcom,msm-dai-stub-dev";
+			qcom,msm-dai-stub-dev-id = <0>;
+		};
+
+		stub_tx: qcom,msm-dai-stub-tx {
+			compatible = "qcom,msm-dai-stub-dev";
+			qcom,msm-dai-stub-dev-id = <1>;
+		};
+
+		stub_1_tx: qcom,msm-dai-stub-1-tx {
+			compatible = "qcom,msm-dai-stub-dev";
+			qcom,msm-dai-stub-dev-id = <3>;
+		};
+	};
+
+	qcom,msm-dai-q6 {
+		compatible = "qcom,msm-dai-q6";
+		sb_0_rx: qcom,msm-dai-q6-sb-0-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16384>;
+		};
+
+		sb_0_tx: qcom,msm-dai-q6-sb-0-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16385>;
+		};
+
+		sb_1_rx: qcom,msm-dai-q6-sb-1-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16386>;
+		};
+
+		sb_1_tx: qcom,msm-dai-q6-sb-1-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16387>;
+		};
+
+		sb_2_rx: qcom,msm-dai-q6-sb-2-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16388>;
+		};
+
+		sb_2_tx: qcom,msm-dai-q6-sb-2-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16389>;
+		};
+
+		sb_3_rx: qcom,msm-dai-q6-sb-3-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16390>;
+		};
+
+		sb_3_tx: qcom,msm-dai-q6-sb-3-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16391>;
+		};
+
+		sb_4_rx: qcom,msm-dai-q6-sb-4-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16392>;
+		};
+
+		sb_4_tx: qcom,msm-dai-q6-sb-4-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16393>;
+		};
+
+		sb_5_tx: qcom,msm-dai-q6-sb-5-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16395>;
+		};
+
+		sb_6_rx: qcom,msm-dai-q6-sb-6-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16396>;
+		};
+
+		sb_6_tx: qcom,msm-dai-q6-sb-6-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16397>;
+		};
+
+		bt_sco_rx: qcom,msm-dai-q6-bt-sco-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <12288>;
+		};
+
+		bt_sco_tx: qcom,msm-dai-q6-bt-sco-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <12289>;
+		};
+
+		int_fm_rx: qcom,msm-dai-q6-int-fm-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <12292>;
+		};
+
+		int_fm_tx: qcom,msm-dai-q6-int-fm-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <12293>;
+		};
+
+		afe_pcm_rx: qcom,msm-dai-q6-be-afe-pcm-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <224>;
+		};
+
+		afe_pcm_tx: qcom,msm-dai-q6-be-afe-pcm-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <225>;
+		};
+
+		afe_proxy_rx: qcom,msm-dai-q6-afe-proxy-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <241>;
+		};
+
+		afe_proxy_tx: qcom,msm-dai-q6-afe-proxy-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <240>;
+		};
+
+		incall_record_rx: qcom,msm-dai-q6-incall-record-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <32771>;
+		};
+
+		incall_record_tx: qcom,msm-dai-q6-incall-record-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <32772>;
+		};
+
+		incall_music_rx: qcom,msm-dai-q6-incall-music-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <32773>;
+		};
+	};
+
+	dai_pri_auxpcm: qcom,msm-pri-auxpcm {
+		compatible = "qcom,msm-auxpcm-dev";
+		qcom,msm-cpudai-auxpcm-mode = <0>, <0>;
+		qcom,msm-cpudai-auxpcm-sync = <1>, <1>;
+		qcom,msm-cpudai-auxpcm-frame = <5>, <4>;
+		qcom,msm-cpudai-auxpcm-quant = <2>, <2>;
+		qcom,msm-cpudai-auxpcm-num-slots = <1>, <1>;
+		qcom,msm-cpudai-auxpcm-slot-mapping = <1>, <1>;
+		qcom,msm-cpudai-auxpcm-data = <0>, <0>;
+		qcom,msm-cpudai-auxpcm-pcm-clk-rate = <2048000>, <2048000>;
+		qcom,msm-auxpcm-interface = "primary";
+	};
+
+	dai_sec_auxpcm: qcom,msm-sec-auxpcm {
+		compatible = "qcom,msm-auxpcm-dev";
+		qcom,msm-cpudai-auxpcm-mode = <0>, <0>;
+		qcom,msm-cpudai-auxpcm-sync = <1>, <1>;
+		qcom,msm-cpudai-auxpcm-frame = <5>, <4>;
+		qcom,msm-cpudai-auxpcm-quant = <2>, <2>;
+		qcom,msm-cpudai-auxpcm-num-slots = <1>, <1>;
+		qcom,msm-cpudai-auxpcm-slot-mapping = <1>, <1>;
+		qcom,msm-cpudai-auxpcm-data = <0>, <0>;
+		qcom,msm-cpudai-auxpcm-pcm-clk-rate = <2048000>, <2048000>;
+		qcom,msm-auxpcm-interface = "secondary";
+	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_mi2s: qcom,msm-dai-q6-mi2s-quat {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <3>;
+			qcom,msm-mi2s-rx-lines = <1>;
+			qcom,msm-mi2s-tx-lines = <2>;
+		};
+	};
+
+	hostless: qcom,msm-pcm-hostless {
+		compatible = "qcom,msm-pcm-hostless";
+	};
+
+	qcom,msm-ocmem-audio {
+		compatible = "qcom,msm-ocmem-audio";
+		qcom,msm-bus,name = "audio-ocmem";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			<11 604 0 0>,
+			<11 604 32506 32506>;
+	};
+
+	qcom,pil-vpu@fde0b000{
+		compatible = "qcom,pil-tz-generic";
+		reg = <0xfde0b000 0x80>;
+
+		vdd-proxy-supply = <&gdsc_vpu>;
+		vdd-supply = <&gdsc_vpu>;
+		qcom,proxy-reg-names = "vdd-proxy";
+		qcom,active-reg-names = "vdd";
+		clock-names = "core_clk", "iface_clk", "bus_clk",
+				"vdp_clk", "vdp_bus_clk", "cxo_clk",
+				"sleep_clk", "maple_bus_clk", "scm_core_clk",
+				"scm_iface_clk", "scm_bus_clk",
+				"scm_core_clk_src";
+		qcom,proxy-clock-names = "core_clk", "iface_clk", "bus_clk",
+					"vdp_clk", "vdp_bus_clk", "cxo_clk",
+					"sleep_clk", "maple_bus_clk",
+					"scm_core_clk", "scm_iface_clk",
+					"scm_bus_clk", "scm_core_clk_src";
+		qcom,scm_core_clk_src-freq = <85710000>;
+
+		qcom,pas-id = <10>;
+		qcom,proxy-timeout-ms = <10000>;
+		qcom,firmware-name = "vpu";
+		linux,contiguous-region = <&peripheral_mem>;
+	};
+
+	cpu-pmu {
+		compatible = "qcom,krait-pmu";
+		qcom,irq-is-percpu;
+		interrupts = <1 7 0xf00>;
+	};
+
+	l2-pmu {
+		compatible = "qcom,l2-pmu";
+		interrupts = <0 1 0>;
+	};
+
+	qcom,perfmap@fc340000 {
+		compatible = "qcom,perfmap";
+		reg = <0xfc340000 0x3000>;
+	};
+
+	cnss: qcom,cnss@0d400000 {
+		compatible = "qcom,cnss";
+		reg = <0x0d400000 0x200000>;
+		reg-names = "ramdump";
+		wlan-en-gpio = <&msmgpio 82 0>;
+		vdd-wlan-supply = <&wlan_vreg>;
+		qcom,notify-modem-status;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cnss_default>;
+		qcom,wlan-rc-num = <0>;
+
+		qcom,msm-bus,name = "msm-cnss";
+		qcom,msm-bus,num-cases = <4>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+					  <45 512 0 0>,           /* No vote */
+					  <45 512 6250 200000>,   /* 50 Mbps */
+					  <45 512 25000 200000>,  /* 200 Mbps */
+					  <45 512 100000 200000>; /* 800 Mbps */
+	};
+
+	qcom,avtimer {
+		compatible = "qcom,avtimer";
+		reg = <0xFE0C900C  0x4>,
+		      <0xFE0C9010  0x4>;
+		reg-names = "avtimer_lsb_addr", "avtimer_msb_addr";
+	};
+
+	cpu0_slp_sts: cpu-sleep-status@f9088008 {
+	      reg = <0xf9088008 0x100>;
+	      qcom,sleep-status-mask = <0x80000>;
+	};
+
+	cpu1_slp_sts: cpu-sleep-status@f9098008 {
+	      reg = <0xf9098008 0x100>;
+	      qcom,sleep-status-mask = <0x80000>;
+	};
+
+	cpu2_slp_sts: cpu-sleep-status@f90a8008 {
+	      reg = <0xf90a8008 0x100>;
+	      qcom,sleep-status-mask = <0x80000>;
+	};
+
+	cpu3_slp_sts: cpu-sleep-status@f90b8008 {
+	      reg = <0xf90b8008 0x100>;
+	      qcom,sleep-status-mask = <0x80000>;
+	};
+};
+
+&gdsc_venus {
+	status = "ok";
+};
+
+&gdsc_venus_core0 {
+	qcom,support-hw-trigger;
+	status = "ok";
+};
+
+&gdsc_venus_core1 {
+	qcom,support-hw-trigger;
+	status = "ok";
+};
+
+&gdsc_vpu {
+	clock-names = "core_clk", "maple_clk";
+	status = "ok";
+};
+
+&gdsc_mdss {
+	clock-names = "core_clk", "lut_clk";
+	status = "ok";
+};
+
+&gdsc_jpeg {
+	status = "ok";
+};
+
+&gdsc_vfe {
+	clock-names = "core0_clk", "core1_clk", "cpp_clk";
+	status = "ok";
+};
+
+&gdsc_oxili_gx {
+	clock-names = "core_clk";
+	status = "ok";
+	parent-supply = <&pma8084_s6_corner>;
+};
+
+&gdsc_oxili_cx {
+	status = "ok";
+};
+
+&gdsc_usb_hsic {
+	status = "ok";
+};
+
+&gdsc_pcie_0{
+	status = "ok";
+};
+
+&gdsc_pcie_1{
+	status = "ok";
+};
+
+&gdsc_usb30{
+	status = "ok";
+};
+
+&gdsc_usb30_sec{
+	parent-supply = <&gdsc_usb30>;
+	status = "ok";
+};
+
+#include "msm-pma8084-rpm-regulator.dtsi"
+#include "msm-pma8084.dtsi"
+#include "apq8084-regulator.dtsi"
+
+&pma8084_vadc {
+	chan@73 {
+		label = "apq_therm";
+		reg = <0x73>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@77 {
+		label = "quiet_therm";
+		reg = <0x77>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@15 {
+		label = "mpp6_div1";
+		reg = <0x15>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@7 {
+		label = "vph_pwr";
+		reg = <7>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+};
+
+&pma8084_adc_tm {
+	chan@8 {
+		label = "die_temp";
+		reg = <8>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <3>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x48>;
+	};
+
+	chan@73 {
+		label = "apq_therm";
+		reg = <0x73>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x68>;
+		qcom,thermal-node;
+	};
+
+	chan@77 {
+		label = "quiet_therm";
+		reg = <0x77>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x70>;
+		qcom,thermal-node;
+	};
+
+	chan@15 {
+		label = "mpp6_div1";
+		reg = <0x15>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+		qcom,meas-interval-timer-idx = <0>;
+		qcom,btm-channel-number = <0x78>;
+	};
+
+	chan@7 {
+		label = "vph_pwr";
+		reg = <0x07>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x80>;
+	};
+};
+
+&krait_regulator_pmic {
+	status = "ok";
+
+	qcom,ctl@2900 {
+		status = "ok";
+	};
+
+	qcom,ps@2a00 {
+		status = "ok";
+	};
+
+	qcom,freq@2b00 {
+		status = "ok";
+	};
+};

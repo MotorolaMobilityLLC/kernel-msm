@@ -1,0 +1,341 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8916-qrd.dtsi"
+#include "msm8916-camera-sensor-qrd.dtsi"
+
+&tlmm_pinmux {
+	akm_reset_pin {
+		qcom,pins = <&gp 36>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "akm_reset_pin";
+		akm_default: akm_default {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		akm_sleep: akm_sleep {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	lis3dh_int1_pin {
+		qcom,pins = <&gp 115>;
+		qcom,num-grp-pins = <1>;
+		label = "lis3dh_int_pin";
+		lis3dh_int1_default: int1_default {
+			drive-strength = <6>;
+			bias-pull-down;
+		};
+		lis3dh_int1_sleep: int1_sleep {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	tps65132-en-pin {
+		qcom,pins = <&gp 32>, <&gp 97>;
+		qcom,num-grp-pins = <2>;
+		label = "tps65132_en_pins";
+		qcom,pin-func = <0>;
+
+		tps65132_en_default: en-default {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+};
+
+&i2c_0 { /* BLSP1 QUP2 */
+	akm@c {
+		compatible = "ak,ak09911";
+		reg = <0x0c>;
+		pinctrl-names = "default","sleep";
+		pinctrl-0 = <&akm_default>;
+		pinctrl-1 = <&akm_sleep>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		akm,layout = <0x3>;
+		akm,gpio_rstn = <&msm_gpio 36 0x0>;
+		akm,auto-report;
+	};
+
+	avago@39 {
+		compatible = "avago,apds9930";
+		reg = <0x39>;
+		pinctrl-names = "default","sleep";
+		pinctrl-0 = <&apds99xx_default>;
+		pinctrl-1 = <&apds99xx_sleep>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <113 0x2002>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		avago,irq-gpio = <&msm_gpio 113 0x2002>;
+		avago,ps-threshold = <600>;
+		avago,ps-hysteresis-threshold = <500>;
+		avago,ps-pulse = <8>;
+		avago,ps-pgain = <0>;
+		avago,als-B = <186>;
+		avago,als-C = <75>;
+		avago,als-D = <129>;
+		avago,ga-value = <313>;
+	};
+
+	st@18 {
+		compatible = "st,lis3dh";
+		reg = <0x18>;
+		pinctrl-names = "lis3dh_default","lis3dh_sleep";
+		pinctrl-0 = <&lis3dh_int1_default>;
+		pinctrl-1 = <&lis3dh_int1_sleep>;
+		interrupt-parent = <&msm_gpio>;
+		vdd-supply = <&pm8916_l17>;
+		vddio-supply = <&pm8916_l6>;
+		st,min-interval = <5>;
+		st,init-interval = <200>;
+		st,axis-map-x = <0>;
+		st,axis-map-y = <1>;
+		st,axis-map-z = <2>;
+		st,g-range = <2>;
+		st,gpio-int1 = <&msm_gpio 115 0x2002>;
+		st,negate-x;
+		st,negate-y;
+	};
+
+	tps65132@3e {
+		compatible = "ti,tps65132";
+		reg = <0x3e>;
+		i2c-pwr-supply = <&pm8916_l6>;
+		ti,en-gpio-lpm;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps65132_en_default>;
+
+		regulators {
+			tps65132_pos: pos-boost {
+				regulator-name = "tps65132-pos";
+				regulator-min-microvolt = <5400000>;
+				regulator-max-microvolt = <5400000>;
+				ti,discharge-enable;
+				ti,enable-time = <800>;
+				ti,current-limit = <200000>;
+				ti,en-gpio = <&msm_gpio 97 0>;
+			};
+
+			tps65132_neg: neg-boost {
+				regulator-name = "tps65132-neg";
+				regulator-min-microvolt = <5400000>;
+				regulator-max-microvolt = <5400000>;
+				ti,discharge-enable;
+				ti,enable-time = <800>;
+				ti,current-limit = <40000>;
+				ti,en-gpio = <&msm_gpio 32 0>;
+			};
+		};
+	};
+
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&pmx_mdss {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 25>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_innolux_720p_video>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
+
+	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
+
+	vsp-supply = <&tps65132_pos>;
+	vsn-supply = <&tps65132_neg>;
+};
+
+&dsi_innolux_720p_video {
+	qcom,esd-check-enabled;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_tps_qrd>;
+};
+
+&soc {
+	spi_0 {
+		status = "disabled";
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_led_off>;
+
+		red {
+			gpios = <&msm_gpio 8 0>;
+			label = "red";
+			linux,default-trigger = "none";
+			default-state = "off";
+			retain-state-suspended;
+		};
+
+		green {
+			gpios = <&msm_gpio 9 0>;
+			label = "green";
+			linux,default-trigger = "none";
+			default-state = "off";
+			retain-state-suspended;
+		};
+
+		blue {
+			gpios = <&msm_gpio 10 0>;
+			label = "blue";
+			linux,default-trigger = "none";
+			default-state = "off";
+		};
+	};
+
+	sound {
+			compatible = "qcom,msm8x16-audio-codec";
+			qcom,model = "msm8x16-skuh-snd-card";
+			qcom,msm-snd-card-id = <0>;
+			qcom,msm-ext-pa = "primary";
+			qcom,msm-codec-type = "internal";
+			qcom,msm-mbhc-hphl-swh = <1>;
+			qcom,msm-mbhc-gnd-swh = <0>;
+			pinctrl-names = "cdc_lines_act",
+					"cdc_lines_sus";
+			pinctrl-0 = <&cdc_pdm_lines_act>;
+			pinctrl-1 = <&cdc_pdm_lines_sus>;
+			asoc-platform = <&pcm0>, <&pcm1>, <&voip>, <&voice>,
+					<&loopback>, <&compress>, <&hostless>,
+					<&afe>, <&lsm>, <&routing>, <&lpa>;
+			asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+					"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
+					"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
+					"msm-lsm-client", "msm-pcm-routing", "msm-pcm-lpa";
+			asoc-cpu = <&dai_pri_auxpcm>, <&dai_hdmi>,
+					<&dai_mi2s0>, <&dai_mi2s1>, <&dai_mi2s2>, <&dai_mi2s3>,
+					<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+					<&sb_3_rx>, <&sb_3_tx>, <&sb_4_rx>, <&sb_4_tx>,
+					<&bt_sco_rx>, <&bt_sco_tx>, <&int_fm_rx>, <&int_fm_tx>,
+					<&afe_pcm_rx>, <&afe_pcm_tx>, <&afe_proxy_rx>,
+					<&afe_proxy_tx>, <&incall_record_rx>,
+					<&incall_record_tx>, <&incall_music_rx>,
+					<&incall_music_2_rx>;
+			asoc-cpu-names = "msm-dai-q6-auxpcm.1", "msm-dai-q6-hdmi.8",
+					"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
+					"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
+					"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
+					"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+					"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+					"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+					"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289",
+					"msm-dai-q6-dev.12292", "msm-dai-q6-dev.12293",
+					"msm-dai-q6-dev.224", "msm-dai-q6-dev.225",
+					"msm-dai-q6-dev.241", "msm-dai-q6-dev.240",
+					"msm-dai-q6-dev.32771", "msm-dai-q6-dev.32772",
+					"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770";
+			asoc-codec = <&stub_codec>, <&pm8916_tombak_dig>;
+			asoc-codec-names = "msm-stub-codec.1", "tombak_codec";
+	};
+
+	i2c@78b9000 { /* BLSP1 QUP5 */
+		synaptics@70 {
+			compatible = "synaptics,rmi4";
+			reg = <0x70>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <13 0x2008>;
+			vdd-supply = <&vdd_vreg>;
+			vcc_i2c-supply = <&pm8916_l16>;
+			/* pins used by touchscreen */
+			pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_suspend";
+			pinctrl-0 = <&ts_int_active &ts_reset_active>;
+			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+			pinctrl-2 = <&ts_release>;
+			synaptics,display-coords = <0 0 1100 1756>;
+			synaptics,panel-coords = <0 0 1100 1899>;
+			synaptics,irq-gpio = <&msm_gpio 13 0x2008>;
+			synaptics,reset-gpio = <&msm_gpio 12 0x0>;
+			synaptics,i2c-pull-up;
+			synaptics,power-down;
+			synaptics,disable-gpios;
+			synaptics,fw-image-name = "PR1601177-s3207_8916_qrd_00430000.img";
+		};
+	};
+
+	vdd_vreg: vdd_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "vdd_vreg";
+	};
+
+	gen-vkeys {
+		compatible = "qcom,gen-vkeys";
+		label = "synaptics_rmi4_i2c";
+		qcom,disp-maxx = <720>;
+		qcom,disp-maxy = <1280>;
+		qcom,panel-maxx = <720>;
+		qcom,panel-maxy = <1385>;
+		qcom,key-codes = <158 172 139>;
+	};
+};
+
+&pm8916_vadc {
+	chan@30 {
+		qcom,scale-function = <10>;
+	};
+};
+
+&pm8916_adc_tm {
+	chan@30 {
+		qcom,scale-function = <6>;
+	};
+};
+
+&pm8916_chg {
+	qcom,vddmax-mv = <4350>;
+	qcom,vddsafe-mv = <4380>;
+	qcom,vinmin-mv = <4470>;
+	qcom,batt-hot-percentage = <35>;
+	qcom,batt-cold-percentage = <70>;
+	qcom,tchg-mins = <360>;
+	status = "okay";
+};
+
+/ {
+	qrd_batterydata: qcom,battery-data {
+		qcom,rpull-up-kohm = <68>;
+		qcom,vref-batt-therm = <1800000>;
+
+		#include "batterydata-qrd-skuh-4v35-2000mah.dtsi"
+	};
+};
+
+&pm8916_bms {
+	status = "ok";
+	qcom,battery-data = <&qrd_batterydata>;
+};
+
+&sdc2_cd_on {
+	/delete-property/ bias-pull-up;
+	bias-disable;
+};
+
+&sdhc_2 {
+	qcom,vdd-always-on;
+	qcom,vdd-lpm-sup;
+
+	qcom,vdd-current-level = <4000 400000>;
+};
+

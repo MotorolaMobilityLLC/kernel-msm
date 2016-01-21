@@ -1,0 +1,1107 @@
+if ARCH_MSM
+
+menu "MSM SoC Type"
+
+config ARCH_MSM8974
+	bool "MSM8974"
+	select ARCH_MSM_KRAITMP
+	select GPIO_MSM_V3
+	select ARM_GIC
+	select CPU_V7
+	select MSM_SCM
+	select MSM_GPIOMUX
+	select PM_DEVFREQ
+	select MSM_DEVFREQ_DEVBW
+	select DEVFREQ_SIMPLE_DEV
+	select MSM_PIL
+	select MSM_SPM
+	select MSM_L2_SPM
+	select MSM_PM if PM
+	select MSM_RPM_SMD
+	select REGULATOR
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_QDSP6_APRV2
+	select MSM_QDSP6V2_CODECS
+	select REGULATOR_RPM_SMD
+	select ARM_HAS_SG_CHAIN
+	select MSM_RUN_QUEUE_STATS
+	select MEMORY_HOLE_CARVEOUT
+	select MSM_RPM_STATS_LOG
+	select QMI_ENCDEC
+	select MSM_ULTRASOUND
+	select MSM_RPM_LOG
+	select ARCH_WANT_KMAP_ATOMIC_FLUSH
+	select KRAIT_REGULATOR
+	select USB_ARCH_HAS_XHCI
+	select ENABLE_VMALLOC_SAVINGS
+	select MSM_IRQ
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+
+config ARCH_APQ8084
+	bool "APQ8084"
+	select ARCH_MSM_KRAITMP
+	select GPIO_MSM_V3
+	select ARM_GIC
+	select CPU_V7
+	select MSM_SCM
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_GPIOMUX
+	select MSM_PM if PM
+	select REGULATOR
+	select MSM_QDSP6V2_CODECS
+	select MSM_QDSP6_APRV2 if SND_SOC
+	select REGULATOR_RPM_SMD
+	select MIGHT_HAVE_PCI
+	select ARCH_SUPPORTS_MSI
+	select ARM_HAS_SG_CHAIN
+	select ARCH_DMA_ADDR_T_64BIT if ARM_LPAE
+	select ARCH_WANT_KMAP_ATOMIC_FLUSH
+	select MEMORY_HOLE_CARVEOUT
+	select QMI_ENCDEC
+	select MSM_SPM
+	select MSM_L2_SPM
+	select MSM_RPM_SMD
+	select MSM_RPM_STATS_LOG
+	select MSM_RPM_LOG
+	select USB_ARCH_HAS_XHCI
+	select KRAIT_REGULATOR
+	select PM_DEVFREQ
+	select MSM_DEVFREQ_DEVBW
+	select DEVFREQ_SIMPLE_DEV
+	select MSM_PIL
+	select ENABLE_VMALLOC_SAVINGS
+	select MSM_ULTRASOUND
+	select MAXIMUM_CURRENT_THROTTLING
+	select MSM_IRQ
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+
+config ARCH_MSM8909
+	bool "MSM8909"
+	select ARCH_MSM_CORTEXMP
+	select ARM_GIC
+	select MULTI_IRQ_HANDLER
+	select CPU_V7
+	select HAVE_ARM_ARCH_TIMER
+	select MAY_HAVE_SPARSE_IRQ
+	select SPARSE_IRQ
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select USE_PINCTRL_IRQ
+	select MSM_PM if PM
+	select MSM_RPM_SMD
+	select MSM_RPM_STATS_LOG
+	select MSM_RPM_LOG
+	select CPU_FREQ
+	select MSM_CORTEX_A7
+	select MSM_IRQ
+	select ARM_TICKET_LOCKS
+	select ARM_HAS_SG_CHAIN
+	select ARCH_WANT_KMAP_ATOMIC_FLUSH
+	select MSM_QDSP6_APRV2
+	select MSM_QDSP6V2_CODECS
+	select MSM_AUDIO_QDSP6V2 if SND_SOC
+	select CPU_FREQ_MSM
+	select CPU_FREQ
+	select PM_DEVFREQ
+	select PM_OPP
+	select MSM_DEVFREQ_DEVBW
+	select DEVFREQ_SIMPLE_DEV
+	select DEVFREQ_GOV_MSM_BW_HWMON
+	select MSM_BIMC_BWMON
+	select MSM_JTAG_MM if CORESIGHT_ETM
+	select RCU_BOOST if DEBUG_KMEMLEAK
+
+config ARCH_MSM8916
+	bool "MSM8916"
+	select ARCH_MSM_CORTEXMP
+	select ARM_GIC
+	select MULTI_IRQ_HANDLER
+	select CPU_V7
+	select HAVE_ARM_ARCH_TIMER
+	select MAY_HAVE_SPARSE_IRQ
+	select SPARSE_IRQ
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select USE_PINCTRL_IRQ
+	select MSM_PM if PM
+	select MSM_RPM_SMD
+	select MSM_RUN_QUEUE_STATS
+	select MEMORY_HOLE_CARVEOUT
+	select DONT_MAP_HOLE_AFTER_MEMBANK0
+	select QMI_ENCDEC
+	select MSM_MULTIMEDIA_USE_ION
+	select MSM_IRQ
+	select MSM_CORTEX_A53
+	select CPU_FREQ_MSM
+	select CPU_FREQ
+	select PM_DEVFREQ
+	select PM_OPP
+	select MSM_DEVFREQ_DEVBW
+	select DEVFREQ_SIMPLE_DEV
+	select DEVFREQ_GOV_MSM_BW_HWMON
+	select MSM_BIMC_BWMON
+	select ARMBW_HWMON
+	select MSM_RPM_SMD
+	select MSM_QDSP6V2_CODECS
+	select MSM_AUDIO_QDSP6V2 if SND_SOC
+	select ARM_HAS_SG_CHAIN
+	select MSM_RPM_STATS_LOG
+	select ARCH_WANT_KMAP_ATOMIC_FLUSH
+	select MSM_RPM_LOG
+	select MSM_JTAGV8 if CORESIGHT_ETMV4
+	select RCU_BOOST if DEBUG_KMEMLEAK
+
+config ARCH_FSM9900
+	bool "FSM9900"
+	select ARCH_MSM_KRAITMP
+	select GPIO_MSM_V3
+	select ARM_GIC
+	select CPU_V7
+	select MSM_SCM
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_GPIOMUX
+	select PM_DEVFREQ
+	select MSM_DEVFREQ_DEVBW
+	select DEVFREQ_SIMPLE_DEV
+	select MSM_PIL
+	select REGULATOR
+	select ARM_HAS_SG_CHAIN
+	select MSM_RUN_QUEUE_STATS
+	select MSM_NOPM
+	select KRAIT_REGULATOR
+	select ARCH_SUPPORTS_MSI
+	select MIGHT_HAVE_PCI
+	select MSM_IRQ
+
+config ARCH_FSM9010
+	bool "FSM9010"
+	select ARM_GIC
+	select GIC_SECURE
+	select ARCH_MSM_CORTEXMP
+	select CPU_V7
+	select MSM_SCM
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_NATIVE_RESTART
+	select MSM_CORTEX_A7
+	select PM_DEVFREQ
+	select MSM_DEVFREQ_CPUBW
+	select MSM_PIL
+	select ARM_HAS_SG_CHAIN
+	select REGULATOR
+	select MSM_NOPM
+	select MSM_JTAG_MM if CORESIGHT_ETM
+	select MSM_IRQ
+	select ARCH_SUPPORTS_MSI
+	select MIGHT_HAVE_PCI
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select USE_PINCTRL_IRQ
+
+config ARCH_MDM9630
+	bool "MDM9630"
+	select ARM_GIC
+	select MSM_SCM
+	select CPU_V7
+	select MSM_GPIOMUX
+	select MSM_RPM_SMD
+	select REGULATOR
+	select REGULATOR_RPM_SMD
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_SPM
+	select MSM_PM if PM
+	select GPIO_MSM_V3
+	select MIGHT_HAVE_PCI
+	select ARCH_SUPPORTS_MSI
+	select MEMORY_HOLE_CARVEOUT
+	select QMI_ENCDEC
+	select MSM_JTAG_MM if CORESIGHT_ETM
+	select MSM_CORTEX_A7
+	select PM_DEVFREQ
+	select MSM_DEVFREQ_DEVBW
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select MSM_IRQ
+	select MSM_QDSP6V2_CODECS
+	select MSM_AUDIO_QDSP6V2 if SND_SOC
+
+config ARCH_MDM9640
+	bool "MDM9640"
+	select ARM_GIC
+	select CPU_V7
+	select REGULATOR
+	select REGULATOR_RPM_SMD
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_RPM_SMD
+	select MSM_SPM
+	select MSM_PM if PM
+	select MEMORY_HOLE_CARVEOUT
+	select QMI_ENCDEC
+	select MSM_CORTEX_A7
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select USE_PINCTRL_IRQ
+	select PCI
+	select MSM_IRQ
+	select MSM_JTAG_MM if CORESIGHT_ETM
+	select MSM_QDSP6_APRV2
+	select MSM_QDSP6V2_CODECS
+	select MSM_AUDIO_QDSP6V2 if SND_SOC
+	select MSM_CLK_CONTROLLER_V2
+	select PM_DEVFREQ
+	select MSM_DEVFREQ_DEVBW
+	select MSM_RPM_LOG
+	select MSM_RPM_STATS_LOG
+
+config ARCH_MDMFERMIUM
+	bool "MDMFERMIUM"
+	select ARM_GIC
+	select CPU_V7
+	select REGULATOR
+	select REGULATOR_RPM_SMD
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_RPM_SMD
+	select MEMORY_HOLE_CARVEOUT
+	select MSM_CORTEX_A7
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select USE_PINCTRL_IRQ
+	select MSM_IRQ
+	select MSM_CLK_CONTROLLER_V2
+	select MSM_NOPM
+
+config ARCH_MDMCALIFORNIUM
+	bool "MDMCALIFORNIUM"
+	select ARM_GIC
+	select CPU_V7
+	select REGULATOR
+	select REGULATOR_RPM_SMD
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_RPM_SMD
+	select MEMORY_HOLE_CARVEOUT
+	select MSM_CORTEX_A7
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select USE_PINCTRL_IRQ
+	select MSM_IRQ
+	select MSM_CLK_CONTROLLER_V2
+
+config ARCH_MSMVPIPA
+	bool "MSMVPIPA"
+	select ARM_GIC
+	select CPU_V7
+	select REGULATOR
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_SPM_V2
+	select MSM_NOPM
+	select MEMORY_HOLE_CARVEOUT
+	select QMI_ENCDEC
+	select MSM_CORTEX_A7
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select USE_PINCTRL_IRQ
+	select MSM_IRQ
+
+config ARCH_MSM8610
+	bool "MSM8610"
+	select ARM_GIC
+	select ARCH_MSM_CORTEXMP
+	select CPU_V7
+	select MSM_SCM
+	select ARM_TICKET_LOCKS
+	select GPIO_MSM_V3
+	select MSM_GPIOMUX
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_QDSP6_APRV2
+	select MSM_QDSP6V2_CODECS
+	select QMI_ENCDEC
+	select MSM_RPM_SMD
+	select MSM_SPM
+	select MSM_L2_SPM
+	select MSM_PM if PM
+	select MEMORY_HOLE_CARVEOUT
+	select MSM_BUS_SCALING
+	select MSM_CORTEX_A7
+	select CPU_FREQ_MSM
+	select CPU_FREQ
+	select PM_DEVFREQ
+	select DEVFREQ_GOV_MSM_BW_HWMON
+	select ARMBW_HWMON
+	select MSM_DEVFREQ_DEVBW
+	select MSM_PIL
+	select MSM_RUN_QUEUE_STATS
+	select ARM_HAS_SG_CHAIN
+	select REGULATOR
+	select REGULATOR_RPM_SMD
+	select REGULATOR_SPM
+	select MSM_JTAG_MM if CORESIGHT_ETM
+	select REGULATOR_CPR
+	select MSM_RPM_LOG
+	select MSM_IOMMU_SYNC
+	select MSM_RPM_STATS_LOG
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select MSM_IRQ
+
+config ARCH_MSM8226
+	bool "MSM8226"
+	select ARM_GIC
+	select ARCH_MSM_CORTEXMP
+	select CPU_V7
+	select MSM_SCM
+	select ARM_TICKET_LOCKS
+	select GPIO_MSM_V3
+	select MSM_GPIOMUX
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_QDSP6_APRV2
+	select MSM_QDSP6V2_CODECS
+	select QMI_ENCDEC
+	select MSM_RPM_SMD
+	select MSM_SPM
+	select MSM_L2_SPM
+	select MSM_PM if PM
+	select MEMORY_HOLE_CARVEOUT
+	select MSM_BUS_SCALING
+	select MSM_CORTEX_A7
+	select CPU_FREQ_MSM
+	select CPU_FREQ
+	select PM_DEVFREQ
+	select DEVFREQ_GOV_MSM_BW_HWMON
+	select ARMBW_HWMON
+	select MSM_DEVFREQ_DEVBW
+	select MSM_PIL
+	select MSM_RUN_QUEUE_STATS
+	select ARM_HAS_SG_CHAIN
+	select REGULATOR
+	select REGULATOR_RPM_SMD
+	select REGULATOR_SPM
+	select MSM_JTAG_MM if CORESIGHT_ETM
+	select REGULATOR_CPR
+	select MSM_RPM_LOG
+	select MSM_RPM_STATS_LOG
+	select ARCH_WANT_KMAP_ATOMIC_FLUSH
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select ENABLE_VMALLOC_SAVINGS
+	select MSM_IRQ
+endmenu
+
+config MSM_KRAIT_TBB_ABORT_HANDLER
+	bool "Krait TBB/TBH data abort handler"
+	depends on ARCH_MSM_KRAIT
+	depends on ARM_THUMB
+	help
+	  Certain early samples of the Krait processor may generate data
+	  aborts for TBB / TBH instructions that fail their condition code
+	  checks. Enabling this option will ignore these erroneous data aborts,
+	  at the expense of a very small performance penalty.
+
+	  If unsure, say N.
+
+config  ARCH_MSM_KRAIT
+	bool
+	select ARM_L1_CACHE_SHIFT_6
+	select DEVFREQ_GOV_MSM_BW_HWMON
+	select DEVFREQ_GOV_MSM_CACHE_HWMON
+
+config  MSM_CORTEX_A7
+	bool
+
+config  MSM_CORTEX_A53
+	bool
+
+config  MSM_SMP
+	select HAVE_SMP
+	bool
+
+config  ARCH_MSM_KRAITMP
+	select ARCH_MSM_KRAIT
+	select MSM_SMP
+	select HAVE_ARCH_HAS_CURRENT_TIMER
+	select MSM_JTAG if CORESIGHT_ETM
+	bool
+
+config  ARCH_MSM_CORTEXMP
+	select MSM_SMP
+	bool
+
+config  MSM_KRAIT_WFE_FIXUP
+	bool
+
+config  ARCH_MSM_CORTEX_A5
+	bool
+
+config MSM_LPM_TEST
+	bool "Low Power Mode test framework"
+	depends on MSM_RPM || MSM_RPM_SMD
+	depends on MSM_PM
+	help
+	  LPM_TEST is a test framework that assists in exercising the low
+	  power mode algorithm on MSM targets. This test framework tracks
+	  notifications sent during entry/exit of the low power modes and
+	  processes them to measure various stats including latency
+	  measurement.
+
+config MSM_REMOTE_SPINLOCK_DEKKERS
+	bool
+config MSM_REMOTE_SPINLOCK_SWP
+	bool
+config MSM_REMOTE_SPINLOCK_LDREX
+	bool
+config MSM_REMOTE_SPINLOCK_SFPB
+	bool
+
+config MSM_STACKED_MEMORY
+	bool "Stacked Memory"
+	default y
+	help
+	  This option is used to indicate the presence of on-die stacked
+	  memory.  When present this memory bank is used for a high speed
+	  shared memory interface.  When not present regular RAM is used.
+
+config PHYS_OFFSET
+	hex
+	default "0x00000000" if ARCH_MSM8974
+	default "0x00000000" if ARCH_APQ8084
+	default "0x00000000" if ARCH_MSM8226
+	default "0x00000000" if ARCH_MSM8610
+	default "0x0b600000" if ARCH_FSM9900
+	default "0x0b600000" if ARCH_FSM9010
+	default "0x00000000" if ARCH_MDM9630
+	default "0x80000000" if ARCH_MDM9640
+	default "0x80000000" if ARCH_MDMCALIFORNIUM
+	default "0x80000000" if ARCH_MSMVPIPA
+	default "0x00200000" if !MSM_STACKED_MEMORY
+	default "0x10000000"
+
+config KERNEL_MSM_CONTIG_MEM_REGION
+	bool "Enable in-kernel contiguous memory region"
+	depends on ARCH_MSM8974
+	help
+	   Enable the in-kernel contiguous memory allocator. Sets up a
+	   region of physically contiguous memory. This memory is
+	   reserved during initialization, and can be used
+	   generically.
+
+config MSM_AMSS_VERSION
+	int
+	default 6210 if MSM_AMSS_VERSION_6210
+	default 6220 if MSM_AMSS_VERSION_6220
+	default 6225 if MSM_AMSS_VERSION_6225
+
+choice
+	prompt "AMSS modem firmware version"
+
+	default MSM_AMSS_VERSION_6225
+
+	config MSM_AMSS_VERSION_6210
+		bool "6.2.10"
+
+	config MSM_AMSS_VERSION_6220
+		bool "6.2.20"
+
+	config MSM_AMSS_VERSION_6225
+		bool "6.2.20 + New ADSP"
+endchoice
+
+config MSM_HAS_DEBUG_UART_HS
+	bool
+	help
+	  Say Y here if high speed MSM UART is present.
+
+config MSM_HAS_DEBUG_UART_HS_V14
+	bool
+	select MSM_HAS_DEBUG_UART_HS
+	help
+	  Say Y here if high speed MSM UART v1.4 is present.
+
+config MSM_DEBUG_UART_PHYS
+	hex
+
+choice
+	prompt "Debug UART"
+	depends on DEBUG_LL
+
+	config DEBUG_MSM8974_UART
+		bool "Kernel low-level debugging messages via MSM 8974 UART"
+		depends on ARCH_MSM8974
+		select MSM_HAS_DEBUG_UART_HS_V14
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to the serial port on MSM 8974 devices.
+
+	config DEBUG_MSM8909_UART
+		bool "Kernel low-level debugging messages via MSM8909 UART"
+		depends on ARCH_MSM8909
+		select MSM_HAS_DEBUG_UART_HS_V14
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to the serial port on MSM8909 devices.
+
+	config DEBUG_MSM8916_UART
+                bool "Kernel low-level debugging messages via MSM8916 UART"
+                depends on ARCH_MSM8916
+                select MSM_HAS_DEBUG_UART_HS_V14
+                help
+                  Say Y here if you want the debug print routines to direct
+                  their output to the serial port on MSM8916 devices.
+
+	config DEBUG_APQ8084_UART
+                bool "Kernel low-level debugging messages via APQ8084 UART"
+                depends on ARCH_APQ8084
+                select MSM_HAS_DEBUG_UART_HS_V14
+                help
+                  Say Y here if you want the debug print routines to direct
+                  their output to the serial port on APQ8084 devices.
+
+	config DEBUG_FSM9900_UART
+		bool "Kernel low-level debugging messages via FSM9900 UART"
+		depends on ARCH_FSM9900
+		select MSM_HAS_DEBUG_UART_HS_V14
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to the serial port on FSM9900 devices.
+
+	config DEBUG_FSM9010_UART
+		bool "Kernel low-level debugging messages via FSM9010 UART"
+		depends on ARCH_FSM9010
+		select MSM_HAS_DEBUG_UART_HS_V14
+		help
+		  Say Y here if you want the debug print routines to
+		  direct their output to the serial port on FSM9010
+		  devices. This is useful in the early kernel
+		  development.
+
+	config DEBUG_MSM8226_UART
+		bool "Kernel low-level debugging messages via MSM 8226 UART"
+		depends on ARCH_MSM8226
+		select MSM_HAS_DEBUG_UART_HS_V14
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to the serial port on MSM 8226 devices.
+
+	config DEBUG_MDM9640_UART
+		bool "Kernel low-level debugging messages via MSM 9640 UART"
+		depends on ARCH_MDM9640
+		select MSM_HAS_DEBUG_UART_HS_V14
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to the serial port on MSM 9640 devices.
+		  This is useful as this makes kernel to print console message
+		  early.
+
+	config DEBUG_MSMVPIPA_UART
+		bool "Kernel low-level debugging messages via MSM VPIPA UART"
+		depends on ARCH_MSMVPIPA
+		select MSM_HAS_DEBUG_UART_HS_V14
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to the serial port on MSM VPIPA devices.
+		  This is useful as this makes kernel to print console message
+		  early.
+
+	config DEBUG_MDMFERMIUM_UART
+		bool "Kernel low-level debugging messages via MDM FERMIUM UART"
+		depends on ARCH_MDMFERMIUM
+		select MSM_HAS_DEBUG_UART_HS_V14
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to the serial port on MDM FERMIUM devices.
+		  This is useful as this makes kernel to print console message
+		  early.
+
+endchoice
+
+choice
+	prompt "Default Timer"
+	default MSM7X00A_USE_GP_TIMER
+
+	config MSM7X00A_USE_GP_TIMER
+		bool "GP Timer"
+	help
+	  Low resolution timer that allows power collapse from idle.
+
+	config MSM7X00A_USE_DG_TIMER
+		bool "DG Timer"
+	help
+	  High resolution timer.
+endchoice
+
+choice
+	prompt "Suspend sleep mode"
+	default MSM7X00A_SLEEP_MODE_POWER_COLLAPSE_SUSPEND
+	help
+	  Allows overriding the sleep mode used. Leave at power
+	  collapse suspend unless the arm9 image has problems.
+
+	config MSM7X00A_SLEEP_MODE_POWER_COLLAPSE_SUSPEND
+		bool "Power collapse suspend"
+	help
+	  Lowest sleep state. Returns through reset vector.
+
+	config MSM7X00A_SLEEP_MODE_POWER_COLLAPSE
+		bool "Power collapse"
+	help
+	  Sleep state that returns through reset vector.
+
+	config MSM7X00A_SLEEP_MODE_APPS_SLEEP
+		bool "Apps Sleep"
+
+	config MSM7X00A_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT
+		bool "Ramp down cpu clock and wait for interrupt"
+
+	config MSM7X00A_SLEEP_WAIT_FOR_INTERRUPT
+		bool "Wait for interrupt"
+endchoice
+
+config MSM7X00A_SLEEP_MODE
+	int
+	default 0 if MSM7X00A_SLEEP_MODE_POWER_COLLAPSE_SUSPEND
+	default 1 if MSM7X00A_SLEEP_MODE_POWER_COLLAPSE
+	default 2 if MSM7X00A_SLEEP_MODE_APPS_SLEEP
+	default 3 if MSM7X00A_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT
+	default 4 if MSM7X00A_SLEEP_WAIT_FOR_INTERRUPT
+
+choice
+	prompt "Idle sleep mode"
+	default MSM7X00A_IDLE_SLEEP_MODE_POWER_COLLAPSE
+	help
+	  Allows overriding the sleep mode used from idle. Leave at power
+	  collapse suspend unless the arm9 image has problems.
+
+	config MSM7X00A_IDLE_SLEEP_MODE_POWER_COLLAPSE_SUSPEND
+		bool "Power collapse suspend"
+	help
+	  Lowest sleep state. Returns through reset vector.
+
+	config MSM7X00A_IDLE_SLEEP_MODE_POWER_COLLAPSE
+		bool "Power collapse"
+	help
+	  Sleep state that returns through reset vector.
+
+	config MSM7X00A_IDLE_SLEEP_MODE_APPS_SLEEP
+		bool "Apps Sleep"
+
+	config MSM7X00A_IDLE_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT
+		bool "Ramp down cpu clock and wait for interrupt"
+
+	config MSM7X00A_IDLE_SLEEP_WAIT_FOR_INTERRUPT
+		bool "Wait for interrupt"
+endchoice
+
+config MSM7X00A_IDLE_SLEEP_MODE
+	int
+	default 0 if MSM7X00A_IDLE_SLEEP_MODE_POWER_COLLAPSE_SUSPEND
+	default 1 if MSM7X00A_IDLE_SLEEP_MODE_POWER_COLLAPSE
+	default 2 if MSM7X00A_IDLE_SLEEP_MODE_APPS_SLEEP
+	default 3 if MSM7X00A_IDLE_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT
+	default 4 if MSM7X00A_IDLE_SLEEP_WAIT_FOR_INTERRUPT
+
+config MSM7X00A_IDLE_SLEEP_MIN_TIME
+	int "Minimum idle time before sleep"
+	default 20000000
+	help
+	  Minimum idle time in nanoseconds before entering low power mode.
+
+config MSM7X00A_IDLE_SPIN_TIME
+	int "Idle spin time before cpu ramp down"
+	default 80000
+	help
+	  Spin time in nanoseconds before ramping down cpu clock and entering
+	  any low power state.
+
+config CPU_HAS_L2_PMU
+	bool "L2CC PMU Support"
+	help
+	 Select this if the L2 cache controller has a Performance Monitoring Unit.
+
+config MSM_SERIAL_DEBUGGER_CONSOLE
+	depends on MSM_SERIAL_DEBUGGER
+	default n
+	bool "Console on FIQ Serial Debugger port"
+	help
+	  Enables a console so that printk messages are displayed on
+	  the debugger serial port as the occur.
+
+config MSM_PCIE
+	bool "MSM PCIe Controller driver"
+	depends on PCI && PCI_MSI
+	select PCI_DOMAINS
+	help
+	  Enables the PCIe functionality by configures PCIe core on
+	  MSM chipset and by enabling the ARM PCI framework extension.
+
+config MSM_TEST_QMI_CLIENT
+	depends on MSM_QMI_INTERFACE
+	bool "MSM TEST QMI CLIENT"
+	help
+	  The sample QMI client provides a test code for QMI usage. The
+	  test_service client driver uses QMI interface library to send
+	  and receive QMI messages over IPC Router. The test code sends
+	  a synchronous QMI request to the test_service and handles the
+	  QMI responses.
+
+config MSM_ONCRPCROUTER_DEBUG
+	depends on MSM_ONCRPCROUTER
+	default y
+	bool "MSM debug ONCRPC router support"
+	help
+	  Support for debugging the ONCRPC router for communication
+	  between the ARM9 and ARM11
+
+config MSM_RPC_LOOPBACK_XPRT
+	depends on MSM_ONCRPCROUTER
+	default n
+	bool "MSM RPC local routing support"
+	help
+	  Support for routing RPC messages between APPS clients
+	  and APPS servers.  Helps in testing APPS RPC framework.
+
+config RTAC
+	bool "MSM8K real-time audio calibration support"
+	default y
+	help
+	  Enable support for rtac. This enables calibration during
+	  audio operation
+
+config MSM_VREG_SWITCH_INVERTED
+	bool "Reverse vreg switch polarity"
+	default n
+	help
+	  Reverses the enable and disable for vreg switch.
+
+config MSM_DMA_TEST
+	tristate "MSM DMA test module"
+	default m
+	help
+	  Intended to be compiled as a module.  Provides a device node
+	  and ioctls for testing the MSM dma system.
+
+config WIFI_CONTROL_FUNC
+	bool "Enable WiFi control function abstraction"
+	help
+	  Enables Power/Reset/Carddetect function abstraction
+
+config WIFI_MEM_PREALLOC
+	depends on WIFI_CONTROL_FUNC
+	bool "Preallocate memory for WiFi buffers"
+	help
+	  Preallocates memory buffers for WiFi driver
+
+config SURF_FFA_GPIO_KEYPAD
+	bool "MSM SURF/FFA GPIO keypad"
+	depends on INPUT_GPIO = "y"
+	default y
+	help
+	  Select if the GPIO keypad is attached.
+
+config MSM_SLEEP_TIME_OVERRIDE
+	bool "Allow overriding suspend/sleep time with PM module parameter"
+	default y
+	help
+	  Enable the module parameter sleep_time_override. Specified
+	  in units of seconds, it overwrites the normal sleep time of
+	  suspend. The feature is required for automated power management
+	  testing.
+
+config MSM_MEMORY_LOW_POWER_MODE
+	bool "Control the low power modes of memory"
+	default n
+	help
+	  The application processor controls whether memory should enter
+	  which low power mode.
+
+choice
+	prompt "Default Memory Low Power Mode during Idle"
+	depends on MSM_MEMORY_LOW_POWER_MODE
+	default MSM_MEMORY_LOW_POWER_MODE_IDLE_ACTIVE
+	help
+	  Selects the default low power mode of the memory during idle
+	  sleep.
+
+	config MSM_MEMORY_LOW_POWER_MODE_IDLE_ACTIVE
+		bool "Memory active"
+
+	config MSM_MEMORY_LOW_POWER_MODE_IDLE_RETENTION
+		bool "Memory in retention"
+
+	config MSM_MEMORY_LOW_POWER_MODE_IDLE_DEEP_POWER_DOWN
+		bool "Memory in deep power down"
+endchoice
+
+choice
+	prompt "Default Memory Low Power Mode during Suspend"
+	depends on MSM_MEMORY_LOW_POWER_MODE
+	default MSM_MEMORY_LOW_POWER_MODE_SUSPEND_ACTIVE
+	help
+	  Selects the default low power mode of the memory during suspend
+	  sleep.
+
+	config MSM_MEMORY_LOW_POWER_MODE_SUSPEND_ACTIVE
+		bool "Memory active"
+
+	config MSM_MEMORY_LOW_POWER_MODE_SUSPEND_RETENTION
+		bool "Memory in retention"
+
+	config MSM_MEMORY_LOW_POWER_MODE_SUSPEND_DEEP_POWER_DOWN
+		bool "Memory in deep power down"
+endchoice
+
+choice
+	prompt "Power management timeout action"
+	default MSM_PM_TIMEOUT_HALT
+	help
+	  Selects the Application Processor's action when Power Management
+	  times out waiting for Modem's handshake.
+
+	config MSM_PM_TIMEOUT_HALT
+		bool "Halt the Application Processor"
+
+	config MSM_PM_TIMEOUT_RESET_MODEM
+		bool "Reset the Modem Processor"
+
+	config MSM_PM_TIMEOUT_RESET_CHIP
+		bool "Reset the entire chip"
+endchoice
+
+config MSM_IDLE_WAIT_ON_MODEM
+	int "Wait for Modem to become ready for idle power collapse"
+	default 0
+	help
+	  If Modem is not ready to handle Application Processor's request
+	  for idle power collapse, wait the number of microseconds in case
+	  Modem becomes ready soon.
+
+config MSM_SMCMOD
+	tristate "Secure Monitor Call (SMC) Module"
+	default n
+	depends on (ION && ION_MSM && MSM_SCM)
+	help
+	  Enable support for smcmod driver. This driver provides a mechanism
+	  to execute the Secure Monitor Call (SMC) to switch from non-secure
+	  to secure execution in the fsm9xxx and msm8x26 targets. This module
+	  utilizes Ion for buffer management.
+
+config MSM_DIRECT_SCLK_ACCESS
+	bool "Direct access to the SCLK timer"
+	default n
+
+config IOMMU_API
+       bool
+
+config MSM_GPIOMUX
+	bool
+
+config MSM_BUS_RPM_MULTI_TIER_ENABLED
+	bool "RPM Multi-tiering Configuration"
+	depends on MSM_BUS_SCALING
+
+config MSM_STANDALONE_POWER_COLLAPSE
+       bool "Enable standalone power collapse"
+       default n
+
+config MSM_GSBI9_UART
+	bool "Enable GSBI9 UART device"
+	default n
+	help
+	  This enables GSBI9 configured into UART.
+
+config MSM_ULTRASOUND
+	bool "QDSP6V2 HW Ultrasound support"
+	help
+	  Enable HW Ultrasound support in QDSP6V2.
+	  QDSP6V2 can support HW encoder & decoder and
+	  ultrasound processing. It will enable
+	  ultrasound data paths between
+	  HW and services, calculating input events
+	  upon the ultrasound data.
+
+config PM8XXX_RPC_VIBRATOR
+	bool "RPC based Vibrator on PM8xxx PMICs"
+	depends on MSM_RPC_VIBRATOR
+	help
+	  Enable the vibrator support on MSM over RPC. The vibrator
+	  is connected on the PM8XXX PMIC. Say Y if you want to enable
+	  this feature.
+
+config SENSORS_ADSP
+	bool "Enable Sensors Driver Support for ADSP"
+	help
+	  Add support for sensors ADSP driver.
+	  This driver is used for exercising different sensors use cases,
+	  such as for lower-power OCMEM use cases, and for time syncing
+	  with ADSP clock.
+
+config MSM_CACHE_ERP
+	bool "Cache / CPU error reporting"
+	depends on ARCH_MSM_KRAIT
+	help
+	  Say 'Y' here to enable reporting of cache and TLB errors to the kernel
+	  log. Enabling this feature can be used as a system debugging technique
+	  if cache corruption is suspected. Cache error statistics will also be
+	  reported in /proc/cpu/msm_cache_erp.
+
+	  For production builds, you should probably say 'N' here.
+
+config MSM_L1_ERR_PANIC
+	bool "Panic on L1 cache errors"
+	depends on MSM_CACHE_ERP
+	help
+	  To cause the kernel to panic whenever an L1 cache error is detected, say
+	  'Y' here. This may be useful as a debugging technique if general system
+	  instability is suspected.
+
+	  For production builds, you should probably say 'N' here.
+
+config MSM_L1_RECOV_ERR_PANIC
+	bool "Panic on recoverable L1 cache errors"
+	depends on MSM_CACHE_ERP && MSM_L1_ERR_PANIC
+	help
+	  Certain CPU designs may be able to automatically recover from certain
+	  kinds of L1 cache errors, even though the L1 cache itself may not
+	  support error correction. These errors should not result in any kind
+	  of corruption, but their presence is nevertheless an indication of
+	  poor system health. To cause the kernel to panic whenever a
+	  recoverable L1 cache error is detected, say 'Y' here. This may be
+	  useful as a debugging technique if general system instability is
+	  suspected.
+
+	  For production builds, you should definitely say 'N' here.
+
+config MSM_L1_ERR_LOG
+	bool "Log CPU ERP events to system memory"
+	depends on MSM_CACHE_ERP
+	help
+	  Enable logging CPU ERP events to an area of memory that will be
+	  preserved across a system reset. This may be useful for detecting and
+	  troubleshooting ERP-related system crashes in the field.
+
+	  For production builds, you may want to say 'Y' here.
+
+config MSM_L2_ERP_PRINT_ACCESS_ERRORS
+	bool "Report L2 master port slave/decode errors in kernel log"
+	depends on MSM_CACHE_ERP
+	help
+	  Master port errors can occur when a memory request is not properly
+	  handled by the destination slave. This can occur if the destination
+	  register does not exist or is inaccessible due to security
+	  restrictions or (in some cases) clock configuration. Enabling this
+	  option will cause a backtrace to be printed to the kernel log whenever
+	  such an error is encountered. Note that the error is reported as an
+	  interrupt rather than as an exception, meaning that the backtrace may
+	  have some skid. This option may help with debugging, though production
+	  builds should probably say 'N' here.
+
+config MSM_L2_ERP_PORT_PANIC
+	bool "Panic on L2 master port errors"
+	depends on MSM_CACHE_ERP && MSM_L2_ERP_PRINT_ACCESS_ERRORS
+	help
+	  Master port errors can occur when a memory request is not properly
+	  handled by the destination slave. Enable this option to catch drivers
+	  which attempt to access bad areas of the address space, or access
+	  hardware registers in an improper state (such as certain clocks not
+	  being on). This option may help with debugging, though production
+	  builds should probably say 'N' here.
+
+config MSM_L2_ERP_1BIT_PANIC
+	bool "Panic on recoverable L2 soft errors"
+	depends on MSM_CACHE_ERP
+	help
+	  Enable this option to cause a kernel panic whenever the L2 cache
+	  encounters a single-bit (correctable) soft error. This option should
+	  only be enabled when doing low-level debugging where cache corruption
+	  is suspected.
+
+	  For production builds, you should definitely say 'N' here.
+
+config MSM_L2_ERP_2BIT_PANIC
+	bool "Panic on unrecoverable L2 soft errors"
+	depends on MSM_CACHE_ERP
+	help
+	  Enable this option to cause a kernel panic whenever the L2 cache
+	  encounters a double-bit (non-correctable) soft error. Debug builds
+	  will likely benefit from having this option enabled to catch cache
+	  problems as soon as possible.
+
+	  For production builds, it may be acceptable to say 'N' here, since
+	  an uncorrectable error might not necessarily cause further problems.
+
+config MSM_CPR
+	tristate "Use MSM CPR in S/W mode"
+	help
+	  Enable CPR (core power reduction) in S/W mode, where the processor
+	  get's the notification from CPR block and programs the PMIC.
+
+config HAVE_ARCH_HAS_CURRENT_TIMER
+	bool
+
+config MSM_HSIC_SYSMON
+	tristate "MSM HSIC system monitor driver"
+	depends on USB
+	help
+	  Add support for bridging with the system monitor interface of MDM
+	  over HSIC. This driver allows the local system monitor to
+	  communicate with the remote system monitor interface.
+
+config MSM_HSIC_SYSMON_TEST
+	tristate "MSM HSIC system monitor bridge test"
+	depends on USB && MSM_HSIC_SYSMON && DEBUG_FS
+	help
+	  Enable the test hook for the Qualcomm system monitor HSIC driver.
+	  This will create a debugfs file entry named "hsic_sysmon_test" which
+	  can be read and written to send character data to the sysmon port of
+	  the modem over USB.
+
+config MSM_RPC_USB
+	tristate "MSM RPC USB driver"
+	depends on MSM_ONCRPCROUTER
+	help
+	 This driver supports the USB configuration support over the RPC
+	 interface. It support the HS USB module connected to the MSM
+	 and FS USB which is connected over the PMIC. This support is
+	 required for MSMs on which the APPS does not have a direct access
+	 to the PMIC.
+
+config MSM_ENABLE_WDOG_DEBUG_CONTROL
+	bool "Enable control of watchdog debug and boot partition select"
+	help
+	  Enables support for controlling watchdog debug and boot partition
+	  select. This is currently used to bypass debug image for PS_HOLD reset
+	  by disabling watchdog debug and boot partition select. This allows
+	  for a clean MSM reset for reboot scenarios.
+
+config MSM_UARTDM_Core_v14
+	bool "Use MSM BLSP based HSUART Core v1.4"
+	depends on SERIAL_MSM_HS
+	help
+		Select if BLSP based UART Core v.14 or higher is present.
+
+config KRAIT_REGULATOR
+	bool "Support Kraits powered via ganged regulators in the pmic"
+	help
+	 Certain MSMs have the Krait CPUs powered via a single supply
+	 line from the PMIC. This supply line is powered by multiple
+	 regulators running in ganged mode inside the PMIC. Enable
+	 this option to support such configurations.
+
+config MSM_PP2S_FEMTO
+	bool "Enable FSM PP2S Interrupt Notification"
+	depends on ARCH_FSM9010 || ARCH_FSM9900
+	default n
+	help
+	  Support for being notified relative to a PP2S pulse
+	  Select Y if you want this notification to manifest.
+	  If unsure, select N.
+
+config FSM9900_GSM_NL
+	bool "FSM9900 GSM NL Hardware Support"
+	depends on ARCH_FSM9900
+	help
+	  Enables the support for GSM NL hardware module. When this option
+	  is enabled, the GPIO pins for DIQ interface are configured differently.
+	  The DIQ functionality is disabled and the UART functionality is enabled.
+	  The serial port connection can be established to communicate with the
+	  GSM NL module.
+
+endif

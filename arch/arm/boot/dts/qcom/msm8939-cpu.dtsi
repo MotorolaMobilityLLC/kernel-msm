@@ -1,0 +1,233 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		cpu-map {
+			cluster0 {
+				core0 {
+					cpu = <&CPU4>;
+				};
+				core1 {
+					cpu = <&CPU5>;
+				};
+				core2 {
+					cpu = <&CPU6>;
+				};
+				core3 {
+					cpu = <&CPU7>;
+				};
+			};
+
+			cluster1 {
+				core0 {
+					cpu = <&CPU0>;
+				};
+				core1 {
+					cpu = <&CPU1>;
+				};
+				core2 {
+					cpu = <&CPU2>;
+				};
+				core3 {
+					cpu = <&CPU3>;
+				};
+			};
+		};
+
+		CPU0: cpu@100 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x100>;
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc0>;
+			next-level-cache = <&L2_1>;
+			qcom,sleep-status = <&cpu0_slp_sts>;
+			L2_1: l2-cache {
+			      compatible = "arm,arch-cache";
+			      cache-level = <2>;
+			      power-domain = <&l2ccc_1>;
+			};
+		};
+
+		CPU1: cpu@101 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x101>;
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc1>;
+			next-level-cache = <&L2_1>;
+			qcom,sleep-status = <&cpu1_slp_sts>;
+		};
+
+		CPU2: cpu@102 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x102>;
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc2>;
+			next-level-cache = <&L2_1>;
+			qcom,sleep-status = <&cpu2_slp_sts>;
+		};
+
+		CPU3: cpu@103 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x103>;
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc3>;
+			next-level-cache = <&L2_1>;
+			qcom,sleep-status = <&cpu3_slp_sts>;
+		};
+
+		CPU4: cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x0>;
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc4>;
+			next-level-cache = <&L2_0>;
+			qcom,sleep-status = <&cpu4_slp_sts>;
+			L2_0: l2-cache {
+			      compatible = "arm,arch-cache";
+			      cache-level = <2>;
+			      power-domain = <&l2ccc_0>;
+			};
+		};
+
+		CPU5: cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x1>;
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc5>;
+			next-level-cache = <&L2_0>;
+			qcom,sleep-status = <&cpu5_slp_sts>;
+		};
+
+		CPU6: cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x2>;
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc6>;
+			next-level-cache = <&L2_0>;
+			qcom,sleep-status = <&cpu6_slp_sts>;
+		};
+
+		CPU7: cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x3>;
+			enable-method = "qcom,arm-cortex-acc";
+			qcom,acc = <&acc7>;
+			next-level-cache = <&L2_0>;
+			qcom,sleep-status = <&cpu7_slp_sts>;
+		};
+	};
+};
+
+&soc {
+	l2ccc_0: clock-controller@b111000 {
+		compatible = "qcom,8916-l2ccc";
+		reg = <0x0b111000 0x1000>;
+		reg-names = "l2-base";
+	};
+
+	l2ccc_1: clock-controller@b011000 {
+		compatible = "qcom,8916-l2ccc";
+		reg = <0x0b011000 0x1000>;
+		reg-names = "l2-base";
+	};
+
+	acc0:clock-controller@b088000 {
+		compatible = "qcom,arm-cortex-acc";
+		reg = <0x0b088000 0x1000>;
+	};
+
+	acc1:clock-controller@b098000 {
+		compatible = "qcom,arm-cortex-acc";
+		reg = <0x0b098000 0x1000>;
+	};
+
+	acc2:clock-controller@b0a8000 {
+		compatible = "qcom,arm-cortex-acc";
+		reg = <0x0b0a8000 0x1000>;
+	};
+
+	acc3:clock-controller@b0b8000 {
+		compatible = "qcom,arm-cortex-acc";
+		reg = <0x0b0b8000 0x1000>;
+	};
+
+	acc4:clock-controller@b188000 {
+		compatible = "qcom,arm-cortex-acc";
+		reg = <0x0b188000 0x1000>;
+	};
+
+	acc5:clock-controller@b198000 {
+		compatible = "qcom,arm-cortex-acc";
+		reg = <0x0b198000 0x1000>;
+	};
+
+	acc6:clock-controller@b1a8000 {
+		compatible = "qcom,arm-cortex-acc";
+		reg = <0x0b1a8000 0x1000>;
+	};
+
+	acc7:clock-controller@b1b8000 {
+		compatible = "qcom,arm-cortex-acc";
+		reg = <0x0b1b8000 0x1000>;
+	};
+
+	cpu0_slp_sts: cpu-sleep-status@b088008 {
+		reg = <0xb088008 0x100>;
+		qcom,sleep-status-mask= <0x40000>;
+	};
+
+	cpu1_slp_sts: cpu-sleep-status@b098008 {
+		reg = <0xb098008 0x100>;
+		qcom,sleep-status-mask= <0x40000>;
+	};
+
+	cpu2_slp_sts: cpu-sleep-status@b0a8008 {
+		reg = <0xb0a8008 0x100>;
+		qcom,sleep-status-mask= <0x40000>;
+	};
+
+	cpu3_slp_sts: cpu-sleep-status@b0b8008 {
+		reg = <0xb0b8008 0x100>;
+		qcom,sleep-status-mask= <0x40000>;
+	};
+
+	cpu4_slp_sts: cpu-sleep-status@b188008 {
+		reg = <0xb188008 0x100>;
+		qcom,sleep-status-mask= <0x40000>;
+	};
+
+	cpu5_slp_sts: cpu-sleep-status@b198008 {
+		reg = <0xb198008 0x100>;
+		qcom,sleep-status-mask= <0x40000>;
+	};
+
+	cpu6_slp_sts: cpu-sleep-status@b1a8008 {
+		reg = <0xb1a8008 0x100>;
+		qcom,sleep-status-mask= <0x40000>;
+	};
+
+	cpu7_slp_sts: cpu-sleep-status@b1b8008 {
+		reg = <0xb1b8008 0x100>;
+		qcom,sleep-status-mask= <0x40000>;
+	};
+};

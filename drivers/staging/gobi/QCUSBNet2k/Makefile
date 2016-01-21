@@ -1,0 +1,1 @@
+obj-$(CONFIG_GOBI_USBNET) += QCUSBNet2k.o

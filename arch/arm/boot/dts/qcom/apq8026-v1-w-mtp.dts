@@ -1,0 +1,60 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+#include "apq8026-v1.dtsi"
+#include "msm8226-w-memory.dtsi"
+#include "msm8226-w-qseecom.dtsi"
+#include "msm8226-w-sharedmem.dtsi"
+#include "msm8226-720p-mtp.dtsi"
+#include "msm8x26w-gpu.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. APQ 8026W MTP";
+	compatible = "qcom,apq8026-mtp", "qcom,apq8026", "qcom,mtp";
+	qcom,board-id = <8 4>;
+};
+
+&cci {
+	/* Rotate rear camera to 180 degrees */
+	qcom,camera@6f {
+		qcom,mount-angle = <180>;
+	};
+};
+
+&mdss_fb0 {
+	/* cont_splash memory*/
+	qcom,memblock-reserve = <0x07e9c000 0x64000>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
+};
+
+&dsi_nt35590_qvga_cmd {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&soc {
+	qcom,mss@fc880000 {
+		/delete-property/ qcom,gpio-err-fatal;
+		/delete-property/ qcom,gpio-err-ready;
+		/delete-property/ qcom,gpio-proxy-unvote;
+		/delete-property/ qcom,gpio-stop-ack;
+		/delete-property/ qcom,gpio-force-stop;
+	};
+};
+
+&pm8x26_rtc {
+	qcom,qpnp-rtc-write = <1>;
+};

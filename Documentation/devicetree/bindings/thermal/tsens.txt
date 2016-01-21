@@ -1,0 +1,116 @@
+Qualcomm's TSENS driver
+
+The TSENS driver supports reading temperature from sensors across
+the MSM. The driver defaults to support a 10 bit ADC.
+
+The driver uses the Thermal sysfs framework to provide thermal
+clients the ability to enable/disable the sensors, read trip zones,
+read cool/warm temperature thresholds, set temperature thresholds
+for cool/warm notification and receive notification on temperature
+threshold events.
+
+TSENS node
+
+Required properties:
+- compatible : should be "qcom,msm-tsens" for 8974, 9625, 8084, Samarium TSENS driver.
+	       should be "qcom,msm8x10-tsens" for 8x10 TSENS driver.
+	       should be "qcom,msm8x26-tsens" for 8x26 TSENS driver.
+	       should be "qcom,fsm9900-tsens" for 9900 TSENS driver.
+	       should be "qcom,fsm9010-tsens" for 9010 TSENS driver.
+	       should be "qcom,mdm9630-tsens" for 9630 TSENS driver.
+	       should be "qcom,msm8994-tsens" for 8994 TSENS driver.
+	       should be "qcom,mdm9640-tsens" for 9640 TSENS driver.
+	       should be "qcom,msm8992-tsens" for 8992 TSENS driver.
+	       should be "qcom,msm8952-tsens" for 8952 TSENS driver.
+	       should be "qcom,msm8976-tsens" for 8976 TSENS driver.
+	       should be "qcom,mdm9640v2-tsens" for 9640v2 TSENS driver.
+	       should be "qcom,msm8916-tsens" for 8916 TSENS driver.
+	       should be "qcom,msm8939-tsens" for 8939 TSENS driver.
+	       should be "qcom,msm8909-tsens" for 8909 TSENS driver.
+	       The compatible property is used to identify the respective fusemap to use
+	       for the corresponding SoC.
+- reg : offset and length of the TSENS registers.
+- reg : offset and length of the QFPROM registers used for storing
+	the calibration data for the individual sensors.
+- reg-names : resource names used for the physical address of the TSENS
+	      registers, the QFPROM efuse primary calibration address region,
+	      Should be "tsens_physical" for physical address of the TSENS,
+	      "tsens_eeprom_physical" for physical address where primary
+	      calibration data is stored. This includes the backup
+	      calibration address region if TSENS calibration data is stored
+	      in the region.
+- interrupts : TSENS interrupt to notify Upper/Lower temperature threshold.
+- interrupt-names: Should be "tsens-upper-lower" for temperature threshold.
+- qcom,sensors : Total number of available Temperature sensors for TSENS.
+- qcom,slope : One point calibration characterized slope data for each
+	       sensor used to compute the offset. Slope is represented
+	       as ADC code/DegC and the value is multipled by a factor
+	       of 1000.
+
+Optional properties:
+- qcom,calibration-less-mode : If present the pre-characterized data for offsets
+		are used else it defaults to use calibration data from QFPROM.
+- qcom,tsens-local-init : If the flag is present the TSENS control registers are
+		initialized. If the boot configures the control register there is
+		no need to re-initialize them. The control registers are also
+		under a secure domain which can prevent them from being initialized
+		locally.
+- qcom,sensor-id : If the flag is present map the TSENS sensors based on the
+		remote sensors that are enabled in HW. Ensure the mapping is not
+		more than the number of supported sensors.
+
+Required properties if compatible is "qcom,msm-tsens-generic-type-a":
+- qcom,tsens_base_info : <(Number of base) (Bits for each base)>
+- qcom,tsens_base_mask : <(base number) (address offset) (mask) (mask_shift)
+				(number of bits read for the individual mask>
+- qcom,tsens_calib_mask_info : If this property is present then the calibration mask
+		is split across different regions. Specify the total number of masks
+		this property is present. e.g. <(total number of masks for this property)>
+- qcom,tsens_calib_mask : <(calibration number)(address offset) (mask) (mask_shift)
+					(number of bits for the individual mask)>
+
+- qcom,tsens_sensor_point_bit_size : Bits to represent one and two point offsets
+				     for individual sensors.
+- qcom,tsens_sensor_point1_total_masks : Total number of masks used to represent
+			                 the point1 offsets.
+- qcom,tsens_sensor_point1 : <(physical sensor number)	(address offset) (mask) (mask shift)
+							(number of bits for individual mask)>
+- qcom,tsens_sensor_point2_total_masks : Total number of masks used to represent
+					 the point1 offsets.
+- qcom,tsens_sensor_point2 : <(physical sensor number) (address offset) (mask) (mask shift)
+							(number of bits for individual mask)>
+
+Example:
+
+tsens@fc4a8000 {
+	compatible = "qcom,msm-tsens";
+	reg = <0xfc4a8000 0x2000>,
+	      <0xfc4b8000 0x1000>;
+	reg-names = "tsens_physical",
+		    "tsens_eeprom_physical";
+	interrupts = <0 184 0>;
+	interrupt-names = "tsens-upper-lower";
+	qcom,calibration-less-mode;
+	qcom,sensors = <11>;
+	qcom,slope = <3200 3200 3200 3200 3200 3200 3200 3200 3200
+			3200>;
+
+	qcom,tsens_base_info = <2 8>;
+	qcom,tsens_base_mask = <0 0xdc 0xff 0 8>,
+			       <1 0xdc 0xff00 8 8>;
+	qcom,tsens_calib_mask = <0 0xdc 0x70000 16 3>;
+	qcom,tsens_sensor_point_bit_size = <6>;
+	qcom,tsens_sensor_point1_total_masks = <5>;
+	qcom,tsens_sensor_point1 = <0 0xa0 0x3f 0x0 6>,
+				   <1 0xa0 0x3f000 0xc 6>,
+				   <2 0xa0 0x3f000000 0x18 6>,
+				   <3 0xa4 0x3f0 0x4 6>,
+				   <4 0xa4 0x3f0000 0x10 6>;
+	qcom,tsens_sensor_point2_total_masks = <6>;
+	qcom,tsens_sensor_point2 = <0 0xa0 0xfc0 0x6 6>,
+				   <1 0xa0 0xfc0000 0x12 6>,
+				   <2 0xa0 0xc0000000 0x1e 2>,
+				   <2 0xa4 0xf 0x4 4>,
+				   <3 0xa4 0xfc00 0xa 6>,
+				   <4 0xa4 0xfc00000 0x16 6>;
+};

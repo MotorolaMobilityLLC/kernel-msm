@@ -1,0 +1,35 @@
+USB Type-C Detection Chip
+
+Required properties :
+- compatible : Must be "pericom,usb-type-c" or "ti,usb-type-c"
+- reg: 7bit I2C slave address
+- interrupt-parent: Should be phandle for the interrupt controller
+                    that services interrupts for this device.
+- interrupt: IRQ line
+- <supply-name>-supply: handle to the regulator device tree node.
+        "supply-name" is "vdd_io" regulator to drive I2C SCL and SDA lines.
+
+Optional properties:
+- pinctrl-names : This should be defined if a target uses pinctrl framework
+  for INT_N and ENB pin. See "pinctrl" in
+  Documentation/devicetree/bindings/pinctrl/pinctrl-bindings.txt.
+  It should specify the names of the configs that pinctrl can install in driver.
+  Following are the pinctrl config that can be installed:
+      "usbc_int_default" : Default configuration of pins.
+- <vendor-name>,enb-gpio : This corresponds to GPIO that is used to drive ENB
+  pin. <vendor-name> can be 'pericom' or 'ti'.
+  GPIO flag represents whether ENB pin is active-high(0) or active-low(1).
+- <vendor-name>,disable-on-suspend : If present then disable chip on suspend if
+  state is not attached. <vendor-name> can be 'pericom' or 'ti'.
+
+Example :
+	pericom-type-c@3d {
+		compatible = "pericom,usb-type-c";
+		reg = <0x3d>;
+		vdd_io-supply = <&pm8950_l5>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <102 2>;    /* MSM GPIO 102, TRIGGER_FALLING */
+		pericom,enb-gpio = <&msm_gpio 101 0x1>;	/* active low ENB */
+		pinctrl-names = "default";
+		pinctrl-0 = <&usbc_int_default>;
+	};

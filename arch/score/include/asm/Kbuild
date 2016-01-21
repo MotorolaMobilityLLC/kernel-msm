@@ -1,0 +1,6 @@
+
+header-y +=
+
+generic-y += clkdev.h
+generic-y += mcs_spinlock.h
+generic-y += trace_clock.h

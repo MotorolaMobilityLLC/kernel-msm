@@ -1,0 +1,302 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		compatible = "qcom,msm-tlmm-9010", "qcom,msm-tlmm-8974";
+		reg = <0xfd510000 0x4000>;
+		interrupts = <0 208 0>;
+
+		/*General purpose pins*/
+		gp: gp {
+			qcom,num-pins = <91>;
+			#qcom,pin-cells = <1>;
+
+			msm_gpio: msm_gpio {
+				compatible = "qcom,msm-tlmm-gp";
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <2>;
+				qcom,direct-connect-irqs = <5>;
+				num_irqs = <91>;
+			};
+		};
+
+		i2c_0 {
+			qcom,pins = <&gp 4>, <&gp 5>; /* SDA, SCL */
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <1>;
+			label = "i2c_0";
+
+			i2c_0_active: i2c_0_active {
+				drive-strength = <8>;
+				bias-disable;
+			};
+
+			i2c_0_sleep: i2c_0_sleep {
+				drive-strength = <8>;
+				bias-disable;
+			};
+		};
+
+		blsp1_uart3_active {
+		qcom,pins = <&gp 10>, <&gp 11>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <1>;
+			label = "blsp1_uart3_active";
+			hsuart3_active: hsuart3_active {
+				drive-strength = <8>; /* 8MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		qfec0_mdio {
+			qcom,pins = <&gp 14>, <&gp 15>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <1>;
+			label = "qfec0-mdio";
+			/* default state */
+			qfec0_mdio_default: qfec0_mdio_default {
+				drive-strength = <8>;
+				bias-disable; /* No PULL */
+			};
+		};
+
+		qfec1_mdio {
+			qcom,pins = <&gp 14>, <&gp 15>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <2>;
+			label = "qfec1-mdio";
+			/* default state */
+			qfec1_mdio_default: qfec1_mdio_default {
+				drive-strength = <8>;
+				bias-disable; /* No PULL */
+			};
+		};
+
+		gp_mdio {
+			qcom,pins = <&gp 14>, <&gp 15>;
+			qcom,num-grp-pins = <2>;
+			label = "gp-mdio";
+			/* default state */
+			gp_mdio_default: gp_mdio_default {
+				drive-strength = <8>;
+				bias-disable; /* No PULL */
+			};
+		};
+
+		mdc0_pin {
+			qcom,pins = <&gp 14>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "mdc0-pin";
+			/* default state */
+			mdc0_pin_default: mdc0_pin_default {
+				drive-strength = <8>; /* 8 MA */
+				bias-disable; /* No PULL */
+				output-high;
+			};
+		};
+
+		mdio0_pin {
+			qcom,pins = <&gp 15>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "mdio0-pin";
+			/* default state */
+			mdio0_pin_default: mdio0_pin_default {
+				drive-strength = <8>; /* 8 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		pcie0_perst {
+			qcom,pins = <&gp 21>;
+			qcom,num-grp-pins = <1>;
+			label = "pcie0-perst";
+			/* default state */
+			pcie0_perst_default: pcie0_perst_default {
+				drive-strength = <2>; /* 2 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		pcie0_wake {
+			qcom,pins = <&gp 23>;
+			qcom,num-grp-pins = <1>;
+			label = "pcie0-wake";
+			/* default state */
+			pcie0_wake_default: pcie0_wake_default {
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
+		pcie1_perst {
+			qcom,pins = <&gp 22>;
+			qcom,num-grp-pins = <1>;
+			label = "pcie1-perst";
+			/* default state */
+			pcie1_perst_default: pcie1_perst_default {
+				drive-strength = <2>; /* 2 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		pcie1_wake {
+			qcom,pins = <&gp 24>;
+			qcom,num-grp-pins = <1>;
+			label = "pcie1-wake";
+			/* default state */
+			pcie1_wake_default: pcie1_wake_default {
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
+		rf_ssbi {
+			qcom,pins = <&gp 47>, <&gp 48>, <&gp 49>;
+			qcom,num-grp-pins = <3>;
+			qcom,pin-func = <2>;
+			label = "rf_ssbi1";
+			/* default state */
+			rf_ssbi_default: rf_ssbi_default {
+				drive-strength = <6>;
+				bias-pull-down;
+			};
+		};
+
+		grfc_f7 {
+			qcom,pins = <&gp 85>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <7>;
+			label = "grfc_f7";
+			/* default state */
+			grfc_f7_default: grfc_f7_default {
+				drive-strength = <6>;
+				bias-pull-down;
+			};
+		};
+
+		grfc_f6 {
+			qcom,pins = <&gp 82>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <6>;
+			label = "grfc_f6";
+			/* default state */
+			grfc_f6_default: grfc_f6_default {
+				drive-strength = <6>;
+				bias-pull-down;
+			};
+		};
+
+		grfc_f5 {
+			qcom,pins = <&gp 81>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <5>;
+			label = "grfc_f5";
+			/* default state */
+			grfc_f5_default: grfc_f5_default {
+				drive-strength = <6>;
+				bias-pull-down;
+			};
+		};
+
+		grfc_f4 {
+			qcom,pins = <&gp 77>, <&gp 71>, <&gp 70>, <&gp 57>,
+			<&gp 56>;
+			qcom,num-grp-pins = <5>;
+			qcom,pin-func = <4>;
+			label = "grfc_f4";
+			/* default state */
+			grfc_f4_default: grfc_f4_default {
+				drive-strength = <6>;
+				bias-pull-down;
+			};
+		};
+
+		grfc_f3 {
+			qcom,pins = <&gp 67>, <&gp 66>, <&gp 55>, <&gp 54>,
+				<&gp 53>, <&gp 51>;
+			qcom,num-grp-pins = <6>;
+			qcom,pin-func = <3>;
+			label = "grfc_f3";
+			/* default state */
+			grfc_f3_default: grfc_f3_default {
+				drive-strength = <6>;
+				bias-pull-down;
+			};
+		};
+
+		grfc_f2 {
+			qcom,pins = <&gp 79>, <&gp 65>, <&gp 64>, <&gp 63>,
+			<&gp 62>, <&gp 61>, <&gp 60>, <&gp 59>, <&gp 58>,
+			<&gp 52>, <&gp 50>;
+			qcom,num-grp-pins = <11>;
+			qcom,pin-func = <2>;
+			label = "grfc_f2";
+			/* default state */
+			grfc_f2_default: grfc_f2_default {
+				drive-strength = <6>;
+				bias-pull-down;
+			};
+		};
+
+		pdm_f2 {
+			qcom,pins = <&gp 69>, <&gp 68>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <2>;
+			label = "pdm_f2";
+			/* default state */
+			pdm_f2_default: pdm_f2_default {
+				drive-strength = <8>;
+				bias-pull-up;
+			};
+		};
+
+		uim0_present {
+			qcom,pins = <&gp 6>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "uim0_present";
+
+			uim0_present_default: uim0_present_default {
+				bias-disable;
+			};
+		};
+
+		uim0_reset {
+			qcom,pins = <&gp 7>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "uim0_reset";
+
+			uim0_reset_default: uim0_reset_default {
+				drive-strength = <4>;
+				bias-pull-down;
+			};
+		};
+
+		uim0_clk_data {
+			qcom,pins = <&gp 8>, <&gp 9>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <1>;
+			label = "uim0_clk_data";
+
+			uim0_clk_data_default: uim0_clk_data_default {
+				drive-strength = <8>;
+				bias-pull-up;
+			};
+		};
+	};
+};
