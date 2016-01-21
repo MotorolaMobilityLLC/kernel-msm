@@ -14,6 +14,7 @@
 #include <linux/backing-dev.h>
 #include <linux/sysctl.h>
 #include <linux/sysfs.h>
+#include <linux/compaction.h>
 #include <linux/balloon_compaction.h>
 #include <linux/page-isolation.h>
 #include <linux/kasan.h>
@@ -639,6 +640,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
 	struct lruvec *lruvec;
 	unsigned long flags = 0;
 	bool locked = false;
+	int err;
 	struct page *page = NULL, *valid_page = NULL;
 
 	/*
@@ -702,11 +704,23 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
 
 		/*
 		 * Check may be lockless but that's ok as we recheck later.
-		 * It's possible to migrate LRU pages and balloon pages
-		 * Skip any other type of page
+		 * It's possible to migrate LRU pages and balloon and mobile
+		 * pages. Skip any other type of page
 		 */
 		if (!PageLRU(page)) {
-			if (unlikely(balloon_page_movable(page))) {
+			if (unlikely(mobile_page(page))) {
+				if (locked) {
+					err = mobilepage_isolate(page);
+					if (unlikely(err)) {
+						if (err == -EAGAIN &&
+						    cc->mode == MIGRATE_SYNC)
+							cc->retry = true;
+						continue;
+					}
+					/* Successfully isolated */
+					goto isolate_success;
+				}
+			} else if (unlikely(balloon_page_movable(page))) {
 				if (balloon_page_isolate(page)) {
 					/* Successfully isolated */
 					goto isolate_success;
@@ -1478,11 +1492,18 @@ static void __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
 		cc->nr_freepages = 0;
 		cc->nr_migratepages = 0;
 		cc->zone = zone;
+		cc->passes = 0;
+		cc->retry = false;
 		INIT_LIST_HEAD(&cc->freepages);
 		INIT_LIST_HEAD(&cc->migratepages);
 
-		if (cc->order == -1 || !compaction_deferred(zone, cc->order))
-			compact_zone(zone, cc);
+		if (cc->order == -1 || !compaction_deferred(zone, cc->order)) {
+			do {
+				cc->retry = false;
+				compact_zone(zone, cc);
+			} while (cc->retry &&
+				 cc->passes++ < COMPACTION_PASSES_MAX);
+		}
 
 		if (cc->order > 0) {
 			if (zone_watermark_ok(zone, cc->order,
@@ -1545,6 +1566,16 @@ int sysctl_compaction_handler(struct ctl_table *table, int write,
 }
 
 int sysctl_extfrag_handler(struct ctl_table *table, int write,
+			void __user *buffer, size_t *length, loff_t *ppos)
+{
+	proc_dointvec_minmax(table, write, buffer, length, ppos);
+
+	return 0;
+}
+
+int sysctl_mobile_page_compaction = 0;
+
+int sysctl_mobile_page_compaction_handler(struct ctl_table *table, int write,
 			void __user *buffer, size_t *length, loff_t *ppos)
 {
 	proc_dointvec_minmax(table, write, buffer, length, ppos);
