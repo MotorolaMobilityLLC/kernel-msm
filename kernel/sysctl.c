@@ -1604,7 +1604,13 @@ static struct ctl_table vm_table[] = {
 		.extra1		= &min_extfrag_threshold,
 		.extra2		= &max_extfrag_threshold,
 	},
-
+	{
+		.procname	= "mobile_page_compaction",
+		.data		= &sysctl_mobile_page_compaction,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= sysctl_mobile_page_compaction_handler,
+	},
 #endif /* CONFIG_COMPACTION */
 	{
 		.procname	= "min_free_kbytes",
