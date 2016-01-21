@@ -171,7 +171,7 @@ static int pm_power_get_property(struct power_supply *psy,
 			}
 			else if((psy->type == POWER_SUPPLY_TYPE_MAINS) && (type == NORMAL_CURRENT_CHARGER_TYPE))
 			{
-
+				val->intval = 1;
 			}
 			//Eason: in Pad AC powered, judge AC powered true---	
 
