@@ -99,6 +99,9 @@
 static int folio_notifier_callback(struct notifier_block *self,
 				 unsigned long event, void *data);
 #endif
+static int fps_notifier_callback(struct notifier_block *self,
+				 unsigned long event, void *data);
+
 static void synaptics_dsx_resumeinfo_start(
 		struct synaptics_rmi4_data *rmi4_data);
 static void synaptics_dsx_resumeinfo_finish(
@@ -131,10 +134,53 @@ static struct {
 	unsigned char max_y_msb;
 } f12_c08_0;
 
+static struct {
+	unsigned char noise_floor;
+	unsigned char min_peak_amplitude;
+	unsigned char peak_merge_threshold_lsb;
+	unsigned char peak_merge_threshold_msb;
+} f12_c10_0;
+
+static struct {
+	unsigned char finger_threshold;
+	unsigned char small_finger_threshold;
+	unsigned char small_finger_border;
+	unsigned char negative_finger_threshold;
+} f12_c15_0;
+
+static struct {
+	unsigned char zone0_x_lsb;
+	unsigned char zone0_x_msb;
+	unsigned char zone0_y_lsb;
+	unsigned char zone0_y_msb;
+	unsigned char zone1_x_lsb;
+	unsigned char zone1_x_msb;
+	unsigned char zone1_y_lsb;
+	unsigned char zone1_y_msb;
+	unsigned char max_timer;
+	unsigned char max_distance;
+} f12_c18_0;
+
 static struct f12_c20_0_type {
 	unsigned char x_suppression;
 	unsigned char y_suppression;
 } f12_c20_0;
+
+static struct {
+	union {
+		struct {
+			unsigned char flags:1;
+			unsigned char wakeup_gesture_only:1;
+			unsigned char dribble:1;
+			unsigned char proximity_only:1;
+			unsigned char hover_swipe:1;
+			unsigned char proximity:1;
+			unsigned char hover_pinch:1;
+			unsigned char lp_proximity:1;
+		} __packed;
+		unsigned char report;
+	};
+} f12_c20_1;
 
 static struct f12_c23_0_type {
 	union {
@@ -154,46 +200,31 @@ static struct f12_c23_1_type {
 } f12_c23_1;
 
 static struct {
+	union {
+		struct {
+			unsigned char double_tap:1;
+			unsigned char swipe:1;
+			unsigned char tap_n_hold:1;
+			unsigned char circle:1;
+			unsigned char triangle:1;
+			unsigned char vee:1;
+			unsigned char unicode:1;
+			unsigned char reserved:1;
+		} __packed;
+		unsigned char wakeup_gesture;
+	};
+} f12_c27_0;
+
+static struct {
 	unsigned char reported_bytes_per_object;
 } f12_c28_0;
-
-static struct {
-	unsigned char finger_threshold;
-	unsigned char small_finger_threshold;
-	unsigned char small_finger_border;
-	unsigned char negative_finger_threshold;
-} f12_c15_0;
-
-static struct {
-	unsigned char noise_floor;
-	unsigned char min_peak_amplitude;
-	unsigned char peak_merge_threshold_lsb;
-	unsigned char peak_merge_threshold_msb;
-} f12_c10_0;
 
 static struct {
 	unsigned char data[128];
 } dummy_subpkt;
 
-static struct synaptics_rmi4_subpkt f12_c15[] = {
-	RMI4_SUBPKT(f12_c15_0),
-};
-
 static struct synaptics_rmi4_subpkt f12_c08[] = {
 	RMI4_SUBPKT(f12_c08_0),
-};
-
-static struct synaptics_rmi4_subpkt f12_c20[] = {
-	RMI4_SUBPKT(f12_c20_0),
-};
-
-static struct synaptics_rmi4_subpkt f12_c23[] = {
-	RMI4_SUBPKT(f12_c23_0),
-	RMI4_SUBPKT(f12_c23_1),
-};
-
-static struct synaptics_rmi4_subpkt f12_c28[] = {
-	RMI4_SUBPKT(f12_c28_0),
 };
 
 static struct synaptics_rmi4_subpkt f12_c09[] = {
@@ -220,6 +251,10 @@ static struct synaptics_rmi4_subpkt f12_c14[] = {
 	RMI4_SUBPKT(dummy_subpkt),
 };
 
+static struct synaptics_rmi4_subpkt f12_c15[] = {
+	RMI4_SUBPKT(f12_c15_0),
+};
+
 static struct synaptics_rmi4_subpkt f12_c16[] = {
 	RMI4_SUBPKT(dummy_subpkt),
 };
@@ -229,11 +264,16 @@ static struct synaptics_rmi4_subpkt f12_c17[] = {
 };
 
 static struct synaptics_rmi4_subpkt f12_c18[] = {
-	RMI4_SUBPKT(dummy_subpkt),
+	RMI4_SUBPKT(f12_c18_0),
 };
 
 static struct synaptics_rmi4_subpkt f12_c19[] = {
 	RMI4_SUBPKT(dummy_subpkt),
+};
+
+static struct synaptics_rmi4_subpkt f12_c20[] = {
+	RMI4_SUBPKT(f12_c20_0),
+	RMI4_SUBPKT(f12_c20_1),
 };
 
 static struct synaptics_rmi4_subpkt f12_c21[] = {
@@ -242,6 +282,11 @@ static struct synaptics_rmi4_subpkt f12_c21[] = {
 
 static struct synaptics_rmi4_subpkt f12_c22[] = {
 	RMI4_SUBPKT(dummy_subpkt),
+};
+
+static struct synaptics_rmi4_subpkt f12_c23[] = {
+	RMI4_SUBPKT(f12_c23_0),
+	RMI4_SUBPKT(f12_c23_1),
 };
 
 static struct synaptics_rmi4_subpkt f12_c24[] = {
@@ -257,7 +302,11 @@ static struct synaptics_rmi4_subpkt f12_c26[] = {
 };
 
 static struct synaptics_rmi4_subpkt f12_c27[] = {
-	RMI4_SUBPKT(dummy_subpkt),
+	RMI4_SUBPKT(f12_c27_0),
+};
+
+static struct synaptics_rmi4_subpkt f12_c28[] = {
+	RMI4_SUBPKT(f12_c28_0),
 };
 
 static struct synaptics_rmi4_subpkt f12_c29[] = {
@@ -319,6 +368,39 @@ static struct synaptics_rmi4_subpkt f12_d1[] = {
 	RMI4_SUBPKT(f12_d1_9),
 };
 
+/* RMI4 has the following wakeup gesture defined:
+	• 0x00 = No gesture
+	• 0x01 = One-Finger single tap
+	• 0x02 = One-Finger tap-and-hold
+	• 0x03 = One-Finger double tap
+	• 0x04 = One-Finger early tap
+	• 0x05 = One-Finger flick
+	• 0x06 = One-Finger press
+	• 0x07 = One-Finger swipe
+	• 0x08 = One-Finger Circle
+	• 0x09 = One-Finger Triangle
+	• 0x0A = One-Finger Vee
+	• 0x0B = Reserved
+	• 0x0C = Triple Tap
+	• 0x0D = Click
+	• 0x0E = Reserved
+	• 0x30 = Edge gesture
+	• 0x7F = Reserved
+	• 0x80 = Pinch
+	• 0x81 = Rotate
+	• 0x82 through 0xFF = Reserved
+*/
+
+#define DOUBLE_TAP_GESTURE 0x03
+
+static struct f12_d4_type {
+	unsigned char gesture;
+} f12_d4_0;
+
+static struct synaptics_rmi4_subpkt f12_d4[] = {
+	RMI4_SUBPKT(f12_d4_0),
+};
+
 static struct {
 	unsigned char attn[2];
 } f12_d15_0;
@@ -329,6 +411,7 @@ static struct synaptics_rmi4_subpkt f12_d15[] = {
 
 static struct synaptics_rmi4_packet_reg f12_data_reg_array[] = {
 	RMI4_REG(1, f12_d1),
+	RMI4_REG(4, f12_d4),
 	RMI4_REG(15, f12_d15),
 };
 
@@ -603,6 +686,29 @@ static struct synaptics_rmi4_packet_reg f54_query_reg_array[] = {
 #define QUERY_TYPE	(2 << 8)
 #define COMMAND_TYPE	(3 << 8)
 
+static unsigned char power_sleep_value = 1;
+static struct synaptics_dsx_func_patch power_sleep_func_patch = {
+	.func = SYNAPTICS_RMI4_F01,
+	.regstr = 0,
+	.subpkt = 0,
+	.size = 1,
+	.bitmask = 7,
+	.data = &power_sleep_value,
+};
+
+static unsigned char force_update_value = 4;
+static struct synaptics_dsx_func_patch force_update_func_patch = {
+	.func = SYNAPTICS_RMI4_F54 | COMMAND_TYPE,
+	.regstr = 0,
+	.subpkt = 0,
+	.size = 1,
+	.bitmask = 0,
+	.data = &force_update_value,
+};
+
+static struct synaptics_dsx_patch *force_update_patch;
+static struct synaptics_dsx_patch *power_sleep_patch;
+
 static inline int register_ascii_to_type(unsigned char *symbol)
 {
 	int reg_type = CTRL_TYPE;
@@ -663,6 +769,9 @@ static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
 		.f_number = SYNAPTICS_RMI4_F12 | DATA_TYPE,
 		.base_addr = 0,
 		.query_offset = 7,
+#define F12_D1_IDX 0
+#define F12_D4_IDX 1
+#define F12_D15_IDX 2
 		.nr_regs = ARRAY_SIZE(f12_data_reg_array),
 		.regs = f12_data_reg_array,
 	},
@@ -874,9 +983,25 @@ static void synaptics_dsx_parse_string(struct synaptics_rmi4_data *data,
 			break;
 
 		dev_dbg(dev, "patch set %d: \"%s\"\n", i, patch_set);
-
 		config_p = strpbrk(patch_set, "@");
-		if ((*patch_set != 'F' && *patch_set != 'f') || !config_p) {
+
+		/* consider force update and power seetings here */
+		if (!config_p) {
+			switch (*patch_set) {
+			case 'S':
+				patch->flags |= FLAG_POWER_SLEEP;
+				break;
+			case 'U':
+				patch->flags |= FLAG_FORCE_UPDATE;
+				break;
+			case 'W':
+				patch->flags |= FLAG_WAKEABLE;
+				break;
+			}
+			continue;
+		}
+
+		if (*patch_set != 'F' && *patch_set != 'f') {
 			dev_err(dev, "invalid syntax '%s'\n", patch_set);
 			continue;
 		}
@@ -1203,7 +1328,10 @@ static int synaptics_rmi4_write_packet_reg(
 			}
 		} else {
 			retval = -EINVAL;
-			pr_err("cannot update subpacket %d\n", ii);
+			pr_err("cannot update subpacket %d: "\
+				"sz=%d, offset=%d, data=%p, reg_sz=%d\n",
+				ii, subpkt->size, offset,
+				subpkt->data, reg->size);
 			goto out;
 		}
 	}
@@ -1267,89 +1395,211 @@ err_gpio:
 	return retval;
 }
 
-int synaptics_dsx_dt_parse_state(struct synaptics_rmi4_data *data,
-		struct device_node *np_config,
-		struct synaptics_dsx_patch *state)
+static void synaptics_dsx_dt_parse_modifier(struct synaptics_rmi4_data *data,
+		struct device_node *parent, struct config_modifier *config,
+		const char *modifier_name, bool active)
 {
-	const char *patch_data;
-	struct device_node *np_state;
+	struct device *dev = &data->i2c_client->dev;
+	const char *patch_string;
+	char node_name[64];
+	struct synaptics_clip_area clipa;
+	struct device_node *np_config;
 	int err;
 
-	np_state = of_node_get(np_config);
-	err = of_property_read_string(np_config, "patch-data",
-				(const char **)&patch_data);
-	if (err < 0) {
-		pr_err("unable to read patch-data\n");
-		return err;
+	scnprintf(node_name, 63, "%s-%s", modifier_name,
+			active ? "active" : "suspended");
+	np_config = of_find_node_by_name(parent, node_name);
+	if (!np_config) {
+		dev_dbg(dev, "%s: node does not exist\n", node_name);
+		return;
 	}
 
-	synaptics_dsx_parse_string(data, patch_data, state, true);
+	err = of_property_read_string(np_config, "patch-data",
+				(const char **)&patch_string);
+	if (!err) {
+		struct synaptics_dsx_patch *p_data =
+			synaptics_dsx_init_patch(modifier_name);
 
-	return 0;
+		if (!p_data) {
+			dev_err(dev, "%s: alloc error\n", node_name);
+			goto clip_area;
+		}
+		synaptics_dsx_parse_string(data, patch_string, p_data, true);
+		if (active)
+			config->active = p_data;
+		else
+			config->suspended = p_data;
+	}
+
+clip_area:
+
+	err = of_property_read_u32_array(np_config, "touch-clip-area",
+		(unsigned int *)&clipa, sizeof(clipa)/sizeof(unsigned int));
+	if (!err) {
+		config->clipa = kzalloc(sizeof(clipa), GFP_KERNEL);
+		if (!config->clipa) {
+			dev_err(dev, "clip area allocation failure\n");
+			return;
+		}
+		memcpy(config->clipa, &clipa, sizeof(clipa));
+		pr_notice("using touch clip area in %s\n", node_name);
+	}
+
+	of_node_put(np_config);
 }
 
-int synaptics_dsx_dt_parse_mode(struct synaptics_rmi4_data *data,
-		const char *mode_name, struct synaptics_dsx_patchset *mode)
+/* ASCII names order MUST match enum */
+static const char const *ascii_names[] = { "aod", "stats", "folio",
+	"charger", "wakeup", "fps", "query", "runtime", "na"
+};
+
+static int modifier_name2id(const char *name)
+{
+	int i, len2cmp, chosen = -1;
+
+	for (i = 0; i < SYNA_MOD_MAX; i++) {
+		len2cmp = min_t(int, strlen(name), strlen(ascii_names[i]));
+		if (!strncmp(name, ascii_names[i], len2cmp)) {
+			chosen = i;
+			break;
+		}
+	}
+	return chosen;
+}
+
+static inline const char *modifier_id2name(int id)
+{
+	return (id >= 0 && id < SYNA_MOD_MAX) ?
+		ascii_names[id] : ascii_names[SYNA_MOD_MAX];
+}
+
+static struct config_modifier *modifier_by_id(
+	struct synaptics_rmi4_data *data, int id)
+{
+	struct config_modifier *cm, *found = NULL;
+
+	down(&data->modifiers.list_sema);
+	list_for_each_entry(cm, &data->modifiers.mod_head, link) {
+		pr_debug("walk-thru: ptr=%p modifier[%s] id=%d\n",
+					cm, cm->name, cm->id);
+		if (cm->id == id) {
+			found = cm;
+			break;
+		}
+	}
+	up(&data->modifiers.list_sema);
+	pr_debug("returning modifier id=%d[%d]\n", found ? found->id : -1, id);
+	return found;
+}
+
+static int synaptics_dsx_dt_parse_modifiers(struct synaptics_rmi4_data *data)
 {
 	struct device *dev = &data->i2c_client->dev;
 	struct device_node *np = dev->of_node;
-	struct device_node *np_modes;
-	int ret = 0;
-	char *propname;
-	struct property *prop;
-	const __be32 *list;
-	int size, config;
-	phandle phandle;
-	struct device_node *np_config;
+	struct device_node *np_mod;
+	int i, num_names, ret = 0;
+	char node_name[64];
+	static const char **modifiers_names;
 
-	np_modes = of_find_node_by_name(np, "touchstate_modes");
-	if (!np_modes) {
-		pr_warn("can't find touchstate modes node\n");
-		ret = -EINVAL;
-		goto err;
+	sema_init(&data->modifiers.list_sema, 1);
+	INIT_LIST_HEAD(&data->modifiers.mod_head);
+	data->modifiers.mods_num = 0;
+
+	num_names = of_property_count_strings(np, "config_modifier-names");
+	if (num_names < 0) {
+		dev_err(dev, "Cannot parse config_modifier-names: %d\n",
+			num_names);
+		return -ENODEV;
 	}
 
-	pr_debug("processing mode %s\n", mode_name);
-	propname = kasprintf(GFP_KERNEL, "touchmode-%s", mode_name);
-	prop = of_find_property(np_modes, propname, &size);
-	kfree(propname);
-	of_node_put(np_modes);
-	if (!prop) {
-		pr_err("can't find mode %s\n", mode_name);
-		ret = -EINVAL;
-		goto err;
-	}
-	list = prop->value;
-	size /= sizeof(*list);
+	modifiers_names = devm_kzalloc(dev,
+			sizeof(*modifiers_names) * num_names, GFP_KERNEL);
+	if (!modifiers_names)
+		return -ENOMEM;
 
-	if (size > MAX_NUM_STATES) {
-		pr_err("unexpected number of states %d\n", size);
-		ret = -EINVAL;
-		goto err;
+	for (i = 0; i < num_names; i++) {
+		ret = of_property_read_string_index(np, "config_modifier-names",
+			i, &modifiers_names[i]);
+		if (ret < 0) {
+			dev_err(dev, "Cannot parse modifier-names: %d\n", ret);
+			return ret;
+		}
 	}
 
-	for (config = 0; config < size; config++) {
-		phandle = be32_to_cpup(list++);
+	data->modifiers.mods_num = num_names;
 
-		/* Look up the touchstate configuration node */
-		np_config = of_find_node_by_phandle(phandle);
-		if (!np_config) {
-			dev_err(dev,
-				"prop %s index %i invalid phandle\n",
-				prop->name, config);
-			ret = -EINVAL;
-			goto err;
+	for (i = 0; i < num_names; i++) {
+		int id;
+		struct config_modifier *cm, *config;
+
+		scnprintf(node_name, 63, "config_modifier-%s",
+				modifiers_names[i]);
+		np_mod = of_find_node_by_name(np, node_name);
+		if (!np_mod) {
+			dev_warn(dev, "cannot find modifier node %s\n",
+				node_name);
+			continue;
 		}
 
-		/* Parse the node */
-		ret = synaptics_dsx_dt_parse_state(data, np_config,
-				 mode->patch_data[config]);
-		of_node_put(np_config);
-		if (ret < 0)
-			goto err;
+		/* check for duplicate nodes in devtree */
+		id = modifier_name2id(modifiers_names[i]);
+		pr_err("processing modifier %s[%d]\n", node_name, id);
+		list_for_each_entry(cm, &data->modifiers.mod_head, link) {
+			if (cm->id == id) {
+				dev_err(dev, "duplicate modifier node %s\n",
+					node_name);
+				return -EFAULT;
+			}
+		}
+		/* allocate modifier's structure */
+		config = kzalloc(sizeof(*config), GFP_KERNEL);
+		if (!config)
+			return -ENOMEM;
+
+		list_add_tail(&config->link, &data->modifiers.mod_head);
+		config->name = modifiers_names[i];
+		config->id = id;
+
+		if (of_property_read_bool(np_mod, "enable-notification")) {
+			switch (id) {
+			case SYNA_MOD_FOLIO:
+				pr_notice("using folio detection\n");
+				data->folio_detection_enabled = true;
+				break;
+			case SYNA_MOD_CHARGER:
+				pr_notice("using charger detection\n");
+				data->charger_detection_enabled = true;
+				break;
+			case SYNA_MOD_FPS:
+				pr_notice("using fingerprint sensor detection\n");
+				data->fps_detection_enabled = true;
+				break;
+			case SYNA_MOD_WAKEUP:
+				pr_notice("using wakeup detection\n");
+				data->wakeup_detection_enabled = true;
+				break;
+			case SYNA_MOD_AOD:
+			case SYNA_MOD_STATS:
+				break;
+
+			}
+		} else {
+			config->effective = true;
+			dev_dbg(dev, "modifier %s enabled unconditionally\n",
+					node_name);
+		}
+
+		dev_dbg(dev, "processing modifier %s[%d]\n",
+				node_name, config->id);
+
+		synaptics_dsx_dt_parse_modifier(data, np_mod, config,
+				modifiers_names[i], true);
+		synaptics_dsx_dt_parse_modifier(data, np_mod, config,
+				modifiers_names[i], false);
+		of_node_put(np_mod);
 	}
-err:
-	return ret;
+
+	return 0;
 }
 
 static struct synaptics_dsx_platform_data *
@@ -1357,28 +1607,37 @@ static struct synaptics_dsx_platform_data *
 				struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
-	unsigned int u32_data, key_codes[SYN_MAX_BUTTONS];
+	unsigned int key_codes[SYN_MAX_BUTTONS];
 	struct synaptics_dsx_platform_data *pdata;
 	struct device_node *np = client->dev.of_node;
 	struct synaptics_dsx_cap_button_map *button_map = NULL;
-	struct synaptics_clip_area clip_area;
 
 	rmi4_data->patching_enabled = 1;
-	retval = synaptics_dsx_dt_parse_mode(rmi4_data, "default",
-			rmi4_data->default_mode);
-	if (retval) {
-		pr_warn("failed to load default mode\n");
+	retval = synaptics_dsx_dt_parse_modifiers(rmi4_data);
+	if (retval)
 		rmi4_data->patching_enabled = 0;
-	}
+	else {
+		force_update_patch = devm_kzalloc(&client->dev,
+				sizeof(struct synaptics_dsx_patch), GFP_KERNEL);
+		power_sleep_patch = devm_kzalloc(&client->dev,
+				sizeof(struct synaptics_dsx_patch), GFP_KERNEL);
 
-	if (rmi4_data->patching_enabled) {
-		retval = synaptics_dsx_dt_parse_mode(rmi4_data, "alternate",
-				rmi4_data->alternate_mode);
-		if (retval) {
-			pr_warn("alternate mode not found;"
-				" using default instead\n");
-			rmi4_data->alternate_mode = rmi4_data->default_mode;
-		}
+		if (!force_update_patch || !power_sleep_patch)
+			return NULL;
+
+		force_update_patch->name = "force-update";
+		force_update_patch->cfg_num = 1;
+		sema_init(&force_update_patch->list_sema, 1);
+		INIT_LIST_HEAD(&force_update_patch->cfg_head);
+		list_add(&force_update_func_patch.link,
+					&force_update_patch->cfg_head);
+
+		power_sleep_patch->name = "power-sleep";
+		power_sleep_patch->cfg_num = 1;
+		sema_init(&power_sleep_patch->list_sema, 1);
+		INIT_LIST_HEAD(&power_sleep_patch->cfg_head);
+		list_add(&power_sleep_func_patch.link,
+					&power_sleep_patch->cfg_head);
 	}
 
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
@@ -1442,35 +1701,6 @@ static struct synaptics_dsx_platform_data *
 		pr_notice("using purge\n");
 		rmi4_data->purge_enabled = true;
 	}
-
-	if (of_property_read_bool(np, "synaptics,charger-detection")) {
-		pr_notice("using charger detection\n");
-		rmi4_data->charger_detection = true;
-	}
-
-	retval = of_property_read_u32(np,
-				"synaptics,aod-multi-touch", &u32_data);
-	if (!retval) {
-		pr_notice("using multi touch in aod\n");
-		rmi4_data->aod_mt = (unsigned char)u32_data;
-	} else {
-		pr_notice("using single touch in aod\n");
-		rmi4_data->aod_mt = 1;
-	}
-
-	retval = of_property_read_u32_array(np,
-			"synaptics,touch-clip-area",
-			(unsigned *)&clip_area, 4);
-	if (!retval) {
-		rmi4_data->clipa = kzalloc(sizeof(clip_area), GFP_KERNEL);
-		if (!rmi4_data->clipa) {
-			dev_err(&client->dev, "clip area allocation failure\n");
-			return NULL;
-		}
-		memcpy(rmi4_data->clipa, &clip_area, sizeof(clip_area));
-		pr_notice("using touch clip area\n");
-	} else
-		dev_err(&client->dev, "clip area read failure\n");
 
 	return pdata;
 }
@@ -1773,8 +2003,10 @@ static int statistics_init(struct synaptics_rmi4_data *rmi4_data)
 	error = statistics_start_timekeeping(rmi4_data);
 	if (error < 0)
 		pr_err("statistics init failed\n");
-	else
+	else {
+		pr_notice("touch statistics enabled\n");
 		gStat.enabled = true;
+	}
 
 	return error;
 }
@@ -1867,20 +2099,23 @@ static ssize_t synaptics_rmi4_ic_ver_show(struct device *dev,
 static ssize_t synaptics_rmi4_poweron_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
-static ssize_t synaptics_rmi4_query_idx_store(struct device *dev,
+static ssize_t synaptics_rmi4_mod_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_mod_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
-static ssize_t synaptics_rmi4_query_idx_show(struct device *dev,
+static ssize_t synaptics_rmi4_mod_sw_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_mod_sw_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
 
 static ssize_t synaptics_rmi4_query_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
 static ssize_t synaptics_rmi4_query_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
-
-static ssize_t synaptics_rmi4_patch_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count);
 
 static ssize_t synaptics_rmi4_reporting_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
@@ -2043,15 +2278,15 @@ static struct device_attribute attrs[] = {
 	__ATTR(poweron, S_IRUSR | S_IRGRP,
 			synaptics_rmi4_poweron_show,
 			synaptics_rmi4_store_error),
-	__ATTR(query_idx, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
-			synaptics_rmi4_query_idx_show,
-			synaptics_rmi4_query_idx_store),
+	__ATTR(mod, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			synaptics_rmi4_mod_show,
+			synaptics_rmi4_mod_store),
+	__ATTR(mod_sw, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			synaptics_rmi4_mod_sw_show,
+			synaptics_rmi4_mod_sw_store),
 	__ATTR(query, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
 			synaptics_rmi4_query_show,
 			synaptics_rmi4_query_store),
-	__ATTR(patch, S_IWUSR | S_IWGRP,
-			synaptics_rmi4_show_error,
-			synaptics_rmi4_patch_store),
 	__ATTR(tsi, S_IRUSR | S_IRGRP,
 			synaptics_rmi4_ud_show,
 			synaptics_rmi4_store_error),
@@ -2206,6 +2441,9 @@ static int synaptics_dsx_alloc_input(struct synaptics_rmi4_data *rmi4_data)
 	rmi4_data->input_dev->dev.parent = &rmi4_data->i2c_client->dev;
 
 	set_bit(EV_SYN, rmi4_data->input_dev->evbit);
+	/* enable power key injection */
+	set_bit(EV_KEY, rmi4_data->input_dev->evbit);
+	input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_POWER);
 
 	pr_debug("allocated input device\n");
 
@@ -2233,9 +2471,8 @@ static void synaptics_copy_multiple_subpkts(
 	pr_debug("%s misalignement detected\n", !leftover ? "no" : "");
 }
 
-static void synaptics_dsx_patch_func(
-		struct synaptics_rmi4_data *rmi4_data,
-		int f_number,
+static void synaptics_dsx_patch_function(
+		struct synaptics_rmi4_data *rmi4_data, int f_number,
 		struct synaptics_dsx_patch *patch)
 {
 	int r, error, function;
@@ -2377,61 +2614,6 @@ static void synaptics_dsx_enable_wakeup_source(
 	pr_debug("%s wakeup; rc=%d\n", enable ? "enabled" : "disabled", error);
 }
 
-static inline void synaptics_dsx_set_alternate_mode(
-		struct synaptics_rmi4_data *rmi4_data,
-		struct synaptics_dsx_patchset *mode,
-		bool wakeable, bool persistent)
-{
-	rmi4_data->mode_is_wakeable = wakeable;
-	rmi4_data->mode_is_persistent = persistent;
-	rmi4_data->current_mode = mode;
-	if (wakeable)
-		synaptics_dsx_enable_wakeup_source(rmi4_data, true);
-	pr_debug("set alternate mode\n");
-}
-
-static inline void synaptics_dsx_restore_default_mode(
-		struct synaptics_rmi4_data *rmi4_data)
-{
-	if (rmi4_data->mode_is_wakeable)
-		synaptics_dsx_enable_wakeup_source(rmi4_data, false);
-	rmi4_data->mode_is_wakeable = false;
-	rmi4_data->mode_is_persistent = true;
-	rmi4_data->current_mode = rmi4_data->default_mode;
-	pr_debug("set default mode\n");
-}
-
-static void synaptics_dsx_state_config(
-		struct synaptics_rmi4_data *rmi4_data, int state)
-{
-	int i;
-	struct synaptics_dsx_patch *patch =
-			rmi4_data->current_mode->patch_data[state];
-
-	if (!patch || !patch->cfg_num) {
-		pr_debug("patchset is empty!\n");
-		goto nothing_to_patch;
-	}
-
-	if (rmi4_data->mode_is_wakeable)
-		synaptics_dsx_enable_wakeup_source(rmi4_data, true);
-
-	if (rmi4_data->patching_enabled) {
-		for (i = 0; i < ARRAY_SIZE(synaptics_cfg_regs); i++)
-			synaptics_dsx_patch_func(rmi4_data,
-				synaptics_cfg_regs[i].f_number, patch);
-
-		pr_debug("applied %s in mode %s\n",
-			state == ACTIVE_IDX ? "ACTIVE" : "SUSPEND",
-			rmi4_data->current_mode == rmi4_data->default_mode ?
-			"DEFAULT" : "OTHER");
-	}
-
-nothing_to_patch:
-	/* keep page 0 active */
-	synaptics_rmi4_set_page(rmi4_data, 0);
-}
-
 static const char * const synaptics_state_names[] = {"UNKNOWN",
 	"ACTIVE", "SUSPEND", "UNUSED", "STANDBY", "BL", "INIT",
 	"FLASH", "QUERY", "INVALID" };
@@ -2440,6 +2622,80 @@ static const char *synaptics_dsx_state_name(int state)
 {
 	int index = state < 0 || state > STATE_INVALID ? STATE_INVALID : state;
 	return synaptics_state_names[index];
+}
+
+static void synaptics_dsx_apply_modifiers(
+		struct synaptics_rmi4_data *rmi4_data, int state)
+{
+	bool wakeup = false, update = false, sleep = false;
+	int i;
+
+	if (!rmi4_data->modifiers.mods_num) {
+		pr_debug("patchset is empty!\n");
+		goto no_modifiers;
+	}
+
+	down(&rmi4_data->modifiers.list_sema);
+	for (i = 0; i < ARRAY_SIZE(synaptics_cfg_regs); i++) {
+		struct config_modifier *cm;
+
+		/* skip query registers */
+		if (synaptics_cfg_regs[i].f_number & QUERY_TYPE)
+			continue;
+
+		list_for_each_entry(cm, &rmi4_data->modifiers.mod_head, link) {
+			struct synaptics_dsx_patch *patch = NULL;
+
+			/* skip disabled modifiers */
+			if (!cm->effective)
+				continue;
+
+			if (state == STATE_ACTIVE)
+				patch = cm->active;
+			else if (state == STATE_SUSPEND)
+				patch = cm->suspended;
+
+			/* skip effective modifier without patch */
+			if (!patch)
+				continue;
+
+			/* keep track of flags among effective modifiers */
+			if (!update && (patch->flags & FLAG_FORCE_UPDATE))
+				update = true;
+			if (!wakeup && (patch->flags & FLAG_WAKEABLE))
+				wakeup = true;
+			if (!sleep && (patch->flags & FLAG_POWER_SLEEP))
+				sleep = true;
+			/* finally apply patch */
+			synaptics_dsx_patch_function(rmi4_data,
+				synaptics_cfg_regs[i].f_number, patch);
+		}
+	}
+	up(&rmi4_data->modifiers.list_sema);
+
+	/* force update regardless the current state */
+	if (update && force_update_patch)
+		synaptics_dsx_patch_function(rmi4_data,
+			SYNAPTICS_RMI4_F54 | COMMAND_TYPE, force_update_patch);
+
+	/* power mode and wakeability only on entering suspend */
+	if (state == STATE_SUSPEND) {
+		if (wakeup) {
+			rmi4_data->suspend_is_wakeable = true;
+			synaptics_dsx_enable_wakeup_source(rmi4_data, true);
+		} else if (sleep && power_sleep_patch)
+			synaptics_dsx_patch_function(rmi4_data,
+				SYNAPTICS_RMI4_F01, power_sleep_patch);
+	}
+
+	if (!wakeup && rmi4_data->suspend_is_wakeable) {
+		rmi4_data->suspend_is_wakeable = false;
+		synaptics_dsx_enable_wakeup_source(rmi4_data, false);
+	}
+
+no_modifiers:
+	/* keep page 0 active */
+	synaptics_rmi4_set_page(rmi4_data, 0);
 }
 
 static int synaptics_dsx_get_state_safe(struct synaptics_rmi4_data *rmi4_data)
@@ -2527,6 +2783,29 @@ static int synaptics_dsx_sensor_ready_state(
 	return 0;
 }
 
+static void synaptics_dsx_enforce_modifiers(
+		struct synaptics_rmi4_data *rmi4_data,
+		struct config_modifier *modifier)
+{
+	int error, state = synaptics_dsx_get_state_safe(rmi4_data);
+
+	if (state == STATE_ACTIVE) {
+		if (!modifier->active)
+			return;
+		/* set unknown state to ensure IRQ gets */
+		/* enabled on state transition to active */
+		synaptics_dsx_sensor_state(rmi4_data, STATE_UNKNOWN);
+		/* disable IRQ to handle reset */
+		synaptics_rmi4_irq_enable(rmi4_data, false);
+		/* perform SW reset to restore defaults */
+		error = synaptics_dsx_ic_reset(rmi4_data, RMI4_SW_RESET);
+		if (error < 0)
+			dev_err(&rmi4_data->i2c_client->dev,
+				"folio: sw reset failed %d\n", error);
+	}
+	synaptics_dsx_sensor_ready_state(rmi4_data, false);
+}
+
 static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 		int state)
 {
@@ -2541,26 +2820,23 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 
 	case STATE_SUSPEND:
 		synaptics_dsx_wait_for_idle(rmi4_data);
-		if (!rmi4_data->mode_is_wakeable)
-			synaptics_rmi4_irq_enable(rmi4_data, false);
+
 		if (!rmi4_data->in_bootloader)
-			synaptics_dsx_state_config(rmi4_data, SUSPEND_IDX);
+			synaptics_dsx_apply_modifiers(rmi4_data, STATE_SUSPEND);
+
+		if (!rmi4_data->suspend_is_wakeable)
+			synaptics_rmi4_irq_enable(rmi4_data, false);
 			break;
 
 	case STATE_ACTIVE:
 		if (!rmi4_data->in_bootloader)
-			synaptics_dsx_state_config(rmi4_data, ACTIVE_IDX);
+			synaptics_dsx_apply_modifiers(rmi4_data, STATE_ACTIVE);
 
 		if (rmi4_data->input_registered)
 			synaptics_rmi4_irq_enable(rmi4_data, true);
 		else {
 			synaptics_rmi4_irq_enable(rmi4_data, false);
 			pr_err("Active state without input device\n");
-		}
-
-		if (!rmi4_data->mode_is_persistent) {
-			synaptics_dsx_restore_default_mode(rmi4_data);
-			pr_debug("Non-persistent mode; restoring default\n");
 		}
 
 		if (gStat.enabled)
@@ -3186,37 +3462,62 @@ static ssize_t synaptics_rmi4_poweron_show(struct device *dev,
 		rmi4_data->flash_enabled);
 }
 
-static struct synaptics_dsx_patch *query_data;
-static unsigned int query_index;
-
-#define SPRINTF_RANGE(fmt, args...) {\
-		blen += scnprintf(out + blen, count - blen, fmt, ##args);\
-	}
-
 static ssize_t synaptics_dsx_patch_dump(
-	struct synaptics_rmi4_data *rmi4_data, char *out, ssize_t count)
+	struct synaptics_rmi4_data *rmi4_data,
+	struct synaptics_dsx_patch *patch,
+	char *pout, ssize_t msize)
 {
-	int i;
-	const char *name;
 	struct synaptics_dsx_func_patch *fp;
 	ssize_t blen = 0;
 
-	if (!query_data) {
-		SPRINTF_RANGE("nothing to query\n");
-		goto time_to_leave;
+	down(&patch->list_sema);
+	list_for_each_entry(fp, &patch->cfg_head, link) {
+		int i;
+		unsigned int data_size = fp->size;
+		unsigned char *value = fp->data;
+
+		blen += scnprintf(pout + blen, msize - blen,
+			"F%02x%c@%d:%d=", fp->func & 0xff,
+			register_type_to_ascii(fp->func & 0xf00),
+			fp->regstr, fp->subpkt);
+
+		for (i = 0; i < data_size; i++)
+			blen += scnprintf(pout + blen, msize - blen,
+					"%02x", *value++);
+		if (fp->bitmask)
+			blen += scnprintf(pout + blen, msize - blen,
+				"&%02x", fp->bitmask);
+		blen += scnprintf(pout + blen, msize - blen, "; ");
 	}
-	name = query_data->name ? query_data->name : "noname";
-	SPRINTF_RANGE("[%s", name);
-	if (!strnstr(name, "runtime", 7))
-		SPRINTF_RANGE("-%s", !query_index ? "active" : "suspended");
-	SPRINTF_RANGE("] ");
-	list_for_each_entry(fp, &query_data->cfg_head, link) {
+	up(&patch->list_sema);
+
+	if (patch->flags & FLAG_FORCE_UPDATE)
+		blen += scnprintf(pout + blen, msize - blen, "U; ");
+	if (patch->flags & FLAG_WAKEABLE)
+		blen += scnprintf(pout + blen, msize - blen, "W; ");
+	if (patch->flags & FLAG_POWER_SLEEP)
+		blen += scnprintf(pout + blen, msize - blen, "S; ");
+	blen += scnprintf(pout + blen, msize - blen, "\n");
+
+	return blen;
+}
+
+static ssize_t synaptics_dsx_patch_query(
+	struct synaptics_rmi4_data *rmi4_data,
+	struct synaptics_dsx_patch *patch,
+	char *pout, ssize_t msize)
+{
+	struct synaptics_dsx_func_patch *fp;
+	ssize_t blen = 0;
+
+	down(&patch->list_sema);
+	list_for_each_entry(fp, &patch->cfg_head, link) {
 		struct synaptics_rmi4_func_packet_regs *regs;
 		struct synaptics_rmi4_packet_reg *reg;
-		int error;
+		int i, error, function;
 		unsigned short data_addr;
 		unsigned int data_size;
-		unsigned char *value;
+		unsigned char *value, rt_mod;
 
 		regs = find_function(fp->func);
 		if (!regs)
@@ -3227,11 +3528,14 @@ static ssize_t synaptics_dsx_patch_dump(
 			continue;
 		}
 
+		rt_mod = register_type_to_ascii(fp->func & 0xf00);
+		function = fp->func & 0xff;
+
 		error = synaptics_rmi4_read_packet_reg(rmi4_data,
 				regs, reg->r_number);
 		if (error < 0) {
 			pr_err("F%x@%d register read failed\n",
-				fp->func, fp->regstr);
+				function, fp->regstr);
 			continue;
 		}
 		/* calculate register address */
@@ -3240,73 +3544,369 @@ static ssize_t synaptics_dsx_patch_dump(
 		if (fp->subpkt == 0xff) {
 			value = reg->data;
 			data_size = reg->size;
-			SPRINTF_RANGE("F%x@%d{%X}=",
-				fp->func, fp->regstr, data_addr);
+			blen += scnprintf(pout + blen, msize - blen,
+				"F%x%c@%d{%X}=",
+				function, rt_mod, fp->regstr, data_addr);
 		} else {
 			struct synaptics_rmi4_subpkt *subpkt;
+
 			subpkt = reg->subpkt + fp->subpkt;
 			value = (unsigned char *)subpkt->data;
 			data_size = subpkt->size;
 			data_addr += subpkt->offset;
-			SPRINTF_RANGE("F%x@%d:%d{%X}=",
-				fp->func, fp->regstr, fp->subpkt, data_addr);
+			blen += scnprintf(pout + blen, msize - blen,
+				"F%x%c@%d:%d{%X}=",
+				function, rt_mod, fp->regstr,
+				fp->subpkt, data_addr);
 		}
 
 		for (i = 0; i < data_size; i++)
-			SPRINTF_RANGE("%02x", *value++);
-		SPRINTF_RANGE("; ");
+			blen += scnprintf(pout + blen, msize - blen,
+				"%02x", *value++);
+		blen += scnprintf(pout + blen, msize - blen, "; ");
 	}
-	SPRINTF_RANGE("\n");
-time_to_leave:
+	up(&patch->list_sema);
+	blen += scnprintf(pout + blen, msize - blen, "\n");
 	return blen;
 }
 
-static ssize_t synaptics_rmi4_query_idx_store(struct device *dev,
+static ssize_t modifiers_show(struct synaptics_rmi4_data *rmi4_data,
+	char *buf, size_t count, bool show_data, bool show_query)
+{
+	struct config_modifier *cm;
+	ssize_t (*handler)(struct synaptics_rmi4_data *,
+			   struct synaptics_dsx_patch *,
+			   char *, ssize_t);
+	ssize_t added, blen = 0;
+
+	if (!rmi4_data->modifiers.mods_num) {
+		pr_debug("patchset is empty!\n");
+		return 0;
+	}
+
+	down(&rmi4_data->modifiers.list_sema);
+	list_for_each_entry(cm, &rmi4_data->modifiers.mod_head, link) {
+		const char *name = cm->name ? cm->name : "na";
+		bool is_query = cm->id == SYNA_MOD_QUERY;
+
+		/* skip printing modifiers, but query */
+		if (!is_query && show_query)
+			continue;
+		blen += scnprintf(buf + blen, count - blen, "%c[%s]\n",
+					cm->effective ? '+' : '-', name);
+		if (!show_data)
+			continue;
+
+		if (is_query && show_query)
+			handler = &synaptics_dsx_patch_query;
+		else
+			handler = &synaptics_dsx_patch_dump;
+
+		if (cm->active) {
+			blen += scnprintf(buf + blen,
+					count - blen, " [active]");
+			added = (*handler)(rmi4_data, cm->active,
+					buf + blen, count - blen);
+			blen += added;
+			count -= added;
+		}
+
+		if (cm->clipa) {
+			blen += scnprintf(buf + blen, count - blen,
+				" [clip]<%u,%u,%u,%u>%s\n",
+				cm->clipa->xul_clip, cm->clipa->yul_clip,
+				cm->clipa->xbr_clip, cm->clipa->ybr_clip,
+				cm->clipa->inversion ? "in" : "out");
+		}
+
+		if (cm->suspended) {
+			blen += scnprintf(buf + blen,
+					count - blen, " [suspended]");
+			added = (*handler)(rmi4_data, cm->suspended,
+					buf + blen, count - blen);
+			blen += added;
+			count -= added;
+		}
+	}
+	up(&rmi4_data->modifiers.list_sema);
+
+	return blen;
+}
+
+#define NAME_ID		0
+#define ACTION_ID	1
+
+static ssize_t synaptics_rmi4_mod_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	unsigned int index;
-	if (sscanf(buf, "%u", &index) != 1)
-		return -EINVAL;
-	query_index = index > 0 ? 1 : 0;
-	pr_debug("index setup to %u\n", query_index);
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	struct synaptics_dsx_patch **patch_ptr, *patch;
+	struct config_modifier *cm;
+	bool clear_only = false;
+	int id, bytes_left, ntokens = 0;
+	char *internal, *ptr, *token[2] = {0};
+
+	internal = kstrdup(buf, GFP_KERNEL);
+	for (ptr = internal; ntokens < 2; ntokens++) {
+		bytes_left = count - (ptr - internal);
+		ptr = strnchr(ptr, bytes_left, '[');
+		if (!ptr)
+			break;
+		token[ntokens] = ++ptr;	/* advance to the name */
+		bytes_left = count - (ptr - internal);
+		ptr = strnchr(ptr, bytes_left, ']');
+		if (ptr)
+			*ptr++ = 0;
+		dev_dbg(dev, "token[%d]='%s'\n", ntokens, token[ntokens]);
+	}
+
+	if (*buf != '[' && ntokens != 2) {
+		dev_err(dev, "invalid modifier syntax\n");
+		count = -EINVAL;
+		goto leave_now;
+	}
+
+	id = modifier_name2id(token[NAME_ID]);
+	switch (id) {
+	case SYNA_MOD_QUERY:
+		dev_err(dev, "use query attribute instead\n");
+		count = -EINVAL;
+		break;
+	case -1:
+		dev_err(dev, "[%s] is invalid modifier\n", token[NAME_ID]);
+		count = -EINVAL;
+		break;
+	}
+
+	if (count == -EINVAL)
+		goto leave_now;
+
+	/* pointer has been advanced in the loop above to point to patch */
+	if (*ptr == '\n')
+		clear_only = true;
+
+	cm = modifier_by_id(rmi4_data, id);
+	if (!cm) {
+		if (clear_only)
+			goto leave_now;
+
+		dev_info(dev, "allocating modifier [%s]\n", token[NAME_ID]);
+		cm = kzalloc(sizeof(*cm), GFP_KERNEL);
+		if (!cm) {
+			count = -ENOMEM;
+			goto leave_now;
+		}
+
+		down(&rmi4_data->modifiers.list_sema);
+		list_add_tail(&cm->link, &rmi4_data->modifiers.mod_head);
+		up(&rmi4_data->modifiers.list_sema);
+		rmi4_data->modifiers.mods_num++;
+		cm->name = ascii_names[id];
+		cm->id = id;
+	}
+
+	if (!strncmp(token[ACTION_ID], "clip", 4)) {
+		bool clipping_is_active = false;
+		struct synaptics_clip_area clipa;
+
+		if (cm->clipa) {
+			if (rmi4_data->clipping_on &&
+				rmi4_data->clipa == cm->clipa) {
+				/* if currently effective clipping */
+				/* is the one being edited */
+				rmi4_data->clipa = NULL;
+				clipping_is_active = true;
+			}
+			kfree(cm->clipa);
+		}
+
+		if (clear_only) {
+			if (clipping_is_active) {
+				rmi4_data->clipping_on = false;
+				pr_debug("removed [clip] from modifier [%s]\n",
+					token[NAME_ID]);
+			}
+			goto leave_now;
+		}
+
+		ntokens = sscanf(ptr, "<%u %u %u %u %u>", &clipa.xul_clip,
+				&clipa.yul_clip, &clipa.xbr_clip,
+				&clipa.ybr_clip, &clipa.inversion);
+		if (ntokens != 5) {
+			dev_err(dev, "Invalid clip area modifier\n");
+			goto leave_now;
+		}
+
+		if (!cm->clipa) {
+			cm->clipa = kzalloc(sizeof(clipa), GFP_KERNEL);
+			if (!cm->clipa) {
+				count = -ENOMEM;
+				goto leave_now;
+			}
+		}
+
+		memcpy(cm->clipa, &clipa, sizeof(clipa));
+
+		if (clipping_is_active)
+			rmi4_data->clipa = cm->clipa;
+
+		pr_debug("added [clip] area to modifier [%s]\n",
+			token[NAME_ID]);
+		goto leave_now;
+	}
+
+	if (!strncmp(token[ACTION_ID], "active", 6))
+		patch_ptr = &cm->active;
+	else
+		patch_ptr = &cm->suspended;
+
+	if (*patch_ptr) {
+		synaptics_dsx_free_patch(*patch_ptr);
+		*patch_ptr = NULL;
+	}
+
+	if (clear_only) {
+		pr_debug("removed [%s] from modifier [%s]\n",
+			token[ACTION_ID], token[NAME_ID]);
+		goto apply_and_leave;
+	}
+
+	patch = synaptics_dsx_init_patch(token[ACTION_ID]);
+	if (!patch) {
+		count = -ENOMEM;
+		goto leave_now;
+	}
+
+	synaptics_dsx_parse_string(rmi4_data, ptr, patch, true);
+	*patch_ptr = patch;
+	pr_debug("added [%s] patch to modifier [%s]\n",
+		token[ACTION_ID], token[NAME_ID]);
+apply_and_leave:
+	if (!rmi4_data->in_bootloader)
+		synaptics_dsx_enforce_modifiers(rmi4_data, cm);
+leave_now:
+	kfree(internal);
 	return count;
 }
 
-static ssize_t synaptics_rmi4_query_idx_show(struct device *dev,
+static ssize_t synaptics_rmi4_mod_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%s\n",
-			!query_index ? "active" : "suspended");
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	return modifiers_show(rmi4_data, buf, PAGE_SIZE, true, false);
 }
 
+static ssize_t synaptics_rmi4_mod_sw_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int id;
+	bool set_op;
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	struct config_modifier *cm;
+	char mod_name[32];
+
+	if (*buf != '+' && *buf != '-') {
+		dev_err(dev, "invalid modifier syntax\n");
+		return -EINVAL;
+	}
+
+	set_op = *buf == '-' ? false : true;
+	if (sscanf(buf + 1, "[%s]", mod_name) != 1) {
+		dev_err(dev, "unable to read modifier name\n");
+		return -EINVAL;
+	}
+
+	id = modifier_name2id(mod_name);
+	if (id == -1) {
+		dev_err(dev, "invalid modifier name '%s'\n", mod_name);
+		return -EINVAL;
+	}
+
+	cm = modifier_by_id(rmi4_data, id);
+	if (!cm) {
+		dev_err(dev, "modifier with id=%d does not exist\n", id);
+		return -EINVAL;
+	}
+
+	if (cm->effective != set_op) {
+		cm->effective = set_op;
+		pr_debug("set [%s] %s\n", cm->name,
+				cm->effective ? "on" : "off");
+
+		if (cm->effective) {
+			if (cm->clipa) {
+				rmi4_data->clipping_on = true;
+				rmi4_data->clipa = cm->clipa;
+				pr_debug("enable clipping in [%s]\n", cm->name);
+			}
+		} else if (cm->clipa && rmi4_data->clipa == cm->clipa) {
+			rmi4_data->clipping_on = false;
+			rmi4_data->clipa = NULL;
+			pr_debug("disable clipping in [%s]\n", cm->name);
+		}
+
+		if (!rmi4_data->in_bootloader)
+			synaptics_dsx_enforce_modifiers(rmi4_data, cm);
+	}
+	return count;
+}
+
+static ssize_t synaptics_rmi4_mod_sw_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	return modifiers_show(rmi4_data, buf, PAGE_SIZE, false, false);
+}
+
+/* NOTE: query is stored in active */
 static ssize_t synaptics_rmi4_query_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	struct synaptics_dsx_patch *patch;
+	struct config_modifier *cm = modifier_by_id(rmi4_data, SYNA_MOD_QUERY);
+
+	if (!cm) {
+		dev_info(dev, "allocating modifier [%s]\n",
+			modifier_id2name(SYNA_MOD_QUERY));
+		cm = kzalloc(sizeof(*cm), GFP_KERNEL);
+		if (!cm) {
+			dev_err(dev, "Cannot allocate query modifier\n");
+			return -ENOMEM;
+		}
+
+		down(&rmi4_data->modifiers.list_sema);
+		list_add_tail(&cm->link, &rmi4_data->modifiers.mod_head);
+		up(&rmi4_data->modifiers.list_sema);
+		rmi4_data->modifiers.mods_num++;
+		cm->name = ascii_names[SYNA_MOD_QUERY];
+		cm->id = SYNA_MOD_QUERY;
+	}
 
 	if (*buf == '\n') {
-		if (query_data) {
-			synaptics_dsx_free_patch(query_data);
-			query_data = NULL;
+		if (cm->active) {
+			synaptics_dsx_free_patch(cm->active);
+			cm->active = NULL;
 			pr_debug("discarded current query\n");
 		}
 		goto leave_now;
 	}
+
 	if (*buf != 'F') {
-		pr_err("invalid query syntax\n");
+		dev_err(dev, "invalid query syntax\n");
 		return -EINVAL;
 	}
-	patch = synaptics_dsx_init_patch("sysfs-runtime");
+
+	patch = synaptics_dsx_init_patch(ascii_names[SYNA_MOD_QUERY]);
 	if (!patch)
 		return -ENOMEM;
+
 	synaptics_dsx_parse_string(rmi4_data, buf, patch, false);
-	if (query_data) {
-		synaptics_dsx_free_patch(query_data);
-		pr_debug("previous query discarded\n");
-	}
-	query_data = patch;
+	cm->active = patch;
 	pr_debug("new query added\n");
+
 leave_now:
 	return count;
 }
@@ -3315,53 +3915,9 @@ static ssize_t synaptics_rmi4_query_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-	bool clear_after_use = false;
-	ssize_t length;
+	struct config_modifier *cm = modifier_by_id(rmi4_data, SYNA_MOD_QUERY);
 
-	if (!query_data) {
-		query_data = rmi4_data->current_mode->patch_data[query_index];
-		clear_after_use = true;
-	}
-	length = synaptics_dsx_patch_dump(rmi4_data, buf, PAGE_SIZE);
-	if (clear_after_use)
-		query_data = NULL;
-	return length;
-}
-
-static ssize_t synaptics_rmi4_patch_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-	struct synaptics_dsx_patch *patch;
-
-	if (*buf == '\n') {
-		pr_debug("discarding %s patch set from %s mode\n",
-			!query_index ? "active" : "suspended",
-			rmi4_data->current_mode == rmi4_data->default_mode ?
-			"default" : "alternate");
-		synaptics_dsx_free_patch(
-			rmi4_data->current_mode->patch_data[query_index]);
-		patch = synaptics_dsx_init_patch("sysfs");
-		rmi4_data->current_mode->patch_data[query_index] = patch;
-		goto leave_now;
-	}
-	if (*buf != 'F') {
-		pr_err("invalid patch syntax\n");
-		return -EINVAL;
-	}
-	patch = synaptics_dsx_init_patch("sysfs");
-	if (!patch)
-		return -ENOMEM;
-	synaptics_dsx_parse_string(rmi4_data, buf, patch, true);
-	synaptics_dsx_free_patch(
-		rmi4_data->current_mode->patch_data[query_index]);
-	rmi4_data->current_mode->patch_data[query_index] = patch;
-	pr_debug("[sysfs-%s] patch set added to %s mode\n",
-		!query_index ? "active" : "suspended",
-		rmi4_data->current_mode == rmi4_data->default_mode ?
-				"default" : "alternate");
-leave_now:
-	return count;
+	return !cm ? 0 : modifiers_show(rmi4_data, buf, PAGE_SIZE, true, true);
 }
 
  /**
@@ -3523,6 +4079,45 @@ exit:
 	return retval;
 }
 
+static int synaptics_rmi4_f12_wakeup_gesture(
+		struct synaptics_rmi4_data *rmi4_data,
+		struct synaptics_rmi4_fn *fhandler)
+{
+	int retval;
+	struct synaptics_rmi4_packet_reg *reg_data_4 =
+			&rmi4_data->f12_data_registers_ptr->regs[F12_D4_IDX];
+
+	if (reg_data_4->offset == -1) {
+		dev_err(&rmi4_data->i2c_client->dev,
+			"unable to clear wakeup gesture IRQ\n");
+		return -EINVAL;
+	}
+
+	retval = synaptics_rmi4_i2c_read(rmi4_data,
+			fhandler->full_addr.data_base + reg_data_4->offset,
+			&f12_d4_0.gesture, sizeof(f12_d4_0));
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+			"failure clearing wakeup gesture IRQ rc=%d\n", retval);
+		return retval;
+	}
+
+	dev_dbg(&rmi4_data->i2c_client->dev,
+		"wakeup gesture status=0x%02x\n", f12_d4_0.gesture);
+
+	if (f12_d4_0.gesture & DOUBLE_TAP_GESTURE) {
+		/* emulate power key press */
+		input_report_key(rmi4_data->input_dev, KEY_POWER, 1);
+		input_report_key(rmi4_data->input_dev, KEY_POWER, 0);
+		input_sync(rmi4_data->input_dev);
+
+		dev_dbg(&rmi4_data->i2c_client->dev,
+			"DBL_TAP wakeup gesture detected\n");
+	}
+
+	return 0;
+}
+
  /**
  * synaptics_rmi4_f12_abs_report()
  *
@@ -3553,9 +4148,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	struct timespec hw_time = ktime_to_timespec(ktime_get());
 	struct f12_d1_type *finger_data;
 	struct synaptics_rmi4_packet_reg *reg_data_1 =
-				&rmi4_data->f12_data_registers_ptr->regs[0];
+			&rmi4_data->f12_data_registers_ptr->regs[F12_D1_IDX];
 	struct synaptics_rmi4_packet_reg *reg_data_15 =
-				&rmi4_data->f12_data_registers_ptr->regs[1];
+			&rmi4_data->f12_data_registers_ptr->regs[F12_D15_IDX];
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
 	unsigned char number_of_fingers_actually_touching = 0;
 #endif
@@ -3660,9 +4255,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					(y >= rmi4_data->clipa->yul_clip) &&
 					(y <= rmi4_data->clipa->ybr_clip);
 
-				if (!inside) {
+				if (inside == rmi4_data->clipa->inversion) {
 					dev_dbg(&rmi4_data->i2c_client->dev,
-						"%d,%d ouside clipping area\n",
+						"%d,%d belong clipping area\n",
 						x, y);
 					continue;
 				}
@@ -4226,10 +4821,16 @@ static void synaptics_rmi4_report_touch(struct synaptics_rmi4_data *rmi4_data,
 		break;
 
 	case SYNAPTICS_RMI4_F12:
+		if (rmi4_data->suspend_is_wakeable) {
+			synaptics_rmi4_f12_wakeup_gesture(rmi4_data, fhandler);
+			break;
+		}
+
 		synaptics_dsx_resumeinfo_isr(rmi4_data);
 
 		touch_count_2d = synaptics_rmi4_f12_abs_report(rmi4_data,
 				fhandler);
+
 
 		*touch_count += touch_count_2d;
 
@@ -5652,8 +6253,7 @@ static int control_access_block_update_dynamic(
 {
 	int i;
 	struct touch_control_access_block *cab = control_access_block_get();
-	struct synaptics_dsx_patch *patch =
-			rmi4_data->current_mode->patch_data[SUSPEND_IDX];
+	struct synaptics_dsx_patch *patch = NULL;
 
 	if (!rmi4_data->patching_enabled || !cab || !patch || !patch->cfg_num) {
 		pr_debug("nothing to add to control access block\n");
@@ -5663,10 +6263,15 @@ static int control_access_block_update_dynamic(
 	control_access_block_zap(SYN_DSX_CONFIG);
 
 	for (i = 0; i < ARRAY_SIZE(synaptics_cfg_regs); i++) {
-		int f_number = synaptics_cfg_regs[i].f_number;
+		int f_number;
 		struct synaptics_dsx_func_patch *fp;
-		struct synaptics_rmi4_func_packet_regs *regs =
-						find_function(f_number);
+		struct synaptics_rmi4_func_packet_regs *regs;
+
+		/* skip query registers */
+		if (synaptics_cfg_regs[i].f_number & QUERY_TYPE)
+			continue;
+		f_number = synaptics_cfg_regs[i].f_number;
+		regs = find_function(f_number);
 
 		list_for_each_entry(fp, &patch->cfg_head, link) {
 			struct synaptics_rmi4_subpkt *subpkt;
@@ -5687,6 +6292,8 @@ static int control_access_block_update_dynamic(
 				continue;
 
 			/* exclude power control from patch set */
+			/* TODO: with modifiers introduced, this */
+			/* check might not be necessary anymore */
 			if (fp->func == SYNAPTICS_RMI4_F01 &&
 				fp->regstr == 0 && fp->subpkt == 0)
 				continue;
@@ -5729,6 +6336,23 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 				&exp_fn_ctrl.det_work,
 				msecs_to_jiffies(EXP_FN_DET_INTERVAL));
 		return;
+	}
+
+	if (rmi4_data->fps_detection_enabled &&
+		!rmi4_data->is_fps_registered) {
+		error = FPS_register_notifier(
+				&rmi4_data->fps_notif, 0xBEEF, false);
+		if (error) {
+			if (exp_fn_ctrl.det_workqueue)
+				queue_delayed_work(
+					exp_fn_ctrl.det_workqueue,
+					&exp_fn_ctrl.det_work,
+					msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+			pr_err("Failed to register fps_notifier\n");
+		} else {
+			rmi4_data->is_fps_registered = true;
+			pr_debug("registered FPS notifier\n");
+		}
 	}
 
 	mutex_lock(&exp_fn_ctrl.list_mutex);
@@ -5909,61 +6533,6 @@ static struct synaptics_dsx_patch *synaptics_dsx_init_patch(const char *name)
 	return patch_set;
 }
 
-static int synaptics_dsx_init_mode(struct synaptics_rmi4_data *data,
-		struct synaptics_dsx_patchset **pmode)
-{
-	int i;
-	struct synaptics_dsx_patchset *mode = *pmode =
-		kzalloc(sizeof(struct synaptics_dsx_patchset), GFP_KERNEL);
-	if (!mode)
-		return -ENOMEM;
-
-	mode->patch_num = MAX_NUM_STATES;
-	for (i = 0; i < mode->patch_num; i++) {
-		struct synaptics_dsx_patch *patch;
-		patch = synaptics_dsx_init_patch("dts");
-		if (!patch) {
-			kfree(mode);
-			return -ENOMEM;
-		}
-		mode->patch_data[i] = patch;
-	}
-	return 0;
-}
-
-static int synaptics_dsx_free_modes(struct synaptics_rmi4_data *data)
-{
-	int m, i;
-	struct synaptics_dsx_patchset *mode;
-
-	for (m = 0; m < 2; m++) {
-		switch (m) {
-		case 0:
-			mode = data->default_mode;
-			break;
-		case 1:
-			/* If alt mode was not present, and set to default
-			 * mode, don't double free it.
-			 */
-			if (data->default_mode == data->alternate_mode)
-				continue;
-			mode = data->alternate_mode;
-			break;
-		}
-		if (!mode)
-			continue;
-		for (i = 0; i < mode->patch_num; i++) {
-			struct synaptics_dsx_patch *patch = mode->patch_data[i];
-			synaptics_dsx_free_patch(patch);
-		}
-		kfree(mode);
-	}
-	data->current_mode = NULL;
-	data->default_mode = NULL;
-	data->alternate_mode = NULL;
-	return 0;
-}
-
 static void synaptics_dsx_queued_resume(struct work_struct *w)
 {
 	struct synaptics_rmi4_data *rmi4_data =
@@ -6012,20 +6581,6 @@ static int rmi_reboot(struct notifier_block *nb,
 }
 
 #if defined(USB_CHARGER_DETECTION)
-static void synaptics_dsx_modify_patch(struct synaptics_dsx_patch *patch_set,
-	struct synaptics_dsx_func_patch *patch, bool remove)
-{
-	down(&patch_set->list_sema);
-	if (!remove) {
-		list_add_tail(&patch->link, &patch_set->cfg_head);
-		patch_set->cfg_num++;
-	} else {
-		list_del(&patch->link);
-		patch_set->cfg_num--;
-	}
-	up(&patch_set->list_sema);
-}
-
 /***************************************************************/
 /* USB charging source info from power_supply driver directly  */
 /***************************************************************/
@@ -6036,59 +6591,12 @@ static enum power_supply_property ps_props[] = {
 
 static const char * const ps_usb_supply[] = { "usb", };
 static bool ps_usb_present;
-static unsigned char ps_data[2] = { 0x20, 0 };
-/* need separate copies of the same patch, since it has */
-/* to be added into active and suspended configurations */
-static struct synaptics_dsx_func_patch ps_on[MAX_NUM_STATES] = {
-	{
-		.func = 1,
-		.regstr = 0,
-		.subpkt = 0,
-		.size = 1,
-		.bitmask = 0x20,
-		.data = &ps_data[0],
-	},
-	{
-		.func = 1,
-		.regstr = 0,
-		.subpkt = 0,
-		.size = 1,
-		.bitmask = 0x20,
-		.data = &ps_data[0],
-	},
-};
-static struct synaptics_dsx_func_patch ps_set = {
-	.func = 1,
-	.regstr = 0,
-	.subpkt = 0,
-	.size = 1,
-	.bitmask = 0x20,
-	.data = &ps_data[0],
-};
-static struct synaptics_dsx_func_patch ps_clear = {
-	.func = 1,
-	.regstr = 0,
-	.subpkt = 0,
-	.size = 1,
-	.bitmask = 0x20,
-	.data = &ps_data[1],
-};
 static int ps_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val)
 {
 	val->intval = 0;
 	return 0;
 }
-static struct synaptics_dsx_patch ps_patch[] = {
-	{
-		.name = "ps_clear",
-		.cfg_num = 1,
-	},
-	{
-		.name = "ps_set",
-		.cfg_num = 1,
-	},
-};
 
 static void ps_external_power_changed(struct power_supply *psy)
 {
@@ -6097,7 +6605,8 @@ static void ps_external_power_changed(struct power_supply *psy)
 	struct synaptics_rmi4_data *rmi4_data = container_of(psy,
 				struct synaptics_rmi4_data, psy);
 	struct device *dev = &rmi4_data->i2c_client->dev;
-	int state;
+	struct config_modifier *cm;
+	int is_plugged, state;
 
 	if (!usb_psy || !usb_psy->get_property)
 		return;
@@ -6105,44 +6614,44 @@ static void ps_external_power_changed(struct power_supply *psy)
 	usb_psy->get_property(usb_psy, POWER_SUPPLY_PROP_PRESENT, &pval);
 	dev_dbg(dev, "external_power_changed: %d\n", pval.intval);
 
-	if (ps_usb_present != (pval.intval == 1)) {
-		int i, index = !!pval.intval;
+	if (ps_usb_present == (pval.intval == 1)) {
+		ps_usb_present = pval.intval == 1;
+		return;
+	}
 
-		/* charging patch has to be added into */
-		/* both patch sets: active and suspend */
-		for (i = 0; i < MAX_NUM_STATES; i++)
-			synaptics_dsx_modify_patch(
-				rmi4_data->default_mode->patch_data[i],
-				&ps_on[i], index == 0);
-
-		state = synaptics_dsx_get_state_safe(rmi4_data);
-		dev_info(dev, "power supply presence %d in state %d\n",
-			pval.intval, state);
-
-		if (state == STATE_ACTIVE) {
-			/* reset touch ic on charging source removal */
-			/* to kick it off FNM mode */
-			if (index == 0) {
-				int retval;
-				/* set unknown state to ensure IRQ gets */
-				/* enabled on state transition to active */
-				synaptics_dsx_sensor_state(
-						rmi4_data, STATE_UNKNOWN);
-				/* disable IRQ to handle reset */
-				synaptics_rmi4_irq_enable(rmi4_data, false);
-				/* perform SW reset to restore defaults */
-				retval = synaptics_dsx_ic_reset(
-						rmi4_data, RMI4_SW_RESET);
-				if (retval < 0)
-					dev_err(&rmi4_data->i2c_client->dev,
-						"folio: sw reset failed %d\n",
-						retval);
-				synaptics_dsx_sensor_ready_state(
-							rmi4_data, false);
-			} else /* on insertion only apply charging bit */
-				synaptics_dsx_patch_func(rmi4_data,
-					SYNAPTICS_RMI4_F01, &ps_patch[index]);
+	is_plugged = !!pval.intval;
+	down(&rmi4_data->modifiers.list_sema);
+	list_for_each_entry(cm, &rmi4_data->modifiers.mod_head, link) {
+		if (cm->id == SYNA_MOD_CHARGER) {
+			cm->effective = is_plugged;
+			break;
 		}
+	}
+	up(&rmi4_data->modifiers.list_sema);
+	/* in case there is no patch required */
+	if (!cm)
+		return;
+	state = synaptics_dsx_get_state_safe(rmi4_data);
+	dev_info(dev, "power supply presence %d in state %d\n",
+			is_plugged, state);
+	/* reset touch ic on power supply presence change */
+	if (state == STATE_ACTIVE) {
+		/* set unknown state to ensure IRQ gets */
+		/* enabled on state transition to active */
+		synaptics_dsx_sensor_state(rmi4_data, STATE_UNKNOWN);
+		/* disable IRQ to handle reset */
+		synaptics_rmi4_irq_enable(rmi4_data, false);
+		if (!is_plugged) {
+			int retval;
+			/* perform SW reset to restore defaults */
+			retval = synaptics_dsx_ic_reset(
+				rmi4_data, RMI4_SW_RESET);
+			if (retval < 0)
+				dev_err(dev, "power supply: sw reset"\
+					" failed %d\n", retval);
+		}
+		synaptics_dsx_sensor_ready_state(rmi4_data, false);
+		/* TODO: just apply a single patch on insertion??? */
 	}
 	ps_usb_present = pval.intval == 1;
 }
@@ -6162,14 +6671,6 @@ static int ps_notifier_register(struct synaptics_rmi4_data *rmi4_data)
 	rmi4_data->psy.num_properties = ARRAY_SIZE(ps_props);
 	rmi4_data->psy.get_property = ps_get_property;
 	rmi4_data->psy.external_power_changed = ps_external_power_changed;
-
-	INIT_LIST_HEAD(&ps_patch[0].cfg_head);
-	sema_init(&ps_patch[0].list_sema, 1);
-	list_add_tail(&ps_clear.link, &ps_patch[0].cfg_head);
-
-	INIT_LIST_HEAD(&ps_patch[1].cfg_head);
-	sema_init(&ps_patch[1].list_sema, 1);
-	list_add_tail(&ps_set.link, &ps_patch[1].cfg_head);
 
 	error = power_supply_register(dev, &rmi4_data->psy);
 	if (error < 0) {
@@ -6327,20 +6828,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	/* assign pointer to client structure right away for further use */
 	rmi4_data->i2c_client = client;
 
-	retval = synaptics_dsx_init_mode(rmi4_data, &rmi4_data->default_mode);
-	if (retval) {
-		dev_err(&client->dev, "%s: Failed to alloc dflt mode mem\n",
-				__func__);
-		return retval;
-	}
-
-	retval = synaptics_dsx_init_mode(rmi4_data, &rmi4_data->alternate_mode);
-	if (retval) {
-		dev_err(&client->dev, "%s: Failed to alloc alt mode mem\n",
-				__func__);
-		return retval;
-	}
-
 	if (client->dev.of_node)
 		platform_data = synaptics_dsx_of_init(client, rmi4_data);
 	else
@@ -6353,8 +6840,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		kfree(rmi4_data);
 		return -EINVAL;
 	}
-
-	rmi4_data->current_mode = rmi4_data->default_mode;
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
@@ -6554,26 +7039,47 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	exp_fn_ctrl.rmi4_data_ptr = rmi4_data;
 	mutex_unlock(&exp_fn_ctrl_mutex);
 
+
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
-	/* register notifier at the end of probe to */
-	/* avoid unnecessary reset in STANDBY state */
-	rmi4_data->folio_notif.notifier_call = folio_notifier_callback;
-	dev_dbg(&client->dev, "registering folio notifier\n");
-	retval = mmi_hall_register_notifier(&rmi4_data->folio_notif,
-				MMI_HALL_FOLIO, true);
-	if (retval) {
-		dev_err(&client->dev,
-			"Error registering folio_notifier: %d\n", retval);
-		/* inability to register folio notifications handler */
-		/* is not fatal, thus reset return value to success */
-		retval = 0;
+	if (rmi4_data->folio_detection_enabled) {
+		/* register notifier at the end of probe to */
+		/* avoid unnecessary reset in STANDBY state */
+		rmi4_data->folio_notif.notifier_call = folio_notifier_callback;
+		dev_dbg(&client->dev, "registering folio notifier\n");
+		retval = mmi_hall_register_notifier(&rmi4_data->folio_notif,
+					MMI_HALL_FOLIO, true);
+		if (retval) {
+			dev_err(&client->dev,
+				"Error registering folio_notifier: %d\n",
+				retval);
+			/* inability to register folio notifications handler */
+			/* is not fatal, thus reset return value to success */
+			retval = 0;
+		}
 	}
 #endif
-
 	synaptics_dsx_sysfs_touchscreen(rmi4_data, true);
 
-	if (rmi4_data->charger_detection)
+	if (rmi4_data->charger_detection_enabled)
 		ps_notifier_register(rmi4_data);
+
+	if (rmi4_data->fps_detection_enabled) {
+		rmi4_data->fps_notif.notifier_call = fps_notifier_callback;
+		dev_dbg(&client->dev, "registering FPS notifier\n");
+		retval = FPS_register_notifier(
+				&rmi4_data->fps_notif, 0xBEEF, false);
+		if (retval) {
+			if (exp_fn_ctrl.det_workqueue)
+				queue_delayed_work(exp_fn_ctrl.det_workqueue,
+					&exp_fn_ctrl.det_work,
+					msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+			dev_err(&client->dev,
+				"Failed to register fps_notifier: %d\n",
+				retval);
+			retval = 0;
+		} else
+			rmi4_data->is_fps_registered = true;
+	}
 
 	return retval;
 
@@ -6615,7 +7121,6 @@ err_free_gpio:
 	gpio_set_value(platform_data->reset_gpio, 0);
 	gpio_free(platform_data->reset_gpio);
 err_input_device:
-	synaptics_dsx_free_modes(rmi4_data);
 	kfree(rmi4_data);
 
 	return retval;
@@ -6678,11 +7183,43 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 
 	synaptics_dsx_sysfs_touchscreen(rmi4_data, false);
 	synaptics_rmi4_cleanup(rmi4_data);
-	synaptics_dsx_free_modes(rmi4_data);
-	if (rmi4_data->charger_detection)
-		ps_notifier_unregister(rmi4_data);
-	kfree(rmi4_data);
 
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+	if (rmi4_data->folio_detection_enabled)
+		mmi_hall_unregister_notifier(rmi4_data);
+#endif
+	if (rmi4_data->charger_detection_enabled)
+		ps_notifier_unregister(rmi4_data);
+	if (rmi4_data->is_fps_registered)
+		FPS_unregister_notifier(&rmi4_data->fps_notif, 0xBEEF);
+
+	kfree(rmi4_data);
+	return 0;
+}
+
+static int fps_notifier_callback(struct notifier_block *self,
+				 unsigned long event, void *data)
+{
+	int state, fps_state = *(int *)data;
+	struct synaptics_rmi4_data *rmi4_data =
+		container_of(self, struct synaptics_rmi4_data, fps_notif);
+
+	if (rmi4_data && event == 0xBEEF &&
+			rmi4_data && rmi4_data->i2c_client) {
+		state = synaptics_dsx_get_state_safe(rmi4_data);
+		dev_dbg(&rmi4_data->i2c_client->dev,
+			"FPS: %s(%d), suspend flag: %d, BL flag: %d\n",
+			synaptics_dsx_state_name(state), state,
+			atomic_read(&rmi4_data->touch_stopped),
+			rmi4_data->in_bootloader);
+		if (fps_state) {/* on */
+			rmi4_data->clipping_on = true;
+		} else {/* off */
+			rmi4_data->clipping_on = false;
+		}
+		pr_info("FPS: clipping is %s\n",
+			rmi4_data->clipping_on ? "ON" : "OFF");
+	}
 	return 0;
 }
 
@@ -6727,6 +7264,13 @@ static int folio_notifier_callback(struct notifier_block *self,
 
 	if (rmi4_data && event == MMI_HALL_FOLIO &&
 			rmi4_data && rmi4_data->i2c_client) {
+		struct config_modifier *cm =
+				modifier_by_id(rmi4_data, SYNA_MOD_FOLIO);
+		if (!cm) {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"No FOLIO modifier found\n");
+			goto done;
+		}
 
 		state = synaptics_dsx_get_state_safe(rmi4_data);
 		dev_dbg(&rmi4_data->i2c_client->dev,
@@ -6735,12 +7279,13 @@ static int folio_notifier_callback(struct notifier_block *self,
 			atomic_read(&rmi4_data->touch_stopped),
 			rmi4_data->in_bootloader);
 		if (folio_state) {/* close */
+			rmi4_data->clipa = cm->clipa;
 			rmi4_data->clipping_on = true;
-			synaptics_dsx_set_alternate_mode(rmi4_data,
-				rmi4_data->alternate_mode, false, true);
+			cm->effective = true;
 		} else {/* open */
+			rmi4_data->clipa = NULL;
 			rmi4_data->clipping_on = false;
-			synaptics_dsx_restore_default_mode(rmi4_data);
+			cm->effective = false;
 		}
 
 		if (control_access_block_get())
@@ -6754,30 +7299,8 @@ static int folio_notifier_callback(struct notifier_block *self,
 			goto done;
 		}
 
-		if (!rmi4_data->in_bootloader) {
-			if (state == STATE_ACTIVE) {
-				int retval;
-				/* set unknown state to ensure IRQ gets */
-				/* enabled on state transition to active */
-				synaptics_dsx_sensor_state(
-						rmi4_data, STATE_UNKNOWN);
-				/* disable IRQ to handle reset */
-				synaptics_rmi4_irq_enable(rmi4_data, false);
-				/* perform SW reset to restore defaults */
-				retval = synaptics_dsx_ic_reset(
-						rmi4_data, RMI4_SW_RESET);
-				if (retval < 0)
-					dev_err(&rmi4_data->i2c_client->dev,
-						"folio: sw reset failed %d\n",
-						retval);
-				synaptics_dsx_sensor_ready_state(
-							rmi4_data, false);
-			}
-
-			synaptics_dsx_state_config(rmi4_data,
-					(state == STATE_SUSPEND) ?
-					SUSPEND_IDX : ACTIVE_IDX);
-		}
+		if (!rmi4_data->in_bootloader)
+			synaptics_dsx_enforce_modifiers(rmi4_data, cm);
 	}
 done:
 	return 0;
@@ -6970,6 +7493,8 @@ static int synaptics_rmi4_resume(struct device *dev)
 		pr_debug("reset gpio state: %d\n", retval);
 		if (retval == 0)
 			reset = RMI4_WAIT_READY;
+		else	/* if not in reset, IRQ might be enabled */
+			synaptics_rmi4_irq_enable(rmi4_data, false);
 
 		pinctrl = devm_pinctrl_get_select(&rmi4_data->i2c_client->dev,
 			"active");
