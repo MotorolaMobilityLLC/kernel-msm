@@ -244,20 +244,50 @@ struct synaptics_dsx_func_patch {
 	struct list_head link;
 };
 
+struct synaptics_clip_area {
+	unsigned xul_clip, yul_clip, xbr_clip, ybr_clip;
+	unsigned inversion; /* clip inside (when 1) or ouside otherwise */
+};
+
+enum {
+	SYNA_MOD_AOD,
+	SYNA_MOD_STATS,
+	SYNA_MOD_FOLIO,
+	SYNA_MOD_CHARGER,
+	SYNA_MOD_WAKEUP,
+	SYNA_MOD_FPS,
+	SYNA_MOD_QUERY,	/* run time query; active only */
+	SYNA_MOD_RT,	/* run time patch; active only; always effective */
+	SYNA_MOD_MAX
+};
+
+#define FLAG_FORCE_UPDATE	1
+#define FLAG_WAKEABLE		2
+#define FLAG_POWER_SLEEP	4
+
 struct synaptics_dsx_patch {
 	const char *name;
 	int	cfg_num;
+	unsigned int flags;
 	struct semaphore list_sema;
 	struct list_head cfg_head;
 };
 
-#define ACTIVE_IDX	0
-#define SUSPEND_IDX	1
-#define MAX_NUM_STATES	2
+struct config_modifier {
+	const char *name;
+	int id;
+	bool effective;
+	struct synaptics_dsx_patch *active;
+	struct synaptics_dsx_patch *suspended;
+	struct synaptics_clip_area *clipa;
+	struct list_head link;
+};
 
-struct synaptics_dsx_patchset {
-	int	patch_num;
-	struct synaptics_dsx_patch *patch_data[MAX_NUM_STATES];
+struct synaptics_dsx_modifiers {
+	int	mods_num;
+	struct semaphore list_sema;
+	struct list_head mod_head;
+
 };
 
 struct f34_properties {
@@ -426,10 +456,6 @@ struct synaptics_rmi4_func_packet_regs {
 	struct synaptics_rmi4_packet_reg *regs;
 };
 
-struct synaptics_clip_area {
-	unsigned xul_clip, yul_clip, xbr_clip, ybr_clip;
-};
-
 /*
  * struct synaptics_rmi4_data - rmi4 device instance data
  * @i2c_client: pointer to associated i2c client
@@ -483,9 +509,6 @@ struct synaptics_rmi4_data {
 #elif defined(CONFIG_FB)
 	struct notifier_block panel_nb;
 #endif
-#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
-	struct notifier_block folio_notif;
-#endif
 	atomic_t panel_off_flag;
 	unsigned char current_page;
 	unsigned char button_0d_enabled;
@@ -512,8 +535,6 @@ struct synaptics_rmi4_data {
 	bool fingers_on_2d;
 	bool input_registered;
 	bool in_bootloader;
-	bool purge_enabled;
-	bool charger_detection;
 	wait_queue_head_t wait;
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);
@@ -530,23 +551,31 @@ struct synaptics_rmi4_data {
 	int last_irq;
 	struct synaptics_rmi4_irq_info *irq_info;
 
-	bool mode_is_wakeable;
-	bool mode_is_persistent;
-
+	/* features enablers */
+	bool charger_detection_enabled;
+	bool folio_detection_enabled;
+	bool fps_detection_enabled;
+	bool wakeup_detection_enabled;
 	bool patching_enabled;
-	struct synaptics_dsx_patchset *default_mode;
-	struct synaptics_dsx_patchset *alternate_mode;
-	struct synaptics_dsx_patchset *current_mode;
+	bool purge_enabled;
+
+	bool suspend_is_wakeable;
+	bool clipping_on;
+	struct synaptics_clip_area *clipa;
+	struct synaptics_dsx_modifiers modifiers;
 
 	struct work_struct resume_work;
-
 	struct synaptics_rmi4_func_packet_regs *f12_data_registers_ptr;
 	struct notifier_block rmi_reboot;
 #if defined(USB_CHARGER_DETECTION)
 	struct power_supply psy;
 #endif
-	bool clipping_on;
-	struct synaptics_clip_area *clipa;
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+	struct notifier_block folio_notif;
+#endif
+	bool is_fps_registered;	/* FPS notif registration might be delayed */
+	struct notifier_block fps_notif;
+
 	struct mutex rmi4_exp_init_mutex;
 };
 
@@ -647,6 +676,10 @@ static inline int synaptics_rmi4_reg_write(
 	return rmi4_data->i2c_write(rmi4_data, addr, data, len);
 }
 
+extern int FPS_register_notifier(struct notifier_block *nb,
+				unsigned long stype, bool report);
+extern int FPS_unregister_notifier(struct notifier_block *nb,
+				unsigned long stype);
 
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING)
 int synaptics_rmi4_scan_f54_ctrl_reg_info(
