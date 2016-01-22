@@ -863,5 +863,10 @@ config SENSORS_ISL29044A
 	help
 	 This option enables support for the INTERSIL ISL29044A P/L sensor.
 
+config HALL
+	tristate "HALL Switch"
+	help
+	 If you say yes here, you get support for hall switch control device
+
 endif
 
