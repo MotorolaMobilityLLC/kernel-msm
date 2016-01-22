@@ -847,6 +847,10 @@
 			qcom,fs-curr-ua = <25000>;
 			/delete-property/ qcom,en-ext-pfet-sc-pro;
 		};
+
+		pmi8950_haptic: qcom,haptic@c000 {
+			qcom,vmax-mv = <2400>;
+		};
 	};
 };
 
