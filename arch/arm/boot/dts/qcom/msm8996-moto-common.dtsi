@@ -718,8 +718,8 @@
 		interrupts = <0 1 2>;
 		#interrupt-cells = <1>;
 		interrupt-map-mask = <0xffffffff>;
-		interrupt-map = <0 &intc 0 117 0
-			    1 &intc 0 239 0
+		interrupt-map = <0 &intc 0 0 117 0
+			    1 &intc 0 0 239 0
 			    2 &tlmm 59 0>;
 
 
