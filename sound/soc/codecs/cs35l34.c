@@ -310,7 +310,6 @@ static const struct snd_kcontrol_new cs35l34_snd_controls[] = {
 	SOC_SINGLE_SX_TLV("Digital Volume", CS35L34_AMP_DIG_VOL,
 		0, 0x34, 0x18, dig_vol_tlv),
 	SOC_ENUM("AMP Gain", amp_gain),
-	SOC_SINGLE("Mute Switch", CS35L34_AMP_ANLG_GAIN_CTL, 5, 1, 0),
 };
 
 static const struct snd_soc_dapm_widget cs35l34_dapm_widgets[] = {
@@ -462,33 +461,6 @@ static int cs35l34_pcm_hw_params(struct snd_pcm_substream *substream,
 	return ret;
 }
 
-static int cs35l34_digital_mute(struct snd_soc_dai *codec_dai, int mute)
-{
-	struct snd_soc_codec *codec = codec_dai->codec;
-	struct cs35l34_private *priv = snd_soc_codec_get_drvdata(codec);
-	int ret;
-
-	if (mute == 1) {
-		ret = regmap_update_bits(priv->regmap,
-			CS35L34_AMP_ANLG_GAIN_CTL,
-			AMP_MUTE,
-			AMP_MUTE);
-	} else if (mute == 0) {
-		ret = regmap_update_bits(priv->regmap,
-			CS35L34_AMP_ANLG_GAIN_CTL,
-			AMP_MUTE,
-			0);
-	} else {
-		dev_err(codec->dev, "Invalid mute input %d\n", mute);
-		return -EINVAL;
-	}
-
-	if (ret != 0)
-		dev_err(codec->dev, "Failed to set mute bit %d\n", ret);
-
-	return ret;
-}
-
 static int cs35l34_set_tristate(struct snd_soc_dai *dai, int tristate)
 {
 
@@ -552,7 +524,6 @@ static const struct snd_soc_dai_ops cs35l34_ops = {
 	.set_fmt = cs35l34_set_dai_fmt,
 	.hw_params = cs35l34_pcm_hw_params,
 	.set_sysclk = cs35l34_codec_set_sysclk,
-	.digital_mute = cs35l34_digital_mute,
 };
 
 static struct snd_soc_dai_driver cs35l34_dai = {
