@@ -75,21 +75,6 @@
 		mmi,wake-deassert-seq = <6 1 0>;
 	};
 };
-<<<<<<< HEAD
-||||||| parent of ec74b61... IKSWM-18121: arm/dts: 8996: move HMDI HPD to GPIO79 (HACK)
-
-&i2c_7 {
-	fusb302@22 {
-		/delete-property/ fsa321-audio-switch;
-	};
-};
-=======
-
-&i2c_7 {
-	fusb302@22 {
-		/delete-property/ fsa321-audio-switch;
-	};
-};
 
 &mdss_hdmi_hpd_active {
 	mux {
@@ -114,4 +99,3 @@
 &mdss_hdmi_tx {
 	qcom,hdmi-tx-hpd = <&tlmm 79 0>;
 };
->>>>>>> ec74b61... IKSWM-18121: arm/dts: 8996: move HMDI HPD to GPIO79 (HACK)
