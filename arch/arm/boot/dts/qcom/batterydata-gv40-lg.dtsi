@@ -1,0 +1,60 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,gv40-lg {
+	/* #2298024_Moto_GV40_3490mAh_averaged_MasterSlave_Jan14th2016*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3490>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3900>;
+	qcom,battery-type = "GV40-LG-3490mah";
+	qcom,chg-rslow-comp-c1 = <3242340>;
+	qcom,chg-rslow-comp-c2 = <4554611>;
+	qcom,chg-rs-to-rslow = <1740375>;
+	qcom,chg-rslow-comp-thr = <0xA5>;
+	qcom,checksum = <0x44E1>;
+	qcom,gui-version = "PMI8996GUI - 1.1.0.0";
+	qcom,fg-profile-data = [
+		 6A 83 54 67
+		 0C 79 E2 6D
+		 57 83 A8 56
+		 AF 80 98 86
+		 2A 82 30 98
+		 DF B4 9A BB
+		 70 17 F7 83
+		 4D 7D 80 81
+		 1E 7C 6A 83
+		 AE 6F 6B 89
+		 91 94 49 82
+		 5F 98 B8 B5
+		 03 C1 58 16
+		 9C 0D 92 53
+		 14 70 8C FB
+		 1B 3E 7B 45
+		 1A 43 00 00
+		 0A 46 30 3A
+		 8D 36 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 95 73 00 72
+		 83 62 3D 83
+		 40 75 B9 63
+		 A7 63 BB 79
+		 F9 6E 1C 59
+		 7F 68 49 AA
+		 23 33 6A 08
+		 6C A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
