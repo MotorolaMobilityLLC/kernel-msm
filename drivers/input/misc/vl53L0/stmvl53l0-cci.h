@@ -51,6 +51,9 @@ struct cci_data {
 	char subdev_initialized;
 	uint32_t subdev_id;
 	uint8_t power_up;
+	uint32_t lowv;
+	uint32_t highv;
+	uint32_t xtalk;
 	struct msm_camera_gpio_conf gconf;
 	struct msm_pinctrl_info pinctrl_info;
 };
