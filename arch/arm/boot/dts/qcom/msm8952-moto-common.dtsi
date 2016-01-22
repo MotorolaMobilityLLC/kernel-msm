@@ -598,6 +598,10 @@
 		};
 	};
 
+	msm-efuse {
+		compatible = "qcom,msm-efuse";
+	};
+
 	sound {
 		compatible = "qcom,msm8952-audio-codec";
 		qcom,model = "msm8952-cs35l34-snd-card";
