@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/swap.h>
 #include <linux/firmware.h>
+#include <linux/reboot.h>
 
 /**
  * struct mmc_ffu_pages - pages allocated by 'alloc_pages()'.
@@ -397,6 +398,25 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 	}
 
 	mmc_claim_host(card->host);
+	mmc_rpm_hold(card->host, &card->dev);
+
+	if (mmc_card_cmdq(card)) {
+		/* halt cmdq engine */
+		err = mmc_cmdq_halt_on_empty_queue(card->host);
+		if (err) {
+			pr_err("fail to halt cmdq on host side err=%d\n", err);
+			goto exit;
+		}
+		/* disable cmdq mode */
+		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+			EXT_CSD_CMDQ, 0,
+			card->ext_csd.generic_cmd6_time);
+		if (err) {
+			pr_err("fail to disable cmdq mode in card=%d\n", err);
+			goto exit;
+		}
+	}
+
 
 	/* trigger flushing*/
 	err = mmc_flush_cache(card);
@@ -487,8 +507,17 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 		}
 	}
 
+	if (mmc_card_cmdq(card)) {
+		/* Do a power cycle after FW is updated
+		   //TODO: find a more grace way to avoid power cycle.
+		*/
+		pr_info("eMMC firmware updated, reboot now\n");
+		kernel_restart(NULL);
+	}
+
 exit:
 	mmc_release_host(card->host);
+	mmc_rpm_release(card->host, &card->dev);
 
 	release_firmware(fw);
 	return err;
