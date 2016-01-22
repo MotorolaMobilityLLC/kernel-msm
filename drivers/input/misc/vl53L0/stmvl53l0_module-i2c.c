@@ -79,7 +79,30 @@ static int stmvl53l0_parse_vdd(struct device *dev, struct i2c_data *data)
 
 	return ret;
 }
+int get_dt_xtalk_data(struct device_node *of_node, int *xtalk)
+{
+	int rc = 0;
+	uint32_t count = 0;
+	uint32_t v_array[1];
 
+	count = of_property_count_strings(of_node, "st,xtalkval");
+
+	if (!count)
+		return 0;
+
+	rc = of_property_read_u32_array(of_node, "st,xtalkval",
+		v_array, 1);
+
+	if (rc != -EINVAL) {
+		if (rc < 0)
+			pr_err("%s failed %d\n", __func__, __LINE__);
+		else
+			*xtalk = v_array[0];
+	} else
+		rc = 0;
+
+	return rc;
+}
 int get_dt_threshold_data(struct device_node *of_node, int *lowv, int *highv)
 {
 	int rc = 0;
@@ -171,6 +194,8 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct i2c_data *data)
 		}
 		rc = get_dt_threshold_data(of_node,
 			&(data->lowv), &(data->highv));
+		rc = get_dt_xtalk_data(of_node,
+			&(data->xtalk));
 	}
 	vl53l0_dbgmsg("End rc =%d\n", rc);
 
