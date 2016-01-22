@@ -1,5 +1,5 @@
 /*******************************************************************************
-Copyright © 2015, STMicroelectronics International N.V.
+Copyright © 2016, STMicroelectronics International N.V.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27,13 +27,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
 /**
- * Device specific defines. To be adapted by implementer for the targeted device.
+ * Device specific defines. To be adapted by implementer for the targeted
+ * device.
  */
 
 #ifndef _VL53L010_DEVICE_H_
 #define _VL53L010_DEVICE_H_
 
 #include "vl53l0_types.h"
+
+/** @defgroup VL53L010_SpecDefines_group VL53L010 cut1.0 Device Specific Defines
+ *  @brief VL53L010 cut1.0 Device Specific Defines
+ *  @{
+ */
 
 
 /** @defgroup VL53L010_DeviceError_group Device Error
@@ -42,7 +48,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *  This enum is Device specific it should be updated in the implementation
  *  Use @a VL53L010_GetStatusErrorString() to get the string.
  *  It is related to Status Register of the Device.
- *  @ingroup regdef
  *  @{
  */
 typedef uint8_t VL53L010_DeviceError;
@@ -64,14 +69,13 @@ typedef uint8_t VL53L010_DeviceError;
 #define VL53L010_DEVICEERROR_FINALSNRLIMIT ((VL53L010_DeviceError)   14)
 #define VL53L010_DEVICEERROR_NOTARGETIGNORE ((VL53L010_DeviceError)   15)
 
-/** @} */ /* end of VL53L010_DeviceError_group */
+/** @} VL53L010_DeviceError_group */
 
 /** @defgroup VL53L010_CheckEnable_group Check Enable list
  *  @brief Check Enable code
  *
  *  Define used to specify the LimitCheckId.
  *  Use @a VL53L010_GetLimitCheckInfo() to get the string.
- *  @ingroup regdef
  *  @{
  */
 
@@ -79,12 +83,11 @@ typedef uint8_t VL53L010_DeviceError;
 #define VL53L010_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE     1
 #define VL53L010_CHECKENABLE_NUMBER_OF_CHECKS            2
 
-/** @} */ /* end of VL53L010_CheckEnable_group */
+/** @} VL53L010_CheckEnable_group */
 
 
 /** @defgroup VL53L010_GpioFunctionality_group Gpio Functionality
  *  @brief Defines the different functionalities for the device GPIO(s)
- *  @ingroup regdef
  *  @{
  */
 typedef uint8_t VL53L010_GpioFunctionality;
@@ -95,7 +98,7 @@ typedef uint8_t VL53L010_GpioFunctionality;
 #define VL53L010_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_OUT       ((VL53L010_GpioFunctionality)  3) /*!< Out Of Window (value < thresh_low OR value > thresh_high)  */
 #define VL53L010_GPIOFUNCTIONALITY_NEW_MEASURE_READY           ((VL53L010_GpioFunctionality)  4) /*!< New Sample Ready  */
 
-/** @} */ /* end of VL53L010_GpioFunctionality_group */
+/** @} VL53L010_GpioFunctionality_group */
 
 
 
@@ -103,7 +106,6 @@ typedef uint8_t VL53L010_GpioFunctionality;
 
 /** @defgroup VL53L010_DefineRegisters_group Define Registers
  *  @brief List of all the defined registers
- *  @ingroup regdef
  *  @{
  */
 #define VL53L010_REG_SYSRANGE_START                        0x000
@@ -217,7 +219,10 @@ typedef uint8_t VL53L010_GpioFunctionality;
 #define VL53L010_SPEED_OF_LIGHT_IN_AIR 2997
 
 
-/** @} */ /* end of VL53L010_DefineRegisters_group */
+/** @} VL53L010_DefineRegisters_group */
+
+/** @} VL53L010_SpecDefines_group */
+
 
 #endif
 
