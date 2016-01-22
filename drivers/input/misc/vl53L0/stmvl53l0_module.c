@@ -61,6 +61,7 @@ static char *devname = "laser";
 
 static struct stmvl53l0_data *gp_vl53l0_data;
 
+
 static struct stmvl53l0_module_fn_t stmvl53l0_module_func_tbl_cci = {
 	.init = stmvl53l0_init_cci,
 	.deinit = stmvl53l0_exit_cci,
@@ -89,10 +90,14 @@ struct stmvl53l0_api_fn_t {
 		VL53L0_DeviceInfo_t *pVL53L0_DeviceInfo);
 	VL53L0_Error(*GetDeviceErrorStatus)(VL53L0_DEV Dev,
 		VL53L0_DeviceError * pDeviceErrorStatus);
+	int8_t (*GetRangeStatusString)(uint8_t RangeStatus,
+				char *pRangeStatusString);
 	VL53L0_Error(*GetDeviceErrorString)(VL53L0_DeviceError ErrorCode,
 		char *pDeviceErrorString);
 	VL53L0_Error(*GetPalErrorString)(VL53L0_Error PalErrorCode,
 		char *pPalErrorString);
+	int8_t (*GetPalStateString)(VL53L0_State PalStateCode,
+				char *pPalStateString);
 	VL53L0_Error(*GetPalState)(VL53L0_DEV Dev, VL53L0_State * pPalState);
 	VL53L0_Error(*SetPowerMode)(VL53L0_DEV Dev,
 		VL53L0_PowerModes PowerMode);
@@ -102,6 +107,10 @@ struct stmvl53l0_api_fn_t {
 		int32_t OffsetCalibrationDataMicroMeter);
 	VL53L0_Error(*GetOffsetCalibrationDataMicroMeter)(VL53L0_DEV Dev,
 		int32_t *pOffsetCalibrationDataMicroMeter);
+	int8_t (*SetLinearityCorrectiveGain)(VL53L0_DEV Dev,
+				int16_t LinearityCorrectiveGain);
+	int8_t (*GetLinearityCorrectiveGain)(VL53L0_DEV Dev,
+				uint16_t *pLinearityCorrectiveGain);
 	VL53L0_Error(*SetGroupParamHold)(VL53L0_DEV Dev,
 		uint8_t GroupParamHold);
 	VL53L0_Error(*GetUpperLimitMilliMeter)(VL53L0_DEV Dev,
@@ -113,7 +122,7 @@ struct stmvl53l0_api_fn_t {
 		uint8_t *pTuningSettingBuffer,
 		uint8_t UseInternalTuningSettings);
 	VL53L0_Error(*GetTuningSettingBuffer)(VL53L0_DEV Dev,
-		uint8_t *pTuningSettingBuffer,
+		uint8_t **pTuningSettingBuffer,
 		uint8_t *pUseInternalTuningSettings);
 	VL53L0_Error(*StaticInit)(VL53L0_DEV Dev);
 	VL53L0_Error(*WaitDeviceBooted)(VL53L0_DEV Dev);
@@ -157,8 +166,7 @@ struct stmvl53l0_api_fn_t {
 		FixPoint1616_t *pTimeOutMilliSecs);
 	VL53L0_Error(*GetNumberOfSequenceSteps)(VL53L0_DEV Dev,
 		uint8_t *pNumberOfSequenceSteps);
-	VL53L0_Error(*GetSequenceStepsInfo)(VL53L0_DEV Dev,
-		VL53L0_SequenceStepId SequenceStepId,
+	VL53L0_Error(*GetSequenceStepsInfo)(VL53L0_SequenceStepId SequenceStepId,
 		char *pSequenceStepsString);
 	VL53L0_Error(*SetInterMeasurementPeriodMilliSeconds)(
 		VL53L0_DEV Dev,
@@ -198,7 +206,8 @@ struct stmvl53l0_api_fn_t {
 	VL53L0_Error(*GetWrapAroundCheckEnable)(VL53L0_DEV Dev,
 		uint8_t *pWrapAroundCheckEnable);
 	VL53L0_Error(*PerformSingleMeasurement)(VL53L0_DEV Dev);
-	VL53L0_Error(*PerformRefCalibration)(VL53L0_DEV Dev);
+	VL53L0_Error(*PerformRefCalibration)(VL53L0_DEV Dev,
+					uint8_t *pVhvSettings, uint8_t *pPhaseCal);
 	VL53L0_Error(*PerformXTalkCalibration)(VL53L0_DEV Dev,
 		FixPoint1616_t XTalkCalDistance,
 		FixPoint1616_t *pXTalkCompensationRateMegaCps);
@@ -257,7 +266,8 @@ struct stmvl53l0_api_fn_t {
 		uint16_t SpadAmbientDamperFactor);
 	VL53L0_Error(*GetSpadAmbientDamperFactor)(VL53L0_DEV Dev,
 		uint16_t *pSpadAmbientDamperFactor);
-	VL53L0_Error(*PerformRefSpadManagement)(VL53L0_DEV Dev);
+	VL53L0_Error(*PerformRefSpadManagement)(VL53L0_DEV Dev,
+				uint32_t *refSpadCount, uint8_t *isApertureSpads);
 };
 
 static struct stmvl53l0_api_fn_t stmvl53l0_api_func_tbl = {
@@ -266,6 +276,7 @@ static struct stmvl53l0_api_fn_t stmvl53l0_api_func_tbl = {
 	.GetProductRevision = VL53L0_GetProductRevision,
 	.GetDeviceInfo = VL53L0_GetDeviceInfo,
 	.GetDeviceErrorStatus = VL53L0_GetDeviceErrorStatus,
+	.GetRangeStatusString = VL53L0_GetRangeStatusString,
 	.GetDeviceErrorString = VL53L0_GetDeviceErrorString,
 	.GetPalErrorString = VL53L0_GetPalErrorString,
 	.GetPalState = VL53L0_GetPalState,
@@ -273,6 +284,10 @@ static struct stmvl53l0_api_fn_t stmvl53l0_api_func_tbl = {
 	.GetPowerMode = VL53L0_GetPowerMode,
 	.SetOffsetCalibrationDataMicroMeter =
 	VL53L0_SetOffsetCalibrationDataMicroMeter,
+	.SetLinearityCorrectiveGain =
+		VL53L0_SetLinearityCorrectiveGain,
+	.GetLinearityCorrectiveGain =
+		VL53L0_GetLinearityCorrectiveGain,
 	.GetOffsetCalibrationDataMicroMeter =
 	VL53L0_GetOffsetCalibrationDataMicroMeter,
 	.SetGroupParamHold = VL53L0_SetGroupParamHold,
@@ -384,6 +399,10 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 			VL53L0_SetOffsetCalibrationDataMicroMeter;
 		papi_func_tbl->GetOffsetCalibrationDataMicroMeter =
 			VL53L0_GetOffsetCalibrationDataMicroMeter;
+		papi_func_tbl->SetLinearityCorrectiveGain =
+			VL53L0_SetLinearityCorrectiveGain;
+		papi_func_tbl->GetLinearityCorrectiveGain =
+			VL53L0_GetLinearityCorrectiveGain;
 		papi_func_tbl->SetGroupParamHold = VL53L0_SetGroupParamHold;
 		papi_func_tbl->GetUpperLimitMilliMeter =
 			VL53L0_GetUpperLimitMilliMeter;
@@ -496,6 +515,7 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 
 	} else if (revision == 0) {
 		/*cut 1.0*/
+		vl53l0_errmsg("to setup API cut 1.0\n");
 		papi_func_tbl->GetVersion = VL53L010_GetVersion;
 		papi_func_tbl->GetPalSpecVersion = VL53L010_GetPalSpecVersion;
 		papi_func_tbl->GetDeviceInfo = VL53L010_GetDeviceInfo;
@@ -573,8 +593,6 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 			VL53L010_GetWrapAroundCheckEnable;
 		papi_func_tbl->PerformSingleMeasurement =
 			VL53L010_PerformSingleMeasurement;
-		papi_func_tbl->PerformRefCalibration =
-			VL53L010_PerformRefCalibration;
 		papi_func_tbl->PerformXTalkCalibration =
 			VL53L010_PerformXTalkCalibration;
 		papi_func_tbl->PerformOffsetCalibration =
@@ -626,8 +644,8 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
  * IOCTL definitions
  */
 #define VL53L0_IOCTL_INIT			_IO('p', 0x01)
-#define VL53L0_IOCTL_XTALKCALB		_IO('p', 0x02)
-#define VL53L0_IOCTL_OFFCALB		_IO('p', 0x03)
+#define VL53L0_IOCTL_XTALKCALB		_IOW('p', 0x02, unsigned int)
+#define VL53L0_IOCTL_OFFCALB		_IOW('p', 0x03, unsigned int)
 #define VL53L0_IOCTL_STOPCALB		_IO('p', 0x04)
 #define VL53L0_IOCTL_STOP			_IO('p', 0x05)
 #define VL53L0_IOCTL_SETXTALK		_IOW('p', 0x06, unsigned int)
@@ -695,11 +713,12 @@ static void stmvl53l0_ps_read_measurement(struct stmvl53l0_data *data)
 
 	if (data->enableDebug)
 		vl53l0_errmsg("range:%d, signalRateRtnMegaCps:%d, \
-				error:0x%x,rtnambrate:%u,measuretime:%u\n",
+				error:0x%x,rtnambrate:%u,DMax:%d,measuretime:%u\n",
 				data->rangeData.RangeMilliMeter,
 				data->rangeData.SignalRateRtnMegaCps,
 				data->rangeData.RangeStatus,
 				data->rangeData.AmbientRateRtnMegaCps,
+				data->rangeData.RangeDMaxMilliMeter,
 				data->rangeData.MeasurementTimeUsec);
 
 }
@@ -808,19 +827,14 @@ static void stmvl53l0_enter_xtalkcal(struct stmvl53l0_data *data,
 static void stmvl53l0_enter_offsetcal(struct stmvl53l0_data *data,
 	uint8_t from)
 {
+	FixPoint1616_t OffsetMicroMeter;
+
 	mutex_lock(&data->work_mutex);
 	vl53l0_dbgmsg("Enter, stmvl53l0_enter_cal flag:%d\n", from);
-	if (data->enable_ps_sensor == 0)
-		stmvl53l0_start(data);
-
-	papi_func_tbl->SetXTalkCompensationEnable(data, 0);
-	papi_func_tbl->SetOffsetCalibrationDataMicroMeter(data, 0);
-	papi_func_tbl->SetGpioConfig(data, 0, 0,
-		VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
-		VL53L0_INTERRUPTPOLARITY_LOW);
-	papi_func_tbl->SetDeviceMode(data,
-		VL53L0_DEVICEMODE_CONTINUOUS_RANGING);
-	papi_func_tbl->StartMeasurement(data);
+	papi_func_tbl->PerformOffsetCalibration(data,
+		(data->offsetCalDistance<<16),
+			&OffsetMicroMeter);
+	pr_err("Offset calibration:%u\n", OffsetMicroMeter);
 	vl53l0_dbgmsg("End\n");
 	mutex_unlock(&data->work_mutex);
 }
@@ -978,11 +992,12 @@ wake_up(&data->range_data_wait);
 
 		if (data->enableDebug)
 			vl53l0_errmsg("range:%d, signalRateRtnMegaCps:%d, \
-				error:0x%x,rtnambrate:%u,measuretime:%u\n",
+				error:0x%x,rtnambrate:%u,Dmax:%d,measuretime:%u\n",
 				data->rangeData.RangeMilliMeter,
 				data->rangeData.SignalRateRtnMegaCps,
 				data->rangeData.RangeStatus,
 				data->rangeData.AmbientRateRtnMegaCps,
+				data->rangeData.RangeDMaxMilliMeter,
 				data->rangeData.MeasurementTimeUsec);
 	} else if (SAR_MODE == data->w_mode) {
 		vl53l0_dbgmsg("SAR_MODE\n");
@@ -1058,7 +1073,7 @@ static void stmvl53l0_work_handler(struct work_struct *work)
 			vl53l0_dev, &InterruptMask);
 
 		vl53l0_dbgmsg(" InterruptMasksssss :%d\n", InterruptMask);
-		if (InterruptMask > 0 && data->interrupt_received == 1) {
+		if (InterruptMask > 0 && InterruptMask <= 4 && data->interrupt_received == 1) {
 			data->interrupt_received = 0;
 			stmvl53l0_state_process();
 		}
@@ -1417,6 +1432,7 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 {
 	int rc = 0;
 	unsigned int xtalkint = 0;
+	unsigned int targetDistance = 0;
 	int8_t offsetint = 0;
 	struct stmvl53l0_data *data = gp_vl53l0_data;
 
@@ -1437,6 +1453,13 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		/* crosstalk calibration */
 	case VL53L0_IOCTL_XTALKCALB:
 		vl53l0_dbgmsg("VL53L0_IOCTL_XTALKCALB\n");
+				data->xtalkCalDistance = 100;
+		if (copy_from_user(&targetDistance, (unsigned int *)p,
+			sizeof(unsigned int))) {
+			vl53l0_errmsg("%d, fail\n", __LINE__);
+			return -EFAULT;
+		}
+		data->xtalkCalDistance = targetDistance;
 		stmvl53l0_work_state(data, XTALKCAL_ON);
 		break;
 		/* set up Xtalk value */
@@ -1452,6 +1475,13 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		/* offset calibration */
 	case VL53L0_IOCTL_OFFCALB:
 		vl53l0_dbgmsg("VL53L0_IOCTL_OFFCALB\n");
+		data->offsetCalDistance = 50;
+		if (copy_from_user(&targetDistance, (unsigned int *)p,
+			sizeof(unsigned int))) {
+			vl53l0_errmsg("%d, fail\n", __LINE__);
+			return -EFAULT;
+		}
+		data->offsetCalDistance = targetDistance;
 		stmvl53l0_work_state(data, OFFSETCAL_ON);
 		break;
 	case VL53L0_IOCTL_STOPCALB:
@@ -1793,6 +1823,7 @@ int stmvl53l0_checkmoduleid(struct stmvl53l0_data *data,
 		return -EIO;
 
 
+
 }
 
 /*
@@ -1805,6 +1836,12 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 	VL53L0_Error Status = VL53L0_ERROR_NONE;
 	VL53L0_DeviceInfo_t DeviceInfo;
 	VL53L0_DEV vl53l0_dev = data;
+	FixPoint1616_t	LimitValue;
+	uint8_t LimitEnable;
+	uint32_t refSpadCount;
+	uint8_t isApertureSpads;
+	uint8_t VhvSettings;
+	uint8_t PhaseCal;
 
 	vl53l0_dbgmsg("Enter\n");
 
@@ -1850,7 +1887,6 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 	if (Status == VL53L0_ERROR_NONE && data->reset) {
 		pr_err("Call of VL53L0_DataInit\n");
 		Status = papi_func_tbl->DataInit(vl53l0_dev);
-		data->reset = 0;
 	}
 
 	if (Status == VL53L0_ERROR_NONE) {
@@ -1860,6 +1896,7 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 			pr_err("Device Name : %s\n", DeviceInfo.Name);
 			pr_err("Device Type : %s\n", DeviceInfo.Type);
 			pr_err("Device ID : %s\n", DeviceInfo.ProductId);
+			pr_err("Product type: %d\n", DeviceInfo.ProductType);
 			pr_err("ProductRevisionMajor : %d\n",
 				DeviceInfo.ProductRevisionMajor);
 			pr_err("ProductRevisionMinor : %d\n",
@@ -1873,12 +1910,68 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 		/* Device Initialization */
 	}
 
+	if (Status == VL53L0_ERROR_NONE && data->reset) {
+		pr_err("Call of VL53L0_PerformRefCalibration\n");
+		Status = papi_func_tbl->PerformRefCalibration(vl53l0_dev,
+				&VhvSettings, &PhaseCal); /* Ref calibration */
+
+	}
+
+	if (Status == VL53L0_ERROR_NONE && data->reset) {
+		pr_err("Call of VL53L0_PerformRefSpadManagement\n");
+		Status = papi_func_tbl->PerformRefSpadManagement(vl53l0_dev,
+				&refSpadCount, &isApertureSpads); /* Ref Spad Management */
+		data->reset = 0;
+	}
 	if (Status == VL53L0_ERROR_NONE) {
 
 		pr_err("Call of papi_func_tbl->SetDeviceMode\n");
 		Status = papi_func_tbl->SetDeviceMode(vl53l0_dev,
 			VL53L0_DEVICEMODE_SINGLE_RANGING);
 		/* Setup in	single ranging mode */
+	}
+	if (Status == VL53L0_ERROR_NONE) {
+		Status = papi_func_tbl->GetLimitCheckValue(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+					&LimitValue);
+		Status = papi_func_tbl->GetLimitCheckEnable(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+					&LimitEnable);
+		pr_err("Get LimitCheckValue SIGMA_FINAL_RANGE as:%d,Enable:%d\n",
+				(LimitValue>>16), LimitEnable);
+	}
+
+	if (Status == VL53L0_ERROR_NONE) {
+		Status = papi_func_tbl->GetLimitCheckValue(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+					&LimitValue);
+		Status = papi_func_tbl->GetLimitCheckEnable(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+					&LimitEnable);
+		pr_err("Get LimitCheckValue SIGNAL_FINAL_RANGE as:%d(Fix1616),Eanble:%d\n",
+				(LimitValue), LimitEnable);
+	}
+
+	if (Status == VL53L0_ERROR_NONE) {
+		Status = papi_func_tbl->GetLimitCheckValue(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGNAL_REF_CLIP,
+					&LimitValue);
+		Status = papi_func_tbl->GetLimitCheckEnable(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGNAL_REF_CLIP,
+					&LimitEnable);
+		pr_err("Get LimitCheckValue SIGNAL_REF_CLIP as:%d(fix1616),Enable:%d\n",
+				(LimitValue), LimitEnable);
+	}
+
+	if (Status == VL53L0_ERROR_NONE) {
+		Status = papi_func_tbl->GetLimitCheckValue(vl53l0_dev,
+					VL53L0_CHECKENABLE_RANGE_IGNORE_THRESHOLD,
+					&LimitValue);
+		Status = papi_func_tbl->GetLimitCheckEnable(vl53l0_dev,
+					VL53L0_CHECKENABLE_RANGE_IGNORE_THRESHOLD,
+					&LimitEnable);
+		pr_err("Get LimitCheckValue RANGE_IGNORE_THRESHOLD as:%d(fix1616),Enable:%d\n",
+				(LimitValue), LimitEnable);
 	}
 
 	if (Status == VL53L0_ERROR_NONE)
@@ -1996,6 +2089,9 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 		/* assign function table */
 		pmodule_func_tbl = &stmvl53l0_module_func_tbl_cci;
 		gpio = data->cci_client_object.gconf.cam_gpio_req_tbl[1].gpio;
+		data->lowv = data->cci_client_object.lowv;
+		data->highv = data->cci_client_object.highv;
+		data->xtalk = data->cci_client_object.xtalk;
 	} else {
 		data->bus_type = I2C_BUS;
 		data->client_object = &(data->i2c_client_object);
@@ -2003,12 +2099,14 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 		gpio = data->i2c_client_object.gconf.cam_gpio_req_tbl[1].gpio;
 		data->lowv = data->i2c_client_object.lowv;
 		data->highv = data->i2c_client_object.highv;
+		data->xtalk = data->i2c_client_object.xtalk;
 	}
 
 	/* init interrupt */
 	gpio_request(gpio, "vl6180_gpio_int");
 	gpio_direction_input(gpio);
 	irq = gpio_to_irq(gpio);
+
 
 	if (irq < 0) {
 		vl53l0_errmsg("%d,filed to map GPIO: %d to interrupt:%d\n",
