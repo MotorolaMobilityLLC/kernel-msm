@@ -1032,13 +1032,6 @@
 	qcom,force-aicl-rerun;
 };
 
-/{
-	mot_batterydata: qcom,battery-data {
-		qcom,batt-id-range-pct = <100>;
-		#include "batterydata-fb55-lg.dtsi"
-	};
-};
-
 &pmi8994_fg {
 	status = "okay";
 	qcom,warm-bat-decidegc = <450>;
@@ -1058,7 +1051,6 @@
 	qcom,fg-max-soc = <100>;
 	qcom,fg-min-soc = <0>;
 	qcom,fg-cc-cv-threshold-mv = <4390>;
-	qcom,battery-data = <&mot_batterydata>;
 };
 
 &pm8994_gpios {

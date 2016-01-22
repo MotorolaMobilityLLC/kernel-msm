@@ -152,7 +152,15 @@
 	qcom,max-psy-name = "bms";
 };
 
+/{
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <100>;
+		#include "batterydata-gv40-lg.dtsi"
+	};
+};
+
 &pmi8994_fg {
 	qcom,bms-psy-name = "msm_bms";
 	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
+	qcom,battery-data = <&mot_batterydata>;
 };
