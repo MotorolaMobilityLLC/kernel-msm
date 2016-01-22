@@ -1,5 +1,5 @@
 /*******************************************************************************
- Copyright © 2015, STMicroelectronics International N.V.
+ Copyright © 2016, STMicroelectronics International N.V.
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -51,7 +51,7 @@ VL53L0_Error VL53L010_load_tuning_settings(VL53L0_DEV Dev)
     VL53L0_Error Status = VL53L0_ERROR_NONE;
     LOG_FUNCTION_START("");
 
-	/* update 17_06_15_v10 */
+	/* update 14_12_15_v11 */
     Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
     Status |= VL53L0_WrByte(Dev, 0x00, 0x00);
     Status |= VL53L0_WrByte(Dev, 0x91, 0x3C);
@@ -91,6 +91,7 @@ VL53L0_Error VL53L010_load_tuning_settings(VL53L0_DEV Dev)
 
     Status |= VL53L0_WrByte(Dev, 0x10, 0x0f);
     Status |= VL53L0_WrByte(Dev, 0x11, 0xff);
+    Status |= VL53L0_WrByte(Dev, 0x40, 0x82);
     Status |= VL53L0_WrByte(Dev, 0x41, 0xff);
     Status |= VL53L0_WrByte(Dev, 0x42, 0x07);
     Status |= VL53L0_WrByte(Dev, 0x43, 0x12);
