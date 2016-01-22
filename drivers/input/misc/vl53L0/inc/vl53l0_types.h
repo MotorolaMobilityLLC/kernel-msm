@@ -1,5 +1,5 @@
 /*******************************************************************************
-Copyright © 2015, STMicroelectronics International N.V.
+Copyright © 2016, STMicroelectronics International N.V.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -26,8 +26,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
-#ifndef VL6180x_TYPES_H_
-#define VL6180x_TYPES_H_
+#ifndef VL53L0_TYPES_H_
+#define VL53L0_TYPES_H_
 
 #include <linux/types.h>
 
@@ -63,6 +63,6 @@ typedef unsigned char uint8_t;
 typedef signed char int8_t;
 
 
-#endif /* _STDINT_H */
+#endif /* VL53L0_TYPES_H_ */
 
 #endif /* VL6180x_TYPES_H_ */
