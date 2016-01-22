@@ -298,17 +298,12 @@ static int cs35l34_main_amp_event(struct snd_soc_dapm_widget *w,
 
 static DECLARE_TLV_DB_SCALE(dig_vol_tlv, -10200, 50, 0);
 
-static const int gain_ranges[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB,
-				0xC, 0xD, 0xE, 0xF};
-
 static const char * const gain_labels[] = {"3dB", "4dB", "5dB", "6dB", "7dB",
 			"8dB", "9dB", "10dB", "11dB", "12dB", "13dB", "14dB",
 			"15dB", "16dB", "17dB", "18dB"};
 
-static const struct soc_enum amp_gain = SOC_VALUE_ENUM_SINGLE(
-				CS35L34_AMP_ANLG_GAIN_CTL,
-				0, 0xF, ARRAY_SIZE(gain_labels),
-				gain_labels, gain_ranges);
+static const SOC_ENUM_SINGLE_DECL(amp_gain, CS35L34_AMP_ANLG_GAIN_CTL, 0,
+	gain_labels);
 
 static const struct snd_kcontrol_new cs35l34_snd_controls[] = {
 	SOC_SINGLE_SX_TLV("Digital Volume", CS35L34_AMP_DIG_VOL,
