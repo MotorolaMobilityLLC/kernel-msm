@@ -76,7 +76,7 @@ int VL53L0_I2CWrite(VL53L0_DEV dev, uint8_t *buff, uint8_t len)
 		struct i2c_msg msg[1];
 		struct i2c_data *i2c_client_obj =
 					(struct i2c_data *)dev->client_object;
-		struct i2c_client *client = i2c_client_obj->client;
+		struct i2c_client *client = (struct i2c_client*)i2c_client_obj->client;
 
 		msg[0].addr = client->addr;
 		msg[0].flags = I2C_M_WR;
@@ -130,7 +130,7 @@ int VL53L0_I2CRead(VL53L0_DEV dev, uint8_t *buff, uint8_t len)
 		struct i2c_msg msg[1];
 		struct i2c_data *i2c_client_obj =
 					(struct i2c_data *)dev->client_object;
-		struct i2c_client *client = i2c_client_obj->client;
+		struct i2c_client *client = (struct i2c_client*) i2c_client_obj->client;
 
 		msg[0].addr = client->addr;
 		msg[0].flags = I2C_M_RD|client->flags;

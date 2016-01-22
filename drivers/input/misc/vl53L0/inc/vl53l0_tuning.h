@@ -1,5 +1,5 @@
 /*******************************************************************************
-Copyright © 2015, STMicroelectronics International N.V.
+Copyright © 2016, STMicroelectronics International N.V.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,7 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*******************************************************************************/
+********************************************************************************/
 /*
  * @file vl53l0_tuning.h
  * $Date: 2015-10-01 16:15:06 +0100 (Thu, 01 Oct 2015) $
@@ -46,7 +46,7 @@ extern "C" {
 
 uint8_t DefaultTuningSettings[] = {
 
-    // update 02/11/2015_v35
+    // update 02/11/2015_v36
     0x01, 0xFF, 0x01,
     0x01, 0x00, 0x00,
 
@@ -65,7 +65,7 @@ uint8_t DefaultTuningSettings[] = {
     0x01, 0x30, 0x20,
 
     0x01, 0xFF, 0x00,
-    0x01, 0x30, 0x64,
+    0x01, 0x30, 0x09, // mja changed from 0x64.
     0x01, 0x54, 0x00,
     0x01, 0x31, 0x04,
     0x01, 0x32, 0x03,
