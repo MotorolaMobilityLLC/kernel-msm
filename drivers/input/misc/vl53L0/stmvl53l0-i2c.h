@@ -35,6 +35,7 @@ struct i2c_data {
 	uint8_t power_up;
 	uint32_t lowv;
 	uint32_t highv;
+	uint32_t xtalk;
 	struct msm_camera_gpio_conf gconf;
 	struct msm_pinctrl_info pinctrl_info;
 };
