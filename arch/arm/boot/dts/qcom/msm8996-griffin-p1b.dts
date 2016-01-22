@@ -76,3 +76,27 @@
 		mmi,wake-deassert-seq = <6 1 0>;
 	};
 };
+
+&mdss_hdmi_hpd_active {
+	mux {
+		pins = "gpio79";
+	};
+
+	config {
+		pins = "gpio79";
+	};
+};
+
+&mdss_hdmi_hpd_suspend {
+	mux {
+		pins = "gpio79";
+	};
+
+	config {
+		pins = "gpio79";
+	};
+};
+
+&mdss_hdmi_tx {
+	qcom,hdmi-tx-hpd = <&tlmm 79 0>;
+};
