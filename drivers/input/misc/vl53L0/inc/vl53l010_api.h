@@ -1,5 +1,5 @@
 /*******************************************************************************
-Copyright © 2015, STMicroelectronics International N.V.
+Copyright © 2016, STMicroelectronics International N.V.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _VL53L010_API_H_
 #define _VL53L010_API_H_
 
+#include "vl53l010_device.h"
 #include "vl53l010_strings.h"
 #include "vl53l0_def.h"
 #include "vl53l0_platform.h"
@@ -57,8 +58,13 @@ extern "C" {
 #endif
 
 
-/** @defgroup VL53L010_general_group VL53L0 General Functions
- *  @brief    General functions and definitions
+/** @defgroup VL53L010_cut10_group VL53L010 cut1.0 Function Definition
+ *  @brief    VL53L010 cut1.0 Function Definition
+ *  @{
+ */
+
+/** @defgroup VL53L010_general_group VL53L010 General Functions
+ *  @brief   VL53L010 General functions and definitions
  *  @{
  */
 
@@ -116,7 +122,7 @@ VL53L010_API VL53L0_Error VL53L010_GetDeviceInfo(VL53L0_DEV Dev,
  * @return  "Other error code"    See ::VL53L0_Error
  */
 VL53L010_API VL53L0_Error VL53L010_GetDeviceErrorStatus(VL53L0_DEV Dev,
-			VL53L0_DeviceError * pDeviceErrorStatus);
+			VL53L010_DeviceError *pDeviceErrorStatus);
 
 /**
  * @brief Human readable error string for a given Error Code
@@ -131,7 +137,7 @@ VL53L010_API VL53L0_Error VL53L010_GetDeviceErrorStatus(VL53L0_DEV Dev,
  * @return  "Other error code"    See ::VL53L0_Error
  */
 VL53L010_API VL53L0_Error VL53L010_GetDeviceErrorString(
-			VL53L0_DeviceError ErrorCode, char *pDeviceErrorString);
+			VL53L010_DeviceError ErrorCode, char *pDeviceErrorString);
 
 
 /**
@@ -161,7 +167,7 @@ VL53L010_API VL53L0_Error VL53L010_GetPalErrorString(VL53L0_Error PalErrorCode,
  * @return  "Other error code"    See ::VL53L0_Error
  */
 VL53L010_API VL53L0_Error VL53L010_GetPalState(VL53L0_DEV Dev,
-			VL53L0_State * pPalState);
+			VL53L0_State *pPalState);
 
 
 /**
@@ -197,7 +203,7 @@ VL53L010_API VL53L0_Error VL53L010_SetPowerMode(VL53L0_DEV Dev,
  * @return  "Other error code"    See ::VL53L0_Error
  */
 VL53L010_API VL53L0_Error VL53L010_GetPowerMode(VL53L0_DEV Dev,
-			VL53L0_PowerModes * pPowerMode);
+			VL53L0_PowerModes *pPowerMode);
 
 
 /**
@@ -270,11 +276,11 @@ VL53L010_API VL53L0_Error VL53L010_SetGroupParamHold(VL53L0_DEV Dev,
 VL53L010_API VL53L0_Error VL53L010_GetUpperLimitMilliMeter(VL53L0_DEV Dev,
 			uint16_t *pUpperLimitMilliMeter);
 
-/** @} VL53L0_general_group */
+/** @} VL53L010_general_group */
 
 
-/** @defgroup VL53L0_init_group VL53L0 Init Functions
- *  @brief    VL53L0 Init Functions
+/** @defgroup VL53L010_init_group VL53L010 Init Functions
+ *  @brief    VL53L010 Init Functions
  *  @{
  */
 
@@ -365,11 +371,11 @@ VL53L010_API VL53L0_Error VL53L010_WaitDeviceBooted(VL53L0_DEV Dev);
  */
 VL53L010_API VL53L0_Error VL53L010_ResetDevice(VL53L0_DEV Dev);
 
-/** @} VL53L0_init_group */
+/** @} VL53L010_init_group */
 
 
-/** @defgroup VL53L0_parameters_group VL53L0 Parameters Functions
- *  @brief    Functions used to prepare and setup the device
+/** @defgroup VL53L010_parameters_group VL53L010 Parameters Functions
+ *  @brief   VL53L010 Functions used to prepare and setup the device
  *  @{
  */
 
@@ -449,7 +455,7 @@ VL53L010_API VL53L0_Error VL53L010_SetDeviceMode(VL53L0_DEV Dev,
  * DeviceMode is not in the supported list
  */
 VL53L010_API VL53L0_Error VL53L010_GetDeviceMode(VL53L0_DEV Dev,
-			VL53L0_DeviceModes * pDeviceMode);
+			VL53L0_DeviceModes *pDeviceMode);
 
 /**
  * @brief  Set a new Histogram mode
@@ -485,7 +491,7 @@ VL53L010_API VL53L0_Error VL53L010_SetHistogramMode(VL53L0_DEV Dev,
  * @return  "Other error code"    See ::VL53L0_Error
  */
 VL53L010_API VL53L0_Error VL53L010_GetHistogramMode(VL53L0_DEV Dev,
-			VL53L0_HistogramModes * pHistogramMode);
+			VL53L0_HistogramModes *pHistogramMode);
 
 /**
  * @brief Set Ranging Timing Budget in microseconds
@@ -577,7 +583,7 @@ VL53L010_API VL53L0_Error VL53L010_GetInterMeasurementPeriodMilliSeconds(
 
 /**
  * @brief Enable/Disable Cross talk compensation feature
- *
+ * 
  * @note This function Access to the device
  *
  * @param   Dev                       Device Handle
@@ -591,7 +597,7 @@ VL53L010_API VL53L0_Error VL53L010_SetXTalkCompensationEnable(
 
 /**
  * @brief Get Cross talk compensation rate
- *
+ * 
  * @note This function Access to the device
  *
  * @param   Dev                        Device Handle
@@ -831,11 +837,11 @@ VL53L010_API VL53L0_Error VL53L010_SetWrapAroundCheckEnable(VL53L0_DEV Dev,
 VL53L010_API VL53L0_Error VL53L010_GetWrapAroundCheckEnable(VL53L0_DEV Dev,
 			uint8_t *pWrapAroundCheckEnable);
 
-/** @} VL53L0_parameters_group */
+/** @} VL53L010_parameters_group */
 
 
-/** @defgroup VL53L0_measurement_group VL53L0 Measurement Functions
- *  @brief    Functions used for the measurements
+/** @defgroup VL53L010_measurement_group VL53L010 Measurement Functions
+ *  @brief   VL53L010 Functions used for the measurements
  *  @{
  */
 
@@ -1156,11 +1162,11 @@ VL53L010_API VL53L0_Error VL53L010_GetMaxNumberOfROIZones(VL53L0_DEV Dev,
 			uint8_t *pMaxNumberOfROIZones);
 
 
-/** @} VL53L0_measurement_group */
+/** @} VL53L010_measurement_group */
 
 
-/** @defgroup VL53L0_interrupt_group VL53L0 Interrupt Functions
- *  @brief    Functions used for interrupt managements
+/** @defgroup VL53L010_interrupt_group VL53L010 Interrupt Functions
+ *  @brief   VL53L010 Functions used for interrupt managements
  *  @{
  */
 
@@ -1221,9 +1227,9 @@ VL53L010_API VL53L0_Error VL53L010_SetGpioConfig(VL53L0_DEV Dev, uint8_t Pin,
  * @return  "Other error code"    See ::VL53L0_Error
  */
 VL53L010_API VL53L0_Error VL53L010_GetGpioConfig(VL53L0_DEV Dev, uint8_t Pin,
-			VL53L0_DeviceModes * pDeviceMode,
-			VL53L0_GpioFunctionality * pFunctionality,
-			VL53L0_InterruptPolarity * pPolarity);
+			VL53L0_DeviceModes *pDeviceMode,
+			VL53L0_GpioFunctionality *pFunctionality,
+			VL53L0_InterruptPolarity *pPolarity);
 
 /**
  * @brief Set low and high Interrupt thresholds for a given mode (ranging, ALS,
@@ -1326,11 +1332,11 @@ VL53L010_API VL53L0_Error VL53L010_EnableInterruptMask(VL53L0_DEV Dev,
 			uint32_t InterruptMask);
 
 
-/** @} VL53L0_interrupt_group */
+/** @} VL53L010_interrupt_group */
 
 
-/** @defgroup VL53L0_SPADfunctions_group VL53L0 SPAD Functions
- *  @brief    Functions used for SPAD managements
+/** @defgroup VL53L010_SPADfunctions_group VL53L010 SPAD Functions
+ *  @brief   VL53L010 Functions used for SPAD managements
  *  @{
  */
 
@@ -1404,7 +1410,9 @@ VL53L010_API VL53L0_Error VL53L010_GetSpadAmbientDamperFactor(VL53L0_DEV Dev,
 				   uint16_t *pSpadAmbientDamperFactor);
 
 
-/** @} VL53L0_SPADfunctions_group */
+/** @} VL53L010_SPADfunctions_group */
+
+/** @} VL53L010_cut10_group */
 
 
 
