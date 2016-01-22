@@ -177,6 +177,11 @@ void nitrous_prepare_uart_tx_locked(struct uart_port *port)
 		return;
 	}
 
+	if (bt_lpm->rfkill_blocked) {
+		pr_err("%s: unexpected Tx when rfkill is blocked\n", __func__);
+		return;
+	}
+
 	hrtimer_cancel(&bt_lpm->tx_lpm_timer);
 	nitrous_wake_device_locked(bt_lpm, true);
 	hrtimer_start(&bt_lpm->tx_lpm_timer, ktime_set(UART_TIMEOUT_SEC, 0),
@@ -200,6 +205,11 @@ static irqreturn_t nitrous_host_wake_isr(int irq, void *dev)
 
 	if (!lpm) {
 		pr_err("%s: missing lpm\n", __func__);
+		return IRQ_HANDLED;
+	}
+
+	if (lpm->rfkill_blocked) {
+		pr_err("%s: unexpected host wake IRQ\n", __func__);
 		return IRQ_HANDLED;
 	}
 
@@ -243,8 +253,8 @@ static int nitrous_lpm_init(struct nitrous_bt_lpm *lpm)
 		goto err_request_irq;
 	}
 
-	wake_lock_init(&lpm->dev_lock, WAKE_LOCK_SUSPEND, "bt_dev_rx_wake");
-	wake_lock_init(&lpm->host_lock, WAKE_LOCK_SUSPEND, "bt_host_tx_wake");
+	wake_lock_init(&lpm->dev_lock, WAKE_LOCK_SUSPEND, "bt_dev_tx_wake");
+	wake_lock_init(&lpm->host_lock, WAKE_LOCK_SUSPEND, "bt_host_rx_wake");
 
 	/* Configure wake peer callback to be called at the onset of Tx. */
 	msm_hs_set_wake_peer(lpm->uart_port, nitrous_prepare_uart_tx_locked);
@@ -520,11 +530,12 @@ static int nitrous_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct nitrous_bt_lpm *lpm = platform_get_drvdata(pdev);
 
-	if (device_may_wakeup(&pdev->dev))
+	if (device_may_wakeup(&pdev->dev) && !lpm->rfkill_blocked) {
 		enable_irq_wake(lpm->irq_host_wake);
 
-	/* Reset flag to capture pending irq before resume */
-	lpm->pending_irq = false;
+		/* Reset flag to capture pending irq before resume */
+		lpm->pending_irq = false;
+	}
 
 	lpm->is_suspended = true;
 
@@ -536,14 +547,15 @@ static int nitrous_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct nitrous_bt_lpm *lpm = platform_get_drvdata(pdev);
 
-	if (device_may_wakeup(&pdev->dev))
+	if (device_may_wakeup(&pdev->dev) && !lpm->rfkill_blocked) {
 		disable_irq_wake(lpm->irq_host_wake);
 
-	/* Handle pending host wake irq. */
-	if (lpm->pending_irq) {
-		pr_info("%s: pending host_wake irq\n", __func__);
-		nitrous_wake_uart(lpm, true);
-		lpm->pending_irq = false;
+		/* Handle pending host wake irq. */
+		if (lpm->pending_irq) {
+			pr_info("%s: pending host_wake irq\n", __func__);
+			nitrous_wake_uart(lpm, true);
+			lpm->pending_irq = false;
+		}
 	}
 
 	lpm->is_suspended = false;
