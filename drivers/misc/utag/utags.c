@@ -56,6 +56,7 @@ enum utag_flag {
 #define UTAG_STATUS_LOADED '0'
 #define UTAG_STATUS_RELOAD '1'
 #define UTAG_STATUS_NOT_READY '2'
+#define UTAG_STATUS_FAILED '3'
 
 struct utag {
 	char name[MAX_UTAG_NAME]; /* UTAG name and type combined */
@@ -132,7 +133,7 @@ struct ctrl {
 	struct utag *attrib;
 };
 
-static void build_utags_directory(struct ctrl *ctrl);
+static int build_utags_directory(struct ctrl *ctrl);
 static void clear_utags_directory(struct ctrl *ctrl);
 
 static int store_utags(struct ctrl *ctrl, struct utag *tags);
@@ -176,6 +177,27 @@ static const struct file_operations delete_fops = {
 	.read = NULL,
 	.write = delete_utag,
 };
+
+/*
+ * check utag name
+ * for special symbols
+ *
+ */
+
+static int no_show_tag(char *name)
+{
+	if (('/' == name[0]) && (0 == name[1])) {
+		pr_err("skipping bl root tag");
+		return 1;
+	}
+
+	if (('.' == name[0]) && (0 == name[1])) {
+		pr_err("skipping . tag");
+		return 1;
+	}
+
+	return 0;
+}
 
 static char *get_dir_name(struct ctrl *ctrl, struct proc_dir_entry *dir)
 {
@@ -221,7 +243,7 @@ static size_t data_size(struct blkdev *cb)
 
 	ctrl->rsize = bytes;
 
-	pr_debug("utag reading %zu bytes\n", bytes);
+	pr_debug("[%s] reading %zu bytes\n", ctrl->dir_name, bytes);
 	return bytes;
 }
 
@@ -1127,7 +1149,7 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 	mutex_lock(&ctrl->access_lock);
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
-		pr_err("load config error\n");
+		pr_err("[%s] load error\n", ctrl->dir_name);
 		goto free_temp_exit;
 	}
 
@@ -1161,10 +1183,10 @@ free_temp_exit:
 	return count;
 }
 
-static void rebuild_utags_directory(struct ctrl *ctrl)
+static int rebuild_utags_directory(struct ctrl *ctrl)
 {
 	clear_utags_directory(ctrl);
-	build_utags_directory(ctrl);
+	return build_utags_directory(ctrl);
 }
 
 /*
@@ -1204,7 +1226,7 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 	mutex_lock(&ctrl->access_lock);
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
-		pr_err("load config error\n");
+		pr_err("[%s] load error\n", ctrl->dir_name);
 		mutex_unlock(&ctrl->access_lock);
 		return count;
 	}
@@ -1321,12 +1343,17 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	if (check_path(expendable, count-1))
 		return -EFAULT;
 
+	if (no_show_tag(expendable)) {
+		pr_err("[%s] reserved name %s\n", ctrl->dir_name, expendable);
+		return -EFAULT;
+	}
+
 	pr_debug("adding [%s] utag\n", expendable);
 
 	mutex_lock(&ctrl->access_lock);
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
-		pr_err("load config error\n");
+		pr_err("[%s] load error\n", ctrl->dir_name);
 		mutex_unlock(&ctrl->access_lock);
 		return -EFAULT;
 	}
@@ -1426,7 +1453,7 @@ static int reload_show(struct seq_file *file, void *v)
 	else
 		seq_printf(file, "%c\n", ctrl->reload);
 
-	pr_debug("%c\n", ctrl->reload);
+	pr_debug("[%s] %c\n", ctrl->dir_name, ctrl->reload);
 	return 0;
 }
 
@@ -1449,7 +1476,7 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 	}
 
 	mutex_lock(&ctrl->access_lock);
-	pr_debug("%c\n", ctrl->reload);
+	pr_debug("[%s] %c\n", ctrl->dir_name, ctrl->reload);
 
 	if (UTAG_STATUS_RELOAD == ctrl->reload) {
 		if (open_utags(&ctrl->main)) {
@@ -1458,7 +1485,8 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 			return -EFAULT;
 		}
 		open_utags(&ctrl->backup);
-		rebuild_utags_directory(ctrl);
+		if (rebuild_utags_directory(ctrl))
+			ctrl->reload = UTAG_STATUS_FAILED;
 	}
 
 	mutex_unlock(&ctrl->access_lock);
@@ -1489,16 +1517,17 @@ static const struct file_operations reload_fops = {
 	.write = reload_write,
 };
 
-static void build_utags_directory(struct ctrl *ctrl)
+static int build_utags_directory(struct ctrl *ctrl)
 {
 	struct proc_dir_entry *parent;
 	struct utag *tags, *cur;
+	int rc = 0;
 
 	/* try to load utags from primary partition */
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
-		pr_err("load config error\n");
-		return;
+		pr_err("[%s] load error\n", ctrl->dir_name);
+		return -EIO;
 	}
 	/* skip utags head */
 	cur = tags->next;
@@ -1509,6 +1538,12 @@ static void build_utags_directory(struct ctrl *ctrl)
 		char path[MAX_UTAG_NAME];
 
 		memset(path, 0, MAX_UTAG_NAME);
+
+		/* hook to skip special tags if we have any*/
+		if (no_show_tag(cur->name)) {
+			cur = cur->next;
+			continue;
+		}
 
 		/* skip utags tail */
 		if (cur->next == NULL)
@@ -1527,8 +1562,10 @@ static void build_utags_directory(struct ctrl *ctrl)
 					/* populate only utag dir */
 					(i == (num_names - 1)) ? true : false,
 					parent);
-			if (IS_ERR(parent))
+			if (IS_ERR(parent)) {
+				rc = -EINVAL;
 				goto stop_building_utags;
+			}
 		}
 
 		cur = cur->next;
@@ -1540,7 +1577,9 @@ stop_building_utags:
 	walk_proc_nodes(ctrl);
 
 	free_tags(tags);
-	ctrl->reload = UTAG_STATUS_LOADED;
+	if (!rc)
+		ctrl->reload = UTAG_STATUS_LOADED;
+	return rc;
 }
 
 #ifdef CONFIG_OF
