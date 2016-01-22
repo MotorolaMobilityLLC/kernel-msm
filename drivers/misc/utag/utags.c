@@ -123,12 +123,12 @@ struct ctrl {
 	struct platform_device *pdev;
 	struct proc_dir_entry *root;
 	char reload;
-	uint32_t key;
 	size_t rsize;
 	struct list_head dir_list;
 	struct list_head node_list;
 	const char *dir_name;
 	uint32_t lock;
+	uint32_t hwtag;
 	struct mutex access_lock;
 	struct utag *attrib;
 };
@@ -144,8 +144,7 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos);
 static ssize_t delete_utag(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos);
-static ssize_t lock_store(struct file *file, const char __user *buffer,
-	   size_t count, loff_t *pos);
+static int add_utag_tail(struct utag *head, char *utag_name, char *utag_type);
 
 static int lock_open(struct inode *inode, struct file *file);
 static int partition_open(struct inode *inode, struct file *file);
@@ -165,12 +164,10 @@ static const struct file_operations new_fops = {
 };
 
 static const struct file_operations lock_fops = {
-	.owner = THIS_MODULE,
 	.open = lock_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
 	.release = single_release,
-	.write = lock_store,
 };
 
 static const struct file_operations delete_fops = {
@@ -199,6 +196,62 @@ static int no_show_tag(char *name)
 	return 0;
 }
 
+/*
+ * Read tags head
+ */
+
+static int read_head(struct blkdev *cb, struct utag *htag)
+{
+	size_t bytes;
+	struct frozen_utag buf;
+
+	if (!htag) {
+		pr_err("[%s] null pointer", cb->name);
+		return -EINVAL;
+	}
+
+	bytes = kernel_read(cb->filep, 0, (void *) &buf, UTAG_MIN_TAG_SIZE);
+	if (UTAG_MIN_TAG_SIZE > bytes) {
+		pr_err("ERR file (%s) read failed ret %zd\n", cb->name, bytes);
+		return -EIO;
+	}
+
+	strlcpy(htag->name, buf.name, MAX_UTAG_NAME - 1);
+	if (strncmp(htag->name, UTAG_HEAD, MAX_UTAG_NAME)) {
+		pr_err("invalid or empty utags partition\n");
+		return -EIO;
+	}
+	htag->flags = ntohl(buf.flags);
+	htag->util = ntohl(buf.util);
+	htag->size = ntohl(buf.size);
+	pr_debug("utag file (%s) flags %#x util %#x size %#x\n",
+		cb->name, htag->flags, htag->util, htag->size);
+	return 0;
+}
+
+/*
+ * Initialize empty tags
+ *
+ */
+static int init_empty(struct ctrl *ctrl)
+{
+	struct utag *htag;
+	int rc;
+
+	pr_err("erasing [%s]\n", ctrl->dir_name);
+	htag = kzalloc(sizeof(struct utag), GFP_KERNEL);
+	if (!htag)
+		return -ENOMEM;
+
+	strlcpy(htag->name, UTAG_HEAD, MAX_UTAG_NAME);
+	add_utag_tail(htag, UTAG_TAIL, NULL);
+	rc = store_utags(ctrl, htag);
+	if (rc)
+		pr_err("error erasing [%s]\n", ctrl->dir_name);
+	kfree(htag);
+	return rc;
+}
+
 static char *get_dir_name(struct ctrl *ctrl, struct proc_dir_entry *dir)
 {
 	struct dir_node *c, *dir_node = NULL;
@@ -219,23 +272,21 @@ static char *get_dir_name(struct ctrl *ctrl, struct proc_dir_entry *dir)
 static size_t data_size(struct blkdev *cb)
 {
 	size_t bytes;
-	struct frozen_utag buf;
+	struct utag htag;
 	struct ctrl *ctrl = container_of(cb, struct ctrl, main);
 
-	bytes = kernel_read(cb->filep, 0, (void *) &buf, UTAG_MIN_TAG_SIZE);
-	if (UTAG_MIN_TAG_SIZE > bytes) {
-		pr_err("ERR file (%s) read failed ret %zd\n", cb->name, bytes);
+	memset(&htag, 0, sizeof(struct utag));
+	if (read_head(cb, &htag))
 		return 0;
-	}
 
-	ctrl->key = ntohl(buf.flags);
-	bytes = ntohl(buf.util);
-	pr_debug("utag file (%s) saved size %zu block size %zu key %#x\n",
-				cb->name, bytes, cb->size, ctrl->key);
+	ctrl->lock = htag.flags & UTAG_FLAG_PROTECTED ? 1 : 0;
+	bytes = htag.util;
+	pr_debug("file (%s) saved %zu block %zu flags %#x ctrl %zu\n",
+		cb->name, bytes, cb->size, htag.flags, ctrl->rsize);
 
 	/* On the first read always load entire partition */
-	if (!strncmp(ctrl->dir_name, HW_ROOT, sizeof(HW_ROOT))) {
-		pr_debug("hw partition block size logic utag\n");
+	if (ctrl->hwtag) {
+		pr_debug("[%s] hwtag sizes\n", ctrl->dir_name);
 		if (!ctrl->rsize || !bytes || bytes > cb->size)
 			bytes = cb->size;
 	} else
@@ -474,6 +525,9 @@ static int add_utag_tail(struct utag *head, char *utag_name, char *utag_type)
 static struct utag *find_first_utag(const struct utag *head, const char *name)
 {
 	struct utag *cur;
+
+	if (!head)
+		return NULL;
 
 	cur = head->next;	/* skip HEAD */
 	while (cur) {
@@ -820,11 +874,15 @@ static struct utag *load_utags(struct blkdev *cb)
 
 	/*
 	 * make sure the block is at least big enough to hold header
-	 * and footer
+	 * and footer, create empty partition for hwtags only
 	 */
 	if (UTAG_MIN_TAG_SIZE * 2 > bytes) {
-		pr_err("invalid tags size %zu\n", bytes);
-		return NULL;
+		pr_err("[%s] invalid tags size %zu\n", ctrl->dir_name, bytes);
+		if (!ctrl->hwtag)
+			return NULL;
+		if (init_empty(ctrl))
+			return NULL;
+		bytes = UTAG_MIN_TAG_SIZE * 2;
 	}
 
 	data = vmalloc(bytes);
@@ -838,20 +896,8 @@ static struct utag *load_utags(struct blkdev *cb)
 	}
 
 	head = thaw_tags(bytes, data);
-	if (!head) { /* initialize empty utags partition */
-		int error;
-		pr_debug("initializing empty utags partition\n");
-
-		head = kzalloc(sizeof(struct utag), GFP_KERNEL);
-		if (!head)
-			goto free_data;
-		strlcpy(head->name, UTAG_HEAD, MAX_UTAG_NAME);
-		add_utag_tail(head, UTAG_TAIL, NULL);
-
-		error = store_utags(ctrl, head);
-		if (error)
-			pr_err("error storing utags partition\n");
-	}
+	if (!head && ctrl->hwtag)
+		init_empty(ctrl);
 
 	/* Save pointer to the root attributes UTAG if present */
 	ctrl->attrib = find_first_utag(head, ".attributes");
@@ -932,7 +978,7 @@ static int check_utag_range(char *tag, struct utag *head, char *data,
 	/* walk the thawed list to find the range */
 	range = find_first_utag(head, rtag);
 	if (!range) {
-		pr_err("full name [%s] no .range\n", rtag);
+		pr_debug("full name [%s] no .range\n", rtag);
 		return 0;
 	}
 
@@ -1153,6 +1199,11 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 		goto free_temp_exit;
 	}
 
+	if (ctrl->lock) {
+		pr_err("[%s] [%s] is locked\n", proc->name, ctrl->dir_name);
+		goto free_tags_exit;
+	}
+
 	/* traverse back all parent directories up to root */
 	error = full_utag_name(proc, utag);
 	if (!error) {
@@ -1160,10 +1211,12 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 		goto free_tags_exit;
 	}
 
-	/* check if this utag has .range child */
-	error = check_utag_range(utag, tags, payload, count);
-	if (error)
-		goto free_tags_exit;
+	/* check if this utag has .range child only for hwtags */
+	if (ctrl->hwtag) {
+		error = check_utag_range(utag, tags, payload, count);
+		if (error)
+			goto free_tags_exit;
+	}
 
 
 	error = replace_first_utag(tags, utag, payload, length);
@@ -1231,6 +1284,11 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 		return count;
 	}
 
+	if (ctrl->lock) {
+		pr_err("[%s] [%s] is locked\n", expendable, ctrl->dir_name);
+		goto just_leave;
+	}
+
 	cur = find_first_utag(tags, expendable);
 	if (!cur) {
 		pr_err("cannot find utag %s\n", expendable);
@@ -1272,39 +1330,27 @@ just_leave:
 
 static int lock_show(struct seq_file *file, void *v)
 {
+	struct utag htag;
 	struct ctrl *ctrl = (struct ctrl *)file->private;
 
-	if (!ctrl)
+	if (!ctrl) {
 		pr_err("no control data set\n");
-	else
-		seq_printf(file, "%u\n", ctrl->lock);
-	return 0;
-}
-
-static ssize_t lock_store(struct file *file, const char __user *buffer,
-	   size_t count, loff_t *pos)
-{
-	struct inode *inode = file->f_dentry->d_inode;
-	struct ctrl *ctrl = PDE_DATA(inode);
-	char tag[MAX_UTAG_NAME];
-
-	if (MAX_UTAG_NAME < count) {
-		pr_err("invalid parameter length %zu\n", count);
 		return -EIO;
 	}
 
-	if (!ctrl || copy_from_user(tag, buffer, count)) {
-		pr_err("no control data set or user copy error\n");
-		return -EFAULT;
+	memset(&htag, 0, sizeof(struct utag));
+	mutex_lock(&ctrl->access_lock);
+
+	if (read_head(&ctrl->main, &htag)) {
+		mutex_unlock(&ctrl->access_lock);
+		return -EIO;
 	}
 
-	if (!strncasecmp(tag, "lock", 4))
-		ctrl->lock = 1;
-	else if (!strncasecmp(tag, "unlock", 6))
-		ctrl->lock = 0;
+	ctrl->lock = htag.flags & UTAG_FLAG_PROTECTED ? 1 : 0;
+	seq_printf(file, "%u\n", ctrl->lock);
+	mutex_unlock(&ctrl->access_lock);
 
-	pr_info("partition %s lock %d\n", ctrl->main.name, ctrl->lock);
-	return count;
+	return 0;
 }
 
 /*
@@ -1356,6 +1402,12 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 		pr_err("[%s] load error\n", ctrl->dir_name);
 		mutex_unlock(&ctrl->access_lock);
 		return -EFAULT;
+	}
+
+	if (ctrl->lock) {
+		pr_err("[%s] [%s] is locked\n", expendable, ctrl->dir_name);
+		ret = -EACCES;
+		goto just_leave;
 	}
 
 	/* Ignore request if utag name already in use */
@@ -1681,6 +1733,9 @@ static int utags_probe(struct platform_device *pdev)
 		pr_err("Failed to create dir entry\n");
 		return -EIO;
 	}
+
+	if (!strncmp(ctrl->dir_name, HW_ROOT, sizeof(HW_ROOT)))
+		ctrl->hwtag = 1;
 
 	/* if we were able to open file descriptor, build utags */
 	if (ctrl->main.filep)
