@@ -188,6 +188,25 @@ enum vmm_ids {
 #define STML0XX_HALL_SOUTH 1
 #define STML0XX_HALL_NORTH 2
 
+/**
+ * struct stml0xx_ioctl_work_struct - struct for deferred ioctl data
+ * @ws base struct
+ * @cmd ioctl number
+ * @data ioctl data
+ * @data_len length of @data
+ * @algo_req_ndx index into @stml0xx_g_algo_requst
+ */
+struct stml0xx_ioctl_work_struct {
+	struct work_struct ws;
+	unsigned int cmd;
+	union {
+		unsigned char bytes[32];
+		unsigned short delay;
+	} data;
+	unsigned char data_len;
+	size_t algo_req_ndx;
+};
+
 struct stml0xx_platform_data {
 	int (*init) (void);
 	void (*exit) (void);
@@ -254,6 +273,7 @@ struct stml0xx_data {
 	struct mutex lock;
 	struct work_struct initialize_work;
 	struct workqueue_struct *irq_work_queue;
+	struct workqueue_struct *ioctl_work_queue;
 	struct wake_lock wakelock;
 	struct wake_lock wake_sensor_wakelock;
 	struct wake_lock reset_wakelock;
