@@ -307,7 +307,7 @@ static const SOC_ENUM_SINGLE_DECL(amp_gain, CS35L34_AMP_ANLG_GAIN_CTL, 0,
 
 static const struct snd_kcontrol_new cs35l34_snd_controls[] = {
 	SOC_SINGLE_SX_TLV("Digital Volume", CS35L34_AMP_DIG_VOL,
-		0, 0x34, 0x18, dig_vol_tlv),
+		0, 0x34, 0xE4, dig_vol_tlv),
 	SOC_ENUM("AMP Gain", amp_gain),
 };
 
