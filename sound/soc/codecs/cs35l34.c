@@ -279,11 +279,17 @@ static int cs35l34_main_amp_event(struct snd_soc_dapm_widget *w,
 			CS35L34_BST_CTL_MASK,
 			0x30);
 		msleep(5);
+		regmap_update_bits(priv->regmap, CS35L34_PROTECT_CTL,
+			AMP_MUTE,
+			0);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		regmap_update_bits(priv->regmap, CS35L34_BST_CVTR_V_CTL,
 			CS35L34_BST_CTL_MASK,
 			0x00);
+		regmap_update_bits(priv->regmap, CS35L34_PROTECT_CTL,
+			AMP_MUTE,
+			AMP_MUTE);
 		msleep(5);
 		break;
 	default:
