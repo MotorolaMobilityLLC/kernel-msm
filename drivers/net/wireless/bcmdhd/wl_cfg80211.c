@@ -8308,8 +8308,8 @@ fail:
 
 #ifdef WL_SCHED_SCAN
 #define PNO_TIME		30
-#define PNO_REPEAT		4
-#define PNO_FREQ_EXPO_MAX	2
+#define PNO_REPEAT		2
+#define PNO_FREQ_EXPO_MAX	4
 static int
 wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
                              struct net_device *dev,
