@@ -17,14 +17,14 @@ maxim,fl40-lg-batterydata {
 	/* Table from Maxim for FL40 LG 3591 mAhr Battery */
 	config		= /bits/ 16 <0x0154>;
 	full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
-	design_cap	= /bits/ 16 <7182>;	/* mAh times 2 */
-	ichgt_term	= /bits/ 16 <0x0489>;	/* battery attribute */
+	design_cap	= /bits/ 16 <3591>;	/* mAh */
+	ichgt_term	= /bits/ 16 <180>;      /* mA */
 	learn_cfg	= /bits/ 16 <0x2607>;	/* app note constant */
 	filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
 	relax_cfg	= /bits/ 16 <0x203B>;
-	fullcap		= /bits/ 16 <7182>;	/* mAh times 2 */
-	fullcapnom	= /bits/ 16 <7182>;	/* mAh times 2 */
-	lavg_empty      = /bits/ 16 <0x1672>;   /* (3591mA/4/0.15625mA) */
+	fullcap		= /bits/ 16 <3591>;	/* mAh */
+	fullcapnom	= /bits/ 16 <3591>;	/* mAh */
+	lavg_empty      = /bits/ 16 <898>;      /* (3591mA/4) */
 	qrtbl00		= /bits/ 16 <0x2081>;	/* battery attribute */
 	qrtbl10		= /bits/ 16 <0x1181>;	/* battery attribute */
 	qrtbl20		= /bits/ 16 <0x0A81>;	/* battery attribute */
