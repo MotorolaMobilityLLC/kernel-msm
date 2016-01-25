@@ -383,14 +383,13 @@ static int nitrous_rfkill_init(struct platform_device *pdev,
 		goto err_rfkill_alloc;
 	}
 
+	/* Make sure rfkill core is initialized to be blocked initially. */
+	rfkill_init_sw_state(lpm->rfkill, true);
 	rc = rfkill_register(lpm->rfkill);
 	if (unlikely(rc))
 		goto err_rfkill_register;
 
-	rfkill_set_states(lpm->rfkill, true, false);
-	/* Set blocked state to false, so the call to
-	   bt_rfkill_set_power can run and set blocked to true */
-	lpm->rfkill_blocked = false;
+	/* Power off chip at startup. */
 	nitrous_rfkill_set_power(lpm, true);
 	return 0;
 
