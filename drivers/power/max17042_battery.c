@@ -115,8 +115,6 @@
 #define START_PROPERTY			"start"
 #define REVISION			"rev"
 
-#define MAX17042_CHRG_CONV_FCTR         500
-
 #define RETRY_COUNT 5
 int retry_sleep_us[RETRY_COUNT] = {
 	100, 200, 300, 400, 500
@@ -156,7 +154,12 @@ struct max17042_chip {
 	char fg_report_str[FUEL_GAUGE_REPORT_SIZE];
 	bool fullcap_report_sent;
 	int last_fullcap;
+	int fctr_uah_bit;
 };
+
+#define CHRG_CONV_WR(fctr, val) ((val * 1000) / fctr)
+#define CURR_CONV(r_sns, val) ((val * 1562500) / r_sns)
+#define CURR_CONV_WR(r_sns, val) ((val * r_sns) / 1562)
 
 static irqreturn_t max17042_thread_handler(int id, void *dev);
 
@@ -271,12 +274,12 @@ int max17042_read_charge_counter(struct max17042_chip *chip, int ql)
 				break;
 		}
 		if (uah == uah_old)
-			uah = uah * MAX17042_CHRG_CONV_FCTR +
-				((uahl * MAX17042_CHRG_CONV_FCTR) >> 16);
+			uah = uah * chip->fctr_uah_bit +
+				((uahl * chip->fctr_uah_bit) >> 16);
 		else
 			uah = -ETIMEDOUT;
 	} else
-		uah = uah * MAX17042_CHRG_CONV_FCTR;
+		uah = uah * chip->fctr_uah_bit;
 	return uah;
 }
 
@@ -383,6 +386,7 @@ static int max17042_get_property(struct power_supply *psy,
 	struct regmap *map = chip->regmap;
 	int ret, cfd_max;
 	u32 data;
+	long int int64val;
 
 	if (!chip->init_complete)
 		return -EAGAIN;
@@ -404,7 +408,7 @@ static int max17042_get_property(struct power_supply *psy,
 			return ret;
 		if (!chip->charge_full_des)
 			return data;
-		val->intval = data * MAX17042_CHRG_CONV_FCTR;
+		val->intval = data * chip->fctr_uah_bit;
 		val->intval *= 100;
 		val->intval /= chip->charge_full_des;
 		break;
@@ -480,7 +484,7 @@ static int max17042_get_property(struct power_supply *psy,
 		if (ret < 0)
 			return ret;
 
-		val->intval = data * 1000 / 2;
+		val->intval = data * chip->fctr_uah_bit;
 
 		if (chip->factory_mode)
 			break;
@@ -488,7 +492,7 @@ static int max17042_get_property(struct power_supply *psy,
 		/* If Full Cap deviates from the range report it once */
 		if (!chip->fullcap_report_sent &&
 		    (val->intval > cfd_max ||
-		     (val->intval * 2) < chip->charge_full_des)) {
+		     val->intval < (chip->charge_full_des / 2))) {
 			snprintf(chip->fg_report_str, FUEL_GAUGE_REPORT_SIZE,
 				MAX_FULL_CAP, val->intval);
 			dropbox_queue_event_text(FUEL_GAUGE_REPORT,
@@ -504,12 +508,12 @@ static int max17042_get_property(struct power_supply *psy,
 			chip->fullcap_report_sent = false;
 		}
 
-		if ((val->intval * 2) < chip->charge_full_des) {
+		if (val->intval < (chip->charge_full_des / 2)) {
 			dev_warn(&chip->client->dev,
 				 "Error fullcap too small! Forcing POR!\n");
 			dev_warn(&chip->client->dev,
-				 "FullCap %d mAhr\n",
-				  val->intval * 2);
+				 "FullCap %d uAhr\n",
+				  val->intval);
 			regmap_write(map, MAX17042_VFSOC0Enable,
 				     MAX17050_FORCE_POR);
 			msleep(MAX17050_POR_WAIT_MS);
@@ -536,14 +540,16 @@ static int max17042_get_property(struct power_supply *psy,
 			if (ret < 0)
 				return ret;
 
-			val->intval = data;
-			if (val->intval & 0x8000) {
+			int64val = data;
+			if (int64val & 0x8000) {
 				/* Negative */
-				val->intval = ~val->intval & 0x7fff;
-				val->intval++;
-				val->intval *= -1;
+				int64val = ~int64val & 0x7fff;
+				int64val++;
+				int64val *= -1;
 			}
-			val->intval *= 1562500 / chip->pdata->r_sns;
+
+			int64val = CURR_CONV(chip->pdata->r_sns, int64val);
+			val->intval = (int) int64val;
 		} else {
 			return -EINVAL;
 		}
@@ -554,14 +560,16 @@ static int max17042_get_property(struct power_supply *psy,
 			if (ret < 0)
 				return ret;
 
-			val->intval = data;
-			if (val->intval & 0x8000) {
+			int64val = data;
+			if (int64val & 0x8000) {
 				/* Negative */
-				val->intval = ~val->intval & 0x7fff;
-				val->intval++;
-				val->intval *= -1;
+				int64val = ~int64val & 0x7fff;
+				int64val++;
+				int64val *= -1;
 			}
-			val->intval *= 1562500 / chip->pdata->r_sns;
+
+			int64val = CURR_CONV(chip->pdata->r_sns, int64val);
+			val->intval = (int) int64val;
 		} else {
 			return -EINVAL;
 		}
@@ -744,9 +752,12 @@ static void  max17042_write_custom_regs(struct max17042_chip *chip)
 
 	max17042_write_verify_reg(map, MAX17042_RCOMP0, config->rcomp0);
 	max17042_write_verify_reg(map, MAX17042_TempCo,	config->tcompc0);
-	max17042_write_verify_reg(map, MAX17042_ICHGTerm, config->ichgt_term);
+	max17042_write_verify_reg(map, MAX17042_ICHGTerm,
+				  CURR_CONV_WR(chip->pdata->r_sns,
+					       config->ichgt_term));
 	max17042_write_verify_reg(map, MAX17042_LAvg_empty,
-				  config->lavg_empty);
+				  CURR_CONV_WR(chip->pdata->r_sns,
+					       config->lavg_empty));
 	if (chip->chip_type == MAX17042) {
 		regmap_write(map, MAX17042_EmptyTempCo,	config->empty_tempco);
 		max17042_write_verify_reg(map, MAX17042_K_empty0,
@@ -769,10 +780,14 @@ static void max17042_update_capacity_regs(struct max17042_chip *chip)
 	struct regmap *map = chip->regmap;
 
 	max17042_write_verify_reg(map, MAX17042_FullCAP,
-				config->fullcap);
-	regmap_write(map, MAX17042_DesignCap, config->design_cap);
+				 CHRG_CONV_WR(chip->fctr_uah_bit,
+					      config->fullcap));
+	regmap_write(map, MAX17042_DesignCap,
+		     CHRG_CONV_WR(chip->fctr_uah_bit,
+				  config->design_cap));
 	max17042_write_verify_reg(map, MAX17042_FullCAPNom,
-				config->fullcapnom);
+				CHRG_CONV_WR(chip->fctr_uah_bit,
+					     config->fullcapnom));
 }
 
 static void max17042_reset_vfsoc0_qh0_regs(struct max17042_chip *chip)
@@ -804,6 +819,7 @@ static void max17042_load_new_capacity_params(struct max17042_chip *chip)
 	 */
 
 	rem_cap = ((vfSoc >> 8) * config->fullcapnom) / 100;
+	rem_cap = CHRG_CONV_WR(chip->fctr_uah_bit, rem_cap);
 	max17042_write_verify_reg(map, MAX17042_RemCap, rem_cap);
 
 	rep_cap = rem_cap;
@@ -815,11 +831,14 @@ static void max17042_load_new_capacity_params(struct max17042_chip *chip)
 	max17042_write_verify_reg(map, MAX17042_dPacc, dP_ACC_200);
 
 	max17042_write_verify_reg(map, MAX17042_FullCAP,
-			config->fullcap);
+			CHRG_CONV_WR(chip->fctr_uah_bit,
+				     config->fullcap));
 	regmap_write(map, MAX17042_DesignCap,
-			config->design_cap);
+		     CHRG_CONV_WR(chip->fctr_uah_bit,
+				  config->design_cap));
 	max17042_write_verify_reg(map, MAX17042_FullCAPNom,
-			config->fullcapnom);
+			CHRG_CONV_WR(chip->fctr_uah_bit,
+				     config->fullcapnom));
 	/* Update SOC register with new SOC */
 	regmap_write(map, MAX17042_RepSOC, vfSoc);
 }
@@ -849,34 +868,44 @@ static inline void max17042_override_por_values(struct max17042_chip *chip)
 	max17042_override_por(map, MAX17042_CONFIG, config->config);
 	max17042_override_por(map, MAX17042_SHDNTIMER, config->shdntimer);
 
-	max17042_override_por(map, MAX17042_DesignCap, config->design_cap);
-	max17042_override_por(map, MAX17042_ICHGTerm, config->ichgt_term);
+	max17042_override_por(map, MAX17042_DesignCap,
+			      CHRG_CONV_WR(chip->fctr_uah_bit, config->design_cap));
+	max17042_override_por(map, MAX17042_ICHGTerm,
+			      CURR_CONV_WR(chip->pdata->r_sns, config->ichgt_term));
 
-	max17042_override_por(map, MAX17042_AtRate, config->at_rate);
+	max17042_override_por(map, MAX17042_AtRate,
+			      CURR_CONV_WR(chip->pdata->r_sns, config->at_rate));
 	max17042_override_por(map, MAX17042_LearnCFG, config->learn_cfg);
 	max17042_override_por(map, MAX17042_FilterCFG, config->filter_cfg);
 	max17042_override_por(map, MAX17042_RelaxCFG, config->relax_cfg);
 	max17042_override_por(map, MAX17042_MiscCFG, config->misc_cfg);
 	max17042_override_por(map, MAX17042_MaskSOC, config->masksoc);
 
-	max17042_override_por(map, MAX17042_FullCAP, config->fullcap);
-	max17042_override_por(map, MAX17042_FullCAPNom, config->fullcapnom);
+	max17042_override_por(map, MAX17042_FullCAP,
+			      CHRG_CONV_WR(chip->fctr_uah_bit, config->fullcap));
+	max17042_override_por(map, MAX17042_FullCAPNom,
+			      CHRG_CONV_WR(chip->fctr_uah_bit, config->fullcapnom));
 
 	if (chip->last_fullcap != -EINVAL) {
 		max17042_override_por(map, MAX17042_FullCAP,
-				      chip->last_fullcap);
+				      CHRG_CONV_WR(chip->fctr_uah_bit,
+						chip->last_fullcap / 1000));
 		max17042_override_por(map, MAX17042_FullCAPNom,
-				      chip->last_fullcap);
+				      CHRG_CONV_WR(chip->fctr_uah_bit,
+						chip->last_fullcap / 1000));
 	} else {
 		max17042_override_por(map, MAX17042_FullCAP,
-				      config->fullcap);
+				      CHRG_CONV_WR(chip->fctr_uah_bit,
+						   config->fullcap));
 		max17042_override_por(map, MAX17042_FullCAPNom,
-				      config->fullcapnom);
+				      CHRG_CONV_WR(chip->fctr_uah_bit,
+						   config->fullcapnom));
 	}
 	if (chip->chip_type == MAX17042)
 		max17042_override_por(map, MAX17042_SOC_empty,
 						config->socempty);
-	max17042_override_por(map, MAX17042_LAvg_empty, config->lavg_empty);
+	max17042_override_por(map, MAX17042_LAvg_empty,
+			      CURR_CONV_WR(chip->pdata->r_sns, config->lavg_empty));
 	max17042_override_por(map, MAX17042_dQacc, config->dqacc);
 	max17042_override_por(map, MAX17042_dPacc, config->dpacc);
 
@@ -1249,15 +1278,15 @@ struct max17042_config_data eg30_lg_config = {
 
 	/* App data */
 	.full_soc_thresh = 0x6200,	/* 0x13 */
-	.design_cap = 4172,	/* 0x18 0.5 mAh per bit */
-	.ichgt_term = 0x01C0,	/* 0x1E */
+	.design_cap = 2086,	/* 0x18 mAHr*/
+	.ichgt_term = 70,	/* 0x1E mA */
 
 	/* MG3 config */
 	.filter_cfg = 0x87A4,	/* 0x29 */
 
 	/* MG3 save and restore */
-	.fullcap = 4172,	/* 0x10 0.5 mAh per bit */
-	.fullcapnom = 4172,	/* 0x23 0.5 mAh per bit */
+	.fullcap = 2086,	/* 0x10 mAh*/
+	.fullcapnom = 2086,	/* 0x23 mAh */
 	.qrtbl00 = 0x1E01,	/* 0x12 */
 	.qrtbl10 = 0x1281,	/* 0x22 */
 	.qrtbl20 = 0x0781,	/* 0x32 */
@@ -1827,7 +1856,7 @@ static void iterm_work(struct work_struct *work)
 	int repcap, fullcap;
 	int repcap_p, i;
 	int socvf, fullsocthr;
-	int curr_avg, curr_inst, iterm_max, iterm_min;
+	long int curr_avg, curr_inst, iterm_max, iterm_min;
 	int resch_time = 60000;
 	int cfd_max;
 	int val;
@@ -1860,16 +1889,16 @@ static void iterm_work(struct work_struct *work)
 		if (ret < 0)
 			goto iterm_fail;
 
-		fullcap = val & 0xFFFF;
+		fullcap = (val & 0xFFFF) * chip->fctr_uah_bit;
 
 		/* Check that FullCap */
 		/* is not less then half of Design Capacity */
-		if ((fullcap * 1000) < chip->charge_full_des) {
+		if (fullcap < (chip->charge_full_des / 2)) {
 			dev_warn(&chip->client->dev,
 				 "Error fullcap too small! Forcing POR!\n");
 			dev_warn(&chip->client->dev,
-				 "FullCap %d mAhr\n",
-				 fullcap / 2);
+				 "FullCap %d uAhr\n",
+				 fullcap);
 			regmap_write(map, MAX17042_VFSOC0Enable,
 				     MAX17050_FORCE_POR);
 			msleep(MAX17050_POR_WAIT_MS);
@@ -1879,18 +1908,22 @@ static void iterm_work(struct work_struct *work)
 		}
 
 		/* Catch Increasing FullCap*/
-		if (((fullcap * 1000) / 2) > cfd_max) {
+		if (fullcap > cfd_max) {
 			dev_warn(&chip->client->dev,
-				 "Error fullcap too big! %d mAhr\n",
-				 fullcap / 2);
-			fullcap = (cfd_max * 2) / 1000;
+				 "Error fullcap too big! %d uAhr\n",
+				 fullcap);
+			fullcap = cfd_max;
 			ret = regmap_write(map,
-					   MAX17042_RepCap, fullcap);
+					   MAX17042_RepCap,
+					   CHRG_CONV_WR(chip->fctr_uah_bit,
+							fullcap / 1000));
 			if (ret < 0)
 				dev_err(&chip->client->dev,
 					"Can't update Rep Cap!\n");
 			ret = regmap_write(map,
-					   MAX17042_FullCAP, fullcap);
+					   MAX17042_FullCAP,
+					   CHRG_CONV_WR(chip->fctr_uah_bit,
+							fullcap / 1000));
 			if (ret < 0)
 				dev_err(&chip->client->dev,
 					"Can't update Full Cap!\n");
@@ -1912,9 +1945,9 @@ static void iterm_work(struct work_struct *work)
 		goto iterm_fail;
 	}
 
-	curr_inst = ret & 0xFFFF;
-	dev_dbg(&chip->client->dev, "ITERM Curr Inst %d uA!\n",
-		 (curr_inst * 1562500) / chip->pdata->r_sns);
+	curr_inst = val & 0xFFFF;
+	dev_dbg(&chip->client->dev, "ITERM Curr Inst %ld uA!\n",
+		CURR_CONV(chip->pdata->r_sns, curr_inst));
 
 	ret = regmap_read(map, MAX17042_AvgCurrent, &val);
 	if (ret < 0)
@@ -1929,9 +1962,9 @@ static void iterm_work(struct work_struct *work)
 	/* No Discharge so Monitor Faster */
 	resch_time = 10000;
 
-	curr_avg = ret & 0xFFFF;
-	dev_dbg(&chip->client->dev, "ITERM Curr Avg %d uA!\n",
-		 (curr_inst * 1562500) / chip->pdata->r_sns);
+	curr_avg = val & 0xFFFF;
+	dev_dbg(&chip->client->dev, "ITERM Curr Avg %ld uA!\n",
+		CURR_CONV(chip->pdata->r_sns, curr_inst));
 
 	ret = regmap_read(map, MAX17042_ICHGTerm, &val);
 	if (ret < 0)
@@ -1940,7 +1973,7 @@ static void iterm_work(struct work_struct *work)
 	iterm_min = val & 0xFFFF;
 	iterm_min = (iterm_min >> 2) & 0xFFFF;
 
-	iterm_max = (ret & 0xFFFF) + iterm_min;
+	iterm_max = (val & 0xFFFF) + iterm_min;
 
 	iterm_min = (iterm_min >> 1) & 0xFFFF;
 
@@ -1952,17 +1985,17 @@ static void iterm_work(struct work_struct *work)
 	if (ret < 0)
 		goto iterm_fail;
 
-	repcap = val & 0xFFFF;
+	repcap = (val & 0xFFFF) * chip->fctr_uah_bit;
 	dev_dbg(&chip->client->dev, "ITERM RepCap %d uAhr!\n",
-		 (repcap * 1000) / 2);
+		 repcap);
 
 	ret = regmap_read(map, MAX17042_FullCAP, &val);
 	if (ret < 0)
 		goto iterm_fail;
 
-	fullcap = val & 0xFFFF;
+	fullcap = (val & 0xFFFF) * chip->fctr_uah_bit;
 	dev_dbg(&chip->client->dev, "ITERM FullCap %d uAhr!\n",
-		 (fullcap * 1000) / 2);
+		 fullcap);
 
 	if (repcap >= fullcap) {
 		taper_hit = 1;
@@ -1988,13 +2021,13 @@ static void iterm_work(struct work_struct *work)
 
 	/* Check that RepCap or FullCap */
 	/* is not less then half of Design Capacity */
-	if (((repcap * 1000) < chip->charge_full_des) ||
-	    ((fullcap * 1000) < chip->charge_full_des)) {
+	if ((repcap < (chip->charge_full_des / 2)) ||
+	    (fullcap < (chip->charge_full_des / 2))) {
 		dev_warn(&chip->client->dev,
 			 "Error fullcap too small! Forcing POR!\n");
 		dev_warn(&chip->client->dev,
-			 "FullCap %d mAhr\n",
-			 fullcap / 2);
+			 "FullCap %d uAhr\n",
+			 fullcap);
 		regmap_write(map, MAX17042_VFSOC0Enable,
 				   MAX17050_FORCE_POR);
 		msleep(MAX17050_POR_WAIT_MS);
@@ -2005,14 +2038,16 @@ static void iterm_work(struct work_struct *work)
 	}
 
 	/* Catch Increasing FullCap*/
-	if (((fullcap * 1000) / 2) > cfd_max) {
+	if (fullcap > cfd_max) {
 		dev_warn(&chip->client->dev, "Error fullcap too big!\n");
 		dev_warn(&chip->client->dev,
-			 "RepCap %d mAhr FullCap %d mAhr\n",
-			 repcap / 2, fullcap / 2);
-		repcap = (cfd_max * 2) / 1000;
+			 "RepCap %d uAhr FullCap %d uAhr\n",
+			 repcap, fullcap);
+		repcap = cfd_max;
 		fullcap = repcap;
-		ret = regmap_write(map, MAX17042_RepSOC, repcap);
+		ret = regmap_write(map, MAX17042_RepSOC,
+				   CHRG_CONV_WR(chip->fctr_uah_bit,
+						repcap / 1000));
 		if (ret < 0)
 			dev_err(&chip->client->dev,
 				"Can't update Rep Cap!\n");
@@ -2021,13 +2056,16 @@ static void iterm_work(struct work_struct *work)
 	chip->last_fullcap = repcap;
 
 	dev_warn(&chip->client->dev, "Taper Reached!\n");
-	dev_warn(&chip->client->dev, "RepCap %d mAhr FullCap %d mAhr\n",
-		 repcap / 2, fullcap / 2);
+	dev_warn(&chip->client->dev, "RepCap %d uAhr FullCap %d uAhr\n",
+		 repcap, fullcap);
 
 	repcap_p = repcap;
 	taper_hit = 1;
 
-	ret = regmap_write(map, MAX17042_FullCAP, repcap);
+
+	ret = regmap_write(map, MAX17042_FullCAP,
+			   CHRG_CONV_WR(chip->fctr_uah_bit,
+					repcap / 1000));
 	if (ret < 0)
 		dev_err(&chip->client->dev, "Can't update Full Cap!\n");
 
@@ -2036,30 +2074,35 @@ static void iterm_work(struct work_struct *work)
 		if (ret < 0)
 			goto iterm_fail;
 
-		repcap = val & 0xFFFF;
+		repcap = (val & 0xFFFF) * chip->fctr_uah_bit;
 
 		ret = regmap_read(map, MAX17042_FullCAP, &val);
 		if (ret < 0)
 			goto iterm_fail;
 
-		fullcap = val & 0xFFFF;
+		fullcap = (val & 0xFFFF) * chip->fctr_uah_bit;
 		dev_warn(&chip->client->dev,
-			 "Checking RepCap %d mAhr FullCap %d mAhr\n",
-			 repcap / 2, fullcap / 2);
-		if ((repcap > (repcap_p + 2)) || (repcap < (repcap_p - 2)) ||
+			 "Checking RepCap %d uAhr FullCap %d uAhr\n",
+			 repcap, fullcap);
+		if ((repcap > (repcap_p + 2000)) ||
+		    (repcap < (repcap_p - 2000)) ||
 		    (fullcap != repcap_p)) {
 			dev_warn(&chip->client->dev,
 				 "ITERM values don't match rewrite!\n");
 			dev_warn(&chip->client->dev,
-				 "RepCap %d mAhr FullCap %d mAhr\n",
-				 repcap / 2, fullcap / 2);
+				 "RepCap %d uAhr FullCap %d uAhr\n",
+				 repcap, fullcap);
 			ret = regmap_write(map,
-					   MAX17042_FullCAP, repcap_p);
+					   MAX17042_FullCAP,
+					   CHRG_CONV_WR(chip->fctr_uah_bit,
+							repcap_p / 1000));
 			if (ret < 0)
 				dev_err(&chip->client->dev,
 					"Can't update Full Cap!\n");
 			ret = regmap_write(map,
-					   MAX17042_RepCap, repcap_p);
+					   MAX17042_RepCap,
+					   CHRG_CONV_WR(chip->fctr_uah_bit,
+							repcap_p / 1000));
 			if (ret < 0)
 				dev_err(&chip->client->dev,
 					"Can't update Rep Cap!\n");
@@ -2130,7 +2173,7 @@ static int max17042_probe(struct i2c_client *client,
 	chip->last_fullcap = -EINVAL;
 	chip->factory_mode = false;
 	chip->charge_full_des =
-		(chip->pdata->config_data->design_cap / 2) * 1000;
+		(chip->pdata->config_data->design_cap) * 1000;
 
 	i2c_set_clientdata(client, chip);
 
@@ -2166,6 +2209,8 @@ static int max17042_probe(struct i2c_client *client,
 
 	if (chip->pdata->r_sns == 0)
 		chip->pdata->r_sns = MAX17042_DEFAULT_SNS_RESISTOR;
+
+	chip->fctr_uah_bit = 5000 / (chip->pdata->r_sns / 1000);
 
 	if (chip->pdata->init_data)
 		for (i = 0; i < chip->pdata->num_init_data; i++)
