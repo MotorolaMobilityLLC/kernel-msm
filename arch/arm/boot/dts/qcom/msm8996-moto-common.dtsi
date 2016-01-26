@@ -771,34 +771,6 @@
 			 <&clock_gcc clk_gcc_blsp1_qup3_spi_apps_clk>;
 	};
 
-	spi_9: spi@75b7000 { /* BLSP2 QUP3 */
-		compatible = "qcom,spi-qup-v2";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "spi_physical", "spi_bam_physical";
-		reg = <0x075b7000 0x600>,
-		      <0x07584000 0x2b000>;
-		interrupt-names = "spi_irq", "spi_bam_irq";
-		interrupts = <0 103 0>, <0 239 0>;
-		spi-max-frequency = <50000000>;
-
-		qcom,infinite-mode = <0>;
-		qcom,use-bam;
-		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <16>;
-		qcom,bam-producer-pipe-index = <17>;
-		qcom,master-id = <84>;
-		qcom,use-pinctrl;
-		pinctrl-names = "spi_default", "spi_sleep";
-		pinctrl-0 = <&spi_9_active>;
-		pinctrl-1 = <&spi_9_sleep>;
-
-		clock-names = "iface_clk", "core_clk";
-
-		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
-			 <&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
-	};
-
 	spi_12: spi@75ba000 { /* BLSP2 QUP6 */
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
@@ -1458,6 +1430,10 @@
 };
 
 &spi_9 {
+	qcom,use-bam;
+	spi-max-frequency = <50000000>;
+	status = "ok";
+
 	florida: florida@0 {
 		compatible = "wlf,wm5110";
 		spi-max-frequency = <26000000>;
