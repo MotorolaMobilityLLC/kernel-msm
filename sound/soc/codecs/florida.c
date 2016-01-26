@@ -253,10 +253,70 @@ static int florida_adsp_power_ev(struct snd_soc_dapm_widget *w,
 	return arizona_adsp_power_ev(w, kcontrol, event);
 }
 
+static bool florida_check_all_dsps(struct florida_priv *florida)
+{
+	int i;
+
+	for (i = 0; i < 4; i++) {
+		if (florida->dsp_enabled[i])
+			return true;
+	}
+	return false;
+}
+
+static int florida_set_fll(struct snd_soc_codec *codec, int fll_id, int source,
+			  unsigned int Fref, unsigned int Fout)
+{
+	struct florida_priv *florida = snd_soc_codec_get_drvdata(codec);
+
+	if (!florida_check_all_dsps(florida) && Fref == 32768) {
+		if (fll_id == FLORIDA_FLL1)
+			return arizona_set_fll(&florida->fll[0], source, 0, 0);
+		if (fll_id == FLORIDA_FLL2)
+			return arizona_set_fll(&florida->fll[1], source, 0, 0);
+	}
+	switch (fll_id) {
+	case FLORIDA_FLL1:
+		return arizona_set_fll(&florida->fll[0], source, Fref, Fout);
+	case FLORIDA_FLL2:
+		return arizona_set_fll(&florida->fll[1], source, Fref, Fout);
+	case FLORIDA_FLL1_REFCLK:
+		return arizona_set_fll_refclk(&florida->fll[0], source, Fref,
+					      Fout);
+	case FLORIDA_FLL2_REFCLK:
+		return arizona_set_fll_refclk(&florida->fll[1], source, Fref,
+					      Fout);
+	default:
+		return -EINVAL;
+	}
+}
+
 static int florida_virt_dsp_power_ev(struct snd_soc_dapm_widget *w,
 				    struct snd_kcontrol *kcontrol, int event)
 {
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(w->codec);
+	int source;
+	unsigned int Fref, Fout;
+
+	arizona_get_fll(&florida->fll[0], &source, &Fref, &Fout);
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		if (!florida_check_all_dsps(florida) && Fref == 0)
+			arizona_set_fll(&florida->fll[0],
+				ARIZONA_FLL_SRC_MCLK2,
+				32768, FLORIDA_SYSCLK_RATE);
+
+		florida->dsp_enabled[w->shift] = true;
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		florida->dsp_enabled[w->shift] = false;
+		if (!florida_check_all_dsps(florida)
+			&& Fref == 32768
+			&& source == ARIZONA_FLL_SRC_MCLK2)
+			arizona_set_fll(&florida->fll[0],
+			ARIZONA_FLL_SRC_SLIMCLK, 0, 0);
+
+	}
 
 	if (w->shift != 2)
 		return 0;
@@ -1880,27 +1940,6 @@ static const struct snd_soc_dapm_route florida_dapm_routes[] = {
 	{ "DRC2 Signal Activity", NULL, "DRC2L" },
 	{ "DRC2 Signal Activity", NULL, "DRC2R" },
 };
-
-static int florida_set_fll(struct snd_soc_codec *codec, int fll_id, int source,
-			  unsigned int Fref, unsigned int Fout)
-{
-	struct florida_priv *florida = snd_soc_codec_get_drvdata(codec);
-
-	switch (fll_id) {
-	case FLORIDA_FLL1:
-		return arizona_set_fll(&florida->fll[0], source, Fref, Fout);
-	case FLORIDA_FLL2:
-		return arizona_set_fll(&florida->fll[1], source, Fref, Fout);
-	case FLORIDA_FLL1_REFCLK:
-		return arizona_set_fll_refclk(&florida->fll[0], source, Fref,
-					      Fout);
-	case FLORIDA_FLL2_REFCLK:
-		return arizona_set_fll_refclk(&florida->fll[1], source, Fref,
-					      Fout);
-	default:
-		return -EINVAL;
-	}
-}
 
 #define FLORIDA_RATES SNDRV_PCM_RATE_8000_192000
 
