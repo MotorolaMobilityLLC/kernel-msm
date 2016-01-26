@@ -111,7 +111,7 @@
 			};
 		};
 
-		spi_9_sleep: spi_19_sleep {
+		spi_9_sleep: spi_9_sleep {
 			spi_9 {
 				pins = "gpio49", "gpio50", "gpio51", "gpio52";
 				function = "blsp_spi9";
