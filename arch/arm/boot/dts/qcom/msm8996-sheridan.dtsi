@@ -93,3 +93,9 @@
 &mot_smd_546_QHD_g_cmd_v0 {
 	qcom,cont-splash-enabled;
 };
+
+&i2c_7 {
+	stmvl53l0@29 {
+		st,xtalkval = <32768>;
+	};
+};
