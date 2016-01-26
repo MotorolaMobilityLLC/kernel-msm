@@ -9050,12 +9050,6 @@ static int smbchg_probe(struct spmi_device *spmi)
 	} else
 		dev_err(&spmi->dev, "IRQ for Warn doesn't exist\n");
 
-	/* Set initial value of usb present to type C status since src detect
-	 * cannot run until type C detection is done*/
-	if (!chip->factory_mode)
-		chip->usb_present = chip->usbc_online;
-	power_supply_set_present(chip->usb_psy, chip->usb_present);
-
 	chip->smb_reboot.notifier_call = smbchg_reboot;
 	chip->smb_reboot.next = NULL;
 	chip->smb_reboot.priority = 1;
