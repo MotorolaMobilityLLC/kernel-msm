@@ -896,18 +896,6 @@ static int get_eb_prop(struct smbchg_chip *chip,
 	}
 	eb_prop = ret.intval;
 
-	rc = eb_pwr_psy->get_property(eb_pwr_psy,
-				      POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
-				      &ret);
-	if (rc) {
-		dev_dbg(chip->dev,
-			"Could not read Send Params rc = %d\n", rc);
-		eb_prop = -EINVAL;
-	} else if (ret.intval !=
-		   POWER_SUPPLY_PTP_INT_SND_SUPPLEMENTAL) {
-		eb_prop = -ENODEV;
-	}
-
 	power_supply_put(eb_batt_psy);
 	power_supply_put(eb_pwr_psy);
 
@@ -3709,17 +3697,68 @@ static int smbchg_wls_is_broadcast(struct power_supply *psy,
 	return rc;
 }
 
+#define EB_RCV_NEVER BIT(7)
+#define EB_SND_LOW BIT(1)
+#define EB_SND_NEVER BIT(0)
+static void smbchg_check_extbat_ability(struct smbchg_chip *chip, char *able)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
+
+	if (!able)
+		return;
+
+	*able = 0;
+
+	if (!eb_pwr_psy) {
+		*able |= (EB_RCV_NEVER | EB_SND_NEVER);
+		return;
+	}
+
+	rc = eb_pwr_psy->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
+				      &ret);
+	if (rc) {
+		dev_err(chip->dev,
+			"Could not read Send Params rc = %d\n", rc);
+		*able |= EB_SND_NEVER;
+	} else if ((ret.intval == POWER_SUPPLY_PTP_INT_SND_NEVER) ||
+		   (ret.intval == POWER_SUPPLY_PTP_INT_SND_UNKNOWN))
+		*able |= EB_SND_NEVER;
+	else if (ret.intval == POWER_SUPPLY_PTP_INT_SND_LOW_BATT_SAVER)
+		*able |= EB_SND_LOW;
+
+	rc = eb_pwr_psy->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_INTERNAL_RECEIVE,
+				      &ret);
+	if (rc) {
+		dev_err(chip->dev,
+			"Could not read Receive Params rc = %d\n", rc);
+		*able |= EB_RCV_NEVER;
+	} else if ((ret.intval == POWER_SUPPLY_PTP_INT_RCV_NEVER) ||
+		   (ret.intval == POWER_SUPPLY_PTP_INT_RCV_UNKNOWN))
+		*able |= EB_RCV_NEVER;
+
+	power_supply_put(eb_pwr_psy);
+}
+
 #define HVDCP_EN_BIT			BIT(3)
 static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 				   enum ebchg_state state)
 {
 	int rc, hvdcp_en = 0;
+	char ability = 0;
 	union power_supply_propval ret = {0, };
 	struct power_supply *eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
 
-	if (state == chip->ebchg_state)
+	if (state == chip->ebchg_state) {
+		if (eb_pwr_psy)
+			power_supply_put(eb_pwr_psy);
 		return;
+	}
 
 	if (chip->usb_insert_bc1_2)
 		hvdcp_en = HVDCP_EN_BIT;
@@ -3736,20 +3775,22 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 				"Couldn't set HVDCP rc=%d\n", rc);
 		chip->ebchg_state = EB_DISCONN;
 		return;
-	} else if (!chip->force_eb_chrg) {
-		rc = eb_pwr_psy->get_property(eb_pwr_psy,
-					  POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
-					  &ret);
-		if (rc)
-			dev_err(chip->dev,
-				"Could not read Send Params rc = %d\n", rc);
-		else if (ret.intval != POWER_SUPPLY_PTP_INT_SND_SUPPLEMENTAL) {
-			if (chip->ebchg_state == EB_DISCONN)
-				dev_err(chip->dev,
-					"No Supplemental Battery Ignore!\n");
-			power_supply_put(eb_pwr_psy);
-			return;
-		}
+	}
+
+	smbchg_check_extbat_ability(chip, &ability);
+
+	if ((state == EB_SINK) && (ability & EB_RCV_NEVER)) {
+		dev_err(chip->dev,
+			"Setting Sink State not Allowed on RVC Never EB!\n");
+		power_supply_put(eb_pwr_psy);
+		return;
+	}
+
+	if ((state == EB_SRC) && (ability & EB_SND_NEVER)) {
+		dev_err(chip->dev,
+			"Setting Source State not Allowed on SND Never EB!\n");
+		power_supply_put(eb_pwr_psy);
+		return;
 	}
 
 	dev_err(chip->dev, "EB State is %d setting %d\n",
@@ -3771,6 +3812,8 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
 					    &ret);
 		if (!rc) {
+			if (chip->ebchg_state == EB_SRC)
+				chip->eb_hotplug = false;
 			chip->ebchg_state = state;
 			smbchg_usb_en(chip, false, REASON_EB);
 			smbchg_dc_en(chip, false, REASON_EB);
@@ -3801,6 +3844,8 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
 					    &ret);
 		if (!rc) {
+			if (chip->ebchg_state == EB_SRC)
+				chip->eb_hotplug = false;
 			chip->ebchg_state = state;
 			gpio_set_value(chip->ebchg_gpio.gpio, 0);
 			smbchg_usb_en(chip, true, REASON_EB);
@@ -8391,6 +8436,10 @@ static int eb_attach_start_soc = 99;
 module_param(eb_attach_start_soc, int, 0644);
 static int eb_attach_stop_soc = 100;
 module_param(eb_attach_stop_soc, int, 0644);
+static int eb_low_start_soc = 16;
+module_param(eb_low_start_soc, int, 0644);
+static int eb_low_stop_soc = 100;
+module_param(eb_low_stop_soc, int, 0644);
 
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
@@ -8416,12 +8465,14 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_step;
 	int index;
 	int eb_max_soc, eb_min_soc;
+	char eb_able = 0;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	if (smbchg_check_and_kick_aicl(chip))
 		goto end_hb;
 
 	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
+	smbchg_check_extbat_ability(chip, &eb_able);
 
 	if (eb_soc == -ENODEV) {
 		chip->eb_hotplug = false;
@@ -8459,6 +8510,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			smbchg_dc_en(chip, true, REASON_DEMO);
 		}
 	} else if (chip->force_eb_chrg &&
+		   !(eb_able & EB_RCV_NEVER) &&
 		   (chip->ebchg_state != EB_DISCONN) &&
 		   chip->usb_present) {
 		smbchg_set_extbat_state(chip, EB_SINK);
@@ -8499,6 +8551,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		     chip->stepchg_taper_ma))
 			if (chip->stepchg_state_holdoff >= 2) {
 				if ((chip->ebchg_state != EB_DISCONN) &&
+				    !(eb_able & EB_RCV_NEVER) &&
 				    (eb_soc < 100)) {
 					smbchg_set_extbat_state(chip, EB_SINK);
 					chip->stepchg_state = STEP_EB;
@@ -8523,6 +8576,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		   (batt_ma < 0) && (chip->usb_present)) {
 		batt_ma *= -1;
 		if ((chip->ebchg_state != EB_DISCONN) &&
+		    !(eb_able & EB_RCV_NEVER) &&
 		    (eb_soc < 100)) {
 			smbchg_set_extbat_state(chip, EB_SINK);
 			chip->stepchg_state = STEP_EB;
@@ -8541,16 +8595,20 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	} else if ((chip->stepchg_state == STEP_FULL) &&
 		    (chip->usb_present)) {
 		if ((chip->ebchg_state != EB_DISCONN) &&
+		    !(eb_able & EB_RCV_NEVER) &&
 		    (eb_soc < 100)) {
 			smbchg_set_extbat_state(chip, EB_SINK);
 			chip->stepchg_state = STEP_EB;
 		} else if (batt_soc < 100)
 			chip->stepchg_state = STEP_TAPER;
-	} else if (!chip->usb_present) {
+	} else if ((!chip->usb_present)  && !(eb_able & EB_SND_NEVER)) {
 		chip->stepchg_state = STEP_NONE;
 
 		/* Sanitize the Thresholds */
-		if (chip->eb_hotplug) {
+		if (eb_able & EB_SND_LOW) {
+			eb_max_soc = eb_low_stop_soc;
+			eb_min_soc = eb_low_start_soc;
+		} else if (chip->eb_hotplug) {
 			eb_max_soc = eb_attach_stop_soc;
 			eb_min_soc = eb_attach_start_soc;
 		} else {
@@ -8585,9 +8643,13 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				smbchg_set_extbat_state(chip, EB_SRC);
 			break;
 		case EB_DISCONN:
+			chip->eb_hotplug = false;
 		default:
 			break;
 		}
+		chip->stepchg_state_holdoff = 0;
+	} else if (!chip->usb_present) {
+		chip->stepchg_state = STEP_NONE;
 		chip->stepchg_state_holdoff = 0;
 	} else
 		chip->stepchg_state_holdoff = 0;
