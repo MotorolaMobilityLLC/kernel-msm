@@ -164,3 +164,9 @@
 	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
 	qcom,battery-data = <&mot_batterydata>;
 };
+
+&i2c_7 {
+	stmvl53l0@29 {
+		st,xtalkval = <26214>;
+	};
+};
