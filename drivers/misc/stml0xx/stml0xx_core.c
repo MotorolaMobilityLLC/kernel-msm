@@ -1000,6 +1000,7 @@ static int stml0xx_probe(struct spi_device *spi)
 
 	ps_stml0xx->is_suspended = false;
 	ps_stml0xx->irq_wake_work_pending = false;
+	ps_stml0xx->discard_sensor_queue = false;
 
 	/* We could call switch_stml0xx_mode(NORMALMODE) at this point, but
 	 * instead we will hold the part in reset and only go to NORMALMODE on a
@@ -1115,6 +1116,7 @@ static int stml0xx_resume(struct device *dev)
 
 	mutex_lock(&ps_stml0xx->lock);
 	ps_stml0xx->is_suspended = false;
+	ps_stml0xx->discard_sensor_queue = true;
 	enable_irq(ps_stml0xx->irq);
 
 	/* Schedule work for wake IRQ, if pending */
@@ -1150,7 +1152,6 @@ static int stml0xx_resume(struct device *dev)
 	}
 	INIT_WORK((struct work_struct *)stm_ws, stml0xx_irq_work_func);
 	stm_ws->ts_ns = ts_to_ns(ts);
-	stm_ws->flags = IRQ_WORK_FLAG_DISCARD_SENSOR_QUEUE;
 	queue_work(ps_stml0xx->irq_work_queue, (struct work_struct *)stm_ws);
 
 	mutex_unlock(&ps_stml0xx->lock);
