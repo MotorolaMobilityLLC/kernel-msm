@@ -43,6 +43,8 @@
 /* TX module parameter IDs */
 /* Get Module status */
 #define PARAM_ID_OPALUM_TX_ENABLE                      0x00A1BF01
+/* Switch between internal config strings */
+#define PARAM_ID_OPALUM_TX_SET_USE_CASE                0x00A1BF02
 /* Run production line test */
 #define PARAM_ID_OPALUM_TX_RUN_CALIBRATION             0x00A1BF03
 /* Get f0 calibration values */
@@ -51,6 +53,9 @@
 #define PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE      0x00A1BF06
 /* Initialize parameters from external config string */
 #define PARAM_ID_OPALUM_TX_SET_EXTERNAL_CONFIG         0x00A1BF08
+/* Get the array index of the parameter set currently in use.
+   Will return -1 when an external string is used */
+#define PARAM_ID_OPALUM_TX_CURRENT_PARAM_SET           0x00A1BF11
 
 struct afe_custom_opalum_set_config_t {
 	struct apr_hdr hdr;

@@ -25,6 +25,8 @@ static char const *ospl2xx_ext_config_tables[] = {
 	"opalum.rx.ext.config.1",
 	"opalum.rx.ext.config.2",
 	"opalum.tx.ext.config.0",
+	"opalum.tx.ext.config.1",
+	"opalum.tx.ext.config.2",
 };
 
 static const struct firmware
@@ -52,7 +54,7 @@ static void ospl2xx_load_config(struct work_struct *work)
 	struct snd_soc_codec *codec = msm8x16_wcd->codec;
 
 	if (codec == NULL) {
-		pr_err("can't load external configuration\n");
+		pr_err("%s: can't load external configuration\n", __func__);
 		return;
 	}
 
@@ -60,10 +62,12 @@ static void ospl2xx_load_config(struct work_struct *work)
 	for (i = 0; i < ARRAY_SIZE(ospl2xx_ext_config_tables); i++) {
 		ret = request_firmware(&ospl2xx_config[i],
 			ospl2xx_ext_config_tables[i], codec->dev);
-		if (ret || ospl2xx_config[i]->data == NULL) {
-			pr_err("failed to load config\n");
+		if (ret ||
+		    ospl2xx_config[i]->data == NULL ||
+		    ospl2xx_config[i]->size <= 0) {
+			pr_err("failed to load config[%d], ret=%d\n", i, ret);
 		} else {
-			pr_info("loading cfg file %s\n",
+			pr_info("loading external configuration %s\n",
 				ospl2xx_ext_config_tables[i]);
 			ospl2xx_config_print(i, ospl2xx_config[i]->data,
 						ospl2xx_config[i]->size);
@@ -440,6 +444,7 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 			case PARAM_ID_OPALUM_TX_ENABLE:
 			case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
 			case PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE:
+			case PARAM_ID_OPALUM_TX_CURRENT_PARAM_SET:
 				afe_cb_payload32_data[0] = payload32[4];
 				afe_cb_payload32_data[1] = payload32[5];
 				pr_debug("%s, payload-module_id = 0x%08X, ",
@@ -582,6 +587,8 @@ static int ospl2xx_rx_ext_config_put(struct snd_kcontrol *kcontrol,
 		goto error_return;
 
 	size = ospl2xx_config[i]->size;
+	if (size <= 0)
+		goto error_return;
 
 	config = kzalloc(sizeof(char) * (size+1), GFP_KERNEL);
 	if (config == NULL || ospl2xx_config[i]->data == NULL)
@@ -760,6 +767,45 @@ static int ospl2xx_tx_get_temp_cal(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+/* PARAM_ID_OPALUM_TX_SET_USE_CASE */
+#define NUM_TX_CONFIGS 3
+static int ospl2xx_tx_int_config_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	mutex_lock(&mr_lock);
+	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
+	ospl2xx_afe_get_param(PARAM_ID_OPALUM_TX_CURRENT_PARAM_SET);
+
+	ucontrol->value.integer.value[0] = afe_cb_payload32_data[0];
+	mutex_unlock(&mr_lock);
+
+	return 0;
+}
+static int ospl2xx_tx_int_config_put(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	if (ucontrol->value.integer.value[0] < 0 ||
+	    ucontrol->value.integer.value[0] >= NUM_TX_CONFIGS)
+		return 0;
+
+	pr_info("%s: set configuration index = %d\n",
+		__func__, (int)ucontrol->value.integer.value[0]);
+
+	ospl2xx_afe_set_single_param(
+		PARAM_ID_OPALUM_TX_SET_USE_CASE,
+		(int)ucontrol->value.integer.value[0]);
+
+	return 0;
+}
+static char const *ospl2xx_tx_int_config_index[] = {
+	"opalum.tx.int.config.0",
+	"opalum.tx.int.config.1",
+	"opalum.tx.int.config.2",
+};
+static const struct soc_enum ospl2xx_tx_int_config_enum[] = {
+	SOC_ENUM_SINGLE_EXT(3, ospl2xx_tx_int_config_index),
+};
+
 /* PARAM_ID_OPALUM_TX_SET_EXTERNAL_CONFIG */
 static int ospl2xx_tx_ext_config_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
@@ -783,6 +829,8 @@ static int ospl2xx_tx_ext_config_put(struct snd_kcontrol *kcontrol,
 		goto error_return;
 
 	size = ospl2xx_config[i]->size;
+	if (size <= 0)
+		goto error_return;
 
 	config = kzalloc(sizeof(char) * (size+1), GFP_KERNEL);
 	if (config == NULL || ospl2xx_config[i]->data == NULL)
@@ -808,15 +856,19 @@ error_return:
 }
 static char const *ospl2xx_tx_ext_config_text[] = {
 	"opalum.tx.ext.config.0",
+	"opalum.tx.ext.config.1",
+	"opalum.tx.ext.config.2",
 };
 static const struct soc_enum ospl2xx_tx_ext_config_enum[] = {
-	SOC_ENUM_SINGLE_EXT(1, ospl2xx_tx_ext_config_text),
+	SOC_ENUM_SINGLE_EXT(NUM_TX_CONFIGS,
+		ospl2xx_tx_ext_config_text),
 };
 
 /* Internal logic to re-load external configuration to driver */
 static int ospl2xx_reload_ext_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
+	int i = 0;
 	int reload = ucontrol->value.integer.value[0];
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct msm8x16_wcd_priv *msm8x16_wcd =
@@ -824,6 +876,9 @@ static int ospl2xx_reload_ext_put(struct snd_kcontrol *kcontrol,
 
 	if (reload) {
 		pr_info("re-loading configuration files\n");
+		for (i = 0; i < ARRAY_SIZE(ospl2xx_ext_config_tables); i++)
+			release_firmware(ospl2xx_config[i]);
+
 		INIT_WORK(&msm8x16_wcd->ospl2xx_config, ospl2xx_load_config);
 		queue_work(msm8x16_wcd->ospl2xx_wq,
 			&msm8x16_wcd->ospl2xx_config);
@@ -877,6 +932,9 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 	/* GET */ SOC_SINGLE_MULTI_EXT("OSPL Tx temp_cal",
 		SND_SOC_NOPM, 0, 0xFFFF, 0, 2,
 		ospl2xx_tx_get_temp_cal, NULL),
+	/* GET,PUT */ SOC_ENUM_EXT("OSPL Int TxConfig",
+		ospl2xx_tx_int_config_enum[0],
+		ospl2xx_tx_int_config_get, ospl2xx_tx_int_config_put),
 	/* PUT */ SOC_ENUM_EXT("OSPL Ext TxConfig",
 		ospl2xx_tx_ext_config_enum[0],
 		ospl2xx_tx_ext_config_get, ospl2xx_tx_ext_config_put),
