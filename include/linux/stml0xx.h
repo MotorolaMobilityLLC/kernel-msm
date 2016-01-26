@@ -135,7 +135,6 @@ enum vmm_ids {
 
 /* Non-wake IRQ work function flags */
 #define IRQ_WORK_FLAG_NONE                   0x00
-#define IRQ_WORK_FLAG_DISCARD_SENSOR_QUEUE   0x01
 
 /* stml0xx_readbuff offsets. */
 #define IRQ_WAKE_LO  0
@@ -326,6 +325,7 @@ struct stml0xx_data {
 	struct regulator *regulator_2;
 	struct regulator *regulator_3;
 
+	bool discard_sensor_queue;
 	bool is_suspended;
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	struct mmi_hall_data *hall_data;

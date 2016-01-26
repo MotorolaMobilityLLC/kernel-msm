@@ -284,12 +284,14 @@ void stml0xx_irq_work_func(struct work_struct *work)
 	    (buf[IRQ_IDX_STATUS_MED] << 8) | buf[IRQ_IDX_STATUS_LO];
 
 	/* Check for streaming sensors */
-	if ((stm_ws->flags & IRQ_WORK_FLAG_DISCARD_SENSOR_QUEUE) == 0) {
+	if (!ps_stml0xx->discard_sensor_queue) {
 		if (irq_status & M_QUEUE_OVERFLOW)
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Streaming sensor queue full");
 		if (irq_status & (M_ACCEL | M_ACCEL2 | M_GYRO | M_UNCALIB_GYRO))
 			stml0xx_process_stream_sensor_queue(buf, stm_ws->ts_ns);
+	} else {
+		ps_stml0xx->discard_sensor_queue = false;
 	}
 
 	if (irq_status & M_ALS) {
