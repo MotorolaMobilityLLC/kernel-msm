@@ -19,6 +19,10 @@ obj-$(CONFIG_ARCH_MSM8909)	+= clock-gcc-8909.o
 obj-$(CONFIG_ARCH_MDMFERRUM)	+= clock-rpm-8909.o
 obj-$(CONFIG_ARCH_MDMFERRUM)	+= clock-gcc-8909.o
 
+# MSM8916 SVELTE
+obj-$(CONFIG_ARCH_MSM8916_SVELTE)      += clock-rpm-8916.o
+obj-$(CONFIG_ARCH_MSM8916_SVELTE)      += clock-gcc-8916.o
+
 # MSM8994
 obj-$(CONFIG_ARCH_MSM8994)	+= clock-rpm-8994.o
 obj-$(CONFIG_ARCH_MSM8994)	+= clock-gcc-8994.o
@@ -33,6 +37,8 @@ obj-$(CONFIG_ARCH_MSM8992)	+= clock-mmss-8992.o
 # MSM8936
 obj-$(CONFIG_ARCH_MSM8916)	+= clock-rpm-8936.o
 obj-$(CONFIG_ARCH_MSM8916)	+= clock-gcc-8936.o
+obj-$(CONFIG_ARCH_MSM8916_SVELTE)      += clock-rpm-8936.o
+obj-$(CONFIG_ARCH_MSM8916_SVELTE)      += clock-gcc-8936.o
 
 # ACPU clock
 obj-$(CONFIG_ARCH_MSM8610)	+= clock-a7.o
@@ -43,6 +49,9 @@ obj-$(CONFIG_ARCH_MSMZIRC)	+= clock-a7.o
 obj-$(CONFIG_ARCH_MSM8916)	+= clock-cpu-8939.o
 obj-$(CONFIG_ARCH_MSM8916)	+= clock-cpu-8936.o
 obj-$(CONFIG_ARCH_MSM8909)	+= clock-a7.o
+obj-$(CONFIG_ARCH_MSM8916_SVELTE)      += clock-a7.o
+obj-$(CONFIG_ARCH_MSM8916_SVELTE)      += clock-cpu-8939.o
+obj-$(CONFIG_ARCH_MSM8916_SVELTE)      += clock-cpu-8936.o
 
 obj-$(CONFIG_ARCH_MSM_KRAIT)	+= clock-krait.o
 obj-$(CONFIG_ARCH_FSM9900)	+= clock-krait-8974.o

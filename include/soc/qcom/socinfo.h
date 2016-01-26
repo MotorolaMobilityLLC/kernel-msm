@@ -521,7 +521,7 @@ static inline int cpu_is_msm8909(void)
 
 static inline int cpu_is_msm8916(void)
 {
-#ifdef CONFIG_ARCH_MSM8916
+#if defined(CONFIG_ARCH_MSM8916) || defined(CONFIG_ARCH_MSM8916_SVELTE)
 	enum msm_cpu cpu = socinfo_get_msm_cpu();
 
 	BUG_ON(cpu == MSM_CPU_UNKNOWN);
@@ -534,7 +534,7 @@ static inline int cpu_is_msm8916(void)
 
 static inline int cpu_is_msm8936(void)
 {
-#ifdef CONFIG_ARCH_MSM8916
+#if defined(CONFIG_ARCH_MSM8916) || defined(CONFIG_ARCH_MSM8916_SVELTE)
 	enum msm_cpu cpu = socinfo_get_msm_cpu();
 
 	BUG_ON(cpu == MSM_CPU_UNKNOWN);
@@ -547,7 +547,7 @@ static inline int cpu_is_msm8936(void)
 
 static inline int cpu_is_msm8939(void)
 {
-#ifdef CONFIG_ARCH_MSM8916
+#if defined(CONFIG_ARCH_MSM8916) || defined(CONFIG_ARCH_MSM8916_SVELTE)
 	enum msm_cpu cpu = socinfo_get_msm_cpu();
 
 	BUG_ON(cpu == MSM_CPU_UNKNOWN);
@@ -560,7 +560,7 @@ static inline int cpu_is_msm8939(void)
 
 static inline int cpu_is_msmtellurium(void)
 {
-#ifdef CONFIG_ARCH_MSM8916
+#if defined(CONFIG_ARCH_MSM8916) || defined(CONFIG_ARCH_MSM8916_SVELTE)
 	enum msm_cpu cpu = socinfo_get_msm_cpu();
 
 	BUG_ON(cpu == MSM_CPU_UNKNOWN);
@@ -573,7 +573,7 @@ static inline int cpu_is_msmtellurium(void)
 
 static inline int cpu_is_msm8929(void)
 {
-#ifdef CONFIG_ARCH_MSM8916
+#if defined(CONFIG_ARCH_MSM8916) || defined(CONFIG_ARCH_MSM8916_SVELTE)
 	enum msm_cpu cpu = socinfo_get_msm_cpu();
 
 	BUG_ON(cpu == MSM_CPU_UNKNOWN);

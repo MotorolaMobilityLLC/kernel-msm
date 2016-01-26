@@ -248,7 +248,7 @@ config SND_SOC_APQ8084
 
 config SND_SOC_MSM8X16
 	tristate "SoC Machine driver for MSM8X16 boards"
-	depends on ARCH_MSM8916
+	depends on ARCH_MSM8916 || ARCH_MSM8916_SVELTE
 	select SND_SOC_QDSP6V2
 	select SND_SOC_MSM_STUB
 	select SND_SOC_MSM_HOSTLESS_PCM

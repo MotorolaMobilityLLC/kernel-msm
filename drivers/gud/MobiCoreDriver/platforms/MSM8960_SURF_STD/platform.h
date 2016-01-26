@@ -33,7 +33,7 @@
 #include <soc/qcom/scm.h>
 
 #if defined(CONFIG_ARCH_APQ8084) || defined(CONFIG_ARCH_MSM8916) || \
-	defined(CONFIG_ARCH_MSM8994)
+	defined(CONFIG_ARCH_MSM8994) || defined(CONFIG_ARCH_MSM8916_SVELTE)
 
 	#include <soc/qcom/qseecomi.h>
 	#include <linux/slab.h>
@@ -62,7 +62,7 @@
 static inline int smc_fastcall(void *fc_generic, size_t size)
 {
 #if defined(CONFIG_ARCH_APQ8084) || defined(CONFIG_ARCH_MSM8916) || \
-	defined(CONFIG_ARCH_MSM8994)
+	defined(CONFIG_ARCH_MSM8994) || defined(CONFIG_ARCH_MSM8916_SVELTE)
 	if (is_scm_armv8()) {
 		struct scm_desc desc = {0};
 		int ret;
@@ -95,7 +95,7 @@ static inline int smc_fastcall(void *fc_generic, size_t size)
 			fc_generic, size,
 			fc_generic, size);
 #if defined(CONFIG_ARCH_APQ8084) || defined(CONFIG_ARCH_MSM8916) || \
-	defined(CONFIG_ARCH_MSM8994)
+	defined(CONFIG_ARCH_MSM8994)|| defined(CONFIG_ARCH_MSM8916_SVELTE)
 	}
 #endif
 }
@@ -115,7 +115,7 @@ static inline int smc_fastcall(void *fc_generic, size_t size)
 #define MC_CRYPTO_CLOCK_MANAGEMENT
 #endif
 
-#if defined(CONFIG_ARCH_MSM8916) || defined(CONFIG_ARCH_MSM8909)
+#if defined(CONFIG_ARCH_MSM8916) || defined(CONFIG_ARCH_MSM8909) || defined(CONFIG_ARCH_MSM8916_SVELTE)
 #define MC_USE_DEVICE_TREE
 #endif
 

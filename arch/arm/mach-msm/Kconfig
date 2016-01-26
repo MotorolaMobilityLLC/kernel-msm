@@ -151,6 +151,45 @@ config ARCH_MSM8916
 	select MSM_RPM_LOG
 	select MSM_JTAGV8 if CORESIGHT_ETMV4
 
+config ARCH_MSM8916_SVELTE
+        bool "MSM8916_SVELTE"
+        select ARCH_MSM_CORTEXMP
+        select ARM_GIC
+        select MULTI_IRQ_HANDLER
+        select CPU_V7
+        select HAVE_ARM_ARCH_TIMER
+        select MAY_HAVE_SPARSE_IRQ
+        select SPARSE_IRQ
+        select PINCTRL
+        select PINCTRL_MSM_TLMM
+        select USE_PINCTRL_IRQ
+        select MSM_PM if PM
+        select MSM_RPM_SMD
+        select MSM_RUN_QUEUE_STATS
+        select MEMORY_HOLE_CARVEOUT
+        select DONT_MAP_HOLE_AFTER_MEMBANK0
+        select QMI_ENCDEC
+        select MSM_MULTIMEDIA_USE_ION
+        select MSM_IRQ
+        select MSM_CORTEX_A53
+        select CPU_FREQ_MSM
+        select CPU_FREQ
+        select PM_DEVFREQ
+        select MSM_DEVFREQ_DEVBW
+        select DEVFREQ_SIMPLE_DEV
+        select DEVFREQ_GOV_MSM_BW_HWMON
+        select MSM_BIMC_BWMON
+        select ARMBW_HWMON
+        select MSM_RPM_SMD
+        select MSM_QDSP6_APRV3
+        select MSM_QDSP6V2_CODECS
+        select MSM_AUDIO_QDSP6V2 if SND_SOC
+        select ARM_HAS_SG_CHAIN
+        select MSM_RPM_STATS_LOG
+        select ARCH_WANT_KMAP_ATOMIC_FLUSH
+        select MSM_RPM_LOG
+        select MSM_JTAGV8 if CORESIGHT_ETMV4
+
 config ARCH_FSM9900
 	bool "FSM9900"
 	select ARCH_MSM_KRAITMP
@@ -501,7 +540,7 @@ choice
 
 	config DEBUG_MSM8916_UART
                 bool "Kernel low-level debugging messages via MSM8916 UART"
-                depends on ARCH_MSM8916
+                depends on ARCH_MSM8916 || ARCH_MSM8916_SVELTE
                 select MSM_HAS_DEBUG_UART_HS_V14
                 help
                   Say Y here if you want the debug print routines to direct

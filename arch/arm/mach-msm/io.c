@@ -133,7 +133,7 @@ void __init msm_map_msm8909_io(void)
 }
 #endif /* CONFIG_ARCH_MSM8909 || CONFIG_ARCH_MDMFERRUM */
 
-#ifdef CONFIG_ARCH_MSM8916
+#if defined(CONFIG_ARCH_MSM8916) || defined(CONFIG_ARCH_MSM8916_SVELTE)
 static struct map_desc msm8916_io_desc[] __initdata = {
 	MSM_CHIP_DEVICE(APCS_GCC, MSM8916),
 #ifdef CONFIG_DEBUG_MSM8916_UART
@@ -145,7 +145,7 @@ void __init msm_map_msm8916_io(void)
 {
 	iotable_init(msm8916_io_desc, ARRAY_SIZE(msm8916_io_desc));
 }
-#endif /* CONFIG_ARCH_MSM8916 */
+#endif /* CONFIG_ARCH_MSM8916(_SVELTE) */
 
 #ifdef CONFIG_ARCH_MSM8226
 static struct map_desc msm_8226_io_desc[] __initdata = {
