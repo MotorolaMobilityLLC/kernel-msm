@@ -8383,10 +8383,14 @@ static bool smbchg_check_and_kick_aicl(struct smbchg_chip *chip)
 		return false;
 }
 
-static int eb_rechrg_start_soc = 80;
+static int eb_rechrg_start_soc = 70;
 module_param(eb_rechrg_start_soc, int, 0644);
-static int eb_rechrg_stop_soc = 100;
+static int eb_rechrg_stop_soc = 80;
 module_param(eb_rechrg_stop_soc, int, 0644);
+static int eb_attach_start_soc = 99;
+module_param(eb_attach_start_soc, int, 0644);
+static int eb_attach_stop_soc = 100;
+module_param(eb_attach_stop_soc, int, 0644);
 
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
@@ -8546,16 +8550,21 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		chip->stepchg_state = STEP_NONE;
 
 		/* Sanitize the Thresholds */
-		eb_max_soc = eb_rechrg_stop_soc;
-		eb_min_soc = eb_rechrg_start_soc;
+		if (chip->eb_hotplug) {
+			eb_max_soc = eb_attach_stop_soc;
+			eb_min_soc = eb_attach_start_soc;
+		} else {
+			eb_max_soc = eb_rechrg_stop_soc;
+			eb_min_soc = eb_rechrg_start_soc;
+		}
 		if (eb_max_soc > 100)
 			eb_max_soc = 100;
 		if (eb_min_soc > 100)
 			eb_min_soc = 100;
 		if (eb_min_soc < 0)
 			eb_min_soc = 0;
-		if (eb_max_soc < 75)
-			eb_max_soc = 75;
+		if (eb_max_soc < 0)
+			eb_max_soc = 0;
 		if (eb_min_soc > eb_max_soc)
 			eb_min_soc = eb_max_soc - 1;
 
@@ -8563,17 +8572,16 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		case EB_SRC:
 			if (eb_soc <= 0)
 				smbchg_set_extbat_state(chip, EB_OFF);
-			else if ((chip->eb_hotplug) && (batt_soc >= 100)) {
+			else if (batt_soc >= eb_max_soc) {
 				chip->eb_hotplug = false;
 				smbchg_set_extbat_state(chip, EB_OFF);
-			} else if (batt_soc >= eb_max_soc)
-				smbchg_set_extbat_state(chip, EB_OFF);
+			}
 			break;
 		case EB_SINK:
 		case EB_OFF:
 			if (eb_soc <= 0)
 				smbchg_set_extbat_state(chip, EB_OFF);
-			else if ((chip->eb_hotplug) || (batt_soc < eb_min_soc))
+			else if (batt_soc <= eb_min_soc)
 				smbchg_set_extbat_state(chip, EB_SRC);
 			break;
 		case EB_DISCONN:
