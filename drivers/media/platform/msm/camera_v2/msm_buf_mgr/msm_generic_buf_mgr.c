@@ -428,6 +428,7 @@ static long msm_buf_mngr_subdev_ioctl(struct v4l2_subdev *sd,
 		rc = msm_buf_mngr_handle_cont_cmd(buf_mngr_dev, argp);
 		break;
 	default:
+		pr_err_ratelimited("unsupported cmd type 0x%x\n", cmd);
 		return -ENOIOCTLCMD;
 	}
 	return rc;
@@ -461,7 +462,7 @@ static long msm_bmgr_subdev_fops_compat_ioctl(struct file *file,
 		cmd = VIDIOC_MSM_BUF_MNGR_CONT_CMD;
 		break;
 	default:
-		pr_debug("%s : unsupported compat type", __func__);
+		pr_err_ratelimited("unsupported compat type 0x%x\n", cmd);
 		return -ENOIOCTLCMD;
 	}
 
@@ -488,7 +489,7 @@ static long msm_bmgr_subdev_fops_compat_ioctl(struct file *file,
 
 		rc = v4l2_subdev_call(sd, core, ioctl, cmd, &buf_info);
 		if (rc < 0) {
-			pr_debug("%s : Subdev cmd %d fail", __func__, cmd);
+			pr_err_ratelimited("Subdev cmd 0x%x fail\n", cmd);
 			return rc;
 		}
 
@@ -517,13 +518,13 @@ static long msm_bmgr_subdev_fops_compat_ioctl(struct file *file,
 			return -EFAULT;
 		rc = v4l2_subdev_call(sd, core, ioctl, cmd, &cont_cmd);
 		if (rc < 0) {
-			pr_debug("%s : Subdev cmd %d fail", __func__, cmd);
+			pr_err_ratelimited("Subdev cmd 0x%x fail\n", cmd);
 			return rc;
 		}
 		}
 		break;
 	default:
-		pr_debug("%s : unsupported compat type", __func__);
+		pr_err_ratelimited("unsupported compat type 0x%x\n", cmd);
 		return -ENOIOCTLCMD;
 		break;
 	}

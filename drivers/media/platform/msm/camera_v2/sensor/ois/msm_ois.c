@@ -433,6 +433,7 @@ static long msm_ois_subdev_ioctl(struct v4l2_subdev *sd,
 			return msm_ois_close(sd, NULL);
 		}
 	default:
+		pr_err_ratelimited("unsupported compat type 0x%x\n", cmd);
 		return -ENOIOCTLCMD;
 	}
 }

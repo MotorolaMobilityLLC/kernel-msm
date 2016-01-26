@@ -639,6 +639,8 @@ static long msm_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 		msm_sensor_stop_stream(s_ctrl);
 		return 0;
 	default:
+		pr_err_ratelimited("%s: unsupported compat type 0x%x\n",
+				__func__, cmd);
 		return -ENOIOCTLCMD;
 	}
 }

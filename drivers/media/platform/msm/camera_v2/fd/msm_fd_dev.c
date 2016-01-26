@@ -549,6 +549,8 @@ static long msm_fd_compat_ioctl32(struct file *file,
 		break;
 	}
 	default:
+		pr_err_ratelimited("%s: unsupported compat type 0x%x\n",
+				__func__, cmd);
 		ret = -ENOIOCTLCMD;
 		break;
 
