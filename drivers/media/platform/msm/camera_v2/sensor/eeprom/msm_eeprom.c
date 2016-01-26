@@ -194,6 +194,8 @@ static long msm_eeprom_subdev_ioctl(struct v4l2_subdev *sd,
 	case VIDIOC_MSM_EEPROM_CFG:
 		return msm_eeprom_config(e_ctrl, argp);
 	default:
+		pr_err_ratelimited("%s: unsupported compat type 0x%x\n",
+				__func__, cmd);
 		return -ENOIOCTLCMD;
 	}
 
@@ -897,6 +899,8 @@ static long msm_eeprom_subdev_ioctl32(struct v4l2_subdev *sd,
 	case VIDIOC_MSM_EEPROM_CFG32:
 		return msm_eeprom_config32(e_ctrl, argp);
 	default:
+		pr_err_ratelimited("%s: unsupported compat type 0x%x\n",
+				__func__, cmd);
 		return -ENOIOCTLCMD;
 	}
 

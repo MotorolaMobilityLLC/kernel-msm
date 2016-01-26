@@ -997,6 +997,8 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 	case MSM_CCI_GPIO_WRITE:
 		break;
 	default:
+		pr_err_ratelimited("%s:%d unsupported compat type 0x%x\n",
+				__func__, __LINE__, cci_ctrl->cmd);
 		rc = -ENOIOCTLCMD;
 	}
 	CDBG("%s line %d rc %d\n", __func__, __LINE__, rc);
@@ -1092,6 +1094,8 @@ static long msm_cci_subdev_ioctl(struct v4l2_subdev *sd,
 		break;
 	}
 	default:
+		pr_err_ratelimited("%s:%d unsupported compat type 0x%x\n",
+				__func__, __LINE__, cmd);
 		rc = -ENOIOCTLCMD;
 	}
 	CDBG("%s line %d rc %d\n", __func__, __LINE__, rc);

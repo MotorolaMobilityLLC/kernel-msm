@@ -95,6 +95,8 @@ static long msm_i2c_mux_subdev_ioctl(struct v4l2_subdev *sd,
 		rc = msm_i2c_mux_release(mux_device);
 		break;
 	default:
+		pr_err_ratelimited("%s: unsupported compat type 0x%x\n",
+				__func__, cmd);
 		rc = -ENOIOCTLCMD;
 	}
 	mutex_unlock(&mux_device->mutex);
