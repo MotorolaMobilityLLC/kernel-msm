@@ -79,6 +79,17 @@ static int msm8952_wsa_switch_event(struct snd_soc_dapm_widget *w,
 static int msm8952_ext_audio_switch_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event);
 
+#if defined(CONFIG_SPEAKER_EXT_PA)
+extern int msm8x16_spk_ext_pa_ctrl(struct msm8916_asoc_mach_data *pdatadata, bool value);
+#endif
+
+
+#if defined(CONFIG_SND_SOC_TPA6130A2)
+extern int tpa6130a2_stereo_enable(struct snd_soc_codec *codec, int enable);
+
+struct snd_soc_codec *codec_hph_pa;
+#endif
+
 /*
  * Android L spec
  * Need to report LINEIN
@@ -121,6 +132,20 @@ static struct afe_clk_cfg mi2s_tx_clk = {
 	Q6AFE_LPASS_MODE_CLK1_VALID,
 	0,
 };
+
+#if defined(CONFIG_SPEAKER_EXT_PA)
+struct cdc_pdm_pinctrl_info {
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *cdc_lines_sus;
+	struct pinctrl_state *cdc_lines_act;
+	struct pinctrl_state *cross_conn_det_sus;
+	struct pinctrl_state *cross_conn_det_act;
+
+	struct pinctrl_state *spk_ext_pa_act;
+	struct pinctrl_state *spk_ext_pa_sus;
+};
+static struct cdc_pdm_pinctrl_info pinctrl_info;
+#endif
 
 static struct afe_clk_cfg wsa_ana_clk = {
 	AFE_API_VERSION_I2S_CONFIG,
@@ -1551,6 +1576,9 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	int ret = -ENOMEM;
+#if defined(CONFIG_SND_SOC_TPA6130A2)
+	codec_hph_pa = codec;
+#endif
 
 	pr_debug("%s(),dev_name%s\n", __func__, dev_name(cpu_dai->dev));
 
@@ -2486,6 +2514,46 @@ void msm8952_disable_mclk(struct work_struct *work)
 	mutex_unlock(&pdata->cdc_mclk_mutex);
 }
 
+#if defined(CONFIG_SPEAKER_EXT_PA)
+static void msm8x16_spk_ext_pa_delayed(struct work_struct *work)
+{
+	struct delayed_work *dwork;
+	struct msm8916_asoc_mach_data *pdata;
+	int ret=0;
+
+	dwork = to_delayed_work(work);
+	pdata = container_of(dwork, struct msm8916_asoc_mach_data, pa_gpio_work);
+
+	if(pdata->pa_is_on == 0)
+	{
+	ret = msm8x16_spk_ext_pa_ctrl(pdata, true);
+	pdata->pa_is_on = 2;
+	pr_debug("At %d In (%s),pdata->pa_is_on=%d,ret=%d\n",__LINE__, __FUNCTION__,pdata->pa_is_on,ret);
+	}
+}
+
+#endif
+
+#if defined(CONFIG_SND_SOC_TPA6130A2)
+static void msm8x16_hph_ext_pa_delayed(struct work_struct *work)
+{
+	struct delayed_work *dwork;
+	struct msm8916_asoc_mach_data *pdata;
+	int ret=0;
+
+	dwork = to_delayed_work(work);
+	pdata = container_of(dwork, struct msm8916_asoc_mach_data, hph_pa_gpio_work);
+	pr_debug("At %d In (%s),enter,pdata->hph_pa_is_on=%d\n",__LINE__, __FUNCTION__,pdata->hph_pa_is_on);
+
+	if(pdata->hph_pa_is_on == 0)
+	{
+	ret = tpa6130a2_stereo_enable(codec_hph_pa, 1);
+	pdata->hph_pa_is_on = 2;
+	}
+}
+
+#endif
+
 static bool msm8952_swap_gnd_mic(struct snd_soc_codec *codec)
 {
 	struct snd_soc_card *card = codec->card;
@@ -2535,6 +2603,56 @@ static void msm8952_dt_parse_cap_info(struct platform_device *pdev,
 	return;
 }
 
+#if defined(CONFIG_SPEAKER_EXT_PA)
+static int msm8x16_setup_spk_ext_pa(struct platform_device *pdev, struct msm8916_asoc_mach_data *pdata)
+{
+	struct pinctrl *pinctrl;
+	int ret;
+
+	pdata->spk_ext_pa_gpio_lc = of_get_named_gpio(pdev->dev.of_node,
+					"qcom,spk_ext_pa", 0);
+	if (pdata->spk_ext_pa_gpio_lc < 0) {
+		pr_debug("%s, spk_ext_pa_gpio_lc not exist!\n", __func__);
+	} else {
+		pr_debug("%s, spk_ext_pa_gpio_lc=%d\n", __func__, pdata->spk_ext_pa_gpio_lc);
+		pinctrl = devm_pinctrl_get(&pdev->dev);
+		if (IS_ERR(pinctrl)) {
+			pr_err("%s: Unable to get pinctrl handle\n", __func__);
+			return -EINVAL;
+		}
+		pinctrl_info.pinctrl = pinctrl;
+		/* get pinctrl handle for spk_ext_pa_gpio_lc */
+		pinctrl_info.spk_ext_pa_act = pinctrl_lookup_state(pinctrl, "spk_ext_pa_act");
+		if (IS_ERR(pinctrl_info.spk_ext_pa_act)) {
+			pr_err("%s: Unable to get pinctrl disable handle\n", __func__);
+			return -EINVAL;
+		}
+		pinctrl_info.spk_ext_pa_sus = pinctrl_lookup_state(pinctrl, "spk_ext_pa_sus");
+		if (IS_ERR(pinctrl_info.spk_ext_pa_sus)) {
+			pr_err("%s: Unable to get pinctrl active handle\n", __func__);
+			return -EINVAL;
+		}
+
+		if (gpio_is_valid(pdata->spk_ext_pa_gpio_lc))
+		{
+			pr_debug("%s, spk_ext_pa_gpio_lc request\n", __func__);
+			ret = gpio_request_one(pdata->spk_ext_pa_gpio_lc,
+					   GPIOF_DIR_OUT | GPIOF_INIT_LOW,
+					   "ext/PA-GPIO");
+			if (ret != 0) {
+				pr_debug("Failed to request /ext/PA-GPIO: %d\n", ret);
+				return -EINVAL;
+			}
+			pr_debug("At %d In (%s),set spk_ext_pa_gpio_lc to low\n",__LINE__, __FUNCTION__);
+			gpio_set_value(pdata->spk_ext_pa_gpio_lc, 0);
+			msleep(5);
+
+		}
+
+	}
+	return 0;
+}
+#endif
 
 static int msm8952_populate_dai_link_component_of_node(
 		struct snd_soc_card *card)
@@ -2950,7 +3068,11 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 	pdata->lb_mode = false;
 
 	msm8952_dt_parse_cap_info(pdev, pdata);
-
+#if defined(CONFIG_SPEAKER_EXT_PA)
+	ret = msm8x16_setup_spk_ext_pa(pdev, pdata);
+	if (ret)
+		pr_debug("%s, msm8x16_setup_spk_ext_pa error!\n", __func__);
+#endif
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, pdata);
@@ -2959,6 +3081,12 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	/* initialize timer */
 	INIT_DELAYED_WORK(&pdata->disable_mclk_work, msm8952_disable_mclk);
+#if defined(CONFIG_SPEAKER_EXT_PA)
+	INIT_DELAYED_WORK(&pdata->pa_gpio_work, msm8x16_spk_ext_pa_delayed);
+#endif
+#if defined(CONFIG_SND_SOC_TPA6130A2)
+	INIT_DELAYED_WORK(&pdata->hph_pa_gpio_work, msm8x16_hph_ext_pa_delayed);
+#endif
 	mutex_init(&pdata->cdc_mclk_mutex);
 	atomic_set(&pdata->mclk_rsc_ref, 0);
 	if (card->aux_dev) {
