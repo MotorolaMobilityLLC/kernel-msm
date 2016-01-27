@@ -2126,7 +2126,7 @@ qpnp_chg_chgr_chg_failed_irq_handler(int irq, void *_chip)
 	u8 chg_led = 0; //ASUS_BSP +
 
 	printk("chg_failed triggered\n");
-
+	chip->chg_done = true;
 	qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
 
 	rc = qpnp_chg_masked_write(chip,
