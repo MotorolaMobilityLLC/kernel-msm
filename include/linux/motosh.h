@@ -341,6 +341,7 @@ struct motosh_platform_data {
 	int accel_orient;
 	int gyro_orient;
 	int mag_orient;
+	int mag_config;
 	int panel_type;
 	int IR_config;
 	int cover_detect_polarity;
