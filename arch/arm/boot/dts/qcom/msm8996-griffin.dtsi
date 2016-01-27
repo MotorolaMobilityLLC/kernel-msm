@@ -51,6 +51,13 @@
 	qcom,msm-thermal {
 		qcom,config-info = "griffin";
 	};
+
+	/* SensorHub Bus */
+	i2c@7579000 {
+		motosh@43 {
+			mag_config = <1>;     /* Magnetometer config value */
+		};
+	};
 };
 
 &pm8994_l17 {
