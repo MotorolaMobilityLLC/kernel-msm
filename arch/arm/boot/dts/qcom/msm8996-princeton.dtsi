@@ -58,8 +58,9 @@
 	/* SensorHub Bus */
 	i2c@7579000 {
 		motosh@43 {
-			accel_orient = <3>;     /* Accel Orientation value */
-			gyro_orient = <3>;      /* Gyro Orientation value */
+			accel_orient = <3>;   /* Accel Orientation value */
+			gyro_orient = <3>;    /* Gyro Orientation value */
+			mag_config = <0>;     /* Magnetometer config value */
 		};
 	};
 
