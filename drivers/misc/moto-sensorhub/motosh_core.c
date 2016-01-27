@@ -876,6 +876,7 @@ motosh_of_init(struct i2c_client *client)
 	pdata->accel_orient = 1;
 	pdata->gyro_orient = 1;
 	pdata->mag_orient = 1;
+	pdata->mag_config = 0;
 	pdata->panel_type = 1;
 	pdata->IR_config = 1;
 	pdata->aod_touch_mode = 0;
@@ -885,6 +886,8 @@ motosh_of_init(struct i2c_client *client)
 			&pdata->gyro_orient);
 	of_property_read_u32(np, "mag_orient",
 			&pdata->mag_orient);
+	of_property_read_u32(np, "mag_config",
+			&pdata->mag_config);
 	of_property_read_u32(np, "panel_type",
 			&pdata->panel_type);
 	of_property_read_u32(np, "IR_config",
