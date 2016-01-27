@@ -649,6 +649,14 @@ config DROPBOX
 	  in dropbox manager service.  This enables fast and simple logging of
 	  various critical events from kernel drivers.
 
+config MODS_USB_EXT_BRIDGE
+	bool "Enable interface to support MODS USB"
+	default n
+	help
+	  This enables an interface that integrates the MODS usb greybus
+	  module with the kernel USB drivers. If you are using the MODS
+	  kernel modules, you should select yes, if not no.
+
 config MODS_CODEC_BUS
 	tristate "mods codec bus interface support"
 	default n
