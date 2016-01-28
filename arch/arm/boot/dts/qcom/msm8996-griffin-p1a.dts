@@ -155,9 +155,6 @@
 	};
 
 	/delete-node/ stmvl53l0@29;
-	fusb302@22 {
-		/delete-property/ fsa321-audio-switch;
-	};
 	/delete-node/ usb3813@2D;
 };
 

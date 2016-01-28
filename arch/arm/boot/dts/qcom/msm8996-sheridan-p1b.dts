@@ -76,12 +76,6 @@
 	};
 };
 
-&i2c_7 {
-	fusb302@22 {
-		/delete-property/ fsa321-audio-switch;
-	};
-};
-
 &mdss_hdmi_hpd_active {
 	mux {
 		pins = "gpio79";
