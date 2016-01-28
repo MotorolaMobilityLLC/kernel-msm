@@ -511,9 +511,9 @@ static void epl_sensor_report_ps_status(void)
 	LOG_INFO("epl_sensor.ps.data.data=%d, value=%d\n", epl_sensor.ps.data.data, epl_sensor.ps.compare_low >> 3);
 
 	if (epl_sensor.ps.compare_low >> 3 == 0)
-		distance = 10;
+		distance = 1;
 	else if (epl_sensor.ps.compare_low >> 3 == 1)
-		distance = 100;
+		distance = 10;
 	else
 		distance = -1;
 
@@ -3208,7 +3208,7 @@ static int epl_sensor_setup_psensor(struct epl_sensor_priv *epld)
     epld->ps_input_dev->name = ElanPsensorName;
 
     set_bit(EV_ABS, epld->ps_input_dev->evbit);
-	input_set_abs_params(epld->ps_input_dev, ABS_DISTANCE, 0, 100, 0, 0);
+	input_set_abs_params(epld->ps_input_dev, ABS_DISTANCE, 0, 10, 0, 0);
 #if SPREAD
     set_bit(EV_ABS, epld->ps_input_dev->evbit);
     input_set_abs_params(epld->ps_input_dev, ABS_MISC, 0, 9, 0, 0);
