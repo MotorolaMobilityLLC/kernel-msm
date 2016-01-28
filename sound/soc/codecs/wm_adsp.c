@@ -2727,6 +2727,8 @@ int wm_adsp2_init(struct wm_adsp *dsp, struct mutex *fw_lock)
 {
 	int ret, i;
 	const char **ctl_names;
+	struct device_node *np = of_get_child_by_name(dsp->dev->of_node,
+						      "adsps");
 
 	/*
 	 * Disable the DSP memory by default when in reset for a small
@@ -2751,6 +2753,14 @@ int wm_adsp2_init(struct wm_adsp *dsp, struct mutex *fw_lock)
 		if (!dsp->dev->of_node || wm_adsp_of_parse_adsp(dsp) <= 0) {
 			dsp->num_firmwares = WM_ADSP_NUM_FW;
 			dsp->firmwares = wm_adsp_fw;
+			ret = of_property_read_string(np,
+				"mot,speaker-protect-coeff",
+				&dsp->firmwares[WM_ADSP_FW_SPEAKERPROTECT]
+					.binfile);
+			if (ret < 0)
+				adsp_info(dsp,
+					 "binfile dt missing, use default: %d\n",
+					 ret);
 		}
 
 		for (i = 0; i < dsp->num_firmwares; i++)
