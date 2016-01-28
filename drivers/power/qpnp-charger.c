@@ -464,6 +464,11 @@ extern char g_CHG_mode;
 #endif
 //ASUS_BSP ---
 
+//ASUS Maggie +++ : use USB in to determine if watch is in still state
+#ifdef CONFIG_SENSORS_INV_ACCEL_CAL
+extern void inv_mpu_delay_calibration(int);
+#endif
+//ASUS Maggie --- : use USB in to determine if watch is in still state
 
 enum bpd_type {
 	BPD_TYPE_BAT_ID,
@@ -1867,6 +1872,9 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			qpnp_chg_iusb_trim_set(chip, chip->usb_trim_default);
 			chip->prev_usb_max_ma = -EINVAL;
 			chip->aicl_settled = false;
+			#ifdef CONFIG_SENSORS_INV_ACCEL_CAL
+			inv_mpu_delay_calibration(0);
+			#endif
 		} else {
 			/* when OVP clamped usbin, and then decrease
 			 * the charger voltage to lower than the OVP
@@ -1893,6 +1901,9 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 			printk("[BAT][PM8226][sche_eoc_work]%s\n",__FUNCTION__);//ASUS BSP Eason:check schedule eoc_work
 			schedule_work(&chip->soc_check_work);
+			#ifdef CONFIG_SENSORS_INV_ACCEL_CAL
+			inv_mpu_delay_calibration(1);
+			#endif
 		}
 
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
