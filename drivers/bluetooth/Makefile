@@ -20,8 +20,7 @@ obj-$(CONFIG_BT_MRVL)		+= btmrvl.o
 obj-$(CONFIG_BT_MRVL_SDIO)	+= btmrvl_sdio.o
 obj-$(CONFIG_BT_WILINK)		+= btwilink.o
 obj-$(CONFIG_MSM_BT_POWER)	+= bluetooth-power.o
-obj-$(CONFIG_BT_MSM_SLEEP)	+= msm_bt_sleep.o
-msm_bt_sleep-objs		:= bluesleep.o
+obj-$(CONFIG_BT_MSM_SLEEP)	+= nitrous.o
 
 btmrvl-y			:= btmrvl_main.o
 btmrvl-$(CONFIG_DEBUG_FS)	+= btmrvl_debugfs.o
