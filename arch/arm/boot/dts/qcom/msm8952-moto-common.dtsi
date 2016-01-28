@@ -615,7 +615,7 @@
 			"csr_gp_io_lpaif_pri_pcm_pri_mode_muxsel",
 			"csr_gp_io_mux_quin_ctl";
 		qcom,msm-ext-pa = "quinary";
-		qcom,msm-mclk-freq = <12288000>;
+		qcom,msm-mclk-freq = <9600000>;
 		qcom,msm-mbhc-hphl-swh = <0>;
 		qcom,msm-mbhc-gnd-swh = <0>;
 		qcom,msm-hs-micbias-type = "external";
