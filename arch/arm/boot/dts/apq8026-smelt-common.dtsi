@@ -40,11 +40,6 @@
 		android,ramoops-annotate-size = <0x400>;
 	};
 
-	bt_qca6174 {
-		compatible = "qca,qca6174";
-		qca,bt-reset-gpio = <&msmgpio 26 0>; /* BT_ENABLE */
-	};
-
 	wifi_bcm4343 {
 		compatible = "bcm,bcm4343";
 		wl_reg_on = <&msmgpio 28 0>;
@@ -319,15 +314,14 @@
 		status = "disabled";
 	};
 
-	bluesleep {
-		compatible = "qcom,bluesleep";
-		bt_port_id = <6>;
-		bt_host_wake = <&msmgpio 27 0>;
-		bt_ext_wake = <&msmgpio 30 0>;
-		interrupt-parent = <&msmgpio>;
-		interrupts = <27 0>;
-		interrupt-names = "host_wake";
-		tx-timer-interval = <300>;
+	bt_nitrous {
+		compatible = "goog,nitrous";
+		uart-port = <6>;
+		power-gpio = <&msmgpio 26 0>;
+		host-wake-gpio = <&msmgpio 27 0>;
+		host-wake-polarity = <0>;
+		dev-wake-gpio = <&msmgpio 30 0>;
+		dev-wake-polarity = <0>;
 	};
 
 };
