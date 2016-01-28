@@ -16,9 +16,67 @@
 / {
 	model = "Motorola Mobility MSM 8916 Harpia";
 	compatible = "qcom,msm8916-harpia", "qcom,msm8916-moto", "qcom,msm8916";
+	aliases {
+		i2c3 = &i2c_3;
+	};
 };
 
 &tlmm_pinmux {
+	pmx_i2c_3 {
+		/* CLK, DATA */
+		qcom,pins = <&gp 11>, <&gp 10>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <2>;
+		label = "pmx_i2c_3";
+		/* active state */
+		i2c_3_active: i2c_3_active{
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+		/* suspended state */
+		i2c_3_sleep: i2c_3_sleep {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+	};
+
+	pmx_nfc_irq {
+		qcom,pins = <&gp 9>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "nfc_irq";
+
+		nfc_irq_default: default {
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+
+	pmx_nfc_pwr {
+		qcom,pins = <&gp 36>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "nfc_pwr";
+
+		nfc_pwr_default: default {
+			bias-pull-down;
+			output-low;
+			drive-strength = <2>;
+		};
+	};
+
+	pmx_nfc_en {
+		qcom,pins = <&gp 8>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "nfc_en";
+
+		nfc_en_default: default {
+			bias-pull-down;
+			output-low;
+			drive-strength = <2>;
+		};
+	};
 	touch_reset_n {
 		qcom,pins = <&gp 12>;
 	};
@@ -26,6 +84,10 @@
 	touch_int_n {
 		qcom,pins = <&gp 13>;
 	};
+};
+
+&spi_0 {
+	status = "disabled";
 };
 
 &i2c_1 {
@@ -78,6 +140,32 @@
 	};
 };
 
+&soc {
+
+	i2c_3: i2c@78b7000 { /* BLSP1 QUP3 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr", "bam_phys_addr";
+		reg = <0x78b7000 0x600>,
+		      <0x7884000 0x23000>;
+		interrupt-names = "qup_irq", "bam_irq";
+		interrupts = <0 97 0>, <0 238 0>;
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup3_i2c_apps_clk>;
+		clock-names = "iface_clk", "core_clk";
+		qcom,clk-freq-out = <100000>;
+		qcom,clk-freq-in  = <19200000>;
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_3_active>;
+		pinctrl-1 = <&i2c_3_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,bam-pipe-idx-cons = <8>;
+		qcom,bam-pipe-idx-prod = <9>;
+		qcom,master-id = <86>;
+	};
+};
 &pm8916_l6 {
 	regulator-boot-on;
         regulator-always-on;
@@ -99,6 +187,38 @@
 		interrupts = <13 0>;
 		gpios = <&msm_gpio 13 0>, /* IRQ */
 			<&msm_gpio 12 0>; /* RESET */
+	};
+};
+
+&i2c_3 { /* BLSP1 QUP3 */
+	status = "okay";
+	/* BCM 20795 NFC Controller */
+	bcm2079x@77 {
+		status = "ok";
+		compatible = "brcm,bcm2079x";
+		reg = <0x77>;
+		brcm,irq-gpio = <&msm_gpio 9 0x00>;
+		brcm,pwr-gpio = <&msm_gpio 36 0x00>;
+		brcm,wak-gpio = <&msm_gpio 8 0x00>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <9 0>;
+		qcom,clk-gpio = <&pm8916_gpios 2 0>;
+		clocks = <&clock_rpm clk_bb_clk2_pin>;
+		clock-names = "ref_clk";
+	};
+	/* BCM 20795 NFC Controller */
+	bcm2079x@77 {
+		status = "ok";
+		compatible = "brcm,bcm2079x";
+		reg = <0x77>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <9 0>; 		/* NFC_IRQ */
+		gpios = <&msm_gpio 8 0>, 	/* NFC_ENABLE_IN */
+			<&msm_gpio 9 0>, 		/* NFC_IRQ */
+			<&msm_gpio 36 0>; 		/* NFC_POWER_ON */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&nfc_irq_default &nfc_pwr_default &nfc_en_default>;
 	};
 };
 
