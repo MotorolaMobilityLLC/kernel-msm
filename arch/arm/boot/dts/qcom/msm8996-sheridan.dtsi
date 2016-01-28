@@ -99,3 +99,9 @@
 		st,xtalkval = <32768>;
 	};
 };
+
+&florida {
+	adsps {
+		mot,speaker-protect-coeff = "speaker-protect-sheridan";
+	};
+};
