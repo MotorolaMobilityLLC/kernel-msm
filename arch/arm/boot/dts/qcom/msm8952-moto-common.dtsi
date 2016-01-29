@@ -951,7 +951,7 @@
 		pinctrl-0 = <&laser_active >;
 		pinctrl-1 = <&laser_suspend >;
 		st,sensorthreshold = <40 50>;
-		st,xtalkval = <26214>;
+		st,xtalkval = <19>;
 	};
 
 	elan@49 {
