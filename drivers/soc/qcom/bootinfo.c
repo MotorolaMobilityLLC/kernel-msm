@@ -309,6 +309,24 @@ const char *bi_bootreason(void)
 }
 EXPORT_SYMBOL(bi_bootreason);
 
+static u32 secure_hardware;
+static int __init bootinfo_secure_hardware_init(char *s)
+{
+	secure_hardware = simple_strtoul(s, NULL, 0);
+
+	return 1;
+}
+__setup("androidboot.secure_hardware=", bootinfo_secure_hardware_init);
+
+u32 bi_secure_hardware(void)
+{
+	return secure_hardware;
+}
+EXPORT_SYMBOL(bi_secure_hardware);
+
+#define EMIT_SECURE_HW() \
+		EMIT_BOOTINFO("SECURE_HW", "%d", secure_hardware)
+
 static void bootinfo_lastkmsg_annotate_bl(struct bl_build_sig *bl)
 {
 	int i;
@@ -326,6 +344,7 @@ static void bootinfo_lastkmsg_annotate_bl(struct bl_build_sig *bl)
 	pstore_annotate(linux_banner);
 	EMIT_BOOTINFO_LASTKMSG(buf, "SERIAL", "0x%llx", serial);
 	EMIT_BOOTINFO_LASTKMSG(buf, "HW_REV", "0x%04x", hwrev);
+	EMIT_BOOTINFO_LASTKMSG(buf, "SECURE_HW", "%d", secure_hardware);
 	EMIT_BOOTINFO_LASTKMSG(buf, "BOOT_SEQ", "0x%08x", boot_seq);
 	persistent_ram_annotation_append("POWERUPREASON: 0x%08x\n",
 						bi_powerup_reason());
@@ -344,6 +363,7 @@ static int get_bootinfo(struct seq_file *m, void *v)
 
 	EMIT_SERIAL();
 	EMIT_HWREV();
+	EMIT_SECURE_HW();
 	EMIT_POWERUPREASON();
 	EMIT_MBM_VERSION();
 	EMIT_BL_BUILD_SIG();
