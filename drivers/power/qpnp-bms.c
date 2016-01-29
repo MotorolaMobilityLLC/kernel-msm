@@ -2095,7 +2095,7 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	backup_soc_and_iavg(chip, batt_temp, chip->last_soc);
 	pr_debug("Reported SOC = %d\n", chip->last_soc);
 	mutex_unlock(&chip->last_soc_mutex);
-	if ((chip->last_soc >= 99) && (chip->calculated_soc >= 98) && (time_since_last_change_sec <= 60)
+	if ((chip->calculated_soc >= 98) && (time_since_last_change_sec <= 60)
 		&& (get_battery_status(chip) == POWER_SUPPLY_STATUS_DISCHARGING) && charge_full == true)
 		return soc_temp;
 	else {
