@@ -85,6 +85,7 @@ extern struct proc_dir_entry proc_root;
 u32  bi_powerup_reason(void);
 const char *bi_bootreason(void);
 u32  bi_mbm_version(void);
+u32  bi_secure_hardware(void);
 
 void bi_add_bl_build_sig(char *bld_sig);
 
@@ -100,6 +101,7 @@ extern unsigned int system_serial_high;
 static inline u32 bi_powerup_reason(void) { return PU_REASON_INVALID; }
 static inline const char *bi_bootreason(void) { return "NOTSUPPORTED"; }
 static inline u32 bi_mbm_version(void) { return 0xFFFFFFFF; }
+static inline u32 bi_secure_hardware(void) { return 1; }
 #endif /* !defined(CONFIG_BOOTINFO) */
 #endif /* defined(__KERNEL__) */
 
