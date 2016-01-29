@@ -36,10 +36,10 @@
 /* #define INT_POLLING_DELAY	20 */
 
 /* if don't want to have output from vl6180_dbgmsg, comment out #DEBUG macro */
-#define DEBUG
+/*#define DEBUG*/
 /* #define vl6180_dbgmsg(str, args...) pr_debug("%s: " str, __func__, ##args) */
 #define vl53l0_dbgmsg(str, args...)	\
-	printk(KERN_INFO "%s: " str, __func__, ##args)
+	pr_debug("%s: " str, __func__, ##args)
 /* #define vl6180_errmsg(str, args...) pr_err("%s: " str, __func__, ##args) */
 #define vl53l0_errmsg(str, args...) \
 	printk(KERN_ERR "%s: " str, __func__, ##args)
@@ -159,6 +159,7 @@ struct stmvl53l0_data {
 	uint8_t cut_v;
 	unsigned int xtalkCalDistance;
 	unsigned int offsetCalDistance;
+	VL53L0_GpioFunctionality gpio_function;
 };
 
 /*
