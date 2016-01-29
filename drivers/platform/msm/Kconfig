@@ -75,6 +75,14 @@ config QPNP_POWER_ON
 	  PNP PMIC. It currently supports reporting the change in status of
 	  the KPDPWR_N line (connected to the power-key).
 
+config QPNP_USER_RESET
+	tristate "QPNP PMIC User Rest"
+	depends on QPNP_POWER_ON
+	help
+	  Support to trigger a watchdog reset on nonsecure hardware by power
+	  and volume down key combination. A usb cable must be connected to
+	  trigger the watchdog reset.
+
 config QPNP_CLKDIV
 	tristate "QPNP PMIC clkdiv driver"
 	depends on OF_SPMI && SPMI
