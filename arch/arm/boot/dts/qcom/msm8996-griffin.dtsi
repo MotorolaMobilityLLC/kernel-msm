@@ -167,6 +167,6 @@
 
 &i2c_7 {
 	stmvl53l0@29 {
-		st,xtalkval = <26214>;
+		st,xtalkval = <22>;
 	};
 };
