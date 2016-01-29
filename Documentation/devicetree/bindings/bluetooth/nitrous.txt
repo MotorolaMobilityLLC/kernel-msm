@@ -1,0 +1,44 @@
+* Nitrous Bluetooth Power Management Driver
+
+The Nitrous BT power management is designed to handle the power management
+between a host processor and a BT controller.  In its current form, the
+driver is specific to the power management between a MSM processor and a
+Broadcom BT controller over UART communication.
+
+The driver handles the following key power management elements:
+-rfkill.
+-host-wake-gpio/dev-wake-gpio sleep protocol.
+-serial driver power management.
+
+On Tx, the driver registers and receives a callback from the serial core to
+toggle the dev-wake-gpio and utilizes the PM Runtime framework to wake up
+the serial driver for transmission.
+
+On Rx, the driver listens to the host-wake GPIO and wakes up the serial driver
+to receive incoming data.  The host-wake GPIO is also capable of waking up
+the host processor from suspend.
+
+Required Properties:
+  - compatible: "goog,nitrous"
+  - uart-port = UART port number for serial communication.
+  - power-gpio = GPIO number for controller power.
+  - host-wake-gpio: GPIO number for host wake signal (controller to host).
+  - host-wake-polarity: Polarity for host wake GPIO
+                        (0: active low; 1: active high).
+  - dev-wake-gpio: GPIO number for controller wake signal (host to controller).
+  - dev-wake-polarity: Polarity for dev wake GPIO
+                       (0: active low; 1: active high).
+
+Optional Properties:
+  None
+
+Example:
+	bt_nitrous {
+		compatible = "goog,nitrous";
+		uart-port = <6>;
+		power-gpio = <&msmgpio 10 0>;
+		host-wake-gpio = <&msmgpio 20 0>;
+		host-wake-polarity = <0>;
+		dev-wake-gpio = <&msmgpio 30 0>;
+		dev-wake-polarity = <0>;
+	};
