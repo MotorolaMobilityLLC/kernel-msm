@@ -30,6 +30,11 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/qpnp/power-on.h>
 #include <linux/time.h>
+#ifdef CONFIG_QPNP_USER_RESET
+#include <linux/power_supply.h>
+#include <soc/qcom/watchdog.h>
+#include <soc/qcom/bootinfo.h>
+#endif
 
 #define CREATE_MASK(NUM_BITS, POS) \
 	((unsigned char) (((1 << (NUM_BITS)) - 1) << (POS)))
@@ -237,6 +242,41 @@ static const char * const qpnp_poff_reason[] = {
  */
 static int warm_boot;
 module_param(warm_boot, int, 0);
+
+#ifdef CONFIG_QPNP_USER_RESET
+static void qpnp_user_wdt_handler(unsigned long data);
+static DEFINE_TIMER(wdt_timer, qpnp_user_wdt_handler, 0, 0);
+static void qpnp_user_wdt_handler(unsigned long data)
+{
+	pr_warn("User triggered watchdog reset(Pwr + VolDn)\n");
+	msm_trigger_wdog_bite();
+}
+
+static void qpnp_user_wdt_set(void)
+{
+	struct power_supply *psy;
+	union power_supply_propval data;
+
+	if (bi_secure_hardware())
+		return;
+
+	psy = power_supply_get_by_name("usb");
+	if (!psy || !psy->get_property)
+		return;
+
+	if (psy->get_property(psy, POWER_SUPPLY_PROP_PRESENT, &data))
+		return;
+
+	/* usb charger present*/
+	if (data.intval)
+		mod_timer(&wdt_timer, jiffies + HZ * 6);
+}
+
+static void qpnp_user_wdt_clear(void)
+{
+	del_timer(&wdt_timer);
+}
+#endif
 
 static int
 qpnp_pon_masked_write(struct qpnp_pon *pon, u16 addr, u8 mask, u8 val)
@@ -717,6 +757,14 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	pr_debug("PMIC input: code=%d, sts=0x%hhx\n",
 					cfg->key_code, pon_rt_sts);
 	key_status = pon_rt_sts & pon_rt_bit;
+
+#ifdef CONFIG_QPNP_USER_RESET
+	if (pon_rt_sts & QPNP_PON_KPDPWR_N_SET &&
+	    pon_rt_sts & QPNP_PON_RESIN_N_SET) {
+		qpnp_user_wdt_set();
+	} else
+		qpnp_user_wdt_clear();
+#endif
 
 	/* simulate press event in case release event occured
 	 * without a press event
