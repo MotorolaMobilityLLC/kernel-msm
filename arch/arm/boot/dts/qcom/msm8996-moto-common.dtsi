@@ -1440,17 +1440,16 @@
 			<&tlmm 39 0>; /* RESET */
 		touch_vdd-supply = <&pm8994_l22>;
 		synaptics,gpio-config;
+		synaptics,aod-multi-touch = <4>;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_active &touch_int_default>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
-		touchstate_modes {
-			touchmode-default = <&default_active_syna &default_suspended_syna>;
-		};
-		default_active_syna: touchstate_default_active {
-			patch-data = "";
-		};
-		default_suspended_syna: touchstate_aod_suspended {
-			patch-data = "F1@0=1&7";
+		config_modifier-names = "aod";
+		config_modifier-aod {
+			aod-suspended {
+				/* XY suppression; NoF; Power->sleep; */
+				patch-data = "F12@20=3838,23=0104;S";
+			};
 		};
 	};
 };
