@@ -12,3 +12,42 @@
 
 #include "msmtitanium.dtsi"
 #include "msmtitanium-pinctrl.dtsi"
+#include "msm8953-moto-pinctrl.dtsi"
+
+/ {
+	aliases {
+		i2c3 = &i2c_3;
+		/delete-property/ spi3;
+	};
+};
+
+&soc{
+
+	i2c_3: i2c@78b7000 { /* BLSP1 QUP3 */
+		synaptics@20 {
+			compatible = "synaptics,dsx";
+			reg = <0x20>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <65 0x2008>;
+			vdd-supply = <&pmtitanium_l6>;
+			clock-names = "iface_clk", "core_clk";
+			clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+				<&clock_gcc clk_gcc_blsp1_qup3_i2c_apps_clk>;
+			/* pins used by touchscreen */
+			pinctrl-names = "pmx_ts_active","pmx_ts_suspend",
+							"pmx_ts_release";
+			pinctrl-0 = <&ts_int_active &ts_reset_active>;
+			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+			pinctrl-2 = <&ts_release>;
+			synaptics,irq-gpio = <&tlmm 65 0x2008>;
+			synaptics,reset-gpio = <&tlmm 64 0x0>;
+			synaptics,i2c-pull-up;
+			synaptics,power-down;
+			synaptics,disable-gpios;
+			synaptics,bypass-packrat-id-check;
+			synaptics,display-coords = <0 0 1079 1919>;
+			synaptics,panel-coords = <0 0 1079 2084>;
+		};
+	};
+};
+
