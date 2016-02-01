@@ -688,6 +688,10 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "Analog Mic4");
 	snd_soc_dapm_ignore_suspend(dapm, "AMIC3");
 	snd_soc_dapm_ignore_suspend(dapm, "AMIC4");
+	snd_soc_dapm_ignore_suspend(dapm, "SPK_OUT");
+	snd_soc_dapm_ignore_suspend(dapm, "BE_IN");
+	snd_soc_dapm_ignore_suspend(dapm, "BE_OUT");
+
 	snd_soc_dapm_sync(dapm);
 
 	codec_clk = clk_get(cpu_dai->dev, "osr_clk");
