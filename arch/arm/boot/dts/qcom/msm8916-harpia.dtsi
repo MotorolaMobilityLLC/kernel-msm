@@ -84,6 +84,20 @@
 	touch_int_n {
 		qcom,pins = <&gp 13>;
 	};
+	bma25x_int1_pin {
+		qcom,pins = <&gp 96>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "bma25x_int1_pin";
+		bma25x_int1_default: int1_default {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		bma25x_int1_sleep: int1_sleep {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
 };
 
 &spi_0 {
@@ -222,6 +236,22 @@
 	};
 };
 
+&i2c_4 { /* BLSP1 QUP4 */
+	bosch@19 { /* Accelerometer sensor */
+		compatible = "bosch,bma253";
+		reg = <0x19>;
+		pinctrl-names = "default","sleep";
+		pinctrl-0 = <&bma25x_int1_default>;
+		pinctrl-1 = <&bma25x_int1_sleep>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <96 0x2002>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		bosch,init-interval = <200>;
+		bosch,place = <4>;
+		bosch,gpio-int1 = <&msm_gpio 96 0x2002>;
+	};
+};
 &usb_otg {
 	qcom,hsusb-otg-mode = <1>;
 	/delete-node/ qcom,usbid-gpio;
