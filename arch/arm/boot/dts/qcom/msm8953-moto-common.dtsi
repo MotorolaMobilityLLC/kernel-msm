@@ -61,3 +61,9 @@
 	qcom,wave-play-rate-us = <4165>;
 	qcom,vmax-mv = <2050>;
 };
+
+&blsp1_uart0 {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart_console_active>;
+};
