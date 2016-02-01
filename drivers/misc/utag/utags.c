@@ -131,6 +131,7 @@ struct ctrl {
 	uint32_t hwtag;
 	struct mutex access_lock;
 	struct utag *attrib;
+	struct utag *features;
 };
 
 static int build_utags_directory(struct ctrl *ctrl);
@@ -305,7 +306,7 @@ static size_t data_size(struct blkdev *cb)
  */
 static int open_utags(struct blkdev *cb)
 {
-	struct inode *inode;
+	struct inode *inode = NULL;
 
 	if (cb->filep)
 		return 0;
@@ -622,7 +623,7 @@ static struct proc_dir_entry *proc_utag_dir(struct ctrl *ctrl,
 	struct proc_dir_entry *parent)
 {
 	struct dir_node *dnode;
-	struct proc_dir_entry *dir;
+	struct proc_dir_entry *dir = NULL;
 
 	if (!parent)
 		parent = ctrl->root;
@@ -900,8 +901,14 @@ static struct utag *load_utags(struct blkdev *cb)
 		init_empty(ctrl);
 
 	/* Save pointer to the root attributes UTAG if present */
-	ctrl->attrib = find_first_utag(head, ".attributes");
-	pr_debug(" .attributes %s\n", ctrl->attrib ? "found" : "not found");
+	if (ctrl->hwtag) {
+		ctrl->attrib = find_first_utag(head, ".attributes");
+		pr_debug(" .attributes %s\n", ctrl->attrib ?
+			"found" : "not found");
+		ctrl->features = find_first_utag(head, ".features");
+		pr_debug(" .features %s\n", ctrl->features ?
+			 "found" : "not found");
+	}
 
  free_data:
 	vfree(data);
@@ -982,15 +989,20 @@ static int check_utag_range(char *tag, struct utag *head, char *data,
 		return 0;
 	}
 
+	if (!range->size) {
+		pr_debug("full name [%s] .range not set\n", rtag);
+		return 0;
+	}
+
 	/* check sizes and termination of the data */
 	check = strnlen(range->payload, range->size);
 	if (check == range->size) {
-		pr_err("range payload [%s] not a string\n", rtag);
+		pr_err("range payload for [%s] is not null terminated\n", rtag);
 		return -EIO;
 	}
 
 	if (count >= check) {
-		pr_err("data for [%s] too big %zu > %zu\n", tag, count, check);
+		pr_err("data for [%s] is not allowed %zu > %zu\n", tag, count, check);
 		return -EIO;
 	}
 
@@ -1186,6 +1198,10 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 		goto free_temp_exit;
 	}
 
+	/* empty string with \n via shell echo */
+	if (proc->mode == OUT_ASCII && count == 1 && payload[0] == '\n')
+		length = 0;
+
 	/* enforce 0 termination for ASCII strings */
 	if (proc->mode == OUT_ASCII)
 		payload[count-1] = 0;
@@ -1353,6 +1369,55 @@ static int lock_show(struct seq_file *file, void *v)
 	return 0;
 }
 
+/* Check utag  name againts valid range saved in vld utag  payload */
+
+static int check_hwtag(struct ctrl *ctrl, char *attr, struct utag *vld)
+{
+
+char *buf, *ptr, *tok;
+bool found = false;
+size_t len, alen;
+
+	if (!vld || !attr) {
+		pr_debug("no validation tag or data\n");
+		return 0;
+	}
+
+	if (!vld->size) {
+		pr_err("no validation data in [%s]\n", vld->name);
+		return 0;
+	}
+
+	alen = strnlen(attr, MAX_UTAG_NAME);
+	pr_debug("name check for [%s] length [%zu]\n", attr, alen);
+	/* make local copy of validation payload to tokenize */
+	buf = ptr = kzalloc(vld->size, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	memcpy(ptr, vld->payload, vld->size);
+
+	while (ptr && !found) {
+		tok = strsep(&ptr, ",");
+		/* *ptr is updated to show past the token */
+		len = strnlen(tok, MAX_UTAG_NAME);
+		if (alen > len)
+			continue;
+		pr_debug("attr value [%s] len [%zu]\n", tok, len);
+		if (!strncmp(tok, attr, len))
+			found = true;
+	}
+	kfree(buf);
+
+	/* if ptr is still NULL we did not find a match */
+	if (!found) {
+		pr_err("[%s] is not allowed\n", attr);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /*
  * Process new file request. Check for existing utag,
  * add empty new utag, save utags and add file interface
@@ -1365,7 +1430,7 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	struct ctrl *ctrl = PDE_DATA(inode);
 	struct utag *tags, *cur;
 	struct proc_dir_entry *parent = NULL;
-	char tag[MAX_UTAG_NAME];
+	char tree[UTAG_DEPTH][MAX_UTAG_NAME];
 	char expendable[MAX_UTAG_NAME], *names[UTAG_DEPTH], *type = NULL;
 	int error, i, num_names;
 	size_t ret = count;
@@ -1418,67 +1483,52 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 		goto just_leave;
 	}
 
+
 	num_names = full_split(expendable, names, &type);
+	if (num_names == 0) {
+		pr_err("failed to split path\n");
+		ret = -EINVAL;
+		goto just_leave;
+	}
 
 	/* check if we are trying to add an attribute file */
-	if ('.' == names[num_names-1][0] && ctrl->attrib) {
-		struct utag *vld = ctrl->attrib;
-		char *buf, *ptr, *tok, *attr;
-		bool found = false;
-		size_t len;
+	/* check every level of the path for validity */
+	for (i = 0; i < num_names; i++) {
+		/* build name for each sublevel and add */
+		/* slash to all sublevels except first */
 
-		if (vld->size < 2) {
-			pr_err("invalid .attributes\n");
+		scnprintf(tree[i], MAX_UTAG_NAME, "%s%s%s", i ? tree[i-1] : "",
+			i ? "/" : "", names[i]);
+		pr_debug("prepared subdir [%s] as [%s]\n", names[i], tree[i]);
+
+		/* only check features for files that do not have a .*/
+		if (ctrl->hwtag && '.' != names[i][0])
+			if (check_hwtag(ctrl, tree[i], ctrl->features)) {
+				ret = -EINVAL;
+				goto just_leave;
+			}
+	}
+
+	/* only check attributes for last file starting with a . */
+	if (ctrl->hwtag && '.' == names[num_names-1][0])
+		if (check_hwtag(ctrl, names[num_names-1], ctrl->attrib)) {
 			ret = -EINVAL;
 			goto just_leave;
 		}
 
-		attr = names[num_names-1];
-		pr_debug("check for [%s] attribute\n", attr);
-		/* make local copy of .range payload to tokenize */
-		buf = ptr = kzalloc(vld->size, GFP_KERNEL);
-		if (!buf) {
-			ret = -ENOMEM;
-			goto just_leave;
-		}
-
-		memcpy(buf, vld->payload, vld->size);
-
-		while (ptr && !found) {
-			tok = strsep(&ptr, ",");
-			len = strnlen(tok, MAX_UTAG_NAME);
-			pr_debug("attr value [%s]\n", tok);
-			if (!strncmp(tok, attr, len))
-				found = true;
-		}
-		kfree(buf);
-
-		/* if ptr is still NULL we did not find a match */
-		if (!found) {
-			pr_err("[%s] is not allowed\n", attr);
-			ret =  -EINVAL;
-			goto just_leave;
-		}
-	}
-
-	for (i = 0, tag[0] = 0; i < num_names; i++) {
-		/* build name for each sublevel and add */
-		/* slash to all sublevels except first */
-		scnprintf(tag + strlen(tag), MAX_UTAG_NAME - strlen(tag),
-			"%s%s", i ? "/" : "", names[i]);
-		pr_debug("creating subdir %s as %s\n", names[i], tag);
-
-		error = add_utag_tail(tags, tag, type);
+	for (i = 0; i < num_names; i++) {
+		error = add_utag_tail(tags, tree[i], type);
 		if (error == -EEXIST) {
 			struct dir_node *dnode;
 			/* need to update parent to ensure proper hierarchy */
-			dnode = find_dir_node(ctrl, tag);
+			dnode = find_dir_node(ctrl, tree[i]);
 			parent = dnode->dir;
 			continue;
 		}
 
 		/* create utag dir for every part of utag name */
-		parent = proc_utag_dir(ctrl, names[i], tag, type, true, parent);
+		parent = proc_utag_dir(ctrl, names[i], tree[i], type,
+			true, parent);
 		if (IS_ERR(parent))
 			break;
 	}
