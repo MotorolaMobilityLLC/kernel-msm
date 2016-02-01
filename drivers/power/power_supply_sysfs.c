@@ -47,7 +47,7 @@ static ssize_t power_supply_show_property(struct device *dev,
 		"Unknown", "Battery", "UPS", "Mains", "USB",
 		"USB_DCP", "USB_CDP", "USB_ACA",
 		"USB_HVDCP", "USB_HVDCP_3", "Wireless", "BMS", "USB_Parallel",
-		"Wipower", "TYPEC", "TYPEC_UFP", "TYPEC_DFP"
+		"Wipower", "TYPEC", "TYPEC_UFP", "TYPEC_DFP",
 		"PTP", "Switch", "USBC", "USBC_PD", "USBC_SINK",
 		"USBC_SRC", "USBC_DBG", "USBC_PWR", "USBC_AUDIO",
 		"USBC_UNSUPP",
