@@ -106,7 +106,7 @@ const u8 reg_6500_accel_offset[] = {REG_6500_XA_OFFS_H,
 #ifdef CONFIG_INV_TESTING
 static bool suspend_state;
 static int inv_mpu_suspend(struct device *dev);
-static int inv_mpu_resume(struct device *dev);
+static void inv_mpu_complete(struct device *dev);
 struct test_data_out {
 	bool gyro;
 	bool accel;
@@ -1885,7 +1885,7 @@ static ssize_t inv_test_suspend_resume_store(struct device *dev,
 	if (data)
 		inv_mpu_suspend(dev);
 	else
-		inv_mpu_resume(dev);
+		inv_mpu_complete(dev);
 	suspend_state = !!data;
 
 	return count;
@@ -3230,12 +3230,14 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 // #define USE_SUSPEND_NOIRQ
 
 /*
- * inv_mpu_resume(): resume method for this driver.
+ * inv_mpu_complete(): resume method for this driver.
  *    This method can be modified according to the request of different
  *    customers. It basically undo everything suspend_noirq is doing
  *    and recover the chip to what it was before suspend.
+ *    .complete vector is used instead of .resume to ensure the timestamp
+ *    correctness.
  */
-static int inv_mpu_resume(struct device *dev)
+static void inv_mpu_complete(struct device *dev)
 {
 	struct iio_dev *indio_dev = i2c_get_clientdata(to_i2c_client(dev));
 	struct inv_mpu_state *st = iio_priv(indio_dev);
@@ -3246,7 +3248,7 @@ static int inv_mpu_resume(struct device *dev)
 	printk("[MPU9250] ts_prev=%lld ts_now=%lld time_elapsed=%lld\n", ped_ts, ts_now, (ped_ts-ts_now));
 
 	/* add code according to different request Start */
-	pr_debug("%s inv_mpu_resume\n", st->hw->name);
+	pr_debug("%s %s\n", st->hw->name, __func__);
 	mutex_lock(&indio_dev->mlock);
 #ifndef USE_SUSPEND_NOIRQ
 	st->suspend_state = false;
@@ -3280,7 +3282,7 @@ static int inv_mpu_resume(struct device *dev)
 
 	mutex_unlock(&st->suspend_resume_lock);
 
-	return result;
+	return;
 }
 
 /*
@@ -3346,7 +3348,7 @@ static const struct dev_pm_ops inv_mpu_pmops = {
 #ifdef USE_SUSPEND_NOIRQ
 	.suspend_noirq = inv_mpu_suspend_noirq,
 #endif
-	.resume        = inv_mpu_resume,
+	.complete        = inv_mpu_complete,
 };
 #define INV_MPU_PMOPS (&inv_mpu_pmops)
 #else
