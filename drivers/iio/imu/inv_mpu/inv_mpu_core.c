@@ -56,12 +56,6 @@ struct inv_mpu_state *g_st;
 static int mpu_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 u64 ped_ts;
 
-#ifdef CONFIG_SENSORS_INV_ACCEL_CAL
-#define ASUS_CALIBRATION_SAMPLES 10
-#define ASUS_CALIBRATION_JIFFIES 3000
-extern int lis3dsh_export_acc_data(int *xyz, int i);
-#endif
-
 //ASUS_BSP +++ Maggie_Lee "fill platform data"
 #ifndef CONFIG_DTS_INV_MPU_IIO
 static struct mpu_platform_data gyro_platform_data = {
@@ -147,49 +141,6 @@ static void inv_setup_reg(struct inv_reg_map_s *reg)
 	reg->mem_r_w		= REG_MEM_RW;
 	reg->prgm_strt_addrh	= REG_PRGM_STRT_ADDRH;
 };
-
-#ifdef CONFIG_SENSORS_INV_ACCEL_CAL
-void inv_mpu_delay_calibration(int en)
-{
-    if(en)
-        queue_delayed_work(g_st->inv_work_queue, &g_st->cal_delay_work, ASUS_CALIBRATION_JIFFIES);
-    else if (delayed_work_pending(&g_st->cal_delay_work))
-        cancel_delayed_work(&g_st->cal_delay_work);
-}
-EXPORT_SYMBOL_GPL(inv_mpu_delay_calibration);
-
-static void inv_delay_cal(struct work_struct *work) {
-    u8 data[6];
-    int mpu_data[ASUS_CALIBRATION_SAMPLES];
-    int lis3dsh_data[ASUS_CALIBRATION_SAMPLES];
-    int result, i;
-    int avg_diff = 0;
-
-    printk("%s +++ \n", __func__);
-
-    for(i=0; i < ASUS_CALIBRATION_SAMPLES; i++) {
-        result = lis3dsh_export_acc_data(lis3dsh_data, i);
-        if(result) {
-            pr_err("%s: error retrieving lis3dsh data\n", __func__);
-            return;
-        }
-        result = inv_i2c_read(g_st,REG_RAW_ACCEL,6,data);
-        if(result) {
-            pr_err("%s: error retrieving lis3dsh data\n", __func__);
-            return;
-        }
-        mpu_data[i]=(short)((data[4]<<8)|data[5])*4000/65536*98;
-        avg_diff += lis3dsh_data[i] - mpu_data[i];
-    }
-
-    avg_diff /= ASUS_CALIBRATION_SAMPLES;
-    g_st->inv_accel_offset = avg_diff/98*65536/4000;
-
-    printk("%s --- \n", __func__);
-
-    return;
-}
-#endif
 
 /**
  *  inv_i2c_read_base() - Read one or more bytes from the device registers.
@@ -3128,11 +3079,6 @@ msleep(100);
 			"Could not initialize device.\n");
 		goto out_free;
 	}
-	#ifdef CONFIG_SENSORS_INV_ACCEL_CAL
-	st->inv_accel_offset = 0;
-	st->inv_work_queue = create_workqueue("inv_mpu_wq");
-	INIT_DELAYED_WORK(&st->cal_delay_work, inv_delay_cal);
-	#endif
 	/* Make state variables available to all _show and _store functions. */
 	i2c_set_clientdata(client, indio_dev);
 	indio_dev->dev.parent = &client->dev;

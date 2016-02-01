@@ -786,11 +786,6 @@ struct inv_mpu_state {
 	u8 secondary_name[20];
         struct wake_lock smd_wakelock;
         struct wake_lock ped_wakelock;
-    #ifdef CONFIG_SENSORS_INV_ACCEL_CAL
-    struct delayed_work cal_delay_work;
-    struct workqueue_struct *inv_work_queue;
-    s16 inv_accel_offset;
-    #endif
 };
 
 /* produces an unique identifier for each device based on the
