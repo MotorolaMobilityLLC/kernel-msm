@@ -89,6 +89,7 @@
 /* wait 10ms for self test  done */
 #define SELF_TEST_DELAY()           usleep_range(10000, 15000)
 
+#ifdef USE_BMA_INTERRUPT
 #define LOW_G_INTERRUPT             REL_Z
 #define HIGH_G_INTERRUPT            REL_HWHEEL
 #define SLOP_INTERRUPT              REL_DIAL
@@ -97,6 +98,17 @@
 #define ORIENT_INTERRUPT            ABS_PRESSURE
 #define FLAT_INTERRUPT              ABS_DISTANCE
 #define SLOW_NO_MOTION_INTERRUPT    REL_Y
+#else
+/* AndroidM didn't use the dev-interrupt,bypass above defines */
+#define LOW_G_INTERRUPT             REL_Z
+#define HIGH_G_INTERRUPT            REL_Z
+#define SLOP_INTERRUPT              REL_Z
+#define DOUBLE_TAP_INTERRUPT        REL_Z
+#define SINGLE_TAP_INTERRUPT        REL_Z
+#define ORIENT_INTERRUPT            REL_Z
+#define FLAT_INTERRUPT              REL_Z
+#define SLOW_NO_MOTION_INTERRUPT    REL_Z
+#endif
 
 #define HIGH_G_INTERRUPT_X_HAPPENED                 1
 #define HIGH_G_INTERRUPT_Y_HAPPENED                 2
