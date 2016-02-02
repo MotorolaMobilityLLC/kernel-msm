@@ -442,4 +442,5 @@
 
 &dsi_rm69032_320x320_cmd {
 	qcom,cont-splash-enabled = <1>;
+	qcom,ulps-enabled = <1>;
 };
