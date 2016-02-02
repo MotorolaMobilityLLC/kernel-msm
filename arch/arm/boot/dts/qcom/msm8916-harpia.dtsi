@@ -160,18 +160,19 @@
 
 &i2c_1 {
 	tps65132@3e {
-		/* TODO nt50358 is compatibale with tps65132
-                 * So, use same driver, but fully details compatible
-                 * needed to check.
+		/* nt50358 is compatible with tps65132
+                 * So, use same driver, but nt50358 needs two enable pins to be high first,
+                 * then registers can be R/W.
                  */
 		compatible = "ti,tps65132";
 		reg = <0x3e>;
 		ti,en-gpio-lpm;
+		ti,nt50358;
 
 		regulators {
 			tps65132_pos: pos-boost {
 				regulator-name = "tps65132-pos";
-				regulator-min-microvolt = <5500000>;
+				regulator-min-microvolt = <5000000>;
 				regulator-max-microvolt = <5500000>;
 				ti,discharge-enable;
 				ti,en-gpio = <&msm_gpio 97 0>;
@@ -179,7 +180,7 @@
 
 			tps65132_neg: neg-boost {
 				regulator-name = "tps65132-neg";
-				regulator-min-microvolt = <5500000>;
+				regulator-min-microvolt = <5000000>;
 				regulator-max-microvolt = <5500000>;
 				ti,discharge-enable;
 				ti,en-gpio = <&msm_gpio 98 0>;
