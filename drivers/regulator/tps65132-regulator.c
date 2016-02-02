@@ -26,6 +26,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/bitops.h>
 #include <linux/types.h>
+#include <linux/delay.h>
 
 struct tps65132_regulator {
 	struct regulator_init_data	*init_data;
@@ -60,6 +61,7 @@ struct tps65132_chip {
 	u8				apps_dischg_val;
 	bool				apps_dischg_cfg_postpone;
 	bool				en_gpio_lpm;
+	bool				nt50358;
 };
 
 #define TPS65132_REG_VPOS		0x00
@@ -102,11 +104,25 @@ static int tps65132_regulator_disable(struct regulator_dev *rdev)
 	struct tps65132_regulator *vreg = rdev_get_drvdata(rdev);
 	struct tps65132_chip *chip = vreg->chip;
 
-	if (chip->en_gpio_lpm)
-		gpio_direction_input(vreg->en_gpio);
-	else
-		gpio_set_value_cansleep(vreg->en_gpio,
-			vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 1 : 0);
+	if (chip->nt50358) {
+		if (chip->en_gpio_lpm) {
+			gpio_direction_input(chip->vreg[1].en_gpio);
+			mdelay(2);
+			gpio_direction_input(chip->vreg[0].en_gpio);
+		} else {
+			gpio_set_value_cansleep(chip->vreg[1].en_gpio,
+				vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 1 : 0);
+			mdelay(2);
+			gpio_set_value_cansleep(chip->vreg[0].en_gpio,
+				vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 1 : 0);
+		}
+	} else {
+		if (chip->en_gpio_lpm)
+			gpio_direction_input(vreg->en_gpio);
+		else
+			gpio_set_value_cansleep(vreg->en_gpio,
+				vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 1 : 0);
+	}
 
 	vreg->is_enabled = false;
 
@@ -119,12 +135,29 @@ static int tps65132_regulator_enable(struct regulator_dev *rdev)
 	struct tps65132_chip *chip = vreg->chip;
 	int rc;
 
-	if (chip->en_gpio_lpm)
-		gpio_direction_output(vreg->en_gpio,
-			vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 0 : 1);
-	else
-		gpio_set_value_cansleep(vreg->en_gpio,
-			vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 0 : 1);
+	if (chip->nt50358) {
+		if (chip->en_gpio_lpm) {
+			gpio_direction_output(chip->vreg[0].en_gpio,
+				vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 0 : 1);
+			mdelay(2);
+			gpio_direction_output(chip->vreg[1].en_gpio,
+				vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 0 : 1);
+		} else {
+			gpio_set_value_cansleep(chip->vreg[0].en_gpio,
+				vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 0 : 1);
+			mdelay(2);
+			gpio_set_value_cansleep(chip->vreg[1].en_gpio,
+				vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 0 : 1);
+		}
+		vreg->vol_set_postpone = true;
+	} else {
+		if (chip->en_gpio_lpm)
+			gpio_direction_output(vreg->en_gpio,
+				vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 0 : 1);
+		else
+			gpio_set_value_cansleep(vreg->en_gpio,
+				vreg->gpio_flags & OF_GPIO_ACTIVE_LOW ? 0 : 1);
+	}
 	vreg->is_enabled = true;
 
 	if (chip->apps_dischg_cfg_postpone) {
@@ -185,6 +218,7 @@ static int tps65132_regulator_set_voltage(struct regulator_dev *rdev,
 		int min_uV, int max_uV, unsigned *selector)
 {
 	struct tps65132_regulator *vreg = rdev_get_drvdata(rdev);
+	struct tps65132_chip *chip = vreg->chip;
 	int val, new_uV, rc;
 
 	if (!rdev->regmap) {
@@ -204,6 +238,8 @@ static int tps65132_regulator_set_voltage(struct regulator_dev *rdev,
 		vreg->vol_set_val = val;
 		vreg->vol_set_postpone = true;
 	} else {
+		if (chip->nt50358)
+			vreg->vol_set_val = val;
 		rc = regmap_write(rdev->regmap, vreg->vol_reg, val);
 		if (rc) {
 			pr_err("failed to write reg %d, rc = %d\n",
@@ -398,6 +434,8 @@ static int tps65132_parse_dt(struct tps65132_chip *chip,
 	}
 	chip->en_gpio_lpm = of_property_read_bool(client->dev.of_node,
 						"ti,en-gpio-lpm");
+	chip->nt50358 = of_property_read_bool(client->dev.of_node,
+						"ti,nt50358");
 
 	for (i = 0; i < chip->num_regulators; i++) {
 		match = &tps65132_reg_matches[i];
