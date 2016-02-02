@@ -1417,7 +1417,7 @@ qpnp_chg_vbatdet_set(struct qpnp_chg_chip *chip, int vbatdet_mv)
 static void
 qpnp_chg_set_appropriate_vbatdet(struct qpnp_chg_chip *chip)
 {
-	if (chip->bat_is_cool)
+	if (chip->bat_is_cool && chip->chg_done == true)
 		qpnp_chg_vbatdet_set(chip, chip->cool_bat_mv
 			+ chip->resume_delta_mv);
 	else if (chip->bat_is_warm)
