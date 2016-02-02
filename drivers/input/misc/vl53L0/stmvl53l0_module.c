@@ -644,6 +644,7 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
  * IOCTL definitions
  */
 #define VL53L0_IOCTL_INIT			_IO('p', 0x01)
+#define VL53L0_IOCTL_INIT_NS                       _IO('p', 0x11)
 #define VL53L0_IOCTL_XTALKCALB		_IOW('p', 0x02, unsigned int)
 #define VL53L0_IOCTL_OFFCALB		_IOW('p', 0x03, unsigned int)
 #define VL53L0_IOCTL_STOPCALB		_IO('p', 0x04)
@@ -690,7 +691,9 @@ static void stmvl53l0_ps_read_measurement(struct stmvl53l0_data *data)
 
 	do_gettimeofday(&tv);
 	data->ps_data = 100;
-	if (data->rangeData.RangeMilliMeter < data->lowv)
+	if (data->rangeData.RangeMilliMeter < data->highv)
+		data->ps_data = 10;
+	if (data->gpio_function == VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW)
 		data->ps_data = 10;
 
 	input_report_abs(data->input_dev_ps, ABS_DISTANCE,
@@ -756,8 +759,6 @@ static void stmvl53l0_enter_cam(struct stmvl53l0_data *data, uint8_t from)
 		VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
 		VL53L0_INTERRUPTPOLARITY_LOW);
 	data->gpio_function = VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY;
-	papi_func_tbl->SetDeviceMode(data,
-		VL53L0_DEVICEMODE_CONTINUOUS_RANGING);
 	papi_func_tbl->StartMeasurement(data);
 
 	vl53l0_dbgmsg("End\n");
@@ -792,7 +793,7 @@ static void stmvl53l0_enter_sar(struct stmvl53l0_data *data, uint8_t from)
 	papi_func_tbl->SetDeviceMode(data,
 		VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 	data->lowint = 1;
-	msleep(20);
+	papi_func_tbl->ClearInterruptMask(data, 0);
 	papi_func_tbl->StartMeasurement(data);
 	vl53l0_dbgmsg("End\n");
 	mutex_unlock(&data->work_mutex);
@@ -1000,7 +1001,8 @@ data->rangeData.MeasurementTimeUsec = tv.tv_usec;
 wake_up(&data->range_data_wait);
 	if (CAM_MODE == data->w_mode) {
 		vl53l0_dbgmsg("CAM_MODE\n");
-		 papi_func_tbl->StartMeasurement(data);
+		papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
+		papi_func_tbl->StartMeasurement(data);
 		if (data->enableDebug)
 			vl53l0_errmsg("range:%d, signalRateRtnMegaCps:%d, \
 				error:0x%x,rtnambrate:%u,Dmax:%d,measuretime:%u\n",
@@ -1012,9 +1014,14 @@ wake_up(&data->range_data_wait);
 				data->rangeData.MeasurementTimeUsec);
 	} else if (SAR_MODE == data->w_mode) {
 		vl53l0_dbgmsg("SAR_MODE\n");
-		if (RMData.RangeMilliMeter < data->lowv) {
+		if (data->gpio_function == VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW) {
 			vl53l0_dbgmsg("SAR enter LOW\n");
-			papi_func_tbl->StopMeasurement(vl53l0_dev);
+			if (data->lowint < 3) {
+				data->lowint++;
+				papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
+				return;
+			}
+
 			papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
 			stmvl53l0_ps_read_measurement(vl53l0_dev);
 			papi_func_tbl->SetGpioConfig(data, 0, 0,
@@ -1022,21 +1029,24 @@ wake_up(&data->range_data_wait);
 			VL53L0_INTERRUPTPOLARITY_LOW);
 			data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH;
 			papi_func_tbl->SetInterMeasurementPeriodMilliSeconds(
-				data, data->delay_ms);
+				data, 1000);
 			papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
 				data, 120000);
 			papi_func_tbl->SetInterruptThresholds(
 			data, 0, data->lowv << 16, data->highv << 16);
 			papi_func_tbl->SetDeviceMode(data,
 				VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
-			data->lowint = 0;
+			data->lowint = 5;
 			papi_func_tbl->StartMeasurement(data);
-			kobject_uevent_env(&(data->miscdev.this_device->kobj),
-				KOBJ_CHANGE, envplow);
 			vl53l0_dbgmsg("SAR enter LOW sent uevent\n");
-		} else if (RMData.RangeMilliMeter > data->highv) {
+		} else if (data->gpio_function == VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH) {
 			vl53l0_dbgmsg("SAR enter HIGH\n");
-			papi_func_tbl->StopMeasurement(vl53l0_dev);
+			    if (data->lowint > 3) {
+				data->lowint--;
+				papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
+				return;
+			}
+
 			papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
 			stmvl53l0_ps_read_measurement(vl53l0_dev);
 			papi_func_tbl->SetGpioConfig(data, 0, 0,
@@ -1044,17 +1054,16 @@ wake_up(&data->range_data_wait);
 			VL53L0_INTERRUPTPOLARITY_LOW);
 			data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW;
 			papi_func_tbl->SetInterMeasurementPeriodMilliSeconds(
-				data, data->delay_ms);
+				data, 1000);
 			papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
-				data, 33000);
+				data, 120000);
 			papi_func_tbl->SetInterruptThresholds(
 				data, 0, data->lowv << 16, data->highv << 16);
 			papi_func_tbl->SetDeviceMode(data,
 				VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 			data->lowint = 1;
 			papi_func_tbl->StartMeasurement(data);
-			kobject_uevent_env(&(data->miscdev.this_device->kobj),
-				KOBJ_CHANGE, envphigh);
+			vl53l0_dbgmsg("SAR enter high sent uevent\n");
 		}
 	} else if (SUPER_MODE == data->w_mode) {
 		vl53l0_dbgmsg("SUPER_MODE\n");
@@ -1070,6 +1079,7 @@ wake_up(&data->range_data_wait);
 			kobject_uevent_env(&(data->miscdev.this_device->kobj),
 				KOBJ_CHANGE, envphigh);
 		}
+		papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
 		papi_func_tbl->StartMeasurement(data);
 	}
 
@@ -1090,13 +1100,9 @@ static void stmvl53l0_work_handler(struct work_struct *work)
 			vl53l0_dev, &InterruptMask);
 
 		vl53l0_dbgmsg(" InterruptMasksssss :%d\n", InterruptMask);
-		if (InterruptMask == data->gpio_function  && data->interrupt_received == 1) {
+		if (InterruptMask > 0  && data->interrupt_received == 1) {
 			data->interrupt_received = 0;
 			stmvl53l0_state_process();
-		} else if (InterruptMask > 0) {
-			papi_func_tbl->StopMeasurement(data);
-			papi_func_tbl->ClearInterruptMask(data, 0);
-			papi_func_tbl->StartMeasurement(data);
 		}
 	}
 
@@ -1227,11 +1233,11 @@ struct device_attribute *attr, const char *buf, size_t count)
 		papi_func_tbl->SetInterMeasurementPeriodMilliSeconds
 			(data, 0x00001388);
 		papi_func_tbl->SetGpioConfig(data, 0, 0,
-			VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
+			VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH,
 			VL53L0_INTERRUPTPOLARITY_LOW);
-		data->gpio_function = VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY;
+		data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH;
 		papi_func_tbl->SetInterruptThresholds
-			(data, 0, 30 << 16, 40 << 16);
+			(data, 0, 30 << 16, 80 << 16);
 		Status = papi_func_tbl->SetDeviceMode(data,
 			VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 		papi_func_tbl->StartMeasurement(data);
@@ -1474,6 +1480,10 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 	case VL53L0_IOCTL_INIT:
 		vl53l0_dbgmsg("VL53L0_IOCTL_INIT\n");
 		stmvl53l0_work_state(data, CAM_ON);
+		break;
+	case VL53L0_IOCTL_INIT_NS:
+		if (data->enable_ps_sensor == 0)
+			stmvl53l0_start(data);
 		break;
 		/* crosstalk calibration */
 	case VL53L0_IOCTL_XTALKCALB:
@@ -2237,7 +2247,7 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	/* init default value */
 	data->enable_ps_sensor = 0;
 	data->reset = 1;
-	data->delay_ms = 0x3e8;	/* delay time to 1s */
+	data->delay_ms = 0x7d8;	/* delay time to 2s */
 	data->enableDebug = 0;
 /*	data->client_object.power_up = 0; */
 
