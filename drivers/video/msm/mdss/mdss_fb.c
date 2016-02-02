@@ -4179,6 +4179,8 @@ static int __ioctl_wait_idle(struct msm_fb_data_type *mfd, u32 cmd)
 		(cmd != MSMFB_HISTOGRAM_START) &&
 		(cmd != MSMFB_HISTOGRAM_STOP) &&
 		(cmd != MSMFB_HISTOGRAM) &&
+		(cmd != MSMFB_REG_READ) &&
+		(cmd != MSMFB_REG_WRITE) &&
 		(cmd != MSMFB_OVERLAY_PREPARE)) {
 		ret = mdss_fb_pan_idle(mfd);
 	}
