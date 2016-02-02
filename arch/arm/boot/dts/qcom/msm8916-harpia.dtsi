@@ -98,6 +98,30 @@
 			bias-pull-down;
 		};
 	};
+        epl8802_active {
+		/* interrupt */
+		qcom,pins = <&gp 113>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "epl8802-active";
+		/* active state */
+		epl8802_active: epl8802_active {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+	};
+	epl8802_suspend {
+		/* interrupt  */
+		qcom,pins = <&gp 113> ;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "epl8802-suspend";
+		/*suspended state */
+		epl8802_suspend: epl8802_suspend {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+	};
 };
 
 &spi_0 {
@@ -250,6 +274,17 @@
 		bosch,init-interval = <200>;
 		bosch,place = <4>;
 		bosch,gpio-int1 = <&msm_gpio 96 0x2002>;
+	};
+
+	elan@49 {
+		compatible = "epl,epl8802";
+		reg = <0x49>;
+		epl,irq-gpio = <&msm_gpio 113 0x00>;
+		pinctrl-names = "epl8802_default", "epl8802_suspend";
+		pinctrl-0 = <&epl8802_active>;
+		pinctrl-1 = <&epl8802_suspend>;
+                vdd-supply = <&pm8916_l17>;
+                vio-supply = <&pm8916_l6>;
 	};
 };
 &usb_otg {

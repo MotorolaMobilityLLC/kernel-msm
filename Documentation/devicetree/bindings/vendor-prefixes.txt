@@ -12,6 +12,7 @@ apm	Applied Micro Circuits Corporation (APM)
 arm	ARM Ltd.
 atmel	Atmel Corporation
 avago	Avago Technologies
+epl	EMINENT Corporation
 bosch	Bosch Sensortec GmbH
 brcm	Broadcom Corporation
 capella	Capella Microsystems, Inc.
