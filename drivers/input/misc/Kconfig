@@ -788,6 +788,13 @@ config SENSORS_CAPELLA_CM36283
 	  To compile this driver as a module, choose M here: the
 	  module will be called CM36283.
 
+config EPL8802
+	tristate "EPL8802 support"
+	depends on I2C
+	default n
+	help
+	  proximity sensor driver.
+
 config SENSORS_BMA2X2
 	tristate "BMA2x2 acceleration sensor support"
 	depends on I2C
