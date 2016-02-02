@@ -1852,6 +1852,12 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			return ret;
 		}
 	}
+#ifdef CONFIG_SND_SOC_OPALUM
+	ret = ospl2xx_init(rtd);
+	if (ret != 0)
+		pr_err("%s Cannot set Opalum controls %d\n", __func__, ret);
+#endif
+
 	return msm8x16_wcd_hs_detect(codec, &mbhc_cfg);
 }
 
@@ -1893,12 +1899,6 @@ static int cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
 	ret = snd_soc_dai_set_sysclk(cs35l34_dai, 0, 12288000, 0);
 	if (ret != 0)
 		dev_err(cs35l34_dai->dev, "Cannot set cs35l34 MCLK %d\n", ret);
-
-#ifdef CONFIG_SND_SOC_OPALUM
-	ret = ospl2xx_init(rtd);
-	if (ret != 0)
-		dev_err(cs35l34_dai->dev, "Cannot set Opalum controls %d\n", ret);
-#endif
 
 	return ret;
 }
