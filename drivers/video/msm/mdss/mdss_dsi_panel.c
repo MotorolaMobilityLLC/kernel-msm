@@ -162,6 +162,10 @@ static struct dsi_cmd_desc dcs_read_cmd = {
 	{DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(dcs_cmd)},
 	dcs_cmd
 };
+static struct dsi_cmd_desc generic_read_cmd = {
+	{DTYPE_GEN_READ1, 1, 0, 1, 5, sizeof(dcs_cmd)},
+	dcs_cmd
+};
 
 u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	char cmd1, void (*fxn)(int), char *rbuf, int len, bool hs_mode)
@@ -179,6 +183,37 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	dcs_cmd[1] = cmd1;
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &dcs_read_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	if (hs_mode)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
+	cmdreq.rlen = len;
+	cmdreq.rbuf = rbuf;
+	cmdreq.cb = fxn; /* call back */
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	/*
+	 * blocked here, until call back called
+	 */
+
+	return 0;
+}
+
+u32 mdss_dsi_panel_generic_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
+	char cmd1, void (*fxn)(int), char *rbuf, int len, bool hs_mode)
+{
+	struct dcs_cmd_req cmdreq;
+	struct mdss_panel_info *pinfo;
+
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (pinfo->dcs_cmd_by_left) {
+		if (ctrl->ndx != DSI_CTRL_LEFT)
+			return -EINVAL;
+	}
+
+	dcs_cmd[0] = cmd0;
+	dcs_cmd[1] = cmd1;
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &generic_read_cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
 	if (hs_mode)
@@ -781,7 +816,12 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
-	mdss_dsi_panel_cmd_read(ctrl, DCS_CMD_GET_POWER_MODE, 0x00, NULL,
+	if (!pinfo->panel_status_generic_read_enabled)
+		mdss_dsi_panel_cmd_read(ctrl, DCS_CMD_GET_POWER_MODE, 0x00, NULL,
+			&pwr_mode, 1,
+			ctrl->on_cmds.link_state == DSI_HS_MODE ? true : false);
+	else
+		mdss_dsi_panel_generic_cmd_read(ctrl, DCS_CMD_GET_POWER_MODE, 0x00, NULL,
 			&pwr_mode, 1,
 			ctrl->on_cmds.link_state == DSI_HS_MODE ? true : false);
 	if ((pwr_mode & 0x04) != 0x04) {
@@ -1324,6 +1364,9 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 
 	pinfo->cont_splash_enabled = of_property_read_bool(np,
 		"qcom,cont-splash-enabled");
+
+	pinfo->panel_status_generic_read_enabled = of_property_read_bool(np,
+		"qcom,panel-status-generic-read-enabled");
 
 	if (pinfo->mipi.mode == DSI_CMD_MODE) {
 		pinfo->partial_update_enabled = of_property_read_bool(np,
