@@ -122,6 +122,36 @@
 			bias-disable; /* No PULL */
 		};
 	};
+	cross-conn-det {
+		qcom,pins = <&gp 112>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "cross-conn-det-sw";
+		cross_conn_det_act: lines_on {
+			drive-strength = <8>;
+			output-low;
+			bias-pull-down;
+		};
+		cross_conn_det_sus: lines_off {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+	cross-conn-en {
+		qcom,pins = <&gp 111>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "cross-conn-det-en";
+		cross_conn_en_act: lines_on {
+			drive-strength = <8>;
+			output-low;
+			bias-pull-down;
+		};
+		cross_conn_en_sus: lines_off {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
 };
 
 &spi_0 {
@@ -226,6 +256,19 @@
 		qcom,bam-pipe-idx-cons = <8>;
 		qcom,bam-pipe-idx-prod = <9>;
 		qcom,master-id = <86>;
+	};
+	sound {
+		qcom,msm-mbhc-gnd-swh = <1>;
+		pinctrl-names = "cdc_lines_act",
+				"cdc_lines_sus",
+				"cross_conn_det_act",
+				"cross_conn_det_sus";
+		pinctrl-0 = <&cdc_pdm_lines_act>;
+		pinctrl-1 = <&cdc_pdm_lines_sus>;
+		pinctrl-2 = <&cross_conn_det_act>;
+		pinctrl-3 = <&cross_conn_det_sus>;
+		qcom,cdc-us-euro-gpios = <&msm_gpio 112 0x0>;
+		qcom,cdc-headset-en-gpios = <&msm_gpio 111 0x0>;
 	};
 };
 &pm8916_l6 {
