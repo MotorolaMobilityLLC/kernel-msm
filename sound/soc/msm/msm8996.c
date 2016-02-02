@@ -81,6 +81,8 @@ static int slim5_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim5_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int slim6_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim6_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+static int tert_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+static int tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
 static struct platform_device *spdev;
 static int ext_us_amp_gpio = -1;
@@ -132,6 +134,15 @@ static const char *const auxpcm_rate_text[] = {"8000", "16000"};
 static const struct soc_enum msm8996_auxpcm_enum[] = {
 		SOC_ENUM_SINGLE_EXT(2, auxpcm_rate_text),
 };
+
+static const char *const tert_mi2s_rate_text[] = {"KHZ_16", "KHZ_48", "KHZ_96"};
+static const char *const tert_mi2s_format_text[] = {"S16_LE", "S24_LE"};
+
+static const struct soc_enum msm8996_tert_mi2s_enum[] = {
+		SOC_ENUM_SINGLE_EXT(3, tert_mi2s_rate_text),
+		SOC_ENUM_SINGLE_EXT(2, tert_mi2s_format_text),
+};
+
 
 static struct afe_clk_set mi2s_tx_clk = {
 	AFE_API_VERSION_I2S_CONFIG,
@@ -1343,6 +1354,80 @@ static int msm8996_auxpcm_rate_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int tert_mi2s_rate_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (tert_mi2s_sample_rate) {
+	case SAMPLING_RATE_16KHZ:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	case SAMPLING_RATE_48KHZ:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	case SAMPLING_RATE_96KHZ:
+		ucontrol->value.integer.value[0] = 2;
+		break;
+	default:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	}
+	return 0;
+}
+
+static int tert_mi2s_rate_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		tert_mi2s_sample_rate = SAMPLING_RATE_16KHZ;
+		break;
+	case 1:
+		tert_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+		break;
+	case 2:
+		tert_mi2s_sample_rate = SAMPLING_RATE_96KHZ;
+		break;
+	default:
+		tert_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+		break;
+	}
+	return 0;
+}
+
+static int tert_mi2s_format_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (tert_mi2s_bit_format) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	default:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	}
+	return 0;
+}
+
+static int tert_mi2s_format_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	case 1:
+		tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S24_LE;
+		break;
+	default:
+		tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	}
+	return 0;
+}
+
 static int msm_proxy_rx_ch_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
@@ -1431,8 +1516,10 @@ static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
 
 	pr_debug("%s: channel:%d\n", __func__, msm_tert_mi2s_tx_ch);
-	rate->min = rate->max = SAMPLING_RATE_48KHZ;
+	rate->min = rate->max = tert_mi2s_sample_rate;
 	channels->min = channels->max = msm_tert_mi2s_tx_ch;
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+				tert_mi2s_bit_format);
 	return 0;
 }
 
@@ -1704,6 +1791,10 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm8996_hifi_put),
 	SOC_ENUM_EXT("VI_FEED_TX Channels", msm_snd_enum[12],
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
+	SOC_ENUM_EXT("TERT_MI2S SampleRate", msm8996_tert_mi2s_enum[0],
+			tert_mi2s_rate_get, tert_mi2s_rate_put),
+	SOC_ENUM_EXT("TERT_MI2S Format", msm8996_tert_mi2s_enum[1],
+			tert_mi2s_format_get, tert_mi2s_format_put),
 };
 
 #ifndef CONFIG_SND_SOC_FLORIDA
