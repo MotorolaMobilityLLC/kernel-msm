@@ -1,0 +1,29 @@
+ELAN epl8802 ambient light + proximity combo driver.
+
+Required properties:
+
+ - compatible					: Should be "epl,epl8802".
+ - reg							: i2c slave address of the device.
+ - epl,irq-gpio				: The gpio pin for the interrupt.
+ - pinctrl-names				: The pinctrl configration names of this sensor driver. Should be
+					"epl8802_default" and "epl8802_suspend".
+ - pinctrl-0					: Should specify pin control groups used for this controller.
+ - pinctrl-1					: Should specify pin control groups used for this controller.
+ - vdd-supply					: Power supply needed to power up the device.
+ - vio-supply					: IO power supply needed for IO and I2C.
+
+
+ Example:
+
+&i2c_4 { /* BLSP1 QUP4 */
+	 elan@49 {
+		compatible = "epl,epl8802";
+		reg = <0x49>;
+		epl,irq-gpio = <&msm_gpio 113 0x00>;
+		pinctrl-names = "epl8802_default", "epl8802_suspend";
+		pinctrl-0 = <&epl8802_active>;
+		pinctrl-1 = <&epl8802_suspend>;
+                vdd-supply = <&pm8916_l17>;
+                vio-supply = <&pm8916_l6>;
+	};
+};
