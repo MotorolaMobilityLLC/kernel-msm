@@ -1420,8 +1420,10 @@ static int qpnp_adc_tm_read_status(struct qpnp_adc_tm_chip *chip)
 	struct qpnp_adc_thr_client_info *client_info = NULL;
 	struct list_head *thr_list;
 
-	if (qpnp_adc_tm_is_valid(chip))
+	if (qpnp_adc_tm_is_valid(chip)) {
+		atomic_dec(&chip->wq_cnt);
 		return -ENODEV;
+	}
 
 	mutex_lock(&chip->adc->adc_lock);
 
@@ -1609,11 +1611,12 @@ fail:
 	mutex_unlock(&chip->adc->adc_lock);
 
 	if (adc_tm_high_enable || adc_tm_low_enable) {
-		queue_work(chip->sensor[sensor_num].req_wq,
-				&chip->sensor[sensor_num].work);
-	} else if (rc < 0) {
-		atomic_dec(&chip->wq_cnt);
+		if (queue_work(chip->sensor[sensor_num].req_wq,
+				&chip->sensor[sensor_num].work))
+			return rc;
 	}
+
+	atomic_dec(&chip->wq_cnt);
 
 	return rc;
 }
@@ -1642,8 +1645,8 @@ static irqreturn_t qpnp_adc_tm_high_thr_isr(int irq, void *data)
 
 	qpnp_adc_tm_disable(chip);
 
-	atomic_inc(&chip->wq_cnt);
-	queue_work(chip->high_thr_wq, &chip->trigger_high_thr_work);
+	if (queue_work(chip->high_thr_wq, &chip->trigger_high_thr_work))
+		atomic_inc(&chip->wq_cnt);
 
 	return IRQ_HANDLED;
 }
@@ -1672,8 +1675,8 @@ static irqreturn_t qpnp_adc_tm_low_thr_isr(int irq, void *data)
 
 	qpnp_adc_tm_disable(chip);
 
-	atomic_inc(&chip->wq_cnt);
-	queue_work(chip->low_thr_wq, &chip->trigger_low_thr_work);
+	if (queue_work(chip->low_thr_wq, &chip->trigger_low_thr_work))
+		atomic_inc(&chip->wq_cnt);
 
 	return IRQ_HANDLED;
 }
