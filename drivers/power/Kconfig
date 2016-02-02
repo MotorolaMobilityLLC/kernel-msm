@@ -590,6 +590,15 @@ config BQ24296_CHARGER
 	  The driver reports the charger status via the power supply framework.
 	  A charger status change triggers an IRQ via the device STAT pin.
 
+config BATTERY_MAX17058
+	tristate "Maxim ModelGauge ICs fuel gauge"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  ModelGauge(TM) is a Maxim algorithm incorporated in
+	  MAX17040/41/43/44/48/49/58/59 fuel-gauges for lithium-ion (Li+)
+	  batteries.
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY

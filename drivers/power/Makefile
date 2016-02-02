@@ -75,3 +75,4 @@ obj-$(CONFIG_POWER_RESET)	+= reset/
 obj-y				+= qcom/
 obj-$(CONFIG_FAN5404X_CHARGER)	+= fan5404x-charger.o
 obj-$(CONFIG_BQ24296_CHARGER)  += bq24296-charger.o
+obj-$(CONFIG_BATTERY_MAX17058)  += max17058_battery.o
