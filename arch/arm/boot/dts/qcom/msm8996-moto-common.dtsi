@@ -829,13 +829,13 @@
 		mmi,muc-ctrl-dis-seq = <1 0 200>;
 
 		/* v1 FF first, BPLUS second on enable */
-		mmi,muc-ctrl-ff-seq-v1 = <2 1 20>, <1 0 100>,
-					<1 1 100>, <2 0 20>;
+		mmi,muc-ctrl-ff-seq-v1 = <5 1 20>, <1 0 100>,
+					<1 1 100>, <5 0 20>;
 
 		/* v2 BPLUS first, FF second on enable */
-		mmi,muc-ctrl-ff-seq-v2 = <2 0 20>, <1 0 20>,
-					<1 1 100>, <2 1 20>,
-					<2 0 20>;
+		mmi,muc-ctrl-ff-seq-v2 = <5 0 20>, <1 0 20>,
+					<1 1 100>, <5 1 20>,
+					<5 0 20>;
 
 		pinctrl-names = "disconnected", "spi_active";
 		pinctrl-0 = <&muc_attach &spi_0_sleep &muc_spi_ctrl>;
