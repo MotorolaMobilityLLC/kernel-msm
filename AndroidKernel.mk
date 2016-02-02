@@ -1,6 +1,7 @@
 #Android makefile to build kernel as a part of Android Build
 PERL		= perl
 
+ifeq ($(TARGET_COMPILE_WITH_MSM_KERNEL),true)
 ifndef TARGET_BOARD_PLATFORM
 $(error TARGET_BOARD_PLATFORM is not defined)
 endif
@@ -151,3 +152,4 @@ kernelconfig: $(KERNEL_OUT) $(KERNEL_CONFIG)
 
 endif
 endif
+endif # TARGET_COMPILE_WITH_MSM_KERNEL
