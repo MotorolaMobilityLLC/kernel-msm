@@ -13,6 +13,7 @@ arm	ARM Ltd.
 atmel	Atmel Corporation
 avago	Avago Technologies
 awinic	AWINIC Technology Co.Ltd
+epl	EMINENT Corporation
 bosch	Bosch Sensortec GmbH
 brcm	Broadcom Corporation
 capella	Capella Microsystems, Inc.
