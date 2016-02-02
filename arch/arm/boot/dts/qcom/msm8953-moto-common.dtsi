@@ -51,3 +51,13 @@
 	};
 };
 
+&pmi_haptic{
+	qcom,actuator-type = "lra";
+	qcom,lra-auto-res-mode="qwd";
+	qcom,wave-shape = "sine";
+	qcom,lra-high-z="opt1";
+	qcom,lra-res-cal-period = <4>;
+	qcom,correct-lra-drive-freq;
+	qcom,wave-play-rate-us = <4165>;
+	qcom,vmax-mv = <2050>;
+};
