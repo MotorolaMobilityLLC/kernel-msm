@@ -981,6 +981,15 @@
 		qcom,master-en = <1>;
 		qcom,src-sel = <0>; /* Function constant */
 	};
+	mpp@a300 {
+		/* FLASH_STROBE MPP_4 */
+		status = "ok";
+		qcom,mode = <0>; /* Digital input */
+		qcom,invert = <0>; /* Disable Invert */
+		qcom,vin-sel = <1>; /* 1.8V */
+		qcom,master-en = <1>;
+		qcom,pin-num = <4>;
+	};
 };
 
 &pmi8950_vadc {
