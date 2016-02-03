@@ -645,7 +645,7 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
  */
 #define VL53L0_IOCTL_INIT			_IO('p', 0x01)
 #define VL53L0_IOCTL_INIT_NS                       _IO('p', 0x11)
-#define VL53L0_IOCTL_XTALKCALB		_IOW('p', 0x02, unsigned int)
+#define VL53L0_IOCTL_XTALKCALB		_IOWR('p', 0x02, unsigned int)
 #define VL53L0_IOCTL_OFFCALB		_IOW('p', 0x03, unsigned int)
 #define VL53L0_IOCTL_STOPCALB		_IO('p', 0x04)
 #define VL53L0_IOCTL_STOP			_IO('p', 0x05)
@@ -832,7 +832,8 @@ static void stmvl53l0_enter_xtalkcal(struct stmvl53l0_data *data,
 	papi_func_tbl->SetXTalkCompensationEnable(data, 0);
 
 	papi_func_tbl->PerformXTalkCalibration(data,
-		(400 << 16), &XTalkCompensationRateMegaCps);
+		(data->xtalkCalDistance << 16), &XTalkCompensationRateMegaCps);
+	data->xtalkcalval = XTalkCompensationRateMegaCps;
 	vl53l0_dbgmsg("End\n");
 	mutex_unlock(&data->work_mutex);
 }
@@ -1496,6 +1497,12 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		}
 		data->xtalkCalDistance = targetDistance;
 		stmvl53l0_work_state(data, XTALKCAL_ON);
+		if (copy_to_user((unsigned int *)p,
+			&(data->xtalkcalval),
+			sizeof(unsigned int))) {
+			vl53l0_errmsg("%d, fail\n", __LINE__);
+			return -EFAULT;
+		}
 		break;
 		/* set up Xtalk value */
 	case VL53L0_IOCTL_SETXTALK:
