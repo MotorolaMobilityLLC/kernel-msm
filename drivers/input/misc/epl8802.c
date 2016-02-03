@@ -522,7 +522,7 @@ static void epl_sensor_report_ps_status(void)
 			epl_sensor.ps.data.data, epl_sensor.ps.compare_low >> 3);
 
 	if (epl_sensor.ps.compare_low >> 3 == 0)
-		distance = 10;
+		distance = 1;
 	else if (epl_sensor.ps.compare_low >> 3 == 1)
 		distance = 100;
 	else
