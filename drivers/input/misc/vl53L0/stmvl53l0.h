@@ -159,6 +159,7 @@ struct stmvl53l0_data {
 	uint8_t cut_v;
 	unsigned int xtalkCalDistance;
 	unsigned int offsetCalDistance;
+	unsigned int xtalkcalval;
 	VL53L0_GpioFunctionality gpio_function;
 };
 
