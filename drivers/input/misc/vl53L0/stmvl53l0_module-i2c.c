@@ -253,6 +253,18 @@ static int stmvl53l0_probe(struct i2c_client *client,
 		msleep(20);
 	}
 	if (rc != 0) {
+		stmvl53l0_power_down_i2c(i2c_object);
+		msleep(20);
+		stmvl53l0_power_up_i2c(i2c_object, &present);
+		for (i = 0; i < 10; i++) {
+			rc = stmvl53l0_checkmoduleid
+				(vl53l0_data, i2c_object->client, I2C_BUS);
+			if (!rc)
+				break;
+			msleep(20);
+		}
+	}
+	if (rc != 0) {
 		vl53l0_errmsg("%d,error rc %d\n", __LINE__, rc);
 		stmvl53l0_power_down_i2c(i2c_object);
 		return rc;
