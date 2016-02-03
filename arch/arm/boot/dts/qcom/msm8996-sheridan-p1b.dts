@@ -69,8 +69,10 @@
 				  "gpio_apba_int_n",
 				  "gpio_apba_wake";
 		mmi,int-index = <5>;
-		mmi,enable-seq = <0 1 0>, <1 0 0>, <2 0 0>, <3 0 0>, <4 0 50>, <4 1 50>;
-		mmi,disable-seq = <0 1 0>, <1 0 0>, <2 0 0>, <3 1 0>, <4 0 50>;
+		mmi,enable-seq = <6 1 0>, <0 1 0>, <1 0 0>, <2 0 0>, <3 0 0>,
+				 <4 0 50>, <4 1 50>;
+		mmi,disable-seq = <1 0 0>, <2 0 0>, <3 1 0>, <4 0 50>, <6 0 0>,
+				  <0 0 0>;
 		mmi,wake-assert-seq = <6 0 0>;
 		mmi,wake-deassert-seq = <6 1 0>;
 	};
