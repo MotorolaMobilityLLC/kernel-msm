@@ -278,6 +278,17 @@
 				<86 512 0 0>,
 				<86 512 500 800>;
 	};
+
+	bt_nitrous {
+		compatible = "goog,nitrous";
+		uart-port = <0>;
+		power-gpio = <&msmgpio 34 0>;
+		reset-gpio = <&msmgpio 36 0>;
+		host-wake-gpio = <&msmgpio 48 0>;
+		host-wake-polarity = <1>;
+		dev-wake-gpio = <&msmgpio 61 0>;
+		dev-wake-polarity = <1>;
+	};
 	// ASUS_BSP BerylHou ---
 
 	uart_2:serial@f991f000 { //ASUS_BSP BerylHou +++
