@@ -103,19 +103,13 @@
 
 	spi_9 {
 		spi_9_active: spi_9_active {
-			spi_9 {
-				pins = "gpio49", "gpio50", "gpio51", "gpio52";
-				function = "blsp_spi9";
-				drive-strength = <6>;
+			config {
 				bias-pull-up;
 			};
 		};
 
 		spi_9_sleep: spi_9_sleep {
-			spi_9 {
-				pins = "gpio49", "gpio50", "gpio51", "gpio52";
-				function = "blsp_spi9";
-				drive-strength = <6>;
+			config {
 				bias-pull-up;
 			};
 		};
