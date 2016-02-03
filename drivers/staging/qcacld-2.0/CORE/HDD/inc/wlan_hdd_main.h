@@ -162,7 +162,7 @@
 /** Mac Address string **/
 #define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
 #define MAC_ADDRESS_STR_LEN 18 /* Including null terminator */
-#define MAX_GENIE_LEN 255
+#define MAX_GENIE_LEN 512
 
 #define WLAN_CHIP_VERSION   "WCNSS"
 
@@ -1686,6 +1686,7 @@ struct hdd_context_s
     /* Is htTxSTBC supported by target */
     uint8_t   ht_tx_stbc_supported;
 
+    bool ns_offload_enable;
 #ifdef WLAN_NS_OFFLOAD
     /* IPv6 notifier callback for handling NS offload on change in IP */
     struct notifier_block ipv6_notifier;
@@ -1709,6 +1710,7 @@ struct hdd_context_s
     /* Current number of TX X RX chains being used */
     enum antenna_mode current_antenna_mode;
     bool bpf_enabled;
+    uint16_t wmi_max_len;
 };
 
 /*---------------------------------------------------------------------------

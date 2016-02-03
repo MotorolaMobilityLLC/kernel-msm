@@ -384,6 +384,9 @@ typedef struct _VosContextType
    /* SSR re-init in progress */
    volatile v_U8_t     isReInitInProgress;
 
+   /* SSR shutdown in progress */
+   v_U8_t     is_shutdown_in_progress;
+
    bool is_wakelock_log_enabled;
    uint32_t wakelock_log_level;
    uint32_t connectivity_log_level;

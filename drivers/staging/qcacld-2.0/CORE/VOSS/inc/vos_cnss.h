@@ -186,6 +186,17 @@ static inline bool vos_is_ssr_fw_dump_required(void)
 {
 	return true;
 }
+
+static inline int vos_update_boarddata(unsigned char *buf, unsigned int len)
+{
+	return 0;
+}
+
+static inline int vos_cache_boarddata(unsigned int offset,
+	unsigned int len, unsigned char *buf)
+{
+	return 0;
+}
 #else
 static inline void vos_init_work(struct work_struct *work, work_func_t func)
 {
@@ -467,5 +478,30 @@ static inline int vos_pcie_shadow_control(struct pci_dev *dev, bool enable)
 	return cnss_pcie_shadow_control(dev, enable);
 }
 #endif
+
+#if defined(CONFIG_CNSS_SDIO) && defined(WLAN_SCPC_FEATURE)
+static inline int vos_update_boarddata(unsigned char *buf, unsigned int len)
+{
+	return cnss_update_boarddata(buf, len);
+}
+
+static inline int vos_cache_boarddata(unsigned int offset,
+	unsigned int len, unsigned char *buf)
+{
+	return cnss_cache_boarddata(buf, len, offset);
+}
+#else
+static inline int vos_update_boarddata(unsigned char *buf, unsigned int len)
+{
+	return 0;
+}
+
+static inline int vos_cache_boarddata(unsigned int offset,
+	unsigned int len, unsigned char *buf)
+{
+	return 0;
+}
 #endif
+#endif
+
 #endif/* _VOS_CNSS_H */

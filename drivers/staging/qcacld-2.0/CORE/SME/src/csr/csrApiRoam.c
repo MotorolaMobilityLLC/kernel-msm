@@ -70,6 +70,10 @@
 #include "regdomain_common.h"
 #include "vos_utils.h"
 
+#define MAX_PWR_FCC_CHAN_12 8
+#define MAX_PWR_FCC_CHAN_13 2
+
+
 #define CSR_NUM_IBSS_START_CHANNELS_50      4
 #define CSR_NUM_IBSS_START_CHANNELS_24      3
 /* 15 seconds, for WPA, WPA2, CCKM */
@@ -489,12 +493,6 @@ eHalStatus csrUpdateChannelList(tpAniSirGlobal pMac)
 
     for (i = 0; i < pScan->base20MHzChannels.numChannels; i++)
     {
-        if (pScan->fcc_constraint) {
-            if (pScan->base20MHzChannels.channelList[i] == 12)
-                continue;
-            if (pScan->base20MHzChannels.channelList[i] == 13)
-                continue;
-        }
         channel_state =
             vos_nv_getChannelEnabledState(
                 pScan->base20MHzChannels.channelList[i]);
@@ -506,6 +504,22 @@ eHalStatus csrUpdateChannelList(tpAniSirGlobal pMac)
             pChanList->chanParam[num_channel].pwr =
                 csrFindChannelPwr(pScan->defaultPowerTable,
                                   pChanList->chanParam[num_channel].chanId);
+
+            if (pScan->fcc_constraint) {
+                if (pChanList->chanParam[num_channel].chanId == 12) {
+                    pChanList->chanParam[num_channel].pwr =
+                                        MAX_PWR_FCC_CHAN_12;
+                    smsLog(pMac, LOG1,
+                     "fcc_constraint is set, txpower for channel 12 is 8db");
+                }
+                if (pChanList->chanParam[num_channel].chanId == 13) {
+                    pChanList->chanParam[num_channel].pwr =
+                                        MAX_PWR_FCC_CHAN_13;
+                    smsLog(pMac, LOG1,
+                     "fcc_constraint is set, txpower for channel 13 is 2db");
+                }
+            }
+
             if (NV_CHANNEL_ENABLE == channel_state)
                 pChanList->chanParam[num_channel].dfsSet = VOS_FALSE;
             else

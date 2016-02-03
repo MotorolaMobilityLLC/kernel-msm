@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -305,4 +305,25 @@ void vos_event_report_payload(v_U16_t event_Id, v_U16_t length, v_VOID_t *pPaylo
 
     return;
 
+}
+
+/**
+ * vos_log_low_resource_failure() - This function is used to send low
+ * resource failure event
+ * @event_sub_type: Reason why the failure was observed
+ *
+ * This function is used to send low resource failure events to user space
+ *
+ * Return: None
+ *
+ */
+void vos_log_low_resource_failure(uint8_t event_sub_type)
+{
+	WLAN_VOS_DIAG_EVENT_DEF(wlan_diag_event,
+			struct vos_event_wlan_low_resource_failure);
+
+	wlan_diag_event.event_sub_type = event_sub_type;
+
+	WLAN_VOS_DIAG_EVENT_REPORT(&wlan_diag_event,
+					EVENT_WLAN_LOW_RESOURCE_FAILURE);
 }

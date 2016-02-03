@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -2452,6 +2452,7 @@ void hif_pci_shutdown(struct pci_dev *pdev)
     }
     /* this is for cases, where shutdown invoked from CNSS */
     vos_set_logp_in_progress(VOS_MODULE_ID_HIF, TRUE);
+    vos_set_shutdown_in_progress(VOS_MODULE_ID_HIF, TRUE);
 
     if (!vos_is_ssr_ready(__func__))
         pr_info("Host driver is not ready for SSR, attempting anyway\n");
@@ -2488,6 +2489,7 @@ void hif_pci_shutdown(struct pci_dev *pdev)
     pci_release_region(pdev, BAR_NUM);
     pci_clear_master(pdev);
     pci_disable_device(pdev);
+    vos_set_shutdown_in_progress(VOS_MODULE_ID_HIF, FALSE);
 
     printk("%s: WLAN host driver shutting down completed!\n", __func__);
 }

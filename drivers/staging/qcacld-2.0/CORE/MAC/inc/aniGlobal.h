@@ -1005,8 +1005,6 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
     tANI_U8 fOffloadScanPending; /*Flag to track offload scan */
     tANI_U8 fOffloadScanP2PSearch; /*Flag to track the p2p search */
     tANI_U8 fOffloadScanP2PListen; /*Flag to track the p2p listen */
-    /*Filter out P2P result if not P2P scan/listen */
-    tANI_U8 offload_scan_filter_p2p_result;
     tANI_U8 probeCounter;
     tANI_U8 maxProbe;
     uint8_t retry_packet_cnt;
@@ -1258,6 +1256,7 @@ typedef struct sAniSirGlobal
     bool per_band_chainmask_supp;
     struct vdev_type_nss vdev_type_nss_2g;
     struct vdev_type_nss vdev_type_nss_5g;
+    uint8_t user_configured_nss;
     t_auth_ack_status auth_ack_status;
     bool first_scan_done;
     int8_t first_scan_bucket_threshold;

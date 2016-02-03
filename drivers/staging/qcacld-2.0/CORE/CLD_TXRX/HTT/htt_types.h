@@ -358,6 +358,7 @@ struct htt_pdev_t {
         void *pdev, A_STATUS status, adf_nbuf_t msdu, u_int16_t msdu_id);
 
     HTT_TX_MUTEX_TYPE htt_tx_mutex;
+    HTT_TX_MUTEX_TYPE credit_mutex;
 
     struct {
         int htc_err_cnt;

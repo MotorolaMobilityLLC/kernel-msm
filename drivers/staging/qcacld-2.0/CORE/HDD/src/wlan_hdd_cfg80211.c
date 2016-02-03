@@ -9555,6 +9555,79 @@ fail:
 	return;
 }
 
+static const struct nla_policy
+ns_offload_set_policy[QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_MAX + 1] = {
+	[QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_FLAG] = {.type = NLA_U8},
+};
+
+/**
+ * __wlan_hdd_cfg80211_set_ns_offload() - enable/disable NS offload
+ * @wiphy: Pointer to wireless phy
+ * @wdev: Pointer to wireless device
+ * @data: Pointer to data
+ * @data_len: Length of @data
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int
+__wlan_hdd_cfg80211_set_ns_offload(struct wiphy *wiphy,
+			struct wireless_dev *wdev,
+			const void *data, int data_len)
+{
+	int status;
+	struct nlattr *tb[QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_MAX + 1];
+	hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+
+	ENTER();
+
+	status = wlan_hdd_validate_context(pHddCtx);
+	if (0 != status)
+		return status;
+	if (TRUE != pHddCtx->cfg_ini->fhostNSOffload) {
+		hddLog(LOGE, FL("ND Offload not supported"));
+		return -EINVAL;
+	}
+
+	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_MAX,
+			(struct nlattr *)data,
+			data_len, ns_offload_set_policy)) {
+		hddLog(LOGE, FL("nla_parse failed"));
+		return -EINVAL;
+	}
+
+	if (!tb[QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_FLAG]) {
+		hddLog(LOGE, FL("ND Offload flag attribute not present"));
+		return -EINVAL;
+	}
+
+	pHddCtx->ns_offload_enable =
+		nla_get_u8(tb[QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_FLAG]);
+
+	return 0;
+}
+
+/**
+ * wlan_hdd_cfg80211_set_ns_offload() - enable/disable NS offload
+ * @wiphy:   pointer to wireless wiphy structure.
+ * @wdev:    pointer to wireless_dev structure.
+ * @data:    Pointer to the data to be passed via vendor interface
+ * @data_len:Length of the data to be passed
+ *
+ * Return:   Return the Success or Failure code.
+ */
+static int wlan_hdd_cfg80211_set_ns_offload(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data, int data_len)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_set_ns_offload(wiphy, wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
 /**
  * __wlan_hdd_cfg80211_setband() - set band
  * @wiphy: Pointer to wireless phy
@@ -9791,19 +9864,28 @@ static int hdd_get_bpf_offload(hdd_context_t *hdd_ctx)
  * hdd_set_reset_bpf_offload - Post set/reset bpf to SME
  * @hdd_ctx: Hdd context
  * @tb: Length of @data
- * @session_id: Session identifier
+ * @adapter: pointer to adapter struct
  *
  * Return: 0 on success; errno on failure
  */
 static int hdd_set_reset_bpf_offload(hdd_context_t *hdd_ctx,
 				     struct nlattr **tb,
-				     uint8_t session_id)
+				     hdd_adapter_t *adapter)
 {
 	struct sir_bpf_set_offload *bpf_set_offload;
 	eHalStatus hstatus;
 	int prog_len;
 
 	ENTER();
+
+	if (adapter->device_mode == WLAN_HDD_INFRA_STATION ||
+			adapter->device_mode == WLAN_HDD_P2P_CLIENT) {
+		if (!hdd_connIsConnected(
+				WLAN_HDD_GET_STATION_CTX_PTR(adapter))) {
+			hddLog(LOGE, FL("Not in Connected state!"));
+			return -ENOTSUPP;
+		}
+	}
 
 	bpf_set_offload = vos_mem_malloc(sizeof(*bpf_set_offload));
 	if (bpf_set_offload == NULL) {
@@ -9834,7 +9916,7 @@ static int hdd_set_reset_bpf_offload(hdd_context_t *hdd_ctx,
 	bpf_set_offload->program = vos_mem_malloc(sizeof(uint8_t) * prog_len);
 	bpf_set_offload->current_length = prog_len;
 	nla_memcpy(bpf_set_offload->program, tb[BPF_PROGRAM], prog_len);
-	bpf_set_offload->session_id = session_id;
+	bpf_set_offload->session_id = adapter->sessionId;
 
 	/* Parse and fetch filter Id */
 	if (!tb[BPF_FILTER_ID]) {
@@ -9931,7 +10013,7 @@ __wlan_hdd_cfg80211_bpf_offload(struct wiphy *wiphy,
 		return hdd_get_bpf_offload(hdd_ctx);
 	else
 		return hdd_set_reset_bpf_offload(hdd_ctx, tb,
-						 pAdapter->sessionId);
+						 pAdapter);
 }
 
 /**
@@ -9975,6 +10057,87 @@ void hdd_init_bpf_completion(void)
 #undef BPF_CURRENT_OFFSET
 #undef BPF_PROGRAM
 #undef BPF_MAX
+
+/**
+ * __wlan_hdd_cfg80211_get_bus_size() - Get WMI Bus size
+ * @wiphy:    wiphy structure pointer
+ * @wdev:     Wireless device structure pointer
+ * @data:     Pointer to the data received
+ * @data_len: Length of @data
+ *
+ * This function reads wmi max bus size and fill in the skb with
+ * NL attributes and send up the NL event.
+ * Return: 0 on success; errno on failure
+ */
+
+static int
+__wlan_hdd_cfg80211_get_bus_size(struct wiphy *wiphy,
+				struct wireless_dev *wdev,
+				const void *data, int data_len)
+{
+	hdd_context_t *hdd_ctx = wiphy_priv(wiphy);
+	int ret_val;
+	struct sk_buff *skb;
+	uint32_t nl_buf_len;
+
+	ENTER();
+
+	ret_val = wlan_hdd_validate_context(hdd_ctx);
+	if (ret_val)
+		return ret_val;
+
+	if (VOS_FTM_MODE == hdd_get_conparam()) {
+		hddLog(LOGE, FL("Command not allowed in FTM mode"));
+		return -EINVAL;
+	}
+
+	hddLog(LOG1, "WMI Max Bus size: %d", hdd_ctx->wmi_max_len);
+
+	nl_buf_len = NLMSG_HDRLEN;
+	nl_buf_len +=  (sizeof(hdd_ctx->wmi_max_len) + NLA_HDRLEN);
+
+	skb = cfg80211_vendor_cmd_alloc_reply_skb(hdd_ctx->wiphy, nl_buf_len);
+	if (!skb) {
+		hddLog(LOGE, FL("cfg80211_vendor_cmd_alloc_reply_skb failed"));
+		return -ENOMEM;
+	}
+
+	if (nla_put_u16(skb, QCA_WLAN_VENDOR_ATTR_DRV_INFO_BUS_SIZE,
+			hdd_ctx->wmi_max_len)) {
+		hddLog(LOGE, FL("nla put failure"));
+		goto nla_put_failure;
+	}
+	cfg80211_vendor_cmd_reply(skb);
+	EXIT();
+	return 0;
+
+nla_put_failure:
+	kfree_skb(skb);
+	return -EINVAL;
+}
+
+/**
+ * wlan_hdd_cfg80211_get_bus_size() - SSR Wrapper to Get Bus size
+ * @wiphy:    wiphy structure pointer
+ * @wdev:     Wireless device structure pointer
+ * @data:     Pointer to the data received
+ * @data_len: Length of @data
+ *
+ * Return: 0 on success; errno on failure
+ */
+
+static int wlan_hdd_cfg80211_get_bus_size(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data, int data_len)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_get_bus_size(wiphy, wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
 
 const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] =
 {
@@ -10400,6 +10563,14 @@ const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] =
 	},
 	{
 		.info.vendor_id = QCA_NL80211_VENDOR_ID,
+		.info.subcmd = QCA_NL80211_VENDOR_SUBCMD_ND_OFFLOAD,
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+			 WIPHY_VENDOR_CMD_NEED_NETDEV |
+			 WIPHY_VENDOR_CMD_NEED_RUNNING,
+		.doit = wlan_hdd_cfg80211_set_ns_offload
+	},
+	{
+		.info.vendor_id = QCA_NL80211_VENDOR_ID,
 		.info.subcmd = QCA_NL80211_VENDOR_SUBCMD_SETBAND,
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
 			 WIPHY_VENDOR_CMD_NEED_NETDEV |
@@ -10413,6 +10584,14 @@ const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] =
 			WIPHY_VENDOR_CMD_NEED_NETDEV |
 			WIPHY_VENDOR_CMD_NEED_RUNNING,
 		.doit = wlan_hdd_cfg80211_bpf_offload
+	},
+	{
+		.info.vendor_id = QCA_NL80211_VENDOR_ID,
+		.info.subcmd = QCA_NL80211_VENDOR_SUBCMD_GET_BUS_SIZE,
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+			WIPHY_VENDOR_CMD_NEED_NETDEV |
+			WIPHY_VENDOR_CMD_NEED_RUNNING,
+		.doit = wlan_hdd_cfg80211_get_bus_size
 	},
 };
 
@@ -11204,7 +11383,8 @@ static void wlan_hdd_set_sapHwmode(hdd_adapter_t *pHostapdAdapter)
 }
 
 static int wlan_hdd_add_ie(hdd_adapter_t* pHostapdAdapter, v_U8_t *genie,
-                              v_U8_t *total_ielen, v_U8_t *oui, v_U8_t oui_size)
+                              v_U16_t *total_ielen, v_U8_t *oui,
+                              v_U8_t oui_size)
 {
     v_U16_t ielen = 0;
     v_U8_t *pIe = NULL;
@@ -11231,7 +11411,7 @@ static int wlan_hdd_add_ie(hdd_adapter_t* pHostapdAdapter, v_U8_t *genie,
 }
 
 static void wlan_hdd_add_hostapd_conf_vsie(hdd_adapter_t* pHostapdAdapter,
-                                           v_U8_t *genie, v_U8_t *total_ielen)
+                                           v_U8_t *genie, v_U16_t *total_ielen)
 {
     beacon_data_t *pBeacon = pHostapdAdapter->sessionCtx.ap.beacon;
     int left = pBeacon->tail_len;
@@ -11292,7 +11472,7 @@ static void wlan_hdd_add_hostapd_conf_vsie(hdd_adapter_t* pHostapdAdapter,
 }
 
 static void wlan_hdd_add_extra_ie(hdd_adapter_t* pHostapdAdapter,
-                                           v_U8_t *genie, v_U8_t *total_ielen,
+                                           v_U8_t *genie, v_U16_t *total_ielen,
                                            v_U8_t temp_ie_id)
 {
     beacon_data_t *pBeacon = pHostapdAdapter->sessionCtx.ap.beacon;
@@ -11342,7 +11522,7 @@ static void wlan_hdd_add_extra_ie(hdd_adapter_t* pHostapdAdapter,
 
 #ifdef QCA_HT_2040_COEX
 static void wlan_hdd_add_sap_obss_scan_ie(
-	hdd_adapter_t *pHostapdAdapter, v_U8_t *ie_buf, v_U8_t *ie_len)
+	hdd_adapter_t *pHostapdAdapter, v_U8_t *ie_buf, v_U16_t *ie_len)
 {
 	if (WLAN_HDD_SOFTAP == pHostapdAdapter->device_mode) {
 		if (wlan_hdd_get_sap_obss(pHostapdAdapter))
@@ -11352,7 +11532,7 @@ static void wlan_hdd_add_sap_obss_scan_ie(
 }
 #else
 static void wlan_hdd_add_sap_obss_scan_ie(
-	hdd_adapter_t* pHostapdAdapter, v_U8_t *ie_buf, v_U8_t *ie_len)
+	hdd_adapter_t* pHostapdAdapter, v_U8_t *ie_buf, v_U16_t *ie_len)
 {
 }
 #endif
@@ -11360,7 +11540,7 @@ static void wlan_hdd_add_sap_obss_scan_ie(
 int wlan_hdd_cfg80211_update_apies(hdd_adapter_t* pHostapdAdapter)
 {
     v_U8_t *genie;
-    v_U8_t total_ielen = 0;
+    v_U16_t total_ielen = 0;
     int ret = 0;
     tsap_Config_t *pConfig;
     tSirUpdateIE   updateIE;
@@ -11375,6 +11555,13 @@ int wlan_hdd_cfg80211_update_apies(hdd_adapter_t* pHostapdAdapter)
 
         return -ENOMEM;
     }
+
+    /* Extract and add the extended capabilities and interworking IE */
+    wlan_hdd_add_extra_ie(pHostapdAdapter, genie, &total_ielen,
+                          WLAN_EID_EXT_CAPABILITY);
+
+    wlan_hdd_add_extra_ie(pHostapdAdapter, genie, &total_ielen,
+                          WLAN_EID_INTERWORKING);
 
     if (0 != wlan_hdd_add_ie(pHostapdAdapter, genie,
                               &total_ielen, WPS_OUI_TYPE, WPS_OUI_TYPE_SIZE))
@@ -17088,14 +17275,15 @@ int wlan_hdd_cfg80211_set_ie(hdd_adapter_t *pAdapter,
                 pWextState->roamProfile.pRSNReqIE = pWextState->WPARSNIE;
                 pWextState->roamProfile.nRSNReqIELength = eLen + 2; //ie_len;
                 break;
-                /* Appending Extended Capabilities with Interworking bit set
-                 * in Assoc Req.
+                /* Appending Extended Capabilities with Interworking or
+                 * bsstransition bit set in Assoc Req.
                  *
                  * In assoc req this EXT Cap will only be taken into account if
-                 * interworkingService bit is set to 1. Currently
-                 * driver is only interested in interworkingService capability
-                 * from supplicant. If in future any other EXT Cap info is
-                 * required from supplicat, it needs to be handled while
+                 * interworkingService or bsstransition bit is set to 1.
+                 * Currently driver is only interested in interworkingService
+                 * and bsstransition capability from supplicant.
+                 * If in future any other EXT Cap info is
+                 * required from supplicant, it needs to be handled while
                  * sending Assoc Req in LIM.
                  */
             case DOT11F_EID_EXTCAP:
@@ -20326,6 +20514,11 @@ static int __wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy,
                         __func__, MAC_ADDR_ARRAY(peer), action_code);
 
              return -ENOTSUPP;
+        } else if (pHddCtx->tdls_nss_switch_in_progress) {
+             hddLog(LOGE,
+                    FL("TDLS antenna switch in progress, action %d declined for "
+                    MAC_ADDRESS_STR), action_code, MAC_ADDR_ARRAY(peer));
+             return -EAGAIN;
         }
     }
     if (WLAN_IS_TDLS_SETUP_ACTION(action_code))

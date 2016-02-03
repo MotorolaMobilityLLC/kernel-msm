@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -82,6 +82,15 @@ void vos_event_report_payload(v_U16_t event_Id, v_U16_t length, v_VOID_t *pPaylo
 
 #endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
+/**
+ * enum auth_timeout_type - authentication timeout type
+ * @AUTH_FAILURE_TIMEOUT: auth failure timeout
+ * @AUTH_RESPONSE_TIMEOUT: auth response timeout
+ */
+enum auth_timeout_type {
+	AUTH_FAILURE_TIMEOUT,
+	AUTH_RESPONSE_TIMEOUT,
+};
 
 /*-------------------------------------------------------------------------
   Function declarations and documenation
@@ -93,6 +102,15 @@ void vos_log_wlock_diag(uint32_t reason, const char *wake_lock_name,
 static inline void vos_log_wlock_diag(uint32_t reason,
 		const char *wake_lock_name,
 		uint32_t timeout, uint32_t status)
+{
+
+}
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */
+
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+void vos_log_low_resource_failure(uint8_t event_sub_type);
+#else
+static inline void vos_log_low_resource_failure(uint8_t event_sub_type)
 {
 
 }

@@ -1151,7 +1151,6 @@ static eHalStatus limSendHalStartScanOffloadReq(tpAniSirGlobal pMac,
 
     pMac->lim.fOffloadScanPending = 0;
     pMac->lim.fOffloadScanP2PSearch = 0;
-    pMac->lim.offload_scan_filter_p2p_result = 0;
 
     if (pScanReq->uIEFieldLen) {
         status = lim_strip_extcap_update_struct(pMac,
@@ -1421,6 +1420,9 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         return;
     }
 
+    /* Clear P2P scan entries before starting any scan */
+    if (pMac->fScanOffload)
+        limFlushp2pScanResults(pMac);
 
     /**
      * If scan request is received in idle, joinFailed
@@ -1433,8 +1435,6 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
   if (__limFreshScanReqd(pMac, pScanReq->returnFreshResults))
   {
       limLog(pMac, LOG1, FL("Fresh scan is required"));
-      if (pMac->fScanOffload)
-         limFlushp2pScanResults(pMac);
 
       if (pScanReq->returnFreshResults & SIR_BG_SCAN_PURGE_RESUTLS)
       {
@@ -1689,9 +1689,6 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             }
 #endif
             limLog(pMac, LOG1, FL("Cached scan results are returned "));
-
-            if (pMac->fScanOffload)
-                 limFlushp2pScanResults(pMac);
 
             if (pScanReq->returnFreshResults & SIR_BG_SCAN_PURGE_RESUTLS)
             {
@@ -2660,6 +2657,12 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     psessionEntry->limPrevSmeState = psessionEntry->limSmeState;
     psessionEntry->limSmeState    = eLIM_SME_WT_REASSOC_STATE;
+
+    psessionEntry->enableHtSmps = pReassocReq->enableHtSmps;
+    psessionEntry->htSmpsvalue = pReassocReq->htSmps;
+    limLog(pMac, LOG1, FL("enableHtSmps: %d htSmps: %d"),
+           psessionEntry->enableHtSmps,
+           psessionEntry->htSmpsvalue);
 
     MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId, psessionEntry->limSmeState));
 
@@ -5789,7 +5792,6 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
      * want to insert NOA before processing those msgs. These msgs will be processed later when
      * start event happens
      */
-    MTRACE(macTraceMsgRx(pMac, NO_SESSION, pMsg->type));
     switch (pMsg->type)
     {
         case eWNI_SME_SCAN_REQ:

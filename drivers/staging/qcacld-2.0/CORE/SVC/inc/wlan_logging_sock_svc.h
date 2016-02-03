@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -74,4 +74,7 @@ static inline void wlan_report_log_completion(uint32_t is_fatal,
 	return;
 }
 #endif /* FEATURE_WLAN_DIAG_SUPPORT */
+
+void wlan_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data);
+
 #endif /* WLAN_LOGGING_SOCK_SVC_H */

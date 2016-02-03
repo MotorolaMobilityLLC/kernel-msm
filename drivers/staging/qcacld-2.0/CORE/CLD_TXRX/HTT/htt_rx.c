@@ -1388,29 +1388,75 @@ htt_rx_offload_msdu_pop_hl(
     adf_nbuf_t *head_buf,
     adf_nbuf_t *tail_buf)
 {
-    adf_nbuf_t buf;
-    u_int32_t *msdu_hdr, msdu_len;
+	adf_nbuf_t buf;
+	u_int32_t *msdu_hdr, msdu_len;
+	u_int32_t *first_word;
+	u_int8_t fake_desc_size;
+	int ret = 0;
 
-    *head_buf = *tail_buf = buf = offload_deliver_msg;
-    msdu_hdr = (u_int32_t *)adf_nbuf_data(buf);
+	*head_buf = *tail_buf = buf = offload_deliver_msg;
+	msdu_hdr = (u_int32_t *)adf_nbuf_data(buf);
 
-    /* First dword */
+	/* First dword */
+	first_word = msdu_hdr;
 
-    /* Second dword */
-    msdu_hdr++;
-    msdu_len = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_LEN_GET(*msdu_hdr);
-    *peer_id = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_PEER_ID_GET(*msdu_hdr);
+	/* Second dword */
+	msdu_hdr++;
+	msdu_len = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_LEN_GET(*msdu_hdr);
+	*peer_id = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_PEER_ID_GET(*msdu_hdr);
 
-    /* Third dword */
-    msdu_hdr++;
-    *vdev_id = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_VDEV_ID_GET(*msdu_hdr);
-    *tid = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_TID_GET(*msdu_hdr);
-    *fw_desc = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_DESC_GET(*msdu_hdr);
+	/* Third dword */
+	msdu_hdr++;
+	*vdev_id = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_VDEV_ID_GET(*msdu_hdr);
+	*tid = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_TID_GET(*msdu_hdr);
+	*fw_desc = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_DESC_GET(*msdu_hdr);
 
-    adf_nbuf_pull_head(buf, HTT_RX_OFFLOAD_DELIVER_IND_MSDU_HDR_BYTES \
-        + HTT_RX_OFFLOAD_DELIVER_IND_HDR_BYTES);
-    adf_nbuf_set_pktlen(buf, msdu_len);
-    return 0;
+	/* align forwarding case with normal rx path, in HL platform rx_desc
+	 * is located in payload area, and there are 8 bytes between ending
+	 * of htt header and starting of rx_desc, so pull 8bytes and then
+	 * throw the packet to rx path.
+	 *
+	 * Normal rx htt header
+	 *
+	 * |------------------------------------|
+	 * |       htt_rx_ind_hdr_prefix_t      |
+	 * |------------------------------------|
+	 * |         htt_rx_ppdu_desc_t         |
+	 * |------------------------------------|
+	 * |      htt_rx_ind_hdr_suffix_t       |
+	 * |------------------------------------|
+	 * | flags | len | ver | fw_rx_desc_base|
+	 * |------------------------------------|
+	 * |             range                  |
+	 * |------------------------------------|
+	 * |            rx desc                 |
+	 *
+	 */
+	adf_nbuf_pull_head(buf, HTT_RX_IND_HL_BYTES - HTT_RX_IND_HDR_BYTES);
+
+	fake_desc_size = HTT_RX_OFFLOAD_DELIVER_IND_MSDU_HDR_BYTES
+				+ HTT_RX_OFFLOAD_DELIVER_IND_HDR_BYTES
+				- (HTT_RX_IND_HL_BYTES - HTT_RX_IND_HDR_BYTES);
+
+	msdu_len += fake_desc_size;
+
+
+	if (msdu_len <= adf_nbuf_len(buf)) {
+		*first_word = 0;
+		/* put rx desc len in the location showed in above table */
+		((u_int8_t*)first_word)[HTT_RX_IND_HL_RX_DESC_LEN_OFFSET
+			- HTT_RX_IND_FW_RX_DESC_BYTE_OFFSET] = fake_desc_size;
+
+		*(u_int8_t*)first_word = *fw_desc;
+
+		adf_nbuf_set_pktlen(buf, msdu_len);
+	} else {
+		adf_os_print("%s: drop frame with invalid msdu len %d %d\n",
+			__FUNCTION__, msdu_len, (int)adf_nbuf_len(buf));
+		adf_nbuf_free(offload_deliver_msg);
+		ret = -1;
+	}
+	return ret;
 }
 
 #ifdef RX_HASH_DEBUG

@@ -1359,12 +1359,6 @@ VOS_STATUS peHandleMgmtFrame( v_PVOID_t pvosGCtx, v_PVOID_t vosBuff)
                WDA_GET_RX_MPDU_HEADER_LEN(pRxPacketInfo),
                WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo));
 
-        MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT,
-                        WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo),
-                        LIM_TRACE_MAKE_RXMGMT(mHdr->fc.subType,
-                        (tANI_U16) (((tANI_U16)(mHdr->seqControl.seqNumHi << 4))
-                        | mHdr->seqControl.seqNumLo)));)
-
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
        if (WDA_GET_ROAMCANDIDATEIND(pRxPacketInfo))
            limLog(pMac, LOG1, FL("roamCandidateInd %d"),

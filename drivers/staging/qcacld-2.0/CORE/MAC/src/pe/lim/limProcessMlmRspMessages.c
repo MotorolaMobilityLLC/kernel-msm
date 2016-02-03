@@ -5057,19 +5057,6 @@ void limProcessRxScanEvent(tpAniSirGlobal pMac, void *buf)
             break;
         case SCAN_EVENT_START_FAILED:
         case SCAN_EVENT_COMPLETED:
-            limLog(pMac, LOG1, FL("pMac->fScanOffload %d, pMac->lim.fOffloadScanPending %d, pMac->lim.fOffloadScanP2PSearch %d, pMac->lim.fOffloadScanP2PListen %d"),
-                   pMac->fScanOffload, pMac->lim.fOffloadScanPending,
-                   pMac->lim.fOffloadScanP2PSearch,
-                   pMac->lim.fOffloadScanP2PListen);
-
-            if ((SCAN_EVENT_COMPLETED == pScanEvent->event) &&
-                 !(pMac->fScanOffload && pMac->lim.fOffloadScanPending &&
-                  (pMac->lim.fOffloadScanP2PSearch ||
-                   pMac->lim.fOffloadScanP2PListen)))
-            {
-                pMac->lim.offload_scan_filter_p2p_result = 1;
-            }
-
             pMac->lim.fOffloadScanPending = 0;
             pMac->lim.fOffloadScanP2PSearch = 0;
             pMac->lim.fOffloadScanP2PListen = 0;
@@ -5096,7 +5083,6 @@ void limProcessRxScanEvent(tpAniSirGlobal pMac, void *buf)
             {
                 limSendScanOffloadComplete(pMac, pScanEvent);
             }
-            pMac->lim.offload_scan_filter_p2p_result = 0;
             break;
         case SCAN_EVENT_FOREIGN_CHANNEL:
             if (P2P_SCAN_TYPE_LISTEN == pScanEvent->p2pScanType)

@@ -1203,7 +1203,16 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
     pMac->lim.numTot++;
 #endif
 
-    MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(limMsg->type, LIM_MSG_PROCESSED));)
+   /* Omitting below message types as these are too frequent and when crash
+    * happens we loose critical trace logs if these are also logged
+    */
+   if (limMsg->type != SIR_LIM_MAX_CHANNEL_TIMEOUT &&
+       limMsg->type != SIR_LIM_MIN_CHANNEL_TIMEOUT &&
+       limMsg->type != SIR_LIM_PERIODIC_PROBE_REQ_TIMEOUT &&
+       limMsg->type != SIR_CFG_PARAM_UPDATE_IND &&
+       limMsg->type != SIR_BB_XPORT_MGMT_MSG)
+          MTRACE(macTraceMsgRx(pMac, NO_SESSION,
+                 LIM_TRACE_MAKE_RXMSG(limMsg->type, LIM_MSG_PROCESSED));)
 
     switch (limMsg->type)
     {

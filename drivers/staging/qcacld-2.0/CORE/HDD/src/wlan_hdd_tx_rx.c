@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1605,10 +1605,10 @@ void wlan_hdd_log_eapol(struct sk_buff *skb,
 	struct vos_event_wlan_eapol eapol_params;
 
 	ret = wlan_hdd_get_eapol_params(skb, &eapol_params, event_type);
-	if (!ret) {
-		wlan_hdd_event_eapol_log(eapol_params);
-	}
+	if (ret)
+		return;
 
+	wlan_hdd_event_eapol_log(eapol_params);
 	if ((eapol_params.eapol_key_info & EAPOL_MASK) == EAPOL_M1_BIT_MASK) {
 		hddLog(LOG1,
 			FL("%s: M1 packet"), eapol_params.event_sub_type ==

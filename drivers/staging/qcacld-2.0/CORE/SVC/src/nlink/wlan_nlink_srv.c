@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -172,7 +172,10 @@ int nl_srv_ucast(struct sk_buff *skb, int dst_pid, int flag)
 
    if (nl_srv_sock != NULL) {
        err = netlink_unicast(nl_srv_sock, skb, dst_pid, flag);
+   } else {
+       dev_kfree_skb(skb);
    }
+
    if (err < 0)
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
       "NLINK: netlink_unicast to pid[%d] failed, ret[%d]", dst_pid, err);
@@ -201,6 +204,8 @@ int nl_srv_bcast(struct sk_buff *skb)
 
    if (nl_srv_sock != NULL) {
        err = netlink_broadcast(nl_srv_sock, skb, 0, WLAN_NLINK_MCAST_GRP_ID, flags);
+   } else {
+       dev_kfree_skb(skb);
    }
    if (err < 0)
    {

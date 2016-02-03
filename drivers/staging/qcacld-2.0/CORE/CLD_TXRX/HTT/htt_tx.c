@@ -771,7 +771,7 @@ int htt_tx_ipa_uc_attach(struct htt_pdev_t *pdev,
       {
          adf_os_print("%s: TX BUF alloc fail, allocated buffer count %d",
                       __func__, tx_buffer_count);
-         return 0;
+         break;
       }
 
       /* Init buffer */

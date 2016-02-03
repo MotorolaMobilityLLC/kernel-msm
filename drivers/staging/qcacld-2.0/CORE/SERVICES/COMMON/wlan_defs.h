@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2010, 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2004-2010, 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -671,7 +671,7 @@ typedef struct {
 #define WHAL_DBG_PHY_ERR_MAXCNT 18
 #define WHAL_DBG_SIFS_STATUS_MAXCNT 8
 #define WHAL_DBG_SIFS_ERR_MAXCNT 8
-#define WHAL_DBG_CMD_RESULT_MAXCNT 10
+#define WHAL_DBG_CMD_RESULT_MAXCNT 11
 #define WHAL_DBG_CMD_STALL_ERR_MAXCNT 4
 #define WHAL_DBG_FLUSH_REASON_MAXCNT 40
 

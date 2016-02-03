@@ -1005,6 +1005,11 @@ void limFillFTSession(tpAniSirGlobal pMac,
    pftSessionEntry->htRecommendedTxWidthSet =
       pftSessionEntry->htSupportedChannelWidthSet;
 
+   pftSessionEntry->enableHtSmps = psessionEntry->enableHtSmps;
+   pftSessionEntry->smpsMode = psessionEntry->smpsMode;
+   limLog(pMac, LOG1, FL("FT session enable smps: %d mode: %d"),
+          pftSessionEntry->enableHtSmps, pftSessionEntry->smpsMode);
+
    vos_mem_free(pBeaconStruct);
 }
 

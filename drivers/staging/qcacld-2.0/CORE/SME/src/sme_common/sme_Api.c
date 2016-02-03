@@ -1192,8 +1192,17 @@ sme_process_cmd:
                                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                                         "sending TDLS Command 0x%x to PE", pCommand->command);
 
-                                csrLLUnlock( &pMac->sme.smeCmdActiveList );
-                                status = csrTdlsProcessCmd( pMac, pCommand );
+                                csrLLUnlock(&pMac->sme.smeCmdActiveList);
+                                status = csrTdlsProcessCmd(pMac, pCommand);
+                                if (!HAL_STATUS_SUCCESS(status)) {
+                                    if (csrLLRemoveEntry(&pMac->sme.smeCmdActiveList,
+                                                         &pCommand->Link,
+                                                         LL_ACCESS_LOCK)) {
+                                        vos_mem_zero(&pCommand->u.tdlsCmd,
+                                                     sizeof(tTdlsCmd));
+                                        csrReleaseCommand(pMac, pCommand);
+                                    }
+                                }
                             }
                             break ;
 #endif
@@ -3662,6 +3671,9 @@ VOS_STATUS sme_get_ap_channel_from_scan_cache(tHalHandle hHal,
        ret_status = VOS_STATUS_E_FAILURE;
    }
 
+   if (NULL != profile)
+       csrFreeScanFilter(pMac, scan_filter);
+
    vos_mem_free(scan_filter);
 
    return ret_status;
@@ -3889,8 +3901,6 @@ tCsrScanResultInfo *sme_ScanResultGetNext(tHalHandle hHal,
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     tCsrScanResultInfo *pRet = NULL;
 
-    MTRACE(vos_trace(VOS_MODULE_ID_SME ,
-        TRACE_CODE_SME_RX_HDD_MSG_SCAN_RESULT_GETNEXT, NO_SESSION,0 ));
     status = sme_AcquireGlobalLock( &pMac->sme );
     if ( HAL_STATUS_SUCCESS( status ) )
     {
@@ -17397,13 +17407,13 @@ eHalStatus vos_send_flush_logs_cmd_to_fw(tpAniSirGlobal mac)
 }
 
 /**
- * sme_disable_non_fcc_channel() - non-fcc channel disable request
+ * sme_handle_set_fcc_channel() - set specific txPower for non-fcc channel
  * @hal: HAL pointer
  * @fcc_constraint: true: disable, false; enable
  *
  * Return: eHalStatus.
  */
-eHalStatus sme_disable_non_fcc_channel(tHalHandle hal, bool fcc_constraint)
+eHalStatus sme_handle_set_fcc_channel(tHalHandle hal, bool fcc_constraint)
 {
 	eHalStatus status = eHAL_STATUS_SUCCESS;
 	tpAniSirGlobal mac_ptr  = PMAC_STRUCT(hal);
@@ -17453,6 +17463,20 @@ void sme_SetDefDot11Mode(tHalHandle hal)
 	tpAniSirGlobal mac_ctx = PMAC_STRUCT( hal );
 	csrSetDefaultDot11Mode(mac_ctx);
 }
+
+/**
+ * sme_update_user_configured_nss() - sets the nss based on user request
+ * @hal: Pointer to HAL
+ * @nss: number of streams
+ *
+ * Return: None
+ */
+void sme_update_user_configured_nss(tHalHandle hal, uint8_t nss)
+{
+	tpAniSirGlobal mac_ctx = PMAC_STRUCT(hal);
+	mac_ctx->user_configured_nss = nss;
+}
+
 /**
  * sme_set_vdev_nss() - sets the vdev nss based on INI
  * @hal: Pointer to HAL
@@ -17480,6 +17504,7 @@ void sme_set_vdev_nss(tHalHandle hal, bool enable2x2)
 		nss_val = 1;
 		coex = 0;
 	}
+	mac_ctx->user_configured_nss = nss_val;
 
 	vdev_nss = &mac_ctx->vdev_type_nss_2g;
 
@@ -17532,6 +17557,7 @@ void sme_update_vdev_type_nss(tHalHandle hal, uint8_t max_supp_nss,
 	vdev_nss->ibss = VOS_MIN(max_supp_nss, CFG_IBSS_NSS(vdev_type_nss));
 	vdev_nss->tdls = VOS_MIN(max_supp_nss, CFG_TDLS_NSS(vdev_type_nss));
 	vdev_nss->ocb = VOS_MIN(max_supp_nss, CFG_OCB_NSS(vdev_type_nss));
+	mac_ctx->user_configured_nss = max_supp_nss;
 
 	smsLog(mac_ctx, LOG1,
            "band %d NSS: sta %d sap %d cli %d go %d dev %d ibss %d tdls %d ocb %d",

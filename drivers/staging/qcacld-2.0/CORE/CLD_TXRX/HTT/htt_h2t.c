@@ -103,8 +103,10 @@ htt_h2t_send_complete(void *context, HTC_PACKET *htc_pkt)
 
     if (pdev->cfg.is_high_latency && !pdev->cfg.default_tx_comp_req) {
         int32_t credit_delta;
+        HTT_TX_MUTEX_ACQUIRE(&pdev->credit_mutex);
         adf_os_atomic_add(1, &pdev->htt_tx_credit.bus_delta);
         credit_delta = htt_tx_credit_update(pdev);
+        HTT_TX_MUTEX_RELEASE(&pdev->credit_mutex);
         if (credit_delta) {
             ol_tx_credit_completion_handler(pdev->txrx_pdev, credit_delta);
         }

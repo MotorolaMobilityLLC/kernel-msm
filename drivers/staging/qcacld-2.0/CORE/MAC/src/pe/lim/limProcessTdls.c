@@ -571,6 +571,7 @@ static void PopulateDot11fTdlsHtVhtCap(tpAniSirGlobal pMac, uint32 selfDot11Mode
     else
         nss = pMac->vdev_type_nss_2g.tdls;
 
+    nss = VOS_MIN(nss, pMac->user_configured_nss);
     if (IS_DOT11_MODE_HT(selfDot11Mode))
     {
         /* Include HT Capability IE */
@@ -2235,6 +2236,7 @@ limTdlsPopulateMatchingRateSet(tpAniSirGlobal pMac,
         nss = pMac->vdev_type_nss_5g.tdls;
     else
         nss = pMac->vdev_type_nss_2g.tdls;
+    nss = VOS_MIN(nss, pMac->user_configured_nss);
     //compute the matching MCS rate set, if peer is 11n capable and self mode is 11n
 #ifdef FEATURE_WLAN_TDLS
     if (pStaDs->mlmStaContext.htCapability)
@@ -2609,6 +2611,9 @@ void PopulateDot11fTdlsOffchannelParams(tpAniSirGlobal pMac,
     tANI_U8    chanOffset;
     tANI_U8    op_class;
     tANI_U8    numClasses;
+    uint32_t   band;
+    uint8_t    nss_2g;
+    uint8_t    nss_5g;
     tANI_U8    classes[SIR_MAC_MAX_SUPP_OPER_CLASSES];
     if (wlan_cfgGetStr(pMac, WNI_CFG_VALID_CHANNEL_LIST,
                           validChan, &numChans) != eSIR_SUCCESS)
@@ -2621,14 +2626,28 @@ void PopulateDot11fTdlsOffchannelParams(tpAniSirGlobal pMac,
          return;
     }
 
-    /* validating the channel list for DFS channels */
-    for (i = 0U; i < numChans; i++)
-    {
-        if (NV_CHANNEL_DFS == vos_nv_getChannelEnabledState(validChan[i]))
-        {
+    if (IS_5G_CH(psessionEntry->currentOperChannel))
+        band = eCSR_BAND_5G;
+    else
+        band = eCSR_BAND_24;
+
+    nss_5g = VOS_MIN(pMac->vdev_type_nss_5g.tdls, pMac->user_configured_nss);
+    nss_2g = VOS_MIN(pMac->vdev_type_nss_2g.tdls, pMac->user_configured_nss);
+
+    /* validating the channel list for DFS and 2G channels */
+    for (i = 0U; i < numChans; i++) {
+        if (band == eCSR_BAND_24) {
+            if (NV_CHANNEL_DFS == vos_nv_getChannelEnabledState(validChan[i])) {
+                limLog(pMac, LOG1,
+                       FL("skipping DFS channel %d from the valid channel list"),
+                       validChan[i]);
+                continue;
+            }
+        } else if ((NSS_2x2_MODE == nss_5g) && (NSS_1x1_MODE == nss_2g) &&
+                   (true == vos_nv_skip_dfs_and_2g(validChan[i]))){
             limLog(pMac, LOG1,
-                FL("skipping DFS channel %d from the valid channel list"),
-                validChan[i]);
+                   FL("skipping channel %d, nss_5g: %d, nss_2g: %d"),
+                   validChan[i], nss_5g, nss_2g);
             continue;
         }
 

@@ -890,8 +890,6 @@ limSendSmeScanRsp(tpAniSirGlobal pMac, tANI_U16 length,
     tANI_U16              i, bssCount;
     tANI_U8               *pbBuf;
     tSirBssDescription    *pDesc;
-    tANI_U8 *pssidstr;
-    tSirMacSSid *pssid;
 
     if (resultCode != eSIR_SME_SUCCESS)
     {
@@ -913,33 +911,13 @@ limSendSmeScanRsp(tpAniSirGlobal pMac, tANI_U16 length,
 
         return;
     }
-
     for (i = 0; i < LIM_MAX_NUM_OF_SCAN_RESULTS; i++)
     {
         //when ptemp is not NULL it is a left over
         ptemp = pMac->lim.gLimCachedScanHashTable[i];
-        pSirSmeScanRsp->sessionId   = smesessionId;
-        pSirSmeScanRsp->transcationId = smetranscationId;
-
         while(ptemp)
         {
             pbBuf = ((tANI_U8 *)pSirSmeScanRsp) + msgLen;
-
-            if (pMac->lim.offload_scan_filter_p2p_result)
-            {
-                pssid =
-                (tSirMacSSid *)((tANI_U8 *)&ptemp->bssDescription.ieFields + 1);
-                pssidstr = pssid->ssId;
-                if (vos_mem_compare(pssidstr, P2P_WILDCARD_SSID,
-                    P2P_WILDCARD_SSID_LEN))
-                {
-                    limLog(pMac, LOG1,
-                    FL("Skipping p2p entries for eWNI_SME_SCAN_RSP"));
-                    ptemp = ptemp->next;
-                    continue;
-                }
-            }
-
             if(0 == bssCount)
             {
                 msgLen = sizeof(tSirSmeScanRsp) -

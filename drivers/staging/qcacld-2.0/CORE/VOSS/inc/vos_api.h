@@ -179,6 +179,11 @@ void vos_set_unload_in_progress(v_U8_t value);
 v_U8_t vos_is_load_in_progress(VOS_MODULE_ID moduleId, v_VOID_t *moduleContext);
 void vos_set_load_in_progress(VOS_MODULE_ID moduleId, v_U8_t value);
 
+bool vos_is_shutdown_in_progress(VOS_MODULE_ID moduleId,
+                                 v_VOID_t *moduleContext);
+void vos_set_shutdown_in_progress(VOS_MODULE_ID moduleId,
+                                  bool value);
+
 v_U8_t vos_is_reinit_in_progress(VOS_MODULE_ID moduleId, v_VOID_t *moduleContext);
 void vos_set_reinit_in_progress(VOS_MODULE_ID moduleId, v_U8_t value);
 
@@ -362,4 +367,5 @@ void vos_logging_set_fw_flush_complete(void);
 void vos_probe_threads(void);
 bool vos_is_crash_indication_pending(void);
 void vos_set_crash_indication_pending(bool value);
+void vos_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data);
 #endif // if !defined __VOS_API_H

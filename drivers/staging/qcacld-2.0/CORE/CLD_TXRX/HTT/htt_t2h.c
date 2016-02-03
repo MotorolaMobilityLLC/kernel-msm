@@ -299,9 +299,11 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
 
             if (pdev->cfg.is_high_latency) {
                 if (!pdev->cfg.default_tx_comp_req) {
+                    HTT_TX_MUTEX_ACQUIRE(&pdev->credit_mutex);
                     adf_os_atomic_add(credit_delta,
                                       &pdev->htt_tx_credit.target_delta);
                     credit_delta = htt_tx_credit_update(pdev);
+                    HTT_TX_MUTEX_RELEASE(&pdev->credit_mutex);
                 }
                 if (credit_delta) {
                     ol_tx_target_credit_update(pdev->txrx_pdev, credit_delta);
@@ -367,9 +369,11 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
 
         if (pdev->cfg.is_high_latency &&
             !pdev->cfg.default_tx_comp_req) {
+            HTT_TX_MUTEX_ACQUIRE(&pdev->credit_mutex);
             adf_os_atomic_add(htt_credit_delta,
                               &pdev->htt_tx_credit.target_delta);
             htt_credit_delta = htt_tx_credit_update(pdev);
+            HTT_TX_MUTEX_RELEASE(&pdev->credit_mutex);
         }
 
         HTT_TX_GROUP_CREDIT_PROCESS(pdev, msg_word);
@@ -616,9 +620,11 @@ if (adf_os_unlikely(pdev->rx_ring.rx_reset)) {
             if (pdev->cfg.is_high_latency) {
                 if (!pdev->cfg.default_tx_comp_req) {
                     int credit_delta;
+                    HTT_TX_MUTEX_ACQUIRE(&pdev->credit_mutex);
                     adf_os_atomic_add(num_msdus,
                         &pdev->htt_tx_credit.target_delta);
                     credit_delta = htt_tx_credit_update(pdev);
+                    HTT_TX_MUTEX_RELEASE(&pdev->credit_mutex);
                     if (credit_delta) {
                         ol_tx_target_credit_update(pdev->txrx_pdev,
                                                    credit_delta);

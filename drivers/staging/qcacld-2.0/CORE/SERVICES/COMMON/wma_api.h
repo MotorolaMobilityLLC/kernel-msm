@@ -172,4 +172,6 @@ static inline VOS_STATUS wma_send_egap_conf_params(WMA_HANDLE handle,
 }
 #endif
 
+extern int wma_scpc_event_handler(void *handle, u_int8_t *event, u_int32_t len);
+
 #endif

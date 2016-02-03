@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -257,6 +257,31 @@ struct vos_event_wlan_eapol
 	uint16_t  eapol_rate;
 	uint8_t   dest_addr[6];
 	uint8_t   src_addr[6];
+};
+
+/*-------------------------------------------------------------------------
+  Event ID: EVENT_WLAN_LOW_RESOURCE_FAILURE
+  ------------------------------------------------------------------------*/
+/**
+ * struct vos_event_wlan_low_resource_failure - Structure holding the
+ * low resource failure information
+ * @event_sub_type: Gives further information about reason for
+ * low resource condition
+ *
+ * This structure will hold the low resource failure information
+ */
+struct vos_event_wlan_low_resource_failure {
+	uint8_t   event_sub_type;
+};
+
+/**
+ * enum resource_failure_type - Reason for low resource failure condition
+ * @WIFI_EVENT_MEMORY_FAILURE: Memory failure
+ *
+ * This enum has the reason codes why the low resource situation is observed
+ */
+enum resource_failure_type {
+	WIFI_EVENT_MEMORY_FAILURE,
 };
 
 /*-------------------------------------------------------------------------

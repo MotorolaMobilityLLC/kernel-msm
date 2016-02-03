@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -540,6 +540,8 @@ typedef enum
     WLAN_PE_DIAG_ROAM_ASSOC_COMP_EVENT,
     RESERVED1, /* = 72 for SCAN_COMPLETE */
     RESERVED2, /*  = 73 for SCAN_RES_FOUND */
+    WLAN_PE_DIAG_ASSOC_TIMEOUT,
+    WLAN_PE_DIAG_AUTH_TIMEOUT,
 } WLAN_PE_DIAG_EVENT_TYPE;
 
 void limDiagEventReport(tpAniSirGlobal pMac, tANI_U16 eventType, tpPESession pSessionEntry, tANI_U16 status, tANI_U16 reasonCode);

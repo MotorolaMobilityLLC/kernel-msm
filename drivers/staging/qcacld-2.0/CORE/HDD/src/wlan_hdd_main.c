@@ -4574,7 +4574,7 @@ static int drv_cmd_set_fcc_channel(hdd_context_t *hdd_ctx, uint8_t *cmd,
 		return -EINVAL;
 	}
 
-	status = sme_disable_non_fcc_channel(hdd_ctx->hHal, !fcc_constraint);
+	status = sme_handle_set_fcc_channel(hdd_ctx->hHal, !fcc_constraint);
 	if (status != eHAL_STATUS_SUCCESS)
 		ret = -EPERM;
 
@@ -5137,6 +5137,13 @@ static int drv_cmd_set_antenna_mode(hdd_adapter_t *adapter,
 			hdd_ctx->current_antenna_mode =
 				HDD_ANTENNA_MODE_2X2;
 		}
+		/* Update the user requested nss in the mac context.
+		 * This will be used in tdls protocol engine to form tdls
+		 * Management frames.
+		 */
+		sme_update_user_configured_nss(
+				hdd_ctx->hHal,
+				hdd_ctx->current_antenna_mode);
 	}
 
 exit:
@@ -8774,6 +8781,9 @@ void hdd_update_tgt_cfg(void *context, void *param)
     hddLog(LOG1, FL("fine_time_measurement_cap: 0x%x"),
              hdd_ctx->cfg_ini->fine_time_meas_cap);
     hdd_ctx->bpf_enabled = cfg->bpf_enabled;
+    if (hdd_ctx->bpf_enabled)
+             hdd_ctx->cfg_ini->maxWoWFilters = MAX_WOW_FILTERS;
+    hdd_ctx->wmi_max_len = cfg->wmi_max_len;
 }
 
 /* This function is invoked in atomic context when a radar
@@ -8887,16 +8897,16 @@ static int __hdd_open(struct net_device *dev)
    hdd_context_t *pHddCtx =  WLAN_HDD_GET_CTX(pAdapter);
    hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
    VOS_STATUS status;
-   int ret;
    v_BOOL_t in_standby = TRUE;
 
    MTRACE(vos_trace(VOS_MODULE_ID_HDD, TRACE_CODE_HDD_OPEN_REQUEST,
                     pAdapter->sessionId, pAdapter->device_mode));
 
-   ret = wlan_hdd_validate_context(pHddCtx);
-   if (0 != ret) {
-       hddLog(LOGE, FL("HDD context is not valid"));
-       return ret;
+   /* Don't validate for load/unload and logp as if we return
+      failure we may endup in scan/connection related issues */
+   if (NULL == pHddCtx || NULL == pHddCtx->cfg_ini) {
+       hddLog(LOG1, FL("HDD context is Null"));
+       return -ENODEV;
    }
 
    status = hdd_get_front_adapter (pHddCtx, &pAdapterNode);
@@ -8925,7 +8935,7 @@ static int __hdd_open(struct net_device *dev)
        netif_tx_start_all_queues(dev);
    }
 
-   return ret;
+   return 0;
 }
 
 /**
@@ -12967,6 +12977,7 @@ void __hdd_wlan_exit(void)
 #endif
 
    //Do all the cleanup before deregistering the driver
+   memdump_deinit();
    hdd_wlan_exit(pHddCtx);
    EXIT();
 }
@@ -13453,7 +13464,8 @@ static void hdd_bus_bw_compute_cbk(void *priv)
             continue;
 
 #ifdef IPA_UC_OFFLOAD
-        pValidAdapter = pAdapter;
+        if (NULL == pValidAdapter)
+                pValidAdapter = pAdapter;
 #endif /* IPA_UC_OFFLOAD */
 
         if ((pAdapter->device_mode == WLAN_HDD_INFRA_STATION ||
@@ -13496,6 +13508,9 @@ static void hdd_bus_bw_compute_cbk(void *priv)
     hdd_ipa_uc_stat_query(pHddCtx, &ipa_tx_packets, &ipa_rx_packets);
     tx_packets += (uint64_t)ipa_tx_packets;
     rx_packets += (uint64_t)ipa_rx_packets;
+
+    pValidAdapter->stats.tx_packets += ipa_tx_packets;
+    pValidAdapter->stats.rx_packets += ipa_rx_packets;
 #endif /* IPA_UC_OFFLOAD */
     if (!connected) {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -13835,6 +13850,36 @@ static int inline wlan_hdd_set_wow_pulse(hdd_context_t *phddctx, bool enable)
 }
 #endif
 
+/**
+ * hdd_tsf_init() - Initialize the TSF synchronization interface
+ * @hdd_ctx: HDD global context
+ *
+ * When TSF synchronization via GPIO is supported by the driver and
+ * has been enabled in the configuration file, this function plumbs
+ * the GPIO value down to firmware via SME.
+ *
+ * Return: None
+ */
+#ifdef WLAN_FEATURE_TSF
+static void hdd_tsf_init(hdd_context_t *hdd_ctx)
+{
+	eHalStatus hal_status;
+
+	if (hdd_ctx->cfg_ini->tsf_gpio_pin == TSF_GPIO_PIN_INVALID)
+		return;
+
+	hal_status = sme_set_tsf_gpio(hdd_ctx->hHal,
+				      hdd_ctx->cfg_ini->tsf_gpio_pin);
+	if (eHAL_STATUS_SUCCESS != hal_status)
+		hddLog(LOGE, FL("set tsf GPIO failed, status: %d"),
+		       hal_status);
+}
+#else
+static void hdd_tsf_init(hdd_context_t *hdd_ctx)
+{
+}
+#endif
+
 /**---------------------------------------------------------------------------
 
   \brief hdd_wlan_startup() - HDD init function
@@ -14006,6 +14051,9 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
          pHddCtx->cfg_ini->nBandCapability = 1;
       }
    }
+
+   if (pHddCtx->cfg_ini->fhostNSOffload)
+       pHddCtx->ns_offload_enable = true;
 
    /*
     * If SNR Monitoring is enabled, FW has to parse all beacons
@@ -14361,6 +14409,7 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
       vos_set_load_in_progress(VOS_MODULE_ID_VOSS, FALSE);
       pHddCtx->isLoadInProgress = FALSE;
 
+      memdump_init();
       hddLog(LOGE, FL("FTM driver loaded"));
       complete(&wlan_start_comp);
       return VOS_STATUS_SUCCESS;
@@ -14721,12 +14770,7 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
                "%s: Error setting txlimit in sme", __func__);
    }
 
-   if (pHddCtx->cfg_ini->tsf_gpio_pin != TSF_GPIO_PIN_INVALID) {
-       hal_status = sme_set_tsf_gpio(pHddCtx->hHal,
-                                     pHddCtx->cfg_ini->tsf_gpio_pin);
-       if (eHAL_STATUS_SUCCESS != hal_status)
-           hddLog(VOS_TRACE_LEVEL_ERROR, FL("set tsf GPIO failed"));
-   }
+   hdd_tsf_init(pHddCtx);
 
 #ifdef FEATURE_BUS_BANDWIDTH
    spin_lock_init(&pHddCtx->bus_bw_lock);
@@ -14804,6 +14848,7 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    pHddCtx->isLoadInProgress = FALSE;
    vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, FALSE);
    vos_set_load_in_progress(VOS_MODULE_ID_VOSS, FALSE);
+   memdump_init();
    complete(&wlan_start_comp);
    goto success;
 
@@ -15056,7 +15101,6 @@ static int hdd_driver_init( void)
        ret_status = -ENODEV;
        break;
    } else {
-       memdump_init();
        pr_info("%s: driver loaded in %lld\n", WLAN_MODULE_NAME,
                                               adf_get_boottime() - start);
        return 0;
@@ -15183,7 +15227,6 @@ static void hdd_driver_exit(void)
    }
 
    vos_wait_for_work_thread_completion(__func__);
-   memdump_deinit();
 
    hif_unregister_driver();
 

@@ -836,6 +836,39 @@ VOS_STATUS vos_nv_readDefaultCountryTable( uNvTables *tableData )
    return status;
 }
 
+/**
+ * vos_nv_skip_dfs_and_2g() - skip dfs and 2g band channels
+ * @rf_channel: input channel enum to know, whether to skip or add the channel
+ *
+ * Return: true or false
+ */
+uint8_t vos_nv_skip_dfs_and_2g(uint32_t rf_channel)
+{
+	uint32_t channel_loop;
+	eRfChannels channel_enum = INVALID_RF_CHANNEL;
+	uint8_t ret = false;
+
+	for (channel_loop = RF_CHAN_36;
+	     channel_loop <= RF_CHAN_184; channel_loop++) {
+		if (rfChannels[channel_loop].channelNum == rf_channel) {
+			channel_enum = (eRfChannels)channel_loop;
+			break;
+		}
+	}
+
+	if (INVALID_RF_CHANNEL == channel_enum) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+			  FL("Invalid channel %d"), rf_channel);
+		ret = true;
+		goto exit_ok;
+	}
+
+	if (NV_CHANNEL_DFS == regChannels[channel_enum].enabled)
+		ret = true;
+exit_ok:
+	return ret;
+}
+
 /**------------------------------------------------------------------------
   \brief vos_nv_getChannelEnabledState -
   \param rfChannel  - input channel enum to know evabled state

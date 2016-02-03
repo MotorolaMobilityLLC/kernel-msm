@@ -239,7 +239,11 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_OFFLOADED_PACKETS = 79,
     QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI = 80,
 
+    /* NS Offload enable/disable cmd */
+    QCA_NL80211_VENDOR_SUBCMD_ND_OFFLOAD = 82,
+
 	QCA_NL80211_VENDOR_SUBCMD_PACKET_FILTER = 83,
+	QCA_NL80211_VENDOR_SUBCMD_GET_BUS_SIZE = 84,
 	/* OCB commands */
 	QCA_NL80211_VENDOR_SUBCMD_OCB_SET_CONFIG = 92,
 	QCA_NL80211_VENDOR_SUBCMD_OCB_SET_UTC_TIME = 93,
@@ -1393,6 +1397,27 @@ enum qca_wlan_vendor_attr_link_properties {
 };
 
 /**
+ * enum qca_wlan_vendor_attr_nd_offload - vendor NS offload support
+ *
+ * @QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_INVALID - Invalid
+ * @QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_FLAG - Flag to set NS offload
+ * @QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_AFTER_LAST - To keep track of the last enum
+ * @QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_MAX - max value possible for this type
+ *
+ * enum values are used for NL attributes for data used by
+ * QCA_NL80211_VENDOR_SUBCMD_ND_OFFLOAD sub command.
+ */
+enum qca_wlan_vendor_attr_nd_offload {
+	QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_FLAG,
+
+	/* Keep last */
+	QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_MAX =
+		QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_AFTER_LAST - 1,
+};
+
+/**
  * enum qca_wlan_vendor_features - vendor device/driver features
  * @QCA_WLAN_VENDOR_FEATURE_KEY_MGMT_OFFLOAD: Device supports key
  * management offload, a mechanism where the station's firmware
@@ -1669,6 +1694,24 @@ enum qca_wlan_vendor_attr_packet_filter {
 	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_MAX =
 	QCA_WLAN_VENDOR_ATTR_PACKET_FILTER_AFTER_LAST - 1,
+};
+
+/**
+ * enum qca_wlan_vendor_drv_info - WLAN driver info
+ * @QCA_WLAN_VENDOR_ATTR_DRV_INFO_INVALID: Invalid
+ * @QCA_WLAN_VENDOR_ATTR_DRV_INFO_BUS_SIZE: Maximum Message size info
+ * between Firmware & Host.
+ */
+enum qca_wlan_vendor_drv_info {
+	QCA_WLAN_VENDOR_ATTR_DRV_INFO_INVALID = 0,
+
+	QCA_WLAN_VENDOR_ATTR_DRV_INFO_BUS_SIZE,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_DRV_INFO_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_DRV_INFO_MAX =
+		QCA_WLAN_VENDOR_ATTR_DRV_INFO_AFTER_LAST - 1,
+
 };
 
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,

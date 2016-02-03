@@ -2064,14 +2064,16 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
         {
             struct s_ext_cap *p_ext_cap = (struct s_ext_cap *)
                                           extractedExtCap.bytes;
-            if (p_ext_cap->interworkingService)
+            if (p_ext_cap->interworkingService ||
+                            p_ext_cap->bssTransition)
                 p_ext_cap->qosMap = 1;
             else {
                 /* No need to merge the EXT Cap from Supplicant
-                 * if interworkingService is not set, as currently
-                 * driver is only interested in interworkingService
-                 * capability from supplicant. if in
-                 * future any other EXT Cap info is required from
+                 * if interworkingService or bsstransition is not set,
+                 * as currently driver is only interested in
+                 * interworkingService and bsstransition capability from
+                 * supplicant.
+                 * if in future any other EXT Cap info is required from
                  * supplicant it needs to be handled here.
                  */
                  extractedExtCapFlag = eANI_BOOLEAN_FALSE;

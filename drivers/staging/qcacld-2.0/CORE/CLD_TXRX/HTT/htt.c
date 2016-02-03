@@ -242,6 +242,7 @@ htt_attach(
 
     HTT_TX_MUTEX_INIT(&pdev->htt_tx_mutex);
     HTT_TX_NBUF_QUEUE_MUTEX_INIT(pdev);
+    HTT_TX_MUTEX_INIT(&pdev->credit_mutex);
 
     /* pre-allocate some HTC_PACKET objects */
     for (i = 0; i < HTT_HTC_PKT_POOL_INIT_SIZE; i++) {
@@ -399,6 +400,7 @@ htt_detach(htt_pdev_handle pdev)
 #endif
     HTT_TX_MUTEX_DESTROY(&pdev->htt_tx_mutex);
     HTT_TX_NBUF_QUEUE_MUTEX_DESTROY(pdev);
+    HTT_TX_MUTEX_DESTROY(&pdev->credit_mutex);
 #ifdef DEBUG_RX_RING_BUFFER
     if (pdev->rx_buff_list)
         adf_os_mem_free(pdev->rx_buff_list);

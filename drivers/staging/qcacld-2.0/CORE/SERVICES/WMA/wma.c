@@ -86,6 +86,8 @@
 #include "wdi_out.h"
 #include "wdi_in.h"
 
+#include "vos_cnss.h"
+
 #include "vos_utils.h"
 #include "tl_shim.h"
 #if defined(QCA_WIFI_FTM)
@@ -195,6 +197,8 @@
 #define WMA_MCC_MIRACAST_REST_TIME 400
 
 #define WMA_LOG_COMPLETION_TIMER 10000 /* 10 seconds */
+
+#define WMI_TLV_HEADROOM 128
 
 #define WMA_SUSPEND_TIMEOUT_IN_SSR 1
 #define WMA_DEL_BSS_TIMEOUT_IN_SSR 10
@@ -19330,6 +19334,8 @@ static const u8 *wma_wow_wake_reason_str(A_INT32 wake_reason, tp_wma_handle wma)
 
 	case WOW_REASON_NLO_SCAN_COMPLETE:
 		return "WOW_REASON_NLO_SCAN_COMPLETE";
+	case WOW_REASON_BPF_ALLOW:
+		return "WOW_REASON_BPF_ALLOW";
 	}
 	return "unknown";
 }
@@ -23233,6 +23239,8 @@ static VOS_STATUS wma_enable_arp_ns_offload(tp_wma_handle wma, tpSirHostOffloadR
 				&pHostOffloadParams->nsOffloadInfo.targetIPv6Addr[i], sizeof(WMI_IPV6_ADDR));
 			A_MEMCPY(&ns_tuple->solicitation_ipaddr,
 				&pHostOffloadParams->nsOffloadInfo.selfIPv6Addr[i], sizeof(WMI_IPV6_ADDR));
+			if(pHostOffloadParams->nsOffloadInfo.target_ipv6_addr_type[i])
+				ns_tuple->flags |= WMI_NSOFF_FLAGS_IS_IPV6_ANYCAST;
 			WMA_LOGD("Index %d NS solicitedIp: %pI6, targetIp: %pI6", i,
 				&pHostOffloadParams->nsOffloadInfo.selfIPv6Addr[i],
 				&pHostOffloadParams->nsOffloadInfo.targetIPv6Addr[i]);
@@ -23296,6 +23304,8 @@ static VOS_STATUS wma_enable_arp_ns_offload(tp_wma_handle wma, tpSirHostOffloadR
 				A_MEMCPY(&ns_tuple->solicitation_ipaddr,
 					&pHostOffloadParams->nsOffloadInfo.selfIPv6Addr[i],
 					sizeof(WMI_IPV6_ADDR));
+				if(pHostOffloadParams->nsOffloadInfo.target_ipv6_addr_type[i])
+					ns_tuple->flags |= WMI_NSOFF_FLAGS_IS_IPV6_ANYCAST;
 				WMA_LOGD("Index %d NS solicitedIp: %pI6, targetIp: %pI6", i,
 					&pHostOffloadParams->nsOffloadInfo.selfIPv6Addr[i],
 					&pHostOffloadParams->nsOffloadInfo.targetIPv6Addr[i]);
@@ -30206,6 +30216,88 @@ static int wma_echo_event_handler(void *handle, u_int8_t *event_buf,
 	return 0;
 }
 
+#if defined(QCA_WIFI_FTM) && defined(WLAN_SCPC_FEATURE)
+/**
+ * wma_scpc_event_handler() - handler for scpc event from firmware
+ * @handle:      wma context
+ * @event_buf:   pointer to the event buffer
+ * @len:         length of the event buffer
+ *
+ * Once SCPC feature is enabled in FTM mode, firmware will do calibration
+ * and indicates calibrated data in an SCPC message.
+ *
+ * This function is used to parse SCPC message. Calibrated data in an SCPC
+ * message is formated like this:
+ * patch1 offset(byte3~0), patch1 length(byte7~4), patch1 data
+ * ......
+ * patchn offset(byte3~0), patchn length(byte7~4), patchn data
+ * All data patches are 4bytes aligned. But the length indicated here is
+ * not multiple of 4.
+ *
+ * Return: 0 on success.
+ */
+int wma_scpc_event_handler(void *handle, u_int8_t *event_buf, u_int32_t len)
+{
+	u_int8_t  *buf;
+	u_int32_t length;
+	u_int32_t i;
+	u_int32_t n;
+	WMI_PDEV_UTF_SCPC_EVENTID_param_tlvs *param_buf;
+	wmi_scpc_event_fixed_param *scpc_event;
+	struct _bd {
+		u_int32_t  offset;
+		u_int32_t  length;
+		u_int8_t   data[0];
+	} *bd_data;
+
+	WMA_LOGD("WMA event <----  SCPC\n");
+	if ((event_buf == NULL) || (len < sizeof(wmi_scpc_event_fixed_param))) {
+		WMA_LOGE("%s: invalid pointer", __func__);
+		return -EINVAL;
+	}
+
+	param_buf = (WMI_PDEV_UTF_SCPC_EVENTID_param_tlvs *)event_buf;
+	scpc_event = param_buf->fixed_param;
+	length = len - sizeof(wmi_scpc_event_fixed_param);
+
+
+	buf = (u_int8_t *)scpc_event + sizeof(wmi_scpc_event_fixed_param);
+
+	WMA_LOGD("%s: section count is %d, data length is %d, tag is 0x%x.\n",
+		__func__, scpc_event->num_patch, length, *(u_int32_t *)buf);
+
+	/* skip the tag */
+	buf += sizeof(u_int32_t);
+
+	i = n = 0;
+	bd_data = (struct _bd *)&buf[n];
+	n += roundup((sizeof(struct _bd) + bd_data->length), 4);
+
+	while ((n < length) && (i < scpc_event->num_patch)) {
+		bd_data = (struct _bd *)&buf[n];
+
+		WMA_LOGD("%s: board data patch%i, offset= %d, length= %d.\n",
+			__func__, i, bd_data->offset, bd_data->length);
+		/* cache the data section */
+		vos_cache_boarddata(bd_data->offset,
+				bd_data->length, bd_data->data);
+
+		n += roundup((sizeof(struct _bd) + bd_data->length), 4);
+		i++;
+	}
+
+	WMA_LOGD("%s: %d patches in message, %d cached.\n",
+		__func__, scpc_event->num_patch, i);
+
+	return 0;
+}
+#else
+int wma_scpc_event_handler(void *handle, u_int8_t *event_buf, u_int32_t len)
+{
+	return 0;
+}
+#endif
+
 /* function   : wma_start
  * Description :
  * Args       :
@@ -30830,6 +30922,11 @@ static v_VOID_t wma_update_fw_config(tp_wma_handle wma_handle,
 	tgt_cap->wlan_resource_config.max_frag_entries =
 		MIN(QCA_OL_11AC_TX_MAX_FRAGS, wma_handle->max_frag_entry);
 	wma_handle->max_frag_entry = tgt_cap->wlan_resource_config.max_frag_entries;
+	/* Update no. of maxWoWFilters depending on BPF service */
+	if (WMI_SERVICE_IS_ENABLED(wma_handle->wmi_service_bitmap,
+					WMI_SERVICE_BPF_OFFLOAD))
+		tgt_cap->wlan_resource_config.num_wow_filters =
+						MAX_WOW_FILTERS;
 }
 
 /**
@@ -31147,6 +31244,8 @@ static void wma_update_hdd_cfg(tp_wma_handle wma_handle)
 	hdd_tgt_cfg.ap_arpns_support = wma_handle->ap_arpns_support;
 	hdd_tgt_cfg.fine_time_measurement_cap =
 		wma_handle->fine_time_measurement_cap;
+	hdd_tgt_cfg.wmi_max_len = wmi_get_max_msg_len(wma_handle->wmi_handle)
+					- WMI_TLV_HEADROOM;
 	wma_setup_egap_support(&hdd_tgt_cfg, wma_handle);
 	wma_handle->tgt_cfg_update_cb(hdd_ctx, &hdd_tgt_cfg);
 }

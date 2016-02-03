@@ -138,6 +138,8 @@ typedef  enum  {
     WMI_SERVICE_RESTRT_CHNL_SUPPORT,  /* Restricted Channel Support */
     WMI_SERVICE_BPF_OFFLOAD,          /* FW supports bpf offload */
     WMI_SERVICE_SYNC_DELETE_CMDS,     /* FW sends response event for Peer, Vdev delete commands */
+    WMI_SERVICE_SMART_ANTENNA_SW_SUPPORT,
+    WMI_SERVICE_SMART_ANTENNA_HW_SUPPORT,
 
     WMI_MAX_SERVICE=128               /* max service */
 } WMI_SERVICE;

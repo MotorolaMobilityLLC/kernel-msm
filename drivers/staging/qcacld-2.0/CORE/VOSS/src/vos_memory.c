@@ -54,6 +54,7 @@
 #include "vos_memory.h"
 #include "vos_trace.h"
 #include "vos_api.h"
+#include "vos_diag_core_event.h"
 
 #include "vos_cnss.h"
 
@@ -403,6 +404,7 @@ v_VOID_t *vos_mem_malloc_debug(v_SIZE_t size, const char *fileName,
    {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                "%s: called with invalid arg %u !!!", __func__, size);
+       vos_log_low_resource_failure(WIFI_EVENT_MEMORY_FAILURE);
        return NULL;
    }
 
@@ -462,6 +464,10 @@ v_VOID_t *vos_mem_malloc_debug(v_SIZE_t size, const char *fileName,
 
       memPtr = (v_VOID_t*)(memStruct + 1);
    }
+
+   if (!memPtr)
+       vos_log_low_resource_failure(WIFI_EVENT_MEMORY_FAILURE);
+
    return memPtr;
 }
 
@@ -525,6 +531,7 @@ v_VOID_t * vos_mem_malloc( v_SIZE_t size )
    {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
             "%s: called with invalid arg %u !!", __func__, size);
+       vos_log_low_resource_failure(WIFI_EVENT_MEMORY_FAILURE);
        return NULL;
    }
    if (in_interrupt() || irqs_disabled() || in_atomic())
@@ -553,6 +560,9 @@ v_VOID_t * vos_mem_malloc( v_SIZE_t size )
            __func__,
            vos_timer_get_system_time() - time_before_kmalloc,
            size, (void *)_RET_IP_);
+   if (!memPtr)
+       vos_log_low_resource_failure(WIFI_EVENT_MEMORY_FAILURE);
+
    return memPtr;
 }
 

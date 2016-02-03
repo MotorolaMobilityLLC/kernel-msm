@@ -4200,7 +4200,9 @@ typedef struct
    uint8_t                     sap_p2p_11ac_override;
    uint8_t                     prefer_non_dfs_on_radar;
    uint8_t                     inform_bss_rssi_raw;
+#ifdef WLAN_FEATURE_TSF
    uint32_t                    tsf_gpio_pin;
+#endif
    uint8_t                     multicast_host_fw_msgs;
    uint32_t                    fine_time_meas_cap;
 #ifdef FEATURE_SECURE_FIRMWARE

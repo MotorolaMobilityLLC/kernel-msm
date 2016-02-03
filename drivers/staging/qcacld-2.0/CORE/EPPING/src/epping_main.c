@@ -69,6 +69,7 @@
 #include "if_ath_sdio.h"
 #endif
 #include "epping_main.h"
+#include "wlan_hdd_memdump.h"
 #include "epping_internal.h"
 
 #ifdef TIMER_MANAGER
@@ -214,6 +215,7 @@ void epping_exit(v_CONTEXT_t pVosContext)
             __func__);
          return;
       }
+   memdump_deinit();
    if (pEpping_ctx->epping_adapter) {
       epping_destroy_adapter(pEpping_ctx->epping_adapter);
       pEpping_ctx->epping_adapter = NULL;
@@ -416,6 +418,7 @@ int epping_wlan_startup(struct device *parent_dev, v_VOID_t *hif_sc)
       }
    }
 #endif /* HIF_PCI */
+   memdump_init();
    EPPING_LOG(VOS_TRACE_LEVEL_INFO_HIGH, "%s: Exit", __func__);
    complete(&pEpping_ctx->wlan_start_comp);
    return ret;
