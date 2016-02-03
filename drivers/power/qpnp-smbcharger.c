@@ -1817,6 +1817,13 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	 */
 	total_current_ma = current_limit_ma + parallel_cl_ma;
 
+	/* total current should not be larger than target current */
+	if (total_current_ma > chip->usb_target_current_ma) {
+		pr_smb(PR_STATUS, "Too large total current: %d -> %d\n",
+				total_current_ma, chip->usb_target_current_ma);
+		total_current_ma = chip->usb_target_current_ma;
+	}
+
 	if (total_current_ma < chip->parallel.initial_aicl_ma
 			- chip->parallel.allowed_lowering_ma) {
 		pr_smb(PR_STATUS,
