@@ -71,7 +71,6 @@ struct ncp6335d_info {
 	unsigned int max_slew_ns;
 	unsigned int peek_poke_address;
 
-	unsigned int volt_inc;
 	bool set_en_always;
 	struct dentry *debug_root;
 };
@@ -226,10 +225,9 @@ static int ncp6335d_set_voltage(struct regulator_dev *rdev,
 	int rc, set_val, new_uV;
 	struct ncp6335d_info *dd = rdev_get_drvdata(rdev);
 
-	set_val = DIV_ROUND_UP(min_uV + dd->volt_inc - dd->min_voltage,
-				dd->step_size);
+	set_val = DIV_ROUND_UP(min_uV - dd->min_voltage, dd->step_size);
 	new_uV = (set_val * dd->step_size) + dd->min_voltage;
-	if (new_uV > max_uV + dd->volt_inc) {
+	if (new_uV > max_uV) {
 		dev_err(dd->dev, "Unable to set volatge (%d %d)\n",
 							min_uV, max_uV);
 		return -EINVAL;
@@ -522,9 +520,6 @@ static int ncp6335d_parse_dt(struct i2c_client *client,
 		dev_err(&client->dev, "min set point missing: rc = %d.\n", rc);
 		return rc;
 	}
-
-	of_property_read_u32(client->dev.of_node,
-			"onnn,volt-increment", &dd->volt_inc);
 
 	dd->set_en_always = of_property_read_bool(client->dev.of_node,
 				"onnn,set-en-always");
