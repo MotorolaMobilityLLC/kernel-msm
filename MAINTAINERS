@@ -7119,6 +7119,13 @@ S:	Maintained
 F:	drivers/staging/media/mn88473/
 F:	drivers/media/dvb-frontends/mn88473.h
 
+MODBUS_EXT SWITCH DRIVER
+M:	Jason Hrycay <jason.hrycay@motorola.com>
+S:	Maintained
+F:	drivers/misc/modbus_ext.c
+F:	include/linux/mods/modbus_ext.h
+F:	Documentation/devicetree/bindings/misc/mmi,modbus_switch.txt
+
 MODULE SUPPORT
 M:	Rusty Russell <rusty@rustcorp.com.au>
 S:	Maintained
