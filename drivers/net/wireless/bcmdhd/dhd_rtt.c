@@ -41,7 +41,8 @@
 #include <dhd.h>
 #include <dhd_rtt.h>
 #include <dhd_dbg.h>
-#define GET_RTTSTATE(dhd) ((rtt_status_info_t *)dhd->rtt_state)
+#include <wldev_common.h>
+#include <wl_cfg80211.h>
 static DEFINE_SPINLOCK(noti_list_lock);
 #define NULL_CHECK(p, s, err)  \
 			do { \
@@ -82,32 +83,14 @@ static DEFINE_SPINLOCK(noti_list_lock);
 
 /* broadcom specific set to have more accurate data */
 #define ENABLE_VHT_ACK
+#define CH_MIN_5G_CHANNEL 34
+#define CH_MIN_2G_CHANNEL 1
 
 struct rtt_noti_callback {
 	struct list_head list;
 	void *ctx;
 	dhd_rtt_compl_noti_fn noti_fn;
 };
-
-typedef struct rtt_status_info {
-	dhd_pub_t *dhd;
-	int8 status;   /* current status for the current entry */
-	int8 txchain; /* current device tx chain */
-	int8 mpc; /* indicate we change mpc mode */
-	int8 cur_idx; /* current entry to do RTT */
-	bool all_cancel; /* cancel all request once we got the cancel requet */
-	struct capability {
-		int32 proto     :8;
-		int32 feature   :8;
-		int32 preamble  :8;
-		int32 bw        :8;
-	} rtt_capa; /* rtt capability */
-	struct mutex rtt_mutex;
-	rtt_config_params_t rtt_config;
-	struct work_struct work;
-	struct list_head noti_fn_list;
-	struct list_head rtt_results_cache; /* store results for RTT */
-} rtt_status_info_t;
 
 /* bitmask indicating which command groups; */
 typedef enum {
@@ -123,7 +106,6 @@ typedef enum {
 	FTM_CONFIG_CAT_AVAIL = 3,	/* 'config avail' */
 } ftm_config_category_t;
 
-
 typedef struct ftm_subcmd_info {
 	int16				version;    /* FTM version (optional) */
 	char				*name;		/* cmd-name string as cmdline input */
@@ -131,7 +113,6 @@ typedef struct ftm_subcmd_info {
 	bcm_xtlv_unpack_cbfn_t *handler;  /* cmd response handler (optional) */
 	ftm_subcmd_flag_t	cmdflag; /* CMD flag (optional)  */
 } ftm_subcmd_info_t;
-
 
 typedef struct ftm_config_options_info {
 	uint32 flags;				/* wl_proxd_flags_t/wl_proxd_session_flags_t */
@@ -1242,7 +1223,6 @@ dhd_rtt_stop(dhd_pub_t *dhd, struct ether_addr *mac_list, int mac_cnt)
 	return err;
 }
 
-
 static int
 dhd_rtt_start(dhd_pub_t *dhd)
 {
@@ -1250,6 +1230,7 @@ dhd_rtt_start(dhd_pub_t *dhd)
 	char eabuf[ETHER_ADDR_STR_LEN];
 	char chanbuf[CHANSPEC_STR_LEN];
 	int mpc = 0;
+	int pm = PM_OFF;
 	int ftm_cfg_cnt = 0;
 	int ftm_param_cnt = 0;
 	uint32 rspec = 0;
@@ -1257,14 +1238,20 @@ dhd_rtt_start(dhd_pub_t *dhd)
 	ftm_config_param_info_t ftm_params[FTM_MAX_PARAMS];
 	rtt_target_info_t *rtt_target;
 	rtt_status_info_t *rtt_status;
+	struct net_device *dev = dhd_linux_get_primary_netdev(dhd);
 	NULL_CHECK(dhd, "dhd is NULL", err);
 
 	rtt_status = GET_RTTSTATE(dhd);
 	NULL_CHECK(rtt_status, "rtt_status is NULL", err);
 
+	DHD_RTT((" Enter %s \n",__FUNCTION__));
 	if (rtt_status->cur_idx >= rtt_status->rtt_config.rtt_target_cnt) {
 		err = BCME_RANGE;
 		DHD_RTT(("%s : idx %d is out of range\n", __FUNCTION__, rtt_status->cur_idx));
+		if (rtt_status->flags == WL_PROXD_SESSION_FLAG_TARGET) {
+			DHD_ERROR(("STA is set as Target/Responder \n"));
+			return BCME_ERROR;
+		}
 		goto exit;
 	}
 	if (RTT_IS_STOPPED(rtt_status)) {
@@ -1279,6 +1266,20 @@ dhd_rtt_start(dhd_pub_t *dhd)
 			goto exit;
 		}
 		rtt_status->mpc = 1; /* Either failure or complete, we need to enable mpc */
+	} else {
+		/* Save the current power mode */
+		err = wldev_ioctl(dev, WLC_GET_PM, &rtt_status->pm, sizeof(pm), false);
+		if (err) {
+			DHD_ERROR(("Failed to get the PM value \n"));
+		} else {
+			err = wldev_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm), true);
+			if (err) {
+				DHD_ERROR(("Failed to set the PM \n"));
+				rtt_status->pm_restore = FALSE;
+			} else {
+				rtt_status->pm_restore = TRUE;
+			}
+		}
 	}
 
 	mutex_lock(&rtt_status->rtt_mutex);
@@ -1425,6 +1426,7 @@ dhd_rtt_start(dhd_pub_t *dhd)
 	}
 exit:
 	if (err) {
+		DHD_ERROR((" rtt is stopped %s \n",__FUNCTION__));
 		rtt_status->status = RTT_STOPPED;
 		/* disable FTM */
 		dhd_rtt_ftm_enable(dhd, FALSE);
@@ -1433,6 +1435,16 @@ exit:
 			mpc = 1;
 			rtt_status->mpc = 0;
 			err = dhd_iovar(dhd, 0, "mpc", (char *)&mpc, sizeof(mpc), 1);
+		}
+		if (rtt_status->pm_restore) {
+			pm = PM_FAST;
+			DHD_ERROR(("pm_restore =%d func =%s \n",rtt_status->pm_restore,__FUNCTION__));
+			err = wldev_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm), true);
+			if (err) {
+				DHD_ERROR(("Failed to set PM \n"));
+			} else {
+				rtt_status->pm_restore = FALSE;
+			}
 		}
 	}
 	return err;
@@ -1662,12 +1674,21 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 
 	event_type = ntoh32_ua((void *)&event->event_type);
 
+	DHD_RTT(("Enter %s \n",__FUNCTION__));
+
 	if (event_type != WLC_E_PROXD) {
+		DHD_ERROR((" failed event \n"));
 		return ret;
 	}
+
 	if (RTT_IS_STOPPED(rtt_status)) {
 		/* Ignore the Proxd event */
-		return ret;
+		DHD_RTT((" event handler rtt is stopped \n"));
+		if (rtt_status->flags == WL_PROXD_SESSION_FLAG_TARGET) {
+			DHD_RTT(("Device is target/Responder. Recv the event. \n"));
+		} else {
+			return ret;
+		}
 	}
 	p_event = (wl_proxd_event_t *) event_data;
 	version = ltoh16(p_event->version);
@@ -1825,6 +1846,7 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 		}
 		if (idx < rtt_status->rtt_config.rtt_target_cnt) {
 			/* restart to measure RTT from next device */
+			DHD_ERROR(("restart to measure rtt \n"));
 			schedule_work(&rtt_status->work);
 		} else {
 			DHD_RTT(("RTT_STOPPED\n"));
@@ -1917,7 +1939,6 @@ dhd_rtt_capability(dhd_pub_t *dhd, rtt_capabilities_t *capa)
 {
 	rtt_status_info_t *rtt_status;
 	int err = BCME_OK;
-
 	NULL_CHECK(dhd, "dhd is NULL", err);
 	rtt_status = GET_RTTSTATE(dhd);
 	NULL_CHECK(rtt_status, "rtt_status is NULL", err);
@@ -1929,7 +1950,6 @@ dhd_rtt_capability(dhd_pub_t *dhd, rtt_capabilities_t *capa)
 		capa->rtt_one_sided_supported = 1;
 	if (rtt_status->rtt_capa.proto & RTT_CAP_FTM_WAY)
 		capa->rtt_ftm_supported = 1;
-
 	if (rtt_status->rtt_capa.feature & RTT_FEATURE_LCI)
 		capa->lci_support = 1;
 	if (rtt_status->rtt_capa.feature & RTT_FEATURE_LCR)
@@ -1938,11 +1958,203 @@ dhd_rtt_capability(dhd_pub_t *dhd, rtt_capabilities_t *capa)
 		capa->preamble_support = 1;
 	if (rtt_status->rtt_capa.feature & RTT_FEATURE_BW)
 		capa->bw_support = 1;
-
 	/* bit mask */
 	capa->preamble_support = rtt_status->rtt_capa.preamble;
 	capa->bw_support = rtt_status->rtt_capa.bw;
 
+	return err;
+}
+
+int
+dhd_rtt_avail_channel(dhd_pub_t *dhd, wifi_channel_info *channel_info)
+{
+	u32 chanspec = 0;
+	int err = BCME_OK;
+	chanspec_t c = 0;
+	u32 channel ;
+	struct net_device *dev = dhd_linux_get_primary_netdev(dhd);
+
+	if ((err = wldev_iovar_getint(dev, "chanspec",
+				(s32 *)&chanspec)) == BCME_OK) {
+		c = (chanspec_t)dtoh32(chanspec);
+		c = wl_chspec_driver_to_host(c);
+		channel  = wf_chspec_ctlchan(c);
+		DHD_RTT((" control channel is %d \n", channel));
+		if (CHSPEC_IS20(c)) {
+			channel_info->width = WIFI_CHAN_WIDTH_20;
+			DHD_RTT((" band is 20 \n"));
+		} else if (CHSPEC_IS40(c)) {
+			channel_info->width = WIFI_CHAN_WIDTH_40;
+			DHD_RTT(("band is 40 \n"));
+		} else {
+			channel_info->width = WIFI_CHAN_WIDTH_80;
+			DHD_RTT(("band is 80 \n"));
+		}
+		if (CHSPEC_IS2G(c) && (channel >= CH_MIN_2G_CHANNEL) &&
+			(channel <= CH_MAX_2G_CHANNEL)) {
+			channel_info->center_freq =
+				ieee80211_channel_to_frequency(channel, IEEE80211_BAND_2GHZ);
+		} else if (CHSPEC_IS5G(c) && channel >= CH_MIN_5G_CHANNEL) {
+			channel_info->center_freq =
+				ieee80211_channel_to_frequency(channel, IEEE80211_BAND_5GHZ);
+		}
+		if ((channel_info->width == WIFI_CHAN_WIDTH_80) ||
+			(channel_info->width == WIFI_CHAN_WIDTH_40)) {
+			channel = CHSPEC_CHANNEL(c);
+			channel_info->center_freq0 =
+				ieee80211_channel_to_frequency(channel, IEEE80211_BAND_5GHZ);
+		}
+	} else {
+		DHD_ERROR(("Failed to get the chanspec \n"));
+	}
+
+	return err;
+}
+
+int
+dhd_rtt_enable_responder(dhd_pub_t *dhd, wifi_channel_info *channel_info )
+{
+	int err = BCME_OK;
+	char chanbuf[CHANSPEC_STR_LEN];
+	int mpc = 0;
+	int8 pm = PM_OFF;
+	int ftm_cfg_cnt = 0;
+	chanspec_t chanspec;
+	wifi_channel_info_t channel;
+	struct net_device *dev = dhd_linux_get_primary_netdev(dhd);
+	ftm_config_options_info_t ftm_configs[FTM_MAX_CONFIGS];
+	ftm_config_param_info_t ftm_params[FTM_MAX_PARAMS];
+	rtt_status_info_t *rtt_status;
+	NULL_CHECK(dhd, "dhd is NULL", err);
+	rtt_status = GET_RTTSTATE(dhd);
+	NULL_CHECK(rtt_status, "rtt_status is NULL", err);
+
+	if (RTT_IS_STOPPED(rtt_status)) {
+		DHD_RTT(("STA responder/Target. \n"));
+	}
+	DHD_RTT(("Enter %s \n",__FUNCTION__));
+	/* turn off mpc in case of non-associted */
+	if (!dhd_is_associated(dhd, NULL, NULL)) {
+		err = dhd_iovar(dhd, 0, "mpc", (char *)&mpc, sizeof(mpc), 1);
+		if (err) {
+			DHD_ERROR(("%s : failed to set mpc\n", __FUNCTION__));
+			goto exit;
+		}
+		rtt_status->mpc = 1; /* Either failure or complete, we need to enable mpc */
+		DHD_RTT(("mpc set \n"));
+
+		channel.width = WIFI_CHAN_WIDTH_80;
+		channel.center_freq = 5180;
+		channel.center_freq0 = 5210;
+		chanspec = dhd_rtt_convert_to_chspec(channel);
+		DHD_RTT(("Default chanspec/channel set as %s for rtt.\n",
+					wf_chspec_ntoa(chanspec, chanbuf)));
+		err = wldev_iovar_setint(dev, "chanspec", chanspec);
+		if (err) {
+			DHD_ERROR(("Failed to set the chanspec \n"));
+		}
+	}
+	/* Need to set PM=0 if STA is going to set as responder. */
+	err = wldev_ioctl(dev, WLC_GET_PM, &rtt_status->pm, sizeof(pm), false);
+	DHD_RTT(("Current PM value read %d \n",rtt_status->pm));
+	if (err) {
+		DHD_ERROR(("Failed to get the PM value \n"));
+	} else {
+		err = wldev_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm), true);
+		if (err) {
+			DHD_ERROR(("Failed to set the PM \n"));
+			rtt_status->pm_restore = FALSE;
+		} else {
+			rtt_status->pm_restore = TRUE;
+		}
+	}
+
+	if (!RTT_IS_ENABLED(rtt_status)) {
+		/* enable ftm */
+		err = dhd_rtt_ftm_enable(dhd, TRUE);
+		if (err) {
+			DHD_ERROR(("Failed to enable FTM (%d)\n", err));
+			goto exit;
+		}
+		DHD_RTT(("FTM enabled \n"));
+	}
+
+	rtt_status->status = RTT_ENABLED;
+	DHD_RTT(("Responder enabled \n"));
+	memset(ftm_configs, 0, sizeof(ftm_configs));
+	memset(ftm_params, 0, sizeof(ftm_params));
+
+	/* configure the session 1 as target */
+	ftm_configs[ftm_cfg_cnt].enable = TRUE;
+	ftm_configs[ftm_cfg_cnt++].flags = WL_PROXD_SESSION_FLAG_TARGET;
+	rtt_status->flags = WL_PROXD_SESSION_FLAG_TARGET;
+	DHD_RTT(("Set the device as responder \n"));
+	dhd_rtt_ftm_config(dhd, FTM_DEFAULT_SESSION, FTM_CONFIG_CAT_OPTIONS,
+		ftm_configs, ftm_cfg_cnt);
+
+exit:
+	if (err) {
+		rtt_status->status = RTT_STOPPED;
+		DHD_ERROR(("rtt is stopped  %s \n",__FUNCTION__));
+		/* disable FTM */
+		dhd_rtt_ftm_enable(dhd, FALSE);
+		if (rtt_status->mpc) {
+			/* enable mpc again in case of error */
+			mpc = 1;
+			rtt_status->mpc = 0;
+			err = dhd_iovar(dhd, 0, "mpc", (char *)&mpc, sizeof(mpc), 1);
+		}
+		DHD_RTT(("restoring the PM value \n"));
+		if (rtt_status->pm_restore) {
+			pm = PM_FAST;
+			err = wldev_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm), true);
+			if (err) {
+				DHD_ERROR(("Failed to restore PM \n"));
+			} else {
+			rtt_status->pm_restore = FALSE;
+			}
+		}
+	}
+
+	return err;
+}
+
+int
+dhd_rtt_cancel_responder(dhd_pub_t *dhd)
+{
+	int err = BCME_OK;
+	rtt_status_info_t *rtt_status;
+	int mpc = 0;
+	int pm = 0;
+	struct net_device *dev = dhd_linux_get_primary_netdev(dhd);
+
+	NULL_CHECK(dhd, "dhd is NULL", err);
+	rtt_status = GET_RTTSTATE(dhd);
+	NULL_CHECK(rtt_status, "rtt_status is NULL", err);
+
+	DHD_RTT(("Enter %s \n",__FUNCTION__));
+	err = dhd_rtt_ftm_enable(dhd, FALSE);
+	if (err) {
+		DHD_ERROR(("failed to disable FTM (%d)\n", err));
+	}
+	rtt_status->status = RTT_STOPPED;
+
+	if (rtt_status->mpc) {
+		/* enable mpc again in case of cancelling responder */
+		mpc = 1;
+		rtt_status->mpc = 0;
+		err = dhd_iovar(dhd, 0, "mpc", (char *)&mpc, sizeof(mpc), 1);
+	}
+	if (rtt_status->pm_restore) {
+		pm = PM_FAST;
+		DHD_RTT(("pm_restore =%d \n",rtt_status->pm_restore));
+		err = wldev_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm), true);
+		if (err) {
+			DHD_ERROR(("Failed to restore PM \n"));
+		} else {
+			rtt_status->pm_restore = FALSE;
+		}
+	}
 	return err;
 }
 
@@ -2030,6 +2242,7 @@ dhd_rtt_deinit(dhd_pub_t *dhd)
 	rtt_status = GET_RTTSTATE(dhd);
 	NULL_CHECK(rtt_status, "rtt_status is NULL", err);
 	rtt_status->status = RTT_STOPPED;
+	DHD_RTT(("rtt is stopped %s \n",__FUNCTION__));
 	/* clear evt callback list */
 	if (!list_empty(&rtt_status->noti_fn_list)) {
 		list_for_each_entry_safe(iter, iter2, &rtt_status->noti_fn_list, list) {

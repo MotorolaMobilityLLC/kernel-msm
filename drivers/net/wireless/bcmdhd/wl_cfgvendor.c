@@ -1688,6 +1688,68 @@ exit:
 	return err;
 }
 
+static int
+wl_cfgvendor_rtt_get_avail_channel(struct wiphy *wiphy, struct wireless_dev *wdev,
+	const void *data, int len)
+{
+	int err = 0;
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+	wifi_channel_info channel_info;
+
+	WL_DBG(("Recv -get_avail_ch command \n"));
+
+	err = dhd_dev_rtt_avail_channel(bcmcfg_to_prmry_ndev(cfg), &channel_info);
+	if (unlikely(err)) {
+		WL_ERR(("Vendor cmd -get_avail_ch failed ret:%d \n", err));
+		return err;
+	}
+	err =  wl_cfgvendor_send_cmd_reply(wiphy, bcmcfg_to_prmry_ndev(cfg),
+	        &channel_info, sizeof(channel_info));
+
+	if (unlikely(err)) {
+		WL_ERR(("Vendor cmd reply for -get_avail_ch failed ret:%d \n", err));
+	}
+	return err;
+}
+
+static int
+wl_cfgvendor_rtt_set_responder(struct wiphy *wiphy, struct wireless_dev *wdev,
+	const void *data, int len)
+{
+	int err = 0;
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+	wifi_channel_info channel_info;
+
+	WL_DBG(("Recv rtt -enable_resp cmd.\n"));
+
+	err = dhd_dev_rtt_enable_responder(bcmcfg_to_prmry_ndev(cfg), &channel_info);
+	if (unlikely(err)) {
+		WL_ERR(("Vendor cmd -enable_resp failed ret:%d \n", err));
+	}
+	err =  wl_cfgvendor_send_cmd_reply(wiphy, bcmcfg_to_prmry_ndev(cfg),
+	        &channel_info, sizeof(channel_info));
+
+	if (unlikely(err)) {
+		WL_ERR(("Vendor cmd reply for -enable_resp failed ret:%d \n", err));
+	}
+	return err;
+}
+
+static int
+wl_cfgvendor_rtt_cancel_responder(struct wiphy *wiphy, struct wireless_dev *wdev,
+	const void *data, int len)
+{
+	int err = 0;
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+
+	WL_DBG(("Recv rtt -cancel_resp cmd \n"));
+
+	err = dhd_dev_rtt_cancel_responder(bcmcfg_to_prmry_ndev(cfg));
+	if (unlikely(err)) {
+		WL_ERR(("Vendor cmd -cancel_resp failed ret:%d \n", err));
+	}
+	return err;
+}
 #endif /* RTT_SUPPORT */
 static int wl_cfgvendor_priv_string_handler(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void  *data, int len)
@@ -2616,6 +2678,30 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		},
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
 		.doit = wl_cfgvendor_rtt_get_capability
+	},
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = RTT_SUBCMD_GETAVAILCHANNEL
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_rtt_get_avail_channel
+	},
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = RTT_SUBCMD_SET_RESPONDER
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_rtt_set_responder
+	},
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = RTT_SUBCMD_CANCEL_RESPONDER
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_rtt_cancel_responder
 	},
 #endif /* RTT_SUPPORT */
 	{

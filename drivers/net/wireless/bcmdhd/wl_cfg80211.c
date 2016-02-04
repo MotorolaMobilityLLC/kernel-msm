@@ -65,6 +65,7 @@
 #include <wl_cfg80211.h>
 #include <wl_cfgp2p.h>
 #include <wl_android.h>
+#include <dhd_rtt.h>
 
 #ifdef PROP_TXSTATUS
 #include <dhd_wlfc.h>
@@ -800,7 +801,7 @@ static int maxrxpktglom = 0;
 #endif
 
 /* IOCtl version read from targeted driver */
-static int ioctl_version;
+int ioctl_version;
 #ifdef DEBUGFS_CFG80211
 #define S_SUBLOGLEVEL 20
 static const struct {
@@ -850,7 +851,7 @@ static void wl_add_remove_pm_enable_work(struct bcm_cfg80211 *cfg, bool add_remo
 /* Return a new chanspec given a legacy chanspec
  * Returns INVCHANSPEC on error
  */
-static chanspec_t
+chanspec_t
 wl_chspec_from_legacy(chanspec_t legacy_chspec)
 {
 	chanspec_t chspec;
@@ -979,7 +980,7 @@ wl_ch_host_to_driver(u16 channel)
  * a chanspec_t value
  * Returns INVCHANSPEC on error
  */
-static chanspec_t
+chanspec_t
 wl_chspec_driver_to_host(chanspec_t chanspec)
 {
 	chanspec = dtohchanspec(chanspec);
@@ -4849,6 +4850,8 @@ wl_cfg80211_set_power_mgmt(struct wiphy *wiphy, struct net_device *dev,
 	s32 err = 0;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	struct net_info *_net_info = wl_get_netinfo_by_netdev(cfg, dev);
+	dhd_pub_t *dhd = cfg->pub;
+	rtt_status_info_t *rtt_status;
 
 	RETURN_EIO_IF_NOT_UP(cfg);
 	WL_DBG(("Enter\n"));
@@ -4868,13 +4871,16 @@ wl_cfg80211_set_power_mgmt(struct wiphy *wiphy, struct net_device *dev,
 	}
 	pm = htod32(pm);
 	WL_DBG(("%s:power save %s\n", dev->name, (pm ? "enabled" : "disabled")));
-	err = wldev_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm), true);
-	if (unlikely(err)) {
-		if (err == -ENODEV)
-			WL_DBG(("net_device is not ready yet\n"));
-		else
-			WL_ERR(("error (%d)\n", err));
-		return err;
+	rtt_status = GET_RTTSTATE(dhd);
+	if (rtt_status->status != RTT_ENABLED) {
+		err = wldev_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm), true);
+		if (unlikely(err)) {
+			if (err == -ENODEV)
+				WL_DBG(("net_device is not ready yet\n"));
+			else
+				WL_ERR(("error (%d)\n", err));
+			return err;
+		}
 	}
 	wl_cfg80211_update_power_mode(dev);
 	return err;
@@ -10693,6 +10699,8 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 	u32 frameburst;
 	struct net_info *iter, *next;
 	struct net_device *primary_dev = bcmcfg_to_prmry_ndev(cfg);
+	dhd_pub_t *dhd = cfg->pub;
+	rtt_status_info_t *rtt_status;
 	WL_DBG(("Enter state %d set %d _net_info->pm_restore %d iface %s\n",
 		state, set, _net_info->pm_restore, _net_info->ndev->name));
 
@@ -10746,13 +10754,16 @@ static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_
 				 */
 				pm = PM_FAST;
 
-				for_each_ndev(cfg, iter, next) {
-					if ((err = wldev_ioctl(iter->ndev, WLC_SET_PM, &pm,
-									sizeof(pm), true)) != 0) {
-						if (err == -ENODEV)
-							WL_DBG(("%s:netdev not ready\n", iter->ndev->name));
-						else
-							WL_ERR(("%s:error (%d)\n", iter->ndev->name, err));
+				rtt_status = GET_RTTSTATE(dhd);
+				if (rtt_status->status != RTT_ENABLED) {
+					for_each_ndev(cfg, iter, next) {
+						if ((err = wldev_ioctl(iter->ndev, WLC_SET_PM, &pm,
+										sizeof(pm), true)) != 0) {
+							if (err == -ENODEV)
+								WL_DBG(("%s:netdev not ready\n", iter->ndev->name));
+							else
+								WL_ERR(("%s:error (%d)\n", iter->ndev->name, err));
+						}
 					}
 				}
 

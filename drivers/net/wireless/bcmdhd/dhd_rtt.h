@@ -54,7 +54,7 @@
 #define WL_RATE_36M	72	/* in 500kbps units */
 #define WL_RATE_48M	96	/* in 500kbps units */
 #define WL_RATE_54M	108	/* in 500kbps units */
-
+#define GET_RTTSTATE(dhd) ((rtt_status_info_t *)dhd->rtt_state)
 
 enum rtt_role {
 	RTT_INITIATOR = 0,
@@ -212,6 +212,33 @@ typedef struct rtt_target_info {
 	uint8  bw;  /* 5, 10, 20, 40, 80, 160 */
 } rtt_target_info_t;
 
+typedef struct rtt_config_params {
+	int8 rtt_target_cnt;
+	rtt_target_info_t *target_info;
+} rtt_config_params_t;
+
+typedef struct rtt_status_info {
+    dhd_pub_t *dhd;
+    int8 status;   /* current status for the current entry */
+    int8 txchain; /* current device tx chain */
+    int8 mpc; /* indicate we change mpc mode */
+    int8 pm; /* to save current value of pm */
+    int8 pm_restore; /* flag to reset the old value of pm */
+    int8 cur_idx; /* current entry to do RTT */
+    bool all_cancel; /* cancel all request once we got the cancel requet */
+    uint32 flags; /* indicate whether device is configured as initiator or target */
+    struct capability {
+        int32 proto     :8;
+        int32 feature   :8;
+        int32 preamble  :8;
+        int32 bw        :8;
+    } rtt_capa; /* rtt capability */
+    struct mutex rtt_mutex;
+    rtt_config_params_t rtt_config;
+    struct work_struct work;
+    struct list_head noti_fn_list;
+    struct list_head rtt_results_cache; /* store results for RTT */
+} rtt_status_info_t;
 
 typedef struct rtt_report {
 	struct ether_addr addr;
@@ -275,10 +302,6 @@ typedef struct rtt_capabilities {
 	uint8 bw_support;               /* bit mask indicate what BW is supported */
 } rtt_capabilities_t;
 
-typedef struct rtt_config_params {
-	int8 rtt_target_cnt;
-	rtt_target_info_t *target_info;
-} rtt_config_params_t;
 
 typedef void (*dhd_rtt_compl_noti_fn)(void *ctx, void *rtt_data);
 /* Linux wrapper to call common dhd_rtt_set_cfg */
@@ -298,6 +321,14 @@ dhd_dev_rtt_unregister_noti_callback(struct net_device *dev, dhd_rtt_compl_noti_
 int
 dhd_dev_rtt_capability(struct net_device *dev, rtt_capabilities_t *capa);
 
+int
+dhd_dev_rtt_avail_channel(struct net_device *dev, wifi_channel_info *channel_info);
+
+int
+dhd_dev_rtt_enable_responder(struct net_device *dev, wifi_channel_info *channel_info);
+
+int
+dhd_dev_rtt_cancel_responder(struct net_device *dev);
 /* export to upper layer */
 chanspec_t
 dhd_rtt_convert_to_chspec(wifi_channel_info_t channel);
@@ -323,6 +354,15 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data);
 
 int
 dhd_rtt_capability(dhd_pub_t *dhd, rtt_capabilities_t *capa);
+
+int
+dhd_rtt_avail_channel(dhd_pub_t *dhd, wifi_channel_info *channel_info);
+
+int
+dhd_rtt_enable_responder(dhd_pub_t *dhd, wifi_channel_info *channel_info);
+
+int
+dhd_rtt_cancel_responder(dhd_pub_t *dhd);
 
 int
 dhd_rtt_init(dhd_pub_t *dhd);

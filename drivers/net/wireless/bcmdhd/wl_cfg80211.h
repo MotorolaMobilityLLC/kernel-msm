@@ -592,6 +592,7 @@ struct bcm_cfg80211 {
 	bool roam_offload;
 };
 
+extern int ioctl_version;
 
 static inline struct wl_bss_info *next_bss(struct wl_scan_results *list, struct wl_bss_info *bss)
 {
@@ -889,6 +890,8 @@ extern s32 wl_cfg80211_set_wps_p2p_ie(struct net_device *net, char *buf, int len
 	enum wl_management_type type);
 extern s32 wl_cfg80211_set_p2p_ps(struct net_device *net, char* buf, int len);
 extern struct bcm_cfg80211 *wl_get_cfg(struct net_device *ndev);
+extern chanspec_t wl_chspec_from_legacy(chanspec_t legacy_chspec);
+extern chanspec_t wl_chspec_driver_to_host(chanspec_t chanspec);
 
 
 /* btcoex functions */

@@ -7849,6 +7849,7 @@ int dhd_dev_get_feature_set(struct net_device *dev)
 			feature_set |= WIFI_FEATURE_D2D_RTT;
 	}
 #ifdef RTT_SUPPORT
+	feature_set |= WIFI_FEATURE_D2D_RTT;
 	feature_set |= WIFI_FEATURE_D2AP_RTT;
 #endif /* RTT_SUPPORT */
 #ifdef LINKSTAT_SUPPORT
@@ -8383,6 +8384,32 @@ dhd_dev_rtt_capability(struct net_device *dev, rtt_capabilities_t *capa)
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 
 	return (dhd_rtt_capability(&dhd->pub, capa));
+}
+
+int
+dhd_dev_rtt_avail_channel(struct net_device *dev, wifi_channel_info *channel_info)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_rtt_avail_channel(&dhd->pub, channel_info));
+}
+
+int
+dhd_dev_rtt_enable_responder(struct net_device *dev, wifi_channel_info *channel_info)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	dhd_rtt_avail_channel(&dhd->pub, channel_info);
+	return (dhd_rtt_enable_responder(&dhd->pub, channel_info));
+
+}
+
+int dhd_dev_rtt_cancel_responder(struct net_device *dev)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_rtt_cancel_responder(&dhd->pub));
+
 }
 #endif /* RTT_SUPPORT */
 
