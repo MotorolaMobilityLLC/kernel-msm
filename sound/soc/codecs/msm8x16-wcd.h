@@ -215,6 +215,9 @@ struct msm8916_asoc_mach_data {
 	int ext_pa;
 	int us_euro_gpio;
 	int spk_ext_pa_gpio;
+#ifdef CONFIG_SND_HARPIA_HEADSET_SWH
+	int headset_det_en_gpio;
+#endif
 	int mclk_freq;
 	int lb_mode;
 	u8 micbias1_cap_mode;
