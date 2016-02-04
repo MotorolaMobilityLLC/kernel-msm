@@ -22,7 +22,7 @@
 #include <linux/delay.h>
 #include <linux/power_supply.h>
 #include <linux/regulator/consumer.h>
-
+#include <linux/mods/modbus_ext.h>
 
 enum hd3ss460_device_list {
 	USBC = 0,
@@ -42,6 +42,7 @@ struct hd3ss460_info {
 	struct power_supply *usbc;
 	struct power_supply *usbc_switch;
 	struct notifier_block switch_notifier;
+	struct notifier_block modbus_notifier;
 	bool switch_is_fusb340;
 	struct delayed_work hd3ss460_switch_work;
 	struct delayed_work hd3ss460_work;
@@ -51,6 +52,7 @@ struct hd3ss460_info {
 	struct device *dev;
 	bool vdd_enabled;
 	int usbc_switch_state;
+	int ext_state;
 };
 
 static ssize_t switch_to_dev_store(struct device *dev,
@@ -155,6 +157,27 @@ static void hd3ss460_switch_set_state(struct hd3ss460_info *info, int pol,
 		gpio_set_value(info->list[HD3_EN_INDEX].gpio, en);
 }
 
+static int modbus_notifier_call(struct notifier_block *nb,
+			unsigned long val,
+			void *v)
+{
+	struct hd3ss460_info *info = container_of(nb,
+				struct hd3ss460_info, modbus_notifier);
+
+	struct modbus_ext_status *sl_status = v;
+	if (sl_status->proto > MODBUS_PROTO_MPHY)
+		return NOTIFY_DONE;
+
+	if (sl_status->active)
+		info->ext_state |= sl_status->proto;
+	else
+		info->ext_state &= ~(sl_status->proto);
+	schedule_delayed_work(&info->hd3ss460_work,
+				msecs_to_jiffies(0));
+
+	return NOTIFY_OK;
+}
+
 static int usbcswitch_notifier_call(struct notifier_block *nb,
 			unsigned long val,
 			void *v)
@@ -202,8 +225,13 @@ static void hd3ss460_w(struct work_struct *work)
 			hd3ss460_work.work);
 	switch (info->usbc_switch_state) {
 	case 0:
-		hd3ss460_switch_set_state(info, 0, 0, 0);
-		hd3ss460_vdd_enable(info, false);
+		if (info->ext_state) {
+			hd3ss460_vdd_enable(info, true);
+			hd3ss460_switch_set_state(info, 0, 0, 1);
+		} else {
+			hd3ss460_switch_set_state(info, 0, 0, 0);
+			hd3ss460_vdd_enable(info, false);
+		}
 		break;
 	case 1:
 		hd3ss460_vdd_enable(info, true);
@@ -346,6 +374,7 @@ static int hd3ss460_probe(struct platform_device *pdev)
 	struct hd3ss460_info *info;
 	int ret, i;
 	struct power_supply *usbc_psy, *usbc_switch_psy;
+	struct modbus_ext_status sl_status;
 
 	usbc_psy = power_supply_get_by_name("usbc");
 	if (!usbc_psy) {
@@ -393,11 +422,18 @@ static int hd3ss460_probe(struct platform_device *pdev)
 	info->mux_dev = USBC;
 	info->usbc = usbc_psy;
 	info->usbc_switch = usbc_switch_psy;
+	info->modbus_notifier.notifier_call = modbus_notifier_call;
+	ret = modbus_ext_register_notifier(&info->modbus_notifier, NULL);
+	if (ret) {
+		dev_err(&pdev->dev, "couldn't register modbus notifier\n");
+		goto fail;
+	}
+
 	info->switch_notifier.notifier_call = usbcswitch_notifier_call;
 	ret = power_supply_reg_notifier(&info->switch_notifier);
 	if (ret) {
 		dev_err(&pdev->dev, "couldn't register usbc_switch notifier\n");
-		goto fail;
+		goto fail_modbus_reg;
 	}
 
 	ret = device_create_file(&pdev->dev,
@@ -413,12 +449,20 @@ static int hd3ss460_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, info);
 	info->dev = &pdev->dev;
 
+	modbus_ext_get_state(&sl_status);
+
+	if (sl_status.active)
+		info->ext_state = sl_status.proto &
+					(MODBUS_PROTO_I2S | MODBUS_PROTO_MPHY);
+
 	/* Query for initial reported state*/
 	usbcswitch_notifier_call(&info->switch_notifier, PSY_EVENT_PROP_CHANGED,
 		info->usbc_switch);
 
 	return 0;
 
+fail_modbus_reg:
+	modbus_ext_unregister_notifier(&info->modbus_notifier);
 fail:
 	gpio_free_array(info->list, info->num_gpios);
 	return ret;
@@ -432,6 +476,8 @@ static int hd3ss460_remove(struct platform_device *pdev)
 			   &dev_attr_switch_to_dev);
 
 	if (info) {
+		modbus_ext_unregister_notifier(&info->modbus_notifier);
+		power_supply_unreg_notifier(&info->switch_notifier);
 		gpio_free_array(info->list, info->num_gpios);
 		cancel_delayed_work_sync(&info->hd3ss460_switch_work);
 		power_supply_put(info->usbc);
