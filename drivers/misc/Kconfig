@@ -639,6 +639,15 @@ config MODS_USB_EXT_BRIDGE
 	  module with the kernel USB drivers. If you are using the MODS
 	  kernel modules, you should select yes, if not no.
 
+config MODS_MODBUS_EXT
+	bool "Enable control of the mods bus muxing circuit"
+	default n
+	help
+	  This enables ability to mux the i2s, mphy, and usb paths through the
+	  set of ts3usb3031 switches depending on the requested configuration.
+	  If you are using the MODS kernel modules, you should select yes, if
+	  not no.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
