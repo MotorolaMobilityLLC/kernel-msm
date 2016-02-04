@@ -126,7 +126,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_WM9705 if SND_SOC_AC97_BUS
 	select SND_SOC_WM9712 if SND_SOC_AC97_BUS
 	select SND_SOC_WM9713 if SND_SOC_AC97_BUS
-	select SND_SOC_FSA8500 if I2C
+	select SND_SOC_FSA8500 if I2C && SND_HARPIA_HEADSET_SWH=n
         help
           Normally ASoC codec drivers are only built if a machine driver which
           uses them is also built since they are only usable with a machine
@@ -609,8 +609,14 @@ config SND_SOC_MSM_HDMI_CODEC_RX
 	HDMI audio drivers should be built only if the platform
         supports hdmi panel.
 
+config SND_HARPIA_HEADSET_SWH
+	bool "SND_HARPIA_HEADSET_SWH"
+	default n
+	help
+	If you say Y, enable SND_HARPIA_HEADSET_SWH function.
+
 config SND_SOC_FSA8500
 	bool "Headset detection chip"
-	depends on I2C
+	depends on I2C && SND_HARPIA_HEADSET_SWH=n
 	help
 	FSA8500 headset detection IC chip
