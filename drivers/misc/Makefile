@@ -73,3 +73,4 @@ obj-$(CONFIG_MOT_UTAG) += utag/
 obj-$(CONFIG_MODS_USB_EXT_BRIDGE) += usb_ext_bridge.o
 obj-$(CONFIG_USB3813) += usb3813_hub.o
 obj-$(CONFIG_DROPBOX) += dropbox.o
+obj-$(CONFIG_MODS_MODBUS_EXT) += modbus_ext.o
