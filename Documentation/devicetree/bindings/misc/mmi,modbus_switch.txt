@@ -1,0 +1,21 @@
+MMI,MODBUS_SWITCH
+
+The MMI,MODBUS_SWITCH provides ability to control a pair of TS3USB3031 switches
+that control the routing of certain data paths on the mod connector to either
+the host I2S, MPHY, or USB SS pins.
+
+Required properties:
+- compatible : should be "mmi,modbus_switch"
+- gpios : should be two selector gpios into SEL0 and SEL1 of the part
+- mmi,mod-switch-gpio-labels : should be the labels of the GPIOs to export
+
+Example:
+	modbus_switch {
+		compatible = "mmi,modbus_switch";
+
+		gpios = <&pm8998_gpios 2 2>,
+			<&tlmm 98 2>;
+
+		mmi,mod-switch-gpio-labels = "MOD_MPHY_SEL0",
+						"MOD_MPHY_SEL1";
+	};
