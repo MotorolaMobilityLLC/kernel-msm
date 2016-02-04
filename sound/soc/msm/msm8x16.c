@@ -2216,7 +2216,23 @@ static int msm8x16_setup_hs_jack(struct platform_device *pdev,
 			struct msm8916_asoc_mach_data *pdata)
 {
 	struct pinctrl *pinctrl;
+#ifdef CONFIG_SND_HARPIA_HEADSET_SWH
+	int ret = 0;
 
+	pdata->headset_det_en_gpio = of_get_named_gpio(pdev->dev.of_node,
+					"qcom,cdc-headset-en-gpios", 0);
+	if (pdata->headset_det_en_gpio < 0) {
+		dev_err(&pdev->dev,
+			"property %s in node %s not found %d\n",
+			"qcom,cdc-headset-en-gpios",
+			pdev->dev.of_node->full_name,
+			pdata->headset_det_en_gpio);
+	}
+	if (gpio_is_valid(pdata->headset_det_en_gpio))
+		ret = gpio_request(pdata->headset_det_en_gpio,
+						"cdc-headset-en-gpios");
+	ret = gpio_direction_output(pdata->headset_det_en_gpio, 1);
+#endif
 	pdata->us_euro_gpio = of_get_named_gpio(pdev->dev.of_node,
 					"qcom,cdc-us-euro-gpios", 0);
 	if (pdata->us_euro_gpio < 0) {
