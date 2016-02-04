@@ -22,6 +22,7 @@
 #include <linux/module.h>
 #include <linux/switch.h>
 #include <linux/input.h>
+#include <linux/mods/modbus_ext.h>
 #include <sound/core.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
@@ -1528,11 +1529,16 @@ static int msm8996_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct modbus_ext_status modbus_status;
 
 	pr_debug("%s: substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
 
+	modbus_status.proto = MODBUS_PROTO_I2S;
+	modbus_status.active = true;
+
 	atomic_inc(&tert_mi2s_active);
+	modbus_ext_set_state(&modbus_status);
 
 	mi2s_tx_clk.enable = 1;
 	ret = afe_set_lpass_clock_v2(AFE_PORT_ID_TERTIARY_MI2S_TX,
@@ -1551,6 +1557,7 @@ err:
 static void msm8996_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 {
 	int ret = 0;
+	struct modbus_ext_status modbus_status;
 
 	pr_debug("%s: substream = %s  stream = %d\n", __func__,
 		substream->name, substream->stream);
@@ -1560,6 +1567,9 @@ static void msm8996_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 				__func__);
 		return;
 	}
+	modbus_status.proto = MODBUS_PROTO_I2S;
+	modbus_status.active = false;
+	modbus_ext_set_state(&modbus_status);
 
 	mi2s_tx_clk.enable = 0;
 	ret = afe_set_lpass_clock_v2(AFE_PORT_ID_TERTIARY_MI2S_TX,
