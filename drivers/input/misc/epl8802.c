@@ -494,15 +494,6 @@ static int set_lsensor_intr_threshold(uint16_t low_thd, uint16_t high_thd)
 static void epl_sensor_report_lux(int report_lux)
 {
 	struct epl_sensor_priv *epld = epl_sensor_obj;
-
-	if (epl_sensor.als.report_type == CMC_BIT_DYN_INT) {
-		LOG_INFO("-------------------  ALS raw = %d, lux = %d\n\n",
-				epl_sensor.als.dyn_intt_raw,  report_lux);
-	} else {
-		LOG_INFO("-------------------  ALS raw = %d, lux = %d\n\n",
-				epl_sensor.als.data.channels[1],  report_lux);
-	}
-
 #if SPREAD
 	input_report_abs(epld->ps_input_dev, ABS_MISC, report_lux);
 	input_sync(epld->ps_input_dev);
@@ -856,7 +847,7 @@ long raw_convert_to_lux(u16 raw_data)
 	}
 	dyn_intt_raw = (raw_data * 10) / (10 * gain_value * als_dynamic_intt_value[dynamic_intt_idx] / als_dynamic_intt_value[1]);
 
-	LOG_INFO("[%s]: dyn_intt_raw=%ld \r\n", __func__, dyn_intt_raw);
+	/*LOG_INFO("[%s]: dyn_intt_raw=%ld \r\n", __func__, dyn_intt_raw);*/
 
 	if (dyn_intt_raw > 0xffff)
 		epl_sensor.als.dyn_intt_raw = 0xffff;
@@ -864,8 +855,6 @@ long raw_convert_to_lux(u16 raw_data)
 		epl_sensor.als.dyn_intt_raw = dyn_intt_raw;
 
 	lux = c_gain * epl_sensor.als.dyn_intt_raw;
-
-	LOG_INFO("[%s]:raw_data=%d, epl_sensor.als.dyn_intt_raw=%d, lux=%ld\r\n", __func__, raw_data, epl_sensor.als.dyn_intt_raw, lux);
 
 	if (lux >= (dynamic_intt_max_lux*dynamic_intt_min_unit)) {
 		LOG_INFO("[%s]:raw_convert_to_lux: change max lux\r\n", __func__);
@@ -920,35 +909,25 @@ static int epl_sensor_get_als_value(struct epl_sensor_priv *obj, u16 als)
 		break;
 #if ALS_DYN_INTT
 	case CMC_BIT_DYN_INT:
-		LOG_INFO("[%s]: dynamic_intt_idx=%d, als_dynamic_intt_value=%d, dynamic_intt_gain=%d, als=%d \r\n",
-				__func__, dynamic_intt_idx, als_dynamic_intt_value[dynamic_intt_idx], als_dynamic_intt_gain[dynamic_intt_idx], als);
-
 		if (als > dynamic_intt_high_thr) {
 			if (dynamic_intt_idx == (als_dynamic_intt_intt_num - 1)) {
 				als = dynamic_intt_high_thr;
 				lux_tmp = raw_convert_to_lux(als);
-
-				LOG_INFO(">>>>>>>>>>>>>>>>>>>>>>>> INTT_MAX_LUX\r\n");
 			} else {
 				change_flag = true;
 				als  = dynamic_intt_high_thr;
 				lux_tmp = raw_convert_to_lux(als);
 				dynamic_intt_idx++;
-
-				LOG_INFO(">>>>>>>>>>>>>>>>>>>>>>>>change INTT high: %d, raw: %d \r\n", dynamic_intt_idx, als);
 			}
 		} else if (als < dynamic_intt_low_thr) {
 			if (dynamic_intt_idx == 0) {
 				/* als = dynamic_intt_low_thr; */
 				lux_tmp = raw_convert_to_lux(als);
-				LOG_INFO(">>>>>>>>>>>>>>>>>>>>>>>> INTT_MIN_LUX\r\n");
 			} else {
 				change_flag = true;
 				als  = dynamic_intt_low_thr;
 				lux_tmp = raw_convert_to_lux(als);
 				dynamic_intt_idx--;
-
-				LOG_INFO(">>>>>>>>>>>>>>>>>>>>>>>>change INTT low: %d, raw: %d \r\n", dynamic_intt_idx, als);
 			}
 		} else {
 			lux_tmp = raw_convert_to_lux(als);
@@ -1055,14 +1034,6 @@ int epl_sensor_read_als(struct i2c_client *client)
 	epl_sensor.als.data.channels[0] = (buf[2]<<8) | buf[1];
 	epl_sensor.als.data.channels[1] = (buf[4]<<8) | buf[3];
 
-	LOG_INFO("als: ~~~~ ALS ~~~~~ \n");
-	LOG_INFO("als: buf = 0x%x\n", buf[0]);
-	LOG_INFO("als: sat = 0x%x\n", epl_sensor.als.saturation);
-	LOG_INFO("als: cmp h = 0x%x, l = %d\n", epl_sensor.als.compare_high, epl_sensor.als.compare_low);
-	LOG_INFO("als: int_flag = 0x%x\n", epl_sensor.als.interrupt_flag);
-	LOG_INFO("als: cmp_rstn = 0x%x, lock = 0x%0x\n", epl_sensor.als.compare_reset, epl_sensor.als.lock);
-	LOG_INFO("read als channel 0 = %d\n", epl_sensor.als.data.channels[0]);
-	LOG_INFO("read als channel 1 = %d\n", epl_sensor.als.data.channels[1]);
 	return 0;
 }
 
@@ -1302,29 +1273,12 @@ int epl_sensor_als_dyn_report(bool report_flag)
 	struct epl_sensor_priv *epld = epl_sensor_obj;
 
 	int als_value = -1, i = 0;
-#if 0
-	bool enable_ps = epld->enable_pflag == 1;
-	bool enable_als = epld->enable_lflag == 1;
-	int als_time = als_sensing_time(epl_sensor.als.integration_time, epl_sensor.als.adc, epl_sensor.als.cycle);
-	int ps_time = ps_sensing_time(epl_sensor.ps.integration_time, epl_sensor.ps.adc, epl_sensor.ps.cycle);
-#endif
 	do {
-#if 0
-		if (enable_ps == 0 && enable_als == 1) {
-			msleep(als_time);
-			LOG_INFO("[%s]:%d ALS only msleep(%d)", __func__, i, als_time);
-		} else if (enable_ps == 1 && enable_als == 1) {
-			msleep(ps_time+als_time);
-			LOG_INFO("[%s]:%d ALS+PS msleep(%d)", __func__, i, (ps_time+als_time));
-		}
-#endif
 		epl_sensor_read_als(epld->client);
 		als_value = epl_sensor_get_als_value(epld, epl_sensor.als.data.channels[1]);
 
-		LOG_INFO("[%s]: als_value=%d \r\n", __func__, als_value);
 
 		if (als_value != -1 && report_flag == true) {
-			LOG_INFO("[%s]: als_dyn_report(%d) \r\n", __func__, als_value);
 			epl_sensor_report_lux(als_value);
 		}
 		i++;
@@ -1493,7 +1447,6 @@ static void epl_sensor_polling_work(struct work_struct *work)
 	bool enable_ps = epld->enable_pflag == 1 && epld->ps_suspend == 0;
 	bool enable_als = epld->enable_lflag == 1 && epld->als_suspend == 0;
 
-	LOG_INFO("enable_pflag = %d, enable_lflag = %d \n", enable_ps, enable_als);
 	cancel_delayed_work(&epld->polling_work);
 
 	if ((enable_als &&  epl_sensor.als.polling_mode == 1) || (enable_ps &&  epl_sensor.ps.polling_mode == 1)) {
@@ -2903,34 +2856,6 @@ static long epl_sensor_ps_ioctl(struct file *file, unsigned int cmd, unsigned lo
 
 		LOG_INFO("elan ambient-light Sensor set lflag %d\n", flag);
 		break;
-#if 0
-	case ELAN_EPL8800_IOCTL_GETDATA:
-		if (enable_als == 0) {
-			epld->enable_lflag = 1;
-			epl_sensor_update_mode(epld->client);
-			msleep(30);
-		}
-
-		if (enable_als == true && epl_sensor.als.polling_mode == 0) {
-				epl_sensor_read_als(epld->client);
-		}
-#if ALS_DYN_INTT
-		if (epl_sensor.als.report_type == CMC_BIT_DYN_INT) {
-			buf[0] = dynamic_intt_lux;
-			LOG_INFO("[%s]: als dynamic_intt_lux = %d \r\n", __func__, dynamic_intt_lux);
-		} else
-#else
-		{
-			buf[0] = epl_sensor.als.data.channels[1];
-			LOG_INFO("[%s]: epl_sensor.als.data.channels[1] = %d \r\n", __func__, epl_sensor.als.data.channels[1]);
-		}
-#endif
-
-		if (copy_to_user(argp, &buf , sizeof(buf)))
-			return -EFAULT;
-
-		break;
-#endif
 #endif  /*SPREAD end......*/
 	default:
 		LOG_ERR("invalid cmd %d\n", _IOC_NR(cmd));
