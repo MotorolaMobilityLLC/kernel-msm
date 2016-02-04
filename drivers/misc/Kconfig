@@ -664,6 +664,14 @@ config MODS_CODEC_BUS
 	  This enables bus interface for mods shim sound codec to talk to
 	  greybus sound codec module.
 
+config MODS_MODBUS_EXT
+	bool "Enable notifications for the mods bus interfaces"
+	default n
+	help
+	  This enables notifications when specific protocols are enabled
+	  on the mods connector. If you are using the MODS kernel modules,
+	  you should select yes, if not no.
+
 config HD3SS460_MUX
 	tristate "HD3SS460 4 x 6 Channel MUX"
 	default n
