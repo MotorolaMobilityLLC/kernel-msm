@@ -52,30 +52,29 @@ static const struct reg_default cs35l34_reg[] = {
 	{CS35L34_PWRCTL2, 0x19},
 	{CS35L34_PWRCTL3, 0x01},
 	{CS35L34_ADSP_CLK_CTL, 0x08},
-	{CS35L34_MCLK_CTL, 0x01},
+	{CS35L34_MCLK_CTL, 0x11},
 	{CS35L34_AMP_INP_DRV_CTL, 0x01},
 	{CS35L34_AMP_DIG_VOL_CTL, 0x12},
 	{CS35L34_AMP_DIG_VOL, 0x00},
-	{CS35L34_AMP_ANLG_GAIN_CTL, 0x09},
+	{CS35L34_AMP_ANLG_GAIN_CTL, 0x0F},
 	{CS35L34_PROTECT_CTL, 0x06},
 	{CS35L34_AMP_KEEP_ALIVE_CTL, 0x04},
 	{CS35L34_BST_CVTR_V_CTL, 0x00},
 	{CS35L34_BST_PEAK_I, 0x10},
-	{CS35L34_BST_RAMP_CTL, 0x06},
-	{CS35L34_BST_CONV_COEF_1, 0x0F},
-	{CS35L34_BST_CONV_COEF_2, 0x0C},
+	{CS35L34_BST_RAMP_CTL, 0x87},
+	{CS35L34_BST_CONV_COEF_1, 0x24},
+	{CS35L34_BST_CONV_COEF_2, 0x24},
 	{CS35L34_BST_CONV_SLOPE_COMP, 0x4E},
-	{CS35L34_BST_CONV_SW_FREQ, 0x40},
-	{CS35L34_CLASS_H_CTL, 0x0B},
-	{CS35L34_CLASS_H_HEADRM_CTL, 0x0B},
+	{CS35L34_BST_CONV_SW_FREQ, 0x8},
+	{CS35L34_CLASS_H_CTL, 0x0D},
+	{CS35L34_CLASS_H_HEADRM_CTL, 0x0D},
 	{CS35L34_CLASS_H_RELEASE_RATE, 0x08},
 	{CS35L34_CLASS_H_FET_DRIVE_CTL, 0x41},
-	{CS35L34_CLASS_H_VP_CH_CTL, 0xC5},
 	{CS35L34_CLASS_H_STATUS, 0x05},
 	{CS35L34_VPBR_CTL, 0x0A},
-	{CS35L34_VPBR_VOL_CTL, 0x91},
+	{CS35L34_VPBR_VOL_CTL, 0x90},
 	{CS35L34_VPBR_TIMING_CTL, 0x6A},
-	{CS35L34_PRED_MAX_ATTEN_SPK_LOAD, 0x96},
+	{CS35L34_PRED_MAX_ATTEN_SPK_LOAD, 0x95},
 	{CS35L34_PRED_BROWNOUT_THRESH, 0x1C},
 	{CS35L34_PRED_BROWNOUT_VOL_CTL, 0x00},
 	{CS35L34_PRED_BROWNOUT_RATE_CTL, 0x10},
@@ -93,20 +92,17 @@ static const struct reg_default cs35l34_reg[] = {
 	{CS35L34_TDM_TX_CTL_4_VBSTMON, 0x07},
 	{CS35L34_TDM_TX_CTL_5_FLAG1, 0x08},
 	{CS35L34_TDM_TX_CTL_6_FLAG2, 0x09},
-	{CS35L34_TDM_TX_CTL_7_LBST, 0x0A},
-	{CS35L34_TDM_TX_CTL_8_NSNS, 0x0B},
 	{CS35L34_TDM_TX_SLOT_EN_1, 0x00},
 	{CS35L34_TDM_TX_SLOT_EN_2, 0x00},
 	{CS35L34_TDM_TX_SLOT_EN_3, 0x00},
 	{CS35L34_TDM_TX_SLOT_EN_4, 0x00},
 	{CS35L34_TDM_RX_CTL_1_AUDIN, 0x40},
-	{CS35L34_TDM_RX_CTL_2_SPLY, 0x03},
 	{CS35L34_TDM_RX_CTL_3_ALIVE, 0x04},
 	{CS35L34_MULT_DEV_SYNCH1, 0x00},
 	{CS35L34_MULT_DEV_SYNCH2, 0x80},
 	{CS35L34_PROT_RELEASE_CTL, 0x00},
 	{CS35L34_DIAG_MODE_REG_LOCK, 0x00},
-	{CS35L34_DIAG_MODE_CTL_1, 0x00},
+	{CS35L34_DIAG_MODE_CTL_1, 0x40},
 	{CS35L34_DIAG_MODE_CTL_2, 0x00},
 	{CS35L34_INT_MASK_1, 0xFF},
 	{CS35L34_INT_MASK_2, 0xFF},
@@ -117,7 +113,6 @@ static const struct reg_default cs35l34_reg[] = {
 	{CS35L34_INT_STATUS_3, 0x00},
 	{CS35L34_INT_STATUS_4, 0x00},
 	{CS35L34_OTP_TRIM_STATUS, 0x00},
-	{CS35L34_PAGE_UNLOCK, 0x00},
 };
 
 static bool cs35l34_volatile_register(struct device *dev, unsigned int reg)
@@ -132,6 +127,9 @@ static bool cs35l34_volatile_register(struct device *dev, unsigned int reg)
 	case CS35L34_INT_STATUS_2:
 	case CS35L34_INT_STATUS_3:
 	case CS35L34_INT_STATUS_4:
+	case CS35L34_CLASS_H_STATUS:
+	case CS35L34_VPBR_ATTEN_STATUS:
+	case CS35L34_OTP_TRIM_STATUS:
 		return true;
 	default:
 		return false;
@@ -169,7 +167,6 @@ static bool cs35l34_readable_register(struct device *dev, unsigned int reg)
 	case	CS35L34_CLASS_H_HEADRM_CTL:
 	case	CS35L34_CLASS_H_RELEASE_RATE:
 	case	CS35L34_CLASS_H_FET_DRIVE_CTL:
-	case	CS35L34_CLASS_H_VP_CH_CTL:
 	case	CS35L34_CLASS_H_STATUS:
 	case	CS35L34_VPBR_CTL:
 	case	CS35L34_VPBR_VOL_CTL:
@@ -192,14 +189,11 @@ static bool cs35l34_readable_register(struct device *dev, unsigned int reg)
 	case	CS35L34_TDM_TX_CTL_4_VBSTMON:
 	case	CS35L34_TDM_TX_CTL_5_FLAG1:
 	case	CS35L34_TDM_TX_CTL_6_FLAG2:
-	case	CS35L34_TDM_TX_CTL_7_LBST:
-	case	CS35L34_TDM_TX_CTL_8_NSNS:
 	case	CS35L34_TDM_TX_SLOT_EN_1:
 	case	CS35L34_TDM_TX_SLOT_EN_2:
 	case	CS35L34_TDM_TX_SLOT_EN_3:
 	case	CS35L34_TDM_TX_SLOT_EN_4:
 	case	CS35L34_TDM_RX_CTL_1_AUDIN:
-	case	CS35L34_TDM_RX_CTL_2_SPLY:
 	case	CS35L34_TDM_RX_CTL_3_ALIVE:
 	case	CS35L34_MULT_DEV_SYNCH1:
 	case	CS35L34_MULT_DEV_SYNCH2:
@@ -218,7 +212,6 @@ static bool cs35l34_readable_register(struct device *dev, unsigned int reg)
 	case	CS35L34_VA_INDEPEN_COEFF_1:
 	case	CS35L34_VA_INDEPEN_COEFF_2:
 	case	CS35L34_OTP_TRIM_STATUS:
-	case	CS35L34_PAGE_UNLOCK:
 		return true;
 	default:
 		return false;
@@ -487,33 +480,27 @@ static int cs35l34_codec_set_sysclk(struct snd_soc_dai *dai,
 
 	switch (freq) {
 	case CS35L34_MCLK_5644:
-		snd_soc_update_bits(codec, CS35L34_MCLK_CTL,
-				0x0F, 0x00);
+		snd_soc_write(codec, CS35L34_MCLK_CTL, 0x00);
 		cs35l34->mclk_int = freq;
 	break;
 	case CS35L34_MCLK_6:
-		snd_soc_update_bits(codec, CS35L34_MCLK_CTL,
-				0x0F, 0x01);
+		snd_soc_write(codec, CS35L34_MCLK_CTL, 0x1);
 		cs35l34->mclk_int = freq;
 	break;
 	case CS35L34_MCLK_6144:
-		snd_soc_update_bits(codec, CS35L34_MCLK_CTL,
-				0x0F, 0x02);
+		snd_soc_write(codec, CS35L34_MCLK_CTL, 0x2);
 		cs35l34->mclk_int = freq;
 	break;
 	case CS35L34_MCLK_11289:
-		snd_soc_update_bits(codec, CS35L34_MCLK_CTL,
-				0xFF, 0x10);
+		snd_soc_write(codec, CS35L34_MCLK_CTL, 0x10);
 		cs35l34->mclk_int = freq/2;
 	break;
 	case CS35L34_MCLK_12:
-		snd_soc_update_bits(codec, CS35L34_MCLK_CTL,
-				0xFF, 0x11);
+		snd_soc_write(codec, CS35L34_MCLK_CTL, 0x11);
 		cs35l34->mclk_int = freq/2;
 	break;
 	case CS35L34_MCLK_12288:
-		snd_soc_update_bits(codec, CS35L34_MCLK_CTL,
-				0xFF, 0x12);
+		snd_soc_write(codec, CS35L34_MCLK_CTL, 0x12);
 		cs35l34->mclk_int = freq/2;
 	break;
 	default:
