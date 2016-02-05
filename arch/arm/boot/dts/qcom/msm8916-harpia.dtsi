@@ -303,20 +303,6 @@
 		status = "ok";
 		compatible = "brcm,bcm2079x";
 		reg = <0x77>;
-		brcm,irq-gpio = <&msm_gpio 9 0x00>;
-		brcm,pwr-gpio = <&msm_gpio 36 0x00>;
-		brcm,wak-gpio = <&msm_gpio 8 0x00>;
-		interrupt-parent = <&msm_gpio>;
-		interrupts = <9 0>;
-		qcom,clk-gpio = <&pm8916_gpios 2 0>;
-		clocks = <&clock_rpm clk_bb_clk2_pin>;
-		clock-names = "ref_clk";
-	};
-	/* BCM 20795 NFC Controller */
-	bcm2079x@77 {
-		status = "ok";
-		compatible = "brcm,bcm2079x";
-		reg = <0x77>;
 		interrupt-parent = <&msm_gpio>;
 		interrupts = <9 0>; 		/* NFC_IRQ */
 		gpios = <&msm_gpio 8 0>, 	/* NFC_ENABLE_IN */
@@ -325,6 +311,10 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&nfc_irq_default &nfc_pwr_default &nfc_en_default>;
+
+		qcom,clk-gpio = <&pm8916_gpios 2 0>;
+		clocks = <&clock_rpm clk_bb_clk2_pin>;
+		clock-names = "ref_clk";
 	};
 };
 
