@@ -1833,6 +1833,8 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 		if (payload_size <= MIN_SIZ_ALLOW) {
 				pr_err("diag: Integer underflow in %s, payload size: %d",
 							__func__, payload_size);
+			diagmem_free(driver, buf_copy, POOL_TYPE_COPY);
+			buf_copy = NULL;
 			return -EBADMSG;
 		}
 		token_offset = 4;
@@ -2697,13 +2699,26 @@ static int __init diagchar_init(void)
 
 fail:
 	pr_err("diagchar is not initialized, ret: %d\n", ret);
-	diag_debugfs_cleanup();
-	diagchar_cleanup();
 	diagfwd_exit();
 	diagfwd_cntl_exit();
 	diag_dci_exit();
 	diag_masks_exit();
 	diagfwd_bridge_fn(EXIT);
+	diag_debugfs_cleanup();
+	diagchar_cleanup();
+
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
+	kfree(diag_smux);
+	diag_smux = NULL;
+	kfree(diag_hsic_dci);
+	diag_hsic_dci = NULL;
+	kfree(diag_hsic);
+	diag_hsic = NULL;
+	kfree(diag_bridge_dci);
+	diag_bridge_dci = NULL;
+	kfree(diag_bridge);
+	diag_bridge = NULL;
+#endif
 	return -1;
 }
 
@@ -2718,6 +2733,19 @@ static void diagchar_exit(void)
 	diagfwd_bridge_fn(EXIT);
 	diag_debugfs_cleanup();
 	diagchar_cleanup();
+
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
+	kfree(diag_smux);
+	diag_smux = NULL;
+	kfree(diag_hsic_dci);
+	diag_hsic_dci = NULL;
+	kfree(diag_hsic);
+	diag_hsic = NULL;
+	kfree(diag_bridge_dci);
+	diag_bridge_dci = NULL;
+	kfree(diag_bridge);
+	diag_bridge = NULL;
+#endif
 	printk(KERN_INFO "done diagchar exit\n");
 }
 
