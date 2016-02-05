@@ -781,6 +781,25 @@ static bool is_otg_present(struct smbchg_chip *chip)
 	return is_otg_present_schg(chip);
 }
 
+static bool is_wls_present(struct smbchg_chip *chip)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+
+	if (!chip->wls_psy.get_property)
+		return false;
+
+	rc = chip->wls_psy.get_property(&chip->wls_psy,
+					 POWER_SUPPLY_PROP_PRESENT,
+					 &ret);
+	if (rc < 0) {
+		SMB_ERR(chip, "Couldn't get wls status\n");
+		return false;
+	}
+
+	return ret.intval ? true : false;
+}
+
 #define USBIN_9V			BIT(5)
 #define USBIN_UNREG			BIT(4)
 #define USBIN_LV			BIT(3)
@@ -5058,7 +5077,6 @@ static int handle_dc_removal(struct smbchg_chip *chip)
 	if (chip->dc_psy_type != -EINVAL)
 		power_supply_set_online(&chip->dc_psy, chip->dc_present);
 
-	smbchg_relax(chip, PM_WIRELESS);
 	return 0;
 }
 
@@ -5067,7 +5085,6 @@ static int handle_dc_insertion(struct smbchg_chip *chip)
 	if (chip->dc_psy_type != -EINVAL)
 		power_supply_set_online(&chip->dc_psy,
 						chip->dc_present);
-	smbchg_stay_awake(chip, PM_WIRELESS);
 	return 0;
 }
 
@@ -8476,6 +8493,11 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		chip->eb_hotplug = true;
 		smbchg_set_extbat_state(chip, EB_OFF);
 	}
+
+	if (is_wls_present(chip))
+		smbchg_stay_awake(chip, PM_WIRELESS);
+	else
+		smbchg_relax(chip, PM_WIRELESS);
 
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_UPDATE_NOW, 1);
 	batt_mv = get_prop_batt_voltage_now(chip) / 1000;
