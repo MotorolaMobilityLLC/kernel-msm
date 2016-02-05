@@ -185,18 +185,20 @@ void *diagmem_alloc(struct diagchar_dev *driver, int size, int pool_type)
 		}
 		spin_lock_irqsave(&mempool->lock, flags);
 		if (mempool->count < mempool->poolsize) {
-			atomic_add(1, (atomic_t *)&mempool->count);
 			buf = mempool_alloc(mempool->pool, GFP_ATOMIC);
-			kmemleak_not_leak(buf);
-		}
-		spin_unlock_irqrestore(&mempool->lock, flags);
-		if (!buf) {
-			pr_debug_ratelimited("diag: Unable to allocate buffer from memory pool %s, size: %d/%d count: %d/%d\n",
+			if (!buf) {
+				pr_warn_ratelimited("diag: Unable to allocate buffer from memory pool %s, size: %d/%d count: %d/%d\n",
 					     mempool->name,
 					     size, mempool->itemsize,
 					     mempool->count,
 					     mempool->poolsize);
+				spin_unlock_irqrestore(&mempool->lock, flags);
+				break;
+			}
+			kmemleak_not_leak(buf);
+			atomic_add(1, (atomic_t *)&mempool->count);
 		}
+		spin_unlock_irqrestore(&mempool->lock, flags);
 		break;
 	}
 
