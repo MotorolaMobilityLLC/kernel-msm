@@ -359,7 +359,7 @@ bcm2079x_of_init(struct i2c_client *client)
 }
 #endif
 
-static int bcm2079x_clk_enable(struct device *dev)
+static void  bcm2079x_clk_enable(struct device *dev)
 {
 	int ret = -1;
 
@@ -367,20 +367,26 @@ static int bcm2079x_clk_enable(struct device *dev)
 	clk_rf = clk_get(dev, "ref_clk");
 	if (IS_ERR(clk_rf)) {
 		pr_err("nfc: failed to get nfc_clk\n");
-		return ret;
+		return;
 	}
-	pr_err("nfc: succeed in obtaining nfc_clk\n");
+	pr_info("nfc: succeed in obtaining nfc_clk from msm pmic\n");
 
 	ret = clk_prepare(clk_rf);
 	if (ret) {
-		pr_err("nfc: failed to call clk_prepare\n");
-		return ret;
+		pr_err("nfc: failed to call clk_prepare, ret = %d\n", ret);
+		return;
 	}
-	return ret;
+
+	return;
 }
 
 static void bcm2079x_clk_disable(void)
 {
+	if (IS_ERR(clk_rf)) {
+		pr_err("nfc: disable clock skiped\n");
+		return;
+	}
+
 	clk_unprepare(clk_rf);
 	clk_put(clk_rf);
 	clk_rf = NULL;
@@ -421,9 +427,7 @@ static int bcm2079x_probe(struct i2c_client *client,
 	gpio_set_value(platform_data->en_gpio, 0);
 	gpio_set_value(platform_data->wake_gpio, 0);
 
-	ret = bcm2079x_clk_enable(&client->dev);
-	if (ret)
-		goto err_firm;
+	bcm2079x_clk_enable(&client->dev);
 
 	bcm2079x_dev = kzalloc(sizeof(*bcm2079x_dev), GFP_KERNEL);
 	if (bcm2079x_dev == NULL) {
