@@ -2433,7 +2433,7 @@ static int arizona_hw_params(struct snd_pcm_substream *substream,
 		SND_SOC_DAIFMT_CBM_CFM |
 		SND_SOC_DAIFMT_NB_NF);
 
-	if (params_rate(params) % 8000)
+	if (params_rate(params) % 4000)
 		rates = &arizona_44k1_bclk_rates[0];
 	else
 		rates = &arizona_48k_bclk_rates[0];
