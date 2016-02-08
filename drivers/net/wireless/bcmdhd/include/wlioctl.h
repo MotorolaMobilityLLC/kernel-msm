@@ -3162,15 +3162,18 @@ typedef enum wl_pkt_filter_type {
 	WL_PKT_FILTER_TYPE_MAGIC_PATTERN_MATCH=1, /* Magic packet match */
 	WL_PKT_FILTER_TYPE_PATTERN_LIST_MATCH=2, /* A pattern list (match all to match filter) */
 	WL_PKT_FILTER_TYPE_ENCRYPTED_PATTERN_MATCH=3, /* SECURE WOWL magic / net pattern match */
+	WL_PKT_FILTER_TYPE_APF_MATCH=4, /* Android packet filter match */
 } wl_pkt_filter_type_t;
 
 #define WL_PKT_FILTER_TYPE wl_pkt_filter_type_t
 
 /* String mapping for types that may be used by applications or debug */
 #define WL_PKT_FILTER_TYPE_NAMES \
-	{ "PATTERN", WL_PKT_FILTER_TYPE_PATTERN_MATCH },       \
+	{ "PATTERN", WL_PKT_FILTER_TYPE_PATTERN_MATCH }, \
 	{ "MAGIC",   WL_PKT_FILTER_TYPE_MAGIC_PATTERN_MATCH }, \
-	{ "PATLIST", WL_PKT_FILTER_TYPE_PATTERN_LIST_MATCH }
+	{ "PATLIST", WL_PKT_FILTER_TYPE_PATTERN_LIST_MATCH }, \
+	{ "SECURE WOWL", WL_PKT_FILTER_TYPE_ENCRYPTED_PATTERN_MATCH }, \
+	{ "APF", WL_PKT_FILTER_TYPE_APF_MATCH }
 
 /* Secured WOWL packet was encrypted, need decrypted before check filter match */
 typedef struct wl_pkt_decrypter {
@@ -3210,6 +3213,13 @@ typedef struct wl_pkt_filter_pattern_list {
 	wl_pkt_filter_pattern_listel_t patterns[1]; /* Variable number of list elements */
 } wl_pkt_filter_pattern_list_t;
 
+typedef struct wl_apf_program {
+	uint16 version;
+	uint16 instr_len;	/* number of instruction blocks */
+	uint32 inst_ts;		/* program installation timestamp */
+	uint8 instrs[1];	/* variable length instructions */
+} wl_apf_program_t;
+
 /* IOVAR "pkt_filter_add" parameter. Used to install packet filters. */
 typedef struct wl_pkt_filter {
 	uint32	id;		/* Unique filter id, specified by app. */
@@ -3218,6 +3228,7 @@ typedef struct wl_pkt_filter {
 	union {			/* Filter definitions */
 		wl_pkt_filter_pattern_t pattern;	/* Pattern matching filter */
 		wl_pkt_filter_pattern_list_t patlist; /* List of patterns to match */
+		wl_apf_program_t apf_program; /* apf program */
 	} u;
 } wl_pkt_filter_t;
 
@@ -3232,6 +3243,13 @@ typedef struct wl_tcp_keep_set {
 #define WL_PKT_FILTER_PATTERN_LIST_FIXED_LEN OFFSETOF(wl_pkt_filter_pattern_list_t, patterns)
 #define WL_PKT_FILTER_PATTERN_LISTEL_FIXED_LEN	\
 			OFFSETOF(wl_pkt_filter_pattern_listel_t, mask_and_data)
+
+#define WL_APF_INTERNAL_VERSION 1
+#define WL_APF_PROGRAM_FIXED_LEN OFFSETOF(wl_apf_program_t, instrs)
+#define WL_APF_PROGRAM_LEN(apf_program) \
+	(apf_program->instr_len * sizeof(apf_program->instrs[0]))
+#define WL_APF_PROGRAM_TOTAL_LEN(apf_program) \
+	(WL_APF_PROGRAM_FIXED_LEN + WL_APF_PROGRAM_LEN(apf_program))
 
 /* IOVAR "pkt_filter_enable" parameter. */
 typedef struct wl_pkt_filter_enable {

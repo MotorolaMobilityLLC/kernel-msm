@@ -2409,6 +2409,105 @@ static int wl_cfgvendor_stop_mkeep_alive(struct wiphy *wiphy, struct wireless_de
 }
 #endif /* defined(KEEP_ALIVE) */
 
+#if defined(PKT_FILTER_SUPPORT) && defined(APF)
+static int
+wl_cfgvendor_apf_get_capabilities(struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void *data, int len)
+{
+	struct net_device *ndev = wdev_to_ndev(wdev);
+	struct sk_buff *skb;
+	int ret, ver, max_len, mem_needed;
+
+	/* APF version */
+	ver = 0;
+	ret = dhd_dev_apf_get_version(ndev, &ver);
+	if (unlikely(ret)) {
+		WL_ERR(("APF get version failed, ret=%d\n", ret));
+		return ret;
+	}
+
+	/* APF memory size limit */
+	max_len = 0;
+	ret = dhd_dev_apf_get_max_len(ndev, &max_len);
+	if (unlikely(ret)) {
+		WL_ERR(("APF get maximum length failed, ret=%d\n", ret));
+		return ret;
+	}
+
+	mem_needed = VENDOR_REPLY_OVERHEAD + (ATTRIBUTE_U32_LEN * 2);
+
+	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, mem_needed);
+	if (unlikely(!skb)) {
+		WL_ERR(("%s: can't allocate %d bytes\n", __FUNCTION__, mem_needed));
+		return -ENOMEM;
+	}
+
+	nla_put_u32(skb, APF_ATTRIBUTE_VERSION, ver);
+	nla_put_u32(skb, APF_ATTRIBUTE_MAX_LEN, max_len);
+
+	ret = cfg80211_vendor_cmd_reply(skb);
+	if (unlikely(ret)) {
+		WL_ERR(("vendor command reply failed, ret=%d\n", ret));
+	}
+
+	return ret;
+}
+
+static int
+wl_cfgvendor_apf_set_filter(struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void  *data, int len)
+{
+	struct net_device *ndev = wdev_to_ndev(wdev);
+	const struct nlattr *iter;
+	u8 *program = NULL;
+	u32 program_len = 0;
+	int ret, tmp, type;
+	gfp_t kflags;
+
+	/* assumption: length attribute must come first */
+	nla_for_each_attr(iter, data, len, tmp) {
+		type = nla_type(iter);
+		switch (type) {
+			case APF_ATTRIBUTE_PROGRAM_LEN:
+				program_len = nla_get_u32(iter);
+				if (unlikely(!program_len)) {
+					WL_ERR(("zero program length\n"));
+					ret = -EINVAL;
+					goto exit;
+				}
+				break;
+			case APF_ATTRIBUTE_PROGRAM:
+				if (unlikely(!program_len)) {
+					WL_ERR(("program len is not set\n"));
+					ret = -EINVAL;
+					goto exit;
+				}
+				kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
+				program = kzalloc(program_len, kflags);
+				if (unlikely(!program)) {
+					WL_ERR(("%s: can't allocate %d bytes\n",
+					      __FUNCTION__, program_len));
+					ret = -ENOMEM;
+					goto exit;
+				}
+				memcpy(program, (u8*)nla_data(iter), program_len);
+				break;
+			default:
+				WL_ERR(("%s: no such attribute %d\n", __FUNCTION__, type));
+				ret = -EINVAL;
+				goto exit;
+		}
+	}
+
+	ret = dhd_dev_apf_add_filter(ndev, program, program_len);
+
+exit:
+	if (program) {
+		kfree(program);
+	}
+	return ret;
+}
+#endif /* PKT_FILTER_SUPPORT && APF */
 
 static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 	{
@@ -2741,6 +2840,24 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		.doit = wl_cfgvendor_stop_mkeep_alive
 	},
 #endif /* KEEP_ALIVE */
+#if defined(PKT_FILTER_SUPPORT) && defined(APF)
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = APF_SUBCMD_GET_CAPABILITIES
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_apf_get_capabilities
+	},
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = APF_SUBCMD_SET_FILTER
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_apf_set_filter
+	},
+#endif /* PKT_FILTER_SUPPORT && APF */
 	{
 		{
 			.vendor_id = OUI_GOOGLE,

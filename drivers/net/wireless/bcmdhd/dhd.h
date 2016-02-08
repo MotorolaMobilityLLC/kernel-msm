@@ -425,6 +425,9 @@ typedef struct dhd_pub {
 #ifdef GSCAN_SUPPORT
 	bool lazy_roam_enable;
 #endif /* GSCAN_SUPPORT */
+#if defined(PKT_FILTER_SUPPORT) && defined(APF)
+	bool apf_set;
+#endif /* PKT_FILTER_SUPPORT && APF */
 	uint8 *soc_ram;
 	uint32 soc_ram_length;
 	uint32 memdump_enabled;
@@ -807,6 +810,27 @@ extern int dhd_dev_start_mkeep_alive(dhd_pub_t *dhd_pub, u8 mkeep_alive_id, u8 *
 	u16 ip_pkt_len, u8* src_mac_addr, u8* dst_mac_addr, u32 period_msec);
 extern int dhd_dev_stop_mkeep_alive(dhd_pub_t *dhd_pub, u8 mkeep_alive_id);
 #endif /* defined(KEEP_ALIVE) */
+
+#if defined(PKT_FILTER_SUPPORT) && defined(APF)
+/*
+ * As per Google's current implementation, there will be only one APF filter.
+ * Therefore, userspace doesn't bother about filter id and because of that
+ * DHD has to manage the filter id.
+ */
+#define PKT_FILTER_APF_ID		200
+#define DHD_APF_LOCK(ndev)		dhd_apf_lock(ndev)
+#define DHD_APF_UNLOCK(ndev)	dhd_apf_unlock(ndev)
+
+extern void dhd_apf_lock(struct net_device *dev);
+extern void dhd_apf_unlock(struct net_device *dev);
+extern int dhd_dev_apf_get_version(struct net_device *ndev, uint32 *version);
+extern int dhd_dev_apf_get_max_len(struct net_device *ndev, uint32 *max_len);
+extern int dhd_dev_apf_add_filter(struct net_device *ndev, u8* program,
+	uint32 program_len);
+extern int dhd_dev_apf_enable_filter(struct net_device *ndev);
+extern int dhd_dev_apf_disable_filter(struct net_device *ndev);
+extern int dhd_dev_apf_delete_filter(struct net_device *ndev);
+#endif /* PKT_FILTER_SUPPORT && APF */
 
 extern void dhd_timeout_start(dhd_timeout_t *tmo, uint usec);
 extern int dhd_timeout_expired(dhd_timeout_t *tmo);
