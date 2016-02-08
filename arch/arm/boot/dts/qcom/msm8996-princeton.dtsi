@@ -430,7 +430,7 @@
 
 	gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
 		<&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
-		<&tlmm 34 1>,   /* gpio_muc_int_n,    input */
+		<&tlmm 26 1>,   /* gpio_muc_int_n,    input */
 		<&tlmm 74 2>,   /* gpio_muc_wake_n,   output-high */
 		<&tlmm 82 1>,   /* gpio_muc_rdy_n,    input */
 		<0>;            /* gpio_muc_ff,       not used */
@@ -451,6 +451,13 @@
 				<0 0 20>;
 
 	mmi,muc-det-pin-reconfig;
+};
+
+&muc_spi_ctrl {
+	config {
+		pins = "gpio26", "gpio74", "gpio82";
+		bias-disable;
+	};
 };
 
 &muc_attach {
