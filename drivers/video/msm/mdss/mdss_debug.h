@@ -101,6 +101,7 @@ struct mdss_debug_base {
 	size_t max_offset;
 	char *buf;
 	size_t buf_len;
+	phys_addr_t regs_phys;
 	u32 *reg_dump; /* address for the mem dump if no ranges used */
 };
 
@@ -120,6 +121,7 @@ struct dump_offset {
 struct range_dump_node {
 	struct list_head head; /* head of this node */
 	u32 *reg_dump; /* address for the mem dump */
+	phys_addr_t regs_phys;
 	char range_name[40]; /* name of this range */
 	struct dump_offset offset; /* range to dump */
 };
