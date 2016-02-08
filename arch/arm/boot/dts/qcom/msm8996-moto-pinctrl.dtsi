@@ -321,7 +321,7 @@
 
 	muc_spi_ctrl: muc_spi_ctrl@0 {
 		config {
-			pins = "gpio26", "gpio74", "gpio82";
+			pins = "gpio34", "gpio74", "gpio82";
 			bias-disable;
 		};
 	};
