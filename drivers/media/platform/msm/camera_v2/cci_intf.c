@@ -213,13 +213,13 @@ static int __init cci_intf_init(void)
 		return rc;
 	}
 
-	msm_cci_intf_v4l2_subdev_fops = v4l2_subdev_fops;
 #ifdef CONFIG_COMPAT
+	msm_cci_intf_v4l2_subdev_fops = v4l2_subdev_fops;
 	msm_cci_intf_v4l2_subdev_fops.compat_ioctl32 =
 		msm_cci_intf_subdev_fops_ioctl;
-#endif
 	fctrl.msm_sd.sd.devnode->fops =
 		&msm_cci_intf_v4l2_subdev_fops;
+#endif
 	return 0;
 }
 
