@@ -328,6 +328,10 @@ void esdfs_derive_perms(struct dentry *dentry)
 					"obb",
 					dentry->d_name.len))
 			inode_i->tree = ESDFS_TREE_ANDROID_OBB;
+		else if (!strncasecmp(dentry->d_name.name,
+					"media",
+					dentry->d_name.len))
+			inode_i->tree = ESDFS_TREE_ANDROID_MEDIA;
 		else if (ESDFS_RESTRICT_PERMS(ESDFS_SB(dentry->d_sb)) &&
 			 !strncasecmp(dentry->d_name.name,
 					"user",
@@ -337,6 +341,7 @@ void esdfs_derive_perms(struct dentry *dentry)
 
 	case ESDFS_TREE_ANDROID_DATA:
 	case ESDFS_TREE_ANDROID_OBB:
+	case ESDFS_TREE_ANDROID_MEDIA:
 		hash = full_name_hash(dentry->d_name.name, dentry->d_name.len);
 		mutex_lock(&package_list_lock);
 		hash_for_each_possible(package_list_hash, package,
@@ -410,6 +415,7 @@ void esdfs_set_derived_perms(struct inode *inode)
 	case ESDFS_TREE_ANDROID:
 	case ESDFS_TREE_ANDROID_DATA:
 	case ESDFS_TREE_ANDROID_OBB:
+	case ESDFS_TREE_ANDROID_MEDIA:
 		if (ESDFS_RESTRICT_PERMS(sbi))
 			inode->i_mode |= 0771;
 		break;
@@ -579,6 +585,7 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 	     (ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID &&
 	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_DATA &&
 	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_OBB &&
+	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_MEDIA &&
 	      ESDFS_I(inode)->tree != ESDFS_TREE_ANDROID_APP &&
 	      (ESDFS_I(inode)->tree != ESDFS_TREE_ROOT ||
 	       !(mask & ESDFS_MAY_CREATE)))))
