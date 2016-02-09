@@ -41,5 +41,63 @@
 			};
 		};
 	};
+
+	touch_reset_n {
+		/*label = "touch-reset";*/
+
+		touch_reset_default: default {
+			mux {
+				pins = "gpio64";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio64";
+				output-low;
+			};
+		};
+
+		touch_reset_active: active {
+			mux {
+				pins = "gpio64";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio64";
+				drive-strength = <2>;   /* 2 mA */
+				bias-pull-up; /* pull-up */
+			};
+		};
+	};
+
+	touch_int_n {
+		/*label = "touch-int";*/
+
+		touch_int_default: default {
+			mux {
+				pins = "gpio65";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio65";
+				bias-disable;
+			};
+		};
+
+		touch_int_active: active {
+			mux {
+				pins = "gpio65";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio65";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+			};
+		};
+	};
 };
 
