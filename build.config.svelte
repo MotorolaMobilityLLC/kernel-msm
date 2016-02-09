@@ -1,0 +1,17 @@
+ARCH=arm
+BRANCH=android-msm-seed-3.10
+CROSS_COMPILE=arm-eabi-
+DEFCONFIG=msm8916-svelte-perf_defconfig
+EXTRA_CMDS=''
+KERNEL_DIR=private/msm-seed
+LINUX_GCC_CROSS_COMPILE_PREBUILTS_BIN=prebuilts/gcc/linux-x86/arm/arm-eabi-4.8/bin
+FILES="
+arch/arm/boot/zImage-dtb
+System.map
+vmlinux
+"
+ODM_DIRS="
+longcheer/l8150
+"
+IN_KERNEL_MODULES=y
+OUT_KERNEL_DIR=device/qcom/seed-kernel
