@@ -1,4 +1,4 @@
- /* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ /* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1778,7 +1778,7 @@ static struct snd_soc_dai_link msm8x16_9326_dai[] = {
 	{ /* FrontEnd DAI Link, CPE Service */
 		.name = "CPE Listen service",
 		.stream_name = "CPE Listen Audio Service",
-		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.cpu_dai_name = "CPE_LSM_NOHOST",
 		.platform_name = "msm-cpe-lsm",
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			SND_SOC_DPCM_TRIGGER_POST},
@@ -1787,7 +1787,6 @@ static struct snd_soc_dai_link msm8x16_9326_dai[] = {
 		.ignore_pmdown_time = 1,
 		.codec_dai_name = "tasha_mad1",
 		.codec_name = "tasha_codec",
-		.ops = &msm8x16_quat_mi2s_be_ops,
 	},
 };
 
