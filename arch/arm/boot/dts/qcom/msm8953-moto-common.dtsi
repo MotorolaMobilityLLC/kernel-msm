@@ -59,30 +59,28 @@
 		dmas = <&dma_blsp1 6 64 0x20000020 0x20>,
 			<&dma_blsp1 7 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
-		synaptics@20 {
-			compatible = "synaptics,dsx";
+		synaptics_dsx_i2c@20 {
+			compatible = "synaptics,synaptics_dsx_i2c";
 			reg = <0x20>;
 			interrupt-parent = <&tlmm>;
 			interrupts = <65 0x2008>;
-			vdd-supply = <&pmtitanium_l6>;
-			clock-names = "iface_clk", "core_clk";
-			clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
-				<&clock_gcc clk_gcc_blsp1_qup3_i2c_apps_clk>;
-			/* pins used by touchscreen */
-			pinctrl-names = "pmx_ts_active","pmx_ts_suspend",
-							"pmx_ts_release";
-			pinctrl-0 = <&ts_int_active &ts_reset_active>;
-			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
-			pinctrl-2 = <&ts_release>;
-			synaptics,irq-gpio = <&tlmm 65 0x2008>;
-			synaptics,reset-gpio = <&tlmm 64 0x0>;
-			synaptics,i2c-pull-up;
-			synaptics,power-down;
-			synaptics,disable-gpios;
-			synaptics,bypass-packrat-id-check;
-			synaptics,display-coords = <0 0 1079 1919>;
-			synaptics,panel-coords = <0 0 1079 2084>;
+			gpios = <&tlmm 65 0x2008>, /* IRQ */
+				<&tlmm 64 0>; /* RESET */
+			synaptics,gpio-config;
+			pinctrl-names = "default", "active";
+			pinctrl-0 = <&touch_reset_active &touch_int_default>;
+			pinctrl-1 = <&touch_reset_active &touch_int_active>;
+			touchstate_modes {
+				touchmode-default = <&default_active_syna &default_suspended_syna>;
+			};
+			default_active_syna: touchstate_default_active {
+				patch-data = "";
+			};
+			default_suspended_syna: touchstate_aod_suspended {
+				patch-data = "F1@0=1&7";
+			};
 		};
+
 	};
 };
 
