@@ -2193,6 +2193,7 @@ static int dwc3_gadget_start(struct usb_gadget *g,
 	}
 
 	dwc->irq = irq;
+	disable_irq(dwc->irq);
 	g->interrupt_num = dwc->irq;
 	spin_lock_irqsave(&dwc->lock, flags);
 
