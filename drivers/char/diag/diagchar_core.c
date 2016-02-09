@@ -1438,6 +1438,14 @@ static ssize_t diagchar_read(struct file *file, char __user *buf, size_t count,
 
 	mutex_lock(&driver->diagchar_mutex);
 
+	if (driver->data_ready[index] & DEINIT_TYPE) {
+		/*Copy the type of data being passed*/
+		data_type = driver->data_ready[index] & DEINIT_TYPE;
+		COPY_USER_SPACE_OR_EXIT(buf, data_type, 4);
+		driver->data_ready[index] ^= DEINIT_TYPE;
+		goto exit;
+	}
+
 	if ((driver->data_ready[index] & USER_SPACE_DATA_TYPE) && (driver->
 					logging_mode == MEMORY_DEVICE_MODE)) {
 		remote_token = 0;
@@ -1584,14 +1592,6 @@ drop:
 		/* In case, the thread wakes up and the logging mode is
 		not memory device any more, the condition needs to be cleared */
 		driver->data_ready[index] ^= USER_SPACE_DATA_TYPE;
-	}
-
-	if (driver->data_ready[index] & DEINIT_TYPE) {
-		/*Copy the type of data being passed*/
-		data_type = driver->data_ready[index] & DEINIT_TYPE;
-		COPY_USER_SPACE_OR_EXIT(buf, data_type, 4);
-		driver->data_ready[index] ^= DEINIT_TYPE;
-		goto exit;
 	}
 
 	if (driver->data_ready[index] & MSG_MASKS_TYPE) {
