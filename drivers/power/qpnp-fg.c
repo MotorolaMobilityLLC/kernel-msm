@@ -222,6 +222,7 @@ enum fg_mem_data_index {
 	FG_DATA_CC_CHARGE,
 	FG_DATA_VINT_ERR,
 	FG_DATA_CPRED_VOLTAGE,
+	FG_DATA_CC_COUNTER,
 	/* values below this only gets read once per profile reload */
 	FG_DATA_BATT_ID,
 	FG_DATA_BATT_ID_INFO,
@@ -274,6 +275,7 @@ static struct fg_mem_data fg_data[FG_DATA_MAX] = {
 	DATA(CC_CHARGE,       0x570,   0,      4,     -EINVAL),
 	DATA(VINT_ERR,        0x560,   0,      4,     -EINVAL),
 	DATA(CPRED_VOLTAGE,   0x540,   0,      2,     -EINVAL),
+	DATA(CC_COUNTER,      0x5BC,   3,      4,     -EINVAL),
 	DATA(BATT_ID,         0x594,   1,      1,     -EINVAL),
 	DATA(BATT_ID_INFO,    0x594,   3,      1,     -EINVAL),
 };
@@ -2536,6 +2538,39 @@ static int64_t twos_compliment_extend(int64_t val, int nbytes)
 	return val;
 }
 
+#define CC_SOC_MAGNITUDE_MASK	0x1FFFFFFF
+#define CC_SOC_NEGATIVE_BIT	BIT(29)
+#define FULL_PERCENT_28BIT	0xFFFFFFF
+#define FULL_RESOLUTION		1000000
+static int fg_get_cc_uah(struct fg_chip *chip, u8 *reg, int64_t *cc_uah)
+{
+	int rc = -EINVAL;
+	int64_t cc_pc_val, cc_soc_pc;
+	unsigned int temp, magnitude;
+
+	if (!reg)
+		goto fail;
+
+	temp = reg[3] << 24 | reg[2] << 16 | reg[1] << 8 | reg[0];
+	magnitude = temp & CC_SOC_MAGNITUDE_MASK;
+	if (temp & CC_SOC_NEGATIVE_BIT)
+		cc_pc_val = -1 * (~magnitude + 1);
+	else
+		cc_pc_val = magnitude;
+
+
+	cc_soc_pc = div64_s64(cc_pc_val * 100 * FULL_RESOLUTION,
+			      FULL_PERCENT_28BIT);
+
+	*cc_uah = div64_s64(chip->nom_cap_uah * cc_soc_pc,
+			    100 * FULL_RESOLUTION);
+
+	return 0;
+
+fail:
+	return rc;
+}
+
 #define LSB_24B_NUMRTR		596046
 #define LSB_24B_DENMTR		1000000
 #define LSB_16B_NUMRTR		152587
@@ -2544,7 +2579,6 @@ static int64_t twos_compliment_extend(int64_t val, int nbytes)
 #define TEMP_LSB_16B	625
 #define DECIKELVIN	2730
 #define SRAM_PERIOD_NO_ID_UPDATE_MS	100
-#define FULL_PERCENT_28BIT		0xFFFFFFF
 static int update_sram_data(struct fg_chip *chip, int *resched_ms)
 {
 	int i, j, rc = 0;
@@ -2613,6 +2647,13 @@ static int update_sram_data(struct fg_chip *chip, int *resched_ms)
 			temp = twos_compliment_extend(temp, fg_data[i].len);
 			fg_data[i].value = div64_s64(temp * chip->nom_cap_uah,
 					FULL_PERCENT_3B);
+			break;
+		case FG_DATA_CC_COUNTER:
+			if (chip->wa_flag & USE_CC_SOC_REG) {
+				fg_get_cc_uah(chip, &reg[0], &temp);
+				fg_data[i].value = temp;
+			} else
+				fg_data[i].value = 0;
 			break;
 		};
 
@@ -4553,6 +4594,7 @@ static enum power_supply_property fg_power_props[] = {
 	POWER_SUPPLY_PROP_CHARGE_NOW,
 	POWER_SUPPLY_PROP_CHARGE_NOW_RAW,
 	POWER_SUPPLY_PROP_CHARGE_NOW_ERROR,
+	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_TEMP,
@@ -4643,6 +4685,9 @@ static int fg_power_get_property(struct power_supply *psy,
 			val->intval = (int)vbatt_low_sts;
 		else
 			val->intval = 1;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
+		val->intval = get_sram_prop_now(chip, FG_DATA_CC_COUNTER);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		val->intval = chip->nom_cap_uah;
