@@ -35,8 +35,10 @@
 };
 
 &soc{
+	/delete-node/ spi@78b7000;
 
 	i2c_3: i2c@78b7000 { /* BLSP1 QUP3 */
+		status = "okay";
 		compatible = "qcom,i2c-msm-v2";
 		#address-cells = <1>;
 		#size-cells = <0>;
