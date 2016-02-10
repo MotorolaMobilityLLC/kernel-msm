@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -78,7 +78,10 @@
 #define BLACKLIST_OUI_TYPE   "\x00\x50\x00\x00"
 #define WHITELIST_OUI_TYPE   "\x00\x50\x00\x01"
 #define WPA_OUI_TYPE_SIZE  4
+#define WMM_OUI_TYPE   "\x00\x50\xf2\x02\x01"
+#define WMM_OUI_TYPE_SIZE  5
 
+#define WLAN_BSS_MEMBERSHIP_SELECTOR_VHT_PHY 126
 #define WLAN_BSS_MEMBERSHIP_SELECTOR_HT_PHY 127
 #define BASIC_RATE_MASK   0x80
 #define RATE_MASK         0x7f
@@ -99,6 +102,12 @@
 #define TDLS_MGMT_VERSION2 0
 #endif
 #endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)) \
+            || defined(BACKPORTED_CHANNEL_SWITCH_PRESENT)
+#define CHANNEL_SWITCH_SUPPORTED
+#endif
+
 
 #define MAX_CHANNEL (MAX_2_4GHZ_CHANNEL + NUM_5GHZ_CHANNELS)
 
@@ -187,7 +196,7 @@ enum qca_nl80211_vendor_subcmds {
 
     QCA_NL80211_VENDOR_SUBCMD_APFIND = 52,
 
-    /* OCB Set Schedule */
+    /* Deprecated */
     QCA_NL80211_VENDOR_SUBCMD_OCB_SET_SCHED = 53,
 
     QCA_NL80211_VENDOR_SUBCMD_DO_ACS = 54,
@@ -230,7 +239,21 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_OFFLOADED_PACKETS = 79,
     QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI = 80,
 
-    QCA_NL80211_VENDOR_SUBCMD_SETBAND = 105,
+
+	/* OCB commands */
+	QCA_NL80211_VENDOR_SUBCMD_OCB_SET_CONFIG = 92,
+	QCA_NL80211_VENDOR_SUBCMD_OCB_SET_UTC_TIME = 93,
+	QCA_NL80211_VENDOR_SUBCMD_OCB_START_TIMING_ADVERT = 94,
+	QCA_NL80211_VENDOR_SUBCMD_OCB_STOP_TIMING_ADVERT = 95,
+	QCA_NL80211_VENDOR_SUBCMD_OCB_GET_TSF_TIMER = 96,
+	QCA_NL80211_VENDOR_SUBCMD_DCC_GET_STATS = 97,
+	QCA_NL80211_VENDOR_SUBCMD_DCC_CLEAR_STATS = 98,
+	QCA_NL80211_VENDOR_SUBCMD_DCC_UPDATE_NDL = 99,
+	QCA_NL80211_VENDOR_SUBCMD_DCC_STATS_EVENT = 100,
+
+	/* subcommand to get link properties */
+	QCA_NL80211_VENDOR_SUBCMD_LINK_PROPERTIES = 101,
+	QCA_NL80211_VENDOR_SUBCMD_SETBAND = 105,
 };
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -272,7 +295,6 @@ enum qca_nl80211_vendor_subcmds_index {
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
     /* EXT TDLS */
     QCA_NL80211_VENDOR_SUBCMD_TDLS_STATE_CHANGE_INDEX,
-
     /* ACS OBSS Coex*/
     QCA_NL80211_VENDOR_SUBCMD_DO_ACS_INDEX,
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
@@ -296,6 +318,8 @@ enum qca_nl80211_vendor_subcmds_index {
     QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_HOTLIST_SSID_FOUND_INDEX,
     QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_HOTLIST_SSID_LOST_INDEX,
 #endif
+	/* OCB events */
+	QCA_NL80211_VENDOR_SUBCMD_DCC_STATS_EVENT_INDEX,
 #ifdef WLAN_FEATURE_MEMDUMP
     QCA_NL80211_VENDOR_SUBCMD_WIFI_LOGGER_MEMORY_DUMP_INDEX,
 #endif /* WLAN_FEATURE_MEMDUMP */
@@ -335,6 +359,8 @@ enum qca_wlan_vendor_attr_tdls_get_status {
     /* signed 32-bit value, but lets keep as unsigned for now */
     QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_STATE,
     QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_REASON,
+    QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_CHANNEL,
+    QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_GLOBAL_OPERATING_CLASS,
     /* keep last */
     QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_AFTER_LAST,
     QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_MAX =
@@ -348,6 +374,8 @@ enum qca_wlan_vendor_attr_tdls_state {
     /* signed 32-bit value, but lets keep as unsigned for now */
     QCA_WLAN_VENDOR_ATTR_TDLS_NEW_STATE,
     QCA_WLAN_VENDOR_ATTR_TDLS_STATE_REASON,
+    QCA_WLAN_VENDOR_ATTR_TDLS_STATE_CHANNEL,
+    QCA_WLAN_VENDOR_ATTR_TDLS_STATE_GLOBAL_OPERATING_CLASS,
     /* keep last */
     QCA_WLAN_VENDOR_ATTR_TDLS_STATE_AFTER_LAST,
     QCA_WLAN_VENDOR_ATTR_TDLS_STATE_MAX =
@@ -375,6 +403,12 @@ enum qca_wlan_vendor_attr {
     /* used by QCA_NL80211_VENDOR_SUBCMD_STATS_EXT */
     QCA_WLAN_VENDOR_ATTR_STATS_EXT = 3,
     QCA_WLAN_VENDOR_ATTR_IFINDEX = 4,
+
+    /* used by QCA_NL80211_VENDOR_SUBCMD_LINK_PROPERTIES */
+    QCA_WLAN_VENDOR_ATTR_MAC_ADDR = 6,
+
+    /* used by QCA_NL80211_VENDOR_SUBCMD_GET_FEATURES */
+    QCA_WLAN_VENDOR_ATTR_FEATURE_FLAGS = 7,
 
     /* Unsigned 32-bit value from enum qca_set_band */
     QCA_WLAN_VENDOR_ATTR_SETBAND_VALUE = 12,
@@ -1092,6 +1126,30 @@ enum qca_wlan_vendor_attr_set_no_dfs_flag
     QCA_WLAN_VENDOR_ATTR_SET_NO_DFS_FLAG_AFTER_LAST - 1,
 };
 
+/**
+ * enum qca_wlan_vendor_attr_roam_auth - vendor event for roaming
+ * @QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_BSSID: BSSID of the roamed AP
+ * @QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_REQ_IE: Request IE
+ * @QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_RESP_IE: Response IE
+ * @QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_AUTHORIZED: Authorization Status
+ * @QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_KEY_REPLAY_CTR: Replay Counter
+ * @QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PTK_KCK: KCK of the PTK
+ * @QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PTK_KEK: KEK of the PTK
+ */
+enum qca_wlan_vendor_attr_roam_auth {
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_BSSID,
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_REQ_IE,
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_RESP_IE,
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_AUTHORIZED,
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_KEY_REPLAY_CTR,
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PTK_KCK,
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_PTK_KEK,
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_MAX =
+		QCA_WLAN_VENDOR_ATTR_ROAM_AUTH_AFTER_LAST - 1
+};
+
 /* NL attributes for data used by
  * QCA_NL80211_VENDOR_SUBCMD_GET_CONCURRENCY_MATRIX sub command.
  */
@@ -1111,40 +1169,9 @@ enum qca_wlan_vendor_attr_get_concurrency_matrix {
         QCA_WLAN_VENDOR_ATTR_GET_CONCURRENCY_MATRIX_AFTER_LAST - 1,
 };
 
-/* OCB Commands */
-enum qca_wlan_vendor_attr_ocb_set_sched
-{
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_INVALID = 0,
-
-    /* Number of channels in schedule */
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_NUM_CHANS,
-
-    /* Attribute for nested array of channel attributes */
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN,
-
-    /* Attributes for each channel */
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_IDX,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_FREQ,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_TX_PWR,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_TX_RATE,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_DUR,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_START_GUARD_INT,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_END_GUARD_INT,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_NUM_QOS,
-
-    /* Attribute for nested array of QoS params*/
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_QOS_PARAM,
-
-    /* Attributes for each QoS Access Category */
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_QOS_PARAM_AC,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_QOS_PARAM_AIFSN,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_QOS_PARAM_CWMIN,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_CHAN_QOS_PARAM_CWMAX,
-
-    /* keep last */
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_AFTER_LAST,
-    QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_MAX =
-        QCA_WLAN_VENDOR_ATTR_OCB_SET_SCHED_AFTER_LAST - 1,
+enum qca_wlan_epno_type {
+	QCA_WLAN_EPNO,
+	QCA_WLAN_PNO
 };
 
 enum qca_wlan_vendor_attr_pno_config_params {
@@ -1196,6 +1223,11 @@ enum qca_wlan_vendor_attr_pno_config_params {
 	QCA_WLAN_VENDOR_ATTR_PNO_SET_LIST_PARAM_EPNO_NETWORK_FLAGS = 11,
 	/* Unsigned 8-bit value; auth bit field for matching WPA IE */
 	QCA_WLAN_VENDOR_ATTR_PNO_SET_LIST_PARAM_EPNO_NETWORK_AUTH_BIT = 12,
+
+	/* Unsigned 8-bit to indicate ePNO type;
+	 * It takes values from qca_wlan_epno_type
+	 */
+	QCA_WLAN_VENDOR_ATTR_PNO_SET_LIST_PARAM_EPNO_TYPE = 13,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_PNO_AFTER_LAST,
@@ -1297,6 +1329,24 @@ enum qca_wlan_vendor_attr_get_logger_features {
 		QCA_WLAN_VENDOR_ATTR_LOGGER_AFTER_LAST - 1,
 };
 
+/* NL attributes for data used by
+ * QCA_NL80211_VENDOR_SUBCMD_LINK_PROPERTIES.
+ */
+enum qca_wlan_vendor_attr_link_properties {
+	QCA_WLAN_VENDOR_ATTR_LINK_PROPERTIES_INVALID    = 0,
+	/* Unsigned 8bit value for specifying nof spatial streams */
+	QCA_WLAN_VENDOR_ATTR_LINK_PROPERTIES_NSS        = 1,
+	/* Unsigned 8bit value for the rate flags */
+	QCA_WLAN_VENDOR_ATTR_LINK_PROPERTIES_RATE_FLAGS = 2,
+	/* Unsigned 32bit value for operating frequency */
+	QCA_WLAN_VENDOR_ATTR_LINK_PROPERTIES_FREQ       = 3,
+
+	/* KEEP LAST */
+	QCA_WLAN_VENDOR_ATTR_LINK_PROPERTIES_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_LINK_PROPERTIES_MAX =
+		QCA_WLAN_VENDOR_ATTR_LINK_PROPERTIES_AFTER_LAST - 1,
+};
+
 /**
  * enum qca_wlan_vendor_features - vendor device/driver features
  * @QCA_WLAN_VENDOR_FEATURE_KEY_MGMT_OFFLOAD: Device supports key
@@ -1375,6 +1425,31 @@ typedef struct sHddAvoidFreqList
    tHddAvoidFreqRange avoidFreqRange[HDD_MAX_AVOID_FREQ_RANGES];
 } tHddAvoidFreqList;
 #endif /* FEATURE_WLAN_CH_AVOID || FEATURE_WLAN_FORCE_SAP_SCC */
+
+enum qca_wlan_vendor_attr_acs_offload {
+       QCA_WLAN_VENDOR_ATTR_ACS_CHANNEL_INVALID = 0,
+       QCA_WLAN_VENDOR_ATTR_ACS_PRIMARY_CHANNEL,
+       QCA_WLAN_VENDOR_ATTR_ACS_SECONDARY_CHANNEL,
+       QCA_WLAN_VENDOR_ATTR_ACS_HW_MODE,
+       QCA_WLAN_VENDOR_ATTR_ACS_HT_ENABLED,
+       QCA_WLAN_VENDOR_ATTR_ACS_HT40_ENABLED,
+       QCA_WLAN_VENDOR_ATTR_ACS_VHT_ENABLED,
+       QCA_WLAN_VENDOR_ATTR_ACS_CHWIDTH,
+       QCA_WLAN_VENDOR_ATTR_ACS_CH_LIST,
+       QCA_WLAN_VENDOR_ATTR_ACS_VHT_SEG0_CENTER_CHANNEL,
+       QCA_WLAN_VENDOR_ATTR_ACS_VHT_SEG1_CENTER_CHANNEL,
+       /* keep last */
+       QCA_WLAN_VENDOR_ATTR_ACS_AFTER_LAST,
+       QCA_WLAN_VENDOR_ATTR_ACS_MAX =
+       QCA_WLAN_VENDOR_ATTR_ACS_AFTER_LAST - 1
+};
+
+enum qca_wlan_vendor_acs_hw_mode {
+        QCA_ACS_MODE_IEEE80211B,
+        QCA_ACS_MODE_IEEE80211G,
+        QCA_ACS_MODE_IEEE80211A,
+        QCA_ACS_MODE_IEEE80211AD,
+};
 
 /**
  * enum qca_wlan_vendor_config: wifi config attr
@@ -1540,12 +1615,13 @@ VOS_STATUS wlan_hdd_cfg80211_roam_metrics_handover(hdd_adapter_t *pAdapter,
 
 #ifdef FEATURE_WLAN_WAPI
 void wlan_hdd_cfg80211_set_key_wapi(hdd_adapter_t* pAdapter,
-              u8 key_index, const u8 *mac_addr, u8 *key , int key_Len);
+                                    u8 key_index, const u8 *mac_addr,
+                                    const u8 *key , int key_Len);
 #endif
 struct wiphy *wlan_hdd_cfg80211_wiphy_alloc(int priv_size);
 
 int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)) && !defined(WITH_BACKPORTS)
                             struct net_device *dev,
 #endif
                             struct cfg80211_scan_request *request);
@@ -1563,7 +1639,7 @@ void wlan_hdd_cfg80211_register_frames(hdd_adapter_t* pAdapter);
 
 void wlan_hdd_cfg80211_deregister_frames(hdd_adapter_t* pAdapter);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0)) || defined(WITH_BACKPORTS)
 void wlan_hdd_linux_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request);
 #else
 int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request);
@@ -1581,17 +1657,25 @@ extern void wlan_hdd_cfg80211_update_replayCounterCallback(void *callbackContext
                             tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoRsp);
 #endif
 void* wlan_hdd_change_country_code_cb(void *pAdapter);
-void hdd_select_cbmode( hdd_adapter_t *pAdapter,v_U8_t operationChannel);
+void hdd_select_cbmode(hdd_adapter_t *pAdapter, v_U8_t operationChannel,
+                uint16_t *ch_width);
 
-v_U8_t* wlan_hdd_cfg80211_get_ie_ptr(v_U8_t *pIes, int length, v_U8_t eid);
+v_U8_t* wlan_hdd_cfg80211_get_ie_ptr(const v_U8_t *pIes,
+                                     int length,
+                                     v_U8_t eid);
 
 #ifdef CFG80211_DEL_STA_V2
 int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                   struct net_device *dev,
                                   struct station_del_parameters *param);
 #else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)) || defined(WITH_BACKPORTS)
+int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
+                                  struct net_device *dev, const u8 *mac);
+#else
 int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                   struct net_device *dev, u8 *mac);
+#endif
 #endif
 
 #if  defined(QCA_WIFI_FTM)     && defined(CONFIG_NL80211_TESTMODE)
@@ -1621,5 +1705,37 @@ struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_list(
 
 int wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
                                    struct cfg80211_wowlan *wow);
+void wlan_hdd_cfg80211_acs_ch_select_evt(hdd_adapter_t *adapter);
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+int wlan_hdd_send_roam_auth_event(hdd_context_t *hdd_ctx_ptr, uint8_t *bssid,
+		uint8_t *req_rsn_ie, uint32_t req_rsn_length,
+		uint8_t *rsp_rsn_ie, uint32_t rsp_rsn_length,
+		tCsrRoamInfo *roam_info_ptr);
+#else
+static inline int wlan_hdd_send_roam_auth_event(hdd_context_t *hdd_ctx_ptr,
+	uint8_t *bssid, uint8_t *req_rsn_ie, uint32_t req_rsn_length,
+		uint8_t *rsp_rsn_ie, uint32_t rsp_rsn_length,
+		tCsrRoamInfo *roam_info_ptr)
+{
+	return 0;
+}
+#endif
+int wlan_hdd_disable_dfs_chan_scan(hdd_context_t *pHddCtx,
+                                   hdd_adapter_t *pAdapter,
+                                   u32 no_dfs_flag);
+
+int wlan_hdd_cfg80211_update_apies(hdd_adapter_t* pHostapdAdapter);
+
+#if !(defined (SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC))
+static inline struct sk_buff *
+backported_cfg80211_vendor_event_alloc(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					int approxlen,
+					int event_idx, gfp_t gfp)
+{
+	return cfg80211_vendor_event_alloc(wiphy, approxlen, event_idx, gfp);
+}
+#define cfg80211_vendor_event_alloc backported_cfg80211_vendor_event_alloc
+#endif
 
 #endif

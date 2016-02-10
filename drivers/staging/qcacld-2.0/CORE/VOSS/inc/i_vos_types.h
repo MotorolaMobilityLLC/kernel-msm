@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -35,6 +35,7 @@
 #include <linux/string.h>
 #include <linux/slab.h>
 #include <linux/interrupt.h>
+#include <linux/version.h>
 #include <asm/div64.h>
 
 /**=========================================================================

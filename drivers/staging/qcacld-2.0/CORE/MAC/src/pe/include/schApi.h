@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -100,5 +100,7 @@ void SetProbeRspIeBitmap(tANI_U32*,tANI_U32);
 tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal,tpPESession,
                                     tANI_U32*);
 
+int schGenTimingAdvertFrame(tpAniSirGlobal pMac, tSirMacAddr self_addr,
+    uint8_t **buf, uint32_t *timestamp_offset, uint32_t *time_value_offset);
 
 #endif

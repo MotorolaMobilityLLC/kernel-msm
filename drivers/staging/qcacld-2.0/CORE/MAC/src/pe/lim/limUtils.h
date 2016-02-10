@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -106,15 +106,8 @@ typedef union uPmfSaQueryTimerId
 void limGetBssidFromPkt(tpAniSirGlobal, tANI_U8 *, tANI_U8 *, tANI_U32 *);
 char * limDot11ReasonStr(tANI_U16 reasonCode);
 char * limMlmStateStr(tLimMlmStates state);
-char * limSmeStateStr(tLimSmeStates state);
-char * limMsgStr(tANI_U32 msgType);
 char * limResultCodeStr(tSirResultCodes resultCode);
-char* limDot11ModeStr(tpAniSirGlobal pMac, tANI_U8 dot11Mode);
-char* limStaOpRateModeStr(tStaRateMode opRateMode);
 void limPrintMlmState(tpAniSirGlobal pMac, tANI_U16 logLevel, tLimMlmStates state);
-void limPrintSmeState(tpAniSirGlobal pMac, tANI_U16 logLevel, tLimSmeStates state);
-void limPrintMsgName(tpAniSirGlobal pMac, tANI_U16 logLevel, tANI_U32 msgType);
-void limPrintMsgInfo(tpAniSirGlobal pMac, tANI_U16 logLevel, tSirMsgQ *msg);
 char* limBssTypeStr(tSirBssType bssType);
 
 #if defined FEATURE_WLAN_ESE || defined WLAN_FEATURE_VOWIFI
@@ -141,7 +134,7 @@ void limUpdateShortPreamble(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tpUpda
 void limUpdateShortSlotTime(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tpUpdateBeaconParams pBeaconParams, tpPESession psessionEntry);
 
 /*
- * The below 'product' check tobe removed if 'Association' is
+ * The below 'product' check to be removed if 'Association' is
  * allowed in IBSS.
  */
 void    limReleasePeerIdx(tpAniSirGlobal, tANI_U16, tpPESession);
@@ -228,9 +221,9 @@ static inline tSirRFBand limGetRFBand(tANI_U8 channel)
 static inline tSirRetStatus
 limGetMgmtStaid(tpAniSirGlobal pMac, tANI_U16 *staid, tpPESession psessionEntry)
 {
-    if (psessionEntry->limSystemRole == eLIM_AP_ROLE)
+    if (LIM_IS_AP_ROLE(psessionEntry))
         *staid = 1;
-    else if (psessionEntry->limSystemRole == eLIM_STA_ROLE)
+    else if (LIM_IS_STA_ROLE(psessionEntry))
         *staid = 0;
     else
         return eSIR_FAILURE;
@@ -444,19 +437,20 @@ v_U8_t* limGetIEPtr(tpAniSirGlobal pMac, v_U8_t *pIes, int length, v_U8_t eid,eS
 tANI_U8 limUnmapChannel(tANI_U8 mapChannel);
 
 #define limGetWscIEPtr(pMac, ie, ie_len) \
-    limGetVendorIEOuiPtr(pMac, SIR_MAC_WSC_OUI, SIR_MAC_WSC_OUI_SIZE, ie, ie_len)
+    cfg_get_vendor_ie_ptr_from_oui(pMac, SIR_MAC_WSC_OUI, SIR_MAC_WSC_OUI_SIZE, ie, ie_len)
 
 #define limGetP2pIEPtr(pMac, ie, ie_len) \
-    limGetVendorIEOuiPtr(pMac, SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE, ie, ie_len)
+    cfg_get_vendor_ie_ptr_from_oui(pMac, SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE, ie, ie_len)
 
 v_U8_t limGetNoaAttrStreamInMultP2pIes(tpAniSirGlobal pMac,v_U8_t* noaStream,v_U8_t noaLen,v_U8_t overFlowLen);
 v_U8_t limGetNoaAttrStream(tpAniSirGlobal pMac, v_U8_t*pNoaStream,tpPESession psessionEntry);
 
 v_U8_t limBuildP2pIe(tpAniSirGlobal pMac, tANI_U8 *ie, tANI_U8 *data, tANI_U8 ie_len);
 tANI_BOOLEAN limIsNOAInsertReqd(tpAniSirGlobal pMac);
-v_U8_t* limGetVendorIEOuiPtr(tpAniSirGlobal pMac, tANI_U8 *oui, tANI_U8 oui_size, tANI_U8 *ie, tANI_U16 ie_len);
 tANI_BOOLEAN limIsconnectedOnDFSChannel(tANI_U8 currentChannel);
 tANI_U8 limGetCurrentOperatingChannel(tpAniSirGlobal pMac);
+
+uint32_t lim_get_max_rate_flags(tpAniSirGlobal mac_ctx, tpDphHashNode sta_ds);
 
 #ifdef WLAN_FEATURE_11AC
 tANI_BOOLEAN limCheckVHTOpModeChange( tpAniSirGlobal pMac, tpPESession psessionEntry,
@@ -607,8 +601,6 @@ void lim_set_ht_caps(tpAniSirGlobal p_mac,
 			tpPESession p_session_entry,
 			tANI_U8 *p_ie_start,
 			tANI_U32 num_bytes);
-bool lim_validate_received_frame_a1_addr(tpAniSirGlobal mac_ctx,
-		tSirMacAddr a1, tpPESession session);
 #ifdef WLAN_FEATURE_11AC
 void lim_set_vht_caps(tpAniSirGlobal p_mac,
 			tpPESession p_session_entry,
@@ -616,7 +608,49 @@ void lim_set_vht_caps(tpAniSirGlobal p_mac,
 			tANI_U32 num_bytes);
 #endif /* WLAN_FEATURE_11AC */
 
+#ifdef SAP_AUTH_OFFLOAD
+void lim_sap_offload_add_sta(tpAniSirGlobal pmac,
+                            tpSirMsgQ lim_msgq);
+void lim_sap_offload_del_sta(tpAniSirGlobal pmac,
+                            tpSirMsgQ lim_msgq);
+void
+lim_pop_sap_deferred_msg(tpAniSirGlobal pmac, tpPESession sessionentry);
+
+void
+lim_push_sap_deferred_msg(tpAniSirGlobal pmac, tpSirMsgQ lim_msgq);
+
+void
+lim_init_sap_deferred_msg_queue(tpAniSirGlobal pmac);
+
+void
+lim_cleanup_sap_deferred_msg_queue(tpAniSirGlobal pmac);
+#else
+static inline void
+lim_pop_sap_deferred_msg(tpAniSirGlobal pmac, tpPESession sessionentry)
+{
+	return;
+}
+static inline void
+lim_push_sap_deferred_msg(tpAniSirGlobal pmac, tpSirMsgQ lim_msgq)
+{
+	return;
+}
+static inline void
+lim_init_sap_deferred_msg_queue(tpAniSirGlobal pmac)
+{
+    return;
+}
+static inline  void
+lim_cleanup_sap_deferred_msg_queue(tpAniSirGlobal pmac)
+{
+	return;
+}
+#endif /* SAP_AUTH_OFFLOAD */
+bool lim_validate_received_frame_a1_addr(tpAniSirGlobal mac_ctx,
+		tSirMacAddr a1, tpPESession session);
+
 void lim_set_stads_rtt_cap(tpDphHashNode sta_ds, struct s_ext_cap *ext_cap);
+void lim_check_and_reset_protection_params(tpAniSirGlobal mac_ctx);
 eHalStatus lim_send_ext_cap_ie(tpAniSirGlobal mac_ctx,
 			       uint32_t session_id,
 			       tDot11fIEExtCap *extracted_extcap, bool merge);
@@ -628,5 +662,6 @@ void lim_update_extcap_struct(tpAniSirGlobal mac_ctx, uint8_t *buf,
 tSirRetStatus lim_strip_extcap_update_struct(tpAniSirGlobal mac_ctx,
 		uint8_t* addn_ie, uint16_t *addn_ielen, tDot11fIEExtCap *dst);
 void lim_merge_extcap_struct(tDot11fIEExtCap *dst, tDot11fIEExtCap *src);
-
+uint8_t
+lim_get_80Mhz_center_channel(uint8_t primary_channel);
 #endif /* __LIM_UTILS_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -381,7 +381,7 @@ typedef struct sPESession           // Added to Support BT-AMP
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM
     tANI_S8 rssi;
 #endif
-    tANI_U8 isAmsduSupportInAMPDU;
+    tANI_U8 max_amsdu_num;
     tANI_U8 isCoalesingInIBSSAllowed;
 
     tSirHTConfig htConfig;
@@ -469,11 +469,11 @@ typedef struct sPESession           // Added to Support BT-AMP
     tftPEContext  ftPEContext;
 #endif
     tANI_BOOLEAN            isNonRoamReassoc;
-    tANI_U8  isKeyInstalled;
 #ifdef WLAN_FEATURE_11W
     vos_timer_t pmfComebackTimer;
     tComebackTimerInfo pmfComebackTimerInfo;
 #endif /* WLAN_FEATURE_11W */
+    tANI_U8  isKeyInstalled;
     /* timer for reseting protection fileds at regular intervals */
     vos_timer_t protection_fields_reset_timer;
     void *mac_ctx;
@@ -483,13 +483,21 @@ typedef struct sPESession           // Added to Support BT-AMP
      */
     tANI_U16 old_protection_state;
     tSirMacAddr             prev_ap_bssid;
+#ifdef FEATURE_AP_MCC_CH_AVOIDANCE
+    /* tells if Q2Q IE, from another MDM device in AP MCC mode was recvd */
+    bool sap_advertise_avoid_ch_ie;
+#endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
     uint8_t sap_dot11mc;
 #ifdef FEATURE_WLAN_ESE
     uint8_t is_ese_version_ie_present;
 #endif
     /* flag to indicate country code in beacon */
     tANI_U8 countryInfoPresent;
+    uint8_t vdev_nss;
     bool roaming_in_progress;
+    bool add_bss_failed;
+    /* Supported NSS is intersection of self and peer NSS */
+    bool supported_nss_1x1;
 } tPESession, *tpPESession;
 
 /*-------------------------------------------------------------------------
@@ -630,15 +638,5 @@ void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry);
 tpPESession pe_find_session_by_sme_session_id(tpAniSirGlobal mac_ctx,
 					   uint8_t sme_session_id);
 
-/*--------------------------------------------------------------------------
-  \brief peDeleteSession() - Returns the SME session ID and Transaction ID .
-
-
-  \param pMac                   - pointer to global adapter context
-  \param sessionId             -session ID of the session which needs to be deleted.
-
-  \sa
-  --------------------------------------------------------------------------*/
-
-
+int pe_get_active_session_count(tpAniSirGlobal mac_ctx);
 #endif //#if !defined( __LIM_SESSION_H )

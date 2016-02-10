@@ -119,6 +119,33 @@ htt_htc_pkt_pool_free(struct htt_pdev_t *pdev)
 
 #ifdef ATH_11AC_TXCOMPACT
 void
+htt_htc_misc_pkt_list_trim(struct htt_pdev_t *pdev, int level)
+{
+    struct htt_htc_pkt_union *pkt, *next, *prev = NULL;
+    int i = 0;
+    adf_nbuf_t netbuf;
+
+    HTT_TX_MUTEX_ACQUIRE(&pdev->htt_tx_mutex);
+    pkt = pdev->htt_htc_pkt_misclist;
+    while (pkt) {
+        next = pkt->u.next;
+        /* trim the out grown list*/
+        if (++i > level) {
+            netbuf = (adf_nbuf_t)(pkt->u.pkt.htc_pkt.pNetBufContext);
+            adf_nbuf_unmap(pdev->osdev, netbuf, ADF_OS_DMA_TO_DEVICE);
+            adf_nbuf_free(netbuf);
+            adf_os_mem_free(pkt);
+            pkt = NULL;
+            if (prev)
+                prev->u.next = NULL;
+        }
+        prev = pkt;
+        pkt = next;
+    }
+    HTT_TX_MUTEX_RELEASE(&pdev->htt_tx_mutex);
+}
+
+void
 htt_htc_misc_pkt_list_add(struct htt_pdev_t *pdev, struct htt_htc_pkt *pkt)
 {
     struct htt_htc_pkt_union *u_pkt = (struct htt_htc_pkt_union *) pkt;
@@ -131,6 +158,7 @@ htt_htc_misc_pkt_list_add(struct htt_pdev_t *pdev, struct htt_htc_pkt *pkt)
         pdev->htt_htc_pkt_misclist = u_pkt;
     }
     HTT_TX_MUTEX_RELEASE(&pdev->htt_tx_mutex);
+    htt_htc_misc_pkt_list_trim(pdev, HTT_HTC_PKT_MISCLIST_SIZE);
 }
 
 void
@@ -371,6 +399,10 @@ htt_detach(htt_pdev_handle pdev)
 #endif
     HTT_TX_MUTEX_DESTROY(&pdev->htt_tx_mutex);
     HTT_TX_NBUF_QUEUE_MUTEX_DESTROY(pdev);
+#ifdef DEBUG_RX_RING_BUFFER
+    if (pdev->rx_buff_list)
+        adf_os_mem_free(pdev->rx_buff_list);
+#endif
     adf_os_mem_free(pdev);
 }
 
@@ -409,7 +441,20 @@ htt_htc_attach(struct htt_pdev_t *pdev)
     connect.MaxSendQueueDepth = HTT_MAX_SEND_QUEUE_DEPTH;
 
     /* disable flow control for HTT data message service */
-#ifndef HIF_SDIO
+#ifdef HIF_SDIO
+    /*
+     * HTC Credit mechanism is disabled based on
+     * default_tx_comp_req as throughput will be lower
+     * if we disable htc credit mechanism with default_tx_comp_req
+     * set since txrx download packet will be limited by ota
+     * completion.
+     * TODO:Conditional disabling will be removed once firmware
+     * with reduced tx completion is pushed into release builds.
+     */
+    if (!pdev->cfg.default_tx_comp_req) {
+       connect.ConnectionFlags |= HTC_CONNECT_FLAGS_DISABLE_CREDIT_FLOW_CTRL;
+    }
+#else
     connect.ConnectionFlags |= HTC_CONNECT_FLAGS_DISABLE_CREDIT_FLOW_CTRL;
 #endif
 
@@ -440,6 +485,8 @@ htt_htc_attach(struct htt_pdev_t *pdev)
 
         /* Should NOT support credit flow control. */
         connect.ConnectionFlags |= HTC_CONNECT_FLAGS_DISABLE_CREDIT_FLOW_CTRL;
+        /* Enable HTC schedule mechanism for TX HTT2 service. */
+        connect.ConnectionFlags |= HTC_CONNECT_FLAGS_ENABLE_HTC_SCHEDULE;
 
         connect.ServiceID = HTT_DATA2_MSG_SVC;
 
@@ -595,4 +642,17 @@ htt_ipa_uc_set_doorbell_paddr(htt_pdev_handle pdev,
    return 0;
 }
 #endif /* IPA_UC_OFFLOAD */
+
+#if defined(DEBUG_HL_LOGGING) && defined(CONFIG_HL_SUPPORT)
+
+void htt_dump_bundle_stats(htt_pdev_handle pdev)
+{
+    HTCDumpBundleStats(pdev->htc_pdev);
+}
+
+void htt_clear_bundle_stats(htt_pdev_handle pdev)
+{
+    HTCClearBundleStats(pdev->htc_pdev);
+}
+#endif
 

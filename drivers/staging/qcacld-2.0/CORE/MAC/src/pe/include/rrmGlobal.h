@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012,2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2012, 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -195,6 +195,9 @@ typedef struct sRRMCaps
     tANI_U8     triggeredTCM: 1;
     tANI_U8     APChanReport: 1;
     tANI_U8    RRMMIBEnabled: 1;
+    tANI_U8 operatingChanMax: 3;
+    tANI_U8 nonOperatingChanMax: 3;
+    tANI_U8 MeasurementPilot: 3;
     tANI_U8 MeasurementPilotEnabled: 1;
     tANI_U8 NeighborTSFOffset: 1;
     tANI_U8  RCPIMeasurement: 1;
@@ -202,10 +205,9 @@ typedef struct sRRMCaps
     tANI_U8 BssAvgAccessDelay: 1;
     tANI_U8 BSSAvailAdmission: 1;
     tANI_U8 AntennaInformation: 1;
-
-    tANI_U8 operatingChanMax;
-    tANI_U8 nonOperatingChanMax;
-    tANI_U8 MeasurementPilot;
+    tANI_U8 fine_time_meas_rpt: 1;
+    tANI_U8 lci_capability: 1;
+    tANI_U8 reserved: 4;
 }tRRMCaps, *tpRRMCaps;
 
 typedef struct sRrmPEContext
@@ -224,5 +226,127 @@ typedef struct sRrmPEContext
 #define RCPI_MAX_VALUE        (220)
 #define CALCULATE_RCPI(rssi)  (((rssi) + 110) * 2)
 
+/* Bit mask are defined as per Draft P802.11REVmc_D4.2 */
+
+/**
+ * enum mask_rm_capability_byte1 - mask for supported capability
+ * @RM_CAP_LINK_MEASUREMENT: Link Measurement capability
+ * @RM_CAP_NEIGHBOR_REPORT: Neighbor report capability
+ * @RM_CAP_PARALLEL_MEASUREMENT: Parallel Measurement capability
+ * @RM_CAP_REPEATED_MEASUREMENT: Repeated Measurement capability
+ * @RM_CAP_BCN_PASSIVE_MEASUREMENT: Beacon passive measurement capability
+ * @RM_CAP_BCN_ACTIVE_MEASUREMENT: Beacon active measurement capability
+ * @RM_CAP_BCN_TABLE_MEASUREMENT: Beacon table measurement capability
+ * @RM_CAP_BCN_MEAS_REPORTING_COND: Beacon measurement reporting conditions
+ */
+enum mask_rm_capability_byte1 {
+	RM_CAP_LINK_MEASUREMENT = (1 << (0)),
+	RM_CAP_NEIGHBOR_REPORT = (1 << (1)),
+	RM_CAP_PARALLEL_MEASUREMENT = (1 << (2)),
+	RM_CAP_REPEATED_MEASUREMENT = (1 << (3)),
+	RM_CAP_BCN_PASSIVE_MEASUREMENT = (1 << (4)),
+	RM_CAP_BCN_ACTIVE_MEASUREMENT = (1 << (5)),
+	RM_CAP_BCN_TABLE_MEASUREMENT = (1 << (6)),
+	RM_CAP_BCN_MEAS_REPORTING_COND = (1 << (7)),
+};
+
+/**
+ * enum mask_rm_capability_byte2 - mask for supported capability
+ * @RM_CAP_FRAME_MEASUREMENT: Frame Measurement capability
+ * @RM_CAP_CHAN_LOAD_MEASUREMENT: Channel load measurement capability
+ * @RM_CAP_NOISE_HIST_MEASUREMENT: Noise Histogram Measurement capability
+ * @RM_CAP_STATISTICS_MEASUREMENT: Statistics Measurement capability
+ * @RM_CAP_LCI_MEASUREMENT: LCI measurement capability
+ * @RM_CAP_LCI_AZIMUTH: LCI Azimuth capability
+ * @RM_CAP_TX_CATEGORY_MEASUREMENT: Transmit category measurement capability
+ * @RM_CAP_TRIG_TX_CATEGORY_MEASUREMENT:
+ *		      Triggered Transmit category measurement capability
+ */
+enum mask_rm_capability_byte2 {
+	RM_CAP_FRAME_MEASUREMENT = (1 << (0)),
+	RM_CAP_CHAN_LOAD_MEASUREMENT = (1 << (1)),
+	RM_CAP_NOISE_HIST_MEASUREMENT = (1 << (2)),
+	RM_CAP_STATISTICS_MEASUREMENT = (1 << (3)),
+	RM_CAP_LCI_MEASUREMENT = (1 << (4)),
+	RM_CAP_LCI_AZIMUTH = (1 << (5)),
+	RM_CAP_TX_CATEGORY_MEASUREMENT = (1 << (6)),
+	RM_CAP_TRIG_TX_CATEGORY_MEASUREMENT = (1 << (7)),
+};
+
+/**
+ * enum mask_rm_capability_byte3 - mask for supported capability
+ * @RM_CAP_AP_CHAN_REPORT: AP channel report capability
+ * @RM_CAP_RM_MIB: RM MIB capability
+ * @RM_CAP_OPER_CHAN_MAX_DURATION_1: OPER_CHAN_MAX_DURATION bit1
+ * @RM_CAP_OPER_CHAN_MAX_DURATION_2: OPER_CHAN_MAX_DURATION bit2
+ * @RM_CAP_OPER_CHAN_MAX_DURATION_3: OPER_CHAN_MAX_DURATION bit3
+ * @RM_CAP_NONOPER_CHAN_MAX_DURATION_1: NONOPER_CHAN_MAX bit1
+ * @RM_CAP_NONOPER_CHAN_MAX_DURATION_2: NONOPER_CHAN_MAX bit2
+ * @RM_CAP_NONOPER_CHAN_MAX_DURATION_3: NONOPER_CHAN_MAX bit3
+ * @RM_CAP_OPER_CHAN_MAX_DURATION: Operating Channel Max Measurement Duration
+ * @RM_CAP_NONOPER_CHAN_MAX_DURATION:
+ *		      Nonoperating Channel Max Measurement Duration
+ */
+
+enum mask_rm_capability_byte3 {
+	RM_CAP_AP_CHAN_REPORT = (1 << (0)),
+	RM_CAP_RM_MIB = (1 << (1)),
+	RM_CAP_OPER_CHAN_MAX_DURATION_1 = (1 << (2)),
+	RM_CAP_OPER_CHAN_MAX_DURATION_2 = (1 << (3)),
+	RM_CAP_OPER_CHAN_MAX_DURATION_3 = (1 << (4)),
+	RM_CAP_NONOPER_CHAN_MAX_DURATION_1 = (1 << (5)),
+	RM_CAP_NONOPER_CHAN_MAX_DURATION_2 = (1 << (6)),
+	RM_CAP_NONOPER_CHAN_MAX_DURATION_3 = (1 << (7)),
+	RM_CAP_OPER_CHAN_MAX_DURATION = (RM_CAP_OPER_CHAN_MAX_DURATION_1 ||
+					 RM_CAP_OPER_CHAN_MAX_DURATION_2 ||
+					 RM_CAP_OPER_CHAN_MAX_DURATION_3),
+	RM_CAP_NONOPER_CHAN_MAX_DURATION =
+				(RM_CAP_NONOPER_CHAN_MAX_DURATION_1 ||
+				 RM_CAP_NONOPER_CHAN_MAX_DURATION_2 ||
+				 RM_CAP_NONOPER_CHAN_MAX_DURATION_3),
+};
+
+/**
+ * enum mask_rm_capability_byte4 - mask for supported capability
+ * @RM_CAP_MEASUREMENT_PILOT_1: MEASUREMENT_PILOT bit1
+ * @RM_CAP_MEASUREMENT_PILOT_2: MEASUREMENT_PILOT bit2
+ * @RM_CAP_MEASUREMENT_PILOT_3: MEASUREMENT_PILOT bit3
+ * @RM_CAP_MEAS_PILOT_TX_INFO: Measurement Pilot Transmission Capability
+ * @RM_CAP_NEIGHBOR_RPT_TSF_OFFSET: Neighbor Report TSF Offset Capability
+ * @RM_CAP_RCPI_MEASUREMENT: RCPI Measurement Capability
+ * @RM_CAP_RSNI_MEASUREMENT: RSNI Measurement Capability
+ * @RM_CAP_BSS_AVG_ACCESS_DELAY: BSS Average Access Delay Capability
+ * @RM_CAP_MEASUREMENT_PILOT: Measurement pilot capability
+ */
+
+enum mask_rm_capability_byte4 {
+	RM_CAP_MEASUREMENT_PILOT_1 = (1 << (0)),
+	RM_CAP_MEASUREMENT_PILOT_2 = (1 << (1)),
+	RM_CAP_MEASUREMENT_PILOT_3 = (1 << (2)),
+	RM_CAP_MEAS_PILOT_TX_INFO = (1 << (3)),
+	RM_CAP_NEIGHBOR_RPT_TSF_OFFSET = (1 << (4)),
+	RM_CAP_RCPI_MEASUREMENT1 = (1 << (5)),
+	RM_CAP_RSNI_MEASUREMENT = (1 << (6)),
+	RM_CAP_BSS_AVG_ACCESS_DELAY = (1 << (7)),
+	RM_CAP_MEASUREMENT_PILOT = (RM_CAP_MEASUREMENT_PILOT_1 ||
+				    RM_CAP_MEASUREMENT_PILOT_2 ||
+				    RM_CAP_MEASUREMENT_PILOT_3),
+};
+
+/**
+ * enum mask_rm_capability_byte5 - mask for supported capability
+ * @RM_CAP_BSS_AVAIL_ADMISSION: BSS Available Admission Capacity Capability
+ * @RM_CAP_ANTENNA: Antenna Capability
+ * @RM_CAP_FTM_RANGE_REPORT: FTM Range Report Capability
+ * @RM_CAP_CIVIC_LOC_MEASUREMENT: Civic Location Measurement capability
+ *
+ * 4 bits are reserved
+ */
+enum mask_rm_capability_byte5 {
+	RM_CAP_BSS_AVAIL_ADMISSION  = (1 << (0)),
+	RM_CAP_ANTENNA = (1 << (1)),
+	RM_CAP_FTM_RANGE_REPORT = (1 << (2)),
+	RM_CAP_CIVIC_LOC_MEASUREMENT = (1 << (3)),
+};
 
 #endif //#if defined __RRMGLOBAL_H

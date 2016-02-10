@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -33,7 +33,7 @@
 
   \file  smeInside.h
 
-  \brief prototype for SME structures and APIs used insside SME
+  \brief prototype for SME structures and APIs used inside SME
 
   ========================================================================*/
 
@@ -66,7 +66,12 @@ ePhyChanBondState csrConvertCBIniValueToPhyCBState(v_U32_t cbIniValue);
   Type declarations
   ------------------------------------------------------------------------*/
 
-#define SME_TOTAL_COMMAND  40
+/*
+ * In case MAX num of STA are connected to SAP, switching off SAP causes
+ * two SME cmd to be enqueued for each STA. Keeping SME total cmds as following
+ * to make sure we have space for these cmds + some additional cmds.
+ */
+#define SME_TOTAL_COMMAND              (HAL_NUM_STA * 3)
 
 
 typedef struct sGenericPmcCmd
@@ -74,7 +79,10 @@ typedef struct sGenericPmcCmd
     tANI_U32 size;  //sizeof the data in the union, if any
     tANI_U32 sessionId;
     tRequestFullPowerReason fullPowerReason;
-    tANI_BOOLEAN fReleaseWhenDone; //if TRUE, the command shall not put back to the queue, free te memory instead.
+
+    /* If TRUE, the command shall not put back to the queue,
+       free the memory instead */
+    tANI_BOOLEAN fReleaseWhenDone;
     union
     {
         tExitBmpsInfo exitBmpsInfo;
@@ -168,6 +176,19 @@ typedef struct s_tdls_cmd
 } tTdlsCmd;
 #endif  /* FEATURE_WLAN_TDLS */
 
+/**
+ * struct s_ani_set_tx_max_pwr - Req params to set max tx power
+ * @bssid: bssid to set the power cap for
+ * @self_mac_addr:self mac address
+ * @power: power to set in dB
+ */
+struct s_ani_set_tx_max_pwr
+{
+    tSirMacAddr   bssid;
+    tSirMacAddr   self_sta_mac_addr;
+    tPowerdBm     power;
+};
+
 typedef struct tagSmeCmd
 {
     tListElem Link;
@@ -192,6 +213,7 @@ typedef struct tagSmeCmd
 #ifdef FEATURE_WLAN_TDLS
         tTdlsCmd  tdlsCmd;
 #endif
+        struct s_ani_set_tx_max_pwr set_tx_max_pwr;
     }u;
 }tSmeCmd;
 
@@ -242,6 +264,7 @@ eHalStatus csrIsFullPowerNeeded( tpAniSirGlobal pMac, tSmeCmd *pCommand, tReques
 void csrAbortCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand, tANI_BOOLEAN fStopping );
 
 VOS_STATUS csrIsValidChannel(tpAniSirGlobal pMac, tANI_U8 chnNum);
+tANI_BOOLEAN csrRoamIsValid40MhzChannel(tpAniSirGlobal pMac, tANI_U8 chnNum);
 
 eHalStatus sme_AcquireGlobalLock( tSmeStruct *psSme);
 eHalStatus sme_ReleaseGlobalLock( tSmeStruct *psSme);
@@ -272,7 +295,6 @@ eHalStatus pmcSetNSOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest, tANI_
 #ifdef FEATURE_WLAN_SCAN_PNO
 eHalStatus pmcSetPreferredNetworkList(tHalHandle hHal, tpSirPNOScanReq pRequest, tANI_U8 sessionId, preferredNetworkFoundIndCallback callbackRoutine,  void *callbackContext);
 eHalStatus pmcUpdateScanParams(tHalHandle hHal, tCsrConfig *pRequest, tCsrChannel *pChannelList, tANI_U8 b11dResolved);
-eHalStatus pmcSetRssiFilter(tHalHandle hHal,   v_U8_t        rssiThreshold);
 #endif // FEATURE_WLAN_SCAN_PNO
 eHalStatus pmcSetPowerParams(tHalHandle hHal,   tSirSetPowerParamsReq*  pwParams, tANI_BOOLEAN forced);
 
@@ -281,11 +303,15 @@ tANI_BOOLEAN csrRoamGetConcurrencyConnectStatusForBmps(tpAniSirGlobal pMac);
 eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMgmt *tdlsSendMgmt);
 VOS_STATUS csrTdlsSendLinkEstablishParams(tHalHandle hHal,
                                           tANI_U8 sessionId,
-                                          tSirMacAddr peerMac,
+                                          const tSirMacAddr peerMac,
                                           tCsrTdlsLinkEstablishParams *tdlsLinkEstablishParams);
-eHalStatus csrTdlsAddPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
-eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac, tCsrStaParams *pstaParams);
-eHalStatus csrTdlsDelPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
+eHalStatus csrTdlsAddPeerSta(tHalHandle hHal, tANI_U8 sessionId,
+                             const tSirMacAddr peerMac);
+eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId,
+                                const tSirMacAddr peerMac,
+                                tCsrStaParams *pstaParams);
+eHalStatus csrTdlsDelPeerSta(tHalHandle hHal, tANI_U8 sessionId,
+                             const tSirMacAddr peerMac);
 eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac,tSmeCmd *pCommand );
 eHalStatus csrTdlsProcessLinkEstablish( tpAniSirGlobal pMac, tSmeCmd *cmd );
 eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,v_U16_t msg_type,

@@ -136,7 +136,7 @@ v_BOOL_t sme_GetFTPreAuthState(tHalHandle hHal, tANI_U32 sessionId)
 
 /*--------------------------------------------------------------------------
   Each time the supplicant sends down the FT IEs to the driver.
-  This function is called in SME. This fucntion packages and sends
+  This function is called in SME. This function packages and sends
   the FT IEs to PE.
   ------------------------------------------------------------------------*/
 void sme_SetFTIEs(tHalHandle hHal, tANI_U32 sessionId, const tANI_U8 *ft_ies,

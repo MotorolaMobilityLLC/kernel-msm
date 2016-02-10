@@ -127,13 +127,46 @@ typedef PREPACK struct _HTC_FRAME_HDR{
 #define HTC_FLAGS_SEQ_CHECK          (1 << 2) /* seq check on rx side */
 #define HTC_FLAGS_CRC CHECK          (1 << 3) /* CRC check on rx side */
 
+
+/*  New Flags definition in Receive Direction
+
+    Bit 0 - Bundle trailer needs 1 extra block towards the end
+    If this bit is set, it implies that the last msg of the bundle has a
+    lookahead trailer and it needs additional block.
+    This bit is set in the 1st pack of the bundle.
+    It gives the host a heads up on the size it wants to receive.
+
+    HOST calculates the total bundle length (for CMD53) as
+
+    L = n * [padded length] + size of trailer information
+          n: number of msgs in the bundle
+          padded length: padded length of 1st msg of the bundle.
+
+
+    Bit 1- Recv Trailer is present, length of data is in control byte 0
+    This is contained in the last packet of the bundle
+
+    Bits 2-7 indicate the Bundle count. When non-zero the number of frames
+    behind the current frame with the same padded length. The split is :
+
+        Bit 2..3	Higher 2 bits of Recv Bundle Count
+        Bit 4..7	Lower 4 bits of Recv Bundle Count
+        (This weird arrangement is to stick to legacy implementation where
+         only bits 4..7 were used)
+*/
+
     /* receive direction */
-#define HTC_FLAGS_RECV_UNUSED_0      (1 << 0)  /* bit 0 unused */
-#define HTC_FLAGS_RECV_TRAILER       (1 << 1)  /* bit 1 trailer data present */
-#define HTC_FLAGS_RECV_UNUSED_2      (1 << 0)  /* bit 2 unused */
-#define HTC_FLAGS_RECV_UNUSED_3      (1 << 0)  /* bit 3 unused */
-#define HTC_FLAGS_RECV_BUNDLE_CNT_MASK (0xF0)  /* bits 7..4  */
-#define HTC_FLAGS_RECV_BUNDLE_CNT_SHIFT 4
+#define HTC_FLAGS_RECV_1MORE_BLOCK  (1 << 0) /*bit0 heads up-additional block*/
+#define HTC_FLAGS_RECV_TRAILER      (1 << 1) /*bit1 trailer data present */
+
+#define GET_RECV_BUNDLE_COUNT(f) (BUNDLE_COUNT_HIGH(f)+BUNDLE_COUNT_LOW(f))
+
+/* high nibble*/
+#define BUNDLE_COUNT_HIGH(f) ((f & 0x0C) << 2)
+
+/* low nibble*/
+#define BUNDLE_COUNT_LOW(f)  ((f & 0xF0) >> 4)
+
 
 #define HTC_HDR_LENGTH  (sizeof(HTC_FRAME_HDR))
 #define HTC_HDR_ALIGNMENT_PADDING           \
@@ -192,15 +225,21 @@ typedef PREPACK struct {
     /* extended information */
     A_UINT32        HTCVersion : 8,
                     MaxMsgsPerHTCBundle : 8,
-                    reserved : 16;
+                    AltDataCreditSize : 12,
+                    Reserved : 4;
 } POSTPACK HTC_READY_EX_MSG;
 
 #define HTC_READY_EX_MSG_HTCVERSION_LSB               0
 #define HTC_READY_EX_MSG_HTCVERSION_MASK              0x000000ff
 #define HTC_READY_EX_MSG_HTCVERSION_OFFSET            sizeof(HTC_READY_MSG)
+
 #define HTC_READY_EX_MSG_MAXMSGSPERHTCBUNDLE_LSB      8
 #define HTC_READY_EX_MSG_MAXMSGSPERHTCBUNDLE_MASK     0x0000ff00
 #define HTC_READY_EX_MSG_MAXMSGSPERHTCBUNDLE_OFFSET   sizeof(HTC_READY_MSG)
+
+#define HTC_READY_EX_MSG_ALTDATACREDITSIZE_LSB        16
+#define HTC_READY_EX_MSG_ALTDATACREDITSIZE_MASK       0x0fff0000
+#define HTC_READY_EX_MSG_ALTDATACREDITSIZE_OFFSET     sizeof(HTC_READY_MSG)
 
 #define HTC_VERSION_2P0  0x00
 #define HTC_VERSION_2P1  0x01  /* HTC 2.1 */

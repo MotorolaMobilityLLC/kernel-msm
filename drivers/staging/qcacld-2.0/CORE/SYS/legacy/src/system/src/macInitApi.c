@@ -102,8 +102,7 @@ tSirRetStatus macStart(tHalHandle hHal, void* pHalMacStartParams)
          vos_mem_set(pMac->pResetMsg, sizeof(tSirMbMsg), 0);
       }
 
-      if (pMac->gDriverType != eDRIVER_TYPE_MFG)
-      {
+      if (ANI_DRIVER_TYPE(pMac) != eDRIVER_TYPE_MFG) {
          status = peStart(pMac);
       }
 
@@ -174,9 +173,6 @@ tSirRetStatus macOpen(tHalHandle *pHalHandle, tHddHandle hHdd, tMacOpenParameter
     /* Initialize the p_mac structure */
     vos_mem_set(p_mac, sizeof(tAniSirGlobal), 0);
 
-    /** Store the Driver type in pMac Global.*/
-    //pMac->gDriverType = pMacOpenParms->driverType;
-
     /*
      * Set various global fields of p_mac here
      * (Could be platform dependant as some variables in p_mac are platform
@@ -209,6 +205,7 @@ tSirRetStatus macOpen(tHalHandle *pHalHandle, tHddHandle hHdd, tMacOpenParameter
     p_mac->scan.nextScanID = FIRST_SCAN_ID;
     /* FW: 0 to 2047 and Host: 2048 to 4095 */
     p_mac->mgmtSeqNum = WLAN_HOST_SEQ_NUM_MIN-1;
+    p_mac->first_scan_done = false;
 
     status = peOpen(p_mac, pMacOpenParms);
 

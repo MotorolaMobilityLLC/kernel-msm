@@ -269,25 +269,14 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb);
   @return         : Qdisc queue index
   ===========================================================================*/
 
-v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb);
-
-
-
-/**============================================================================
-  @brief hdd_wmm_classify_pkt() - Function which will classify an OS packet
-  into a WMM AC based on either 802.1Q or DSCP
-
-  @param pAdapter : [in]  pointer to adapter context
-  @param skb      : [in]  pointer to OS packet (sk_buff)
-  @param pAcType  : [out] pointer to WMM AC type of OS packet
-
-  @return         : None
-  ===========================================================================*/
-v_VOID_t hdd_wmm_classify_pkt ( hdd_adapter_t* pAdapter,
-                                struct sk_buff *skb,
-                                WLANTL_ACEnumType* pAcType,
-                                sme_QosWmmUpType* pUserPri);
-
+v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,13,0))
+                                 , void *accel_priv
+#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
+                                 , select_queue_fallback_t fallback
+#endif
+);
 
 /**============================================================================
   @brief hdd_wmm_acquire_access() - Function which will attempt to acquire

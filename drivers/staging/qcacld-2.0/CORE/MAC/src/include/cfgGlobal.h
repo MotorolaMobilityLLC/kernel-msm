@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2013, 2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -41,10 +41,12 @@
 #include "sirCommon.h"
 #include "sirTypes.h"
 #include "wniCfgSta.h"
+#include "wniCfgAp.h"
 
 #define CFG_MAX_NUM_STA      SIR_MAX_NUM_STA_IN_IBSS
 
-#define CFG_MAX_STR_LEN       256    // as the number of channels grows, 128 is not big enough
+#define CFG_MAX_STATIC_STRING   70
+#define CFG_MAX_STR_LEN         256    // as the number of channels grows, 128 is not big enough
 
 /*--------------------------------------------------------------------*/
 /* Configuration Control Structure                                    */
@@ -54,6 +56,21 @@ typedef struct
     tANI_U32   control;
 } tCfgCtl;
 
+struct cfgstatic_string {
+    uint16_t cfg_id;
+    uint8_t  max_len;
+    uint8_t  length;
+    uint8_t  data[255];
+};
+
+struct cgstatic {
+    uint16_t  cfg_id;
+    uint32_t  control;
+    uint32_t  cfg_imin;
+    uint32_t  cfg_imax;
+    uint32_t  cfg_ival;
+    void      *p_str_data;
+};
 
 typedef struct sAniSirCfg
 {
@@ -73,7 +90,6 @@ typedef struct sAniSirCfg
     tANI_U8    *gSBuffer;
 
     // Message parameter list buffer (enough for largest possible response)
-    tANI_U32   *gParamList;
 } tAniSirCfg,  *tpAniSirCfg;
 
 #endif

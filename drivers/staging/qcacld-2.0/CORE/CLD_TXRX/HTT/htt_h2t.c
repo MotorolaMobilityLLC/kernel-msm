@@ -100,6 +100,16 @@ htt_h2t_send_complete(void *context, HTC_PACKET *htc_pkt)
         send_complete_part2(
             htt_pkt->pdev_ctxt, htc_pkt->Status, netbuf, htt_pkt->msdu_id);
     }
+
+    if (pdev->cfg.is_high_latency && !pdev->cfg.default_tx_comp_req) {
+        int32_t credit_delta;
+        adf_os_atomic_add(1, &pdev->htt_tx_credit.bus_delta);
+        credit_delta = htt_tx_credit_update(pdev);
+        if (credit_delta) {
+            ol_tx_credit_completion_handler(pdev->txrx_pdev, credit_delta);
+        }
+    }
+
     /* free the htt_htc_pkt / HTC_PACKET object */
     htt_htc_pkt_free(pdev, htt_pkt);
 }
@@ -117,10 +127,21 @@ htt_h2t_ver_req_msg(struct htt_pdev_t *pdev)
     struct htt_htc_pkt *pkt;
     adf_nbuf_t msg;
     u_int32_t *msg_word;
+    u_int32_t msg_size;
+    u_int32_t max_tx_group;
 
     pkt = htt_htc_pkt_alloc(pdev);
     if (!pkt) {
         return A_ERROR; /* failure */
+    }
+
+    max_tx_group = OL_TX_GET_MAX_GROUPS(pdev->txrx_pdev);
+
+    if (max_tx_group) {
+        msg_size = HTT_VER_REQ_BYTES +
+               sizeof(struct htt_option_tlv_mac_tx_queue_groups_t);
+    } else {
+        msg_size = HTT_VER_REQ_BYTES;
     }
 
     /* show that this is not a tx frame download (not required, but helpful) */
@@ -129,7 +150,7 @@ htt_h2t_ver_req_msg(struct htt_pdev_t *pdev)
 
     msg = adf_nbuf_alloc(
         pdev->osdev,
-        HTT_MSG_BUF_SIZE(HTT_VER_REQ_BYTES),
+        HTT_MSG_BUF_SIZE(msg_size),
         /* reserve room for the HTC header */
         HTC_HEADER_LEN + HTC_HDR_ALIGNMENT_PADDING, 4, TRUE);
     if (!msg) {
@@ -143,7 +164,7 @@ htt_h2t_ver_req_msg(struct htt_pdev_t *pdev)
      * separately during the below call to adf_nbuf_push_head.
      * The contribution from the HTC header is added separately inside HTC.
      */
-    adf_nbuf_put_tail(msg, HTT_VER_REQ_BYTES);
+    adf_nbuf_put_tail(msg, msg_size);
 
     /* fill in the message contents */
     msg_word = (u_int32_t *) adf_nbuf_data(msg);
@@ -153,6 +174,17 @@ htt_h2t_ver_req_msg(struct htt_pdev_t *pdev)
 
     *msg_word = 0;
     HTT_H2T_MSG_TYPE_SET(*msg_word, HTT_H2T_MSG_TYPE_VERSION_REQ);
+
+    if (max_tx_group) {
+        *(msg_word + 1) = 0;
+        /* Fill Group Info */
+        HTT_OPTION_TLV_TAG_SET(*(msg_word+1),
+                           HTT_OPTION_TLV_TAG_MAX_TX_QUEUE_GROUPS);
+        HTT_OPTION_TLV_LENGTH_SET(*(msg_word+1),
+                          (sizeof(struct htt_option_tlv_mac_tx_queue_groups_t)/
+                           sizeof(u_int32_t)));
+        HTT_OPTION_TLV_VALUE0_SET(*(msg_word+1), max_tx_group);
+    }
 
     SET_HTC_PACKET_INFO_TX(
         &pkt->htc_pkt,
@@ -338,15 +370,13 @@ htt_h2t_rx_ring_cfg_msg_ll(struct htt_pdev_t *pdev)
             adf_nbuf_data(msg),
             adf_nbuf_len(msg),
             pdev->htc_endpoint,
-            1); /* tag - not relevant here */
+            HTC_TX_PACKET_TAG_RUNTIME_PUT);
 
     SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
 
 #ifdef ATH_11AC_TXCOMPACT
-    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK) {
+    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK)
         htt_htc_misc_pkt_list_add(pdev, pkt);
-        htc_pm_runtime_put(pdev->htc_pdev);
-    }
 #else
     HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
 #endif
@@ -504,6 +534,7 @@ htt_h2t_dbg_stats_get(
     struct htt_htc_pkt *pkt;
     adf_nbuf_t msg;
     u_int32_t *msg_word;
+    uint16_t htc_tag = 1;
 
     pkt = htt_htc_pkt_alloc(pdev);
     if (!pkt) {
@@ -518,6 +549,9 @@ htt_h2t_dbg_stats_get(
             stats_type_upload_mask, stats_type_reset_mask);
         return -1; /* failure */
     }
+
+    if (stats_type_reset_mask)
+        htc_tag = HTC_TX_PACKET_TAG_RUNTIME_PUT;
 
     /* show that this is not a tx frame download (not required, but helpful) */
     pkt->msdu_id = HTT_TX_COMPL_INV_MSDU_ID;
@@ -568,7 +602,7 @@ htt_h2t_dbg_stats_get(
         adf_nbuf_data(msg),
         adf_nbuf_len(msg),
         pdev->htc_endpoint,
-        1); /* tag - not relevant here */
+        htc_tag);
 
     SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
 
@@ -630,15 +664,13 @@ htt_h2t_sync_msg(struct htt_pdev_t *pdev, u_int8_t sync_cnt)
         adf_nbuf_data(msg),
         adf_nbuf_len(msg),
         pdev->htc_endpoint,
-        1); /* tag - not relevant here */
+        HTC_TX_PACKET_TAG_RUNTIME_PUT);
 
     SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
 
 #ifdef ATH_11AC_TXCOMPACT
-    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK) {
+    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK)
         htt_htc_misc_pkt_list_add(pdev, pkt);
-        htc_pm_runtime_put(pdev->htc_pdev);
-    }
 #else
     HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
 #endif
@@ -702,15 +734,13 @@ htt_h2t_aggr_cfg_msg(struct htt_pdev_t *pdev,
         adf_nbuf_data(msg),
         adf_nbuf_len(msg),
         pdev->htc_endpoint,
-        1); /* tag - not relevant here */
+        HTC_TX_PACKET_TAG_RUNTIME_PUT);
 
     SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
 
 #ifdef ATH_11AC_TXCOMPACT
-    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK) {
+    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK)
         htt_htc_misc_pkt_list_add(pdev, pkt);
-        htc_pm_runtime_put(pdev->htc_pdev);
-    }
 #else
     HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
 #endif
@@ -806,15 +836,13 @@ int htt_h2t_ipa_uc_rsc_cfg_msg(struct htt_pdev_t *pdev)
         adf_nbuf_data(msg),
         adf_nbuf_len(msg),
         pdev->htc_endpoint,
-        1); /* tag - not relevant here */
+        HTC_TX_PACKET_TAG_RUNTIME_PUT);
 
     SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
 
 #ifdef ATH_11AC_TXCOMPACT
-    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK) {
+    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK)
         htt_htc_misc_pkt_list_add(pdev, pkt);
-        htc_pm_runtime_put(pdev->htc_pdev);
-    }
 #else
     HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
 #endif
@@ -904,64 +932,58 @@ int htt_h2t_ipa_uc_set_active(struct htt_pdev_t *pdev,
 
 int htt_h2t_ipa_uc_get_stats(struct htt_pdev_t *pdev)
 {
-    static struct htt_htc_pkt *pkt = NULL;
-    static adf_nbuf_t msg = NULL;
+    struct htt_htc_pkt *pkt = NULL;
+    adf_nbuf_t msg = NULL;
     u_int32_t *msg_word;
 
-    if ((!pkt) || (!msg)) {
-        /* New buffer alloc send */
-        pkt = htt_htc_pkt_alloc(pdev);
-        if (!pkt) {
-            return A_NO_MEMORY;
-        }
+    /* New buffer alloc send */
+    pkt = htt_htc_pkt_alloc(pdev);
+    if (!pkt) {
+        return A_NO_MEMORY;
+    }
 
-        /* show that this is not a tx frame download (not required,
-         * but helpful) */
-        pkt->msdu_id = HTT_TX_COMPL_INV_MSDU_ID;
-        pkt->pdev_ctxt = NULL; /* not used during send-done callback */
+    /* show that this is not a tx frame download (not required,
+     * but helpful) */
+    pkt->msdu_id = HTT_TX_COMPL_INV_MSDU_ID;
+    pkt->pdev_ctxt = NULL; /* not used during send-done callback */
 
-        msg = adf_nbuf_alloc(
-                pdev->osdev,
-                HTT_MSG_BUF_SIZE(HTT_WDI_IPA_OP_REQUEST_SZ),
-                /* reserve room for HTC header */
-                HTC_HEADER_LEN + HTC_HDR_ALIGNMENT_PADDING, 4, FALSE);
-        if (!msg) {
-            htt_htc_pkt_free(pdev, pkt);
-            return A_NO_MEMORY;
-        }
-        /* set the length of the message */
-        adf_nbuf_put_tail(msg, HTT_WDI_IPA_OP_REQUEST_SZ);
-        /* rewind beyond alignment pad to get to the HTC header reserved area */
-        adf_nbuf_push_head(msg, HTC_HDR_ALIGNMENT_PADDING);
+    msg = adf_nbuf_alloc(
+                         pdev->osdev,
+                         HTT_MSG_BUF_SIZE(HTT_WDI_IPA_OP_REQUEST_SZ),
+                         /* reserve room for HTC header */
+                         HTC_HEADER_LEN + HTC_HDR_ALIGNMENT_PADDING, 4, FALSE);
+    if (!msg) {
+        htt_htc_pkt_free(pdev, pkt);
+        return A_NO_MEMORY;
+    }
+    /* set the length of the message */
+    adf_nbuf_put_tail(msg, HTT_WDI_IPA_OP_REQUEST_SZ);
+    /* rewind beyond alignment pad to get to the HTC header reserved area */
+    adf_nbuf_push_head(msg, HTC_HDR_ALIGNMENT_PADDING);
 
-        /* fill in the message contents */
-        msg_word = (u_int32_t *) adf_nbuf_data(msg);
-        *msg_word = 0;
-        HTT_WDI_IPA_OP_REQUEST_OP_CODE_SET(*msg_word,
-             HTT_WDI_IPA_OPCODE_DBG_STATS);
-        HTT_H2T_MSG_TYPE_SET(*msg_word, HTT_H2T_MSG_TYPE_WDI_IPA_OP_REQ);
+    /* fill in the message contents */
+    msg_word = (u_int32_t *) adf_nbuf_data(msg);
+    *msg_word = 0;
+    HTT_WDI_IPA_OP_REQUEST_OP_CODE_SET(*msg_word,
+                                       HTT_WDI_IPA_OPCODE_DBG_STATS);
+    HTT_H2T_MSG_TYPE_SET(*msg_word, HTT_H2T_MSG_TYPE_WDI_IPA_OP_REQ);
 
-        SET_HTC_PACKET_INFO_TX(
-            &pkt->htc_pkt,
-            htt_h2t_send_complete_free_netbuf,
-            adf_nbuf_data(msg),
-            adf_nbuf_len(msg),
-            pdev->htc_endpoint,
-            1); /* tag - not relevant here */
+    SET_HTC_PACKET_INFO_TX(
+                           &pkt->htc_pkt,
+                           htt_h2t_send_complete_free_netbuf,
+                           adf_nbuf_data(msg),
+                           adf_nbuf_len(msg),
+                           pdev->htc_endpoint,
+                           1); /* tag - not relevant here */
 
-        SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
+    SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
 
 #ifdef ATH_11AC_TXCOMPACT
-        if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK)
-            htt_htc_misc_pkt_list_add(pdev, pkt);
+    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK)
+        htt_htc_misc_pkt_list_add(pdev, pkt);
 #else
-        HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
+    HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
 #endif
-    } else {
-        /* Cached MSG send */
-        adf_nbuf_pull_head(msg, sizeof(HTC_FRAME_HDR));
-        HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
-    }
     return A_OK;
 }
 #endif /* IPA_UC_OFFLOAD */

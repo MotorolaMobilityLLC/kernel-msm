@@ -51,7 +51,11 @@
 #define PKTLOG_DEVNAME_SIZE	32
 #define MAX_WLANDEV		1
 
+#ifdef MULTI_IF_NAME
+#define PKTLOG_PROC_DIR		"ath_pktlog" MULTI_IF_NAME
+#else
 #define PKTLOG_PROC_DIR		"ath_pktlog"
+#endif
 
 /* Permissions for creating proc entries */
 #define PKTLOG_PROC_PERM	0444

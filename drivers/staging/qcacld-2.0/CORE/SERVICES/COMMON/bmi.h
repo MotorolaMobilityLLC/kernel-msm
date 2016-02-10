@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -46,7 +46,7 @@ extern "C" {
 #include "ol_if_athvar.h"
 
 A_STATUS bmi_download_firmware(struct ol_softc *scn);
-
+void bmi_target_ready(struct ol_softc *scn, void *cfg_ctx);
 void
 BMICleanup(struct ol_softc *scn);
 

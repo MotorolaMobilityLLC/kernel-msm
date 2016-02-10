@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -314,7 +314,7 @@ typedef void (*wda_tgt_cfg_cb) (void *context, void *param);
  * to stop accepting data Tx packets from netif as radar is
  * found on the current operating channel
  */
-typedef void (*wda_dfs_radar_indication_cb) (void *context, void *param);
+typedef bool (*wda_dfs_radar_indication_cb) (void *context, void *param);
 
 typedef struct
 {
@@ -596,9 +596,6 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_CCA_CHANGE_MODE            SIR_HAL_CCA_CHANGE_MODE
 #define WDA_TIMER_WRAP_AROUND_STATS_COLLECT_REQ   SIR_HAL_TIMER_WRAP_AROUND_STATS_COLLECT_REQ
 
-/*
- * New Taurus related messages
- */
 #define WDA_ADD_STA_REQ                SIR_HAL_ADD_STA_REQ
 #define WDA_ADD_STA_RSP                SIR_HAL_ADD_STA_RSP
 #define WDA_ADD_STA_SELF_RSP           SIR_HAL_ADD_STA_SELF_RSP
@@ -656,6 +653,8 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_ENTER_BMPS_RSP             SIR_HAL_ENTER_BMPS_RSP
 #define WDA_BMPS_STATUS_IND            SIR_HAL_BMPS_STATUS_IND
 #define WDA_MISSED_BEACON_IND          SIR_HAL_MISSED_BEACON_IND
+
+#define WDA_SMPS_FORCE_MODE_IND        SIR_HAL_SMPS_FORCE_MODE_IND
 
 #define WDA_CFG_RXP_FILTER_REQ         SIR_HAL_CFG_RXP_FILTER_REQ
 #define WDA_CFG_RXP_FILTER_RSP         SIR_HAL_CFG_RXP_FILTER_RSP
@@ -767,7 +766,6 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_BTC_SET_CFG                SIR_HAL_BTC_SET_CFG
 #define WDA_SIGNAL_BT_EVENT            SIR_HAL_SIGNAL_BT_EVENT
 #define WDA_HANDLE_FW_MBOX_RSP         SIR_HAL_HANDLE_FW_MBOX_RSP
-#define WDA_SIGNAL_BTAMP_EVENT         SIR_HAL_SIGNAL_BTAMP_EVENT
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
 /* PE <-> HAL OEM_DATA RELATED MESSAGES */
@@ -825,7 +823,6 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #ifdef FEATURE_WLAN_SCAN_PNO
 /*Requests sent to lower driver*/
 #define WDA_SET_PNO_REQ             SIR_HAL_SET_PNO_REQ
-#define WDA_SET_RSSI_FILTER_REQ     SIR_HAL_SET_RSSI_FILTER_REQ
 #define WDA_UPDATE_SCAN_PARAMS_REQ  SIR_HAL_UPDATE_SCAN_PARAMS
 
 /*Indication comming from lower driver*/
@@ -880,9 +877,6 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_UPDATE_USERPOS         SIR_HAL_UPDATE_USERPOS
 #endif
 
-#define WDA_GET_ROAM_RSSI_REQ      SIR_HAL_GET_ROAM_RSSI_REQ
-#define WDA_GET_ROAM_RSSI_RSP      SIR_HAL_GET_ROAM_RSSI_RSP
-
 #ifdef WLAN_FEATURE_NAN
 #define WDA_NAN_REQUEST            SIR_HAL_NAN_REQUEST
 #endif
@@ -898,6 +892,7 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 
 #define WDA_CLI_SET_CMD             SIR_HAL_CLI_SET_CMD
 #define WDA_CLI_GET_CMD             SIR_HAL_CLI_GET_CMD
+#define WDA_SET_PDEV_IE_REQ         SIR_HAL_SET_PDEV_IE_REQ
 #ifdef FEATURE_WLAN_SCAN_PNO
 #define WDA_SME_SCAN_CACHE_UPDATED  SIR_HAL_SME_SCAN_CACHE_UPDATED
 #endif
@@ -929,6 +924,16 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_INIT_THERMAL_INFO_CMD   SIR_HAL_INIT_THERMAL_INFO_CMD
 #define WDA_SET_THERMAL_LEVEL       SIR_HAL_SET_THERMAL_LEVEL
 
+#define WDA_RMC_ENABLE_IND          SIR_HAL_RMC_ENABLE_IND
+#define WDA_RMC_DISABLE_IND         SIR_HAL_RMC_DISABLE_IND
+#define WDA_RMC_ACTION_PERIOD_IND   SIR_HAL_RMC_ACTION_PERIOD_IND
+
+#define WDA_GET_IBSS_PEER_INFO_REQ  SIR_HAL_IBSS_PEER_INFO_REQ
+#define WDA_GET_IBSS_PEER_INFO_RSP  SIR_HAL_IBSS_PEER_INFO_RSP
+
+#define WDA_IBSS_CESIUM_ENABLE_IND  SIR_HAL_IBSS_CESIUM_ENABLE_IND
+#define WDA_INIT_BAD_PEER_TX_CTL_INFO_CMD   SIR_HAL_BAD_PEER_TX_CTL_INI_CMD
+
 #ifdef FEATURE_WLAN_TDLS
 #define WDA_UPDATE_FW_TDLS_STATE      SIR_HAL_UPDATE_FW_TDLS_STATE
 #define WDA_UPDATE_TDLS_PEER_STATE    SIR_HAL_UPDATE_TDLS_PEER_STATE
@@ -951,6 +956,8 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_DEAUTH_TX_COMP         SIR_HAL_DEAUTH_TX_COMP
 #define WDA_GET_LINK_SPEED         SIR_HAL_GET_LINK_SPEED
 
+#define WDA_GET_RSSI               SIR_HAL_GET_RSSI
+
 #define WDA_MODEM_POWER_STATE_IND SIR_HAL_MODEM_POWER_STATE_IND
 
 #define WDA_VDEV_STOP_IND           SIR_HAL_VDEV_STOP_IND
@@ -960,10 +967,13 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #endif
 
 #define WDA_VDEV_START_RSP_IND      SIR_HAL_VDEV_START_RSP_IND
+#define WDA_IPA_OFFLOAD_ENABLE_DISABLE        SIR_HAL_IPA_OFFLOAD_ENABLE_DISABLE
 
 #define WDA_ROAM_PREAUTH_IND        SIR_HAL_ROAM_PREAUTH_IND
 
 #define WDA_TBTT_UPDATE_IND         SIR_HAL_TBTT_UPDATE_IND
+
+#define WDA_GET_TEMPERATURE_REQ     SIR_HAL_GET_TEMPERATURE_REQ
 
 #ifdef FEATURE_WLAN_EXTSCAN
 #define WDA_EXTSCAN_GET_CAPABILITIES_REQ    SIR_HAL_EXTSCAN_GET_CAPABILITIES_REQ
@@ -1000,16 +1010,67 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #endif
 
 #define WDA_SET_SCAN_MAC_OUI_REQ              SIR_HAL_SET_SCAN_MAC_OUI_REQ
+#define WDA_GET_FW_STATUS_REQ                 SIR_HAL_GET_FW_STATUS_REQ
+
+#ifdef DHCP_SERVER_OFFLOAD
+#define WDA_SET_DHCP_SERVER_OFFLOAD_CMD       SIR_HAL_SET_DHCP_SERVER_OFFLOAD
+#endif /* DHCP_SERVER_OFFLOAD */
+
+#ifdef WLAN_FEATURE_GPIO_LED_FLASHING
+#define WDA_LED_FLASHING_REQ   SIR_HAL_LED_FLASHING_REQ
+#endif
+
+#ifdef MDNS_OFFLOAD
+#define WDA_SET_MDNS_OFFLOAD_CMD              SIR_HAL_SET_MDNS_OFFLOAD
+#define WDA_SET_MDNS_FQDN_CMD                 SIR_HAL_SET_MDNS_FQDN
+#define WDA_SET_MDNS_RESPONSE_CMD             SIR_HAL_SET_MDNS_RESPONSE
+#define WDA_GET_MDNS_STATUS_CMD               SIR_HAL_GET_MDNS_STATUS
+#endif /* MDNS_OFFLOAD */
+
+#ifdef SAP_AUTH_OFFLOAD
+#define WDA_SAP_OFL_ADD_STA                   SIR_HAL_SAP_OFL_ADD_STA
+#define WDA_SAP_OFL_DEL_STA                   SIR_HAL_SAP_OFL_DEL_STA
+#define WDA_SET_SAP_AUTH_OFL                  SIR_HAL_SET_SAP_AUTH_OFL
+#define WDA_SET_CLIENT_BLOCK_INFO             SIR_HAL_SET_CLIENT_BLOCK_INFO
+#endif /* SAP_AUTH_OFFLOAD */
+
+#ifdef WLAN_FEATURE_APFIND
+#define WDA_APFIND_SET_CMD                    SIR_HAL_APFIND_SET_CMD
+#endif /* WLAN_FEATURE_APFIND */
+
+#define WDA_OCB_SET_CONFIG_CMD                SIR_HAL_OCB_SET_CONFIG_CMD
+#define WDA_OCB_SET_UTC_TIME_CMD              SIR_HAL_OCB_SET_UTC_TIME_CMD
+#define WDA_OCB_START_TIMING_ADVERT_CMD       SIR_HAL_OCB_START_TIMING_ADVERT_CMD
+#define WDA_OCB_STOP_TIMING_ADVERT_CMD        SIR_HAL_OCB_STOP_TIMING_ADVERT_CMD
+#define WDA_OCB_GET_TSF_TIMER_CMD             SIR_HAL_OCB_GET_TSF_TIMER_CMD
+#define WDA_DCC_GET_STATS_CMD                 SIR_HAL_DCC_GET_STATS_CMD
+#define WDA_DCC_CLEAR_STATS_CMD               SIR_HAL_DCC_CLEAR_STATS_CMD
+#define WDA_DCC_UPDATE_NDL_CMD                SIR_HAL_DCC_UPDATE_NDL_CMD
 
 #ifdef FEATURE_RUNTIME_PM
 #define WDA_RUNTIME_PM_SUSPEND_IND            SIR_HAL_RUNTIME_PM_SUSPEND_IND
 #define WDA_RUNTIME_PM_RESUME_IND             SIR_HAL_RUNTIME_PM_RESUME_IND
 #endif
 
+#ifdef FEATURE_AP_MCC_CH_AVOIDANCE
+#define WDA_UPDATE_Q2Q_IE_IND                 SIR_HAL_UPDATE_Q2Q_IE_IND
+#endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
+
 #define WDA_FW_MEM_DUMP_REQ                   SIR_HAL_FW_MEM_DUMP_REQ
+#define WDA_TSF_GPIO_PIN                      SIR_HAL_TSF_GPIO_PIN_REQ
 #define WDA_SET_RSSI_MONITOR_REQ              SIR_HAL_SET_RSSI_MONITOR_REQ
 
 #define WDA_SET_IE_INFO                       SIR_HAL_SET_IE_INFO
+
+#define WDA_SET_UDP_RESP_OFFLOAD              SIR_HAL_SET_UDP_RESP_OFFLOAD
+
+#define WDA_SET_WOW_PULSE_CMD                 SIR_HAL_SET_WOW_PULSE_CMD
+
+#define WDA_UPDATE_WEP_DEFAULT_KEY            SIR_HAL_UPDATE_WEP_DEFAULT_KEY
+
+#define WDA_SET_CTS2SELF_FOR_STA              SIR_HAL_SET_CTS2SELF_FOR_STA
+
+#define WDA_SET_EGAP_CONF_PARAMS              SIR_HAL_SET_EGAP_CONF_PARAMS
 
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
@@ -1056,15 +1117,11 @@ tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
 VOS_STATUS WDA_SetIdlePsConfig(void *wda_handle, tANI_U32 idle_ps);
 VOS_STATUS WDA_notify_modem_power_state(void *wda_handle, tANI_U32 value);
+VOS_STATUS WDA_GetSnr(tAniGetSnrReq *psnr_req);
 static inline void WDA_UpdateSnrBmps(v_PVOID_t pvosGCtx, v_U8_t staId,
             v_S7_t snr)
 {
 
-}
-
-static inline int WDA_GetSnr(tANI_U8 ucSTAId, tANI_S8* pSnr)
-{
-     return VOS_STATUS_SUCCESS;
 }
 
 static inline void WDA_UpdateLinkCapacity(v_PVOID_t pvosGCtx, v_U8_t staId,

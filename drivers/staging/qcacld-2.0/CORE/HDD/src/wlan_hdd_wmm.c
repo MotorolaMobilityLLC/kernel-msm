@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -63,6 +63,7 @@
 #include <wlan_hdd_hostapd.h>
 #include <wlan_hdd_softap_tx_rx.h>
 #include <vos_sched.h>
+#include <linux/ipv6.h>
 #include "sme_Api.h"
 
 // change logging behavior based upon debug flag
@@ -103,7 +104,7 @@ const v_U8_t hddWmmUpToAcMap[] = {
 };
 
 //Linux based UP -> AC Mapping
-const v_U8_t hddLinuxUpToAcMap[8] = {
+const v_U8_t hddLinuxUpToAcMap[HDD_WMM_UP_TO_AC_MAP_SIZE] = {
    HDD_LINUX_AC_BE,
    HDD_LINUX_AC_BK,
    HDD_LINUX_AC_BK,
@@ -405,6 +406,11 @@ void hdd_wmm_inactivity_timer_cb( v_PVOID_t pUserData )
     WLANTL_ACEnumType acType = pQosContext->acType;
 
     pAdapter = pQosContext->pAdapter;
+    if ((NULL == pAdapter) || (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic)) {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  FL("invalid pAdapter: %p"), pAdapter);
+        return;
+    }
     pAc = &pAdapter->hddWmmStatus.wmmAcStatus[acType];
 
     // Get the Tx stats for this AC.
@@ -1656,15 +1662,15 @@ v_BOOL_t is_dhcp_packet(struct sk_buff *skb)
 
   @return         : None
   ===========================================================================*/
-v_VOID_t hdd_wmm_classify_pkt ( hdd_adapter_t* pAdapter,
-                                struct sk_buff *skb,
-                                WLANTL_ACEnumType* pAcType,
-                                sme_QosWmmUpType *pUserPri)
+static v_VOID_t
+hdd_wmm_classify_pkt(hdd_adapter_t* pAdapter, struct sk_buff *skb,
+                     WLANTL_ACEnumType* pAcType, sme_QosWmmUpType *pUserPri)
 {
    unsigned char * pPkt;
    union generic_ethhdr *pHdr;
    struct iphdr *pIpHdr;
    unsigned char tos;
+   struct ipv6hdr *ipv6hdr;
    unsigned char dscp;
    sme_QosWmmUpType userPri;
    WLANTL_ACEnumType acType;
@@ -1698,7 +1704,14 @@ v_VOID_t hdd_wmm_classify_pkt ( hdd_adapter_t* pAdapter,
                    "%s: Ethernet II IP Packet, tos is %d",
                    __func__, tos);
 #endif // HDD_WMM_DEBUG
-
+      } else if (pHdr->eth_II.h_proto  == htons(ETH_P_IPV6)) {
+         ipv6hdr = ipv6_hdr(skb);
+         tos = ntohs(*(const __be16 *)ipv6hdr) >> 4;
+#ifdef HDD_WMM_DEBUG
+         VOS_TRACE(CDF_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO_LOW,
+                   "%s: Ethernet II IPv6 Packet, tos is %d",
+                   __func__, tos);
+#endif /* HDD_WMM_DEBUG */
       }
       else if ((ntohs(pHdr->eth_II.h_proto) < WLAN_MIN_PROTO) &&
                (pHdr->eth_8023.h_snap.dsap == WLAN_SNAP_DSAP) &&
@@ -1843,60 +1856,34 @@ v_VOID_t hdd_wmm_classify_pkt ( hdd_adapter_t* pAdapter,
 
   @return         : Qdisc queue index
   ===========================================================================*/
-v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
+v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,13,0))
+                                 , void *accel_priv
+#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
+                                 , select_queue_fallback_t fallback
+#endif
+)
 {
    WLANTL_ACEnumType ac;
    sme_QosWmmUpType up = SME_QOS_WMM_UP_BE;
    v_USHORT_t queueIndex;
-   v_MACADDR_t *pDestMacAddress = (v_MACADDR_t*)skb->data;
    hdd_adapter_t *pAdapter = (hdd_adapter_t *)netdev_priv(dev);
    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-   v_U8_t STAId;
-   v_U8_t *pSTAId = (v_U8_t *)(((v_U8_t *)(skb->data)) - 1);
    int status = 0;
    status = wlan_hdd_validate_context(pHddCtx);
 
-   if (status != 0) {
+   if (status != 0)
+   {
       skb->priority = SME_QOS_WMM_UP_BE;
       return HDD_LINUX_AC_BE;
    }
 
-   /*Get the Station ID*/
-   if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(pAdapter, pDestMacAddress, &STAId))
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
-            "%s: Failed to find right station", __func__);
-      *pSTAId = HDD_WLAN_INVALID_STA_ID;
-      goto done;
-   }
-
-   spin_lock_bh( &pAdapter->staInfo_lock );
-   if (FALSE == vos_is_macaddr_equal(&pAdapter->aStaInfo[STAId].macAddrSTA, pDestMacAddress))
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
-                   "%s: Station MAC address does not matching", __func__);
-
-      *pSTAId = HDD_WLAN_INVALID_STA_ID;
-      goto release_lock;
-   }
-   if (pAdapter->aStaInfo[STAId].isUsed && pAdapter->aStaInfo[STAId].isQosEnabled && (HDD_WMM_USER_MODE_NO_QOS != pHddCtx->cfg_ini->WmmMode))
-   {
+   if (HDD_WMM_USER_MODE_NO_QOS != pHddCtx->cfg_ini->WmmMode) {
       /* Get the user priority from IP header & corresponding AC */
       hdd_wmm_classify_pkt (pAdapter, skb, &ac, &up);
-      //If 3/4th of Tx queue is used then place the DHCP packet in VOICE AC queue
-      if (pAdapter->aStaInfo[STAId].vosLowResource && is_dhcp_packet(skb))
-      {
-         VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
-                    "%s: Making priority of DHCP packet as VOICE", __func__);
-         up = SME_QOS_WMM_UP_VO;
-         ac = hddWmmUpToAcMap[up];
-      }
    }
-   *pSTAId = STAId;
 
-release_lock:
-    spin_unlock_bh( &pAdapter->staInfo_lock );
-done:
    skb->priority = up;
    queueIndex = hddLinuxUpToAcMap[skb->priority];
 
@@ -1927,46 +1914,16 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb)
        skb->priority = SME_QOS_WMM_UP_BE;
        return HDD_LINUX_AC_BE;
    }
-
-   /*Get the Station ID*/
-   if (WLAN_HDD_IBSS == pAdapter->device_mode)
-   {
-       v_U8_t *pSTAId = (v_U8_t *)(((v_U8_t *)(skb->data)) - 1);
-       v_MACADDR_t *pDestMacAddress = (v_MACADDR_t*)skb->data;
-
-       if ( VOS_STATUS_SUCCESS !=
-            hdd_Ibss_GetStaId(&pAdapter->sessionCtx.station,
-                               pDestMacAddress, pSTAId))
-       {
-          *pSTAId = HDD_WLAN_INVALID_STA_ID;
-          if (!vos_is_macaddr_broadcast(pDestMacAddress) &&
-              !vos_is_macaddr_group(pDestMacAddress)) {
-              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                     "%s: Failed to find right station pDestMacAddress: "
-                     MAC_ADDRESS_STR , __func__,
-                     MAC_ADDR_ARRAY(pDestMacAddress->bytes));
-              goto done;
-          }
-       }
-   }
    /*
     * If we don't want QoS or the AP doesn't support Qos
     * All traffic will get equal opportunity to transmit data frames.
     */
+
    if( hdd_wmm_is_active(pAdapter) ) {
       /* Get the user priority from IP header & corresponding AC */
       hdd_wmm_classify_pkt (pAdapter, skb, &ac, &up);
-      //If 3/4th of BE AC Tx queue is full, then place the DHCP packet in VOICE AC queue
-      if (pAdapter->isVosLowResource && is_dhcp_packet(skb))
-      {
-         VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_WARN,
-                   "%s: BestEffort Tx Queue is 3/4th full"
-                   " Make DHCP packet's pri as VO", __func__);
-         up = SME_QOS_WMM_UP_VO;
-         ac = hddWmmUpToAcMap[up];
-      }
    }
-done:
+
    skb->priority = up;
    queueIndex = hddLinuxUpToAcMap[skb->priority];
 
@@ -2109,13 +2066,8 @@ VOS_STATUS hdd_wmm_acquire_access( hdd_adapter_t* pAdapter,
    pQosContext->magic = HDD_WMM_CTX_MAGIC;
    pQosContext->is_inactivity_timer_running = false;
 
-#ifdef CONFIG_CNSS
-   cnss_init_work(&pQosContext->wmmAcSetupImplicitQos,
+   vos_init_work(&pQosContext->wmmAcSetupImplicitQos,
              hdd_wmm_do_implicit_qos);
-#else
-   INIT_WORK(&pQosContext->wmmAcSetupImplicitQos,
-             hdd_wmm_do_implicit_qos);
-#endif
 
    VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
              "%s: Scheduling work for AC %d, context %p",
@@ -2334,17 +2286,38 @@ VOS_STATUS hdd_wmm_connect( hdd_adapter_t* pAdapter,
              * Here we avoid 11r and ccx based association because Tspec will
              * be part of assoc/reassoc request.
              */
-#if defined (WLAN_FEATURE_VOWIFI_11R)
-            if (pRoamInfo->u.pConnectedProfile->AuthType != eCSR_AUTH_TYPE_FT_RSN
-                && pRoamInfo->u.pConnectedProfile->AuthType != eCSR_AUTH_TYPE_FT_RSN_PSK
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                       FL( "fReassocReq = %d"
 #if defined (FEATURE_WLAN_ESE)
-                && pRoamInfo->u.pConnectedProfile->AuthType != eCSR_AUTH_TYPE_CCKM_WPA
-                && pRoamInfo->u.pConnectedProfile->AuthType != eCSR_AUTH_TYPE_CCKM_RSN
+                           "isESEAssoc = %d"
 #endif
-               )
+#if defined (WLAN_FEATURE_VOWIFI_11R)
+                           "is11rAssoc = %d"
 #endif
+                         ),
+                         pRoamInfo->fReassocReq
+#if defined (FEATURE_WLAN_ESE)
+                         ,pRoamInfo->isESEAssoc
+#endif
+#if defined (WLAN_FEATURE_VOWIFI_11R)
+                         ,pRoamInfo->is11rAssoc
+#endif
+                     );
+            if ( !pRoamInfo->fReassocReq
+#if defined (WLAN_FEATURE_VOWIFI_11R)
+            &&
+            !pRoamInfo->is11rAssoc
+#endif
+#if defined (FEATURE_WLAN_ESE)
+            &&
+            !pRoamInfo->isESEAssoc
+#endif
+            )
             {
-                pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid = VOS_FALSE;
+                pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid =
+                        VOS_FALSE;
+                pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessAllowed =
+                        VOS_FALSE;
             }
          }
       }
@@ -2519,8 +2492,12 @@ hdd_wlan_wmm_status_e hdd_wmm_addts( hdd_adapter_t* pAdapter,
           return HDD_WLAN_WMM_STATUS_MODIFY_FAILED;
       }
 
-      // we were successful, save the status
-      pQosContext->lastStatus = status;
+      /* we were successful, save the status */
+      mutex_lock(&pAdapter->hddWmmStatus.wmmLock);
+      if (pQosContext->magic == HDD_WMM_CTX_MAGIC)
+          pQosContext->lastStatus = status;
+      mutex_unlock(&pAdapter->hddWmmStatus.wmmLock);
+
       return status;
    }
 
@@ -2608,8 +2585,11 @@ hdd_wlan_wmm_status_e hdd_wmm_addts( hdd_adapter_t* pAdapter,
    }
 #endif
 
-   // we were successful, save the status
-   pQosContext->lastStatus = status;
+   /* we were successful, save the status */
+   mutex_lock(&pAdapter->hddWmmStatus.wmmLock);
+   if (pQosContext->magic == HDD_WMM_CTX_MAGIC)
+       pQosContext->lastStatus = status;
+   mutex_unlock(&pAdapter->hddWmmStatus.wmmLock);
 
    return status;
 }
@@ -2719,7 +2699,11 @@ hdd_wlan_wmm_status_e hdd_wmm_delts( hdd_adapter_t* pAdapter,
    }
 
 #endif
-   pQosContext->lastStatus = status;
+   mutex_lock(&pAdapter->hddWmmStatus.wmmLock);
+   if (pQosContext->magic == HDD_WMM_CTX_MAGIC)
+       pQosContext->lastStatus = status;
+   mutex_unlock(&pAdapter->hddWmmStatus.wmmLock);
+
    return status;
 }
 

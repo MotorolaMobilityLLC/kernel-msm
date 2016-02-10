@@ -114,18 +114,16 @@ tSirRetStatus
 sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
                          tANI_U32 subType)
 {
-    static tANI_U32 lastDeauthPacketTime = 0;
+    tANI_U32 framecount;
     tSirRetStatus ret;
     void*         pBd;
     tMgmtFrmDropReason dropReason;
     vos_pkt_t  *pVosPkt = (vos_pkt_t *)pMsg->bodyptr;
     VOS_STATUS  vosStatus =
               WDA_DS_PeekRxPacketInfo( pVosPkt, (v_PVOID_t *)&pBd, VOS_FALSE );
-#ifdef WLAN_FEATURE_11W
     tANI_U8         sessionId;
     tpPESession     psessionEntry;
     tpSirMacMgmtHdr pMacHdr;
-#endif /* WLAN_FEATURE_11W */
 
     pMac->sys.gSysBbtReceived++;
 
@@ -139,29 +137,44 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
     sirDumpBuf(pMac, SIR_SYS_MODULE_ID, LOG3, WDA_GET_RX_MPDU_DATA(pBd), WDA_GET_RX_PAYLOAD_LEN(pBd));)
 
     pMac->sys.gSysFrameCount[type][subType]++;
+    framecount = pMac->sys.gSysFrameCount[type][subType];
 
     if(type == SIR_MAC_MGMT_FRAME)
     {
-            if ((subType == SIR_MAC_MGMT_DEAUTH) && (pMac->sys.gSysFrameCount[type][subType] >= MAX_DEAUTH_ALLOWED))
+            if (VOS_TRUE == pMac->sap.SapDfsInfo.is_dfs_cac_timer_running)
             {
-                tANI_U32 timeNow = adf_os_ticks();
-                tANI_U32 timeGap = adf_os_ticks_to_msecs(timeNow -
-                                              lastDeauthPacketTime);
-                if (timeGap < 1000) {
-#ifdef WLAN_FEATURE_11W
-                    pMacHdr = WDA_GET_RX_MAC_HEADER(pBd);
-                    psessionEntry = peFindSessionByPeerSta(pMac,
-                                        pMacHdr->sa, &sessionId);
-                    if(!psessionEntry) {
-                        PELOGE(sysLog(pMac, LOGE,
-                            FL("session does not exist for given STA [%pM]"),
-                            pMacHdr->sa););
-                        goto fail;
-                    }
-                    if (!psessionEntry->limRmfEnabled)
-#endif /* WLAN_FEATURE_11W */
-                        goto fail;
+                pMacHdr = WDA_GET_RX_MAC_HEADER(pBd);
+                psessionEntry = peFindSessionByBssid(pMac,
+                                        pMacHdr->bssId, &sessionId);
+                if (psessionEntry &&
+                    (psessionEntry->pePersona == VOS_STA_SAP_MODE))
+                {
+                    VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO_HIGH,
+                          FL("CAC timer is running, dropping the mgmt frame"));
+                    goto fail;
                 }
+            }
+
+            /*
+             * Drop beacon frames in deferred state to avoid VOSS run out of
+             * message wrappers.
+             */
+            if ((subType == SIR_MAC_MGMT_BEACON) &&
+                (!limIsSystemInScanState(pMac)) &&
+                (true != GET_LIM_PROCESS_DEFD_MESGS(pMac)) &&
+                !pMac->lim.gLimSystemInScanLearnMode) {
+                VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO_HIGH,
+                          FL("dropping received beacon in deffered state"));
+                goto fail;
+            }
+
+            dropReason = limIsPktCandidateForDrop(pMac, pBd, subType);
+            if (dropReason != eMGMT_DROP_NO_DROP) {
+                PELOG1(limLog(pMac, LOG1,
+                            FL("Mgmt Frame %d being dropped, reason: %d\n"),
+                            subType, dropReason);)
+                MTRACE(macTrace(pMac,   TRACE_CODE_RX_MGMT_DROP, NO_SESSION, dropReason);)
+                goto fail;
             }
 
             if (subType == SIR_MAC_MGMT_DEAUTH)
@@ -177,15 +190,22 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
                        MAC_ADDR_ARRAY(pMacHdr->sa),
                        MAC_ADDR_ARRAY(pMacHdr->bssId),
                        pMac->sys.gSysFrameCount[type][subType] ););
-                lastDeauthPacketTime = adf_os_ticks();
+            }
+            if (subType == SIR_MAC_MGMT_DISASSOC)
+            {
+                tpSirMacMgmtHdr pMacHdr = WDA_GET_RX_MAC_HEADER(pBd);
+                PELOGE(sysLog( pMac, LOGE,
+                       FL("DISASSOC frame allowed: "
+                       "da: " MAC_ADDRESS_STR ", "
+                       "sa: " MAC_ADDRESS_STR ", "
+                       "bssid: " MAC_ADDRESS_STR ", "
+                       "DISASSOC count so far: %d\n"),
+                       MAC_ADDR_ARRAY(pMacHdr->da),
+                       MAC_ADDR_ARRAY(pMacHdr->sa),
+                       MAC_ADDR_ARRAY(pMacHdr->bssId),
+                       pMac->sys.gSysFrameCount[type][subType] ););
             }
 
-            if( (dropReason = limIsPktCandidateForDrop(pMac, pBd, subType)) != eMGMT_DROP_NO_DROP)
-            {
-                PELOG1(sysLog(pMac, LOG1, FL("Mgmt Frame %d being dropped, reason: %d\n"), subType, dropReason);)
-                MTRACE(macTrace(pMac,   TRACE_CODE_RX_MGMT_DROP, NO_SESSION, dropReason);)
-                goto fail;
-            }
             //Post the message to PE Queue
             ret = (tSirRetStatus) limPostMsgApi(pMac, pMsg);
             if (ret != eSIR_SUCCESS)

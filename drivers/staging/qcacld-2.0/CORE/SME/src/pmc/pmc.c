@@ -164,8 +164,7 @@ eHalStatus pmcEnterFullPowerState (tHalHandle hHal)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
 
-    pmcLog(pMac, LOG2, FL("Entering pmcEnterFullPowerState"));
-
+    pmcLog(pMac, LOG1, FL("PMC state is %d"), pMac->pmc.pmcState);
     /* Take action based on the current state. */
     switch (pMac->pmc.pmcState)
     {
@@ -192,9 +191,11 @@ eHalStatus pmcEnterFullPowerState (tHalHandle hHal)
         /* Do all the callbacks. */
         pmcDoCallbacks(hHal, eHAL_STATUS_SUCCESS);
 
-        /* Update registerd modules that we are entering Full Power. This is
-           only way to inform modules if PMC exited a power save mode because
-           of error conditions or if som other module requested full power */
+        /*
+         * Update registered modules that we are entering Full Power. This is
+         * only way to inform modules if PMC exited a power save mode because
+         * of error conditions or if some other module requested full power.
+         */
         pmcDoDeviceStateUpdateCallbacks(hHal, FULL_POWER);
         break;
 
@@ -257,7 +258,10 @@ eHalStatus pmcEnterRequestFullPowerState (tHalHandle hHal, tRequestFullPowerReas
     case REQUEST_ENTER_WOWL:
     case REQUEST_EXIT_WOWL:
         pmcLog(pMac, LOGW, FL("Request for full power is being buffered. "
-            "Current state is %d"), pMac->pmc.pmcState);
+                              "Current state is %s (%d)"),
+                              sme_PmcStatetoString(pMac->pmc.pmcState),
+                                                   pMac->pmc.pmcState);
+
         //Ignore the new reason if request for full power is already pending
         if( !pMac->pmc.requestFullPowerPending )
         {
@@ -330,7 +334,10 @@ eHalStatus pmcEnterRequestFullPowerState (tHalHandle hHal, tRequestFullPowerReas
     /* Cannot go directly to Request Full Power State from these states. */
     default:
         pmcLog(pMac, LOGE,
-               FL("Trying to enter Request Full Power State from state %d"), pMac->pmc.pmcState);
+               FL("Trying to enter Request Full Power State from state %s (%d)"),
+               sme_PmcStatetoString(pMac->pmc.pmcState),
+                                    pMac->pmc.pmcState);
+
         PMC_ABORT;
         return eHAL_STATUS_FAILURE;
     }
@@ -361,7 +368,8 @@ eHalStatus pmcEnterRequestImpsState (tHalHandle hHal)
     /* Can enter Request IMPS State only from Full Power State. */
     if (pMac->pmc.pmcState != FULL_POWER)
     {
-        pmcLog(pMac, LOGE, FL("Trying to enter Request IMPS State from state %d"), pMac->pmc.pmcState);
+        pmcLog(pMac, LOGE, FL("Trying to enter Request IMPS State from state %s (%d)"),
+               sme_PmcStatetoString(pMac->pmc.pmcState), pMac->pmc.pmcState);
         return eHAL_STATUS_FAILURE;
     }
 
@@ -409,14 +417,16 @@ eHalStatus pmcEnterImpsState (tHalHandle hHal)
     /* Can enter IMPS State only from Request IMPS State. */
     if (pMac->pmc.pmcState != REQUEST_IMPS)
     {
-        pmcLog(pMac, LOGE, FL("Trying to enter IMPS State from state %d"), pMac->pmc.pmcState);
+        pmcLog(pMac, LOGE, FL("Trying to enter IMPS State from state %s (%d)"),
+               sme_PmcStatetoString(pMac->pmc.pmcState), pMac->pmc.pmcState);
+
         return eHAL_STATUS_FAILURE;
     }
 
     /* Change state. */
     pMac->pmc.pmcState = IMPS;
 
-    /* If we have a reqeust for full power pending then we have to go
+    /* If we have a request for full power pending then we have to go
        directly into full power. */
     if (pMac->pmc.requestFullPowerPending)
     {
@@ -478,7 +488,9 @@ eHalStatus pmcEnterRequestBmpsState (tHalHandle hHal)
     if (pMac->pmc.pmcState != FULL_POWER)
     {
         pmcLog(pMac, LOGE,
-               FL("Trying to enter Request BMPS State from state %d"), pMac->pmc.pmcState);
+               FL("Trying to enter Request BMPS State from state %s (%d)"),
+               sme_PmcStatetoString(pMac->pmc.pmcState), pMac->pmc.pmcState);
+
         return eHAL_STATUS_FAILURE;
     }
 
@@ -555,12 +567,15 @@ eHalStatus pmcEnterBmpsState (tHalHandle hHal)
     /* Change state. */
     pMac->pmc.pmcState = BMPS;
 
-   /* Update registerd modules that we are entering BMPS. This is
-      only way to inform modules if PMC entered BMPS power save mode
-      on its own because of traffic timer */
+   /*
+    * Update registered modules that we are entering BMPS. This is
+    * only way to inform modules if PMC entered BMPS power save mode
+    * on its own because of traffic timer.
+    */
     pmcDoDeviceStateUpdateCallbacks(hHal, BMPS);
 
-    /* If we have a reqeust for full power pending then we have to go directly into full power. */
+    /* If we have a request for full power pending then we have to go directly
+       into full power. */
     if (pMac->pmc.requestFullPowerPending)
     {
 
@@ -633,8 +648,8 @@ tANI_BOOLEAN pmcPowerSaveCheck (tHalHandle hHal)
         pPowerSaveCheckEntry = GET_BASE_ADDR(pEntry, tPowerSaveCheckEntry, link);
         checkRoutine = pPowerSaveCheckEntry->checkRoutine;
 
-        /* If the checkRoutine is NULL for a paricular entry, proceed with other entries
-         * in the list */
+        /* If the checkRoutine is NULL for a particular entry, proceed with
+         * other entries in the list */
         if (NULL != checkRoutine)
         {
             if (!checkRoutine(pPowerSaveCheckEntry->checkContext))
@@ -666,7 +681,7 @@ tANI_BOOLEAN pmcPowerSaveCheck (tHalHandle hHal)
 *    hHal - HAL handle for device
 *
 * Returns:
-*    eHAL_STATUS_SUCCESS - message successfuly sent
+*    eHAL_STATUS_SUCCESS - message successfully sent
 *    eHAL_STATUS_FAILURE - error while sending message
 *
 ******************************************************************************/
@@ -758,7 +773,7 @@ eHalStatus pmcSendPowerSaveConfigMessage (tHalHandle hHal)
 *    messageSize - Size of the message data
 *
 * Returns:
-*    eHAL_STATUS_SUCCESS - message successfuly sent
+*    eHAL_STATUS_SUCCESS - message successfully sent
 *    eHAL_STATUS_FAILURE - error while sending message
 *
 ******************************************************************************/
@@ -817,7 +832,7 @@ void pmcDoCallbacks (tHalHandle hHal, eHalStatus callbackStatus)
     tListElem *pEntry;
     tpRequestFullPowerEntry pRequestFullPowerEntry;
 
-    pmcLog(pMac, LOG2, FL("Entering pmcDoCallbacks"));
+    pmcLog(pMac, LOG2, FL("Enter"));
 
     /* Call IMPS callback routine. */
     if (pMac->pmc.impsCallbackRoutine != NULL)
@@ -850,7 +865,7 @@ void pmcDoCallbacks (tHalHandle hHal, eHalStatus callbackStatus)
 *    hHal - HAL handle for device
 *
 * Returns:
-*    eHAL_STATUS_SUCCESS - timer successfuly started
+*    eHAL_STATUS_SUCCESS - timer successfully started
 *    eHAL_STATUS_FAILURE - error while starting timer
 *
 ******************************************************************************/
@@ -924,7 +939,9 @@ void pmcImpsTimerExpired (tHalHandle hHal)
     /* If timer expires and we are in a state other than IMPS State then something is wrong. */
     if (pMac->pmc.pmcState != IMPS)
     {
-        pmcLog(pMac, LOGE, FL("Got IMPS timer expiration in state %d"), pMac->pmc.pmcState);
+        pmcLog(pMac, LOGE, FL("Got IMPS timer expiration in state %s (%d)"),
+               sme_PmcStatetoString(pMac->pmc.pmcState), pMac->pmc.pmcState);
+
         PMC_ABORT;
         return;
     }
@@ -959,11 +976,13 @@ void pmcTrafficTimerExpired (tHalHandle hHal)
     /* If timer expires and we are in a state other than Full Power State then something is wrong. */
     if (pMac->pmc.pmcState != FULL_POWER)
     {
-        pmcLog(pMac, LOGE, FL("Got traffic timer expiration in state %d"), pMac->pmc.pmcState);
+        pmcLog(pMac, LOGE, FL("Got traffic timer expiration in state %s (%d)"),
+               sme_PmcStatetoString(pMac->pmc.pmcState), pMac->pmc.pmcState);
+
         return;
     }
 
-    /* Untill DHCP is not completed remain in power active */
+    /* Until DHCP is not completed remain in power active */
     if(pMac->pmc.remainInPowerActiveTillDHCP)
     {
         pmcLog(pMac, LOG2, FL("BMPS Traffic Timer expired before DHCP completion ignore enter BMPS"));
@@ -1293,12 +1312,14 @@ eHalStatus pmcEnterUapsdState (tHalHandle hHal)
    /* Change state. */
    pMac->pmc.pmcState = UAPSD;
 
-   /* Update registerd modules that we are entering UAPSD. This is
-      only way to inform modules if PMC resumed UAPSD power save mode
-      on its own after full power mode */
+   /*
+    * Update registered modules that we are entering UAPSD. This is
+    * only way to inform modules if PMC resumed UAPSD power save mode
+    * on its own after full power mode.
+    */
    pmcDoDeviceStateUpdateCallbacks(hHal, UAPSD);
 
-   /* If we have a reqeust for full power pending then we have to go
+   /* If we have a request for full power pending then we have to go
    directly into full power. */
    if (pMac->pmc.requestFullPowerPending)
    {
@@ -1438,7 +1459,7 @@ eHalStatus pmcEnterStandbyState (tHalHandle hHal)
    /* Change state. */
    pMac->pmc.pmcState = STANDBY;
 
-   /* If we have a reqeust for full power pending then we have to go
+   /* If we have a request for full power pending then we have to go
       directly into full power. */
    if (pMac->pmc.requestFullPowerPending)
    {
@@ -1678,7 +1699,7 @@ eHalStatus pmcEnterWowlState (tHalHandle hHal)
    /* Clear the buffered command for WOWL */
    pMac->pmc.wowlModeRequired = FALSE;
 
-   /* If we have a reqeust for full power pending then we have to go
+   /* If we have a request for full power pending then we have to go
    directly into full power. */
    if (pMac->pmc.requestFullPowerPending)
    {
@@ -1882,13 +1903,14 @@ void pmcReleaseCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
 {
     if(!pCommand->u.pmcCmd.fReleaseWhenDone)
     {
-        //This is a normal command, put it back to the free lsit
+        /* This is a normal command, put it back to the free list */
         pCommand->u.pmcCmd.size = 0;
         smeReleaseCommand( pMac, pCommand );
     }
     else
     {
-        //this is a specially allocated comamnd due to out of command buffer. free it.
+        /* This is a specially allocated command due to out of command buffer.
+           free it. */
         vos_mem_free(pCommand);
     }
 }
@@ -2139,8 +2161,11 @@ tANI_BOOLEAN pmcProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
                     status = pmcSendMessage(pMac, eWNI_PMC_ENTER_IMPS_REQ, NULL, 0);
                     if( HAL_STATUS_SUCCESS( status ) )
                     {
-                        /* If we already went back Full Power State (meaning that request did not
-                           get as far as the device) then we are not successfull. */
+                        /*
+                         * If we already went back Full Power State (meaning
+                         * that request did not get as far as the device)
+                         * then we are not successful.
+                         */
                         if ( FULL_POWER != pMac->pmc.pmcState )
                         {
                             fRemoveCmd = eANI_BOOLEAN_FALSE;
@@ -2180,7 +2205,6 @@ tANI_BOOLEAN pmcProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
                 {
                     pmcLog(pMac, LOGE,
                            FL("eWNI_PMC_EXIT_IMPS_REQ fail to be sent to PE status %d"), status);
-                    //Callbacks are called with success srarus, do we need to pass in real status??
                     pmcEnterFullPowerState(pMac);
                 }
             }
@@ -2222,8 +2246,9 @@ tANI_BOOLEAN pmcProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
             break;
 
         case eSmeCommandExitBmps:
-            if( BMPS == pMac->pmc.pmcState )
+            if(( BMPS == pMac->pmc.pmcState ) || (UAPSD == pMac->pmc.pmcState))
             {
+                tPmcState origState = pMac->pmc.pmcState;
                 pMac->pmc.requestFullPowerPending = FALSE;
 
                 status = pmcSendMessage( pMac, eWNI_PMC_EXIT_BMPS_REQ,
@@ -2237,6 +2262,7 @@ tANI_BOOLEAN pmcProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
                 }
                 else
                 {
+                    pMac->pmc.pmcState = origState;
                     pmcLog(pMac, LOGE, FL("eWNI_PMC_EXIT_BMPS_REQ fail to be sent to PE status %d"), status);
                     pmcEnterFullPowerState(pMac);
                 }
@@ -2257,7 +2283,8 @@ tANI_BOOLEAN pmcProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
                 {
                     pmcLog(pMac, LOGE, "PMC: failure to send message "
                        "eWNI_PMC_ENTER_BMPS_REQ");
-                    //there is no retry for re-entering UAPSD so tell the requester we are done witgh failure.
+                    /* There is no retry for re-entering UAPSD so tell the
+                       requester we are done with failure. */
                     pMac->pmc.uapsdSessionRequired = FALSE;
                     pmcDoStartUapsdCallbacks(pMac, eHAL_STATUS_FAILURE);
                 }
@@ -2340,12 +2367,17 @@ tANI_BOOLEAN pmcProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
         case eSmeCommandEnterStandby:
             if( FULL_POWER == pMac->pmc.pmcState )
             {
-               //Disallow standby if concurrent sessions are present. Note that CSR would have
-               //caused the STA to disconnect the Infra session (if not already disconnected) because of
-               //standby request. But we are now failing the standby request because of concurrent session.
-               //So was the tearing of infra session wasteful if we were going to fail the standby request ?
-               //Not really. This is beacuse if and when BT-AMP etc sessions are torn down we will transition
-               //to IMPS/standby and still save power.
+               /*
+                * Disallow standby if concurrent sessions are present. Note that
+                * CSR would have caused the STA to disconnect the Infra session
+                * (if not already disconnected) because of standby request.
+                * But we are now failing the standby request because of
+                * concurrent session. So was the tearing of infra session
+                * wasteful if we were going to fail the standby request?
+                * Not really. This is because if and when BT-AMP etc sessions
+                * are torn down we will transition to IMPS/standby and still
+                * save power.
+                */
                if (csrIsIBSSStarted(pMac) || csrIsBTAMPStarted(pMac))
                {
                   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL,
@@ -2454,9 +2486,11 @@ eHalStatus pmcEnterImpsCheck( tpAniSirGlobal pMac )
     return ( eHAL_STATUS_SUCCESS );
 }
 
-/* This API detrmines if it is ok to proceed with a Enter BMPS Request or not . Note when
-   device is in BMPS/UAPSD states, this API returns failure because it is not ok to issue
-   a BMPS request */
+/*
+ * This API determines if it is ok to proceed with a Enter BMPS Request or not.
+ * Note when device is in BMPS/UAPSD states, this API returns failure because it
+ * is not ok to issue a BMPS request.
+ */
 eHalStatus pmcEnterBmpsCheck( tpAniSirGlobal pMac )
 {
 
@@ -2556,54 +2590,33 @@ tANI_BOOLEAN pmcShouldBmpsTimerRun( tpAniSirGlobal pMac )
     return eANI_BOOLEAN_TRUE;
 }
 
-
-#ifdef FEATURE_WLAN_DIAG_SUPPORT
-
-#define PMC_DIAG_EVT_TIMER_INTERVAL ( 5000 )
-
-void pmcDiagEvtTimerExpired (tHalHandle hHal)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
-    WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
-
-    vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
-    psRequest.event_subtype = WLAN_PMC_CURRENT_STATE;
-    psRequest.pmc_current_state = pMac->pmc.pmcState;
-
-    WLAN_VOS_DIAG_EVENT_REPORT(&psRequest, EVENT_WLAN_POWERSAVE_GENERIC);
-
-    pmcLog(pMac, LOGW, FL("DIAG event timer expired"));
-
-    /* re-arm timer */
-    if (pmcStartDiagEvtTimer(hHal) != eHAL_STATUS_SUCCESS)
+/**
+ * sme_PmcStatetoString(): converts PMC state enum to string.
+ * @pmcState: PMC state enum.
+ */
+const char * sme_PmcStatetoString(const v_U8_t pmcState)
+{   switch (pmcState)
     {
-        pmcLog(pMac, LOGP, FL("Cannot re-arm DIAG evt timer"));
+        CASE_RETURN_STRING( STOPPED );
+        CASE_RETURN_STRING( FULL_POWER );
+        CASE_RETURN_STRING( LOW_POWER);
+        CASE_RETURN_STRING( REQUEST_IMPS );
+        CASE_RETURN_STRING( IMPS );
+        CASE_RETURN_STRING( REQUEST_BMPS );
+        CASE_RETURN_STRING( BMPS );
+        CASE_RETURN_STRING( REQUEST_FULL_POWER );
+        CASE_RETURN_STRING( REQUEST_START_UAPSD );
+        CASE_RETURN_STRING( REQUEST_STOP_UAPSD );
+        CASE_RETURN_STRING( UAPSD );
+        CASE_RETURN_STRING( REQUEST_STANDBY );
+        CASE_RETURN_STRING( STANDBY );
+        CASE_RETURN_STRING( REQUEST_ENTER_WOWL );
+        CASE_RETURN_STRING( REQUEST_EXIT_WOWL );
+        CASE_RETURN_STRING( WOWL );
+        default:
+            return "Invalid pmcState";
     }
-    vos_timer_start(&pMac->pmc.hDiagEvtTimer, PMC_DIAG_EVT_TIMER_INTERVAL);
 }
-
-eHalStatus pmcStartDiagEvtTimer (tHalHandle hHal)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
-
-    pmcLog(pMac, LOG2, FL("Entering pmcStartDiagEvtTimer"));
-
-    if ( vos_timer_start(&pMac->pmc.hDiagEvtTimer, PMC_DIAG_EVT_TIMER_INTERVAL) != VOS_STATUS_SUCCESS)
-    {
-       pmcLog(pMac, LOGP, FL("Cannot start DIAG evt timer"));
-       return eHAL_STATUS_FAILURE;
-    }
-
-    return eHAL_STATUS_SUCCESS;
-}
-
-void pmcStopDiagEvtTimer (tHalHandle hHal)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
-    pmcLog(pMac, LOG2, FL("Entering pmcStopDiagEvtTimer"));
-    (void)vos_timer_stop(&pMac->pmc.hDiagEvtTimer);
-}
-#endif
 
 void pmcOffloadClosePowerSaveCheckList(tpAniSirGlobal pMac, tANI_U32 sessionId)
 {
@@ -2891,7 +2904,7 @@ tANI_BOOLEAN pmcOffloadPowerSaveCheck(tHalHandle hHal,
                                              link);
         checkRoutine = pPowerSaveCheckEntry->pwrsaveCheckCb;
         /*
-         * If the checkRoutine is NULL for a paricular entry,
+         * If the checkRoutine is NULL for a particular entry,
          * proceed with other entries
          * in the list
          */
@@ -2997,7 +3010,7 @@ void pmcOffloadStopAutoStaPsTimer(tpAniSirGlobal pMac, tANI_U32 sessionId)
     tpPsOffloadPerSessionInfo pmc = &pMac->pmcOffloadInfo.pmc[sessionId];
 
     /*
-     * Stop the auto ps entry timer if runnin
+     * Stop the auto ps entry timer if running
      */
     if(VOS_TIMER_STATE_RUNNING ==
        vos_timer_getCurrentState(&pmc->autoPsEnableTimer))
@@ -3370,7 +3383,7 @@ eHalStatus pmcOffloadEnterUapsdState(tpAniSirGlobal pMac, tANI_U32 sessionId)
     /* Change the State */
     pmc->pmcState = UAPSD;
 
-    /* Call the State Chnage Indication through Registered Cbs */
+    /* Call the State Change Indication through Registered Cbs */
     pmcOffloadDoDeviceStateUpdateCallbacks(pMac, sessionId, UAPSD);
 
     /* Call the registered uapsd cbs */

@@ -62,10 +62,12 @@
 #define VOS_24_GHZ_CHANNEL_14  14
 #define VOS_24_GHZ_CHANNEL_15  15
 #define VOS_24_GHZ_CHANNEL_27  27
+#define VOS_5_GHZ_CHANNEL_170  170
 #define VOS_CHAN_SPACING_5MHZ  5
 #define VOS_CHAN_SPACING_20MHZ 20
 #define VOS_CHAN_14_FREQ       2484
 #define VOS_CHAN_15_FREQ       2512
+#define VOS_CHAN_170_FREQ      5852
 /*--------------------------------------------------------------------------
   Type declarations
   ------------------------------------------------------------------------*/

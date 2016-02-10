@@ -55,6 +55,6 @@ A_STATUS HIFDevSendBuffer(HIF_SDIO_DEVICE *htc_sdio_device, unsigned int transfe
         unsigned int nbytes, adf_nbuf_t buf);
 
 A_STATUS HIFDevMapServiceToPipe(HIF_SDIO_DEVICE *pDev, A_UINT16 ServiceId,
-        A_UINT8 *ULPipe, A_UINT8 *DLPipe);
+        A_UINT8 *ULPipe, A_UINT8 *DLPipe, A_BOOL SwapMapping);
 
 #endif /* HIF_SDIO_DEV_H_ */

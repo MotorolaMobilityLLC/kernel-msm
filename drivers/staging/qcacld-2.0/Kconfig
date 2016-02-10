@@ -45,6 +45,10 @@ config QCOM_LTE_COEX
 	bool "Enable QCOM LTE Coex feature"
 	default n
 
+config WLAN_SYNC_TSF
+	bool "Enable QCOM sync multi devices tsf feature"
+	default n
+
 config WLAN_FEATURE_MEMDUMP
 	bool "Enable MEMDUMP feature"
 	default n
@@ -53,8 +57,20 @@ config WLAN_OFFLOAD_PACKETS
 	bool "Enable offload packets feature"
 	default n
 
+config QCA_WIFI_AUTOMOTIVE_CONC
+	bool "Enable 3 port concurrency feature"
+	default n
+
+config WLAN_UDP_RESPONSE_OFFLOAD
+	bool "Enable UDP response offload feature"
+	default n
+
 config WLAN_FEATURE_RX_WAKELOCK
 	bool "Enable RX wake lock feature"
+	default n
+
+config WLAN_WOW_PULSE
+	bool "Enable WOW Pulse feature"
 	default n
 
 endif # QCA_CLD_WLAN

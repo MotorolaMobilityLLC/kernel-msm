@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -123,7 +123,7 @@ sirSwapU16(tANI_U16 val)
  *
  * FUNCTION:
  * This function is called to swap two U8s of an tANI_U16 value depending
- * on endiannes of the target processor/compiler the software is
+ * on endianness of the target processor/compiler the software is
  * running on
  *
  * LOGIC:
@@ -180,7 +180,7 @@ sirSwapU32(tANI_U32 val)
  *
  * FUNCTION:
  * This function is called to swap U8s of an tANI_U32 value depending
- * on endiannes of the target processor/compiler the software is
+ * on endianness of the target processor/compiler the software is
  * running on
  *
  * LOGIC:
@@ -241,7 +241,7 @@ sirSwapU32Buf(tANI_U32 *ptr, tANI_U32 nWords)
  *
  * FUNCTION:
  * This function is called to swap U8s of U32s in the buffer depending
- * on endiannes of the target processor/compiler the software is
+ * on endianness of the target processor/compiler the software is
  * running on
  *
  * LOGIC:
@@ -709,7 +709,7 @@ halRoundS32(tANI_S32 p)
         return(k);
 }
 
-// New functions for endianess conversion
+/* New functions for endianness conversion */
 #ifdef ANI_LITTLE_BYTE_ENDIAN
 #define ani_cpu_to_be16(x) sirSwapU16((x))
 #define ani_cpu_to_le16(x) (x)

@@ -8,14 +8,10 @@ endif
 
 ifeq ($(CONFIG_CLD_HL_SDIO_CORE), y)
 	CONFIG_QCA_WIFI_SDIO := 1
-endif
-
-ifeq ($(CONFIG_QCA_WIFI_SDIO), 1)
 	CONFIG_ROME_IF = sdio
 endif
 
 ifndef CONFIG_ROME_IF
-	#use pci as default interface
 	CONFIG_ROME_IF = pci
 endif
 
@@ -31,8 +27,22 @@ ifeq ($(KERNEL_BUILD), 0)
 	# These are configurable via Kconfig for kernel-based builds
 	# Need to explicitly configure for Android-based builds
 
-	#Flag to enable BlueTooth AMP feature
-	CONFIG_PRIMA_WLAN_BTAMP := n
+	ifeq ($(CONFIG_ARCH_MDM9630), y)
+	CONFIG_MOBILE_ROUTER := y
+	endif
+
+	ifeq ($(CONFIG_ARCH_MDM9640), y)
+	CONFIG_MOBILE_ROUTER := y
+	endif
+
+	ifeq ($(CONFIG_ARCH_MDMCALIFORNIUM), y)
+	CONFIG_MOBILE_ROUTER := y
+	endif
+
+	ifeq ($(CONFIG_ARCH_MDM9607), y)
+	CONFIG_MOBILE_ROUTER := y
+	CONFIG_QCOM_LTE_COEX := y
+	endif
 
 	#Flag to enable Legacy Fast Roaming3(LFR3)
 	CONFIG_QCACLD_WLAN_LFR3 := y
@@ -50,22 +60,27 @@ ifeq ($(KERNEL_BUILD), 0)
 	ifeq ($(CONFIG_ROME_IF),sdio)
 		CONFIG_PRIMA_WLAN_11AC_HIGH_TP := n
 	endif
+
+	ifneq ($(CONFIG_MOBILE_ROUTER), y)
 	#Flag to enable TDLS feature
 	CONFIG_QCOM_TDLS := y
+	endif
 
 	#Flag to enable Fast Transition (11r) feature
 	CONFIG_QCOM_VOWIFI_11R := y
 
-        ifneq ($(CONFIG_QCA_CLD_WLAN),)
-                ifeq ($(CONFIG_CNSS),y)
-        #Flag to enable Protected Managment Frames (11w) feature
-                CONFIG_WLAN_FEATURE_11W := y
-        #Flag to enable LTE CoEx feature
-                CONFIG_QCOM_LTE_COEX := y
-        #Flag to enable LPSS feature
+	ifneq ($(CONFIG_QCA_CLD_WLAN),)
+        ifeq ($(CONFIG_CNSS),y)
+		#Flag to enable Protected Managment Frames (11w) feature
+		CONFIG_WLAN_FEATURE_11W := y
+		#Flag to enable LTE CoEx feature
+		CONFIG_QCOM_LTE_COEX := y
+		ifneq ($(CONFIG_MOBILE_ROUTER), y)
+                #Flag to enable LPSS feature
                 CONFIG_WLAN_FEATURE_LPSS := y
-                endif
-        endif
+		endif
+	endif
+	endif
 
 
         #Flag to enable Protected Managment Frames (11w) feature
@@ -76,24 +91,40 @@ ifeq ($(KERNEL_BUILD), 0)
                 CONFIG_WLAN_FEATURE_11W := y
         endif
 
-	#Flag to enable NAN
+        ifneq ($(CONFIG_MOBILE_ROUTER), y)
+        #Flag to enable NAN
         CONFIG_WLAN_FEATURE_NAN := y
+        endif
 
         #Flag to enable Linux QCMBR feature as default feature
         ifeq ($(CONFIG_ROME_IF),usb)
                 CONFIG_LINUX_QCMBR :=y
         endif
-	#Flag to enable memdump feature
-	CONFIG_WLAN_FEATURE_MEMDUMP := y
 
-	#Flag to enable offload packets feature
-	CONFIG_WLAN_OFFLOAD_PACKETS := y
+	ifneq ($(CONFIG_ARCH_MDM9607), y)
+		#Flag to enable memdump feature
+		CONFIG_WLAN_FEATURE_MEMDUMP := y
+
+		#Flag to enable offload packets feature
+		CONFIG_WLAN_OFFLOAD_PACKETS := y
+	endif
 endif
 
+ifdef CPTCFG_QCA_CLD_WLAN
+	WLAN_ROOT := $(BACKPORT_PWD)/drivers/staging/qcacld-2.0
+	CONFIG_QCA_CLD_WLAN=$(CPTCFG_QCA_CLD_WLAN)
+endif
+
+ifeq ($(CONFIG_X86), y)
+CONFIG_NON_QC_PLATFORM := y
+endif
+
+ifneq ($(CONFIG_MOBILE_ROUTER), y)
 # To enable ESE upload, dependent config
 # CONFIG_QCOM_ESE must be enabled.
 CONFIG_QCOM_ESE := y
 CONFIG_QCOM_ESE_UPLOAD := y
+endif
 
 # Feature flags which are not (currently) configurable via Kconfig
 
@@ -118,9 +149,11 @@ CONFIG_ATH_PERF_PWR_OFFLOAD := 1
 #Disable packet log
 CONFIG_REMOVE_PKT_LOG := 0
 
-#Enable 11AC TX
 ifeq ($(CONFIG_ROME_IF),pci)
+#Enable 11AC TX
 	CONFIG_ATH_11AC_TXCOMPACT := 1
+#Enable TSF Capture for Rome PCI
+	CONFIG_WLAN_SYNC_TSF := y
 endif
 ifeq ($(CONFIG_ROME_IF),usb)
 	CONFIG_ATH_11AC_TXCOMPACT := 0
@@ -138,6 +171,9 @@ ifeq ($(CONFIG_ROME_IF),usb)
 endif
 ifeq ($(CONFIG_QCA_WIFI_SDIO), 1)
 	CONFIG_PER_VDEV_TX_DESC_POOL := 0
+endif
+ifeq ($(CONFIG_QCA_WIFI_SDIO), 1)
+	CONFIG_TX_DESC_HI_PRIO_RESERVE  := 1
 endif
 
 
@@ -168,8 +204,17 @@ ifeq ($(CONFIG_ROME_IF),usb)
 #CONFIG_ATH_PCI := 1
 endif
 
+ifneq ($(CONFIG_MOBILE_ROUTER), y)
 #Enable IBSS support on CLD
 CONFIG_QCA_IBSS_SUPPORT := 1
+endif
+
+#Enable MDNS Offload
+ifeq ($(CONFIG_QCA_WIFI_SDIO), 1)
+ifneq ($(CONFIG_ARCH_MDM9607), y)
+CONFIG_MDNS_OFFLOAD_SUPPORT := 1
+endif
+endif
 
 #Enable power management suspend/resume functionality to PCI
 CONFIG_ATH_BUS_PM := 1
@@ -214,8 +259,10 @@ CONFIG_ATH_PCIE_ACCESS_DEBUG := 0
 
 #Enable IPA offload
 ifeq ($(CONFIG_IPA), y)
+ifeq ($(CONFIG_ROME_IF),pci)
 CONFIG_IPA_OFFLOAD := 1
 CONFIG_IPA_UC_OFFLOAD := 1
+endif
 endif
 
 #Enable Signed firmware support for split binary format
@@ -227,12 +274,12 @@ CONFIG_QCA_SINGLE_BINARY_SUPPORT := 0
 #Enable collecting target RAM dump after kernel panic
 CONFIG_TARGET_RAMDUMP_AFTER_KERNEL_PANIC := 1
 
-#Flag to enable/disable secure firmware feature
-CONFIG_FEATURE_SECURE_FIRMWARE := 0
-
 #Flag to enable Stats Ext implementation
 CONFIG_FEATURE_STATS_EXT := 1
 
+#Flag to force the inclusion of the 802.11p channels because support
+#for these channels has not yet been added to the kernel.
+CONFIG_STATICALLY_ADD_11P_CHANNELS := n
 
 ifeq ($(CONFIG_CFG80211),y)
 HAVE_CFG80211 := 1
@@ -259,35 +306,6 @@ ADF_OBJS :=     $(ADF_DIR)/adf_nbuf.o \
                 $(ADF_DIR)/adf_os_mem.o \
                 $(ADF_DIR)/linux/adf_os_defer_pvt.o \
                 $(ADF_DIR)/linux/adf_os_lock_pvt.o
-
-############ BAP ############
-BAP_DIR :=	CORE/BAP
-BAP_INC_DIR :=	$(BAP_DIR)/inc
-BAP_SRC_DIR :=	$(BAP_DIR)/src
-
-BAP_INC := 	-I$(WLAN_ROOT)/$(BAP_INC_DIR) \
-		-I$(WLAN_ROOT)/$(BAP_SRC_DIR)
-
-BAP_OBJS := 	$(BAP_SRC_DIR)/bapApiData.o \
-		$(BAP_SRC_DIR)/bapApiDebug.o \
-		$(BAP_SRC_DIR)/bapApiExt.o \
-		$(BAP_SRC_DIR)/bapApiHCBB.o \
-		$(BAP_SRC_DIR)/bapApiInfo.o \
-		$(BAP_SRC_DIR)/bapApiLinkCntl.o \
-		$(BAP_SRC_DIR)/bapApiLinkSupervision.o \
-		$(BAP_SRC_DIR)/bapApiStatus.o \
-		$(BAP_SRC_DIR)/bapApiTimer.o \
-		$(BAP_SRC_DIR)/bapModule.o \
-		$(BAP_SRC_DIR)/bapRsn8021xAuthFsm.o \
-		$(BAP_SRC_DIR)/bapRsn8021xPrf.o \
-		$(BAP_SRC_DIR)/bapRsn8021xSuppRsnFsm.o \
-		$(BAP_SRC_DIR)/bapRsnAsfPacket.o \
-		$(BAP_SRC_DIR)/bapRsnSsmAesKeyWrap.o \
-		$(BAP_SRC_DIR)/bapRsnSsmEapol.o \
-		$(BAP_SRC_DIR)/bapRsnSsmReplayCtr.o \
-		$(BAP_SRC_DIR)/bapRsnTxRx.o \
-		$(BAP_SRC_DIR)/btampFsm.o \
-		$(BAP_SRC_DIR)/btampHCI.o
 
 ifeq ($(CONFIG_QCA_WIFI_SDIO), 1)
 ############ HIF ############
@@ -337,8 +355,7 @@ HDD_SRC_DIR :=	$(HDD_DIR)/src
 HDD_INC := 	-I$(WLAN_ROOT)/$(HDD_INC_DIR) \
 		-I$(WLAN_ROOT)/$(HDD_SRC_DIR)
 
-HDD_OBJS := 	$(HDD_SRC_DIR)/bap_hdd_main.o \
-		$(HDD_SRC_DIR)/wlan_hdd_assoc.o \
+HDD_OBJS := 	$(HDD_SRC_DIR)/wlan_hdd_assoc.o \
 		$(HDD_SRC_DIR)/wlan_hdd_cfg.o \
 		$(HDD_SRC_DIR)/wlan_hdd_debugfs.o \
 		$(HDD_SRC_DIR)/wlan_hdd_dev_pwr.o \
@@ -347,7 +364,7 @@ HDD_OBJS := 	$(HDD_SRC_DIR)/bap_hdd_main.o \
 		$(HDD_SRC_DIR)/wlan_hdd_ftm.o \
 		$(HDD_SRC_DIR)/wlan_hdd_hostapd.o \
 		$(HDD_SRC_DIR)/wlan_hdd_main.o \
-		$(HDD_SRC_DIR)/wlan_hdd_mib.o \
+		$(HDD_SRC_DIR)/wlan_hdd_ocb.o \
 		$(HDD_SRC_DIR)/wlan_hdd_oemdata.o \
 		$(HDD_SRC_DIR)/wlan_hdd_scan.o \
 		$(HDD_SRC_DIR)/wlan_hdd_softap_tx_rx.o \
@@ -361,6 +378,10 @@ ifeq ($(CONFIG_IPA_OFFLOAD), 1)
 HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_hdd_ipa.o
 endif
 
+ifeq ($(CONFIG_MDNS_OFFLOAD_SUPPORT), 1)
+HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_hdd_mdns_offload.o
+endif
+
 ifeq ($(HAVE_CFG80211),1)
 HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_hdd_cfg80211.o \
 		$(HDD_SRC_DIR)/wlan_hdd_p2p.o
@@ -368,6 +389,10 @@ endif
 
 ifeq ($(CONFIG_QCOM_TDLS),y)
 HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_hdd_tdls.o
+endif
+
+ifeq ($(CONFIG_WLAN_SYNC_TSF),y)
+HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_hdd_tsf.o
 endif
 
 ifeq ($(CONFIG_WLAN_FEATURE_MEMDUMP),y)
@@ -776,7 +801,8 @@ WMA_INC :=	-I$(WLAN_ROOT)/$(WMA_DIR)
 WMA_OBJS :=	$(WMA_DIR)/regdomain.o \
 		$(WMA_DIR)/wlan_nv.o \
 		$(WMA_DIR)/wma.o \
-		$(WMA_DIR)/wma_dfs_interface.o
+		$(WMA_DIR)/wma_dfs_interface.o \
+		$(WMA_DIR)/wma_ocb.o
 
 
 ############ WDA ############
@@ -812,8 +838,7 @@ WCNSS_INC :=	-I$(WLAN_ROOT)/wcnss/inc
 
 LINUX_INC :=	-Iinclude/linux
 
-INCS :=		$(BAP_INC) \
-		$(HDD_INC) \
+INCS :=		$(HDD_INC) \
 		$(EPPING_INC) \
 		$(LINUX_INC) \
 		$(MAC_INC) \
@@ -847,8 +872,7 @@ ifeq ($(CONFIG_REMOVE_PKT_LOG), 0)
 INCS +=		$(PKTLOG_INC)
 endif
 
-OBJS :=		$(BAP_OBJS) \
-		$(HDD_OBJS) \
+OBJS :=		$(HDD_OBJS) \
 		$(EPPING_OBJS) \
 		$(MAC_OBJS) \
 		$(SAP_OBJS) \
@@ -924,36 +948,66 @@ CDEFINES :=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DWLAN_FEATURE_LINK_LAYER_STATS \
 		-DWLAN_LOGGING_SOCK_SVC_ENABLE \
 		-DFEATURE_WLAN_EXTSCAN \
-		-DQCA_LL_TX_FLOW_CT \
 		-DFEATURE_WLAN_LFR \
-		-DFEATURE_WLAN_CH144
+		-DFEATURE_WLAN_CH144 \
+		-DHTC_CRP_DEBUG
 
 ifeq ($(CONFIG_QCA_WIFI_SDIO), 1)
 CDEFINES +=     -DCONFIG_HL_SUPPORT \
                 -DCONFIG_AR6320_SUPPORT \
                 -DSDIO_3_0 \
                 -DHIF_SDIO \
-                -DCONFIG_ATH_PROCFS_DIAG_SUPPORT
+                -DCONFIG_ATH_PROCFS_DIAG_SUPPORT \
+                -DFEATURE_HL_GROUP_CREDIT_FLOW_CONTROL \
+                -DHIF_MBOX_SLEEP_WAR
 endif
+
+ifeq ($(CONFIG_ARCH_MDM9607), y)
+ifeq ($(CONFIG_QCA_WIFI_SDIO), 1)
+CDEFINES += -DDEBUG_HL_LOGGING
+endif
+endif
+
+ifeq ($(CONFIG_ARCH_MDM9607), y)
+CDEFINES += -DCONFIG_TUFELLO_DUAL_FW_SUPPORT
+endif
+
 
 ifeq ($(CONFIG_QCA_WIFI_SDIO), 1)
 CDEFINES += -DFEATURE_WLAN_FORCE_SAP_SCC
+ifneq ($(CONFIG_ARCH_MDM9607), y)
+CDEFINES += -DDHCP_SERVER_OFFLOAD
+CDEFINES += -DWLAN_FEATURE_GPIO_LED_FLASHING
+CDEFINES += -DWLAN_FEATURE_APFIND
+endif
+ifneq ($(CONFIG_NON_QC_PLATFORM), y)
+CDEFINES += -DDFS_MASTER_OFFLOAD_IND_SUPPORT
+endif
+endif
+
+ifeq ($(CONFIG_MDNS_OFFLOAD_SUPPORT), 1)
+CDEFINES += -DMDNS_OFFLOAD
 endif
 
 ifeq ($(CONFIG_ARCH_MSM), y)
 CDEFINES += -DMSM_PLATFORM
+ifeq ($(CONFIG_CNSS_PCI), y)
+CDEFINES += -DFEATURE_BUS_BANDWIDTH
+endif
+endif
+
+ifeq ($(CONFIG_MOBILE_ROUTER), y)
+CDEFINES += -DMDM_PLATFORM
 endif
 
 CDEFINES +=	-DOSIF_NEED_RX_PEER_ID \
 		-DQCA_SUPPORT_TXRX_LOCAL_PEER_ID
 ifeq ($(CONFIG_ROME_IF),pci)
-CDEFINES +=	-DQCA_LL_TX_FLOW_CT \
-		-DQCA_SUPPORT_TXRX_VDEV_PAUSE_LL \
-		-DQCA_SUPPORT_TXRX_VDEV_LL_TXQ
+ifneq ($(CONFIG_MOBILE_ROUTER),y)
+CDEFINES +=	-DQCA_LL_TX_FLOW_CT
 endif
-
-ifeq ($(CONFIG_DEBUG_LL),y)
-CDEFINES +=    	-DQCA_PKT_PROTO_TRACE
+CDEFINES +=	-DQCA_SUPPORT_TXRX_VDEV_PAUSE_LL \
+		-DQCA_SUPPORT_TXRX_VDEV_LL_TXQ
 endif
 
 ifneq ($(CONFIG_QCA_CLD_WLAN),)
@@ -961,12 +1015,13 @@ CDEFINES += -DWCN_PRONTO
 CDEFINES += -DWCN_PRONTO_V1
 endif
 
-ifeq ($(BUILD_DEBUG_VERSION),1)
-CDEFINES +=	-DWLAN_DEBUG \
-		-DTRACE_RECORD \
+CDEFINES += 	-DTRACE_RECORD \
 		-DLIM_TRACE_RECORD \
 		-DSME_TRACE_RECORD \
-		-DHDD_TRACE_RECORD \
+		-DHDD_TRACE_RECORD
+
+ifeq ($(BUILD_DEBUG_VERSION),1)
+CDEFINES +=	-DWLAN_DEBUG \
 		-DPE_DEBUG_LOGW \
 		-DPE_DEBUG_LOGE \
 		-DDEBUG
@@ -998,19 +1053,7 @@ endif
 #normally, TDLS negative behavior is not needed
 ifeq ($(CONFIG_QCOM_TDLS),y)
 CDEFINES += -DFEATURE_WLAN_TDLS
-ifeq ($(BUILD_DEBUG_VERSION),1)
-CDEFINES += -DWLAN_FEATURE_TDLS_DEBUG
-endif
 CDEFINES += -DCONFIG_TDLS_IMPLICIT
-#CDEFINES += -DFEATURE_WLAN_TDLS_NEGATIVE
-#Code under FEATURE_WLAN_TDLS_INTERNAL is ported from volans, This code
-#is not tested only verifed that it compiles. This is not required for
-#supplicant based implementation
-#CDEFINES += -DFEATURE_WLAN_TDLS_INTERNAL
-endif
-
-ifeq ($(CONFIG_PRIMA_WLAN_BTAMP),y)
-CDEFINES += -DWLAN_BTAMP_FEATURE
 endif
 
 ifeq ($(CONFIG_QCACLD_WLAN_LFR3),y)
@@ -1039,6 +1082,14 @@ CDEFINES += -DCONFIG_ATH_PROCFS_DIAG_SUPPORT
 CDEFINES += -DQCA_SUPPORT_OL_RX_REORDER_TIMEOUT
 CDEFINES += -DCONFIG_ATH_PCIE_MAX_PERF=0 -DCONFIG_ATH_PCIE_AWAKE_WHILE_DRIVER_LOAD=0 -DCONFIG_DISABLE_CDC_MAX_PERF_WAR=0
 CDEFINES += -DQCA_TX_HTT2_SUPPORT
+CDEFINES += -DCONFIG_HDD_INIT_WITH_RTNL_LOCK
+ifeq ($(CONFIG_HIF_USB_TASKLET), 1)
+CDEFINES += -DHIF_USB_TASKLET
+endif
+endif
+
+ifneq ($(TARGET_BUILD_VARIANT),user)
+CDEFINES += -DDEBUG_RX_RING_BUFFER
 endif
 
 # enable the MAC Address auto-generation feature
@@ -1104,6 +1155,12 @@ endif
 ifeq ($(CONFIG_PER_VDEV_TX_DESC_POOL), 1)
 CDEFINES += -DCONFIG_PER_VDEV_TX_DESC_POOL
 endif
+
+#Enable Tx mgmt desc reserve
+ifeq ($(CONFIG_TX_DESC_HI_PRIO_RESERVE), 1)
+CDEFINES += -DCONFIG_TX_DESC_HI_PRIO_RESERVE
+endif
+
 
 #Enable OS specific IRQ abstraction
 ifeq ($(CONFIG_ATH_SUPPORT_SHARED_IRQ), 1)
@@ -1192,7 +1249,17 @@ endif
 ifneq ($(CONFIG_ARCH_MDM9630), y)
 ifeq ($(CONFIG_IPA_UC_OFFLOAD), 1)
 CDEFINES += -DIPA_UC_OFFLOAD
+ifeq ($(CONFIG_ARCH_MDM9640), y)
+CDEFINES += -DIPA_UC_STA_OFFLOAD
+CDEFINES += -DINTRA_BSS_FWD_OFFLOAD
+else
+CDEFINES += -DQCA_CONFIG_SMP
 endif
+endif
+endif
+
+ifeq ($(CONFIG_ARCH_MDMCALIFORNIUM), y)
+CDEFINES += -DSYNC_IPA_READY
 endif
 
 #Enable GTK Offload
@@ -1216,39 +1283,57 @@ ifeq ($(CONFIG_RPS),y)
 CDEFINES += -DQCA_FEATURE_RPS
 endif
 
-#features specific to mdm9630
-ifeq ($(CONFIG_ARCH_MDM9630), y)
+#Enable Channel Matrix restriction for all targets
+CDEFINES += -DWLAN_ENABLE_CHNL_MATRIX_RESTRICTION
+
+#features specific to mobile router use case
+ifeq ($(CONFIG_MOBILE_ROUTER), y)
 
 #enable MCC TO SCC switch
 CDEFINES += -DFEATURE_WLAN_MCC_TO_SCC_SWITCH
 
-#enable wlan auto shutdown feature for mdm9630
+#Enable 4address scheme
+CDEFINES += -DFEATURE_WLAN_STA_4ADDR_SCHEME
+
+#enable wlan auto shutdown feature
 CDEFINES += -DFEATURE_WLAN_AUTO_SHUTDOWN
+
+ifneq ($(CONFIG_ARCH_MDM9607), y)
+
+#MDM Device only, to optimize MSM skb cb memory usage
+CDEFINES += -DQCA_MDM_DEVICE
+endif
 
 #enable for MBSSID
 CDEFINES += -DWLAN_FEATURE_MBSSID
 
+#enable AP-AP ACS Optimization
+CDEFINES += -DFEATURE_WLAN_AP_AP_ACS_OPTIMIZE
+
 #Green AP feature
 CDEFINES += -DFEATURE_GREEN_AP
-
-#Enable 4address scheme for mdm9630
-CDEFINES += -DFEATURE_WLAN_STA_4ADDR_SCHEME
 
 #Disable STA-AP Mode DFS support
 CDEFINES += -DFEATURE_WLAN_STA_AP_MODE_DFS_DISABLE
 
-#Enable OBSS feature for mdm9630
+#Enable OBSS feature
 CDEFINES += -DQCA_HT_2040_COEX
 
-else
+#Disable HT40 in 2.4GHZ STA mode
+CDEFINES += -DQCA_HT_20_24G_STA_ONLY
 
-#Open P2P device interface only for non-MDM9630 platform
+else #CONFIG_MOBILE_ROUTER
+
+#Open P2P device interface only for non-Mobile router use cases
 CDEFINES += -DWLAN_OPEN_P2P_INTERFACE
 
 #Enable 2.4 GHz social channels in 5 GHz only mode for p2p usage
 CDEFINES += -DWLAN_ENABLE_SOCIAL_CHANNELS_5G_ONLY
 
-#Enable RX Full re-order OL feature only "LL and NON-MDM platform"
+endif #CONFIG_MOBILE_ROUTER
+
+#Enable RX Full re-order OL feature only "LL and NON-MDM9630 platform"
+ifneq ($(CONFIG_ARCH_MDM9630), y)
 ifeq ($(CONFIG_HIF_PCI), 1)
 CDEFINES += -DWLAN_FEATURE_RX_FULL_REORDER_OL
 endif
@@ -1270,7 +1355,7 @@ CDEFINES += -DTARGET_RAMDUMP_AFTER_KERNEL_PANIC
 endif
 
 #Enable/disable secure firmware feature
-ifeq ($(CONFIG_FEATURE_SECURE_FIRMWARE), 1)
+ifeq ($(CONFIG_CNSS_SECURE_FW), y)
 CDEFINES += -DFEATURE_SECURE_FIRMWARE
 endif
 
@@ -1285,13 +1370,16 @@ endif
 
 #Flag to enable/disable WLAN D0-WOW
 ifeq ($(CONFIG_PCI_MSM), y)
+ifeq ($(CONFIG_ROME_IF),pci)
 CDEFINES += -DFEATURE_WLAN_D0WOW
+endif
 endif
 
 # Flag to enable bus auto suspend
 ifeq ($(CONFIG_BUS_AUTO_SUSPEND), y)
 CDEFINES += -DFEATURE_RUNTIME_PM
 endif
+
 # Some kernel include files are being moved.  Check to see if
 # the old version of the files are present
 
@@ -1308,6 +1396,47 @@ ifeq ($(CONFIG_LINUX_QCMBR),y)
 CDEFINES += -DLINUX_QCMBR
 endif
 
+# Enable feature Software AP Authentication Offload
+ifeq ($(SAP_AUTH_OFFLOAD),1)
+CDEFINES += -DSAP_AUTH_OFFLOAD
+endif
+
+# Enable featue sync tsf between multi devices
+ifeq ($(CONFIG_WLAN_SYNC_TSF),y)
+CDEFINES += -DWLAN_FEATURE_TSF
+endif
+
+# Enable target dump for non-qualcomm platform
+ifeq ($(CONFIG_NON_QC_PLATFORM), y)
+CDEFINES += -DCONFIG_NON_QC_PLATFORM
+ifeq ($(CONFIG_CLD_HL_SDIO_CORE), y)
+CDEFINES += -DTARGET_DUMP_FOR_NON_QC_PLATFORM
+endif
+endif
+
+ifeq ($(CONFIG_ARCH_MDM9640), y)
+CDEFINES += -DFEATURE_AP_MCC_CH_AVOIDANCE
+endif
+
+ifeq ($(CONFIG_ARCH_MDM9607), y)
+CDEFINES += -DFEATURE_AP_MCC_CH_AVOIDANCE
+CDEFINES += -DMDM_SAP_11AC_NO_OVERRIDE
+endif
+
+ifdef CPTCFG_QCA_CLD_WLAN
+CDEFINES += -DWITH_BACKPORTS
+#Enable OBSS feature
+CDEFINES += -DQCA_HT_2040_COEX
+endif
+
+ifdef CPTCFG_QCA_CLD_WLAN
+CDEFINES += -DTARGET_DUMP_FOR_9X15_PLATFORM
+endif
+
+ifeq ($(CONFIG_STATICALLY_ADD_11P_CHANNELS),y)
+CDEFINES += -DFEATURE_STATICALLY_ADD_11P_CHANNELS
+endif
+
 ifeq ($(CONFIG_WLAN_FEATURE_MEMDUMP),y)
 CDEFINES += -DWLAN_FEATURE_MEMDUMP
 endif
@@ -1316,9 +1445,21 @@ ifeq ($(CONFIG_WLAN_OFFLOAD_PACKETS),y)
 CDEFINES += -DWLAN_FEATURE_OFFLOAD_PACKETS
 endif
 
+
+ifeq ($(CONFIG_WLAN_UDP_RESPONSE_OFFLOAD),y)
+CDEFINES += -DWLAN_FEATURE_UDP_RESPONSE_OFFLOAD
+endif
+
+
 ifeq ($(CONFIG_WLAN_FEATURE_RX_WAKELOCK), y)
 CDEFINES += -DWLAN_FEATURE_HOLD_RX_WAKELOCK
 endif
+
+
+ifeq ($(CONFIG_WLAN_WOW_PULSE), y)
+CDEFINES += -DWLAN_FEATURE_WOW_PULSE
+endif
+
 
 KBUILD_CPPFLAGS += $(CDEFINES)
 
@@ -1328,6 +1469,24 @@ KBUILD_CPPFLAGS += $(CDEFINES)
 # will override the kernel settings.
 ifeq ($(call cc-option-yn, -Wmaybe-uninitialized),y)
 EXTRA_CFLAGS += -Wmaybe-uninitialized
+endif
+
+# If the module name is not "wlan", then the define MULTI_IF_NAME to be the
+# same a the module name. The host driver will then append MULTI_IF_NAME to
+# any string that must be unique for all instances of the driver on the system.
+# This allows multiple instances of the driver with different module names.
+# If the module name is wlan, leave MULTI_IF_NAME undefined and the code will
+# treat the driver as the primary driver.
+ifneq ($(MODNAME), wlan)
+CDEFINES += -DMULTI_IF_NAME=\"$(MODNAME)\"
+endif
+
+# WLAN_HDD_ADAPTER_MAGIC must be unique for all instances of the driver on the
+# system. If it is not defined, then the host driver will use the first 4
+# characters (including NULL) of MULTI_IF_NAME to construct
+# WLAN_HDD_ADAPTER_MAGIC.
+ifdef WLAN_HDD_ADAPTER_MAGIC
+CDEFINES += -DWLAN_HDD_ADAPTER_MAGIC=$(WLAN_HDD_ADAPTER_MAGIC)
 endif
 
 # Module information used by KBuild framework

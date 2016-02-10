@@ -34,7 +34,6 @@
 #include "htc_api.h"
 
 
-#define HIF_SDIO_RX_BUFFER_SIZE            1664
 #define HIF_SDIO_RX_DATA_OFFSET            64
 
 /* TODO: print output level and mask control */
@@ -128,15 +127,16 @@ struct TAG_HIF_SDIO_DEVICE {
 #define HTC_RECV_WAIT_BUFFERS        (1 << 0)
 #define HTC_OP_STATE_STOPPING        (1 << 0)
 
-#define HTC_RX_PKT_IGNORE_LOOKAHEAD      (1 << 0)
-#define HTC_RX_PKT_REFRESH_HDR           (1 << 1)
-#define HTC_RX_PKT_PART_OF_BUNDLE        (1 << 2)
-#define HTC_RX_PKT_NO_RECYCLE            (1 << 3)
+#define HTC_RX_PKT_IGNORE_LOOKAHEAD                         (1 << 0)
+#define HTC_RX_PKT_REFRESH_HDR                              (1 << 1)
+#define HTC_RX_PKT_PART_OF_BUNDLE                           (1 << 2)
+#define HTC_RX_PKT_NO_RECYCLE                               (1 << 3)
+#define HTC_RX_PKT_LAST_BUNDLED_PKT_HAS_ADDTIONAL_BLOCK     (1 << 4)
 
 #define IS_DEV_IRQ_PROCESSING_ASYNC_ALLOWED(pDev) ((pDev)->HifIRQProcessingMode != HIF_DEVICE_IRQ_SYNC_ONLY)
 
 /* hif_sdio_dev.c */
-HTC_PACKET *HIFDevAllocRxBuffer(HIF_SDIO_DEVICE *pDev);
+HTC_PACKET *HIFDevAllocRxBuffer(HIF_SDIO_DEVICE *pDev, size_t length);
 
 A_UINT8 HIFDevMapPipeToMailBox(HIF_SDIO_DEVICE *pDev, A_UINT8 pipeid);
 A_UINT8 HIFDevMapMailBoxToPipe(HIF_SDIO_DEVICE *pDev, A_UINT8 mboxIndex,

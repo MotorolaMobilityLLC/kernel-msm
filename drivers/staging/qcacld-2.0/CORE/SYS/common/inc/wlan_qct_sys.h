@@ -78,12 +78,6 @@ typedef enum
    SYS_MSG_ID_MC_START,
    SYS_MSG_ID_MC_THR_PROBE,
    SYS_MSG_ID_MC_TIMER,
-
-   SYS_MSG_ID_TX_THR_PROBE,
-   SYS_MSG_ID_TX_TIMER,
-
-   SYS_MSG_ID_RX_TIMER,
-
    SYS_MSG_ID_MC_STOP,
    SYS_MSG_ID_FTM_RSP,
 
@@ -385,23 +379,6 @@ VOS_STATUS sysRxProcessMsg( v_CONTEXT_t pVContext, vos_msg_t* pMsg );
 
   --------------------------------------------------------------------------*/
 v_VOID_t sysMcFreeMsg( v_CONTEXT_t pVosContext, vos_msg_t* pMsg );
-
-/*----------------------------------------------------------------------------
-
-  \brief sysTxFreeMsg() - free a message queue'd to the Tx thread
-
-  This fnction will free a SYS Message that is pending in the Tx
-  thread queue.  These messages are free'd when the message queue needs to be
-  purged, for example during a Reset of Shutdown of the system.
-
-  \param pVosContext - pointer to the VOS Context
-
-  \param pMsg - the message to be free'd
-
-  \return Nothing.
-
-  --------------------------------------------------------------------------*/
-v_VOID_t sysTxFreeMsg( v_CONTEXT_t pVContext, vos_msg_t* pMsg );
 
 /*----------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -130,6 +130,20 @@ tSirRetStatus ConvertWPAOpaque( tpAniSirGlobal      pMac,
 
     return eSIR_SUCCESS;
 }
+
+#ifdef FEATURE_WLAN_WAPI
+tSirRetStatus ConvertWAPIOpaque( tpAniSirGlobal      pMac,
+                                tSirMacWapiInfo     *pOld,
+                                tDot11fIEWAPIOpaque *pNew )
+{
+    // This is awful, I know, but the old code just rammed the IE into
+    // an opaque array.  Note that we need to explicitly add the OUI!
+    pOld->length    = pNew->num_data;
+    vos_mem_copy( pOld->info , pNew->data, pNew->num_data );
+
+    return eSIR_SUCCESS;
+}
+#endif
 
 tSirRetStatus ConvertWscOpaque( tpAniSirGlobal      pMac,
                                 tSirAddie           *pOld,
@@ -690,6 +704,8 @@ void CreateScanCtsFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tSirMac
 void ConvertQosMapsetFrame(tpAniSirGlobal pMac, tSirQosMapSet* Qos, tDot11fIEQosMapSet* dot11fIE)
 {
     tANI_U8 i,j=0;
+    if (dot11fIE->num_dscp_exceptions > 58)
+        dot11fIE->num_dscp_exceptions = 58;
     Qos->num_dscp_exceptions = (dot11fIE->num_dscp_exceptions - 16)/2;
     for (i = 0; i < Qos->num_dscp_exceptions; i++)
     {

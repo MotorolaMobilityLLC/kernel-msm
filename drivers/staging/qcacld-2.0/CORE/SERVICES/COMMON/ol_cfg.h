@@ -265,7 +265,7 @@ int ol_cfg_netbuf_frags_max(ol_pdev_handle pdev);
  *      1 -> free the tx frame as soon as the download completes
  */
 int ol_cfg_tx_free_at_download(ol_pdev_handle pdev);
-
+void ol_cfg_set_tx_free_at_download(ol_pdev_handle pdev);
 
 /**
  * @brief Low water mark for target tx credit.

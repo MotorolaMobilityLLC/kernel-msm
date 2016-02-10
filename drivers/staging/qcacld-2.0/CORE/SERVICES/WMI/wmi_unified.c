@@ -50,10 +50,6 @@
 #include "if_usb.h"
 #endif
 
-#if defined(QCA_WIFI_2_0) && !defined(QCA_WIFI_ISOC) && defined(CONFIG_CNSS)
-#include <net/cnss.h>
-#endif
-
 #define WMI_MIN_HEAD_ROOM 64
 
 #ifdef WMI_INTERFACE_EVENT_LOGGING
@@ -500,6 +496,7 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_THERMAL_MGMT_CMDID);
 		CASE_RETURN_STRING(WMI_RSSI_BREACH_MONITOR_CONFIG_CMDID);
                 CASE_RETURN_STRING(WMI_LRO_CONFIG_CMDID);
+                CASE_RETURN_STRING(WMI_TRANSFER_DATA_TO_FLASH_CMDID);
                 CASE_RETURN_STRING(WMI_MAWC_SENSOR_REPORT_IND_CMDID);
                 CASE_RETURN_STRING(WMI_ROAM_CONFIGURE_MAWC_CMDID);
                 CASE_RETURN_STRING(WMI_NLO_CONFIGURE_MAWC_CMDID);
@@ -574,6 +571,7 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_BATCH_SCAN_TRIGGER_RESULT_CMDID);
 		/* OEM related cmd */
 		CASE_RETURN_STRING(WMI_OEM_REQ_CMDID);
+		CASE_RETURN_STRING(WMI_OEM_REQUEST_CMDID);
 		/* NAN request cmd */
 		CASE_RETURN_STRING(WMI_NAN_CMDID);
 		/* Modem power state cmd */
@@ -656,17 +654,13 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_WOW_HOSTWAKEUP_GPIO_PIN_PATTERN_CONFIG_CMDID);
 		CASE_RETURN_STRING(WMI_AP_PS_EGAP_PARAM_CMDID);
 		CASE_RETURN_STRING(WMI_PMF_OFFLOAD_SET_SA_QUERY_CMDID);
+		CASE_RETURN_STRING(WMI_BPF_GET_CAPABILITY_CMDID);
+		CASE_RETURN_STRING(WMI_BPF_GET_VDEV_STATS_CMDID);
+		CASE_RETURN_STRING(WMI_BPF_SET_VDEV_INSTRUCTIONS_CMDID);
+		CASE_RETURN_STRING(WMI_BPF_DEL_VDEV_INSTRUCTIONS_CMDID);
         }
 	return "Invalid WMI cmd";
 }
-
-/* worker thread to recover when Target doesn't respond with credits */
-static void recovery_work_handler(struct work_struct *recovery)
-{
-    cnss_device_self_recovery();
-}
-
-static DECLARE_WORK(recovery_work, recovery_work_handler);
 
 #ifdef FEATURE_RUNTIME_PM
 inline bool wmi_get_runtime_pm_inprogress(wmi_unified_t wmi_handle)
@@ -711,6 +705,11 @@ skip_suspend_check:
 	case WMI_D0_WOW_ENABLE_DISABLE_CMDID:
 #endif
 		htc_tag = HTC_TX_PACKET_TAG_AUTO_PM;
+	case WMI_FORCE_FW_HANG_CMDID:
+		if (wmi_handle->tag_crash_inject) {
+			htc_tag = HTC_TX_PACKET_TAG_AUTO_PM;
+			wmi_handle->tag_crash_inject = false;
+		}
 	default:
 		break;
 	}
@@ -746,9 +745,9 @@ dont_tag:
 		//dump_CE_register(scn);
 		//dump_CE_debug_register(scn->hif_sc);
 		adf_os_atomic_dec(&wmi_handle->pending_cmds);
-		pr_err("%s: MAX 1024 WMI Pending cmds reached.\n", __func__);
-		vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
-		schedule_work(&recovery_work);
+		pr_err("%s: MAX %d WMI Pending cmds reached.\n",
+			__func__, WMI_MAX_CMDS);
+		VOS_BUG(0);
 		return -EBUSY;
 	}
 
@@ -980,7 +979,7 @@ void __wmi_control_rx(struct wmi_unified *wmi_handle, wmi_buf_t evt_buf)
 	}
 
 #ifdef FEATURE_WLAN_D0WOW
-	if (wmi_handle->in_d0wow)
+	if (wmi_get_d0wow_flag(wmi_handle))
 		pr_debug("%s: WMI event ID is 0x%x\n", __func__, id);
 #endif
 
@@ -1069,11 +1068,7 @@ wmi_unified_attach(ol_scn_t scn_handle, wma_wow_tx_complete_cbk func)
 #endif
     adf_os_spinlock_init(&wmi_handle->eventq_lock);
     adf_nbuf_queue_init(&wmi_handle->event_queue);
-#ifdef CONFIG_CNSS
-    cnss_init_work(&wmi_handle->rx_event_work, wmi_rx_event_work);
-#else
-    INIT_WORK(&wmi_handle->rx_event_work, wmi_rx_event_work);
-#endif
+    vos_init_work(&wmi_handle->rx_event_work, wmi_rx_event_work);
 #ifdef WMI_INTERFACE_EVENT_LOGGING
     adf_os_spinlock_init(&wmi_handle->wmi_record_lock);
 #endif
@@ -1232,6 +1227,33 @@ void wmi_set_runtime_pm_inprogress(wmi_unified_t wmi_handle, A_BOOL val)
 #ifdef FEATURE_WLAN_D0WOW
 void wmi_set_d0wow_flag(wmi_unified_t wmi_handle, A_BOOL flag)
 {
-	wmi_handle->in_d0wow = flag;
+	tp_wma_handle wma = wmi_handle->scn_handle;
+	struct ol_softc *scn =
+		vos_get_context(VOS_MODULE_ID_HIF, wma->vos_context);
+
+	if (NULL == scn) {
+		WMA_LOGE("%s: Failed to get HIF context", __func__);
+		return;
+	}
+	adf_os_atomic_set(&scn->hif_sc->in_d0wow, flag);
+}
+
+A_BOOL wmi_get_d0wow_flag(wmi_unified_t wmi_handle)
+{
+	tp_wma_handle wma = wmi_handle->scn_handle;
+	struct ol_softc *scn =
+		vos_get_context(VOS_MODULE_ID_HIF, wma->vos_context);
+
+	if (NULL == scn) {
+		WMA_LOGE("%s: Failed to get HIF context", __func__);
+		return -EINVAL;
+	}
+
+	return adf_os_atomic_read(&scn->hif_sc->in_d0wow);
 }
 #endif
+
+void wmi_tag_crash_inject(wmi_unified_t wmi_handle, A_BOOL flag)
+{
+	wmi_handle->tag_crash_inject = flag;
+}

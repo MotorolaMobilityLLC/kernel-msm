@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010,2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -27,6 +27,31 @@
 
 
 #include <adf_os_mem.h>
+#ifdef MEMORY_DEBUG
+#include <vos_memory.h>
+#endif
+
+#ifdef MEMORY_DEBUG
+void *
+adf_os_mem_alloc_debug(adf_os_device_t osdev,
+				adf_os_size_t size,
+				const char *fileName,
+				a_uint32_t lineNum)
+{
+	void *p = vos_mem_malloc_debug(size, fileName, lineNum);
+	if (p) {
+		memset(p, 0, size);
+	}
+	return p;
+}
+
+void
+adf_os_mem_free_debug(void *buf)
+{
+	vos_mem_free(buf);
+}
+
+#endif
 
 void *
 adf_os_mem_alloc_outline(adf_os_device_t osdev, size_t size)

@@ -384,8 +384,7 @@ process_tx_info(struct ol_txrx_pdev_t *txrx_pdev,
 			adf_nbuf_peek_header(netbuf, &addr, &len);
 
 			if (len < (2 * IEEE80211_ADDR_LEN)) {
-				adf_os_print("TX frame does not have a valid" \
-					     " address\n");
+				adf_os_print("TX frame does not have a valid address\n");
 				return -1;
 			}
 			/* Adding header information for the TX data frames */

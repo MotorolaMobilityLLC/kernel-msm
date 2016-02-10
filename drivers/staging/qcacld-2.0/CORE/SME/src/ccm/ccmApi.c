@@ -33,12 +33,6 @@
 #include "ccmApi.h"
 #include "logDump.h"
 
-//#define CCM_DEBUG
-#undef CCM_DEBUG
-
-#define CCM_DEBUG2
-//#undef CCM_DEBUG2
-
 #define CFGOBJ_ALIGNTO          4
 #define CFGOBJ_ALIGN(len)       ( ((len)+CFGOBJ_ALIGNTO-1) & ~(CFGOBJ_ALIGNTO-1) )
 
@@ -134,7 +128,7 @@ static eHalStatus sendCfg(tpAniSirGlobal pMac, tHddHandle hHdd, tCfgReq *req, tA
     }
     else
     {
-        smsLog( pMac, LOGW, FL("failed to allocate memory(len=%d)"), msgLen );
+        smsLog( pMac, LOGE, FL("failed to allocate memory(len=%d)"), msgLen );
         status = eHAL_STATUS_FAILURE;
     }
 
@@ -238,9 +232,6 @@ static void sendQueuedReqToMacSw(tpAniSirGlobal pMac, tHddHandle hHdd)
                     req->callback((tHalHandle)pMac, WNI_CFG_OTHER_ERROR) ;
                 }
 
-#ifdef CCM_DEBUG
-                smsLog(pMac, LOGW, FL("ccmComplete(%p)"), req->done);
-#endif
                 ccmComplete(hHdd, req->done);
 
                 freeCfgReq(hHdd, req);
@@ -269,6 +260,8 @@ static eHalStatus cfgSetSub(tpAniSirGlobal pMac, tHddHandle hHdd, tANI_U32 cfgId
         if (pMac->ccm.state == eCCM_STOPPED)
         {
             status = eHAL_STATUS_FAILURE ;
+            smsLog(pMac, LOGE,
+                          FL("cfgSetSub failure. ccm.state=eCCM_STOPPED"));
             break ;
         }
 
@@ -276,6 +269,7 @@ static eHalStatus cfgSetSub(tpAniSirGlobal pMac, tHddHandle hHdd, tANI_U32 cfgId
         if (req == NULL)
         {
             status = eHAL_STATUS_FAILED_ALLOC ;
+            smsLog(pMac, LOGE, FL("cfgSetSub failure. req=NULL"));
             break ;
         }
 
@@ -346,18 +340,12 @@ static eHalStatus cfgSet(tHalHandle hHal, tANI_U32 cfgId, tANI_U32 type, tANI_S3
 
     if (pal_in_interrupt())
     {
-#ifdef CCM_DEBUG2
-        smsLog(pMac, LOG1, FL("WNI_CFG_%s (%d 0x%x), in_interrupt()=TRUE"), gCfgParamName[cfgId], (int)cfgId, (int)cfgId);
-#endif
         status = cfgSetSub(pMac, hHdd, cfgId, type, length, ccmPtr, ccmValue, callback, toBeSaved, NULL, &req);
     }
     else
     {
         void *sem ;
 
-#ifdef CCM_DEBUG2
-        smsLog(pMac, LOG1, FL("WNI_CFG_%s (%d 0x%x), in_interrupt()=FALSE"), gCfgParamName[cfgId], (int)cfgId, (int)cfgId);
-#endif
         pal_local_bh_disable() ;
 
         status = palMutexAllocLocked( hHdd, &sem ) ;
@@ -381,14 +369,8 @@ static eHalStatus cfgSet(tHalHandle hHal, tANI_U32 cfgId, tANI_U32 type, tANI_S3
 
         if ((status == eHAL_STATUS_SUCCESS) && (sem != NULL))
         {
-#ifdef CCM_DEBUG
-            smsLog(pMac, LOG1, FL("ccmWaitForCompletion(%p)"), req->done);
-#endif
             ccmWaitForCompletion(hHdd, sem);
 
-#ifdef CCM_DEBUG
-            smsLog(pMac, LOG1, FL("free(%p)"), req->done);
-#endif
             palSemaphoreFree( hHdd, sem ) ;
         }
     }
@@ -438,6 +420,9 @@ void ccmCfgCnfMsgHandler(tHalHandle hHal, void *m)
     result  = pal_be32_to_cpu(msg->data[0]);
     cfgId   = pal_be32_to_cpu(msg->data[1]);
 
+    smsLog(pMac, LOG1, FL("started=%d, cfgId=%d, in_progress=%d"),
+        pMac->ccm.replay.started, cfgId, pMac->ccm.replay.in_progress);
+
     if (pMac->ccm.replay.started && cfgId == CFG_UPDATE_MAGIC_DWORD)
     {
         pMac->ccm.replay.in_progress = 1 ;
@@ -464,9 +449,6 @@ void ccmCfgCnfMsgHandler(tHalHandle hHal, void *m)
             pMac->ccm.replay.started = 0 ;
 
             /* Wake up the sleeping process */
-#ifdef CCM_DEBUG
-            smsLog(pMac, LOGW, FL("ccmComplete(%p)"), pMac->ccm.replay.done);
-#endif
             ccmComplete(hHdd, pMac->ccm.replay.done);
             //Let go with the rest of the set CFGs waiting.
             sendQueuedReqToMacSw(pMac, hHdd);
@@ -492,26 +474,16 @@ void ccmCfgCnfMsgHandler(tHalHandle hHal, void *m)
                 if (result == WNI_CFG_NEED_RESTART ||
                     result == WNI_CFG_NEED_RELOAD)
                 {
-#ifdef CCM_DEBUG
-                    smsLog(pMac, LOGW, FL("need restart/reload, cfgId=%d"), req->cfgId) ;
-#endif
                     //purgeReqQ(hHal);
                 }
 
                 /* invoke callback */
                 if (req->callback)
                 {
-#ifdef CCM_DEBUG
-                    req->callback(hHal, cfgId) ;
-#else
                     req->callback(hHal, result) ;
-#endif
                 }
 
                 /* Wake up the sleeping process */
-#ifdef CCM_DEBUG
-                smsLog(pMac, LOGW, FL("cfgId=%ld, calling ccmComplete(%p)"), cfgId, req->done);
-#endif
                 ccmComplete(hHdd, req->done);
 
                 /* move the completed req from reqQ to comp[] */
@@ -537,9 +509,6 @@ void ccmCfgCnfMsgHandler(tHalHandle hHal, void *m)
                 smsLog( pMac, LOGW, FL("can not match RSP with REQ, rspcfgid=%d result=%d reqcfgid=%d reqstate=%d"),
                         (int)cfgId, (int)result, req->cfgId, req->state);
 
-#ifdef CCM_DEBUG
-                smsLog(pMac, LOGW, FL("ccmComplete(%p)"), req->done);
-#endif
             }
 
         }
@@ -578,7 +547,7 @@ eHalStatus ccmCfgSetInt(tHalHandle hHal, tANI_U32 cfgId, tANI_U32 ccmValue, tCcm
 {
     if( callback || toBeSaved)
     {
-        //we need to sychronous this one
+        /* We need to synchronous this one */
         return cfgSet(hHal, cfgId, CCM_INTEGER_TYPE, sizeof(tANI_U32), NULL, ccmValue, callback, toBeSaved);
     }
     else
@@ -605,7 +574,7 @@ eHalStatus ccmCfgSetStr(tHalHandle hHal, tANI_U32 cfgId, tANI_U8 *pStr, tANI_U32
 {
     if( callback || toBeSaved )
     {
-        //we need to sychronous this one
+        /* We need to synchronous this one */
         return cfgSet(hHal, cfgId, CCM_STRING_TYPE, length, pStr, 0, callback, toBeSaved);
     }
     else
@@ -724,9 +693,6 @@ static eHalStatus cfgUpdate(tpAniSirGlobal pMac, tHddHandle hHdd, tCcmCfgSetCall
         {
             msgLen += (tANI_S16)(CFGOBJ_ID_SIZE + CFGOBJ_LEN_SIZE + CFGOBJ_ALIGN(req->length)) ;
             pMac->ccm.replay.nr_param += 1 ;
-#ifdef CCM_DEBUG
-            smsLog(pMac, LOGW, FL("cfgId=%d"), req->cfgId);
-#endif
         }
     }
 
@@ -820,14 +786,8 @@ eHalStatus ccmCfgUpdate(tHalHandle hHal, tCcmCfgSetCallback callback)
     /* Waiting here ... */
     if (status == eHAL_STATUS_SUCCESS && pMac->ccm.replay.done)
     {
-#ifdef CCM_DEBUG
-        smsLog(pMac, LOGW, FL("ccmWaitForCompletion(%p)"), pMac->ccm.replay.done);
-#endif
         ccmWaitForCompletion(hHdd, pMac->ccm.replay.done);
 
-#ifdef CCM_DEBUG
-        smsLog(pMac, LOGW, FL("free(%p)"), pMac->ccm.replay.done);
-#endif
         palSemaphoreFree( hHdd, pMac->ccm.replay.done) ;
     }
 

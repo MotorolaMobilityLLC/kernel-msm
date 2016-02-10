@@ -179,70 +179,25 @@ typedef struct _VosSchedContext
    /* SYS Message queue on the Main thread */
    VosMqType           sysMcMq;
 
-   /* TL Message queue on the Tx thread */
-   VosMqType           tlTxMq;
-
-   /* SYS Message queue on the Tx thread */
-   VosMqType           sysTxMq;
-
-   VosMqType           sysRxMq;
-
    /* Handle of Event for MC thread to signal startup */
    struct completion   McStartEvent;
 
-   /* Handle of Event for Tx thread to signal startup */
-   struct completion   TxStartEvent;
-
-   /* Handle of Event for Rx thread to signal startup */
-   struct completion   RxStartEvent;
-
    struct task_struct* McThread;
-
-   /* TX Thread handle */
-
-   struct task_struct*   TxThread;
-
-   /* RX Thread handle */
-   struct task_struct*   RxThread;
 
 
    /* completion object for MC thread shutdown */
    struct completion   McShutdown;
-
-   /* completion object for Tx thread shutdown */
-   struct completion   TxShutdown;
-
-   /* completion object for Rx thread shutdown */
-   struct completion   RxShutdown;
 
    /* Wait queue for MC thread */
    wait_queue_head_t mcWaitQueue;
 
    unsigned long     mcEventFlag;
 
-   /* Wait queue for Tx thread */
-   wait_queue_head_t txWaitQueue;
-
-   unsigned long     txEventFlag;
-
-   /* Wait queue for Rx thread */
-   wait_queue_head_t rxWaitQueue;
-
-   unsigned long     rxEventFlag;
-
    /* Completion object to resume Mc thread */
    struct completion ResumeMcEvent;
 
-   /* Completion object to resume Tx thread */
-   struct completion ResumeTxEvent;
-
-   /* Completion object to resume Rx thread */
-   struct completion ResumeRxEvent;
-
    /* lock to make sure that McThread and TxThread Suspend/resume mechanism is in sync*/
    spinlock_t McThreadLock;
-   spinlock_t TxThreadLock;
-   spinlock_t RxThreadLock;
 #ifdef QCA_CONFIG_SMP
    spinlock_t TlshimRxThreadLock;
 
@@ -381,17 +336,11 @@ typedef struct _VosContextType
    /* HDD Module Context  */
    v_VOID_t           *pHDDContext;
 
-   /* HDD SoftAP Module Context  */
-   v_VOID_t           *pHDDSoftAPContext;
-
    /* TL Module Context  */
    v_VOID_t           *pTLContext;
 
    /* MAC Module Context  */
    v_VOID_t           *pMACContext;
-
-   /* BAP Context */
-   v_VOID_t           *pBAPContext;
 
 #ifndef WLAN_FEATURE_MBSSID
    /* SAP Context */
@@ -424,6 +373,8 @@ typedef struct _VosContextType
    v_VOID_t    *cfg_ctx;
 
    volatile v_U8_t    isLoadUnloadInProgress;
+   volatile v_U8_t    is_load_in_progress;
+   volatile v_U8_t    is_unload_in_progress;
 
    /* SSR re-init in progress */
    volatile v_U8_t     isReInitInProgress;
@@ -437,6 +388,8 @@ typedef struct _VosContextType
 
    struct vos_log_complete log_complete;
    vos_spin_lock_t bug_report_lock;
+
+   bool crash_indication_pending;
 } VosContextType, *pVosContextType;
 
 
@@ -516,8 +469,6 @@ static inline int vos_sched_handle_throughput_req(
 }
 #endif
 
-int vos_sched_is_tx_thread(int threadID);
-int vos_sched_is_rx_thread(int threadID);
 /*---------------------------------------------------------------------------
 
   \brief vos_sched_open() - initialize the vOSS Scheduler
@@ -663,8 +614,6 @@ pVosWatchdogContext get_vos_watchdog_ctxt(void);
 VOS_STATUS vos_sched_init_mqs   (pVosSchedContext pSchedContext);
 void vos_sched_deinit_mqs (pVosSchedContext pSchedContext);
 void vos_sched_flush_mc_mqs  (pVosSchedContext pSchedContext);
-void vos_sched_flush_tx_mqs  (pVosSchedContext pSchedContext);
-void vos_sched_flush_rx_mqs  (pVosSchedContext pSchedContext);
 void clearWlanResetReason(void);
 
 void vos_timer_module_init( void );

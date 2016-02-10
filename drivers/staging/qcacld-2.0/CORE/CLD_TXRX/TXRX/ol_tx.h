@@ -73,6 +73,7 @@ ol_tx_reinject(struct ol_txrx_vdev_t *vdev, adf_nbuf_t msdu, u_int16_t peer_id);
 void
 ol_txrx_mgmt_tx_complete(void *ctxt, adf_nbuf_t netbuf, int err);
 
+#ifdef QCA_SUPPORT_TXRX_VDEV_LL_TXQ
 /**
  * ol_tx_vdev_ll_pause_start_timer() - Start ll-q pause timer for specific virtual device
  * @vdev: the virtual device
@@ -86,6 +87,7 @@ ol_txrx_mgmt_tx_complete(void *ctxt, adf_nbuf_t netbuf, int err);
  */
 void
 ol_tx_vdev_ll_pause_start_timer(struct ol_txrx_vdev_t *vdev);
+#endif
 
 void
 ol_tx_pdev_ll_pause_queue_send_all(struct ol_txrx_pdev_t *pdev);

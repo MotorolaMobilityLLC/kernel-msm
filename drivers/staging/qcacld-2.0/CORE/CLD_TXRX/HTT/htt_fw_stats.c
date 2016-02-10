@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -472,6 +472,23 @@ htt_t2h_stats_rx_rem_buf_stats_print(
                  stats_ptr->host_no_bufs);
 }
 
+static void
+htt_t2h_rx_musu_ndpa_pkts_stats_print(
+    struct rx_txbf_musu_ndpa_pkts_stats *stats_ptr, int concise)
+{
+    adf_os_print("Rx TXBF MU/SU Packets and NDPA Statistics:\n");
+    adf_os_print("  %u Number of TXBF MU packets received\n",
+                 stats_ptr->number_mu_pkts);
+    adf_os_print("  %u Number of TXBF SU packets received\n",
+                 stats_ptr->number_su_pkts);
+    adf_os_print("  %u Number of TXBF directed NDPA\n",
+                 stats_ptr->txbf_directed_ndpa_count);
+    adf_os_print("  %u Number of TXBF retried NDPA\n",
+                 stats_ptr->txbf_ndpa_retry_count);
+    adf_os_print("  %u Total number of TXBF NDPA\n",
+                 stats_ptr->txbf_total_ndpa_count);
+}
+
 #define HTT_T2H_STATS_TX_PPDU_TIME_TO_MICROSEC(ticks, microsec_per_tick) \
     (ticks * microsec_per_tick)
 static inline int
@@ -839,6 +856,14 @@ htt_t2h_stats_print(u_int8_t *stats_data, int concise)
 
             rx_rem_buf = (struct rx_remote_buffer_mgmt_stats *)(msg_word + 1);
             htt_t2h_stats_rx_rem_buf_stats_print(rx_rem_buf, concise);
+            break;
+        }
+    case HTT_DBG_STATS_TXBF_MUSU_NDPA_PKT:
+        {
+            struct rx_txbf_musu_ndpa_pkts_stats *rx_musu_ndpa_stats;
+
+            rx_musu_ndpa_stats = (struct rx_txbf_musu_ndpa_pkts_stats *)(msg_word + 1);
+            htt_t2h_rx_musu_ndpa_pkts_stats_print(rx_musu_ndpa_stats, concise);
             break;
         }
     default:

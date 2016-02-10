@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -53,13 +53,32 @@
 #include "parserApi.h"
 
 tSirRetStatus
-limValidateIEInformationInProbeRspFrame (tANI_U8 *pRxPacketInfo)
+limValidateIEInformationInProbeRspFrame (tpAniSirGlobal pMac,
+                                         tANI_U8 *pRxPacketInfo)
 {
    tSirRetStatus       status = eSIR_SUCCESS;
+   tANI_U8             *pFrame;
+   tANI_U32            nFrame;
+   tANI_U32            nMissingRsnBytes;
 
+   /*
+    * Validate a Probe response frame for malformed frame.
+    * If the frame is malformed then do not consider as it
+    * may cause problem fetching wrong IE values
+    */
    if (WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo) < (SIR_MAC_B_PR_SSID_OFFSET + SIR_MAC_MIN_IE_LEN))
    {
-      status = eSIR_FAILURE;
+      return eSIR_FAILURE;
+   }
+
+   pFrame = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
+   nFrame = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+   nMissingRsnBytes = 0;
+
+   status = sirvalidateandrectifyies(pMac, pFrame, nFrame, &nMissingRsnBytes);
+   if ( status == eSIR_SUCCESS )
+   {
+       WDA_GET_RX_MPDU_LEN(pRxPacketInfo) += nMissingRsnBytes;
    }
 
    return status;
@@ -117,8 +136,6 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
 
     pProbeRsp->ssId.length              = 0;
     pProbeRsp->wpa.length               = 0;
-    pProbeRsp->propIEinfo.apName.length = 0;
-
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
 
@@ -138,7 +155,8 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
    }
 
    // Validate IE information before processing Probe Response Frame
-   if (limValidateIEInformationInProbeRspFrame(pRxPacketInfo) != eSIR_SUCCESS)
+   if (limValidateIEInformationInProbeRspFrame(pMac, pRxPacketInfo)
+       != eSIR_SUCCESS)
    {
        PELOG1(limLog(pMac, LOG1,
                  FL("Parse error ProbeResponse, length=%d"), frameLen);)
@@ -168,7 +186,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
         (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE) ||            //mlm state check should be global - 18th oct
         (psessionEntry->limMlmState == eLIM_MLM_WT_JOIN_BEACON_STATE) ||
         (psessionEntry->limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE) )||
-        ((GET_LIM_SYSTEM_ROLE(psessionEntry) == eLIM_STA_IN_IBSS_ROLE) &&
+        (LIM_IS_IBSS_ROLE(psessionEntry) &&
         (psessionEntry->limMlmState == eLIM_MLM_BSS_STARTED_STATE)) ||
         pMac->fScanOffload)
     {
@@ -217,6 +235,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             {
                 vos_mem_free(psessionEntry->beacon);
                 psessionEntry->beacon = NULL;
+                psessionEntry->bcnLen = 0;
             }
             psessionEntry->bcnLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
@@ -265,11 +284,17 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             }
 
 
-            if (psessionEntry->limSystemRole == eLIM_STA_ROLE)
-            {
-                if (pProbeRsp->channelSwitchPresent ||
-                    pProbeRsp->propIEinfo.propChannelSwitchPresent)
+            if (LIM_IS_STA_ROLE(psessionEntry)) {
+                if (pProbeRsp->channelSwitchPresent)
                 {
+#ifdef FEATURE_WLAN_TDLS
+                    /*
+                     * on receiving channel switch announcement from AP, delete
+                     * all TDLS peers before leaving BSS and proceed
+                     * for channel switch
+                     */
+                    limDeleteTDLSPeers(pMac, psessionEntry);
+#endif
                     limUpdateChannelSwitch(pMac, pProbeRsp, psessionEntry);
                 }
                 else if (psessionEntry->gLimSpecMgmt.dot11hChanSwState == eLIM_11H_CHANSW_RUNNING)
@@ -306,10 +331,8 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                     // If needed, downgrade the EDCA parameters
                     limSetActiveEdcaParams(pMac, psessionEntry->gLimEdcaParams, psessionEntry);
 
-                    if (pStaDs->aniPeer == eANI_BOOLEAN_TRUE)
-                        limSendEdcaParams(pMac, psessionEntry->gLimEdcaParamsActive, pStaDs->bssId, eANI_BOOLEAN_TRUE);
-                    else
-                        limSendEdcaParams(pMac, psessionEntry->gLimEdcaParamsActive, pStaDs->bssId, eANI_BOOLEAN_FALSE);
+                    limSendEdcaParams(pMac, psessionEntry->gLimEdcaParamsActive,
+                                      pStaDs->bssId);
                 }
                 else
                     PELOGE(limLog(pMac, LOGE, FL("Self Entry missing in Hash Table"));)
@@ -322,7 +345,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                limDetectChangeInApCapabilities(pMac, pProbeRsp, psessionEntry);
            }
         }
-        else if ((psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) &&
+        else if (LIM_IS_IBSS_ROLE(psessionEntry) &&
                  (psessionEntry->limMlmState == eLIM_MLM_BSS_STARTED_STATE))
                 limHandleIBSScoalescing(pMac, pProbeRsp, pRxPacketInfo,psessionEntry);
     } // if ((pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) || ...
@@ -350,8 +373,6 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
 
     pProbeRsp->ssId.length              = 0;
     pProbeRsp->wpa.length               = 0;
-    pProbeRsp->propIEinfo.apName.length = 0;
-
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
 
@@ -378,7 +399,8 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     }
 #endif
      // Validate IE information before processing Probe Response Frame
-    if (limValidateIEInformationInProbeRspFrame(pRxPacketInfo) != eSIR_SUCCESS)
+    if (limValidateIEInformationInProbeRspFrame(pMac, pRxPacketInfo)
+        != eSIR_SUCCESS)
     {
        PELOG1(limLog(pMac, LOG1,FL("Parse error ProbeResponse, length=%d"),
               frameLen);)

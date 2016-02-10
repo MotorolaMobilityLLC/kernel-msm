@@ -174,7 +174,9 @@ static OS_TIMER_FUNC(dfs_task)
              */
             OS_CANCEL_TIMER(&dfs->ath_dfstesttimer);
             dfs->ath_dfstest = 1;
+            adf_os_spin_lock_bh(&ic->chan_lock);
             dfs->ath_dfstest_ieeechan = ic->ic_curchan->ic_ieee;
+            adf_os_spin_unlock_bh(&ic->chan_lock);
             dfs->ath_dfstesttime = 1;   /* 1ms */
             OS_SET_TIMER(&dfs->ath_dfstesttimer, dfs->ath_dfstesttime);
         }

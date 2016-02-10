@@ -53,6 +53,10 @@
 #define pci_alloc_consistent(dev, size, paddr) NULL
 #endif /* __KERNEL__ */
 
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 4096
+#endif /* PAGE_SIZE */
+
 static inline void *
 __adf_os_mem_alloc(adf_os_device_t osdev, size_t size)
 {
@@ -187,6 +191,17 @@ static inline adf_os_size_t
 __adf_os_str_len(const char *str)
 {
     return strlen(str);
+}
+
+/**
+ * @brief Returns the system default page size
+ *
+ * @retval    system default page size
+ */
+static inline a_int32_t
+__adf_os_mem_get_page_size(void)
+{
+	return PAGE_SIZE;
 }
 
 #endif /*ADF_OS_MEM_PVT_H*/

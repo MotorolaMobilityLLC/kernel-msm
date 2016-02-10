@@ -62,7 +62,10 @@ typedef enum
    WLAN_BMPS_STATUS_IND_RCVD,      /* PE received a SIR_HAL_BMPS_STATUS_IND */
    WLAN_BMPS_MODE_DISABLED,        /* BMPS mode was disabled by HDD in SME */
    WLAN_LINK_DISCONNECTED_BY_HDD,  /* Link has been disconnected requested by HDD */
-   WLAN_LINK_DISCONNECTED_BY_OTHER,/* Disconnect due to linklost or requested by peer */
+
+   /* Disconnect due to link lost or requested by peer */
+   WLAN_LINK_DISCONNECTED_BY_OTHER,
+
    WLAN_FULL_PWR_NEEDED_BY_HDD,    /* HDD request full power for some reason */
    WLAN_FULL_PWR_NEEDED_BY_BAP,    /* BAP request full power for BT_AMP */
    WLAN_FULL_PWR_NEEDED_BY_CSR,    /* CSR requests full power */

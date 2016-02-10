@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -77,7 +77,8 @@ enum
     eLIM_DEAUTH_ACK_TIMER,
     eLIM_PERIODIC_JOIN_PROBE_REQ_TIMER,
     eLIM_INSERT_SINGLESHOT_NOA_TIMER,
-    eLIM_CONVERT_ACTIVE_CHANNEL_TO_PASSIVE
+    eLIM_CONVERT_ACTIVE_CHANNEL_TO_PASSIVE,
+    eLIM_AUTH_RETRY_TIMER
 };
 
 #define LIM_DISASSOC_DEAUTH_ACK_TIMEOUT         500

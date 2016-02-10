@@ -25,14 +25,6 @@
  * to the Linux Foundation.
  */
 
-//------------------------------------------------------------------------------
-// <copyright file="wlan_defs.h" company="Atheros">
-//    Copyright (c) 2004-2010, 2013 Atheros Corporation.  All rights reserved.
-// $ATH_LICENSE_HOSTSDK0_C$
-//------------------------------------------------------------------------------
-//==============================================================================
-// Author(s): ="Atheros"
-//==============================================================================
 #ifndef __WLANDEFS_H__
 #define __WLANDEFS_H__
 
@@ -43,6 +35,8 @@
  * This file contains WLAN definitions that may be used across both
  * Host and Target software.
  */
+
+
 /*
  * MAX_SPATIAL_STREAM should be defined in a fwconfig_xxx.h file,
  * but for now provide a default value here in case it's not defined
@@ -184,6 +178,9 @@ enum {
     REGDMN_MODE_11AC_VHT40_2G    = 0x000400000, /* 2Ghz, VHT40 */
     REGDMN_MODE_11AC_VHT80_2G    = 0x000800000, /* 2Ghz, VHT80 */
     REGDMN_MODE_11AC_VHT160      = 0x001000000, /* 5Ghz, VHT160 */
+    REGDMN_MODE_11AC_VHT40_2GPLUS  = 0x002000000, /* 2Ghz, VHT40+ */
+    REGDMN_MODE_11AC_VHT40_2GMINUS = 0x004000000, /* 2Ghz, VHT40- */
+    REGDMN_MODE_11AC_VHT80_80      = 0x008000000, /* 5GHz, VHT80+80 */
 };
 
 #define REGDMN_MODE_ALL       (0xFFFFFFFF)       /* REGDMN_MODE_ALL is defined out of the enum
@@ -326,6 +323,7 @@ typedef struct{
     A_RATE      probe_rix;
     A_UINT8     num_valid_rates;
     A_UINT8     rtscts_tpc;
+    A_UINT8     dd_profile;
 } RC_TX_RATE_SCHEDULE;
 
 #else
@@ -399,8 +397,11 @@ typedef struct {
    A_UINT32 size;
 } wlan_host_memory_chunk;
 
-#define NUM_UNITS_IS_NUM_VDEVS   0x1
-#define NUM_UNITS_IS_NUM_PEERS   0x2
+#define NUM_UNITS_IS_NUM_VDEVS        0x1
+#define NUM_UNITS_IS_NUM_PEERS        0x2
+#define NUM_UNITS_IS_NUM_ACTIVE_PEERS 0x4
+/* request host to allocate memory contiguously */
+#define REQ_TO_HOST_FOR_CONT_MEMORY   0x8
 
 /**
  * structure used by FW for requesting host memory

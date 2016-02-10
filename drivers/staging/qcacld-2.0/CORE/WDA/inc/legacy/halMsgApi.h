@@ -80,6 +80,10 @@
  */
 #define BSSIDX_INVALID             254
 
+#ifdef SAP_AUTH_OFFLOAD
+#define MAX_CONNECT_REQ_LENGTH 512
+#endif
+
 #define HAL_IS_VALID_BSS_INDEX(pMac, bssIdx)  ((BSSIDX_INVALID != (bssIdx)) && ((bssIdx) < (pMac)->hal.memMap.maxBssids))
 
 // Beacon structure
@@ -179,12 +183,6 @@ typedef struct
     tANI_U8 delBASupport;
     // delayed ba support... TBD
 
-#ifdef ANI_DVT_DEBUG
-    //These 6 fields are used only by DVT driver to pass selected
-    //rates to Softmac through HAL.
-    tANI_U8 primaryRateIndex, secondaryRateIndex, tertiaryRateIndex;
-    tANI_U8 primaryRateIndex40, secondaryRateIndex40, tertiaryRateIndex40;
-#endif
 
     // FIXME
     //Add these fields to message
@@ -312,6 +310,8 @@ typedef struct
     tANI_U8  atimIePresent;
     tANI_U32 peerAtimWindowLength;
     tANI_U8  nonRoamReassoc;
+    uint32_t nss; /* Number of spatial streams supported */
+    tANI_U8  max_amsdu_num;
 } tAddStaParams, *tpAddStaParams;
 
 
@@ -537,6 +537,9 @@ typedef struct
     tANI_U16 smpsMode;
     tANI_U8 dot11_mode;
     tANI_U8 nonRoamReassoc;
+    uint8_t wps_state;
+    uint8_t nss_2g;
+    uint8_t nss_5g;
 } tAddBssParams, * tpAddBssParams;
 
 typedef struct
@@ -1030,6 +1033,8 @@ typedef struct
     tANI_U8  vhtCapable;
 
     tANI_U8  dot11_mode;
+
+    uint8_t restart_on_chan_switch;
 }tSwitchChannelParams, *tpSwitchChannelParams;
 
 typedef struct CSAOffloadParams {
@@ -1037,6 +1042,7 @@ typedef struct CSAOffloadParams {
    tANI_U8 switchmode;
    tANI_U8 sec_chan_offset;
    tANI_U8 new_ch_width;       /* New channel width */
+   tANI_U8 new_op_class;       /* New operating class */
    tANI_U8 new_ch_freq_seg1;   /* Channel Center frequency 1 */
    tANI_U8 new_ch_freq_seg2;   /* Channel Center frequency 2 */
    tANI_U32 ies_present_flag;   /* WMI_CSA_EVENT_IES_PRESENT_FLAG */
@@ -1114,7 +1120,6 @@ typedef tSirRetStatus (*tHalMsgCallback)(tpAniSirGlobal pMac, tANI_U32 mesgId, v
 typedef struct
 {
   tANI_U16 bssIdx;
-  tANI_BOOLEAN highPerformance;
   tSirMacEdcaParamRecord acbe; // best effort
   tSirMacEdcaParamRecord acbk; // background
   tSirMacEdcaParamRecord acvi; // video
@@ -1426,7 +1431,30 @@ typedef struct sAddStaSelfParams
    tANI_U8         sessionId;
    tANI_U32        status;
    tANI_U16        pkt_err_disconn_th;
+   uint8_t         nss_2g;
+   uint8_t         nss_5g;
 }tAddStaSelfParams, *tpAddStaSelfParams;
+
+/**
+ * struct set_ie_param - set IE params structure
+ * @pdev_id: pdev id
+ * @ie_type: IE type
+ * @nss: Nss value
+ * @ie_len: IE length
+ * @*ie_ptr: Pointer to IE data
+ *
+ * Holds the set pdev IE req data.
+ */
+struct set_ie_param {
+   uint8_t pdev_id;
+   uint8_t ie_type;
+   uint8_t nss;
+   uint8_t ie_len;
+   uint8_t *ie_ptr;
+};
+
+#define DOT11_HT_IE     1
+#define DOT11_VHT_IE    2
 
 #ifdef FEATURE_WLAN_TDLS
 
@@ -1583,6 +1611,30 @@ typedef struct sNanRequest
     tANI_U16 request_data_len;
     tANI_U8  request_data[];
 } tNanRequest, *tpNanRequest;
+#endif
+
+#ifdef SAP_AUTH_OFFLOAD
+struct sap_offload_add_sta_req
+{
+    tANI_U32 assoc_id;
+    tANI_U32 conn_req_len;
+    tANI_U8 conn_req[MAX_CONNECT_REQ_LENGTH];
+};
+struct sap_offload_del_sta_req
+{
+    tANI_U32 assoc_id;
+    tANI_U32 reason_code;
+    tANI_U32 flags;
+    tSirMacAddr sta_mac;
+};
+#endif /* SAP_AUTH_OFFLOAD */
+
+#ifdef WLAN_FEATURE_APFIND
+struct hal_apfind_request
+{
+    u_int16_t request_data_len;
+    u_int8_t  request_data[];
+};
 #endif
 
 #endif /* _HALMSGAPI_H_ */

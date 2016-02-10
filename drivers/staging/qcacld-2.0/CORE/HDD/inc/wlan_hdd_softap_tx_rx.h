@@ -50,12 +50,6 @@
 #define HDD_SOFTAP_TX_VI_QUEUE_MAX_LEN (74*2)
 #define HDD_SOFTAP_TX_VO_QUEUE_MAX_LEN (70*2)
 
-/* SoftAP specific AC Weights */
-#define HDD_SOFTAP_BK_WEIGHT_DEFAULT                        1
-#define HDD_SOFTAP_BE_WEIGHT_DEFAULT                        3
-#define HDD_SOFTAP_VI_WEIGHT_DEFAULT                        8
-#define HDD_SOFTAP_VO_WEIGHT_DEFAULT                        18
-
 /*---------------------------------------------------------------------------
   Type declarations
   -------------------------------------------------------------------------*/
@@ -138,67 +132,6 @@ extern VOS_STATUS hdd_softap_init_tx_rx_sta( hdd_adapter_t *pAdapter, v_U8_t STA
                   : VOS_STATUS_SUCCESS otherwise
   ===========================================================================*/
 extern VOS_STATUS hdd_softap_deinit_tx_rx_sta ( hdd_adapter_t *pAdapter, v_U8_t STAId );
-
-/**============================================================================
-  @brief hdd_disconnect_tx_rx() - Disconnect function to clean up Tx/RX
-  modules in HDD
-
-  @param pAdapter : [in] pointer to adapter context
-  @return         : VOS_STATUS_E_FAILURE if any errors encountered
-                  : VOS_STATUS_SUCCESS otherwise
-  ===========================================================================*/
-extern VOS_STATUS hdd_softap_disconnect_tx_rx( hdd_adapter_t *pAdapter );
-
-/**============================================================================
-  @brief hdd_tx_complete_cbk() - Callback function invoked by TL
-  to indicate that a packet has been transmitted across the SDIO bus
-  successfully. OS packet resources can be released after this cbk.
-
-  @param vosContext   : [in] pointer to VOS context
-  @param pVosPacket   : [in] pointer to VOS packet (containing skb)
-  @param vosStatusIn  : [in] status of the transmission
-
-  @return             : VOS_STATUS_E_FAILURE if any errors encountered
-                      : VOS_STATUS_SUCCESS otherwise
-  ===========================================================================*/
-extern VOS_STATUS hdd_softap_tx_complete_cbk( v_VOID_t *vosContext,
-                                       vos_pkt_t *pVosPacket,
-                                       VOS_STATUS vosStatusIn );
-
-/**============================================================================
-  @brief hdd_softap_tx_fetch_packet_cbk() - Callback function invoked by TL to
-  fetch a packet for transmission.
-
-  @param vosContext   : [in] pointer to VOS context
-  @param staId        : [in] Station for which TL is requesting a pkt
-  @param ucAC         : [in] pointer to access category requested by TL
-  @param pVosPacket   : [out] pointer to VOS packet packet pointer
-  @param pPktMetaInfo : [out] pointer to meta info for the pkt
-
-  @return             : VOS_STATUS_E_EMPTY if no packets to transmit
-                      : VOS_STATUS_E_FAILURE if any errors encountered
-                      : VOS_STATUS_SUCCESS otherwise
-  ===========================================================================*/
-extern VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
-                                           v_U8_t *pStaId,
-                                           WLANTL_ACEnumType    ucAC,
-                                           vos_pkt_t **ppVosPacket,
-                                           WLANTL_MetaInfoType *pPktMetaInfo );
-
-/**============================================================================
-  @brief hdd_softap_tx_low_resource_cbk() - Callback function invoked in the
-  case where VOS packets are not available at the time of the call to get
-  packets. This callback function is invoked by VOS when packets are
-  available.
-
-  @param pVosPacket : [in]  pointer to VOS packet
-  @param userData   : [in]  opaque user data that was passed initially
-
-  @return           : VOS_STATUS_E_FAILURE if any errors encountered,
-                    : VOS_STATUS_SUCCESS otherwise
-  =============================================================================*/
-extern VOS_STATUS hdd_softap_tx_low_resource_cbk( vos_pkt_t *pVosPacket,
-                                           v_VOID_t *userData );
 
 /**============================================================================
   @brief hdd_softap_rx_packet_cbk() - Receive callback registered with TL.
@@ -299,16 +232,6 @@ extern VOS_STATUS hdd_softap_change_STA_state( hdd_adapter_t *pAdapter, v_MACADD
                   : VOS_STATUS_SUCCESS otherwise
   =========================================================================== */
 extern VOS_STATUS hdd_softap_GetStaId( hdd_adapter_t *pAdapter, v_MACADDR_t *pMacAddress, v_U8_t *staId);
-
-/**============================================================================
-  @brief hdd_softap_GetConnectedStaId - Helper function to get station Id of the connected device
-
-  @param pAdapter : [in] pointer to adapter context
-  @param staId    : [out] station id
-  @return         : VOS_STATUS_E_FAILURE if any errors encountered
-                  : VOS_STATUS_SUCCESS otherwise
-  =========================================================================== */
-extern VOS_STATUS hdd_softap_GetConnectedStaId( hdd_adapter_t *pAdapter, v_U8_t *staId);
 
 #ifdef QCA_LL_TX_FLOW_CT
 /**============================================================================

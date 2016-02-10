@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -82,16 +82,6 @@
 #define BTC_SMART_BT_A2DP       (5) /** BTC Mapping Layer decides whats best, balanced + BT A2DP weight */
 #define BT_EXEC_MODE_MAX        (6) /** This and beyond are invalid values */
 
-/** Enumeration of different kinds actions that BTC Mapping Layer
-    can do if PM indication (to AP) fails.
-*/
-#define BTC_RESTART_CURRENT     (0) /** Restart the interval we just failed to leave */
-#define BTC_START_NEXT          (1) /** Start the next interval even though the PM transition at the AP was unsuccessful */
-#define BTC_ACTION_TYPE_MAX     (2) /** This and beyond are invalid values */
-
-#define BTC_BT_INTERVAL_MODE1_DEFAULT       (120) /** BT Interval in Mode 1 */
-#define BTC_WLAN_INTERVAL_MODE1_DEFAULT     (30)  /** WLAN Interval in Mode 1 */
-
 /** Bitmaps used for maintaining various BT events that requires
     enough time to complete such that it might require disbling of
     heartbeat monitoring to avoid WLAN link loss with the AP
@@ -116,26 +106,9 @@
 #define BT_MAX_NUM_EVENT_ACL_DEFERRED  4  //We may need to defer these many BT events for ACL
 #define BT_MAX_NUM_EVENT_SCO_DEFERRED  4  //We may need to defer these many BT events for SYNC
 
-/** Default values for the BTC tunables parameters
-*/
-#define BTC_STATIC_BT_LEN_INQ_DEF     (120000)  // 120 msec
-#define BTC_STATIC_BT_LEN_PAGE_DEF     (10000)  // 10 msec (don't care)
-#define BTC_STATIC_BT_LEN_CONN_DEF     (10000)  // 10 msec (don't care)
-#define BTC_STATIC_BT_LEN_LE_DEF       (10000)  // 10 msec (don't care)
-#define BTC_STATIC_WLAN_LEN_INQ_DEF    (30000)  // 30 msec
-#define BTC_STATIC_WLAN_LEN_PAGE_DEF       (0)  // 0 msec (BT takes all)
-#define BTC_STATIC_WLAN_LEN_CONN_DEF       (0)  // 0 msec (BT takes all)
-#define BTC_STATIC_WLAN_LEN_LE_DEF         (0)  // 0 msec (BT takes all)
-#define BTC_DYNAMIC_BT_LEN_MAX_DEF    (250000)  // 250 msec
-#define BTC_DYNAMIC_WLAN_LEN_MAX_DEF   (45000)  // 45 msec
-#define BTC_SCO_BLOCK_PERC_DEF             (1)  // 1 percent
-#define BTC_DHCP_ON_A2DP_DEF               (1)  // ON
-#define BTC_DHCP_ON_SCO_DEF                (0)  // OFF
-
 /*
- * Number of victim tables and mws coex configurations
+ * Number of mws coex configurations
  */
-#define MWS_COEX_MAX_VICTIM_TABLE             10
 #define MWS_COEX_MAX_CONFIG                   6
 
 /** Enumeration of all the different kinds of BT events
@@ -163,17 +136,6 @@ typedef enum eSmeBtEventType
   BT_EVENT_A2DP_STREAM_STOP,
   BT_EVENT_TYPE_MAX,    //This and beyond are invalid values
 } tSmeBtEventType;
-
-/** BT-AMP events type
-*/
-typedef enum eSmeBtAmpEventType
-{
-  BTAMP_EVENT_CONNECTION_START,
-  BTAMP_EVENT_CONNECTION_STOP,
-  BTAMP_EVENT_CONNECTION_TERMINATED,
-  BTAMP_EVENT_TYPE_MAX, //This and beyond are invalid values
-} tSmeBtAmpEventType;
-
 
 /**Data structure that specifies the needed event parameters for
     BT_EVENT_CREATE_ACL_CONNECTION and BT_EVENT_ACL_CONNECTION_COMPLETE
@@ -249,48 +211,12 @@ typedef struct sSmeBtcBtEvent
 } tSmeBtEvent, *tpSmeBtEvent;
 
 
-/**
-    BT-AMP Event Structure
-*/
-typedef struct sSmeBtAmpEvent
-{
-  tSmeBtAmpEventType btAmpEventType;
-
-} tSmeBtAmpEvent, *tpSmeBtAmpEvent;
-
-
 /** Data structure that specifies the BTC Configuration parameters
 */
 typedef struct sSmeBtcConfig
 {
    v_U8_t       btcExecutionMode;
-   v_U8_t       btcConsBtSlotsToBlockDuringDhcp;
-   v_U8_t       btcA2DPBtSubIntervalsDuringDhcp;
-   v_U8_t       btcActionOnPmFail;
-   v_U8_t       btcBtIntervalMode1;
-   v_U8_t       btcWlanIntervalMode1;
-
-   v_U32_t      btcStaticLenInqBt;
-   v_U32_t      btcStaticLenPageBt;
-   v_U32_t      btcStaticLenConnBt;
-   v_U32_t      btcStaticLenLeBt;
-   v_U32_t      btcStaticLenInqWlan;
-   v_U32_t      btcStaticLenPageWlan;
-   v_U32_t      btcStaticLenConnWlan;
-   v_U32_t      btcStaticLenLeWlan;
-   v_U32_t      btcDynMaxLenBt;
-   v_U32_t      btcDynMaxLenWlan;
-   v_U32_t      btcMaxScoBlockPerc;
-   v_U32_t      btcDhcpProtOnA2dp;
-   v_U32_t      btcDhcpProtOnSco;
-
-   v_U32_t      mwsCoexVictimWANFreq[MWS_COEX_MAX_VICTIM_TABLE];
-   v_U32_t      mwsCoexVictimWLANFreq[MWS_COEX_MAX_VICTIM_TABLE];
-   v_U32_t      mwsCoexVictimConfig[MWS_COEX_MAX_VICTIM_TABLE];
-   v_U32_t      mwsCoexVictimConfig2[MWS_COEX_MAX_VICTIM_TABLE];
-   v_U32_t      mwsCoexModemBackoff;
    v_U32_t      mwsCoexConfig[MWS_COEX_MAX_CONFIG];
-   v_U32_t      SARPowerBackoff;
 } tSmeBtcConfig, *tpSmeBtcConfig;
 
 

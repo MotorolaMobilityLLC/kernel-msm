@@ -393,14 +393,14 @@ limSetRSNieWPAiefromSmeStartBSSReqMessage(tpAniSirGlobal pMac,
  * received in various SME_REQ messages is valid or not
  *
  *LOGIC:
- * BSS Descritipion validity checks are performed in this function
+ * BSS Description validity checks are performed in this function
  *
  *ASSUMPTIONS:
  *
  *NOTE:
  *
  * @param  pMac      Pointer to Global MAC structure
- * @param  pBssDescr Pointer to received Bss Descritipion
+ * @param  pBssDescr Pointer to received Bss Description
  * @return true when BSS description is valid, false otherwise
  */
 
@@ -495,7 +495,9 @@ limIsSmeStartBssReqValid(tpAniSirGlobal pMac,
     tANI_U8 valid = true;
 
     PELOG1(limLog(pMac, LOG1,
-           FL("Parsed START_BSS_REQ fields are bssType=%d, channelId=%d, SSID len=%d, rsnIE len=%d, nwType=%d, rateset len=%d"),
+           FL("Parsed START_BSS_REQ fields are bssType=%s (%d), channelId=%d,"
+              " SSID len=%d, rsnIE len=%d, nwType=%d, rateset len=%d"),
+           lim_BssTypetoString(pStartBssReq->bssType),
            pStartBssReq->bssType,
            pStartBssReq->channelId,
            pStartBssReq->ssId.length,
@@ -595,7 +597,7 @@ limIsSmeStartBssReqValid(tpAniSirGlobal pMac,
             goto end;
         }
     }
-    // check if all the rates in the operatioal rate set are legal 11G rates
+    /* Check if all the rates in the operational rate set are legal 11G rates */
     else if (pStartBssReq->nwType == eSIR_11G_NW_TYPE)
     {
         for (i = 0; i < pStartBssReq->operationalRateSet.numRates; i++)

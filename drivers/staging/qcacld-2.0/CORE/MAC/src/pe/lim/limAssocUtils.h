@@ -101,7 +101,6 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
                            tSirMacRateSet *pOperRateSet,
                            tSirMacRateSet *pExtRateSet,
                            tANI_U8* pSupportedMCSSet,
-                           tSirMacPropRateSet *pAniLegRateSet,
                            tpPESession  psessionEntry,
                            tDot11fIEVHTCaps *pVHTCaps);
 #else
@@ -110,7 +109,7 @@ tSirRetStatus   limPopulateMatchingRateSet(tpAniSirGlobal,
                                            tSirMacRateSet *,
                                            tSirMacRateSet *,
                                            tANI_U8* pSupportedMCSSet,
-                                           tSirMacPropRateSet *, tpPESession);
+                                           tpPESession);
 
 
 #endif

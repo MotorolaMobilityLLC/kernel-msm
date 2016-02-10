@@ -896,6 +896,23 @@ const sHalNv nvDefaults =
                     {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_161,
                     {NV_CHANNEL_ENABLE, 0},             //RF_CHAN_165,
 
+                    // 802.11p
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_170,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_171,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_172,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_173,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_174,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_175,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_176,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_177,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_178,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_179,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_180,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_181,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_182,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_183,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_184,
+
                     //2.4GHz Band, channel bonded channels
                     {NV_CHANNEL_ENABLE, 22},            //RF_CHAN_BOND_3,
                     {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_BOND_4,
@@ -1044,6 +1061,23 @@ const sHalNv nvDefaults =
                     {NV_CHANNEL_DISABLE, 0},            //RF_CHAN_157,
                     {NV_CHANNEL_DISABLE, 0},            //RF_CHAN_161,
                     {NV_CHANNEL_DISABLE, 0},            //RF_CHAN_165,
+
+                    // 802.11p
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_170,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_171,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_172,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_173,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_174,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_175,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_176,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_177,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_178,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_179,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_180,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_181,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_182,
+                    {NV_CHANNEL_DISABLE, 30},           //RF_CHAN_183,
+                    {NV_CHANNEL_ENABLE, 30},            //RF_CHAN_184,
 
                     //2.4GHz Band, channel bonded channels
                     {NV_CHANNEL_ENABLE, 20},            //RF_CHAN_BOND_3,

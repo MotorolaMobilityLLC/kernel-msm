@@ -70,9 +70,11 @@ extern "C" {
 #define HTC_TARGET_CREDIT_INTR_MASK         0xF0
 #define HTC_MIN_MSG_PER_BUNDLE              2
 #if defined(HIF_USB)
-#define HTC_MAX_MSG_PER_BUNDLE              9
+#define HTC_MAX_MSG_PER_BUNDLE_RX              11
+#define HTC_MAX_MSG_PER_BUNDLE_TX              8
 #else
-#define HTC_MAX_MSG_PER_BUNDLE              16
+#define HTC_MAX_MSG_PER_BUNDLE_RX              64
+#define HTC_MAX_MSG_PER_BUNDLE_TX              32
 #endif
 /*
  * HTC_MAX_TX_BUNDLE_SEND_LIMIT -
@@ -184,9 +186,6 @@ typedef struct _HTC_TARGET {
     adf_os_comp_t               CtrlResponseValid;
     A_BOOL                      CtrlResponseProcessing;
     int                         TotalTransmitCredits;
-#if defined(HIF_USB)
-    int                         avail_tx_credits;
-#endif
     HTC_SERVICE_TX_CREDIT_ALLOCATION ServiceTxAllocTable[HTC_MAX_SERVICE_ALLOC_ENTRIES];
     int                         TargetCreditSize;
 #ifdef RX_SG_SUPPORT
@@ -197,10 +196,16 @@ typedef struct _HTC_TARGET {
 #endif
     adf_os_device_t             osdev;
     struct ol_ath_htc_stats     htc_pkt_stats;
-    HTC_PACKET                  *pBundleFreeList;
+    HTC_PACKET                  *pBundleFreeTxList;
+    HTC_PACKET                  *pBundleFreeRxList;
     A_UINT32                    CE_send_cnt;
     A_UINT32                    TX_comp_cnt;
     A_UINT8                     MaxMsgsPerHTCBundle;
+    A_UINT16                    AltDataCreditSize;
+#if defined(DEBUG_HL_LOGGING) && defined(CONFIG_HL_SUPPORT)
+    A_UINT32                    rx_bundle_stats[HTC_MAX_MSG_PER_BUNDLE_RX];
+    A_UINT32                    tx_bundle_stats[HTC_MAX_MSG_PER_BUNDLE_TX];
+#endif
 } HTC_TARGET;
 
 #define HTC_ENABLE_BUNDLE(target) (target->MaxMsgsPerHTCBundle > 1)
@@ -243,8 +248,11 @@ A_STATUS HTCRxCompletionHandler(
 A_STATUS HTCTxCompletionHandler(
             void *Context, adf_nbuf_t netbuf, unsigned int transferID);
 
-HTC_PACKET *AllocateHTCBundlePacket(HTC_TARGET *target);
-void FreeHTCBundlePacket(HTC_TARGET *target, HTC_PACKET *pPacket);
+HTC_PACKET *AllocateHTCBundleRxPacket(HTC_TARGET *target);
+HTC_PACKET *AllocateHTCBundleTxPacket(HTC_TARGET *target);
+
+void FreeHTCBundleRxPacket(HTC_TARGET *target, HTC_PACKET *pPacket);
+void FreeHTCBundleTxPacket(HTC_TARGET *target, HTC_PACKET *pPacket);
 
 HTC_PACKET *AllocateHTCPacketContainer(HTC_TARGET *target);
 void        FreeHTCPacketContainer(HTC_TARGET *target, HTC_PACKET *pPacket);
@@ -323,7 +331,7 @@ HTCSendCompleteCheck(HTC_ENDPOINT *pEndpoint, int force)
 #define DEBUG_BUNDLE 0
 #endif
 
-#ifdef HIF_SDIO
+#if defined(HIF_SDIO) || defined(HIF_USB)
 #ifndef ENABLE_BUNDLE_TX
 #define ENABLE_BUNDLE_TX 1
 #endif
@@ -331,5 +339,5 @@ HTCSendCompleteCheck(HTC_ENDPOINT *pEndpoint, int force)
 #ifndef ENABLE_BUNDLE_RX
 #define ENABLE_BUNDLE_RX 1
 #endif
-#endif /* HIF_SDIO */
+#endif
 #endif	/* !_HTC_HOST_INTERNAL_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -244,9 +244,14 @@ VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId,
   -------------------------------------------------------------------------*/
 eNVChannelEnabledType vos_nv_getChannelEnabledState(v_U32_t rfChannel);
 
+VOS_STATUS vos_nv_get_dfs_region(uint8_t *dfs_region);
+VOS_STATUS vos_nv_set_dfs_region(uint8_t dfs_region);
+
 #define VOS_IS_DFS_CH(channel) (vos_nv_getChannelEnabledState((channel)) == \
                                    NV_CHANNEL_DFS)
 
 VOS_STATUS vos_init_wiphy_from_nv_bin(void);
+const char * voss_DomainIdtoString(const v_U8_t domainIdCurrent);
 VOS_STATUS vos_init_wiphy_from_eeprom(void);
+bool vos_is_dsrc_channel(uint16_t);
 #endif // __VOS_NVITEM_H

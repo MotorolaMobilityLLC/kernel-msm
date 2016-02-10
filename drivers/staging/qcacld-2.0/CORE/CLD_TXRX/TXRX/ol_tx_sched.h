@@ -75,6 +75,12 @@ ol_tx_sched_attach(struct ol_txrx_pdev_t *pdev);
 void
 ol_tx_sched_detach(struct ol_txrx_pdev_t *pdev);
 
+void ol_tx_sched_stats_display(struct ol_txrx_pdev_t *pdev);
+
+void ol_tx_sched_cur_state_display(struct ol_txrx_pdev_t *pdev);
+
+void ol_tx_sched_stats_clear(struct ol_txrx_pdev_t *pdev);
+
 #else
 
 #define ol_tx_notify_sched(pdev, ctx) /* no-op */
@@ -82,6 +88,9 @@ ol_tx_sched_detach(struct ol_txrx_pdev_t *pdev);
 #define ol_tx_sched_discard_select(pdev, frms, tx_descs, force) 0
 #define ol_tx_sched_attach(pdev) NULL
 #define ol_tx_sched_detach(pdev) /* no-op */
+#define ol_tx_sched_stats_display(pdev) /* no-op */
+#define ol_tx_sched_cur_state_display(pdev) /* no-op */
+#define ol_tx_sched_stats_clear(pdev) /* no-op */
 
 #endif /* defined(CONFIG_HL_SUPPORT) */
 

@@ -617,13 +617,10 @@ LIM
 #ENUM  11B           2
 #ENUM  11G           3
 #ENUM  11N           4
-#ENUM  POLARIS       5
-#ENUM  TITAN         6
-#ENUM  TAURUS        7
-#ENUM  11G_ONLY      8
-#ENUM  11N_ONLY      9
-#ENUM  11AC          10
-#ENUM  11AC_ONLY     11
+#ENUM  11G_ONLY      5
+#ENUM  11N_ONLY      6
+#ENUM  11AC          7
+#ENUM  11AC_ONLY     8
 
 
 
@@ -1135,7 +1132,7 @@ NONE
 * Manufacture Name (from eeprom)
 *
 
-WNI_CFG_MANUFACTURER_NAME    S    65    8
+WNI_CFG_MANUFACTURER_NAME    S    64    8
 V    RO    NP
 NONE
 8    0x51 0x75 0x61 0x6c 0x63 0x6f 0x6D 0x6D
@@ -1147,7 +1144,7 @@ NONE
 * Model Number (from eeprom)
 *
 
-WNI_CFG_MODEL_NUMBER    S    33    8
+WNI_CFG_MODEL_NUMBER    S    32    8
 V    RO    NP
 NONE
 6    0x4d 0x4e 0x31 0x32 0x33 0x34
@@ -1162,7 +1159,7 @@ NONE
 * WFR4031
 *
 
-WNI_CFG_MODEL_NAME    S    33    8
+WNI_CFG_MODEL_NAME    S    32    8
 V    RO    NP
 NONE
 7    0x57 0x46 0x52 0x34 0x30 0x33 0x31
@@ -1177,7 +1174,7 @@ NONE
 * Manufacture Product Name (from eeprom)
 *
 
-WNI_CFG_MANUFACTURER_PRODUCT_NAME    S    33    8
+WNI_CFG_MANUFACTURER_PRODUCT_NAME    S    32    8
 V    RO    NP
 NONE
 6    0x31 0x31 0x6e 0x2D 0x41 0x50
@@ -1190,7 +1187,7 @@ NONE
 * Manufacture Product Version (from eeprom)
 *
 
-WNI_CFG_MANUFACTURER_PRODUCT_VERSION    S    33    8
+WNI_CFG_MANUFACTURER_PRODUCT_VERSION    S    32    8
 V    RO    NP
 NONE
 6    0x53 0x4e 0x31 0x32 0x33 0x34
@@ -1306,50 +1303,6 @@ NONE
 
 
 *
-* Radio Power State for each Chain
-*
-* This CFG is invoked when user issues the Apple setPower()
-* command, which configures the power state for each chain. Currently,
-* Taurus supports up to three chains, and each chain can be configured
-* to one of the 4 following possible power states:
-*    POWER_OFF = 0x0
-*    POWER_ON  = 0x1
-*    POWER_TX  = 0x2
-*    POWER_RX  = 0x3
-*
-* The power state of each chain is expressed in nibble:
-*    bit[0:3]   - chain 0
-*    bit[4:7]   - chain 1
-*    bit[8:11]  - chain 2
-*    bit[12:15] - not used at the moment
-*
-* Examples:
-* 0x001 -  1x1 (chain 1 is for both tx and rcv. chain 1,2 are turned off)
-* 0x031 -  1x2 (chain 0 is for both tx and rcv. chain 1 is rcv only. chain 2 is turned off)
-* 0x011 -  2x2 (chain 0,1 are used for both tx and rcv)
-* 0x311 -  2x3 (chain 0,1 are used for both tx and rcv. chain 2 is for rcv only)
-* 0x333 -  all 3 chains are set to RX
-*
-
-WNI_CFG_POWER_STATE_PER_CHAIN    I    4    9
-V    RW    NP
-HAL
-0    0xffff    0x311
-V    RW    NP
-HAL
-0    0xffff    0x311
-
-#ENUM OFF               0
-#ENUM ON                1
-#ENUM TX                2
-#ENUM RX                3
-#ENUM MASK              0xf
-#ENUM CHAIN_0_OFFSET    0
-#ENUM CHAIN_1_OFFSET    4
-#ENUM CHAIN_2_OFFSET    8
-
-
-*
 * Parameter to indicate or not new BSS found
 *
 
@@ -1358,18 +1311,6 @@ V    RW    NP
 NONE
 0    1    0
 V   RW    NP
-NONE
-0    1    0
-
-*
-* Proprietary ANI features enable/disable
-*
-
-WNI_CFG_PROPRIETARY_ANI_FEATURES_ENABLED    I    4    12
-V    RW    NP RESTART
-NONE
-0    1    0
-V    RW    NP RESTART
 NONE
 0    1    0
 
@@ -1597,46 +1538,6 @@ NONE
 0    1    1
 
 *
-* Calibration periodicity (minutes)
-*
-
-WNI_CFG_CAL_PERIOD    I    4    12
-V    RW    NP
-HAL
-2    10    5
-V    RW    NP
-HAL
-2    10    5
-
-*
-* Statistics collection periodicity (seconds)
-*
-
-WNI_CFG_STATS_PERIOD    I    4    12
-V    RW    NP
-HAL
-1    10    10
-V    RW    NP
-HAL
-1    10    10
-
-*
-* Calibration on/off control
-*
-
-WNI_CFG_CAL_CONTROL    I    4    12
-V    RW    NP
-HAL
-0    1    0
-V    RW    NP
-HAL
-0    1    0
-
-#ENUM CAL_ON  0
-#ENUM CAL_OFF 1
-
-
-*
 * Parameter to allow 11g only STAs while operating in 11g mode
 *
 
@@ -1754,37 +1655,6 @@ NONE
 V    RW    NP
 NONE
 0    1     0
-
-* ****************************************
-*
-* Proprietary IE capability enable
-* bit mapped:
-*  0:HCF    1:11eQos     2:WME      3:WSM  4:EXT_RATES
-*  5:EXTRATE_STOP
-*  6:Titan device          7:Taurus Device
-* 13:EDCA  14:LOADINFO  15:VERSION
-*
-
-WNI_CFG_PROP_CAPABILITY    I    4    8
-V    RW    NP
-NONE
-0    0xffff     0xe0bf
-V    RW    NP
-NONE
-0    0xffff     0xc0a9
-
-#ENUM HCF          0
-#ENUM 11EQOS       1
-#ENUM WME          2
-#ENUM WSM          3
-#ENUM EXTRATES     4
-#ENUM EXTRATE_STOP 5
-#ENUM TITAN        6
-#ENUM TAURUS      7
-#ENUM EDCAPARAMS   13
-#ENUM LOADINFO     14
-#ENUM VERSION      15
-#ENUM MAXBITOFFSET 15
 
 * ****************************************
 *
@@ -2052,110 +1922,6 @@ NONE
 V   RW  NP RESTART
 NONE
 17   0 2   0 3  0 7  47   0 3  0 7  102   0 3  0 7  47
-
-* ****************************************
-* Profile 2(Titan Demo) parameters - AC_BK Local
-* ACM, AIFSN, [CWminH, CWminL, CWmaxH, CWmaxL, TxOp]-11A/11B/11G
-*
-
-WNI_CFG_EDCA_TIT_DEMO_ACBK_LOCAL   S   20  8
-V   RW  NP RESTART
-NONE
-17   0 7   0 8  0 255  200   0 31  0 255  200   0 8  0 255  200
-V   RW  NP RESTART
-NONE
-17   0 7   0 8  0 255  200   0 31  0 255  200   0 8  0 255  200
-
-*
-* Profile 2(Titan Demo) parameters AC_BE Local
-* ACM, AIFSN, [CWmin, CWmax, TxOp]-11A/11B/11G
-*
-
-WNI_CFG_EDCA_TIT_DEMO_ACBE_LOCAL   S   20  8
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200    0 31  0 255  200   0 8  0 255  200
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200    0 31  0 255  200   0 8  0 255  200
-
-*
-* Profile 2(Titan Demo) parameters AC_VI Local
-* ACM, AIFSN, [CWmin, CWmax, TxOp]-11A/11B/11G
-*
-
-WNI_CFG_EDCA_TIT_DEMO_ACVI_LOCAL   S   20  8
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-
-*
-* Profile 2(Titan Demo) parameters AC_VO Local
-* ACM, AIFSN, [CWmin, CWmax, TxOp]-11A/11B/11G
-*
-
-WNI_CFG_EDCA_TIT_DEMO_ACVO_LOCAL   S   20  8
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-
-*
-* Profile 2(Titan Demo) parameters - AC_BK Broadcast
-* ACM, AIFSN, [CWmin, CWmax, TxOp]-11A/11B/11G
-*
-
-WNI_CFG_EDCA_TIT_DEMO_ACBK   S   20  8
-V   RW  NP RESTART
-NONE
-17   0 7   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-V   RW  NP RESTART
-NONE
-17   0 7   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-
-*
-* Profile 2(Titan Demo) parameters AC_BE Broadcast
-* ACM, AIFSN, [CWmin, CWmax, TxOp]-11A/11B/11G
-*
-
-WNI_CFG_EDCA_TIT_DEMO_ACBE   S   20  8
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-
-*
-* Profile 2(Titan Demo) parameters AC_VI Broadcast
-* ACM, AIFSN, [CWmin, CWmax, TxOp]-11A/11B/11G
-*
-
-WNI_CFG_EDCA_TIT_DEMO_ACVI   S   20  8
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-
-*
-* Profile 2(Titan Demo) parameters AC_VO Broadcast
-* ACM, AIFSN, [CWmin, CWmax, TxOp]-11A/11B/11G
-*
-
-WNI_CFG_EDCA_TIT_DEMO_ACVO   S   20  8
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
-V   RW  NP RESTART
-NONE
-17   0 2   0 8  0 255  200   0 8  0 255  200   0 8  0 255  200
 
 *
 * Radar detector flag enable/disable
@@ -2819,10 +2585,10 @@ LIM
 WNI_CFG_VHT_SU_BEAMFORMEE_CAP  I    4    19
 V    RW    NP
 LIM
-0    1    0
+0    1    1
 V    RW    NP
 LIM
-0    1    0
+0    1    1
 
 *
 * Compressed Steering Number of Beamformer Antennas Supported
@@ -2990,23 +2756,6 @@ V    RW    NP
 LIM
 0    780    780
 
-*
-* VHT Operation Information
-* Channel Width set to zero for 20/40MHz.
-* set to 1 for 80MHz. 2->160Mhz, 3->80+80MHz
-*
-WNI_CFG_VHT_CHANNEL_WIDTH  I    4    19
-V    RW    NP
-LIM
-0    3    0
-V    RW    NP
-LIM
-0    3    0
-
-#ENUM 20_40MHZ       0
-#ENUM 80MHZ          1
-#ENUM 160MHZ         2
-#ENUM 80_PLUS_80MHZ  3
 *
 * Channel center freq Seg1
 *
@@ -4115,44 +3864,6 @@ NONE
 0    1    1
 
 *
-* RRM Enabled
-*
-
-WNI_CFG_RRM_ENABLED    I    4    8
-V    RW    NP
-NONE
-0    1    0
-V    RW    NP
-NONE
-0    1    0
-
-*
-* RRM measurement max duration. Section 11.10.3 802.11k-2008.
-* Max Duration represented as maxDuration inTUs = 2^(*WNI_CFG_RRM_IN_CHAN_MAX - 4) * bcnIntvl
-* Operating channel max measurement duration.
-*
-
-WNI_CFG_RRM_OPERATING_CHAN_MAX    I    4    8
-V    RW    NP
-NONE
-0    8    0
-V    RW    NP
-NONE
-0    8    0
-
-*
-* Non-Operating channel max measurement duration.
-*
-
-WNI_CFG_RRM_NON_OPERATING_CHAN_MAX    I    4    8
-V    RW    NP
-NONE
-0    8    0
-V    RW    NP
-NONE
-0    8    0
-
-*
 * TX power control feature
 *
 
@@ -4297,10 +4008,10 @@ HAL
 WNI_CFG_INFRA_STA_KEEP_ALIVE_PERIOD   I    4    7
 V    RW    NP
 HAL
-0    1000     0
+0    1000    0
 V    RW    NP
 HAL
-0    1000     0
+0    1000    0
 
 * Limit on number of associated stations
 * (applies to peer stations in IBSS, SoftAP, BT-AMP AP, & P2P-GO modes)

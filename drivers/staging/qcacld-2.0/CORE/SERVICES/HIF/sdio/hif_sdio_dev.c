@@ -92,13 +92,18 @@ A_UINT8 HIFDevMapMailBoxToPipe(HIF_SDIO_DEVICE *pDev, A_UINT8 mboxIndex,
 }
 
 A_STATUS HIFDevMapServiceToPipe(HIF_SDIO_DEVICE *pDev, A_UINT16 ServiceId,
-        A_UINT8 *ULPipe, A_UINT8 *DLPipe)
+        A_UINT8 *ULPipe, A_UINT8 *DLPipe, A_BOOL SwapMapping)
 {
     A_STATUS status = EOK;
     switch (ServiceId) {
     case HTT_DATA_MSG_SVC:
-        *ULPipe = 3;
-        *DLPipe = 2;
+        if (SwapMapping) {
+            *ULPipe = 1;
+            *DLPipe = 0;
+        } else {
+            *ULPipe = 3;
+            *DLPipe = 2;
+        }
         break;
 
     case HTC_CTRL_RSVD_SVC:
@@ -116,8 +121,13 @@ A_STATUS HIFDevMapServiceToPipe(HIF_SDIO_DEVICE *pDev, A_UINT16 ServiceId,
         break;
 
     case WMI_CONTROL_SVC:
-        *ULPipe = 1;
-        *DLPipe = 0;
+        if (SwapMapping) {
+            *ULPipe = 3;
+            *DLPipe = 2;
+        } else {
+            *ULPipe = 1;
+            *DLPipe = 0;
+        }
         break;
 
     default:
@@ -127,13 +137,13 @@ A_STATUS HIFDevMapServiceToPipe(HIF_SDIO_DEVICE *pDev, A_UINT16 ServiceId,
     return status;
 }
 
-HTC_PACKET *HIFDevAllocRxBuffer(HIF_SDIO_DEVICE *pDev)
+HTC_PACKET *HIFDevAllocRxBuffer(HIF_SDIO_DEVICE *pDev, size_t length)
 {
     HTC_PACKET *pPacket;
     adf_nbuf_t netbuf;
     A_UINT32 bufsize = 0, headsize = 0;
 
-    bufsize = HIF_SDIO_RX_BUFFER_SIZE + HIF_SDIO_RX_DATA_OFFSET;
+    bufsize = length + HIF_SDIO_RX_DATA_OFFSET;
     headsize = sizeof(HTC_PACKET);
     netbuf = adf_nbuf_alloc(NULL, bufsize + headsize, 0, 4, FALSE);
     if (netbuf == NULL) {
@@ -250,6 +260,8 @@ A_STATUS HIFDevDisableInterrupts(HIF_SDIO_DEVICE *pDev)
         AR_DEBUG_PRINTF(ATH_DEBUG_ERR,("Failed to update interrupt control registers err: %d", status));
     }
 
+    /* mask the host controller interrupts */
+    HIFMaskInterrupt(pDev->HIFDevice);
     EXIT("status :%d",status);
     return status;
 }

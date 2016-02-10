@@ -103,8 +103,12 @@
 #define HIF_GMBOX_BASE_ADDR                0x7000
 #define HIF_GMBOX_WIDTH                    0x4000
 
-    /* for SDIO we recommend a 128-byte block size */
+/* for SDIO we recommend a 128-byte block size */
+#if defined(WITH_BACKPORTS)
 #define HIF_DEFAULT_IO_BLOCK_SIZE          128
+#else
+#define HIF_DEFAULT_IO_BLOCK_SIZE          256
+#endif
 
     /* set extended MBOX window information for SDIO interconnects */
 static INLINE void SetExtendedMboxWindowInfo(A_UINT16 Manfid, HIF_DEVICE_MBOX_INFO *pInfo)
@@ -179,6 +183,9 @@ static INLINE void SetExtendedMboxWindowInfo(A_UINT16 Manfid, HIF_DEVICE_MBOX_IN
     }
 }
 
+#define FIFO_TIMEOUT_AND_CHIP_CONTROL 0x00000868
+#define FIFO_TIMEOUT_AND_CHIP_CONTROL_DISABLE_SLEEP_OFF 0xFFFEFFFF
+#define FIFO_TIMEOUT_AND_CHIP_CONTROL_DISABLE_SLEEP_ON 0x10000
 /*
   In SDIO 2.0, asynchronous interrupt is not in SPEC requirement, but AR6003 support it, so the register
   is placed in vendor specific field 0xF0(bit0)

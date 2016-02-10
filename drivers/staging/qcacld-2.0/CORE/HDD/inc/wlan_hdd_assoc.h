@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -25,10 +25,11 @@
  * to the Linux Foundation.
  */
 
-#include <sme_Api.h>
-#if !defined( HDD_CONNECTION_H__ )
-#define HDD_CONNECTION_H__
+#if !defined(WLAN_HDD_ASSOC_H__)
+#define WLAN_HDD_ASSOC_H__
 #include <wlan_hdd_mib.h>
+#include <sme_Api.h>
+
 #define HDD_MAX_NUM_IBSS_STA          ( 32 )
 #ifdef FEATURE_WLAN_TDLS
 #define HDD_MAX_NUM_TDLS_STA          ( 8 )
@@ -111,7 +112,17 @@ typedef struct connection_info_s
 
    v_U8_t proxyARPService;
 
+   /** NSS and RateFlags used for this connection */
+   uint8_t   nss;
+   uint32_t  rate_flags;
+
+   /* ptk installed state */
+   bool ptk_installed;
+
+   /* gtk installed state */
+   bool gtk_installed;
 }connection_info_t;
+
 /*Forward declaration of Adapter*/
 typedef struct hdd_adapter_s hdd_adapter_t;
 typedef struct hdd_context_s hdd_context_t;
@@ -131,16 +142,15 @@ eCsrBand hdd_connGetConnectedBand( hdd_station_ctx_t *pHddStaCtx );
 extern eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, v_U32_t roamId,
                                 eRoamCmdStatus roamStatus, eCsrRoamResult roamResult );
 
-extern v_VOID_t hdd_connSaveConnectInfo( hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo, eCsrRoamBssType eBssType );
-
 v_BOOL_t hdd_connGetConnectedBssType( hdd_station_ctx_t *pHddCtx,
         eMib_dot11DesiredBssType *pConnectedBssType );
 
 int hdd_SetGENIEToCsr( hdd_adapter_t *pAdapter, eCsrAuthType *RSNAuthType );
 
 int hdd_set_csr_auth_type( hdd_adapter_t *pAdapter, eCsrAuthType RSNAuthType );
-VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
-                                    tANI_U8 *peerMac, tANI_U16 staId, tANI_U8 ucastSig);
+VOS_STATUS hdd_roamRegisterTDLSSTA(hdd_adapter_t *pAdapter,
+                                   const tANI_U8 *peerMac, tANI_U16 staId,
+                                   tANI_U8 ucastSig);
 void hdd_PerformRoamSetKeyComplete(hdd_adapter_t *pAdapter);
 
 void hdd_SendPeerStatusIndToOemApp(v_MACADDR_t *peerMac,

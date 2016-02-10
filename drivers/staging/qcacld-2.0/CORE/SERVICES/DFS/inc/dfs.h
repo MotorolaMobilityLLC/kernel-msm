@@ -213,6 +213,22 @@
 #define DFS_FAST_CLOCK_MULTIPLIER       (800/11)
 #define DFS_NO_FAST_CLOCK_MULTIPLIER    (80)
 
+#define DFS_WAR_PLUS_30_MHZ_SEPARATION   30
+#define DFS_WAR_MINUS_30_MHZ_SEPARATION -30
+#define DFS_WAR_PEAK_INDEX_ZERO 0
+#define DFS_TYPE4_WAR_PULSE_DURATION_LOWER_LIMIT 11
+#define DFS_TYPE4_WAR_PULSE_DURATION_UPPER_LIMIT 33
+#define DFS_TYPE4_WAR_PRI_LOWER_LIMIT 200
+#define DFS_TYPE4_WAR_PRI_UPPER_LIMIT 500
+#define DFS_TYPE4_WAR_VALID_PULSE_DURATION 12
+#define DFS_ETSI_TYPE2_TYPE3_WAR_PULSE_DUR_LOWER_LIMIT 15
+#define DFS_ETSI_TYPE2_TYPE3_WAR_PULSE_DUR_UPPER_LIMIT 33
+#define DFS_ETSI_TYPE2_WAR_PRI_LOWER_LIMIT 625
+#define DFS_ETSI_TYPE2_WAR_PRI_UPPER_LIMIT 5000
+#define DFS_ETSI_TYPE3_WAR_PRI_LOWER_LIMIT 250
+#define DFS_ETSI_TYPE3_WAR_PRI_UPPER_LIMIT 435
+#define DFS_ETSI_WAR_VALID_PULSE_DURATION 15
+
 typedef  adf_os_spinlock_t  dfsq_lock_t;
 
 #ifdef WIN32
@@ -275,6 +291,7 @@ struct dfs_event {
    u_int32_t  re_freq;       /* Centre frequency of event, KHz */
    u_int32_t  re_freq_lo;    /* Lower bounds of frequency, KHz */
    u_int32_t  re_freq_hi;    /* Upper bounds of frequency, KHz */
+   int        sidx;          /* Pulse Index as in radar summary report */
    STAILQ_ENTRY(dfs_event) re_list; /* List of radar events */
 } adf_os_packed;
 #ifdef WIN32
@@ -600,6 +617,11 @@ struct ath_dfs {
     int        dfs_pri_multiplier;      /* allow pulse if they are within multiple of PRI for the radar type */
     int        ath_dfs_nol_timeout;
     int        dfs_pri_multiplier_ini;  /* dfs pri configuration from ini */
+    /*
+     * Flag to indicate if DFS test mode is enabled and
+     * channel switch is disabled.
+     */
+    int8_t     disable_dfs_ch_switch;
 };
 
 /* This should match the table from if_ath.c */
@@ -687,6 +709,7 @@ struct dfs_phy_err {
 
    u_int8_t rssi;    /* pulse RSSI */
    u_int8_t dur;     /* pulse duration, raw (not uS) */
+   int sidx; /* Pulse Index as in radar summary report */
 };
 
 /* Attach, detach, handle ioctl prototypes */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -60,7 +60,8 @@ eHalStatus sme_RrmMsgProcessor( tpAniSirGlobal pMac,  v_U16_t msg_type,
 VOS_STATUS rrmClose (tpAniSirGlobal pMac);
 VOS_STATUS rrmReady (tpAniSirGlobal pMac);
 VOS_STATUS rrmOpen (tpAniSirGlobal pMac);
-VOS_STATUS rrmChangeDefaultConfigParam(tpAniSirGlobal pMac, tpRrmConfigParam pRrmConfig);
+VOS_STATUS rrmChangeDefaultConfigParam(tpAniSirGlobal pMac,
+				       struct rrm_config_param *rrm_config);
 VOS_STATUS sme_RrmNeighborReportRequest(tpAniSirGlobal pMac, tANI_U8 sessionId, tpRrmNeighborReq pNeighborReq, tpRrmNeighborRspCallbackInfo callbackInfo);
 
 tRrmNeighborReportDesc* smeRrmGetFirstBssEntryFromNeighborCache( tpAniSirGlobal pMac);

@@ -92,7 +92,7 @@ typedef  enum  {
     WMI_SERVICE_BATCH_SCAN,           /*Service to support batch scan*/
     WMI_SERVICE_QPOWER,               /* QPower service */
     WMI_SERVICE_PLMREQ,
-    WMI_SERVICE_THERMAL_MGMT,
+    WMI_SERVICE_THERMAL_MGMT,         /* thermal throttling support */
     WMI_SERVICE_RMC,                  /* RMC support */
     WMI_SERVICE_MHF_OFFLOAD,          /* multi-hop forwarding offload */
     WMI_SERVICE_COEX_SAR,             /* target support SAR tx limit from WMI_PDEV_PARAM_TXPOWER_LIMITxG */
@@ -127,6 +127,17 @@ typedef  enum  {
     WMI_SERVICE_PEER_ASSOC_CONF,      /* target will send ASSOC_CONF after ASSOC_CMD is processed */
     WMI_SERVICE_EGAP,                 /* enhanced green ap support */
     WMI_SERVICE_STA_PMF_OFFLOAD,      /* FW supports 11W PMF Offload for STA */
+    WMI_SERVICE_UNIFIED_WOW_CAPABILITY, /* FW supports unified D0 and D3 wow */
+    WMI_SERVICE_ENHANCED_PROXY_STA,   /* Enhanced ProxySTA mode support */
+    WMI_SERVICE_ATF,                  /* Air Time Fairness support */
+    WMI_SERVICE_COEX_GPIO,            /* BTCOEX GPIO support */
+    WMI_SERVICE_AUX_SPECTRAL_INTF,    /* Aux Radio enhancement support for ignoring spectral scan intf from main radios */
+    WMI_SERVICE_AUX_CHAN_LOAD_INTF,   /* Aux Radio enhancement support for ignoring chan load intf from main radios*/
+    WMI_SERVICE_BSS_CHANNEL_INFO_64,  /* BSS channel info (freq, noise floor, 64-bit counters) event support */
+    WMI_SERVICE_ENTERPRISE_MESH,      /* Enterprise MESH Service Support */
+    WMI_SERVICE_RESTRT_CHNL_SUPPORT,  /* Restricted Channel Support */
+    WMI_SERVICE_BPF_OFFLOAD,          /* FW supports bpf offload */
+    WMI_SERVICE_SYNC_DELETE_CMDS,     /* FW sends response event for Peer, Vdev delete commands */
 
     WMI_MAX_SERVICE=128               /* max service */
 } WMI_SERVICE;

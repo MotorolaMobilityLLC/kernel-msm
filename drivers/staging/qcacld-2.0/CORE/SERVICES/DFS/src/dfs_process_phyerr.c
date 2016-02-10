@@ -103,6 +103,7 @@ dfs_get_event_freqcentre(struct ath_dfs *dfs, int is_pri, int is_ext, int is_dc)
 {
    struct ieee80211com *ic;
    int chan_offset = 0, chan_width;
+   uint16_t freq;
 
    /* Handle edge cases during startup/transition, shouldn't happen! */
    if (dfs == NULL)
@@ -119,12 +120,14 @@ dfs_get_event_freqcentre(struct ath_dfs *dfs, int is_pri, int is_ext, int is_dc)
     */
    chan_width = dfs_get_event_freqwidth(dfs);
 
+   adf_os_spin_lock_bh(&ic->chan_lock);
    if (IEEE80211_IS_CHAN_11N_HT40PLUS(ic->ic_curchan))
       chan_offset = chan_width;
    else if (IEEE80211_IS_CHAN_11N_HT40MINUS(ic->ic_curchan))
       chan_offset = -chan_width;
    else
       chan_offset = 0;
+   adf_os_spin_unlock_bh(&ic->chan_lock);
 
    /*
     * Check for DC events first - the sowl code may just set all
@@ -134,8 +137,11 @@ dfs_get_event_freqcentre(struct ath_dfs *dfs, int is_pri, int is_ext, int is_dc)
       /*
        * XXX TODO: Should DC events be considered 40MHz wide here?
        */
-      return (ieee80211_chan2freq(ic, ic->ic_curchan) +
+      adf_os_spin_lock_bh(&ic->chan_lock);
+      freq = (ieee80211_chan2freq(ic, ic->ic_curchan) +
           (chan_offset / 2));
+      adf_os_spin_unlock_bh(&ic->chan_lock);
+      return freq;
    }
 
    /*
@@ -143,15 +149,25 @@ dfs_get_event_freqcentre(struct ath_dfs *dfs, int is_pri, int is_ext, int is_dc)
     * The centre frequency for pri events is still ic_freq.
     */
    if (is_pri) {
-      return (ieee80211_chan2freq(ic, ic->ic_curchan));
+      adf_os_spin_lock_bh(&ic->chan_lock);
+      freq = (ieee80211_chan2freq(ic, ic->ic_curchan));
+      adf_os_spin_unlock_bh(&ic->chan_lock);
+      return freq;
    }
 
    if (is_ext) {
-      return (ieee80211_chan2freq(ic, ic->ic_curchan) + chan_width);
+      adf_os_spin_lock_bh(&ic->chan_lock);
+      freq = (ieee80211_chan2freq(ic, ic->ic_curchan) + chan_width);
+      adf_os_spin_unlock_bh(&ic->chan_lock);
+      return freq;
    }
 
    /* XXX shouldn't get here */
-   return (ieee80211_chan2freq(ic, ic->ic_curchan));
+   adf_os_spin_lock_bh(&ic->chan_lock);
+   freq = (ieee80211_chan2freq(ic, ic->ic_curchan));
+   adf_os_spin_unlock_bh(&ic->chan_lock);
+
+   return freq;
 }
 
 /*
@@ -501,8 +517,8 @@ dump_phyerr_contents(const char *d, int len)
 
 void
 dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
-    u_int8_t r_rssi, u_int8_t r_ext_rssi, u_int32_t r_rs_tstamp,
-    u_int64_t r_fulltsf)
+                   u_int8_t r_rssi, u_int8_t r_ext_rssi, u_int32_t r_rs_tstamp,
+                   u_int64_t r_fulltsf, bool enable_log)
 {
    struct ath_dfs *dfs = (struct ath_dfs *)ic->ic_dfs;
    struct ieee80211_channel *chan=ic->ic_curchan;
@@ -545,7 +561,9 @@ dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
       return;
    }
 
+   adf_os_spin_lock_bh(&ic->chan_lock);
    if (IEEE80211_IS_CHAN_RADAR(chan)) {
+         adf_os_spin_unlock_bh(&ic->chan_lock);
          DFS_DPRINTK(dfs, ATH_DEBUG_DFS1,
           "%s: Radar already found in the channel, "
           " do not queue radar data\n",
@@ -553,6 +571,7 @@ dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
       return;
    }
 
+   adf_os_spin_unlock_bh(&ic->chan_lock);
    dfs->ath_dfs_stats.total_phy_errors++;
    DFS_DPRINTK(dfs, ATH_DEBUG_DFS2,
        "%s[%d] phyerr %d len %d\n",
@@ -584,8 +603,9 @@ dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
     * + otherwise, Owl (and legacy.)
     */
    if (dfs->dfs_caps.ath_chip_is_bb_tlv) {
-      if (dfs_process_phyerr_bb_tlv(dfs, buf, datalen, r_rssi,
-          r_ext_rssi, r_rs_tstamp, r_fulltsf, &e) == 0) {
+      if (dfs_process_phyerr_bb_tlv(dfs, buf, datalen, r_rssi, r_ext_rssi,
+                                    r_rs_tstamp, r_fulltsf,
+                                    &e, enable_log) == 0) {
                         dfs->dfs_phyerr_reject_count++;
          return;
                     } else {
@@ -611,6 +631,10 @@ dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
          return;
                 }
    }
+
+   VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+             "\n %s: Frequency at which the phyerror was injected = %d",
+             __func__, e.freq);
 
    /*
     * If the hardware supports radar reporting on the extension channel
@@ -731,7 +755,9 @@ dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
     * for the adaptive radio (AR) pattern matching rather than
     * radar detection.
     */
+   adf_os_spin_lock_bh(&ic->chan_lock);
    if ((chan->ic_flags & CHANNEL_108G) == CHANNEL_108G) {
+      adf_os_spin_unlock_bh(&ic->chan_lock);
       if (!(dfs->dfs_proc_phyerr & DFS_AR_EN)) {
          DFS_DPRINTK(dfs, ATH_DEBUG_DFS2,
              "%s: DFS_AR_EN not enabled\n",
@@ -755,6 +781,7 @@ dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
       event->re_ts = (e.rs_tstamp) & DFS_TSMASK;
       event->re_chanindex = dfs->dfs_curchan_radindex;
       event->re_flags = 0;
+      event->sidx = e.sidx;
 
       /*
        * Handle chirp flags.
@@ -772,6 +799,7 @@ dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
       ATH_ARQ_UNLOCK(dfs);
    } else {
       if (IEEE80211_IS_CHAN_DFS(chan)) {
+         adf_os_spin_unlock_bh(&ic->chan_lock);
          if (!(dfs->dfs_proc_phyerr & DFS_RADAR_EN)) {
             DFS_DPRINTK(dfs, ATH_DEBUG_DFS3,
                 "%s: DFS_RADAR_EN not enabled\n",
@@ -831,6 +859,7 @@ dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
          event->re_full_ts = e.fulltsf;
          event->re_ts = (e.rs_tstamp) & DFS_TSMASK;
          event->re_rssi = e.rssi;
+         event->sidx = e.sidx;
 
          /*
           * Handle chirp flags.
@@ -861,6 +890,8 @@ dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
          ATH_DFSQ_LOCK(dfs);
          STAILQ_INSERT_TAIL(&(dfs->dfs_radarq), event, re_list);
          ATH_DFSQ_UNLOCK(dfs);
+      } else {
+        adf_os_spin_unlock_bh(&ic->chan_lock);
       }
    }
 

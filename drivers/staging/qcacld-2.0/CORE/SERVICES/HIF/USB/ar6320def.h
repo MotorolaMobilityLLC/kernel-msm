@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -112,8 +112,12 @@
 #define AR6320_DST_WATERMARK_ADDRESS                    0x0050
 #define AR6320_RX_MSDU_END_4_FIRST_MSDU_LSB             14
 #define AR6320_RX_MSDU_END_4_FIRST_MSDU_MASK            0x00004000
+#define AR6320_RX_MPDU_START_0_RETRY_LSB                14
+#define AR6320_RX_MPDU_START_0_RETRY_MASK               0x00004000
 #define AR6320_RX_MPDU_START_0_SEQ_NUM_LSB              16
 #define AR6320_RX_MPDU_START_0_SEQ_NUM_MASK             0x0fff0000
+#define AR6320_RX_MPDU_START_2_TID_LSB                  28
+#define AR6320_RX_MPDU_START_2_TID_MASK                 0xf0000000
 #define AR6320_RX_MPDU_START_2_PN_47_32_LSB             0
 #define AR6320_RX_MPDU_START_2_PN_47_32_MASK            0x0000ffff
 #define AR6320_RX_MSDU_END_1_KEY_ID_OCT_MASK            0x000000ff
@@ -455,10 +459,14 @@ struct targetdef_s ar6320_targetdef = {
     /* htt_rx.c */
     .d_RX_MSDU_END_4_FIRST_MSDU_MASK =         AR6320_RX_MSDU_END_4_FIRST_MSDU_MASK,
     .d_RX_MSDU_END_4_FIRST_MSDU_LSB =          AR6320_RX_MSDU_END_4_FIRST_MSDU_LSB,
+    .d_RX_MPDU_START_0_RETRY_LSB =             AR6320_RX_MPDU_START_0_RETRY_LSB,
+    .d_RX_MPDU_START_0_RETRY_MASK =            AR6320_RX_MPDU_START_0_RETRY_MASK,
     .d_RX_MPDU_START_0_SEQ_NUM_MASK =          AR6320_RX_MPDU_START_0_SEQ_NUM_MASK,
     .d_RX_MPDU_START_0_SEQ_NUM_LSB =           AR6320_RX_MPDU_START_0_SEQ_NUM_LSB,
     .d_RX_MPDU_START_2_PN_47_32_LSB =          AR6320_RX_MPDU_START_2_PN_47_32_LSB,
     .d_RX_MPDU_START_2_PN_47_32_MASK =         AR6320_RX_MPDU_START_2_PN_47_32_MASK,
+    .d_RX_MPDU_START_2_TID_LSB =               AR6320_RX_MPDU_START_2_TID_LSB,
+    .d_RX_MPDU_START_2_TID_MASK =              AR6320_RX_MPDU_START_2_TID_MASK,
     .d_RX_MSDU_END_1_KEY_ID_OCT_MASK =         AR6320_RX_MSDU_END_1_KEY_ID_OCT_MASK,
     .d_RX_MSDU_END_1_KEY_ID_OCT_LSB =          AR6320_RX_MSDU_END_1_KEY_ID_OCT_LSB,
     .d_RX_MSDU_END_1_EXT_WAPI_PN_63_48_MASK =  AR6320_RX_MSDU_END_1_EXT_WAPI_PN_63_48_MASK,

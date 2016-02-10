@@ -109,12 +109,9 @@ typedef eHalStatus (*oemData_OemDataReqCompleteCallback)(
     \brief Request an OEM DATA RSP
     \param sessionId - Id of session to be used
     \param pOemDataReqID - pointer to an object to get back the request ID
-    \param callback - a callback function that is called upon finish
-    \param pContext - a pointer passed in for the callback
     \return eHalStatus
   -------------------------------------------------------------------------------*/
-eHalStatus oemData_OemDataReq(tHalHandle, tANI_U8, tOemDataReqConfig *, tANI_U32 *pOemDataReqID,
-                            oemData_OemDataReqCompleteCallback callback, void *pContext);
+eHalStatus oemData_OemDataReq(tHalHandle, tANI_U8, tOemDataReqConfig *, tANI_U32 *pOemDataReqID);
 
 /* ---------------------------------------------------------------------------
     \fn sme_HandleOemDataRsp

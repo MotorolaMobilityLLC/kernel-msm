@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -75,17 +75,6 @@ typedef struct sCfgBinHdr
 } tCfgBinHdr, *tpCfgBinHdr;
 
 
-/*--------------------------------------------------------------------*/
-/* Polaris HW counter access structure                                */
-/*--------------------------------------------------------------------*/
-typedef struct
-{
-    tANI_U32    addr;
-    tANI_U32    mask;
-    tANI_U32    shift;
-} tCfgHwCnt;
-
-
 #define CFG_STAT_CNT_LO_MASK       0x0000ffff
 #define CFG_STAT_CNT_HI_MASK       0xffff0000
 #define CFG_STAT_CNT_HI_INCR       0x00010000
@@ -96,9 +85,8 @@ typedef struct
 
 extern void cfgSendHostMsg(tpAniSirGlobal, tANI_U16, tANI_U32, tANI_U32, tANI_U32*, tANI_U32, tANI_U32*);
 
+extern struct cfgstatic_string cfg_static_string[CFG_MAX_STATIC_STRING];
 
-
-
-
+extern struct cgstatic cfg_static[CFG_PARAM_MAX_NUM];
 
 #endif /* __CFGPRIV_H */

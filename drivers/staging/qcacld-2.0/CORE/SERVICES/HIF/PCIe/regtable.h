@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -119,10 +119,14 @@ typedef struct targetdef_s {
     /* htt_rx.c */
     u_int32_t d_RX_MSDU_END_4_FIRST_MSDU_MASK;
     u_int32_t d_RX_MSDU_END_4_FIRST_MSDU_LSB;
+    u_int32_t d_RX_MPDU_START_0_RETRY_LSB;
+    u_int32_t d_RX_MPDU_START_0_RETRY_MASK;
     u_int32_t d_RX_MPDU_START_0_SEQ_NUM_MASK;
     u_int32_t d_RX_MPDU_START_0_SEQ_NUM_LSB;
     u_int32_t d_RX_MPDU_START_2_PN_47_32_LSB;
     u_int32_t d_RX_MPDU_START_2_PN_47_32_MASK;
+    u_int32_t d_RX_MPDU_START_2_TID_LSB;
+    u_int32_t d_RX_MPDU_START_2_TID_MASK;
     u_int32_t d_RX_MSDU_END_1_EXT_WAPI_PN_63_48_MASK;
     u_int32_t d_RX_MSDU_END_1_EXT_WAPI_PN_63_48_LSB;
     u_int32_t d_RX_MSDU_END_1_KEY_ID_OCT_MASK;
@@ -403,10 +407,14 @@ typedef struct targetdef_s {
 /* htt_rx.c */
 #define RX_MSDU_END_4_FIRST_MSDU_MASK            (pdev->targetdef->d_RX_MSDU_END_4_FIRST_MSDU_MASK)
 #define RX_MSDU_END_4_FIRST_MSDU_LSB             (pdev->targetdef->d_RX_MSDU_END_4_FIRST_MSDU_LSB)
+#define RX_MPDU_START_0_RETRY_LSB                (pdev->targetdef->d_RX_MPDU_START_0_RETRY_LSB)
+#define RX_MPDU_START_0_RETRY_MASK               (pdev->targetdef->d_RX_MPDU_START_0_RETRY_MASK)
 #define RX_MPDU_START_0_SEQ_NUM_MASK             (pdev->targetdef->d_RX_MPDU_START_0_SEQ_NUM_MASK)
 #define RX_MPDU_START_0_SEQ_NUM_LSB              (pdev->targetdef->d_RX_MPDU_START_0_SEQ_NUM_LSB)
 #define RX_MPDU_START_2_PN_47_32_LSB             (pdev->targetdef->d_RX_MPDU_START_2_PN_47_32_LSB)
 #define RX_MPDU_START_2_PN_47_32_MASK            (pdev->targetdef->d_RX_MPDU_START_2_PN_47_32_MASK)
+#define RX_MPDU_START_2_TID_LSB                  (pdev->targetdef->d_RX_MPDU_START_2_TID_LSB)
+#define RX_MPDU_START_2_TID_MASK                 (pdev->targetdef->d_RX_MPDU_START_2_TID_MASK)
 #define RX_MSDU_END_1_KEY_ID_OCT_MASK            (pdev->targetdef->d_RX_MSDU_END_1_KEY_ID_OCT_MASK)
 #define RX_MSDU_END_1_KEY_ID_OCT_LSB             (pdev->targetdef->d_RX_MSDU_END_1_KEY_ID_OCT_LSB)
 #define RX_MSDU_END_1_EXT_WAPI_PN_63_48_MASK     (pdev->targetdef->d_RX_MSDU_END_1_EXT_WAPI_PN_63_48_MASK)

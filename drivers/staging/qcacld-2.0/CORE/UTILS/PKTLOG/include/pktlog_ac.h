@@ -139,7 +139,8 @@ void pktlog_init(struct ol_softc *scn);
 int pktlog_enable(struct ol_softc *scn, int32_t log_state);
 int pktlog_setsize(struct ol_softc *scn, int32_t log_state);
 int pktlog_disable(struct ol_softc *scn);
-
+int pktlogmod_init(void *context);
+void pktlogmod_exit(void *context);
 #else /* REMOVE_PKT_LOG */
 #define ol_pktlog_attach(_scn)	({ (void)_scn; })
 #define ol_pktlog_detach(_scn)	({ (void)_scn; })

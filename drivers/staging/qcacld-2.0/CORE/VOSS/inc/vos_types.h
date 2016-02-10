@@ -101,7 +101,7 @@
 /// in the software system.
 typedef enum
 {
-   VOS_MODULE_ID_BAP        = 0,
+   /* 0 is unused for historical purposes */
    VOS_MODULE_ID_TL         = 1,
    VOS_MODULE_ID_WDI        = 2,
    // 3 & 4 are unused for historical purposes
@@ -146,6 +146,7 @@ typedef enum
     VOS_FTM_MODE = 5,
     VOS_IBSS_MODE,
     VOS_P2P_DEVICE_MODE,
+    VOS_OCB_MODE,
     VOS_MAX_NO_OF_MODE
 } tVOS_CON_MODE;
 

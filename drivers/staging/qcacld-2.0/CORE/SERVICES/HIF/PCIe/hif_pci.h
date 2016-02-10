@@ -156,6 +156,18 @@ void hif_dump_pipe_debug_count(HIF_DEVICE *hif_device);
 #include <linux/pm_runtime.h>
 void hif_pci_runtime_pm_timeout_fn(unsigned long data);
 void hif_pci_runtime_pm_warn(struct hif_pci_softc *, const char *);
+void hif_pm_ssr_runtime_allow_suspend(struct hif_pci_softc *, void *);
+
+/**
+ * Runtime PM Context for wakelocks
+ */
+struct hif_pm_runtime_context {
+	struct list_head list;
+	bool active;
+	uint32_t timeout;
+	const char *name;
+};
+
 #ifdef WLAN_OPEN_SOURCE
 static inline int hif_pm_request_resume(struct device *dev)
 {
@@ -183,26 +195,26 @@ static inline int hif_pm_runtime_resume(struct device *dev)
 #else
 static inline int hif_pm_request_resume(struct device *dev)
 {
-	return cnss_pm_runtime_request(dev, CNSS_PM_REQUEST_RESUME);
+	return vos_pm_runtime_request(dev, CNSS_PM_REQUEST_RESUME);
 }
 
 static inline int __hif_pm_runtime_get(struct device *dev)
 {
-	return cnss_pm_runtime_request(dev, CNSS_PM_RUNTIME_GET);
+	return vos_pm_runtime_request(dev, CNSS_PM_RUNTIME_GET);
 }
 
 static inline int hif_pm_runtime_put_auto(struct device *dev)
 {
-	return cnss_pm_runtime_request(dev, CNSS_PM_RUNTIME_PUT_AUTO);
+	return vos_pm_runtime_request(dev, CNSS_PM_RUNTIME_PUT_AUTO);
 }
 
 static inline void hif_pm_runtime_mark_last_busy(struct device *dev)
 {
-	cnss_pm_runtime_request(dev, CNSS_PM_RUNTIME_MARK_LAST_BUSY);
+	vos_pm_runtime_request(dev, CNSS_PM_RUNTIME_MARK_LAST_BUSY);
 }
 static inline int hif_pm_runtime_resume(struct device *dev)
 {
-	return cnss_pm_runtime_request(dev, CNSS_PM_RUNTIME_RESUME);
+	return vos_pm_runtime_request(dev, CNSS_PM_RUNTIME_RESUME);
 }
 #endif /* WLAN_OPEN_SOURCE */
 #else /* FEATURE_RUNTIME_PM */
@@ -210,6 +222,8 @@ static inline void
 hif_pm_runtime_mark_last_busy(struct device *dev) { }
 static inline void
 hif_pci_runtime_pm_warn(struct hif_pci_softc *sc, const char *name) { }
+static inline void
+hif_pm_ssr_runtime_allow_suspend(struct hif_pci_softc *sc, void *ctx) { }
 #endif
 
 #define CE_HTT_T2H_MSG 1

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -39,6 +39,10 @@
 #include <ol_rx_fwd.h>        /* our own defs */
 #include <ol_rx.h>            /* ol_rx_deliver */
 #include <ol_txrx_internal.h> /* TXRX_ASSERT1 */
+#ifdef QCA_ARP_SPOOFING_WAR
+#include <ol_if_athvar.h>
+#endif
+
 
 /*
  * Porting from Ap11PrepareForwardedPacket.
@@ -130,7 +134,6 @@ ol_rx_fwd_to_tx(struct ol_txrx_vdev_t *vdev, adf_nbuf_t msdu)
      */
     adf_nbuf_map_single(pdev->osdev, msdu, ADF_OS_DMA_TO_DEVICE);
     adf_nbuf_set_next(msdu, NULL); /* add NULL terminator */
-    TXRX_STATS_MSDU_INCR(vdev->pdev, rx.forwarded, msdu);
 
     /* for HL, point to payload before send to tx again.*/
     if (pdev->cfg.is_high_latency) {
@@ -181,6 +184,10 @@ ol_rx_fwd_check(
 
         if (!vdev->disable_intrabss_fwd &&
             htt_rx_msdu_forward(pdev->htt_pdev, rx_desc)) {
+#ifdef QCA_ARP_SPOOFING_WAR
+            void *filter_cb;
+#endif
+            int do_not_fwd = 0;
             /*
              * Use the same vdev that received the frame to
              * transmit the frame.
@@ -208,22 +215,38 @@ ol_rx_fwd_check(
             } else {
                 adf_nbuf_set_tid(msdu, ADF_NBUF_TX_EXT_TID_INVALID);
             }
+
+#ifdef QCA_ARP_SPOOFING_WAR
+            filter_cb = (void *)NBUF_CB_PTR(msdu);
+            if (filter_cb) {
+                do_not_fwd = (*(hdd_filter_cb_t)filter_cb)(vdev->vdev_id, msdu,
+                        RX_INTRA_BSS_FWD);
+            }
+#endif
             /*
              * This MSDU needs to be forwarded to the tx path.
              * Check whether it also needs to be sent to the OS shim,
              * in which case we need to make a copy (or clone?).
              */
-            if (htt_rx_msdu_discard(pdev->htt_pdev, rx_desc)) {
-                htt_rx_msdu_desc_free(pdev->htt_pdev, msdu);
-                ol_rx_fwd_to_tx(tx_vdev, msdu);
-                msdu = NULL; /* already handled this MSDU */
-            } else {
-				adf_nbuf_t copy;
-				copy = adf_nbuf_copy(msdu);
-                if (copy) {
-					ol_rx_fwd_to_tx(tx_vdev, copy);
+            if (!do_not_fwd) {
+                if (htt_rx_msdu_discard(pdev->htt_pdev, rx_desc)) {
+                        htt_rx_msdu_desc_free(pdev->htt_pdev, msdu);
+                        ol_rx_fwd_to_tx(tx_vdev, msdu);
+                        msdu = NULL; /* already handled this MSDU */
+                        TXRX_STATS_ADD(pdev, pub.rx.intra_bss_fwd.packets_fwd,
+                                1);
+                } else {
+                        adf_nbuf_t copy;
+                        copy = adf_nbuf_copy(msdu);
+                        if (copy) {
+                            ol_rx_fwd_to_tx(tx_vdev, copy);
+                        }
+                        TXRX_STATS_ADD(pdev,
+                                pub.rx.intra_bss_fwd.packets_stack_n_fwd, 1);
                 }
             }
+        } else {
+            TXRX_STATS_ADD(pdev, pub.rx.intra_bss_fwd.packets_stack, 1);
         }
         if (msdu) {
             /* send this frame to the OS */

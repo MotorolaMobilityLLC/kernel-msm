@@ -48,6 +48,22 @@
 #include <htt_types.h>
 #include <vos_trace.h>
 
+/* Remove these macros when they get added to htt.h. */
+#ifndef HTT_TX_DESC_EXTENSION_GET
+#define HTT_TX_DESC_EXTENSION_OFFSET_BYTES 0
+#define HTT_TX_DESC_EXTENSION_OFFSET_DWORD 0
+#define HTT_TX_DESC_EXTENSION_M        0x10000000
+#define HTT_TX_DESC_EXTENSION_S        28
+
+#define HTT_TX_DESC_EXTENSION_GET(_var) \
+    (((_var) & HTT_TX_DESC_EXTENSION_M) >> HTT_TX_DESC_EXTENSION_S)
+#define HTT_TX_DESC_EXTENSION_SET(_var, _val)            \
+    do {                                                 \
+        HTT_CHECK_SET_VAL(HTT_TX_DESC_EXTENSION, _val);  \
+        ((_var) |= ((_val) << HTT_TX_DESC_EXTENSION_S)); \
+    } while (0)
+#endif
+
 /*================ meta-info about tx MSDUs =================================*/
 
 /*
@@ -94,6 +110,111 @@ enum htt_frm_subtype {
     htt_frm_subtype_data_QoS_cf_poll = 14,
     htt_frm_subtype_data_QoS_cf_ack_cf_poll = 15,
 };
+
+enum htt_ofdm_datarate {            // Value    MBPS    Modulation  Coding
+    htt_ofdm_datarate_6_mbps = 0,   // 0        6       BPSK        1/2
+    htt_ofdm_datarate_9_mbps = 1,   // 1        9       BPSK        3/4
+    htt_ofdm_datarate_12_mbps = 2,  // 2        12      QPSK        1/2
+    htt_ofdm_datarate_18_mbps = 3,  // 3        18      QPSK        3/4
+    htt_ofdm_datarate_24_mbps = 4,  // 4        24      16-QAM      1/2
+    htt_ofdm_datarate_36_mbps = 5,  // 5        36      16-QAM      3/4
+    htt_ofdm_datarate_48_mbps = 6,  // 6        48      64-QAM      1/2
+    htt_ofdm_datarate_54_mbps = 7,  // 7        54      64-QAM      3/4
+    htt_ofdm_datarate_max = 7,
+};
+
+/**
+ * @brief TX control header
+ * @details
+ *  When sending an OCB packet, the user application has
+ *  the option of including the following struct following an ethernet header
+ *  with the proto field set to 0x8151. This struct includes various TX
+ *  paramaters including the TX power and MCS.
+ */
+PREPACK struct ocb_tx_ctrl_hdr_t {
+    /* The version must be 1. */
+    A_UINT16 version;
+    A_UINT16 length;
+    A_UINT16 channel_freq;
+
+    /* flags */
+    union {
+        struct {
+            A_UINT16
+                /* bit 0: if set, tx pwr spec is valid */
+                valid_pwr:            1,
+                /* bit 1: if set, tx MCS mask spec is valid */
+                valid_datarate:       1,
+                /* bit 2: if set, tx retries spec is valid */
+                valid_retries:        1,
+                /* bit 3: if set, chain mask is valid */
+                valid_chain_mask:     1,
+                /* bit 4: if set, tx expire TSF spec is valid*/
+                valid_expire_tsf:     1,
+                /* bit 5: if set, TID is valid */
+                valid_tid:            1,
+                reserved0_15_6:      10; /* bits 15:6 - unused, set to 0x0 */
+        };
+        A_UINT16 all_flags;
+    };
+
+    /* TX expiry time (TSF) LSBs */
+    A_UINT32 expire_tsf_lo;
+
+    /* TX expiry time (TSF) MSBs */
+    A_UINT32 expire_tsf_hi;
+
+    /* pwr -
+     * Specify what power the tx frame needs to be transmitted at.
+     * The power a signed (two's complement) value is in units of 0.5 dBm.
+     * The value needs to be appropriately sign-extended when extracting
+     * the value from the message and storing it in a variable that is
+     * larger than A_INT8.
+     * If the transmission uses multiple tx chains, this power spec is
+     * the total transmit power, assuming incoherent combination of
+     * per-chain power to produce the total power.
+     */
+    A_INT8 pwr;
+
+    /* datarate -
+     * The desired modulation and coding scheme.
+     *
+     * VALUE    DATA RATE   MODULATION  CODING RATE
+     *          @ 20 MHz
+     *          (MBPS)
+     * 0        6           BPSK        1/2
+     * 1        9           BPSK        3/4
+     * 2        12          QPSK        1/2
+     * 3        18          QPSK        3/4
+     * 4        24          16-QAM      1/2
+     * 5        36          16-QAM      3/4
+     * 6        48          64-QAM      1/2
+     * 7        54          64-QAM      3/4
+     */
+    A_UINT8 datarate;
+
+    /* retry_limit -
+     * Specify the maximum number of transmissions, including the
+     * initial transmission, to attempt before giving up if no ack
+     * is received.
+     * If the tx rate is specified, then all retries shall use the
+     * same rate as the initial transmission.
+     * If no tx rate is specified, the target can choose whether to
+     * retain the original rate during the retransmissions, or to
+     * fall back to a more robust rate.
+     */
+    A_UINT8 retry_limit;
+
+    /* Chain mask - specify which chains to transmit from. */
+    A_UINT8 chain_mask;
+
+    /* Extended Traffic ID (0-15) */
+    A_UINT8 ext_tid;
+
+    /* Ensure that the size of the structure is a multiple of 4. */
+    A_UINT8 reserved[3];
+
+} POSTPACK;
 
 /**
  * @brief tx MSDU meta-data that HTT may use to program the FW/HW tx descriptor
@@ -393,12 +514,15 @@ htt_tx_desc_init(
     u_int32_t htt_tx_desc_paddr_lo,
     u_int16_t msdu_id,
     adf_nbuf_t msdu,
-    struct htt_msdu_info_t *msdu_info)
+    struct htt_msdu_info_t *msdu_info,
+    struct ocb_tx_ctrl_hdr_t *tx_ctrl,
+    u_int8_t is_dsrc)
 {
     u_int32_t *word0, *word1, *word3;
-    u_int32_t local_word0, local_word1;
+    u_int32_t local_word0, local_word1, local_word3;
     struct htt_host_tx_desc_t *htt_host_tx_desc = (struct htt_host_tx_desc_t *)
         (((char *) htt_tx_desc) - HTT_TX_DESC_VADDR_OFFSET);
+    bool desc_ext_required = (tx_ctrl && tx_ctrl->all_flags != 0);
 
     word0 = (u_int32_t *) htt_tx_desc;
     word1 = word0 + 1;
@@ -417,8 +541,13 @@ htt_tx_desc_init(
     HTT_H2T_MSG_TYPE_SET(local_word0, HTT_H2T_MSG_TYPE_TX_FRM);
     HTT_TX_DESC_PKT_TYPE_SET(local_word0, msdu_info->info.l2_hdr_type);
     HTT_TX_DESC_VDEV_ID_SET(local_word0, msdu_info->info.vdev_id);
-    HTT_TX_DESC_EXT_TID_SET(local_word0, msdu_info->info.ext_tid);
+    if (tx_ctrl && tx_ctrl->valid_tid) {
+        HTT_TX_DESC_EXT_TID_SET(local_word0, tx_ctrl->ext_tid);
+    } else {
+        HTT_TX_DESC_EXT_TID_SET(local_word0, msdu_info->info.ext_tid);
+    }
     HTT_TX_DESC_CKSUM_OFFLOAD_SET(local_word0, msdu_info->action.cksum_offload);
+    HTT_TX_DESC_EXTENSION_SET(local_word0, desc_ext_required);
     if (pdev->cfg.is_high_latency)
         HTT_TX_DESC_TX_COMP_SET(local_word0, msdu_info->action.tx_comp_req);
     HTT_TX_DESC_NO_ENCRYPT_SET(local_word0, msdu_info->action.do_encrypt ? 0 : 1);
@@ -427,10 +556,51 @@ htt_tx_desc_init(
     local_word1 = 0;
     HTT_TX_DESC_FRM_LEN_SET(local_word1, adf_nbuf_len(msdu));
     HTT_TX_DESC_FRM_ID_SET(local_word1, msdu_id);
+
     *word1 = local_word1;
 
     /* Initialize peer_id to INVALID_PEER bcoz this is NOT Reinjection path*/
-    *word3 = HTT_INVALID_PEER;
+    local_word3 = HTT_INVALID_PEER;
+    if (tx_ctrl && tx_ctrl->channel_freq) {
+            HTT_TX_DESC_CHAN_FREQ_SET(local_word3, tx_ctrl->channel_freq);
+    }
+    *word3 = local_word3;
+
+    /*
+     *  If any of the tx control flags are set, then we need the extended
+     *  HTT header.
+     */
+    if (desc_ext_required)
+    {
+        struct htt_tx_msdu_desc_ext_t local_desc_ext = {0};
+
+        /*
+         * Copy the info that was read from TX control header from the user
+         * application to the extended HTT header.
+         * First copy everything
+         * to a local temp structure, and then copy everything to the
+         * actual uncached structure in one go to save memory writes.
+         */
+        local_desc_ext.valid_pwr = tx_ctrl->valid_pwr;
+        local_desc_ext.valid_mcs_mask = tx_ctrl->valid_datarate;
+        local_desc_ext.valid_retries = tx_ctrl->valid_retries;
+        local_desc_ext.valid_expire_tsf = tx_ctrl->valid_expire_tsf;
+        local_desc_ext.valid_chainmask = tx_ctrl->valid_chain_mask;
+
+        local_desc_ext.pwr = tx_ctrl->pwr;
+        if (tx_ctrl->valid_datarate &&
+            tx_ctrl->datarate <= htt_ofdm_datarate_max)
+        local_desc_ext.mcs_mask = (1 << (tx_ctrl->datarate + 4));
+        local_desc_ext.retry_limit = tx_ctrl->retry_limit;
+        local_desc_ext.expire_tsf_lo = tx_ctrl->expire_tsf_lo;
+        local_desc_ext.expire_tsf_hi = tx_ctrl->expire_tsf_hi;
+        local_desc_ext.chain_mask = tx_ctrl->chain_mask;
+
+        local_desc_ext.is_dsrc = (is_dsrc != 0);
+
+        adf_nbuf_push_head(msdu, sizeof(local_desc_ext));
+        adf_os_mem_copy(adf_nbuf_data(msdu), &local_desc_ext,
+               sizeof(local_desc_ext));    }
 
     /*
      * Specify that the data provided by the OS is a bytestream,

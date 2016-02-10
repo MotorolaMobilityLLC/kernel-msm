@@ -245,8 +245,6 @@ limCollectBssDescription(tpAniSirGlobal pMac,
     channelNum = pBssDescr->channelId;
     pBssDescr->nwType = limGetNwType(pMac, channelNum, SIR_MAC_MGMT_FRAME, pBPR);
 
-    pBssDescr->aniIndicator = pBPR->propIEinfo.aniIndicator;
-
     // Copy RSSI & SINR from BD
 
     PELOG4(limLog(pMac, LOG4, "***********BSS Description for BSSID:*********** ");
@@ -258,12 +256,11 @@ limCollectBssDescription(tpAniSirGlobal pMac,
 
     //SINR no longer reported by HW
     pBssDescr->sinr = 0;
-
     pBssDescr->nReceivedTime = (tANI_TIMESTAMP)palGetTickCount(pMac->hHdd);
     pBssDescr->tsf_delta = WDA_GET_RX_TSF_DELTA(pRxPacketInfo);
 
     limLog(pMac, LOG1,
-        FL("BSSID: "MAC_ADDRESS_STR " rssi: normalized: %d, absolute = %d, tsf_delta: %u"),
+        FL("BSSID: "MAC_ADDRESS_STR " rssi: normalized = %d, absolute = %d tsf_delta = %u"),
         MAC_ADDR_ARRAY(pHdr->bssId), pBssDescr->rssi, pBssDescr->rssi_raw,
         pBssDescr->tsf_delta);
 
@@ -310,10 +307,9 @@ limCollectBssDescription(tpAniSirGlobal pMac,
     pBPR->channelNumber = pBssDescr->channelId;
 
     limLog( pMac, LOG3,
-        FL("Collected BSS Description for Channel(%1d), length(%u), aniIndicator(%d), IE Fields(%u)"),
+        FL("Collected BSS Description for Channel(%1d), length(%u), IE Fields(%u)"),
         pBssDescr->channelId,
         pBssDescr->length,
-        pBssDescr->aniIndicator,
         ieLen );
 
     return eHAL_STATUS_SUCCESS;
@@ -400,10 +396,17 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
     tANI_U8               rxChannelInBD = 0;
 
     tSirMacAddr bssid = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    tSirMacAddr bssid_zero =  {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
     tANI_BOOLEAN fFound = FALSE;
     tpSirMacDataHdr3a pHdr;
 
     pHdr = WDA_GET_RX_MPDUHEADER3A((tANI_U8 *)pRxPacketInfo);
+
+    // Check For Null BSSID; Skip in case of P2P.
+    if (vos_mem_compare(bssid_zero, &pHdr->addr3, 6))
+    {
+        return ;
+    }
 
     //Checking if scanning for a particular BSSID
     if ((fScanning) && (pMac->lim.gpLimMlmScanReq))
@@ -564,13 +567,13 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     if (WDA_GET_OFFLOADSCANLEARN(pRxPacketInfo))
     {
-       limLog(pMac, LOG2, FL(" pHdr->addr1:"MAC_ADDRESS_STR),
+       limLog(pMac, LOG1, FL(" pHdr->addr1:"MAC_ADDRESS_STR),
               MAC_ADDR_ARRAY(pHdr->addr1));
-       limLog(pMac, LOG2, FL(" pHdr->addr2:"MAC_ADDRESS_STR),
+       limLog(pMac, LOG1, FL(" pHdr->addr2:"MAC_ADDRESS_STR),
               MAC_ADDR_ARRAY(pHdr->addr2));
-       limLog(pMac, LOG2, FL(" pHdr->addr3:"MAC_ADDRESS_STR),
+       limLog(pMac, LOG1, FL(" pHdr->addr3:"MAC_ADDRESS_STR),
               MAC_ADDR_ARRAY(pHdr->addr3));
-       limLog( pMac, LOG2, FL("Save this entry in LFR cache"));
+       limLog( pMac, LOG1, FL("Save this entry in LFR cache"));
        status = limLookupNaddLfrHashEntry(pMac, pBssDescr, LIM_HASH_ADD, dontUpdateAll);
     }
     else
@@ -838,6 +841,9 @@ limLookupNaddHashEntry(tpAniSirGlobal pMac,
             break;
         }
     }
+
+    if ((false == found) && dontUpdateAll)
+        return eHAL_STATUS_FAILURE;
 
     //for now, only rssi, we can add more if needed
     if ((action == LIM_HASH_UPDATE) && dontUpdateAll && rssi && rssi_raw)

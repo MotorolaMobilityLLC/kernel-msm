@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -156,7 +156,7 @@ rrmSendSetMaxTxPowerReq ( tpAniSirGlobal pMac, tPowerdBm txPower, tpPESession pS
 
    if( pSessionEntry == NULL )
    {
-      PELOGE(limLog(pMac, LOGE, FL(" Inavalid parameters"));)
+      PELOGE(limLog(pMac, LOGE, FL("Invalid parameters"));)
       return eSIR_FAILURE;
    }
    pMaxTxParams = vos_mem_malloc(sizeof(tMaxTxPowerParams));
@@ -490,7 +490,7 @@ rrmProcessNeighborReportReq( tpAniSirGlobal pMac,
  *
  * NOTE:
  *
- * @param pCurrentReq pointer to the current Req comtext.
+ * @param pCurrentReq pointer to the current Req context.
  * @param pBeaconReq pointer to the beacon report request IE from the peer.
  * @param pSessionEntry session entry.
  * @return None
@@ -511,10 +511,14 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
    if( pBeaconReq->measurement_request.Beacon.BeaconReporting.present &&
        (pBeaconReq->measurement_request.Beacon.BeaconReporting.reportingCondition != 0) )
    {
-      //Repeated measurement is not supported. This means number of repetitions should be zero.(Already checked)
-      //All test case in VoWifi(as of version 0.36)  use zero for number of repetitions.
-      //Beacon reporting should not be included in request if number of repetitons is zero.
-      // IEEE Std 802.11k-2008 Table 7-29g and section 11.10.8.1
+      /*
+       * Repeated measurement is not supported. This means number of repetitions
+       * should be zero.(Already checked).
+       * All test case in VoWifi(as of version 0.36)  use zero for number of
+       * repetitions. Beacon reporting should not be included in request
+       * if number of repetitions is zero.
+       * IEEE Std 802.11k-2008 Table 7-29g and section 11.10.8.1
+       */
 
       PELOGE(limLog( pMac, LOGE, "Dropping the request: Reporting condition included in beacon report request and it is not zero");)
       return eRRM_INCAPABLE;
@@ -596,7 +600,7 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
 
    vos_mem_set(pSmeBcnReportReq,sizeof( tSirBeaconReportReqInd ),0);
 
-   /* Allocated memory for pSmeBcnReportReq....will be freed by other modulea*/
+   /* Allocated memory for pSmeBcnReportReq will be freed by other modules */
    vos_mem_copy(pSmeBcnReportReq->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr));
    pSmeBcnReportReq->messageType = eWNI_SME_BEACON_REPORT_REQ_IND;
    pSmeBcnReportReq->length = sizeof( tSirBeaconReportReqInd );
@@ -1076,8 +1080,14 @@ rrmProcessRadioMeasurementRequest( tpAniSirGlobal pMac,
                }
             }
             break;
+         case SIR_MAC_RRM_LCI_TYPE:
+         case SIR_MAC_RRM_LOCATION_CIVIC_TYPE:
+         case SIR_MAC_RRM_FINE_TIME_MEAS_TYPE:
+             limLog(pMac, LOG1, FL("RRM with type: %d sent to userspace"),
+		    pRRMReq->MeasurementRequest[i].measurement_type);
+             break;
          default:
-            //Send a report with incapabale bit set.
+            /* Send a report with incapable bit set. */
             if ( pReport == NULL ) //Allocate memory to send reports for any subsequent requests.
             {
                pReport = vos_mem_malloc(sizeof( tSirMacRadioMeasureReport )
@@ -1093,7 +1103,7 @@ rrmProcessRadioMeasurementRequest( tpAniSirGlobal pMac,
                            * (pRRMReq->num_MeasurementRequest - i),
                            0);
                   limLog( pMac, LOG3,
-                         FL(" rrm beacon type incapble of %d report "),
+                         FL("rrm beacon type incapable of %d report "),
                          num_report );
             }
             pReport[num_report].incapable = 1;
@@ -1185,54 +1195,6 @@ tpRRMCaps rrmGetCapabilities ( tpAniSirGlobal pMac,
 
 // --------------------------------------------------------------------
 /**
- * rrmUpdateConfig
- *
- * FUNCTION:
- * Update the configuration. This is called from limUpdateConfig.
- *
- * LOGIC:
- *
- * ASSUMPTIONS:
- *
- * NOTE:
- *
- * @param pSessionEntry
- * @return pointer to tRRMCaps
- */
-void rrmUpdateConfig ( tpAniSirGlobal pMac,
-                               tpPESession pSessionEntry )
-{
-   tANI_U32 val;
-   tpRRMCaps pRRMCaps = &pMac->rrm.rrmPEContext.rrmEnabledCaps;
-
-   if (wlan_cfgGetInt(pMac, WNI_CFG_RRM_ENABLED, &val) != eSIR_SUCCESS)
-   {
-       limLog(pMac, LOGP, FL("cfg get rrm enabled failed"));
-       return;
-   }
-   pMac->rrm.rrmPEContext.rrmEnable = (val) ? 1 : 0;
-
-   if (wlan_cfgGetInt(pMac, WNI_CFG_RRM_OPERATING_CHAN_MAX, &val) != eSIR_SUCCESS)
-   {
-       limLog(pMac, LOGP, FL("cfg get rrm operating channel max measurement duration failed"));
-       return;
-   }
-   pRRMCaps->operatingChanMax = (tANI_U8)val;
-
-   if (wlan_cfgGetInt(pMac, WNI_CFG_RRM_NON_OPERATING_CHAN_MAX, &val) != eSIR_SUCCESS)
-   {
-       limLog(pMac, LOGP, FL("cfg get rrm non-operating channel max measurement duration failed"));
-       return;
-   }
-   pRRMCaps->nonOperatingChanMax =(tANI_U8) val;
-
-   limLog( pMac, LOG1,
-          "RRM enabled = %d  OperatingChanMax = %d  NonOperatingMax = %d",
-          pMac->rrm.rrmPEContext.rrmEnable,
-          pRRMCaps->operatingChanMax, pRRMCaps->nonOperatingChanMax );
-}
-// --------------------------------------------------------------------
-/**
  * rrmInitialize
  *
  * FUNCTION:
@@ -1265,6 +1227,8 @@ rrmInitialize(tpAniSirGlobal pMac)
    pRRMCaps->BeaconActive = 1;
    pRRMCaps->BeaconTable = 1;
    pRRMCaps->APChanReport = 1;
+   pRRMCaps->fine_time_meas_rpt = 1;
+   pRRMCaps->lci_capability = 1;
 
    pRRMCaps->operatingChanMax = 3;
    pRRMCaps->nonOperatingChanMax = 3;
@@ -1335,8 +1299,29 @@ void rrmProcessMessage(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
       case eWNI_SME_BEACON_REPORT_RESP_XMIT_IND:
          rrmProcessBeaconReportXmit( pMac, pMsg->bodyptr );
          break;
+      default:
+         limLog(pMac, LOGE, FL("Invalid msg type:%d"), pMsg->type);
    }
 
 }
 
+/**
+ * lim_update_rrm_capability() - Update PE context's rrm capability
+ * @mac_ctx: Global pointer to MAC context
+ * @join_req: Pointer to SME join request.
+ *
+ * Update PE context's rrm capability based on SME join request.
+ *
+ * Return: None
+ */
+void lim_update_rrm_capability(tpAniSirGlobal mac_ctx,
+                                      tpSirSmeJoinReq join_req)
+{
+	mac_ctx->rrm.rrmPEContext.rrmEnable = join_req->rrm_config.rrm_enabled;
+	vos_mem_copy(&mac_ctx->rrm.rrmPEContext.rrmEnabledCaps,
+		     &join_req->rrm_config.rm_capability,
+		     RMENABLEDCAP_MAX_LEN);
+
+	return;
+}
 #endif

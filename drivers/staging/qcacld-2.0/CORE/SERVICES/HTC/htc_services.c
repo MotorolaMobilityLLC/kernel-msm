@@ -269,8 +269,38 @@ A_STATUS HTCConnectService(HTC_HANDLE               HTCHandle,
                                      &pEndpoint->ul_is_polled,
                                      &pEndpoint->dl_is_polled);
         if (A_FAILED(status)) {
+            AR_DEBUG_PRINTF(ATH_DEBUG_ERROR,("%s Failed to Map Service to Pipe\n",
+                       __func__));
             break;
         }
+
+#if defined(HIF_SDIO)
+        /*
+         When AltDataCreditSize is non zero, it indicates the credit size for
+         HTT and all other services on Mbox0. Mbox1 has WMI_CONTROL_SVC which
+         uses the default credit size. Use AltDataCreditSize only when mailbox
+         is swapped. Mailbox swap bit is set by bmi_target_ready at the end of
+         BMI phase.
+
+         The Credit Size is a parameter associated with the mbox rather than a
+         service. Multiple services can run on this mbox.
+
+         If AltDataCreditSize is 0, that means the firmware doesn't support
+         this feature. Default to the TargetCreditSize
+        */
+
+        if ((target->AltDataCreditSize) && HIFIsMailBoxSwapped(target->hif_dev)
+            && (pEndpoint->UL_PipeID == 1) && (pEndpoint->DL_PipeID == 0))
+            pEndpoint->TxCreditSize = target->AltDataCreditSize;
+#elif defined(HIF_USB)
+        /*
+         * Endpoing to pipe is one-to-one mapping in USB.
+         * If AltDataCreditSize is not zero, it indicates the credit size for
+         * HTT_DATA_MSG_SVC services use AltDataCrditSize.
+         */
+        if ((target->AltDataCreditSize) && (pEndpoint->ServiceID == HTT_DATA_MSG_SVC))
+            pEndpoint->TxCreditSize = target->AltDataCreditSize;
+#endif
 
         adf_os_assert(!pEndpoint->dl_is_polled); /* not currently supported */
 

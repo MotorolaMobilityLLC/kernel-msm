@@ -92,6 +92,9 @@ regdm_op_class_map_t global_op_class[] = {
 	{125, 20, BW20,      {149, 153, 157, 161, 165, 169}},
 	{126, 40, BW40_LOW_PRIMARY,  {149, 157}},
 	{127, 40, BW40_HIGH_PRIMARY, {153, 161}},
+	{128, 80, BW80,      {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108,
+				112, 116, 120, 124, 128, 132, 136, 140, 144,
+				149, 153, 157, 161}},
 	{0, 0, 0, {0}},
 };
 
@@ -99,19 +102,23 @@ regdm_op_class_map_t global_op_class[] = {
 regdm_op_class_map_t us_op_class[] = {
 	{1, 20,  BW20,      {36, 40, 44, 48}},
 	{2, 20,  BW20,      {52, 56, 60, 64}},
-	{4, 20,  BW20,   {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140}},
+	{4, 20,  BW20,   {100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140,
+				144}},
 	{5, 20,  BW20,      {149, 153, 157, 161, 165}},
 	{12, 25, BW20,      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}},
 	{22, 40, BW40_LOW_PRIMARY,  {36, 44}},
 	{23, 40, BW40_LOW_PRIMARY,  {52, 60}},
-	{24, 40, BW40_LOW_PRIMARY,  {100, 108, 116, 124, 132}},
+	{24, 40, BW40_LOW_PRIMARY,  {100, 108, 116, 124, 132, 140}},
 	{26, 40, BW40_LOW_PRIMARY,  {149, 157}},
 	{27, 40, BW40_HIGH_PRIMARY, {40, 48}},
 	{28, 40, BW40_HIGH_PRIMARY, {56, 64}},
-	{29, 40, BW40_HIGH_PRIMARY, {104, 112, 120, 128, 136}},
+	{29, 40, BW40_HIGH_PRIMARY, {104, 112, 120, 128, 136, 144}},
 	{31, 40, BW40_HIGH_PRIMARY, {153, 161}},
 	{32, 40, BW40_LOW_PRIMARY,  {1, 2, 3, 4, 5, 6, 7}},
 	{33, 40, BW40_HIGH_PRIMARY, {5, 6, 7, 8, 9, 10, 11}},
+	{128, 80, BW80,      {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108,
+				112, 116, 120, 124, 128, 132, 136, 140, 144,
+				149, 153, 157, 161}},
 	{0, 0, 0, {0}},
 };
 
@@ -130,6 +137,8 @@ regdm_op_class_map_t euro_op_class[] = {
 	{11, 40, BW40_LOW_PRIMARY,  {1, 2, 3, 4, 5, 6, 7, 8, 9}},
 	{12, 40, BW40_HIGH_PRIMARY, {5, 6, 7, 8, 9, 10, 11, 12, 13}},
 	{17, 20, BW20,      {149, 153, 157, 161, 165, 169}},
+	{128, 80, BW80,     {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112,
+				116, 120, 124, 128}},
 	{0, 0, 0, {0}},
 };
 
@@ -146,6 +155,8 @@ regdm_op_class_map_t japan_op_class[] = {
 	{41, 40, BW40_HIGH_PRIMARY, {40, 48}},
 	{42, 40, BW40_HIGH_PRIMARY, {56, 64}},
 	{44, 40, BW40_HIGH_PRIMARY, {104, 112, 120, 128, 136}},
+	{128, 80, BW80,     {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112,
+				116, 120, 124, 128}},
 	{0, 0, 0, {0}},
 };
 
@@ -541,8 +552,33 @@ void regdmn_get_ctl_info(struct regulatory *reg, u_int32_t modesAvail,
 		if (rd == regdomain5G)
 			ctl_5g = ctl;
 	}
+
+	/* save the ctl information for future reference */
+	reg->ctl_5g = ctl_5g;
+	reg->ctl_2g = ctl_2g;
+
 	wma_send_regdomain_info(reg->reg_domain, regpair->regDmn2GHz,
 				regpair->regDmn5GHz, ctl_2g, ctl_5g);
+}
+
+/* regdmn_set_dfs_region() - to set the dfs region to wma
+ *
+ * @reg: the regulatory handle
+ *
+ * Return: none
+ */
+void regdmn_set_dfs_region(struct regulatory *reg)
+{
+	void *vos_context = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
+	tp_wma_handle wma = vos_get_context(VOS_MODULE_ID_WDA, vos_context);
+
+	if (!wma) {
+		WMA_LOGE("%s: Unable to get WMA handle", __func__);
+		return;
+	}
+
+	WMA_LOGE("%s: dfs_region: %d", __func__, reg->dfs_region);
+	wma_set_dfs_regdomain(wma, reg->dfs_region);
 }
 
 void regdmn_set_regval(struct regulatory *reg)
@@ -599,6 +635,40 @@ u_int16_t get_regdmn_5g(u_int32_t reg_dmn)
 	}
 	adf_os_print("%s: invalid regulatory domain/country code 0x%x\n",
 		     __func__, reg_dmn);
+	return 0;
+}
+
+/*
+ *  Get channel width from a given operating class
+ */
+u_int16_t regdm_get_chanwidth_from_opclass(u_int8_t *country, u_int8_t channel,
+       u_int8_t opclass)
+{
+	regdm_op_class_map_t *class = NULL;
+	u_int16_t i;
+
+	if (0 == adf_os_mem_cmp(country,"US", 2)) {
+		class = us_op_class;
+	} else if (0 == adf_os_mem_cmp(country,"EU", 2)) {
+		class = euro_op_class;
+	} else if (0 == adf_os_mem_cmp(country,"JP", 2)) {
+		class = japan_op_class;
+	} else {
+		class = global_op_class;
+	}
+
+	while (class->op_class) {
+		if (opclass == class->op_class) {
+			for (i = 0;
+			        (i < MAX_CHANNELS_PER_OPERATING_CLASS &&
+			         class->channels[i]);
+			         i++) {
+				if (channel == class->channels[i])
+					return class->ch_spacing;
+			}
+		}
+		class++;
+	}
 	return 0;
 }
 

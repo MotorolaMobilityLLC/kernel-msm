@@ -307,7 +307,10 @@ VOS_STATUS vos_wake_lock_release(vos_wake_lock_t *pLock, uint32_t reason);
   ------------------------------------------------------------------------*/
 VOS_STATUS vos_wake_lock_destroy(vos_wake_lock_t *pLock);
 
-VOS_STATUS vos_runtime_pm_prevent_suspend(void);
-VOS_STATUS vos_runtime_pm_allow_suspend(void);
-VOS_STATUS vos_runtime_pm_prevent_suspend_timeout(unsigned int msec);
+VOS_STATUS vos_runtime_pm_prevent_suspend(runtime_pm_context_t context);
+VOS_STATUS vos_runtime_pm_allow_suspend(runtime_pm_context_t context);
+VOS_STATUS vos_runtime_pm_prevent_suspend_timeout(runtime_pm_context_t context,
+						unsigned int msec);
+void *vos_runtime_pm_prevent_suspend_init(const char *);
+void vos_runtime_pm_prevent_suspend_deinit(runtime_pm_context_t);
 #endif // __VOSS_LOCK_H

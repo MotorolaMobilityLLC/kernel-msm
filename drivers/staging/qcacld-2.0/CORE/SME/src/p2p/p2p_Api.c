@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014,2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -38,6 +38,40 @@
 
 
 eHalStatus p2pProcessNoAReq(tpAniSirGlobal pMac, tSmeCmd *pNoACmd);
+
+/**
+ * csr_release_roc_req_cmd() - Release the command
+ * @mac_ctx: Global MAC Context
+ *
+ * Release the remain on channel request command from the queue
+ *
+ * Return: None
+ */
+void csr_release_roc_req_cmd(tpAniSirGlobal mac_ctx)
+{
+	tListElem *entry = NULL;
+	tSmeCmd *cmd = NULL;
+
+	entry = csrLLPeekHead(&mac_ctx->sme.smeCmdActiveList, LL_ACCESS_LOCK);
+	if (entry) {
+		cmd = GET_BASE_ADDR(entry, tSmeCmd, Link);
+		if (eSmeCommandRemainOnChannel == cmd->command) {
+			remainOnChanCallback callback =
+				cmd->u.remainChlCmd.callback;
+			/* process the msg */
+			if (callback)
+				callback(mac_ctx,
+					cmd->u.remainChlCmd.callbackCtx, 0);
+			smsLog(mac_ctx, LOGE,
+				FL("Remove RoC Request from Active Cmd List"));
+			/* Now put this cmd back on the avilable command list */
+			if (csrLLRemoveEntry(&mac_ctx->sme.smeCmdActiveList,
+					entry, LL_ACCESS_LOCK))
+				smeReleaseCommand(mac_ctx, cmd);
+		}
+	}
+}
+
 /*------------------------------------------------------------------
  *
  * handle SME remain on channel request.
@@ -46,7 +80,7 @@ eHalStatus p2pProcessNoAReq(tpAniSirGlobal pMac, tSmeCmd *pNoACmd);
 
 eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemainonChn)
 {
-    eHalStatus status = eHAL_STATUS_SUCCESS;
+    eHalStatus status = eHAL_STATUS_FAILURE;
     tSirRemainOnChnReq* pMsg;
     tANI_U32 len;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, p2pRemainonChn->sessionId );
@@ -54,7 +88,7 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
     if(!pSession)
     {
        smsLog(pMac, LOGE, FL("  session %d not found "), p2pRemainonChn->sessionId);
-       return eHAL_STATUS_FAILURE;
+       goto error;
     }
 
 
@@ -62,7 +96,7 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
     {
        smsLog(pMac, LOGE, FL("  session %d is invalid or listen is disabled "),
             p2pRemainonChn->sessionId);
-       return eHAL_STATUS_FAILURE;
+       goto error;
     }
     len = sizeof(tSirRemainOnChnReq) + pMac->p2pContext.probeRspIeLength;
 
@@ -71,12 +105,12 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
        /*In coming len for Msg is more then 16bit value*/
        smsLog(pMac, LOGE, FL("  Message length is very large, %d"),
             len);
-       return eHAL_STATUS_FAILURE;
+       goto error;
     }
 
     pMsg = vos_mem_malloc(len);
     if ( NULL == pMsg )
-        status = eHAL_STATUS_FAILURE;
+        goto error;
     else
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s call", __func__);
@@ -94,7 +128,9 @@ eHalStatus p2pProcessRemainOnChannelCmd(tpAniSirGlobal pMac, tSmeCmd *p2pRemaino
                         pMac->p2pContext.probeRspIeLength);
         status = palSendMBMessage(pMac->hHdd, pMsg);
     }
-
+error:
+    if (eHAL_STATUS_FAILURE == status)
+       csr_release_roc_req_cmd(pMac);
     return status;
 }
 
@@ -141,7 +177,7 @@ eHalStatus sme_remainOnChnRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
 
             if (fFound)
             {
-                //Now put this command back on the avilable command list
+                /* Now put this command back on the available command list */
                 smeReleaseCommand(pMac, pCommand);
             }
             smeProcessPendingQueue( pMac );
@@ -149,49 +185,6 @@ eHalStatus sme_remainOnChnRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
     }
     return status;
 }
-
-
-/*------------------------------------------------------------------
- *
- * Handle the Mgmt frm ind from LIM and forward to HDD.
- *
- *------------------------------------------------------------------*/
-
-eHalStatus sme_mgmtFrmInd( tHalHandle hHal, tpSirSmeMgmtFrameInd pSmeMgmtFrm)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    eHalStatus  status = eHAL_STATUS_SUCCESS;
-    tCsrRoamInfo pRoamInfo = {0};
-    tANI_U8 i = 0;
-    tANI_U32 SessionId = pSmeMgmtFrm->sessionId;
-
-    pRoamInfo.nFrameLength = pSmeMgmtFrm->mesgLen - sizeof(tSirSmeMgmtFrameInd);
-    pRoamInfo.pbFrames = pSmeMgmtFrm->frameBuf;
-    pRoamInfo.frameType = pSmeMgmtFrm->frameType;
-    pRoamInfo.rxChan   = pSmeMgmtFrm->rxChan;
-    pRoamInfo.rxRssi   = pSmeMgmtFrm->rxRssi;
-    if(CSR_IS_SESSION_ANY(SessionId))
-    {
-       for(i = 0; i < CSR_ROAM_SESSION_MAX; i++)
-       {
-          if(CSR_IS_SESSION_VALID(pMac, i))
-          {
-             SessionId = i;
-             break;
-          }
-       }
-    }
-
-    if (i == CSR_ROAM_SESSION_MAX) {
-        smsLog(pMac, LOGE, FL("No valid sessions found."));
-        return eHAL_STATUS_FAILURE;
-    }
-    /* forward the mgmt frame to HDD */
-    csrRoamCallCallback(pMac, SessionId, &pRoamInfo, 0, eCSR_ROAM_INDICATE_MGMT_FRAME, 0);
-
-    return status;
-}
-
 
 /*------------------------------------------------------------------
  *
@@ -361,7 +354,7 @@ eHalStatus p2pRemainOnChannel(tHalHandle hHal, tANI_U8 sessionId,
         pRemainChlCmd->u.remainChlCmd.callbackCtx = pContext;
 
         //Put it at the head of the Q if we just finish finding the peer and ready to send a frame
-        csrQueueSmeCommand(pMac, pRemainChlCmd, eANI_BOOLEAN_FALSE);
+        status = csrQueueSmeCommand(pMac, pRemainChlCmd, eANI_BOOLEAN_FALSE);
     } while(0);
 
     smsLog(pMac, LOGW, "exiting function %s", __func__);

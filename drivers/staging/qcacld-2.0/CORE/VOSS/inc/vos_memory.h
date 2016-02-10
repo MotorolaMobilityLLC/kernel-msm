@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -53,6 +53,7 @@
 v_VOID_t vos_mem_init(v_VOID_t);
 v_VOID_t vos_mem_exit(v_VOID_t);
 void vos_mem_clean(void);
+void vos_mem_trace_dump(int level);
 #endif
 
 /*--------------------------------------------------------------------------
@@ -82,7 +83,8 @@ void vos_mem_clean(void);
   --------------------------------------------------------------------------*/
 #ifdef MEMORY_DEBUG
 #define vos_mem_malloc(size) vos_mem_malloc_debug(size, __FILE__, __LINE__)
-v_VOID_t * vos_mem_malloc_debug( v_SIZE_t size, char* fileName, v_U32_t lineNum);
+v_VOID_t *vos_mem_malloc_debug(v_SIZE_t size, const char *fileName,
+					v_U32_t lineNum);
 #else
 v_VOID_t * vos_mem_malloc( v_SIZE_t size );
 #endif
@@ -209,7 +211,7 @@ v_VOID_t vos_mem_move( v_VOID_t *pDst, const v_VOID_t *pSrc, v_SIZE_t numBytes )
                        locations are equal or not equal.
 
   -------------------------------------------------------------------------------*/
-v_BOOL_t vos_mem_compare( v_VOID_t *pMemory1, v_VOID_t *pMemory2, v_U32_t numBytes );
+v_BOOL_t vos_mem_compare(const v_VOID_t *pMemory1, const v_VOID_t *pMemory2, v_U32_t numBytes );
 
 
 /** ---------------------------------------------------------------------------

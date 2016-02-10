@@ -75,7 +75,13 @@ struct cvg_nbuf_cb {
      * decremented, and ultimately freed once all the segments have been
      * freed.
      */
-    struct sk_buff *parent;
+    union {
+        struct sk_buff *parent;
+        void *ptr;
+#ifdef DEBUG_RX_RING_BUFFER
+        uint32_t map_index;
+#endif
+    } txrx_field;
 
     /*
      * Store the DMA mapping info for the network buffer fragments
@@ -83,6 +89,12 @@ struct cvg_nbuf_cb {
      */
     u_int32_t mapped_paddr_lo[CVG_NBUF_MAX_OS_FRAGS];
 
+    /*
+     * place tx_desc_id after mapped_paddr_lo to avoid cb length overflow
+     */
+#ifdef CONFIG_HL_SUPPORT
+    uint16_t tx_desc_id;
+#endif
     /* store extra tx fragments provided by the driver */
     struct {
         /* vaddr -
@@ -104,11 +116,13 @@ struct cvg_nbuf_cb {
              */
             wordstream_flags : CVG_NBUF_MAX_EXTRA_FRAGS+1;
     } extra_frags;
+#ifdef QCA_MDM_DEVICE
     uint32_t owner_id;
     __adf_nbuf_callback_fn adf_nbuf_callback_fn;
 #ifdef IPA_OFFLOAD
     unsigned long priv_data;
 #endif
+#endif /* QCA_MDM_DEVICE */
 #ifdef QCA_PKT_PROTO_TRACE
     unsigned char proto_type;
     unsigned char vdev_id;
@@ -118,6 +132,18 @@ struct cvg_nbuf_cb {
     unsigned char tx_htt2_reserved: 7;
 #endif /* QCA_TX_HTT2_SUPPORT */
 };
+
+#ifdef QCA_ARP_SPOOFING_WAR
+#define NBUF_CB_PTR(skb) \
+    (((struct cvg_nbuf_cb *)((skb)->cb))->txrx_field.ptr)
+#endif
+
+#ifdef DEBUG_RX_RING_BUFFER
+#define NBUF_MAP_ID(skb) \
+    (((struct cvg_nbuf_cb *)((skb)->cb))->txrx_field.map_index)
+#endif
+
+#ifdef QCA_MDM_DEVICE
 #define NBUF_OWNER_ID(skb) \
     (((struct cvg_nbuf_cb *)((skb)->cb))->owner_id)
 #ifdef IPA_OFFLOAD
@@ -128,6 +154,7 @@ struct cvg_nbuf_cb {
     (((struct cvg_nbuf_cb *)((skb)->cb))->adf_nbuf_callback_fn)
 #define NBUF_CALLBACK_FN_EXEC(skb) \
     (((struct cvg_nbuf_cb *)((skb)->cb))->adf_nbuf_callback_fn)(skb)
+#endif /* QCA_MDM_DEVICE */
 #define NBUF_MAPPED_PADDR_LO(skb) \
     (((struct cvg_nbuf_cb *)((skb)->cb))->mapped_paddr_lo[0])
 #define NBUF_NUM_EXTRA_FRAGS(skb) \
@@ -160,6 +187,11 @@ struct cvg_nbuf_cb {
 #define NBUF_SET_TX_HTT2_FRM(skb, candi)
 #define NBUF_GET_TX_HTT2_FRM(skb) 0
 #endif /* QCA_TX_HTT2_SUPPORT */
+
+#ifdef CONFIG_HL_SUPPORT
+#define NBUF_CB_ID(skb) \
+    (&((struct cvg_nbuf_cb *)((skb)->cb))->tx_desc_id)
+#endif
 
 #define __adf_nbuf_get_num_frags(skb)              \
     /* assume the OS provides a single fragment */ \
@@ -245,6 +277,10 @@ typedef struct __adf_nbuf_qhead {
  * prototypes. Implemented in adf_nbuf_pvt.c
  */
 __adf_nbuf_t    __adf_nbuf_alloc(__adf_os_device_t osdev, size_t size, int reserve, int align, int prio);
+#ifdef QCA_ARP_SPOOFING_WAR
+__adf_nbuf_t    __adf_rx_nbuf_alloc(__adf_os_device_t osdev, size_t size,
+        int reserve, int align, int prio);
+#endif
 void            __adf_nbuf_free (struct sk_buff *skb);
 void            __adf_nbuf_ref (struct sk_buff *skb);
 int             __adf_nbuf_shared (struct sk_buff *skb);
@@ -264,6 +300,8 @@ void            __adf_nbuf_dmamap_info(__adf_os_dma_map_t bmap, adf_os_dmamap_in
 void            __adf_nbuf_frag_info(struct sk_buff *skb, adf_os_sglist_t  *sg);
 void            __adf_nbuf_dmamap_set_cb(__adf_os_dma_map_t dmap, void *cb, void *arg);
 void            __adf_nbuf_reg_trace_cb(adf_nbuf_trace_update_t cb_func_ptr);
+a_status_t      __adf_nbuf_is_dhcp_pkt(struct sk_buff *skb);
+a_status_t      __adf_nbuf_is_eapol_pkt(struct sk_buff *skb);
 
 #ifdef QCA_PKT_PROTO_TRACE
 void

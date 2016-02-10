@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -113,15 +113,6 @@ eHalStatus pmcOpen (tHalHandle hHal)
         pmcLog(pMac, LOGE, FL("Cannot allocate timer for traffic measurement"));
         return eHAL_STATUS_FAILURE;
     }
-
-#ifdef FEATURE_WLAN_DIAG_SUPPORT
-    /* Allocate a timer used to report current PMC state through periodic DIAG event */
-    if (vos_timer_init(&pMac->pmc.hDiagEvtTimer, VOS_TIMER_TYPE_SW, pmcDiagEvtTimerExpired, hHal) != VOS_STATUS_SUCCESS)
-    {
-        pmcLog(pMac, LOGE, FL("Cannot allocate timer for diag event reporting"));
-        return eHAL_STATUS_FAILURE;
-    }
-#endif
 
     //Initialize the default value for Bmps related config.
     pMac->pmc.bmpsConfig.trafficMeasurePeriod = BMPS_TRAFFIC_TIMER_DEFAULT;
@@ -250,13 +241,6 @@ eHalStatus pmcStart (tHalHandle hHal)
                        sizeof(tSirMacHTMIMOPowerSaveState)) != eHAL_STATUS_SUCCESS)
         return eHAL_STATUS_FAILURE;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT
-    if (pmcStartDiagEvtTimer(hHal) != eHAL_STATUS_SUCCESS)
-    {
-       return eHAL_STATUS_FAILURE;
-    }
-#endif
-
 #if defined(ANI_LOGDUMP)
     pmcDumpInit(hHal);
 #endif
@@ -295,10 +279,6 @@ eHalStatus pmcStop (tHalHandle hHal)
     }
 
     pmcStopTrafficTimer(hHal);
-
-#ifdef FEATURE_WLAN_DIAG_SUPPORT
-    pmcStopDiagEvtTimer(hHal);
-#endif
 
     if (vos_timer_stop(&pMac->pmc.hExitPowerSaveTimer) != VOS_STATUS_SUCCESS)
     {
@@ -359,12 +339,6 @@ eHalStatus pmcClose (tHalHandle hHal)
     {
         pmcLog(pMac, LOGE, FL("Cannot deallocate traffic timer"));
     }
-#ifdef FEATURE_WLAN_DIAG_SUPPORT
-    if (vos_timer_destroy(&pMac->pmc.hDiagEvtTimer) != VOS_STATUS_SUCCESS)
-    {
-        pmcLog(pMac, LOGE, FL("Cannot deallocate timer for diag event reporting"));
-    }
-#endif
     if (vos_timer_destroy(&pMac->pmc.hExitPowerSaveTimer) != VOS_STATUS_SUCCESS)
     {
         pmcLog(pMac, LOGE, FL("Cannot deallocate exit power save mode timer"));
@@ -1111,7 +1085,7 @@ eHalStatus pmcRegisterPowerSaveCheck (tHalHandle hHal, tANI_BOOLEAN (*checkRouti
 * Name:  pmcDeregisterPowerSaveCheck
 *
 * Description:
-*    Reregisters a routine that was previously registered with
+*    Re-registers a routine that was previously registered with
 *    pmcRegisterPowerSaveCheck.
 *
 * Parameters:
@@ -1265,6 +1239,14 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             {
                 pmcLog(pMac, LOGE, FL("Response message to request to exit "
                    "IMPS indicates failure, status %x"), pMsg->statusCode);
+                if (eHAL_STATUS_SUCCESS ==
+                      pmcSendMessage(pMac, eWNI_PMC_EXIT_IMPS_REQ, NULL, 0)) {
+                    fRemoveCommand = eANI_BOOLEAN_FALSE;
+                    pMac->pmc.pmcState = REQUEST_FULL_POWER;
+                    pmcLog(pMac, LOGE, FL("eWNI_PMC_EXIT_IMPS_REQ sent again"
+                                          " to PE"));
+                    break;
+                }
             }
             pmcEnterFullPowerState(pMac);
         break;
@@ -1331,7 +1313,10 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
                 pmcLog(pMac, LOGP,
                        FL("Response message to request to exit BMPS indicates failure, status %x"),
                        pMsg->statusCode);
+                /*Status is not succes, so set back the pmc state as BMPS*/
+                pMac->pmc.pmcState = BMPS;
             }
+            else
             pmcEnterFullPowerState(pMac);
         break;
 
@@ -1494,7 +1479,7 @@ void pmcMessageProcessor (tHalHandle hHal, tSirSmeRsp *pMsg)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
 
-    pmcLog(pMac, LOG2, FL("Entering pmcMessageProcessor, message type %d"), pMsg->messageType);
+    pmcLog(pMac, LOG2, FL("Message type %d"), pMsg->messageType);
 
     switch( pMsg->messageType )
     {
@@ -1601,7 +1586,8 @@ tANI_BOOLEAN pmcAllowImps( tHalHandle hHal )
     //All sessions must be disconnected to allow IMPS
     if ( !csrIsAllSessionDisconnected( pMac ) )
     {
-       pmcLog(pMac, LOGW, "PMC: Atleast one connected session. IMPS cannot be entered");
+       pmcLog(pMac, LOGW,
+              "PMC: At-least one connected session. IMPS cannot be entered");
        return eANI_BOOLEAN_FALSE;
     }
 
@@ -1983,7 +1969,7 @@ eHalStatus pmcDeregisterDeviceStateUpdateInd (tHalHandle hHal,
     tListElem *pEntry;
     tpDeviceStateUpdateIndEntry pDeviceStateUpdateIndEntry;
 
-    pmcLog(pMac, LOG2, FL("Entering pmcDeregisterDeviceStateUpdateInd"));
+    pmcLog(pMac, LOG2, FL("Enter"));
 
     /* Find entry in the power save update routine list that matches
        the specified routine and remove it. */
@@ -2012,9 +1998,9 @@ eHalStatus pmcDeregisterDeviceStateUpdateInd (tHalHandle hHal,
     \fn pmcReady
     \brief  fn to inform PMC that eWNI_SME_SYS_READY_IND has been sent to PE.
             This acts as a trigger to send a message to PE to update the power
-            save related conig to FW. Note that if HDD configures any power save
-            related stuff before this API is invoked, PMC will buffer all the
-            configutaion.
+            save related config to FW. Note that if HDD configures any power
+            save related stuff before this API is invoked, PMC will buffer all
+            the configuration.
     \param  hHal - The handle returned by macOpen.
     \return eHalStatus
   ---------------------------------------------------------------------------*/
@@ -2061,7 +2047,6 @@ eHalStatus pmcWowlAddBcastPattern (
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
     vos_log_powersave_wow_add_ptrn_pkt_type *log_ptr = NULL;
-    WLAN_VOS_DIAG_LOG_ALLOC(log_ptr, vos_log_powersave_wow_add_ptrn_pkt_type, LOG_WLAN_POWERSAVE_WOW_ADD_PTRN_C);
 #endif //#ifdef FEATURE_WLAN_DIAG_SUPPORT
 
     pmcLog(pMac, LOG2, "PMC: entering pmcWowlAddBcastPattern");
@@ -2079,6 +2064,7 @@ eHalStatus pmcWowlAddBcastPattern (
     }
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
+    WLAN_VOS_DIAG_LOG_ALLOC(log_ptr, vos_log_powersave_wow_add_ptrn_pkt_type, LOG_WLAN_POWERSAVE_WOW_ADD_PTRN_C);
     if( log_ptr )
     {
        log_ptr->pattern_id = pattern->ucPatternId;
@@ -2095,10 +2081,10 @@ eHalStatus pmcWowlAddBcastPattern (
        /* 1 bit in the pattern mask denotes 1 byte of pattern. */
        vos_mem_copy(log_ptr->pattern_mask, pattern->ucPatternMask,
                      log_ptr->pattern_mask_size);
+       //The same macro frees the memory.
+       WLAN_VOS_DIAG_LOG_REPORT(log_ptr);
     }
 
-    //The same macro frees the memory.
-    WLAN_VOS_DIAG_LOG_REPORT(log_ptr);
 #endif
 
 
@@ -2230,33 +2216,37 @@ skip_pmc_state_transition:
 /* ---------------------------------------------------------------------------
     \fn pmcEnterWowl
     \brief  Request that the device be brought to full power state.
-            Note 1: If "fullPowerReason" specificied in this API is set to
-            eSME_FULL_PWR_NEEDED_BY_HDD, PMC will clear any "buffered wowl" requests
-            and also clear any "buffered BMPS requests by HDD". Assumption is that since
-            HDD is requesting full power, we need to undo any previous HDD requests for
-            BMPS (using sme_RequestBmps) or WoWL (using sme_EnterWoWL). If the reason is
-            specified anything other than above, the buffered requests for BMPS and WoWL
+            Note 1: If "fullPowerReason" specified in this API is set to
+            eSME_FULL_PWR_NEEDED_BY_HDD, PMC will clear any "buffered wowl"
+            requests and also clear any "buffered BMPS requests by HDD".
+            Assumption is that since HDD is requesting full power, we need to
+            undo any previous HDD requests for BMPS (using sme_RequestBmps) or
+            WoWL (using sme_EnterWoWL). If the reason is specified anything
+            other than above, the buffered requests for BMPS and WoWL
             will not be cleared.
-            Note 2: Requesting full power (no matter what the fullPowerReason is) doesn't
-            disable the "auto bmps timer" (if it is enabled) or clear any "buffered uapsd
-            request".
-            Note 3: When the device finally enters Full Power PMC will start a timer
-            if any of the following holds true:
+            Note 2: Requesting full power (no matter what the fullPowerReason
+            is) doesn't disable the "auto bmps timer" (if it is enabled) or
+            clear any "buffered uapsd request".
+            Note 3: When the device finally enters Full Power PMC will start
+            a timer if any of the following holds true:
             - Auto BMPS mode is enabled
             - Uapsd request is pending
             - HDD's request for BMPS is pending
             - HDD's request for WoWL is pending
-            On timer expiry PMC will attempt to put the device in BMPS mode if following
-            (in addition to those listed above) holds true:
+            On timer expiry PMC will attempt to put the device in BMPS mode
+            if following (in addition to those listed above) holds true:
             - Polling of all modules through the Power Save Check routine passes
             - STA is associated to an access point
     \param  hHal - The handle returned by macOpen.
-    \param  - enterWowlCallbackRoutine Callback routine invoked in case of success/failure
-    \param  - enterWowlCallbackContext -  Cookie to be passed back during callback
-    \param  - wakeReasonIndCB Callback routine invoked for Wake Reason Indication
+    \param  - enterWowlCallbackRoutine Callback routine invoked in case of
+              success/failure
+    \param  - enterWowlCallbackContext - Cookie to be passed back during
+              callback
+    \param  - wakeReasonIndCB Callback routine invoked for Wake Reason
+              Indication
     \param  - wakeReasonIndCBContext -  Cookie to be passed back during callback
-    \param  - fullPowerReason - Reason why this API is being invoked. SME needs to
-              distinguish between BAP and HDD requests
+    \param  - fullPowerReason - Reason why this API is being invoked. SME needs
+              to distinguish between BAP and HDD requests
     \return eHalStatus - status
      eHAL_STATUS_SUCCESS - device brought to full power state
      eHAL_STATUS_FAILURE - device cannot be brought to full power state
@@ -2339,7 +2329,7 @@ eHalStatus pmcEnterWowl (
    }
 
    /* Is there a pending UAPSD request? HDD should have triggered QoS
-      module to do the necessary cleanup before triggring WOWL*/
+      module to do the necessary cleanup before triggering WOWL*/
    if(pMac->pmc.uapsdSessionRequired)
    {
       pmcLog(pMac, LOGE, "PMC: Cannot request WOWL. Pending UAPSD request");
@@ -2480,7 +2470,7 @@ eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
     \param  hHal - The handle returned by macOpen.
     \param  pRequest - Pointer to the Keep Alive.
     \return eHalStatus
-            eHAL_STATUS_FAILURE  Cannot set the keepalive.
+            eHAL_STATUS_FAILURE  Cannot set the keep alive.
             eHAL_STATUS_SUCCESS  Request accepted.
   ---------------------------------------------------------------------------*/
 eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest, tANI_U8 sessionId)
@@ -2940,6 +2930,27 @@ eHalStatus pmcSetPreferredNetworkList
        pRequestBuf->sessionId = sessionId;
     }
 
+    if (csrIsAnySessionConnected(pMac)) {
+        /* if AP-STA concurrency is active */
+        pRequestBuf->active_max_time =
+            pMac->roam.configParam.nActiveMaxChnTimeConc;
+        pRequestBuf->active_min_time =
+            pMac->roam.configParam.nActiveMinChnTimeConc;
+        pRequestBuf->passive_max_time =
+            pMac->roam.configParam.nPassiveMaxChnTimeConc;
+        pRequestBuf->passive_min_time =
+            pMac->roam.configParam.nPassiveMinChnTimeConc;
+    } else {
+        pRequestBuf->active_max_time =
+            pMac->roam.configParam.nActiveMaxChnTime;
+        pRequestBuf->active_min_time =
+            pMac->roam.configParam.nActiveMinChnTime;
+        pRequestBuf->passive_max_time =
+            pMac->roam.configParam.nPassiveMaxChnTime;
+        pRequestBuf->passive_min_time =
+            pMac->roam.configParam.nPassiveMinChnTime;
+    }
+
     msg.type     = WDA_SET_PNO_REQ;
     msg.reserved = 0;
     msg.bodyptr  = pRequestBuf;
@@ -2958,36 +2969,6 @@ eHalStatus pmcSetPreferredNetworkList
 
     return eHAL_STATUS_SUCCESS;
 }
-
-eHalStatus pmcSetRssiFilter(tHalHandle hHal,   v_U8_t        rssiThreshold)
-{
-    tpSirSetRSSIFilterReq pRequestBuf;
-    vos_msg_t msg;
-
-
-    pRequestBuf = vos_mem_malloc(sizeof(tpSirSetRSSIFilterReq));
-    if (NULL == pRequestBuf)
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to allocate memory for PNO request", __func__);
-        return eHAL_STATUS_FAILED_ALLOC;
-    }
-
-
-    pRequestBuf->rssiThreshold = rssiThreshold;
-
-    msg.type = WDA_SET_RSSI_FILTER_REQ;
-    msg.reserved = 0;
-    msg.bodyptr = pRequestBuf;
-    if (!VOS_IS_STATUS_SUCCESS(vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to post WDA_SET_PNO_REQ message to WDA", __func__);
-        vos_mem_free(pRequestBuf);
-        return eHAL_STATUS_FAILURE;
-    }
-
-    return eHAL_STATUS_SUCCESS;
-}
-
 
 eHalStatus pmcUpdateScanParams(tHalHandle hHal, tCsrConfig *pRequest, tCsrChannel *pChannelList, tANI_U8 b11dResolved)
 {
@@ -3471,7 +3452,7 @@ eHalStatus pmcOffloadDeregisterPowerSaveCheck(tHalHandle hHal,
             else
             {
                 smsLog(pMac, LOGE,
-                       FL("Cannot remove powersave check routine list entry"));
+                       FL("Cannot remove power save check routine list entry"));
                 return eHAL_STATUS_FAILURE;
             }
             return eHAL_STATUS_SUCCESS;
@@ -3539,7 +3520,7 @@ eHalStatus pmcOffloadDeregisterDeviceStateUpdateInd(tHalHandle hHal,
                                  pEntry, FALSE))
             {
                 smsLog(pMac, LOGE,
-                    FL("Cannot remove devicestate update ind entry list"));
+                    FL("Cannot remove device state update ind entry list"));
                 return eHAL_STATUS_FAILURE;
             }
             vos_mem_free(pDeviceStateUpdateIndEntry);
@@ -3575,7 +3556,7 @@ eHalStatus PmcOffloadEnableStaModePowerSave(tHalHandle hHal,
         {
             /* Successfully Queued Enabling Sta Mode Ps Request */
             smsLog(pMac, LOG2,
-                   FL("Successfull Queued Enabling Sta Mode Ps Request"));
+                   FL("Successful Queued Enabling Sta Mode Ps Request"));
 
             pmc->configStaPsEnabled = TRUE;
             return eHAL_STATUS_SUCCESS;
@@ -3583,7 +3564,7 @@ eHalStatus PmcOffloadEnableStaModePowerSave(tHalHandle hHal,
         else
         {
             /* Failed to Queue Sta Mode Ps Request */
-            smsLog(pMac, LOGE,
+            smsLog(pMac, LOGW,
                    FL("Failed to Queue Sta Mode Ps Request"));
             return eHAL_STATUS_FAILURE;
         }
@@ -3593,10 +3574,10 @@ eHalStatus PmcOffloadEnableStaModePowerSave(tHalHandle hHal,
         /*
          * configStaPsEnabled is the master flag
          * to enable sta mode power save
-         * If it is already set Auto Powersave Timer
+         * If it is already set Auto Power save Timer
          * will take care of enabling Power Save
          */
-        smsLog(pMac, LOGE,
+        smsLog(pMac, LOGW,
                FL("sta mode power save already enabled"));
         return eHAL_STATUS_SUCCESS;
     }
@@ -3609,19 +3590,16 @@ eHalStatus PmcOffloadDisableStaModePowerSave(tHalHandle hHal,
     tpPsOffloadPerSessionInfo pmc = &pMac->pmcOffloadInfo.pmc[sessionId];
     eHalStatus status = eHAL_STATUS_SUCCESS;
 
-    if(pmc->configStaPsEnabled)
-    {
+    if (pmc->configStaPsEnabled) {
         status = pmcOffloadDisableStaPsHandler(pMac, sessionId);
-    }
-    else
-    {
+    } else {
         /*
          * configStaPsEnabled is the master flag
          * to enable sta mode power save
          * If it is already cleared then no need to
          * do anything
          */
-        smsLog(pMac, LOGE,
+        smsLog(pMac, LOGW,
                FL("sta mode power save already disabled"));
         /* Stop the Auto Sta Ps Timer if running */
         pmcOffloadStopAutoStaPsTimer(pMac, sessionId);

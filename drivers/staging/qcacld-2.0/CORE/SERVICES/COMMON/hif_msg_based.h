@@ -144,6 +144,9 @@ u_int16_t HIFGetMaxQueueNumber(HIF_DEVICE *hifDevice, u_int8_t PipeID);
 void HIFDumpInfo(HIF_DEVICE *hifDevice);
 void *hif_get_targetdef(HIF_DEVICE *hif_device);
 void HIFsuspendwow(HIF_DEVICE *hif_device);
+#if defined(HIF_SDIO) || defined(HIF_USB)
+void HIFSetBundleMode(HIF_DEVICE *hif_device, bool enabled, int rx_bundle_cnt);
+#endif
 
 #ifdef __cplusplus
 }

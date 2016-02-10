@@ -122,13 +122,16 @@ A_STATUS HIFDevSendBuffer(HIF_SDIO_DEVICE *pDev, unsigned int transferID, a_uint
     }
 
     /* Check whether head room is enough to save extra head data */
-    if ((head_data_len <= adf_nbuf_headroom(buf)) &&
+    if ((adf_nbuf_is_cloned(buf) != A_TRUE) &&
+		(head_data_len <= adf_nbuf_headroom(buf)) &&
                 (adf_nbuf_tailroom(buf) >= (paddedLength - nbytes))){
         pSendContext = (struct HIFSendContext*)adf_nbuf_push_head(buf, head_data_len);
         pSendContext->bNewAlloc = FALSE;
     } else {
         pSendContext = (struct HIFSendContext*)adf_os_mem_alloc(NULL,
                 sizeof(struct HIFSendContext) + paddedLength);
+        if (pSendContext == NULL)
+            return A_ERROR;
         pSendContext->bNewAlloc = TRUE;
     }
 

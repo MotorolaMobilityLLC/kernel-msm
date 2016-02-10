@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -422,9 +422,12 @@ PREPACK64 struct host_interest_s {
 #define DESC_IN_FW() \
         (HOST_INTEREST->hi_fw_swap & HI_DESC_IN_FW_BIT)
 
-#define HI_ACS_FLAGS_ENABLED        (1 << 0)    /* ACS is enabled */
-#define HI_ACS_FLAGS_USE_WWAN       (1 << 1)    /* Use physical WWAN device */
-#define HI_ACS_FLAGS_TEST_VAP       (1 << 2)    /* Use test VAP */
+#define HI_ACS_FLAGS_SDIO_SWAP_MAILBOX_SET          (1 << 0)
+#define HI_ACS_FLAGS_SDIO_REDUCE_TX_COMPL_SET       (1 << 1)
+#define HI_ACS_FLAGS_ALT_DATA_CREDIT_SIZE           (1 << 2)
+
+#define HI_ACS_FLAGS_SDIO_SWAP_MAILBOX_FW_ACK       (1 << 16)
+#define HI_ACS_FLAGS_SDIO_REDUCE_TX_COMPL_FW_ACK    (1 << 17)
 
 /* CONSOLE FLAGS
  *

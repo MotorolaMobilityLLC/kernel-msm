@@ -40,15 +40,21 @@
 #include <linux/mmc/sdio_ids.h>
 #include <linux/mmc/sdio.h>
 #include <linux/mmc/sd.h>
+#include "vos_cnss.h"
+#include "wlan_hdd_main.h"
+#include "wlan_nlink_common.h"
 #include "bmi_msg.h" /* TARGET_TYPE_ */
 #include "if_ath_sdio.h"
 #include "vos_api.h"
+#include "vos_sched.h"
+#include "regtable.h"
 
 #ifndef REMOVE_PKT_LOG
 #include "ol_txrx_types.h"
 #include "pktlog_ac_api.h"
 #include "pktlog_ac.h"
 #endif
+#include "ol_fw.h"
 #include "epping_main.h"
 
 #ifndef ATH_BUS_PM
@@ -69,6 +75,54 @@ extern void __hdd_wlan_exit(void);
 
 struct ath_hif_sdio_softc *sc = NULL;
 
+#ifdef CONFIG_CNSS_SDIO
+static void hif_crash_indication(void)
+{
+	if (vos_is_crash_indication_pending()) {
+		vos_set_crash_indication_pending(false);
+		wlan_hdd_send_svc_nlink_msg(WLAN_SVC_FW_CRASHED_IND, NULL, 0);
+	}
+}
+
+static inline void *hif_get_virt_ramdump_mem(unsigned long *size)
+{
+	return cnss_get_virt_ramdump_mem(size);
+}
+
+static inline void hif_release_ramdump_mem(unsigned long *address)
+{
+}
+#else
+static void hif_crash_indication(void)
+{
+}
+#ifndef TARGET_DUMP_FOR_NON_QC_PLATFORM
+static inline void *hif_get_virt_ramdump_mem(unsigned long *size)
+{
+	void *addr;
+	addr = ioremap(RAMDUMP_ADDR, RAMDUMP_SIZE);
+	if (addr)
+		*size = RAMDUMP_SIZE;
+	return addr;
+}
+
+static inline void hif_release_ramdump_mem(unsigned long *address)
+{
+	if (address)
+		iounmap(address);
+}
+#else
+static inline void *hif_get_virt_ramdump_mem(unsigned long *size)
+{
+	*size = 0;
+	return NULL;
+}
+
+static inline void hif_release_ramdump_mem(unsigned long *address)
+{
+}
+#endif
+#endif
 static A_STATUS
 ath_hif_sdio_probe(void *context, void *hif_handle)
 {
@@ -118,12 +172,20 @@ ath_hif_sdio_probe(void *context, void *hif_handle)
         target_type = TARGET_TYPE_AR9888;
 #elif defined(CONFIG_AR6320_SUPPORT)
         id = ((HIF_DEVICE*)hif_handle)->id;
-        if (id->device == MANUFACTURER_ID_QCA9377_BASE) {
+        if ((id->device & MANUFACTURER_ID_AR6K_BASE_MASK) == MANUFACTURER_ID_QCA9377_BASE) {
             hif_register_tbl_attach(HIF_TYPE_AR6320V2);
             target_register_tbl_attach(TARGET_TYPE_AR6320V2);
-        } else {
-            hif_register_tbl_attach(HIF_TYPE_AR6320);
-            target_register_tbl_attach(TARGET_TYPE_AR6320);
+        } else if ((id->device & MANUFACTURER_ID_AR6K_BASE_MASK) == MANUFACTURER_ID_AR6320_BASE) {
+            int ar6kid = id->device & MANUFACTURER_ID_AR6K_REV_MASK;
+            if (ar6kid >= 1) {
+                /* v2 or higher silicon */
+                hif_register_tbl_attach(HIF_TYPE_AR6320V2);
+                target_register_tbl_attach(TARGET_TYPE_AR6320V2);
+            } else {
+                /* legacy v1 silicon */
+                hif_register_tbl_attach(HIF_TYPE_AR6320);
+                target_register_tbl_attach(TARGET_TYPE_AR6320);
+            }
         }
         target_type = TARGET_TYPE_AR6320;
 
@@ -148,11 +210,16 @@ ath_hif_sdio_probe(void *context, void *hif_handle)
 
     ol_sc->hif_hdl = hif_handle;
 
-    ol_sc->ramdump_base = ioremap(RAMDUMP_ADDR, RAMDUMP_SIZE);
-    ol_sc->ramdump_size = RAMDUMP_SIZE;
-    if (ol_sc->ramdump_base == NULL) {
-        ol_sc->ramdump_base = 0;
-        ol_sc->ramdump_size = 0;
+    /* Get RAM dump memory address and size */
+    ol_sc->ramdump_base = hif_get_virt_ramdump_mem(&ol_sc->ramdump_size);
+    if (ol_sc->ramdump_base == NULL || !ol_sc->ramdump_size) {
+        VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
+            "%s: Failed to get RAM dump memory address or size!\n",
+            __func__);
+    } else {
+        VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
+            "%s: ramdump base 0x%p size %d\n",
+            __func__, ol_sc->ramdump_base, (int)ol_sc->ramdump_size);
     }
     init_waitqueue_head(&ol_sc->sc_osdev->event_queue);
 
@@ -162,37 +229,22 @@ ath_hif_sdio_probe(void *context, void *hif_handle)
         ret =  A_ERROR;
         goto err_attach1;
     }
-
-    ret = hdd_wlan_startup(&(func->dev), ol_sc);
+    ret = hif_init_adf_ctx(ol_sc);
+    if (ret == 0)
+        ret = hdd_wlan_startup(&(func->dev), ol_sc);
     if ( ret ) {
         VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_FATAL," hdd_wlan_startup failed");
         goto err_attach2;
     }else{
         VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO," hdd_wlan_startup success!");
+        hif_crash_indication();
     }
 
-	/* epping is minimum ethernet driver and the
-	 * epping fw does not support pktlog, etc.
-	 * After hdd_wladriver is epping directly return. */
-	if (WLAN_IS_EPPING_ENABLED(vos_get_conparam()))
-		goto end;
-
-#ifndef REMOVE_PKT_LOG
-    if (vos_get_conparam() != VOS_FTM_MODE) {
-        /*
-         * pktlog initialization
-         */
-        ol_pl_sethandle(&ol_sc->pdev_txrx_handle->pl_dev, ol_sc);
-
-        if (pktlogmod_init(ol_sc))
-            printk(KERN_ERR "%s: pktlogmod_init failed\n", __func__);
-    }
-#endif
-end:
     return 0;
 
 err_attach2:
     athdiag_procfs_remove();
+    hif_deinit_adf_ctx(ol_sc);
 err_attach1:
     A_FREE(ol_sc);
 err_attach:
@@ -231,7 +283,8 @@ ath_hif_sdio_remove(void *context, void *hif_handle)
 
     athdiag_procfs_remove();
 
-    iounmap(sc->ol_sc->ramdump_base);
+    if (sc && sc->ol_sc && sc->ol_sc->ramdump_base)
+        hif_release_ramdump_mem(sc->ol_sc->ramdump_base);
 
 #ifndef REMOVE_PKT_LOG
     if (vos_get_conparam() != VOS_FTM_MODE &&
@@ -245,6 +298,7 @@ ath_hif_sdio_remove(void *context, void *hif_handle)
     __hdd_wlan_exit();
 
     if (sc && sc->ol_sc){
+       hif_deinit_adf_ctx(sc->ol_sc);
        A_FREE(sc->ol_sc);
        sc->ol_sc = NULL;
     }
@@ -260,15 +314,15 @@ ath_hif_sdio_remove(void *context, void *hif_handle)
 static A_STATUS
 ath_hif_sdio_suspend(void *context)
 {
-    printk(KERN_INFO "ol_ath_sdio_suspend TODO\n");
-    return 0;
+	pr_debug("%s TODO\n", __func__);
+	return 0;
 }
 
 static A_STATUS
 ath_hif_sdio_resume(void *context)
 {
-    printk(KERN_INFO "ol_ath_sdio_resume ODO\n");
-    return 0;
+	pr_debug("%s TODO\n", __func__);
+	return 0;
 }
 
 static A_STATUS
@@ -287,7 +341,6 @@ static char *dev_info = "ath_hif_sdio";
 
 static int init_ath_hif_sdio(void)
 {
-    static int probed = 0;
     A_STATUS status;
     OSDRV_CALLBACKS osdrvCallbacks;
     ENTER();
@@ -300,11 +353,6 @@ static int init_ath_hif_sdio(void)
     osdrvCallbacks.deviceResumeHandler = ath_hif_sdio_resume;
     osdrvCallbacks.devicePowerChangeHandler = ath_hif_sdio_power_change;
 #endif
-
-    if (probed) {
-        return -ENODEV;
-    }
-    probed++;
 
     VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,"%s %d",__func__,__LINE__);
     status = HIFInit(&osdrvCallbacks);
@@ -336,21 +384,43 @@ void hif_unregister_driver(void)
    return ;
 }
 
-void hif_init_adf_ctx(adf_os_device_t adf_dev, void *ol_sc)
+int hif_init_adf_ctx(void *ol_sc)
 {
+   adf_os_device_t adf_ctx;
+   v_CONTEXT_t pVosContext = NULL;
    struct ol_softc *ol_sc_local = (struct ol_softc *)ol_sc;
    struct ath_hif_sdio_softc *hif_sc = ol_sc_local->hif_sc;
    ENTER();
-   adf_dev->drv = &hif_sc->aps_osdev;
-   adf_dev->dev = hif_sc->aps_osdev.device;
-   ol_sc_local->adf_dev = adf_dev;
+   pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+   if(pVosContext == NULL)
+      return -EFAULT;
+   adf_ctx = vos_mem_malloc(sizeof(*adf_ctx));
+   if (!adf_ctx)
+      return -ENOMEM;
+   vos_mem_zero(adf_ctx, sizeof(*adf_ctx));
+   adf_ctx->drv = &hif_sc->aps_osdev;
+   adf_ctx->dev = hif_sc->aps_osdev.device;
+   ol_sc_local->adf_dev = adf_ctx;
+   ((VosContextType*)(pVosContext))->adf_ctx = adf_ctx;
    EXIT();
+   return 0;
 }
 
 void hif_deinit_adf_ctx(void *ol_sc)
 {
    struct ol_softc *sc = (struct ol_softc *)ol_sc;
-   sc->adf_dev = NULL;
+
+   if (sc == NULL)
+      return;
+   if (sc->adf_dev) {
+      v_CONTEXT_t pVosContext = NULL;
+
+      pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+      vos_mem_free(sc->adf_dev);
+      sc->adf_dev = NULL;
+      if (pVosContext)
+         ((VosContextType*)(pVosContext))->adf_ctx = NULL;
+   }
 }
 
 /* Function to set the TXRX handle in the ol_sc context */
@@ -387,27 +457,23 @@ void hif_reset_soc(void *ol_sc)
 
 void hif_get_hw_info(void *ol_sc, u32 *version, u32 *revision)
 {
-    *version = ((struct ol_softc *)ol_sc)->target_version;
-    /* Chip revision should be supported, set to 0 for now */
-    *revision = 0;
+    struct ol_softc *ol_sc_local = (struct ol_softc *)ol_sc;
+    A_UINT32 chip_id = 0;
+    A_STATUS rv;
+    rv = HIFDiagReadAccess(ol_sc_local->hif_hdl,
+             (CHIP_ID_ADDRESS | RTC_SOC_BASE_ADDRESS), &chip_id);
+    if (rv != A_OK) {
+        pr_warn("%s[%d]: get chip id fail\n", __func__, __LINE__);
+        ol_sc_local->target_revision = -1;
+    } else {
+        ol_sc_local->target_revision =
+            CHIP_ID_REVISION_GET(chip_id);
+    }
+    *version = ol_sc_local->target_version;
+    *revision = ol_sc_local->target_revision;
 }
 
 void hif_set_fw_info(void *ol_sc, u32 target_fw_version)
 {
     ((struct ol_softc *)ol_sc)->target_fw_version = target_fw_version;
-}
-
-int hif_pm_runtime_prevent_suspend(void *ol_sc)
-{
-    return 0;
-}
-
-int hif_pm_runtime_allow_suspend(void *ol_sc)
-{
-    return 0;
-}
-
-int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
-{
-        return 0;
 }

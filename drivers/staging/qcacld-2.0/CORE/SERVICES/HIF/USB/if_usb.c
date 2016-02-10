@@ -29,6 +29,7 @@
 #include <linux/slab.h>
 #include <linux/interrupt.h>
 #include <linux/if_arp.h>
+#include <linux/usb/hcd.h>
 #include "if_usb.h"
 #include "hif_usb_internal.h"
 #include "bmi_msg.h"		/* TARGET_TYPE_ */
@@ -39,11 +40,7 @@
 #include "wma_api.h"
 #include "wlan_hdd_main.h"
 #include "epping_main.h"
-
-#ifdef WLAN_BTAMP_FEATURE
-#include "wlan_btc_svc.h"
-#include "wlan_nlink_common.h"
-#endif
+#include "vos_sched.h"
 
 #ifndef REMOVE_PKT_LOG
 #include "ol_txrx_types.h"
@@ -116,6 +113,44 @@ static int hif_usb_reboot(struct notifier_block *nb, unsigned long val,
 	return NOTIFY_DONE;
 }
 
+/*
+ * Disable lpm feature of usb2.0.
+ */
+static int hif_usb_disable_lpm(struct usb_device *udev)
+{
+	struct usb_hcd *hcd;
+	int ret = -EPERM;
+	pr_info("Enter:%s,Line:%d\n", __func__, __LINE__);
+	if (!udev || !udev->bus) {
+		pr_err("Invalid input parameters\n");
+	} else {
+		hcd = bus_to_hcd(udev->bus);
+		if (udev->usb2_hw_lpm_enabled) {
+			if (hcd->driver->set_usb2_hw_lpm) {
+				ret = hcd->driver->set_usb2_hw_lpm(hcd,
+							udev, FALSE);
+				if (!ret) {
+					udev->usb2_hw_lpm_enabled = FALSE;
+					udev->usb2_hw_lpm_capable = FALSE;
+					pr_info("%s: LPM is disabled\n",
+								__func__);
+				} else {
+					pr_info("%s: Fail to disable LPM\n",
+								__func__);
+				}
+			} else {
+				pr_info("%s: hcd doesn't support LPM\n",
+							__func__);
+			}
+		} else {
+			pr_info("%s: LPM isn't enabled\n", __func__);
+		}
+	}
+
+	pr_info("Exit:%s,Line:%d\n", __func__, __LINE__);
+	return ret;
+}
+
 static int
 hif_usb_probe(struct usb_interface *interface, const struct usb_device_id *id)
 {
@@ -163,6 +198,8 @@ hif_usb_probe(struct usb_interface *interface, const struct usb_device_id *id)
 		pr_info("%s[%d]\n\r", __func__, __LINE__);
 	}
 	usb_set_interface(pdev, 0, 0);
+	/* disable lpm to avoid usb2.0 probe timeout */
+	hif_usb_disable_lpm(pdev);
 
 	if (hif_usb_configure(sc, &ol_sc->hif_hdl, interface))
 		goto err_config;
@@ -174,7 +211,9 @@ hif_usb_probe(struct usb_interface *interface, const struct usb_device_id *id)
 
 	init_waitqueue_head(&ol_sc->sc_osdev->event_queue);
 
-	ret = hdd_wlan_startup(&pdev->dev, ol_sc);
+	ret = hif_init_adf_ctx(ol_sc);
+	if (ret == 0)
+		ret = hdd_wlan_startup(&pdev->dev, ol_sc);
 	if (ret) {
 		hif_nointrs(sc);
 		if (sc->hif_device != NULL) {
@@ -183,27 +222,9 @@ hif_usb_probe(struct usb_interface *interface, const struct usb_device_id *id)
 		athdiag_procfs_remove();
 		goto err_config;
 	}
-	sc->hdd_removed = 0;
-	sc->hdd_removed_processing = 0;
+	atomic_set(&sc->hdd_removed, -1);
+	atomic_set(&sc->hdd_removed_processing, 0);
 	sc->hdd_removed_wait_cnt = 0;
-
-#ifndef REMOVE_PKT_LOG
-	if (vos_get_conparam() != VOS_FTM_MODE &&
-        !WLAN_IS_EPPING_ENABLED(vos_get_conparam())) {
-		/*
-		 * pktlog initialization
-		 */
-		ol_pl_sethandle(&ol_sc->pdev_txrx_handle->pl_dev, ol_sc);
-
-		if (pktlogmod_init(ol_sc))
-			pr_err("%s: pktlogmod_init failed\n", __func__);
-	}
-#endif
-
-#ifdef WLAN_BTAMP_FEATURE
-	/* Send WLAN UP indication to Nlink Service */
-	send_btc_nlink_msg(WLAN_MODULE_UP_IND, 0);
-#endif
 
 	sc->interface = interface;
 	sc->reboot_notifier.notifier_call = hif_usb_reboot;
@@ -213,6 +234,8 @@ hif_usb_probe(struct usb_interface *interface, const struct usb_device_id *id)
 	return 0;
 
 err_config:
+	hif_deinit_adf_ctx(ol_sc);
+	HIFDiagWriteCOLDRESET(sc->hif_device);
 	A_FREE(ol_sc);
 err_attach:
 	ret = -EIO;
@@ -227,6 +250,7 @@ err_alloc:
 static void hif_usb_remove(struct usb_interface *interface)
 {
 	HIF_DEVICE_USB *device = usb_get_intfdata(interface);
+	struct usb_device *udev = interface_to_usbdev(interface);
 	struct hif_usb_softc *sc = device->sc;
 	struct ol_softc *scn;
 
@@ -235,23 +259,34 @@ static void hif_usb_remove(struct usb_interface *interface)
 	 */
 	if (!sc)
 		return;
+
+	pr_info("Try to remove hif_usb!\n");
+
 	/* wait __hdd_wlan_exit until finished and no more than 4 seconds*/
-	while(usb_sc->hdd_removed_processing == 1 &&
+	while(atomic_read(&usb_sc->hdd_removed_processing) == 1 &&
 			usb_sc->hdd_removed_wait_cnt < 20) {
 		set_current_state(TASK_INTERRUPTIBLE);
 		schedule_timeout(msecs_to_jiffies(DELAY_INT_FOR_HDD_REMOVE));
 		set_current_state(TASK_RUNNING);
 		usb_sc->hdd_removed_wait_cnt ++;
 	}
-	/* do cold reset */
-	HIFDiagWriteCOLDRESET(sc->hif_device);
-	/* wait for target jump to boot code and finish the initialization */
+	atomic_set(&usb_sc->hdd_removed_processing, 1);
+
+	/* disable lpm to avoid following cold reset will
+	 *cause xHCI U1/U2 timeout
+	 */
+	usb_disable_lpm(udev);
+
+	/* wait for disable lpm */
 	set_current_state(TASK_INTERRUPTIBLE);
 	schedule_timeout(msecs_to_jiffies(DELAY_FOR_TARGET_READY));
 	set_current_state(TASK_RUNNING);
-	if (usb_sc->local_state.event != 0) {
+
+	/* do cold reset */
+	HIFDiagWriteCOLDRESET(sc->hif_device);
+
+	if (usb_sc->suspend_state) {
 		hif_usb_resume(usb_sc->interface);
-		usb_sc->local_state.event = 0;
 	}
 	unregister_reboot_notifier(&sc->reboot_notifier);
 	usb_put_dev(interface_to_usbdev(interface));
@@ -261,19 +296,30 @@ static void hif_usb_remove(struct usb_interface *interface)
 			   HIF_USB_UNLOAD_STATE_TARGET_RESET);
 	scn = sc->ol_sc;
 
-	if (usb_sc->hdd_removed == 0) {
-		usb_sc->hdd_removed_processing = 1;
+        /* The logp is set by target failure's ol_ramdump_handler.
+         * Coldreset occurs and do this disconnect cb, try to issue
+         * offline uevent to restart driver.
+         */
+        if (vos_is_logp_in_progress(VOS_MODULE_ID_VOSS, NULL)) {
+                /* dispatch 'offline' uevent to restart module */
+                kobject_uevent(&scn->adf_dev->dev->kobj, KOBJ_OFFLINE);
+                vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, FALSE);
+        }
+
+	if (atomic_inc_and_test(&usb_sc->hdd_removed)) {
 #ifndef REMOVE_PKT_LOG
-	if (vos_get_conparam() != VOS_FTM_MODE &&
-		!WLAN_IS_EPPING_ENABLED(vos_get_conparam()))
-		pktlogmod_exit(scn);
+		if (vos_get_conparam() != VOS_FTM_MODE &&
+			!WLAN_IS_EPPING_ENABLED(vos_get_conparam()))
+			pktlogmod_exit(scn);
 #endif
 		__hdd_wlan_exit();
-		usb_sc->hdd_removed_processing = 0;
-		usb_sc->hdd_removed = 1;
+		pr_info("Exit HDD wlan... done by %s\n", __func__);
 	}
+
 	hif_nointrs(sc);
 	HIF_USBDeviceDetached(interface, 1);
+	atomic_set(&usb_sc->hdd_removed_processing, 0);
+	hif_deinit_adf_ctx(scn);
 	A_FREE(scn);
 	A_FREE(sc);
 	usb_sc = NULL;
@@ -292,9 +338,8 @@ static int hif_usb_suspend(struct usb_interface *interface, pm_message_t state)
 	void *vos = vos_get_global_context(VOS_MODULE_ID_HIF, NULL);
 	v_VOID_t * temp_module;
 
-	if (vos == NULL)
-		return 0;
-	/* No need to send WMI_PDEV_SUSPEND_CMDID to FW if WOW is enabled */
+	printk("Enter:%s,Line:%d\n", __func__,__LINE__);
+
 	temp_module = vos_get_context(VOS_MODULE_ID_WDA, vos);
 	if (!temp_module) {
 		printk("%s: WDA module is NULL\n", __func__);
@@ -305,7 +350,7 @@ static int hif_usb_suspend(struct usb_interface *interface, pm_message_t state)
 		printk("%s: Scan in progress. Aborting suspend\n", __func__);
 		return (-1);
 	}
-	sc->local_state = state;
+
 	/* No need to send WMI_PDEV_SUSPEND_CMDID to FW if WOW is enabled */
 	if (wma_is_wow_mode_selected(temp_module)) {
 		if (wma_enable_wow_in_fw(temp_module, 0)) {
@@ -321,7 +366,11 @@ static int hif_usb_suspend(struct usb_interface *interface, pm_message_t state)
 			return -1;
 		}
 	}
+
+	sc->suspend_state = 1;
 	usb_hif_flush_all(device);
+
+	printk("Exit:%s,Line:%d\n", __func__,__LINE__);
 	return 0;
 }
 
@@ -336,20 +385,14 @@ static int hif_usb_resume(struct usb_interface *interface)
 	void *vos = vos_get_global_context(VOS_MODULE_ID_HIF, NULL);
 	v_VOID_t * temp_module;
 
-	if (vos == NULL)
-		return 0;
-	/* No need to send WMI_PDEV_SUSPEND_CMDID to FW if WOW is enabled */
+	printk("Enter:%s,Line:%d\n", __func__,__LINE__);
 	temp_module = vos_get_context(VOS_MODULE_ID_WDA, vos);
 	if (!temp_module) {
 		printk("%s: WDA module is NULL\n", __func__);
 		return (-1);
 	}
 
-	if (wma_check_scan_in_progress(temp_module)) {
-		printk("%s: Scan in progress. Aborting suspend\n", __func__);
-		return (-1);
-	}
-	sc->local_state.event = 0;
+	sc->suspend_state = 0;
 	usb_hif_start_recv_pipes(device);
 
 #ifdef USB_HIF_TEST_INTERRUPT_IN
@@ -363,7 +406,7 @@ static int hif_usb_resume(struct usb_interface *interface)
 		pr_warn("%s[%d]: fail\n", __func__, __LINE__);
 		return (-1);
 	}
-
+	printk("Exit:%s,Line:%d\n", __func__,__LINE__);
 	return 0;
 }
 
@@ -372,8 +415,9 @@ static int hif_usb_reset_resume(struct usb_interface *intf)
 	HIF_DEVICE_USB *device = usb_get_intfdata(intf);
 	struct hif_usb_softc *sc = device->sc;
 
+	printk("Enter:%s,Line:%d \n\r", __func__,__LINE__);
 	HIFDiagWriteCOLDRESET(sc->hif_device);
-
+	printk("Exit:%s,Line:%d \n\r", __func__,__LINE__);
 	return 0;
 }
 
@@ -397,20 +441,44 @@ struct usb_driver hif_usb_drv_id = {
 	.supports_autosuspend = true,
 };
 
-void hif_init_adf_ctx(adf_os_device_t adf_dev, void *ol_sc)
+int hif_init_adf_ctx(void *ol_sc)
 {
+	adf_os_device_t adf_ctx;
+	v_CONTEXT_t pVosContext = NULL;
 	struct ol_softc *sc = (struct ol_softc *)ol_sc;
 	struct hif_usb_softc *hif_sc = (struct hif_usb_softc *)sc->hif_sc;
-	adf_dev->drv = &hif_sc->aps_osdev;
-	adf_dev->drv_hdl = hif_sc->aps_osdev.bdev;
-	adf_dev->dev = hif_sc->aps_osdev.device;
-	sc->adf_dev = adf_dev;
+
+	pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+	if(pVosContext == NULL)
+		return -EFAULT;
+
+	adf_ctx = vos_mem_malloc(sizeof(*adf_ctx));
+	if (!adf_ctx)
+		return -ENOMEM;
+	vos_mem_zero(adf_ctx, sizeof(*adf_ctx));
+	adf_ctx->drv = &hif_sc->aps_osdev;
+	adf_ctx->drv_hdl = hif_sc->aps_osdev.bdev;
+	adf_ctx->dev = hif_sc->aps_osdev.device;
+	sc->adf_dev = adf_ctx;
+	((VosContextType*)(pVosContext))->adf_ctx = adf_ctx;
+	return 0;
 }
 
 void hif_deinit_adf_ctx(void *ol_sc)
 {
 	struct ol_softc *sc = (struct ol_softc *)ol_sc;
-	sc->adf_dev = NULL;
+
+	if (sc == NULL)
+		return;
+	if (sc->adf_dev) {
+		v_CONTEXT_t pVosContext = NULL;
+
+		pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+		vos_mem_free(sc->adf_dev);
+		sc->adf_dev = NULL;
+		if (pVosContext)
+			((VosContextType*)(pVosContext))->adf_ctx = NULL;
+	}
 }
 
 static int hif_usb_dev_notify(struct notifier_block *nb,
@@ -443,46 +511,68 @@ static struct notifier_block hif_usb_dev_nb = {
 static int is_usb_driver_register = 0;
 int hif_register_driver(void)
 {
+	int status = 0;
+	int probe_wait_cnt = 0;
 	is_usb_driver_register = 1;
 	init_waitqueue_head(&hif_usb_unload_event_wq);
 	atomic_set(&hif_usb_unload_state, HIF_USB_UNLOAD_STATE_NULL);
 	usb_register_notify(&hif_usb_dev_nb);
-	return usb_register(&hif_usb_drv_id);
+	status = usb_register(&hif_usb_drv_id);
+
+	/* wait for usb probe done, 2s at most*/
+	while(!usb_sc && probe_wait_cnt < 10) {
+		A_MSLEEP(200);
+		probe_wait_cnt++;
+	}
+
+	if (usb_sc && status == 0)
+		return 0;
+	else
+		return -1;
 }
 
 void hif_unregister_driver(void)
 {
 	if (is_usb_driver_register) {
 		long timeleft = 0;
+		pr_info("Try to unregister hif_driver\n");
 		if (usb_sc != NULL) {
 			/* wait __hdd_wlan_exit until finished and no more than
 			 * 4 seconds
 			 */
-			while(usb_sc->hdd_removed_processing == 1 &&
-					usb_sc->hdd_removed_wait_cnt < 20) {
+			while(usb_sc &&
+				atomic_read(&usb_sc->hdd_removed_processing) == 1 &&
+				usb_sc->hdd_removed_wait_cnt < 20) {
+				usb_sc->hdd_removed_wait_cnt ++;
 				set_current_state(TASK_INTERRUPTIBLE);
 				schedule_timeout(msecs_to_jiffies(
 						DELAY_INT_FOR_HDD_REMOVE));
 				set_current_state(TASK_RUNNING);
-				usb_sc->hdd_removed_wait_cnt ++;
-			}
-			if (usb_sc->local_state.event != 0) {
-				hif_usb_resume(usb_sc->interface);
-				usb_sc->local_state.event = 0;
 			}
 
-			if (usb_sc->hdd_removed == 0) {
-				usb_sc->hdd_removed_processing = 1;
+			/* usb_sc is freed by hif_usb_remove */
+			if (!usb_sc)
+				goto deregister;
+
+			atomic_set(&usb_sc->hdd_removed_processing, 1);
+
+			if (usb_sc->suspend_state) {
+				hif_usb_resume(usb_sc->interface);
+			}
+
+			if (atomic_inc_and_test(&usb_sc->hdd_removed)) {
 #ifndef REMOVE_PKT_LOG
-	            if (vos_get_conparam() != VOS_FTM_MODE &&
-		            !WLAN_IS_EPPING_ENABLED(vos_get_conparam()))
+				if (vos_get_conparam() != VOS_FTM_MODE &&
+					!WLAN_IS_EPPING_ENABLED(vos_get_conparam()))
 					pktlogmod_exit(usb_sc->ol_sc);
 #endif
 				__hdd_wlan_exit();
-				usb_sc->hdd_removed_processing = 0;
-				usb_sc->hdd_removed = 1;
+				pr_info("Exit HDD wlan... done by %s\n", __func__);
 			}
+			atomic_set(&usb_sc->hdd_removed_processing, 0);
 		}
+
+deregister:
 		is_usb_driver_register = 0;
 		atomic_set(&hif_usb_unload_state,
 			   HIF_USB_UNLOAD_STATE_DRV_DEREG);
@@ -501,6 +591,7 @@ void hif_unregister_driver(void)
 				timeleft);
 finish:
 		usb_unregister_notify(&hif_usb_dev_nb);
+		pr_info("hif_unregister_driver!!!!!!\n");
 	}
 }
 
@@ -545,6 +636,7 @@ void hif_get_hw_info(void *ol_sc, u32 *version, u32 *revision)
 					case AR6320_REV2_1_VERSION:
 					case AR6320_REV3_VERSION:
 					case AR6320_REV3_2_VERSION:
+					case QCA9377_REV1_1_VERSION:
 						hif_type = HIF_TYPE_AR6320V2;
 						target_type = TARGET_TYPE_AR6320V2;
 						break;
@@ -580,30 +672,6 @@ void hif_get_hw_info(void *ol_sc, u32 *version, u32 *revision)
 void hif_set_fw_info(void *ol_sc, u32 target_fw_version)
 {
 	((struct ol_softc *)ol_sc)->target_fw_version = target_fw_version;
-}
-
-int hif_pm_runtime_prevent_suspend(void *ol_sc)
-{
-	if (usb_sc && usb_sc->interface)
-		return usb_autopm_get_interface_async(usb_sc->interface);
-	else {
-		pr_err("%s: USB interface isn't ready for autopm\n", __func__);
-		return 0;
-	}
-}
-
-int hif_pm_runtime_allow_suspend(void *ol_sc)
-{
-	if (usb_sc && usb_sc->interface)
-		usb_autopm_put_interface_async(usb_sc->interface);
-	else
-		pr_err("%s: USB interface isn't ready for autopm\n", __func__);
-	return 0;
-}
-
-int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
-{
-        return 0;
 }
 
 MODULE_LICENSE("Dual BSD/GPL");

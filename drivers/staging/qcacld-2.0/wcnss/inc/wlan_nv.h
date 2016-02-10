@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012, 2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -286,6 +286,23 @@ typedef enum
     RF_CHAN_161,
     RF_CHAN_165,
 
+    // 802.11p
+    RF_CHAN_170,
+    RF_CHAN_171,
+    RF_CHAN_172,
+    RF_CHAN_173,
+    RF_CHAN_174,
+    RF_CHAN_175,
+    RF_CHAN_176,
+    RF_CHAN_177,
+    RF_CHAN_178,
+    RF_CHAN_179,
+    RF_CHAN_180,
+    RF_CHAN_181,
+    RF_CHAN_182,
+    RF_CHAN_183,
+    RF_CHAN_184,
+
     //CHANNEL BONDED CHANNELS
     RF_CHAN_BOND_3,
     RF_CHAN_BOND_4,
@@ -332,11 +349,11 @@ typedef enum
     MAX_2_4GHZ_CHANNEL = RF_CHAN_14,
 
     MIN_5GHZ_CHANNEL = RF_CHAN_240,
-    MAX_5GHZ_CHANNEL = RF_CHAN_165,
+    MAX_5GHZ_CHANNEL = RF_CHAN_184,
     NUM_5GHZ_CHANNELS = (MAX_5GHZ_CHANNEL - MIN_5GHZ_CHANNEL + 1),
 
     MIN_20MHZ_RF_CHANNEL = RF_CHAN_1,
-    MAX_20MHZ_RF_CHANNEL = RF_CHAN_165,
+    MAX_20MHZ_RF_CHANNEL = RF_CHAN_184,
     NUM_20MHZ_RF_CHANNELS = (MAX_20MHZ_RF_CHANNEL - MIN_20MHZ_RF_CHANNEL + 1),
 
     MIN_40MHZ_RF_CHANNEL = RF_CHAN_BOND_3,
@@ -440,10 +457,10 @@ typedef PACKED_PRE struct PACKED_POST
     uint8     nv_TxBBFSel9MHz       : 1;
     uint8     hwParam1              : 7;
     uint8     hwParam2;
-    
+
     uint16    custom_tcxo_reg8;
     uint16    custom_tcxo_reg9;
-    
+
     uint32    hwParam3;
     uint32    hwParam4;
     uint32    hwParam5;
@@ -598,7 +615,7 @@ typedef enum
 #ifdef WCN_PRONTO
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_NGI_86_5_MBPS,
 #endif
-    
+
     /*11AC rate 20MHZ Shortl GI*/
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_SGI_7_2_MBPS,
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_SGI_14_4_MBPS,
@@ -612,7 +629,7 @@ typedef enum
 #ifdef WCN_PRONTO
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_SGI_96_1_MBPS,
 #endif
-    
+
     /*11AC rates 40MHZ normal GI*/
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_NGI_13_5_MBPS ,
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_NGI_27_MBPS,
@@ -624,7 +641,7 @@ typedef enum
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_NGI_135_MBPS,
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_NGI_162_MBPS,
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_NGI_180_MBPS,
-    
+
     /*11AC rates 40MHZ short GI*/
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_SGI_15_MBPS ,
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_SGI_30_MBPS,
@@ -636,7 +653,7 @@ typedef enum
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_SGI_150_MBPS,
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_SGI_180_MBPS,
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_SGI_200_MBPS,
-    
+
     /*11AC rates 80 MHZ normal GI*/
     HAL_PHY_RATE_VHT_80MHZ_MCS_1NSS_CB_NGI_29_3_MBPS ,
     HAL_PHY_RATE_VHT_80MHZ_MCS_1NSS_CB_NGI_58_5_MBPS,
@@ -648,7 +665,7 @@ typedef enum
     HAL_PHY_RATE_VHT_80MHZ_MCS_1NSS_CB_NGI_292_5_MBPS,
     HAL_PHY_RATE_VHT_80MHZ_MCS_1NSS_CB_NGI_351_MBPS,
     HAL_PHY_RATE_VHT_80MHZ_MCS_1NSS_CB_NGI_390_MBPS,
-    
+
     /*11AC rates 80 MHZ short GI*/
     HAL_PHY_RATE_VHT_80MHZ_MCS_1NSS_CB_SGI_32_5_MBPS ,
     HAL_PHY_RATE_VHT_80MHZ_MCS_1NSS_CB_SGI_65_MBPS,
@@ -705,7 +722,7 @@ typedef PACKED_PRE struct PACKED_POST
 
 typedef PACKED_PRE struct PACKED_POST
 {
-    uint8 skuID; 
+    uint8 skuID;
     uint8 tpcMode2G;
     uint8 tpcMode5G;
     uint8 configItem1;

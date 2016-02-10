@@ -406,7 +406,11 @@ typedef int ( *HIF_MASK_UNMASK_RECV_EVENT)(HIF_DEVICE  *device,
                                                 bool    Mask,
                                                 void   *AsyncContext);
 
-
+#ifdef HIF_MBOX_SLEEP_WAR
+/* This API is used to update the target sleep state */
+void
+HIFSetMboxSleep(HIF_DEVICE *device, bool sleep, bool wait, bool cache);
+#endif
 /*
  * This API is used to perform any global initialization of the HIF layer
  * and to set OS driver callbacks (i.e. insertion/removal) to the HIF layer
@@ -425,6 +429,14 @@ void HIFReleaseDevice(HIF_DEVICE *device);
 int HIFAttachHTC(HIF_DEVICE *device, HTC_CALLBACKS *callbacks);
 /* This API detaches the HTC layer from the HIF device */
 void     HIFDetachHTC(HIF_DEVICE *device);
+
+A_STATUS
+HIFSyncRead(HIF_DEVICE *device,
+               A_UINT32 address,
+               A_UCHAR *buffer,
+               A_UINT32 length,
+               A_UINT32 request,
+               void *context);
 
 /*
  * This API is used to provide the read/write interface over the specific bus
@@ -813,6 +825,18 @@ void HIFIpaGetCEResource(HIF_DEVICE *hif_device,
                           A_UINT32 *ce_reg_paddr);
 #endif /* IPA_UC_OFFLOAD */
 
+void HIFSetMailboxSwap(HIF_DEVICE  *device);
+
+int hif_register_driver(void);
+void hif_unregister_driver(void);
+/* The API's check if FW can be suspended as part of cfg80211 suspend.
+ * This is done for SDIO drivers, for other bus types it's NO OP, they
+ * enable/disable wow in bus suspend callback.
+ * In SDIO driver bus suspend host will configure 4 bit sdio mode to
+ * 1 bit sdio mode and set the appropriate host flags.
+ */
+bool hif_is_80211_fw_wow_required(void);
+
 #ifdef FEATURE_RUNTIME_PM
 /* Runtime power management API of HIF to control
  * runtime pm. During Runtime Suspend the get API
@@ -823,15 +847,34 @@ void HIFIpaGetCEResource(HIF_DEVICE *hif_device,
  */
 int hif_pm_runtime_get(HIF_DEVICE *);
 int hif_pm_runtime_put(HIF_DEVICE *);
+void *hif_runtime_pm_prevent_suspend_init(const char *);
+void hif_runtime_pm_prevent_suspend_deinit(void *data);
+int hif_pm_runtime_prevent_suspend(void *ol_sc, void *data);
+int hif_pm_runtime_allow_suspend(void *ol_sc, void *data);
+int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, void *data,
+						unsigned int delay);
 #else
 static inline int hif_pm_runtime_get(HIF_DEVICE *device) { return 0; }
 static inline int hif_pm_runtime_put(HIF_DEVICE *device) { return 0; }
+static inline int
+hif_pm_runtime_prevent_suspend(void *ol_sc, void *context) { return 0; }
+static inline int
+hif_pm_runtime_allow_suspend(void *ol_sc, void *context) { return 0; }
+static inline int
+hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, void *context,
+						unsigned int msec)
+{
+	return 0;
+}
+static inline void *
+hif_runtime_pm_prevent_suspend_init(const char *name) { return NULL; }
+static inline void
+hif_runtime_pm_prevent_suspend_deinit(void *context) { }
 #endif
-int hif_pm_runtime_prevent_suspend(void *ol_sc);
-int hif_pm_runtime_allow_suspend(void *ol_sc);
-int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay);
 #ifdef __cplusplus
 }
 #endif
+
+A_BOOL HIFIsMailBoxSwapped(HIF_DEVICE *hd);
 
 #endif /* _HIF_H_ */

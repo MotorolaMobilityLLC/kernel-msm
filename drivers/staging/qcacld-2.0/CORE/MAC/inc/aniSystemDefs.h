@@ -142,6 +142,13 @@ typedef struct sSirRSNie
     tANI_U8        rsnIEdata[SIR_MAC_MAX_IE_LENGTH+2];
 } tSirRSNie, *tpSirRSNie;
 
+/// WAPI IE information
+typedef struct sSirWAPIie
+{
+    tANI_U16       length;
+    tANI_U8        wapiIEdata[SIR_MAC_MAX_IE_LENGTH+2];
+} tSirWAPIie, *tpSirWAPIie;
+
 /// Additional IE information :
 /// This can include WSC IE, P2P IE, and/or FTIE from upper layer.
 /// MAC layer transparently convey these IE info between peer STA and upper layer,

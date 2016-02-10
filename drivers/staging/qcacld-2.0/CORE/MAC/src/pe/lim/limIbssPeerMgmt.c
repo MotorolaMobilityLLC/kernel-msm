@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -57,9 +57,9 @@
  *
  *FUNCTION:
  * This function is called while adding a context at
- * DPH & Polaris for a peer in IBSS.
+ * DPH for a peer in IBSS.
  * If peer is found in the list, capabilities from the
- * returned BSS description are used at DPH node & Polaris.
+ * returned BSS description are used at DPH node.
  *
  *LOGIC:
  *
@@ -263,7 +263,10 @@ ibss_sta_caps_update(
         if (pPeerNode->htCapable)
         {
             pStaDs->htGreenfield = pPeerNode->htGreenfield;
-            pStaDs->htSupportedChannelWidthSet =  pPeerNode->htSupportedChannelWidthSet;
+            pStaDs->htSupportedChannelWidthSet =
+                                      pPeerNode->htSupportedChannelWidthSet;
+            pStaDs->htSecondaryChannelOffset =
+                                         pPeerNode->htSecondaryChannelOffset;
             pStaDs->htMIMOPSState =             pPeerNode->htMIMOPSState;
             pStaDs->htMaxAmsduLength =  pPeerNode->htMaxAmsduLength;
             pStaDs->htAMpduDensity =             pPeerNode->htAMpduDensity;
@@ -292,14 +295,6 @@ ibss_sta_caps_update(
         }
     }
 #endif
-
-    if(IS_DOT11_MODE_PROPRIETARY(psessionEntry->dot11mode) &&
-      pPeerNode->aniIndicator)
-    {
-        pStaDs->aniPeer = pPeerNode->aniIndicator;
-        pStaDs->propCapability = pPeerNode->propCapability;
-    }
-
 
     // peer is 11e capable but is not 11e enabled yet
     // some STA's when joining Airgo IBSS, assert qos capability even when
@@ -366,12 +361,12 @@ ibss_sta_rates_update(
 #ifdef WLAN_FEATURE_11AC
     limPopulateMatchingRateSet(pMac, pStaDs, &pPeer->supportedRates,
                                &pPeer->extendedRates, pPeer->supportedMCSSet,
-                               &pStaDs->mlmStaContext.propRateSet,psessionEntry, &pPeer->VHTCaps);
+                               psessionEntry, &pPeer->VHTCaps);
 #else
     // Populate supported rateset
     limPopulateMatchingRateSet(pMac, pStaDs, &pPeer->supportedRates,
                                &pPeer->extendedRates, pPeer->supportedMCSSet,
-                               &pStaDs->mlmStaContext.propRateSet,psessionEntry);
+                               psessionEntry);
 #endif
 
     pStaDs->mlmStaContext.capabilityInfo = pPeer->capabilityInfo;
@@ -381,8 +376,7 @@ ibss_sta_rates_update(
  * ibss_sta_info_update
  *
  *FUNCTION:
- * This is called to program both SW & Polaris context
- * for peer in IBSS.
+ * This is called to program SW context for peer in IBSS.
  *
  *LOGIC:
  *
@@ -960,9 +954,9 @@ limIbssDecideProtection(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpUpdateBeaco
  *
  *FUNCTION:
  * This function is called while adding a context at
- * DPH & Polaris for a peer in IBSS.
+ * DPH for a peer in IBSS.
  * If peer is found in the list, capabilities from the
- * returned BSS description are used at DPH node & Polaris.
+ * returned BSS description are used at DPH node.
  *
  *LOGIC:
  *
@@ -1469,7 +1463,12 @@ limIbssCoalesce(
          */
         if ((pMac->lim.gLimNumIbssPeers+1) >= pMac->lim.gLimIbssStaLimit)
         {
-            PELOGE(limLog(pMac, LOGE, FL("**** MAX STA LIMIT HAS REACHED ****"));)
+            /*Print every 100th time */
+            if (pMac->lim.gLimIbssRetryCnt % 100 == 0)
+            {
+                PELOGE(limLog(pMac, LOG1, FL("**** MAX STA LIMIT HAS REACHED ****"));)
+            }
+            pMac->lim.gLimIbssRetryCnt++;
             return eSIR_LIM_MAX_STA_REACHED_ERROR;
         }
         PELOGW(limLog(pMac, LOGW, FL("IBSS Peer node does not exist, adding it***"));)
@@ -1482,6 +1481,9 @@ limIbssCoalesce(
                    frameLen);
             return eSIR_MEM_ALLOC_FAILED;
         }
+
+        /* Initialize all peer node properties to 0 */
+        vos_mem_zero(pPeerNode, frameLen);
 
         pPeerNode->beacon = NULL;
         pPeerNode->beaconLen = 0;

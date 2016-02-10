@@ -54,6 +54,13 @@
 #define NBUF_PKT_TRAC_MAX_STRING   12
 #define NBUF_PKT_TRAC_PROTO_STRING 4
 
+#define ADF_NBUF_TRAC_IPV4_OFFSET       14
+#define ADF_NBUF_TRAC_IPV4_HEADER_SIZE  20
+#define ADF_NBUF_TRAC_DHCP_SRV_PORT     67
+#define ADF_NBUF_TRAC_DHCP_CLI_PORT     68
+#define ADF_NBUF_TRAC_ETH_TYPE_OFFSET   12
+#define ADF_NBUF_TRAC_EAPOL_ETH_TYPE    0x888E
+
 /**
  * @brief Platform indepedent packet abstraction
  */
@@ -277,6 +284,32 @@ adf_nbuf_alloc(adf_os_device_t      osdev,
     return __adf_nbuf_alloc(osdev, size, reserve,align, prio);
 }
 
+#ifdef QCA_ARP_SPOOFING_WAR
+/**
+ * adf_rx_nbuf_alloc() Allocate adf_nbuf for Rx packet
+ *
+ * The nbuf created is guarenteed to have only 1 physical segment
+ *
+ * @hdl:   platform device object
+ * @size:  data buffer size for this adf_nbuf including max header
+ *                  size
+ * @reserve:  headroom to start with.
+ * @align:    alignment for the start buffer.
+ * @prio:   Indicate if the nbuf is high priority (some OSes e.g darwin
+ *                   polls few times if allocation fails and priority is  TRUE)
+ *
+ * Return: The new adf_nbuf instance or NULL if there's not enough memory.
+ */
+static inline adf_nbuf_t
+adf_rx_nbuf_alloc(adf_os_device_t      osdev,
+               adf_os_size_t        size,
+               int                  reserve,
+               int                  align,
+               int                  prio)
+{
+    return __adf_rx_nbuf_alloc(osdev, size, reserve,align, prio);
+}
+#endif
 
 /**
  * @brief Free adf_nbuf
@@ -1133,4 +1166,29 @@ adf_nbuf_get_tx_parallel_dnload_frm(adf_nbuf_t buf)
    return __adf_nbuf_get_tx_htt2_frm(buf);
 }
 
+/**
+ * @brief this will return if the skb data is a dhcp packet or not
+ *
+ * @param[in] buf       buffer
+ *
+ * @return A_STATUS_OK if packet is DHCP packet
+ */
+static inline a_status_t
+adf_nbuf_is_dhcp_pkt(adf_nbuf_t buf)
+{
+    return (__adf_nbuf_is_dhcp_pkt(buf));
+}
+
+/**
+ * @brief this will return if the skb data is a eapol packet or not
+ *
+ * @param[in] buf       buffer
+ *
+ * @return A_STATUS_OK if packet is EAPOL packet
+ */
+static inline a_status_t
+adf_nbuf_is_eapol_pkt(adf_nbuf_t buf)
+{
+    return (__adf_nbuf_is_eapol_pkt(buf));
+}
 #endif

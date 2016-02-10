@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -68,9 +68,6 @@
 #define ANI_HDD_PRE_DUMMY_PKT_SPL_PROC  2
 #define ANI_HDD_WNS_L2_UPDATE_SPL_PROC  3
 #define ANI_HDD_DUMMY_DATA              4
-#ifdef WMM_APSD
-#define ANI_HDD_EOSP_PKT                5
-#endif
 
 /// Message offset for the cmd to enqueue a dummy pkt to HDD TD ring
 #define ANI_DUMMY_PKT_MSG_TYPE_OFFSET    0
@@ -80,19 +77,6 @@
 #define ANI_DUMMY_PKT_RT_FL_OFFSET       12
 #define ANI_DUMMY_PKT_MSG_LEN            16
 #define ANI_DUMMY_DATA_PAYLOAD_OFFSET    10
-
-/**
- * Product IDs stored in the EEPROM for the different types of AP radio cards
- * supported by Polaris
- */
-#define AGN1323AR_00      4
-#define AGN1323AR_01      5
-#define AGN1223AR_00      6
-#define AGN1223AR_01      7
-#define AGN1223AR_02      8
-#define AGN_EEP_PRODUCT_ID_MAX   8
-
-
 
 
 /// Start of Sirius/Host message types
@@ -168,7 +152,7 @@ enum eWniMsgTypes
     eWNI_SME_SELECT_CHANNEL_RSP,
     eWNI_SME_SET_PROPRIETARY_IE_REQ,
     eWNI_SME_SET_PROPRIETARY_IE_RSP, // #endif
-    eWNI_SME_DISCARD_SKB_NTF,  // Used to cleanup SKBs by HDD
+    eWNI_SME_DISCARD_SKB_NTF,  /* Used to clean up SKBs by HDD */
     eWNI_SME_DEAUTH_CNF,
     eWNI_SME_MIC_FAILURE_IND,
     eWNI_SME_ADDTS_REQ,
@@ -206,8 +190,6 @@ enum eWniMsgTypes
     eWNI_SME_GET_STATISTICS_REQ,
     eWNI_SME_GET_STATISTICS_RSP,
     eWNI_SME_GET_RSSI_REQ,
-    eWNI_SME_GET_ROAM_RSSI_REQ,
-    eWNI_SME_GET_ROAM_RSSI_RSP,
     eWNI_SME_GET_ASSOC_STAS_REQ,
     eWNI_SME_TKIP_CNTR_MEAS_REQ,
     eWNI_SME_UPDATE_APWPSIE_REQ,
@@ -220,7 +202,6 @@ enum eWniMsgTypes
     eWNI_SME_REMAIN_ON_CHANNEL_REQ,
     eWNI_SME_REMAIN_ON_CHN_IND,
     eWNI_SME_REMAIN_ON_CHN_RSP,
-    eWNI_SME_MGMT_FRM_IND,
     eWNI_SME_REMAIN_ON_CHN_RDY_IND,
     eWNI_SME_SEND_ACTION_FRAME_IND,
     eWNI_SME_ACTION_FRAME_SEND_CNF,
@@ -311,8 +292,8 @@ enum eWniMsgTypes
 
     eWNI_SME_MAX_ASSOC_EXCEEDED,
 
-    eWNI_SME_BTAMP_LOG_LINK_IND,//to serialize the create/accpet LL req from HCI
-
+    /* To serialize the create/accept LL req from HCI */
+    eWNI_SME_BTAMP_LOG_LINK_IND,
 
 #ifdef WLAN_WAKEUP_EVENTS
     eWNI_SME_WAKE_REASON_IND,
@@ -335,11 +316,13 @@ enum eWniMsgTypes
     eWNI_SME_TDLS_SHOULD_TEARDOWN,
     eWNI_SME_TDLS_PEER_DISCONNECTED,
 #endif
-    //NOTE: If you are planning to add more mesages, please make sure that
-    //SIR_LIM_ITC_MSG_TYPES_BEGIN is moved appropriately. It is set as
-    //SIR_LIM_MSG_TYPES_BEGIN+0xB0 = 12B0 (which means max of 176 messages and
-    //eWNI_SME_TDLS_DEL_STA_RSP = 175.
-    //Should fix above issue to enable TDLS_INTERNAL
+    /*
+     * NOTE: If you are planning to add more messages, please make sure that
+     * SIR_LIM_ITC_MSG_TYPES_BEGIN is moved appropriately. It is set as
+     * SIR_LIM_MSG_TYPES_BEGIN+0xB0 = 12B0 (which means max of 176 messages and
+     * eWNI_SME_TDLS_DEL_STA_RSP = 175.
+     * Should fix above issue to enable TDLS_INTERNAL
+     */
     eWNI_SME_SET_BCN_FILTER_REQ,
     eWNI_SME_RESET_AP_CAPS_CHANGED,
 #ifdef WLAN_FEATURE_11W
@@ -372,7 +355,7 @@ enum eWniMsgTypes
     eWNI_SME_DFS_CSAIE_TX_COMPLETE_IND, //To indicate completion of CSA IE
                                         //update in beacons/probe rsp
     eWNI_SME_STATS_EXT_EVENT,
-    eWNI_SME_LINK_SPEED_IND,//Indicate linkspeed response from WMA
+    eWNI_SME_LINK_SPEED_IND, /* Indicate link speed response from WMA */
     eWNI_SME_CSA_OFFLOAD_EVENT,
     eWNI_SME_UPDATE_ADDITIONAL_IES,  // indicates Additional IE from hdd to PE
     eWNI_SME_MODIFY_ADDITIONAL_IES, /* To indicate IE modify from hdd to PE */
@@ -393,12 +376,31 @@ enum eWniMsgTypes
 #ifdef WLAN_FEATURE_EXTWOW_SUPPORT
     eWNI_SME_READY_TO_EXTWOW_IND,
 #endif
+    eWNI_SME_MSG_GET_TEMPERATURE_IND,
+    eWNI_SME_SNR_IND,
 #ifdef FEATURE_WLAN_EXTSCAN
     eWNI_SME_EXTSCAN_FULL_SCAN_RESULT_IND,
     eWNI_SME_EPNO_NETWORK_FOUND_IND,
 #endif
+    eWNI_SME_FW_STATUS_IND,
+    eWNI_SME_SET_THERMAL_LEVEL_IND,
+
+    eWNI_SME_OCB_SET_CONFIG_RSP,
+    eWNI_SME_OCB_GET_TSF_TIMER_RSP,
+    eWNI_SME_DCC_GET_STATS_RSP,
+    eWNI_SME_DCC_UPDATE_NDL_RSP,
+    eWNI_SME_DCC_STATS_EVENT,
+
+    eWNI_SME_TSF_EVENT,
     eWNI_SME_FW_DUMP_IND,
+    eWNI_SME_PDEV_SET_HT_VHT_IE,
+    eWNI_SME_EXT_CHANGE_CHANNEL,
+    eWNI_SME_EXT_CHANGE_CHANNEL_IND,
+    eWNI_SME_LOST_LINK_INFO_IND,
+    eWNI_SME_GET_RSSI_IND,
     eWNI_SME_ROAM_RESTART_REQ,
+    eWNI_SME_SMPS_FORCE_MODE_IND,
+    eWNI_SME_REGISTER_MGMT_FRAME_CB,
     eWNI_SME_MSG_TYPES_END
 };
 
@@ -447,7 +449,7 @@ typedef enum {
 
 
 /*---------------------------------------------------------------------*/
-/* CFG to HDD message paramter indices                                 */
+/* CFG to HDD message parameter indices                                 */
 
 /*   The followings are word indices starting from the message body    */
 
@@ -543,7 +545,7 @@ typedef enum {
 
 
 /*---------------------------------------------------------------------*/
-/* HDD to CFG message paramter indices                                 */
+/* HDD to CFG message parameter indices                                 */
 /*                                                                     */
 /*   The followings are word indices starting from the message body    */
 /*                                                                     */

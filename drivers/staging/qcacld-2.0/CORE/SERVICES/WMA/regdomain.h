@@ -314,12 +314,16 @@ typedef enum
 } COUNTRY_CODE_SOURCE;
 
 struct regulatory {
-    u_int32_t reg_domain;
-    u_int32_t eeprom_rd_ext;
-    u_int16_t country_code;
-    u_int8_t alpha2[3];
+    uint32_t reg_domain;
+    uint32_t eeprom_rd_ext;
+    uint16_t country_code;
+    uint8_t alpha2[3];
+    uint8_t dfs_region;
+    uint8_t ctl_2g;
+    uint8_t ctl_5g;
     const void *regpair;
     COUNTRY_CODE_SOURCE cc_src;
+    uint32_t reg_flags;
 };
 /* Multi-Device RegDomain Support */
 typedef struct ath_hal_reg_dmn_tables {
@@ -1094,4 +1098,6 @@ int32_t regdmn_get_country_alpha2(struct regulatory *reg);
 void regdmn_set_regval(struct regulatory *reg);
 
 int32_t regdmn_find_ctry_by_name(u_int8_t *alpha2);
+void regdmn_set_dfs_region(struct regulatory *reg);
+
 #endif /* REGULATORY_H */

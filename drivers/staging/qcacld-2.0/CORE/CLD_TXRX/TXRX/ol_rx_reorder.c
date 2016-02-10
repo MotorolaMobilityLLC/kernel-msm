@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -110,7 +110,7 @@ void ol_rx_reorder_init(struct ol_rx_reorder_t *rx_reorder, u_int8_t tid)
 }
 
 
-enum htt_rx_status
+static enum htt_rx_status
 ol_rx_reorder_seq_num_check(
     struct ol_txrx_pdev_t *pdev,
     struct ol_txrx_peer_t *peer,
@@ -141,6 +141,84 @@ ol_rx_reorder_seq_num_check(
          return htt_rx_status_err_replay; /* or maybe htt_rx_status_err_dup */
     }
     return htt_rx_status_ok;
+}
+
+/**
+ * ol_rx_seq_num_check() - Does duplicate detection for mcast packets and
+ *                           duplicate detection & check for out-of-order
+ *                           packets for unicast packets.
+ * @pdev:                        Pointer to pdev maintained by OL
+ * @peer:                        Pointer to peer structure maintained by OL
+ * @tid:                         TID value passed as part of HTT msg by f/w
+ * @rx_mpdu_desc:                Pointer to Rx Descriptor for the given MPDU
+ *
+ *  This function
+ *      1) For Multicast Frames -- does duplicate detection
+ *          A frame is considered duplicate & dropped if it has a seq.number
+ *          which is received twice in succession and with the retry bit set
+ *          in the second case.
+ *          A frame which is older than the last sequence number received
+ *          is not considered duplicate but out-of-order. This function does
+ *          perform out-of-order check for multicast frames, which is in
+ *          keeping with the 802.11 2012 spec section 9.3.2.10
+ *      2) For Unicast Frames -- does duplicate detection & out-of-order check
+ *          only for non-aggregation tids.
+ *
+ * Return:        Returns htt_rx_status_err_replay, if packet needs to be
+ *                dropped, htt_rx_status_ok otherwise.
+ */
+enum htt_rx_status
+ol_rx_seq_num_check(struct ol_txrx_pdev_t *pdev,
+					struct ol_txrx_peer_t *peer,
+					uint8_t tid,
+					void *rx_mpdu_desc)
+{
+	uint16_t pkt_tid = 0xffff;
+	uint16_t seq_num = IEEE80211_SEQ_MAX;
+	bool retry = 0;
+
+	seq_num = htt_rx_mpdu_desc_seq_num(pdev->htt_pdev, rx_mpdu_desc);
+
+	 /* For mcast packets, we only the dup-detection, not re-order check */
+
+	if (adf_os_unlikely(OL_RX_MCAST_TID == tid)) {
+
+		pkt_tid = htt_rx_mpdu_desc_tid(pdev->htt_pdev, rx_mpdu_desc);
+
+		/* Invalid packet TID, expected only for HL */
+		/* Pass the packet on */
+		if (adf_os_unlikely(pkt_tid >= OL_TXRX_NUM_EXT_TIDS))
+			return htt_rx_status_ok;
+
+		retry = htt_rx_mpdu_desc_retry(pdev->htt_pdev, rx_mpdu_desc);
+
+		/*
+		 * At this point, we define frames to be duplicate if they arrive
+		 * "ONLY" in succession with the same sequence number and the last
+		 * one has the retry bit set. For an older frame, we consider that
+		 * as an out of order frame, and hence do not perform the dup-detection
+		 * or out-of-order check for multicast frames as per discussions & spec
+		 * Hence "seq_num <= last_seq_num" check is not necessary.
+		 */
+		if (adf_os_unlikely(retry &&
+			(seq_num == peer->tids_mcast_last_seq[pkt_tid]))) {/* drop mcast */
+			TXRX_STATS_INCR(pdev, priv.rx.err.msdu_mc_dup_drop);
+			return htt_rx_status_err_replay;
+		} else {
+			/*
+			 * This is a multicast packet likely to be passed on...
+			 * Set the mcast last seq number here
+			 * This is fairly accurate since:
+			 * a) f/w sends multicast as separate PPDU/HTT messages
+			 * b) Mcast packets are not aggregated & hence single
+			 * c) Result of b) is that, flush / release bit is set always
+			 *	on the mcast packets, so likely to be immediatedly released.
+			 */
+			peer->tids_mcast_last_seq[pkt_tid] = seq_num;
+			return htt_rx_status_ok;
+		}
+	} else
+		return ol_rx_reorder_seq_num_check(pdev, peer, tid, seq_num);
 }
 
 void
@@ -539,6 +617,14 @@ ol_rx_pn_ind_handler(
     int seq_num, i=0;
 
     peer = ol_txrx_peer_find_by_id(pdev, peer_id);
+
+    if (!peer) {
+        /* If we can't find a peer send this packet to OCB interface using
+           OCB self peer */
+        if (!ol_txrx_get_ocb_peer(pdev, &peer))
+			peer = NULL;
+    }
+
     if (peer) {
         vdev = peer->vdev;
     } else {

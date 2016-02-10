@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -40,6 +40,7 @@
   ----------------------------------------------------------------------------*/
 #include <wlan_hdd_dp_utils.h>
 #include <wlan_hdd_main.h>
+#include <sirDebug.h>
 
 /**-----------------------------------------------------------------------------
   Preprocessor definitions and constants
@@ -234,17 +235,49 @@ VOS_STATUS hdd_string_to_hex( char *pSrcMac, int length, char *pDescMac )
  */
 void hdd_dp_util_send_rps_ind(hdd_context_t  *hdd_ctxt)
 {
+	int i = 0;
+	uint8_t cpu_map_list_len = 0;
 	hdd_adapter_t *adapter;
 	hdd_adapter_list_node_t *adapter_node, *next;
 	VOS_STATUS status = VOS_STATUS_SUCCESS;
+	struct wlan_rps_data rps_data;
+
+	rps_data.num_queues = NUM_TX_QUEUES;
+
+	hddLog(LOG1, FL("cpu_map_list '%s'"), hdd_ctxt->cfg_ini->cpu_map_list);
+
+	/* in case no cpu map list is provided, simply return */
+	if (!strlen(hdd_ctxt->cfg_ini->cpu_map_list)) {
+		hddLog(VOS_TRACE_LEVEL_ERROR, FL("no cpu map list found"));
+		return;
+	}
+
+	if (VOS_STATUS_SUCCESS !=
+		hdd_hex_string_to_u16_array(hdd_ctxt->cfg_ini->cpu_map_list,
+				rps_data.cpu_map_list,
+				&cpu_map_list_len,
+				WLAN_SVC_IFACE_NUM_QUEUES)) {
+		return;
+	}
+
+	rps_data.num_queues =
+		(cpu_map_list_len < rps_data.num_queues) ?
+				cpu_map_list_len : rps_data.num_queues;
+
+	for (i = 0; i < rps_data.num_queues; i++) {
+		hddLog(LOG1, FL("cpu_map_list[%d] = 0x%x"),
+			i, rps_data.cpu_map_list[i]);
+	}
 
 	status = hdd_get_front_adapter (hdd_ctxt, &adapter_node);
 	while (NULL != adapter_node && VOS_STATUS_SUCCESS == status) {
 		adapter = adapter_node->pAdapter;
-		if (NULL != adapter)
+		if (NULL != adapter) {
+			strlcpy(rps_data.ifname, adapter->dev->name,
+				sizeof(rps_data.ifname));
 			wlan_hdd_send_svc_nlink_msg(WLAN_SVC_RPS_ENABLE_IND,
-				(void *)adapter->dev->name,
-				strlen(adapter->dev->name));
+				&rps_data, sizeof(rps_data));
+		}
 		status = hdd_get_next_adapter (hdd_ctxt, adapter_node, &next);
 		adapter_node = next;
 	}

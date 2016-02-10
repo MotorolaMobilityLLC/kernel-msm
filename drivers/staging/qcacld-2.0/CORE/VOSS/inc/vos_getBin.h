@@ -144,6 +144,6 @@ v_BOOL_t vos_is_multiple_active_sta_sessions (void);
 v_BOOL_t vos_is_sta_active_connection_exists (void);
 
 #ifdef WLAN_FEATURE_MBSSID
-v_BOOL_t vos_concurrent_sap_sessions_running(v_VOID_t);
+v_BOOL_t vos_concurrent_beaconing_sessions_running(v_VOID_t);
 #endif
 #endif // !defined __VOS_GETBIN_H

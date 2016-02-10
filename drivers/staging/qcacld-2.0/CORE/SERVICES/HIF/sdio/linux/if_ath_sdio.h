@@ -46,8 +46,16 @@
 
 #define ATH_DBG_DEFAULT   0
 
+#ifdef TARGET_DUMP_FOR_9X15_PLATFORM
+#define RAMDUMP_ADDR     0x46E00000
+#define RAMDUMP_SIZE     0x100000
+#elif defined(CONFIG_ARCH_MDM9607)
+#define RAMDUMP_ADDR     0x87A00000
+#define RAMDUMP_SIZE     0x200000
+#else
 #define RAMDUMP_ADDR     0x8F000000
 #define RAMDUMP_SIZE     0x700000
+#endif
 
 struct ath_hif_sdio_softc {
     struct device *dev;
@@ -74,11 +82,6 @@ static inline int athdiag_procfs_init(void *scn) { return 0; }
 static inline void athdiag_procfs_remove(void) { return; }
 #endif
 
-#ifndef REMOVE_PKT_LOG
-extern int pktlogmod_init(void *context);
-extern void pktlogmod_exit(void *context);
-#endif
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,27)
 #define DMA_MAPPING_ERROR(dev, addr) dma_mapping_error((addr))
 #else
@@ -91,9 +94,7 @@ int ath_sdio_suspend(void *context);
 int ath_sdio_resume(void *context);
 
 /*These functions are exposed to HDD*/
-int hif_register_driver(void);
-void hif_unregister_driver(void);
-void hif_init_adf_ctx(adf_os_device_t adf_dev, void *ol_sc);
+int hif_init_adf_ctx(void *ol_sc);
 void hif_deinit_adf_ctx(void *ol_sc);
 void hif_disable_isr(void *ol_sc);
 void hif_init_pdev_txrx_handle(void *ol_sc, void *txrx_handle);

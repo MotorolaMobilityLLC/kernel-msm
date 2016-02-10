@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -76,13 +76,6 @@ ATH_DEBUG_INSTANTIATE_MODULE_VAR(hif,
 /* use credit flow control over HTC */
 unsigned int htc_credit_flow;
 module_param(htc_credit_flow, uint, 0644);
-
-/* not enabling bundle recv/send by default */
-unsigned int htc_bundle_recv;
-module_param(htc_bundle_recv, uint, 0644);
-
-unsigned int htc_bundle_send;
-module_param(htc_bundle_send, uint, 0644);
 
 #ifdef USB_ISOC_SUPPORT
 unsigned int hif_usb_isoch_vo = 1;
@@ -230,139 +223,13 @@ static void usb_hif_usb_transmit_complete(struct urb *urb)
 
 	/* note: queue implements a lock */
 	skb_queue_tail(&pipe->io_comp_queue, buf);
+#ifdef HIF_USB_TASKLET
+	tasklet_schedule(&pipe->io_complete_tasklet);
+#else
 	schedule_work(&pipe->io_complete_work);
-
-	AR_DEBUG_PRINTF(USB_HIF_DEBUG_BULK_OUT, ("-%s\n", __func__));
-}
-
-static void usb_hif_usb_transmit_bundle_complete(struct urb *urb)
-{
-	HIF_URB_CONTEXT *urb_context = (HIF_URB_CONTEXT *) urb->context;
-	HIF_USB_PIPE *pipe = urb_context->pipe;
-	adf_nbuf_t tmp_buf;
-
-	AR_DEBUG_PRINTF(USB_HIF_DEBUG_BULK_OUT,
-			("+%s: pipe: %d, stat:%d, len:%d\n", __func__,
-			 pipe->logical_pipe_num, urb->status,
-			 urb->actual_length));
-
-	/* this urb is not pending anymore */
-	usb_hif_remove_pending_transfer(urb_context);
-
-	if (urb->status != 0) {
-		AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("%s:  pipe: %d, failed:%d\n",
-						__func__,
-						pipe->logical_pipe_num,
-						urb->status));
-	}
-
-	a_mem_trace(urb_context->buf);
-
-	usb_hif_cleanup_transmit_urb(urb_context);
-
-#if 0
-	if (pipe->urbcnt >= pipe->urb_cnt_thresh)
-		/* TBD */
 #endif
 
-	while ((tmp_buf = skb_dequeue(&urb_context->comp_queue)))
-		skb_queue_tail(&pipe->io_comp_queue, tmp_buf);
-	schedule_work(&pipe->io_complete_work);
-
 	AR_DEBUG_PRINTF(USB_HIF_DEBUG_BULK_OUT, ("-%s\n", __func__));
-}
-
-A_STATUS HIFSendMultiple(HIF_DEVICE *hifDevice, a_uint8_t PipeID,
-			 adf_nbuf_t *msg_bundle, int num_msgs)
-{
-	A_STATUS status = A_OK;
-	HIF_DEVICE_USB *device = (HIF_DEVICE_USB *) hifDevice;
-	HIF_USB_PIPE *pipe = &device->pipes[PipeID];
-	HIF_URB_CONTEXT *urb_context;
-	struct urb *urb;
-	adf_nbuf_t stream_buf = NULL, nbuf;
-	int usb_status;
-	int i;
-
-	AR_DEBUG_PRINTF(USB_HIF_DEBUG_BULK_OUT,
-			("+%s pipe : %d\n", __func__, PipeID));
-
-	do {
-		A_UINT8 *stream_netdata, *netdata, *stream_netdata_start;
-		A_UINT32 stream_netlen, netlen;
-
-		urb_context = usb_hif_alloc_urb_from_pipe(pipe);
-		if (NULL == urb_context) {
-			/* TODO : note, it is possible to run out of urbs if 2
-			 * endpoints map to the same pipe ID
-			 */
-			AR_DEBUG_PRINTF(ATH_DEBUG_ERR, (
-					 "%s pipe:%d no urbs left. URB Cnt :%d\n",
-					 __func__, PipeID, pipe->urb_cnt));
-			status = A_NO_RESOURCE;
-			break;
-		}
-
-		urb = urb_context->urb;
-		stream_buf = urb_context->buf;
-
-		adf_nbuf_peek_header(stream_buf, &stream_netdata,
-				     &stream_netlen);
-		stream_netlen = 0;
-		stream_netdata_start = stream_netdata;
-
-		for (i = 0; i < num_msgs; i++) {
-			nbuf = msg_bundle[i];
-			adf_nbuf_peek_header(nbuf, &netdata, &netlen);
-
-			adf_os_mem_copy(stream_netdata, netdata, netlen);
-
-			/* add additional dummy padding
-			 * target credit size
-			 */
-			stream_netdata += USB_HIF_TARGET_CREDIT_SIZE;
-			stream_netlen += USB_HIF_TARGET_CREDIT_SIZE;
-
-			/* note: queue implements a lock */
-			skb_queue_tail(&urb_context->comp_queue, nbuf);
-		}
-
-		usb_fill_bulk_urb(urb,
-				  device->udev,
-				  pipe->usb_pipe_handle,
-				  stream_netdata_start,
-				  (stream_netlen % pipe->max_packet_size) == 0 ?
-				  (stream_netlen + 1) : stream_netlen,
-				  usb_hif_usb_transmit_bundle_complete,
-				  urb_context);
-
-		if ((stream_netlen % pipe->max_packet_size) == 0) {
-			/* hit a max packet boundary on this pipe */
-			/* urb->transfer_flags |= URB_ZERO_PACKET; */
-		}
-
-		AR_DEBUG_PRINTF(USB_HIF_DEBUG_BULK_OUT, (
-				 "athusb bulk send submit:%d, 0x%X (ep:0x%2.2X), %d bytes\n",
-				 pipe->logical_pipe_num, pipe->usb_pipe_handle,
-				 pipe->ep_address, stream_netlen));
-
-		usb_hif_enqueue_pending_transfer(pipe, urb_context);
-
-		usb_status = usb_submit_urb(urb, GFP_ATOMIC);
-		if (usb_status) {
-			AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
-				("athusb : usb bulk transmit failed\n"));
-			usb_hif_remove_pending_transfer(urb_context);
-			usb_hif_cleanup_transmit_urb(urb_context);
-			status = A_ECOMM;
-			break;
-		}
-	} while (FALSE);
-
-	AR_DEBUG_PRINTF(USB_HIF_DEBUG_BULK_OUT,
-			("-%s pipe : %d\n", __func__, PipeID));
-
-	return status;
 }
 
 static A_STATUS HIFSend_internal(HIF_DEVICE *hifDevice, a_uint8_t PipeID,
@@ -609,8 +476,13 @@ static HIF_DEVICE_USB *usb_hif_create(struct usb_interface *interface)
 
 		for (i = 0; i < HIF_USB_PIPE_MAX; i++) {
 			pipe = &device->pipes[i];
+#ifdef HIF_USB_TASKLET
+			tasklet_init(&pipe->io_complete_tasklet, usb_hif_io_comp_tasklet,
+						(long unsigned int)pipe);
+#else
 			INIT_WORK(&pipe->io_complete_work,
 				  usb_hif_io_comp_work);
+#endif
 			skb_queue_head_init(&pipe->io_comp_queue);
 		}
 
@@ -649,7 +521,7 @@ A_STATUS HIFStart(HIF_DEVICE *hifDevice)
 
 	AR_DEBUG_PRINTF(ATH_DEBUG_TRC, ("+%s\n", __func__));
 
-	usb_hif_start_recv_pipes(device);
+	usb_hif_prestart_recv_pipes(device);
 
 	/* set the TX resource avail threshold for each TX pipe */
 	for (i = HIF_TX_CTRL_PIPE; i <= HIF_TX_DATA_HP_PIPE; i++) {
@@ -1156,4 +1028,36 @@ A_STATUS HIFDiagWriteWARMRESET(struct usb_interface *interface,
 void HIFsuspendwow(HIF_DEVICE *hif_device)
 {
 	printk(KERN_INFO "HIFsuspendwow TODO\n");
+}
+
+void HIFSetBundleMode(HIF_DEVICE *hif_device, bool enabled, int rx_bundle_cnt)
+{
+	HIF_DEVICE_USB *device = (HIF_DEVICE_USB *) hif_device;
+
+	device->is_bundle_enabled = enabled;
+	device->rx_bundle_cnt = rx_bundle_cnt;
+	if (device->is_bundle_enabled && (device->rx_bundle_cnt == 0)) {
+		device->rx_bundle_cnt = 1;
+	}
+	device->rx_bundle_buf_len = device->rx_bundle_cnt *
+		                        HIF_USB_RX_BUNDLE_ONE_PKT_SIZE;
+
+	AR_DEBUG_PRINTF(USB_HIF_DEBUG_BULK_IN,
+			("athusb bundle %s cnt %d\n",
+			 enabled ? "enabled" : "disabled",
+			 rx_bundle_cnt));
+}
+
+/**
+ * hif_is_80211_fw_wow_required() - API to check if target suspend is needed
+ *
+ * API determines if fw can be suspended and returns true/false to the caller.
+ * Caller will call WMA WoW API's to suspend.
+ * This API returns true only for SDIO bus types, for others it's a false.
+ *
+ * Return: bool
+ */
+bool hif_is_80211_fw_wow_required(void)
+{
+	return false;
 }

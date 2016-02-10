@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011,2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -61,7 +61,7 @@ adf_os_atomic_init(adf_os_atomic_t *v)
  *
  * @return the current value of the variable
  */
-static inline a_uint32_t
+static inline int32_t
 adf_os_atomic_read(adf_os_atomic_t *v)
 {
     return (__adf_os_atomic_read(v));
@@ -99,16 +99,44 @@ adf_os_atomic_add(int i, adf_os_atomic_t *v)
 }
 
 /**
+ * adf_os_atomic_sub() - Subtract a value from an atomic variable.
+ * @v: a pointer to an opaque atomic variable
+ * @i: the amount by which to decrease the atomic counter
+ *
+ * Return: none
+ */
+static inline void
+adf_os_atomic_sub(int i, adf_os_atomic_t *v)
+{
+	__adf_os_atomic_sub(i, v);
+}
+
+/**
  * @brief Decrement an atomic variable and check if the new value is zero.
  * @param v a pointer to an opaque atomic variable
  * @return
  *      true (non-zero) if the new value is zero,
  *      or false (0) if the new value is non-zero
  */
-static inline a_uint32_t
+static inline int32_t
 adf_os_atomic_dec_and_test(adf_os_atomic_t *v)
 {
     return __adf_os_atomic_dec_and_test(v);
+}
+
+/**
+ * adf_os_atomic_inc_return() - Increment and return an atomic variable
+ * @v a pointer to an opaque atomic variable
+ *
+ * good for eliminating race conditions between multiple increments and reads
+ *
+ * @return
+ *      the new value stored int the atomic type.
+ */
+static inline int32_t
+adf_os_atomic_inc_return(adf_os_atomic_t *v)
+{
+	return __adf_os_atomic_inc_return(v);
 }
 
 /**

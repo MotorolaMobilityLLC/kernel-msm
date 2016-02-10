@@ -32,6 +32,15 @@
 *
 ******************************************************************************/
 
+/*
+ * If MULTI_IF_NAME is not defined, then this is the primary instance of the
+ * driver and the diagnostics netlink socket will be available. If
+ * MULTI_IF_NAME is defined then this is not the primary instance of the driver
+ * and the diagnotics netlink socket will not be available since this
+ * diagnostics netlink socket can only be exposed by one instance of the driver.
+ */
+#ifndef MULTI_IF_NAME
+
 #include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -166,7 +175,7 @@ int nl_srv_ucast(struct sk_buff *skb, int dst_pid, int flag)
    }
    if (err < 0)
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-      "NLINK: netlink_unicast to pid[%d] failed, ret[0x%X]", dst_pid, err);
+      "NLINK: netlink_unicast to pid[%d] failed, ret[%d]", dst_pid, err);
 
    return err;
 }
@@ -276,9 +285,6 @@ static void nl_srv_rcv_msg (struct sk_buff *skb, struct nlmsghdr *nlh)
       return;
    }
 
-   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-      "NLINK: Received NL msg type [%d]", type);
-
    // turn type into dispatch table offset
    type -= WLAN_NL_MSG_BASE;
 
@@ -307,3 +313,43 @@ int nl_srv_is_initialized()
 	else
 		return -EPERM;
 }
+
+#else /* ifndef MULTI_IF_NAME */
+
+#include <wlan_nlink_srv.h>
+
+int nl_srv_init(void)
+{
+	return 0;
+}
+
+void nl_srv_exit(int dst_pid)
+{
+}
+
+int nl_srv_register(tWlanNlModTypes msg_type, nl_srv_msg_callback msg_handler)
+{
+	return 0;
+}
+
+int nl_srv_unregister(tWlanNlModTypes msg_type, nl_srv_msg_callback msg_handler)
+{
+	return 0;
+}
+
+int nl_srv_ucast(struct sk_buff *skb, int dst_pid, int flag)
+{
+	return 0;
+}
+
+int nl_srv_bcast(struct sk_buff *skb)
+{
+	return 0;
+}
+
+int nl_srv_is_initialized()
+{
+	return 0;
+}
+
+#endif

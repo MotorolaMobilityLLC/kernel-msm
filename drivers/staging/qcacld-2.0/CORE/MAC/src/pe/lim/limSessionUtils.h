@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -57,7 +57,7 @@
 
 
 /*-------------------------------------------------------------------------
-  Function declarations and documenation
+  Function declarations and documentation
   ------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------
 
@@ -92,11 +92,12 @@ tANI_U8 peValidateBtJoinRequest(tpAniSirGlobal pMac);
 
 
 /*--------------------------------------------------------------------------
-  \brief peGetValidPowerSaveSession() - Fetches the valid session for powersave .
+  \brief peGetValidPowerSaveSession() - Fetches the valid session for power save .
 
   This function is called to check the valid session for power save, if more than one session is active , this function
   it returns NULL.
-  if there is only one valid "infrastructure" session present in "linkestablished" state this function returns sessionentry.
+  if there is only one valid "infrastructure" session present in
+  "link stablished" state this function returns sessionentry.
   For all other cases it returns NULL.
 
   \param pMac                   - pointer to global adapter context
@@ -114,10 +115,11 @@ tpPESession peGetValidPowerSaveSession(tpAniSirGlobal pMac);
 /*--------------------------------------------------------------------------
   \brief peIsAnySessionActive() - checks for the active session presence .
 
-  This function returns TRUE if atleast one valid session is present else it returns FALSE
+  This function returns TRUE if at least one valid session is present else it returns FALSE
 
   \param pMac                   - pointer to global adapter context
-  \return                            - return TRUE if atleast one session is active else return FALSE.
+  \return                       - return TRUE if at least one session is active
+                                  else return FALSE.
 
   \sa
   --------------------------------------------------------------------------*/
@@ -200,7 +202,7 @@ tANI_U8
 limIsInQuietDuration (tpAniSirGlobal pMac);
 
 /*--------------------------------------------------------------------------
-  \brief limIsQuietBegin() - Check if channel quieting is begining on any
+  \brief limIsQuietBegin() - Check if channel quieting is beginning on any
                                     valid session.
 
   \param pMac                   - pointer to global adapter context

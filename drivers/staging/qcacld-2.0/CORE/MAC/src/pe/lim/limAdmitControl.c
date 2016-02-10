@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -61,15 +61,6 @@
 // conversion factors
 #define LIM_CONVERT_SIZE_BITS(numBytes) ((numBytes) * 8)
 #define LIM_CONVERT_RATE_MBPS(rate)     ((rate)/1000000)
-
-/* ANI sta's support enhanced rates, so the effective medium time used is
- * half that of other stations. This is the same as if they were requesting
- * half the badnwidth - so we adjust ANI sta's accordingly for bandwidth
- * calculations. Also enhanced rates apply only in case of non 11B mode.
- */
-#define LIM_STA_BW_ADJUST(aniPeer, phyMode, bw) \
-            (((aniPeer) && ((phyMode) != WNI_CFG_PHY_MODE_11B)) \
-              ?   ((bw)/2) : (bw))
 
 
 //------------------------------------------------------------------------------
@@ -257,8 +248,7 @@ limComputeMeanBwUsed(
                        ctspec, pTspecInfo->assocId);
                 continue;
             }
-            //FIXME: need to take care of taurusPeer, titanPeer, 11npeer too.
-            *pBw += LIM_STA_BW_ADJUST(pSta->aniPeer, phyMode, pTspecInfo->tspec.meanDataRate);
+            *pBw += pTspecInfo->tspec.meanDataRate;
         }
     }
 }
@@ -937,15 +927,13 @@ limSendHalMsgAddTs(
 {
     tSirMsgQ msg;
     tpAddTsParams pAddTsParam;
-
-#ifdef WLAN_FEATURE_ROAM_OFFLOAD
     tpPESession psessionEntry = peFindSessionBySessionId(pMac, sessionId);
+
     if (psessionEntry == NULL) {
        limLog( pMac, LOGP,
           FL("Unable to get Session for session Id %d"), sessionId);
        return eSIR_FAILURE;
     }
-#endif
 
     pAddTsParam = vos_mem_malloc(sizeof(tAddTsParams));
     if (NULL == pAddTsParam)
@@ -1040,7 +1028,8 @@ limSendHalMsgDelTs(
      goto err;
   }
   pDelTsParam->sessionId = psessionEntry->smeSessionId;
-  pDelTsParam->userPrio = delts.tsinfo.traffic.userPrio;
+  pDelTsParam->userPrio = delts.wmeTspecPresent?
+      delts.tspec.tsinfo.traffic.userPrio: delts.tsinfo.traffic.userPrio;
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
   if (pMac->roam.configParam.isRoamOffloadEnabled &&

@@ -146,13 +146,16 @@ dfs_process_radarevent(struct ath_dfs *dfs, struct ieee80211_channel *chan)
       return 0;
    }
     pl = dfs->pulses;
+   adf_os_spin_lock_bh(&dfs->ic->chan_lock);
    if ( !(IEEE80211_IS_CHAN_DFS(dfs->ic->ic_curchan))) {
+           adf_os_spin_unlock_bh(&dfs->ic->chan_lock);
            DFS_DPRINTK(dfs, ATH_DEBUG_DFS2, "%s: radar event on non-DFS chan",
                         __func__);
                 dfs_reset_radarq(dfs);
                 dfs_reset_alldelaylines(dfs);
          return 0;
         }
+   adf_os_spin_unlock_bh(&dfs->ic->chan_lock);
 #ifndef ATH_DFS_RADAR_DETECTION_ONLY
    /* TEST : Simulate radar bang, make sure we add the channel to NOL (bug 29968) */
         if (dfs->dfs_bangradar) {
@@ -227,6 +230,18 @@ dfs_process_radarevent(struct ath_dfs *dfs, struct ieee80211_channel *chan)
       ATH_DFSEVENTQ_UNLOCK(dfs);
 
       found = 0;
+
+      adf_os_spin_lock_bh(&dfs->ic->chan_lock);
+      if (dfs->ic->disable_phy_err_processing) {
+         ATH_DFSQ_LOCK(dfs);
+         empty = STAILQ_EMPTY(&(dfs->dfs_radarq));
+         ATH_DFSQ_UNLOCK(dfs);
+         adf_os_spin_unlock_bh(&dfs->ic->chan_lock);
+         continue;
+      }
+
+      adf_os_spin_unlock_bh(&dfs->ic->chan_lock);
+
       if (re.re_chanindex < DFS_NUM_RADAR_STATES)
          rs = &dfs->dfs_radar[re.re_chanindex];
       else {
@@ -380,7 +395,101 @@ dfs_process_radarevent(struct ath_dfs *dfs, struct ieee80211_channel *chan)
             dfs_reset_alldelaylines(dfs);
             dfs_reset_radarq(dfs);
          }
+
          found = 0;
+
+         /*
+          * Use this fix only when device is not in test mode, as
+          * it drops some valid phyerrors.
+          * In FCC or JAPAN domain,if the follwing signature matches
+          * its likely that this is a false radar pulse pattern
+          * so process the next pulse in the queue.
+          */
+         if ((dfs->disable_dfs_ch_switch == VOS_FALSE) &&
+             (DFS_FCC_DOMAIN == dfs->dfsdomain ||
+              DFS_MKK4_DOMAIN == dfs->dfsdomain) &&
+             (re.re_dur >= 11 && re.re_dur <= 20) &&
+             (diff_ts > 500 || diff_ts <= 305) &&
+             (re.sidx == -4)) {
+            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+            "\n%s: Rejecting on Peak Index = %d,re.re_dur = %d,diff_ts = %d\n",
+            __func__,re.sidx, re.re_dur, diff_ts);
+
+            ATH_DFSQ_LOCK(dfs);
+            empty = STAILQ_EMPTY(&(dfs->dfs_radarq));
+            ATH_DFSQ_UNLOCK(dfs);
+            continue;
+         }
+
+         /*
+          * Modifying the pulse duration for FCC Type 4
+          * or JAPAN W56 Type 6 radar pulses when the
+          * following condition is reported in radar
+          * summary report.
+          */
+         if ((DFS_FCC_DOMAIN == dfs->dfsdomain ||
+              DFS_MKK4_DOMAIN == dfs->dfsdomain) &&
+             ((chan->ic_flags & IEEE80211_CHAN_VHT80) ==
+              IEEE80211_CHAN_VHT80) &&
+             (chan->ic_pri_freq_center_freq_mhz_separation ==
+                                DFS_WAR_PLUS_30_MHZ_SEPARATION ||
+              chan->ic_pri_freq_center_freq_mhz_separation ==
+                                DFS_WAR_MINUS_30_MHZ_SEPARATION) &&
+             (re.sidx == DFS_WAR_PEAK_INDEX_ZERO) &&
+             (re.re_dur > DFS_TYPE4_WAR_PULSE_DURATION_LOWER_LIMIT &&
+              re.re_dur < DFS_TYPE4_WAR_PULSE_DURATION_UPPER_LIMIT) &&
+             (diff_ts > DFS_TYPE4_WAR_PRI_LOWER_LIMIT &&
+              diff_ts < DFS_TYPE4_WAR_PRI_UPPER_LIMIT)) {
+             VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                       "\n%s:chan->ic_flags=0x%x, Pri Chan MHz Separation=%d\n",
+                       __func__, chan->ic_flags,
+                       chan->ic_pri_freq_center_freq_mhz_separation);
+
+             VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                "\n%s: Reported Peak Index = %d,re.re_dur = %d,diff_ts = %d\n",
+                 __func__, re.sidx, re.re_dur, diff_ts);
+
+             VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                "\n%s: Modifying the pulse duration to fit the valid range \n",
+                 __func__);
+
+             re.re_dur = DFS_TYPE4_WAR_VALID_PULSE_DURATION;
+         }
+
+         /*
+          * Modifying the pulse duration for ETSI Type 2
+          * and ETSI type 3 radar pulses when the following
+          * condition is reported in radar summary report.
+          */
+         if ((DFS_ETSI_DOMAIN == dfs->dfsdomain) &&
+             ((chan->ic_flags & IEEE80211_CHAN_VHT80) ==
+              IEEE80211_CHAN_VHT80) &&
+             (chan->ic_pri_freq_center_freq_mhz_separation ==
+                                DFS_WAR_PLUS_30_MHZ_SEPARATION ||
+              chan->ic_pri_freq_center_freq_mhz_separation ==
+                                DFS_WAR_MINUS_30_MHZ_SEPARATION) &&
+             (re.sidx == DFS_WAR_PEAK_INDEX_ZERO) &&
+             (re.re_dur > DFS_ETSI_TYPE2_TYPE3_WAR_PULSE_DUR_LOWER_LIMIT &&
+              re.re_dur < DFS_ETSI_TYPE2_TYPE3_WAR_PULSE_DUR_UPPER_LIMIT) &&
+             ((diff_ts > DFS_ETSI_TYPE2_WAR_PRI_LOWER_LIMIT &&
+               diff_ts < DFS_ETSI_TYPE2_WAR_PRI_UPPER_LIMIT) ||
+              (diff_ts > DFS_ETSI_TYPE3_WAR_PRI_LOWER_LIMIT &&
+               diff_ts < DFS_ETSI_TYPE3_WAR_PRI_UPPER_LIMIT ))) {
+             VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                       "\n%s:chan->ic_flags=0x%x, Pri Chan MHz Separation=%d\n",
+                       __func__, chan->ic_flags,
+                       chan->ic_pri_freq_center_freq_mhz_separation);
+
+             VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                "\n%s: Reported Peak Index = %d,re.re_dur = %d,diff_ts = %d\n",
+                 __func__, re.sidx, re.re_dur, diff_ts);
+
+             VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                "\n%s: Modifying the ETSI pulse dur to fit the valid range \n",
+                 __func__);
+
+             re.re_dur  = DFS_ETSI_WAR_VALID_PULSE_DURATION;
+         }
 
       /* BIN5 pulses are FCC and Japan specific */
 
@@ -516,7 +625,11 @@ VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO, "%s[%d]:filterID= %d :: Rejec
             DFS_DPRINTK(dfs, ATH_DEBUG_DFS3,
                "Found on channel minDur = %d, filterId = %d",ft->ft_mindur,
                rf != NULL ? rf->rf_pulseid : -1);
-                        }
+            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                 "%s[%d]:### Found on channel minDur = %d, filterId = %d ###",
+                 __func__,__LINE__,ft->ft_mindur,
+                 rf != NULL ? rf->rf_pulseid : -1);
+         }
          tabledepth++;
       }
       ATH_DFSQ_LOCK(dfs);
@@ -562,11 +675,14 @@ thischan->ic_freq);
          DFS_DPRINTK(dfs, ATH_DEBUG_DFS1,
              "Primary channel freq = %u flags=0x%x",
              chan->ic_freq, chan->ic_flagext);
+         adf_os_spin_lock_bh(&dfs->ic->chan_lock);
          if ((dfs->ic->ic_curchan->ic_freq!= thischan->ic_freq)) {
          DFS_DPRINTK(dfs, ATH_DEBUG_DFS1,
              "Ext channel freq = %u flags=0x%x",
              thischan->ic_freq, thischan->ic_flagext);
       }
+
+      adf_os_spin_unlock_bh(&dfs->ic->chan_lock);
                 dfs->dfs_phyerr_freq_min     = 0x7fffffff;
                 dfs->dfs_phyerr_freq_max     = 0;
                 dfs->dfs_phyerr_w53_counter  = 0;

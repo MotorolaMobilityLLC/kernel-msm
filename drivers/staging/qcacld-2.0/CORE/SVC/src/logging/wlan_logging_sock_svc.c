@@ -118,7 +118,7 @@ static int wlan_send_sock_msg_to_app(tAniHdr *wmsg, int radio,
 	tAniNlHdr *wnl = NULL;
 	struct sk_buff *skb;
 	struct nlmsghdr *nlh;
-	int wmsg_length = be16_to_cpu(wmsg->length);
+	int wmsg_length = wmsg->length;
 	static int nlmsg_seq;
 
 	if (radio < 0 || radio > ANI_MAX_RADIOS) {
@@ -150,11 +150,13 @@ static int wlan_send_sock_msg_to_app(tAniHdr *wmsg, int radio,
 	wnl = (tAniNlHdr *) nlh;
 	wnl->radio = radio;
 	memcpy(&wnl->wmsg, wmsg, wmsg_length);
-	LOGGING_TRACE(VOS_TRACE_LEVEL_INFO,
-			"%s: Sending Msg Type [0x%X] to pid[%d]\n",
-			__func__, be16_to_cpu(wmsg->type), pid);
-
 	err = nl_srv_ucast(skb, pid, MSG_DONTWAIT);
+	if (err) {
+		LOGGING_TRACE(VOS_TRACE_LEVEL_INFO,
+				"%s: Failed sending Msg Type [0x%X] to pid[%d]\n",
+				__func__, wmsg->type, pid);
+	}
+
 	return err;
 }
 
@@ -174,6 +176,8 @@ static bool is_data_path_module(VOS_MODULE_ID mod_id)
 	case VOS_MODULE_ID_HTC:
 	case VOS_MODULE_ID_TXRX:
 	case VOS_MODULE_ID_HIF:
+	case VOS_MODULE_ID_VOSS:
+	case VOS_MODULE_ID_TL:
 		return true;
 	default:
 		return false;
@@ -283,6 +287,7 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 		 */
 		pr_info("%s\n", to_be_sent);
 	} else {
+
 		/* Format the Log time [Seconds.microseconds] */
 		ts = adf_get_boottime();
 		rem = do_div(ts, VOS_TIMER_TO_SEC_UNIT);
@@ -676,10 +681,10 @@ int wlan_logging_sock_activate_svc(int log_fe_to_console, int num_buf)
 		pr_err("%s: Could not Create LogMsg Thread Controller",
 		       __func__);
 		spin_lock_irqsave(&gwlan_logging.spin_lock, irq_flag);
-		vfree(gplog_msg);
-		gplog_msg = NULL;
 		gwlan_logging.pcur_node = NULL;
 		spin_unlock_irqrestore(&gwlan_logging.spin_lock, irq_flag);
+		vfree(gplog_msg);
+		gplog_msg = NULL;
 		return -ENOMEM;
 	}
 	wake_up_process(gwlan_logging.thread);
@@ -715,10 +720,10 @@ int wlan_logging_sock_deactivate_svc(void)
 	wait_for_completion(&gwlan_logging.shutdown_comp);
 
 	spin_lock_irqsave(&gwlan_logging.spin_lock, irq_flag);
-	vfree(gplog_msg);
-	gplog_msg = NULL;
 	gwlan_logging.pcur_node = NULL;
 	spin_unlock_irqrestore(&gwlan_logging.spin_lock, irq_flag);
+	vfree(gplog_msg);
+	gplog_msg = NULL;
 
 	pr_info("%s: Deactivate wlan_logging svc\n", __func__);
 

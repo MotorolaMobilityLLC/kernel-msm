@@ -76,9 +76,12 @@ u_int32_t *g_dbg_htt_desc_end_addr, *g_dbg_htt_desc_start_addr;
 int
 htt_tx_attach(struct htt_pdev_t *pdev, int desc_pool_elems)
 {
-    int i, pool_size;
-    u_int32_t **p;
+    int i, i_int, pool_size;
+    uint32_t **p;
     adf_os_dma_addr_t pool_paddr = {0};
+    struct htt_tx_desc_page_t *page_info;
+    unsigned int num_link = 0;
+    uint32_t page_size;
 
     if (pdev->cfg.is_high_latency) {
         pdev->tx_descs.size = sizeof(struct htt_host_tx_desc_t);
@@ -104,63 +107,190 @@ htt_tx_attach(struct htt_pdev_t *pdev, int desc_pool_elems)
      * It should be, but round up just to be sure.
      */
     pdev->tx_descs.size = (pdev->tx_descs.size + 3) & (~0x3);
-
     pdev->tx_descs.pool_elems = desc_pool_elems;
     pdev->tx_descs.alloc_cnt = 0;
 
     pool_size = pdev->tx_descs.pool_elems * pdev->tx_descs.size;
 
-    if (pdev->cfg.is_high_latency)
-        pdev->tx_descs.pool_vaddr = adf_os_mem_alloc(pdev->osdev, pool_size);
-    else
-        pdev->tx_descs.pool_vaddr =
-        adf_os_mem_alloc_consistent( pdev->osdev, pool_size, &pool_paddr,
-            adf_os_get_dma_mem_context((&pdev->tx_descs), memctx));
+   /* Calculate required page count first */
+    page_size = adf_os_mem_get_page_size();
+    pdev->num_pages = pool_size / page_size;
+    if (pool_size % page_size)
+        pdev->num_pages++;
 
-    pdev->tx_descs.pool_paddr = pool_paddr;
+    /* Put in as many as possible descriptors into single page */
+    /* calculate how many descriptors can put in single page */
+    pdev->num_desc_per_page = page_size / pdev->tx_descs.size;
 
-    if (!pdev->tx_descs.pool_vaddr) {
-        return 1; /* failure */
+    /* Pages information storage */
+    pdev->desc_pages = (struct htt_tx_desc_page_t *)adf_os_mem_alloc(
+        pdev->osdev, pdev->num_pages * sizeof(struct htt_tx_desc_page_t));
+    if (!pdev->desc_pages) {
+        adf_os_print("HTT Attach, desc page alloc fail");
+        goto fail1;
     }
 
-    adf_os_print("%s:htt_desc_start:0x%p htt_desc_end:0x%p\n", __func__,
-                 pdev->tx_descs.pool_vaddr,
-                 (u_int32_t *) (pdev->tx_descs.pool_vaddr + pool_size));
+    page_info = pdev->desc_pages;
+    p = (uint32_t **) pdev->tx_descs.freelist;
+    /* Allocate required memory with multiple pages */
+    for(i = 0; i < pdev->num_pages; i++) {
+        if (pdev->cfg.is_high_latency) {
+            page_info->page_v_addr_start = adf_os_mem_alloc(
+                pdev->osdev, page_size);
+            page_info->page_p_addr = pool_paddr;
+            if (!page_info->page_v_addr_start) {
+               page_info = pdev->desc_pages;
+               for (i_int = 0 ; i_int < i; i_int++) {
+                    page_info = pdev->desc_pages + i_int;
+                    adf_os_mem_free(page_info->page_v_addr_start);
+               }
+               goto fail2;
+            }
+        } else {
+            page_info->page_v_addr_start = adf_os_mem_alloc_consistent(
+                pdev->osdev,
+                page_size,
+                &page_info->page_p_addr,
+                adf_os_get_dma_mem_context((&pdev->tx_descs), memctx));
+            if (!page_info->page_v_addr_start) {
+               page_info = pdev->desc_pages;
+               for (i_int = 0 ; i_int < i; i_int++) {
+                    page_info = pdev->desc_pages + i_int;
+                    adf_os_mem_free_consistent(
+                        pdev->osdev,
+                        pdev->num_desc_per_page * pdev->tx_descs.size,
+                        page_info->page_v_addr_start,
+                        page_info->page_p_addr,
+                        adf_os_get_dma_mem_context((&pdev->tx_descs), memctx));
+               }
+               goto fail2;
+            }
+        }
+        page_info->page_v_addr_end = page_info->page_v_addr_start +
+            pdev->num_desc_per_page * pdev->tx_descs.size;
+        page_info++;
+    }
 
-#ifdef QCA_SUPPORT_TXDESC_SANITY_CHECKS
-    g_dbg_htt_desc_end_addr = (u_int32_t *)
-                         (pdev->tx_descs.pool_vaddr + pool_size);
-    g_dbg_htt_desc_start_addr = (u_int32_t *) pdev->tx_descs.pool_vaddr;
-#endif
-
-    /* link tx descriptors into a freelist */
-    pdev->tx_descs.freelist = (u_int32_t *) pdev->tx_descs.pool_vaddr;
-    p = (u_int32_t **) pdev->tx_descs.freelist;
-    for (i = 0; i < desc_pool_elems - 1; i++) {
-        *p = (u_int32_t *) (((char *) p) + pdev->tx_descs.size);
-        p = (u_int32_t **) *p;
+    page_info = pdev->desc_pages;
+    pdev->tx_descs.freelist = (uint32_t *)page_info->page_v_addr_start;
+    p = (uint32_t **) pdev->tx_descs.freelist;
+    for(i = 0; i < pdev->num_pages; i++) {
+        for (i_int = 0; i_int < pdev->num_desc_per_page; i_int++) {
+            if (i_int == (pdev->num_desc_per_page - 1)) {
+                /* Last element on this page, should pint next page */
+                if (!page_info->page_v_addr_start) {
+                    adf_os_print("over flow num link %d\n", num_link);
+                    goto fail3;
+                }
+                page_info++;
+                *p = (uint32_t *)page_info->page_v_addr_start;
+            }
+            else {
+                *p = (uint32_t *)(((char *) p) + pdev->tx_descs.size);
+            }
+            num_link++;
+            p = (uint32_t **) *p;
+            /* Last link established exit */
+            if (num_link == (pdev->tx_descs.pool_elems - 1))
+               break;
+        }
     }
     *p = NULL;
 
+    if (pdev->cfg.is_high_latency) {
+        adf_os_atomic_init(&pdev->htt_tx_credit.target_delta);
+        adf_os_atomic_init(&pdev->htt_tx_credit.bus_delta);
+        adf_os_atomic_add(HTT_MAX_BUS_CREDIT,&pdev->htt_tx_credit.bus_delta);
+    }
     return 0; /* success */
+
+fail3:
+    if (pdev->cfg.is_high_latency) {
+        page_info = pdev->desc_pages;
+        for (i_int = 0 ; i_int < pdev->num_pages; i_int++) {
+            page_info = pdev->desc_pages + i_int;
+            adf_os_mem_free(page_info->page_v_addr_start);
+        }
+    } else {
+        page_info = pdev->desc_pages;
+        for (i_int = 0 ; i_int < pdev->num_pages; i_int++) {
+            page_info = pdev->desc_pages + i_int;
+            adf_os_mem_free_consistent(
+                pdev->osdev,
+                pdev->num_desc_per_page * pdev->tx_descs.size,
+                page_info->page_v_addr_start,
+                page_info->page_p_addr,
+                adf_os_get_dma_mem_context((&pdev->tx_descs), memctx));
+        }
+    }
+
+fail2:
+    adf_os_mem_free(pdev->desc_pages);
+
+fail1:
+    return -1;
 }
 
 void
 htt_tx_detach(struct htt_pdev_t *pdev)
 {
+    unsigned int i;
+    struct htt_tx_desc_page_t *page_info;
+
     if (pdev){
-        if (pdev->cfg.is_high_latency)
+        if (pdev->cfg.is_high_latency) {
             adf_os_mem_free(pdev->tx_descs.pool_vaddr);
-        else
-            adf_os_mem_free_consistent(
-            pdev->osdev,
-            pdev->tx_descs.pool_elems * pdev->tx_descs.size, /* pool_size */
-            pdev->tx_descs.pool_vaddr,
-            pdev->tx_descs.pool_paddr,
-            adf_os_get_dma_mem_context((&pdev->tx_descs), memctx));
+            for (i = 0; i < pdev->num_pages; i++) {
+                page_info = pdev->desc_pages + i;
+                    adf_os_mem_free(page_info->page_v_addr_start);
+            }
+        } else {
+            for (i = 0; i < pdev->num_pages; i++) {
+                page_info = pdev->desc_pages + i;
+                    adf_os_mem_free_consistent(
+                    pdev->osdev,
+                    pdev->num_desc_per_page * pdev->tx_descs.size,
+                    page_info->page_v_addr_start,
+                    page_info->page_p_addr,
+                    adf_os_get_dma_mem_context((&pdev->tx_descs), memctx));
+            }
         }
+        adf_os_mem_free(pdev->desc_pages);
+    }
 }
 
+/**
+ * htt_tx_get_paddr() - get physical address for htt desc
+ *
+ * Get HTT descriptor physical address from virtaul address
+ * Find page first and find offset
+ *
+ * Return: Physical address of descriptor
+ */
+adf_os_dma_addr_t htt_tx_get_paddr(htt_pdev_handle pdev, char *target_vaddr)
+{
+	unsigned int i;
+	struct htt_tx_desc_page_t *page_info = NULL;
+
+	for (i = 0; i < pdev->num_pages; i++) {
+		page_info = pdev->desc_pages + i;
+		if (!page_info || !page_info->page_v_addr_start) {
+			adf_os_assert(0);
+			return 0;
+		}
+		if ((target_vaddr >= page_info->page_v_addr_start) &&
+			(target_vaddr <= page_info->page_v_addr_end))
+			break;
+	}
+	if (!page_info || !page_info->page_v_addr_start ||
+		 !page_info->page_p_addr) {
+		adf_os_assert(0);
+		return 0;
+	}
+
+	return page_info->page_p_addr +
+		(adf_os_dma_addr_t)(target_vaddr - page_info->page_v_addr_start);
+}
 
 /*--- descriptor allocation functions ---------------------------------------*/
 
@@ -199,13 +329,14 @@ htt_tx_desc_alloc(htt_pdev_handle pdev, u_int32_t *paddr_lo)
          * to map it from a virtual/CPU address to a physical/bus address.
          */
         *fragmentation_descr_field_ptr =
-            HTT_TX_DESC_PADDR(pdev, htt_tx_desc) + HTT_TX_DESC_LEN;
+            (uint32_t)htt_tx_get_paddr(pdev, (char *)htt_tx_desc) +
+            HTT_TX_DESC_LEN;
     }
     /*
      * Include the headroom for the HTC frame header when specifying the
      * physical address for the HTT tx descriptor.
      */
-    *paddr_lo = (u_int32_t) HTT_TX_DESC_PADDR(pdev, htt_host_tx_desc);
+    *paddr_lo = (uint32_t)htt_tx_get_paddr(pdev, (char *)htt_host_tx_desc);
     /*
      * The allocated tx descriptor space includes headroom for a
      * HTC frame header.  Hide this headroom, so that we don't have
@@ -246,7 +377,7 @@ void htt_tx_desc_frags_table_set(
         ((u_int32_t *) htt_tx_desc) + HTT_TX_DESC_FRAGS_DESC_PADDR_OFFSET_DWORD;
     if (reset) {
         *fragmentation_descr_field_ptr =
-            HTT_TX_DESC_PADDR(pdev, htt_tx_desc) + HTT_TX_DESC_LEN;
+            (uint32_t)htt_tx_get_paddr(pdev, (char *)htt_tx_desc) + HTT_TX_DESC_LEN;
     } else {
         *fragmentation_descr_field_ptr = paddr;
     }
@@ -730,3 +861,51 @@ int htt_tx_ipa_uc_detach(struct htt_pdev_t *pdev)
    return 0;
 }
 #endif /* IPA_UC_OFFLOAD */
+
+int htt_tx_credit_update(struct htt_pdev_t *pdev)
+{
+   int credit_delta;
+   credit_delta = MIN(adf_os_atomic_read(&pdev->htt_tx_credit.target_delta),
+                      adf_os_atomic_read(&pdev->htt_tx_credit.bus_delta));
+   if (credit_delta) {
+      adf_os_atomic_add(-credit_delta, &pdev->htt_tx_credit.target_delta);
+      adf_os_atomic_add(-credit_delta, &pdev->htt_tx_credit.bus_delta);
+   }
+   return credit_delta;
+}
+
+#ifdef FEATURE_HL_GROUP_CREDIT_FLOW_CONTROL
+void htt_tx_group_credit_process(struct htt_pdev_t *pdev, u_int32_t *msg_word)
+{
+   int group_credit_sign;
+   int32_t group_credit;
+   u_int32_t group_credit_abs, vdev_id_mask, ac_mask;
+   u_int8_t group_abs, group_id;
+   u_int8_t group_offset = 0, more_group_present = 0;
+
+   more_group_present = HTT_TX_CREDIT_TXQ_GRP_GET(*msg_word);
+
+   while (more_group_present) {
+      /* Parse the Group Data */
+      group_id = HTT_TXQ_GROUP_ID_GET(*(msg_word+1+group_offset));
+      group_credit_abs =
+           HTT_TXQ_GROUP_CREDIT_COUNT_GET(*(msg_word+1+group_offset));
+      group_credit_sign =
+           HTT_TXQ_GROUP_SIGN_GET(*(msg_word+1+group_offset)) ? -1 : 1;
+      group_credit = group_credit_sign * group_credit_abs;
+      group_abs = HTT_TXQ_GROUP_ABS_GET(*(msg_word+1+group_offset));
+
+      vdev_id_mask =
+           HTT_TXQ_GROUP_VDEV_ID_MASK_GET(*(msg_word+2+group_offset));
+      ac_mask = HTT_TXQ_GROUP_AC_MASK_GET(*(msg_word+2+group_offset));
+
+      ol_txrx_update_tx_queue_groups(pdev->txrx_pdev, group_id,
+                                     group_credit, group_abs,
+                                     vdev_id_mask, ac_mask);
+      more_group_present = HTT_TXQ_GROUP_EXT_GET(*(msg_word+1+group_offset));
+      group_offset += HTT_TX_GROUP_INDEX_OFFSET;
+   }
+   OL_TX_UPDATE_GROUP_CREDIT_STATS(pdev->txrx_pdev);
+}
+#endif
+

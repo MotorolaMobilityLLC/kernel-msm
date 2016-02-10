@@ -20,6 +20,12 @@
  */
 
 /*
+ * This file was originally distributed by Qualcomm Atheros, Inc.
+ * under proprietary terms before Copyright ownership was assigned
+ * to the Linux Foundation.
+ */
+
+/*
  * DO NOT EDIT - This file is generated automatically
  */
 
@@ -113,9 +119,7 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"CURRENT_TX_ANTENNA",
     (unsigned char *)"CURRENT_RX_ANTENNA",
     (unsigned char *)"CURRENT_TX_POWER_LEVEL",
-    (unsigned char *)"POWER_STATE_PER_CHAIN",
     (unsigned char *)"NEW_BSS_FOUND_IND",
-    (unsigned char *)"PROPRIETARY_ANI_FEATURES_ENABLED",
     (unsigned char *)"PROPRIETARY_RATES_ENABLED",
     (unsigned char *)"AP_NODE_NAME",
     (unsigned char *)"COUNTRY_CODE",
@@ -130,9 +134,6 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"FORCE_POLICY_PROTECTION",
     (unsigned char *)"11G_SHORT_PREAMBLE_ENABLED",
     (unsigned char *)"11G_SHORT_SLOT_TIME_ENABLED",
-    (unsigned char *)"CAL_PERIOD",
-    (unsigned char *)"STATS_PERIOD",
-    (unsigned char *)"CAL_CONTROL",
     (unsigned char *)"11G_ONLY_POLICY",
     (unsigned char *)"PACKET_CLASSIFICATION",
     (unsigned char *)"WME_ENABLED",
@@ -141,7 +142,6 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"KEEP_ALIVE_STA_LIMIT_THRESHOLD",
     (unsigned char *)"SEND_SINGLE_SSID_ALWAYS",
     (unsigned char *)"WSM_ENABLED",
-    (unsigned char *)"PROP_CAPABILITY",
     (unsigned char *)"EDCA_PROFILE",
     (unsigned char *)"EDCA_ANI_ACBK_LOCAL",
     (unsigned char *)"EDCA_ANI_ACBE_LOCAL",
@@ -159,14 +159,6 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"EDCA_WME_ACBE",
     (unsigned char *)"EDCA_WME_ACVI",
     (unsigned char *)"EDCA_WME_ACVO",
-    (unsigned char *)"EDCA_TIT_DEMO_ACBK_LOCAL",
-    (unsigned char *)"EDCA_TIT_DEMO_ACBE_LOCAL",
-    (unsigned char *)"EDCA_TIT_DEMO_ACVI_LOCAL",
-    (unsigned char *)"EDCA_TIT_DEMO_ACVO_LOCAL",
-    (unsigned char *)"EDCA_TIT_DEMO_ACBK",
-    (unsigned char *)"EDCA_TIT_DEMO_ACBE",
-    (unsigned char *)"EDCA_TIT_DEMO_ACVI",
-    (unsigned char *)"EDCA_TIT_DEMO_ACVO",
     (unsigned char *)"RDET_FLAG",
     (unsigned char *)"RADAR_CHANNEL_LIST",
     (unsigned char *)"LOCAL_POWER_CONSTRAINT",
@@ -220,7 +212,6 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"VHT_TX_MCS_MAP",
     (unsigned char *)"VHT_RX_HIGHEST_SUPPORTED_DATA_RATE",
     (unsigned char *)"VHT_TX_HIGHEST_SUPPORTED_DATA_RATE",
-    (unsigned char *)"VHT_CHANNEL_WIDTH",
     (unsigned char *)"VHT_CHANNEL_CENTER_FREQ_SEGMENT1",
     (unsigned char *)"VHT_CHANNEL_CENTER_FREQ_SEGMENT2",
     (unsigned char *)"VHT_BASIC_MCS_SET",
@@ -296,9 +287,6 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"RPE_AGING_THRESHOLD_FOR_AC3_REG",
     (unsigned char *)"NO_OF_ONCHIP_REORDER_SESSIONS",
     (unsigned char *)"SINGLE_TID_RC",
-    (unsigned char *)"RRM_ENABLED",
-    (unsigned char *)"RRM_OPERATING_CHAN_MAX",
-    (unsigned char *)"RRM_NON_OPERATING_CHAN_MAX",
     (unsigned char *)"TX_PWR_CTRL_ENABLE",
     (unsigned char *)"MCAST_BCAST_FILTER_SETTING",
     (unsigned char *)"BTC_DHCP_BT_SLOTS_TO_BLOCK",
@@ -346,3 +334,4 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"VHT_ENABLE_TXBF_20MHZ",
     (unsigned char *)"TDLS_WMM_MODE_ENABLED",
 };
+

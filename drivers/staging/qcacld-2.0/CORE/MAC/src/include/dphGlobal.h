@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -274,12 +274,6 @@ typedef struct sDphHashNode
 
     tANI_U8   staAuthenticated:1;
 
-    /// Whether the peer is ANI or not
-
-    tANI_U8  aniPeer:1;
-
-    tANI_U8   titanPeer:1;                // flag to indicate if its a titan peer
-
     tANI_U8  fAniCount:1;
 
     tANI_U8   rmfEnabled:1;
@@ -300,11 +294,8 @@ typedef struct sDphHashNode
     tANI_U8  timWaitCount;
 
 
-    /// Number of Successfull MPDU's being sent
-
+    /* Number of Successful MPDU's being sent */
     tANI_U32    curTxMpduCnt;
-
-
 
 
     /// number of consecutive TIMs sent without response
@@ -321,11 +312,6 @@ typedef struct sDphHashNode
 
     tSirMacPropVersion version;
 
-    // station proprietary capability
-
-    tANI_U16                propCapability;
-
-
 #ifdef PLM_WDS
 
     tANI_U8  wdsIndex;
@@ -335,15 +321,11 @@ typedef struct sDphHashNode
 #endif
 
 
-   //Taurus capabilities
-
    tANI_U16 baPolicyFlag;                 //BA Policy for each TID.
 
 
     /*
-
-    * All the legacy and airgo supported rates.
-
+    * All the legacy supported rates.
     */
 
     tSirSupportedRates supportedRates;
@@ -430,7 +412,7 @@ typedef struct sDphHashNode
 
     ///////////////////////////////////////////////////////////////////////
 
-    tANI_U8 dpuSig:4;                       // DPU signiture
+    tANI_U8 dpuSig:4;                       /* DPU signature */
 
     tANI_U8 staSig:4;                       // STA signature
 
@@ -481,27 +463,6 @@ typedef struct sDphHashNode
     tCfgTrafficClass tcCfg[STACFG_MAX_TC];
 
 
-    // Block Ack state
-
-    // This is used between PE and HAL only.
-
-    // can be set to one of the values from the following enum
-
-    /*typedef enum eLimBAState
-
-    {
-
-        eLIM_BA_STATE_IDLE, // we are not waiting for anything from HAL.
-
-        eLIM_BA_STATE_WT_ADD_RSP, //We are waiting for Add rsponse from HAL.
-
-        eLIM_BA_STATE_WT_DEL_RSP //  We are waiting for Del response from HAL.
-
-    } tLimBAState; */
-
-
-
-
     //BA state bitmap 2 bits per tid
 
     // BA state for tid i  = (baState >> tid*2) & 0x3
@@ -520,6 +481,9 @@ typedef struct sDphHashNode
     tANI_U16 pmfSaQueryCurrentTransId;
     tANI_U16 pmfSaQueryStartTransId;
     TX_TIMER pmfSaQueryTimer;
+    v_TIME_t last_unprot_deauth_disassoc;
+    tANI_U8 proct_deauh_disassoc_cnt;
+    v_TIME_t last_assoc_received_time;
 #endif
 
     tANI_U8 htLdpcCapable;
@@ -534,6 +498,8 @@ typedef struct sDphHashNode
     tANI_U8 timingMeasCap;
     /* key installed for this STA or not in the firmware */
     tANI_U8 isKeyInstalled;
+
+    uint8_t nss;
 
     /* When a station with already an existing dph entry tries to
 

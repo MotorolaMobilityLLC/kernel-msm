@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -60,12 +60,10 @@
 #include <palTypes.h>
 #include <aniGlobal.h>
 #include <dot11f.h>
-#ifdef WLAN_BTAMP_FEATURE
-#include "bap_hdd_misc.h"
-#endif
 
 #include <linux/wireless.h>
 #include <net/cfg80211.h>
+#include <vos_sched.h>
 
 
 #define WEXT_CSCAN_HEADER               "CSCAN S\x01\x00\x00S\x00"
@@ -482,20 +480,7 @@ static eHalStatus hdd_IndicateScanResult(hdd_scan_info_t *scanInfo, tCsrScanResu
    event.u.qual.qual = descriptor->rssi;
    event.u.qual.noise = descriptor->sinr;
 
-   /*To keep the rssi icon of the connected AP in the scan window
-    *and the rssi icon of the wireless networks in sync */
-   if (( eConnectionState_Associated ==
-              pAdapter->sessionCtx.station.conn_info.connState ) &&
-              ( VOS_TRUE == vos_mem_compare(descriptor->bssId,
-                             pAdapter->sessionCtx.station.conn_info.bssId,
-                             VOS_MAC_ADDR_SIZE)))
-   {
-      event.u.qual.level = pAdapter->rssi;
-   }
-   else
-   {
-      event.u.qual.level = VOS_MIN ((descriptor->rssi + descriptor->sinr), 0);
-   }
+   event.u.qual.level = VOS_MIN ((descriptor->rssi + descriptor->sinr), 0);
 
    event.u.qual.updated = IW_QUAL_ALL_UPDATED;
 
@@ -595,24 +580,20 @@ static eHalStatus hdd_ScanRequestCallback(tHalHandle halHandle, void *pContext,
     return eHAL_STATUS_SUCCESS;
 }
 
-/**---------------------------------------------------------------------------
-
-  \brief iw_set_scan() -
-
-   This function process the scan request from the wpa_supplicant
-   and set the scan request to the SME
-
-  \param  - dev - Pointer to the net device.
-              - info - Pointer to the iw_request_info.
-              - wrqu - Pointer to the iwreq_data.
-              - extra - Pointer to the data.
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
-
-
-int iw_set_scan(struct net_device *dev, struct iw_request_info *info,
-                 union iwreq_data *wrqu, char *extra)
+/**
+ * __iw_set_scan() - set scan request
+ * @dev: Pointer to the net device.
+ * @info: Pointer to the iw_request_info.
+ * @wrqu: Pointer to the iwreq_data.
+ * @extra: Pointer to the data.
+ *
+ * This function process the scan request from the wpa_supplicant
+ * and set the scan request to the SME
+ *
+ * Return: 0 on success, error number otherwise
+ */
+static int __iw_set_scan(struct net_device *dev, struct iw_request_info *info,
+			 union iwreq_data *wrqu, char *extra)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev) ;
    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
@@ -623,31 +604,24 @@ int iw_set_scan(struct net_device *dev, struct iw_request_info *info,
    struct iw_scan_req *scanReq = (struct iw_scan_req *)extra;
    hdd_adapter_t *con_sap_adapter;
    uint16_t con_dfs_ch;
+   int ret;
 
    ENTER();
 
-   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: enter !!!",__func__);
+   ret = wlan_hdd_validate_context(pHddCtx);
+   if (0 != ret)
+       return ret;
 
-#ifdef WLAN_BTAMP_FEATURE
-   //Scan not supported when AMP traffic is on.
-   if( VOS_TRUE == WLANBAP_AmpSessionOn() )
-   {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "%s: No scanning when AMP is on",__func__);
-       return eHAL_STATUS_SUCCESS;
+   /* Block All Scan during DFS operation and send null scan result */
+   con_sap_adapter = hdd_get_con_sap_adapter(pAdapter, true);
+   if (con_sap_adapter) {
+       con_dfs_ch = con_sap_adapter->sessionCtx.ap.operatingChannel;
+
+       if (VOS_IS_DFS_CH(con_dfs_ch)) {
+           hddLog(LOGW, "%s:##In DFS Master mode. Scan aborted", __func__);
+           return -EOPNOTSUPP;
+       }
    }
-#endif
-    /* Block All Scan during DFS operation and send null scan result */
-    con_sap_adapter = hdd_get_con_sap_adapter(pAdapter);
-    if (con_sap_adapter) {
-        con_dfs_ch = con_sap_adapter->sessionCtx.ap.sapConfig.channel;
-        if (con_dfs_ch == AUTO_CHANNEL_SELECT)
-            con_dfs_ch = con_sap_adapter->sessionCtx.ap.operatingChannel;
-
-        if (VOS_IS_DFS_CH(con_dfs_ch)) {
-            hddLog(LOGW, "%s:##In DFS Master mode. Scan aborted", __func__);
-            return -EOPNOTSUPP;
-        }
-    }
 
 
    if(pAdapter->scan_info.mScanPending == TRUE)
@@ -656,10 +630,6 @@ int iw_set_scan(struct net_device *dev, struct iw_request_info *info,
        return eHAL_STATUS_SUCCESS;
    }
 
-   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress) {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
-      return eHAL_STATUS_SUCCESS;
-   }
    vos_mem_zero( &scanRequest, sizeof(scanRequest));
 
    if (NULL != wrqu->data.pointer)
@@ -775,29 +745,44 @@ error:
        vos_mem_free(scanRequest.SSIDs.SSIDList);
 
    EXIT();
-
-   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: exit !!!",__func__);
    return status;
 }
 
-/**---------------------------------------------------------------------------
+/**
+ * iw_set_scan() - SSR wrapper for __iw_set_scan
+ * @dev: Pointer to the net device.
+ * @info: Pointer to the iw_request_info.
+ * @wrqu: Pointer to the iwreq_data.
+ * @extra: Pointer to the data.
+ *
+ * Return: 0 on success, error number otherwise
+ */
+int iw_set_scan(struct net_device *dev, struct iw_request_info *info,
+		 union iwreq_data *wrqu, char *extra)
+{
+	int ret;
 
-  \brief iw_get_scan() -
+	vos_ssr_protect(__func__);
+	ret = __iw_set_scan(dev, info, wrqu, extra);
+	vos_ssr_unprotect(__func__);
 
-   This function returns the scan results to the wpa_supplicant
+	return ret;
+}
 
-  \param  - dev - Pointer to the net device.
-              - info - Pointer to the iw_request_info.
-              - wrqu - Pointer to the iwreq_data.
-              - extra - Pointer to the data.
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
-
-
-int iw_get_scan(struct net_device *dev,
-                         struct iw_request_info *info,
-                         union iwreq_data *wrqu, char *extra)
+/**
+ * __iw_get_scan() - get scan results
+ * @dev: Pointer to the net device.
+ * @info: Pointer to the iw_request_info.
+ * @wrqu: Pointer to the iwreq_data.
+ * @extra: Pointer to the data.
+ *
+ * This function returns the scan results to the wpa_supplicant
+ *
+ * Return: 0 on success, error number otherwise
+ */
+static int __iw_get_scan(struct net_device *dev,
+			 struct iw_request_info *info,
+			 union iwreq_data *wrqu, char *extra)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev) ;
    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
@@ -806,20 +791,23 @@ int iw_get_scan(struct net_device *dev,
    hdd_scan_info_t scanInfo;
    tScanResultHandle pResult;
    int i = 0;
+   hdd_context_t *hdd_ctx;
+   int ret;
+
+   ENTER();
+
+   hdd_ctx = WLAN_HDD_GET_CTX(pAdapter);
+   ret = wlan_hdd_validate_context(hdd_ctx);
+   if (0 != ret)
+       return ret;
 
    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: enter buffer length %d!!!",
        __func__, (wrqu->data.length)?wrqu->data.length:IW_SCAN_MAX_DATA);
-   ENTER();
 
    if (TRUE == pAdapter->scan_info.mScanPending)
    {
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:mScanPending is TRUE !!!",__func__);
        return -EAGAIN;
-   }
-
-   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress) {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
-      return -EAGAIN;
    }
 
    scanInfo.dev = dev;
@@ -859,9 +847,31 @@ int iw_get_scan(struct net_device *dev,
 
    sme_ScanResultPurge(hHal, pResult);
 
-   EXIT();
    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: exit total %d BSS reported !!!",__func__, i);
+   EXIT();
    return status;
+}
+
+/**
+ * iw_get_scan() - SSR wrapper function for __iw_get_scan
+ * @dev: Pointer to the net device.
+ * @info: Pointer to the iw_request_info.
+ * @wrqu: Pointer to the iwreq_data.
+ * @extra: Pointer to the data.
+ *
+ * Return: 0 on success, error number otherwise
+ */
+int iw_get_scan(struct net_device *dev,
+			 struct iw_request_info *info,
+			 union iwreq_data *wrqu, char *extra)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __iw_get_scan(dev, info, wrqu, extra);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 #if 0
@@ -926,14 +936,6 @@ int iw_set_cscan(struct net_device *dev, struct iw_request_info *info,
     ENTER();
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: enter !!!",__func__);
 
-#ifdef WLAN_BTAMP_FEATURE
-    //Scan not supported when AMP traffic is on.
-    if( VOS_TRUE == WLANBAP_AmpSessionOn() )
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "%s: No scanning when AMP is on",__func__);
-        return eHAL_STATUS_SUCCESS;
-    }
-#endif
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {

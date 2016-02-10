@@ -148,11 +148,8 @@ void ol_tx_desc_frame_free_nonstd(
 static inline u_int16_t
 ol_tx_desc_id(struct ol_txrx_pdev_t *pdev, struct ol_tx_desc_t *tx_desc)
 {
-    TXRX_ASSERT2(
-        ((union ol_tx_desc_list_elem_t *) tx_desc - pdev->tx_desc.array) <
-        pdev->tx_desc.pool_size);
-    return (u_int16_t)
-        ((union ol_tx_desc_list_elem_t *)tx_desc - pdev->tx_desc.array);
+    TXRX_ASSERT2(tx_desc->id < pdev->tx_desc.pool_size);
+    return tx_desc->id;
 }
 /*
  * @brief Retrieves the beacon headr for the vdev

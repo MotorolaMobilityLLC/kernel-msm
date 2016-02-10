@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -59,8 +59,9 @@ enum ieee80211_phymode {
     IEEE80211_MODE_11AC_VHT40MINUS  = 17,   /* 5Ghz  VHT40 (Ext ch -1) */
     IEEE80211_MODE_11AC_VHT40       = 18,   /* 5Ghz, VHT40 */
     IEEE80211_MODE_11AC_VHT80       = 19,   /* 5Ghz, VHT80 */
-    IEEE80211_MODE_2G_AUTO          = 20,    /* 2G 11 b/g/n  autoselect */
-    IEEE80211_MODE_5G_AUTO          = 21,    /* 5G 11 a/n/ac autoselect */
+    IEEE80211_MODE_2G_AUTO          = 20,   /* 2G 11 b/g/n  autoselect */
+    IEEE80211_MODE_5G_AUTO          = 21,   /* 5G 11 a/n/ac autoselect */
+    IEEE80211_MODE_11AGN            = 22,   /* Support 11N in both 2G and 5G */
 };
 #define IEEE80211_MODE_MAX      (IEEE80211_MODE_11AC_VHT80 + 1)
 

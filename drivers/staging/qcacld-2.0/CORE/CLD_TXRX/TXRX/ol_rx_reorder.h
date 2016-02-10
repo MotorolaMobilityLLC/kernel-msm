@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -83,23 +83,22 @@ void
 ol_rx_reorder_init(struct ol_rx_reorder_t *rx_reorder, u_int8_t tid);
 
 enum htt_rx_status
-ol_rx_reorder_seq_num_check(
-    struct ol_txrx_pdev_t *pdev,
-    struct ol_txrx_peer_t *peer,
-    unsigned tid,
-    unsigned seq_num);
-
+ol_rx_seq_num_check(
+	struct ol_txrx_pdev_t *pdev,
+	struct ol_txrx_peer_t *peer,
+	uint8_t tid,
+	void *rx_mpdu_desc);
 
 /*
  * Peregrine and Rome: do sequence number checking in the host
  * for peer-TIDs without aggregation enabled
  */
-#define OL_RX_REORDER_SEQ_NUM_CHECK(pdev, peer, tid, rx_mpdu_desc) \
-  (pdev->rx.flags.dup_check && peer->tids_rx_reorder[tid].win_sz_mask == 0) ? \
-      ol_rx_reorder_seq_num_check( \
-          pdev, peer, tid, \
-          htt_rx_mpdu_desc_seq_num(pdev->htt_pdev, rx_mpdu_desc)) : \
-      htt_rx_status_ok
+#define OL_RX_SEQ_NUM_CHECK(pdev, peer, tid, rx_mpdu_desc) \
+	(pdev->rx.flags.dup_check && peer->tids_rx_reorder[tid].win_sz_mask == 0) ? \
+		ol_rx_seq_num_check( \
+		pdev, peer, tid, \
+		rx_mpdu_desc) : \
+		htt_rx_status_ok
 
 
 

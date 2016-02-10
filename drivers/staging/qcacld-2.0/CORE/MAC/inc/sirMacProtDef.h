@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -42,7 +42,6 @@
 #include "palTypes.h"
 #include "sirTypes.h"
 #include "wniCfgSta.h"
-#include "aniCompiler.h"
 
 
 ///Capability information related
@@ -56,6 +55,8 @@
 #define SIR_11B_CHANNEL_END             14
 #define SIR_11A_FREQUENCY_OFFSET        4
 #define SIR_11B_FREQUENCY_OFFSET        1
+#define SIR_11P_CHANNEL_BEGIN           170
+#define SIR_11P_CHANNEL_END             184
 
 /// Current version of 802.11
 #define SIR_MAC_PROTOCOL_VERSION 0
@@ -81,10 +82,7 @@
 #define SIR_MAC_CTRL_CF_END     14
 #define SIR_MAC_CTRL_CF_END_ACK 15
 
-#define GEN4_SCAN         1
-#ifdef GEN4_SCAN
 #define SIR_MAC_MAX_DURATION_MICRO_SECONDS       32767
-#endif // GEN4_SCAN
 
 // Data frame subtype definitions
 #define SIR_MAC_DATA_DATA                 0
@@ -120,6 +118,7 @@
 #define SIR_MAC_MGMT_REASSOC_RSP  0x3
 #define SIR_MAC_MGMT_PROBE_REQ    0x4
 #define SIR_MAC_MGMT_PROBE_RSP    0x5
+#define SIR_MAC_MGMT_TIME_ADVERT  0x6
 #define SIR_MAC_MGMT_BEACON       0x8
 #define SIR_MAC_MGMT_ATIM         0x9
 #define SIR_MAC_MGMT_DISASSOC     0xA
@@ -147,6 +146,7 @@
 #define SIR_MAC_ACTION_MHF            14
 #define SIR_MAC_SELF_PROTECTED        15
 #define SIR_MAC_ACTION_WME            17
+#define SIR_MAC_ACTION_FST            18
 #define SIR_MAC_ACTION_VHT            21
 
 // QoS management action codes
@@ -162,22 +162,9 @@
 #define SIR_MAC_QOS_DEL_BA_REQ      6
 #define SIR_MAC_QOS_DEL_BA_RSP      7
 
-#ifdef ANI_SUPPORT_11H
-// Spectrum management action codes
-#define SIR_MAC_ACTION_MEASURE_REQUEST_ID      0
-#define SIR_MAC_ACTION_MEASURE_REPORT_ID       1
-#define SIR_MAC_ACTION_TPC_REQUEST_ID          2
-#define SIR_MAC_ACTION_TPC_REPORT_ID           3
-#endif //ANI_SUPPORT_11H
 #define SIR_MAC_ACTION_CHANNEL_SWITCH_ID       4
 
 
-#ifdef ANI_SUPPORT_11H
-// Measurement Request/Report Type
-#define SIR_MAC_BASIC_MEASUREMENT_TYPE         0
-#define SIR_MAC_CCA_MEASUREMENT_TYPE           1
-#define SIR_MAC_RPI_MEASUREMENT_TYPE           2
-#endif //ANI_SUPPORT_11H
 
 //RRM related.
 //Refer IEEE Std 802.11k-2008, Section 7.3.2.21, table 7.29
@@ -190,6 +177,8 @@
 #define SIR_MAC_RRM_STA_STATISTICS_TYPE        7
 #define SIR_MAC_RRM_LCI_TYPE                   8
 #define SIR_MAC_RRM_TSM_TYPE                   9
+#define SIR_MAC_RRM_LOCATION_CIVIC_TYPE        11
+#define SIR_MAC_RRM_FINE_TIME_MEAS_TYPE        16
 
 //RRM action codes
 #define SIR_MAC_RRM_RADIO_MEASURE_REQ          0
@@ -225,6 +214,8 @@
 
 // Public Action for 20/40 BSS Coexistence
 #define SIR_MAC_ACTION_2040_BSS_COEXISTENCE     0
+#define SIR_MAC_ACTION_EXT_CHANNEL_SWITCH_ID    4
+
 
 #ifdef WLAN_FEATURE_11W
 //11w SA query request/response action frame category code
@@ -297,7 +288,7 @@
 #define SIR_MAC_QBSS_LOAD_EID_MAX          5
 #define SIR_MAC_EDCA_PARAM_SET_EID     12 // EDCA parameter set
 #define SIR_MAC_EDCA_PARAM_SET_EID_MIN     18
-#define SIR_MAC_EDCA_PARAM_SET_EID_MAX     20 // TBD temp - change backto 18
+#define SIR_MAC_EDCA_PARAM_SET_EID_MAX     20
 #define SIR_MAC_TSPEC_EID              13
 #define SIR_MAC_TSPEC_EID_MIN              55
 #define SIR_MAC_TSPEC_EID_MAX              55
@@ -366,6 +357,14 @@
 #define SIR_MAC_EXTENDED_RATE_EID      50
 #define SIR_MAC_EXTENDED_RATE_EID_MIN      0
 #define SIR_MAC_EXTENDED_RATE_EID_MAX      255
+#define SIR_MAC_OPERATING_CLASS_EID    59
+#define SIR_MAC_OPERATING_CLASS_EID_MIN    2
+#define SIR_MAC_OPERATING_CLASS_EID_MAX    253
+#define SIR_MAC_CHNL_EXTENDED_SWITCH_ANN_EID 60
+#define SIR_MAC_CHNL_EXTENDED_SWITCH_ANN_EID_MIN    0
+#define SIR_MAC_CHNL_EXTENDED_SWITCH_ANN_EID_MAX    255
+
+
 // reserved       51-69
 #define SIR_MAC_RM_ENABLED_CAPABILITY_EID      70
 #define SIR_MAC_RM_ENABLED_CAPABILITY_EID_MIN  5
@@ -376,6 +375,8 @@
 #define SIR_MAC_WPA_EID_MAX                255
 
 #define SIR_MAC_EID_VENDOR                221
+
+#define SIR_MAC_WAPI_EID                68
 
 // reserved                            222-254
 #define SIR_MAC_HT_CAPABILITIES_EID    45
@@ -392,6 +393,23 @@
 #define SIR_MAC_VHT_OPMODE_EID         199
 #endif
 #define SIR_MAC_MAX_SUPPORTED_MCS_SET    16
+
+#define VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_1_1       390
+#define VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_1_1       390
+#define VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_2_2       780
+#define VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_2_2       780
+
+#define VHT_MCS_1x1 0xFFFC
+#define VHT_MCS_2x2 0xFFF3
+
+#define NSS_1x1_MODE 1
+#define NSS_2x2_MODE 2
+
+#ifdef FEATURE_AP_MCC_CH_AVOIDANCE
+#define SIR_MAC_QCOM_VENDOR_EID      200
+#define SIR_MAC_QCOM_VENDOR_OUI      "\x00\xA0\xC6"
+#define SIR_MAC_QCOM_VENDOR_SIZE     3
+#endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
 
 /// Workaround IE to change beacon length when it is 4*n+1
 #define SIR_MAC_ANI_WORKAROUND_EID     255
@@ -692,8 +710,14 @@ typedef enum eSirMacStatusCodes
     eSIR_MAC_UNSUPPORTED_RSN_IE_VERSION_STATUS    = 44, //Unsupported RSN information element version
     eSIR_MAC_INVALID_RSN_IE_CAPABILITIES_STATUS   = 45, //Invalid RSN information element capabilities
     eSIR_MAC_CIPHER_SUITE_REJECTED_STATUS         = 46, //Cipher suite rejected because of security policy
-    eSIR_MAC_TS_NOT_CREATED_STATUS                = 47, //The TS has not been created; however, the HC may be capable of creating a TS, in
-                                                        //response to a request, after the time indicated in the TS Delay element
+
+    /*
+     * The TS has not been created; however, the HC may be capable of creating
+     * a TS, in response to a request, after the time indicated in the TS Delay
+     * element
+     */
+    eSIR_MAC_TS_NOT_CREATED_STATUS                = 47,
+
     eSIR_MAC_DL_NOT_ALLOWED_STATUS                = 48, //Direct link is not allowed in the BSS by policy
     eSIR_MAC_DEST_STA_NOT_KNOWN_STATUS            = 49, //The Destination STA is not present within this BSS
     eSIR_MAC_DEST_STA_NOT_QSTA_STATUS             = 50, //The Destination STA is not a QoS STA
@@ -723,8 +747,13 @@ typedef enum eSirMacReasonCodes
     eSIR_MAC_DEAUTH_LEAVING_BSS_REASON               = 3, //Deauthenticated because sending station is leaving (or has left) IBSS or ESS
     eSIR_MAC_DISASSOC_DUE_TO_INACTIVITY_REASON       = 4, //Disassociated due to inactivity
     eSIR_MAC_DISASSOC_DUE_TO_DISABILITY_REASON       = 5, //Disassociated because AP is unable to handle all currently associated stations
-    eSIR_MAC_CLASS2_FRAME_FROM_NON_AUTH_STA_REASON   = 6, //Class 2 frame received from nonauthenticated station
-    eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON  = 7, //Class 3 frame received from nonassociated station
+
+    /* Class 2 frame received from non-authenticated station */
+    eSIR_MAC_CLASS2_FRAME_FROM_NON_AUTH_STA_REASON   = 6,
+
+    /* Class 3 frame received from non-associated station */
+    eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON  = 7,
+
     eSIR_MAC_DISASSOC_LEAVING_BSS_REASON             = 8, //Disassociated because sending station is leaving (or has left) BSS
     eSIR_MAC_STA_NOT_PRE_AUTHENTICATED_REASON        = 9, //Station requesting (re)association is not authenticated with responding station
     eSIR_MAC_PWR_CAPABILITY_BAD_REASON               = 10, //Disassociated because the information in the Power Capability element is unacceptable
@@ -745,8 +774,12 @@ typedef enum eSirMacReasonCodes
     eSIR_MAC_1X_AUTH_FAILURE_REASON                  = 23, //IEEE 802.1X authentication failed
     eSIR_MAC_CIPHER_SUITE_REJECTED_REASON            = 24, //Cipher suite rejected because of the security policy
 #ifdef FEATURE_WLAN_TDLS
-    eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE          = 25, //TDLS direct link teardown due to TDLS peer STA unreachable via the TDLS direct link
-    eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON             = 26, //TDLS direct link teardown for unspecified reason
+    /* TDLS direct link tear down due to TDLS peer STA unreachable
+       via the TDLS direct link */
+    eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE          = 25,
+
+    /* TDLS direct link tear down for unspecified reason */
+    eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON             = 26,
 #endif
     // reserved                                        27 - 30
 #ifdef WLAN_FEATURE_11W
@@ -1010,7 +1043,15 @@ typedef __ani_attr_pre_packed struct sSirMacWpaInfo
 {
     tANI_U8        length;
     tANI_U8        info[SIR_MAC_MAX_IE_LENGTH];
-} __ani_attr_packed tSirMacWpaInfo, *tpSirMacWpaInfo, tSirMacRsnInfo, *tpSirMacRsnInfo;
+} __ani_attr_packed tSirMacWpaInfo, *tpSirMacWpaInfo,
+    tSirMacRsnInfo, *tpSirMacRsnInfo;
+
+typedef __ani_attr_pre_packed struct sSirMacWapiInfo
+{
+    tANI_U8        length;
+    tANI_U8        info[SIR_MAC_MAX_IE_LENGTH];
+} __ani_attr_packed tSirMacWapiInfo, *tpSirMacWapiInfo,
+    tSirMacWapiInfo, *tpSirMacWapiInfo;
 
 typedef __ani_attr_pre_packed struct sSirMacFHParamSet
 {
@@ -1613,7 +1654,7 @@ typedef enum eSirMacHTOperatingMode
   eSIR_HT_OP_MODE_PURE, // No Protection
   eSIR_HT_OP_MODE_OVERLAP_LEGACY, // Overlap Legacy device present, protection is optional
   eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT, // No legacy device, but 20 MHz HT present
-  eSIR_HT_OP_MODE_MIXED // Protetion is required
+  eSIR_HT_OP_MODE_MIXED /* Protection is required */
 } tSirMacHTOperatingMode;
 
 
@@ -1762,6 +1803,7 @@ typedef enum eHTCapability
   eHT_PSMP,
   eHT_DSSS_CCK_MODE_40MHZ,
   eHT_MAX_AMSDU_LENGTH,
+  eHT_MAX_AMSDU_NUM,
   eHT_DELAYED_BA,
   eHT_RX_STBC,
   eHT_TX_STBC,
@@ -2101,20 +2143,6 @@ typedef  struct sSirMacMeasActionFrameHdr
 } tSirMacMeasActionFrameHdr, *tpSirMacMeasActionFrameHdr;
 
 
-#ifdef ANI_SUPPORT_11H
-typedef  struct sSirMacTpcReqActionFrame
-{
-    tSirMacMeasActionFrameHdr   actionHeader;
-    tANI_U8                          type;
-    tANI_U8                          length;
-} tSirMacTpcReqActionFrame, *tpSirMacTpcReqActionFrame;
-
-typedef  struct sSirMacMeasReqActionFrame
-{
-    tSirMacMeasActionFrameHdr   actionHeader;
-    tSirMacMeasReqIE            measReqIE;
-} tSirMacMeasReqActionFrame, *tpSirMacMeasReqActionFrame;
-#endif
 
 #if defined WLAN_FEATURE_VOWIFI
 
@@ -2250,7 +2278,6 @@ typedef struct sSirMacRadioMeasureReport
                        (((tANI_U8)x)==SIR_MAC_RATE_54))
 
 #define SIR_MAC_MIN_IE_LEN 2 // Minimum IE length for IE validation
-
 
 #define SIR_MAC_TI_TYPE_REASSOC_DEADLINE        1
 #define SIR_MAC_TI_TYPE_KEY_LIFETIME            2

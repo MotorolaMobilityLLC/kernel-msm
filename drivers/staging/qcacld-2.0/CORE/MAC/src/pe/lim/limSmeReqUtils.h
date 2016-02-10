@@ -28,7 +28,7 @@
 /*
  *
  * This file limSmeReqUtils.h contains the utility definitions
- * LIM uses while processing SME request messsages.
+ * LIM uses while processing SME request messages.
  * Author:        Chandra Modumudi
  * Date:          02/13/02
  * History:-

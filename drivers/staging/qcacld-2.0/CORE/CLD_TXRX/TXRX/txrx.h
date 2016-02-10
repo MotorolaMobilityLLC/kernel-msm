@@ -40,10 +40,10 @@
 #define PEER_DELETION_TIMEOUT 500
 
 enum txrx_wmm_ac {
-	TXRX_WMM_AC_VO,
-	TXRX_WMM_AC_VI,
-	TXRX_WMM_AC_BK,
 	TXRX_WMM_AC_BE,
+	TXRX_WMM_AC_BK,
+	TXRX_WMM_AC_VI,
+	TXRX_WMM_AC_VO,
 
 	TXRX_NUM_WMM_AC
 };
@@ -141,7 +141,6 @@ struct wlan_txrx_ind_req {
 };
 
 struct wlan_txrx_config_param {
-	u8 ucAcWeights[TXRX_NUM_WMM_AC];
 	u32 uDelayedTriggerFrmInt;
 	u8 uMinFramesProcThres;
 };

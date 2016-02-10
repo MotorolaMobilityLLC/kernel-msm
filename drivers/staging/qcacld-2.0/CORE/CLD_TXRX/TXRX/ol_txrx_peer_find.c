@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -367,7 +367,6 @@ ol_txrx_peer_find_add_id(
          * Peregrine/Rome has two peer id for each peer.
          */
         if (peer->peer_ids[0] == HTT_INVALID_PEER) {
-            TXRX_PRINT(TXRX_PRINT_LEVEL_ERR, "%s: Delete Peer %p\n", __func__, peer);
             ol_txrx_peer_unref_delete(peer);
         }
         if (ol_txrx_peer_find_add_id_to_obj(peer, peer_id)) {

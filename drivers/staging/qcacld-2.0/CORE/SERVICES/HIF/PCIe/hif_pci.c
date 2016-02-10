@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -55,11 +55,12 @@
 #include "hif_pci.h"
 #include "vos_trace.h"
 #include "vos_api.h"
-#if  defined(CONFIG_CNSS)
-#include <net/cnss.h>
-#endif
+#include "vos_cnss.h"
 #include <vos_getBin.h>
 #include "epping_main.h"
+#ifdef CONFIG_PCI_MSM
+#include <linux/msm_pcie.h>
+#endif
 
 /* use credit flow control over HTC */
 unsigned int htc_credit_flow = 1;
@@ -121,6 +122,40 @@ static int hif_post_recv_buffers_for_pipe(struct HIF_CE_pipe_info *pipe_info);
 //#define BMI_RSP_POLLING
 #define BMI_RSP_TO_MILLISEC  1000
 
+/**
+ * enum ce_host_index: index into the host copy engine attribute
+ * table
+ * @CE_HOST_H2T_HTC_CTRL: host->target HTC control and raw streams
+ * @CE_HOST_T2H_HTT_HTC_CTRL: target->host HTT + HTC control
+ * @CE_HOST_T2H_WMI: target->host WMI
+ * @CE_HOST_H2T_WMI: host->target WMI
+ * @CE_HOST_H2T_HTT: host->target HTT
+ * @CE_HOST_IPA2T_HTC_CTRL: ipa_uc->target HTC control
+ * @CE_HOST_TARGET_HIF: Target autonomous HIF_memcpy
+ * @CE_HOST_DIAG: ce_diag, the Diagnostic Window
+ * Note: This enum is closely tied to the host_CE_config_wlan
+ * table below. Please update the enum if the table is updated
+ */
+
+enum ce_host_index {
+	CE_HOST_H2T_HTC_CTRL = 0,
+	CE_HOST_T2H_HTT_HTC_CTRL = 1,
+	CE_HOST_T2H_WMI = 2,
+	CE_HOST_H2T_WMI = 3,
+	CE_HOST_H2T_HTT = 4,
+#ifndef IPA_UC_OFFLOAD
+	CE_HOST_UNUSED = 5,
+#else
+	CE_HOST_IPA2T_HTC_CTRL = 5,
+#endif
+	CE_HOST_TARGET_HIF = 6,
+	CE_HOST_DIAG = 7,
+};
+
+/**
+ * Note: This structure is closely tied to the enum above.
+ * Please update the enum if the table is updated
+ */
 static struct CE_attr host_CE_config_wlan[] =
 {
         { /* CE0 */ CE_ATTR_FLAGS, 0, 16, 256, 0, NULL, }, /* host->target HTC control and raw streams */
@@ -523,7 +558,14 @@ HIF_PCI_CE_recv_data(struct CE_handle *copyeng, void *ce_context, void *transfer
         }
         compl_queue_tail = compl_state;
 
-        adf_nbuf_unmap_single(scn->adf_dev, (adf_nbuf_t)transfer_context, ADF_OS_DMA_FROM_DEVICE);
+#ifdef HTC_CRP_DEBUG
+        if (CE_HOST_T2H_WMI == pipe_info->pipe_num)
+            adf_nbuf_unmap_single(scn->adf_dev, (adf_nbuf_t)transfer_context,
+                                  ADF_OS_DMA_BIDIRECTIONAL);
+        else
+#endif
+        adf_nbuf_unmap_single(scn->adf_dev, (adf_nbuf_t)transfer_context,
+                               ADF_OS_DMA_FROM_DEVICE);
 
         /*
          * EV #112693 - [Peregrine][ES1][WB342][Win8x86][Performance] BSoD_0x133 occurred in VHT80 UDP_DL
@@ -1499,10 +1541,27 @@ hif_post_recv_buffers_for_pipe(struct HIF_CE_pipe_info *pipe_info)
             return 1;
         }
 
+#ifdef HTC_CRP_DEBUG
+#define HTC_DEBUG_PATTERN 0xF005BA11
+        if (CE_HOST_T2H_WMI == pipe_info->pipe_num) {
+            uint32_t * data;
+            data = (uint32_t *)adf_nbuf_data(nbuf);
+            *data = HTC_DEBUG_PATTERN;
+            *(data + 1) = HTC_DEBUG_PATTERN;
+            *(data + 2) = HTC_DEBUG_PATTERN;
+            *(data + 3) = HTC_DEBUG_PATTERN;
+        }
+#endif
         /*
          * adf_nbuf_peek_header(nbuf, &data, &unused);
          * CE_data = dma_map_single(dev, data, buf_sz, DMA_FROM_DEVICE);
          */
+#ifdef HTC_CRP_DEBUG
+        if (CE_HOST_T2H_WMI == pipe_info->pipe_num)
+            ret = adf_nbuf_map_single(scn->adf_dev, nbuf,
+                                      ADF_OS_DMA_BIDIRECTIONAL);
+        else
+#endif
         ret = adf_nbuf_map_single(scn->adf_dev, nbuf, ADF_OS_DMA_FROM_DEVICE);
 
         if (unlikely(ret != A_STATUS_OK)) {
@@ -1696,7 +1755,14 @@ hif_recv_buffer_cleanup_on_pipe(struct HIF_CE_pipe_info *pipe_info)
     }
     while (CE_revoke_recv_next(ce_hdl, &per_CE_context, (void **)&netbuf, &CE_data) == A_OK)
     {
+#ifdef HTC_CRP_DEBUG
+        if (CE_HOST_T2H_WMI == pipe_info->pipe_num)
+            adf_nbuf_unmap_single(scn->adf_dev, netbuf,
+                                  ADF_OS_DMA_BIDIRECTIONAL);
+        else
+#endif
         adf_nbuf_unmap_single(scn->adf_dev, netbuf, ADF_OS_DMA_FROM_DEVICE);
+
         adf_nbuf_free(netbuf);
     }
 }
@@ -1789,6 +1855,9 @@ HIFStop(HIF_DEVICE *hif_device)
     if (!hif_state->started && !sc->hif_init_done) {
         return; /* already stopped or stopping */
     }
+
+    if (sc->hdd_startup_reinit_flag == TRUE)
+        return; /* If still in wlan_hdd_startup or wlan_hdd_reinit nop. */
 
     sc->hif_init_done = FALSE;
 
@@ -2281,7 +2350,7 @@ HIF_sleep_entry(void *arg)
 	struct hif_pci_softc *sc = hif_state->sc;
 	u_int32_t idle_ms;
 
-	if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HIF, NULL))
+	if (vos_is_unload_in_progress())
 		return;
 
 	if (sc->recovery)
@@ -2642,6 +2711,15 @@ HIFGetTargetId(HIF_DEVICE *hif_device)
 
 extern void HIFdebug(void);
 
+#ifdef CONFIG_PCI_MSM
+static inline void hif_msm_pcie_debug_info(struct hif_pci_softc *sc)
+{
+	msm_pcie_debug_info(sc->pdev, 13, 1, 0, 0, 0);
+	msm_pcie_debug_info(sc->pdev, 13, 2, 0, 0, 0);
+}
+#else
+static inline void hif_msm_pcie_debug_info(struct hif_pci_softc *sc) {};
+#endif
 /*
  * For now, we use simple on-demand sleep/wake.
  * Some possible improvements:
@@ -2675,11 +2753,27 @@ HIFTargetSleepStateAdjust(A_target_id_t targid,
     struct HIF_CE_state *hif_state = (struct HIF_CE_state *)TARGID_TO_HIF(targid);
     A_target_id_t pci_addr = TARGID_TO_PCI_ADDR(targid);
     static int max_delay;
+    static int debug = 0;
     struct hif_pci_softc *sc = hif_state->sc;
 
 
     if (sc->recovery)
         return -EACCES;
+
+    if (adf_os_atomic_read(&sc->pci_link_suspended)) {
+        VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
+                 "invalid access, PCIe link is suspended");
+        debug = 1;
+        VOS_ASSERT(0);
+        return -EACCES;
+    }
+
+    if(debug) {
+        wait_for_it = TRUE;
+        VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
+                 "doing debug for invalid access, PCIe link is suspended");
+        VOS_ASSERT(0);
+    }
 
     if (sleep_ok) {
         adf_os_spin_lock_irqsave(&hif_state->keep_awake_lock);
@@ -2751,20 +2845,21 @@ HIFTargetSleepStateAdjust(A_target_id_t targid,
                     pci_read_config_dword(sc->pdev, PCI_BASE_ADDRESS_0, &bar);
                     printk("%s: PCI BAR 0 = 0x%08x\n", __func__, bar);
 
-                    printk("%s: PCIE_SOC_WAKE_ADDRESS = 0x%08x,"    \
-                           " RTC_STATE_ADDRESS = 0x%08x\n", __func__,
+                    printk("%s: PCIE_SOC_WAKE_ADDRESS = 0x%08x, RTC_STATE_ADDRESS = 0x%08x\n",
+                           __func__,
                            A_PCI_READ32(pci_addr + PCIE_LOCAL_BASE_ADDRESS
                                         + PCIE_SOC_WAKE_ADDRESS),
                            A_PCI_READ32(pci_addr + PCIE_LOCAL_BASE_ADDRESS
                                         + RTC_STATE_ADDRESS));
 
                     printk("%s:error, can't wakeup target\n", __func__);
+                    hif_msm_pcie_debug_info(sc);
                     if (!sc->ol_sc->enable_self_recovery)
                             VOS_BUG(0);
                     sc->recovery = true;
                     vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
-#ifdef CONFIG_CNSS
-                    cnss_wlan_pci_link_down();
+#ifdef CONFIG_CNSS_PCI
+                    vos_wlan_pci_link_down();
 #endif
                     return -EACCES;
                 }
@@ -2787,6 +2882,25 @@ HIFTargetSleepStateAdjust(A_target_id_t targid,
             }
         }
     }
+
+    if(debug && hif_state->verified_awake) {
+        debug = 0;
+        VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
+                "%s: INTR_ENABLE_REG = 0x%08x, INTR_CAUSE_REG = 0x%08x, "
+                "CPU_INTR_REG = 0x%08x, INTR_CLR_REG = 0x%08x, "
+                "CE_INTERRUPT_SUMMARY_REG = 0x%08x", __func__,
+                A_PCI_READ32(sc->mem + SOC_CORE_BASE_ADDRESS +
+                             PCIE_INTR_ENABLE_ADDRESS),
+                A_PCI_READ32(sc->mem + SOC_CORE_BASE_ADDRESS +
+                             PCIE_INTR_CAUSE_ADDRESS),
+                A_PCI_READ32(sc->mem + SOC_CORE_BASE_ADDRESS +
+                             CPU_INTR_ADDRESS),
+                A_PCI_READ32(sc->mem + SOC_CORE_BASE_ADDRESS +
+                             PCIE_INTR_CLR_ADDRESS),
+                A_PCI_READ32(sc->mem + CE_WRAPPER_BASE_ADDRESS +
+                             CE_WRAPPER_INTERRUPT_SUMMARY_ADDRESS));
+    }
+
     return EOK;
 }
 
@@ -3008,10 +3122,21 @@ void HIFIpaGetCEResource(HIF_DEVICE *hif_device,
  */
 void hif_pci_runtime_pm_warn(struct hif_pci_softc *sc, const char *msg)
 {
+	struct hif_pm_runtime_context *ctx;
+	static const char *rpm_status[] = {"RPM_ACTIVE", "RPM_RESUMING",
+					"RPM_SUSPENDED", "RPM_SUSPENDING"};
+
 	pr_warn("%s: usage_count: %d, pm_state: %d, prevent_suspend_cnt: %d\n",
 			msg, atomic_read(&sc->dev->power.usage_count),
 			atomic_read(&sc->pm_state),
-			atomic_read(&sc->prevent_suspend_cnt));
+			sc->prevent_suspend_cnt);
+
+	pr_warn("runtime_status: %s, runtime_error: %d, disable_depth : %d "
+			"autosuspend_delay: %d\n",
+			rpm_status[sc->dev->power.runtime_status],
+			sc->dev->power.runtime_error,
+			sc->dev->power.disable_depth,
+			sc->dev->power.autosuspend_delay);
 
 	pr_warn("runtime_get: %u, runtime_put: %u, request_resume: %u\n",
 			sc->pm_stats.runtime_get, sc->pm_stats.runtime_put,
@@ -3033,7 +3158,16 @@ void hif_pci_runtime_pm_warn(struct hif_pci_softc *sc, const char *msg)
 			sc->pm_stats.suspend_err,
 			sc->pm_stats.runtime_get_err);
 
+	pr_warn("Active Wakeup Sources preventing Runtime Suspend: ");
 
+	list_for_each_entry(ctx, &sc->prevent_suspend_list, list) {
+		pr_warn("%s", ctx->name);
+		if (ctx->timeout)
+			pr_warn("(%d ms)", ctx->timeout);
+		pr_warn(" ");
+	}
+
+	pr_warn("\n");
 	WARN_ON(1);
 }
 
@@ -3044,8 +3178,8 @@ int hif_pm_runtime_get(HIF_DEVICE *hif_device)
 	int ret = 0;
 	int pm_state = adf_os_atomic_read(&sc->pm_state);
 
-	if (pm_state == HIF_PM_RUNTIME_STATE_ON ||
-		pm_state == HIF_PM_RUNTIME_STATE_NONE) {
+	if (pm_state  == HIF_PM_RUNTIME_STATE_ON ||
+			pm_state == HIF_PM_RUNTIME_STATE_NONE) {
 		sc->pm_stats.runtime_get++;
 		ret = __hif_pm_runtime_get(sc->dev);
 
@@ -3059,11 +3193,11 @@ int hif_pm_runtime_get(HIF_DEVICE *hif_device)
 			hif_pm_runtime_put(hif_device);
 
 		if (ret && ret != -EINPROGRESS) {
+			sc->pm_stats.runtime_get_err++;
 			VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
-				"%s: Resuming or suspending in pm_state:%d"
+				"%s: Runtime Get PM Error in pm_state:%d"
 				" ret: %d\n", __func__,
 				adf_os_atomic_read(&sc->pm_state), ret);
-			sc->pm_stats.runtime_get_err++;
 		}
 
 		return ret;
@@ -3082,6 +3216,7 @@ int hif_pm_runtime_put(HIF_DEVICE *hif_device)
 	struct hif_pci_softc *sc = hif_state->sc;
 	int ret = 0;
 	int pm_state, usage_count;
+	unsigned long flags;
 
 	pm_state = adf_os_atomic_read(&sc->pm_state);
 	usage_count = atomic_read(&sc->dev->power.usage_count);
@@ -3096,7 +3231,9 @@ int hif_pm_runtime_put(HIF_DEVICE *hif_device)
 
 	if ((pm_state == HIF_PM_RUNTIME_STATE_NONE && usage_count == 1) ||
 					usage_count == 0) {
+		spin_lock_irqsave(&sc->runtime_lock, flags);
 		hif_pci_runtime_pm_warn(sc, "PUT Without a Get Operation");
+		spin_unlock_irqrestore(&sc->runtime_lock, flags);
 		return -EINVAL;
 	}
 
@@ -3108,45 +3245,76 @@ int hif_pm_runtime_put(HIF_DEVICE *hif_device)
 	return 0;
 }
 
-static inline int __hif_pm_runtime_prevent_suspend(struct hif_pci_softc *hif_sc)
+static int __hif_pm_runtime_prevent_suspend(struct hif_pci_softc
+		*hif_sc, struct hif_pm_runtime_context *context)
 {
 	int ret = 0;
 
-	if (atomic_inc_return(&hif_sc->prevent_suspend_cnt) == 1) {
-		ret = __hif_pm_runtime_get(hif_sc->dev);
+	/*
+	 * We shouldn't be setting context->timeout to zero here when
+	 * context is active as we will have a case where Timeout API's
+	 * for the same context called back to back.
+	 * eg: echo "1=T:10:T:20" > /d/cnss_runtime_pm
+	 * Set context->timeout to zero in hif_pm_runtime_prevent_suspend
+	 * API to ensure the timeout version is no more active and
+	 * list entry of this context will be deleted during allow suspend.
+	 */
+	if (context->active)
+		return 0;
 
-		if (ret < 0 && ret != -EINPROGRESS) {
-			VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
-				"%s: Resuming or suspending in pm_state:%d"
-				" ret: %d\n", __func__,
-				adf_os_atomic_read(&hif_sc->pm_state), ret);
-			hif_sc->pm_stats.runtime_get_err++;
-		}
+	ret = __hif_pm_runtime_get(hif_sc->dev);
 
-		VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
-				"%s: in pm_state:%d ret: %d\n", __func__,
-				adf_os_atomic_read(&hif_sc->pm_state), ret);
+	/**
+	 * The ret can be -EINPROGRESS, if Runtime status is RPM_RESUMING or
+	 * RPM_SUSPENDING. Any other negative value is an error.
+	 * We shouldn't be do runtime_put here as in later point allow
+	 * suspend gets called with the the context and there the usage count
+	 * is decremented, so suspend will be prevented.
+	 */
+
+	if (ret < 0 && ret != -EINPROGRESS) {
+		hif_sc->pm_stats.runtime_get_err++;
+		hif_pci_runtime_pm_warn(hif_sc,
+				"Prevent Suspend Runtime PM Error");
 	}
+
+	hif_sc->prevent_suspend_cnt++;
+
+	context->active = true;
+
+	list_add_tail(&context->list, &hif_sc->prevent_suspend_list);
+
+	hif_sc->pm_stats.prevent_suspend++;
+
+	VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
+			"%s: in pm_state:%d ret: %d\n", __func__,
+			adf_os_atomic_read(&hif_sc->pm_state), ret);
 
 	return ret;
 }
 
-static inline int __hif_pm_runtime_allow_suspend(struct hif_pci_softc *hif_sc)
+static int __hif_pm_runtime_allow_suspend(struct hif_pci_softc *hif_sc,
+				struct hif_pm_runtime_context *context)
 {
 	int ret = 0;
 	int usage_count;
 
-	if (atomic_read(&hif_sc->prevent_suspend_cnt) == 0)
+	if (hif_sc->prevent_suspend_cnt == 0)
 		return ret;
 
-	/*
-	 * During Driver Unload, Platform driver increments the usage
-	 * count to prevent any runtime suspend getting called.
-	 * So during driver load in HIF_PM_RUNTIME_STATE_NONE state
-	 * the usage count should be one.
-	 */
+	if (!context->active)
+		return ret;
 
 	usage_count = atomic_read(&hif_sc->dev->power.usage_count);
+
+	/*
+	 * During Driver unload, platform driver increments the usage
+	 * count to prevent any runtime suspend getting called.
+	 * So during driver load in HIF_PM_RUNTIME_STATE_NONE state the
+	 * usage_count should be one. Ideally this shouldn't happen as
+	 * context->active should be active for allow suspend to happen
+	 * Handling this case here to prevent any failures.
+	 */
 	if ((adf_os_atomic_read(&hif_sc->pm_state) == HIF_PM_RUNTIME_STATE_NONE
 			&& usage_count == 1) || usage_count == 0) {
 		hif_pci_runtime_pm_warn(hif_sc,
@@ -3154,21 +3322,21 @@ static inline int __hif_pm_runtime_allow_suspend(struct hif_pci_softc *hif_sc)
 		return -EINVAL;
 	}
 
+	list_del(&context->list);
 
-	if (atomic_dec_return(&hif_sc->prevent_suspend_cnt) == 0) {
-		if (hif_sc->runtime_timer_expires > 0) {
-			del_timer(&hif_sc->runtime_timer);
-			hif_sc->runtime_timer_expires = 0;
-		}
+	hif_sc->prevent_suspend_cnt--;
 
-		hif_pm_runtime_mark_last_busy(hif_sc->dev);
-		ret = hif_pm_runtime_put_auto(hif_sc->dev);
+	context->active = false;
+	context->timeout = 0;
 
-		VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
-				"%s: in pm_state:%d ret: %d\n", __func__,
-				adf_os_atomic_read(&hif_sc->pm_state), ret);
-	}
+	hif_pm_runtime_mark_last_busy(hif_sc->dev);
+	ret = hif_pm_runtime_put_auto(hif_sc->dev);
 
+	VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
+			"%s: in pm_state:%d ret: %d\n", __func__,
+			adf_os_atomic_read(&hif_sc->pm_state), ret);
+
+	hif_sc->pm_stats.allow_suspend++;
 	return ret;
 }
 
@@ -3177,6 +3345,7 @@ void hif_pci_runtime_pm_timeout_fn(unsigned long data)
 	struct hif_pci_softc *hif_sc = (struct hif_pci_softc *)data;
 	unsigned long flags;
 	unsigned long timer_expires;
+	struct hif_pm_runtime_context *context, *temp;
 
 	spin_lock_irqsave(&hif_sc->runtime_lock, flags);
 
@@ -3196,49 +3365,71 @@ void hif_pci_runtime_pm_timeout_fn(unsigned long data)
 	 *                              spin_lock_irq
 	 */
 	if (timer_expires > 0 && !time_after(timer_expires, jiffies)) {
-
 		hif_sc->runtime_timer_expires = 0;
-		__hif_pm_runtime_allow_suspend(hif_sc);
-		hif_sc->pm_stats.allow_suspend_timeout++;
+		list_for_each_entry_safe(context, temp,
+			&hif_sc->prevent_suspend_list, list) {
+			if (context->timeout) {
+				__hif_pm_runtime_allow_suspend(hif_sc, context);
+				hif_sc->pm_stats.allow_suspend_timeout++;
+			}
+		}
 	}
 
 	spin_unlock_irqrestore(&hif_sc->runtime_lock, flags);
 }
 
-
-int hif_pm_runtime_prevent_suspend(void *ol_sc)
+int hif_pm_runtime_prevent_suspend(void *ol_sc, void *data)
 {
 	struct ol_softc *sc = (struct ol_softc *)ol_sc;
 	struct hif_pci_softc *hif_sc = sc->hif_sc;
+	struct hif_pm_runtime_context *context = data;
 	unsigned long flags;
 
 	if (!sc->enable_runtime_pm)
 		return 0;
 
-	hif_sc->pm_stats.prevent_suspend++;
+	if (!context)
+		return -EINVAL;
 
 	spin_lock_irqsave(&hif_sc->runtime_lock, flags);
-	__hif_pm_runtime_prevent_suspend(hif_sc);
+	context->timeout = 0;
+	__hif_pm_runtime_prevent_suspend(hif_sc, context);
 	spin_unlock_irqrestore(&hif_sc->runtime_lock, flags);
 
 	return 0;
 }
 
-int hif_pm_runtime_allow_suspend(void *ol_sc)
+int hif_pm_runtime_allow_suspend(void *ol_sc, void *data)
 {
 	struct ol_softc *sc = (struct ol_softc *)ol_sc;
 	struct hif_pci_softc *hif_sc = sc->hif_sc;
+	struct hif_pm_runtime_context *context = data;
+
 	unsigned long flags;
 
 	if (!sc->enable_runtime_pm)
 		return 0;
 
-	hif_sc->pm_stats.allow_suspend++;
+	if (!context)
+		return -EINVAL;
 
 	spin_lock_irqsave(&hif_sc->runtime_lock, flags);
-	__hif_pm_runtime_allow_suspend(hif_sc);
-	spin_unlock_irqrestore(&hif_sc->runtime_lock, flags);
 
+	__hif_pm_runtime_allow_suspend(hif_sc, context);
+
+	/* The list can be empty as well in cases where
+	 * we have one context in the list and the allow
+	 * suspend came before the timer expires and we delete
+	 * context above from the list.
+	 * When list is empty prevent_suspend count will be zero.
+	 */
+	if (hif_sc->prevent_suspend_cnt == 0 &&
+			hif_sc->runtime_timer_expires > 0) {
+		del_timer(&hif_sc->runtime_timer);
+		hif_sc->runtime_timer_expires = 0;
+	}
+
+	spin_unlock_irqrestore(&hif_sc->runtime_lock, flags);
 
 	return 0;
 }
@@ -3258,13 +3449,15 @@ int hif_pm_runtime_allow_suspend(void *ol_sc)
  *
  * Return: 0 on success and negative error code on failure
  */
-int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
+int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, void *data,
+						unsigned int delay)
 {
 	struct ol_softc *sc = (struct ol_softc *)ol_sc;
 	struct hif_pci_softc *hif_sc = sc->hif_sc;
 	int ret = 0;
 	unsigned long expires;
 	unsigned long flags;
+	struct hif_pm_runtime_context *context = data;
 
 	if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HIF, NULL)) {
 		VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
@@ -3282,6 +3475,9 @@ int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
 	if (!sc->enable_runtime_pm)
 		return 0;
 
+	if (!context)
+		return -EINVAL;
+
 	/*
 	 * Don't use internal timer if the timeout is less than auto suspend
 	 * delay.
@@ -3297,12 +3493,9 @@ int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
 
 	spin_lock_irqsave(&hif_sc->runtime_lock, flags);
 
-	/* Runtime Get only if timer is not running */
-	if (hif_sc->runtime_timer_expires == 0) {
-		__hif_pm_runtime_prevent_suspend(hif_sc);
-
-		hif_sc->pm_stats.prevent_suspend_timeout++;
-	}
+	context->timeout = delay;
+	ret = __hif_pm_runtime_prevent_suspend(hif_sc, context);
+	hif_sc->pm_stats.prevent_suspend_timeout++;
 
 	/* Modify the timer only if new timeout is after already configured
 	 * timeout
@@ -3321,19 +3514,96 @@ int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
 	return ret;
 
 }
-#else
-int hif_pm_runtime_prevent_suspend(void *ol_sc)
+
+/**
+ * hif_runtime_pm_prevent_suspend_init() - API to initialize Runtime PM context
+ * @name: Context name
+ *
+ * This API initalizes the Runtime PM context of the caller and
+ * return the pointer.
+ *
+ * Return: void *
+ */
+void *hif_runtime_pm_prevent_suspend_init(const char *name)
 {
-	return 0;
+	struct hif_pm_runtime_context *context;
+
+	context = adf_os_mem_alloc(NULL, sizeof(*context));
+	if (!context) {
+		VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
+			"%s: No memory for Runtime PM wakelock context\n",
+							__func__);
+		return NULL;
+	}
+
+	context->name = name ? name : "Default";
+	return context;
 }
 
-int hif_pm_runtime_allow_suspend(void *ol_sc)
+/**
+ * hif_runtime_pm_prevent_suspend_deinit() - This API frees the runtime pm ctx
+ * @data: Runtime PM context
+ *
+ * Return: void
+ */
+void hif_runtime_pm_prevent_suspend_deinit(void *data)
 {
-	return 0;
+	unsigned long flags;
+	struct hif_pm_runtime_context *context = data;
+	void *vos_context = vos_get_global_context(VOS_MODULE_ID_HIF, NULL);
+	struct ol_softc *scn =  vos_get_context(VOS_MODULE_ID_HIF,
+							vos_context);
+	struct hif_pci_softc *sc;
+
+	if (!scn)
+		return;
+
+	sc = scn->hif_sc;
+
+	if (!sc)
+		return;
+
+	if (!context)
+		return;
+
+	/*
+	 * Ensure to delete the context list entry and reduce the usage count
+	 * before freeing the context if context is active.
+	 */
+	spin_lock_irqsave(&sc->runtime_lock, flags);
+	__hif_pm_runtime_allow_suspend(sc, context);
+	spin_unlock_irqrestore(&sc->runtime_lock, flags);
+
+	adf_os_mem_free(context);
 }
 
-int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int msec)
+/**
+ * hif_pm_ssr_runtime_allow_suspend() - Release Runtime Context during SSR
+ * @sc: hif_pci context
+ * @context: runtime context
+ *
+ * API is used to release runtime pm context from prevent suspend list and
+ * reduce the usage count taken by the context and set the context state to
+ * false.
+ *
+ * Return: void
+ */
+void hif_pm_ssr_runtime_allow_suspend(struct hif_pci_softc *sc, void *context)
 {
-	return 0;
+	__hif_pm_runtime_allow_suspend(sc, context);
 }
 #endif
+
+/**
+ * hif_is_80211_fw_wow_required() - API to check if target suspend is needed
+ *
+ * API determines if fw can be suspended and returns true/false to the caller.
+ * Caller will call WMA WoW API's to suspend.
+ * This API returns true only for SDIO bus types, for others it's a false.
+ *
+ * Return: bool
+ */
+bool hif_is_80211_fw_wow_required(void)
+{
+	return false;
+}

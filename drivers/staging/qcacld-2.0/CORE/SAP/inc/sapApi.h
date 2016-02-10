@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -97,11 +97,6 @@ when           who                what, where, why
 #define       AUTO_CHANNEL_SELECT          0
 #define       MAX_ASSOC_IND_IE_LEN         255
 
-/* defines for WPS config states */
-#define       SAP_WPS_DISABLED             0
-#define       SAP_WPS_ENABLED_UNCONFIGURED 1
-#define       SAP_WPS_ENABLED_CONFIGURED   2
-
 #define       MAX_NAME_SIZE                64
 #define       MAX_TEXT_SIZE                32
 
@@ -147,21 +142,6 @@ typedef enum{
 }eSapReasonCode;
 
 typedef enum {
-    eSAP_DOT11_MODE_abg = 0x0001,
-    eSAP_DOT11_MODE_11a = 0x0002,
-    eSAP_DOT11_MODE_11b = 0x0004,
-    eSAP_DOT11_MODE_11g = 0x0008,
-    eSAP_DOT11_MODE_11n = 0x0010,
-    eSAP_DOT11_MODE_11g_ONLY = 0x0080,
-    eSAP_DOT11_MODE_11n_ONLY = 0x0100,
-    eSAP_DOT11_MODE_11b_ONLY = 0x0400,
-#ifdef WLAN_FEATURE_11AC
-    eSAP_DOT11_MODE_11ac     = 0x1000,
-    eSAP_DOT11_MODE_11ac_ONLY = 0x2000
-#endif
-} eSapPhyMode;
-
-typedef enum {
     eSAP_ACCEPT_UNLESS_DENIED = 0,
     eSAP_DENY_UNLESS_ACCEPTED = 1,
     eSAP_SUPPORT_ACCEPT_AND_DENY = 2, /* this type is added to support both accept and deny lists at the same time */
@@ -193,7 +173,6 @@ typedef enum {
     eSAP_ASSOC_STA_CALLBACK_EVENT,  /*Event sent when user called WLANSAP_GetAssocStations */
     eSAP_GET_WPSPBC_SESSION_EVENT,  /* Event send when user call  WLANSAP_getWpsSessionOverlap */
     eSAP_WPS_PBC_PROBE_REQ_EVENT, /* Event send on WPS PBC probe request is received */
-    eSAP_INDICATE_MGMT_FRAME,
     eSAP_REMAIN_CHAN_READY,
     eSAP_SEND_ACTION_CNF,
     eSAP_DISCONNECT_ALL_P2P_CLIENT,
@@ -202,6 +181,7 @@ typedef enum {
     eSAP_MAX_ASSOC_EXCEEDED, /* Event send when a new STA is rejected association since softAP max assoc limit has reached */
     eSAP_CHANNEL_CHANGE_EVENT,
     eSAP_DFS_CAC_START,
+    eSAP_DFS_CAC_INTERRUPTED,
     eSAP_DFS_CAC_END,
     eSAP_DFS_RADAR_DETECT,
     eSAP_DFS_NOL_GET,  /* Event sent when user need to get the DFS NOL from CNSS */
@@ -210,6 +190,8 @@ typedef enum {
 #ifdef FEATURE_WLAN_AP_AP_ACS_OPTIMIZE
     eSAP_ACS_SCAN_SUCCESS_EVENT,
 #endif
+    eSAP_ACS_CHANNEL_SELECTED,
+    eSAP_ECSA_CHANGE_CHAN_IND,
 } eSapHddEvent;
 
 typedef enum {
@@ -252,15 +234,6 @@ typedef enum  {
     eSAP_WPSPBC_NO_WPSPBC_PROBE_REQ_IN120S,     /* no WPS probe request in 120 second */
     eSAP_WPSPBC_ONE_WPSPBC_PROBE_REQ_IN120S,    /* One WPS probe request in 120 second  */
 }eWPSPBCOverlap;
-
-typedef enum {
-        eSAP_RF_SUBBAND_2_4_GHZ      = 0,
-        eSAP_RF_SUBBAND_5_LOW_GHZ    = 1,    //Low & Mid U-NII
-        eSAP_RF_SUBBAND_5_MID_GHZ    = 2,    //ETSI
-        eSAP_RF_SUBBAND_5_HIGH_GHZ   = 3,    //High U-NII
-        eSAP_RF_SUBBAND_4_9_GHZ      = 4,
-        eSAP_RF_SUBBAND_5_ALL_GHZ    = 5,    //All 5 GHZ,
-}eSapOperatingBand;
 
 /*----------------------------------------------------------------------------
  *  Typedefs
@@ -398,14 +371,27 @@ typedef struct sap_MaxAssocExceededEvent_s {
     v_MACADDR_t    macaddr;
 } tSap_MaxAssocExceededEvent;
 
-typedef struct sap_OperatingChannelChangeEvent_s {
-   tANI_U8 operatingChannel;
-} tSap_OperatingChannelChangeEvent;
-
 typedef struct sap_DfsNolInfo_s {
    v_U16_t   sDfsList;       /* size of pDfsList in byte */
    v_PVOID_t pDfsList;       /* pointer to pDfsList buffer */
 } tSap_DfsNolInfo;
+
+typedef struct sap_ChSelected_s {
+   uint16_t pri_ch;
+   uint16_t ht_sec_ch;
+   uint16_t vht_seg0_center_ch;
+   uint16_t vht_seg1_center_ch;
+   uint16_t ch_width;
+} tSap_ChSelectedEvent;
+
+/**
+ * struct sap_ch_change_ind - channel change indication
+ * @new_chan: channel to change
+ */
+struct sap_ch_change_ind {
+	uint16_t new_chan;
+};
+
 
 /*
    This struct will be filled in and passed to tpWLAN_SAPEventCB that is provided during WLANSAP_StartBss call
@@ -426,12 +412,13 @@ typedef struct sap_Event_s {
         tSap_AssocStaListEvent                    sapAssocStaListEvent; /*SAP_ASSOC_STA_CALLBACK_EVENT */
         tSap_GetWPSPBCSessionEvent                sapGetWPSPBCSessionEvent; /*SAP_GET_WPSPBC_SESSION_EVENT */
         tSap_WPSPBCProbeReqEvent                  sapPBCProbeReqEvent; /*eSAP_WPS_PBC_PROBE_REQ_EVENT */
-        tSap_ManagementFrameInfo                  sapManagementFrameInfo; /*eSAP_INDICATE_MGMT_FRAME*/
         tSap_SendActionCnf                        sapActionCnf;  /* eSAP_SEND_ACTION_CNF */
         tSap_UnknownSTAJoinEvent                  sapUnknownSTAJoin; /* eSAP_UNKNOWN_STA_JOIN */
         tSap_MaxAssocExceededEvent                sapMaxAssocExceeded; /* eSAP_MAX_ASSOC_EXCEEDED */
-        tSap_OperatingChannelChangeEvent          sapChannelChange; /* eSAP_CHANNEL_CHANGE_EVENT */
         tSap_DfsNolInfo                           sapDfsNolInfo;    /*eSAP_DFS_NOL_XXX */
+        /*eSAP_ACS_CHANNEL_SELECTED */
+        tSap_ChSelectedEvent                      sapChSelected;
+        struct sap_ch_change_ind                  sap_chan_cng_ind;
     } sapevt;
 } tSap_Event, *tpSap_Event;
 
@@ -446,9 +433,34 @@ typedef __ani_attr_pre_packed struct sap_SSIDInfo {
     v_U8_t       ssidHidden; /*SSID shouldn't/should be broadcast in probe RSP and beacon*/
 } __ani_attr_packed tSap_SSIDInfo_t;
 
+struct sap_acs_cfg {
+    /* ACS Algo Input */
+    uint8_t    acs_mode;
+    uint32_t    hw_mode;
+    uint8_t    start_ch;
+    uint8_t    end_ch;
+    uint8_t    *ch_list;
+    uint8_t    ch_list_count;
+#ifdef FEATURE_WLAN_AP_AP_ACS_OPTIMIZE
+    uint8_t    skip_scan_status;
+    uint8_t    skip_scan_range1_stch;
+    uint8_t    skip_scan_range1_endch;
+    uint8_t    skip_scan_range2_stch;
+    uint8_t    skip_scan_range2_endch;
+#endif
+
+    uint16_t   ch_width;
+    /* ACS Algo Output */
+    uint8_t    pri_ch;
+    uint8_t    ht_sec_ch;
+    uint8_t    vht_seg0_center_ch;
+    uint8_t    vht_seg1_center_ch;
+};
+
+
 typedef struct sap_Config {
     tSap_SSIDInfo_t SSIDinfo;
-    eSapPhyMode     SapHw_mode; /* Wireless Mode */
+    eCsrPhyMode     SapHw_mode; /* Wireless Mode */
     eSapMacAddrACL  SapMacaddr_acl;
     v_MACADDR_t     accept_mac[MAX_ACL_MAC_ADDRESS]; /* MAC filtering */
     v_BOOL_t        ieee80211d;      /*Specify if 11D is enabled or disabled*/
@@ -458,6 +470,9 @@ typedef struct sap_Config {
     v_MACADDR_t     self_macaddr; //self macaddress or BSSID
 
     v_U8_t          channel;         /* Operation channel */
+    uint8_t         sec_ch;
+    uint16_t         vht_channel_width;
+    uint16_t         ch_width_orig;
     v_U8_t          max_num_sta;     /* maximum number of STAs in station table */
     v_U8_t          dtim_period;     /* dtim interval */
     v_U8_t          num_accept_mac;
@@ -485,21 +500,8 @@ typedef struct sap_Config {
     v_U8_t          disableDFSChSwitch;
     eCsrBand        scanBandPreference;
     v_BOOL_t        enOverLapCh;
-    char            acsAllowedChnls[MAX_CHANNEL_LIST_LEN];
     v_U16_t         acsBandSwitchThreshold;
-    v_BOOL_t        apAutoChannelSelection;
-    v_U8_t          apStartChannelNum;
-    v_U8_t          apEndChannelNum;
-    v_U8_t          apOperatingBand;
-
-#ifdef FEATURE_WLAN_AP_AP_ACS_OPTIMIZE
-    v_U8_t          skip_acs_scan_status;
-    v_U8_t          skip_acs_scan_range1_stch;
-    v_U8_t          skip_acs_scan_range1_endch;
-    v_U8_t          skip_acs_scan_range2_stch;
-    v_U8_t          skip_acs_scan_range2_endch;
-#endif
-
+    struct sap_acs_cfg acs_cfg;
 #ifdef WLAN_FEATURE_11W
     v_BOOL_t        mfpRequired;
     v_BOOL_t        mfpCapable;
@@ -627,6 +629,7 @@ typedef struct sSapDfsInfo
      * channel switch is disabled.
      */
     v_U8_t              disable_dfs_ch_switch;
+    uint16_t tx_leakage_threshold;
 } tSapDfsInfo;
 
 typedef struct tagSapCtxList
@@ -641,6 +644,10 @@ typedef struct tagSapStruct
     //Information Required for SAP DFS Master mode
     tSapDfsInfo         SapDfsInfo;
     tSapCtxList         sapCtxList[SAP_MAX_NUM_SESSION];
+#ifdef FEATURE_AP_MCC_CH_AVOIDANCE
+    bool sap_channel_avoidance;
+#endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
+    bool enable_dfs_phy_error_logs;
 } tSapStruct, *tpSapStruct;
 
 #define WPS_PROBRSP_VER_PRESENT                          0x00000001
@@ -1276,33 +1283,6 @@ WLANSAP_DeauthSta
 ============================================================================*/
 VOS_STATUS
 WLANSAP_SetChannelChangeWithCsa(v_PVOID_t pvosGCtx, v_U32_t targetChannel);
-
-/*==========================================================================
-  FUNCTION    WLANSAP_SetChannelRange
-
-  DESCRIPTION
-      This api function sets the range of channels for SoftAP.
-
-  DEPENDENCIES
-    NA.
-
-  PARAMETERS
-
-    IN
-    startChannel         : start channel
-    endChannel           : End channel
-    operatingBand        : Operating band (2.4GHz/5GHz)
-
-  RETURN VALUE
-    The VOS_STATUS code associated with performing the operation
-
-    VOS_STATUS_SUCCESS:  Success
-
-  SIDE EFFECTS
-============================================================================*/
-VOS_STATUS
-WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
-                          eSapOperatingBand operatingBand);
 
 /*==========================================================================
   FUNCTION    WLANSAP_SetKeySta
@@ -2094,6 +2074,20 @@ WLANSAP_Set_Dfs_Ignore_CAC(tHalHandle hHal, v_U8_t ignore_cac);
 VOS_STATUS
 WLANSAP_set_Dfs_Restrict_JapanW53(tHalHandle hHal, v_U8_t disable_Dfs_JapanW3);
 
+#ifdef FEATURE_AP_MCC_CH_AVOIDANCE
+/**
+ * wlan_sap_set_channel_avoidance() - sets sap mcc channel avoidance ini param
+ * @hal:                        hal handle
+ * @sap_channel_avoidance:      ini parameter value
+ *
+ * sets sap mcc channel avoidance ini param, to be called in sap_start
+ *
+ * Return: success of failure of operation
+ */
+VOS_STATUS
+wlan_sap_set_channel_avoidance(tHalHandle hal, bool sap_channel_avoidance);
+#endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
+
 /*==========================================================================
   FUNCTION    WLANSAP_set_Dfs_Preferred_Channel_location
 
@@ -2155,6 +2149,41 @@ WLANSAP_Set_Dfs_Target_Chnl(tHalHandle hHal,
                             v_U8_t target_channel);
 
 
+
+/*==========================================================================
+  FUNCTION   wlan_sap_get_vht_ch_width
+
+  DESCRIPTION Returns the SAP VHT channel width.
+
+  DEPENDENCIES NA.
+
+  PARAMETERS
+  IN
+  ctx: Pointer to vos Context or Sap Context based on MBSSID
+
+  RETURN VALUE VHT channnel width
+
+  SIDE EFFECTS
+============================================================================*/
+v_U32_t wlan_sap_get_vht_ch_width(v_PVOID_t ctx);
+
+/*==========================================================================
+  FUNCTION   wlan_sap_set_vht_ch_width
+
+  DESCRIPTION Sets the SAP VHT channel width.
+
+  DEPENDENCIES NA.
+
+  PARAMETERS
+  IN
+  ctx: Pointer to vos Context or Sap Context based on MBSSID
+  vht_channel_width - VHT channel width
+
+  RETURN VALUE NONE
+
+  SIDE EFFECTS
+============================================================================*/
+void wlan_sap_set_vht_ch_width(v_PVOID_t ctx, v_U32_t vht_channel_width);
 
 /*==========================================================================
   FUNCTION    WLANSAP_UpdateSapConfigAddIE
@@ -2221,23 +2250,6 @@ VOS_STATUS
 WLANSAP_ResetSapConfigAddIE(tsap_Config_t *pConfig,
                             eUpdateIEsType updateType);
 
-
-
-/*==========================================================================
-FUNCTION  sapConvertSapPhyModeToCsrPhyMode
-
-DESCRIPTION Function to implement selection of CSR PhyMode using SAP PhyMode
-
-DEPENDENCIES PARAMETERS
-
-IN sapPhyMode : SAP Phy Module
-
-RETURN VALUE If SUCCESS or FAILURE
-
-SIDE EFFECTS
-============================================================================*/
-eCsrPhyMode sapConvertSapPhyModeToCsrPhyMode( eSapPhyMode sapPhyMode );
-
 /*==========================================================================
 FUNCTION  WLANSAP_extend_to_acs_range
 
@@ -2255,8 +2267,7 @@ RETURN VALUE NONE
 
 SIDE EFFECTS
 ============================================================================*/
-v_VOID_t WLANSAP_extend_to_acs_range(v_U8_t operatingBand,
-                                  v_U8_t *startChannelNum,
+v_VOID_t WLANSAP_extend_to_acs_range(v_U8_t *startChannelNum,
                                   v_U8_t *endChannelNum,
                                   v_U8_t *bandStartChannel,
                                   v_U8_t *bandEndChannel);
@@ -2330,6 +2341,46 @@ void WLANSAP_PopulateDelStaParams(const v_U8_t *mac,
                                   v_U16_t reason_code,
                                   v_U8_t subtype,
                                   struct tagCsrDelStaParams *pDelStaParams);
+
+/*==========================================================================
+  FUNCTION    WLANSAP_ACS_CHSelect
+
+  DESCRIPTION
+    This api function provides ACS selection for BSS
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+      pvosGCtx: Pointer to vos global context structure
+      pConfig: Pointer to configuration structure passed down from HDD
+      pACSEventCallback: Callback function in HDD called by SAP to inform
+                         HDD about channel section result
+      usrDataForCallback: Parameter that will be passed back in all the
+                          SAP callback events.
+
+  RETURN VALUE
+    The VOS_STATUS code associated with performing the operation
+
+    VOS_STATUS_SUCCESS:  Success
+
+  SIDE EFFECTS
+============================================================================*/
+VOS_STATUS
+WLANSAP_ACS_CHSelect(v_PVOID_t pvosGCtx,
+                     tpWLAN_SAPEventCB pACSEventCallback,
+                     tsap_Config_t *pConfig,
+                     v_PVOID_t  pUsrContext);
+
+eCsrPhyMode
+wlansap_get_phymode(v_PVOID_t pctx);
+
+VOS_STATUS wlansap_set_tx_leakage_threshold(tHalHandle hal,
+			uint16 tx_leakage_threshold);
+
+
 #ifdef __cplusplus
  }
 #endif

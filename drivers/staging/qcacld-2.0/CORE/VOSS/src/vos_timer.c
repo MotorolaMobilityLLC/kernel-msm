@@ -186,35 +186,6 @@ static void vos_linux_timer_callback (unsigned long data)
                  __func__);
        return;
    }
-   // If timer has expired then call vos_client specific callback
-   if ( vos_sched_is_tx_thread( threadId ) )
-   {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-          "TIMER callback: running on TX thread");
-
-      //Serialize to the Tx thread
-      sysBuildMessageHeader( SYS_MSG_ID_TX_TIMER, &msg );
-      msg.callback = callback;
-      msg.bodyptr  = userData;
-      msg.bodyval  = 0;
-
-      if(vos_tx_mq_serialize( VOS_MQ_ID_SYS, &msg ) == VOS_STATUS_SUCCESS)
-         return;
-   }
-   else if ( vos_sched_is_rx_thread( threadId ) )
-   {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-          "TIMER callback: running on RX thread");
-
-      //Serialize to the Rx thread
-      sysBuildMessageHeader( SYS_MSG_ID_RX_TIMER, &msg );
-      msg.callback = callback;
-      msg.bodyptr  = userData;
-      msg.bodyval  = 0;
-
-      if(vos_rx_mq_serialize( VOS_MQ_ID_SYS, &msg ) == VOS_STATUS_SUCCESS)
-         return;
-   }
    else
    {
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
@@ -713,10 +684,7 @@ VOS_STATUS vos_timer_start( vos_timer_t *timer, v_U32_t expirationTime )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
           "%s: Cannot start uninitialized timer",__func__);
-      if ( LINUX_INVALID_TIMER_COOKIE != timer->platformInfo.cookie )
-      {
-         VOS_ASSERT(0);
-      }
+      VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }
 
@@ -808,10 +776,7 @@ VOS_STATUS vos_timer_stop ( vos_timer_t *timer )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
           "%s: Cannot stop uninitialized timer",__func__);
-      if ( LINUX_INVALID_TIMER_COOKIE != timer->platformInfo.cookie )
-      {
-         VOS_ASSERT(0);
-      }
+      VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }
 

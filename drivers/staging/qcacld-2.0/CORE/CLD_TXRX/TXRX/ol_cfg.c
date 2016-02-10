@@ -183,6 +183,11 @@ int ol_cfg_tx_free_at_download(ol_pdev_handle pdev)
 	return cfg->tx_free_at_download;
 }
 
+void ol_cfg_set_tx_free_at_download(ol_pdev_handle pdev)
+{
+	struct txrx_pdev_cfg_t *cfg = (struct txrx_pdev_cfg_t *)pdev;
+	cfg->tx_free_at_download = 1;
+}
 u_int16_t ol_cfg_target_tx_credit(ol_pdev_handle pdev)
 {
 	struct txrx_pdev_cfg_t *cfg = (struct txrx_pdev_cfg_t *)pdev;

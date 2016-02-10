@@ -56,4 +56,7 @@ ol_tx_desc_pool_size_hl(ol_pdev_handle ctrl_pdev);
 #define TXRX_HL_TX_FLOW_CTRL_MGMT_RESERVED 100
 #endif
 
+#ifdef CONFIG_TX_DESC_HI_PRIO_RESERVE
+#define TXRX_HL_TX_DESC_HI_PRIO_RESERVED 20
+#endif
 #endif /* _OL_TXRX__H_ */

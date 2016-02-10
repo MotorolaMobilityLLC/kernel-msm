@@ -52,6 +52,7 @@ void          ConvertQOSCaps        (tpAniSirGlobal, tSirMacQosCapabilityIE*,   
 void          ConvertQOSCapsStation (tpAniSirGlobal, tSirMacQosCapabilityStaIE*, tDot11fIEQOSCapsStation*);
 tSirRetStatus ConvertWPA            (tpAniSirGlobal, tSirMacWpaInfo*,            tDot11fIEWPA*);
 tSirRetStatus ConvertWPAOpaque      (tpAniSirGlobal, tSirMacWpaInfo*,            tDot11fIEWPAOpaque*);
+tSirRetStatus ConvertWAPIOpaque     (tpAniSirGlobal, tSirMacWapiInfo*,           tDot11fIEWAPIOpaque*);
 tSirRetStatus ConvertRSN            (tpAniSirGlobal, tSirMacRsnInfo*,            tDot11fIERSN*);
 tSirRetStatus ConvertRSNOpaque      (tpAniSirGlobal, tSirMacRsnInfo*,            tDot11fIERSNOpaque*);
 void          ConvertPowerCaps      (tpAniSirGlobal, tSirMacPowerCapabilityIE*,  tDot11fIEPowerCaps*);

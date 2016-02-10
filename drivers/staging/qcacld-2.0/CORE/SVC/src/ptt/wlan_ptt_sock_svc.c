@@ -97,8 +97,6 @@ int ptt_sock_send_msg_to_app(tAniHdr *wmsg, int radio, int src_mod, int pid)
    wnl = (tAniNlHdr *) nlh;
    wnl->radio = radio;
    memcpy(&wnl->wmsg, wmsg, wmsg_length);
-   PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: Sending Msg Type [0x%X] to pid[%d]\n",
-      __func__, be16_to_cpu(wmsg->type), pid);
 #ifdef PTT_SOCK_DEBUG_VERBOSE
    ptt_sock_dump_buf((const unsigned char *)skb->data, skb->len);
 #endif
@@ -108,7 +106,11 @@ int ptt_sock_send_msg_to_app(tAniHdr *wmsg, int radio, int src_mod, int pid)
    } else {
        err = nl_srv_bcast(skb);
    }
-
+   if (err) {
+       PTT_TRACE(VOS_TRACE_LEVEL_INFO,
+       "%s:Failed sending Msg Type [0x%X] to pid[%d]\n",
+       __func__, be16_to_cpu(wmsg->type), pid);
+   }
    return err;
 }
 /*

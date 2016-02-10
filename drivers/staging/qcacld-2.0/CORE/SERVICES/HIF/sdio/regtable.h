@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -118,10 +118,14 @@ typedef struct targetdef_s {
     /* htt_rx.c */
     u_int32_t d_RX_MSDU_END_4_FIRST_MSDU_MASK;
     u_int32_t d_RX_MSDU_END_4_FIRST_MSDU_LSB;
+    u_int32_t d_RX_MPDU_START_0_RETRY_LSB;
+    u_int32_t d_RX_MPDU_START_0_RETRY_MASK;
     u_int32_t d_RX_MPDU_START_0_SEQ_NUM_MASK;
     u_int32_t d_RX_MPDU_START_0_SEQ_NUM_LSB;
     u_int32_t d_RX_MPDU_START_2_PN_47_32_LSB;
     u_int32_t d_RX_MPDU_START_2_PN_47_32_MASK;
+    u_int32_t d_RX_MPDU_START_2_TID_LSB;
+    u_int32_t d_RX_MPDU_START_2_TID_MASK;
     u_int32_t d_RX_MSDU_END_1_EXT_WAPI_PN_63_48_MASK;
     u_int32_t d_RX_MSDU_END_1_EXT_WAPI_PN_63_48_LSB;
     u_int32_t d_RX_MSDU_END_1_KEY_ID_OCT_MASK;
@@ -190,6 +194,62 @@ typedef struct targetdef_s {
     u_int32_t d_CE_CTRL1_SRC_RING_BYTE_SWAP_EN_LSB;
     u_int32_t d_CE_CTRL1_DST_RING_BYTE_SWAP_EN_LSB;
     /* end */
+    /* PLL start */
+    u_int32_t d_EFUSE_OFFSET;
+    u_int32_t d_EFUSE_XTAL_SEL_MSB;
+    u_int32_t d_EFUSE_XTAL_SEL_LSB;
+    u_int32_t d_EFUSE_XTAL_SEL_MASK;
+    u_int32_t d_BB_PLL_CONFIG_OFFSET;
+    u_int32_t d_BB_PLL_CONFIG_OUTDIV_MSB;
+    u_int32_t d_BB_PLL_CONFIG_OUTDIV_LSB;
+    u_int32_t d_BB_PLL_CONFIG_OUTDIV_MASK;
+    u_int32_t d_BB_PLL_CONFIG_FRAC_MSB;
+    u_int32_t d_BB_PLL_CONFIG_FRAC_LSB;
+    u_int32_t d_BB_PLL_CONFIG_FRAC_MASK;
+    u_int32_t d_WLAN_PLL_SETTLE_TIME_MSB;
+    u_int32_t d_WLAN_PLL_SETTLE_TIME_LSB;
+    u_int32_t d_WLAN_PLL_SETTLE_TIME_MASK;
+    u_int32_t d_WLAN_PLL_SETTLE_OFFSET;
+    u_int32_t d_WLAN_PLL_SETTLE_SW_MASK;
+    u_int32_t d_WLAN_PLL_SETTLE_RSTMASK;
+    u_int32_t d_WLAN_PLL_SETTLE_RESET;
+    u_int32_t d_WLAN_PLL_CONTROL_NOPWD_MSB;
+    u_int32_t d_WLAN_PLL_CONTROL_NOPWD_LSB;
+    u_int32_t d_WLAN_PLL_CONTROL_NOPWD_MASK;
+    u_int32_t d_WLAN_PLL_CONTROL_BYPASS_MSB;
+    u_int32_t d_WLAN_PLL_CONTROL_BYPASS_LSB;
+    u_int32_t d_WLAN_PLL_CONTROL_BYPASS_MASK;
+    u_int32_t d_WLAN_PLL_CONTROL_BYPASS_RESET;
+    u_int32_t d_WLAN_PLL_CONTROL_CLK_SEL_MSB;
+    u_int32_t d_WLAN_PLL_CONTROL_CLK_SEL_LSB;
+    u_int32_t d_WLAN_PLL_CONTROL_CLK_SEL_MASK;
+    u_int32_t d_WLAN_PLL_CONTROL_CLK_SEL_RESET;
+    u_int32_t d_WLAN_PLL_CONTROL_REFDIV_MSB;
+    u_int32_t d_WLAN_PLL_CONTROL_REFDIV_LSB;
+    u_int32_t d_WLAN_PLL_CONTROL_REFDIV_MASK;
+    u_int32_t d_WLAN_PLL_CONTROL_REFDIV_RESET;
+    u_int32_t d_WLAN_PLL_CONTROL_DIV_MSB;
+    u_int32_t d_WLAN_PLL_CONTROL_DIV_LSB;
+    u_int32_t d_WLAN_PLL_CONTROL_DIV_MASK;
+    u_int32_t d_WLAN_PLL_CONTROL_DIV_RESET;
+    u_int32_t d_WLAN_PLL_CONTROL_OFFSET;
+    u_int32_t d_WLAN_PLL_CONTROL_SW_MASK;
+    u_int32_t d_WLAN_PLL_CONTROL_RSTMASK;
+    u_int32_t d_WLAN_PLL_CONTROL_RESET;
+    u_int32_t d_SOC_CORE_CLK_CTRL_OFFSET;
+    u_int32_t d_SOC_CORE_CLK_CTRL_DIV_MSB;
+    u_int32_t d_SOC_CORE_CLK_CTRL_DIV_LSB;
+    u_int32_t d_SOC_CORE_CLK_CTRL_DIV_MASK;
+    u_int32_t d_RTC_SYNC_STATUS_PLL_CHANGING_MSB;
+    u_int32_t d_RTC_SYNC_STATUS_PLL_CHANGING_LSB;
+    u_int32_t d_RTC_SYNC_STATUS_PLL_CHANGING_MASK;
+    u_int32_t d_RTC_SYNC_STATUS_PLL_CHANGING_RESET;
+    u_int32_t d_RTC_SYNC_STATUS_OFFSET;
+    u_int32_t d_SOC_CPU_CLOCK_OFFSET;
+    u_int32_t d_SOC_CPU_CLOCK_STANDARD_MSB;
+    u_int32_t d_SOC_CPU_CLOCK_STANDARD_LSB;
+    u_int32_t d_SOC_CPU_CLOCK_STANDARD_MASK;
+    /* PLL end */
     u_int32_t d_PCIE_INTR_CAUSE_ADDRESS;
     u_int32_t d_SOC_RESET_CONTROL_ADDRESS;
     u_int32_t d_SOC_RESET_CONTROL_PCIE_RST_SHORT_OVRD_MASK;
@@ -316,10 +376,14 @@ typedef struct targetdef_s {
 /* htt_rx.c */
 #define RX_MSDU_END_4_FIRST_MSDU_MASK            (pdev->targetdef->d_RX_MSDU_END_4_FIRST_MSDU_MASK)
 #define RX_MSDU_END_4_FIRST_MSDU_LSB             (pdev->targetdef->d_RX_MSDU_END_4_FIRST_MSDU_LSB)
+#define RX_MPDU_START_0_RETRY_LSB                (pdev->targetdef->d_RX_MPDU_START_0_RETRY_LSB)
+#define RX_MPDU_START_0_RETRY_MASK               (pdev->targetdef->d_RX_MPDU_START_0_RETRY_MASK)
 #define RX_MPDU_START_0_SEQ_NUM_MASK             (pdev->targetdef->d_RX_MPDU_START_0_SEQ_NUM_MASK)
 #define RX_MPDU_START_0_SEQ_NUM_LSB              (pdev->targetdef->d_RX_MPDU_START_0_SEQ_NUM_LSB)
 #define RX_MPDU_START_2_PN_47_32_LSB             (pdev->targetdef->d_RX_MPDU_START_2_PN_47_32_LSB)
 #define RX_MPDU_START_2_PN_47_32_MASK            (pdev->targetdef->d_RX_MPDU_START_2_PN_47_32_MASK)
+#define RX_MPDU_START_2_TID_LSB                  (pdev->targetdef->d_RX_MPDU_START_2_TID_LSB)
+#define RX_MPDU_START_2_TID_MASK                 (pdev->targetdef->d_RX_MPDU_START_2_TID_MASK)
 #define RX_MSDU_END_1_KEY_ID_OCT_MASK            (pdev->targetdef->d_RX_MSDU_END_1_KEY_ID_OCT_MASK)
 #define RX_MSDU_END_1_KEY_ID_OCT_LSB             (pdev->targetdef->d_RX_MSDU_END_1_KEY_ID_OCT_LSB)
 #define RX_MSDU_END_1_EXT_WAPI_PN_63_48_MASK     (pdev->targetdef->d_RX_MSDU_END_1_EXT_WAPI_PN_63_48_MASK)
@@ -389,6 +453,62 @@ typedef struct targetdef_s {
 #define CE_CTRL1_SRC_RING_BYTE_SWAP_EN_LSB       (sc->targetdef->d_CE_CTRL1_SRC_RING_BYTE_SWAP_EN_LSB)
 #define CE_CTRL1_DST_RING_BYTE_SWAP_EN_LSB       (sc->targetdef->d_CE_CTRL1_DST_RING_BYTE_SWAP_EN_LSB)
 /* end */
+/* PLL start */
+#define EFUSE_OFFSET                             (sc->targetdef->d_EFUSE_OFFSET)
+#define EFUSE_XTAL_SEL_MSB                       (sc->targetdef->d_EFUSE_XTAL_SEL_MSB)
+#define EFUSE_XTAL_SEL_LSB                       (sc->targetdef->d_EFUSE_XTAL_SEL_LSB)
+#define EFUSE_XTAL_SEL_MASK                      (sc->targetdef->d_EFUSE_XTAL_SEL_MASK)
+#define BB_PLL_CONFIG_OFFSET                     (sc->targetdef->d_BB_PLL_CONFIG_OFFSET)
+#define BB_PLL_CONFIG_OUTDIV_MSB                 (sc->targetdef->d_BB_PLL_CONFIG_OUTDIV_MSB)
+#define BB_PLL_CONFIG_OUTDIV_LSB                 (sc->targetdef->d_BB_PLL_CONFIG_OUTDIV_LSB)
+#define BB_PLL_CONFIG_OUTDIV_MASK                (sc->targetdef->d_BB_PLL_CONFIG_OUTDIV_MASK)
+#define BB_PLL_CONFIG_FRAC_MSB                   (sc->targetdef->d_BB_PLL_CONFIG_FRAC_MSB)
+#define BB_PLL_CONFIG_FRAC_LSB                   (sc->targetdef->d_BB_PLL_CONFIG_FRAC_LSB)
+#define BB_PLL_CONFIG_FRAC_MASK                  (sc->targetdef->d_BB_PLL_CONFIG_FRAC_MASK)
+#define WLAN_PLL_SETTLE_TIME_MSB                 (sc->targetdef->d_WLAN_PLL_SETTLE_TIME_MSB)
+#define WLAN_PLL_SETTLE_TIME_LSB                 (sc->targetdef->d_WLAN_PLL_SETTLE_TIME_LSB)
+#define WLAN_PLL_SETTLE_TIME_MASK                (sc->targetdef->d_WLAN_PLL_SETTLE_TIME_MASK)
+#define WLAN_PLL_SETTLE_OFFSET                   (sc->targetdef->d_WLAN_PLL_SETTLE_OFFSET)
+#define WLAN_PLL_SETTLE_SW_MASK                  (sc->targetdef->d_WLAN_PLL_SETTLE_SW_MASK)
+#define WLAN_PLL_SETTLE_RSTMASK                  (sc->targetdef->d_WLAN_PLL_SETTLE_RSTMASK)
+#define WLAN_PLL_SETTLE_RESET                    (sc->targetdef->d_WLAN_PLL_SETTLE_RESET)
+#define WLAN_PLL_CONTROL_NOPWD_MSB               (sc->targetdef->d_WLAN_PLL_CONTROL_NOPWD_MSB)
+#define WLAN_PLL_CONTROL_NOPWD_LSB               (sc->targetdef->d_WLAN_PLL_CONTROL_NOPWD_LSB)
+#define WLAN_PLL_CONTROL_NOPWD_MASK              (sc->targetdef->d_WLAN_PLL_CONTROL_NOPWD_MASK)
+#define WLAN_PLL_CONTROL_BYPASS_MSB              (sc->targetdef->d_WLAN_PLL_CONTROL_BYPASS_MSB)
+#define WLAN_PLL_CONTROL_BYPASS_LSB              (sc->targetdef->d_WLAN_PLL_CONTROL_BYPASS_LSB)
+#define WLAN_PLL_CONTROL_BYPASS_MASK             (sc->targetdef->d_WLAN_PLL_CONTROL_BYPASS_MASK)
+#define WLAN_PLL_CONTROL_BYPASS_RESET            (sc->targetdef->d_WLAN_PLL_CONTROL_BYPASS_RESET)
+#define WLAN_PLL_CONTROL_CLK_SEL_MSB             (sc->targetdef->d_WLAN_PLL_CONTROL_CLK_SEL_MSB)
+#define WLAN_PLL_CONTROL_CLK_SEL_LSB             (sc->targetdef->d_WLAN_PLL_CONTROL_CLK_SEL_LSB)
+#define WLAN_PLL_CONTROL_CLK_SEL_MASK            (sc->targetdef->d_WLAN_PLL_CONTROL_CLK_SEL_MASK)
+#define WLAN_PLL_CONTROL_CLK_SEL_RESET           (sc->targetdef->d_WLAN_PLL_CONTROL_CLK_SEL_RESET)
+#define WLAN_PLL_CONTROL_REFDIV_MSB              (sc->targetdef->d_WLAN_PLL_CONTROL_REFDIV_MSB)
+#define WLAN_PLL_CONTROL_REFDIV_LSB              (sc->targetdef->d_WLAN_PLL_CONTROL_REFDIV_LSB)
+#define WLAN_PLL_CONTROL_REFDIV_MASK             (sc->targetdef->d_WLAN_PLL_CONTROL_REFDIV_MASK)
+#define WLAN_PLL_CONTROL_REFDIV_RESET            (sc->targetdef->d_WLAN_PLL_CONTROL_REFDIV_RESET)
+#define WLAN_PLL_CONTROL_DIV_MSB                 (sc->targetdef->d_WLAN_PLL_CONTROL_DIV_MSB)
+#define WLAN_PLL_CONTROL_DIV_LSB                 (sc->targetdef->d_WLAN_PLL_CONTROL_DIV_LSB)
+#define WLAN_PLL_CONTROL_DIV_MASK                (sc->targetdef->d_WLAN_PLL_CONTROL_DIV_MASK)
+#define WLAN_PLL_CONTROL_DIV_RESET               (sc->targetdef->d_WLAN_PLL_CONTROL_DIV_RESET)
+#define WLAN_PLL_CONTROL_OFFSET                  (sc->targetdef->d_WLAN_PLL_CONTROL_OFFSET)
+#define WLAN_PLL_CONTROL_SW_MASK                 (sc->targetdef->d_WLAN_PLL_CONTROL_SW_MASK)
+#define WLAN_PLL_CONTROL_RSTMASK                 (sc->targetdef->d_WLAN_PLL_CONTROL_RSTMASK)
+#define WLAN_PLL_CONTROL_RESET                   (sc->targetdef->d_WLAN_PLL_CONTROL_RESET)
+#define SOC_CORE_CLK_CTRL_OFFSET                 (sc->targetdef->d_SOC_CORE_CLK_CTRL_OFFSET)
+#define SOC_CORE_CLK_CTRL_DIV_MSB                (sc->targetdef->d_SOC_CORE_CLK_CTRL_DIV_MSB)
+#define SOC_CORE_CLK_CTRL_DIV_LSB                (sc->targetdef->d_SOC_CORE_CLK_CTRL_DIV_LSB)
+#define SOC_CORE_CLK_CTRL_DIV_MASK               (sc->targetdef->d_SOC_CORE_CLK_CTRL_DIV_MASK)
+#define RTC_SYNC_STATUS_PLL_CHANGING_MSB         (sc->targetdef->d_RTC_SYNC_STATUS_PLL_CHANGING_MSB)
+#define RTC_SYNC_STATUS_PLL_CHANGING_LSB         (sc->targetdef->d_RTC_SYNC_STATUS_PLL_CHANGING_LSB)
+#define RTC_SYNC_STATUS_PLL_CHANGING_MASK        (sc->targetdef->d_RTC_SYNC_STATUS_PLL_CHANGING_MASK)
+#define RTC_SYNC_STATUS_PLL_CHANGING_RESET       (sc->targetdef->d_RTC_SYNC_STATUS_PLL_CHANGING_RESET)
+#define RTC_SYNC_STATUS_OFFSET                   (sc->targetdef->d_RTC_SYNC_STATUS_OFFSET)
+#define SOC_CPU_CLOCK_OFFSET                     (sc->targetdef->d_SOC_CPU_CLOCK_OFFSET)
+#define SOC_CPU_CLOCK_STANDARD_MSB               (sc->targetdef->d_SOC_CPU_CLOCK_STANDARD_MSB)
+#define SOC_CPU_CLOCK_STANDARD_LSB               (sc->targetdef->d_SOC_CPU_CLOCK_STANDARD_LSB)
+#define SOC_CPU_CLOCK_STANDARD_MASK              (sc->targetdef->d_SOC_CPU_CLOCK_STANDARD_MASK)
+/* PLL end */
 
 /* SET macros */
 #define WLAN_SYSTEM_SLEEP_DISABLE_SET(x)         (((x) << WLAN_SYSTEM_SLEEP_DISABLE_LSB) & WLAN_SYSTEM_SLEEP_DISABLE_MASK)
@@ -414,6 +534,32 @@ typedef struct targetdef_s {
 #define CE_CTRL1_SRC_RING_BYTE_SWAP_EN_SET(x)    (((x) << CE_CTRL1_SRC_RING_BYTE_SWAP_EN_LSB) & CE_CTRL1_SRC_RING_BYTE_SWAP_EN_MASK)
 #define CE_CTRL1_DST_RING_BYTE_SWAP_EN_SET(x)    (((x) << CE_CTRL1_DST_RING_BYTE_SWAP_EN_LSB) & CE_CTRL1_DST_RING_BYTE_SWAP_EN_MASK)
 /* end */
+/* PLL start */
+#define EFUSE_XTAL_SEL_GET(x)                    (((x) & EFUSE_XTAL_SEL_MASK) >> EFUSE_XTAL_SEL_LSB)
+#define EFUSE_XTAL_SEL_SET(x)                    (((x) << EFUSE_XTAL_SEL_LSB) & EFUSE_XTAL_SEL_MASK)
+#define BB_PLL_CONFIG_OUTDIV_GET(x)              (((x) & BB_PLL_CONFIG_OUTDIV_MASK) >> BB_PLL_CONFIG_OUTDIV_LSB)
+#define BB_PLL_CONFIG_OUTDIV_SET(x)              (((x) << BB_PLL_CONFIG_OUTDIV_LSB) & BB_PLL_CONFIG_OUTDIV_MASK)
+#define BB_PLL_CONFIG_FRAC_GET(x)                (((x) & BB_PLL_CONFIG_FRAC_MASK) >> BB_PLL_CONFIG_FRAC_LSB)
+#define BB_PLL_CONFIG_FRAC_SET(x)                (((x) << BB_PLL_CONFIG_FRAC_LSB) & BB_PLL_CONFIG_FRAC_MASK)
+#define WLAN_PLL_SETTLE_TIME_GET(x)              (((x) & WLAN_PLL_SETTLE_TIME_MASK) >> WLAN_PLL_SETTLE_TIME_LSB)
+#define WLAN_PLL_SETTLE_TIME_SET(x)              (((x) << WLAN_PLL_SETTLE_TIME_LSB) & WLAN_PLL_SETTLE_TIME_MASK)
+#define WLAN_PLL_CONTROL_NOPWD_GET(x)            (((x) & WLAN_PLL_CONTROL_NOPWD_MASK) >> WLAN_PLL_CONTROL_NOPWD_LSB)
+#define WLAN_PLL_CONTROL_NOPWD_SET(x)            (((x) << WLAN_PLL_CONTROL_NOPWD_LSB) & WLAN_PLL_CONTROL_NOPWD_MASK)
+#define WLAN_PLL_CONTROL_BYPASS_GET(x)           (((x) & WLAN_PLL_CONTROL_BYPASS_MASK) >> WLAN_PLL_CONTROL_BYPASS_LSB)
+#define WLAN_PLL_CONTROL_BYPASS_SET(x)           (((x) << WLAN_PLL_CONTROL_BYPASS_LSB) & WLAN_PLL_CONTROL_BYPASS_MASK)
+#define WLAN_PLL_CONTROL_CLK_SEL_GET(x)          (((x) & WLAN_PLL_CONTROL_CLK_SEL_MASK) >> WLAN_PLL_CONTROL_CLK_SEL_LSB)
+#define WLAN_PLL_CONTROL_CLK_SEL_SET(x)          (((x) << WLAN_PLL_CONTROL_CLK_SEL_LSB) & WLAN_PLL_CONTROL_CLK_SEL_MASK)
+#define WLAN_PLL_CONTROL_REFDIV_GET(x)           (((x) & WLAN_PLL_CONTROL_REFDIV_MASK) >> WLAN_PLL_CONTROL_REFDIV_LSB)
+#define WLAN_PLL_CONTROL_REFDIV_SET(x)           (((x) << WLAN_PLL_CONTROL_REFDIV_LSB) & WLAN_PLL_CONTROL_REFDIV_MASK)
+#define WLAN_PLL_CONTROL_DIV_GET(x)              (((x) & WLAN_PLL_CONTROL_DIV_MASK) >> WLAN_PLL_CONTROL_DIV_LSB)
+#define WLAN_PLL_CONTROL_DIV_SET(x)              (((x) << WLAN_PLL_CONTROL_DIV_LSB) & WLAN_PLL_CONTROL_DIV_MASK)
+#define SOC_CORE_CLK_CTRL_DIV_GET(x)             (((x) & SOC_CORE_CLK_CTRL_DIV_MASK) >> SOC_CORE_CLK_CTRL_DIV_LSB)
+#define SOC_CORE_CLK_CTRL_DIV_SET(x)             (((x) << SOC_CORE_CLK_CTRL_DIV_LSB) & SOC_CORE_CLK_CTRL_DIV_MASK)
+#define RTC_SYNC_STATUS_PLL_CHANGING_GET(x)      (((x) & RTC_SYNC_STATUS_PLL_CHANGING_MASK) >> RTC_SYNC_STATUS_PLL_CHANGING_LSB)
+#define RTC_SYNC_STATUS_PLL_CHANGING_SET(x)      (((x) << RTC_SYNC_STATUS_PLL_CHANGING_LSB) & RTC_SYNC_STATUS_PLL_CHANGING_MASK)
+#define SOC_CPU_CLOCK_STANDARD_GET(x)            (((x) & SOC_CPU_CLOCK_STANDARD_MASK) >> SOC_CPU_CLOCK_STANDARD_LSB)
+#define SOC_CPU_CLOCK_STANDARD_SET(x)            (((x) << SOC_CPU_CLOCK_STANDARD_LSB) & SOC_CPU_CLOCK_STANDARD_MASK)
+/* PLL end */
 
 typedef struct hostdef_s {
     A_UINT32 d_INT_STATUS_ENABLE_ERROR_LSB;
@@ -563,4 +709,65 @@ typedef struct hostdef_s {
 #if defined(SDIO_3_0)
 #define HOST_INT_STATUS_MBOX_DATA_GET(x)        (((x) & HOST_INT_STATUS_MBOX_DATA_MASK) >> HOST_INT_STATUS_MBOX_DATA_LSB)
 #endif
+
+#define INVALID_REG_LOC_DUMMY_DATA 0xAA
+
+
+#define AR6320_CORE_CLK_DIV_ADDR	0x403fa8
+#define AR6320_CPU_PLL_INIT_DONE_ADDR	0x403fd0
+#define AR6320_CPU_SPEED_ADDR		0x403fa4
+#define AR6320V2_CORE_CLK_DIV_ADDR	0x403fd8
+#define AR6320V2_CPU_PLL_INIT_DONE_ADDR	0x403fd0
+#define AR6320V2_CPU_SPEED_ADDR		0x403fd4
+#define AR6320V3_CORE_CLK_DIV_ADDR	0x404028
+#define AR6320V3_CPU_PLL_INIT_DONE_ADDR	0x404020
+#define AR6320V3_CPU_SPEED_ADDR		0x404024
+
+typedef enum {
+	SOC_REFCLK_UNKNOWN   = -1, /* Unsupported ref clock -- use PLL Bypass */
+	SOC_REFCLK_48_MHZ    = 0,
+	SOC_REFCLK_19_2_MHZ  = 1,
+	SOC_REFCLK_24_MHZ    = 2,
+	SOC_REFCLK_26_MHZ    = 3,
+	SOC_REFCLK_37_4_MHZ  = 4,
+	SOC_REFCLK_38_4_MHZ  = 5,
+	SOC_REFCLK_40_MHZ    = 6,
+	SOC_REFCLK_52_MHZ    = 7,
+} A_refclk_speed_t;
+
+#define A_REFCLK_UNKNOWN    SOC_REFCLK_UNKNOWN
+#define A_REFCLK_48_MHZ     SOC_REFCLK_48_MHZ
+#define A_REFCLK_19_2_MHZ   SOC_REFCLK_19_2_MHZ
+#define A_REFCLK_24_MHZ     SOC_REFCLK_24_MHZ
+#define A_REFCLK_26_MHZ     SOC_REFCLK_26_MHZ
+#define A_REFCLK_37_4_MHZ   SOC_REFCLK_37_4_MHZ
+#define A_REFCLK_38_4_MHZ   SOC_REFCLK_38_4_MHZ
+#define A_REFCLK_40_MHZ     SOC_REFCLK_40_MHZ
+#define A_REFCLK_52_MHZ     SOC_REFCLK_52_MHZ
+
+#define TARGET_CPU_FREQ 176000000
+
+struct wlan_pll_s {
+	u_int32_t refdiv;
+	u_int32_t div;
+	u_int32_t rnfrac;
+	u_int32_t outdiv;
+};
+
+struct cmnos_clock_s {
+	A_refclk_speed_t refclk_speed;
+	u_int32_t         refclk_hz;
+	u_int32_t         pll_settling_time; /* 50us */
+	struct wlan_pll_s   wlan_pll;
+};
+
+typedef struct TGT_REG_SECTION {
+	u_int32_t start_addr;
+	u_int32_t end_addr;
+} tgt_reg_section;
+
+typedef struct TGT_REG_TABLE {
+	tgt_reg_section *section;
+	u_int32_t section_size;
+} tgt_reg_table;
 #endif

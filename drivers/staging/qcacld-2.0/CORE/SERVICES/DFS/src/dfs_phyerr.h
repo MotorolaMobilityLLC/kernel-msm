@@ -57,8 +57,10 @@
 #ifndef  __DFS_PHYERR_H__
 #define  __DFS_PHYERR_H__
 
-extern   int dfs_process_phyerr_bb_tlv(struct ath_dfs *dfs, void *buf,
-       u_int16_t datalen, u_int8_t rssi, u_int8_t ext_rssi,
-       u_int32_t rs_tstamp, u_int64_t fulltsf, struct dfs_phy_err *e);
+extern int
+dfs_process_phyerr_bb_tlv(struct ath_dfs *dfs, void *buf, u_int16_t datalen,
+                          u_int8_t rssi, u_int8_t ext_rssi, u_int32_t rs_tstamp,
+                          u_int64_t fulltsf, struct dfs_phy_err *e,
+                          bool enable_log);
 
 #endif   /* __DFS_PHYERR_H__ */

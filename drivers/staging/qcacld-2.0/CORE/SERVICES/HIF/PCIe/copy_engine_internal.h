@@ -167,6 +167,18 @@ struct CE_dest_desc {
     struct dest_desc_info info;
 };
 
+/**
+ * typdef CE_desc - unified data type for ce descriptors
+ *
+ * Both src and destination descriptors follow the same format.
+ * They use different data structures for different access symantics.
+ * Here we provice a unifying data type.
+ */
+typedef union {
+	struct CE_src_desc src_desc;
+	struct CE_dest_desc dest_desc;
+} CE_desc;
+
 #define CE_SENDLIST_ITEMS_MAX 12
 
 enum CE_sendlist_type_e {

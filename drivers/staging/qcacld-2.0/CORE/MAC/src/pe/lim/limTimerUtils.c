@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -54,6 +54,8 @@
 #define LIM_KEEPALIVE_TIMER_MS                   3000
 // Lim JoinProbeRequest Retry  timer default (200)ms
 #define LIM_JOIN_PROBE_REQ_TIMER_MS              200
+#define LIM_AUTH_RETRY_TIMER_MS              60
+
 
 //default beacon interval value used in HB timer interval calculation
 #define LIM_HB_TIMER_BEACON_INTERVAL             100
@@ -151,7 +153,7 @@ limCreateTimers(tpAniSirGlobal pMac)
     }
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
 
-    /* Limiting max numm of probe req for each channel scan */
+    /* Limiting max number of probe req for each channel scan */
     pMac->lim.maxProbe = (cfgValue/cfgValue1);
 
     if (tx_timer_create(&pMac->lim.limTimers.gLimMaxChannelTimer,
@@ -257,7 +259,19 @@ limCreateTimers(tpAniSirGlobal pMac)
             limLog(pMac, LOGP, FL("could not create Periodic Join Probe Request timer"));
             goto err_timer;
         }
-
+        //Send Auth frame every 60 ms
+        if ((tx_timer_create
+                        (&pMac->lim.limTimers.g_lim_periodic_auth_retry_timer,
+                        "Periodic AUTH Timer",
+                        limTimerHandler, SIR_LIM_AUTH_RETRY_TIMEOUT,
+                        SYS_MS_TO_TICKS(LIM_AUTH_RETRY_TIMER_MS), 0,
+                        TX_NO_ACTIVATE)) != TX_SUCCESS)
+        {
+            /// Could not create Periodic Join Probe Request timer.
+            // Log error
+            limLog(pMac, LOGP, FL("could not create Periodic AUTH Timer timer"));
+            goto err_timer;
+        }
         if (wlan_cfgGetInt(pMac, WNI_CFG_ASSOCIATION_FAILURE_TIMEOUT,
                       &cfgValue) != eSIR_SUCCESS)
         {
@@ -407,8 +421,8 @@ limCreateTimers(tpAniSirGlobal pMac)
                             0,
                             TX_NO_ACTIVATE) != TX_SUCCESS)
         {
-            // Could not creat wt-probe-after-HeartBeat-failure timer.
-            // Log error
+            /* Could not create wt-probe-after-HeartBeat-failure timer.
+               Log error */
             limLog(pMac, LOGP,
                    FL("unable to create ProbeAfterHBTimer"));
             goto err_timer;
@@ -479,18 +493,18 @@ limCreateTimers(tpAniSirGlobal pMac)
            FL("Created Disassociate throttle timer "));)
 
     /**
-     * Create keepalive timer and  activate it right away for AP role
+     * Create keep alive timer and  activate it right away for AP role
      */
 
     if (wlan_cfgGetInt(pMac, WNI_CFG_KEEPALIVE_TIMEOUT,
                   &cfgValue) != eSIR_SUCCESS)
     {
         /**
-         * Could not get keepalive timeout value
+         * Could not get keep alive timeout value
          * from CFG. Log error.
          */
         limLog(pMac, LOGP,
-               FL("could not retrieve keepalive timeout value"));
+               FL("could not retrieve keep alive timeout value"));
     }
 
     // A value of zero implies keep alive should be disabled
@@ -514,8 +528,8 @@ limCreateTimers(tpAniSirGlobal pMac)
                          TX_AUTO_ACTIVATE : TX_NO_ACTIVATE)
                   != TX_SUCCESS)
     {
-        // Cannot create keepalive timer.  Log error.
-        limLog(pMac, LOGP, FL("Cannot create keepalive timer."));
+        /* Cannot create keep alive timer.  Log error. */
+        limLog(pMac, LOGP, FL("Cannot create keep alive timer."));
         goto err_timer;
     }
 
@@ -568,11 +582,24 @@ limCreateTimers(tpAniSirGlobal pMac)
                FL("could not retrieve mac preauth value"));
     }
     pMac->lim.gLimPreAuthTimerTable.numEntry = cfgValue;
-    pMac->lim.gLimPreAuthTimerTable.pTable = vos_mem_malloc(cfgValue*sizeof(tLimPreAuthNode));
-    if(pMac->lim.gLimPreAuthTimerTable.pTable == NULL)
-    {
+    pMac->lim.gLimPreAuthTimerTable.pTable =
+        vos_mem_malloc(cfgValue*sizeof(tLimPreAuthNode*));
+    if(pMac->lim.gLimPreAuthTimerTable.pTable == NULL) {
+        pMac->lim.gLimPreAuthTimerTable.numEntry = 0;
         limLog(pMac, LOGP, FL("AllocateMemory failed!"));
         goto err_timer;
+    }
+    vos_mem_zero(pMac->lim.gLimPreAuthTimerTable.pTable,
+                 cfgValue * sizeof(tLimPreAuthNode*));
+
+    for (i = 0; i < cfgValue; i++) {
+        pMac->lim.gLimPreAuthTimerTable.pTable[i] =
+            vos_mem_malloc(sizeof(tLimPreAuthNode));
+        if (pMac->lim.gLimPreAuthTimerTable.pTable[i] == NULL) {
+            pMac->lim.gLimPreAuthTimerTable.numEntry = 0;
+            limLog(pMac, LOGP, FL("AllocateMemory failed!"));
+            goto err_timer;
+        }
     }
 
     limInitPreAuthTimerTable(pMac, &pMac->lim.gLimPreAuthTimerTable);
@@ -738,6 +765,7 @@ limCreateTimers(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimAssocFailureTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimJoinFailureTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer);
+        tx_timer_delete(&pMac->lim.limTimers.g_lim_periodic_auth_retry_timer);
         tx_timer_delete(&pMac->lim.limTimers.gLimQuietBssTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimQuietTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimChannelSwitchTimer);
@@ -749,6 +777,8 @@ limCreateTimers(tpAniSirGlobal pMac)
 
         if(NULL != pMac->lim.gLimPreAuthTimerTable.pTable)
         {
+            for (i = 0; i < cfgValue; i++)
+                vos_mem_free(pMac->lim.gLimPreAuthTimerTable.pTable[i]);
             vos_mem_free(pMac->lim.gLimPreAuthTimerTable.pTable);
             pMac->lim.gLimPreAuthTimerTable.pTable = NULL;
         }
@@ -769,7 +799,7 @@ limCreateTimers(tpAniSirGlobal pMac)
  * 3. AUTH_FAILURE timer expiration while authenticating with a peer
  * 4. Heartbeat timer expiration on STA
  * 5. Background scan timer expiration on STA
- * 6. AID release, Pre-auth cleanup and Link monitoring timer
+ * 6. AID release, Pre-auth clean up and Link monitoring timer
  *    expiration on AP
  *
  *LOGIC:
@@ -1004,6 +1034,7 @@ void
 limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
 {
     tANI_U32    val=0, val1=0;
+    tpPESession  session_entry;
 
     MTRACE(macTrace(pMac, TRACE_CODE_TIMER_DEACTIVATE, NO_SESSION, timerId));
 
@@ -1229,6 +1260,35 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
 
             break;
 
+        case eLIM_AUTH_RETRY_TIMER:
+
+            if (tx_timer_deactivate
+                  (&pMac->lim.limTimers.g_lim_periodic_auth_retry_timer)
+                                         != TX_SUCCESS) {
+                // Could not deactivate Auth Retry Timer.
+                limLog(pMac, LOGP,
+                       FL("Unable to deactivate Auth Retry timer"));
+            }
+            if ((session_entry = peFindSessionBySessionId(pMac,
+                pMac->lim.limTimers.g_lim_periodic_auth_retry_timer.sessionId))
+                                                                   == NULL) {
+                   limLog(pMac, LOGP,
+                    FL("session does not exist for given SessionId : %d"),
+                    pMac->lim.limTimers.g_lim_periodic_auth_retry_timer.sessionId);
+                   break;
+            }
+            /* 3/5 of the beacon interval*/
+            val = session_entry->beaconParams.beaconInterval * 3/5;
+            val = SYS_MS_TO_TICKS(val);
+            if (tx_timer_change
+                 (&pMac->lim.limTimers.g_lim_periodic_auth_retry_timer,
+                                val, 0) != TX_SUCCESS) {
+                // Could not change Auth Retry timer.
+                // Log error
+                limLog(pMac, LOGP, FL("Unable to change Auth Retry timer"));
+            }
+            break;
+
         case eLIM_ASSOC_FAIL_TIMER:
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimAssocFailureTimer) !=
                                     TX_SUCCESS)
@@ -1391,8 +1451,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimKeepaliveTimer)
                             != TX_SUCCESS)
             {
-                // Could not deactivate Keepalive timer.
-                // Log error
+                /* Could not deactivate Keep alive timer. Log error */
                 limLog(pMac, LOGP,
                    FL("unable to deactivate KeepaliveTimer timer"));
             }
@@ -1403,11 +1462,11 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                           &val) != eSIR_SUCCESS)
             {
                 /**
-                 * Could not get keepalive timeout value
+                 * Could not get keep alive timeout value
                  * from CFG. Log error.
                  */
                 limLog(pMac, LOGP,
-                   FL("could not retrieve keepalive timeout value"));
+                   FL("could not retrieve keep alive timeout value"));
             }
             if (val == 0)
             {
@@ -1728,7 +1787,7 @@ limReactivateHeartBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry)
     limHeartBeatDeactivateAndChangeTimer(pMac, psessionEntry);
     MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
 
-    //only start the hearbeat-timer if the timeout value is non-zero
+    /* Only start the heartbeat-timer if the timeout value is non-zero */
     if(pMac->lim.limTimers.gLimHeartBeatTimer.initScheduleTimeInMsecs > 0)
     {
        /*
@@ -1737,9 +1796,8 @@ limReactivateHeartBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry)
         * the host causing the host to wakeup. Hence, offloading the HB
         * monitoring to LMAC
         */
-       if (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE &&
-             IS_IBSS_HEARTBEAT_OFFLOAD_FEATURE_ENABLE)
-       {
+       if (LIM_IS_IBSS_ROLE(psessionEntry) &&
+             IS_IBSS_HEARTBEAT_OFFLOAD_FEATURE_ENABLE) {
           if (tx_timer_deactivate(&pMac->lim.limTimers.gLimHeartBeatTimer)!= TX_SUCCESS)
           {
              limLog(pMac, LOGP,FL("IBSS HeartBeat Offloaded, Could not deactivate Heartbeat timer"));
@@ -1799,9 +1857,8 @@ v_UINT_t limActivateHearBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry
         //consider 0 interval a ok case
         if( pMac->lim.limTimers.gLimHeartBeatTimer.initScheduleTimeInMsecs )
         {
-           if (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE &&
-               IS_IBSS_HEARTBEAT_OFFLOAD_FEATURE_ENABLE)
-           {
+           if (LIM_IS_IBSS_ROLE(psessionEntry) &&
+               IS_IBSS_HEARTBEAT_OFFLOAD_FEATURE_ENABLE) {
               /* HB offload in IBSS mode */
               status = tx_timer_deactivate(&pMac->lim.limTimers.gLimHeartBeatTimer);
               if (TX_SUCCESS != status)

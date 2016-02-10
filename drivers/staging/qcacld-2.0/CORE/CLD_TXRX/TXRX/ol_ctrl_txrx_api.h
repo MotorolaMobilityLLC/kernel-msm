@@ -38,6 +38,7 @@
 
 #include <ol_ctrl_api.h>  /* ol_vdev_handle */
 #include <ol_txrx_api.h>  /* ol_txrx_peer_handle, etc. */
+#include <ol_txrx_types.h>  /* ol_txrx_peer_handle, etc. */
 #include <ieee80211_common.h>   /*ieee80211_frame */
 
 enum ol_rx_err_type {
@@ -135,6 +136,33 @@ enum ol_rx_notify_type {
     OL_RX_NOTIFY_IPV4_IGMP,
 };
 
+struct ol_mic_error_info {
+    u_int8_t vdev_id;
+    u_int32_t key_id;
+    u_int64_t pn;
+    u_int8_t sa[OL_TXRX_MAC_ADDR_LEN];
+    u_int8_t da[OL_TXRX_MAC_ADDR_LEN];
+    u_int8_t ta[OL_TXRX_MAC_ADDR_LEN];
+};
+
+struct ol_error_info {
+    union {
+        struct ol_mic_error_info mic_err;
+    } u;
+};
+
+/**
+ * @brief Indicate an error to the protocol stack.
+ * @details
+ *  Indicate an error from the data path to the protocol stack
+ *
+ * @param err_type - error type
+ * @param err_info - information associated with the error
+ */
+void
+ol_indicate_err(
+    enum ol_rx_err_type err_type,
+    struct ol_error_info * err_info);
 
 /**
  * @brief Provide notification of reception of data of special interest.

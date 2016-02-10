@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -71,7 +71,6 @@
 #include "wlan_nv.h"
 #include "wlan_qct_wda.h"
 #include "cfgApi.h"
-#include "wlan_qct_pal_device.h"
 
 #if  defined(QCA_WIFI_FTM)
 #include "bmi.h"
@@ -89,9 +88,6 @@
 #endif
 #endif
 
-static int wlan_ftm_stop(hdd_context_t *pHddCtx);
-static int hdd_ftm_service_registration(hdd_context_t *pHddCtx);
-
 #if  defined(QCA_WIFI_FTM)
 #if defined(LINUX_QCMBR)
 #define ATH_XIOCTL_UNIFIED_UTF_CMD  0x1000
@@ -107,11 +103,16 @@ typedef struct qcmbr_queue_s {
     unsigned char utf_buf[MAX_UTF_LENGTH + 4];
     struct list_head list;
 } qcmbr_queue_t;
+
 LIST_HEAD(qcmbr_queue_head);
 DEFINE_SPINLOCK(qcmbr_queue_lock);
+
+/* FLAG to distinguish QCMBR rsp from CFG80211 test mode */
+static boolean rsp_to_qcmbr = false;
 #endif
 #endif
 
+#define HDD_FTM_WMA_PRE_START_TIMEOUT (30000) /* 30 seconds */
 
 /**---------------------------------------------------------------------------
 
@@ -153,7 +154,7 @@ static v_U32_t wlan_ftm_postmsg(v_U8_t *cmd_ptr, v_U16_t cmd_len)
     return VOS_STATUS_SUCCESS;
 }
 
-void wlan_hdd_ftm_update_tgt_cfg(void *context, void *param)
+static void wlan_hdd_ftm_update_tgt_cfg(void *context, void *param)
 {
     hdd_context_t *hdd_ctx = (hdd_context_t *)context;
     struct hdd_tgt_cfg *cfg = (struct hdd_tgt_cfg *)param;
@@ -338,6 +339,9 @@ static VOS_STATUS wlan_ftm_vos_open( v_CONTEXT_t pVosContext, v_SIZE_t hddContex
      VOS_ASSERT(0);
      goto err_sys_close;
    }
+
+   ((struct ol_softc *)pHifContext)->enableRamdumpCollection =
+                                  pHddCtx->cfg_ini->is_ramdump_enabled;
 
    macOpenParms.powersaveOffloadEnabled =
       pHddCtx->cfg_ini->enablePowersaveOffload;
@@ -593,7 +597,7 @@ static VOS_STATUS wlan_ftm_vos_close( v_CONTEXT_t vosContext )
   \sa vos_start
 
 ---------------------------------------------------------------------------*/
-VOS_STATUS vos_ftm_preStart( v_CONTEXT_t vosContext )
+static VOS_STATUS vos_ftm_preStart(v_CONTEXT_t vosContext)
 {
    VOS_STATUS vStatus          = VOS_STATUS_SUCCESS;
    pVosContextType pVosContext = (pVosContextType)vosContext;
@@ -640,7 +644,8 @@ VOS_STATUS vos_ftm_preStart( v_CONTEXT_t vosContext )
    }
 
    /* Need to update time out of complete */
-   vStatus = vos_wait_single_event( &pVosContext->wdaCompleteEvent, 1000);
+   vStatus = vos_wait_single_event(&pVosContext->wdaCompleteEvent,
+                  HDD_FTM_WMA_PRE_START_TIMEOUT);
    if ( vStatus != VOS_STATUS_SUCCESS )
    {
       if ( vStatus == VOS_STATUS_E_TIMEOUT )
@@ -763,6 +768,17 @@ hdd_close_all_adapters( pHddCtx );
 err_adapter_open_failure:
 
     return VOS_STATUS_E_FAILURE;
+}
+
+static int wlan_ftm_stop(hdd_context_t *pHddCtx)
+{
+	if (pHddCtx->ftm.ftm_state != WLAN_FTM_STARTED) {
+		hddLog(LOGP, FL("FTM has not started. No need to stop"));
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	WDA_stop(pHddCtx->pvosContext, HAL_STOP_TYPE_RF_KILL);
+	return WLAN_FTM_SUCCESS;
 }
 
 int wlan_hdd_ftm_close(hdd_context_t *pHddCtx)
@@ -920,17 +936,6 @@ int hdd_ftm_start(hdd_context_t *pHddCtx)
 }
 #endif
 
-static int wlan_ftm_stop(hdd_context_t *pHddCtx)
-{
-	if (pHddCtx->ftm.ftm_state != WLAN_FTM_STARTED) {
-		hddLog(LOGP, FL("FTM has not started. No need to stop"));
-		return VOS_STATUS_E_FAILURE;
-	}
-
-	WDA_stop(pHddCtx->pvosContext, HAL_STOP_TYPE_RF_KILL);
-	return WLAN_FTM_SUCCESS;
-}
-
 #if  defined(QCA_WIFI_FTM)
 int hdd_ftm_stop(hdd_context_t *pHddCtx)
 {
@@ -950,7 +955,8 @@ static int wlan_hdd_qcmbr_command(hdd_adapter_t *pAdapter, qcmbr_data_t *pqcmbr_
             pqcmbr_data->copy_to_user = 0;
             if (pqcmbr_data->length) {
                 if (wlan_hdd_ftm_testmode_cmd(pqcmbr_data->buf,
-                                              pqcmbr_data->length)
+                                              pqcmbr_data->length,
+                                              TRUE)
                         != VOS_STATUS_SUCCESS) {
                     ret = -EBUSY;
                 } else {
@@ -1066,6 +1072,7 @@ static void WLANQCMBR_McProcessMsg(v_VOID_t *message)
 
     data_len = *((u_int32_t *)message) + sizeof(u_int32_t);
     qcmbr_buf = kzalloc(sizeof(qcmbr_queue_t), GFP_KERNEL);
+
     if (qcmbr_buf != NULL) {
         memcpy(qcmbr_buf->utf_buf, message, data_len);
         spin_lock_bh(&qcmbr_queue_lock);
@@ -1087,11 +1094,17 @@ VOS_STATUS WLANFTM_McProcessMsg (v_VOID_t *message)
     data = (u_int32_t *)message + 1;
 
 #if defined(LINUX_QCMBR)
-    WLANQCMBR_McProcessMsg(message);
-#else
-#ifdef CONFIG_NL80211_TESTMODE
-    wlan_hdd_testmode_rx_event(data, (size_t)data_len);
+    if (TRUE == rsp_to_qcmbr) {
+        WLANQCMBR_McProcessMsg(message);
+    } else {
 #endif
+
+#ifdef CONFIG_NL80211_TESTMODE
+        wlan_hdd_testmode_rx_event(data, (size_t)data_len);
+#endif
+
+#if defined(LINUX_QCMBR)
+    }
 #endif
 
     vos_mem_free(message);
@@ -1099,12 +1112,16 @@ VOS_STATUS WLANFTM_McProcessMsg (v_VOID_t *message)
     return VOS_STATUS_SUCCESS;
 }
 
-VOS_STATUS wlan_hdd_ftm_testmode_cmd(void *data, int len)
+VOS_STATUS wlan_hdd_ftm_testmode_cmd(void *data, int len, boolean from_qcmbr)
 {
     struct ar6k_testmode_cmd_data *cmd_data;
 
     cmd_data = (struct ar6k_testmode_cmd_data *)
                vos_mem_malloc(sizeof(*cmd_data));
+
+#if defined(LINUX_QCMBR)
+    rsp_to_qcmbr = from_qcmbr;
+#endif
 
     if (!cmd_data) {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,

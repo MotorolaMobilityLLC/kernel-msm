@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -124,7 +124,21 @@ extern "C" {
 #define WMI_DBGID_DCS_PARAM_CMD                      49
 #define WMI_SEND_EVENT_WRONG_TLV                     50
 #define WMI_SEND_EVENT_NO_TLV_DEF                    51
-#define WMI_DBGID_DEFINITION_END                     52
+#define WMI_RECV_CMD_WRONG_TLV                              52
+#define WMI_CHECK_TLV_PARAM_GET_NUM_TLVS_ERROR              53
+#define WMI_CHECK_TLV_PARAM_TLV_LEN_EXCEEDED_BUF_LEN        54
+#define WMI_CHECK_TLV_PARAM_NONEXISTING_TAG_ORDER           55
+#define WMI_CHECK_TLV_PARAM_WRONG_TAG_ORDER                 56
+#define WMI_CHECK_TLV_PARAM_INVALID_TLV_DEF_ARRAY_SIZE      57
+#define WMI_CHECK_TLV_PARAM_INVALID_TLV_DEF_VARIED_SIZE     58
+#define WMI_CHECK_TLV_PARAM_WRONG_TLV_LENGTH                59
+#define WMI_CHECK_TLV_PARAM_UNALIGNED_TLV_LEN               60
+#define WMI_CHECK_TLV_PARAM_WRONG_INNER_TLV_LEN             61
+#define WMI_CHECK_TLV_PARAM_UNSUPPORTED_ARRAY_TAG           62
+#define WMI_CHECK_TLV_PARAM_EXCEEDED_MAX_TLVs               63
+#define WMI_CHECK_TLV_PARAM_CMD_BUF_ALLOC_FAILED            64
+#define WMI_CHECK_TLV_PARAM_TLV_INFO                        65
+#define WMI_DBGID_DEFINITION_END                            66
 
 /*  PM Message definition*/
 #define PS_STA_DEFINITION_START                     0
@@ -611,11 +625,27 @@ extern "C" {
 #define AP_PS_DBGID_CLIENT_IN_PS_ACTIVE             28
 #define AP_PS_DBGID_CLIENT_IN_PS_NON_ACTIVE         29
 #define AP_PS_DBGID_CLIENT_IN_AWAKE                 30
+/* Enhanced Green AP DBGIDs */
+#define AP_PS_DBGID_EGAP_SET_PARAM                  31
+#define AP_PS_DBGID_EGAP_VDEV_START                 32
+#define AP_PS_DBGID_EGAP_VDEV_STOP                  33
+#define AP_PS_DBGID_EGAP_CONN_PEER                  34
+#define AP_PS_DBGID_EGAP_DELETE_PEER                35
+#define AP_PS_DBGID_EGAP_WAL_PEER_EVENT             36
+#define AP_PS_DBGID_EGAP_WAL_PDEV_EVENT             37
+#define AP_PS_DBGID_EGAP_NOTIF_STA_SLEEPING         38
+#define AP_PS_DBGID_EGAP_PROC_STA_SLEEPING          39
+#define AP_PS_DBGID_EGAP_PROC_STA_INACTIVITY        40
+#define AP_PS_DBGID_EGAP_CHANGE_CHAINMASK           41
+#define AP_PS_DBGID_EGAP_CHANGE_SM_STATE            42
 
 /* WLAN_MODULE_MGMT_TXRX Debugids*/
 #define MGMT_TXRX_DBGID_DEFINITION_START            0
 #define MGMT_TXRX_FORWARD_TO_HOST                   1
-#define MGMT_TXRX_DBGID_DEFINITION_END              2
+#define MGMT_TXRX_MGMT_FRAME_BUFFER_FULL            2
+#define MGMT_TXRX_VDEV_USED_TO_SEND_FRAME_IS_FREE   3
+#define MGMT_TXRX_LOCAL_FRAME_SEND_FAILED           4
+#define MGMT_TXRX_DBGID_DEFINITION_END              5
 
 #define WAL_DBGID_DEFINITION_START                  0
 #define WAL_DBGID_FAST_WAKE_REQUEST                 1
@@ -688,7 +718,6 @@ extern "C" {
 #define WAL_DBGID_RESUME                            67
 #define WAL_DBGID_PEER_TX_FAIL_CNT_THRES_EXCEEDED   68
 #define WAL_DBGID_RX_FULL_REORDER_SUPPORT           69
-#if defined(AR900B)
 #define WAL_DBGID_HCM_BIN                           70
 #define WAL_DBGID_HCM_BIN_PENALIZE                  71
 #define WAL_DBGID_HCM_BIN_DEPENALIZE                72
@@ -697,10 +726,19 @@ extern "C" {
 #define WAL_DBGID_TX_AC_BUFFER_SET                  75
 #define WAL_DBGID_AST_ENTRY_EXIST                   76
 #define WAL_DBGID_AST_ENTRY_FULL                    77
-#define WAL_DBGID_DEFINITION_END                    78
-#else
-#define WAL_DBGID_DEFINITION_END                    70
-#endif
+#define WAL_DBGID_WMMAC_TXQ_STATUS                  78
+#define WAL_DBGID_PROLONGED_TX_PPDU_TOTAL_US        79
+#define WAL_DBGID_UPDATE_USED_TIME                  80
+#define WAL_DBGID_PAST_WB_ACK_TIMESTAMP             81
+#define WAL_DBGID_WMMAC_ADD_DEL_TSPEC               82
+#define WAL_DBGID_WMMAC_TIMER_EXPIRY                83
+#define WAL_DBGID_WMMAC_PARAMS                      84
+#define WAL_DBGID_TX_MGMT_WAL_PEER_DOES_NOT_EXIST   85
+#define WAL_DBGID_TX_MGMT_WAL_PEER_DELETE_IN_PROGRESS 86
+#define WAL_DBGID_TX_MGMT_FRAME_DESC_ALLOC_FAILED   87
+#define WAL_DBGID_TX_MGMT_TID_STRUCT_NOT_FOUND      88
+#define WAL_DBGID_TX_MGMT_ENQUEUE_FAILED            89
+#define WAL_DBGID_DEFINITION_END                    90
 
 #define ANI_DBGID_POLL                               0
 #define ANI_DBGID_CONTROL                            1
@@ -741,7 +779,12 @@ extern "C" {
 #define RESOURCE_PEER_ALLOC_WAL_PEER                3
 #define RESOURCE_PEER_NBRHOOD_MGMT_ALLOC            4
 #define RESOURCE_PEER_NBRHOOD_MGMT_INFO             5
-#define RESOURCE_DBGID_DEFINITION_END               6
+#define RESOURCE_SMALL_MGMT_BUF_FULL                6
+#define RESOURCE_MGMT_AVAIL_BUF_CNT_NOT_ENOUGH      7
+#define RESOURCE_MGMT_BUF_FULL                      8
+#define RESOURCE_MGMT_BUF_INC                       9
+#define RESOURCE_MGMT_BUF_DEC                       10
+#define RESOURCE_DBGID_DEFINITION_END               11
 
 /* DCS debug IDs*/
 #define WLAN_DCS_DBGID_INIT                         0
@@ -858,7 +901,10 @@ extern "C" {
 #define SWBMISS_DBGID_DEFINITION_START  0
 #define SWBMISS_ENABLED                 1
 #define SWBMISS_DISABLED                2
-#define SWBMISS_DBGID_DEFINITION_END    3
+#define SWBMISS_UPDATE_BEACON_RSSI      3
+#define SWBMISS_CHECK_RSSI_OUTLIER      4
+#define SWBMISS_TIMER_SET               5
+#define SWBMISS_DBGID_DEFINITION_END    6
 
 /* WLAN module DBGIDS */
 #define ROAM_DBGID_DEFINITION_START 0
@@ -935,14 +981,42 @@ extern "C" {
 #define ROAM_CANDIDATE_INFO       71
 #define ROAM_CANDIDATE_FILTER_MATCH 72
 #define ROAM_CANDIDATE_RSSI_ADJUST  73
-#define ROAM_DBGID_DEFINITION_END   74
+#define ROAM_CONFIG_ROAM_FILTER     74
+#define ROAM_EXTENDED_RSSI_TRESHOLD_1 75
+#define ROAM_EXTENDED_RSSI_TRESHOLD_2 76
+#define ROAM_BLACKLIST_BSSID        77
+#define ROAM_WHITELIST_SSID         78
+#define ROAM_WHITELIST_SSID_2       79
+#define ROAM_PREFERRED_BSSID        80
+#define ROAM_PREFERRED_FACTOR       81
+#define ROAM_SCAN_HIRSSI_THRESHOLD      82
+#define ROAM_SCAN_HIRSSI_CHECK          83
+#define ROAM_SCAN_HIRSSI_TIMER_EXPIRED  84
+#define ROAM_SCAN_EXTSCAN_CHECK         85
+#define ROAM_DBGID_DEFINITION_END   86
 
 /* DATA_TXRX module DBGIDs*/
 #define DATA_TXRX_DBGID_DEFINITION_START         0
 #define DATA_TXRX_DBGID_RX_DATA_SEQ_LEN_INFO     1
 #define DATA_TXRX_DBGID_REPLAY_CHECK             2
 #define DATA_TXRX_DBGID_DUP_CHECK                3
-#define DATA_TXRX_DBGID_DEFINITION_END           4
+#define DATA_TXRX_INVALID_PEER_AST_STA           4
+#define DATA_TXRX_INVALID_PEER_AST_P2P           5
+#define DATA_TXRX_INVALID_ADDR1_STA              6
+#define DATA_TXRX_INVALID_ADDR1_P2P              7
+#define DATA_TXRX_MULTICAST_BROADCAST_FRAME      8
+#define DATA_TXRX_INVALID_FRAME_CTRL_OR_ADDR     9
+#define DATA_TXRX_DBGID_DEFINITION_END          10
+
+/* HTT module DBGIDs */
+#define HTT_DBGID_DEFINITION_START               0
+#define HTT_DBGID_INVALID_VDEVID_OR_GROUP        1
+#define HTT_DBGID_DISCARD_INTERNAL_PKTS          2
+#define HTT_DBGID_DISCARD_TX_PKTS                3
+#define HTT_DBGID_GROUP_CHANGE                   4
+#define HTT_DBGID_GROUP_CREDIT_STATS             5
+#define HTT_DBGID_DISCARD_INTERNAL_PKTS_NUM      6
+#define HTT_DBGID_DEFINITION_END                 7
 
 /* TDLS module DBGIDs*/
 #define TDLS_DBGID_DEFINITION_START             0
@@ -1042,6 +1116,14 @@ extern "C" {
 #define RTT_CHANNEL_SWITCH_PREEMPT    18
 #define RTT_CHANNEL_SWITCH_STOP       19
 #define RTT_TIMER_START               20
+#define RTT_FTM_PARAM_INFO            21
+#define RTT_RX_TM_FRAME               22
+#define RTT_INITR_TSTAMP              23
+#define RTT_RSPDR_TSTAMP              24
+#define RTT_TX_COMP_STATUS            25
+#define RTT_ERROR_WMI_EVENT           26
+#define RTT_MEASUREMENT_VALUES        27
+
 /* WLAN HB module DBGIDs */
 #define WLAN_HB_DBGID_DEFINITION_START                  0
 #define WLAN_HB_DBGID_INIT                              1
@@ -1116,6 +1198,13 @@ extern "C" {
 #define SUPPL_DBGID_SEND_EAPOL                  3
 #define SUPPL_DBGID_MIC_MISMATCH                4
 #define SUPPL_DBGID_FINISH                      5
+#define SUPPL_DBGID_GET_FRM_INFO                6
+#define SUPPL_DBGID_DUMP_TYPE                   7
+#define SUPPL_DBGID_DUMP_HEX                    8
+#define SUPPL_DBGID_NODE_NOT_FOUND              9
+#define SUPPL_DBGID_GET_EAPOL_BUF               10
+#define SUPPL_DBGID_GET_BUF_FAIL                11
+#define SUPPL_DBGID_RECV_EAPOL_ERROR            12
 
 /* Stats Module DBGIDs */
 #define WLAN_STATS_DBGID_DEFINITION_START                0
@@ -1344,10 +1433,27 @@ extern "C" {
 #define NAN_DBGID_OTA_PKT_BASE                      NAN_DBGID_API_MSG_LAST
 #define NAN_DBGID_OTA_PKT_HEADER                    (NAN_DBGID_OTA_PKT_BASE + 0)
 #define NAN_DBGID_OTA_PKT_DATA                      (NAN_DBGID_OTA_PKT_BASE + 1)
-#define NAN_DBGID_OTA_PKT_LAST                      (NAN_DBGID_OTA_PKT_BASE + 2)
+#define NAN_DBGID_OTA_PKT_LAST                      (NAN_DBGID_OTA_PKT_BASE + 2) /*  not really the last! */
 
-#define NAN_DBGID_END                               NAN_DBGID_OTA_PKT_LAST
+#define NAN_DBGID_BEACON_RX_TIMES               (NAN_DBGID_OTA_PKT_LAST + 0)
+#define NAN_DBGID_BEACON_RX_MANDATORY_ATTRS     (NAN_DBGID_OTA_PKT_LAST + 1)
+#define NAN_DBGID_BEACON_RX_SID_ATTR            (NAN_DBGID_OTA_PKT_LAST + 2)
+#define NAN_DBGID_BEACON_RX_VSA_ATTR            (NAN_DBGID_OTA_PKT_LAST + 3)
+#define NAN_DBGID_BEACON_RX_AVG_RSSI            (NAN_DBGID_OTA_PKT_LAST + 4)
+#define NAN_DBGID_CANDIDATE_BEACONS             (NAN_DBGID_OTA_PKT_LAST + 5)
+#define NAN_DBGID_TSF_OFFSET                    (NAN_DBGID_OTA_PKT_LAST + 6)
+#define NAN_DBGID_ANCHORMASTER_RECORD_UPDATE_LAST       (NAN_DBGID_OTA_PKT_LAST + 7)
+#define NAN_DBGID_ANCHORMASTER_RECORD_EXPIRED2  (NAN_DBGID_OTA_PKT_LAST + 8)
+#define NAN_DBGID_BEACON_TX_SEND                (NAN_DBGID_OTA_PKT_LAST + 9)
+#define NAN_DBGID_BEACON_TX_CANCEL              (NAN_DBGID_OTA_PKT_LAST + 10)
+#define NAN_DBGID_NAN_SCAN_EVENT                (NAN_DBGID_OTA_PKT_LAST + 11)
+#define NAN_DBGID_NAN_SDF_QUEUED                (NAN_DBGID_OTA_PKT_LAST + 12)
+#define NAN_DBGID_NAN_BEACON_QUEUED             (NAN_DBGID_OTA_PKT_LAST + 13)
+#define NAN_DBGID_NAN_NOT_ALLOWED               (NAN_DBGID_OTA_PKT_LAST + 14)
+#define NAN_DBGID_NAN_TX_FOLLOWUP_REQ_TR_ID     (NAN_DBGID_OTA_PKT_LAST + 15)
+#define NAN_DBGID_NAN_TX_FOLLOWUP_RESP_TR_ID    (NAN_DBGID_OTA_PKT_LAST + 16)
 
+#define NAN_DBGID_END                           (NAN_DBGID_NAN_TX_FOLLOWUP_RESP_TR_ID + 1)
 
 /* IBSS PS module DBGIDs*/
 #define IBSS_PS_DBGID_DEFINITION_START           0
@@ -1443,6 +1549,70 @@ extern "C" {
 #define SCAN_CH_PREDICT_START                           6
 #define SCAN_CH_PREDICT_STOP                            7
 #define SCAN_CH_PREDICT_DBGID_DEFINITION_END            8
+
+/* DSRC DBGIDs */
+#define  OCB_DBGID_VDEV_CREATE                          0
+#define  OCB_DBGID_VDEV_DELETE                          1
+#define  OCB_DBGID_CHAN_PAUSE                           2
+#define  OCB_DBGID_CHAN_UNPAUSE                         3
+#define  OCB_DBGID_PEER_CREATE                          4
+#define  OCB_DBGID_PEER_DELETE                          5
+#define  OCB_DBGID_DCC_START                            6
+#define  OCB_DBGID_DCC_STOP                             7
+#define  OCB_DBGID_SET_CONFIG_CMD                       8
+#define  OCB_DBGID_SET_UTC_TIME_CMD                     9
+#define  OCB_DBGID_START_TIMING_ADVERT_CMD              10
+#define  OCB_DBGID_STOP_TIMING_ADVERT_CMD               11
+#define  OCB_DBGID_GET_TSF_TIMER_CMD                    12
+#define  OCB_DBGID_GET_DCC_STATS_CMD                    13
+#define  OCB_DBGID_UPDATE_DCC_NDL_CMD                   14
+#define  OCB_DBGID_SET_CONFIG_RESP_EVENT                15
+#define  OCB_DBGID_GET_TSF_TIMER_RESP_EVENT             16
+#define  OCB_DBGID_GET_DCC_STATS_RESP_EVENT             17
+#define  OCB_DBGID_DCC_STATS_EVENT                      18
+#define  OCB_UPDATE_DCC_NDL_RESP_EVENT                  19
+#define  OCB_DBGID_GENERIC                              20
+#define  OCB_DBGID_VDEV_START                           21
+#define  OCB_DBGID_CHANNEL_SCHED_EVENT                  22
+#define  OCB_DBGID_GPS_EVENT_START                      23
+#define  OCB_DBGID_GPS_EVENT_END                        24
+#define  OCB_DBGID_TX_TA_FRAME                          25
+#define  OCB_DBGID_RX_TA_FRAME                          26
+
+/* Up to 255 reserved for OCB debug IDs */
+
+#define  DCC_DBGID_START                                256
+#define  DCC_DBGID_STOP                                 257
+#define  DCC_DBGID_DCC_STATS_EVENT                      258
+#define  DCC_DBGID_SM_INIT                              259
+#define  DCC_DBGID_SM_EVENT                             260
+#define  DCC_DBGID_SM_CHANGE                            261
+#define  DCC_DBGID_GET_TX_ALLOWED                       262
+#define  DCC_DBGID_NOTIFY_TX_COMPLETION                 263
+#define  DCC_DBGID_NOTIFY_RX                            264
+#define  DCC_DBGID_GET_TX_POWER                         265
+#define  DCC_DBGID_GET_TX_RATE                          266
+#define  DCC_DBGID_TICKLE_SCHED                         267
+#define  DCC_DBGID_GENERIC                              268
+#define  DCC_DBGID_RX_PATH                              269
+#define  DCC_DBGID_TX_PATH                              270
+
+/* RSSI Threshold Monitor DBGIDs*/
+#define RSSI_MONITOR_DBGID_DEFINITION_START               0
+#define RSSI_MONITOR_VDEV_INIT                            1
+#define RSSI_MONITOR_VDEV_FREE                            2
+#define RSSI_MONITOR_VDEV_EVENT                           3
+#define RSSI_MONITOR_HW_EVENT                             4
+#define RSSI_MONITOR_ENABLE_THRESHOLDS_CLIENT_REQ         5
+#define RSSI_MONITOR_ENABLE_THRESHOLDS_CLIENT_REQ_ERR     6
+#define RSSI_MONITOR_DISABLE_THRESHOLDS_CLIENT_REQ        7
+#define RSSI_MONITOR_DISABLE_THRESHOLDS_CLIENT_REQ_ERR    8
+#define RSSI_MONITOR_ARBITER                              9
+#define RSSI_MONITOR_ARBITER_CONFIG_HW                   10
+#define RSSI_MONITOR_CHECK_AND_DELIVER_EVENT             11
+#define RSSI_MONITOR_DELIVER_EVENT                       12
+#define RSSI_MONITOR_UPDATE_BEACON_RSSI                  13
+#define RSSI_MONITOR_DBGID_DEFINITION_END                14
 
 #ifdef __cplusplus
 }

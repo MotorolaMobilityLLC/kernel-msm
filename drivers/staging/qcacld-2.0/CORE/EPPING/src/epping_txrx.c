@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -20,12 +20,10 @@
  */
 
 /*
- * Copyright (c) 2014 Qualcomm Atheros, Inc.
- * All Rights Reserved.
- * Qualcomm Atheros Confidential and Proprietary.
- *
+ * This file was originally distributed by Qualcomm Atheros, Inc.
+ * under proprietary terms before Copyright ownership was assigned
+ * to the Linux Foundation.
  */
-
 
 /*========================================================================
 
@@ -55,9 +53,7 @@
 #include <wlan_hdd_wext.h>
 #include <linux/wireless.h>
 #include <net/cfg80211.h>
-#if defined(MSM_PLATFORM) && defined(HIF_PCI)
-#include <net/cnss.h>
-#endif /* MSM_PLATFORM */
+#include "vos_cnss.h"
 #include <linux/rtnetlink.h>
 #include <linux/semaphore.h>
 #include <linux/ctype.h>
@@ -244,12 +240,11 @@ static int epping_set_mac_address(struct net_device *dev, void *addr)
 static void epping_stop_adapter(epping_adapter_t *pAdapter)
 {
    if (pAdapter && pAdapter->started) {
+      EPPING_LOG(LOG1, FL("Disabling queues"));
       netif_tx_disable(pAdapter->dev);
       netif_carrier_off(pAdapter->dev);
       pAdapter->started = false;
-#if defined(MSM_PLATFORM) && defined(HIF_PCI)
-      cnss_request_bus_bandwidth(CNSS_BUS_WIDTH_LOW);
-#endif
+      vos_request_bus_bandwidth(CNSS_BUS_WIDTH_LOW);
    }
 }
 
@@ -261,10 +256,9 @@ static int epping_start_adapter(epping_adapter_t *pAdapter)
       return -1;
    }
    if (!pAdapter->started) {
-#if defined(MSM_PLATFORM) && defined(HIF_PCI)
-      cnss_request_bus_bandwidth(CNSS_BUS_WIDTH_HIGH);
-#endif
+      vos_request_bus_bandwidth(CNSS_BUS_WIDTH_HIGH);
       netif_carrier_on(pAdapter->dev);
+      EPPING_LOG(LOG1, FL("Enabling queues"));
       netif_tx_start_all_queues(pAdapter->dev);
       pAdapter->started = true;
    } else {
@@ -355,7 +349,12 @@ epping_adapter_t *epping_add_adapter(epping_context_t *pEpping_ctx,
    struct net_device *dev;
    epping_adapter_t *pAdapter;
 
-   dev = alloc_netdev(sizeof(epping_adapter_t), "wifi%d", ether_setup);
+   dev = alloc_netdev(sizeof(epping_adapter_t),
+                      "wifi%d",
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)) || defined(WITH_BACKPORTS)
+                      NET_NAME_UNKNOWN,
+#endif
+                      ether_setup);
    if (dev == NULL) {
       EPPING_LOG(VOS_TRACE_LEVEL_FATAL,
          "%s: Cannot allocate epping_adapter_t\n", __func__);
@@ -380,6 +379,7 @@ epping_adapter_t *epping_add_adapter(epping_context_t *pEpping_ctx,
    dev->watchdog_timeo = 5 * HZ;           /* XXX */
    dev->tx_queue_len = ATH_TXBUF-1;        /* 1 for mgmt frame */
    if (epping_register_adapter(pAdapter) == 0) {
+      EPPING_LOG(LOG1, FL("Disabling queues"));
       netif_tx_disable(dev);
       netif_carrier_off(dev);
       return pAdapter;

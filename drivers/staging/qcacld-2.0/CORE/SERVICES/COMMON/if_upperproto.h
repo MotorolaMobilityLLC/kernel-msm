@@ -93,6 +93,9 @@ struct vlan_hdr {
 #define ETHERTYPE_WAI    0x88b4     /* WAI/WAPI */
 #endif
 
+#define ETHERTYPE_OCB_TX   0x8151
+#define ETHERTYPE_OCB_RX   0x8152
+
 /*
  * Structure of a 48-bit Ethernet address.
  */

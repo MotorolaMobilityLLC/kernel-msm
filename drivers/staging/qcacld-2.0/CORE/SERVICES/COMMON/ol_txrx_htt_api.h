@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -38,14 +38,20 @@
 
 #include <ol_txrx_api.h> /* ol_txrx_pdev_handle */
 
-
+#ifdef CONFIG_HL_SUPPORT
+static inline u_int16_t *
+ol_tx_msdu_id_storage(adf_nbuf_t msdu)
+{
+    return NBUF_CB_ID(msdu);
+}
+#else
 static inline u_int16_t *
 ol_tx_msdu_id_storage(adf_nbuf_t msdu)
 {
     adf_os_assert(adf_nbuf_headroom(msdu) >= (sizeof(u_int16_t) * 2 - 1));
     return (u_int16_t *) (((adf_os_size_t) (adf_nbuf_head(msdu) + 1)) & ~0x1);
 }
-
+#endif
 
 /**
  * @brief Tx MSDU download completion for a LL system
@@ -131,6 +137,9 @@ enum htt_tx_status {
 
     /* download_fail - the host could not deliver the tx frame to the target */
     htt_tx_status_download_fail = HTT_HOST_ONLY_STATUS_CODE_START,
+
+    /* peer_del - tx completion for alreay deleted peer used for HL case */
+    htt_tx_status_peer_del = HTT_TX_COMPL_IND_STAT_PEER_DEL,
 };
 
 /**
@@ -166,6 +175,90 @@ ol_tx_completion_handler(
 
 void
 ol_tx_credit_completion_handler(ol_txrx_pdev_handle pdev, int credits);
+
+
+
+struct rate_report_t{
+    u_int16_t id;
+    u_int16_t phy : 4;
+    u_int32_t rate;
+};
+
+#if defined(CONFIG_HL_SUPPORT) && defined(QCA_BAD_PEER_TX_FLOW_CL)
+/**
+ * @brief Process a link status report for all peers.
+ * @details
+ *  The ol_txrx_peer_link_status_handler function performs basic peer link
+ *  status analysis
+ *
+ *  According to the design, there are 3 kinds of peers which will be
+ *  treated differently:
+ *  1) normal: not do any flow control for the peer
+ *  2) limited: will apply flow control for the peer, but frames are allowed to send
+ *  3) paused: will apply flow control for the peer, no frame is allowed to send
+ *
+ * @param pdev - the data physical device that sent the tx frames
+ * @param status - the number of peers need to be handled
+ * @param peer_link_report - the link status dedail message
+ */
+void
+ol_txrx_peer_link_status_handler(
+    ol_txrx_pdev_handle pdev,
+    u_int16_t peer_num,
+    struct rate_report_t* peer_link_status);
+
+
+#else
+static inline void ol_txrx_peer_link_status_handler(
+    ol_txrx_pdev_handle pdev,
+    u_int16_t peer_num,
+    struct rate_report_t* peer_link_status)
+{
+    /* no-op */
+}
+#endif
+
+
+#ifdef FEATURE_HL_GROUP_CREDIT_FLOW_CONTROL
+void
+ol_txrx_update_tx_queue_groups(
+    ol_txrx_pdev_handle pdev,
+    u_int8_t group_id,
+    int32_t credit,
+    u_int8_t absolute,
+    u_int32_t vdev_id_mask,
+    u_int32_t ac_mask
+);
+
+void
+ol_tx_desc_update_group_credit(
+    ol_txrx_pdev_handle pdev,
+    u_int16_t tx_desc_id,
+    int credit, u_int8_t absolute, enum htt_tx_status status);
+#define OL_TX_DESC_UPDATE_GROUP_CREDIT ol_tx_desc_update_group_credit
+
+#ifdef DEBUG_HL_LOGGING
+void
+ol_tx_update_group_credit_stats(ol_txrx_pdev_handle pdev);
+
+void
+ol_tx_dump_group_credit_stats(ol_txrx_pdev_handle pdev);
+
+void
+ol_tx_clear_group_credit_stats(ol_txrx_pdev_handle pdev);
+
+#define OL_TX_UPDATE_GROUP_CREDIT_STATS ol_tx_update_group_credit_stats
+#define OL_TX_DUMP_GROUP_CREDIT_STATS ol_tx_dump_group_credit_stats
+#define OL_TX_CLEAR_GROUP_CREDIT_STATS ol_tx_clear_group_credit_stats
+#else
+#define OL_TX_UPDATE_GROUP_CREDIT_STATS(pdev) /* no -op*/
+#define OL_TX_DUMP_GROUP_CREDIT_STATS(pdev) /* no -op*/
+#define OL_TX_CLEAR_GROUP_CREDIT_STATS(pdev) /* no -op*/
+#endif
+
+#else
+#define OL_TX_DESC_UPDATE_GROUP_CREDIT(pdev, tx_desc_id, credit, absolute, status) /* no-op */
+#endif
 
 /**
  * @brief Init the total amount of target credit.
@@ -629,5 +722,12 @@ ol_rx_in_order_indication_handler(
     u_int16_t peer_id,
     u_int8_t tid,
     u_int8_t is_offload );
+
+#ifdef FEATURE_HL_GROUP_CREDIT_FLOW_CONTROL
+u_int32_t ol_tx_get_max_tx_groups_supported(struct ol_txrx_pdev_t *pdev);
+#define OL_TX_GET_MAX_GROUPS ol_tx_get_max_tx_groups_supported
+#else
+#define OL_TX_GET_MAX_GROUPS(pdev) 0
+#endif
 
 #endif /* _OL_TXRX_HTT_API__H_ */

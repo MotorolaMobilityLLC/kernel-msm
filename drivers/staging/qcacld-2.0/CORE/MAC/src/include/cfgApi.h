@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012,2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2012,2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -94,7 +94,7 @@ tSirRetStatus cfgSetStr(tpAniSirGlobal, tANI_U16, tANI_U8*, tANI_U32);
 tSirRetStatus cfgSetStrNotify(tpAniSirGlobal, tANI_U16, tANI_U8*, tANI_U32, int);
 
 //Cfg Download function for Prima or Integrated solutions.
-void processCfgDownloadReq(tpAniSirGlobal, tANI_U16, tANI_U32*);
+void processCfgDownloadReq(tpAniSirGlobal);
 
 /// Get string parameter value
 tSirRetStatus wlan_cfgGetStr(tpAniSirGlobal, tANI_U16, tANI_U8*, tANI_U32*);
@@ -120,9 +120,15 @@ extern tSirRetStatus cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tp
 /// Set capability info
 extern void cfgSetCapabilityInfo(tpAniSirGlobal, tANI_U16);
 
-/// Cleanup CFG module
+/* Clean up CFG module */
 void cfgCleanup(tpAniSirGlobal pMac);
 
 extern tANI_U8 *gCfgParamName[];
+
+uint8_t* cfg_get_vendor_ie_ptr_from_oui(tpAniSirGlobal mac_ctx,
+					uint8_t *oui,
+					uint8_t oui_size,
+					uint8_t *ie,
+					uint16_t ie_len);
 
 #endif /* __CFGAPI_H */

@@ -41,7 +41,7 @@
 
 typedef struct sNanRequestReq {
 	tANI_U16 request_data_len;
-	tANI_U8* request_data;
+	const tANI_U8* request_data;
 } tNanRequestReq, *tpNanRequestReq;
 
 /******************************************************************************

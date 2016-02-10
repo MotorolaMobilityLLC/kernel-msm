@@ -158,28 +158,6 @@ typedef PACKED_PRE struct PACKED_POST
     tHddChannelInfo peer_chan_info;
 } tPeerStatusInfo;
 
-struct iw_oem_data_req
-{
-    v_U8_t                  oemDataReq[OEM_DATA_REQ_SIZE];
-};
-
-int iw_set_oem_data_req(
-        struct net_device *dev,
-        struct iw_request_info *info,
-        union iwreq_data *wrqu,
-        char *extra);
-
-int iw_get_oem_data_rsp(
-        struct net_device *dev,
-        struct iw_request_info *info,
-        union iwreq_data *wrqu,
-        char *extra);
-
-struct iw_oem_data_rsp
-{
-    tANI_U8           oemDataRsp[OEM_DATA_RSP_SIZE];
-};
-
 #endif //__WLAN_HDD_OEM_DATA_H__
 
 #endif //FEATURE_OEM_DATA_SUPPORT

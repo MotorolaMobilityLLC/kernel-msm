@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -38,7 +38,9 @@
 #define WLAN_NLINK_COMMON_H__
 
 #include <linux/netlink.h>
-
+#ifdef QCA_FEATURE_RPS
+#include <linux/if.h>
+#endif
 /*---------------------------------------------------------------------------
  * External Functions
  *-------------------------------------------------------------------------*/
@@ -103,6 +105,12 @@
 #define WLAN_SVC_MAX_NUM_CHAN    128
 #define WLAN_SVC_COUNTRY_CODE_LEN 3
 
+/*
+ * Maximim number of queues supported by WLAN driver. Setting an upper
+ * limit. Actual number of queues may be smaller than this value.
+ */
+#define WLAN_SVC_IFACE_NUM_QUEUES 6
+
 // Event data for WLAN_BTC_QUERY_STATE_RSP & WLAN_STA_ASSOC_DONE_IND
 typedef struct
 {
@@ -154,6 +162,25 @@ struct wlan_version_data {
    char host_version[WLAN_SVC_MAX_STR_LEN];
    char fw_version[WLAN_SVC_MAX_STR_LEN];
 };
+
+#ifdef QCA_FEATURE_RPS
+/**
+ * struct wlan_rps_data - structure to send RPS info to cnss-daemon
+ * @ifname:         interface name for which the RPS data belongs to
+ * @num_queues:     number of rx queues for which RPS data is being sent
+ * @cpu_map_list:   array of cpu maps for different rx queues supported by
+ *                  the wlan driver
+ *
+ * The structure specifies the format of data exchanged between wlan
+ * driver and cnss-daemon. On receipt of the data, cnss-daemon is expected
+ * to apply the 'cpu_map' for each rx queue belonging to the interface 'ifname'
+ */
+struct wlan_rps_data {
+	char ifname[IFNAMSIZ];
+	uint16_t num_queues;
+	uint16_t cpu_map_list[WLAN_SVC_IFACE_NUM_QUEUES];
+};
+#endif
 
 struct wlan_dfs_info {
    uint16_t channel;

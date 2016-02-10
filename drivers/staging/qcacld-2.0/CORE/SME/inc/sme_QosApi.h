@@ -132,9 +132,9 @@ typedef enum
    SME_QOS_STATUS_MODIFY_SETUP_SUCCESS_IND_APSD_SET_FAILED,
    //sync: STA is handing off to a new AP
    SME_QOS_STATUS_HANDING_OFF = 300,
-   //async:powersave mode changed by PMC from UAPSD to Full power
+   /* async:power save mode changed by PMC from UAPSD to Full power */
    SME_QOS_STATUS_OUT_OF_APSD_POWER_MODE_IND = 400,
-   //async:powersave mode changed by PMC from Full power to UAPSD
+   /* async:power save mode changed by PMC from Full power to UAPSD */
    SME_QOS_STATUS_INTO_APSD_POWER_MODE_IND,
 
 }sme_QosStatusType;
@@ -240,7 +240,7 @@ typedef struct
 
   \param hHal - The handle returned by macOpen.
   \param HDDcontext - A cookie passed by HDD during QoS setup, to be used by SME
-                      during any QoS notification (through the callabck) to HDD
+                      during any QoS notification (through the callback) to HDD
   \param pCurrentQoSInfo - Pointer to sme_QosWmmTspecInfo which contains the WMM
                            TSPEC related info as defined above, fed back to HDD
   \param status - The status of the flow running on an AC. It could be of
@@ -276,7 +276,7 @@ typedef eHalStatus (*sme_QosCallback)(tHalHandle hHal, void * HDDcontext,
                        flow (i.e. setup success/failure/release) which needs to
                        be sent to HDD
   \param HDDcontext - A cookie passed by HDD to be used by SME during any QoS
-                      notification (through the callabck) to HDD
+                      notification (through the callback) to HDD
   \param UPType - Useful only if HDD or any other upper layer module (BAP etc.)
                   looking for implicit QoS setup, in that
                   case, the pQoSInfo will be NULL & SME will know about the AC
@@ -301,7 +301,7 @@ sme_QosStatusType sme_QosSetupReq(tHalHandle hHal, tANI_U32 sessionId,
   \brief sme_QosModifyReq() - The SME QoS API exposed to HDD to request for
   modification of certain QoS params on a flow running on a particular AC.
   This function should be called after a link has been established, i.e. STA is
-  associated with an AP etc. & a QoS setup has been succesful for that flow.
+  associated with an AP etc. & a QoS setup has been successful for that flow.
   If the request involves admission control on the requested AC, HDD needs to
   provide the necessary Traffic Specification (TSPEC) parameters & SME might
   start the renegotiation process through ADDTS.
@@ -328,7 +328,7 @@ sme_QosStatusType sme_QosModifyReq(tHalHandle hHal,
 /*--------------------------------------------------------------------------
   \brief sme_QosReleaseReq() - The SME QoS API exposed to HDD to request for
   releasing a QoS flow running on a particular AC. This function should be
-  called only if a QoS is set up with a valid FlowID. HDD sould invoke this
+  called only if a QoS is set up with a valid FlowID. HDD should invoke this
   API only if an explicit request for QoS release has come from Application
 
   \param hHal - The handle returned by macOpen.
@@ -346,7 +346,8 @@ sme_QosStatusType sme_QosReleaseReq(tHalHandle hHal, v_U32_t QosFlowID);
 
 /*--------------------------------------------------------------------------
   \brief sme_QosIsTSInfoAckPolicyValid() - The SME QoS API exposed to HDD to
-  check if TS info ack policy field can be set to "HT-immediate block acknowledgement"
+  check if TS info ack policy field can be set to "HT-immediate block
+  acknowledgment"
 
   \param pMac - The handle returned by macOpen.
   \param pQoSInfo - Pointer to sme_QosWmmTspecInfo which contains the WMM TSPEC
@@ -354,7 +355,7 @@ sme_QosStatusType sme_QosReleaseReq(tHalHandle hHal, v_U32_t QosFlowID);
   \param sessionId - sessionId returned by sme_OpenSession.
 
   \return VOS_TRUE - Current Association is HT association and so TS info ack policy
-                     can be set to "HT-immediate block acknowledgement"
+                     can be set to "HT-immediate block acknowledgment"
 
   \sa
 

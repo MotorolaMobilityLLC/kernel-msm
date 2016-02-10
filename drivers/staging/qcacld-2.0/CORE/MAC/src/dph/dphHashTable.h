@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -68,7 +68,7 @@ typedef struct
 /// The hash table object
 extern dphHashTableClass dphHashTable;
 
-/// Print MAC addresse
+/* Print MAC address */
 extern void dphPrintMacAddr(struct sAniSirGlobal *pMac, tANI_U8 addr[], tANI_U32);
 
 tpDphHashNode dphLookupHashEntry(tpAniSirGlobal pMac, tANI_U8 staAddr[], tANI_U16 *pStaId, dphHashTableClass* pDphHashTable);
@@ -85,6 +85,13 @@ extern tpDphHashNode dphAddHashEntry(tpAniSirGlobal pMac, tSirMacAddr staAddr, t
 extern tSirRetStatus dphDeleteHashEntry(tpAniSirGlobal pMac, tSirMacAddr staAddr, tANI_U16 staId, dphHashTableClass* pDphHashTable);
 
 void dphHashTableClassInit(tpAniSirGlobal pMac, dphHashTableClass* pDphHashTable);
+
+#ifdef SAP_AUTH_OFFLOAD
+extern bool dph_entry_exist(tpAniSirGlobal pmac, tSirMacAddr staaddr,
+				tANI_U16 staid, dphHashTableClass* dphtable);
+
+#endif
+
 /// Initialize STA state
 extern tpDphHashNode dphInitStaState(tpAniSirGlobal pMac, tSirMacAddr staAddr,
         tANI_U16 staId, tANI_U8 validStaIdx, dphHashTableClass* pDphHashTable);

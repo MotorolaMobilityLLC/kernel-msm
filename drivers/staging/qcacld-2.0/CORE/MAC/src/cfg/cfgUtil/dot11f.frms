@@ -20,9 +20,9 @@
  */
 
 /*
- * Copyright (c) 2006-2007,2014 Qualcomm Atheros, Inc.
- * All Rights Reserved.
- * Qualcomm Atheros Confidential and Proprietary.
+ * This file was originally distributed by Qualcomm Atheros, Inc.
+ * under proprietary terms before Copyright ownership was assigned
+ * to the Linux Foundation.
  */
 
 /**
@@ -94,11 +94,13 @@ const EID_FT_INFO                    =  55;
 const EID_TIMEOUT_INTERVAL           =  56;
 const EID_FT_RIC_DATA                =  57;
 const EID_SUPPORTED_OPER_CLASSES     =  59;
+const EID_EXT_CHAN_SWITCH            =  60;
 const EID_HT_INFO                    =  61;
-const EID_EXT_CHANNEL_SWITCH_ANN     =  62;
+const EID_SEC_CHAN_OFFSET            =  62;
 const EID_RSNI                       =  65;
 const EID_RRM_MEAS_PILOT_TX_INFO     =  66;
 const EID_WAPI                       =  68;
+const EID_TIME_ADVERTISEMENT         =  69;
 const EID_RRM_ENABLED_CAPS           =  70;
 const EID_MULTIPLE_BSSID             =  71;
 const EID_20_40_BSS_COEXISTENCE      =  72;
@@ -134,11 +136,9 @@ const SIR_MAC_PROP_LL_ATTR_TYPE      =   9;
 const SIR_MAC_PROP_CAPABILITY        =  10;
 const SIR_MAC_PROP_VERSION           =  11;
 const SIR_MAC_PROP_EDCAPARAMS        =  12;
-const SIR_MAC_PROP_TITAN             =  14;
 const SIR_MAC_PROP_CHANNEL_SWITCH    =  15;
 const SIR_MAC_PROP_QUIET_BSS         =  16;
 const SIR_MAC_PROP_TRIG_STA_BK_SCAN	 =  17;
-const SIR_MAC_PROP_TAURUS            =  18;
 
 const ANI_WDS_INFO_MAX_LENGTH        =  64;
 const SIR_MAC_MAX_NUMBER_OF_RATES    =  12;
@@ -431,6 +431,15 @@ FF VhtUserPositionArray(16)                    // 8.4.1.52
     userPositionArray[16];
 }
 
+FF ext_chan_switch_ann_action(4)
+{
+   {
+     switch_mode: 8;
+     op_class: 8;
+     new_channel: 8;
+     switch_count: 8;
+   }
+}
 /////////////////////////////////////////////////////////////////////////////
 //                                  TLVs                                   //
 /////////////////////////////////////////////////////////////////////////////
@@ -1343,7 +1352,15 @@ IE ChanSwitchAnn (EID_CHANNEL_SWITCH_ANN) // 7.3.2.20
     switchCount, 1;
 }
 
-IE ExtChanSwitchAnn (EID_EXT_CHANNEL_SWITCH_ANN) // 7.3.2.20a
+IE ext_chan_switch_ann (EID_EXT_CHAN_SWITCH) // 8.4.2.55
+{
+    switch_mode,   1;
+    new_reg_class, 1;
+    new_channel,   1;
+    switch_count,  1;
+}
+
+IE sec_chan_offset_ele (EID_SEC_CHAN_OFFSET) // 7.3.2.20a
 {
 	secondaryChannelOffset, 1;
 }
@@ -2035,6 +2052,12 @@ IE Vendor3IE (EID_VENDOR_SPECIFIC) OUI (0x00, 0x16, 0x32)
 {
 }
 
+IE QComVendorIE (EID_VENDOR_SPECIFIC) OUI (0x00, 0xA0, 0xC6)
+{
+    type,      1;
+    channel,   1;
+}
+
 IE ESETrafStrmMet (EID_VENDOR_SPECIFIC) OUI (0x00, 0x40, 0x96, 0x07)
 {
     tsid,           1;
@@ -2104,7 +2127,9 @@ IE RRMEnabledCap (EID_RRM_ENABLED_CAPS)
      {
           BSSAvailAdmission:       1;
           AntennaInformation:      1;
-          reserved:                6;
+          fine_time_meas_rpt:      1;
+          lci_capability:          1;
+          reserved:                4;
      }
 }
 
@@ -2327,296 +2352,6 @@ IE PUBufferStatus (EID_PU_BUFFER_STATUS)        // 7.3.2.66
 }
 
 
-/////////////////////////////////////////////////////////////////////////////
-// Airgo Information Elements
-
-
-IE Airgo (EID_VENDOR_SPECIFIC) OUI (0x00, 0x0A, 0xF5)
-{
-    // N.B. The fact that these IEs are defined inside the Airgo IE indicates
-    // that they can *only* occur inside the Airgo IE.
-
-    OPTIE IE PropSuppRates (SIR_MAC_PROP_EXT_RATES_TYPE)
-    {
-        rates[1..12];
-    }
-
-    OPTIE IE APName (SIR_MAC_PROP_AP_NAME_TYPE)
-    {
-        name[1..32];
-    }
-
-    OPTIE IE HCF (SIR_MAC_PROP_HCF_TYPE)
-    {
-        enabled, 1;
-    }
-
-    OPTIE IE WDS (SIR_MAC_PROP_WDS_TYPE)
-    {
-        wdsData[0..ANI_WDS_INFO_MAX_LENGTH];
-    }
-
-    OPTIE IE BPIndicator (SIR_MAC_PROP_BP_IND_TYPE)
-    {
-        indicator, 1;
-        type, 1;
-    }
-
-
-    // In Progress: I think SIR_MAC_PROP_NEIGHBOR_BSS_TYPE is going to need a
-    // custom parser...
-
-
-    OPTIE IE LoadInfo (SIR_MAC_PROP_LOAD_INFO_TYPE) MSB
-    {
-        num_stas, 2;
-        channel_util, 2;
-    }
-
-    OPTIE IE LoadBalance (SIR_MAC_PROP_LOAD_BALANCE_TYPE)
-    {
-        bssid[6];
-        channel, 1;
-    }
-
-    OPTIE IE PropAssocType (SIR_MAC_PROP_ASSOC_TYPE)
-    {
-        type, 1;
-    }
-
-    OPTIE IE LLAttr (SIR_MAC_PROP_LL_ATTR_TYPE) MSB
-    {
-        defer_threshold, 4;
-    }
-
-    OPTIE IE PropCapability (SIR_MAC_PROP_CAPABILITY)
-    {
-        capability, 2;
-    }
-
-    OPTIE IE Version (SIR_MAC_PROP_VERSION)
-    {
-        chip_rev, 4;
-        card_type, 1;
-        build_version[0..20];
-    }
-
-    OPTIE IE PropEDCAParams (SIR_MAC_PROP_EDCAPARAMS)
-    {
-        qos, 1;                 // ToDo: This is a bitfield whose format
-                                // depends on whether this is from an AP
-                                // or a STA, information which I'm not
-                                // sure we have at parse time...
-        reserved, 1;
-
-        // Best Effort
-        {
-            acbe_aifsn: 4;
-            acbe_acm:   1;
-            acbe_aci:   2;
-            unused1:    1;
-        }
-        {
-            acbe_min: 4;
-            acbe_max: 4;
-        }
-        acbe_txoplimit, 2;
-
-        // Background
-        {
-            acbk_aifsn: 4;
-            acbk_acm:   1;
-            acbk_aci:   2;
-            unused2:    1;
-        }
-        {
-            acbk_min: 4;
-            acbk_max: 4;
-        }
-        acbk_txoplimit, 2;
-
-        // Video
-        {
-            acvi_aifsn: 4;
-            acvi_acm: 1;
-            acvi_aci: 2;
-            unused3:    1;
-        }
-        {
-            acvi_min: 4;
-            acvi_max: 4;
-        }
-        acvi_txoplimit, 2;
-
-        // Voice
-        {
-            acvo_aifsn: 4;
-            acvo_acm: 1;
-            acvo_aci: 2;
-            unused4:    1;
-        }
-        {
-            acvo_min: 4;
-            acvo_max: 4;
-        }
-        acvo_txoplimit, 2;
-
-    } // End IE PropEDCAParams.
-
-    /**
-     * \ie Titan
-     *
-     * \brief Proprietary Next Generation (TITAN) IE structure
-     *
-     *
-     * Based on the setting of the "Titan" proprietary bit in the
-     * tSirPropIEStruct.capability field (bit #6), this IE will be sent
-     * appropriately to all the ANIpeers in the following management frames -
-     *
-     * - Beacons
-     * - Assoc Req/Rsp
-     * - Reassoc Req/Rsp
-     * - Probe Req/Rsp
-     *
-     */
-
-    OPTIE IE Titan (SIR_MAC_PROP_TITAN)
-    {
-        concat_tcid_bitmap, 1;
-        compression_tcid_bitmap, 1;
-
-        // Identifies the OPERATIONAL state of Channel Bonding
-        // This info is encoded as a bitmap as follows:
-        //
-        //     b7    b6   b5  b4  b3  b2  b1  b0
-        // --------------------------------------
-        // |CCA_CB |CCA |ICE | AU|CS|U/D| O | A |
-        // --------------------------------------
-        // where,
-        // A   - Admin state of CB - [enabled(1)/disabled(0)]
-        // O   - Oper state of CB - [on(1)/off(0)]
-        // U/D - Indicates where the secondary CB channel is
-        //       parked - Up(1)/Down(0) from the primary
-        // CS  - Channel Switch announcement in progress with
-        //       respect to the secondary CB channel
-        //       CS_on(1)/CS_off(0)
-        //       This applies to an AP only
-        // AU  - Autonomous updates. This indicates to an STA
-        //       that it can send an unsolicited CB Report
-        //       regarding its neighbor BSS during an Assoc/
-        //       ReAssoc REQ.
-        //       AU_on(1)/AU_off(0)
-        //       This applies to an AP only
-        // ICE - Intelligent Channel Expansion mode enable/disable
-        //       ICE_on(1)/ICE_off(0)
-        // CCA - CCA mode to be used
-        //       CCA_20MHz(0)/CCA_40MHz(1)
-        // CCA_CB  - channel bonding enable/disable based on cca monitoring
-        //           enable(1)/disable(0)
-
-        cb_state, 1;
-
-        // Identifies Reverse FCS pattern and state
-        // This info is encoded as a bitmap as follows:
-        //
-        //  b7  b6  b5  b4  b3  b2  b1  b0
-        // ---------------------------------
-        // | X | X | X | X | P | P | P | O |
-        // ---------------------------------
-        // where,
-        // O   - Oper state of Reverse FCS - [on(1)/off(0)]
-        // P   - Identifies the pattern ID to be used
-        // NOTE - These bits are used only during Assoc Req/Rsp
-        // management frames. Thus, the pattern ID needs to be
-        // looked up only during Assoc Req/Rsp. In other words,
-        // the pattern ID between an AP/STA is negotiated via
-        // the revFcsState during Assoc Req/Rsp
-
-        rev_fcs_state, 1;
-    }
-
-    OPTIE IE PropChannSwitchAnn (SIR_MAC_PROP_CHANNEL_SWITCH)
-    {
-        mode,                 1;
-        primary_channel,      1;
-        sub_band,             1;
-        channel_switch_count, 1;
-    }
-
-    /**
-     * \ie PropQuietBSS
-     *
-     * \brief Proprietary Quite BSS IE structure
-     *
-     *
-     * Based on the setting of the "Titan" proprietary bit in the
-     * tSirPropIEStruct.capability field (bit #6), this IE will be sent
-     * appropriately to all the ANI peers in the following management
-     * frames
-     *
-     * - Beacons
-     * - Probe Rsp
-     *
-     */
-
-    OPTIE IE PropQuietBSS (SIR_MAC_PROP_QUIET_BSS)
-    {
-        // Indicates the number of TBTT's until the next beacon
-        // interval during which the next quiet interval will
-        // start
-        // 1 - Quiet Interval will start during the beacon
-        // interval starting at the next TBTT
-        // 0 - Reserved
-        quiet_count, 1;
-
-        // Shall be set to the number of beacon intervals between
-        // the start of regularly scheduled quiet intervals
-        // defined by this Quiet Element
-        // 0 - No periodic quiet interval is defined
-        quiet_period, 1;
-
-        // Duration of the quiet interval, expressed in TUs
-        // 1 TU = 1024 microseconds??
-        quiet_duration, 2;
-
-        // Set to the offset of the start of the quiet interval
-        // from the TBTT specified by the quietCount field,
-        // expressed in TUs. The value of this offset field will
-        // be less than one beacon interval
-        // 1 TU = 1024 microseconds??
-        quiet_offset, 2;
-
-    }
-
-    OPTIE IE TriggerStaBgScan (SIR_MAC_PROP_TRIG_STA_BK_SCAN)
-    {
-        enable, 1;
-    }
-
-    OPTIE IE Taurus (SIR_MAC_PROP_TAURUS)
-    {
-        // TID bitmap indicating the TIDs for which BA is setup.
-        // bit0 for TID0, bit1 for TID1 and so on.
-        baTIDBitmap, 2;
-
-        // Block Ack Policy: 0-Delayed BA 1-Immediate BA.
-        // One bit for each TID
-        baPolicy, 2;
-
-        // Buffer size for each AC, in exponential notation.
-        // 3 bits reserved for each AC.
-        // bit0-2 for AC0[TID 0 and 3], bit3-5 for AC1[TID 1 and 2]
-        // and so on.
-
-        // TID 8 & 11 will use AC0, TID 9 & 10 will use AC1, so use of AC is
-        // overloaded.  This is done to reduce the size of IE in the beacons.
-        {
-            baBufferSize: 12;
-            rsvd:          4;
-        }
-    }
-
-} // End IE Airgo.
 
 IE VHTCaps (EID_VHT_CAPABILITIES)
 {
@@ -2840,6 +2575,13 @@ CONTAINERIE RICDataDesc
   OPTIE  WMMTCLASPROC;
   OPTIE  WMMTSDelay;
   OPTIE  WMMSchedule;
+}
+
+IE TimeAdvertisement (EID_TIME_ADVERTISEMENT)   // 8.4.2.63
+{
+    timing_capabilities, 1;
+    time_value[10];
+    time_error[5];
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -3293,6 +3035,8 @@ FRAME Beacon                              // C.f. Sec. 7.2.3.1
     OPTIE  FHPattTable;
     OPTIE  PowerConstraints;
     OPTIE  ChanSwitchAnn;
+    OPTIE  ext_chan_switch_ann;
+    OPTIE  SuppOperatingClasses;
     OPTIE  Quiet;
     OPTIE  TPCReport;
     OPTIE  ERPInfo;
@@ -3307,7 +3051,7 @@ FRAME Beacon                              // C.f. Sec. 7.2.3.1
     OPTIE  WPA;
     OPTIE  HTCaps;
     OPTIE  HTInfo;
-    OPTIE  ExtChanSwitchAnn;
+    OPTIE  sec_chan_offset_ele;
     OPTIE  WMMInfoAp;
     OPTIE  WMMParams;
     OPTIE  WMMCaps;
@@ -3316,7 +3060,6 @@ FRAME Beacon                              // C.f. Sec. 7.2.3.1
     OPTIE  ESETrafStrmMet;
     OPTIE  ESETxmitPower;
 
-    OPTIE  Airgo;
     OPTIE  WscBeacon;
     OPTIE  P2PBeacon;
     OPTIE  VHTCaps;
@@ -3330,6 +3073,7 @@ FRAME Beacon                              // C.f. Sec. 7.2.3.1
     OPTIE  Vendor2IE;
     OPTIE  Vendor3IE;
     OPTIE  ChannelSwitchWrapper;
+    OPTIE  QComVendorIE;
     OPTIE  ESEVersion;
 } // End frame Beacon.
 
@@ -3350,9 +3094,9 @@ FRAME Beacon                              // C.f. Sec. 7.2.3.1
 
 // Next, it serializes the following fields into gSchBeaconFrameEnd: Country,
 // EDCAParamSet,   PowerConstraints,   TPCReport,  ChannelSwitchAnn,   Quiet,
-// ERPInfo,      HTCaps,      HTInfo,      ExtSuppRates,      Airgo      (via
-// sirFillPropIEsInBeaconPR),  WPA, RSN,  WMMInfo,  WMMParams, WMMCaps.   The
-// length of *this* buffer is kept in gSchBeaconOffsetEnd.
+// ERPInfo,      HTCaps,      HTInfo,      ExtSuppRates, WPA, RSN,  WMMInfo,
+// WMMParams, WMMCaps.
+// The length of *this* buffer is kept in gSchBeaconOffsetEnd.
 
 // Then, in 'schBeaconInterruptHandler',  we write CFParams & TIM  at the end
 // of gSchBeaconFrameBegin, keeping track of the (new) size of this buffer in
@@ -3381,6 +3125,8 @@ FRAME Beacon2
     OPTIE  Country;
     OPTIE  PowerConstraints;
     OPTIE  ChanSwitchAnn;
+    OPTIE  ext_chan_switch_ann;
+    OPTIE  SuppOperatingClasses;
     OPTIE  Quiet;
     OPTIE  TPCReport;
     OPTIE  ERPInfo;
@@ -3393,11 +3139,10 @@ FRAME Beacon2
     OPTIE  WPA;
     OPTIE  HTCaps;
     OPTIE  HTInfo;
-    OPTIE  ExtChanSwitchAnn;
+    OPTIE  sec_chan_offset_ele;
     OPTIE  WMMInfoAp;
     OPTIE  WMMParams;
     OPTIE  WMMCaps;
-    OPTIE  Airgo;
     OPTIE  WscBeacon;
     OPTIE  WAPI;
     OPTIE  ESERadMgmtCap;
@@ -3415,6 +3160,7 @@ FRAME Beacon2
     OPTIE  Vendor2IE;
     OPTIE  Vendor3IE;
     OPTIE  ChannelSwitchWrapper;
+    OPTIE  QComVendorIE;
     OPTIE  ESEVersion;
 }
 
@@ -3439,6 +3185,8 @@ FRAME BeaconIEs
     OPTIE  FHPattTable;
     OPTIE  PowerConstraints;
     OPTIE  ChanSwitchAnn;
+    OPTIE  ext_chan_switch_ann;
+    OPTIE  SuppOperatingClasses;
     OPTIE  Quiet;
     OPTIE  TPCReport;
     OPTIE  ERPInfo;
@@ -3453,7 +3201,7 @@ FRAME BeaconIEs
     OPTIE  WPA;
     OPTIE  HTCaps;
     OPTIE  HTInfo;
-    OPTIE  ExtChanSwitchAnn;
+    OPTIE  sec_chan_offset_ele;
     OPTIE  WMMInfoAp;
     OPTIE  WMMParams;
     OPTIE  WMMCaps;
@@ -3463,7 +3211,6 @@ FRAME BeaconIEs
     OPTIE  ESETrafStrmMet;
     OPTIE  ESETxmitPower;
 
-    OPTIE  Airgo;
     OPTIE  WscBeaconProbeRes;
     OPTIE  P2PBeaconProbeRes;
     OPTIE  VHTCaps;
@@ -3477,6 +3224,7 @@ FRAME BeaconIEs
     OPTIE  Vendor2IE;
     OPTIE  Vendor3IE;
     OPTIE  ChannelSwitchWrapper;
+    OPTIE  QComVendorIE;
 
 } // End frame BeaconIEs.
 
@@ -3503,9 +3251,9 @@ FRAME AssocRequest                        // 7.2.3.4
     OPTIE  HTCaps;
     OPTIE  WMMCaps;
     OPTIE  WMMInfoStation;
-    OPTIE  Airgo;
     OPTIE  WscIEOpaque;
     OPTIE  WAPIOpaque;
+    OPTIE  WAPI;
     OPTIE  ESERadMgmtCap;
     OPTIE  ESEVersion;
     OPTIE  P2PIEOpaque;
@@ -3540,7 +3288,6 @@ FRAME AssocResponse                       // 7.2.3.5
     OPTIE  ESETrafStrmMet;
     OPTIE  ESETxmitPower;
     OPTIE  WMMTSPEC[0..4];
-    OPTIE  Airgo;
     OPTIE  WscAssocRes;
     OPTIE  P2PAssocRes;
     OPTIE  VHTCaps;
@@ -3570,9 +3317,9 @@ FRAME ReAssocRequest                      // 7.2.3.6
     OPTIE  HTCaps;
     OPTIE  WMMCaps;
     OPTIE  WMMInfoStation;
-    OPTIE  Airgo;
     OPTIE  WscIEOpaque;
     OPTIE  WAPIOpaque;
+    OPTIE  WAPI;
     OPTIE  ESERadMgmtCap;
     OPTIE  ESEVersion;
     OPTIE  ESECckmOpaque;
@@ -3611,7 +3358,6 @@ FRAME ReAssocResponse                     // 7.2.3.7
     OPTIE  ESETxmitPower;
     OPTIE  WMMTSPEC[0..4];
     OPTIE  ESETrafStrmRateSet;
-    OPTIE  Airgo;
     OPTIE  WscReassocRes;
     OPTIE  P2PAssocRes;
     OPTIE  VHTCaps;
@@ -3652,6 +3398,8 @@ FRAME ProbeResponse                       // 7.2.3.9
     OPTIE  FHPattTable;
     OPTIE  PowerConstraints;
     OPTIE  ChanSwitchAnn;
+    OPTIE  ext_chan_switch_ann;
+    OPTIE  SuppOperatingClasses;
     OPTIE  Quiet;
     OPTIE  TPCReport;
     OPTIE  ERPInfo;
@@ -3665,7 +3413,7 @@ FRAME ProbeResponse                       // 7.2.3.9
     OPTIE  WPA;
     OPTIE  HTCaps;
     OPTIE  HTInfo;
-    OPTIE  ExtChanSwitchAnn;
+    OPTIE  sec_chan_offset_ele;
     OPTIE  WMMInfoAp;
     OPTIE  WMMParams;
     OPTIE  WMMCaps;
@@ -3674,7 +3422,6 @@ FRAME ProbeResponse                       // 7.2.3.9
     OPTIE  ESETrafStrmMet;
     OPTIE  ESETxmitPower;
 
-    OPTIE  Airgo;
     OPTIE  WscProbeRes;
     OPTIE  P2PProbeRes;
 
@@ -3687,6 +3434,7 @@ FRAME ProbeResponse                       // 7.2.3.9
     OPTIE  Vendor2IE;
     OPTIE  Vendor3IE;
     OPTIE  ChannelSwitchWrapper;
+    OPTIE  QComVendorIE;
     OPTIE  ESEVersion;
 } // End frame ProbeResponse.
 
@@ -3813,7 +3561,7 @@ FRAME ChannelSwitch
     FF     Category;
     FF     Action;
     MANDIE ChanSwitchAnn;
-    OPTIE  ExtChanSwitchAnn;
+    OPTIE  sec_chan_offset_ele;
     OPTIE  WiderBWChanSwitchAnn;
 }
 
@@ -4236,6 +3984,26 @@ FRAME HT2040BSSCoexistenceManagementActionFrame
     FF     Action;
     MANDIE HT2040BSSCoexistence;
     MANDIE HT2040BSSIntolerantReport;
+}
+
+FRAME TimingAdvertisementFrame            // 8.3.3.15
+{
+    FF     TimeStamp;
+    FF     Capabilities;
+    OPTIE  Country;
+    OPTIE  PowerConstraints;
+    OPTIE  TimeAdvertisement;
+    OPTIE  ExtCap;
+    OPTIE  Vendor1IE;
+    OPTIE  Vendor2IE;
+    OPTIE  Vendor3IE;
+}
+
+FRAME ext_channel_switch_action_frame
+{
+    FF     Category;
+    FF     Action;
+    FF     ext_chan_switch_ann_action;
 }
 
 // Local Variables:

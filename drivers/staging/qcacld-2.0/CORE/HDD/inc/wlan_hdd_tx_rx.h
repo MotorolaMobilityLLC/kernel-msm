@@ -97,6 +97,11 @@
   ===========================================================================*/
 extern int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev);
 
+extern void hdd_drop_skb(hdd_adapter_t *adapter, struct sk_buff *skb);
+
+extern void hdd_drop_skb_list(hdd_adapter_t *adapter, struct sk_buff *skb,
+                                                      bool is_update_ac_stats);
+
 extern int hdd_mon_hard_start_xmit(struct sk_buff *skb, struct net_device *dev);
 /**============================================================================
   @brief hdd_tx_timeout() - Function called by OS if there is any
@@ -149,57 +154,6 @@ extern VOS_STATUS hdd_deinit_tx_rx( hdd_adapter_t *pAdapter );
 extern VOS_STATUS hdd_disconnect_tx_rx( hdd_adapter_t *pAdapter );
 
 /**============================================================================
-  @brief hdd_tx_complete_cbk() - Callback function invoked by TL
-  to indicate that a packet has been transmitted across the SDIO bus
-  succesfully. OS packet resources can be released after this cbk.
-
-  @param vosContext   : [in] pointer to VOS context
-  @param pVosPacket   : [in] pointer to VOS packet (containing skb)
-  @param vosStatusIn  : [in] status of the transmission
-
-  @return             : VOS_STATUS_E_FAILURE if any errors encountered
-                      : VOS_STATUS_SUCCESS otherwise
-  ===========================================================================*/
-extern VOS_STATUS hdd_tx_complete_cbk( v_VOID_t *vosContext,
-                                       vos_pkt_t *pVosPacket,
-                                       VOS_STATUS vosStatusIn );
-
-/**============================================================================
-  @brief hdd_tx_fetch_packet_cbk() - Callback function invoked by TL to
-  fetch a packet for transmission.
-
-  @param vosContext   : [in] pointer to VOS context
-  @param staId        : [in] Station for which TL is requesting a pkt
-  @param ucAC         : [in] pointer to access category requested by TL
-  @param pVosPacket   : [out] pointer to VOS packet packet pointer
-  @param pPktMetaInfo : [out] pointer to meta info for the pkt
-
-  @return             : VOS_STATUS_E_EMPTY if no packets to transmit
-                      : VOS_STATUS_E_FAILURE if any errors encountered
-                      : VOS_STATUS_SUCCESS otherwise
-  ===========================================================================*/
-extern VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
-                                           v_U8_t *pStaId,
-                                           WLANTL_ACEnumType    ucAC,
-                                           vos_pkt_t **ppVosPacket,
-                                           WLANTL_MetaInfoType *pPktMetaInfo );
-
-/**============================================================================
-  @brief hdd_tx_low_resource_cbk() - Callback function invoked in the
-  case where VOS packets are not available at the time of the call to get
-  packets. This callback function is invoked by VOS when packets are
-  available.
-
-  @param pVosPacket : [in]  pointer to VOS packet
-  @param userData   : [in]  opaque user data that was passed initially
-
-  @return           : VOS_STATUS_E_FAILURE if any errors encountered,
-                    : VOS_STATUS_SUCCESS otherwise
-  =============================================================================*/
-extern VOS_STATUS hdd_tx_low_resource_cbk( vos_pkt_t *pVosPacket,
-                                           v_VOID_t *userData );
-
-/**============================================================================
   @brief hdd_rx_packet_cbk() - Receive callback registered with TL.
   TL will call this to notify the HDD when a packet was received
   for a registered STA.
@@ -248,14 +202,6 @@ void hdd_mon_tx_work_queue(struct work_struct *work);
   ===========================================================================*/
 VOS_STATUS hdd_Ibss_GetStaId(hdd_station_ctx_t *pHddStaCtx,
                                   v_MACADDR_t *pMacAddress, v_U8_t *staId);
-
-/**============================================================================
-  @brief hdd_tx_rx_pkt_cnt_stat_timer_handler() -
-                    Timer handler to check enable/disable split scan
-  @param pHddStaCtx : Hdd adapter
-  @return    : VOS_STATUS_SUCCESS/VOS_STATUS_E_FAILURE
-  ===========================================================================*/
-void hdd_tx_rx_pkt_cnt_stat_timer_handler( void *pAdapter);
 
 /**============================================================================
   @brief hdd_flush_ibss_tx_queues() -

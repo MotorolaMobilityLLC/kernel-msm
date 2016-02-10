@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -32,9 +32,7 @@
 #include <linux/version.h>
 #include <linux/workqueue.h>
 #include <linux/interrupt.h>
-#ifdef CONFIG_CNSS
-#include <net/cnss.h>
-#endif
+#include "vos_cnss.h"
 #include <adf_os_types.h>
 
 typedef struct tasklet_struct  __adf_os_bh_t;
@@ -69,11 +67,7 @@ __adf_os_init_work(adf_os_handle_t    hdl,
     /*Initilize func and argument in work struct */
     work->fn = func;
     work->arg = arg;
-#ifdef CONFIG_CNSS
-    cnss_init_work(&work->work, __adf_os_defer_func);
-#else
-    INIT_WORK(&work->work, __adf_os_defer_func);
-#endif
+    vos_init_work(&work->work, __adf_os_defer_func);
     return A_STATUS_OK;
 }
 
@@ -86,11 +80,7 @@ __adf_os_init_delayed_work(adf_os_handle_t    hdl,
     /*Initilize func and argument in work struct */
     work->fn = func;
     work->arg = arg;
-#ifdef CONFIG_CNSS
-    cnss_init_delayed_work(&work->dwork, __adf_os_defer_delayed_func);
-#else
-    INIT_DELAYED_WORK(&work->dwork, __adf_os_defer_delayed_func);
-#endif
+    vos_init_delayed_work(&work->dwork, __adf_os_defer_delayed_func);
     return A_STATUS_OK;
 }
 

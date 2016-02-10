@@ -91,8 +91,10 @@ void        dfs_detach(struct ieee80211com *ic);
 int         dfs_radar_enable(struct ieee80211com *ic,
                 struct ath_dfs_radar_tab_info *ri);
 int         dfs_radar_disable(struct ieee80211com *ic);
-extern void dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen, u_int8_t rssi,
-                                    u_int8_t ext_rssi, u_int32_t rs_tstamp, u_int64_t fulltsf);
+extern void dfs_process_phyerr(struct ieee80211com *ic, void *buf,
+                               u_int16_t datalen, u_int8_t rssi,
+                               u_int8_t ext_rssi, u_int32_t rs_tstamp,
+                               u_int64_t fulltsf, bool enable_log);
 int         dfs_control(struct ieee80211com *ic, u_int id, void *indata, u_int32_t insize,
                             void *outdata, u_int32_t *outsize);
 void        dfs_clear_stats(struct ieee80211com *ic);

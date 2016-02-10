@@ -120,6 +120,12 @@ struct ieee80211_channel
 
     /* Channel Center frequency applicable*/
     u_int32_t       ic_vhtop_ch_freq_seg2;
+
+    /*
+     * spectral separation between pri channel
+     * and the center frequency in MHz
+     */
+    int             ic_pri_freq_center_freq_mhz_separation;
 };
 
 struct ieee80211_channel_list
@@ -200,7 +206,8 @@ typedef struct ieee80211com
     u_int8_t vdev_id;
     u_int8_t last_radar_found_chan;
     int32_t dfs_pri_multiplier;
-    vos_lock_t chan_lock;
+    adf_os_spinlock_t chan_lock;
+    bool disable_phy_err_processing;
 } IEEE80211COM, *PIEEE80211COM;
 
 /*

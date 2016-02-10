@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -50,8 +50,6 @@ static tANI_U32  __gCfgIBufMax[CFG_STA_IBUF_MAX_SIZE]          ;
 static tANI_U32  __gCfgIBuf[CFG_STA_IBUF_MAX_SIZE]             ;
 static tANI_U8   __gCfgSBuf[CFG_STA_SBUF_MAX_SIZE]             ;
 static tANI_U8   __gSBuffer[CFG_MAX_STR_LEN]                   ;
-static tANI_U32  __gParamList[WNI_CFG_MAX_PARAM_NUM +
-                              WNI_CFG_GET_PER_STA_STAT_RSP_NUM];
 
 static void Notify(tpAniSirGlobal, tANI_U16, tANI_U32);
 
@@ -87,7 +85,7 @@ tANI_U32 cfgNeedReload(tpAniSirGlobal pMac, tANI_U16 cfgId)
  *
  * LOGIC:
  * Please see Configuration & Statistic Collection Micro-Architecture
- * specification for the pseudocode.
+ * specification for the pseudo code.
  *
  * ASSUMPTIONS:
  * None.
@@ -112,19 +110,45 @@ wlan_cfgInit(tpAniSirGlobal pMac)
 
 } /*** end wlan_cfgInit() ***/
 
+void cfg_get_str_index(tpAniSirGlobal mac_ctx, uint16_t cfg_id)
+{
+    uint16_t i = 0;
+
+    for (i = 0; i < CFG_MAX_STATIC_STRING; i++) {
+        if (cfg_id == cfg_static_string[i].cfg_id)
+            break;
+    }
+
+    if (i == CFG_MAX_STATIC_STRING) {
+        PELOGE(cfgLog(mac_ctx, LOGE,
+               FL("Entry not found for cfg id :%d"), cfg_id);)
+        cfg_static[cfg_id].p_str_data = NULL;
+        return;
+    }
+
+    cfg_static[cfg_id].p_str_data = &cfg_static_string[i];
+}
+
 
 //---------------------------------------------------------------------
 tSirRetStatus cfgInit(tpAniSirGlobal pMac)
 {
-   pMac->cfg.gCfgIBufMin  = __gCfgIBufMin;
-   pMac->cfg.gCfgIBufMax  = __gCfgIBufMax;
-   pMac->cfg.gCfgIBuf     = __gCfgIBuf;
-   pMac->cfg.gCfgSBuf     = __gCfgSBuf;
-   pMac->cfg.gSBuffer     = __gSBuffer;
-   pMac->cfg.gCfgEntry    = __gCfgEntry;
-   pMac->cfg.gParamList   = __gParamList;
+    uint16_t i = 0;
+    pMac->cfg.gCfgIBufMin  = __gCfgIBufMin;
+    pMac->cfg.gCfgIBufMax  = __gCfgIBufMax;
+    pMac->cfg.gCfgIBuf     = __gCfgIBuf;
+    pMac->cfg.gCfgSBuf     = __gCfgSBuf;
+    pMac->cfg.gSBuffer     = __gSBuffer;
+    pMac->cfg.gCfgEntry    = __gCfgEntry;
 
-   return (eSIR_SUCCESS);
+    for (i = 0; i < CFG_PARAM_MAX_NUM; i++) {
+        if (!(cfg_static[i].control & CFG_CTL_INT))
+            cfg_get_str_index(pMac, i);
+        else
+            cfg_static[i].p_str_data = NULL;
+    }
+
+    return (eSIR_SUCCESS);
 }
 
 //----------------------------------------------------------------------
@@ -136,7 +160,6 @@ void cfgDeInit(tpAniSirGlobal pMac)
    pMac->cfg.gCfgSBuf     = NULL;
    pMac->cfg.gSBuffer     = NULL;
    pMac->cfg.gCfgEntry    = NULL;
-   pMac->cfg.gParamList   = NULL;
 }
 
 // ---------------------------------------------------------------------
@@ -741,7 +764,7 @@ cfgGetDot11dTransmitPower(tpAniSirGlobal pMac, tANI_U16   cfgId,
         cfgLog(pMac, LOGP, FL("Failed to retrieve 11d configuration parameters while retrieving 11d tuples"));
         goto error;
     }
-    /* Identify the channel and maxtxpower */
+    /* Identify the channel and max txpower */
     while(count <= (cfgLength - (sizeof(tSirMacChanInfo))))
     {
         tANI_U8    firstChannel, maxChannels;
@@ -835,18 +858,18 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
 {
     tANI_U32 val = 0;
     tpSirMacCapabilityInfo pCapInfo;
-    tLimSystemRole systemRole = limGetSystemRole(sessionEntry);
 
     *pCap = 0;
     pCapInfo = (tpSirMacCapabilityInfo) pCap;
 
-    if (systemRole == eLIM_STA_IN_IBSS_ROLE)
+    if (LIM_IS_IBSS_ROLE(sessionEntry))
         pCapInfo->ibss = 1; // IBSS bit
-    else if ( (systemRole == eLIM_AP_ROLE) ||(systemRole == eLIM_BT_AMP_AP_ROLE)||(systemRole == eLIM_BT_AMP_STA_ROLE) ||
-             (systemRole == eLIM_STA_ROLE) )
+    else if (LIM_IS_AP_ROLE(sessionEntry) ||
+             LIM_IS_BT_AMP_AP_ROLE(sessionEntry) ||
+             LIM_IS_BT_AMP_STA_ROLE(sessionEntry) ||
+             LIM_IS_STA_ROLE(sessionEntry))
         pCapInfo->ess = 1; // ESS bit
-    else if (limGetSystemRole(sessionEntry) == eLIM_P2P_DEVICE_ROLE )
-    {
+    else if (LIM_IS_P2P_DEVICE_ROLE(sessionEntry)) {
         pCapInfo->ess = 0;
         pCapInfo->ibss = 0;
     }
@@ -854,12 +877,18 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
         cfgLog(pMac, LOGP, FL("can't get capability, role is UNKNOWN!!"));
 
 
-    if(systemRole == eLIM_AP_ROLE)
-    {
+    if (LIM_IS_AP_ROLE(sessionEntry)) {
         val = sessionEntry->privacy;
-    }
-    else
-    {
+#ifdef SAP_AUTH_OFFLOAD
+         /* Support software AP Authentication Offload feature,
+          * If Auth offload security Type is not disabled
+          * We need to enable privacy bit in beacon
+          */
+        if (pMac->sap_auth_offload && pMac->sap_auth_offload_sec_type) {
+            val = 1;
+        }
+#endif
+    } else {
         // PRIVACY bit
         if (wlan_cfgGetInt(pMac, WNI_CFG_PRIVACY_ENABLED, &val) != eSIR_SUCCESS)
         {
@@ -890,12 +919,9 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
         return eSIR_SUCCESS;
 
     // Short slot time bit
-    if (systemRole == eLIM_AP_ROLE)
-    {
+    if (LIM_IS_AP_ROLE(sessionEntry)) {
         pCapInfo->shortSlotTime = sessionEntry->shortSlotTimeSupported;
-    }
-    else
-    {
+    } else {
         if (wlan_cfgGetInt(pMac, WNI_CFG_11G_SHORT_SLOT_TIME_ENABLED, &val)
                        != eSIR_SUCCESS)
         {
@@ -916,9 +942,7 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
     }
 
     // Spectrum Management bit
-    if((eLIM_STA_IN_IBSS_ROLE != systemRole) &&
-            sessionEntry->lim11hEnable )
-    {
+    if (!LIM_IS_IBSS_ROLE(sessionEntry) && sessionEntry->lim11hEnable) {
       if (wlan_cfgGetInt(pMac, WNI_CFG_11H_ENABLED, &val) != eSIR_SUCCESS)
       {
           cfgLog(pMac, LOGP, FL("cfg get WNI_CFG_11H_ENABLED failed"));
@@ -947,20 +971,12 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
         pCapInfo->apsd = 1;
 
 #if defined WLAN_FEATURE_VOWIFI
-    if ((limGetSystemRole(sessionEntry) == eLIM_STA_ROLE) )
-    {
-      if (wlan_cfgGetInt(pMac, WNI_CFG_RRM_ENABLED, &val) != eSIR_SUCCESS)
-      {
-        cfgLog(pMac, LOGP, FL("cfg get WNI_CFG_RRM_ENABLED failed"));
-        return eSIR_FAILURE;
-      }
+    pCapInfo->rrm = pMac->rrm.rrmSmeContext.rrmConfig.rrm_enabled;
 #if defined WLAN_VOWIFI_DEBUG
-      PELOGE(cfgLog( pMac, LOGE, "RRM = %d",val );)
+    cfgLog( pMac, LOGE, "RRM = %d", pCapInfo->rrm);
 #endif
-      if (val)
-        pCapInfo->rrm = 1;
-    }
 #endif
+
     //DSSS-OFDM
     //FIXME : no config defined yet.
 
@@ -1008,7 +1024,7 @@ cfgSetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 caps)
  * cfgCleanup()
  *
  * FUNCTION:
- * CFG cleanup function.
+ * CFG clean up function.
  *
  * LOGIC:
  *
@@ -1016,7 +1032,7 @@ cfgSetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 caps)
  * None.
  *
  * NOTE:
- * This function must be called during system shutdown.
+ * This function must be called during system shut down.
  *
  * @param None
  *
@@ -1077,4 +1093,50 @@ Notify(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U32 ntfMask)
 
 } /*** end Notify() ***/
 
+/**
+ * cfg_get_vendor_ie_ptr_from_oui() - returns IE pointer in IE buffer given its
+ * OUI and OUI size
+ * @mac_ctx:    mac context.
+ * @oui:        OUI string.
+ * @oui_size:   length of OUI string
+ *              One can provide multiple line descriptions
+ *              for arguments.
+ * @ie:         ie buffer
+ * @ie_len:     length of ie buffer
+ *
+ * This function parses the IE buffer and finds the given OUI and returns its
+ * pointer
+ *
+ * Return: pointer of given OUI IE else NULL
+ */
+uint8_t* cfg_get_vendor_ie_ptr_from_oui(tpAniSirGlobal mac_ctx,
+					uint8_t *oui,
+					uint8_t oui_size,
+					uint8_t *ie,
+					uint16_t ie_len)
+{
+	int32_t left = ie_len;
+	uint8_t *ptr = ie;
+	uint8_t elem_id, elem_len;
+
+	while(left >= 2) {
+		elem_id  = ptr[0];
+		elem_len = ptr[1];
+		left -= 2;
+		if(elem_len > left) {
+			cfgLog(mac_ctx, LOGE,
+			FL("Invalid IEs eid = %d elem_len=%d left=%d"),
+			elem_id, elem_len, left);
+			return NULL;
+		}
+		if (SIR_MAC_EID_VENDOR == elem_id) {
+			if(memcmp(&ptr[2], oui, oui_size)==0)
+			return ptr;
+		}
+
+		left -= elem_len;
+		ptr += (elem_len + 2);
+	}
+	return NULL;
+}
 // ---------------------------------------------------------------------

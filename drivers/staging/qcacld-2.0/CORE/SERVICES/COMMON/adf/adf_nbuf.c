@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -32,8 +32,40 @@
 #include <linux/module.h>
 #include <adf_os_types.h>
 #include <adf_nbuf.h>
+#include <adf_os_io.h>
+
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+#include <net/cnss_prealloc.h>
+#endif
 
 adf_nbuf_trace_update_t  trace_update_cb = NULL;
+
+#if defined(CONFIG_WCNSS_MEM_PRE_ALLOC) && defined(WITH_BACKPORTS)
+struct sk_buff *__adf_nbuf_pre_alloc(adf_os_device_t osdev, size_t size)
+{
+	struct sk_buff *skb = NULL;
+
+	if (size >= WCNSS_PRE_SKB_ALLOC_GET_THRESHOLD)
+		skb = wcnss_skb_prealloc_get(size);
+
+	return skb;
+}
+
+int __adf_nbuf_pre_alloc_free(struct sk_buff *skb)
+{
+	return wcnss_skb_prealloc_put(skb);
+}
+#else
+struct sk_buff *__adf_nbuf_pre_alloc(adf_os_device_t osdev, size_t size)
+{
+	return NULL;
+}
+
+int __adf_nbuf_pre_alloc_free(struct sk_buff *skb)
+{
+	return 0;
+}
+#endif
 
 /*
  * @brief This allocates an nbuf aligns if needed and reserves
@@ -57,12 +89,19 @@ __adf_nbuf_alloc(adf_os_device_t osdev, size_t size, int reserve, int align, int
     if(align)
         size += (align - 1);
 
+    skb = __adf_nbuf_pre_alloc(osdev, size);
+
+    if (skb)
+       goto skb_cb;
+
     skb = dev_alloc_skb(size);
 
     if (!skb) {
         printk("ERROR:NBUF alloc failed\n");
         return NULL;
     }
+
+skb_cb:
     memset(skb->cb, 0x0, sizeof(skb->cb));
 
     /*
@@ -96,6 +135,32 @@ __adf_nbuf_alloc(adf_os_device_t osdev, size_t size, int reserve, int align, int
     return skb;
 }
 
+#ifdef QCA_ARP_SPOOFING_WAR
+/*
+ * __adf_rx_nbuf_alloc() Rx buffer allocation function *
+ * @hdl:
+ * @size:
+ * @reserve:
+ * @align:
+ *
+ * Use existing buffer allocation API and overwrite
+ * priv_data field of skb->cb for registering callback
+ * as it is not used for Rx case.
+ *
+ * Return: nbuf or NULL if no memory
+ */
+struct sk_buff *
+__adf_rx_nbuf_alloc(adf_os_device_t osdev, size_t size, int reserve, int align, int prio)
+{
+    struct sk_buff *skb;
+
+    skb = __adf_nbuf_alloc(osdev, size, reserve,align, prio);
+    if (skb) {
+        NBUF_CB_PTR(skb) = osdev->filter_cb;
+    }
+    return skb;
+}
+#endif
 /*
  * @brief free the nbuf its interrupt safe
  * @param skb
@@ -103,12 +168,19 @@ __adf_nbuf_alloc(adf_os_device_t osdev, size_t size, int reserve, int align, int
 void
 __adf_nbuf_free(struct sk_buff *skb)
 {
-#if defined(IPA_OFFLOAD) && !defined(IPA_UC_OFFLOAD)
+#ifdef QCA_MDM_DEVICE
+#if defined(IPA_OFFLOAD) && (!defined(IPA_UC_OFFLOAD) ||\
+   (defined(IPA_UC_OFFLOAD) && defined(IPA_UC_STA_OFFLOAD)))
     if( (NBUF_OWNER_ID(skb) == IPA_NBUF_OWNER_ID) && NBUF_CALLBACK_FN(skb) )
         NBUF_CALLBACK_FN_EXEC(skb);
     else
 #endif
-    dev_kfree_skb_any(skb);
+#endif /* QCA_MDM_DEVICE */
+    {
+       if (__adf_nbuf_pre_alloc_free(skb))
+           return;
+       dev_kfree_skb_any(skb);
+    }
 }
 
 
@@ -382,6 +454,46 @@ __adf_nbuf_reg_trace_cb(adf_nbuf_trace_update_t cb_func_ptr)
    return;
 }
 
+a_status_t
+__adf_nbuf_is_dhcp_pkt(struct sk_buff *skb)
+{
+   a_uint16_t    SPort;
+   a_uint16_t    DPort;
+
+    SPort = (a_uint16_t)(*(a_uint16_t *)(skb->data + ADF_NBUF_TRAC_IPV4_OFFSET +
+                                     ADF_NBUF_TRAC_IPV4_HEADER_SIZE));
+    DPort = (a_uint16_t)(*(a_uint16_t *)(skb->data + ADF_NBUF_TRAC_IPV4_OFFSET +
+                                     ADF_NBUF_TRAC_IPV4_HEADER_SIZE + sizeof(a_uint16_t)));
+
+    if (((ADF_NBUF_TRAC_DHCP_SRV_PORT == adf_os_cpu_to_be16(SPort)) &&
+       (ADF_NBUF_TRAC_DHCP_CLI_PORT == adf_os_cpu_to_be16(DPort))) ||
+       ((ADF_NBUF_TRAC_DHCP_CLI_PORT == adf_os_cpu_to_be16(SPort)) &&
+       (ADF_NBUF_TRAC_DHCP_SRV_PORT == adf_os_cpu_to_be16(DPort))))
+    {
+        return A_STATUS_OK;
+    }
+    else
+    {
+        return A_STATUS_FAILED;
+    }
+}
+
+a_status_t
+__adf_nbuf_is_eapol_pkt(struct sk_buff *skb)
+{
+    a_uint16_t    ether_type;
+
+    ether_type = (a_uint16_t)(*(a_uint16_t *)(skb->data + ADF_NBUF_TRAC_ETH_TYPE_OFFSET));
+    if (ADF_NBUF_TRAC_EAPOL_ETH_TYPE == adf_os_cpu_to_be16(ether_type))
+    {
+        return A_STATUS_OK;
+    }
+    else
+    {
+        return A_STATUS_FAILED;
+    }
+}
+
 #ifdef QCA_PKT_PROTO_TRACE
 void
 __adf_nbuf_trace_update(struct sk_buff *buf, char *event_string)
@@ -430,6 +542,9 @@ __adf_nbuf_trace_update(struct sk_buff *buf, char *event_string)
 #endif /* QCA_PKT_PROTO_TRACE */
 
 EXPORT_SYMBOL(__adf_nbuf_alloc);
+#ifdef QCA_ARP_SPOOFING_WAR
+EXPORT_SYMBOL(__adf_rx_nbuf_alloc);
+#endif
 EXPORT_SYMBOL(__adf_nbuf_free);
 EXPORT_SYMBOL(__adf_nbuf_ref);
 EXPORT_SYMBOL(__adf_nbuf_shared);
@@ -448,3 +563,5 @@ EXPORT_SYMBOL(__adf_nbuf_get_tid);
 EXPORT_SYMBOL(__adf_nbuf_set_tid);
 EXPORT_SYMBOL(__adf_nbuf_get_exemption_type);
 EXPORT_SYMBOL(__adf_nbuf_dmamap_set_cb);
+EXPORT_SYMBOL(__adf_nbuf_is_dhcp_pkt);
+EXPORT_SYMBOL(__adf_nbuf_is_eapol_pkt);

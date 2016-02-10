@@ -161,7 +161,7 @@ typedef unsigned long TQUEUE_ARG;
 #define mark_bh(a)
 
 #define ATH_SYSCTL_DECL(f, ctl, write, filp, buffer, lenp, ppos) \
-    f(ctl_table *ctl, int write, void *buffer,                   \
+    f(struct ctl_table *ctl, int write, void *buffer,                   \
         size_t *lenp, loff_t *ppos)
 #define ATH_SYSCTL_PROC_DOINTVEC(ctl, write, filp, buffer, lenp, ppos) \
     proc_dointvec(ctl, write, buffer, lenp, ppos)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -46,7 +46,7 @@
 
 /* # of WDS entries to support.
  */
-#define CFG_TGT_WDS_ENTRIES             32
+#define CFG_TGT_WDS_ENTRIES             0
 
 /* MAC DMA burst size. 0: 128B - default, 1: 256B, 2: 64B
  */
@@ -240,5 +240,20 @@
  * enable all BW 20/40/80/160
  */
 #define CFG_TGT_DEFAULT_GTX_BW_MASK		0xf
+
+/*
+ * number of vdevs that can support OCB
+ */
+#define CFG_TGT_NUM_OCB_VDEVS			1
+
+/*
+ * maximum number of channels that can do OCB
+ */
+#define CFG_TGT_NUM_OCB_CHANNELS		2
+
+/*
+ * maximum number of channels in an OCB schedule
+ */
+#define CFG_TGT_NUM_OCB_SCHEDULES		2
 
 #endif  /*__WLAN_TGT_DEF_CONFIG_H__ */

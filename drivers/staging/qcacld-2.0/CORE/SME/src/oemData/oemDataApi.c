@@ -90,11 +90,6 @@ eHalStatus oemData_OemDataReqClose(tHalHandle hHal)
             break;
         }
 
-        if(pMac->oemData.pOemDataRsp != NULL)
-        {
-            vos_mem_free(pMac->oemData.pOemDataRsp);
-        }
-
         //initialize all the variables to null
         vos_mem_set(&(pMac->oemData), sizeof(tOemDataStruct), 0);
     } while(0);
@@ -116,7 +111,7 @@ void oemData_ReleaseOemDataReqCommand(tpAniSirGlobal pMac, tSmeCmd *pOemDataCmd,
     {
         vos_mem_set(&(pOemDataCmd->u.oemDataCmd), sizeof(tOemDataCmd), 0);
 
-        //Now put this command back on the avilable command list
+        /* Now put this command back on the available command list */
         smeReleaseCommand(pMac, pOemDataCmd);
     }
     else
@@ -130,16 +125,12 @@ void oemData_ReleaseOemDataReqCommand(tpAniSirGlobal pMac, tSmeCmd *pOemDataCmd,
     \brief Request an OEM DATA RSP
     \param sessionId - Id of session to be used
     \param pOemDataReqID - pointer to an object to get back the request ID
-    \param callback - a callback function that is called upon finish
-    \param pContext - a pointer passed in for the callback
     \return eHalStatus
   -------------------------------------------------------------------------------*/
 eHalStatus oemData_OemDataReq(tHalHandle hHal,
                                 tANI_U8 sessionId,
                                 tOemDataReqConfig *oemDataReqConfig,
-                                tANI_U32 *pOemDataReqID,
-                                oemData_OemDataReqCompleteCallback callback,
-                                void *pContext)
+                                tANI_U32 *pOemDataReqID)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
@@ -154,8 +145,6 @@ eHalStatus oemData_OemDataReq(tHalHandle hHal,
         }
 
         pMac->oemData.oemDataReqConfig.sessionId = sessionId;
-        pMac->oemData.callback = callback;
-        pMac->oemData.pContext = pContext;
         pMac->oemData.oemDataReqID = *(pOemDataReqID);
 
         vos_mem_copy((v_VOID_t*)(pMac->oemData.oemDataReqConfig.oemDataReq),
@@ -170,8 +159,6 @@ eHalStatus oemData_OemDataReq(tHalHandle hHal,
         if(pOemDataCmd)
         {
             pOemDataCmd->command = eSmeCommandOemDataReq;
-            pOemDataCmd->u.oemDataCmd.callback = callback;
-            pOemDataCmd->u.oemDataCmd.pContext = pContext;
             pOemDataCmd->u.oemDataCmd.oemDataReqID = pMac->oemData.oemDataReqID;
 
             //set the oem data request
@@ -314,7 +301,7 @@ eHalStatus sme_HandleOemDataRsp(tHalHandle hHal, tANI_U8* pMsg)
          * OEM Data request, SME does not peek into data response so SME
          * can not know which response is the last one. So SME clears active
          * request command on receiving first response and thereafter SME
-         * passes each sunsequent response to upper user layer.
+         * passes each subsequent response to upper user layer.
          */
         pEntry = csrLLPeekHead(&pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK);
         if (pEntry)
