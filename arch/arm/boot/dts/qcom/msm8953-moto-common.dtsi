@@ -61,6 +61,14 @@
 		dmas = <&dma_blsp1 6 64 0x20000020 0x20>,
 			<&dma_blsp1 7 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
+		cs35l34@40 {
+			compatible = "cirrus,cs35l34";
+			reg = <0x40>;
+
+			cirrus,gain-zc = <1>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&cs35l34_reset_default>;
+		};
 	};
 
 	i2c_3: i2c@78b7000 { /* BLSP1 QUP3 */
