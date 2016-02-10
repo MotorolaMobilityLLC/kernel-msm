@@ -446,6 +446,77 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 	return result;
 }
 
+#define NUM_RX_CONFIGS 3
+static int ext_rxconfig;
+static int ext_txconfig = NUM_RX_CONFIGS;
+
+static int ospl2xx_update_rx_ext_config(void)
+{
+	int i = ext_rxconfig, size = 0;
+	char *config = NULL;
+
+	if (ospl2xx_config[i] == NULL)
+		goto error_return;
+
+	size = ospl2xx_config[i]->size;
+	if (size <= 0)
+		goto error_return;
+
+	config = kzalloc(sizeof(char) * (size+1), GFP_KERNEL);
+	if (config == NULL || ospl2xx_config[i]->data == NULL)
+		goto error_return;
+
+	memcpy(config, ospl2xx_config[i]->data, size);
+	config[size] = '\0';
+
+	pr_info("%s: ospl2xx_config[%d] size[%d]\n",
+		__func__, i, size);
+
+	ospl2xx_afe_set_ext_config_param(config,
+		PARAM_ID_OPALUM_RX_SET_EXTERNAL_CONFIG);
+
+	kfree(config);
+	return 0;
+
+error_return:
+	kfree(config);
+	return 0;
+
+}
+
+static int ospl2xx_update_tx_ext_config(void)
+{
+	int i = ext_txconfig, size = 0;
+	char *config = NULL;
+
+	if (ospl2xx_config[i] == NULL)
+		goto error_return;
+
+	size = ospl2xx_config[i]->size;
+	if (size <= 0)
+		goto error_return;
+
+	config = kzalloc(sizeof(char) * (size+1), GFP_KERNEL);
+	if (config == NULL || ospl2xx_config[i]->data == NULL)
+		goto error_return;
+
+	memcpy(config, ospl2xx_config[i]->data, size);
+	config[size] = '\0';
+
+	pr_info("%s: ospl2xx_config[%d] size[%d]\n",
+		__func__, i, size);
+
+	ospl2xx_afe_set_ext_config_param(config,
+		PARAM_ID_OPALUM_TX_SET_EXTERNAL_CONFIG);
+
+	kfree(config);
+	return 0;
+
+error_return:
+	kfree(config);
+	return 0;
+}
+
 /*
  * AFE callback
  */
@@ -541,7 +612,6 @@ static const struct soc_enum ospl2xx_rx_enable_enum[] = {
 };
 
 /* PARAM_ID_OPALUM_RX_SET_USE_CASE */
-#define NUM_RX_CONFIGS 3
 static int ospl2xx_rx_int_config_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
@@ -607,49 +677,28 @@ static const struct soc_enum ospl2xx_rx_run_diagnostic_enum[] = {
 static int ospl2xx_rx_ext_config_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	/* not implemented */
+	ucontrol->value.integer.value[0] = ext_rxconfig;
 	return 0;
 }
+
 static int ospl2xx_rx_ext_config_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	int i = 0, size = 0;
-	char *config = NULL;
+	int i = 0, ret = 0;
 
-	mutex_lock(&lr_lock);
 	i = ucontrol->value.integer.value[0];
 	if (i < 0 || i >= NUM_RX_CONFIGS)
-		goto error_return;
+		return -ERANGE;
 
-	if (ospl2xx_config[i] == NULL)
-		goto error_return;
-
-	size = ospl2xx_config[i]->size;
-	if (size <= 0)
-		goto error_return;
-
-	config = kzalloc(sizeof(char) * (size+1), GFP_KERNEL);
-	if (config == NULL || ospl2xx_config[i]->data == NULL)
-		goto error_return;
-
-	memcpy(config, ospl2xx_config[i]->data, size);
-	config[size] = '\0';
-
-	pr_info("%s: ospl2xx_config[%d] size[%d]\n",
-		__func__, i, size);
-
-	ospl2xx_afe_set_ext_config_param(config,
-		PARAM_ID_OPALUM_RX_SET_EXTERNAL_CONFIG);
-
-	kfree(config);
+	mutex_lock(&lr_lock);
+	if (ext_rxconfig != i) {
+		ext_rxconfig = i;
+		ret = ospl2xx_update_rx_ext_config();
+	}
 	mutex_unlock(&lr_lock);
-	return 0;
-
-error_return:
-	kfree(config);
-	mutex_unlock(&lr_lock);
-	return 0;
+	return ret;
 }
+
 static char const *ospl2xx_rx_ext_config_text[] = {
 	"opalum.rx.ext.config.0",
 	"opalum.rx.ext.config.1",
@@ -658,6 +707,44 @@ static char const *ospl2xx_rx_ext_config_text[] = {
 static const struct soc_enum ospl2xx_rx_ext_config_enum[] = {
 	SOC_ENUM_SINGLE_EXT(NUM_RX_CONFIGS,
 		ospl2xx_rx_ext_config_text),
+};
+
+static int ospl2xx_audio_mode_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = ext_rxconfig;
+	return 0;
+}
+
+static int ospl2xx_audio_mode_put(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int i = 0, ret = 0;
+
+	i = ucontrol->value.integer.value[0];
+	if (i < 0 || i >= NUM_RX_CONFIGS)
+		return -ERANGE;
+
+	mutex_lock(&lr_lock);
+	if (ext_rxconfig != i) {
+		ext_rxconfig = i;
+		ext_txconfig = i + NUM_RX_CONFIGS;
+		ret = ospl2xx_update_rx_ext_config();
+		if (ret == 0)
+			ret = ospl2xx_update_tx_ext_config();
+	}
+	mutex_unlock(&lr_lock);
+	return ret;
+}
+/*NOTE that audio mode name must align with RX configs above*/
+static char const *ospl2xx_audio_mode_text[] = {
+	"NORMAL",
+	"VOICE",
+	"RING",
+};
+static const struct soc_enum ospl2xx_audio_mode_enum[] = {
+	SOC_ENUM_SINGLE_EXT(NUM_RX_CONFIGS,
+		ospl2xx_audio_mode_text),
 };
 
 /* PARAM_ID_OPALUM_RX_EXC_MODEL */
@@ -715,6 +802,11 @@ static int ospl2xx_rx_put_temp_cal(struct snd_kcontrol *kcontrol,
 			PARAM_ID_OPALUM_RX_TEMP_CAL_DATA,
 			accumulated, count, temperature);
 	mutex_unlock(&mr_lock);
+
+	mutex_lock(&lr_lock);
+	ospl2xx_update_rx_ext_config();
+	ospl2xx_update_tx_ext_config();
+	mutex_unlock(&lr_lock);
 
 	return 0;
 }
@@ -871,50 +963,28 @@ static const struct soc_enum ospl2xx_tx_int_config_enum[] = {
 static int ospl2xx_tx_ext_config_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	/* not implemented yet */
+	ucontrol->value.integer.value[0] = ext_txconfig - NUM_RX_CONFIGS;
 	return 0;
 }
 
 static int ospl2xx_tx_ext_config_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	int i = 0, size = 0;
-	char *config = NULL;
+	int i = 0, ret = 0;
 
-	mutex_lock(&lr_lock);
 	i = ucontrol->value.integer.value[0] + NUM_RX_CONFIGS;
 	if (i < NUM_RX_CONFIGS || i >= ARRAY_SIZE(ospl2xx_ext_config_tables))
-		goto error_return;
+		return -ERANGE;
 
-	if (ospl2xx_config[i] == NULL)
-		goto error_return;
-
-	size = ospl2xx_config[i]->size;
-	if (size <= 0)
-		goto error_return;
-
-	config = kzalloc(sizeof(char) * (size+1), GFP_KERNEL);
-	if (config == NULL || ospl2xx_config[i]->data == NULL)
-		goto error_return;
-
-	memcpy(config, ospl2xx_config[i]->data, size);
-	config[size] = '\0';
-
-	pr_info("%s: ospl2xx_config[%d] size[%d]\n",
-		__func__, i, size);
-
-	ospl2xx_afe_set_ext_config_param(config,
-		PARAM_ID_OPALUM_TX_SET_EXTERNAL_CONFIG);
-
-	kfree(config);
+	mutex_lock(&lr_lock);
+	if (ext_txconfig != i) {
+		ext_txconfig = i;
+		ret = ospl2xx_update_tx_ext_config();
+	}
 	mutex_unlock(&lr_lock);
-	return 0;
-
-error_return:
-	kfree(config);
-	mutex_unlock(&lr_lock);
-	return 0;
+	return ret;
 }
+
 static char const *ospl2xx_tx_ext_config_text[] = {
 	"opalum.tx.ext.config.0",
 	"opalum.tx.ext.config.1",
@@ -1006,6 +1076,10 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 	/* PUT */ SOC_ENUM_EXT("OSPL Ext Reload",
 		ospl2xx_reload_ext_enum[0],
 		ospl2xx_reload_ext_get, ospl2xx_reload_ext_put),
+
+	/* PUT */ SOC_ENUM_EXT("OSPL Audio Mode",
+		ospl2xx_audio_mode_enum[0],
+		ospl2xx_audio_mode_get, ospl2xx_audio_mode_put),
 };
 
 /*
