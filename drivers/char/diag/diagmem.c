@@ -225,8 +225,14 @@ void diagmem_free(struct diagchar_dev *driver, void *buf, int pool_type)
 		}
 		spin_lock_irqsave(&mempool->lock, flags);
 		if (mempool->count > 0) {
-			mempool_free(buf, mempool->pool);
-			atomic_add(-1, (atomic_t *)&mempool->count);
+			/* TODO: clean up memory allocation */
+			if (driver->encoded_rsp_buf != buf) {
+				mempool_free(buf, mempool->pool);
+				atomic_add(-1, (atomic_t *)&mempool->count);
+			} else {
+				pr_debug("diag: %x no in mempool\n",
+						(int)buf);
+			}
 		} else {
 			pr_err_ratelimited("diag: Attempting to free items from %s mempool which is already empty\n",
 					   mempool->name);
