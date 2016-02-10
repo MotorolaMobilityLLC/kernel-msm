@@ -78,8 +78,8 @@
 		qcom,bam-producer-pipe-index = <13>;
 
 		pinctrl-names = "spi_default", "spi_sleep";
-		pinctrl-0 = <&spi7_default>;
-		pinctrl-1 = <&spi7_sleep>;
+		pinctrl-0 = <&spi7_default &spi7_cs_active>;
+		pinctrl-1 = <&spi7_sleep &spi7_cs_sleep>;
 		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
 			<&clock_gcc clk_gcc_blsp2_qup1_spi_apps_clk>;
 		clock-names = "iface_clk", "core_clk";

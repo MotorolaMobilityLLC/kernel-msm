@@ -1,29 +1,19 @@
 &spi_7 {
 	sensorhub@0 {
-		compatible = "nanohub";
+		compatible = "contexthub,spich";
 		reg = <0>;
 		spi-max-frequency = <25000000>;
 		spi-cpol;
 		spi-cpha;
 
+		contexthub,ap2sh = <&msm_gpio 65 0x00>;
+		contexthub,sh2ap = <&msm_gpio 66 0x00>;
+		contexthub,nrst = <&msm_gpio 59 0x00>;
+		contexthub,boot0 = <&msm_gpio 60 0x00>;
+
 		interrupt-parent = <&msm_gpio>;
 		interrupts = <66 0x2>;
-		sensorhub,nreset-gpio = <&msm_gpio 59 0>;
-		sensorhub,boot0-gpio = <&msm_gpio 60 0>;
-		sensorhub,wakeup-gpio = <&msm_gpio 65 0>;
-		sensorhub,irq1-gpio = <&msm_gpio 66 0>;
-		sensorhub,spi-cs-gpio = <&msm_gpio 43 0>;
-		sensorhub,bl-addr = <0x08000000>;
-		sensorhub,kernel-addr = <0x0800C000>;
-		sensorhub,shared-addr = <0x08020000>;
-		sensorhub,flash-banks = <0 0x08000000 0x04000>,
-			<3 0x0800C000 0x04000>,
-			<4 0x08010000 0x10000>,
-			<5 0x08020000 0x20000>;
-		sensorhub,num-flash-banks = <4>;
-		sensorhub,shared-flash-banks = <6 0x08040000 0x20000>,
-			<7 0x08060000 0x20000>;
-		sensorhub,num-shared-flash-banks = <2>;
+		interrupt-names = "contexthub_wake_irq";
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&sensorhub_ctrl_active

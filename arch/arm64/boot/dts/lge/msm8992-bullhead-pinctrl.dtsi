@@ -309,6 +309,30 @@
 			};
 		};
 
+		spi7_cs_active {
+			/* CS */
+			qcom,pins = <&gp 43>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "spi7-cs-active";
+			spi7_cs_active: cs_active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		spi7_cs_suspend {
+			/* CS */
+			qcom,pins = <&gp 43>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "spi7-cs-suspend";
+			spi7_cs_sleep: cs_sleep {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
 		pmx_ts_reset {
 			qcom,pins = <&gp 8>;
 			qcom,pin-func = <0>;
@@ -494,9 +518,9 @@
 		};
 
 		pmx_sensorhub_ctrl {
-			/* NRST, BOOT0, SPI7 CS */
-			qcom,pins = <&gp 59>, <&gp 60>, <&gp 43>;
-			qcom,num-grp-pins = <3>;
+			/* NRST, BOOT0 */
+			qcom,pins = <&gp 59>, <&gp 60>;
+			qcom,num-grp-pins = <2>;
 			qcom,pin-func = <0>;
 			label = "pmx_sensorhub";
 			sensorhub_ctrl_sleep: sensorhub_sleep {
@@ -537,7 +561,7 @@
 			};
 			sensorhub_int2_active: sensorhub_int2_active {
 				drive-strength = <2>;
-				bias-pull-up;
+				bias-disable;
 			};
 		};
 
