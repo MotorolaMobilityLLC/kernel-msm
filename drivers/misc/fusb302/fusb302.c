@@ -1,6 +1,7 @@
 #include <linux/i2c.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
+#include <linux/debugfs.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/of_gpio.h>
@@ -66,6 +67,7 @@ int VBUS_12V_EN;
 
 #define ROLE_SWITCH_TIMEOUT  1500
 
+
 struct fusb302_i2c_data {
 	struct i2c_client *client;
 	struct work_struct eint_work;
@@ -79,6 +81,8 @@ struct fusb302_i2c_data {
 	bool factory_mode;
 	struct dual_role_phy_instance *dual_role;
 	struct dual_role_phy_desc *desc;
+	struct dentry *debug_root;
+	u32 debug_address;
 };
 
 struct fusb302_i2c_data *fusb_i2c_data;
@@ -305,37 +309,6 @@ void wake_up_statemachine(void)
 	wake_up_interruptible(&fusb_thread_wq);
 }
 
-static void dump_reg(void)
-{
-/*
-    int reg_addr[] = {regDeviceID, regSwitches0, regSwitches1, regMeasure, regSlice,
-        regControl0, regControl1, regControl2, regControl3, regMask, regPower, regReset,
-        regOCPreg, regMaska, regMaskb, regControl4, regStatus0a, regStatus1a, regInterrupta,
-        regInterruptb, regStatus0, regStatus1, regInterrupt };
-
-    char buf[1024];
-    int i, len = 0;
-    u8 byte = 0;
-    for (i=0; i< sizeof(reg_addr)/sizeof(reg_addr[0]); i++)
-    {
-        FUSB300Read(reg_addr[i], 1, &byte);
-        len += sprintf(buf+len, "%02xH:%02x ", reg_addr[i], byte);
-        if (((i+1)%6)==0)
-            len += sprintf(buf+len, "\n");
-    }
-    FUSB_LOG("%s\n", buf);
-*/
-	char buf[1024];
-	int i, len = 0;
-	//u8 byte = 0;
-	for (i = 0; i < 7; i++) {
-		len +=
-		    sprintf(buf + len, "%02xH:%02x ", i + regStatus0a,
-			    Registers.Status.byte[i]);
-	}
-	FUSB_LOG("%s\n", buf);
-}
-
 /*******************************************************************************
  * Function:        InitializeFUSB300Variables
  * Input:           None
@@ -491,7 +464,6 @@ void StateMachineFUSB300(void)
 		FUSB300Read(regStatus0, 1, &Registers.Status.byte[4]);
 		FUSB300Read(regStatus1, 1, &Registers.Status.byte[5]);
 		FUSB300Read(regInterrupt, 1, &Registers.Status.byte[6]);
-		dump_reg();	// Read the interrupta, interruptb, status0, status1 and interrupt registers
 	}
 #ifdef PD_SUPPORT
 	if (USBPDActive)	// Only call the USB PD routines if we have enabled the block
@@ -1966,8 +1938,7 @@ static void fusb302_device_check(void)
 	FUSB_LOG("device id:%2x\n", Registers.DeviceID.byte);
 }
 
-static ssize_t fusb302_reg_dump(struct device *dev,
-				struct device_attribute *attr, char *buf)
+static int fusb302_reg_dump(struct seq_file *m, void *data)
 {
 	int reg_addr[] =
 	    { regDeviceID, regSwitches0, regSwitches1, regMeasure, regSlice,
@@ -1978,25 +1949,40 @@ static ssize_t fusb302_reg_dump(struct device *dev,
 		regInterruptb, regStatus0, regStatus1, regInterrupt
 	};
 
-	int i, len = 0;
+	static char *reg_name[] = {
+		  "Device ID", "Switches0", "Switches1", "Measure", "Slice",
+		  "Control0", "Control1", "Control2", "Control3", "Mask1",
+		  "Power", "Reset", "OCPReg", "Maska", "Maskb", "Control4",
+		  "Status0a", "Status1a", "Interrupta", "Interruptb", "Status0",
+		  "Status1", "Interrupt"
+		};
+
+
+	int i;
 	u8 byte = 0;
 	for (i = 0; i < sizeof(reg_addr) / sizeof(reg_addr[0]); i++) {
 		FUSB300Read(reg_addr[i], 1, &byte);
-		len += sprintf(buf + len, "R%02xH:%02x ", reg_addr[i], byte);
-		if (((i + 1) % 6) == 0)
-			len += sprintf(buf + len, "\n");
+		seq_printf(m, "Register - %s: %02xH = %02x\n",
+					reg_name[i], reg_addr[i], byte);
 	}
-	return len;
+	return 0;
 }
 
-static ssize_t fusb302_reg_set(struct device *dev,
-			       struct device_attribute *attr, const char *buf,
-			       size_t size)
+static int fusbreg_debugfs_open(struct inode *inode, struct file *file)
 {
-	return size;
+	struct fusb_i2c_data *fusb = inode->i_private;
+
+	return single_open(file, fusb302_reg_dump, fusb);
 }
 
-static DEVICE_ATTR(reg_dump, 0660, fusb302_reg_dump, fusb302_reg_set);
+static const struct file_operations fusbreg_debugfs_ops = {
+	.owner          = THIS_MODULE,
+	.open           = fusbreg_debugfs_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
 
 static ssize_t fusb302_state(struct device *dev, struct device_attribute *attr,
 			     char *buf)
@@ -2326,6 +2312,73 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 	return 0;
 }
 
+static int get_reg(void *data, u64 *val)
+{
+	struct fusb302_i2c_data *fusb = data;
+	u8 temp = 0;
+
+	FUSB300Read(fusb->debug_address, 1, &temp);
+	*val = temp;
+	return 0;
+}
+
+static int set_reg(void *data, u64 val)
+{
+	struct fusb302_i2c_data *fusb = data;
+	u8 temp;
+
+	temp = (u8) val;
+	FUSB300Write(fusb->debug_address, 1, &temp);
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(fusbdata_reg_fops, get_reg, set_reg, "0x%02llx\n");
+
+int fusb302_debug_init(struct fusb302_i2c_data *fusb)
+{
+	struct dentry *ent;
+
+	fusb->debug_root = debugfs_create_dir("fusb302", NULL);
+
+	if (!fusb->debug_root) {
+		dev_err(&fusb->client->dev, "Couldn't create debug dir\n");
+		return -EINVAL;
+	}
+
+	ent = debugfs_create_file("register_dump",
+			S_IFREG | S_IRUGO,
+			fusb->debug_root, fusb,
+			&fusbreg_debugfs_ops);
+
+
+	if (!ent) {
+		dev_err(&fusb->client->dev, "Couldn't create reg dump\n");
+		return -EINVAL;
+	}
+
+	ent = debugfs_create_x32("address", S_IFREG | S_IWUSR | S_IRUGO,
+				fusb->debug_root, &(fusb->debug_address));
+	if (!ent) {
+		dev_err(&fusb->client->dev, "Error creating address entry\n");
+		return -EINVAL;
+	}
+
+	ent = debugfs_create_file("data", S_IFREG | S_IWUSR | S_IRUGO,
+				fusb->debug_root, fusb, &fusbdata_reg_fops);
+	if (!ent) {
+		dev_err(&fusb->client->dev, "Error creating data entry\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int fusb302_debug_remove(struct fusb302_i2c_data *fusb)
+{
+	debugfs_remove_recursive(fusb->debug_root);
+	return 0;
+}
+
 static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 {
 	struct fusb302_i2c_data *fusb;
@@ -2377,7 +2430,6 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	if (fusb_i2c_data->fsa321_switch)
 		FSA321_setSwitchState(fsa_lpm);
 
-	ret_device_file = device_create_file(&(i2c->dev), &dev_attr_reg_dump);
 	ret_device_file = device_create_file(&(i2c->dev), &dev_attr_state);
 	ret_device_file = device_create_file(&(i2c->dev), &dev_attr_CC_state);
 	ret_device_file = device_create_file(&(i2c->dev),
@@ -2465,6 +2517,8 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		goto unregister_dr;
 	}
 
+	fusb302_debug_init(fusb);
+
 	/* Initialize the Switch */
 	power_supply_changed(&fusb->switch_psy);
 	FUSB_LOG("probe successfully!\n");
@@ -2487,7 +2541,7 @@ static int fusb302_remove(struct i2c_client *i2c)
 {
 	struct fusb302_i2c_data *fusb = i2c_get_clientdata(i2c);
 
-	device_remove_file(&(i2c->dev), &dev_attr_reg_dump);
+	fusb302_debug_remove(fusb);
 	device_remove_file(&(i2c->dev), &dev_attr_state);
 	device_remove_file(&(i2c->dev), &dev_attr_CC_state);
 	device_remove_file(&(i2c->dev), &dev_attr_enable_vconn);
