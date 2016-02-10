@@ -72,6 +72,15 @@
 		};
 	};
 
+	cs35l34_reset_default: cs35l34_reset_default {
+		config {
+			pins = "gpio94";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
 	touch_reset_n {
 		/*label = "touch-reset";*/
 
