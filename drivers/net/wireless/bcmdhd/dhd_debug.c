@@ -135,42 +135,6 @@ struct log_level_table fw_event_level_map[] = {
 /* reference tab table */
 uint ref_tag_tbl[EVENT_LOG_TAG_MAX + 1] = {0};
 
-enum dbg_ring_state {
-	RING_STOP	= 0,	/* ring is not initialized */
-	RING_ACTIVE,	/* ring is live and logging */
-	RING_SUSPEND	/* ring is initialized but not logging */
-};
-
-struct ring_statistics {
-	/* number of bytes that was written to the buffer by driver */
-	uint32 written_bytes;
-	/* number of bytes that was read from the buffer by user land */
-	uint32 read_bytes;
-	/* number of records that was written to the buffer by driver */
-	uint32 written_records;
-};
-
-typedef struct dhd_dbg_ring {
-	int	id;		/* ring id */
-	uint8	name[DBGRING_NAME_MAX];	/* name string */
-	uint32	ring_size;	/* numbers of item in ring */
-	uint32	wp;		/* write pointer */
-	uint32	rp;		/* read pointer */
-	uint32  log_level; /* log_level */
-	uint32	threshold; /* threshold bytes */
-	void *	ring_buf;	/* pointer of actually ring buffer */
-	void *	lock;		/* spin lock for ring access */
-	struct ring_statistics stat; /* statistics */
-	enum dbg_ring_state state;	/* ring state enum */
-} dhd_dbg_ring_t;
-
-typedef struct dhd_dbg {
-	dhd_dbg_ring_t dbg_rings[DEBUG_RING_ID_MAX];
-	void *private;		/* os private_data */
-	dbg_pullreq_t pullreq;
-	dbg_urgent_noti_t urgent_notifier;
-} dhd_dbg_t;
-
 typedef struct dhddbg_loglist_item {
 	dll_t list;
 	event_log_hdr_t *hdr;

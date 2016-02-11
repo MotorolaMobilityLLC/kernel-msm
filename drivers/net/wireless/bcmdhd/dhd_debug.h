@@ -65,11 +65,6 @@ enum {
 #define DHD_EVENT_RING_NAME		"dhd_event"
 #define DHD_EVENT_RING_SIZE		(64 * 1024)
 
-#define DBG_RING_STATUS_SIZE (sizeof(dhd_dbg_ring_status_t))
-
-#define VALID_RING(id)	\
-	(id > DEBUG_RING_ID_INVALID && id < DEBUG_RING_ID_MAX)
-
 /* driver receive association command from kernel */
 #define WIFI_EVENT_ASSOCIATION_REQUESTED 0
 #define WIFI_EVENT_AUTH_COMPLETE 1
@@ -128,6 +123,42 @@ enum {
 #define WIFI_EVENT_ROAM_ASSOC_STARTED 36
 /* firmware receive assoc/reassoc confirm from ap */
 #define WIFI_EVENT_ROAM_ASSOC_COMPLETE 37
+/* firmware sends stop G_SCAN */
+#define WIFI_EVENT_G_SCAN_STOP 38
+/* firmware indicates G_SCAN scan cycle started */
+#define WIFI_EVENT_G_SCAN_CYCLE_STARTED 39
+/* firmware indicates G_SCAN scan cycle completed */
+#define WIFI_EVENT_G_SCAN_CYCLE_COMPLETED 40
+/* firmware indicates G_SCAN scan start for a particular bucket */
+#define WIFI_EVENT_G_SCAN_BUCKET_STARTED 41
+/* firmware indicates G_SCAN scan completed for particular bucket */
+#define WIFI_EVENT_G_SCAN_BUCKET_COMPLETED  42
+/* Event received from firmware about G_SCAN scan results being available */
+#define WIFI_EVENT_G_SCAN_RESULTS_AVAILABLE 43
+/* Event received from firmware with G_SCAN capabilities */
+#define WIFI_EVENT_G_SCAN_CAPABILITIES 44
+/* Event received from firmware when eligible candidate is found */
+#define WIFI_EVENT_ROAM_CANDIDATE_FOUND 45
+/* Event received from firmware when roam scan configuration gets enabled or disabled */
+#define WIFI_EVENT_ROAM_SCAN_CONFIG 46
+/* firmware/driver timed out authentication */
+#define WIFI_EVENT_AUTH_TIMEOUT 47
+/* firmware/driver timed out association */
+#define WIFI_EVENT_ASSOC_TIMEOUT 48
+/* firmware/driver encountered allocation failure */
+#define WIFI_EVENT_MEM_ALLOC_FAILURE 49
+/* driver added a PNO network in firmware */
+#define WIFI_EVENT_DRIVER_PNO_ADD 50
+/* driver removed a PNO network in firmware */
+#define WIFI_EVENT_DRIVER_PNO_REMOVE 51
+/* driver received PNO networks found indication from firmware */
+#define WIFI_EVENT_DRIVER_PNO_NETWORK_FOUND 52
+/* driver triggered a scan for PNO networks */
+#define WIFI_EVENT_DRIVER_PNO_SCAN_REQUESTED 53
+/* driver received scan results of PNO networks */
+#define WIFI_EVENT_DRIVER_PNO_SCAN_RESULT_FOUND 54
+/* driver updated scan results from PNO candidates to cfg80211 */
+#define WIFI_EVENT_DRIVER_PNO_SCAN_COMPLETE 55
 
 #define WIFI_TAG_VENDOR_SPECIFIC 0 /* take a byte stream as parameter */
 #define WIFI_TAG_BSSID 1 /* takes a 6 bytes MAC address as parameter */
@@ -147,6 +178,48 @@ enum {
 #define WIFI_TAG_INTERFACE 13 /* take interface name as parameter */
 #define WIFI_TAG_REASON_CODE 14 /* take a reason code as per 802.11 as parameter */
 #define WIFI_TAG_RATE_MBPS 15 /* take a wifi rate in 0.5 mbps */
+#define WIFI_TAG_REQUEST_ID 16 /* take an integer as parameter */
+#define WIFI_TAG_BUCKET_ID 17 /* take an integer as parameter */
+#define WIFI_TAG_GSCAN_PARAMS 18 /* takes a wifi_scan_cmd_params struct as parameter */
+#define WIFI_TAG_GSCAN_CAPABILITIES 19 /* takes a wifi_gscan_capabilities struct as parameter */
+#define WIFI_TAG_SCAN_ID 20 /* take an integer as parameter */
+#define WIFI_TAG_RSSI 21 /* takes s16 as parameter */
+#define WIFI_TAG_CHANNEL 22 /* takes u16 as parameter */
+#define WIFI_TAG_LINK_ID 23 /* take an integer as parameter */
+#define WIFI_TAG_LINK_ROLE 24 /* take an integer as parameter */
+#define WIFI_TAG_LINK_STATE 25 /* take an integer as parameter */
+#define WIFI_TAG_LINK_TYPE 26 /* take an integer as parameter */
+#define WIFI_TAG_TSCO 27 /* take an integer as parameter */
+#define WIFI_TAG_RSCO 28 /* take an integer as parameter */
+#define WIFI_TAG_EAPOL_MESSAGE_TYPE 29 /* take an integer as parameter */
+									   /* M1-1, M2-2, M3-3, M4-4 */
+
+#define TLV_LOG_SIZE(tlv) ((tlv) ? (sizeof(tlv_log) + (tlv)->len) : 0)
+
+#define TLV_LOG_NEXT(tlv)	\
+	((tlv) ? ((tlv_log *)((uint8 *)tlv + TLV_LOG_SIZE(tlv))) : 0)
+
+#define DBG_RING_STATUS_SIZE (sizeof(dhd_dbg_ring_status_t))
+
+#define VALID_RING(id)	\
+	(id > DEBUG_RING_ID_INVALID && id < DEBUG_RING_ID_MAX)
+
+#define DBG_RING_ENTRY_SIZE (sizeof(dhd_dbg_ring_entry_t))
+
+#define ENTRY_LENGTH(hdr) (hdr->len + DBG_RING_ENTRY_SIZE)
+
+#define DBG_RING_ACTIVE(dhdp, ring_id)	\
+	(dhdp->dbg->dbg_rings[ring_id].state == RING_ACTIVE)
+
+#define DBG_EVENT_LOG(dhdp, connect_state) 						\
+{																\
+	do {														\
+		uint16 state = connect_state;							\
+		if (DBG_RING_ACTIVE(dhdp, DHD_EVENT_RING_ID)) 			\
+			dhd_os_push_push_ring_data(dhdp, DHD_EVENT_RING_ID,	\
+				&state, sizeof(state)); 						\
+	} while (0); 												\
+}
 
 typedef struct {
     uint16 tag;
@@ -237,15 +310,10 @@ typedef struct dhd_dbg_ring_entry {
 	uint64 timestamp; /* present if has_timestamp bit is set. */
 }  __attribute__ ((packed)) dhd_dbg_ring_entry_t;
 
-#define DBG_RING_ENTRY_SIZE (sizeof(dhd_dbg_ring_entry_t))
-#define ENTRY_LENGTH(hdr) (hdr->len + DBG_RING_ENTRY_SIZE)
-#define DBG_EVENT_LOG(dhd, connect_state) \
-{											\
-	do {									\
-		uint16 state = connect_state;			\
-		dhd_os_push_push_ring_data(dhd, DHD_EVENT_RING_ID, &state, sizeof(state)); \
-	} while (0); 								\
-}
+typedef void (*dbg_pullreq_t)(void *os_priv, const int ring_id);
+
+typedef void (*dbg_urgent_noti_t) (dhd_pub_t *dhdp, const void *data, const uint32 len);
+
 typedef struct dhd_dbg_ring_status {
 	uint8 name[DBGRING_NAME_MAX];
 	uint32 flags;
@@ -261,15 +329,49 @@ typedef struct dhd_dbg_ring_status {
 	uint32 written_records;
 } dhd_dbg_ring_status_t;
 
+struct ring_statistics {
+	/* number of bytes that was written to the buffer by driver */
+	uint32 written_bytes;
+	/* number of bytes that was read from the buffer by user land */
+	uint32 read_bytes;
+	/* number of records that was written to the buffer by driver */
+	uint32 written_records;
+};
+
+enum dbg_ring_state {
+	RING_STOP	= 0,	/* ring is not initialized */
+	RING_ACTIVE,	/* ring is live and logging */
+	RING_SUSPEND	/* ring is initialized but not logging */
+};
+
+typedef struct dhd_dbg_ring {
+	int	id;		/* ring id */
+	uint8	name[DBGRING_NAME_MAX];	/* name string */
+	uint32	ring_size;	/* numbers of item in ring */
+	uint32	wp;		/* write pointer */
+	uint32	rp;		/* read pointer */
+	uint32  log_level; /* log_level */
+	uint32	threshold; /* threshold bytes */
+	void *	ring_buf;	/* pointer of actually ring buffer */
+	void *	lock;		/* spin lock for ring access */
+	struct ring_statistics stat; /* statistics */
+	enum dbg_ring_state state;	/* ring state enum */
+} dhd_dbg_ring_t;
+
+typedef struct dhd_dbg {
+	dhd_dbg_ring_t dbg_rings[DEBUG_RING_ID_MAX];
+	void *private;		/* os private_data */
+	dbg_pullreq_t pullreq;
+	dbg_urgent_noti_t urgent_notifier;
+} dhd_dbg_t;
+
 struct log_level_table {
 	int log_level;
 	uint16 tag;
 	char *desc;
 };
 
-typedef void (*dbg_pullreq_t)(void *os_priv, const int ring_id);
 
-typedef void (*dbg_urgent_noti_t) (dhd_pub_t *dhdp, const void *data, const uint32 len);
 /* dhd_dbg functions */
 extern int dhd_dbg_attach(dhd_pub_t *dhdp, dbg_pullreq_t os_pullreq,
 	dbg_urgent_noti_t os_urgent_notifier, void *os_priv);

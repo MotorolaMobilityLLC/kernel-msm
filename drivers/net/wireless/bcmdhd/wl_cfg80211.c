@@ -40,6 +40,7 @@
 #include <dngl_stats.h>
 #include <dhd.h>
 #include <dhd_linux.h>
+#include <dhd_debug.h>
 #include <dhdioctl.h>
 #include <wlioctl.h>
 #include <dhd_cfg80211.h>
@@ -8069,6 +8070,11 @@ static s32 wl_inform_single_bss(struct bcm_cfg80211 *cfg, struct wl_bss_info *bi
 	struct wl_scan_req *sr = wl_to_sr(cfg);
 	struct beacon_proberesp *beacon_proberesp;
 	struct cfg80211_bss *cbss = NULL;
+	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
+	log_conn_event_t *event_data = NULL;
+	tlv_log *tlv_data = NULL;
+	u32 alloc_len;
+	u32 payload_len;
 	s32 mgmt_type;
 	s32 signal;
 	u32 freq;
@@ -8171,6 +8177,50 @@ static s32 wl_inform_single_bss(struct bcm_cfg80211 *cfg, struct wl_bss_info *bi
 #else
 	cfg80211_put_bss(cbss);
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0) */
+
+	if (DBG_RING_ACTIVE(dhdp, DHD_EVENT_RING_ID) &&
+		(cfg->sched_scan_req && !cfg->scan_request)) {
+		alloc_len = sizeof(log_conn_event_t) + (3 * sizeof(tlv_log)) +
+						IEEE80211_MAX_SSID_LEN + sizeof(uint16) +
+						sizeof(int16);
+		event_data = MALLOCZ(dhdp->osh, alloc_len);
+		if (!event_data) {
+			WL_ERR(("%s: failed to allocate the log_conn_event_t with "
+				"length(%d)\n", __func__, alloc_len));
+			goto out_err;
+		}
+
+		payload_len = sizeof(log_conn_event_t);
+		event_data->event = WIFI_EVENT_DRIVER_PNO_SCAN_RESULT_FOUND;
+		tlv_data = event_data->tlvs;
+
+		/* ssid */
+		tlv_data->tag = WIFI_TAG_SSID;
+		tlv_data->len = bi->SSID_len;
+		memcpy(tlv_data->value, bi->SSID, bi->SSID_len);
+		payload_len += TLV_LOG_SIZE(tlv_data);
+		tlv_data = TLV_LOG_NEXT(tlv_data);
+
+		/* channel */
+		tlv_data->tag = WIFI_TAG_CHANNEL;
+		tlv_data->len = sizeof(uint16);
+		memcpy(tlv_data->value, &notif_bss_info->channel, sizeof(uint16));
+		payload_len += TLV_LOG_SIZE(tlv_data);
+		tlv_data = TLV_LOG_NEXT(tlv_data);
+
+		/* rssi */
+		tlv_data->tag = WIFI_TAG_RSSI;
+		tlv_data->len = sizeof(int16);
+		memcpy(tlv_data->value, &notif_bss_info->rssi, sizeof(int16));
+		payload_len += TLV_LOG_SIZE(tlv_data);
+		tlv_data = TLV_LOG_NEXT(tlv_data);
+
+		dhd_os_push_push_ring_data(dhdp, DHD_EVENT_RING_ID,
+			event_data, payload_len);
+		MFREE(dhdp->osh, event_data, alloc_len);
+	}
+
+out_err:
 	kfree(notif_bss_info);
 	return err;
 }
@@ -9635,6 +9685,7 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 {
 	wl_pfn_net_info_t *netinfo, *pnetinfo;
 	struct wiphy *wiphy	= bcmcfg_to_wiphy(cfg);
+	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
 	int err = 0;
 	struct cfg80211_scan_request *request = NULL;
 	struct cfg80211_ssid ssid[MAX_PFN_LIST_COUNT];
@@ -9643,6 +9694,10 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	int band = 0;
 	struct wl_pfn_scanresults *pfn_result = (struct wl_pfn_scanresults *)data;
 	int n_pfn_results = pfn_result->count;
+	log_conn_event_t *event_data = NULL;
+	tlv_log *tlv_data = NULL;
+	u32 alloc_len;
+	u32 payload_len;
 
 	WL_DBG(("Enter\n"));
 
@@ -9680,6 +9735,18 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 
 		request->wiphy = wiphy;
 
+		if (DBG_RING_ACTIVE(dhdp, DHD_EVENT_RING_ID)) {
+			alloc_len = sizeof(log_conn_event_t) + (3 * sizeof(tlv_log)) +
+							DOT11_MAX_SSID_LEN + sizeof(uint16) +
+							sizeof(int16);
+			event_data = MALLOC(dhdp->osh, alloc_len);
+			if (!event_data) {
+				WL_ERR(("%s: failed to allocate the log_conn_event_t with "
+					"length(%d)\n", __func__, alloc_len));
+				goto out_err;
+			}
+		}
+
 		for (i = 0; i < n_pfn_results; i++) {
 			netinfo = &pnetinfo[i];
 			if (!netinfo) {
@@ -9708,6 +9775,37 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 			channel[i].flags |= IEEE80211_CHAN_NO_HT40;
 			request->channels[i] = &channel[i];
 			request->n_channels++;
+
+			if (DBG_RING_ACTIVE(dhdp, DHD_EVENT_RING_ID)) {
+				payload_len = sizeof(log_conn_event_t);
+				memset(event_data, 0, alloc_len);
+				event_data->event = WIFI_EVENT_DRIVER_PNO_NETWORK_FOUND;
+				tlv_data = event_data->tlvs;
+
+				/* ssid */
+				tlv_data->tag = WIFI_TAG_SSID;
+				tlv_data->len = netinfo->pfnsubnet.SSID_len;
+				memcpy(tlv_data->value, ssid[i].ssid, ssid[i].ssid_len);
+				payload_len += TLV_LOG_SIZE(tlv_data);
+				tlv_data = TLV_LOG_NEXT(tlv_data);
+
+				/* channel */
+				tlv_data->tag = WIFI_TAG_CHANNEL;
+				tlv_data->len = sizeof(uint16);
+				memcpy(tlv_data->value, &channel_req, sizeof(uint16));
+				payload_len += TLV_LOG_SIZE(tlv_data);
+				tlv_data = TLV_LOG_NEXT(tlv_data);
+
+				/* rssi */
+				tlv_data->tag = WIFI_TAG_RSSI;
+				tlv_data->len = sizeof(int16);
+				memcpy(tlv_data->value, &netinfo->RSSI, sizeof(int16));
+				payload_len += TLV_LOG_SIZE(tlv_data);
+				tlv_data = TLV_LOG_NEXT(tlv_data);
+
+				dhd_os_push_push_ring_data(dhdp, DHD_EVENT_RING_ID,
+					&event_data->event, payload_len);
+			}
 		}
 
 		/* assign parsed ssid array */
@@ -9744,6 +9842,8 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 			wl_clr_drv_status(cfg, SCANNING, ndev);
 			goto out_err;
 		}
+
+		DBG_EVENT_LOG(dhdp, WIFI_EVENT_DRIVER_PNO_SCAN_REQUESTED);
 		cfg->sched_scan_running = TRUE;
 	}
 	else {
@@ -9754,6 +9854,9 @@ out_err:
 		kfree(request);
 	if (channel)
 		kfree(channel);
+	if (event_data) {
+		MFREE(dhdp->osh, event_data, alloc_len);
+	}
 	return err;
 }
 #endif /* WL_SCHED_SCAN */
@@ -10112,6 +10215,7 @@ static s32 wl_notify_escan_complete(struct bcm_cfg80211 *cfg,
 	s32 err = BCME_OK;
 	unsigned long flags;
 	struct net_device *dev;
+	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
 
 	WL_DBG(("Enter \n"));
 
@@ -10162,6 +10266,8 @@ static s32 wl_notify_escan_complete(struct bcm_cfg80211 *cfg,
 			cfg80211_sched_scan_results(cfg->sched_scan_req->wiphy);
 			printk(">> SCHED SCAN RESULT %d\n", count);
 		}
+
+		DBG_EVENT_LOG(dhdp, WIFI_EVENT_DRIVER_PNO_SCAN_COMPLETE);
 		cfg->sched_scan_running = FALSE;
 	}
 #endif /* WL_SCHED_SCAN */

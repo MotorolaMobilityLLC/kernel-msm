@@ -58,7 +58,11 @@ struct log_level_table dhd_event_map[] = {
 	{1, WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED, "DRIVER EAPOL RX"},
 	{2, WIFI_EVENT_DRIVER_SCAN_REQUESTED, "SCAN_REQUESTED"},
 	{2, WIFI_EVENT_DRIVER_SCAN_COMPLETE, "SCAN COMPELETE"},
-	{3, WIFI_EVENT_DRIVER_SCAN_RESULT_FOUND, "SCAN RESULT FOUND"}
+	{3, WIFI_EVENT_DRIVER_SCAN_RESULT_FOUND, "SCAN RESULT FOUND"},
+	{2, WIFI_EVENT_DRIVER_PNO_NETWORK_FOUND, "PNO NETWORK FOUND"},
+	{2, WIFI_EVENT_DRIVER_PNO_SCAN_REQUESTED, "PNO SCAN_REQUESTED"},
+	{1, WIFI_EVENT_DRIVER_PNO_SCAN_RESULT_FOUND, "PNO SCAN RESULT FOUND"},
+	{1, WIFI_EVENT_DRIVER_PNO_SCAN_COMPLETE, "PNO SCAN COMPELETE"},
 };
 
 static void
@@ -300,7 +304,7 @@ dhd_os_push_push_ring_data(dhd_pub_t *dhdp, int ring_id, void *data, int32 data_
 {
 	int ret = BCME_OK, i;
 	dhd_dbg_ring_entry_t msg_hdr;
-	log_conn_event_t event_data;
+	log_conn_event_t *event_data = (log_conn_event_t *)data;
 	linux_dbgring_info_t *os_priv, *ring_info = NULL;
 
 	if (!VALID_RING(ring_id))
@@ -321,17 +325,16 @@ dhd_os_push_push_ring_data(dhd_pub_t *dhdp, int ring_id, void *data, int32 data_
 		msg_hdr.timestamp = local_clock();
 		/* convert to ms */
 		do_div(msg_hdr.timestamp, 1000000);
-		msg_hdr.len = sizeof(event_data);
-		event_data.event = *((uint16 *)(data));
+		msg_hdr.len = data_len;
 		/* filter the event for higher log level with current log level */
 		for (i = 0; i < ARRAYSIZE(dhd_event_map); i++) {
-			if ((dhd_event_map[i].tag == event_data.event) &&
+			if ((dhd_event_map[i].tag == event_data->event) &&
 				dhd_event_map[i].log_level > ring_info->log_level) {
 				return ret;
 			}
 		}
 	}
-	ret = dhd_dbg_ring_push(dhdp, ring_id, &msg_hdr, &event_data);
+	ret = dhd_dbg_ring_push(dhdp, ring_id, &msg_hdr, event_data);
 	if (ret) {
 		DHD_ERROR(("%s : failed to push data into the ring (%d) with ret(%d)\n",
 			__FUNCTION__, ring_id, ret));
