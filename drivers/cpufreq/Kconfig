@@ -144,6 +144,11 @@ config CPU_FREQ_DEFAULT_GOV_DANCEDANCE
             help
               Use the CPUFreq governor 'dancedance' as default.
 
+config CPU_FREQ_DEFAULT_GOV_NIGHTMARE
+	bool "nightmare"
+	select CPU_FREQ_GOV_NIGHTMARE
+	help
+
 endchoice
 
 config CPU_FREQ_GOV_ZZMOOVE
@@ -283,6 +288,10 @@ config CPUFREQ_DT
 	  systems which share clock and voltage across all CPUs.
 
 	  If in doubt, say N.
+
+config CPU_FREQ_GOV_NIGHTMARE
+	tristate "'nightmare' cpufreq governor"
+	depends on CPU_FREQ
 
 config CPU_BOOST
 	tristate "Event base short term CPU freq boost"
