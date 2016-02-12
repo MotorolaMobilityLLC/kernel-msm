@@ -992,9 +992,11 @@
 &pmi8994_charger {
 	status = "okay";
 	gpios = <&tlmm 72 0x0>, /* GPIOF_OUT_INIT_LOW */
-		<&tlmm 62 0x1>; /* GPIOF_IN */
+		<&tlmm 62 0x1>, /* GPIOF_IN */
+		<&pm8994_gpios 8 0>; /* TOGL_RST, output-low */
 	gpio-names = "eb_vbus_en",
-		     "factory_warn";
+		     "factory_warn",
+		     "togl_rst";
 	pinctrl-names = "default", "eb_active";
 	pinctrl-0 = <&eb_vbus_conf &kungpow_default>;
 	pinctrl-1 = <&eb_vbus_active &kungpow_default>;
@@ -1107,6 +1109,15 @@
 		qcom,src-sel = <0>;	/* GPIO */
 		qcom,master-en = <1>;	/* Enable GPIO */
 		qcom,invert = <1>;	/* Output high */
+		status = "okay";
+	};
+
+	gpio@c700 { /* GPIO 8 - TGL_RST/FACT_EN */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
 		status = "okay";
 	};
 
