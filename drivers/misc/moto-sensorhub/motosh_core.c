@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 Motorola Mobility LLC
+ * Copyright (C) 2010-2016 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -814,6 +814,7 @@ motosh_of_init(struct i2c_client *client)
 		return NULL;
 	}
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	if (of_property_read_u32(np, "qd_pm_qos_latency",
 				&pdata->qd_pm_qos_latency)) {
 		dev_warn(&motosh_misc_data->client->dev,
@@ -826,6 +827,11 @@ motosh_of_init(struct i2c_client *client)
 			"PM QoS timeout not configured!\n");
 		pdata->qd_pm_qos_timeout = 0;
 	}
+
+	pdata->aod_touch_mode = 0;
+	of_property_read_u32(np, "aod_touch_mode",
+			&pdata->aod_touch_mode);
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 	of_property_read_u32(np, "bslen_pin_active_value",
 				&pdata->bslen_pin_active_value);
@@ -870,16 +876,59 @@ motosh_of_init(struct i2c_client *client)
 				&pdata->ct406_als_lux2_c1_mult);
 	of_property_read_u32(np, "ct406_als_lux2_div",
 				&pdata->ct406_als_lux2_div);
+
+#ifdef CONFIG_SENSORS_MOTOSH_HEADSET
+	pdata->headset_detect_enable = 0;
+	pdata->headset_insertion_debounce = 0x01F4;
+	pdata->headset_removal_debounce = 0x01F4;
+	pdata->headset_button_down_debounce = 0x0032;
+	pdata->headset_button_up_debounce = 0x0032;
+	pdata->headset_button_0_1_threshold = 0x0096;
+	pdata->headset_button_1_2_threshold = 0x012C;
+	pdata->headset_button_2_3_threshold = 0x01C2;
+	pdata->headset_button_3_upper_threshold = 0x02EE;
+	pdata->headset_button_1_keycode = 0xE2;
+	pdata->headset_button_2_keycode = 0x0;
+	pdata->headset_button_3_keycode = 0x0;
+	pdata->headset_button_4_keycode = 0x0;
+	of_property_read_u32(np, "headset_detect_enable",
+			&pdata->headset_detect_enable);
+	of_property_read_u32(np, "headset_insertion_debounce",
+			&pdata->headset_insertion_debounce);
+	of_property_read_u32(np, "headset_removal_debounce",
+			&pdata->headset_removal_debounce);
+	of_property_read_u32(np, "headset_button_down_debounce",
+			&pdata->headset_button_down_debounce);
+	of_property_read_u32(np, "headset_button_up_debounce",
+			&pdata->headset_button_up_debounce);
+	of_property_read_u32(np, "headset_button_0-1_threshold",
+			&pdata->headset_button_0_1_threshold);
+	of_property_read_u32(np, "headset_button_1-2_threshold",
+			&pdata->headset_button_1_2_threshold);
+	of_property_read_u32(np, "headset_button_2-3_threshold",
+			&pdata->headset_button_2_3_threshold);
+	of_property_read_u32(np, "headset_button_3-upper_threshold",
+			&pdata->headset_button_3_upper_threshold);
+	of_property_read_u32(np, "headset_button_1_keycode",
+			&pdata->headset_button_1_keycode);
+	of_property_read_u32(np, "headset_button_2_keycode",
+			&pdata->headset_button_2_keycode);
+	of_property_read_u32(np, "headset_button_3_keycode",
+			&pdata->headset_button_3_keycode);
+	of_property_read_u32(np, "headset_button_4_keycode",
+			&pdata->headset_button_4_keycode);
+#endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
+
 	pdata->cover_detect_polarity = MOTOSH_HALL_NO_DETECT;
 	of_property_read_u32(np, "cover_detect_polarity",
 				&pdata->cover_detect_polarity);
+
 	pdata->accel_orient = 1;
 	pdata->gyro_orient = 1;
 	pdata->mag_orient = 1;
 	pdata->mag_config = 0;
 	pdata->panel_type = 1;
 	pdata->IR_config = 1;
-	pdata->aod_touch_mode = 0;
 	of_property_read_u32(np, "accel_orient",
 			&pdata->accel_orient);
 	of_property_read_u32(np, "gyro_orient",
@@ -892,8 +941,7 @@ motosh_of_init(struct i2c_client *client)
 			&pdata->panel_type);
 	of_property_read_u32(np, "IR_config",
 			&pdata->IR_config);
-	of_property_read_u32(np, "aod_touch_mode",
-			&pdata->aod_touch_mode);
+
 	return pdata;
 }
 #else
@@ -1068,6 +1116,7 @@ static void motosh_gpio_free(struct motosh_platform_data *pdata)
 		gpio_free(pdata->gpio_sh_wake_resp);
 }
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 #if defined(CONFIG_FB)
 static int motosh_fb_notifier_callback(struct notifier_block *self,
 	unsigned long event, void *data)
@@ -1125,6 +1174,7 @@ exit:
 	return 0;
 }
 #endif
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 static int motosh_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
@@ -1205,7 +1255,9 @@ static int motosh_probe(struct i2c_client *client,
 	wake_lock_init(&ps_motosh->reset_wakelock, WAKE_LOCK_SUSPEND,
 		"motosh_reset");
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	mutex_init(&ps_motosh->aod_enabled.vote_lock);
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 	/* Set to passive mode by default */
 	motosh_g_nonwake_sensor_state = 0;
@@ -1351,6 +1403,24 @@ static int motosh_probe(struct i2c_client *client,
 	input_set_capability(ps_motosh->input_dev, EV_KEY, KEY_POWER);
 	input_set_capability(ps_motosh->input_dev, EV_KEY, KEY_CAMERA);
 	input_set_capability(ps_motosh->input_dev, EV_SW, SW_LID);
+#ifdef CONFIG_SENSORS_MOTOSH_HEADSET
+	if (pdata->headset_button_1_keycode > 0)
+		input_set_capability(ps_motosh->input_dev, EV_KEY,
+				pdata->headset_button_1_keycode);
+	if (pdata->headset_button_2_keycode > 0)
+		input_set_capability(ps_motosh->input_dev, EV_KEY,
+				pdata->headset_button_2_keycode);
+	if (pdata->headset_button_3_keycode > 0)
+		input_set_capability(ps_motosh->input_dev, EV_KEY,
+				pdata->headset_button_3_keycode);
+	if (pdata->headset_button_4_keycode > 0)
+		input_set_capability(ps_motosh->input_dev, EV_KEY,
+				pdata->headset_button_4_keycode);
+	input_set_capability(ps_motosh->input_dev, EV_SW,
+			SW_HEADPHONE_INSERT);
+	input_set_capability(ps_motosh->input_dev, EV_SW,
+			SW_MICROPHONE_INSERT);
+#endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
 	ps_motosh->input_dev->name = "sensorprocessor";
 
 	err = input_register_device(ps_motosh->input_dev);
@@ -1361,6 +1431,7 @@ static int motosh_probe(struct i2c_client *client,
 		goto err9;
 	}
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 #if defined(CONFIG_FB)
 	ps_motosh->fb_notif.notifier_call = motosh_fb_notifier_callback;
 	/* We must make sure we are the first callback to run, high priority */
@@ -1372,7 +1443,6 @@ static int motosh_probe(struct i2c_client *client,
 		goto err10;
 	}
 #endif
-
 	ps_motosh->quickpeek_work_queue =
 		create_singlethread_workqueue("motosh_quickpeek_wq");
 	if (!ps_motosh->quickpeek_work_queue) {
@@ -1396,11 +1466,12 @@ static int motosh_probe(struct i2c_client *client,
 
 	motosh_quickwakeup_init(ps_motosh);
 
-	ps_motosh->is_suspended = false;
-	ps_motosh->resume_cleanup = false;
-
 	pm_qos_add_request(&ps_motosh->pm_qos_req_dma,
 			PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
+
+	ps_motosh->is_suspended = false;
+	ps_motosh->resume_cleanup = false;
 
 	/* We could call switch_motosh_mode(NORMALMODE) at this point, but
 	 * instead we will hold the part in reset and only go to NORMALMODE on a
@@ -1432,11 +1503,13 @@ static int motosh_probe(struct i2c_client *client,
 
 	return 0;
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 err11:
 #if defined(CONFIG_FB)
 	fb_unregister_client(&ps_motosh->fb_notif);
 err10:
 #endif
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 err9:
 	input_free_device(ps_motosh->input_dev);
 err8:
@@ -1492,15 +1565,19 @@ static int motosh_remove(struct i2c_client *client)
 	wake_unlock(&ps_motosh->reset_wakelock);
 	wake_lock_destroy(&ps_motosh->reset_wakelock);
 	disable_irq_wake(ps_motosh->irq);
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	pm_qos_remove_request(&ps_motosh->pm_qos_req_dma);
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 	regulator_disable(ps_motosh->regulator_2);
 	regulator_disable(ps_motosh->regulator_1);
 	regulator_put(ps_motosh->regulator_2);
 	regulator_put(ps_motosh->regulator_1);
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 #if defined(CONFIG_FB)
 	fb_unregister_client(&ps_motosh->fb_notif);
 #endif
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 	kfree(ps_motosh);
 
 	return 0;
@@ -1593,6 +1670,7 @@ static int motosh_suspend(struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 static int motosh_suspend_late(struct device *dev)
 {
 	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
@@ -1605,6 +1683,7 @@ static int motosh_suspend_late(struct device *dev)
 
 	return 0;
 }
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 static int motosh_suspend_noirq(struct device *dev)
 {
@@ -1625,7 +1704,9 @@ static int motosh_suspend_noirq(struct device *dev)
 		ret = -EBUSY;
 	}
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	ps_motosh->quickpeek_occurred = false;
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 	mutex_unlock(&ps_motosh->lock);
 
@@ -1634,7 +1715,9 @@ static int motosh_suspend_noirq(struct device *dev)
 
 static const struct dev_pm_ops motosh_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(motosh_suspend, motosh_resume)
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	.suspend_late = motosh_suspend_late,
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 	.suspend_noirq = motosh_suspend_noirq,
 	.resume_early = motosh_resume_early,
 };
