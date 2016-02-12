@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 Motorola Mobility LLC
+ * Copyright (C) 2010-2016 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -113,7 +113,9 @@ int motosh_reset_and_init(enum reset_mode mode)
 	unsigned int i;
 	int err = 0, ret_err = 0;
 	unsigned char *rst_cmdbuff;
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	int mutex_locked = 0;
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 	dev_dbg(&motosh_misc_data->client->dev,
 		 "motosh_reset_and_init %d\n", (int)mode);
@@ -151,7 +153,11 @@ int motosh_reset_and_init(enum reset_mode mode)
 	rst_cmdbuff[3] = pdata->mag_orient & 0xff;
 	rst_cmdbuff[4] = pdata->panel_type & 0xff;
 	rst_cmdbuff[5] = pdata->IR_config & 0xff;
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	rst_cmdbuff[6] = pdata->aod_touch_mode & 0xff;
+#else
+	rst_cmdbuff[6] = 0;
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 	rst_cmdbuff[7] = pdata->mag_config & 0xff;
 	err = motosh_i2c_write_no_reset(motosh_misc_data,
 					rst_cmdbuff, 8);
@@ -295,6 +301,43 @@ int motosh_reset_and_init(enum reset_mode mode)
 	if (err < 0)
 		ret_err = err;
 
+#ifdef CONFIG_SENSORS_MOTOSH_HEADSET
+	rst_cmdbuff[0] = HEADSET_SETTINGS;
+	rst_cmdbuff[1] = (pdata->headset_insertion_debounce >> 8) & 0xff;
+	rst_cmdbuff[2] = pdata->headset_insertion_debounce & 0xff;
+	rst_cmdbuff[3] = (pdata->headset_removal_debounce >> 8) & 0xff;
+	rst_cmdbuff[4] = pdata->headset_removal_debounce & 0xff;
+	rst_cmdbuff[5] = (pdata->headset_button_down_debounce >> 8) & 0xff;
+	rst_cmdbuff[6] = pdata->headset_button_down_debounce & 0xff;
+	rst_cmdbuff[7] = (pdata->headset_button_up_debounce >> 8) & 0xff;
+	rst_cmdbuff[8] = pdata->headset_button_up_debounce & 0xff;
+	rst_cmdbuff[9] = (pdata->headset_button_0_1_threshold >> 8) & 0xff;
+	rst_cmdbuff[10] = pdata->headset_button_0_1_threshold & 0xff;
+	rst_cmdbuff[11] = (pdata->headset_button_1_2_threshold >> 8) & 0xff;
+	rst_cmdbuff[12] = pdata->headset_button_1_2_threshold & 0xff;
+	rst_cmdbuff[13] = (pdata->headset_button_2_3_threshold >> 8) & 0xff;
+	rst_cmdbuff[14] = pdata->headset_button_2_3_threshold & 0xff;
+	rst_cmdbuff[15] = (pdata->headset_button_3_upper_threshold >> 8) & 0xff;
+	rst_cmdbuff[16] = pdata->headset_button_3_upper_threshold & 0xff;
+	err = motosh_i2c_write_no_reset(motosh_misc_data,
+					rst_cmdbuff, 17);
+	if (err < 0) {
+		dev_err(&motosh_misc_data->client->dev,
+				"Unable to write headset settings %d", err);
+		ret_err = err;
+	} else {
+		rst_cmdbuff[0] = HEADSET_CONTROL;
+		rst_cmdbuff[1] = pdata->headset_detect_enable & 0xFF;
+		err = motosh_i2c_write_no_reset(motosh_misc_data,
+					rst_cmdbuff, 2);
+		if (err < 0) {
+			dev_err(&motosh_misc_data->client->dev,
+					"Unable to write headset detect enable");
+			ret_err = err;
+		}
+	}
+#endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
+
 	getnstimeofday(&current_time);
 	current_time.tv_sec += motosh_time_delta;
 
@@ -380,18 +423,20 @@ int motosh_reset_and_init(enum reset_mode mode)
 		ret_err = err;
 #endif
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	/* Write the current touch configuration to
 	 * the sensorhub.  On reset force the update even
 	 * if the touch driver says nothing has changed. */
 	motosh_check_touch_config_locked(FORCE_UPDATE);
 
-	/* sending reset to slpc hal */
-	motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET, NULL, 0, false);
-
 	mutex_locked = mutex_trylock(&motosh_misc_data->lock);
 	motosh_quickpeek_reset_locked(motosh_misc_data);
 	if (mutex_locked)
 		mutex_unlock(&motosh_misc_data->lock);
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
+
+	/* sending reset to slpc hal */
+	motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET, NULL, 0, false);
 
 	kfree(rst_cmdbuff);
 	motosh_sleep(motosh_misc_data);
