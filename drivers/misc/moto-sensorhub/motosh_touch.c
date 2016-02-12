@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2015 Motorola Mobility LLC
- *
- * Copyright (C) 2015 Dan Moore <dtmoore@motorola.com>
+ * Copyright (C) 2015-2016 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,6 +11,8 @@
  * GNU General Public License for more details.
  *
  */
+
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 
 #include <linux/motosh.h>
 
@@ -272,3 +272,5 @@ int motosh_check_touch_config_locked(enum check_touch_type check_type)
 }
 
 #endif /* #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_CTRL_ACCESS_BLK) */
+
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
