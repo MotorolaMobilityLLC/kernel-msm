@@ -16,25 +16,26 @@
 #define __MOTOSH_H__
 
 #include <linux/cdev.h>
-#include <linux/wakelock.h>
+#include <linux/i2c.h>
 #include <linux/spinlock.h>
 #include <linux/switch.h>
+#include <linux/wakelock.h>
 
 /* The user-space-visible definitions. */
 #include <uapi/linux/motosh.h>
-
-#include <linux/spinlock.h>
 
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 #include <linux/mmi_hall_notifier.h>
 #endif
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 #include <linux/fb_quickdraw.h>
 #include <linux/pm_qos.h>
 #if defined(CONFIG_FB)
 #include <linux/notifier.h>
 #include <linux/fb.h>
 #endif
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 #ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
 #include <linux/power_supply.h>
@@ -236,6 +237,9 @@ enum vmm_ids {
 #define LIFT_DISTANCE	0
 #define LIFT_ROTATION	4
 #define LIFT_GRAV_DIFF	8
+#ifdef CONFIG_SENSORS_MOTOSH_HEADSET
+#define HEADSET_VALUE   0
+#endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
 
 #ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
 /* motosh_g_antcap_enabled */
@@ -286,6 +290,17 @@ enum vmm_ids {
 #define MOTOSH_HALL_NORTH_DETECT 2
 #define MOTOSH_HALL_NORTH_OR_SOUTH_DETECT 3
 
+#ifdef CONFIG_SENSORS_MOTOSH_HEADSET
+#define SH_HEADSET_EMPTY          0x00
+#define SH_HEADPHONE_DETECTED     0x01
+#define SH_HEADSET_DETECTED       0x02
+#define SH_HEADSET_BUTTON_1_DOWN  0x04
+#define SH_HEADSET_BUTTON_2_DOWN  0x08
+#define SH_HEADSET_BUTTON_3_DOWN  0x10
+#define SH_HEADSET_BUTTON_4_DOWN  0x20
+#endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
+
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 enum check_touch_type {
 	NORMAL_CHECK,
 	FORCE_UPDATE
@@ -308,6 +323,7 @@ struct motosh_aod_enabled_vote {
 	unsigned int vote;
 	unsigned int resolved_vote;
 };
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 struct motosh_platform_data {
 	int (*init)(void);
@@ -323,8 +339,11 @@ struct motosh_platform_data {
 	unsigned int bslen_pin_active_value;
 	u16 lux_table[LIGHTING_TABLE_SIZE];
 	u8 brightness_table[LIGHTING_TABLE_SIZE];
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	int qd_pm_qos_latency;
 	unsigned int qd_pm_qos_timeout;
+	int aod_touch_mode;
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 	char fw_version[FW_VERSION_SIZE];
 	char fw_version_str[FW_VERSION_STR_MAX_LEN];
 	int ct406_detect_threshold;
@@ -345,7 +364,21 @@ struct motosh_platform_data {
 	int panel_type;
 	int IR_config;
 	int cover_detect_polarity;
-	int aod_touch_mode;
+#ifdef CONFIG_SENSORS_MOTOSH_HEADSET
+	int headset_detect_enable;
+	int headset_insertion_debounce;
+	int headset_removal_debounce;
+	int headset_button_down_debounce;
+	int headset_button_up_debounce;
+	int headset_button_0_1_threshold;
+	int headset_button_1_2_threshold;
+	int headset_button_2_3_threshold;
+	int headset_button_3_upper_threshold;
+	int headset_button_1_keycode;
+	int headset_button_2_keycode;
+	int headset_button_3_keycode;
+	int headset_button_4_keycode;
+#endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
 };
 
 /**
@@ -411,6 +444,7 @@ struct motosh_data {
 	struct regulator *regulator_1;
 	struct regulator *regulator_2;
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	/* Quick peek data */
 	struct workqueue_struct *quickpeek_work_queue;
 	struct work_struct quickpeek_work;
@@ -421,12 +455,14 @@ struct motosh_data {
 	bool quickpeek_occurred;
 	unsigned long qw_irq_status;
 	struct motosh_aod_enabled_vote aod_enabled;
-	bool ignore_wakeable_interrupts;
-	int ignored_interrupts;
 	bool qp_in_progress;
 	bool qp_prepared;
 	struct mutex qp_list_lock;
 	struct pm_qos_request pm_qos_req_dma;
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
+
+	bool ignore_wakeable_interrupts;
+	int ignored_interrupts;
 
 	bool in_reset_and_init;
 	bool is_suspended;
@@ -535,6 +571,7 @@ int motosh_irq_wake_work_func_display_locked(struct motosh_data *ps_motosh,
 	unsigned short irq_status);
 unsigned short motosh_get_interrupt_status(struct motosh_data *ps_motosh,
 	unsigned char reg, int *err);
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 void motosh_quickpeek_work_func(struct work_struct *work);
 void motosh_quickpeek_reset_locked(struct motosh_data *ps_motosh);
 int motosh_quickpeek_disable_when_idle(struct motosh_data *ps_motosh);
@@ -549,6 +586,9 @@ int motosh_display_handle_touch_locked(struct motosh_data *ps_motosh);
 int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh);
 void motosh_quickwakeup_init(struct motosh_data *ps_motosh);
 
+int motosh_check_touch_config_locked(enum check_touch_type);
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
+
 int motosh_boot_flash_erase(void);
 int motosh_get_version(struct motosh_data *ps_motosh);
 int motosh_get_version_str(struct motosh_data *ps_motosh);
@@ -560,8 +600,6 @@ int64_t motosh_time_recover(int32_t hubshort, int64_t cur_time);
 int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time);
 
 void motosh_time_compare(void);
-
-int motosh_check_touch_config_locked(enum check_touch_type);
 
 extern struct motosh_data *motosh_misc_data;
 
