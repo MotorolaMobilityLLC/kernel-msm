@@ -199,6 +199,7 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 ARCH		?= arm64
 CROSS_COMPILE	?= /home/anon/android/toolchains/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+INSTALL_MOD_PATH ?= /home/anon/android/kernel
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -882,7 +883,7 @@ define filechk_utsrelease.h
 	  exit 1;                                                         \
 	fi;                                                               \
 	(echo \#define UTS_RELEASE \"$(KERNELRELEASE)\";                  \
-	echo \#define SHORT_UTS_RELEASE \"$(KERNELVERSION)$(CONFIG_LOCALVERSION)\";)
+	echo \#define SHORT_UTS_RELEASE \"$(KERNELRELEASE)\";)
 endef
 
 define filechk_version.h
