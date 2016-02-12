@@ -180,3 +180,7 @@
 &mdss_hdmi_tx {
 	qcom,hdmi-tx-hpd = <&tlmm 79 0>;
 };
+
+&muc_svc {
+	mmi,default-root-ver = /bits/ 8 <1>;
+};
