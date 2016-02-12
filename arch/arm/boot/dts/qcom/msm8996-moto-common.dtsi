@@ -846,11 +846,12 @@
 		pinctrl-1 = <&muc_attach &spi_0_active &muc_spi_ctrl>;
 	};
 
-	muc_svc@0 {
+	muc_svc: muc_svc@0 {
 		compatible = "mmi,muc_svc";
 
 		mmi,use-authentication;
 		mmi,endo-mask = <0x4755>;
+		mmi,default-root-ver = /bits/ 8 <2>;
 	};
 
 	apba_ctrl {
