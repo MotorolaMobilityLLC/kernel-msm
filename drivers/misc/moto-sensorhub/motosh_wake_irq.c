@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 Motorola Mobility LLC
+ * Copyright (C) 2010-2016 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -43,6 +43,20 @@
 
 #define SPURIOUS_INT_DELAY 800 /* ms */
 #define MAX_NUM_LOGS_PER_INT  25
+
+#ifdef CONFIG_SENSORS_MOTOSH_HEADSET
+enum headset_state_t {
+	SH_HEADSET_REMOVED,
+	SH_HEADPHONE_INSERTED,
+	SH_HEADSET_INSERTED,
+	SH_HEADSET_BUTTON_1,
+	SH_HEADSET_BUTTON_2,
+	SH_HEADSET_BUTTON_3,
+	SH_HEADSET_BUTTON_4
+};
+
+enum headset_state_t Headset_State = SH_HEADSET_REMOVED;
+#endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
 
 static int process_log_message(
 	struct motosh_data *ps_motosh,
@@ -116,6 +130,9 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			(struct delayed_work *)work,
 			struct motosh_data, irq_wake_work);
 	int log_msg_ctr = 0;
+#ifdef CONFIG_SENSORS_MOTOSH_HEADSET
+	unsigned char new_state;
+#endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
 	struct motosh_platform_data *pdata;
 	pdata = ps_motosh->pdata;
 
@@ -171,10 +188,12 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	irq_status = (readbuff[IRQ_WAKE_HI] << 16)
 			| (readbuff[IRQ_WAKE_MED] << 8) | readbuff[IRQ_WAKE_LO];
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	if (ps_motosh->qw_irq_status) {
 		irq_status |= ps_motosh->qw_irq_status;
 		ps_motosh->qw_irq_status = 0;
 	}
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 	/* Check if we are coming out of normal reset and/or
 	   the part has self-reset */
@@ -183,6 +202,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			"sensorhub reports reset [%d]", spurious_det);
 		motosh_reset_and_init(COMPLETE_INIT);
 	}
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	if (irq_status & M_TOUCH) {
 		if (motosh_display_handle_touch_locked(ps_motosh) == -EIO)
 			goto EXIT;
@@ -191,6 +211,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		if (motosh_display_handle_quickpeek_locked(ps_motosh) == -EIO)
 			goto EXIT;
 	}
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 	/* read wake queue length */
 	cmdbuff[0] = WAKE_MSG_QUEUE_LEN;
@@ -310,9 +331,11 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 					    state);
 			input_sync(ps_motosh->input_dev);
 
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 			/* On folio changes touch configuration will
 			 * usually need to be changed */
 			motosh_check_touch_config_locked(NORMAL_CHECK);
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 
 			dev_info(&ps_motosh->client->dev, "Cover status: %d\n",
 				state);
@@ -480,6 +503,135 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			motosh_as_data_buffer_write(ps_motosh, DT_GYRO_CAL,
 				NULL, 0, 0, false);
 			break;
+#ifdef CONFIG_SENSORS_MOTOSH_HEADSET
+		case HEADSET_STATE:
+			new_state = data[HEADSET_VALUE];
+
+			switch (Headset_State) {
+			case SH_HEADSET_BUTTON_1:
+				if (!(new_state & SH_HEADSET_BUTTON_1_DOWN)) {
+					dev_info(&ps_motosh->client->dev,
+						"Headset button 1 released");
+					Headset_State = SH_HEADSET_INSERTED;
+					input_report_key(ps_motosh->input_dev,
+						pdata->headset_button_1_keycode,
+						0);
+					input_sync(ps_motosh->input_dev);
+				}
+				break;
+			case SH_HEADSET_BUTTON_2:
+				if (!(new_state & SH_HEADSET_BUTTON_2_DOWN)) {
+					dev_info(&ps_motosh->client->dev,
+						"Headset button 2 released");
+					Headset_State = SH_HEADSET_INSERTED;
+					input_report_key(ps_motosh->input_dev,
+						pdata->headset_button_2_keycode,
+						0);
+					input_sync(ps_motosh->input_dev);
+				}
+				break;
+			case SH_HEADSET_BUTTON_3:
+				if (!(new_state & SH_HEADSET_BUTTON_3_DOWN)) {
+					dev_info(&ps_motosh->client->dev,
+						"Headset button 3 released");
+					Headset_State = SH_HEADSET_INSERTED;
+					input_report_key(ps_motosh->input_dev,
+						pdata->headset_button_3_keycode,
+						0);
+					input_sync(ps_motosh->input_dev);
+				}
+				break;
+			case SH_HEADSET_BUTTON_4:
+				if (!(new_state & SH_HEADSET_BUTTON_4_DOWN)) {
+					dev_info(&ps_motosh->client->dev,
+						"Headset button 4 released");
+					Headset_State = SH_HEADSET_INSERTED;
+					input_report_key(ps_motosh->input_dev,
+						pdata->headset_button_4_keycode,
+						0);
+					input_sync(ps_motosh->input_dev);
+				}
+				break;
+			default:
+				break;
+			}
+			if (Headset_State == SH_HEADPHONE_INSERTED) {
+				if (!(new_state & SH_HEADPHONE_DETECTED)) {
+					dev_info(&ps_motosh->client->dev,
+						"Headphone removed");
+					Headset_State = SH_HEADSET_REMOVED;
+					input_report_switch(ps_motosh->input_dev,
+							SW_HEADPHONE_INSERT, 0);
+					input_sync(ps_motosh->input_dev);
+				}
+			} else if (Headset_State ==  SH_HEADSET_INSERTED) {
+				if (!(new_state & SH_HEADSET_DETECTED)) {
+					dev_info(&ps_motosh->client->dev,
+						"Headset removed");
+					Headset_State = SH_HEADSET_REMOVED;
+					input_report_switch(ps_motosh->input_dev,
+							SW_HEADPHONE_INSERT,  0);
+					input_report_switch(ps_motosh->input_dev,
+							SW_MICROPHONE_INSERT, 0);
+					input_sync(ps_motosh->input_dev);
+				}
+			}
+			if (Headset_State == SH_HEADSET_REMOVED) {
+				if (new_state & SH_HEADPHONE_DETECTED) {
+					dev_info(&ps_motosh->client->dev,
+						"Headphone inserted");
+					Headset_State = SH_HEADPHONE_INSERTED;
+					input_report_switch(ps_motosh->input_dev,
+							SW_HEADPHONE_INSERT, 1);
+					input_sync(ps_motosh->input_dev);
+				} else if (new_state & SH_HEADSET_DETECTED) {
+					dev_info(&ps_motosh->client->dev,
+						"Headset inserted");
+					Headset_State = SH_HEADSET_INSERTED;
+					input_report_switch(ps_motosh->input_dev,
+							SW_HEADPHONE_INSERT,  1);
+					input_report_switch(ps_motosh->input_dev,
+							SW_MICROPHONE_INSERT, 1);
+					input_sync(ps_motosh->input_dev);
+				}
+			}
+			if (Headset_State == SH_HEADSET_INSERTED) {
+				if (new_state & SH_HEADSET_BUTTON_1_DOWN) {
+					dev_info(&ps_motosh->client->dev,
+						"Headset button 1 pressed");
+					Headset_State = SH_HEADSET_BUTTON_1;
+					input_report_key(ps_motosh->input_dev,
+						pdata->headset_button_1_keycode,
+						1);
+					input_sync(ps_motosh->input_dev);
+				} else if (new_state & SH_HEADSET_BUTTON_2_DOWN) {
+					dev_info(&ps_motosh->client->dev,
+						"Headset button 2 pressed");
+					Headset_State = SH_HEADSET_BUTTON_2;
+					input_report_key(ps_motosh->input_dev,
+						pdata->headset_button_2_keycode,
+					1);
+					input_sync(ps_motosh->input_dev);
+				} else if (new_state & SH_HEADSET_BUTTON_3_DOWN) {
+					dev_info(&ps_motosh->client->dev,
+						"Headset button 3 pressed");
+					Headset_State = SH_HEADSET_BUTTON_3;
+					input_report_key(ps_motosh->input_dev,
+						pdata->headset_button_3_keycode,
+						1);
+					input_sync(ps_motosh->input_dev);
+				} else if (new_state & SH_HEADSET_BUTTON_4_DOWN) {
+					dev_info(&ps_motosh->client->dev,
+						"Headset button 4 pressed");
+					Headset_State = SH_HEADSET_BUTTON_4;
+					input_report_key(ps_motosh->input_dev,
+						pdata->headset_button_4_keycode,
+						1);
+					input_sync(ps_motosh->input_dev);
+				}
+			}
+			break;
+#endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
 		default:
 			/* ERROR...unknown message
 			   Need to drop the remaining data in this operation. */
