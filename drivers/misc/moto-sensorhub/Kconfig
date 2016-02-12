@@ -14,3 +14,17 @@ config MMI_HALL_NOTIFICATIONS
         depends on SENSORS_MOTOSH
         help
           Support for hall effect sensor notifications.
+
+config SENSORS_MOTOSH_HEADSET
+        bool "Enable sensor hub headset detection"
+        default n
+        depends on SENSORS_MOTOSH
+        help
+          Support for sensor hub based headset detection.
+
+config SENSORS_MOTOSH_MOTODISP
+        bool "Enable sensor hub Moto display"
+        default n
+        depends on SENSORS_MOTOSH
+        help
+          Support for sensor hub based notification display.
