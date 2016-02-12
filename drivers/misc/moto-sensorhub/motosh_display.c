@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 Motorola Mobility LLC
+ * Copyright (C) 2010-2016 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,6 +11,8 @@
  * GNU General Public License for more details.
  *
  */
+
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 
 #include <linux/cdev.h>
 #include <linux/delay.h>
@@ -899,3 +901,5 @@ void motosh_quickwakeup_init(struct motosh_data *ps_motosh)
 	motosh_quickwakeup_ops.data = ps_motosh;
 	quickwakeup_register(&motosh_quickwakeup_ops);
 }
+
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
