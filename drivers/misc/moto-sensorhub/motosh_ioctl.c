@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2013 Motorola Mobility LLC
+ * Copyright (C) 2010-2016 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -789,6 +789,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
 		break;
+#ifdef CONFIG_SENSORS_MOTOSH_MOTODISP
 	case MOTOSH_IOCTL_ENABLE_BREATHING:
 		if (ps_motosh->mode <= BOOTMODE) {
 			err = -EBUSY;
@@ -816,6 +817,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		/* the user's vote can not fail */
 		err = 0;
 		break;
+#endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
 	case MOTOSH_IOCTL_SET_LOWPOWER_MODE:
 		if (ps_motosh->mode <= BOOTMODE) {
 			err = -EBUSY;
@@ -1015,6 +1017,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_g_antcap_enabled &= ~ANTCAP_CHECK_CAL;
 
 		break;
+#ifdef CONFIG_SENSORS_MOTOSH_HEADSET
 	case MOTOSH_IOCTL_SET_HEADSET_STATE:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_HEADSET_STATE");
 		if (copy_from_user(&byte, argp, sizeof(byte))) {
@@ -1034,6 +1037,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			err, motosh_g_antcap_enabled, motosh_g_conn_state);
 
 		break;
+#endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
 	case MOTOSH_IOCTL_SET_USBCONN_STATE:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_USBCONN_STATE");
 		if (copy_from_user(&byte, argp, sizeof(byte))) {
