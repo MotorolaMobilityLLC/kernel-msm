@@ -206,9 +206,9 @@ VMM_ENTRY(0x25, SLAVE_ADDRESS,						TRUE,
 VMM_ENTRY(0x26, ALGO_CONFIG,						TRUE,
 		vmm_algo_config,
 		sizeof(vmm_algo_config))
-VMM_ENTRY(0x27, UNUSED_27,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x27, HEADSET_CONTROL,					TRUE,
+		&vmm_headset_control,
+		sizeof(vmm_headset_control))
 VMM_ENTRY(0x28, GENERIC_INT,						FALSE,
 		vmm_generic_int,
 		sizeof(vmm_generic_int))
@@ -274,9 +274,9 @@ VMM_ENTRY(0x38, FW_CRC,							FALSE,
 VMM_ENTRY(0x39, WAKESENSOR_STATUS,					FALSE,
 		vmm_wakesensor_status,
 		sizeof(vmm_wakesensor_status))
-VMM_ENTRY(0x3A, UNUSED_3A,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x3A, HEADSET_SETTINGS,					TRUE,
+		vmm_headset_settings,
+		sizeof(vmm_headset_settings))
 VMM_ENTRY(0x3B, ACCEL_DATA,						FALSE,
 		vmm_accel_data,
 		sizeof(vmm_accel_data))
@@ -442,9 +442,9 @@ VMM_ENTRY(0x65, QUATERNION_9AXIS,					FALSE,
 VMM_ENTRY(0x66, PRESSURE_DATA,						FALSE,
 		vmm_pressure_data,
 		sizeof(vmm_pressure_data))
-VMM_ENTRY(0x67, UNUSED_67,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x67, HEADSET_STATE,						FALSE,
+		&vmm_headset_state,
+		sizeof(vmm_headset_state))
 
 #ifdef BLD_ALS_TEST
 	VMM_ENTRY(0x68, ALS_TEST,					FALSE,
