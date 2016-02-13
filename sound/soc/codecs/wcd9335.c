@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10343,10 +10343,7 @@ int tasha_mbhc_hs_detect(struct snd_soc_codec *codec,
 {
 	struct tasha_priv *tasha = snd_soc_codec_get_drvdata(codec);
 
-	if (mbhc_cfg->insert_detect)
-		return wcd_mbhc_start(&tasha->mbhc, mbhc_cfg);
-	else
-		return 0;
+	return wcd_mbhc_start(&tasha->mbhc, mbhc_cfg);
 }
 EXPORT_SYMBOL(tasha_mbhc_hs_detect);
 
