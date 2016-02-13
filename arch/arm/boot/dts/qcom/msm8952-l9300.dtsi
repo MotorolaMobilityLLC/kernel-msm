@@ -328,7 +328,7 @@
 
 	sound {
 		compatible = "qcom,msm8952-audio-codec";
-		qcom,model = "msm8952-skum-snd-card";
+		qcom,model = "msm8952-l9300-snd-card";
 		reg = <0xc051000 0x4>,
 		      <0xc051004 0x4>,
 		      <0xc055000 0x4>,
