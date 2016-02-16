@@ -1006,7 +1006,7 @@
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
 	/delete-property/ qcom,dc-psy-type;
-	qcom,dc-psy-ma = <500>;
+	qcom,dc-psy-ma = <950>;
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
 	qcom,eb-batt-psy-name = "gb_battery";
