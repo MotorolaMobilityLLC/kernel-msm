@@ -16,6 +16,9 @@
 enum codecs {
 	TOMTOM_CODEC,
 	TASHA_CODEC,
+#ifdef CONFIG_SND_SOC_MARLEY
+	MARLEY_CODEC,
+#endif
 	MAX_CODECS,
 };
 
@@ -60,6 +63,9 @@ int msm_proxy_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 int msm_tdm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 			       struct snd_pcm_hw_params *params);
 int msm_audrx_init(struct snd_soc_pcm_runtime *rtd);
+#ifdef CONFIG_SND_SOC_MARLEY
+int marley_dai_init(struct snd_soc_pcm_runtime *rtd);
+#endif
 int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params);
 int msm_snd_cpe_hw_params(struct snd_pcm_substream *substream,
@@ -84,7 +90,9 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev);
 int msm_slim_4_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					    struct snd_pcm_hw_params *params);
 int msm895x_wsa881x_init(struct snd_soc_component *component);
+#ifndef CONFIG_SND_SOC_MARLEY
 int msm8952_init_wsa_dev(struct platform_device *pdev,
 		struct snd_soc_card *card);
+#endif
 void msm895x_free_auxdev_mem(struct platform_device *pdev);
 #endif
