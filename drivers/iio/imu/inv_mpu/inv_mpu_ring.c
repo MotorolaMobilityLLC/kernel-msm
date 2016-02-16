@@ -1585,7 +1585,7 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 		    new_ts = st->sensor[sensor_ind].ts + (u64)st->sensor[sensor_ind].dur;
         }
 
-        if (new_ts > st->last_ts)
+        if (new_ts > get_time_ns())
             new_ts = st->sensor[sensor_ind].ts;
 
         t = new_ts;
