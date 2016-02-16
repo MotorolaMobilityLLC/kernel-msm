@@ -330,6 +330,7 @@ struct smbchg_chip {
 	int				cl_usbc;
 	bool				usbc_online;
 	bool				usbc_disabled;
+	struct gpio			togl_rst_gpio;
 };
 
 static struct smbchg_chip *the_chip;
@@ -6593,7 +6594,7 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 	rc = gpio_export(chip->warn_gpio.gpio, 1);
 	if (rc) {
 		dev_err(chip->dev, "Failed to export GPIO %s: %d\n",
-			chip->ebchg_gpio.label, chip->ebchg_gpio.gpio);
+			chip->warn_gpio.label, chip->warn_gpio.gpio);
 		return;
 	}
 
@@ -6604,6 +6605,33 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 			chip->warn_gpio.label, chip->warn_gpio.gpio);
 	else
 		chip->warn_irq = gpio_to_irq(chip->warn_gpio.gpio);
+
+	chip->togl_rst_gpio.gpio = of_get_gpio_flags(node, 2, &flags);
+	chip->togl_rst_gpio.flags = flags;
+	of_property_read_string_index(node, "gpio-names", 2,
+				      &chip->togl_rst_gpio.label);
+
+	rc = gpio_request_one(chip->togl_rst_gpio.gpio,
+			      chip->togl_rst_gpio.flags,
+			      chip->togl_rst_gpio.label);
+	if (rc) {
+		dev_err(chip->dev, "failed to request GPIO\n");
+		return;
+	}
+
+	rc = gpio_export(chip->togl_rst_gpio.gpio, 1);
+	if (rc) {
+		dev_err(chip->dev, "Failed to export GPIO %s: %d\n",
+			chip->togl_rst_gpio.label, chip->togl_rst_gpio.gpio);
+		return;
+	}
+
+	rc = gpio_export_link(chip->dev, chip->togl_rst_gpio.label,
+			      chip->togl_rst_gpio.gpio);
+
+	if (rc)
+		dev_err(chip->dev, "Failed to link GPIO %s: %d\n",
+			chip->togl_rst_gpio.label, chip->togl_rst_gpio.gpio);
 }
 
 static int smb_parse_dt(struct smbchg_chip *chip)
