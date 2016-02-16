@@ -35,7 +35,12 @@
 #include "../codecs/wcd9330.h"
 #include "../codecs/wcd9335.h"
 #include "../codecs/wcd-mbhc-v2.h"
+#ifdef CONFIG_SND_SOC_MARLEY
+#include "../codecs/marley.h"
+#endif
+#ifndef CONFIG_SND_SOC_MARLEY
 #include "../codecs/wsa881x.h"
+#endif
 
 #define DRV_NAME "msm8952-slimbus-wcd"
 
@@ -72,6 +77,10 @@
 #define WSA8810_NAME_2 "wsa881x.20170212"
 
 #define TDM_SLOT_OFFSET_MAX    8
+
+#ifdef CONFIG_SND_SOC_MARLEY
+#define MARLEY_SYSCLK_RATE	(48000 * 1024 * 3)
+#endif
 
 enum btsco_rates {
 	RATE_8KHZ_ID,
@@ -374,6 +383,7 @@ static inline struct snd_mask *param_to_mask(struct snd_pcm_hw_params *p, int n)
 	return &(p->masks[n - SNDRV_PCM_HW_PARAM_FIRST_MASK]);
 }
 
+#ifndef CONFIG_SND_SOC_MARLEY
 int msm895x_wsa881x_init(struct snd_soc_component *component)
 {
 	u8 spkleft_ports[WSA881X_MAX_SWR_PORTS] = {100, 101, 102, 106};
@@ -422,6 +432,7 @@ int msm895x_wsa881x_init(struct snd_soc_component *component)
 						      codec);
 	return 0;
 }
+#endif
 
 static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
 {
@@ -3360,12 +3371,29 @@ static const struct snd_soc_dapm_widget msm8952_tasha_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic6", NULL),
 };
 
+#ifdef CONFIG_SND_SOC_MARLEY
+static const struct snd_soc_dapm_widget msm8952_marley_dapm_widgets[] = {
+	SND_SOC_DAPM_SUPPLY_S("MCLK", -1,  SND_SOC_NOPM, 0, 0,
+	msm8952_mclk_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+};
+#endif
+
 static struct snd_soc_dapm_route wcd9335_audio_paths[] = {
 	{"MIC BIAS1", NULL, "MCLK"},
 	{"MIC BIAS2", NULL, "MCLK"},
 	{"MIC BIAS3", NULL, "MCLK"},
 	{"MIC BIAS4", NULL, "MCLK"},
 };
+
+#ifdef CONFIG_SND_SOC_MARLEY
+static struct snd_soc_dapm_route marley_audio_routes[] = {
+	{"Slim1 Playback", NULL, "MCLK"},
+	{"Slim1 Capture", NULL, "MCLK"},
+	{"Slim2 Capture", NULL, "MCLK"},
+
+	/* MICBIAS ? */
+};
+#endif
 
 static int msm8952_codec_event_cb(struct snd_soc_codec *codec,
 		enum wcd9xxx_codec_event codec_event)
@@ -3592,6 +3620,89 @@ out:
 	return err;
 }
 
+#ifdef CONFIG_SND_SOC_MARLEY
+int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+
+	ret = snd_soc_codec_set_pll(codec, MARLEY_FLL1_REFCLK,
+			ARIZONA_FLL_SRC_NONE,
+			0, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set FLL1REFCLK %d\n", ret);
+		return ret;
+	}
+
+	ret = snd_soc_codec_set_pll(codec, MARLEY_FLL1,
+			ARIZONA_FLL_SRC_MCLK2,
+			32768, MARLEY_SYSCLK_RATE);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set FLL1REFCLK %d\n", ret);
+		return ret;
+	}
+
+	ret = snd_soc_codec_set_sysclk(codec, ARIZONA_CLK_SYSCLK,
+		ARIZONA_CLK_SRC_FLL1, MARLEY_SYSCLK_RATE,
+		SND_SOC_CLOCK_IN);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
+		return ret;
+	}
+
+	ret = snd_soc_codec_set_sysclk(codec, ARIZONA_CLK_OPCLK,
+		0, MARLEY_SYSCLK_RATE,
+		SND_SOC_CLOCK_OUT);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set OPCLK %d\n", ret);
+		return ret;
+	}
+
+	ret = snd_soc_dapm_new_controls(dapm, msm8952_marley_dapm_widgets,
+		ARRAY_SIZE(msm8952_marley_dapm_widgets));
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to add dapm widgets %d\n", ret);
+		return ret;
+	}
+
+	ret = snd_soc_dapm_add_routes(dapm, marley_audio_routes,
+		ARRAY_SIZE(marley_audio_routes));
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to add audio routes %d\n", ret);
+		return ret;
+	}
+
+	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS1");
+	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS2");
+	snd_soc_dapm_ignore_suspend(dapm, "MICSUPP");
+	snd_soc_dapm_ignore_suspend(dapm, "IN1AL");
+	snd_soc_dapm_ignore_suspend(dapm, "IN1AR");
+	snd_soc_dapm_ignore_suspend(dapm, "IN1BL");
+	snd_soc_dapm_ignore_suspend(dapm, "IN1BR");
+	snd_soc_dapm_ignore_suspend(dapm, "IN2L");
+	snd_soc_dapm_ignore_suspend(dapm, "IN2R");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1TX1");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1TX2");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX1");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX2");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT1L");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT1R");
+	snd_soc_dapm_ignore_suspend(dapm, "SLIMTX5");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim2 Capture");
+
+	ret = snd_soc_add_codec_controls(codec, msm_snd_controls,
+		ARRAY_SIZE(msm_snd_controls));
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to add kcontrols %d\n", ret);
+		return ret;
+	}
+
+	snd_soc_dapm_sync(dapm);
+	return 0;
+}
+#endif
+
 static void hs_detect_work(struct work_struct *work)
 {
 	struct delayed_work *dwork;
@@ -3618,6 +3729,7 @@ static void hs_detect_work(struct work_struct *work)
 	pr_debug("%s: leave\n", __func__);
 }
 
+#ifndef CONFIG_SND_SOC_MARLEY
 static bool msm8952_swap_gnd_mic(struct snd_soc_codec *codec)
 {
 	struct snd_soc_card *card = codec->component.card;
@@ -3681,6 +3793,7 @@ static int is_us_eu_switch_gpio_support(struct platform_device *pdev,
 	}
 	return 0;
 }
+#endif
 
 static int msm8952_populate_dai_link_component_of_node(
 					struct snd_soc_card *card)
@@ -3911,6 +4024,7 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, pdata);
 
+#ifndef CONFIG_SND_SOC_MARLEY
 	wcd9xxx_mbhc_cfg.gpio_level_insert = of_property_read_bool(
 						pdev->dev.of_node,
 					"qcom,headset-jack-type-NC");
@@ -3918,15 +4032,18 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 			"qcom,audio-routing");
 	if (ret)
 		goto err;
+#endif
 	ret = msm8952_populate_dai_link_component_of_node(card);
 	if (ret) {
 		ret = -EPROBE_DEFER;
 		goto err;
 	}
 
+#ifndef CONFIG_SND_SOC_MARLEY
 	ret = msm8952_init_wsa_dev(pdev, card);
 	if (ret)
 		goto err;
+#endif
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
@@ -3959,6 +4076,7 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 			pdata->ext_pa = (pdata->ext_pa | QUIN_MI2S_ID);
 	}
 
+#ifndef CONFIG_SND_SOC_MARLEY
 	/* Reading the gpio configurations from dtsi file*/
 	ret = msm_gpioset_initialize(CLIENT_WCD_EXT, &pdev->dev);
 	if (ret < 0) {
@@ -3976,15 +4094,17 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 				__func__, ret);
 		goto err;
 	}
-
+#endif
 	return 0;
 err:
+#ifndef CONFIG_SND_SOC_MARLEY
 	if (pdata->us_euro_gpio > 0) {
 		dev_dbg(&pdev->dev, "%s free us_euro gpio %d\n",
 			__func__, pdata->us_euro_gpio);
 		gpio_free(pdata->us_euro_gpio);
 		pdata->us_euro_gpio = 0;
 	}
+#endif
 	if (pdata->vaddr_gpio_mux_spkr_ctl)
 		iounmap(pdata->vaddr_gpio_mux_spkr_ctl);
 	if (pdata->vaddr_gpio_mux_mic_ctl)
@@ -3999,7 +4119,9 @@ err:
 		iounmap(pdata->vaddr_gpio_mux_mic_ext_clk_ctl);
 	if (pdata->vaddr_gpio_mux_sec_tlmm_ctl)
 		iounmap(pdata->vaddr_gpio_mux_sec_tlmm_ctl);
+#ifndef CONFIG_SND_SOC_MARLEY
 	cancel_delayed_work_sync(&pdata->hs_detect_dwork);
+#endif
 	devm_kfree(&pdev->dev, pdata);
 	return ret;
 }
