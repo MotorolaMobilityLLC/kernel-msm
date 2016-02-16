@@ -29,6 +29,11 @@ int msm_camera_fill_vreg_params(struct camera_vreg_t *cam_vreg,
 	uint16_t i = 0;
 	int      j = 0;
 
+	/*For no vreg used board, the cam_vreg is NULL*/
+	if (!cam_vreg && power_setting) {
+		return 0;
+	}
+
 	/* Validate input parameters */
 	if (!cam_vreg || !power_setting) {
 		pr_err("%s:%d failed: cam_vreg %p power_setting %p", __func__,
@@ -1051,7 +1056,13 @@ int msm_camera_get_dt_vreg_data(struct device_node *of_node,
 	struct camera_vreg_t *vreg = NULL;
 	bool custom_vreg_name =  false;
 
-	count = of_property_count_strings(of_node, "qcom,cam-vreg-name");
+	/*For no vreg used board, of_property_count_strings() will
+	    return error code, that will cause the sensor platform device
+	    probe failed, so for no vreg used board, just remove the
+	    "qcom,cam-vreg-name" property, let the verg count equals 0*/
+	if (of_find_property(of_node, "qcom,cam-vreg-name", NULL))
+		count = of_property_count_strings(of_node, "qcom,cam-vreg-name");
+
 	CDBG("%s qcom,cam-vreg-name count %d\n", __func__, count);
 
 	if (!count)
