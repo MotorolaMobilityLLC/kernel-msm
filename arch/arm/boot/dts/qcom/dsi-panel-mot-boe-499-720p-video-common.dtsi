@@ -34,11 +34,11 @@ qcom,mdss-dsi-dis-reset-sequence = <1 101>, <0 0>;
 qcom,mdss-dsi-on-command = [
 	39 01 00 00 00 00 04 b9 ff 83 94
 	05 01 00 00 c8 00 01 11 		/* TODO for timing check */
-	39 01 00 00 00 00 02 CC 07
-	39 01 00 00 0a 00 02 51 CF
+	15 01 00 00 00 00 02 CC 07
+	15 01 00 00 0a 00 02 51 CF
 	39 01 00 00 0a 00 08 C9 13 00 00 14 B1 1E 00
-	39 01 00 00 0a 00 02 55 01
-	39 01 00 00 00 00 02 53 2C
+	15 01 00 00 0a 00 02 55 01
+	15 01 00 00 00 00 02 53 2C
 	05 01 00 00 00 00 01 29];		/* Display on */
 
 qcom,mdss-dsi-off-command = [
