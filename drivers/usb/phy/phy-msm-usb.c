@@ -4977,6 +4977,7 @@ static int otg_power_set_property_usb(struct power_supply *psy,
 			break;
 		default:
 			motg->chg_type = USB_INVALID_CHARGER;
+			psy->type = POWER_SUPPLY_TYPE_USB;
 			break;
 		}
 
