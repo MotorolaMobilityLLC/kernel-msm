@@ -1254,10 +1254,6 @@ static int inv_get_timestamp(struct inv_mpu_state *st, int count)
     }
 	spin_unlock_irqrestore(&st->time_stamp_lock, flags);
 
-    /* not to set future timestamp */
-    if (st->last_ts > st->prev_ts)
-        st->last_ts = st->prev_ts;
-
 	return 0;
 }
 
