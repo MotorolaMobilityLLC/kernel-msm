@@ -4658,8 +4658,10 @@ static int mem_cgroup_resize_limit(struct mem_cgroup *memcg,
 		}
 		mutex_unlock(&set_limit_mutex);
 
-		if (!ret)
+		if (!ret) {
+			vmpressure_update_mem_limit(memcg, val);
 			break;
+		}
 
 		mem_cgroup_reclaim(memcg, GFP_KERNEL,
 				   MEM_CGROUP_RECLAIM_SHRINK);
@@ -6282,7 +6284,7 @@ mem_cgroup_css_alloc(struct cgroup *cont)
 	memcg->move_charge_at_immigrate = 0;
 	mutex_init(&memcg->thresholds_lock);
 	spin_lock_init(&memcg->move_lock);
-	vmpressure_init(&memcg->vmpressure);
+	vmpressure_init(&memcg->vmpressure, cont->parent == NULL);
 
 	return &memcg->css;
 
