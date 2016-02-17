@@ -36,8 +36,10 @@ struct nanohub_buf {
 struct nanohub_data {
 	struct class *sensor_class;
 	struct device *sensor_dev;
+	struct device *comms_dev;
 	struct iio_dev *iio_dev;
 	struct cdev cdev;
+	struct cdev cdev_comms;
 	struct nanohub_comms comms;
 	struct nanohub_bl bl;
 	const struct nanohub_platform_data *pdata;
@@ -49,11 +51,13 @@ struct nanohub_data {
 
 	wait_queue_head_t read_wait;
 	struct list_head read_data;
-	struct list_head read_free;
 	atomic_t read_cnt;
-	atomic_t read_free_cnt;
 	spinlock_t read_lock;
 	struct wake_lock wakelock_read;
+
+	struct list_head read_free;
+	atomic_t read_free_cnt;
+	spinlock_t read_free_lock;
 
 	atomic_t wakeup_cnt;
 	spinlock_t wakeup_lock;
@@ -63,6 +67,11 @@ struct nanohub_data {
 	uint32_t interrupts[8];
 
 	int err_cnt;
+
+	wait_queue_head_t hal_read_wait;
+	struct list_head hal_read_data;
+	atomic_t hal_read_cnt;
+	spinlock_t hal_read_lock;
 };
 
 int request_wakeup(struct nanohub_data *data);
