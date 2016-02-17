@@ -623,6 +623,8 @@ static void mdss_xlog_dump_array(struct mdss_debug_base *blk_arr[],
 		mutex_unlock(&mdss_dbg_xlog.xlog_lock);
 		panic(name);
 	}
+
+	pr_info("%s: xlog dump created\n", __func__);
 	mutex_unlock(&mdss_dbg_xlog.xlog_lock);
 }
 
@@ -636,7 +638,8 @@ static void xlog_debug_work(struct work_struct *work)
 		mdss_dbg_xlog.work_vbif_dbgbus);
 }
 
-void mdss_xlog_tout_handler_default(bool queue, const char *name, ...)
+void mdss_xlog_tout_handler_default(bool is_mmi, bool queue,
+				const char *name, ...)
 {
 	int i, index = 0;
 	bool dead = false;
@@ -650,6 +653,9 @@ void mdss_xlog_tout_handler_default(bool queue, const char *name, ...)
 	if (!mdss_xlog_is_enabled(MDSS_XLOG_DEFAULT))
 		return;
 
+	if (!is_mmi)
+		return;
+
 	if (queue && work_pending(&mdss_dbg_xlog.xlog_dump_work))
 		return;
 
@@ -657,7 +663,8 @@ void mdss_xlog_tout_handler_default(bool queue, const char *name, ...)
 	  drop the new one. 
 	*/
 	if (mdss_dbg_xlog.xlog_user_buf){
-		pr_err("prev dump exists \n");
+		pr_debug("%s: previous dump exists, keeping older dump\n",
+			__func__);
 		return;
 	}
 
