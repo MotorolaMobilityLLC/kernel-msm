@@ -54,6 +54,5 @@ struct anx7816_platform_data {
 
 unchar sp_get_rx_bw(void);
 int slimport_read_edid_block(int block, uint8_t *edid_buf);
-void anx7816_hpd_cb(bool connected);
 
 #endif /* SLIMPORT_DEVICE */
