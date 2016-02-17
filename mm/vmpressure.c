@@ -24,20 +24,21 @@
 #include <linux/vmpressure.h>
 
 /*
- * The window size (vmpressure_win) is the number of scanned pages before
- * we try to analyze scanned/reclaimed ratio. So the window is used as a
- * rate-limit tunable for the "low" level notification, and also for
- * averaging the ratio for medium/critical levels. Using small window
- * sizes can cause lot of false positives, but too big window size will
- * delay the notifications.
- *
- * As the vmscan reclaimer logic works with chunks which are multiple of
- * SWAP_CLUSTER_MAX, it makes sense to use it for the window size as well.
- *
- * TODO: Make the window size depend on machine size, as we do for vmstat
- * thresholds. Currently we set it to 512 pages (2MB for 4KB pages).
+ * The amount of windows we need to see for each pressure level before
+ * reporting an event for that pressure level.
  */
-static const unsigned long vmpressure_win = SWAP_CLUSTER_MAX * 16;
+static const int const vmpressure_windows_needed[] = {
+	[VMPRESSURE_LOW] = 4,
+	[VMPRESSURE_MEDIUM] = 2,
+	[VMPRESSURE_CRITICAL] = 1,
+};
+
+/**
+ * In case we can't compute a window size for a cgroup, because it's
+ * not the root or it doesn't have a limit set, fall back to the
+ * default window size, which is 512 pages (2MB for 4KB pages).
+ */
+static const unsigned long default_window_size = SWAP_CLUSTER_MAX * 16;
 
 /*
  * These thresholds are used when we account memory pressure through
@@ -90,13 +91,6 @@ static struct vmpressure *vmpressure_parent(struct vmpressure *vmpr)
 	return memcg_to_vmpressure(memcg);
 }
 
-enum vmpressure_levels {
-	VMPRESSURE_LOW = 0,
-	VMPRESSURE_MEDIUM,
-	VMPRESSURE_CRITICAL,
-	VMPRESSURE_NUM_LEVELS,
-};
-
 static const char * const vmpressure_str_levels[] = {
 	[VMPRESSURE_LOW] = "low",
 	[VMPRESSURE_MEDIUM] = "medium",
@@ -141,13 +135,10 @@ struct vmpressure_event {
 };
 
 static bool vmpressure_event(struct vmpressure *vmpr,
-			     unsigned long scanned, unsigned long reclaimed)
+			     enum vmpressure_levels level)
 {
 	struct vmpressure_event *ev;
-	enum vmpressure_levels level;
 	bool signalled = false;
-
-	level = vmpressure_calc_level(scanned, reclaimed);
 
 	mutex_lock(&vmpr->events_lock);
 
@@ -168,6 +159,8 @@ static void vmpressure_work_fn(struct work_struct *work)
 	struct vmpressure *vmpr = work_to_vmpressure(work);
 	unsigned long scanned;
 	unsigned long reclaimed;
+	bool report = false;
+	enum vmpressure_levels level;
 
 	/*
 	 * Several contexts might be calling vmpressure(), so it is
@@ -185,16 +178,50 @@ static void vmpressure_work_fn(struct work_struct *work)
 	reclaimed = vmpr->reclaimed;
 	vmpr->scanned = 0;
 	vmpr->reclaimed = 0;
+	level = vmpressure_calc_level(scanned, reclaimed);
+	if (++vmpr->nr_windows[level] == vmpressure_windows_needed[level]) {
+		vmpr->nr_windows[level] = 0;
+		report = true;
+	}
 	mutex_unlock(&vmpr->sr_lock);
-
+	if (!report)
+		return;
 	do {
-		if (vmpressure_event(vmpr, scanned, reclaimed))
+		if (vmpressure_event(vmpr, level))
 			break;
 		/*
 		 * If not handled, propagate the event upward into the
 		 * hierarchy.
 		 */
 	} while ((vmpr = vmpressure_parent(vmpr)));
+}
+
+static void vmpressure_update_window_size(struct vmpressure *vmpr,
+					  unsigned long total_pages)
+{
+	mutex_lock(&vmpr->sr_lock);
+	/*
+	 * This is inspired by the low watermark computation:
+	 * We want a small window size for small machines, but don't
+	 * grow linearly, since users may want to do cache management
+	 * at a finer granularity.
+	 *
+	 * Using sqrt(4 * total_pages) yields the following:
+	 *
+	 * 32MB:	724k
+	 * 64MB:	1024k
+	 * 128MB:	1448k
+	 * 256MB:	2048k
+	 * 512MB:	2896k
+	 * 1024MB:	4096k
+	 * 2048MB:	5792k
+	 * 4096MB:	8192k
+	 * 8192MB:	11584k
+	 * 16384MB:	16384k
+	 * 32768MB:	23170k
+	 */
+	vmpr->window_size = int_sqrt(total_pages * 4);
+	mutex_unlock(&vmpr->sr_lock);
 }
 
 /**
@@ -213,6 +240,7 @@ static void vmpressure_work_fn(struct work_struct *work)
 void vmpressure(gfp_t gfp, struct mem_cgroup *memcg,
 		unsigned long scanned, unsigned long reclaimed)
 {
+	unsigned long window_size;
 	struct vmpressure *vmpr = memcg_to_vmpressure(memcg);
 
 	/*
@@ -244,9 +272,10 @@ void vmpressure(gfp_t gfp, struct mem_cgroup *memcg,
 	vmpr->scanned += scanned;
 	vmpr->reclaimed += reclaimed;
 	scanned = vmpr->scanned;
+	window_size = vmpr->window_size;
 	mutex_unlock(&vmpr->sr_lock);
 
-	if (scanned < vmpressure_win || work_pending(&vmpr->work))
+	if (scanned < window_size || work_pending(&vmpr->work))
 		return;
 	schedule_work(&vmpr->work);
 }
@@ -264,6 +293,8 @@ void vmpressure(gfp_t gfp, struct mem_cgroup *memcg,
  */
 void vmpressure_prio(gfp_t gfp, struct mem_cgroup *memcg, int prio)
 {
+	struct vmpressure *vmpr;
+	unsigned long window_size;
 	/*
 	 * We only use prio for accounting critical level. For more info
 	 * see comment for vmpressure_level_critical_prio variable above.
@@ -271,14 +302,40 @@ void vmpressure_prio(gfp_t gfp, struct mem_cgroup *memcg, int prio)
 	if (prio > vmpressure_level_critical_prio)
 		return;
 
+	vmpr = memcg_to_vmpressure(memcg);
+	mutex_lock(&vmpr->sr_lock);
+	window_size = vmpr->window_size;
+	mutex_unlock(&vmpr->sr_lock);
 	/*
 	 * OK, the prio is below the threshold, updating vmpressure
 	 * information before shrinker dives into long shrinking of long
-	 * range vmscan. Passing scanned = vmpressure_win, reclaimed = 0
+	 * range vmscan. Passing scanned = window_size, reclaimed = 0
 	 * to the vmpressure() basically means that we signal 'critical'
 	 * level.
 	 */
-	vmpressure(gfp, memcg, vmpressure_win, 0);
+	vmpressure(gfp, memcg, window_size, 0);
+}
+
+/**
+ * vmpressure_update_mem_limit() - Lets vmpressure know about a new memory limit
+ * @memcg:	cgroup for which the limit is being updated
+ * @limit:	new limit in pages
+ *
+ * This function lets vmpressure know the memory limit for a specific cgroup
+ * was changed. This allows us to compute new window sizes for this cgroup.
+ */
+void vmpressure_update_mem_limit(struct mem_cgroup *memcg,
+				 unsigned long limit)
+{
+	struct vmpressure *vmpr = memcg_to_vmpressure(memcg);
+
+	/* Clamp to number of pages above the watermark, to avoid creating
+	 * way too large windows when erroneously high limits are set.
+	 */
+	if (limit > nr_free_pagecache_pages())
+		limit = nr_free_pagecache_pages();
+
+	vmpressure_update_window_size(vmpr, limit);
 }
 
 /**
@@ -365,10 +422,21 @@ void vmpressure_unregister_event(struct cgroup *cg, struct cftype *cft,
  * This function should be called on every allocated vmpressure structure
  * before any usage.
  */
-void vmpressure_init(struct vmpressure *vmpr)
+void vmpressure_init(struct vmpressure *vmpr, bool is_root)
 {
 	mutex_init(&vmpr->sr_lock);
 	mutex_init(&vmpr->events_lock);
 	INIT_LIST_HEAD(&vmpr->events);
 	INIT_WORK(&vmpr->work, vmpressure_work_fn);
+	if (is_root) {
+		/* For the root mem cgroup, compute the window size
+		 * based on the total amount of memory in the machine.
+		 */
+		vmpressure_update_window_size(vmpr, nr_free_pagecache_pages());
+	} else {
+		/* Use default window size, until a hard limit is set
+		 * on this cgroup.
+		 */
+		vmpr->window_size = default_window_size;
+	}
 }
