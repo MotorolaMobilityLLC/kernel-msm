@@ -219,10 +219,10 @@ static void mdss_xlog_dump_all(void)
 
 	while (__mdss_xlog_dump_calc_range()) {
 		mdss_xlog_dump_entry(xlog_buf, MDSS_XLOG_BUF_MAX);
-		pr_info("%s", xlog_buf);
+		pr_debug("%s", xlog_buf);
 		off += snprintf((mdss_dbg_xlog.xlog_user_buf + off), (max_size - off), "%s", xlog_buf);
 		if((off < 0) || (off > max_size))
-			pr_err("error copying buffer \n");
+			pr_err("error copying buffer\n");
 	}
 	mdss_dbg_xlog.xlog_user_buf[off] = '\0';
 }
@@ -271,7 +271,7 @@ static void mdss_dump_debug_bus(u32 bus_dump_flag,
 
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
-			pr_info("%s: start_addr:0x%pK end_addr:0x%pK\n",
+			pr_debug("%s: start_addr:0x%pK end_addr:0x%pK\n",
 				__func__, dump_addr, dump_addr + list_size);
 		} else {
 			in_mem = false;
@@ -393,7 +393,7 @@ static void mdss_dump_vbif_debug_bus(u32 bus_dump_flag,
 
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
-			pr_info("%s: start_addr:0x%pK end_addr:0x%pK\n",
+			pr_debug("%s: start_addr:0x%pK end_addr:0x%pK\n",
 				__func__, dump_addr, dump_addr + list_size);
 		} else {
 			in_mem = false;
@@ -441,7 +441,7 @@ void mdss_dump_reg(const char *dump_name, u32 reg_dump_flag,
 
 	*regs_phys = 0;
 
-	pr_err("reg_dump_flag=%d in_log=%d in_mem=%d\n",
+	pr_debug("reg_dump_flag=%d in_log=%d in_mem=%d\n",
 		reg_dump_flag, in_log, in_mem);
 
 	if (len % 16)
@@ -455,7 +455,7 @@ void mdss_dump_reg(const char *dump_name, u32 reg_dump_flag,
 		}
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
-			pr_err("%s: start_addr:0x%pK end_addr:0x%pK reg_addr=0x%pK\n",
+			pr_debug("%s: start_addr:0x%pK end_addr:0x%pK reg_addr=0x%pK\n",
 				dump_name, dump_addr, dump_addr + (u32)len * 16,
 				addr);
 		} else {
@@ -523,8 +523,8 @@ static void mdss_dump_reg_by_ranges(struct mdss_debug_base *dbg,
 		}
 	} else {
 		/* If there is no list to dump ranges, dump all registers */
-		pr_info("Ranges not found, will dump full registers");
-		pr_info("base:0x%pK len:0x%zu\n", dbg->base, dbg->max_offset);
+		pr_debug("Ranges not found, will dump full registers");
+		pr_debug("base:0x%pK len:0x%zu\n", dbg->base, dbg->max_offset);
 		addr = dbg->base;
 		len = dbg->max_offset;
 		mdss_dump_reg((const char *)dbg->name, reg_dump_flag, addr,
@@ -901,7 +901,7 @@ static int mdss_debugfs_xlog_file_show(struct seq_file *s, void *v)
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	struct mdss_debug_base **blk_arr;
 
-	pr_err("entering %s \n",__func__);
+	pr_debug("entering %s\n", __func__);
 	mutex_lock(&mdss_dbg_xlog.xlog_lock);
 	seq_printf(s, "==================================REGS DUMP===================================\n");
 	if(mdss_dbg_xlog.enable_reg_dump & MDSS_DBG_DUMP_IN_MEM){
