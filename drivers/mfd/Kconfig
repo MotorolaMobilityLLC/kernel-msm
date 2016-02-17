@@ -1267,6 +1267,12 @@ config MFD_WM5110
 	help
 	  Support for Wolfson Microelectronics WM5110 low power audio SoC
 
+config MFD_MARLEY
+	bool "Cirrus Logic CS47L35"
+	depends on MFD_ARIZONA
+	help
+	  Support for Cirrus Logic CS47L35 low power audio SoC
+
 config MFD_WM8997
 	bool "Wolfson Microelectronics WM8997"
 	depends on MFD_ARIZONA
