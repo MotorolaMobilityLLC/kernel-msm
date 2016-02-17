@@ -17,44 +17,44 @@ qcom,ga40-3000mah {
 	qcom,batt-id-kohm = <243>;
 	qcom,battery-beta = <3900>;
 	qcom,battery-type = "GA40-3000mAh";
-	qcom,chg-rslow-comp-c1 = <2456357>;
-	qcom,chg-rslow-comp-c2 = <2731891>;
-	qcom,chg-rs-to-rslow = <746576>;
+	qcom,chg-rslow-comp-c1 = <2477894>;
+	qcom,chg-rslow-comp-c2 = <2918165>;
+	qcom,chg-rs-to-rslow = <769547>;
 	qcom,chg-rslow-comp-thr = <0x99>;
-	qcom,checksum = <0xA2E0>;
+	qcom,checksum = <0xAF1F>;
 	qcom,gui-version = "PMI8950GUI - 2.0.0.15";
 	qcom,fg-profile-data = [
-		DA 83 4D 7C
-		67 80 F0 75
-		3C 83 57 6A
-		5D 78 B6 84
-		1B 82 43 99
-		A3 B7 AE C3
-		58 0F AB 82
-		D5 79 D0 7C
-		F7 71 23 83
-		30 7A 4D 87
-		E7 82 22 82
-		C9 99 E5 BC
-		F6 C9 83 0D
-		D5 0B 34 60
-		CE 6E 64 FC
-		2C 0B 2D 46
-		93 41 00 00
-		CE 46 6E 33
-		FE 2A 00 00
-		00 00 00 00
-		00 00 00 00
-		66 6B 0F 6A
-		A9 75 2E 81
-		B7 7C AF 70
-		44 74 78 80
-		72 7C 34 70
-		94 6E BB A8
-		1D 27 59 2C
-		4E A0 71 0C
-		28 00 FF 36
-		F0 11 30 03
-		00 00 00 0C
+		 C7 83 5A 77
+		 E5 7B 15 75
+		 29 83 12 73
+		 B8 77 DD 68
+		 1A 82 2E 98
+		 DF B4 C1 BB
+		 6A 17 1E 88
+		 C3 7D 9E 80
+		 45 75 1D 83
+		 B5 7A 1B 8C
+		 E6 83 11 82
+		 1A 9A 44 BD
+		 A1 CA 9B 0D
+		 D5 0B 1F 60
+		 CE 6E 64 FC
+		 E2 2C 4F 44
+		 AA 42 00 00
+		 EC 46 7B 39
+		 FE 22 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 F9 6B 7C 6A
+		 F1 75 7C 81
+		 FE 7C 2F 71
+		 E4 74 27 80
+		 A6 7C 96 70
+		 92 6F D9 A9
+		 20 4E 59 B7
+		 4F A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
 	];
 };
