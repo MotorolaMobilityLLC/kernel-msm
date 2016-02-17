@@ -80,3 +80,10 @@ config FB_MSM_MDSS_PANEL_STATS_OPR
 	---help---
 	Collects OPR statics from the panel and exported to a plain-text file
 	in debugfs.
+
+config FB_MSM_MDSS_XLOG_MMI
+	depends on FB_MSM_MDSS_XLOG_DEBUG
+	bool "Enable Motorola's MDSS XLOG behavior"
+	---help---
+	Overrides QCOM's default XLOG behavior with Motorola's preferred
+	behavior.
