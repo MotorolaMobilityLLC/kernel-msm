@@ -72,6 +72,62 @@
 		};
 	};
 
+	spi_6 {
+		spi_6_active: spi_6_active {
+			mux {
+				/* MOSI, MISO, CLK */
+				pins = "gpio20", "gpio21", "gpio23";
+				function = "blsp_spi6";
+			};
+
+			config {
+				pins = "gpio20", "gpio21", "gpio23";
+				drive-strength = <12>; /* 12 MA */
+				bias-disable = <0>; /* No PULL */
+			};
+		};
+
+		spi_6_sleep: spi_6_sleep {
+			mux {
+				/* MOSI, MISO, CLK */
+				pins = "gpio20", "gpio21", "gpio23";
+				function = "blsp_spi6";
+			};
+
+			config {
+				pins = "gpio20", "gpio21", "gpio23";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-down; /* PULL Down */
+			};
+		};
+
+		spi6_cs0_active: cs0_active {
+			mux {
+				pins = "gpio22";
+				function = "blsp_spi6";
+			};
+
+			config {
+				pins = "gpio22";
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+
+		spi6_cs0_sleep: cs0_sleep {
+			mux {
+				pins = "gpio22";
+				function = "blsp_spi6";
+			};
+
+			config {
+				pins = "gpio22";
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+	};
+
 	cs35l34_reset_default: cs35l34_reset_default {
 		config {
 			pins = "gpio94";
