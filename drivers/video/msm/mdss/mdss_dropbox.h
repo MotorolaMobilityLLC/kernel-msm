@@ -16,6 +16,7 @@
 
 #define MDSS_DROPBOX_MSG_ESD "ESD event detected"
 #define MDSS_DROPBOX_MSG_PWR_MODE_BLACK "PWR_MODE black screen detected"
+#define MDSS_DROPBOX_MSG_PP_TO "Ping pong timeout"
 
 extern struct ratelimit_state mdss_dropbox_global_rl;
 void mdss_dropbox_report_event(char *msg, int count);
