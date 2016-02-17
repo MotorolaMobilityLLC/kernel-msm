@@ -1,1 +1,0 @@
-obj-$(CONFIG_SLIMPORT_ANX7816)  += anx7816/
