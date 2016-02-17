@@ -165,14 +165,6 @@ enum hdmi_tx_res_states {
 	RESOLUTION_CHANGED
 };
 
-/*
- * On Griffin/Sheridan P1B HW, ANX is not connected to HDMI HPD, therefore ANX
- * needs to call direct to HDMI to inform the HDP detect. Until next HW version
- * the ANX will toggle the HDMI HPD_OUT with will trigger the HPD IRQ from HDMI,
- * then this hacked code will be removed
- */
-static struct hdmi_tx_ctrl *hdmi_ctrl_ptr;
-
 static int hdmi_tx_set_mhl_hpd(struct platform_device *pdev, uint8_t on);
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 static int hdmi_tx_set_slimport_hpd(struct platform_device *pdev, uint8_t on);
@@ -3035,9 +3027,6 @@ static int hdmi_tx_enable_power(struct hdmi_tx_ctrl *hdmi_ctrl,
 	int rc = 0;
 	struct dss_module_power *power_data = NULL;
 
-	/* TODO: hack for P0 HDMI HPD detection */
-	hdmi_ctrl_ptr = hdmi_ctrl;
-
 	if (!hdmi_ctrl || module >= HDMI_TX_MAX_PM) {
 		DEV_ERR("%s: Error: invalid input\n", __func__);
 		rc = -EINVAL;
@@ -4023,41 +4012,13 @@ static int hdmi_tx_set_slimport_hpd(struct platform_device *pdev, uint8_t on)
 }
 #endif
 
-/* TODO: hack for P0 HDMI HPD detection */
-void hdmi_hpd_hack(int new_hpd_state)
-{
-	struct hdmi_tx_ctrl *hdmi_ctrl;
-	u32 hpd_current_state;
-
-	if (!hdmi_ctrl_ptr) {
-		pr_err("%s: hdmi_ctrl_ptr is not set\n", __func__);
-		return;
-	} else
-		hdmi_ctrl = hdmi_ctrl_ptr;
-
-	hpd_current_state = hdmi_ctrl->hpd_state;
-
-	if (new_hpd_state == hpd_current_state)
-		return;
-	else
-		hdmi_ctrl->hpd_state = new_hpd_state;
-
-	pr_info("%s(%d)+\n", __func__, new_hpd_state);
-
-	if (!hdmi_ctrl->panel_suspend)
-		queue_work(hdmi_ctrl->workq, &hdmi_ctrl->hpd_int_work);
-}
-
 static irqreturn_t hdmi_tx_isr(int irq, void *data)
 {
 	struct dss_io_data *io = NULL;
 	struct hdmi_tx_ctrl *hdmi_ctrl = (struct hdmi_tx_ctrl *)data;
-/* TODO: hack for P0 HDMI HPD detection */
-#ifdef HDMI_HDP_CONNECTED
 	unsigned long flags;
 	u32 hpd_current_state;
 	u32 reg_val = 0;
-#endif
 
 	if (!hdmi_ctrl) {
 		DEV_WARN("%s: invalid input data, ISR ignored\n", __func__);
@@ -4072,7 +4033,6 @@ static irqreturn_t hdmi_tx_isr(int irq, void *data)
 	}
 
 	if (DSS_REG_R(io, HDMI_HPD_INT_STATUS) & BIT(0)) {
-#ifdef HDMI_HDP_CONNECTED
 		spin_lock_irqsave(&hdmi_ctrl->hpd_state_lock, flags);
 		hpd_current_state = hdmi_ctrl->hpd_state;
 		hdmi_ctrl->hpd_state =
@@ -4110,13 +4070,6 @@ static irqreturn_t hdmi_tx_isr(int irq, void *data)
 		DSS_REG_W(io, HDMI_HPD_INT_CTRL, BIT(0));
 
 		queue_work(hdmi_ctrl->workq, &hdmi_ctrl->hpd_int_work);
-#else
-		/*
-		 * Ack the current hpd interrupt and stop listening to
-		 * new hpd interrupt.
-		 */
-		 DSS_REG_W(io, HDMI_HPD_INT_CTRL, BIT(0));
-#endif
 	}
 
 	if (hdmi_ddc_isr(&hdmi_ctrl->ddc_ctrl,
