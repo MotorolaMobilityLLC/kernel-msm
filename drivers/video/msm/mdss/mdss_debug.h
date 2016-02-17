@@ -61,13 +61,22 @@ struct vbif_debug_bus {
 #define MDSS_XLOG(...) mdss_xlog(__func__, __LINE__, MDSS_XLOG_DEFAULT, \
 		##__VA_ARGS__, DATA_LIMITER)
 
+#ifndef CONFIG_FB_MSM_MDSS_XLOG_MMI
 #define MDSS_XLOG_TOUT_HANDLER(...)	\
-	mdss_xlog_tout_handler_default(false, __func__, ##__VA_ARGS__, \
+	mdss_xlog_tout_handler_default(false, false, __func__, ##__VA_ARGS__, \
 		XLOG_TOUT_DATA_LIMITER)
 
 #define MDSS_XLOG_TOUT_HANDLER_WQ(...)	\
-	mdss_xlog_tout_handler_default(true, __func__, ##__VA_ARGS__, \
+	mdss_xlog_tout_handler_default(false, true, __func__, ##__VA_ARGS__, \
 		XLOG_TOUT_DATA_LIMITER)
+#define MDSS_XLOG_TOUT_HANDLER_MMI(...)
+#else
+#define MDSS_XLOG_TOUT_HANDLER(...)
+#define MDSS_XLOG_TOUT_HANDLER_WQ(...)
+#define MDSS_XLOG_TOUT_HANDLER_MMI(...) \
+	mdss_xlog_tout_handler_default(true, false, __func__, ##__VA_ARGS__, \
+		XLOG_TOUT_DATA_LIMITER)
+#endif
 
 #define MDSS_XLOG_DBG(...) mdss_xlog(__func__, __LINE__, MDSS_XLOG_DBG, \
 		##__VA_ARGS__, DATA_LIMITER)
@@ -163,7 +172,8 @@ void mdss_misr_crc_collect(struct mdss_data_type *mdata, int block_id,
 
 int mdss_create_xlog_debug(struct mdss_debug_data *mdd);
 void mdss_xlog(const char *name, int line, int flag, ...);
-void mdss_xlog_tout_handler_default(bool queue, const char *name, ...);
+void mdss_xlog_tout_handler_default(bool is_mmi, bool queue,
+				const char *name, ...);
 #else
 struct mdss_debug_base;
 
@@ -203,7 +213,7 @@ static inline void mdss_xlog_dump(void) { }
 static inline void mdss_xlog(const char *name, int line, int flag, ...) { }
 
 static inline void mdss_dsi_debug_check_te(struct mdss_panel_data *pdata) { }
-static inline void mdss_xlog_tout_handler_default(bool queue,
+static inline void mdss_xlog_tout_handler_default(bool is_mmi, bool queue,
 	const char *name, ...) { }
 #endif
 
