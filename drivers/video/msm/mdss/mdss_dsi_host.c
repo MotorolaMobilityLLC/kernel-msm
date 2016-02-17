@@ -1425,6 +1425,9 @@ int mdss_dsi_reg_status_check_dropbox(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		pr_warn("mdss_panel_check_status: ESD detected pwr_mode =0x%x expected mask = 0x%x\n",
 			reg_val, ctrl_pdata->status_value[0]);
 		if (!dropbox_sent) {
+			MDSS_XLOG_TOUT_HANDLER_MMI("mdp",
+						"dsi0_ctrl", "dsi0_phy",
+						"dsi1_ctrl", "dsi1_phy");
 			mdss_dropbox_report_event(MDSS_DROPBOX_MSG_ESD, 1);
 			dropbox_sent = true;
 		}
