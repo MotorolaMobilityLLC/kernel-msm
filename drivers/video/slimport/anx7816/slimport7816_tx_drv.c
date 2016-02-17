@@ -907,8 +907,6 @@ void slimport_waitting_cable_plug_process(void)
 		slimport_set_hdmi_hpd(1);
 #endif
 		hardware_power_ctl(1);
-		/* TODO: hack for P0 HDMI HPD detection */
-		hdmi_hpd_hack(1);
 		goto_next_system_state();
 	} else {
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
