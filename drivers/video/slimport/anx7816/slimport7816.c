@@ -54,7 +54,6 @@ static bool irq_enable;
 
 /* to access global platform data */
 static struct anx7816_platform_data *g_pdata;
-static struct anx7816_data *g_data;
 
 /* #define USE_HDMI_SWITCH */
 #define TRUE 1
@@ -1396,40 +1395,41 @@ static int anx7816_system_init(void)
 		dwc3_ref_clk_set(false);
 }*/
 
-void anx7816_hpd_cb(bool connected)
+#if 0
+static irqreturn_t anx7816_cbl_det_isr(int irq, void *data)
 {
-	struct anx7816_data *anx7816;
+	struct anx7816_data *anx7816 = data;
 
-	if (!g_data) {
-		pr_err("%s: g_data is not set \n", __func__);
-		return;
-	} else
-		anx7816 = g_data;
-
-	if (connected) {
+	if (gpio_get_value(anx7816->pdata->gpio_cbl_det) && irq_enable) {
 		if (!anx7816->slimport_connected) {
 			wake_lock(&anx7816->slimport_lock);
 			anx7816->slimport_connected = true;
 			pr_info("%s %s : detect cable insertion\n",
-						LOG_TAG, __func__);
+							LOG_TAG, __func__);
 			queue_delayed_work(anx7816->workqueue,
-						&anx7816->work, 0);
-		} else
-			pr_debug("%s: anx7816 is already ON\n", __func__);
-	} else {
+							&anx7816->work, 0);
+/*			queue_delayed_work(anx7816->workqueue,
+					&anx7816->dwc3_ref_clk_work, 0); */
+		}
+	} else if (!gpio_get_value(anx7816->pdata->gpio_cbl_det) && irq_enable) {
 		if (anx7816->slimport_connected) {
 			anx7816->slimport_connected = false;
 			pr_info("%s %s : detect cable removal\n",
-						LOG_TAG, __func__);
+							LOG_TAG, __func__);
 			cancel_delayed_work_sync(&anx7816->work);
-			/* TODO: hack for P0 HDMI HPD detection */
-			hdmi_hpd_hack(0);
+			/* skip making driver initiated when cable det pin is
+			 * unstable */
+/*			flush_workqueue(anx7816->workqueue);
+			sp_tx_clean_state_machine();*/
 			wake_unlock(&anx7816->slimport_lock);
-			wake_lock_timeout(&anx7816->slimport_lock, 2*HZ);
-		} else
-			pr_debug("%s: anx7816 is already OFF\n", __func__);
+			wake_lock_timeout(&anx7816->slimport_lock, 2 * HZ);
+/*			queue_delayed_work(anx7816->workqueue,
+					&anx7816->dwc3_ref_clk_work, 0); */
+		}
 	}
+	return IRQ_HANDLED;
 }
+#endif
 
 static void anx7816_work_func(struct work_struct *work)
 {
@@ -1749,7 +1749,6 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 
 	/* to access global platform data */
 	g_pdata = anx7816->pdata;
-	g_data = anx7816;
 
 	anx7816_client = client;
 
