@@ -1,0 +1,5 @@
+config SLIMPORT_ANX7816
+	tristate "Analogix Slimport transmitter ANX7816 support"
+	help
+	  Slimport Transmitter is a 2K/4K video transmitter chip
+	  over micro-USB connector for smartphone device.
