@@ -74,6 +74,12 @@ struct device;
 	.reg = wreg, .mask = 1, .shift = wshift, \
 	.on_val = winvert ? 0 : 1, .off_val = winvert ? 1 : 0
 
+#define SND_SOC_DAPM_DEMUX(wname, wreg, wshift, winvert, wcontrols) \
+{	.id = snd_soc_dapm_demux, .name = wname, \
+	SND_SOC_DAPM_INIT_REG_VAL(wreg, wshift, winvert), \
+	.kcontrol_news = wcontrols, .num_kcontrols = 1}
+
+
 /* path domain */
 #define SND_SOC_DAPM_PGA(wname, wreg, wshift, winvert,\
 	 wcontrols, wncontrols) \
@@ -458,13 +464,14 @@ struct snd_soc_dapm_widget_list *snd_soc_dapm_kcontrol_widget_list(
 enum snd_soc_dapm_type {
 	snd_soc_dapm_input = 0,		/* input pin */
 	snd_soc_dapm_output,		/* output pin */
-	snd_soc_dapm_mux,			/* selects 1 analog signal from many inputs */
-	snd_soc_dapm_mixer,			/* mixes several analog signals together */
-	snd_soc_dapm_mixer_named_ctl,		/* mixer with named controls */
-	snd_soc_dapm_pga,			/* programmable gain/attenuation (volume) */
-	snd_soc_dapm_out_drv,			/* output driver */
-	snd_soc_dapm_adc,			/* analog to digital converter */
-	snd_soc_dapm_dac,			/* digital to analog converter */
+	snd_soc_dapm_mux,	/* selects 1 analog signal from many inputs */
+	snd_soc_dapm_demux,	/* connects the input of one multiple outputs */
+	snd_soc_dapm_mixer,	/* mixes several analog signals together */
+	snd_soc_dapm_mixer_named_ctl,	/* mixer with named controls */
+	snd_soc_dapm_pga,	/* programmable gain/attenuation (volume) */
+	snd_soc_dapm_out_drv,		/* output driver */
+	snd_soc_dapm_adc,		/* analog to digital converter */
+	snd_soc_dapm_dac,		/* digital to analog converter */
 	snd_soc_dapm_micbias,		/* microphone bias (power) */
 	snd_soc_dapm_mic,			/* microphone */
 	snd_soc_dapm_hp,			/* headphones */
