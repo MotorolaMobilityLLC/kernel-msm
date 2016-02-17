@@ -45,6 +45,9 @@ endif
 ifeq ($(CONFIG_MFD_FLORIDA),y)
 obj-$(CONFIG_MFD_ARIZONA)	+= florida-tables.o
 endif
+ifeq ($(CONFIG_MFD_MARLEY),y)
+obj-$(CONFIG_MFD_ARIZONA)	+= marley-tables.o
+endif
 ifeq ($(CONFIG_MFD_WM8997),y)
 obj-$(CONFIG_MFD_ARIZONA)	+= wm8997-tables.o
 endif
