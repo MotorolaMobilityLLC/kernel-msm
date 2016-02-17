@@ -50,6 +50,7 @@ int hdcp_disable;
 /* HDCP switch for external block*/
 /* external_block_en = 1: enable, 0: disable*/
 int external_block_en = 0;
+
 static bool irq_enable;
 
 /* to access global platform data */
@@ -137,7 +138,7 @@ struct msm_hdmi_slimport_ops *hdmi_slimport_ops;
 void slimport_set_hdmi_hpd(int on)
 {
 	int rc = 0;
-	static int hdmi_hpd_flag;
+	static int hdmi_hpd_flag = 0;
 
 	pr_info("%s %s:+\n", LOG_TAG, __func__);
 
@@ -148,8 +149,7 @@ void slimport_set_hdmi_hpd(int on)
 				rc ? "failed" : "passed");
 		if (rc) {
 			msleep(2000);
-			rc = hdmi_slimport_ops->set_upstream_hpd(
-							g_pdata->hdmi_pdev, 1);
+			rc = hdmi_slimport_ops->set_upstream_hpd(g_pdata->hdmi_pdev, 1);
 		}
 	} else if (!on && hdmi_hpd_flag != 0) {
 		hdmi_hpd_flag = 0;
@@ -190,14 +190,14 @@ bool slimport_is_connected(void)
 
 	/* spin_lock(&pdata->lock); */
 
-	while (i < 30) {
+	while(i < 30) {
 		if (gpio_get_value_cansleep(pdata->gpio_cbl_det)) {
 			pr_err("%s %s : Slimport Dongle is detected\n",
 					LOG_TAG, __func__);
 			result = true;
 			break;
 		}
-		msleep(10);
+                msleep(10);
 		i++;
 	}
 	/* spin_unlock(&pdata->lock); */
@@ -291,42 +291,38 @@ slimport7816_rev_check_store(
 	return count;
 }
 /*sysfs interface : Enable or Disable HDCP by default*/
-static ssize_t sp_hdcp_feature_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
+static ssize_t sp_hdcp_feature_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%d\n", hdcp_disable);
+	return sprintf(buf, "%d\n", hdcp_disable);
 }
 
-static ssize_t sp_hdcp_feature_store(struct device *dev,
-			struct device_attribute *attr,
-			const char *buf, size_t count)
+static ssize_t sp_hdcp_feature_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	hdcp_disable = val;
-	pr_debug(" hdcp_disable = %d\n", hdcp_disable);
+	pr_info(" hdcp_disable = %d\n", hdcp_disable);
 	return count;
 }
 
 /*sysfs  interface : HDCP switch for VGA dongle*/
-static ssize_t sp_external_block_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
+static ssize_t sp_external_block_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%d\n", external_block_en);
+	return sprintf(buf, "%d\n", external_block_en);
 }
 
-static ssize_t sp_external_block_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t sp_external_block_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	external_block_en = val;
@@ -338,16 +334,15 @@ anx7730 addr id:: DP_rx(0x50:0, 0x8c:1) HDMI_tx(0x72:5, 0x7a:6, 0x70:7)
 ex:read ) 05df   = read:0  id:5 reg:0xdf
 ex:write) 15df5f = write:1 id:5 reg:0xdf val:0x5f
 */
-static ssize_t anx7730_write_reg_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t anx7730_write_reg_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret = 0;
 	char op, i;
 	char r[3];
 	char v[3];
 	unchar tmp;
-	int id, reg, val = 0;
+	int id, reg, val = 0 ;
 
 	if (sp_tx_cur_states() != STATE_PLAY_BACK) {
 		pr_err("%s: error!, Not STATE_PLAY_BACK\n", LOG_TAG);
@@ -361,10 +356,8 @@ static ssize_t anx7730_write_reg_store(struct device *dev,
 
 	if (count != 7 && count != 5) {
 		pr_err("%s: cnt:%d, invalid input!\n", LOG_TAG, (int)count-1);
-		pr_err("%s: ex) 05df  -> op:0(read)  id:5 reg:0xdf\n",
-							LOG_TAG);
-		pr_err("%s: ex) 15df5f-> op:1(write) id:5 reg:0xdf val:0x5f\n",
-							LOG_TAG);
+		pr_err("%s: ex) 05df   -> op:0(read)  id:5 reg:0xdf \n", LOG_TAG);
+		pr_err("%s: ex) 15df5f -> op:1(wirte) id:5 reg:0xdf val:0x5f\n", LOG_TAG);
 		return -EINVAL;
 	}
 
@@ -372,10 +365,8 @@ static ssize_t anx7730_write_reg_store(struct device *dev,
 	ret = snprintf(&i, 2, buf+1);
 	ret = snprintf(r, 3, buf+2);
 
-	ret = kstrtoul(&i, 10, (unsigned long *)&id);
-	ret += kstrtoul(r, 16, (unsigned long *)&reg);
-	if (ret)
-		return -EINVAL;
+	id = simple_strtoul(&i, NULL, 10);
+	reg = simple_strtoul(r, NULL, 16);
 
 	if ((id != 0 && id != 1 && id != 5 && id != 6 && id != 7)) {
 		pr_err("%s: invalid addr id! (id:0,1,5,6,7)\n", LOG_TAG);
@@ -385,25 +376,20 @@ static ssize_t anx7730_write_reg_store(struct device *dev,
 	switch (op) {
 	case 0x30: /* "0" -> read */
 		i2c_master_read_reg(id, reg, &tmp);
-		pr_debug("%s: anx7730 read(%d,0x%x)= 0x%x\n",
-						LOG_TAG, id, reg, tmp);
+		pr_info("%s: anx7730 read(%d,0x%x)= 0x%x \n", LOG_TAG, id, reg, tmp);
 		break;
 
 	case 0x31: /* "1" -> write */
 		ret = snprintf(v, 3, buf+4);
-		ret = kstrtoul(v, 16, (unsigned long *)&val);
-		if (ret)
-			return -EINVAL;
+		val = simple_strtoul(v, NULL, 16);
 
 		i2c_master_write_reg(id, reg, val);
 		i2c_master_read_reg(id, reg, &tmp);
-		pr_debug("%s: anx7730 write(%d,0x%x,0x%x)\n",
-						LOG_TAG, id, reg, tmp);
+		pr_info("%s: anx7730 write(%d,0x%x,0x%x)\n", LOG_TAG, id, reg, tmp);
 		break;
 
 	default:
-		pr_err("%s: invalid operation code! (0:read, 1:write)\n",
-						LOG_TAG);
+		pr_err("%s: invalid operation code! (0:read, 1:write)\n", LOG_TAG);
 		return -EINVAL;
 	}
 
@@ -439,16 +425,15 @@ static int anx7816_id_change(int id)
 	return chg_id;
 }
 
-static ssize_t anx7816_write_reg_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t anx7816_write_reg_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret = 0;
 	char op, i;
 	char r[3];
 	char v[3];
 	unchar tmp;
-	int id, reg, val = 0;
+	int id, reg, val = 0 ;
 
 	if (sp_tx_cur_states() != STATE_PLAY_BACK) {
 		pr_err("%s: error!, Not STATE_PLAY_BACK\n", LOG_TAG);
@@ -457,10 +442,8 @@ static ssize_t anx7816_write_reg_store(struct device *dev,
 
 	if (count != 7 && count != 5) {
 		pr_err("%s: cnt:%d, invalid input!\n", LOG_TAG, (int)count-1);
-		pr_err("%s: ex) 05df  -> op:0(read)  id:5 reg:0xdf\n",
-							LOG_TAG);
-		pr_err("%s: ex) 15df5f-> op:1(write) id:5 reg:0xdf val:0x5f\n",
-							LOG_TAG);
+		pr_err("%s: ex) 05df   -> op:0(read)  id:5 reg:0xdf \n", LOG_TAG);
+		pr_err("%s: ex) 15df5f -> op:1(wirte) id:5 reg:0xdf val:0x5f\n", LOG_TAG);
 		return -EINVAL;
 	}
 
@@ -468,10 +451,8 @@ static ssize_t anx7816_write_reg_store(struct device *dev,
 	ret = snprintf(&i, 2, buf+1);
 	ret = snprintf(r, 3, buf+2);
 
-	ret = kstrtoul(&i, 10, (unsigned long *)&id);
-	ret += kstrtoul(r, 16, (unsigned long *)&reg);
-	if (ret)
-		return -EINVAL;
+	id = simple_strtoul(&i, NULL, 10);
+	reg = simple_strtoul(r, NULL, 16);
 
 	if ((id != 0 && id != 1 && id != 5 && id != 6 && id != 7)) {
 		pr_err("%s: invalid addr id! (id:0,1,5,6,7)\n", LOG_TAG);
@@ -483,8 +464,7 @@ static ssize_t anx7816_write_reg_store(struct device *dev,
 	switch (op) {
 	case 0x30: /* "0" -> read */
 		sp_read_reg(id, reg, &tmp);
-		pr_debug("%s: anx7816 read(0x%x,0x%x)= 0x%x\n",
-						LOG_TAG, id, reg, tmp);
+		pr_info("%s: anx7816 read(0x%x,0x%x)= 0x%x \n", LOG_TAG, id, reg, tmp);
 		break;
 
 	case 0x31: /* "1" -> write */
@@ -493,50 +473,42 @@ static ssize_t anx7816_write_reg_store(struct device *dev,
 
 		sp_write_reg(id, reg, val);
 		sp_read_reg(id, reg, &tmp);
-		pr_debug("%s: anx7816 write(0x%x,0x%x,0x%x)\n",
-						LOG_TAG, id, reg, tmp);
+		pr_info("%s: anx7816 write(0x%x,0x%x,0x%x)\n", LOG_TAG, id, reg, tmp);
 		break;
 
 	default:
-		pr_err("%s: invalid operation code! (0:read, 1:write)\n",
-						LOG_TAG);
+		pr_err("%s: invalid operation code! (0:read, 1:write)\n", LOG_TAG);
 		return -EINVAL;
 	}
 
 	return count;
 }
 
-static ssize_t slimport_sysfs_rda_hdmi_vga(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t slimport_sysfs_rda_hdmi_vga(struct device *dev, struct device_attribute *attr,
+	       char *buf)
 {
 	int ret;
 	ret = is_slimport_vga();
-
-	return snprintf(buf, PAGE_SIZE, "%d", ret);
+	return sprintf(buf, "%d", ret);
 }
 
 #ifdef SP_REGISTER_SET_TEST /* Slimport test */
 /*sysfs read interface*/
-static ssize_t ctrl_reg0_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg0_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG0, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg0_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg0_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG0 = val;
@@ -544,25 +516,21 @@ static ssize_t ctrl_reg0_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg1_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg1_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG1, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg1_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg1_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG1 = val;
@@ -570,25 +538,21 @@ static ssize_t ctrl_reg1_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg2_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg2_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG2, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg2_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg2_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG2 = val;
@@ -596,25 +560,21 @@ static ssize_t ctrl_reg2_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg3_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg3_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG3, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg3_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg3_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG3 = val;
@@ -622,25 +582,21 @@ static ssize_t ctrl_reg3_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg4_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg4_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG4, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg4_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg4_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG4 = val;
@@ -648,25 +604,21 @@ static ssize_t ctrl_reg4_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg5_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg5_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG5, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg5_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg5_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG5 = val;
@@ -674,25 +626,21 @@ static ssize_t ctrl_reg5_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg6_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg6_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG6, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg6_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg6_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG6 = val;
@@ -700,25 +648,21 @@ static ssize_t ctrl_reg6_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg7_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg7_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG7, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg7_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg7_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG7 = val;
@@ -726,25 +670,21 @@ static ssize_t ctrl_reg7_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg8_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg8_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG8, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg8_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg8_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG8 = val;
@@ -752,25 +692,21 @@ static ssize_t ctrl_reg8_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg9_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg9_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG9, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg9_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg9_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG9 = val;
@@ -778,25 +714,21 @@ static ssize_t ctrl_reg9_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg10_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg10_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG10, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg10_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg10_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG10 = val;
@@ -804,25 +736,21 @@ static ssize_t ctrl_reg10_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg11_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg11_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG11, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg11_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg11_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG11 = val;
@@ -831,25 +759,21 @@ static ssize_t ctrl_reg11_store(struct device *dev,
 
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg12_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg12_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG12, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg12_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg12_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG12 = val;
@@ -857,25 +781,21 @@ static ssize_t ctrl_reg12_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg13_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg13_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG13, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg13_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg13_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG13 = val;
@@ -883,25 +803,21 @@ static ssize_t ctrl_reg13_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg14_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg14_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG14, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg14_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg14_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG14 = val;
@@ -909,25 +825,21 @@ static ssize_t ctrl_reg14_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg15_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg15_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG15, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg15_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg15_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG15 = val;
@@ -935,25 +847,21 @@ static ssize_t ctrl_reg15_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg16_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg16_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG16, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg16_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg16_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG16 = val;
@@ -961,25 +869,21 @@ static ssize_t ctrl_reg16_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg17_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg17_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG17, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg17_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg17_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG17 = val;
@@ -987,51 +891,44 @@ static ssize_t ctrl_reg17_store(struct device *dev,
 }
 
 /*sysfs read interface*/
-static ssize_t ctrl_reg18_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg18_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG18, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg18_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg18_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG18 = val;
 	return count;
 }
 
+
 /*sysfs read interface*/
-static ssize_t ctrl_reg19_show(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
+static ssize_t ctrl_reg19_show(struct device *dev, struct device_attribute *attr,
+		 char *buf)
 {
 	unchar c;
 	sp_read_reg(TX_P1, SP_TX_LT_CTRL_REG19, &c);
-
-	return snprintf(buf, PAGE_SIZE, "0x%x\n", c);
+	return sprintf(buf, "0x%x\n", c);
 }
 
 /*sysfs write interface*/
-static ssize_t ctrl_reg19_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
+static ssize_t ctrl_reg19_store(struct device *dev, struct device_attribute *attr,
+		 const char *buf, size_t count)
 {
 	int ret;
 	long val;
-
-	ret = kstrtol(buf, 10, &val);
+	ret = strict_strtol(buf, 10, &val);
 	if (ret)
 		return ret;
 	val_SP_TX_LT_CTRL_REG19 = val;
@@ -1039,15 +936,13 @@ static ssize_t ctrl_reg19_store(struct device *dev,
 }
 #endif
 
-static ssize_t anx7816_enable_irq_show(struct device *dev,
-		struct device_attribute *attr,
+static ssize_t anx7816_enable_irq_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%d\n", irq_enable);
+	return snprintf(buf, sizeof(bool) + 2, "%d\n", irq_enable);
 }
 
-static ssize_t anx7816_enable_irq_store(struct device *dev,
-		struct device_attribute *attr,
+static ssize_t anx7816_enable_irq_store(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count)
 {
 	int ret;
@@ -1066,10 +961,8 @@ static ssize_t anx7816_enable_irq_store(struct device *dev,
 
 static struct device_attribute slimport_device_attrs[] = {
 	__ATTR(rev_check, S_IWUSR, NULL, slimport7816_rev_check_store),
-	__ATTR(hdcp_disable, S_IRUGO | S_IWUSR, sp_hdcp_feature_show,
-					sp_hdcp_feature_store),
-	__ATTR(hdcp_switch, S_IRUGO | S_IWUSR, sp_external_block_show,
-					sp_external_block_store),
+	__ATTR(hdcp_disable, S_IRUGO | S_IWUSR, sp_hdcp_feature_show, sp_hdcp_feature_store),
+	__ATTR(hdcp_switch, S_IRUGO | S_IWUSR, sp_external_block_show, sp_external_block_store),
 	__ATTR(hdmi_vga, S_IRUGO, slimport_sysfs_rda_hdmi_vga, NULL),
 	__ATTR(anx7730, S_IWUSR, NULL, anx7730_write_reg_store),
 	__ATTR(anx7816, S_IWUSR, NULL, anx7816_write_reg_store),
@@ -1086,33 +979,22 @@ static struct device_attribute slimport_device_attrs[] = {
 	__ATTR(ctrl_reg7, S_IRUGO | S_IWUSR, ctrl_reg7_show, ctrl_reg7_store),
 	__ATTR(ctrl_reg8, S_IRUGO | S_IWUSR, ctrl_reg8_show, ctrl_reg8_store),
 	__ATTR(ctrl_reg9, S_IRUGO | S_IWUSR, ctrl_reg9_show, ctrl_reg9_store),
-	__ATTR(ctrl_reg10, S_IRUGO | S_IWUSR, ctrl_reg10_show,
-							ctrl_reg10_store),
-	__ATTR(ctrl_reg11, S_IRUGO | S_IWUSR, ctrl_reg11_show,
-							ctrl_reg11_store),
-	__ATTR(ctrl_reg12, S_IRUGO | S_IWUSR, ctrl_reg12_show,
-							ctrl_reg12_store),
-	__ATTR(ctrl_reg13, S_IRUGO | S_IWUSR, ctrl_reg13_show,
-							ctrl_reg13_store),
-	__ATTR(ctrl_reg14, S_IRUGO | S_IWUSR, ctrl_reg14_show,
-							ctrl_reg14_store),
-	__ATTR(ctrl_reg15, S_IRUGO | S_IWUSR, ctrl_reg15_show,
-							ctrl_reg15_store),
-	__ATTR(ctrl_reg16, S_IRUGO | S_IWUSR, ctrl_reg16_show,
-							ctrl_reg16_store),
-	__ATTR(ctrl_reg17, S_IRUGO | S_IWUSR, ctrl_reg17_show,
-							ctrl_reg17_store),
-	__ATTR(ctrl_reg18, S_IRUGO | S_IWUSR, ctrl_reg18_show,
-							ctrl_reg18_store),
-	__ATTR(ctrl_reg19, S_IRUGO | S_IWUSR, ctrl_reg19_show,
-							ctrl_reg19_store),
+	__ATTR(ctrl_reg10, S_IRUGO | S_IWUSR, ctrl_reg10_show, ctrl_reg10_store),
+	__ATTR(ctrl_reg11, S_IRUGO | S_IWUSR, ctrl_reg11_show, ctrl_reg11_store),
+	__ATTR(ctrl_reg12, S_IRUGO | S_IWUSR, ctrl_reg12_show, ctrl_reg12_store),
+	__ATTR(ctrl_reg13, S_IRUGO | S_IWUSR, ctrl_reg13_show, ctrl_reg13_store),
+	__ATTR(ctrl_reg14, S_IRUGO | S_IWUSR, ctrl_reg14_show, ctrl_reg14_store),
+	__ATTR(ctrl_reg15, S_IRUGO | S_IWUSR, ctrl_reg15_show, ctrl_reg15_store),
+	__ATTR(ctrl_reg16, S_IRUGO | S_IWUSR, ctrl_reg16_show, ctrl_reg16_store),
+	__ATTR(ctrl_reg17, S_IRUGO | S_IWUSR, ctrl_reg17_show, ctrl_reg17_store),
+	__ATTR(ctrl_reg18, S_IRUGO | S_IWUSR, ctrl_reg18_show, ctrl_reg18_store),
+	__ATTR(ctrl_reg19, S_IRUGO | S_IWUSR, ctrl_reg19_show, ctrl_reg19_store),
 #endif
 };
 
 static int create_sysfs_interfaces(struct device *dev)
 {
 	int i;
-
 	for (i = 0; i < ARRAY_SIZE(slimport_device_attrs); i++)
 		if (device_create_file(dev, &slimport_device_attrs[i]))
 			goto error;
@@ -1349,7 +1231,7 @@ static int anx7816_init_gpio(struct anx7816_data *anx7816)
 		goto err1;
 	}
 	gpio_direction_output(hdmi_switch_gpio, 0);
-	udelay(1000);
+	msleep(1);
 	gpio_set_value(hdmi_switch_gpio, 1);
 #endif
 
@@ -1395,7 +1277,6 @@ static int anx7816_system_init(void)
 		dwc3_ref_clk_set(false);
 }*/
 
-#if 0
 static irqreturn_t anx7816_cbl_det_isr(int irq, void *data)
 {
 	struct anx7816_data *anx7816 = data;
@@ -1436,7 +1317,6 @@ static void anx7816_work_func(struct work_struct *work)
 	struct anx7816_data *td = container_of(work, struct anx7816_data,
 								work.work);
 	int workqueu_timer = 0;
-
 	if (sp_tx_cur_states() >= STATE_PLAY_BACK)
 		workqueu_timer = 500;
 	else
@@ -1571,7 +1451,7 @@ static int anx7816_parse_dt(
 	}
 	pdata->hdmi_pdev = sp_pdev;
 #endif
-	if (anx7816_regulator_configure(dev, pdata) < 0) {
+	if(anx7816_regulator_configure(dev, pdata) < 0) {
 		pr_err("%s %s: parsing dt for anx7816 is failed.\n",
 				LOG_TAG, __func__);
 		return rc;
@@ -1688,7 +1568,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	struct anx7816_data *anx7816;
 	struct anx7816_platform_data *pdata;
 	int ret = 0;
-	/* int sbl_cable_type = 0; */
+	//int sbl_cable_type = 0;
 
 	pr_debug("%s %s start\n", LOG_TAG, __func__);
 
@@ -1730,8 +1610,8 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 
 	if (client->dev.of_node) {
 		pdata = devm_kzalloc(&client->dev,
-				 sizeof(struct anx7816_platform_data),
-				 GFP_KERNEL);
+							 sizeof(struct anx7816_platform_data),
+							 GFP_KERNEL);
 		if (!pdata) {
 			pr_err("%s: Failed to allocate memory\n", __func__);
 			return -ENOMEM;
@@ -1843,7 +1723,6 @@ static int anx7816_i2c_remove(struct i2c_client *client)
 {
 	struct anx7816_data *anx7816 = i2c_get_clientdata(client);
 	int i = 0;
-
 	for (i = 0; i < ARRAY_SIZE(slimport_device_attrs); i++)
 		device_remove_file(&client->dev, &slimport_device_attrs[i]);
 	pr_warn("anx7816_i2c_remove\n");
@@ -1866,26 +1745,22 @@ bool is_slimport_vga(void)
     0x02: DP device is attached
     0x03: Old VGA device is attached // RX_VGA_9832
     0x04: new combo VGA device is attached // RX_VGA_GEN
-    0x00: unknown device            */
+    0x00: unknow device            */
 EXPORT_SYMBOL(is_slimport_vga);
-
 bool is_slimport_dp(void)
 {
 	return (sp_tx_cur_cable_type() == DWN_STRM_IS_DIGITAL) ? TRUE : FALSE;
 }
 EXPORT_SYMBOL(is_slimport_dp);
-
 unchar sp_get_link_bw(void)
 {
 	return sp_tx_cur_bw();
 }
 EXPORT_SYMBOL(sp_get_link_bw);
-
 void sp_set_link_bw(unchar link_bw)
 {
 	sp_tx_set_bw(link_bw);
 }
-
 unchar sp_get_rx_bw(void)
 {
 	return sp_rx_cur_bw();
@@ -1896,6 +1771,7 @@ static int anx7816_i2c_suspend(struct i2c_client *client, pm_message_t state)
 {
 	return 0;
 }
+
 
 static int anx7816_i2c_resume(struct i2c_client *client)
 {
@@ -1911,8 +1787,8 @@ MODULE_DEVICE_TABLE(i2c, anx7816_id);
 
 #ifdef CONFIG_OF
 static struct of_device_id anx_match_table[] = {
-	{ .compatible = "analogix,anx7816",},
-	{ },
+    { .compatible = "analogix,anx7816",},
+    { },
 };
 #endif
 
