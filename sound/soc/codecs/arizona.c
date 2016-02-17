@@ -65,6 +65,7 @@
 #define ARIZONA_FLL_MAX_REFDIV 8
 #define ARIZONA_FLL_MIN_OUTDIV 2
 #define ARIZONA_FLL_MAX_OUTDIV 7
+#define ARIZONA_FLL_SYNC_OFFSET 0x10
 
 #define ARIZONA_FMT_DSP_MODE_A          0
 #define ARIZONA_FMT_DSP_MODE_B          1
@@ -5074,8 +5075,8 @@ static int arizona_enable_fll(struct arizona_fll *fll)
 			arizona_calc_fll(fll, &cfg, fll->sync_freq, true);
 
 			fll_change |= arizona_apply_fll(arizona,
-							fll->base + 0x10, &cfg,
-							fll->sync_src, true);
+						fll->base + fll->sync_offset, &cfg,
+						fll->sync_src, true);
 			use_sync = true;
 		}
 	} else if (fll->sync_src >= 0) {
@@ -5770,6 +5771,23 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(arizona_eq_coeff_put);
+
+int arizona_lhpf_coeff_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct arizona *arizona = dev_get_drvdata(codec->dev->parent);
+	__be16 *data = (__be16 *)ucontrol->value.bytes.data;
+	s16 val = be16_to_cpu(*data);
+
+	if (abs(val) >= 4096) {
+		dev_err(arizona->dev, "Rejecting unstable LHPF coefficients\n");
+		return -EINVAL;
+	}
+
+	return snd_soc_bytes_put(kcontrol, ucontrol);
+}
+EXPORT_SYMBOL_GPL(arizona_lhpf_coeff_put);
 
 static int arizona_slim_audio_probe(struct slim_device *slim)
 {
