@@ -38,7 +38,7 @@
 
 &soc{
 	/delete-node/ spi@78b7000;
-
+	/delete-node/ adv_vreg;
 	i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
 		compatible = "qcom,i2c-msm-v2";
 		#address-cells = <1>;
@@ -224,4 +224,129 @@
 	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
 
 	status = "ok";
+};
+
+&i2c_2 {
+	fusb302@22 {
+		compatible = "fairchild,fusb302";
+		reg = <0x22>;
+		gpios = <&tlmm 67 1>; /* FUSB302_INT_N, in */
+		fusb,gpio-labels = "gpio_fusb_int_n";
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&fusb302_int_default>;
+		pinctrl-1 = <&fusb302_int_active>;
+	};
+
+	adv7533@39 {
+		status = "disabled";
+		/delete-property/ hpd-5v-en-supply;
+	};
+};
+
+&pmi8950_gpios {
+	gpio@c100 {
+		qcom,mode = <1>;	/* Digital output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <0>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <0>;	/* Output Low */
+		status = "okay";
+	};
+};
+
+&pmtitanium_gpios {
+	gpio@c400 {
+		qcom,mode = <0>;		/* Digital Input */
+		qcom,pull = <5>;		/* No pull  */
+		qcom,vin-sel = <2>;		/* VIN0 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+};
+
+&pmi8950_charger {
+	status = "okay";
+	gpios = <&pmi8950_gpios 2 0x0>, /* GPIOF_OUT_INIT_LOW */
+		<&pmtitanium_gpios 5 0x1>; /* GPIOF_IN */
+	gpio-names = "eb_vbus_en",
+		     "factory_warn";
+	/delete-property/ qcom,iterm-ma;
+	qcom,iterm-disabled;
+	/delete-property/ qcom,autoadjust-vfloat;
+	qcom,fastchg-current-ma = <2500>;
+	qcom,float-voltage-mv = <4400>;
+	qcom,resume-delta-mv = <200>;
+	qcom,chg-inhibit-fg;
+	qcom,rparasitic-uohm = <100000>;
+	qcom,bms-psy-name = "bms";
+	qcom,eb-batt-psy-name = "gb_battery";
+	qcom,eb-pwr-psy-name = "gb_ptp";
+	qcom,charge-unknown-battery;
+	qcom,chg-thermal-mitigation = <2500>, <2000>, <1600>, <1200>, <1000>, <700>,
+				      <500>, <300>;
+	qcom,dc-thermal-mitigation = <950>, <700>, <600>, <500>, <400>, <300>;
+	qcom,parallel-charge-current-map = <2500 2500 0>,
+					   <2000 2000 0>,
+					   <1600 1600 0>,
+					   <1200 1200 0>,
+					   <1000 1000 0>,
+					   <700 700 0>,
+					   <500 500 0>,
+					   <300 300 0>;
+	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-current-ma = <2500>;
+	qcom,stepchg-taper-ma = <2000>;
+	qcom,stepchg-iterm-ma = <200>;
+	qcom,hot-temp-c = <60>;
+	qcom,cold-temp-c = <(-20)>;
+	qcom,warm-temp-c = <45>;
+	qcom,cool-temp-c = <0>;
+	qcom,ext-temp-volt-mv = <4200>;
+	qcom,hotspot-thrs-c = <50>;
+	qcom,charging-timeout-mins = <0>;
+	qcom,precharging-timeout-mins = <0>;
+	qcom,bmd-algo-disabled;
+	qcom,bmd-pin-src = "bpd_none";
+	qcom,usbid-disabled;
+	qcom,force-aicl-rerun;
+};
+
+/{
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <100>;
+		#include "batterydata-gv40-lg.dtsi"
+	};
+};
+
+&mot_batterydata{
+	qcom,gv40-lg {
+		qcom,batt-id-kohm = <240>;
+	};
+};
+
+&pmi8950_fg {
+	status = "okay";
+	qcom,warm-bat-decidegc = <450>;
+	qcom,cool-bat-decidegc = <0>;
+	qcom,hot-bat-decidegc = <600>;
+	qcom,cold-bat-decidegc = <(-200)>;
+	qcom,thermal-coefficients =  /bits/ 16 <0x6986 0x5D4B 0x6235>;
+	qcom,resume-soc = <99>;
+	qcom,bcl-lm-threshold-ma = <126>;
+	qcom,bcl-mh-threshold-ma = <400>;
+	qcom,fg-iterm-ma = <150>;
+	qcom,irq-volt-empty-mv = <2750>;
+	qcom,fg-cutoff-voltage-mv = <3000>;
+	qcom,fg-vbat-estimate-diff-mv = <1000>;
+	qcom,fg-delta-soc = <1>;
+	qcom,fg-max-soc = <100>;
+	qcom,fg-min-soc = <0>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,battery-data = <&mot_batterydata>;
+};
+
+&pmtitanium_typec {
+	status = "disabled";
 };
