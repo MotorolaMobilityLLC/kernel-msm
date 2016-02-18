@@ -393,6 +393,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&usbid_default>;
 	vbus_otg-supply = <&smbcharger_charger_otg>;
+	qcom,hsusb-otg-phy-init-seq =
+		<0x73 0x80 0x59 0x81 0x36 0x82 0x3c 0x83 0xffffffff>;
 };
 
 &pmi8950_charger {
