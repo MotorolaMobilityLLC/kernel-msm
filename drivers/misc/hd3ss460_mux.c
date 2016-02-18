@@ -35,6 +35,10 @@ enum hd3ss460_device_list {
 #define HD3_EN_INDEX 2
 #define HD3_NUM_GPIOS 3
 
+static bool ssusb_peripheral;
+module_param(ssusb_peripheral, bool, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(ssusb_peripheral, "SSUSB goes to Peripheral mode on the mod connector");
+
 struct hd3ss460_info {
 	int num_gpios;
 	struct gpio *list;
@@ -246,19 +250,42 @@ static void hd3ss460_w(struct work_struct *work)
 	}
 }
 
+static void hd3ss460_notify_usb_psy(struct hd3ss460_info *info, bool enable)
+{
+	struct power_supply *usb_psy = power_supply_get_by_name("usb");
+
+	if (!usb_psy)
+		return;
+
+	if (enable) {
+		if (ssusb_peripheral) {
+			power_supply_set_supply_type(usb_psy,
+					POWER_SUPPLY_TYPE_USB);
+			power_supply_set_present(usb_psy, 1);
+		} else
+			power_supply_set_usb_otg(usb_psy, 1);
+	} else {
+		if (ssusb_peripheral) {
+			power_supply_set_supply_type(usb_psy,
+					POWER_SUPPLY_TYPE_UNKNOWN);
+			power_supply_set_present(usb_psy, 0);
+		} else
+			power_supply_set_usb_otg(usb_psy, 0);
+	}
+	power_supply_put(usb_psy);
+}
+
 static void hd3ss460_switch_w(struct work_struct *work)
 {
 	struct hd3ss460_info *info =
 			container_of(work, struct hd3ss460_info,
 			hd3ss460_switch_work.work);
-	struct power_supply *usb_psy = power_supply_get_by_name("usb");
 	union power_supply_propval ret = {0,};
 
 	dev_dbg(info->dev, "Setting mux_dev to %d\n", info->mux_dev);
 	if (info->mux_dev == USBC) {
-		/* Disable Host mode in the USB Controller */
-		if (usb_psy)
-			power_supply_set_usb_otg(usb_psy, 0);
+		/* Notify the USB Controller */
+		hd3ss460_notify_usb_psy(info, false);
 		/* Disable the Crossbar switch */
 		hd3ss460_switch_set_state(info, 0, 0, 0);
 		hd3ss460_vdd_enable(info, false);
@@ -278,9 +305,8 @@ static void hd3ss460_switch_w(struct work_struct *work)
 				&ret);
 		hd3ss460_vdd_enable(info, true);
 		hd3ss460_switch_set_state(info, 1, 0, 1);
-		/* Enable Host mode in the USB Controller */
-		if (usb_psy)
-			power_supply_set_usb_otg(usb_psy, 1);
+		/* Notify the USB Controller */
+		hd3ss460_notify_usb_psy(info, true);
 	} else
 		dev_err(info->dev, "Invalid mode set\n");
 }
