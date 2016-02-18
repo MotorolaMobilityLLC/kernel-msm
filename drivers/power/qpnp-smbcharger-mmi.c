@@ -4606,7 +4606,7 @@ static int smbchg_regulator_init(struct smbchg_chip *chip)
 		init_data->constraints.valid_ops_mask
 			|= REGULATOR_CHANGE_STATUS;
 
-		chip->otg_vreg.rdev = regulator_register(
+		chip->otg_vreg.rdev = devm_regulator_register(chip->dev,
 						&chip->otg_vreg.rdesc, &cfg);
 		if (IS_ERR(chip->otg_vreg.rdev)) {
 			rc = PTR_ERR(chip->otg_vreg.rdev);
@@ -4649,7 +4649,7 @@ static int smbchg_regulator_init(struct smbchg_chip *chip)
 		init_data->constraints.valid_ops_mask
 			|= REGULATOR_CHANGE_STATUS;
 
-		chip->ext_otg_vreg.rdev = regulator_register(
+		chip->ext_otg_vreg.rdev = devm_regulator_register(chip->dev,
 					&chip->ext_otg_vreg.rdesc, &cfg);
 		if (IS_ERR(chip->ext_otg_vreg.rdev)) {
 			rc = PTR_ERR(chip->ext_otg_vreg.rdev);
@@ -4663,13 +4663,6 @@ static int smbchg_regulator_init(struct smbchg_chip *chip)
 	return rc;
 }
 
-static void smbchg_regulator_deinit(struct smbchg_chip *chip)
-{
-	if (chip->otg_vreg.rdev)
-		regulator_unregister(chip->otg_vreg.rdev);
-	if (chip->ext_otg_vreg.rdev)
-		regulator_unregister(chip->ext_otg_vreg.rdev);
-}
 
 static int vf_adjust_low_threshold = 5;
 module_param(vf_adjust_low_threshold, int, 0644);
@@ -6565,13 +6558,13 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 			      chip->ebchg_gpio.flags,
 			      chip->ebchg_gpio.label);
 	if (rc) {
-		dev_err(chip->dev, "failed to request GPIO\n");
+		dev_err(chip->dev, "failed to request eb GPIO\n");
 		return;
 	}
 
 	rc = gpio_export(chip->ebchg_gpio.gpio, 1);
 	if (rc) {
-		dev_err(chip->dev, "Failed to export GPIO %s: %d\n",
+		dev_err(chip->dev, "Failed to export eb GPIO %s: %d\n",
 			chip->ebchg_gpio.label, chip->ebchg_gpio.gpio);
 		return;
 	}
@@ -6579,7 +6572,7 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 	rc = gpio_export_link(chip->dev, chip->ebchg_gpio.label,
 			      chip->ebchg_gpio.gpio);
 	if (rc)
-		dev_err(chip->dev, "Failed to link GPIO %s: %d\n",
+		dev_err(chip->dev, "Failed to eb link GPIO %s: %d\n",
 			chip->ebchg_gpio.label, chip->ebchg_gpio.gpio);
 
 	chip->warn_gpio.gpio = of_get_gpio_flags(node, 1, &flags);
@@ -6591,13 +6584,13 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 			      chip->warn_gpio.flags,
 			      chip->warn_gpio.label);
 	if (rc) {
-		dev_err(chip->dev, "failed to request GPIO\n");
+		dev_err(chip->dev, "failed to request warn GPIO\n");
 		return;
 	}
 
 	rc = gpio_export(chip->warn_gpio.gpio, 1);
 	if (rc) {
-		dev_err(chip->dev, "Failed to export GPIO %s: %d\n",
+		dev_err(chip->dev, "Failed to warn export GPIO %s: %d\n",
 			chip->warn_gpio.label, chip->warn_gpio.gpio);
 		return;
 	}
@@ -6605,7 +6598,7 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 	rc = gpio_export_link(chip->dev, chip->warn_gpio.label,
 			      chip->warn_gpio.gpio);
 	if (rc)
-		dev_err(chip->dev, "Failed to link GPIO %s: %d\n",
+		dev_err(chip->dev, "Failed to link warn GPIO %s: %d\n",
 			chip->warn_gpio.label, chip->warn_gpio.gpio);
 	else
 		chip->warn_irq = gpio_to_irq(chip->warn_gpio.gpio);
@@ -6805,12 +6798,12 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	OF_PROP_READ(chip, chip->dc_target_current_ma,
 		     "dc-psy-ma", rc, 1);
 	if (rc)
-		return rc;
+		chip->dc_target_current_ma = -EINVAL;
 	if (chip->dc_target_current_ma < DC_MA_MIN
 	    || chip->dc_target_current_ma > DC_MA_MAX) {
 		dev_err(chip->dev, "Bad dc mA %d\n",
 			chip->dc_target_current_ma);
-		return -EINVAL;
+		chip->dc_target_current_ma = -EINVAL;
 	}
 
 	if (chip->dc_psy_type == POWER_SUPPLY_TYPE_WIPOWER)
@@ -9043,6 +9036,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->usbc_psy = usbc_psy;
 	chip->demo_mode = false;
 	chip->hvdcp_det_done = false;
+	chip->usbc_disabled = true;
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
 	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
 	chip->test_mode = qpnp_smbcharger_test_mode();
@@ -9281,7 +9275,6 @@ unregister_wls_psy:
 unregister_batt_psy:
 	power_supply_unregister(&chip->batt_psy);
 free_regulator:
-	smbchg_regulator_deinit(chip);
 	mutex_lock(&chip->usb_set_present_lock);
 	handle_usb_removal(chip);
 	mutex_unlock(&chip->usb_set_present_lock);
@@ -9332,7 +9325,6 @@ static int smbchg_remove(struct spmi_device *spmi)
 
 	power_supply_unregister(&chip->batt_psy);
 	power_supply_unregister(&chip->wls_psy);
-	smbchg_regulator_deinit(chip);
 	wakeup_source_trash(&chip->smbchg_wake_source);
 
 	return 0;
