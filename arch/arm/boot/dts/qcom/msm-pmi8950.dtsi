@@ -544,7 +544,7 @@
 			qcom,ramp_up_step = "6P7_US";
 			qcom,ramp_dn_step = "6P7_US";
 			qcom,vph-pwr-droop-enabled;
-			qcom,vph-pwr-droop-threshold = <3000>;
+			qcom,vph-pwr-droop-threshold = <3200>;
 			qcom,vph-pwr-droop-debounce-time = <10>;
 			qcom,headroom-sense-ch0-enabled;
 			qcom,headroom-sense-ch1-enabled;
