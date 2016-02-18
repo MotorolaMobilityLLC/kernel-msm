@@ -534,6 +534,16 @@ config QPNP_SMB2
 	  autonomous charging and APSD for different charging sources.
 	  This module also interfaces USB PD for power-delivery support.
 
+config QPNP_SMBCHARGER_MMI
+	tristate "QPNP SMB Charger driver for MMI"
+	depends on SPMI || MSM_SPMI
+	depends on OF_SPMI
+	help
+	  Say Y here to enable the dual path switch mode battery charger which
+	  supports USB detection and battery charging up to 3A.
+	  The driver also offers relevant information to userspace via the
+	  power supply framework.
+
 config FUELGAUGE_STC3117
 	tristate "STC3117 fuel gauge driver"
 	default n
