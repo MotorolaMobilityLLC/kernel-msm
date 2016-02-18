@@ -99,6 +99,16 @@ static long validate_and_copy(unsigned int *cmd, unsigned long *arg,
 			goto validate_exit;
 		}
 		break;
+	case MSM_THERMAL_GET_CLUSTER_FREQUENCY_PLAN:
+		if (query->clock_freq.cluster_num >= NR_CPUS) {
+			ret = -EINVAL;
+			goto validate_exit;
+		}
+	case MSM_THERMAL_GET_CLUSTER_VOLTAGE_PLAN:
+		if (query->voltage.cluster_num >= NR_CPUS) {
+			ret = -EINVAL;
+			goto validate_exit;
+		}
 	default:
 		break;
 	}
