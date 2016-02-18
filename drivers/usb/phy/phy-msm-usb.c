@@ -2234,6 +2234,7 @@ out:
 	return NOTIFY_OK;
 }
 
+#define MSM_ID_CHECK_DELAY 1000
 static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 {
 	int ret;
@@ -4457,6 +4458,8 @@ static void msm_id_status_w(struct work_struct *w)
 			set_bit(A_BUS_REQ, &motg->inputs);
 			work = 1;
 		}
+		queue_delayed_work(motg->otg_wq, &motg->id_status_work,
+				msecs_to_jiffies(MSM_ID_CHECK_DELAY));
 	}
 
 	if (work && (motg->phy.state != OTG_STATE_UNDEFINED)) {
@@ -4485,10 +4488,12 @@ static irqreturn_t msm_id_irq(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 
-	if (!aca_id_turned_on)
+	if (!aca_id_turned_on) {
+		cancel_delayed_work(&motg->id_status_work);
 		/*schedule delayed work for 5msec for ID line state to settle*/
 		queue_delayed_work(motg->otg_wq, &motg->id_status_work,
 				msecs_to_jiffies(MSM_ID_STATUS_DELAY));
+	}
 
 	return IRQ_HANDLED;
 }
