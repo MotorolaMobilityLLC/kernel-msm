@@ -383,7 +383,7 @@ static int arizona_spk_ev(struct snd_soc_dapm_widget *w,
 		case WM5110:
 		case WM1831:
 		case CS47L24:
-			msleep(10);
+			usleep_range(10000, 10001);
 			break;
 		default:
 			break;
@@ -2377,18 +2377,17 @@ static int arizona_update_input(struct arizona* arizona, bool enable)
 
 	if (enable) {
 		arizona_florida_mute_analog(arizona, ARIZONA_IN1L_MUTE);
-
-		msleep(10);
+		usleep_range(10000, 10001);
 
 		regmap_write(arizona->regmap, 0x3A6, 0x5555);
 		regmap_write(arizona->regmap, 0x3A5, 0x3);
 	} else {
 		regmap_read(arizona->regmap, 0x3A5, &val);
 		if (val) {
-			msleep(10);
+			usleep_range(10000, 10001);
 			regmap_write(arizona->regmap, 0x3A5, 0x0);
 			regmap_write(arizona->regmap, 0x3A6, 0x0);
-			msleep(5);
+			usleep_range(5000, 5001);
 		}
 
 		arizona_florida_mute_analog(arizona, 0);
@@ -2434,7 +2433,7 @@ int arizona_in_ev(struct snd_soc_dapm_widget *w, struct snd_kcontrol *kcontrol,
 
 		/* If this is the last input pending then allow VU */
 		if (priv->in_pending == 0) {
-			msleep(1);
+			usleep_range(1000, 1001);
 			arizona_in_set_vu(w->codec, 1);
 		}
 		break;
@@ -2597,7 +2596,7 @@ static int florida_hp_pre_disable(struct snd_soc_dapm_widget *w)
 				      ARIZONA_WRITE_SEQUENCER_CTRL_0,
 				      ARIZONA_WSEQ_ENA | ARIZONA_WSEQ_START |
 				      0x138);
-			msleep(10);
+			usleep_range(10000, 10001);
 		}
 		break;
 	case ARIZONA_OUT1R_ENA_SHIFT:
@@ -2606,7 +2605,7 @@ static int florida_hp_pre_disable(struct snd_soc_dapm_widget *w)
 				      ARIZONA_WRITE_SEQUENCER_CTRL_0,
 				      ARIZONA_WSEQ_ENA | ARIZONA_WSEQ_START |
 				      0x13d);
-			msleep(10);
+			usleep_range(10000, 10001);
 		}
 		break;
 
@@ -2935,7 +2934,8 @@ int arizona_out_ev(struct snd_soc_dapm_widget *w,
 		case ARIZONA_OUT3R_ENA_SHIFT:
 			priv->out_up_pending--;
 			if (!priv->out_up_pending) {
-				msleep(priv->out_up_delay);
+				usleep_range(priv->out_up_delay*1000,
+					priv->out_up_delay*1000 + 1);
 				priv->out_up_delay = 0;
 			}
 			break;
@@ -2971,7 +2971,8 @@ int arizona_out_ev(struct snd_soc_dapm_widget *w,
 		case ARIZONA_OUT3R_ENA_SHIFT:
 			priv->out_down_pending--;
 			if (!priv->out_down_pending) {
-				msleep(priv->out_down_delay);
+				usleep_range(priv->out_down_delay*1000,
+					priv->out_down_delay*1000 + 1);
 				priv->out_down_delay = 0;
 			}
 			break;
@@ -3046,7 +3047,7 @@ static int arizona_slim_get_la(struct slim_device *dev, u8 *la)
 	do {
 		if (!slim_audio_dev) {
 			dev_err(&dev->dev, "Waiting for probe...\n");
-			msleep(10);
+			usleep_range(10000, 10001);
 			continue;
 		}
 
@@ -3054,7 +3055,7 @@ static int arizona_slim_get_la(struct slim_device *dev, u8 *la)
 				sizeof(e_addr), la);
 		if (ret != 0) {
 			dev_err(&dev->dev, "Waiting for enum...\n");
-			msleep(10);
+			usleep_range(10000, 10001);
 		}
 	} while (!la);
 
@@ -3175,8 +3176,6 @@ int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 			dev_err(arizona->dev, "Failed to remove tx: %d\n", ret);
 
 		mutex_unlock(&slim_tx_lock);
-		/* Cargo culted from QC */
-		usleep_range(15000, 15000);
 		break;
 	}
 	return 0;
@@ -3283,8 +3282,6 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		if (ret != 0)
 			dev_err(arizona->dev, "Failed to remove rx: %d\n", ret);
 
-		/* Cargo culted from QC */
-		usleep_range(15000, 15000);
 		break;
 	}
 	return 0;
@@ -5032,7 +5029,7 @@ static int arizona_wait_for_fll(struct arizona_fll *fll, bool requested)
 		status = val & (mask << (fll->id - 1));
 		if (status == requested)
 			return 0;
-		msleep(10);
+		usleep_range(10000, 10001);
 	}
 
 	arizona_fll_warn(fll, "Timed out waiting for lock\n");
