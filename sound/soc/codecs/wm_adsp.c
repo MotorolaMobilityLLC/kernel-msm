@@ -2255,7 +2255,7 @@ static int wm_adsp2_ena(struct wm_adsp *dsp)
 			if (val & ADSP2_RAM_RDY)
 				break;
 
-			msleep(1);
+			usleep_range(1000, 1001);
 		}
 
 		if (!(val & ADSP2_RAM_RDY)) {
@@ -2435,7 +2435,7 @@ static void wm_adsp_edac_shutdown(struct wm_adsp *dsp)
 		if (!val)
 			break;
 
-		msleep(1);
+		usleep_range(1000, 1001);
 	}
 
 	if (val)
