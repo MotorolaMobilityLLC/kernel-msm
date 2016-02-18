@@ -305,6 +305,15 @@ static const struct qmp_reg_val qmp_settings_rev2_misc[] = {
 	{-1, 0x00} /* terminating entry */
 };
 
+static bool max_tuning;
+module_param(max_tuning, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(max_tuning, "Maximize QMP PHY tuning");
+static const struct qmp_reg_val qmp_settings_rev2_max[] = {
+	{0x218, 0x1F}, /* QSERDES_TX_TX_EMP_POST1_LVL */
+	{0x22C, 0x1F}, /* QSERDES_TX_TX_DRV_LVL */
+	{-1, 0x00} /* terminating entry */
+};
+
 /* Override PLL Calibration */
 static const struct qmp_reg_val qmp_override_pll[] = {
 	{0x04, 0xE1}, /* QSERDES_COM_PLL_VCOTAIL_EN */
@@ -534,7 +543,7 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 	int ret;
 	unsigned init_timeout_usec = INIT_MAX_TIME_USEC;
 	u32 revid;
-	const struct qmp_reg_val *reg = NULL, *misc = NULL, *pll = NULL;
+	const struct qmp_reg_val *reg = NULL, *misc = NULL, *pll = NULL, *max = NULL;
 
 	dev_dbg(uphy->dev, "Initializing QMP phy\n");
 
@@ -580,6 +589,9 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 	case 0x20000001:
 		reg = qmp_settings_rev2;
 		misc = qmp_settings_rev2_misc;
+
+		if (max_tuning)
+			max = qmp_settings_rev2_max;
 		break;
 	default:
 		dev_err(uphy->dev, "Unknown revid 0x%x, cannot initialize PHY\n",
@@ -601,6 +613,14 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 	if (ret) {
 		dev_err(uphy->dev, "Failed the main PHY configuration\n");
 		return ret;
+	}
+
+	if (max) {
+		ret = configure_phy_regs(uphy, max);
+		if (ret) {
+			dev_err(uphy->dev, "Failed the max PHY configuration\n");
+			return ret;
+		}
 	}
 
 	/* Feature specific configurations */
