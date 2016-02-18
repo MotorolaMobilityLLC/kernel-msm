@@ -2079,6 +2079,9 @@ static int fusb302_parse_dt(struct device *dev, struct fusb302_i2c_data *fusb)
 	const char *label_prop = "fusb,gpio-labels";
 	int label_cnt = of_property_count_strings(dev->of_node, label_prop);
 
+	for (i = 0; i < ARRAY_SIZE(fusb->gpios); i++)
+		fusb->gpios[i] = -ENODEV;
+
 	if (gpio_cnt > ARRAY_SIZE(fusb->gpios)) {
 		dev_err(dev, "%s:%d gpio count is greater than %zu.\n",
 			__func__, __LINE__, ARRAY_SIZE(fusb->gpios));
