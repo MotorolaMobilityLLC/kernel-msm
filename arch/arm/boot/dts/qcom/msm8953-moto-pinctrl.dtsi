@@ -194,5 +194,35 @@
 			};
 		};
 	};
+
+	fusb302_int{
+	/*label = "fusb302-int";*/
+
+		fusb302_int_default: default {
+			mux {
+				pins = "gpio67";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio67";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+			};
+		};
+
+		fusb302_int_active: active {
+			mux {
+				pins = "gpio67";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio67";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+			};
+		};
+	};
 };
 
