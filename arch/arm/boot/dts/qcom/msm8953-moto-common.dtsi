@@ -42,6 +42,14 @@
 	/delete-node/ i2c@7af5000;
 	/delete-node/ spi@78b7000;
 	/delete-node/ adv_vreg;
+
+	dummy_vreg: dummy_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "dummy_vreg";
+		regulator-always-on;
+	};
+
 	i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
 		compatible = "qcom,i2c-msm-v2";
 		#address-cells = <1>;
@@ -134,7 +142,7 @@
 		<0x07ac4000 0x1f000>;
 		interrupt-names = "spi_irq", "spi_bam_irq";
 		interrupts = <0 300 0>, <0 239 0>;
-		spi-max-frequency = <48000000>;
+		spi-max-frequency = <19200000>;
 
 		qcom,infinite-mode = <0>;
 		qcom,use-bam;
@@ -144,13 +152,45 @@
 		qcom,master-id = <84>;
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
-		pinctrl-0 = <&spi_6_active &spi6_cs0_sleep>;
+		pinctrl-0 = <&spi_6_active &spi6_cs0_active>;
 		pinctrl-1 = <&spi_6_sleep &spi6_cs0_sleep>;
 
 		clock-names = "iface_clk", "core_clk";
 
 		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
 			<&clock_gcc clk_gcc_blsp2_qup2_spi_apps_clk>;
+
+		marley: marley@0 {
+			compatible = "cirrus,cs47l35";
+			spi-max-frequency = <26000000>;
+			reg = <0x0>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <46 0>;
+			irq-base = <800>;
+			gpio-base = <200>;
+			wlf,reset = <&tlmm 68 0>;
+			wlf,irq = <&tlmm 46 0>;
+			wlf,out-mono = <0 1 0 0 0 0>;
+			wlf,micbias1 = <1800 1 1 0 0>;
+			wlf,micbias2 = <1800 1 1 0 0>;
+			wlf,micbias3 = <1800 1 1 0 0>;
+			vreg-arizona1p2-supply = <&dummy_vreg>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&marley_irq_default &marley_reset_default>;
+
+			AVDD-supply = <&pmtitanium_l6>;
+			DBVDD1-supply = <&pmtitanium_l6>;
+			DBVDD2-supply = <&pmtitanium_l6>;
+			CPVDD-supply = <&pmtitanium_l6>;
+			CPVDD1-supply = <&pmtitanium_l6>;
+			CPVDD2-supply = <&pmtitanium_l6>;
+			DCVDD-supply = <&pmtitanium_l6>;
+			SPKVDDL-supply = <&dummy_vreg>;
+			SPKVDDR-supply = <&dummy_vreg>;
+
+			gpio-controller;
+			#gpio-cells = <2>;
+		};
 	};
 
 	/* currus 1.2V supply TPS6267001 */
