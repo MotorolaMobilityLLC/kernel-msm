@@ -93,8 +93,8 @@
 		qcom,noise-rjct-scl = <0>;
 		qcom,noise-rjct-sda = <0>;
 		qcom,master-id = <86>;
-		dmas = <&dma_blsp1 6 64 0x20000020 0x20>,
-			<&dma_blsp1 7 32 0x20000020 0x20>;
+		dmas = <&dma_blsp1 8 64 0x20000020 0x20>,
+			<&dma_blsp1 9 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
 		synaptics_dsx_i2c@20 {
 			compatible = "synaptics,synaptics_dsx_i2c";
