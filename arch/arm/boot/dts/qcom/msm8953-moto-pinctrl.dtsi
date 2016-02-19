@@ -137,6 +137,23 @@
 		};
 	};
 
+	marley_irq_default: marley_irq_default {
+		config {
+			pins = "gpio46";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	marley_reset_default: marley_reset_default {
+		config {
+			pins = "gpio68";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
 	touch_reset_n {
 		/*label = "touch-reset";*/
 
