@@ -1103,6 +1103,7 @@ void cable_disconnect(void *data)
 	wake_lock_timeout(&anx7816->slimport_lock, 2 * HZ);
 
 }
+void system_power_ctrl(unchar enable);
 
 /*JIRA: CLD-110,
 Software patch for cable det pin has glitch before stable "High"*/
@@ -1146,6 +1147,8 @@ static unsigned char confirmed_cable_det(void *data)
 void anx7816_force_mydp_det(bool connected)
 {
 	struct anx7816_data *anx7816;
+
+	pr_info("%s+\n", __func__);
 
 	if (!g_data) {
 		pr_err("%s: g_data is not set \n", __func__);
@@ -1389,6 +1392,8 @@ static int slimport_mod_display_handle_available(void *data)
 
 	anx7816 = (struct anx7816_data *)data;
 
+	anx7816_force_mydp_det(true);
+
 	pr_debug("%s-\n", __func__);
 
 	return 0;
@@ -1401,6 +1406,11 @@ static int slimport_mod_display_handle_unavailable(void *data)
 	pr_debug("%s+\n", __func__);
 
 	anx7816 = (struct anx7816_data *)data;
+
+	/* Just in case */
+	mod_display_set_display_state(MOD_DISPLAY_OFF);
+
+	anx7816_force_mydp_det(false);
 
 	pr_debug("%s-\n", __func__);
 
@@ -1415,6 +1425,8 @@ static int slimport_mod_display_handle_connect(void *data)
 
 	anx7816 = (struct anx7816_data *)data;
 
+	mod_display_set_display_state(MOD_DISPLAY_ON);
+
 	pr_debug("%s-\n", __func__);
 
 	return 0;
@@ -1427,6 +1439,8 @@ static int slimport_mod_display_handle_disconnect(void *data)
 	pr_debug("%s+\n", __func__);
 
 	anx7816 = (struct anx7816_data *)data;
+
+	mod_display_set_display_state(MOD_DISPLAY_OFF);
 
 	pr_debug("%s-\n", __func__);
 
