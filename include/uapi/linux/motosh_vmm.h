@@ -51,11 +51,10 @@ VMM_ENTRY(0x06, ELAPSED_RT,						FALSE,
 VMM_ENTRY(0x07, RESET_REASON,						FALSE,
 		&vmm_reset_reason,
 		sizeof(vmm_reset_reason))
-
+VMM_ENTRY(0x08, UNUSED_08,						FALSE,
+		0,
+		0)
 #ifdef PDISPLAY
-	VMM_ENTRY(0x08, PD_CYCLE_COUNTER,				FALSE,
-			&pd_cycle_counter,
-			sizeof(pd_cycle_counter))
 	VMM_ENTRY(0x09, PD_QUICK_PEEK,					FALSE,
 			pd_quick_peek,
 			sizeof(pd_quick_peek))
@@ -65,10 +64,17 @@ VMM_ENTRY(0x07, RESET_REASON,						FALSE,
 	VMM_ENTRY(0x0B, P_DISPLAY_STATUS,				FALSE,
 			vmm_p_display_status,
 			sizeof(vmm_p_display_status))
+	VMM_ENTRY(0x0C, TOUCH_INFO,					FALSE,
+			vmm_touch_info,
+			sizeof(vmm_touch_info))
+	VMM_ENTRY(0x0D, P_DISPLAY_CONFIG,				TRUE,
+			vmm_p_display_config,
+			sizeof(vmm_p_display_config))
+	VMM_ENTRY(0x0E, P_DISPLAY_DATA_VALID,				FALSE,
+			&vmm_pdl.data_valid,
+			sizeof(vmm_pdl.data_valid))
 #else
-	VMM_ENTRY(0x08, UNUSED_08,					FALSE,
-			0,
-			0)
+
 	VMM_ENTRY(0x09, UNUSED_09,					FALSE,
 			0,
 			0)
@@ -78,33 +84,22 @@ VMM_ENTRY(0x07, RESET_REASON,						FALSE,
 	VMM_ENTRY(0x0B, UNUSED_0B,					FALSE,
 			0,
 			0)
-#endif /*PDISPLAY*/
-
-VMM_ENTRY(0x0C, TOUCH_INFO,						FALSE,
-		vmm_touch_info,
-		sizeof(vmm_touch_info))
-
-#ifdef PDISPLAY
-	VMM_ENTRY(0x0D, P_DISPLAY_CONFIG,				TRUE,
-			vmm_p_display_config,
-			sizeof(vmm_p_display_config))
-	VMM_ENTRY(0x0E, P_DISPLAY_DATA_VALID,				FALSE,
-			&vmm_pdl.data_valid,
-			sizeof(vmm_pdl.data_valid))
-	VMM_ENTRY(0x0F, P_DISPLAY_COLOR,				TRUE,
-			vmm_p_display_color,
-			sizeof(vmm_p_display_color))
-#else
+	VMM_ENTRY(0x0C, UNUSED_0C,					FALSE,
+			0,
+			0)
 	VMM_ENTRY(0x0D, UNUSED_0D,					FALSE,
 			0,
 			0)
 	VMM_ENTRY(0x0E, UNUSED_0E,					FALSE,
 			0,
 			0)
-	VMM_ENTRY(0x0F, UNUSED_0F,					FALSE,
-			0,
-			0)
 #endif /*PDISPLAY*/
+
+
+VMM_ENTRY(0x0F, UNUSED_0F,						FALSE,
+		0,
+		0)
+
 
 VMM_ENTRY(0x10, POSIX_TIME,						TRUE,
 		vmm_posix_time,
