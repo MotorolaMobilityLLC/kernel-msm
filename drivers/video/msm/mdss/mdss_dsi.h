@@ -415,6 +415,7 @@ bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type);
 int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl, int enable,
 								int partial);
 
+void mdss_dsi_dln0_phy_err(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		bool cmd_cfg_cont_splash);

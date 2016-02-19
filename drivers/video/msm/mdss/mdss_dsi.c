@@ -729,6 +729,8 @@ int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enable,
 				regval & ~((clamp_reg << 16) | BIT(31)));
 		}
 
+		/*Clear out PHY Errors before exiting ULPS*/
+		mdss_dsi_dln0_phy_err(ctrl_pdata);
 
 		/*
 		 * ULPS Exit Request
@@ -736,6 +738,10 @@ int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enable,
 		 */
 		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, active_lanes << 8);
 		usleep(1000);
+
+		/*Force the lanes to STOP state*/
+		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, active_lanes << 16);
+
 		MIPI_OUTP(ctrl_pdata->ctrl_base + 0x0AC, 0x0);
 
 		/*
