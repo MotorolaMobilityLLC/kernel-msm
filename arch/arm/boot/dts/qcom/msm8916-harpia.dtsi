@@ -153,6 +153,9 @@
 			bias-disable;
 		};
 	};
+	cc_alert {
+		qcom,pins = <&gp 62>;
+	};
 };
 
 &spi_0 {
@@ -192,14 +195,14 @@
 	fan54046: fan54046-charger@6b {
 		status = "disabled";
 	};
-	bq24296-charger@6b {
+	bq24296: bq24296-charger@6b {
 		compatible = "ti,bq24296-charger";
 		reg = <0x6b>;
 
 		qcom,bq24296-vadc = <&pm8916_vadc>;
 		qcom,bq24296-adc_tm = <&pm8916_adc_tm>;
 
-		ti,bms-psy-name = "bms";
+		ti,bms-psy-name = "max170xx_battery";
 		ti,ext-temp-volt-mv = <4200>;
 		ti,oreg-voltage-mv = <4400>;
 		ti,low-voltage-uv = <3000000>;
@@ -209,28 +212,51 @@
 		ti,chg-current-ma = <2000>;
 	};
 
-	max17058@36 {
-		compatible = "maxim,max17058";
+	max17050: max17050-battery@36 {
+		compatible = "maxim,max17050";
 		reg = <0x36>;
+		maxim,rsns-microohm = <10000>;
 
-		maxim,rcomp0 = /bits/ 8 <88>;
-		maxim,temp-co-up = <(-800)>;
-		maxim,temp-co-down = <(-5375)>;
-		maxim,ocvtest = /bits/ 16 <58128>;
-		maxim,soc-check-a = /bits/ 8 <228>;
-		maxim,soc-check-b = /bits/ 8 <230>;
-		maxim,bits = /bits/ 8 <19>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <62 0x0>;
+		gpios = <&msm_gpio 62 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+		gpio-names = "cc-alert";
+
+		maxim,enable_por_init;
+		maxim,batt_undervoltage_zero_soc;
 		maxim,batt-psy-name = "battery";
+		maxim,warm-temp-c = <45>;
+		maxim,hot-temp-c = <60>;
+		maxim,cool-temp-c = <0>;
+		maxim,cold-temp-c = <(-20)>;
 
-		maxim,model-data = /bits/ 8 <
-			0xA6 0xF0 0xB7 0x70 0xB8 0xC0 0xBA 0xE0
-			0xBC 0x40 0xBD 0x00 0xBE 0x60 0xC0 0x00
-			0xC2 0x30 0xC3 0xF0 0xC6 0x30 0xC8 0x20
-			0xC9 0xE0 0xCC 0x80 0xD4 0xC0 0xD9 0x10
-			0x01 0xA0 0x35 0x20 0x13 0x40 0x26 0xA0
-			0x47 0xC0 0x31 0x80 0x2B 0xC0 0x15 0xE0
-			0x17 0xC0 0x11 0x40 0x14 0x20 0x0A 0x00
-			0x12 0x00 0x10 0x00 0x0C 0x00 0x0C 0x00>;
+		maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cc_alert_default>;
+
+		maxim,configuration {
+			df-serialnum	= "SNN5976A";
+
+			 /include/ "batterydata-bl259-atl.dtsi"
+
+		};
+
+		maxim,temp-conv {
+			start	= /bits/ 16 <(-20)>;	/* in degrees C */
+			result	= /bits/ 16 <
+				/* 1/10th C "real" temps corresponding start, start + 1, etc. fuel gauge temps in C */
+				(-288) (-266) (-246) (-228) (-210) (-193) (-176) (-161) (-146) (-132)	/* -20 C ... -11 C */
+				(-118) (-104)  (-91)  (-78)  (-66)  (-54)  (-42)  (-31)  (-20)   (-9)	/* -10 C ... -1  C */
+				2      13     23     33     43     53     63     73     82     87	/*  0  C ...  9  C */
+				102    111    121    130    140    149    159    168    177    187	/*  10 C ...  19 C */
+				196    205    215    224    233    243    252    262    271    281	/*  20 C ...  29 C */
+				291    300    310    320    330    341    351    361    372    383	/*  30 C ...  39 C */
+				394    405    416    427    439    451    463    475    488    501	/*  40 C ...  49 C */
+				514    528    542    556    571    586    602    618    635    653	/*  50 C ...  59 C */
+				671    690    710    732						/*  60 C ...  63 C */
+			>;
+		};
 	};
 };
 

@@ -1,0 +1,51 @@
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+maxim,bl259-atl-batterydata {
+	/* Required properties */
+	serialnum	= "SNN5976A";
+
+	/* Table from Maxim for BL259 ATL 2754 mAhr Battery */
+	config		= /bits/ 16 <0x0254>;
+	full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
+	design_cap	= /bits/ 16 <5508>;	/* mAh times 2 */
+	ichgt_term	= /bits/ 16 <0x034C>;	/* battery attribute */
+	learn_cfg	= /bits/ 16 <0x2603>;	/* app note constant */
+	filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
+	relax_cfg	= /bits/ 16 <0x203B>;
+	fullcap		= /bits/ 16 <5508>;	/* mAh times 2 */
+	fullcapnom	= /bits/ 16 <5508>;	/* mAh times 2 */
+	lavg_empty      = /bits/ 16 <0x1136>;   /* (2510mA/4/0.15625mA) */
+	qrtbl00		= /bits/ 16 <0x2080>;	/* battery attribute */
+	qrtbl10		= /bits/ 16 <0x0F00>;	/* battery attribute */
+	qrtbl20		= /bits/ 16 <0x0680>;	/* battery attribute */
+	qrtbl30		= /bits/ 16 <0x0580>;	/* battery attribute */
+	rcomp0		= /bits/ 16 <0x006A>;	/* battery attribute */
+	tcompc0		= /bits/ 16 <0x3426>;	/* battery attribute */
+	vempty          = /bits/ 16 <0xA05F>;   /* battery attribute */
+	maxim,cell-char-tbl = /bits/ 16 <	/* battery attribute */
+		0x9940 0xb5c0 0xb7d0 0xb9a0 0xbb30 0xbc90
+		0xbd50 0xbe40 0xbf80 0xc120 0xc3e0 0xc6c0
+		0xcb70 0xd0d0 0xd460 0xd940 0x0090 0x04c0
+		0x1300 0x0c90 0x1450 0x1b40 0x2010 0x12d0
+		0x11e0 0x09d0 0x0860 0x0760 0x0830 0x06f0
+		0x0670 0x0670 0x0100 0x0100 0x0100 0x0100
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+	>;
+	/* Optional properties */
+	tgain		= /bits/ 16 <0xE3E1>;	/* thermistor attribute */
+	toff		= /bits/ 16 <0x290E>;	/* thermistor attribute */
+	cgain		= /bits/ 16 <0x4000>;	/* current sense attribute */
+	misc_cfg	= /bits/ 16 <0x0170>;
+	rev		= /bits/ 16 <0x0004>;
+};
