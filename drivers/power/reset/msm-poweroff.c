@@ -479,6 +479,10 @@ static ssize_t show_emmc_dload(struct kobject *kobj, struct attribute *attr,
 {
 	uint32_t read_val, show_val;
 
+	if (dload_type_addr == NULL) {
+		return snprintf(buf, 8, "%s\n", "No Node");
+	}
+
 	read_val = __raw_readl(dload_type_addr);
 	if (read_val == EMMC_DLOAD_TYPE)
 		show_val = 1;
