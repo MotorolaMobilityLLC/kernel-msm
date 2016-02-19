@@ -18,7 +18,9 @@
 #ifdef QUICK_CHARGE_SUPPORT
 #include "quick_charge.h"
 #endif
+#include <linux/slab.h>
 
+#include <linux/mod_display.h>
 
 #ifndef XTAL_CLK_DEF
 #define XTAL_CLK_DEF XTAL_19D2M
@@ -150,10 +152,18 @@ static void hdmi_rx_new_vsi_int(void);
 
 #define hdmi_rx_set_hpd(enable) \
 	do { \
-		if ((bool)enable) \
+		if ((bool)enable) { \
 			sp_write_reg_or(TX_P2, SP_TX_VID_CTRL3_REG, HPD_OUT); \
-		else \
-			sp_write_reg_and(TX_P2, SP_TX_VID_CTRL3_REG, ~HPD_OUT); \
+			/* TODO: hack for P0 HDMI HPD detection */ \
+			hdmi_hpd_hack(1); \
+			pr_debug("%s %s : hdmi_hpd_hack 1 !\n", LOG_TAG, __func__); \
+		} else {\
+			sp_write_reg_and(TX_P2, SP_TX_VID_CTRL3_REG, \
+								~HPD_OUT); \
+			/* TODO: hack for P0 HDMI HPD detection */ \
+			hdmi_hpd_hack(0); \
+			pr_debug("%s %s : hdmi_hpd_hack 0 !\n", LOG_TAG, __func__); \
+		} \
 	} while (0)
 #define hdmi_rx_set_termination(enable) \
 	do { \
@@ -770,8 +780,6 @@ void slimport_waitting_cable_plug_process(void)
 		/*enable otg,QC2.0*/
 		enable_otg();
 #endif
-		/* TODO: hack for P0 HDMI HPD detection */
-		hdmi_hpd_hack(1);
 		goto_next_system_state();
 	} else
 		hardware_power_ctl(0);
@@ -1437,6 +1445,8 @@ void slimport_edid_process(void)
 {
 	unchar rx_bandwidth, tx_bandwidth;
 	unchar i;
+	struct mod_display_panel_config *display_config = NULL;
+	int ret;
 
 	pr_debug("%s %s : edid_process\n", LOG_TAG, __func__);
 
@@ -1445,6 +1455,23 @@ void slimport_edid_process(void)
 		(uint)rx_bandwidth);
 	sp_rx_bandwidth = rx_bandwidth;
 
+	ret = mod_display_get_display_config(&display_config);
+	if (ret) {
+		pr_err("%s: Failed to get display config: %d\n", __func__, ret);
+		memset(edid_blocks, 0, 256);
+		return;
+	} else {
+		if (display_config->edid_buf_size > 256) {
+			pr_err("%s: EDID too big: %d\n", __func__,
+						display_config->edid_buf_size);
+		} else {
+			memcpy(edid_blocks, display_config->edid_buf,
+						display_config->edid_buf_size);
+			goto skip_me;
+		}
+	}
+
+	/* mdelay(200); */
 	if (g_read_edid_flag == 1) {
 		if (check_with_pre_edid(edid_blocks))
 			g_read_edid_flag = 0;
@@ -1459,6 +1486,10 @@ void slimport_edid_process(void)
 			pr_err("%s %s : ERR:EDID corruption!\n",
 						LOG_TAG, __func__);
 	}
+
+skip_me:
+	if (display_config)
+		kfree(display_config);
 
 	/*Release the HPD after the OTP loaddown*/
 	i = 10;
