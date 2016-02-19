@@ -1384,6 +1384,7 @@ static int anx7816_system_init(void)
 	return 0;
 }
 
+void system_power_ctrl(unchar enable);
 /* extern void dwc3_ref_clk_set(bool); */
 
 /*static void dwc3_ref_clk_work_func(struct work_struct *work)
@@ -1396,9 +1397,11 @@ static int anx7816_system_init(void)
 		dwc3_ref_clk_set(false);
 }*/
 
-void anx7816_hpd_cb(bool connected)
+void anx7816_force_mydp_det(bool connected)
 {
 	struct anx7816_data *anx7816;
+
+	pr_info("%s+\n", __func__);
 
 	if (!g_data) {
 		pr_err("%s: g_data is not set \n", __func__);
@@ -1611,6 +1614,8 @@ static int slimport_mod_display_handle_available(void *data)
 
 	anx7816 = (struct anx7816_data *)data;
 
+	anx7816_force_mydp_det(true);
+
 	pr_debug("%s-\n", __func__);
 
 	return 0;
@@ -1623,6 +1628,11 @@ static int slimport_mod_display_handle_unavailable(void *data)
 	pr_debug("%s+\n", __func__);
 
 	anx7816 = (struct anx7816_data *)data;
+
+	/* Just in case */
+	mod_display_set_display_state(MOD_DISPLAY_OFF);
+
+	anx7816_force_mydp_det(false);
 
 	pr_debug("%s-\n", __func__);
 
@@ -1637,6 +1647,8 @@ static int slimport_mod_display_handle_connect(void *data)
 
 	anx7816 = (struct anx7816_data *)data;
 
+	mod_display_set_display_state(MOD_DISPLAY_ON);
+
 	pr_debug("%s-\n", __func__);
 
 	return 0;
@@ -1649,6 +1661,8 @@ static int slimport_mod_display_handle_disconnect(void *data)
 	pr_debug("%s+\n", __func__);
 
 	anx7816 = (struct anx7816_data *)data;
+
+	mod_display_set_display_state(MOD_DISPLAY_OFF);
 
 	pr_debug("%s-\n", __func__);
 
