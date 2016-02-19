@@ -454,7 +454,6 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 			}
 
 			mdss_dsi_ulps_config(ctrl_pdata, 1, 1);
-			mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 		} else {
 			if (ctrl_pdata->partial_mode_enabled &&
 					mdss_dsi_is_panel_dead(pdata))
@@ -678,14 +677,14 @@ int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enable,
 			goto error;
 		}
 
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 0);
 		/* Enable MMSS DSI Clamps */
-		if (ctrl_pdata->ndx == DSI_CTRL_0) {
+		if (ctrl_pdata->ndx == DSI_CTRL_1) {
 			regval = MIPI_INP(ctrl_pdata->mmss_misc_io.base + 0x14);
 			MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14,
 				regval | clamp_reg);
 			MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14,
 				regval | (clamp_reg | BIT(15)));
-		} else if (ctrl_pdata->ndx == DSI_CTRL_1) {
 			regval = MIPI_INP(ctrl_pdata->mmss_misc_io.base + 0x14);
 			MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x14,
 				regval | (clamp_reg << 16));
@@ -702,12 +701,13 @@ int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enable,
 		 */
 		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x108, 0x1);
 		ctrl_pdata->ulps = true;
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 0);
 	} else if (ctrl_pdata->ulps) {
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
 		MIPI_OUTP(ctrl_pdata->mmss_misc_io.base + 0x108, 0x0);
 		mdss_dsi_phy_init(pdata);
 
 		__mdss_dsi_ctrl_setup(pdata);
-		mdss_dsi_sw_reset(pdata);
 		mdss_dsi_host_init(pdata);
 		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode, pdata);
 
@@ -734,6 +734,7 @@ int mdss_dsi_ulps_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata, int enable,
 
 		/*Clear out PHY Errors before exiting ULPS*/
 		mdss_dsi_dln0_phy_err(ctrl_pdata);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 1);
 
 		/*
 		 * ULPS Exit Request
@@ -794,7 +795,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 
 	if (ctrl_pdata->partial_mode_enabled &&
 				!mdss_dsi_is_panel_dead(pdata)) {
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 		mdss_dsi_ulps_config(ctrl_pdata, 0, 1);
 	} else {
 		if (ctrl_pdata->partial_mode_enabled
