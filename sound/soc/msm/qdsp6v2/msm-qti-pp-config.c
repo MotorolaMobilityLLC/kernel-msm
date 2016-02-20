@@ -426,6 +426,24 @@ static int msm_qti_pp_set_pri_mi2s_lb_vol_mixer(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int msm_qti_pp_get_tert_mi2s_lb_vol_mixer(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = msm_afe_lb_vol_ctrl;
+	return 0;
+}
+
+static int msm_qti_pp_set_tert_mi2s_lb_vol_mixer(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	afe_loopback_gain(AFE_PORT_ID_TERTIARY_MI2S_TX,
+			  ucontrol->value.integer.value[0]);
+
+	msm_afe_lb_vol_ctrl = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
 static int msm_qti_pp_get_quat_mi2s_fm_vol_mixer(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol)
 {
@@ -688,6 +706,12 @@ static const struct snd_kcontrol_new pri_mi2s_lb_vol_mixer_controls[] = {
 	msm_qti_pp_set_pri_mi2s_lb_vol_mixer, afe_lb_vol_gain),
 };
 
+static const struct snd_kcontrol_new tert_mi2s_lb_vol_mixer_controls[] = {
+	SOC_SINGLE_EXT_TLV("TERT MI2S LOOPBACK Volume", SND_SOC_NOPM, 0,
+	INT_RX_VOL_GAIN, 0, msm_qti_pp_get_tert_mi2s_lb_vol_mixer,
+	msm_qti_pp_set_tert_mi2s_lb_vol_mixer, afe_lb_vol_gain),
+};
+
 static const struct snd_kcontrol_new int_hfp_vol_mixer_controls[] = {
 	SOC_SINGLE_EXT_TLV("Internal HFP RX Volume", SND_SOC_NOPM, 0,
 	INT_RX_VOL_GAIN, 0, msm_qti_pp_get_hfp_vol_mixer,
@@ -863,6 +887,9 @@ void msm_qti_pp_add_controls(struct snd_soc_platform *platform)
 
 	snd_soc_add_platform_controls(platform, pri_mi2s_lb_vol_mixer_controls,
 			ARRAY_SIZE(pri_mi2s_lb_vol_mixer_controls));
+
+	snd_soc_add_platform_controls(platform, tert_mi2s_lb_vol_mixer_controls,
+			ARRAY_SIZE(tert_mi2s_lb_vol_mixer_controls));
 
 	snd_soc_add_platform_controls(platform, int_hfp_vol_mixer_controls,
 			ARRAY_SIZE(int_hfp_vol_mixer_controls));
