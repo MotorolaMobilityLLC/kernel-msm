@@ -987,7 +987,7 @@ static ssize_t aio_setup_single_vector(int rw, struct kiocb *kiocb)
 		len = MAX_RW_COUNT;
 
 	if (unlikely(!access_ok(!rw, kiocb->ki_buf, len)))
-                return -EFAULT;
+		return -EFAULT;
 
 	kiocb->ki_iovec = &kiocb->ki_inline_vec;
 	kiocb->ki_iovec->iov_base = kiocb->ki_buf;
