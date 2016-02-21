@@ -115,6 +115,7 @@ struct stmvl53l0_data {
 	void *client_object;
 	struct mutex update_lock;
 	struct delayed_work	dwork;		/* for PS  work handler */
+	struct delayed_work     initwork;
 	struct input_dev *input_dev_ps;
 	struct kobject *range_kobj;
 
@@ -143,7 +144,6 @@ struct stmvl53l0_data {
 	unsigned int delay_ms;
 
 	struct mutex work_mutex;
-
 	/* Debug */
 	unsigned int enableDebug;
 	uint8_t interrupt_received;
@@ -161,6 +161,7 @@ struct stmvl53l0_data {
 	unsigned int offsetCalDistance;
 	unsigned int xtalkcalval;
 	VL53L0_GpioFunctionality gpio_function;
+	uint8_t c_suspend;
 };
 
 /*
