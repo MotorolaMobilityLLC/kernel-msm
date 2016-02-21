@@ -643,8 +643,11 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 /*
  * IOCTL definitions
  */
-#define VL53L0_IOCTL_INIT			_IO('p', 0x01)
-#define VL53L0_IOCTL_INIT_NS                       _IO('p', 0x11)
+#define VL53L0_IOCTL_INIT	        _IO('p', 0x01)
+#define VL53L0_IOCTL_INIT_NS		_IO('p', 0x11)
+#define VL53L0_IOCTL_INIT_NB		_IO('p', 0x90)
+#define VL53L0_IOCTL_SUSPEND		_IO('p', 0x93)
+#define VL53L0_IOCTL_RESUME		_IO('p', 0x94)
 #define VL53L0_IOCTL_XTALKCALB		_IOWR('p', 0x02, unsigned int)
 #define VL53L0_IOCTL_OFFCALB		_IOW('p', 0x03, unsigned int)
 #define VL53L0_IOCTL_STOPCALB		_IO('p', 0x04)
@@ -973,6 +976,10 @@ static void stmvl53l0_cancel_handler(struct stmvl53l0_data *data)
 	if (ret == 0)
 		vl53l0_errmsg("%d,cancel_delayed_work return FALSE\n",
 		__LINE__);
+	ret = cancel_delayed_work(&data->initwork);
+	if (ret == 0)
+		vl53l0_errmsg("%d,cancel_delayed_work return FALSE\n",
+		__LINE__);
 
 	spin_unlock_irqrestore(&data->update_lock.wait_lock, flags);
 
@@ -1085,6 +1092,15 @@ wake_up(&data->range_data_wait);
 	}
 
 }
+static void stmvl53l0_init_handler(struct work_struct *work)
+{
+	struct stmvl53l0_data *data = gp_vl53l0_data;
+
+	vl53l0_dbgmsg("get in the handler\n");
+	stmvl53l0_work_state(data, CAM_ON);
+	return;
+
+}
 /* interrupt work handler */
 static void stmvl53l0_work_handler(struct work_struct *work)
 {
@@ -1096,7 +1112,7 @@ static void stmvl53l0_work_handler(struct work_struct *work)
 
 	mutex_lock(&data->work_mutex);
 
-	if (data->enable_ps_sensor == 1) {
+	if (data->enable_ps_sensor == 1 && data->c_suspend == 0) {
 		papi_func_tbl->GetInterruptMaskStatus(
 			vl53l0_dev, &InterruptMask);
 
@@ -1475,7 +1491,7 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 	if (!data)
 		return -EINVAL;
 
-	vl53l0_dbgmsg("Enter enable_ps_sensor:%d\n", data->enable_ps_sensor);
+	vl53l0_errmsg("Enter enable_ps_sensor:%d\n", data->enable_ps_sensor);
 	switch (cmd) {
 		/* enable */
 	case VL53L0_IOCTL_INIT:
@@ -1485,6 +1501,21 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 	case VL53L0_IOCTL_INIT_NS:
 		if (data->enable_ps_sensor == 0)
 			stmvl53l0_start(data);
+		break;
+	case VL53L0_IOCTL_INIT_NB:
+		vl53l0_dbgmsg("init nb called\n");
+		if (data->enable_ps_sensor == 0)
+			schedule_delayed_work(&data->initwork, 0);
+		break;
+	case VL53L0_IOCTL_SUSPEND:
+		vl53l0_dbgmsg("VL53L0_IOCTL_SUSPEND\n");
+		data->c_suspend = 1;
+		break;
+	case VL53L0_IOCTL_RESUME:
+		vl53l0_dbgmsg("VL53L0_IOCTL_RESUME\n");
+		data->c_suspend = 0;
+		VL53L0_ClearInterruptMask(data, 0);
+		papi_func_tbl->StartMeasurement(data);
 		break;
 		/* crosstalk calibration */
 	case VL53L0_IOCTL_XTALKCALB:
@@ -1561,6 +1592,8 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		/* Get all range data */
 	case VL53L0_IOCTL_GETDATAS:
 		vl53l0_dbgmsg("VL53L0_IOCTL_GETDATAS\n");
+		if (data->enable_ps_sensor == 0)
+			return -EFAULT;
 		if (copy_to_user((VL53L0_RangingMeasurementData_t *)p,
 			&(data->rangeData),
 			sizeof(VL53L0_RangingMeasurementData_t))) {
@@ -2180,6 +2213,7 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	init_waitqueue_head(&data->range_data_wait);
 	/* init work handler */
 	INIT_DELAYED_WORK(&data->dwork, stmvl53l0_work_handler);
+	INIT_DELAYED_WORK(&data->initwork, stmvl53l0_init_handler);
 
 	/* Register to Input Device */
 	data->input_dev_ps = input_allocate_device();
@@ -2254,6 +2288,7 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	/* init default value */
 	data->enable_ps_sensor = 0;
 	data->reset = 1;
+	data->c_suspend = 0;
 	data->delay_ms = 0x7d8;	/* delay time to 2s */
 	data->enableDebug = 0;
 /*	data->client_object.power_up = 0; */
