@@ -24,6 +24,7 @@
 #include "kgsl_cffdump.h"
 #include "kgsl_device.h"
 #include "kgsl_log.h"
+#include "kgsl_trace.h"
 
 static DEFINE_MUTEX(kernel_map_global_lock);
 
@@ -403,9 +404,10 @@ static void kgsl_page_alloc_free(struct kgsl_memdesc *memdesc)
 	/* we certainly do not expect the hostptr to still be mapped */
 	BUG_ON(memdesc->hostptr);
 
-	if (memdesc->sg)
-		for_each_sg(memdesc->sg, sg, sglen, i)
-			__free_pages(sg_page(sg), get_order(sg->length));
+	if (sglen && memdesc->sg)
+		for_each_sg(memdesc->sg, sg, sglen, i) {
+			kgsl_heap_free(sg_page(sg));
+		}
 }
 
 /*
@@ -564,9 +566,15 @@ EXPORT_SYMBOL(kgsl_cache_range_op);
 #ifndef CONFIG_ALLOC_BUFFERS_IN_4K_CHUNKS
 static inline int get_page_size(size_t size, unsigned int align)
 {
-	return (align >= ilog2(SZ_64K) && size >= SZ_64K)
-					? SZ_64K : PAGE_SIZE;
+	if (align >= ilog2(SZ_64K) && size >= SZ_1M)
+		return SZ_1M;
+	if (align >= ilog2(SZ_64K) && size >= SZ_64K)
+		return SZ_64K;
+	if (size >= SZ_16K)
+		return SZ_16K;
+	return PAGE_SIZE;
 }
+
 #else
 static inline int get_page_size(size_t size, unsigned int align)
 {
@@ -581,7 +589,6 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 {
 	size_t len;
 	int ret = 0, page_size, sglen_alloc, sglen = 0;
-	void *ptr;
 	unsigned int align;
 
 	align = (memdesc->flags & KGSL_MEMALIGN_MASK) >> KGSL_MEMALIGN_SHIFT;
@@ -592,7 +599,6 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	 * The alignment cannot be less than the intended page size - it can be
 	 * larger however to accomodate hardware quirks
 	 */
-
 	if (ilog2(align) < page_size)
 		kgsl_memdesc_set_align(memdesc, ilog2(page_size));
 
@@ -600,7 +606,6 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	 * There needs to be enough room in the sg structure to be able to
 	 * service the allocation entirely with PAGE_SIZE sized chunks
 	 */
-
 	sglen_alloc = PAGE_ALIGN(size) >> PAGE_SHIFT;
 
 	memdesc->pagetable = pagetable;
@@ -620,35 +625,19 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 	len = size;
 
+	// only care about size for tracing
+	trace_kgsl_sharedmem_page_alloc(size, page_size, align);
+
 	while (len > 0) {
 		struct page *page;
-		unsigned int gfp_mask = __GFP_HIGHMEM;
-		int j;
 
 		/* don't waste space at the end of the allocation*/
 		if (len < page_size)
 			page_size = PAGE_SIZE;
 
-		/*
-		 * Don't do some of the more aggressive memory recovery
-		 * techniques for large order allocations
-		 */
-		if (page_size != PAGE_SIZE)
-			gfp_mask |= __GFP_COMP | __GFP_NORETRY |
-				__GFP_NO_KSWAPD | __GFP_NOWARN;
-		else
-			gfp_mask |= GFP_KERNEL;
-
-		gfp_mask |= __GFP_ZERO;
-
-		page = alloc_pages(gfp_mask, get_order(page_size));
+		page = kgsl_heap_alloc(page_size);
 
 		if (page == NULL) {
-			if (page_size != PAGE_SIZE) {
-				page_size = PAGE_SIZE;
-				continue;
-			}
-
 			/*
 			 * Update sglen and memdesc size,as requested allocation
 			 * not served fully. So that they can be correctly freed
@@ -666,12 +655,11 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 			goto done;
 		}
 
-		for (j = 0; j < page_size >> PAGE_SHIFT; j++) {
-			struct page *p = nth_page(page, j);
-			ptr = kmap_atomic(p);
-			dmac_flush_range(ptr, ptr + PAGE_SIZE);
-			kunmap_atomic(ptr);
-		}
+		/*
+		 * We need to confirm the actual page size returned by kgsl_heap_alloc.
+		 * It is likely not the same as what we asked for.
+		 */
+		page_size = PAGE_SIZE << compound_order(page);
 
 		sg_set_page(&memdesc->sg[sglen++], page, page_size, 0);
 		len -= page_size;
