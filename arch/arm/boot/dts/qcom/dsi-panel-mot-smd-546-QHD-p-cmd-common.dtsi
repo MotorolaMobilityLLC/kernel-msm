@@ -66,6 +66,9 @@ qcom,mdss-dsi-te-dcs-command = <1>;
 qcom,mdss-dsi-te-check-enable;
 qcom,mdss-dsi-te-using-te-pin;
 
+qcom,partial-update-enabled;
+qcom,panel-roi-alignment = <360 64 360 64 0 0>;
+
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-on-command = [
 	39 01 00 00 00 00 03 F0 5A 5A
