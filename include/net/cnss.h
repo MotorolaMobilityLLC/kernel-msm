@@ -185,4 +185,5 @@ extern int cnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list,
 		u16 *ch_count, u16 buf_len);
 extern int cnss_wlan_set_dfs_nol(const void *info, u16 info_len);
 extern int cnss_wlan_get_dfs_nol(void *info, u16 info_len);
+extern void cnss_dump_stack(struct task_struct *task);
 #endif /* _NET_CNSS_H_ */
