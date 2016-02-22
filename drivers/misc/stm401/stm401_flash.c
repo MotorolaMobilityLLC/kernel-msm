@@ -329,7 +329,7 @@ EXIT:
 int stm401_get_version(struct stm401_data *ps_stm401)
 {
 	int err = 0;
-	if (ps_stm401->mode == BOOTMODE) {
+	if (ps_stm401->mode <= BOOTMODE) {
 		dev_err(&ps_stm401->client->dev,
 			"Tried to read version in boot mode\n");
 		err = -EIO;
@@ -421,8 +421,11 @@ RETRY_ID:
 		dev_dbg(&stm401_misc_data->client->dev,
 			"Switching to normal mode\n");
 		/* init only if not in the factory
-			- stm401_irq_disable indicates factory test ongoing */
-		if (!stm401_irq_disable)
+		 * and stm401_g_booted is set.
+		 *   - stm401_irq_disable indicates factory test ongoing
+		 *   - stm401_g_booted indicates the flasher and binary exist
+		 */
+		if (!stm401_irq_disable && stm401_g_booted)
 			stm401_reset_and_init();
 		else
 			stm401_reset(pdata, stm401_cmdbuff);
@@ -469,7 +472,7 @@ ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 		}
 	}
 
-	if (stm401_misc_data->mode == BOOTMODE) {
+	if (stm401_misc_data->mode <= BOOTMODE) {
 		dev_dbg(&stm401_misc_data->client->dev,
 			"Starting flash write, %d bytes to address 0x%08x\n",
 			count, stm401_misc_data->current_addr);

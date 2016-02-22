@@ -107,7 +107,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 			(cmdbuff[2] << 8) |
 			cmdbuff[1];
 		/* Send sensor state */
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 4);
 		dev_dbg(&ps_stm401->client->dev, "Sensor enable = 0x%lx\n",
 			stm401_g_nonwake_sensor_state);
@@ -120,7 +120,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		cmdbuff[0] = ACCEL_UPDATE_RATE;
 		cmdbuff[1] = ioctl_ws->data.delay;
 		stm401_g_acc_delay =  ioctl_ws->data.delay;
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 2);
 		break;
 	case STM401_IOCTL_SET_MAG_DELAY:
@@ -131,7 +131,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		cmdbuff[0] = MAG_UPDATE_RATE;
 		cmdbuff[1] = ioctl_ws->data.delay;
 		stm401_g_mag_delay =  ioctl_ws->data.delay;
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 2);
 		break;
 	case STM401_IOCTL_SET_GYRO_DELAY:
@@ -142,7 +142,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		cmdbuff[0] = GYRO_UPDATE_RATE;
 		cmdbuff[1] = ioctl_ws->data.delay;
 		stm401_g_gyro_delay =  ioctl_ws->data.delay;
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 2);
 		break;
 	case STM401_IOCTL_SET_STEP_COUNTER_DELAY:
@@ -153,7 +153,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		cmdbuff[0] = STEP_COUNTER_UPDATE_RATE;
 		cmdbuff[1] = ioctl_ws->data.delay;
 		stm401_g_step_counter_delay =  ioctl_ws->data.delay;
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 2);
 		break;
 	case STM401_IOCTL_SET_PRES_DELAY:
@@ -164,7 +164,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		cmdbuff[0] = PRESSURE_UPDATE_RATE;
 		cmdbuff[1] = ioctl_ws->data.delay;
 		stm401_g_baro_delay =  ioctl_ws->data.delay;
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 2);
 		break;
 	case STM401_IOCTL_SET_WAKESENSORS:
@@ -178,7 +178,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		stm401_g_wake_sensor_state =
 			(cmdbuff[2] << 8) |
 			cmdbuff[1];
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 3);
 		dev_dbg(&ps_stm401->client->dev, "Sensor enable = 0x%02X\n",
 			stm401_g_wake_sensor_state);
@@ -199,7 +199,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		stm401_g_algo_state =
 			(cmdbuff[2] << 8) |
 			cmdbuff[1];
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 3);
 		break;
 	case STM401_IOCTL_SET_MAG_CAL:
@@ -213,7 +213,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 			STM401_MAG_CAL_SIZE
 		);
 		ioctl_ws->data.bytes[0] = MAG_CAL;
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(
 				ps_stm401,
 				ioctl_ws->data.bytes,
@@ -227,7 +227,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		);
 		ioctl_ws->data.bytes[0] = MOTION_DUR;
 		stm401_g_motion_dur = ioctl_ws->data.bytes[1];
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(
 				ps_stm401,
 				ioctl_ws->data.bytes,
@@ -240,7 +240,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		);
 		ioctl_ws->data.bytes[0] = ZRMOTION_DUR;
 		stm401_g_zmotion_dur =  ioctl_ws->data.bytes[1];
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(
 				ps_stm401,
 				ioctl_ws->data.bytes,
@@ -262,7 +262,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		stm401_g_algo_requst[ndx].size = ioctl_ws->data_len;
 		memcpy(stm401_g_algo_requst[ndx].data,
 			&(ioctl_ws->data.bytes[1]), ioctl_ws->data_len);
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, ioctl_ws->data.bytes,
 				1 + ioctl_ws->data_len);
 		break;
@@ -553,7 +553,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			&ps_stm401->client->dev,
 			"deferring STM401_IOCTL_SET_POSIX_TIME"
 		);
-		if (ps_stm401->mode == BOOTMODE)
+		if (ps_stm401->mode <= BOOTMODE)
 			return 0;
 		INIT_IOCTL_WS
 		ioctl_ws->cmd = cmd;
@@ -714,14 +714,14 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case STM401_IOCTL_GET_VERSION:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_VERSION");
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_get_version(ps_stm401);
 		else
 			err = -EBUSY;
 		break;
 	case STM401_IOCTL_GET_SENSORS:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_SENSORS");
-		if (ps_stm401->mode != BOOTMODE) {
+		if (ps_stm401->mode > BOOTMODE) {
 			stm401_cmdbuff[0] = NONWAKESENSOR_CONFIG;
 			err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff,
 				1, 3);
@@ -744,7 +744,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	case STM401_IOCTL_GET_WAKESENSORS:
 		dev_dbg(&ps_stm401->client->dev,
 			"STM401_IOCTL_GET_WAKESENSORS");
-		if (ps_stm401->mode != BOOTMODE) {
+		if (ps_stm401->mode > BOOTMODE) {
 			stm401_cmdbuff[0] = WAKESENSOR_CONFIG;
 			err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff,
 				1, 2);
@@ -764,7 +764,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case STM401_IOCTL_GET_ALGOS:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_ALGOS");
-		if (ps_stm401->mode != BOOTMODE) {
+		if (ps_stm401->mode > BOOTMODE) {
 			stm401_cmdbuff[0] = ALGO_CONFIG;
 			err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff,
 				1, 2);
@@ -786,7 +786,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case STM401_IOCTL_GET_MAG_CAL:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_MAG_CAL");
-		if (ps_stm401->mode != BOOTMODE) {
+		if (ps_stm401->mode > BOOTMODE) {
 			stm401_cmdbuff[0] = MAG_CAL;
 			err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff,
 				1, STM401_MAG_CAL_SIZE);
@@ -806,7 +806,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	case STM401_IOCTL_GET_DOCK_STATUS:
 		dev_dbg(&ps_stm401->client->dev,
 			"STM401_IOCTL_GET_DOCK_STATUS");
-		if (ps_stm401->mode != BOOTMODE) {
+		if (ps_stm401->mode > BOOTMODE) {
 			err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff,
 				1, 1);
 			byte = stm401_readbuff[0];
@@ -817,7 +817,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case STM401_IOCTL_TEST_READ:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_TEST_READ");
-		if (ps_stm401->mode != BOOTMODE) {
+		if (ps_stm401->mode > BOOTMODE) {
 			err = stm401_i2c_read(ps_stm401, &byte, 1);
 			/* stm401 will return num of bytes read or error */
 			if (err > 0)
@@ -826,7 +826,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case STM401_IOCTL_TEST_WRITE:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_TEST_WRITE");
-		if (ps_stm401->mode == BOOTMODE)
+		if (ps_stm401->mode <= BOOTMODE)
 			break;
 		if (copy_from_user(&byte, argp, sizeof(unsigned char))) {
 			dev_err(&ps_stm401->client->dev,
@@ -838,7 +838,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case STM401_IOCTL_GET_ALGO_EVT:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_ALGO_EVT");
-		if (ps_stm401->mode == BOOTMODE) {
+		if (ps_stm401->mode <= BOOTMODE) {
 			err = -EFAULT;
 			break;
 		}
@@ -877,7 +877,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	case STM401_IOCTL_WRITE_REG:
 		dev_dbg(&ps_stm401->client->dev,
 			"STM401_IOCTL_WRITE_REG");
-		if (ps_stm401->mode == BOOTMODE) {
+		if (ps_stm401->mode <= BOOTMODE) {
 			err = -EFAULT;
 			break;
 		}
@@ -924,7 +924,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	case STM401_IOCTL_READ_REG:
 		dev_dbg(&ps_stm401->client->dev,
 			"STM401_IOCTL_READ_REG");
-		if (ps_stm401->mode == BOOTMODE) {
+		if (ps_stm401->mode <= BOOTMODE) {
 			err = -EFAULT;
 			break;
 		}
@@ -984,7 +984,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		if (copy_from_user(&stm401_cmdbuff[2], argp + 1,
 					stm401_cmdbuff[1] - 1)) {
 			dev_err(&ps_stm401->client->dev,
-				"Copy data from user returned error\n");
+				"SET_IR_CONFIG: Copy data from user returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -992,7 +992,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		memcpy(stm401_g_ir_config_reg, &stm401_cmdbuff[1],
 			stm401_cmdbuff[1]);
 
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, stm401_cmdbuff,
 					stm401_cmdbuff[1] + 1);
 		dev_dbg(&stm401_misc_data->client->dev,
@@ -1018,7 +1018,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 
-		if (ps_stm401->mode != BOOTMODE) {
+		if (ps_stm401->mode > BOOTMODE) {
 			stm401_cmdbuff[0] = IR_CONFIG;
 			err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff,
 				1, byte);
@@ -1047,7 +1047,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		stm401_cmdbuff[0] = IR_GESTURE_RATE;
 		stm401_cmdbuff[1] = delay;
 		stm401_g_ir_gesture_delay = delay;
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 2);
 		break;
 	case STM401_IOCTL_SET_IR_RAW_DELAY:
@@ -1063,11 +1063,11 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		stm401_cmdbuff[0] = IR_RAW_RATE;
 		stm401_cmdbuff[1] = delay;
 		stm401_g_ir_raw_delay = delay;
-		if (ps_stm401->mode != BOOTMODE)
+		if (ps_stm401->mode > BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 2);
 		break;
 	case STM401_IOCTL_ENABLE_BREATHING:
-		if (ps_stm401->mode == BOOTMODE) {
+		if (ps_stm401->mode <= BOOTMODE) {
 			err = -EBUSY;
 			break;
 		}
@@ -1089,7 +1089,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		err = 0;
 		break;
 	case STM401_IOCTL_SET_LOWPOWER_MODE:
-		if (ps_stm401->mode == BOOTMODE) {
+		if (ps_stm401->mode <= BOOTMODE) {
 			err = -EBUSY;
 			break;
 		}
@@ -1114,7 +1114,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case STM401_IOCTL_SET_FLUSH:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_FLUSH");
-		if (ps_stm401->mode == BOOTMODE)
+		if (ps_stm401->mode <= BOOTMODE)
 			break;
 		if (copy_from_user(&handle, argp, sizeof(unsigned int))) {
 			dev_err(&ps_stm401->client->dev,
@@ -1143,7 +1143,7 @@ int stm401_set_rv_6axis_update_rate(
 		return -EINTR;
 	stm401_wake(ps_stm401);
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_stm401->mode <= BOOTMODE)
 		goto EPILOGUE;
 
 	stm401_cmdbuff[0] = QUAT_6AXIS_UPDATE_RATE;
@@ -1168,7 +1168,7 @@ int stm401_set_rv_9axis_update_rate(
 		return -EINTR;
 	stm401_wake(ps_stm401);
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_stm401->mode <= BOOTMODE)
 		goto EPILOGUE;
 
 	stm401_cmdbuff[0] = QUAT_9AXIS_UPDATE_RATE;

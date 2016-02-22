@@ -70,7 +70,7 @@ void stm401_irq_work_func(struct work_struct *work)
 
 	stm401_wake(ps_stm401);
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_stm401->mode <= BOOTMODE)
 		goto EXIT;
 
 	if (ps_stm401->is_suspended)
