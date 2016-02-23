@@ -27,7 +27,7 @@
 
 #include "arizona.h"
 
-static int arizona_map_irq(struct arizona *arizona, int irq)
+int arizona_map_irq(struct arizona *arizona, int irq)
 {
 	int ret;
 
@@ -40,10 +40,11 @@ static int arizona_map_irq(struct arizona *arizona, int irq)
 	if (arizona->irq_chip)
 		return regmap_irq_get_virq(arizona->irq_chip, irq);
 
-	return 0;
+	return -EINVAL;
 }
+EXPORT_SYMBOL_GPL(arizona_map_irq);
 
-int arizona_request_irq(struct arizona *arizona, int irq, char *name,
+int arizona_request_irq(struct arizona *arizona, int irq, const char *name,
 			   irq_handler_t handler, void *data)
 {
 	irq = arizona_map_irq(arizona, irq);
