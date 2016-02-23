@@ -1008,9 +1008,9 @@
 	gpio-names = "eb_vbus_en",
 		     "factory_warn",
 		     "togl_rst";
-	pinctrl-names = "default", "eb_active";
+	pinctrl-names = "default", "eb_sleep";
 	pinctrl-0 = <&eb_vbus_conf &kungpow_default>;
-	pinctrl-1 = <&eb_vbus_active &kungpow_default>;
+	pinctrl-1 = <&eb_vbus_sleep &kungpow_default>;
 	/delete-property/ qcom,iterm-ma;
 	qcom,iterm-disabled;
 	/delete-property/ qcom,autoadjust-vfloat;
