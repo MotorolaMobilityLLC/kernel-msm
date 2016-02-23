@@ -2,11 +2,26 @@
 #include "TypeC.h"
 #include "PDProtocol.h"
 #include "PDPolicy.h"
-
+#include "vdm/vdm.h"
 #ifdef FSC_DEBUG
 #include "version.h"
 #endif // FSC_DEBUG
 
+static void core_wakeup_statemachine(void)
+{
+	Registers.Mask.byte = 0xFF;
+	Registers.Mask.M_VBUSOK = 0;
+	Registers.Mask.M_ACTIVITY = 0;
+	Registers.Mask.M_COLLISION = 0;
+	DeviceWrite(regMask, 1, &Registers.Mask.byte);
+	Registers.MaskAdv.byte[0] = 0xFF;
+	Registers.MaskAdv.M_RETRYFAIL = 0;
+	Registers.MaskAdv.M_TXCRCSENT = 0;
+	Registers.MaskAdv.M_HARDRST = 0;
+	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
+	Registers.MaskAdv.M_GCRCSENT = 0;
+	DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
+}
 /*
  * Call this function to initialize the core.
  */
@@ -107,6 +122,12 @@ void core_set_source_caps(FSC_U8 * buf)
 void core_get_source_caps(FSC_U8 * buf)
 {
 	ReadSourceCapabilities(buf);
+	core_wakeup_statemachine();
+	PolicyState = peSinkGetSourceCap;
+	PolicySubIndex = 0;
+	PDTxStatus = txIdle;
+	PolicySinkGetSourceCap();
+	ProtocolIdle();
 }
 #endif // FSC_HAVE_SRC
 
@@ -131,12 +152,21 @@ void core_get_sink_req(FSC_U8 * buf)
 	ReadSinkRequestSettings(buf);
 }
 #endif // FSC_HAVE_SNK
-
 void core_send_hard_reset(void)
 {
-	SendUSBPDHardReset();
+	core_wakeup_statemachine();
+	PolicySinkSendHardReset();
+	ProtocolSendHardReset();
 }
-
+void core_send_sink_request(void)
+{
+	core_wakeup_statemachine();
+	PolicySubIndex = 0;
+	PDTxStatus = txIdle;
+	PolicySinkEvaluateCaps();
+	PolicySinkSelectCapability();
+	ProtocolIdle();
+}
 void core_process_pd_buffer_read(FSC_U8 * InBuffer, FSC_U8 * OutBuffer)
 {
 	ProcessPDBufferRead(InBuffer, OutBuffer);
@@ -171,7 +201,26 @@ void core_process_read_pd_state_log(FSC_U8 * InBuffer, FSC_U8 * OutBuffer)
 {
 	ProcessReadPDStateLog(InBuffer, OutBuffer);
 }
-
+void core_process_send_dr_swap(void)
+{
+	core_wakeup_statemachine();
+	PolicySubIndex = 0;
+	PDTxStatus = txIdle;
+	PolicyState = peSinkSendDRSwap;
+	PolicySinkSendDRSwap();
+	USBPDPolicyEngine();
+	ProtocolIdle();
+}
+void core_process_send_vdm(void)
+{
+	core_wakeup_statemachine();
+	PolicySubIndex = 1;
+	PDTxStatus = txIdle;
+	PolicyState = peSinkReady;
+	requestDiscoverIdentity(SOP_TYPE_SOP);
+	USBPDPolicyEngine();
+	ProtocolIdle();
+}
 void core_set_alternate_modes(FSC_U8 * InBuffer, FSC_U8 * OutBuffer)
 {
 	setAlternateModes(InBuffer[3]);

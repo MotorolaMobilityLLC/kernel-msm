@@ -28,7 +28,7 @@ void core_get_sink_caps(FSC_U8 * buf);
 void core_set_sink_req(FSC_U8 * buf);
 void core_get_sink_req(FSC_U8 * buf);
 void core_send_hard_reset(void);
-
+void core_send_sink_request(void);
 void core_process_pd_buffer_read(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
 void core_process_typec_pd_status(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
 void core_process_typec_pd_control(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
@@ -36,7 +36,8 @@ void core_process_local_register_request(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
 void core_process_set_typec_state(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
 void core_process_read_typec_state_log(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
 void core_process_read_pd_state_log(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
-
+void core_process_send_dr_swap(void);
+void core_process_send_vdm(void);
 void core_set_alternate_modes(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
 void core_set_manual_retries(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
 FSC_U8 core_get_alternate_modes(void);
