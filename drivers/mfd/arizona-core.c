@@ -26,16 +26,13 @@
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/machine.h>
 #include <linux/slab.h>
-#include <sound/core.h>
-#include <sound/asound.h>
-#include <sound/soc.h>
 
 #include <linux/mfd/arizona/core.h>
 #include <linux/mfd/arizona/registers.h>
 
 #include "arizona.h"
 
-static const char *wm5102_core_supplies[] = {
+static const char * const wm5102_core_supplies[] = {
 	"AVDD",
 	"DBVDD1",
 };
@@ -98,125 +95,6 @@ int arizona_clk32k_disable(struct arizona *arizona)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(arizona_clk32k_disable);
-
-static int arizona_dvfs_apply_boost(struct arizona *arizona)
-{
-	int ret;
-
-	ret = regulator_set_voltage(arizona->dcvdd, 1800000, 1800000);
-	if (ret != 0) {
-		dev_err(arizona->dev,
-			"Failed to boost DCVDD: %d\n", ret);
-		return ret;
-	}
-
-	ret = regmap_update_bits(arizona->regmap,
-				ARIZONA_DYNAMIC_FREQUENCY_SCALING_1,
-				ARIZONA_SUBSYS_MAX_FREQ, 1);
-	if (ret != 0) {
-		dev_err(arizona->dev,
-			"Failed to enable subsys max: %d\n", ret);
-
-		regulator_set_voltage(arizona->dcvdd, 1200000, 1800000);
-		return ret;
-	}
-
-	return 0;
-}
-
-static int arizona_dvfs_remove_boost(struct arizona *arizona)
-{
-	int ret;
-
-	ret = regmap_update_bits(arizona->regmap,
-				ARIZONA_DYNAMIC_FREQUENCY_SCALING_1,
-				ARIZONA_SUBSYS_MAX_FREQ, 0);
-	if (ret != 0) {
-		dev_err(arizona->dev,
-			"Failed to disable subsys max: %d\n", ret);
-		return ret;
-	}
-
-	ret = regulator_set_voltage(arizona->dcvdd, 1200000, 1800000);
-	if (ret != 0) {
-		dev_err(arizona->dev,
-			"Failed to unboost DCVDD : %d\n", ret);
-		return ret;
-	}
-
-	return 0;
-}
-
-int arizona_dvfs_up(struct arizona *arizona, unsigned int flags)
-{
-	unsigned int old_flags;
-	int ret = 0;
-
-	mutex_lock(&arizona->subsys_max_lock);
-
-	old_flags = arizona->subsys_max_rq;
-	arizona->subsys_max_rq |= flags;
-
-	/* If currently caching the change will be applied in runtime resume */
-	if (arizona->subsys_max_cached) {
-		dev_dbg(arizona->dev, "subsys_max_cached (dvfs up)\n");
-		goto out;
-	}
-
-	if (arizona->subsys_max_rq != old_flags) {
-		switch (arizona->type) {
-		case WM5102:
-		case WM8997:
-		case WM8998:
-		case WM1814:
-			ret = arizona_dvfs_apply_boost(arizona);
-			break;
-
-		default:
-			break;
-		}
-
-	}
-out:
-	mutex_unlock(&arizona->subsys_max_lock);
-	return ret;
-}
-EXPORT_SYMBOL_GPL(arizona_dvfs_up);
-
-int arizona_dvfs_down(struct arizona *arizona, unsigned int flags)
-{
-	unsigned int old_flags;
-	int ret = 0;
-
-	mutex_lock(&arizona->subsys_max_lock);
-
-	old_flags = arizona->subsys_max_rq;
-	arizona->subsys_max_rq &= ~flags;
-
-	/* If currently caching the change will be applied in runtime resume */
-	if (arizona->subsys_max_cached) {
-		dev_dbg(arizona->dev, "subsys_max_cached (dvfs down)\n");
-		goto out;
-	}
-
-	if ((old_flags != 0) && (arizona->subsys_max_rq == 0)) {
-		switch (arizona->type) {
-		case WM5102:
-		case WM8997:
-		case WM8998:
-		case WM1814:
-			ret = arizona_dvfs_remove_boost(arizona);
-			break;
-
-		default:
-			break;
-		}
-	}
-out:
-	mutex_unlock(&arizona->subsys_max_lock);
-	return ret;
-}
-EXPORT_SYMBOL_GPL(arizona_dvfs_down);
 
 static irqreturn_t arizona_clkgen_err(int irq, void *data)
 {
@@ -622,33 +500,6 @@ err:
 }
 
 #ifdef CONFIG_PM_RUNTIME
-static int arizona_restore_dvfs(struct arizona *arizona)
-{
-	int ret;
-
-	switch (arizona->type) {
-	default:
-		return 0;	/* no DVFS */
-
-	case WM5102:
-	case WM8997:
-	case WM8998:
-	case WM1814:
-		break;
-	}
-
-	ret = 0;
-	mutex_lock(&arizona->subsys_max_lock);
-	if (arizona->subsys_max_rq != 0) {
-		dev_dbg(arizona->dev, "Restore subsys_max boost\n");
-		ret = arizona_dvfs_apply_boost(arizona);
-	}
-
-	arizona->subsys_max_cached = false;
-	mutex_unlock(&arizona->subsys_max_lock);
-	return ret;
-}
-
 static int arizona_dcvdd_notify(struct notifier_block *nb,
 				unsigned long action, void *data)
 {
@@ -667,6 +518,7 @@ static int arizona_runtime_resume(struct device *dev)
 {
 	struct arizona *arizona = dev_get_drvdata(dev);
 	int ret;
+	unsigned int offset, num_gpios = 0;
 
 	dev_dbg(arizona->dev, "Leaving AoD mode\n");
 
@@ -696,6 +548,8 @@ static int arizona_runtime_resume(struct device *dev)
 	}
 
 	regcache_cache_only(arizona->regmap, false);
+	if (arizona->regmap_32bit)
+		regcache_cache_only(arizona->regmap_32bit, false);
 
 	switch (arizona->type) {
 	case WM5102:
@@ -769,8 +623,6 @@ static int arizona_runtime_resume(struct device *dev)
 	case WM8997:
 	case WM8998:
 	case WM1814:
-	case WM1831:
-	case CS47L24:
 		ret = arizona_wait_for_boot(arizona);
 		if (ret != 0) {
 			goto err;
@@ -785,6 +637,13 @@ static int arizona_runtime_resume(struct device *dev)
 					"Failed to connect DCVDD: %d\n", ret);
 				goto err;
 			}
+		}
+		break;
+	case WM1831:
+	case CS47L24:
+		ret = arizona_wait_for_boot(arizona);
+		if (ret != 0) {
+			goto err;
 		}
 		break;
 	default:
@@ -810,6 +669,28 @@ static int arizona_runtime_resume(struct device *dev)
 		break;
 	}
 
+	switch (arizona->type) {
+	case WM8285:
+	case WM1840:
+		num_gpios = CLEARWATER_NUM_GPIOS;
+		break;
+	case CS47L35:
+		num_gpios = MARLEY_NUM_GPIOS;
+		break;
+	case CS47L90:
+	case CS47L91:
+		num_gpios = MOON_NUM_GPIOS;
+		break;
+	default:
+		break;
+	}
+
+	/* sync the gpio registers */
+	for (offset = 0; offset < num_gpios; offset++)
+		regmap_write(arizona->regmap,
+			CLEARWATER_GPIO1_CTRL_1 + (offset * 2),
+			arizona->pdata.gpio_defaults[offset * 2]);
+
 	ret = regcache_sync(arizona->regmap);
 	if (ret != 0) {
 		dev_err(arizona->dev,
@@ -826,14 +707,12 @@ static int arizona_runtime_resume(struct device *dev)
 		}
 	}
 
-	ret = arizona_restore_dvfs(arizona);
-	if (ret < 0)
-		goto err;
-
 	return 0;
 
 err:
 	regcache_cache_only(arizona->regmap, true);
+	if (arizona->regmap_32bit)
+		regcache_cache_only(arizona->regmap_32bit, true);
 	regulator_disable(arizona->dcvdd);
 	return ret;
 }
@@ -845,21 +724,6 @@ static int arizona_runtime_suspend(struct device *dev)
 
 	dev_dbg(arizona->dev, "Entering AoD mode\n");
 
-	switch(arizona->type) {
-	case WM5102:
-	case WM8997:
-	case WM8998:
-	case WM1814:
-		/* Must disable DVFS boost before powering down DCVDD */
-		mutex_lock(&arizona->subsys_max_lock);
-		arizona->subsys_max_cached = true;
-		arizona_dvfs_remove_boost(arizona);
-		mutex_unlock(&arizona->subsys_max_lock);
-		break;
-	default:
-		break;
-	}
-
 	if (arizona->external_dcvdd) {
 		switch (arizona->type) {
 		case WM5102:
@@ -868,8 +732,6 @@ static int arizona_runtime_suspend(struct device *dev)
 		case WM8280:
 		case WM8998:
 		case WM1814:
-		case WM1831:
-		case CS47L24:
 			ret = regmap_update_bits(arizona->regmap,
 						 ARIZONA_ISOLATION_CONTROL,
 						 ARIZONA_ISOLATE_DCVDD1,
@@ -877,7 +739,7 @@ static int arizona_runtime_suspend(struct device *dev)
 			if (ret != 0) {
 				dev_err(arizona->dev, "Failed to isolate DCVDD: %d\n",
 					ret);
-				goto err;
+				return ret;
 			}
 			break;
 		default:
@@ -893,12 +755,13 @@ static int arizona_runtime_suspend(struct device *dev)
 			 * to request an exact range.
 			 */
 			ret = regulator_set_voltage(arizona->dcvdd,
-						    1175000, 1175000);
+						    1175000,
+						    1175000);
 			if (ret < 0) {
 				dev_err(arizona->dev,
 					"Failed to set suspend voltage: %d\n",
 					ret);
-				goto err;
+				return ret;
 			}
 			break;
 		default:
@@ -908,14 +771,13 @@ static int arizona_runtime_suspend(struct device *dev)
 
 	regcache_cache_only(arizona->regmap, true);
 	regcache_mark_dirty(arizona->regmap);
-	if (arizona->regmap_32bit)
+	if (arizona->regmap_32bit) {
+		regcache_cache_only(arizona->regmap_32bit, true);
 		regcache_mark_dirty(arizona->regmap_32bit);
+	}
 	regulator_disable(arizona->dcvdd);
 
 	return 0;
-err:
-	arizona_restore_dvfs(arizona);
-	return ret;
 }
 #else
 static inline int arizona_dcvdd_notify(struct notifier_block *nb,
@@ -964,51 +826,15 @@ static int arizona_resume_noirq(struct device *dev)
 	return 0;
 }
 
-#ifdef CONFIG_MFD_ARIZONA_DEFERRED_RESUME
-static void arizona_resume_deferred(struct work_struct *work)
-{
-	struct arizona *arizona =
-			container_of(work, struct arizona, deferred_resume_work);
-	int level = -1;
-
-	if (arizona->dapm)
-		level = snd_power_get_state(arizona->dapm->card->snd_card);
-
-	if ((arizona->dapm) && (level != SNDRV_CTL_POWER_D0)) {
-		if (!schedule_work(&arizona->deferred_resume_work))
-			dev_err(arizona->dev, "Resume work item may be lost\n");
-	} else {
-		dev_dbg(arizona->dev, "Deferred resume, reenabling IRQ\n");
-		if (arizona->irq_sem) {
-			enable_irq(arizona->irq);
-			arizona->irq_sem = 0;
-		}
-	}
-}
-#endif
-
 static int arizona_resume(struct device *dev)
 {
 	struct arizona *arizona = dev_get_drvdata(dev);
-#ifdef CONFIG_MFD_ARIZONA_DEFERRED_RESUME
-	int level = -1;
 
-	if (arizona->dapm)
-		level = snd_power_get_state(arizona->dapm->card->snd_card);
-
-	if ((arizona->dapm) && (level != SNDRV_CTL_POWER_D0)) {
-		if (!schedule_work(&arizona->deferred_resume_work))
-			dev_err(dev, "Resume work item may be lost\n");
-	} else {
-#endif
-		dev_dbg(arizona->dev, "Late resume, reenabling IRQ\n");
-		if (arizona->irq_sem) {
-			enable_irq(arizona->irq);
-			arizona->irq_sem = 0;
-		}
-#ifdef CONFIG_MFD_ARIZONA_DEFERRED_RESUME
+	dev_dbg(arizona->dev, "Late resume, reenabling IRQ\n");
+	if (arizona->irq_sem) {
+		enable_irq(arizona->irq);
+		arizona->irq_sem = 0;
 	}
-#endif
 
 	return 0;
 }
@@ -1136,6 +962,27 @@ static int arizona_of_get_inmode(struct arizona *arizona,
 	return 0;
 }
 
+static int arizona_of_get_lrclk_adv(struct arizona *arizona,
+					const char *prop)
+{
+	struct arizona_pdata *pdata = &arizona->pdata;
+	struct device_node *np = arizona->dev->of_node;
+	struct property *tempprop;
+	const __be32 *cur;
+	u32 val;
+	int i;
+
+	i = 0;
+	of_property_for_each_u32(np, prop, tempprop, cur, val) {
+		if (i == ARRAY_SIZE(pdata->lrclk_adv))
+			break;
+
+		pdata->lrclk_adv[i++] = val;
+	}
+
+	return 0;
+}
+
 static int arizona_of_get_dmicref(struct arizona *arizona,
 					const char *prop)
 {
@@ -1195,8 +1042,6 @@ static int arizona_of_get_gpio_defaults(struct arizona *arizona,
 
 		pdata->gpio_defaults[i++] = val;
 	}
-	if (!i)
-		return 0;
 
 	/*
 	 * All values are literal except out of range values
@@ -1204,7 +1049,8 @@ static int arizona_of_get_gpio_defaults(struct arizona *arizona,
 	 * data which uses 0 as chip default and out of range
 	 * as zero.
 	 */
-	for (i = 0; i < ARRAY_SIZE(pdata->gpio_defaults); i++) {
+	while (i > 0) {
+		--i;
 		if (pdata->gpio_defaults[i] > 0xffff)
 			pdata->gpio_defaults[i] = 0;
 		else if (pdata->gpio_defaults[i] == 0)
@@ -1410,7 +1256,6 @@ static int arizona_of_get_core_pdata(struct arizona *arizona)
 	memset(&out_mono, 0, sizeof(out_mono));
 
 	pdata->reset = arizona_of_get_named_gpio(arizona, "wlf,reset", true);
-	pdata->ldoena = arizona_of_get_named_gpio(arizona, "wlf,ldoena", true);
 
 	arizona_of_read_s32(arizona, "wlf,clk32k-src", false,
 				&pdata->clk32k_src);
@@ -1446,6 +1291,9 @@ static int arizona_of_get_core_pdata(struct arizona *arizona)
 
 	pdata->rev_specific_fw = of_property_read_bool(arizona->dev->of_node,
 						       "wlf,rev-specific-fw");
+
+	arizona_of_get_lrclk_adv(arizona, "wlf,aif-lrclk-advance");
+
 	return 0;
 }
 
@@ -1478,7 +1326,7 @@ static const struct mfd_cell early_devs[] = {
 	{ .name = "arizona-ldo1" },
 };
 
-static const char *wm5102_supplies[] = {
+static const char * const wm5102_supplies[] = {
 	"MICVDD",
 	"DBVDD2",
 	"DBVDD3",
@@ -1521,7 +1369,7 @@ static const struct mfd_cell florida_devs[] = {
 	},
 };
 
-static const char *cs47l24_supplies[] = {
+static const char * const cs47l24_supplies[] = {
 	"MICVDD",
 	"CPVDD",
 	"SPKVDD",
@@ -1538,7 +1386,7 @@ static const struct mfd_cell largo_devs[] = {
 	},
 };
 
-static const char *wm8997_supplies[] = {
+static const char * const wm8997_supplies[] = {
 	"MICVDD",
 	"DBVDD2",
 	"CPVDD",
@@ -1575,7 +1423,7 @@ static const struct mfd_cell vegas_devs[] = {
 	},
 };
 
-static const char *clearwater_supplies[] = {
+static const char * const clearwater_supplies[] = {
 	"MICVDD",
 	"DBVDD2",
 	"DBVDD3",
@@ -1598,7 +1446,7 @@ static const struct mfd_cell clearwater_devs[] = {
 	},
 };
 
-static const char *marley_supplies[] = {
+static const char * const marley_supplies[] = {
 	"MICVDD",
 	"DBVDD2",
 	"CPVDD",
@@ -1773,11 +1621,17 @@ int arizona_get_num_micbias(struct arizona *arizona,
 	case WM8280:
 	case WM8998:
 	case WM1814:
-	case WM8285:
-	case WM1840:
+		num_micbiases = WM5102_NUM_MICBIAS;
+		num_child_micbiases = 0;
+		break;
 	case WM1831:
 	case CS47L24:
-		num_micbiases = ARIZONA_MAX_MICBIAS;
+		num_micbiases = LARGO_NUM_MICBIAS;
+		num_child_micbiases = 0;
+		break;
+	case WM8285:
+	case WM1840:
+		num_micbiases = CLEARWATER_NUM_MICBIAS;
 		num_child_micbiases = 0;
 		break;
 	case CS47L35:
@@ -1811,9 +1665,9 @@ int arizona_dev_init(struct arizona *arizona)
 
 	dev_set_drvdata(arizona->dev, arizona);
 	mutex_init(&arizona->clk_lock);
-	mutex_init(&arizona->subsys_max_lock);
 	mutex_init(&arizona->reg_setting_lock);
 	mutex_init(&arizona->rate_lock);
+	mutex_init(&arizona->dspclk_ena_lock);
 
 	if (dev_get_platdata(arizona->dev))
 		memcpy(&arizona->pdata, dev_get_platdata(arizona->dev),
@@ -1822,6 +1676,8 @@ int arizona_dev_init(struct arizona *arizona)
 		arizona_of_get_core_pdata(arizona);
 
 	regcache_cache_only(arizona->regmap, true);
+	if (arizona->regmap_32bit)
+		regcache_cache_only(arizona->regmap_32bit, true);
 
 	switch (arizona->type) {
 	case WM5102:
@@ -1847,11 +1703,6 @@ int arizona_dev_init(struct arizona *arizona)
 			arizona->type);
 		return -EINVAL;
 	}
-
-#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_MFD_ARIZONA_DEFERRED_RESUME)
-		/* deferred resume work */
-		INIT_WORK(&arizona->deferred_resume_work, arizona_resume_deferred);
-#endif
 
 	/* Mark DCVDD as external, LDO1 driver will clear if internal */
 	arizona->external_dcvdd = true;
@@ -1933,6 +1784,8 @@ int arizona_dev_init(struct arizona *arizona)
 	arizona_disable_reset(arizona);
 
 	regcache_cache_only(arizona->regmap, false);
+	if (arizona->regmap_32bit)
+		regcache_cache_only(arizona->regmap_32bit, false);
 
 	/* Verify that this is a chip we know about */
 	ret = regmap_read(arizona->regmap, ARIZONA_SOFTWARE_RESET, &reg);
@@ -2241,7 +2094,7 @@ int arizona_dev_init(struct arizona *arizona)
 	pm_runtime_use_autosuspend(arizona->dev);
 	pm_runtime_enable(arizona->dev);
 
-	pm_runtime_get(dev);
+	pm_runtime_get(arizona->dev);
 	arizona_get_num_micbias(arizona, &max_micbias, &num_child_micbias);
 
 	for (i = 0; i < max_micbias; i++) {
