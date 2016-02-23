@@ -34,7 +34,7 @@
 
 #define SSC_EN
 
-#define LOG_TAG "SlimPort Colorado3"
+#define LOG_TAG "ANX7816"
 
 #define AUX_ERR 1
 #define AUX_OK 0
