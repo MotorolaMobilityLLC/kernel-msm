@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -189,6 +189,13 @@ extern int cnss_get_ramdump_mem(unsigned long *address, unsigned long *size);
 extern void *cnss_get_virt_ramdump_mem(unsigned long *size);
 extern void cnss_schedule_recovery_work(void);
 
+enum {
+	CNSS_RESET_SOC = 0,
+	CNSS_RESET_SUBSYS_COUPLED,
+	CNSS_RESET_LEVEL_MAX
+};
+extern int cnss_get_restart_level(void);
+
 #ifdef CONFIG_CNSS_SDIO
 struct cnss_sdio_wlan_driver {
 	const char *name;
@@ -206,5 +213,11 @@ extern int cnss_sdio_wlan_register_driver(
 	struct cnss_sdio_wlan_driver *driver);
 extern void cnss_sdio_wlan_unregister_driver(
 	struct cnss_sdio_wlan_driver *driver);
+
+typedef void (*oob_irq_handler_t)(void *dev_para);
+extern int cnss_wlan_query_oob_status(void);
+extern int cnss_wlan_register_oob_irq_handler(oob_irq_handler_t handler,
+	    void *pm_oob);
+extern int cnss_wlan_unregister_oob_irq_handler(void *pm_oob);
 #endif
 #endif /* _NET_CNSS_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -335,6 +335,7 @@ enum {
 	AIF4_SWITCH_VALUE,
 	AUDIO_NOMINAL,
 	CPE_NOMINAL,
+	HPH_PA_DELAY,
 };
 
 enum {
@@ -753,6 +754,8 @@ struct tasha_priv {
 	int spkr_mode;
 	struct hpf_work tx_hpf_work[TASHA_NUM_DECIMATORS];
 	struct tx_mute_work tx_mute_dwork[TASHA_NUM_DECIMATORS];
+	int hph_l_gain;
+	int hph_r_gain;
 };
 
 static int tasha_codec_vote_max_bw(struct snd_soc_codec *codec,
@@ -3479,23 +3482,102 @@ err:
 	return ret;
 }
 
+static void tasha_codec_hph_post_pa_config(struct tasha_priv *tasha,
+					   int mode, int event)
+{
+	u8 scale_val = 0;
+
+	if (!TASHA_IS_2_0(tasha->wcd9xxx->version))
+		return;
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		switch (mode) {
+		case CLS_H_HIFI:
+			scale_val = 0x3;
+			break;
+		case CLS_H_LOHIFI:
+			scale_val = 0x1;
+			break;
+		}
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		scale_val = 0x6;
+		break;
+	}
+
+	if (scale_val)
+		snd_soc_update_bits(tasha->codec, WCD9335_HPH_PA_CTL1, 0x0E,
+				    scale_val << 1);
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		if (tasha->comp_enabled[COMPANDER_1] ||
+		    tasha->comp_enabled[COMPANDER_2]) {
+			snd_soc_update_bits(tasha->codec, WCD9335_HPH_L_EN,
+					    0x20, 0x00);
+			snd_soc_update_bits(tasha->codec, WCD9335_HPH_R_EN,
+					    0x20, 0x00);
+			snd_soc_update_bits(tasha->codec, WCD9335_HPH_AUTO_CHOP,
+					    0x20, 0x20);
+		}
+		snd_soc_update_bits(tasha->codec, WCD9335_HPH_L_EN, 0x1F,
+				    tasha->hph_l_gain);
+		snd_soc_update_bits(tasha->codec, WCD9335_HPH_R_EN, 0x1F,
+				    tasha->hph_r_gain);
+	}
+
+	if (SND_SOC_DAPM_EVENT_OFF(event)) {
+		snd_soc_update_bits(tasha->codec, WCD9335_HPH_AUTO_CHOP, 0x20,
+				    0x00);
+	}
+}
+
+static void tasha_codec_override(struct snd_soc_codec *codec,
+				 int mode,
+				 int event)
+{
+	if (mode == CLS_AB) {
+		switch (event) {
+		case SND_SOC_DAPM_POST_PMU:
+			if (!(snd_soc_read(codec,
+					WCD9335_CDC_RX2_RX_PATH_CTL) & 0x10) &&
+				(!(snd_soc_read(codec,
+					WCD9335_CDC_RX1_RX_PATH_CTL) & 0x10)))
+				snd_soc_update_bits(codec,
+					WCD9XXX_A_ANA_RX_SUPPLIES, 0x02, 0x02);
+		break;
+		case SND_SOC_DAPM_POST_PMD:
+				snd_soc_update_bits(codec,
+					WCD9XXX_A_ANA_RX_SUPPLIES, 0x02, 0x00);
+		break;
+		}
+	}
+}
+
 static int tasha_codec_enable_hphr_pa(struct snd_soc_dapm_widget *w,
 				      struct snd_kcontrol *kcontrol,
 				      int event)
 {
 	struct snd_soc_codec *codec = w->codec;
 	struct tasha_priv *tasha = snd_soc_codec_get_drvdata(codec);
+	int hph_mode = tasha->hph_mode;
 	int ret = 0;
 
 	dev_dbg(codec->dev, "%s %s %d\n", __func__, w->name, event);
 
 	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		set_bit(HPH_PA_DELAY, &tasha->status_mask);
+		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/*
-		 * 5ms sleep is required after PA is enabled as per
+		 * 7ms sleep is required after PA is enabled as per
 		 * HW requirement
 		 */
-		usleep_range(5000, 5500);
+		if (test_bit(HPH_PA_DELAY, &tasha->status_mask)) {
+			usleep_range(7000, 7100);
+			clear_bit(HPH_PA_DELAY, &tasha->status_mask);
+		}
+		tasha_codec_hph_post_pa_config(tasha, hph_mode, event);
 		snd_soc_update_bits(codec, WCD9335_CDC_RX2_RX_PATH_CTL,
 				    0x10, 0x00);
 		/* Remove mix path mute if it is enabled */
@@ -3504,11 +3586,13 @@ static int tasha_codec_enable_hphr_pa(struct snd_soc_dapm_widget *w,
 			snd_soc_update_bits(codec,
 					    WCD9335_CDC_RX2_RX_PATH_MIX_CTL,
 					    0x10, 0x00);
+		tasha_codec_override(codec, hph_mode, event);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		blocking_notifier_call_chain(&tasha->notifier,
 					WCD_EVENT_PRE_HPHR_PA_OFF,
 					&tasha->mbhc);
+		tasha_codec_hph_post_pa_config(tasha, hph_mode, event);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/*
@@ -3516,6 +3600,7 @@ static int tasha_codec_enable_hphr_pa(struct snd_soc_dapm_widget *w,
 		 * HW requirement
 		 */
 		usleep_range(5000, 5500);
+		tasha_codec_override(codec, hph_mode, event);
 		blocking_notifier_call_chain(&tasha->notifier,
 					WCD_EVENT_POST_HPHR_PA_OFF,
 					&tasha->mbhc);
@@ -3536,17 +3621,26 @@ static int tasha_codec_enable_hphl_pa(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_codec *codec = w->codec;
 	struct tasha_priv *tasha = snd_soc_codec_get_drvdata(codec);
+	int hph_mode = tasha->hph_mode;
 	int ret = 0;
 
 	dev_dbg(codec->dev, "%s %s %d\n", __func__, w->name, event);
 
 	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		set_bit(HPH_PA_DELAY, &tasha->status_mask);
+		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/*
-		 * 5ms sleep is required after PA is enabled as per
+		 * 7ms sleep is required after PA is enabled as per
 		 * HW requirement
 		 */
-		usleep_range(5000, 5500);
+		if (test_bit(HPH_PA_DELAY, &tasha->status_mask)) {
+			usleep_range(7000, 7100);
+			clear_bit(HPH_PA_DELAY, &tasha->status_mask);
+		}
+
+		tasha_codec_hph_post_pa_config(tasha, hph_mode, event);
 		snd_soc_update_bits(codec, WCD9335_CDC_RX1_RX_PATH_CTL,
 				    0x10, 0x00);
 		/* Remove mix path mute if it is enabled */
@@ -3555,11 +3649,13 @@ static int tasha_codec_enable_hphl_pa(struct snd_soc_dapm_widget *w,
 			snd_soc_update_bits(codec,
 					    WCD9335_CDC_RX1_RX_PATH_MIX_CTL,
 					    0x10, 0x00);
+		tasha_codec_override(codec, hph_mode, event);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		blocking_notifier_call_chain(&tasha->notifier,
 					WCD_EVENT_PRE_HPHL_PA_OFF,
 					&tasha->mbhc);
+		tasha_codec_hph_post_pa_config(tasha, hph_mode, event);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/*
@@ -3567,6 +3663,7 @@ static int tasha_codec_enable_hphl_pa(struct snd_soc_dapm_widget *w,
 		 * HW requirement
 		 */
 		usleep_range(5000, 5500);
+		tasha_codec_override(codec, hph_mode, event);
 		blocking_notifier_call_chain(&tasha->notifier,
 					WCD_EVENT_POST_HPHL_PA_OFF,
 					&tasha->mbhc);
@@ -3626,12 +3723,14 @@ static int tasha_codec_enable_lineout_pa(struct snd_soc_dapm_widget *w,
 			snd_soc_update_bits(codec,
 					    lineout_mix_vol_reg,
 					    0x10, 0x00);
+		tasha_codec_override(codec, CLS_AB, event);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* 5ms sleep is required after PA is disabled as per
 		 * HW requirement
 		 */
 		usleep_range(5000, 5500);
+		tasha_codec_override(codec, CLS_AB, event);
 		if (!(strcmp(w->name, "ANC LINEOUT1 PA")) ||
 			!(strcmp(w->name, "ANC LINEOUT2 PA"))) {
 			ret = tasha_codec_enable_anc(w, kcontrol, event);
@@ -3691,32 +3790,70 @@ static int tasha_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 	return ret;
 }
 
+static void tasha_codec_hph_mode_gain_opt(struct snd_soc_codec *codec,
+					  u8 gain)
+{
+	struct tasha_priv *tasha = snd_soc_codec_get_drvdata(codec);
+	u8 hph_l_en, hph_r_en;
+	u8 l_val, r_val;
+	u8 hph_pa_status;
+	bool is_hphl_pa, is_hphr_pa;
+
+	hph_pa_status = snd_soc_read(codec, WCD9335_ANA_HPH);
+	is_hphl_pa = hph_pa_status >> 7;
+	is_hphr_pa = (hph_pa_status & 0x40) >> 6;
+
+	hph_l_en = snd_soc_read(codec, WCD9335_HPH_L_EN);
+	hph_r_en = snd_soc_read(codec, WCD9335_HPH_R_EN);
+
+	l_val = (hph_l_en & 0xC0) | 0x20 | gain;
+	r_val = (hph_r_en & 0xC0) | 0x20 | gain;
+
+	/*
+	 * Set HPH_L & HPH_R gain source selection to REGISTER
+	 * for better click and pop only if corresponding PAs are
+	 * not enabled. Also cache the values of the HPHL/R
+	 * PA gains to be applied after PAs are enabled
+	 */
+	if ((l_val != hph_l_en) && !is_hphl_pa) {
+		snd_soc_write(codec, WCD9335_HPH_L_EN, l_val);
+		tasha->hph_l_gain = hph_l_en & 0x1F;
+	}
+
+	if ((r_val != hph_r_en) && !is_hphr_pa) {
+		snd_soc_write(codec, WCD9335_HPH_R_EN, r_val);
+		tasha->hph_r_gain = hph_r_en & 0x1F;
+	}
+}
+
 static void tasha_codec_hph_lohifi_config(struct snd_soc_codec *codec,
-					  struct tasha_priv *tasha,
 					  int event)
 {
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
-		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL1, 0x0E, 0x02);
-		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x08, 0x08);
 		snd_soc_update_bits(codec, WCD9335_RX_BIAS_HPH_PA, 0x0F, 0x06);
 		snd_soc_update_bits(codec, WCD9335_RX_BIAS_HPH_RDACBUFF_CNP2,
 				    0xF0, 0x40);
+		snd_soc_update_bits(codec, WCD9335_HPH_CNP_WG_CTL, 0x07, 0x03);
+		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x08, 0x08);
+		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL1, 0x0E, 0x0C);
+		tasha_codec_hph_mode_gain_opt(codec, 0x11);
 	}
 
 	if (SND_SOC_DAPM_EVENT_OFF(event)) {
+		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x08, 0x00);
+		snd_soc_update_bits(codec, WCD9335_HPH_CNP_WG_CTL, 0x07, 0x02);
 		snd_soc_write(codec, WCD9335_RX_BIAS_HPH_RDACBUFF_CNP2, 0x8A);
 		snd_soc_update_bits(codec, WCD9335_RX_BIAS_HPH_PA, 0x0F, 0x0A);
-		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL1, 0x0E, 0x06);
-		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x08, 0x00);
 	}
 }
 
 static void tasha_codec_hph_lp_config(struct snd_soc_codec *codec,
-				      struct tasha_priv *tasha,
 				      int event)
 {
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
 		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL1, 0x0E, 0x0C);
+		tasha_codec_hph_mode_gain_opt(codec, 0x10);
+		snd_soc_update_bits(codec, WCD9335_HPH_CNP_WG_CTL, 0x07, 0x03);
 		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x08, 0x08);
 		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x04, 0x04);
 		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x20, 0x20);
@@ -3731,14 +3868,30 @@ static void tasha_codec_hph_lp_config(struct snd_soc_codec *codec,
 	}
 
 	if (SND_SOC_DAPM_EVENT_OFF(event)) {
-		snd_soc_update_bits(codec, WCD9335_HPH_R_EN, 0xC0, 0x80);
-		snd_soc_update_bits(codec, WCD9335_HPH_L_EN, 0xC0, 0x80);
 		snd_soc_write(codec, WCD9335_RX_BIAS_HPH_RDAC_LDO, 0x88);
 		snd_soc_write(codec, WCD9335_HPH_RDAC_LDO_CTL, 0x33);
 		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x20, 0x00);
 		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x04, 0x00);
 		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x08, 0x00);
-		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL1, 0x0E, 0x06);
+		snd_soc_update_bits(codec, WCD9335_HPH_CNP_WG_CTL, 0x07, 0x02);
+		snd_soc_update_bits(codec, WCD9335_HPH_R_EN, 0xC0, 0x80);
+		snd_soc_update_bits(codec, WCD9335_HPH_L_EN, 0xC0, 0x80);
+	}
+}
+
+static void tasha_codec_hph_hifi_config(struct snd_soc_codec *codec,
+					int event)
+{
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		snd_soc_update_bits(codec, WCD9335_HPH_CNP_WG_CTL, 0x07, 0x03);
+		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x08, 0x08);
+		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL1, 0x0E, 0x0C);
+		tasha_codec_hph_mode_gain_opt(codec, 0x11);
+	}
+
+	if (SND_SOC_DAPM_EVENT_OFF(event)) {
+		snd_soc_update_bits(codec, WCD9335_HPH_PA_CTL2, 0x08, 0x00);
+		snd_soc_update_bits(codec, WCD9335_HPH_CNP_WG_CTL, 0x07, 0x02);
 	}
 }
 
@@ -3752,10 +3905,13 @@ static void tasha_codec_hph_mode_config(struct snd_soc_codec *codec,
 
 	switch (mode) {
 	case CLS_H_LP:
-		tasha_codec_hph_lp_config(codec, tasha, event);
+		tasha_codec_hph_lp_config(codec, event);
 		break;
 	case CLS_H_LOHIFI:
-		tasha_codec_hph_lohifi_config(codec, tasha, event);
+		tasha_codec_hph_lohifi_config(codec, event);
+		break;
+	case CLS_H_HIFI:
+		tasha_codec_hph_hifi_config(codec, event);
 		break;
 	}
 }
@@ -4092,6 +4248,38 @@ static u16 tasha_interp_get_primary_reg(u16 reg, u16 *ind)
 	return prim_int_reg;
 }
 
+static void tasha_codec_hd2_control(struct snd_soc_codec *codec,
+				    u16 prim_int_reg, int event)
+{
+	struct tasha_priv *tasha = snd_soc_codec_get_drvdata(codec);
+	u16 hd2_scale_reg;
+	u16 hd2_enable_reg = 0;
+
+	if (!TASHA_IS_2_0(tasha->wcd9xxx->version))
+		return;
+
+	if (prim_int_reg == WCD9335_CDC_RX1_RX_PATH_CTL) {
+		hd2_scale_reg = WCD9335_CDC_RX1_RX_PATH_SEC3;
+		hd2_enable_reg = WCD9335_CDC_RX1_RX_PATH_CFG0;
+	}
+	if (prim_int_reg == WCD9335_CDC_RX2_RX_PATH_CTL) {
+		hd2_scale_reg = WCD9335_CDC_RX2_RX_PATH_SEC3;
+		hd2_enable_reg = WCD9335_CDC_RX2_RX_PATH_CFG0;
+	}
+
+	if (hd2_enable_reg && SND_SOC_DAPM_EVENT_ON(event)) {
+		snd_soc_update_bits(codec, hd2_scale_reg, 0x3C, 0x10);
+		snd_soc_update_bits(codec, hd2_scale_reg, 0x03, 0x01);
+		snd_soc_update_bits(codec, hd2_enable_reg, 0x04, 0x04);
+	}
+
+	if (hd2_enable_reg && SND_SOC_DAPM_EVENT_OFF(event)) {
+		snd_soc_update_bits(codec, hd2_enable_reg, 0x04, 0x00);
+		snd_soc_update_bits(codec, hd2_scale_reg, 0x03, 0x00);
+		snd_soc_update_bits(codec, hd2_scale_reg, 0x3C, 0x00);
+	}
+}
+
 static int tasha_codec_enable_prim_interpolator(
 				struct snd_soc_codec *codec,
 				u16 reg, int event)
@@ -4108,6 +4296,7 @@ static int tasha_codec_enable_prim_interpolator(
 		if (tasha->prim_int_users[ind] == 1) {
 			snd_soc_update_bits(codec, prim_int_reg,
 					    0x10, 0x10);
+			tasha_codec_hd2_control(codec, prim_int_reg, event);
 			snd_soc_update_bits(codec, prim_int_reg,
 					    1 << 0x5, 1 << 0x5);
 		}
@@ -4124,6 +4313,7 @@ static int tasha_codec_enable_prim_interpolator(
 					0x40, 0x40);
 			snd_soc_update_bits(codec, prim_int_reg,
 					0x40, 0x00);
+			tasha_codec_hd2_control(codec, prim_int_reg, event);
 		}
 		break;
 	};
@@ -9532,11 +9722,11 @@ static const struct snd_soc_dapm_widget tasha_dapm_widgets[] = {
 			   SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_PGA_E("ANC HPHL PA", WCD9335_ANA_HPH, 7, 0, NULL, 0,
 			   tasha_codec_enable_hphl_pa,
-			   SND_SOC_DAPM_POST_PMU |
+			   SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
 			   SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_PGA_E("ANC HPHR PA", WCD9335_ANA_HPH, 6, 0, NULL, 0,
 			   tasha_codec_enable_hphr_pa,
-			   SND_SOC_DAPM_POST_PMU |
+			   SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
 			   SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_PGA_E("ANC LINEOUT1 PA", WCD9335_ANA_LO_1_2,
 				7, 0, NULL, 0,
@@ -10570,7 +10760,8 @@ static const struct tasha_reg_mask_val tasha_codec_reg_init_val_2_0[] = {
 	{WCD9335_HPH_OCP_CTL, 0xFF, 0x5A},
 	{WCD9335_HPH_L_TEST, 0x01, 0x01},
 	{WCD9335_HPH_R_TEST, 0x01, 0x01},
-	{WCD9335_FLYBACK_VNEG_DAC_CTRL_2, 0xE0, 0x20},
+	{WCD9335_HPH_REFBUFF_LP_CTL, 0x08, 0x08},
+	{WCD9335_HPH_REFBUFF_LP_CTL, 0x06, 0x02},
 };
 
 static const struct tasha_reg_mask_val tasha_codec_reg_defaults[] = {

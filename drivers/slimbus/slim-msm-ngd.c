@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -284,6 +284,21 @@ static int ngd_get_tid(struct slim_controller *ctrl, struct slim_msg_txn *txn,
 	spin_unlock_irqrestore(&ctrl->txn_lock, flags);
 	return 0;
 }
+
+static void slim_reinit_tx_msgq(struct msm_slim_ctrl *dev)
+{
+	/*
+	 * disconnect/recoonect pipe so that subsequent
+	 * transactions don't timeout due to unavailable
+	 * descriptors
+	 */
+	if (dev->state != MSM_CTRL_DOWN) {
+		msm_slim_disconnect_endp(dev, &dev->tx_msgq,
+					&dev->use_tx_msgqs);
+		msm_slim_connect_endp(dev, &dev->tx_msgq);
+	}
+}
+
 static int ngd_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 {
 	DECLARE_COMPLETION_ONSTACK(done);
@@ -395,7 +410,7 @@ static int ngd_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 		 * It also makes HW status cosistent with what SW has it here
 		 */
 		if ((pm_runtime_enabled(dev->dev) && ret < 0) ||
-				dev->state == MSM_CTRL_DOWN) {
+				dev->state >= MSM_CTRL_ASLEEP) {
 			SLIM_ERR(dev, "slim ctrl vote failed ret:%d, state:%d",
 					ret, dev->state);
 			pm_runtime_set_suspended(dev->dev);
@@ -570,19 +585,7 @@ static int ngd_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 							i, *(pbuf + i));
 			if (idx < MSM_TX_BUFS)
 				dev->wr_comp[idx] = NULL;
-			/*
-			 * disconnect/recoonect pipe so that subsequent
-			 * transactions don't timeout due to unavailable
-			 * descriptors
-			 */
-			if (dev->state != MSM_CTRL_DOWN) {
-				/* print BAM debug info for TX pipe */
-				sps_get_bam_debug_info(dev->bam.hdl, 93,
-							SPS_BAM_PIPE(4), 0, 2);
-				msm_slim_disconnect_endp(dev, &dev->tx_msgq,
-							&dev->use_tx_msgqs);
-				msm_slim_connect_endp(dev, &dev->tx_msgq);
-			}
+			slim_reinit_tx_msgq(dev);
 		} else if (!timeout) {
 			ret = -ETIMEDOUT;
 			SLIM_WARN(dev, "timeout non-BAM TX,len:%d", txn->rl);
@@ -716,7 +719,7 @@ static int ngd_bulk_wr(struct slim_controller *ctrl, u8 la, u8 mt, u8 mc,
 	mutex_lock(&dev->tx_lock);
 
 	if ((pm_runtime_enabled(dev->dev) && ret < 0) ||
-			dev->state == MSM_CTRL_DOWN) {
+			dev->state >= MSM_CTRL_ASLEEP) {
 		SLIM_WARN(dev, "vote failed/SSR in-progress ret:%d, state:%d",
 				ret, dev->state);
 		pm_runtime_set_suspended(dev->dev);
@@ -791,11 +794,6 @@ static int ngd_bulk_wr(struct slim_controller *ctrl, u8 la, u8 mt, u8 mc,
 		}
 	}
 	header = dev->bulk.base;
-	/* SLIM_INFO only prints to internal buffer log, does not do pr_info */
-	for (i = 0; i < (dev->bulk.size); i += 16, header += 4)
-		SLIM_INFO(dev, "bulk sz:%d:0x%x, 0x%x, 0x%x, 0x%x",
-			  dev->bulk.size, *header, *(header+1), *(header+2),
-			  *(header+3));
 	if (comp_cb) {
 		dev->bulk.cb = comp_cb;
 		dev->bulk.ctx = ctx;
@@ -827,8 +825,12 @@ static int ngd_bulk_wr(struct slim_controller *ctrl, u8 la, u8 mt, u8 mc,
 		}
 	}
 retpath:
-	if (ret)
+	if (ret) {
 		dev->bulk.in_progress = false;
+		dev->bulk.ctx = NULL;
+		dev->bulk.wr_dma = 0;
+		slim_reinit_tx_msgq(dev);
+	}
 	mutex_unlock(&dev->tx_lock);
 	msm_slim_put_ctrl(dev);
 	return ret;
@@ -839,8 +841,26 @@ static int ngd_xferandwait_ack(struct slim_controller *ctrl,
 {
 	struct msm_slim_ctrl *dev = slim_get_ctrldata(ctrl);
 	unsigned long flags;
+	int ret;
 
-	int ret = ngd_xfer_msg(ctrl, txn);
+	if (dev->state == MSM_CTRL_DOWN) {
+		/*
+		 * no need to send anything to the bus due to SSR
+		 * transactions related to channel removal marked as success
+		 * since HW is down
+		 */
+		if ((txn->mt == SLIM_MSG_MT_DEST_REFERRED_USER) &&
+			((txn->mc >= SLIM_USR_MC_CHAN_CTRL &&
+			  txn->mc <= SLIM_USR_MC_REQ_BW) ||
+			txn->mc == SLIM_USR_MC_DISCONNECT_PORT)) {
+			spin_lock_irqsave(&ctrl->txn_lock, flags);
+			ctrl->txnt[txn->tid] = NULL;
+			spin_unlock_irqrestore(&ctrl->txn_lock, flags);
+			return 0;
+		}
+	}
+
+	ret = ngd_xfer_msg(ctrl, txn);
 	if (!ret) {
 		int timeout;
 		timeout = wait_for_completion_timeout(txn->comp, HZ);

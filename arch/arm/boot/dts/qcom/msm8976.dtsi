@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,7 +22,7 @@
 	interrupt-parent = <&intc>;
 
 	chosen {
-		bootargs = "boot_cpus=0,1,2,3,4 sched_enable_hmp=1";
+		bootargs = "boot_cpus=0,1,2,3,4,5 sched_enable_hmp=1";
 	};
 
 	aliases {
@@ -1011,7 +1011,6 @@
 		reg = <0x7a24900 0x11c>, <0x7a24000 0x800>;
 		reg-names = "hc_mem", "core_mem";
 
-		qcom,cpu-dma-latency-us = <701>;
 		qcom,bus-width = <4>;
 		gpios = <&msm_gpio 44 0>, /* CLK */
 			<&msm_gpio 43 0>, /* CMD */
@@ -1023,12 +1022,16 @@
 
 		qcom,clk-rates = <400000 20000000 25000000 50000000 100000000
 								200000000>;
+		qcom,cpu-dma-latency-us = <60>;
+		qcom,cpu-affinity = "affine_cores";
+		qcom,cpu-affinity-mask = <0x0f>;
 
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc clk_gcc_sdcc3_ahb_clk>,
 			<&clock_gcc clk_gcc_sdcc3_apps_clk>;
 
 		qcom,core_3_0v_support;
+		qcom,nonremovable;
 		qcom,msm-bus,name = "sdhc3";
 		qcom,msm-bus,num-cases = <8>;
 		qcom,msm-bus,num-paths = <1>;
@@ -1376,6 +1379,7 @@
                 clock-names = "core_clk";
                 clocks = <&clock_gcc clk_ipa_clk>;
                 qcom,ee = <0>;
+		qcom,modem-cfg-emb-pipe-flt;
                 qcom,msm-bus,name = "ipa";
                 qcom,msm-bus,num-cases = <3>;
                 qcom,msm-bus,num-paths = <1>;
@@ -2691,6 +2695,8 @@
 		qcom,proxy-clock-names = "xo";
 		qcom,active-clock-names = "iface_clk", "bus_clk", "mem_clk";
 
+		qcom,pas-id = <5>;
+		qcom,pil-mss-memsetup;
 		qcom,firmware-name = "modem";
 		qcom,pil-self-auth;
 		qcom,sysmon-id = <0>;
@@ -2722,11 +2728,13 @@
 		qcom,ce-opp-freq = <100000000>;
 	};
 
-	qcom,cnss_sdio {
+	cnss_sdio: qcom,cnss_sdio {
 		compatible = "qcom,cnss_sdio";
 		subsys-name = "AR6320";
 		vdd-wlan-supply = <&rome_vreg>;
 		vdd-wlan-io-supply = <&pm8950_l5>;
+		qcom,wlan-ramdump-dynamic = <0x200000>;
+		status = "disabled";
 	};
 
 	cpu-pmu {

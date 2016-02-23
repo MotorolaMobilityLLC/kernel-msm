@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -36,8 +36,6 @@
 #define CMI_CMD_TIMEOUT (10 * HZ)
 #define WCD_CPE_LSM_MAX_SESSIONS 1
 #define WCD_CPE_AFE_MAX_PORTS 4
-#define WCD_CPE_DRAM_SIZE 0x30000
-#define WCD_CPE_DRAM_OFFSET 0x50000
 #define AFE_SVC_EXPLICIT_PORT_START 1
 
 #define ELF_FLAG_EXECUTE (1 << 0)
@@ -202,9 +200,17 @@ static int wcd_cpe_collect_ramdump(struct wcd_cpe_core *core)
 	struct cpe_svc_mem_segment dump_seg;
 	int rc;
 
+	if (!core->cpe_ramdump_dev || !core->cpe_dump_v_addr ||
+	    core->hw_info.dram_size == 0) {
+		dev_err(core->dev,
+			"%s: Ramdump devices not set up, size = %zu\n",
+			__func__, core->hw_info.dram_size);
+		return -EINVAL;
+	}
+
 	dump_seg.type = CPE_SVC_DATA_MEM;
-	dump_seg.cpe_addr = WCD_CPE_DRAM_OFFSET;
-	dump_seg.size = WCD_CPE_DRAM_SIZE;
+	dump_seg.cpe_addr = core->hw_info.dram_offset;
+	dump_seg.size = core->hw_info.dram_size;
 	dump_seg.data = core->cpe_dump_v_addr;
 
 	dev_dbg(core->dev,
@@ -224,7 +230,7 @@ static int wcd_cpe_collect_ramdump(struct wcd_cpe_core *core)
 		__func__);
 
 	core->cpe_ramdump_seg.address = (unsigned long) core->cpe_dump_addr;
-	core->cpe_ramdump_seg.size = WCD_CPE_DRAM_SIZE;
+	core->cpe_ramdump_seg.size = core->hw_info.dram_size;
 	core->cpe_ramdump_seg.v_address = core->cpe_dump_v_addr;
 
 	rc = do_ramdump(core->cpe_ramdump_dev,
@@ -816,6 +822,15 @@ static int wcd_cpe_enable(struct wcd_cpe_core *core,
 	int ret = 0;
 
 	if (enable) {
+		/* Reset CPE first */
+		ret = cpe_svc_reset(core->cpe_handle);
+		if (IS_ERR_VALUE(ret)) {
+			dev_err(core->dev,
+				"%s: CPE Reset failed, error = %d\n",
+				__func__, ret);
+			goto done;
+		}
+
 		ret = wcd_cpe_setup_irqs(core);
 		if (ret) {
 			dev_err(core->dev,
@@ -878,11 +893,10 @@ static int wcd_cpe_enable(struct wcd_cpe_core *core,
 			goto done;
 		}
 
-		/* Reset CPE first */
-		ret = cpe_svc_reset(core->cpe_handle);
+		ret = cpe_svc_shutdown(core->cpe_handle);
 		if (IS_ERR_VALUE(ret)) {
 			dev_err(core->dev,
-				"%s: Failed to reset CPE with error %d\n",
+				"%s: CPE shutdown failed, error %d\n",
 				__func__, ret);
 			goto done;
 		}
@@ -1363,6 +1377,15 @@ static void wcd_cpe_svc_event_cb(const struct cpe_svc_notification *param)
 		complete(&core->online_compl);
 		break;
 	case CPE_SVC_OFFLINE:
+		/*
+		 * offline can happen during normal shutdown,
+		 * but we are interested in offline only during
+		 * SSR.
+		 */
+		if (core->ssr_type != WCD_CPE_SSR_EVENT &&
+		    core->ssr_type != WCD_CPE_BUS_DOWN_EVENT)
+			break;
+
 		active_sessions = wcd_cpe_lsm_session_active();
 		wcd_cpe_change_online_state(core, 0);
 		complete(&core->offline_compl);
@@ -1881,6 +1904,7 @@ struct wcd_cpe_core *wcd_cpe_init(const char *img_fname,
 	char proc_name[WCD_CPE_STATE_MAX_LEN];
 	const char *cpe_name = "cpe";
 	const char *state_name = "_state";
+	const struct cpe_svc_hw_cfg *hw_info;
 	int id = 0;
 
 	if (wcd_cpe_validate_params(codec, params))
@@ -1994,6 +2018,19 @@ struct wcd_cpe_core *wcd_cpe_init(const char *img_fname,
 
 	wcd_cpe_sysfs_init(core, id);
 
+	hw_info = cpe_svc_get_hw_cfg(core->cpe_handle);
+	if (!hw_info) {
+		dev_err(core->dev,
+			"%s: hw info not available\n",
+			__func__);
+		goto schedule_dload_work;
+	} else {
+		core->hw_info.dram_offset = hw_info->DRAM_offset;
+		core->hw_info.dram_size = hw_info->DRAM_size;
+		core->hw_info.iram_offset = hw_info->IRAM_offset;
+		core->hw_info.iram_size = hw_info->IRAM_size;
+	}
+
 	/* Setup the ramdump device and buffer */
 	core->cpe_ramdump_dev = create_ramdump_device("cpe",
 						      core->dev);
@@ -2005,16 +2042,16 @@ struct wcd_cpe_core *wcd_cpe_init(const char *img_fname,
 	}
 
 	core->cpe_dump_v_addr = dma_alloc_coherent(core->dev,
-						   WCD_CPE_DRAM_SIZE,
+						   core->hw_info.dram_size,
 						   &core->cpe_dump_addr,
 						   GFP_KERNEL);
 	if (!core->cpe_dump_v_addr) {
 		dev_err(core->dev,
-			"%s: Failed to alloc memory for cpe dump, size = %d\n",
-			__func__, WCD_CPE_DRAM_SIZE);
+			"%s: Failed to alloc memory for cpe dump, size = %zd\n",
+			__func__, core->hw_info.dram_size);
 		goto schedule_dload_work;
 	} else {
-		memset(core->cpe_dump_v_addr, 0, WCD_CPE_DRAM_SIZE);
+		memset(core->cpe_dump_v_addr, 0, core->hw_info.dram_size);
 	}
 
 schedule_dload_work:
@@ -2153,6 +2190,7 @@ static int wcd_cpe_cmi_send_lsm_msg(
 	if (CMI_HDR_GET_OBM_FLAG(hdr))
 		wcd_cpe_bus_vote_max_bw(core, true);
 
+	INIT_COMPLETION(session->cmd_comp);
 	ret = cmi_send_msg(message);
 	if (ret) {
 		pr_err("%s: msg opcode (0x%x) send failed (%d)\n",
@@ -2176,8 +2214,6 @@ static int wcd_cpe_cmi_send_lsm_msg(
 
 
 rel_bus_vote:
-
-	INIT_COMPLETION(session->cmd_comp);
 
 	if (CMI_HDR_GET_OBM_FLAG(hdr))
 		wcd_cpe_bus_vote_max_bw(core, false);
@@ -3520,13 +3556,13 @@ static int wcd_cpe_lsm_config_lab_latency(
 		 lab_lat->param.param_id, (long int)PARAM_SIZE_LSM_LATENCY_SIZE,
 		 pld_size);
 
+	WCD_CPE_GRAB_LOCK(&session->lsm_lock, "lsm");
 	ret = wcd_cpe_cmi_send_lsm_msg(core, session, &cpe_lab_latency);
-	if (ret != 0) {
+	if (ret != 0)
 		pr_err("%s: lsm_set_params failed, error = %d\n",
 		       __func__, ret);
-		return -EINVAL;
-	}
-	return 0;
+	WCD_CPE_REL_LOCK(&session->lsm_lock, "lsm");
+	return ret;
 }
 
 /*
@@ -3569,16 +3605,22 @@ static int wcd_cpe_lsm_lab_control(
 		 __func__, lab_enable->param.module_id,
 		 lab_enable->param.param_id,
 		 (long int)PARAM_SIZE_LSM_CONTROL_SIZE, pld_size);
+
+	WCD_CPE_GRAB_LOCK(&session->lsm_lock, "lsm");
 	ret = wcd_cpe_cmi_send_lsm_msg(core, session, &cpe_lab_enable);
 	if (ret != 0) {
 		pr_err("%s: lsm_set_params failed, error = %d\n",
 			__func__, ret);
-		return -EINVAL;
+		WCD_CPE_REL_LOCK(&session->lsm_lock, "lsm");
+		goto done;
 	}
+	WCD_CPE_REL_LOCK(&session->lsm_lock, "lsm");
+
 	if (lab_enable->enable)
-		wcd_cpe_lsm_config_lab_latency(core, session,
+		ret = wcd_cpe_lsm_config_lab_latency(core, session,
 					       WCD_CPE_LAB_MAX_LATENCY);
-	return 0;
+done:
+	return ret;
 }
 
 /*
@@ -3597,12 +3639,14 @@ static int wcd_cpe_lsm_eob(
 		0, CPE_LSM_SESSION_CMD_EOB)) {
 		return -EINVAL;
 	}
+
+	WCD_CPE_GRAB_LOCK(&session->lsm_lock, "lsm");
 	ret = wcd_cpe_cmi_send_lsm_msg(core, session, &lab_eob);
-	if (ret != 0) {
+	if (ret != 0)
 		pr_err("%s: lsm_set_params failed\n", __func__);
-		return -EINVAL;
-	}
-	return 0;
+	WCD_CPE_REL_LOCK(&session->lsm_lock, "lsm");
+
+	return ret;
 }
 
 /*
@@ -3637,17 +3681,17 @@ static int wcd_cpe_dealloc_lsm_session(void *core_handle,
 	lsm_sessions[session->id] = NULL;
 	kfree(session);
 
-	ret = wcd_cpe_vote(core, false);
-	if (ret)
-		dev_dbg(core->dev,
-			"%s: Failed to un-vote cpe, err = %d\n",
-			__func__, ret);
-
 	if (!wcd_cpe_lsm_session_active()) {
 		cmi_deregister(core->cmi_afe_handle);
 		core->cmi_afe_handle = NULL;
 		wcd_cpe_deinitialize_afe_port_data();
 	}
+
+	ret = wcd_cpe_vote(core, false);
+	if (ret)
+		dev_dbg(core->dev,
+			"%s: Failed to un-vote cpe, err = %d\n",
+			__func__, ret);
 
 	return ret;
 }

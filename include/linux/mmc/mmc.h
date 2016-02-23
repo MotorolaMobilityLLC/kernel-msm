@@ -244,6 +244,7 @@ struct _mmc_csd {
 #define EXT_CSD_PART_CONFIG		179	/* R/W */
 #define EXT_CSD_ERASED_MEM_CONT		181	/* RO */
 #define EXT_CSD_BUS_WIDTH		183	/* R/W */
+#define EXT_CSD_STROBE_SUPPORT		184	/* RO */
 #define EXT_CSD_HS_TIMING		185	/* R/W */
 #define EXT_CSD_POWER_CLASS		187	/* R/W */
 #define EXT_CSD_REV			192	/* RO */
@@ -295,7 +296,7 @@ struct _mmc_csd {
 #define EXT_CSD_BKOPS_EN_AUTO_EN	BIT(1)
 
 #define EXT_CSD_WR_REL_PARAM_EN		(1<<2)
-#define EXT_CSD_WR_REL_PARAM_EN_RPMB	(1<<4)
+#define EXT_CSD_WR_REL_PARAM_EN_RPMB_REL_WR	(1<<4)
 
 #define EXT_CSD_BOOT_WP_B_PWR_WP_DIS	(0x40)
 #define EXT_CSD_BOOT_WP_B_PERM_WP_DIS	(0x10)
@@ -334,6 +335,7 @@ struct _mmc_csd {
 #define EXT_CSD_CARD_TYPE_HS400		(EXT_CSD_CARD_TYPE_HS400_1_8V  \
 					| EXT_CSD_CARD_TYPE_HS400_1_2V)
 
+#define EXT_CSD_ENHANCED_STROBE	(1 << 0)
 #define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
 #define EXT_CSD_BUS_WIDTH_4	1	/* Card is in 4 bit mode */
 #define EXT_CSD_BUS_WIDTH_8	2	/* Card is in 8 bit mode */
