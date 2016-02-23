@@ -249,6 +249,7 @@ static int msm_ipc_router_smd_remote_write(void *data,
 static int msm_ipc_router_smd_remote_close(struct msm_ipc_router_xprt *xprt)
 {
 	int rc;
+	unsigned long flags;
 	struct msm_ipc_router_smd_xprt *smd_xprtp =
 		container_of(xprt, struct msm_ipc_router_smd_xprt, xprt);
 
@@ -257,6 +258,12 @@ static int msm_ipc_router_smd_remote_close(struct msm_ipc_router_xprt *xprt)
 		subsystem_put(smd_xprtp->pil);
 		smd_xprtp->pil = NULL;
 	}
+
+	spin_lock_irqsave(&smd_xprtp->ss_reset_lock, flags);
+	smd_xprtp->ss_reset = 1;
+	spin_unlock_irqrestore(&smd_xprtp->ss_reset_lock, flags);
+	wake_up(&smd_xprtp->write_avail_wait_q);
+
 	return rc;
 }
 
