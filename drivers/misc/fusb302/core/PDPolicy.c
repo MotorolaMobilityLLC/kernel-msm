@@ -23,11 +23,11 @@
  * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
  *
  *****************************************************************************/
-
+#include <linux/printk.h>
+#include <linux/power_supply.h>
 #ifdef FSC_DEBUG
 #include "Log.h"
 #endif // FSC_DEBUG
-
 #include "PD_Types.h"
 #include "PDPolicy.h"
 #include "PDProtocol.h"
@@ -44,7 +44,6 @@
 #include "vdm/DisplayPort/dp.h"
 #include "vdm/DisplayPort/interface_dp.h"
 #endif // FSC_HAVE_VDM
-
 /////////////////////////////////////////////////////////////////////////////
 //      Variables for use with the USB PD state machine
 /////////////////////////////////////////////////////////////////////////////
@@ -58,7 +57,7 @@ extern FSC_U8 nTries;		// Number of tries for manual retry
 #endif // FSC_DEBUG
 
 extern FSC_BOOL g_Idle;		// Puts state machine into Idle state
-
+FSC_U32 gChargerMaxCurrent;
 // Device Policy Manager Variables 
 FSC_BOOL USBPDTxFlag;		// Flag to indicate that we need to send a message (set by device policy manager)
 FSC_BOOL IsHardReset;		// Variable indicating that a Hard Reset is occurring
@@ -163,7 +162,7 @@ void PolicyTickAt100us(void)
 	if (!USBPDActive)
 		return;
 
-	if (PolicyStateTimer)	// If the PolicyStateTimer is greater than zero...
+	if (PolicyStateTimer > 0)
 		PolicyStateTimer--;	// Decrement it
 	if ((NoResponseTimer < T_TIMER_DISABLE) && (NoResponseTimer > 0))	// If the timer is enabled and hasn't expired
 		NoResponseTimer--;	// Decrement it
@@ -182,8 +181,9 @@ void InitializePDPolicyVariables(void)
 
 #ifdef FSC_HAVE_SNK
 	SinkRequestMaxVoltage = 240;	// Maximum voltage that the sink will request (12V)
-	SinkRequestMaxPower = 1000;	// Maximum power the sink will request (0.5W, used to calculate current as well)
-	SinkRequestOpPower = 1000;	// Operating power the sink will request (0.5W, sed to calculate current as well)
+	/* Maximum power the sink will request first(0.5W*60)*/
+	SinkRequestMaxPower = 60000;
+	SinkRequestOpPower = 60000;
 	SinkGotoMinCompatible = FALSE;	// Whether the sink will respond to the GotoMin command
 	SinkUSBSuspendOperation = FALSE;	// Whether the sink wants to continue operation during USB suspend
 	SinkUSBCommCapable = FALSE;	// Whether the sink is USB communications capable
@@ -274,7 +274,7 @@ void InitializePDPolicyVariables(void)
 	Registers.Slice.SDAC = SDAC_DEFAULT;	// Set the SDAC threshold to "default"
 	Registers.Slice.SDAC_HYS = 0b01;	// Set hysteresis to 85mV
 	DeviceWrite(regSlice, 1, &Registers.Slice.byte);
-
+	gChargerMaxCurrent = 0;
 #ifdef FSC_DEBUG
 	InitializeStateLog(&PDStateLog);
 #endif // FSC_DEBUG
@@ -708,7 +708,7 @@ void PolicySourceStartup(void)
 		PRSwapTimer = 0;	// Clear the swap timer 
 		CapsCounter = 0;	// Clear the caps counter
 		CollisionCounter = 0;	// Reset the collision counter
-		PolicyStateTimer = 1500;	// 150ms timeout for VBUS
+		PolicyStateTimer = 150;	/* 150ms timeout for VBUS*/
 		PolicySubIndex++;
 		break;
 	case 1:
@@ -1017,7 +1017,7 @@ void PolicySourceTransitionSupply(void)
 				platform_set_vbus_lvl_enable(VBUS_LVL_5V, TRUE, TRUE);	// Disable the "other" vbus outputs
 			}
 
-			PolicyStateTimer = 3500;	// 400ms delay timeout to get up to 
+			PolicyStateTimer = 350;
 			PolicySubIndex++;	// Increment to move to the next sub state
 		}
 		break;
@@ -1819,8 +1819,10 @@ void PolicySinkTransitionDefault(void)
 	switch (PolicySubIndex) {
 	case 0:
 		IsHardReset = TRUE;
+		PolicyHasContract = FALSE;
 		Registers.Switches.AUTO_CRC = 0;	// turn off Auto CRC
 		DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);
+		PolicyStateTimer = tPSHardResetMax + tSafe0V;
 		NoResponseTimer = tNoResponse;	// Initialize the no response timer
 		if (PolicyIsDFP)	// Make sure data role is UFP
 		{
@@ -1841,9 +1843,8 @@ void PolicySinkTransitionDefault(void)
 	case 1:
 		if (VbusVSafe0V()) {
 			PolicySubIndex++;
-			PolicyStateTimer = 15000;	// 1.5 second timeout wait for vbus
-		} else if (NoResponseTimer == 0)	// Break out if we never see 0V
-		{
+			PolicyStateTimer = 1500;
+		} else if (PolicyStateTimer == 0) {
 			if (PolicyHasContract) {
 				PolicyState = peErrorRecovery;
 				PolicySubIndex = 0;
@@ -1857,8 +1858,7 @@ void PolicySinkTransitionDefault(void)
 	case 2:
 		if (isVBUSOverVoltage(VBUS_MDAC_4p2) || (PolicyStateTimer == 0)) {
 			PolicySubIndex++;
-		} else if (NoResponseTimer == 0)	// Break out if we never see 0V
-		{
+		} else if (PolicyStateTimer == 0) {
 			if (PolicyHasContract) {
 				PolicyState = peErrorRecovery;
 				PolicySubIndex = 0;
@@ -2023,13 +2023,14 @@ void PolicySinkEvaluateCaps(void)
 			}
 			break;
 		case pdoTypeVariable:
-			objVoltage = CapsReceived[i].VPDO.MaxVoltage;	// Grab the maximum voltage of the variable supply
+			/*Grab the Maxvoltage of Variable PDO for MaxPower*/
+			objVoltage = CapsReceived[i].VPDO.MaxVoltage;
 			if (objVoltage > SinkRequestMaxVoltage)	// If the max voltage is greater than our limit...
 				objPower = 0;	// Set the power to zero to ignore the object
 			else	// Otherwise...
 			{
-				objVoltage = CapsReceived[i].VPDO.MinVoltage;	// Get the minimum output voltage of the variable supply
-				objCurrent = CapsReceived[i].VPDO.MaxCurrent;	// Get the maximum output current of the variable supply
+				objVoltage = CapsReceived[i].VPDO.MaxVoltage;
+				objCurrent = CapsReceived[i].VPDO.MaxCurrent;
 				objPower = objVoltage * objCurrent;	// Calculate the power for comparison (based on min V/max I)
 			}
 			break;
@@ -2044,7 +2045,15 @@ void PolicySinkEvaluateCaps(void)
 			SelVoltage = objVoltage;	// Store the objects voltage (used for calculations)
 			reqPos = i + 1;	// Store the position of the object
 		}
+		pr_debug("reqPos = %d objPower %d MaxPower is %d\n",
+				 reqPos, objPower, MaxPower);
 	}
+	if (MaxPower > SinkRequestMaxPower)
+		SinkRequestMaxPower = MaxPower;
+	gChargerMaxCurrent = MaxPower/SelVoltage;
+	SinkRequestOpPower = gRequestOpCurrent * SelVoltage;
+	pr_debug("Charger Maxcurrent is %d ma, voltage is %d\n",
+				gChargerMaxCurrent*10, SelVoltage);
 	if ((reqPos > 0) && (SelVoltage > 0)) {
 		PartnerCaps.object = CapsReceived[0].object;
 		SinkRequest.FVRDO.ObjectPosition = reqPos & 0x07;	// Set the object position selected
@@ -2053,8 +2062,10 @@ void PolicySinkEvaluateCaps(void)
 		SinkRequest.FVRDO.USBCommCapable = SinkUSBCommCapable;	// Set whether USB communications is active
 		ReqCurrent = SinkRequestOpPower / SelVoltage;	// Calculate the requested operating current
 		SinkRequest.FVRDO.OpCurrent = (ReqCurrent & 0x3FF);	// Set the current based on the selected voltage (in 10mA units)
-		ReqCurrent = SinkRequestMaxPower / SelVoltage;	// Calculate the requested maximum current
-		SinkRequest.FVRDO.MinMaxCurrent = (ReqCurrent & 0x3FF);	// Set the min/max current based on the selected voltage (in 10mA units)
+		/*Nitro charger does not care about OpCurrent
+		* Make it same as MaxCurrent
+		*/
+		SinkRequest.FVRDO.MinMaxCurrent = (ReqCurrent & 0x3FF);
 		if (SinkGotoMinCompatible)	// If the give back flag is set...
 			SinkRequest.FVRDO.CapabilityMismatch = FALSE;	// There can't be a capabilities mismatch
 		else		// Otherwise...
@@ -2141,7 +2152,6 @@ void PolicySinkSelectCapability(void)
 		break;
 	}
 }
-
 void PolicySinkTransitionSink(void)
 {
 	if (ProtocolMsgRx) {
@@ -2236,8 +2246,13 @@ void PolicySinkReady(void)
 		} else {
 			switch (PolicyRxHeader.MessageType) {
 			case DMTSourceCapabilities:
-				UpdateCapabilitiesRx(TRUE);	// Update the received capabilities
-				PolicyState = peSinkEvaluateCaps;	// Go to the evaluate capabilities state
+				UpdateCapabilitiesRx(TRUE);
+				/*Special request from charger team
+				*do not restart the request again
+				*after we get the updated source capability
+				*we will evaluate it before we send request
+				*/
+				PolicyState = peSinkReady;
 				PolicySubIndex = 0;	// Clear the sub index
 				PDTxStatus = txIdle;	// Clear the transmitter status
 				break;
@@ -2317,6 +2332,12 @@ void PolicySinkReady(void)
 	}
 #endif // FSC_HAVE_VDM
 	else {
+		if (!PolicyIsDFP) {
+			/*Send DRSwap to get VDM enabled */
+			PolicySubIndex = 0;
+			PDTxStatus = txIdle;
+			PolicyState = peSinkSendDRSwap;
+		} else {
 #ifdef FSC_INTERRUPT_TRIGGERED
 		g_Idle = TRUE;	// Wait for VBUSOK or HARDRST or GCRCSENT
 		Registers.Mask.byte = 0xFF;
@@ -2329,6 +2350,8 @@ void PolicySinkReady(void)
 		DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
 		platform_enable_timer(FALSE);
 #endif // FSC_INTERRUPT_TRIGGERED
+		power_supply_changed(&usbc_psy);
+		}
 	}
 }
 
@@ -2366,10 +2389,26 @@ void PolicySinkSendDRSwap(void)
 	switch (PolicySubIndex) {
 	case 0:
 		Status = PolicySendCommandNoReset(CMTDR_Swap, peSinkSendDRSwap, 1);	// Send the DR_Swap command
-		if (Status == STAT_SUCCESS)	// If we received a good CRC message...
+		if (Status == STAT_SUCCESS)
 			PolicyStateTimer = tSenderResponse;	// Initialize for SenderResponseTimer if we received the GoodCRC
 		else if (Status == STAT_ERROR)	// If there was an error...
 			PolicyState = peErrorRecovery;	// Go directly to the error recovery state
+		if (ProtocolMsgRx) {
+			ProtocolMsgRx = FALSE;
+			 /*If received data message*/
+			if (PolicyRxHeader.NumDataObjects != 0) {
+				switch (PolicyRxHeader.MessageType) {
+#ifdef FSC_HAVE_VDM
+				case DMTVenderDefined:
+					convertAndProcessVdmMessage(
+						ProtocolMsgRxSop);
+				break;
+#endif
+				default:
+					break;
+				}
+			}
+		}
 		break;
 	default:
 		if (ProtocolMsgRx) {
@@ -2383,6 +2422,14 @@ void PolicySinkSendDRSwap(void)
 					Registers.Switches.DATAROLE = PolicyIsDFP;	// Update the data role
 					DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);	// Commit the data role in the 302 for the auto CRC
 					PolicyState = peSinkReady;	// Sink ready state
+					if (PolicyIsDFP) {
+						AutoVdmState =
+							AUTO_VDM_DISCOVER_ID_PP;
+						PDTxStatus = txIdle;
+						PolicySubIndex = 0;
+						requestDiscoverIdentity(
+							SOP_TYPE_SOP);
+					}
 					break;
 				case CMTSoftReset:
 					PolicyState = peSinkSoftReset;	// Go to the soft reset state if we received a reset command
@@ -2393,6 +2440,16 @@ void PolicySinkSendDRSwap(void)
 				}
 			} else	// Otherwise we received a data message...
 			{
+				switch (PolicyRxHeader.MessageType) {
+#ifdef FSC_HAVE_VDM
+				case DMTVenderDefined:
+					convertAndProcessVdmMessage(
+						ProtocolMsgRxSop);
+				break;
+#endif
+				default:
+					break;
+				}
 				PolicyState = peSinkReady;	// Go to the sink ready state if we received a unexpected data message (ignoring message)
 			}
 			PolicySubIndex = 0;	// Reset the sub index
@@ -3407,6 +3464,7 @@ void ReadSinkRequestSettings(FSC_U8 * abytData)
 	*abytData++ = (FSC_U8) ((SinkRequestMaxPower >> 16) & 0xFF);
 	*abytData++ = (FSC_U8) ((SinkRequestMaxPower >> 24) & 0xFF);
 }
+
 #endif // FSC_HAVE_SNK
 
 void EnableUSBPD(void)

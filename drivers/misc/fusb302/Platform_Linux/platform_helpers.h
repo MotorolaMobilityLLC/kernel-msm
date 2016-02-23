@@ -224,4 +224,6 @@ void fusb_ScheduleWork(void);
 
 #endif // FSC_INTERRUPT_TRIGGERED, else
 
+int fusb302_debug_init(void);
+int fusb302_debug_remove(void);
 #endif // __FUSB_PLATFORM_HELPERS_H_
