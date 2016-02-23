@@ -242,8 +242,8 @@ int epl_sensor_als_dyn_report(bool report_flag);
 static bool ps_dyn_flag = false;
 #define PS_MAX_CT	10000
 #define PS_MAX_IR	50000
-#define PS_DYN_H_OFFSET 800
-#define PS_DYN_L_OFFSET 500
+#define PS_DYN_H_OFFSET 400
+#define PS_DYN_L_OFFSET 150
 u32 dynk_thd_low = 0;
 u32 dynk_thd_high = 0;
 #endif
@@ -253,6 +253,11 @@ u32 dynk_thd_high = 0;
 #if PS_FIRST_REPORT
 static bool ps_frist_flag = true;
 #endif
+
+static u16 ps_thd_1cm;
+static u16 ps_thd_3cm;
+static u16 ps_thd_5cm;
+static int ps_status_moto = 100;
 /******************************************************************************
  *  ALS DYN INTT
  ******************************************************************************/
@@ -494,11 +499,19 @@ static int set_lsensor_intr_threshold(uint16_t low_thd, uint16_t high_thd)
 static void epl_sensor_report_lux(int report_lux)
 {
 	struct epl_sensor_priv *epld = epl_sensor_obj;
+	ktime_t	timestamp;
+	timestamp = ktime_get();
 #if SPREAD
 	input_report_abs(epld->ps_input_dev, ABS_MISC, report_lux);
 	input_sync(epld->ps_input_dev);
 #else
 	input_report_abs(epld->als_input_dev, ABS_MISC, report_lux);
+	input_event(epld->als_input_dev,
+			EV_SYN, SYN_TIME_SEC,
+			ktime_to_timespec(timestamp).tv_sec);
+	input_event(epld->als_input_dev,
+			EV_SYN, SYN_TIME_NSEC,
+			ktime_to_timespec(timestamp).tv_nsec);
 	input_sync(epld->als_input_dev);
 #endif
 }
@@ -510,15 +523,8 @@ static void epl_sensor_report_ps_status(void)
 	int distance;
 	timestamp = ktime_get();
 	LOG_INFO("------------------- epl_sensor.ps.data.data=%d, value=%d\n\n",
-			epl_sensor.ps.data.data, epl_sensor.ps.compare_low >> 3);
-
-	if (epl_sensor.ps.compare_low >> 3 == 0)
-		distance = 1;
-	else if (epl_sensor.ps.compare_low >> 3 == 1)
-		distance = 100;
-	else
-		distance = -1;
-
+			epl_sensor.ps.data.data, ps_status_moto);
+	distance = ps_status_moto;
 	input_report_abs(epld->ps_input_dev,
 				ABS_DISTANCE, distance);
 	input_event(epld->ps_input_dev,
@@ -685,7 +691,9 @@ static void initial_global_variable(struct i2c_client *client, struct epl_sensor
 	epl_sensor.ps.lock = EPL_UN_LOCK;
 	epl_sensor.ps.high_threshold = PS_HIGH_THRESHOLD;
 	epl_sensor.ps.low_threshold = PS_LOW_THRESHOLD;
-
+	ps_thd_5cm = epl_sensor.ps.low_threshold;
+	ps_thd_3cm = epl_sensor.ps.high_threshold;
+	ps_thd_1cm = 5*epl_sensor.ps.high_threshold;
 	/* ps factory */
 	epl_sensor.ps.factory.calibration_enable =  false;
 	epl_sensor.ps.factory.calibrated = false;
@@ -1306,6 +1314,9 @@ void epl_sensor_do_ps_auto_k_one(void)
 			dynk_thd_low = epl_sensor.ps.data.data + PS_DYN_L_OFFSET;
 			dynk_thd_high = epl_sensor.ps.data.data + PS_DYN_H_OFFSET;
 			set_psensor_intr_threshold(dynk_thd_low, dynk_thd_high);
+			ps_thd_3cm = dynk_thd_high;
+			ps_thd_1cm = epl_sensor.ps.data.data +
+					5*PS_DYN_H_OFFSET;
 		} else {
 			LOG_INFO("[%s]:threshold is err; epl_sensor.ps.data.data=%d \r\n", __func__, epl_sensor.ps.data.data);
 			epl_sensor.ps.high_threshold = PS_HIGH_THRESHOLD;
@@ -1313,6 +1324,8 @@ void epl_sensor_do_ps_auto_k_one(void)
 			set_psensor_intr_threshold(epl_sensor.ps.low_threshold, epl_sensor.ps.high_threshold);
 			dynk_thd_low = epl_sensor.ps.low_threshold;
 			dynk_thd_high = epl_sensor.ps.high_threshold;
+			ps_thd_3cm = dynk_thd_high;
+			ps_thd_1cm = 5*dynk_thd_high;
 		}
 
 		ps_dyn_flag = false;
@@ -1582,12 +1595,41 @@ static void epl_sensor_eint_work(struct work_struct *work)
 {
 	struct epl_sensor_priv *epld = epl_sensor_obj;
 	bool enable_ps = epld->enable_pflag == 1 && epld->ps_suspend == 0;
+	u8 buf[4];
+	u16 read_h_thd = 0;
 
 	LOG_INFO("xxxxxxxxxxx\n\n");
 
 	epl_sensor_read_ps(epld->client);
 	epl_sensor_read_als(epld->client);
 	if (epl_sensor.ps.interrupt_flag == EPL_INT_TRIGGER) {
+
+		if ((epl_sensor.ps.compare_low >> 3) == 0) {
+			mutex_lock(&sensor_mutex);
+			epl_sensor_I2C_Read(epld->client, 0x0e, 2);
+			buf[0] = gRawData.raw_bytes[0];
+			buf[1] = gRawData.raw_bytes[1];
+			mutex_unlock(&sensor_mutex);
+			read_h_thd = (buf[1]<<8) | buf[0];
+
+			if (read_h_thd == ps_thd_3cm) {
+				ps_status_moto = 3;
+				set_psensor_intr_threshold(ps_thd_5cm,
+					ps_thd_1cm);
+				mutex_lock(&sensor_mutex);
+				epl_sensor_I2C_Write(epld->client,
+					0x1b,
+					EPL_CMP_RESET | EPL_UN_LOCK);
+				mutex_unlock(&sensor_mutex);
+			} else if (read_h_thd == ps_thd_1cm) {
+				ps_status_moto = 1;
+				set_psensor_intr_threshold(ps_thd_5cm,
+						ps_thd_3cm);
+			}
+		} else {
+			ps_status_moto = 100;
+			set_psensor_intr_threshold(ps_thd_5cm, ps_thd_3cm);
+		}
 		if (enable_ps) {
 			wake_lock_timeout(&ps_lock, 2*HZ);
 			epl_sensor_report_ps_status();
