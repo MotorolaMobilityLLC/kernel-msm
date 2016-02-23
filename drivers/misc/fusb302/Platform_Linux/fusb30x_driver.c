@@ -15,7 +15,7 @@
 #include <linux/types.h>	// Kernel datatypes
 #include <linux/errno.h>	// EINVAL, ERANGE, etc
 #include <linux/of_device.h>	// Device tree functionality
-
+#include <linux/interrupt.h>
 /* Driver-specific includes */
 #include "fusb30x_global.h"	// Driver-specific structures/types
 #include "platform_helpers.h"	// I2C R/W, GPIO, misc, etc
@@ -23,8 +23,114 @@
 #ifdef FSC_DEBUG
 #include "../core/core.h"	// GetDeviceTypeCStatus
 #endif // FSC_DEBUG
-
+#include "../core/TypeC_Types.h"
 #include "fusb30x_driver.h"
+u16 SwitchState = 0;
+struct power_supply switch_psy;
+
+enum power_supply_property fusb_power_supply_props[] = {
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_AUTHENTIC,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
+	POWER_SUPPLY_PROP_TYPE,
+	POWER_SUPPLY_PROP_DISABLE_USB,
+};
+
+static enum power_supply_property switch_power_supply_props[] = {
+	POWER_SUPPLY_PROP_TYPE,
+	POWER_SUPPLY_PROP_SWITCH_STATE,
+};
+
+int switch_power_supply_get_property(struct power_supply *psy,
+			    enum power_supply_property psp,
+			    union power_supply_propval *val)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_TYPE:
+		val->intval = psy->type;
+		break;
+	case POWER_SUPPLY_PROP_SWITCH_STATE:
+		val->intval = SwitchState;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static enum dual_role_property fusb_drp_properties[] = {
+	DUAL_ROLE_PROP_MODE,
+	DUAL_ROLE_PROP_PR,
+	DUAL_ROLE_PROP_DR,
+};
+
+/* Callback for "cat /sys/class/dual_role_usb/otg_default/<property>" */
+static int dual_role_get_local_prop(struct dual_role_phy_instance *dual_role,
+			enum dual_role_property prop,
+			unsigned int *val)
+{
+	int ret = 0;
+	char data[5];
+	ConnectionState ConnState;
+
+	GetDeviceTypeCStatus(data);
+	ConnState = (ConnectionState)data[1] & 0xFF;
+	if (ConnState == AttachedSource) {
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_DFP;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_SRC;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_HOST;
+		else
+			ret = -EINVAL;
+	} else if (ConnState == AttachedSink) {
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_UFP;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_SNK;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_DEVICE;
+		else
+			ret = -EINVAL;
+	} else {
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_NONE;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_NONE;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_NONE;
+		else
+			ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+/* Decides whether userspace can change a specific property */
+static int dual_role_is_writeable(struct dual_role_phy_instance *drp,
+		enum dual_role_property prop) {
+	/* Return 0 for now */
+	return 0;
+}
+
+/* Callback for "echo <value> >
+ *                      /sys/class/dual_role_usb/<name>/<property>"
+ * Block until the entire final state is reached.
+ * Blocking is one of the better ways to signal when the operation
+ * is done.
+ * This function tries to switched to Attached.SRC or Attached.SNK
+ * by forcing the mode into SRC or SNK.
+ * On failure, we fall back to Try.SNK state machine.
+ */
+static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
+		enum dual_role_property prop,
+		const unsigned int *val)
+{
+	/* Return nothing for now */
+	return 0;
+}
 
 /******************************************************************************
 * Driver functions
@@ -48,6 +154,9 @@ static int fusb30x_probe(struct i2c_client *client,
 	int ret = 0;
 	struct fusb30x_chip *chip;
 	struct i2c_adapter *adapter;
+	struct dual_role_phy_desc *desc;
+	struct dual_role_phy_instance *dual_role;
+	USBTypeCPort PortType;
 
 	if (!client) {
 		pr_err("FUSB  %s - Error: Client structure is NULL!\n",
@@ -121,6 +230,67 @@ static int fusb30x_probe(struct i2c_client *client,
 		return -EIO;
 	}
 	pr_debug("FUSB  %s - Device check passed!\n", __func__);
+	usbc_psy.name	= "usbc";
+	usbc_psy.type		= POWER_SUPPLY_TYPE_USBC;
+	usbc_psy.get_property	= fusb_power_supply_get_property;
+	usbc_psy.set_property	= fusb_power_supply_set_property;
+	usbc_psy.properties	= fusb_power_supply_props;
+	usbc_psy.num_properties	= ARRAY_SIZE(fusb_power_supply_props);
+	usbc_psy.property_is_writeable = fusb_power_supply_is_writeable;
+	ret = power_supply_register(&client->dev, &usbc_psy);
+	if (ret) {
+		dev_err(&client->dev, "failed: power supply register\n");
+		return ret;
+	}
+
+	switch_psy.name		= "usbc_switch";
+	switch_psy.type		= POWER_SUPPLY_TYPE_SWITCH;
+	switch_psy.get_property	= switch_power_supply_get_property;
+	switch_psy.properties	= switch_power_supply_props;
+	switch_psy.num_properties	= ARRAY_SIZE(switch_power_supply_props);
+	ret = power_supply_register(&client->dev, &switch_psy);
+	if (ret) {
+		dev_err(&client->dev, "failed to register switch_psy\n");
+		goto unregister_usbcpsy;
+	}
+	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
+		desc = devm_kzalloc(&client->dev,
+			sizeof(struct dual_role_phy_desc),
+			GFP_KERNEL);
+		if (!desc) {
+			dev_err(&client->dev, "unable to allocate dual role descriptor\n");
+			goto unregister_switchpsy;
+		}
+
+		desc->name = "otg_default";
+		PortType = (USBTypeCPort)GetTypeCSMControl() & 0x03;
+		switch (PortType) {
+		case USBTypeC_Sink:
+			desc->supported_modes =
+				DUAL_ROLE_SUPPORTED_MODES_UFP;
+			break;
+		case USBTypeC_Source:
+			desc->supported_modes =
+				DUAL_ROLE_SUPPORTED_MODES_DFP;
+			break;
+		case USBTypeC_DRP:
+		default:
+			desc->supported_modes =
+				DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+			break;
+		}
+
+		desc->get_property = dual_role_get_local_prop;
+		desc->set_property = dual_role_set_prop;
+		desc->properties = fusb_drp_properties;
+		desc->num_properties = ARRAY_SIZE(fusb_drp_properties);
+		desc->property_is_writeable = dual_role_is_writeable;
+		dual_role = devm_dual_role_instance_register(
+					   &client->dev, desc);
+		dual_role->drv_data = client;
+		chip->dual_role = dual_role;
+		chip->desc = desc;
+	}
 
 	/* Initialize the platform's GPIO pins and IRQ */
 	ret = fusb_InitializeGPIO();
@@ -163,13 +333,26 @@ static int fusb30x_probe(struct i2c_client *client,
 	pr_debug("FUSB  %s - Workers initialized and scheduled!\n", __func__);
 #endif // ifdef FSC_POLLING elif FSC_INTERRUPT_TRIGGERED
 
+	fusb302_debug_init();
+	power_supply_changed(&switch_psy);
 	dev_info(&client->dev,
 		 "FUSB  %s - FUSB30X Driver loaded successfully!\n", __func__);
+	return ret;
+unregister_switchpsy:
+	power_supply_unregister(&switch_psy);
+unregister_usbcpsy:
+	power_supply_unregister(&usbc_psy);
 	return ret;
 }
 
 static int fusb30x_remove(struct i2c_client *client)
 {
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
+		return -EINVAL;
+	}
 	pr_debug("FUSB  %s - Removing fusb30x device!\n", __func__);
 
 #ifndef FSC_INTERRUPT_TRIGGERED	// Polling mode by default
@@ -178,6 +361,14 @@ static int fusb30x_remove(struct i2c_client *client)
 
 	fusb_StopTimers();
 	fusb_GPIO_Cleanup();
+	fusb302_debug_remove();
+	power_supply_unregister(&switch_psy);
+	power_supply_unregister(&usbc_psy);
+	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
+		devm_dual_role_instance_unregister(
+			&client->dev, chip->dual_role);
+		devm_kfree(&client->dev, chip->desc);
+	}
 	pr_debug("FUSB  %s - FUSB30x device removed from driver...\n",
 		 __func__);
 	return 0;
