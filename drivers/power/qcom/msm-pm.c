@@ -52,7 +52,7 @@
 
 #define MAX_BUF_SIZE  1024
 
-static int msm_pm_debug_mask = 1;
+static int msm_pm_debug_mask = 0;
 module_param_named(
 	debug_mask, msm_pm_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP
 );
