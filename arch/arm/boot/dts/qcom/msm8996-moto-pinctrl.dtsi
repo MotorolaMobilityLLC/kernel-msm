@@ -420,13 +420,13 @@
 				bias-disable;
 			};
 		};
-		eb_vbus_active: active {
+		eb_vbus_sleep: sleep {
 			config {
 				pins = "gpio72";
 				function = "gpio";
 				output-low;
 				drive-strength = <2>;
-				bias-disable;
+				bias-pull-down;
 			};
 		};
 	};
