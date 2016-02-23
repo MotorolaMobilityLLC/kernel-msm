@@ -26,11 +26,12 @@
 #define CMD_ENABLE_TYPEC_SM             0xAC
 #define CMD_DISABLE_TYPEC_SM            0xAD
 #define CMD_SEND_HARD_RESET             0xAE
-
+#define CMD_SEND_REQUEST                0xAF
 #define CMD_DEVICE_LOCAL_REGISTER_READ  0xB0	// xBX designation used for automated testing
 #define CMD_SET_STATE                   0xB1
 #define CMD_READ_STATE_LOG              0xB2
 #define CMD_READ_PD_STATE_LOG           0xB3
+#define CMD_SEND_DR_SWAP                0xB4
 
 #define CMD_READ_I2C                    0xC0
 #define CMD_WRITE_I2C                   0xC1
