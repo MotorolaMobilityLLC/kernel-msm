@@ -31,6 +31,7 @@ int external_block_en = 1;
 
 /* to access global platform data */
 static struct anx7816_platform_data *g_pdata;
+static struct anx7816_data *g_data;
 
 /* Use device tree structure data when defined "CONFIG_OF"  */
 /*#define CONFIG_OF
@@ -1139,6 +1140,40 @@ static unsigned char confirmed_cable_det(void *data)
 	#endif
 }
 
+void anx7816_force_mydp_det(bool connected)
+{
+	struct anx7816_data *anx7816;
+
+	if (!g_data) {
+		pr_err("%s: g_data is not set \n", __func__);
+		return;
+	} else
+		anx7816 = g_data;
+
+	if (connected) {
+		if (!anx7816->slimport_connected) {
+			wake_lock(&anx7816->slimport_lock);
+#ifdef QUICK_CHARGE_SUPPORT
+			reset_process();
+#endif
+			pr_info("%s %s : detect cable insertion\n",
+						LOG_TAG, __func__);
+			queue_delayed_work(anx7816->workqueue,
+							&anx7816->work, 0);
+			anx7816->slimport_connected = true;
+		} else
+			pr_debug("%s: anx7816 is already ON\n", __func__);
+	} else {
+		if (anx7816->slimport_connected) {
+			anx7816->slimport_connected = false;
+			pr_info("%s %s : detect cable removal\n",
+							LOG_TAG, __func__);
+			cable_disconnect(anx7816);
+		} else
+			pr_debug("%s: anx7816 is already OFF\n", __func__);
+	}
+}
+
 static irqreturn_t anx7816_cbl_det_isr(int irq, void *data)
 {
 	struct anx7816_data *anx7816 = data;
@@ -1401,6 +1436,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 
 	/* to access global platform data */
 	g_pdata = anx7816->pdata;
+	g_data = anx7816;
 
 	anx7816_client = client;
 
