@@ -551,12 +551,13 @@
 		reg = <0x72>;
 		clock-names = "dp_bridge_mclk";
 		clocks = <&clock_gcc clk_bb_clk2_ao>;
-/* TODO: don't know if we need this in our configuration
-		interrupt-parent = <&pm8994_gpios>;
-		interrupts = <4 0x2>;  cbl-det-gpio is interrupt pin */
+		interrupt-parent = <&tlmm>;
+		/*cbl-det-gpio is interrupt pin */
+		interrupts = <14 (IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING)>;
 		analogix,reset-gpio = <&tlmm 93 0x00>;
 /* TODO: Don't know if we need this in our configuration
 		analogix,irq-gpio = <&msm_gpio 53 0x00>; */
+		analogix,cbl-det-gpio = <&tlmm 14 0x00>;
 		analogix,p-dwn-gpio = <&pmi8994_gpios 3 0x0>;   /* chip_pd */
 		analogix,vdd_33-supply = <&pm8994_l22>;
 		analogix,vdd_18-supply = <&pm8994_s4>;
