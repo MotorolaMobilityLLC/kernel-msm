@@ -19,3 +19,7 @@
 / {
 	qcom,board-id = <0x41 0x8100>;
 };
+
+&cdc_1p2v {
+	status = "ok";
+};
