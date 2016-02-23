@@ -9555,6 +9555,11 @@ static int smbchg_reboot(struct notifier_block *nb,
 		default:
 			break;
 		}
+	} else {
+		/* Turn off any Ext batt charging */
+		smbchg_set_extbat_state(chip, EB_OFF);
+		gpio_set_value(chip->ebchg_gpio.gpio, 0);
+		gpio_free(chip->ebchg_gpio.gpio);
 	}
 	return NOTIFY_DONE;
 }
