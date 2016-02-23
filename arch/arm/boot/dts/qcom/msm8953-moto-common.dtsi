@@ -149,6 +149,14 @@
 			<&clock_gcc clk_gcc_blsp2_qup2_spi_apps_clk>;
 	};
 
+	/* currus 1.2V supply TPS6267001 */
+	cdc_1p2v: cdc_1p2v {
+		status = "disabled";
+		compatible = "regulator-fixed";
+		regulator-name = "cdc_1p2v";
+		enable-active-high;
+		gpio = <&tlmm 130 0>;
+	};
 };
 
 &pmi_haptic{
