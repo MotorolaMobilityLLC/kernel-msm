@@ -224,5 +224,21 @@
 			};
 		};
 	};
+
+	/* CDC_1P2_EN control for 1.2v cirrus supply TPS6267001 */
+	cdc_1p2_en {
+		cdc_1p2_en_default: cdc_1p2_en_default {
+			mux {
+				pins = "gpio130";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio130";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
 };
 
