@@ -32,7 +32,48 @@ extern "C" {
 	};
 	MODULE_DEVICE_TABLE(of, fusb30x_dt_match);
 #endif /* CONFIG_OF */
+#ifdef CONFIG_PM_SLEEP
+	static int fusb30x_suspend(struct device *dev)
+	{
+		struct fusb30x_chip *chip = fusb30x_GetChip();
 
+		if (!chip) {
+			pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
+					 __func__);
+			return 0;
+		}
+		/*
+		 * disable the irq and enable irq_wake
+		 * capability to the interrupt line.
+		 */
+		if (chip->gpio_IntN_irq) {
+			disable_irq(chip->gpio_IntN_irq);
+			enable_irq_wake(chip->gpio_IntN_irq);
+		}
+
+		return 0;
+	}
+
+	static int fusb30x_resume(struct device *dev)
+	{
+		struct fusb30x_chip *chip = fusb30x_GetChip();
+
+		if (!chip) {
+			pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
+					 __func__);
+			return 0;
+		}
+
+		if (chip->gpio_IntN_irq) {
+			disable_irq_wake(chip->gpio_IntN_irq);
+			enable_irq(chip->gpio_IntN_irq);
+		}
+
+		return 0;
+	}
+	static SIMPLE_DEV_PM_OPS(fusb30x_pm_ops, fusb30x_suspend,
+							 fusb30x_resume);
+#endif
 /* This identifies our I2C driver in the kernel's driver module table */
 	static const struct i2c_device_id fusb30x_i2c_device_id[] = {
 		{FUSB30X_I2C_DRIVER_NAME, 0},
@@ -53,7 +94,11 @@ extern "C" {
 	static struct i2c_driver fusb30x_driver = {
 		.driver = {
 			   .name = FUSB30X_I2C_DRIVER_NAME,	// Must match our id_table name
-			   .of_match_table = of_match_ptr(fusb30x_dt_match),	// Device-tree match structure to pair the DT device with our driver
+/* Device-tree match structure to pair the DT device with our driver */
+			.of_match_table = of_match_ptr(fusb30x_dt_match),
+#ifdef CONFIG_PM_SLEEP
+			   .pm = &fusb30x_pm_ops,
+#endif
 			   },
 		.probe = fusb30x_probe,	// Called on device add, inits/starts driver
 		.remove = fusb30x_remove,	// Called on device remove, cleans up driver
