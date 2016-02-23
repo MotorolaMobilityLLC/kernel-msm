@@ -14,7 +14,6 @@
  */
 #ifndef _FSC_PLATFORM_H_
 #define _FSC_PLATFORM_H_
-
 /* PLATFORM_NONE
  * 
  * This is a set of stubs for no platform in particular.
@@ -143,6 +142,14 @@ void platform_delay_10us(FSC_U32 delayCount);
 
 void platform_disableSuperspeedUSB(void);
 void platform_enableSuperspeedUSB(int CC1, int CC2);
-void platform_toggleAudioSwitch(bool enable);
+
+typedef enum {
+	fsa_lpm = 0,
+	fsa_audio_mode,
+	fsa_usb_mode,
+	fsa_audio_override
+} FSASwitchState;
+
+void platform_toggleAudioSwitch(FSASwitchState state);
 
 #endif // _FSC_PLATFORM_H_
