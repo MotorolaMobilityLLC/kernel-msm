@@ -14,6 +14,7 @@
 
 #include "slimport_custom_declare.h"
 #include <linux/platform_data/slimport_device.h>
+#include "../../msm/mdss/mdss_hdmi_slimport.h"
 #ifdef QUICK_CHARGE_SUPPORT
 #include "quick_charge.h"
 #endif
@@ -772,6 +773,8 @@ void slimport_waitting_cable_plug_process(void)
 		/*enable otg,QC2.0*/
 		enable_otg();
 #endif
+		/* TODO: hack for P0 HDMI HPD detection */
+		hdmi_hpd_hack(1);
 		goto_next_system_state();
 	} else
 		hardware_power_ctl(0);
