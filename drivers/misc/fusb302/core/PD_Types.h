@@ -72,29 +72,30 @@
 #define BDO_BIST_Test_Data      0b1000	// Implemented
 
 // USB PD Timing Parameters
-// Units are in ms * 10 to be ticked by a 0.1ms timer.
-#define TICK_SCALE_TO_MS        10
+/*Units are in ms to be ticked by a 1ms timer.*/
+#define TICK_SCALE_TO_MS        1
 
-#define tNoResponse             5000    * TICK_SCALE_TO_MS
-#define tSenderResponse         270
-#define tTypeCSendSourceCap     150     * TICK_SCALE_TO_MS
-#define tSinkWaitCap            500     * TICK_SCALE_TO_MS	// Setting to tTypeCSinkWaitCap for now
-#define tTypeCSinkWaitCap       500     * TICK_SCALE_TO_MS
-#define tSrcTransition          30      * TICK_SCALE_TO_MS
-#define tPSHardReset            30      * TICK_SCALE_TO_MS
-#define tPSTransition           500     * TICK_SCALE_TO_MS
-#define tPSSourceOff            835     * TICK_SCALE_TO_MS
-#define tPSSourceOn             435     * TICK_SCALE_TO_MS
-#define tSourceOnDelay          30      * TICK_SCALE_TO_MS	// Not Spec, Delay for Allowing source to turn on (should be replaced by V sensing)
-#define tVCONNSourceOn          90      * TICK_SCALE_TO_MS
-#define tBMCTimeout             5       * TICK_SCALE_TO_MS	// (not defined by spec)
-#define tPRSwapBailout          5000    * TICK_SCALE_TO_MS	// (not defined by spec)
-#define tBISTContMode           50      * TICK_SCALE_TO_MS
-#define tSwapSourceStart        25      * TICK_SCALE_TO_MS
-#define tSrcRecover             830     * TICK_SCALE_TO_MS
-#define tGoodCRCDelay           1       * TICK_SCALE_TO_MS
-#define t5To12VTransition       8       * TICK_SCALE_TO_MS
-
+#define tNoResponse             (2000    * TICK_SCALE_TO_MS)
+#define tSenderResponse         (27	   * TICK_SCALE_TO_MS)
+#define tTypeCSendSourceCap     (150     * TICK_SCALE_TO_MS)
+#define tSinkWaitCap            (500     * TICK_SCALE_TO_MS)
+#define tTypeCSinkWaitCap       (150     * TICK_SCALE_TO_MS)
+#define tSrcTransition          (30      * TICK_SCALE_TO_MS)
+#define tPSHardReset            (30      * TICK_SCALE_TO_MS)
+#define tPSTransition           (500     * TICK_SCALE_TO_MS)
+#define tPSSourceOff            (835     * TICK_SCALE_TO_MS)
+#define tPSSourceOn             (435     * TICK_SCALE_TO_MS)
+#define tSourceOnDelay          (30      * TICK_SCALE_TO_MS)
+#define tVCONNSourceOn          (90      * TICK_SCALE_TO_MS)
+#define tBMCTimeout             (5       * TICK_SCALE_TO_MS)
+#define tPRSwapBailout          (5000    * TICK_SCALE_TO_MS)
+#define tBISTContMode           (50      * TICK_SCALE_TO_MS)
+#define tSwapSourceStart        (25      * TICK_SCALE_TO_MS)
+#define tSrcRecover             (830     * TICK_SCALE_TO_MS)
+#define tGoodCRCDelay           (1       * TICK_SCALE_TO_MS)
+#define t5To12VTransition       (8       * TICK_SCALE_TO_MS)
+#define tPSHardResetMax         (35      * TICK_SCALE_TO_MS)
+#define tSafe0V                 (30     * TICK_SCALE_TO_MS)
 #define nHardResetCount         2
 #define nRetryCount             3
 #define nCapsCount              50
