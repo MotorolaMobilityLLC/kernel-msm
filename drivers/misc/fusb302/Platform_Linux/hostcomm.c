@@ -102,6 +102,12 @@ void fusb_ProcessMsg(FSC_U8 * inMsgBuffer, FSC_U8 * outMsgBuffer)
 	case CMD_READ_PD_STATE_LOG:	// Read PD state log
 		core_process_read_pd_state_log(inMsgBuffer, outMsgBuffer);
 		break;
+	case CMD_SEND_DR_SWAP:
+		if (inMsgBuffer[1] != 0)
+			core_process_send_dr_swap();
+		else
+			core_process_send_vdm();
+		break;
 	case CMD_READ_I2C:
 		fusb_hc_Handle_I2CRead(inMsgBuffer, outMsgBuffer);
 		break;
@@ -120,6 +126,12 @@ void fusb_ProcessMsg(FSC_U8 * inMsgBuffer, FSC_U8 * outMsgBuffer)
 	case CMD_SEND_HARD_RESET:
 		core_send_hard_reset();
 		outMsgBuffer[0] = CMD_SEND_HARD_RESET;
+		outMsgBuffer[1] = 0;
+		break;
+	case CMD_SEND_REQUEST:
+		core_set_sink_req(&inMsgBuffer[1]);
+		core_send_sink_request();
+		outMsgBuffer[0] = CMD_SEND_REQUEST;
 		outMsgBuffer[1] = 0;
 		break;
 #ifdef FSC_DEBUG
