@@ -10,7 +10,7 @@
  *
  * Software License Agreement:
  *
- * The software supplied herewith by Fairchild Semiconductor (the “Company”)
+ * The software supplied herewith by Fairchild Semiconductor (the Company)
  * is supplied to you, the Company's customer, for exclusive use with its
  * USB Type C / USB PD products.  The software is owned by the Company and/or
  * its supplier, and is protected under applicable copyright laws.
@@ -19,7 +19,7 @@
  * as to civil liability for the breach of the terms and conditions of this
  * license.
  *
- * THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
+ * THIS SOFTWARE IS PROVIDED IN AN AS IS CONDITION. NO WARRANTIES,
  * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
  * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
@@ -28,11 +28,12 @@
  *
  *****************************************************************************/
 #ifdef FSC_HAVE_VDM
-
+#include <linux/printk.h>
 #include "vdm.h"
 #include "../platform.h"
 #include "../PDPolicy.h"
 #include "../PD_Types.h"
+#include "../TypeC.h"
 #include "vdm_types.h"
 #include "bitfield_translators.h"
 #include "fsc_vdm_defs.h"
@@ -46,12 +47,28 @@ extern PolicyState_t PolicyState;
 extern FSC_U32 VdmTimer;
 extern FSC_BOOL VdmTimerStarted;
 extern PolicyState_t vdm_next_ps;
-
 VdmManager vdmm;
 PolicyState_t originalPolicyState;
 FSC_BOOL vdm_timeout;
 FSC_BOOL ExpectingVdmResponse;
+static const UsbVidPid id_table[] = {
+	{CYPRESS_VENDOR_ID, CYPRESS_CCG2_PID1},
+	{MOTOROL_VENDOR_ID, MOTOROLA_PID_NITRO1},
+	{MOTOROL_VENDOR_ID, MOTOROLA_PID_NITRO2},
+	{MOTOROL_VENDOR_ID, MOTOROLA_PID_NITRO3},
+	{}
+};
+FSC_BOOL usbMatchId(FSC_U16 vid, FSC_U16 pid)
+{
+	const UsbVidPid *id = id_table;
 
+	for ( ; id->usb_vid || id->usb_pid; id++) {
+		if ((id->usb_vid == vid) &&
+				(id->usb_pid == pid))
+			return TRUE;
+	}
+	return FALSE;
+}
 // initialize the VDM Manager (no definition/configuration object necessary). returns 0 on success.
 FSC_S32 initializeVdm()
 {
@@ -324,7 +341,6 @@ FSC_S32 processDiscoverIdentity(SopType sop, FSC_U32 * arr_in,
 		    (PolicyState != peDfpCblVdmIdentityRequest) &&
 		    (PolicyState != peSrcVdmIdentityRequest))
 			return 0;
-
 		// Discover Identity responses should have at least VDM Header, ID Header, and Cert Stat VDO
 		if (length_in < MIN_DISC_ID_RESP_SIZE) {
 			PolicyState = originalPolicyState;
@@ -376,6 +392,16 @@ FSC_S32 processDiscoverIdentity(SopType sop, FSC_U32 * arr_in,
 				__id.has_ama_vdo = TRUE;
 				__id.ama_vdo = getAmaVdo(arr_in[4]);	// !!! assuming it is after Product VDO
 			}
+			__id.product_vdo = getProductVdo(arr_in[3]);
+			pr_debug("VDM Acked, usb vid is %d\n product id is %d",
+				   __id.id_header.usb_vid,
+				   __id.product_vdo.usb_product_id
+				  );
+			if (usbMatchId(__id.id_header.usb_vid,
+				__id.product_vdo.usb_product_id))
+				gChargerAuthenticated = TRUE;
+			else
+				gChargerAuthenticated = FALSE;
 		}
 
 		__result = (PolicyState == peDfpUfpVdmIdentityAcked) ||

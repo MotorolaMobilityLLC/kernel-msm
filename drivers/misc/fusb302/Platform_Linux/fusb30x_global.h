@@ -11,17 +11,17 @@
 
 #include <linux/i2c.h>		// i2c_client, spinlock_t
 #include <linux/hrtimer.h>	// hrtimer
+#include <linux/usb/class-dual-role.h>
+#include <linux/power_supply.h>
 #include "FSCTypes.h"		// FUSB30x custom types
 
 #ifdef FSC_DEBUG
 #define FSC_HOSTCOMM_BUFFER_SIZE    64	// Length of the hostcomm buffer
 #endif // FSC_DEBUG
-#define FUSB_NUM_GPIOS (5)
+#define FUSB_NUM_GPIOS (3)
 #define FUSB_INT_INDEX 0
-#define FUSB_SS_SW_SEL_INDEX 1
-#define FUSB_AUD_SW_SEL_INDEX 2
-#define FUSB_SS_OE_EN_INDEX 3
-#define FUSB_AUD_DET_INDEX 4
+#define FUSB_AUD_SW_SEL_INDEX 1
+#define FUSB_AUD_DET_INDEX 2
 
 struct fusb30x_chip		// Contains data required by this driver
 {
@@ -63,11 +63,28 @@ struct fusb30x_chip		// Contains data required by this driver
 	/* Timers */
 	struct hrtimer timer_state_machine;	// High-resolution timer for the state machine
 	int gpios[FUSB_NUM_GPIOS];
+	bool fsa321_switch;
+	bool factory_mode;
+	struct dual_role_phy_instance *dual_role;
+	struct dual_role_phy_desc *desc;
+	struct dentry *debug_root;
+	u32 debug_address;
 };
 
 extern struct fusb30x_chip *g_chip;
-
+/* Variable to indicate switch state for SS lines */
+extern struct power_supply usbc_psy;
+extern int fusb_power_supply_set_property(struct power_supply *psy,
+		enum power_supply_property prop,
+		const union power_supply_propval *val);
+extern int fusb_power_supply_is_writeable(struct power_supply *psy,
+		enum power_supply_property prop);
+extern int fusb_power_supply_get_property(struct power_supply *psy,
+		enum power_supply_property psp,
+		union power_supply_propval *val);
+extern FSC_U8 GetTypeCSMControl(void);
+extern void GetDeviceTypeCStatus(FSC_U8 abytData[]);
+extern struct power_supply switch_psy;
 struct fusb30x_chip *fusb30x_GetChip(void);	// Getter for the global chip structure
 void fusb30x_SetChip(struct fusb30x_chip *newChip);	// Setter for the global chip structure
-
 #endif /* FUSB30X_TYPES_H */
