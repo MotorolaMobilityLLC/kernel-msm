@@ -972,6 +972,669 @@ dhd_dbg_send_urgent_evt(dhd_pub_t *dhdp, const void *data, const uint32 len)
 	}
 	return ret;
 }
+
+#ifdef D11_STATUS
+static uint32
+__dhd_dbg_pkt_hash(uintptr_t pkt, uint32 pktid)
+{
+	uint32 __pkt;
+	uint32 __pktid;
+
+	__pkt = pkt >= 0 ? (2 * pkt) : (-2 * pkt - 1);
+	__pktid = pktid >= 0 ? (2 * pktid) : (-2 * pktid - 1);
+
+	return (__pkt >= __pktid ? (__pkt * __pkt + __pkt + __pktid) :
+		(__pkt + __pktid * __pktid));
+}
+
+#define __TIMESPEC_TO_US(ts) \
+	(((uint32)(ts).tv_sec * USEC_PER_SEC) + ((ts).tv_nsec / NSEC_PER_USEC))
+
+static uint32
+__dhd_dbg_driver_ts_usec(void)
+{
+	struct timespec ts;
+
+	get_monotonic_boottime(&ts);
+	return ((uint32)(__TIMESPEC_TO_US(ts)));
+}
+
+static wifi_tx_packet_fate
+__dhd_dbg_map_tx_status_to_pkt_fate(uint16 status)
+{
+	wifi_tx_packet_fate pkt_fate;
+
+	switch (status) {
+		case WLFC_CTL_PKTFLAG_DISCARD:
+			pkt_fate = TX_PKT_FATE_ACKED;
+			break;
+		case WLFC_CTL_PKTFLAG_D11SUPPRESS:
+			/* fallthrough */
+		case WLFC_CTL_PKTFLAG_WLSUPPRESS:
+			pkt_fate = TX_PKT_FATE_FW_QUEUED;
+			break;
+		case WLFC_CTL_PKTFLAG_TOSSED_BYWLC:
+			pkt_fate = TX_PKT_FATE_FW_DROP_INVALID;
+			break;
+		case WLFC_CTL_PKTFLAG_DISCARD_NOACK:
+			pkt_fate = TX_PKT_FATE_SENT;
+			break;
+		default:
+			pkt_fate = TX_PKT_FATE_FW_DROP_OTHER;
+	}
+
+	return pkt_fate;
+}
+
+static int
+__dhd_dbg_free_tx_pkts(dhd_pub_t *dhdp, dhd_dbg_tx_info_t *tx_pkts,
+	uint16 pkt_count)
+{
+	uint16 count;
+
+	count = 0;
+	while ((count < pkt_count) && tx_pkts) {
+		PKTFREE(dhdp->osh, tx_pkts->info.pkt, TRUE);
+
+		tx_pkts++;
+		count++;
+	}
+
+	return BCME_OK;
+}
+
+static int
+__dhd_dbg_free_rx_pkts(dhd_pub_t *dhdp, dhd_dbg_rx_info_t *rx_pkts,
+	uint16 pkt_count)
+{
+	uint16 count;
+
+	count = 0;
+	while ((count < pkt_count) && rx_pkts) {
+		PKTFREE(dhdp->osh, rx_pkts->info.pkt, TRUE);
+
+		rx_pkts++;
+		count++;
+	}
+
+	return BCME_OK;
+}
+
+void
+__dhd_dbg_dump_pkt_info(dhd_pub_t *dhdp, dhd_dbg_pkt_info_t *info)
+{
+	if (DHD_PKT_MON_DUMP_ON()) {
+		DHD_PKT_MON(("payload type   = %d\n", info->payload_type));
+		DHD_PKT_MON(("driver ts      = %u\n", info->driver_ts));
+		DHD_PKT_MON(("firmware ts    = %u\n", info->firmware_ts));
+		DHD_PKT_MON(("packet hash    = %u\n", info->pkt_hash));
+		DHD_PKT_MON(("packet length  = %zu\n", info->pkt_len));
+		DHD_PKT_MON(("packet address = %p\n", info->pkt));
+		DHD_PKT_MON(("packet data    = \n"));
+		if (DHD_PKT_MON_ON()) {
+			prhex(NULL, PKTDATA(dhdp->osh, info->pkt), info->pkt_len);
+		}
+	}
+}
+
+void
+__dhd_dbg_dump_tx_pkt_info(dhd_pub_t *dhdp, dhd_dbg_tx_info_t *tx_pkt)
+{
+	if (DHD_PKT_MON_DUMP_ON()) {
+		DHD_PKT_MON(("\npacket fate    = %d\n", tx_pkt->fate));
+		__dhd_dbg_dump_pkt_info(dhdp, &tx_pkt->info);
+	}
+}
+
+void
+__dhd_dbg_dump_rx_pkt_info(dhd_pub_t *dhdp, dhd_dbg_rx_info_t *rx_pkt)
+{
+	if (DHD_PKT_MON_DUMP_ON()) {
+		DHD_PKT_MON(("\npacket fate    = %d\n", rx_pkt->fate));
+		__dhd_dbg_dump_pkt_info(dhdp, &rx_pkt->info);
+	}
+}
+
+int
+dhd_dbg_attach_pkt_monitor(dhd_pub_t *dhdp,
+	dbg_mon_tx_pkts_t tx_pkt_mon,
+	dbg_mon_tx_status_t tx_status_mon,
+	dbg_mon_rx_pkts_t rx_pkt_mon)
+{
+
+	dhd_dbg_tx_report_t *tx_report = NULL;
+	dhd_dbg_rx_report_t *rx_report = NULL;
+	dhd_dbg_tx_info_t *tx_pkts = NULL;
+	dhd_dbg_rx_info_t *rx_pkts = NULL;
+	dhd_dbg_pkt_mon_state_t tx_pkt_state;
+	dhd_dbg_pkt_mon_state_t tx_status_state;
+	dhd_dbg_pkt_mon_state_t rx_pkt_state;
+	gfp_t kflags;
+	uint32 alloc_len;
+	int ret = BCME_OK;
+
+	if (!dhdp || !dhdp->dbg) {
+		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
+			(dhdp ? dhdp->dbg : NULL)));
+		return -EINVAL;
+	}
+
+	tx_pkt_state = dhdp->dbg->pkt_mon.tx_pkt_state;
+	tx_status_state = dhdp->dbg->pkt_mon.tx_pkt_state;
+	rx_pkt_state = dhdp->dbg->pkt_mon.rx_pkt_state;
+
+	if (PKT_MON_ATTACHED(tx_pkt_state) || PKT_MON_ATTACHED(tx_status_state) ||
+		PKT_MON_ATTACHED(rx_pkt_state)) {
+		DHD_PKT_MON(("packet monitor is already attached, "
+			"tx_pkt_state=%d, tx_status_state=%d, rx_pkt_state=%d\n",
+			tx_pkt_state, tx_status_state, rx_pkt_state));
+		/* return success as the intention was to initialize packet monitor */
+		return BCME_OK;
+	}
+
+	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
+
+	/* allocate and initialize tx packet monitoring */
+	alloc_len = sizeof(*tx_report);
+	tx_report = (dhd_dbg_tx_report_t *)kzalloc(alloc_len, kflags);
+	if (unlikely(!tx_report)) {
+		DHD_ERROR(("could not allocate memory for - dhd_dbg_tx_report_t\n"));
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	alloc_len = (sizeof(*tx_pkts) * MAX_FATE_LOG_LEN);
+	tx_pkts = (dhd_dbg_tx_info_t *)kzalloc(alloc_len, kflags);
+	if (unlikely(!tx_pkts)) {
+		DHD_ERROR(("could not allocate memory for - dhd_dbg_tx_info_t\n"));
+		ret = -ENOMEM;
+		goto fail;
+	}
+	dhdp->dbg->pkt_mon.tx_report = tx_report;
+	dhdp->dbg->pkt_mon.tx_report->tx_pkts = tx_pkts;
+	dhdp->dbg->pkt_mon.tx_pkt_mon = tx_pkt_mon;
+	dhdp->dbg->pkt_mon.tx_status_mon = tx_status_mon;
+	dhdp->dbg->pkt_mon.tx_pkt_state = PKT_MON_STARTED;
+	dhdp->dbg->pkt_mon.tx_status_state = PKT_MON_STARTED;
+
+	/* allocate and initialze rx packet monitoring */
+	alloc_len = sizeof(*rx_report);
+	rx_report = (dhd_dbg_rx_report_t *)kzalloc(alloc_len, kflags);
+	if (unlikely(!rx_report)) {
+		DHD_ERROR(("could not allocate memory for - dhd_dbg_rx_report_t\n"));
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	alloc_len = (sizeof(*rx_pkts) * MAX_FATE_LOG_LEN);
+	rx_pkts = (dhd_dbg_rx_info_t *)kzalloc(alloc_len, kflags);
+	if (unlikely(!rx_pkts)) {
+		DHD_ERROR(("could not allocate memory for - dhd_dbg_rx_info_t\n"));
+		ret = -ENOMEM;
+		goto fail;
+	}
+	dhdp->dbg->pkt_mon.rx_report = rx_report;
+	dhdp->dbg->pkt_mon.rx_report->rx_pkts = rx_pkts;
+	dhdp->dbg->pkt_mon.rx_pkt_mon = rx_pkt_mon;
+	dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_STARTED;
+
+	DHD_PKT_MON(("packet monitor attach succeeded\n"));
+	return ret;
+
+fail:
+	/* tx packet monitoring */
+	if (tx_pkts) {
+		kfree(tx_pkts);
+	}
+	if (tx_report) {
+		kfree(tx_report);
+	}
+	dhdp->dbg->pkt_mon.tx_report = NULL;
+	dhdp->dbg->pkt_mon.tx_report->tx_pkts = NULL;
+	dhdp->dbg->pkt_mon.tx_pkt_mon = NULL;
+	dhdp->dbg->pkt_mon.tx_status_mon = NULL;
+	dhdp->dbg->pkt_mon.tx_pkt_state = PKT_MON_DETACHED;
+	dhdp->dbg->pkt_mon.tx_status_state = PKT_MON_DETACHED;
+
+	/* rx packet monitoring */
+	if (rx_pkts) {
+		kfree(rx_pkts);
+	}
+	if (rx_report) {
+		kfree(rx_report);
+	}
+	dhdp->dbg->pkt_mon.rx_report = NULL;
+	dhdp->dbg->pkt_mon.rx_report->rx_pkts = NULL;
+	dhdp->dbg->pkt_mon.rx_pkt_mon = NULL;
+	dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_DETACHED;
+
+	DHD_ERROR(("packet monitor attach failed\n"));
+	return ret;
+}
+
+int
+dhd_dbg_start_pkt_monitor(dhd_pub_t *dhdp)
+{
+	dhd_dbg_tx_report_t *tx_report;
+	dhd_dbg_rx_report_t *rx_report;
+	dhd_dbg_pkt_mon_state_t tx_pkt_state;
+	dhd_dbg_pkt_mon_state_t tx_status_state;
+	dhd_dbg_pkt_mon_state_t rx_pkt_state;
+
+	if (!dhdp || !dhdp->dbg) {
+		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
+			(dhdp ? dhdp->dbg : NULL)));
+		return -EINVAL;
+	}
+
+	tx_pkt_state = dhdp->dbg->pkt_mon.tx_pkt_state;
+	tx_status_state = dhdp->dbg->pkt_mon.tx_status_state;
+	rx_pkt_state = dhdp->dbg->pkt_mon.rx_pkt_state;
+
+	if (PKT_MON_DETACHED(tx_pkt_state) || PKT_MON_DETACHED(tx_status_state) ||
+		PKT_MON_DETACHED(rx_pkt_state)) {
+		DHD_PKT_MON(("packet monitor is not yet enabled, "
+			"tx_pkt_state=%d, tx_status_state=%d, rx_pkt_state=%d\n",
+			tx_pkt_state, tx_status_state, rx_pkt_state));
+		return -EINVAL;
+	}
+
+	tx_report = dhdp->dbg->pkt_mon.tx_report;
+	rx_report = dhdp->dbg->pkt_mon.rx_report;
+	if (!tx_report || !rx_report) {
+		DHD_PKT_MON(("tx_report=%p, rx_report=%p\n", tx_report, rx_report));
+		return -EINVAL;
+	}
+
+	if (PKT_MON_STOPPED(tx_pkt_state) || PKT_MON_STOPPED(tx_status_state)) {
+		__dhd_dbg_free_tx_pkts(dhdp, tx_report->tx_pkts, tx_report->pkt_pos);
+	}
+
+	if (PKT_MON_STOPPED(rx_pkt_state)) {
+		__dhd_dbg_free_rx_pkts(dhdp, rx_report->rx_pkts, rx_report->pkt_pos);
+	}
+
+	/* reset array postion */
+	tx_report->pkt_pos = 0;
+	tx_report->status_pos = 0;
+	dhdp->dbg->pkt_mon.tx_pkt_state = PKT_MON_STARTED;
+	dhdp->dbg->pkt_mon.tx_status_state = PKT_MON_STARTED;
+
+	rx_report->pkt_pos = 0;
+	dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_STARTED;
+
+	DHD_PKT_MON(("packet monitor started\n"));
+	return BCME_OK;
+}
+
+int
+dhd_dbg_monitor_tx_pkts(dhd_pub_t *dhdp, void *pkt, uint32 pktid)
+{
+	dhd_dbg_tx_report_t *tx_report;
+	dhd_dbg_tx_info_t *tx_pkts;
+	dhd_dbg_pkt_mon_state_t tx_pkt_state;
+	uint32 pkt_hash, driver_ts;
+	uint16 pkt_pos;
+
+	if (!dhdp || !dhdp->dbg) {
+		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
+			(dhdp ? dhdp->dbg : NULL)));
+		return -EINVAL;
+	}
+
+	tx_pkt_state = dhdp->dbg->pkt_mon.tx_pkt_state;
+	if (PKT_MON_STARTED(tx_pkt_state)) {
+		tx_report = dhdp->dbg->pkt_mon.tx_report;
+		pkt_pos = tx_report->pkt_pos;
+
+		if (!PKT_MON_PKT_FULL(pkt_pos)) {
+			tx_pkts = tx_report->tx_pkts;
+			pkt_hash = __dhd_dbg_pkt_hash((uintptr_t)pkt, pktid);
+			driver_ts = __dhd_dbg_driver_ts_usec();
+
+			tx_pkts[pkt_pos].info.pkt = PKTDUP(dhdp->osh, pkt);
+			tx_pkts[pkt_pos].info.pkt_len = PKTLEN(dhdp->osh, pkt);
+			tx_pkts[pkt_pos].info.pkt_hash = pkt_hash;
+			tx_pkts[pkt_pos].info.driver_ts = driver_ts;
+			tx_pkts[pkt_pos].info.firmware_ts = 0U;
+			tx_pkts[pkt_pos].info.payload_type = FRAME_TYPE_ETHERNET_II;
+			tx_pkts[pkt_pos].fate = TX_PKT_FATE_DRV_QUEUED;
+
+			tx_report->pkt_pos++;
+		} else {
+			dhdp->dbg->pkt_mon.tx_pkt_state = PKT_MON_STOPPED;
+			DHD_PKT_MON(("tx pkt logging stopped, reached max limit\n"));
+		}
+	}
+
+	return BCME_OK;
+}
+
+int
+dhd_dbg_monitor_tx_status(dhd_pub_t *dhdp, void *pkt, uint32 pktid,
+	uint16 status)
+{
+	dhd_dbg_tx_report_t *tx_report;
+	dhd_dbg_tx_info_t *tx_pkt;
+	dhd_dbg_pkt_mon_state_t tx_status_state;
+	wifi_tx_packet_fate pkt_fate;
+	uint32 pkt_hash, temp_hash;
+	uint16 pkt_pos, status_pos, count;
+	bool found = FALSE;
+
+	if (!dhdp || !dhdp->dbg) {
+		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
+			(dhdp ? dhdp->dbg : NULL)));
+		return -EINVAL;
+	}
+
+	tx_status_state = dhdp->dbg->pkt_mon.tx_status_state;
+	if (PKT_MON_STARTED(tx_status_state)) {
+		tx_report = dhdp->dbg->pkt_mon.tx_report;
+		pkt_pos = tx_report->pkt_pos;
+		status_pos = tx_report->status_pos;
+
+		if (!PKT_MON_STATUS_FULL(pkt_pos, status_pos)) {
+			pkt_hash = __dhd_dbg_pkt_hash((uintptr_t)pkt, pktid);
+			pkt_fate = __dhd_dbg_map_tx_status_to_pkt_fate(status);
+
+			/* best bet (in-order tx completion) */
+			count = status_pos;
+			tx_pkt = (((dhd_dbg_tx_info_t *)tx_report->tx_pkts) + status_pos);
+			while ((count < pkt_pos) && tx_pkt) {
+				temp_hash = tx_pkt->info.pkt_hash;
+				if (temp_hash == pkt_hash) {
+					tx_pkt->fate = pkt_fate;
+					tx_report->status_pos++;
+					found = TRUE;
+					break;
+				}
+				tx_pkt++;
+				count++;
+			}
+
+			/* linear search (handles out-of-order completion) */
+			if (!found) {
+				count = 0;
+				tx_pkt = tx_report->tx_pkts;
+				while ((count < pkt_pos) && tx_pkt) {
+					temp_hash = tx_pkt->info.pkt_hash;
+					if (temp_hash == pkt_hash) {
+						tx_pkt->fate = pkt_fate;
+						tx_report->status_pos++;
+						found = TRUE;
+						break;
+					}
+					tx_pkt++;
+					count++;
+				}
+
+				/* still couldn't match tx_status */
+				DHD_ERROR(("couldn't match tx_status, pkt_pos=%u, "
+					"status_pos=%u, pkt_fate=%u\n", pkt_pos, status_pos,
+					pkt_fate));
+			}
+		} else {
+			dhdp->dbg->pkt_mon.tx_status_state = PKT_MON_STOPPED;
+			DHD_PKT_MON(("tx_status logging stopped, reached max limit\n"));
+		}
+	}
+
+	return BCME_OK;
+}
+
+int
+dhd_dbg_monitor_rx_pkts(dhd_pub_t *dhdp, void *pkt)
+{
+	dhd_dbg_rx_report_t *rx_report;
+	dhd_dbg_rx_info_t *rx_pkts;
+	dhd_dbg_pkt_mon_state_t rx_pkt_state;
+	uint32 driver_ts;
+	uint16 pkt_pos;
+
+	if (!dhdp || !dhdp->dbg) {
+		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
+			(dhdp ? dhdp->dbg : NULL)));
+		return -EINVAL;
+	}
+
+	rx_pkt_state = dhdp->dbg->pkt_mon.rx_pkt_state;
+	if (PKT_MON_STARTED(rx_pkt_state)) {
+		rx_report = dhdp->dbg->pkt_mon.rx_report;
+		pkt_pos = rx_report->pkt_pos;
+
+		if (!PKT_MON_PKT_FULL(pkt_pos)) {
+			rx_pkts = rx_report->rx_pkts;
+			driver_ts = __dhd_dbg_driver_ts_usec();
+
+			rx_pkts[pkt_pos].info.pkt = PKTDUP(dhdp->osh, pkt);
+			rx_pkts[pkt_pos].info.pkt_len = PKTLEN(dhdp->osh, pkt);
+			rx_pkts[pkt_pos].info.pkt_hash = 0U;
+			rx_pkts[pkt_pos].info.driver_ts = driver_ts;
+			rx_pkts[pkt_pos].info.firmware_ts = 0U;
+			rx_pkts[pkt_pos].info.payload_type = FRAME_TYPE_ETHERNET_II;
+			rx_pkts[pkt_pos].fate = RX_PKT_FATE_SUCCESS;
+
+			rx_report->pkt_pos++;
+		} else {
+			dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_STOPPED;
+			DHD_PKT_MON(("rx pkt logging stopped, reached max limit\n"));
+		}
+	}
+
+	return BCME_OK;
+}
+
+int
+dhd_dbg_stop_pkt_monitor(dhd_pub_t *dhdp)
+{
+	dhd_dbg_pkt_mon_state_t tx_pkt_state;
+	dhd_dbg_pkt_mon_state_t tx_status_state;
+	dhd_dbg_pkt_mon_state_t rx_pkt_state;
+
+	if (!dhdp || !dhdp->dbg) {
+		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
+			(dhdp ? dhdp->dbg : NULL)));
+		return -EINVAL;
+	}
+
+	tx_pkt_state = dhdp->dbg->pkt_mon.tx_pkt_state;
+	tx_status_state = dhdp->dbg->pkt_mon.tx_status_state;
+	rx_pkt_state = dhdp->dbg->pkt_mon.rx_pkt_state;
+
+	if (PKT_MON_DETACHED(tx_pkt_state) || PKT_MON_DETACHED(tx_status_state) ||
+		PKT_MON_DETACHED(rx_pkt_state)) {
+		DHD_PKT_MON(("packet monitor is not yet enabled, "
+			"tx_pkt_state=%d, tx_status_state=%d, rx_pkt_state=%d\n",
+			tx_pkt_state, tx_status_state, rx_pkt_state));
+		return -EINVAL;
+	}
+
+	dhdp->dbg->pkt_mon.tx_pkt_state = PKT_MON_STOPPED;
+	dhdp->dbg->pkt_mon.tx_status_state = PKT_MON_STOPPED;
+	dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_STOPPED;
+
+	DHD_PKT_MON(("packet monitor stopped\n"));
+	return BCME_OK;
+}
+
+#define __COPY_TO_USER(to, from, n) \
+	do { \
+		int __ret; \
+		__ret = copy_to_user((void __user *)(to), (void *)(from), \
+				(unsigned long)(n)); \
+		if (unlikely(__ret)) { \
+			DHD_ERROR(("copy_to_user failed, ret=%d\n", __ret)); \
+			return __ret; \
+		} \
+	} while (0);
+
+int
+dhd_dbg_monitor_get_tx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
+	uint16 req_count, uint16 *resp_count)
+{
+	dhd_dbg_tx_report_t *tx_report;
+	dhd_dbg_tx_info_t *tx_pkt;
+	wifi_tx_report_t *ptr;
+	dhd_dbg_pkt_mon_state_t tx_pkt_state;
+	dhd_dbg_pkt_mon_state_t tx_status_state;
+	uint16 pkt_count, count;
+
+	if (!dhdp || !dhdp->dbg) {
+		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
+			(dhdp ? dhdp->dbg : NULL)));
+		return -EINVAL;
+	}
+
+	tx_pkt_state = dhdp->dbg->pkt_mon.tx_pkt_state;
+	tx_status_state = dhdp->dbg->pkt_mon.tx_status_state;
+	if (PKT_MON_DETACHED(tx_pkt_state) || PKT_MON_DETACHED(tx_status_state)) {
+		DHD_PKT_MON(("packet monitor is not yet enabled, tx_pkt_state=%d, "
+			"tx_status_state=%d\n", tx_pkt_state, tx_status_state));
+		return -EINVAL;
+	}
+
+	count = 0;
+	tx_report = dhdp->dbg->pkt_mon.tx_report;
+	tx_pkt = tx_report->tx_pkts;
+	pkt_count = MIN(req_count, tx_report->status_pos);
+	ptr = (wifi_tx_report_t *)user_buf;
+	while ((count < pkt_count) && tx_pkt && ptr) {
+		__dhd_dbg_dump_tx_pkt_info(dhdp, tx_pkt);
+
+		__COPY_TO_USER(&ptr->fate, &tx_pkt->fate, sizeof(tx_pkt->fate));
+		__COPY_TO_USER(&ptr->frame_inf.payload_type,
+			&tx_pkt->info.payload_type,
+			OFFSETOF(dhd_dbg_pkt_info_t, pkt_hash));
+		__COPY_TO_USER(ptr->frame_inf.frame_content.ethernet_ii,
+			PKTDATA(dhdp->osh, tx_pkt->info.pkt), tx_pkt->info.pkt_len);
+
+		ptr++;
+		tx_pkt++;
+		count++;
+	}
+	*resp_count = pkt_count;
+
+	if (!pkt_count) {
+		DHD_ERROR(("no tx_status in tx completion messages, make sure that "
+			"'d11status' is enabled in firmware, status_pos=%u", pkt_count));
+	}
+
+	return BCME_OK;
+}
+
+int
+dhd_dbg_monitor_get_rx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
+	uint16 req_count, uint16 *resp_count)
+{
+	dhd_dbg_rx_report_t *rx_report;
+	dhd_dbg_rx_info_t *rx_pkt;
+	wifi_rx_report_t *ptr;
+	dhd_dbg_pkt_mon_state_t rx_pkt_state;
+	uint16 pkt_count, count;
+
+	if (!dhdp || !dhdp->dbg) {
+		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
+			(dhdp ? dhdp->dbg : NULL)));
+		return -EINVAL;
+	}
+
+	rx_pkt_state = dhdp->dbg->pkt_mon.rx_pkt_state;
+	if (PKT_MON_DETACHED(rx_pkt_state)) {
+		DHD_PKT_MON(("packet monitor is not yet enabled, rx_pkt_state=%d\n",
+			rx_pkt_state));
+		return -EINVAL;
+	}
+
+	count = 0;
+	rx_report = dhdp->dbg->pkt_mon.rx_report;
+	rx_pkt = rx_report->rx_pkts;
+	pkt_count = MIN(req_count, rx_report->pkt_pos);
+	ptr = (wifi_rx_report_t *)user_buf;
+	while ((count < pkt_count) && rx_pkt && ptr) {
+		__dhd_dbg_dump_rx_pkt_info(dhdp, rx_pkt);
+
+		__COPY_TO_USER(&ptr->fate, &rx_pkt->fate, sizeof(rx_pkt->fate));
+		__COPY_TO_USER(&ptr->frame_inf.payload_type,
+			&rx_pkt->info.payload_type,
+			OFFSETOF(dhd_dbg_pkt_info_t, pkt_hash));
+		__COPY_TO_USER(ptr->frame_inf.frame_content.ethernet_ii,
+			PKTDATA(dhdp->osh, rx_pkt->info.pkt), rx_pkt->info.pkt_len);
+
+		ptr++;
+		rx_pkt++;
+		count++;
+	}
+	*resp_count = pkt_count;
+
+	return BCME_OK;
+}
+
+int
+dhd_dbg_detach_pkt_monitor(dhd_pub_t *dhdp)
+{
+	dhd_dbg_tx_report_t *tx_report;
+	dhd_dbg_rx_report_t *rx_report;
+	dhd_dbg_pkt_mon_state_t tx_pkt_state;
+	dhd_dbg_pkt_mon_state_t tx_status_state;
+	dhd_dbg_pkt_mon_state_t rx_pkt_state;
+
+	if (!dhdp || !dhdp->dbg) {
+		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
+			(dhdp ? dhdp->dbg : NULL)));
+		return -EINVAL;
+	}
+
+	tx_pkt_state = dhdp->dbg->pkt_mon.tx_pkt_state;
+	tx_status_state = dhdp->dbg->pkt_mon.tx_status_state;
+	rx_pkt_state = dhdp->dbg->pkt_mon.rx_pkt_state;
+
+	if (PKT_MON_DETACHED(tx_pkt_state) || PKT_MON_DETACHED(tx_status_state) ||
+		PKT_MON_DETACHED(rx_pkt_state)) {
+		DHD_PKT_MON(("packet monitor is already detached, "
+			"tx_pkt_state=%d, tx_status_state=%d, rx_pkt_state=%d\n",
+			tx_pkt_state, tx_status_state, rx_pkt_state));
+		return -EINVAL;
+	}
+
+	tx_report = dhdp->dbg->pkt_mon.tx_report;
+	rx_report = dhdp->dbg->pkt_mon.rx_report;
+
+	/* free and de-initalize tx packet monitoring */
+	dhdp->dbg->pkt_mon.tx_pkt_state = PKT_MON_DETACHED;
+	dhdp->dbg->pkt_mon.tx_status_state = PKT_MON_DETACHED;
+	if (tx_report) {
+		if (tx_report->tx_pkts) {
+			__dhd_dbg_free_tx_pkts(dhdp, tx_report->tx_pkts,
+				tx_report->pkt_pos);
+			kfree(tx_report->tx_pkts);
+			dhdp->dbg->pkt_mon.tx_report->tx_pkts = NULL;
+		}
+		kfree(tx_report);
+		dhdp->dbg->pkt_mon.tx_report = NULL;
+	}
+	dhdp->dbg->pkt_mon.tx_pkt_mon = NULL;
+	dhdp->dbg->pkt_mon.tx_status_mon = NULL;
+
+	/* free and de-initalize rx packet monitoring */
+	dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_DETACHED;
+	if (rx_report) {
+		if (rx_report->rx_pkts) {
+			__dhd_dbg_free_rx_pkts(dhdp, rx_report->rx_pkts,
+				rx_report->pkt_pos);
+			kfree(rx_report->rx_pkts);
+			dhdp->dbg->pkt_mon.rx_report->rx_pkts = NULL;
+		}
+		kfree(rx_report);
+		dhdp->dbg->pkt_mon.rx_report = NULL;
+	}
+	dhdp->dbg->pkt_mon.rx_pkt_mon = NULL;
+
+	DHD_PKT_MON(("packet monitor detach succeeded\n"));
+	return BCME_OK;
+}
+#endif /* D11_STATUS */
+
 /*
  * dhd_dbg_attach: initialziation of dhd dbugability module
  *

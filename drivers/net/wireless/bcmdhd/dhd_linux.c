@@ -3006,6 +3006,9 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 #ifdef WLMEDIA_HTSF
 		dhd_htsf_addrxts(dhdp, pktbuf);
 #endif
+		/* TODO: XXX: re-look into dropped packets. */
+		DHD_DBG_PKT_MON_RX(dhdp, skb);
+
 		/* Strip header, count, deliver upward */
 		skb_pull(skb, ETH_HLEN);
 
@@ -3186,12 +3189,14 @@ dhd_txcomplete(dhd_pub_t *dhdp, void *txp, bool success)
 
 	dhd_prot_hdrpull(dhdp, NULL, txp, NULL, NULL);
 
-	eh = (struct ether_header *)PKTDATA(dhdp->osh, txp);
-	type  = ntoh16(eh->ether_type);
+	if (success) {
+		eh = (struct ether_header *)PKTDATA(dhdp->osh, txp);
+		type  = ntoh16(eh->ether_type);
 
-	if (type == ETHER_TYPE_802_1X)
-		atomic_dec(&dhd->pend_8021x_cnt);
-
+		if (type == ETHER_TYPE_802_1X) {
+			atomic_dec(&dhd->pend_8021x_cnt);
+		}
+	}
 }
 
 static struct net_device_stats *
@@ -6895,8 +6900,12 @@ void dhd_detach(dhd_pub_t *dhdp)
 	dhd_deferred_work_deinit(dhd->dhd_deferred_wq);
 	dhd->dhd_deferred_wq = NULL;
 
-	if (dhdp->dbg)
+	if (dhdp->dbg) {
+#ifdef D11_STATUS
+		dhd_os_dbg_detach_pkt_monitor(dhdp);
+#endif /* D11_STATUS */
 		dhd_os_dbg_detach(dhdp);
+	}
 #ifdef SHOW_LOGTRACE
 	if (dhd->event_data.fmts)
 		kfree(dhd->event_data.fmts);
@@ -7619,6 +7628,9 @@ dhd_net_bus_devreset(struct net_device *dev, uint8 flag)
 			dhd_rtt_deinit(&dhd->pub);
 		}
 #endif /* RTT_SUPPORT */
+#ifdef D11_STATUS
+		dhd_os_dbg_detach_pkt_monitor(&dhd->pub);
+#endif /* D11_STATUS */
 	}
 #ifdef BCMSDIO
 	if (!flag) {

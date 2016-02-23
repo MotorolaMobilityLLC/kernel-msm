@@ -342,6 +342,66 @@ dhd_os_push_push_ring_data(dhd_pub_t *dhdp, int ring_id, void *data, int32 data_
 	return ret;
 }
 
+#ifdef D11_STATUS
+int
+dhd_os_dbg_attach_pkt_monitor(dhd_pub_t *dhdp)
+{
+	return dhd_dbg_attach_pkt_monitor(dhdp, dhd_os_dbg_monitor_tx_pkts,
+		dhd_os_dbg_monitor_tx_status, dhd_os_dbg_monitor_rx_pkts);
+}
+
+int
+dhd_os_dbg_start_pkt_monitor(dhd_pub_t *dhdp)
+{
+	return dhd_dbg_start_pkt_monitor(dhdp);
+}
+
+int
+dhd_os_dbg_monitor_tx_pkts(dhd_pub_t *dhdp, void *pkt, uint32 pktid)
+{
+	return dhd_dbg_monitor_tx_pkts(dhdp, pkt, pktid);
+}
+
+int
+dhd_os_dbg_monitor_tx_status(dhd_pub_t *dhdp, void *pkt, uint32 pktid,
+	uint16 status)
+{
+	return dhd_dbg_monitor_tx_status(dhdp, pkt, pktid, status);
+}
+
+int
+dhd_os_dbg_monitor_rx_pkts(dhd_pub_t *dhdp, void *pkt)
+{
+	return dhd_dbg_monitor_rx_pkts(dhdp, pkt);
+}
+
+int
+dhd_os_dbg_stop_pkt_monitor(dhd_pub_t *dhdp)
+{
+	return dhd_dbg_stop_pkt_monitor(dhdp);
+}
+
+int
+dhd_os_dbg_monitor_get_tx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
+	uint16 req_count, uint16 *resp_count)
+{
+	return dhd_dbg_monitor_get_tx_pkts(dhdp, user_buf, req_count, resp_count);
+}
+
+int
+dhd_os_dbg_monitor_get_rx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
+	uint16 req_count, uint16 *resp_count)
+{
+	return dhd_dbg_monitor_get_rx_pkts(dhdp, user_buf, req_count, resp_count);
+}
+
+int
+dhd_os_dbg_detach_pkt_monitor(dhd_pub_t *dhdp)
+{
+	return dhd_dbg_detach_pkt_monitor(dhdp);
+}
+#endif /* D11_STATUS */
+
 int
 dhd_os_dbg_get_feature(dhd_pub_t *dhdp, int32 *features)
 {
@@ -356,6 +416,11 @@ dhd_os_dbg_get_feature(dhd_pub_t *dhdp, int32 *features)
 	if (FW_SUPPORTED(dhdp, hchk)) {
 		*features |= DBG_HEALTH_CHECK_SUPPORTED;
 	}
+#ifdef D11_STATUS
+	if (FW_SUPPORTED(dhdp, d11status)) {
+		*features |= DBG_PACKET_FATE_SUPPORTED;
+	}
+#endif /* D11_STATUS */
 	return ret;
 }
 

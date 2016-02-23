@@ -94,6 +94,8 @@ enum {
 #define DHD_WL_VAL2		0x40000
 #define DHD_PNO_VAL		0x80000
 #define DHD_RTT_VAL		0x100000
+#define DHD_PKT_MON_VAL	0x200000
+#define DHD_PKT_MON_DUMP_VAL	0x400000
 
 #ifdef SDTEST
 /* For pktgen iovar */

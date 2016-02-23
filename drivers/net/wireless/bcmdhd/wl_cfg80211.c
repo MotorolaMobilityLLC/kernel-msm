@@ -402,6 +402,8 @@ static s32 wl_notify_connect_status(struct bcm_cfg80211 *cfg,
 	bcm_struct_cfgdev *cfgdev, const wl_event_msg_t *e, void *data);
 static s32 wl_notify_roaming_status(struct bcm_cfg80211 *cfg,
 	bcm_struct_cfgdev *cfgdev, const wl_event_msg_t *e, void *data);
+static s32 wl_notify_roam_prep_status(struct bcm_cfg80211 *cfg,
+	bcm_struct_cfgdev *cfgdev, const wl_event_msg_t *e, void *data);
 static s32 wl_notify_scan_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	const wl_event_msg_t *e, void *data);
 static s32 wl_bss_connect_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
@@ -3820,8 +3822,8 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	struct ether_addr bssid;
 	wl_extjoin_params_t *ext_join_params;
 	size_t join_params_size;
+	dhd_pub_t *dhdp =  (dhd_pub_t *)(cfg->pub);
 #if defined(ROAM_ENABLE) && defined(ROAM_AP_ENV_DETECTION)
-	dhd_pub_t *dhd =  (dhd_pub_t *)(cfg->pub);
 	s32 roam_trigger[2] = {0, 0};
 #endif /* ROAM_AP_ENV_DETECTION */
 	u8* wpaie  = 0;
@@ -3965,7 +3967,7 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 		}
 	}
 #if defined(ROAM_ENABLE) && defined(ROAM_AP_ENV_DETECTION)
-	if (dhd->roam_env_detection) {
+	if (dhdp->roam_env_detection) {
 		bool is_roamtrig_reset = TRUE;
 		bool is_roam_env_ok = (wldev_iovar_setint(dev, "roam_env_detection",
 			AP_ENV_DETECT_NOT_USED) == BCME_OK);
@@ -4155,6 +4157,14 @@ set_ssid:
 		wl_clr_drv_status(cfg, CONNECTING, dev);
 	}
 exit:
+
+	/*
+	 * XXX: start packet logging in advance to make sure that EAPOL 1/4
+	 * is not missed
+	 */
+	if ((dev == bcmcfg_to_prmry_ndev(cfg)) && !err) {
+		DHD_DBG_PKT_MON_START(dhdp);
+	}
 	return err;
 }
 
@@ -4167,9 +4177,7 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 	bool act = false;
 	s32 err = 0;
 	u8 *curbssid;
-#ifdef CUSTOM_SET_CPUCORE
-	dhd_pub_t *dhd = (dhd_pub_t *)(cfg->pub);
-#endif /* CUSTOM_SET_CPUCORE */
+	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
 	WL_ERR(("Reason %d\n", reason_code));
 	RETURN_EIO_IF_NOT_UP(cfg);
 	act = *(bool *) wl_read_prof(cfg, dev, WL_PROF_ACT);
@@ -4185,6 +4193,10 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 #endif /* ESCAN_RESULT_PATCH */
 
 	if (act) {
+		if (dev == bcmcfg_to_prmry_ndev(cfg)) {
+			DHD_DBG_PKT_MON_STOP(dhdp);
+		}
+
 		/*
 		 * Cancel ongoing scan to sync up with sme state machine of cfg80211.
 		 */
@@ -4216,9 +4228,9 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 #ifdef CUSTOM_SET_CPUCORE
 	/* set default cpucore */
 	if (dev == bcmcfg_to_prmry_ndev(cfg)) {
-		dhd->chan_isvht80 &= ~DHD_FLAG_STA_MODE;
-		if (!(dhd->chan_isvht80))
-			dhd_set_cpucore(dhd, FALSE);
+		dhdp->chan_isvht80 &= ~DHD_FLAG_STA_MODE;
+		if (!(dhdp->chan_isvht80))
+			dhd_set_cpucore(dhdp, FALSE);
 	}
 #endif /* CUSTOM_SET_CPUCORE */
 
@@ -8567,10 +8579,13 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 {
 	bool act;
 	struct net_device *ndev = NULL;
+	dhd_pub_t *dhdp;
 	s32 err = 0;
 	u32 event = ntoh32(e->event_type);
 
 	ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
+	dhdp = (dhd_pub_t *)(cfg->pub);
+	BCM_REFERENCE(dhdp);
 
 	if (wl_get_mode_by_netdev(cfg, ndev) == WL_MODE_AP) {
 		err = wl_notify_connect_status_ap(cfg, ndev, e, data);
@@ -8586,6 +8601,7 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 		if (wl_is_linkup(cfg, e, ndev)) {
 			wl_link_up(cfg);
 			act = true;
+
 			if (!wl_get_drv_status(cfg, DISCONNECTING, ndev)) {
 				printk("wl_bss_connect_done succeeded with " MACDBG "\n",
 					MAC2STRDBG((u8*)(&e->addr)));
@@ -8619,6 +8635,11 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 						MAC2STRDBG(curbssid), MAC2STRDBG((u8*)(&e->addr))));
 					return 0;
 				}
+
+				if (ndev == bcmcfg_to_prmry_ndev(cfg)) {
+					DHD_DBG_PKT_MON_STOP(dhdp);
+				}
+
 				wl_clr_drv_status(cfg, CONNECTED, ndev);
 				if (!wl_get_drv_status(cfg, DISCONNECTING, ndev)) {
 					/* To make sure disconnect, explictly send dissassoc
@@ -8634,6 +8655,7 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 						WL_ERR(("WLC_DISASSOC error %d\n", err));
 						err = 0;
 					}
+
 					cfg80211_disconnected(ndev, reason, NULL, 0, GFP_KERNEL);
 					wl_link_down(cfg);
 					wl_init_prof(cfg, ndev);
@@ -8767,6 +8789,24 @@ wl_notify_roaming_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 		wl_update_prof(cfg, ndev, NULL, (void *)&e->addr, WL_PROF_BSSID);
 	}
 	return err;
+}
+
+static s32
+wl_notify_roam_prep_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
+    const wl_event_msg_t *e, void *data)
+{
+	dhd_pub_t *dhdp;
+	struct net_device *ndev;
+
+	dhdp = (dhd_pub_t *)(cfg->pub);
+	ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
+
+	if (ndev == bcmcfg_to_prmry_ndev(cfg)) {
+		DHD_DBG_PKT_MON_STOP(dhdp);
+		DHD_DBG_PKT_MON_START(dhdp);
+	}
+
+    return BCME_OK;
 }
 
 static s32 wl_get_assoc_ies(struct bcm_cfg80211 *cfg, struct net_device *ndev)
@@ -8997,6 +9037,7 @@ static s32
 wl_bss_roaming_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	const wl_event_msg_t *e, void *data)
 {
+	dhd_pub_t *dhdp;
 	struct wl_connect_info *conn_info = wl_to_conn(cfg);
 	s32 err = 0;
 	u8 *curbssid;
@@ -9008,6 +9049,8 @@ wl_bss_roaming_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	u32 freq;
 #endif
 
+	dhdp = (dhd_pub_t *)(cfg->pub);
+	BCM_REFERENCE(dhdp);
 
 	wl_get_assoc_ies(cfg, ndev);
 	wl_update_prof(cfg, ndev, NULL, (void *)(e->addr.octet), WL_PROF_BSSID);
@@ -9049,14 +9092,15 @@ static s32
 wl_bss_connect_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	const wl_event_msg_t *e, void *data, bool completed)
 {
+	dhd_pub_t *dhdp;
 	struct wl_connect_info *conn_info = wl_to_conn(cfg);
 	struct wl_security *sec = wl_read_prof(cfg, ndev, WL_PROF_SEC);
-#if (defined(ROAM_ENABLE) && defined(ROAM_AP_ENV_DETECTION)) || \
-	defined(CUSTOM_SET_CPUCORE)
-	dhd_pub_t *dhd = (dhd_pub_t *)(cfg->pub);
-#endif /* (ROAM_ENABLE && ROAM_AP_ENV_DETECTION) || CUSTOM_SET_CPUCORE */
 	s32 err = 0;
 	u8 *curbssid = wl_read_prof(cfg, ndev, WL_PROF_BSSID);
+
+	dhdp = (dhd_pub_t *)(cfg->pub);
+	BCM_REFERENCE(dhdp);
+
 	if (!sec) {
 		WL_ERR(("sec is NULL\n"));
 		return -ENODEV;
@@ -9092,7 +9136,7 @@ wl_bss_connect_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 			wl_update_pmklist(ndev, cfg->pmk_list, err);
 			wl_set_drv_status(cfg, CONNECTED, ndev);
 #if defined(ROAM_ENABLE) && defined(ROAM_AP_ENV_DETECTION)
-			if (dhd->roam_env_detection)
+			if (dhdp->roam_env_detection)
 				wldev_iovar_setint(ndev, "roam_env_detection",
 					AP_ENV_INDETERMINATE);
 #endif /* ROAM_AP_ENV_DETECTION */
@@ -9105,15 +9149,14 @@ wl_bss_connect_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 #endif
 			}
 #ifdef CUSTOM_SET_CPUCORE
-			if (wl_get_chan_isvht80(ndev, dhd)) {
+			if (wl_get_chan_isvht80(ndev, dhdp)) {
 				if (ndev == bcmcfg_to_prmry_ndev(cfg))
-					dhd->chan_isvht80 |= DHD_FLAG_STA_MODE; /* STA mode */
+					dhdp->chan_isvht80 |= DHD_FLAG_STA_MODE; /* STA mode */
 				else if (ndev == wl_to_p2p_bss_ndev(cfg, P2PAPI_BSSCFG_CONNECTION))
-					dhd->chan_isvht80 |= DHD_FLAG_P2P_MODE; /* p2p mode */
-				dhd_set_cpucore(dhd, TRUE);
+					dhdp->chan_isvht80 |= DHD_FLAG_P2P_MODE; /* p2p mode */
+				dhd_set_cpucore(dhdp, TRUE);
 			}
 #endif /* CUSTOM_SET_CPUCORE */
-
 		}
 		cfg80211_connect_result(ndev,
 			curbssid,
@@ -9132,7 +9175,7 @@ wl_bss_connect_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 			WL_ERR(("Report connect result - connection failed\n"));
 	}
 #ifdef CONFIG_TCPACK_FASTTX
-	if (wl_get_chan_isvht80(ndev, dhd))
+	if (wl_get_chan_isvht80(ndev, dhdp))
 		wldev_iovar_setint(ndev, "tcpack_fast_tx", 0);
 	else
 		wldev_iovar_setint(ndev, "tcpack_fast_tx", 1);
@@ -9926,6 +9969,7 @@ static void wl_init_event_handler(struct bcm_cfg80211 *cfg)
 #ifdef BT_WIFI_HANDOVER
 	cfg->evt_handler[WLC_E_BT_WIFI_HANDOVER_REQ] = wl_notify_bt_wifi_handover_req;
 #endif
+	cfg->evt_handler[WLC_E_ROAM_PREP] = wl_notify_roam_prep_status;
 }
 
 #if defined(STATIC_WL_PRIV_STRUCT)

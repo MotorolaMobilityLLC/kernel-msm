@@ -3851,7 +3851,6 @@ dhdpcie_readshared(dhd_bus_t *bus)
 		bus->dhd->dma_h2d_ring_upd_support = FALSE;
 	}
 
-
 	/* get ring_info, ring_state and mb data ptrs and store the addresses in bus structure */
 	{
 		ring_info_t  ring_info;
@@ -4034,13 +4033,34 @@ int dhd_bus_init(dhd_pub_t *dhdp, bool enforce_mutex)
 		return ret;
 	}
 
-
 	/* Make sure we're talking to the core. */
 	bus->reg = si_setcore(bus->sih, PCIE2_CORE_ID, 0);
 	ASSERT(bus->reg != NULL);
 
 	/* Set bus state according to enable result */
 	dhdp->busstate = DHD_BUS_DATA;
+
+#ifdef D11_STATUS
+	/*
+	 * XXX: WAR: Update dongle that driver supports sending of d11
+	 * tx_status through unused status field of PCIe completion header
+	 * if dongle also supports the same WAR.
+	 */
+	if (bus->pcie_sh->flags & PCIE_SHARED_D2H_D11_TX_STATUS) {
+		uint32 flags = bus->pcie_sh->flags;
+
+		flags |= PCIE_SHARED_H2D_D11_TX_STATUS;
+		ret = dhdpcie_bus_membytes(bus, TRUE, bus->shared_addr,
+				(uint8 *)&flags, sizeof(flags));
+		if (ret < 0) {
+			DHD_ERROR(("%s: update flag bit (H2D_D11_TX_STATUS) failed\n",
+				__FUNCTION__));
+			return ret;
+		}
+		bus->pcie_sh->flags = flags;
+		bus->dhd->d11_tx_status = TRUE;
+	}
+#endif /* D11_STATUS */
 
 	/* Enable the interrupt after device is up */
 	dhdpcie_bus_intr_enable(bus);
