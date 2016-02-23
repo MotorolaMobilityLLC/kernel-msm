@@ -87,6 +87,13 @@ qcom,mdss-dsi-te-dcs-command = <1>;
 qcom,mdss-dsi-te-check-enable;
 qcom,mdss-dsi-te-using-te-pin;
 
+/* Enable ESD checking */
+qcom,esd-check-enabled;
+qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-panel-status-value = <0x9c>;
+
 qcom,panel-supply-entries {
 	#address-cells = <1>;
 	#size-cells = <0>;
