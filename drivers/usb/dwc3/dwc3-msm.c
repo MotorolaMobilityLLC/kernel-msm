@@ -53,6 +53,7 @@
 #include "xhci.h"
 
 #define DWC3_IDEV_CHG_MAX 1500
+#define DWC3_IDEV_CHG_MIN 500
 #define DWC3_HVDCP_CHG_MAX 1800
 
 /* AHB2PHY register offsets */
@@ -128,6 +129,8 @@ MODULE_PARM_DESC(dcp_max_current, "max current drawn for DCP charger");
 
 #define	GSI_IF_STS	(QSCRATCH_REG_OFFSET + 0x1A4)
 #define	GSI_WR_CTRL_STATE_MASK	BIT(15)
+
+#define CHG_RECHECK_DELAY (jiffies + msecs_to_jiffies(5000))
 
 struct dwc3_msm_req_complete {
 	struct list_head list_item;
@@ -242,6 +245,7 @@ struct dwc3_msm {
 	atomic_t                in_p3;
 	unsigned int		lpm_to_suspend_delay;
 	bool			init;
+	struct timer_list       chg_check_timer;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2730,6 +2734,18 @@ static int dwc3_msm_get_clk_gdsc(struct dwc3_msm *mdwc)
 	return 0;
 }
 
+static void dwc3_chg_check_timer_func(unsigned long data)
+{
+	struct dwc3_msm *mdwc = (struct dwc3_msm *) data;
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+
+	if (dwc->gadget.speed == USB_SPEED_UNKNOWN && mdwc->vbus_active &&
+			mdwc->current_max < DWC3_IDEV_CHG_MIN) {
+		dev_err(mdwc->dev, "Fall back to min charging limit\n");
+		dwc3_msm_gadget_vbus_draw(mdwc, DWC3_IDEV_CHG_MIN);
+	}
+}
+
 static int dwc3_msm_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node, *dwc3_node;
@@ -2773,6 +2789,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	INIT_WORK(&mdwc->restart_usb_work, dwc3_restart_usb_work);
 	INIT_WORK(&mdwc->bus_vote_w, dwc3_msm_bus_vote_w);
 	INIT_DELAYED_WORK(&mdwc->sm_work, dwc3_otg_sm_work);
+	setup_timer(&mdwc->chg_check_timer, dwc3_chg_check_timer_func,
+			(unsigned long) mdwc);
 
 	mdwc->dwc3_wq = alloc_ordered_workqueue("dwc3_wq", 0);
 	if (!mdwc->dwc3_wq) {
@@ -3364,9 +3382,12 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 
 		dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
 		usb_gadget_vbus_connect(&dwc->gadget);
+		if (mdwc->chg_type == DWC3_SDP_CHARGER)
+			mod_timer(&mdwc->chg_check_timer, CHG_RECHECK_DELAY);
 	} else {
 		dev_dbg(mdwc->dev, "%s: turn off gadget %s\n",
 					__func__, dwc->gadget.name);
+		del_timer_sync(&mdwc->chg_check_timer);
 		usb_gadget_vbus_disconnect(&dwc->gadget);
 		usb_phy_notify_disconnect(mdwc->hs_phy, USB_SPEED_HIGH);
 		usb_phy_notify_disconnect(mdwc->ss_phy, USB_SPEED_SUPER);
@@ -3717,6 +3738,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 		if (!test_bit(B_SESS_VLD, &mdwc->inputs)) {
 			dev_dbg(mdwc->dev, "BSUSP: !bsv\n");
 			mdwc->otg_state = OTG_STATE_B_IDLE;
+			del_timer_sync(&mdwc->chg_check_timer);
 			dwc3_otg_start_peripheral(mdwc, 0);
 		} else if (!test_bit(B_SUSPEND, &mdwc->inputs)) {
 			dev_dbg(mdwc->dev, "BSUSP !susp\n");
