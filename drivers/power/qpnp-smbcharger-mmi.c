@@ -4241,6 +4241,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 			chip->usbc_online = false;
 			chip->usb_insert_bc1_2 = false;
 			chip->usb_present = false;
+			smbchg_relax(chip, PM_CHARGER);
 			schedule_delayed_work(&chip->usb_removal_work,
 					      msecs_to_jiffies(0));
 		}
@@ -4300,6 +4301,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 		/* Skip notifying insertion if already done */
 		if (!chip->usbc_online) {
 			chip->usbc_online = true;
+			smbchg_stay_awake(chip, PM_CHARGER);
 			schedule_delayed_work(&chip->usb_insertion_work,
 				      msecs_to_jiffies(100));
 		}
@@ -4314,6 +4316,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 		chip->usbc_online = false;
 		chip->usb_insert_bc1_2 = false;
 		chip->usbc_bswchg_pres = false;
+		smbchg_relax(chip, PM_CHARGER);
 	}
 
 	return NOTIFY_OK;
