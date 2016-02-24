@@ -225,6 +225,9 @@ struct android_dev {
 
 	/* reboot notifier */
 	 struct notifier_block android_reboot;
+
+	/* To control USB enumeration based on phone lock */
+	bool secured;
 };
 
 struct android_configuration {
@@ -3857,7 +3860,8 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 			}
 		if (audio_enabled)
 			msleep(100);
-		err = android_enable(dev);
+		if (!dev->secured)
+			err = android_enable(dev);
 		if (err < 0) {
 			pr_err("%s: android_enable failed\n", __func__);
 			dev->connected = 0;
@@ -3867,7 +3871,8 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 		}
 		dev->enabled = true;
 	} else if (!enabled && dev->enabled) {
-		android_disable(dev);
+		if (!dev->secured)
+			android_disable(dev);
 		list_for_each_entry(conf, &dev->configs, list_item)
 			list_for_each_entry(f_holder, &conf->enabled_functions,
 						enabled_list) {
@@ -3959,6 +3964,45 @@ field ## _store(struct device *pdev, struct device_attribute *attr,	\
 }									\
 static DEVICE_ATTR(field, S_IRUGO | S_IWUSR, field ## _show, field ## _store);
 
+static ssize_t secure_show(struct device *pdev, struct device_attribute *attr,
+			   char *buf)
+{
+	struct android_dev *dev = dev_get_drvdata(pdev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", dev->secured);
+}
+
+static ssize_t secure_store(struct device *pdev, struct device_attribute *attr,
+			    const char *buff, size_t size)
+{
+	struct android_dev *dev = dev_get_drvdata(pdev);
+	int secured = 0;
+
+
+	mutex_lock(&dev->mutex);
+
+	sscanf(buff, "%d", &secured);
+	if (secured && !dev->secured) {
+		if (dev->enabled)
+			android_disable(dev);
+		dev->secured = true;
+		pr_info("android_usb: secured\n");
+	} else if (!secured && dev->secured) {
+		if (dev->enabled)
+			android_enable(dev);
+		dev->secured = false;
+		pr_info("android_usb: unsecured\n");
+	} else {
+		pr_err("android_usb: already %s\n",
+				dev->secured ? "secured" : "unsecured");
+	}
+
+	mutex_unlock(&dev->mutex);
+
+	return size;
+}
+
+
 #define DESCRIPTOR_ATTR(field, format_string)				\
 static ssize_t								\
 field ## _show(struct device *dev, struct device_attribute *attr,	\
@@ -4025,6 +4069,7 @@ ANDROID_DEV_ATTR(idle_pc_rpm_no_int_secs, "%u\n");
 static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
 static DEVICE_ATTR(remote_wakeup, S_IRUGO | S_IWUSR,
 		remote_wakeup_show, remote_wakeup_store);
+static DEVICE_ATTR(secure, S_IRUGO | S_IWUSR, secure_show, secure_store);
 
 static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_idVendor,
@@ -4047,6 +4092,7 @@ static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_pm_qos_state,
 	&dev_attr_state,
 	&dev_attr_remote_wakeup,
+	&dev_attr_secure,
 	NULL
 };
 
