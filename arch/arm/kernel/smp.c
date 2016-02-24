@@ -358,6 +358,7 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 	 * before we continue - which happens after __cpu_up returns.
 	 */
 	set_cpu_online(cpu, true);
+	smp_mb__after_atomic();
 	complete(&cpu_running);
 
 	/*
