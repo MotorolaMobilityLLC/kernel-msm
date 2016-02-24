@@ -237,11 +237,12 @@ static int32_t msm_ois_write_settings(struct msm_ois_ctrl_t *o_ctrl,
 			break;
 
 		case MSM_OIS_READ: {
-			uint16_t data;
 
 			switch (settings[i].data_type) {
+
 			case MSM_CAMERA_I2C_BYTE_DATA:
-			case MSM_CAMERA_I2C_WORD_DATA:
+			case MSM_CAMERA_I2C_WORD_DATA: {
+				uint16_t data;
 				rc = o_ctrl->i2c_client.i2c_func_tbl->i2c_read(
 					&o_ctrl->i2c_client,
 					settings[i].reg_addr,
@@ -251,6 +252,25 @@ static int32_t msm_ois_write_settings(struct msm_ois_ctrl_t *o_ctrl,
 					return rc;
 				settings[i].reg_data = data;
 				break;
+			}
+
+			case MSM_CAMERA_I2C_DWORD_DATA: {
+				uint8_t data[4];
+
+				rc = o_ctrl->i2c_client.i2c_func_tbl->
+					i2c_read_seq(
+						&o_ctrl->i2c_client,
+						settings[i].reg_addr,
+						data,
+						4);
+				if (rc < 0)
+					return rc;
+				settings[i].reg_data = (data[0] << 24)
+					| (data[1] << 16)
+					| (data[2] << 8)
+					| data[3];
+				break;
+			}
 
 			default:
 				pr_err("Unsupport data type: %d\n",
