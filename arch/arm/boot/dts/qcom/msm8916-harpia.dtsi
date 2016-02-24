@@ -327,7 +327,7 @@
 	status = "okay";
 	/* BCM 20795 NFC Controller */
 	bcm2079x@77 {
-		status = "ok";
+		status = "/chosen", "mmi,nfc", "true";
 		compatible = "brcm,bcm2079x";
 		reg = <0x77>;
 		interrupt-parent = <&msm_gpio>;
