@@ -3205,7 +3205,26 @@ static int msm_routing_ext_ec_get(struct snd_kcontrol *kcontrol,
 	pr_debug("%s: ext_ec_ref_rx  = %x\n", __func__, msm_route_ext_ec_ref);
 
 	mutex_lock(&routing_lock);
-	ucontrol->value.integer.value[0] = msm_route_ext_ec_ref;
+	switch (msm_route_ext_ec_ref) {
+	case AFE_PORT_ID_PRIMARY_MI2S_TX:
+		ucontrol->value.integer.value[0] = EXT_EC_REF_PRI_MI2S_TX;
+		break;
+	case AFE_PORT_ID_SECONDARY_MI2S_TX:
+		ucontrol->value.integer.value[0] = EXT_EC_REF_SEC_MI2S_TX;
+		break;
+	case AFE_PORT_ID_TERTIARY_MI2S_TX:
+		ucontrol->value.integer.value[0] = EXT_EC_REF_TERT_MI2S_TX;
+		break;
+	case AFE_PORT_ID_QUATERNARY_MI2S_TX:
+		ucontrol->value.integer.value[0] = EXT_EC_REF_QUAT_MI2S_TX;
+		break;
+	case SLIMBUS_1_TX:
+		ucontrol->value.integer.value[0] = EXT_EC_REF_SLIM_1_TX;
+		break;
+	default:
+		ucontrol->value.integer.value[0] = 0; /* NONE */
+		break;
+	}
 	mutex_unlock(&routing_lock);
 	return 0;
 }
