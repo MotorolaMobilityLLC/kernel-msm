@@ -735,9 +735,6 @@
 		clocks = <&clock_gcc clk_gcc_blsp2_uart5_apps_clk>,
 		    <&clock_gcc clk_gcc_blsp2_ahb_clk>;
 		qcom,shared;
-		pinctrl-names = "sleep", "default";
-		pinctrl-0 = <&blsp2_uart5_sleep>;
-		pinctrl-1 = <&blsp2_uart5_active>;
 
 		qcom,msm-bus,name = "buart11";
 		qcom,msm-bus,num-cases = <2>;
@@ -903,6 +900,10 @@
 		mmi,tty = "ttyHS5";
 		mmi,tty_speed = <115200>;
 		mmi,intf-id = /bits/ 8 <5>;
+
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&blsp2_uart5_sleep>;
+		pinctrl-1 = <&blsp2_uart5_active>;
 	};
 
 	cci: qcom,cci@a0c000 {
