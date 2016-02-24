@@ -20,6 +20,7 @@
 		i2c3 = &i2c_3;
 		spi6 = &spi_6;
 		/delete-property/ spi3;
+		/delete-property/ i2c5;
 	};
 
 	utags {
@@ -37,6 +38,7 @@
 };
 
 &soc{
+	/delete-node/ i2c@7af5000;
 	/delete-node/ spi@78b7000;
 	/delete-node/ adv_vreg;
 	i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
@@ -70,6 +72,7 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&cs35l34_reset_default>;
 		};
+		/delete-node/ adv7533@39;
 	};
 
 	i2c_3: i2c@78b7000 { /* BLSP1 QUP3 */
