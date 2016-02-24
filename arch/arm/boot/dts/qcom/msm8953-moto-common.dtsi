@@ -38,6 +38,7 @@
 };
 
 &soc{
+	/delete-node/ uart@78b0000;
 	/delete-node/ i2c@7af5000;
 	/delete-node/ spi@78b7000;
 	/delete-node/ adv_vreg;
