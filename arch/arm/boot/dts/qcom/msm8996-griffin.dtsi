@@ -157,6 +157,12 @@
 &pmi8994_charger {
 	qcom,bms-psy-name = "msm_bms";
 	qcom,max-psy-name = "bms";
+
+	qcom,step-chg-steps = <4100 6000 4000>,
+				<4200 4000 2400>,
+				<4400 2400 2000>;
+
+	qcom,bsw-psy-name = "charger-switch";
 };
 
 /{
