@@ -23,3 +23,8 @@
 &cdc_1p2v {
 	status = "ok";
 };
+
+&marley {
+	CPVDD2-supply = <&cdc_1p2v>;
+	DCVDD-supply = <&cdc_1p2v>;
+};
