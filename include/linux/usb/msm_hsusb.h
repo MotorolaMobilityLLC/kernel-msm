@@ -608,6 +608,7 @@ struct msm_otg {
 	int pm_qos_latency;
 	struct pm_qos_request pm_qos_req_dma;
 	struct delayed_work perf_vote_work;
+	int falsesdp_retry_count;
 };
 
 struct ci13xxx_platform_data {
