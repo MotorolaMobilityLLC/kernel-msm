@@ -3783,7 +3783,7 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 		return;
 	}
 
-	if (chip->usb_insert_bc1_2)
+	if (chip->usb_insert_bc1_2 && chip->enable_hvdcp_9v)
 		hvdcp_en = HVDCP_EN_BIT;
 
 	if (!eb_pwr_psy) {
@@ -5264,6 +5264,7 @@ static void usb_insertion_work(struct work_struct *work)
 		container_of(work, struct smbchg_chip,
 			     usb_insertion_work.work);
 	int rc, health;
+	int hvdcp_en = 0;
 
 	/* If USB C is not online, bail out unless we are in factory mode */
 	if (chip->usbc_psy && !chip->usbc_online && !chip->factory_mode) {
@@ -5278,6 +5279,8 @@ static void usb_insertion_work(struct work_struct *work)
 		power_supply_set_dp_dm(chip->usb_psy,
 				       POWER_SUPPLY_DP_DM_DPF_DMF);
 	}
+	if (chip->enable_hvdcp_9v)
+		hvdcp_en = HVDCP_EN_BIT;
 
 	if (chip->cl_usbc < 3000) {
 		SMB_DBG(chip, "Setup BC1.2 Detection\n");
@@ -5285,7 +5288,7 @@ static void usb_insertion_work(struct work_struct *work)
 		chip->usb_present = 0;
 		rc = smbchg_sec_masked_write(chip,
 					     chip->usb_chgpth_base + CHGPTH_CFG,
-					     HVDCP_EN_BIT, HVDCP_EN_BIT);
+					     HVDCP_EN_BIT, hvdcp_en);
 		if (rc < 0)
 			SMB_ERR(chip,
 				"Couldn't enable HVDCP rc=%d\n", rc);
