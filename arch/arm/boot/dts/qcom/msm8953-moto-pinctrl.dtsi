@@ -242,3 +242,5 @@
 	};
 };
 
+/delete-node/ &hsuart_active;
+/delete-node/ &hsuart_sleep;
