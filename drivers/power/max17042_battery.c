@@ -155,6 +155,7 @@ struct max17042_chip {
 	bool fullcap_report_sent;
 	int last_fullcap;
 	int fctr_uah_bit;
+	int batt_max_uv;
 };
 
 #define CHRG_CONV_WR(fctr, val) ((val * 1000) / fctr)
@@ -190,6 +191,7 @@ static enum power_supply_property max17042_battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
+	POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
@@ -343,6 +345,9 @@ static int max17042_set_property(struct power_supply *psy,
 {
 	struct max17042_chip *chip = container_of(psy,
 				struct max17042_chip, battery);
+	struct regmap *map = chip->regmap;
+	u32 data;
+	int ret;
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
@@ -352,6 +357,20 @@ static int max17042_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TEMP:
 		chip->batt_temp_dc = val->intval;
 		schedule_work(&chip->check_temp_work);
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		chip->batt_max_uv = val->intval;
+		regmap_read(map, MAX17042_VALRT_Th, &data);
+		if (ret < 0)
+			return ret;
+
+		data &= (~MAX17042_ALRT_MSK_MAX);
+		/* Units of LSB = 20mV */
+		data |= (chip->batt_max_uv / 20000) << 8;
+
+		regmap_write(map, MAX17042_VALRT_Th, data);
+		if (ret < 0)
+			return ret;
 		break;
 	default:
 		return -EINVAL;
@@ -368,6 +387,7 @@ static int max17042_is_writeable(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 	case POWER_SUPPLY_PROP_TEMP:
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		rc = 1;
 		break;
 	default:
@@ -413,7 +433,7 @@ static int max17042_get_property(struct power_supply *psy,
 		val->intval /= chip->charge_full_des;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		ret = regmap_read(map, MAX17042_MinMaxVolt, &data);
+		ret = regmap_read(map, MAX17042_VALRT_Th, &data);
 		if (ret < 0)
 			return ret;
 
@@ -528,6 +548,14 @@ static int max17042_get_property(struct power_supply *psy,
 			return ret;
 
 		val->intval = ret;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
+		regmap_read(map, MAX17042_STATUS, &data);
+
+		if (data & STATUS_INTR_VMAX_BIT)
+			val->intval = 1;
+		else
+			val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		ret = max17042_read_temp(chip, &val->intval);
@@ -848,7 +876,7 @@ static void max17042_load_new_capacity_params(struct max17042_chip *chip)
  * This function MUST be called before the POR initialization proceedure
  * specified by maxim.
  */
-#define POR_VALRT_THRESHOLD 0xAA00
+#define POR_VALRT_THRESHOLD 0xDF00
 static inline void max17042_override_por_values(struct max17042_chip *chip)
 {
 	struct regmap *map = chip->regmap;
@@ -1628,7 +1656,7 @@ max17042_get_config_data(struct device *dev)
 	dev_warn(dev, "Config Revision = %d", config_data->revision);
 
 	config_data->cur_sense_val = 10;
-	config_data->valrt_thresh = 0xFF97;
+	config_data->valrt_thresh = 0xDF97;
 	config_data->talrt_thresh = 0x7F80;
 	config_data->soc_alrt_thresh = 0xFF00;
 	config_data->config = 0x0214;
