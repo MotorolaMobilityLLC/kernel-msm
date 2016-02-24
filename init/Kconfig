@@ -850,6 +850,14 @@ config CPUSETS
 
 	  Say N if unsure.
 
+config TASK_CPUFREQ_STATS
+	bool "task cpufreq stats support"
+	help
+	  Export cumulative time spent by tasks/processes in each frequency
+          for each cpu through /proc/<pid> interface. The statistics are
+          available during the lifetime of tasks/processes as responses to
+          commands.
+
 config PROC_PID_CPUSET
 	bool "Include legacy /proc/<pid>/cpuset file"
 	depends on CPUSETS
