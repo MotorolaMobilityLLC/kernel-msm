@@ -87,6 +87,7 @@ struct anx7816_platform_data {
 	struct pinctrl_state *hdmi_pinctrl_active;
 	struct pinctrl_state *hdmi_pinctrl_suspend;
 	struct platform_device *hdmi_pdev;
+	bool cbl_det_suport;
 };
 
 struct anx7816_data {
@@ -172,11 +173,16 @@ bool slimport_dongle_is_connected(void)
 	if (!pdata)
 		return false;
 
-	if (gpio_get_value(pdata->gpio_cbl_det) == DONGLE_CABLE_INSERT
+	if (pdata->cbl_det_suport) {
+		if (gpio_get_value(pdata->gpio_cbl_det) == DONGLE_CABLE_INSERT
 			/*gpio_get_value_cansleep(pdata->gpio_cbl_det)*/) {
 			pr_debug("%s %s : Slimport Dongle is detected\n",
 				LOG_TAG, __func__);
 			result = true;
+		}
+	} else {
+		/* For some HW doesn't has ANX CBL_DET GPIO connection */
+		result = true;
 	}
 
 	return result;
@@ -1105,6 +1111,11 @@ static unsigned char confirmed_cable_det(void *data)
 	unsigned char count = 10;
 	unsigned char cable_det_count = 0;
 
+	if (!anx7816->pdata->cbl_det_suport) {
+		/* For some HW doesn't has ANX CBL_DET GPIO connection */
+		return 1;
+	}
+
 	do {
 		if (gpio_get_value(anx7816->pdata->gpio_cbl_det)
 				== DONGLE_CABLE_INSERT)
@@ -1114,8 +1125,17 @@ static unsigned char confirmed_cable_det(void *data)
 
 	return (cable_det_count > 5) ? 0 : 1;
 	#else
-	usleep_range(DEBOUNCING_DELAY_US, DEBOUNCING_DELAY_US);
-	return gpio_get_value(anx7816->pdata->gpio_cbl_det);
+	if (!anx7816->pdata->cbl_det_suport) {
+		/* This returns 1 is not quite right for cbl_det_suport is not
+		 * set. This is OK, because this confirmed_cable_det() is only
+		 * called by anx7816_cbl_det_isr() and at beginning, it has
+		 * a check for cbl_det_suport, before it reaches this point
+		 */
+		return 1;
+	} else {
+		usleep_range(DEBOUNCING_DELAY_US, DEBOUNCING_DELAY_US);
+		return gpio_get_value(anx7816->pdata->gpio_cbl_det);
+	}
 	#endif
 }
 
@@ -1123,6 +1143,11 @@ static irqreturn_t anx7816_cbl_det_isr(int irq, void *data)
 {
 	struct anx7816_data *anx7816 = data;
 	int cable_connected = 0;
+
+	if (!anx7816->pdata->cbl_det_suport) {
+		/* For some HW doesn't has ANX CBL_DET GPIO connection */
+		return IRQ_HANDLED;
+	}
 
 	cable_connected = confirmed_cable_det(data);
 	pr_debug("%s %s : detect cable insertion, cable_connected = %d\n",
@@ -1268,6 +1293,11 @@ static int anx7816_parse_dt(struct device *dev,
 	pdata->gpio_cbl_det =
 	    of_get_named_gpio_flags(np, "analogix,cbl-det-gpio", 0, NULL);
 
+	if (gpio_is_valid(pdata->gpio_cbl_det))
+		pdata->cbl_det_suport = true;
+	else
+		pdata->cbl_det_suport = false;
+
 	pr_debug(
 	       "%s gpio p_dwn : %d, reset : %d,  gpio_cbl_det %d\n",
 	       LOG_TAG, pdata->gpio_p_dwn,
@@ -1411,36 +1441,42 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		goto err2;
 	}
 
-	client->irq = gpio_to_irq(anx7816->pdata->gpio_cbl_det);
-	if (client->irq < 0) {
-		pr_err("%s : failed to get gpio irq\n", __func__);
-		goto err2;
+	if (anx7816->pdata->cbl_det_suport) {
+		client->irq = gpio_to_irq(anx7816->pdata->gpio_cbl_det);
+		if (client->irq < 0) {
+			pr_err("%s : failed to get gpio irq\n", __func__);
+			goto err2;
+		}
 	}
 
 	wake_lock_init(&anx7816->slimport_lock,
 		       WAKE_LOCK_SUSPEND, "slimport_wake_lock");
 
-	ret = request_threaded_irq(client->irq, NULL, anx7816_cbl_det_isr,
+	if (anx7816->pdata->cbl_det_suport) {
+		ret = request_threaded_irq(client->irq, NULL,
+				anx7816_cbl_det_isr,
 				   IRQF_TRIGGER_RISING
 				   | IRQF_TRIGGER_FALLING
 				   | IRQF_ONESHOT, "anx7816", anx7816);
-	if (ret < 0) {
-		pr_err("%s : failed to request irq\n", __func__);
-		goto err2;
-	}
+		if (ret < 0) {
+			pr_err("%s : failed to request irq\n", __func__);
+			goto err2;
+		}
 
-	ret = irq_set_irq_wake(client->irq, 1);
-	if (ret < 0) {
-		pr_err("%s : Request irq for cable detect", __func__);
-		pr_err("interrupt wake set fail\n");
-		goto err3;
-	}
+		ret = irq_set_irq_wake(client->irq, 1);
+		if (ret < 0) {
+			pr_err("%s : Request irq for cable detect", __func__);
+			pr_err("interrupt wake set fail\n");
+			goto err3;
+		}
 
-	ret = enable_irq_wake(client->irq);
-	if (ret < 0) {
-		pr_err("%s : Enable irq for cable detect", __func__);
-		pr_err("interrupt wake enable fail\n");
-		goto err3;
+		ret = enable_irq_wake(client->irq);
+		if (ret < 0) {
+			pr_err("%s : Enable irq for cable detect", __func__);
+			pr_err("interrupt wake enable fail\n");
+			goto err3;
+		}
+
 	}
 
 	ret = create_sysfs_interfaces(&client->dev);
