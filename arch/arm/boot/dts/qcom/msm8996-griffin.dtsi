@@ -110,9 +110,9 @@
 		maxim,df-read-battsn;
 
 		maxim,configuration {
-			df-serialnum    = "SNN5963";
+			df-serialnum    = "SNN5968";
 
-			/include/ "batterydata-fl40-lg.dtsi"
+			/include/ "batterydata-gv40-lg-maxim.dtsi"
 		};
 	};
 
