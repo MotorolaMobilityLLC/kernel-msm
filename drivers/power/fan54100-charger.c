@@ -111,6 +111,7 @@ struct fan54100_chrg_chip {
 	int sotp_limit_c;
 	int health;
 	bool factory_mode;
+	bool sovp_tripped;
 };
 
 static int fan54100_chrg_write_reg(struct i2c_client *client, u8 reg, u8 value)
@@ -213,13 +214,9 @@ static void fan54100_chrg_update_health(struct fan54100_chrg_chip *chip,
 	case POWER_SUPPLY_HEALTH_OVERHEAT:
 	case POWER_SUPPLY_HEALTH_OVERVOLTAGE:
 		break;
-	case POWER_SUPPLY_HEALTH_SAFETY_TIMER_EXPIRE:
 	case POWER_SUPPLY_HEALTH_GOOD:
-		chip->health = health;
-		break;
 	case POWER_SUPPLY_HEALTH_UNSPEC_FAILURE:
-		if (health != POWER_SUPPLY_HEALTH_SAFETY_TIMER_EXPIRE)
-			chip->health = health;
+		chip->health = health;
 		break;
 	default:
 		break;
@@ -256,7 +253,9 @@ static void fan54100_chrg_get_psys(struct fan54100_chrg_chip *chip)
 static enum power_supply_property fan54100_chrg_props[] = {
 	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
+	POWER_SUPPLY_PROP_VOLTAGE_MIN,
 	POWER_SUPPLY_PROP_HEALTH,
+	POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT,
 };
 
 static int fan54100_chrg_get_property(struct power_supply *psy,
@@ -295,8 +294,15 @@ static int fan54100_chrg_get_property(struct power_supply *psy,
 			reg_val = (SOVP_NUM_STEP - 1);
 		val->intval = ((reg_val * SOVP_STEP_MV) + SOVP_MIN_MV) * 1000;
 		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MIN:
+		val->intval = SOVP_MIN_MV * 1000;
+		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = chip->health;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
+		if (chip->sovp_tripped)
+			val->intval = 1;
 		break;
 	default:
 		return -EINVAL;
@@ -327,8 +333,10 @@ static int fan54100_chrg_set_property(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		protect_bits = val->intval ?  FAN54100_BIT_SW_ENABLE : 0;
-		if (val->intval)
+		if (val->intval) {
 			chip->health = POWER_SUPPLY_HEALTH_GOOD;
+			chip->sovp_tripped = false;
+		}
 		rc = fan54100_chrg_masked_write_reg(chip->client,
 						    FAN54100_REG_CONTROL0,
 						    FAN54100_BIT_SW_ENABLE,
@@ -415,8 +423,8 @@ static int fan54100_fovp_handler(struct fan54100_chrg_chip *chip)
 
 static int fan54100_sovp_handler(struct fan54100_chrg_chip *chip)
 {
-	fan54100_chrg_update_health(chip,
-				    POWER_SUPPLY_HEALTH_SAFETY_TIMER_EXPIRE);
+	fan54100_chrg_update_health(chip, POWER_SUPPLY_HEALTH_OVERVOLTAGE);
+	chip->sovp_tripped = true;
 	dev_dbg(chip->dev, "FAN54100 SOVP IRQ tripped!\n");
 	return 0;
 }
@@ -569,6 +577,7 @@ static int fan54100_chrg_probe(struct i2c_client *client,
 		dev_info(&client->dev, "fan54100: Factory Mode\n");
 
 	chip->health = POWER_SUPPLY_HEALTH_GOOD;
+	chip->sovp_tripped = false;
 
 	chip->fan54100_int_n.gpio = of_get_gpio_flags(np, 0, &flags);
 	chip->fan54100_int_n.flags = flags;
