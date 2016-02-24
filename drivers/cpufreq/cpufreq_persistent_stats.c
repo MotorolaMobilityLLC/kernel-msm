@@ -104,6 +104,83 @@ static int cpufreq_stats_update(unsigned int cpu)
 	return 0;
 }
 
+#ifdef CONFIG_TASK_CPUFREQ_STATS
+int cpufreq_stats_get_max_state(int cpu)
+{
+	struct cpu_persistent_stats *cpu_stats = &per_cpu(pcpu_stats, cpu);
+	if(!cpu_stats)
+		return 0;
+	return cpu_stats->max_state;
+}
+EXPORT_SYMBOL_GPL(cpufreq_stats_get_max_state);
+
+void update_freq_table(unsigned int* freq_table, int cpu,
+		       unsigned int max_state)
+{
+	int i;
+	struct cpu_persistent_stats *cpu_stats = &per_cpu(pcpu_stats, cpu);
+	if(!freq_table || !cpu_stats)
+		return;
+	if(cpu_stats->max_state != max_state)
+		return;
+	for (i = 0; i < cpu_stats->max_state; i++) {
+		freq_table[i] = cpu_stats->freq_table[i];
+	}
+}
+EXPORT_SYMBOL_GPL(update_freq_table);
+
+void update_time_in_state(struct task_struct *task, int cpu)
+{
+	int i;
+	unsigned long flags;
+	struct cpu_persistent_stats *stat = &per_cpu(pcpu_stats, cpu);
+	if (!task || !stat)
+		return;
+	if (task->cpufreq_stats[cpu].max_state == 0 ||
+	    task->cpufreq_stats[cpu].max_state != stat->max_state)
+		return;
+	spin_lock_irqsave(&cpufreq_stats_lock, flags);
+	cpufreq_stats_update(cpu);
+	for (i = 0; i < stat->max_state; i++) {
+		task->cpufreq_stats[cpu].time_in_state[i] =
+			stat->time_in_state[i];
+	}
+	spin_unlock_irqrestore(&cpufreq_stats_lock, flags);
+}
+EXPORT_SYMBOL_GPL(update_time_in_state);
+
+void update_cumulative_time_in_state(struct task_struct *task,
+			      struct task_struct *parent,
+			      int cpu)
+{
+	int i;
+	unsigned long flags;
+	struct cpu_persistent_stats *stat = &per_cpu(pcpu_stats, cpu);
+	if (!task || !parent || !stat)
+		return;
+	if (task->cpufreq_stats[cpu].max_state == 0 ||
+	    task->cpufreq_stats[cpu].max_state != stat->max_state ||
+	    parent->pid == 0 ||
+	    parent->cpufreq_stats[cpu].max_state == 0 ||
+	    parent->cpufreq_stats[cpu].max_state != stat->max_state)
+		return;
+	spin_lock_irqsave(&cpufreq_stats_lock, flags);
+	cpufreq_stats_update(cpu);
+	for (i = 0; i < stat->max_state; i++) {
+		task->cpufreq_stats[cpu].cumulative_time_in_state[i] =
+			task->cpufreq_stats[cpu].cumulative_time_in_state[i] +
+			(stat->time_in_state[i] -
+			 task->cpufreq_stats[cpu].time_in_state[i]);
+		parent->cpufreq_stats[cpu].cumulative_time_in_state[i] =
+			parent->cpufreq_stats[cpu].cumulative_time_in_state[i] +
+			(stat->time_in_state[i] -
+			 task->cpufreq_stats[cpu].time_in_state[i]);
+	}
+	spin_unlock_irqrestore(&cpufreq_stats_lock, flags);
+}
+EXPORT_SYMBOL_GPL(update_cumulative_time_in_state);
+#endif
+
 static void reset_stats(void)
 {
 	unsigned int cpu;

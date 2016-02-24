@@ -490,4 +490,13 @@ static inline int cpufreq_generic_exit(struct cpufreq_policy *policy)
 
 void acct_update_power(struct task_struct *p, cputime_t cputime);
 
+#ifdef CONFIG_TASK_CPUFREQ_STATS
+void update_time_in_state(struct task_struct *p, int cpu);
+void update_cumulative_time_in_state(struct task_struct *p,
+				     struct task_struct *parent,
+				     int cpu);
+int cpufreq_stats_get_max_state(int cpu);
+void update_freq_table(unsigned int* freq_table, int cpu,
+		       unsigned int max_state);
+#endif
 #endif /* _LINUX_CPUFREQ_H */
