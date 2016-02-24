@@ -56,7 +56,8 @@ struct nanohub_data {
 	struct wake_lock wakelock_read;
 
 	atomic_t wakeup_cnt;
-	atomic_t wakeup_lock;
+	spinlock_t wakeup_lock;
+	atomic_t wakeup_aquired;
 	wait_queue_head_t wakeup_wait;
 
 	uint32_t interrupts[8];

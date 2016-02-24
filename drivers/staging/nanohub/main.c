@@ -68,12 +68,14 @@ int request_wakeup(struct nanohub_data *data)
 	int ret = 0, lock;
 	DEFINE_WAIT(wait);
 
+	spin_lock(&data->wakeup_lock);
 	if (atomic_inc_return(&data->wakeup_cnt) == 1)
 		gpio_direction_output(pdata->wakeup_gpio, 0);
+	spin_unlock(&data->wakeup_lock);
 
 	/* if the interrupt line is low, just try and grab the lock */
 	if (!gpio_get_value(data->pdata->irq1_gpio))
-		lock = atomic_cmpxchg(&data->wakeup_lock, 0, 1);
+		lock = atomic_cmpxchg(&data->wakeup_aquired, 0, 1);
 	else
 		lock = 1;
 
@@ -82,7 +84,7 @@ int request_wakeup(struct nanohub_data *data)
 			prepare_to_wait_exclusive(&data->wakeup_wait, &wait,
 						  TASK_INTERRUPTIBLE);
 			if (!gpio_get_value(data->pdata->irq1_gpio)) {
-				lock = atomic_cmpxchg(&data->wakeup_lock, 0, 1);
+				lock = atomic_cmpxchg(&data->wakeup_aquired, 0, 1);
 				if (!lock) {
 					finish_wait(&data->wakeup_wait, &wait);
 					break;
@@ -100,8 +102,10 @@ int request_wakeup(struct nanohub_data *data)
 	}
 
 	if (ret) {
+		spin_lock(&data->wakeup_lock);
 		if (atomic_dec_and_test(&data->wakeup_cnt))
 			gpio_direction_output(pdata->wakeup_gpio, 1);
+		spin_unlock(&data->wakeup_lock);
 	}
 
 	return ret;
@@ -113,12 +117,14 @@ int request_wakeup_timeout(struct nanohub_data *data, long timeout)
 	int lock;
 	DEFINE_WAIT(wait);
 
+	spin_lock(&data->wakeup_lock);
 	if (atomic_inc_return(&data->wakeup_cnt) == 1)
 		gpio_direction_output(pdata->wakeup_gpio, 0);
+	spin_unlock(&data->wakeup_lock);
 
 	/* if the interrupt line is low, just try and grab the lock */
 	if (!gpio_get_value(data->pdata->irq1_gpio))
-		lock = atomic_cmpxchg(&data->wakeup_lock, 0, 1);
+		lock = atomic_cmpxchg(&data->wakeup_aquired, 0, 1);
 	else
 		lock = 1;
 
@@ -127,7 +133,7 @@ int request_wakeup_timeout(struct nanohub_data *data, long timeout)
 			prepare_to_wait_exclusive(&data->wakeup_wait, &wait,
 						  TASK_INTERRUPTIBLE);
 			if (!gpio_get_value(data->pdata->irq1_gpio)) {
-				lock = atomic_cmpxchg(&data->wakeup_lock, 0, 1);
+				lock = atomic_cmpxchg(&data->wakeup_aquired, 0, 1);
 				if (!lock) {
 					finish_wait(&data->wakeup_wait, &wait);
 					break;
@@ -150,7 +156,7 @@ int request_wakeup_timeout(struct nanohub_data *data, long timeout)
 		if (!timeout
 		    && (!lock || !gpio_get_value(data->pdata->irq1_gpio))) {
 			if (lock)
-				lock = atomic_cmpxchg(&data->wakeup_lock, 0, 1);
+				lock = atomic_cmpxchg(&data->wakeup_aquired, 0, 1);
 			if (!lock)
 				timeout = 1;
 		}
@@ -159,8 +165,10 @@ int request_wakeup_timeout(struct nanohub_data *data, long timeout)
 	}
 
 	if (timeout <= 0) {
+		spin_lock(&data->wakeup_lock);
 		if (atomic_dec_and_test(&data->wakeup_cnt))
 			gpio_direction_output(pdata->wakeup_gpio, 1);
+		spin_unlock(&data->wakeup_lock);
 
 		if (timeout == 0)
 			timeout = -ETIME;
@@ -175,14 +183,17 @@ void release_wakeup(struct nanohub_data *data)
 {
 	const struct nanohub_platform_data *pdata = data->pdata;
 
+	spin_lock(&data->wakeup_lock);
 	if (!atomic_dec_and_test(&data->wakeup_cnt)) {
 		gpio_direction_output(pdata->wakeup_gpio, 0);
-		atomic_dec(&data->wakeup_lock);
+		spin_unlock(&data->wakeup_lock);
+		atomic_dec(&data->wakeup_aquired);
 		if (!gpio_get_value(data->pdata->irq1_gpio))
 			wake_up_interruptible_sync(&data->wakeup_wait);
 	} else {
 		gpio_direction_output(pdata->wakeup_gpio, 1);
-		atomic_dec(&data->wakeup_lock);
+		spin_unlock(&data->wakeup_lock);
+		atomic_dec(&data->wakeup_aquired);
 		if (!gpio_get_value(data->pdata->irq1_gpio) ||
 		    (gpio_is_valid(data->pdata->irq2_gpio)
 		     && !gpio_get_value(data->pdata->irq2_gpio))) {
@@ -208,7 +219,7 @@ static void nanohub_mask_interrupt(struct nanohub_data *data, uint8_t interrupt)
 						false, 10, 0);
 		release_wakeup(data);
 		dev_info(data->sensor_dev,
-			 "nanohub: Masking interrupt %d, ret=%d, mask_ret=%d\n",
+			 "Masking interrupt %d, ret=%d, mask_ret=%d\n",
 			 interrupt, ret, mask_ret);
 	} while ((ret != 1 || mask_ret != 1) && --cnt > 0);
 }
@@ -230,7 +241,7 @@ static void nanohub_unmask_interrupt(struct nanohub_data *data,
 						false, 10, 0);
 		release_wakeup(data);
 		dev_info(data->sensor_dev,
-			 "nanohub: Unmasking interrupt %d, ret=%d, mask_ret=%d\n",
+			 "Unmasking interrupt %d, ret=%d, mask_ret=%d\n",
 			 interrupt, ret, unmask_ret);
 	} while ((ret != 1 || unmask_ret != 1) && --cnt > 0);
 }
@@ -330,7 +341,7 @@ static ssize_t nanohub_hw_reset(struct device *dev,
 	struct nanohub_data *data = dev_get_drvdata(dev);
 	const struct nanohub_platform_data *pdata = data->pdata;
 
-	atomic_inc(&data->wakeup_lock);
+	atomic_inc(&data->wakeup_aquired);
 
 	if (gpio_is_valid(pdata->irq1_gpio))
 		disable_irq(data->irq1);
@@ -351,7 +362,7 @@ static ssize_t nanohub_hw_reset(struct device *dev,
 	if (gpio_is_valid(pdata->irq2_gpio))
 		enable_irq(data->irq2);
 
-	atomic_dec(&data->wakeup_lock);
+	atomic_dec(&data->wakeup_aquired);
 
 	if (atomic_read(&data->wakeup_cnt) > 0
 	    && gpio_is_valid(pdata->wakeup_gpio))
@@ -370,7 +381,7 @@ static ssize_t nanohub_erase_shared(struct device *dev,
 	const struct nanohub_platform_data *pdata = data->pdata;
 	uint8_t status = CMD_ACK;
 
-	atomic_inc(&data->wakeup_lock);
+	atomic_inc(&data->wakeup_aquired);
 
 	nanohub_bl_open(data);
 	if (gpio_is_valid(pdata->irq1_gpio))
@@ -391,7 +402,7 @@ static ssize_t nanohub_erase_shared(struct device *dev,
 
 	usleep_range(70000, 75000);
 	status = nanohub_bl_erase_shared(data);
-	dev_info(dev, "nanohub: nanohub_bl_erase_shared: status=%02x\n",
+	dev_info(dev, "nanohub_bl_erase_shared: status=%02x\n",
 		 status);
 
 	if (gpio_is_valid(pdata->nreset_gpio))
@@ -408,7 +419,7 @@ static ssize_t nanohub_erase_shared(struct device *dev,
 	if (gpio_is_valid(pdata->irq2_gpio))
 		enable_irq(data->irq2);
 
-	atomic_dec(&data->wakeup_lock);
+	atomic_dec(&data->wakeup_aquired);
 
 	if (atomic_read(&data->wakeup_cnt) > 0
 	    && gpio_is_valid(pdata->wakeup_gpio))
@@ -429,7 +440,7 @@ static ssize_t nanohub_download_bl(struct device *dev,
 	int ret;
 	uint8_t status = CMD_ACK;
 
-	atomic_inc(&data->wakeup_lock);
+	atomic_inc(&data->wakeup_aquired);
 
 	nanohub_bl_open(data);
 	if (gpio_is_valid(pdata->irq1_gpio))
@@ -450,13 +461,13 @@ static ssize_t nanohub_download_bl(struct device *dev,
 
 	ret = request_firmware(&fw_entry, "nanohub.full.bin", dev);
 	if (ret) {
-		dev_err(dev, "nanohub: nanohub_download_bl: err=%d\n", ret);
+		dev_err(dev, "nanohub_download_bl: err=%d\n", ret);
 	} else {
 		usleep_range(70000, 75000);
 		status =
 		    nanohub_bl_download(data, pdata->bl_addr, fw_entry->data,
 					fw_entry->size);
-		dev_info(dev, "nanohub: nanohub_download_bl: status=%02x\n",
+		dev_info(dev, "nanohub_download_bl: status=%02x\n",
 			 status);
 		release_firmware(fw_entry);
 	}
@@ -475,7 +486,7 @@ static ssize_t nanohub_download_bl(struct device *dev,
 	if (gpio_is_valid(pdata->irq2_gpio))
 		enable_irq(data->irq2);
 
-	atomic_dec(&data->wakeup_lock);
+	atomic_dec(&data->wakeup_aquired);
 
 	if (atomic_read(&data->wakeup_cnt) > 0
 	    && gpio_is_valid(pdata->wakeup_gpio))
@@ -496,7 +507,7 @@ static ssize_t nanohub_download_kernel(struct device *dev,
 
 	ret = request_firmware(&fw_entry, "nanohub.update.bin", dev);
 	if (ret) {
-		dev_err(dev, "nanohub: nanohub_download_kernel: err=%d\n", ret);
+		dev_err(dev, "nanohub_download_kernel: err=%d\n", ret);
 		return -EIO;
 	} else {
 		ret =
@@ -557,7 +568,7 @@ static ssize_t nanohub_download_app(struct device *dev,
 
 	ret = request_firmware(&fw_entry, buffer, dev);
 	if (ret) {
-		dev_err(dev, "nanohub: nanohub_download_app(%s): err=%d\n",
+		dev_err(dev, "nanohub_download_app(%s): err=%d\n",
 			buffer, ret);
 		return -EIO;
 	} else {
@@ -639,7 +650,7 @@ static int create_sysfs(struct nanohub_data *data)
 		ret = device_create_file(data->sensor_dev, &attributes[i]);
 		if (ret) {
 			dev_err(data->sensor_dev,
-				"nanohub: device_create_file failed\n");
+				"device_create_file failed\n");
 			device_unregister(data->sensor_dev);
 			class_destroy(data->sensor_class);
 			return ret;
@@ -651,7 +662,7 @@ static int create_sysfs(struct nanohub_data *data)
 			      "iio");
 	if (ret) {
 		dev_err(data->sensor_dev,
-			"nanohub: sysfs_create_link failed\n");
+			"sysfs_create_link failed\n");
 		device_unregister(data->sensor_dev);
 		class_destroy(data->sensor_class);
 		return ret;
@@ -663,6 +674,8 @@ static int create_sysfs(struct nanohub_data *data)
 static int nanohub_open(struct inode *inode, struct file *file)
 {
 	struct nanohub_data *data;
+
+	nonseekable_open(inode, file);
 
 	data = container_of(inode->i_cdev, struct nanohub_data, cdev);
 
@@ -911,7 +924,7 @@ static int nanohub_kthread(void *arg)
 					release_wakeup(data);
 					if (++data->err_cnt >= 10) {
 						dev_err(data->sensor_dev,
-							"nanohub: nanohub_kthread: err_cnt=%d\n",
+							"nanohub_kthread: err_cnt=%d\n",
 							data->err_cnt);
 						schedule_timeout
 						    (msecs_to_jiffies(1000));
@@ -1123,6 +1136,7 @@ struct iio_dev *nanohub_probe(struct device *dev, struct iio_dev *iio_dev)
 	atomic_set(&data->kthread_run, 0);
 
 	spin_lock_init(&data->read_lock);
+	spin_lock_init(&data->wakeup_lock);
 	init_waitqueue_head(&data->read_wait);
 	INIT_LIST_HEAD(&data->read_data);
 	INIT_LIST_HEAD(&data->read_free);
@@ -1134,7 +1148,7 @@ struct iio_dev *nanohub_probe(struct device *dev, struct iio_dev *iio_dev)
 		       "nanohub_wakelock_read");
 
 	atomic_set(&data->wakeup_cnt, 0);
-	atomic_set(&data->wakeup_lock, 0);
+	atomic_set(&data->wakeup_aquired, 0);
 	init_waitqueue_head(&data->wakeup_wait);
 
 	pdata = dev_get_platdata(dev);
