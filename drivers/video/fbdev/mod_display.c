@@ -19,6 +19,7 @@
 #include <linux/mod_display_comm.h>
 #include <linux/module.h>
 #include <linux/printk.h>
+#include <linux/slab.h>
 
 static LIST_HEAD(impl_list_head);
 static DEFINE_MUTEX(list_lock);
@@ -36,7 +37,11 @@ int mod_display_get_display_config(
 
 	pr_debug("%s+\n", __func__);
 
-	BUG_ON(!mod_display_comm);
+	if (!mod_display_comm) {
+		pr_err("%s: No comm interface ready!\n", __func__);
+		ret = -ENODEV;
+		goto exit;
+	}
 
 	ret = mod_display_comm->ops->get_display_config(
 		mod_display_comm->ops->data, display_config);
@@ -63,11 +68,12 @@ int mod_display_set_display_config(u8 index)
 
 	pr_debug("%s+\n", __func__);
 
-	BUG_ON(!mod_display_impl);
-	BUG_ON(!mod_display_comm);
-
-	ret = mod_display_comm->ops->set_display_config(
-		mod_display_comm->ops->data, index);
+	if (!mod_display_impl || !mod_display_comm) {
+		pr_err("%s: Interfaces are not setup!\n", __func__);
+		ret = -ENODEV;
+	} else
+		ret = mod_display_comm->ops->set_display_config(
+			mod_display_comm->ops->data, index);
 
 	pr_debug("%s-\n", __func__);
 
@@ -80,11 +86,12 @@ int mod_display_get_display_state(u8 *state)
 
 	pr_debug("%s+\n", __func__);
 
-	BUG_ON(!mod_display_impl);
-	BUG_ON(!mod_display_comm);
-
-	ret = mod_display_comm->ops->get_display_state(
-		mod_display_comm->ops->data, state);
+	if (!mod_display_impl || !mod_display_comm) {
+		pr_err("%s: Interfaces are not setup!\n", __func__);
+		ret = -ENODEV;
+	} else
+		ret = mod_display_comm->ops->get_display_state(
+			mod_display_comm->ops->data, state);
 
 	pr_debug("%s-\n", __func__);
 
@@ -97,11 +104,13 @@ int mod_display_set_display_state(u8 state)
 
 	pr_debug("%s+\n", __func__);
 
-	BUG_ON(!mod_display_impl);
-	BUG_ON(!mod_display_comm);
+	if (!mod_display_impl || !mod_display_comm) {
+		pr_err("%s: Interfaces are not setup!\n", __func__);
+		ret = -ENODEV;
+	} else
+		ret = mod_display_comm->ops->set_display_state(
+			mod_display_comm->ops->data, state);
 
-	ret = mod_display_comm->ops->set_display_state(
-		mod_display_comm->ops->data, state);
 
 	pr_debug("%s-\n", __func__);
 
@@ -118,13 +127,26 @@ int mod_display_notification(enum mod_display_notification event)
 
 	pr_debug("%s+\n", __func__);
 
-	BUG_ON(!mod_display_comm);
+	if (!mod_display_comm) {
+		pr_err("%s: No comm interface ready!\n", __func__);
+		ret = -ENODEV;
+		goto exit;
+	}
 
 	switch (event) {
 	case MOD_NOTIFY_AVAILABLE:
-		BUG_ON(mod_display_impl);
+		if (mod_display_impl) {
+			pr_err("%s: Implementation already setup!\n", __func__);
+			ret = -EBUSY;
+			break;
+		}
 
-		mod_display_get_display_config(&display_config);
+		ret = mod_display_get_display_config(&display_config);
+		if (ret) {
+			pr_err("%s: Unable to get display config (ret: %d)",
+				__func__, ret);
+			break;
+		}
 
 		mutex_lock(&list_lock);
 		list_for_each_entry(cur, &impl_list_head, list) {
@@ -148,9 +170,14 @@ int mod_display_notification(enum mod_display_notification event)
 			ret = -EINVAL;
 		}
 
+		kfree(display_config);
 		break;
 	case MOD_NOTIFY_UNAVAILABLE:
-		BUG_ON(!mod_display_impl);
+		if (!mod_display_impl) {
+			pr_err("%s: No implementation ready!\n", __func__);
+			ret = -ENODEV;
+			break;
+		}
 
 		if (mod_display_impl->ops->handle_unavailable)
 			mod_display_impl->ops->handle_unavailable(
@@ -160,7 +187,11 @@ int mod_display_notification(enum mod_display_notification event)
 
 		break;
 	case MOD_NOTIFY_CONNECT:
-		BUG_ON(!mod_display_impl);
+		if (!mod_display_impl) {
+			pr_err("%s: No implementation ready!\n", __func__);
+			ret = -ENODEV;
+			break;
+		}
 
 		if (mod_display_impl->ops->handle_connect)
 			mod_display_impl->ops->handle_connect(
@@ -168,7 +199,11 @@ int mod_display_notification(enum mod_display_notification event)
 
 		break;
 	case MOD_NOTIFY_DISCONNECT:
-		BUG_ON(!mod_display_impl);
+		if (!mod_display_impl) {
+			pr_err("%s: No implementation ready!\n", __func__);
+			ret = -ENODEV;
+			break;
+		}
 
 		if (mod_display_impl->ops->handle_disconnect)
 			mod_display_impl->ops->handle_disconnect(
@@ -182,6 +217,7 @@ int mod_display_notification(enum mod_display_notification event)
 		pr_err("%s: Invalid event: %d\n", __func__, event);
 	}
 
+exit:
 	pr_debug("%s-\n", __func__);
 
 	return ret;
