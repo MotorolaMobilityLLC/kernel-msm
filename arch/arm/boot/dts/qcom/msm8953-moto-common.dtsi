@@ -342,8 +342,30 @@
 					<5 0 20>;
 
 		pinctrl-names = "disconnected", "spi_active";
-		pinctrl-0 = <&muc_attach>;
-		pinctrl-1 = <&muc_attach>;
+		pinctrl-0 = <&muc_attach &spi_1_sleep &muc_spi_ctrl>;
+		pinctrl-1 = <&muc_attach &spi_1_active &muc_spi_ctrl>;
+	};
+};
+
+&spi_1 {
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+	/delete-property/ pinctrl-names;
+	/delete-property/ qcom,use-pinctrl;
+
+	spi-max-frequency = <50000000>;
+
+	qcom,rt-priority;
+	qcom,active-only;
+
+	muc_spi: muc_spi@0 {
+		compatible = "moto,muc_spi";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <72 0>;
+		spi-max-frequency = <4800000>;
+
+		mmi,intf-id = /bits/ 8 <3>;
 	};
 };
 
