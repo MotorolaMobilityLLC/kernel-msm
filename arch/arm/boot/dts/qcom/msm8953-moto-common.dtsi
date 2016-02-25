@@ -81,6 +81,17 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&cs35l34_reset_default>;
 		};
+
+		fusb302@22 {
+			compatible = "fairchild,fusb302";
+			reg = <0x22>;
+			gpios = <&tlmm 67 1>; /* FUSB302_INT_N, in */
+			fusb,gpio-labels = "gpio_fusb_int_n";
+			pinctrl-names = "default", "active";
+			pinctrl-0 = <&fusb302_int_default>;
+			pinctrl-1 = <&fusb302_int_active>;
+		};
+
 		/delete-node/ adv7533@39;
 	};
 
@@ -278,22 +289,6 @@
 	status = "ok";
 };
 
-&i2c_2 {
-	fusb302@22 {
-		compatible = "fairchild,fusb302";
-		reg = <0x22>;
-		gpios = <&tlmm 67 1>; /* FUSB302_INT_N, in */
-		fusb,gpio-labels = "gpio_fusb_int_n";
-		pinctrl-names = "default", "active";
-		pinctrl-0 = <&fusb302_int_default>;
-		pinctrl-1 = <&fusb302_int_active>;
-	};
-
-	adv7533@39 {
-		status = "disabled";
-		/delete-property/ hpd-5v-en-supply;
-	};
-};
 
 &pmi8950_gpios {
 	gpio@c100 {
