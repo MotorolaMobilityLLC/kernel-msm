@@ -780,25 +780,6 @@ static bool is_otg_present(struct smbchg_chip *chip)
 	return is_otg_present_schg(chip);
 }
 
-static bool is_wls_present(struct smbchg_chip *chip)
-{
-	int rc;
-	union power_supply_propval ret = {0, };
-
-	if (!chip->wls_psy.get_property)
-		return false;
-
-	rc = chip->wls_psy.get_property(&chip->wls_psy,
-					 POWER_SUPPLY_PROP_PRESENT,
-					 &ret);
-	if (rc < 0) {
-		SMB_ERR(chip, "Couldn't get wls status\n");
-		return false;
-	}
-
-	return (ret.intval ? true : false);
-}
-
 #define USBIN_9V			BIT(5)
 #define USBIN_UNREG			BIT(4)
 #define USBIN_LV			BIT(3)
@@ -882,7 +863,6 @@ static inline enum power_supply_type get_usb_supply_type(int type)
 
 static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_STATUS,
-	POWER_SUPPLY_PROP_MAIN_STATUS,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_CHARGING_ENABLED,
@@ -961,69 +941,6 @@ static int get_eb_prop(struct smbchg_chip *chip,
 #define CHG_INHIBIT_BIT		BIT(1)
 #define BAT_TCC_REACHED_BIT		BIT(7)
 static int get_prop_batt_status(struct smbchg_chip *chip)
-{
-	int rc, status = POWER_SUPPLY_STATUS_DISCHARGING;
-	u8 reg = 0, chg_type;
-	bool charger_present, chg_inhibit;
-	int batt_soc, eb_soc;
-
-	batt_soc = get_prop_batt_capacity(chip);
-	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
-
-	rc = smbchg_read(chip, &reg, chip->chgr_base + RT_STS, 1);
-	if (rc < 0) {
-		SMB_ERR(chip, "Unable to read RT_STS rc = %d\n", rc);
-		return POWER_SUPPLY_STATUS_UNKNOWN;
-	}
-
-	if ((reg & BAT_TCC_REACHED_BIT) && !chip->demo_mode &&
-	    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD) &&
-	    (eb_soc == -ENODEV))
-		return POWER_SUPPLY_STATUS_FULL;
-
-	if ((chip->stepchg_state == STEP_FULL) && !(batt_soc < 100) &&
-	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD)
-	    && ((eb_soc == -ENODEV) || (eb_soc >= 100)))
-		return POWER_SUPPLY_STATUS_FULL;
-
-	if (is_usb_present(chip) && (chip->ebchg_state == EB_SINK))
-		return POWER_SUPPLY_STATUS_CHARGING;
-
-	charger_present = is_usb_present(chip) | is_wls_present(chip);
-	if (!charger_present)
-		return POWER_SUPPLY_STATUS_DISCHARGING;
-
-	chg_inhibit = reg & CHG_INHIBIT_BIT;
-	if (chg_inhibit)
-		SMB_ERR(chip, "Charge Inhibit Set\n");
-
-	rc = smbchg_read(chip, &reg, chip->chgr_base + CHGR_STS, 1);
-	if (rc < 0) {
-		SMB_ERR(chip, "Unable to read CHGR_STS rc = %d\n", rc);
-		return POWER_SUPPLY_STATUS_UNKNOWN;
-	}
-
-	if (reg & CHG_HOLD_OFF_BIT) {
-		/*
-		 * when chg hold off happens the battery is
-		 * not charging
-		 */
-		status = POWER_SUPPLY_STATUS_NOT_CHARGING;
-		goto out;
-	}
-
-	chg_type = (reg & CHG_TYPE_MASK) >> CHG_TYPE_SHIFT;
-
-	if (chg_type == BATT_NOT_CHG_VAL)
-		status = POWER_SUPPLY_STATUS_DISCHARGING;
-	else
-		status = POWER_SUPPLY_STATUS_CHARGING;
-out:
-	SMB_DBG(chip, "CHGR_STS = 0x%02x\n", reg);
-	return status;
-}
-
-static int get_prop_main_batt_status(struct smbchg_chip *chip)
 {
 	int rc, status = POWER_SUPPLY_STATUS_DISCHARGING;
 	u8 reg = 0, chg_type;
@@ -1312,20 +1229,6 @@ static int get_prop_charge_full(struct smbchg_chip *chip)
 	return uah;
 }
 
-static int smbchg_calc_batt_cap_full(struct smbchg_chip *chip)
-{
-	int batt_size;
-	int eb_size;
-
-	batt_size = get_prop_charge_full(chip);
-
-	eb_size = get_eb_prop(chip, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN);
-	if (eb_size >= 0)
-	    batt_size += eb_size;
-
-	return batt_size;
-}
-
 #define DEFAULT_CHARGE_FULL_DESIGN	3000000
 static int get_prop_charge_full_design(struct smbchg_chip *chip)
 {
@@ -1338,20 +1241,6 @@ static int get_prop_charge_full_design(struct smbchg_chip *chip)
 		uah = DEFAULT_CHARGE_FULL_DESIGN;
 	}
 	return uah;
-}
-
-static int smbchg_calc_batt_cap_full_design(struct smbchg_chip *chip)
-{
-	int batt_size;
-	int eb_size;
-
-	batt_size = get_prop_charge_full_design(chip);
-
-	eb_size = get_eb_prop(chip, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN);
-	if (eb_size >= 0)
-	    batt_size += eb_size;
-
-	return batt_size;
 }
 
 #define DEFAULT_CYCLE_COUNT	0
@@ -1380,38 +1269,6 @@ static int get_prop_batt_health(struct smbchg_chip *chip)
 		return POWER_SUPPLY_HEALTH_COOL;
 	else
 		return POWER_SUPPLY_HEALTH_GOOD;
-}
-
-static int smbchg_calc_batt_capacity(struct smbchg_chip *chip)
-{
-	int batt_cap, batt_size, batt_uah;
-	int eb_cap, eb_size, eb_uah, total_uah, total_size;
-
-	batt_cap = get_prop_batt_capacity(chip);
-	eb_cap = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
-	eb_size = get_eb_prop(chip, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN);
-
-	if ((eb_cap < 0) || (eb_size <= 0))
-		return batt_cap;
-
-	eb_uah = (eb_cap * eb_size) / 100;
-	SMB_DBG(chip, "EB RemCap = %d, FullCap = %d\n",
-		 eb_cap, eb_size);
-
-	batt_size = get_prop_charge_full_design(chip);
-	batt_uah = (batt_cap * batt_size) / 100;
-	SMB_DBG(chip, "BATT RemCap = %d, FullCap = %d\n",
-		 batt_cap, batt_size);
-
-	total_uah = batt_uah + eb_uah;
-	total_size = batt_size + eb_size;
-	SMB_DBG(chip, "EB+BATT RemCap = %d, FullCap = %d\n",
-		 total_uah, total_size);
-
-	batt_cap = (100 * total_uah) / total_size;
-	SMB_DBG(chip, "EB+BATT Capacity = %d\n", batt_cap);
-
-	return batt_cap;
 }
 
 /*
@@ -3455,9 +3312,6 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = get_prop_batt_status(chip);
 		break;
-	case POWER_SUPPLY_PROP_MAIN_STATUS:
-		val->intval = get_prop_main_batt_status(chip);
-		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = get_prop_batt_present(chip);
 		break;
@@ -3530,7 +3384,7 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		break;
 	/* properties from fg */
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = smbchg_calc_batt_capacity(chip);
+		val->intval = get_prop_batt_capacity(chip);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = get_prop_batt_current_now(chip);
@@ -3558,10 +3412,10 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		val->intval = get_prop_cycle_count(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
-		val->intval = smbchg_calc_batt_cap_full(chip);
+		val->intval = get_prop_charge_full(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		val->intval = smbchg_calc_batt_cap_full_design(chip);
+		val->intval = get_prop_charge_full_design(chip);
 		break;
 	case POWER_SUPPLY_PROP_AGE:
 		val->intval = ((get_prop_charge_full(chip) / 10) /
@@ -3635,7 +3489,7 @@ static int smbchg_dc_get_property(struct power_supply *psy,
 			val->intval = 0;
 		else
 			val->intval = (smbchg_get_pwr_path(chip) == PWR_PATH_DC)
-				&& (get_prop_main_batt_status(chip)
+				&& (get_prop_batt_status(chip)
 				    == POWER_SUPPLY_STATUS_CHARGING);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
@@ -4936,7 +4790,7 @@ static int smbchg_charging_status_change(struct smbchg_chip *chip)
 {
 	smbchg_vfloat_adjust_check(chip);
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_STATUS,
-			get_prop_main_batt_status(chip));
+			get_prop_batt_status(chip));
 	return 0;
 }
 
