@@ -433,6 +433,9 @@
 		compatible = "mmi,mods-v4l2_hal";
 	};
 
+	mods_codec_shim {
+		compatible = "mmi,mods-codec-shim";
+	};
 };
 
 &pmi8950_mpps {
