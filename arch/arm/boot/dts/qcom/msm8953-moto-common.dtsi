@@ -428,6 +428,11 @@
 		mmi,wake-assert-seq = <5 0 0>;
 		mmi,wake-deassert-seq = <5 1 0>;
 	};
+
+	mods_v4l2_hal {
+		compatible = "mmi,mods-v4l2_hal";
+	};
+
 };
 
 &pmi8950_mpps {
