@@ -90,7 +90,7 @@ int64_t motosh_time_recover(int32_t hubshort, int64_t cur_time)
 	int64_t hubtime = -1;
 	int32_t short_hubtime_estimate;
 
-	hubtime_estimate = (cur_time - motosh_realtime_delta)/1000; /* uS */
+	hubtime_estimate = div64_s64((cur_time - motosh_realtime_delta), 1000); /* uS */
 	short_hubtime_estimate = hubtime_estimate & 0xFFFFFF;
 
 	/* Determine if a rollover needs to be accounted for */
