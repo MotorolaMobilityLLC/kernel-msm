@@ -90,13 +90,10 @@ qcom,mdss-dsi-off-command = [
 	/* enter sleep mode */
 	05 01 00 00 78 00 01 10];
 
-/* Disable HBM for now*/
-//qcom,mdss-dsi-hbm-on-command = [
-//	/* PWM set to 100% */
-//	15 01 00 00 00 00 02 51 ff];
-//qcom,mdss-dsi-hbm-off-command = [
-//	/* PWM set to 80% */
-//	15 01 00 00 00 00 02 51 cc];
+qcom,mdss-dsi-hbm-on-command = [
+	15 01 00 00 00 00 02 53 e0];
+qcom,mdss-dsi-hbm-off-command = [
+	15 01 00 00 00 00 02 53 20];
 qcom,mdss-dsi-acl-on-command = [15 01 00 00 00 00 02 55 03];
 qcom,mdss-dsi-acl-off-command = [15 01 00 00 00 00 02 55 00];
 
@@ -109,16 +106,6 @@ qcom,mdss-dsi-panel-status-value = <0x9c>;
 /* DSC Host Configuration */
 qcom,compression-mode = "dsc";
 qcom,config-select = <&dsc_cfg_mot_smd_546_QHD_p_cmd>;
-dsc_cfg_mot_smd_546_QHD_p_cmd: config0 {
-	qcom,lm-split = <720 720>;
-	qcom,mdss-dsc-encoders = <2>;
-	qcom,mdss-dsc-slice-height = <64>;
-	qcom,mdss-dsc-slice-width = <360>;
-	qcom,mdss-dsc-slice-per-pkt = <1>;
-	qcom,mdss-dsc-bit-per-component = <8>;
-	qcom,mdss-dsc-bit-per-pixel = <8>;
-	qcom,mdss-dsc-block-prediction-enable;
-};
 
 qcom,panel-supply-entries {
 	#address-cells = <1>;
