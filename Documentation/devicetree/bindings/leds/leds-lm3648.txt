@@ -1,0 +1,48 @@
+* TI LM3648 Flash Led driver
+
+Required properties:
+- cell-index : Should contain flash source index to diffentiate
+    between different flash devices. These indexes represent flash devices
+    for multiple flashes.
+    - 0, 1, 2, 3
+- compatible : should be "ti,lm3648"
+- gpios : contain phandle to gpio controller node and array of
+    #gpio-cells specifying specific gpio (controller specific)
+- qcom,gpio-req-tbl-num : contain index to gpios specific to this flash
+- qcom,gpio-req-tbl-flags : contain direction of gpios present in
+    qcom,gpio-req-tbl-num property (in the same order)
+- qcom,gpio-req-tbl-label : contain name of gpios present in
+    qcom,gpio-req-tbl-num property (in the same order)
+- qcom,gpio-flash-reset : contain index to gpio used by flash's "flash reset" pin.
+- qcom,gpio-flash-en : contain index to gpio used by flash's "flash enable" pin.
+- qcom,gpio-flash-now : contain index to gpio used by flash's "flash now" pin.
+- label : contain unique flash name to differentiate from other flash
+    - shoule be "lm3648"
+- qcom,flash-type : type of flash device should be:
+    - 1 for LED flash.
+- qcom,cci-master : should contain i2c master id to be used for this flash.
+    - 0 -> MASTER 0
+    - 1 -> MASTER 1
+
+Example:
+
+	led_flash1: ti,lm3648@c6 {
+		cell-index = <0>;
+		qcom,slave-id = <0xc6 0x0c 0x02>;
+		compatible = "ti,lm3648";
+		label = "lm3648";
+		qcom,flash-type = <1>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msm_gpio 32 0>, /*FLASH_RST(HW_EN)*/
+			<&msm_gpio 114 0>, /*TORCH_EN*/
+			<&msm_gpio 31 0>; /*FLASH_NOW*/
+		qcom,gpio-flash-reset = <0>;
+		qcom,gpio-flash-en = <1>;
+		qcom,gpio-flash-now = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <0 0 0>;
+		qcom,gpio-req-tbl-label = "FLASH_RST",
+			"FLASH_EN",
+			"FLASH_NOW";
+		qcom,cci-master = <0>;
+	};
