@@ -76,6 +76,7 @@
 
 #define ATTR_RANGE_PATH 1
 
+#define ALSPS_DEBUG 0
 /******************************************************************************
 * ALS / PS define
 *******************************************************************************/
@@ -141,10 +142,16 @@ static const char ElanPsensorName[] = "proximity_sensor";
 static const char ElanALsensorName[] = "light_sensor";
 #endif
 
-#define LOG_TAG                      "[EPL8802] "
+#define LOG_TAG "alsps_epl8802"
+#if ALSPS_DEBUG
 #define LOG_FUN(f)               	 printk(KERN_INFO LOG_TAG"%s\n", __FUNCTION__)
 #define LOG_INFO(fmt, args...)    	 printk(KERN_INFO LOG_TAG fmt, ##args)
-#define LOG_ERR(fmt, args...)   	 printk(KERN_ERR  LOG_TAG"%s %d : "fmt, __FUNCTION__, __LINE__, ##args)
+#else
+#define LOG_FUN(f)
+#define LOG_INFO(fmt, args...)
+#endif
+#define LOG_DBG(fmt, args...)	printk(KERN_INFO LOG_TAG fmt, ##args)
+#define LOG_ERR(fmt, args...)	printk(KERN_ERR  LOG_TAG"%s %d : "fmt, __FUNCTION__, __LINE__, ##args)
 
 typedef enum
 {
@@ -459,7 +466,9 @@ static int set_psensor_intr_threshold(uint16_t low_thd, uint16_t high_thd)
     mutex_lock(&sensor_mutex);
     epl_sensor_I2C_Write_Block(client, 0x0c, buf, 4);
     mutex_unlock(&sensor_mutex);
-    LOG_INFO("%s: low_thd = %d, high_thd = %d \n",__FUNCTION__, low_thd, high_thd);
+
+	LOG_DBG("%s: low_thd = %d, high_thd = %d \n", __FUNCTION__, low_thd, high_thd);
+
     return 0;
 }
 
@@ -508,7 +517,8 @@ static void epl_sensor_report_ps_status(void)
 	ktime_t	timestamp;
 	int distance;
 	timestamp = ktime_get();
-	LOG_INFO("epl_sensor.ps.data.data=%d, value=%d\n", epl_sensor.ps.data.data, epl_sensor.ps.compare_low >> 3);
+
+	LOG_DBG("epl_sensor.ps.data.data=%d, value=%d\n", epl_sensor.ps.data.data, epl_sensor.ps.compare_low >> 3);
 
 	if (epl_sensor.ps.compare_low >> 3 == 0)
 		distance = 1;
@@ -1192,7 +1202,7 @@ void epl_sensor_enable_ps(int enable)
 {
 	struct epl_sensor_priv *epld = epl_sensor_obj;
 
-	LOG_INFO("[%s]: ps enable=%d \r\n", __func__, enable);
+	LOG_DBG("[%s]: ps enable=%d \r\n", __func__, enable);
 
 	if (epld->enable_pflag != enable) {
 		epld->enable_pflag = enable;
@@ -1220,7 +1230,7 @@ void epl_sensor_enable_als(int enable)
 {
     struct epl_sensor_priv *epld = epl_sensor_obj;
 
-    LOG_INFO("[%s]: enable=%d \r\n", __func__, enable);
+	LOG_DBG("[%s]: enable=%d \r\n", __func__, enable);
 
 	if(epld->enable_lflag != enable)
     {
@@ -3260,7 +3270,8 @@ static int epl_sensor_suspend(struct i2c_client *client, pm_message_t mesg)
 
 #if !defined(CONFIG_HAS_EARLYSUSPEND)
     epld->als_suspend=1;
-    LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+
+	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
 
     if(epld->enable_pflag == 0)
     {
@@ -3297,7 +3308,7 @@ static void epl_sensor_early_suspend(struct early_suspend *h)
 
     epld->als_suspend=1;
 
-    LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
 
     if(epld->enable_pflag == 0)
     {
@@ -3334,7 +3345,7 @@ static int epl_sensor_resume(struct i2c_client *client)
     epld->als_suspend=0;
     epld->ps_suspend=0;
 
-    LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
 
     if(epld->enable_pflag == 0)
     {
@@ -3368,7 +3379,7 @@ static void epl_sensor_late_resume(struct early_suspend *h)
     epld->als_suspend=0;
     epld->ps_suspend=0;
 
-    LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
 
     if(epld->enable_pflag == 0)
     {
