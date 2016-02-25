@@ -202,6 +202,13 @@
 		};
 	};
 
+	muc_spi_ctrl: muc_spi_ctrl@0 {
+		config {
+			pins = "gpio38", "gpio72", "gpio59";
+			bias-disable;
+		};
+	};
+
 	cs35l34_reset_default: cs35l34_reset_default {
 		config {
 			pins = "gpio94";
