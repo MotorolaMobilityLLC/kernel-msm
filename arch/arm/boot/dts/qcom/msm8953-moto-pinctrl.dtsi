@@ -71,7 +71,25 @@
 			};
 		};
 	};
+	i2c_4 {
+		i2c_4_active: i2c_4_active {
+			i2c_4 {
+				pins = "gpio14", "gpio15";
+				function = "blsp_i2c4";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
 
+		i2c_4_sleep: i2c_4_sleep {
+			i2c_4 {
+				pins = "gpio14", "gpio15";
+				function = "blsp_i2c4";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
 	spi_6 {
 		spi_6_active: spi_6_active {
 			mux {
@@ -209,6 +227,25 @@
 				drive-strength = <2>;
 				bias-pull-up; /* pull-up */
 			};
+		};
+	};
+
+	pmx_motosh_out: pmx_motosh_out {
+		config {
+			pins ="gpio8", "gpio128", "gpio31";
+			function = "gpio";
+			output-low;
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	pmx_motosh_in: pmx_motosh_in {
+		config {
+			pins = "gpio9", "gpio12", "gpio129";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-down;
 		};
 	};
 
