@@ -333,6 +333,7 @@ struct smbchg_chip {
 	struct gpio			togl_rst_gpio;
 	void				*ipc_log;
 	void				*ipc_log_reg;
+	int				update_eb_params;
 };
 
 static struct smbchg_chip *the_chip;
@@ -8382,18 +8383,41 @@ static bool smbchg_check_and_kick_aicl(struct smbchg_chip *chip)
 		return false;
 }
 
+#define HEARTBEAT_EB_MS 1000
+static int set_eb_param(const char *val, const struct kernel_param *kp)
+{
+	int rv = param_set_int(val, kp);
+	if (rv)
+		return rv;
+
+	if (the_chip) {
+		the_chip->update_eb_params++;
+		smbchg_stay_awake(the_chip, PM_HEARTBEAT);
+		cancel_delayed_work(&the_chip->heartbeat_work);
+		schedule_delayed_work(&the_chip->heartbeat_work,
+				      msecs_to_jiffies(HEARTBEAT_EB_MS));
+	}
+
+	return 0;
+}
+
+static struct kernel_param_ops eb_ops = {
+	.set = set_eb_param,
+	.get = param_get_int,
+};
+
 static int eb_rechrg_start_soc = 70;
-module_param(eb_rechrg_start_soc, int, 0644);
+module_param_cb(eb_rechrg_start_soc, &eb_ops, &eb_rechrg_start_soc, 0644);
 static int eb_rechrg_stop_soc = 80;
-module_param(eb_rechrg_stop_soc, int, 0644);
+module_param_cb(eb_rechrg_stop_soc, &eb_ops, &eb_rechrg_stop_soc, 0644);
 static int eb_attach_start_soc = 99;
-module_param(eb_attach_start_soc, int, 0644);
+module_param_cb(eb_attach_start_soc, &eb_ops, &eb_attach_start_soc, 0644);
 static int eb_attach_stop_soc = 100;
-module_param(eb_attach_stop_soc, int, 0644);
+module_param_cb(eb_attach_stop_soc, &eb_ops, &eb_attach_stop_soc, 0644);
 static int eb_low_start_soc = 16;
-module_param(eb_low_start_soc, int, 0644);
+module_param_cb(eb_low_start_soc, &eb_ops, &eb_low_start_soc, 0644);
 static int eb_low_stop_soc = 100;
-module_param(eb_low_stop_soc, int, 0644);
+module_param_cb(eb_low_stop_soc, &eb_ops, &eb_low_stop_soc, 0644);
 
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
@@ -8420,6 +8444,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int index;
 	int eb_max_soc, eb_min_soc;
 	char eb_able = 0;
+	int hb_resch_time;
+	int ebparams_cnt = chip->update_eb_params;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	if (smbchg_check_and_kick_aicl(chip))
@@ -8584,7 +8610,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		case EB_SRC:
 			if (eb_soc <= 0)
 				smbchg_set_extbat_state(chip, EB_OFF);
-			else if (batt_soc >= eb_max_soc) {
+			else if ((chip->update_eb_params &&
+				    (batt_soc > eb_min_soc)) ||
+				   (batt_soc >= eb_max_soc)) {
 				chip->eb_hotplug = false;
 				smbchg_set_extbat_state(chip, EB_OFF);
 			}
@@ -8667,12 +8695,18 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 end_hb:
 	power_supply_changed(&chip->batt_psy);
 
+	hb_resch_time = HEARTBEAT_HOLDOFF_MS;
+
 	if (!chip->stepchg_state_holdoff && !chip->aicl_wait_retries)
-		schedule_delayed_work(&chip->heartbeat_work,
-				      msecs_to_jiffies(HEARTBEAT_DELAY_MS));
+		hb_resch_time = HEARTBEAT_DELAY_MS;
+
+	if (ebparams_cnt != chip->update_eb_params)
+		hb_resch_time = HEARTBEAT_EB_MS;
 	else
-		schedule_delayed_work(&chip->heartbeat_work,
-				      msecs_to_jiffies(HEARTBEAT_HOLDOFF_MS));
+		chip->update_eb_params = 0;
+
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(hb_resch_time));
 
 	smbchg_relax(chip, PM_HEARTBEAT);
 }
