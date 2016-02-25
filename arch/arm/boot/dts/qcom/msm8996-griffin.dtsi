@@ -79,7 +79,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_p_cmd_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_p_cmd_v1>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vci_disp-supply = <&pm8994_l19>;
 	vdd3_disp-supply = <&vdd3_disp_vreg>;
