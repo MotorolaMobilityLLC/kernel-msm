@@ -112,6 +112,18 @@ static char *stepchg_str[] = {
 	[STEP_NONE]		= "NONE",
 };
 
+enum bsw_modes {
+	BSW_OFF,
+	BSW_RUN,
+	BSW_DONE,
+};
+
+static char *bsw_str[] = {
+	[BSW_OFF]		= "OFF",
+	[BSW_RUN]		= "RUNNING",
+	[BSW_DONE]		= "DONE",
+};
+
 enum ebchg_state {
 	EB_DISCONN = POWER_SUPPLY_EXTERN_STATE_DIS,
 	EB_SINK = POWER_SUPPLY_EXTERN_STATE_SINK,
@@ -289,9 +301,11 @@ struct smbchg_chip {
 	struct power_supply		wls_psy;
 	struct power_supply		*bms_psy;
 	struct power_supply		*max_psy;
+	struct power_supply		*bsw_psy;
 	int				dc_psy_type;
 	const char			*bms_psy_name;
 	const char			*max_psy_name;
+	const char			*bsw_psy_name;
 	const char			*eb_batt_psy_name;
 	const char			*eb_pwr_psy_name;
 	const char			*battery_psy_name;
@@ -360,6 +374,11 @@ struct smbchg_chip {
 	int				update_eb_params;
 	struct stepchg_step		*stepchg_steps;
 	uint32_t			stepchg_num_steps;
+
+	int				bsw_curr_ma;
+	enum bsw_modes			bsw_mode;
+	bool				bsw_ramping;
+	bool				usbc_bswchg_pres;
 };
 
 static struct smbchg_chip *the_chip;
@@ -1686,6 +1705,10 @@ enum enable_reason {
 	 * The External Battery is being Charged, ensure proper USB Suspend.
 	 */
 	REASON_EB = BIT(7),
+	/*
+	 * The BSW is being used, ensure PMI is Disabled.
+	 */
+	REASON_BSW = BIT(8),
 };
 
 enum battchg_enable_reason {
@@ -4172,6 +4195,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 				struct smbchg_chip, smb_psy_notifier);
 	struct power_supply *psy = v;
 	int rc, online, disabled;
+	bool  bswchg_pres;
 	union power_supply_propval prop = {0,};
 
 	if (!chip) {
@@ -4253,6 +4277,17 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 
 	prop.intval = 0;
 	rc = psy->get_property(psy,
+			       POWER_SUPPLY_PROP_AUTHENTIC,
+			       &prop);
+	if (rc < 0) {
+		dev_err(chip->dev,
+			"couldn't read USBC authentic rc=%d\n", rc);
+		return NOTIFY_DONE;
+	}
+	bswchg_pres = (prop.intval == 1);
+
+	prop.intval = 0;
+	rc = psy->get_property(psy,
 			       POWER_SUPPLY_PROP_TYPE,
 			       &prop);
 	if (rc < 0) {
@@ -4268,10 +4303,17 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 			schedule_delayed_work(&chip->usb_insertion_work,
 				      msecs_to_jiffies(100));
 		}
+		if (chip->usbc_bswchg_pres ^ bswchg_pres) {
+			chip->usbc_bswchg_pres = bswchg_pres;
+			cancel_delayed_work(&chip->heartbeat_work);
+			schedule_delayed_work(&chip->heartbeat_work,
+					      msecs_to_jiffies(0));
+		}
 	} else {
 		/* Clear the BC 1.2 detection flag when type C goes offline */
 		chip->usbc_online = false;
 		chip->usb_insert_bc1_2 = false;
+		chip->usbc_bswchg_pres = false;
 	}
 
 	return NOTIFY_OK;
@@ -6779,6 +6821,12 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	if (rc)
 		chip->max_psy_name = NULL;
 
+	/* read the bsw power supply name */
+	rc = of_property_read_string(node, "qcom,bsw-psy-name",
+						&chip->bsw_psy_name);
+	if (rc)
+		chip->bsw_psy_name = NULL;
+
 	/* read the bms power supply name */
 	rc = of_property_read_string(node, "qcom,battery-psy-name",
 						&chip->battery_psy_name);
@@ -8382,6 +8430,14 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 	if (chip->factory_mode)
 		return;
 
+	if (chip->bsw_mode == BSW_RUN) {
+		smbchg_usb_en(chip, false, REASON_BSW);
+		smbchg_dc_en(chip, false, REASON_BSW);
+	} else {
+		smbchg_usb_en(chip, true, REASON_BSW);
+		smbchg_dc_en(chip, true, REASON_BSW);
+	}
+
 	if (chip->demo_mode)
 		smbchg_float_voltage_set(chip, DEMO_MODE_VOLTAGE);
 	else if (((chip->temp_state == POWER_SUPPLY_HEALTH_COOL)
@@ -8400,7 +8456,8 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 	    (chip->temp_state == POWER_SUPPLY_HEALTH_COLD) ||
 	    (chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT) ||
 	    (chip->stepchg_state == STEP_FULL) ||
-	    (chip->stepchg_state == STEP_EB))
+	    (chip->stepchg_state == STEP_EB) ||
+	    (chip->bsw_mode == BSW_RUN))
 		smbchg_charging_en(chip, 0);
 	else {
 		if (((prev_temp == POWER_SUPPLY_HEALTH_COOL) ||
@@ -8497,6 +8554,278 @@ static bool smbchg_check_and_kick_aicl(struct smbchg_chip *chip)
 		return false;
 }
 
+static bool check_bswchg_volt(struct smbchg_chip *chip)
+{
+	union power_supply_propval ret = {0, };
+	int sovp_tripped, bsw_open;
+	static bool no_bsw;
+	int rc;
+
+	if (no_bsw || !chip || !chip->bsw_psy_name)
+		return false;
+
+	if (!chip->bsw_psy) {
+		chip->bsw_psy =
+			power_supply_get_by_name((char *)chip->bsw_psy_name);
+		if (!chip->bsw_psy) {
+			no_bsw = true;
+			return false;
+		}
+	}
+
+	if (!chip->bsw_psy->get_property)
+		return false;
+
+	ret.intval = 0;
+	rc = chip->bsw_psy->get_property(chip->bsw_psy,
+					POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT,
+					&ret);
+	if (rc < 0)
+		return false;
+
+	sovp_tripped = ret.intval;
+
+	ret.intval = 0;
+	rc = chip->bsw_psy->get_property(chip->bsw_psy,
+					POWER_SUPPLY_PROP_CHARGING_ENABLED,
+					&ret);
+	if (rc < 0)
+		return false;
+
+	bsw_open = !ret.intval;
+
+	dev_dbg(chip->dev, "Check bsw enable: %d, control: %d\n",
+		bsw_open, sovp_tripped);
+	if (sovp_tripped && bsw_open) {
+		dev_info(chip->dev, "BSW Alarm\n");
+		return true;
+	}
+
+	return false;
+}
+
+static bool check_maxbms_volt(struct smbchg_chip *chip)
+{
+	union power_supply_propval ret = {0, };
+	int sovp_tripped;
+	int rc;
+	static bool no_max;
+
+	if (no_max || !chip || !chip->max_psy_name)
+		return false;
+
+	if (!chip->max_psy) {
+		chip->max_psy =
+			power_supply_get_by_name((char *)chip->max_psy_name);
+		if (!chip->max_psy) {
+			no_max = true;
+			return false;
+		}
+	}
+
+	if (!chip->max_psy->get_property)
+		return false;
+
+	ret.intval = 0;
+	rc = chip->max_psy->get_property(chip->max_psy,
+					POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT,
+					&ret);
+	if (rc < 0)
+		return false;
+	sovp_tripped = ret.intval;
+
+	dev_dbg(chip->dev, "Check max control: %d\n", sovp_tripped);
+	if (sovp_tripped) {
+		dev_info(chip->dev, "MAXBMS Alarm\n");
+		return true;
+	}
+
+	return false;
+}
+
+#define PATH_IMPEDANCE_MILLIOHM 30
+#define DEFAULT_PATH_OFFSET 100000
+static int set_bsw(struct smbchg_chip *chip,
+		   int volt_mv, int curr_ma, bool close)
+{
+	union power_supply_propval ret = {0, };
+	int rc = -EINVAL;
+	int bsw_volt_min_uv, bsw_volt_uv, maxbms_volt_uv;
+	int compen_uv;
+	int index;
+	static bool no_bsw;
+
+	if (no_bsw || !chip || !chip->bsw_psy_name)
+		return rc;
+
+	if (!chip->bsw_psy) {
+		chip->bsw_psy =
+			power_supply_get_by_name((char *)chip->bsw_psy_name);
+		if (!chip->bsw_psy) {
+			no_bsw = true;
+			return rc;
+		}
+	}
+
+	if (!chip->bsw_psy->get_property || !chip->bsw_psy->set_property)
+		return rc;
+
+	if (!close) {
+		index = STEP_END(chip->stepchg_num_steps);
+		maxbms_volt_uv = chip->stepchg_steps[index].max_mv * 1000;
+		maxbms_volt_uv += DEFAULT_PATH_OFFSET;
+		goto bsw_open_switch;
+	}
+
+	if (!chip->max_psy) {
+		chip->max_psy =
+			power_supply_get_by_name((char *)chip->max_psy_name);
+		if (!chip->max_psy)
+			return rc;
+	}
+
+	if (!chip->max_psy->set_property)
+		return rc;
+
+	dev_dbg(chip->dev, "bsw volt %d mV\n", volt_mv);
+	compen_uv = PATH_IMPEDANCE_MILLIOHM * curr_ma;
+
+	ret.intval = 0;
+	rc = chip->bsw_psy->get_property(chip->bsw_psy,
+					POWER_SUPPLY_PROP_VOLTAGE_MIN,
+					&ret);
+	if (rc < 0)
+		return rc;
+
+	bsw_volt_min_uv = ret.intval;
+
+	if ((volt_mv * 1000) < bsw_volt_min_uv) {
+		maxbms_volt_uv = (volt_mv * 1000) + compen_uv;
+		bsw_volt_uv = bsw_volt_min_uv;
+	} else {
+		index = STEP_END(chip->stepchg_num_steps);
+		maxbms_volt_uv = chip->stepchg_steps[index].max_mv * 1000;
+		maxbms_volt_uv += DEFAULT_PATH_OFFSET;
+		bsw_volt_uv = volt_mv * 1000;
+	}
+
+	/* Round up if half way between steps */
+	if ((maxbms_volt_uv % 20000) >= 10000)
+		maxbms_volt_uv += 20000;
+
+	/* Ensure 20000 uV steps */
+	maxbms_volt_uv /= 20000;
+	maxbms_volt_uv *= 20000;
+	dev_dbg(chip->dev, "Set MAXBMS, BSW Alarm with %d uV, %d uV\n",
+		maxbms_volt_uv, bsw_volt_uv);
+	ret.intval = bsw_volt_uv;
+	rc = chip->bsw_psy->set_property(chip->bsw_psy,
+					 POWER_SUPPLY_PROP_VOLTAGE_MAX,
+					 &ret);
+	if (rc < 0)
+		return rc;
+
+bsw_open_switch:
+	ret.intval = maxbms_volt_uv;
+	rc = chip->max_psy->set_property(chip->max_psy,
+					 POWER_SUPPLY_PROP_VOLTAGE_MAX,
+					 &ret);
+	if (rc < 0)
+		return rc;
+
+	/* Open/Close BSW */
+	ret.intval = close ? 1 : 0;
+	rc = chip->bsw_psy->set_property(chip->bsw_psy,
+					 POWER_SUPPLY_PROP_CHARGING_ENABLED,
+					 &ret);
+	if (rc < 0)
+		return rc;
+
+	return 0;
+}
+
+static int set_bsw_curr(struct smbchg_chip *chip, int chrg_curr_ma)
+{
+	union power_supply_propval ret = {0, };
+	int rc = -EINVAL;
+
+	if (!chip->usbc_psy || !chip->usbc_online)
+		return rc;
+
+	if (!chip->usbc_psy->set_property)
+		return rc;
+
+	ret.intval = chrg_curr_ma * 1000;
+	rc = chip->usbc_psy->set_property(chip->usbc_psy,
+					  POWER_SUPPLY_PROP_CURRENT_MAX,
+					  &ret);
+	if (rc < 0)
+		dev_err(chip->dev,
+			"Err could not set BSW Current %d mA!\n",
+			chrg_curr_ma);
+
+	return rc;
+}
+
+#define BSW_CURR_STEP_MA 100
+static int bsw_ramp_up(struct smbchg_chip *chip)
+{
+	int rc = -EINVAL;
+	int set_curr;
+	int max_mv;
+	int max_ma;
+	int taper_ma;
+	int index;
+
+	if (!chip || !chip->bsw_psy_name)
+		return rc;
+
+	if (!((chip->stepchg_state >= STEP_FIRST) &&
+	      (chip->stepchg_state <= STEP_LAST)))
+		return rc;
+
+	index = STEP_START(chip->stepchg_state);
+	max_mv = chip->stepchg_steps[index].max_mv;
+	max_ma = chip->stepchg_steps[index].max_ma;
+	taper_ma = chip->stepchg_steps[index].taper_ma;
+
+	set_curr = taper_ma;
+	do {
+		rc = set_bsw_curr(chip, set_curr);
+		if (rc < 0)
+			return rc;
+
+		set_bsw(chip, max_mv, set_curr, true);
+
+		/* Delay is twice max17050 update period */
+		msleep(350);
+
+		if (set_curr >= max_ma)
+			break;
+
+		set_curr += BSW_CURR_STEP_MA;
+		if (set_curr >= max_ma)
+			set_curr = max_ma;
+
+	} while (!check_bswchg_volt(chip) && !check_maxbms_volt(chip));
+
+	if (set_curr == taper_ma) {
+		set_bsw(chip, max_mv, taper_ma, false);
+		return 1;
+	} else if (set_curr >= max_ma)
+		set_curr = max_ma;
+	else
+		set_curr -= (BSW_CURR_STEP_MA * 2);
+
+	rc = set_bsw_curr(chip, set_curr);
+	if (rc < 0)
+		return rc;
+
+	set_bsw(chip, max_mv, set_curr, true);
+	chip->bsw_curr_ma = set_curr;
+	return 0;
+}
+
 #define HEARTBEAT_EB_MS 1000
 static int set_eb_param(const char *val, const struct kernel_param *kp)
 {
@@ -8542,6 +8871,7 @@ module_param_cb(eb_low_stop_soc, &eb_ops, &eb_low_stop_soc, 0644);
 #define DEMO_MODE_MAX_SOC 35
 #define DEMO_MODE_HYS_SOC 5
 #define HYST_STEP_MV 50
+#define BSW_DEFAULT_MA 3000
 static void smbchg_heartbeat_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work,
@@ -8565,9 +8895,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int max_ma = 0;
 	int taper_ma = 0;
 	int pmi_max_chrg_ma;
+	bool bsw_chrg_alarm;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
-	if (smbchg_check_and_kick_aicl(chip))
+	if (smbchg_check_and_kick_aicl(chip) || chip->bsw_ramping)
 		goto end_hb;
 
 	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
@@ -8609,6 +8940,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		max_ma = chip->stepchg_steps[index].max_ma;
 		taper_ma = chip->stepchg_steps[index].taper_ma;
 	}
+	bsw_chrg_alarm = (check_bswchg_volt(chip) || check_maxbms_volt(chip));
 
 	prev_step = chip->stepchg_state;
 
@@ -8631,6 +8963,85 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		   chip->usb_present) {
 		smbchg_set_extbat_state(chip, EB_SINK);
 		chip->stepchg_state = STEP_EB;
+	} else if (chip->usbc_bswchg_pres && chip->usb_present &&
+		   (chip->bsw_mode == BSW_OFF)) {
+		for (index = 0; index < chip->stepchg_num_steps; index++) {
+			if (batt_mv < chip->stepchg_steps[index].max_mv) {
+				chip->stepchg_state = STEP_FIRST + index;
+				break;
+			}
+		}
+		smbchg_set_extbat_state(chip, EB_OFF);
+		smbchg_usb_en(chip, false, REASON_BSW);
+		smbchg_dc_en(chip, false, REASON_BSW);
+		smbchg_charging_en(chip, 0);
+		chip->stepchg_state_holdoff = 0;
+		chip->bsw_mode = BSW_RUN;
+		chip->bsw_ramping = true;
+		while (bsw_ramp_up(chip) == 1) {
+			if (chip->stepchg_state ==
+			    STEP_END(chip->stepchg_num_steps)) {
+				if (eb_chrg_allowed) {
+					smbchg_set_extbat_state(chip, EB_SINK);
+					chip->stepchg_state = STEP_EB;
+				} else
+					chip->stepchg_state = STEP_TAPER;
+				chip->bsw_mode = BSW_DONE;
+				chip->bsw_curr_ma = BSW_DEFAULT_MA;
+				set_bsw_curr(chip, chip->bsw_curr_ma);
+				set_bsw(chip, max_mv, chip->bsw_curr_ma,
+					false);
+				break;
+			}
+			chip->stepchg_state++;
+		}
+		chip->bsw_ramping = false;
+	} else if (chip->usbc_bswchg_pres && chip->usb_present &&
+		   (chip->bsw_mode == BSW_RUN) &&
+		   bsw_chrg_alarm) {
+		bool change_state = false;
+
+		dev_info(chip->dev, "bsw tripped! BSW Current %d mA\n",
+			 chip->bsw_curr_ma);
+		chip->bsw_ramping = true;
+		set_bsw(chip, max_mv, chip->bsw_curr_ma, false);
+
+		/* Keep Switch Open for 100 ms to let battery relax */
+		msleep(100);
+
+		if (chip->bsw_curr_ma <= taper_ma)
+			change_state = true;
+		else
+			chip->bsw_curr_ma -= BSW_CURR_STEP_MA;
+
+		if (change_state) {
+			if (chip->stepchg_state ==
+			    STEP_END(chip->stepchg_num_steps)) {
+				if (eb_chrg_allowed) {
+					smbchg_set_extbat_state(chip, EB_SINK);
+					chip->stepchg_state = STEP_EB;
+				} else
+					chip->stepchg_state = STEP_TAPER;
+				chip->bsw_mode = BSW_DONE;
+				chip->bsw_curr_ma = BSW_DEFAULT_MA;
+			} else if (pmi_max_chrg_ma > taper_ma) {
+				chip->stepchg_state++;
+				chip->bsw_mode = BSW_DONE;
+				chip->bsw_curr_ma = BSW_DEFAULT_MA;
+			} else {
+				chip->stepchg_state++;
+				index = STEP_START(chip->stepchg_state);
+				max_mv = chip->stepchg_steps[index].max_mv;
+				max_ma = chip->stepchg_steps[index].max_ma;
+				taper_ma = chip->stepchg_steps[index].taper_ma;
+				chip->bsw_curr_ma = max_ma;
+		    }
+		}
+
+		set_bsw_curr(chip, chip->bsw_curr_ma);
+		set_bsw(chip, max_mv, chip->bsw_curr_ma,
+			(chip->bsw_mode == BSW_RUN));
+		chip->bsw_ramping = false;
 	} else if ((chip->stepchg_state == STEP_NONE) && (chip->usb_present)) {
 		for (index = 0; index < chip->stepchg_num_steps; index++) {
 			if ((batt_mv < chip->stepchg_steps[index].max_mv) &&
@@ -8761,6 +9172,11 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	} else if (!chip->usb_present) {
 		chip->stepchg_state = STEP_NONE;
 		chip->stepchg_state_holdoff = 0;
+		if (chip->bsw_mode == BSW_RUN) {
+			chip->bsw_mode = BSW_OFF;
+			chip->bsw_curr_ma = BSW_DEFAULT_MA;
+			set_bsw(chip, 0, 0, false);
+		}
 	} else
 		chip->stepchg_state_holdoff = 0;
 
@@ -8806,8 +9222,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		break;
 	}
 
-	dev_warn(chip->dev, "Step State = %s\n",
-		 stepchg_str[(int)chip->stepchg_state]);
+	dev_warn(chip->dev, "Step State = %s, BSW Mode %s\n",
+		 stepchg_str[(int)chip->stepchg_state],
+		 bsw_str[(int)chip->bsw_mode]);
 
 	prev_batt_health = chip->temp_state;
 	smbchg_check_temp_state(chip, batt_temp);
