@@ -43,9 +43,9 @@
 };
 
 &spi_5 {
-	status = "ok";
+	status = "/chosen", "mmi,dtv", "true";
 	fci_dtv: fc8180@0 {
-		status = "ok";
+		status = "/chosen", "mmi,dtv", "true";
 		compatible = "fci,isdbt";
 		reg = <0>;
 		spi-max-frequency = <19200000>;
