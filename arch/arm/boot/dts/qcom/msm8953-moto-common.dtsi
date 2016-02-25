@@ -18,6 +18,7 @@
 	aliases {
 		i2c2 = &i2c_2;
 		i2c3 = &i2c_3;
+		i2c4 = &i2c_4;
 		spi6 = &spi_6;
 		/delete-property/ spi3;
 		/delete-property/ i2c5;
@@ -141,6 +142,73 @@
 			};
 		};
 
+	};
+
+	/* SensorHub Bus */
+	i2c_4: i2c@78b8000 {
+		/* BLSP1 QUP4, however QC refers to this address as:
+		   HWID BLSP4 - BLSP1 QUP3
+		*/
+		status = "okay";
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x78b8000 0x600>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 98 0>;
+		dmas = <&dma_blsp1 10 64 0x20000020 0x20>,
+			<&dma_blsp1 11 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		qcom,master-id = <86>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup4_i2c_apps_clk>;
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_4_active>;
+		pinctrl-1 = <&i2c_4_sleep>;
+
+		motosh@43 {
+			compatible = "stm,motosh";
+			reg = <0x43>;
+			gpios = <&tlmm 129 0>,  /* IRQ     CCP_AP_INT2  */
+				<&tlmm  31 0>,  /* RESET   CCP_FAULT_N  */
+				<&tlmm   8 0>,  /* BSLEN   CCP_FLASH_EN */
+				<&tlmm   9 0>,  /* WakeIRQ CCP_AP_INT   */
+				<&tlmm 128 0>,  /* SH Wake AP_CCP_WAKE  */
+				<&tlmm  12 0>;  /* SH Wake Resp CCP_AP_WAKE */
+			motosh_fw_version = "stml47x";
+			lux_table = <7 60 120 1800 4245 11350>;
+			brightness_table = <5 15 23 48 70 102 168>;
+			qd_pm_qos_latency = <350>;
+			qd_pm_qos_timeout = <500000>;
+			bslen_pin_active_value = <1>;
+			ct406_detect_threshold = <0x006E>;
+			ct406_undetect_threshold = <0x0050>;
+			ct406_recalibrate_threshold = <0x0064>;
+			ct406_pulse_count = <0x02>;
+			ct406_prox_gain = <0x02>;
+			ct406_als_lux1_c0_mult = <0x46E>;
+			ct406_als_lux1_c1_mult = <0x85A>;
+			ct406_als_lux1_div = <0x80>;
+			ct406_als_lux2_c0_mult = <0x11F>;
+			ct406_als_lux2_c1_mult = <0x1DE>;
+			ct406_als_lux2_div = <0x80>;
+			sensor1-supply = <&pmtitanium_l6>;
+			sensor2-supply = <&pmtitanium_l22>;
+			accel_orient = <1>;     /* Accel Orientation value */
+			gyro_orient = <1>;      /* Gyro Orientation value */
+			mag_orient =  <2>;      /* Mag Orientation value */
+			mag_config = <0>;       /* Magnetometer config value */
+			panel_type = <1>;       /* Panel Type value */
+			IR_config = <1>;        /* IR Config value */
+			cover_detect_polarity = <2>; /*MOTOSH_NORTH_DETECT*/
+			pinctrl-names = "default";
+			pinctrl-0 = <&pmx_motosh_out &pmx_motosh_in>;
+			antcap_cfg = [54 21 03 00 00 0a 52 00 00 0b e7 00 00 09 9f 00 00 12 74 13 88 00 00 00 00 80 00 14 1e 00 a4 13 ec 00 00 00 00 00 de ad be ef 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ];
+		};
 	};
 
 	spi_6: spi@7af6000 { /* BLSP2 QUP2 */
