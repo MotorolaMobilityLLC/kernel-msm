@@ -19,6 +19,7 @@
 		i2c2 = &i2c_2;
 		i2c3 = &i2c_3;
 		i2c4 = &i2c_4;
+		spi1 = &spi_1;
 		spi6 = &spi_6;
 		/delete-property/ spi3;
 		/delete-property/ i2c5;
@@ -279,6 +280,35 @@
 		regulator-name = "cdc_1p2v";
 		enable-active-high;
 		gpio = <&tlmm 130 0>;
+	};
+
+	spi_1: spi@78b5000 { /* BLSP1 QUP1 */
+		status = "ok";
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x078b5000 0x600>,
+		<0x07884000 0x1f000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 95 0>, <0 238 0>;
+		spi-max-frequency = <48000000>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <4>;
+		qcom,bam-producer-pipe-index = <5>;
+		qcom,master-id = <86>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_1_active &spi1_cs0_sleep>;
+		pinctrl-1 = <&spi_1_sleep &spi1_cs0_sleep>;
+
+		clock-names = "iface_clk", "core_clk";
+
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
 	};
 
 	muc: muc@0 {
