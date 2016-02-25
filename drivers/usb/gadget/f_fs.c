@@ -1613,8 +1613,12 @@ static void ffs_func_free(struct ffs_function *func)
 	/* cleanup after autoconfig */
 	spin_lock_irqsave(&func->ffs->eps_lock, flags);
 	do {
-		if (ep->ep && ep->req)
-			usb_ep_free_request(ep->ep, ep->req);
+		if (likely(ep->ep)) {
+			if(ep->req)
+				usb_ep_free_request(ep->ep, ep->req);
+			/* mark the ep reclaimable */
+			ep->ep->driver_data = NULL;
+		}
 		ep->req = NULL;
 		ep->ep = NULL;
 		++ep;
@@ -1644,10 +1648,8 @@ static void ffs_func_eps_disable(struct ffs_function *func)
 	do {
 		atomic_set(&epfile->error, 1);
 		/* pending requests get nuked */
-		if (likely(ep->ep)) {
+		if (likely(ep->ep))
 			usb_ep_disable(ep->ep);
-			ep->ep->driver_data = NULL;
-		}
 		epfile->ep = NULL;
 
 		++ep;
