@@ -11,7 +11,28 @@
  */
 
 &mdss_mdp {
+	mot_smd_546_QHD_p_cmd_v1: qcom,mdss_dsi_mot_smd_546_QHD_p_cmd_v1 {
+		#include "dsi-panel-mot-smd-546-QHD-p-cmd-common.dtsi"
+	};
+
 	mot_smd_546_QHD_p_cmd_v0: qcom,mdss_dsi_mot_smd_546_QHD_p_cmd_v0 {
 		#include "dsi-panel-mot-smd-546-QHD-p-cmd-common.dtsi"
 	};
+
+	dsc_cfg_mot_smd_546_QHD_p_cmd: dsc_cfg_mot_smd_546_QHD_p_cmd_cfg {
+		qcom,lm-split = <720 720>;
+		qcom,mdss-dsc-encoders = <2>;
+		qcom,mdss-dsc-slice-height = <64>;
+		qcom,mdss-dsc-slice-width = <360>;
+		qcom,mdss-dsc-slice-per-pkt = <1>;
+		qcom,mdss-dsc-bit-per-component = <8>;
+		qcom,mdss-dsc-bit-per-pixel = <8>;
+		qcom,mdss-dsc-block-prediction-enable;
+	};
+};
+
+&mot_smd_546_QHD_p_cmd_v0 {
+	/* HBM doesn't work on older HW */
+	/delete-property/ qcom,mdss-dsi-hbm-on-command;
+	/delete-property/ qcom,mdss-dsi-hbm-off-command;
 };
