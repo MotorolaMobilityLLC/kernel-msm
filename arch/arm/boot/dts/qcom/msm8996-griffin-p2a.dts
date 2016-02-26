@@ -42,3 +42,19 @@
 &mdss_hdmi_tx {
 	qcom,hdmi-tx-hpd = <&tlmm 79 0>;
 };
+
+&muc_attach {
+	config {
+		pins = "gpio73", "gpio35", "gpio143", "gpio34";
+		bias-disable;
+	};
+};
+
+&muc {
+	gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
+		<&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
+		<&tlmm 34 1>,   /* gpio_muc_int_n,    input */
+		<&tlmm 74 2>,   /* gpio_muc_wake_n,   output-high */
+		<&tlmm 82 1>,   /* gpio_muc_rdy_n,    input */
+		<&tlmm 143 0>;  /* gpio_muc_ff,       output-low */
+};
