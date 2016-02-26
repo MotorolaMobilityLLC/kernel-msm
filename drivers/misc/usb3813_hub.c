@@ -27,9 +27,12 @@
 #include <linux/platform_device.h>
 #include <linux/printk.h>
 #include <linux/clk.h>
-#include <linux/regmap.h>
 
 #define USB_ATTACH 0xAA55
+#define CFG_ACCESS 0x9937
+#define HS_P2_BOOST 0x68CA
+
+#define HS_BOOST_MAX 0x07
 
 struct usb3813_info {
 	struct i2c_client *client;
@@ -37,9 +40,125 @@ struct usb3813_info {
 	struct gpio hub_reset_n;
 	struct clk *hub_clk;
 	bool   hub_enabled;
-	struct regmap *regmap;
 	struct delayed_work usb3813_attach_work;
+	struct mutex	i2c_mutex;
 };
+
+static int usb3813_write_command(struct usb3813_info *info, u16 command)
+{
+	struct i2c_client *client = to_i2c_client(info->dev);
+	struct i2c_msg msg[1];
+	u8 data[3];
+	int ret;
+
+	data[0] = (command >> 8) & 0xFF;
+	data[1] = command & 0xFF;
+	data[2] = 0x00;
+
+	msg[0].addr = client->addr;
+	msg[0].flags = 0;
+	msg[0].buf = data;
+	msg[0].len = ARRAY_SIZE(data);
+
+	mutex_lock(&info->i2c_mutex);
+	ret = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
+	mutex_unlock(&info->i2c_mutex);
+
+	/* i2c_transfer returns number of messages transferred */
+	if (ret < 0)
+		return ret;
+	else if (ret != 1)
+		return -EIO;
+
+	return 0;
+}
+
+static int usb3813_write_cfg_reg(struct usb3813_info *info, u16 reg, u8 val)
+{
+	struct i2c_client *client = to_i2c_client(info->dev);
+	struct i2c_msg msg[1];
+	u8 data[8];
+	int ret;
+
+	data[0] = 0x00;
+	data[1] = 0x00;
+	data[2] = 0x05;
+	data[3] = 0x00;
+	data[4] = 0x01;
+	data[5] = (reg >> 8) & 0xFF;
+	data[6] = reg & 0xFF;
+	data[7] = val;
+
+	msg[0].addr = client->addr;
+	msg[0].flags = 0;
+	msg[0].buf = data;
+	msg[0].len = ARRAY_SIZE(data);
+
+	mutex_lock(&info->i2c_mutex);
+	ret = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
+	mutex_unlock(&info->i2c_mutex);
+
+	if (ret < 0)
+		return ret;
+	else if (ret != 1)
+		return -EIO;
+
+	return usb3813_write_command(info, CFG_ACCESS);
+}
+
+#if 0
+static int usb3813_read_cfg_reg(struct usb3813_info *info, u16 reg)
+{
+	struct i2c_client *client = to_i2c_client(info->dev);
+	struct i2c_msg msg[2];
+	u8 data[7];
+	u8 val[2];
+	int ret;
+
+	data[0] = 0x00;
+	data[1] = 0x00;
+	data[2] = 0x04;
+	data[3] = 0x01;
+	data[4] = 0x01;
+	data[5] = (reg >> 8) & 0xFF;
+	data[6] = reg & 0xFF;
+
+	msg[0].addr = client->addr;
+	msg[0].flags = 0;
+	msg[0].buf = data;
+	msg[0].len = ARRAY_SIZE(data);
+
+	mutex_lock(&info->i2c_mutex);
+	ret = i2c_transfer(client->adapter, msg, 1);
+	mutex_unlock(&info->i2c_mutex);
+
+	if (ret < 0)
+		return ret;
+	else if (ret != 1)
+		return -EIO;
+
+	ret = usb3813_write_command(info, CFG_ACCESS);
+	if (ret < 0)
+		return ret;
+
+	data[0] = 0x00;
+	data[1] = 0x04;
+	msg[0].len = 2;
+	msg[1].addr = client->addr;
+	msg[1].flags = I2C_M_RD;
+	msg[1].buf = val;
+	msg[1].len = ARRAY_SIZE(val);
+
+	mutex_lock(&info->i2c_mutex);
+	ret = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
+	mutex_unlock(&info->i2c_mutex);
+
+	if (ret < 0)
+		return ret;
+
+	return val[1];
+}
+#endif
 
 static ssize_t usb3813_enable_show(struct device *dev,
 			struct device_attribute *attr,
@@ -98,16 +217,16 @@ static void usb3813_attach_w(struct work_struct *work)
 	if (!info->hub_enabled)
 		return;
 
-	ret = regmap_write(info->regmap, USB_ATTACH, 0x00);
+	ret = usb3813_write_cfg_reg(info, HS_P2_BOOST, HS_BOOST_MAX);
+	if (ret < 0)
+		dev_err(info->dev, "Write HS_P2_BOOST failed (%d)\n", ret);
+
+	ret = usb3813_write_command(info, USB_ATTACH);
 	if (ret < 0) {
 		dev_err(info->dev, "USB_ATTCH failed (%d)\n", ret);
 	}
-}
 
-static const struct regmap_config usb3813_regmap_config = {
-	.reg_bits = 16,
-	.val_bits = 8,
-};
+}
 
 static int usb3813_probe(struct i2c_client *client,
 			      const struct i2c_device_id *id)
@@ -130,13 +249,7 @@ static int usb3813_probe(struct i2c_client *client,
 	info->dev = &client->dev;
 	i2c_set_clientdata(client, info);
 
-	info->regmap = devm_regmap_init_i2c(client, &usb3813_regmap_config);
-	if (IS_ERR(info->regmap)) {
-		ret = PTR_ERR(info->regmap);
-		dev_err(&client->dev, "Failed to initialise regmap: %d\n", ret);
-		return ret;
-	}
-
+	mutex_init(&info->i2c_mutex);
 	info->hub_enabled = 0;
 
 	info->hub_reset_n.gpio = of_get_gpio_flags(np, 0, &flags);
