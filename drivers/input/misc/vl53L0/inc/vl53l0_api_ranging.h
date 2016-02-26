@@ -26,8 +26,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
-#ifndef _VL53L010_TUNING_H_
-#define _VL53L010_TUNING_H_
+#ifndef _VL53L0_API_RANGING_H_
+#define _VL53L0_API_RANGING_H_
 
 #include "vl53l0_def.h"
 #include "vl53l0_platform.h"
@@ -38,21 +38,10 @@ extern "C" {
 #endif
 
 
-/**
- * @brief Internal function used to Program the default tuning settings
- *
- * @ingroup VL53L0_general_group
- * @note This function access to the device
- *
- * @param   Dev                   Device Handle
- * @return  VL53L0_ERROR_NONE     Success
- * @return  "Other error code"    See ::VL53L0_Error
- */
-VL53L0_Error VL53L010_load_tuning_settings(VL53L0_DEV Dev);
 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _VL53L010_TUNING_H_ */
+#endif /* _VL53L0_API_RANGING_H_ */

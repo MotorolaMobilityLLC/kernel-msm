@@ -26,8 +26,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
-#ifndef _VL53L010_TUNING_H_
-#define _VL53L010_TUNING_H_
+#ifndef _VL53L0_API_CORE_H_
+#define _VL53L0_API_CORE_H_
 
 #include "vl53l0_def.h"
 #include "vl53l0_platform.h"
@@ -38,21 +38,59 @@ extern "C" {
 #endif
 
 
-/**
- * @brief Internal function used to Program the default tuning settings
- *
- * @ingroup VL53L0_general_group
- * @note This function access to the device
- *
- * @param   Dev                   Device Handle
- * @return  VL53L0_ERROR_NONE     Success
- * @return  "Other error code"    See ::VL53L0_Error
- */
-VL53L0_Error VL53L010_load_tuning_settings(VL53L0_DEV Dev);
+VL53L0_Error VL53L0_reverse_bytes(uint8_t *data, uint32_t size);
+
+VL53L0_Error VL53L0_measurement_poll_for_completion(VL53L0_DEV Dev);
+
+uint8_t VL53L0_encode_vcsel_period(uint8_t vcsel_period_pclks);
+
+uint8_t VL53L0_decode_vcsel_period(uint8_t vcsel_period_reg);
+
+uint32_t VL53L0_isqrt(uint32_t num);
+
+uint32_t VL53L0_quadrature_sum(uint32_t a, uint32_t b);
+
+VL53L0_Error VL53L0_get_info_from_device(VL53L0_DEV Dev, uint8_t option);
+
+VL53L0_Error VL53L0_set_vcsel_pulse_period(VL53L0_DEV Dev,
+	VL53L0_VcselPeriod VcselPeriodType, uint8_t VCSELPulsePeriodPCLK);
+
+VL53L0_Error VL53L0_get_vcsel_pulse_period(VL53L0_DEV Dev,
+	VL53L0_VcselPeriod VcselPeriodType, uint8_t *pVCSELPulsePeriodPCLK);
+
+uint32_t VL53L0_decode_timeout(uint16_t encoded_timeout);
+
+VL53L0_Error get_sequence_step_timeout(VL53L0_DEV Dev,
+			VL53L0_SequenceStepId SequenceStepId,
+			uint32_t *pTimeOutMicroSecs);
+
+VL53L0_Error set_sequence_step_timeout(VL53L0_DEV Dev,
+			VL53L0_SequenceStepId SequenceStepId,
+			uint32_t TimeOutMicroSecs);
+
+VL53L0_Error VL53L0_set_measurement_timing_budget_micro_seconds(VL53L0_DEV Dev,
+	uint32_t MeasurementTimingBudgetMicroSeconds);
+
+VL53L0_Error VL53L0_get_measurement_timing_budget_micro_seconds(VL53L0_DEV Dev,
+		uint32_t *pMeasurementTimingBudgetMicroSeconds);
+
+VL53L0_Error VL53L0_load_tuning_settings(VL53L0_DEV Dev,
+		uint8_t *pTuningSettingBuffer);
+
+VL53L0_Error VL53L0_calc_sigma_estimate(VL53L0_DEV Dev,
+		VL53L0_RangingMeasurementData_t *pRangingMeasurementData,
+		FixPoint1616_t *pSigmaEstimate);
+
+VL53L0_Error VL53L0_get_pal_range_status(VL53L0_DEV Dev,
+		 uint8_t DeviceRangeStatus,
+		 FixPoint1616_t SignalRate,
+		 uint16_t EffectiveSpadRtnCount,
+		 VL53L0_RangingMeasurementData_t *pRangingMeasurementData,
+		 uint8_t *pPalRangeStatus);
 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _VL53L010_TUNING_H_ */
+#endif /* _VL53L0_API_CORE_H_ */
