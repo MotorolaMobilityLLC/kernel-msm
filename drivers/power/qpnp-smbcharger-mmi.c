@@ -3718,6 +3718,19 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 			power_supply_put(eb_pwr_psy);
 			return;
 		}
+
+		if (chip->cl_usbc >= 1500)
+			ret.intval = 1500000;
+		else
+			ret.intval = 500000;
+
+		rc = eb_pwr_psy->set_property(eb_pwr_psy,
+					    POWER_SUPPLY_PROP_PTP_MAX_INPUT_CURRENT,
+					    &ret);
+		if (rc)
+			dev_info(chip->dev, "Failed to set EB Input Current %d mA",
+				 ret.intval / 1000);
+
 		ret.intval = POWER_SUPPLY_PTP_CURRENT_FROM_PHONE;
 		rc = eb_pwr_psy->set_property(eb_pwr_psy,
 					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
