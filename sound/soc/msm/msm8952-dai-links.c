@@ -408,6 +408,32 @@ static struct snd_soc_dai_link msm8952_tasha_be_dai[] = {
 };
 
 #ifdef CONFIG_SND_SOC_MARLEY
+static const struct snd_soc_pcm_stream cs35l34_params = {
+	.formats = SNDRV_PCM_FORMAT_S16_LE,
+	.rate_min = 48000,
+	.rate_max = 48000,
+	.channels_min = 1,
+	.channels_max = 2,
+};
+
+static struct snd_soc_dai_link msm8952_marley_l34_dai_link[] = {
+	{
+		.name = "MARLEY-AMP",
+		.stream_name = "MARLEY-AMP Playback",
+		.cpu_name = "marley-codec",
+		.cpu_dai_name = "marley-aif1",
+		.codec_name = "cs35l34.7-0040",
+		.codec_dai_name = "cs35l34",
+		.init = marley_cs35l34_dai_init,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+		SND_SOC_DAIFMT_CBS_CFS,
+		.no_pcm = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.params = &cs35l34_params,
+	}
+};
+
 static struct snd_soc_dai_link msm8952_marley_be_dai[] = {
 	/* Backend DAI Links */
 	{
@@ -1792,6 +1818,7 @@ static struct snd_soc_dai_link msm8952_marley_dai_links[
 ARRAY_SIZE(msm8952_common_fe_dai) +
 ARRAY_SIZE(msm8952_marley_fe_dai) +
 ARRAY_SIZE(msm8952_common_be_dai) +
+ARRAY_SIZE(msm8952_marley_l34_dai_link) +
 ARRAY_SIZE(msm8952_marley_be_dai)];
 #else
 int msm8952_init_wsa_dev(struct platform_device *pdev,
@@ -2031,9 +2058,11 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	}
 #ifdef CONFIG_SND_SOC_MARLEY
 	else if (!strcmp(card->name, "msm8952-marley-card")) {
+		int len_2a;
 		len1 = ARRAY_SIZE(msm8952_common_fe_dai);
 		len2 = len1 + ARRAY_SIZE(msm8952_marley_fe_dai);
-		len3 = len2 + ARRAY_SIZE(msm8952_common_be_dai);
+		len_2a = len2 + ARRAY_SIZE(msm8952_common_be_dai);
+		len3  = len_2a + ARRAY_SIZE(msm8952_marley_l34_dai_link);
 		snd_soc_card_msm[MARLEY_CODEC].name = card->name;
 		card = &snd_soc_card_msm[MARLEY_CODEC];
 		num_links = ARRAY_SIZE(msm8952_marley_dai_links);
@@ -2043,6 +2072,9 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 			msm8952_marley_fe_dai, sizeof(msm8952_marley_fe_dai));
 		memcpy(msm8952_marley_dai_links + len2,
 			msm8952_common_be_dai, sizeof(msm8952_common_be_dai));
+		memcpy(msm8952_marley_dai_links + len_2a,
+			msm8952_marley_l34_dai_link,
+			sizeof(msm8952_marley_l34_dai_link));
 		memcpy(msm8952_marley_dai_links + len3,
 			msm8952_marley_be_dai, sizeof(msm8952_marley_be_dai));
 		msm8952_dai_links = msm8952_marley_dai_links;
