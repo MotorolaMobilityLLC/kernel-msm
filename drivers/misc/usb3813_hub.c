@@ -42,6 +42,10 @@ struct usb3813_info {
 	bool   hub_enabled;
 	struct delayed_work usb3813_attach_work;
 	struct mutex	i2c_mutex;
+	struct dentry *debug_root;
+	u16 debug_address;
+	bool debug_enabled;
+	bool debug_attach;
 };
 
 static int usb3813_write_command(struct usb3813_info *info, u16 command)
@@ -106,7 +110,6 @@ static int usb3813_write_cfg_reg(struct usb3813_info *info, u16 reg, u8 val)
 	return usb3813_write_command(info, CFG_ACCESS);
 }
 
-#if 0
 static int usb3813_read_cfg_reg(struct usb3813_info *info, u16 reg)
 {
 	struct i2c_client *client = to_i2c_client(info->dev);
@@ -158,7 +161,6 @@ static int usb3813_read_cfg_reg(struct usb3813_info *info, u16 reg)
 
 	return val[1];
 }
-#endif
 
 static ssize_t usb3813_enable_show(struct device *dev,
 			struct device_attribute *attr,
@@ -228,6 +230,148 @@ static void usb3813_attach_w(struct work_struct *work)
 
 }
 
+static int get_reg(void *data, u64 *val)
+{
+	struct usb3813_info *info = data;
+	u8 temp = 0;
+
+	if (!info->debug_enabled) {
+		dev_err(info->dev, "Enable hub debug before access\n");
+		return -ENODEV;
+	}
+
+	temp = usb3813_read_cfg_reg(info, info->debug_address);
+	*val = temp;
+
+	return 0;
+}
+
+static int set_reg(void *data, u64 val)
+{
+	struct usb3813_info *info = data;
+	u8 temp;
+	int ret;
+
+	if (!info->debug_enabled) {
+		dev_err(info->dev, "Enable hub debug before access\n");
+		return -ENODEV;
+	}
+
+	temp = (u8) val;
+	ret = usb3813_write_cfg_reg(info, info->debug_address, temp);
+	if (ret < 0)
+		dev_err(info->dev, "Write to 0x%04x failed (%d)\n",
+						info->debug_address,
+						ret);
+	return ret;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(usb3813_reg_fops, get_reg, set_reg, "0x%02llx\n");
+
+static int usb3813_dbg_enable_show(void *data, u64 *val)
+{
+	struct usb3813_info *info = data;
+
+	*val = (u64)info->debug_enabled;
+	return 0;
+}
+
+static int usb3813_dbg_enable_write(void *data, u64 val)
+{
+	struct usb3813_info *info = data;
+
+	if (info->hub_enabled) {
+		dev_err(info->dev, "Cannot enable debugging, HUB active\n");
+		return -EBUSY;
+	}
+
+	if (val) {
+		info->debug_enabled = true;
+		if (clk_prepare_enable(info->hub_clk)) {
+			dev_err(info->dev, "%s: failed to prepare clock\n",
+								__func__);
+			return -EFAULT;
+		}
+		gpio_set_value(info->hub_reset_n.gpio, 1);
+		info->debug_enabled = true;
+	} else {
+		gpio_set_value(info->hub_reset_n.gpio, 0);
+		clk_disable_unprepare(info->hub_clk);
+		info->debug_enabled = false;
+	}
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(usb3813_dbg_fops, usb3813_dbg_enable_show,
+		usb3813_dbg_enable_write, "%llu\n");
+
+static int usb3813_dbg_attach_write(void *data, u64 val)
+{
+	struct usb3813_info *info = data;
+	int ret = 0;
+
+	if (!info->debug_enabled) {
+		dev_err(info->dev, "Debug not enabled\n");
+		return -EINVAL;
+	}
+
+	if (val)
+		ret = usb3813_write_command(info, USB_ATTACH);
+	else {
+		gpio_set_value(info->hub_reset_n.gpio, 0);
+		mdelay(10);
+		gpio_set_value(info->hub_reset_n.gpio, 1);
+	}
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(usb3813_attach_fops, NULL,
+		usb3813_dbg_attach_write, "%llu\n");
+
+int usb3813_debug_init(struct usb3813_info *info)
+{
+	struct dentry *ent;
+
+	info->debug_root = debugfs_create_dir("usb3813", NULL);
+
+	if (!info->debug_root) {
+		dev_err(info->dev, "Couldn't create debug dir\n");
+		return -EINVAL;
+	}
+
+	ent = debugfs_create_x16("address", S_IFREG | S_IWUSR | S_IRUGO,
+				info->debug_root, &(info->debug_address));
+	if (!ent) {
+		dev_err(info->dev, "Error creating address entry\n");
+		return -EINVAL;
+	}
+
+	ent = debugfs_create_file("data", S_IFREG | S_IWUSR | S_IRUGO,
+				info->debug_root, info, &usb3813_reg_fops);
+	if (!ent) {
+		dev_err(info->dev, "Error creating data entry\n");
+		return -EINVAL;
+	}
+
+	ent = debugfs_create_file("enable_dbg", S_IFREG | S_IWUSR | S_IRUGO,
+				info->debug_root, info, &usb3813_dbg_fops);
+	if (!ent) {
+		dev_err(info->dev, "Error creating enable_dbg entry\n");
+		return -EINVAL;
+	}
+
+	ent = debugfs_create_file("attach", S_IFREG | S_IWUSR | S_IRUGO,
+				info->debug_root, info, &usb3813_attach_fops);
+	if (!ent) {
+		dev_err(info->dev, "Error creating attach entry\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int usb3813_probe(struct i2c_client *client,
 			      const struct i2c_device_id *id)
 {
@@ -294,6 +438,8 @@ static int usb3813_probe(struct i2c_client *client,
 		goto fail_clk;
 	}
 
+	usb3813_debug_init(info);
+
 	dev_info(&client->dev, "Done probing usb3813\n");
 	return 0;
 
@@ -315,6 +461,7 @@ static int usb3813_remove(struct i2c_client *client)
 		clk_disable_unprepare(info->hub_clk);
 	clk_put(info->hub_clk);
 	device_remove_file(&client->dev, &dev_attr_enable);
+	debugfs_remove_recursive(info->debug_root);
 	kfree(info);
 	return 0;
 }
