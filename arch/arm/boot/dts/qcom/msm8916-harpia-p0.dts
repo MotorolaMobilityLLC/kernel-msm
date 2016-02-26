@@ -13,7 +13,75 @@
 /dts-v1/;
 
 #include "msm8916-harpia.dtsi"
-
 / {
 	qcom,board-id = <0x4D 0x8000>;
+};
+&cci {
+	/* LM3643 flash LED driver*/
+	led_flash1: ti,lm3643@c6 {
+		cell-index = <0>;
+		qcom,slave-id = <0xc6 0x0c 0x02>;
+		compatible = "ti,lm3643";
+		label = "lm3643";
+		qcom,flash-type = <1>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msm_gpio 32 0>, /*FLASH_RST(HW_EN)*/
+			<&msm_gpio 114 0>, /*TORCH_EN*/
+			<&msm_gpio 31 0>; /*FLASH_NOW*/
+		qcom,gpio-flash-reset = <0>;
+		qcom,gpio-flash-en = <1>;
+		qcom,gpio-flash-now = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <0 0 0>;
+		qcom,gpio-req-tbl-label = "FLASH_RST",
+			"FLASH_EN",
+			"FLASH_NOW";
+		qcom,cci-master = <0>;
+	};
+qcom,camera@0 {
+		cell-index = <0>;
+		compatible = "qcom,camera";
+		reg = <0x0>;
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+		qcom,mount-angle = <90>;
+		qcom,actuator-src = <&actuator0>;
+		qcom,led-flash-src = <&led_flash1>;
+		cam_vaf-supply = <&pm8916_l10>;
+		qcom,cam-vreg-name = "cam_vaf";
+		qcom,cam-vreg-type = <0>;
+		qcom,cam-vreg-min-voltage = <2800000>;
+		qcom,cam-vreg-max-voltage = <2800000>;
+		qcom,cam-vreg-op-mode = <2800000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_default &cam_sensor_rear_default>;
+		pinctrl-1 = <&cam_sensor_mclk0_sleep &cam_sensor_rear_sleep>;
+		gpios = <&msm_gpio 26 0>,
+			<&msm_gpio 35 0>,
+			<&msm_gpio 34 0>,
+			<&msm_gpio 60 0>,
+			<&msm_gpio 56 0>,
+			<&msm_gpio 38 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-standby = <2>;
+		qcom,gpio-vio = <3>;
+		qcom,gpio-vdig = <4>;
+		qcom,gpio-vana= <5>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+			"CAM_RESET1",
+			"CAM_STANDBY",
+			"CAM_VIO",
+			"CAM_VDIG",
+			"CAM_VANA";
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		qcom,mclk-23880000;
+		status = "ok";
+		clocks = <&clock_gcc clk_mclk0_clk_src>,
+				<&clock_gcc clk_gcc_camss_mclk0_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
 };

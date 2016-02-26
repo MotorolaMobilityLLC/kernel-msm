@@ -11,9 +11,9 @@
 */
 
 #include "msm8916-moto-common.dtsi"
-#include "msm8916-camera-sensor-harpia.dtsi"
 #include "dsi-panel-mot-boe-499-720p-video.dtsi"
 #include  "msm8916-harpia-dtv.dtsi"
+#include "msm8916-camera-sensor-harpia.dtsi"
 / {
 	model = "Motorola Mobility MSM 8916 Harpia";
 	compatible = "qcom,msm8916-harpia", "qcom,msm8916-moto", "qcom,msm8916";
