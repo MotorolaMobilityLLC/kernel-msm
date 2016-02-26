@@ -769,6 +769,14 @@
 	alsa_to_h2w {
 		compatible = "mmi,alsa-to-h2w";
 	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+					"back_temp";
+		status = "ok";
+	};
+
 };
 
 &sdhc_1 {
