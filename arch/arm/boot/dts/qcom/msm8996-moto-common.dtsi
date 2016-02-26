@@ -561,8 +561,8 @@
 		qcom,hdmi-tx-map = <&mdss_hdmi_tx>;
 
 		pinctrl-names = "anx_default", "anx_sleep";
-		pinctrl-0 = <&anx_rst_active>;
-		pinctrl-1 = <&anx_rst_suspend>;
+		pinctrl-0 = <&anx_rst_active &anx_mydp_det_active>;
+		pinctrl-1 = <&anx_rst_suspend &anx_mydp_det_suspend>;
 	};
 
 };
@@ -814,7 +814,7 @@
 
 		gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
 			<&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
-			<&tlmm 34 1>,   /* gpio_muc_int_n,    input */
+			<&tlmm 79 1>,   /* gpio_muc_int_n,    input */
 			<&tlmm 74 2>,   /* gpio_muc_wake_n,   output-high */
 			<&tlmm 82 1>,   /* gpio_muc_rdy_n,    input */
 			<&tlmm 143 0>;  /* gpio_muc_ff,       output-low */
