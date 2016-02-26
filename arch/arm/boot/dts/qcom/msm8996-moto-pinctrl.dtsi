@@ -258,7 +258,7 @@
 
 	muc_attach: muc_attach@0 {
 		config {
-			pins = "gpio73", "gpio35", "gpio143";
+			pins = "gpio73", "gpio35", "gpio143", "gpio79";
 			bias-disable;
 		};
 	};
@@ -610,6 +610,29 @@
 		};
 		config {
 			pins = "gpio93";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-down; /* pull down */
+		};
+	};
+
+	anx_mydp_det_active: anx_mydp_det_active {
+		mux {
+			pins = "gpio14";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio14";
+			drive-strength = <2>; /* 2 mA */
+			bias-disable = <0>; /* no pull */
+		};
+	};
+
+	anx_mydp_det_suspend: anx_mydp_det_suspend {
+		mux {
+			pins = "gpio14";
+		};
+		config {
+			pins = "gpio14";
 			drive-strength = <2>; /* 2 mA */
 			bias-pull-down; /* pull down */
 		};
