@@ -37,12 +37,12 @@
 		qcom,cam-vreg-op-mode = <80000>;
 	};
 
-	/* LM3643 flash LED driver*/
-	led_flash0: ti,lm3643@c6 {
+	/* LM3648 flash LED driver*/
+	led_flash0: ti,lm3648@c6 {
 		cell-index = <0>;
 		qcom,slave-id = <0xc6 0x0c 0x02>;
-		compatible = "ti,lm3643";
-		label = "lm3643";
+		compatible = "ti,lm3648";
+		label = "lm3648";
 		qcom,flash-type = <1>;
 		qcom,gpio-no-mux = <0>;
 		gpios = <&msm_gpio 32 0>, /*FLASH_RST(HW_EN)*/

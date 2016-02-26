@@ -13,7 +13,6 @@
 /dts-v1/;
 
 #include "msm8916-harpia.dtsi"
-
 / {
 	qcom,board-id = <0x4D 0x8100>;
 };
