@@ -808,7 +808,7 @@ static int msm_pc_debug_counters_copy(
 				sizeof(data->buf)-data->len,
 				"CPU%d\n", cpu);
 
-		for (j = 0; j < MSM_PC_NUM_COUNTERS; j++) {
+		for (j = 0; j < MSM_PC_NUM_COUNTERS - 1; j++) {
 			stat = msm_pc_debug_counters_read_register(
 					data->reg, cpu, j);
 			data->len += scnprintf(data->buf + data->len,
@@ -816,7 +816,9 @@ static int msm_pc_debug_counters_copy(
 					"\t%s : %d\n", counter_name[j],
 					stat);
 		}
-
+		data->len += scnprintf(data->buf + data->len,
+			 sizeof(data->buf) - data->len,
+			"\n");
 	}
 
 	return data->len;
