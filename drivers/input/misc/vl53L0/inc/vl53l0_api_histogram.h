@@ -26,8 +26,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
-#ifndef _VL53L010_TUNING_H_
-#define _VL53L010_TUNING_H_
+#ifndef _VL53L0_API_HISTOGRAM_H_
+#define _VL53L0_API_HISTOGRAM_H_
 
 #include "vl53l0_def.h"
 #include "vl53l0_platform.h"
@@ -38,21 +38,32 @@ extern "C" {
 #endif
 
 
-/**
- * @brief Internal function used to Program the default tuning settings
- *
- * @ingroup VL53L0_general_group
- * @note This function access to the device
- *
- * @param   Dev                   Device Handle
- * @return  VL53L0_ERROR_NONE     Success
- * @return  "Other error code"    See ::VL53L0_Error
- */
-VL53L0_Error VL53L010_load_tuning_settings(VL53L0_DEV Dev);
+VL53L0_Error VL53L0_confirm_measurement_start(VL53L0_DEV Dev);
+
+VL53L0_Error VL53L0_set_histogram_mode(VL53L0_DEV Dev,
+			VL53L0_HistogramModes HistogramMode);
+
+VL53L0_Error VL53L0_get_histogram_mode(VL53L0_DEV Dev,
+			VL53L0_HistogramModes *pHistogramMode);
+
+VL53L0_Error VL53L0_start_histogram_measurement(VL53L0_DEV Dev,
+		VL53L0_HistogramModes histoMode,
+		uint32_t count);
+
+VL53L0_Error VL53L0_perform_single_histogram_measurement(VL53L0_DEV Dev,
+		VL53L0_HistogramMeasurementData_t *pHistogramMeasurementData);
+
+VL53L0_Error VL53L0_get_histogram_measurement_data(VL53L0_DEV Dev,
+		VL53L0_HistogramMeasurementData_t *pHistogramMeasurementData);
+
+VL53L0_Error VL53L0_read_histo_measurement(VL53L0_DEV Dev,
+				uint32_t *histoData,
+				uint32_t offset,
+				VL53L0_HistogramModes histoMode);
 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _VL53L010_TUNING_H_ */
+#endif /* _VL53L0_API_HISTOGRAM_H_ */
