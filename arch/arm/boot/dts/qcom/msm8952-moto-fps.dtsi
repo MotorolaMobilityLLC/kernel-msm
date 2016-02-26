@@ -116,8 +116,10 @@
 		qcom,infinite-mode = <0>;
 		qcom,use-pinctrl;
 		qcom,master-id = <84>;
+		status = "/chosen", "mmi,fps", "true";
 
 		fpc_fpc1020@0{
+			status = "/chosen", "mmi,fps", "true";
 			compatible = "fpc,fpc1020";
 			reg = <0>;
 			interrupts = <42 0x0>;
