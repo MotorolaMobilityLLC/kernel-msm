@@ -242,7 +242,7 @@ int epl_sensor_als_dyn_report(bool report_flag);
 static bool ps_dyn_flag = false;
 #define PS_MAX_CT	10000
 #define PS_MAX_IR	50000
-#define PS_DYN_H_OFFSET 400
+#define PS_DYN_H_OFFSET 270
 #define PS_DYN_L_OFFSET 150
 u32 dynk_thd_low = 0;
 u32 dynk_thd_high = 0;
@@ -679,7 +679,7 @@ static void initial_global_variable(struct i2c_client *client, struct epl_sensor
 #endif
 	/* ps setting */
 	epl_sensor.ps.polling_mode = PS_POLLING_MODE;
-	epl_sensor.ps.integration_time = EPL_PS_INTT_272;
+	epl_sensor.ps.integration_time = EPL_PS_INTT_144;
 	epl_sensor.ps.gain = EPL_GAIN_LOW;
 	epl_sensor.ps.adc = EPL_PSALS_ADC_11;
 	epl_sensor.ps.cycle = EPL_CYCLE_16;
