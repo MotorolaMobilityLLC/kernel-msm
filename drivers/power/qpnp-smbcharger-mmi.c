@@ -5597,9 +5597,6 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 	struct smbchg_chip *chip = _chip;
 	bool usb_present;
 
-	SMB_DBG(chip, "chip->usb_present = %d usb_present = %d\n",
-			chip->usb_present, usb_present);
-
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
 		SMB_ERR(chip,
