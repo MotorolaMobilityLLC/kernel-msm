@@ -583,7 +583,7 @@ VL53L010_API VL53L0_Error VL53L010_GetInterMeasurementPeriodMilliSeconds(
 
 /**
  * @brief Enable/Disable Cross talk compensation feature
- * 
+ *
  * @note This function Access to the device
  *
  * @param   Dev                       Device Handle
@@ -597,7 +597,7 @@ VL53L010_API VL53L0_Error VL53L010_SetXTalkCompensationEnable(
 
 /**
  * @brief Get Cross talk compensation rate
- * 
+ *
  * @note This function Access to the device
  *
  * @param   Dev                        Device Handle
@@ -920,7 +920,7 @@ VL53L010_API VL53L0_Error VL53L010_PerformXTalkCalibration(VL53L0_DEV Dev,
  * @brief Perform Offset Calibration
  *
  * @details Perform a Offset calibration of the Device.
- * This function will launch a ranging measurement, if interrupts are 
+ * This function will launch a ranging measurement, if interrupts are
  * enabled an interrupt will be done.
  * This function will clear the interrupt generated automatically.
  * This function will program a new value for the Offset calibration value and
