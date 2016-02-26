@@ -65,6 +65,7 @@ int msm_tdm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 int msm_audrx_init(struct snd_soc_pcm_runtime *rtd);
 #ifdef CONFIG_SND_SOC_MARLEY
 int marley_dai_init(struct snd_soc_pcm_runtime *rtd);
+int marley_cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd);
 #endif
 int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params);
