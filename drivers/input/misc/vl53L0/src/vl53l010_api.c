@@ -1453,7 +1453,7 @@ VL53L0_Error VL53L010_GetLimitCheckValue(VL53L0_DEV Dev,
 
     LOG_FUNCTION_END(Status);
     return Status;
-    
+
 }
 
 VL53L0_Error VL53L010_GetLimitCheckCurrent(VL53L0_DEV Dev,
