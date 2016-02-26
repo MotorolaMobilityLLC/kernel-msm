@@ -79,7 +79,10 @@
 #define TDM_SLOT_OFFSET_MAX    8
 
 #ifdef CONFIG_SND_SOC_MARLEY
-#define MARLEY_SYSCLK_RATE	(48000 * 1024 * 3)
+#define FLL_RATE_MARLEY 294912000
+#define MARLEY_SYSCLK_RATE (FLL_RATE_MARLEY / 3)
+#define DSPCLK_RATE (FLL_RATE_MARLEY / 2)
+#define CS35L34_MCLK_RATE 6144000
 #endif
 
 enum btsco_rates {
@@ -3392,6 +3395,17 @@ static struct snd_soc_dapm_route marley_audio_routes[] = {
 	{"Slim2 Capture", NULL, "MCLK"},
 
 	/* MICBIAS ? */
+
+	{"AMP Playback", NULL, "OPCLK"},
+
+	{"Slim1 Playback", NULL, "MCLK"},
+	{"Slim1 Capture", NULL, "MCLK"},
+	{"Slim2 Capture", NULL, "MCLK"},
+
+	{"IN1AL", NULL, "MICBIAS1A"},
+	{"IN1AR", NULL, "MICBIAS1B"},
+	{"IN2L", NULL, "MICBIAS2B"},
+	{"IN1BR", NULL, "MICBIAS2A"}, /* Headset mic */
 };
 #endif
 
@@ -3652,7 +3666,7 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	}
 
 	ret = snd_soc_codec_set_sysclk(codec, ARIZONA_CLK_OPCLK,
-		0, MARLEY_SYSCLK_RATE,
+		0, CS35L34_MCLK_RATE,
 		SND_SOC_CLOCK_OUT);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set OPCLK %d\n", ret);
@@ -3676,6 +3690,10 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS1");
 	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS2");
 	snd_soc_dapm_ignore_suspend(dapm, "MICSUPP");
+	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS1A");
+	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS1B");
+	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS2A");
+	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS2B");
 	snd_soc_dapm_ignore_suspend(dapm, "IN1AL");
 	snd_soc_dapm_ignore_suspend(dapm, "IN1AR");
 	snd_soc_dapm_ignore_suspend(dapm, "IN1BL");
@@ -3686,10 +3704,8 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1TX2");
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX1");
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX2");
-	snd_soc_dapm_ignore_suspend(dapm, "HPOUT1L");
-	snd_soc_dapm_ignore_suspend(dapm, "HPOUT1R");
-	snd_soc_dapm_ignore_suspend(dapm, "SLIMTX5");
-	snd_soc_dapm_ignore_suspend(dapm, "Slim2 Capture");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUTL");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUTR");
 
 	ret = snd_soc_add_codec_controls(codec, msm_snd_controls,
 		ARRAY_SIZE(msm_snd_controls));
@@ -3698,6 +3714,29 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
+	snd_soc_dapm_sync(dapm);
+	return 0;
+}
+
+int marley_cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+	struct snd_soc_dai *aif1_dai = rtd->cpu_dai;
+	struct snd_soc_dai *cs35l34_dai = rtd->codec_dai;
+
+	ret = snd_soc_dai_set_sysclk(aif1_dai, ARIZONA_CLK_SYSCLK, 0, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
+		return ret;
+	}
+	ret = snd_soc_dai_set_sysclk(cs35l34_dai, 0, CS35L34_MCLK_RATE, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
+		return ret;
+	}
+	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
 	snd_soc_dapm_sync(dapm);
 	return 0;
 }
