@@ -31,14 +31,20 @@
 #define STMVL53L0_DRV_NAME	"stmvl53l0"
 #define STMVL53L0_SLAVE_ADDR	(0x52>>1)
 
-#define DRIVER_VERSION		"1.1.14"
+#define DRIVER_VERSION		"1.1.15"
 #define I2C_M_WR			0x00
 /* #define INT_POLLING_DELAY	20 */
 
 /* if don't want to have output from vl6180_dbgmsg, comment out #DEBUG macro */
 /*#define DEBUG*/
 /* #define vl6180_dbgmsg(str, args...) pr_debug("%s: " str, __func__, ##args) */
-#define vl53l0_dbgmsg(str, args...)	\
+#define vl53l0_dbgmsg_en(str, args...)	\
+do {\
+if (gp_vl53l0_data->enableDebug) \
+	pr_err("%s: " str, __func__, ##args); \
+} while (0)
+
+#define vl53l0_dbgmsg(str, args...)  \
 	pr_debug("%s: " str, __func__, ##args)
 /* #define vl6180_errmsg(str, args...) pr_err("%s: " str, __func__, ##args) */
 #define vl53l0_errmsg(str, args...) \
@@ -53,6 +59,7 @@
 #define	SUPER_MODE  3
 #define	XTALKCAL_MODE  4
 #define	OFFSETCAL_MODE  5
+
 /*user actions*/
 #define	CAM_ON  0
 #define	CAM_OFF 1
@@ -61,6 +68,7 @@
 #define	XTALKCAL_ON 4
 #define	OFFSETCAL_ON 5
 #define	CAL_OFF 6
+#define RESET 7
 /*parameter types*/
 #define	OFFSET_PAR 0
 #define	XTALKRATE_PAR 1
@@ -73,6 +81,7 @@
 #define	SGLVAL_PRA 8
 #define	SGLCTL_PRA 9
 #define CUTV_PRA 10
+#define DRVV_PRA 11
 
 #define	CCI_BUS  0
 #define	I2C_BUS  1
@@ -82,7 +91,7 @@
  *  IOCTL register data structs
  */
 struct stmvl53l0_register {
-	uint32_t is_read; /*1: read 0: write*/
+	uint32_t is_read; /*1: read 0: #define write*/
 	uint32_t reg_index;
 	uint32_t reg_bytes;
 	uint32_t reg_data;
