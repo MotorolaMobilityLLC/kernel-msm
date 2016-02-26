@@ -648,6 +648,7 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 #define VL53L0_IOCTL_INIT_NB		_IO('p', 0x90)
 #define VL53L0_IOCTL_SUSPEND		_IO('p', 0x93)
 #define VL53L0_IOCTL_RESUME		_IO('p', 0x94)
+#define VL53L0_IOCTL_RESET		 _IO('p', 0x95)
 #define VL53L0_IOCTL_XTALKCALB		_IOWR('p', 0x02, unsigned int)
 #define VL53L0_IOCTL_OFFCALB		_IOW('p', 0x03, unsigned int)
 #define VL53L0_IOCTL_STOPCALB		_IO('p', 0x04)
@@ -731,24 +732,23 @@ static void stmvl53l0_ps_read_measurement(struct stmvl53l0_data *data)
 
 static void stmvl53l0_enter_off(struct stmvl53l0_data *data, uint8_t from)
 {
-	vl53l0_dbgmsg("Enter, stmvl53l0_enter_off from:%d\n", from);
-	mutex_lock(&data->work_mutex);
-		/* turn off tof sensor */
-		if (data->enable_ps_sensor == 1) {
-			data->enable_ps_sensor = 0;
-			/* to stop */
-			stmvl53l0_stop(data);
-		}
+	vl53l0_dbgmsg_en("Enter, stmvl53l0_enter_off from:%d\n", from);
+	if (data->enable_ps_sensor == 0)
+		stmvl53l0_start(data);
+	papi_func_tbl->SetDeviceMode(data,
+		VL53L0_DEVICEMODE_SINGLE_RANGING);
+	papi_func_tbl->SetGpioConfig(data, 0, 0,
+		VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
+		VL53L0_INTERRUPTPOLARITY_LOW);
+	data->gpio_function = VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY;
 
-	vl53l0_dbgmsg("End\n");
-	mutex_unlock(&data->work_mutex);
+	vl53l0_dbgmsg_en("End\n");
 }
 static void stmvl53l0_enter_cam(struct stmvl53l0_data *data, uint8_t from)
 {
 	VL53L0_RangingMeasurementData_t    RMData;
 
-	mutex_lock(&data->work_mutex);
-	vl53l0_dbgmsg("Enter, stmvl53l0_enter_cam from:%d\n", from);
+	vl53l0_dbgmsg_en("Enter, stmvl53l0_enter_cam from:%d\n", from);
 	/* turn on tof sensor */
 	if (data->enable_ps_sensor == 0)
 		stmvl53l0_start(data);
@@ -757,21 +757,19 @@ static void stmvl53l0_enter_cam(struct stmvl53l0_data *data, uint8_t from)
 		VL53L0_DEVICEMODE_SINGLE_RANGING);
 	papi_func_tbl->PerformSingleRangingMeasurement(data,
 		&RMData);
-	vl53l0_dbgmsg("Call of VL53L0_DEVICEMODE_CONTINUOUS_RANGING\n");
+	vl53l0_dbgmsg_en("Call of VL53L0_DEVICEMODE_CONTINUOUS_RANGING\n");
 	papi_func_tbl->SetGpioConfig(data, 0, 0,
 		VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
 		VL53L0_INTERRUPTPOLARITY_LOW);
 	data->gpio_function = VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY;
 	papi_func_tbl->StartMeasurement(data);
 
-	vl53l0_dbgmsg("End\n");
-	mutex_unlock(&data->work_mutex);
+	vl53l0_dbgmsg_en("End\n");
 }
 static void stmvl53l0_enter_sar(struct stmvl53l0_data *data, uint8_t from)
 {
 	VL53L0_RangingMeasurementData_t    RMData;
-	mutex_lock(&data->work_mutex);
-	vl53l0_dbgmsg("Enter,  from:%d\n", from);
+	vl53l0_dbgmsg_en("Enter,  from:%d\n", from);
 	/* turn on tof sensor */
 	if (data->enable_ps_sensor == 0)
 		stmvl53l0_start(data);
@@ -798,16 +796,14 @@ static void stmvl53l0_enter_sar(struct stmvl53l0_data *data, uint8_t from)
 	data->lowint = 1;
 	papi_func_tbl->ClearInterruptMask(data, 0);
 	papi_func_tbl->StartMeasurement(data);
-	vl53l0_dbgmsg("End\n");
-	mutex_unlock(&data->work_mutex);
+	vl53l0_dbgmsg_en("End\n");
 	stmvl53l0_dumpreg(data);
 }
 static void stmvl53l0_enter_super(struct stmvl53l0_data *data, uint8_t from)
 {
-	mutex_lock(&data->work_mutex);
-	vl53l0_dbgmsg("Enter, stmvl53l0_enter_super flag:%d\n", from);
+	vl53l0_dbgmsg_en("Enter, stmvl53l0_enter_super flag:%d\n", from);
 	if (from == SAR_MODE) {
-		vl53l0_dbgmsg("Call of VL53L0_DEVICEMODE_CONTINUOUS_RANGING\n");
+		vl53l0_dbgmsg_en("Call of VL53L0_DEVICEMODE_CONTINUOUS_RANGING\n");
 		papi_func_tbl->StopMeasurement(data);
 		papi_func_tbl->ClearInterruptMask(data, 0);
 		papi_func_tbl->SetGpioConfig(data, 0, 0,
@@ -819,16 +815,14 @@ static void stmvl53l0_enter_super(struct stmvl53l0_data *data, uint8_t from)
 		papi_func_tbl->StartMeasurement(data);
 	}
 
-	vl53l0_dbgmsg("End\n");
-	mutex_unlock(&data->work_mutex);
+	vl53l0_dbgmsg_en("End\n");
 }
 static void stmvl53l0_enter_xtalkcal(struct stmvl53l0_data *data,
 	uint8_t from)
 {
 	FixPoint1616_t XTalkCompensationRateMegaCps;
 
-	mutex_lock(&data->work_mutex);
-	vl53l0_dbgmsg("Enter, stmvl53l0_enter_cal flag:%d\n", from);
+	vl53l0_dbgmsg_en("Enter, stmvl53l0_enter_cal flag:%d\n", from);
 	if (data->enable_ps_sensor == 0)
 		stmvl53l0_start(data);
 
@@ -837,32 +831,28 @@ static void stmvl53l0_enter_xtalkcal(struct stmvl53l0_data *data,
 	papi_func_tbl->PerformXTalkCalibration(data,
 		(data->xtalkCalDistance << 16), &XTalkCompensationRateMegaCps);
 	data->xtalkcalval = XTalkCompensationRateMegaCps;
-	vl53l0_dbgmsg("End\n");
-	mutex_unlock(&data->work_mutex);
+	vl53l0_dbgmsg_en("End\n");
 }
 static void stmvl53l0_enter_offsetcal(struct stmvl53l0_data *data,
 	uint8_t from)
 {
 	FixPoint1616_t OffsetMicroMeter;
 
-	mutex_lock(&data->work_mutex);
-	vl53l0_dbgmsg("Enter, stmvl53l0_enter_cal flag:%d\n", from);
+	vl53l0_dbgmsg_en("Enter, stmvl53l0_enter_cal flag:%d\n", from);
 	papi_func_tbl->PerformOffsetCalibration(data,
 		(data->offsetCalDistance<<16),
 			&OffsetMicroMeter);
 	pr_err("Offset calibration:%u\n", OffsetMicroMeter);
-	vl53l0_dbgmsg("End\n");
-	mutex_unlock(&data->work_mutex);
+	vl53l0_dbgmsg_en("End\n");
 }
 static void stmvl53l0_work_state(
 struct stmvl53l0_data *data, uint8_t input)
 {
-	unsigned long flags;
 	int nochange = 0;
 	uint8_t from = data->w_mode;
 
-	vl53l0_dbgmsg("Enter, stmvl53l0_work_state:%d\n", input);
-	spin_lock_irqsave(&data->update_lock.wait_lock, flags);
+	vl53l0_dbgmsg_en("Enter, stmvl53l0_work_state:%d\n", input);
+	mutex_lock(&data->work_mutex);
 	switch (data->w_mode) {
 	case OFF_MODE:
 		if (input == CAM_ON)
@@ -874,7 +864,7 @@ struct stmvl53l0_data *data, uint8_t input)
 		else if (input == OFFSETCAL_ON)
 			data->w_mode = OFFSETCAL_MODE;
 		else {
-			vl53l0_dbgmsg("unsopport status = %d,cs = OFF_MODE",
+			vl53l0_dbgmsg_en("unsopport status = %d,cs = OFF_MODE",
 				input);
 			nochange = 1;
 		}
@@ -885,7 +875,7 @@ struct stmvl53l0_data *data, uint8_t input)
 		else if (input == SAR_ON)
 			data->w_mode = SUPER_MODE;
 		else {
-		vl53l0_dbgmsg("unsopport status = %d,cs = CAM_MODE", input);
+		vl53l0_dbgmsg_en("unsopport status = %d,cs = CAM_MODE", input);
 			nochange = 1;
 		}
 		break;
@@ -895,7 +885,7 @@ struct stmvl53l0_data *data, uint8_t input)
 		else if (input == SAR_OFF)
 			data->w_mode = OFF_MODE;
 		else {
-		vl53l0_dbgmsg("unsopport status = %d,cs = SAR_MODE", input);
+		vl53l0_dbgmsg_en("unsopport status = %d,cs = SAR_MODE", input);
 			nochange = 1;
 		}
 		break;
@@ -905,7 +895,7 @@ struct stmvl53l0_data *data, uint8_t input)
 		else if (input == SAR_OFF)
 			data->w_mode = CAM_MODE;
 		else {
-		vl53l0_dbgmsg("unsopport status= %d,cs = SUPER_MODE", input);
+		vl53l0_dbgmsg_en("unsopport status= %d,cs = SUPER_MODE", input);
 			nochange = 1;
 		}
 		break;
@@ -913,7 +903,7 @@ struct stmvl53l0_data *data, uint8_t input)
 		if (input == CAL_OFF)
 			data->w_mode = OFF_MODE;
 		else {
-		vl53l0_dbgmsg("unsopport status = %d,cs= SUPER_MODE", input);
+		vl53l0_dbgmsg_en("unsopport status = %d,cs= SUPER_MODE", input);
 			data->w_mode = OFF_MODE;
 		}
 		break;
@@ -921,22 +911,31 @@ struct stmvl53l0_data *data, uint8_t input)
 		if (input == CAL_OFF)
 			data->w_mode = OFF_MODE;
 		else {
-		vl53l0_dbgmsg("unsopport status= %d,cs = SUPER_MODE", input);
+		vl53l0_dbgmsg_en("unsopport status= %d,cs = SUPER_MODE", input);
 			data->w_mode = OFF_MODE;
 		}
 		break;
 	default:
-		vl53l0_dbgmsg("unsopport status= %d,cs = unknown", input);
+		vl53l0_dbgmsg_en("unsopport status= %d,cs = unknown", input);
 		nochange = 1;
 		break;
 	}
 
-	spin_unlock_irqrestore(&data->update_lock.wait_lock, flags);
-	if (nochange) {
-		vl53l0_dbgmsg("unsopport status= %d,cs = %d",
+	if (nochange && input != RESET) {
+		vl53l0_dbgmsg_en("unsopport status= %d,cs = %d",
 		input, data->w_mode);
+		mutex_unlock(&data->work_mutex);
 		return;
 	}
+	if (input == RESET) {
+		stmvl53l0_stop(data);
+		data->reset = 1;
+		if (data->enable_ps_sensor == 0)
+			stmvl53l0_start(data);
+	}
+
+	data->c_suspend = 1;
+	cancel_delayed_work(&data->dwork);
 	switch (data->w_mode) {
 	case OFF_MODE:
 		stmvl53l0_enter_off(data, from);
@@ -960,6 +959,8 @@ struct stmvl53l0_data *data, uint8_t input)
 		pr_err("status unknown, input = %d", input);
 		break;
 	}
+	data->c_suspend = 0;
+	mutex_unlock(&data->work_mutex);
 }
 
 static void stmvl53l0_cancel_handler(struct stmvl53l0_data *data)
@@ -998,7 +999,7 @@ struct timeval tv;
 do_gettimeofday(&tv);
 papi_func_tbl->GetRangingMeasurementData(vl53l0_dev, &RMData);
 
-vl53l0_dbgmsg("which MODE =%d\n", data->w_mode);
+vl53l0_dbgmsg_en("which MODE =%d\n", data->w_mode);
 papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
 memcpy(&(data->rangeData), &RMData,
 	sizeof(VL53L0_RangingMeasurementData_t));
@@ -1008,7 +1009,7 @@ data->rangeData.TimeStamp = tv.tv_sec;
 data->rangeData.MeasurementTimeUsec = tv.tv_usec;
 wake_up(&data->range_data_wait);
 	if (CAM_MODE == data->w_mode) {
-		vl53l0_dbgmsg("CAM_MODE\n");
+		vl53l0_dbgmsg_en("CAM_MODE\n");
 		papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
 		papi_func_tbl->StartMeasurement(data);
 		if (data->enableDebug)
@@ -1021,9 +1022,9 @@ wake_up(&data->range_data_wait);
 				data->rangeData.RangeDMaxMilliMeter,
 				data->rangeData.MeasurementTimeUsec);
 	} else if (SAR_MODE == data->w_mode) {
-		vl53l0_dbgmsg("SAR_MODE\n");
+		vl53l0_dbgmsg_en("SAR_MODE\n");
 		if (data->gpio_function == VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW) {
-			vl53l0_dbgmsg("SAR enter LOW\n");
+			vl53l0_dbgmsg_en("SAR enter LOW\n");
 			if (data->lowint < 3) {
 				data->lowint++;
 				papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
@@ -1036,19 +1037,15 @@ wake_up(&data->range_data_wait);
 			VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH,
 			VL53L0_INTERRUPTPOLARITY_LOW);
 			data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH;
-			papi_func_tbl->SetInterMeasurementPeriodMilliSeconds(
-				data, 1000);
-			papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
-				data, 120000);
 			papi_func_tbl->SetInterruptThresholds(
 			data, 0, data->lowv << 16, data->highv << 16);
 			papi_func_tbl->SetDeviceMode(data,
 				VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 			data->lowint = 5;
 			papi_func_tbl->StartMeasurement(data);
-			vl53l0_dbgmsg("SAR enter LOW sent uevent\n");
+			vl53l0_dbgmsg_en("SAR enter LOW sent uevent\n");
 		} else if (data->gpio_function == VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH) {
-			vl53l0_dbgmsg("SAR enter HIGH\n");
+			vl53l0_dbgmsg_en("SAR enter HIGH\n");
 			    if (data->lowint > 3) {
 				data->lowint--;
 				papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
@@ -1061,28 +1058,24 @@ wake_up(&data->range_data_wait);
 			VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
 			VL53L0_INTERRUPTPOLARITY_LOW);
 			data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW;
-			papi_func_tbl->SetInterMeasurementPeriodMilliSeconds(
-				data, 1000);
-			papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
-				data, 120000);
 			papi_func_tbl->SetInterruptThresholds(
 				data, 0, data->lowv << 16, data->highv << 16);
 			papi_func_tbl->SetDeviceMode(data,
 				VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 			data->lowint = 1;
 			papi_func_tbl->StartMeasurement(data);
-			vl53l0_dbgmsg("SAR enter high sent uevent\n");
+			vl53l0_dbgmsg_en("SAR enter high sent uevent\n");
 		}
 	} else if (SUPER_MODE == data->w_mode) {
-		vl53l0_dbgmsg("SUPER_MODE\n");
+		vl53l0_dbgmsg_en("SUPER_MODE\n");
 		if (RMData.RangeMilliMeter < data->lowv
 				&& RMData.RangeMilliMeter != 0) {
-			vl53l0_dbgmsg("SAR enter LOW\n");
+			vl53l0_dbgmsg_en("SAR enter LOW\n");
 			stmvl53l0_ps_read_measurement(vl53l0_dev);
 			kobject_uevent_env(&(data->miscdev.this_device->kobj),
 				KOBJ_CHANGE, envplow);
 		} else if (RMData.RangeMilliMeter > data->highv) {
-			vl53l0_dbgmsg("SAR enter HIGH\n");
+			vl53l0_dbgmsg_en("SAR enter HIGH\n");
 			stmvl53l0_ps_read_measurement(vl53l0_dev);
 			kobject_uevent_env(&(data->miscdev.this_device->kobj),
 				KOBJ_CHANGE, envphigh);
@@ -1096,7 +1089,7 @@ static void stmvl53l0_init_handler(struct work_struct *work)
 {
 	struct stmvl53l0_data *data = gp_vl53l0_data;
 
-	vl53l0_dbgmsg("get in the handler\n");
+	vl53l0_dbgmsg_en("get in the handler\n");
 	stmvl53l0_work_state(data, CAM_ON);
 	return;
 
@@ -1108,7 +1101,7 @@ static void stmvl53l0_work_handler(struct work_struct *work)
 	VL53L0_DEV vl53l0_dev = data;
 	uint32_t InterruptMask;
 
-	vl53l0_dbgmsg("get in the handler\n");
+	vl53l0_dbgmsg_en("get in the handler\n");
 
 	mutex_lock(&data->work_mutex);
 
@@ -1116,7 +1109,7 @@ static void stmvl53l0_work_handler(struct work_struct *work)
 		papi_func_tbl->GetInterruptMaskStatus(
 			vl53l0_dev, &InterruptMask);
 
-		vl53l0_dbgmsg(" InterruptMasksssss :%d\n", InterruptMask);
+		vl53l0_dbgmsg_en(" InterruptMasksssss :%d\n", InterruptMask);
 		if (InterruptMask > 0  && data->interrupt_received == 1) {
 			data->interrupt_received = 0;
 			stmvl53l0_state_process();
@@ -1154,9 +1147,9 @@ static ssize_t stmvl53l0_store_enable_ps_sensor(struct device *dev,
 		return count;
 	}
 	mutex_lock(&data->work_mutex);
-	vl53l0_dbgmsg("Enter, enable_ps_sensor flag:%d\n",
+	vl53l0_dbgmsg_en("Enter, enable_ps_sensor flag:%d\n",
 		data->enable_ps_sensor);
-	vl53l0_dbgmsg("enable ps senosr ( %ld)\n", val);
+	vl53l0_dbgmsg_en("enable ps senosr ( %ld)\n", val);
 
 	if (val == 1) {
 		/* turn on tof sensor */
@@ -1174,7 +1167,7 @@ static ssize_t stmvl53l0_store_enable_ps_sensor(struct device *dev,
 			stmvl53l0_stop(data);
 		}
 	}
-	vl53l0_dbgmsg("End\n");
+	vl53l0_dbgmsg_en("End\n");
 	mutex_unlock(&data->work_mutex);
 
 	return count;
@@ -1212,7 +1205,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 		stmvl53l0_start(data);
 	}
 	if (VL53L0_DEVICEMODE_SINGLE_RANGING == data->d_mode) {
-		vl53l0_dbgmsg("Call of VL53L0_DEVICEMODE_SINGLE_RANGING\n");
+		vl53l0_dbgmsg_en("Call of VL53L0_DEVICEMODE_SINGLE_RANGING\n");
 		Status = papi_func_tbl->SetGpioConfig(data, 0, 0,
 			VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
 			VL53L0_INTERRUPTPOLARITY_LOW);
@@ -1225,7 +1218,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 			&RMData);
 		stmvl53l0_ps_read_measurement(data);
 	} else if (1 == data->d_mode) {
-		vl53l0_dbgmsg("Call of mode 1\n");
+		vl53l0_dbgmsg_en("Call of mode 1\n");
 		Status = papi_func_tbl->SetGpioConfig(data, 0, 0,
 			VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
 			VL53L0_INTERRUPTPOLARITY_LOW);
@@ -1234,7 +1227,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 			VL53L0_DEVICEMODE_CONTINUOUS_RANGING);
 		papi_func_tbl->StartMeasurement(data);
 	} else if (2 == data->d_mode) {
-		vl53l0_dbgmsg("Call of mode 2\n");
+		vl53l0_dbgmsg_en("Call of mode 2\n");
 		Status = papi_func_tbl->SetGpioConfig(data, 0, 0,
 			VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
 			VL53L0_INTERRUPTPOLARITY_LOW);
@@ -1246,7 +1239,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 		papi_func_tbl->StartMeasurement(data);
 
 	} else if (3 == data->d_mode) {
-		vl53l0_dbgmsg("Call  mode 3\n");
+		vl53l0_dbgmsg_en("Call  mode 3\n");
 		papi_func_tbl->SetInterMeasurementPeriodMilliSeconds
 			(data, 0x00001388);
 		papi_func_tbl->SetGpioConfig(data, 0, 0,
@@ -1259,7 +1252,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 			VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 		papi_func_tbl->StartMeasurement(data);
 	} else if (4 == data->d_mode) {
-		vl53l0_dbgmsg("Call of mode 4\n");
+		vl53l0_dbgmsg_en("Call of mode 4\n");
 		Status = papi_func_tbl->SetGpioConfig(data, 0, 0,
 			VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH,
 			VL53L0_INTERRUPTPOLARITY_LOW);
@@ -1368,7 +1361,8 @@ static ssize_t stmvl53l0_store_offset(struct device *dev,
 	}
 	vl53l0_errmsg("%d,set offset=%ld\n", __LINE__, on);
 	data->offset = on * 1000;
-
+	if (data->enable_ps_sensor == 0)
+		stmvl53l0_start(data);
 	return count;
 }
 
@@ -1491,11 +1485,11 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 	if (!data)
 		return -EINVAL;
 
-	vl53l0_errmsg("Enter enable_ps_sensor:%d\n", data->enable_ps_sensor);
+	vl53l0_dbgmsg_en("Enter enable_ps_sensor:%d\n", data->enable_ps_sensor);
 	switch (cmd) {
 		/* enable */
 	case VL53L0_IOCTL_INIT:
-		vl53l0_dbgmsg("VL53L0_IOCTL_INIT\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_INIT\n");
 		stmvl53l0_work_state(data, CAM_ON);
 		break;
 	case VL53L0_IOCTL_INIT_NS:
@@ -1503,23 +1497,25 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 			stmvl53l0_start(data);
 		break;
 	case VL53L0_IOCTL_INIT_NB:
-		vl53l0_dbgmsg("init nb called\n");
-		if (data->enable_ps_sensor == 0)
-			schedule_delayed_work(&data->initwork, 0);
+		vl53l0_dbgmsg_en("init nb called\n");
+		schedule_delayed_work(&data->initwork, 0);
 		break;
 	case VL53L0_IOCTL_SUSPEND:
-		vl53l0_dbgmsg("VL53L0_IOCTL_SUSPEND\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_SUSPEND\n");
 		data->c_suspend = 1;
 		break;
 	case VL53L0_IOCTL_RESUME:
-		vl53l0_dbgmsg("VL53L0_IOCTL_RESUME\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_RESUME\n");
 		data->c_suspend = 0;
 		VL53L0_ClearInterruptMask(data, 0);
 		papi_func_tbl->StartMeasurement(data);
 		break;
+	case VL53L0_IOCTL_RESET:
+		stmvl53l0_work_state(data, RESET);
+		break;
 		/* crosstalk calibration */
 	case VL53L0_IOCTL_XTALKCALB:
-		vl53l0_dbgmsg("VL53L0_IOCTL_XTALKCALB\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_XTALKCALB\n");
 				data->xtalkCalDistance = 100;
 		if (copy_from_user(&targetDistance, (unsigned int *)p,
 			sizeof(unsigned int))) {
@@ -1537,17 +1533,17 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		break;
 		/* set up Xtalk value */
 	case VL53L0_IOCTL_SETXTALK:
-		vl53l0_dbgmsg("VL53L0_IOCTL_SETXTALK\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_SETXTALK\n");
 		if (copy_from_user(&xtalkint, (unsigned int *)p,
 			sizeof(unsigned int))) {
 			vl53l0_errmsg("%d, fail\n", __LINE__);
 			return -EFAULT;
 		}
-		vl53l0_dbgmsg("SETXTALK as 0x%x\n", xtalkint);
+		vl53l0_dbgmsg_en("SETXTALK as 0x%x\n", xtalkint);
 		break;
 		/* offset calibration */
 	case VL53L0_IOCTL_OFFCALB:
-		vl53l0_dbgmsg("VL53L0_IOCTL_OFFCALB\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_OFFCALB\n");
 		data->offsetCalDistance = 50;
 		if (copy_from_user(&targetDistance, (unsigned int *)p,
 			sizeof(unsigned int))) {
@@ -1558,26 +1554,26 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		stmvl53l0_work_state(data, OFFSETCAL_ON);
 		break;
 	case VL53L0_IOCTL_STOPCALB:
-		vl53l0_dbgmsg("VL53L0_IOCTL_STOPCALB\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_STOPCALB\n");
 		stmvl53l0_work_state(data, CAL_OFF);
 		break;
 		/* set up offset value */
 	case VL53L0_IOCTL_SETOFFSET:
-		vl53l0_dbgmsg("VL53L0_IOCTL_SETOFFSET\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_SETOFFSET\n");
 		if (copy_from_user(&offsetint, (int8_t *)p, sizeof(int8_t))) {
 			vl53l0_errmsg("%d, fail\n", __LINE__);
 			return -EFAULT;
 		}
-		vl53l0_dbgmsg("SETOFFSET as %d\n", offsetint);
+		vl53l0_dbgmsg_en("SETOFFSET as %d\n", offsetint);
 
 		break;
 		/* disable */
 	case VL53L0_IOCTL_STOP:
-		vl53l0_dbgmsg("VL53L0_IOCTL_STOP\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_STOP\n");
 		stmvl53l0_work_state(data, CAL_OFF);
 		break;
 	case VL53L0_IOCTL_GETDATAS_BLOCK:
-		vl53l0_dbgmsg("VL53L0_IOCTL_GETDATAS_BLOCK\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_GETDATAS_BLOCK\n");
 		data->d_ready = 0;
 		wait_event_timeout(data->range_data_wait,
 			data->d_ready > 0,
@@ -1591,7 +1587,7 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		break;
 		/* Get all range data */
 	case VL53L0_IOCTL_GETDATAS:
-		vl53l0_dbgmsg("VL53L0_IOCTL_GETDATAS\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_GETDATAS\n");
 		if (data->enable_ps_sensor == 0)
 			return -EFAULT;
 		if (copy_to_user((VL53L0_RangingMeasurementData_t *)p,
@@ -1603,7 +1599,7 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		break;
 		/* Register tool */
 	case VL53L0_IOCTL_REGISTER:
-		vl53l0_dbgmsg("VL53L0_IOCTL_REGISTER\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_REGISTER\n");
 		/* turn on tof sensor */
 		if (data->enable_ps_sensor == 0) {
 			/* to start */
@@ -1616,7 +1612,7 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		}
 		reg.status = 0;
 		page_num = (uint8_t)((reg.reg_index & 0x0000ff00) >> 8);
-		vl53l0_dbgmsg("IOCTL_REGISTER, page num:%d\n", page_num);
+		vl53l0_dbgmsg_en("IOCTL_REGISTER, page num:%d\n", page_num);
 		if (page_num != 0)
 			reg.status = VL53L0_WrByte(vl53l0_dev, 0xFF, page_num);
 
@@ -1665,7 +1661,7 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		break;
 		/* parameter access */
 	case VL53L0_IOCTL_PARAMETER:
-		vl53l0_dbgmsg("VL53L0_IOCTL_PARAMETER\n");
+		vl53l0_dbgmsg_en("VL53L0_IOCTL_PARAMETER\n");
 		/* turn on tof sensor */
 		if (data->enable_ps_sensor == 0) {
 			/* to start */
@@ -1918,7 +1914,7 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 	uint8_t VhvSettings;
 	uint8_t PhaseCal;
 
-	vl53l0_dbgmsg("Enter\n");
+	vl53l0_dbgmsg_en("Enter\n");
 
 	/* Read Model ID */
 	for (i = 0; i < 5; i++) {
@@ -2059,13 +2055,14 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 		vl53l0_dev, (FixPoint1616_t)data->xtalk);
 	papi_func_tbl->SetXTalkCompensationEnable(vl53l0_dev, 1);
 	papi_func_tbl->SetLimitCheckEnable(vl53l0_dev,
+		VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE, 0);
+	papi_func_tbl->SetLimitCheckEnable(vl53l0_dev,
 		VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE, 0);
-
 #ifdef CALIBRATION_FILE
 	/*stmvl53l0_read_calibration_file(data);*/
 #endif
 
-	vl53l0_dbgmsg("End\n");
+	vl53l0_dbgmsg_en("End\n");
 
 	return 0;
 }
@@ -2074,11 +2071,12 @@ irqreturn_t laser_isr(int irq, void *dev)
 {
 	struct stmvl53l0_data *data = gp_vl53l0_data;
 
-	vl53l0_dbgmsg("interrupt called");
+	vl53l0_dbgmsg_en("interrupt called");
 
 	if (data->w_mode != OFF_MODE || data->d_mode > 0) {
-		vl53l0_dbgmsg("have mode");
+		vl53l0_dbgmsg_en("have mode");
 		data->interrupt_received = 1;
+		cancel_delayed_work(&data->dwork);
 		schedule_delayed_work(&data->dwork, 0);
 	}
 
@@ -2103,7 +2101,7 @@ static int stmvl53l0_start(struct stmvl53l0_data *data)
 	}
 
 	data->enable_ps_sensor = 1;
-	vl53l0_dbgmsg("End\n");
+	vl53l0_dbgmsg_en("End\n");
 
 	return rc;
 }
@@ -2112,20 +2110,21 @@ static int stmvl53l0_stop(struct stmvl53l0_data *data)
 {
 	int rc = 0;
 
-	vl53l0_dbgmsg("Enter\n");
+	vl53l0_dbgmsg_en("Enter\n");
 		VL53L0_StopMeasurement(data);
 
 	/* clean interrupt */
 	VL53L0_ClearInterruptMask(data, 0);
 	/* cancel work handler */
 	stmvl53l0_cancel_handler(data);
+	data->enable_ps_sensor = 0;
 	/* power down */
 	rc = pmodule_func_tbl->power_down(data->client_object);
 	if (rc) {
 		vl53l0_errmsg("%d, error rc %d\n", __LINE__, rc);
 		return rc;
 	}
-	vl53l0_dbgmsg("End\n");
+	vl53l0_dbgmsg_en("End\n");
 
 
 	return rc;
@@ -2349,7 +2348,7 @@ static int __init stmvl53l0_init(void)
 
 static void __exit stmvl53l0_exit(void)
 {
-	vl53l0_dbgmsg("Enter\n");
+	vl53l0_dbgmsg_en("Enter\n");
 #if 0
 	if (gp_vl53l0_data) {
 		input_unregister_device(gp_vl53l0_data->input_dev_ps);
@@ -2365,7 +2364,7 @@ static void __exit stmvl53l0_exit(void)
 		gp_vl53l0_data = NULL;
 	}
 #endif
-	vl53l0_dbgmsg("End\n");
+	vl53l0_dbgmsg_en("End\n");
 }
 
 
