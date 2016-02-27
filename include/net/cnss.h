@@ -200,5 +200,24 @@ extern int cnss_wlan_get_dfs_nol(void *info, u16 info_len);
 extern int cnss_pcie_set_wlan_mac_address(const u8 *in, uint32_t len);
 extern u8 *cnss_get_wlan_mac_address(struct device *dev, uint32_t *num);
 extern int cnss_sdio_set_wlan_mac_address(const u8 *in, uint32_t len);
+
+extern void cnss_device_crashed(void);
+extern void cnss_sdio_device_crashed(void);
+extern void cnss_pci_device_crashed(void);
+
+extern void cnss_device_self_recovery(void);
+extern void cnss_pci_device_self_recovery(void);
+extern void cnss_sdio_device_self_recovery(void);
+
+extern int cnss_get_ramdump_mem(unsigned long *address, unsigned long *size);
+
+extern void *cnss_get_virt_ramdump_mem(unsigned long *size);
+extern void *cnss_pci_get_virt_ramdump_mem(unsigned long *size);
+extern void *cnss_sdio_get_virt_ramdump_mem(unsigned long *size);
+
+extern void cnss_schedule_recovery_work(void);
+extern void cnss_sdio_schedule_recovery_work(void);
+extern void cnss_pci_schedule_recovery_work(void);
+
 extern void cnss_dump_stack(struct task_struct *task);
 #endif /* _NET_CNSS_H_ */
