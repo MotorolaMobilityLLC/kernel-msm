@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 and
@@ -30,6 +30,8 @@
 #define ADM_MATRIX_ID_AUDIO_TX              1
 
 #define ADM_MATRIX_ID_COMPRESSED_AUDIO_RX   2
+
+#define ADM_MATRIX_ID_LISTEN_TX		    4
 /* Enumeration for an audio Tx matrix ID.*/
 #define ADM_MATRIX_ID_AUDIOX              1
 
@@ -84,6 +86,7 @@ struct adm_cmd_matrix_map_routings_v5 {
 *	COPP ID.
 */
 #define ADM_CMD_DEVICE_OPEN_V5                          0x00010326
+#define ADM_CMD_DEVICE_OPEN_V6                          0x00010356
 
 /* Definition for a low latency stream session. */
 #define ADM_LOW_LATENCY_DEVICE_SESSION			0x2000
@@ -237,6 +240,43 @@ struct adm_cmd_device_open_v5 {
  */
 } __packed;
 
+/*  ADM device open command payload of the
+ *  #ADM_CMD_DEVICE_OPEN_V6 command.
+ */
+struct adm_cmd_device_open_v6 {
+	struct adm_cmd_device_open_v5 open;
+
+	u16                  ref_end_num_channel;
+/* Number of channels in the data expected at the reference end point
+ * for the voice processing Tx block.
+ * Supported values: 1, 2.
+ * Not applicable and ignored for audio COPP, compressed usecase.
+ */
+
+	u16                  ref_end_bit_width;
+/* bit width(in bits) in the data expected at the reference end point
+ * for the voice processing Tx block.
+ * Supported values: 16bits.
+ * Not applicable and ignored for audio COPP, compressed usecase.
+ */
+
+	u32                  ref_end_sample_rate;
+/* Sampling rate of the data expected at the reference end point
+ * for the voice processing Tx block.
+ * Supported values for voice processor Tx: 8000, 16000, 48000 Hz
+ * Not applicable and ignored for audio COPP, compressed usecase.
+ */
+
+	u8                   ref_end_channel_mapping[8];
+/* Array of channel mapping of buffers that the audio COPP that is expected
+ * at the reference end point for the voice processing Tx block.
+ * Channel[i] mapping describes channel I inside the buffer,
+ * where 0 < i < ref_end_num_channel.
+ * Not applicable and ignored for audio COPP, compressed usecase.
+ */
+} __packed;
+
+
 /*
  *	This command allows the client to close a COPP and disconnect
  *	the device session.
@@ -337,6 +377,7 @@ struct adm_cmd_set_pp_params_inband_v5 {
 /* Returns the status and COPP ID to an #ADM_CMD_DEVICE_OPEN_V5 command.
  */
 #define ADM_CMDRSP_DEVICE_OPEN_V5                      0x00010329
+#define ADM_CMDRSP_DEVICE_OPEN_V6                      0x00010357
 
 /*  Payload of the #ADM_CMDRSP_DEVICE_OPEN_V5 message,
  *	which returns the
@@ -2467,6 +2508,8 @@ struct afe_port_cmdrsp_get_param_v2 {
 #define VPM_TX_DM_FLUENCE_COPP_TOPOLOGY			0x00010F72
 #define VPM_TX_QMIC_FLUENCE_COPP_TOPOLOGY		0x00010F75
 #define VPM_TX_DM_RFECNS_COPP_TOPOLOGY			0x00010F86
+#define VPM_TX_LEC_STEREO_REF				0x00010F8C
+#define VPM_TX_LEC_MONO_REF				0x00010F8D
 #define ADM_CMD_COPP_OPEN_TOPOLOGY_ID_DTS_HPX_0		0x00010347
 #define ADM_CMD_COPP_OPEN_TOPOLOGY_ID_DTS_HPX_1		0x00010348
 #define ADM_CMD_COPP_OPEN_TOPOLOGY_ID_AUDIOSPHERE	0x10015003
@@ -7232,6 +7275,10 @@ struct asm_dts_eagle_param_get {
 #define LSM_PARAM_ID_LAB_ENABLE				(0x00012C09)
 #define LSM_PARAM_ID_LAB_CONFIG				(0x00012C0A)
 #define LSM_MODULE_ID_FRAMEWORK				(0x00012C0E)
+#define LSM_PARAM_ID_SWMAD_CFG				(0x00012C18)
+#define LSM_PARAM_ID_SWMAD_MODEL			(0x00012C19)
+#define LSM_PARAM_ID_SWMAD_ENABLE			(0x00012C1A)
+#define LSM_PARAM_ID_POLLING_ENABLE			(0x00012C1B)
 
 /* HW MAD specific */
 #define AFE_MODULE_HW_MAD				(0x00010230)
@@ -7864,6 +7911,7 @@ enum {
 	LEGACY_PCM = 0,
 	COMPRESSED_PASSTHROUGH,
 	COMPRESSED_PASSTHROUGH_CONVERT,
+	LISTEN,
 };
 
 #define AUDPROC_MODULE_ID_COMPRESSED_MUTE                0x00010770
