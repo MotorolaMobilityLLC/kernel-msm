@@ -85,8 +85,12 @@
 		sensorhub,shared-addr = <0x08020000>;
 		sensorhub,flash-banks = <0 0x08000000 0x04000>,
 			<3 0x0800C000 0x04000>,
-			<4 0x08010000 0x10000>;
-		sensorhub,num-flash-banks = <3>;
+			<4 0x08010000 0x10000>,
+			<5 0x08020000 0x20000>;
+		sensorhub,num-flash-banks = <4>;
+		sensorhub,shared-flash-banks = <6 0x08040000 0x20000>,
+			<7 0x08060000 0x20000>;
+		sensorhub,num-shared-flash-banks = <2>;
 
 		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&sensorhub_ctrl_active>;
@@ -107,4 +111,3 @@
 	regulator-always-on;
 	status = "okay";
 };
-
