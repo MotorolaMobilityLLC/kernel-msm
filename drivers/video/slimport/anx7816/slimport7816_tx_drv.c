@@ -20,9 +20,6 @@
 #include "slimport7816_tx_drv.h"
 #include "slimport7816_tx_reg.h"
 #include "../../msm/mdss/mdss_hdmi_slimport.h"
-#include <linux/slab.h>
-
-#include <linux/mod_display.h>
 
 #define SLIMPORT_DRV_DEBUG
 
@@ -176,18 +173,11 @@ static void hdmi_rx_new_vsi_int(void);
 
 #define hdmi_rx_set_hpd(enable) \
 	do { \
-		if ((bool)enable) { \
+		if ((bool)enable) \
 			sp_write_reg_or(TX_P2, SP_TX_VID_CTRL3_REG, HPD_OUT); \
-			/* TODO: hack for P0 HDMI HPD detection */ \
-			hdmi_hpd_hack(1); \
-			pr_debug("%s %s : hdmi_hpd_hack 1 !\n", LOG_TAG, __func__); \
-		} else {\
+		else \
 			sp_write_reg_and(TX_P2, SP_TX_VID_CTRL3_REG, \
 								~HPD_OUT); \
-			/* TODO: hack for P0 HDMI HPD detection */ \
-			hdmi_hpd_hack(0); \
-			pr_debug("%s %s : hdmi_hpd_hack 0 !\n", LOG_TAG, __func__); \
-		} \
 	} while (0)
 
 #define hdmi_rx_set_termination(enable) \
@@ -917,6 +907,8 @@ void slimport_waitting_cable_plug_process(void)
 		slimport_set_hdmi_hpd(1);
 #endif
 		hardware_power_ctl(1);
+		/* TODO: hack for P0 HDMI HPD detection */
+		hdmi_hpd_hack(1);
 		goto_next_system_state();
 	} else {
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
@@ -1628,24 +1620,8 @@ void slimport_edid_process(void)
 {
 	unchar temp_value, temp_value1;
 	unchar i;
-	struct mod_display_panel_config *display_config = NULL;
-	int ret;
 
 	pr_debug("%s %s : edid_process\n", LOG_TAG, __func__);
-
-	ret = mod_display_get_display_config(&display_config);
-	if (ret) {
-		pr_err("%s: Failed to get display config: %d\n", __func__, ret);
-		memset(edid_blocks, 0, 256);
-		return;
-	} else {
-		if (display_config->edid_buf_size > 256) {
-			pr_err("%s: EDID too big: %d\n", __func__, display_config->edid_buf_size);
-		} else {
-			memcpy(edid_blocks, display_config->edid_buf, display_config->edid_buf_size);
-			goto skip_me;
-		}
-	}
 
 	/* mdelay(200); */
 	if (g_read_edid_flag == 1) {
@@ -1663,7 +1639,7 @@ void slimport_edid_process(void)
 							LOG_TAG, __func__);
 	}
 
-skip_me:
+
 	/*Release the HPD after the EEPROM loaddown*/
 	i = 10;
 	do {
@@ -1705,9 +1681,6 @@ skip_me:
 							MSG_INPUT_DVI);
   */
 	goto_next_system_state();
-
-	if (display_config)
-		kfree(display_config);
 }
 #endif
 /******************End EDID process********************/
