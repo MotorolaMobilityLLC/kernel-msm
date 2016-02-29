@@ -135,6 +135,7 @@ struct log_level_table fw_event_level_map[] = {
 /* reference tab table */
 uint ref_tag_tbl[EVENT_LOG_TAG_MAX + 1] = {0};
 
+
 typedef struct dhddbg_loglist_item {
 	dll_t list;
 	event_log_hdr_t *hdr;
@@ -174,16 +175,16 @@ get_entry(dhd_dbg_ring_t *ring, int32 offset)
 	 * A length == 0 record is the end of buffer marker. Wrap around and
 	 * read the message at the start of the buffer.
 	 */
-	if (!entry->len)
+	if (!entry->len) {
 		return (dhd_dbg_ring_entry_t *)ring->ring_buf;
+	}
 	return entry;
 }
 
 int
 dhd_dbg_ring_pull(dhd_pub_t *dhdp, int ring_id, void *data, uint32 buf_len)
 {
-	uint32 avail_len, r_len = 0;
-	unsigned long flags;
+	int32 avail_len, r_len = 0;
 	dhd_dbg_ring_t *ring;
 	dhd_dbg_ring_entry_t *hdr;
 
@@ -193,10 +194,14 @@ dhd_dbg_ring_pull(dhd_pub_t *dhdp, int ring_id, void *data, uint32 buf_len)
 	if (ring->state != RING_ACTIVE)
 		return r_len;
 
-	flags = dhd_os_spin_lock(ring->lock);
-
 	/* get a fresh pending length */
 	avail_len = READ_AVAIL_SPACE(ring->wp, ring->rp, ring->ring_size);
+	if (ring->no_space) {
+		avail_len = avail_len - ring->rem_len + ring->wp;
+		ring->no_space = FALSE;
+		ring->wp_pad = 0;
+		ring->rem_len = 0;
+	}
 	while (avail_len > 0 && buf_len > 0) {
 		hdr = get_entry(ring, ring->rp);
 		memcpy(data, hdr, ENTRY_LENGTH(hdr));
@@ -210,7 +215,6 @@ dhd_dbg_ring_pull(dhd_pub_t *dhdp, int ring_id, void *data, uint32 buf_len)
 		DHD_RING(("%s read_bytes  %d\n", __FUNCTION__,
 			ring->stat.read_bytes));
 	}
-	dhd_os_spin_unlock(ring->lock, flags);
 
 	return r_len;
 }
@@ -219,7 +223,8 @@ int
 dhd_dbg_ring_push(dhd_pub_t *dhdp, int ring_id, dhd_dbg_ring_entry_t *hdr, void *data)
 {
 	unsigned long flags;
-	uint32 w_len;
+	uint32 pending_len;
+	int w_len, diff;
 	dhd_dbg_ring_t *ring;
 	dhd_dbg_ring_entry_t *w_entry;
 	if (!dhdp || !dhdp->dbg)
@@ -235,16 +240,28 @@ dhd_dbg_ring_push(dhd_pub_t *dhdp, int ring_id, dhd_dbg_ring_entry_t *hdr, void 
 	w_len = ENTRY_LENGTH(hdr);
 	/* prep the space */
 	do {
-		if (ring->rp == ring->wp)
+		if (ring->rp == ring->wp) {
+			if ((diff = (ring->ring_size - ring->wp)) < w_len) {
+				ring->no_space = TRUE;
+				ring->wp_pad = ring->wp;
+				ring->rem_len = ring->ring_size - ring->wp_pad;
+				/* 0 pad insufficient tail space */
+				memset(ring->ring_buf + ring->wp, 0,
+					   DBG_RING_ENTRY_SIZE);
+				ring->wp = 0;
+				continue;
+			}
 			break;
+		}
 		if (ring->rp < ring->wp) {
-			if (ring->ring_size - ring->wp == w_len) {
-				if (ring->rp == 0)
+		 	if ((diff = (ring->ring_size - ring->wp)) <= w_len) {
+				if (ring->rp == 0) {
 					ring->rp = next_entry(ring, ring->rp);
-				break;
-			} else if (ring->ring_size - ring->wp < w_len) {
-				if (ring->rp == 0)
-					ring->rp = next_entry(ring, ring->rp);
+				} else {
+					ring->no_space = TRUE;
+					ring->wp_pad = ring->wp;
+					ring->rem_len = ring->ring_size - ring->wp_pad;
+				}
 				/* 0 pad insufficient tail space */
 				memset(ring->ring_buf + ring->wp, 0,
 				       DBG_RING_ENTRY_SIZE);
@@ -255,12 +272,7 @@ dhd_dbg_ring_push(dhd_pub_t *dhdp, int ring_id, dhd_dbg_ring_entry_t *hdr, void 
 			}
 		}
 		if (ring->rp > ring->wp) {
-			if (ring->rp - ring->wp <= w_len) {
-				ring->rp = next_entry(ring, ring->rp);
-				continue;
-			} else {
-				break;
-			}
+			break;
 		}
 	} while (1);
 
@@ -275,15 +287,17 @@ dhd_dbg_ring_push(dhd_pub_t *dhdp, int ring_id, dhd_dbg_ring_entry_t *hdr, void 
 	/* update statistics */
 	ring->stat.written_records++;
 	ring->stat.written_bytes += w_len;
-	dhd_os_spin_unlock(ring->lock, flags);
 	DHD_RING(("%s : written_records %d, written_bytes %d\n", __FUNCTION__,
 		ring->stat.written_records, ring->stat.written_bytes));
 
 	/* if the current pending size is bigger than threshold */
+	pending_len = ring->stat.written_bytes - ring->stat.read_bytes;
+	dhd_os_spin_unlock(ring->lock, flags);
 	if (ring->threshold > 0 &&
-		(READ_AVAIL_SPACE(ring->wp, ring->rp, ring->ring_size) >=
-	    ring->threshold))
+		(pending_len >= ring->threshold) && ring->sched_pull) {
 		dhdp->dbg->pullreq(dhdp->dbg->private, ring->id);
+		ring->sched_pull = FALSE;
+	}
 	return  BCME_OK;
 }
 
@@ -738,6 +752,7 @@ dhd_dbg_ring_init(dhd_pub_t *dhdp, dhd_dbg_ring_t *ring, uint16 id, uint8 *name,
 	ring->ring_buf = buf;
 	ring->threshold = DBGRING_FLUSH_THRESHOLD(ring);
 	ring->state = RING_SUSPEND;
+	ring->sched_pull = TRUE;
 	dhd_os_spin_unlock(ring->lock, flags);
 
 	return BCME_OK;

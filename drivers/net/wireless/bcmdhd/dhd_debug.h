@@ -66,7 +66,8 @@ enum {
 /* DHD connection event ring, ring id 3 */
 #define DHD_EVENT_RING_NAME		"dhd_event"
 #define DHD_EVENT_RING_SIZE		(64 * 1024)
-
+/* Default interval for all rings */
+#define DEFAULT_INTERVAL 5
 /* driver receive association command from kernel */
 #define WIFI_EVENT_ASSOCIATION_REQUESTED 0
 #define WIFI_EVENT_AUTH_COMPLETE 1
@@ -640,6 +641,11 @@ typedef struct dhd_dbg_ring {
 	void *	lock;		/* spin lock for ring access */
 	struct ring_statistics stat; /* statistics */
 	enum dbg_ring_state state;	/* ring state enum */
+	uint32  wp_pad; /* padding start position */
+	bool no_space; /* writer does not have enough space */
+	uint32 rem_len; /* number of bytes from wp_pad to end */
+	bool sched_pull; /* schedule reader immediately */
+
 } dhd_dbg_ring_t;
 
 typedef struct dhd_dbg {
