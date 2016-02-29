@@ -46,6 +46,7 @@
 	/delete-node/ i2c@7af5000;
 	/delete-node/ spi@78b7000;
 	/delete-node/ adv_vreg;
+	/delete-node/ sound-9335;
 
 	dummy_vreg: dummy_vreg {
 		compatible = "regulator-fixed";
@@ -281,11 +282,9 @@
 			gpio-base = <200>;
 			wlf,reset = <&tlmm 68 0>;
 			wlf,irq = <&tlmm 46 0>;
-			wlf,out-mono = <0 1 0 0 0 0>;
-			wlf,micbias1 = <1800 1 1 0 0>;
-			wlf,micbias2 = <1800 1 1 0 0>;
-			wlf,micbias3 = <1800 1 1 0 0>;
-			vreg-arizona1p2-supply = <&dummy_vreg>;
+			wlf,out-mono = <1 0 0 0 0 0>;
+			wlf,micbias1 = <1800 1 1 1 1 0>;
+			wlf,micbias2 = <1800 1 1 1 1 0>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&marley_irq_default &marley_reset_default>;
 
@@ -296,11 +295,30 @@
 			CPVDD1-supply = <&pmtitanium_l6>;
 			CPVDD2-supply = <&pmtitanium_l6>;
 			DCVDD-supply = <&pmtitanium_l6>;
-			SPKVDDL-supply = <&dummy_vreg>;
-			SPKVDDR-supply = <&dummy_vreg>;
+			SPKVDD-supply = <&dummy_vreg>;
 
 			gpio-controller;
 			#gpio-cells = <2>;
+
+			wlf,gpio-defaults = <
+				0x00002000 0x0000f000 /* AIF3TXDAT / GPIO1  */
+				0x00002000 0x0000f000 /* AIF3BCLK  / GPIO2  */
+				0x00000040 0x00000000 /* AIF3RXDAT / GPIO3  */
+				0x00002000 0x0000f000 /* AIF3LRCLK / GPIO4  */
+				0xffffffff 0xffffffff /* GPIO5 */
+				0xffffffff 0xffffffff /* GPIO6 */
+				0x00002000 0x0000f000 /* MIF1SDA   / GPIO7  */
+				0x00002000 0x0000f000 /* AIF1RXDAT / GPIO8  */
+				0x00002000 0x0000f000 /* AIF1BCLK  / GPIO9  */
+				0x00002000 0x0000f000 /* AIF1TXDAT / GPIO10 */
+				0x00002000 0x0000f000 /* AIF1LRCLK / GPIO11 */
+				0x00002000 0x0000f000 /* AIF2TXDAT / GPIO12 */
+				0x00002000 0x0000f000 /* AIF2BCLK  / GPIO13 */
+				0x00002000 0x0000f000 /* AIF2RXDAT / GPIO14 */
+				0x00002000 0x0000f000 /* AIF2LRCLK / GPIO15 */
+				0x00002000 0x0000f000 /* MIF1SCLK  / GPIO16 */
+			>;
+
 		};
 	};
 
@@ -473,6 +491,47 @@
 		dwc3@7000000 {
 			controller-number = /bits/ 8 <1>;
 		};
+	};
+
+	sound {
+		status = "ok";
+		compatible = "qcom,msm8952-audio-slim-codec";
+		qcom,model = "msm8952-marley-card";
+
+		/* qcom,marley-mclk-clk-freq = <9600000>; */
+		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+			<&loopback>, <&compress>, <&hostless>,
+			<&afe>, <&lsm>, <&routing>, <&cpe>, <&lpa>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+			"msm-pcm-dsp.2", "msm-voip-dsp",
+			"msm-pcm-voice", "msm-pcm-loopback",
+			"msm-compress-dsp", "msm-pcm-hostless",
+			"msm-pcm-afe", "msm-lsm-client",
+			"msm-pcm-routing", "msm-cpe-lsm",
+			"msm-pcm-lpa";
+		asoc-cpu = <&dai_mi2s2>, <&dai_mi2s5>,
+			<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+			<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
+			<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>,
+			<&afe_pcm_rx>, <&afe_pcm_tx>,
+			<&afe_proxy_rx>, <&afe_proxy_tx>,
+			<&incall_record_rx>, <&incall_record_tx>,
+			<&incall_music_rx>, <&incall_music_2_rx>,
+			<&sb_5_rx>;
+		asoc-cpu-names = "msm-dai-q6-mi2s.2",
+			"msm-dai-q6-mi2s.5",
+			"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
+			"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+			"msm-dai-q6-dev.16388", "msm-dai-q6-dev.16389",
+			"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+			"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+			"msm-dai-q6-dev.16395", "msm-dai-q6-dev.224",
+			"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
+			"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
+			"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
+			"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394";
+		asoc-codec = <&stub_codec>;
+		asoc-codec-names = "msm-stub-codec.1";
 	};
 };
 
