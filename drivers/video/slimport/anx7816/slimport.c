@@ -1120,7 +1120,7 @@ static unsigned char confirmed_cable_det(void *data)
 		if (gpio_get_value(anx7816->pdata->gpio_cbl_det)
 				== DONGLE_CABLE_INSERT)
 			cable_det_count++;
-		mdelay(5);
+		usleep_range(5000, 5000);
 	} while (count--);
 
 	return (cable_det_count > 5) ? 0 : 1;
