@@ -3820,11 +3820,13 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA)
 {
 	enum power_supply_type power_supply_type;
 	union power_supply_propval propval;
+	static enum dwc3_chg_type last_chg_type = -EINVAL;
 
 	if (mdwc->charging_disabled)
 		return 0;
 
-	if (mdwc->chg_type != DWC3_INVALID_CHARGER) {
+	if ((mdwc->chg_type != DWC3_INVALID_CHARGER) ||
+	    (last_chg_type == mdwc->chg_type)) {
 		dev_dbg(mdwc->dev,
 			"SKIP setting power supply type again,chg_type = %d\n",
 			mdwc->chg_type);
@@ -3833,7 +3835,7 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA)
 
 	dev_dbg(mdwc->dev, "Requested curr from USB = %u, max-type-c:%u\n",
 					mA, mdwc->typec_current_max);
-
+	last_chg_type = mdwc->chg_type;
 	if (mdwc->chg_type == DWC3_SDP_CHARGER)
 		power_supply_type = POWER_SUPPLY_TYPE_USB;
 	else if (mdwc->chg_type == DWC3_CDP_CHARGER)
