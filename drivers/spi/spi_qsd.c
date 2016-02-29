@@ -1724,8 +1724,13 @@ static int msm_spi_prepare_transfer_hardware(struct spi_master *master)
 	int resume_state = 0;
 
 	resume_state = pm_runtime_get_sync(dd->dev);
-	if (resume_state < 0)
+	if (resume_state < 0 && resume_state != -EACCES) {
+		dev_err(dd->dev, "pm_runtime_get_sync: %d\n", resume_state);
 		goto spi_finalize;
+	}
+
+	if (resume_state == -EACCES)
+		dev_warn(dd->dev, "pm runtime disabled\n");
 
 	/*
 	 * Counter-part of system-suspend when runtime-pm is not enabled.
