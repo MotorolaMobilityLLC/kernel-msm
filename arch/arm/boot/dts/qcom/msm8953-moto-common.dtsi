@@ -345,6 +345,55 @@
 		pinctrl-0 = <&muc_attach &spi_1_sleep &muc_spi_ctrl>;
 		pinctrl-1 = <&muc_attach &spi_1_active &muc_spi_ctrl>;
 	};
+
+	apba_ctrl {
+		compatible = "mmi,apba-ctrl";
+		reg = <0 0>;
+		clock-names = "apba_mclk";
+		clocks = <&clock_gcc clk_bb_clk2_a>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&apba_default>;
+		gpios = <&tlmm 39 2>,      /* APBA_1P1_EN, output-high */
+			<&tlmm 140 0>,     /* APBA_BOOTRET, output-low */
+			<&pmi8950_mpps 2 2>, /* MOD_MPHY_I2S_SEL, output-high */
+			<&tlmm 132 0>,     /* APBA_RESET_N, output-low */
+			<&tlmm 62 1>,      /* APBA_INT_N, in */
+			<&tlmm 41 2>,      /* APBA_SFLASH_EN, output-high */
+			<&tlmm 141 2>;     /* APBA_WAKE, output-high */
+		mmi,gpio-labels = "gpio_apba_1p1_en",
+				  "gpio_apba_bootret",
+				  "gpio_mphy_i2s_sel",
+				  "gpio_apba_rst_n",
+				  "gpio_apba_int_n",
+				  "gpio_apba_sflash_en",
+				  "gpio_apba_wake";
+		mmi,int-index = <4>;
+		mmi,enable-seq = <5 1 0>, <0 1 0>, <1 0 0>, <2 0 0>, <3 0 50>,
+				 <3 1 50>;
+		mmi,disable-seq = <1 0 0>, <2 1 0>, <3 0 50>, <5 0 0>, <0 0 0>;
+		mmi,wake-assert-seq = <5 0 0>;
+		mmi,wake-deassert-seq = <5 1 0>;
+	};
+};
+
+&pmi8950_mpps {
+	mpp@a000 { /* MPP1 MOD_MPHY_I2S_EN */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <0>;	/* Output low (disabled) */
+		status = "okay";
+	};
+
+	mpp@a100 { /* MPP2 MOD_MPHY_I2S_SEL */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <1>;	/* Output high */
+		status = "okay";
+	};
 };
 
 &spi_1 {
