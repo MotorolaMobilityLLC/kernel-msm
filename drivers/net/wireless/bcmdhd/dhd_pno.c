@@ -2619,7 +2619,7 @@ exit:
 	return err;
 }
 
-/* Cleanup any consumed results 
+/* Cleanup any consumed results
  * Return TRUE if all results consumed else FALSE
  */
 int dhd_gscan_batch_cache_cleanup(dhd_pub_t *dhd)
@@ -2691,6 +2691,12 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 	}
 
 	plbestnet = (wl_pfn_lscanresults_t *)MALLOC(dhd->osh, PNO_BESTNET_LEN);
+	if (!plbestnet) {
+		DHD_ERROR(("%s :Out of memory!! Cant malloc %d bytes\n", __FUNCTION__,
+		      PNO_BESTNET_LEN));
+		err = BCME_NOMEM;
+		goto exit;
+	}
 
 	mutex_lock(&_pno_state->pno_mutex);
 
@@ -2736,7 +2742,7 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 			/* Unlikely to happen, but just in case the results from
 			 * FW doesnt make sense..... Assume its part of one single scan
 			 */
-			if (num_scans_in_cur_iter > gscan_params->mscan) {
+			if (num_scans_in_cur_iter >= gscan_params->mscan) {
 				num_scans_in_cur_iter = 0;
 				count = plbestnet->count;
 				break;
@@ -2748,8 +2754,10 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 			}
 			timestamp = plnetinfo->timestamp;
 		}
-		nAPs_per_scan[num_scans_in_cur_iter] = count;
-		num_scans_in_cur_iter++;
+		if (num_scans_in_cur_iter < gscan_params->mscan) {
+			nAPs_per_scan[num_scans_in_cur_iter] = count;
+			num_scans_in_cur_iter++;
+		}
 
 		DHD_PNO(("num_scans_in_cur_iter %d\n", num_scans_in_cur_iter));
 		plnetinfo = &plbestnet->netinfo[0];
@@ -2775,6 +2783,7 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 
 			DHD_PNO(("scan_id %d tot_count %d\n", gscan_params->scan_id, nAPs_per_scan[i]));
 			iter->tot_count = nAPs_per_scan[i];
+			iter->scan_ch_bucket = 0;
 			iter->tot_consumed = 0;
 			iter->flag = 0;
 			if (plnetinfo->flags & PFN_PARTIAL_SCAN_MASK) {
@@ -2801,10 +2810,10 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 				/* Info not available & not expected */
 				result->beacon_period = 0;
 				result->capability = 0;
-				result->ie_length = 0;
 				result->rtt = (uint64) plnetinfo->rtt0;
 				result->rtt_sd = (uint64) plnetinfo->rtt1;
-				result->ts = convert_fw_rel_time_to_systime(&tm_spec, plnetinfo->timestamp);
+				result->ts = convert_fw_rel_time_to_systime(&tm_spec,
+					plnetinfo->timestamp);
 				ts = plnetinfo->timestamp;
 				if (plnetinfo->pfnsubnet.SSID_len > DOT11_MAX_SSID_LEN) {
 					DHD_ERROR(("%s: Invalid SSID length %d\n",
@@ -3661,7 +3670,7 @@ dhd_process_full_gscan_result(dhd_pub_t *dhd, const void *data, int *size)
 {
 	wl_bss_info_t *bi = NULL;
 	wl_gscan_result_t *gscan_result;
-	wifi_gscan_result_t *result = NULL;
+	wifi_gscan_full_result_t *result = NULL;
 	u32 bi_length = 0;
 	uint8 channel;
 	uint32 mem_needed;
@@ -3691,30 +3700,30 @@ dhd_process_full_gscan_result(dhd_pub_t *dhd, const void *data, int *size)
 		bi->SSID_len = DOT11_MAX_SSID_LEN;
 	}
 
-	mem_needed = OFFSETOF(wifi_gscan_result_t, ie_data) + bi->ie_length;
-	result = kmalloc(mem_needed, GFP_KERNEL);
+	mem_needed = OFFSETOF(wifi_gscan_full_result_t, ie_data) + bi->ie_length;
+	result = (wifi_gscan_full_result_t *) kmalloc(mem_needed, GFP_KERNEL);
 
 	if (!result) {
 		DHD_ERROR(("%s Cannot malloc scan result buffer %d bytes\n",
 		  __FUNCTION__, mem_needed));
 		goto exit;
 	}
-
-	memcpy(result->ssid, bi->SSID, bi->SSID_len);
-	result->ssid[bi->SSID_len] = '\0';
+	result->scan_ch_bucket = 0;
+	memcpy(result->fixed.ssid, bi->SSID, bi->SSID_len);
+	result->fixed.ssid[bi->SSID_len] = '\0';
 	channel = wf_chspec_ctlchan(bi->chanspec);
-	result->channel = wf_channel2mhz(channel,
+	result->fixed.channel = wf_channel2mhz(channel,
 		(channel <= CH_MAX_2G_CHANNEL?
 		WF_CHAN_FACTOR_2_4_G : WF_CHAN_FACTOR_5_G));
-	result->rssi = (int32) bi->RSSI;
-	result->rtt = 0;
-	result->rtt_sd = 0;
+	result->fixed.rssi = (int32) bi->RSSI;
+	result->fixed.rtt = 0;
+	result->fixed.rtt_sd = 0;
 	get_monotonic_boottime(&ts);
-	result->ts = (uint64) TIMESPEC_TO_US(ts);
-	result->beacon_period = dtoh16(bi->beacon_period);
-	result->capability = dtoh16(bi->capability);
+	result->fixed.ts = (uint64) TIMESPEC_TO_US(ts);
+	result->fixed.beacon_period = dtoh16(bi->beacon_period);
+	result->fixed.capability = dtoh16(bi->capability);
 	result->ie_length = dtoh32(bi->ie_length);
-	memcpy(&result->macaddr, &bi->BSSID, ETHER_ADDR_LEN);
+	memcpy(&result->fixed.macaddr, &bi->BSSID, ETHER_ADDR_LEN);
 	memcpy(result->ie_data, ((uint8 *)bi + bi->ie_offset), bi->ie_length);
 	*size = mem_needed;
 exit:
@@ -3822,41 +3831,42 @@ void *
 dhd_pno_process_anqpo_result(dhd_pub_t *dhd, const void *data, uint32 event, int *size)
 {
 	wl_bss_info_t *bi = (wl_bss_info_t *)data;
-	wifi_gscan_result_t *result = NULL;
+	wifi_gscan_full_result_t *result = NULL;
 	wl_event_gas_t *gas_data = (wl_event_gas_t *)((uint8 *)data +
-				OFFSETOF(wifi_gscan_result_t, ie_data) + bi->ie_length);
+		bi->ie_offset + bi->ie_length);
 	uint8 channel;
 	uint32 mem_needed;
 	struct timespec ts;
 
 	if (event == WLC_E_PFN_NET_FOUND) {
-		mem_needed = OFFSETOF(wifi_gscan_result_t, ie_data) + bi->ie_length +
+		mem_needed = OFFSETOF(wifi_gscan_full_result_t, ie_data) + bi->ie_length +
 				OFFSETOF(wl_event_gas_t, data) + gas_data->data_len +
 				sizeof(int);
-		result = (wifi_gscan_result_t *) kmalloc(mem_needed, GFP_KERNEL);
-		if (NULL == result) {
+		result = (wifi_gscan_full_result_t *) kmalloc(mem_needed, GFP_KERNEL);
+		if (result == NULL) {
 			DHD_ERROR(("%s Cannot Malloc %d bytes!!\n", __FUNCTION__, mem_needed));
 			return NULL;
 		}
 
-		memcpy(result->ssid, bi->SSID, bi->SSID_len);
-		result->ssid[bi->SSID_len] = '\0';
+		memcpy(result->fixed.ssid, bi->SSID, bi->SSID_len);
+		result->fixed.ssid[bi->SSID_len] = '\0';
 		channel = wf_chspec_ctlchan(bi->chanspec);
-		result->channel = wf_channel2mhz(channel,
+		result->fixed.channel = wf_channel2mhz(channel,
 			(channel <= CH_MAX_2G_CHANNEL?
 			WF_CHAN_FACTOR_2_4_G : WF_CHAN_FACTOR_5_G));
-		result->rssi = (int32) bi->RSSI;
-		result->rtt = 0;
-		result->rtt_sd = 0;
+		result->fixed.rssi = (int32) bi->RSSI;
+		result->fixed.rtt = 0;
+		result->fixed.rtt_sd = 0;
+		result->scan_ch_bucket = 0;
 		get_monotonic_boottime(&ts);
-		result->ts = (uint64) TIMESPEC_TO_US(ts);
-		result->beacon_period = dtoh16(bi->beacon_period);
-		result->capability = dtoh16(bi->capability);
+		result->fixed.ts = (uint64) TIMESPEC_TO_US(ts);
+		result->fixed.beacon_period = dtoh16(bi->beacon_period);
+		result->fixed.capability = dtoh16(bi->capability);
 		result->ie_length = dtoh32(bi->ie_length);
-		memcpy(&result->macaddr, &bi->BSSID, ETHER_ADDR_LEN);
+		memcpy(&result->fixed.macaddr, &bi->BSSID, ETHER_ADDR_LEN);
 		memcpy(result->ie_data, ((uint8 *)bi + bi->ie_offset), bi->ie_length);
 		/* append ANQP data to end of scan result */
-		memcpy((uint8 *)result+OFFSETOF(wifi_gscan_result_t, ie_data)+bi->ie_length,
+		memcpy((uint8 *)result+OFFSETOF(wifi_gscan_full_result_t, ie_data)+bi->ie_length,
 			gas_data, OFFSETOF(wl_event_gas_t, data)+gas_data->data_len);
 		/* append network id to end of result */
 		memcpy((uint8 *)result+mem_needed-sizeof(int),
@@ -3913,21 +3923,19 @@ void *dhd_handle_hotlist_scan_evt(dhd_pub_t *dhd, const void *event_data, int *s
 
 	gscan_hotlist_cache->tot_count = results->count;
 	gscan_hotlist_cache->tot_consumed = 0;
+	gscan_hotlist_cache->scan_ch_bucket = 0;
 	plnetinfo = results->netinfo;
 
 	for (i = 0; i < results->count; i++, plnetinfo++) {
 		hotlist_found_array = &gscan_hotlist_cache->results[i];
+		memset(hotlist_found_array, 0, sizeof(wifi_gscan_result_t));
 		hotlist_found_array->channel = wf_channel2mhz(plnetinfo->pfnsubnet.channel,
 			(plnetinfo->pfnsubnet.channel <= CH_MAX_2G_CHANNEL?
 			WF_CHAN_FACTOR_2_4_G : WF_CHAN_FACTOR_5_G));
 		hotlist_found_array->rssi = (int32) plnetinfo->RSSI;
-		/* Info not available & not expected */
-		hotlist_found_array->beacon_period = 0;
-		hotlist_found_array->capability = 0;
-		hotlist_found_array->ie_length = 0;
 
 		hotlist_found_array->ts =
-		       convert_fw_rel_time_to_systime(&tm_spec, plnetinfo->timestamp);
+		       convert_fw_rel_time_to_systime(&tm_spec, (plnetinfo->timestamp * 1000));
 		if (plnetinfo->pfnsubnet.SSID_len > DOT11_MAX_SSID_LEN) {
 			DHD_ERROR(("Invalid SSID length %d: trimming it to max\n",
 			          plnetinfo->pfnsubnet.SSID_len));

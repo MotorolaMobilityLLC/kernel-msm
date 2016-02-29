@@ -336,9 +336,15 @@ typedef struct wifi_gscan_result {
     uint64 rtt_sd;                       /* standard deviation in rtt   */
     uint16 beacon_period;                /* units are Kusec             */
     uint16 capability;		            /* Capability information       */
+    uint32 pad;
+} wifi_gscan_result_t;
+
+typedef struct wifi_gscan_full_result {
+    wifi_gscan_result_t fixed;
+    uint32 scan_ch_bucket;
     uint32 ie_length;		            /* byte length of Information Elements */
     char  ie_data[1];					/* IE data to follow       */
-} wifi_gscan_result_t;
+} wifi_gscan_full_result_t;
 
 typedef struct gscan_results_cache {
 	struct gscan_results_cache *next;
@@ -346,6 +352,7 @@ typedef struct gscan_results_cache {
 	uint8  flag;
 	uint8  tot_count;
 	uint8  tot_consumed;
+	uint32 scan_ch_bucket;
 	wifi_gscan_result_t results[1];
 } gscan_results_cache_t;
 
