@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -86,6 +86,11 @@ struct lsm_priv {
 	wait_queue_head_t period_wait;
 	int appl_cnt;
 	int dma_write;
+};
+
+enum { /* lsm session states */
+	IDLE = 0,
+	RUNNING,
 };
 
 static int msm_lsm_queue_lab_buffer(struct lsm_priv *prtd, int i)
@@ -716,6 +721,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 	struct snd_lsm_event_status *user = arg;
 	struct snd_lsm_detection_params det_params;
 	uint8_t *confidence_level = NULL;
+	bool poll_en;
 
 	if (!substream || !substream->private_data) {
 		pr_err("%s: Invalid %s\n", __func__,
@@ -852,10 +858,32 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 		rc = q6lsm_set_data(prtd->lsm_client,
 			       det_params.detect_mode,
 			       det_params.detect_failure);
+
 		if (rc)
 			dev_err(rtd->dev,
 				"%s: Failed to set params, err = %d\n",
 				__func__, rc);
+		else {
+			poll_en = det_params.poll_enable;
+			if (prtd->lsm_client->poll_enable == poll_en) {
+				dev_dbg(rtd->dev,
+					"%s: Polling for session %d already %s\n",
+					__func__, prtd->lsm_client->session,
+					(poll_en ? "enabled" : "disabled"));
+				rc = 0;
+			} else {
+				dev_dbg(rtd->dev, "%s: polling enable = %d\n",
+					 __func__, poll_en);
+				rc = q6lsm_polling_enable(prtd->lsm_client,
+								poll_en);
+				if (!rc)
+					prtd->lsm_client->poll_enable = poll_en;
+				else
+					dev_err(rtd->dev,
+						"%s: poll enable failed %d\n",
+						__func__, rc);
+			}
+		}
 
 		kfree(prtd->lsm_client->confidence_levels);
 		prtd->lsm_client->confidence_levels = NULL;
@@ -1697,6 +1725,10 @@ static int msm_lsm_open(struct snd_pcm_substream *substream)
 		runtime->private_data = NULL;
 		return -ENOMEM;
 	}
+	prtd->lsm_client->session_state = IDLE;
+	prtd->lsm_client->poll_enable = true;
+	prtd->lsm_client->perf_mode = 0;
+
 	return 0;
 }
 
@@ -1705,6 +1737,7 @@ static int msm_lsm_prepare(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct lsm_priv *prtd = runtime->private_data;
 	struct snd_soc_pcm_runtime *rtd;
+	int ret = 0;
 
 	if (!substream->private_data) {
 		pr_err("%s: Invalid private_data", __func__);
@@ -1718,9 +1751,26 @@ static int msm_lsm_prepare(struct snd_pcm_substream *substream)
 			"%s: LSM client data ptr is NULL\n", __func__);
 		return -EINVAL;
 	}
+
+	if (prtd->lsm_client->session_state == IDLE) {
+		ret = msm_pcm_routing_reg_phy_compr_stream(
+				rtd->dai_link->be_id,
+				prtd->lsm_client->perf_mode,
+				prtd->lsm_client->session,
+				SNDRV_PCM_STREAM_CAPTURE,
+				LISTEN);
+		if (ret) {
+			dev_err(rtd->dev,
+				"%s: register phy compr stream failed %d\n",
+					__func__, ret);
+			return ret;
+		}
+	}
+
+	prtd->lsm_client->session_state = RUNNING;
 	prtd->lsm_client->started = false;
 	runtime->private_data = prtd;
-	return 0;
+	return ret;
 }
 
 static int msm_lsm_close(struct snd_pcm_substream *substream)
@@ -1764,6 +1814,9 @@ static int msm_lsm_close(struct snd_pcm_substream *substream)
 			dev_dbg(rtd->dev, "%s: dereg_snd_model succesful\n",
 				 __func__);
 	}
+
+	msm_pcm_routing_dereg_phy_stream(rtd->dai_link->be_id,
+					SNDRV_PCM_STREAM_CAPTURE);
 
 	q6lsm_close(prtd->lsm_client);
 	q6lsm_client_free(prtd->lsm_client);
