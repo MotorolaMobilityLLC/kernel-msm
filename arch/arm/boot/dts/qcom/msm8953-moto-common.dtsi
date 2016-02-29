@@ -201,9 +201,9 @@
 			ct406_als_lux2_div = <0x80>;
 			sensor1-supply = <&pmtitanium_l6>;
 			sensor2-supply = <&pmtitanium_l22>;
-			accel_orient = <1>;     /* Accel Orientation value */
-			gyro_orient = <1>;      /* Gyro Orientation value */
-			mag_orient =  <2>;      /* Mag Orientation value */
+			accel_orient = <3>;     /* Accel Orientation value */
+			gyro_orient = <3>;      /* Gyro Orientation value */
+			mag_orient =  <3>;      /* Mag Orientation value */
 			mag_config = <0>;       /* Magnetometer config value */
 			panel_type = <1>;       /* Panel Type value */
 			IR_config = <1>;        /* IR Config value */
@@ -211,6 +211,19 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&pmx_motosh_out &pmx_motosh_in>;
 			antcap_cfg = [54 21 03 00 00 0a 52 00 00 0b e7 00 00 09 9f 00 00 12 74 13 88 00 00 00 00 80 00 14 1e 00 a4 13 ec 00 00 00 00 00 de ad be ef 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ];
+			headset_detect_enable = <1>;
+			headset_insertion_debounce = <0x01F4>;
+			headset_removal_debounce = <0x0080>;
+			headset_button_down_debounce = <0x0032>;
+			headset_button_up_debounce = <0x0032>;
+			headset_button_0-1_threshold = <0x009D>;
+			headset_button_1-2_threshold = <0x0145>;
+			headset_button_2-3_threshold = <0x0201>;
+			headset_button_3-upper_threshold = <0x03B0>;
+			headset_button_1_keycode = <0xE2>; /* KEY_MEDIA */
+			headset_button_2_keycode = <0x246>;/* KEY_VOICECOMMAND */
+			headset_button_3_keycode = <0x73>; /* KEY_VOLUMEUP */
+			headset_button_4_keycode = <0x72>; /* KEY_VOLUMEDOWN */
 		};
 	};
 
