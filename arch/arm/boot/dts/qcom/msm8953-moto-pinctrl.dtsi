@@ -364,6 +364,32 @@
 			bias-pull-up;
 		};
 	};
+
+	apba_default: apba_default@0 {
+		apba_bootret {
+			pins = "gpio140";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		apba_reset_n {
+			pins = "gpio132";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		apba_wake {
+			pins = "gpio141";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		apba_int_n {
+			pins = "gpio62";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
 };
 
 /delete-node/ &hsuart_active;
