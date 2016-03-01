@@ -379,6 +379,7 @@ struct smbchg_chip {
 	enum bsw_modes			bsw_mode;
 	bool				bsw_ramping;
 	bool				usbc_bswchg_pres;
+	bool				fake_factory_type;
 };
 
 static struct smbchg_chip *the_chip;
@@ -899,16 +900,23 @@ static char *usb_type_str[] = {
 #define N_TYPE_BITS		4
 #define TYPE_BITS_OFFSET	4
 
-static int get_type(u8 type_reg)
+static int get_type(u8 type_reg, struct smbchg_chip *chip)
 {
 	unsigned long type = type_reg;
+
+	if (chip->factory_mode && chip->fake_factory_type)
+		return 0;
+
 	type >>= TYPE_BITS_OFFSET;
 	return find_first_bit(&type, N_TYPE_BITS);
 }
 
 /* helper to return the string of USB type */
-static inline char *get_usb_type_name(int type)
+static inline char *get_usb_type_name(int type, struct smbchg_chip *chip)
 {
+	if (chip->factory_mode && chip->fake_factory_type)
+		return usb_type_str[0];
+
 	return usb_type_str[type];
 }
 
@@ -2146,7 +2154,7 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 		return false;
 	}
 
-	type = get_type(reg);
+	type = get_type(reg, chip);
 	if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB_CDP) {
 		SMB_DBG(chip, "CDP adapter, skipping\n");
 		return false;
@@ -5397,8 +5405,8 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
 	if (rc < 0)
 		SMB_ERR(chip, "Couldn't read status 5 rc = %d\n", rc);
-	type = get_type(reg);
-	usb_type_name = get_usb_type_name(type);
+	type = get_type(reg, chip);
+	usb_type_name = get_usb_type_name(type, chip);
 	usb_supply_type = get_usb_supply_type(type);
 
 	if (chip->usb_psy) {
@@ -5433,9 +5441,11 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 					POWER_SUPPLY_HEALTH_GOOD, rc);
 		}
 		schedule_work(&chip->usb_set_online_work);
-		chip->hvdcp_det_done = false;
-		schedule_delayed_work(&chip->hvdcp_det_work,
-					msecs_to_jiffies(HVDCP_NOTIFY_MS));
+		if (!chip->fake_factory_type && !chip->factory_mode) {
+			chip->hvdcp_det_done = false;
+			schedule_delayed_work(&chip->hvdcp_det_work,
+						msecs_to_jiffies(HVDCP_NOTIFY_MS));
+		}
 	}
 
 	chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NORMAL;
@@ -6765,6 +6775,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,force-aicl-rerun");
 	chip->enable_hvdcp_9v = of_property_read_bool(node,
 					"qcom,enable-hvdcp-9v");
+	chip->fake_factory_type = of_property_read_bool(node,
+					"mmi,fake-factory-type");
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
 		"qcom,bmd-pin-src", &bpd);
