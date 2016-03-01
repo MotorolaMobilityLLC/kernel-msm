@@ -534,6 +534,8 @@
 				  <6 1 0>;
 		mmi,wake-assert-seq = <5 0 0>;
 		mmi,wake-deassert-seq = <5 1 0>;
+		mmi,flash-start-seq = <6 1 0>, <0 1 11>;
+		mmi,flash-end-seq = <6 0 0>, <0 0 0>;
 	};
 
 	mods_v4l2_hal {
