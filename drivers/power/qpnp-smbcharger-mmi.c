@@ -9541,7 +9541,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->usbc_psy = usbc_psy;
 	chip->demo_mode = false;
 	chip->hvdcp_det_done = false;
-	chip->usbc_disabled = true;
+	chip->usbc_disabled = false;
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
 	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
 	chip->test_mode = qpnp_smbcharger_test_mode();
