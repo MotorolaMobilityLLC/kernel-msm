@@ -39,7 +39,6 @@
    Will return -1 when an external string is used */
 #define PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET           0x00A1AF11
 
-
 /* TX module parameter IDs */
 /* Get Module status */
 #define PARAM_ID_OPALUM_TX_ENABLE                      0x00A1BF01
@@ -51,11 +50,16 @@
 #define PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE        0x00A1BF05
 /* Get impedance calibration values */
 #define PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE      0x00A1BF06
+/* Get f0 curve */
+#define PARAM_ID_OPALUM_TX_F0_CURVE                    0x00A1BF07
 /* Initialize parameters from external config string */
 #define PARAM_ID_OPALUM_TX_SET_EXTERNAL_CONFIG         0x00A1BF08
 /* Get the array index of the parameter set currently in use.
    Will return -1 when an external string is used */
 #define PARAM_ID_OPALUM_TX_CURRENT_PARAM_SET           0x00A1BF11
+
+
+#define F0_CURVE_POINTS 90
 
 struct afe_custom_opalum_set_config_t {
 	struct apr_hdr hdr;
@@ -81,6 +85,10 @@ struct opalum_dual_data_ctrl_t {
 struct opalum_f0_calib_data_t {
 	int f0;
 	int ref_diff;
+};
+
+struct opalum_f0_curve_t {
+	int32_t curve[F0_CURVE_POINTS];
 };
 
 struct opalum_temp_calib_data_t {
