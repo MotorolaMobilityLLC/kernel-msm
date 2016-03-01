@@ -982,6 +982,7 @@ struct dwc3 {
 	unsigned                irq_dbg_index;
 
 	wait_queue_head_t	wait_linkstate;
+	u8			ctrl_num;
 };
 
 /* -------------------------------------------------------------------------- */
