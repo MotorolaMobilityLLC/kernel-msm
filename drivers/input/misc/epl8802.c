@@ -506,11 +506,9 @@ static void epl_sensor_report_lux(int report_lux)
 	input_sync(epld->ps_input_dev);
 #else
 	input_report_abs(epld->als_input_dev, ABS_MISC, report_lux);
-	input_event(epld->als_input_dev,
-			EV_SYN, SYN_TIME_SEC,
+	input_report_rel(epld->als_input_dev, SYN_TIME_SEC,
 			ktime_to_timespec(timestamp).tv_sec);
-	input_event(epld->als_input_dev,
-			EV_SYN, SYN_TIME_NSEC,
+	input_report_rel(epld->als_input_dev, SYN_TIME_NSEC,
 			ktime_to_timespec(timestamp).tv_nsec);
 	input_sync(epld->als_input_dev);
 #endif
@@ -527,11 +525,9 @@ static void epl_sensor_report_ps_status(void)
 	distance = ps_status_moto;
 	input_report_abs(epld->ps_input_dev,
 				ABS_DISTANCE, distance);
-	input_event(epld->ps_input_dev,
-			EV_SYN, SYN_TIME_SEC,
+	input_report_rel(epld->ps_input_dev, SYN_TIME_SEC,
 			ktime_to_timespec(timestamp).tv_sec);
-	input_event(epld->ps_input_dev,
-			EV_SYN, SYN_TIME_NSEC,
+	input_report_rel(epld->ps_input_dev, SYN_TIME_NSEC,
 			ktime_to_timespec(timestamp).tv_nsec);
 	input_sync(epld->ps_input_dev);
 }
@@ -1602,52 +1598,51 @@ static void epl_sensor_eint_work(struct work_struct *work)
 
 	epl_sensor_read_ps(epld->client);
 	epl_sensor_read_als(epld->client);
+	mutex_lock(&sensor_mutex);
 	if (epl_sensor.ps.interrupt_flag == EPL_INT_TRIGGER) {
 
 		if ((epl_sensor.ps.compare_low >> 3) == 0) {
-			mutex_lock(&sensor_mutex);
 			epl_sensor_I2C_Read(epld->client, 0x0e, 2);
 			buf[0] = gRawData.raw_bytes[0];
 			buf[1] = gRawData.raw_bytes[1];
-			mutex_unlock(&sensor_mutex);
 			read_h_thd = (buf[1]<<8) | buf[0];
 
 			if (read_h_thd == ps_thd_3cm) {
 				ps_status_moto = 3;
-				set_psensor_intr_threshold(ps_thd_5cm,
-					ps_thd_1cm);
-				mutex_lock(&sensor_mutex);
 				epl_sensor_I2C_Write(epld->client,
 					0x1b,
 					EPL_CMP_RESET | EPL_UN_LOCK);
-				mutex_unlock(&sensor_mutex);
 			} else if (read_h_thd == ps_thd_1cm) {
 				ps_status_moto = 1;
-				set_psensor_intr_threshold(ps_thd_5cm,
-						ps_thd_3cm);
 			}
 		} else {
 			ps_status_moto = 100;
-			set_psensor_intr_threshold(ps_thd_5cm, ps_thd_3cm);
 		}
 		if (enable_ps) {
 			wake_lock_timeout(&ps_lock, 2*HZ);
 			epl_sensor_report_ps_status();
 		}
 		/* PS unlock interrupt pin and restart chip */
-		mutex_lock(&sensor_mutex);
 		epl_sensor_I2C_Write(epld->client, 0x1b, EPL_CMP_RUN | EPL_UN_LOCK);
-		mutex_unlock(&sensor_mutex);
 	}
 
 	if (epl_sensor.als.interrupt_flag == EPL_INT_TRIGGER) {
 		epl_sensor_intr_als_report_lux();
 		/* ALS unlock interrupt pin and restart chip */
-		mutex_lock(&sensor_mutex);
 		epl_sensor_I2C_Write(epld->client, 0x12, EPL_CMP_RUN | EPL_UN_LOCK);
-		mutex_unlock(&sensor_mutex);
 	}
-
+	mutex_unlock(&sensor_mutex);
+	if ((epl_sensor.ps.compare_low >> 3) == 0) {
+		if (read_h_thd == ps_thd_3cm) {
+			set_psensor_intr_threshold(ps_thd_5cm,
+				ps_thd_1cm);
+		} else if (read_h_thd == ps_thd_1cm) {
+			set_psensor_intr_threshold(ps_thd_5cm,
+				ps_thd_3cm);
+		}
+	} else {
+		set_psensor_intr_threshold(ps_thd_5cm, ps_thd_3cm);
+	}
 	enable_irq(epld->irq);
 }
 /*----------------------------------------------------------------------------*/
@@ -2980,6 +2975,8 @@ static int epl_sensor_setup_lsensor(struct epl_sensor_priv *epld)
 	epld->als_input_dev->name = ElanALsensorName;
 	set_bit(EV_ABS, epld->als_input_dev->evbit);
 	input_set_abs_params(epld->als_input_dev, ABS_MISC, 0, 9, 0, 0);
+	input_set_capability(epld->als_input_dev, EV_REL, SYN_TIME_SEC);
+	input_set_capability(epld->als_input_dev, EV_REL, SYN_TIME_NSEC);
 
 	err = input_register_device(epld->als_input_dev);
 	if (err < 0) {
@@ -3068,6 +3065,8 @@ static int epl_sensor_setup_psensor(struct epl_sensor_priv *epld)
 
 	set_bit(EV_ABS, epld->ps_input_dev->evbit);
 	input_set_abs_params(epld->ps_input_dev, ABS_DISTANCE, 0, 100, 0, 0);
+	input_set_capability(epld->ps_input_dev, EV_REL, SYN_TIME_SEC);
+	input_set_capability(epld->ps_input_dev, EV_REL, SYN_TIME_NSEC);
 #if SPREAD
 	set_bit(EV_ABS, epld->ps_input_dev->evbit);
 	input_set_abs_params(epld->ps_input_dev, ABS_MISC, 0, 9, 0, 0);
