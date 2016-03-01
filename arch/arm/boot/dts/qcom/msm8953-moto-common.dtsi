@@ -451,6 +451,12 @@
 	mods_codec_shim {
 		compatible = "mmi,mods-codec-shim";
 	};
+
+	usb3: ssusb@7000000{
+		dwc3@7000000 {
+			controller-number = /bits/ 8 <1>;
+		};
+	};
 };
 
 &pmi8950_mpps {
