@@ -935,11 +935,18 @@
 		};
 	};
 
+	usb3: ssusb@6a00000{
+		dwc3@6a00000 {
+			controller-number = /bits/ 8 <1>;
+		};
+	};
+
 	usb2s: hsusb@7600000 {
 		status = "okay";
 
 		dwc3@7600000 {
 			dr_mode = "host";
+			controller-number = /bits/ 8 <2>;
 		};
 	};
 
