@@ -2269,8 +2269,10 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
 {
+	int res = 0;
 	struct dwc3_msm *mdwc = container_of(psy, struct dwc3_msm,
 								usb_psy);
+
 	switch (psp) {
 	case POWER_SUPPLY_PROP_SCOPE:
 		val->intval = mdwc->scope;
@@ -2291,7 +2293,9 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 		val->intval = psy->type;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = get_prop_usbin_voltage_now(mdwc);
+		res = get_prop_usbin_voltage_now(mdwc);
+		if (res >= 0)
+			val->intval = res;
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = mdwc->health_status;
@@ -2305,7 +2309,7 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 	default:
 		return -EINVAL;
 	}
-	return 0;
+	return res;
 }
 
 static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
