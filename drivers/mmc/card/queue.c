@@ -658,14 +658,9 @@ static void mmc_cmdq_error_work(struct work_struct *work)
 enum blk_eh_timer_return mmc_cmdq_rq_timed_out(struct request *req)
 {
 	struct mmc_queue *mq = req->q->queuedata;
-	static int mmc_cmdq_req_timeout_count;
 
 	pr_err("%s: request with tag: %d flags: 0x%x timed out\n",
 	       mmc_hostname(mq->card->host), req->tag, req->cmd_flags);
-
-	mmc_cmdq_req_timeout_count++;
-	if (mmc_cmdq_req_timeout_count >= 10)
-		BUG();
 
 	return mq->cmdq_req_timed_out(req);
 }
