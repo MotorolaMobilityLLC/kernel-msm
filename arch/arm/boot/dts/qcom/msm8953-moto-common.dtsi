@@ -425,6 +425,7 @@
 	qcom,bmd-pin-src = "bpd_none";
 	qcom,usbid-disabled;
 	qcom,force-aicl-rerun;
+	mmi,fake-factory-type;
 };
 
 /{
