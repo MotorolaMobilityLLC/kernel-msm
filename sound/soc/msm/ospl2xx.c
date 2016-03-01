@@ -393,8 +393,7 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 	/* Set param section */
 	config->param.port_id = port_id;
 	config->param.payload_size =
-		sizeof(struct afe_port_param_data_v2) +
-		sizeof(struct opalum_tri_data_ctrl_t);
+		sizeof(struct afe_port_param_data_v2);
 	config->param.payload_address_lsw = 0;
 	config->param.payload_address_msw = 0;
 	config->param.mem_map_handle = 0;
@@ -404,8 +403,35 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 	/* Set data section */
 	config->data.module_id = module_id;
 	config->data.param_id = param_id;
-	config->data.param_size = sizeof(struct opalum_tri_data_ctrl_t);
 	config->data.reserved = 0;
+
+	/* payload and param size section */
+	switch (param_id) {
+	case PARAM_ID_OPALUM_RX_ENABLE:
+	case PARAM_ID_OPALUM_RX_EXC_MODEL:
+	case PARAM_ID_OPLAUM_RX_TEMPERATURE:
+	case PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET:
+	case PARAM_ID_OPALUM_TX_ENABLE:
+	case PARAM_ID_OPALUM_TX_CURRENT_PARAM_SET:
+		config->param.payload_size +=
+			sizeof(struct opalum_single_data_ctrl_t);
+		config->data.param_size =
+			sizeof(struct opalum_single_data_ctrl_t);
+		break;
+	case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
+	case PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE:
+		config->param.payload_size +=
+			sizeof(struct opalum_dual_data_ctrl_t);
+		config->data.param_size =
+			sizeof(struct opalum_dual_data_ctrl_t);
+		break;
+	case PARAM_ID_OPALUM_TX_F0_CURVE:
+		config->param.payload_size +=
+			sizeof(struct opalum_f0_curve_t);
+		config->data.param_size =
+			sizeof(struct opalum_f0_curve_t);
+		break;
+	}
 
 	result = ospl2xx_afe_apr_send_pkt(config, index);
 	if (result) {
@@ -424,6 +450,8 @@ int ospl2xx_afe_get_param(uint32_t param_id)
  * AFE callback
  */
 int32_t afe_cb_payload32_data[2] = {0,};
+int32_t *f0_curve;
+int32_t f0_curve_size;
 static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 {
 	if (!data) {
@@ -455,6 +483,16 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 					(int) afe_cb_payload32_data[0]);
 				pr_debug("afe_cb_payload32_data[1] = %d\n",
 					(int) afe_cb_payload32_data[1]);
+				break;
+			case PARAM_ID_OPALUM_TX_F0_CURVE:
+				f0_curve_size = payload32[3];
+				f0_curve = (int32_t *) &payload32[4];
+				pr_debug("%s, payload-module_id = 0x%08X, ",
+					__func__, (int) payload32[1]);
+				pr_debug("payload-param_id = 0x%08X, ",
+					(int) payload32[2]);
+				pr_debug("f0_curve size = %d",
+					(int) f0_curve_size);
 				break;
 			default:
 				break;
@@ -752,6 +790,29 @@ static int ospl2xx_tx_get_f0(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+/* PARAM_ID_OPALUM_TX_F0_CURVE */
+static int ospl2xx_tx_get_f0_curve(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int i = 0;
+
+	mutex_lock(&mr_lock);
+	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
+	ospl2xx_afe_get_param(PARAM_ID_OPALUM_TX_F0_CURVE);
+
+	if (f0_curve != NULL &&
+	    f0_curve_size >= F0_CURVE_POINTS * sizeof(int32_t))
+		for (i = 0; i < F0_CURVE_POINTS; i++)
+			ucontrol->value.integer.value[i] = f0_curve[i];
+	else
+		pr_err("%s: returned f0 points too small, %d\n",
+			__func__, f0_curve_size);
+
+	mutex_unlock(&mr_lock);
+
+	return 0;
+}
+
 /* PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE */
 static int ospl2xx_tx_get_temp_cal(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
@@ -929,6 +990,9 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 	/* GET */ SOC_SINGLE_MULTI_EXT("OSPL Tx F0",
 		SND_SOC_NOPM, 0, 0xFFFF, 0, 2,
 		ospl2xx_tx_get_f0, NULL),
+	/* GET */ SOC_SINGLE_MULTI_EXT("OSPL Tx F0_curve",
+		SND_SOC_NOPM, 0, 0xFFFF, 0, F0_CURVE_POINTS,
+		ospl2xx_tx_get_f0_curve, NULL),
 	/* GET */ SOC_SINGLE_MULTI_EXT("OSPL Tx temp_cal",
 		SND_SOC_NOPM, 0, 0xFFFF, 0, 2,
 		ospl2xx_tx_get_temp_cal, NULL),
