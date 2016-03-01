@@ -5232,6 +5232,8 @@ static void usb_insertion_work(struct work_struct *work)
 		return;
 	}
 
+	smbchg_stay_awake(chip, PM_CHARGER);
+
 	if (chip->usb_psy) {
 		SMB_DBG(chip, "setting usb psy dp=f dm=f\n");
 		power_supply_set_dp_dm(chip->usb_psy,
