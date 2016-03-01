@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -642,8 +642,8 @@ limApplyConfiguration(tpAniSirGlobal pMac,tpPESession psessionEntry)
         return;
     }
 
-    PELOG1(limLog(pMac, LOG1, FL("pMac->lim.gScanInPowersave = %hu"),
-                pMac->lim.gScanInPowersave);)
+    limLog(pMac, LOG1, FL("pMac->lim.gScanInPowersave = %hu"),
+                pMac->lim.gScanInPowersave);
     pMac->lim.gScanInPowersave = (tANI_U8) val;
 
 } /*** end limApplyConfiguration() ***/

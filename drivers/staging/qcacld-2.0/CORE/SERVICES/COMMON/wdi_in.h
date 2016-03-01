@@ -1201,6 +1201,8 @@ ol_tx_queue_log_display(ol_txrx_pdev_handle pdev);
 #define wdi_in_tx_release ol_txrx_tx_release
 #define wdi_in_vdev_pause ol_txrx_vdev_pause
 #define wdi_in_vdev_unpause ol_txrx_vdev_unpause
+#define wdi_in_pdev_pause_other_vdev ol_txrx_pdev_pause_other_vdev
+#define wdi_in_pdev_unpause_other_vdev ol_txrx_pdev_unpause_other_vdev
 #define wdi_in_pdev_pause ol_txrx_pdev_pause
 #define wdi_in_pdev_unpause ol_txrx_pdev_unpause
 #define wdi_in_tx_sync ol_txrx_tx_sync

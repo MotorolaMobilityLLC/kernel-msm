@@ -50,6 +50,8 @@
 #include <ol_txrx_htt_api.h> /* ol_tx_msdu_id_storage */
 #include <htt_internal.h>
 
+#include <vos_utils.h>
+
 #ifdef IPA_UC_OFFLOAD
 /* IPA Micro controler TX data packet HTT Header Preset */
 /* 31 | 30  29 | 28 | 27 | 26  22  | 21   16 | 15  13   | 12  8       | 7 0
@@ -714,11 +716,13 @@ int htt_tx_ipa_uc_attach(struct htt_pdev_t *pdev,
     unsigned int uc_tx_partition_base)
 {
    unsigned int  tx_buffer_count;
+   unsigned int  tx_buffer_count_pwr2;
    adf_nbuf_t    buffer_vaddr;
    u_int32_t     buffer_paddr;
    u_int32_t    *header_ptr;
    u_int32_t    *ring_vaddr;
    int           return_code = 0;
+   uint16_t     idx;
 
    /* Allocate CE Write Index WORD */
    pdev->ipa_uc_tx_rsc.tx_ce_idx.vaddr =
@@ -802,7 +806,33 @@ int htt_tx_ipa_uc_attach(struct htt_pdev_t *pdev,
       ring_vaddr++;
    }
 
-   pdev->ipa_uc_tx_rsc.alloc_tx_buf_cnt = tx_buffer_count;
+   /*
+    * Tx complete ring buffer count should be power of 2.
+    * So, allocated Tx buffer count should be one less than ring buffer size.
+    */
+   tx_buffer_count_pwr2 = vos_rounddown_pow_of_two(tx_buffer_count + 1) - 1;
+   if (tx_buffer_count > tx_buffer_count_pwr2) {
+       adf_os_print("%s: Allocated Tx buffer count %d is rounded down to %d",
+                   __func__, tx_buffer_count, tx_buffer_count_pwr2);
+
+       /* Free over allocated buffers below power of 2 */
+       for(idx = tx_buffer_count_pwr2; idx < tx_buffer_count; idx++) {
+           if (pdev->ipa_uc_tx_rsc.tx_buf_pool_vaddr_strg[idx]) {
+               adf_nbuf_unmap(pdev->osdev,
+                   pdev->ipa_uc_tx_rsc.tx_buf_pool_vaddr_strg[idx],
+                   ADF_OS_DMA_FROM_DEVICE);
+               adf_nbuf_free(pdev->ipa_uc_tx_rsc.tx_buf_pool_vaddr_strg[idx]);
+           }
+       }
+   }
+
+   if (tx_buffer_count_pwr2 < 0) {
+       adf_os_print("%s: Failed to round down Tx buffer count %d",
+                   __func__, tx_buffer_count_pwr2);
+       goto free_tx_comp_base;
+   }
+
+   pdev->ipa_uc_tx_rsc.alloc_tx_buf_cnt = tx_buffer_count_pwr2;
 
    return 0;
 

@@ -212,7 +212,11 @@
 #define WLAN_HDD_QOS_MAP_CONFIGURE 4
 #define HDD_SAP_WAKE_LOCK_DURATION 10000 //in msecs
 
+#if defined(CONFIG_HL_SUPPORT)
+#define HDD_MOD_EXIT_SSR_MAX_RETRIES 200
+#else
 #define HDD_MOD_EXIT_SSR_MAX_RETRIES 75
+#endif
 
 /* Maximum number of interfaces allowed(STA, P2P Device, P2P Interfaces) */
 #ifndef WLAN_OPEN_P2P_INTERFACE
@@ -667,7 +671,6 @@ typedef struct hdd_cfg80211_state_s
   u64 action_cookie;
   tANI_U8 *buf;
   size_t len;
-  struct sk_buff *skb;
   hdd_remain_on_chan_ctx_t* remain_on_chan_ctx;
   struct mutex remain_on_chan_ctx_lock;
   eP2PActionFrameState actionFrmState;
@@ -679,6 +682,20 @@ typedef enum{
     HDD_SSR_REQUIRED,
     HDD_SSR_DISABLED,
 }e_hdd_ssr_required;
+
+/**
+ * struct hdd_mon_set_ch_info - Holds monitor mode channel switch params
+ * @channel: Channel number.
+ * @cb_mode: Channel bonding
+ * @channel_width: Channel width 0/1/2 for 20/40/80MHz respectively.
+ * @phy_mode: PHY mode
+ */
+struct hdd_mon_set_ch_info {
+	uint8_t channel;
+	uint8_t cb_mode;
+	uint32_t channel_width;
+	eCsrPhyMode phy_mode;
+};
 
 struct hdd_station_ctx
 {
@@ -716,6 +733,8 @@ struct hdd_station_ctx
 
    /* STA ctx debug variables */
    int staDebugState;
+
+   struct hdd_mon_set_ch_info ch_info;
 };
 
 #define BSS_STOP    0
@@ -824,11 +843,6 @@ struct hdd_ap_ctx_s
    v_PVOID_t sapContext;
 #endif
    v_BOOL_t dfs_cac_block_tx;
-};
-
-struct hdd_mon_ctx_s
-{
-   hdd_adapter_t *pAdapterForTx;
 };
 
 typedef struct hdd_scaninfo_s
@@ -1072,7 +1086,6 @@ struct hdd_adapter_s
    union {
       hdd_station_ctx_t station;
       hdd_ap_ctx_t  ap;
-      hdd_mon_ctx_t monitor;
    }sessionCtx;
 
 #ifdef WLAN_FEATURE_TSF
@@ -1112,9 +1125,10 @@ struct hdd_adapter_s
     /* Using delayed work for ACS for Primary AP Startup to complete
      * since CSR Config is same for both AP */
     struct delayed_work acs_pending_work;
-#ifdef MSM_PLATFORM
+#ifdef FEATURE_BUS_BANDWIDTH
     unsigned long prev_rx_packets;
     unsigned long prev_tx_packets;
+    unsigned long prev_tx_bytes;
     int connection;
 #endif
     v_BOOL_t is_roc_inprogress;
@@ -1154,6 +1168,7 @@ struct hdd_adapter_s
 	tSirMacAddr ocb_mac_address[VOS_MAX_CONCURRENCY_PERSONA];
 	int ocb_mac_addr_count;
 	struct hdd_adapter_pm_context runtime_context;
+	struct mib_stats_metrics mib_stats;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
@@ -1525,6 +1540,8 @@ struct hdd_context_s
     tANI_U16     tdls_channel_offset;
     int32_t      tdls_fw_off_chan_mode;
     bool         tdls_nss_switch_in_progress;
+    bool         tdls_nss_teardown_complete;
+    int32_t      tdls_nss_transition_mode;
     int32_t      tdls_teardown_peers_cnt;
 #endif
 
@@ -1679,6 +1696,8 @@ struct hdd_context_s
     struct mutex memdump_lock;
     bool memdump_in_progress;
 #endif /* WLAN_FEATURE_MEMDUMP */
+    uint16_t driver_dump_size;
+    uint8_t *driver_dump_mem;
 
     /* number of rf chains supported by target */
     uint32_t  num_rf_chains;
@@ -1711,6 +1730,11 @@ struct hdd_context_s
     enum antenna_mode current_antenna_mode;
     bool bpf_enabled;
     uint16_t wmi_max_len;
+    /*
+     * place to store FTM capab of target. This allows changing of FTM capab
+     * at runtime and intersecting it with target capab before updating.
+     */
+    uint32_t fine_time_meas_cap_target;
 };
 
 /*---------------------------------------------------------------------------
@@ -1755,7 +1779,6 @@ hdd_adapter_t * hdd_get_adapter_by_name( hdd_context_t *pHddCtx, tANI_U8 *name )
 hdd_adapter_t * hdd_get_adapter_by_vdev( hdd_context_t *pHddCtx,
                                          tANI_U32 vdev_id );
 hdd_adapter_t * hdd_get_adapter_by_macaddr( hdd_context_t *pHddCtx, tSirMacAddr macAddr );
-hdd_adapter_t * hdd_get_mon_adapter( hdd_context_t *pHddCtx );
 VOS_STATUS hdd_init_station_mode( hdd_adapter_t *pAdapter );
 hdd_adapter_t * hdd_get_adapter( hdd_context_t *pHddCtx, device_mode_t mode );
 void hdd_deinit_adapter(hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
@@ -1774,7 +1797,6 @@ void wlan_hdd_enable_deepsleep(v_VOID_t * pVosContext);
 v_BOOL_t hdd_is_suspend_notify_allowed(hdd_context_t* pHddCtx);
 void hdd_abort_mac_scan(hdd_context_t* pHddCtx, tANI_U8 sessionId,
                         eCsrAbortReason reason);
-void wlan_hdd_set_monitor_tx_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 
 void crda_regulatory_entry_default(v_U8_t *countryCode, int domain_id);
@@ -1822,7 +1844,7 @@ void hdd_checkandupdate_phymode( hdd_context_t *pHddCtx);
 
 int hdd_wmmps_helper(hdd_adapter_t *pAdapter, tANI_U8 *ptr);
 int wlan_hdd_set_mc_rate(hdd_adapter_t *pAdapter, int targetRate);
-#ifdef MSM_PLATFORM
+#ifdef FEATURE_BUS_BANDWIDTH
 void hdd_start_bus_bw_compute_timer(hdd_adapter_t *pAdapter);
 void hdd_stop_bus_bw_compute_timer(hdd_adapter_t *pAdapter);
 #else

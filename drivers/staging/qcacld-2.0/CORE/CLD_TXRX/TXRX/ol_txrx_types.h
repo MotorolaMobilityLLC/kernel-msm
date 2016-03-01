@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -191,9 +191,9 @@ struct ol_tx_desc_t {
 	/* used by tx encap, to restore the os buf start offset after tx complete*/
 	u_int8_t orig_l2_hdr_bytes;
 #endif
-#if defined(CONFIG_HL_SUPPORT)
+
 	struct ol_txrx_vdev_t* vdev;
-#endif
+
 	void *txq;
 	void *p_link;
 	uint16_t id;
@@ -834,6 +834,8 @@ struct ol_txrx_pdev_t {
 	unsigned int num_desc_pages;
 	unsigned int num_descs_per_page;
 	void **desc_pages;
+	struct ol_txrx_peer_t *self_peer;
+	uint32_t total_bundle_queue_length;
 };
 
 struct ol_txrx_ocb_chan_info {
@@ -902,6 +904,7 @@ struct ol_txrx_vdev_t {
 
 #if defined(CONFIG_HL_SUPPORT)
 	struct ol_tx_frms_queue_t txqs[OL_TX_VDEV_NUM_QUEUES];
+	u_int32_t hl_paused_reason;
 #endif
 
 	struct {
@@ -925,6 +928,17 @@ struct ol_txrx_vdev_t {
 	u_int16_t tx_fl_lwm;
 	u_int16_t tx_fl_hwm;
 	ol_txrx_tx_flow_control_fp osif_flow_control_cb;
+
+	bool bundling_reqired;
+	struct {
+		struct {
+			adf_nbuf_t head;
+			adf_nbuf_t tail;
+			int depth;
+		} txq;
+		adf_os_spinlock_t mutex;
+		adf_os_timer_t timer;
+	} bundle_queue;
 
 #if defined(CONFIG_HL_SUPPORT) && defined(FEATURE_WLAN_TDLS)
         union ol_txrx_align_mac_addr_t hl_tdls_ap_mac_addr;

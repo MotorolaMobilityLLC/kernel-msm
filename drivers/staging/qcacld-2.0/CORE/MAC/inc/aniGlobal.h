@@ -1124,6 +1124,8 @@ typedef struct sMacOpenParameters
 #endif
     uint16_t  max_mgmt_tx_fail_count;
     bool force_target_assert_enabled;
+    uint16_t pkt_bundle_timer_value;
+    uint16_t pkt_bundle_size;
 } tMacOpenParameters;
 
 typedef struct sHalMacStartParameters

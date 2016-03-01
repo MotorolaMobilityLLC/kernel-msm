@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014, 2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -138,7 +138,7 @@ eHalStatus oemData_OemDataReq(tHalHandle hHal,
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     tSmeCmd *pOemDataCmd = NULL;
-    tOemDataReq *cmd_req, *mac_req;
+    tOemDataReq *cmd_req;
 
     do
     {
@@ -148,28 +148,7 @@ eHalStatus oemData_OemDataReq(tHalHandle hHal,
            break;
         }
 
-        pMac->oemData.oemDataReqConfig.sessionId = sessionId;
         pMac->oemData.oemDataReqID = *(pOemDataReqID);
-
-        pMac->oemData.oemDataReqConfig.data_len =
-        oemDataReqConfig->data_len;
-
-        if (pMac->oemData.oemDataReqConfig.data) {
-            vos_mem_free(pMac->oemData.oemDataReqConfig.data);
-            pMac->oemData.oemDataReqConfig.data = NULL;
-        }
-
-        pMac->oemData.oemDataReqConfig.data =
-                vos_mem_malloc(pMac->oemData.oemDataReqConfig.data_len);
-        if (!pMac->oemData.oemDataReqConfig.data) {
-            smsLog(pMac, LOGE, FL("memory alloc failed"));
-            status = eHAL_STATUS_FAILED_ALLOC;
-            break;
-        }
-
-        vos_mem_copy((v_VOID_t*)(pMac->oemData.oemDataReqConfig.data),
-                     (v_VOID_t*)(oemDataReqConfig->data),
-                     oemDataReqConfig->data_len);
 
         pMac->oemData.oemDataReqActive = eANI_BOOLEAN_FALSE;
 
@@ -182,12 +161,10 @@ eHalStatus oemData_OemDataReq(tHalHandle hHal,
             pOemDataCmd->u.oemDataCmd.oemDataReqID = pMac->oemData.oemDataReqID;
 
             cmd_req = &(pOemDataCmd->u.oemDataCmd.oemDataReq);
-            mac_req = &(pMac->oemData.oemDataReqConfig);
             /* set the oem data request */
-            cmd_req->sessionId = mac_req->sessionId;
-            cmd_req->data_len =  mac_req->data_len;
-            cmd_req->data =
-            vos_mem_malloc(cmd_req->data_len);
+            cmd_req->sessionId = sessionId;
+            cmd_req->data_len =  oemDataReqConfig->data_len;
+            cmd_req->data = vos_mem_malloc(cmd_req->data_len);
 
             if (!cmd_req->data) {
                 smsLog(pMac, LOGE, FL("memory alloc failed"));
@@ -195,7 +172,8 @@ eHalStatus oemData_OemDataReq(tHalHandle hHal,
                 break;
             }
 
-            vos_mem_copy(cmd_req->data, mac_req->data, cmd_req->data_len);
+            vos_mem_copy(cmd_req->data, oemDataReqConfig->data,
+                         cmd_req->data_len);
         }
         else
         {
@@ -231,7 +209,7 @@ eHalStatus oemData_SendMBOemDataReq(tpAniSirGlobal pMac, tOemDataReq *pOemDataRe
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tSirOemDataReq* pMsg;
     tANI_U16 msgLen;
-    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, pOemDataReq->sessionId );
+    tCsrRoamSession *pSession;
 
     smsLog(pMac, LOGW, "OEM_DATA: entering Function %s", __func__);
 
@@ -240,23 +218,21 @@ eHalStatus oemData_SendMBOemDataReq(tpAniSirGlobal pMac, tOemDataReq *pOemDataRe
         return eHAL_STATUS_INVALID_PARAMETER;
     }
 
+    pSession = CSR_GET_SESSION(pMac, pOemDataReq->sessionId);
     pMsg = vos_mem_malloc(sizeof(*pMsg));
     if (NULL == pMsg) {
         smsLog(pMac, LOGE, "Memory Allocation failed. %s", __func__);
         return eHAL_STATUS_FAILURE;
     }
-    pMsg->data = vos_mem_malloc(pOemDataReq->data_len);
-    if (!pMsg->data) {
-        smsLog(pMac, LOGP, FL("vos_mem_malloc failed"));
-        vos_mem_free(pMsg);
-        return eHAL_STATUS_FAILED_ALLOC;
-    }
+
     msgLen = (uint16_t) (sizeof(*pMsg) + pOemDataReq->data_len);
     pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_OEM_DATA_REQ);
     pMsg->messageLen = pal_cpu_to_be16(msgLen);
     vos_mem_copy(pMsg->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr) );
     pMsg->data_len = pOemDataReq->data_len;
-    vos_mem_copy(pMsg->data, pOemDataReq->data, pOemDataReq->data_len);
+    /* Incoming buffer ptr saved, set to null to avoid free by caller */
+    pMsg->data = pOemDataReq->data;
+    pOemDataReq->data = NULL;
     smsLog(pMac, LOGW, "OEM_DATA: sending message to pe%s", __func__);
     status = palSendMBMessage(pMac->hHdd, pMsg);
 

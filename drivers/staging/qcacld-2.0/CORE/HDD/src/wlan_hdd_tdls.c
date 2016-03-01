@@ -44,6 +44,8 @@
 #include <net/ieee80211_radiotap.h>
 #include "wlan_hdd_tdls.h"
 #include "wlan_hdd_cfg80211.h"
+#include "wlan_hdd_assoc.h"
+#include "sme_Api.h"
 #include "vos_sched.h"
 
 /**
@@ -91,6 +93,89 @@ static u8 wlan_hdd_tdls_hash_key (const u8 *mac)
     return key;
 }
 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+/**
+ * hdd_send_wlan_tdls_teardown_event()- send TDLS teardown event
+ * @reason: reason for tear down.
+ * @peer_mac: peer mac
+ *
+ * This Function send TDLS teardown diag event
+ *
+ * Return: void.
+ */
+void hdd_send_wlan_tdls_teardown_event(uint32_t reason,
+					uint8_t *peer_mac)
+{
+	WLAN_VOS_DIAG_EVENT_DEF(tdls_tear_down,
+		struct vos_event_tdls_teardown);
+	vos_mem_zero(&tdls_tear_down,
+			sizeof(tdls_tear_down));
+
+	tdls_tear_down.reason = reason;
+	vos_mem_copy(tdls_tear_down.peer_mac, peer_mac, HDD_MAC_ADDR_LEN);
+	WLAN_VOS_DIAG_EVENT_REPORT(&tdls_tear_down,
+		EVENT_WLAN_TDLS_TEARDOWN);
+}
+
+/**
+ * hdd_wlan_tdls_enable_link_event()- send TDLS enable link event
+ * @peer_mac: peer mac
+ * @is_off_chan_supported: Does peer supports off chan
+ * @is_off_chan_configured: If off channel is configured
+ * @is_off_chan_established: If off chan is established
+ *
+ * This Function send TDLS enable link diag event
+ *
+ * Return: void.
+ */
+
+void hdd_wlan_tdls_enable_link_event(const uint8_t *peer_mac,
+				uint8_t is_off_chan_supported,
+				uint8_t is_off_chan_configured,
+				uint8_t is_off_chan_established)
+{
+	WLAN_VOS_DIAG_EVENT_DEF(tdls_event,
+		struct vos_event_tdls_enable_link);
+	vos_mem_zero(&tdls_event,
+			sizeof(tdls_event));
+
+	vos_mem_copy(tdls_event.peer_mac,
+			peer_mac, HDD_MAC_ADDR_LEN);
+
+	tdls_event.is_off_chan_supported =
+			is_off_chan_supported;
+	tdls_event.is_off_chan_configured =
+			is_off_chan_configured;
+	tdls_event.is_off_chan_established =
+			is_off_chan_established;
+
+	WLAN_VOS_DIAG_EVENT_REPORT(&tdls_event,
+		EVENT_WLAN_TDLS_ENABLE_LINK);
+}
+
+/**
+ * hdd_wlan_block_scan_by_tdls_event()- send event
+ * if scan is blocked by tdls
+ *
+ * This Function send send diag event if scan is
+ * blocked by tdls
+ *
+ * Return: void.
+ */
+
+void hdd_wlan_block_scan_by_tdls_event(void)
+{
+	WLAN_VOS_DIAG_EVENT_DEF(tdls_scan_block_status,
+		struct vos_event_tdls_scan_rejected);
+
+	vos_mem_zero(&tdls_scan_block_status, sizeof(tdls_scan_block_status));
+
+	tdls_scan_block_status.status = true;
+	WLAN_VOS_DIAG_EVENT_REPORT(&tdls_scan_block_status,
+					EVENT_TDLS_SCAN_BLOCK);
+}
+
+#endif
 /**
  * wlan_hdd_tdls_disable_offchan_and_teardown_links - Disable offchannel
  * and teardown TDLS links
@@ -101,8 +186,8 @@ static u8 wlan_hdd_tdls_hash_key (const u8 *mac)
 void wlan_hdd_tdls_disable_offchan_and_teardown_links(hdd_context_t *hddctx)
 {
 	u16 connected_tdls_peers = 0;
+	hddTdlsPeer_t *curr_peer;
 	u8 staidx;
-	hddTdlsPeer_t *curr_peer = NULL;
 	hdd_adapter_t *adapter = NULL;
 
 	if (eTDLS_SUPPORT_NOT_ENABLED == hddctx->tdls_mode) {
@@ -119,8 +204,10 @@ void wlan_hdd_tdls_disable_offchan_and_teardown_links(hdd_context_t *hddctx)
 
 	connected_tdls_peers = wlan_hdd_tdlsConnectedPeers(adapter);
 
-	if (!connected_tdls_peers)
+	if (!connected_tdls_peers) {
+		hddLog(LOG1, FL("No TDLS connected peers to delete"));
 		return ;
+	}
 
 	/* TDLS is not supported in case of concurrency.
 	 * Disable TDLS Offchannel in FW to avoid more
@@ -139,6 +226,9 @@ void wlan_hdd_tdls_disable_offchan_and_teardown_links(hdd_context_t *hddctx)
 			TDLS_SEC_OFFCHAN_OFFSET_40PLUS);
 	hdd_set_tdls_offchannelmode(adapter, DISABLE_CHANSWITCH);
 
+	/* Send Msg to PE for deleting all the TDLS peers */
+	sme_delete_all_tdls_peers(hddctx->hHal, adapter->sessionId);
+
 	for (staidx = 0; staidx < hddctx->max_num_tdls_sta;
 							staidx++) {
 		if (!hddctx->tdlsConnInfo[staidx].staId)
@@ -146,18 +236,36 @@ void wlan_hdd_tdls_disable_offchan_and_teardown_links(hdd_context_t *hddctx)
 
 		curr_peer = wlan_hdd_tdls_find_all_peer(hddctx,
 				hddctx->tdlsConnInfo[staidx].peerMac.bytes);
-
 		if (!curr_peer)
 			continue;
 
 		hddLog(LOG1, FL("indicate TDLS teardown (staId %d)"),
-				curr_peer->staId);
+			curr_peer->staId);
 
+		/* Indicate teardown to supplicant */
 		wlan_hdd_tdls_indicate_teardown(
-					curr_peer->pHddTdlsCtx->pAdapter,
-					curr_peer,
-					eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
+				curr_peer->pHddTdlsCtx->pAdapter,
+				curr_peer,
+				eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
+
+		/*
+		 * Del Sta happened already as part of sme_delete_all_tdls_peers
+		 * Hence clear hdd data structure.
+		 */
+		hdd_roamDeregisterTDLSSTA(adapter,
+				hddctx->tdlsConnInfo[staidx].staId);
+		wlan_hdd_tdls_decrement_peer_count(adapter);
+		wlan_hdd_tdls_reset_peer(adapter, curr_peer->peerMac);
+		hdd_send_wlan_tdls_teardown_event(eTDLS_TEARDOWN_CONCURRENCY,
+				curr_peer->peerMac);
+
+		hddctx->tdlsConnInfo[staidx].staId = 0;
+		hddctx->tdlsConnInfo[staidx].sessionId = 255;
+
+		vos_mem_zero(&hddctx->tdlsConnInfo[staidx].peerMac,
+			sizeof(v_MACADDR_t));
 	}
+	wlan_hdd_tdls_check_bmps(adapter);
 }
 
 /**
@@ -472,6 +580,8 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
     pHddCtx->connected_peer_count = 0;
     pHddCtx->tdls_nss_switch_in_progress = false;
     pHddCtx->tdls_teardown_peers_cnt = 0;
+    pHddCtx->tdls_nss_teardown_complete = false;
+    pHddCtx->tdls_nss_transition_mode = TDLS_NSS_TRANSITION_UNKNOWN;
 
     sme_SetTdlsPowerSaveProhibited(WLAN_HDD_GET_HAL_CTX(pAdapter),
                                    pAdapter->sessionId, 0);
@@ -2625,6 +2735,9 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
                             connectedPeerList[i]->pHddTdlsCtx->pAdapter,
                             connectedPeerList[i],
                             eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
+                    hdd_send_wlan_tdls_teardown_event(eTDLS_TEARDOWN_SCAN,
+                          connectedPeerList[i]->peerMac);
+
 #endif
                 }
             }
@@ -3091,6 +3204,9 @@ static int wlan_hdd_tdls_teardown_links(hdd_context_t *hddctx, uint32_t mode)
 					curr_peer->pHddTdlsCtx->pAdapter,
 					curr_peer,
 					eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
+		hdd_send_wlan_tdls_teardown_event(
+					eTDLS_TEARDOWN_ANTENNA_SWITCH,
+					curr_peer->peerMac);
 		mutex_lock(&hddctx->tdls_lock);
 		hddctx->tdls_teardown_peers_cnt++;
 		mutex_unlock(&hddctx->tdls_lock);
@@ -3101,11 +3217,16 @@ static int wlan_hdd_tdls_teardown_links(hdd_context_t *hddctx, uint32_t mode)
 		hddLog(LOG1, FL("TDLS peers to be torn down = %d"),
 			hddctx->tdls_teardown_peers_cnt);
 		/*  Antenna switch 2x2 to 1x1 */
-		if (mode == HDD_ANTENNA_MODE_1X1)
+		if (mode == HDD_ANTENNA_MODE_1X1) {
+			hddctx->tdls_nss_transition_mode =
+				TDLS_NSS_TRANSITION_2x2_to_1x1;
 			ret = -EAGAIN;
-		else
+		} else {
 		/*  Antenna switch 1x1 to 2x2 */
+			hddctx->tdls_nss_transition_mode =
+				TDLS_NSS_TRANSITION_1x1_to_2x2;
 			ret = 0;
+		}
 		hddLog(LOG1,
 		       FL("TDLS teardown for antenna switch operation starts"));
 	}
@@ -3132,8 +3253,12 @@ int wlan_hdd_tdls_antenna_switch(hdd_context_t *hdd_ctx,
 
 	/* Check whether TDLS antenna switch is in progress */
 	if (hdd_ctx->tdls_nss_switch_in_progress) {
-		hddLog(LOGE, FL("TDLS antenna switch is in progress"));
-		return -EAGAIN;
+		if (hdd_ctx->tdls_nss_teardown_complete == false) {
+			hddLog(LOGE, FL("TDLS nss switch is in progress"));
+			return -EAGAIN;
+		} else {
+			goto tdls_ant_sw_done;
+		}
 	}
 
 	/* Check whether TDLS is connected or not */

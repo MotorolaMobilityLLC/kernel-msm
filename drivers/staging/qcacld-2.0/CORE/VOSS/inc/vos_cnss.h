@@ -197,6 +197,23 @@ static inline int vos_cache_boarddata(unsigned int offset,
 {
 	return 0;
 }
+
+typedef void (*oob_irq_handler_t) (void *dev_para);
+static inline bool vos_oob_enabled(void)
+{
+	return false;
+}
+
+static inline int vos_register_oob_irq_handler(oob_irq_handler_t handler,
+		void *pm_oob)
+{
+	return -ENOSYS;
+}
+
+static inline int vos_unregister_oob_irq_handler(void *pm_oob)
+{
+	return -ENOSYS;
+}
 #else
 static inline void vos_init_work(struct work_struct *work, work_func_t func)
 {
@@ -382,11 +399,6 @@ static inline int vos_request_bus_bandwidth(int bandwidth)
 {
 	return cnss_request_bus_bandwidth(bandwidth);
 }
-#else
-static inline int vos_request_bus_bandwidth(int bandwidth)
-{
-	return 0;
-}
 #endif
 
 #ifdef CONFIG_CNSS_PCI
@@ -500,6 +512,46 @@ static inline int vos_cache_boarddata(unsigned int offset,
 	unsigned int len, unsigned char *buf)
 {
 	return 0;
+}
+#endif
+
+#ifdef CONFIG_CNSS_SDIO
+static inline bool vos_oob_enabled(void)
+{
+	bool enabled = true;
+
+	if (-ENOSYS == cnss_wlan_query_oob_status())
+		enabled = false;
+
+	return enabled;
+}
+
+static inline int vos_register_oob_irq_handler(oob_irq_handler_t handler,
+		void *pm_oob)
+{
+	return cnss_wlan_register_oob_irq_handler(handler, pm_oob);
+}
+
+static inline int vos_unregister_oob_irq_handler(void *pm_oob)
+{
+	return cnss_wlan_unregister_oob_irq_handler(pm_oob);
+}
+#else
+typedef void (*oob_irq_handler_t) (void *dev_para);
+static inline bool vos_oob_enabled(void)
+{
+	return false;
+}
+
+static inline int vos_register_oob_irq_handler(oob_irq_handler_t handler,
+		void *pm_oob)
+{
+	return -ENOSYS;
+}
+
+static inline int vos_unregister_oob_irq_handler(void *pm_oob)
+{
+	return -ENOSYS;
 }
 #endif
 #endif

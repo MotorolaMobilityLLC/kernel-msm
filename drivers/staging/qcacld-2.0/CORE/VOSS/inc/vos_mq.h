@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -115,6 +115,12 @@ typedef enum
 } VOS_MQ_ID;
 
 
+#define HIGH_PRIORITY 1
+#define LOW_PRIORITY  0
+VOS_STATUS vos_mq_post_message_by_priority(VOS_MQ_ID msg_queue_id,
+					   vos_msg_t *message,
+					   int is_high_priority);
+
 /**---------------------------------------------------------------------------
 
   \brief vos_mq_post_message() - post a message to a message queue
@@ -129,7 +135,7 @@ typedef enum
     <li> TL
   </ul>
 
-  \param msgQueueId - identifies the message queue upon which the message
+  \param msg_queue_id - identifies the message queue upon which the message
          will be posted.
 
   \param message - a pointer to a message buffer.  Memory for this message
@@ -152,6 +158,11 @@ typedef enum
   \sa
 
   --------------------------------------------------------------------------*/
-VOS_STATUS vos_mq_post_message( VOS_MQ_ID msgQueueId, vos_msg_t *message );
+static inline VOS_STATUS vos_mq_post_message(VOS_MQ_ID msg_queue_id,
+					     vos_msg_t *message)
+{
+	return vos_mq_post_message_by_priority (msg_queue_id, message,
+						LOW_PRIORITY);
+}
 
 #endif // if !defined __VOS_MQ_H

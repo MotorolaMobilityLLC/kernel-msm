@@ -236,6 +236,16 @@
 #define CFG_REG_CHANGE_DEF_COUNTRY_MIN           ( 0 )
 #define CFG_REG_CHANGE_DEF_COUNTRY_MAX           ( 1 )
 
+/*
+ * Enabling gIgnorePeerHTopMode will enable 11g
+ * protection only when there is a 11g AP in vicinity
+ */
+#define CFG_IGNORE_PEER_HT_MODE_NAME       "gIgnorePeerHTopMode"
+#define CFG_IGNORE_PEER_HT_MODE_MIN        (0)
+#define CFG_IGNORE_PEER_HT_MODE_MAX        (1)
+#define CFG_IGNORE_PEER_HT_MODE_DEFAULT    (0)
+
+
 #define CFG_ADVERTISE_CONCURRENT_OPERATION_NAME    "gAdvertiseConcurrentOperation"
 #define CFG_ADVERTISE_CONCURRENT_OPERATION_DEFAULT ( 1 )
 #define CFG_ADVERTISE_CONCURRENT_OPERATION_MIN     ( 0 )
@@ -1561,12 +1571,12 @@ typedef enum
 
 #define CFG_ENABLE_EGAP_INACT_TIME_FEATURE         "gEGAPInactTime"
 #define CFG_ENABLE_EGAP_INACT_TIME_FEATURE_MIN     (0)
-#define CFG_ENABLE_EGAP_INACT_TIME_FEATURE_MAX     (5000)
+#define CFG_ENABLE_EGAP_INACT_TIME_FEATURE_MAX     (300000)
 #define CFG_ENABLE_EGAP_INACT_TIME_FEATURE_DEFAULT (1000)
 
 #define CFG_ENABLE_EGAP_WAIT_TIME_FEATURE          "gEGAPWaitTime"
 #define CFG_ENABLE_EGAP_WAIT_TIME_FEATURE_MIN      (0)
-#define CFG_ENABLE_EGAP_WAIT_TIME_FEATURE_MAX      (5000)
+#define CFG_ENABLE_EGAP_WAIT_TIME_FEATURE_MAX      (300000)
 #define CFG_ENABLE_EGAP_WAIT_TIME_FEATURE_DEFAULT  (100)
 
 #define CFG_ENABLE_EGAP_FLAGS_FEATURE              "gEGAPFeatures"
@@ -2805,7 +2815,7 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_ROAMING_DFS_CHANNEL_MAX                (CFG_ROAMING_DFS_CHANNEL_ENABLED_ACTIVE)
 #define CFG_ROAMING_DFS_CHANNEL_DEFAULT            (CFG_ROAMING_DFS_CHANNEL_DISABLED)
 
-#ifdef MSM_PLATFORM
+#ifdef FEATURE_BUS_BANDWIDTH
 #define CFG_BUS_BANDWIDTH_HIGH_THRESHOLD           "gBusBandwidthHighThreshold"
 #define CFG_BUS_BANDWIDTH_HIGH_THRESHOLD_DEFAULT   ( 2000 )
 #define CFG_BUS_BANDWIDTH_HIGH_THRESHOLD_MIN       ( 0 )
@@ -2836,6 +2846,7 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_TCP_DELACK_THRESHOLD_LOW_MIN           ( 0 )
 #define CFG_TCP_DELACK_THRESHOLD_LOW_MAX           ( 10000 )
 
+
 /* TCP_TX_HIGH_TPUT_THRESHOLD specifies the threshold of packets transmitted
  * over a period of 100 ms beyond which TCP can be considered to have a high
  * TX throughput requirement. The driver uses this condition to tweak TCP TX
@@ -2847,7 +2858,39 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_TCP_TX_HIGH_TPUT_THRESHOLD_MIN          ( 0 )
 #define CFG_TCP_TX_HIGH_TPUT_THRESHOLD_MAX          ( 16000 )
 
-#endif /* MSM_PLATFORM */
+#endif /* FEATURE_BUS_BANDWIDTH */
+
+#ifdef QCA_SUPPORT_TXRX_HL_BUNDLE
+
+/*
+ * PKT_BUNDLE_THRESHOLD_HIGH specifies threshold of packets transmitted
+ * over a period of 100ms beyond which bundling will be enabled and
+ * TXRX layer bundle packets before giving to scheduler. If numbers
+ * of packets falls below PKT_BUNDLE_THRESHOLD_LOW than bundling will
+ * stop.
+ */
+
+#define CFG_PKT_BUNDLE_THRESHOLD_HIGH              "gPacketBundleHighThreshold"
+#define CFG_PKT_BUNDLE_THRESHOLD_HIGH_DEFAULT      ( 4330 )
+#define CFG_PKT_BUNDLE_THRESHOLD_HIGH_MIN          ( 0 )
+#define CFG_PKT_BUNDLE_THRESHOLD_HIGH_MAX          ( 70000 )
+
+#define CFG_PKT_BUNDLE_THRESHOLD_LOW               "gPacketBundleLowThreshold"
+#define CFG_PKT_BUNDLE_THRESHOLD_LOW_DEFAULT       ( 4000 )
+#define CFG_PKT_BUNDLE_THRESHOLD_LOW_MIN           ( 0 )
+#define CFG_PKT_BUNDLE_THRESHOLD_LOW_MAX           ( 70000 )
+
+#define CFG_PKT_BUNDLE_TIMER_IN_MS                 "gPacketBundleTimerValue"
+#define CFG_PKT_BUNDLE_TIMER_IN_MS_DEFAULT         ( 100 )
+#define CFG_PKT_BUNDLE_TIMER_IN_MS_MIN             ( 10 )
+#define CFG_PKT_BUNDLE_TIMER_IN_MS_MAX             ( 10000 )
+
+#define CFG_PKT_BUNDLE_SIZE                       "gPacketBundleSize"
+#define CFG_PKT_BUNDLE_SIZE_DEFAULT                ( 10 )
+#define CFG_PKT_BUNDLE_SIZE_MIN                    ( 0 )
+#define CFG_PKT_BUNDLE_SIZE_MAX                    ( 32 )
+
+#endif /* QCA_SUPPORT_TXRX_HL_BUNDLE */
 
 #ifdef WLAN_FEATURE_11W
 #define CFG_PMF_SA_QUERY_MAX_RETRIES_NAME          "pmfSaQueryMaxRetries"
@@ -2897,6 +2940,7 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_IPA_UC_OFFLOAD_ENABLED_MAX             ( 1 )
 #define CFG_IPA_UC_OFFLOAD_ENABLED_DEFAULT         ( 0 )
 
+/* IpaUcTxBufCount should be power of 2 */
 #define CFG_IPA_UC_TX_BUF_COUNT_NAME               "IpaUcTxBufCount"
 #define CFG_IPA_UC_TX_BUF_COUNT_MIN                ( 0 )
 #define CFG_IPA_UC_TX_BUF_COUNT_MAX                ( 2048 )
@@ -2907,6 +2951,7 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_IPA_UC_TX_BUF_SIZE_MAX                ( 4096 )
 #define CFG_IPA_UC_TX_BUF_SIZE_DEFAULT            ( 2048 )
 
+/* IpaUcRxIndRingCount should be power of 2 */
 #define CFG_IPA_UC_RX_IND_RING_COUNT_NAME          "IpaUcRxIndRingCount"
 #define CFG_IPA_UC_RX_IND_RING_COUNT_MIN           ( 0 )
 #define CFG_IPA_UC_RX_IND_RING_COUNT_MAX           ( 2048 )
@@ -2937,9 +2982,15 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_WLAN_LOGGING_NUM_BUF_DEFAULT            ( 256 )
 #endif /* WLAN_LOGGING_SOCK_SVC_ENABLE */
 
+/*
+ * Sifs burst feature configuration
+ * gEnableSifsBurst = 0 means sifs burst toally disable
+ * gEnableSifsBurst = 1 means sifs burst enabled but disabled for legacy mode
+ * gEnableSifsBurst = 3 means sifs burst enabled and also for legacy mode
+ */
 #define CFG_ENABLE_SIFS_BURST                      "gEnableSifsBurst"
 #define CFG_ENABLE_SIFS_BURST_MIN                  ( 0 )
-#define CFG_ENABLE_SIFS_BURST_MAX                  ( 1 )
+#define CFG_ENABLE_SIFS_BURST_MAX                  (3)
 #define CFG_ENABLE_SIFS_BURST_DEFAULT              ( 0 )
 
 #ifdef WLAN_FEATURE_LPSS
@@ -3437,6 +3488,14 @@ enum dot11p_mode {
 #define CFG_FIRST_SCAN_BUCKET_THRESHOLD_MAX       (-30)
 #define CFG_FIRST_SCAN_BUCKET_THRESHOLD_DEFAULT   (-30)
 
+/*
+ * MIB Stats enable/disable
+ * This variable will turn off/on collection of mib stats in FW
+ */
+#define CFG_MIB_STATS_ENABLED_NAME     "gdot11_mib_stats_enabled"
+#define CFG_MIB_STATS_ENABLED_MIN      (0)
+#define CFG_MIB_STATS_ENABLED_MAX      (1)
+#define CFG_MIB_STATS_ENABLED_DEFAULT  (0)
 
 #ifdef WLAN_FEATURE_WOW_PULSE
 /*
@@ -3498,38 +3557,6 @@ enum dot11p_mode {
 #define CFG_SAP_TX_LEAKAGE_THRESHOLD_MIN     (100)
 #define CFG_SAP_TX_LEAKAGE_THRESHOLD_MAX     (1000)
 #define CFG_SAP_TX_LEAKAGE_THRESHOLD_DEFAULT (310)
-
-/*
- * Dense traffic threshold
- * traffic threshold required for dense roam scan
- * not used currently
- */
-#define CFG_ROAM_DENSE_TRAFFIC_THRESHOLD         "gtraffic_threshold"
-#define CFG_ROAM_DENSE_TRAFFIC_THRESHOLD_MIN     (0)
-#define CFG_ROAM_DENSE_TRAFFIC_THRESHOLD_MAX     (100)
-#define CFG_ROAM_DENSE_TRAFFIC_THRESHOLD_DEFAULT (0)
-
-/*
- * Dense Roam RSSI Threshold diff
- * offset value from normal RSSI threshold to dense RSSI threshold
- * Fw will optimize roaming based on new RSSI threshold once it detects
- * dense enviournment.
- */
-#define CFG_ROAM_DENSE_RSSI_THRE_OFFSET         "groam_dense_rssi_thresh_offset"
-#define CFG_ROAM_DENSE_RSSI_THRE_OFFSET_MIN     (0)
-#define CFG_ROAM_DENSE_RSSI_THRE_OFFSET_MAX     (20)
-#define CFG_ROAM_DENSE_RSSI_THRE_OFFSET_DEFAULT (0)
-
-/*
- * Dense Roam Min APs
- * minimum number of AP required for roam dense
- * FW will consider enviournment as dense once it detects #APs
- * operating is more than CFG_ROAM_DENSE_MIN_APS.
- */
-#define CFG_ROAM_DENSE_MIN_APS         "groam_dense_min_aps"
-#define CFG_ROAM_DENSE_MIN_APS_MIN     (1)
-#define CFG_ROAM_DENSE_MIN_APS_MAX     (5)
-#define CFG_ROAM_DENSE_MIN_APS_DEFAULT (1)
 
 /*---------------------------------------------------------------------------
   Type declarations
@@ -4061,7 +4088,7 @@ typedef struct
    v_BOOL_t                    debugP2pRemainOnChannel;
 
    v_BOOL_t                    enablePacketLog;
-#ifdef MSM_PLATFORM
+#ifdef FEATURE_BUS_BANDWIDTH
    v_U32_t                     busBandwidthHighThreshold;
    v_U32_t                     busBandwidthMediumThreshold;
    v_U32_t                     busBandwidthLowThreshold;
@@ -4069,8 +4096,13 @@ typedef struct
    v_U32_t                     tcpDelackThresholdHigh;
    v_U32_t                     tcpDelackThresholdLow;
    uint32_t                    tcp_tx_high_tput_thres;
-#endif /* MSM_PLATFORM */
-
+#endif /* FEATURE_BUS_BANDWIDTH */
+#ifdef QCA_SUPPORT_TXRX_HL_BUNDLE
+   uint32_t                    pkt_bundle_threshold_high;
+   uint32_t                    pkt_bundle_threshold_low;
+   uint16_t                    pkt_bundle_timer_value;
+   uint16_t                    pkt_bundle_size;
+#endif
    /* FW debug log parameters */
    v_U32_t     enableFwLogType;
    v_U32_t     enableFwLogLevel;
@@ -4119,7 +4151,7 @@ typedef struct
    v_U32_t                     wlanLoggingNumBuf;
 #endif /* WLAN_LOGGING_SOCK_SVC_ENABLE */
 
-   v_BOOL_t                    enableSifsBurst;
+   v_U8_t                      enableSifsBurst;
 
 #ifdef WLAN_FEATURE_LPSS
    v_BOOL_t                    enablelpasssupport;
@@ -4241,9 +4273,8 @@ typedef struct
    uint8_t                     ht_mpdu_density;
    bool                        indoor_channel_support;
    uint16_t                    sap_tx_leakage_threshold;
-   uint32_t                    roam_dense_traffic_thresh;
-   uint32_t                    roam_dense_rssi_thresh_offset;
-   uint32_t                    roam_dense_min_aps;
+   bool                        ignore_peer_ht_opmode;
+   bool                        mib_stats_enabled;
 } hdd_config_t;
 
 #ifdef WLAN_FEATURE_MBSSID

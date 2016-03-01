@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -96,9 +96,7 @@ ol_tx_desc_alloc(struct ol_txrx_pdev_t *pdev, struct ol_txrx_vdev_t *vdev)
     if (!tx_desc) {
         return NULL;
     }
-#if defined(CONFIG_HL_SUPPORT)
     tx_desc->vdev = vdev;
-#endif
 #if defined(CONFIG_PER_VDEV_TX_DESC_POOL)
     adf_os_atomic_inc(&vdev->tx_desc_count);
 #endif

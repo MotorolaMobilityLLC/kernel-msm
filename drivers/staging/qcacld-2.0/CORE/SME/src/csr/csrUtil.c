@@ -3153,7 +3153,7 @@ tANI_BOOLEAN csrLookupPMKID( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U8 *p
         fRC = TRUE;
     }
     while( 0 );
-    smsLog(pMac, LOGW, "csrLookupPMKID called return match = %d pMac->roam.NumPmkidCache = %d",
+    smsLog(pMac, LOG1, "csrLookupPMKID called return match = %d pMac->roam.NumPmkidCache = %d",
         fRC, pSession->NumPmkidCache);
 
     return fRC;

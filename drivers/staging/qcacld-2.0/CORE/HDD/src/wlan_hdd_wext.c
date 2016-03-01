@@ -455,6 +455,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #ifdef DEBUG
 #define WE_SET_FW_CRASH_INJECT    2
 #endif
+#define WE_SET_MON_MODE_CHAN 3
 
 #define WLAN_STATS_INVALID            0
 #define WLAN_STATS_RETRY_CNT          1
@@ -11242,6 +11243,46 @@ static int __iw_set_two_ints_getnone(struct net_device *dev,
                                               value[1], value[2], GEN_CMD);
         break;
 #endif
+    case WE_SET_MON_MODE_CHAN:
+        /*
+         * TODO: Remove this private implementation use standard
+         * interface wlan_hdd_cfg80211_ops.set_monitor_channel
+         */
+        if (VOS_MONITOR_MODE == hdd_get_conparam()) {
+            uint16_t vht_channel_width = value[2];
+            hdd_station_ctx_t *sta_ctx =
+                    WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+            struct hdd_mon_set_ch_info *ch_info = &sta_ctx->ch_info;
+            eHalStatus hal_status;
+
+            tHalHandle hal_hdl = hdd_ctx->hHal;
+            tCsrBssid bssid = {0};
+            tCsrRoamProfile roam_profile;
+
+            hddLog(LOG1, "Set monitor mode Channel %d", value[1]);
+            hdd_select_cbmode(pAdapter, value[1], &vht_channel_width);
+            roam_profile.ChannelInfo.ChannelList = &ch_info->channel;
+            roam_profile.ChannelInfo.numOfChannels = 1;
+            roam_profile.vht_channel_width = ch_info->channel_width;
+            roam_profile.phyMode = ch_info->phy_mode;
+
+            vos_mem_copy(bssid, pAdapter->macAddressCurrent.bytes,
+                         VOS_MAC_ADDR_SIZE);
+
+            hal_status = sme_RoamChannelChangeReq(hal_hdl,
+                                 bssid,
+                                 ch_info->cb_mode, &roam_profile);
+            if (!HAL_STATUS_SUCCESS(hal_status)) {
+                hddLog(LOGE,
+                       "Failed to set sme_RoamChannel for monitor mode");
+                ret = -EINVAL;
+            }
+        } else {
+            hddLog(LOGE, "Not supported, device is not in monitor mode");
+            ret = -EINVAL;
+        }
+        break;
+
     default:
         hddLog(LOGE, "%s: Invalid IOCTL command %d", __func__, sub_cmd);
         break;
@@ -12432,6 +12473,9 @@ static const struct iw_priv_args we_private_args[] = {
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 2,
         0, "crash_inject" },
 #endif
+    {   WE_SET_MON_MODE_CHAN,
+        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 2,
+        0, "setMonChan" },
 };
 
 

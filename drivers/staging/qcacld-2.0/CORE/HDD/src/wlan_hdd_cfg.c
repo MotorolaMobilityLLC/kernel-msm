@@ -3463,7 +3463,7 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ROAMING_OFFLOAD_MIN,
                  CFG_ROAMING_OFFLOAD_MAX),
 #endif
-#ifdef MSM_PLATFORM
+#ifdef FEATURE_BUS_BANDWIDTH
    REG_VARIABLE( CFG_BUS_BANDWIDTH_HIGH_THRESHOLD, WLAN_PARAM_Integer,
                  hdd_config_t, busBandwidthHighThreshold,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -3512,6 +3512,36 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_TCP_TX_HIGH_TPUT_THRESHOLD_DEFAULT,
                  CFG_TCP_TX_HIGH_TPUT_THRESHOLD_MIN,
                  CFG_TCP_TX_HIGH_TPUT_THRESHOLD_MAX ),
+#endif
+#ifdef QCA_SUPPORT_TXRX_HL_BUNDLE
+
+    REG_VARIABLE( CFG_PKT_BUNDLE_THRESHOLD_HIGH, WLAN_PARAM_Integer,
+                 hdd_config_t, pkt_bundle_threshold_high,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_PKT_BUNDLE_THRESHOLD_HIGH_DEFAULT,
+                 CFG_PKT_BUNDLE_THRESHOLD_HIGH_MIN,
+                 CFG_PKT_BUNDLE_THRESHOLD_HIGH_MAX ),
+
+    REG_VARIABLE( CFG_PKT_BUNDLE_THRESHOLD_LOW, WLAN_PARAM_Integer,
+                 hdd_config_t, pkt_bundle_threshold_low,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_PKT_BUNDLE_THRESHOLD_LOW_DEFAULT,
+                 CFG_PKT_BUNDLE_THRESHOLD_LOW_MIN,
+                 CFG_PKT_BUNDLE_THRESHOLD_LOW_MAX ),
+
+    REG_VARIABLE( CFG_PKT_BUNDLE_TIMER_IN_MS, WLAN_PARAM_Integer,
+                 hdd_config_t, pkt_bundle_timer_value,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_PKT_BUNDLE_TIMER_IN_MS_DEFAULT,
+                 CFG_PKT_BUNDLE_TIMER_IN_MS_MIN,
+                 CFG_PKT_BUNDLE_TIMER_IN_MS_MAX ),
+
+    REG_VARIABLE( CFG_PKT_BUNDLE_SIZE, WLAN_PARAM_Integer,
+                 hdd_config_t, pkt_bundle_size,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_PKT_BUNDLE_SIZE_DEFAULT,
+                 CFG_PKT_BUNDLE_SIZE_MIN,
+                 CFG_PKT_BUNDLE_SIZE_MAX ),
 
 #endif
 
@@ -4245,6 +4275,12 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_WOW_PULSE_INTERVAL_HIGH_MAX),
 #endif
 
+   REG_VARIABLE(CFG_MIB_STATS_ENABLED_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, mib_stats_enabled,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_MIB_STATS_ENABLED_DEFAULT,
+                CFG_MIB_STATS_ENABLED_MIN,
+                CFG_MIB_STATS_ENABLED_MAX),
 
    REG_VARIABLE(CFG_DBG_MAX_MGMT_TX_FAILURE_COUNT_NAME, WLAN_PARAM_Integer,
                 hdd_config_t, max_mgmt_tx_fail_count,
@@ -4284,27 +4320,16 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_SAP_TX_LEAKAGE_THRESHOLD_MIN,
                 CFG_SAP_TX_LEAKAGE_THRESHOLD_MAX),
 
-   REG_VARIABLE(CFG_ROAM_DENSE_TRAFFIC_THRESHOLD, WLAN_PARAM_Integer,
-                hdd_config_t, roam_dense_traffic_thresh,
-                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                CFG_ROAM_DENSE_TRAFFIC_THRESHOLD_DEFAULT,
-                CFG_ROAM_DENSE_TRAFFIC_THRESHOLD_MIN,
-                CFG_ROAM_DENSE_TRAFFIC_THRESHOLD_MAX),
+   REG_VARIABLE(CFG_IGNORE_PEER_HT_MODE_NAME, WLAN_PARAM_Integer,
+                  hdd_config_t, ignore_peer_ht_opmode,
+                  VAR_FLAGS_OPTIONAL |
+                  VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                  CFG_IGNORE_PEER_HT_MODE_DEFAULT,
+                  CFG_IGNORE_PEER_HT_MODE_MIN,
+                  CFG_IGNORE_PEER_HT_MODE_MAX),
 
-   REG_VARIABLE(CFG_ROAM_DENSE_RSSI_THRE_OFFSET, WLAN_PARAM_Integer,
-                hdd_config_t, roam_dense_rssi_thresh_offset,
-                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                CFG_ROAM_DENSE_RSSI_THRE_OFFSET_DEFAULT,
-                CFG_ROAM_DENSE_RSSI_THRE_OFFSET_MIN,
-                CFG_ROAM_DENSE_RSSI_THRE_OFFSET_MAX),
-
-   REG_VARIABLE(CFG_ROAM_DENSE_MIN_APS, WLAN_PARAM_Integer,
-                hdd_config_t, roam_dense_min_aps,
-                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                CFG_ROAM_DENSE_MIN_APS_DEFAULT,
-                CFG_ROAM_DENSE_MIN_APS_MIN,
-                CFG_ROAM_DENSE_MIN_APS_MAX),
 };
+
 
 #ifdef WLAN_FEATURE_MBSSID
 REG_TABLE_ENTRY mbssid_sap_dyn_ini_reg_table[] =
@@ -4419,6 +4444,53 @@ void dump_cfg_ini (tCfgIniEntry* iniTable, unsigned long entries)
 }
 #endif
 
+#ifdef FEATURE_RUNTIME_PM
+static void disable_runtime_pm(hdd_config_t *cfg_ini)
+{
+	cfg_ini->runtime_pm = 0;
+}
+#else
+static void disable_runtime_pm(hdd_config_t *cfg_ini)
+{
+}
+#endif
+
+#ifdef FEATURE_WLAN_AUTO_SHUTDOWN
+static void disable_auto_shutdown(hdd_config_t *cfg_ini)
+{
+	cfg_ini->WlanAutoShutdown = 0;
+}
+#else
+static void disable_auto_shutdown(hdd_config_t *cfg_ini)
+{
+}
+#endif
+
+/**
+ * hdd_override_all_ps() - overrides to disables all the powersave features.
+ * @hdd_ctx: Pointer to HDD context.
+ *
+ * Overrides below powersave ini configurations.
+ * gEnableImps=0
+ * gEnableBmps=0
+ * gRuntimePM=0
+ * gWlanAutoShutdown = 0
+ * gEnableSuspend=0
+ * gEnablePowerSaveOffload=0
+ * gEnableWoW=0
+ */
+static void hdd_override_all_ps(hdd_context_t *hdd_ctx)
+{
+	hdd_config_t *cfg_ini = hdd_ctx->cfg_ini;
+
+	cfg_ini->fIsImpsEnabled = 0;
+	cfg_ini->fIsBmpsEnabled = 0;
+	disable_runtime_pm(cfg_ini);
+	disable_auto_shutdown(cfg_ini);
+	cfg_ini->enablePowersaveOffload = 0;
+	cfg_ini->wowEnable = 0;
+}
+
 /*
  * This function reads the qcom_cfg.ini file and
  * parses each 'Name=Value' pair in the ini file
@@ -4512,6 +4584,9 @@ VOS_STATUS hdd_parse_config_ini(hdd_context_t* pHddCtx)
 
    //Loop through the registry table and apply all these configs
    vos_status = hdd_apply_cfg_ini(pHddCtx, cfgIniTable, i);
+
+   if (VOS_MONITOR_MODE == hdd_get_conparam())
+      hdd_override_all_ps(pHddCtx);
 
 config_exit:
    release_firmware(fw);
@@ -4797,7 +4872,7 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAllowDFSChannelRoam] Value = [%u] ",pHddCtx->cfg_ini->allowDFSChannelRoam);
   hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gMaxConcurrentActiveSessions] Value = [%u] ", pHddCtx->cfg_ini->gMaxConcurrentActiveSessions);
 
-#ifdef MSM_PLATFORM
+#ifdef FEATURE_BUS_BANDWIDTH
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
           "Name = [gBusBandwidthHighThreshold] Value = [%u] ",
           pHddCtx->cfg_ini->busBandwidthHighThreshold);
@@ -4869,7 +4944,9 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
             "Name = [gEnableSapSuspend] Value = [%u]",
             pHddCtx->cfg_ini->enableSapSuspend);
-
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+           "Name = [gIgnorePeerHTopMode] Value = [%u]",
+                   pHddCtx->cfg_ini->ignore_peer_ht_opmode);
 #ifdef WLAN_FEATURE_EXTWOW_SUPPORT
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
            "Name = [gExtWoWgotoSuspend] Value = [%u]",
@@ -4995,6 +5072,8 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
                  CFG_FIRST_SCAN_BUCKET_THRESHOLD_NAME,
                  pHddCtx->cfg_ini->first_scan_bucket_threshold);
 
+  hddLog(LOG2, "Name = [gdot11_mib_stats_enabled] Value = [%u]",
+                   pHddCtx->cfg_ini->mib_stats_enabled);
   hddLog(LOG2, "Name = [gEnable_go_cts2self_for_sta] Value = [%u]",
                    pHddCtx->cfg_ini->enable_go_cts2self_for_sta);
   hddLog(LOG2, "Name = [ght_mpdu_density] Value = [%u]",
@@ -5003,12 +5082,6 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
                    pHddCtx->cfg_ini->min_rest_time_conc);
   hddLog(LOG2, "Name = [gIdleTimeConc] Value = [%u]",
                    pHddCtx->cfg_ini->idle_time_conc);
-  hddLog(LOG2, "Name = [groam_dense_rssi_thresh] Value = [%u]",
-                   pHddCtx->cfg_ini->roam_dense_traffic_thresh);
-  hddLog(LOG2, "Name = [groam_dense_rssi_thresh_offset] Value = [%u]",
-                   pHddCtx->cfg_ini->roam_dense_rssi_thresh_offset);
-  hddLog(LOG2, "Name = [groam_dense_min_aps] Value = [%u]",
-                   pHddCtx->cfg_ini->roam_dense_min_aps);
 
 }
 
@@ -6888,7 +6961,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig->sap_channel_avoidance =
                 pHddCtx->cfg_ini->sap_channel_avoidance;
 #endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
-
+   smeConfig->csrConfig.ignore_peer_ht_opmode =
+                           pConfig->ignore_peer_ht_opmode;
    smeConfig->csrConfig.pkt_err_disconn_th =
                    pHddCtx->cfg_ini->pkt_err_disconn_th;
    smeConfig->f_prefer_non_dfs_on_radar =

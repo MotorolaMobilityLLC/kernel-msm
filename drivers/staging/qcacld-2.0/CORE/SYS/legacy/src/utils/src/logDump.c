@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013,2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -125,8 +125,10 @@ int log_sprintf(tpAniSirGlobal pMac, char *pBuf, char *fmt, ...)
     va_list args;
     va_start(args, fmt);
 
-    if (pMac->gCurrentLogSize >= MAX_LOGDUMP_SIZE)
+    if (pMac->gCurrentLogSize >= MAX_LOGDUMP_SIZE) {
+        va_end(args);
         return 0;
+    }
 
 #if    defined (ANI_OS_TYPE_ANDROID)
     ret = vsnprintf(pBuf, (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize), fmt, args);

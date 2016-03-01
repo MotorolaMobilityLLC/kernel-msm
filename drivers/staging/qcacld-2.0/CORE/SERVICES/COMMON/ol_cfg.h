@@ -83,6 +83,8 @@ struct txrx_pdev_cfg_t {
 #ifdef IPA_UC_OFFLOAD
 	struct wlan_ipa_uc_rsc_t ipa_uc_rsc;
 #endif /* IPA_UC_OFFLOAD */
+	uint16_t pkt_bundle_timer_value;
+	uint16_t pkt_bundle_size;
 };
 
 /**
@@ -497,4 +499,22 @@ unsigned int ol_cfg_ipa_uc_rx_ind_ring_size(ol_pdev_handle pdev);
  */
 unsigned int ol_cfg_ipa_uc_tx_partition_base(ol_pdev_handle pdev);
 #endif /* IPA_UC_OFFLOAD */
+
+#define DEFAULT_BUNDLE_TIMER_VALUE 100
+
+#ifdef FEATURE_BUS_BANDWIDTH
+int ol_cfg_get_bundle_timer_value(ol_pdev_handle pdev);
+int ol_cfg_get_bundle_size(ol_pdev_handle pdev);
+#else
+int ol_cfg_get_bundle_timer_value(ol_pdev_handle pdev)
+{
+	return DEFAULT_BUNDLE_TIMER_VALUE;
+}
+
+int ol_cfg_get_bundle_size(ol_pdev_handle pdev)
+{
+	return 0;
+}
+#endif
+
 #endif /* _OL_CFG__H_ */

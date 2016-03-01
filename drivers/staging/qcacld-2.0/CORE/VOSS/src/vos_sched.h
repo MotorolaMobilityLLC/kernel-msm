@@ -615,6 +615,7 @@ VOS_STATUS vos_watchdog_close ( v_PVOID_t pVosContext );
 VOS_STATUS vos_mq_init(pVosMqType pMq);
 void vos_mq_deinit(pVosMqType pMq);
 void vos_mq_put(pVosMqType pMq, pVosMsgWrapper pMsgWrapper);
+void vos_mq_put_front(pVosMqType mq, pVosMsgWrapper msg_wrapper);
 pVosMsgWrapper vos_mq_get(pVosMqType pMq);
 v_BOOL_t vos_is_mq_empty(pVosMqType pMq);
 pVosSchedContext get_vos_sched_ctxt(void);

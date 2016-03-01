@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -64,7 +64,6 @@
 
 #define MAX_SUPPORTED_PEERS_WEP 16
 
-static void limHandleSmeJoinResult(tpAniSirGlobal, tSirResultCodes, tANI_U16,tpPESession);
 static void limHandleSmeReaasocResult(tpAniSirGlobal, tSirResultCodes, tANI_U16, tpPESession);
 void limProcessMlmScanCnf(tpAniSirGlobal, tANI_U32 *);
 #ifdef FEATURE_OEM_DATA_SUPPORT
@@ -1122,7 +1121,8 @@ limProcessMlmReassocInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     msgQ.type = eWNI_SME_REASSOC_IND;
     msgQ.bodyptr = pSirSmeReassocInd;
     msgQ.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    MTRACE(macTrace(pMac, TRACE_CODE_TX_SME_MSG, psessionEntry->peSessionId,
+                    msgQ.type));
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
     limDiagEventReport(pMac, WLAN_PE_DIAG_REASSOC_IND_EVENT, psessionEntry, 0, 0);
 #endif //FEATURE_WLAN_DIAG_SUPPORT
@@ -1187,7 +1187,7 @@ limProcessMlmAuthInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     msgQ.type = eWNI_SME_AUTH_IND;
     msgQ.bodyptr = pSirSmeAuthInd;
     msgQ.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, NO_SESSION, msgQ.type));
+    MTRACE(macTrace(pMac, TRACE_CODE_TX_SME_MSG, NO_SESSION, msgQ.type));
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
     limDiagEventReport(pMac, WLAN_PE_DIAG_AUTH_IND_EVENT, NULL, 0, 0);
 #endif //FEATURE_WLAN_DIAG_SUPPORT
@@ -1325,7 +1325,8 @@ limProcessMlmAssocInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     pSirSmeAssocInd->staId = pStaDs->staIndex;
     pSirSmeAssocInd->reassocReq = pStaDs->mlmStaContext.subType;
     pSirSmeAssocInd->timingMeasCap = pStaDs->timingMeasCap;
-    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    MTRACE(macTrace(pMac, TRACE_CODE_TX_SME_MSG, psessionEntry->peSessionId,
+                                                             msgQ.type));
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
     limDiagEventReport(pMac, WLAN_PE_DIAG_ASSOC_IND_EVENT, psessionEntry, 0, 0);
 #endif //FEATURE_WLAN_DIAG_SUPPORT
@@ -1839,7 +1840,7 @@ limProcessMlmRemoveKeyCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
  *
  * @return None
  */
-static void
+void
 limHandleSmeJoinResult(tpAniSirGlobal pMac, tSirResultCodes resultCode, tANI_U16 protStatusCode, tpPESession psessionEntry)
 {
     tpDphHashNode pStaDs = NULL;
@@ -2671,12 +2672,12 @@ limProcessApMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ)
         if (psessionEntry->privacy)
         {
             if ((psessionEntry->gStartBssRSNIe.present) || (psessionEntry->gStartBssWPAIe.present))
-                limLog(pMac, LOG1, FL("WPA/WPA2 SAP configuration\n"));
+                limLog(pMac, LOG1, FL("WPA/WPA2 SAP configuration"));
             else
             {
                 if (pMac->lim.gLimAssocStaLimit > MAX_SUPPORTED_PEERS_WEP)
                 {
-                    limLog(pMac, LOG1, FL("WEP SAP Configuration\n"));
+                    limLog(pMac, LOG1, FL("WEP SAP Configuration"));
                     pMac->lim.gLimAssocStaLimit = MAX_SUPPORTED_PEERS_WEP;
                     isWepEnabled = TRUE;
                 }

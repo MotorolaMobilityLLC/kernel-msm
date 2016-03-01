@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1072,6 +1072,10 @@ ol_txrx_vdev_attach(
 
     adf_os_spinlock_init(&vdev->ll_pause.mutex);
     vdev->ll_pause.paused_reason = 0;
+#if defined(CONFIG_HL_SUPPORT)
+    vdev->hl_paused_reason = 0;
+#endif
+
     vdev->ll_pause.txq.head = vdev->ll_pause.txq.tail = NULL;
     vdev->ll_pause.txq.depth = 0;
     adf_os_timer_init(
@@ -1088,6 +1092,17 @@ ol_txrx_vdev_attach(
     /* Default MAX Q depth for every VDEV */
     vdev->ll_pause.max_q_depth =
         ol_tx_cfg_max_tx_queue_depth_ll(vdev->pdev->ctrl_pdev);
+
+    vdev->bundling_reqired = false;
+    adf_os_spinlock_init(&vdev->bundle_queue.mutex);
+    vdev->bundle_queue.txq.head = vdev->ll_pause.txq.tail = NULL;
+    vdev->bundle_queue.txq.depth = 0;
+    adf_os_timer_init(
+            pdev->osdev,
+            &vdev->bundle_queue.timer,
+            ol_tx_hl_vdev_bundle_timer,
+            vdev, ADF_DEFERRABLE_TIMER);
+
     /* add this vdev into the pdev's list */
     TAILQ_INSERT_TAIL(&pdev->vdev_list, vdev, vdev_list_elem);
 
@@ -1114,7 +1129,7 @@ void ol_txrx_osif_vdev_register(ol_txrx_vdev_handle vdev,
     vdev->osif_rx = txrx_ops->rx.std;
 
     if (ol_cfg_is_high_latency(vdev->pdev->ctrl_pdev)) {
-        txrx_ops->tx.std = vdev->tx = ol_tx_hl;
+        txrx_ops->tx.std = vdev->tx = OL_TX_HL;
         txrx_ops->tx.non_std = ol_tx_non_std_hl;
     } else {
         txrx_ops->tx.std = vdev->tx = OL_TX_LL;
@@ -1394,6 +1409,14 @@ ol_txrx_peer_attach(
     #ifdef QCA_SUPPORT_PEER_DATA_RX_RSSI
     peer->rssi_dbm = HTT_RSSI_INVALID;
     #endif
+    if ((VOS_MONITOR_MODE == vos_get_conparam()) && !pdev->self_peer) {
+        pdev->self_peer = peer;
+        /*
+         * No Tx in monitor mode, otherwise results in target assert.
+         * Setting disable_intrabss_fwd to true
+         */
+        ol_vdev_rx_set_intrabss_fwd(vdev, true);
+    }
 
     OL_TXRX_LOCAL_PEER_ID_ALLOC(pdev, peer);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -203,7 +203,9 @@ ap_beacon_process(
                   //then we need to enable protection from 11g station.
                   //we don't need protection from 11b because if that's needed then our operating
                   //mode would have already been set to legacy in the previous blocks.
-                  if(eSIR_HT_OP_MODE_OVERLAP_LEGACY == pBcnStruct->HTInfo.opMode)
+                  if((eSIR_HT_OP_MODE_OVERLAP_LEGACY ==
+                                  pBcnStruct->HTInfo.opMode) &&
+                       !pMac->roam.configParam.ignore_peer_ht_opmode)
                   {
                       if((eSIR_HT_OP_MODE_MIXED != pMac->lim.gHTOperMode) &&
                           (eSIR_HT_OP_MODE_OVERLAP_LEGACY != pMac->lim.gHTOperMode))

@@ -1744,6 +1744,8 @@ static void __limProcessSmeOemDataReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     pMlmOemDataReq->data_len = pOemDataReq->data_len;
     vos_mem_copy(pMlmOemDataReq->data, pOemDataReq->data,
                  pOemDataReq->data_len);
+    /* buffer from SME copied, free it now */
+    vos_mem_free(pOemDataReq->data);
 
     //Issue LIM_MLM_OEM_DATA_REQ to MLM
     limPostMlmMessage(pMac, LIM_MLM_OEM_DATA_REQ, (tANI_U32*)pMlmOemDataReq);
@@ -2415,22 +2417,17 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
    if((psessionEntry = peFindSessionByBssid(pMac,pReassocReq->bssDescription.bssId,&sessionId))==NULL)
     {
-	// Because of wrong bssid in ReAssoc request, we are not able to find
-	// pe session in our list of sessions, this is then sent to upper layer
-	// with sme_session id same as in request. Upper layers then cause a
-	// DISASSOC for sme session (wrong, this should not happen)
-	// Hence:
-	// Ideally we should not return error here to upper layer,
-	// since the request was for some other BSSID, session for which is not
-	// present in our sessions array
-
-	// for IR-063901, an old roam command that is somehow coming after
-	// connection is established with a newer AP. Since older AP is already
-	// removed from our list, hence no session is found, causing disconnect
-	// with new AP instead.
-        limPrintMacAddr(pMac, pReassocReq->bssDescription.bssId, LOGE);
         limLog(pMac, LOGE, FL("Session does not exist for given bssId"));
-	goto end;
+        limPrintMacAddr(pMac, pReassocReq->bssDescription.bssId, LOGE);
+        retCode = eSIR_SME_INVALID_PARAMETERS;
+
+       limGetSessionInfo(pMac,(tANI_U8*)pMsgBuf, &smeSessionId, &transactionId);
+       psessionEntry = pe_find_session_by_sme_session_id(pMac, smeSessionId);
+
+       if (psessionEntry != NULL)
+                   limHandleSmeJoinResult(pMac, eSIR_SME_INVALID_PARAMETERS,
+                                 eSIR_MAC_UNSPEC_FAILURE_STATUS, psessionEntry);
+       goto end;
     }
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
@@ -2444,6 +2441,13 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     psessionEntry->dot11mode = pReassocReq->dot11mode;
     psessionEntry->vhtCapability = IS_DOT11_MODE_VHT(pReassocReq->dot11mode);
+
+    psessionEntry->enableHtSmps = pReassocReq->enableHtSmps;
+    psessionEntry->htSmpsvalue = pReassocReq->htSmps;
+    limLog(pMac, LOG1, FL("enableHtSmps: %d htSmps: %d"),
+           psessionEntry->enableHtSmps,
+           psessionEntry->htSmpsvalue);
+
     /**
      * Reassociate request is expected
      * in link established state only.
@@ -2657,12 +2661,6 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     psessionEntry->limPrevSmeState = psessionEntry->limSmeState;
     psessionEntry->limSmeState    = eLIM_SME_WT_REASSOC_STATE;
-
-    psessionEntry->enableHtSmps = pReassocReq->enableHtSmps;
-    psessionEntry->htSmpsvalue = pReassocReq->htSmps;
-    limLog(pMac, LOG1, FL("enableHtSmps: %d htSmps: %d"),
-           psessionEntry->enableHtSmps,
-           psessionEntry->htSmpsvalue);
 
     MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId, psessionEntry->limSmeState));
 
@@ -3636,7 +3634,7 @@ void limProcessSmeGetScanChannelInfo(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     mmhMsg.bodyval = 0;
 
     pMac->lim.gLimRspReqd = false;
-    MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    MTRACE(macTrace(pMac, TRACE_CODE_TX_SME_MSG, NO_SESSION, mmhMsg.type));
     limSysProcessMmhMsgApi(pMac, &mmhMsg,  ePROT);
 }
 
@@ -6443,8 +6441,11 @@ static tANI_BOOLEAN
 limUpdateIBssPropAddIEs(tpAniSirGlobal pMac, tANI_U8 **pDstData_buff,
                         tANI_U16 *pDstDataLen, tSirModifyIE *pModifyIE)
 {
-    int32_t  oui_length;
-    uint8_t  *ibss_ie = NULL;
+    int32_t oui_length;
+    uint8_t *ibss_ie = NULL;
+    uint8_t *vendor_ie;
+    #define MAC_VENDOR_OUI  "\x00\x16\x32"
+    #define MAC_VENDOR_SIZE 3
 
     ibss_ie = pModifyIE->pIEBuffer;
     oui_length = pModifyIE->oui_length;
@@ -6455,13 +6456,34 @@ limUpdateIBssPropAddIEs(tpAniSirGlobal pMac, tANI_U8 **pDstData_buff,
                   oui_length, ibss_ie);
         return FALSE;
     }
+    /*
+     * Why replace only beacon OUI data here:
+     * 1. other ie (such as wpa) shall not be overwritten here.
+     * 2. per spec, beacon oui ie might be set twice and original one
+     * shall be updated.
+     */
+    vendor_ie = cfg_get_vendor_ie_ptr_from_oui(pMac, MAC_VENDOR_OUI,
+                 MAC_VENDOR_SIZE, *pDstData_buff, *pDstDataLen);
 
-    limUpdateAddIEBuffer(pMac,
-                pDstData_buff,
-                pDstDataLen,
-                pModifyIE->pIEBuffer,
-                pModifyIE->ieBufferlength);
+    if (vendor_ie) {
+        VOS_ASSERT((vendor_ie[1] + 2) == pModifyIE->ieBufferlength);
+        vos_mem_copy(vendor_ie, pModifyIE->pIEBuffer,
+                     pModifyIE->ieBufferlength);
+    } else {
+        uint16_t new_length = pModifyIE->ieBufferlength + *pDstDataLen;
+        uint8_t *new_ptr = vos_mem_malloc(new_length);
 
+        if (NULL == new_ptr) {
+            limLog(pMac, LOGE, FL("Memory allocation failed."));
+            return FALSE;
+        }
+        vos_mem_copy(new_ptr, *pDstData_buff, *pDstDataLen);
+        vos_mem_copy(&new_ptr[*pDstDataLen], pModifyIE->pIEBuffer,
+                     pModifyIE->ieBufferlength);
+        vos_mem_free(*pDstData_buff);
+        *pDstDataLen = new_length;
+        *pDstData_buff = new_ptr;
+    }
     return TRUE;
 }
 

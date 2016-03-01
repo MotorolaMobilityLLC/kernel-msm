@@ -2247,8 +2247,6 @@ limProcessMlmJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         if( isLimSessionOffChannel(pMac, sessionId) )
         {
-            limLog(pMac,LOG1,"SessionId:%d LimSession is on OffChannel",
-                   sessionId);
           //suspend link
           limLog(pMac, LOG1, FL("Suspend link as LimSession on sessionid %d"
           "is off channel"),sessionId);
@@ -2263,10 +2261,6 @@ limProcessMlmJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         }
         else
         {
-          limLog(pMac, LOG1, FL("No need to Suspend link as LimSession on "
-              "sessionid %d is not off channel, calling "
-              "limProcessMlmPostJoinSuspendLink with status as SUCCESS"),
-              sessionId);
           //No need to suspend link.
           limLog(pMac,LOG1,"SessionId:%d Join request on current channel",
                  sessionId);

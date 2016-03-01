@@ -84,8 +84,6 @@ const v_U8_t hdd_QdiscAcToTlAC[] = {
    WLANTL_AC_BK,
 };
 
-static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter);
-
 /*---------------------------------------------------------------------------
   Type declarations
   -------------------------------------------------------------------------*/
@@ -285,384 +283,6 @@ void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
 
       spin_unlock_bh(&pAdapter->wmm_tx_queue[i].lock);
    }
-}
-
-static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter)
-{
-   skb_list_node_t *pktNode = NULL;
-   struct sk_buff *skb = NULL;
-   v_SIZE_t size = 0;
-   WLANTL_ACEnumType ac = 0;
-   VOS_STATUS status = VOS_STATUS_E_FAILURE;
-   hdd_list_node_t *anchor = NULL;
-
-   if (NULL == pAdapter)
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-       FL("pAdapter is NULL"));
-      VOS_ASSERT(0);
-      return NULL;
-   }
-
-   // do we have any packets pending in this AC?
-   hdd_list_size( &pAdapter->wmm_tx_queue[ac], &size );
-   if( size == 0 )
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-                 "%s: NO Packet Pending", __func__);
-      return NULL;
-   }
-
-   //Remove the packet from the queue
-   spin_lock_bh(&pAdapter->wmm_tx_queue[ac].lock);
-   status = hdd_list_remove_front( &pAdapter->wmm_tx_queue[ac], &anchor );
-   spin_unlock_bh(&pAdapter->wmm_tx_queue[ac].lock);
-
-   if(VOS_STATUS_SUCCESS == status)
-   {
-      //If success then we got a valid packet from some AC
-      pktNode = list_entry(anchor, skb_list_node_t, anchor);
-      skb = pktNode->skb;
-   }
-   else
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-                "%s: Not able to remove Packet from the list",
-                  __func__);
-
-      return NULL;
-   }
-
-   /* If we are in a back pressure situation see if we can turn the
-      hose back on */
-   if ( (pAdapter->isTxSuspended[ac]) &&
-        (size <= HDD_TX_QUEUE_LOW_WATER_MARK) )
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_WARN,
-                 "%s: TX queue[%d] re-enabled", __func__, ac);
-      pAdapter->isTxSuspended[ac] = VOS_FALSE;
-      /* Enable Queues which we have disabled earlier */
-      netif_tx_start_all_queues( pAdapter->dev );
-   }
-
-   return skb;
-}
-
-static void __hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
-{
-   hdd_cfg80211_state_t *cfgState;
-   struct sk_buff* skb;
-   hdd_adapter_t* pMonAdapter = NULL;
-   struct ieee80211_hdr *hdr;
-   hdd_context_t *hdd_ctx;
-   int ret = 0;
-   struct tagCsrDelStaParams delStaParams;
-
-   ENTER();
-   if (pAdapter == NULL)
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-       FL("pAdapter is NULL"));
-      VOS_ASSERT(0);
-      return;
-   }
-
-   hdd_ctx = WLAN_HDD_GET_CTX(pAdapter);
-   ret = wlan_hdd_validate_context(hdd_ctx);
-   if (0 != ret)
-       return;
-
-   pMonAdapter = hdd_get_adapter( pAdapter->pHddCtx, WLAN_HDD_MONITOR );
-   if (pMonAdapter == NULL)
-   {
-       VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-       "%s: pMonAdapter is NULL", __func__);
-       return;
-   }
-
-   cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
-
-   if( NULL != cfgState->buf )
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-          "%s: Already one MGMT packet Tx going on", __func__);
-      return;
-   }
-
-   skb = hdd_mon_tx_fetch_pkt(pMonAdapter);
-
-   if (NULL == skb)
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-       "%s: No Packet Pending", __func__);
-      return;
-   }
-
-   cfgState->buf = vos_mem_malloc( skb->len ); //buf;
-   if( cfgState->buf == NULL )
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-          "%s: Failed to Allocate memory", __func__);
-      goto fail;
-   }
-
-   cfgState->len = skb->len;
-
-   vos_mem_copy( cfgState->buf, skb->data, skb->len);
-
-   cfgState->skb = skb; //buf;
-   cfgState->action_cookie = (uintptr_t)cfgState->buf;
-
-   hdr = (struct ieee80211_hdr *)skb->data;
-   if( (hdr->frame_control & HDD_FRAME_TYPE_MASK)
-                                       == HDD_FRAME_TYPE_MGMT )
-   {
-       if( (hdr->frame_control & HDD_FRAME_SUBTYPE_MASK)
-                                       == HDD_FRAME_SUBTYPE_DEAUTH )
-       {
-          WLANSAP_PopulateDelStaParams(hdr->addr1,
-                                     eSIR_MAC_DEAUTH_LEAVING_BSS_REASON,
-                                    (SIR_MAC_MGMT_DEAUTH >> 4), &delStaParams);
-          hdd_softap_sta_deauth (pAdapter, &delStaParams);
-          goto mgmt_handled;
-       }
-       else if( (hdr->frame_control & HDD_FRAME_SUBTYPE_MASK)
-                                      == HDD_FRAME_SUBTYPE_DISASSOC )
-       {
-           WLANSAP_PopulateDelStaParams(hdr->addr1,
-                                        eSIR_MAC_DEAUTH_LEAVING_BSS_REASON,
-                                        (SIR_MAC_MGMT_DISASSOC >> 4),
-                                        &delStaParams);
-          hdd_softap_sta_disassoc( pAdapter, &delStaParams );
-          goto mgmt_handled;
-       }
-   }
-   VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
-      "%s: Sending action frame to SAP to TX, Len %d", __func__, skb->len);
-
-   if (VOS_STATUS_SUCCESS !=
-#ifdef WLAN_FEATURE_MBSSID
-      WLANSAP_SendAction( pAdapter->sessionCtx.ap.sapContext,
-#else
-      WLANSAP_SendAction( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
-#endif
-                           skb->data, skb->len, 0) )
-
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-          "%s: WLANSAP_SendAction returned fail", __func__);
-      hdd_sendActionCnf( pAdapter, FALSE );
-   }
-   EXIT();
-   return;
-
-mgmt_handled:
-   hdd_sendActionCnf( pAdapter, TRUE );
-   EXIT();
-   return;
-fail:
-   kfree_skb(pAdapter->skb_to_tx);
-   pAdapter->skb_to_tx = NULL;
-   return;
-}
-
-/**
- * hdd_mon_tx_mgmt_pkt() - monitor mode tx packet api
- * @Adapter: Pointer to adapter
- *
- * Return: none
- */
-void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
-{
-	vos_ssr_protect(__func__);
-	__hdd_mon_tx_mgmt_pkt(pAdapter);
-	vos_ssr_unprotect(__func__);
-}
-
-
-static void __hdd_mon_tx_work_queue(struct work_struct *work)
-{
-   hdd_adapter_t* pAdapter = container_of(work, hdd_adapter_t, monTxWorkQueue);
-   __hdd_mon_tx_mgmt_pkt(pAdapter);
-}
-
-/**
- * hdd_mon_tx_work_queue() - monitor mode tx work handler
- * @work: Pointer to work
- *
- * Return: none
- */
-void hdd_mon_tx_work_queue(struct work_struct *work)
-{
-	vos_ssr_protect(__func__);
-	__hdd_mon_tx_work_queue(work);
-	vos_ssr_unprotect(__func__);
-}
-
-int hdd_mon_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
-{
-   v_U16_t rt_hdr_len;
-   struct ieee80211_hdr *hdr;
-   hdd_adapter_t *pPgBkAdapter, *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
-   struct ieee80211_radiotap_header *rtap_hdr =
-                        (struct ieee80211_radiotap_header *)skb->data;
-
-   /*Supplicant sends the EAPOL packet on monitor interface*/
-   pPgBkAdapter = pAdapter->sessionCtx.monitor.pAdapterForTx;
-   if(pPgBkAdapter == NULL)
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_FATAL,
-           "%s: No Adapter to piggy back. Dropping the pkt on monitor inf",
-                                                                 __func__);
-      goto fail; /* too short to be possibly valid */
-   }
-
-   /* Check if total skb length is greater then radio tap
-      header length of not */
-   if (unlikely(skb->len < sizeof(struct ieee80211_radiotap_header)))
-      goto fail; /* too short to be possibly valid */
-
-   /* check if radio tap header version is correct or not */
-   if (unlikely(rtap_hdr->it_version))
-      goto fail; /* only version 0 is supported */
-
-   /*Strip off the radio tap header*/
-   rt_hdr_len = ieee80211_get_radiotap_len(skb->data);
-
-   /* Check if skb length if greater then total radio tap header length ot not*/
-   if (unlikely(skb->len < rt_hdr_len))
-      goto fail;
-
-   /* Update the trans_start for this netdev */
-   dev->trans_start = jiffies;
-   /*
-    * fix up the pointers accounting for the radiotap
-    * header still being in there.
-    */
-   skb_set_mac_header(skb, rt_hdr_len);
-   skb_set_network_header(skb, rt_hdr_len);
-   skb_set_transport_header(skb, rt_hdr_len);
-
-   /* Pull rtap header out of the skb */
-   skb_pull(skb, rt_hdr_len);
-
-   /*Supplicant adds: radiotap Hdr + radiotap data + 80211 Header. So after
-    * radio tap header and 802.11 header starts
-    */
-   hdr = (struct ieee80211_hdr *)skb->data;
-
-   /* Send data frames through the normal Data path. In this path we will
-    * convert rcvd 802.11 packet to 802.3 packet */
-   if ( (hdr->frame_control & HDD_FRAME_TYPE_MASK)  == HDD_FRAME_TYPE_DATA)
-   {
-      v_U8_t da[6];
-      v_U8_t sa[6];
-
-      memcpy (da, hdr->addr1, VOS_MAC_ADDR_SIZE);
-      memcpy (sa, hdr->addr2, VOS_MAC_ADDR_SIZE);
-
-      /* Pull 802.11 MAC header */
-      skb_pull(skb, HDD_80211_HEADER_LEN);
-
-      if ( HDD_FRAME_SUBTYPE_QOSDATA ==
-          (hdr->frame_control & HDD_FRAME_SUBTYPE_MASK))
-      {
-         skb_pull(skb, HDD_80211_HEADER_QOS_CTL);
-      }
-
-      /* Pull LLC header */
-      skb_pull(skb, HDD_LLC_HDR_LEN);
-
-      /* Create space for Ethernet header */
-      skb_push(skb, HDD_MAC_HDR_SIZE*2);
-      memcpy(&skb->data[0], da, HDD_MAC_HDR_SIZE);
-      memcpy(&skb->data[HDD_DEST_ADDR_OFFSET], sa, HDD_MAC_HDR_SIZE);
-
-      /* Only EAPOL Data packets are allowed through monitor interface */
-      if (vos_be16_to_cpu(
-         (*(unsigned short*)&skb->data[HDD_ETHERTYPE_802_1_X_FRAME_OFFSET]) )
-                                                     != HDD_ETHERTYPE_802_1_X)
-      {
-         VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_FATAL,
-           "%s: Not a Eapol packet. Drop this frame", __func__);
-         //If not EAPOL frames, drop them.
-         kfree_skb(skb);
-         return NETDEV_TX_OK;
-      }
-
-      skb->protocol = htons(HDD_ETHERTYPE_802_1_X);
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
-      hdd_hostapd_select_queue(pPgBkAdapter->dev, skb, NULL, NULL);
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3,13,0))
-      hdd_hostapd_select_queue(pPgBkAdapter->dev, skb, NULL);
-#else
-      hdd_hostapd_select_queue(pPgBkAdapter->dev, skb);
-#endif
-
-      return hdd_softap_hard_start_xmit( skb, pPgBkAdapter->dev );
-   }
-   else
-   {
-      VOS_STATUS status;
-      WLANTL_ACEnumType ac = 0;
-      skb_list_node_t *pktNode = NULL;
-      v_SIZE_t pktListSize = 0;
-
-      spin_lock(&pAdapter->wmm_tx_queue[ac].lock);
-      //If we have already reached the max queue size, disable the TX queue
-      if ( pAdapter->wmm_tx_queue[ac].count == pAdapter->wmm_tx_queue[ac].max_size)
-      {
-         /* We want to process one packet at a time, so lets disable all TX queues
-           * and re-enable the queues once we get TX feedback for this packet */
-         hddLog(LOG1, FL("Disabling queues"));
-         netif_tx_stop_all_queues(pAdapter->dev);
-         pAdapter->isTxSuspended[ac] = VOS_TRUE;
-         spin_unlock(&pAdapter->wmm_tx_queue[ac].lock);
-         return NETDEV_TX_BUSY;
-      }
-      spin_unlock(&pAdapter->wmm_tx_queue[ac].lock);
-
-      //Use the skb->cb field to hold the list node information
-      pktNode = (skb_list_node_t *)&skb->cb;
-
-      //Stick the OS packet inside this node.
-      pktNode->skb = skb;
-
-      INIT_LIST_HEAD(&pktNode->anchor);
-
-      //Insert the OS packet into the appropriate AC queue
-      spin_lock(&pAdapter->wmm_tx_queue[ac].lock);
-      status = hdd_list_insert_back_size( &pAdapter->wmm_tx_queue[ac],
-                                          &pktNode->anchor, &pktListSize );
-      spin_unlock(&pAdapter->wmm_tx_queue[ac].lock);
-
-      if ( !VOS_IS_STATUS_SUCCESS( status ) )
-      {
-         VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-                "%s:Insert Tx queue failed. Pkt dropped", __func__);
-         kfree_skb(skb);
-         return NETDEV_TX_OK;
-      }
-
-      if (pktListSize == 1) {
-         /*
-          * In this context we cannot acquire any mutex etc. And to transmit
-          * this packet we need to call SME API. So to take care of this we will
-          * schedule a work queue
-          */
-         schedule_work(&pPgBkAdapter->monTxWorkQueue);
-      }
-      return NETDEV_TX_OK;
-   }
-
-fail:
-   VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_WARN,
-           "%s: Packet Rcvd at Monitor interface is not proper,"
-           " Dropping the packet",
-            __func__);
-   kfree_skb(skb);
-   return NETDEV_TX_OK;
 }
 
 #ifdef QCA_LL_TX_FLOW_CT
@@ -1375,6 +995,88 @@ bool drop_ip6_mcast(struct sk_buff *skb)
 #define drop_ip6_mcast(_a) 0
 #endif
 
+/**
+ * hdd_mon_rx_packet_cbk() - Receive callback registered with TLSHIM.
+ * @vosContext: [in] pointer to VOS context
+ * @staId:      [in] Station Id
+ * @rxBuf:      [in] pointer to rx adf_nbuf
+ *
+ * TL will call this to notify the HDD when one or more packets were
+ * received for a registered STA.
+ * Return: VOS_STATUS_E_FAILURE if any errors encountered, VOS_STATUS_SUCCESS
+ * otherwise
+ */
+VOS_STATUS hdd_mon_rx_packet_cbk(v_VOID_t *vos_ctx, adf_nbuf_t rx_buf,
+				 uint8_t sta_id)
+{
+	hdd_adapter_t *adapter = NULL;
+	hdd_context_t *hdd_ctx = NULL;
+	int rxstat;
+	struct sk_buff *skb = NULL;
+	struct sk_buff *skb_next;
+	unsigned int cpu_index;
+	hdd_adapter_list_node_t *adapter_node = NULL;
+
+	/* Sanity check on inputs */
+	if ((NULL == vos_ctx) || (NULL == rx_buf)) {
+		VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
+			  "%s: Null params being passed", __func__);
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	hdd_ctx = vos_get_context(VOS_MODULE_ID_HDD, vos_ctx);
+	if (NULL == hdd_ctx) {
+		VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
+			  "%s: HDD adapter context is Null", __func__);
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	hdd_get_front_adapter(hdd_ctx, &adapter_node);
+	adapter = adapter_node->pAdapter;
+	if ((NULL == adapter) || (WLAN_HDD_ADAPTER_MAGIC != adapter->magic)) {
+		VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
+			  "invalid adapter %p for sta Id %d", adapter, sta_id);
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	cpu_index = wlan_hdd_get_cpu();
+
+	/* walk the chain until all are processed */
+	skb = (struct sk_buff *) rx_buf;
+	while (NULL != skb) {
+		skb_next = skb->next;
+		skb->dev = adapter->dev;
+
+		++adapter->hdd_stats.hddTxRxStats.rxPackets[cpu_index];
+		++adapter->stats.rx_packets;
+		adapter->stats.rx_bytes += skb->len;
+		/*
+		 * If this is not a last packet on the chain
+		 * Just put packet into backlog queue, not scheduling RX sirq
+		 */
+		if (skb->next) {
+			rxstat = netif_rx(skb);
+		} else {
+			/*
+			 * This is the last packet on the chain
+			 * Scheduling rx sirq
+			 */
+			rxstat = netif_rx_ni(skb);
+		}
+
+		if (NET_RX_SUCCESS == rxstat)
+			++adapter->
+				hdd_stats.hddTxRxStats.rxDelivered[cpu_index];
+		else
+			++adapter->hdd_stats.hddTxRxStats.rxRefused[cpu_index];
+
+		skb = skb_next;
+	}
+
+	adapter->dev->last_rx = jiffies;
+
+	return VOS_STATUS_SUCCESS;
+}
 /**============================================================================
   @brief hdd_rx_packet_cbk() - Receive callback registered with TL.
   TL will call this to notify the HDD when one or more packets were

@@ -102,6 +102,7 @@ void vos_trace_set_module_trace_level(VOS_MODULE_ID module, uint32_t level);
 void __printf(3,4) vos_snprintf(char *strBuffer, unsigned  int size,
                                 char *strFormat, ...);
 #define VOS_SNPRINTF vos_snprintf
+#define vos_scnprintf scnprintf
 
 #ifdef VOS_ENABLE_TRACING
 

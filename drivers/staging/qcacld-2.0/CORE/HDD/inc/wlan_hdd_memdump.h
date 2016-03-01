@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -36,6 +36,9 @@
 #define WLAN_HDD_MEMDUMP_H
 
 #include "wlan_hdd_main.h"
+
+/* Assigned size of driver memory dump is 4096 bytes */
+#define DRIVER_MEM_DUMP_SIZE    4096
 
 #ifdef WLAN_FEATURE_MEMDUMP
 /**
@@ -88,5 +91,8 @@ static inline int wlan_hdd_cfg80211_get_fw_mem_dump(struct wiphy *wiphy,
 	return -ENOTSUPP;
 }
 #endif
+
+int hdd_driver_memdump_init(void);
+void hdd_driver_memdump_deinit(void);
 
 #endif /* if !defined(WLAN_HDD_MEMDUMP_H)*/

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2013, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -110,4 +110,14 @@ enum ol_tx_spec {
      ol_tx_spec_no_free     = 0x20, /* give to cb rather than free */
 };
 
+typedef void (*tp_ol_packetdump_cb)(adf_nbuf_t netbuf,
+				uint8_t status, uint8_t vdev_id, uint8_t type);
+void ol_register_packetdump_callback(tp_ol_packetdump_cb ol_packetdump_cb);
+void ol_deregister_packetdump_callback(void);
+
+typedef void (*tp_htt_packetdump_cb)(adf_nbuf_t netbuf,
+			uint8_t status, uint8_t vdev_id, uint8_t type);
+
+void htt_register_packetdump_callback(tp_htt_packetdump_cb htt_packetdump_cb);
+void htt_deregister_packetdump_callback(void);
 #endif /* _OL_TXRX_API__H_ */

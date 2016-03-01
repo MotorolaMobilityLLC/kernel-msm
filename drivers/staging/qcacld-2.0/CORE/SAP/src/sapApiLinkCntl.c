@@ -1127,8 +1127,8 @@ WLANSAP_RoamCallback
             {
                 /* Further actions to be taken here */
                 VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                         "In %s, eCSR_ROAM_RESULT_DFS_RADAR_FOUND_IND received in"
-                         "(%d) state\n", __func__, sapContext->sapsMachine);
+                         "In %s, eCSR_ROAM_RESULT_DFS_RADAR_FOUND_IND received in (%d) state"
+                         , __func__, sapContext->sapsMachine);
             }
             break;
 
@@ -1287,8 +1287,8 @@ WLANSAP_RoamCallback
             {
                 /* Further actions to be taken here */
                 VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_WARN,
-                         "In %s, eCSR_ROAM_RESULT_DFS_RADAR_FOUND_IND received in"
-                         "(%d) state\n", __func__, sapContext->sapsMachine);
+                         "In %s, eCSR_ROAM_RESULT_DFS_RADAR_FOUND_IND received in (%d) state",
+                         __func__, sapContext->sapsMachine);
             }
             break;
         }

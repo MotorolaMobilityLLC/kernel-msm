@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -452,7 +452,7 @@ static ssize_t memdump_read(struct file *file, char __user *buf,
 		return -EFAULT;
 	}
 
-	/* offset(pos) should be updated here based on the copy done*/
+	/* offset(pos) should be updated here based on the copy done */
 	*pos += count;
 
 	/* Entire FW memory dump copy completed */
@@ -665,4 +665,253 @@ void memdump_deinit(void) {
 	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
 		hddLog(LOGE, FL("Failed to deallocate timer"));
 	}
+}
+
+#define PROCFS_DRIVER_DUMP_DIR "debugdriver"
+
+#ifdef MULTI_IF_NAME
+#define PROCFS_DRIVER_DUMP_NAME "driverdump" MULTI_IF_NAME
+#else
+#define PROCFS_DRIVER_DUMP_NAME "driverdump"
+#endif
+
+#define PROCFS_DRIVER_DUMP_PERM 0444
+
+static struct proc_dir_entry *proc_file_driver, *proc_dir_driver;
+
+/**
+ * hdd_driver_mem_cleanup() - Frees memory allocated for
+ * driver dump
+ *
+ * This function unallocates driver dump memory.
+ *
+ * Return: None
+ */
+static void hdd_driver_mem_cleanup(void)
+{
+	hdd_context_t *hdd_ctx;
+	void *vos_ctx;
+
+	vos_ctx = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+	if (!vos_ctx) {
+		VOS_ASSERT(0);
+		return;
+	}
+
+	hdd_ctx = vos_get_context(VOS_MODULE_ID_HDD, vos_ctx);
+	if (!hdd_ctx) {
+		hddLog(LOGE, FL("Invalid HDD context"));
+		return;
+	}
+
+	if (hdd_ctx->driver_dump_mem) {
+		vos_mem_free(hdd_ctx->driver_dump_mem);
+		hdd_ctx->driver_dump_mem = NULL;
+	}
+}
+
+
+/**
+ * hdd_driver_memdump_read() - perform read operation in driver
+ * memory dump proc file
+ * @file  - handle for the proc file.
+ * @buf   - pointer to user space buffer.
+ * @count - number of bytes to be read.
+ * @pos   - offset in the from buffer.
+ *
+ * This function performs read operation for the driver memory dump proc file.
+ *
+ * Return: number of bytes read on success, error code otherwise.
+ */
+static ssize_t hdd_driver_memdump_read(struct file *file, char __user *buf,
+					size_t count, loff_t *pos)
+{
+	int status, vos_status;
+	hdd_context_t *hdd_ctx;
+	size_t no_of_bytes_read = 0;
+
+	hdd_ctx = memdump_get_file_data(file);
+
+	hddLog(LOG1, FL("Read req for size:%zu pos:%llu"), count, *pos);
+	status = wlan_hdd_validate_context(hdd_ctx);
+	if (0 != status)
+		return -EINVAL;
+
+	if (*pos < 0) {
+		hddLog(LOGE, FL("Invalid start offset for memdump read"));
+		return -EINVAL;
+	} else if (!count || (hdd_ctx->driver_dump_size &&
+				(*pos >= hdd_ctx->driver_dump_size))) {
+		hddLog(LOGE, FL("No more data to copy"));
+		return 0;
+	} else if ((*pos == 0) || (hdd_ctx->driver_dump_mem == NULL)) {
+		/*
+		 * Allocate memory for Driver memory dump.
+		 */
+		if (!hdd_ctx->driver_dump_mem) {
+			hdd_ctx->driver_dump_mem =
+				vos_mem_malloc(DRIVER_MEM_DUMP_SIZE);
+			if (!hdd_ctx->driver_dump_mem) {
+				hddLog(LOGE, FL("vos_mem_malloc failed"));
+				return -ENOMEM;
+			}
+		}
+
+		vos_status = vos_state_info_dump_all(hdd_ctx->driver_dump_mem,
+						DRIVER_MEM_DUMP_SIZE,
+						&hdd_ctx->driver_dump_size);
+		/*
+		 * If vos_status is set, then memory allocated is insufficient
+		 * to dump driver information. This print can give information
+		 * to allocate more memory if more information from each layer
+		 * is added in future.
+		 */
+		if (vos_status)
+			hddLog(LOGE,
+				FL("Memory insufficient to dump driver information"));
+		hddLog(LOG1, FL("driver_dump_size: %d"),
+					hdd_ctx->driver_dump_size);
+	}
+
+	if (count > hdd_ctx->driver_dump_size - *pos)
+		no_of_bytes_read = hdd_ctx->driver_dump_size - *pos;
+	else
+		no_of_bytes_read = count;
+
+	if (copy_to_user(buf, hdd_ctx->driver_dump_mem + *pos,
+					no_of_bytes_read)) {
+		hddLog(LOGE, FL("copy to user space failed"));
+		return -EFAULT;
+	}
+
+	/* offset(pos) should be updated here based on the copy done */
+	*pos += no_of_bytes_read;
+
+	/* Entire driver memory dump copy completed */
+	if (*pos >= hdd_ctx->driver_dump_size)
+		hdd_driver_mem_cleanup();
+
+	return no_of_bytes_read;
+}
+
+
+/**
+ * struct driver_dump_fops - file operations for driver dump feature
+ * @read - read function for driver dump operation.
+ *
+ * This structure initialize the file operation handle for memory
+ * dump feature
+ */
+static const struct file_operations driver_dump_fops = {
+	read: hdd_driver_memdump_read
+};
+
+/**
+ * hdd_driver_memdump_procfs_init() - Initialize procfs for driver memory dump
+ *
+ * This function create file under proc file system to be used later for
+ * processing driver memory dump
+ *
+ * Return:   0 on success, error code otherwise.
+ */
+static int hdd_driver_memdump_procfs_init(void)
+{
+	hdd_context_t *hdd_ctx;
+	void *vos_ctx;
+
+	vos_ctx = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+	if (!vos_ctx) {
+		VOS_ASSERT(0);
+		return -EINVAL;
+	}
+
+	hdd_ctx = vos_get_context(VOS_MODULE_ID_HDD, vos_ctx);
+	if (!hdd_ctx) {
+		hddLog(LOGE, FL("Invalid HDD context"));
+		return -EINVAL;
+	}
+
+	proc_dir_driver = proc_mkdir(PROCFS_DRIVER_DUMP_DIR, NULL);
+	if (proc_dir_driver == NULL) {
+		pr_debug("Error: Could not initialize /proc/%s\n",
+			 PROCFS_DRIVER_DUMP_DIR);
+		return -ENOMEM;
+	}
+
+	proc_file_driver = proc_create_data(PROCFS_DRIVER_DUMP_NAME,
+				     PROCFS_DRIVER_DUMP_PERM, proc_dir_driver,
+				     &driver_dump_fops, hdd_ctx);
+	if (proc_file_driver == NULL) {
+		remove_proc_entry(PROCFS_DRIVER_DUMP_NAME, proc_dir_driver);
+		pr_debug("Error: Could not initialize /proc/%s\n",
+			  PROCFS_DRIVER_DUMP_NAME);
+		return -ENOMEM;
+	}
+
+	pr_debug("/proc/%s/%s created\n", PROCFS_DRIVER_DUMP_DIR,
+		 PROCFS_DRIVER_DUMP_NAME);
+	return 0;
+}
+
+/**
+ * hdd_driver_memdump_procfs_remove() - Remove file/dir under procfs
+ * for driver memory dump
+ *
+ * This function removes file/dir under proc file system that was
+ * processing driver memory dump
+ *
+ * Return:  None
+ */
+static void hdd_driver_memdump_procfs_remove(void)
+{
+	remove_proc_entry(PROCFS_DRIVER_DUMP_NAME, proc_dir_driver);
+	pr_debug("/proc/%s/%s removed\n", PROCFS_DRIVER_DUMP_DIR,
+					  PROCFS_DRIVER_DUMP_NAME);
+	remove_proc_entry(PROCFS_DRIVER_DUMP_DIR, NULL);
+	pr_debug("/proc/%s removed\n", PROCFS_DRIVER_DUMP_DIR);
+}
+
+/**
+ * hdd_driver_memdump_init() - Intialization function for driver
+ * memory dump feature
+ *
+ * This function creates proc file for driver memdump feature
+ *
+ * Return - 0 on success, error otherwise
+ */
+int hdd_driver_memdump_init(void)
+{
+	int status;
+
+	if (VOS_FTM_MODE == hdd_get_conparam()) {
+		hddLog(LOGE, FL("Not initializing memdump in FTM mode"));
+		return -EINVAL;
+	}
+
+	status = hdd_driver_memdump_procfs_init();
+	if (status) {
+		hddLog(LOGE, FL("Failed to create proc file"));
+		return status;
+	}
+
+	return 0;
+}
+
+/**
+ * hdd_driver_memdump_deinit() - De initialize driver memdump feature
+ *
+ * This function removes proc file created for driver memdump feature.
+ *
+ * Return: None
+ */
+void hdd_driver_memdump_deinit(void)
+{
+	if (VOS_FTM_MODE == hdd_get_conparam()) {
+		hddLog(LOGE, FL("Not deinitializing memdump in FTM mode"));
+		return;
+	}
+
+	hdd_driver_memdump_procfs_remove();
+
+	hdd_driver_mem_cleanup();
 }

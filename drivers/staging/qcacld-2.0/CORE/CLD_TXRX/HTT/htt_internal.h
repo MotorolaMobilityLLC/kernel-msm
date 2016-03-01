@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -259,6 +259,7 @@ htt_print_rx_desc(struct htt_host_rx_desc_base *rx_desc)
  * rounded up to a cache line size.
  */
 #define HTT_RX_BUF_SIZE 1920
+#define MAX_RX_PAYLOAD_SZ (HTT_RX_BUF_SIZE - RX_STD_DESC_SIZE)
 /*
  * DMA_MAP expects the buffer to be an integral number of cache lines.
  * Rather than checking the actual cache line size, this code makes a

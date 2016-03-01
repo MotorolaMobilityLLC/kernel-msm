@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -255,7 +255,7 @@ static CountryInfoTable_t countryInfoTable =
       {REGDOMAIN_FCC, {'G', 'T'}},  //GUATEMALA
       {REGDOMAIN_FCC, {'G', 'U'}},  //GUAM
       {REGDOMAIN_ETSI, {'H', 'U'}}, //HUNGARY
-      {REGDOMAIN_FCC, {'I', 'D'}},  //INDONESIA
+      {REGDOMAIN_ETSI, {'I', 'D'}},  //INDONESIA
       {REGDOMAIN_ETSI, {'I', 'E'}}, //IRELAND
       {REGDOMAIN_ETSI, {'I', 'L'}}, //ISRAEL
       {REGDOMAIN_ETSI, {'I', 'N'}}, //INDIA
@@ -325,12 +325,12 @@ static CountryInfoTable_t countryInfoTable =
       {REGDOMAIN_ETSI, {'T', 'R'}}, //TURKEY
       {REGDOMAIN_ETSI, {'T', 'T'}}, //TRINIDAD AND TOBAGO
       {REGDOMAIN_FCC, {'T', 'W'}}, //TAIWAN, PRIVINCE OF CHINA
-      {REGDOMAIN_FCC, {'T', 'Z'}}, //TANZANIA, UNITED REPUBLIC OF
+      {REGDOMAIN_ETSI, {'T', 'Z'}}, //TANZANIA, UNITED REPUBLIC OF
       {REGDOMAIN_ETSI, {'U', 'A'}}, //UKRAINE
       {REGDOMAIN_ETSI, {'U', 'G'}}, //UGANDA
       {REGDOMAIN_FCC, {'U', 'S'}}, //USA
       {REGDOMAIN_ETSI, {'U', 'Y'}}, //URUGUAY
-      {REGDOMAIN_FCC, {'U', 'Z'}}, //UZBEKISTAN
+      {REGDOMAIN_ETSI, {'U', 'Z'}}, //UZBEKISTAN
       {REGDOMAIN_ETSI, {'V', 'E'}}, //VENEZUELA
       {REGDOMAIN_FCC, {'V', 'I'}}, //VIRGIN ISLANDS, US
       {REGDOMAIN_ETSI, {'V', 'N'}}, //VIETNAM

@@ -84,7 +84,7 @@
 #define WMA_TGT_WOW_TX_COMPLETE_TIMEOUT    2000
 #define MAX_MEM_CHUNKS                     32
 #define WMA_CRASH_INJECT_TIMEOUT           5000
-
+#define WMA_RESET_MAX_RATE                 10
 /*
    In prima 12 HW stations are supported including BCAST STA(staId 0)
    and SELF STA(staId 1) so total ASSOC stations which can connect to Prima
@@ -436,7 +436,7 @@ typedef struct {
 #define WMA_NUM_BITS_IN_BYTE           8
 
 #define WMA_AP_WOW_DEFAULT_PTRN_MAX    4
-#define WMA_STA_WOW_DEFAULT_PTRN_MAX   4
+#define WMA_STA_WOW_DEFAULT_PTRN_MAX   5
 
 struct wma_wow_ptrn_cache {
 	u_int8_t vdev_id;
@@ -574,6 +574,8 @@ struct wma_txrx_node {
 	uint8_t nss_5g;
 
 	uint8_t wep_default_key_idx;
+	bool is_vdev_valid;
+
 };
 
 #if defined(QCA_WIFI_FTM)
@@ -802,6 +804,7 @@ typedef struct wma_handle {
 #ifdef WLAN_FEATURE_NAN
 	bool is_nan_enabled;
 #endif
+	bool is_mib_enabled;
 
 	/* Powersave Configuration Parameters */
 	u_int8_t staMaxLIModDtim;
@@ -849,10 +852,12 @@ typedef struct wma_handle {
 	uint32_t wow_wakeup_enable_mask;
 	uint32_t wow_wakeup_disable_mask;
 	uint16_t max_mgmt_tx_fail_count;
+	uint32_t ccmp_replays_attack_cnt;
 
 	struct wma_runtime_pm_context runtime_context;
 	uint32_t fine_time_measurement_cap;
 	bool bpf_enabled;
+	bool     pause_other_vdev_on_mcc_start;
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {
@@ -1704,5 +1709,7 @@ int wma_crash_inject(tp_wma_handle wma_handle, uint32_t type,
 			uint32_t delay_time_ms);
 
 uint32_t wma_get_vht_ch_width(void);
+
+VOS_STATUS wma_get_wakelock_stats(struct sir_wake_lock_stats *wake_lock_stats);
 
 #endif

@@ -298,13 +298,8 @@ A_STATUS HIFRegBasedGetTargetInfo(HIF_DEVICE *device, struct bmi_target_info *ta
 
     status = bmiBufferSend(device, (A_UCHAR *)&cid, sizeof(cid));
     if (status != A_OK) {
-        AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Unable to write to the device, try again.\n"));
-        mdelay(100);
-        status = bmiBufferSend(device, (A_UCHAR *)&cid, sizeof(cid));
-        if (status != A_OK) {
-            AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Still unable to write to the device!\n"));
-            return A_ERROR;
-        }
+        AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Unable to write to the device.\n"));
+        return A_ERROR;
     }
 
     status = bmiBufferReceive(device, (A_UCHAR *)&targ_info->target_ver,

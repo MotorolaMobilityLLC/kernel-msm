@@ -2764,8 +2764,8 @@ void limSwitchChannelCback(tpAniSirGlobal pMac, eHalStatus status,
    mmhMsg.bodyptr = pSirSmeSwitchChInd;
    mmhMsg.bodyval = 0;
 
-   MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
-
+   MTRACE(macTrace(pMac, TRACE_CODE_TX_SME_MSG, psessionEntry->peSessionId,
+                                                            mmhMsg.type));
    SysProcessMmhMsg(pMac, &mmhMsg);
 }
 
@@ -6938,7 +6938,7 @@ void limProcessAddStaSelfRsp(tpAniSirGlobal pMac,tpSirMsgQ limMsgQ)
    mmhMsg.type = eWNI_SME_ADD_STA_SELF_RSP;
    mmhMsg.bodyptr = pRsp;
    mmhMsg.bodyval = 0;
-   MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+   MTRACE(macTrace(pMac, TRACE_CODE_TX_SME_MSG, NO_SESSION, mmhMsg.type));
    limSysProcessMmhMsgApi(pMac, &mmhMsg,  ePROT);
 
 }
@@ -7030,7 +7030,7 @@ void limProcessDelStaSelfRsp(tpAniSirGlobal pMac,tpSirMsgQ limMsgQ)
    mmhMsg.type = eWNI_SME_DEL_STA_SELF_RSP;
    mmhMsg.bodyptr = pRsp;
    mmhMsg.bodyval = 0;
-   MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+   MTRACE(macTrace(pMac, TRACE_CODE_TX_SME_MSG, NO_SESSION, mmhMsg.type));
    limSysProcessMmhMsgApi(pMac, &mmhMsg,  ePROT);
 
 }

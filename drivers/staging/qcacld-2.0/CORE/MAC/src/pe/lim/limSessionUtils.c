@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -258,7 +258,7 @@ isLimSessionOffChannel(tpAniSirGlobal pMac, tANI_U8 sessionId)
 
     if(sessionId >=  pMac->lim.maxBssId)
     {
-        limLog(pMac, LOGE, FL("Invalid sessionId: %d \n "), sessionId);
+        limLog(pMac, LOGE, FL("Invalid sessionId: %d"), sessionId);
         return FALSE;
     }
 

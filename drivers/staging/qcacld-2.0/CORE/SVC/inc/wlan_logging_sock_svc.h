@@ -77,4 +77,6 @@ static inline void wlan_report_log_completion(uint32_t is_fatal,
 
 void wlan_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data);
 
+void wlan_deregister_txrx_packetdump(void);
+void wlan_register_txrx_packetdump(void);
 #endif /* WLAN_LOGGING_SOCK_SVC_H */

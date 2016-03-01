@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012, 2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -71,6 +71,23 @@
  *   Type declarations
  *-------------------------------------------------------------------------*/
 
+/**
+ * enum suspend_resume_state - Suspend resume state
+ * @HDD_WLAN_EARLY_SUSPEND: Early suspend state.
+ * @HDD_WLAN_SUSPEND: Suspend state.
+ * @HDD_WLAN_EARLY_RESUME: Early resume state.
+ * @HDD_WLAN_RESUME: Resume state.
+ *
+ * Suspend state to indicate in diag event of suspend resume.
+ */
+
+enum suspend_resume_state {
+	 HDD_WLAN_EARLY_SUSPEND,
+	 HDD_WLAN_SUSPEND,
+	 HDD_WLAN_EARLY_RESUME,
+	 HDD_WLAN_RESUME
+};
+
 /*-------------------------------------------------------------------------
  * Function declarations and documentation
  * ------------------------------------------------------------------------*/
@@ -102,6 +119,16 @@ int wlan_hdd_ipv4_changed(struct notifier_block *nb,
 
 int wlan_hdd_ipv6_changed(struct notifier_block *nb,
 				unsigned long data, void *arg);
+
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+void hdd_wlan_suspend_resume_event(uint8_t state);
+#else
+static inline
+void hdd_wlan_suspend_resume_event(uint8_t state)
+{
+	return;
+}
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
 
 #endif // if !defined __WLAN_QCT_DRIVER_H

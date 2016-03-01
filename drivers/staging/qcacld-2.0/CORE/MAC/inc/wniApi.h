@@ -78,6 +78,7 @@
 #define ANI_DUMMY_PKT_MSG_LEN            16
 #define ANI_DUMMY_DATA_PAYLOAD_OFFSET    10
 
+#define SIR_SME_MODULE_ID 0x16
 
 /// Start of Sirius/Host message types
 #define WNI_HOST_MSG_START             0x1500
@@ -402,6 +403,8 @@ enum eWniMsgTypes
     eWNI_SME_ROAM_RESTART_REQ,
     eWNI_SME_SMPS_FORCE_MODE_IND,
     eWNI_SME_REGISTER_MGMT_FRAME_CB,
+    eWNI_SME_MON_INIT_SESSION,
+    eWNI_SME_DEL_ALL_TDLS_PEERS,
     eWNI_SME_MSG_TYPES_END
 };
 

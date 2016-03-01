@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -156,6 +156,8 @@
 #define CFG_TGT_RX_DECAP_MODE (0x2)
 /* Decap to native Wifi header */
 #define CFG_TGT_RX_DECAP_MODE_NWIFI (0x1)
+/* Decap to raw mode header */
+#define CFG_TGT_RX_DECAP_MODE_RAW   (0x0)
 
 /* maximum number of pending scan requests */
 #define CFG_TGT_DEFAULT_SCAN_MAX_REQS   0x4

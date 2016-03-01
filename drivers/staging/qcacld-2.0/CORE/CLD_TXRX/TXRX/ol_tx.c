@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014,2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -556,7 +556,7 @@ ol_tx_hl_base(
     ol_txrx_vdev_handle vdev,
     enum ol_tx_spec tx_spec,
     adf_nbuf_t msdu_list,
-    int tx_comp_req)
+    int tx_comp_req, bool call_sched)
 {
     struct ol_txrx_pdev_t *pdev = vdev->pdev;
     adf_nbuf_t msdu = msdu_list;
@@ -717,10 +717,253 @@ ol_tx_hl_base(
 MSDU_LOOP_BOTTOM:
         msdu = next;
     }
-    ol_tx_sched(pdev);
+
+    if (call_sched == true)
+        ol_tx_sched(pdev);
 
     return NULL; /* all MSDUs were accepted */
 }
+
+/**
+ * ol_txrx_get_vdev_from_vdev_id() - get vdev from vdev_id
+ * @vdev_id: vdev_id
+ *
+ * Return: vdev handle
+ *            NULL if not found.
+ */
+ol_txrx_vdev_handle ol_txrx_get_vdev_from_vdev_id(uint8_t vdev_id)
+{
+	v_CONTEXT_t vos_context = vos_get_global_context(VOS_MODULE_ID_TXRX,
+							 NULL);
+	ol_txrx_pdev_handle pdev = vos_get_context(VOS_MODULE_ID_TXRX,
+							 vos_context);
+	ol_txrx_vdev_handle vdev = NULL;
+
+	if (adf_os_unlikely(!pdev))
+		return NULL;
+
+	TAILQ_FOREACH(vdev, &pdev->vdev_list, vdev_list_elem)
+		if (vdev->vdev_id == vdev_id)
+			break;
+
+	return vdev;
+}
+
+#ifdef QCA_SUPPORT_TXRX_HL_BUNDLE
+/**
+ * ol_tx_pdev_reset_bundle_require() - reset bundle require flag
+ * @pdev_handle: pdev handle
+ *
+ * Return: none
+ */
+void
+ol_tx_pdev_reset_bundle_require(void* pdev_handle)
+{
+	struct ol_txrx_pdev_t *pdev = (struct ol_txrx_pdev_t *)pdev_handle;
+	struct ol_txrx_vdev_t *vdev;
+
+	TAILQ_FOREACH(vdev, &pdev->vdev_list, vdev_list_elem) {
+		vdev->bundling_reqired = false;
+		TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
+			"vdev_id %d bundle_require %d\n",
+			vdev->vdev_id, vdev->bundling_reqired);
+    }
+}
+
+/**
+ * ol_tx_vdev_set_bundle_require() - set bundle require flag if required
+ * @vdev_id: vdev id
+ * @tx_packets: number of tx packets
+ * @time_in_ms: time in ms
+ * @high_th: high threashold
+ * @low_th: low threashold
+ *
+ * Return: none
+ */
+void
+ol_tx_vdev_set_bundle_require(uint8_t vdev_id, unsigned long tx_bytes,
+			uint32_t time_in_ms, uint32_t high_th, uint32_t low_th)
+{
+	struct ol_txrx_vdev_t* vdev = ol_txrx_get_vdev_from_vdev_id(vdev_id);
+	bool old_bundle_required;
+
+	if ((!vdev) || (low_th > high_th))
+		return;
+
+	old_bundle_required = vdev->bundling_reqired;
+	if (tx_bytes > ((high_th * time_in_ms * 1500)/1000))
+		vdev->bundling_reqired = true;
+	else if (tx_bytes < ((low_th * time_in_ms * 1500)/1000))
+		vdev->bundling_reqired = false;
+
+	if (old_bundle_required != vdev->bundling_reqired)
+		TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
+			"vdev_id %d bundle_require %d tx_bytes %ld time_in_ms %d high_th %d low_th %d\n",
+			vdev->vdev_id, vdev->bundling_reqired, tx_bytes,
+			time_in_ms, high_th, low_th);
+}
+
+/**
+ * ol_tx_hl_queue_flush_all() - drop all packets in vdev bundle queue
+ * @vdev: vdev handle
+ *
+ * Return: none
+ */
+void
+ol_tx_hl_queue_flush_all(struct ol_txrx_vdev_t* vdev)
+{
+	adf_os_spin_lock_bh(&vdev->bundle_queue.mutex);
+	if (vdev->bundle_queue.txq.depth != 0) {
+		adf_os_timer_cancel(&vdev->bundle_queue.timer);
+		vdev->pdev->total_bundle_queue_length -=
+				vdev->bundle_queue.txq.depth;
+		adf_nbuf_tx_free(vdev->bundle_queue.txq.head, 1/*error*/);
+		vdev->bundle_queue.txq.depth = 0;
+		vdev->bundle_queue.txq.head = NULL;
+		vdev->bundle_queue.txq.tail = NULL;
+	}
+	adf_os_spin_unlock_bh(&vdev->bundle_queue.mutex);
+}
+
+/**
+ * ol_tx_hl_vdev_queue_append() - append pkt in tx queue
+ * @vdev: vdev handle
+ * @msdu_list: msdu list
+ *
+ * Return: none
+ */
+static void
+ol_tx_hl_vdev_queue_append(struct ol_txrx_vdev_t* vdev, adf_nbuf_t msdu_list)
+{
+	adf_os_spin_lock_bh(&vdev->bundle_queue.mutex);
+
+	if (!vdev->bundle_queue.txq.head) {
+		adf_os_timer_start(
+			&vdev->bundle_queue.timer,
+			ol_cfg_get_bundle_timer_value(vdev->pdev->ctrl_pdev));
+		vdev->bundle_queue.txq.head = msdu_list;
+		vdev->bundle_queue.txq.tail = msdu_list;
+	} else {
+		adf_nbuf_set_next(vdev->bundle_queue.txq.tail, msdu_list);
+	}
+
+	while (adf_nbuf_next(msdu_list) != NULL) {
+		vdev->bundle_queue.txq.depth++;
+		vdev->pdev->total_bundle_queue_length++;
+		msdu_list = adf_nbuf_next(msdu_list);
+	}
+
+	vdev->bundle_queue.txq.depth++;
+	vdev->pdev->total_bundle_queue_length++;
+	vdev->bundle_queue.txq.tail = msdu_list;
+	adf_os_spin_unlock_bh(&vdev->bundle_queue.mutex);
+
+	return;
+}
+
+/**
+ * ol_tx_hl_vdev_queue_send_all() - send all packets in vdev bundle queue
+ * @vdev: vdev handle
+ * @call_sched: invoke scheduler
+ *
+ * Return: NULL for success
+ */
+adf_nbuf_t
+ol_tx_hl_vdev_queue_send_all(struct ol_txrx_vdev_t* vdev, bool call_sched)
+{
+	adf_nbuf_t msdu_list = NULL;
+	struct ol_txrx_pdev_t *pdev = vdev->pdev;
+	int tx_comp_req = pdev->cfg.default_tx_comp_req;
+
+	adf_os_spin_lock_bh(&vdev->bundle_queue.mutex);
+
+	if (vdev->bundle_queue.txq.depth != 0) {
+		adf_os_timer_cancel(&vdev->bundle_queue.timer);
+		vdev->pdev->total_bundle_queue_length -=
+			vdev->bundle_queue.txq.depth;
+		msdu_list = ol_tx_hl_base(vdev, ol_tx_spec_std,
+			vdev->bundle_queue.txq.head, tx_comp_req, call_sched);
+
+		vdev->bundle_queue.txq.depth = 0;
+		vdev->bundle_queue.txq.head = NULL;
+		vdev->bundle_queue.txq.tail = NULL;
+	}
+	adf_os_spin_unlock_bh(&vdev->bundle_queue.mutex);
+
+	return msdu_list;
+}
+
+/**
+ * ol_tx_hl_pdev_queue_send_all() - send all packets from all vdev bundle queue
+ * @pdev: pdev handle
+ *
+ * Return: NULL for success
+ */
+adf_nbuf_t
+ol_tx_hl_pdev_queue_send_all(struct ol_txrx_pdev_t* pdev)
+{
+	struct ol_txrx_vdev_t* vdev;
+	adf_nbuf_t msdu_list;
+
+	TAILQ_FOREACH(vdev, &pdev->vdev_list, vdev_list_elem) {
+		msdu_list = ol_tx_hl_vdev_queue_send_all(vdev, false);
+		if (msdu_list)
+			adf_nbuf_tx_free(msdu_list, 1/*error*/);
+	}
+	ol_tx_sched(pdev);
+	return NULL; /* all msdus were accepted */
+}
+
+/**
+ * ol_tx_hl_vdev_bundle_timer() - bundle timer function
+ * @vdev: vdev handle
+ *
+ * Return: none
+ */
+void
+ol_tx_hl_vdev_bundle_timer(void *vdev)
+{
+	adf_nbuf_t msdu_list;
+
+	msdu_list = ol_tx_hl_vdev_queue_send_all(vdev, true);
+	if (msdu_list)
+		adf_nbuf_tx_free(msdu_list, 1/*error*/);
+}
+
+/**
+ * ol_tx_hl_queue() - queueing logic to bundle in HL
+ * @vdev: vdev handle
+ * @msdu_list: msdu list
+ *
+ * Return: NULL for success/drop msdu list
+ */
+adf_nbuf_t
+ol_tx_hl_queue(struct ol_txrx_vdev_t* vdev, adf_nbuf_t msdu_list)
+{
+	struct ol_txrx_pdev_t *pdev = vdev->pdev;
+	int tx_comp_req = pdev->cfg.default_tx_comp_req;
+
+	if (vdev->bundling_reqired == true &&
+		(ol_cfg_get_bundle_size(vdev->pdev->ctrl_pdev) > 1)) {
+		ol_tx_hl_vdev_queue_append(vdev, msdu_list);
+		if (pdev->total_bundle_queue_length >=
+			ol_cfg_get_bundle_size(vdev->pdev->ctrl_pdev)){
+			return ol_tx_hl_pdev_queue_send_all(pdev);
+		}
+	} else {
+		if (vdev->bundle_queue.txq.depth != 0) {
+			ol_tx_hl_vdev_queue_append(vdev, msdu_list);
+			return ol_tx_hl_vdev_queue_send_all(vdev, true);
+		} else {
+			return ol_tx_hl_base(vdev, ol_tx_spec_std, msdu_list,
+							 tx_comp_req, true);
+		}
+	}
+
+	return NULL; /* all msdus were accepted */
+}
+
+#endif
 
 adf_nbuf_t
 ol_tx_hl(ol_txrx_vdev_handle vdev, adf_nbuf_t msdu_list)
@@ -728,7 +971,7 @@ ol_tx_hl(ol_txrx_vdev_handle vdev, adf_nbuf_t msdu_list)
     struct ol_txrx_pdev_t *pdev = vdev->pdev;
     int tx_comp_req = pdev->cfg.default_tx_comp_req;
 
-    return ol_tx_hl_base(vdev, ol_tx_spec_std, msdu_list, tx_comp_req);
+    return ol_tx_hl_base(vdev, ol_tx_spec_std, msdu_list, tx_comp_req, true);
 }
 
 adf_nbuf_t
@@ -746,7 +989,7 @@ ol_tx_non_std_hl(
             tx_comp_req = 1;
         }
     }
-    return ol_tx_hl_base(vdev, tx_spec, msdu_list, tx_comp_req);
+    return ol_tx_hl_base(vdev, tx_spec, msdu_list, tx_comp_req, true);
 }
 
 adf_nbuf_t

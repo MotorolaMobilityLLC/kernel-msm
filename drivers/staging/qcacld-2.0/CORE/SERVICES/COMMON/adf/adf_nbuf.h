@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -60,6 +60,29 @@
 #define ADF_NBUF_TRAC_DHCP_CLI_PORT     68
 #define ADF_NBUF_TRAC_ETH_TYPE_OFFSET   12
 #define ADF_NBUF_TRAC_EAPOL_ETH_TYPE    0x888E
+
+/**
+ * struct mon_rx_status - This will have monitor mode rx_status extracted from
+ * htt_rx_desc used later to update radiotap information.
+ * @tsft: Time Synchronization Function timer
+ * @chan: Channel frequency
+ * @chan_flags: Bitmap of Channel flags, IEEE80211_CHAN_TURBO,
+ *              IEEE80211_CHAN_CCK...
+ * @flags: For IEEE80211_RADIOTAP_FLAGS
+ * @rate: Rate in terms 500Kbps
+ * @ant_signal_db: Rx packet RSSI
+ * @nr_ant: Number of Antennas used for streaming
+ */
+
+struct mon_rx_status {
+	uint64_t tsft;
+	uint16_t chan;
+	uint16_t chan_flags;
+	uint8_t  flags;
+	uint8_t  rate;
+	uint8_t  ant_signal_db;
+	uint8_t  nr_ant;
+};
 
 /**
  * @brief Platform indepedent packet abstraction
@@ -1191,4 +1214,17 @@ adf_nbuf_is_eapol_pkt(adf_nbuf_t buf)
 {
     return (__adf_nbuf_is_eapol_pkt(buf));
 }
+
+/**
+ * adf_nbuf_update_radiotap() - update radiotap at head of nbuf.
+ * @rx_status: rx_status containing required info to update radiotap
+ * @nbuf: Pointer to nbuf
+ * @headroom_sz: Available headroom size
+ *
+ * Return: radiotap length.
+ */
+int adf_nbuf_update_radiotap(struct mon_rx_status *rx_status, adf_nbuf_t nbuf,
+			     u_int32_t headroom_sz);
+
+
 #endif

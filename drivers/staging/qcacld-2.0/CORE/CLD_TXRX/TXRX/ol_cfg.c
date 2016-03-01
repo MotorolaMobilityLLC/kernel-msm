@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014,2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -32,6 +32,29 @@ unsigned int vow_config = 0;
 module_param(vow_config, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 MODULE_PARM_DESC(vow_config, "Do VoW Configuration");
 EXPORT_SYMBOL(vow_config);
+
+#ifdef QCA_SUPPORT_TXRX_HL_BUNDLE
+/**
+ * ol_cfg_update_bundle_params() - update tx bundle params
+ * @cfg_ctx: cfg context
+ * @cfg_param: parameters
+ *
+ * Return: none
+ */
+void ol_cfg_update_bundle_params(struct txrx_pdev_cfg_t *cfg_ctx,
+				struct txrx_pdev_cfg_param_t cfg_param)
+{
+	cfg_ctx->pkt_bundle_timer_value = cfg_param.pkt_bundle_timer_value;
+	cfg_ctx->pkt_bundle_size = cfg_param.pkt_bundle_size;
+}
+#else
+void ol_cfg_update_bundle_params(struct txrx_pdev_cfg_t *cfg_ctx,
+				struct txrx_pdev_cfg_param_t cfg_param)
+{
+	return;
+}
+#endif
+
 
 /* FIX THIS -
  * For now, all these configuration parameters are hardcoded.
@@ -87,8 +110,36 @@ ol_pdev_handle ol_pdev_cfg_attach(adf_os_device_t osdev,
 	cfg_ctx->ipa_uc_rsc.rx_ind_ring_size = cfg_param.uc_rx_indication_ring_count;
 	cfg_ctx->ipa_uc_rsc.tx_partition_base = cfg_param.uc_tx_partition_base;
 #endif /* IPA_UC_OFFLOAD */
+
+	ol_cfg_update_bundle_params(cfg_ctx, cfg_param);
 	return (ol_pdev_handle) cfg_ctx;
 }
+
+#ifdef FEATURE_BUS_BANDWIDTH
+/**
+ * ol_cfg_get_bundle_timer_value() - get bundle timer value
+ * @pdev: pdev handle
+ *
+ * Return: bundle timer value
+ */
+int ol_cfg_get_bundle_timer_value(ol_pdev_handle pdev)
+{
+	struct txrx_pdev_cfg_t *cfg = (struct txrx_pdev_cfg_t *)pdev;
+	return cfg->pkt_bundle_timer_value;
+}
+
+/**
+ * ol_cfg_get_bundle_size() - get bundle size value
+ * @pdev: pdev handle
+ *
+ * Return: bundle size value
+ */
+int ol_cfg_get_bundle_size(ol_pdev_handle pdev)
+{
+	struct txrx_pdev_cfg_t *cfg = (struct txrx_pdev_cfg_t *)pdev;
+	return cfg->pkt_bundle_size;
+}
+#endif
 
 int ol_cfg_is_high_latency(ol_pdev_handle pdev)
 {

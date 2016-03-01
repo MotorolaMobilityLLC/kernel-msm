@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -162,6 +162,29 @@ __inline void vos_mq_put(pVosMqType pMq, pVosMsgWrapper pMsgWrapper)
 
 } /* vos_mq_put() */
 
+/**
+ * vos_mq_put_front() - adds a message to the head of message queue
+ * @mq: message queue
+ * @msg_wrapper: message wrapper
+ *
+ * This function is used to add a message to the head of message queue
+ *
+ * Return: None
+ */
+void vos_mq_put_front(pVosMqType mq, pVosMsgWrapper msg_wrapper)
+{
+	unsigned long flags;
+
+	if ((mq == NULL) || (msg_wrapper == NULL)) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+			"%s: NULL pointer passed", __func__);
+		return;
+	}
+
+	spin_lock_irqsave(&mq->mqLock, flags);
+	list_add(&msg_wrapper->msgNode, &mq->mqList);
+	spin_unlock_irqrestore(&mq->mqLock, flags);
+}
 
 /*---------------------------------------------------------------------------
 

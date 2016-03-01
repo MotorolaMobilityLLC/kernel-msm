@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -52,6 +52,7 @@
 
 
 #include <htt_internal.h>
+#include <vos_getBin.h>
 
 #define HTT_MSG_BUF_SIZE(msg_bytes) \
    ((msg_bytes) + HTC_HEADER_LEN + HTC_HDR_ALIGNMENT_PADDING)
@@ -309,6 +310,19 @@ htt_h2t_rx_ring_cfg_msg_ll(struct htt_pdev_t *pdev)
     enable_ppdu_start= 0;
     enable_ppdu_end  = 0;
 #endif
+    if (VOS_MONITOR_MODE == vos_get_conparam()) {
+        enable_ctrl_data = 1;
+        enable_mgmt_data = 1;
+        enable_null_data = 1;
+        enable_phy_data  = 1;
+        enable_hdr       = 1;
+        enable_ppdu_start= 1;
+        enable_ppdu_end  = 1;
+        /* Disable ASPM for monitor mode */
+        adf_os_print("Monitor mode is enabled\n");
+        htt_htc_disable_aspm();
+    }
+
     HTT_RX_RING_CFG_ENABLED_802_11_HDR_SET(*msg_word, enable_hdr);
     HTT_RX_RING_CFG_ENABLED_MSDU_PAYLD_SET(*msg_word, 1);
     HTT_RX_RING_CFG_ENABLED_PPDU_START_SET(*msg_word, enable_ppdu_start);

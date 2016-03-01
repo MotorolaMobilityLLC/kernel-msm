@@ -768,7 +768,7 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
         if ((!pMac->lim.gpLimRemainOnChanReq) && (0 != pMbMsg->wait))
         {
             limLog(pMac, LOGE,
-                    FL("Remain on channel is not running \n"));
+                    FL("Remain on channel is not running"));
             limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF,
                     eHAL_STATUS_FAILURE, pMbMsg->sessionId, 0);
             return;
@@ -965,7 +965,7 @@ send_action_frame:
             else
             {
                 limLog(pMac, LOGE,
-                            FL("Failed to Send Action frame \n"));
+                            FL("Failed to Send Action frame"));
                 limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF,
                         eHAL_STATUS_FAILURE, pMbMsg->sessionId, 0);
                 return;
@@ -1038,7 +1038,7 @@ send_frame1:
         else
         {
             limLog(pMac, LOGE,
-                FL("Dropping SA Query frame - Unable to find PE Session \n"));
+                FL("Dropping SA Query frame - Unable to find PE Session"));
             limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF,
                     eHAL_STATUS_FAILURE, pMbMsg->sessionId, 0);
             palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
@@ -1054,7 +1054,7 @@ send_frame1:
         if(0 ==  pMacHdr->fc.wep)
         {
             limLog(pMac, LOGE,
-                FL("Dropping SA Query frame due to non PMF connection\n"));
+                FL("Dropping SA Query frame due to non PMF connection"));
             limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF,
                     eHAL_STATUS_FAILURE, pMbMsg->sessionId, 0);
             palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,

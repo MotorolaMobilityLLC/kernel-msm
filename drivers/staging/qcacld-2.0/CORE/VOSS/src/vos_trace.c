@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -134,6 +134,8 @@ static tvosTraceData gvosTraceData;
  */
 static tpvosTraceCb vostraceCBTable[VOS_MODULE_ID_MAX];
 static tpvosTraceCb vostraceRestoreCBTable[VOS_MODULE_ID_MAX];
+static tp_vos_state_info_cb vos_state_info_table[VOS_MODULE_ID_MAX];
+
 /*-------------------------------------------------------------------------
   Functions
   ------------------------------------------------------------------------*/
@@ -471,6 +473,20 @@ void vosTraceInit()
     }
 }
 
+/**
+ * vos_register_debugcb_init() - initializes debug callbacks
+ * to NULL
+ *
+ * Return: None
+ */
+void vos_register_debugcb_init(void)
+{
+	uint8_t i;
+
+	for (i = 0; i < VOS_MODULE_ID_MAX; i++)
+		vos_state_info_table[i] = NULL;
+}
+
 /*-----------------------------------------------------------------------------
   \brief vos_trace() - puts the messages in to ring-buffer
 
@@ -684,4 +700,51 @@ void vosTraceDumpAll(void *pMac, v_U8_t code, v_U8_t session,
     {
         spin_unlock(&ltraceLock);
     }
+}
+
+/**
+ * vos_register_debug_callback() - stores callback handlers to print
+ * state information
+ * @module_id: module id of layer
+ * @vos_state_infocb: callback to be registered
+ *
+ * This function is used to store callback handlers to print
+ * state information
+ *
+ * Return: None
+ */
+void vos_register_debug_callback(VOS_MODULE_ID module_id,
+					tp_vos_state_info_cb vos_state_infocb)
+{
+	vos_state_info_table[module_id] = vos_state_infocb;
+}
+
+/**
+ * vos_state_info_dump_all() - it invokes callback of layer which registered
+ * its callback to print its state information.
+ * @buf:  buffer pointer to be passed
+ * @size:  size of buffer to be filled
+ * @driver_dump_size: actual size of buffer used
+ *
+ * Return: zero on success
+ */
+int vos_state_info_dump_all(char *buf, uint16_t size,
+			uint16_t *driver_dump_size)
+{
+	uint8_t module, ret = 0;
+	uint16_t buf_len = size;
+	char *buf_ptr = buf;
+
+	for (module = 0; module < VOS_MODULE_ID_MAX; module++) {
+		if (NULL != vos_state_info_table[module]) {
+			vos_state_info_table[module](&buf_ptr, &buf_len);
+			if (!buf_len) {
+				ret = 1;
+				break;
+			}
+		}
+	}
+
+	*driver_dump_size = size - buf_len;
+	return ret;
 }

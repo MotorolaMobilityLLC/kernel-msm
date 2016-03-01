@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -2584,7 +2584,7 @@ tANI_BOOLEAN pmcShouldBmpsTimerRun( tpAniSirGlobal pMac )
      * an Infra session */
     if (!csrIsInfraConnected(pMac))
     {
-        pmcLog(pMac, LOG1, FL("No Infra Session or multiple sessions. BMPS should not be started"));
+        pmcLog(pMac, LOG1, FL("No Infra Session. BMPS can't be started"));
         return eANI_BOOLEAN_FALSE;
     }
     return eANI_BOOLEAN_TRUE;

@@ -365,7 +365,5 @@ VOS_STATUS vos_flush_logs(uint32_t is_fatal,
 		uint32_t reason_code);
 void vos_logging_set_fw_flush_complete(void);
 void vos_probe_threads(void);
-bool vos_is_crash_indication_pending(void);
-void vos_set_crash_indication_pending(bool value);
 void vos_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data);
 #endif // if !defined __VOS_API_H

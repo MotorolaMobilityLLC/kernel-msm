@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -455,6 +455,11 @@ tANI_U8* limTraceGetMlmStateString( tANI_U32 mlmState )
         CASE_RETURN_STRING( eLIM_MLM_WT_REMOVE_BSS_KEY_STATE);
         CASE_RETURN_STRING( eLIM_MLM_WT_REMOVE_STA_KEY_STATE);
         CASE_RETURN_STRING( eLIM_MLM_WT_SET_MIMOPS_STATE);
+#if defined WLAN_FEATURE_VOWIFI_11R
+	CASE_RETURN_STRING(eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE);
+	CASE_RETURN_STRING(eLIM_MLM_WT_FT_REASSOC_RSP_STATE);
+#endif
+	CASE_RETURN_STRING(eLIM_MLM_P2P_LISTEN_STATE);
         default:
             return( "UNKNOWN" );
             break;

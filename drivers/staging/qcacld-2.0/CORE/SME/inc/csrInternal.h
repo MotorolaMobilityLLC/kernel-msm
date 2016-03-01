@@ -43,6 +43,7 @@
 #include "csrSupport.h"
 #include "vos_nvitem.h"
 #include "wlan_qct_tl.h"
+#include "vos_utils.h"
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
 #include "csrNeighborRoam.h"
@@ -707,6 +708,7 @@ typedef struct tagCsrConfig
     struct roam_ext_params roam_params;
     tANI_BOOLEAN sendDeauthBeforeCon;
     tANI_BOOLEAN ignorePeerErpInfo;
+    bool ignore_peer_ht_opmode;
     v_U16_t pkt_err_disconn_th;
 }tCsrConfig;
 
@@ -1040,6 +1042,7 @@ typedef struct tagCsrRoamSession
     tCsrRoamStoredProfile stored_roam_profile;
     bool ch_switch_in_progress;
     bool supported_nss_1x1;
+    bool disable_hi_rssi;
 } tCsrRoamSession;
 
 typedef struct tagCsrRoamStruct
@@ -1095,6 +1098,7 @@ typedef struct tagCsrRoamStruct
     tANI_U8 *pReassocResp;  /* reassociation response from new AP */
     tANI_U16 reassocRespLen;  /* length of reassociation response */
 #endif
+    vos_timer_t packetdump_timer;
 }tCsrRoamStruct;
 
 

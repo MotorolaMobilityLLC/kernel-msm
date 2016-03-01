@@ -156,6 +156,8 @@ VOS_STATUS hdd_roamRegisterTDLSSTA(hdd_adapter_t *pAdapter,
                                    tANI_U8 ucastSig);
 void hdd_PerformRoamSetKeyComplete(hdd_adapter_t *pAdapter);
 
+VOS_STATUS hdd_roamDeregisterTDLSSTA(hdd_adapter_t *adapter, uint8_t staId);
+
 void hdd_SendPeerStatusIndToOemApp(v_MACADDR_t *peerMac,
                                    tANI_U8 peerStatus,
                                    tANI_U8 peerTimingMeasCap,

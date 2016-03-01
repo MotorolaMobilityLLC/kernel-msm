@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -654,6 +654,11 @@ tANI_BOOLEAN csrIsProfileWapi( tCsrRoamProfile *pProfile );
 #define WLAN_SECURITY_EVENT_PMKID_CANDIDATE_FOUND  7
 #define WLAN_SECURITY_EVENT_PMKID_UPDATE    8
 #define WLAN_SECURITY_EVENT_MIC_ERROR       9
+#define WLAN_SECURITY_EVENT_SET_UNICAST_REQ  10
+#define WLAN_SECURITY_EVENT_SET_UNICAST_RSP  11
+#define WLAN_SECURITY_EVENT_SET_BCAST_REQ    12
+#define WLAN_SECURITY_EVENT_SET_BCAST_RSP    13
+
 
 #define AUTH_OPEN       0
 #define AUTH_SHARED     1

@@ -801,8 +801,10 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_DEL_STA_SELF_REQ           SIR_HAL_DEL_STA_SELF_REQ
 
 #define WDA_SET_P2P_GO_NOA_REQ         SIR_HAL_SET_P2P_GO_NOA_REQ
+#ifdef FEATURE_WLAN_TDLS
 #define WDA_SET_TDLS_LINK_ESTABLISH_REQ SIR_HAL_TDLS_LINK_ESTABLISH_REQ
 #define WDA_SET_TDLS_LINK_ESTABLISH_REQ_RSP SIR_HAL_TDLS_LINK_ESTABLISH_REQ_RSP
+#endif
 
 #define WDA_TX_COMPLETE_TIMEOUT_IND  (WDA_MSG_TYPES_END - 1)
 #define WDA_WLAN_SUSPEND_IND           SIR_HAL_WLAN_SUSPEND_IND
@@ -1082,7 +1084,12 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_BPF_GET_CAPABILITIES_REQ          SIR_HAL_BPF_GET_CAPABILITIES_REQ
 #define WDA_BPF_SET_INSTRUCTIONS_REQ          SIR_HAL_BPF_SET_INSTRUCTIONS_REQ
 
-#define MAX_WOW_FILTERS 2
+#define WDA_MIB_STATS_REQ                     SIR_HAL_MIB_STATS_REQ
+#define WDA_SET_MIB_STATS_ENABLE              SIR_HAL_SET_MIB_STATS_ENABLE
+#define WDA_SET_MIB_STATS_DISABLE             SIR_HAL_SET_MIB_STATS_DISABLE
+
+#define WDA_UPDATE_TX_RATE                    SIR_HAL_UPDATE_TX_RATE
+
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
 #define HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME 0x40 // Bit 6 will be used to control BD rate for Management frames

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -908,7 +908,6 @@ VOS_STATUS hdd_softap_RegisterSTA( hdd_adapter_t *pAdapter,
    VOS_STATUS vosStatus = VOS_STATUS_E_FAILURE;
    WLAN_STADescType staDesc = {0};
    hdd_context_t *pHddCtx = pAdapter->pHddCtx;
-   hdd_adapter_t *pmonAdapter = NULL;
 
    //eCsrEncryptionType connectedCipherAlgo;
    //v_BOOL_t  fConnected;
@@ -1032,16 +1031,7 @@ VOS_STATUS hdd_softap_RegisterSTA( hdd_adapter_t *pAdapter,
       pAdapter->sessionCtx.ap.uIsAuthenticated = VOS_FALSE;
 
    }
-   pmonAdapter= hdd_get_mon_adapter( pAdapter->pHddCtx);
-   if(pmonAdapter)
-   {
-       VOS_TRACE( VOS_MODULE_ID_HDD_SAP_DATA, VOS_TRACE_LEVEL_INFO_HIGH,
-                  "Turn on Monitor the carrier");
-       netif_carrier_on(pmonAdapter->dev);
-           //Enable Tx queue
-       hddLog(LOG1, FL("Enabling queues"));
-       netif_tx_start_all_queues(pmonAdapter->dev);
-    }
+
    netif_carrier_on(pAdapter->dev);
    //Enable Tx queue
    hddLog(LOG1, FL("Enabling queues"));

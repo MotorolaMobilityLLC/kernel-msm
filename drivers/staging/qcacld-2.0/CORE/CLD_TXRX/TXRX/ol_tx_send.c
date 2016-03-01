@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -59,6 +59,9 @@
 #endif
 #include <ol_tx_queue.h>
 #include <ol_txrx.h>
+#include <pktlog_ac_fmt.h>
+
+static tp_ol_packetdump_cb gol_packetdump_cb;
 
 #ifdef TX_CREDIT_RECLAIM_SUPPORT
 
@@ -552,6 +555,9 @@ ol_tx_completion_handler(
             OL_TX_DESC_UPDATE_GROUP_CREDIT(pdev, tx_desc_id, 1, 0, status);
         }
 
+    if (gol_packetdump_cb)
+        gol_packetdump_cb(netbuf, status, tx_desc->vdev->vdev_id, TX_DATA_PKT);
+
         htc_pm_runtime_put(pdev->htt_pdev->htc_pdev);
         adf_nbuf_trace_update(netbuf, trace_str);
         /* Per SDU update of byte count */
@@ -744,6 +750,9 @@ ol_tx_single_completion_handler(
 
     /* Do one shot statistics */
     TXRX_STATS_UPDATE_TX_STATS(pdev, status, 1, adf_nbuf_len(netbuf));
+
+     if (gol_packetdump_cb)
+        gol_packetdump_cb(netbuf, status, tx_desc->vdev->vdev_id, TX_MGMT_PKT);
 
     if (OL_TX_DESC_NO_REFS(tx_desc)) {
         ol_tx_desc_frame_free_nonstd(pdev, tx_desc, status != htt_tx_status_ok);
@@ -1131,3 +1140,32 @@ ol_tx_delay_compute(
 }
 
 #endif /* QCA_COMPUTE_TX_DELAY */
+
+/**
+ * ol_register_packetdump_callback() - stores tx packet dump
+ * callback handler
+ * @ol_packetdump_cb: packetdump cb
+ *
+ * This function is used to store tx packet dump callback
+ *
+ * Return: None
+ *
+ */
+void ol_register_packetdump_callback(tp_ol_packetdump_cb ol_packetdump_cb)
+{
+	gol_packetdump_cb = ol_packetdump_cb;
+}
+
+/**
+ * ol_deregister_packetdump_callback() - removes tx packet dump
+ * callback handler
+ *
+ * This function is used to remove tx packet dump callback
+ *
+ * Return: None
+ *
+ */
+void ol_deregister_packetdump_callback(void)
+{
+	gol_packetdump_cb = NULL;
+}

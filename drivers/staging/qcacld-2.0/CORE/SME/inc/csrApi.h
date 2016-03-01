@@ -1292,7 +1292,7 @@ typedef struct tagCsrConfigParam
     v_U8_t conc_custom_rule1;
     v_U8_t conc_custom_rule2;
     v_U8_t is_sta_connection_in_5gz_enabled;
-
+    bool       ignore_peer_ht_opmode;
     /* 802.11p enable */
     bool       enable_dot11p;
     tANI_BOOLEAN sendDeauthBeforeCon;
@@ -1857,6 +1857,8 @@ eHalStatus csrRoamIssueFTRoamOffloadSynch(tHalHandle hHal, tANI_U32 sessionId,
 
 ---------------------------------------------------------------------------*/
 typedef void (*tCsrLinkStatusCallback)(v_U8_t status, void *pContext);
+typedef void (*csr_mib_stats_callback)
+			(struct mib_stats_metrics *mib_stats, void *context);
 /**
  * tcsr_fw_state_callback() -HDD callback registered with SME for getting
  *  firmware state
@@ -1865,4 +1867,5 @@ typedef void (*tCsrLinkStatusCallback)(v_U8_t status, void *pContext);
  * Return: void
  */
 typedef void (*tcsr_fw_state_callback)(void *context);
+void csr_packetdump_timer_stop(void);
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -58,5 +58,15 @@ typedef struct
     } params;
     v_MACADDR_t bssId;
 } tHostOffloadRequest, *tpHostOffloadRequest;
+
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+void hdd_wlan_offload_event(uint8_t type, uint8_t state);
+#else
+static inline
+void hdd_wlan_offload_event(uint8_t type, uint8_t state)
+{
+	return;
+}
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
 #endif // __WLAN_HDD_HOST_OFFLOAD_H__

@@ -1795,6 +1795,8 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                 spin_lock_bh(&pHddCtx->bus_bw_lock);
                 pHostapdAdapter->prev_tx_packets = pHostapdAdapter->stats.tx_packets;
                 pHostapdAdapter->prev_rx_packets = pHostapdAdapter->stats.rx_packets;
+                pHostapdAdapter->prev_tx_bytes =
+                        pHostapdAdapter->stats.tx_bytes;
                 spin_unlock_bh(&pHddCtx->bus_bw_lock);
                 hdd_start_bus_bw_compute_timer(pHostapdAdapter);
             }
@@ -1978,6 +1980,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                 spin_lock_bh(&pHddCtx->bus_bw_lock);
                 pHostapdAdapter->prev_tx_packets = 0;
                 pHostapdAdapter->prev_rx_packets = 0;
+                pHostapdAdapter->prev_tx_bytes = 0;
                 spin_unlock_bh(&pHddCtx->bus_bw_lock);
                 hdd_stop_bus_bw_compute_timer(pHostapdAdapter);
             }
@@ -2079,12 +2082,14 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
 
         case eSAP_CHANNEL_CHANGE_EVENT:
             hddLog(LOG1, FL("Received eSAP_CHANNEL_CHANGE_EVENT event"));
-            /* Prevent suspend for new channel */
-            hdd_hostapd_channel_prevent_suspend(pHostapdAdapter,
-                    pSapEvent->sapevt.sapChSelected.pri_ch);
-            /* Allow suspend for old channel */
-            hdd_hostapd_channel_allow_suspend(pHostapdAdapter,
-                    pHddApCtx->operatingChannel);
+            if (pHostapdState->bssState != BSS_STOP) {
+                /* Prevent suspend for new channel */
+                hdd_hostapd_channel_prevent_suspend(pHostapdAdapter,
+                        pSapEvent->sapevt.sapChSelected.pri_ch);
+                /* Allow suspend for old channel */
+                hdd_hostapd_channel_allow_suspend(pHostapdAdapter,
+                        pHddApCtx->operatingChannel);
+            }
             /* SME/PE is already updated for new operation channel. So update
              * HDD layer also here. This resolves issue in AP-AP mode where
              * AP1 channel is changed due to RADAR then CAC is going on and
@@ -7028,7 +7033,6 @@ VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter )
                     __func__, ret);
     }
 
-    wlan_hdd_set_monitor_tx_adapter( WLAN_HDD_GET_CTX(pAdapter), pAdapter );
     pAdapter->sessionCtx.ap.sapConfig.acs_cfg.acs_mode = false;
     vos_mem_free(pAdapter->sessionCtx.ap.sapConfig.acs_cfg.ch_list);
     vos_mem_zero(&pAdapter->sessionCtx.ap.sapConfig.acs_cfg,

@@ -3683,6 +3683,7 @@ void smeGetCommandQStatus( tHalHandle hHal );
 VOS_STATUS sme_SetIdlePowersaveConfig(v_PVOID_t vosContext, tANI_U32 value);
 VOS_STATUS sme_notify_modem_power_state(tHalHandle hHal, tANI_U32 value);
 eHalStatus sme_set_cts2self_for_p2p_go(tHalHandle hHal);
+eHalStatus sme_set_mib_stats_enable(tHalHandle hal, uint8_t value);
 
 eHalStatus sme_ConfigEnablePowerSave (tHalHandle hHal, tPmcPowerSavingMode psMode);
 eHalStatus sme_ConfigDisablePowerSave (tHalHandle hHal, tPmcPowerSavingMode psMode);
@@ -4487,10 +4488,6 @@ static inline VOS_STATUS sme_send_egap_conf_params(uint32_t enable,
 }
 #endif
 
-eHalStatus sme_set_dense_roam_params(tHalHandle hal,
-					uint32_t rssi_thresh_offset,
-					uint32_t min_aps, uint32_t status,
-					uint32_t traffic_thresh);
 #ifdef WLAN_FEATURE_WOW_PULSE
 VOS_STATUS sme_set_wow_pulse(struct wow_pulse_mode *wow_pulse_set_info);
 #endif
@@ -4510,4 +4507,23 @@ bool sme_is_sta_smps_allowed(tHalHandle hHal, uint8_t session_id);
 eHalStatus sme_get_bpf_offload_capabilities(tHalHandle hal);
 eHalStatus sme_set_bpf_instructions(tHalHandle hal,
 			struct sir_bpf_set_offload *);
+
+/**
+ * sme_create_mon_session() - post message to create PE session for monitormode
+ * operation
+ * @hal_handle: Handle to the HAL
+ * @bssid: pointer to bssid
+ *
+ * Return: eHAL_STATUS_SUCCESS on success, non-zero error code on failure.
+ */
+eHalStatus sme_create_mon_session(tHalHandle hal_handle, uint8_t *bssid);
+eHalStatus sme_get_mib_stats(tHalHandle hal,
+				csr_mib_stats_callback callback,
+				void *context, void *vos_context,
+				uint8_t session_id);
+void sme_update_fine_time_measurement_capab(tHalHandle hal, uint32_t val);
+
+eHalStatus sme_delete_all_tdls_peers(tHalHandle hal, uint8_t session_id);
+
+eHalStatus sme_update_txrate(tHalHandle hal, struct sir_txrate_update *req);
 #endif //#if !defined( __SME_API_H )

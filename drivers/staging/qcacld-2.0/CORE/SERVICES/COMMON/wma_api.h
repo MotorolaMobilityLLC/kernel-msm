@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -155,6 +155,7 @@ int process_wma_set_command(int sessid, int paramid,
 tANI_U8 wma_getFwWlanFeatCaps(tANI_U8 featEnumValue);
 VOS_STATUS wma_set_cts2self_for_p2p_go(void *wda_handle,
 		u_int32_t cts2self_for_p2p_go);
+VOS_STATUS wma_set_mib_stats_enable(void *wda_handle, u_int32_t enable);
 
 #ifdef FEATURE_GREEN_AP
 void wma_setup_egap_support(struct hdd_tgt_cfg *tgt_cfg, WMA_HANDLE handle);

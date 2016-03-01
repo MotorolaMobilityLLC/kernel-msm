@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -180,6 +180,12 @@ static tANI_U8* smeTraceGetCommandString( tANI_U32 command )
         CASE_RETURN_STRING(eSmeCommandRemoveKey);
         CASE_RETURN_STRING(eSmeCommandAddStaSession);
         CASE_RETURN_STRING(eSmeCommandDelStaSession);
+#ifdef FEATURE_WLAN_TDLS
+       CASE_RETURN_STRING(eSmeCommandTdlsSendMgmt);
+       CASE_RETURN_STRING(eSmeCommandTdlsAddPeer);
+       CASE_RETURN_STRING(eSmeCommandTdlsDelPeer);
+       CASE_RETURN_STRING(eSmeCommandTdlsLinkEstablish);
+#endif
         CASE_RETURN_STRING(eSmePmcCommandMask);
         CASE_RETURN_STRING(eSmeCommandEnterImps);
         CASE_RETURN_STRING(eSmeCommandExitImps);
@@ -206,18 +212,36 @@ static tANI_U8* smeTraceGetCommandString( tANI_U32 command )
 static void smeTraceDump(tpAniSirGlobal pMac, tpvosTraceRecord pRecord,
                                                             tANI_U16 recIndex)
 {
-    if (TRACE_CODE_SME_COMMAND == pRecord->code)
-    {
-        smsLog(pMac, LOG1, "%04d %012llu S%d %-14s %-30s(0x%x)", recIndex,
-                   pRecord->time, pRecord->session, "SME COMMAND:",
-                   smeTraceGetCommandString(pRecord->data), pRecord->data );
-    }
-    else
-    {
-        smsLog(pMac, LOG1, "%04d %012llu S%d %-14s %-30s(0x%x)", recIndex,
-                   pRecord->time, pRecord->session, "RX HDD MSG:",
-                   smeTraceGetRxMsgString(pRecord->code), pRecord->data );
-    }
+	switch (pRecord->code) {
+	case TRACE_CODE_SME_COMMAND:
+		smsLog(pMac, LOGE, "%04d %012llu S%d %-14s %-30s(0x%x)",
+			recIndex, pRecord->time, pRecord->session,
+			"SME COMMAND:",
+			smeTraceGetCommandString(pRecord->data),
+			pRecord->data);
+		break;
+	case TRACE_CODE_SME_TX_WDA_MSG:
+		smsLog(pMac, LOGE, "%04d %012llu S%d %-14s %-30s(0x%x)",
+			recIndex, pRecord->time, pRecord->session,
+			"TX WDA Msg:",
+			macTraceGetWdaMsgString((tANI_U16)pRecord->data),
+			pRecord->data);
+		break;
+	case TRACE_CODE_SME_RX_WDA_MSG:
+		smsLog(pMac, LOGE, "%04d %012llu S%d %-14s %-30s(0x%x)",
+			recIndex, pRecord->time, pRecord->session,
+			"RX WDA Msg:",
+			macTraceGetSmeMsgString((tANI_U16)pRecord->data),
+			pRecord->data);
+		break;
+	default:
+		smsLog(pMac, LOGE, "%04d %012llu S%d %-14s %-30s(0x%x)",
+			recIndex, pRecord->time, pRecord->session,
+			"RX HDD MSG:",
+			smeTraceGetRxMsgString(pRecord->code),
+			pRecord->data);
+		break;
+	}
 }
 
 void smeTraceInit(tpAniSirGlobal pMac)

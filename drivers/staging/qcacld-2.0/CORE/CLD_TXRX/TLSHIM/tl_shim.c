@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -466,9 +466,7 @@ static int tlshim_mgmt_rx_process(void *context, u_int8_t *data,
 	void *vos_ctx = vos_get_global_context(VOS_MODULE_ID_TL, NULL);
 	struct txrx_tl_shim_ctx *tl_shim = vos_get_context(VOS_MODULE_ID_TL,
 							   vos_ctx);
-#ifdef FEATURE_WLAN_D0WOW
 	tp_wma_handle wma_handle = vos_get_context(VOS_MODULE_ID_WDA, vos_ctx);
-#endif
 	WMI_MGMT_RX_EVENTID_param_tlvs *param_tlvs = NULL;
 	wmi_mgmt_rx_hdr *hdr = NULL;
 #ifdef WLAN_FEATURE_11W
@@ -698,6 +696,7 @@ static int tlshim_mgmt_rx_process(void *context, u_int8_t *data,
 				if (is_ccmp_pn_replay_attack(vos_ctx, wh,
 									ccmp)) {
 					TLSHIM_LOGE("Dropping the frame");
+					wma_handle->ccmp_replays_attack_cnt++;
 					vos_pkt_return_packet(rx_pkt);
 					return 0;
 				}

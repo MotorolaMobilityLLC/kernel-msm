@@ -519,13 +519,13 @@ static char *ol_board_id_to_filename(struct ol_softc *scn, uint16_t board_id)
 #define MAX_SUPPORTED_PEERS 32
 #endif
 
-#if defined(CONFIG_CNSS)
-const char* ol_get_fw_name(struct ol_softc *scn)
+#if defined(HIF_PCI)
+const char *ol_get_fw_name(struct ol_softc *scn)
 {
 	return scn->fw_files.image_file;
 }
 #elif defined(HIF_SDIO)
-const char* ol_get_fw_name(struct ol_softc *scn)
+const char *ol_get_fw_name(struct ol_softc *scn)
 {
 	const char *filename = NULL;
 
@@ -542,7 +542,7 @@ const char* ol_get_fw_name(struct ol_softc *scn)
 	return filename;
 }
 #else
-const char* ol_get_fw_name(struct ol_softc *scn)
+const char *ol_get_fw_name(struct ol_softc *scn)
 {
 	return QCA_FIRMWARE_FILE;
 }

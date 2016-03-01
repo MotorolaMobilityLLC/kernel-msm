@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -41,7 +41,6 @@
 #include "macTrace.h"
 
 #define NO_SESSION 0xFF
-#define TRACE_CODE_SME_COMMAND 0xFF
 enum {
     TRACE_CODE_SME_RX_HDD_MSG_SCAN_REQ,
     TRACE_CODE_SME_RX_HDD_MSG_SCAN_GET_RESULTS,
@@ -62,7 +61,6 @@ enum {
     TRACE_CODE_SME_RX_HDD_ROAM_GET_CONNECTPROFILE,
     TRACE_CODE_SME_RX_HDD_ROAM_FREE_CONNECTPROFILE,
     TRACE_CODE_SME_RX_HDD_ROAM_SET_PMKIDCACHE,
-    TRACE_CODE_SME_RX_HDD_ROAM_DEL_PMKIDCACHE,
     TRACE_CODE_SME_RX_HDD_ROAM_GET_PMKIDCACHE,
     TRACE_CODE_SME_RX_HDD_GET_CONFIGPARAM,
     TRACE_CODE_SME_RX_HDD_GET_MODPROFFIELDS,
@@ -153,6 +151,14 @@ enum {
 #ifdef FEATURE_WLAN_LPHB
     TRACE_CODE_SME_RX_HDD_LPHB_CONFIG_REQ,
 #endif /* FEATURE_WLAN_LPHB */
+    TRACE_CODE_SME_RX_HDD_ROAM_DEL_PMKIDCACHE,
+    /*
+     * New trace commands to be added before this comment not at the end
+     * Trace codes for SME commands
+     */
+    TRACE_CODE_SME_COMMAND = 250,
+    TRACE_CODE_SME_TX_WDA_MSG,
+    TRACE_CODE_SME_RX_WDA_MSG,
 };
 
 void smeTraceInit(tpAniSirGlobal pMac);

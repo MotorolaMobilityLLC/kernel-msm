@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -48,6 +48,7 @@
 #include "vos_api.h"
 #include "vos_sched.h"
 #include "regtable.h"
+#include "wlan_hdd_power.h"
 
 #ifndef REMOVE_PKT_LOG
 #include "ol_txrx_types.h"
@@ -76,14 +77,6 @@ extern void __hdd_wlan_exit(void);
 struct ath_hif_sdio_softc *sc = NULL;
 
 #ifdef CONFIG_CNSS_SDIO
-static void hif_crash_indication(void)
-{
-	if (vos_is_crash_indication_pending()) {
-		vos_set_crash_indication_pending(false);
-		wlan_hdd_send_svc_nlink_msg(WLAN_SVC_FW_CRASHED_IND, NULL, 0);
-	}
-}
-
 static inline void *hif_get_virt_ramdump_mem(unsigned long *size)
 {
 	return cnss_get_virt_ramdump_mem(size);
@@ -93,9 +86,6 @@ static inline void hif_release_ramdump_mem(unsigned long *address)
 {
 }
 #else
-static void hif_crash_indication(void)
-{
-}
 #ifndef TARGET_DUMP_FOR_NON_QC_PLATFORM
 static inline void *hif_get_virt_ramdump_mem(unsigned long *size)
 {
@@ -230,14 +220,19 @@ ath_hif_sdio_probe(void *context, void *hif_handle)
         goto err_attach1;
     }
     ret = hif_init_adf_ctx(ol_sc);
-    if (ret == 0)
-        ret = hdd_wlan_startup(&(func->dev), ol_sc);
+    if (ret == 0) {
+        if (vos_is_logp_in_progress(VOS_MODULE_ID_HIF, NULL)) {
+            ret = hdd_wlan_re_init(ol_sc);
+            vos_set_logp_in_progress(VOS_MODULE_ID_HIF, FALSE);
+        } else{
+            ret = hdd_wlan_startup(&(func->dev), ol_sc);
+        }
+    }
     if ( ret ) {
         VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_FATAL," hdd_wlan_startup failed");
         goto err_attach2;
     }else{
         VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO," hdd_wlan_startup success!");
-        hif_crash_indication();
     }
 
     return 0;
@@ -295,8 +290,11 @@ ath_hif_sdio_remove(void *context, void *hif_handle)
 #endif
 
     //cleaning up the upper layers
-    __hdd_wlan_exit();
-
+    if (vos_is_logp_in_progress(VOS_MODULE_ID_HIF, NULL)) {
+        hdd_wlan_shutdown();
+    } else {
+        __hdd_wlan_exit();
+    }
     if (sc && sc->ol_sc){
        hif_deinit_adf_ctx(sc->ol_sc);
        A_FREE(sc->ol_sc);

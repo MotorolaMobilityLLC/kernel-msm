@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -33,6 +33,7 @@
 #include <adf_os_types.h>
 #include <adf_nbuf.h>
 #include <adf_os_io.h>
+#include <net/ieee80211_radiotap.h>
 
 #ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 #include <net/cnss_prealloc.h>
@@ -540,6 +541,71 @@ __adf_nbuf_trace_update(struct sk_buff *buf, char *event_string)
    return;
 }
 #endif /* QCA_PKT_PROTO_TRACE */
+
+/**
+ * adf_nbuf_update_radiotap() - Update radiotap header from rx_status
+ *
+ * @rx_status: Pointer to rx_status.
+ * @nbuf:      nbuf pointe to which radiotap has to be updated
+ * @headroom_sz: Available headroom size.
+ *
+ * Return: length of rtap_len updated.
+ */
+int adf_nbuf_update_radiotap(struct mon_rx_status *rx_status, adf_nbuf_t nbuf,
+			     u_int32_t headroom_sz)
+{
+	uint8_t rtap_buf[sizeof(struct ieee80211_radiotap_header) + 100] = {0};
+	struct ieee80211_radiotap_header *rthdr =
+		(struct ieee80211_radiotap_header *)rtap_buf;
+	uint32_t rtap_hdr_len = sizeof(struct ieee80211_radiotap_header);
+	uint32_t rtap_len = rtap_hdr_len;
+
+	/* IEEE80211_RADIOTAP_TSFT              __le64       microseconds*/
+	rthdr->it_present = cpu_to_le32(1 << IEEE80211_RADIOTAP_TSFT);
+	put_unaligned_le64(rx_status->tsft,
+			   (void *)&rtap_buf[rtap_len]);
+	rtap_len += 8;
+
+	/* IEEE80211_RADIOTAP_FLAGS u8*/
+	rthdr->it_present |= cpu_to_le32(1 << IEEE80211_RADIOTAP_FLAGS);
+	rtap_buf[rtap_len] = rx_status->flags;
+	rtap_len += 1;
+
+	/* IEEE80211_RADIOTAP_RATE  u8           500kb/s*/
+	rthdr->it_present |= cpu_to_le32(1 << IEEE80211_RADIOTAP_RATE);
+	rtap_buf[rtap_len] = rx_status->rate;
+	rtap_len += 1;
+	rthdr->it_present |= cpu_to_le32(1 << IEEE80211_RADIOTAP_CHANNEL);
+	/* IEEE80211_RADIOTAP_CHANNEL, Channel frequency in Mhz */
+	put_unaligned_le16(rx_status->chan, (void *)&rtap_buf[rtap_len]);
+	rtap_len += 2;
+	/* Channel flags. */
+
+	put_unaligned_le16(rx_status->chan_flags, (void *)&rtap_buf[rtap_len]);
+	rtap_len += 2;
+
+	/* IEEE80211_RADIOTAP_DBM_ANTSIGNAL */
+	rthdr->it_present |= cpu_to_le32(1 << IEEE80211_RADIOTAP_DBM_ANTSIGNAL);
+#define NORMALIZED_TO_NOISE_FLOOR (-96)
+	/*
+	 * rssi_comb is int dB, need to convert it to dBm.
+	 * normalize value to noise floor of -96 dBm
+	 */
+	rtap_buf[rtap_len] = rx_status->ant_signal_db +
+		NORMALIZED_TO_NOISE_FLOOR;
+	rtap_len += 1;
+	rthdr->it_present |= cpu_to_le32(1 << IEEE80211_RADIOTAP_ANTENNA);
+	rtap_buf[rtap_len] = rx_status->nr_ant;
+	rtap_len += 1;
+
+	rthdr->it_len = cpu_to_le16(rtap_len);
+
+	adf_nbuf_pull_head(nbuf, headroom_sz  - rtap_len);
+	adf_os_mem_copy(adf_nbuf_data(nbuf), rthdr, rtap_hdr_len);
+	adf_os_mem_copy(adf_nbuf_data(nbuf) + rtap_hdr_len, rtap_buf +
+			rtap_hdr_len, rtap_len - rtap_hdr_len);
+	return rtap_len;
+}
 
 EXPORT_SYMBOL(__adf_nbuf_alloc);
 #ifdef QCA_ARP_SPOOFING_WAR

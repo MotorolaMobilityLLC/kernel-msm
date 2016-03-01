@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -102,7 +102,6 @@ extern void hdd_drop_skb(hdd_adapter_t *adapter, struct sk_buff *skb);
 extern void hdd_drop_skb_list(hdd_adapter_t *adapter, struct sk_buff *skb,
                                                       bool is_update_ac_stats);
 
-extern int hdd_mon_hard_start_xmit(struct sk_buff *skb, struct net_device *dev);
 /**============================================================================
   @brief hdd_tx_timeout() - Function called by OS if there is any
   timeout during transmission. Since HDD simply enqueues packet
@@ -176,22 +175,6 @@ extern VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext, adf_nbuf_t rxBufChain,
                   : VOS_FALSE otherwise
   ===========================================================================*/
 extern v_BOOL_t hdd_IsEAPOLPacket( vos_pkt_t *pVosPacket );
-
-/**============================================================================
-  @brief hdd_mon_tx_mgmt_pkt() - Transmit MGMT packet received on monitor
-                                 interface.
-
-  @param pAdapter: [in] SAP/P2P GO adapter.
-  ===========================================================================*/
-void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter);
-
-/**============================================================================
-  @brief hdd_mon_tx_work_queue() - work queue handler for transmitting
-                                   mgmt packets.
-
-  @param work: [in] work queue structure.
-  ===========================================================================*/
-void hdd_mon_tx_work_queue(struct work_struct *work);
 
 /**============================================================================
   @brief hdd_Ibss_GetStaId() - Get the StationID using the Peer Mac address
@@ -270,4 +253,18 @@ static inline void wlan_hdd_log_eapol(struct sk_buff *skb,
 }
 #endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
+/**
+ * hdd_mon_rx_packet_cbk() - Receive callback registered with TL.
+ * @vosContext: [in] pointer to VOS context
+ * @staId:      [in] Station Id
+ * @rxBuf:      [in] pointer to rx adf_nbuf
+ *
+ * TL will call this to notify the HDD when one or more packets were
+ * received for a registered STA.
+ *
+ * Return: VOS_STATUS_E_FAILURE if any errors encountered, VOS_STATUS_SUCCESS
+ * otherwise
+ */
+VOS_STATUS hdd_mon_rx_packet_cbk(v_VOID_t *vos_ctx, adf_nbuf_t rx_buf,
+				 uint8_t sta_id);
 #endif    // end #if !defined( WLAN_HDD_TX_RX_H )

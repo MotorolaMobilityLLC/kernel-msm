@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014,2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -132,4 +132,27 @@ static inline void tl_shim_set_peer_authorized_event(void *vos_ctx, v_U8_t sessi
 {
 }
 #endif
+
+static inline
+void tlshim_set_bundle_require(uint8_t vdev_id, unsigned long tx_bytes,
+			uint32_t time_in_ms, uint32_t high_th, uint32_t low_th)
+{
+	ol_tx_vdev_set_bundle_require(vdev_id, tx_bytes,
+				 time_in_ms, high_th, low_th);
+}
+
+static inline void tlshim_reset_bundle_require(void)
+{
+	void *vos_ctx = vos_get_global_context(VOS_MODULE_ID_TL, NULL);
+	void *pdev;
+
+	if (!vos_ctx)
+		return;
+
+	pdev = vos_get_context(VOS_MODULE_ID_TXRX, vos_ctx);
+	if (!pdev)
+		return;
+
+	ol_tx_pdev_reset_bundle_require(pdev);
+}
 #endif

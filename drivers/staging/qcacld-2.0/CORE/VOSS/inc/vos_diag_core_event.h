@@ -72,12 +72,12 @@ typedef struct
 } vos_event_wlan_security_payload_type;
 
 /*-------------------------------------------------------------------------
-  Event ID: EVENT_WLAN_STATUS
+  Event ID: EVENT_WLAN_STATUS_V2
   ------------------------------------------------------------------------*/
 typedef struct
 {
    v_U8_t eventId;
-   v_U8_t ssid[6];
+   v_U8_t ssid[32];
    v_U8_t bssType;
    v_U8_t rssi;
    v_U8_t channel;
@@ -323,6 +323,87 @@ struct vos_event_wlan_log_complete {
 	uint32_t indicator;
 	uint32_t reason_code;
 	uint32_t reserved;
+};
+
+/**
+ * struct vos_event_tdls_teardown - tdls teardown diag event
+ * @reason: reason for tear down
+ * @peer_mac: peer mac
+ *
+ * This structure contain tdls teardown diag event info
+ */
+
+struct vos_event_tdls_teardown {
+	uint32_t reason;
+	uint8_t peer_mac[6];
+};
+
+/**
+ * struct vos_event_tdls_enable_link - tdls enable link event
+ * @peer_mac: peer mac
+ * @is_off_chan_supported: if off channel supported
+ * @is_off_chan_configured: if off channel configured
+ * @is_off_chan_established: if off channel established
+ *
+ * This structure contain tdls enable link diag event info
+ */
+struct vos_event_tdls_enable_link {
+	uint8_t   peer_mac[6];
+	uint8_t   is_off_chan_supported;
+	uint8_t   is_off_chan_configured;
+	uint8_t   is_off_chan_established;
+};
+
+/**
+ * struct vos_event_suspend - suspend/resume state
+ * @state: suspend/resume state
+ *
+ * This structure contains suspend resume diag event info
+ */
+struct vos_event_suspend {
+	uint8_t state;
+};
+
+/**
+ * struct vos_event_offload_req - offload state
+ * @offload_type: offload type
+ * @state: enabled or disabled state
+ *
+ * This structure contains offload diag event info
+ */
+struct vos_event_offload_req {
+	uint8_t offload_type;
+	uint8_t state;
+};
+
+/**
+ * struct vos_event_tdls_scan_rejected - scan
+ * rejected due to tdls
+ * @status: rejected status
+ *
+ * This structure contains scan rejected due to
+ * tdls event info
+ */
+struct vos_event_tdls_scan_rejected {
+	uint8_t status;
+};
+
+/**
+ * struct vos_event_tdls_tx_rx_mgmt - for TX RX management frame
+ * @event_id: event ID
+ * @tx_rx: tx or rx
+ * @type: type of frame
+ * @action_sub_type: action frame type
+ * @peer_mac: peer mac
+ *
+ * This structure contains tdls TX RX management frame info
+ */
+struct vos_event_tdls_tx_rx_mgmt {
+	uint8_t   event_id;
+	uint8_t   tx_rx;
+	uint8_t   type;
+	uint8_t   action_sub_type;
+	uint8_t   peer_mac[6];
 };
 
 /*-------------------------------------------------------------------------

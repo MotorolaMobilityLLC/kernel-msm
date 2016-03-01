@@ -78,7 +78,7 @@
 #define MAX_REG_READ_RETRIES 10
 
 unsigned int msienable = 0;
-module_param(msienable, int, 0644);
+module_param(msienable, int, S_IRUSR | S_IRGRP | S_IROTH);
 
 int hif_pci_configure(struct hif_pci_softc *sc, hif_handle_t *hif_hdl);
 void hif_nointrs(struct hif_pci_softc *sc);
@@ -2438,6 +2438,7 @@ void hif_pci_shutdown(struct pci_dev *pdev)
     void __iomem *mem;
     struct hif_pci_softc *sc;
     struct ol_softc *scn;
+    struct HIF_CE_state *hif_state;
 
     sc = pci_get_drvdata(pdev);
     /* Attach did not succeed, all resources have been
@@ -2445,6 +2446,8 @@ void hif_pci_shutdown(struct pci_dev *pdev)
      */
     if (!sc)
         return;
+
+    hif_state = (struct HIF_CE_state *)sc->hif_device;
 
     if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HIF, NULL)) {
         printk("Load/unload in progress, ignore SSR shutdown\n");
@@ -2460,7 +2463,10 @@ void hif_pci_shutdown(struct pci_dev *pdev)
     scn = sc->ol_sc;
 
     hif_disable_isr(scn);
-    hif_pci_device_reset(sc);
+    adf_os_spin_lock_irqsave(&hif_state->suspend_lock);
+    if (!adf_os_atomic_read(&sc->pci_link_suspended))
+        hif_pci_device_reset(sc);
+    adf_os_spin_unlock_irqrestore(&hif_state->suspend_lock);
 
 #ifndef REMOVE_PKT_LOG
     if (vos_get_conparam() != VOS_FTM_MODE &&
@@ -2696,7 +2702,7 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
     }
 
 skip:
-    pr_debug("%s: Suspend completes%s in%s mode event:%d device_state:%d\n",
+    pr_info("%s: Suspend completes%s in%s mode event:%d device_state:%d\n",
                    __func__, runtime_pm ? " for runtime pm" : "",
                    wma_is_wow_mode_selected(temp_module) ? " wow" : " pdev",
                    state.event, val);
@@ -2839,7 +2845,7 @@ skip:
     }
 #endif
 
-    pr_debug("%s: Resume completes%s in%s mode\n", __func__,
+    pr_info("%s: Resume completes%s in%s mode\n", __func__,
                 runtime_pm ? " for runtime pm" : "",
                 wma_is_wow_mode_selected(temp_module) ? " wow" : " pdev");
 out:

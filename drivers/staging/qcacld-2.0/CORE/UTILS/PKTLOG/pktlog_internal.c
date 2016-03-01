@@ -259,6 +259,8 @@ process_tx_info(struct ol_txrx_pdev_t *txrx_pdev,
 		A_UINT32 desc_id = (A_UINT32)
 				*((A_UINT32 *)(data + sizeof(pl_hdr)));
 		A_UINT32 vdev_id = desc_id;
+		struct ol_tx_desc_t *tx_desc;
+		adf_nbuf_t netbuf;
 
 		/* if the pkt log msg is for the bcn frame the vdev id
 		 * is piggybacked in desc_id and the MSB of the desc ID
@@ -277,10 +279,11 @@ process_tx_info(struct ol_txrx_pdev_t *txrx_pdev,
 				adf_os_mem_free(data);
 			}
 		} else {
-			/*
-			 * TODO: get the hdr content for mgmt frames from
-			 * Tx mgmt desc pool
-			 */
+			tx_desc = ol_tx_desc_find(txrx_pdev, desc_id);
+			adf_os_assert(tx_desc);
+			netbuf = tx_desc->netbuf;
+			if (netbuf)
+				process_ieee_hdr(adf_nbuf_data(netbuf));
 		}
 	}
 
