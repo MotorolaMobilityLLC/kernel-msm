@@ -777,6 +777,7 @@ static int dwc3_probe(struct platform_device *pdev)
 	u8			lpm_nyet_threshold;
 	u8			hird_threshold;
 	u32			num_evt_buffs;
+	static u8		ctrl_number;
 
 	int			ret;
 
@@ -853,6 +854,14 @@ static int dwc3_probe(struct platform_device *pdev)
 				"snps,is-utmi-l1-suspend");
 		of_property_read_u8(node, "snps,hird-threshold",
 				&hird_threshold);
+
+		ret = of_property_read_u8(node, "controller-number",
+				&dwc->ctrl_num);
+
+		if (!ret)
+			ctrl_number = dwc->ctrl_num;
+		else
+			dwc->ctrl_num = ++ctrl_number;
 
 		dwc->needs_fifo_resize = of_property_read_bool(node,
 				"tx-fifo-resize");
