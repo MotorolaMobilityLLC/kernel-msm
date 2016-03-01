@@ -115,7 +115,9 @@
 	};
 	aliases {
 		/delete-property/ i2c12;
+		/delete-property/ spi0;
 		i2c5 = &i2c_5;
+		spi0 = &spi_0;
 		spi3 = &spi_3;
 		spi9 = &spi_9;
 		spi12 = &spi_12;
@@ -577,6 +579,7 @@
 	/delete-node/ qcom,wil6210;
 	/delete-node/ sound-9335;
 	/delete-node/ wcd9xxx-irq;
+	/delete-node/ spi@7575000;
 
 	qcom,msm-dai-mi2s {
 		compatible = "qcom,msm-dai-mi2s";
@@ -786,9 +789,12 @@
 
 	/delete-node/ dsi_panel_pwr_supply;
 
-	muc: muc@0 {
+	muc: muc {
 		compatible = "mmi,muc";
-		reg = <0 0>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0 0xffffffff>;
+
 
 		gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
 			<&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
@@ -819,6 +825,16 @@
 		pinctrl-names = "disconnected", "spi_active";
 		pinctrl-0 = <&muc_attach &spi_0_sleep &muc_spi_ctrl>;
 		pinctrl-1 = <&muc_attach &spi_0_active &muc_spi_ctrl>;
+
+
+		transports {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0 0xffffffff>;
+
+			/* Dummy Place Holder for SPI */
+			spi_0: spi@7575000 { };
+		};
 	};
 
 	muc_svc: muc_svc@0 {
@@ -1423,7 +1439,39 @@
 	};
 };
 
+/* Direct Copy of SPI0 from msm8996.dtsi for BLSP1 QUP1 */
 &spi_0 {
+	compatible = "qcom,spi-qup-v2";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg-names = "spi_physical", "spi_bam_physical";
+	reg = <0x07575000 0x600>,
+	      <0x07544000 0x2b000>;
+	interrupt-names = "spi_irq", "spi_bam_irq";
+	interrupts = <0 95 0>, <0 238 0>;
+	spi-max-frequency = <19200000>;
+
+	qcom,infinite-mode = <0>;
+	qcom,use-bam;
+	qcom,ver-reg-exists;
+	qcom,bam-consumer-pipe-index = <12>;
+	qcom,bam-producer-pipe-index = <13>;
+	qcom,master-id = <86>;
+	qcom,use-pinctrl;
+	pinctrl-names = "spi_default", "spi_sleep";
+	pinctrl-0 = <&spi_0_active &spi_0_cs_active>;
+	pinctrl-1 = <&spi_0_sleep &spi_0_cs_sleep>;
+
+	clock-names = "iface_clk", "core_clk";
+
+	clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+		 <&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
+};
+
+/* Overrides of the default SPI0 configuration */
+&spi_0 {
+	compatible = "qcom,spi-qup-v2", "moto,mod-spi-transfer";
+
 	/delete-property/ pinctrl-0;
 	/delete-property/ pinctrl-1;
 	/delete-property/ pinctrl-names;
