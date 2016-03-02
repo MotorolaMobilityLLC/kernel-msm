@@ -139,3 +139,10 @@ qcom,camera@0 {
 		clock-names = "cam_src_clk", "cam_clk";
 	};
 };
+/* DTV lna regulator uses L18 on evt */
+&spi_5 {
+	fci_dtv: fc8180@0 {
+		isdbt_ant-supply = <&pm8916_l18>;
+		qcom,ant-min-max-voltage = <2700000 2700000>;
+	};
+};
