@@ -239,6 +239,16 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 			ret_err = err;
 		}
 	}
+	if (err >= 0) {
+		memcpy(buf, stml0xx_g_accel_cal, STML0XX_ACCEL_CAL_SIZE);
+		err = stml0xx_spi_send_write_reg_reset(ACCEL_CAL, buf,
+				STML0XX_ACCEL_CAL_SIZE, RESET_NOT_ALLOWED);
+		if (err < 0) {
+			dev_err(&ps_stml0xx->spi->dev,
+					"Unable to write accel calibration");
+			ret_err = err;
+		}
+	}
 #ifdef CONFIG_SENSORHUB_DEBUG_LOGGING
 	buf[0] = SH_LOG_DEBUG;
 	err = stml0xx_spi_send_write_reg_reset(SH_LOG_LEVEL, buf,

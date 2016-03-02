@@ -138,6 +138,10 @@
 		_IOW(STML0XX_IOCTL_BASE, 55,  unsigned short)
 #define STML0XX_IOCTL_SET_FLUSH \
 		_IOW(STML0XX_IOCTL_BASE, 56, int)
+#define STML0XX_IOCTL_GET_ACCEL_CAL \
+		_IOR(STML0XX_IOCTL_BASE, 57, char[STML0XX_ACCEL_CAL_SIZE])
+#define STML0XX_IOCTL_SET_ACCEL_CAL \
+		_IOR(STML0XX_IOCTL_BASE, 58, char[STML0XX_ACCEL_CAL_SIZE])
 
 /* SPI contants */
 #define SPI_MSG_SIZE        192
@@ -156,6 +160,7 @@
 #define STML0XX_GYRO_CAL_FIRST           102 /* 17 entries - 6 bytes each */
 #define STML0XX_GYRO_CAL_SECOND          96  /* 16 entries - 6 bytes each */
 #define STML0XX_GYRO_CAL_SIZE            198 /* 33 entries - 6 bytes each */
+#define STML0XX_ACCEL_CAL_SIZE           6   /* 1 entry    - 6 bytes      */
 #define STML0XX_AS_DATA_BUFF_SIZE        20
 #define STML0XX_MS_DATA_BUFF_SIZE        20
 #define STML0XX_ALGO_SIZE                2
@@ -189,6 +194,7 @@
 #define M_ACCEL2                0x020000
 #define M_QUAT_9AXIS            0x040000
 #define M_QUEUE_OVERFLOW        0x080000
+#define M_UPDATE_ACCEL_CAL      0x100000
 
 /* wake sensor status */
 #define M_DOCK                  0x000001
@@ -314,7 +320,8 @@ enum STML0XX_data_types {
 	DT_GYRO_CAL,
 	DT_STEP_COUNTER,
 	DT_STEP_DETECTOR,
-	DT_GLANCE
+	DT_GLANCE,
+	DT_ACCEL_CAL
 };
 
 enum {
