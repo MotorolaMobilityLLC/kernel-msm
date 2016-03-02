@@ -19,9 +19,8 @@ qcom,mdss-dsi-virtual-channel-id = <0>;
 qcom,mdss-dsi-stream = <0>;
 qcom,mdss-dsi-panel-width = <1080>;
 qcom,mdss-dsi-panel-height = <1920>;
-/* To update dimension based on final spec */
-qcom,mdss-pan-physical-width-dimension = <65>;
-qcom,mdss-pan-physical-height-dimension = <115>;
+qcom,mdss-pan-physical-width-dimension = <68>;
+qcom,mdss-pan-physical-height-dimension = <121>;
 
 /* To update clock rate */
 qcom,mdss-dsi-panel-clockrate = <0>;
