@@ -337,6 +337,18 @@ void stml0xx_irq_work_func(struct work_struct *work)
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending step detect");
 	}
+	if (irq_status & M_UPDATE_ACCEL_CAL) {
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_ACCEL_CAL,
+			NULL,
+			0,
+			0,
+			stm_ws->ts_ns);
+
+		dev_info(&stml0xx_misc_data->spi->dev,
+			"Save accel cal");
+	}
 EXIT:
 	kfree((void *)stm_ws);
 	stml0xx_sleep(ps_stml0xx);
