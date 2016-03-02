@@ -13,6 +13,7 @@
 #include "msmtitanium.dtsi"
 #include "msmtitanium-pinctrl.dtsi"
 #include "msm8953-moto-pinctrl.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 / {
 	aliases {
@@ -701,4 +702,12 @@
 
 &pmtitanium_typec {
 	status = "disabled";
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi0 {
+	qcom,display-id = "primary";
 };
