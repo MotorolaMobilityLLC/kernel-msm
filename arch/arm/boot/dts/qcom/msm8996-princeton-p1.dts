@@ -95,7 +95,9 @@
 		<&tlmm  34 1>,   /* gpio_muc_int_n,    input */
 		<&tlmm  74 2>,   /* gpio_muc_wake_n,   output-high */
 		<&tlmm  82 1>,   /* gpio_muc_rdy_n,    input */
-		<0>;             /* gpio_muc_ff,       not used */
+		<0>,             /* gpio_muc_ff,       not used */
+		<&tlmm 0 0>,     /* gpio_muc_spi_mosi, output-low */
+		<&tlmm 1 1>;     /* gpio_muc_spi_miso, input */
 };
 
 &muc_attach {
