@@ -25,3 +25,11 @@
 	qcom,board-id= <8 0x105>;
 };
 
+&modem_adsp_mem {
+	reg = <0x0 0x88000000 0x0 0x02400000>;
+};
+
+&peripheral_mem {
+	reg = <0x0 0x8a400000 0x0 0x0500000>;
+};
+
