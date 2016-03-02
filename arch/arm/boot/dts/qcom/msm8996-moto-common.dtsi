@@ -825,9 +825,9 @@
 					"gpio_muc_rdy_n",
 					"gpio_muc_ff";
 
-		mmi,muc-ctrl-det-hysteresis = <500>;
-		mmi,muc-ctrl-en-seq = <1 0 200>, <1 1 1000>;
-		mmi,muc-ctrl-dis-seq = <1 0 200>;
+		mmi,muc-ctrl-det-hysteresis = <200>;
+		mmi,muc-ctrl-en-seq =  <1 1 100>;
+		mmi,muc-ctrl-dis-seq = <1 0 20>;
 
 		/* v1 FF first, BPLUS second on enable */
 		mmi,muc-ctrl-ff-seq-v1 = <5 1 20>, <1 0 100>,
