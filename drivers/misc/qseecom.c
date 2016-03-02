@@ -2793,7 +2793,6 @@ int qseecom_start_app(struct qseecom_handle **handle,
 	data->client.ihandle = NULL;
 
 	init_waitqueue_head(&data->abort_wq);
-	atomic_set(&data->ioctl_count, 0);
 
 	data->client.ihandle = ion_alloc(qseecom.ion_clnt, size, 4096,
 				ION_HEAP(ION_QSECOM_HEAP_ID), 0);
@@ -2926,7 +2925,6 @@ int qseecom_shutdown_app(struct qseecom_handle **handle)
 	}
 	data =	(struct qseecom_dev_handle *) ((*handle)->dev);
 	mutex_lock(&app_access_lock);
-	atomic_inc(&data->ioctl_count);
 
 	spin_lock_irqsave(&qseecom.registered_kclient_list_lock, flags);
 	list_for_each_entry(kclient, &qseecom.registered_kclient_list_head,
@@ -2943,25 +2941,6 @@ int qseecom_shutdown_app(struct qseecom_handle **handle)
 	else
 		ret = qseecom_unload_app(data, false);
 
-	if (qseecom.support_bus_scaling) {
-		mutex_lock(&qsee_bw_mutex);
-		if (data->mode != INACTIVE) {
-			qseecom_unregister_bus_bandwidth_needs(data);
-			if (qseecom.cumulative_mode == INACTIVE) {
-				ret = __qseecom_set_msm_bus_request(INACTIVE);
-				if (ret)
-					pr_err("Fail to scale down bus\n");
-			}
-		}
-		mutex_unlock(&qsee_bw_mutex);
-	} else {
-		if (data->fast_load_enabled == true)
-			qsee_disable_clock_vote(data, CLK_SFPB);
-		if (data->perf_enabled == true)
-			qsee_disable_clock_vote(data, CLK_DFAB);
-	}
-
-	atomic_dec(&data->ioctl_count);
 	mutex_unlock(&app_access_lock);
 	if (ret == 0) {
 		kzfree(data);
@@ -2997,12 +2976,10 @@ int qseecom_send_command(struct qseecom_handle *handle, void *send_buf,
 		return -EINVAL;
 
 	mutex_lock(&app_access_lock);
-	atomic_inc(&data->ioctl_count);
 	if (qseecom.support_bus_scaling) {
 		ret = qseecom_scale_bus_bandwidth_timer(INACTIVE);
 		if (ret) {
 			pr_err("Failed to set bw.\n");
-			atomic_dec(&data->ioctl_count);
 			mutex_unlock(&app_access_lock);
 			return ret;
 		}
@@ -3020,7 +2997,6 @@ int qseecom_send_command(struct qseecom_handle *handle, void *send_buf,
 		if (ret) {
 			pr_err("Failed to vote for clock with err %d\n",
 						ret);
-			atomic_dec(&data->ioctl_count);
 			mutex_unlock(&app_access_lock);
 			return -EINVAL;
 		}
@@ -3037,7 +3013,6 @@ int qseecom_send_command(struct qseecom_handle *handle, void *send_buf,
 		qsee_disable_clock_vote(data, CLK_SFPB);
 	}
 
-	atomic_dec(&data->ioctl_count);
 	mutex_unlock(&app_access_lock);
 
 	if (ret)
@@ -3062,8 +3037,6 @@ int qseecom_set_bandwidth(struct qseecom_handle *handle, bool high)
 			__qseecom_register_bus_bandwidth_needs(handle->dev,
 									HIGH);
 			mutex_unlock(&qsee_bw_mutex);
-			if (ret)
-				pr_err("Failed to scale bus (med) %d\n", ret);
 		} else {
 			ret = qseecom_perf_enable(handle->dev);
 			if (ret)
@@ -4466,11 +4439,13 @@ long qseecom_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			break;
 		}
 		pr_debug("ioctl register_listener_req()\n");
+		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		data->type = QSEECOM_LISTENER_SERVICE;
 		ret = qseecom_register_listener(data, argp);
 		atomic_dec(&data->ioctl_count);
 		wake_up_all(&data->abort_wq);
+		mutex_unlock(&app_access_lock);
 		if (ret)
 			pr_err("failed qseecom_register_listener: %d\n", ret);
 		break;
@@ -4484,10 +4459,12 @@ long qseecom_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			break;
 		}
 		pr_debug("ioctl unregister_listener_req()\n");
+		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_unregister_listener(data);
 		atomic_dec(&data->ioctl_count);
 		wake_up_all(&data->abort_wq);
+		mutex_unlock(&app_access_lock);
 		if (ret)
 			pr_err("failed qseecom_unregister_listener: %d\n", ret);
 		break;
@@ -4868,12 +4845,14 @@ long qseecom_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			return -EINVAL;
 		}
 		data->released = true;
+		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_create_key(data, argp);
 		if (ret)
 			pr_err("failed to create encryption key: %d\n", ret);
 
 		atomic_dec(&data->ioctl_count);
+		mutex_unlock(&app_access_lock);
 		break;
 	}
 	case QSEECOM_IOCTL_WIPE_KEY_REQ: {
@@ -4891,11 +4870,13 @@ long qseecom_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			return -EINVAL;
 		}
 		data->released = true;
+		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_wipe_key(data, argp);
 		if (ret)
 			pr_err("failed to wipe encryption key: %d\n", ret);
 		atomic_dec(&data->ioctl_count);
+		mutex_unlock(&app_access_lock);
 		break;
 	}
 	case QSEECOM_IOCTL_UPDATE_KEY_USER_INFO_REQ: {
@@ -4913,11 +4894,13 @@ long qseecom_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			return -EINVAL;
 		}
 		data->released = true;
+		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_update_key_user_info(data, argp);
 		if (ret)
 			pr_err("failed to update key user info: %d\n", ret);
 		atomic_dec(&data->ioctl_count);
+		mutex_unlock(&app_access_lock);
 		break;
 	}
 	case QSEECOM_IOCTL_SAVE_PARTITION_HASH_REQ: {
@@ -5078,7 +5061,9 @@ static int qseecom_release(struct inode *inode, struct file *file)
 			data->type, data->mode, data);
 		switch (data->type) {
 		case QSEECOM_LISTENER_SERVICE:
+			mutex_lock(&app_access_lock);
 			ret = qseecom_unregister_listener(data);
+			mutex_unlock(&app_access_lock);
 			break;
 		case QSEECOM_CLIENT_APP:
 			ret = qseecom_unload_app(data, true);
