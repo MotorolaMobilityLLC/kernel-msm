@@ -239,7 +239,7 @@ int epl_sensor_als_dyn_report(bool report_flag);
  ******************************************************************************/
 #if PS_DYN_K_ONE
 static bool ps_dyn_flag = false;
-#define PS_MAX_CT	10000
+#define PS_MAX_CT	7600
 #define PS_MAX_IR	50000
 #define PS_DYN_H_OFFSET 6943
 #define PS_DYN_L_OFFSET 2024
