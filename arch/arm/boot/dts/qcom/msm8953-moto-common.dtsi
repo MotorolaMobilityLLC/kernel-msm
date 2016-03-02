@@ -440,18 +440,22 @@
 		#size-cells = <1>;
 		ranges = <0 0 0xffffffff>;
 
-		gpios = <&tlmm 60 1>,          /* gpio_muc_det_n, input */
-			<&pmi8950_gpios 1 0>,  /* gpio_muc_bplus_en, output-low */
-			<&tlmm 72 1>,          /* gpio_muc_int_n, input */
-			<&tlmm 38 2>,          /* gpio_muc_wake_n, output-high */
-			<&tlmm 59 1>,          /* gpio_muc_rdy_n, input */
-			<&pmi8950_mpps 1 0>;   /* gpio_muc_ff, output-low */
+		gpios = <&tlmm 60 1>,         /* gpio_muc_det_n, input */
+			<&pmi8950_gpios 1 0>, /* gpio_muc_bplus_en, output-low */
+			<&tlmm 72 1>,         /* gpio_muc_int_n, input */
+			<&tlmm 38 2>,         /* gpio_muc_wake_n, output-high */
+			<&tlmm 59 1>,         /* gpio_muc_rdy_n, input */
+			<&pmi8950_mpps 1 0>,  /* gpio_muc_ff, output-low */
+			<&tlmm 0 0>,          /* gpio_muc_spi_mosi, output-low */
+			<&tlmm 1 1>;          /* gpio_muc_spi_miso, input */
 		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
 					"gpio_muc_bplus_en",
 					"gpio_muc_int_n",
 					"gpio_muc_wake_n",
 					"gpio_muc_rdy_n",
-					"gpio_muc_ff";
+					"gpio_muc_ff",
+					"gpio_muc_spi_mosi",
+					"gpio_muc_spi_miso";
 
 		/* Addison has shared muc/flash SPI. */
 		mmi,spi-shared-with-flash;

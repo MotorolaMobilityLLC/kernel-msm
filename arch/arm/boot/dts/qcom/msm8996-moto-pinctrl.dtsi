@@ -60,6 +60,34 @@
 				bias-pull-down;
 			};
 		};
+
+		spi_0_mosi_ack: spi_0_mosi_ack {
+			mux {
+				pins = "gpio0";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio0";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+
+		spi_0_miso_ack: spi_0_miso_ack {
+			mux {
+				pins = "gpio1";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio1";
+				drive-strength = <2>;
+				bias-disable;
+				input-enable;
+			};
+		};
 	};
 
 	/* Princeton uses CS2 on GPIO28 to talk to SPI Flash */
