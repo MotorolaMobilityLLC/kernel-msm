@@ -4056,6 +4056,14 @@ int mmc_suspend_host(struct mmc_host *host)
 		if (host->ops->notify_pm_status)
 			host->ops->notify_pm_status(host, DEV_SUSPENDING);
 		/*
+		 * Disable clock scaling before suspend and enable it after
+		 * resume so as to avoid clock scaling decisions kicking in
+		 * during this window.
+		 */
+		if (mmc_can_scale_clk(host))
+			mmc_disable_clk_scaling(host);
+
+		/*
 		 * A long response time is not acceptable for device drivers
 		 * when doing suspend. Prevent mmc_claim_host in the suspend
 		 * sequence, to potentially wait "forever" by trying to
@@ -4118,6 +4126,8 @@ int mmc_suspend_host(struct mmc_host *host)
 		mmc_release_host(host);
 	}
 
+	if (err && mmc_can_scale_clk(host))
+		mmc_init_clk_scaling(host);
 	trace_mmc_suspend_host(mmc_hostname(host), err,
 			ktime_to_us(ktime_sub(ktime_get(), start)));
 	if (host->ops->notify_pm_status)
