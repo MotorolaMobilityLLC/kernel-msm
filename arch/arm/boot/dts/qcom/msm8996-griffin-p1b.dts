@@ -31,12 +31,9 @@
 		<&tlmm 34 1>,   /* gpio_muc_int_n,    input */
 		<&tlmm 74 2>,   /* gpio_muc_wake_n,   output-high */
 		<&tlmm 82 1>,   /* gpio_muc_rdy_n,    input */
-		<0>;            /* gpio_muc_ff,       not used */
-	mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
-				"gpio_muc_bplus_en",
-				"gpio_muc_int_n",
-				"gpio_muc_wake_n",
-				"gpio_muc_rdy_n";
+		<0>,            /* gpio_muc_ff,       not used */
+		<&tlmm 0 0>,    /* gpio_muc_spi_mosi, output-low */
+		<&tlmm 1 1>;    /* gpio_muc_spi_miso, input */
 
 	/* v1 CC first, BPLUS second on enable */
 	mmi,muc-ctrl-ff-seq-v1 = <0 0 20>, <1 0 100>,
