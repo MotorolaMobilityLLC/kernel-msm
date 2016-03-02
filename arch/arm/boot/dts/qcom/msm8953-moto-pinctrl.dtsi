@@ -294,6 +294,13 @@
 			};
 		};
 	};
+
+	muc_attach: muc_attach@0 {
+		config {
+			pins = "gpio60", "gpio72";
+			bias-pull-up;
+		};
+	};
 };
 
 /delete-node/ &hsuart_active;
