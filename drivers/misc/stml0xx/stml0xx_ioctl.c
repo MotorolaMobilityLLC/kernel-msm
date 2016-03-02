@@ -1041,6 +1041,45 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 		}
 		break;
+	case STML0XX_IOCTL_GET_ACCEL_CAL:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+				"STML0XX_IOCTL_GET_ACCEL_CAL");
+		if (stml0xx_g_booted) {
+			err = stml0xx_spi_send_read_reg(ACCEL_CAL,
+					buf, STML0XX_ACCEL_CAL_SIZE);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Reading get accel cal failed\n");
+				break;
+			}
+			memcpy(stml0xx_g_accel_cal, buf,
+					STML0XX_ACCEL_CAL_SIZE);
+		}
+		if (copy_to_user(argp, stml0xx_g_accel_cal,
+					STML0XX_ACCEL_CAL_SIZE))
+			err = -EFAULT;
+		break;
+	case STML0XX_IOCTL_SET_ACCEL_CAL:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+				"STML0XX_IOCTL_SET_ACCEL_CAL");
+		if (copy_from_user(buf, argp, STML0XX_ACCEL_CAL_SIZE)) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+					"Copy set accel cal returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		memcpy(stml0xx_g_accel_cal, buf,
+				STML0XX_ACCEL_CAL_SIZE);
+		if (stml0xx_g_booted) {
+			err = stml0xx_spi_send_write_reg(ACCEL_CAL,
+					buf, STML0XX_ACCEL_CAL_SIZE);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Writing set accel cal failed\n");
+				break;
+			}
+		}
+		break;
 	default:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Invalid IOCTL [%d]", cmd);

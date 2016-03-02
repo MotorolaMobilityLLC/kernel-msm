@@ -52,29 +52,29 @@ VMM_ENTRY(0x06, ACCEL_ORIENTATION,					TRUE,
 VMM_ENTRY(0x07, ACCEL_SWAP,						TRUE,
 		&vmm_accel_swap,
 		sizeof(vmm_accel_swap))
-VMM_ENTRY(0x08, UNUSED_08,						FALSE,
-		0, /* &pd_cycle_counter */
-		0)
+VMM_ENTRY(0x08, ACCEL_CAL,						TRUE,
+		&vmm_accel_cal,
+		sizeof(vmm_accel_cal))
 VMM_ENTRY(0x09, UNUSED_09,						FALSE,
-		0, /* pd_quick_peek */
+		0,
 		0)
 VMM_ENTRY(0x0A, UNUSED_0A,						FALSE,
-		0, /* pd_peek_response */
+		0,
 		0)
 VMM_ENTRY(0x0B, UNUSED_0B,						FALSE,
-		0, /* vmm_p_display_status */
+		0,
 		0)
 VMM_ENTRY(0x0C, UNUSED_0C,						FALSE,
-		0, /* vmm_touch_info */
+		0,
 		0)
 VMM_ENTRY(0x0D, UNUSED_0D,						FALSE,
-		0, /*vmm_p_display_config */
+		0,
 		0)
 VMM_ENTRY(0x0E, UNUSED_0E,						FALSE,
-		0, /* &vmm_pdl.data_valid */
+		0,
 		0)
 VMM_ENTRY(0x0F, UNUSED_0F,						FALSE,
-		0, /* vmm_p_display_color */
+		0,
 		0)
 VMM_ENTRY(0x10, QUEUE_TEST_LIMIT,					TRUE,
 		&vmm_queue_test_limit,
