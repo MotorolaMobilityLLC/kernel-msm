@@ -280,6 +280,41 @@
 		enable-active-high;
 		gpio = <&tlmm 130 0>;
 	};
+
+	muc: muc@0 {
+		compatible = "mmi,muc";
+		reg = <0 0>;
+
+		gpios = <&tlmm 60 1>,          /* gpio_muc_det_n, input */
+			<&pmi8950_gpios 1 0>,  /* gpio_muc_bplus_en, output-low */
+			<&tlmm 72 1>,          /* gpio_muc_int_n, input */
+			<&tlmm 38 2>,          /* gpio_muc_wake_n, output-high */
+			<&tlmm 59 1>,          /* gpio_muc_rdy_n, input */
+			<&pmi8950_mpps 1 0>;   /* gpio_muc_ff, output-low */
+		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
+					"gpio_muc_bplus_en",
+					"gpio_muc_int_n",
+					"gpio_muc_wake_n",
+					"gpio_muc_rdy_n",
+					"gpio_muc_ff";
+
+		mmi,muc-ctrl-det-hysteresis = <500>;
+		mmi,muc-ctrl-en-seq = <1 0 200>, <1 1 1000>;
+		mmi,muc-ctrl-dis-seq = <1 0 200>;
+
+		/* v1 FF first, BPLUS second on enable */
+		mmi,muc-ctrl-ff-seq-v1 = <5 1 20>, <1 0 100>,
+					<1 1 100>, <5 0 20>;
+
+		/* v2 BPLUS first, FF second on enable */
+		mmi,muc-ctrl-ff-seq-v2 = <5 0 20>, <1 0 20>,
+					<1 1 100>, <5 1 20>,
+					<5 0 20>;
+
+		pinctrl-names = "disconnected", "spi_active";
+		pinctrl-0 = <&muc_attach>;
+		pinctrl-1 = <&muc_attach>;
+	};
 };
 
 &pmi_haptic{
@@ -359,6 +394,16 @@
 
 
 &pmi8950_gpios {
+	gpio@c000 { /* GPIO 1 - MOD_BPLUS_EN */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <0>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <0>;	/* Output Low */
+		status = "okay";
+	};
+
 	gpio@c100 {
 		qcom,mode = <1>;	/* Digital output */
 		qcom,pull = <5>;	/* No Pull */
@@ -366,6 +411,17 @@
 		qcom,src-sel = <0>;	/* GPIO */
 		qcom,master-en = <1>;	/* Enable GPIO */
 		qcom,invert = <0>;	/* Output Low */
+		status = "okay";
+	};
+};
+
+&pmi8950_mpps {
+	mpp@a000 { /* MPP 1 - MOD_F_FLASH */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <0>;	/* Output low */
 		status = "okay";
 	};
 };
