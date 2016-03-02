@@ -21,6 +21,7 @@
 		i2c4 = &i2c_4;
 		spi1 = &spi_1;
 		spi6 = &spi_6;
+		uart5 = &blsp2_uart1;
 		/delete-property/ spi3;
 		/delete-property/ i2c5;
 	};
@@ -309,6 +310,51 @@
 
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
 			<&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
+	};
+
+	blsp2_uart1: uart@7aef000 { /* BLSP2 UART1 */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0x7aef000 0x200>,
+			<0x7ac4000 0x1f000>;
+		reg-names = "core_mem", "bam_mem";
+
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#address-cells = <0>;
+		interrupt-parent = <&blsp2_uart1>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 306 0
+				1 &intc 0 239 0
+				2 &tlmm 17 0>;
+
+		qcom,tx-gpio = <&tlmm 16 0>;
+		qcom,rx-gpio = <&tlmm 17 1>;
+		qcom,cts-gpio = <&tlmm 18 0>;
+		qcom,rts-gpio = <&tlmm 19 1>;
+		qcom,master-id = <84>;
+		clock-names = "core_clk", "iface_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_uart1_apps_clk>,
+			<&clock_gcc clk_gcc_blsp2_ahb_clk>;
+		pinctrl-names = "sleep", "default";
+		pinctrl-0 = <&blsp2_uart1_sleep>;
+		pinctrl-1 = <&blsp2_uart1_active>;
+		qcom,bam-tx-ep-pipe-index = <0>;
+		qcom,bam-rx-ep-pipe-index = <1>;
+		qcom,msm-bus,name = "blsp2_uart1";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<84 512 0 0>,
+				<84 512 500 800>;
+		status = "ok";
+	};
+
+	mod_uart {
+		compatible = "mmi,mod-uart";
+		mmi,tty = "ttyHS5";
+		mmi,tty_speed = <115200>;
+		mmi,intf-id = /bits/ 8 <5>;
 	};
 
 	muc: muc@0 {
