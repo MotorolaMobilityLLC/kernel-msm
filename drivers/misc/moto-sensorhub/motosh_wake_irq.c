@@ -630,6 +630,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 					input_sync(ps_motosh->input_dev);
 				}
 			}
+			queue_index += 1;
 			break;
 #endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
 		default:
