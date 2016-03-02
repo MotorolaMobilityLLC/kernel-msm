@@ -464,6 +464,7 @@ extern unsigned char stml0xx_g_zmotion_dur;
 extern unsigned char stml0xx_g_control_reg[STML0XX_CONTROL_REG_SIZE];
 extern unsigned char stml0xx_g_mag_cal[STML0XX_MAG_CAL_SIZE];
 extern unsigned char stml0xx_g_gyro_cal[STML0XX_GYRO_CAL_SIZE];
+extern unsigned char stml0xx_g_accel_cal[STML0XX_ACCEL_CAL_SIZE];
 extern unsigned short stml0xx_g_control_reg_restore;
 extern bool stml0xx_g_booted;
 
