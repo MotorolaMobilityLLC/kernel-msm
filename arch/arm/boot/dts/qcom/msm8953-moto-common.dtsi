@@ -336,9 +336,6 @@
 		clock-names = "core_clk", "iface_clk";
 		clocks = <&clock_gcc clk_gcc_blsp2_uart1_apps_clk>,
 			<&clock_gcc clk_gcc_blsp2_ahb_clk>;
-		pinctrl-names = "sleep", "default";
-		pinctrl-0 = <&blsp2_uart1_sleep>;
-		pinctrl-1 = <&blsp2_uart1_active>;
 		qcom,bam-tx-ep-pipe-index = <0>;
 		qcom,bam-rx-ep-pipe-index = <1>;
 		qcom,msm-bus,name = "blsp2_uart1";
@@ -355,6 +352,10 @@
 		mmi,tty = "ttyHS5";
 		mmi,tty_speed = <115200>;
 		mmi,intf-id = /bits/ 8 <5>;
+
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&blsp2_uart1_sleep>;
+		pinctrl-1 = <&blsp2_uart1_active>;
 	};
 
 	muc: muc@0 {
