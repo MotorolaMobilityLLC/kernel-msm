@@ -3289,7 +3289,7 @@ static void dhd_watchdog(ulong data)
 	}
 	DHD_GENERAL_LOCK(&dhd->pub, flags);
 	/* Call the bus module watchdog */
-	if (dhd->pub.up)	
+	if (dhd->pub.up)
 		dhd_bus_watchdog(&dhd->pub);
 
 	/* Count the tick for reference */
@@ -7963,10 +7963,30 @@ dhd_dev_pno_get_for_batch(struct net_device *dev, char *buf, int bufsize)
 #endif /* PNO_SUPPORT */
 
 #ifdef GSCAN_SUPPORT
+int
+dhd_dev_set_epno(struct net_device *dev)
+{
+	dhd_info_t *dhd = DHD_DEV_INFO(dev);
+	if (!dhd) {
+		return BCME_ERROR;
+	}
+	return dhd_pno_set_epno(&dhd->pub);
+}
+
+int
+dhd_dev_flush_fw_epno(struct net_device *dev)
+{
+	dhd_info_t *dhd = DHD_DEV_INFO(dev);
+	if (!dhd) {
+		return BCME_ERROR;
+	}
+	return dhd_pno_flush_fw_epno(&dhd->pub);
+}
+
 /* Linux wrapper to call common dhd_pno_set_cfg_gscan */
 int
 dhd_dev_pno_set_cfg_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type,
- void *buf, uint8 flush)
+ void *buf, bool flush)
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 

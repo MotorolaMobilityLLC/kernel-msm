@@ -431,6 +431,8 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 		}
 		nla_put_u32(skb, GSCAN_ATTRIBUTE_SCAN_ID, iter->scan_id);
 		nla_put_u8(skb, GSCAN_ATTRIBUTE_SCAN_FLAGS, iter->flag);
+		nla_put_u32(skb, GSCAN_ATTRIBUTE_CH_BUCKET_BITMASK, iter->scan_ch_bucket);
+
 		num_results_iter = iter->tot_count - iter->tot_consumed;
 
 		nla_put_u32(skb, GSCAN_ATTRIBUTE_NUM_OF_RESULTS, num_results_iter);
@@ -598,7 +600,7 @@ static int wl_cfgvendor_set_scan_cfg(struct wiphy *wiphy,
 	}
 
 	if (dhd_dev_pno_set_cfg_gscan(bcmcfg_to_prmry_ndev(cfg),
-	     DHD_PNO_SCAN_CFG_ID, scan_param, 0) < 0) {
+	     DHD_PNO_SCAN_CFG_ID, scan_param, FALSE) < 0) {
 		WL_ERR(("Could not set GSCAN scan cfg\n"));
 		err = -EINVAL;
 	}
@@ -616,7 +618,7 @@ static int wl_cfgvendor_hotlist_cfg(struct wiphy *wiphy,
 	gscan_hotlist_scan_params_t *hotlist_params;
 	int tmp, tmp1, tmp2, type, j = 0, dummy;
 	const struct nlattr *outer, *inner, *iter;
-	uint8 flush = 0;
+	bool flush = FALSE;
 	struct bssid_t *pbssid;
 
 	hotlist_params = (gscan_hotlist_scan_params_t *)kzalloc(len, GFP_KERNEL);
@@ -655,7 +657,7 @@ static int wl_cfgvendor_hotlist_cfg(struct wiphy *wiphy,
 				hotlist_params->nbssid = j;
 				break;
 			case GSCAN_ATTRIBUTE_HOTLIST_FLUSH:
-				flush = nla_get_u8(iter);
+				flush = (bool) nla_get_u8(iter);
 				break;
 			case GSCAN_ATTRIBUTE_LOST_AP_SAMPLE_SIZE:
 				hotlist_params->lost_ap_window = nla_get_u32(iter);
@@ -675,94 +677,141 @@ exit:
 	return err;
 }
 
+/* Configures the ePNO SSID list and params sent
+ * by HAL. The SSIDs are appended to the existing
+ * SSID list. Thus to program a fresh list the FLUSH
+ * attribute has to be set (before the SSID list
+ * attributes) Can also be used to just FLUSH all
+ * previously set config - SSID list and params.
+ */
 static int wl_cfgvendor_epno_cfg(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void  *data, int len)
 {
 	int err = 0;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
-	dhd_epno_params_t *epno_params;
+	dhd_pno_ssid_t *ssid_elem;
 	int tmp, tmp1, tmp2, type, num = 0;
 	const struct nlattr *outer, *inner, *iter;
-	uint8 flush = 0, i = 0;
-	uint16 num_visible_ssid = 0;
+	uint32 cnt_ssid = 0;
+	wl_pfn_ssid_params_t params;
+	bool flush = FALSE;
 
+	memset(&params, 0, sizeof(wl_pfn_ssid_params_t));
 	nla_for_each_attr(iter, data, len, tmp2) {
 		type = nla_type(iter);
 		switch (type) {
 			case GSCAN_ATTRIBUTE_EPNO_SSID_LIST:
 				nla_for_each_nested(outer, iter, tmp) {
-					epno_params = (dhd_epno_params_t *)
+					ssid_elem = (dhd_pno_ssid_t *)
 					          dhd_dev_pno_get_gscan(bcmcfg_to_prmry_ndev(cfg),
-					                 DHD_PNO_GET_EPNO_SSID_ELEM, NULL, &num);
-					if (!epno_params) {
+					                 DHD_PNO_GET_NEW_EPNO_SSID_ELEM,
+					                 NULL, &num);
+					if (!ssid_elem) {
 						WL_ERR(("Failed to get SSID LIST buffer\n"));
 						err = -ENOMEM;
 						goto exit;
 					}
-					i++;
+					cnt_ssid++;
 					nla_for_each_nested(inner, outer, tmp1) {
 						type = nla_type(inner);
-
 						switch (type) {
 							case GSCAN_ATTRIBUTE_EPNO_SSID:
-								memcpy(epno_params->ssid,
+								memcpy(ssid_elem->SSID,
 								  nla_data(inner),
 								  DOT11_MAX_SSID_LEN);
 								break;
 							case GSCAN_ATTRIBUTE_EPNO_SSID_LEN:
-								len = nla_get_u8(inner);
-								if (len < DOT11_MAX_SSID_LEN) {
-									epno_params->ssid_len = len;
-								} else {
-									WL_ERR(("SSID too long %d\n", len));
+								ssid_elem->SSID_len = nla_get_u32(inner);
+								if (ssid_elem->SSID_len > DOT11_MAX_SSID_LEN) {
+									WL_ERR(("SSID too long %d\n",
+									      ssid_elem->SSID_len));
 									err = -EINVAL;
 									goto exit;
 								}
 								break;
-							case GSCAN_ATTRIBUTE_EPNO_RSSI:
-								epno_params->rssi_thresh =
-								       (int8) nla_get_u32(inner);
-								break;
 							case GSCAN_ATTRIBUTE_EPNO_FLAGS:
-								epno_params->flags =
-								          nla_get_u8(inner);
-								if (!(epno_params->flags &
-								        DHD_PNO_USE_SSID))
-									num_visible_ssid++;
+								ssid_elem->flags =
+									nla_get_u32(inner);
+								ssid_elem->hidden =
+									((ssid_elem->flags &
+									DHD_EPNO_HIDDEN_SSID) != 0);
 								break;
 							case GSCAN_ATTRIBUTE_EPNO_AUTH:
-								epno_params->auth =
-								        nla_get_u8(inner);
+								ssid_elem->wpa_auth =
+									nla_get_u32(inner);
 								break;
 						}
 					}
+					/* Missing/incorrect attribute? */
+					if (!ssid_elem->SSID_len) {
+						WL_ERR(("Broadcast SSID is illegal for ePNO\n"));
+						err = -EINVAL;
+						goto exit;
+					}
+					dhd_pno_translate_epno_fw_flags(&ssid_elem->flags);
+					dhd_pno_set_epno_auth_flag(&ssid_elem->wpa_auth);
 				}
 				break;
 			case GSCAN_ATTRIBUTE_EPNO_SSID_NUM:
 				num = nla_get_u8(iter);
 				break;
 			case GSCAN_ATTRIBUTE_EPNO_FLUSH:
-				flush = nla_get_u8(iter);
+				flush = (bool)nla_get_u32(iter);
+				/* Flush attribute is expected before any ssid attribute */
+				if (cnt_ssid && flush) {
+					WL_ERR(("Bad attributes\n"));
+					err = -EINVAL;
+					goto exit;
+				}
+				/* Need to flush driver and FW cfg */
 				dhd_dev_pno_set_cfg_gscan(bcmcfg_to_prmry_ndev(cfg),
-				           DHD_PNO_EPNO_CFG_ID, NULL, flush);
+				   DHD_PNO_EPNO_CFG_ID, NULL, flush);
+				dhd_dev_flush_fw_epno(bcmcfg_to_prmry_ndev(cfg));
+				break;
+			case GSCAN_ATTRIBUTE_EPNO_5G_RSSI_THR:
+				params.min5G_rssi = nla_get_s8(iter);
+				break;
+			case GSCAN_ATTRIBUTE_EPNO_2G_RSSI_THR:
+				params.min2G_rssi = nla_get_s8(iter);
+				break;
+			case GSCAN_ATTRIBUTE_EPNO_INIT_SCORE_MAX:
+				params.init_score_max = nla_get_s16(iter);
+				break;
+			case GSCAN_ATTRIBUTE_EPNO_CUR_CONN_BONUS:
+				params.cur_bssid_bonus = nla_get_s16(iter);
+				break;
+			case GSCAN_ATTRIBUTE_EPNO_SAME_NETWORK_BONUS:
+				params.same_ssid_bonus = nla_get_s16(iter);
+				break;
+			case GSCAN_ATTRIBUTE_EPNO_SECURE_BONUS:
+				params.secure_bonus = nla_get_s16(iter);
+			case GSCAN_ATTRIBUTE_EPNO_5G_BONUS:
+				params.band_5g_bonus = nla_get_s16(iter);
 				break;
 			default:
-				WL_ERR(("%s: No such attribute %d\n", __FUNCTION__, type));
+				WL_ERR(("No such attribute %d\n", type));
 				err = -EINVAL;
 				goto exit;
 			}
 
 	}
-	if (i != num) {
+	if (cnt_ssid != num) {
 		WL_ERR(("%s: num_ssid %d does not match ssids sent %d\n", __FUNCTION__,
-		     num, i));
+		     num, cnt_ssid));
 		err = -EINVAL;
 	}
 exit:
 	/* Flush all configs if error condition */
-	flush = (err < 0) ? TRUE: FALSE;
-	dhd_dev_pno_set_cfg_gscan(bcmcfg_to_prmry_ndev(cfg),
-	   DHD_PNO_EPNO_CFG_ID, &num_visible_ssid, flush);
+	if (err < 0) {
+		dhd_dev_pno_set_cfg_gscan(bcmcfg_to_prmry_ndev(cfg),
+		   DHD_PNO_EPNO_CFG_ID, NULL, TRUE);
+		dhd_dev_flush_fw_epno(bcmcfg_to_prmry_ndev(cfg));
+	} else if (type != GSCAN_ATTRIBUTE_EPNO_FLUSH) {
+		/* If the last attribute was FLUSH, nothing else to do */
+		dhd_dev_pno_set_cfg_gscan(bcmcfg_to_prmry_ndev(cfg),
+		   DHD_PNO_EPNO_PARAMS_ID, &params, FALSE);
+		err = dhd_dev_set_epno(bcmcfg_to_prmry_ndev(cfg));
+	}
 	return err;
 }
 
@@ -902,7 +951,7 @@ static int wl_cfgvendor_set_batch_scan_cfg(struct wiphy *wiphy,
 	}
 
 	if (dhd_dev_pno_set_cfg_gscan(bcmcfg_to_prmry_ndev(cfg),
-	       DHD_PNO_BATCH_SCAN_CFG_ID, &batch_param, 0) < 0) {
+	       DHD_PNO_BATCH_SCAN_CFG_ID, &batch_param, FALSE) < 0) {
 		WL_ERR(("Could not set batch cfg\n"));
 		err = -EINVAL;
 		return err;
@@ -919,7 +968,7 @@ static int wl_cfgvendor_significant_change_cfg(struct wiphy *wiphy,
 	gscan_swc_params_t *significant_params;
 	int tmp, tmp1, tmp2, type, j = 0;
 	const struct nlattr *outer, *inner, *iter;
-	uint8 flush = 0;
+	bool flush = FALSE;
 	wl_pfn_significant_bssid_t *pbssid;
 
 	significant_params = (gscan_swc_params_t *) kzalloc(len, GFP_KERNEL);
@@ -934,7 +983,7 @@ static int wl_cfgvendor_significant_change_cfg(struct wiphy *wiphy,
 
 		switch (type) {
 			case GSCAN_ATTRIBUTE_SIGNIFICANT_CHANGE_FLUSH:
-			flush = nla_get_u8(iter);
+			flush = (bool) nla_get_u8(iter);
 			break;
 			case GSCAN_ATTRIBUTE_RSSI_SAMPLE_SIZE:
 				significant_params->rssi_window = nla_get_u16(iter);

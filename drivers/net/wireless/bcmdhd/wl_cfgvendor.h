@@ -45,10 +45,12 @@
 #define SCAN_ID_HDR_LEN                      ATTRIBUTE_U32_LEN
 #define SCAN_FLAGS_HDR_LEN                   ATTRIBUTE_U32_LEN
 #define GSCAN_NUM_RESULTS_HDR_LEN            ATTRIBUTE_U32_LEN
+#define GSCAN_CH_BUCKET_MASK_HDR_LEN         ATTRIBUTE_U32_LEN
 #define GSCAN_RESULTS_HDR_LEN                (NLA_HDRLEN)
 #define GSCAN_BATCH_RESULT_HDR_LEN  (SCAN_INDEX_HDR_LEN + SCAN_ID_HDR_LEN + \
 									SCAN_FLAGS_HDR_LEN + \
 							        GSCAN_NUM_RESULTS_HDR_LEN + \
+							        GSCAN_CH_BUCKET_MASK_HDR_LEN + \
 									GSCAN_RESULTS_HDR_LEN)
 
 #define VENDOR_REPLY_OVERHEAD       (VENDOR_ID_OVERHEAD + \
@@ -163,7 +165,7 @@ enum gscan_attributes {
     GSCAN_ATTRIBUTE_AP_FLAGS,                           /* flags on significant change event */
     GSCAN_ATTRIBUTE_NUM_CHANNELS,
     GSCAN_ATTRIBUTE_CHANNEL_LIST,
-
+    GSCAN_ATTRIBUTE_CH_BUCKET_BITMASK,
 	/* remaining reserved for additional attributes */
 
     GSCAN_ATTRIBUTE_SSID = 40,
@@ -193,7 +195,7 @@ enum gscan_attributes {
     GSCAN_ATTRIBUTE_EPNO_SSID_LIST = 70,
     GSCAN_ATTRIBUTE_EPNO_SSID,
     GSCAN_ATTRIBUTE_EPNO_SSID_LEN,
-    GSCAN_ATTRIBUTE_EPNO_RSSI,
+    GSCAN_ATTRIBUTE_EPNO_UNUSED, /* Deprecated */
     GSCAN_ATTRIBUTE_EPNO_FLAGS,
     GSCAN_ATTRIBUTE_EPNO_AUTH,
     GSCAN_ATTRIBUTE_EPNO_SSID_NUM,
@@ -236,6 +238,15 @@ enum gscan_attributes {
     /* Adaptive scan attributes */
     GSCAN_ATTRIBUTE_BUCKET_STEP_COUNT = 120,
     GSCAN_ATTRIBUTE_BUCKET_MAX_PERIOD,
+
+    /* ePNO cfg */
+    GSCAN_ATTRIBUTE_EPNO_5G_RSSI_THR = 130,
+    GSCAN_ATTRIBUTE_EPNO_2G_RSSI_THR,
+    GSCAN_ATTRIBUTE_EPNO_INIT_SCORE_MAX,
+    GSCAN_ATTRIBUTE_EPNO_CUR_CONN_BONUS,
+    GSCAN_ATTRIBUTE_EPNO_SAME_NETWORK_BONUS,
+    GSCAN_ATTRIBUTE_EPNO_SECURE_BONUS,
+    GSCAN_ATTRIBUTE_EPNO_5G_BONUS,
 
     GSCAN_ATTRIBUTE_MAX
 };
@@ -364,8 +375,9 @@ typedef enum gscan_geofence_attribute {
 } gscan_geofence_attribute_t;
 
 typedef enum gscan_complete_event {
-	WIFI_SCAN_BUFFER_FULL,
-	WIFI_SCAN_COMPLETE
+	WIFI_SCAN_COMPLETE,
+	WIFI_SCAN_THRESHOLD_NUM_SCANS,
+	WIFI_SCAN_BUFFER_THR_BREACHED
 } gscan_complete_event_t;
 
 /* Capture the BRCM_VENDOR_SUBCMD_PRIV_STRINGS* here */

@@ -5,13 +5,13 @@
  * Definitions subject to change without notice.
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -19,7 +19,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -370,7 +370,7 @@
 #define CRYPTO_ALGO_CKIP_MMH	8
 #define CRYPTO_ALGO_WEP_MMH		9
 #define CRYPTO_ALGO_NALG		10
-#endif 
+#endif
 
 #define CRYPTO_ALGO_SMS4		11
 #define CRYPTO_ALGO_PMK			12	/* for 802.1x supp to set PMK before 4-way */
@@ -400,7 +400,7 @@
 #else
 #define WL_KF_RES_4	(1 << 4)	/* Reserved for backward compat */
 #define WL_KF_RES_5	(1 << 5)	/* Reserved for backward compat */
-#endif 
+#endif
 #define WL_IBSS_PEER_GROUP_KEY	(1 << 6)	/* Indicates a group key for a IBSS PEER */
 
 /* wireless security bitvec */
@@ -430,7 +430,7 @@
 #if defined(BCMEXTCCX)
 #define WPA_AUTH_CCKM		0x0008	/* CCKM */
 #define WPA2_AUTH_CCKM		0x0010	/* CCKM2 */
-#endif	
+#endif
 /* #define WPA_AUTH_8021X 0x0020 */	/* 802.1x, reserved */
 #define WPA2_AUTH_UNSPECIFIED	0x0040	/* over 802.1x */
 #define WPA2_AUTH_PSK		0x0080	/* Pre-shared key */
@@ -1816,7 +1816,7 @@
 #define BESTN_BSSID_ONLY_MASK		0x1000
 
 #define PFN_VERSION			2
-#define PFN_SCANRESULT_VERSION		1
+#define PFN_SCANRESULT_VERSION		2
 #define MAX_PFN_LIST_COUNT		16
 
 #define PFN_COMPLETE			1
@@ -1830,8 +1830,15 @@
 #define PFN_PARTIAL_SCAN_BIT		0
 #define PFN_PARTIAL_SCAN_MASK		1
 
-#define WL_PFN_SUPPRESSFOUND_MASK	0x08
-#define WL_PFN_SUPPRESSLOST_MASK	0x10
+#define WL_PFN_SUPPRESSFOUND_MASK	  0x08
+#define WL_PFN_SUPPRESSLOST_MASK	  0x10
+#define WL_PFN_SSID_A_BAND_TRIG	  	  0x20
+#define WL_PFN_SSID_BG_BAND_TRIG  	  0x40
+#define WL_PFN_SSID_IMPRECISE_MATCH   0x80
+#define WL_PFN_SSID_SAME_NETWORK      0x10000
+#define WL_PFN_SUPPRESS_AGING_MASK    0x20000
+#define WL_PFN_FLUSH_ALL_SSIDS        0x40000
+
 #define WL_PFN_RSSI_MASK		0xff00
 #define WL_PFN_RSSI_SHIFT		8
 

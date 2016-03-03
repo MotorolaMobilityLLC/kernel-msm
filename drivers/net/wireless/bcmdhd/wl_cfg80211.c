@@ -9184,7 +9184,7 @@ wl_notify_gscan_event(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	u32 event = be32_to_cpu(e->event_type);
 	void *ptr;
 	int send_evt_bytes = 0;
-	int batch_event_result_dummy = 0;
+	int event_type;
 	struct net_device *ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
 	struct wiphy *wiphy = bcmcfg_to_wiphy(cfg);
 	u32 len = ntoh32(e->datalen);
@@ -9203,16 +9203,20 @@ wl_notify_gscan_event(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 			if (err < 0) {
 				WL_ERR(("Batch retrieval already in progress %d\n", err));
 			} else {
+				event_type = WIFI_SCAN_THRESHOLD_NUM_SCANS;
+				if (data && len) {
+					event_type = *((int *)data);
+				}
 				wl_cfgvendor_send_async_event(wiphy, ndev,
 				    GOOGLE_GSCAN_BATCH_SCAN_EVENT,
-				     &batch_event_result_dummy, sizeof(int));
+				     &event_type, sizeof(int));
 			}
 			break;
 		case WLC_E_PFN_SCAN_COMPLETE:
-			batch_event_result_dummy = WIFI_SCAN_COMPLETE;
+			event_type = WIFI_SCAN_COMPLETE;
 			wl_cfgvendor_send_async_event(wiphy, ndev,
 				GOOGLE_SCAN_COMPLETE_EVENT,
-				&batch_event_result_dummy, sizeof(int));
+				&event_type, sizeof(int));
 			break;
 		case WLC_E_PFN_BSSID_NET_FOUND:
 			ptr = dhd_dev_hotlist_scan_event(ndev, data, &send_evt_bytes,
@@ -9245,15 +9249,6 @@ wl_notify_gscan_event(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 			if (ptr) {
 				wl_cfgvendor_send_async_event(wiphy, ndev,
 				    GOOGLE_SCAN_FULL_RESULTS_EVENT, ptr, send_evt_bytes);
-				kfree(ptr);
-			} else
-				err = -ENOMEM;
-			break;
-		case WLC_E_PFN_SSID_EXT:
-			ptr = dhd_dev_process_epno_result(ndev, data, event, &send_evt_bytes);
-			if (ptr) {
-				wl_cfgvendor_send_async_event(wiphy, ndev,
-				    GOOGLE_SCAN_EPNO_EVENT, ptr, send_evt_bytes);
 				kfree(ptr);
 			} else
 				err = -ENOMEM;
@@ -9651,6 +9646,11 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 
 	WL_DBG(("Enter\n"));
 
+	if (pfn_result->version != PFN_SCANRESULT_VERSION) {
+		WL_ERR(("Incorrect version %d expected %d\n",
+		       pfn_result->version, PFN_SCANRESULT_VERSION));
+		return BCME_VERSION;
+	}
 	if (e->event_type == WLC_E_PFN_NET_LOST) {
 		WL_PNO(("PFN NET LOST event. Do Nothing \n"));
 		return 0;
@@ -9688,7 +9688,7 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 				goto out_err;
 			}
 			printk(">>> SSID:%s Channel:%d \n",
-				netinfo->pfnsubnet.SSID, netinfo->pfnsubnet.channel);
+				netinfo->pfnsubnet.u.SSID, netinfo->pfnsubnet.channel);
 			/* PFN result doesn't have all the info which are required by the supplicant
 			 * (For e.g IEs) Do a target Escan so that sched scan results are reported
 			 * via wl_inform_single_bss in the required format. Escan does require the
@@ -9696,7 +9696,7 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 			 * cfg80211_scan_request one out of the received PNO event.
 			 */
 			ssid[i].ssid_len = MIN(DOT11_MAX_SSID_LEN, netinfo->pfnsubnet.SSID_len);
-			memcpy(ssid[i].ssid, netinfo->pfnsubnet.SSID,
+			memcpy(ssid[i].ssid, netinfo->pfnsubnet.u.SSID,
 			       ssid[i].ssid_len);
 			request->n_ssids++;
 
@@ -9812,7 +9812,6 @@ static void wl_init_event_handler(struct bcm_cfg80211 *cfg)
 	cfg->evt_handler[WLC_E_PFN_SWC] = wl_notify_gscan_event;
 	cfg->evt_handler[WLC_E_PFN_BSSID_NET_FOUND] = wl_notify_gscan_event;
 	cfg->evt_handler[WLC_E_PFN_BSSID_NET_LOST] = wl_notify_gscan_event;
-	cfg->evt_handler[WLC_E_PFN_SSID_EXT] = wl_notify_gscan_event;
 	cfg->evt_handler[WLC_E_GAS_FRAGMENT_RX] = wl_notify_gscan_event;
 	cfg->evt_handler[WLC_E_ROAM_EXP_EVENT] = wl_handle_roam_exp_event;
 #endif /* GSCAN_SUPPORT */
