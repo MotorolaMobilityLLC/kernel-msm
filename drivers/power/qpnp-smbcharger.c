@@ -1123,6 +1123,8 @@ enum battchg_enable_reason {
 	REASON_BATTCHG_UNKNOWN_BATTERY	= BIT(1),
 	/* thermal interrupt has disabled battery charging */
 	REASON_BATTCHG_THERM		= BIT(2),
+	/* battery charging disabled for OV workaround */
+	REASON_BATTCHG_WRKARND_OV	= BIT(3),
 };
 
 static struct power_supply *get_parallel_psy(struct smbchg_chip *chip)
@@ -4523,6 +4525,7 @@ static irqreturn_t chg_error_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
+	bool unused;
 
 	pr_info("chg-error triggered\n");
 	smbchg_parallel_usb_check_ok(chip);
@@ -4533,10 +4536,13 @@ static irqreturn_t chg_error_handler(int irq, void *_chip)
 
 	/* Clear OV and restart charging by disable/enable charging */
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
+	pr_info("chg-error batt_if RT_STS: 0x%02x\n",reg);
 	if (reg & BAT_OV_BIT) {
-		smbchg_charging_en(chip, false);
+		smbchg_battchg_en(chip, false, REASON_BATTCHG_WRKARND_OV,
+					&unused);
 		msleep(200);
-		smbchg_charging_en(chip, true);
+		smbchg_battchg_en(chip, true, REASON_BATTCHG_WRKARND_OV,
+					&unused);
 	}
 
 	return IRQ_HANDLED;
