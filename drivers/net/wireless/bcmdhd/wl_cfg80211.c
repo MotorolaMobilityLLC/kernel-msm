@@ -1219,8 +1219,10 @@ wl_validate_wps_ie(char *wps_ie, s32 wps_ie_len, bool *pbc)
 			WL_DBG(("  attr WPS_ID_CONFIG_METHODS: %x\n", HTON16(val)));
 		} else if (subelt_id == WPS_ID_DEVICE_NAME) {
 			char devname[100];
-			memcpy(devname, subel, subelt_len);
-			devname[subelt_len] = '\0';
+			int namelen = MIN(subelt_len, (sizeof(devname) - 1));
+			memcpy(devname, subel, namelen);
+			devname[namelen] = '\0';
+			/* Printing len as rx'ed in the IE */
 			WL_DBG(("  attr WPS_ID_DEVICE_NAME: %s (len %u)\n",
 				devname, subelt_len));
 		} else if (subelt_id == WPS_ID_DEVICE_PWD_ID) {
@@ -10463,8 +10465,13 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 
 	WL_DBG(("Enter\n"));
 
-	if (e->event_type == WLC_E_PFN_NET_LOST) {
-		WL_PNO(("PFN NET LOST event. Do Nothing \n"));
+	if ((e->event_type == WLC_E_PFN_NET_LOST) || !data)  {
+		WL_PNO(("Do Nothing %d\n", e->event_type));
+		return 0;
+	}
+	if (pfn_result->version != PFN_SCANRESULT_VERSION) {
+		WL_ERR(("Incorrect version %d, expected %d\n", pfn_result->version,
+					PFN_SCANRESULT_VERSION));
 		return 0;
 	}
 	WL_PNO((">>> PFN NET FOUND event. count:%d \n", n_pfn_results));
@@ -10507,9 +10514,8 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 			 * scan request in the form of cfg80211_scan_request. For timebeing, create
 			 * cfg80211_scan_request one out of the received PNO event.
 			 */
-			memcpy(ssid[i].ssid, netinfo->pfnsubnet.SSID,
-				netinfo->pfnsubnet.SSID_len);
-			ssid[i].ssid_len = netinfo->pfnsubnet.SSID_len;
+			ssid[i].ssid_len = MIN(netinfo->pfnsubnet.SSID_len, DOT11_MAX_SSID_LEN);
+			memcpy(ssid[i].ssid, netinfo->pfnsubnet.SSID, ssid[i].ssid_len);
 			request->n_ssids++;
 
 			channel_req = netinfo->pfnsubnet.channel;
