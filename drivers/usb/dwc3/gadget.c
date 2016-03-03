@@ -675,7 +675,7 @@ static int __dwc3_gadget_ep_disable(struct dwc3_ep *dep)
 	if (dep->number > 1 && dep->trb_pool) {
 		memset(&dep->trb_pool[0], 0,
 			sizeof(struct dwc3_trb) * dep->num_trbs);
-		dbg_event(dep->number, "Clr_TRB", 0);
+		dbg_event(dwc->ctrl_num, dep->number, "Clr_TRB", 0);
 	}
 
 	return 0;
@@ -1961,9 +1961,9 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 			dev_err(dwc->dev, "failed to %s controller\n",
 						is_on ? "start" : "stop");
 			if (is_on)
-				dbg_event(0xFF, "STARTTOUT", reg);
+				dbg_event(dwc->ctrl_num, 0xFF, "STARTTOUT", reg);
 			else
-				dbg_event(0xFF, "STOPTOUT", reg);
+				dbg_event(dwc->ctrl_num, 0xFF, "STOPTOUT", reg);
 			return -ETIMEDOUT;
 		}
 		udelay(1);
