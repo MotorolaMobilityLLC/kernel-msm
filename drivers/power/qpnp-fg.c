@@ -3492,6 +3492,8 @@ fail:
 	if (chip->wa_flag & USE_CC_SOC_REG)
 		fg_relax(&chip->capacity_learning_wakeup_source);
 	mutex_unlock(&chip->learning_data.learning_lock);
+	if (chip->wa_flag & USE_CC_SOC_REG)
+		fg_relax(&chip->capacity_learning_wakeup_source);
 	return;
 
 }
