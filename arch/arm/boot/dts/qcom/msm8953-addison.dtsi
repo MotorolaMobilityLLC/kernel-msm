@@ -140,6 +140,14 @@
 
 	qcom,pmi8950@2 {
 		/delete-node/ qcom,leds@a100;
+
+		qcom,leds@1000 {
+			status = "ok";
+			reg = <0x1000 0x100>;
+			compatible = "qcom,leds-atc";
+			linux,name = "charging";
+			qcom,ctrl-reg = <0x243>;
+		};
 	};
 
 	qcom,pmi8950@3 {
