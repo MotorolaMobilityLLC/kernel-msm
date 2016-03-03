@@ -39,10 +39,7 @@
 /*#define DEBUG*/
 /* #define vl6180_dbgmsg(str, args...) pr_debug("%s: " str, __func__, ##args) */
 #define vl53l0_dbgmsg_en(str, args...)	\
-do {\
-if (gp_vl53l0_data->enableDebug) \
-	pr_err("%s: " str, __func__, ##args); \
-} while (0)
+	pr_debug("%s: " str, __func__, ##args)
 
 #define vl53l0_dbgmsg(str, args...)  \
 	pr_debug("%s: " str, __func__, ##args)
