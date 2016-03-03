@@ -744,60 +744,93 @@ static void stmvl53l0_enter_off(struct stmvl53l0_data *data, uint8_t from)
 
 	vl53l0_dbgmsg_en("End\n");
 }
+
 static void stmvl53l0_enter_cam(struct stmvl53l0_data *data, uint8_t from)
 {
-	VL53L0_RangingMeasurementData_t    RMData;
 
-	vl53l0_dbgmsg_en("Enter, stmvl53l0_enter_cam from:%d\n", from);
+	vl53l0_errmsg("Enter, stmvl53l0_enter_cam from:%d\n", from);
 	/* turn on tof sensor */
 	if (data->enable_ps_sensor == 0)
 		stmvl53l0_start(data);
 
+	papi_func_tbl->SetVcselPulsePeriod(data,
+			VL53L0_VCSEL_PERIOD_PRE_RANGE, 18);
+
+	papi_func_tbl->SetVcselPulsePeriod(data,
+	VL53L0_VCSEL_PERIOD_FINAL_RANGE, 14);
+
+	papi_func_tbl->SetLimitCheckEnable(data,
+		VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+				(uint8_t)0);
+
+	papi_func_tbl->SetLimitCheckEnable(data,
+		VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+				(uint8_t)0);
+
+	papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
+		data, 26000);
+
 	papi_func_tbl->SetDeviceMode(data,
 		VL53L0_DEVICEMODE_SINGLE_RANGING);
-	papi_func_tbl->PerformSingleRangingMeasurement(data,
-		&RMData);
-	vl53l0_dbgmsg_en("Call of VL53L0_DEVICEMODE_CONTINUOUS_RANGING\n");
+
+	vl53l0_errmsg("Call of VL53L0_DEVICEMODE_SINGLE_RANGING\n");
 	papi_func_tbl->SetGpioConfig(data, 0, 0,
 		VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
 		VL53L0_INTERRUPTPOLARITY_LOW);
 	data->gpio_function = VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY;
+
 	papi_func_tbl->StartMeasurement(data);
 
-	vl53l0_dbgmsg_en("End\n");
+	vl53l0_errmsg("End\n");
 }
+
 static void stmvl53l0_enter_sar(struct stmvl53l0_data *data, uint8_t from)
 {
 	VL53L0_RangingMeasurementData_t    RMData;
-	vl53l0_dbgmsg_en("Enter,  from:%d\n", from);
+	vl53l0_errmsg("Enter,  from:%d\n", from);
 	/* turn on tof sensor */
 	if (data->enable_ps_sensor == 0)
 		stmvl53l0_start(data);
 
 	papi_func_tbl->SetDeviceMode(data,
 		VL53L0_DEVICEMODE_SINGLE_RANGING);
+
+	papi_func_tbl->SetVcselPulsePeriod(data,
+		VL53L0_VCSEL_PERIOD_PRE_RANGE, 14);
+
+	papi_func_tbl->SetVcselPulsePeriod(data,
+		VL53L0_VCSEL_PERIOD_FINAL_RANGE, 10);
+
+	papi_func_tbl->SetLimitCheckEnable(data,
+		VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+				(uint8_t)1);
+
+	papi_func_tbl->SetLimitCheckEnable(data,
+		VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+				(uint8_t)0);
+
+	papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
+		data, 33000);
 
 	papi_func_tbl->PerformSingleRangingMeasurement(data,
 		&RMData);
 	memcpy(&(data->rangeData), &RMData,
 		sizeof(VL53L0_RangingMeasurementData_t));
 	stmvl53l0_ps_read_measurement(data);
-	papi_func_tbl->SetInterMeasurementPeriodMilliSeconds
-		(data, data->delay_ms);
 
 	papi_func_tbl->SetGpioConfig(data, 0, 0,
-		VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
+		VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
 		VL53L0_INTERRUPTPOLARITY_LOW);
-	data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW;
-	papi_func_tbl->SetInterruptThresholds(data,
-		0, data->lowv << 16, data->highv << 16);
+	data->gpio_function = VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY;
+
+	papi_func_tbl->SetInterMeasurementPeriodMilliSeconds
+		(data, data->delay_ms);
 	papi_func_tbl->SetDeviceMode(data,
 		VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 	data->lowint = 1;
 	papi_func_tbl->ClearInterruptMask(data, 0);
 	papi_func_tbl->StartMeasurement(data);
-	vl53l0_dbgmsg_en("End\n");
-	stmvl53l0_dumpreg(data);
+	vl53l0_errmsg("End\n");
 }
 static void stmvl53l0_enter_super(struct stmvl53l0_data *data, uint8_t from)
 {
@@ -806,13 +839,36 @@ static void stmvl53l0_enter_super(struct stmvl53l0_data *data, uint8_t from)
 		vl53l0_dbgmsg_en("Call of VL53L0_DEVICEMODE_CONTINUOUS_RANGING\n");
 		papi_func_tbl->StopMeasurement(data);
 		papi_func_tbl->ClearInterruptMask(data, 0);
-		papi_func_tbl->SetGpioConfig(data, 0, 0,
-			VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
-			VL53L0_INTERRUPTPOLARITY_LOW);
-		data->gpio_function = VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY;
-		papi_func_tbl->SetDeviceMode(data,
-			VL53L0_DEVICEMODE_CONTINUOUS_RANGING);
-		papi_func_tbl->StartMeasurement(data);
+
+	papi_func_tbl->SetVcselPulsePeriod(data,
+			VL53L0_VCSEL_PERIOD_PRE_RANGE, 18);
+
+	papi_func_tbl->SetVcselPulsePeriod(data,
+	VL53L0_VCSEL_PERIOD_FINAL_RANGE, 14);
+
+	papi_func_tbl->SetLimitCheckEnable(data,
+		VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+				(uint8_t)0);
+
+	papi_func_tbl->SetLimitCheckEnable(data,
+		VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+				(uint8_t)0);
+
+	papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
+		data, 26000);
+
+	papi_func_tbl->SetDeviceMode(data,
+		VL53L0_DEVICEMODE_SINGLE_RANGING);
+
+	vl53l0_errmsg("Call of VL53L0_DEVICEMODE_SINGLE_RANGING\n");
+	papi_func_tbl->SetGpioConfig(data, 0, 0,
+		VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
+		VL53L0_INTERRUPTPOLARITY_LOW);
+	data->gpio_function = VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY;
+
+	papi_func_tbl->StartMeasurement(data);
+
+	vl53l0_errmsg("End\n");
 	}
 
 	vl53l0_dbgmsg_en("End\n");
@@ -992,8 +1048,6 @@ static void stmvl53l0_state_process(void)
 VL53L0_RangingMeasurementData_t    RMData;
 struct stmvl53l0_data *data = gp_vl53l0_data;
 VL53L0_DEV vl53l0_dev = data;
-char *envplow[2] = { "SAR LOW=1", NULL };
-char *envphigh[2] = { "SAR HIGH=1", NULL };
 struct timeval tv;
 
 do_gettimeofday(&tv);
@@ -1008,9 +1062,9 @@ data->d_ready = 1;
 data->rangeData.TimeStamp = tv.tv_sec;
 data->rangeData.MeasurementTimeUsec = tv.tv_usec;
 wake_up(&data->range_data_wait);
+
 	if (CAM_MODE == data->w_mode) {
 		vl53l0_dbgmsg_en("CAM_MODE\n");
-		papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
 		papi_func_tbl->StartMeasurement(data);
 		if (data->enableDebug)
 			vl53l0_errmsg("range:%d, signalRateRtnMegaCps:%d, \
@@ -1023,64 +1077,11 @@ wake_up(&data->range_data_wait);
 				data->rangeData.MeasurementTimeUsec);
 	} else if (SAR_MODE == data->w_mode) {
 		vl53l0_dbgmsg_en("SAR_MODE\n");
-		if (data->gpio_function == VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW) {
-			vl53l0_dbgmsg_en("SAR enter LOW\n");
-			if (data->lowint < 3) {
-				data->lowint++;
-				papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
-				return;
-			}
-
-			papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
-			stmvl53l0_ps_read_measurement(vl53l0_dev);
-			papi_func_tbl->SetGpioConfig(data, 0, 0,
-			VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH,
-			VL53L0_INTERRUPTPOLARITY_LOW);
-			data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH;
-			papi_func_tbl->SetInterruptThresholds(
-			data, 0, data->lowv << 16, data->highv << 16);
-			papi_func_tbl->SetDeviceMode(data,
-				VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
-			data->lowint = 5;
-			papi_func_tbl->StartMeasurement(data);
-			vl53l0_dbgmsg_en("SAR enter LOW sent uevent\n");
-		} else if (data->gpio_function == VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH) {
-			vl53l0_dbgmsg_en("SAR enter HIGH\n");
-			    if (data->lowint > 3) {
-				data->lowint--;
-				papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
-				return;
-			}
-
-			papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
-			stmvl53l0_ps_read_measurement(vl53l0_dev);
-			papi_func_tbl->SetGpioConfig(data, 0, 0,
-			VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
-			VL53L0_INTERRUPTPOLARITY_LOW);
-			data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW;
-			papi_func_tbl->SetInterruptThresholds(
-				data, 0, data->lowv << 16, data->highv << 16);
-			papi_func_tbl->SetDeviceMode(data,
-				VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
-			data->lowint = 1;
-			papi_func_tbl->StartMeasurement(data);
-			vl53l0_dbgmsg_en("SAR enter high sent uevent\n");
-		}
+		stmvl53l0_ps_read_measurement(vl53l0_dev);
+		vl53l0_dbgmsg_en("SAR measurement ready\n");
 	} else if (SUPER_MODE == data->w_mode) {
 		vl53l0_dbgmsg_en("SUPER_MODE\n");
-		if (RMData.RangeMilliMeter < data->lowv
-				&& RMData.RangeMilliMeter != 0) {
-			vl53l0_dbgmsg_en("SAR enter LOW\n");
-			stmvl53l0_ps_read_measurement(vl53l0_dev);
-			kobject_uevent_env(&(data->miscdev.this_device->kobj),
-				KOBJ_CHANGE, envplow);
-		} else if (RMData.RangeMilliMeter > data->highv) {
-			vl53l0_dbgmsg_en("SAR enter HIGH\n");
-			stmvl53l0_ps_read_measurement(vl53l0_dev);
-			kobject_uevent_env(&(data->miscdev.this_device->kobj),
-				KOBJ_CHANGE, envphigh);
-		}
-		papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
+		stmvl53l0_ps_read_measurement(vl53l0_dev);
 		papi_func_tbl->StartMeasurement(data);
 	}
 
@@ -1205,7 +1206,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 		stmvl53l0_start(data);
 	}
 	if (VL53L0_DEVICEMODE_SINGLE_RANGING == data->d_mode) {
-		vl53l0_dbgmsg_en("Call of VL53L0_DEVICEMODE_SINGLE_RANGING\n");
+		vl53l0_errmsg("Call of VL53L0_DEVICEMODE_SINGLE_RANGING\n");
 		Status = papi_func_tbl->SetGpioConfig(data, 0, 0,
 			VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
 			VL53L0_INTERRUPTPOLARITY_LOW);
@@ -1218,7 +1219,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 			&RMData);
 		stmvl53l0_ps_read_measurement(data);
 	} else if (1 == data->d_mode) {
-		vl53l0_dbgmsg_en("Call of mode 1\n");
+		vl53l0_errmsg("Call of mode 1\n");
 		Status = papi_func_tbl->SetGpioConfig(data, 0, 0,
 			VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
 			VL53L0_INTERRUPTPOLARITY_LOW);
@@ -1227,7 +1228,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 			VL53L0_DEVICEMODE_CONTINUOUS_RANGING);
 		papi_func_tbl->StartMeasurement(data);
 	} else if (2 == data->d_mode) {
-		vl53l0_dbgmsg_en("Call of mode 2\n");
+		vl53l0_errmsg("Call of mode 2\n");
 		Status = papi_func_tbl->SetGpioConfig(data, 0, 0,
 			VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
 			VL53L0_INTERRUPTPOLARITY_LOW);
@@ -1239,7 +1240,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 		papi_func_tbl->StartMeasurement(data);
 
 	} else if (3 == data->d_mode) {
-		vl53l0_dbgmsg_en("Call  mode 3\n");
+		vl53l0_errmsg("Call  mode 3\n");
 		papi_func_tbl->SetInterMeasurementPeriodMilliSeconds
 			(data, 0x00001388);
 		papi_func_tbl->SetGpioConfig(data, 0, 0,
@@ -1252,7 +1253,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 			VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 		papi_func_tbl->StartMeasurement(data);
 	} else if (4 == data->d_mode) {
-		vl53l0_dbgmsg_en("Call of mode 4\n");
+		vl53l0_errmsg("Call of mode 4\n");
 		Status = papi_func_tbl->SetGpioConfig(data, 0, 0,
 			VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH,
 			VL53L0_INTERRUPTPOLARITY_LOW);
