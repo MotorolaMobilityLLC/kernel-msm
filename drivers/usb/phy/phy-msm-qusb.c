@@ -120,6 +120,10 @@ unsigned int tune2;
 module_param(tune2, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(tune2, "QUSB PHY TUNE2");
 
+static int override_phy_init;
+module_param(override_phy_init, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_phy_init, "Override QUSB PHY Settings");
+
 struct qusb_phy {
 	struct usb_phy		phy;
 	void __iomem		*base;
@@ -727,6 +731,24 @@ static void qusb_phy_write_seq(void __iomem *base, u32 *seq, int cnt,
 	}
 }
 
+static void qusb_override_phy_init(struct usb_phy *phy)
+{
+	struct qusb_phy *qphy = container_of(phy, struct qusb_phy, phy);
+
+	if (!override_phy_init)
+		return;
+
+	dev_err(phy->dev, "QUSB PHY Init Override :0x%x\n", override_phy_init);
+	writel_relaxed(override_phy_init & 0xFF,
+				qphy->base + QUSB2PHY_PORT_TUNE1);
+	writel_relaxed((override_phy_init >> 8) & 0xFF,
+				qphy->base + QUSB2PHY_PORT_TUNE2);
+	writel_relaxed((override_phy_init >> 16) & 0xFF,
+				qphy->base + QUSB2PHY_PORT_TUNE3);
+	writel_relaxed((override_phy_init >> 24) & 0xFF,
+				qphy->base + QUSB2PHY_PORT_TUNE4);
+}
+
 static int qusb_phy_init(struct usb_phy *phy)
 {
 	struct qusb_phy *qphy = container_of(phy, struct qusb_phy, phy);
@@ -824,6 +846,8 @@ static int qusb_phy_init(struct usb_phy *phy)
 		writel_relaxed(tune2,
 				qphy->base + QUSB2PHY_PORT_TUNE2);
 	}
+
+	qusb_override_phy_init(phy);
 
 	/* ensure above writes are completed before re-enabling PHY */
 	wmb();
