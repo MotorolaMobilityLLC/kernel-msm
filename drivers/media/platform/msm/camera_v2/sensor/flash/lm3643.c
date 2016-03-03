@@ -34,12 +34,12 @@
 
 #define LED_MAX_STROBE_CURRENT      1500
 #define LED_STROBE_CURRENT_250      0x00
-#define LED_DEFAULT_STROBE_CURRENT  0x0A /* 750 mA */
+#define LED_DEFAULT_STROBE_CURRENT  0x3F /* 729mA */
 #define LED_STROBE_EN_DEFAULT       0x22 /* both enabled */
 
 #define LED_MAX_TORCH_CURRENT      250
-#define LED_DEFAULT_TORCH_CURRENT  0x22 /* 75 mA each */
-#define LED_TORCH_EN_DEFAULT       0x11 /* both enabled */
+#define LED_DEFAULT_TORCH_CURRENT  0x06 /* 75 mA each */
+#define LED_TORCH_EN_DEFAULT       0xDB /* both enabled */
 
 #define LED_MAX_TOTAL_STROBE_CURRENT  1500
 #define LED_MAX_TOTAL_TORCH_CURRENT    179
@@ -109,7 +109,8 @@ static int msm_flash_lm3643_led_low(struct msm_led_flash_ctrl_t *fctrl)
 
 	/* set defaults */
 	lm3643_low_array[0].reg_data = LED_DEFAULT_TORCH_CURRENT;
-	lm3643_low_array[1].reg_data = LED_TORCH_EN_DEFAULT;
+	lm3643_low_array[1].reg_data = LED_DEFAULT_TORCH_CURRENT;
+	lm3643_low_array[2].reg_data = LED_TORCH_EN_DEFAULT;
 
 	if ((fctrl->torch_op_current[0] > LED_MAX_TOTAL_TORCH_CURRENT) ||
 		(fctrl->torch_op_current[1] > LED_MAX_TOTAL_TORCH_CURRENT) ||
