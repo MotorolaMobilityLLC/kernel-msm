@@ -217,6 +217,10 @@
 	status = "disabled";
 };
 
+&pm8994_rtc {
+    qcom,qpnp-rtc-alarm-pwrup = <1>;
+};
+
 &pm8994_vadc {
 	chan@5 {
 		label = "vcoin";
