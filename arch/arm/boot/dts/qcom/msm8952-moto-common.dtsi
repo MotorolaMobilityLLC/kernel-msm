@@ -926,7 +926,7 @@
 		synaptics,gpio-config;
 		/* pins used by touchscreen */
 		pinctrl-names = "default", "active";
-		pinctrl-0 = <&touch_reset_default &touch_int_default>;
+		pinctrl-0 = <&touch_reset_active &touch_int_default>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
 		touchstate_modes {
 			touchmode-default = <&default_active &default_suspended>;
