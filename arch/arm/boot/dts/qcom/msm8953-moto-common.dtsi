@@ -96,6 +96,22 @@
 			pinctrl-1 = <&fusb302_int_active>;
 		};
 
+		pnxxx: pnxxx@28 {
+			compatible = "nxp,pn544";
+			reg = <0x28>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <13 0>;
+			gpios = <&tlmm 13 0>, /* IRQ */
+			<&tlmm 89 0>, /* VEN */
+			<&tlmm 87 0>; /* Firmware */
+
+			nxp,pnxxx-discharge-delay = <2000>;
+			nxp,pnxxx-ven-inv-polarity = <0>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&nfc_irq_default &nfc_en_default &nfc_firm_default>;
+		};
+
 		/delete-node/ adv7533@39;
 	};
 
