@@ -508,12 +508,16 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		partition@0 {
-			label = "apbaboot";
-			reg = <0x0 0x4000>;
+			label = "apba";
+			reg = <0x0 0x40000>;
 		};
 		partition@1 {
-			label = "apba";
-			reg = <0x4000 0x44000>;
+			label = "es2_apbaboot";
+			reg = <0x0 0x4000>;
+		};
+		partition@2 {
+			label = "es2_apba";
+			reg = <0x4000 0x3C000>;
 		};
 	};
 };
