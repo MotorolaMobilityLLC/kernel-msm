@@ -611,6 +611,34 @@ const struct snd_kcontrol_new wm_adsp1_fw_controls[] = {
 };
 EXPORT_SYMBOL_GPL(wm_adsp1_fw_controls);
 
+static char const *wm_adsp_audio_mode_text[] = {
+	"NORMAL",
+	"VOICE",
+	"RING",
+};
+static const struct soc_enum wm_adsp_audio_mode_enum[] = {
+	SOC_ENUM_SINGLE_EXT(3, wm_adsp_audio_mode_text),
+};
+static int audio_mode;
+static int wm_adsp_audio_mode_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = audio_mode;
+	return 0;
+}
+
+static int wm_adsp_audio_mode_put(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int i = ucontrol->value.integer.value[0];
+
+	if (i < 0 || i >= ARRAY_SIZE(wm_adsp_audio_mode_text))
+		return -ERANGE;
+
+	audio_mode = i;
+	return 0;
+}
+
 #if IS_ENABLED(CONFIG_SND_SOC_ARIZONA)
 static const struct soc_enum wm_adsp2_rate_enum[] = {
 	SOC_VALUE_ENUM_SINGLE(ARIZONA_DSP1_CONTROL_1,
@@ -644,6 +672,8 @@ const struct snd_kcontrol_new wm_adsp2_fw_controls[] = {
 	SOC_ENUM_EXT("DSP4 Firmware", wm_adsp_fw_enum[3],
 		     wm_adsp_fw_get, wm_adsp_fw_put),
 	SOC_ENUM("DSP4 Rate", wm_adsp2_rate_enum[3]),
+	SOC_ENUM_EXT("DSP4 Audio Mode", wm_adsp_audio_mode_enum[0],
+		     wm_adsp_audio_mode_get, wm_adsp_audio_mode_put),
 };
 EXPORT_SYMBOL_GPL(wm_adsp2_fw_controls);
 
@@ -1902,6 +1932,7 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 	int err, pos, blocks, type, offset, reg;
 	char *file;
 	struct wm_adsp_buf *buf;
+	const char *coeff;
 
 	if (dsp->firmwares[dsp->fw].binfile &&
 	    !(strcmp(dsp->firmwares[dsp->fw].binfile, "None")))
@@ -1912,11 +1943,35 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 		return -ENOMEM;
 
 	if (dsp->firmwares[dsp->fw].binfile)
-		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.bin", dsp->part,
-			 dsp->num, dsp->firmwares[dsp->fw].binfile);
+		coeff = dsp->firmwares[dsp->fw].binfile;
 	else
+		coeff = dsp->firmwares[dsp->fw].file;
+
+	if (dsp->fw == WM_ADSP_FW_SPEAKERPROTECT) {
+		switch (audio_mode) {
+		case 0:
+			snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.bin",
+				 dsp->part, dsp->num, coeff);
+			break;
+		case 1:
+			snprintf(file, PAGE_SIZE, "%s-dsp%d-%s-voice.bin",
+				 dsp->part, dsp->num, coeff);
+			break;
+		case 2:
+			snprintf(file, PAGE_SIZE, "%s-dsp%d-%s-ring.bin",
+				 dsp->part, dsp->num, coeff);
+			break;
+		default:
+			adsp_err(dsp, "%s: Unsupported coefficient table %d\n",
+				 __func__, audio_mode);
+			ret = -EINVAL;
+			goto out_fw;
+		}
+		adsp_info(dsp, "coefficient table : %s\n", file);
+	} else
 		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.bin", dsp->part,
-			 dsp->num, dsp->firmwares[dsp->fw].file);
+			 dsp->num, coeff);
+
 	file[PAGE_SIZE - 1] = '\0';
 
 	mutex_lock(dsp->fw_lock);
