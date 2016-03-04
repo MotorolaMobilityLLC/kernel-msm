@@ -835,11 +835,14 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
-	if (is_ambient_on()){
+	if (is_ambient_on()&&!send_panel_off_cmd){
 		printk("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
 	}else{
-	if (ctrl->on_cmds.cmd_cnt)
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+		if (ctrl->on_cmds.cmd_cnt) {
+			pr_debug("%s: send panel on cmd\n",__func__);
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+			send_panel_off_cmd = 0;
+		}
 	}
 
 end:
@@ -873,11 +876,13 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
-	if (is_ambient_on()){
+	if (is_ambient_on()&&!send_panel_off_cmd){
 		pr_info("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
 	}else{
-		if (ctrl->off_cmds.cmd_cnt)
+		if (ctrl->off_cmds.cmd_cnt) {
+			pr_debug("%s: send panel off cmd\n",__func__);
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
+		}
 	}
 
 end:

@@ -71,6 +71,8 @@
 #define BLANK_FLAG_LP	FB_BLANK_VSYNC_SUSPEND
 #define BLANK_FLAG_ULP	FB_BLANK_NORMAL
 
+int send_panel_off_cmd;
+
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
 struct msm_fb_data_type *g_mfd;
@@ -1362,6 +1364,9 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 		return 0;
 	}
 	pr_debug("mode: %d\n", blank_mode);
+
+	if (blank_mode == FB_BLANK_POWERDOWN)
+		send_panel_off_cmd = 1;
 
 	pdata = dev_get_platdata(&mfd->pdev->dev);
 

@@ -43,7 +43,7 @@ struct panel_id {
 #define WRITEBACK_PANEL		10	/* Wifi display */
 #define LVDS_PANEL		11	/* LVDS */
 #define EDP_PANEL		12	/* LVDS */
-
+extern int send_panel_off_cmd;
 static inline const char *mdss_panel2str(u32 panel)
 {
 	static const char const *names[] = {
