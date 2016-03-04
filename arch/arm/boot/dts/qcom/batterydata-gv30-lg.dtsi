@@ -11,6 +11,7 @@
  */
 
 qcom,gv30-lg {
+	serialnum = "SNN5972";
 	/* #2298022_Moto_GV30_2630mAh_averaged_MasterSlave_Jan13th2016*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <2630>;

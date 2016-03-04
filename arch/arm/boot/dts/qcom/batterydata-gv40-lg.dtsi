@@ -11,6 +11,7 @@
  */
 
 qcom,gv40-lg {
+	serialnum = "SNN5968";
 	/* #2298024_Moto_GV40_3490mAh_averaged_MasterSlave_Jan14th2016*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <3490>;
