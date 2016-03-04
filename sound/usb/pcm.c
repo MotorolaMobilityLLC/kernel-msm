@@ -683,7 +683,8 @@ static int snd_usb_pcm_prepare(struct snd_pcm_substream *substream)
 	}
 
 	down_read(&subs->stream->chip->shutdown_rwsem);
-	if (subs->stream->chip->shutdown) {
+	if (subs->stream->chip->shutdown ||
+			(subs->dev->state == USB_STATE_NOTATTACHED)) {
 		ret = -ENODEV;
 		goto unlock;
 	}
