@@ -437,6 +437,33 @@
 			bias-pull-up;
 		};
 	};
+
+	nfc_irq_default: nfc_irq_default {
+		config {
+			pins = "gpio13";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	nfc_en_default: nfc_en_default {
+		config {
+			pins = "gpio89";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	nfc_firm_default: nfc_firm_default {
+		config {
+			pins = "gpio87";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
 };
 
 /delete-node/ &hsuart_active;
