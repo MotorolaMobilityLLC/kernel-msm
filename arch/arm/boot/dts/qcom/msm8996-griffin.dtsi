@@ -168,6 +168,8 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <100>;
+		df-serialnum = "SNN5968";
+
 		#include "batterydata-gv40-lg.dtsi"
 	};
 };
