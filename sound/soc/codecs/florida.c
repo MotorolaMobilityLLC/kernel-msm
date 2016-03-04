@@ -853,13 +853,6 @@ static const struct soc_enum florida_aec_loopback =
 static const struct snd_kcontrol_new florida_aec_loopback_mux =
 	SOC_DAPM_ENUM("AEC Loopback", florida_aec_loopback);
 
-static const struct snd_kcontrol_new florida_anc_input_mux[] = {
-	SOC_DAPM_ENUM_EXT("RXANCL Input", arizona_anc_input_src[0],
-			  arizona_get_anc_input, arizona_put_anc_input),
-	SOC_DAPM_ENUM_EXT("RXANCR Input", arizona_anc_input_src[1],
-			  arizona_get_anc_input, arizona_put_anc_input),
-};
-
 static const struct snd_kcontrol_new florida_output_anc_src[] = {
 	SOC_DAPM_ENUM("HPOUT1L ANC Source", arizona_output_anc_src[0]),
 	SOC_DAPM_ENUM("HPOUT1R ANC Source", arizona_output_anc_src[1]),
@@ -1063,9 +1056,6 @@ SND_SOC_DAPM_PGA("ISRC3DEC4", ARIZONA_ISRC_3_CTRL_3,
 SND_SOC_DAPM_MUX("AEC Loopback", ARIZONA_DAC_AEC_CONTROL_1,
 		       ARIZONA_AEC_LOOPBACK_ENA_SHIFT, 0,
 		       &florida_aec_loopback_mux),
-
-SND_SOC_DAPM_MUX("RXANCL Input", SND_SOC_NOPM, 0, 0, &florida_anc_input_mux[0]),
-SND_SOC_DAPM_MUX("RXANCR Input", SND_SOC_NOPM, 0, 0, &florida_anc_input_mux[1]),
 
 SND_SOC_DAPM_PGA_E("RXANCL", SND_SOC_NOPM, ARIZONA_CLK_L_ENA_SET_SHIFT,
 		   0, NULL, 0, arizona_anc_ev,
