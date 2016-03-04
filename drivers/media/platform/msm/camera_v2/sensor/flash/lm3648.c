@@ -38,7 +38,7 @@
 
 #define LED_MAX_TORCH_CURRENT      250
 #define LED_DEFAULT_TORCH_CURRENT  0x1A /* 75 mA each */
-#define LED_TORCH_EN_DEFAULT       0xDB /* both enabled */
+#define LED_TORCH_EN_DEFAULT       0x8B /* both enabled */
 
 #define LED_MAX_TOTAL_STROBE_CURRENT  1500
 #define LED_MAX_TOTAL_TORCH_CURRENT    179
@@ -53,26 +53,26 @@ struct lm3648_current_to_reg {
 };
 
 static struct msm_camera_i2c_reg_array lm3648_init_array[] = {
-	{0x01, 0xF3}, /*gpio enable & led on*/
+	{0x01, 0x80}, /*gpio disable & led on*/
 	{0x08, 0x0F}, /*set flash time-out duration to 400ms*/
 };
 
 static struct msm_camera_i2c_reg_array lm3648_off_array[] = {
-	{0x01, 0xF0},
+	{0x01, 0x80},
 };
 
 static struct msm_camera_i2c_reg_array lm3648_release_array[] = {
-	{0x01, 0xF0},
+	{0x01, 0x80},
 };
 
 static struct msm_camera_i2c_reg_array lm3648_low_array[] = {
 	{0x05, 0xBF}, /*LED1 torch current*/
-	{0x01, 0xDB},
+	{0x01, 0x8B},
 };
 
 static struct msm_camera_i2c_reg_array lm3648_high_array[] = {
 	{0x03, 0x9F}, /*LED1 flash current */
-	{0x01, 0xEF},
+	{0x01, 0x8F},
 	{0x08, 0x0F}, /*set flash time-out duration to 400ms*/
 };
 
