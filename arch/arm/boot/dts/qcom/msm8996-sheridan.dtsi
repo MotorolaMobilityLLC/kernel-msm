@@ -31,6 +31,8 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <100>;
+		df-serialnum = "SNN5972";
+
 		#include "batterydata-gv30-lg.dtsi"
 	};
 };
