@@ -799,6 +799,11 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	printk("MDSS:AMB:%s: ctrl=%p ndx=%d enable=%d\n", __func__, ctrl, ctrl->ndx,
 		enable);
 
+	if (!ctrl->ctrl_state & CTRL_STATE_PANEL_INIT){
+		printk("MDSS:%s:skip due to DSI has shutdown!!\n",__func__);
+		return -EBUSY;
+	}
+
 	/* set ambient command by panel id */
 	mdss_panel_set_ambient_command(ctrl);
 

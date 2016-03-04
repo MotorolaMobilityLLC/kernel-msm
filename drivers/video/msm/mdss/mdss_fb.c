@@ -1182,6 +1182,7 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	mutex_unlock(&mfd->bl_lock);
 }
 
+extern void mdss_mdp_ambient_flush_now(void);
 static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 	int req_power_state)
 {
@@ -1196,8 +1197,16 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 
 	cur_power_state = mfd->panel_power_state;
 
-	pr_debug("Transitioning from %d --> %d\n", cur_power_state,
+	printk("MDSS: Transitioning from %d --> %d\n", cur_power_state,
 		req_power_state);
+
+	/*
+	 * Transition from MDSS_PANEL_POWER_LP1 to MDSS_PANEL_POWER_LP2.
+	 * It is a suspend from upper layer, flush ambient queue.
+	 */
+	if ((cur_power_state == MDSS_PANEL_POWER_LP1) &&
+		(req_power_state == MDSS_PANEL_POWER_LP2))
+		mdss_mdp_ambient_flush_now();
 
 	if (cur_power_state == req_power_state) {
 		pr_debug("No change in power state\n");

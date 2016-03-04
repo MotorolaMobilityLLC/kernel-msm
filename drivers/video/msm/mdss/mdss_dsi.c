@@ -986,8 +986,13 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 
 	if (mdss_panel_is_power_on_lp(power_state)) {
 		pr_debug("%s: low power state requested\n", __func__);
-		if (ctrl_pdata->low_power_config)
-			ret = ctrl_pdata->low_power_config(pdata, true);
+
+		/* Delay a certain number of jiffies to prevent 3 bits color */
+		if (!ctrl_pdata->ambient_on_queued) {
+			schedule_delayed_work(&ctrl_pdata->ambient_enable_work ,msecs_to_jiffies(1000));
+			ctrl_pdata->ambient_on_queued = true;
+		}
+
 		goto error;
 	}
 
@@ -1299,6 +1304,49 @@ static int mdss_dsi_set_stream_size(struct mdss_panel_data *pdata)
 	return 0;
 }
 
+static void __mdss_mdp_ambient_on_work(struct work_struct *work)
+{
+	int rc = 0;
+	struct delayed_work *dw = to_delayed_work(work);
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = container_of(dw, struct mdss_dsi_ctrl_pdata, ambient_enable_work);
+
+	wake_lock_timeout(&ctrl_pdata->ambient_enable_wake_lock, msecs_to_jiffies(300));
+
+	/* prevent the work is started but idle off also fired */
+	if (!ctrl_pdata->ambient_on_queued) {
+		printk("MDSS:AMB: cancel work because idle off.\n");
+		return;
+	}
+
+	printk("MDSS:__mdss_mdp_ambient_on_work:exec ...\n");
+
+	if (ctrl_pdata->low_power_config)
+		rc = ctrl_pdata->low_power_config(&(ctrl_pdata->panel_data), true);
+
+	ctrl_pdata->ambient_on_queued = false;
+	printk("MDSS:__mdss_mdp_ambient_on_work---\n");
+	wake_unlock(&ctrl_pdata->ambient_enable_wake_lock);
+}
+
+void mdss_mdp_ambient_flush_now(void)
+{
+	if (!g_ctrl_pdata) {
+		printk("MDSS: ctrl_data is not set, abort now.\n");
+		return;
+	}
+
+	if (g_ctrl_pdata->ambient_on_queued) {
+		cancel_delayed_work_sync(&g_ctrl_pdata->ambient_enable_work);
+		printk("MDSS: flush queued ambient mode request now.\n");
+		if (g_ctrl_pdata->low_power_config)
+			g_ctrl_pdata->low_power_config(&(g_ctrl_pdata->panel_data), true);
+		g_ctrl_pdata->ambient_on_queued = false;
+	} else {
+		printk("MDSS: no queued ambient mode request.\n");
+	}
+}
+EXPORT_SYMBOL(mdss_mdp_ambient_flush_now);
+
 int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct mdss_panel_recovery *recovery)
 {
@@ -1327,6 +1375,14 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 
 	switch (event) {
 	case MDSS_EVENT_UNBLANK:
+		printk("MDSS: MDSS_EVENT_UNBLANK ++ \n");
+		/* Cancel ambient on workqueue if we need to wake up */
+		if (ctrl_pdata->ambient_on_queued){
+			printk("MDSS:AMB:cancel ambient_enable_work due to ambient_on_queued.\n");
+			ctrl_pdata->ambient_on_queued = false;
+			cancel_delayed_work_sync(&ctrl_pdata->ambient_enable_work);
+		}
+
 		rc = mdss_dsi_on(pdata);
 		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode,
 							pdata);
@@ -1334,16 +1390,29 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			rc = mdss_dsi_unblank(pdata);
 		break;
 	case MDSS_EVENT_PANEL_ON:
+		printk("MDSS: MDSS_EVENT_PANEL_ON ++ \n");
 		ctrl_pdata->ctrl_state |= CTRL_STATE_MDP_ACTIVE;
 		if (ctrl_pdata->on_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_unblank(pdata);
 		break;
 	case MDSS_EVENT_BLANK:
 		power_state = (int) (unsigned long) arg;
+		printk("MDSS: MDSS_EVENT_BLANK ++ \n");
+		if (ctrl_pdata->ambient_on_queued){
+			cancel_delayed_work_sync(&ctrl_pdata->ambient_enable_work);
+			printk("MDSS:AMB:MDSS_EVENT_BLANK:flush mdss_dsi_panel_ambient_enable() due to ambient_on_queued\n");
+			if (ctrl_pdata->low_power_config)
+				ctrl_pdata->low_power_config(pdata, true);
+			ctrl_pdata->ambient_on_queued = false;
+		}else{
+			printk("MDSS:AMB:MDSS_EVENT_BLANK:ambient_enable_work not queued..\n");
+		}
+
 		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_blank(pdata, power_state);
 		break;
 	case MDSS_EVENT_PANEL_OFF:
+		printk("MDSS: MDSS_EVENT_PANEL_OFF ++ \n");
 		power_state = (int) (unsigned long) arg;
 		ctrl_pdata->ctrl_state &= ~CTRL_STATE_MDP_ACTIVE;
 		if (ctrl_pdata->off_cmds.link_state == DSI_LP_MODE)
@@ -1614,6 +1683,10 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		goto error_pan_node;
 	}
 
+	INIT_DELAYED_WORK(&ctrl_pdata->ambient_enable_work, __mdss_mdp_ambient_on_work);
+	ctrl_pdata->ambient_on_queued = false;
+	wake_lock_init(&ctrl_pdata->ambient_enable_wake_lock, WAKE_LOCK_SUSPEND, "mdss ambient");
+
 #ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
 	ctrl_pdata->dis_off_with_ulps = false;
 #endif
@@ -1659,6 +1732,7 @@ static int mdss_dsi_ctrl_remove(struct platform_device *pdev)
 	msm_dss_iounmap(&ctrl_pdata->mmss_misc_io);
 	msm_dss_iounmap(&ctrl_pdata->phy_io);
 	msm_dss_iounmap(&ctrl_pdata->ctrl_io);
+	wake_lock_destroy(&ctrl_pdata->ambient_enable_wake_lock);
 	return 0;
 }
 

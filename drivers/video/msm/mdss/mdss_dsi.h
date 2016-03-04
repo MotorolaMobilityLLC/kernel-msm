@@ -369,6 +369,11 @@ struct mdss_dsi_ctrl_pdata {
 	/* ASUS_BSP Josh: add for query panel version */
 	struct delayed_work panel_version_work;
 
+	/* ASUS_BSP Josh: add for delay idle on command */
+	struct delayed_work ambient_enable_work;
+	struct wake_lock ambient_enable_wake_lock;
+	int ambient_on_queued;
+
 #ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
 	int dis_off_with_ulps;
 #endif
