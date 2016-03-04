@@ -1029,10 +1029,6 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 		return POWER_SUPPLY_STATUS_UNKNOWN;
 	}
 
-	if ((reg & BAT_TCC_REACHED_BIT) && !chip->demo_mode &&
-	    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
-		return POWER_SUPPLY_STATUS_FULL;
-
 	if ((chip->stepchg_state == STEP_FULL) && !(batt_soc < 100) &&
 	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
 		return POWER_SUPPLY_STATUS_FULL;
@@ -9114,23 +9110,33 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		chip->stepchg_state_holdoff = 0;
 	} else if ((chip->stepchg_state >= STEP_FIRST) &&
 		   (chip->stepchg_state <= STEP_LAST) &&
-		   (batt_ma < 0) && (chip->usb_present) &&
+		   (chip->usb_present) &&
 		   ((batt_mv + HYST_STEP_MV) >= max_mv)) {
 		bool change_state = false;
-		batt_ma *= -1;
-		index = smbchg_get_pchg_current_map_index(chip);
-		if (chip->pchg_current_map_data[index].primary == taper_ma)
-			batt_ma -= STEPCHG_CURR_ADJ;
 
-		if ((batt_ma <= taper_ma) &&
-		    (chip->allowed_fastchg_current_ma >= taper_ma))
+		if (batt_ma < 0) {
+			batt_ma *= -1;
+			index = smbchg_get_pchg_current_map_index(chip);
+			if (chip->pchg_current_map_data[index].primary ==
+			    taper_ma)
+				batt_ma -= STEPCHG_CURR_ADJ;
+
+			if ((batt_ma <= taper_ma) &&
+			    (chip->allowed_fastchg_current_ma >= taper_ma))
+				if (chip->stepchg_state_holdoff >= 2) {
+					change_state = true;
+					chip->stepchg_state_holdoff = 0;
+				} else
+					chip->stepchg_state_holdoff++;
+			else
+				chip->stepchg_state_holdoff = 0;
+		} else {
 			if (chip->stepchg_state_holdoff >= 2) {
 				change_state = true;
 				chip->stepchg_state_holdoff = 0;
 			} else
 				chip->stepchg_state_holdoff++;
-		else
-			chip->stepchg_state_holdoff = 0;
+		}
 
 		if (change_state) {
 			if (chip->stepchg_state ==
