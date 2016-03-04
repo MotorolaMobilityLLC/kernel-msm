@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1438,7 +1438,6 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 				goto error;
 			}
 		}
-		ctrl_pdata->ctrl_state |= CTRL_STATE_PANEL_INIT;
 	}
 
 	if ((pdata->panel_info.type == MIPI_CMD_PANEL) &&
@@ -1448,6 +1447,7 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 			enable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
 
+	ctrl_pdata->ctrl_state |= CTRL_STATE_PANEL_INIT;
 error:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 
@@ -2024,6 +2024,15 @@ int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 	return 0;
 }
 
+int mdss_dsi_register_mdp_callback(struct mdss_dsi_ctrl_pdata *ctrl,
+	struct mdss_intf_recovery *mdp_callback)
+{
+	mutex_lock(&ctrl->mutex);
+	ctrl->mdp_callback = mdp_callback;
+	mutex_unlock(&ctrl->mutex);
+	return 0;
+}
+
 static int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -2260,6 +2269,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_REGISTER_RECOVERY_HANDLER:
 		rc = mdss_dsi_register_recovery_handler(ctrl_pdata,
+			(struct mdss_intf_recovery *)arg);
+		break;
+	case MDSS_EVENT_REGISTER_MDP_CALLBACK:
+		rc = mdss_dsi_register_mdp_callback(ctrl_pdata,
 			(struct mdss_intf_recovery *)arg);
 		break;
 	case MDSS_EVENT_DSI_DYNAMIC_SWITCH:

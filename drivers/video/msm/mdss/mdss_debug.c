@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -179,7 +179,8 @@ static ssize_t panel_debug_base_reg_write(struct file *file,
 		mdata->debug_inf.debug_enable_clock(1);
 
 	dsi_write_cmd.dchdr.dlen = len;
-	mdss_dsi_cmdlist_put(ctrl_pdata, &cmdreq);
+	if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT)
+		mdss_dsi_cmdlist_put(ctrl_pdata, &cmdreq);
 
 	if (mdata->debug_inf.debug_enable_clock)
 		mdata->debug_inf.debug_enable_clock(0);
