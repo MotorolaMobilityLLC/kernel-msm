@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,6 +13,8 @@
 
 #include <linux/kernel.h>
 #include <linux/pm_runtime.h>
+#include <linux/iopoll.h>
+#include <linux/delay.h>
 
 #include "mdss_mdp.h"
 #include "mdss_panel.h"
@@ -38,6 +40,8 @@ struct mdss_mdp_cmd_ctx {
 	u8 ref_cnt;
 	struct completion stop_comp;
 	struct completion readptr_done;
+	atomic_t readptr_cnt;
+	wait_queue_head_t rdptr_waitq;
 	wait_queue_head_t pp_waitq;
 	struct list_head vsync_handlers;
 	int panel_power_state;
@@ -59,6 +63,7 @@ struct mdss_mdp_cmd_ctx {
 	bool autorefresh_init;
 
 	struct mdss_intf_recovery intf_recovery;
+	struct mdss_intf_recovery intf_mdp_callback;
 	struct mdss_mdp_cmd_ctx *sync_ctx; /* for partial update */
 	u32 pp_timeout_report_cnt;
 	int pingpong_split_slave;
@@ -362,6 +367,17 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 		complete_all(&ctx->readptr_done);
 	}
 
+	/* If caller is waiting for the read pointer, notify */
+	if (atomic_read(&ctx->readptr_cnt)) {
+		if (atomic_add_unless(&ctx->readptr_cnt, -1, 0)) {
+			MDSS_XLOG(atomic_read(&ctx->readptr_cnt));
+			if (atomic_read(&ctx->readptr_cnt))
+				pr_warn("%s: too many rdptrs=%d!\n", __func__,
+					atomic_read(&ctx->readptr_cnt));
+		}
+		wake_up_all(&ctx->rdptr_waitq);
+	}
+
 	if (ctx->autorefresh_off_pending)
 		ctx->autorefresh_off_pending = false;
 
@@ -393,6 +409,79 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 	}
 
 	spin_unlock(&ctx->clk_lock);
+}
+
+static int mdss_mdp_cmd_wait4readptr(struct mdss_mdp_cmd_ctx *ctx)
+{
+	int rc = 0;
+
+	rc = wait_event_timeout(ctx->rdptr_waitq,
+		atomic_read(&ctx->readptr_cnt) == 0,
+		KOFF_TIMEOUT);
+	if (rc <= 0) {
+		if (atomic_read(&ctx->readptr_cnt))
+			pr_err("timed out waiting for rdptr irq\n");
+		else
+			rc = 1;
+	}
+	return rc;
+}
+
+static void mdss_mdp_cmd_intf_callback(void *data, int event)
+{
+	struct mdss_mdp_cmd_ctx *ctx = data;
+	struct mdss_mdp_pp_tear_check *te = NULL;
+	u32 timeout_us = 3000, val = 0;
+	struct mdss_mdp_mixer *mixer = NULL;
+
+	if (!data) {
+		pr_err("%s: invalid ctx\n", __func__);
+		return;
+	}
+
+	if (!ctx->ctl)
+		return;
+
+	switch (event) {
+	case MDP_INTF_CALLBACK_DSI_WAIT:
+		pr_debug("%s: wait for frame cnt:%d event:%d\n",
+			__func__, atomic_read(&ctx->readptr_cnt), event);
+
+		/*
+		 * if we are going to suspended or pp split is not enabled,
+		 * just return
+		 */
+		if (ctx->intf_stopped || !is_pingpong_split(ctx->ctl->mfd))
+			return;
+
+		atomic_inc(&ctx->readptr_cnt);
+		/* enable clks and rd_ptr interrupt */
+		mdss_mdp_cmd_clk_on(ctx);
+
+		te = &ctx->ctl->panel_data->panel_info.te;
+		mixer = mdss_mdp_mixer_get(ctx->ctl, MDSS_MDP_MIXER_MUX_LEFT);
+		if (!mixer) {
+			pr_err("%s: null mixer\n", __func__);
+			return;
+		}
+
+		/* wait for read pointer and frame transfer to start */
+		MDSS_XLOG(atomic_read(&ctx->readptr_cnt));
+		if (mdss_mdp_cmd_wait4readptr(ctx))
+			readl_poll_timeout(mixer->pingpong_base +
+				MDSS_MDP_REG_PP_INT_COUNT_VAL, val,
+				(val & 0xffff) > (te->start_pos +
+				te->sync_threshold_start), 10, timeout_us);
+
+		/*
+		 * rdptr interrupt will be disabled from command mode
+		 * clock work queue
+		 */
+		break;
+	default:
+		pr_debug("%s: unhandled event=%d\n", __func__, event);
+		break;
+	}
 }
 
 static void mdss_mdp_cmd_intf_recovery(void *data, int event)
@@ -831,6 +920,10 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 			MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
 			(void *)&ctx->intf_recovery);
 
+		mdss_mdp_ctl_intf_event(ctl,
+			MDSS_EVENT_REGISTER_MDP_CALLBACK,
+			(void *)&ctx->intf_mdp_callback);
+
 		ctx->intf_stopped = 0;
 	} else {
 		pr_err("%s: Panel already on\n", __func__);
@@ -1111,6 +1204,10 @@ int mdss_mdp_cmd_ctx_stop(struct mdss_mdp_ctl *ctl,
 		mdss_mdp_ctl_intf_event(ctl,
 			MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
 			NULL);
+
+		mdss_mdp_ctl_intf_event(ctl,
+			MDSS_EVENT_REGISTER_MDP_CALLBACK,
+			NULL);
 	}
 
 	mdss_mdp_cmd_clk_off(ctx);
@@ -1259,6 +1356,9 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			 * get turned on when the first update comes.
 			 */
 			pr_debug("%s: reset intf_stopped flag.\n", __func__);
+			mdss_mdp_ctl_intf_event(ctl,
+				MDSS_EVENT_REGISTER_MDP_CALLBACK,
+				(void *)&ctx->intf_mdp_callback);
 			ctx->intf_stopped = 0;
 			goto end;
 		}
@@ -1340,6 +1440,7 @@ static int mdss_mdp_cmd_ctx_setup(struct mdss_mdp_ctl *ctl,
 	ctx->pingpong_split_slave = pingpong_split_slave;
 	ctx->pp_timeout_report_cnt = 0;
 	init_waitqueue_head(&ctx->pp_waitq);
+	init_waitqueue_head(&ctx->rdptr_waitq);
 	init_completion(&ctx->stop_comp);
 	init_completion(&ctx->readptr_done);
 	spin_lock_init(&ctx->clk_lock);
@@ -1355,6 +1456,9 @@ static int mdss_mdp_cmd_ctx_setup(struct mdss_mdp_ctl *ctl,
 
 	ctx->intf_recovery.fxn = mdss_mdp_cmd_intf_recovery;
 	ctx->intf_recovery.data = ctx;
+
+	ctx->intf_mdp_callback.fxn = mdss_mdp_cmd_intf_callback;
+	ctx->intf_mdp_callback.data = ctx;
 
 	ctx->intf_stopped = 0;
 
