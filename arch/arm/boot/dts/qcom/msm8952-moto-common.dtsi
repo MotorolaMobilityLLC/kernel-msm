@@ -444,7 +444,10 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <100>;
-		#include "batterydata-ga40-3000mah.dtsi"
+		df-serialnum = "SNN5966";
+
+		#include "batterydata-ga40-sony.dtsi"
+		#include "batterydata-ga40-atl.dtsi"
 	};
 };
 
