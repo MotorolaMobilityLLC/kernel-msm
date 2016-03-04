@@ -4894,6 +4894,89 @@ static void update_cc_cv_setpoint(struct fg_chip *chip)
 			tmp[0], tmp[1], CC_CV_SETPOINT_REG);
 }
 
+static const char *fg_get_mmi_battid(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *battsn_buf;
+	int retval;
+
+	battsn_buf = NULL;
+
+	if (np)
+		retval = of_property_read_string(np, "mmi,battid",
+						 &battsn_buf);
+	else
+		return NULL;
+
+	if ((retval == -EINVAL) || !battsn_buf) {
+		pr_err("Battsn unused\n");
+		of_node_put(np);
+		return NULL;
+
+	} else
+		pr_err("Battsn = %s\n", battsn_buf);
+
+	of_node_put(np);
+
+	return battsn_buf;
+}
+
+static struct device_node *fg_get_serialnumber(struct fg_chip *chip,
+					       struct device_node *np)
+{
+	struct device_node *node, *df_node, *sn_node;
+	const char *sn_buf, *df_sn, *dev_sn;
+	int rc;
+
+	if (!np)
+		return NULL;
+
+	dev_sn = NULL;
+	df_sn = NULL;
+	sn_buf = NULL;
+	df_node = NULL;
+	sn_node = NULL;
+
+	dev_sn = fg_get_mmi_battid();
+
+	rc = of_property_read_string(np, "df-serialnum",
+				     &df_sn);
+	if (rc)
+		dev_warn(chip->dev, "No Default Serial Number defined");
+	else if (df_sn)
+		dev_warn(chip->dev, "Default Serial Number %s", df_sn);
+
+	for_each_child_of_node(np, node) {
+		rc = of_property_read_string(node, "serialnum",
+					     &sn_buf);
+		if (!rc && sn_buf) {
+			if (dev_sn)
+				if (strnstr(dev_sn, sn_buf, 32))
+					sn_node = node;
+			if (df_sn)
+				if (strnstr(df_sn, sn_buf, 32))
+					df_node = node;
+		}
+	}
+
+	if (sn_node) {
+		node = sn_node;
+		df_node = NULL;
+		dev_warn(chip->dev, "Battery Match Found using %s",
+			 sn_node->name);
+	} else if (df_node) {
+		node = df_node;
+		sn_node = NULL;
+		dev_warn(chip->dev, "Battery Match Found using default %s",
+			 df_node->name);
+	} else {
+		dev_warn(chip->dev, "No Battery Match Found!");
+		return NULL;
+	}
+
+	return node;
+}
+
 #define LOW_LATENCY			BIT(6)
 #define BATT_PROFILE_OFFSET		0x4C0
 #define PROFILE_INTEGRITY_REG		0x53C
@@ -5088,13 +5171,18 @@ wait:
 		goto no_profile;
 	}
 
-	profile_node = of_batterydata_get_best_profile(batt_node, "bms",
-							fg_batt_type);
+	profile_node = fg_get_serialnumber(chip, batt_node);
+
 	if (!profile_node) {
-		pr_err("couldn't find profile handle\n");
-		old_batt_type = default_batt_type;
-		rc = -ENODATA;
-		goto fail;
+		profile_node = of_batterydata_get_best_profile(batt_node,
+							       "bms",
+							       fg_batt_type);
+		if (!profile_node) {
+			pr_err("couldn't find profile handle\n");
+			old_batt_type = default_batt_type;
+			rc = -ENODATA;
+			goto fail;
+		}
 	}
 
 	/* read rslow compensation values if they're available */
