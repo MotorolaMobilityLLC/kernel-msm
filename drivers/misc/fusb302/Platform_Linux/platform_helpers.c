@@ -60,7 +60,7 @@ static int FSA321_setSwitchState(FSASwitchState state)
 	if (!(gpio_is_valid(aud_det_gpio) && gpio_is_valid(aud_sw_sel_gpio)))
 		return -ENODEV;
 
-	pr_debug("Set Audio Switch to state %d\n", state);
+	FUSB_LOG("Set Audio Switch to state %d\n", state);
 
 	switch (state) {
 	case fsa_lpm:
@@ -97,7 +97,7 @@ static int fusb_toggleAudioSwitch(bool enable)
 	if (!(gpio_is_valid(aud_det_gpio) &&
 		gpio_is_valid(aud_sw_sel_gpio)))
 		return -ENODEV;
-	pr_debug("%sabling, Audio Switch\n", enable ? "En" : "Dis");
+	FUSB_LOG("%sabling, Audio Switch\n", enable ? "En" : "Dis");
 	if (enable) {
 		gpio_set_value(aud_sw_sel_gpio, 1);
 		gpio_set_value(aud_det_gpio, 0);
@@ -121,7 +121,7 @@ static int fusb_enableSuperspeedUSB(int CC1, int CC2)
 		return 0;
 	SwitchState = CC1 ? 1 : 2;
 	power_supply_changed(&switch_psy);
-	pr_debug("Enabling SS lines for CC%d\n", SwitchState);
+	FUSB_LOG("Enabling SS lines for CC%d\n", SwitchState);
 	return 0;
 }
 static int fusb_disableSuperspeedUSB(void)
@@ -154,7 +154,7 @@ void platform_toggleAudioSwitch(FSASwitchState state)
 			   __func__);
 		return;
 	}
-	pr_debug("SetAudio Mode %x\n", state);
+	FUSB_LOG("SetAudio Mode %x\n", state);
 	switch (state) {
 
 	case fsa_lpm:
@@ -246,7 +246,7 @@ FSC_S32 fusb_InitializeGPIO(void)
 		chip->gpios[i] = gpio;
 	}
 	chip->gpio_IntN = chip->gpios[FUSB_INT_INDEX];
-	pr_debug("irq_gpio number is %d\n", chip->gpios[FUSB_INT_INDEX]);
+	FUSB_LOG("irq_gpio number is %d\n", chip->gpios[FUSB_INT_INDEX]);
 #ifdef FPGA_BOARD
 	/* Get our GPIO pins from the device tree, allocate them, and then set their direction (input/output) */
 	chip->gpio_IntN = of_get_named_gpio(node, FUSB_DT_GPIO_INTN, 0);
@@ -431,7 +431,7 @@ void fusb_GPIO_Set_VBus5v(FSC_BOOL set)
 	}
 	chip->gpio_VBus5V_value = set;
 
-	pr_debug("FUSB  %s - VBus 5V set to: %d\n", __func__,
+	FUSB_LOG("FUSB  %s - VBus 5V set to: %d\n", __func__,
 		 chip->gpio_VBus5V_value ? 1 : 0);
 #endif
 }
@@ -1743,7 +1743,7 @@ void fusb_InitializeTimer(void)
 	hrtimer_init(&chip->timer_state_machine, CLOCK_MONOTONIC, HRTIMER_MODE_REL);	// Init the timer structure
 	chip->timer_state_machine.function = _fusb_TimerHandler;	// Assign the callback to call when time runs out
 
-	pr_debug("FUSB  %s - Timer initialized!\n", __func__);
+	FUSB_LOG("FUSB  %s - Timer initialized!\n", __func__);
 }
 
 void fusb_StartTimers(void)
@@ -1779,16 +1779,16 @@ void fusb_StopTimers(void)
 	mutex_lock(&chip->lock);
 	if (hrtimer_active(&chip->timer_state_machine) != 0) {
 		ret = hrtimer_cancel(&chip->timer_state_machine);
-		pr_debug("%s - Active state machine hrtimer canceled: %d\n",
+		FUSB_LOG("%s - Active state machine hrtimer canceled: %d\n",
 			 __func__, ret);
 	}
 	if (hrtimer_is_queued(&chip->timer_state_machine) != 0) {
 		ret = hrtimer_cancel(&chip->timer_state_machine);
-		pr_debug("%s - Queued state machine hrtimer canceled: %d\n",
+		FUSB_LOG("%s - Queued state machine hrtimer canceled: %d\n",
 			 __func__, ret);
 	}
 	mutex_unlock(&chip->lock);
-	pr_debug("FUSB  %s - Timer stopped!\n", __func__);
+	FUSB_LOG("FUSB  %s - Timer stopped!\n", __func__);
 }
 
 // Get the max value that we can delay in 10us increments at compile time
@@ -4885,10 +4885,10 @@ static ssize_t _fusb_Sysfs_Reinitialize_fusb302(struct device *dev,
 
 	fusb_StopTimers();
 	core_initialize();
-	pr_debug("FUSB  %s - Core is initialized!\n", __func__);
+	FUSB_LOG("FUSB  %s - Core is initialized!\n", __func__);
 	fusb_StartTimers();
 	core_enable_typec(TRUE);
-	pr_debug("FUSB  %s - Type-C State Machine is enabled!\n", __func__);
+	FUSB_LOG("FUSB  %s - Type-C State Machine is enabled!\n", __func__);
 
 #ifdef FSC_INTERRUPT_TRIGGERED
 	enable_irq(chip->gpio_IntN_irq);
@@ -5165,11 +5165,11 @@ void fusb_Sysfs_Init(void)
 void fusb_InitializeCore(void)
 {
 	core_initialize();
-	pr_debug("FUSB  %s - Core is initialized!\n", __func__);
+	FUSB_LOG("FUSB  %s - Core is initialized!\n", __func__);
 	fusb_StartTimers();
-	pr_debug("FUSB  %s - Timers are started!\n", __func__);
+	FUSB_LOG("FUSB  %s - Timers are started!\n", __func__);
 	core_enable_typec(TRUE);
-	pr_debug("FUSB  %s - Type-C State Machine is enabled!\n", __func__);
+	FUSB_LOG("FUSB  %s - Type-C State Machine is enabled!\n", __func__);
 }
 
 FSC_BOOL fusb_IsDeviceValid(void)
@@ -5251,7 +5251,7 @@ FSC_S32 fusb_EnableInterrupts(void)
 		return ret;
 	}
 	chip->gpio_IntN_irq = ret;
-	pr_debug("%s - Success: Requested INT_N IRQ: '%d'\n", __func__,
+	FUSB_LOG("%s - Success: Requested INT_N IRQ: '%d'\n", __func__,
 		 chip->gpio_IntN_irq);
 
 	/* Request threaded IRQ because we will likely sleep while handling the interrupt, trigger is active-low, don't handle concurrent interrupts */
@@ -5349,7 +5349,7 @@ void _fusb_MainWorker(struct work_struct *work)
 void fusb_InitializeWorkers(void)
 {
 	struct fusb30x_chip *chip = fusb30x_GetChip();
-	pr_debug("FUSB  %s - Initializing threads!\n", __func__);
+	FUSB_LOG("FUSB  %s - Initializing threads!\n", __func__);
 	if (!chip) {
 		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
 		return;
