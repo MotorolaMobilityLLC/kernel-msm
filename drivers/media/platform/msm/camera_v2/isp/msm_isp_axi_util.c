@@ -581,22 +581,25 @@ void msm_isp_check_for_output_error(struct vfe_device *vfe_dev,
 	if (!vfe_dev->reg_updated) {
 		output_info->regs_not_updated =
 			vfe_dev->reg_update_requested;
-		for (i = 0; i < MAX_NUM_STREAM; i++) {
-			stream_info = &axi_data->stream_info[i];
-			if (stream_info->state != ACTIVE ||
-				!stream_info->controllable_output ||
-				(SRC_TO_INTF(stream_info->stream_src) !=
-				VFE_PIX_0))
-				continue;
+	}
+	for (i = 0; i < MAX_NUM_STREAM; i++) {
+		stream_info = &axi_data->stream_info[i];
+		if ((stream_info->state != ACTIVE &&
+			stream_info->state != RESUMING) ||
+			(SRC_TO_INTF(stream_info->stream_src) !=
+			VFE_PIX_0))
+			continue;
 
-			if (stream_info->undelivered_request_cnt) {
-				if (msm_isp_drop_frame(vfe_dev, stream_info, ts,
-					output_info)) {
-					pr_debug("drop frame failed\n");
-				}
+		if ((stream_info->undelivered_request_cnt &&
+			!vfe_dev->reg_updated) ||
+			stream_info->state == RESUMING) {
+			if (msm_isp_drop_frame(vfe_dev, stream_info, ts,
+				output_info)) {
+				pr_debug("drop frame failed\n");
 			}
 		}
 	}
+
 	vfe_dev->reg_updated = 0;
 
 	/* report frame drop per stream */
@@ -1492,8 +1495,6 @@ int msm_isp_drop_frame(struct vfe_device *vfe_dev,
 	pingpong_status =
 		~vfe_dev->hw_info->vfe_ops.axi_ops.get_pingpong_status(vfe_dev);
 
-	if (stream_info->stream_type == BURST_STREAM)
-		stream_info->runtime_num_burst_capture--;
 
 	spin_lock_irqsave(&stream_info->lock, flags);
 	rc = msm_isp_get_done_buf(vfe_dev, stream_info, pingpong_status,
@@ -1506,30 +1507,40 @@ int msm_isp_drop_frame(struct vfe_device *vfe_dev,
 		return rc;
 	}
 
-	if (stream_info->stream_type == CONTINUOUS_STREAM ||
-		stream_info->runtime_num_burst_capture > 1)
-		msm_isp_cfg_ping_pong_address(vfe_dev, stream_info,
-			pingpong_status, 1, 1);
+	if (!vfe_dev->reg_updated) {
+		if (stream_info->stream_type == BURST_STREAM)
+			stream_info->runtime_num_burst_capture--;
 
+		if (stream_info->stream_type == CONTINUOUS_STREAM ||
+			stream_info->runtime_num_burst_capture > 1)
+			msm_isp_cfg_ping_pong_address(vfe_dev, stream_info,
+				pingpong_status, 1, 1);
+	}
 	spin_unlock_irqrestore(&stream_info->lock, flags);
 
 	frame_id = vfe_dev->axi_data.
 		src_info[SRC_TO_INTF(stream_info->stream_src)].frame_id;
 
 	if (done_buf) {
-		vfe_dev->buf_mgr->ops->buf_done(vfe_dev->buf_mgr,
-			done_buf->bufq_handle, done_buf->buf_idx, &ts->buf_time,
-			frame_id, stream_info->runtime_output_format);
+		if (stream_info->controllable_output &&
+			stream_info->undelivered_request_cnt)
+			vfe_dev->buf_mgr->ops->buf_done(vfe_dev->buf_mgr,
+				done_buf->bufq_handle, done_buf->buf_idx,
+				&ts->buf_time,
+				frame_id, stream_info->runtime_output_format);
 
-		bufq = vfe_dev->buf_mgr->ops->get_bufq(vfe_dev->buf_mgr,
-			done_buf->bufq_handle);
-		if (!bufq) {
-			pr_err("%s: Invalid bufq buf_handle %x\n",
-				__func__, done_buf->bufq_handle);
-			return rc;
+		if ((stream_info->controllable_output && !vfe_dev->reg_updated)
+			|| stream_info->state == RESUMING) {
+			bufq = vfe_dev->buf_mgr->ops->get_bufq(vfe_dev->buf_mgr,
+				done_buf->bufq_handle);
+			if (!bufq) {
+				pr_err("%s: Invalid bufq buf_handle %x\n",
+					__func__, done_buf->bufq_handle);
+				return rc;
+			}
+			output_info->output_err_mask |=
+				1 << bufq->stream_id;
 		}
-		output_info->output_err_mask |=
-			1 << bufq->stream_id;
 	}
 	return 0;
 }
