@@ -78,11 +78,13 @@ extern doDataObject_t PolicyRxDataObj[7];	// Buffer for data objects received
 extern doDataObject_t PolicyTxDataObj[7];	// Buffer for data objects to send
 
 extern FSC_U32 NoResponseTimer;	// Policy engine no response timer
-
+/*Multi-function timer for the different policy states*/
+extern FSC_U32 PolicyStateTimer;
 #ifdef FSC_HAVE_VDM
 extern FSC_U32 VdmTimer;
 extern FSC_BOOL VdmTimerStarted;
 #endif // FSC_HAVE_VDM
+extern ReqContextType coreReqCtx;
 
 /////////////////////////////////////////////////////////////////////////////
 //                            LOCAL PROTOTYPES

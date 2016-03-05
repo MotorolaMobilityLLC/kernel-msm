@@ -37,13 +37,12 @@
 #include "vdm_types.h"
 #include "bitfield_translators.h"
 #include "fsc_vdm_defs.h"
-
+#include "../../Platform_Linux/fusb30x_global.h"
 #ifdef FSC_HAVE_DP
 #include "DisplayPort/dp.h"
 #endif // FSC_HAVE_DP
 
 // assuming policy state is made elsewhere
-extern PolicyState_t PolicyState;
 extern FSC_U32 VdmTimer;
 extern FSC_BOOL VdmTimerStarted;
 extern PolicyState_t vdm_next_ps;
@@ -53,6 +52,7 @@ FSC_BOOL vdm_timeout;
 FSC_BOOL ExpectingVdmResponse;
 static const UsbVidPid id_table[] = {
 	{CYPRESS_VENDOR_ID, CYPRESS_CCG2_PID1},
+	{MOTOROL_VENDOR_ID, CYPRESS_CCG2_PID1},
 	{MOTOROL_VENDOR_ID, MOTOROLA_PID_NITRO1},
 	{MOTOROL_VENDOR_ID, MOTOROLA_PID_NITRO2},
 	{MOTOROL_VENDOR_ID, MOTOROLA_PID_NITRO3},
@@ -393,7 +393,7 @@ FSC_S32 processDiscoverIdentity(SopType sop, FSC_U32 * arr_in,
 				__id.ama_vdo = getAmaVdo(arr_in[4]);	// !!! assuming it is after Product VDO
 			}
 			__id.product_vdo = getProductVdo(arr_in[3]);
-			pr_debug("VDM Acked, usb vid is %d\n product id is %d",
+			FUSB_LOG("VDM Acked, usb vid is %d\n product id is %d",
 				   __id.id_header.usb_vid,
 				   __id.product_vdo.usb_product_id
 				  );
