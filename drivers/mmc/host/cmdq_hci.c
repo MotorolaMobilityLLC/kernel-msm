@@ -562,6 +562,7 @@ static void cmdq_prep_dcmd_desc(struct mmc_host *mmc,
 	__le64 *dataddr;
 	struct cmdq_host *cq_host = mmc_cmdq_private(mmc);
 	u8 timing;
+	unsigned long flags;
 
 	if (!(mrq->cmd->flags & MMC_RSP_PRESENT)) {
 		resp_type = 0x0;
@@ -576,6 +577,7 @@ static void cmdq_prep_dcmd_desc(struct mmc_host *mmc,
 		}
 	}
 
+	local_irq_save(flags);
 	task_desc = (__le64 __force *)get_desc(cq_host, cq_host->dcmd_slot);
 	memset(task_desc, 0, cq_host->task_desc_len);
 	data |= (VALID(1) |
@@ -587,11 +589,13 @@ static void cmdq_prep_dcmd_desc(struct mmc_host *mmc,
 		 CMD_TIMING(timing) | RESP_TYPE(resp_type));
 	*task_desc |= data;
 	desc = (u8 *)task_desc;
-	pr_debug("cmdq: dcmd: cmd: %d timing: %d resp: %d\n",
-		mrq->cmd->opcode, timing, resp_type);
 	dataddr = (__le64 __force *)(desc + 4);
 	dataddr[0] = cpu_to_le64((u64)mrq->cmd->arg);
+	mb();
+	local_irq_restore(flags);
 
+	pr_debug("cmdq: dcmd: cmd: %d timing: %d resp: %d\n",
+		mrq->cmd->opcode, timing, resp_type);
 }
 
 static int cmdq_request(struct mmc_host *mmc, struct mmc_request *mrq)
