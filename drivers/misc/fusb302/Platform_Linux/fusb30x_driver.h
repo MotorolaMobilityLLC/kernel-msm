@@ -89,7 +89,7 @@ extern "C" {
 	static int fusb30x_probe(struct i2c_client *client,	// Called when the associated device is added
 				 const struct i2c_device_id *id);
 	static int fusb30x_remove(struct i2c_client *client);	// Called when the associated device is removed
-
+	extern void fusb302_shutdown(struct i2c_client *i2c);
 /* Defines our driver's name, device-tree match, and required driver callbacks */
 	static struct i2c_driver fusb30x_driver = {
 		.driver = {
@@ -102,6 +102,7 @@ extern "C" {
 			   },
 		.probe = fusb30x_probe,	// Called on device add, inits/starts driver
 		.remove = fusb30x_remove,	// Called on device remove, cleans up driver
+		.shutdown = fusb302_shutdown,
 		.id_table = fusb30x_i2c_device_id,	// I2C id structure to associate with our driver
 	};
 
