@@ -24,10 +24,30 @@
 #include "../core/core.h"	// GetDeviceTypeCStatus
 #endif // FSC_DEBUG
 #include "../core/TypeC_Types.h"
+#include "../core/fusb30X.h"
 #include "fusb30x_driver.h"
 u16 SwitchState = 0;
 struct power_supply switch_psy;
 
+#define FUSB_LOG_PAGES 50
+void *fusb302_ipc_log = NULL;
+
+void fusb302_shutdown(struct i2c_client *i2c)
+{
+	u8 data = 0x0;
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
+				 __func__);
+		return;
+	}
+
+	DeviceWrite(regPower, 1, &data);	/* Disable Power */
+	DeviceWrite(regControl2, 1, &data);	/* Disable Toggle */
+
+	disable_irq(chip->gpio_IntN_irq);
+}
 enum power_supply_property fusb_power_supply_props[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
@@ -35,6 +55,8 @@ enum power_supply_property fusb_power_supply_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_DISABLE_USB,
+	POWER_SUPPLY_PROP_WAKEUP,
+	POWER_SUPPLY_PROP_MASK_INT,
 };
 
 static enum power_supply_property switch_power_supply_props[] = {
@@ -137,7 +159,7 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 ******************************************************************************/
 static int __init fusb30x_init(void)
 {
-	pr_debug("FUSB  %s - Start driver initialization...\n", __func__);
+	FUSB_LOG("FUSB  %s - Start driver initialization...\n", __func__);
 
 	return i2c_add_driver(&fusb30x_driver);
 }
@@ -145,7 +167,7 @@ static int __init fusb30x_init(void)
 static void __exit fusb30x_exit(void)
 {
 	i2c_del_driver(&fusb30x_driver);
-	pr_debug("FUSB  %s - Driver deleted...\n", __func__);
+	FUSB_LOG("FUSB  %s - Driver deleted...\n", __func__);
 }
 
 static int fusb30x_probe(struct i2c_client *client,
@@ -164,14 +186,14 @@ static int fusb30x_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 	dev_info(&client->dev, "%s\n", __func__);
-
+	fusb302_ipc_log = ipc_log_context_create(FUSB_LOG_PAGES, "fusb302", 0);
 	/* Make sure probe was called on a compatible device */
 	if (!of_match_device(fusb30x_dt_match, &client->dev)) {
 		dev_err(&client->dev,
 			"FUSB  %s - Error: Device tree mismatch!\n", __func__);
 		return -EINVAL;
 	}
-	pr_debug("FUSB  %s - Device tree matched!\n", __func__);
+	FUSB_LOG("FUSB  %s - Device tree matched!\n", __func__);
 
 	/* Allocate space for our chip structure (devm_* is managed by the device) */
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
@@ -183,7 +205,7 @@ static int fusb30x_probe(struct i2c_client *client,
 	}
 	chip->client = client;	// Assign our client handle to our chip
 	fusb30x_SetChip(chip);	// Set our global chip's address to the newly allocated memory
-	pr_debug("FUSB  %s - Chip structure is set! Chip: %p ... g_chip: %p\n",
+	FUSB_LOG("FUSB  %s - Chip structure is set! Chip: %p ... g_chip: %p\n",
 		 __func__, chip, fusb30x_GetChip());
 
 	/* Initialize the chip lock */
@@ -191,7 +213,7 @@ static int fusb30x_probe(struct i2c_client *client,
 
 	/* Initialize the chip's data members */
 	fusb_InitChipData();
-	pr_debug("FUSB  %s - Chip struct data initialized!\n", __func__);
+	FUSB_LOG("FUSB  %s - Chip struct data initialized!\n", __func__);
 
 	/* Verify that the system has our required I2C/SMBUS functionality (see <linux/i2c.h> for definitions) */
 	adapter = to_i2c_adapter(client->dev.parent);
@@ -215,12 +237,12 @@ static int fusb30x_probe(struct i2c_client *client,
 			return -EIO;
 		}
 	}
-	pr_debug("FUSB  %s - I2C Functionality check passed! Block reads: %s\n",
+	FUSB_LOG("FUSB  %s - I2C Functionality check passed! Block reads: %s\n",
 		 __func__, chip->use_i2c_blocks ? "YES" : "NO");
 
 	/* Assign our struct as the client's driverdata */
 	i2c_set_clientdata(client, chip);
-	pr_debug("FUSB  %s - I2C client data set!\n", __func__);
+	FUSB_LOG("FUSB  %s - I2C client data set!\n", __func__);
 
 	/* Verify that our device exists and that it's what we expect */
 	if (!fusb_IsDeviceValid()) {
@@ -229,7 +251,7 @@ static int fusb30x_probe(struct i2c_client *client,
 			__func__);
 		return -EIO;
 	}
-	pr_debug("FUSB  %s - Device check passed!\n", __func__);
+	FUSB_LOG("FUSB  %s - Device check passed!\n", __func__);
 	usbc_psy.name	= "usbc";
 	usbc_psy.type		= POWER_SUPPLY_TYPE_USBC;
 	usbc_psy.get_property	= fusb_power_supply_get_property;
@@ -300,20 +322,20 @@ static int fusb30x_probe(struct i2c_client *client,
 			__func__);
 		return ret;
 	}
-	pr_debug("FUSB  %s - GPIO initialized!\n", __func__);
+	FUSB_LOG("FUSB  %s - GPIO initialized!\n", __func__);
 
 	/* Initialize our timer */
 	fusb_InitializeTimer();
-	pr_debug("FUSB  %s - Timers initialized!\n", __func__);
+	FUSB_LOG("FUSB  %s - Timers initialized!\n", __func__);
 
 	/* Initialize the core and enable the state machine (NOTE: timer and GPIO must be initialized by now) */
 	fusb_InitializeCore();
-	pr_debug("FUSB  %s - Core is initialized!\n", __func__);
+	FUSB_LOG("FUSB  %s - Core is initialized!\n", __func__);
 
 #ifdef FSC_DEBUG
 	/* Initialize debug sysfs file accessors */
 	fusb_Sysfs_Init();
-	pr_debug("FUSB  %s - Sysfs device file created!\n", __func__);
+	FUSB_LOG("FUSB  %s - Sysfs device file created!\n", __func__);
 #endif // FSC_DEBUG
 
 #ifdef FSC_INTERRUPT_TRIGGERED
@@ -330,7 +352,7 @@ static int fusb30x_probe(struct i2c_client *client,
 	fusb_InitializeWorkers();
 	/* Start worker threads after successful initialization */
 	fusb_ScheduleWork();
-	pr_debug("FUSB  %s - Workers initialized and scheduled!\n", __func__);
+	FUSB_LOG("FUSB  %s - Workers initialized and scheduled!\n", __func__);
 #endif // ifdef FSC_POLLING elif FSC_INTERRUPT_TRIGGERED
 
 	fusb302_debug_init();
@@ -353,7 +375,7 @@ static int fusb30x_remove(struct i2c_client *client)
 		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
 		return -EINVAL;
 	}
-	pr_debug("FUSB  %s - Removing fusb30x device!\n", __func__);
+	FUSB_LOG("FUSB  %s - Removing fusb30x device!\n", __func__);
 
 #ifndef FSC_INTERRUPT_TRIGGERED	// Polling mode by default
 	fusb_StopThreads();
@@ -369,8 +391,11 @@ static int fusb30x_remove(struct i2c_client *client)
 			&client->dev, chip->dual_role);
 		devm_kfree(&client->dev, chip->desc);
 	}
-	pr_debug("FUSB  %s - FUSB30x device removed from driver...\n",
+	FUSB_LOG("FUSB  %s - FUSB30x device removed from driver...\n",
 		 __func__);
+	if (fusb302_ipc_log)
+		ipc_log_context_destroy(fusb302_ipc_log);
+	fusb302_ipc_log = NULL;
 	return 0;
 }
 
