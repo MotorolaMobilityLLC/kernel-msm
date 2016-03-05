@@ -30,9 +30,6 @@
 /* get linux-specific type definitions (NULL, size_t, etc) */
 #include <linux/types.h>
 
-#ifndef U8_MAX
-#define U8_MAX  ((__u8)~0U)
-#endif
 
 #if !defined(BOOL) && !defined(FALSE) && !defined(TRUE)
 typedef enum _BOOL { FALSE = 0, TRUE } FSC_BOOL;	/* Undefined size */
