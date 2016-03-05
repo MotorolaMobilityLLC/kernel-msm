@@ -8906,7 +8906,7 @@ static int eb_rechrg_start_soc = 70;
 module_param_cb(eb_rechrg_start_soc, &eb_ops, &eb_rechrg_start_soc, 0644);
 static int eb_rechrg_stop_soc = 80;
 module_param_cb(eb_rechrg_stop_soc, &eb_ops, &eb_rechrg_stop_soc, 0644);
-static int eb_attach_start_soc = 99;
+static int eb_attach_start_soc = 100;
 module_param_cb(eb_attach_start_soc, &eb_ops, &eb_attach_start_soc, 0644);
 static int eb_attach_stop_soc = 100;
 module_param_cb(eb_attach_stop_soc, &eb_ops, &eb_attach_stop_soc, 0644);
@@ -9212,13 +9212,20 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 		switch (chip->ebchg_state) {
 		case EB_SRC:
-			if (eb_soc <= 0)
+			if (eb_soc <= 0) {
 				smbchg_set_extbat_state(chip, EB_OFF);
-			else if ((chip->update_eb_params &&
-				    (batt_soc > eb_min_soc)) ||
-				   (batt_soc >= eb_max_soc)) {
+				chip->update_allowed_fastchg_current_ma = true;
+			} else if (chip->update_eb_params &&
+				 (batt_soc > eb_min_soc)) {
 				chip->eb_hotplug = false;
+				chip->update_allowed_fastchg_current_ma = true;
 				smbchg_set_extbat_state(chip, EB_OFF);
+			} else if (batt_soc >= eb_max_soc) {
+				chip->eb_hotplug = false;
+				if (eb_max_soc < 100)
+					smbchg_set_extbat_state(chip, EB_OFF);
+				else
+					smbchg_charging_en(chip, 0);
 			}
 			break;
 		case EB_SINK:
