@@ -44,6 +44,7 @@
 #include "vdm/DisplayPort/dp.h"
 #include "vdm/DisplayPort/interface_dp.h"
 #endif // FSC_HAVE_VDM
+#include "../Platform_Linux/fusb30x_global.h"
 /////////////////////////////////////////////////////////////////////////////
 //      Variables for use with the USB PD state machine
 /////////////////////////////////////////////////////////////////////////////
@@ -153,7 +154,7 @@ extern FSC_S32 AutoDpModeEntryObjPos;
 #endif // FSC_HAVE_DP
 
 extern FSC_BOOL ProtocolCheckRxBeforeTx;
-
+ReqContextType coreReqCtx;
 /////////////////////////////////////////////////////////////////////////////
 //                  Timer Interrupt service routine
 /////////////////////////////////////////////////////////////////////////////
@@ -275,6 +276,8 @@ void InitializePDPolicyVariables(void)
 	Registers.Slice.SDAC_HYS = 0b01;	// Set hysteresis to 85mV
 	DeviceWrite(regSlice, 1, &Registers.Slice.byte);
 	gChargerMaxCurrent = 0;
+	init_completion(&coreReqCtx.complete);
+	atomic_set(&coreReqCtx.pending, 0);
 #ifdef FSC_DEBUG
 	InitializeStateLog(&PDStateLog);
 #endif // FSC_DEBUG
@@ -1841,19 +1844,9 @@ void PolicySinkTransitionDefault(void)
 		PolicySubIndex++;
 		break;
 	case 1:
-		if (VbusVSafe0V()) {
-			PolicySubIndex++;
-			PolicyStateTimer = 1500;
-		} else if (PolicyStateTimer == 0) {
-			if (PolicyHasContract) {
-				PolicyState = peErrorRecovery;
-				PolicySubIndex = 0;
-			} else {
-				PolicyState = peSinkStartup;
-				PolicySubIndex = 0;
-				PolicyStateTimer = 0;
-			}
-		}
+/*Nitro P1 VBUS is always on, ignore the Vsaft0Check the*/
+		PolicySubIndex++;
+		PolicyStateTimer = 1500;
 		break;
 	case 2:
 		if (isVBUSOverVoltage(VBUS_MDAC_4p2) || (PolicyStateTimer == 0)) {
@@ -2045,15 +2038,13 @@ void PolicySinkEvaluateCaps(void)
 			SelVoltage = objVoltage;	// Store the objects voltage (used for calculations)
 			reqPos = i + 1;	// Store the position of the object
 		}
-		pr_debug("reqPos = %d objPower %d MaxPower is %d\n",
+		FUSB_LOG("reqPos = %d objPower %d MaxPower is %d\n",
 				 reqPos, objPower, MaxPower);
 	}
 	if (MaxPower > SinkRequestMaxPower)
 		SinkRequestMaxPower = MaxPower;
 	gChargerMaxCurrent = MaxPower/SelVoltage;
 	SinkRequestOpPower = gRequestOpCurrent * SelVoltage;
-	pr_debug("Charger Maxcurrent is %d ma, voltage is %d\n",
-				gChargerMaxCurrent*10, SelVoltage);
 	if ((reqPos > 0) && (SelVoltage > 0)) {
 		PartnerCaps.object = CapsReceived[0].object;
 		SinkRequest.FVRDO.ObjectPosition = reqPos & 0x07;	// Set the object position selected
@@ -2351,6 +2342,8 @@ void PolicySinkReady(void)
 		platform_enable_timer(FALSE);
 #endif // FSC_INTERRUPT_TRIGGERED
 		power_supply_changed(&usbc_psy);
+		if (atomic_read(&coreReqCtx.pending) > 0)
+			complete(&coreReqCtx.complete);
 		}
 	}
 }
