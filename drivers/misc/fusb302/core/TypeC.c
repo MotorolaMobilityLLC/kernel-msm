@@ -36,7 +36,9 @@
 #include "TypeC.h"
 #include "fusb30X.h"
 #include "AlternateModes.h"
-
+#ifdef CONFIG_FSUSB42_MUX
+#include <linux/fsusb42.h>
+#endif
 #include "PDPolicy.h"
 
 #ifdef FSC_HAVE_VDM
@@ -47,6 +49,7 @@
 #include "Log.h"
 #endif // FSC_DEBUG
 #include "core.h"
+#include "../Platform_Linux/fusb30x_global.h"
 /////////////////////////////////////////////////////////////////////////////
 //      Variables accessible outside of the TypeC state machine
 /////////////////////////////////////////////////////////////////////////////
@@ -109,7 +112,9 @@ static FSC_U8 alternateModes = 1;	// Set to 1 to enable alternate modes
 #else
 static FSC_U8 alternateModes = 0;	// Set to 1 to enable alternate modes
 #endif
-FSC_U32 gRequestOpCurrent = 300;/*set default 3000mA*/
+FSC_U32 gRequestOpCurrent = 400;/*set default 4000mA*/
+static regMask_t Mask;
+static regMaskAdv_t MaskAdv;
 int fusb_power_supply_set_property(struct power_supply *psy,
 				 enum power_supply_property prop,
 				 const union power_supply_propval *val)
@@ -118,10 +123,26 @@ int fusb_power_supply_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		gRequestOpCurrent = val->intval/10000;
 		core_send_sink_request();
-		break;
+		return 0;
 	case POWER_SUPPLY_PROP_DISABLE_USB:
 		usbDataDisabled = !!val->intval;
 		break;
+	case POWER_SUPPLY_PROP_WAKEUP:
+		break;
+	case POWER_SUPPLY_PROP_MASK_INT:
+		if (val->intval > 0) {
+			Mask.byte = 0xFF;
+			MaskAdv.byte[0] = 0xFF;
+			MaskAdv.byte[1] = 0xFF;
+			DeviceWrite(regMask, 1, &Mask.byte);
+			DeviceWrite(regMaska, 1, &MaskAdv.byte[0]);
+			DeviceWrite(regMaskb, 1, &MaskAdv.byte[1]);
+		} else {
+			DeviceWrite(regMask, 1, &Registers.Mask.byte);
+			DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
+			DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
+		}
+		return 0;
 	default:
 		return -EINVAL;
 	}
@@ -137,6 +158,8 @@ int fusb_power_supply_is_writeable(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_DISABLE_USB:
+	case POWER_SUPPLY_PROP_MASK_INT:
+	case POWER_SUPPLY_PROP_WAKEUP:
 		rc = 1;
 		break;
 	default:
@@ -188,6 +211,17 @@ int fusb_power_supply_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_DISABLE_USB:
 		val->intval = usbDataDisabled;
+		break;
+	case POWER_SUPPLY_PROP_WAKEUP:
+		val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_MASK_INT:
+		DeviceRead(regMask, 1, &Mask.byte);
+		DeviceRead(regMaska, 1, &MaskAdv.byte[0]);
+		DeviceRead(regMaskb, 1, &MaskAdv.byte[1]);
+		val->intval = (Mask.byte << 16) |
+					(MaskAdv.byte[0] << 8) |
+					MaskAdv.byte[1];
 		break;
 	default:
 		return -EINVAL;
@@ -398,7 +432,7 @@ void EnableTypeCStateMachine(void)
  ******************************************************************************/
 void StateMachineTypeC(void)
 {
-	pr_debug("TypeC Start ConnState is %d USBPDActive is %d\n",
+	FUSB_LOG("TypeC Start ConnState is %d USBPDActive is %d\n",
 			 ConnState, USBPDActive);
 #ifdef  FSC_INTERRUPT_TRIGGERED
 	do {
@@ -500,7 +534,7 @@ void StateMachineTypeC(void)
 		platform_delay_10us(SLEEP_DELAY);
 	} while (g_Idle == FALSE);
 #endif // FSC_INTERRUPT_TRIGGERED
-	pr_debug("TypeC End ConnState is %d USBPDActive is %d\n",
+	FUSB_LOG("TypeC End ConnState is %d USBPDActive is %d\n",
 			 ConnState, USBPDActive);
 }
 
@@ -1136,6 +1170,9 @@ void SetStateDelayUnattached(void)
 
 	platform_disableSuperspeedUSB();
 	platform_toggleAudioSwitch(fsa_lpm);
+#ifdef CONFIG_FSUSB42_MUX
+	fsusb42_set_state(FSUSB_OFF);
+#endif
 #ifndef FPGA_BOARD
 	SetStateUnattached();
 	return;
@@ -1427,6 +1464,9 @@ void SetStateAttachedSource(void)
 	DeviceWrite(regSwitches0, 1, &Registers.Switches.byte[0]);	// Commit the switch state
 	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	platform_toggleAudioSwitch(fsa_usb_mode);
+#ifdef CONFIG_FSUSB42_MUX
+	fsusb42_set_state(FSUSB_STATE_USB);
+#endif
 	USBPDEnable(TRUE, TRUE);	// Enable the USB PD state machine if applicable (no need to write to Device again), set as DFP
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
@@ -1462,7 +1502,6 @@ void SetStateAttachedSink(void)
 	platform_set_vbus_lvl_enable(VBUS_LVL_ALL, FALSE, FALSE);	// Disable the vbus outputs
 	ConnState = AttachedSink;	// Set the state machine variable to Attached.Sink
 	sourceOrSink = Sink;
-	updateSourceCurrent();
 	Registers.Power.PWR = 0x7;	// Enable everything except internal oscillator
 	DeviceWrite(regPower, 1, &Registers.Power.byte);	// Commit the power state
 	if ((blnCCPinIsCC1 == FALSE) && (blnCCPinIsCC2 == FALSE))	//For automated testing
@@ -1474,17 +1513,21 @@ void SetStateAttachedSink(void)
 		peekCC2Sink();
 		peekCC1Sink();
 		Registers.Switches.byte[0] = 0x07;
+		UpdateSinkCurrent(CC1TermCCDebounce);
 	} else			// Otherwise we are assuming CC2 is CC
 	{
 		peekCC1Sink();
 		peekCC2Sink();
 		Registers.Switches.byte[0] = 0x0B;
+		UpdateSinkCurrent(CC2TermCCDebounce);
 	}
 	DeviceWrite(regSwitches0, 1, &Registers.Switches.byte[0]);	// Commit the switch state
 	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	platform_toggleAudioSwitch(fsa_usb_mode);
+#ifdef CONFIG_FSUSB42_MUX
+	fsusb42_set_state(FSUSB_STATE_USB);
+#endif
 	USBPDEnable(TRUE, FALSE);	// Enable the USB PD state machine (no need to write Device again since we are doing it here)
-	SinkCurrent = utccDefault;	// Set the current advertisment variable to the default until we detect something different
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
 	PDDebounce = tPDDebounce;	// Set the debounce timer to tPDDebounceMin for detecting changes in advertised current
 	CCDebounce = T_TIMER_DISABLE;	// Disable the 2nd level debounce timer, not used in this state

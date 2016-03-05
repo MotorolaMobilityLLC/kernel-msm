@@ -102,8 +102,8 @@ void dump_usbpdlog(unsigned long RegisterAddress,
 		   unsigned char *Data, FSC_BOOL b_read)
 {
 	char log[256];
-	char pd_read_mark[] = "\n[fusbpd]<<<<<";
-	char pd_write_mark[] = "\n[fusbpd]>>>>>";
+	char pd_read_mark[] = "[fusbpd]<<<<<";
+	char pd_write_mark[] = "[fusbpd]>>>>>";
 	int i, s_ret = 0;
 
 	if (DataLength > ((sizeof(log) - sizeof(pd_read_mark)) / 3))
@@ -116,7 +116,7 @@ void dump_usbpdlog(unsigned long RegisterAddress,
 		for (i = 0; i < DataLength; i++)
 			s_ret += snprintf(log + s_ret, sizeof(log) - s_ret,
 					  " %2x", Data[i]);
-		pr_debug("%s\n", log);
+		FUSB_LOG("%s", log);
 	}
 }
 
