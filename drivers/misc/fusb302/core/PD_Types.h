@@ -1,6 +1,7 @@
 #ifndef __USBPD_TYPES_H__
 #define __USBPD_TYPES_H__
-
+#include <linux/completion.h>
+#include <linux/atomic.h>
 #include "platform.h"
 
 #ifdef FSC_DEBUG
@@ -426,4 +427,8 @@ typedef enum {
 	SOP_TYPE_ERROR = 0xFF
 } SopType;
 
+typedef struct {
+	struct completion	complete;
+	atomic_t		pending;
+} ReqContextType;
 #endif // __USBPD_TYPES_H__
