@@ -1,3 +1,5 @@
+#include <linux/printk.h>
+#include <linux/jiffies.h>
 #include "core.h"
 #include "TypeC.h"
 #include "PDProtocol.h"
@@ -17,6 +19,7 @@ static void core_wakeup_statemachine(void)
 	Registers.MaskAdv.byte[0] = 0xFF;
 	Registers.MaskAdv.M_RETRYFAIL = 0;
 	Registers.MaskAdv.M_TXCRCSENT = 0;
+	Registers.MaskAdv.M_SOFTRST = 0;
 	Registers.MaskAdv.M_HARDRST = 0;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
 	Registers.MaskAdv.M_GCRCSENT = 0;
@@ -155,17 +158,37 @@ void core_get_sink_req(FSC_U8 * buf)
 void core_send_hard_reset(void)
 {
 	core_wakeup_statemachine();
-	PolicySinkSendHardReset();
-	ProtocolSendHardReset();
+	PolicyState = peSinkSendHardReset;
+	PolicySubIndex = 0;
+	PDTxStatus = txIdle;
+	StateMachineTypeC();
 }
 void core_send_sink_request(void)
 {
+	static int timeout_count;
+
+	atomic_set(&coreReqCtx.pending, 1);
 	core_wakeup_statemachine();
 	PolicySubIndex = 0;
 	PDTxStatus = txIdle;
+	PolicyStateTimer = 1000;
 	PolicySinkEvaluateCaps();
 	PolicySinkSelectCapability();
 	ProtocolIdle();
+	if (!wait_for_completion_timeout(&coreReqCtx.complete,
+			msecs_to_jiffies(1000))) {
+		pr_err("core_send_sink_request timeout!\n");
+		timeout_count++;
+		if (timeout_count > 3) {
+			timeout_count = 0;
+			core_send_hard_reset();
+			platform_delay_10us(SLEEP_DELAY*500);
+		}
+	} else
+		timeout_count = 0;
+	atomic_set(&coreReqCtx.pending, 0);
+	/*Wait 100 ms for charger to do its job*/
+	platform_delay_10us(SLEEP_DELAY*100);
 }
 void core_process_pd_buffer_read(FSC_U8 * InBuffer, FSC_U8 * OutBuffer)
 {
