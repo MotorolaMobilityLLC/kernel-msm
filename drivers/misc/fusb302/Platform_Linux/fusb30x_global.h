@@ -13,6 +13,7 @@
 #include <linux/hrtimer.h>	// hrtimer
 #include <linux/usb/class-dual-role.h>
 #include <linux/power_supply.h>
+#include <linux/ipc_logging.h>
 #include "FSCTypes.h"		// FUSB30x custom types
 
 #ifdef FSC_DEBUG
@@ -87,4 +88,16 @@ extern void GetDeviceTypeCStatus(FSC_U8 abytData[]);
 extern struct power_supply switch_psy;
 struct fusb30x_chip *fusb30x_GetChip(void);	// Getter for the global chip structure
 void fusb30x_SetChip(struct fusb30x_chip *newChip);	// Setter for the global chip structure
+extern void *fusb302_ipc_log;
+#ifdef FSC_DEBUG
+#define FUSB_LOG(fmt, args...) do {                         \
+if (fusb302_ipc_log)   \
+	ipc_log_string(fusb302_ipc_log, \
+				   fmt, ## args); \
+pr_debug(fmt, ## args);  \
+} while (0)
+#else
+#define FUSB_LOG(fmt, args...)
+#endif
+
 #endif /* FUSB30X_TYPES_H */
