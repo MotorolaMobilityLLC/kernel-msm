@@ -95,6 +95,14 @@
                         reg = <0 0 0 0x400000>;
                         label = "adsp_mem";
                 };
+
+                ramoops_mem: ramoops_region@0x9ff00000 {
+                        linux,reserve-contiguous-region;
+                        linux,reserve-region;
+                        linux,remove-completely;
+                        reg = <0x0 0x9ff00000 0x0 0x40000>;
+                        label = "ramoops_mem";
+                };
 	};
 
 	aliases {
@@ -2344,6 +2352,18 @@
 				"iface_clk", "bus_clk";
 		qcom,ce-opp-freq = <100000000>;
 	};
+
+        ramoops {
+                compatible = "ramoops";
+                status = "okay";
+
+                android,ramoops-buffer-start = <0x9ff00000>;
+                android,ramoops-buffer-size =  <0x40000>;
+                android,ramoops-console-size = <0x10000>;
+                android,ramoops-record-size = <0x10000>;
+                android,ramoops-pmsg-size = <0x20000>;
+                android,ramoops-dump-oops = <0x1>;
+        };
 };
 
 &gdsc_venus {
