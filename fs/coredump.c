@@ -517,7 +517,7 @@ static void adjust_permissions(struct cred *cred, int *flag,
 	cap_raise(cred->cap_effective, CAP_DAC_OVERRIDE);
 	cap_raise(cred->cap_effective, CAP_FOWNER);
 
-#if defined(CONFIG_SELINUX)
+#if defined(CONFIG_SECURITY_SELINUX)
 #define COREDUMP_SECCTX "u:r:coredump:s0"
 	{
 		/* HACK -- selinux hides all of this stuff */
