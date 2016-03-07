@@ -333,7 +333,7 @@
 		qcom,master-id = <86>;
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
-		pinctrl-0 = <&spi_1_active &spi1_cs0_sleep &spi1_cs1_sleep>;
+		pinctrl-0 = <&spi_1_active &spi1_cs0_active &spi1_cs1_active>;
 		pinctrl-1 = <&spi_1_sleep &spi1_cs0_sleep &spi1_cs1_sleep>;
 
 		clock-names = "iface_clk", "core_clk";
@@ -419,8 +419,8 @@
 					<5 0 20>;
 
 		pinctrl-names = "disconnected", "spi_active";
-		pinctrl-0 = <&muc_attach &spi_1_sleep &muc_spi_ctrl>;
-		pinctrl-1 = <&muc_attach &spi_1_active &muc_spi_ctrl>;
+		pinctrl-0 = <&muc_attach &muc_spi_ctrl>;
+		pinctrl-1 = <&muc_attach &muc_spi_ctrl>;
 	};
 
 	muc_svc: muc_svc@0 {
@@ -443,19 +443,20 @@
 			<&pmi8950_mpps 2 2>, /* MOD_MPHY_I2S_SEL, output-high */
 			<&tlmm 132 0>,     /* APBA_RESET_N, output-low */
 			<&tlmm 62 1>,      /* APBA_INT_N, in */
-			<&tlmm 41 2>,      /* APBA_SFLASH_EN, output-high */
-			<&tlmm 141 2>;     /* APBA_WAKE, output-high */
+			<&tlmm 141 2>,     /* APBA_WAKE, output-high */
+			<&tlmm 41 2>;      /* APBA_SFLASH_EN, output-high */
 		mmi,gpio-labels = "gpio_apba_1p1_en",
 				  "gpio_apba_bootret",
 				  "gpio_mphy_i2s_sel",
 				  "gpio_apba_rst_n",
 				  "gpio_apba_int_n",
-				  "gpio_apba_sflash_en",
-				  "gpio_apba_wake";
+				  "gpio_apba_wake",
+				  "gpio_apba_sflash_en";
 		mmi,int-index = <4>;
-		mmi,enable-seq = <5 1 0>, <0 1 0>, <1 0 0>, <2 0 0>, <3 0 50>,
-				 <3 1 50>;
-		mmi,disable-seq = <1 0 0>, <2 1 0>, <3 0 50>, <5 0 0>, <0 0 0>;
+		mmi,enable-seq = <6 0 0>, <5 1 0>, <0 1 0>, <1 0 0>,
+				 <2 0 0>, <3 0 50>, <3 1 50>;
+		mmi,disable-seq = <1 0 0>, <2 1 0>, <3 0 50>, <5 0 0>, <0 0 0>,
+				  <6 1 0>;
 		mmi,wake-assert-seq = <5 0 0>;
 		mmi,wake-deassert-seq = <5 1 0>;
 	};
@@ -496,11 +497,6 @@
 };
 
 &spi_1 {
-	/delete-property/ pinctrl-0;
-	/delete-property/ pinctrl-1;
-	/delete-property/ pinctrl-names;
-	/delete-property/ qcom,use-pinctrl;
-
 	spi-max-frequency = <50000000>;
 
 	qcom,rt-priority;
