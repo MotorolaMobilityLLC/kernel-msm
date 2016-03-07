@@ -203,25 +203,25 @@
 
 		spi1_cs1_active: cs1_active {
 			mux {
-				pins = "gpio48";
-				function = "blsp_spi1";
+				pins = "gpio35";
+				function = "blsp1_spi";
 			};
 
 			config {
-				pins = "gpio48";
-				drive-strength = <6>;
+				pins = "gpio35";
+				drive-strength = <2>;
 				bias-disable = <0>;
 			};
 		};
 
 		spi1_cs1_sleep: cs1_sleep {
 			mux {
-				pins = "gpio48";
-				function = "blsp_spi1";
+				pins = "gpio35";
+				function = "blsp1_spi";
 			};
 
 			config {
-				pins = "gpio48";
+				pins = "gpio35";
 				drive-strength = <2>;
 				bias-disable = <0>;
 			};
@@ -413,6 +413,11 @@
 	};
 
 	apba_default: apba_default@0 {
+		apba_1p1_en {
+			pins = "gpio39";
+			drive-strength = <2>;
+			output-high;
+		};
 		apba_bootret {
 			pins = "gpio140";
 			drive-strength = <2>;
@@ -435,6 +440,12 @@
 			pins = "gpio62";
 			drive-strength = <2>;
 			bias-pull-up;
+		};
+
+		apba_sflash_en {
+			pins = "gpio48";
+			drive-strength = <2>;
+			output-high;
 		};
 	};
 
