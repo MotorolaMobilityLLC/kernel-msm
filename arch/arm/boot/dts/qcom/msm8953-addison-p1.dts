@@ -28,3 +28,23 @@
 	CPVDD2-supply = <&cdc_1p2v>;
 	DCVDD-supply = <&cdc_1p2v>;
 };
+
+&soc {
+	apba_ctrl {
+		gpios = <&tlmm 39 2>,      /* APBA_1P1_EN, output-high */
+			<&tlmm 140 0>,     /* APBA_BOOTRET, output-low */
+			<&pmi8950_mpps 2 2>, /* MOD_MPHY_I2S_SEL, output-high */
+			<&tlmm 132 0>,     /* APBA_RESET_N, output-low */
+			<&tlmm 62 1>,      /* APBA_INT_N, in */
+			<&tlmm 141 2>,     /* APBA_WAKE, output-high */
+			<&tlmm 48 2>;      /* APBA_SFLASH_EN, output-high */
+	};
+};
+
+&tlmm {
+	apba_default: apba_default@0 {
+		apba_sflash_en {
+			pins = "gpio48";
+		};
+	};
+};
