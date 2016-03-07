@@ -48,18 +48,11 @@
 #define ARIZONA_MAX_GPIO_REGS 5
 #define CLEARWATER_MAX_GPIO_REGS 80
 
-#define CLEARWATER_NUM_GPIOS	40
-#define MARLEY_NUM_GPIOS	16
-#define MOON_NUM_GPIOS		38
-
 #define ARIZONA_MAX_INPUT 12
 
 #define ARIZONA_MAX_MICBIAS 4
 #define ARIZONA_MAX_CHILD_MICBIAS 4
 
-#define WM5102_NUM_MICBIAS       3
-#define CLEARWATER_NUM_MICBIAS   4
-#define LARGO_NUM_MICBIAS        2
 #define MARLEY_NUM_MICBIAS       2
 #define MARLEY_NUM_CHILD_MICBIAS 2
 #define MOON_NUM_MICBIAS         2
@@ -156,6 +149,13 @@ struct arizona_pdata {
 	/** set to true if jackdet contact opens on insert */
 	bool jd_invert;
 
+	/**
+	* Set to true to support antenna cable. antenna cable is a 4 pole
+	* cable with open circuit impedance and the usual 3 pole (headphone)
+	* or 4 pole (headset) cables can be plugged into the antenna cable
+	*/
+	bool antenna_supported;
+
 	/** If non-zero don't run headphone detection, report this value */
 	int fixed_hpdet_imp;
 
@@ -180,6 +180,21 @@ struct arizona_pdata {
 	int hpdet_short_circuit_imp;
 
 	/**
+	 * Channel to use for moisture detection, valid values are 0 for
+	 * left and 1 for right
+	 */
+	unsigned int moisture_det_channel;
+
+	/**
+	* This value specifies the  threshold impedance in ohms above
+	* which it will be considered a false detection
+	*/
+	int hpdet_moisture_imp;
+
+	/** Software debounces for moisture detect */
+	int hpdet_moisture_debounce;
+
+	/**
 	 * Channel to use for headphone detection, valid values are 0 for
 	 * left and 1 for right
 	 */
@@ -193,6 +208,16 @@ struct arizona_pdata {
 
 	/** Extra software debounces during button detection */
 	int micd_manual_debounce;
+
+	/** Software debounces during 3/4 pole plugin into antenna cable */
+	int antenna_manual_debounce;
+
+	/** Software debounces during 3/4 pole plugout from antenna cable */
+	int antenna_manual_db_plugout;
+
+	/** range around hp impedance to be rejected to prevent false button events */
+	int antenna_hp_imp_range_lo;
+	int antenna_hp_imp_range_hi;
 
 	/** GPIO for mic detection polarity */
 	int micd_pol_gpio;
@@ -244,6 +269,12 @@ struct arizona_pdata {
 	*/
 	struct arizona_hpd_pins hpd_r_pins;
 
+	/**
+	* impedance_measurement_pin for
+	* detecting moisture
+	*/
+	unsigned int moisture_pin;
+
 	/** Reference voltage for DMIC inputs */
 	int dmic_ref[ARIZONA_MAX_INPUT];
 
@@ -291,8 +322,6 @@ struct arizona_pdata {
 
 	/** Callback which is called when text data from a DSP is detected */
 	void (*ez2text_trigger)(int dsp);
-
-
 	/** wm5102t output power */
 	unsigned int wm5102t_output_pwr;
 
@@ -313,10 +342,6 @@ struct arizona_pdata {
 	 * removal: 1 - IN1L, 2 - IN1R, ..., n - IN[n]R
 	 */
 	unsigned int hs_mic;
-
-	/* If lrclk_adv is set then in dsp-a mode,
-	fsync is shifted left by half bclk */
-	int lrclk_adv[ARIZONA_MAX_AIF];
 };
 
 #endif
