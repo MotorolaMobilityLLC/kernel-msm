@@ -98,8 +98,8 @@
 		cam_vio-supply = <&pm8994_lvs1>;
 		cam_vaf-supply = <&pm8994_l23>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vaf";
-		qcom,cam-vreg-min-voltage = <0 1800000>;
-		qcom,cam-vreg-max-voltage = <0 1800000>;
+		qcom,cam-vreg-min-voltage = <0 1850000>;
+		qcom,cam-vreg-max-voltage = <0 1850000>;
 		qcom,cam-vreg-op-mode = <0 100000>;
 		gpios =<&pm8994_gpios 10 0>,
 			  <&tlmm 119 0>;
