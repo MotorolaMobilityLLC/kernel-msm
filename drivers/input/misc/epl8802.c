@@ -578,8 +578,8 @@ static void write_global_variable(struct i2c_client *client)
 
 	/*chip refrash*/
 	epl_sensor_I2C_Write(client, 0xfd, 0x8e);
-	epl_sensor_I2C_Write(client, 0xfe, 0x22);
-	epl_sensor_I2C_Write(client, 0xfe, 0x02);
+	epl_sensor_I2C_Write(client, 0xfe, 0x20);
+	epl_sensor_I2C_Write(client, 0xfe, 0x00);
 	epl_sensor_I2C_Write(client, 0xfd, 0x00);
 
 	epl_sensor_I2C_Write(client, 0xfc,
