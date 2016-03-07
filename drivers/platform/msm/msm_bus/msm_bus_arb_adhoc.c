@@ -806,7 +806,7 @@ static int alloc_handle_lst(int size)
 	} else {
 		t_cl_list = krealloc(handle_list.cl_list,
 				sizeof(struct msm_bus_client *) *
-				handle_list.num_entries + NUM_CL_HANDLES,
+				(handle_list.num_entries + NUM_CL_HANDLES),
 				GFP_KERNEL);
 		if (ZERO_OR_NULL_PTR(t_cl_list)) {
 			ret = -ENOMEM;
@@ -815,8 +815,9 @@ static int alloc_handle_lst(int size)
 			goto exit_alloc_handle_lst;
 		}
 
-		memset(&handle_list.cl_list[handle_list.num_entries], 0,
+		memset(&t_cl_list[handle_list.num_entries], 0,
 			NUM_CL_HANDLES * sizeof(struct msm_bus_client *));
+
 		handle_list.num_entries += NUM_CL_HANDLES;
 		handle_list.cl_list = t_cl_list;
 	}
