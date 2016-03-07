@@ -292,7 +292,6 @@ static void msm_hs_queue_rx_desc(struct msm_hs_port *msm_uport);
 #define UARTDM_TO_MSM(uart_port) \
 	container_of((uart_port), struct msm_hs_port, uport)
 
-extern void bluesleep_setup_uart_port(struct uart_port *uport); //ASUS_BSP BerylHou +++
 
 static int msm_hs_ioctl(struct uart_port *uport, unsigned int cmd,
 						unsigned long arg)
