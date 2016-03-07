@@ -932,16 +932,10 @@
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_active &touch_int_default>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
-		config_modifier-names = "aod", "fps";
+		config_modifier-names = "aod";
 		config_modifier-aod {
 			aod-suspended {
 				patch-data = "S"; /* Power->sleep */
-			};
-		};
-		config_modifier-fps {
-			enable-notification;
-			fps-active {
-				touch-clip-area = <450 1875 610 1919 1>;
 			};
 		};
 	};
