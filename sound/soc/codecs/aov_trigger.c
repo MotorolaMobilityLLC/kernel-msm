@@ -38,17 +38,17 @@ static DEFINE_MUTEX(dsp_info_mutex);
 
 static struct attribute aov_sysfs_attr_trigger = {
 	.name = "trigger",
-	.mode = S_IRUSR | S_IRGRP | S_IROTH
+	.mode = S_IRUSR | S_IRGRP
 };
 
 static struct attribute aov_sysfs_attr_register = {
 	.name = "register",
-	.mode = S_IWUSR | S_IWGRP | S_IWOTH
+	.mode = S_IWUSR | S_IWGRP
 };
 
 static struct attribute aov_sysfs_attr_event = {
 	.name = "event",
-	.mode = S_IRUSR | S_IRGRP | S_IROTH
+	.mode = S_IRUSR | S_IRGRP
 };
 
 static const char *reg_cmd = "register";
