@@ -647,8 +647,9 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 #define VL53L0_IOCTL_INIT_NS		_IO('p', 0x11)
 #define VL53L0_IOCTL_INIT_NB		_IO('p', 0x90)
 #define VL53L0_IOCTL_SUSPEND		_IO('p', 0x93)
-#define VL53L0_IOCTL_RESUME		_IO('p', 0x94)
-#define VL53L0_IOCTL_RESET		 _IO('p', 0x95)
+#define VL53L0_IOCTL_RESUME			_IO('p', 0x94)
+#define VL53L0_IOCTL_RESET			_IO('p', 0x95)
+#define VL53L0_IOCTL_RESET_NB		_IO('p', 0x96)
 #define VL53L0_IOCTL_XTALKCALB		_IOWR('p', 0x02, unsigned int)
 #define VL53L0_IOCTL_OFFCALB		_IOW('p', 0x03, unsigned int)
 #define VL53L0_IOCTL_STOPCALB		_IO('p', 0x04)
@@ -735,6 +736,8 @@ static void stmvl53l0_enter_off(struct stmvl53l0_data *data, uint8_t from)
 	vl53l0_dbgmsg_en("Enter, stmvl53l0_enter_off from:%d\n", from);
 	if (data->enable_ps_sensor == 0)
 		stmvl53l0_start(data);
+	papi_func_tbl->StopMeasurement(data);
+	papi_func_tbl->ClearInterruptMask(data, 0);
 	papi_func_tbl->SetDeviceMode(data,
 		VL53L0_DEVICEMODE_SINGLE_RANGING);
 	papi_func_tbl->SetGpioConfig(data, 0, 0,
@@ -985,7 +988,7 @@ struct stmvl53l0_data *data, uint8_t input)
 	}
 	if (input == RESET) {
 		stmvl53l0_stop(data);
-		data->reset = 1;
+		data->reset = 0;
 		if (data->enable_ps_sensor == 0)
 			stmvl53l0_start(data);
 	}
@@ -1037,7 +1040,10 @@ static void stmvl53l0_cancel_handler(struct stmvl53l0_data *data)
 	if (ret == 0)
 		vl53l0_errmsg("%d,cancel_delayed_work return FALSE\n",
 		__LINE__);
-
+	ret = cancel_delayed_work(&data->resetwork);
+	if (ret == 0)
+		vl53l0_errmsg("%d,cancel_delayed_work return FALSE\n",
+		__LINE__);
 	spin_unlock_irqrestore(&data->update_lock.wait_lock, flags);
 
 	return;
@@ -1092,6 +1098,15 @@ static void stmvl53l0_init_handler(struct work_struct *work)
 
 	vl53l0_dbgmsg_en("get in the handler\n");
 	stmvl53l0_work_state(data, CAM_ON);
+	return;
+
+}
+static void stmvl53l0_reset_handler(struct work_struct *work)
+{
+	struct stmvl53l0_data *data = gp_vl53l0_data;
+
+	vl53l0_dbgmsg_en("get in the handler\n");
+	stmvl53l0_work_state(data, RESET);
 	return;
 
 }
@@ -1514,6 +1529,9 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 	case VL53L0_IOCTL_RESET:
 		stmvl53l0_work_state(data, RESET);
 		break;
+	case VL53L0_IOCTL_RESET_NB:
+		schedule_delayed_work(&data->resetwork, 0);
+		break;
 		/* crosstalk calibration */
 	case VL53L0_IOCTL_XTALKCALB:
 		vl53l0_dbgmsg_en("VL53L0_IOCTL_XTALKCALB\n");
@@ -1571,7 +1589,7 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		/* disable */
 	case VL53L0_IOCTL_STOP:
 		vl53l0_dbgmsg_en("VL53L0_IOCTL_STOP\n");
-		stmvl53l0_work_state(data, CAL_OFF);
+		stmvl53l0_work_state(data, CAM_OFF);
 		break;
 	case VL53L0_IOCTL_GETDATAS_BLOCK:
 		vl53l0_dbgmsg_en("VL53L0_IOCTL_GETDATAS_BLOCK\n");
@@ -1674,6 +1692,12 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 			return -EFAULT;
 		}
 		parameter.status = 0;
+		mutex_lock(&data->work_mutex);
+		if (!parameter.is_read && data->w_mode != OFF_MODE) {
+			vl53l0_errmsg("%d, fail write parameter in other mode \n", __LINE__);
+			mutex_unlock(&data->work_mutex);
+			return -EFAULT;
+		}
 		switch (parameter.name) {
 		case (OFFSET_PAR):
 			if (parameter.is_read)
@@ -1782,7 +1806,12 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 			if (parameter.is_read)
 				parameter.value = vl53l0_dev->cut_v;
 			break;
+		case (DRVV_PRA):
+			if (parameter.is_read)
+				parameter.value = DRIVER_VERSION_NUM;
+			break;
 		}
+		mutex_unlock(&data->work_mutex);
 		if (copy_to_user((struct stmvl53l0_parameter *)p, &parameter,
 			sizeof(struct stmvl53l0_parameter))) {
 			vl53l0_errmsg("%d, fail\n", __LINE__);
@@ -1910,10 +1939,6 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 	VL53L0_DEV vl53l0_dev = data;
 	FixPoint1616_t	LimitValue;
 	uint8_t LimitEnable;
-	uint32_t refSpadCount;
-	uint8_t isApertureSpads;
-	uint8_t VhvSettings;
-	uint8_t PhaseCal;
 
 	vl53l0_dbgmsg_en("Enter\n");
 
@@ -1956,7 +1981,7 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 	/* Setup API functions based on revision */
 	stmvl53l0_setupAPIFunctions(data);
 
-	if (Status == VL53L0_ERROR_NONE && data->reset) {
+	if (Status == VL53L0_ERROR_NONE) {
 		pr_err("Call of VL53L0_DataInit\n");
 		Status = papi_func_tbl->DataInit(vl53l0_dev);
 	}
@@ -1985,15 +2010,21 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 	if (Status == VL53L0_ERROR_NONE && data->reset) {
 		pr_err("Call of VL53L0_PerformRefCalibration\n");
 		Status = papi_func_tbl->PerformRefCalibration(vl53l0_dev,
-				&VhvSettings, &PhaseCal); /* Ref calibration */
+				&(data->VhvSettings), &(data->PhaseCal)); /* Ref calibration */
 
+	} else if (Status == VL53L0_ERROR_NONE && data->reset == 0) {
+		pr_err("Call of VL53L0_SetRefCalibration\n");
+		VL53L0_SetRefCalibration(vl53l0_dev, data->VhvSettings, data->PhaseCal);
 	}
 
 	if (Status == VL53L0_ERROR_NONE && data->reset) {
 		pr_err("Call of VL53L0_PerformRefSpadManagement\n");
 		Status = papi_func_tbl->PerformRefSpadManagement(vl53l0_dev,
-				&refSpadCount, &isApertureSpads); /* Ref Spad Management */
+				&(data->refSpadCount), &(data->isApertureSpads));
 		data->reset = 0;
+	} else if (Status == VL53L0_ERROR_NONE && data->reset == 0) {
+		pr_err("Call of VL53L0_SetReferenceSpads\n");
+		VL53L0_SetReferenceSpads(vl53l0_dev, data->refSpadCount, data->isApertureSpads);
 	}
 	if (Status == VL53L0_ERROR_NONE) {
 
@@ -2086,9 +2117,10 @@ irqreturn_t laser_isr(int irq, void *dev)
 static int stmvl53l0_start(struct stmvl53l0_data *data)
 {
 	int rc = 0;
+	int reset = 0;
 
 	/* Power up */
-	rc = pmodule_func_tbl->power_up(data->client_object, &data->reset);
+	rc = pmodule_func_tbl->power_up(data->client_object, &reset);
 	if (rc) {
 		vl53l0_errmsg("%d,error rc %d\n", __LINE__, rc);
 		return rc;
@@ -2214,7 +2246,7 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	/* init work handler */
 	INIT_DELAYED_WORK(&data->dwork, stmvl53l0_work_handler);
 	INIT_DELAYED_WORK(&data->initwork, stmvl53l0_init_handler);
-
+	INIT_DELAYED_WORK(&data->resetwork, stmvl53l0_reset_handler);
 	/* Register to Input Device */
 	data->input_dev_ps = input_allocate_device();
 	if (!data->input_dev_ps) {
