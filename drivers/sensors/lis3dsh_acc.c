@@ -573,6 +573,27 @@ static int lis3dsh_acc_i2c_update(struct lis3dsh_acc_data *acc,
 	return err;
 }
 
+#ifdef CONFIG_SENSORS_INV_ACCEL_CAL
+int lis3dsh_export_acc_data(int *xyz, int i)
+{
+   int err = -1;
+   u8 acc_data[6];
+   s32 hw_d = 0;
+
+   acc_data[0] = (I2C_AUTO_INCREMENT | OUT_AXISDATA_REG);
+   err = lis3dsh_acc_i2c_read(sensor_data, acc_data, 6);
+   if (err < 0)
+       return err;
+
+   hw_d = ((s16) ((acc_data[5] << 8) | acc_data[4]));
+   hw_d = hw_d * sensor_data->sensitivity / 10;
+   xyz[i] = ((sensor_data->pdata->negate_z) ? (-hw_d):(hw_d));
+
+   return err;
+}
+EXPORT_SYMBOL_GPL(lis3dsh_export_acc_data);
+#endif
+
 static int lis3dsh_acc_hw_init(struct lis3dsh_acc_data *acc)
 {
 	int i;

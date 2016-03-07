@@ -56,8 +56,13 @@ static int inv_push_8bytes_buffer(struct inv_mpu_state *st, u16 hdr,
 	int i;
 
 	memcpy(buf, &hdr, sizeof(hdr));
-	for (i = 0; i < 3; i++)
+	for (i = 0; i < 3; i++) {
+       #ifdef CONFIG_SENSORS_INV_ACCEL_CAL
+       if(hdr==ACCEL_HDR && i==2)
+           d[i] += st->inv_accel_offset;
+       #endif
 		memcpy(&buf[2 + i * 2], &d[i], sizeof(d[i]));
+    }
 	iio_push_to_buffers(indio_dev, buf);
 	memcpy(buf, &t, sizeof(t));
 	iio_push_to_buffers(indio_dev, buf);
