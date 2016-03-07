@@ -32,6 +32,7 @@
 #define STMVL53L0_SLAVE_ADDR	(0x52>>1)
 
 #define DRIVER_VERSION		"1.1.15"
+#define DRIVER_VERSION_NUM		15
 #define I2C_M_WR			0x00
 /* #define INT_POLLING_DELAY	20 */
 
@@ -122,6 +123,7 @@ struct stmvl53l0_data {
 	struct mutex update_lock;
 	struct delayed_work	dwork;		/* for PS  work handler */
 	struct delayed_work     initwork;
+	struct delayed_work     resetwork;
 	struct input_dev *input_dev_ps;
 	struct kobject *range_kobj;
 
@@ -168,6 +170,10 @@ struct stmvl53l0_data {
 	unsigned int xtalkcalval;
 	VL53L0_GpioFunctionality gpio_function;
 	uint8_t c_suspend;
+	uint32_t refSpadCount;
+	uint8_t isApertureSpads;
+	uint8_t VhvSettings;
+	uint8_t PhaseCal;
 };
 
 /*
