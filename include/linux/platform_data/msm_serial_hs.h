@@ -33,6 +33,7 @@
  * @bam_tx_ep_pipe_index : BAM TX Endpoint Pipe Index for HSUART
  * @bam_tx_ep_pipe_index : BAM RX Endpoint Pipe Index for HSUART
  * @no_suspend_delay : Flag used to make system go to suspend
+ * @obs: Flag for out of band sleep usage
  * immediately or not
  * @obs: Flag for out of band sleep usage
  */
