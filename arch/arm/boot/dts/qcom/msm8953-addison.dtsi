@@ -156,3 +156,31 @@
 		};
 	};
 };
+
+&tlmm {
+	cdc-pdm-lines {
+		cdc_pdm_lines_act: pdm_lines_on {
+			mux {
+				/delete-property/ pins;
+				pins = "gpio73", "gpio74";
+			};
+
+			config {
+				/delete-property/ pins;
+				pins = "gpio73", "gpio74";
+			};
+		};
+
+		cdc_pdm_lines_sus: pdm_lines_off {
+			mux {
+				/delete-property/ pins;
+				pins = "gpio73", "gpio74";
+			};
+
+			config {
+				/delete-property/ pins;
+				pins = "gpio73", "gpio74";
+			};
+		};
+	};
+};
