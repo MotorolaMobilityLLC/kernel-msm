@@ -39,7 +39,6 @@
 #define ARIZONA_PWM_DRIVE_3                      0x32
 #define ARIZONA_WAKE_CONTROL                     0x40
 #define ARIZONA_SEQUENCE_CONTROL                 0x41
-#define ARIZONA_SPARE_TRIGGERS                   0x42
 #define ARIZONA_SAMPLE_RATE_SEQUENCE_SELECT_1    0x61
 #define ARIZONA_SAMPLE_RATE_SEQUENCE_SELECT_2    0x62
 #define ARIZONA_SAMPLE_RATE_SEQUENCE_SELECT_3    0x63
@@ -97,7 +96,6 @@
 #define ARIZONA_FLL1_LOOP_FILTER_TEST_1          0x177
 #define ARIZONA_FLL1_NCO_TEST_0                  0x178
 #define ARIZONA_FLL1_CONTROL_7                   0x179
-#define ARIZONA_FLL1_EFS_2                       0x17A
 #define ARIZONA_FLL1_SYNCHRONISER_1              0x181
 #define ARIZONA_FLL1_SYNCHRONISER_2              0x182
 #define ARIZONA_FLL1_SYNCHRONISER_3              0x183
@@ -125,7 +123,6 @@
 #define ARIZONA_FLL2_LOOP_FILTER_TEST_1          0x197
 #define ARIZONA_FLL2_NCO_TEST_0                  0x198
 #define ARIZONA_FLL2_CONTROL_7                   0x199
-#define ARIZONA_FLL2_EFS_2                       0x19A
 #define ARIZONA_FLL2_SYNCHRONISER_1              0x1A1
 #define ARIZONA_FLL2_SYNCHRONISER_2              0x1A2
 #define ARIZONA_FLL2_SYNCHRONISER_3              0x1A3
@@ -2311,8 +2308,6 @@
 #define MARLEY_OTP_HPDET_CALIB_2                 0x31FA
 #define CLEARWATER_OTP_HPDET_CALIB_1             0x33F8
 #define CLEARWATER_OTP_HPDET_CALIB_2             0x33FA
-#define MOON_OTP_HPDET_CALIB_1                   0x020004
-#define MOON_OTP_HPDET_CALIB_2                   0x020006
 #define CLEARWATER_DSP1_CONFIG                   0x0FFE00
 #define CLEARWATER_DSP1_STATUS_1                 0x0FFE04
 #define CLEARWATER_DSP1_STATUS_2                 0x0FFE06
@@ -2699,42 +2694,6 @@
 #define ARIZONA_WSEQ_ENA_JD2_RISE_MASK           0x0001  /* WSEQ_ENA_JD2_RISE */
 #define ARIZONA_WSEQ_ENA_JD2_RISE_SHIFT               0  /* WSEQ_ENA_JD2_RISE */
 #define ARIZONA_WSEQ_ENA_JD2_RISE_WIDTH               1  /* WSEQ_ENA_JD2_RISE */
-
-/*
- * R66 (0x42) - Spare Triggers
- */
-#define ARIZONA_WS_TRG8                          0x0080  /* WS_TRG8 */
-#define ARIZONA_WS_TRG8_MASK                     0x0080  /* WS_TRG8 */
-#define ARIZONA_WS_TRG8_SHIFT                         7  /* WS_TRG8 */
-#define ARIZONA_WS_TRG8_WIDTH                         1  /* WS_TRG8 */
-#define ARIZONA_WS_TRG7                          0x0040  /* WS_TRG7 */
-#define ARIZONA_WS_TRG7_MASK                     0x0040  /* WS_TRG7 */
-#define ARIZONA_WS_TRG7_SHIFT                         6  /* WS_TRG7 */
-#define ARIZONA_WS_TRG7_WIDTH                         1  /* WS_TRG7 */
-#define ARIZONA_WS_TRG6                          0x0020  /* WS_TRG6 */
-#define ARIZONA_WS_TRG6_MASK                     0x0020  /* WS_TRG6 */
-#define ARIZONA_WS_TRG6_SHIFT                         5  /* WS_TRG6 */
-#define ARIZONA_WS_TRG6_WIDTH                         1  /* WS_TRG6 */
-#define ARIZONA_WS_TRG5                          0x0010  /* WS_TRG5 */
-#define ARIZONA_WS_TRG5_MASK                     0x0010  /* WS_TRG5 */
-#define ARIZONA_WS_TRG5_SHIFT                         4  /* WS_TRG5 */
-#define ARIZONA_WS_TRG5_WIDTH                         1  /* WS_TRG5 */
-#define ARIZONA_WS_TRG4                          0x0008  /* WS_TRG4 */
-#define ARIZONA_WS_TRG4_MASK                     0x0008  /* WS_TRG4 */
-#define ARIZONA_WS_TRG4_SHIFT                         3  /* WS_TRG4 */
-#define ARIZONA_WS_TRG4_WIDTH                         1  /* WS_TRG4 */
-#define ARIZONA_WS_TRG3                          0x0004  /* WS_TRG3 */
-#define ARIZONA_WS_TRG3_MASK                     0x0004  /* WS_TRG3 */
-#define ARIZONA_WS_TRG3_SHIFT                         2  /* WS_TRG3 */
-#define ARIZONA_WS_TRG3_WIDTH                         1  /* WS_TRG3 */
-#define ARIZONA_WS_TRG2                          0x0002  /* WS_TRG2 */
-#define ARIZONA_WS_TRG2_MASK                     0x0002  /* WS_TRG2 */
-#define ARIZONA_WS_TRG2_SHIFT                         1  /* WS_TRG2 */
-#define ARIZONA_WS_TRG2_WIDTH                         1  /* WS_TRG2 */
-#define ARIZONA_WS_TRG1                          0x0001  /* WS_TRG1 */
-#define ARIZONA_WS_TRG1_MASK                     0x0001  /* WS_TRG1 */
-#define ARIZONA_WS_TRG1_SHIFT                         0  /* WS_TRG1 */
-#define ARIZONA_WS_TRG1_WIDTH                         1  /* WS_TRG1 */
 
 /*
  * R97 (0x61) - Sample Rate Sequence Select 1
@@ -3194,16 +3153,6 @@
 #define ARIZONA_FLL1_GAIN_MASK                   0x003c  /* FLL1_GAIN */
 #define ARIZONA_FLL1_GAIN_SHIFT                       2  /* FLL1_GAIN */
 #define ARIZONA_FLL1_GAIN_WIDTH                       4  /* FLL1_GAIN */
-
-/*
- * R378 (0x17A) - FLL1 EFS 2
- */
-#define ARIZONA_FLL1_PHASE_GAIN_MASK             0xF000  /* FLL1_PHASE_GAIN */
-#define ARIZONA_FLL1_PHASE_GAIN_SHIFT                12  /* FLL1_PHASE_GAIN */
-#define ARIZONA_FLL1_PHASE_GAIN_WIDTH                 4  /* FLL1_PHASE_GAIN */
-#define ARIZONA_FLL1_PHASE_ENA_MASK              0x0800  /* FLL1_PHASE_ENA */
-#define ARIZONA_FLL1_PHASE_ENA_SHIFT                 11  /* FLL1_PHASE_ENA */
-#define ARIZONA_FLL1_PHASE_ENA_WIDTH                  1  /* FLL1_PHASE_ENA */
 
 /*
  * R385 (0x181) - FLL1 Synchroniser 1
@@ -6117,10 +6066,6 @@
 /*
  * R1282 (0x502) - AIF1 Rx Pin Ctrl
  */
-#define ARIZONA_AIF1RX_LRCLK_ADV                 0x0008  /* AIF1RX_LRCLK_ADV */
-#define ARIZONA_AIF1RX_LRCLK_ADV_MASK            0x0008  /* AIF1RX_LRCLK_ADV */
-#define ARIZONA_AIF1RX_LRCLK_ADV_SHIFT                3  /* AIF1RX_LRCLK_ADV */
-#define ARIZONA_AIF1RX_LRCLK_ADV_WIDTH                1  /* AIF1RX_LRCLK_ADV */
 #define ARIZONA_AIF1RX_LRCLK_INV                 0x0004  /* AIF1RX_LRCLK_INV */
 #define ARIZONA_AIF1RX_LRCLK_INV_MASK            0x0004  /* AIF1RX_LRCLK_INV */
 #define ARIZONA_AIF1RX_LRCLK_INV_SHIFT                2  /* AIF1RX_LRCLK_INV */
@@ -10720,14 +10665,6 @@
 /*
  * R3840 (0xF00) - Clock Control
  */
-#define ARIZONA_EXT_NG_SEL_CLR                   0x0080  /* EXT_NG_SEL_CLR */
-#define ARIZONA_EXT_NG_SEL_CLR_MASK              0x0080  /* EXT_NG_SEL_CLR */
-#define ARIZONA_EXT_NG_SEL_CLR_SHIFT                  7  /* EXT_NG_SEL_CLR */
-#define ARIZONA_EXT_NG_SEL_CLR_WIDTH                  1  /* EXT_NG_SEL_CLR */
-#define ARIZONA_EXT_NG_SEL_SET                   0x0040  /* EXT_NG_SEL_SET */
-#define ARIZONA_EXT_NG_SEL_SET_MASK              0x0040  /* EXT_NG_SEL_SET */
-#define ARIZONA_EXT_NG_SEL_SET_SHIFT                  6  /* EXT_NG_SEL_SET */
-#define ARIZONA_EXT_NG_SEL_SET_WIDTH                  1  /* EXT_NG_SEL_SET */
 #define ARIZONA_CLK_R_ENA_CLR                    0x0020  /* CLK_R_ENA_CLR */
 #define ARIZONA_CLK_R_ENA_CLR_MASK               0x0020  /* CLK_R_ENA_CLR */
 #define ARIZONA_CLK_R_ENA_CLR_SHIFT                   5  /* CLK_R_ENA_CLR */
@@ -10736,14 +10673,6 @@
 #define ARIZONA_CLK_R_ENA_SET_MASK               0x0010  /* CLK_R_ENA_SET */
 #define ARIZONA_CLK_R_ENA_SET_SHIFT                   4  /* CLK_R_ENA_SET */
 #define ARIZONA_CLK_R_ENA_SET_WIDTH                   1  /* CLK_R_ENA_SET */
-#define ARIZONA_CLK_NG_ENA_CLR                   0x0008  /* CLK_NG_ENA_CLR */
-#define ARIZONA_CLK_NG_ENA_CLR_MASK              0x0008  /* CLK_NG_ENA_CLR */
-#define ARIZONA_CLK_NG_ENA_CLR_SHIFT                  3  /* CLK_NG_ENA_CLR */
-#define ARIZONA_CLK_NG_ENA_CLR_WIDTH                  1  /* CLK_NG_ENA_CLR */
-#define ARIZONA_CLK_NG_ENA_SET                   0x0004  /* CLK_NG_ENA_SET */
-#define ARIZONA_CLK_NG_ENA_SET_MASK              0x0004  /* CLK_NG_ENA_SET */
-#define ARIZONA_CLK_NG_ENA_SET_SHIFT                  2  /* CLK_NG_ENA_SET */
-#define ARIZONA_CLK_NG_ENA_SET_WIDTH                  1  /* CLK_NG_ENA_SET */
 #define ARIZONA_CLK_L_ENA_CLR                    0x0002  /* CLK_L_ENA_CLR */
 #define ARIZONA_CLK_L_ENA_CLR_MASK               0x0002  /* CLK_L_ENA_CLR */
 #define ARIZONA_CLK_L_ENA_CLR_SHIFT                   1  /* CLK_L_ENA_CLR */
@@ -11513,42 +11442,6 @@
 #define CLEARWATER_SPK_SHUTDOWN_EINT1_MASK             0x0001  /* SPK_SHUTDOWN_EINT1 */
 #define CLEARWATER_SPK_SHUTDOWN_EINT1_SHIFT                 0  /* SPK_SHUTDOWN_EINT1 */
 #define CLEARWATER_SPK_SHUTDOWN_EINT1_WIDTH                 1  /* SPK_SHUTDOWN_EINT1 */
-
-/*
- * R6160 (0x1810) - IRQ1 Status 17
- */
-#define CLEARWATER_GP1_EINT1			       0x0001  /* GP1_EINT1 */
-#define CLEARWATER_GP1_EINT1_MASK		       0x0001  /* GP1_EINT1 */
-#define CLEARWATER_GP1_EINT1_SHIFT			    0  /* GP1_EINT1 */
-#define CLEARWATER_GP1_EINT1_WIDTH			    1  /* GP1_EINT1 */
-#define CLEARWATER_GP2_EINT1			       0x0002  /* GP2_EINT1 */
-#define CLEARWATER_GP2_EINT1_MASK		       0x0002  /* GP2_EINT1 */
-#define CLEARWATER_GP2_EINT1_SHIFT			    1  /* GP2_EINT1 */
-#define CLEARWATER_GP2_EINT1_WIDTH			    1  /* GP2_EINT1 */
-#define CLEARWATER_GP3_EINT1			       0x0004  /* GP3_EINT1 */
-#define CLEARWATER_GP3_EINT1_MASK		       0x0004  /* GP3_EINT1 */
-#define CLEARWATER_GP3_EINT1_SHIFT			    2  /* GP3_EINT1 */
-#define CLEARWATER_GP3_EINT1_WIDTH			    1  /* GP3_EINT1 */
-#define CLEARWATER_GP4_EINT1			       0x0008  /* GP4_EINT1 */
-#define CLEARWATER_GP4_EINT1_MASK		       0x0008  /* GP4_EINT1 */
-#define CLEARWATER_GP4_EINT1_SHIFT			    3  /* GP4_EINT1 */
-#define CLEARWATER_GP4_EINT1_WIDTH			    1  /* GP4_EINT1 */
-#define CLEARWATER_GP5_EINT1			       0x0010  /* GP5_EINT1 */
-#define CLEARWATER_GP5_EINT1_MASK		       0x0010  /* GP5_EINT1 */
-#define CLEARWATER_GP5_EINT1_SHIFT			    4  /* GP5_EINT1 */
-#define CLEARWATER_GP5_EINT1_WIDTH			    1  /* GP5_EINT1 */
-#define CLEARWATER_GP6_EINT1			       0x0020  /* GP6_EINT1 */
-#define CLEARWATER_GP6_EINT1_MASK		       0x0020  /* GP6_EINT1 */
-#define CLEARWATER_GP6_EINT1_SHIFT			    5  /* GP6_EINT1 */
-#define CLEARWATER_GP6_EINT1_WIDTH			    1  /* GP6_EINT1 */
-#define CLEARWATER_GP7_EINT1			       0x0040  /* GP7_EINT1 */
-#define CLEARWATER_GP7_EINT1_MASK		       0x0040  /* GP7_EINT1 */
-#define CLEARWATER_GP7_EINT1_SHIFT			    6  /* GP7_EINT1 */
-#define CLEARWATER_GP7_EINT1_WIDTH			    1  /* GP7_EINT1 */
-#define CLEARWATER_GP8_EINT1			       0x0080  /* GP8_EINT1 */
-#define CLEARWATER_GP8_EINT1_MASK		       0x0080  /* GP8_EINT1 */
-#define CLEARWATER_GP8_EINT1_SHIFT			    7  /* GP8_EINT1 */
-#define CLEARWATER_GP8_EINT1_WIDTH			    1  /* GP8_EINT1 */
 
 /*
  * R6176 (0x1820) - IRQ1 Status 33
