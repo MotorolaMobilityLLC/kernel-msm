@@ -27,6 +27,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#include <linux/vmalloc.h>
 #include <soc/qcom/scm.h>
 #include <soc/qcom/smem.h>
 #include <soc/qcom/subsystem_restart.h>
@@ -3349,7 +3350,11 @@ static void __flush_debug_queue(struct venus_hfi_device *device, u8 *packet)
 	}
 
 	if (!packet) {
-		packet = kzalloc(VIDC_IFACEQ_VAR_HUGE_PKT_SIZE, GFP_TEMPORARY);
+		if (VIDC_IFACEQ_VAR_HUGE_PKT_SIZE > PAGE_SIZE)
+			packet = vzalloc(VIDC_IFACEQ_VAR_HUGE_PKT_SIZE);
+		else
+			packet = kzalloc(VIDC_IFACEQ_VAR_HUGE_PKT_SIZE,
+					GFP_TEMPORARY);
 		if (!packet) {
 			dprintk(VIDC_ERR, "In %s() Fail to allocate mem\n",
 				__func__);
@@ -3378,7 +3383,7 @@ static void __flush_debug_queue(struct venus_hfi_device *device, u8 *packet)
 	}
 
 	if (local_packet)
-		kfree(packet);
+		kvfree(packet);
 }
 
 static struct hal_session *__get_session(struct venus_hfi_device *device,
@@ -3406,10 +3411,14 @@ static int __response_handler(struct venus_hfi_device *device)
 
 	packets = device->response_pkt;
 
-	raw_packet = kzalloc(VIDC_IFACEQ_VAR_HUGE_PKT_SIZE, GFP_TEMPORARY);
+	if (VIDC_IFACEQ_VAR_HUGE_PKT_SIZE > PAGE_SIZE)
+		raw_packet = vzalloc(VIDC_IFACEQ_VAR_HUGE_PKT_SIZE);
+	else
+		raw_packet = kzalloc(VIDC_IFACEQ_VAR_HUGE_PKT_SIZE,
+				GFP_TEMPORARY);
 	if (!raw_packet || !packets) {
 		dprintk(VIDC_ERR, "%s: Failed to allocate memory\n",  __func__);
-		kfree(raw_packet);
+		kvfree(raw_packet);
 		return 0;
 	}
 
@@ -3570,7 +3579,7 @@ static int __response_handler(struct venus_hfi_device *device)
 exit:
 	__flush_debug_queue(device, raw_packet);
 
-	kfree(raw_packet);
+	kvfree(raw_packet);
 	return packet_count;
 }
 
