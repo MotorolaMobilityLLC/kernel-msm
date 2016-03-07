@@ -51,10 +51,62 @@
 };
 
 &i2c_3 { /* BLSP1 QUP3 */
-	synaptics@20 {
+	/delete-node/ synaptics@20;
+
+	synaptics_lgd@20 {
+		status = "/chosen", "mmi,panel_name", "mipi_mot_cmd_lgd_1080p_546";
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <65 0>;
+		gpios = <&msm_gpio 65 0>, /* IRQ */
+			<&msm_gpio 64 0>; /* RESET */
+		synaptics,gpio-config;
 		synaptics,use-in-progress-event-blank;
-		default_suspended: touchstate_aod_suspended {
-			patch-data = "F12@20:1=2;F1@0=1&7";
+		/* pins used by touchscreen */
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_active &touch_int_default>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+		config_modifier-names = "aod", "fps";
+		config_modifier-aod {
+			aod-suspended {
+				patch-data = "F12@20:1=2;S"; /* Set LPWG bit; Power->sleep */
+			};
+		};
+		config_modifier-fps {
+			enable-notification;
+			fps-active {
+				touch-clip-area = <450 1875 610 1919 1>;
+			};
+		};
+	};
+
+	synaptics_boe@20 {
+		status = "/chosen", "mmi,panel_name", "mipi_mot_cmd_boe_1080p_546";
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <65 0>;
+		gpios = <&msm_gpio 65 0>, /* IRQ */
+			<&msm_gpio 64 0>; /* RESET */
+		synaptics,gpio-config;
+		synaptics,use-in-progress-event-blank;
+		synaptics,charger-detection; /* mitigate charger noise on BOE */
+		/* pins used by touchscreen */
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_active &touch_int_default>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+		config_modifier-names = "aod", "fps";
+		config_modifier-aod {
+			aod-suspended {
+				patch-data = "F12@20:1=2;S"; /* Set LPWG bit; Power->sleep */
+			};
+		};
+		config_modifier-fps {
+			enable-notification;
+			fps-active {
+				touch-clip-area = <450 1875 610 1919 1>;
+			};
 		};
 	};
 };
