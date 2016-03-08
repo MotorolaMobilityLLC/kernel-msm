@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -42,9 +42,9 @@ struct msm_actuator_func_tbl {
 		struct msm_actuator_set_info_t *);
 	int32_t (*actuator_init_focus)(struct msm_actuator_ctrl_t *,
 		uint16_t, struct reg_settings_t *);
-	int32_t (*actuator_set_default_focus) (struct msm_actuator_ctrl_t *,
+	int32_t (*actuator_set_default_focus)(struct msm_actuator_ctrl_t *,
 			struct msm_actuator_move_params_t *);
-	int32_t (*actuator_move_focus) (struct msm_actuator_ctrl_t *,
+	int32_t (*actuator_move_focus)(struct msm_actuator_ctrl_t *,
 			struct msm_actuator_move_params_t *);
 	void (*actuator_parse_i2c_params)(struct msm_actuator_ctrl_t *,
 			int16_t, uint32_t, uint16_t);
