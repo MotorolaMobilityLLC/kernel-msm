@@ -1151,6 +1151,7 @@ static inline void msm_spi_dma_unmap_buffers(struct msm_spi *dd)
  * 3. Transfer size is greater than 3*block size.
  * 4. Buffers are aligned to cache line.
  * 5. Bytes-per-word is 8,16 or 32.
+ * 6. Buffer is not a vmalloc address
   */
 static inline bool
 msm_spi_use_dma(struct msm_spi *dd, struct spi_transfer *tr, u8 bpw)
@@ -1167,6 +1168,10 @@ msm_spi_use_dma(struct msm_spi *dd, struct spi_transfer *tr, u8 bpw)
 
 	if ((dd->qup_ver != SPI_QUP_VERSION_BFAM) &&
 		 !dd->read_len && !dd->write_len)
+		return false;
+
+	if ((is_vmalloc_addr(tr->rx_buf) && !!dd->read_len)  ||
+	    (is_vmalloc_addr(tr->tx_buf) && !!dd->write_len))
 		return false;
 
 	if (dd->qup_ver == SPI_QUP_VERSION_NONE) {
