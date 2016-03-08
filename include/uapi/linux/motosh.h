@@ -161,6 +161,10 @@
 		_IOW(MOTOSH_IOCTL_BASE, 61, unsigned char)
 #define MOTOSH_IOCTL_PASSTHROUGH \
 		_IOR(MOTOSH_IOCTL_BASE, 62, char[1])
+#define MOTOSH_IOCTL_GET_ACCEL_CAL \
+		_IOR(MOTOSH_IOCTL_BASE, 63, char[MOTOSH_ACCEL_CAL_SIZE])
+#define MOTOSH_IOCTL_SET_ACCEL_CAL \
+		_IOR(MOTOSH_IOCTL_BASE, 64, char[MOTOSH_ACCEL_CAL_SIZE])
 
 
 /* Used in HAL */
@@ -183,6 +187,7 @@
 /* Used in HAL */
 #define MOTOSH_MAG_CAL_SIZE 32
 #define MOTOSH_GYRO_CAL_SIZE 198 /* 33 entries - 6 bytes each */
+#define MOTOSH_ACCEL_CAL_SIZE 6 /* 1 entry - 6 bytes */
 /* Not used */
 #define STM_AOD_INSTRUMENTATION_REG_SIZE 256
 /* Not used in user space */
@@ -206,7 +211,7 @@
 #define M_GYRO			0x000002
 #define M_PRESSURE		0x000004
 #define M_ECOMPASS		0x000008
-#define M_TEMPERATURE	0x000010
+
 #define M_ALS			0x000020
 #define M_STEP_DETECTOR	0x000040
 #define M_STEP_COUNTER	0x000080
@@ -336,6 +341,7 @@ enum MOTOSH_data_types {
 	DT_LIFT,
 	DT_GYRO_CAL,
 	DT_GLANCE,
+	DT_ACCEL_CAL
 };
 
 enum {
