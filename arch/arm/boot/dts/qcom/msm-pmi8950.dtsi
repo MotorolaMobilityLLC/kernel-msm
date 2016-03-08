@@ -597,7 +597,7 @@
 				qcom,default-led-trigger =
 						"switch_trigger";
 				qcom,max-current = <1000>;
-				qcom,duration = <1280>;
+				qcom,duration = <150>;
 				qcom,id = <2>;
 				qcom,current = <1000>;
 				reg0 {
