@@ -44,6 +44,7 @@
 #define QPNP_WLED_SOFTSTART_RAMP_DLY(b) (b + 0x53)
 #define QPNP_WLED_VLOOP_COMP_RES_REG(b)	(b + 0x55)
 #define QPNP_WLED_VLOOP_COMP_GM_REG(b)	(b + 0x56)
+#define QPNP_WLED_PSM_EN_REG(b)		(b + 0x5A)
 #define QPNP_WLED_PSM_CTRL_REG(b)	(b + 0x5B)
 #define QPNP_WLED_SC_PRO_REG(b)		(b + 0x5E)
 #define QPNP_WLED_TEST1_REG(b)		(b + 0xE2)
@@ -70,6 +71,8 @@
 #define QPNP_WLED_LOOP_EA_GM_DFLT_AMOLED		0x03
 #define QPNP_WLED_LOOP_EA_GM_MIN			0x0
 #define QPNP_WLED_LOOP_EA_GM_MAX			0xF
+#define QPNP_WLED_PSM_ENABLE				0x80
+#define QPNP_WLED_PSM_DISABLE				0x00
 #define QPNP_WLED_VREF_PSM_MASK				0xF8
 #define QPNP_WLED_VREF_PSM_STEP_MV			50
 #define QPNP_WLED_VREF_PSM_MIN_MV			400
@@ -268,6 +271,7 @@ static u8 qpnp_wled_sink_dbg_regs[] = {
  *  @ ibb_bias_active - activate display bias
  *  @ lab_fast_precharge - fast/slow precharge
  *  @ en_ext_pfet_sc_pro - enable sc protection on external pfet
+ *  @ en_amoled_psm - Enable Pulse skipping mode in AMOLED mode
  */
 struct qpnp_wled {
 	struct led_classdev	cdev;
@@ -306,6 +310,7 @@ struct qpnp_wled {
 	bool disp_type_amoled;
 	bool en_ext_pfet_sc_pro;
 	bool prev_state;
+	bool en_amoled_psm;
 };
 
 /* helper to read a pmic register */
@@ -864,6 +869,14 @@ static int qpnp_wled_set_disp(struct qpnp_wled *wled, u16 base_addr)
 				QPNP_WLED_PSM_CTRL_REG(wled->ctrl_base));
 		if (rc)
 			return rc;
+
+		/* PSM EN register for AMOLED */
+		if (wled->en_amoled_psm)
+			reg = QPNP_WLED_PSM_ENABLE;
+		else
+			reg = QPNP_WLED_PSM_DISABLE;
+		rc = qpnp_wled_write_reg(wled, &reg,
+					QPNP_WLED_PSM_EN_REG(wled->ctrl_base));
 
 		/* Configure the VLOOP COMP RES register for AMOLED */
 		if (wled->loop_comp_res_kohm < QPNP_WLED_LOOP_COMP_RES_MIN_KOHM)
@@ -1452,6 +1465,9 @@ static int qpnp_wled_parse_dt(struct qpnp_wled *wled)
 			dev_err(&spmi->dev, "Unable to read avdd trim steps from center value\n");
 			return rc;
 		}
+
+		wled->en_amoled_psm = of_property_read_bool(spmi->dev.of_node,
+				"qcom,enable-amoled-pulse-skipping");
 	}
 
 	wled->sc_deb_cycles = QPNP_WLED_SC_DEB_CYCLES_DFLT;
