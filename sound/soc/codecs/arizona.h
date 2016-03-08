@@ -81,6 +81,14 @@
 #define ARIZONA_SLIM2 5
 #define ARIZONA_SLIM3 6
 
+#define ARIZONA_DVFS_SR1_RQ 0x001
+#define ARIZONA_DVFS_SR2_RQ 0x002
+#define ARIZONA_DVFS_SR3_RQ 0x004
+#define ARIZONA_DVFS_ASR1_RQ    0x008
+#define ARIZONA_DVFS_ASR2_RQ    0x010
+#define ARIZONA_DVFS_ADSP1_RQ   0x100
+
+
 #define ARIZONA_SLIMCLK_384kHZ		384000
 #define ARIZONA_SLIMCLK_768kHZ		768000
 #define ARIZONA_SLIMCLK_1P536MHZ	1536000
@@ -112,6 +120,10 @@ struct arizona_priv {
 	unsigned int out_up_delay;
 	unsigned int out_down_pending;
 	unsigned int out_down_delay;
+
+	unsigned int dvfs_reqs;
+	struct mutex dvfs_lock;
+	bool dvfs_cached;
 };
 
 #define ARIZONA_NUM_MIXER_INPUTS 134
@@ -456,6 +468,14 @@ extern int arizona_set_fll_ao(struct arizona_fll *fll, int source,
 		    unsigned int fin, unsigned int fout);
 extern int arizona_get_fll(struct arizona_fll *fll, int *source,
 			   unsigned int *Fref, unsigned int *Fout);
+
+
+extern int arizona_dvfs_up(struct snd_soc_codec *codec, unsigned int flags);
+extern int arizona_dvfs_down(struct snd_soc_codec *codec, unsigned int flags);
+
+extern int arizona_dvfs_sysclk_ev(struct snd_soc_dapm_widget *w,
+			struct snd_kcontrol *kcontrol, int event);
+extern void arizona_init_dvfs(struct arizona_priv *priv);
 
 extern int arizona_init_spk(struct snd_soc_codec *codec);
 extern int arizona_init_gpio(struct snd_soc_codec *codec);
