@@ -83,6 +83,7 @@ unsigned char motosh_g_zmotion_dur;
 unsigned char motosh_g_control_reg[MOTOSH_CONTROL_REG_SIZE];
 unsigned char motosh_g_mag_cal[MOTOSH_MAG_CAL_SIZE];
 unsigned char motosh_g_gyro_cal[MOTOSH_GYRO_CAL_SIZE];
+unsigned char motosh_g_accel_cal[MOTOSH_ACCEL_CAL_SIZE];
 unsigned short motosh_g_control_reg_restore;
 unsigned char motosh_g_ir_config_reg[MOTOSH_IR_CONFIG_REG_SIZE];
 bool motosh_g_ir_config_reg_restore;
