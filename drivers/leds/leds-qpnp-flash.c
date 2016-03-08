@@ -1307,10 +1307,6 @@ static void qpnp_flash_led_work(struct work_struct *work)
 					led->current2_addr,
 					FLASH_CURRENT_MASK, val);
 
-			/* Set to 1280ms max duration to allow software to
-			   control the expiration */
-			flash_node->duration = 1280;
-
 			if (rc) {
 				dev_err(&led->spmi_dev->dev,
 					"Torch reg write failed\n");
@@ -1491,12 +1487,10 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			/* Enable HW strobe control for switch trigger,
 			   for main flash, not preflash.
 			   Leds will be on for the duration of
-			   flash_node->duration (safety timer).
-			   Set duration of strobe to be 70ms */
+			   flash_node->duration (safety timer). */
 			flash_node->trigger |= (FLASH_LED_HW_STROBE_SEL |
 						FLASH_LED_HW_STROBE_TRIG_EDGE |
 						FLASH_LED_HW_STROBE_ACT_HIGH);
-			flash_node->duration = 70;
 
 			val = (u8)(flash_node->prgm_current *
 				FLASH_MAX_LEVEL / flash_node->max_current);
