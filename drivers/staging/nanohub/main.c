@@ -210,8 +210,14 @@ static void nanohub_mask_interrupt(struct nanohub_data *data, uint8_t interrupt)
 	int cnt = 10;
 
 	do {
-		if (request_wakeup(data))
+		ret = request_wakeup_timeout(data, msecs_to_jiffies(1000));
+		if (ret) {
+			dev_err(data->sensor_dev,
+				"nanohub_mask_interrupt: request_wakeup_timeout: returned %d\n",
+				ret);
 			return;
+		}
+
 		ret =
 		    nanohub_comms_tx_rx_retrans(data, CMD_COMMS_MASK_INTR,
 						&interrupt, 1,
@@ -232,8 +238,14 @@ static void nanohub_unmask_interrupt(struct nanohub_data *data,
 	int cnt = 10;
 
 	do {
-		if (request_wakeup_timeout(data, msecs_to_jiffies(1000)))
+		ret = request_wakeup_timeout(data, msecs_to_jiffies(1000));
+		if (ret) {
+			dev_err(data->sensor_dev,
+				"nanohub_unmask_interrupt: request_wakeup_timeout: returned %d\n",
+				ret);
 			return;
+		}
+
 		ret =
 		    nanohub_comms_tx_rx_retrans(data, CMD_COMMS_UNMASK_INTR,
 						&interrupt, 1,
@@ -887,8 +899,14 @@ static int nanohub_kthread(void *arg)
 		init_wait(&wait);
 		atomic_set(&data->kthread_run, 0);
 		if (buf || atomic_read(&data->read_free_cnt) > 0) {
-			if (request_wakeup(data))
+			ret = request_wakeup_timeout(data,
+				msecs_to_jiffies(1000));
+			if (ret) {
+				dev_info(data->sensor_dev,
+					"nanohub_kthread: request_wakeup_timeout: returned %d\n",
+					ret);
 				continue;
+			}
 
 			if (buf == NULL
 			    && atomic_add_unless(&data->read_free_cnt, -1,
@@ -926,6 +944,7 @@ static int nanohub_kthread(void *arg)
 						dev_err(data->sensor_dev,
 							"nanohub_kthread: err_cnt=%d\n",
 							data->err_cnt);
+						set_current_state(TASK_INTERRUPTIBLE);
 						schedule_timeout
 						    (msecs_to_jiffies(1000));
 					}
