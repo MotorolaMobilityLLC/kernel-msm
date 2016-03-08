@@ -1206,12 +1206,6 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
-	mdss_dsi_panel_set_param(pdata,
-		PARAM_HBM_ID, HBM_OFF_STATE, true);
-
-	mdss_dsi_panel_set_param(pdata,
-		PARAM_ACL_ID, ACL_OFF_STATE, true);
-
 	if (pinfo->forced_tx_mode_ftr_enabled)
 		mdss_dsi_panel_forced_tx_mode_set(pinfo, false);
 
@@ -1402,8 +1396,8 @@ static struct panel_param_val_map acl_map[ACL_STATE_NUM] = {
 };
 
 static struct panel_param mdss_dsi_panel_param[PARAM_ID_NUM] = {
-	{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE, false},
-	{"ACL", acl_map, ACL_STATE_NUM, ACL_OFF_STATE, false},
+	{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE, HBM_OFF_STATE, false},
+	{"ACL", acl_map, ACL_STATE_NUM, ACL_OFF_STATE, ACL_OFF_STATE, false},
 };
 
 static int mdss_panel_parse_param_prop(struct device_node *np,
