@@ -14,6 +14,7 @@
 #include "msmtitanium-pinctrl.dtsi"
 #include "msm8953-moto-pinctrl.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "msm8953-camera-sensor-mot.dtsi"
 
 / {
 	aliases {
