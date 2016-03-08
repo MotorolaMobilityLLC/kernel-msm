@@ -926,10 +926,6 @@ end:
 	else
 		pr_info("%s[%d]-.\n", __func__, ctrl->ndx);
 
-	/* Default CABC mode is UI while turning on display */
-	mdss_dsi_panel_set_param(pdata,
-		PARAM_CABC_ID, CABC_UI_MODE, false);
-
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
@@ -1016,9 +1012,6 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
-	mdss_dsi_panel_set_param(pdata,
-		PARAM_HBM_ID, HBM_OFF_STATE, true);
-
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
@@ -1030,9 +1023,6 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	mdss_dsi_panel_off_in_prog_notify(pdata, pinfo);
 
 end:
-	mdss_dsi_panel_set_param(pdata,
-		PARAM_CABC_ID, CABC_OFF_MODE, false);
-
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
@@ -1183,8 +1173,8 @@ static struct panel_param_val_map cabc_map[CABC_MODE_NUM] = {
 };
 
 static struct panel_param mdss_dsi_panel_param[PARAM_ID_NUM] = {
-	{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE, false},
-	{"CABC", cabc_map, CABC_MODE_NUM, CABC_UI_MODE, false},
+	{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE, HBM_OFF_STATE, false},
+	{"CABC", cabc_map, CABC_MODE_NUM, CABC_UI_MODE, CABC_UI_MODE, false},
 };
 
 static int mdss_panel_parse_param_prop(struct device_node *np,
