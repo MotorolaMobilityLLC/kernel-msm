@@ -4467,9 +4467,11 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 				pr_err("couldn't 9V HVDCP continuing rc=%d\n",
 						rc);
 		}
-		power_supply_set_supply_type(chip->usb_psy,
-				POWER_SUPPLY_TYPE_USB_HVDCP);
-		smbchg_aicl_deglitch_wa_check(chip);
+		if (is_usb_present(chip)) {
+			power_supply_set_supply_type(chip->usb_psy,
+					POWER_SUPPLY_TYPE_USB_HVDCP);
+			smbchg_aicl_deglitch_wa_check(chip);
+		}
 	}
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	cancel_delayed_work(&chip->heartbeat_work);
