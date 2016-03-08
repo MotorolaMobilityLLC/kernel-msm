@@ -51,9 +51,9 @@ VMM_ENTRY(0x06, ELAPSED_RT,						FALSE,
 VMM_ENTRY(0x07, RESET_REASON,						FALSE,
 		&vmm_reset_reason,
 		sizeof(vmm_reset_reason))
-VMM_ENTRY(0x08, UNUSED_08,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x08, ACCEL_CAL,						TRUE,
+		&vmm_accel_cal,
+		sizeof(vmm_accel_cal))
 #ifdef PDISPLAY
 	VMM_ENTRY(0x09, PD_QUICK_PEEK,					FALSE,
 			pd_quick_peek,
@@ -290,9 +290,9 @@ VMM_ENTRY(0x3F, DOCKED_DATA,						FALSE,
 VMM_ENTRY(0x40, COVER_DATA,						FALSE,
 		&vmm_cover_data,
 		sizeof(vmm_cover_data))
-VMM_ENTRY(0x41, TEMPERATURE_DATA,					FALSE,
-		vmm_temperature_data,
-		sizeof(vmm_temperature_data))
+VMM_ENTRY(0x41, UNUSED_41,						FALSE,
+		0,
+		0)
 
 #ifdef GYRO_CALIBRATION
 	VMM_ENTRY(0x42, GYRO_CAL,					TRUE,
