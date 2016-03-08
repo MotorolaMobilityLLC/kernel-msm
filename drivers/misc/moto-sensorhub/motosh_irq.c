@@ -62,8 +62,6 @@ void motosh_irq_work_func(struct work_struct *work)
 	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
 	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
 
-	dev_dbg(&ps_motosh->client->dev, "motosh_irq_work_func\n");
-
 	if (ps_motosh->is_suspended)
 		return;
 
@@ -100,6 +98,9 @@ void motosh_irq_work_func(struct work_struct *work)
 	}
 	queue_length = readbuff[0];
 	irq_status = readbuff[1];
+
+	dev_dbg(&ps_motosh->client->dev,
+			"motosh_irq_work_func irq_status:%0X\n", irq_status);
 
 	/* process the irq status */
 	if (irq_status & N_DISP_ROTATE) {
@@ -175,6 +176,18 @@ void motosh_irq_work_func(struct work_struct *work)
 				readbuff[2], readbuff[3],
 				readbuff[4], readbuff[5]);
 		}
+	}
+	if (irq_status & N_UPDATE_ACCEL_CAL) {
+		motosh_as_data_buffer_write(
+			ps_motosh,
+			DT_ACCEL_CAL,
+			NULL,
+			0,
+			0,
+			false);
+
+		dev_info(&ps_motosh->client->dev,
+			"Save accel cal");
 	}
 
 	/* process the nwake queue */
@@ -352,15 +365,6 @@ void motosh_irq_work_func(struct work_struct *work)
 			}
 			queue_index += 1;
 		}
-			break;
-		case TEMPERATURE_DATA:
-			motosh_as_data_buffer_write(ps_motosh, DT_TEMP,
-						    data, 2, 0, false);
-
-			dev_dbg(&ps_motosh->client->dev,
-				"Sending temp(x)value:%d\n",
-				STM16_TO_HOST(data, TEMP_VALUE));
-			queue_index += 2;
 			break;
 		case PRESSURE_DATA:
 			dev_err(&ps_motosh->client->dev, "Invalid CURRENT_PRESSURE event\n");
