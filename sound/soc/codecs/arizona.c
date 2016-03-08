@@ -3559,6 +3559,133 @@ int arizona_anc_ev(struct snd_soc_dapm_widget *w,
 }
 EXPORT_SYMBOL_GPL(arizona_anc_ev);
 
+
+static int arizona_dvfs_enable(struct snd_soc_codec *codec)
+{
+	const struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
+	struct arizona *arizona = priv->arizona;
+	int ret;
+
+	ret = regulator_set_voltage(arizona->dcvdd, 1800000, 1800000);
+	if (ret) {
+		dev_err(codec->dev, "Failed to boost DCVDD: %d\n", ret);
+		return ret;
+	}
+	ret = regmap_update_bits(arizona->regmap,
+		ARIZONA_DYNAMIC_FREQUENCY_SCALING_1,
+		ARIZONA_SUBSYS_MAX_FREQ,
+		ARIZONA_SUBSYS_MAX_FREQ);
+	if (ret) {
+		dev_err(codec->dev, "Failed to enable subsys max: %d\n", ret);
+		regulator_set_voltage(arizona->dcvdd, 1200000, 1800000);
+		return ret;
+	}
+	return 0;
+}
+
+static int arizona_dvfs_disable(struct snd_soc_codec *codec)
+{
+	const struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
+	struct arizona *arizona = priv->arizona;
+	int ret;
+
+	ret = regmap_update_bits(arizona->regmap,
+		ARIZONA_DYNAMIC_FREQUENCY_SCALING_1,
+		ARIZONA_SUBSYS_MAX_FREQ, 0);
+	if (ret) {
+		dev_err(codec->dev, "Failed to disable subsys max: %d\n", ret);
+		return ret;
+	}
+
+	ret = regulator_set_voltage(arizona->dcvdd, 1200000, 1800000);
+	if (ret) {
+		dev_err(codec->dev, "Failed to unboost DCVDD: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+int arizona_dvfs_up(struct snd_soc_codec *codec, unsigned int flags)
+{
+	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
+
+	mutex_lock(&priv->dvfs_lock);
+
+	if (!priv->dvfs_cached && !priv->dvfs_reqs) {
+		ret = arizona_dvfs_enable(codec);
+		if (ret)
+			goto err;
+	}
+
+	priv->dvfs_reqs |= flags;
+err:
+	mutex_unlock(&priv->dvfs_lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(arizona_dvfs_up);
+
+int arizona_dvfs_down(struct snd_soc_codec *codec, unsigned int flags)
+{
+	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
+	unsigned int old_reqs;
+	int ret = 0;
+
+	mutex_lock(&priv->dvfs_lock);
+
+	old_reqs = priv->dvfs_reqs;
+	priv->dvfs_reqs &= ~flags;
+
+	if (!priv->dvfs_cached && old_reqs && !priv->dvfs_reqs)
+		ret = arizona_dvfs_disable(codec);
+
+	mutex_unlock(&priv->dvfs_lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(arizona_dvfs_down);
+
+int arizona_dvfs_sysclk_ev(struct snd_soc_dapm_widget *w,
+			struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
+
+	mutex_lock(&priv->dvfs_lock);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		if (priv->dvfs_reqs)
+			ret = arizona_dvfs_enable(codec);
+
+		priv->dvfs_cached = false;
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		/* We must ensure DVFS is disabled before the codec goes into
+		* suspend so that we are never in an illegal state of DVFS
+		* enabled without enough DCVDD
+		*/
+		priv->dvfs_cached = true;
+
+		if (priv->dvfs_reqs)
+			ret = arizona_dvfs_disable(codec);
+		break;
+	default:
+		break;
+	}
+
+	mutex_unlock(&priv->dvfs_lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(arizona_dvfs_sysclk_ev);
+
+void arizona_init_dvfs(struct arizona_priv *priv)
+{
+	mutex_init(&priv->dvfs_lock);
+}
+EXPORT_SYMBOL_GPL(arizona_init_dvfs);
+
 static unsigned int arizona_sysclk_48k_rates[] = {
 	6144000,
 	12288000,
@@ -4062,7 +4189,6 @@ int arizona_put_sample_rate_enum(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct arizona *arizona = dev_get_drvdata(codec->dev->parent);
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	unsigned int val;
 	unsigned int flag;
@@ -4092,11 +4218,11 @@ int arizona_put_sample_rate_enum(struct snd_kcontrol *kcontrol,
 	}
 
 	if (arizona_sr_vals[val] >= 88200) {
-		ret = arizona_dvfs_up(arizona, flag);
+		ret = arizona_dvfs_up(codec, flag);
 		if (ret != 0)
 			dev_err(codec->dev, "Failed to raise DVFS %d\n", ret);
 	} else {
-		ret = arizona_dvfs_down(arizona, flag);
+		ret = arizona_dvfs_down(codec, flag);
 	}
 
 	return ret;
@@ -4211,28 +4337,6 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 				snd_soc_write(codec, 0x4dd, 0x0);
 			snd_soc_write(codec, 0x80, 0x0);
 			mutex_unlock(&arizona->reg_setting_lock);
-		}
-		break;
-
-	default:
-		break;
-	}
-
-	switch (priv->arizona->type) {
-	case WM5102:
-	case WM8997:
-	case WM8998:
-	case WM1814:
-		if (arizona_sr_vals[sr_val] >= 88200)
-			ret = arizona_dvfs_up(priv->arizona,
-					      ARIZONA_DVFS_SR1_RQ);
-		else
-			ret = arizona_dvfs_down(priv->arizona,
-						ARIZONA_DVFS_SR1_RQ);
-
-		if (ret != 0) {
-			arizona_aif_err(dai, "Failed to change DVFS %d\n", ret);
-			return ret;
 		}
 		break;
 
