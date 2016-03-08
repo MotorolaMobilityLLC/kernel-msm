@@ -370,6 +370,14 @@ int motosh_reset_and_init(enum reset_mode mode)
 	if (err < 0)
 		ret_err = err;
 
+	rst_cmdbuff[0] = ACCEL_CAL;
+	memcpy(&rst_cmdbuff[1], motosh_g_accel_cal,
+		MOTOSH_ACCEL_CAL_SIZE);
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff,
+					MOTOSH_ACCEL_CAL_SIZE + 1);
+	if (err < 0)
+		ret_err = err;
+
 	if (motosh_g_ir_config_reg_restore) {
 		rst_cmdbuff[0] = IR_CONFIG;
 		memcpy(&rst_cmdbuff[1], motosh_g_ir_config_reg,
