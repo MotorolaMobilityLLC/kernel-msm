@@ -258,8 +258,13 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc backlight_cmd = {
-	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0, sizeof(led_pwm1)},
 	led_pwm1
+};
+static char led_pwm2[3] = {0x51, 0x0, 0x0};	/* DTYPE_DCS_LWRITE */
+static struct dsi_cmd_desc backlight_12bits_cmd = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(led_pwm2)},
+	led_pwm2
 };
 
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
@@ -275,10 +280,18 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 
 	pr_debug("%s: level=%d\n", __func__, level);
 
-	led_pwm1[1] = (unsigned char)level;
+	if (!pinfo->bklt_dcs_12bits_enabled)
+		led_pwm1[1] = (unsigned char)level;
+	else {
+		led_pwm2[1] = (unsigned char)((level&0xF00)>>8);
+		led_pwm2[2] = (unsigned char)(level&0xFF);
+	}
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = &backlight_cmd;
+	if (!pinfo->bklt_dcs_12bits_enabled)
+		cmdreq.cmds = &backlight_cmd;
+	else
+		cmdreq.cmds = &backlight_12bits_cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	cmdreq.rlen = 0;
@@ -1869,6 +1882,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 			ctrl_pdata->bklt_ctrl = BL_DCS_CMD;
 			pr_debug("%s: Configured DCS_CMD bklt ctrl\n",
 								__func__);
+			pinfo->bklt_dcs_12bits_enabled = of_property_read_bool(np,
+				"qcom,bklt-dcs-12bits-enabled");
 		}
 	}
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
