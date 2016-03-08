@@ -12,6 +12,7 @@
 
 #include "msm8916-moto-common.dtsi"
 #include "dsi-panel-mot-boe-499-720p-video.dtsi"
+#include "dsi-panel-mot-tianma-499-720p-video.dtsi"
 #include  "msm8916-harpia-dtv.dtsi"
 #include "msm8916-camera-sensor-harpia.dtsi"
 / {
