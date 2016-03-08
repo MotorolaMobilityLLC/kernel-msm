@@ -9,8 +9,8 @@ qcom,mdss-dsi-virtual-channel-id = <0>;
 qcom,mdss-dsi-stream = <0>;
 qcom,mdss-dsi-panel-width = <720>;
 qcom,mdss-dsi-panel-height = <1280>;
-qcom,mdss-pan-physical-width-dimension = <59>; /* TODO */
-qcom,mdss-pan-physical-height-dimension = <104>; /*TODO */
+qcom,mdss-pan-physical-width-dimension = <62>;
+qcom,mdss-pan-physical-height-dimension = <110>;
 
 qcom,mdss-dsi-panel-clockrate = <0>;
 qcom,mdss-dsi-h-front-porch = <52>;
