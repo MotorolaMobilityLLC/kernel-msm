@@ -115,6 +115,7 @@ enum vmm_ids {
 #define N_DISP_ROTATE           0x01
 #define N_ALS                   0x02
 #define N_DISP_BRIGHTNESS       0x04
+#define N_UPDATE_ACCEL_CAL	0x10
 #define N_STEP_COUNTER          0x80
 
 #define MOTOSH_MAX_EVENT_QUEUE_SIZE   248
@@ -218,7 +219,6 @@ enum vmm_ids {
 #define GYRO_UNCALIB_Y	8
 #define GYRO_UNCALIB_Z	10
 #define ALS_VALUE	0
-#define TEMP_VALUE	0
 #define PRESSURE_VALUE	0
 #define GRAV_X		0
 #define GRAV_Y		2
@@ -622,6 +622,7 @@ extern unsigned char motosh_g_zmotion_dur;
 extern unsigned char motosh_g_control_reg[MOTOSH_CONTROL_REG_SIZE];
 extern unsigned char motosh_g_mag_cal[MOTOSH_MAG_CAL_SIZE];
 extern unsigned char motosh_g_gyro_cal[MOTOSH_GYRO_CAL_SIZE];
+extern unsigned char motosh_g_accel_cal[MOTOSH_ACCEL_CAL_SIZE];
 extern unsigned short motosh_g_control_reg_restore;
 extern unsigned char motosh_g_ir_config_reg[MOTOSH_IR_CONFIG_REG_SIZE];
 extern bool motosh_g_ir_config_reg_restore;
