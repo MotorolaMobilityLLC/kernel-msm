@@ -886,9 +886,50 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		memcpy(motosh_g_gyro_cal, &cmdbuff[1],
 			MOTOSH_GYRO_CAL_SIZE);
 		cmdbuff[0] = GYRO_CAL;
-		if (ps_motosh->mode > BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE) {
 			err = motosh_i2c_write(ps_motosh, cmdbuff,
 				(MOTOSH_GYRO_CAL_SIZE + 1));
+			if (err < 0)
+				dev_err(&ps_motosh->client->dev,
+					"Writing set gyro cal failed\n");
+		}
+		break;
+	case MOTOSH_IOCTL_GET_ACCEL_CAL:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_ACCEL_CAL");
+		if (ps_motosh->mode > BOOTMODE) {
+			cmdbuff[0] = ACCEL_CAL;
+			err = motosh_i2c_write_read(ps_motosh, cmdbuff,
+					readbuff, 1, MOTOSH_ACCEL_CAL_SIZE);
+			if (err < 0) {
+				dev_err(&ps_motosh->client->dev,
+					"Reading get accel cal failed\n");
+				break;
+			}
+			memcpy(motosh_g_accel_cal, readbuff,
+					MOTOSH_ACCEL_CAL_SIZE);
+		}
+		if (copy_to_user(argp, motosh_g_accel_cal,
+					MOTOSH_ACCEL_CAL_SIZE))
+			err = -EFAULT;
+		break;
+	case MOTOSH_IOCTL_SET_ACCEL_CAL:
+		dev_dbg(&ps_motosh->client->dev,
+				"MOTOSH_IOCTL_SET_ACCEL_CAL");
+		if (copy_from_user(&cmdbuff[1], argp, MOTOSH_ACCEL_CAL_SIZE)) {
+			dev_err(&ps_motosh->client->dev,
+					"Copy set accel cal returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		memcpy(motosh_g_accel_cal, &cmdbuff[1], MOTOSH_ACCEL_CAL_SIZE);
+		cmdbuff[0] = ACCEL_CAL;
+		if (ps_motosh->mode > BOOTMODE) {
+			err = motosh_i2c_write(ps_motosh, cmdbuff,
+					(MOTOSH_ACCEL_CAL_SIZE + 1));
+			if (err < 0)
+				dev_err(&ps_motosh->client->dev,
+					"Writing set accel cal failed\n");
+		}
 		break;
 	case MOTOSH_IOCTL_SET_ALS_DELAY:
 		dev_dbg(&ps_motosh->client->dev,
