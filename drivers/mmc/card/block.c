@@ -4307,6 +4307,8 @@ static void mmc_blk_shutdown(struct mmc_card *card)
 		mmc_rpm_hold(card->host, &card->dev);
 		mmc_claim_host(card->host);
 		mmc_stop_bkops(card);
+		if (mmc_card_doing_auto_bkops(card))
+			mmc_set_auto_bkops(card, false);
 		mmc_release_host(card->host);
 		mmc_send_pon(card);
 		mmc_rpm_release(card->host, &card->dev);
