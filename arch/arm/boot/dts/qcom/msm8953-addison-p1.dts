@@ -48,3 +48,9 @@
 		};
 	};
 };
+
+&pmtitanium_gpios {
+	gpio@c100 {
+		status = "disabled";
+	};
+};
