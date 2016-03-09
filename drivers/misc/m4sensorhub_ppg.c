@@ -51,7 +51,7 @@ struct m4sensorhub_ppg_drvdata {
 	int num_buffered_samples;
 };
 
-#define DATA_SIZE_IN_BITS  (sizeof(struct m4sensorhub_ppg_iio_data) * 8)
+#define DATA_SIZE_IN_BITS  ((u8)(sizeof(struct m4sensorhub_ppg_iio_data) * 8))
 
 static const struct iio_chan_spec m4sensorhub_ppg_channels[] = {
 	{
@@ -94,13 +94,15 @@ static void m4_read_ppg_data_locked(struct m4sensorhub_ppg_drvdata *priv_data)
 
 	priv_data->read_data.type = PPG_TYPE_EVENT_DATA;
 
-	for (i = 0; i < priv_data->num_buffered_samples; i = i + 5) {
+	for (i = 0; i < priv_data->num_buffered_samples; i = i + 6) {
 		priv_data->read_data.event_data.raw_data1 = priv_data->data[i];
 		priv_data->read_data.event_data.raw_data2 =
 			priv_data->data[i+1];
-		priv_data->read_data.event_data.x = priv_data->data[i+2];
-		priv_data->read_data.event_data.y = priv_data->data[i+3];
-		priv_data->read_data.event_data.z = priv_data->data[i+4];
+		priv_data->read_data.event_data.calib =
+			priv_data->data[i+2];
+		priv_data->read_data.event_data.x = priv_data->data[i+3];
+		priv_data->read_data.event_data.y = priv_data->data[i+4];
+		priv_data->read_data.event_data.z = priv_data->data[i+5];
 
 		priv_data->read_data.timestamp =
 			ktime_to_ns(ktime_get_boottime());
