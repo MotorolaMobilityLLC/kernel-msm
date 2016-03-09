@@ -390,6 +390,7 @@ struct smbchg_chip {
 	bool				fg_ready;
 	int				cl_ebchg;
 	int				cl_usb;
+	atomic_t			hb_ready;
 };
 
 static struct smbchg_chip *the_chip;
@@ -8983,6 +8984,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int pmi_max_chrg_ma;
 	bool bsw_chrg_alarm;
 
+	if (!atomic_read(&chip->hb_ready))
+		return;
+
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	if (smbchg_check_and_kick_aicl(chip) || chip->bsw_ramping ||
 	    !smbchg_fg_ready(chip))
@@ -9487,6 +9491,9 @@ static int smbchg_reboot(struct notifier_block *nb,
 		return NOTIFY_DONE;
 	}
 
+	atomic_set(&chip->hb_ready, 0);
+	cancel_delayed_work_sync(&chip->heartbeat_work);
+
 	if (chip->factory_mode) {
 		switch (event) {
 		case SYS_POWER_OFF:
@@ -9933,6 +9940,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	schedule_delayed_work(&chip->heartbeat_work,
 			      msecs_to_jiffies(0));
+	atomic_set(&chip->hb_ready, 1);
+
 	SMB_INFO(chip,
 		"SMBCHG successfully probe Charger version=%s Revision DIG:%d.%d ANA:%d.%d batt=%d dc=%d usb=%d\n",
 			version_str[chip->schg_version],
