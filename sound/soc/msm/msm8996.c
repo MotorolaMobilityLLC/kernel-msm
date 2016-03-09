@@ -102,6 +102,9 @@ static int hdmi_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int msm_tert_mi2s_tx_ch = 2;
 
 static bool codec_reg_done;
+static bool florida_disable_fll = true;
+static bool florida_slim_playback;
+
 
 static const char *const hifi_function[] = {"Off", "On"};
 static const char *const pin_states[] = {"Disable", "active"};
@@ -513,30 +516,38 @@ static int msm8996_mclk_event(struct snd_soc_dapm_widget *w,
 	pr_debug("%s: event = %d\n", __func__, event);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		florida_slim_playback = true;
+		break;
+	case SND_SOC_DAPM_POST_PMU:
 #ifdef CONFIG_SND_SOC_FLORIDA
 		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
-			ARIZONA_FLL_SRC_SLIMCLK, FLORIDA_SLIMCLK_RATE,
-			FLORIDA_SYSCLK_RATE);
+			ARIZONA_FLL_SRC_SLIMCLK, 1536000, FLORIDA_SYSCLK_RATE);
 		if (ret != 0)
-			dev_err(w->codec->dev, "set PLL clk failed\n");
+			dev_err(w->codec->dev, "set PLL clk failed %d\n", ret);
 
 		break;
 #else
 		return msm_snd_enable_codec_ext_clk(w->codec, 1, true);
 #endif
-	case SND_SOC_DAPM_POST_PMD:
+	case SND_SOC_DAPM_PRE_PMD:
 #ifdef CONFIG_SND_SOC_FLORIDA
-		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
-			ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
+		florida_slim_playback = false;
+		if (!florida_disable_fll)
+			ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
+				ARIZONA_FLL_SRC_MCLK2, 32768,
+				FLORIDA_SYSCLK_RATE);
 		if (ret != 0)
-			dev_err(w->codec->dev, "set PLL clk failed\n");
-
+			dev_err(w->codec->dev, "set PLL clk failed %d\n", ret);
 		break;
 #else
 		return msm_snd_enable_codec_ext_clk(w->codec, 0, true);
 #endif
+	default:
+		dev_err(w->codec->dev, "Invalid Event %d\n", event);
+		ret = -EINVAL;
+
 	}
-	return 0;
+	return ret;
 }
 
 static int msm_snd_enable_codec_ext_tx_clk(struct snd_soc_codec *codec,
@@ -606,10 +617,45 @@ err:
 	return ret;
 }
 
+static int msm8996_dsp_event(struct snd_soc_dapm_widget *w,
+				 struct snd_kcontrol *kcontrol, int event)
+{
+	int ret = 0;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		florida_disable_fll = false;
+		if (florida_slim_playback)
+			break;
+
+		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
+			ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
+		if (ret != 0)
+			dev_err(w->codec->dev, "set PLL clk failed\n");
+
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		florida_disable_fll = true;
+		if (florida_slim_playback)
+			break;
+
+		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
+			ARIZONA_FLL_SRC_NONE, 0, 0);
+		if (ret != 0)
+			dev_err(w->codec->dev, "set PLL clk failed\n");
+
+		break;
+	}
+	return ret;
+}
 static const struct snd_soc_dapm_widget msm8996_dapm_widgets[] = {
 
 	SND_SOC_DAPM_SUPPLY("MCLK",  SND_SOC_NOPM, 0, 0,
-	msm8996_mclk_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	msm8996_mclk_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU
+				| SND_SOC_DAPM_PRE_PMD),
+
+	SND_SOC_DAPM_SUPPLY("DSPSWITCH",  SND_SOC_NOPM, 0, 0,
+	msm8996_dsp_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_SUPPLY("MCLK TX",  SND_SOC_NOPM, 0, 0,
 	msm8996_mclk_tx_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
@@ -651,8 +697,6 @@ static struct snd_soc_dapm_route wcd9335_audio_paths[] = {
 
 #ifdef CONFIG_SND_SOC_FLORIDA
 static const struct snd_soc_dapm_route florida_audio_routes[] = {
-
-
 	{"Slim1 Playback", NULL, "MCLK"},
 	{"Slim1 Capture", NULL, "MCLK"},
 	{"Slim2 Playback", NULL, "MCLK"},
@@ -669,6 +713,9 @@ static const struct snd_soc_dapm_route florida_audio_routes[] = {
 	{"AMP Playback", NULL, "AIF1 Capture"},
 	{"AIF1 Playback", NULL, "AMP Capture"},
 	{"AMP Playback", NULL, "OPCLK"},
+
+	{"DSP2 Virtual Output", NULL, "DSPSWITCH"},
+	{"DSP3 Virtual Output", NULL, "DSPSWITCH"},
 };
 #endif
 
@@ -2197,12 +2244,6 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 	dev_crit(codec->dev, "florida_dai_init first BE dai initing ...\n");
 
 	aov_trigger_init(codec);
-	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1_REFCLK,
-					ARIZONA_FLL_SRC_NONE,
-					0, 0);
-
-	if (ret != 0)
-		dev_err(codec->dev, "Failed to set FLL1REFCLK\n");
 
 	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1,
 		ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
@@ -3977,6 +4018,71 @@ static int msm8996_wsa881x_init(struct snd_soc_component *component)
 }
 #endif
 
+static int msm8996_set_bias_level(struct snd_soc_card *card,
+				struct snd_soc_dapm_context *dapm,
+				enum snd_soc_bias_level level)
+{
+	struct snd_soc_dai *codec_dai = card->rtd[43].codec_dai;
+	struct snd_soc_codec *codec = card->rtd[43].codec;
+	int ret = 0;
+
+	if (dapm->dev != codec_dai->dev)
+		return 0;
+
+	switch (level) {
+	case SND_SOC_BIAS_PREPARE:
+		if (dapm->bias_level != SND_SOC_BIAS_STANDBY)
+			break;
+
+		ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1,
+			ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
+		if (ret != 0) {
+			dev_err(dapm->dev, "%s ERROR: %d\n",
+			 __func__, ret);
+			return ret;
+		}
+		break;
+	default:
+		break;
+	}
+	dapm->bias_level = level;
+	return 0;
+}
+
+static int msm8996_set_bias_level_post(struct snd_soc_card *card,
+				struct snd_soc_dapm_context *dapm,
+				enum snd_soc_bias_level level)
+{
+	struct snd_soc_dai *codec_dai = card->rtd[43].codec_dai;
+	struct snd_soc_codec *codec = card->rtd[43].codec;
+	int ret = 0;
+
+	if (dapm->dev != codec_dai->dev)
+		return 0;
+
+	switch (level) {
+	case SND_SOC_BIAS_STANDBY:
+		if (florida_disable_fll)
+			ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1,
+				ARIZONA_FLL_SRC_NONE, 0, 0);
+		else
+			ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1,
+				ARIZONA_FLL_SRC_MCLK2, 32768,
+				FLORIDA_SYSCLK_RATE);
+
+			if (ret != 0) {
+				dev_err(dapm->dev, "%s ERROR: %d\n",
+				 __func__, ret);
+				return ret;
+			}
+		break;
+	default:
+		break;
+	}
+	dapm->bias_level = level;
+	return 0;
+}
+
 struct snd_soc_card snd_soc_card_tasha_msm8996 = {
 	.name		= "msm8996-tasha-snd-card",
 };
@@ -3984,6 +4090,8 @@ struct snd_soc_card snd_soc_card_tasha_msm8996 = {
 #ifdef CONFIG_SND_SOC_FLORIDA
 struct snd_soc_card snd_soc_card_florida_msm8996 = {
 	.name		= "msm8996-florida-snd-card",
+	.set_bias_level = msm8996_set_bias_level,
+	.set_bias_level_post = msm8996_set_bias_level_post,
 };
 #endif
 
