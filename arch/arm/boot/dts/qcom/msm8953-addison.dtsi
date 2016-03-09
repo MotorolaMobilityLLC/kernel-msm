@@ -63,15 +63,6 @@
 		enable-active-high;
 		regulator-boot-on;
 	};
-
-	avdd_disp_vreg: avdd_disp_vreg {
-		compatible = "regulator-fixed";
-		regulator-name = "avdd_disp";
-		gpio = <&pmi8950_mpps 3 0>;
-		startup-delay-us = <300>;
-		regulator-boot-on;
-		regulator-always-on;
-	};
 };
 
 &pmx_mdss {
@@ -126,7 +117,7 @@
 		qcom,mode = <1>;		/* Digital output */
 		qcom,output-type = <0>;		/* CMOS logic */
 		qcom,vin-sel = <0>;
-		qcom,src-sel = <0>;		/* Constant */
+		qcom,src-sel = <5>;		/* DTEST2 */
 		qcom,master-en = <1>;		/* Enable GPIO */
 		qcom,invert = <0>;
 		status = "okay";
