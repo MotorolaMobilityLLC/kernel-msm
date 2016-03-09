@@ -1359,7 +1359,7 @@ static int goodix_power_on(struct goodix_ts_data *ts)
 				"Enable power gpio failed ret=%d\n", ret);
 			goto err_set_vtg_vcc_i2c;
 		}
-		udelay(2);
+		msleep(20);
 	}
 
 	if (!IS_ERR(ts->vcc_i2c)) {
@@ -2344,6 +2344,7 @@ static int goodix_ts_suspend(struct device *dev)
 	mutex_unlock(&ts->lock);
 	ts->gtp_is_suspend = 1;
 
+	pr_warn("%s: finished\n", __func__);
 	return ret;
 }
 
@@ -2383,6 +2384,7 @@ static int goodix_ts_resume(struct device *dev)
 	mutex_unlock(&ts->lock);
 	ts->gtp_is_suspend = 0;
 
+	pr_warn("%s: finished\n", __func__);
 	return ret;
 }
 
