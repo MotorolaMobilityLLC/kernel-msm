@@ -4476,7 +4476,8 @@ static int android_reboot_notifier(struct notifier_block *nb,
 	struct android_dev *dev =
 		container_of(nb, struct android_dev, android_reboot);
 	pr_err("Android reboot  - de-enumerate\n");
-	android_disable(dev);
+	if (event == SYS_POWER_OFF)
+		usb_gadget_disconnect(dev->cdev->gadget);
 	return NOTIFY_DONE;
 }
 
