@@ -29,6 +29,7 @@ enum m4sensorhub_ppg_iio_type {
 struct m4sensorhub_ppg_event_data {
 	int32_t raw_data1;
 	int32_t raw_data2;
+	uint32_t calib;
 	int32_t x;
 	int32_t y;
 	int32_t z;
