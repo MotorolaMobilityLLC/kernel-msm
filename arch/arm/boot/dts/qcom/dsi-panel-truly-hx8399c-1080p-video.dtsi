@@ -53,7 +53,7 @@
 			39 01 00 00 00 00 04
 			B9 FF 83 99
 			39 01 00 00 00 00 10
-			B1 02 04 6C 8C 01 32
+			B1 00 04 6C 8C 01 32
 			22 11 11 58 62 56 73
 			02 02
 			39 01 00 00 00 00 0c
@@ -159,14 +159,20 @@
 			34 00
 			05 01 00 00 78 00 02
 			11 00
+			39 01 00 00 00 00 02
+			D0 39
 			05 01 00 00 00 00 02
 			29 00
 		];
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 32 00 02
 			28 00
-			05 01 00 00 10 00 02
+			05 01 00 00 64 00 02
 			10 00
+			39 01 00 00 00 00 04
+			B9 ff 83 99
+			39 01 00 00 00 00 02
+			b1 01
 		];
 
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
@@ -177,10 +183,10 @@
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 
-		qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 02 09 08];
+		qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 02 D0 08];
 		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
-		qcom,mdss-dsi-panel-status-check-mode = "reg_read";
-		qcom,mdss-dsi-panel-status-value = <0x80 0x73 0x04>;
+		qcom,mdss-dsi-panel-status-check-mode = "reg_read_hx8399";
+		qcom,mdss-dsi-panel-status-value = <0x39 0xc7 0x7b>;
 		qcom,mdss-dsi-panel-status-read-length = <3>;
 		qcom,esd-check-enabled;
 	};
