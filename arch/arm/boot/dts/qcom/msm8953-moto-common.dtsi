@@ -644,6 +644,20 @@
 };
 
 &pmtitanium_gpios {
+	gpio@c100 {
+		status = "okay";
+		qcom,mode = <1>; /* Digital output */
+		qcom,output-type = <0>; /* CMOS logic */
+		qcom,pull = <5>; /* From QC */
+		qcom,invert = <0>; /* Output low initially */
+		qcom,vin-sel = <3>; /* VIN 3 */
+		qcom,src-sel = <0x6>; /* DTEST3 */
+		qcom,out-strength = <2>; /* Medium */
+		qcom,master-en = <1>; /* Enable GPIO */
+		reg = <0xc100 0x100>;
+		qcom,pin-num = <2>;
+	};
+
 	gpio@c400 {
 		qcom,mode = <0>;		/* Digital Input */
 		qcom,pull = <5>;		/* No pull  */
