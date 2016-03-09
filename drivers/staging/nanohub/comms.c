@@ -23,6 +23,9 @@
 #include "main.h"
 #include "comms.h"
 
+#define READ_ACK_TIMEOUT_MS	10
+#define READ_MSG_TIMEOUT_MS	70
+
 static const uint32_t crc_table[] = {
 	0x00000000, 0x04C11DB7, 0x09823B6E, 0x0D4326D9,
 	0x130476DC, 0x17C56B6B, 0x1A864DB2, 0x1E475005,
@@ -154,8 +157,9 @@ static int read_ack(struct nanohub_data *data, struct nanohub_packet *response,
 	int ret, i;
 	const int max_size = sizeof(struct nanohub_packet) + MAX_UINT8 +
 	    sizeof(struct nanohub_packet_crc);
+	unsigned long end = jiffies + msecs_to_jiffies(READ_ACK_TIMEOUT_MS);
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; time_before(jiffies, end); i++) {
 		ret =
 		    data->comms.read(data, (uint8_t *) response, max_size,
 				     timeout);
@@ -167,7 +171,6 @@ static int read_ack(struct nanohub_data *data, struct nanohub_packet *response,
 		} else if (ret < sizeof(struct nanohub_packet)) {
 			pr_debug("nanohub: read_ack: %d: too small\n", i);
 			ret = ERROR_NACK;
-			i--;
 			continue;
 		} else if (ret <
 			   sizeof(struct nanohub_packet) + response->len +
@@ -175,7 +178,6 @@ static int read_ack(struct nanohub_data *data, struct nanohub_packet *response,
 			pr_debug("nanohub: read_ack: %d: too small length\n",
 				 i);
 			ret = ERROR_NACK;
-			i--;
 			continue;
 		} else if (ret !=
 			   sizeof(struct nanohub_packet) + response->len +
@@ -201,8 +203,9 @@ static int read_msg(struct nanohub_data *data, struct nanohub_packet *response,
 	int ret, i;
 	const int max_size = sizeof(struct nanohub_packet) + MAX_UINT8 +
 	    sizeof(struct nanohub_packet_crc);
+	unsigned long end = jiffies + msecs_to_jiffies(READ_MSG_TIMEOUT_MS);
 
-	for (i = 0; i < 16; i++) {
+	for (i = 0; time_before(jiffies, end); i++) {
 		ret =
 		    data->comms.read(data, (uint8_t *) response, max_size,
 				     timeout);
@@ -214,7 +217,6 @@ static int read_msg(struct nanohub_data *data, struct nanohub_packet *response,
 		} else if (ret < sizeof(struct nanohub_packet)) {
 			pr_debug("nanohub: read_msg: %d: too small\n", i);
 			ret = ERROR_NACK;
-			i--;
 			continue;
 		} else if (ret <
 			   sizeof(struct nanohub_packet) + response->len +
@@ -222,7 +224,6 @@ static int read_msg(struct nanohub_data *data, struct nanohub_packet *response,
 			pr_debug("nanohub: read_msg: %d: too small length\n",
 				 i);
 			ret = ERROR_NACK;
-			i--;
 			continue;
 		} else if (ret !=
 			   sizeof(struct nanohub_packet) + response->len +
