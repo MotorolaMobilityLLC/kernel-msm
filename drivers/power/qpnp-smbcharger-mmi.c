@@ -1161,7 +1161,8 @@ static int get_property_from_fg(struct smbchg_chip *chip,
 		enum power_supply_property prop, int *val)
 {
 	int rc;
-	union power_supply_propval ret = {0, };
+	union power_supply_propval retmax = {-EINVAL, };
+	union power_supply_propval retbms = {0, };
 
 	if (!chip->bms_psy && chip->bms_psy_name)
 		chip->bms_psy =
@@ -1178,25 +1179,38 @@ static int get_property_from_fg(struct smbchg_chip *chip,
 		if (prop == POWER_SUPPLY_PROP_CHARGE_NOW_RAW)
 			prop = POWER_SUPPLY_PROP_CHARGE_COUNTER;
 
-		rc = chip->max_psy->get_property(chip->max_psy, prop, &ret);
-		if (rc == 0) {
-			*val = ret.intval;
+		rc = chip->max_psy->get_property(chip->max_psy, prop, &retmax);
+		if (rc) {
+			SMB_DBG(chip,
+				"max psy doesn't support prop %d rc = %d\n",
+				prop, rc);
+			goto exit_prop_fg;
+		} else if (prop == POWER_SUPPLY_PROP_CURRENT_NOW)
 			/* current now polarity is flipped on max17050 */
-			if (prop == POWER_SUPPLY_PROP_CURRENT_NOW)
-			    *val *= -1;
-			return rc;
+			retmax.intval *= -1;
+		if (prop != POWER_SUPPLY_PROP_CAPACITY) {
+			*val = retmax.intval;
+			goto exit_prop_fg;
 		}
 	}
 
-	rc = chip->bms_psy->get_property(chip->bms_psy, prop, &ret);
+	rc = chip->bms_psy->get_property(chip->bms_psy, prop, &retbms);
 	if (rc) {
 		SMB_DBG(chip,
 			"bms psy doesn't support reading prop %d rc = %d\n",
 			prop, rc);
-		return rc;
+		goto exit_prop_fg;
 	}
 
-	*val = ret.intval;
+	/* Send 0% if either PMI or MAX reports 0% */
+	if ((prop == POWER_SUPPLY_PROP_CAPACITY) &&
+	    ((retbms.intval == 0) || (retmax.intval == 0)))
+		*val = 0;
+	else
+		*val = retbms.intval;
+
+exit_prop_fg:
+
 	return rc;
 }
 
