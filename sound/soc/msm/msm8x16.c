@@ -1690,6 +1690,9 @@ static int msm_audrx_init_wcd(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_card *card;
+	struct snd_info_entry *entry;
+	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(rtd->card);
 	int ret = 0;
 
 	pr_debug("%s: dev_name%s\n", __func__, dev_name(cpu_dai->dev));
@@ -1721,6 +1724,20 @@ static int msm_audrx_init_wcd(struct snd_soc_pcm_runtime *rtd)
 		ret = tasha_mbhc_hs_detect(codec, &wcd_mbhc_cfg);
 	else
 		ret = -ENOMEM;
+
+	card = rtd->card->snd_card;
+	entry = snd_register_module_info(card->module,
+						"codecs",
+						card->proc_root);
+	if (!entry) {
+		pr_debug("%s: Cannot create codecs module entry\n",
+			__func__);
+		return 0;
+	}
+	pdata->codec_root = entry;
+	tasha_codec_info_create_codec_entry(pdata->codec_root,
+							codec);
+
 	return ret;
 }
 
