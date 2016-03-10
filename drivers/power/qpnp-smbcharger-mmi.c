@@ -9253,7 +9253,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				smbchg_set_extbat_state(chip, EB_OFF);
 			} else if (batt_soc >= eb_max_soc) {
 				chip->eb_hotplug = false;
-				if (eb_max_soc < 100)
+				if ((eb_max_soc < 100) || (eb_min_soc < 99))
 					smbchg_set_extbat_state(chip, EB_OFF);
 				else
 					smbchg_charging_en(chip, 0);
