@@ -22,6 +22,7 @@
 		i2c4 = &i2c_4;
 		spi1 = &spi_1;
 		spi6 = &spi_6;
+		spi8 = &spi_8;
 		uart5 = &blsp2_uart1;
 		/delete-property/ spi3;
 		/delete-property/ i2c5;
@@ -319,6 +320,42 @@
 				0x00002000 0x0000f000 /* MIF1SCLK  / GPIO16 */
 			>;
 
+		};
+	};
+
+	spi_8: spi@7af8000 { /* BLSP2 QUP3 */
+		compatible = "qcom,spi-qup-v2";
+		status = "ok";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical";
+		reg = <0x07af8000 0x600>;
+		interrupt-names = "spi_irq";
+		interrupts = <0 302 0>;
+		spi-max-frequency = <19200000>;
+
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_8_active>;
+		pinctrl-1 = <&spi_8_sleep>;
+		qcom,infinite-mode = <0>;
+		qcom,master-id = <84>;
+		qcom,use-pinctrl;
+
+		fpc_fpc1020@0{
+			compatible = "fpc,fpc1020";
+			status = "ok";
+			reg = <0>;
+			interrupts = <42 0x0>;
+			spi-max-frequency = <4800000>;
+			fpc,gpio_irq = <&tlmm 42 0>;
+			fpc,gpio_rst = <&tlmm 47 0>;
+			fpc,txout_boost_enable;
+			vcc_spi-supply = <&pmtitanium_s3>;
+			vcc_ana-supply = <&pmtitanium_l6>;
+			vcc_io-supply  = <&pmtitanium_l6>;
+			clock-names = "iface_clk", "core_clk";
+			clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup4_spi_apps_clk>;
 		};
 	};
 
