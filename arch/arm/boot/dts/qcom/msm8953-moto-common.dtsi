@@ -852,3 +852,12 @@
 		label = "msm_therm";
 	};
 };
+
+&slim_msm {
+	status = "ok";
+	/delete-node/ tasha_codec;
+	marley-codec {
+		compatible = "cirrus,marley-slim-audio";
+		elemental-addr = [00 7F 60 63 FA 01];
+	};
+};
