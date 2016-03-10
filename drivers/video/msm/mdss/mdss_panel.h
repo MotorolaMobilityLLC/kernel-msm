@@ -775,7 +775,6 @@ struct mdss_panel_info {
 	u32 forced_tx_mode_ftr_enabled;
 	u32 forced_tx_mode_state;
 	bool opr_stats_enabled;
-	bool is_mod_panel;
 };
 
 struct mdss_panel_timing {
