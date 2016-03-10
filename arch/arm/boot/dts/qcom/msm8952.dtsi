@@ -96,11 +96,11 @@
                         label = "adsp_mem";
                 };
 
-                ramoops_mem: ramoops_region@0x9ff00000 {
+                ramoops_mem: ramoops_region@0xdffc0000 {
                         linux,reserve-contiguous-region;
                         linux,reserve-region;
                         linux,remove-completely;
-                        reg = <0x0 0x9ff00000 0x0 0x40000>;
+                        reg = <0x0 0xdffc0000 0x0 0x40000>;
                         label = "ramoops_mem";
                 };
 	};
@@ -2357,7 +2357,7 @@
                 compatible = "ramoops";
                 status = "okay";
 
-                android,ramoops-buffer-start = <0x9ff00000>;
+                android,ramoops-buffer-start = <0xdffc0000>;
                 android,ramoops-buffer-size =  <0x40000>;
                 android,ramoops-console-size = <0x10000>;
                 android,ramoops-record-size = <0x10000>;
