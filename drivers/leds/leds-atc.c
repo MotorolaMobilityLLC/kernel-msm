@@ -22,9 +22,10 @@
 #include <linux/of_device.h>
 #include <linux/spmi.h>
 
-#define FORCE_SW_MASK	0x05
-#define FORCE_ON	0x05
-#define FORCE_OFF	0x01
+#define LED_CFG_MASK	0x06
+#define LED_CFG_SHIFT   1
+#define LED_ON		0x03
+#define LED_OFF		0x00
 
 /**
  * @led_classdev - led class device
@@ -68,8 +69,12 @@ static void atc_led_set(struct led_classdev *led_cdev,
 	struct atc_led_data *led;
 
 	led = container_of(led_cdev, struct atc_led_data, cdev);
-	val = (led->cdev.brightness) ? 1 : 0;
-	spmi_masked_write(led, led->addr, FORCE_SW_MASK, val ? FORCE_ON : FORCE_OFF);
+
+	if (value > LED_ON)
+		value = LED_ON;
+
+	val = value << LED_CFG_SHIFT;
+	spmi_masked_write(led, led->addr, LED_CFG_MASK, val);
 	led->cdev.brightness = value;
 }
 
@@ -85,6 +90,7 @@ static int atc_leds_probe(struct spmi_device *spmi)
 	struct device_node *node;
 	u32 offset;
 	int rc;
+	u8 reg;
 
 	node = spmi->dev.of_node;
 	if (node == NULL)
@@ -120,9 +126,17 @@ static int atc_leds_probe(struct spmi_device *spmi)
 		return -ENODEV;
 	}
 
+	rc = spmi_ext_register_readl(led->spmi_dev->ctrl, led->spmi_dev->sid,
+			led->addr, &reg, 1);
+	if (rc)
+		dev_err(&led->spmi_dev->dev,
+			"Unable to read from addr=%#x, rc(%d)\n",
+			led->addr, rc);
+
 	led->cdev.brightness_set = atc_led_set;
 	led->cdev.brightness_get = atc_led_get;
-	led->cdev.brightness = LED_OFF;
+	led->cdev.brightness = (reg & LED_CFG_MASK) >> LED_CFG_SHIFT;
+	led->cdev.max_brightness = LED_ON;
 
 	rc = led_classdev_register(&spmi->dev, &led->cdev);
 	if (rc) {
