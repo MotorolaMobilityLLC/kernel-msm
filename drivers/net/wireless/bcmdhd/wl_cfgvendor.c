@@ -785,6 +785,7 @@ static int wl_cfgvendor_epno_cfg(struct wiphy *wiphy,
 				break;
 			case GSCAN_ATTRIBUTE_EPNO_SECURE_BONUS:
 				params.secure_bonus = nla_get_s16(iter);
+				break;
 			case GSCAN_ATTRIBUTE_EPNO_5G_BONUS:
 				params.band_5g_bonus = nla_get_s16(iter);
 				break;
