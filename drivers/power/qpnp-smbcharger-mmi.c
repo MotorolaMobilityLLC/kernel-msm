@@ -1213,31 +1213,31 @@ static bool smbchg_fg_ready(struct smbchg_chip *chip)
 		chip->bms_psy =
 			power_supply_get_by_name((char *)chip->bms_psy_name);
 	if (!chip->bms_psy) {
-		dev_warn(chip->dev, "no bms psy found\n");
+		SMB_WARN(chip, "no bms psy found\n");
 		return fg_ready;
 	}
 
 	rc = chip->bms_psy->get_property(chip->bms_psy,
 					 POWER_SUPPLY_PROP_BATTERY_TYPE, &ret);
 	if (rc) {
-		dev_warn(chip->dev,
+		SMB_WARN(chip,
 			 "bms psy doesn't support reading type rc = %d\n",
 			 rc);
 		return fg_ready;
 	}
 
-	dev_warn(chip->dev, "SMBCHG: FG Status: %s\n", ret.strval);
+	SMB_WARN(chip, "SMBCHG: FG Status: %s\n", ret.strval);
 
 	if (!strncmp(ret.strval, "Loading", 7) ||
 	    !strncmp(ret.strval, "Unknown", 7)) {
-		dev_warn(chip->dev, "SMBCHG: FG Status: Not Ready!\n");
+		SMB_WARN(chip, "SMBCHG: FG Status: Not Ready!\n");
 		fg_ready = false;
 	}
 
 	chip->fg_ready = fg_ready;
 
 	if (chip->fg_ready)
-		dev_warn(chip->dev, "SMBCHG: FG Status: Lets Charge!\n");
+		SMB_WARN(chip, "SMBCHG: FG Status: Lets Charge!\n");
 
 	return fg_ready;
 }
@@ -3789,12 +3789,12 @@ static void smbchg_set_extbat_cl(struct smbchg_chip *chip)
 
 	ret.intval = chip->cl_ebchg * 1000;
 
-	dev_dbg(chip->dev, "Set EB Current %d uA\n", ret.intval);
+	SMB_DBG(chip, "Set EB Current %d uA\n", ret.intval);
 	rc = eb_pwr_psy->set_property(eb_pwr_psy,
 				      POWER_SUPPLY_PROP_PTP_MAX_INPUT_CURRENT,
 				      &ret);
 	if (rc)
-		dev_err(chip->dev, "Failed to set EB Input Current %d mA",
+		SMB_ERR(chip, "Failed to set EB Input Current %d mA",
 			ret.intval / 1000);
 
 	power_supply_put(eb_pwr_psy);
@@ -4352,7 +4352,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 			       POWER_SUPPLY_PROP_AUTHENTIC,
 			       &prop);
 	if (rc < 0) {
-		dev_err(chip->dev,
+		SMB_ERR(chip,
 			"couldn't read USBC authentic rc=%d\n", rc);
 		return NOTIFY_DONE;
 	}
@@ -6932,10 +6932,10 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	dt_map = of_get_property(node, "qcom,step-chg-steps",
 					&chip->stepchg_num_steps);
 	if ((!dt_map) || (chip->stepchg_num_steps <= 0))
-		dev_err(chip->dev, "No Charge steps defined\n");
+		SMB_ERR(chip, "No Charge steps defined\n");
 	else {
 		chip->stepchg_num_steps /= 3 * sizeof(uint32_t);
-		dev_err(chip->dev, "length=%d\n", chip->stepchg_num_steps);
+		SMB_ERR(chip, "length=%d\n", chip->stepchg_num_steps);
 		if (chip->stepchg_num_steps > MAX_NUM_STEPS)
 			chip->stepchg_num_steps = MAX_NUM_STEPS;
 
@@ -6945,7 +6945,7 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 				      chip->stepchg_num_steps),
 				     GFP_KERNEL);
 		if (chip->stepchg_steps == NULL) {
-			dev_err(chip->dev,
+			SMB_ERR(chip,
 			 "Failed to kzalloc memory for Charge steps\n");
 			return -ENOMEM;
 		}
@@ -6956,14 +6956,14 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					      chip->stepchg_num_steps);
 
 		if (chip->stepchg_num_steps <= 0) {
-			dev_err(chip->dev,
+			SMB_ERR(chip,
 			"Couldn't read stepchg steps rc = %d\n", rc);
 			return rc;
 		}
-		dev_err(chip->dev, "num stepchg  entries=%d\n",
+		SMB_ERR(chip, "num stepchg  entries=%d\n",
 			chip->stepchg_num_steps);
 		for (index = 0; index < chip->stepchg_num_steps; index++) {
-			dev_err(chip->dev,
+			SMB_ERR(chip,
 				"Step %d  max_mv = %d mV, max_ma = %d mA, taper_ma = %d mA\n",
 				index,
 				chip->stepchg_steps[index].max_mv,
@@ -8679,10 +8679,10 @@ static bool check_bswchg_volt(struct smbchg_chip *chip)
 
 	bsw_open = !ret.intval;
 
-	dev_dbg(chip->dev, "Check bsw enable: %d, control: %d\n",
+	SMB_DBG(chip, "Check bsw enable: %d, control: %d\n",
 		bsw_open, sovp_tripped);
 	if (sovp_tripped && bsw_open) {
-		dev_info(chip->dev, "BSW Alarm\n");
+		SMB_INFO(chip, "BSW Alarm\n");
 		return true;
 	}
 
@@ -8719,9 +8719,9 @@ static bool check_maxbms_volt(struct smbchg_chip *chip)
 		return false;
 	sovp_tripped = ret.intval;
 
-	dev_dbg(chip->dev, "Check max control: %d\n", sovp_tripped);
+	SMB_DBG(chip, "Check max control: %d\n", sovp_tripped);
 	if (sovp_tripped) {
-		dev_info(chip->dev, "MAXBMS Alarm\n");
+		SMB_INFO(chip, "MAXBMS Alarm\n");
 		return true;
 	}
 
@@ -8772,7 +8772,7 @@ static int set_bsw(struct smbchg_chip *chip,
 	if (!chip->max_psy->set_property)
 		return rc;
 
-	dev_dbg(chip->dev, "bsw volt %d mV\n", volt_mv);
+	SMB_DBG(chip, "bsw volt %d mV\n", volt_mv);
 	compen_uv = PATH_IMPEDANCE_MILLIOHM * curr_ma;
 
 	ret.intval = 0;
@@ -8801,7 +8801,7 @@ static int set_bsw(struct smbchg_chip *chip,
 	/* Ensure 20000 uV steps */
 	maxbms_volt_uv /= 20000;
 	maxbms_volt_uv *= 20000;
-	dev_dbg(chip->dev, "Set MAXBMS, BSW Alarm with %d uV, %d uV\n",
+	SMB_DBG(chip, "Set MAXBMS, BSW Alarm with %d uV, %d uV\n",
 		maxbms_volt_uv, bsw_volt_uv);
 	ret.intval = bsw_volt_uv;
 	rc = chip->bsw_psy->set_property(chip->bsw_psy,
@@ -8845,7 +8845,7 @@ static int set_bsw_curr(struct smbchg_chip *chip, int chrg_curr_ma)
 					  POWER_SUPPLY_PROP_CURRENT_MAX,
 					  &ret);
 	if (rc < 0)
-		dev_err(chip->dev,
+		SMB_ERR(chip,
 			"Err could not set BSW Current %d mA!\n",
 			chrg_curr_ma);
 
@@ -9087,7 +9087,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		   bsw_chrg_alarm) {
 		bool change_state = false;
 
-		dev_info(chip->dev, "bsw tripped! BSW Current %d mA\n",
+		SMB_INFO(chip, "bsw tripped! BSW Current %d mA\n",
 			 chip->bsw_curr_ma);
 		chip->bsw_ramping = true;
 		set_bsw(chip, max_mv, chip->bsw_curr_ma, false);
@@ -9397,9 +9397,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	default:
 		break;
 	}
-	dev_warn(chip->dev, "EB Input %d mA, PMI Input %d mA, USBC CL %d mA\n",
+	SMB_WARN(chip, "EB Input %d mA, PMI Input %d mA, USBC CL %d mA\n",
 		 chip->cl_ebchg, chip->usb_target_current_ma, chip->cl_usbc);
-	dev_warn(chip->dev, "Step State = %s, BSW Mode %s, EB State %s\n",
+	SMB_WARN(chip, "Step State = %s, BSW Mode %s, EB State %s\n",
 		 stepchg_str[(int)chip->stepchg_state],
 		 bsw_str[(int)chip->bsw_mode],
 		 ebchg_str[(int)chip->ebchg_state]);
