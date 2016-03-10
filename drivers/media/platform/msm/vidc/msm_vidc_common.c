@@ -1231,6 +1231,35 @@ static struct vb2_buffer *get_vb_from_device_addr(struct buf_queue *bufq,
 	return vb;
 }
 
+static void handle_dynamic_input_buffer(struct msm_vidc_inst *inst,
+		ion_phys_addr_t device_addr)
+{
+	struct buffer_info *binfo = NULL, *temp = NULL;
+
+	if (inst->session_type == MSM_VIDC_ENCODER) {
+		binfo = device_to_uvaddr(&inst->registeredbufs, device_addr);
+		if (!binfo) {
+			dprintk(VIDC_ERR,
+				"%s buffer not found in registered list\n",
+				__func__);
+			return;
+		}
+		dprintk(VIDC_DBG,
+			"EBD fd[0] = %d -> EBD_ref_released, addr: %pa\n",
+			binfo->fd[0], &device_addr);
+
+		mutex_lock(&inst->registeredbufs.lock);
+		list_for_each_entry(temp, &inst->registeredbufs.list,
+				list) {
+			if (temp == binfo) {
+				binfo->pending_deletion = true;
+				break;
+			}
+		}
+		mutex_unlock(&inst->registeredbufs.lock);
+	}
+}
+
 static void handle_ebd(enum command_response cmd, void *data)
 {
 	struct msm_vidc_cb_data_done *response = data;
@@ -1249,6 +1278,9 @@ static void handle_ebd(enum command_response cmd, void *data)
 			__func__);
 		return;
 	}
+
+	handle_dynamic_input_buffer(inst, response->input_done.packet_buffer);
+
 	vb = get_vb_from_device_addr(&inst->bufq[OUTPUT_PORT],
 				response->clnt_data);
 	if (vb) {
