@@ -3687,6 +3687,11 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
+	/* Ensures that GPIO3 is set to an output clock. */
+	snd_soc_write(codec, 0x1704, 0);
+	snd_soc_write(codec, 0x1705, 0);
+	snd_soc_write(codec, 0x1704, 0x40);
+
 	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS1");
 	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS2");
 	snd_soc_dapm_ignore_suspend(dapm, "MICSUPP");
