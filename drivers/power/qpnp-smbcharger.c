@@ -11,6 +11,7 @@
  */
 #define pr_fmt(fmt) "SMBCHG: %s: " fmt, __func__
 
+#include <linux/atomic.h>
 #include <linux/spmi.h>
 #include <linux/spinlock.h>
 #include <linux/gpio.h>
@@ -222,6 +223,8 @@ struct smbchg_chip {
 	struct smbchg_regulator		otg_vreg;
 	struct smbchg_regulator		ext_otg_vreg;
 	struct work_struct		usb_set_online_work;
+	struct delayed_work		discharge_while_plugged_work;
+	atomic_t			discharge_while_plugged_event_count;
 	struct delayed_work		vfloat_adjust_work;
 	struct delayed_work		hvdcp_det_work;
 	spinlock_t			sec_access_lock;
@@ -3513,6 +3516,73 @@ out:
 	return rc;
 }
 
+#define DISCHARGE_WHILE_PLUGGED_THRESHOLD	3
+#define DISCHARGE_WHILE_PLUGGED_LOOP_TIME_MS	10000
+static void smbchg_discharge_while_plugged_check(struct work_struct *work)
+{
+	int rc = 0;
+	u8 reg = 0, chg_type;
+	bool valid_chg_disabled, status_full, chg_inhibit;
+	struct smbchg_chip *chip = container_of(work,
+					struct smbchg_chip,
+					discharge_while_plugged_work.work);
+
+	/* charger not present  stop work loop */
+	if (!(is_usb_present(chip) || is_dc_present(chip))) {
+		pr_smb(PR_MISC, "No charge source connected\n");
+		atomic_set(&chip->discharge_while_plugged_event_count, 0);
+		return;
+	}
+
+	rc = smbchg_read(chip, &reg, chip->chgr_base + RT_STS, 1);
+	if (rc < 0) {
+		dev_err(chip->dev, "Unable to read RT_STS rc = %d\n", rc);
+		atomic_set(&chip->discharge_while_plugged_event_count, 0);
+		goto discharge_while_plugged_check_error;
+	}
+
+	status_full = reg & BAT_TCC_REACHED_BIT;
+
+	chg_inhibit = reg & CHG_INHIBIT_BIT;
+
+	rc = smbchg_read(chip, &reg, chip->chgr_base + CHGR_STS, 1);
+	if (rc < 0) {
+		atomic_set(&chip->discharge_while_plugged_event_count, 0);
+		dev_err(chip->dev, "Unable to read CHGR_STS rc = %d\n", rc);
+		goto discharge_while_plugged_check_error;
+	}
+
+	chg_type = (reg & CHG_TYPE_MASK) >> CHG_TYPE_SHIFT;
+	mutex_lock(&chip->battchg_disabled_lock);
+	valid_chg_disabled = !!chip->battchg_disabled;
+	mutex_unlock(&chip->battchg_disabled_lock);
+
+	/* charging disabled due to valid disabling reason or charging
+	 * type is is not charging, or battery full
+	 * fall through to increment counter
+	 */
+	if ( valid_chg_disabled || chg_type != BATT_NOT_CHG_VAL ||
+		status_full || chg_inhibit)  {
+		atomic_set(&chip->discharge_while_plugged_event_count, 0);
+		goto discharge_while_plugged_check_next;
+	}
+
+	/* wa_check failed threshold times */
+	if (atomic_inc_return(&chip->discharge_while_plugged_event_count)
+			>= DISCHARGE_WHILE_PLUGGED_THRESHOLD) {
+		pr_smb(PR_MISC, "discharging while plugged !!\n");
+
+	}
+discharge_while_plugged_check_next:
+discharge_while_plugged_check_error:
+	pr_smb(PR_MISC, "discharging while plugged count:"
+			"%d sf:%d ci:%d ct:%d vd:%d\n",
+		atomic_read(&chip->discharge_while_plugged_event_count),
+		status_full, chg_inhibit, chg_type, valid_chg_disabled);
+	schedule_delayed_work(&chip->discharge_while_plugged_work,
+		msecs_to_jiffies(DISCHARGE_WHILE_PLUGGED_LOOP_TIME_MS));
+}
+
 static int vf_adjust_low_threshold = 5;
 module_param(vf_adjust_low_threshold, int, 0644);
 
@@ -3919,6 +3989,12 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		rc = enable_irq_wake(chip->aicl_done_irq);
 		chip->enable_aicl_wake = true;
 	}
+
+	/* schedule wa check work for discharging while plugged */
+	atomic_set(&chip->discharge_while_plugged_event_count, 0);
+	schedule_delayed_work(&chip->discharge_while_plugged_work,
+		msecs_to_jiffies(DISCHARGE_WHILE_PLUGGED_LOOP_TIME_MS));
+
 }
 
 void update_usb_status(struct smbchg_chip *chip, bool usb_present, bool force)
@@ -6081,6 +6157,9 @@ static int smbchg_probe(struct spmi_device *spmi)
 	}
 
 	INIT_WORK(&chip->usb_set_online_work, smbchg_usb_update_online_work);
+	INIT_DELAYED_WORK(&chip->discharge_while_plugged_work,
+			smbchg_discharge_while_plugged_check);
+	atomic_set(&chip->discharge_while_plugged_event_count, 0);
 	INIT_DELAYED_WORK(&chip->parallel_en_work,
 			smbchg_parallel_usb_en_work);
 	INIT_DELAYED_WORK(&chip->vfloat_adjust_work, smbchg_vfloat_adjust_work);
