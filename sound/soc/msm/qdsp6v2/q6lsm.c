@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -799,6 +799,62 @@ int q6lsm_set_port_connected(struct lsm_client *client)
 
 	return rc;
 }
+
+static int q6lsm_send_param_polling_enable(struct lsm_client *client,
+		bool poll_en,
+		struct lsm_module_param_ids *poll_enable_ids,
+		u32 set_param_opcode)
+{
+	int rc = 0;
+	struct lsm_cmd_poll_enable cmd;
+	struct apr_hdr  *msg_hdr;
+	struct lsm_param_poll_enable *poll_enable;
+	u32 data_payload_size, param_size;
+
+	msg_hdr = &cmd.msg_hdr;
+	q6lsm_add_hdr(client, msg_hdr,
+		      sizeof(struct lsm_cmd_poll_enable), true);
+	msg_hdr->opcode = set_param_opcode;
+	data_payload_size = sizeof(struct lsm_cmd_poll_enable) -
+			    sizeof(struct apr_hdr) -
+			    sizeof(struct lsm_set_params_hdr);
+	q6lsm_set_param_hdr_info(&cmd.params_hdr,
+				 data_payload_size, 0, 0, 0);
+	poll_enable = &cmd.poll_enable;
+
+	param_size = (sizeof(struct lsm_param_poll_enable) -
+		      sizeof(poll_enable->common));
+	q6lsm_set_param_common(&poll_enable->common,
+			       poll_enable_ids, param_size,
+			       set_param_opcode);
+	poll_enable->minor_version = QLSM_PARAM_ID_MINOR_VERSION;
+	poll_enable->polling_enable = (poll_en) ? 1 : 0;
+	pr_debug("%s: poll enable= %d", __func__, poll_enable->polling_enable);
+
+	rc = q6lsm_apr_send_pkt(client, client->apr,
+				&cmd, true, NULL);
+	if (rc)
+		pr_err("%s: Failed set_params opcode 0x%x, rc %d\n",
+		       __func__, msg_hdr->opcode, rc);
+
+	return rc;
+}
+
+int q6lsm_polling_enable(struct lsm_client *client, bool poll_en)
+{
+	int rc = 0;
+	struct lsm_module_param_ids ids;
+
+	ids.module_id = LSM_MODULE_ID_VOICE_WAKEUP;
+	ids.param_id = LSM_PARAM_ID_POLLING_ENABLE;
+	rc = q6lsm_send_param_polling_enable(client, poll_en, &ids,
+			LSM_SESSION_CMD_SET_PARAMS);
+	if (rc)
+		pr_err("%s: Polling enable failed, rc %d\n",
+			 __func__, rc);
+	return rc;
+}
+
 int q6lsm_set_data(struct lsm_client *client,
 			   enum lsm_detection_mode mode,
 			   bool detectfailure)
@@ -1479,6 +1535,20 @@ int q6lsm_set_one_param(struct lsm_client *client,
 			pr_err("%s: CONFIDENCE_LEVELS cmd failed, rc %d\n",
 				 __func__, rc);
 		break;
+	case LSM_POLLING_ENABLE: {
+		struct snd_lsm_poll_enable *lsm_poll_enable =
+				(struct snd_lsm_poll_enable *) data;
+		ids.module_id = p_info->module_id;
+		ids.param_id = p_info->param_id;
+		rc = q6lsm_send_param_polling_enable(client,
+				lsm_poll_enable->poll_en, &ids,
+				LSM_SESSION_CMD_SET_PARAMS_V2);
+		if (rc)
+			pr_err("%s: POLLING ENABLE cmd failed, rc %d\n",
+				 __func__, rc);
+		break;
+	}
+
 	case LSM_REG_SND_MODEL: {
 		struct lsm_cmd_set_params model_param;
 		u32 payload_size;

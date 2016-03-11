@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -87,7 +87,7 @@ struct adm_ctl {
 	struct source_tracking_data sourceTrackingData;
 
 	int set_custom_topology;
-	int ec_ref_rx;
+	struct route_ec_ref_cfg ec_ref_cfg;
 };
 
 static struct adm_ctl			this_adm;
@@ -1273,7 +1273,8 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 		}
 
 		switch (data->opcode) {
-		case ADM_CMDRSP_DEVICE_OPEN_V5: {
+		case ADM_CMDRSP_DEVICE_OPEN_V5:
+		case ADM_CMDRSP_DEVICE_OPEN_V6: {
 			struct adm_cmd_rsp_device_open_v5 *open =
 			(struct adm_cmd_rsp_device_open_v5 *)data->payload;
 
@@ -1925,13 +1926,27 @@ fail_cmd:
 	return ret;
 }
 
+static bool is_vptx_topology(int topology)
+{
+	if ((topology == VPM_TX_SM_ECNS_COPP_TOPOLOGY) ||
+	    (topology == VPM_TX_DM_FLUENCE_COPP_TOPOLOGY) ||
+	    (topology == VPM_TX_DM_RFECNS_COPP_TOPOLOGY) ||
+	    (topology == VPM_TX_LEC_STEREO_REF) ||
+	    (topology == VPM_TX_LEC_MONO_REF))
+		return true;
+
+	return false;
+}
+
 int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 	     int perf_mode, uint16_t bit_width, int app_type, int acdb_id)
 {
 	struct adm_cmd_device_open_v5	open;
+	struct adm_cmd_device_open_v6   open_v6;
 	int ret = 0;
 	int port_idx, copp_idx, flags;
 	int tmp_port = q6audio_get_port_id(port_id);
+	bool use_open_v6 = false;
 
 	pr_debug("%s:port %#x path:%d rate:%d mode:%d perf_mode:%d,topo_id %d\n",
 		 __func__, port_id, path, rate, channel_mode, perf_mode,
@@ -1972,9 +1987,7 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			flags = ADM_LEGACY_DEVICE_SESSION;
 	}
 
-	if ((topology == VPM_TX_SM_ECNS_COPP_TOPOLOGY) ||
-	    (topology == VPM_TX_DM_FLUENCE_COPP_TOPOLOGY) ||
-	    (topology == VPM_TX_DM_RFECNS_COPP_TOPOLOGY))
+	if (is_vptx_topology(topology))
 		rate = 16000;
 
 	copp_idx = adm_get_idx_if_copp_exists(port_idx, topology, perf_mode,
@@ -2055,11 +2068,12 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		open.mode_of_operation = path;
 		open.endpoint_id_1 = tmp_port;
 
-		if (this_adm.ec_ref_rx == -1) {
+		if (this_adm.ec_ref_cfg.port_id == -1) {
 			open.endpoint_id_2 = 0xFFFF;
-		} else if (this_adm.ec_ref_rx && (path != 1)) {
-			open.endpoint_id_2 = this_adm.ec_ref_rx;
-			this_adm.ec_ref_rx = -1;
+		} else if ((this_adm.ec_ref_cfg.port_id) &&
+			(path != ADM_PATH_PLAYBACK)) {
+			open.endpoint_id_2 = this_adm.ec_ref_cfg.port_id;
+			this_adm.ec_ref_cfg.port_id = -1;
 		}
 
 		open.topology_id = topology;
@@ -2121,9 +2135,39 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			__func__, open.endpoint_id_1, open.sample_rate,
 			open.topology_id);
 
+		if (open.topology_id == VPM_TX_LEC_STEREO_REF ||
+			open.topology_id == VPM_TX_LEC_MONO_REF) {
+			int ref_end_channel_mode = this_adm.ec_ref_cfg.channel;
+			use_open_v6 = true;
+			/* overwrite open opcode and pkt size here to use
+			 * ADM_CMD_DEVICE_OPEN_V6
+			 */
+			open.hdr.opcode = ADM_CMD_DEVICE_OPEN_V6;
+			open.hdr.pkt_size = sizeof(open_v6);
+
+			open_v6.open = open;
+			open_v6.ref_end_num_channel = ref_end_channel_mode;
+			open_v6.ref_end_sample_rate =
+					this_adm.ec_ref_cfg.sample_rate;
+			open_v6.ref_end_bit_width =
+					this_adm.ec_ref_cfg.bit_width;
+			if (ref_end_channel_mode == 1)	{
+				open_v6.ref_end_channel_mapping[0] =
+							PCM_CHANNEL_FC;
+			} else if (ref_end_channel_mode == 2) {
+				open_v6.ref_end_channel_mapping[0] =
+							PCM_CHANNEL_FL;
+				open_v6.ref_end_channel_mapping[1] =
+							PCM_CHANNEL_FR;
+			}
+		}
+
 		atomic_set(&this_adm.copp.stat[port_idx][copp_idx], 0);
 
-		ret = apr_send_pkt(this_adm.apr, (uint32_t *)&open);
+		if (use_open_v6)
+			ret = apr_send_pkt(this_adm.apr, (uint32_t *)&open_v6);
+		else
+			ret = apr_send_pkt(this_adm.apr, (uint32_t *)&open);
 		if (ret < 0) {
 			pr_err("%s: port_id: 0x%x for[0x%x] failed %d\n",
 			__func__, tmp_port, port_id, ret);
@@ -2143,7 +2187,43 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 	return copp_idx;
 }
 
-int adm_matrix_map(int path, struct route_payload payload_map, int perf_mode)
+static void route_set_opcode_matrix_id(
+			struct adm_cmd_matrix_map_routings_v5 **route_addr,
+			int path, uint32_t passthr_mode)
+{
+	struct adm_cmd_matrix_map_routings_v5 *route = *route_addr;
+
+	switch (path) {
+	case ADM_PATH_PLAYBACK:
+		route->hdr.opcode = ADM_CMD_MATRIX_MAP_ROUTINGS_V5;
+		route->matrix_id = ADM_MATRIX_ID_AUDIO_RX;
+		break;
+	case ADM_PATH_LIVE_REC:
+		if (passthr_mode == LISTEN) {
+			route->hdr.opcode =
+				ADM_CMD_STREAM_DEVICE_MAP_ROUTINGS_V5;
+			route->matrix_id = ADM_MATRIX_ID_LISTEN_TX;
+			break;
+		}
+		/* fall through to set matrix id for non-listen case */
+	case ADM_PATH_NONLIVE_REC:
+		route->hdr.opcode = ADM_CMD_MATRIX_MAP_ROUTINGS_V5;
+		route->matrix_id = ADM_MATRIX_ID_AUDIO_TX;
+		break;
+	case ADM_PATH_COMPRESSED_RX:
+		route->hdr.opcode = ADM_CMD_STREAM_DEVICE_MAP_ROUTINGS_V5;
+		route->matrix_id = ADM_MATRIX_ID_COMPRESSED_AUDIO_RX;
+		break;
+	default:
+		pr_err("%s: Wrong path set[%d]\n", __func__, path);
+		break;
+	}
+	pr_debug("%s: opcode 0x%x, matrix id %d\n",
+		 __func__, route->hdr.opcode, route->matrix_id);
+}
+
+int adm_matrix_map(int path, struct route_payload payload_map,
+			int perf_mode, uint32_t passthr_mode)
 {
 	struct adm_cmd_matrix_map_routings_v5	*route;
 	struct adm_session_map_node_v5 *node;
@@ -2176,32 +2256,10 @@ int adm_matrix_map(int path, struct route_payload payload_map, int perf_mode)
 	route->hdr.dest_domain = APR_DOMAIN_ADSP;
 	route->hdr.dest_port = 0; /* Ignored */;
 	route->hdr.token = 0;
-	if (path == ADM_PATH_COMPRESSED_RX) {
-		pr_debug("%s: ADM_CMD_STREAM_DEVICE_MAP_ROUTINGS_V5 0x%x\n",
-			 __func__, ADM_CMD_STREAM_DEVICE_MAP_ROUTINGS_V5);
-		route->hdr.opcode = ADM_CMD_STREAM_DEVICE_MAP_ROUTINGS_V5;
-	} else {
-		pr_debug("%s: DM_CMD_MATRIX_MAP_ROUTINGS_V5 0x%x\n",
-			 __func__, ADM_CMD_MATRIX_MAP_ROUTINGS_V5);
-		route->hdr.opcode = ADM_CMD_MATRIX_MAP_ROUTINGS_V5;
-	}
 	route->num_sessions = 1;
 
-	switch (path) {
-	case ADM_PATH_PLAYBACK:
-		route->matrix_id = ADM_MATRIX_ID_AUDIO_RX;
-		break;
-	case ADM_PATH_LIVE_REC:
-	case ADM_PATH_NONLIVE_REC:
-		route->matrix_id = ADM_MATRIX_ID_AUDIO_TX;
-		break;
-	case ADM_PATH_COMPRESSED_RX:
-		route->matrix_id = ADM_MATRIX_ID_COMPRESSED_AUDIO_RX;
-		break;
-	default:
-		pr_err("%s: Wrong path set[%d]\n", __func__, path);
-		break;
-	}
+	route_set_opcode_matrix_id(&route, path, passthr_mode);
+
 	payload = ((u8 *)matrix_map +
 			sizeof(struct adm_cmd_matrix_map_routings_v5));
 	node = (struct adm_session_map_node_v5 *)payload;
@@ -2278,8 +2336,16 @@ fail_cmd:
 
 void adm_ec_ref_rx_id(int port_id)
 {
-	this_adm.ec_ref_rx = port_id;
-	pr_debug("%s: ec_ref_rx:%d", __func__, this_adm.ec_ref_rx);
+	this_adm.ec_ref_cfg.port_id = port_id;
+	pr_debug("%s: ec_ref port id :%d\n", __func__, port_id);
+}
+
+void adm_lec_ref_cfg(struct route_ec_ref_cfg ref_cfg)
+{
+	this_adm.ec_ref_cfg.port_id = ref_cfg.port_id;
+	this_adm.ec_ref_cfg.channel = ref_cfg.channel;
+	this_adm.ec_ref_cfg.sample_rate = ref_cfg.sample_rate;
+	this_adm.ec_ref_cfg.bit_width = ref_cfg.bit_width;
 }
 
 int adm_close(int port_id, int perf_mode, int copp_idx)
@@ -3709,7 +3775,6 @@ static int __init adm_init(void)
 {
 	int i = 0, j;
 	this_adm.apr = NULL;
-	this_adm.ec_ref_rx = -1;
 	atomic_set(&this_adm.matrix_map_stat, 0);
 	init_waitqueue_head(&this_adm.matrix_map_wait);
 	atomic_set(&this_adm.adm_stat, 0);
@@ -3746,6 +3811,10 @@ static int __init adm_init(void)
 	this_adm.sourceTrackingData.apr_cmd_status = -1;
 	atomic_set(&this_adm.mem_map_handles[ADM_MEM_MAP_INDEX_SOURCE_TRACKING],
 		   0);
+	this_adm.ec_ref_cfg.port_id = -1;
+	this_adm.ec_ref_cfg.channel = 0;
+	this_adm.ec_ref_cfg.sample_rate = 0;
+	this_adm.ec_ref_cfg.bit_width = 0;
 
 	return 0;
 }
