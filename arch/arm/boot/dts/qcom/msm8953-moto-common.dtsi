@@ -123,6 +123,17 @@
 		};
 
 		/delete-node/ adv7533@39;
+
+		usb3813@2D {
+			compatible = "microchip,usb3813";
+			reg = <0x2D>;
+			pinctrl-0 = <&hub_reset_n_default>;
+			pinctrl-names = "default";
+			gpios = <&tlmm 74 0>;   /* HUB_RESET_EN */
+			gpio-labels = "gpio_hub_reset_n";
+			clock-names = "hub_clk";
+			clocks = <&clock_gcc clk_bb_clk2_a>;
+		};
 	};
 
 	i2c_3: i2c@78b7000 { /* BLSP1 QUP3 */
