@@ -19,18 +19,3 @@
 / {
 	qcom,board-id = <0x41 0x82a0>;
 };
-
-&cdc_1p2v {
-	/delete-property/ gpio;
-	gpio = <&tlmm 126 0>;
-};
-
-&cdc_1p2_en_default {
-	mux {
-		pins = "gpio126";
-	};
-
-	config {
-		pins = "gpio126";
-		};
-};
