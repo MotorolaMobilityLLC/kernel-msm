@@ -493,7 +493,7 @@ static int send_fw_log_pkt_to_user(void)
 		vos_pkt_return_packet(current_pkt);
 
 		extra_header_len = sizeof(msg_header.radio) + sizeof(tAniHdr);
-		nl_payload_len = NLMSG_ALIGN(extra_header_len + skb->len);
+		nl_payload_len = extra_header_len + skb->len;
 
 		msg_header.nlh.nlmsg_type = ANI_NL_MSG_LOG;
 		msg_header.nlh.nlmsg_len = nlmsg_msg_size(nl_payload_len);
@@ -587,7 +587,7 @@ static int send_data_mgmt_log_pkt_to_user(void)
 
 		extra_header_len = sizeof(msg_header.radio) + sizeof(tAniHdr) +
 						sizeof(msg_header.frameSize);
-		nl_payload_len = NLMSG_ALIGN(extra_header_len + skb->len);
+		nl_payload_len = extra_header_len + skb->len;
 
 		msg_header.nlh.nlmsg_type = ANI_NL_MSG_LOG;
 		msg_header.nlh.nlmsg_len = nlmsg_msg_size(nl_payload_len);
