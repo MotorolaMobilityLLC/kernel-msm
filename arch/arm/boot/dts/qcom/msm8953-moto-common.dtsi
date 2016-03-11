@@ -615,6 +615,14 @@
 
 		linux,contiguous-region = <&ramoops_mem>;
 	};
+
+	fsusb42 {
+		compatible = "fairchild,fsusb42";
+		gpios = <&pmtitanium_gpios 6 0>; /* USB_SELECT, output-low */
+		gpio-names = "gpio_fsusb_select";
+		vdd-fsusb42-supply = <&pmtitanium_l13>;
+		status = "okay";
+	};
 };
 
 &pmi8950_mpps {
@@ -801,6 +809,15 @@
 
 	gpio@c400 {
 		qcom,mode = <0>;		/* Digital Input */
+		qcom,pull = <5>;		/* No pull  */
+		qcom,vin-sel = <2>;		/* VIN0 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c500 { /* GPIO 6 - USB_SELECT */
+		qcom,mode = <1>;		/* Digital Input */
 		qcom,pull = <5>;		/* No pull  */
 		qcom,vin-sel = <2>;		/* VIN0 */
 		qcom,src-sel = <0>;		/* GPIO */
