@@ -162,24 +162,24 @@
 		cdc_pdm_lines_act: pdm_lines_on {
 			mux {
 				/delete-property/ pins;
-				pins = "gpio73", "gpio74";
+				pins = "gpio73";
 			};
 
 			config {
 				/delete-property/ pins;
-				pins = "gpio73", "gpio74";
+				pins = "gpio73";
 			};
 		};
 
 		cdc_pdm_lines_sus: pdm_lines_off {
 			mux {
 				/delete-property/ pins;
-				pins = "gpio73", "gpio74";
+				pins = "gpio73";
 			};
 
 			config {
 				/delete-property/ pins;
-				pins = "gpio73", "gpio74";
+				pins = "gpio73";
 			};
 		};
 	};
