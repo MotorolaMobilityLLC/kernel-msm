@@ -385,7 +385,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->lcd_mode_sel_gpio))
 			gpio_free(ctrl_pdata->lcd_mode_sel_gpio);
@@ -1410,6 +1410,18 @@ static int mdss_dsi_gen_read_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	return 1;
 }
 
+static int mdss_dsi_hx8399_read_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	if (!mdss_dsi_cmp_panel_reg(ctrl_pdata->status_buf,
+				ctrl_pdata->status_value, 0)) {
+		pr_err("%s: Read back value from panel is incorrect\n",
+					__func__);
+		return -EINVAL;
+	}
+
+	return 1;
+}
+
 static int mdss_dsi_nt35596_read_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	if (!mdss_dsi_cmp_panel_reg(ctrl_pdata->status_buf,
@@ -1593,6 +1605,10 @@ static void mdss_dsi_parse_esd_params(struct device_node *np,
 			ctrl->status_error_count = 0;
 			ctrl->check_read_status =
 				mdss_dsi_nt35596_read_status;
+		} else if (!strcmp(string, "reg_read_hx8399")) {
+			ctrl->status_mode = ESD_REG;
+			ctrl->check_read_status =
+				mdss_dsi_hx8399_read_status;
 		} else if (!strcmp(string, "te_signal_check")) {
 			if (pinfo->mipi.mode == DSI_CMD_MODE) {
 				ctrl->status_mode = ESD_TE;
