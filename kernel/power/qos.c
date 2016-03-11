@@ -224,6 +224,20 @@ static inline void pm_qos_set_value_for_cpus(struct pm_qos_constraints *c,
 	}
 }
 
+static void pm_qos_notifier_work(struct work_struct *work)
+{
+	int cur_value;
+	struct pm_qos_constraints *c;
+	struct pm_qos_request *req = container_of(work, struct pm_qos_request,
+						  notifier_work);
+
+	c = pm_qos_array[req->pm_qos_class]->constraints;
+	cur_value = pm_qos_get_value(c);
+	if (c->notifiers)
+		blocking_notifier_call_chain(c->notifiers,
+					(unsigned long)cur_value,
+					&req->cpus_affine);
+}
 /**
  * pm_qos_update_target - manages the constraints list and calls the notifiers
  *  if needed
@@ -286,10 +300,14 @@ int pm_qos_update_target(struct pm_qos_constraints *c,
 	 */
 	if (!cpumask_empty(&cpus)) {
 		ret = 1;
-		if (c->notifiers)
-			blocking_notifier_call_chain(c->notifiers,
+		if (c->notifiers) {
+			if (req->flag & PM_QOS_FLAG_NO_BLOCK)
+				schedule_work(&req->notifier_work);
+			else
+				blocking_notifier_call_chain(c->notifiers,
 						     (unsigned long)curr_value,
 						     &cpus);
+		}
 	} else {
 		ret = 0;
 	}
@@ -440,6 +458,9 @@ static void pm_qos_work_fn(struct work_struct *work)
 						  work);
 
 	__pm_qos_update_request(req, PM_QOS_DEFAULT_VALUE);
+
+	/* It is safe to remove the DELAYED_TIMER FLAG now */
+	req->flag &= ~PM_QOS_FLAG_DELAYED_TIMER;
 }
 
 #ifdef CONFIG_SMP
@@ -539,6 +560,8 @@ void pm_qos_add_request(struct pm_qos_request *req,
 
 	req->pm_qos_class = pm_qos_class;
 	INIT_DELAYED_WORK(&req->work, pm_qos_work_fn);
+	if (req->flag & PM_QOS_FLAG_NO_BLOCK)
+		INIT_WORK(&req->notifier_work, pm_qos_notifier_work);
 	trace_pm_qos_add_request(pm_qos_class, value);
 	pm_qos_update_target(pm_qos_array[pm_qos_class]->constraints,
 			     req, PM_QOS_ADD_REQ, value);
@@ -584,7 +607,8 @@ void pm_qos_update_request(struct pm_qos_request *req,
 		return;
 	}
 
-	cancel_delayed_work_sync(&req->work);
+	if (req->flag & PM_QOS_FLAG_DELAYED_TIMER)
+		cancel_delayed_work_sync(&req->work);
 	__pm_qos_update_request(req, new_value);
 }
 EXPORT_SYMBOL_GPL(pm_qos_update_request);
@@ -606,6 +630,10 @@ void pm_qos_update_request_timeout(struct pm_qos_request *req, s32 new_value,
 		 "%s called for unknown object.", __func__))
 		return;
 
+	if (WARN(req->flag & PM_QOS_FLAG_NO_BLOCK,
+		"%s called from atomic context.", __func__))
+		return;
+
 	cancel_delayed_work_sync(&req->work);
 
 	trace_pm_qos_update_request_timeout(req->pm_qos_class,
@@ -615,6 +643,7 @@ void pm_qos_update_request_timeout(struct pm_qos_request *req, s32 new_value,
 			pm_qos_array[req->pm_qos_class]->constraints,
 			req, PM_QOS_UPDATE_REQ, new_value);
 
+	req->flag |= PM_QOS_FLAG_DELAYED_TIMER;
 	schedule_delayed_work(&req->work, usecs_to_jiffies(timeout_us));
 }
 
@@ -638,6 +667,8 @@ void pm_qos_remove_request(struct pm_qos_request *req)
 	}
 
 	cancel_delayed_work_sync(&req->work);
+	if (req->flag & PM_QOS_FLAG_NO_BLOCK)
+		cancel_work_sync(&req->notifier_work);
 
 #ifdef CONFIG_SMP
 	if (req->type == PM_QOS_REQ_AFFINE_IRQ) {
