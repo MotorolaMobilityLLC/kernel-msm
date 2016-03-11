@@ -16,6 +16,10 @@
 #include <linux/usb/class-dual-role.h>
 #include "fusb302.h"
 
+#ifdef CONFIG_FSUSB42_MUX
+#include <linux/fsusb42.h>
+#endif
+
 #define PD_SUPPORT
 
 #ifdef PD_SUPPORT
@@ -1156,6 +1160,9 @@ void SetStateDelayUnattached(void)
 		FSA321_setSwitchState(fsa_lpm);
 	else
 		FUSB302_toggleAudioSwitch(false);
+#ifdef CONFIG_FSUSB42_MUX
+	fsusb42_set_state(FSUSB_OFF);
+#endif
 	CC1TermDeb = CCTypeNone;	// Clear the debounced CC1 state
 	CC2TermDeb = CCTypeNone;	// Clear the debounced CC2 state
 	CC1TermAct = CC1TermDeb;	// Clear the active CC1 state
@@ -1376,6 +1383,10 @@ void SetStateAttachedSrc(void)
 	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	if (fusb_i2c_data->fsa321_switch)
 		FSA321_setSwitchState(fsa_usb_mode);
+
+#ifdef CONFIG_FSUSB42_MUX
+	fsusb42_set_state(FSUSB_STATE_USB);
+#endif
 	/* Notify USB driver to switch to host mode */
 	if (usb_psy)
 		power_supply_set_usb_otg(usb_psy, 1);
@@ -1419,6 +1430,9 @@ void SetStateAttachedSink(void)
 	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	if (fusb_i2c_data->fsa321_switch)
 		FSA321_setSwitchState(fsa_usb_mode);
+#ifdef CONFIG_FSUSB42_MUX
+	fsusb42_set_state(FSUSB_STATE_USB);
+#endif
 	// Maintain the existing CC term values from the wait state
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
 	DebounceTimer1 = tPDDebounceMin;	// Set the debounce timer to tPDDebounceMin for detecting changes in advertised current
