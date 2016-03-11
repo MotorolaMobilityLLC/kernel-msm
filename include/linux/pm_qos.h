@@ -44,6 +44,9 @@ enum pm_qos_flags_status {
 #define PM_QOS_FLAG_NO_POWER_OFF	(1 << 0)
 #define PM_QOS_FLAG_REMOTE_WAKEUP	(1 << 1)
 
+#define PM_QOS_FLAG_DELAYED_TIMER	(1 << 0)
+#define PM_QOS_FLAG_NO_BLOCK		(1 << 1)
+
 enum pm_qos_req_type {
 	PM_QOS_REQ_ALL_CORES = 0,
 	PM_QOS_REQ_AFFINE_CORES,
@@ -60,8 +63,10 @@ struct pm_qos_request {
 	/* Internal structure members */
 	struct irq_affinity_notify irq_notify;
 #endif
+	int flag;
 	struct plist_node node;
 	int pm_qos_class;
+	struct work_struct notifier_work;
 	struct delayed_work work; /* for pm_qos_update_request_timeout */
 };
 
