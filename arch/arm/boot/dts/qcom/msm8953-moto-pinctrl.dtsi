@@ -620,6 +620,15 @@
 			};
 		};
 	};
+
+	hub_reset_n_default: hub_reset_n_default {
+		config {
+			pins = "gpio74";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
 };
 
 /delete-node/ &hsuart_active;
