@@ -169,6 +169,7 @@ static DEFINE_SPINLOCK(reg_spinlock);
 #define MCU_FDBR_FDAHB_ERR_OFFSET		0x3a4
 #define MCU_FDBR_CDAHB_TIMEOUT_OFFSET		0x3a8
 #define MCU_FDBR_FDAHB_TIMEOUT_OFFSET		0x3ac
+#define PRONTO_PMU_CCPU_BOOT_REMAP_OFFSET	0x2004
 
 #define WCNSS_DEF_WLAN_RX_BUFF_COUNT		1024
 
@@ -651,6 +652,10 @@ void wcnss_pronto_log_debug_regs(void)
 	reg_addr = penv->pronto_saw2_base + PRONTO_SAW2_SPM_STS_OFFSET;
 	reg = readl_relaxed(reg_addr);
 	pr_err("PRONTO_SAW2_SPM_STS %08x\n", reg);
+
+	reg_addr = penv->msm_wcnss_base  + PRONTO_PMU_CCPU_BOOT_REMAP_OFFSET;
+	reg = readl_relaxed(reg_addr);
+	pr_err("PRONTO_PMU_CCPU_BOOT_REMAP %08x\n", reg);
 
 	reg_addr = penv->pronto_pll_base + PRONTO_PLL_STATUS_OFFSET;
 	reg = readl_relaxed(reg_addr);
