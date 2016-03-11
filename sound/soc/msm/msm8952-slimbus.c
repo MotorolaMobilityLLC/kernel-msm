@@ -3316,12 +3316,14 @@ static int msm8952_mclk_event(struct snd_soc_dapm_widget *w,
 {
 	pr_debug("%s: event = %d\n", __func__, event);
 
+#ifndef CONFIG_SND_SOC_MARLEY
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		return msm8952_enable_codec_mclk(w->codec, 1, true);
 	case SND_SOC_DAPM_POST_PMD:
 		return msm8952_enable_codec_mclk(w->codec, 0, true);
 	}
+#endif
 	return 0;
 }
 
