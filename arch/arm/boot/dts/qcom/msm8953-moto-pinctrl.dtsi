@@ -509,12 +509,12 @@
 	cdc_1p2_en {
 		cdc_1p2_en_default: cdc_1p2_en_default {
 			mux {
-				pins = "gpio130";
+				pins = "gpio126";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio130";
+				pins = "gpio126";
 				drive-strength = <2>;
 				bias-disable;
 			};
@@ -591,6 +591,35 @@
 		};
 	};
 
+	hd3ss460_amsel{
+
+		hd3ss460_amsel_default: default {
+			mux {
+				pins = "gpio130";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio130";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+				output-low;
+			};
+		};
+
+		hd3ss460_amsel_active: active {
+			mux {
+				pins = "gpio130";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio130";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+			};
+		};
+	};
 };
 
 /delete-node/ &hsuart_active;
