@@ -28,6 +28,7 @@
 #include <linux/power_supply.h>
 #include <linux/printk.h>
 #include <linux/interrupt.h>
+#include <linux/delay.h>
 
 #define FAN54100_CHRG_DRV_NAME "fan54100-charger"
 #define FAN54100_CHRG_PSY_NAME "charger-switch"
@@ -104,6 +105,7 @@ struct fan54100_chrg_chip {
 
 	struct power_supply sw_psy;
 	struct power_supply *batt_psy;
+	struct power_supply *usbc_psy;
 	struct dentry *debug_root;
 	u32 peek_poke_address;
 	int fovp_limit_mv;
@@ -112,8 +114,8 @@ struct fan54100_chrg_chip {
 	int health;
 	bool factory_mode;
 	bool sovp_tripped;
+	bool other_tripped;
 };
-
 static int fan54100_chrg_write_reg(struct i2c_client *client, u8 reg, u8 value)
 {
 	int ret = i2c_smbus_write_byte_data(client, reg, value);
@@ -301,7 +303,9 @@ static int fan54100_chrg_get_property(struct power_supply *psy,
 		val->intval = chip->health;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
-		if (chip->sovp_tripped)
+		if (chip->sovp_tripped
+			|| chip->other_tripped
+		)
 			val->intval = 1;
 		break;
 	default:
@@ -310,7 +314,78 @@ static int fan54100_chrg_get_property(struct power_supply *psy,
 
 	return 0;
 }
+static int fan54100_chrg_set_usbc_mask(
+	struct fan54100_chrg_chip *chip, int value)
+{
+	union power_supply_propval ret = {0, };
+	int rc = -EINVAL;
 
+	if (!chip) {
+		pr_err("FAN54100 NO dev chip!\n");
+		return -ENODEV;
+	}
+	if (!chip->usbc_psy)
+		return rc;
+	if ((!chip->usbc_psy->get_property) ||
+		(!chip->usbc_psy->set_property))
+		return rc;
+
+	rc = chip->usbc_psy->get_property(
+			  chip->usbc_psy,
+			  POWER_SUPPLY_PROP_ONLINE,
+			  &ret);
+	if (ret.intval == 0)
+		return rc;
+	ret.intval = value;
+	rc = chip->usbc_psy->set_property(chip->usbc_psy,
+				POWER_SUPPLY_PROP_MASK_INT,
+				&ret);
+	if (rc < 0)
+		dev_warn(chip->dev,
+			"FAN54100 set usbc interrupt mask Error!\n");
+
+	return rc;
+}
+static int fan54100_chrg_enable_protection(
+	struct fan54100_chrg_chip *chip, bool enable)
+{
+	int rc = 0;
+	u8 protect_bits;
+
+	if (!chip) {
+		pr_err("FAN54100 NO dev chip!\n");
+		return -ENODEV;
+	}
+	if (enable)
+		protect_bits = (FAN54100_BIT_UVLO |
+						FAN54100_BIT_SOTP |
+						FAN54100_BIT_RCB |
+						FAN54100_BIT_CDP |
+						FAN54100_BIT_OCP |
+						FAN54100_BIT_FOVP |
+						FAN54100_BIT_SOVP |
+						FAN54100_BIT_OVLO);
+	else
+		protect_bits = (
+						FAN54100_BIT_SOTP |
+						FAN54100_BIT_OCP |
+						FAN54100_BIT_FOVP |
+						FAN54100_BIT_SOVP |
+						FAN54100_BIT_OVLO);
+	rc = fan54100_chrg_write_reg(chip->client,
+						FAN54100_REG_PROTECT,
+						protect_bits);
+	if (rc < 0) {
+		pr_err("FAN54100 enable_protection failed\n");
+		return rc;
+	}
+	/* Unmask All Interrupts */
+	protect_bits = ~protect_bits;
+	rc = fan54100_chrg_write_reg(chip->client,
+				FAN54100_REG_IRQ_MASK,
+				protect_bits);
+	return rc;
+}
 static int fan54100_chrg_set_property(struct power_supply *psy,
 				      enum power_supply_property prop,
 				      const union power_supply_propval *val)
@@ -333,14 +408,21 @@ static int fan54100_chrg_set_property(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		protect_bits = val->intval ?  FAN54100_BIT_SW_ENABLE : 0;
+		fan54100_chrg_set_usbc_mask(chip, 1);
 		if (val->intval) {
 			chip->health = POWER_SUPPLY_HEALTH_GOOD;
 			chip->sovp_tripped = false;
+			chip->other_tripped = false;
+			fan54100_chrg_enable_protection(chip, false);
 		}
 		rc = fan54100_chrg_masked_write_reg(chip->client,
 						    FAN54100_REG_CONTROL0,
 						    FAN54100_BIT_SW_ENABLE,
 						    protect_bits);
+		msleep(350);
+		if (val->intval)
+			fan54100_chrg_enable_protection(chip, true);
+		fan54100_chrg_set_usbc_mask(chip, 0);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		protect_bits = find_protect_setting((val->intval / 1000),
@@ -382,6 +464,7 @@ static int fan54100_chrg_is_writeable(struct power_supply *psy,
 static int fan54100_uvlo_handler(struct fan54100_chrg_chip *chip)
 {
 	fan54100_chrg_update_health(chip, POWER_SUPPLY_HEALTH_UNSPEC_FAILURE);
+	chip->other_tripped = true;
 	dev_dbg(chip->dev, "FAN54100 UVLO IRQ tripped!\n");
 	return 0;
 }
@@ -389,6 +472,7 @@ static int fan54100_uvlo_handler(struct fan54100_chrg_chip *chip)
 static int fan54100_sotp_handler(struct fan54100_chrg_chip *chip)
 {
 	fan54100_chrg_update_health(chip, POWER_SUPPLY_HEALTH_OVERHEAT);
+	chip->other_tripped = true;
 	dev_warn(chip->dev, "FAN54100 SOTP IRQ tripped!\n");
 	return 0;
 }
@@ -396,6 +480,7 @@ static int fan54100_sotp_handler(struct fan54100_chrg_chip *chip)
 static int fan54100_rcb_handler(struct fan54100_chrg_chip *chip)
 {
 	fan54100_chrg_update_health(chip, POWER_SUPPLY_HEALTH_UNSPEC_FAILURE);
+	chip->other_tripped = true;
 	dev_warn(chip->dev, "FAN54100 RCB IRQ tripped!\n");
 	return 0;
 }
@@ -403,6 +488,7 @@ static int fan54100_rcb_handler(struct fan54100_chrg_chip *chip)
 static int fan54100_cdp_handler(struct fan54100_chrg_chip *chip)
 {
 	fan54100_chrg_update_health(chip, POWER_SUPPLY_HEALTH_UNSPEC_FAILURE);
+	chip->other_tripped = true;
 	dev_warn(chip->dev, "FAN54100 CDP IRQ tripped!\n");
 	return 0;
 }
@@ -410,6 +496,7 @@ static int fan54100_cdp_handler(struct fan54100_chrg_chip *chip)
 static int fan54100_ocp_handler(struct fan54100_chrg_chip *chip)
 {
 	fan54100_chrg_update_health(chip, POWER_SUPPLY_HEALTH_UNSPEC_FAILURE);
+	chip->other_tripped = true;
 	dev_warn(chip->dev, "FAN54100 OCP IRQ tripped!\n");
 	return 0;
 }
@@ -417,6 +504,7 @@ static int fan54100_ocp_handler(struct fan54100_chrg_chip *chip)
 static int fan54100_fovp_handler(struct fan54100_chrg_chip *chip)
 {
 	fan54100_chrg_update_health(chip, POWER_SUPPLY_HEALTH_OVERVOLTAGE);
+	chip->other_tripped = true;
 	dev_warn(chip->dev, "FAN54100 FOVP IRQ tripped!\n");
 	return 0;
 }
@@ -432,6 +520,7 @@ static int fan54100_sovp_handler(struct fan54100_chrg_chip *chip)
 static int fan54100_ovlo_handler(struct fan54100_chrg_chip *chip)
 {
 	fan54100_chrg_update_health(chip, POWER_SUPPLY_HEALTH_UNSPEC_FAILURE);
+	chip->other_tripped = true;
 	dev_warn(chip->dev, "FAN54100 OVLO IRQ tripped!\n");
 	return 0;
 }
@@ -571,13 +660,18 @@ static int fan54100_chrg_probe(struct i2c_client *client,
 		dev_info(&client->dev, "fan54100_charger absent\n");
 		return -ENODEV;
 	}
-
+	chip->usbc_psy = power_supply_get_by_name("usbc");
+	if (!chip->usbc_psy) {
+		dev_warn(chip->dev, "FAN54100 USBC supply not found!\n");
+		return -EPROBE_DEFER;
+	}
 	chip->factory_mode = fan54100_mmi_factory();
 	if (chip->factory_mode)
 		dev_info(&client->dev, "fan54100: Factory Mode\n");
 
 	chip->health = POWER_SUPPLY_HEALTH_GOOD;
 	chip->sovp_tripped = false;
+	chip->other_tripped = false;
 
 	chip->fan54100_int_n.gpio = of_get_gpio_flags(np, 0, &flags);
 	chip->fan54100_int_n.flags = flags;
@@ -746,17 +840,14 @@ static int fan54100_chrg_probe(struct i2c_client *client,
 				       FAN54100_MSK_SOTP,
 				       protect_bits);
 	/* Enable All Interrupts */
-	protect_bits = (FAN54100_BIT_UVLO |
+	protect_bits = (
 			FAN54100_BIT_SOTP |
-			FAN54100_BIT_RCB |
-			FAN54100_BIT_CDP |
 			FAN54100_BIT_OCP |
 			FAN54100_BIT_FOVP |
 			FAN54100_BIT_SOVP |
 			FAN54100_BIT_OVLO);
 	fan54100_chrg_write_reg(client, FAN54100_REG_PROTECT,
 				protect_bits);
-
 	/* Unmask All Interrupts */
 	protect_bits = ~protect_bits;
 	fan54100_chrg_write_reg(client, FAN54100_REG_IRQ_MASK,
