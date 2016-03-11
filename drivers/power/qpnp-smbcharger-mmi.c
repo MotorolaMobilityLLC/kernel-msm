@@ -3689,6 +3689,39 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 
 }
 
+#define IDEV_CHG_MIN 500
+static int smbchg_is_ta_charger(struct power_supply *psy, int current_limit)
+{
+	struct smbchg_chip *chip = container_of(psy,
+				struct smbchg_chip, batt_psy);
+	union power_supply_propval prop = {0,};
+	enum power_supply_type usb_supply_type;
+	char *usb_type_name = "null";
+	int rc, type;
+	u8 reg = 0;
+
+	smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
+	type = get_type(reg);
+	usb_type_name = get_usb_type_name(type);
+	usb_supply_type = get_usb_supply_type(type);
+
+	rc = chip->usb_psy->get_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_TYPE, &prop);
+	if (rc < 0) {
+		pr_smb(PR_MISC, "could not read USB type, rc=%d\n",
+				rc);
+		return 0;
+	}
+	pr_smb(PR_MISC, "usb_type_name =%s, type = %d, current_limit = %d\n",
+		usb_type_name, prop.intval, current_limit);
+	if ((usb_supply_type == POWER_SUPPLY_TYPE_USB)
+		&& (prop.intval == POWER_SUPPLY_TYPE_USB_DCP)
+		&& (current_limit > IDEV_CHG_MIN))
+		return 1;
+	else
+		return 0;
+}
+
 #define UNKNOWN_BATT_TYPE	"Unknown Battery"
 #define LOADING_BATT_TYPE	"Loading Battery Data"
 static void smbchg_external_power_changed(struct power_supply *psy)
@@ -3756,6 +3789,14 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 		pr_smb(PR_STATUS, "changed current_limit = %d\n",
 				current_limit);
 		chip->usb_target_current_ma = current_limit;
+
+		if (smbchg_is_ta_charger(psy, current_limit)) {
+			pr_smb(PR_MISC, "Maybe is Ta charger, rerun APSD!\n");
+			smbchg_force_apsd(chip);
+			mutex_unlock(&chip->current_change_lock);
+			return;
+		}
+
 		rc = smbchg_set_thermal_limited_usb_current_max(chip,
 				current_limit);
 		if (rc < 0)
