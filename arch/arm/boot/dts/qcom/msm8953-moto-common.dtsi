@@ -373,7 +373,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "cdc_1p2v";
 		enable-active-high;
-		gpio = <&tlmm 130 0>;
+		gpio = <&tlmm 126 0>;
 	};
 
 	spi_1: spi@78b5000 { /* BLSP1 QUP1 */
@@ -623,6 +623,22 @@
 		vdd-fsusb42-supply = <&pmtitanium_l13>;
 		status = "okay";
 	};
+
+	hd3ss460 {
+		compatible = "ti,hd3ss460";
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&hd3ss460_amsel_default>;
+		pinctrl-1 = <&hd3ss460_amsel_active>;
+		gpios = <&pmtitanium_gpios 7 0>, /* USB_SS_MOD_EN, output-low */
+			<&tlmm 130 0>,       	 /* USB_SS_SW_SEL, output-low */
+			<&pmtitanium_gpios 8 0>; /* USB_SS_MOD_MPHY_AP_EN, output-low */
+		hd3-gpio-labels = "gpio_hd3ss460_pol",
+				"gpio_hd3ss460_amsel",
+				"gpio_hd3ss460_en";
+		vdd-hd3ss460-supply = <&pmtitanium_l6>;
+		vdd-voltage-level = <1800000 1800000>;
+		vdd-current-level = <200 30000>;
+	};
 };
 
 &pmi8950_mpps {
@@ -817,7 +833,25 @@
 	};
 
 	gpio@c500 { /* GPIO 6 - USB_SELECT */
-		qcom,mode = <1>;		/* Digital Input */
+		qcom,mode = <1>;		/* Digital Output */
+		qcom,pull = <5>;		/* No pull  */
+		qcom,vin-sel = <2>;		/* VIN0 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c600 { /* GPIO 7 - USB_SS_MOD_EN */
+		qcom,mode = <1>;		/* Digital Output */
+		qcom,pull = <5>;		/* No pull  */
+		qcom,vin-sel = <2>;		/* VIN0 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c700 { /* GPIO 8 - USB_SS_MOD_MPHY_AP_EN */
+		qcom,mode = <1>;		/* Digital Output */
 		qcom,pull = <5>;		/* No pull  */
 		qcom,vin-sel = <2>;		/* VIN0 */
 		qcom,src-sel = <0>;		/* GPIO */
