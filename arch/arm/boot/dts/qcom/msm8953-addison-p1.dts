@@ -20,9 +20,21 @@
 	qcom,board-id = <0x41 0x8100>;
 };
 
-&cdc_1p2v {
-	status = "ok";
+&cdc_1p2_en_default {
+	mux {
+		pins = "gpio130";
+	};
+
+	config {
+		pins = "gpio130";
+	};
 };
+
+&cdc_1p2v {
+	/delete-property/ gpio;
+	gpio = <&tlmm 130 0>;
+};
+
 
 &marley {
 	CPVDD2-supply = <&cdc_1p2v>;
@@ -39,6 +51,15 @@
 			<&tlmm 141 2>,     /* APBA_WAKE, output-high */
 			<&tlmm 48 2>;      /* APBA_SFLASH_EN, output-high */
 	};
+
+	hd3ss460 {
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+		gpios = <&pmtitanium_gpios 7 0>, /* USB_SS_MOD_EN, output-low */
+			<&pmtitanium_gpios 2 0>, /* USB_SS_SW_SEL, output-low */
+			<&pmtitanium_gpios 8 0>; /* USB_SS_MOD_MPHY_AP_EN, output-low */
+	};
 };
 
 &tlmm {
@@ -50,7 +71,12 @@
 };
 
 &pmtitanium_gpios {
-	gpio@c100 {
-		status = "disabled";
+	gpio@c100 { /* GPIO 2 - USB_SS_SW_SEL */
+		qcom,mode = <1>;		/* Digital Output */
+		qcom,pull = <5>;		/* No pull  */
+		qcom,vin-sel = <2>;		/* VIN0 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
 	};
 };
