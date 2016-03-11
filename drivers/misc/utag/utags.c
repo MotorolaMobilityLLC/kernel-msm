@@ -1384,7 +1384,7 @@ size_t len, alen;
 	}
 
 	if (!vld->size) {
-		pr_err("no validation data in [%s]\n", vld->name);
+		pr_err("allow [%s] because [%s] is empty\n", attr, vld->name);
 		return 0;
 	}
 
@@ -1510,7 +1510,8 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	}
 
 	/* only check attributes for last file starting with a . */
-	if (ctrl->hwtag && '.' == names[num_names-1][0])
+	/* do not check for attributes in the root */
+	if (ctrl->hwtag && num_names != 1 && '.' == names[num_names-1][0])
 		if (check_hwtag(ctrl, names[num_names-1], ctrl->attrib)) {
 			ret = -EINVAL;
 			goto just_leave;
