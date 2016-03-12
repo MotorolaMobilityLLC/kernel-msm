@@ -391,3 +391,16 @@
 		qcom,master-en = <1>;	/* enalbe this pin */
 	};
 };
+
+&spmi_bus {
+        qcom,pm8916@1 {
+                qcom,vibrator@c000 {
+                        status = "okay";
+                        qcom,vib-timeout-ms = <30000>;
+                        qcom,vib-vtg-level-mV = <3000>;
+                        qcom,vib-vtg-level-mV-haptic = <2800>;
+                        qcom,vib-boot-up-vibe-ms = <100>;
+                };
+        };
+};
+
