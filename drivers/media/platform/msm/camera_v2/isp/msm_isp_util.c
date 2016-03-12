@@ -639,12 +639,12 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		break;
 	case VIDIOC_MSM_ISP_AXI_RESET:
 		mutex_lock(&vfe_dev->core_mutex);
-		rc = msm_isp_axi_reset(vfe_dev, arg);
+			rc = msm_isp_axi_reset(vfe_dev, arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
 	case VIDIOC_MSM_ISP_AXI_RESTART:
 		mutex_lock(&vfe_dev->core_mutex);
-		rc = msm_isp_axi_restart(vfe_dev, arg);
+			rc = msm_isp_axi_restart(vfe_dev, arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
 	case VIDIOC_MSM_ISP_INPUT_CFG:
@@ -1293,8 +1293,6 @@ void msm_isp_update_error_frame_count(struct vfe_device *vfe_dev)
 {
 	struct msm_vfe_error_info *error_info = &vfe_dev->error_info;
 	error_info->info_dump_frame_count++;
-	if (error_info->info_dump_frame_count == 0)
-		error_info->info_dump_frame_count++;
 }
 
 void msm_isp_process_error_info(struct vfe_device *vfe_dev)
@@ -1390,6 +1388,7 @@ static void msm_isp_process_overflow_irq(
 		*irq_status0 = 0;
 		*irq_status1 = 0;
 
+			memset(&error_event, 0, sizeof(error_event));
 		error_event.frame_id =
 			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
 		error_event.u.error_info.error_mask = 1 << ISP_WM_BUS_OVERFLOW;
@@ -1406,8 +1405,7 @@ void msm_isp_reset_burst_count_and_frame_drop(
 		stream_info->stream_type != BURST_STREAM) {
 		return;
 	}
-	if (stream_info->stream_type == BURST_STREAM &&
-		stream_info->num_burst_capture != 0) {
+	if (stream_info->num_burst_capture != 0) {
 		stream_cfg_cmd.burst_count =
 			stream_info->num_burst_capture;
 		stream_cfg_cmd.frame_skip_pattern =
@@ -1419,7 +1417,6 @@ void msm_isp_reset_burst_count_and_frame_drop(
 		msm_isp_reset_framedrop(vfe_dev, stream_info);
 	}
 }
-
 irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 {
 	unsigned long flags;
