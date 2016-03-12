@@ -759,17 +759,19 @@ void kick_all_cpus_sync(void)
 EXPORT_SYMBOL_GPL(kick_all_cpus_sync);
 
 /**
- * wake_up_all_idle_cpus - break all cpus out of idle
- * wake_up_all_idle_cpus try to break all cpus which is in idle state even
+ * wake_up_idle_cpus - break a set of cpus out of idle
+ * @mask: The set of cpus to break out of idle
+ *
+ * wake_up_idle_cpus try to break a set of cpus which is in idle state even
  * including idle polling cpus, for non-idle cpus, we will do nothing
  * for them.
  */
-void wake_up_all_idle_cpus(void)
+void wake_up_idle_cpus(const struct cpumask *mask)
 {
 	int cpu;
 
 	preempt_disable();
-	for_each_online_cpu(cpu) {
+	for_each_cpu_and(cpu, mask, cpu_online_mask) {
 		if (cpu == smp_processor_id())
 			continue;
 
@@ -777,4 +779,4 @@ void wake_up_all_idle_cpus(void)
 	}
 	preempt_enable();
 }
-EXPORT_SYMBOL_GPL(wake_up_all_idle_cpus);
+EXPORT_SYMBOL_GPL(wake_up_idle_cpus);
