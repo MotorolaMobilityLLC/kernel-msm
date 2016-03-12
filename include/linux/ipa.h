@@ -229,6 +229,13 @@ struct ipa_ep_cfg_mode {
  *			aggregation closure. Valid for Output Pipes only (IPA
  *			Producer). EOF affects only Pipes configured for
  *			generic aggregation.
+ * @aggr_sw_eof_active: 0: EOF does not close aggregation. HW closes
+ *			aggregation (sends EOT) only based on its aggregation config
+ *			(byte/time limit, etc).
+ *			1: EOF closes aggregation in addition to HW based
+ *			aggregation closure. Valid for Output Pipes only (IPA
+ *			Producer). EOF affects only Pipes configured for generic
+ *			aggregation.
  */
 struct ipa_ep_cfg_aggr {
 	enum ipa_aggr_en_type aggr_en;
@@ -236,6 +243,7 @@ struct ipa_ep_cfg_aggr {
 	u32 aggr_byte_limit;
 	u32 aggr_time_limit;
 	u32 aggr_pkt_limit;
+	bool aggr_sw_eof_active;
 };
 
 /**
