@@ -2294,6 +2294,210 @@ dhd_ndo_remove_ip(dhd_pub_t *dhd, int idx)
 	return retcode;
 }
 
+/* Enhanced ND offload */
+uint16
+dhd_ndo_get_version(dhd_pub_t *dhdp)
+{
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	wl_nd_hostip_t ndo_get_ver;
+	int iov_len;
+	int retcode;
+	uint16 ver = 0;
+
+	if (dhdp == NULL) {
+		return BCME_ERROR;
+	}
+
+	ndo_get_ver.version = htod16(WL_ND_HOSTIP_IOV_VER);
+	ndo_get_ver.op_type = htod16(WL_ND_HOSTIP_OP_VER);
+	ndo_get_ver.length = htod32(WL_ND_HOSTIP_FIXED_LEN + sizeof(uint16));
+	ndo_get_ver.u.version = 0;
+	iov_len = bcm_mkiovar("nd_hostip", (char *)&ndo_get_ver,
+			WL_ND_HOSTIP_FIXED_LEN + sizeof(uint16), iovbuf, sizeof(iovbuf));
+	if (!iov_len) {
+		DHD_ERROR(("%s: Insufficient iovar buffer size %zu \n",
+			__FUNCTION__, sizeof(iovbuf)));
+		return BCME_ERROR;
+	}
+
+	retcode = dhd_wl_ioctl_cmd(dhdp, WLC_GET_VAR, iovbuf, iov_len, FALSE, 0);
+	if (retcode) {
+		DHD_ERROR(("%s: failed, retcode = %d\n", __FUNCTION__, retcode));
+		/* ver iovar not supported. NDO version is 0 */
+		ver = 0;
+	} else {
+		wl_nd_hostip_t *ndo_ver_ret = (wl_nd_hostip_t *)iovbuf;
+
+		if ((dtoh16(ndo_ver_ret->version) == WL_ND_HOSTIP_IOV_VER) &&
+				(dtoh16(ndo_ver_ret->op_type) == WL_ND_HOSTIP_OP_VER) &&
+				(dtoh32(ndo_ver_ret->length) == WL_ND_HOSTIP_FIXED_LEN
+					+ sizeof(uint16))) {
+			/* nd_hostip iovar version */
+			ver = dtoh16(ndo_ver_ret->u.version);
+		}
+
+		DHD_TRACE(("%s: successfully get version: %d\n", __FUNCTION__, ver));
+	}
+
+	return ver;
+}
+
+int
+dhd_ndo_add_ip_with_type(dhd_pub_t *dhdp, char *ipv6addr, uint8 type, int idx)
+{
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	wl_nd_hostip_t ndo_add_addr;
+	int iov_len;
+	int retcode;
+
+	if (dhdp == NULL || ipv6addr == 0) {
+		return BCME_ERROR;
+	}
+
+	/* wl_nd_hostip_t fixed param */
+	ndo_add_addr.version = htod16(WL_ND_HOSTIP_IOV_VER);
+	ndo_add_addr.op_type = htod16(WL_ND_HOSTIP_OP_ADD);
+	ndo_add_addr.length = htod32(WL_ND_HOSTIP_WITH_ADDR_LEN);
+	/* wl_nd_host_ip_addr_t param for add */
+	memcpy(&ndo_add_addr.u.host_ip.ip_addr, ipv6addr, IPV6_ADDR_LEN);
+	ndo_add_addr.u.host_ip.type = type;
+
+	iov_len = bcm_mkiovar("nd_hostip", (char *)&ndo_add_addr,
+		WL_ND_HOSTIP_WITH_ADDR_LEN, iovbuf, sizeof(iovbuf));
+	if (!iov_len) {
+		DHD_ERROR(("%s: Insufficient iovar buffer size %zu \n",
+			__FUNCTION__, sizeof(iovbuf)));
+		return BCME_ERROR;
+	}
+
+	retcode = dhd_wl_ioctl_cmd(dhdp, WLC_SET_VAR, iovbuf, iov_len, TRUE, idx);
+	if (retcode) {
+		DHD_ERROR(("%s: failed, retcode = %d\n", __FUNCTION__, retcode));
+#ifdef NDO_CONFIG_SUPPORT
+		if (retcode == BCME_NORESOURCE) {
+			/* number of host ip addr exceeds FW capacity, Deactivate ND offload */
+			DHD_INFO(("%s: Host IP count exceed device capacity,"
+				"ND offload deactivated\n", __FUNCTION__));
+			dhdp->ndo_host_ip_overflow = TRUE;
+			dhd_ndo_enable(dhdp, 0);
+		}
+#endif /* NDO_CONFIG_SUPPORT */
+	} else {
+		DHD_TRACE(("%s: successfully added: %d\n", __FUNCTION__, retcode));
+	}
+
+	return retcode;
+}
+
+int
+dhd_ndo_remove_ip_by_addr(dhd_pub_t *dhdp, char *ipv6addr, int idx)
+{
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	wl_nd_hostip_t ndo_del_addr;
+	int iov_len;
+	int retcode;
+
+	if (dhdp == NULL || ipv6addr == 0) {
+		return BCME_ERROR;
+	}
+
+	/* wl_nd_hostip_t fixed param */
+	ndo_del_addr.version = htod16(WL_ND_HOSTIP_IOV_VER);
+	ndo_del_addr.op_type = htod16(WL_ND_HOSTIP_OP_DEL);
+	ndo_del_addr.length = htod32(WL_ND_HOSTIP_WITH_ADDR_LEN);
+	/* wl_nd_host_ip_addr_t param for del */
+	memcpy(&ndo_del_addr.u.host_ip.ip_addr, ipv6addr, IPV6_ADDR_LEN);
+	ndo_del_addr.u.host_ip.type = 0;	/* don't care */
+
+	iov_len = bcm_mkiovar("nd_hostip", (char *)&ndo_del_addr,
+		WL_ND_HOSTIP_WITH_ADDR_LEN, iovbuf, sizeof(iovbuf));
+	if (!iov_len) {
+		DHD_ERROR(("%s: Insufficient iovar buffer size %zu \n",
+			__FUNCTION__, sizeof(iovbuf)));
+		return BCME_ERROR;
+	}
+
+	retcode = dhd_wl_ioctl_cmd(dhdp, WLC_SET_VAR, iovbuf, iov_len, TRUE, idx);
+	if (retcode) {
+		DHD_ERROR(("%s: failed, retcode = %d\n", __FUNCTION__, retcode));
+	} else {
+		DHD_TRACE(("%s: successfully removed: %d\n", __FUNCTION__, retcode));
+	}
+
+	return retcode;
+}
+
+int
+dhd_ndo_remove_ip_by_type(dhd_pub_t *dhdp, uint8 type, int idx)
+{
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	wl_nd_hostip_t ndo_del_addr;
+	int iov_len;
+	int retcode;
+
+	if (dhdp == NULL) {
+		return BCME_ERROR;
+	}
+
+	/* wl_nd_hostip_t fixed param */
+	ndo_del_addr.version = htod16(WL_ND_HOSTIP_IOV_VER);
+	if (type == WL_ND_IPV6_ADDR_TYPE_UNICAST) {
+		ndo_del_addr.op_type = htod16(WL_ND_HOSTIP_OP_DEL_UC);
+	} else if (type == WL_ND_IPV6_ADDR_TYPE_ANYCAST) {
+		ndo_del_addr.op_type = htod16(WL_ND_HOSTIP_OP_DEL_AC);
+	} else {
+		return BCME_BADARG;
+	}
+	ndo_del_addr.length = htod32(WL_ND_HOSTIP_FIXED_LEN);
+
+	iov_len = bcm_mkiovar("nd_hostip", (char *)&ndo_del_addr, WL_ND_HOSTIP_FIXED_LEN,
+			iovbuf, sizeof(iovbuf));
+	if (!iov_len) {
+		DHD_ERROR(("%s: Insufficient iovar buffer size %zu \n",
+			__FUNCTION__, sizeof(iovbuf)));
+		return BCME_ERROR;
+	}
+
+	retcode = dhd_wl_ioctl_cmd(dhdp, WLC_SET_VAR, iovbuf, iov_len, TRUE, idx);
+	if (retcode) {
+		DHD_ERROR(("%s: failed, retcode = %d\n", __FUNCTION__, retcode));
+	} else {
+		DHD_TRACE(("%s: successfully removed: %d\n", __FUNCTION__, retcode));
+	}
+
+	return retcode;
+}
+
+int
+dhd_ndo_unsolicited_na_filter_enable(dhd_pub_t *dhdp, int enable)
+{
+	char iovbuf[DHD_IOVAR_BUF_SIZE];
+	int iov_len;
+	int retcode;
+
+	if (dhdp == NULL) {
+		return BCME_ERROR;
+	}
+
+	iov_len = bcm_mkiovar("nd_unsolicited_na_filter", (char *)&enable, sizeof(int),
+			iovbuf, sizeof(iovbuf));
+	if (!iov_len) {
+		DHD_ERROR(("%s: Insufficient iovar buffer size %zu \n",
+			__FUNCTION__, sizeof(iovbuf)));
+		return BCME_ERROR;
+	}
+	retcode = dhd_wl_ioctl_cmd(dhdp, WLC_SET_VAR, iovbuf, iov_len, TRUE, 0);
+	if (retcode)
+		DHD_ERROR(("%s: failed to enable Unsolicited NA filter to %d, retcode = %d\n",
+			__FUNCTION__, enable, retcode));
+	else {
+		DHD_TRACE(("%s: successfully enabled Unsolicited NA filter to %d\n",
+			__FUNCTION__, enable));
+	}
+
+	return retcode;
+}
+
 /* send up locally generated event */
 void
 dhd_sendup_event_common(dhd_pub_t *dhdp, wl_event_msg_t *event, void *data)

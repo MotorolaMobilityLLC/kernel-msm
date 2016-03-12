@@ -114,7 +114,7 @@ BWL_PRE_PACKED_STRUCT struct ipv6_hdr {
 } BWL_POST_PACKED_STRUCT;
 
 /* Neighbor Advertisement/Solicitation Packet Structure */
-BWL_PRE_PACKED_STRUCT struct nd_msg {
+BWL_PRE_PACKED_STRUCT struct bcm_nd_msg {
 	struct icmp6_hdr	icmph;
 	struct ipv6_addr target;
 } BWL_POST_PACKED_STRUCT;

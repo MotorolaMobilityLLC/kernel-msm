@@ -1553,6 +1553,21 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 					iovbuf, sizeof(iovbuf));
 				dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
 #endif /* ENABLE_FW_ROAM_SUSPEND */
+#ifdef NDO_CONFIG_SUPPORT
+				if (dhd->ndo_enable) {
+					if (!dhd->ndo_host_ip_overflow) {
+						/* enable ND offload on suspend */
+						ret = dhd_ndo_enable(dhd, 1);
+						if (ret < 0) {
+							DHD_ERROR(("%s: failed to enable NDO\n",
+								__FUNCTION__));
+						}
+					} else {
+						DHD_INFO(("%s: NDO disabled on suspend due to"
+								"HW capacity\n", __FUNCTION__));
+					}
+				}
+#endif /* NDO_CONFIG_SUPPORT */
 				if (FW_SUPPORTED(dhd, ndoe) && !FW_SUPPORTED(dhd, apf)) {
 					/* enable IPv6 RA filter in  firmware during suspend */
 					nd_ra_filter = 1;
@@ -1601,6 +1616,16 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 					sizeof(iovbuf));
 				dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
 #endif /* ENABLE_FW_ROAM_SUSPEND */
+#ifdef NDO_CONFIG_SUPPORT
+				if (dhd->ndo_enable) {
+					/* Disable ND offload on resume */
+					ret = dhd_ndo_enable(dhd, 0);
+					if (ret < 0) {
+						DHD_ERROR(("%s: failed to disable NDO\n",
+							__FUNCTION__));
+					}
+				}
+#endif /* NDO_CONFIG_SUPPORT */
 				if (FW_SUPPORTED(dhd, ndoe) && !FW_SUPPORTED(dhd, apf)) {
 					/* disable IPv6 RA filter in  firmware during suspend */
 					nd_ra_filter = 0;
@@ -6229,6 +6254,25 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	dhd_interworking_enable(dhd);
 #endif /* WL11U */
 
+#ifdef NDO_CONFIG_SUPPORT
+	dhd->ndo_enable = FALSE;
+	dhd->ndo_host_ip_overflow = FALSE;
+#endif /* NDO_CONFIG_SUPPORT */
+
+	/* ND offload version supported */
+	dhd->ndo_version = dhd_ndo_get_version(dhd);
+	if (dhd->ndo_version > 0) {
+		DHD_INFO(("%s: ndo version %d\n", __FUNCTION__, dhd->ndo_version));
+
+#ifdef NDO_CONFIG_SUPPORT
+		/* enable Unsolicited NA filter */
+		ret = dhd_ndo_unsolicited_na_filter_enable(dhd, 1);
+		if (ret < 0) {
+			DHD_ERROR(("%s failed to enable Unsolicited NA filter\n", __FUNCTION__));
+		}
+#endif /* NDO_CONFIG_SUPPORT */
+	}
+
 done:
 	return ret;
 }
@@ -6541,32 +6585,61 @@ dhd_inet6_work_handler(void *dhd_info, void *event_data, u8 event)
 
 	switch (ndo_work->event) {
 		case NETDEV_UP:
-			DHD_TRACE(("%s: Enable NDO and add ipv6 into table \n ", __FUNCTION__));
+#ifndef NDO_CONFIG_SUPPORT
+			DHD_TRACE(("%s: Enable NDO\n ", __FUNCTION__));
 			ret = dhd_ndo_enable(pub, TRUE);
 			if (ret < 0) {
 				DHD_ERROR(("%s: Enabling NDO Failed %d\n", __FUNCTION__, ret));
 			}
+#endif /* !NDO_CONFIG_SUPPORT */
 
-			ret = dhd_ndo_add_ip(pub, &ndo_work->ipv6_addr[0], ndo_work->if_idx);
+			DHD_TRACE(("%s: Add a host ip for NDO\n", __FUNCTION__));
+			if (pub->ndo_version > 0) {
+				/* inet6 addr notifier called only for unicast address */
+				ret = dhd_ndo_add_ip_with_type(pub, &ndo_work->ipv6_addr[0],
+					WL_ND_IPV6_ADDR_TYPE_UNICAST, ndo_work->if_idx);
+			} else {
+				ret = dhd_ndo_add_ip(pub, &ndo_work->ipv6_addr[0],
+					ndo_work->if_idx);
+			}
 			if (ret < 0) {
-				DHD_ERROR(("%s: Adding host ip for NDO failed %d\n",
+				DHD_ERROR(("%s: Adding a host ip for NDO failed %d\n",
 					__FUNCTION__, ret));
 			}
 			break;
 		case NETDEV_DOWN:
-			DHD_TRACE(("%s: clear ipv6 table \n", __FUNCTION__));
-			ret = dhd_ndo_remove_ip(pub, ndo_work->if_idx);
+			if (pub->ndo_version > 0) {
+				DHD_TRACE(("%s: Remove a host ip for NDO\n", __FUNCTION__));
+				ret = dhd_ndo_remove_ip_by_addr(pub,
+					&ndo_work->ipv6_addr[0], ndo_work->if_idx);
+			} else {
+				DHD_TRACE(("%s: Clear host ip table for NDO\n", __FUNCTION__));
+				ret = dhd_ndo_remove_ip(pub, ndo_work->if_idx);
+			}
 			if (ret < 0) {
 				DHD_ERROR(("%s: Removing host ip for NDO failed %d\n",
 					__FUNCTION__, ret));
 				goto done;
 			}
 
+#ifdef NDO_CONFIG_SUPPORT
+			if (pub->ndo_host_ip_overflow) {
+				ret = dhd_dev_ndo_update_inet6addr(
+					dhd_idx2net(pub, ndo_work->if_idx));
+				if ((ret < 0) && (ret != BCME_NORESOURCE)) {
+					DHD_ERROR(("%s: Updating host ip for NDO failed %d\n",
+						__FUNCTION__, ret));
+					goto done;
+				}
+			}
+#else /* !NDO_CONFIG_SUPPORT */
+			DHD_TRACE(("%s: Disable NDO\n ", __FUNCTION__));
 			ret = dhd_ndo_enable(pub, FALSE);
 			if (ret < 0) {
 				DHD_ERROR(("%s: disabling NDO Failed %d\n", __FUNCTION__, ret));
 				goto done;
 			}
+#endif /* NDO_CONFIG_SUPPORT */
 			break;
 		default:
 			DHD_ERROR(("%s: unknown notifier event \n", __FUNCTION__));
@@ -7873,12 +7946,15 @@ int dhd_dev_get_feature_set(struct net_device *dev)
 #endif /* GSCAN_SUPPORT */
 	}
 	if (FW_SUPPORTED(dhd, rssi_mon)) {
-		feature_set |= WIFI_FEATUE_RSSI_MONITOR;
+		feature_set |= WIFI_FEATURE_RSSI_MONITOR;
 	}
 #endif /* PNO_SUPPORT */
 #ifdef WL11U
 	feature_set |= WIFI_FEATURE_HOTSPOT;
 #endif /* WL11U */
+#ifdef NDO_CONFIG_SUPPORT
+	feature_set |= WIFI_FEATURE_CONFIG_NDO;
+#endif /* NDO_CONFIG_SUPPORT */
 	return feature_set;
 }
 
@@ -7906,7 +7982,7 @@ int *dhd_dev_get_feature_set_matrix(struct net_device *dev, int *num)
 	         (feature_set_full & WIFI_FEATURE_D2AP_RTT) |
 	         (feature_set_full & WIFI_FEATURE_PNO) |
 	         (feature_set_full & WIFI_FEATURE_HAL_EPNO) |
-	         (feature_set_full & WIFI_FEATUE_RSSI_MONITOR) |
+	         (feature_set_full & WIFI_FEATURE_RSSI_MONITOR) |
 	         (feature_set_full & WIFI_FEATURE_BATCH_SCAN) |
 	         (feature_set_full & WIFI_FEATURE_GSCAN) |
 	         (feature_set_full & WIFI_FEATURE_HOTSPOT) |
@@ -7915,7 +7991,7 @@ int *dhd_dev_get_feature_set_matrix(struct net_device *dev, int *num)
 
 	ret[1] = (feature_set_full & WIFI_FEATURE_INFRA) |
 	         (feature_set_full & WIFI_FEATURE_INFRA_5G) |
-	         (feature_set_full & WIFI_FEATUE_RSSI_MONITOR) |
+	         (feature_set_full & WIFI_FEATURE_RSSI_MONITOR) |
 	         /* Not yet verified NAN with P2P */
 	         /* (feature_set_full & WIFI_FEATURE_NAN) | */
 	         (feature_set_full & WIFI_FEATURE_P2P) |
@@ -7925,7 +8001,7 @@ int *dhd_dev_get_feature_set_matrix(struct net_device *dev, int *num)
 
 	ret[2] = (feature_set_full & WIFI_FEATURE_INFRA) |
 	         (feature_set_full & WIFI_FEATURE_INFRA_5G) |
-	         (feature_set_full & WIFI_FEATUE_RSSI_MONITOR) |
+	         (feature_set_full & WIFI_FEATURE_RSSI_MONITOR) |
 	         (feature_set_full & WIFI_FEATURE_NAN) |
 	         (feature_set_full & WIFI_FEATURE_D2D_RTT) |
 	         (feature_set_full & WIFI_FEATURE_D2AP_RTT) |
@@ -7949,6 +8025,138 @@ dhd_dev_set_nodfs(struct net_device *dev, u32 nodfs)
 	dhd->pub.force_country_change = TRUE;
 	return 0;
 }
+
+#ifdef NDO_CONFIG_SUPPORT
+int
+dhd_dev_ndo_cfg(struct net_device *dev, u8 enable)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+	dhd_pub_t *dhdp = &dhd->pub;
+	int ret = 0;
+
+	if (enable) {
+		/* enable ND offload feature (will be enabled in FW on suspend) */
+		dhdp->ndo_enable = TRUE;
+		/* trigger ipv6 addr scan/update for anycast & DAD failed address */
+		ret = dhd_dev_ndo_update_inet6addr(dev);
+		if ((ret < 0) && (ret != BCME_NORESOURCE)) {
+			DHD_ERROR(("%s: failed to update host ip addr: %d\n", __FUNCTION__, ret));
+			return ret;
+		}
+		if (dhdp->in_suspend) {
+			/* driver is already in (early) suspend state. enable NDO */
+			ret = dhd_ndo_enable(dhdp, 1);
+			if (ret < 0) {
+				DHD_ERROR(("%s: failed to enable NDO: %d\n", __FUNCTION__, ret));
+			}
+		}
+	} else {
+		/* disable ND offload feature */
+		dhdp->ndo_enable = FALSE;
+		/* disable ND offload in FW */
+		ret = dhd_ndo_enable(dhdp, 0);
+		if (ret < 0) {
+			DHD_ERROR(("%s: failed to disable NDO: %d\n", __FUNCTION__, ret));
+		}
+
+	}
+	return ret;
+}
+
+int
+dhd_dev_ndo_update_inet6addr(struct net_device *dev)
+{
+	dhd_info_t *dhd = DHD_DEV_INFO(dev);
+	struct inet6_dev *inet6;
+	struct list_head *p;
+	struct inet6_ifaddr *ifa;
+	struct ifacaddr6 *acaddr = NULL;
+	int ret = 0;
+
+	/*
+	 * evaulate host ip address in struct inet6_dev
+	 * unicast addr in inet6_dev->addr_list
+	 * anycast addr in inet6_dev->ac_list
+	 */
+
+	if (dev) {
+		inet6 = dev->ip6_ptr;
+		if (!inet6) {
+			DHD_ERROR(("%s: Invalid inet6_dev\n", __FUNCTION__));
+			return BCME_ERROR;
+		} else if (dhd_net2idx(dhd, dev) != 0) {
+			DHD_ERROR(("%s: Not primary interface\n", __FUNCTION__));
+			return BCME_ERROR;
+		}
+	} else {
+		DHD_ERROR(("%s: Invalid net_device\n", __FUNCTION__));
+		return BCME_ERROR;
+	}
+
+	/* Remove address first and then attempt to add address */
+
+	/* Remove DAD failed unicast address */
+	list_for_each(p, &inet6->addr_list) {
+		ifa = list_entry(p, struct inet6_ifaddr, if_list);
+		if (ifa->flags & IFA_F_DADFAILED) {
+			/* Remove DAD failed address */
+			DHD_INFO(("%s: Remove DAD failed addr\n", __FUNCTION__));
+			ret = dhd_ndo_remove_ip_by_addr(&dhd->pub, (char *)&ifa->addr, 0);
+			if (ret < 0) {
+				return ret;
+			}
+		}
+	}
+
+	/* Remove all anycast address */
+	ret = dhd_ndo_remove_ip_by_type(&dhd->pub, WL_ND_IPV6_ADDR_TYPE_ANYCAST, 0);
+	if (ret < 0) {
+		return ret;
+	}
+
+	/*
+	 * if ND offload was disabled due to host ip overflow, attempt to add valid unicast
+	 * address. there can be removed address (DAD failed or anycast)
+	 */
+	if (dhd->pub.ndo_host_ip_overflow) {
+		list_for_each(p, &inet6->addr_list) {
+			ifa = list_entry(p, struct inet6_ifaddr, if_list);
+			if ((ifa->flags & IFA_F_DADFAILED) == 0) {
+				/* valid unicast address */
+				ret = dhd_ndo_add_ip_with_type(&dhd->pub,
+					(char *)&ifa->addr, WL_ND_IPV6_ADDR_TYPE_UNICAST,  0);
+				if (ret < 0) {
+					return ret;
+				}
+			}
+		}
+	}
+
+	/* Attempt to add anycast address */
+	acaddr = inet6->ac_list;
+	while (acaddr) {
+		ret = dhd_ndo_add_ip_with_type(&dhd->pub, (char *)&acaddr->aca_addr,
+			WL_ND_IPV6_ADDR_TYPE_ANYCAST,  0);
+		if (ret < 0) {
+			return ret;
+		}
+		acaddr = acaddr->aca_next;
+	}
+
+	/* Now All host ip addr were added successfully */
+	if (dhd->pub.ndo_host_ip_overflow) {
+		dhd->pub.ndo_host_ip_overflow = FALSE;
+
+		if (dhd->pub.in_suspend) {
+			/* drvier is in (early) suspend state, need to enable NDO in FW */
+			DHD_INFO(("%s: enable NDO\n", __FUNCTION__));
+			ret = dhd_ndo_enable(&dhd->pub, 1);
+		}
+	}
+
+	return ret;
+}
+#endif /* NDO_CONFIG_SUPPORT */
 
 #ifdef PNO_SUPPORT
 /* Linux wrapper to call common dhd_pno_stop_for_ssid */

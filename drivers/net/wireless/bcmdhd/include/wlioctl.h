@@ -35,6 +35,7 @@
 #include <proto/bcmip.h>
 #include <proto/bcmeth.h>
 #include <proto/bcmip.h>
+#include <proto/bcmipv6.h>
 #include <proto/bcmevent.h>
 #include <proto/802.11.h>
 #include <proto/802.1d.h>
@@ -3117,6 +3118,51 @@ struct nd_ol_stats_t {
 	uint32  peer_reply_drop;    /* NA replies from network that were dropped */
 	uint32  peer_service;       /* NS request from host serviced by firmware */
 };
+
+/*
+ * Neighbor Discovery Offloading
+ */
+enum {
+	WL_ND_IPV6_ADDR_TYPE_UNICAST = 0,
+	WL_ND_IPV6_ADDR_TYPE_ANYCAST
+};
+
+typedef struct wl_nd_host_ip_addr {
+	struct ipv6_addr ip_addr;	/* host ip address */
+	uint8 type;			/* type of address */
+	uint8 pad[3];
+} wl_nd_host_ip_addr_t;
+
+typedef struct wl_nd_host_ip_list {
+	uint32 count;
+	wl_nd_host_ip_addr_t host_ip[1];
+} wl_nd_host_ip_list_t;
+
+#define WL_ND_HOSTIP_IOV_VER	1
+
+enum {
+	WL_ND_HOSTIP_OP_VER = 0,	/* get version */
+	WL_ND_HOSTIP_OP_ADD,		/* add address */
+	WL_ND_HOSTIP_OP_DEL,		/* delete specified address */
+	WL_ND_HOSTIP_OP_DEL_UC,		/* delete all unicast address */
+	WL_ND_HOSTIP_OP_DEL_AC,		/* delete all anycast address */
+	WL_ND_HOSTIP_OP_DEL_ALL,	/* delete all addresses */
+	WL_ND_HOSTIP_OP_LIST,		/* get list of host ip address */
+	WL_ND_HOSTIP_OP_MAX
+};
+
+typedef struct wl_nd_hostip {
+	uint16 version;			/* version of iovar buf */
+	uint16 op_type;			/* operation type */
+	uint32 length;			/* length of entire structure */
+	union {
+		wl_nd_host_ip_addr_t host_ip;	/* set param for add */
+		uint16 version;			/* get return for ver */
+	} u;
+} wl_nd_hostip_t;
+
+#define WL_ND_HOSTIP_FIXED_LEN		OFFSETOF(wl_nd_hostip_t, u)
+#define WL_ND_HOSTIP_WITH_ADDR_LEN	(WL_ND_HOSTIP_FIXED_LEN + sizeof(wl_nd_host_ip_addr_t))
 
 /*
  * Keep-alive packet offloading.
