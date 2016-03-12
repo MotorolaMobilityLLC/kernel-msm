@@ -255,7 +255,6 @@ enum ufs_qcom_pm_qos_state {
  * struct ufs_qcom_pm_qos_cpu_group - data related to cluster PM QoS voting
  *	logic
  * @req: request object for PM QoS
- * @vote_work: work object for voting procedure
  * @unvote_work: work object for un-voting procedure
  * @host: back pointer to the main structure
  * @state: voting state machine current state
@@ -266,8 +265,7 @@ enum ufs_qcom_pm_qos_state {
  */
 struct ufs_qcom_pm_qos_cpu_group {
 	struct pm_qos_request req;
-	struct work_struct vote_work;
-	struct work_struct unvote_work;
+	struct delayed_work unvote_work;
 	struct ufs_qcom_host *host;
 	enum ufs_qcom_pm_qos_state state;
 	s32 latency_us;
