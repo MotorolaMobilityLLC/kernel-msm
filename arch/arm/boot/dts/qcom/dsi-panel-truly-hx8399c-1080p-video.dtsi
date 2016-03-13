@@ -49,6 +49,8 @@
 		qcom,mdss-dsi-bl-max-level = <4095>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
+                qcom,mdss-pan-physical-width-dimension = <69>;
+                qcom,mdss-pan-physical-height-dimension = <122>;
 		qcom,mdss-dsi-on-command = [
 			39 01 00 00 00 00 04
 			B9 FF 83 99
