@@ -44,6 +44,7 @@
 #include <linux/of.h>
 #include <linux/blkdev.h>
 
+#include <linux/kthread.h>
 #include "ufshcd.h"
 #include "ufshci.h"
 #include "ufs_quirks.h"
@@ -8616,6 +8617,7 @@ static inline void ufshcd_add_sysfs_nodes(struct ufs_hba *hba)
 int ufshcd_shutdown(struct ufs_hba *hba)
 {
 	int ret = 0;
+	struct Scsi_Host *host = hba->host;
 
 	if (ufshcd_is_ufs_dev_poweroff(hba) && ufshcd_is_link_off(hba))
 		goto out;
@@ -8625,6 +8627,9 @@ int ufshcd_shutdown(struct ufs_hba *hba)
 		if (ret)
 			goto out;
 	}
+
+	if (host->ehandler)
+		kthread_stop(host->ehandler);
 
 	ret = ufshcd_suspend(hba, UFS_SHUTDOWN_PM);
 out:
