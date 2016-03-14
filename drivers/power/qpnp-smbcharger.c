@@ -125,6 +125,7 @@ struct smbchg_chip {
 	int				jeita_temp_hard_limit;
 	int				sw_esr_pulse_current_ma;
 	int				aicl_rerun_period_s;
+	int				cfg_dp_pulse_cnt;
 	bool				use_vfloat_adjustments;
 	bool				iterm_disabled;
 	bool				bmd_algo_disabled;
@@ -4282,30 +4283,6 @@ static int force_9v_hvdcp(struct smbchg_chip *chip)
 	return rc;
 }
 
-static void smbchg_hvdcp_det_work(struct work_struct *work)
-{
-	struct smbchg_chip *chip = container_of(work,
-				struct smbchg_chip,
-				hvdcp_det_work.work);
-	int rc;
-
-	if (is_hvdcp_present(chip)) {
-		if (!chip->hvdcp3_supported &&
-			(chip->wa_flags & SMBCHG_HVDCP_9V_EN_WA)) {
-			/* force HVDCP 2.0 */
-			rc = force_9v_hvdcp(chip);
-			if (rc)
-				pr_err("could not force 9V HVDCP continuing rc=%d\n",
-						rc);
-		}
-		smbchg_change_usb_supply_type(chip,
-				POWER_SUPPLY_TYPE_USB_HVDCP);
-		if (chip->psy_registered)
-			power_supply_changed(&chip->batt_psy);
-		smbchg_aicl_deglitch_wa_check(chip);
-	}
-}
-
 static int set_usb_psy_dp_dm(struct smbchg_chip *chip, int state)
 {
 	int rc;
@@ -5349,6 +5326,44 @@ static int smbchg_dp_dm(struct smbchg_chip *chip, int val)
 	}
 
 	return rc;
+}
+
+static void smbchg_hvdcp_det_work(struct work_struct *work)
+{
+	struct smbchg_chip *chip = container_of(work,
+				struct smbchg_chip,
+				hvdcp_det_work.work);
+	int rc, i;
+
+	if (is_hvdcp_present(chip)) {
+		if (!chip->hvdcp3_supported) {
+			if (chip->cfg_dp_pulse_cnt) {
+				for (i = 0; i < chip->cfg_dp_pulse_cnt; i++) {
+					rc = smbchg_dp_pulse_lite(chip);
+					if (rc) {
+						pr_err("DP pulsing failed rc=%d\n",
+							       rc);
+						break;
+					}
+					/* wait 60ms for pulse to take effect */
+					msleep(60);
+				}
+			} else if (chip->wa_flags & SMBCHG_HVDCP_9V_EN_WA) {
+				/* force HVDCP 2.0 */
+				rc = force_9v_hvdcp(chip);
+				if (rc)
+					pr_err("could not force 9V HVDCP continuing rc=%d\n",
+							rc);
+			}
+		}
+		pr_smb(PR_MISC, "setting usb psy type = %d\n",
+				POWER_SUPPLY_TYPE_USB_HVDCP);
+		power_supply_set_supply_type(chip->usb_psy,
+				POWER_SUPPLY_TYPE_USB_HVDCP);
+		if (chip->psy_registered)
+			power_supply_changed(&chip->batt_psy);
+		smbchg_aicl_deglitch_wa_check(chip);
+	}
 }
 
 #define CHARGE_OUTPUT_VTG_RATIO		840
@@ -6966,6 +6981,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 			"aicl-rerun-period-s", rc, 1);
 	OF_PROP_READ(chip, chip->vchg_adc_channel,
 				"vchg-adc-channel-id", rc, 1);
+	OF_PROP_READ(chip, chip->cfg_dp_pulse_cnt,
+				"dp-pulse-count", rc, 1);
 
 	/* read boolean configuration properties */
 	chip->use_vfloat_adjustments = of_property_read_bool(node,
