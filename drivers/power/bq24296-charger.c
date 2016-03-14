@@ -670,6 +670,13 @@ static int start_charging(struct bq24296_chg *chip)
 	if (!bq_wake_active(&chip->bq_wake_source_charger))
 				bq_stay_awake(&chip->bq_wake_source_charger);
 
+
+	rc = bq24296_wdt_rest(chip);
+	if (rc) {
+		pr_err("start-charge: Couldn't set TMR_RST\n");
+		return rc;
+	}
+
 	rc = chip->usb_psy->get_property(chip->usb_psy,
 				POWER_SUPPLY_PROP_CURRENT_MAX, &prop);
 	if (rc < 0) {
@@ -700,6 +707,13 @@ static int start_charging(struct bq24296_chg *chip)
 	rc = bq24296_disable_en_term(chip);
 	if (rc)
 		return rc;
+
+	/* Disable T32 */
+	rc  = bq24296_set_chg_timer(chip, 0);
+	if (rc) {
+		pr_err("failed to disable T32 timer\n");
+		return rc;
+	}
 
 	/* Check battery charging temp thresholds */
 	chip->temp_check = bq24296_check_temp_range(chip);
@@ -1401,7 +1415,6 @@ static void bq24296_dump_register(void)
 #define DEMO_MODE_HYS_SOC 5
 static void heartbeat_work(struct work_struct *work)
 {
-	int ret;
 	struct bq24296_chg *chip =
 		container_of(work, struct bq24296_chg,
 					heartbeat_work.work);
@@ -1412,9 +1425,6 @@ static void heartbeat_work(struct work_struct *work)
 	bool taper_reached = bq24296_get_prop_taper_reached(chip);
 
 	dev_dbg(chip->dev, "HB Pound!\n");
-	ret = bq24296_wdt_rest(chip);
-	if (ret)
-		pr_err("failed to wdt reset\n");
 
 	bq24296_dump_register();
 
@@ -1561,7 +1571,7 @@ static int bq24296_hw_init(struct bq24296_chg *chip)
 		return ret;
 	}
 
-	ret = bq24296_set_chg_timer(chip, 3);
+	ret = bq24296_set_chg_timer(chip, 0);
 	if (ret) {
 		pr_err("failed to disable chg safety timer\n");
 		return ret;
