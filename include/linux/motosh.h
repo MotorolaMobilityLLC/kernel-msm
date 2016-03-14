@@ -112,11 +112,12 @@ enum vmm_ids {
 /* MOTOSH memory map end */
 
 /* nwake interrupt mask */
-#define N_DISP_ROTATE           0x01
-#define N_ALS                   0x02
-#define N_DISP_BRIGHTNESS       0x04
-#define N_UPDATE_ACCEL_CAL	0x10
-#define N_STEP_COUNTER          0x80
+#define N_DISP_ROTATE            0x01
+#define N_ALS                    0x02
+#define N_DISP_BRIGHTNESS        0x04
+#define N_UPDATE_ACCEL_CAL       0x10
+#define N_MOTO_MOD_CURRENT_DRAIN 0x20
+#define N_STEP_COUNTER           0x80
 
 #define MOTOSH_MAX_EVENT_QUEUE_SIZE   248
 
