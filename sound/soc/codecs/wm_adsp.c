@@ -34,7 +34,11 @@
 
 #include <linux/mfd/arizona/registers.h>
 
+#ifndef CONFIG_SND_SOC_MARLEY
 #include "arizona.h"
+#else
+#include "arizona_marley.h"
+#endif
 #include "wm_adsp.h"
 
 #define adsp_crit(_dsp, fmt, ...) \
@@ -639,7 +643,6 @@ static int wm_adsp_audio_mode_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_SND_SOC_ARIZONA)
 static const struct soc_enum wm_adsp2_rate_enum[] = {
 	SOC_VALUE_ENUM_SINGLE(ARIZONA_DSP1_CONTROL_1,
 			      ARIZONA_DSP1_RATE_SHIFT, 0xf,
@@ -725,7 +728,6 @@ const struct snd_kcontrol_new wm_adsp2v2_fw_controls[] = {
 		     wm_adsp2v2_rate_get, wm_adsp2v2_rate_put),
 };
 EXPORT_SYMBOL_GPL(wm_adsp2v2_fw_controls);
-#endif
 
 static struct wm_adsp_region const *wm_adsp_find_region(struct wm_adsp *dsp,
 							int type)
