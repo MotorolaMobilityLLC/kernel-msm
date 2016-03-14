@@ -4040,7 +4040,7 @@ int dhd_bus_init(dhd_pub_t *dhdp, bool enforce_mutex)
 	/* Set bus state according to enable result */
 	dhdp->busstate = DHD_BUS_DATA;
 
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 	/*
 	 * XXX: WAR: Update dongle that driver supports sending of d11
 	 * tx_status through unused status field of PCIe completion header
@@ -4060,7 +4060,7 @@ int dhd_bus_init(dhd_pub_t *dhdp, bool enforce_mutex)
 		bus->pcie_sh->flags = flags;
 		bus->dhd->d11_tx_status = TRUE;
 	}
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 
 	/* Enable the interrupt after device is up */
 	dhdpcie_bus_intr_enable(bus);

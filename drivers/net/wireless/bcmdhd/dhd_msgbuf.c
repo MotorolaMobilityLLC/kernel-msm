@@ -1906,7 +1906,7 @@ dhd_prot_txstatus_process(dhd_pub_t *dhd, void * buf, uint16 msglen)
 	ASSERT(pktid != 0);
 	pkt = dhd_prot_packet_get(dhd, pktid, BUFF_TYPE_DATA_TX);
 	if (pkt) {
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 	/*
 	 * XXX: WAR: Because of the overloading by DMA marker field,
 	 * tx_status in TX completion message cannot be used. As a WAR,
@@ -1921,7 +1921,7 @@ dhd_prot_txstatus_process(dhd_pub_t *dhd, void * buf, uint16 msglen)
 
 		DHD_DBG_PKT_MON_TX_STATUS(dhd, pkt, pktid, tx_status);
 	}
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 
 #if defined(BCMPCIE)
 		dhd_txcomplete(dhd, pkt, pkt_fate);
@@ -2158,8 +2158,10 @@ dhd_prot_txdata(dhd_pub_t *dhd, void *PKTBUF, uint8 ifidx)
 		goto err_no_res_pktfree;
 	}
 
+#ifdef DBG_PKT_MON
 	/* TODO: XXX: re-look into dropped packets */
 	DHD_DBG_PKT_MON_TX(dhd, PKTBUF, pktid);
+#endif /* DBG_PKT_MON */
 
 	/* test if dhcp pkt */
 	dhcp_pkt = pkt_is_dhcp(dhd->osh, PKTBUF);

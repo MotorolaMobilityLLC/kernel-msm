@@ -988,7 +988,7 @@ dhd_dbg_send_urgent_evt(dhd_pub_t *dhdp, const void *data, const uint32 len)
 	return ret;
 }
 
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 static uint32
 __dhd_dbg_pkt_hash(uintptr_t pkt, uint32 pktid)
 {
@@ -1024,7 +1024,7 @@ __dhd_dbg_map_tx_status_to_pkt_fate(uint16 status)
 			pkt_fate = TX_PKT_FATE_ACKED;
 			break;
 		case WLFC_CTL_PKTFLAG_D11SUPPRESS:
-			/* fallthrough */
+			/* intentional fall through */
 		case WLFC_CTL_PKTFLAG_WLSUPPRESS:
 			pkt_fate = TX_PKT_FATE_FW_QUEUED;
 			break;
@@ -1036,6 +1036,7 @@ __dhd_dbg_map_tx_status_to_pkt_fate(uint16 status)
 			break;
 		default:
 			pkt_fate = TX_PKT_FATE_FW_DROP_OTHER;
+			break;
 	}
 
 	return pkt_fate;
@@ -1093,19 +1094,23 @@ __dhd_dbg_dump_pkt_info(dhd_pub_t *dhdp, dhd_dbg_pkt_info_t *info)
 }
 
 void
-__dhd_dbg_dump_tx_pkt_info(dhd_pub_t *dhdp, dhd_dbg_tx_info_t *tx_pkt)
+__dhd_dbg_dump_tx_pkt_info(dhd_pub_t *dhdp, dhd_dbg_tx_info_t *tx_pkt,
+	uint16 count)
 {
 	if (DHD_PKT_MON_DUMP_ON()) {
-		DHD_PKT_MON(("\npacket fate    = %d\n", tx_pkt->fate));
+		DHD_PKT_MON(("\nTX (count: %d)\n", ++count));
+		DHD_PKT_MON(("packet fate    = %d\n", tx_pkt->fate));
 		__dhd_dbg_dump_pkt_info(dhdp, &tx_pkt->info);
 	}
 }
 
 void
-__dhd_dbg_dump_rx_pkt_info(dhd_pub_t *dhdp, dhd_dbg_rx_info_t *rx_pkt)
+__dhd_dbg_dump_rx_pkt_info(dhd_pub_t *dhdp, dhd_dbg_rx_info_t *rx_pkt,
+	uint16 count)
 {
 	if (DHD_PKT_MON_DUMP_ON()) {
-		DHD_PKT_MON(("\npacket fate    = %d\n", rx_pkt->fate));
+		DHD_PKT_MON(("\nRX (count: %d)\n", ++count));
+		DHD_PKT_MON(("packet fate    = %d\n", rx_pkt->fate));
 		__dhd_dbg_dump_pkt_info(dhdp, &rx_pkt->info);
 	}
 }
@@ -1129,8 +1134,8 @@ dhd_dbg_attach_pkt_monitor(dhd_pub_t *dhdp,
 	int ret = BCME_OK;
 
 	if (!dhdp || !dhdp->dbg) {
-		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
-			(dhdp ? dhdp->dbg : NULL)));
+		DHD_PKT_MON(("%s(): dhdp=%p, dhdp->dbg=%p\n", __FUNCTION__,
+			dhdp, (dhdp ? dhdp->dbg : NULL)));
 		return -EINVAL;
 	}
 
@@ -1140,9 +1145,9 @@ dhd_dbg_attach_pkt_monitor(dhd_pub_t *dhdp,
 
 	if (PKT_MON_ATTACHED(tx_pkt_state) || PKT_MON_ATTACHED(tx_status_state) ||
 		PKT_MON_ATTACHED(rx_pkt_state)) {
-		DHD_PKT_MON(("packet monitor is already attached, "
+		DHD_PKT_MON(("%s(): packet monitor is already attached, "
 			"tx_pkt_state=%d, tx_status_state=%d, rx_pkt_state=%d\n",
-			tx_pkt_state, tx_status_state, rx_pkt_state));
+			__FUNCTION__, tx_pkt_state, tx_status_state, rx_pkt_state));
 		/* return success as the intention was to initialize packet monitor */
 		return BCME_OK;
 	}
@@ -1153,7 +1158,8 @@ dhd_dbg_attach_pkt_monitor(dhd_pub_t *dhdp,
 	alloc_len = sizeof(*tx_report);
 	tx_report = (dhd_dbg_tx_report_t *)kzalloc(alloc_len, kflags);
 	if (unlikely(!tx_report)) {
-		DHD_ERROR(("could not allocate memory for - dhd_dbg_tx_report_t\n"));
+		DHD_ERROR(("%s(): could not allocate memory for - "
+			"dhd_dbg_tx_report_t\n", __FUNCTION__));
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -1161,7 +1167,8 @@ dhd_dbg_attach_pkt_monitor(dhd_pub_t *dhdp,
 	alloc_len = (sizeof(*tx_pkts) * MAX_FATE_LOG_LEN);
 	tx_pkts = (dhd_dbg_tx_info_t *)kzalloc(alloc_len, kflags);
 	if (unlikely(!tx_pkts)) {
-		DHD_ERROR(("could not allocate memory for - dhd_dbg_tx_info_t\n"));
+		DHD_ERROR(("%s(): could not allocate memory for - "
+			"dhd_dbg_tx_info_t\n", __FUNCTION__));
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -1176,7 +1183,8 @@ dhd_dbg_attach_pkt_monitor(dhd_pub_t *dhdp,
 	alloc_len = sizeof(*rx_report);
 	rx_report = (dhd_dbg_rx_report_t *)kzalloc(alloc_len, kflags);
 	if (unlikely(!rx_report)) {
-		DHD_ERROR(("could not allocate memory for - dhd_dbg_rx_report_t\n"));
+		DHD_ERROR(("%s(): could not allocate memory for - "
+			"dhd_dbg_rx_report_t\n", __FUNCTION__));
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -1184,7 +1192,8 @@ dhd_dbg_attach_pkt_monitor(dhd_pub_t *dhdp,
 	alloc_len = (sizeof(*rx_pkts) * MAX_FATE_LOG_LEN);
 	rx_pkts = (dhd_dbg_rx_info_t *)kzalloc(alloc_len, kflags);
 	if (unlikely(!rx_pkts)) {
-		DHD_ERROR(("could not allocate memory for - dhd_dbg_rx_info_t\n"));
+		DHD_ERROR(("%s(): could not allocate memory for - "
+			"dhd_dbg_rx_info_t\n", __FUNCTION__));
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -1193,7 +1202,7 @@ dhd_dbg_attach_pkt_monitor(dhd_pub_t *dhdp,
 	dhdp->dbg->pkt_mon.rx_pkt_mon = rx_pkt_mon;
 	dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_STARTED;
 
-	DHD_PKT_MON(("packet monitor attach succeeded\n"));
+	DHD_PKT_MON(("%s(): packet monitor attach succeeded\n", __FUNCTION__));
 	return ret;
 
 fail:
@@ -1223,7 +1232,7 @@ fail:
 	dhdp->dbg->pkt_mon.rx_pkt_mon = NULL;
 	dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_DETACHED;
 
-	DHD_ERROR(("packet monitor attach failed\n"));
+	DHD_ERROR(("%s(): packet monitor attach failed\n", __FUNCTION__));
 	return ret;
 }
 
@@ -1237,8 +1246,8 @@ dhd_dbg_start_pkt_monitor(dhd_pub_t *dhdp)
 	dhd_dbg_pkt_mon_state_t rx_pkt_state;
 
 	if (!dhdp || !dhdp->dbg) {
-		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
-			(dhdp ? dhdp->dbg : NULL)));
+		DHD_PKT_MON(("%s(): dhdp=%p, dhdp->dbg=%p\n", __FUNCTION__,
+			dhdp, (dhdp ? dhdp->dbg : NULL)));
 		return -EINVAL;
 	}
 
@@ -1248,16 +1257,17 @@ dhd_dbg_start_pkt_monitor(dhd_pub_t *dhdp)
 
 	if (PKT_MON_DETACHED(tx_pkt_state) || PKT_MON_DETACHED(tx_status_state) ||
 		PKT_MON_DETACHED(rx_pkt_state)) {
-		DHD_PKT_MON(("packet monitor is not yet enabled, "
+		DHD_PKT_MON(("%s(): packet monitor is not yet enabled, "
 			"tx_pkt_state=%d, tx_status_state=%d, rx_pkt_state=%d\n",
-			tx_pkt_state, tx_status_state, rx_pkt_state));
+			__FUNCTION__, tx_pkt_state, tx_status_state, rx_pkt_state));
 		return -EINVAL;
 	}
 
 	tx_report = dhdp->dbg->pkt_mon.tx_report;
 	rx_report = dhdp->dbg->pkt_mon.rx_report;
 	if (!tx_report || !rx_report) {
-		DHD_PKT_MON(("tx_report=%p, rx_report=%p\n", tx_report, rx_report));
+		DHD_PKT_MON(("%s(): tx_report=%p, rx_report=%p\n",
+			__FUNCTION__, tx_report, rx_report));
 		return -EINVAL;
 	}
 
@@ -1278,7 +1288,7 @@ dhd_dbg_start_pkt_monitor(dhd_pub_t *dhdp)
 	rx_report->pkt_pos = 0;
 	dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_STARTED;
 
-	DHD_PKT_MON(("packet monitor started\n"));
+	DHD_PKT_MON(("%s(): packet monitor started\n", __FUNCTION__));
 	return BCME_OK;
 }
 
@@ -1292,8 +1302,8 @@ dhd_dbg_monitor_tx_pkts(dhd_pub_t *dhdp, void *pkt, uint32 pktid)
 	uint16 pkt_pos;
 
 	if (!dhdp || !dhdp->dbg) {
-		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
-			(dhdp ? dhdp->dbg : NULL)));
+		DHD_PKT_MON(("%s(): dhdp=%p, dhdp->dbg=%p\n", __FUNCTION__,
+			dhdp, (dhdp ? dhdp->dbg : NULL)));
 		return -EINVAL;
 	}
 
@@ -1318,7 +1328,8 @@ dhd_dbg_monitor_tx_pkts(dhd_pub_t *dhdp, void *pkt, uint32 pktid)
 			tx_report->pkt_pos++;
 		} else {
 			dhdp->dbg->pkt_mon.tx_pkt_state = PKT_MON_STOPPED;
-			DHD_PKT_MON(("tx pkt logging stopped, reached max limit\n"));
+			DHD_PKT_MON(("%s(): tx pkt logging stopped, reached "
+				"max limit\n", __FUNCTION__));
 		}
 	}
 
@@ -1338,8 +1349,8 @@ dhd_dbg_monitor_tx_status(dhd_pub_t *dhdp, void *pkt, uint32 pktid,
 	bool found = FALSE;
 
 	if (!dhdp || !dhdp->dbg) {
-		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
-			(dhdp ? dhdp->dbg : NULL)));
+		DHD_PKT_MON(("%s(): dhdp=%p, dhdp->dbg=%p\n", __FUNCTION__,
+			dhdp, (dhdp ? dhdp->dbg : NULL)));
 		return -EINVAL;
 	}
 
@@ -1385,13 +1396,14 @@ dhd_dbg_monitor_tx_status(dhd_pub_t *dhdp, void *pkt, uint32 pktid,
 				}
 
 				/* still couldn't match tx_status */
-				DHD_ERROR(("couldn't match tx_status, pkt_pos=%u, "
-					"status_pos=%u, pkt_fate=%u\n", pkt_pos, status_pos,
-					pkt_fate));
+				DHD_ERROR(("%s(): couldn't match tx_status, pkt_pos=%u, "
+					"status_pos=%u, pkt_fate=%u\n", __FUNCTION__,
+					pkt_pos, status_pos, pkt_fate));
 			}
 		} else {
 			dhdp->dbg->pkt_mon.tx_status_state = PKT_MON_STOPPED;
-			DHD_PKT_MON(("tx_status logging stopped, reached max limit\n"));
+			DHD_PKT_MON(("%s(): tx_status logging stopped, reached "
+				"max limit\n", __FUNCTION__));
 		}
 	}
 
@@ -1408,8 +1420,8 @@ dhd_dbg_monitor_rx_pkts(dhd_pub_t *dhdp, void *pkt)
 	uint16 pkt_pos;
 
 	if (!dhdp || !dhdp->dbg) {
-		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
-			(dhdp ? dhdp->dbg : NULL)));
+		DHD_PKT_MON(("%s(): dhdp=%p, dhdp->dbg=%p\n", __FUNCTION__,
+			dhdp, (dhdp ? dhdp->dbg : NULL)));
 		return -EINVAL;
 	}
 
@@ -1433,7 +1445,8 @@ dhd_dbg_monitor_rx_pkts(dhd_pub_t *dhdp, void *pkt)
 			rx_report->pkt_pos++;
 		} else {
 			dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_STOPPED;
-			DHD_PKT_MON(("rx pkt logging stopped, reached max limit\n"));
+			DHD_PKT_MON(("%s(): rx pkt logging stopped, reached "
+				"max limit\n", __FUNCTION__));
 		}
 	}
 
@@ -1448,8 +1461,8 @@ dhd_dbg_stop_pkt_monitor(dhd_pub_t *dhdp)
 	dhd_dbg_pkt_mon_state_t rx_pkt_state;
 
 	if (!dhdp || !dhdp->dbg) {
-		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
-			(dhdp ? dhdp->dbg : NULL)));
+		DHD_PKT_MON(("%s(): dhdp=%p, dhdp->dbg=%p\n", __FUNCTION__,
+			dhdp, (dhdp ? dhdp->dbg : NULL)));
 		return -EINVAL;
 	}
 
@@ -1459,9 +1472,9 @@ dhd_dbg_stop_pkt_monitor(dhd_pub_t *dhdp)
 
 	if (PKT_MON_DETACHED(tx_pkt_state) || PKT_MON_DETACHED(tx_status_state) ||
 		PKT_MON_DETACHED(rx_pkt_state)) {
-		DHD_PKT_MON(("packet monitor is not yet enabled, "
+		DHD_PKT_MON(("%s(): packet monitor is not yet enabled, "
 			"tx_pkt_state=%d, tx_status_state=%d, rx_pkt_state=%d\n",
-			tx_pkt_state, tx_status_state, rx_pkt_state));
+			__FUNCTION__, tx_pkt_state, tx_status_state, rx_pkt_state));
 		return -EINVAL;
 	}
 
@@ -1469,7 +1482,7 @@ dhd_dbg_stop_pkt_monitor(dhd_pub_t *dhdp)
 	dhdp->dbg->pkt_mon.tx_status_state = PKT_MON_STOPPED;
 	dhdp->dbg->pkt_mon.rx_pkt_state = PKT_MON_STOPPED;
 
-	DHD_PKT_MON(("packet monitor stopped\n"));
+	DHD_PKT_MON(("%s(): packet monitor stopped\n", __FUNCTION__));
 	return BCME_OK;
 }
 
@@ -1479,7 +1492,8 @@ dhd_dbg_stop_pkt_monitor(dhd_pub_t *dhdp)
 		__ret = copy_to_user((void __user *)(to), (void *)(from), \
 				(unsigned long)(n)); \
 		if (unlikely(__ret)) { \
-			DHD_ERROR(("copy_to_user failed, ret=%d\n", __ret)); \
+			DHD_ERROR(("%s():%d: copy_to_user failed, ret=%d\n", \
+				__FUNCTION__, __LINE__, __ret)); \
 			return __ret; \
 		} \
 	} while (0);
@@ -1496,16 +1510,17 @@ dhd_dbg_monitor_get_tx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
 	uint16 pkt_count, count;
 
 	if (!dhdp || !dhdp->dbg) {
-		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
-			(dhdp ? dhdp->dbg : NULL)));
+		DHD_PKT_MON(("%s(): dhdp=%p, dhdp->dbg=%p\n", __FUNCTION__,
+			dhdp, (dhdp ? dhdp->dbg : NULL)));
 		return -EINVAL;
 	}
 
 	tx_pkt_state = dhdp->dbg->pkt_mon.tx_pkt_state;
 	tx_status_state = dhdp->dbg->pkt_mon.tx_status_state;
 	if (PKT_MON_DETACHED(tx_pkt_state) || PKT_MON_DETACHED(tx_status_state)) {
-		DHD_PKT_MON(("packet monitor is not yet enabled, tx_pkt_state=%d, "
-			"tx_status_state=%d\n", tx_pkt_state, tx_status_state));
+		DHD_PKT_MON(("%s(): packet monitor is not yet enabled, "
+			"tx_pkt_state=%d, tx_status_state=%d\n", __FUNCTION__,
+			tx_pkt_state, tx_status_state));
 		return -EINVAL;
 	}
 
@@ -1515,7 +1530,7 @@ dhd_dbg_monitor_get_tx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
 	pkt_count = MIN(req_count, tx_report->status_pos);
 	ptr = (wifi_tx_report_t *)user_buf;
 	while ((count < pkt_count) && tx_pkt && ptr) {
-		__dhd_dbg_dump_tx_pkt_info(dhdp, tx_pkt);
+		__dhd_dbg_dump_tx_pkt_info(dhdp, tx_pkt, count);
 
 		__COPY_TO_USER(&ptr->fate, &tx_pkt->fate, sizeof(tx_pkt->fate));
 		__COPY_TO_USER(&ptr->frame_inf.payload_type,
@@ -1531,8 +1546,9 @@ dhd_dbg_monitor_get_tx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
 	*resp_count = pkt_count;
 
 	if (!pkt_count) {
-		DHD_ERROR(("no tx_status in tx completion messages, make sure that "
-			"'d11status' is enabled in firmware, status_pos=%u", pkt_count));
+		DHD_ERROR(("%s(): no tx_status in tx completion messages, "
+			"make sure that 'd11status' is enabled in firmware, "
+			"status_pos=%u", __FUNCTION__, pkt_count));
 	}
 
 	return BCME_OK;
@@ -1549,15 +1565,15 @@ dhd_dbg_monitor_get_rx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
 	uint16 pkt_count, count;
 
 	if (!dhdp || !dhdp->dbg) {
-		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
-			(dhdp ? dhdp->dbg : NULL)));
+		DHD_PKT_MON(("%s(): dhdp=%p, dhdp->dbg=%p\n", __FUNCTION__,
+			dhdp, (dhdp ? dhdp->dbg : NULL)));
 		return -EINVAL;
 	}
 
 	rx_pkt_state = dhdp->dbg->pkt_mon.rx_pkt_state;
 	if (PKT_MON_DETACHED(rx_pkt_state)) {
-		DHD_PKT_MON(("packet monitor is not yet enabled, rx_pkt_state=%d\n",
-			rx_pkt_state));
+		DHD_PKT_MON(("%s(): packet monitor is not yet enabled, "
+			"rx_pkt_state=%d\n", __FUNCTION__, rx_pkt_state));
 		return -EINVAL;
 	}
 
@@ -1567,7 +1583,7 @@ dhd_dbg_monitor_get_rx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
 	pkt_count = MIN(req_count, rx_report->pkt_pos);
 	ptr = (wifi_rx_report_t *)user_buf;
 	while ((count < pkt_count) && rx_pkt && ptr) {
-		__dhd_dbg_dump_rx_pkt_info(dhdp, rx_pkt);
+		__dhd_dbg_dump_rx_pkt_info(dhdp, rx_pkt, count);
 
 		__COPY_TO_USER(&ptr->fate, &rx_pkt->fate, sizeof(rx_pkt->fate));
 		__COPY_TO_USER(&ptr->frame_inf.payload_type,
@@ -1595,8 +1611,8 @@ dhd_dbg_detach_pkt_monitor(dhd_pub_t *dhdp)
 	dhd_dbg_pkt_mon_state_t rx_pkt_state;
 
 	if (!dhdp || !dhdp->dbg) {
-		DHD_PKT_MON(("dhdp=%p, dhdp->dbg=%p\n", dhdp,
-			(dhdp ? dhdp->dbg : NULL)));
+		DHD_PKT_MON(("%s(): dhdp=%p, dhdp->dbg=%p\n", __FUNCTION__,
+			dhdp, (dhdp ? dhdp->dbg : NULL)));
 		return -EINVAL;
 	}
 
@@ -1606,9 +1622,9 @@ dhd_dbg_detach_pkt_monitor(dhd_pub_t *dhdp)
 
 	if (PKT_MON_DETACHED(tx_pkt_state) || PKT_MON_DETACHED(tx_status_state) ||
 		PKT_MON_DETACHED(rx_pkt_state)) {
-		DHD_PKT_MON(("packet monitor is already detached, "
+		DHD_PKT_MON(("%s(): packet monitor is already detached, "
 			"tx_pkt_state=%d, tx_status_state=%d, rx_pkt_state=%d\n",
-			tx_pkt_state, tx_status_state, rx_pkt_state));
+			__FUNCTION__, tx_pkt_state, tx_status_state, rx_pkt_state));
 		return -EINVAL;
 	}
 
@@ -1645,10 +1661,10 @@ dhd_dbg_detach_pkt_monitor(dhd_pub_t *dhdp)
 	}
 	dhdp->dbg->pkt_mon.rx_pkt_mon = NULL;
 
-	DHD_PKT_MON(("packet monitor detach succeeded\n"));
+	DHD_PKT_MON(("%s(): packet monitor detach succeeded\n", __FUNCTION__));
 	return BCME_OK;
 }
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 
 /*
  * dhd_dbg_attach: initialziation of dhd dbugability module

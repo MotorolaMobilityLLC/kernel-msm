@@ -403,8 +403,10 @@ static s32 wl_notify_connect_status(struct bcm_cfg80211 *cfg,
 	bcm_struct_cfgdev *cfgdev, const wl_event_msg_t *e, void *data);
 static s32 wl_notify_roaming_status(struct bcm_cfg80211 *cfg,
 	bcm_struct_cfgdev *cfgdev, const wl_event_msg_t *e, void *data);
+#ifdef DBG_PKT_MON
 static s32 wl_notify_roam_prep_status(struct bcm_cfg80211 *cfg,
 	bcm_struct_cfgdev *cfgdev, const wl_event_msg_t *e, void *data);
+#endif /* DBG_PKT_MON */
 static s32 wl_notify_scan_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	const wl_event_msg_t *e, void *data);
 static s32 wl_bss_connect_done(struct bcm_cfg80211 *cfg, struct net_device *ndev,
@@ -4159,13 +4161,16 @@ set_ssid:
 	}
 exit:
 
+#ifdef DBG_PKT_MON
 	/*
-	 * XXX: start packet logging in advance to make sure that EAPOL 1/4
-	 * is not missed
+	 * XXX: start packet logging in advance to make sure that EAPOL
+	 * messages are not missed
 	 */
 	if ((dev == bcmcfg_to_prmry_ndev(cfg)) && !err) {
 		DHD_DBG_PKT_MON_START(dhdp);
 	}
+#endif /* DBG_PKT_MON */
+
 	return err;
 }
 
@@ -4194,9 +4199,11 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 #endif /* ESCAN_RESULT_PATCH */
 
 	if (act) {
+#ifdef DBG_PKT_MON
 		if (dev == bcmcfg_to_prmry_ndev(cfg)) {
 			DHD_DBG_PKT_MON_STOP(dhdp);
 		}
+#endif /* DBG_PKT_MON */
 
 		/*
 		 * Cancel ongoing scan to sync up with sme state machine of cfg80211.
@@ -8642,9 +8649,11 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 					return 0;
 				}
 
+#ifdef DBG_PKT_MON
 				if (ndev == bcmcfg_to_prmry_ndev(cfg)) {
 					DHD_DBG_PKT_MON_STOP(dhdp);
 				}
+#endif /* DBG_PKT_MON */
 
 				wl_clr_drv_status(cfg, CONNECTED, ndev);
 				if (!wl_get_drv_status(cfg, DISCONNECTING, ndev)) {
@@ -8797,6 +8806,11 @@ wl_notify_roaming_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	return err;
 }
 
+#ifdef DBG_PKT_MON
+/*
+ * XXX: start packet logging in advance to make sure that EAPOL
+ * messages are not missed during roaming
+ */
 static s32
 wl_notify_roam_prep_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
     const wl_event_msg_t *e, void *data)
@@ -8814,6 +8828,7 @@ wl_notify_roam_prep_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 
     return BCME_OK;
 }
+#endif /* DBG_PKT_MON */
 
 static s32 wl_get_assoc_ies(struct bcm_cfg80211 *cfg, struct net_device *ndev)
 {
@@ -9975,7 +9990,9 @@ static void wl_init_event_handler(struct bcm_cfg80211 *cfg)
 #ifdef BT_WIFI_HANDOVER
 	cfg->evt_handler[WLC_E_BT_WIFI_HANDOVER_REQ] = wl_notify_bt_wifi_handover_req;
 #endif
+#ifdef DBG_PKT_MON
 	cfg->evt_handler[WLC_E_ROAM_PREP] = wl_notify_roam_prep_status;
+#endif /* DBG_PKT_MON */
 }
 
 #if defined(STATIC_WL_PRIV_STRUCT)

@@ -349,7 +349,7 @@ dhd_os_push_push_ring_data(dhd_pub_t *dhdp, int ring_id, void *data, int32 data_
 	return ret;
 }
 
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 int
 dhd_os_dbg_attach_pkt_monitor(dhd_pub_t *dhdp)
 {
@@ -407,7 +407,7 @@ dhd_os_dbg_detach_pkt_monitor(dhd_pub_t *dhdp)
 {
 	return dhd_dbg_detach_pkt_monitor(dhdp);
 }
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 
 int
 dhd_os_dbg_get_feature(dhd_pub_t *dhdp, int32 *features)
@@ -423,11 +423,11 @@ dhd_os_dbg_get_feature(dhd_pub_t *dhdp, int32 *features)
 	if (FW_SUPPORTED(dhdp, hchk)) {
 		*features |= DBG_HEALTH_CHECK_SUPPORTED;
 	}
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 	if (FW_SUPPORTED(dhdp, d11status)) {
 		*features |= DBG_PACKET_FATE_SUPPORTED;
 	}
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 	return ret;
 }
 

@@ -3023,8 +3023,11 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 #ifdef WLMEDIA_HTSF
 		dhd_htsf_addrxts(dhdp, pktbuf);
 #endif
+
+#ifdef DBG_PKT_MON
 		/* TODO: XXX: re-look into dropped packets. */
 		DHD_DBG_PKT_MON_RX(dhdp, skb);
+#endif /* DBG_PKT_MON */
 
 		/* Strip header, count, deliver upward */
 		skb_pull(skb, ETH_HLEN);
@@ -6081,6 +6084,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #ifdef BT_WIFI_HANDOVER
 		setbit(eventmask_msg->mask, WLC_E_BT_WIFI_HANDOVER_REQ);
 #endif /* BT_WIFI_HANDOVER */
+#ifdef DBG_PKT_MON
+		setbit(eventmask_msg->mask, WLC_E_ROAM_PREP);
+#endif /* DBG_PKT_MON */
 
 		/* Write updated Event mask */
 		eventmask_msg->ver = EVENTMSGS_VER;
@@ -6930,9 +6936,9 @@ void dhd_detach(dhd_pub_t *dhdp)
 	dhd->dhd_deferred_wq = NULL;
 
 	if (dhdp->dbg) {
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 		dhd_os_dbg_detach_pkt_monitor(dhdp);
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 		dhd_os_dbg_detach(dhdp);
 	}
 #ifdef SHOW_LOGTRACE
@@ -7657,9 +7663,9 @@ dhd_net_bus_devreset(struct net_device *dev, uint8 flag)
 			dhd_rtt_deinit(&dhd->pub);
 		}
 #endif /* RTT_SUPPORT */
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 		dhd_os_dbg_detach_pkt_monitor(&dhd->pub);
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 	}
 #ifdef BCMSDIO
 	if (!flag) {

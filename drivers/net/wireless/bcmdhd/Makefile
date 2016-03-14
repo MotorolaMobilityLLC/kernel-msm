@@ -191,7 +191,7 @@ endif
   DHDCFLAGS += -DDONGLE_ENABLE_ISOLATION
 
 # Debugability - Packet logging
-  DHDCFLAGS += -DD11_STATUS
+  DHDCFLAGS += -DDBG_PKT_MON
 endif
 
 # Print 802.1X packets

@@ -234,7 +234,7 @@ enum {
 #define PKT_MON_STATUS_FULL(pkt_count, status_count) \
 	(((status_count) >= (pkt_count)) || ((status_count) >= MAX_FATE_LOG_LEN))
 
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 #define DHD_DBG_PKT_MON_TX(dhdp, pkt, pktid) \
 	do { \
 		if ((dhdp) && (dhdp)->dbg && (dhdp)->dbg->pkt_mon.tx_pkt_mon && (pkt)) { \
@@ -265,7 +265,7 @@ enum {
 #define DHD_DBG_PKT_MON_RX(dhdp, pkt)
 #define DHD_DBG_PKT_MON_START(dhdp)
 #define DHD_DBG_PKT_MON_STOP(dhdp)
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 
 typedef struct {
     uint16 tag;
@@ -682,7 +682,7 @@ extern int dhd_dbg_find_ring_id(dhd_pub_t *dhdp, char *ring_name);
 extern void *dhd_dbg_get_priv(dhd_pub_t *dhdp);
 extern int dhd_dbg_send_urgent_evt(dhd_pub_t *dhdp, const void *data, const uint32 len);
 
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 extern int dhd_dbg_attach_pkt_monitor(dhd_pub_t *dhdp,
 	dbg_mon_tx_pkts_t tx_pkt_mon,
 	dbg_mon_tx_status_t tx_status_mon,
@@ -698,7 +698,7 @@ extern int dhd_dbg_monitor_get_tx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
 extern int dhd_dbg_monitor_get_rx_pkts(dhd_pub_t *dhdp, void __user *user_buf,
 	uint16 req_count, uint16 *resp_count);
 extern int dhd_dbg_detach_pkt_monitor(dhd_pub_t *dhdp);
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 
 /* wrapper function */
 extern int dhd_os_dbg_attach(dhd_pub_t *dhdp);
@@ -721,7 +721,7 @@ extern int dhd_os_push_push_ring_data(dhd_pub_t *dhdp, int ring_id, void *data, 
 
 extern int dhd_os_dbg_get_feature(dhd_pub_t *dhdp, int32 *features);
 
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 extern int dhd_os_dbg_attach_pkt_monitor(dhd_pub_t *dhdp);
 extern int dhd_os_dbg_start_pkt_monitor(dhd_pub_t *dhdp);
 extern int dhd_os_dbg_monitor_tx_pkts(dhd_pub_t *dhdp, void *pkt,
@@ -735,5 +735,5 @@ extern int dhd_os_dbg_monitor_get_tx_pkts(dhd_pub_t *dhdp,
 extern int dhd_os_dbg_monitor_get_rx_pkts(dhd_pub_t *dhdp,
 	void __user *user_buf, uint16 req_count, uint16 *resp_count);
 extern int dhd_os_dbg_detach_pkt_monitor(dhd_pub_t *dhdp);
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 #endif /* _dhd_debug_h_ */

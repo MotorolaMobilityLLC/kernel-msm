@@ -2209,7 +2209,7 @@ exit:
 	return ret;
 }
 
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 static int wl_cfgvendor_dbg_start_pkt_fate_monitoring(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void *data, int len)
 {
@@ -2314,7 +2314,7 @@ static int wl_cfgvendor_dbg_get_rx_pkt_fates(struct wiphy *wiphy,
 
 	return ret;
 }
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 
 static void wl_cfgvendor_dbg_ring_send_evt(void *ctx,
 	const int ring_id, const void *data, const uint32 len,
@@ -2882,7 +2882,7 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
 		.doit = wl_cfgvendor_dbg_get_feature
 	},
-#ifdef D11_STATUS
+#ifdef DBG_PKT_MON
 	{
 		{
 			.vendor_id = OUI_GOOGLE,
@@ -2907,7 +2907,7 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
 		.doit = wl_cfgvendor_dbg_get_rx_pkt_fates
 	},
-#endif /* D11_STATUS */
+#endif /* DBG_PKT_MON */
 #ifdef KEEP_ALIVE
 	{
 		{
