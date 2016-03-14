@@ -203,6 +203,24 @@ void motosh_irq_work_func(struct work_struct *work)
 		dev_info(&ps_motosh->client->dev,
 			"Save accel cal");
 	}
+	if (irq_status & N_MOTO_MOD_CURRENT_DRAIN) {
+		cmdbuff[0] = MOTO_MOD_CURRENT_DRAIN;
+		err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
+			1, 4);
+
+		if (err >= 0) {
+			motosh_as_data_buffer_write(ps_motosh,
+				DT_MOTO_MOD_CURRENT_DRAIN,
+				readbuff, 4, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev, "Sending Moto Mod Current Drain 0x%04X\n",
+				STM32_TO_HOST(readbuff, 0));
+		} else {
+			dev_err(&ps_motosh->client->dev,
+				"Reading MOTO_MOD_CURRENT_DRAIN failed [err: %d]\n",
+				err);
+		}
+	}
 
 	if (queue_length > MOTOSH_MAX_NWAKE_EVENT_QUEUE_SIZE) {
 		dev_err(&ps_motosh->client->dev,
