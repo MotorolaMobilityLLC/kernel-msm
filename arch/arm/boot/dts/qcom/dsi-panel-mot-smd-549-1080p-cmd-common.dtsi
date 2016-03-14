@@ -86,6 +86,9 @@ qcom,mdss-dsi-te-dcs-command = <1>;
 qcom,mdss-dsi-te-check-enable;
 qcom,mdss-dsi-te-using-te-pin;
 
+qcom,partial-update-enabled;
+qcom,panel-roi-alignment = <8 0 8 0 0 0>;
+
 /* Enable ESD checking */
 qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
