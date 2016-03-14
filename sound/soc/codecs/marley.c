@@ -29,7 +29,7 @@
 #include <linux/mfd/arizona/core.h>
 #include <linux/mfd/arizona/registers.h>
 
-#include "arizona.h"
+#include "arizona_marley.h"
 #include "wm_adsp.h"
 #include "marley.h"
 
