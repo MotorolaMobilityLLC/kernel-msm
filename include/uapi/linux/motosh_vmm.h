@@ -96,9 +96,9 @@ VMM_ENTRY(0x08, ACCEL_CAL,						TRUE,
 #endif /*PDISPLAY*/
 
 
-VMM_ENTRY(0x0F, UNUSED_0F,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x0F, MOTO_MOD_CURRENT_DRAIN,					FALSE,
+		vmm_moto_mod_current_drain,
+		sizeof(vmm_moto_mod_current_drain))
 
 
 VMM_ENTRY(0x10, POSIX_TIME,						TRUE,
