@@ -57,6 +57,11 @@
 
 #define NO_AUTO_CAL_MASK 0x01
 
+static inline ssize_t synaptics_dsx_test_reporting_show_error(struct device *dev,
+		struct device_attribute *attr, char *buf);
+static inline ssize_t synaptics_dsx_test_reporting_store_error(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
 #define concat(a, b) a##b
 
 #define GROUP(_attrs) {\
@@ -74,7 +79,7 @@ static ssize_t concat(synaptics_rmi4_f54, _##propname##_show)(\
 struct device_attribute dev_attr_##propname =\
 		__ATTR(propname, (perm),\
 		concat(synaptics_rmi4_f54, _##propname##_show),\
-		synaptics_rmi4_store_error);
+		synaptics_dsx_test_reporting_store_error);
 
 #define show_prototype(propname)\
 	show_prototype_ext(propname, S_IRUSR | S_IRGRP | S_IROTH)
@@ -87,7 +92,7 @@ static ssize_t concat(synaptics_rmi4_f54, _##propname##_store)(\
 \
 struct device_attribute dev_attr_##propname =\
 		__ATTR(propname, S_IWUSR | S_IWGRP,\
-		synaptics_rmi4_show_error,\
+		synaptics_dsx_test_reporting_show_error,\
 		concat(synaptics_rmi4_f54, _##propname##_store));
 
 #define show_store_prototype_ext(propname, perm)\
@@ -2317,6 +2322,24 @@ static struct bin_attribute dev_report_data = {
 static struct synaptics_rmi4_f54_handle *f54;
 
 static struct completion remove_complete;
+
+static inline ssize_t synaptics_dsx_test_reporting_show_error(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	dev_warn(&f54->rmi4_data->i2c_client->dev,
+			"%s: Attempted to read from write-only attribute %s\n",
+			__func__, attr->attr.name);
+	return -EPERM;
+}
+
+static inline ssize_t synaptics_dsx_test_reporting_store_error(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	dev_warn(&f54->rmi4_data->i2c_client->dev,
+			"%s: Attempted to write to read-only attribute %s\n",
+			__func__, attr->attr.name);
+	return -EPERM;
+}
 
 static bool is_report_type_valid(enum f54_report_types report_type)
 {
