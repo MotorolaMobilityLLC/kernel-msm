@@ -943,6 +943,9 @@ static int mdss_dsi_debugfs_init(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	struct mdss_panel_data *pdata = &ctrl_pdata->panel_data;
 	int rc;
 
+	if (!pdata)
+		return -EINVAL;
+
 	do {
 		struct mdss_panel_info panel_info = pdata->panel_info;
 		if (panel_info.debugfs_info) {
