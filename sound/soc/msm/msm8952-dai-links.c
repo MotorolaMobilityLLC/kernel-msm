@@ -30,12 +30,6 @@ enum TASHA_LITE_DEVICE {
 static struct snd_soc_card snd_soc_card_msm[MAX_CODECS];
 static struct snd_soc_card snd_soc_card_msm_card;
 
-static struct snd_soc_ops msm8952_quat_mi2s_be_ops = {
-	.startup = msm_quat_mi2s_snd_startup,
-	.hw_params = msm_mi2s_snd_hw_params,
-	.shutdown = msm_quat_mi2s_snd_shutdown,
-};
-
 static struct snd_soc_ops msm8952_quin_mi2s_be_ops = {
 	.startup = msm_quin_mi2s_snd_startup,
 	.hw_params = msm_mi2s_snd_hw_params,
@@ -1456,22 +1450,6 @@ static struct snd_soc_dai_link msm8952_tdm_fe_dai[] = {
 };
 
 static struct snd_soc_dai_link msm8952_common_be_dai[] = {
-	/* Backend I2S DAI Links */
-	{
-		.name = LPASS_BE_QUAT_MI2S_RX,
-		.stream_name = "Quaternary MI2S Playback",
-		.cpu_dai_name = "msm-dai-q6-mi2s.3",
-		.platform_name = "msm-pcm-routing",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.no_pcm = 1,
-		.dpcm_playback = 1,
-		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
-		.ops = &msm8952_quat_mi2s_be_ops,
-		.ignore_pmdown_time = 1, /* dai link has playback support */
-		.ignore_suspend = 1,
-	},
 	/* Primary AUX PCM Backend DAI Links */
 	{
 		.name = LPASS_BE_AUXPCM_RX,
@@ -1500,76 +1478,6 @@ static struct snd_soc_dai_link msm8952_common_be_dai[] = {
 		.be_id = MSM_BACKEND_DAI_AUXPCM_TX,
 		.be_hw_params_fixup = msm_auxpcm_be_params_fixup,
 		.ops = &msm_pri_auxpcm_be_ops,
-		.ignore_suspend = 1,
-	},
-	{
-		.name = LPASS_BE_QUAT_MI2S_TX,
-		.stream_name = "Quaternary MI2S Capture",
-		.cpu_dai_name = "msm-dai-q6-mi2s.3",
-		.platform_name = "msm-pcm-routing",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.no_pcm = 1,
-		.dpcm_capture = 1,
-		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
-		.ops = &msm8952_quat_mi2s_be_ops,
-		.ignore_suspend = 1,
-	},
-	{
-		.name = LPASS_BE_INT_BT_SCO_RX,
-		.stream_name = "Internal BT-SCO Playback",
-		.cpu_dai_name = "msm-dai-q6-dev.12288",
-		.platform_name = "msm-pcm-routing",
-		.codec_name = "msm-stub-codec.1",
-		.codec_dai_name	= "msm-stub-rx",
-		.no_pcm = 1,
-		.dpcm_playback = 1,
-		.be_id = MSM_BACKEND_DAI_INT_BT_SCO_RX,
-		.be_hw_params_fixup = msm_btsco_be_hw_params_fixup,
-		/* this dai link has playback support */
-		.ignore_pmdown_time = 1,
-		.ignore_suspend = 1,
-	},
-	{
-		.name = LPASS_BE_INT_BT_SCO_TX,
-		.stream_name = "Internal BT-SCO Capture",
-		.cpu_dai_name = "msm-dai-q6-dev.12289",
-		.platform_name = "msm-pcm-routing",
-		.codec_name = "msm-stub-codec.1",
-		.codec_dai_name	= "msm-stub-tx",
-		.no_pcm = 1,
-		.dpcm_capture = 1,
-		.be_id = MSM_BACKEND_DAI_INT_BT_SCO_TX,
-		.be_hw_params_fixup = msm_btsco_be_hw_params_fixup,
-		.ignore_suspend = 1,
-	},
-	{
-		.name = LPASS_BE_INT_FM_RX,
-		.stream_name = "Internal FM Playback",
-		.cpu_dai_name = "msm-dai-q6-dev.12292",
-		.platform_name = "msm-pcm-routing",
-		.codec_name = "msm-stub-codec.1",
-		.codec_dai_name = "msm-stub-rx",
-		.no_pcm = 1,
-		.dpcm_playback = 1,
-		.be_id = MSM_BACKEND_DAI_INT_FM_RX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
-		/* this dai link has playback support */
-		.ignore_pmdown_time = 1,
-		.ignore_suspend = 1,
-	},
-	{
-		.name = LPASS_BE_INT_FM_TX,
-		.stream_name = "Internal FM Capture",
-		.cpu_dai_name = "msm-dai-q6-dev.12293",
-		.platform_name = "msm-pcm-routing",
-		.codec_name = "msm-stub-codec.1",
-		.codec_dai_name = "msm-stub-tx",
-		.no_pcm = 1,
-		.dpcm_capture = 1,
-		.be_id = MSM_BACKEND_DAI_INT_FM_TX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ignore_suspend = 1,
 	},
 	{
@@ -2082,6 +1990,7 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	}
 #endif
 
+#ifndef CONFIG_SND_SOC_MARLEY
 	if (of_property_read_bool(dev->of_node, "qcom,hdmi-dba-codec-rx")) {
 		dev_dbg(dev, "%s(): hdmi dba audio support present\n",
 				__func__);
@@ -2101,7 +2010,7 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		memcpy(msm8952_dai_links + len5, msm8952_tdm_be_dai_link,
 			sizeof(msm8952_tdm_be_dai_link));
 		len5 += ARRAY_SIZE(msm8952_tdm_be_dai_link);
-	}
+	}	
 	if (of_property_read_bool(dev->of_node, "qcom,afe-rxtx-lb")) {
 		dev_dbg(dev, "%s(): AFE RX to TX loopback supported\n",
 				__func__);
@@ -2110,6 +2019,7 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		       sizeof(msm8952_afe_rxtx_lb_be_dai_link));
 		len5 += ARRAY_SIZE(msm8952_afe_rxtx_lb_be_dai_link);
 	}
+#endif
 	card->dai_link = msm8952_dai_links;
 	card->num_links = len5;
 	card->dev = dev;
