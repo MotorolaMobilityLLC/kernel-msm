@@ -1784,7 +1784,7 @@ static struct snd_soc_dai_driver marley_dai[] = {
 	},
 	{
 		.name = "marley-slim1",
-		.id = 5,
+		.id = 4,
 		.playback = {
 			.stream_name = "Slim1 Playback",
 			.channels_min = 1,
@@ -1803,7 +1803,7 @@ static struct snd_soc_dai_driver marley_dai[] = {
 	},
 	{
 		.name = "marley-slim2",
-		.id = 6,
+		.id = 5,
 		.playback = {
 			.stream_name = "Slim2 Playback",
 			.channels_min = 1,
