@@ -5542,6 +5542,7 @@ static irqreturn_t fg_soc_irq_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
+#define FG_EMPTY_IRQ_DEBOUNCE_MS	10
 static irqreturn_t fg_empty_soc_irq_handler(int irq, void *_chip)
 {
 	struct fg_chip *chip = _chip;
@@ -5555,14 +5556,16 @@ static irqreturn_t fg_empty_soc_irq_handler(int irq, void *_chip)
 		goto done;
 	}
 
-	if (fg_debug_mask & FG_IRQS)
-		pr_info("triggered 0x%x\n", soc_rt_sts);
-	if (fg_is_batt_empty(chip)) {
+	pr_info("triggered 0x%x\n", soc_rt_sts);
+
+	if (soc_rt_sts & SOC_EMPTY) {
+		chip->soc_empty = true;
 		fg_stay_awake(&chip->empty_check_wakeup_source);
 		schedule_delayed_work(&chip->check_empty_work,
-			msecs_to_jiffies(FG_EMPTY_DEBOUNCE_MS));
+			msecs_to_jiffies(FG_EMPTY_IRQ_DEBOUNCE_MS));
 	} else {
 		chip->soc_empty = false;
+		fg_relax(&chip->empty_check_wakeup_source);
 	}
 
 done:
@@ -6856,19 +6859,11 @@ static void check_empty_work(struct work_struct *work)
 			enable_irq_wake(chip->batt_irq[VBATT_LOW].irq);
 			chip->vbat_low_irq_enabled = true;
 		}
-	} else if (fg_is_batt_empty(chip) 
-		   && (get_prop_capacity_raw(chip) <= 0)) {
-		if (fg_debug_mask & FG_STATUS)
-			pr_info("EMPTY SOC high\n");
-		chip->soc_empty = true;
+	} else if (chip->soc_empty
+		   || (get_prop_capacity_raw(chip) <= 0)) {
+		pr_info("EMPTY SOC high\n");
 		if (chip->power_supply_registered)
 			power_supply_changed(&chip->bms_psy);
-		cancel_delayed_work(&chip->check_empty_work);
-		schedule_delayed_work(&chip->check_empty_work,
-			msecs_to_jiffies(FG_EMPTY_DEBOUNCE_MS));
-	} else {
-		chip->soc_empty = false;
-		fg_relax(&chip->empty_check_wakeup_source);
 	}
 
 out:
