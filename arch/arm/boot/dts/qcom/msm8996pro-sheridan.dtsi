@@ -1,0 +1,116 @@
+/* Copyright (c) 2015, Motorla Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8996pro.dtsi"
+#include "msm8996-moto-common.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
+
+/ {
+	model = "Sheridan";
+	compatible = "qcom,msm8996-sheridan", "qcom,msm8996-moto",
+			"qcom,msm8996";
+};
+
+&drv2605 {
+	effects_library = <6>;
+	rated_voltage = <0x2d>;         /* 0.96v */
+	overdrive_voltage = <0x89>;     /* 3v */
+	rtp_overdrive_voltage = <0x89>; /* 3v */
+	lra_drive;
+};
+
+/{
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <100>;
+		df-serialnum = "SNN5972";
+
+		#include "batterydata-gv30-lg.dtsi"
+	};
+};
+
+&pmi8994_fg {
+	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
+	qcom,battery-data = <&mot_batterydata>;
+};
+
+&soc {
+	vbat_disp_vreg: vbat_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat_disp";
+		gpio = <&tlmm 69 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	vdd3_disp_vreg: vdd3_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd3_disp";
+		gpio = <&pm8994_gpios 5 0>;
+		vin-supply = <&pm8994_s4>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "sheridan";
+	};
+
+	/* SensorHub Bus */
+	i2c@7579000 {
+		motosh@43 {
+			mag_config = <2>;     /* Magnetometer config value */
+		};
+	};
+};
+
+&pm8994_l17 {
+	regulator-always-on;
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+};
+
+&pm8994_l19 {
+	regulator-boot-on;
+	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_g_cmd_v0>;
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vci_disp-supply = <&pm8994_l19>;
+	vdd3_disp-supply = <&vdd3_disp_vreg>;
+};
+
+&mot_smd_546_QHD_g_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&i2c_7 {
+	stmvl53l0@29 {
+		st,xtalkval = <22>;
+	};
+};
+
+&florida {
+	adsps {
+		mot,speaker-protect-coeff = "speaker-protect-sheridan";
+	};
+};
