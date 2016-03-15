@@ -15,6 +15,7 @@
 #include <linux/of_gpio.h>
 #include <linux/usb/class-dual-role.h>
 #include "fusb302.h"
+#include <linux/ipc_logging.h>
 
 #ifdef CONFIG_FSUSB42_MUX
 #include <linux/fsusb42.h>
@@ -61,10 +62,18 @@ int VBUS_12V_EN;
 #define FUSB_AUD_SW_SEL_INDEX 1
 #define FUSB_AUD_DET_INDEX 2
 
+#define FUSB_LOG_PAGES 50
+static void *fusb302_ipc_log;
+
 #define FUSB302_DEBUG
 
 #ifdef FUSB302_DEBUG
-#define FUSB_LOG(fmt, args...)  pr_debug("[fusb302]" fmt, ##args)
+#define FUSB_LOG(fmt, args...) do {                         \
+	if (fusb302_ipc_log)   \
+		ipc_log_string(fusb302_ipc_log, \
+			"%s: " fmt, __func__, ## args); \
+		pr_debug("%s: " fmt, __func__, ## args);  \
+	} while (0)
 #else
 #define FUSB_LOG(fmt, args...)
 #endif
@@ -182,7 +191,7 @@ void UpdateSourcePowerMode(void);
 static int FUSB300Int_PIN_LVL(void)
 {
 	int ret = gpio_get_value(fusb_i2c_data->gpios[FUSB_INT_INDEX]);
-	FUSB_LOG("gpio irq_gpio value = %d\n", ret);
+	/* FUSB_LOG("gpio irq_gpio value = %d\n", ret); */
 	return ret;
 }
 
@@ -1941,6 +1950,7 @@ int fusb302_state_kthread(void *x)
 			state_changed = false;
 			set_current_state(TASK_RUNNING);
 		}
+		FUSB_LOG("Run StateMachine, int = %d\n", FUSB300Int_PIN_LVL());
 		StateMachineFUSB300();
 	}
 	return 0;
@@ -2401,6 +2411,7 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	int retval = 0;
 	struct dual_role_phy_desc *desc;
 	struct dual_role_phy_instance *dual_role;
+	fusb302_ipc_log = ipc_log_context_create(FUSB_LOG_PAGES, "fusb302", 0);
 	FUSB_LOG("enter probe\n");
 	if (!i2c_check_functionality(i2c->adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
 		dev_err(&i2c->dev,
@@ -2568,6 +2579,8 @@ static int fusb302_remove(struct i2c_client *i2c)
 		devm_kfree(&i2c->dev, fusb->desc);
 	}
 	devm_kfree(&i2c->dev, fusb);
+	ipc_log_context_destroy(fusb302_ipc_log);
+	fusb302_ipc_log = NULL;
 	return 0;
 }
 
