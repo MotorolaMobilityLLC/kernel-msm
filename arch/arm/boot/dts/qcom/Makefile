@@ -145,6 +145,10 @@ dtb-$(CONFIG_ARCH_MSM8996) += msm8996-sheridan-p2a.dtb
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-griffin-p2a.dtb
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-sheridan-p2c.dtb
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-griffin-p2c.dtb
+dtb-$(CONFIG_ARCH_MSM8996) += msm8996pro-sheridan-p2a.dtb
+dtb-$(CONFIG_ARCH_MSM8996) += msm8996pro-griffin-p2a.dtb
+dtb-$(CONFIG_ARCH_MSM8996) += msm8996pro-sheridan-p2c.dtb
+dtb-$(CONFIG_ARCH_MSM8996) += msm8996pro-griffin-p2c.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables

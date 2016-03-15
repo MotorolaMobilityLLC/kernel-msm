@@ -1,0 +1,60 @@
+/* Copyright (c) 2015, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+
+#include "msm8996pro-griffin.dtsi"
+
+/ {
+	qcom,board-id = <0x45 0x82A0>;
+};
+
+&mdss_hdmi_hpd_active {
+	mux {
+		pins = "gpio79";
+	};
+
+	config {
+		pins = "gpio79";
+	};
+};
+
+&mdss_hdmi_hpd_suspend {
+	mux {
+		pins = "gpio79";
+	};
+
+	config {
+		pins = "gpio79";
+	};
+};
+
+&mdss_hdmi_tx {
+	qcom,hdmi-tx-hpd = <&tlmm 79 0>;
+};
+
+&muc_attach {
+	config {
+		pins = "gpio73", "gpio35", "gpio143", "gpio34";
+		bias-disable;
+	};
+};
+
+&muc {
+	gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
+		<&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
+		<&tlmm 34 1>,   /* gpio_muc_int_n,    input */
+		<&tlmm 74 2>,   /* gpio_muc_wake_n,   output-high */
+		<&tlmm 82 1>,   /* gpio_muc_rdy_n,    input */
+		<&tlmm 143 0>;  /* gpio_muc_ff,       output-low */
+};
