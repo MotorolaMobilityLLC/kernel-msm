@@ -2178,6 +2178,7 @@ static enum power_supply_property fusb_power_supply_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_DISABLE_USB,
+	POWER_SUPPLY_PROP_WAKEUP,
 };
 
 static int fusb_power_supply_set_property(struct power_supply *psy,
@@ -2189,6 +2190,10 @@ static int fusb_power_supply_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_DISABLE_USB:
 		usbDataDisabled = !!val->intval;
+		break;
+	case POWER_SUPPLY_PROP_WAKEUP:
+		FUSB_LOG("Wakeup USBC SM\n");
+		wake_up_statemachine();
 		break;
 	default:
 		return -EINVAL;
@@ -2205,6 +2210,7 @@ static int fusb_power_supply_is_writeable(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_DISABLE_USB:
+	case POWER_SUPPLY_PROP_WAKEUP:
 		rc = 1;
 		break;
 	default:
@@ -2254,6 +2260,9 @@ static int fusb_power_supply_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_DISABLE_USB:
 		val->intval = usbDataDisabled;
+		break;
+	case POWER_SUPPLY_PROP_WAKEUP:
+		val->intval = 0;
 		break;
 	default:
 		return -EINVAL;
