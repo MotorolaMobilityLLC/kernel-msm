@@ -1,0 +1,187 @@
+/* Copyright (c) 2015, Motorla Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8996pro.dtsi"
+#include "msm8996-moto-common.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-p-cmd.dtsi"
+
+/ {
+	model = "Griffin";
+	compatible = "qcom,msm8996-griffin", "qcom,msm8996-moto",
+			"qcom,msm8996";
+};
+
+&drv2605 {
+	effects_library = <6>;
+	rated_voltage = <0x51>;
+	overdrive_voltage = <0xa4>;
+	rtp_overdrive_voltage = <0xa4>;
+	lra_drive;
+};
+
+&soc {
+	vbat_disp_vreg: vbat_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat_disp";
+		gpio = <&tlmm 69 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	vdd3_disp_vreg: vdd3_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd3_disp";
+		gpio = <&pm8994_gpios 5 0>;
+		vin-supply = <&pm8994_s4>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "griffin";
+	};
+
+	/* SensorHub Bus */
+	i2c@7579000 {
+		motosh@43 {
+			mag_config = <1>;     /* Magnetometer config value */
+		};
+	};
+};
+
+&pm8994_l17 {
+	regulator-always-on;
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+};
+
+&pm8994_l19 {
+	regulator-boot-on;
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_p_cmd_v1>;
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vci_disp-supply = <&pm8994_l19>;
+	vdd3_disp-supply = <&vdd3_disp_vreg>;
+};
+
+&mot_smd_546_QHD_p_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&i2c_7 {
+	max17050: max17050-battery@36 {
+		compatible = "maxim,max17050";
+		reg = <0x36>;
+		maxim,rsns-microohm = <5000>;
+
+		interrupt-parent = <&spmi_bus>;
+		interrupts = <0 0xc5 5>;
+		gpios = <&pm8994_gpios 6 0x21>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+		gpio-names = "cc-alert";
+
+		maxim,psy-name = "bms";
+		maxim,enable_por_init;
+		maxim,batt_undervoltage_zero_soc;
+		maxim,batt-psy-name = "battery";
+		maxim,use-external-temp;
+
+		maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
+		maxim,df-read-battsn;
+
+		maxim,configuration {
+			df-serialnum    = "SNN5968";
+
+			/include/ "batterydata-gv40-lg-maxim.dtsi"
+		};
+	};
+
+	fan54100: fan54100-charger@30 {
+		compatible = "fairchild,fan54100";
+		reg = <0x30>;
+
+		interrupt-parent = <&spmi_bus>;
+		interrupts = <2 0xc6 6>;
+		gpios = <&pmi8994_gpios 7 0x21>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+		gpio-names = "fan-int-n";
+		supply-names = "battery";
+
+		fairchild,sotp-limit-c = <150>;
+		fairchild,fovp-limit-mv = <4700>;
+		fairchild,ocp-limit-ma = <6200>;
+	};
+};
+
+&pmi8994_gpios {
+	gpio@c600 { /* GPIO 7 - FAN54100_INT_N */
+		qcom,mode = <0>;		/* Digital Input */
+		qcom,pull = <5>;		/* No pull */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+};
+
+&pm8994_gpios {
+	gpio@c500 { /* GPIO 6 - CC_ALERT */
+		qcom,mode = <0>;		/* Digital Input */
+		qcom,pull = <5>;		/* No pull */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+};
+
+&pmi8994_charger {
+	qcom,bms-psy-name = "msm_bms";
+	qcom,max-psy-name = "bms";
+
+	qcom,step-chg-steps = <4100 6000 4000>,
+				<4200 4000 2400>,
+				<4400 2400 2000>;
+
+	qcom,bsw-psy-name = "charger-switch";
+};
+
+/{
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <100>;
+		df-serialnum = "SNN5968";
+
+		#include "batterydata-gv40-lg.dtsi"
+	};
+};
+
+&pmi8994_fg {
+	qcom,bms-psy-name = "msm_bms";
+	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
+	qcom,battery-data = <&mot_batterydata>;
+};
+
+&i2c_7 {
+	stmvl53l0@29 {
+		st,xtalkval = <22>;
+	};
+};
