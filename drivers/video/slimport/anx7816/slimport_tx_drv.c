@@ -1460,15 +1460,23 @@ void slimport_edid_process(void)
 		pr_err("%s: Failed to get display config: %d\n", __func__, ret);
 		memset(edid_blocks, 0, 256);
 		return;
-	} else {
-		if (display_config->edid_buf_size > 256) {
+	} else if (display_config->config_type == MOD_CONFIG_EDID_1_3) {
+		if (display_config->config_size > 256) {
 			pr_err("%s: EDID too big: %d\n", __func__,
-						display_config->edid_buf_size);
+				display_config->config_size);
+		} else if (display_config->config_size == 0) {
+			pr_debug("%s: Reading EDID over HDMI link...\n",
+				__func__);
 		} else {
-			memcpy(edid_blocks, display_config->edid_buf,
-						display_config->edid_buf_size);
+			memcpy(edid_blocks, display_config->config_buf,
+				display_config->config_size);
 			goto skip_me;
 		}
+	} else {
+		pr_err("%s: Unknown display config type (%d)... Abort\n",
+			__func__, display_config->config_type);
+		memset(edid_blocks, 0, 256);
+		return;
 	}
 
 	/* mdelay(200); */
