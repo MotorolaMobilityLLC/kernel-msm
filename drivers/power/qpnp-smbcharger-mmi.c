@@ -3773,15 +3773,8 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 	else
 		current_limit = prop.intval / 1000;
 
-	if (smbchg_hvdcp_det_check(chip)) {
-		if ((chip->stepchg_state == STEP_TAPER) ||
-		    (chip->stepchg_state == STEP_FULL) ||
-		    (chip->usb_target_current_ma == HVDCP_ICL_TAPER) ||
-		    (chip->demo_mode))
-			current_limit = HVDCP_ICL_TAPER;
-		else
-			current_limit = HVDCP_ICL_MAX;
-	}
+	if (smbchg_hvdcp_det_check(chip))
+		current_limit = HVDCP_ICL_TAPER;
 
 	pr_smb(PR_MISC, "current_limit = %d\n", current_limit);
 	mutex_lock(&chip->current_change_lock);
