@@ -90,7 +90,7 @@ static ssize_t mdss_debug_base_offset_read(struct file *file,
 {
 	struct mdss_debug_base *dbg = file->private_data;
 	int len = 0;
-	char buf[24];
+	char buf[24] = {'\0'};
 
 	if (!dbg)
 		return -ENODEV;
@@ -99,10 +99,10 @@ static ssize_t mdss_debug_base_offset_read(struct file *file,
 		return 0;	/* the end */
 
 	len = snprintf(buf, sizeof(buf), "0x%08zx %zx\n", dbg->off, dbg->cnt);
-	if (len < 0)
+	if (len < 0 || len >= sizeof(buf))
 		return 0;
 
-	if (copy_to_user(buff, buf, len))
+	if ((count < sizeof(buf)) || copy_to_user(buff, buf, len))
 		return -EFAULT;
 
 	*ppos += len;	/* increase offset */
@@ -379,7 +379,7 @@ static ssize_t mdss_debug_factor_read(struct file *file,
 {
 	struct mdss_fudge_factor *factor = file->private_data;
 	int len = 0;
-	char buf[32];
+	char buf[32] = {'\0'};
 
 	if (!factor)
 		return -ENODEV;
@@ -389,10 +389,10 @@ static ssize_t mdss_debug_factor_read(struct file *file,
 
 	len = snprintf(buf, sizeof(buf), "%d/%d\n",
 			factor->numer, factor->denom);
-	if (len < 0)
+	if (len < 0 || len >= sizeof(buf))
 		return 0;
 
-	if (copy_to_user(buff, buf, len))
+	if ((count < sizeof(buf)) || copy_to_user(buff, buf, len))
 		return -EFAULT;
 
 	*ppos += len;	/* increase offset */
