@@ -221,100 +221,6 @@ static const struct snd_kcontrol_new marley_in1mux[2] = {
 	SOC_DAPM_ENUM("IN1R Mux", marley_in1muxr_enum),
 };
 
-static const char * const marley_outdemux_texts[] = {
-	"HPOUT",
-	"EPOUT",
-};
-
-static int marley_put_demux(struct snd_kcontrol *kcontrol,
-		     struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_dapm_context *dapm = snd_soc_dapm_kcontrol_dapm(kcontrol);
-	struct snd_soc_codec *codec = snd_soc_dapm_kcontrol_codec(kcontrol);
-	struct snd_soc_card *card = codec->component.card;
-	struct arizona *arizona = dev_get_drvdata(codec->dev->parent);
-	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
-	unsigned int ep_sel, mux, change;
-	unsigned int mask;
-	int ret;
-
-	if (ucontrol->value.enumerated.item[0] > e->items - 1)
-		return -EINVAL;
-	mux = ucontrol->value.enumerated.item[0];
-	ep_sel = mux << e->shift_l;
-	mask = e->mask << e->shift_l;
-
-	mutex_lock_nested(&card->dapm_mutex, SND_SOC_DAPM_CLASS_RUNTIME);
-
-	change = snd_soc_test_bits(codec, e->reg, mask, ep_sel);
-	if (change) {
-		/* if HP detection clamp is applied while switching to HPOUT
-		 * disable OUT1 and set EDRE Manual */
-		if (!ep_sel && (arizona->hpdet_clamp || (arizona->hp_impedance
-				<= arizona->pdata.hpdet_short_circuit_imp))) {
-			ret = regmap_update_bits(arizona->regmap,
-						 ARIZONA_OUTPUT_ENABLES_1,
-						 ARIZONA_OUT1L_ENA |
-						 ARIZONA_OUT1R_ENA, 0);
-			if (ret)
-				dev_warn(arizona->dev,
-					 "Failed to disable headphone outputs"
-					 ": %d\n", ret);
-		}
-		if (!ep_sel && arizona->hpdet_clamp) {
-			ret = regmap_write(arizona->regmap,
-					   CLEARWATER_EDRE_MANUAL, 0x3);
-			if (ret)
-				dev_warn(arizona->dev,
-					 "Failed to set EDRE Manual: %d\n",
-					 ret);
-		}
-
-		ret = regmap_update_bits(arizona->regmap,
-					 ARIZONA_OUTPUT_ENABLES_1,
-					 ARIZONA_EP_SEL, ep_sel);
-		if (ret)
-			dev_err(arizona->dev, "Failed to set OUT1 demux: %d\n",
-					ret);
-
-		/* provided the switch back to EPOUT succeeded make sure OUT1
-		 * is restored to a desired value (retained by arizona->hp_ena)
-		 * and EDRE Manual is set to the proper value
-		 * */
-		if (ep_sel && !ret) {
-			ret = regmap_update_bits(arizona->regmap,
-						 ARIZONA_OUTPUT_ENABLES_1,
-						 ARIZONA_OUT1L_ENA |
-						 ARIZONA_OUT1R_ENA,
-						 arizona->hp_ena);
-			if (ret)
-				dev_warn(arizona->dev,
-					 "Failed to restore earpiece outputs:"
-					 " %d\n", ret);
-			ret = regmap_write(arizona->regmap,
-					   CLEARWATER_EDRE_MANUAL, 0);
-			if (ret)
-				dev_warn(arizona->dev,
-					 "Failed to restore EDRE Manual: %d\n",
-					 ret);
-		}
-
-	}
-
-	mutex_unlock(&card->dapm_mutex);
-
-	return snd_soc_dapm_mux_update_power(dapm, kcontrol, mux, e, NULL);
-}
-
-static SOC_ENUM_SINGLE_DECL(marley_outdemux_enum,
-			    ARIZONA_OUTPUT_ENABLES_1,
-			    ARIZONA_EP_SEL_SHIFT,
-			    marley_outdemux_texts);
-
-static const struct snd_kcontrol_new marley_outdemux =
-	SOC_DAPM_ENUM_EXT("OUT1 Demux", marley_outdemux_enum,
-			snd_soc_dapm_get_enum_double, marley_put_demux);
-
 static int marley_frf_bytes_put(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
@@ -1045,8 +951,6 @@ SND_SOC_DAPM_INPUT("IN2R"),
 SND_SOC_DAPM_MUX("IN1L Mux", SND_SOC_NOPM, 0, 0, &marley_in1mux[0]),
 SND_SOC_DAPM_MUX("IN1R Mux", SND_SOC_NOPM, 0, 0, &marley_in1mux[1]),
 
-SND_SOC_DAPM_DEMUX("OUT1 Demux", SND_SOC_NOPM, 0, 0, &marley_outdemux),
-
 SND_SOC_DAPM_OUTPUT("DRC1 Signal Activity"),
 SND_SOC_DAPM_OUTPUT("DRC2 Signal Activity"),
 
@@ -1372,12 +1276,8 @@ ARIZONA_MUX_WIDGETS(ISRC2INT2, "ISRC2INT2"),
 ARIZONA_MUX_WIDGETS(ISRC2INT3, "ISRC2INT3"),
 ARIZONA_MUX_WIDGETS(ISRC2INT4, "ISRC2INT4"),
 
-#if 0
 SND_SOC_DAPM_OUTPUT("HPOUTL"),
 SND_SOC_DAPM_OUTPUT("HPOUTR"),
-SND_SOC_DAPM_OUTPUT("EPOUTP"),
-SND_SOC_DAPM_OUTPUT("EPOUTN"),
-#endif
 SND_SOC_DAPM_OUTPUT("SPKOUTN"),
 SND_SOC_DAPM_OUTPUT("SPKOUTP"),
 SND_SOC_DAPM_OUTPUT("SPKDATL"),
@@ -1668,19 +1568,12 @@ static const struct snd_soc_dapm_route marley_dapm_routes[] = {
 
 	{ "AEC Loopback", "OUT1L", "OUT1L" },
 	{ "AEC Loopback", "OUT1R", "OUT1R" },
-	{ "OUT1 Demux", NULL, "OUT1L" },
-	{ "OUT1 Demux", NULL, "OUT1R" },
+	{ "HPOUTL", NULL, "OUT1L" },
+	{ "HPOUTR", NULL, "OUT1R" },
 
 	{ "AEC Loopback", "SPKOUT", "OUT4L" },
 	{ "SPKOUTN", NULL, "OUT4L" },
 	{ "SPKOUTP", NULL, "OUT4L" },
-
-#if 0
-	{ "HPOUTL", "HPOUT", "OUT1 Demux" },
-	{ "HPOUTR", "HPOUT", "OUT1 Demux" },
-	{ "EPOUTP", "EPOUT", "OUT1 Demux" },
-	{ "EPOUTN", "EPOUT", "OUT1 Demux" },
-#endif
 
 	{ "AEC Loopback", "SPKDATL", "OUT5L" },
 	{ "AEC Loopback", "SPKDATR", "OUT5R" },
