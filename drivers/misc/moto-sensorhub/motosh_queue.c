@@ -157,6 +157,7 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	 */
 	now = motosh_timestamp_ns();
 	if (timestamped) {
+		bool streaming;
 
 		/* if a timestamp is included in the event buffer,
 		   it is the 3 bytes after the data */
@@ -165,10 +166,17 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 					    (data[size+1] <<  8) |
 					    (data[size+2]),
 					    now);
+		if (type == DT_ACCEL &&
+		   (ps_motosh->is_batching & ACCEL_BATCHING))
+			streaming = false;
+		else
+			streaming = true;
 
 		/* compensate for AP/Hub drift based on recovered sample
 		   time and the current time */
-		motosh_time_drift_comp(buffer->timestamp, now);
+		motosh_time_drift_comp(buffer->timestamp,
+				       now,
+				       streaming);
 
 		/* check for erroneous future time */
 		if (buffer->timestamp > now) {
