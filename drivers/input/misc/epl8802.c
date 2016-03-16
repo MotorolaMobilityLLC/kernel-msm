@@ -671,7 +671,7 @@ static void initial_global_variable(struct i2c_client *client, struct epl_sensor
 		dynamic_intt_high_thr = als_dynamic_intt_high_thr[dynamic_intt_idx];
 		dynamic_intt_low_thr = als_dynamic_intt_low_thr[dynamic_intt_idx];
 	}
-	c_gain = 300;   /*Lux per count*/
+	c_gain = 100;   /*Lux per count*/
 #endif
 	/* ps setting */
 	epl_sensor.ps.polling_mode = PS_POLLING_MODE;
@@ -2566,19 +2566,6 @@ static ssize_t epl_sensor_store_delay_ms(struct device *dev, struct device_attri
 	return count;
 }
 
-#if ALS_DYN_INTT
-static ssize_t epl_sensor_store_c_gain(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	int als_c_gian;
-
-	sscanf(buf, "%d", &als_c_gian);
-	c_gain = als_c_gian;
-	LOG_INFO("c_gain = %d \r\n", c_gain);
-
-	return count;
-}
-#endif
-
 /*----------------------------------------------------------------------------*/
 /*CTS --> S_IWUSR | S_IRUGO*/
 static DEVICE_ATTR(elan_status, S_IROTH  | S_IWOTH, epl_sensor_show_status, NULL);
@@ -2610,9 +2597,6 @@ static DEVICE_ATTR(pdata, S_IROTH  | S_IWOTH, epl_sensor_show_pdata, NULL);
 static DEVICE_ATTR(als_data, S_IROTH  | S_IWOTH, epl_sensor_show_als_data, NULL);
 static DEVICE_ATTR(elan_renvo, S_IROTH  | S_IWOTH, epl_sensor_show_renvo, NULL);
 static DEVICE_ATTR(set_delay_ms, S_IROTH | S_IWOTH, epl_sensor_show_delay_ms, epl_sensor_store_delay_ms);
-#if ALS_DYN_INTT
-static DEVICE_ATTR(als_dyn_c_gain, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_c_gain);
-#endif
 static DEVICE_ATTR(near, S_IROTH  | S_IWOTH, epl_sensor_show_near, NULL);
 static DEVICE_ATTR(als_lux, S_IROTH  | S_IWOTH, epl_sensor_show_als_lux, NULL);
 /*----------------------------------------------------------------------------*/
@@ -2646,9 +2630,6 @@ static struct attribute *epl_sensor_attr_list[] = {
 	&dev_attr_als_data.attr,
 	&dev_attr_elan_renvo.attr,
 	&dev_attr_set_delay_ms.attr,
-#if ALS_DYN_INTT
-	&dev_attr_als_dyn_c_gain.attr,
-#endif
 	&dev_attr_near.attr,
 	&dev_attr_als_lux.attr,
 	NULL,
