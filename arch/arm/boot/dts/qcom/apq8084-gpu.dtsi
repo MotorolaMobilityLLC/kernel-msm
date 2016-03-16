@@ -25,7 +25,7 @@
 
 		qcom,initial-pwrlevel = <3>;
 
-		qcom,idle-timeout = <8>; //<HZ/12>
+		qcom,idle-timeout = <80>; // 80ms
 		qcom,strtstp-sleepwake;
 		qcom,clk-map = <0x00000006>; //KGSL_CLK_CORE | KGSL_CLK_IFACE
 
