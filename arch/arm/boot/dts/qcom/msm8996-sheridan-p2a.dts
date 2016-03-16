@@ -19,6 +19,12 @@
 	qcom,board-id = <0x43 0x82A0>;
 };
 
+&spi_0 {
+	muc_spi: muc_spi@0 {
+		interrupts = <34 0>;
+	};
+};
+
 &mdss_hdmi_hpd_active {
 	mux {
 		pins = "gpio79";
