@@ -63,7 +63,7 @@ module_param_named(irq_disable, motosh_irq_disable, uint, 0644);
 unsigned short motosh_i2c_retry_delay = 13;
 
 /* Remember the sensor state */
-unsigned short motosh_g_acc_delay;
+struct motosh_moto_sensor_batch_cfg motosh_g_acc_cfg;
 unsigned short motosh_g_mag_delay;
 unsigned short motosh_g_gyro_delay;
 uint8_t motosh_g_rv_6axis_delay = 40;
@@ -322,6 +322,7 @@ int64_t motosh_timestamp_ns(void)
 
 void motosh_wake(struct motosh_data *ps_motosh)
 {
+#if LOWPOWER_ALLOWED
 	if (ps_motosh != NULL && ps_motosh->pdata != NULL) {
 		if (!(ps_motosh->sh_lowpower_enabled))
 			return;
@@ -349,10 +350,12 @@ void motosh_wake(struct motosh_data *ps_motosh)
 
 		mutex_unlock(&ps_motosh->sh_wakeup_lock);
 	}
+#endif
 }
 
 void motosh_sleep(struct motosh_data *ps_motosh)
 {
+#if LOWPOWER_ALLOWED
 	if (ps_motosh != NULL && ps_motosh->pdata != NULL) {
 		if (!(ps_motosh->sh_lowpower_enabled))
 			return;
@@ -374,10 +377,12 @@ void motosh_sleep(struct motosh_data *ps_motosh)
 
 		mutex_unlock(&ps_motosh->sh_wakeup_lock);
 	}
+#endif
 }
 
 void motosh_detect_lowpower_mode(unsigned char *cmdbuff)
 {
+#if LOWPOWER_ALLOWED
 	int err;
 	bool factory;
 	struct device_node *np = of_find_node_by_path("/chosen");
@@ -464,6 +469,7 @@ void motosh_detect_lowpower_mode(unsigned char *cmdbuff)
 
 		mutex_unlock(&motosh_misc_data->sh_wakeup_lock);
 	}
+#endif
 }
 
 int motosh_i2c_write_read_no_reset(
@@ -756,16 +762,10 @@ motosh_of_init(struct i2c_client *client)
 	pdata->gpio_reset = of_get_gpio(np, 1);
 	pdata->gpio_bslen = of_get_gpio(np, 2);
 	pdata->gpio_wakeirq = of_get_gpio(np, 3);
+	pdata->gpio_sh_wake = of_get_gpio(np, 4);
+	pdata->gpio_sh_wake_resp = -1;
 
-	if (LOWPOWER_ALLOWED && of_gpio_count(np) >= 6) {
-		pdata->gpio_sh_wake = of_get_gpio(np, 4);
-		pdata->gpio_sh_wake_resp = of_get_gpio(np, 5);
-		motosh_misc_data->sh_lowpower_enabled = 1;
-	} else {
-		pdata->gpio_sh_wake = -1;
-		pdata->gpio_sh_wake_resp = -1;
-		motosh_misc_data->sh_lowpower_enabled = 0;
-	}
+	motosh_misc_data->sh_lowpower_enabled = 0;
 	motosh_misc_data->sh_wakeup_count = 0;
 
 	if (of_get_property(np, "lux_table", &len) == NULL) {
@@ -1012,8 +1012,9 @@ static int motosh_gpio_init(struct motosh_platform_data *pdata,
 		goto free_bslen;
 	}
 
-	if ((pdata->gpio_sh_wake >= 0) && (pdata->gpio_sh_wake_resp >= 0)) {
-		/* pin to pull the stm chip out of lowpower mode */
+	/* use pin to trigger a sensor hub time update and indicate that
+	   AP is no longer suspended */
+	if (pdata->gpio_sh_wake >= 0) {
 		err = gpio_request(pdata->gpio_sh_wake, "motosh sh_wake");
 		if (err) {
 			dev_err(&motosh_misc_data->client->dev,
@@ -1021,15 +1022,22 @@ static int motosh_gpio_init(struct motosh_platform_data *pdata,
 			goto free_bslen;
 		}
 		gpio_direction_output(pdata->gpio_sh_wake, 0);
-		gpio_set_value(pdata->gpio_sh_wake, 1);
+		/* keep low until ready */
+		gpio_set_value(pdata->gpio_sh_wake, 0);
 		err = gpio_export(pdata->gpio_sh_wake, 0);
 		if (err) {
 			dev_err(&motosh_misc_data->client->dev,
 				"sh_wake gpio_export failed: %d\n", err);
 			goto free_wake_sh;
 		}
+	} else {
+		dev_err(&motosh_misc_data->client->dev,
+			"%s: pin for SH time sync not available!\n",
+			__func__);
+	}
 
-		/* pin for the response from stm that it is awake */
+	/* pin for the response from stm that it is awake */
+	if (pdata->gpio_sh_wake_resp >= 0) {
 		err =
 		    gpio_request(pdata->gpio_sh_wake_resp,
 				 "motosh sh_wake_resp");
@@ -1055,8 +1063,8 @@ static int motosh_gpio_init(struct motosh_platform_data *pdata,
 			goto free_sh_wake_resp;
 		}
 	} else {
-		dev_err(&motosh_misc_data->client->dev,
-			"%s: pins for stm lowpower mode not specified\n",
+		dev_info(&motosh_misc_data->client->dev,
+			"%s: wake_response currently unused\n",
 			__func__);
 	}
 
@@ -1657,6 +1665,9 @@ static int motosh_suspend(struct device *dev)
 {
 	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
 	dev_dbg(dev, "%s\n", __func__);
+
+	/* drop line as hard indication AP is suspended */
+	gpio_set_value(motosh_misc_data->pdata->gpio_sh_wake, 0);
 
 	/* Stop processing non-wake irqs. Afterwards, no more non-wake
 	 * irq work functions are scheduled. */
