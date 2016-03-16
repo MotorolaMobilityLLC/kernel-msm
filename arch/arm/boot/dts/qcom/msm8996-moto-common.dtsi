@@ -1400,7 +1400,7 @@
 		compatible = "moto,muc_spi";
 		reg = <0>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <34 0>;
+		interrupts = <79 0>;
 		spi-max-frequency = <4800000>;
 
 		mmi,intf-id = /bits/ 8 <3>;
