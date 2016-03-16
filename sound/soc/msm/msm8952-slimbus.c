@@ -37,6 +37,7 @@
 #include "../codecs/wcd-mbhc-v2.h"
 #ifdef CONFIG_SND_SOC_MARLEY
 #include "../codecs/marley.h"
+#include <linux/mfd/arizona/registers.h>
 #endif
 #ifndef CONFIG_SND_SOC_MARLEY
 #include "../codecs/wsa881x.h"
@@ -3642,6 +3643,7 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	int ret;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
+	struct snd_soc_card *card = codec->component.card;
 
 	ret = snd_soc_codec_set_pll(codec, MARLEY_FLL1_REFCLK,
 			ARIZONA_FLL_SRC_NONE,
@@ -3722,6 +3724,23 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	}
 
 	snd_soc_dapm_sync(dapm);
+
+	/* In current hardware, both Marley MICDETECT and sensor hub
+	 * are connected for test purposes.  This code could be removed
+	 * later.
+	 */
+	if (of_property_read_bool(card->dev->of_node, "mot,micdet1-high-imp")) {
+		snd_soc_dapm_force_enable_pin(dapm, "MICSUPP");
+		snd_soc_dapm_sync(dapm);
+		snd_soc_write(codec, CLEARWATER_MICD_CLAMP_CONTROL, 0);
+		snd_soc_update_bits(codec, ARIZONA_MIC_CHARGE_PUMP_1,
+			ARIZONA_CPMIC_BYPASS, 0);
+		snd_soc_dapm_force_enable_pin(dapm, "MICVDD");
+		snd_soc_dapm_sync(dapm);
+		/* Set LDO2 to 3V */
+		snd_soc_write(codec, ARIZONA_LDO2_CONTROL_1, 0x484);
+	}
+
 	return 0;
 }
 
