@@ -10,12 +10,12 @@
  * GNU General Public License for more details.
  */
 
-qcom,l9300_3150mah {
+qcom,l9300_3100mah {
 	qcom,max-voltage-uv = <4400000>;
-	qcom,nom-batt-capacity-mah = <3150>;
+	qcom,nom-batt-capacity-mah = <3100>;
 	qcom,batt-id-kohm = <47>;
 	qcom,battery-beta = <3380>;
-	qcom,battery-type = "l9300_3150mah_20160104";
+	qcom,battery-type = "l9300_3100mah_20160104";
 	qcom,fastchg-current-ma = <3000>;
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,chg-rslow-comp-c1 = <4269225>;

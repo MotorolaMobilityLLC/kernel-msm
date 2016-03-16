@@ -536,7 +536,7 @@
 / {
 	qrd_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
-		#include "batterydata-4v4-3150mah-l9300.dtsi"
+		#include "batterydata-4v4-3100mah-l9300.dtsi"
 	};
 };
 
