@@ -168,9 +168,17 @@ int motosh_reset_and_init(enum reset_mode mode)
 	}
 
 	rst_cmdbuff[0] = ACCEL_UPDATE_RATE;
-	rst_cmdbuff[1] = motosh_g_acc_delay;
+	rst_cmdbuff[1] = motosh_g_acc_cfg.delay;
+	rst_cmdbuff[2] = (unsigned char)
+		((motosh_g_acc_cfg.timeout >> 24));
+	rst_cmdbuff[3] = (unsigned char)
+		((motosh_g_acc_cfg.timeout >> 16) & 0xff);
+	rst_cmdbuff[4] = (unsigned char)
+		((motosh_g_acc_cfg.timeout >> 8)  & 0xff);
+	rst_cmdbuff[5] = (unsigned char)
+		((motosh_g_acc_cfg.timeout)       & 0xff);
 	err = motosh_i2c_write_no_reset(motosh_misc_data,
-					rst_cmdbuff, 2);
+					rst_cmdbuff, 6);
 	if (err < 0)
 		ret_err = err;
 
