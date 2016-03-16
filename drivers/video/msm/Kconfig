@@ -39,6 +39,11 @@ config FB_MSM_MDP_HW
 	bool
 	default n
 
+config MDP_DEBUG_FS
+	depends on DEBUG_FS
+	bool "MDP Debug FS"
+	default n
+
 choice
 	prompt "MDP HW version"
 	default FB_MSM_MDP22
