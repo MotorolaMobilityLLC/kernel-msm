@@ -36,8 +36,11 @@
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
+#include <linux/vmalloc.h>
 
 #include <linux/motosh.h>
+
+#define FAST_READBUFF_SIZE 256
 
 irqreturn_t motosh_isr(int irq, void *dev)
 {
@@ -55,12 +58,18 @@ void motosh_irq_work_func(struct work_struct *work)
 {
 	int err;
 	u8 irq_status = 0;
-	u8 queue_length = 0;
-	u8 queue_index = 0;
+	u16 queue_length = 0;
+	u16 read_size;
+	u16 queue_index = 0;
 	struct motosh_data *ps_motosh = container_of(work,
 			struct motosh_data, irq_work);
-	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
-	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
+	/* Short buffers for command and status reads */
+	unsigned char cmdbuff[8];
+	static unsigned char readbuff[FAST_READBUFF_SIZE];
+
+	/* dynamically allocated on incoming batch of data */
+	unsigned char *queuebuff = NULL;
+	u8 resuming = 0;
 
 	if (ps_motosh->is_suspended)
 		return;
@@ -78,26 +87,32 @@ void motosh_irq_work_func(struct work_struct *work)
 	if (ps_motosh->resume_cleanup) {
 		ps_motosh->resume_cleanup = false;
 
-		/* If we are just coming back from suspend clear all the
-		 * streaming sensor data because it is old.
-		 * A write to the work queue length causes it to be reset */
-		cmdbuff[0] = NWAKE_STATUS;
-		cmdbuff[1] = 0x00;
-		motosh_i2c_write(ps_motosh, cmdbuff, 2);
+		/* If we are just coming back from suspend we will
+		   discard any non-batchable sensor data that may have
+		   entered the buffer prior to last reporting interval
+		   before the AP went to suspend */
+		resuming = 1;
 
 		motosh_time_sync();
 	}
 
 	/* get nwake status (queue length and irq_status) */
 	cmdbuff[0] = NWAKE_STATUS;
-	err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff, 1, 2);
+	err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff, 1, 3);
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev,
 			"Reading nwake status failed [err: %d]\n", err);
 		goto EXIT;
 	}
-	queue_length = readbuff[0];
-	irq_status = readbuff[1];
+	queue_length = (readbuff[0] << 8) | (readbuff[1] & 0xff);
+	irq_status = readbuff[2];
+
+	if (queue_length == 0) {
+		if (irq_status == 0)
+			dev_dbg(&ps_motosh->client->dev,
+				"No status or queue\n");
+		goto EXIT;
+	}
 
 	dev_dbg(&ps_motosh->client->dev,
 			"motosh_irq_work_func irq_status:%0X\n", irq_status);
@@ -190,21 +205,50 @@ void motosh_irq_work_func(struct work_struct *work)
 			"Save accel cal");
 	}
 
-	/* process the nwake queue */
-	dev_dbg(&ps_motosh->client->dev,
-			"nwake queue_length: %d\n", queue_length);
-
-	if (queue_length == 0 || queue_length > MOTOSH_MAX_EVENT_QUEUE_SIZE) {
-		dev_dbg(&ps_motosh->client->dev,
+	if (queue_length > MOTOSH_MAX_NWAKE_EVENT_QUEUE_SIZE) {
+		dev_err(&ps_motosh->client->dev,
 			"Invalid nwake queue_length: %d\n",
 			queue_length);
 		goto EXIT;
 	}
 
-	/* read nwake queue */
+	/* when batching, queue can contain more data but report slowly,
+	   at higher rates use static smaller queue buffer
+	*/
+	if (queue_length > FAST_READBUFF_SIZE) {
+		if (queue_length > PAGE_SIZE)
+			queuebuff = vmalloc(queue_length);
+		else
+			queuebuff = kmalloc(queue_length, GFP_KERNEL);
+
+		if (queuebuff == NULL) {
+			dev_err(&ps_motosh->client->dev, "no memory for queuebuff\n");
+			goto EXIT;
+		}
+	} else {
+		queuebuff = readbuff;
+	}
+
+	/* read nwake queue, due to I2C DMA memory limit
+	   this may take 2 block reads
+	*/
+	if (queue_length <= MOTOSH_MAX_NWAKE_EVENT_QUEUE_READ_SIZE)
+		read_size = queue_length;
+	else
+		read_size = MOTOSH_MAX_NWAKE_EVENT_QUEUE_READ_SIZE;
+
 	cmdbuff[0] = NWAKE_MSG_QUEUE;
-	err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
-		1, queue_length);
+	err = motosh_i2c_write_read(ps_motosh, cmdbuff, queuebuff,
+		1, read_size);
+
+	/* get one more packet */
+	if (err >= 0 &&
+	   queue_length > read_size)
+		err = motosh_i2c_write_read(ps_motosh, cmdbuff,
+					    &queuebuff[read_size],
+					    1,
+					    queue_length - read_size);
+
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev,
 			"Reading nwake queue failed [len: %d] [err: %d]\n",
@@ -214,16 +258,17 @@ void motosh_irq_work_func(struct work_struct *work)
 	}
 
 	/* process each event from the queue */
-	/* NOTE: the readbuff should not be modified while the event
+	/* NOTE: the queuebuff should not be modified while the event
 	   queue is being processed */
 	while (queue_index < queue_length) {
 		unsigned char *data;
-		unsigned char message_id = readbuff[queue_index];
+		unsigned char message_id = queuebuff[queue_index];
 
 		queue_index += MOTOSH_EVENT_QUEUE_MSG_ID_LEN;
-		data = &readbuff[queue_index];
+		data = &queuebuff[queue_index];
 		switch (message_id) {
 		case ACCEL_DATA:
+			/* Accel supports batching while AP suspended */
 			motosh_as_data_buffer_write(ps_motosh, DT_ACCEL,
 				data, 6, 0, true);
 			dev_dbg(&ps_motosh->client->dev,
@@ -234,8 +279,10 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 6 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
 		case LINEAR_ACCEL:
-			motosh_as_data_buffer_write(ps_motosh, DT_LIN_ACCEL,
-						data, 6, 0, true);
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh,
+							    DT_LIN_ACCEL,
+							    data, 6, 0, true);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending lin_acc(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -253,7 +300,8 @@ void motosh_irq_work_func(struct work_struct *work)
 			memcpy(mag_orient_data, data, 6);
 			memcpy(mag_orient_data+6, data+13,
 				MOTOSH_EVENT_TIMESTAMP_LEN);
-			motosh_as_data_buffer_write(ps_motosh, DT_MAG,
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh, DT_MAG,
 				mag_orient_data, 6, status, true);
 
 			dev_dbg(&ps_motosh->client->dev,
@@ -263,9 +311,11 @@ void motosh_irq_work_func(struct work_struct *work)
 				STM16_TO_HOST(data, MAG_Z));
 
 			memcpy(mag_orient_data, data+6, 6);
-			motosh_as_data_buffer_write(ps_motosh, DT_ORIENT,
-						    mag_orient_data, 6,
-						    status, true);
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh,
+							    DT_ORIENT,
+							    mag_orient_data, 6,
+							    status, true);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending orient(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -276,7 +326,8 @@ void motosh_irq_work_func(struct work_struct *work)
 		}
 			break;
 		case GYRO_DATA:
-			motosh_as_data_buffer_write(ps_motosh, DT_GYRO,
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh, DT_GYRO,
 				data, 6, 0, true);
 
 			dev_dbg(&ps_motosh->client->dev,
@@ -287,8 +338,10 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 6 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
 		case UNCALIB_GYRO_DATA:
-			motosh_as_data_buffer_write(ps_motosh, DT_UNCALIB_GYRO,
-				data, 12, 0, true);
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh,
+							    DT_UNCALIB_GYRO,
+							    data, 12, 0, true);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d\n",
@@ -301,8 +354,10 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 12 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
 		case UNCALIB_MAG_DATA:
-			motosh_as_data_buffer_write(ps_motosh, DT_UNCALIB_MAG,
-				data, 12, 0, true);
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh,
+							    DT_UNCALIB_MAG,
+							    data, 12, 0, true);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d\n",
@@ -315,13 +370,14 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 12 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
 		case QUATERNION_6AXIS:
-			motosh_as_data_buffer_write(
-				ps_motosh,
-				DT_QUAT_6AXIS,
-				data,
-				8,
-				0, true
-			);
+			if (!resuming)
+				motosh_as_data_buffer_write(
+							    ps_motosh,
+							    DT_QUAT_6AXIS,
+							    data,
+							    8,
+							    0, true
+							    );
 
 			dev_dbg(
 				&ps_motosh->client->dev,
@@ -334,13 +390,14 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 8 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
 		case QUATERNION_9AXIS:
-			motosh_as_data_buffer_write(
-				ps_motosh,
-				DT_QUAT_9AXIS,
-				data,
-				8,
-				0, true
-			);
+			if (!resuming)
+				motosh_as_data_buffer_write(
+							    ps_motosh,
+							    DT_QUAT_9AXIS,
+							    data,
+							    8,
+							    0, true
+							    );
 
 			dev_dbg(
 				&ps_motosh->client->dev,
@@ -353,32 +410,33 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 8 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
 		case STEP_DETECTOR:
-		{
-			unsigned short detected_steps = 0;
-			detected_steps = data[0];
-			while (detected_steps-- != 0) {
+			/* Step detector always sends a 1 */
+			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh,
 					DT_STEP_DETECTOR, data, 1, 0, false);
 
-				dev_dbg(&ps_motosh->client->dev,
-					"Sending step detector, %d\n", data[0]);
-			}
+			dev_dbg(&ps_motosh->client->dev,
+				"Sending step detector, %d\n", data[0]);
+
 			queue_index += 1;
-		}
 			break;
 		case PRESSURE_DATA:
 			dev_err(&ps_motosh->client->dev, "Invalid CURRENT_PRESSURE event\n");
 
-			motosh_as_data_buffer_write(ps_motosh, DT_PRESSURE,
-				data, 4, 0, false);
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh,
+							    DT_PRESSURE,
+							    data, 4, 0, false);
 
 			dev_dbg(&ps_motosh->client->dev, "Sending pressure %d\n",
 				STM32_TO_HOST(data, PRESSURE_VALUE));
 			queue_index += 4;
 			break;
 		case GRAVITY:
-			motosh_as_data_buffer_write(ps_motosh, DT_GRAVITY,
-				data, 6, 0, true);
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh,
+							    DT_GRAVITY,
+							    data, 6, 0, true);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending gravity(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -388,18 +446,27 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 6 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
 		case IR_GESTURE:
-			queue_index += motosh_process_ir_gesture(ps_motosh,
-								 data);
+			if (!resuming)
+				motosh_process_ir_gesture(ps_motosh, data);
+
+			queue_index += MOTOSH_IR_SZ_GESTURE *
+				MOTOSH_IR_GESTURE_CNT;
 			break;
 		case IR_RAW:
-			motosh_as_data_buffer_write(ps_motosh, DT_IR_RAW,
-				data, MOTOSH_IR_SZ_RAW, 0, false);
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh,
+							    DT_IR_RAW,
+							    data,
+							    MOTOSH_IR_SZ_RAW,
+							    0, false);
 			dev_dbg(&ps_motosh->client->dev, "Sending raw IR data\n");
 			queue_index += MOTOSH_IR_SZ_RAW;
 			break;
 		case IR_STATE:
-			motosh_as_data_buffer_write(ps_motosh, DT_IR_OBJECT,
-				data, 1, 0, false);
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh,
+							    DT_IR_OBJECT,
+							    data, 1, 0, false);
 			dev_dbg(&ps_motosh->client->dev, "Sending IR object state: 0x%x\n",
 				data[0]);
 			queue_index += 1;
@@ -419,9 +486,36 @@ void motosh_irq_work_func(struct work_struct *work)
 	}
 
 EXIT:
+	/* Latest queue purged from hub. Reply to each pending flush bit
+	   that is pending. Currently only accel is batched, others are
+	   directly handled at IOCTL
+	*/
+	if (ps_motosh->nwake_flush_req & FLUSH_ACCEL_REQ) {
+		uint32_t handle = ID_A;
+
+		motosh_as_data_buffer_write(ps_motosh, DT_FLUSH,
+					    (char *)&handle, 4, 0, false);
+		dev_dbg(&ps_motosh->client->dev,
+			 "flushed accel");
+	}
+	/* clear any flush requests pending */
+	ps_motosh->nwake_flush_req = 0;
+
+	/* last of batched accel processed */
+	if (motosh_g_acc_cfg.timeout == 0)
+		ps_motosh->is_batching &= (~ACCEL_BATCHING);
+
 	motosh_sleep(ps_motosh);
 	/* For now HAE needs events even if the activity is still */
 	mutex_unlock(&ps_motosh->lock);
+
+	if (queuebuff != readbuff && queuebuff != NULL) {
+		if (queue_length > PAGE_SIZE)
+			vfree(queuebuff);
+		else
+			kfree(queuebuff);
+	}
+
 }
 
 int motosh_process_ir_gesture(struct motosh_data *ps_motosh,
