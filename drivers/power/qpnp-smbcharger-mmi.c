@@ -5390,6 +5390,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 {
 	int rc;
 	int index;
+	union power_supply_propval ret = {0, };
 
 	cancel_delayed_work(&chip->usb_insertion_work);
 	SMB_DBG(chip, "Running USB Removal\n");
@@ -5446,6 +5447,14 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 			SMB_DBG(chip,
 				"usb psy does not allow updating prop %d rc = %d\n",
 				POWER_SUPPLY_HEALTH_UNKNOWN, rc);
+	}
+
+	/* Kick the Type C Controller if necessary */
+	if (chip->usbc_psy && chip->usbc_psy->set_property) {
+		SMB_DBG(chip, "Kick USBC Statemachine\n");
+		chip->usbc_psy->set_property(chip->usbc_psy,
+					POWER_SUPPLY_PROP_WAKEUP,
+					&ret);
 	}
 
 	if (chip->parallel.avail && chip->aicl_done_irq
@@ -8575,6 +8584,7 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 	bool dc_present = is_dc_present(chip);
 	u8 reg = 0;
 	int rc;
+	union power_supply_propval ret = {0, };
 
 	/* If BC 1.2 Detection wasn't triggered , skip USB sync */
 	if (!chip->usb_insert_bc1_2)
@@ -8601,6 +8611,16 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 
 	if (chip->usb_present != chip->usb_online)
 		schedule_work(&chip->usb_set_online_work);
+
+	if (chip->usbc_online && !chip->usb_present) {
+		/* Kick the Type C Controller if necessary */
+		if (chip->usbc_psy && chip->usbc_psy->set_property) {
+			SMB_DBG(chip, "Kick USBC Statemachine\n");
+			chip->usbc_psy->set_property(chip->usbc_psy,
+						POWER_SUPPLY_PROP_WAKEUP,
+						&ret);
+		}
+	}
 sync_dc:
 	mutex_lock(&chip->dc_set_present_lock);
 	if (!chip->dc_present && dc_present) {
