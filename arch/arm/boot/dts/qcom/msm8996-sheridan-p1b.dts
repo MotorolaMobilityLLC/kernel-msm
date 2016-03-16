@@ -19,6 +19,12 @@
 	qcom,board-id = <0x43 0x81B0>;
 };
 
+&spi_0 {
+	muc_spi: muc_spi@0 {
+		interrupts = <34 0>;
+	};
+};
+
 &muc {
 	gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
 		<&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
