@@ -8980,6 +8980,8 @@ static int eb_low_start_soc = 16;
 module_param_cb(eb_low_start_soc, &eb_ops, &eb_low_start_soc, 0644);
 static int eb_low_stop_soc = 100;
 module_param_cb(eb_low_stop_soc, &eb_ops, &eb_low_stop_soc, 0644);
+static int eb_on_sw = 1;
+module_param_cb(eb_on_sw, &eb_ops, &eb_on_sw, 0644);
 
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
@@ -9007,7 +9009,6 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_ext_lvl;
 	int prev_step;
 	int index;
-	int eb_max_soc, eb_min_soc;
 	char eb_able = 0;
 	int hb_resch_time;
 	int ebparams_cnt = chip->update_eb_params;
@@ -9064,6 +9065,33 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		taper_ma = chip->stepchg_steps[index].taper_ma;
 	}
 	bsw_chrg_alarm = (check_bswchg_volt(chip) || check_maxbms_volt(chip));
+
+	if ((!chip->usb_present) && !(eb_able & EB_SND_NEVER)) {
+		switch (chip->ebchg_state) {
+		case EB_SRC:
+			if ((eb_soc <= 0) || (eb_on_sw == 0)) {
+				smbchg_set_extbat_state(chip, EB_OFF);
+				chip->eb_hotplug = false;
+			}
+			break;
+		case EB_SINK:
+		case EB_OFF:
+			if ((eb_soc <= 0) || (eb_on_sw == 0))
+				smbchg_set_extbat_state(chip, EB_OFF);
+			else if (eb_able & EB_SND_LOW) {
+				if (batt_soc <= eb_low_start_soc)
+					smbchg_set_extbat_state(chip, EB_SRC);
+				else
+					smbchg_set_extbat_state(chip, EB_OFF);
+			} else
+				smbchg_set_extbat_state(chip, EB_SRC);
+			break;
+		case EB_DISCONN:
+			chip->eb_hotplug = false;
+		default:
+			break;
+		}
+	}
 
 	prev_step = chip->stepchg_state;
 
@@ -9158,7 +9186,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		set_bsw(chip, max_mv, chip->bsw_curr_ma,
 			(chip->bsw_mode == BSW_RUN));
 		chip->bsw_ramping = false;
-	} else if ((chip->stepchg_state == STEP_NONE) && (chip->usb_present)) {
+	} else if ((chip->stepchg_state == STEP_NONE) &&
+		   (chip->usb_present || (chip->ebchg_state == EB_SRC))) {
 		for (index = 0; index < chip->stepchg_num_steps; index++) {
 			if ((batt_mv < chip->stepchg_steps[index].max_mv) &&
 			    (pmi_max_chrg_ma >
@@ -9167,10 +9196,12 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				break;
 			}
 		}
+		if (chip->stepchg_state == STEP_NONE)
+			chip->stepchg_state = STEP_FULL;
 		chip->stepchg_state_holdoff = 0;
 	} else if ((chip->stepchg_state >= STEP_FIRST) &&
 		   (chip->stepchg_state <= STEP_LAST) &&
-		   (chip->usb_present) &&
+		   (chip->usb_present || (chip->ebchg_state == EB_SRC)) &&
 		   ((batt_mv + HYST_STEP_MV) >= max_mv)) {
 		bool change_state = false;
 
@@ -9226,14 +9257,15 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			}
 		}
 	} else if ((chip->stepchg_state == STEP_TAPER) &&
-		   (batt_ma < 0) && (chip->usb_present)) {
+		   (batt_ma < 0) &&
+		   (chip->usb_present || (chip->ebchg_state == EB_SRC))) {
 		batt_ma *= -1;
 		if ((batt_soc >= 100) &&
 		    (batt_ma <= chip->stepchg_iterm_ma) &&
 		    (chip->allowed_fastchg_current_ma >=
 		     chip->stepchg_iterm_ma)) {
 			if (chip->stepchg_state_holdoff >= 2) {
-				if (eb_chrg_allowed)
+				if (eb_chrg_allowed && chip->usb_present)
 					chip->stepchg_state = STEP_EB;
 				else
 					chip->stepchg_state = STEP_FULL;
@@ -9245,68 +9277,12 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			chip->stepchg_state_holdoff = 0;
 		}
 	} else if ((chip->stepchg_state == STEP_FULL) &&
-		    (chip->usb_present)) {
-		if (eb_chrg_allowed)
+		   (chip->usb_present || (chip->ebchg_state == EB_SRC))) {
+		if (eb_chrg_allowed && chip->usb_present)
 			chip->stepchg_state = STEP_EB;
 		else if (batt_soc < 100)
 			chip->stepchg_state = STEP_TAPER;
-	} else if ((!chip->usb_present)  && !(eb_able & EB_SND_NEVER)) {
-		chip->stepchg_state = STEP_NONE;
-
-		/* Sanitize the Thresholds */
-		if (eb_able & EB_SND_LOW) {
-			eb_max_soc = eb_low_stop_soc;
-			eb_min_soc = eb_low_start_soc;
-		} else if (chip->eb_hotplug) {
-			eb_max_soc = eb_attach_stop_soc;
-			eb_min_soc = eb_attach_start_soc;
-		} else {
-			eb_max_soc = eb_rechrg_stop_soc;
-			eb_min_soc = eb_rechrg_start_soc;
-		}
-		if (eb_max_soc > 100)
-			eb_max_soc = 100;
-		if (eb_min_soc > 100)
-			eb_min_soc = 100;
-		if (eb_min_soc < 0)
-			eb_min_soc = 0;
-		if (eb_max_soc < 0)
-			eb_max_soc = 0;
-		if (eb_min_soc > eb_max_soc)
-			eb_min_soc = eb_max_soc - 1;
-
-		switch (chip->ebchg_state) {
-		case EB_SRC:
-			if (eb_soc <= 0) {
-				smbchg_set_extbat_state(chip, EB_OFF);
-				chip->update_allowed_fastchg_current_ma = true;
-			} else if (chip->update_eb_params &&
-				 (batt_soc > eb_min_soc)) {
-				chip->eb_hotplug = false;
-				chip->update_allowed_fastchg_current_ma = true;
-				smbchg_set_extbat_state(chip, EB_OFF);
-			} else if (batt_soc >= eb_max_soc) {
-				chip->eb_hotplug = false;
-				if ((eb_max_soc < 100) || (eb_min_soc < 99))
-					smbchg_set_extbat_state(chip, EB_OFF);
-				else
-					smbchg_charging_en(chip, 0);
-			}
-			break;
-		case EB_SINK:
-		case EB_OFF:
-			if (eb_soc <= 0)
-				smbchg_set_extbat_state(chip, EB_OFF);
-			else if (batt_soc <= eb_min_soc)
-				smbchg_set_extbat_state(chip, EB_SRC);
-			break;
-		case EB_DISCONN:
-			chip->eb_hotplug = false;
-		default:
-			break;
-		}
-		chip->stepchg_state_holdoff = 0;
-	} else if (!chip->usb_present) {
+	} else if (!chip->usb_present && (chip->ebchg_state != EB_SRC)) {
 		chip->stepchg_state = STEP_NONE;
 		chip->stepchg_state_holdoff = 0;
 		if (chip->bsw_mode == BSW_RUN) {
@@ -9350,7 +9326,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			mutex_unlock(&chip->current_change_lock);
 		}
 		index = STEP_END(chip->stepchg_num_steps);
-		if (chip->ebchg_state != EB_DISCONN) {
+		if ((chip->ebchg_state != EB_DISCONN) && chip->usb_present) {
 			if (eb_chrg_allowed && (chip->bsw_mode != BSW_RUN) &&
 			    ((chip->cl_usbc - 500) >=
 			     MIN(chip->stepchg_steps[index].max_ma,
@@ -9390,7 +9366,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			chip->stepchg_steps[index].max_mv;
 
 		index = STEP_START(chip->stepchg_state);
-		if (chip->ebchg_state != EB_DISCONN) {
+		if ((chip->ebchg_state != EB_DISCONN) && chip->usb_present) {
 			if (eb_chrg_allowed && (chip->bsw_mode != BSW_RUN) &&
 			    ((chip->cl_usbc - 500) >=
 			     MIN(chip->stepchg_steps[index].max_ma,
