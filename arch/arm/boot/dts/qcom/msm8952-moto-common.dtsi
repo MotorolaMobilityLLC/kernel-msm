@@ -426,7 +426,7 @@
 	qcom,stepchg-voltage-mv = <4200>;
 	qcom,stepchg-current-ma = <2500>;
 	qcom,stepchg-taper-ma = <2000>;
-	qcom,stepchg-iterm-ma = <200>;
+	qcom,stepchg-iterm-ma = <146>;
 	qcom,hot-temp-c = <60>;
 	qcom,cold-temp-c = <(-20)>;
 	qcom,warm-temp-c = <45>;
