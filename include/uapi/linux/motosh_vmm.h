@@ -134,8 +134,8 @@ VMM_ENTRY(0x15, LINEAR_ACCEL_UPDATE_RATE,				TRUE,
 		&vmm_lin_accel_update_rate,
 		sizeof(vmm_lin_accel_update_rate))
 VMM_ENTRY(0x16, ACCEL_UPDATE_RATE,					TRUE,
-		&vmm_accel_update_rate,
-		sizeof(vmm_accel_update_rate))
+		vmm_accel_update_cfg,
+		sizeof(vmm_accel_update_cfg))
 VMM_ENTRY(0x17, MAG_UPDATE_RATE,					TRUE,
 		&vmm_mag_update_rate,
 		sizeof(vmm_mag_update_rate))
