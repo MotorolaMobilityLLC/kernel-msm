@@ -1310,6 +1310,7 @@ void epl_sensor_do_ps_auto_k_one(void)
 			dynk_thd_low = epl_sensor.ps.data.data + PS_DYN_L_OFFSET;
 			dynk_thd_high = epl_sensor.ps.data.data + PS_DYN_H_OFFSET;
 			set_psensor_intr_threshold(dynk_thd_low, dynk_thd_high);
+			ps_thd_5cm = dynk_thd_low;
 			ps_thd_3cm = dynk_thd_high;
 			ps_thd_1cm = epl_sensor.ps.data.data +
 					5*PS_DYN_H_OFFSET;
@@ -1320,6 +1321,7 @@ void epl_sensor_do_ps_auto_k_one(void)
 			set_psensor_intr_threshold(epl_sensor.ps.low_threshold, epl_sensor.ps.high_threshold);
 			dynk_thd_low = epl_sensor.ps.low_threshold;
 			dynk_thd_high = epl_sensor.ps.high_threshold;
+			ps_thd_5cm = dynk_thd_low;
 			ps_thd_3cm = dynk_thd_high;
 			ps_thd_1cm = 5*dynk_thd_high;
 		}
