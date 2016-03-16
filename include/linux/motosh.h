@@ -119,6 +119,12 @@ enum vmm_ids {
 #define N_STEP_COUNTER          0x80
 
 #define MOTOSH_MAX_EVENT_QUEUE_SIZE   248
+
+/* max size of total queue */
+#define MOTOSH_MAX_NWAKE_EVENT_QUEUE_SIZE   5300
+/* I2C DMA has a 3840 byte limit */
+#define MOTOSH_MAX_NWAKE_EVENT_QUEUE_READ_SIZE 2650
+
 #define MOTOSH_EVENT_QUEUE_MSG_ID_LEN 1
 #define MOTOSH_EVENT_TIMESTAMP_LEN    3
 
@@ -393,6 +399,12 @@ struct as_node {
 	struct motosh_android_sensor_data data;
 };
 
+/* bitmask for batching flush requests */
+#define FLUSH_ACCEL_REQ 0x00000001
+
+/* bitmask for is_batching */
+#define ACCEL_BATCHING 0x00000001
+
 struct motosh_data {
 	struct i2c_client *client;
 	struct motosh_platform_data *pdata;
@@ -467,6 +479,10 @@ struct motosh_data {
 	bool in_reset_and_init;
 	bool is_suspended;
 	bool resume_cleanup;
+	/* bitmask to invoke flush complete for all pending sensor requests */
+	uint32_t nwake_flush_req;
+	/* bitmask to track sensors being batched */
+	uint32_t is_batching;
 	bool pending_wake_work;
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notif;
@@ -597,13 +613,13 @@ int motosh_bootloadermode(struct motosh_data *ps_motosh);
 
 void motosh_time_sync(void);
 int64_t motosh_time_recover(int32_t hubshort, int64_t cur_time);
-int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time);
+int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time, bool streaming);
 
 void motosh_time_compare(void);
 
 extern struct motosh_data *motosh_misc_data;
 
-extern unsigned short motosh_g_acc_delay;
+extern struct motosh_moto_sensor_batch_cfg motosh_g_acc_cfg;
 extern unsigned short motosh_g_mag_delay;
 extern unsigned short motosh_g_gyro_delay;
 extern uint8_t motosh_g_rv_6axis_delay;

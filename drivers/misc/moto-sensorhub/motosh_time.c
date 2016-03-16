@@ -20,18 +20,20 @@
 #include <linux/switch.h>
 #include <linux/time.h>
 #include <linux/wakelock.h>
+#include <linux/gpio.h>
 
 #include <linux/motosh.h>
 
-/* Max latency needs to allow for kernel irq delay and queue depth.
-   Nudging offset at 50 uS per sample allows drift tracking up to
-   .25 mS/s at 5 Hz sample rates.
+/* Max latency needs to allow for kernel irq delay and streaming
+   queue depth. Nudging offset at 50 uS per sample allows drift
+   tracking up to .25 mS/s at 5 Hz sample rates.
 */
 #define MAX_DRIFT_LATENCY 100000000  /* 100 ms in ns */
-#define MIN_DRIFT_LATENCY   2000000  /*   2 ms in ns */
+#define MIN_DRIFT_LATENCY    200000  /*  .2 ms in ns */
 #define DRIFT_NUDGE           50000  /* .05 ms */
 
 static int64_t motosh_realtime_delta;
+static spinlock_t time_sync_lock;
 
 /*
   read hub time interrupt status register
@@ -46,10 +48,24 @@ void motosh_time_sync(void)
 	unsigned char cmdbuff[1];
 	unsigned char readbuff[8];
 	int err = 0;
+	unsigned long flags;
 
+	/* one time init */
+	if (!motosh_realtime_delta)
+		spin_lock_init(&time_sync_lock);
+
+	/* ensure line starts low */
+	gpio_set_value(motosh_misc_data->pdata->gpio_sh_wake, 0);
+
+	/* get AP time and raise wake line to lock in time at hub */
+	spin_lock_irqsave(&time_sync_lock, flags);
 	get_monotonic_boottime(&ts);
+	gpio_set_value(motosh_misc_data->pdata->gpio_sh_wake, 1);
+	spin_unlock_irqrestore(&time_sync_lock, flags);
+
 	ap_time1 = ts.tv_sec*1000000000LL + ts.tv_nsec;
 
+	/* read time from hub saved at int */
 	cmdbuff[0] = ELAPSED_RT;
 	err = motosh_i2c_write_read(motosh_misc_data, cmdbuff, readbuff, 1, 8);
 	if (err < 0) {
@@ -72,7 +88,7 @@ void motosh_time_sync(void)
 	delta = ap_time1 - hub_time;
 
 	/* update offset */
-	dev_dbg(&motosh_misc_data->client->dev,
+	dev_info(&motosh_misc_data->client->dev,
 		"Sync time - sh: %12lld ap: %12lld offs_delta: %12lld",
 		hub_time, ap_time1, delta - motosh_realtime_delta);
 
@@ -80,7 +96,9 @@ void motosh_time_sync(void)
 }
 
 /*
-  hubshort - 3 bytes in uSec
+  hubshort - 3 bytes of time from sensorhub in 16 uSec resolution
+  (lsb = 16 uSec, mult by 16 to get uSec)
+
   curtime  - 8 bytes in nSec
  */
 int64_t motosh_time_recover(int32_t hubshort, int64_t cur_time)
@@ -90,30 +108,33 @@ int64_t motosh_time_recover(int32_t hubshort, int64_t cur_time)
 	int64_t hubtime = -1;
 	int32_t short_hubtime_estimate;
 
+	/* convert back to uSec */
+	hubshort *= 16;
+
 	hubtime_estimate = div64_s64((cur_time - motosh_realtime_delta), 1000); /* uS */
-	short_hubtime_estimate = hubtime_estimate & 0xFFFFFF;
+	short_hubtime_estimate = hubtime_estimate & 0xFFFFFFF;
 
 	/* Determine if a rollover needs to be accounted for */
-	if (short_hubtime_estimate - hubshort > 8000000) {
+	if (short_hubtime_estimate - hubshort > 130000000) {
 		/* hub time likely rolled, AP estimate has not, roll
 		   estimate forward
 		*/
-		hubtime_estimate += 0x01000000;
+		hubtime_estimate += 0x010000000;
 		dev_dbg(&motosh_misc_data->client->dev,
 			 "roll fwd %X %X", short_hubtime_estimate, hubshort);
 
-	} else if (hubshort - short_hubtime_estimate > 8000000) {
+	} else if (hubshort - short_hubtime_estimate > 130000000) {
 		/* AP estimate likely rolled, hub time did not, roll
 		   estimate back
 		*/
-		hubtime_estimate -= 0x01000000;
+		hubtime_estimate -= 0x010000000;
 		dev_dbg(&motosh_misc_data->client->dev,
 			 "roll back %X %X", short_hubtime_estimate, hubshort);
 	}
 
-	/* recover AP time based on 24bit usec from Hub */
-	hubtime = ((hubtime_estimate & 0xFFFFFFFFFF000000) |
-		   (hubshort & 0xFFFFFF)) * 1000;
+	/* recover AP time based on 28bit usec from Hub */
+	hubtime = ((hubtime_estimate & 0xFFFFFFFFF0000000) |
+		   (hubshort & 0xFFFFFFF)) * 1000;
 
 	return hubtime + motosh_realtime_delta;
 
@@ -124,7 +145,7 @@ int64_t motosh_time_recover(int32_t hubshort, int64_t cur_time)
   cur_time - current AP time
   returns direction of nudge to offset
  */
-int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time)
+int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time, bool streaming)
 {
 	int64_t offset;
 	int nudged;
@@ -137,7 +158,7 @@ int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time)
 	*/
 	offset = cur_time - rec_hub;
 
-	if (offset > MAX_DRIFT_LATENCY) {
+	if (streaming && offset > MAX_DRIFT_LATENCY) {
 		/* increase delta, to reduce offset on next sample */
 		motosh_realtime_delta += DRIFT_NUDGE;
 		nudged = 1;
@@ -152,9 +173,9 @@ int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time)
 	if (nudged || count > 999) {
 		count = 0;
 		dev_info(&motosh_misc_data->client->dev,
-			"driftcomp, uS delta: %lld, %d\n",
-			(cur_time - rec_hub)/1000,
-			nudged * DRIFT_NUDGE/1000);
+			 "driftcomp, uS delta: %lld, %d\n",
+			 offset/1000,
+			 nudged * DRIFT_NUDGE/1000);
 	}
 	count++;
 #endif
@@ -162,73 +183,3 @@ int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time)
 	return nudged;
 }
 
-/*
-   For debug use only:
-   Utility function to check the current time sync
-*/
-#ifdef MOTOSH_TIME_DEBUG
-void motosh_time_compare(void)
-{
-
-	struct timespec ts;
-	int64_t ap_time1;
-	int64_t ap_time2;
-	int64_t hub_time;
-	int64_t rec_hub_time;
-	int err = 0, ret_err = 0;
-	int32_t hubshort_time;
-	int64_t midaptime;
-	unsigned char cmdbuff[1];
-	unsigned char readbuff[8];
-
-	get_monotonic_boottime(&ts);
-	ap_time1 = ts.tv_sec*1000000000LL + ts.tv_nsec;
-
-	cmdbuff[0] = ELAPSED_RT;
-	err = motosh_i2c_write_read(motosh_misc_data, cmdbuff, readbuff, 1, 8);
-
-	get_monotonic_boottime(&ts);
-	ap_time2 = ts.tv_sec*1000000000LL + ts.tv_nsec;
-
-	midaptime = (((ap_time2-ap_time1)/2) + ap_time1);
-
-	if (err < 0) {
-		dev_err(&motosh_misc_data->client->dev,
-			"Unable to read hub time");
-		ret_err = err;
-	}
-
-	/* nanoseconds */
-	hub_time =
-		(((uint64_t)readbuff[0] << 56) |
-		 ((uint64_t)readbuff[1] << 48) |
-		 ((uint64_t)readbuff[2] << 40) |
-		 ((uint64_t)readbuff[3] << 32) |
-		 ((uint64_t)readbuff[4] << 24) |
-		 ((uint64_t)readbuff[5] << 16) |
-		 ((uint64_t)readbuff[6] <<  8) |
-		  (uint64_t)readbuff[7]) * 1000;
-
-	dev_info(&motosh_misc_data->client->dev,
-		 "%02X %02X %02X %02X %02X %02X %02X %02X",
-		 readbuff[0],
-		 readbuff[1],
-		 readbuff[2],
-		 readbuff[3],
-		 readbuff[4],
-		 readbuff[5],
-		 readbuff[6],
-		 readbuff[7]);
-
-	hubshort_time = (readbuff[5] << 16) |
-		(readbuff[6] <<  8) | (readbuff[7]);
-
-	rec_hub_time = motosh_time_recover(hubshort_time, ap_time2);
-	dev_info(&motosh_misc_data->client->dev,
-		 "recovered hub: %12lld full_hub: %12lld ap: %12lld delta: %12lld ",
-		 rec_hub_time,
-		 hub_time,
-		 midaptime,
-		 midaptime - (motosh_realtime_delta + rec_hub_time));
-}
-#endif
