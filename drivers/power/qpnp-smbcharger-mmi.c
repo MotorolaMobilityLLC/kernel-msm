@@ -4476,6 +4476,10 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 			current_limit = chip->cl_usbc;
 
 	SMB_DBG(chip, "current_limit = %d\n", current_limit);
+
+	if (current_limit == 0)
+		chip->cl_ebchg = 0;
+
 	mutex_lock(&chip->current_change_lock);
 	if ((current_limit != chip->usb_target_current_ma) &&
 	    (chip->cl_ebchg == 0)) {
