@@ -57,6 +57,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned char byte;
 	unsigned char bytes[3];
 	unsigned short delay;
+	struct motosh_moto_sensor_batch_cfg batch_cfg;
 	unsigned long current_posix_time;
 	unsigned int handle;
 	struct timespec current_time;
@@ -177,17 +178,32 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	case MOTOSH_IOCTL_SET_ACC_DELAY:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_ACC_DELAY");
 		delay = 0;
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
+		if (copy_from_user(&batch_cfg, argp, sizeof(batch_cfg))) {
 			dev_dbg(&ps_motosh->client->dev,
 				"Copy acc delay returned error\n");
 			err = -EFAULT;
 			break;
 		}
+		motosh_g_acc_cfg = batch_cfg;
+
+		/* set is_batching at batch startup based on timeout. The clear
+		   will be delayed until after latest queue is read */
+		if (motosh_g_acc_cfg.timeout > 0)
+			ps_motosh->is_batching |= ACCEL_BATCHING;
+
 		cmdbuff[0] = ACCEL_UPDATE_RATE;
-		cmdbuff[1] = delay;
-		motosh_g_acc_delay = delay;
+		cmdbuff[1] = motosh_g_acc_cfg.delay;
+		cmdbuff[2] = (unsigned char)
+			((motosh_g_acc_cfg.timeout >> 24));
+		cmdbuff[3] = (unsigned char)
+			((motosh_g_acc_cfg.timeout >> 16) & 0xff);
+		cmdbuff[4] = (unsigned char)
+			((motosh_g_acc_cfg.timeout >> 8)  & 0xff);
+		cmdbuff[5] = (unsigned char)
+			((motosh_g_acc_cfg.timeout)       & 0xff);
+
 		if (ps_motosh->mode > BOOTMODE)
-			err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
+			err = motosh_i2c_write(ps_motosh, cmdbuff, 6);
 		break;
 
 	case MOTOSH_IOCTL_SET_MAG_DELAY:
@@ -852,9 +868,18 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 			break;
 		}
+		/* batchable sensors must invoke irq work to retrieve
+		   buffered data from the hub. Only Accel is currently
+		   batched */
 		handle = cpu_to_be32(handle);
-		motosh_as_data_buffer_write(ps_motosh, DT_FLUSH,
-				(char *)&handle, 4, 0, false);
+		if (handle == ID_A) {
+			ps_motosh->nwake_flush_req |= FLUSH_ACCEL_REQ;
+			queue_work(ps_motosh->irq_work_queue,
+				   &ps_motosh->irq_work);
+		} else
+			motosh_as_data_buffer_write(ps_motosh, DT_FLUSH,
+						    (char *)&handle,
+						    4, 0, false);
 		break;
 	case MOTOSH_IOCTL_GET_GYRO_CAL:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_GYRO_CAL");
