@@ -76,8 +76,6 @@ void motosh_irq_work_func(struct work_struct *work)
 
 	mutex_lock(&ps_motosh->lock);
 
-	motosh_wake(ps_motosh);
-
 	if (ps_motosh->mode <= BOOTMODE)
 		goto EXIT;
 
@@ -524,7 +522,6 @@ EXIT:
 	if (motosh_g_acc_cfg.timeout == 0)
 		ps_motosh->is_batching &= (~ACCEL_BATCHING);
 
-	motosh_sleep(ps_motosh);
 	/* For now HAE needs events even if the activity is still */
 	mutex_unlock(&ps_motosh->lock);
 
