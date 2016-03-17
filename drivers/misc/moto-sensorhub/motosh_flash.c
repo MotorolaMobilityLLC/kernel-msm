@@ -323,8 +323,6 @@ int motosh_get_version(struct motosh_data *ps_motosh)
 		goto EXIT;
 	}
 
-	motosh_wake(ps_motosh);
-
 	cmdbuff[0] = REV_ID;
 	err = motosh_i2c_write_read_no_reset(ps_motosh, cmdbuff, readbuff,
 		1, 1);
@@ -334,7 +332,6 @@ int motosh_get_version(struct motosh_data *ps_motosh)
 			readbuff[0]);
 		motosh_g_booted = 1;
 	}
-	motosh_sleep(ps_motosh);
 
 EXIT:
 	return err;
@@ -353,8 +350,6 @@ int motosh_get_version_str(struct motosh_data *ps_motosh)
 		err = -EIO;
 		goto EXIT;
 	}
-
-	motosh_wake(ps_motosh);
 
 	cmdbuff[0] = FW_VERSION_LEN;
 	err = motosh_i2c_write_read_no_reset(ps_motosh, cmdbuff, readbuff,
@@ -380,7 +375,6 @@ int motosh_get_version_str(struct motosh_data *ps_motosh)
 			motosh_g_booted = 1;
 		}
 	}
-	motosh_sleep(ps_motosh);
 
 EXIT:
 	return err;
@@ -682,13 +676,9 @@ RETRY_WRITE:
 			err = -EINVAL;
 		}
 
-		motosh_wake(motosh_misc_data);
-
 		if (err == 0)
 			err = motosh_i2c_write_no_reset(motosh_misc_data,
 				motosh_flash_cmdbuff, count);
-
-		motosh_sleep(motosh_misc_data);
 
 		if (err == 0)
 			err = count;
