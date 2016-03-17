@@ -19,3 +19,9 @@
 / {
 	qcom,board-id = <0x41 0x82a0>;
 };
+
+&soc {
+	sound {
+		mot,micdet1-high-imp;
+	};
+};
