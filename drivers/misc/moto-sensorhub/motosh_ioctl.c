@@ -48,7 +48,6 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 {
 	void __user *argp = (void __user *)arg;
 	static int brightness_table_loaded;
-	static int lowpower_mode = 1;
 	int err = 0;
 	unsigned int addr = 0;
 	unsigned int data_size = 0;
@@ -73,8 +72,6 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	err = mutex_lock_interruptible(&ps_motosh->lock);
 	if (err != 0)
 		return err;
-
-	motosh_wake(ps_motosh);
 
 	switch (cmd) {
 	case MOTOSH_IOCTL_BOOTLOADERMODE:
@@ -834,30 +831,6 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		err = 0;
 		break;
 #endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
-	case MOTOSH_IOCTL_SET_LOWPOWER_MODE:
-		if (ps_motosh->mode <= BOOTMODE) {
-			err = -EBUSY;
-			break;
-		}
-		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_LOWPOWER_MODE");
-		if (copy_from_user(&cmdbuff[0], argp, 1)) {
-			dev_err(&ps_motosh->client->dev,
-				"Copy size from user returned error\n");
-			err = -EFAULT;
-			break;
-		}
-
-		err = 0;
-		if (cmdbuff[0] != 0 && lowpower_mode == 0) {
-			/* allow sensorhub to sleep */
-			motosh_sleep(ps_motosh);
-			lowpower_mode = cmdbuff[0];
-		} else if (cmdbuff[0] == 0 && lowpower_mode == 1) {
-			/* keep sensorhub awake */
-			motosh_wake(ps_motosh);
-			lowpower_mode = cmdbuff[0];
-		}
-		break;
 	case MOTOSH_IOCTL_SET_FLUSH:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_FLUSH");
 		if (ps_motosh->mode <= BOOTMODE)
@@ -1246,9 +1219,11 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 				break;
 			}
 		}
+		break;
+	default:
+		err = -EFAULT;
 	}
 
-	motosh_sleep(ps_motosh);
 	mutex_unlock(&ps_motosh->lock);
 	return err;
 }
@@ -1262,7 +1237,6 @@ int motosh_set_rv_6axis_update_rate(
 
 	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
 		return -EINTR;
-	motosh_wake(ps_motosh);
 
 	motosh_g_rv_6axis_delay = newDelay;
 	if (ps_motosh->mode <= BOOTMODE)
@@ -1273,7 +1247,6 @@ int motosh_set_rv_6axis_update_rate(
 	err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
 
 EPILOGUE:
-	motosh_sleep(ps_motosh);
 	mutex_unlock(&ps_motosh->lock);
 
 	return err;
@@ -1288,7 +1261,6 @@ int motosh_set_rv_9axis_update_rate(
 
 	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
 		return -EINTR;
-	motosh_wake(ps_motosh);
 
 	motosh_g_rv_9axis_delay = newDelay;
 	if (ps_motosh->mode <= BOOTMODE)
@@ -1299,7 +1271,6 @@ int motosh_set_rv_9axis_update_rate(
 	err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
 
 EPILOGUE:
-	motosh_sleep(ps_motosh);
 	mutex_unlock(&ps_motosh->lock);
 
 	return err;
@@ -1314,7 +1285,6 @@ int motosh_set_gravity_update_rate(
 
 	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
 		return -EINTR;
-	motosh_wake(ps_motosh);
 
 	motosh_g_gravity_delay = newDelay;
 	if (ps_motosh->mode <= BOOTMODE)
@@ -1325,7 +1295,6 @@ int motosh_set_gravity_update_rate(
 	err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
 
 EPILOGUE:
-	motosh_sleep(ps_motosh);
 	mutex_unlock(&ps_motosh->lock);
 
 	return err;
@@ -1340,7 +1309,6 @@ int motosh_set_linear_accel_update_rate(
 
 	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
 		return -EINTR;
-	motosh_wake(ps_motosh);
 
 	motosh_g_linear_accel_delay = newDelay;
 	if (ps_motosh->mode <= BOOTMODE)
@@ -1351,7 +1319,6 @@ int motosh_set_linear_accel_update_rate(
 	err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
 
 EPILOGUE:
-	motosh_sleep(ps_motosh);
 	mutex_unlock(&ps_motosh->lock);
 
 	return err;
