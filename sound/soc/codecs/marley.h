@@ -17,5 +17,28 @@
 
 #define MARLEY_FLL1        1
 #define MARLEY_FLL1_REFCLK 3
+#define MARLEY_FLL_COUNT   1
+/* Number of compressed DAI hookups, each pair of DSP and dummy CPU
+ * are counted as one DAI
+ */
+#define MARLEY_NUM_COMPR_DAI 2
+
+struct marley_compr {
+#if 0
+	struct wm_adsp_compr adsp_compr;
+#endif
+	const char *dai_name;
+	bool trig;
+	struct mutex trig_lock;
+	struct marley_priv *priv;
+};
+
+struct marley_priv {
+	struct arizona_priv core;
+	struct arizona_fll fll[MARLEY_FLL_COUNT];
+	struct marley_compr compr_info[MARLEY_NUM_COMPR_DAI];
+
+	struct mutex fw_lock;
+};
 
 #endif
