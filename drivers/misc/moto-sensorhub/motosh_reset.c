@@ -93,7 +93,6 @@ void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff)
 
 	gpio_set_value(pdata->gpio_reset, 1);
 	msleep(MOTOSH_RESET_DELAY);
-	motosh_detect_lowpower_mode(cmdbuff);
 
 	if (!motosh_misc_data->in_reset_and_init) {
 		/* sending reset to slpc hal */
@@ -139,8 +138,6 @@ int motosh_reset_and_init(enum reset_mode mode)
 		wake_unlock(&motosh_misc_data->reset_wakelock);
 		return -ENOMEM;
 	}
-
-	motosh_wake(motosh_misc_data);
 
 	/* Part is up and alive, switch to normal mode */
 	motosh_misc_data->mode = NORMALMODE;
@@ -455,7 +452,6 @@ int motosh_reset_and_init(enum reset_mode mode)
 	motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET, NULL, 0, false);
 
 	kfree(rst_cmdbuff);
-	motosh_sleep(motosh_misc_data);
 	motosh_misc_data->in_reset_and_init = false;
 	wake_unlock(&motosh_misc_data->reset_wakelock);
 
