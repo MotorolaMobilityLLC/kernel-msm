@@ -1539,14 +1539,9 @@ bool is_slimport_dp(void)
 	return (sp_tx_cur_cable_type() == DWN_STRM_IS_DIGITAL) ? TRUE : FALSE;
 }
 
-unchar sp_get_link_bw(void)
+unchar sp_get_rx_bw(void)
 {
-	return sp_tx_cur_bw();
-}
-
-void sp_set_link_bw(unchar link_bw)
-{
-	sp_tx_set_bw(link_bw);
+	return sp_rx_cur_bw();
 }
 
 static int anx7816_i2c_suspend(struct i2c_client *client, pm_message_t state)
