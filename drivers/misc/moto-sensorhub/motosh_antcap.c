@@ -65,9 +65,7 @@ static int motosh_antcap_i2c_write(unsigned char *buf,
 
 	if (motosh_g_booted && motosh_g_antcap_hw_ready
 			&& (ps_motosh->mode > BOOTMODE)) {
-		motosh_wake(ps_motosh);
 		err = motosh_i2c_write(ps_motosh, buf, len);
-		motosh_sleep(ps_motosh);
 	} else
 		err = 0x8000 |
 			(motosh_g_booted << 8) | motosh_g_antcap_hw_ready;
@@ -92,11 +90,9 @@ static int motosh_antcap_i2c_write_read(unsigned char *buf,
 
 	if (motosh_g_booted && motosh_g_antcap_hw_ready
 			&& (ps_motosh->mode > BOOTMODE)) {
-		motosh_wake(ps_motosh);
 		err = motosh_i2c_write_read(ps_motosh, buf,
 						motosh_antcap_i2c_rbuf,
 						wlen, rlen);
-		motosh_sleep(ps_motosh);
 	} else
 		err = 0x8000
 			| (motosh_g_booted << 8)
