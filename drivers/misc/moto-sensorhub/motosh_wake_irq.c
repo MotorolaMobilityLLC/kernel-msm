@@ -154,8 +154,6 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		goto EXIT_NO_WAKE;
 	}
 
-	motosh_wake(ps_motosh);
-
 	/* prioritize AoD
 	   [these events operates independent of the wake event queueing] */
 	cmdbuff[0] = WAKESENSOR_STATUS;
@@ -718,7 +716,6 @@ EXIT:
 	if (irq_status == M_QUICKPEEK && !valid_queue_len)
 		wake_unlock(&ps_motosh->wakelock);
 
-	motosh_sleep(ps_motosh);
 EXIT_NO_WAKE:
 	mutex_unlock(&ps_motosh->lock);
 }
