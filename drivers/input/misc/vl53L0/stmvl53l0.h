@@ -80,7 +80,8 @@
 #define	SGLCTL_PRA 9
 #define CUTV_PRA 10
 #define DRVV_PRA 11
-
+#define PLLPRE_PRA 12
+#define PLLFINAL_PRA 13
 #define	CCI_BUS  0
 #define	I2C_BUS  1
 
