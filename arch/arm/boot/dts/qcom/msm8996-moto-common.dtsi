@@ -750,34 +750,6 @@
 			    <84 512 500 800>;
 	};
 
-	spi_3: spi@7577000 { /* BLSP1 QUP3 */
-		compatible = "qcom,spi-qup-v2";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "spi_physical", "spi_bam_physical";
-		reg = <0x07577000 0x600>,
-		      <0x07544000 0x2b000>;
-		interrupt-names = "spi_irq", "spi_bam_irq";
-		interrupts = <0 97 0>, <0 238 0>;
-		spi-max-frequency = <50000000>;
-
-		qcom,infinite-mode = <0>;
-		qcom,use-bam;
-		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <16>;
-		qcom,bam-producer-pipe-index = <17>;
-		qcom,master-id = <86>;
-		qcom,use-pinctrl;
-		pinctrl-names = "spi_default", "spi_sleep";
-		pinctrl-0 = <&spi_3_active>;
-		pinctrl-1 = <&spi_3_sleep>;
-
-		clock-names = "iface_clk", "core_clk";
-
-		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
-			 <&clock_gcc clk_gcc_blsp1_qup3_spi_apps_clk>;
-	};
-
 	spi_12: spi@75ba000 { /* BLSP2 QUP6 */
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
@@ -859,11 +831,15 @@
 
 	apba_ctrl {
 		compatible = "mmi,apba-ctrl";
+		#address-cells = <1>;
+		#size-cells = <1>;
 		reg = <0 0>;
+		ranges = <0 0 0xffffffff>;
 		clock-names = "apba_mclk";
 		clocks = <&clock_gcc clk_bb_clk2_ao>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&apba_default>;
+		pinctrl-names = "default", "spi_active";
+		pinctrl-0 = <&apba_default &spi_3_sleep>;
+		pinctrl-1 = <&apba_default &spi_3_active>;
 		gpios = <&pm8994_gpios 7 2>, /* APBA_1P1_EN, output-high */
 			<&tlmm 27 0>,        /* APBA_BOOTRET, output-low */
 			<&tlmm 81 2>,        /* MOD_MPHY_I2S_SEL, output-high */
@@ -884,6 +860,15 @@
 		mmi,wake-deassert-seq = <5 1 0>;
 		mmi,flash-start-seq = <0 1 11>;
 		mmi,flash-end-seq = <0 0 0>;
+
+		transports {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0 0xffffffff>;
+
+			/* Dummy Place Holder for SPI */
+			spi_3: spi@7577000 { };
+		};
 	};
 
 	mods_camera_ext {
@@ -1003,6 +988,52 @@
 	android_usb@66bf0c8 {
 		/* Disable CPU idle power collapse for factory */
 		mmi,pm-qos-latency-factory = <2 2 2>;
+	};
+};
+
+&spi_3 { /* BLSP1 QUP3 */
+	compatible = "qcom,spi-qup-v2", "moto,apba-spi-transfer";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg-names = "spi_physical", "spi_bam_physical";
+	reg = <0x07577000 0x600>,
+	      <0x07544000 0x2b000>;
+	interrupt-names = "spi_irq", "spi_bam_irq";
+	interrupts = <0 97 0>, <0 238 0>;
+	spi-max-frequency = <50000000>;
+
+	qcom,infinite-mode = <0>;
+	qcom,use-bam;
+	qcom,ver-reg-exists;
+	qcom,bam-consumer-pipe-index = <16>;
+	qcom,bam-producer-pipe-index = <17>;
+	qcom,master-id = <86>;
+	/* pin control will happen in the apba driver itself */
+
+	clock-names = "iface_clk", "core_clk";
+
+	clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+		 <&clock_gcc clk_gcc_blsp1_qup3_spi_apps_clk>;
+
+	apba_flash: m25p80@0 {
+		compatible = "w25q40ew";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0>;
+		spi-max-frequency = <4800000>;
+
+		partition@0 {
+			label = "apba";
+			reg = <0x0 0x40000>;
+		};
+		partition@1 {
+			label = "es2_apbaboot";
+			reg = <0x0 0x4000>;
+		};
+		partition@2 {
+			label = "es2_apba";
+			reg = <0x4000 0x3C000>;
+		};
 	};
 };
 
@@ -1410,29 +1441,6 @@
 		spi-max-frequency = <4800000>;
 
 		mmi,intf-id = /bits/ 8 <3>;
-	};
-};
-
-&spi_3 {
-	apba_flash: m25p80@0 {
-		compatible = "w25q40ew";
-		reg = <0>;
-		spi-max-frequency = <4800000>;
-
-		#address-cells = <1>;
-		#size-cells = <1>;
-		partition@0 {
-			label = "apba";
-			reg = <0x0 0x40000>;
-		};
-		partition@1 {
-			label = "es2_apbaboot";
-			reg = <0x0 0x4000>;
-		};
-		partition@2 {
-			label = "es2_apba";
-			reg = <0x4000 0x3C000>;
-		};
 	};
 };
 
