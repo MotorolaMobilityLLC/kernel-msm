@@ -1273,6 +1273,7 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 	}
 
 	if (cci_dev->ref_count++) {
+		return 0;
 		CDBG("%s ref_count %d\n", __func__, cci_dev->ref_count);
 		master = c_ctrl->cci_info->cci_i2c_master;
 		CDBG("%s:%d master %d\n", __func__, __LINE__, master);
