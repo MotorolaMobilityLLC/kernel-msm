@@ -1538,7 +1538,7 @@ static void hdmi_edid_add_sink_3d_format(struct hdmi_edid_sink_data *sink_data,
 void limit_supported_video_format(u32 *video_format)
 {
 	switch (sp_get_rx_bw()) {
-	case 0x0a:
+	case 0x0a: /*Slimport Max Bandwidth is 2.7Gbps*/
 		if ((*video_format == HDMI_VFRMT_1920x1080p60_16_9) ||
 			(*video_format == HDMI_VFRMT_2880x480p60_4_3) ||
 			(*video_format == HDMI_VFRMT_2880x480p60_16_9) ||
@@ -1553,14 +1553,12 @@ void limit_supported_video_format(u32 *video_format)
 			*video_format = HDMI_VFRMT_1920x1080i50_16_9;
 		else if (*video_format == HDMI_VFRMT_1920x1080i120_16_9)
 			*video_format = HDMI_VFRMT_1920x1080i60_16_9;
-		else if (*video_format == HDMI_VFRMT_1280x1024p60_5_4)
-			*video_format = HDMI_VFRMT_1024x768p60_4_3;
 		break;
-	case 0x06:
+	case 0x06: /*Slimport Max Bandwidth is 1.62Gbps*/
 		if (*video_format != HDMI_VFRMT_640x480p60_4_3)
 			*video_format = HDMI_VFRMT_640x480p60_4_3;
 		break;
-	case 0x14:
+	case 0x14: /*Slimport Max Bandwidth is 5.4Gbps*/
 		if ((*video_format == HDMI_VFRMT_1920x1200p60_16_10) ||
 			(*video_format == HDMI_VFRMT_2560x1600p60_16_9) ||
 			(*video_format == HDMI_VFRMT_3840x2160p30_16_9) ||
@@ -1569,17 +1567,7 @@ void limit_supported_video_format(u32 *video_format)
 			(*video_format == HDMI_EVFRMT_4096x2160p24_16_9))
 			*video_format = HDMI_VFRMT_1920x1080p60_16_9;
 		break;
-#if defined(CONFIG_SLIMPORT_ANX7808) || defined(CONFIG_SLIMPORT_ANX7812)
-	case 0x19:
-		if ((*video_format == HDMI_VFRMT_2560x1600p60_16_9) ||
-			(*video_format == HDMI_VFRMT_3840x2160p30_16_9) ||
-			(*video_format == HDMI_VFRMT_3840x2160p25_16_9) ||
-			(*video_format == HDMI_VFRMT_3840x2160p24_16_9) ||
-			(*video_format == HDMI_EVFRMT_4096x2160p24_16_9))
-			*video_format = HDMI_VFRMT_1920x1080p60_16_9;
-		break;
-#endif
-	default:
+	default: /*Slimport Max Bandwidth is 6.75Gbps or higher*/
 		break;
 	}
 }
