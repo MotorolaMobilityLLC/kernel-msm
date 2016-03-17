@@ -3190,13 +3190,13 @@ static int arizona_slim_get_la(struct slim_device *dev, u8 *la)
 
 
 static u32 rx_porth1[2], rx_porth2[1], rx_porth3[2], rx_porth1m[1];
-static u32 tx_porth1[4], tx_porth2[1], tx_porth3[1];
+static u32 tx_porth1[4], tx_porth2[2], tx_porth3[1];
 static u16 rx_handles1[] = { RX_STREAM_1, RX_STREAM_1 + 1 };
 static u16 rx_handles2[] = { RX_STREAM_2 };
 static u16 rx_handles3[] = { RX_STREAM_3, RX_STREAM_3 + 1 };
 static u16 tx_handles1[] = { TX_STREAM_1, TX_STREAM_1 + 1,
 			     TX_STREAM_1 + 2, TX_STREAM_1 + 3 };
-static u16 tx_handles2[] = { TX_STREAM_2 };
+static u16 tx_handles2[] = { TX_STREAM_2, TX_STREAM_2 + 1 };
 static u16 tx_handles3[] = { TX_STREAM_3 };
 static u16 rx_group1, rx_group2, rx_group3;
 static u16 tx_group1, tx_group2, tx_group3;
@@ -3533,8 +3533,9 @@ dev_info(arizona->dev, "%s logic addr %d\n", __func__, laddr);
 	case ARIZONA_SLIM2:
 		*rx_num = 1;
 		rx_slot[0] = RX_STREAM_2;
-		*tx_num = 1;
+		*tx_num = 2;
 		tx_slot[0] = TX_STREAM_2;
+		tx_slot[1] = TX_STREAM_2 + 1;
 		break;
 	case ARIZONA_SLIM3:
 		*rx_num = 2;
