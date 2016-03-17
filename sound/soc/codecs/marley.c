@@ -35,14 +35,7 @@
 
 #define MARLEY_NUM_ADSP 3
 
-/* Number of compressed DAI hookups, each pair of DSP and dummy CPU
- * are counted as one DAI
- */
-#define MARLEY_NUM_COMPR_DAI 2
-
 #define MARLEY_FRF_COEFFICIENT_LEN 4
-
-#define MARLEY_FLL_COUNT 1
 
 static int marley_frf_bytes_put(struct snd_kcontrol *kcontrol,
 		      struct snd_ctl_elem_value *ucontrol);
@@ -135,24 +128,6 @@ static int marley_rate_put(struct snd_kcontrol *kcontrol,
 	.private_value = (unsigned long)&xenum }
 
 struct marley_priv;
-
-struct marley_compr {
-#if 0
-	struct wm_adsp_compr adsp_compr;
-#endif
-	const char *dai_name;
-	bool trig;
-	struct mutex trig_lock;
-	struct marley_priv *priv;
-};
-
-struct marley_priv {
-	struct arizona_priv core;
-	struct arizona_fll fll[MARLEY_FLL_COUNT];
-	struct marley_compr compr_info[MARLEY_NUM_COMPR_DAI];
-
-	struct mutex fw_lock;
-};
 
 static const struct {
 	const char *dai_name;
