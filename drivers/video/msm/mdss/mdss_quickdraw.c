@@ -357,6 +357,7 @@ static int mdss_quickdraw_prepare(void *data, unsigned char panel_state)
 	struct mdss_panel_data *pdata = NULL;
 	struct mdss_mdp_ctl *ctl = NULL;
 	int ret = 0;
+	bool reset_panel = false;
 
 	pr_debug("%s+ (panel_state: %d)\n", __func__, panel_state);
 
@@ -375,6 +376,7 @@ static int mdss_quickdraw_prepare(void *data, unsigned char panel_state)
 
 	ctl = mfd_to_ctl(mfd);
 	memset(&ctl->roi, 0, sizeof(ctl->roi));
+	reset_panel = mfd->quickdraw_reset_panel;
 
 	if (mfd->quickdraw_reset_panel) {
 		pdata->panel_info.panel_dead = true;
@@ -382,11 +384,11 @@ static int mdss_quickdraw_prepare(void *data, unsigned char panel_state)
 		mdss_fb_blank_sub(FB_BLANK_NORMAL, mfd->fbi, true);
 		mdss_fb_blank_sub(FB_BLANK_UNBLANK, mfd->fbi, true);
 		mfd->quickdraw_in_progress = 1;
+		mfd->quickdraw_reset_panel = false;
 		ret = QUICKDRAW_ESD_RECOVERED;
 	}
 exit:
-	pr_debug("%s- (quickdraw_reset_panel: %d)\n", __func__,
-		mfd->quickdraw_reset_panel);
+	pr_debug("%s- (quickdraw_reset_panel: %d)\n", __func__, reset_panel);
 
 	return ret;
 }
