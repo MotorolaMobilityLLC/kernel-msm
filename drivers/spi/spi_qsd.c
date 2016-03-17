@@ -2079,11 +2079,6 @@ static void msm_spi_bam_teardown(struct msm_spi *dd)
 {
 	msm_spi_bam_pipe_teardown(dd, SPI_BAM_PRODUCER_PIPE);
 	msm_spi_bam_pipe_teardown(dd, SPI_BAM_CONSUMER_PIPE);
-
-	if (dd->bam.deregister_required) {
-		sps_deregister_bam_device(dd->bam.handle);
-		dd->bam.deregister_required = false;
-	}
 }
 
 static int msm_spi_bam_init(struct msm_spi *dd)
@@ -2107,7 +2102,6 @@ static int msm_spi_bam_init(struct msm_spi *dd)
 				__func__);
 			return rc;
 		}
-		dd->bam.deregister_required = true;
 	}
 
 	dd->bam.handle = bam_handle;
