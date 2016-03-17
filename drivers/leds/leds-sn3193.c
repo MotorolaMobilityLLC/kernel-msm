@@ -593,7 +593,7 @@ static int sn3193_led_probe(struct i2c_client *client,
 	sn3193_led_reset_off(pdata);
 
 	/* Power up IC */
-	pdata->led_current = SN_CURRENT_30mA;
+	pdata->led_current = SN_CURRENT_17mA;
 	pdata->led_r_brightness = 0x00;
 	pdata->led_g_brightness = 0x00;
 	pdata->led_b_brightness = 0x00;
