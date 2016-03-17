@@ -285,6 +285,10 @@ Optional Properties:
 				detected based on GPIO.
 - qcom,vchg_sns-adc			Phandle of the VADC node.
 - qcom,vchg-adc-channel-id		The ADC channel to which the VCHG is routed.
+- qcom,dp-pulse-count			If present the charger adapter's
+					maximum output is 5.4V. This property
+					indicates maximum number of D+ pulses
+					that can be supplied to the adapter.
 
 Example:
 	qcom,qpnp-smbcharger {
