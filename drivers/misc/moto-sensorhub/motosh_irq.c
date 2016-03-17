@@ -107,11 +107,10 @@ void motosh_irq_work_func(struct work_struct *work)
 	queue_length = (readbuff[0] << 8) | (readbuff[1] & 0xff);
 	irq_status = readbuff[2];
 
-	if (queue_length == 0) {
-		if (irq_status == 0)
+	if (queue_length == 0 && irq_status == 0) {
 			dev_dbg(&ps_motosh->client->dev,
 				"No status or queue\n");
-		goto EXIT;
+			goto EXIT;
 	}
 
 	dev_dbg(&ps_motosh->client->dev,
@@ -209,6 +208,8 @@ void motosh_irq_work_func(struct work_struct *work)
 		dev_err(&ps_motosh->client->dev,
 			"Invalid nwake queue_length: %d\n",
 			queue_length);
+		goto EXIT;
+	} else if (queue_length == 0) {
 		goto EXIT;
 	}
 
