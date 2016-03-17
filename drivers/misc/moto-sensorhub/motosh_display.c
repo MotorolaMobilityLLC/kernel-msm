@@ -220,8 +220,6 @@ static int motosh_quickpeek_status_ack(struct motosh_data *ps_motosh,
 
 	dev_dbg(&ps_motosh->client->dev, "%s\n", __func__);
 
-	motosh_wake(ps_motosh);
-
 	if (qp_message && qp_message->message == AOD_WAKEUP_REASON_QP_DRAW)
 		payload |= (qp_message->buffer_id &
 			AOD_QP_ACK_BUFFER_ID_MASK) << 2;
@@ -246,8 +244,6 @@ static int motosh_quickpeek_status_ack(struct motosh_data *ps_motosh,
 	QD_trace_add(ps_motosh, qp_message ? qp_message->message : 0,
 		qp_message ? qp_message->buffer_id : 0,
 		(u8)(ack_return & 0x03));
-
-	motosh_sleep(ps_motosh);
 
 	return ret;
 }
@@ -535,8 +531,6 @@ void motosh_quickpeek_work_func(struct work_struct *work)
 
 	dev_dbg(&ps_motosh->client->dev, "%s\n", __func__);
 
-	motosh_wake(ps_motosh);
-
 	mutex_lock(&ps_motosh->qp_list_lock);
 
 	motosh_quickpeek_set_in_progress_locked(ps_motosh, true);
@@ -659,8 +653,6 @@ loop:
 	motosh_quickpeek_set_in_progress_locked(ps_motosh, false);
 
 	mutex_unlock(&ps_motosh->qp_list_lock);
-
-	motosh_sleep(ps_motosh);
 }
 
 static int motosh_takeback_locked(struct motosh_data *ps_motosh)
@@ -670,7 +662,6 @@ static int motosh_takeback_locked(struct motosh_data *ps_motosh)
 	unsigned char readbuff[1];
 
 	dev_dbg(&motosh_misc_data->client->dev, "%s\n", __func__);
-	motosh_wake(ps_motosh);
 
 	if (ps_motosh->mode == NORMALMODE) {
 		motosh_quickpeek_reset_locked(ps_motosh);
@@ -732,7 +723,6 @@ static int motosh_takeback_locked(struct motosh_data *ps_motosh)
 	}
 
 EXIT:
-	motosh_sleep(ps_motosh);
 	return 0;
 }
 
@@ -742,7 +732,6 @@ static int motosh_handover_locked(struct motosh_data *ps_motosh)
 	unsigned char cmdbuff[2];
 
 	dev_dbg(&motosh_misc_data->client->dev, "%s\n", __func__);
-	motosh_wake(ps_motosh);
 
 	if (ps_motosh->mode == NORMALMODE) {
 		cmdbuff[0] = PD_PEEK_RESPONSE;
@@ -754,7 +743,6 @@ static int motosh_handover_locked(struct motosh_data *ps_motosh)
 		}
 	}
 
-	motosh_sleep(ps_motosh);
 	return ret;
 }
 
@@ -827,17 +815,13 @@ static unsigned long motosh_get_wake_interrupt_status(
 	unsigned char cmdbuff[1];
 	unsigned char readbuff[3];
 
-	motosh_wake(ps_motosh);
-
 	cmdbuff[0] = WAKESENSOR_STATUS;
 	*err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff, 1, 3);
 	if (*err < 0) {
 		dev_err(&ps_motosh->client->dev, "Reading from STM failed\n");
-		motosh_sleep(ps_motosh);
 		return 0;
 	}
 
-	motosh_sleep(ps_motosh);
 	return (readbuff[2] << 16) | (readbuff[1] << 8) | readbuff[0];
 }
 
