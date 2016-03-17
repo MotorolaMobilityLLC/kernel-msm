@@ -6499,6 +6499,13 @@ static int iw_set_band_config(struct net_device *dev,
     tANI_U8 *ptr = (tANI_U8*)wrqu->data.pointer;
     int ret = 0;
 
+    if (!capable(CAP_NET_ADMIN))
+    {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+		FL("permission check failed"));
+      return -EPERM;
+    }
+
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: ", __func__);
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
