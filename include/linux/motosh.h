@@ -420,8 +420,6 @@ struct motosh_data {
 	struct input_dev *input_dev;
 
 	struct mutex sh_wakeup_lock;
-	int sh_wakeup_count;
-	int sh_lowpower_enabled;
 
 	int hw_initialized;
 

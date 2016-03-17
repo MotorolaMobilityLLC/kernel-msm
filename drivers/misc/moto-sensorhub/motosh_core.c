@@ -43,8 +43,6 @@
 
 #include <linux/motosh.h>
 
-#define LOWPOWER_ALLOWED   0
-
 #define I2C_RETRIES			5
 #define RESET_RETRIES			2
 #define MOTOSH_DELAY_USEC		10
@@ -318,158 +316,6 @@ int64_t motosh_timestamp_ns(void)
 	struct timespec ts;
 	get_monotonic_boottime(&ts);
 	return ts.tv_sec*1000000000LL + ts.tv_nsec;
-}
-
-void motosh_wake(struct motosh_data *ps_motosh)
-{
-#if LOWPOWER_ALLOWED
-	if (ps_motosh != NULL && ps_motosh->pdata != NULL) {
-		if (!(ps_motosh->sh_lowpower_enabled))
-			return;
-
-		mutex_lock(&ps_motosh->sh_wakeup_lock);
-
-		if (ps_motosh->sh_wakeup_count == 0) {
-			int timeout = 5000;
-
-			/* wake up the sensorhub and wait up to 5ms
-			 * for it to respond */
-			gpio_set_value(ps_motosh->pdata->gpio_sh_wake, 1);
-			while (!gpio_get_value
-			       (ps_motosh->pdata->gpio_sh_wake_resp)
-			       && timeout--) {
-				udelay(1);
-			}
-
-			if (timeout <= 0)
-				dev_err(&ps_motosh->client->dev,
-					"sensorhub wakeup timeout\n");
-		}
-
-		ps_motosh->sh_wakeup_count++;
-
-		mutex_unlock(&ps_motosh->sh_wakeup_lock);
-	}
-#endif
-}
-
-void motosh_sleep(struct motosh_data *ps_motosh)
-{
-#if LOWPOWER_ALLOWED
-	if (ps_motosh != NULL && ps_motosh->pdata != NULL) {
-		if (!(ps_motosh->sh_lowpower_enabled))
-			return;
-
-		mutex_lock(&ps_motosh->sh_wakeup_lock);
-
-		if (ps_motosh->sh_wakeup_count > 0) {
-			ps_motosh->sh_wakeup_count--;
-			if (ps_motosh->sh_wakeup_count == 0) {
-				gpio_set_value(ps_motosh->pdata->gpio_sh_wake,
-					       0);
-				udelay(1);
-			}
-		} else {
-			dev_err(&ps_motosh->client->dev,
-				"motosh_sleep called too many times: %d",
-				ps_motosh->sh_wakeup_count);
-		}
-
-		mutex_unlock(&ps_motosh->sh_wakeup_lock);
-	}
-#endif
-}
-
-void motosh_detect_lowpower_mode(unsigned char *cmdbuff)
-{
-#if LOWPOWER_ALLOWED
-	int err;
-	bool factory;
-	struct device_node *np = of_find_node_by_path("/chosen");
-	unsigned char readbuff[2];
-
-	if (np) {
-		/* detect factory cable and disable lowpower mode
-		 * because TCMDs will talk directly to the motosh
-		 * over i2c */
-		factory = of_property_read_bool(np, "mmi,factory-cable");
-
-		if (factory) {
-			/* lowpower mode disabled for factory testing */
-			dev_dbg(&motosh_misc_data->client->dev,
-				"factory cable...lowpower disabled");
-			motosh_misc_data->sh_lowpower_enabled = 0;
-			return;
-		}
-	}
-
-	if ((motosh_misc_data->pdata->gpio_sh_wake >= 0)
-	    && (motosh_misc_data->pdata->gpio_sh_wake_resp >= 0)) {
-		/* wait up to 5ms for the sensorhub to respond/power up */
-		int timeout = 5000;
-		mutex_lock(&motosh_misc_data->sh_wakeup_lock);
-
-		/* hold sensorhub awake, it might try to sleep
-		 * after we tell it the kernel supports low power */
-		gpio_set_value(motosh_misc_data->pdata->gpio_sh_wake, 1);
-		while (!gpio_get_value
-		       (motosh_misc_data->pdata->gpio_sh_wake_resp)
-		       && timeout--) {
-			udelay(1);
-		}
-
-		/* detect whether lowpower mode is supported */
-		dev_dbg(&motosh_misc_data->client->dev,
-			"lowpower supported: ");
-
-		cmdbuff[0] = LOWPOWER_REG;
-		err =
-		    motosh_i2c_write_read_no_reset(
-			motosh_misc_data,
-			cmdbuff,
-			readbuff,
-			1, 2);
-		if (err >= 0) {
-			if ((int)readbuff[1] == 1)
-				motosh_misc_data->sh_lowpower_enabled = 1;
-			else
-				motosh_misc_data->sh_lowpower_enabled = 0;
-
-			dev_dbg(&motosh_misc_data->client->dev,
-				"lowpower supported: %d",
-				motosh_misc_data->sh_lowpower_enabled);
-
-			if (motosh_misc_data->sh_lowpower_enabled) {
-				/* send back to the hub the kernel
-				 * supports low power mode */
-				cmdbuff[1] =
-				    motosh_misc_data->sh_lowpower_enabled;
-				err =
-				    motosh_i2c_write_no_reset(motosh_misc_data,
-							      cmdbuff,
-							      2);
-
-				if (err < 0) {
-					/* if we failed to let the sensorhub
-					 * know we support lowpower mode
-					 * disable it */
-					motosh_misc_data->sh_lowpower_enabled =
-					    0;
-				}
-			}
-		} else {
-			dev_err(&motosh_misc_data->client->dev,
-				"error reading lowpower supported %d",
-				err);
-				/* if we failed to read the sensorhub
-				 * disable lowpower mode */
-				motosh_misc_data->sh_lowpower_enabled =
-				    0;
-		}
-
-		mutex_unlock(&motosh_misc_data->sh_wakeup_lock);
-	}
-#endif
 }
 
 int motosh_i2c_write_read_no_reset(
@@ -764,9 +610,6 @@ motosh_of_init(struct i2c_client *client)
 	pdata->gpio_wakeirq = of_get_gpio(np, 3);
 	pdata->gpio_sh_wake = of_get_gpio(np, 4);
 	pdata->gpio_sh_wake_resp = -1;
-
-	motosh_misc_data->sh_lowpower_enabled = 0;
-	motosh_misc_data->sh_wakeup_count = 0;
 
 	if (of_get_property(np, "lux_table", &len) == NULL) {
 		dev_err(&motosh_misc_data->client->dev,
