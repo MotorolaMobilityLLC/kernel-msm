@@ -70,9 +70,10 @@ struct panel_param_val_map {
 };
 
 struct panel_param {
-	char *param_name;
-	struct panel_param_val_map *val_map;
-	u16 val_max;
+	const char *param_name;
+	const struct panel_param_val_map *val_map;
+	const u16 val_max;
+	const u16 default_value;
 	u16 value;
 	bool is_supported;
 };
@@ -850,8 +851,7 @@ struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
 	int (*apply_display_setting)(struct mdss_panel_data *pdata, u32 mode);
-	int (*set_param)(struct mdss_panel_data *pdata,
-		u16 id, u16 value, bool sent_cmd);
+	int (*set_param)(struct mdss_panel_data *pdata, u16 id, u16 value);
 	unsigned char *mmss_cc_base;
 
 	/**
