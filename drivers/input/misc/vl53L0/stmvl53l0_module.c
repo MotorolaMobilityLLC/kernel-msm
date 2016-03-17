@@ -11,7 +11,7 @@
 *
 *  This program is distributed in the hope that it will be useful,
 *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
@@ -55,7 +55,7 @@
 struct timeval start_tv, stop_tv;
 #endif
 
-#define SAR_LOW    30
+#define SAR_LOW	   30
 #define SAR_HIGH   40
 static char *devname = "laser";
 
@@ -77,6 +77,8 @@ static struct stmvl53l0_module_fn_t stmvl53l0_module_func_tbl_i2c = {
 };
 
 struct stmvl53l0_module_fn_t *pmodule_func_tbl;
+static struct stmvl53l0_parameter s_parameters[10];
+static int s_nump;
 
 
 struct stmvl53l0_api_fn_t {
@@ -369,6 +371,17 @@ static struct stmvl53l0_api_fn_t stmvl53l0_api_func_tbl = {
 };
 struct stmvl53l0_api_fn_t *papi_func_tbl;
 
+int stmvl53l0_stopmeasurement(struct stmvl53l0_data *data)
+{
+	uint32_t us;
+
+	VL53L0_StopMeasurement(data);
+	VL53L0_GetMeasurementTimingBudgetMicroSeconds(
+			data, (uint32_t *)&us);
+	udelay(us);
+	return 0;
+}
+
 static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 {
 	uint8_t revision = 0;
@@ -643,7 +656,7 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 /*
  * IOCTL definitions
  */
-#define VL53L0_IOCTL_INIT	        _IO('p', 0x01)
+#define VL53L0_IOCTL_INIT			_IO('p', 0x01)
 #define VL53L0_IOCTL_INIT_NS		_IO('p', 0x11)
 #define VL53L0_IOCTL_INIT_NB		_IO('p', 0x90)
 #define VL53L0_IOCTL_SUSPEND		_IO('p', 0x93)
@@ -689,6 +702,141 @@ void stmvl53l0_dumpreg(struct stmvl53l0_data *data)
 
 }
 
+void stmvl53l0_apply_parameters(struct stmvl53l0_data *vl53l0_dev)
+{
+	int i;
+	struct stmvl53l0_parameter parameter;
+
+	for (i = 0; i < s_nump; i++) {
+		parameter = s_parameters[i];
+		switch (parameter.name) {
+		case (OFFSET_PAR):
+			if (parameter.is_read)
+				parameter.status =
+				papi_func_tbl->GetOffsetCalibrationDataMicroMeter(
+					vl53l0_dev, &parameter.value);
+			else
+				parameter.status =
+				papi_func_tbl->SetOffsetCalibrationDataMicroMeter(
+					vl53l0_dev, parameter.value);
+			break;
+		case (XTALKRATE_PAR):
+			if (parameter.is_read)
+				parameter.status =
+				VL53L0_GetXTalkCompensationRateMegaCps(
+					vl53l0_dev, (FixPoint1616_t *)&parameter.value);
+			else
+				parameter.status =
+				papi_func_tbl->SetXTalkCompensationRateMegaCps(
+					vl53l0_dev, (FixPoint1616_t)parameter.value);
+			break;
+		case (XTALKENABLE_PAR):
+			if (parameter.is_read)
+				parameter.status =
+				papi_func_tbl->GetXTalkCompensationEnable(
+					vl53l0_dev, (uint8_t *)&parameter.value);
+			else
+				parameter.status =
+				papi_func_tbl->SetXTalkCompensationEnable(
+					vl53l0_dev, (uint8_t)parameter.value);
+			break;
+		case (SIGMAVAL_PRA):
+			if (!parameter.is_read)
+				parameter.status = papi_func_tbl->
+					SetLimitCheckValue(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+					(FixPoint1616_t)parameter.value);
+			else
+				parameter.status = papi_func_tbl->
+					GetLimitCheckValue(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+					(FixPoint1616_t *)&parameter.value);
+			break;
+
+		case (SIGMACTL_PRA):
+			if (!parameter.is_read)
+				parameter.status =
+					papi_func_tbl->SetLimitCheckEnable(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+					(uint8_t)parameter.value);
+			else
+				parameter.status =
+					papi_func_tbl->GetLimitCheckEnable(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
+					(uint8_t *)&parameter.value);
+			break;
+		case (SGLVAL_PRA):
+			if (!parameter.is_read)
+				parameter.status = papi_func_tbl->
+					SetLimitCheckValue(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+					(FixPoint1616_t)parameter.value);
+			else
+				parameter.status = papi_func_tbl->
+					GetLimitCheckValue(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+					(FixPoint1616_t *)&parameter.value);
+			break;
+
+		case (SGLCTL_PRA):
+			if (!parameter.is_read)
+				parameter.status =
+					papi_func_tbl->SetLimitCheckEnable(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+					(uint8_t)parameter.value);
+			else
+				parameter.status =
+					papi_func_tbl->GetLimitCheckEnable(vl53l0_dev,
+					VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
+					(uint8_t *)&parameter.value);
+			break;
+
+		case (WRAPAROUNDCTL_PRA):
+			if (parameter.is_read)
+				parameter.status =
+					VL53L0_GetWrapAroundCheckEnable(
+					vl53l0_dev, (uint8_t *)&parameter.value);
+			else
+				parameter.status =
+					VL53L0_SetWrapAroundCheckEnable(
+					vl53l0_dev, (uint8_t)parameter.value);
+			break;
+
+		case (MEASUREMENTTIMINGBUDGET_PAR):
+			if (parameter.is_read)
+				parameter.status =
+					VL53L0_GetMeasurementTimingBudgetMicroSeconds(
+					vl53l0_dev, (uint32_t *)&parameter.value);
+			else
+				parameter.status =
+					VL53L0_SetMeasurementTimingBudgetMicroSeconds(
+					vl53l0_dev, (uint32_t)parameter.value);
+			break;
+		case (PLLPRE_PRA):
+			if (parameter.is_read)
+				parameter.status =
+					papi_func_tbl->GetVcselPulsePeriod(vl53l0_dev,
+					VL53L0_VCSEL_PERIOD_PRE_RANGE, (uint8_t *)&parameter.value);
+			else
+				parameter.status =
+					papi_func_tbl->SetVcselPulsePeriod(vl53l0_dev,
+					VL53L0_VCSEL_PERIOD_PRE_RANGE, (uint8_t)parameter.value);
+			break;
+		case (PLLFINAL_PRA):
+			if (parameter.is_read)
+				parameter.status =
+					papi_func_tbl->GetVcselPulsePeriod(vl53l0_dev,
+					VL53L0_VCSEL_PERIOD_FINAL_RANGE, (uint8_t *)&parameter.value);
+			else
+				parameter.status =
+					papi_func_tbl->SetVcselPulsePeriod(vl53l0_dev,
+					VL53L0_VCSEL_PERIOD_FINAL_RANGE, (uint8_t)parameter.value);
+			break;
+		}
+
+	}
+	s_nump = 0;
+}
 
 static void stmvl53l0_ps_read_measurement(struct stmvl53l0_data *data)
 {
@@ -761,7 +909,7 @@ static void stmvl53l0_enter_cam(struct stmvl53l0_data *data, uint8_t from)
 
 	papi_func_tbl->SetVcselPulsePeriod(data,
 	VL53L0_VCSEL_PERIOD_FINAL_RANGE, 14);
-
+	vl53l0_errmsg("Call of setlimt \n");
 	papi_func_tbl->SetLimitCheckEnable(data,
 		VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
 				(uint8_t)0);
@@ -769,7 +917,7 @@ static void stmvl53l0_enter_cam(struct stmvl53l0_data *data, uint8_t from)
 	papi_func_tbl->SetLimitCheckEnable(data,
 		VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
 				(uint8_t)0);
-
+	vl53l0_errmsg("Call ofSetMeasurementTimingBudgetMicroSeconds \n");
 	papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
 		data, 26000);
 
@@ -789,7 +937,7 @@ static void stmvl53l0_enter_cam(struct stmvl53l0_data *data, uint8_t from)
 
 static void stmvl53l0_enter_sar(struct stmvl53l0_data *data, uint8_t from)
 {
-	VL53L0_RangingMeasurementData_t    RMData;
+	VL53L0_RangingMeasurementData_t	   RMData;
 	vl53l0_errmsg("Enter,  from:%d\n", from);
 	/* turn on tof sensor */
 	if (data->enable_ps_sensor == 0)
@@ -822,12 +970,15 @@ static void stmvl53l0_enter_sar(struct stmvl53l0_data *data, uint8_t from)
 	stmvl53l0_ps_read_measurement(data);
 
 	papi_func_tbl->SetGpioConfig(data, 0, 0,
-		VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY,
+		VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
 		VL53L0_INTERRUPTPOLARITY_LOW);
-	data->gpio_function = VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY;
-
-	papi_func_tbl->SetInterMeasurementPeriodMilliSeconds
-		(data, data->delay_ms);
+	data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW;
+	papi_func_tbl->SetInterMeasurementPeriodMilliSeconds(
+		data, 5000);
+	papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
+		data, 33000);
+	papi_func_tbl->SetInterruptThresholds(
+		data, 0, data->lowv << 16, data->highv << 16);
 	papi_func_tbl->SetDeviceMode(data,
 		VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 	data->lowint = 1;
@@ -840,7 +991,6 @@ static void stmvl53l0_enter_super(struct stmvl53l0_data *data, uint8_t from)
 	vl53l0_dbgmsg_en("Enter, stmvl53l0_enter_super flag:%d\n", from);
 	if (from == SAR_MODE) {
 		vl53l0_dbgmsg_en("Call of VL53L0_DEVICEMODE_CONTINUOUS_RANGING\n");
-		papi_func_tbl->StopMeasurement(data);
 		papi_func_tbl->ClearInterruptMask(data, 0);
 
 	papi_func_tbl->SetVcselPulsePeriod(data,
@@ -949,11 +1099,13 @@ struct stmvl53l0_data *data, uint8_t input)
 		}
 		break;
 	case SUPER_MODE:
-		if (input == CAM_OFF)
+		if (input == CAM_OFF) {
+			stmvl53l0_stopmeasurement(data);
 			data->w_mode = SAR_MODE;
-		else if (input == SAR_OFF)
+		} else if (input == SAR_OFF) {
+			stmvl53l0_stopmeasurement(data);
 			data->w_mode = CAM_MODE;
-		else {
+		} else {
 		vl53l0_dbgmsg_en("unsopport status= %d,cs = SUPER_MODE", input);
 			nochange = 1;
 		}
@@ -997,6 +1149,7 @@ struct stmvl53l0_data *data, uint8_t input)
 	cancel_delayed_work(&data->dwork);
 	switch (data->w_mode) {
 	case OFF_MODE:
+		stmvl53l0_stopmeasurement(data);
 		stmvl53l0_enter_off(data, from);
 		break;
 	case CAM_MODE:
@@ -1006,6 +1159,7 @@ struct stmvl53l0_data *data, uint8_t input)
 		stmvl53l0_enter_sar(data, from);
 		break;
 	case SUPER_MODE:
+		stmvl53l0_stopmeasurement(data);
 		stmvl53l0_enter_super(data, from);
 		break;
 	case XTALKCAL_MODE:
@@ -1051,7 +1205,7 @@ static void stmvl53l0_cancel_handler(struct stmvl53l0_data *data)
 
 static void stmvl53l0_state_process(void)
 {
-VL53L0_RangingMeasurementData_t    RMData;
+VL53L0_RangingMeasurementData_t	   RMData;
 struct stmvl53l0_data *data = gp_vl53l0_data;
 VL53L0_DEV vl53l0_dev = data;
 struct timeval tv;
@@ -1071,6 +1225,7 @@ wake_up(&data->range_data_wait);
 
 	if (CAM_MODE == data->w_mode) {
 		vl53l0_dbgmsg_en("CAM_MODE\n");
+		stmvl53l0_apply_parameters(data);
 		papi_func_tbl->StartMeasurement(data);
 		if (data->enableDebug)
 			vl53l0_errmsg("range:%d, signalRateRtnMegaCps:%d, \
@@ -1082,12 +1237,64 @@ wake_up(&data->range_data_wait);
 				data->rangeData.RangeDMaxMilliMeter,
 				data->rangeData.MeasurementTimeUsec);
 	} else if (SAR_MODE == data->w_mode) {
-		vl53l0_dbgmsg_en("SAR_MODE\n");
-		stmvl53l0_ps_read_measurement(vl53l0_dev);
+		vl53l0_dbgmsg("SAR_MODE\n");
+		if (data->gpio_function == VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW) {
+			vl53l0_dbgmsg("SAR enter LOW\n");
+			if (data->lowint < 2) {
+				data->lowint++;
+				papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
+				return;
+			}
+
+			papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
+			stmvl53l0_ps_read_measurement(vl53l0_dev);
+			papi_func_tbl->SetGpioConfig(data, 0, 0,
+				VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH,
+				VL53L0_INTERRUPTPOLARITY_LOW);
+			data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH;
+			papi_func_tbl->SetInterMeasurementPeriodMilliSeconds(
+				data, 5000);
+			papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
+				data, 33000);
+			papi_func_tbl->SetInterruptThresholds(
+				data, 0, data->lowv << 16, data->highv << 16);
+			papi_func_tbl->SetDeviceMode(data,
+				VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
+			data->lowint = 5;
+			papi_func_tbl->StartMeasurement(data);
+			vl53l0_dbgmsg("SAR enter LOW sent uevent\n");
+		} else if (data->gpio_function == VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH) {
+			vl53l0_dbgmsg("SAR enter HIGH\n");
+			if (data->lowint > 4) {
+				data->lowint--;
+				papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
+				return;
+			}
+
+			papi_func_tbl->ClearInterruptMask(vl53l0_dev, 0);
+			stmvl53l0_ps_read_measurement(vl53l0_dev);
+			papi_func_tbl->SetGpioConfig(data, 0, 0,
+				VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
+				VL53L0_INTERRUPTPOLARITY_LOW);
+			data->gpio_function = VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW;
+			papi_func_tbl->SetInterMeasurementPeriodMilliSeconds(
+				data, 5000);
+			papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
+				data, 33000);
+			papi_func_tbl->SetInterruptThresholds(
+				data, 0, data->lowv << 16, data->highv << 16);
+			papi_func_tbl->SetDeviceMode(data,
+				VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
+			data->lowint = 1;
+			papi_func_tbl->StartMeasurement(data);
+			vl53l0_dbgmsg("SAR enter high sent uevent\n");
+		}
+
 		vl53l0_dbgmsg_en("SAR measurement ready\n");
 	} else if (SUPER_MODE == data->w_mode) {
 		vl53l0_dbgmsg_en("SUPER_MODE\n");
 		stmvl53l0_ps_read_measurement(vl53l0_dev);
+		stmvl53l0_apply_parameters(data);
 		papi_func_tbl->StartMeasurement(data);
 	}
 
@@ -1204,7 +1411,7 @@ static ssize_t stmvl53l0_store_set_mode(struct device *dev,
 struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct stmvl53l0_data *data = gp_vl53l0_data;
-	VL53L0_RangingMeasurementData_t    RMData;
+	VL53L0_RangingMeasurementData_t	   RMData;
 	long on;
 	VL53L0_Error Status = VL53L0_ERROR_NONE;
 
@@ -1255,7 +1462,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 		papi_func_tbl->StartMeasurement(data);
 
 	} else if (3 == data->d_mode) {
-		vl53l0_errmsg("Call  mode 3\n");
+		vl53l0_errmsg("Call	 mode 3\n");
 		papi_func_tbl->SetInterMeasurementPeriodMilliSeconds
 			(data, 0x00001388);
 		papi_func_tbl->SetGpioConfig(data, 0, 0,
@@ -1377,8 +1584,19 @@ static ssize_t stmvl53l0_store_offset(struct device *dev,
 	}
 	vl53l0_errmsg("%d,set offset=%ld\n", __LINE__, on);
 	data->offset = on * 1000;
+	mutex_lock(&data->work_mutex);
 	if (data->enable_ps_sensor == 0)
 		stmvl53l0_start(data);
+	if (data->w_mode != OFF_MODE) {
+		vl53l0_errmsg("%d, set offsetcal in other mode, it will be postpone \n", __LINE__);
+		if (s_nump < 10) {
+			s_parameters[s_nump].name = OFFSET_PAR;
+			s_parameters[s_nump].is_read = 0;
+			s_parameters[s_nump].value = data->offset;
+			s_nump++;
+		}
+	}
+	mutex_unlock(&data->work_mutex);
 	return count;
 }
 
@@ -1694,9 +1912,14 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		parameter.status = 0;
 		mutex_lock(&data->work_mutex);
 		if (!parameter.is_read && data->w_mode != OFF_MODE) {
-			vl53l0_errmsg("%d, fail write parameter in other mode \n", __LINE__);
+			vl53l0_errmsg("%d, write parameter in other mode, it will be postpone \n", __LINE__);
+			if (s_nump < 10) {
+				if (!copy_from_user(&s_parameters[s_nump],
+					(struct stmvl53l0_parameter *)p, sizeof(struct stmvl53l0_parameter)))
+				s_nump++;
+			}
 			mutex_unlock(&data->work_mutex);
-			return -EFAULT;
+			return rc;
 		}
 		switch (parameter.name) {
 		case (OFFSET_PAR):
@@ -1810,7 +2033,30 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 			if (parameter.is_read)
 				parameter.value = DRIVER_VERSION_NUM;
 			break;
+		case (PLLPRE_PRA):
+			if (parameter.is_read)
+				parameter.status =
+					papi_func_tbl->GetVcselPulsePeriod(vl53l0_dev,
+					VL53L0_VCSEL_PERIOD_PRE_RANGE, (uint8_t *)&parameter.value);
+			else
+				parameter.status =
+					papi_func_tbl->SetVcselPulsePeriod(vl53l0_dev,
+					VL53L0_VCSEL_PERIOD_PRE_RANGE, (uint8_t)parameter.value);
+			break;
+		case (PLLFINAL_PRA):
+			if (parameter.is_read)
+				parameter.status =
+					papi_func_tbl->GetVcselPulsePeriod(vl53l0_dev,
+					VL53L0_VCSEL_PERIOD_FINAL_RANGE, (uint8_t *)&parameter.value);
+			else
+				parameter.status =
+					papi_func_tbl->SetVcselPulsePeriod(vl53l0_dev,
+					VL53L0_VCSEL_PERIOD_FINAL_RANGE, (uint8_t)parameter.value);
+			break;
 		}
+
+
+
 		mutex_unlock(&data->work_mutex);
 		if (copy_to_user((struct stmvl53l0_parameter *)p, &parameter,
 			sizeof(struct stmvl53l0_parameter))) {
@@ -1952,41 +2198,43 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 			break;
 		}
 
-		msleep(20);
+		udelay(1000);
 	}
 	if (id != 0xee) {
 		vl53l0_errmsg("Not found STM VL53L0\n");
 		return -EIO;
 	}
-	VL53L0_RdByte(vl53l0_dev, 0xc1, &id);
-	vl53l0_errmsg("read 0xc1: 0x%x\n", id);
-	VL53L0_RdByte(vl53l0_dev, 0xc2, &id);
-	vl53l0_errmsg("read 0xc2: 0x%x\n", id);
-	VL53L0_RdByte(vl53l0_dev, 0xc3, &id);
-	vl53l0_errmsg("read 0xc3: 0x%x\n", id);
+	if (data->reset) {
+		VL53L0_RdByte(vl53l0_dev, 0xc1, &id);
+		vl53l0_errmsg("read 0xc1: 0x%x\n", id);
+		VL53L0_RdByte(vl53l0_dev, 0xc2, &id);
+		vl53l0_errmsg("read 0xc2: 0x%x\n", id);
+		VL53L0_RdByte(vl53l0_dev, 0xc3, &id);
+		vl53l0_errmsg("read 0xc3: 0x%x\n", id);
 
 	/* Read Model Version */
-	VL53L0_RdByte(vl53l0_dev, 0xC0, &type);
-	VL53L0_RdByte(vl53l0_dev, VL53L0_REG_IDENTIFICATION_REVISION_ID,
+		VL53L0_RdByte(vl53l0_dev, 0xC0, &type);
+		VL53L0_RdByte(vl53l0_dev, VL53L0_REG_IDENTIFICATION_REVISION_ID,
 		&revision);
-	VL53L0_RdByte(vl53l0_dev, 0xc3,
+		VL53L0_RdByte(vl53l0_dev, 0xc3,
 		&module_id);
-	vl53l0_errmsg("STM VL53L0 Model type : %d. rev:%d. module:%d\n", type,
+		vl53l0_errmsg("STM VL53L0 Model type : %d. rev:%d. module:%d\n", type,
 		revision, module_id);
 
-	vl53l0_dev->I2cDevAddr = 0x52;
-	vl53l0_dev->comms_type = 1;
-	vl53l0_dev->comms_speed_khz = 400;
+		vl53l0_dev->I2cDevAddr = 0x52;
+		vl53l0_dev->comms_type = 1;
+		vl53l0_dev->comms_speed_khz = 400;
 
-	/* Setup API functions based on revision */
-	stmvl53l0_setupAPIFunctions(data);
+		/* Setup API functions based on revision */
+		stmvl53l0_setupAPIFunctions(data);
+	}
 
 	if (Status == VL53L0_ERROR_NONE) {
 		pr_err("Call of VL53L0_DataInit\n");
 		Status = papi_func_tbl->DataInit(vl53l0_dev);
 	}
 
-	if (Status == VL53L0_ERROR_NONE) {
+	if (Status == VL53L0_ERROR_NONE && data->reset) {
 		pr_err("VL53L0_GetDeviceInfo:\n");
 		Status = papi_func_tbl->GetDeviceInfo(vl53l0_dev, &DeviceInfo);
 		if (Status == VL53L0_ERROR_NONE) {
@@ -2026,14 +2274,14 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 		pr_err("Call of VL53L0_SetReferenceSpads\n");
 		VL53L0_SetReferenceSpads(vl53l0_dev, data->refSpadCount, data->isApertureSpads);
 	}
-	if (Status == VL53L0_ERROR_NONE) {
+	if (Status == VL53L0_ERROR_NONE && data->reset) {
 
 		pr_err("Call of papi_func_tbl->SetDeviceMode\n");
 		Status = papi_func_tbl->SetDeviceMode(vl53l0_dev,
 			VL53L0_DEVICEMODE_SINGLE_RANGING);
 		/* Setup in	single ranging mode */
 	}
-	if (Status == VL53L0_ERROR_NONE) {
+	if (Status == VL53L0_ERROR_NONE && data->reset) {
 		Status = papi_func_tbl->GetLimitCheckValue(vl53l0_dev,
 					VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE,
 					&LimitValue);
@@ -2044,7 +2292,7 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 				(LimitValue>>16), LimitEnable);
 	}
 
-	if (Status == VL53L0_ERROR_NONE) {
+	if (Status == VL53L0_ERROR_NONE && data->reset) {
 		Status = papi_func_tbl->GetLimitCheckValue(vl53l0_dev,
 					VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
 					&LimitValue);
@@ -2055,7 +2303,7 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 				(LimitValue), LimitEnable);
 	}
 
-	if (Status == VL53L0_ERROR_NONE) {
+	if (Status == VL53L0_ERROR_NONE && data->reset) {
 		Status = papi_func_tbl->GetLimitCheckValue(vl53l0_dev,
 					VL53L0_CHECKENABLE_SIGNAL_REF_CLIP,
 					&LimitValue);
@@ -2066,7 +2314,7 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 				(LimitValue), LimitEnable);
 	}
 
-	if (Status == VL53L0_ERROR_NONE) {
+	if (Status == VL53L0_ERROR_NONE && data->reset) {
 		Status = papi_func_tbl->GetLimitCheckValue(vl53l0_dev,
 					VL53L0_CHECKENABLE_RANGE_IGNORE_THRESHOLD,
 					&LimitValue);
@@ -2086,10 +2334,7 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 		papi_func_tbl->SetXTalkCompensationRateMegaCps(
 		vl53l0_dev, (FixPoint1616_t)data->xtalk);
 	papi_func_tbl->SetXTalkCompensationEnable(vl53l0_dev, 1);
-	papi_func_tbl->SetLimitCheckEnable(vl53l0_dev,
-		VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE, 0);
-	papi_func_tbl->SetLimitCheckEnable(vl53l0_dev,
-		VL53L0_CHECKENABLE_SIGMA_FINAL_RANGE, 0);
+
 #ifdef CALIBRATION_FILE
 	/*stmvl53l0_read_calibration_file(data);*/
 #endif
@@ -2243,6 +2488,7 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	mutex_init(&data->work_mutex);
 	data->w_mode = OFF_MODE;
 	init_waitqueue_head(&data->range_data_wait);
+	s_nump = 0;
 	/* init work handler */
 	INIT_DELAYED_WORK(&data->dwork, stmvl53l0_work_handler);
 	INIT_DELAYED_WORK(&data->initwork, stmvl53l0_init_handler);
@@ -2321,7 +2567,7 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	data->enable_ps_sensor = 0;
 	data->reset = 1;
 	data->c_suspend = 0;
-	data->delay_ms = 0x7d8;	/* delay time to 2s */
+	data->delay_ms = 2000;	/* delay time to 2s */
 	data->enableDebug = 0;
 /*	data->client_object.power_up = 0; */
 
