@@ -306,8 +306,13 @@ static bool mdss_dsi_panel_get_idle_mode(struct mdss_panel_data *pdata)
 	return ctrl->idle;
 }
 
+/*
+ * Note that: the following panel parameter related function must be called
+ * within mfd->panel_info->param_lock to avoid data mess-up caused by possible
+ * race condition between blank/unblank and parameter access.
+*/
 static int mdss_dsi_panel_set_param(struct mdss_panel_data *pdata,
-		u16 id, u16 val, bool cmd_sent)
+		u16 id, u16 val)
 {
 	struct mdss_panel_info *pinfo = &pdata->panel_info;
 	struct dsi_panel_cmds *cmds;
@@ -325,28 +330,13 @@ static int mdss_dsi_panel_set_param(struct mdss_panel_data *pdata,
 		return 0;
 	}
 
-	if (val >= pinfo->param[id]->val_max) {
-		pr_warn("%s: unsupported value: %d\n", __func__, val);
+	cmds = ctrl->param_cmds[id];
+	if (!cmds || !cmds[val].cmd_cnt) {
+		pr_warn("%s: value %d not supported for id %d\n",
+				__func__, val, id);
 		return -EINVAL;
 	}
-
-	if (pinfo->param[id]->value == val) {
-		pr_debug("%s: already in wanted value %d for id %d\n",
-			__func__, val, id);
-		return 0;
-	}
-
-	if (cmd_sent) {
-		cmds = ctrl->param_cmds[id];
-		if (!cmds || !cmds[val].cmd_cnt) {
-			pr_warn("%s: value %d not supported for id %d\n",
-					__func__, val, id);
-			return -EINVAL;
-		}
-		mdss_dsi_panel_cmds_send(ctrl, &cmds[val], CMD_REQ_COMMIT);
-	}
-	pinfo->param[id]->value = val;
-
+	mdss_dsi_panel_cmds_send(ctrl, &cmds[val], CMD_REQ_COMMIT);
 	return 0;
 }
 
