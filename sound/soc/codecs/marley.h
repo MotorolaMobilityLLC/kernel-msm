@@ -39,6 +39,11 @@ struct marley_priv {
 	struct marley_compr compr_info[MARLEY_NUM_COMPR_DAI];
 
 	struct mutex fw_lock;
+
+#ifdef CONFIG_SND_SOC_OPALUM
+	struct workqueue_struct *ospl2xx_wq;
+	struct work_struct ospl2xx_config;
+#endif
 };
 
 #endif
