@@ -42,6 +42,9 @@
 #ifndef CONFIG_SND_SOC_MARLEY
 #include "../codecs/wsa881x.h"
 #endif
+#ifdef CONFIG_SND_SOC_OPALUM
+#include <sound/ospl2xx.h>
+#endif
 
 #define DRV_NAME "msm8952-slimbus-wcd"
 
@@ -3714,6 +3717,12 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to add kcontrols %d\n", ret);
 		return ret;
 	}
+
+#ifdef CONFIG_SND_SOC_OPALUM
+	ret = ospl2xx_init(rtd);
+	if (ret != 0)
+		pr_err("%s Cannot set Opalum controls %d\n", __func__, ret);
+#endif
 
 	snd_soc_dapm_sync(dapm);
 
