@@ -1074,7 +1074,10 @@ static int pci_pm_runtime_idle(struct device *dev)
 	}
 
 out:
-	pm_runtime_suspend(dev);
+	if (dev->power.use_autosuspend)
+		pm_runtime_autosuspend(dev);
+	else
+		pm_runtime_suspend(dev);
 	return 0;
 }
 

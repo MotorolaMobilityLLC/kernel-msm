@@ -59,6 +59,8 @@
 #endif
 #endif
 
+#include <linux/pm_runtime.h>
+
 #define PCI_CFG_RETRY 		10
 #define OS_HANDLE_MAGIC		0x1234abcd	/* Magic # to recognize osh */
 #define BCM_MEM_FILENAME_LEN 	24		/* Mem. filename length */
@@ -119,7 +121,6 @@ struct pcos_info {
 	struct tasklet_struct tuning_tasklet;
 };
 
-
 /* function declarations */
 static int __devinit
 dhdpcie_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent);
@@ -129,9 +130,15 @@ static int dhdpcie_init(struct pci_dev *pdev);
 static irqreturn_t dhdpcie_isr(int irq, void *arg);
 /* OS Routine functions for PCI suspend/resume */
 
-static int dhdpcie_pci_suspend(struct pci_dev *dev, pm_message_t state);
-static int dhdpcie_set_suspend_resume(struct pci_dev *dev, bool state);
-static int dhdpcie_pci_resume(struct pci_dev *dev);
+#ifdef CONFIG_PM_RUNTIME
+static int dhdpcie_pm_runtime_suspend(struct device * dev);
+static int dhdpcie_pm_runtime_resume(struct device * dev);
+#endif /* CONFIG_PM_RUNTIME */
+#ifdef CONFIG_PM
+static int dhdpcie_pm_system_suspend_noirq(struct device * dev);
+static int dhdpcie_pm_system_resume_noirq(struct device * dev);
+#endif /* CONFIG_PM */
+static int dhdpcie_set_suspend_resume(struct pci_dev *dev, bool state, bool byint);
 static int dhdpcie_resume_dev(struct pci_dev *dev);
 static int dhdpcie_suspend_dev(struct pci_dev *dev);
 static struct pci_device_id dhdpcie_pci_devid[] __devinitdata = {
@@ -147,6 +154,13 @@ static struct pci_device_id dhdpcie_pci_devid[] __devinitdata = {
 };
 MODULE_DEVICE_TABLE(pci, dhdpcie_pci_devid);
 
+
+static const struct dev_pm_ops dhdpcie_pm_ops = {
+	SET_RUNTIME_PM_OPS(dhdpcie_pm_runtime_suspend, dhdpcie_pm_runtime_resume, NULL)
+	.suspend_noirq = dhdpcie_pm_system_suspend_noirq,
+	.resume_noirq = dhdpcie_pm_system_resume_noirq
+};
+
 static struct pci_driver dhdpcie_driver = {
 	node:		{},
 	name:		"pcieh",
@@ -156,8 +170,11 @@ static struct pci_driver dhdpcie_driver = {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 	save_state:	NULL,
 #endif
-	suspend:	dhdpcie_pci_suspend,
-	resume:		dhdpcie_pci_resume,
+#ifdef CONFIG_PM
+		driver: {
+			.pm = &dhdpcie_pm_ops,
+		},
+#endif
 };
 
 int dhdpcie_init_succeeded = FALSE;
@@ -175,7 +192,7 @@ static void dhdpcie_pme_active(struct pci_dev *pdev, bool enable)
 	pci_write_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, pmcsr);
 }
 
-static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
+static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state, bool byint)
 {
 	int ret = 0;
 	dhdpcie_info_t *pch = pci_get_drvdata(pdev);
@@ -197,24 +214,123 @@ static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
 		(bus->dhd->busstate == DHD_BUS_DATA)) &&
 		(bus->suspended != state)) {
 
-		ret = dhdpcie_bus_suspend(bus, state);
+		ret = dhdpcie_bus_suspend(bus, state, byint);
 	}
 
 	DHD_INFO(("%s Exit with state :%d\n", __FUNCTION__, ret));
 	return ret;
 }
-
-static int dhdpcie_pci_suspend(struct pci_dev * pdev, pm_message_t state)
+#ifdef CONFIG_PM_RUNTIME
+static int dhdpcie_pm_runtime_suspend(struct device * dev)
 {
-	BCM_REFERENCE(state);
-	DHD_INFO(("%s Enter with event %x\n", __FUNCTION__, state.event));
-	return dhdpcie_set_suspend_resume(pdev, TRUE);
+	struct pci_dev *pdev = to_pci_dev(dev);
+	dhdpcie_info_t *pch = pci_get_drvdata(pdev);
+	dhd_bus_t *bus = NULL;
+	int ret = 0;
+
+	if (!pch)
+		return -EBUSY;
+
+	bus = pch->bus;
+
+	DHD_RPM(("%s Enter\n", __FUNCTION__));
+
+	if (atomic_read(&bus->dhd->runtime_pm_status) != PCI_PM_RT_ACTIVE)
+		return 0;
+
+	ret = dhdpcie_set_suspend_resume(pdev, TRUE, TRUE);
+
+	if (ret) {
+		pm_runtime_mark_last_busy(dev);
+		ret = -EAGAIN;
+	} else
+		atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_RT_SUSPENDED);
+
+	return ret;
 }
 
-static int dhdpcie_pci_resume(struct pci_dev *pdev)
+static int dhdpcie_pm_runtime_resume(struct device * dev)
 {
-	DHD_INFO(("%s Enter\n", __FUNCTION__));
-	return dhdpcie_set_suspend_resume(pdev, FALSE);
+	int ret;
+	struct pci_dev *pdev = to_pci_dev(dev);
+	dhdpcie_info_t *pch = pci_get_drvdata(pdev);
+	dhd_bus_t *bus = NULL;
+
+	bus = pch->bus;
+
+	DHD_RPM(("%s Enter\n", __FUNCTION__));
+
+	if (atomic_read(&bus->dhd->runtime_pm_status) == PCI_PM_RT_ACTIVE)
+		return 0;
+	else if (atomic_read(&bus->dhd->runtime_pm_status) == PCI_PM_SYS_SUSPENDED)
+		return -EHOSTDOWN;
+
+	ret = dhdpcie_set_suspend_resume(pdev, FALSE, TRUE);
+
+	if (!ret)
+		atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_RT_ACTIVE);
+	else
+		ret = -EAGAIN;
+
+	return ret;
+}
+#endif /* CONFIG_PM_RUNTIME */
+
+static int dhdpcie_pm_system_suspend_noirq(struct device * dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev);
+	dhdpcie_info_t *pch = pci_get_drvdata(pdev);
+	dhd_bus_t *bus = NULL;
+	int ret;
+
+	DHD_RPM(("%s Enter\n", __FUNCTION__));
+
+	if (!pch)
+		return -EBUSY;
+
+	bus = pch->bus;
+
+	ret = dhdpcie_set_suspend_resume(pdev, TRUE, FALSE);
+
+	atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_SYS_SUSPENDED);
+
+	if (atomic_read(&bus->dhd->runtime_pm_status) == PCI_PM_RT_ACTIVE) {
+		pm_runtime_disable(dev);
+		pm_runtime_set_suspended(dev);
+		pm_runtime_enable(dev);
+	}
+
+	return ret;
+}
+
+static int dhdpcie_pm_system_resume_noirq(struct device * dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev);
+	dhdpcie_info_t *pch = pci_get_drvdata(pdev);
+	dhd_bus_t *bus = NULL;
+	int ret;
+
+	if (!pch)
+		return -EBUSY;
+
+	bus = pch->bus;
+
+	DHD_RPM(("%s Enter\n", __FUNCTION__));
+
+	atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_RT_SUSPENDED);
+
+	ret = dhdpcie_set_suspend_resume(pdev, FALSE, FALSE);
+
+	if (!ret) {
+		pm_runtime_get_noresume(dev);
+
+		atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_RT_ACTIVE);
+
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
+	}
+
+	return ret;
 }
 
 int dhd_os_get_wake_irq(dhd_pub_t *pub);
@@ -306,10 +422,15 @@ int dhdpcie_pci_suspend_resume(struct pci_dev *dev, bool state)
 {
 	int rc;
 
-	if (state)
+	if (state) {
 		rc = dhdpcie_suspend_dev(dev);
-	else
+		if(!rc)
+			disable_irq(dev->irq);
+	}
+	else {
+		enable_irq(dev->irq);
 		rc = dhdpcie_resume_dev(dev);
+	}
 	return rc;
 }
 
@@ -386,6 +507,11 @@ dhdpcie_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		DHD_ERROR(("%s: PCIe Enumeration failed\n", __FUNCTION__));
 		return -ENODEV;
 	}
+
+	pm_runtime_put_noidle(&pdev->dev);
+	pm_runtime_put_noidle(&pdev->dev);  //since already +2, even before dhdpcie_pci_probe called.
+	pm_runtime_set_suspended(&pdev->dev);
+
 	/* disable async suspend */
 	device_disable_async_suspend(&pdev->dev);
 	DHD_TRACE(("%s: PCIe Enumeration done!!\n", __FUNCTION__));
@@ -418,6 +544,9 @@ dhdpcie_pci_remove(struct pci_dev *pdev)
 	pch = pci_get_drvdata(pdev);
 	bus = pch->bus;
 	osh = pch->osh;
+
+	pm_runtime_get_noresume(&pdev->dev);
+	pm_runtime_get_noresume(&pdev->dev);
 
 	dhdpcie_bus_release(bus);
 	pci_disable_device(pdev);
@@ -565,25 +694,57 @@ int dhdpcie_scan_resource(dhdpcie_info_t *dhdpcie_info)
 	return -1; /* FAILURE */
 
 }
-#ifdef MSM_PCIE_LINKDOWN_RECOVERY
-void dhdpcie_linkdown_cb(struct msm_pcie_notify *noti)
+#ifdef CONFIG_ARCH_MSM
+void dhdpcie_event_cb(struct msm_pcie_notify *noti)
 {
 	struct pci_dev *pdev = (struct pci_dev *)noti->user;
 	dhdpcie_info_t *pch;
 	dhd_bus_t *bus;
 	dhd_pub_t *dhd;
-	if (pdev && (pch = pci_get_drvdata(pdev))) {
-		if ((bus = pch->bus) && (dhd = bus->dhd)) {
-			DHD_ERROR(("%s: Event HANG send up "
-				"due to PCIe linkdown\n", __FUNCTION__));
-			bus->islinkdown = TRUE;
-			dhd->busstate = DHD_BUS_DOWN;
-			DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(dhd, DHD_EVENT_TIMEOUT_MS);
-			dhd_os_check_hang(dhd, 0, -ETIMEDOUT);
-		}
-	}
-}
+
+	if (!pdev)
+	  return;
+
+	pch = pci_get_drvdata(pdev);
+
+	if (!pch)
+	   return;
+
+	bus = pch->bus;
+
+	if (!bus)
+	   return;
+
+	dhd = bus->dhd;
+
+	if (!dhd)
+		return;
+
+	switch (noti->event) {
+#ifdef MSM_PCIE_LINKDOWN_RECOVERY
+	case MSM_PCIE_EVENT_LINKDOWN:
+		DHD_ERROR(("%s: Event HANG send up "
+			"due to PCIe linkdown\n", __FUNCTION__));
+		bus->islinkdown = TRUE;
+		dhd->busstate = DHD_BUS_DOWN;
+		DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(dhd, DHD_EVENT_TIMEOUT_MS);
+		dhd_os_check_hang(dhd, 0, -ETIMEDOUT);
+		break;
 #endif /* MSM_PCIE_LINKDOWN_RECOVERY */
+#ifdef CONFIG_PM_RUNTIME
+	case MSM_PCIE_EVENT_WAKEUP:
+		DHD_RPM(("%s: MSM_PCIE_EVENT_WAKEUP received.\n", __FUNCTION__));
+		bus->rpm_irq_enable = 1;
+		dhd_sched_dpc(dhd);
+		break;
+#endif /* CONFIG_PM_RUNTIME */
+	default :
+		break;
+	}
+
+}
+#endif /* CONFIG_ARCH_MSM */
+
 int dhdpcie_init(struct pci_dev *pdev)
 {
 
@@ -634,15 +795,21 @@ int dhdpcie_init(struct pci_dev *pdev)
 
 		dhdpcie_info->bus = bus;
 		dhdpcie_info->bus->dev = pdev;
+#ifdef CONFIG_ARCH_MSM
 #ifdef MSM_PCIE_LINKDOWN_RECOVERY
 		bus->islinkdown = FALSE;
-		bus->pcie_event.events = MSM_PCIE_EVENT_LINKDOWN;
+		bus->pcie_event.events |= MSM_PCIE_EVENT_LINKDOWN;
+#endif /* MSM_PCIE_LINKDOWN_RECOVERY */
+#ifdef CONFIG_PM_RUNTIME
+		bus->pcie_event.events |= MSM_PCIE_EVENT_WAKEUP;
+#endif /* CONFIG_PM_RUNTIME */
 		bus->pcie_event.user = pdev;
 		bus->pcie_event.mode = MSM_PCIE_TRIGGER_CALLBACK;
-		bus->pcie_event.callback = dhdpcie_linkdown_cb;
+		bus->pcie_event.callback = dhdpcie_event_cb;
 		bus->pcie_event.options = MSM_PCIE_CONFIG_NO_RECOVERY;
 		msm_pcie_register_event(&bus->pcie_event);
-#endif /* MSM_PCIE_LINKDOWN_RECOVERY */
+#endif /* CONFIG_ARCH_MSM */
+
 
 		if (bus->intr) {
 			/* Register interrupt callback, but mask it (not operational yet). */
@@ -681,6 +848,12 @@ int dhdpcie_init(struct pci_dev *pdev)
 			dhdpcie_info->wake_irq = pdev->irq;
 #endif
 		dhdpcie_init_succeeded = TRUE;
+
+#ifdef CONFIG_PM_RUNTIME
+		pm_runtime_set_autosuspend_delay(&pdev->dev, AUTO_SUSPEND_TIMEOUT * MSEC_PER_SEC);
+		pm_runtime_use_autosuspend(&pdev->dev);
+		atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_RT_SUSPENDED);
+#endif /* CONFIG_PM_RUNTIME */
 
 		DHD_ERROR(("%s:Exit - SUCCESS \n", __FUNCTION__));
 		return 0;  /* return  SUCCESS  */
@@ -1000,4 +1173,17 @@ dhdpcie_bus_request_irq(struct dhd_bus *bus)
 
 	return ret;
 }
+
+#ifdef CONFIG_PM_RUNTIME
+struct device * dhd_bus_to_dev(dhd_bus_t *bus)
+{
+	struct pci_dev *pdev;
+	pdev = bus->dev;
+
+	if(pdev)
+		return &pdev->dev;
+	else
+		return NULL;
+}
+#endif /* CONFIG_PM_RUNTIME */
 
