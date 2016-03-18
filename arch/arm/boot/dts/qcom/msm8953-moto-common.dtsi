@@ -576,7 +576,7 @@
 			<&afe_proxy_rx>, <&afe_proxy_tx>,
 			<&incall_record_rx>, <&incall_record_tx>,
 			<&incall_music_rx>, <&incall_music_2_rx>,
-			<&sb_5_rx>;
+			<&sb_5_rx>, <&bt_sco_rx>, <&bt_sco_tx>;
 		asoc-cpu-names = "msm-dai-q6-auxpcm.1",
 			"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.5",
 			"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
@@ -588,7 +588,8 @@
 			"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
 			"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
 			"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
-			"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394";
+			"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394",
+			"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289";
 		asoc-codec = <&stub_codec>;
 		asoc-codec-names = "msm-stub-codec.1";
 	};
