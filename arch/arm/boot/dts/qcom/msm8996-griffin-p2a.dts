@@ -25,6 +25,14 @@
 	};
 };
 
+&i2c_7 {
+	analogix_anx78e6@72 {
+		/delete-property/ interrupt-parent;
+		/delete-property/ interrupts;
+		/delete-property/ analogix,cbl-det-gpio;
+	};
+};
+
 &mdss_hdmi_hpd_active {
 	mux {
 		pins = "gpio79";
