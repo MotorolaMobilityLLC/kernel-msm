@@ -606,6 +606,7 @@ struct msm_isp_output_info {
 	uint32_t output_err_mask;
 	uint16_t stream_framedrop_mask;
 	uint32_t stats_framedrop_mask;
+	uint32_t axi_updating_mask;
 };
 
 struct msm_isp_event_data {

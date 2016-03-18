@@ -59,7 +59,7 @@ static void msm_ispif_io_dump_reg(struct ispif_device *ispif)
 {
 	if (!ispif->enb_dump_reg)
 		return;
-	msm_camera_io_dump(ispif->base, 0x250);
+	msm_camera_io_dump(ispif->base + 0x400, 0x80);
 }
 
 
@@ -609,9 +609,9 @@ static int msm_ispif_config(struct ispif_device *ispif,
 		intftype = params->entries[i].intftype;
 
 		vfe_intf = params->entries[i].vfe_intf;
-
-		CDBG("%s intftype %x, vfe_intf %d, csid %d\n", __func__,
-			intftype, vfe_intf, params->entries[i].csid);
+		if (intftype >= RDI0)
+			pr_err("%s intftype %x, vfe_intf %d, csid %d\n", __func__,
+				intftype, vfe_intf, params->entries[i].csid);
 
 		if ((intftype >= INTF_MAX) ||
 			(vfe_intf >=  ispif->vfe_info.num_vfe) ||
@@ -637,6 +637,9 @@ static int msm_ispif_config(struct ispif_device *ispif,
 			params->entries[i].csid, vfe_intf);
 		cid_mask = msm_ispif_get_cids_mask_from_cfg(
 				&params->entries[i]);
+		if (intftype >= RDI0)
+			pr_err("%s: cid_mask %x\n", __func__, cid_mask);
+
 		msm_ispif_enable_intf_cids(ispif, intftype,
 			cid_mask, vfe_intf, 1);
 		if (params->entries[i].crop_enable)
@@ -719,10 +722,17 @@ static void msm_ispif_intf_cmd(struct ispif_device *ispif, uint32_t cmd_bits,
 			}
 		}
 		/* cmd for PIX0, PIX1, RDI0, RDI1 */
-		if (ispif->applied_intf_cmd[vfe_intf].intf_cmd != 0xFFFFFFFF)
+		if (ispif->applied_intf_cmd[vfe_intf].intf_cmd != 0xFFFFFFFF) {
+			if (cmd_bits == ISPIF_INTF_CMD_ENABLE_FRAME_BOUNDARY)
+				pr_err("%s: vfe %d intf_cmd %x\n", __func__,
+					vfe_intf,
+					ispif->applied_intf_cmd[vfe_intf].
+					intf_cmd);
+
 			msm_camera_io_w_mb(
 				ispif->applied_intf_cmd[vfe_intf].intf_cmd,
 				ispif->base + ISPIF_VFE_m_INTF_CMD_0(vfe_intf));
+		}
 
 		/* cmd for RDI2 */
 		if (ispif->applied_intf_cmd[vfe_intf].intf_cmd1 != 0xFFFFFFFF)
