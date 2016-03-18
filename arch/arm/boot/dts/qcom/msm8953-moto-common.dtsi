@@ -1003,3 +1003,11 @@
 		elemental-addr = [00 7F 60 63 FA 01];
 	};
 };
+
+&other_ext_mem {
+	reg = <0x0 0x84300000 0x0 0x2500000>;
+};
+
+&qcom_seecom {
+	reg = <0x84300000 0x2000000>;
+};
