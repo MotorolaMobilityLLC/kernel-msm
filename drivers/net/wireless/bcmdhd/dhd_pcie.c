@@ -56,7 +56,7 @@
 #include <dhd_ip.h>
 #endif /* DHDTCPACK_SUPPRESS */
 #include <proto/bcmevent.h>
-
+#include <linux/pm_runtime.h>
 #ifdef BCMEMBEDIMAGE
 #include BCMEMBEDIMAGE
 #endif /* BCMEMBEDIMAGE */
@@ -92,7 +92,6 @@ static int _dhdpcie_download_firmware(struct dhd_bus *bus);
 static int dhdpcie_download_firmware(dhd_bus_t *bus, osl_t *osh);
 static int dhdpcie_bus_write_vars(dhd_bus_t *bus);
 static void dhdpcie_bus_process_mailbox_intr(dhd_bus_t *bus, uint32 intstatus);
-static void dhdpci_bus_read_frames(dhd_bus_t *bus);
 static int dhdpcie_readshared(dhd_bus_t *bus);
 static void dhdpcie_init_shared_addr(dhd_bus_t *bus);
 static bool dhdpcie_dongle_attach(dhd_bus_t *bus);
@@ -125,7 +124,8 @@ static int dhdpcie_download_code_array(dhd_bus_t *bus);
 #endif /* BCMEMBEDIMAGE */
 extern void dhd_dpc_kill(dhd_pub_t *dhdp);
 
-
+static void dhdpcie_handle_mb_data(dhd_bus_t *bus);
+#define MAX_D3_ACK_TIMEOUT	10
 
 #define     PCI_VENDOR_ID_BROADCOM          0x14e4
 
@@ -368,6 +368,8 @@ disable interrupt and queue DPC if mail box interrupts are raised.
 int32
 dhdpcie_bus_isr(dhd_bus_t *bus)
 {
+	uint32 intstatus = 0;
+	uint32 newstatus = 0;
 
 	do {
 			DHD_TRACE(("%s: Enter\n", __FUNCTION__));
@@ -398,6 +400,18 @@ dhdpcie_bus_isr(dhd_bus_t *bus)
 			dhdpcie_bus_intr_disable(bus); /* Disable interrupt!! */
 			bus->intdis = TRUE;
 
+			intstatus = bus->intstatus;
+
+			newstatus = si_corereg(bus->sih, bus->sih->buscoreidx, PCIMailBoxInt, 0, 0);
+			intstatus |= (newstatus & bus->def_intmask);
+			si_corereg(bus->sih, bus->sih->buscoreidx, PCIMailBoxInt, intstatus, intstatus);
+
+			if (intstatus & bus->def_intmask) {
+				if (intstatus & (PCIE_MB_TOPCIE_FN0_0 | PCIE_MB_TOPCIE_FN0_1)) {
+					dhdpcie_handle_mb_data(bus);
+				}
+			}
+
 #if defined(PCIE_ISR_THREAD)
 
 			DHD_TRACE(("Calling dhd_bus_dpc() from %s\n", __FUNCTION__));
@@ -405,8 +419,12 @@ dhdpcie_bus_isr(dhd_bus_t *bus)
 			while (dhd_bus_dpc(bus));
 			DHD_OS_WAKE_UNLOCK(bus->dhd);
 #else
-			bus->dpc_sched = TRUE;
-			dhd_sched_dpc(bus->dhd);     /* queue DPC now!! */
+			if (intstatus & PCIE_MB_D2H_MB_MASK) {
+				bus->dpc_sched = TRUE;
+				dhd_sched_dpc(bus->dhd);     /* queue DPC now!! */
+			} else {
+				dhdpcie_bus_intr_enable(bus);
+			}
 #endif /* defined(SDIO_ISR_THREAD) */
 
 			DHD_TRACE(("%s: Exit Success DPC Queued\n", __FUNCTION__));
@@ -1510,6 +1528,10 @@ dhdpcie_mem_dump(dhd_bus_t *bus)
 		DHD_ERROR(("%s : dhd->soc_ram is NULL\n", __FUNCTION__));
 		return -1;
 	}
+
+	if (pm_runtime_get_sync(dhd_bus_to_dev(bus)) < 0)
+		return BCME_ERROR;
+
 	size = dhd->soc_ram_length = bus->ramsize;
 
 	/* Read mem content */
@@ -1531,6 +1553,9 @@ dhdpcie_mem_dump(dhd_bus_t *bus)
 
 	dhd_save_fwdump(bus->dhd, dhd->soc_ram, dhd->soc_ram_length);
 	dhd_schedule_memdump(bus->dhd, dhd->soc_ram, dhd->soc_ram_length);
+
+	pm_runtime_mark_last_busy(dhd_bus_to_dev(bus));
+	pm_runtime_put_autosuspend(dhd_bus_to_dev(bus));
 
 	return ret;
 }
@@ -3019,12 +3044,12 @@ int
 dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 {
 
-	int timeleft;
 	unsigned long flags;
 	int rc = 0;
 	struct net_device *netdev = NULL;
 	dhd_pub_t *pub = (dhd_pub_t *)(bus->dhd);
 	int idle_retry = 0;
+	int d3_read_retry = 0;
 	int active;
 
 	DHD_INFO(("%s Enter with state :%d\n", __FUNCTION__, state));
@@ -3050,52 +3075,34 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 		return BCME_OK;
 
 	if (state) {
+
+		while ((active = dhd_os_check_wakelock_all(bus->dhd)) &&
+			(idle_retry < MAX_WKLK_IDLE_CHECK)) {
+			usleep_range(1000, 1500);
+			idle_retry++;
+		}
+
+		if (active)
+			return BCME_ERROR;
+
 		bus->wait_for_d3_ack = 0;
-		bus->suspended = TRUE;
-		bus->dhd->busstate = DHD_BUS_SUSPEND;
 
-		/* stop all interface network queue. */
-		dhd_bus_stop_queue(bus);
-
-		DHD_OS_WAKE_LOCK_WAIVE(bus->dhd);
-		dhd_os_set_ioctl_resp_timeout(DEFAULT_IOCTL_RESP_TIMEOUT);
-		dhdpcie_send_mb_data(bus, H2D_HOST_D3_INFORM);
-		timeleft = dhd_os_d3ack_wait(bus->dhd, &bus->wait_for_d3_ack);
-		dhd_os_set_ioctl_resp_timeout(IOCTL_RESP_TIMEOUT);
-		DHD_OS_WAKE_LOCK_RESTORE(bus->dhd);
+		dhdpcie_send_mb_data(bus, H2D_HOST_D3_INFORM | H2D_HOST_ACK_NOINT);
+		while (!bus->wait_for_d3_ack && d3_read_retry < MAX_D3_ACK_TIMEOUT) {
+			dhdpcie_handle_mb_data(bus);
+			usleep_range(1000, 1500);
+			d3_read_retry++;
+		}
 
 		if (bus->wait_for_d3_ack == 1) {
 			/* Got D3 Ack. Suspend the bus */
 			/* To allow threads that got pre-empted to complete. */
-
-			while ((active = dhd_os_check_wakelock_all(bus->dhd)) &&
-				(idle_retry < MAX_WKLK_IDLE_CHECK)) {
-				msleep(1);
-				idle_retry++;
-			}
-			if (active) {
-				DHD_ERROR(("Suspend failed because of wakelock\n"));
-				bus->dev->current_state = PCI_D3hot;
-				pci_set_master(bus->dev);
-				rc = pci_set_power_state(bus->dev, PCI_D0);
-				if (rc) {
-					DHD_ERROR(("%s: pci_set_power_state failed:"
-						" current_state[%d], ret[%d]\n",
-						__FUNCTION__, bus->dev->current_state, rc));
-				}
-				bus->suspended = FALSE;
-				bus->dhd->busstate = DHD_BUS_DATA;
-
-				/* resume all interface network queue. */
-				dhd_bus_start_queue(bus);
-
-				rc = BCME_ERROR;
-			} else {
-				dhdpcie_bus_intr_disable(bus);
-				rc = dhdpcie_pci_suspend_resume(bus->dev, state);
-			}
+			dhdpcie_bus_intr_disable(bus);
+			rc = dhdpcie_pci_suspend_resume(bus->dev, state);
 			bus->dhd->d3ackcnt_timeout = 0;
-		} else if (timeleft == 0) {
+			bus->suspended = TRUE;
+			bus->dhd->busstate = DHD_BUS_SUSPEND;
+		} else {
 			bus->dhd->d3ackcnt_timeout++;
 			DHD_ERROR(("%s: resumed on timeout for D3 ACK d3ackcnt_timeout %d \n",
 				__FUNCTION__, bus->dhd->d3ackcnt_timeout));
@@ -3127,19 +3134,10 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 			bus->dhd->busstate = DHD_BUS_DATA;
 			DHD_INFO(("fail to suspend, start net device traffic\n"));
 
-			/* resume all interface network queue. */
-			dhd_bus_start_queue(bus);
-
 			DHD_GENERAL_UNLOCK(bus->dhd, flags);
 			rc = -ETIMEDOUT;
-		} else if (bus->wait_for_d3_ack == DHD_INVALID) {
-			DHD_ERROR(("PCIe link down during suspend"));
-			bus->suspended = FALSE;
-			bus->dhd->busstate = DHD_BUS_DOWN;
-			rc = -ETIMEDOUT;
-			dhdpcie_bus_report_pcie_linkdown(bus);
 		}
-		bus->wait_for_d3_ack = 1;
+
 	} else {
 		/* Resume */
 		DHD_INFO(("dhdpcie_bus_suspend resume\n"));
@@ -3153,9 +3151,6 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 		} else {
 			bus->dhd->busstate = DHD_BUS_DATA;
 			dhdpcie_bus_intr_enable(bus);
-
-			/* resume all interface network queue. */
-			dhd_bus_start_queue(bus);
 		}
 	}
 	return rc;
@@ -3689,10 +3684,9 @@ dhdpcie_handle_mb_data(dhd_bus_t *bus)
 	}
 	if (d2h_mb_data & D2H_DEV_D3_ACK)  {
 		/* what should we do */
-		DHD_ERROR(("D2H_MB_DATA: D3 ACK\n"));
+		DHD_RPM(("D2H_MB_DATA: D3 ACK\n"));
 		if (!bus->wait_for_d3_ack) {
 			bus->wait_for_d3_ack = 1;
-			dhd_os_d3ack_wake(bus->dhd);
 		}
 	}
 	if (d2h_mb_data & D2H_DEV_FWHALT)  {
@@ -3732,9 +3726,16 @@ dhdpcie_bus_process_mailbox_intr(dhd_bus_t *bus, uint32 intstatus)
 }
 
 /* Decode dongle to host message stream */
-static void
+void
 dhdpci_bus_read_frames(dhd_bus_t *bus)
 {
+
+	if (bus->rpm_irq_enable) {
+		DHD_RPM(("%s: rpm_irq_enable only.\n", __FUNCTION__));
+		bus->rpm_irq_enable = 0;
+		return;
+	}
+
 	/* There may be frames in both ctrl buf and data buf; check ctrl buf first */
 	DHD_PERIM_LOCK(bus->dhd); /* Take the perimeter lock */
 
@@ -3748,6 +3749,9 @@ dhdpci_bus_read_frames(dhd_bus_t *bus)
 	dhd_prot_process_msgbuf_rxcpl(bus->dhd);
 
 	DHD_PERIM_UNLOCK(bus->dhd); /* Release the perimeter lock */
+
+	dhdpcie_bus_intr_enable(bus); /* Enable interrupt!! */
+
 }
 
 static int
