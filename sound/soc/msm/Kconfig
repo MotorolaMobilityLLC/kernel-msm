@@ -119,6 +119,15 @@ config SND_SOC_APQ8084
 	 the machine drivers and the corresponding
 	 DAI-links.
 
+config SND_SOC_OPALUM
+	tristate
+	help
+	 To add support for Opalum Speaker Protection Library.
+	 This support is to configure the post processing
+	 parameters of QDSP AFE Opalum module. The configuration
+	 includes sending calibration data, tunning parameters and
+	 getting speaker characterization values back.
+
 config SND_SOC_MSM8994
 	tristate "SoC Machine driver for MSM8994 boards"
 	depends on ARCH_MSM8994
@@ -218,6 +227,7 @@ config SND_SOC_MSM8X16
         select DTS_EAGLE
 	select SND_SOC_MARLEY
 	select SND_SOC_CS35L34
+	select SND_SOC_OPALUM
 	help
 	 To add support for SoC audio on MSM8996.
 	 This will enable sound soc drivers which
