@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -43,6 +43,8 @@ struct wsa_pinctrl_info {
 	struct pinctrl_state *wsa_spkr_sus;
 	struct pinctrl_state *wsa_spkr_act;
 };
+
+#define WSA881X_NUM_RETRY	5
 
 enum {
 	G_18DB = 0,
@@ -1299,7 +1301,6 @@ static int wsa881x_swr_down(struct swr_device *pdev)
 		dev_err(&pdev->dev, "%s: wsa881x is NULL\n", __func__);
 		return -EINVAL;
 	}
-	regcache_mark_dirty(wsa881x->regmap);
 	ret = wsa881x_gpio_ctrl(wsa881x, false);
 	if (ret)
 		dev_err(&pdev->dev, "%s: Failed to disable gpio\n", __func__);
@@ -1312,13 +1313,20 @@ static int wsa881x_swr_down(struct swr_device *pdev)
 static int wsa881x_swr_reset(struct swr_device *pdev)
 {
 	struct wsa881x_priv *wsa881x;
-
+	u8 retry = WSA881X_NUM_RETRY;
+	u8 devnum = 0;
 	wsa881x = swr_get_dev_data(pdev);
 	if (!wsa881x) {
 		dev_err(&pdev->dev, "%s: wsa881x is NULL\n", __func__);
 		return -EINVAL;
 	}
 	wsa881x->bg_cnt = 0;
+	wsa881x->clk_cnt = 0;
+	while (swr_get_logical_dev_num(pdev, pdev->addr, &devnum) && retry--) {
+		/* Retry after 1 msec delay */
+		usleep_range(1000, 1100);
+	}
+	regcache_mark_dirty(wsa881x->regmap);
 	regcache_sync(wsa881x->regmap);
 	return 0;
 }
