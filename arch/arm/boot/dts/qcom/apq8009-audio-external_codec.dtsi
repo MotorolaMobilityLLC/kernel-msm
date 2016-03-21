@@ -80,7 +80,6 @@
 		pinctrl-5 = <&pri_mi2s_active &quat_mi2s_sleep &quat_mi2s_din_sleep &cross_conn_det_act>;
 		pinctrl-6 = <&pri_mi2s_sleep &quat_mi2s_active &quat_mi2s_din_active &cross_conn_det_act>;
 		pinctrl-7 = <&pri_mi2s_active &quat_mi2s_active &quat_mi2s_din_active &cross_conn_det_act>;
-		qcom,cdc-us-euro-gpios = <&msm_gpio 97 0>;
 
 		asoc-platform = <&pcm0>, <&pcm1>, <&voip>, <&voice>,
 				<&loopback>, <&compress>, <&hostless>,
