@@ -14,6 +14,7 @@
 #include "msm8996-pinctrl.dtsi"
 #include "msm8996-moto-pinctrl.dtsi"
 #include "msm8996-camera-sensor-mot.dtsi"
+#include "carrier-channel-ids.dtsi"
 
 &sdcc1_ice {
         status = "ok";
