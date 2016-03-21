@@ -337,7 +337,6 @@ int nanohub_comms_rx_retrans_boottime(struct nanohub_data *data, uint32_t cmd,
 				      uint8_t *rx, size_t rx_len,
 				      int retrans_cnt, int retrans_delay)
 {
-	const struct nanohub_platform_data *pdata = data->pdata;
 	int packet_size = 0;
 	struct nanohub_packet_pad *pad = packet_alloc(GFP_KERNEL);
 	int delay = 0;
@@ -363,10 +362,10 @@ int nanohub_comms_rx_retrans_boottime(struct nanohub_data *data, uint32_t cmd,
 		    nanohub_comms_tx_rx(data, pad, packet_size, seq, rx,
 					rx_len);
 
-		gpio_direction_output(pdata->wakeup_gpio, 1);
-		if ((ret == ERROR_BUSY)
-		    || (ret == ERROR_NACK && retrans_cnt >= 0))
-			gpio_direction_output(pdata->wakeup_gpio, 0);
+		if (nanohub_wakeup_eom(data,
+				       (ret == ERROR_BUSY) ||
+				       (ret == ERROR_NACK && retrans_cnt >= 0)))
+			ret = -EFAULT;
 
 		data->comms.close(data);
 
@@ -391,7 +390,6 @@ int nanohub_comms_tx_rx_retrans(struct nanohub_data *data, uint32_t cmd,
 				uint8_t *rx, size_t rx_len, bool user,
 				int retrans_cnt, int retrans_delay)
 {
-	const struct nanohub_platform_data *pdata = data->pdata;
 	int packet_size = 0;
 	struct nanohub_packet_pad *pad = packet_alloc(GFP_KERNEL);
 	int delay = 0;
@@ -412,10 +410,10 @@ int nanohub_comms_tx_rx_retrans(struct nanohub_data *data, uint32_t cmd,
 		    nanohub_comms_tx_rx(data, pad, packet_size, seq, rx,
 					rx_len);
 
-		gpio_direction_output(pdata->wakeup_gpio, 1);
-		if ((ret == ERROR_BUSY)
-		    || (ret == ERROR_NACK && retrans_cnt >= 0))
-			gpio_direction_output(pdata->wakeup_gpio, 0);
+		if (nanohub_wakeup_eom(data,
+				       (ret == ERROR_BUSY) ||
+				       (ret == ERROR_NACK && retrans_cnt >= 0)))
+			ret = -EFAULT;
 
 		data->comms.close(data);
 
@@ -501,18 +499,11 @@ static int nanohub_comms_download(struct nanohub_data *data,
 				if (chunk_reply == CHUNK_REPLY_ACCEPTED)
 					offset += chunk_size;
 				else if (chunk_reply == CHUNK_REPLY_WAIT) {
-					/* release the wakeup line, and wait
-					 * for nanohub to send us an interrupt
-					 * indicating the transaction
-					 * completed */
-					gpio_direction_output(
-					    data->pdata->wakeup_gpio, 1);
-					wait_event_interruptible(
-					    data->wakeup_wait,
-					    !gpio_get_value(
-						data->pdata->irq1_gpio));
-					gpio_direction_output(
-					    data->pdata->wakeup_gpio, 0);
+					ret = nanohub_wait_for_interrupt(data);
+					if (ret < 0) {
+						release_wakeup(data);
+						continue;
+					}
 					nanohub_comms_tx_rx_retrans(data,
 					    CMD_COMMS_CLR_GET_INTR,
 					    (uint8_t *)clear_interrupts,
