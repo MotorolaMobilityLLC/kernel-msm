@@ -954,7 +954,6 @@ static int __maybe_unused mdss_fb_set_param(struct device *dev,
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
 	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
-	struct mdss_panel_info *pinfo = mfd->panel_info;
 	struct panel_param *param;
 	const char *val_name;
 	int ret = -EINVAL;
@@ -975,7 +974,7 @@ static int __maybe_unused mdss_fb_set_param(struct device *dev,
 			break;
 	}
 
-	mutex_lock(&pinfo->param_lock);
+	mutex_lock(&mfd->param_lock);
 	mutex_lock(&ctl->offlock);
 	if (param->value != value) {
 		if (mdss_fb_is_power_on(mfd))
@@ -983,7 +982,7 @@ static int __maybe_unused mdss_fb_set_param(struct device *dev,
 		param->value = value;
 	}
 	mutex_unlock(&ctl->offlock);
-	mutex_unlock(&pinfo->param_lock);
+	mutex_unlock(&mfd->param_lock);
 
 	return ret;
 }
@@ -1008,14 +1007,14 @@ static void mdss_fb_restore_param(struct msm_fb_data_type *mfd)
 	struct panel_param *param;
 	int i;
 
-	mutex_lock(&pinfo->param_lock);
+	mutex_lock(&mfd->param_lock);
 	for (i = 0; i < PARAM_ID_NUM; i++) {
 		param = pinfo->param[i];
 		if (!param || param->value == param->default_value)
 			continue;
 		mdss_fb_set_hw_param(mfd, i, param->value);
 	}
-	mutex_unlock(&pinfo->param_lock);
+	mutex_unlock(&mfd->param_lock);
 }
 
 static ssize_t hbm_show(struct device *dev,
@@ -1218,6 +1217,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 
 	mutex_init(&mfd->bl_lock);
 	mutex_init(&mfd->switch_lock);
+	mutex_init(&mfd->param_lock);
 
 	fbi_list[fbi_list_index++] = fbi;
 

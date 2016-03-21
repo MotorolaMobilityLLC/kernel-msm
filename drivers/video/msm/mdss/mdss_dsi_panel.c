@@ -1188,8 +1188,6 @@ static int mdss_panel_parse_param_prop(struct device_node *np,
 	struct dsi_panel_cmds *cmds;
 	char *prop;
 
-	mutex_init(&pinfo->param_lock);
-
 	for (i = 0; i < ARRAY_SIZE(mdss_dsi_panel_param); i++) {
 		param = &mdss_dsi_panel_param[i];
 		cmds = kcalloc(param->val_max, sizeof(struct dsi_panel_cmds),
