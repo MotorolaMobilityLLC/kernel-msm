@@ -1203,11 +1203,14 @@ static int get_property_from_fg(struct smbchg_chip *chip,
 	}
 
 	/* Send 0% if either PMI or MAX reports 0% */
-	if ((prop == POWER_SUPPLY_PROP_CAPACITY) &&
-	    ((retbms.intval == 0) || (retmax.intval == 0)))
-		*val = 0;
-	else
-		*val = retbms.intval;
+	if (prop == POWER_SUPPLY_PROP_CAPACITY) {
+		if ((retbms.intval == 0) || (retmax.intval == 0))
+			retbms.intval = 0;
+		else if (retmax.intval > 0)
+			retbms.intval = retmax.intval;
+	}
+
+	*val = retbms.intval;
 
 exit_prop_fg:
 
