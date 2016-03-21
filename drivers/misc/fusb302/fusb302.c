@@ -2593,6 +2593,20 @@ static int fusb302_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+static void fusb302_shutdown(struct i2c_client *i2c)
+{
+	struct fusb302_i2c_data *fusb = i2c_get_clientdata(i2c);
+	u8 data = 0x0;
+
+	if (!fusb)
+		return;
+
+	FUSB300Write(regPower, 1, &data);	/* Disable Power */
+	FUSB300Write(regControl2, 1, &data);	/* Disable Toggle */
+
+	disable_irq(fusb->irq);
+}
+
 #ifdef CONFIG_PM_SLEEP
 static int fusb302_suspend(struct device *dev)
 {
@@ -2661,6 +2675,7 @@ static struct i2c_driver fusb302_i2c_driver = {
 		   },
 	.probe = fusb302_probe,
 	.remove = fusb302_remove,
+	.shutdown = fusb302_shutdown,
 	.id_table = fusb302_id,
 };
 
