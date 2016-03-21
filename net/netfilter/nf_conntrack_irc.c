@@ -202,7 +202,7 @@ static int handle_nickname(struct nf_conn *ct,
 				kmalloc(i, GFP_ATOMIC);
 			if (temp->nickname) {
 				temp->nickname_len = i;
-				memcpy(&temp->nickname,
+				memcpy(temp->nickname,
 					   nick_start, temp->nickname_len);
 			} else {
 				list_del(&temp->ptr);
