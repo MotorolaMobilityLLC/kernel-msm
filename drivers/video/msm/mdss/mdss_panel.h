@@ -591,7 +591,6 @@ struct mdss_panel_info {
 	u32 disp_on_check_val;
 	bool blank_progress_notify_enabled;
 	struct panel_param *param[PARAM_ID_NUM];
-	struct mutex param_lock;
 };
 
 struct mdss_panel_data {
