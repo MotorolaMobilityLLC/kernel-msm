@@ -9262,6 +9262,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			(chip->bsw_mode == BSW_RUN));
 		chip->bsw_ramping = false;
 	} else if ((chip->stepchg_state == STEP_NONE) &&
+		   (chip->bsw_mode != BSW_RUN) &&
 		   (chip->usb_present || (chip->ebchg_state == EB_SRC))) {
 		for (index = 0; index < chip->stepchg_num_steps; index++) {
 			if ((batt_mv < chip->stepchg_steps[index].max_mv) &&
@@ -9277,7 +9278,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	} else if ((chip->stepchg_state >= STEP_FIRST) &&
 		   (chip->stepchg_state <= STEP_LAST) &&
 		   (chip->usb_present || (chip->ebchg_state == EB_SRC)) &&
-		   ((batt_mv + HYST_STEP_MV) >= max_mv)) {
+		   ((batt_mv + HYST_STEP_MV) >= max_mv) &&
+		   (chip->bsw_mode != BSW_RUN)) {
 		bool change_state = false;
 
 		if (batt_ma < 0) {
@@ -9314,6 +9316,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			}
 		}
 	} else if ((chip->stepchg_state == STEP_EB) &&
+		   (chip->bsw_mode != BSW_RUN) &&
 		   (chip->usb_present)) {
 		if ((chip->ebchg_state == EB_DISCONN) ||
 		    !eb_chrg_allowed)
@@ -9334,7 +9337,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			}
 		}
 	} else if ((chip->stepchg_state == STEP_TAPER) &&
-		   (batt_ma < 0) &&
+		   (batt_ma < 0) && (chip->bsw_mode != BSW_RUN) &&
 		   (chip->usb_present || (chip->ebchg_state == EB_SRC))) {
 		batt_ma *= -1;
 		if ((batt_soc >= 100) &&
@@ -9354,6 +9357,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			chip->stepchg_state_holdoff = 0;
 		}
 	} else if ((chip->stepchg_state == STEP_FULL) &&
+		   (chip->bsw_mode != BSW_RUN) &&
 		   (chip->usb_present || (chip->ebchg_state == EB_SRC))) {
 		if (eb_chrg_allowed && chip->usb_present)
 			chip->stepchg_state = STEP_EB;
