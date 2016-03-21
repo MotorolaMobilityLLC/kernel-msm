@@ -629,6 +629,15 @@
 			output-low;
 		};
 	};
+
+	factory_default: factory_default {
+		config {
+			pins = "gpio110";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
 };
 
 /delete-node/ &hsuart_active;
