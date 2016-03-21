@@ -1,0 +1,61 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,gl40-sony {
+	serialnum = "SNN5975";
+	/* #2362071_Moto_GL40_3510mAh_averaged_MasterSlave_Mar14th2016*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3510>;
+	qcom,batt-id-kohm = <243>;
+	qcom,battery-beta = <3900>;
+	qcom,battery-type = "GL40-SONY-3510mah";
+	qcom,chg-rslow-comp-c1 = <2955215>;
+	qcom,chg-rslow-comp-c2 = <4320965>;
+	qcom,chg-rs-to-rslow = <891473>;
+	qcom,chg-rslow-comp-thr = <0xA8>;
+	qcom,checksum = <0x6830>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.15";
+	qcom,fg-profile-data = [
+		 E3 83 D9 7C
+		 09 81 20 77
+		 38 83 1E 70
+		 76 70 4A 7E
+		 03 82 82 99
+		 FF B7 04 C8
+		 51 0F EF 83
+		 D3 7C FA 80
+		 F5 76 34 83
+		 B4 73 FC 76
+		 50 6F 11 82
+		 37 9A 5E BD
+		 A8 CA 5A 0E
+		 EA 0D 5E 5A
+		 14 70 A6 FB
+		 75 3A 02 3F
+		 5E 34 00 00
+		 72 3D 27 29
+		 CE 34 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 2D 70 FD 6A
+		 6F 76 44 80
+		 56 7C 49 70
+		 F2 74 15 7B
+		 4B 7C 2E 70
+		 4A 71 6C B2
+		 18 1D 5B BA
+		 55 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
