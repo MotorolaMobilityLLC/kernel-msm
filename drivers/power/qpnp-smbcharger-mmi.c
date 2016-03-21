@@ -362,6 +362,7 @@ struct smbchg_chip {
 	bool				batt_therm_wa;
 	struct notifier_block		smb_reboot;
 	struct notifier_block		smb_psy_notifier;
+	struct notifier_block		bsw_psy_notifier;
 	int				aicl_wait_retries;
 	bool				hvdcp_det_done;
 	enum ebchg_state		ebchg_state;
@@ -4277,7 +4278,42 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 			charge_rate[chip->charger_rate]);
 
 }
+static int bsw_psy_notifier_call(struct notifier_block *nb, unsigned long val,
+								 void *v)
+{
+	struct smbchg_chip *chip = container_of(nb,
+		struct smbchg_chip, bsw_psy_notifier);
+	struct power_supply *psy = v;
+	int rc;
+	union power_supply_propval prop = {0,};
 
+	if (!chip) {
+		SMB_WARN(chip, "called before chip valid!\n");
+		return NOTIFY_DONE;
+	}
+	if (val != PSY_EVENT_PROP_CHANGED)
+		return NOTIFY_OK;
+	if (!psy || (psy != chip->bsw_psy))
+		return NOTIFY_OK;
+	prop.intval = 0;
+	rc = psy->get_property(psy,
+		POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT,
+		&prop);
+	if (rc < 0) {
+		SMB_DBG(chip,
+		"could not read control limit property, rc=%d\n",
+		rc);
+		return NOTIFY_DONE;
+	}
+	if (prop.intval)
+		SMB_DBG(chip, "BSW SOVP tripped!\n");
+	else
+		SMB_DBG(chip, "BSW Other tripped!\n");
+	cancel_delayed_work(&chip->heartbeat_work);
+	schedule_delayed_work(&chip->heartbeat_work,
+						  msecs_to_jiffies(0));
+	return NOTIFY_OK;
+}
 static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 				 void *v)
 {
@@ -4391,13 +4427,13 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 		if (!chip->usbc_online) {
 			chip->usbc_online = true;
 			schedule_delayed_work(&chip->usb_insertion_work,
-				      msecs_to_jiffies(100));
+				      msecs_to_jiffies(1000));
 		}
 		if (chip->usbc_bswchg_pres ^ bswchg_pres) {
 			chip->usbc_bswchg_pres = bswchg_pres;
 			cancel_delayed_work(&chip->heartbeat_work);
 			schedule_delayed_work(&chip->heartbeat_work,
-					      msecs_to_jiffies(0));
+					      msecs_to_jiffies(1000));
 		}
 	} else {
 		/* Clear the BC 1.2 detection flag when type C goes offline */
@@ -8891,7 +8927,6 @@ bsw_open_switch:
 					 &ret);
 	if (rc < 0)
 		return rc;
-
 	/* Open/Close BSW */
 	ret.intval = close ? 1 : 0;
 	rc = chip->bsw_psy->set_property(chip->bsw_psy,
@@ -8950,15 +8985,15 @@ static int bsw_ramp_up(struct smbchg_chip *chip)
 
 	set_curr = taper_ma;
 	do {
+		set_bsw(chip, max_mv, set_curr, false);
+		msleep(100);
 		rc = set_bsw_curr(chip, set_curr);
 		if (rc < 0)
 			return rc;
-
 		set_bsw(chip, max_mv, set_curr, true);
 
 		/* Delay is twice max17050 update period */
 		msleep(350);
-
 		if (set_curr >= max_ma)
 			break;
 
@@ -8975,11 +9010,11 @@ static int bsw_ramp_up(struct smbchg_chip *chip)
 		set_curr = max_ma;
 	else
 		set_curr -= (BSW_CURR_STEP_MA * 2);
-
+	set_bsw(chip, max_mv, set_curr, false);
+	msleep(100);
 	rc = set_bsw_curr(chip, set_curr);
 	if (rc < 0)
 		return rc;
-
 	set_bsw(chip, max_mv, set_curr, true);
 	chip->bsw_curr_ma = set_curr;
 	return 0;
@@ -9176,12 +9211,13 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				chip->stepchg_state = STEP_TAPER;
 				chip->bsw_mode = BSW_DONE;
 				chip->bsw_curr_ma = BSW_DEFAULT_MA;
-				set_bsw_curr(chip, chip->bsw_curr_ma);
 				set_bsw(chip, max_mv, chip->bsw_curr_ma,
-					false);
+						false);
+				set_bsw_curr(chip, chip->bsw_curr_ma);
 				break;
 			}
-			chip->stepchg_state++;
+			if (chip->stepchg_state < STEP_NONE)
+				chip->stepchg_state++;
 		}
 		chip->bsw_ramping = false;
 	} else if (chip->usbc_bswchg_pres && chip->usb_present &&
@@ -9193,10 +9229,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			 chip->bsw_curr_ma);
 		chip->bsw_ramping = true;
 		set_bsw(chip, max_mv, chip->bsw_curr_ma, false);
-
 		/* Keep Switch Open for 100 ms to let battery relax */
 		msleep(100);
-
 		if (chip->bsw_curr_ma <= taper_ma)
 			change_state = true;
 		else
@@ -9209,11 +9243,13 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				chip->bsw_mode = BSW_DONE;
 				chip->bsw_curr_ma = BSW_DEFAULT_MA;
 			} else if (pmi_max_chrg_ma > taper_ma) {
-				chip->stepchg_state++;
+				if (chip->stepchg_state < STEP_NONE)
+					chip->stepchg_state++;
 				chip->bsw_mode = BSW_DONE;
 				chip->bsw_curr_ma = BSW_DEFAULT_MA;
 			} else {
-				chip->stepchg_state++;
+				if (chip->stepchg_state < STEP_NONE)
+					chip->stepchg_state++;
 				index = STEP_START(chip->stepchg_state);
 				max_mv = chip->stepchg_steps[index].max_mv;
 				max_ma = chip->stepchg_steps[index].max_ma;
@@ -9221,7 +9257,6 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				chip->bsw_curr_ma = max_ma;
 		    }
 		}
-
 		set_bsw_curr(chip, chip->bsw_curr_ma);
 		set_bsw(chip, max_mv, chip->bsw_curr_ma,
 			(chip->bsw_mode == BSW_RUN));
@@ -9273,8 +9308,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			if (chip->stepchg_state ==
 			    STEP_END(chip->stepchg_num_steps))
 				chip->stepchg_state = STEP_TAPER;
-			else
-				chip->stepchg_state++;
+			else {
+				if (chip->stepchg_state < STEP_NONE)
+					chip->stepchg_state++;
+			}
 		}
 	} else if ((chip->stepchg_state == STEP_EB) &&
 		   (chip->usb_present)) {
@@ -9325,7 +9362,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	} else if (!chip->usb_present && (chip->ebchg_state != EB_SRC)) {
 		chip->stepchg_state = STEP_NONE;
 		chip->stepchg_state_holdoff = 0;
-		if (chip->bsw_mode == BSW_RUN) {
+		if (chip->bsw_mode != BSW_OFF) {
 			chip->bsw_mode = BSW_OFF;
 			chip->bsw_curr_ma = BSW_DEFAULT_MA;
 			set_bsw(chip, 0, 0, false);
@@ -9897,7 +9934,20 @@ static int smbchg_probe(struct spmi_device *spmi)
 	/* Query for initial reported state*/
 	smb_psy_notifier_call(&chip->smb_psy_notifier, PSY_EVENT_PROP_CHANGED,
 				chip->usbc_psy);
-
+	if (chip->bsw_psy_name != NULL)
+		chip->bsw_psy =
+		power_supply_get_by_name((char *)chip->bsw_psy_name);
+	if (chip->bsw_psy) {
+		/* Register the notifier for the BSW psy */
+		chip->bsw_psy_notifier.notifier_call =
+			bsw_psy_notifier_call;
+		rc = power_supply_reg_notifier(
+				&chip->bsw_psy_notifier);
+		if (rc) {
+			SMB_ERR(chip,
+				"failed to reg notifier: %d\n", rc);
+		}
+	}
 	chip->psy_registered = true;
 
 	rc = smbchg_request_irqs(chip);
@@ -10052,6 +10102,8 @@ static int smbchg_remove(struct spmi_device *spmi)
 	}
 
 	power_supply_unreg_notifier(&chip->smb_psy_notifier);
+	if (chip->bsw_psy)
+		power_supply_unreg_notifier(&chip->bsw_psy_notifier);
 	power_supply_put(chip->usb_psy);
 	power_supply_put(chip->bms_psy);
 	power_supply_put(chip->max_psy);
