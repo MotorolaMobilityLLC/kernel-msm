@@ -942,13 +942,8 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <100>;
-		#include "batterydata-gv40-lg.dtsi"
-	};
-};
-
-&mot_batterydata{
-	qcom,gv40-lg {
-		qcom,batt-id-kohm = <240>;
+		df-serialnum = "SNN5975";
+		#include "batterydata-gl40-sony.dtsi"
 	};
 };
 
