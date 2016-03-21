@@ -17,6 +17,7 @@
 
 #include <linux/kernel.h>
 #include <linux/cdev.h>
+#include <linux/gpio.h>
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/semaphore.h>
@@ -33,13 +34,31 @@ struct nanohub_buf {
 	uint8_t length;
 };
 
+struct nanohub_data;
+
+struct nanohub_io {
+	struct device *dev;
+	struct nanohub_data *data;
+	wait_queue_head_t buf_wait;
+	struct list_head buf_list;
+};
+
+static inline struct nanohub_data *dev_get_nanohub_data(struct device *dev)
+{
+	struct nanohub_io *io = dev_get_drvdata(dev);
+
+	return io->data;
+}
+
 struct nanohub_data {
-	struct class *sensor_class;
-	struct device *sensor_dev;
-	struct device *comms_dev;
+	/* indices for io[] array */
+	#define ID_NANOHUB_SENSOR 0
+	#define ID_NANOHUB_COMMS 1
+	#define ID_NANOHUB_MAX 2
+
 	struct iio_dev *iio_dev;
-	struct cdev cdev;
-	struct cdev cdev_comms;
+	struct nanohub_io io[ID_NANOHUB_MAX];
+
 	struct nanohub_comms comms;
 	struct nanohub_bl bl;
 	const struct nanohub_platform_data *pdata;
@@ -47,40 +66,70 @@ struct nanohub_data {
 	int irq2;
 
 	atomic_t kthread_run;
+	atomic_t thread_state;
 	wait_queue_head_t kthread_wait;
 
-	wait_queue_head_t read_wait;
-	struct list_head read_data;
-	atomic_t read_cnt;
-	spinlock_t read_lock;
 	struct wake_lock wakelock_read;
 
-	struct list_head read_free;
-	atomic_t read_free_cnt;
-	spinlock_t read_free_lock;
+	struct nanohub_io free_pool;
 
 	atomic_t wakeup_cnt;
 	spinlock_t wakeup_lock;
-	atomic_t wakeup_aquired;
+	atomic_t wakeup_acquired;
 	wait_queue_head_t wakeup_wait;
 
 	uint32_t interrupts[8];
 
 	int err_cnt;
-
-	wait_queue_head_t hal_read_wait;
-	struct list_head hal_read_data;
-	atomic_t hal_read_cnt;
-	spinlock_t hal_read_lock;
+	void *vbuf;
+	struct task_struct *thread;
 };
 
-int request_wakeup(struct nanohub_data *data);
-int request_wakeup_timeout(struct nanohub_data *data, long timeout);
-void release_wakeup(struct nanohub_data *data);
+enum {
+	KEY_WAKEUP_NONE,
+	KEY_WAKEUP,
+	KEY_WAKEUP_USER,
+	KEY_WAKEUP_SYSTEM
+};
+
+int request_wakeup_ex(struct nanohub_data *data, long timeout,
+		      int key, int wakeup_gpio_init, bool no_irq);
+void release_wakeup_ex(struct nanohub_data *data, int key);
+int nanohub_wait_for_interrupt(struct nanohub_data *data);
+int nanohub_wakeup_eom(struct nanohub_data *data, bool repeat);
 struct iio_dev *nanohub_probe(struct device *dev, struct iio_dev *iio_dev);
 int nanohub_reset(struct nanohub_data *data);
 int nanohub_remove(struct iio_dev *iio_dev);
 int nanohub_suspend(struct iio_dev *iio_dev);
 int nanohub_resume(struct iio_dev *iio_dev);
+
+static inline int nanohub_irq1_fired(struct nanohub_data *data)
+{
+	const struct nanohub_platform_data *pdata = data->pdata;
+
+	return !gpio_get_value(pdata->irq1_gpio);
+}
+
+static inline int nanohub_irq2_fired(struct nanohub_data *data)
+{
+	const struct nanohub_platform_data *pdata = data->pdata;
+
+	return data->irq2 && !gpio_get_value(pdata->irq1_gpio);
+}
+
+static inline int request_wakeup_timeout(struct nanohub_data *data, int timeout)
+{
+	return request_wakeup_ex(data, timeout, KEY_WAKEUP, 0, 0);
+}
+
+static inline int request_wakeup(struct nanohub_data *data)
+{
+	return request_wakeup_ex(data, MAX_SCHEDULE_TIMEOUT, KEY_WAKEUP, 0, 0);
+}
+
+static inline void release_wakeup(struct nanohub_data *data)
+{
+	release_wakeup_ex(data, KEY_WAKEUP);
+}
 
 #endif
