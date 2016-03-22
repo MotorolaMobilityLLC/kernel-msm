@@ -944,6 +944,7 @@
 		qcom,batt-id-range-pct = <100>;
 		df-serialnum = "SNN5975";
 		#include "batterydata-gl40-sony.dtsi"
+		#include "batterydata-gl40-atl.dtsi"
 	};
 };
 
