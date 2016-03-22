@@ -547,6 +547,7 @@
 	/delete-property/ qcom,chg-led-support;
 	qcom,parallel-usb-min-current-ma = <1000>;
 	qcom,fastchg-current-ma = <3000>;
+	qcom,fastchg-current-comp = <700>;
 	qcom,thermal-mitigation = <2000 1500 1000 0>;
 	status = "okay";
 };
@@ -554,9 +555,9 @@
 &pmi8950_fg {
 	qcom,battery-data = <&qrd_batterydata>;
 	qcom,cold-bat-decidegc = <(-100)>;
-	qcom,cool-bat-decidegc = <(-100)>;
+	qcom,cool-bat-decidegc = <0>;
 	qcom,hot-bat-decidegc = <550>;
-	qcom,warm-bat-decidegc = <550>;
+	qcom,warm-bat-decidegc = <450>;
 	qcom,ext-sense-type;
 	qcom,fg-delta-soc = <1>;
 };
