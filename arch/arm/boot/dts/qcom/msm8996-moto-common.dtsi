@@ -815,6 +815,7 @@
 					"gpio_muc_spi_miso";
 
 		mmi,muc-ctrl-det-hysteresis = <200>;
+		mmi,muc-ctrl-rm-hysteresis = <5>;
 		mmi,muc-ctrl-en-seq =  <1 1 100>;
 		mmi,muc-ctrl-dis-seq = <1 0 505>;
 
