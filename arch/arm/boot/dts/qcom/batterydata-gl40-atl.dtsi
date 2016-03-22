@@ -1,0 +1,61 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,gl40-atl {
+	serialnum = "SNN5974";
+	/* #2371683_Moto_GL40ATL_3510mAh_averaged_MasterSlave_Mar21st2016*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3510>;
+	qcom,batt-id-kohm = <243>;
+	qcom,battery-beta = <3900>;
+	qcom,battery-type = "GL40-ATL-3510mah";
+	qcom,chg-rslow-comp-c1 = <3424202>;
+	qcom,chg-rslow-comp-c2 = <5839715>;
+	qcom,chg-rs-to-rslow = <779204>;
+	qcom,chg-rslow-comp-thr = <0xB5>;
+	qcom,checksum = <0xFE98>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.15";
+	qcom,fg-profile-data = [
+		 DD 83 A3 7C
+		 ED 80 F5 76
+		 5D 83 30 6D
+		 61 88 66 8F
+		 81 82 59 93
+		 39 B5 F7 C0
+		 52 17 F8 83
+		 2B 7D 3E 81
+		 79 77 66 83
+		 F7 6C F5 88
+		 94 94 50 82
+		 D3 99 26 BD
+		 28 CA 52 0D
+		 05 0E 8F 5A
+		 14 70 A6 FB
+		 B6 37 E1 3E
+		 E6 39 00 00
+		 43 46 0F 2D
+		 97 38 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 ED 6A 13 6A
+		 0A 72 51 8A
+		 1E 77 C2 6A
+		 FA 60 BE 82
+		 6A 76 BB 69
+		 8E 6D 94 A8
+		 18 B0 61 8D
+		 5F A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
