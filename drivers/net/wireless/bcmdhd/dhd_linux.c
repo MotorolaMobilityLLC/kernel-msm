@@ -3066,7 +3066,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 #else
 			skb->mac.raw,
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 22) */
-			len - 2,
+			len - ETHER_TYPE_LEN,
 			&event,
 			&data);
 

@@ -1407,7 +1407,7 @@ dngl_host_event_process(dhd_pub_t *dhdp, bcm_dngl_event_t *event, size_t pktlen)
 	uint16 version = ntoh16_ua((void *)&dngl_event->version);
 
 	DHD_EVENT(("VERSION:%d, EVENT TYPE:%d, DATALEN:%d\n", version, type, datalen));
-	if (datalen > (pktlen - sizeof(bcm_event_t))) {
+	if (datalen > (pktlen - sizeof(bcm_dngl_event_t) + ETHER_TYPE_LEN)) {
 		return;
 	}
 	if (version != BCM_DNGL_EVENT_MSG_VERSION) {
