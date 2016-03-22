@@ -397,7 +397,7 @@
                 qcom,vibrator@c000 {
                         status = "okay";
                         qcom,vib-timeout-ms = <30000>;
-                        qcom,vib-vtg-level-mV = <3000>;
+                        qcom,vib-vtg-level-mV = <2800>;
                         qcom,vib-vtg-level-mV-haptic = <2800>;
                         qcom,vib-boot-up-vibe-ms = <100>;
                 };
