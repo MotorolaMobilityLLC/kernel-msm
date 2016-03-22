@@ -265,6 +265,7 @@
 		reg = <0x25>;
 		qcom,fusb-irq = <&msm_gpio 45 0x00>;
 		pinctrl-names = "default";
+		fusb301,use-try-snk-emulation;
 		pinctrl-0 = <&fusb_default>;
 	};
 
