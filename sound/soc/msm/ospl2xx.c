@@ -882,29 +882,6 @@ static int ospl2xx_tx_get_f0(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-/* PARAM_ID_OPALUM_TX_F0_CURVE */
-static int ospl2xx_tx_get_f0_curve(struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol)
-{
-	int i = 0;
-
-	mutex_lock(&mr_lock);
-	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
-	ospl2xx_afe_get_param(PARAM_ID_OPALUM_TX_F0_CURVE);
-
-	if (f0_curve != NULL &&
-	    f0_curve_size >= F0_CURVE_POINTS * sizeof(int32_t))
-		for (i = 0; i < F0_CURVE_POINTS; i++)
-			ucontrol->value.integer.value[i] = f0_curve[i];
-	else
-		pr_err("%s: returned f0 points too small, %d\n",
-			__func__, f0_curve_size);
-
-	mutex_unlock(&mr_lock);
-
-	return 0;
-}
-
 /* PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE */
 static int ospl2xx_tx_get_temp_cal(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
@@ -1060,9 +1037,6 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 	/* GET */ SOC_SINGLE_MULTI_EXT("OSPL Tx F0",
 		SND_SOC_NOPM, 0, 0xFFFF, 0, 2,
 		ospl2xx_tx_get_f0, NULL),
-	/* GET */ SOC_SINGLE_MULTI_EXT("OSPL Tx F0_curve",
-		SND_SOC_NOPM, 0, 0xFFFF, 0, F0_CURVE_POINTS,
-		ospl2xx_tx_get_f0_curve, NULL),
 	/* GET */ SOC_SINGLE_MULTI_EXT("OSPL Tx temp_cal",
 		SND_SOC_NOPM, 0, 0xFFFF, 0, 2,
 		ospl2xx_tx_get_temp_cal, NULL),
