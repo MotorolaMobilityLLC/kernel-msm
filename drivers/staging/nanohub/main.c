@@ -1287,6 +1287,7 @@ struct iio_dev *nanohub_probe(struct device *dev, struct iio_dev *iio_dev)
 	atomic_set(&data->kthread_run, 0);
 
 	spin_lock_init(&data->wakeup_lock);
+	spin_lock_init(&data->read_lock);
 	spin_lock_init(&data->hal_read_lock);
 	spin_lock_init(&data->read_free_lock);
 	init_waitqueue_head(&data->read_wait);
