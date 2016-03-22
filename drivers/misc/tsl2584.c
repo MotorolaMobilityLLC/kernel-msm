@@ -782,6 +782,8 @@ static ssize_t tsl2584_registers_store(struct device *dev,
 	reg_count = sizeof(tsl2584_regs) / sizeof(tsl2584_regs[0]);
 	for (i = 0; i < reg_count; i++) {
 		if (!strcmp(name, tsl2584_regs[i].name)) {
+			reg_data[0] = tsl2584_regs[i].reg;
+			reg_data[1] = value;
 			mutex_lock(&ct->mutex);
 			error = tsl2584_i2c_write(ct, reg_data, 2);
 			mutex_unlock(&ct->mutex);
