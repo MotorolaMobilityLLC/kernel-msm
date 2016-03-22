@@ -117,6 +117,36 @@
 &soc {
 	tlmm: pinctrl@1000000 {
 
+		cam_sensor_mclk0_default: cam_sensor_mclk0_default {
+			/* MCLK0 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio26";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio26";
+				bias-disable; /* No PULL */
+				drive-strength = <6>; /* 6 MA */
+			};
+		};
+
+		cam_sensor_mclk0_sleep: cam_sensor_mclk0_sleep {
+			/* MCLK0 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio26";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio26";
+				bias-pull-down; /* PULL DOWN */
+				drive-strength = <6>; /* 6 MA */
+			};
+		};
+
 		cam_sensor_rear_default: cam_sensor_rear_default {
 			/* RESET, VDIG */
 			mux {
@@ -144,6 +174,37 @@
 				drive-strength = <2>; /* 2 MA */
 			};
 		};
+
+		cam_sensor_mclk2_default: cam_sensor_mclk2_default {
+			/* MCLK2 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio28";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio28";
+				bias-disable; /* No PULL */
+				drive-strength = <6>; /* 6 MA */
+			};
+		};
+
+		cam_sensor_mclk2_sleep: cam_sensor_mclk2_sleep {
+			/* MCLK2 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio28";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio28";
+				bias-pull-down; /* PULL DOWN */
+				drive-strength = <6>; /* 6 MA */
+			};
+		};
+
 		cam_sensor_front_default: cam_sensor_front_default {
 			/* RESET, VDIG */
 			mux {
