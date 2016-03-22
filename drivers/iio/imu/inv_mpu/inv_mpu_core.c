@@ -150,6 +150,8 @@ static void inv_setup_reg(struct inv_reg_map_s *reg)
 #ifdef CONFIG_SENSORS_INV_ACCEL_CAL
 void inv_mpu_delay_calibration(int en)
 {
+    printk("[MPU9250] %s en=%d prev_en=%d\n", __func__, en, g_st->inv_accel_cal_en);
+
     if(en ^ g_st->inv_accel_cal_en) {
         g_st->inv_accel_cal_en = en;
         if (delayed_work_pending(&g_st->cal_delay_work)) {
@@ -157,7 +159,6 @@ void inv_mpu_delay_calibration(int en)
         }
 
         if (en) {
-            printk("[MPU9250] %s en=%d prev_en=%d scheduling delayed work\n", __func__, en, g_st->inv_accel_cal_en);
             queue_delayed_work(g_st->inv_work_queue, &g_st->cal_delay_work, ASUS_CALIBRATION_JIFFIES);
         }
     }
