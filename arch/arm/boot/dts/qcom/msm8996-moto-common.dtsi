@@ -1088,6 +1088,7 @@
 	qcom,bmd-pin-src = "bpd_none";
 	qcom,usbid-disabled;
 	qcom,force-aicl-rerun;
+	qcom,auto-voltage-comp-mv = <75>;
 };
 
 &pmi8994_fg {
