@@ -285,9 +285,14 @@ void motosh_irq_work_func(struct work_struct *work)
 		data = &queuebuff[queue_index];
 		switch (message_id) {
 		case ACCEL_DATA:
-			/* Accel supports batching while AP suspended */
-			motosh_as_data_buffer_write(ps_motosh, DT_ACCEL,
-				data, 6, 0, true);
+			/* Accel supports batching while AP suspended, send
+			   events on resume only if we are batching */
+			if (!resuming ||
+			    (ps_motosh->is_batching & ACCEL_BATCHING))
+				motosh_as_data_buffer_write(ps_motosh,
+							    DT_ACCEL,
+							    data, 6, 0, true);
+
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending acc(x,y,z)values:x=%d,y=%d,z=%d\n",
 				STM16_TO_HOST(data, ACCEL_RD_X),
