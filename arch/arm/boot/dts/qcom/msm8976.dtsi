@@ -91,18 +91,21 @@
 
 		secure_mem: secure_region@0 {
 			linux,reserve-contiguous-region;
+			linux,memory-limit = <0xffffffff>;
 			reg = <0x0 0x0 0x0 0x8100000>;
 			label = "secure_mem";
 		};
 
 		qseecom_mem: qseecom_region@0 {
 			linux,reserve-contiguous-region;
+			linux,memory-limit = <0xffffffff>;
 			reg = <0x0 0x0 0x0 0x1000000>;
 			label = "qseecom_mem";
 		};
 
 		audio_mem: audio_region@0 {
 			linux,reserve-contiguous-region;
+			linux,memory-limit = <0xffffffff>;
 			reg = <0x0 0x0 0x0 0x314000>;
 		};
 
@@ -115,6 +118,7 @@
 
 		adsp_mem: adsp_region@0 {
 			linux,reserve-contiguous-region;
+			linux,memory-limit = <0xffffffff>;
 			reg = <0x0 0x0 0x0 0x400000>;
 			label = "adsp_mem";
 		};
