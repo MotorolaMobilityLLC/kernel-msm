@@ -1454,10 +1454,14 @@ static int bma25x_normal_to_suspend(struct bma25x_data *bma25x,
 		unsigned char data1, unsigned char data2);
 static int bma25x_power_ctl(struct bma25x_data *data, bool on);
 static int bma25x_get_sensitivity(struct bma25x_data *bma25x, int range);
+#if defined(BMA25X_ENABLE_INT1) || defined(BMA25X_ENABLE_INT2)
 static int bma25x_set_Int_Enable(struct i2c_client *client, unsigned char
 		InterruptType , unsigned char value);
+#endif
+#ifdef BMA25X_ENABLE_INT1
 static int bma25x_set_int1_pad_sel(struct i2c_client *client,
 		unsigned char int1sel);
+#endif
 
 static struct sensors_classdev sensors_cdev = {
 	.name = "bma25x-accel",
@@ -2922,6 +2926,7 @@ static irqreturn_t bma25x_int2_irq_handler(int irq, void *handle)
 	return IRQ_HANDLED;
 }
 #endif
+#if defined(BMA25X_ENABLE_INT1) || defined(BMA25X_ENABLE_INT2)
 static int bma25x_set_Int_Enable(struct i2c_client *client, unsigned char
 		InterruptType , unsigned char value)
 {
@@ -3046,6 +3051,7 @@ static int bma25x_set_Int_Enable(struct i2c_client *client, unsigned char
 
 	return comres;
 }
+#endif
 static int bma25x_set_Int_Mode(struct i2c_client *client, unsigned char Mode)
 {
 	int comres = 0;
@@ -3507,9 +3513,11 @@ static int bma25x_probe(struct i2c_client *client,
 	data->ref_count = 0;
 	data->fifo_datasel = 0;
 	data->fifo_count = 0;
+#ifdef BMA25X_ENABLE_INT1
 	data->mEnabled = 0;
 	atomic_set(&data->flat_flag, 0);
 	atomic_set(&data->flat_sign, 0);
+#endif
 	data->cdev = sensors_cdev;
 	data->cdev.min_delay = POLL_INTERVAL_MIN_MS * 1000;
 	data->cdev.delay_msec = pdata->poll_interval;
