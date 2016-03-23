@@ -12,6 +12,30 @@
  */
 
 &cci {
+	/* Skyworks 81298 */
+	led_flash0: qcom,camera-flash@c6 {
+		cell-index = <0xc6>;
+		compatible = "qcom,camera-flash";
+		label = "sky81298";
+		qcom,flash-name = "sky81298";
+		qcom,flash-type = <1>;
+		cam_vio-supply = <&pmtitanium_l6>;
+		qcom,cam-vreg-name = "cam_vio";
+		qcom,cam-vreg-min-voltage = <1800000>;
+		qcom,cam-vreg-max-voltage = <1800000>;
+		qcom,cam-vreg-op-mode = <100000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_flash_active>;
+		pinctrl-1 = <&cam_sensor_flash_suspend>;
+		gpios = <&tlmm 27 0>;
+		qcom,gpio-flash-en = <0>;
+		qcom,gpio-req-tbl-num = <0>;
+		qcom,gpio-req-tbl-flags = <1>;
+		qcom,gpio-req-tbl-label = "FLASH_EN";
+		qcom,cci-master = <0>;
+	};
+
 	/* OV16860 */
 	qcom,camera@0 {
 		cell-index = <0>;
@@ -20,6 +44,7 @@
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
+		qcom,led-flash-src = <&led_flash0>;
 		cam_vio-supply = <&pmtitanium_l10>;
 		cam_vaf-supply = <&pmtitanium_l17>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vaf";
@@ -57,6 +82,7 @@
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <2>;
 		qcom,mount-angle = <270>;
+		qcom,led-flash-src = <&led_flash0>;
 		cam_vio-supply = <&pmtitanium_l10>;
 		qcom,cam-vreg-name = "cam_vio";
 		qcom,cam-vreg-min-voltage = <1800000>;
@@ -141,6 +167,34 @@
 
 			config {
 				pins = "gpio40","gpio113";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_flash_active: cam_sensor_flash_active {
+			/* Flash-En */
+			mux {
+				pins = "gpio27";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio27";
+				bias-pull-up; /* PULL Up */
+				drive-strength = <8>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_flash_suspend: cam_sensor_flash_suspend {
+			/* RESET, STANDBY */
+			mux {
+				pins = "gpio27";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio27";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
