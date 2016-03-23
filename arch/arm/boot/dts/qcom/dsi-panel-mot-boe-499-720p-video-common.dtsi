@@ -1,5 +1,6 @@
 
 compatible = "qcom,mdss-dsi-panel";
+qcom,mdss-dsi-panel-name = "mipi_mot_video_boe_720p_499";
 qcom,mdss-dsi-panel-supplier = "boe";
 qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 qcom,mdss-dsi-panel-type = "dsi_video_mode";
@@ -34,7 +35,6 @@ qcom,mdss-dsi-dis-reset-sequence = <1 35>, <0 0>;
 qcom,mdss-dsi-on-command = [
 	39 01 00 00 00 00 04 b9 ff 83 94
 	05 01 00 00 78 00 01 11
-	15 01 00 00 00 00 02 CC 07
 	15 01 00 00 05 00 02 51 00
 	39 01 00 00 05 00 0A C9 13 00 00 14 B1 1E 00 91 00
 	15 01 00 00 05 00 02 55 01
