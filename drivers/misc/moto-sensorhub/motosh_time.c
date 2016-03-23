@@ -88,7 +88,7 @@ void motosh_time_sync(void)
 	delta = ap_time1 - hub_time;
 
 	/* update offset */
-	dev_info(&motosh_misc_data->client->dev,
+	dev_dbg(&motosh_misc_data->client->dev,
 		"Sync time - sh: %12lld ap: %12lld offs_delta: %12lld",
 		hub_time, ap_time1, delta - motosh_realtime_delta);
 
