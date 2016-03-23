@@ -1408,7 +1408,7 @@ static void __ufs_qcom_pm_qos_req_end(struct ufs_qcom_host *host, int req_cpu)
 		return;
 	cancel_delayed_work(&group->unvote_work);
 	queue_delayed_work(host->pm_qos.workq, &group->unvote_work,
-			usecs_to_jiffies(UFS_QCOM_PM_QOS_UNVOTE_TIMEOUT_US));
+			usecs_to_jiffies(host->pm_qos.unvote_delay));
 }
 
 static void ufs_qcom_pm_qos_req_end(struct ufs_hba *hba, struct request *req,
@@ -1560,6 +1560,30 @@ static ssize_t ufs_qcom_pm_qos_latency_store(struct device *dev,
 	return count;
 }
 
+static ssize_t ufs_qcom_unvote_delay_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev->parent);
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", host->pm_qos.unvote_delay);
+}
+
+static ssize_t ufs_qcom_unvote_delay_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int delay;
+	struct ufs_hba *hba = dev_get_drvdata(dev->parent);
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+
+	if (kstrtoint(buf, 10, &delay))
+		return -EINVAL;
+
+	host->pm_qos.unvote_delay = delay;
+
+	return count;
+}
+
 static int ufs_qcom_pm_qos_init(struct ufs_qcom_host *host)
 {
 	struct device_node *node = host->hba->dev->of_node;
@@ -1680,6 +1704,17 @@ static int ufs_qcom_pm_qos_init(struct ufs_qcom_host *host)
 	if (device_create_file(host->hba->var->dev, attr))
 		dev_dbg(host->hba->dev, "Failed to create sysfs for pm_qos enable\n");
 
+	/* PM Qos unvote_delay sys-fs attribute */
+	attr = &host->pm_qos.unvote_delay_attr;
+	attr->show = ufs_qcom_unvote_delay_show;
+	attr->store = ufs_qcom_unvote_delay_store;
+	sysfs_attr_init(&attr->attr);
+	attr->attr.name = "unvote_delay";
+	attr->attr.mode = S_IRUGO | S_IWUSR;
+	if (device_create_file(host->hba->var->dev, attr))
+		dev_dbg(host->hba->dev, "Failed to create sysfs for unvote_delay\n");
+
+	host->pm_qos.unvote_delay = UFS_QCOM_PM_QOS_UNVOTE_TIMEOUT_US;
 	host->pm_qos.is_enabled = true;
 
 	return 0;
