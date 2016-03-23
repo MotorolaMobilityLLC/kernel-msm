@@ -38,6 +38,7 @@
 
 #include <ol_ctrl_api.h>  /* ol_pdev_handle */
 #include <ol_txrx_api.h>  /* ol_txrx_pdev_handle */
+#include <ol_htt_api.h>
 
 #define DEBUG_DMA_DONE
 
@@ -379,6 +380,9 @@ struct htt_pdev_t {
     struct rx_buf_debug *rx_buff_list;
     int rx_buff_index;
 #endif
+
+    /* callback function for packetdump */
+    tp_rx_pkt_dump_cb rx_pkt_dump_cb;
 
     int num_pages;
     int num_desc_per_page;

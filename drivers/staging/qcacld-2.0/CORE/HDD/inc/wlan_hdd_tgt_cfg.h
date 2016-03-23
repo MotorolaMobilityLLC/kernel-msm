@@ -111,6 +111,9 @@ struct hdd_tgt_cfg {
         uint32_t fine_time_measurement_cap;
         bool bpf_enabled;
         uint16_t wmi_max_len;
+#ifdef WLAN_FEATURE_NAN_DATAPATH
+        bool nan_datapath_enabled;
+#endif
 };
 
 struct hdd_dfs_radar_ind {

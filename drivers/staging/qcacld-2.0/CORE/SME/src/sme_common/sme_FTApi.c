@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -107,8 +107,6 @@ void sme_FTClose(tHalHandle hHal, tANI_U32 sessionId)
       }
 
       if (pSession->ftSmeContext.pUsrCtx != NULL) {
-          smsLog(pMac, LOG1,
-                 FL("Freeing ftSmeContext.pUsrCtx and setting to NULL"));
           vos_mem_free(pSession->ftSmeContext.pUsrCtx);
           pSession->ftSmeContext.pUsrCtx = NULL;
       }

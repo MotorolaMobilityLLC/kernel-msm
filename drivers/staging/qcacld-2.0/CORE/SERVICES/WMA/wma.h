@@ -70,6 +70,7 @@
 #include "ol_txrx_types.h"
 #include "wlan_qct_wda.h"
 #include <linux/workqueue.h>
+#include "ol_defines.h"
 
 /* Platform specific configuration for max. no. of fragments */
 #define QCA_OL_11AC_TX_MAX_FRAGS            2
@@ -857,7 +858,10 @@ typedef struct wma_handle {
 	struct wma_runtime_pm_context runtime_context;
 	uint32_t fine_time_measurement_cap;
 	bool bpf_enabled;
-	bool     pause_other_vdev_on_mcc_start;
+	bool pause_other_vdev_on_mcc_start;
+
+	/* NAN datapath support enabled in firmware */
+	bool nan_datapath_enabled;
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {
@@ -1711,5 +1715,68 @@ int wma_crash_inject(tp_wma_handle wma_handle, uint32_t type,
 uint32_t wma_get_vht_ch_width(void);
 
 VOS_STATUS wma_get_wakelock_stats(struct sir_wake_lock_stats *wake_lock_stats);
+/**
+ * wma_find_vdev_by_id() - Find vdev handle for given vdev id.
+ * @wma: WMA handle
+ * @vdev_id: vdev ID
+ * Return: Returns vdev handle if given vdev id is valid.
+ *         Otherwise returns NULL.
+ */
+static inline void *wma_find_vdev_by_id(tp_wma_handle wma, u_int8_t vdev_id)
+{
+	if (vdev_id > wma->max_bssid)
+		return NULL;
 
+	return wma->interfaces[vdev_id].handle;
+}
+
+/**
+ * wma_find_vdev_by_addr() - Find vdev handle for given vdev mac addr.
+ * @wma: WMA handle
+ * @addr: mac address of the vdev
+ * @vdev_id: out parameter to update with vdev ID
+ *
+ * Return: vdev handle if found NULL otherwise
+ */
+static inline void *wma_find_vdev_by_addr(tp_wma_handle wma, u_int8_t *addr,
+				   u_int8_t *vdev_id)
+{
+	u_int8_t i;
+
+	for (i = 0; i < wma->max_bssid; i++) {
+		if (vos_is_macaddr_equal(
+			(v_MACADDR_t *) wma->interfaces[i].addr,
+			(v_MACADDR_t *) addr) == VOS_TRUE) {
+			*vdev_id = i;
+			return wma->interfaces[i].handle;
+		}
+	}
+	return NULL;
+}
+
+
+int wmi_unified_vdev_set_param_send(wmi_unified_t wmi_handle, u_int32_t if_id,
+				u_int32_t param_id, u_int32_t param_value);
+
+void wma_set_bss_rate_flags(struct wma_txrx_node *iface,
+				tpAddBssParams add_bss);
+
+void wma_send_msg(tp_wma_handle wma_handle, u_int16_t msg_type,
+				void *body_ptr, u_int32_t body_val);
+
+/**
+ * struct wma_version_info - Store wmi version info
+ * @major: wmi major version
+ * @minor: wmi minor version
+ * @revision: wmi revision number
+ */
+struct wma_version_info {
+	u_int32_t major;
+	u_int32_t minor;
+	u_int32_t revision;
+};
+
+void wma_remove_peer(tp_wma_handle wma, u_int8_t *bssid,
+			u_int8_t vdev_id, ol_txrx_peer_handle peer,
+			v_BOOL_t roam_synch_in_progress);
 #endif

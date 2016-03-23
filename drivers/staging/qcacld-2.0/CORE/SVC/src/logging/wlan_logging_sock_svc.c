@@ -43,7 +43,6 @@
 #include <adf_os_time.h>
 #include "pktlog_ac.h"
 #include <linux/rtc.h>
-#include <linux/skbuff.h>
 #include <vos_diag_core_log.h>
 #include "limApi.h"
 #include "ol_txrx_api.h"
@@ -199,8 +198,7 @@ static int wlan_send_sock_msg_to_app(tAniHdr *wmsg, int radio,
 		return -EINVAL;
 	}
 
-	payload_len = wmsg_length + sizeof(wnl->radio) +
-			sizeof(struct nlmsghdr);
+	payload_len = wmsg_length + sizeof(wnl->radio) + sizeof(tAniHdr);
 	tot_msg_len = NLMSG_SPACE(payload_len);
 	skb = dev_alloc_skb(tot_msg_len);
 	if (skb == NULL) {
@@ -484,18 +482,17 @@ static int pkt_stats_fill_headers(struct sk_buff *skb)
 	diag_type = DIAG_TYPE_LOGS;
 	vos_mem_copy(skb_push(skb, sizeof(int)), &diag_type, sizeof(int));
 
-	extra_header_len = sizeof(msg_header.radio) + sizeof(tAniHdr) +
-				sizeof(struct nlmsghdr);
+	extra_header_len = sizeof(msg_header.radio) + sizeof(tAniHdr);
 	nl_payload_len = extra_header_len + skb->len;
 
 	msg_header.nlh.nlmsg_type = ANI_NL_MSG_PUMAC;
-	msg_header.nlh.nlmsg_len = nl_payload_len;
+	msg_header.nlh.nlmsg_len = nlmsg_msg_size(nl_payload_len);
 	msg_header.nlh.nlmsg_flags = NLM_F_REQUEST;
 	msg_header.nlh.nlmsg_pid = 0;
 	msg_header.nlh.nlmsg_seq = nlmsg_seq++;
 	msg_header.radio = 0;
 	msg_header.wmsg.type = PTT_MSG_DIAG_CMDS_TYPE;
-	msg_header.wmsg.length = skb->len;
+	msg_header.wmsg.length = cpu_to_be16(skb->len);
 
 	if (unlikely(skb_headroom(skb) < sizeof(msg_header))) {
 		pr_err("VPKT [%d]: Insufficient headroom, head[%p], data[%p], req[%zu]",
@@ -619,8 +616,7 @@ static int send_filled_buffers_to_user(void)
 		spin_unlock_irqrestore(&gwlan_logging.spin_lock, flags);
 		/* 4 extra bytes for the radio idx */
 		payload_len = plog_msg->filled_length +
-			sizeof(wnl->radio) + sizeof(tAniHdr) +
-			sizeof(struct nlmsghdr);
+			sizeof(wnl->radio) + sizeof(tAniHdr);
 
 		tot_msg_len = NLMSG_SPACE(payload_len);
 		nlh = nlmsg_put(skb, 0, nlmsg_seq++,
@@ -704,15 +700,18 @@ void wlan_report_log_completion(uint32_t is_fatal,
  */
 void send_flush_completion_to_user(void)
 {
-	uint32_t is_fatal, indicator, reason_code;
+	uint32_t is_fatal, indicator, reason_code, is_ssr_needed;
 
-	vos_get_log_completion(&is_fatal, &indicator, &reason_code);
+	vos_get_log_and_reset_completion(&is_fatal, &indicator, &reason_code,
+					 &is_ssr_needed);
 
 	/* Error on purpose, so that it will get logged in the kmsg */
 	LOGGING_TRACE(VOS_TRACE_LEVEL_ERROR,
 			"%s: Sending flush done to userspace", __func__);
 
 	wlan_report_log_completion(is_fatal, indicator, reason_code);
+	if (is_ssr_needed)
+		vos_wlanRestart();
 }
 
 /**
@@ -725,6 +724,7 @@ static int wlan_logging_thread(void *Arg)
 {
 	int ret_wait_status = 0;
 	int ret = 0;
+	unsigned long flags;
 
 	set_user_nice(current, -2);
 
@@ -760,6 +760,10 @@ static int wlan_logging_thread(void *Arg)
 			if (-ENOMEM == ret) {
 				msleep(200);
 			}
+			if (WLAN_LOG_INDICATOR_HOST_ONLY ==
+						 vos_get_log_indicator()) {
+				send_flush_completion_to_user();
+			}
 		}
 
 		if (test_and_clear_bit(HOST_LOG_PER_PKT_STATS,
@@ -782,6 +786,12 @@ static int wlan_logging_thread(void *Arg)
 				send_flush_completion_to_user();
 			} else {
 				gwlan_logging.is_flush_complete = true;
+				/* Flush all current host logs*/
+				spin_lock_irqsave(&gwlan_logging.spin_lock,
+						  flags);
+				wlan_queue_logmsg_for_app();
+				spin_unlock_irqrestore(&gwlan_logging.spin_lock,
+						       flags);
 				set_bit(HOST_LOG_DRIVER_MSG,
 						&gwlan_logging.eventFlag);
 				set_bit(HOST_LOG_PER_PKT_STATS,
@@ -1074,7 +1084,8 @@ void wlan_logging_set_log_level(void)
  */
 void wlan_logging_set_fw_flush_complete(void)
 {
-	if (gwlan_logging.is_active == false)
+	if (gwlan_logging.is_active == false ||
+		!vos_is_fatal_event_enabled())
 		return;
 
 	set_bit(HOST_LOG_FW_FLUSH_COMPLETE, &gwlan_logging.eventFlag);
@@ -1121,8 +1132,8 @@ static int wlan_get_pkt_stats_free_node(void)
 		ret = 1;
 	}
 
-	/* Reset the skb values, essential if dequeued from filled list */
-	skb_trim(gwlan_logging.pkt_stats_pcur_node->skb, 0);
+	/* Reset the current node values */
+	gwlan_logging.pkt_stats_pcur_node->skb->len = 0;
 	return ret;
 }
 
@@ -1193,7 +1204,8 @@ void wlan_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data)
 					pktlog_hdr->size),
 					data, pktlog_hdr->size);
 
-	if (pkt_stats_dump->type == STOP_MONITOR) {
+	if (pkt_stats_dump &&
+		pkt_stats_dump->type == STOP_MONITOR) {
 		wake_up_thread = true;
 		wlan_get_pkt_stats_free_node();
 	}
@@ -1276,7 +1288,7 @@ static void send_packetdump(adf_nbuf_t netbuf, uint8_t status,
 		return;
 
 	pktlog_hdr.log_type = PKTLOG_TYPE_PKT_DUMP;
-	pktlog_hdr.size = sizeof(pd_hdr) + adf_nbuf_len(netbuf);
+	pktlog_hdr.size = sizeof(pd_hdr) + netbuf->len;
 
 	pd_hdr.status = status;
 	pd_hdr.type = type;
@@ -1332,7 +1344,6 @@ void wlan_deregister_txrx_packetdump(void)
 	if (gtx_count || grx_count) {
 		ol_deregister_packetdump_callback();
 		pe_deregister_packetdump_callback();
-		htt_deregister_packetdump_callback();
 		send_packetdump_monitor(STOP_MONITOR);
 		csr_packetdump_timer_stop();
 
@@ -1432,12 +1443,36 @@ static void rx_packetdump_cb(adf_nbuf_t netbuf, uint8_t status,
  */
 void wlan_register_txrx_packetdump(void)
 {
-	ol_register_packetdump_callback(tx_packetdump_cb);
+	ol_register_packetdump_callback(tx_packetdump_cb,
+				rx_packetdump_cb);
 	pe_register_packetdump_callback(rx_packetdump_cb);
-	htt_register_packetdump_callback(rx_packetdump_cb);
 	send_packetdump_monitor(START_MONITOR);
 
 	gtx_count = 0;
 	grx_count = 0;
 }
+
+/**
+ * wlan_flush_host_logs_for_fatal() - Flush host logs
+ *
+ * This function is used to send signal to the logger thread to
+ * Flush the host logs
+ *
+ * Return: None
+ */
+void wlan_flush_host_logs_for_fatal(void)
+{
+	unsigned long flags;
+
+	if (vos_is_log_report_in_progress()) {
+		pr_info("%s:flush all host logs Setting HOST_LOG_POST_MASK\n",
+			 __func__);
+		spin_lock_irqsave(&gwlan_logging.spin_lock, flags);
+		wlan_queue_logmsg_for_app();
+		spin_unlock_irqrestore(&gwlan_logging.spin_lock, flags);
+		set_bit(HOST_LOG_DRIVER_MSG, &gwlan_logging.eventFlag);
+		wake_up_interruptible(&gwlan_logging.wait_queue);
+	}
+}
+
 #endif /* WLAN_LOGGING_SOCK_SVC_ENABLE */

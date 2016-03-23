@@ -1006,61 +1006,29 @@ send_frame1:
     {
         vos_mem_copy(pFrame, pMbMsg->data, nBytes);
     }
-
 #ifdef WLAN_FEATURE_11W
     pActionHdr = (tpSirMacActionFrameHdr) (pFrame + sizeof(tSirMacMgmtHdr));
+    pMacHdr = (tpSirMacMgmtHdr)pFrame;
+    /*
+     * Setting Protected bit only for Robust Action Frames
+     * This has to be based on the current Connection with the station
+     * limSetProtectedBit API will set the protected bit if connection is PMF
+     */
+    psessionEntry = peFindSessionByBssid(pMac,
+         (tANI_U8*)pMbMsg->data + BSSID_OFFSET, &sessionId);
 
     /*
-     * Setting Protected bit for SA_QUERY Action Frame
-     * This has to be based on the current Connection with the station
-     * limSetProtectedBit API will set the protected bit if connection if PMF
+     * Check for session corresponding to ADDR2 ss supplicant is filling
+     *  ADDR2  with BSSID
      */
+    if (NULL == psessionEntry)
+       psessionEntry = peFindSessionByBssid(pMac,
+               (tANI_U8*)pMbMsg->data + ADDR2_OFFSET, &sessionId);
 
-    if ((SIR_MAC_MGMT_ACTION == pFc->subType) &&
-        (SIR_MAC_ACTION_SA_QUERY == pActionHdr->category))
-    {
-        pMacHdr    = (tpSirMacMgmtHdr ) pFrame;
-        psessionEntry = peFindSessionByBssid(pMac,
-                        (tANI_U8*)pMbMsg->data + BSSID_OFFSET, &sessionId);
-
-        /* Check for session corresponding to ADDR2 ss supplicant is filling
-           ADDR2  with BSSID */
-        if(NULL == psessionEntry)
-        {
-            psessionEntry = peFindSessionByBssid(pMac,
-                       (tANI_U8*)pMbMsg->data + ADDR2_OFFSET, &sessionId);
-        }
-
-        if(NULL != psessionEntry)
-        {
-            limSetProtectedBit(pMac, psessionEntry, pMacHdr->da, pMacHdr);
-        }
-        else
-        {
-            limLog(pMac, LOGE,
-                FL("Dropping SA Query frame - Unable to find PE Session"));
-            limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF,
-                    eHAL_STATUS_FAILURE, pMbMsg->sessionId, 0);
-            palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
-                    ( void* ) pFrame, ( void* ) pPacket );
-            return;
-        }
-
-        /*
-         * If wep bit is not set in MAC header then we are trying to
-         * send SA Query via non PMF connection. Drop the packet.
-         */
-
-        if(0 ==  pMacHdr->fc.wep)
-        {
-            limLog(pMac, LOGE,
-                FL("Dropping SA Query frame due to non PMF connection"));
-            limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF,
-                    eHAL_STATUS_FAILURE, pMbMsg->sessionId, 0);
-            palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
-                    ( void* ) pFrame, ( void* ) pPacket );
-            return;
-        }
+    if (psessionEntry && (SIR_MAC_MGMT_ACTION == pFc->subType) &&
+        psessionEntry->limRmfEnabled && (!limIsGroupAddr(pMacHdr->da)) &&
+        lim_is_robust_mgmt_action_frame(pActionHdr->category)) {
+        limSetProtectedBit(pMac, psessionEntry, pMacHdr->da, pMacHdr);
     }
 #endif
 

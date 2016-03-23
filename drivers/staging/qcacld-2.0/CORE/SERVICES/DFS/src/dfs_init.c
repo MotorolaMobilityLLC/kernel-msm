@@ -105,7 +105,7 @@ void dfs_reset_alldelaylines(struct ath_dfs *dfs)
                 ft = dfs->dfs_radarf[i];
                 if (NULL != ft) {
                     for (j = 0; j < ft->ft_numfilters; j++) {
-                        rf = &(ft->ft_filters[j]);
+                        rf = ft->ft_filters[j];
                         dl = &(rf->rf_dl);
                         if (dl != NULL) {
                             OS_MEMZERO(dl, sizeof(struct dfs_delayline));
@@ -137,7 +137,7 @@ void dfs_reset_filter_delaylines(struct dfs_filtertype *dft)
         int i;
         struct dfs_filter *df;
         for (i=0; i< DFS_MAX_NUM_RADAR_FILTERS; i++) {
-                df = &dft->ft_filters[i];
+                df = dft->ft_filters[i];
                 dfs_reset_delayline(&(df->rf_dl));
         }
 }
@@ -284,7 +284,7 @@ int dfs_init_radar_filters(struct ieee80211com *ic,
         }
         dfs->dfs_rinfo.rn_numradars++;
     }
-    rf = &(ft->ft_filters[ft->ft_numfilters++]);
+    rf = ft->ft_filters[ft->ft_numfilters++];
     dfs_reset_delayline(&rf->rf_dl);
     numpulses = dfs_radars[p].rp_numpulses;
 

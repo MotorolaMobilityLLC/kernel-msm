@@ -1274,10 +1274,8 @@ static void __hdd_wmm_do_implicit_qos(struct work_struct *work)
    pAdapter = pQosContext->pAdapter;
 
    hdd_ctx = WLAN_HDD_GET_CTX(pAdapter);
-   if (0 != wlan_hdd_validate_context(hdd_ctx)) {
-       hddLog(LOGE, FL("HDD context is not valid"));
+   if (0 != wlan_hdd_validate_context(hdd_ctx))
        return;
-   }
 
    acType = pQosContext->acType;
    pAc = &pAdapter->hddWmmStatus.wmmAcStatus[acType];

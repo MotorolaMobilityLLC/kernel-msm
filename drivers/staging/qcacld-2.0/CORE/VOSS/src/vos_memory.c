@@ -105,7 +105,7 @@ static struct s_vos_mem_usage_struct g_usage_mem_buf[MAX_USAGE_TRACE_BUF_NUM];
  * Preprocessor Definitions and Constants
  * ------------------------------------------------------------------------*/
 
-#define VOS_GET_MEMORY_TIME_THRESHOLD 3000
+#define VOS_GET_MEMORY_TIME_THRESHOLD 300
 
 /*---------------------------------------------------------------------------
  * Type Declarations

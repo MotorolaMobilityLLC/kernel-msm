@@ -1917,12 +1917,6 @@ void pmmSendWowlAddBcastPtrn(tpAniSirGlobal pMac,  tpSirMsgQ pMsg)
     }
     vos_mem_copy(pBcastPtrn, pMbMsg->data, sizeof(*pBcastPtrn));
 
-    if (NULL == pBcastPtrn)
-    {
-        pmmLog(pMac, LOGE, FL("Add broadcast pattern message is NULL "));
-        return;
-    }
-
     msgQ.type = WDA_WOWL_ADD_BCAST_PTRN;
     msgQ.reserved = 0;
     msgQ.bodyptr = pBcastPtrn;

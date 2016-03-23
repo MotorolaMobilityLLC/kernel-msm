@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -55,6 +55,7 @@ int wma_ocb_set_config_resp(tp_wma_handle wma_handle, uint8_t status)
 	 */
 	if (status == VOS_STATUS_SUCCESS) {
 		if (vdev && req) {
+			/* Save the channel info in the vdev */
 			if (vdev->ocb_channel_info)
 				vos_mem_free(vdev->ocb_channel_info);
 			vdev->ocb_channel_count =
@@ -78,6 +79,14 @@ int wma_ocb_set_config_resp(tp_wma_handle wma_handle, uint8_t status)
 				}
 			} else {
 				vdev->ocb_channel_info = 0;
+			}
+
+			/* Default TX parameter */
+			if (!ol_txrx_set_ocb_def_tx_param(vdev,
+				req->def_tx_param, req->def_tx_param_size)) {
+				/* Setting the default param failed */
+				WMA_LOGE(FL("Invalid default TX parameters"));
+				status = VOS_STATUS_E_INVAL;
 			}
 		}
 	}

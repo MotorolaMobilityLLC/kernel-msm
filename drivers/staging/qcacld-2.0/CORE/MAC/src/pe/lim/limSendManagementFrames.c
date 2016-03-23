@@ -240,7 +240,7 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
 {
     tDot11fProbeRequest pr;
     tANI_U32            nStatus, nBytes, nPayload;
-    tSirRetStatus       nSirStatus, extcap_status;
+    tSirRetStatus       nSirStatus;
     tANI_U8            *pFrame;
     void               *pPacket;
     eHalStatus          halstatus;
@@ -251,6 +251,8 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
     tANI_U8             smeSessionId = 0;
     bool                isVHTEnabled = false;
     uint16_t addn_ielen = nAdditionalIELen;
+    bool                extracted_ext_cap_flag = true;
+    tDot11fIEExtCap     extracted_ext_cap;
 
 
 
@@ -395,14 +397,25 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
                                "0x%08x)."), nStatus );
     }
 
-    /* Strip extended capability IE (if present). FW will add that IE */
     if (addn_ielen) {
-        extcap_status = lim_strip_extcap_ie(pMac, pAdditionalIE, &addn_ielen,
-                                            NULL);
-        if (eSIR_SUCCESS != extcap_status)
-            limLog(pMac, LOGE,
-                   FL("Error:(%d) stripping extcap IE"), extcap_status);
 
+        vos_mem_set((tANI_U8 *)&extracted_ext_cap,
+                     sizeof(tDot11fIEExtCap), 0);
+        nSirStatus = lim_strip_extcap_update_struct(pMac, pAdditionalIE,
+                                      &addn_ielen,
+                                      &extracted_ext_cap);
+        if (eSIR_SUCCESS != nSirStatus) {
+            extracted_ext_cap_flag = eANI_BOOLEAN_FALSE;
+            limLog(pMac, LOG1,
+                 FL("Unable to Stripoff ExtCap IE from Probe Req"));
+        } else {
+            struct s_ext_cap *p_ext_cap = (struct s_ext_cap *)
+                                          extracted_ext_cap.bytes;
+            if (p_ext_cap->interworkingService)
+                p_ext_cap->qosMap = 1;
+
+            extracted_ext_cap_flag = lim_is_ext_cap_ie_present(p_ext_cap);
+        }
     }
 
     nBytes = nPayload + sizeof( tSirMacMgmtHdr ) + addn_ielen;
@@ -433,6 +446,10 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
                     ( void* ) pFrame, ( void* ) pPacket );
         return nSirStatus;      // allocated!
     }
+
+    /* merge the ExtCap struct*/
+    if (extracted_ext_cap_flag)
+        lim_merge_extcap_struct(&pr.ExtCap, &extracted_ext_cap);
 
     // That done, pack the Probe Request:
     nStatus = dot11fPackProbeRequest( pMac, &pr, pFrame +
@@ -2064,20 +2081,9 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
         {
             struct s_ext_cap *p_ext_cap = (struct s_ext_cap *)
                                           extractedExtCap.bytes;
-            if (p_ext_cap->interworkingService ||
-                            p_ext_cap->bssTransition)
+            if (p_ext_cap->interworkingService)
                 p_ext_cap->qosMap = 1;
-            else {
-                /* No need to merge the EXT Cap from Supplicant
-                 * if interworkingService or bsstransition is not set,
-                 * as currently driver is only interested in
-                 * interworkingService and bsstransition capability from
-                 * supplicant.
-                 * if in future any other EXT Cap info is required from
-                 * supplicant it needs to be handled here.
-                 */
-                 extractedExtCapFlag = eANI_BOOLEAN_FALSE;
-            }
+            extractedExtCapFlag = lim_is_ext_cap_ie_present(p_ext_cap);
         }
     } else {
         limLog(pMac, LOG1,

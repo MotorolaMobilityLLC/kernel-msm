@@ -42,6 +42,7 @@
 #ifdef QCA_ARP_SPOOFING_WAR
 #include <ol_if_athvar.h>
 #endif
+#include "ol_tx.h"
 
 
 /*
@@ -233,6 +234,7 @@ ol_rx_fwd_check(
                         htt_rx_msdu_desc_free(pdev->htt_pdev, msdu);
                         ol_rx_fwd_to_tx(tx_vdev, msdu);
                         msdu = NULL; /* already handled this MSDU */
+                        vdev->fwd_to_tx_packets++;
                         TXRX_STATS_ADD(pdev, pub.rx.intra_bss_fwd.packets_fwd,
                                 1);
                 } else {
@@ -263,3 +265,27 @@ ol_rx_fwd_check(
         }
     }
 }
+
+/* ol_rx_get_fwd_to_tx_packet_count() - to get the total rx packets that has
+ * been forwarded to tx without going to OS layer.
+ *
+ * @vdev_id: vdev id
+ *
+ * Return: forwarded packet count if vdev is valid
+ *         0 if vdev is NULL
+ *
+ */
+uint64_t ol_rx_get_fwd_to_tx_packet_count(uint8_t vdev_id)
+{
+	struct ol_txrx_vdev_t *vdev = NULL;
+
+	vdev = (struct ol_txrx_vdev_t *)ol_txrx_get_vdev_from_vdev_id(vdev_id);
+	if (!vdev) {
+		TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
+			"%s: vdev is NULL for vdev id %d", __func__, vdev_id);
+		return 0;
+	}
+
+	return vdev->fwd_to_tx_packets;
+}
+

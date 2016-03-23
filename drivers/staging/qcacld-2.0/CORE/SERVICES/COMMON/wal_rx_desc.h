@@ -68,6 +68,9 @@ struct hw_rx_desc_base {
 };
 #endif
 
+#define FW_MSDU_INFO_FIRST_WAKEUP_M 0x40
+#define FW_MSDU_INFO_FIRST_WAKEUP_S 6
+
 /*
  * This struct defines the basic MSDU rx descriptor created by FW.
  */

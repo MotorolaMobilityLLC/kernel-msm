@@ -123,4 +123,8 @@ static inline tANI_U32 limGetU32(tANI_U8 *ptr)
 #endif
 }
 
+tSirRetStatus lim_send_disassoc_frm_req_ser_des(tpAniSirGlobal mac_ctx,
+                struct sme_send_disassoc_frm_req *disassoc_frm_req,
+                uint8_t *buf);
+
 #endif /* __LIM_SERDES_UTILS_H */

@@ -67,6 +67,15 @@ enum ol_addba_status {
     ol_addba_busy,
 };
 
+enum pn_replay_type {
+    OL_RX_TKIP_REPLAYS,
+    OL_RX_CCMP_REPLAYS,
+    OL_RX_OTHER_REPLAYS,
+
+    /* total replays */
+    OL_RX_NUM_PN_REPLAY_TYPES
+};
+
 enum ol_sec_type {
     ol_sec_type_none,
     ol_sec_type_wep128,
@@ -112,12 +121,8 @@ enum ol_tx_spec {
 
 typedef void (*tp_ol_packetdump_cb)(adf_nbuf_t netbuf,
 				uint8_t status, uint8_t vdev_id, uint8_t type);
-void ol_register_packetdump_callback(tp_ol_packetdump_cb ol_packetdump_cb);
+void ol_register_packetdump_callback(tp_ol_packetdump_cb ol_tx_packetdump_cb,
+				tp_ol_packetdump_cb ol_rx_packetdump_cb);
 void ol_deregister_packetdump_callback(void);
 
-typedef void (*tp_htt_packetdump_cb)(adf_nbuf_t netbuf,
-			uint8_t status, uint8_t vdev_id, uint8_t type);
-
-void htt_register_packetdump_callback(tp_htt_packetdump_cb htt_packetdump_cb);
-void htt_deregister_packetdump_callback(void);
 #endif /* _OL_TXRX_API__H_ */

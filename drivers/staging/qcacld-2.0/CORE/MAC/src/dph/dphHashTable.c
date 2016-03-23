@@ -255,7 +255,7 @@ tpDphHashNode dphInitStaState(tpAniSirGlobal pMac, tSirMacAddr staAddr,
     pStaDs = getNode(pMac, (tANI_U8) assocId, pDphHashTable);
     staIdx = pStaDs->staIndex;
 
-    PELOG1(limLog(pMac, LOG1, FL("Assoc Id %d, Addr %08X"), assocId, pStaDs);)
+    PELOG1(limLog(pMac, LOG1, FL("Assoc Id %d, Addr %p"), assocId, &pStaDs);)
 
     // Clear the STA node except for the next pointer (last 4 bytes)
     vos_mem_set( (tANI_U8 *) pStaDs, sizeof(tDphHashNode) - sizeof(tpDphHashNode), 0);

@@ -111,7 +111,15 @@ ol_tx_queue_vdev_flush(struct ol_txrx_pdev_t *pdev, struct ol_txrx_vdev_t *vdev)
     /* flush VDEV TX queues */
     for (i = 0; i < OL_TX_VDEV_NUM_QUEUES; i++) {
         txq = &vdev->txqs[i];
-        ol_tx_queue_free(pdev, txq, (i + OL_TX_NUM_TIDS));
+       /*
+        * currently txq of MCAST_BCAST packet is using tid
+        * HTT_TX_EXT_TID_NON_QOS_MCAST_BCAST when instered into scheduler,
+        * so use same tid when flush
+        */
+        if (i == 0)
+            ol_tx_queue_free(pdev, txq, HTT_TX_EXT_TID_NON_QOS_MCAST_BCAST);
+        else
+            ol_tx_queue_free(pdev, txq, (i + OL_TX_NUM_TIDS));
     }
     /* flush PEER TX queues */
     do {
@@ -1029,9 +1037,11 @@ ol_txrx_vdev_pause(ol_txrx_vdev_handle vdev, u_int32_t reason)
         /* use peer_ref_mutex before accessing peer_list */
         adf_os_spin_lock_bh(&pdev->peer_ref_mutex);
         adf_os_spin_lock_bh(&pdev->tx_queue_spinlock);
-        vdev->hl_paused_reason |= reason;
-        TAILQ_FOREACH(peer, &vdev->peer_list, peer_list_elem) {
-            ol_txrx_peer_pause_base(pdev, peer);
+        if((vdev->hl_paused_reason & reason) == 0) {
+            vdev->hl_paused_reason |= reason;
+            TAILQ_FOREACH(peer, &vdev->peer_list, peer_list_elem) {
+                ol_txrx_peer_pause_base(pdev, peer);
+            }
         }
         adf_os_spin_unlock_bh(&pdev->tx_queue_spinlock);
         adf_os_spin_unlock_bh(&pdev->peer_ref_mutex);

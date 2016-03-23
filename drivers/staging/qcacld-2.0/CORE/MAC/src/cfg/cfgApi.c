@@ -869,7 +869,8 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
              LIM_IS_BT_AMP_STA_ROLE(sessionEntry) ||
              LIM_IS_STA_ROLE(sessionEntry))
         pCapInfo->ess = 1; // ESS bit
-    else if (LIM_IS_P2P_DEVICE_ROLE(sessionEntry)) {
+    else if (LIM_IS_P2P_DEVICE_ROLE(sessionEntry) ||
+             LIM_IS_NDI_ROLE(sessionEntry)) {
         pCapInfo->ess = 0;
         pCapInfo->ibss = 0;
     }
@@ -973,7 +974,7 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
 #if defined WLAN_FEATURE_VOWIFI
     pCapInfo->rrm = pMac->rrm.rrmSmeContext.rrmConfig.rrm_enabled;
 #if defined WLAN_VOWIFI_DEBUG
-    cfgLog( pMac, LOGE, "RRM = %d", pCapInfo->rrm);
+    cfgLog( pMac, LOG1, "RRM = %d", pCapInfo->rrm);
 #endif
 #endif
 

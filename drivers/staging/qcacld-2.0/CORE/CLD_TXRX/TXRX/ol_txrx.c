@@ -418,6 +418,12 @@ ol_txrx_pdev_attach(
         goto fail2;
     }
 
+    htt_register_rx_pkt_dump_callback(pdev->htt_pdev,
+                          ol_rx_pkt_dump_call);
+
+    adf_os_mem_zero(pdev->pn_replays,
+                    OL_RX_NUM_PN_REPLAY_TYPES * sizeof(uint32_t));
+
 #ifdef IPA_UC_OFFLOAD
     /* Attach micro controller data path offload resource */
     if (ol_cfg_ipa_uc_offload_enabled(ctrl_pdev)) {
@@ -918,6 +924,8 @@ ol_txrx_pdev_detach(ol_txrx_pdev_handle pdev, int force)
         ol_txrx_peer_find_hash_erase(pdev);
     }
 
+    htt_deregister_rx_pkt_dump_callback(pdev->htt_pdev);
+
     /* Stop the communication between HTT and target at first */
     htt_detach_target(pdev->htt_pdev);
 
@@ -1033,6 +1041,7 @@ ol_txrx_vdev_attach(
     vdev->safemode = 0;
     vdev->drop_unenc = 1;
     vdev->num_filters = 0;
+    vdev->fwd_to_tx_packets = 0;
 #if defined(CONFIG_PER_VDEV_TX_DESC_POOL)
     adf_os_atomic_init(&vdev->tx_desc_count);
 #endif
@@ -2509,6 +2518,92 @@ a_bool_t ol_txrx_get_ocb_peer(struct ol_txrx_pdev_t *pdev, struct ol_txrx_peer_t
 
 exit:
     return rc;
+}
+
+#define MAX_TID         15
+#define MAX_DATARATE    7
+#define OCB_HEADER_VERSION 1
+
+/**
+ * ol_txrx_set_ocb_def_tx_param() - Set the default OCB TX parameters
+ * @vdev: The OCB vdev that will use these defaults.
+ * @_def_tx_param: The default TX parameters.
+ * @def_tx_param_size: The size of the _def_tx_param buffer.
+ *
+ * Return: true if the default parameters were set correctly, false if there
+ * is an error, for example an invalid parameter. In the case that false is
+ * returned, see the kernel log for the error description.
+ */
+bool ol_txrx_set_ocb_def_tx_param(ol_txrx_vdev_handle vdev,
+	void *_def_tx_param, uint32_t def_tx_param_size)
+{
+	struct ocb_tx_ctrl_hdr_t *def_tx_param =
+		(struct ocb_tx_ctrl_hdr_t *)_def_tx_param;
+
+	if (def_tx_param) {
+		/*
+		 * Default TX parameters are provided.
+		 * Validate the contents and
+		 * save them in the vdev.
+		 */
+		if (def_tx_param_size != sizeof(struct ocb_tx_ctrl_hdr_t)) {
+			VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+			    "Invalid size of OCB default TX params");
+			return false;
+		}
+
+		if (def_tx_param->version != OCB_HEADER_VERSION) {
+			VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+				  "Invalid version of OCB default TX params");
+			return false;
+		}
+
+		if (def_tx_param->channel_freq) {
+			int i;
+			for (i = 0; i < vdev->ocb_channel_count; i++) {
+				if (vdev->ocb_channel_info[i].chan_freq ==
+						def_tx_param->channel_freq)
+					break;
+			}
+			if (i == vdev->ocb_channel_count) {
+				VOS_TRACE(VOS_MODULE_ID_TXRX,
+					  VOS_TRACE_LEVEL_ERROR,
+					  "Invalid default channel frequency");
+				return false;
+			}
+		}
+
+		if (def_tx_param->valid_datarate &&
+			    def_tx_param->datarate > MAX_DATARATE) {
+			VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+				  "Invalid default datarate");
+			return false;
+		}
+
+		if (def_tx_param->valid_tid &&
+			    def_tx_param->ext_tid > MAX_TID) {
+			VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+				  "Invalid default TID");
+			return false;
+		}
+
+		if (vdev->ocb_def_tx_param == NULL)
+			vdev->ocb_def_tx_param =
+				vos_mem_malloc(sizeof(*vdev->ocb_def_tx_param));
+		vos_mem_copy(vdev->ocb_def_tx_param, def_tx_param,
+			     sizeof(*vdev->ocb_def_tx_param));
+	} else {
+		/*
+		 * Default TX parameters are not provided.
+		 * Delete the old defaults.
+		 */
+		if (vdev->ocb_def_tx_param) {
+			vos_mem_free(vdev->ocb_def_tx_param);
+			vdev->ocb_def_tx_param = NULL;
+		}
+	}
+
+	return true;
 }
 
 #ifdef IPA_UC_OFFLOAD

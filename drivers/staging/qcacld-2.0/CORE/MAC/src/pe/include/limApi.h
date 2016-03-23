@@ -72,6 +72,8 @@
                    (GET_LIM_SYSTEM_ROLE(psessionEntry) == eLIM_P2P_DEVICE_ROLE)
 #define LIM_IS_P2P_DEVICE_GO(psessionEntry)   \
                    (GET_LIM_SYSTEM_ROLE(psessionEntry) == eLIM_P2P_DEVICE_GO)
+#define LIM_IS_NDI_ROLE(psessionEntry)   \
+                   (GET_LIM_SYSTEM_ROLE(psessionEntry) == eLIM_NDI_ROLE)
 /* gLimSmeState */
 #define GET_LIM_SME_STATE(pMac)                 (pMac->lim.gLimSmeState)
 #define SET_LIM_SME_STATE(pMac, state)          (pMac->lim.gLimSmeState = state)

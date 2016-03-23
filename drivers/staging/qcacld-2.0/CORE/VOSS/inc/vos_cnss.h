@@ -44,6 +44,12 @@ enum cnss_bus_width_type {
 	CNSS_BUS_WIDTH_HIGH
 };
 
+static inline u8 *vos_get_cnss_wlan_mac_buff(struct device *dev, uint32_t *num)
+{
+	*num = 0;
+	return NULL;
+}
+
 static inline void vos_init_work(struct work_struct *work, work_func_t func)
 {
 	INIT_WORK(work, func);
@@ -108,12 +114,6 @@ static inline void vos_get_boottime_ts(struct timespec *ts)
 	ktime_get_ts(ts);
 }
 
-static inline int vos_get_ramdump_mem(unsigned long *address,
-				unsigned long *size)
-{
-	return 0;
-}
-
 static inline void *vos_get_virt_ramdump_mem(unsigned long *size)
 {
 	return NULL;
@@ -134,7 +134,10 @@ static inline int vos_set_cpus_allowed_ptr(struct task_struct *task, ulong cpu)
 #endif
 
 static inline void vos_device_self_recovery(void) { return; }
-static inline void vos_request_pm_qos(u32 qos_val) { return; }
+static inline void vos_request_pm_qos_type(int latency_type, u32 qos_val)
+{
+	return;
+}
 static inline void vos_remove_pm_qos(void) { return; }
 static inline int vos_request_bus_bandwidth(int bandwidth) { return 0; }
 static inline int vos_get_platform_cap(void *cap) { return 1; }
@@ -214,7 +217,21 @@ static inline int vos_unregister_oob_irq_handler(void *pm_oob)
 {
 	return -ENOSYS;
 }
-#else
+
+static inline void vos_dump_stack (struct task_struct *task)
+{
+}
+#else /* END WLAN_OPEN_SOURCE and !CONFIG_CNSS */
+static inline void vos_dump_stack (struct task_struct *task)
+{
+	cnss_dump_stack(task);
+}
+
+static inline u8 *vos_get_cnss_wlan_mac_buff(struct device *dev, uint32_t *num)
+{
+	return cnss_get_wlan_mac_address(dev, num);
+}
+
 static inline void vos_init_work(struct work_struct *work, work_func_t func)
 {
 	cnss_init_work(work, func);
@@ -304,23 +321,15 @@ static inline void vos_get_boottime_ts(struct timespec *ts)
         cnss_get_boottime(ts);
 }
 
-#ifdef CONFIG_CNSS_PCI
-static inline void vos_request_pm_qos(u32 qos_val)
+static inline void vos_request_pm_qos_type(int latency_type, u32 qos_val)
 {
-	cnss_request_pm_qos(qos_val);
+	cnss_request_pm_qos_type(latency_type, qos_val);
 }
-#else
-static inline void vos_request_pm_qos(u32 qos_val) {}
-#endif
 
-#ifdef CONFIG_CNSS_PCI
 static inline void vos_remove_pm_qos(void)
 {
 	cnss_remove_pm_qos();
 }
-#else
-static inline void vos_remove_pm_qos(void) {}
-#endif
 
 static inline int vos_vendor_cmd_reply(struct sk_buff *skb)
 {
@@ -401,7 +410,7 @@ static inline int vos_request_bus_bandwidth(int bandwidth)
 }
 #endif
 
-#ifdef CONFIG_CNSS_PCI
+#if (defined(CONFIG_CNSS_PCI)) && (defined(CONFIG_CNSS_SECURE_FW))
 static inline int vos_get_sha_hash(const u8 *data, u32 data_len,
 				u8 *hash_idx, u8 *out)
 {
@@ -433,12 +442,6 @@ static inline int vos_wlan_pm_control(bool vote)
 }
 #endif
 
-static inline int vos_get_ramdump_mem(unsigned long *address,
-				unsigned long *size)
-{
-	return cnss_get_ramdump_mem(address, size);
-}
-
 static inline int vos_get_platform_cap(void *cap)
 {
 	return cnss_get_platform_cap(cap);
@@ -449,10 +452,17 @@ static inline int vos_get_bmi_setup(void)
 	return cnss_get_bmi_setup();
 }
 
+#ifdef CONFIG_CNSS_SECURE_FW
 static inline void *vos_get_fw_ptr(void)
 {
 	return cnss_get_fw_ptr();
 }
+#else
+static inline void *vos_get_fw_ptr(void)
+{
+	return NULL;
+}
+#endif
 
 static inline int vos_auto_suspend(void)
 {
@@ -553,7 +563,7 @@ static inline int vos_unregister_oob_irq_handler(void *pm_oob)
 {
 	return -ENOSYS;
 }
-#endif
-#endif
+#endif /*END CONFIG_CNSS_SDIO */
+#endif /* CONFIG_CNSS */
 
 #endif/* _VOS_CNSS_H */

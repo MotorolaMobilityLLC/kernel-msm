@@ -497,6 +497,7 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_RSSI_BREACH_MONITOR_CONFIG_CMDID);
                 CASE_RETURN_STRING(WMI_LRO_CONFIG_CMDID);
                 CASE_RETURN_STRING(WMI_TRANSFER_DATA_TO_FLASH_CMDID);
+		CASE_RETURN_STRING(WMI_CONFIG_ENHANCED_MCAST_FILTER_CMDID);
                 CASE_RETURN_STRING(WMI_MAWC_SENSOR_REPORT_IND_CMDID);
                 CASE_RETURN_STRING(WMI_ROAM_CONFIGURE_MAWC_CMDID);
                 CASE_RETURN_STRING(WMI_NLO_CONFIGURE_MAWC_CMDID);
@@ -584,6 +585,7 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_PDEV_SET_LED_CONFIG_CMDID);
 		CASE_RETURN_STRING(WMI_HOST_AUTO_SHUTDOWN_CFG_CMDID);
 		CASE_RETURN_STRING(WMI_CHAN_AVOID_UPDATE_CMDID);
+		CASE_RETURN_STRING(WMI_COEX_CONFIG_CMDID);
 		CASE_RETURN_STRING(WMI_WOW_IOAC_ADD_KEEPALIVE_CMDID);
 		CASE_RETURN_STRING(WMI_WOW_IOAC_DEL_KEEPALIVE_CMDID);
 		CASE_RETURN_STRING(WMI_WOW_IOAC_ADD_WAKE_PATTERN_CMDID);
@@ -641,8 +643,11 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_DEBUG_MESG_FLUSH_CMDID);
 		CASE_RETURN_STRING(WMI_PEER_SET_RATE_REPORT_CONDITION_CMDID);
 		CASE_RETURN_STRING(WMI_SOC_SET_PCL_CMDID);
+		CASE_RETURN_STRING(WMI_PDEV_SET_PCL_CMDID);
 		CASE_RETURN_STRING(WMI_SOC_SET_HW_MODE_CMDID);
+		CASE_RETURN_STRING(WMI_PDEV_SET_HW_MODE_CMDID);
 		CASE_RETURN_STRING(WMI_SOC_SET_DUAL_MAC_CONFIG_CMDID);
+		CASE_RETURN_STRING(WMI_PDEV_SET_MAC_CONFIG_CMDID);
 		CASE_RETURN_STRING(WMI_WOW_ENABLE_ICMPV6_NA_FLT_CMDID);
 		CASE_RETURN_STRING(WMI_DIAG_EVENT_LOG_CONFIG_CMDID);
 		CASE_RETURN_STRING(WMI_PACKET_FILTER_CONFIG_CMDID);
@@ -651,6 +656,7 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_WOW_UDP_SVC_OFLD_CMDID);
 		CASE_RETURN_STRING(WMI_MGMT_TX_SEND_CMDID);
 		CASE_RETURN_STRING(WMI_SOC_SET_ANTENNA_MODE_CMDID);
+		CASE_RETURN_STRING(WMI_PDEV_SET_ANTENNA_MODE_CMDID);
 		CASE_RETURN_STRING(WMI_WOW_HOSTWAKEUP_GPIO_PIN_PATTERN_CONFIG_CMDID);
 		CASE_RETURN_STRING(WMI_AP_PS_EGAP_PARAM_CMDID);
 		CASE_RETURN_STRING(WMI_PMF_OFFLOAD_SET_SA_QUERY_CMDID);
@@ -678,6 +684,7 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_VDEV_ATF_REQUEST_CMDID);
 		CASE_RETURN_STRING(WMI_VDEV_SET_DSCP_TID_MAP_CMDID);
 		CASE_RETURN_STRING(WMI_VDEV_FILTER_NEIGHBOR_RX_PACKETS_CMDID);
+		CASE_RETURN_STRING(WMI_VDEV_SET_QUIET_MODE_CMDID);
 		CASE_RETURN_STRING(WMI_PEER_SMART_ANT_SET_TX_ANTENNA_CMDID);
 		CASE_RETURN_STRING(WMI_PEER_SMART_ANT_SET_TRAIN_INFO_CMDID);
 		CASE_RETURN_STRING(WMI_PEER_SMART_ANT_SET_NODE_CONFIG_OPS_CMDID);
@@ -686,6 +693,8 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_QBOOST_CFG_CMDID);
 		CASE_RETURN_STRING(WMI_PDEV_GET_NFCAL_POWER_CMDID);
 		CASE_RETURN_STRING(WMI_ROAM_SET_MBO_PARAM_CMDID);
+		CASE_RETURN_STRING(WMI_CHAN_AVOID_RPT_ALLOW_CMDID);
+		CASE_RETURN_STRING(WMI_SET_PERIODIC_CHANNEL_STATS_CONFIG_CMDID);
         }
 	return "Invalid WMI cmd";
 }
@@ -1123,14 +1132,16 @@ wmi_unified_detach(struct wmi_unified* wmi_handle)
 {
     wmi_buf_t buf;
 
-    vos_flush_work(&wmi_handle->rx_event_work);
-    adf_os_spin_lock_bh(&wmi_handle->eventq_lock);
-    buf = adf_nbuf_queue_remove(&wmi_handle->event_queue);
-    while (buf) {
-	adf_nbuf_free(buf);
-	buf = adf_nbuf_queue_remove(&wmi_handle->event_queue);
+    if (wmi_handle != NULL) {
+        vos_flush_work(&wmi_handle->rx_event_work);
+        adf_os_spin_lock_bh(&wmi_handle->eventq_lock);
+        buf = adf_nbuf_queue_remove(&wmi_handle->event_queue);
+        while (buf) {
+            adf_nbuf_free(buf);
+            buf = adf_nbuf_queue_remove(&wmi_handle->event_queue);
+        }
+        adf_os_spin_unlock_bh(&wmi_handle->eventq_lock);
     }
-    adf_os_spin_unlock_bh(&wmi_handle->eventq_lock);
     if (wmi_handle != NULL) {
         OS_FREE(wmi_handle);
         wmi_handle = NULL;

@@ -942,7 +942,9 @@ WLANSAP_RoamCallback
                              "eCSR_ROAM_RESULT_AUTHENTICATED",
                               roamResult);
             /* Fill in the event structure */
-            sapSignalHDDevent( sapContext, pCsrRoamInfo,eSAP_STA_SET_KEY_EVENT, (v_PVOID_t)eSAP_STATUS_SUCCESS);
+            vosStatus = sapSignalHDDevent(sapContext,
+                                  pCsrRoamInfo,eSAP_STA_SET_KEY_EVENT,
+                                  (v_PVOID_t)eSAP_STATUS_SUCCESS);
             if(!VOS_IS_STATUS_SUCCESS(vosStatus))
             {
                 halStatus = eHAL_STATUS_FAILURE;

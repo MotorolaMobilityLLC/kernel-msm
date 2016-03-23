@@ -259,9 +259,10 @@ limCollectBssDescription(tpAniSirGlobal pMac,
     pBssDescr->tsf_delta = WDA_GET_RX_TSF_DELTA(pRxPacketInfo);
 
     limLog(pMac, LOG1,
-        FL("BSSID: "MAC_ADDRESS_STR " rssi: normalized = %d, absolute = %d tsf_delta = %u"),
+        FL("BSSID: "MAC_ADDRESS_STR " rssi: normalized = %d, absolute = %d tsf_delta = %u seq %d"),
         MAC_ADDR_ARRAY(pHdr->bssId), pBssDescr->rssi, pBssDescr->rssi_raw,
-        pBssDescr->tsf_delta);
+        pBssDescr->tsf_delta, ((pHdr->seqControl.seqNumHi << 4) |
+              (pHdr->seqControl.seqNumLo)));
 
 #if defined WLAN_FEATURE_VOWIFI
     if( fScanning )

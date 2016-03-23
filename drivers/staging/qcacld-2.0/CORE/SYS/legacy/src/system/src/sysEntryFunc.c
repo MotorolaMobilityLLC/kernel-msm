@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -132,9 +132,9 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
         goto fail;
     }
 
-    PELOG3(sysLog(pMac, LOG3, FL("Rx Mgmt Frame Subtype: %d\n"), subType);
+    sysLog(pMac, LOG3, FL("Rx Mgmt Frame Subtype: %d\n"), subType);
     sirDumpBuf(pMac, SIR_SYS_MODULE_ID, LOG3, (tANI_U8 *)WDA_GET_RX_MAC_HEADER(pBd), WDA_GET_RX_MPDU_LEN(pBd));
-    sirDumpBuf(pMac, SIR_SYS_MODULE_ID, LOG3, WDA_GET_RX_MPDU_DATA(pBd), WDA_GET_RX_PAYLOAD_LEN(pBd));)
+    sirDumpBuf(pMac, SIR_SYS_MODULE_ID, LOG3, WDA_GET_RX_MPDU_DATA(pBd), WDA_GET_RX_PAYLOAD_LEN(pBd));
 
     pMac->sys.gSysFrameCount[type][subType]++;
     framecount = pMac->sys.gSysFrameCount[type][subType];
@@ -149,7 +149,7 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
                 if (psessionEntry &&
                     (psessionEntry->pePersona == VOS_STA_SAP_MODE))
                 {
-                    VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO_HIGH,
+                    sysLog(pMac, LOG1,
                           FL("CAC timer is running, dropping the mgmt frame"));
                     goto fail;
                 }
@@ -163,24 +163,24 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
                 (!limIsSystemInScanState(pMac)) &&
                 (true != GET_LIM_PROCESS_DEFD_MESGS(pMac)) &&
                 !pMac->lim.gLimSystemInScanLearnMode) {
-                VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO_HIGH,
+                sysLog(pMac, LOG1,
                           FL("dropping received beacon in deffered state"));
                 goto fail;
             }
 
             dropReason = limIsPktCandidateForDrop(pMac, pBd, subType);
             if (dropReason != eMGMT_DROP_NO_DROP) {
-                PELOG1(limLog(pMac, LOG1,
+                sysLog(pMac, LOG1,
                             FL("Mgmt Frame %d being dropped, reason: %d\n"),
-                            subType, dropReason);)
-                MTRACE(macTrace(pMac,   TRACE_CODE_RX_MGMT_DROP, NO_SESSION, dropReason);)
+                            subType, dropReason);
+                MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_DROP, NO_SESSION, dropReason));
                 goto fail;
             }
 
             if (subType == SIR_MAC_MGMT_DEAUTH)
             {
                 tpSirMacMgmtHdr pMacHdr = WDA_GET_RX_MAC_HEADER(pBd);
-                PELOGE(sysLog( pMac, LOGE,
+                sysLog(pMac, LOGE,
                        FL("DEAUTH frame allowed: "
                        "da: " MAC_ADDRESS_STR ", "
                        "sa: " MAC_ADDRESS_STR ", "
@@ -189,12 +189,12 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
                        MAC_ADDR_ARRAY(pMacHdr->da),
                        MAC_ADDR_ARRAY(pMacHdr->sa),
                        MAC_ADDR_ARRAY(pMacHdr->bssId),
-                       pMac->sys.gSysFrameCount[type][subType] ););
+                       pMac->sys.gSysFrameCount[type][subType]);
             }
             if (subType == SIR_MAC_MGMT_DISASSOC)
             {
                 tpSirMacMgmtHdr pMacHdr = WDA_GET_RX_MAC_HEADER(pBd);
-                PELOGE(sysLog( pMac, LOGE,
+                sysLog(pMac, LOGE,
                        FL("DISASSOC frame allowed: "
                        "da: " MAC_ADDRESS_STR ", "
                        "sa: " MAC_ADDRESS_STR ", "
@@ -203,7 +203,7 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
                        MAC_ADDR_ARRAY(pMacHdr->da),
                        MAC_ADDR_ARRAY(pMacHdr->sa),
                        MAC_ADDR_ARRAY(pMacHdr->bssId),
-                       pMac->sys.gSysFrameCount[type][subType] ););
+                       pMac->sys.gSysFrameCount[type][subType]);
             }
 
             //Post the message to PE Queue
@@ -212,7 +212,8 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
             {
                 /* Print only one debug failure out of 512 failure messages */
                 if(pMac->sys.gSysBbtReceived & 0x0200)
-                   sysLog(pMac, LOGE, FL("posting to LIM2 failed, ret %d\n"), ret);
+                   sysLog(pMac, LOGE,
+                       FL("posting to LIM2 failed, ret %d"), ret);
                 goto fail;
             }
             pMac->sys.gSysBbtPostedToLim++;
@@ -220,12 +221,12 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
     else if (type == SIR_MAC_DATA_FRAME)
     {
 #ifdef FEATURE_WLAN_ESE
-        PELOGW(sysLog(pMac, LOGW, FL("IAPP Frame...\n")););
+        sysLog(pMac, LOGW, FL("IAPP Frame...\n"));
         //Post the message to PE Queue
         ret = (tSirRetStatus) limPostMsgApi(pMac, pMsg);
         if (ret != eSIR_SUCCESS)
         {
-            PELOGE(sysLog(pMac, LOGE, FL("posting to LIM2 failed, ret %d\n"), ret);)
+            sysLog(pMac, LOGE, FL("posting to LIM2 failed, ret %d\n"), ret);
             goto fail;
         }
         pMac->sys.gSysBbtPostedToLim++;
@@ -233,11 +234,11 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
     }
     else
     {
-        PELOG3(sysLog(pMac, LOG3, "BBT received Invalid type %d subType %d "
+        sysLog(pMac, LOG3, "BBT received Invalid type %d subType %d "
                    "LIM state %X. BD dump is:\n",
                    type, subType, limGetSmeState(pMac));
         sirDumpBuf(pMac, SIR_SYS_MODULE_ID, LOG3,
-                       (tANI_U8 *) pBd, WLANHAL_RX_BD_HEADER_SIZE);)
+                       (tANI_U8 *) pBd, WLANHAL_RX_BD_HEADER_SIZE);
 
         goto fail;
     }

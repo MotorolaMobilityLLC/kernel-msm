@@ -745,11 +745,11 @@ dfs_process_phyerr(struct ieee80211com *ic, void *buf, u_int16_t datalen,
     */
    ATH_DFSEVENTQ_LOCK(dfs);
    empty = STAILQ_EMPTY(&(dfs->dfs_eventq));
-   ATH_DFSEVENTQ_UNLOCK(dfs);
    if (empty) {
+      ATH_DFSEVENTQ_UNLOCK(dfs);
       return;
    }
-
+   ATH_DFSEVENTQ_UNLOCK(dfs);
    /*
     * If the channel is a turbo G channel, then the event is
     * for the adaptive radio (AR) pattern matching rather than

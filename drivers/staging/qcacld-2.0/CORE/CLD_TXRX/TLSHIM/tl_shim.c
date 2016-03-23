@@ -42,6 +42,7 @@
 #include "wma_api.h"
 #include "vos_utils.h"
 #include "wdi_out.h"
+#include "ol_rx_fwd.h"
 
 #define TLSHIM_PEER_AUTHORIZE_WAIT 50
 
@@ -1815,9 +1816,9 @@ VOS_STATUS WLANTL_Start(void *vos_ctx)
 VOS_STATUS WLANTL_Close(void *vos_ctx)
 {
 	struct txrx_tl_shim_ctx *tl_shim;
-#if defined(QCA_LL_TX_FLOW_CT) || defined(QCA_SUPPORT_TXRX_VDEV_PAUSE_LL)
-	u_int8_t i;
-#endif /* QCA_LL_TX_FLOW_CT */
+	struct tlshim_buf *cache_buf, *tmp;
+	struct tlshim_sta_info *sta_info;
+	u_int16_t i;
 
 	ENTER();
 	tl_shim = vos_get_context(VOS_MODULE_ID_TL, vos_ctx);
@@ -1849,7 +1850,19 @@ VOS_STATUS WLANTL_Close(void *vos_ctx)
 	vos_flush_work(&tl_shim->iapp_work.deferred_work);
 #endif
 	vos_flush_work(&tl_shim->cache_flush_work);
-
+	for (i = 0; i < WLAN_MAX_STA_COUNT; i++) {
+		sta_info = &tl_shim->sta_info[i];
+		adf_os_spin_lock_bh(&tl_shim->bufq_lock);
+		list_for_each_entry_safe(cache_buf, tmp,
+					 &sta_info->cached_bufq, list) {
+			list_del(&cache_buf->list);
+			adf_os_spin_unlock_bh(&tl_shim->bufq_lock);
+			adf_nbuf_free(cache_buf->buf);
+			adf_os_mem_free(cache_buf);
+			adf_os_spin_lock_bh(&tl_shim->bufq_lock);
+		}
+		adf_os_spin_unlock_bh(&tl_shim->bufq_lock);
+	}
 	wdi_in_pdev_detach(((pVosContextType) vos_ctx)->pdev_txrx_ctx, 1);
 	// Delete beacon buffer hanging off tl_shim
 	if (tl_shim->last_beacon_data) {
@@ -2640,4 +2653,17 @@ void WLANTL_clear_datapath_stats(void *vos_ctx, uint16_t bitmap)
 
 	wdi_in_clear_stats(pdev, bitmap);
 	return;
+}
+
+/* tlshim_get_fwd_to_tx_packet_count() - to get the total rx packets that have
+ *   been directly forwarded to tx without coming to upper layers
+ *
+ * @session_id: session id/vdev id
+ *
+ * Returns: forwarded packet count
+ *
+ */
+uint64_t tlshim_get_fwd_to_tx_packet_count(uint8_t session_id)
+{
+	return ol_rx_get_fwd_to_tx_packet_count(session_id);
 }

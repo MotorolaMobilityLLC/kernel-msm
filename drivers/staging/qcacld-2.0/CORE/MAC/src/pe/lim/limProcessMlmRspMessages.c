@@ -61,6 +61,7 @@
 #endif
 #include "wlan_qct_wda.h"
 #include "vos_utils.h"
+#include "nan_datapath.h"
 
 #define MAX_SUPPORTED_PEERS_WEP 16
 
@@ -392,17 +393,13 @@ limProcessMlmStartCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->limSmeState = eLIM_SME_NORMAL_STATE;
         MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId, psessionEntry->limSmeState));
         if(psessionEntry->bssType == eSIR_BTAMP_STA_MODE)
-        {
              limLog(pMac, LOG1, FL("*** Started BSS in BT_AMP STA SIDE***"));
-        }
         else if(psessionEntry->bssType == eSIR_BTAMP_AP_MODE)
-        {
              limLog(pMac, LOG1, FL("*** Started BSS in BT_AMP AP SIDE***"));
-        }
         else if(psessionEntry->bssType == eSIR_INFRA_AP_MODE)
-        {
              limLog(pMac, LOG1, FL("*** Started BSS in INFRA AP SIDE***"));
-        }
+        else if (psessionEntry->bssType == eSIR_NDI_MODE)
+             limLog(pMac, LOG1, FL("*** Started BSS in NDI mode ***"));
         else
             PELOG1(limLog(pMac, LOG1, FL("*** Started BSS ***"));)
     }
@@ -724,7 +721,7 @@ limProcessMlmAuthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         return;
     }
     /// Process AUTH confirm from MLM
-    if (((tLimMlmAuthCnf *) pMsgBuf)->resultCode != eSIR_SME_SUCCESS)
+    if (pMlmAuthCnf->resultCode != eSIR_SME_SUCCESS)
     {
         if (psessionEntry->limSmeState == eLIM_SME_WT_AUTH_STATE)
                 {
@@ -743,8 +740,10 @@ limProcessMlmAuthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             cfgAuthType = pMac->lim.gLimPreAuthType;
 
         if ((cfgAuthType == eSIR_AUTO_SWITCH) &&
-                (((tLimMlmAuthCnf *) pMsgBuf)->authType == eSIR_SHARED_KEY)
-                && (eSIR_MAC_AUTH_ALGO_NOT_SUPPORTED_STATUS == ((tLimMlmAuthCnf *) pMsgBuf)->protStatusCode))
+             (pMlmAuthCnf->authType == eSIR_SHARED_KEY)
+             && ((eSIR_MAC_AUTH_ALGO_NOT_SUPPORTED_STATUS ==
+             pMlmAuthCnf->protStatusCode) ||
+             (pMlmAuthCnf->resultCode == eSIR_SME_AUTH_TIMEOUT_RESULT_CODE)))
         {
             /**
              * When Shared authentication fails with reason code "13" and
@@ -803,8 +802,8 @@ limProcessMlmAuthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                  * Need to send Join response with
                  * auth failure to Host.
                  */
-                limHandleSmeJoinResult(pMac,
-                              ((tLimMlmAuthCnf *) pMsgBuf)->resultCode, ((tLimMlmAuthCnf *) pMsgBuf)->protStatusCode,psessionEntry);
+                limHandleSmeJoinResult(pMac, pMlmAuthCnf->resultCode,
+                              pMlmAuthCnf->protStatusCode, psessionEntry);
             }
             else
             {
@@ -886,9 +885,10 @@ limProcessMlmAssocCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     if (((tLimMlmAssocCnf *) pMsgBuf)->resultCode != eSIR_SME_SUCCESS)
     {
         // Association failure
-        PELOG1(limLog(pMac, LOG1, FL("SessionId:%d Association failure"
+        PELOG1(limLog(pMac, LOG1, FL("SessionId:%u Association failure"
                       "resultCode: resultCode: %d limSmeState:%d"),
                       psessionEntry->peSessionId,
+                      ((tLimMlmAssocCnf *) pMsgBuf)->resultCode,
                       psessionEntry->limSmeState);)
 
         /* If driver gets deauth when its waiting for ADD_STA_RSP then we need
@@ -3376,6 +3376,8 @@ void limProcessMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
     mlmStartCnf.sessionId = psessionEntry->peSessionId;
     if( eSIR_IBSS_MODE == psessionEntry->bssType )
         limProcessIbssMlmAddBssRsp( pMac, limMsgQ, psessionEntry );
+    else if (eSIR_NDI_MODE == psessionEntry->bssType)
+        lim_process_ndi_mlm_add_bss_rsp(pMac, limMsgQ, psessionEntry);
     else
     {
         if( eLIM_SME_WT_START_BSS_STATE == psessionEntry->limSmeState )
@@ -3398,7 +3400,7 @@ void limProcessMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
                 limProcessBtampAddBssRsp(pMac,limMsgQ,psessionEntry);
             }
             else
-            limProcessApMlmAddBssRsp( pMac,limMsgQ);
+                limProcessApMlmAddBssRsp( pMac,limMsgQ);
         }
         else
             /* Called while processing assoc response */
@@ -5049,15 +5051,12 @@ void limProcessRxScanEvent(tpAniSirGlobal pMac, void *buf)
 {
     tSirScanOffloadEvent *pScanEvent = (tSirScanOffloadEvent *) buf;
 
-    VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
-            "scan_id = %u", pScanEvent->scanId);
-
     switch (pScanEvent->event)
     {
-        case SCAN_EVENT_STARTED:
+        case LIM_SCAN_EVENT_STARTED:
             break;
-        case SCAN_EVENT_START_FAILED:
-        case SCAN_EVENT_COMPLETED:
+        case LIM_SCAN_EVENT_START_FAILED:
+        case LIM_SCAN_EVENT_COMPLETED:
             pMac->lim.fOffloadScanPending = 0;
             pMac->lim.fOffloadScanP2PSearch = 0;
             pMac->lim.fOffloadScanP2PListen = 0;
@@ -5085,7 +5084,7 @@ void limProcessRxScanEvent(tpAniSirGlobal pMac, void *buf)
                 limSendScanOffloadComplete(pMac, pScanEvent);
             }
             break;
-        case SCAN_EVENT_FOREIGN_CHANNEL:
+        case LIM_SCAN_EVENT_FOREIGN_CHANNEL:
             if (P2P_SCAN_TYPE_LISTEN == pScanEvent->p2pScanType)
             {
                 /*Send Ready on channel indication to SME */
@@ -5106,9 +5105,9 @@ void limProcessRxScanEvent(tpAniSirGlobal pMac, void *buf)
                 limAddScanChannelInfo(pMac, vos_freq_to_chan(pScanEvent->chanFreq));
             }
             break;
-        case SCAN_EVENT_BSS_CHANNEL:
-        case SCAN_EVENT_DEQUEUED:
-        case SCAN_EVENT_PREEMPTED:
+        case LIM_SCAN_EVENT_BSS_CHANNEL:
+        case LIM_SCAN_EVENT_DEQUEUED:
+        case LIM_SCAN_EVENT_PREEMPTED:
         default:
             VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_DEBUG,
                     "Received unhandled scan event %u", pScanEvent->event);

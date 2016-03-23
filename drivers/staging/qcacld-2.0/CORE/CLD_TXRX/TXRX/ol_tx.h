@@ -121,4 +121,8 @@ ol_tx_vdev_ll_pause_start_timer(struct ol_txrx_vdev_t *vdev);
 
 void
 ol_tx_pdev_ll_pause_queue_send_all(struct ol_txrx_pdev_t *pdev);
+
+struct ol_txrx_vdev_t *
+ol_txrx_get_vdev_from_vdev_id(uint8_t vdev_id);
+
 #endif /* _OL_TX__H_ */

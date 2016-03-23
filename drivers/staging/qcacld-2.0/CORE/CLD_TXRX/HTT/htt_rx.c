@@ -48,7 +48,6 @@
 #include <ol_cfg.h>
 #include <ol_rx.h>
 #include <ol_htt_rx_api.h>
-#include <ol_txrx_peer_find.h>
 #include <htt_internal.h> /* HTT_ASSERT, htt_pdev_t, HTT_RX_BUF_SIZE */
 #include "regtable.h"
 
@@ -64,8 +63,6 @@
 #endif
 #endif
 #include <pktlog_ac_fmt.h>
-
-static tp_htt_packetdump_cb ghtt_packetdump_cb;
 
 #ifdef DEBUG_DMA_DONE
 extern int process_wma_set_command(int sessid, int paramid,
@@ -1848,6 +1845,8 @@ htt_rx_amsdu_rx_in_order_pop_ll(
     unsigned int msdu_count = 0;
     u_int8_t offload_ind;
     struct htt_host_rx_desc_base *rx_desc;
+    enum rx_pkt_fate status = RX_PKT_FATE_SUCCESS;
+    uint16_t peer_id;
 
     HTT_ASSERT1(htt_rx_in_order_ring_elems(pdev) != 0);
 
@@ -1907,26 +1906,28 @@ htt_rx_amsdu_rx_in_order_pop_ll(
         *((u_int8_t *) &rx_desc->fw_desc.u.val) =
              HTT_RX_IN_ORD_PADDR_IND_FW_DESC_GET(*(msg_word + 1));
 
+        if (HTT_RX_IN_ORD_PADDR_IND_MSDU_INFO_GET(*(msg_word + 1)) &
+                             FW_MSDU_INFO_FIRST_WAKEUP_M) {
+                adf_os_print("%s: first packet after WOW wakeup\n", __func__);
+                adf_nbuf_update_skb_mark(msdu, HTT_MARK_FIRST_WAKEUP_PACKET);
+        }
+
         msdu_count--;
 
-        if (ghtt_packetdump_cb) {
-            uint8_t status = RX_PKT_FATE_SUCCESS;
-            uint16_t peer_id =
-              HTT_RX_IN_ORD_PADDR_IND_PEER_ID_GET(*(u_int32_t *)rx_ind_data);
-            struct ol_txrx_peer_t *peer =
-              ol_txrx_peer_find_by_id(pdev->txrx_pdev, peer_id);
-            if (adf_os_unlikely((*((u_int8_t *) &rx_desc->fw_desc.u.val)) &
-                             FW_RX_DESC_MIC_ERR_M))
-                 status = RX_PKT_FATE_FW_DROP_INVALID;
-            ghtt_packetdump_cb(msdu, status, peer->vdev->vdev_id, RX_DATA_PKT);
-        }
+        /* calling callback function for packet logging */
+        peer_id = HTT_RX_IN_ORD_PADDR_IND_PEER_ID_GET(
+                                 *(u_int32_t *)rx_ind_data);
+        if (adf_os_unlikely((*((u_int8_t *) &rx_desc->fw_desc.u.val)) &
+                    FW_RX_DESC_MIC_ERR_M))
+            status = RX_PKT_FATE_FW_DROP_INVALID;
+        if (pdev->rx_pkt_dump_cb)
+            pdev->rx_pkt_dump_cb(msdu, peer_id, status);
 
         if (adf_os_unlikely((*((u_int8_t *) &rx_desc->fw_desc.u.val)) &
                              FW_RX_DESC_MIC_ERR_M)) {
             u_int8_t tid =
                  HTT_RX_IN_ORD_PADDR_IND_EXT_TID_GET(*(u_int32_t *)rx_ind_data);
-            u_int16_t peer_id =
-                 HTT_RX_IN_ORD_PADDR_IND_PEER_ID_GET(*(u_int32_t *)rx_ind_data);
+
             ol_rx_mic_error_handler(pdev->txrx_pdev, tid, peer_id, rx_desc, msdu);
 
             htt_rx_desc_frame_free(pdev, msdu);
@@ -3378,30 +3379,49 @@ int htt_rx_ipa_uc_detach(struct htt_pdev_t *pdev)
 #endif /* IPA_UC_OFFLOAD */
 
 /**
- * htt_register_packetdump_callback() - stores rx packet dump
- * callback handler
- * @htt_packetdump_cb: packetdump cb
+ * htt_register_rx_pkt_dump_callback() - registers callback to
+ * get rx pkt status and call callback to do rx packet dump
  *
- * This function is used to store rx packet dump callback
+ * @pdev: htt pdev handle
+ * @callback: callback to get rx pkt status and
+ *     call callback to do rx packet dump
+ *
+ * This function is used to register the callback to get
+ * rx pkt status and call callback to do rx packet dump
  *
  * Return: None
  *
  */
-void htt_register_packetdump_callback(tp_htt_packetdump_cb htt_packetdump_cb)
+void htt_register_rx_pkt_dump_callback(struct htt_pdev_t *pdev,
+				tp_rx_pkt_dump_cb callback)
 {
-	ghtt_packetdump_cb = htt_packetdump_cb;
+	if (!pdev) {
+		adf_os_print("%s: htt pdev is NULL, rx packet status callback register unsuccessful\n",
+						__func__);
+		return;
+	}
+	pdev->rx_pkt_dump_cb = callback;
 }
 
 /**
- * htt_deregister_packetdump_callback() - removes rx packet dump
- * callback handler
+ * htt_deregister_rx_pkt_dump_callback() - deregisters callback to
+ * get rx pkt status and call callback to do rx packet dump
  *
- * This function is used to remove rx packet dump callback
+ * @pdev: htt pdev handle
+ *
+ * This function is used to deregister the callback to get
+ * rx pkt status and call callback to do rx packet dump
  *
  * Return: None
  *
  */
-void htt_deregister_packetdump_callback(void)
+void htt_deregister_rx_pkt_dump_callback(struct htt_pdev_t *pdev)
 {
-	ghtt_packetdump_cb = NULL;
+	if (!pdev) {
+		adf_os_print("%s: htt pdev is NULL, rx packet status callback deregister unsuccessful\n",
+						__func__);
+		return;
+	}
+	pdev->rx_pkt_dump_cb = NULL;
 }
+

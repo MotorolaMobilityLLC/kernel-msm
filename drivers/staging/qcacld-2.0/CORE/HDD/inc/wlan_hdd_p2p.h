@@ -183,8 +183,12 @@ struct net_device* wlan_hdd_add_virtual_intf(
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)) || defined(WITH_BACKPORTS)
 int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct wireless_dev *wdev );
+int __wlan_hdd_del_virtual_intf(struct wiphy *wiphy,
+                                        struct wireless_dev *wdev);
 #else
 int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct net_device *dev );
+int __wlan_hdd_del_virtual_intf(struct wiphy *wiphy,
+                                        struct net_device *dev);
 #endif
 
 void wlan_hdd_cleanup_remain_on_channel_ctx(hdd_adapter_t *pAdapter);

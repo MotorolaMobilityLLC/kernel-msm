@@ -326,4 +326,11 @@ htt_clear_bundle_stats(struct htt_pdev_t *pdev);
 
 #endif
 
+typedef void (*tp_rx_pkt_dump_cb)(adf_nbuf_t msdu, uint16_t peer_id,
+                                          uint8_t status);
+void htt_register_rx_pkt_dump_callback(struct htt_pdev_t *pdev,
+              tp_rx_pkt_dump_cb ol_rx_pkt_dump_call);
+void htt_deregister_rx_pkt_dump_callback(struct htt_pdev_t *pdev);
+void ol_rx_pkt_dump_call(adf_nbuf_t msdu, uint16_t peer_id, uint8_t status);
+
 #endif /* _OL_HTT_API__H_ */

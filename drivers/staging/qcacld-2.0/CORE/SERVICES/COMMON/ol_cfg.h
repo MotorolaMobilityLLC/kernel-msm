@@ -502,15 +502,17 @@ unsigned int ol_cfg_ipa_uc_tx_partition_base(ol_pdev_handle pdev);
 
 #define DEFAULT_BUNDLE_TIMER_VALUE 100
 
-#ifdef FEATURE_BUS_BANDWIDTH
+#ifdef QCA_SUPPORT_TXRX_HL_BUNDLE
 int ol_cfg_get_bundle_timer_value(ol_pdev_handle pdev);
 int ol_cfg_get_bundle_size(ol_pdev_handle pdev);
 #else
+static inline
 int ol_cfg_get_bundle_timer_value(ol_pdev_handle pdev)
 {
 	return DEFAULT_BUNDLE_TIMER_VALUE;
 }
 
+static inline
 int ol_cfg_get_bundle_size(ol_pdev_handle pdev)
 {
 	return 0;

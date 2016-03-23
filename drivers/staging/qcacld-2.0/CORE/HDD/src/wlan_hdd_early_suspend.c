@@ -584,10 +584,8 @@ static int __wlan_hdd_ipv6_changed(struct notifier_block *nb,
 
 	hdd_ctx = container_of(nb, hdd_context_t, ipv6_notifier);
 	status = wlan_hdd_validate_context(hdd_ctx);
-	if (0 != status) {
-		hddLog(LOGE, FL("HDD context is invalid"));
+	if (0 != status)
 		return NOTIFY_DONE;
-	}
 
 	adapter = WLAN_HDD_GET_PRIV_PTR(ndev);
 	if (WLAN_HDD_ADAPTER_MAGIC != adapter->magic) return NOTIFY_DONE;
@@ -1082,10 +1080,7 @@ static void __hdd_ipv4_notifier_work_queue(struct work_struct *work)
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     status = wlan_hdd_validate_context(pHddCtx);
     if (0 != status)
-    {
-        hddLog(LOGE, FL("HDD context is invalid"));
         return;
-    }
 
     if ( VOS_FALSE == pHddCtx->sus_res_mcastbcast_filter_valid)
     {
@@ -1131,10 +1126,8 @@ static int __wlan_hdd_ipv4_changed(struct notifier_block *nb,
 
 	hdd_ctx = container_of(nb, hdd_context_t, ipv4_notifier);
 	status = wlan_hdd_validate_context(hdd_ctx);
-	if (0 != status) {
-		hddLog(LOGE, FL("HDD context is invalid"));
+	if (0 != status)
 		return NOTIFY_DONE;
-	}
 
 	adapter = WLAN_HDD_GET_PRIV_PTR(ndev);
 	if (!adapter) return NOTIFY_DONE;
@@ -1917,10 +1910,6 @@ VOS_STATUS hdd_wlan_shutdown(void)
 
    hddLog(VOS_TRACE_LEVEL_FATAL, "%s: WLAN driver shutting down! ",__func__);
 
-#ifdef WLAN_FEATURE_LPSS
-   wlan_hdd_send_status_pkg(NULL, NULL, 0, 0);
-#endif
-
    /* If SSR never completes, then do kernel panic. */
    hdd_ssr_timer_init();
    hdd_ssr_timer_start(HDD_SSR_BRING_UP_TIME);
@@ -2086,6 +2075,11 @@ VOS_STATUS hdd_wlan_shutdown(void)
       hddLog(VOS_TRACE_LEVEL_ERROR, "%s: failed to free power on lock",
                                            __func__);
    }
+
+#ifdef WLAN_FEATURE_LPSS
+   wlan_hdd_send_status_pkg(NULL, NULL, 0, 0);
+#endif
+
    hddLog(VOS_TRACE_LEVEL_FATAL, "%s: WLAN driver shutdown complete"
                                    ,__func__);
    return VOS_STATUS_SUCCESS;

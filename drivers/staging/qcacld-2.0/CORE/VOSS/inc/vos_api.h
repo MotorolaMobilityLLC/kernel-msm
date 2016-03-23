@@ -354,16 +354,22 @@ uint8_t vos_is_multicast_logging(void);
 VOS_STATUS vos_set_log_completion(uint32_t is_fatal,
 		uint32_t type,
 		uint32_t sub_type);
-void vos_get_log_completion(uint32_t *is_fatal,
+void vos_get_log_and_reset_completion(uint32_t *is_fatal,
 		uint32_t *type,
-		uint32_t *sub_type);
+		uint32_t *sub_type,
+		uint32_t *is_ssr_needed);
 bool vos_is_log_report_in_progress(void);
+bool vos_is_fatal_event_enabled(void);
+uint32_t vos_get_log_indicator(void);
 void vos_init_log_completion(void);
 void vos_deinit_log_completion(void);
 VOS_STATUS vos_flush_logs(uint32_t is_fatal,
 		uint32_t indicator,
-		uint32_t reason_code);
+		uint32_t reason_code,
+		bool dump_vos_trace);
+void vos_wlan_flush_host_logs_for_fatal(void);
 void vos_logging_set_fw_flush_complete(void);
 void vos_probe_threads(void);
+void vos_set_fatal_event(bool value);
 void vos_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data);
 #endif // if !defined __VOS_API_H

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -581,7 +581,43 @@ extern "C" {
 #define SCAN_FWLOG_EVENT_RESTARTED                  10
 #define SCAN_FWLOG_EVENT_COMPLETED                  11
 #define SCAN_SM_REQ_NEXT_CH                         12
-#define SCAN_DBGID_DEFINITION_END                   13
+#define SCAN_ENG_START                              13
+#define SCAN_ENG_CANCEL                             14
+#define SCAN_ENG_SPOOFED_MAC_ADDR                   15
+#define SCAN_ENG_PARAM_1                            16
+#define SCAN_ENG_PARAM_2                            17
+#define SCAN_ENG_MAX_SCAN_TIMEOUT                   18
+#define SCAN_ENG_START_IN_PROGRESS                  19
+#define SCAN_SM_START_COMMAND_FAILED                20
+#define SCAN_SCH_START                              21
+#define SCAN_SCH_START_INFO                         22
+#define SCAN_SCH_START_NEW_REQ_FAILED               23
+#define SCAN_SCH_START_ALLOC_FAIL                   24
+#define SCAN_SCH_ENGINE_STOP_DUE_TO_TIMEOUT         25
+#define SCAN_SCH_POLICY_EVENT                       26
+#define SCAN_SCH_CANCEL                             27
+#define SCAN_SCH_STOP_COMMAND_FAILED                28
+#define SCAN_SCH_NEXT_SCAN_FAILED                   29
+#define SCAN_WMI_SET_CHAN_LIST                      30
+#define SCAN_EVENT_STARTED                          31
+#define SCAN_EVENT_BSS_CHANNEL                      32
+#define SCAN_EVENT_FOREIGN_CHANNEL                  33
+#define SCAN_EVENT_DEQUEUED                         34
+#define SCAN_EVENT_START_FAILED                     35
+#define SCAN_EVENT_FOREIGN_CHANNEL_EXIT             36
+#define SCAN_SM_DISPATCH                            37
+#define SCAN_SM_TRANSITIONS                         38
+#define SCAN_SM_REQ_NEXT_CHAN                       39
+#define SCAN_SEND_PROBE_REQ_RET_VDEV                40
+#define SCAN_SEND_PROBE_REQ_RET_PLM                 41
+#define SCAN_SEND_PROBE_REQ_RET_PASSIVE             42
+#define SCAN_SEND_PROBE_REQ_RET_RADAR               43
+#define SCAN_SEND_PROBE_REQ_RET_DFS                 44
+#define SCAN_SEND_PROBE_REQ_INFO                    45
+#define SCAN_SM_CANCEL                              46
+#define SCAN_SM_PROBE_REQ_FRAME_SEND_FAILED         47
+#define SCAN_SCH_BANNED_MODULE                      48
+#define SCAN_DBGID_DEFINITION_END                   49
 
 #define BEACON_EVENT_SWBA_SEND_FAILED               0
 #define BEACON_EVENT_EARLY_RX_BMISS_STATUS          1
@@ -1213,7 +1249,10 @@ extern "C" {
 #define WLAN_STATS_DBGID_EST_LINKSPEED_CHAN_TIME_END     3
 #define WLAN_STATS_DBGID_EST_LINKSPEED_CALC              4
 #define WLAN_STATS_DBGID_EST_LINKSPEED_UPDATE_HOME_CHAN  5
-#define WLAN_STATS_DBGID_DEFINITION_END                  6
+#define WLAN_STATS_DBGID_RSSI                            6
+#define WLAN_STATS_DBGID_CNE_RSSI                        7
+#define WLAN_STATS_DBGID_DEFINITION_END                  8
+
 /* NAN DBGIDs */
 #define NAN_DBGID_START                             0
 
@@ -1534,6 +1573,7 @@ extern "C" {
 #define EXTSCAN_NOTIFY_HOTLIST_MATCH                    38
 #define EXTSCAN_CONFIG_HOTLIST_TABLE                    39
 #define EXTSCAN_CONFIG_WLAN_CHANGE_TABLE                40
+#define EXTSCAN_EVENT_SEND_FAILED                       41
 
 /* NLO DBGIDs */
 #define NLO_DBGID_SSID_TO_BE_SCANNED_LIST 0

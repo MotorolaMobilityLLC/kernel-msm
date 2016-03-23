@@ -1885,16 +1885,19 @@ VOS_STATUS vos_mq_post_message_by_priority(VOS_MQ_ID msgQueueId,
 
   if (NULL == pMsgWrapper) {
       debug_count = atomic_inc_return(&vos_wrapper_empty_count);
-      if (1 == debug_count)
+      if (1 == debug_count) {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
               "%s: VOS Core run out of message wrapper %d",
               __func__, debug_count);
-
-      if (VOS_WRAPPER_MAX_FAIL_COUNT == debug_count) {
-          VOS_BUG(0);
+           vos_flush_logs(WLAN_LOG_TYPE_FATAL,
+                          WLAN_LOG_INDICATOR_HOST_ONLY,
+                          WLAN_LOG_REASON_VOS_MSG_UNDER_RUN,
+                          true);
       }
-
-    return VOS_STATUS_E_RESOURCES;
+      if (VOS_WRAPPER_MAX_FAIL_COUNT == debug_count) {
+          vos_wlanRestart();
+      }
+      return VOS_STATUS_E_RESOURCES;
   }
 
   atomic_set(&vos_wrapper_empty_count, 0);
@@ -2333,6 +2336,9 @@ VOS_STATUS vos_get_vdev_types(tVOS_CON_MODE mode, tANI_U32 *type,
         case VOS_OCB_MODE:
             *type = WMI_VDEV_TYPE_OCB;
             break;
+        case VOS_NDI_MODE:
+            *type = WMI_VDEV_TYPE_NDI;
+            break;
         default:
             hddLog(VOS_TRACE_LEVEL_ERROR, "Invalid device mode %d", mode);
             status = VOS_STATUS_E_INVAL;
@@ -2674,18 +2680,21 @@ VOS_STATUS vos_set_log_completion(uint32_t is_fatal,
 }
 
 /**
- * vos_get_log_completion() - Get the logging related params
+ * vos_get_log_and_reset_completion() - Get and reset the logging
+ * related params
  * @is_fatal: Indicates if the event triggering bug report is fatal or not
  * @indicator: Source which trigerred the bug report
  * @reason_code: Reason for triggering bug report
+ * @ssr_needed: Indicates if SSR is required or not
  *
  * This function is used to get the logging related parameters
  *
  * Return: None
  */
-void vos_get_log_completion(uint32_t *is_fatal,
+void vos_get_log_and_reset_completion(uint32_t *is_fatal,
 		uint32_t *indicator,
-		uint32_t *reason_code)
+		uint32_t *reason_code,
+		uint32_t *is_ssr_needed)
 {
 	VosContextType *vos_context;
 
@@ -2700,7 +2709,19 @@ void vos_get_log_completion(uint32_t *is_fatal,
 	*is_fatal =  vos_context->log_complete.is_fatal;
 	*indicator = vos_context->log_complete.indicator;
 	*reason_code = vos_context->log_complete.reason_code;
+
+	if ((WLAN_LOG_INDICATOR_HOST_DRIVER == *indicator) &&
+	    ((WLAN_LOG_REASON_SME_OUT_OF_CMD_BUF == *reason_code) ||
+		 (WLAN_LOG_REASON_SME_COMMAND_STUCK == *reason_code)))
+		*is_ssr_needed = true;
+	else
+		*is_ssr_needed = false;
+
+	/* reset */
+	vos_context->log_complete.indicator = WLAN_LOG_INDICATOR_UNUSED;
+	vos_context->log_complete.is_fatal = WLAN_LOG_TYPE_NON_FATAL;
 	vos_context->log_complete.is_report_in_progress = false;
+	vos_context->log_complete.reason_code = WLAN_LOG_REASON_CODE_UNUSED;
 	vos_spin_lock_release(&vos_context->bug_report_lock);
 }
 
@@ -2723,12 +2744,78 @@ bool vos_is_log_report_in_progress(void)
 	}
 	return vos_context->log_complete.is_report_in_progress;
 }
+/**
+ * vos_is_fatal_event_enabled() - Return if fatal event is enabled
+ *
+ * Return true if fatal event is enabled is in progress.
+ */
+bool vos_is_fatal_event_enabled(void)
+{
+	VosContextType *vos_context =
+			 vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+
+	if (!vos_context) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+				"%s: Global VOS context is Null", __func__);
+		return false;
+	}
+
+	return vos_context->enable_fatal_event;
+}
+
+/**
+ * vos_get_log_indicator() - Get the log flush indicator
+ *
+ * This function is used to get the log flush indicator
+ *
+ * Return: log indicator
+ */
+uint32_t vos_get_log_indicator(void)
+{
+	VosContextType *vos_context;
+	uint32_t indicator;
+
+	vos_context = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+	if (!vos_context) {
+		VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+				"%s: vos context is Invalid", __func__);
+		return WLAN_LOG_INDICATOR_UNUSED;
+	}
+	if (vos_context->isLoadUnloadInProgress ||
+		vos_context->isLogpInProgress ||
+		vos_context->isReInitInProgress) {
+		VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+				"%s: vos context initialization is in progress"
+				, __func__);
+		return WLAN_LOG_INDICATOR_UNUSED;
+	}
+
+	vos_spin_lock_acquire(&vos_context->bug_report_lock);
+	indicator = vos_context->log_complete.indicator;
+	vos_spin_lock_release(&vos_context->bug_report_lock);
+	return indicator;
+}
+
+/**
+ * vos_wlan_flush_host_logs_for_fatal() - Wrapper to flush host logs
+ *
+ * This function is used to send signal to the logger thread to
+ * flush the host logs.
+ *
+ * Return: None
+ *
+ */
+void vos_wlan_flush_host_logs_for_fatal(void)
+{
+	wlan_flush_host_logs_for_fatal();
+}
 
 /**
  * vos_flush_logs() - Report fatal event to userspace
  * @is_fatal: Indicates if the event triggering bug report is fatal or not
  * @indicator: Source which trigerred the bug report
  * @reason_code: Reason for triggering bug report
+ * @dump_vos_trace: If vos trace are needed in logs.
  *
  * This function sets the log related params and send the WMI command to the
  * FW to flush its logs. On receiving the flush completion event from the FW
@@ -2738,11 +2825,11 @@ bool vos_is_log_report_in_progress(void)
  */
 VOS_STATUS vos_flush_logs(uint32_t is_fatal,
 		uint32_t indicator,
-		uint32_t reason_code)
+		uint32_t reason_code,
+		bool dump_vos_trace)
 {
 	uint32_t ret;
 	VOS_STATUS status;
-
 	VosContextType *vos_context;
 
 	vos_context = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
@@ -2752,8 +2839,21 @@ VOS_STATUS vos_flush_logs(uint32_t is_fatal,
 		return eHAL_STATUS_FAILURE;
 	}
 
+	if (!vos_context->enable_fatal_event) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+				"%s: Fatal event not enabled", __func__);
+		return eHAL_STATUS_FAILURE;
+	}
+	if (vos_context->is_unload_in_progress ||
+	    vos_context->is_load_in_progress ||
+	    vos_context->isLogpInProgress) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+				"%s: un/Load/SSR in progress", __func__);
+		return eHAL_STATUS_FAILURE;
+	}
+
 	if (vos_is_log_report_in_progress() == true) {
-		VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
 				"%s: Bug report already in progress - dropping! type:%d, indicator=%d reason_code=%d",
 				__func__, is_fatal, indicator, reason_code);
 		return VOS_STATUS_E_FAILURE;
@@ -2766,10 +2866,17 @@ VOS_STATUS vos_flush_logs(uint32_t is_fatal,
 		return VOS_STATUS_E_FAILURE;
 	}
 
-	VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+	VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
 			"%s: Triggering bug report: type:%d, indicator=%d reason_code=%d",
 			__func__, is_fatal, indicator, reason_code);
 
+	if (dump_vos_trace)
+		vosTraceDumpAll(vos_context->pMACContext, 0, 0, 500, 0);
+
+	if (WLAN_LOG_INDICATOR_HOST_ONLY == indicator) {
+		vos_wlan_flush_host_logs_for_fatal();
+		return VOS_STATUS_SUCCESS;
+	}
 	ret = vos_send_flush_logs_cmd_to_fw(vos_context->pMACContext);
 	if (0 != ret) {
 		VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -2796,6 +2903,23 @@ void vos_logging_set_fw_flush_complete(void)
 }
 
 /**
+ * vos_set_fatal_event() - set fatal event status
+ * @value: pending statue to set
+ *
+ * Return: None
+ */
+void vos_set_fatal_event(bool value)
+{
+	if (gpVosContext == NULL) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+			  "%s: global voss context is NULL", __func__);
+		return;
+	}
+
+	gpVosContext->enable_fatal_event = value;
+}
+
+/**
  * vos_probe_threads() - VOS API to post messages
  * to all the threads to detect if they are active or not
  *
@@ -2814,7 +2938,6 @@ void vos_probe_threads(void)
 			  FL("Unable to post SYS_MSG_ID_MC_THR_PROBE message to MC thread"));
 	}
 }
-
 /**
  * vos_pkt_stats_to_logger_thread() - send pktstats to user
  * @pl_hdr: Pointer to pl_hdr

@@ -155,7 +155,7 @@
 #define CFG_TGT_DEFAULT_MCAST2UCAST_MODE 2
 #endif
 
-#define CFG_TGT_MAX_MULTICAST_FILTER_ENTRIES 5
+#define CFG_TGT_MAX_MULTICAST_FILTER_ENTRIES 16
 /*
  * Specify how much memory the target should allocate for a debug log of
  * tx PPDU meta-information (how large the PPDU was, when it was sent,

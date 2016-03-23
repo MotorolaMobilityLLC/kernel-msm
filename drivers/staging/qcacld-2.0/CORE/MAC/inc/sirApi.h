@@ -529,17 +529,27 @@ typedef struct sSirLoad
     tANI_U16             channelUtilization;
 } tSirLoad, *tpSirLoad;
 
-/// BSS type enum used in while scanning/joining etc
-typedef enum eSirBssType
-{
+/**
+ * enum tSirBssType - BSS type enum used in while scanning/joining etc
+ *
+ * @eSIR_INFRASTRUCTURE_MODE: Infrastructure station
+ * @eSIR_INFRA_AP_MODE: softAP mode
+ * @eSIR_IBSS_MODE: IBSS mode
+ * @eSIR_BTAMP_STA_MODE: BT-AMP STA mode
+ * @eSIR_BTAMP_AP_MODE: BT-AMP AP mode
+ * @eSIR_MONITOR_MODE: Monitor mode
+ * @eSIR_NDI_MODE: NAN data path mide
+ * @eSIR_AUTO_MODE: Auto role
+ */
+typedef enum eSirBssType {
     eSIR_INFRASTRUCTURE_MODE,
-    eSIR_INFRA_AP_MODE,                    //Added for softAP support
+    eSIR_INFRA_AP_MODE,
     eSIR_IBSS_MODE,
-    eSIR_BTAMP_STA_MODE,                     //Added for BT-AMP support
-    eSIR_BTAMP_AP_MODE,                     //Added for BT-AMP support
-    eSIR_AUTO_MODE,
+    eSIR_BTAMP_STA_MODE,
+    eSIR_BTAMP_AP_MODE,
     eSIR_MONITOR_MODE,
-    eSIR_DONOT_USE_BSS_TYPE = SIR_MAX_ENUM_SIZE
+    eSIR_NDI_MODE,
+    eSIR_AUTO_MODE,
 } tSirBssType;
 
 /// Power Capability info used in 11H
@@ -1042,6 +1052,8 @@ typedef struct sSirSmeJoinReq
     tANI_U8             cc_switch_mode;
 #endif
     tVOS_CON_MODE       staPersona;             //Persona
+    bool                osen_association;
+    bool                wps_registartion;
     ePhyChanBondState   cbMode;                 // Pass CB mode value in Join.
 
     /*This contains the UAPSD Flag for all 4 AC
@@ -4398,20 +4410,32 @@ typedef struct sSirScanOffloadReq {
       -----------------------------*/
 } tSirScanOffloadReq, *tpSirScanOffloadReq;
 
-typedef enum sSirScanEventType {
-    SCAN_EVENT_STARTED=0x1,          /* Scan command accepted by FW */
-    SCAN_EVENT_COMPLETED=0x2,        /* Scan has been completed by FW */
-    SCAN_EVENT_BSS_CHANNEL=0x4,      /* FW is going to move to HOME channel */
-    SCAN_EVENT_FOREIGN_CHANNEL = 0x8,/* FW is going to move to FORIEGN channel */
-    SCAN_EVENT_DEQUEUED=0x10,       /* scan request got dequeued */
-    SCAN_EVENT_PREEMPTED=0x20,      /* preempted by other high priority scan */
-    SCAN_EVENT_START_FAILED=0x40,   /* scan start failed */
-    SCAN_EVENT_RESTARTED=0x80,      /*scan restarted*/
-    SCAN_EVENT_MAX=0x8000
-} tSirScanEventType;
+/**
+ * lim_scan_event_type - scan event types used in LIM
+ * @LIM_SCAN_EVENT_STARTED - scan command accepted by FW
+ * @LIM_SCAN_EVENT_COMPLETED - scan has been completed by FW
+ * @LIM_SCAN_EVENT_BSS_CHANNEL - FW is going to move to HOME channel
+ * @LIM_SCAN_EVENT_FOREIGN_CHANNEL - FW is going to move to FORIEGN channel
+ * @LIM_SCAN_EVENT_DEQUEUED - scan request got dequeued
+ * @LIM_SCAN_EVENT_PREEMPTED - preempted by other high priority scan
+ * @LIM_SCAN_EVENT_START_FAILED - scan start failed
+ * @LIM_SCAN_EVENT_RESTARTED - scan restarted
+ * @LIM_SCAN_EVENT_MAX - max value for event type
+*/
+enum lim_scan_event_type {
+    LIM_SCAN_EVENT_STARTED=0x1,
+    LIM_SCAN_EVENT_COMPLETED=0x2,
+    LIM_SCAN_EVENT_BSS_CHANNEL=0x4,
+    LIM_SCAN_EVENT_FOREIGN_CHANNEL = 0x8,
+    LIM_SCAN_EVENT_DEQUEUED=0x10,
+    LIM_SCAN_EVENT_PREEMPTED=0x20,
+    LIM_SCAN_EVENT_START_FAILED=0x40,
+    LIM_SCAN_EVENT_RESTARTED=0x80,
+    LIM_SCAN_EVENT_MAX=0x8000
+};
 
 typedef struct sSirScanOffloadEvent{
-    tSirScanEventType event;
+    enum lim_scan_event_type event;
     tSirResultCodes reasonCode;
     tANI_U32 chanFreq;
     tANI_U32 requestor;
@@ -5721,6 +5745,7 @@ typedef enum
     WIFI_INTERFACE_P2P_GO     = 4,
     WIFI_INTERFACE_NAN        = 5,
     WIFI_INTERFACE_MESH       = 6,
+    WIFI_INTERFACE_NDI        = 7,
  } tSirWifiInterfaceMode;
 
 /* set for QOS association */
@@ -6284,8 +6309,8 @@ struct sir_ocb_config_sched {
  * @dcc_ndl_chan_list: array of dcc channel info
  * @dcc_ndl_active_state_list_len: size of the active state array
  * @dcc_ndl_active_state_list: array of active states
- * @adapter: the OCB adapter
- * @dcc_stats_callback: callback for the response event
+ * @def_tx_param: default TX parameters
+ * @def_tx_param_size: size of the default TX parameters
  */
 struct sir_ocb_config {
 	uint8_t session_id;
@@ -6298,6 +6323,8 @@ struct sir_ocb_config {
 	void *dcc_ndl_chan_list;
 	uint32_t dcc_ndl_active_state_list_len;
 	void *dcc_ndl_active_state_list;
+	void *def_tx_param;
+	uint32_t def_tx_param_size;
 };
 
 /* The size of the utc time in bytes. */
@@ -6661,6 +6688,17 @@ struct egap_conf_params {
 };
 
 /**
+ * struct beacon_filter_param - parameters for beacon filtering
+ * @vdev_id: vdev id
+ * @ie_map: bitwise map of IEs that needs to be filtered
+ *
+ */
+struct beacon_filter_param {
+	uint32_t   vdev_id;
+	uint32_t   ie_map[8];
+};
+
+/**
  * struct smps_force_mode_event - smps force mode event param
  * @message_type: Type of message
  * @length: length
@@ -6885,5 +6923,376 @@ struct sir_del_all_tdls_peers {
 	uint16_t msg_len;
 	tSirMacAddr bssid;
 };
+
+/**
+ * struct sme_send_disassoc_frm_req - send disassoc request frame
+ * @msg_type: message type
+ * @length: length of message
+ * @session_id: session id
+ * @trans_id: transaction id
+ * @peer_mac: peer mac address
+ * @reason: reason for disassoc
+ * @wait_for_ack: wait for acknowledgment
+ */
+struct sme_send_disassoc_frm_req
+{
+	uint16_t msg_type;
+	uint16_t length;
+	uint8_t session_id;
+	uint16_t trans_id;
+	uint8_t peer_mac[6];
+	uint16_t reason;
+	uint8_t wait_for_ack;
+};
+
+#ifdef WLAN_FEATURE_NAN_DATAPATH
+
+#define IFACE_NAME_SIZE 64
+
+/**
+ * enum ndp_accept_policy - nan data path accept policy
+ * @NDP_ACCEPT_POLICY_NONE: the framework will decide the policy
+ * @NDP_ACCEPT_POLICY_ALL: accept policy offloaded to fw
+ *
+ */
+enum ndp_accept_policy {
+	NDP_ACCEPT_POLICY_NONE = 0,
+	NDP_ACCEPT_POLICY_ALL = 1,
+};
+
+/**
+ * enum ndp_self_role - nan data path role
+ * @NDP_ROLE_INITIATOR: initiator of nan data path request
+ * @NDP_ROLE_RESPONDER: responder to nan data path request
+ *
+ */
+enum ndp_self_role {
+	NDP_ROLE_INITIATOR = 0,
+	NDP_ROLE_RESPONDER = 1,
+};
+
+/**
+ * enum ndp_response_code - responder's response code to nan data path request
+ * @NDP_RESPONSE_ACCEPT: ndp request accepted
+ * @NDP_RESPONSE_REJECT: ndp request rejected
+ * @NDP_RESPONSE_DEFER: ndp request deferred until later (response to follow
+ * any time later)
+ *
+ */
+enum ndp_response_code {
+	NDP_RESPONSE_ACCEPT = 0,
+	NDP_RESPONSE_REJECT = 1,
+	NDP_RESPONSE_DEFER = 2,
+};
+
+/**
+ * struct ndp_cfg - ndp configuration
+ * @tag: unique identifier
+ * @ndp_cfg_len: ndp configuration length
+ * @ndp_cfg: variable length ndp configuration
+ *
+ */
+struct ndp_cfg {
+	uint32_t tag;
+	uint32_t ndp_cfg_len;
+	uint8_t ndp_cfg[];
+};
+
+/**
+ * struct ndp_qos_cfg - ndp qos configuration
+ * @tag: unique identifier
+ * @ndp_qos_cfg_len: ndp qos configuration length
+ * @ndp_qos_cfg: variable length ndp qos configuration
+ *
+ */
+struct ndp_qos_cfg {
+	uint32_t tag;
+	uint32_t ndp_qos_cfg_len;
+	uint8_t ndp_qos_cfg[];
+};
+
+/**
+ * struct ndp_app_info - application info shared during ndp setup
+ * @tag: unique identifier
+ * @ndp_app_info_len: ndp app info length
+ * @ndp_app_info: variable length application information
+ *
+ */
+struct ndp_app_info {
+	uint32_t tag;
+	uint32_t ndp_app_info_len;
+	uint8_t ndp_app_info[];
+};
+
+/**
+ * struct ndi_create_req - ndi create request params
+ * @transaction_id: unique identifier
+ * @iface_name: interface name
+ *
+ */
+ struct ndi_create_req {
+	uint32_t transaction_id;
+	char  iface_name[IFACE_NAME_SIZE];
+};
+
+/**
+ * struct ndi_create_rsp - ndi create response params
+ * @transaction_id: unique identifier
+ * @status: request status
+ * @reason: reason if any
+ *
+ */
+ struct ndi_create_rsp {
+	uint32_t transaction_id;
+	uint32_t status;
+	uint32_t reason;
+};
+
+/**
+ * struct ndi_delete_req - ndi delete request params
+ * @transaction_id: unique identifier
+ * @iface_name: interface name
+ *
+ */
+ struct ndi_delete_req {
+	uint32_t transaction_id;
+	char  iface_name[IFACE_NAME_SIZE];
+};
+
+/**
+ * struct ndi_delete_rsp - ndi delete response params
+ * @transaction_id: unique identifier
+ * @status: request status
+ * @reason: reason if any
+ *
+ */
+ struct ndi_delete_rsp {
+	uint32_t transaction_id;
+	uint32_t status;
+	uint32_t reason;
+};
+
+/**
+ * struct ndp_initiator_req - ndp initiator request params
+ * @transaction_id: unique identifier
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @channel: suggested channel for ndp creation
+ * @service_instance_id: Service identifier
+ * @peer_discovery_mac_addr: Peer's discovery mac address
+ * @self_ndi_mac_addr: self NDI mac address
+ * @ndp_config: ndp configuration params
+ * @ndp_info: ndp application info
+ *
+ */
+struct ndp_initiator_req {
+	uint32_t transaction_id;
+	uint32_t vdev_id;
+	uint32_t channel;
+	uint32_t service_instance_id;
+	v_MACADDR_t peer_discovery_mac_addr;
+	v_MACADDR_t self_ndi_mac_addr;
+	struct ndp_cfg ndp_config;
+	struct ndp_app_info ndp_info;
+};
+
+/**
+ * struct ndp_initiator_rsp_event - response event from FW
+ * @transaction_id: unique identifier
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @ndp_instance_id: locally created NDP instance ID
+ * @status: status of the ndp request
+ * @reason: reason for failure if any
+ *
+ */
+struct ndp_initiator_rsp_event {
+	uint32_t transaction_id;
+	uint32_t vdev_id;
+	uint32_t ndp_instance_id;
+	uint32_t status;
+	uint32_t reason;
+};
+
+/**
+ * struct ndp_indication_event - create ndp indication on the responder
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @service_instance_id: Service identifier
+ * @peer_discovery_mac_addr: Peer's discovery mac address
+ * @ndp_initiator_mac_addr: NDI mac address of the peer initiating NDP
+ * @ndp_instance_id: locally created NDP instance ID
+ * @role: self role for NDP
+ * @ndp_accept_policy: accept policy configured by the upper layer
+ * @ndp_config: ndp configuration params
+ * @ndp_info: ndp application info
+ *
+ */
+struct ndp_indication_event {
+	uint32_t vdev_id;
+	uint32_t service_instance_id;
+	v_MACADDR_t peer_discovery_mac_addr;
+	v_MACADDR_t ndp_initiator_mac_addr;
+	uint32_t ndp_instance_id;
+	enum ndp_self_role role;
+	enum ndp_accept_policy policy;
+	struct ndp_cfg ndp_config;
+	struct ndp_app_info ndp_info;
+};
+
+/**
+ * struct ndp_responder_req - responder's response to ndp create request
+ * @transaction_id: unique identifier
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @ndp_instance_id: locally created NDP instance ID
+ * @ndp_rsp: response to the ndp create request
+ * @ndp_config: ndp configuration params
+ * @ndp_info: ndp application info
+ *
+ */
+struct ndp_responder_req {
+	uint32_t transaction_id;
+	uint32_t vdev_id;
+	uint32_t ndp_instance_id;
+	enum ndp_response_code ndp_rsp;
+	struct ndp_cfg ndp_config;
+	struct ndp_app_info ndp_info;
+};
+
+/**
+ * struct ndp_responder_rsp_event - response to responder's request
+ * @transaction_id: unique identifier
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @status: command status
+ * @reason: reason for failure if any
+ *
+ */
+struct ndp_responder_rsp_event {
+	uint32_t transaction_id;
+	uint32_t vdev_id;
+	uint32_t status;
+	uint32_t reason;
+};
+
+/**
+ * struct ndp_confirm_event - ndp confirmation event from FW
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @ndp_instance_id: ndp instance id for which confirm is being generated
+ * @peer_ndi_mac_addr: peer NDI mac address
+ * @rsp_code: ndp response code
+ * @ndp_config: ndp configuration
+ * @ndp_info: ndp application info
+ *
+ */
+struct ndp_confirm_event {
+	uint32_t vdev_id;
+	uint32_t ndp_instance_id;
+	v_MACADDR_t peer_ndi_mac_addr;
+	enum ndp_response_code rsp_code;
+	struct ndp_cfg ndp_config;
+	struct ndp_app_info ndp_info;
+};
+
+/**
+ * struct ndp_end_req - ndp end request
+ * @transaction_id: unique transaction identifier
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @num_ndp_instances: number of ndp instances to be terminated
+ * @ndp_instances: list of ndp instances to be terminated
+ *
+ */
+struct ndp_end_req {
+	uint32_t transaction_id;
+	uint32_t vdev_id;
+	uint32_t num_ndp_instances;
+	uint32_t ndp_instances[];
+};
+
+/**
+ * struct peer_ndp_map  - mapping of NDP instances to peer to VDEV
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @peer_ndi_mac_addr: peer NDI mac address
+ * @num_active_ndp_sessions: number of active NDP sessions on the peer
+ *
+ */
+struct peer_ndp_map {
+	uint32_t vdev_id;
+	v_MACADDR_t peer_ndi_mac_addr;
+	uint32_t num_active_ndp_sessions;
+};
+
+/**
+ * struct ndp_end_rsp_event  - firmware response to ndp end request
+ * @transaction_id: unique identifier for the request
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @ndp_map: mapping of NDP instances to peer to VDEV
+ *
+ */
+struct ndp_end_rsp_event {
+	uint32_t transaction_id;
+	uint32_t vdev_id;
+	struct peer_ndp_map ndp_map[];
+};
+
+/**
+ * struct ndp_end_indication_event - ndp termination notification from FW
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @reason: reason code for failure if any
+ * @status: status of the request
+ * @ndp_map: mapping of NDP instances to peer to VDEV
+ *
+ */
+struct ndp_end_indication_event {
+	uint32_t vdev_id;
+	uint32_t status;
+	uint32_t reason;
+	struct peer_ndp_map ndp_map[];
+};
+
+/**
+ * struct ndp_schedule_update_req - ndp schedule update request
+ * @transaction_id: unique identifier
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @ndp_instance_id: ndp instance id for which schedule update is requested
+ * @ndp_qos: new set of qos parameters
+ *
+ */
+struct ndp_schedule_update_req {
+	uint32_t transaction_id;
+	uint32_t vdev_id;
+	uint32_t ndp_instance_id;
+	struct ndp_qos_cfg ndp_qos;
+};
+
+/**
+ * struct ndp_schedule_update_rsp - ndp schedule update response
+ * @transaction_id: unique identifier
+ * @vdev_id: session id of the interface over which ndp is being created
+ * @status: status of the request
+ * @reason: reason code for failure if any
+ *
+ */
+struct ndp_schedule_update_rsp {
+	uint32 transaction_id;
+	uint32 vdev_id;
+	uint32 status;
+	uint32 reason;
+};
+
+/**
+ * struct sme_ndp_peer_ind - ndp peer indication
+ * @msg_type: message id
+ * @msg_len: message length
+ * @session_id: session id
+ * @peer_mac_addr: peer mac address
+ * @sta_id: station id
+ *
+ */
+struct sme_ndp_peer_ind {
+	uint16_t msg_type;
+	uint16_t msg_len;
+	uint8_t session_id;
+	v_MACADDR_t  peer_mac_addr;
+	uint16_t sta_id;
+};
+
+#endif /* WLAN_FEATURE_NAN_DATAPATH */
 
 #endif /* __SIR_API_H */

@@ -555,7 +555,7 @@ dfs_process_radarevent(struct ath_dfs *dfs, struct ieee80211_channel *chan)
             continue;
          }
          for (p=0, found = 0; (p<ft->ft_numfilters) && (!found); p++) {
-                                    rf = &(ft->ft_filters[p]);
+                                    rf = ft->ft_filters[p];
                                     if ((re.re_dur >= rf->rf_mindur) && (re.re_dur <= rf->rf_maxdur)) {
                                         /* The above check is probably not necessary */
                                         deltaT = (this_ts < rf->rf_dl.dl_last_ts) ?

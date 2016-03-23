@@ -37,6 +37,11 @@ config WLAN_FEATURE_NAN
 	bool "Enable NAN feature"
 	default n
 
+config WLAN_FEATURE_NAN_DATAPATH
+	bool "Enable NaN Data Path feature"
+	depends on WLAN_FEATURE_NAN
+	default n
+
 config QCOM_TDLS
 	bool "Enable TDLS feature"
 	default n

@@ -1234,4 +1234,10 @@ __adf_nbuf_peek_data(__adf_nbuf_t buf, void **data, a_uint32_t off,
 #define __adf_nbuf_get_tx_htt2_frm(skb) \
     NBUF_GET_TX_HTT2_FRM(skb)
 
+static inline void
+__adf_nbuf_update_skb_mark(__adf_nbuf_t skb, uint32_t mask)
+{
+	skb->mark |= mask;
+}
+
 #endif /*_adf_nbuf_PVT_H */

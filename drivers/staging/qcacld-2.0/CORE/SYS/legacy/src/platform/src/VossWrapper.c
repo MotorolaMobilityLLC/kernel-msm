@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -140,16 +140,11 @@ v_UINT_t tx_timer_activate(TX_TIMER *timer_ptr)
     // Check for an uninitialized timer
     VOS_ASSERT(0 != strlen(TIMER_NAME));
 
-    VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
-            "Timer %s being activated\n", TIMER_NAME);
-
     status = vos_timer_start( &timer_ptr->vosTimer,
          timer_ptr->initScheduleTimeInMsecs );
 
    if (VOS_STATUS_SUCCESS == status)
    {
-      VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
-            "Timer %s now activated\n", TIMER_NAME);
       return TX_SUCCESS;
    }
    else if (VOS_STATUS_E_ALREADY == status)
@@ -457,8 +452,6 @@ v_UINT_t tx_timer_create_intern( v_PVOID_t pMacGlobal, TX_TIMER *timer_ptr,
 v_UINT_t tx_timer_deactivate(TX_TIMER *timer_ptr)
 {
    VOS_STATUS vStatus;
-   VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
-             "tx_timer_deactivate() called for timer %s\n", TIMER_NAME);
 
    // Put a check for the free builds
    if (TX_AIRGO_TMR_SIGNATURE != timer_ptr->tmrSignature)
@@ -481,9 +474,6 @@ v_UINT_t tx_timer_deactivate(TX_TIMER *timer_ptr)
 
 v_UINT_t tx_timer_delete( TX_TIMER *timer_ptr )
 {
-   VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
-             "tx_timer_delete() called for timer %s\n", TIMER_NAME);
-
    // Put a check for the free builds
    if (TX_AIRGO_TMR_SIGNATURE != timer_ptr->tmrSignature)
    {
@@ -514,9 +504,6 @@ v_UINT_t tx_timer_delete( TX_TIMER *timer_ptr )
  */
 v_BOOL_t tx_timer_running(TX_TIMER *timer_ptr)
 {
-   VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
-             "tx_timer_running() called for timer %s\n", TIMER_NAME);
-
    // Put a check for the free builds
    if (TX_AIRGO_TMR_SIGNATURE != timer_ptr->tmrSignature)
       return VOS_FALSE;

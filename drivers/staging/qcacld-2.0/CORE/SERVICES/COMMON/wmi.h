@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2010 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2004-2010 2013, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -165,6 +165,7 @@ typedef enum {
     WMI_11NG_CAPABILITY  = 5,
     WMI_11NAG_CAPABILITY = 6,
     WMI_11AC_CAPABILITY  = 7,
+    WMI_11AX_CAPABILITY  = 8,
     // END CAPABILITY
     WMI_11N_CAPABILITY_OFFSET = (WMI_11NA_CAPABILITY - WMI_11A_CAPABILITY),
 } WMI_PHY_CAPABILITY;

@@ -588,6 +588,10 @@ struct ol_txrx_pdev_t {
 		} callbacks[OL_TXRX_MGMT_NUM_TYPES];
 	} tx_mgmt;
 
+	/* packetdump callback functions */
+	tp_ol_packetdump_cb ol_tx_packetdump_cb;
+	tp_ol_packetdump_cb ol_rx_packetdump_cb;
+
 	/* tx descriptor pool */
 	struct {
 		u_int16_t pool_size;
@@ -604,6 +608,8 @@ struct ol_txrx_pdev_t {
 				int opmode);
 		int len;
 	} rx_pn[htt_num_sec_types];
+
+	uint32_t pn_replays[OL_RX_NUM_PN_REPLAY_TYPES];
 
 	/* tx mutex */
 	OL_TX_MUTEX_TYPE tx_mutex;
@@ -962,6 +968,12 @@ struct ol_txrx_vdev_t {
 	/* Information about the schedules in the schedule */
 	struct ol_txrx_ocb_chan_info *ocb_channel_info;
 	uint32_t ocb_channel_count;
+
+	/* Default OCB TX parameter */
+	struct ocb_tx_ctrl_hdr_t *ocb_def_tx_param;
+
+	/* packet count that only forwarded and not dent to OS layer */
+	uint64_t fwd_to_tx_packets;
 };
 
 struct ol_rx_reorder_array_elem_t {

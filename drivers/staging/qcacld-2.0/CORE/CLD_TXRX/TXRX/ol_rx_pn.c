@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2015, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -107,6 +107,7 @@ ol_rx_pn_check_base(
     int pn_len;
     void *rx_desc;
     int last_pn_valid;
+    enum pn_replay_type replay_type = OL_RX_OTHER_REPLAYS;
 
     /* Make sure host pn check is not redundant */
     if ((adf_os_atomic_read(&peer->fw_pn_check)) ||
@@ -120,6 +121,14 @@ ol_rx_pn_check_base(
     index = htt_rx_msdu_is_wlan_mcast(pdev->htt_pdev, rx_desc) ?
         txrx_sec_mcast : txrx_sec_ucast;
     pn_len = pdev->rx_pn[peer->security[index].sec_type].len;
+
+    if (peer->security[index].sec_type == htt_sec_type_tkip ||
+        peer->security[index].sec_type == htt_sec_type_tkip_nomic) {
+        replay_type = OL_RX_TKIP_REPLAYS;
+    } else if (peer->security[index].sec_type == htt_sec_type_aes_ccmp) {
+        replay_type = OL_RX_CCMP_REPLAYS;
+    }
+
     if (pn_len == 0) {
         return msdu_list;
     }
@@ -212,6 +221,7 @@ ol_rx_pn_check_base(
                 OL_RX_ERR_STATISTICS_1(pdev, vdev, peer, rx_desc, OL_RX_ERR_PN);
                 next_msdu = adf_nbuf_next(msdu);
                 htt_rx_desc_frame_free(pdev->htt_pdev, msdu);
+                pdev->pn_replays[replay_type]++;
                 if (msdu == mpdu_tail) {
                     break;
                 } else {

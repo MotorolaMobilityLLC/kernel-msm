@@ -1226,5 +1226,17 @@ adf_nbuf_is_eapol_pkt(adf_nbuf_t buf)
 int adf_nbuf_update_radiotap(struct mon_rx_status *rx_status, adf_nbuf_t nbuf,
 			     u_int32_t headroom_sz);
 
+/**
+ * adf_nbuf_update_skb_mark() - update skb->mark.
+ * @skb: Pointer to nbuf
+ * @mask: the mask to set in skb->mark
+ *
+ * Return: None
+ */
+static inline void
+adf_nbuf_update_skb_mark(adf_nbuf_t skb, uint32_t mask)
+{
+	 __adf_nbuf_update_skb_mark(skb, mask);
+}
 
 #endif

@@ -73,10 +73,8 @@ static void memdump_cleanup_timer_cb(void *data)
 	adf_os_device_t adf_ctx;
 
 	status = wlan_hdd_validate_context(hdd_ctx);
-	if (0 != status) {
-		hddLog(LOGE, FL("HDD context is not valid"));
+	if (0 != status)
 		return;
-	}
 
 	if (!hdd_ctx->fw_dump_loc) {
 		hddLog(LOG1, FL("Memory dump already freed"));
@@ -117,10 +115,8 @@ static void wlan_hdd_cfg80211_fw_mem_dump_cb(void *ctx,
 	int status;
 
 	status = wlan_hdd_validate_context(hdd_ctx);
-	if (0 != status) {
-		hddLog(LOGE, FL("HDD context is not valid"));
+	if (0 != status)
 		return;
-	}
 
 	spin_lock(&hdd_context_lock);
 	context = &fw_dump_context;
@@ -153,10 +149,8 @@ static int wlan_hdd_send_memdump_rsp(hdd_context_t *hdd_ctx)
 	int status;
 
 	status = wlan_hdd_validate_context(hdd_ctx);
-	if (0 != status) {
-		hddLog(LOGE, FL("HDD context is not valid"));
+	if (0 != status)
 		return status;
-	}
 
 	skb = cfg80211_vendor_cmd_alloc_reply_skb(hdd_ctx->wiphy,
 			NLMSG_HDRLEN + NLA_HDRLEN + sizeof(uint32_t));
@@ -216,10 +210,8 @@ __wlan_hdd_cfg80211_get_fw_mem_dump(struct wiphy *wiphy,
 	}
 
 	status = wlan_hdd_validate_context(hdd_ctx);
-	if (0 != status) {
-		hddLog(LOGE, FL("HDD context is invalid"));
+	if (0 != status)
 		return status;
-	}
 
 	adf_ctx = vos_get_context(VOS_MODULE_ID_ADF, hdd_ctx->pvosContext);
 	if (!adf_ctx) {
@@ -417,10 +409,9 @@ static ssize_t memdump_read(struct file *file, char __user *buf,
 
 	hddLog(LOG1, FL("Read req for size:%zu pos:%llu"), count, *pos);
 	status = wlan_hdd_validate_context(hdd_ctx);
-	if (0 != status) {
-		hddLog(LOGE, FL("HDD context is not valid"));
+	if (0 != status)
 		return -EINVAL;
-	}
+
 	adf_ctx = vos_get_context(VOS_MODULE_ID_ADF, hdd_ctx->pvosContext);
 	if (!adf_ctx) {
 		hddLog(LOGE, FL("ADF context is NULL"));

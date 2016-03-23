@@ -59,9 +59,7 @@
 #include <linux/kthread.h>
 #include <linux/cpu.h>
 #include <linux/topology.h>
-#if defined(QCA_CONFIG_SMP)
 #include "vos_cnss.h"
-#endif
 
 /*---------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
@@ -77,7 +75,6 @@
 
 /* Timer value for detecting thread stuck issues */
 #define THREAD_STUCK_TIMER_VAL 5000 /* 5 seconds */
-#define THREAD_STUCK_COUNT 3
 
 static atomic_t ssr_protect_entry_count;
 
@@ -943,10 +940,10 @@ VosMCThread
         clear_bit(MC_SUSPEND_EVENT_MASK, &pSchedContext->mcEventFlag);
         spin_lock(&pSchedContext->McThreadLock);
 
+        INIT_COMPLETION(pSchedContext->ResumeMcEvent);
         /* Mc Thread Suspended */
         complete(&pHddCtx->mc_sus_event_var);
 
-        INIT_COMPLETION(pSchedContext->ResumeMcEvent);
         spin_unlock(&pSchedContext->McThreadLock);
 
         /* Wait foe Resume Indication */
@@ -988,16 +985,20 @@ static void vos_wd_detect_thread_stuck(void)
 
 	spin_lock_irqsave(&gpVosWatchdogContext->thread_stuck_lock, flags);
 
-	if ((gpVosWatchdogContext->mc_thread_stuck_count
-				== THREAD_STUCK_COUNT)) {
+	if (gpVosWatchdogContext->mc_thread_stuck_count) {
 		spin_unlock_irqrestore(&gpVosWatchdogContext->thread_stuck_lock,
 				flags);
-		hddLog(LOGE, FL("%s: Thread Stuck!!! MC Count %d "),
-				__func__,
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+				"%s: Thread Stuck!!! MC Count %d", __func__,
 				gpVosWatchdogContext->mc_thread_stuck_count);
 
-		vos_wlanRestart();
-		return;
+		vos_dump_stack(gpVosSchedContext->McThread);
+		vos_flush_logs(WLAN_LOG_TYPE_FATAL,
+			       WLAN_LOG_INDICATOR_HOST_ONLY,
+			       WLAN_LOG_REASON_THREAD_STUCK,
+			       true);
+		spin_lock_irqsave(&gpVosWatchdogContext->thread_stuck_lock,
+			flags);
 	}
 
 	/* Increment the thread stuck count for all threads */
@@ -1089,14 +1090,17 @@ VosWDThread
   /* Initialize the timer to detect thread stuck issues */
   if (vos_timer_init(&gpVosWatchdogContext->thread_stuck_timer,
         VOS_TIMER_TYPE_SW, vos_wd_detect_thread_stuck_cb, NULL)) {
-      hddLog(LOGE, FL("Unable to initialize thread stuck timer"));
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                "Unable to initialize thread stuck timer");
   } else {
       if (VOS_STATUS_SUCCESS !=
               vos_timer_start(&gpVosWatchdogContext->thread_stuck_timer,
                            THREAD_STUCK_TIMER_VAL))
-          hddLog(LOGE, FL("Unable to start thread stuck timer"));
+          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                        "Unable to start thread stuck timer");
       else
-          hddLog(LOGE, FL("Successfully started thread stuck timer"));
+          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                        "Successfully started thread stuck timer");
   }
 
   /*
@@ -1121,6 +1125,16 @@ VosWDThread
     clear_bit(WD_POST_EVENT_MASK, &pWdContext->wdEventFlag);
     while(1)
     {
+      /* Post Msg to detect thread stuck */
+      if (test_and_clear_bit(WD_WLAN_DETECT_THREAD_STUCK_MASK,
+                                   &pWdContext->wdEventFlag)) {
+        vos_wd_detect_thread_stuck();
+        /*
+         * Process here and return without processing any SSR
+         * related logic.
+         */
+        break;
+      }
       /* Check for any Active Entry Points
        * If active, delay SSR until no entry point is active or
        * delay until count is decremented to ZERO
@@ -1203,11 +1217,6 @@ VosWDThread
           goto err_reset;
         }
         pWdContext->resetInProgress = false;
-      }
-      /* Post Msg to detect thread stuck */
-      else if (test_and_clear_bit(WD_WLAN_DETECT_THREAD_STUCK_MASK,
-                                          &pWdContext->wdEventFlag)) {
-        vos_wd_detect_thread_stuck();
       }
       else
       {
@@ -1501,8 +1510,8 @@ static int VosTlshimRxThread(void *arg)
                clear_bit(RX_SUSPEND_EVENT_MASK,
                          &pSchedContext->tlshimRxEvtFlg);
                spin_lock(&pSchedContext->TlshimRxThreadLock);
-               complete(&pSchedContext->SuspndTlshimRxEvent);
                INIT_COMPLETION(pSchedContext->ResumeTlshimRxEvent);
+               complete(&pSchedContext->SuspndTlshimRxEvent);
                spin_unlock(&pSchedContext->TlshimRxThreadLock);
                wait_for_completion_interruptible(
                               &pSchedContext->ResumeTlshimRxEvent);

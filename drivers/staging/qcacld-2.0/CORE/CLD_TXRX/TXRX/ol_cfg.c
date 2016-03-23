@@ -115,7 +115,7 @@ ol_pdev_handle ol_pdev_cfg_attach(adf_os_device_t osdev,
 	return (ol_pdev_handle) cfg_ctx;
 }
 
-#ifdef FEATURE_BUS_BANDWIDTH
+#ifdef QCA_SUPPORT_TXRX_HL_BUNDLE
 /**
  * ol_cfg_get_bundle_timer_value() - get bundle timer value
  * @pdev: pdev handle

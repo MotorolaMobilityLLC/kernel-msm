@@ -766,30 +766,25 @@ limCleanupMlm(tpAniSirGlobal pMac)
      * each STA associated per BSSId and deactivate/delete
      * the pmfSaQueryTimer for it
      */
-    if (vos_is_logp_in_progress(VOS_MODULE_ID_PE, NULL))
+    for (bss_entry = 0; bss_entry < pMac->lim.maxBssId; bss_entry++)
     {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
-                  FL("SSR is detected, proceed to clean up pmfSaQueryTimer"));
-        for (bss_entry = 0; bss_entry < pMac->lim.maxBssId; bss_entry++)
-        {
-             if (pMac->lim.gpSession[bss_entry].valid)
+         if (pMac->lim.gpSession[bss_entry].valid)
+         {
+             for (sta_entry = 1; sta_entry < pMac->lim.gLimAssocStaLimit;
+                  sta_entry++)
              {
-                 for (sta_entry = 1; sta_entry < pMac->lim.gLimAssocStaLimit;
-                      sta_entry++)
-                 {
-                      psessionEntry = &pMac->lim.gpSession[bss_entry];
-                      pStaDs = dphGetHashEntry(pMac, sta_entry,
-                                              &psessionEntry->dph.dphHashTable);
-                      if (NULL == pStaDs)
-                      {
-                          continue;
-                      }
-                      VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
-                                FL("Deleting pmfSaQueryTimer for staid[%d]"),
-                                pStaDs->staIndex) ;
-                      tx_timer_deactivate(&pStaDs->pmfSaQueryTimer);
-                      tx_timer_delete(&pStaDs->pmfSaQueryTimer);
-                }
+                  psessionEntry = &pMac->lim.gpSession[bss_entry];
+                  pStaDs = dphGetHashEntry(pMac, sta_entry,
+                                          &psessionEntry->dph.dphHashTable);
+                  if (NULL == pStaDs)
+                  {
+                      continue;
+                  }
+                  VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+                            FL("Deleting pmfSaQueryTimer for staid[%d]"),
+                            pStaDs->staIndex) ;
+                  tx_timer_deactivate(&pStaDs->pmfSaQueryTimer);
+                  tx_timer_delete(&pStaDs->pmfSaQueryTimer);
             }
         }
     }
@@ -1033,7 +1028,13 @@ tANI_U8 limWriteDeferredMsgQ(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     {
         if(!(pMac->lim.deferredMsgCnt & 0xF))
         {
-            PELOGE(limLog(pMac, LOGE, FL("Deferred Message Queue is full. Msg:%d Messages Failed:%d"), limMsg->type, ++pMac->lim.deferredMsgCnt);)
+            limLog(pMac, LOGE,
+               FL("Deferred Message Queue is full. Msg:%d Messages Failed:%d"),
+               limMsg->type, ++pMac->lim.deferredMsgCnt);
+            vos_flush_logs(WLAN_LOG_TYPE_NON_FATAL,
+                           WLAN_LOG_INDICATOR_HOST_DRIVER,
+                           WLAN_LOG_REASON_QUEUE_FULL,
+                           true);
         }
         else
         {
@@ -6974,6 +6975,7 @@ const char * lim_BssTypetoString(const v_U8_t bssType)
         CASE_RETURN_STRING( eSIR_BTAMP_STA_MODE );
         CASE_RETURN_STRING( eSIR_BTAMP_AP_MODE );
         CASE_RETURN_STRING( eSIR_AUTO_MODE );
+        CASE_RETURN_STRING(eSIR_NDI_MODE);
         default:
             return "Unknown BssType";
     }
@@ -8370,11 +8372,6 @@ void lim_set_stads_rtt_cap(tpDphHashNode sta_ds, struct s_ext_cap *ext_cap)
 	sta_ds->timingMeasCap |= (ext_cap->fine_time_meas_responder)?
 				  RTT_FINE_TIME_MEAS_RESPONDER_CAPABILITY :
 				  RTT_INVALID;
-
-	PELOG1(limLog(pMac, LOG1,
-	       FL("ExtCap present, timingMeas: %d Initiator: %d Responder: %d"),
-	       ext_cap->timingMeas, ext_cap->fine_time_meas_initiator,
-	       ext_cap->fine_time_meas_responder);)
 }
 
 /**
@@ -8462,7 +8459,7 @@ eHalStatus lim_send_ext_cap_ie(tpAniSirGlobal mac_ctx,
 			DOT11F_EID_EXTCAP, num_bytes);
 	temp = ext_cap_data.bytes;
 	for (i=0; i < num_bytes; i++, temp++)
-		limLog(mac_ctx, LOG1, FL("%d byte is %02x"), i+1, *temp);
+		limLog(mac_ctx, LOG2, FL("%d byte is %02x"), i+1, *temp);
 
 	vdev_ie->data = (uint8_t *)vdev_ie + sizeof(*vdev_ie);
 	vos_mem_copy(vdev_ie->data, ext_cap_data.bytes, num_bytes);
@@ -8676,3 +8673,67 @@ lim_get_80Mhz_center_channel(uint8_t primary_channel)
 
 	return HAL_INVALID_CHANNEL_ID;
 }
+
+/**
+ * lim_is_ext_cap_ie_present - checks if ext ie is present
+ * @ext_cap: extended IEs structure
+ *
+ * Return: true if ext IEs are present else false
+ */
+bool lim_is_ext_cap_ie_present (struct s_ext_cap *ext_cap)
+{
+	int i, size;
+	uint8_t *tmp_buf;
+
+	tmp_buf = (uint8_t *) ext_cap;
+	size = sizeof(*ext_cap);
+
+	for (i = 0; i < size; i++)
+		if (tmp_buf[i])
+			return true;
+
+	return false;
+}
+
+/**
+ * lim_is_robust_mgmt_action_frame() - Check if action catagory is
+ * robust action frame
+ * @action_catagory: Action frame catagory.
+ *
+ * This function is used to check if given action catagory is robust
+ * action frame.
+ *
+ * Return: bool
+ */
+bool lim_is_robust_mgmt_action_frame(uint8_t action_catagory)
+{
+	switch (action_catagory) {
+		/*
+		 * NOTE: This function doesn't take care of the DMG
+		 * (Directional Multi-Gigatbit) BSS case as 8011ad
+		 * support is not yet added. In future, if the support
+		 * is required then this function need few more arguments
+		 * and little change in logic.
+		 */
+		case SIR_MAC_ACTION_SPECTRUM_MGMT:
+		case SIR_MAC_ACTION_QOS_MGMT:
+		case SIR_MAC_ACTION_DLP:
+		case SIR_MAC_ACTION_BLKACK:
+		case SIR_MAC_ACTION_RRM:
+		case SIR_MAC_ACTION_FAST_BSS_TRNST:
+		case SIR_MAC_ACTION_SA_QUERY:
+		case SIR_MAC_ACTION_PROT_DUAL_PUB:
+		case SIR_MAC_ACTION_WNM:
+		case SIR_MAC_ACITON_MESH:
+		case SIR_MAC_ACTION_MHF:
+		case SIR_MAC_ACTION_FST:
+			return true;
+		default:
+			VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
+				FL("non-PMF action category[%d] "),
+				action_catagory);
+		break;
+	}
+	return false;
+}
+

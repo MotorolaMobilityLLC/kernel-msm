@@ -41,7 +41,7 @@
 
 adf_nbuf_trace_update_t  trace_update_cb = NULL;
 
-#if defined(CONFIG_WCNSS_MEM_PRE_ALLOC) && defined(WITH_BACKPORTS)
+#if defined(CONFIG_WCNSS_MEM_PRE_ALLOC) && defined(FEATURE_SKB_PRE_ALLOC)
 struct sk_buff *__adf_nbuf_pre_alloc(adf_os_device_t osdev, size_t size)
 {
 	struct sk_buff *skb = NULL;
@@ -90,12 +90,12 @@ __adf_nbuf_alloc(adf_os_device_t osdev, size_t size, int reserve, int align, int
     if(align)
         size += (align - 1);
 
-    skb = __adf_nbuf_pre_alloc(osdev, size);
+    skb = dev_alloc_skb(size);
 
     if (skb)
        goto skb_cb;
 
-    skb = dev_alloc_skb(size);
+    skb = __adf_nbuf_pre_alloc(osdev, size);
 
     if (!skb) {
         printk("ERROR:NBUF alloc failed\n");

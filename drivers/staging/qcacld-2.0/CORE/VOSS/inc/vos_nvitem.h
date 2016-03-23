@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -91,6 +91,17 @@ typedef enum
    DFS_CAC_ALREADY_DONE, /* CAC already for SAP starting this DFS session */
 }
 eDFS_CAC_STATUS;
+
+/**
+ * struct chan_to_ht_40_index_map - information of secondary channel index
+ *
+ * @ht_40_minus_index: HT40- channel index
+ * @ht_40_plus_index: HT40+ channel index
+ */
+struct chan_to_ht_40_index_map {
+   uint16 ht_40_minus_index;
+   uint16 ht_40_plus_index;
+};
 
 // country code type
 typedef v_U8_t v_COUNTRYCODE_t[VOS_COUNTRY_CODE_LEN];
@@ -244,7 +255,7 @@ VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId,
   -------------------------------------------------------------------------*/
 eNVChannelEnabledType vos_nv_getChannelEnabledState(v_U32_t rfChannel);
 
-uint8_t vos_nv_skip_dfs_and_2g(uint32_t rf_channel);
+uint8_t vos_nv_skip_dsrc_dfs_2g(uint32_t rf_channel, int32_t skip_group);
 VOS_STATUS vos_nv_get_dfs_region(uint8_t *dfs_region);
 VOS_STATUS vos_nv_set_dfs_region(uint8_t dfs_region);
 
@@ -255,4 +266,6 @@ VOS_STATUS vos_init_wiphy_from_nv_bin(void);
 const char * voss_DomainIdtoString(const v_U8_t domainIdCurrent);
 VOS_STATUS vos_init_wiphy_from_eeprom(void);
 bool vos_is_dsrc_channel(uint16_t);
+uint32_t vos_nv_get_channel_flags(uint32_t rf_channel);
+int vos_update_band(uint8_t  band);
 #endif // __VOS_NVITEM_H

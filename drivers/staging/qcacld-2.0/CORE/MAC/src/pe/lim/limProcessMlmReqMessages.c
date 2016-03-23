@@ -891,7 +891,7 @@ limSendHalInitScanReq(tpAniSirGlobal pMac, tLimLimHalScanState nextState, tSirLi
 
     rc = wdaPostCtrlMsg(pMac, &msg);
     if (rc == eSIR_SUCCESS) {
-        PELOG3(limLog(pMac, LOG3, FL("wdaPostCtrlMsg() return eSIR_SUCCESS pMac=%x nextState=%d"),
+        PELOG3(limLog(pMac, LOG3, FL("wdaPostCtrlMsg() return eSIR_SUCCESS pMac=%p nextState=%d"),
                     pMac, pMac->lim.gLimHalScanState);)
             return;
     }
@@ -1334,7 +1334,7 @@ limRestorePreScanState(tpAniSirGlobal pMac)
     }
 
     pMac->lim.gLimSystemInScanLearnMode = 0;
-    PELOG1(limLog(pMac, LOG1, FL("Scan ended, took %d tu"), (tx_time_get() - pMac->lim.scanStartTime));)
+    PELOG1(limLog(pMac, LOG1, FL("Scan ended, took %lu tu"), (tx_time_get() - pMac->lim.scanStartTime));)
 } /*** limRestorePreScanState() ***/
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
@@ -1652,12 +1652,12 @@ limMlmAddBss (
     pAddBssParams->bssType = pMlmStartReq->bssType;
     if ((pMlmStartReq->bssType == eSIR_IBSS_MODE) ||
         (pMlmStartReq->bssType == eSIR_BTAMP_AP_MODE)||
-        (pMlmStartReq->bssType == eSIR_BTAMP_STA_MODE)) {
-        pAddBssParams->operMode                 = BSS_OPERATIONAL_MODE_STA;
-    }
-    else if (pMlmStartReq->bssType == eSIR_INFRA_AP_MODE){
-        pAddBssParams->operMode                 = BSS_OPERATIONAL_MODE_AP;
-    }
+        (pMlmStartReq->bssType == eSIR_BTAMP_STA_MODE))
+        pAddBssParams->operMode = BSS_OPERATIONAL_MODE_STA;
+    else if (pMlmStartReq->bssType == eSIR_INFRA_AP_MODE)
+        pAddBssParams->operMode = BSS_OPERATIONAL_MODE_AP;
+    else if (pMlmStartReq->bssType == eSIR_NDI_MODE)
+        pAddBssParams->operMode = BSS_OPERATIONAL_MODE_NDI;
 
     pAddBssParams->shortSlotTimeSupported = psessionEntry->shortSlotTimeSupported;
 
@@ -2262,7 +2262,7 @@ limProcessMlmJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         else
         {
           //No need to suspend link.
-          limLog(pMac,LOG1,"SessionId:%d Join request on current channel",
+          limLog(pMac,LOG2,"SessionId:%d Join request on current channel",
                  sessionId);
           limProcessMlmPostJoinSuspendLink( pMac, eHAL_STATUS_SUCCESS,
                                                     (tANI_U32*) psessionEntry );
@@ -4411,9 +4411,23 @@ limProcessAssocFailureTimeout(tpAniSirGlobal pMac, tANI_U32 MsgType)
     /* notify TL that association is failed so that TL can flush the cached frame  */
     WLANTL_AssocFailed (psessionEntry->staId);
 
-    // Log error
-    PELOG1(limLog(pMac, LOG1,
-       FL("Re/Association Response not received before timeout "));)
+    /* Log error */
+    limLog(pMac, LOG1,
+       FL("Re/Association Response not received before timeout "));
+    /*
+     * Send Deauth to handle the scenareo where association timeout happened
+     * when device has missed the assoc resp sent by peer.
+     * By sending deauth try to clear the session created on peer device.
+     */
+    limLog(pMac, LOGE,
+           FL("Sessionid: %d try sending Send deauth on channel %d to BSSID: "
+           MAC_ADDRESS_STR ), psessionEntry->peSessionId,
+           psessionEntry->currentOperChannel,
+           MAC_ADDR_ARRAY(psessionEntry->bssId));
+
+    limSendDeauthMgmtFrame(pMac, eSIR_MAC_UNSPEC_FAILURE_REASON,
+                 psessionEntry->bssId,
+                 psessionEntry, FALSE);
 
     if ((LIM_IS_AP_ROLE(psessionEntry) ||
          LIM_IS_BT_AMP_AP_ROLE(psessionEntry)) ||

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -420,7 +420,7 @@ void ccmCfgCnfMsgHandler(tHalHandle hHal, void *m)
     result  = pal_be32_to_cpu(msg->data[0]);
     cfgId   = pal_be32_to_cpu(msg->data[1]);
 
-    smsLog(pMac, LOG1, FL("started=%d, cfgId=%d, in_progress=%d"),
+    smsLog(pMac, LOG2, FL("started=%d, cfgId=%d, in_progress=%d"),
         pMac->ccm.replay.started, cfgId, pMac->ccm.replay.in_progress);
 
     if (pMac->ccm.replay.started && cfgId == CFG_UPDATE_MAGIC_DWORD)
