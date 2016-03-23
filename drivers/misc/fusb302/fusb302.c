@@ -1628,6 +1628,10 @@ void SetStateDebugAccessory(void)
 	wake_up_statemachine();
 }
 
+static bool debug_audio;
+module_param(debug_audio, bool, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(debug_audio, "SSUSB enabled in audio accessory mode");
+
 void SetStateAudioAccessory(void)
 {
 	FUSB_LOG("enter:%s\n", __func__);
@@ -1642,7 +1646,12 @@ void SetStateAudioAccessory(void)
 	Delay10us(25);		// Delay the reading of the COMP and BC_LVL to allow time for settling
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = AudioAccessory;	// Set the state machine variable to Audio.Accessory
-	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_AUDIO;
+	if (Registers.Status.VBUSOK && debug_audio) {
+		FUSB_LOG("Audio Debug Accessory, Enable SS\n");
+		fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SINK;
+		FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
+	} else
+		fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_AUDIO;
 	power_supply_changed(&fusb_i2c_data->usbc_psy);
 	SinkCurrent = utccNone;	// Not used in accessories
 	// Maintain the existing CC term values from the wait state
