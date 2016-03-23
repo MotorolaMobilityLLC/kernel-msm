@@ -937,6 +937,7 @@
 	qcom,usbid-disabled;
 	qcom,force-aicl-rerun;
 	mmi,fake-factory-type;
+	qcom,auto-voltage-comp-mv = <75>;
 };
 
 /{
