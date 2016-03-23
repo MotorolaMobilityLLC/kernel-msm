@@ -287,9 +287,11 @@ struct ufs_qcom_pm_qos {
 	struct ufs_qcom_pm_qos_cpu_group *groups;
 	struct device_attribute enable_attr;
 	struct device_attribute latency_attr;
+	struct device_attribute unvote_delay_attr;
 	struct workqueue_struct *workq;
 	int num_groups;
 	int default_cpu;
+	int unvote_delay;
 	bool is_enabled;
 };
 
