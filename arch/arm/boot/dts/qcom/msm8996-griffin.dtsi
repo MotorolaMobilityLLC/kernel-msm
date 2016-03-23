@@ -157,11 +157,22 @@
 &pmi8994_charger {
 	qcom,bms-psy-name = "msm_bms";
 	qcom,max-psy-name = "bms";
-
+	qcom,fastchg-current-ma = <3000>;
+	qcom,chg-thermal-mitigation = <3000>, <2500>, <2000>, <1600>, <1200>,
+				      <1000>, <700>, <500>, <300>;
+	qcom,parallel-charge-current-map = <3000 3000 0>,
+					   <2500 2500 0>,
+					   <2000 2000 0>,
+					   <1600 1600 0>,
+					   <1200 1200 0>,
+					   <1000 1000 0>,
+					   <700 700 0>,
+					   <500 500 0>,
+					   <300 300 0>;
 	qcom,step-chg-steps = <4100 6000 4000>,
 				<4200 4000 2400>,
 				<4400 2400 2000>;
-
+	qcom,stepchg-iterm-ma = <170>;
 	qcom,bsw-psy-name = "charger-switch";
 };
 
