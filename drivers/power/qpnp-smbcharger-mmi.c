@@ -5434,7 +5434,6 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 {
 	int rc;
 	int index;
-	union power_supply_propval ret = {0, };
 
 	cancel_delayed_work(&chip->usb_insertion_work);
 	SMB_DBG(chip, "Running USB Removal\n");
@@ -5491,14 +5490,6 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 			SMB_DBG(chip,
 				"usb psy does not allow updating prop %d rc = %d\n",
 				POWER_SUPPLY_HEALTH_UNKNOWN, rc);
-	}
-
-	/* Kick the Type C Controller if necessary */
-	if (chip->usbc_psy && chip->usbc_psy->set_property) {
-		SMB_DBG(chip, "Kick USBC Statemachine\n");
-		chip->usbc_psy->set_property(chip->usbc_psy,
-					POWER_SUPPLY_PROP_WAKEUP,
-					&ret);
 	}
 
 	if (chip->parallel.avail && chip->aicl_done_irq
@@ -5695,9 +5686,19 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 {
 	int rc;
 	u8 reg;
+	union power_supply_propval ret = {0, };
 
 	struct smbchg_chip *chip = _chip;
 	bool usb_present;
+
+	/* Kick the Type C Controller if necessary */
+	if (chip->usbc_psy && chip->usbc_psy->set_property) {
+		SMB_DBG(chip, "Kick USBC Statemachine\n");
+		chip->usbc_psy->set_property(chip->usbc_psy,
+					POWER_SUPPLY_PROP_WAKEUP,
+					&ret);
+	}
+
 
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
