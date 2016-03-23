@@ -91,12 +91,11 @@
 			<&msm_gpio 64 0>; /* RESET */
 		synaptics,gpio-config;
 		synaptics,use-in-progress-event-blank;
-		synaptics,charger-detection; /* mitigate charger noise on BOE */
 		/* pins used by touchscreen */
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_active &touch_int_default>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
-		config_modifier-names = "aod", "fps";
+		config_modifier-names = "aod", "fps", "charger";
 		config_modifier-aod {
 			aod-suspended {
 				patch-data = "F12@20:1=2;S"; /* Set LPWG bit; Power->sleep */
@@ -106,6 +105,12 @@
 			enable-notification;
 			fps-active {
 				touch-clip-area = <450 1875 610 1919 1>;
+			};
+		};
+		config_modifier-charger {
+			enable-notification;
+			charger-active { /* mitigate charger noise on BOE */
+				patch-data = "F1@0=20&0";
 			};
 		};
 	};
