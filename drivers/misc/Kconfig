@@ -709,4 +709,5 @@ source "drivers/misc/echo/Kconfig"
 source "drivers/misc/cxl/Kconfig"
 source "drivers/misc/moto-sensorhub/Kconfig"
 source "drivers/misc/fusb302/Kconfig"
+source "drivers/misc/fusb302_legacy/Kconfig"
 endmenu
