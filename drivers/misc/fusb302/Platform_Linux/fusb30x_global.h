@@ -89,6 +89,7 @@ extern struct power_supply switch_psy;
 struct fusb30x_chip *fusb30x_GetChip(void);	// Getter for the global chip structure
 void fusb30x_SetChip(struct fusb30x_chip *newChip);	// Setter for the global chip structure
 extern void *fusb302_ipc_log;
+extern bool debug_audio;
 #ifdef FSC_DEBUG
 #define FUSB_LOG(fmt, args...) do {                         \
 if (fusb302_ipc_log)   \
