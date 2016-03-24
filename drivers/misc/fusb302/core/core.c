@@ -169,14 +169,14 @@ void core_send_hard_reset(void)
 void core_send_sink_request(void)
 {
 	static int timeout_count;
-
 	atomic_set(&coreReqCtx.pending, 1);
 	core_wakeup_statemachine();
 	PolicySubIndex = 0;
 	PDTxStatus = txIdle;
 	PolicyStateTimer = 1000;
-	PolicySinkEvaluateCaps();
-	PolicySinkSelectCapability();
+	PolicyState = peSinkReady;
+	requestCurLimit(gRequestOpCurrent);
+	USBPDPolicyEngine();
 	ProtocolIdle();
 	if (!wait_for_completion_timeout(&coreReqCtx.complete,
 			msecs_to_jiffies(1000))) {
@@ -193,6 +193,7 @@ void core_send_sink_request(void)
 	/*Wait 100 ms for charger to do its job*/
 	platform_delay_10us(SLEEP_DELAY*100);
 }
+
 void core_process_pd_buffer_read(FSC_U8 * InBuffer, FSC_U8 * OutBuffer)
 {
 	ProcessPDBufferRead(InBuffer, OutBuffer);
