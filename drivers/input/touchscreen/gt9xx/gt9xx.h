@@ -145,7 +145,7 @@ extern u16 total_len;
 #define GTP_PRODUCT_ID_MAXSIZE	5
 #define GTP_PRODUCT_ID_BUFFER_MAXSIZE	6
 #define GTP_FW_VERSION_BUFFER_MAXSIZE	4
-#define GTP_MAX_TOUCH		5
+#define GTP_MAX_TOUCH		10
 #define GTP_ESD_CHECK_CIRCLE	2000      /* jiffy: ms */
 
 /***************************PART3:OTHER define*********************************/
