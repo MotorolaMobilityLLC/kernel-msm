@@ -39,6 +39,7 @@ const char *FUSB_DT_INTERRUPT_INTN = "fsc_interrupt_int_n";	// Name of the INT_N
 #endif // FSC_DEBUG
 
 static bool disable_ss_switch;
+bool debug_audio = false;
 #ifdef FSC_INTERRUPT_TRIGGERED
 /* Internal forward declarations */
 static irqreturn_t _fusb_isr_intn(int irq, void *dev_id);
@@ -5136,6 +5137,9 @@ static struct kernel_param_ops disable_ss_param_ops = {
 module_param_cb(disable_ss_switch, &disable_ss_param_ops,
 				&disable_ss_switch, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(disable_ss_switch, "Disable Super Speed Switch");
+
+module_param(debug_audio, bool, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(debug_audio, "SSUSB enabled in audio accessory mode");
 void fusb_Sysfs_Init(void)
 {
 	FSC_S32 ret = 0;
