@@ -180,6 +180,7 @@ void doDiscoverSvids(void);
 void PolicyGiveVdm(void);
 void PolicyVdm(void);
 void autoVdmDiscovery(void);
+void requestCurLimit(FSC_U16 currentLimit);
 #endif // FSC_HAVE_VDM
 
 SopType TokenToSopType(FSC_U8 data);

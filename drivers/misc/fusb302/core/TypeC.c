@@ -224,6 +224,12 @@ int fusb_power_supply_get_property(struct power_supply *psy,
 					(MaskAdv.byte[0] << 8) |
 					MaskAdv.byte[1];
 		break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
+		if (gChargerAuthenticated)
+			val->intval = gChargerOpCurrent*10000;
+		else
+			val->intval = 0;
+		break;
 	default:
 		return -EINVAL;
 	}
