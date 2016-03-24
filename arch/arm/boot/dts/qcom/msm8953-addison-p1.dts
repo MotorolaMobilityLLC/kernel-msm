@@ -86,3 +86,9 @@
 		mag_orient =  <3>; /* Mag Orientation value */
 	};
 };
+
+&i2c_2 {
+	analogix_anx7805@72{
+		status = "disabled";
+	};
+};
