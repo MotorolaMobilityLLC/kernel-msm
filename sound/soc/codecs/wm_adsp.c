@@ -619,9 +619,10 @@ static char const *wm_adsp_audio_mode_text[] = {
 	"NORMAL",
 	"VOICE",
 	"RING",
+	"CALIBRATION",
 };
 static const struct soc_enum wm_adsp_audio_mode_enum[] = {
-	SOC_ENUM_SINGLE_EXT(3, wm_adsp_audio_mode_text),
+	SOC_ENUM_SINGLE_EXT(4, wm_adsp_audio_mode_text),
 };
 static int audio_mode;
 static int wm_adsp_audio_mode_get(struct snd_kcontrol *kcontrol,
@@ -1973,6 +1974,10 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 			break;
 		case 2:
 			snprintf(file, PAGE_SIZE, "%s-dsp%d-%s-ring.bin",
+				 dsp->part, dsp->num, coeff);
+			break;
+		case 3:
+			snprintf(file, PAGE_SIZE, "%s-dsp%d-%s-calibration.bin",
 				 dsp->part, dsp->num, coeff);
 			break;
 		default:
