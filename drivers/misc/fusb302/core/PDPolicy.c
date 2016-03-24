@@ -1199,9 +1199,6 @@ void PolicySourceReady(void)
 	}
 #ifdef FSC_HAVE_VDM
 	else if (PolicyIsDFP && (AutoVdmState != AUTO_VDM_DONE)
-#ifdef FSC_DEBUG
-		 && (GetUSBPDBufferNumBytes() == 0)
-#endif // FSC_DEBUG
 	    ) {
 		autoVdmDiscovery();
 	}
@@ -2315,9 +2312,6 @@ void PolicySinkReady(void)
 	}
 #ifdef FSC_HAVE_VDM
 	else if (PolicyIsDFP && (AutoVdmState != AUTO_VDM_DONE)
-#ifdef FSC_DEBUG
-		 && (GetUSBPDBufferNumBytes() == 0)
-#endif // FSC_DEBUG
 	    ) {
 		autoVdmDiscovery();
 	}
@@ -2420,8 +2414,6 @@ void PolicySinkSendDRSwap(void)
 							AUTO_VDM_DISCOVER_ID_PP;
 						PDTxStatus = txIdle;
 						PolicySubIndex = 0;
-						requestDiscoverIdentity(
-							SOP_TYPE_SOP);
 					}
 					break;
 				case CMTSoftReset:
@@ -3113,6 +3105,26 @@ void policyBISTTestData(void)
 
 #ifdef FSC_HAVE_VDM
 
+void requestCurLimit(FSC_U16 currentLimit)
+{
+	doDataObject_t __uvdmh = { 0 };
+	doDataObject_t __uvdmDo = { 0 };
+	FSC_U32 __length = 2;
+	FSC_U32 __arr[2] = { 0 };
+
+	__uvdmh.UVDMReqRsp.VendorID = MOTOROL_VENDOR_ID;
+	__uvdmh.UVDMReqRsp.VDMType = UNSTRUCTURED_VDM;
+	__uvdmh.UVDMReqRsp.CommandStatus = 0;
+	__uvdmh.UVDMReqRsp.Command = 1;
+	__uvdmh.UVDMReqRsp.ModeObjPos = 1;
+	__uvdmDo.UVDMDO.Current = currentLimit;
+	__arr[0] = __uvdmh.object;
+	__arr[1] = __uvdmDo.object;
+	FUSB_LOG("VDMReq is %x Data %x Current is %d ma",
+			 __arr[0], __arr[1], currentLimit*10);
+	sendVdmMessageWithTimeout(SOP_TYPE_SOP, __arr, __length,
+							  peDpRequestStatus);
+}
 void InitializeVdmManager(void)
 {
 	initializeVdm();
@@ -3211,12 +3223,6 @@ void doVdmCommand(void)
 // this function assumes we're already in either Source or Sink Ready states!
 void autoVdmDiscovery(void)
 {
-#ifdef FSC_DEBUG
-	// these messages can get pretty fast, don't want to obliterate the USB buffer
-	if (GetUSBPDBufferNumBytes() != 0)
-		return;
-#endif // FSC_DEBUG
-
 	if (!PolicyIsDFP)
 		return;		// only auto-discover for DFPs - but allow SM to start for DR swaps in the future
 
@@ -3250,8 +3256,9 @@ void autoVdmDiscovery(void)
 #ifdef FSC_HAVE_DP
 		case AUTO_VDM_ENTER_DP_MODE_PP:
 			if (AutoDpModeEntryObjPos > 0) {
-				requestEnterMode(SOP_TYPE_SOP, DP_SID,
-						 AutoDpModeEntryObjPos);
+				requestEnterMode(SOP_TYPE_SOP,
+						MOTOROL_VENDOR_ID,
+						AutoDpModeEntryObjPos);
 				AutoVdmState = AUTO_VDM_DP_GET_STATUS;
 			} else {
 				AutoVdmState = AUTO_VDM_DONE;
@@ -3259,7 +3266,7 @@ void autoVdmDiscovery(void)
 			break;
 		case AUTO_VDM_DP_GET_STATUS:
 			if (DpModeEntered) {
-				requestDpStatus();
+				requestCurLimit(gRequestOpCurrent);
 			}
 			AutoVdmState = AUTO_VDM_DONE;
 			break;

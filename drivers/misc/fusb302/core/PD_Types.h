@@ -214,6 +214,26 @@ typedef union {
 		unsigned VDMType:1;	// Unstructured or structured message header
 		unsigned SVID:16;	// Unique 16-bit unsigned integer assigned by the USB-IF
 	} SVDM;
+	struct {
+		unsigned Command:5;
+		unsigned Reserverd2:2;
+		unsigned CommandStatus:1;
+		unsigned ModeObjPos:3;
+		unsigned Reserverd1:2;
+		unsigned UVDMVersion:2;
+		unsigned VDMType:1;
+		unsigned VendorID:16;
+	} UVDMReqRsp;
+	struct {
+		unsigned Current:22;
+		unsigned Unused:10;
+	} UVDMDO;
+	struct {
+		unsigned MaxCurrentLimit:10;
+		unsigned MiniCurrentLimit:10;
+		unsigned Voltage:10;
+		unsigned ModeID:2;
+	} ModeInfo;
 } doDataObject_t;
 
 typedef enum {
