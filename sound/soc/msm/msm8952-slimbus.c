@@ -1346,7 +1346,14 @@ static int msm_btsco_rate_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	pr_debug("%s: msm_btsco_rate  = %d", __func__, msm_btsco_rate);
-	ucontrol->value.integer.value[0] = msm_btsco_rate;
+	switch (msm_btsco_rate) {
+	case BTSCO_RATE_8KHZ:
+		ucontrol->value.integer.value[0] = RATE_8KHZ_ID;
+		break;
+	case BTSCO_RATE_16KHZ:
+		ucontrol->value.integer.value[0] = RATE_16KHZ_ID;
+		break;
+	}
 	return 0;
 }
 
