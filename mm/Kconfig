@@ -564,6 +564,17 @@ config FORCE_SKB_ALLOC_FROM_DMA_ZONE
 
 	  If unsure, say "n".
 
+config FORCE_KMALLOC_FROM_DMA_ZONE
+	bool "Force kmalloc to always return ZONE_DMA memory"
+	depends on ZONE_DMA
+	help
+	  Ensure kmalloc to always return memory from ZONE_DMA.
+	  This option helps ensure that clients who require ZONE_DMA memory are
+	  always using ZONE_DMA memory.
+
+	  If unsure, say "n".
+
+
 config PROCESS_RECLAIM
 	bool "Enable process reclaim"
 	depends on PROC_FS
