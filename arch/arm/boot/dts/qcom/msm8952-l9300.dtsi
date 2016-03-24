@@ -561,6 +561,8 @@
 	qcom,warm-bat-decidegc = <450>;
 	qcom,ext-sense-type;
 	qcom,fg-delta-soc = <1>;
+	qcom,resume-soc = <99>;
+	qcom,resume-soc-raw = <254>;
 };
 
 &pmi8950_haptic {
