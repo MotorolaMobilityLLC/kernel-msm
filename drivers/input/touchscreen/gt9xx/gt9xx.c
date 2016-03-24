@@ -75,8 +75,6 @@
 #define PHY_BUF_SIZE		32
 #define PROP_NAME_SIZE		24
 
-#define GTP_MAX_TOUCH		5
-
 static void gtp_int_sync(struct goodix_ts_data *ts, int ms);
 static int gtp_i2c_test(struct i2c_client *client);
 static int goodix_power_off(struct goodix_ts_data *ts);
