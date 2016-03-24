@@ -10,7 +10,7 @@
  *
  * Software License Agreement:
  *
- * The software supplied herewith by Fairchild Semiconductor (the “Company”)
+ * The software supplied herewith by Fairchild Semiconductor (the Company)
  * is supplied to you, the Company's customer, for exclusive use with its
  * USB Type C / USB PD products.  The software is owned by the Company and/or
  * its supplier, and is protected under applicable copyright laws.
@@ -19,7 +19,7 @@
  * as to civil liability for the breach of the terms and conditions of this
  * license.
  *
- * THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
+ * THIS SOFTWARE IS PROVIDED IN AN AS IS CONDITION. NO WARRANTIES,
  * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
  * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
@@ -31,12 +31,12 @@
 
 #include "vdm_callbacks.h"
 #include "vdm_types.h"
-
+#include "../../Platform_Linux/fusb30x_global.h"
 #ifdef FSC_HAVE_DP
 #include "DisplayPort/dp.h"
 #include "DisplayPort/interface_dp.h"
 #endif // FSC_HAVE_DP
-
+#include "../TypeC.h"
 FSC_BOOL svid_enable;
 FSC_BOOL mode_enable;
 FSC_U16 my_svid;
@@ -143,7 +143,8 @@ FSC_BOOL vdmEnterModeResult(FSC_BOOL success, FSC_U16 svid, FSC_U32 mode_index)
 		DpModeEntered = mode_index;
 	}
 #endif // FSC_HAVE_DP
-
+	if (svid == MOTOROL_VENDOR_ID && success)
+		DpModeEntered = mode_index;
 	return TRUE;
 }
 
@@ -172,6 +173,18 @@ void vdmInformSvids(FSC_BOOL success, SopType sop, SvidInfo svid_info)
 		}
 	}
 }
+FSC_BOOL vdmEvaluateModeEntry(FSC_U32 mode_in)
+{
+	doDataObject_t modeObj;
+
+	modeObj.object = mode_in;
+	FUSB_LOG("MaxCur %d ma", modeObj.ModeInfo.MaxCurrentLimit*10);
+	if (1 == modeObj.ModeInfo.ModeID) {
+		gChargerMaxCurrent = modeObj.ModeInfo.MaxCurrentLimit;
+		return TRUE;
+	} else
+		return FALSE;
+}
 
 void vdmInformModes(FSC_BOOL success, SopType sop, ModesInfo modes_info)
 {
@@ -186,6 +199,13 @@ void vdmInformModes(FSC_BOOL success, SopType sop, ModesInfo modes_info)
 		}
 	}
 #endif // FSC_HAVE_DP
+
+	if (modes_info.svid == MOTOROL_VENDOR_ID && modes_info.nack == FALSE) {
+		for (i = 0; i < modes_info.num_modes; i++) {
+			if (vdmEvaluateModeEntry(modes_info.modes[i]))
+				AutoDpModeEntryObjPos = i + 1;
+		}
+	}
 }
 
 void vdmInformAttention(FSC_U16 svid, FSC_U8 mode_index)
