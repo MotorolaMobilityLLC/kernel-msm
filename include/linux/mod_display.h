@@ -33,8 +33,8 @@ enum mod_display_config_type {
 struct mod_display_panel_config {
 	u8 display_type;
 	u8 config_type;
-	u32 edid_buf_size;
-	char edid_buf[0];
+	u32 config_size;
+	char config_buf[0];
 };
 
 enum mod_display_state {
