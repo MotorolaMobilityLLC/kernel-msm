@@ -22,7 +22,8 @@
 #define TS_WAKE_LOCK_TIMEOUT		(2 * HZ)
 
 #if defined(HX_AUTO_UPDATE_FW)||defined(HX_AUTO_UPDATE_CONFIG)
-#include "himax_fw.h"
+#include "himax_fw_booyi.h"
+#include "himax_fw_dijing.h"
 #endif
 static int		HX_TOUCH_INFO_POINT_CNT;
 static int		HX_RX_NUM;
@@ -800,7 +801,10 @@ void himax_touch_information(void)
 		}
 		HX_RX_NUM = data[0];				 // FE(70)
 		HX_TX_NUM = data[1];				 // FE(71)
-		HX_MAX_PT = (data[2] & 0xF0) >> 4; // FE(72)
+		if (private_ts->vendor_sensor_id == 0x12)
+			HX_MAX_PT = 10;
+		else
+			HX_MAX_PT = (data[2] & 0xF0) >> 4; // FE(72)
 #ifdef HX_EN_SEL_BUTTON
 		HX_BT_NUM = (data[2] & 0x0F); //FE(72)
 #endif
@@ -1024,12 +1028,29 @@ static void himax_power_on_initCMD(struct i2c_client *client)
 #ifdef HX_AUTO_UPDATE_FW
 static int i_update_FW(void)
 {
-	unsigned char* ImageBuffer = i_CTPM_FW;
-	int fullFileLength = sizeof(i_CTPM_FW);
+	unsigned char* ImageBuffer = i_CTPM_FW_BY;
+	int fullFileLength = sizeof(i_CTPM_FW_BY);
 	uint8_t checksumResult = 0;
 
+	if (private_ts->vendor_sensor_id == 0x11) {
+		ImageBuffer = i_CTPM_FW_DJN;
+		fullFileLength = sizeof(i_CTPM_FW_DJN);
+		W("%s: Dijing module\n", __func__);
+	} else if (private_ts->vendor_sensor_id == 0x12) {
+		ImageBuffer = i_CTPM_FW_BY;
+		fullFileLength = sizeof(i_CTPM_FW_BY);
+		W("%s: Booyi module\n", __func__);
+	} else {
+		E("%s: unknown module, use booyi default\n", __func__);
+	}
+
 	checksumResult = himax_calculateChecksum(true);
-	if (( private_ts->vendor_config_ver < i_CTPM_FW[FW_VER_MAJ_FLASH_ADDR - 1]) || (checksumResult == 0) ) {
+	W("%s: cur fw: 0x%x, new fw: 0x%x, checksum: %u\n",
+		__func__,
+		(u32)private_ts->vendor_config_ver,
+		ImageBuffer[FW_VER_MAJ_FLASH_ADDR - 1], checksumResult);
+
+	if (( private_ts->vendor_config_ver < ImageBuffer[FW_VER_MAJ_FLASH_ADDR - 1]) || (checksumResult == 0) ) {
 			if(fts_ctpm_fw_upgrade_with_sys_fs(ImageBuffer,fullFileLength,true) == 1)
 				E("%s: TP upgrade OK\n", __func__);
 			else
@@ -1730,8 +1751,9 @@ static void himax_read_TP_info(struct i2c_client *client)
 	//read sensor ID
 	private_ts->vendor_sensor_id = himax_read_Sensor_ID(client);
 
-	I("sensor_id=%x.\n",private_ts->vendor_sensor_id);
-	I("fw_ver=%x.\n",private_ts->vendor_fw_ver);
+	W("%s: module id: 0x%x, fw id: 0x%x\n",
+		__func__,
+		private_ts->vendor_sensor_id, private_ts->vendor_fw_ver);
 }
 
 #ifdef HX_ESD_WORKAROUND
@@ -4491,6 +4513,7 @@ HW_RESET_ACTIVATE = 0;
 	if (err)
 		goto err_sysfs_init_failed;
 
+	W("%s: Probe successfully\n", __func__);
 	return 0;
 
 err_sysfs_init_failed:

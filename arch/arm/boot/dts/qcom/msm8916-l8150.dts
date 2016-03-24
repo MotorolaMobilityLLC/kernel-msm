@@ -19,6 +19,7 @@
 #include "dsi-panel-booyiOTM1287-720p-video.dtsi"
 #include "dsi-panel-dijingOTM1287-720p-video.dtsi"
 #include "dsi-panel-truly-HX8394F-720p-video.dtsi"
+#include "dsi-panel-booyiOTM1287-sec-720p-video.dtsi"
 #include "msm8916-memory.dtsi"
 
 / {
@@ -305,9 +306,9 @@
 };
 
 &i2c_5 {/* BLSP1 QUP5 */
-
-	qcom,fs-clk-div = <106>;
-	qcom,high-time-clk-div = <86>;
+	qcom,clk-freq-out = <400000>;
+	qcom,fs-clk-div = <28>;
+	qcom,high-time-clk-div = <14>;
 
 	goodix@5d {
 		compatible = "goodix,gt9xx";
