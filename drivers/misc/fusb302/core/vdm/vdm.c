@@ -50,6 +50,7 @@ VdmManager vdmm;
 PolicyState_t originalPolicyState;
 FSC_BOOL vdm_timeout;
 FSC_BOOL ExpectingVdmResponse;
+FSC_U32 gChargerOpCurrent = 0;
 static const UsbVidPid id_table[] = {
 	{CYPRESS_VENDOR_ID, CYPRESS_CCG2_PID1},
 	{MOTOROL_VENDOR_ID, CYPRESS_CCG2_PID1},
@@ -397,11 +398,6 @@ FSC_S32 processDiscoverIdentity(SopType sop, FSC_U32 * arr_in,
 				   __id.id_header.usb_vid,
 				   __id.product_vdo.usb_product_id
 				  );
-			if (usbMatchId(__id.id_header.usb_vid,
-				__id.product_vdo.usb_product_id))
-				gChargerAuthenticated = TRUE;
-			else
-				gChargerAuthenticated = FALSE;
 		}
 
 		__result = (PolicyState == peDfpUfpVdmIdentityAcked) ||
@@ -706,10 +702,12 @@ FSC_S32 processEnterMode(SopType sop, FSC_U32 * arr_in, FSC_U32 length_in)
 			PolicyState = peDfpVdmModeEntryNaked;
 			vdmm.enter_mode_result(FALSE, __svdmh_in.SVDM.SVID,
 					       __svdmh_in.SVDM.ObjPos);
+			gChargerAuthenticated = FALSE;
 		} else {
 			PolicyState = peDfpVdmModeEntryAcked;
 			vdmm.enter_mode_result(TRUE, __svdmh_in.SVDM.SVID,
 					       __svdmh_in.SVDM.ObjPos);
+			gChargerAuthenticated = TRUE;
 		}
 		PolicyState = originalPolicyState;
 		ExpectingVdmResponse = FALSE;
@@ -847,7 +845,26 @@ FSC_S32 processSvidSpecific(SopType sop, FSC_U32 * arr_in, FSC_U32 length_in)
 	sendVdmMessage(sop, __arr, __length, originalPolicyState);
 	return 0;
 }
+FSC_S32  processUVDM(SopType sop, FSC_U32 *arr_in, FSC_U32 length_in)
+{
+	doDataObject_t __uvdmh_in = { 0 };
+	doDataObject_t __uvdmDo_in = { 0 };
 
+	__uvdmh_in.object = arr_in[0];
+	if (__uvdmh_in.UVDM.VendorID ==
+			MOTOROL_VENDOR_ID) {
+		FUSB_LOG("uvdm command %d status %d",
+				 __uvdmh_in.UVDMReqRsp.Command,
+				 __uvdmh_in.UVDMReqRsp.CommandStatus);
+		if (length_in > 1) {
+			__uvdmDo_in.object = arr_in[1];
+			FUSB_LOG("current %d ma",
+					 __uvdmDo_in.UVDMDO.Current*10);
+			gChargerOpCurrent = __uvdmDo_in.UVDMDO.Current;
+		}
+	}
+	return 0;
+}
 // returns 0 on success, 1+ otherwise
 FSC_S32 processVdmMessage(SopType sop, FSC_U32 * arr_in, FSC_U32 length_in)
 {
@@ -876,6 +893,10 @@ FSC_S32 processVdmMessage(SopType sop, FSC_U32 * arr_in, FSC_U32 length_in)
 		}
 	} else {
 		// TODO: Unstructured messages
+		if (__vdmh_in.UVDM.VDMType == UNSTRUCTURED_VDM) {
+			processUVDM(sop, arr_in, length_in);
+			return 0;
+		}
 		return 1;
 	}
 }
