@@ -50,11 +50,13 @@ int mod_display_get_display_config(
 		goto exit;
 	}
 
-	pr_debug("%s: === EDID BLOCK ===\n", __func__);
-	print_hex_dump_debug("HDMI EDID: ", DUMP_PREFIX_NONE, 16, 1,
-		(*display_config)->edid_buf, (*display_config)->edid_buf_size,
-		false);
-	pr_debug("%s: === EDID BLOCK ===\n", __func__);
+	if ((*display_config)->config_type == MOD_CONFIG_EDID_1_3) {
+		pr_debug("%s: === EDID BLOCK ===\n", __func__);
+		print_hex_dump_debug("HDMI EDID: ", DUMP_PREFIX_NONE, 16, 1,
+			(*display_config)->config_buf, (*display_config)->config_size,
+			false);
+		pr_debug("%s: === EDID BLOCK ===\n", __func__);
+	}
 
 exit:
 	pr_debug("%s-\n", __func__);
