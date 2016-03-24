@@ -36,6 +36,18 @@
 		qcom,cci-master = <0>;
 	};
 
+	actuator0: qcom,actuator@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+		cam_vaf-supply = <&pm8953_l17>;
+		qcom,cam-vreg-name = "cam_vaf";
+		qcom,cam-vreg-min-voltage = <2850000>;
+		qcom,cam-vreg-max-voltage = <2850000>;
+		qcom,cam-vreg-op-mode = <1000000>;
+	};
+
 	/* OV16860 */
 	qcom,camera@0 {
 		cell-index = <0>;
@@ -44,13 +56,13 @@
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
+		qcom,actuator-src = <&actuator0>;
 		qcom,led-flash-src = <&led_flash0>;
 		cam_vio-supply = <&pm8953_l10>;
-		cam_vaf-supply = <&pm8953_l17>;
-		qcom,cam-vreg-name = "cam_vio", "cam_vaf";
-		qcom,cam-vreg-min-voltage = <1800000 2850000>;
-		qcom,cam-vreg-max-voltage = <1800000 2850000>;
-		qcom,cam-vreg-op-mode = <1800000 1000000>;
+		qcom,cam-vreg-name = "cam_vio";
+		qcom,cam-vreg-min-voltage = <1800000>;
+		qcom,cam-vreg-max-voltage = <1800000>;
+		qcom,cam-vreg-op-mode = <1800000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_default
