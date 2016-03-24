@@ -1,0 +1,8 @@
+config FUSB302_LEGACY
+	bool "Legacy FUSB302 Type C Controller support"
+	depends on I2C
+	default n
+        help
+          Say y here to enable support for legacy FUSB302 type C Controller.
+		FUSB302 is a programmable USB Type-C Controller and does not
+		fully support USB Power Delivery.
