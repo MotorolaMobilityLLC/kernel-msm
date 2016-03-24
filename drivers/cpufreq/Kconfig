@@ -149,6 +149,11 @@ config CPU_FREQ_DEFAULT_GOV_NIGHTMARE
 	select CPU_FREQ_GOV_NIGHTMARE
 	help
 
+config CPU_FREQ_DEFAULT_GOV_DARKNESS
+	bool "darkness"
+  	select CPU_FREQ_GOV_DARKNESS
+  	help
+
 endchoice
 
 config CPU_FREQ_GOV_ZZMOOVE
@@ -291,6 +296,10 @@ config CPUFREQ_DT
 
 config CPU_FREQ_GOV_NIGHTMARE
 	tristate "'nightmare' cpufreq governor"
+	depends on CPU_FREQ
+
+config CPU_FREQ_GOV_DARKNESS
+	tristate "'darkness' cpufreq governor"
 	depends on CPU_FREQ
 
 config CPU_BOOST
