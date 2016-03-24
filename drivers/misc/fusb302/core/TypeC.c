@@ -1863,6 +1863,12 @@ void SetStateAudioAccessory(void)
 		Registers.Switches.byte[0] = 0x88;	// Configure VCONN on CC1, pull-up on CC2, measure CC2
 	}
 	DeviceWrite(regSwitches0, 1, &Registers.Switches.byte[0]);	// Commit the switch state
+	if (Registers.Status.VBUSOK && debug_audio) {
+		FUSB_LOG("Audio Debug Accessory, Enable SS\n");
+		usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SINK;
+		platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
+	} else
+		usbc_psy.type = POWER_SUPPLY_TYPE_USBC_AUDIO;
 	SinkCurrent = utccNone;	// Not used in accessories
 	OverPDDebounce = T_TIMER_DISABLE;	// Disable PD filter timer
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
@@ -1870,7 +1876,6 @@ void SetStateAudioAccessory(void)
 	CCDebounce = T_TIMER_DISABLE;	// Disable the 2nd level debouncing initially to force completion of a 1st level debouncing
 	ToggleTimer = T_TIMER_DISABLE;	// Once we are in the audio.accessory state, we are going to stop toggling and only monitor CC1
 	platform_toggleAudioSwitch(fsa_audio_mode);
-	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_AUDIO;
 	power_supply_changed(&usbc_psy);
 #ifdef FSC_DEBUG
 	WriteStateLog(&TypeCStateLog, ConnState, Timer_tms, Timer_S);
