@@ -49,12 +49,13 @@ irqreturn_t motosh_isr(int irq, void *dev)
 	if (motosh_irq_disable || ps_motosh->is_suspended)
 		return IRQ_HANDLED;
 
-	queue_work(ps_motosh->irq_work_queue, &ps_motosh->irq_work);
+	queue_kthread_work(&ps_motosh->irq_worker,
+		&ps_motosh->irq_work);
 
 	return IRQ_HANDLED;
 }
 
-void motosh_irq_work_func(struct work_struct *work)
+void motosh_irq_thread_func(struct kthread_work *work)
 {
 	int err;
 	u8 irq_status = 0;
