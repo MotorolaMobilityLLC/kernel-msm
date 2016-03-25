@@ -27,6 +27,7 @@
 #include <linux/platform_device.h>
 #include <linux/printk.h>
 #include <linux/clk.h>
+#include <linux/mods/usb_ext_bridge.h>
 
 #define USB_ATTACH 0xAA55
 #define CFG_ACCESS 0x9937
@@ -46,6 +47,7 @@ struct usb3813_info {
 	u16 debug_address;
 	bool debug_enabled;
 	bool debug_attach;
+	struct notifier_block usbext_notifier;
 };
 
 static int usb3813_write_command(struct usb3813_info *info, u16 command)
@@ -162,6 +164,32 @@ static int usb3813_read_cfg_reg(struct usb3813_info *info, u16 reg)
 	return val[1];
 }
 
+static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
+{
+	if (enable == info->hub_enabled)
+		return 0;
+
+	dev_info(info->dev, "%sabling the USB38138 hub\n",
+			enable ? "En" : "Dis");
+	info->hub_enabled = enable;
+
+	if (info->hub_enabled) {
+		if (clk_prepare_enable(info->hub_clk)) {
+			dev_err(info->dev, "%s: failed to prepare clock\n",
+				__func__);
+			return -EFAULT;
+		}
+		gpio_set_value(info->hub_reset_n.gpio, 1);
+		schedule_delayed_work(&info->usb3813_attach_work,
+					msecs_to_jiffies(1000));
+	} else {
+		gpio_set_value(info->hub_reset_n.gpio, 0);
+		clk_disable_unprepare(info->hub_clk);
+	}
+
+	return 0;
+}
+
 static ssize_t usb3813_enable_show(struct device *dev,
 			struct device_attribute *attr,
 			char *buf)
@@ -186,25 +214,10 @@ static ssize_t usb3813_enable_store(struct device *dev,
 
 	mode = !!mode;
 
-	if (mode == info->hub_enabled)
+	if (usb3813_hub_attach(info, mode))
+		return -EFAULT;
+	else
 		return count;
-
-	info->hub_enabled = mode;
-
-	if (info->hub_enabled) {
-		if (clk_prepare_enable(info->hub_clk)) {
-			dev_err(dev, "%s: failed to prepare clock\n", __func__);
-			return count;
-		}
-		gpio_set_value(info->hub_reset_n.gpio, 1);
-		schedule_delayed_work(&info->usb3813_attach_work,
-					msecs_to_jiffies(1000));
-	} else {
-		gpio_set_value(info->hub_reset_n.gpio, 0);
-		clk_disable_unprepare(info->hub_clk);
-	}
-
-	return count;
 }
 
 static DEVICE_ATTR(enable, 0660, usb3813_enable_show, usb3813_enable_store);
@@ -372,6 +385,30 @@ int usb3813_debug_init(struct usb3813_info *info)
 	return 0;
 }
 
+static int usb_ext_notifier_call(struct notifier_block *nb,
+		unsigned long val,
+		void *v)
+{
+	struct usb3813_info *info = container_of(nb,
+				struct usb3813_info, usbext_notifier);
+
+	struct usb_ext_status *status = v;
+
+	/* If Mod has detached, disconnect the hub */
+	if (status->proto == USB_EXT_PROTO_UNKNOWN && !val) {
+		usb3813_hub_attach(info, 0);
+		return NOTIFY_DONE;
+	}
+
+	/* We don't care about anything other than USB2.0 Host */
+	if (status->proto != USB_EXT_PROTO_2_0 ||
+		status->type != USB_EXT_REMOTE_DEVICE)
+		return NOTIFY_DONE;
+
+	usb3813_hub_attach(info, !!val);
+	return NOTIFY_OK;
+}
+
 static int usb3813_probe(struct i2c_client *client,
 			      const struct i2c_device_id *id)
 {
@@ -432,10 +469,18 @@ static int usb3813_probe(struct i2c_client *client,
 	}
 
 	INIT_DELAYED_WORK(&info->usb3813_attach_work, usb3813_attach_w);
+
+	info->usbext_notifier.notifier_call = usb_ext_notifier_call;
+	ret = usb_ext_register_notifier(&info->usbext_notifier, NULL);
+	if (ret) {
+		dev_err(&client->dev, "couldn't register usb ext notifier\n");
+		goto fail_clk;
+	}
+
 	ret = device_create_file(&client->dev, &dev_attr_enable);
 	if (ret) {
 		dev_err(&client->dev, "Unable to create enable file\n");
-		goto fail_clk;
+		goto fail_usb_ext;
 	}
 
 	usb3813_debug_init(info);
@@ -443,6 +488,8 @@ static int usb3813_probe(struct i2c_client *client,
 	dev_info(&client->dev, "Done probing usb3813\n");
 	return 0;
 
+fail_usb_ext:
+	usb_ext_unregister_notifier(&info->usbext_notifier);
 fail_clk:
 	clk_put(info->hub_clk);
 fail_gpio:
@@ -456,6 +503,7 @@ static int usb3813_remove(struct i2c_client *client)
 	struct usb3813_info *info = i2c_get_clientdata(client);
 
 	cancel_delayed_work(&info->usb3813_attach_work);
+	usb_ext_unregister_notifier(&info->usbext_notifier);
 	gpio_free(info->hub_reset_n.gpio);
 	if (info->hub_enabled)
 		clk_disable_unprepare(info->hub_clk);
