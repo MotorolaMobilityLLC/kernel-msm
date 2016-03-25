@@ -1272,7 +1272,7 @@ static ssize_t hdmi_reg_write(
 
 	cnt = sscanf(debug_buf, "%x %x", &off, &data);
 
-	if (cnt != 1)
+	if (cnt != 2)
 		return -EFAULT;
 
 	if (off > HDMI_MAX_OFFSET) {
