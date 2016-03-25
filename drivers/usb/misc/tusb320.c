@@ -27,6 +27,7 @@
 #include <linux/irq.h>
 #include <linux/delay.h>
 #include <linux/wakelock.h>
+#include <linux/usb/class-dual-role.h>
 
 #undef  __CONST_FFS
 #define __CONST_FFS(_x) \
@@ -119,6 +120,8 @@
 #define TUBS320_I2C_RESET		1
 #define TUBS320_GPIO_I2C_RESET		2
 
+#define ROLE_SWITCH_TIMEOUT		1500
+
 struct tusb320_data {
 	unsigned int_gpio;
 	unsigned enb_gpio;
@@ -138,7 +141,13 @@ struct tusb320_chip {
 	struct work_struct dwork;
 	struct wake_lock wlock;
 	struct power_supply *usb_psy;
+        struct mutex mlock;
+	struct dual_role_phy_instance *dual_role;
+	bool role_switch;
+	struct dual_role_phy_desc *desc;
 };
+
+DECLARE_WAIT_QUEUE_HEAD(tusb_mode_switch);
 
 static int tusb320_write_masked_byte(struct i2c_client *client,
 					u8 addr, u8 mask, u8 val)
@@ -736,6 +745,156 @@ out:
 	return rc;
 }
 
+static enum dual_role_property tusb_drp_properties[] = {
+	DUAL_ROLE_PROP_MODE,
+	DUAL_ROLE_PROP_PR,
+	DUAL_ROLE_PROP_DR,
+};
+
+ /* Callback for "cat /sys/class/dual_role_usb/otg_default/<property>" */
+static int dual_role_get_local_prop(struct dual_role_phy_instance *dual_role,
+			enum dual_role_property prop,
+			unsigned int *val)
+{
+	struct tusb320_chip *chip;
+	struct i2c_client *client = dual_role_get_drvdata(dual_role);
+	int ret = 0;
+
+	if (!client)
+		return -EINVAL;
+
+	chip = i2c_get_clientdata(client);
+
+	mutex_lock(&chip->mlock);
+	if (chip->state == TUBS320_DFP_ATTACH_UFP) {
+                /* attached src(DUT as DFP) */
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_DFP;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_SRC;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_HOST;
+		else
+			ret = -EINVAL;
+	} else if (chip->state == TUBS320_UFP_ATTACH_DFP) {
+        	/* attached snk(DUT as UFP) */
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_UFP;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_SNK;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_DEVICE;
+		else
+			ret = -EINVAL;
+	} else {
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_NONE;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_NONE;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_NONE;
+		else
+			ret = -EINVAL;
+	}
+	mutex_unlock(&chip->mlock);
+
+	return ret;
+}
+
+/* Decides whether userspace can change a specific property */
+static int dual_role_is_writeable(struct dual_role_phy_instance *drp,
+				enum dual_role_property prop) {
+
+	if (prop == DUAL_ROLE_PROP_MODE)
+		return 1;
+	else
+		return 0;
+}
+
+/* Callback for "echo <value> >
+ *                      /sys/class/dual_role_usb/<name>/<property>"
+ * Block until the entire final state is reached.
+ * Blocking is one of the better ways to signal when the operation
+ * is done.
+ * This function tries to switched to Attached.SRC or Attached.SNK
+ * by forcing the mode into SRC or SNK.
+ * On failure, we fall back to Try.SNK state machine.
+ */
+static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
+				enum dual_role_property prop,
+				const unsigned int *val) {
+	struct tusb320_chip *chip;
+	struct i2c_client *client = dual_role_get_drvdata(dual_role);
+	u8 mode, target_state, fallback_mode, fallback_state;
+	int rc;
+	struct device *cdev;
+	long timeout;
+
+	if (!client)
+		return -EIO;
+
+	chip = i2c_get_clientdata(client);
+	cdev = &client->dev;
+
+	if (prop == DUAL_ROLE_PROP_MODE) {
+		if (*val == DUAL_ROLE_PROP_MODE_DFP) {
+			dev_dbg(cdev, "%s: Setting SRC mode\n", __func__);
+			mode = TUBS320_MODE_UFP;
+			fallback_mode = TUBS320_MODE_DFP;
+			target_state = TUBS320_DFP_ATTACH_UFP;
+			fallback_state = TUBS320_UFP_ATTACH_DFP;
+		} else if (*val == DUAL_ROLE_PROP_MODE_UFP) {
+			dev_dbg(cdev, "%s: Setting SNK mode\n", __func__);
+			mode = TUBS320_MODE_DFP;
+			fallback_mode = TUBS320_MODE_UFP;
+			target_state = TUBS320_UFP_ATTACH_DFP;
+			fallback_state = TUBS320_DFP_ATTACH_UFP;
+		} else {
+			dev_err(cdev, "%s: Trying to set invalid mode\n",
+								__func__);
+			return -EINVAL;
+		}
+	} else {
+		dev_err(cdev, "%s: Property cannot be set\n", __func__);
+		return -EINVAL;
+	}
+
+	if (chip->state == target_state)
+		return 0;
+
+	mutex_lock(&chip->mlock);
+	/* role_switch is used a flag to force the chip back Try.SNK
+	 * state machine. */
+	chip->role_switch = false;
+	rc = tusb320_select_mode(chip, mode);
+	if (IS_ERR_VALUE(rc))
+		dev_err(cdev, "failed to select mode\n");
+
+	tusb320_i2c_reset_device(chip);
+	chip->role_switch = true;
+	mutex_unlock(&chip->mlock);
+
+	timeout = wait_event_interruptible_timeout(tusb_mode_switch,
+			chip->state == target_state,
+			msecs_to_jiffies(ROLE_SWITCH_TIMEOUT));
+
+	if (timeout > 0)
+		return 0;
+
+	mutex_lock(&chip->mlock);
+	rc = tusb320_select_mode(chip, fallback_mode);
+	if (IS_ERR_VALUE(rc))
+		dev_err(cdev, "failed to select back mode\n");
+	tusb320_i2c_reset_device(chip);
+	mutex_unlock(&chip->mlock);
+
+	timeout = wait_event_interruptible_timeout(tusb_mode_switch,
+			chip->state == fallback_state,
+			msecs_to_jiffies(ROLE_SWITCH_TIMEOUT));
+
+	return -EIO;
+}
+
 static int tusb320_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -744,6 +903,8 @@ static int tusb320_probe(struct i2c_client *client,
 	unsigned long flags;
 	int ret = 0, is_active;
 	struct power_supply *usb_psy;
+	struct dual_role_phy_desc *desc;
+	struct dual_role_phy_instance *dual_role;
 
 	usb_psy = power_supply_get_by_name("usb");
 	if (!usb_psy) {
@@ -803,6 +964,7 @@ static int tusb320_probe(struct i2c_client *client,
 
 	INIT_WORK(&chip->dwork, tusb320_work_handler);
 	wake_lock_init(&chip->wlock, WAKE_LOCK_SUSPEND, "tusb320_wake");
+        mutex_init(&chip->mlock);
 
 	ret = tusb320_create_devices(cdev);
 	if (IS_ERR_VALUE(ret)) {
@@ -846,6 +1008,28 @@ static int tusb320_probe(struct i2c_client *client,
 		ret = tusb320_select_mode(chip, chip->pdata->select_mode);
 		if (IS_ERR_VALUE(ret))
 			dev_err(cdev, "failed to select mode and work as default\n");
+	}
+
+	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
+                pr_err("to support select mode\n");
+		desc = devm_kzalloc(cdev, sizeof(struct dual_role_phy_desc),
+					GFP_KERNEL);
+		if (!desc) {
+			dev_err(cdev, "unable to allocate dual role descriptor\n");
+			goto err4;
+		}
+
+		desc->name = "otg_default";
+		desc->supported_modes = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+		desc->get_property = dual_role_get_local_prop;
+		desc->set_property = dual_role_set_prop;
+		desc->properties = tusb_drp_properties;
+		desc->num_properties = ARRAY_SIZE(tusb_drp_properties);
+		desc->property_is_writeable = dual_role_is_writeable;
+		dual_role = devm_dual_role_instance_register(cdev, desc);
+		dual_role->drv_data = client;
+		chip->dual_role = dual_role;
+		chip->desc = desc;
 	}
 
 	return 0;
