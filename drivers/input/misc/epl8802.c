@@ -637,7 +637,7 @@ static void initial_global_variable(struct i2c_client *client, struct epl_sensor
     epl_sensor.power = EPL_POWER_ON;
     epl_sensor.reset = EPL_RESETN_RUN;
     epl_sensor.mode = EPL_MODE_IDLE;
-    epl_sensor.wait = EPL_WAIT_0_MS;
+    epl_sensor.wait = EPL_WAIT_400_MS;
     epl_sensor.osc_sel = EPL_OSC_SEL_1MHZ;
 
     //als setting
@@ -677,7 +677,7 @@ static void initial_global_variable(struct i2c_client *client, struct epl_sensor
     epl_sensor.ps.integration_time = EPL_PS_INTT_272;
     epl_sensor.ps.gain = EPL_GAIN_LOW;
     epl_sensor.ps.adc = EPL_PSALS_ADC_11;
-    epl_sensor.ps.cycle = EPL_CYCLE_16;
+    epl_sensor.ps.cycle = EPL_CYCLE_8;
     epl_sensor.ps.persist = EPL_PERIST_1;
     epl_sensor.ps.ir_on_control = EPL_IR_ON_CTRL_ON;
     epl_sensor.ps.ir_mode = EPL_IR_MODE_CURRENT;
