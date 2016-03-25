@@ -1438,8 +1438,6 @@ struct bma25x_data {
 	struct bma25x_suspend_state suspend_state;
 	struct bma25x_pinctrl_data *pctrl_data;
 #ifdef BMA25X_ENABLE_INT1
-	struct class *g_sensor_class;
-	struct device *g_sensor_dev;
 	atomic_t flat_flag;
 	atomic_t flat_sign;
 	int mEnabled;
@@ -2227,8 +2225,11 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 		err = bma25x_set_mode(
 			bma25x->bma25x_client, BMA25X_MODE_NORMAL);
 		usleep(1500);
-	} else if (bma25x->mEnabled && !newstatus)
+	} else if (bma25x->mEnabled && !newstatus) {
 		disable_irq_wake(bma25x->IRQ1);
+		bma25x_set_bandwidth(
+			bma25x->bma25x_client,  bma25x->bandwidth);
+	}
 
 	bma25x_read_accel_xyz(
 		bma25x->bma25x_client, bma25x->sensor_type, &acc);
@@ -2508,6 +2509,23 @@ static ssize_t bma25x_value_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%d %d %d\n",
 			acc_value.x, acc_value.y, acc_value.z);
 }
+
+static ssize_t bma25x_debug_reg_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma25x_data *bma25x = i2c_get_clientdata(client);
+	int i = 0;
+	unsigned char data = 0;
+	int err = 0;
+
+	for (i = 0; i < 0x3F; ++i) {
+		err = bma25x_smbus_read_byte(bma25x->bma25x_client, i, &data);
+		dev_err(&bma25x->bma25x_client->dev,
+			"Reg 0x%x = 0x%x\n",  i, data);
+	}
+	return snprintf(buf, PAGE_SIZE, "%d\n", atomic_read(&bma25x->enable));
+}
 #ifdef BMA25X_ENABLE_INT1
 static ssize_t bma25x_int_mode_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -2534,37 +2552,20 @@ static ssize_t bma25x_int_mode_store(struct device *dev,
 
 	return count;
 }
-
-static ssize_t bma25x_debug_reg_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct bma25x_data *bma25x = i2c_get_clientdata(client);
-	int i = 0;
-	unsigned char data = 0;
-	int err = 0;
-
-	for (i = 0; i < 0x3F; ++i) {
-		err = bma25x_smbus_read_byte(bma25x->bma25x_client, i, &data);
-		dev_err(&bma25x->bma25x_client->dev,
-			"Reg 0x%x = 0x%x\n",  i, data);
-	}
-	return snprintf(buf, PAGE_SIZE, "%d\n", bma25x->mEnabled);
-}
 #endif
-static DEVICE_ATTR(range, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
+static DEVICE_ATTR(range, S_IWUSR|S_IWGRP|S_IRUGO,
 		bma25x_range_show, bma25x_range_store);
-static DEVICE_ATTR(bandwidth, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
+static DEVICE_ATTR(bandwidth, S_IWUSR|S_IWGRP|S_IRUGO,
 		bma25x_bandwidth_show, bma25x_bandwidth_store);
-static DEVICE_ATTR(delay, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
+static DEVICE_ATTR(delay, S_IWUSR|S_IWGRP|S_IRUGO,
 		bma25x_delay_show, bma25x_delay_store);
-static DEVICE_ATTR(enable, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
+static DEVICE_ATTR(enable, S_IWUSR|S_IWGRP|S_IRUGO,
 		bma25x_enable_show, bma25x_enable_store);
 static DEVICE_ATTR(value, S_IRUGO,  bma25x_value_show, NULL);
-#ifdef BMA25X_ENABLE_INT1
-static DEVICE_ATTR(int_mode, S_IRUGO|S_IWUSR|S_IWGRP|S_IWOTH,
-		bma25x_int_mode_show, bma25x_int_mode_store);
 static DEVICE_ATTR(debug_reg,  S_IRUGO, bma25x_debug_reg_show, NULL);
+#ifdef BMA25X_ENABLE_INT1
+static DEVICE_ATTR(int_mode, S_IWUSR|S_IWGRP|S_IRUGO,
+		bma25x_int_mode_show, bma25x_int_mode_store);
 #endif
 static struct attribute *bma25x_attributes[] = {
 	&dev_attr_range.attr,
@@ -2572,9 +2573,9 @@ static struct attribute *bma25x_attributes[] = {
 	&dev_attr_delay.attr,
 	&dev_attr_enable.attr,
 	&dev_attr_value.attr,
+	&dev_attr_debug_reg.attr,
 #ifdef BMA25X_ENABLE_INT1
 	&dev_attr_int_mode.attr,
-	&dev_attr_debug_reg.attr,
 #endif
 	NULL
 };
@@ -2582,15 +2583,6 @@ static struct attribute *bma25x_attributes[] = {
 static struct attribute_group bma25x_attribute_group = {
 	.attrs = bma25x_attributes
 };
-#ifdef BMA25X_ENABLE_INT1
-static struct attribute *bma25x_sig_motion_attributes[] = {
-	&dev_attr_int_mode.attr,
-	NULL
-};
-static struct attribute_group bma25x_sig_motion_attribute_group = {
-	.attrs = bma25x_sig_motion_attributes
-};
-#endif
 
 static int bma25x_power_ctl(struct bma25x_data *data, bool on)
 {
@@ -3456,35 +3448,6 @@ static int bma25x_probe(struct i2c_client *client,
 
 	data->input = dev;
 	data->dev_interrupt = dev_interrupt;
-#ifdef BMA25X_ENABLE_INT1
-	data->g_sensor_class = class_create(THIS_MODULE, "sig_sensor");
-	if (IS_ERR(data->g_sensor_class)) {
-		err = PTR_ERR(data->g_sensor_class);
-		data->g_sensor_class = NULL;
-		dev_err(&client->dev, "could not allocate g_sensor_class\n");
-		goto err_create_class;
-	}
-	data->g_sensor_dev = device_create(data->g_sensor_class,
-				NULL, 0, "%s", "g_sensor");
-	if (unlikely(IS_ERR(data->g_sensor_dev))) {
-		err = PTR_ERR(data->g_sensor_dev);
-		data->g_sensor_dev = NULL;
-
-		dev_err(&client->dev, "could not allocate g_sensor_dev\n");
-		goto err_create_g_sensor_device;
-	}
-	dev_set_drvdata(data->g_sensor_dev, data);
-	err = sysfs_create_group(&data->g_sensor_dev->kobj,
-			&bma25x_sig_motion_attribute_group);
-	if (err < 0)
-		goto error_sysfs;
-#endif
-	err = sysfs_create_group(&data->input->dev.kobj,
-			&bma25x_attribute_group);
-	if (err < 0) {
-		dev_err(&client->dev, "Cannot create sysfs for bma25x\n");
-		goto error_sysfs;
-	}
 
 	dev_acc = bst_allocate_device();
 	if (!dev_acc) {
@@ -3493,19 +3456,15 @@ static int bma25x_probe(struct i2c_client *client,
 		goto error_sysfs;
 	}
 	dev_acc->name = ACC_NAME;
-
 	bst_set_drvdata(dev_acc, data);
-
 	err = bst_register_device(dev_acc);
 	if (err < 0) {
 		dev_err(&client->dev, "Cannot register bst device\n");
 		goto bst_free_acc_exit;
 	}
-
 	data->bst_acc = dev_acc;
 	err = sysfs_create_group(&data->bst_acc->dev.kobj,
 			&bma25x_attribute_group);
-
 	if (err < 0) {
 		dev_err(&client->dev, "Cannot create sysfs for bst_acc.\n");
 		goto bst_free_exit;
@@ -3547,12 +3506,6 @@ bst_free_acc_exit:
 	bst_free_device(dev_acc);
 error_sysfs:
 	input_unregister_device(data->input);
-#ifdef BMA25X_ENABLE_INT1
-err_create_g_sensor_device:
-	class_destroy(data->g_sensor_class);
-err_create_class:
-	input_unregister_device(data->dev_interrupt);
-#endif
 err_register_input_device_interrupt:
 	input_free_device(dev_interrupt);
 	input_unregister_device(data->input);

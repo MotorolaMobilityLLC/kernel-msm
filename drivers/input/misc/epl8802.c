@@ -141,7 +141,7 @@ static const char ElanALsensorName[] = "lightsensor-level";
 #elif SPREAD
 static const char ElanPsensorName[] = "light sensor";
 #elif QCOM || LEADCORE
-static const char ElanPsensorName[] = "Rear proximity sensor";
+static const char ElanPsensorName[] = "proximity sensor";
 static const char ElanALsensorName[] = "light";
 #elif MARVELL
 static const char ElanPsensorName[] = "proximity_sensor";
@@ -2651,39 +2651,73 @@ static ssize_t epl_sensor_store_delay_ms(struct device *dev, struct device_attri
 
 /*----------------------------------------------------------------------------*/
 /*CTS --> S_IWUSR | S_IRUGO*/
-static DEVICE_ATTR(elan_status, S_IROTH  | S_IWOTH, epl_sensor_show_status, NULL);
-static DEVICE_ATTR(elan_reg, S_IROTH  | S_IWOTH, epl_sensor_show_reg, NULL);
-static DEVICE_ATTR(mode, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_mode);
-static DEVICE_ATTR(wait_time, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_wait_time);
-static DEVICE_ATTR(set_threshold, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_threshold);
-static DEVICE_ATTR(cal_raw, S_IROTH  | S_IWOTH, epl_sensor_show_cal_raw, NULL);
-static DEVICE_ATTR(als_enable, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_als_enable);
-static DEVICE_ATTR(als_report_type, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_als_report_type);
-static DEVICE_ATTR(enable_sar, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_ps_enable);
-static DEVICE_ATTR(enable_stow, S_IROTH  | S_IWOTH, NULL,
+static DEVICE_ATTR(elan_status, S_IRUGO,
+			epl_sensor_show_status, NULL);
+static DEVICE_ATTR(elan_reg, S_IRUGO,
+			epl_sensor_show_reg, NULL);
+static DEVICE_ATTR(mode, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_mode);
+static DEVICE_ATTR(wait_time, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_wait_time);
+static DEVICE_ATTR(set_threshold, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_threshold);
+static DEVICE_ATTR(cal_raw, S_IRUGO,
+			epl_sensor_show_cal_raw, NULL);
+static DEVICE_ATTR(als_enable, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_als_enable);
+static DEVICE_ATTR(als_report_type, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_als_report_type);
+static DEVICE_ATTR(enable_sar, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_ps_enable);
+static DEVICE_ATTR(enable_stow, S_IWUSR | S_IRUGO, NULL,
 			epl_sensor_store_stowed_enable);
-static DEVICE_ATTR(ps_polling_mode, S_IROTH  | S_IWOTH, epl_sensor_show_ps_polling, epl_sensor_store_ps_polling_mode);
-static DEVICE_ATTR(als_polling_mode, S_IROTH  | S_IWOTH, epl_sensor_show_als_polling, epl_sensor_store_als_polling_mode);
-static DEVICE_ATTR(gain, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_gain);
-static DEVICE_ATTR(ir_mode, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_ir_mode);
-static DEVICE_ATTR(ir_drive, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_ir_drive);
-static DEVICE_ATTR(ir_on, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_ir_contrl);
-static DEVICE_ATTR(interrupt_type, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_interrupt_type);
-static DEVICE_ATTR(integration, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_integration);
-static DEVICE_ATTR(adc, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_adc);
-static DEVICE_ATTR(cycle, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_cycle);
-static DEVICE_ATTR(ps_w_calfile, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_ps_w_calfile);
-static DEVICE_ATTR(i2c_w, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_reg_write);
-static DEVICE_ATTR(unlock, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_unlock);
-static DEVICE_ATTR(als_ch, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_als_ch_sel);
-static DEVICE_ATTR(ps_cancel, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_ps_cancelation);
-static DEVICE_ATTR(run_ps_cali, S_IROTH  | S_IWOTH, epl_sensor_show_ps_run_cali, NULL);
-static DEVICE_ATTR(pdata, S_IROTH  | S_IWOTH, epl_sensor_show_pdata, NULL);
-static DEVICE_ATTR(als_data, S_IROTH  | S_IWOTH, epl_sensor_show_als_data, NULL);
-static DEVICE_ATTR(elan_renvo, S_IROTH  | S_IWOTH, epl_sensor_show_renvo, NULL);
-static DEVICE_ATTR(set_delay_ms, S_IROTH | S_IWOTH, epl_sensor_show_delay_ms, epl_sensor_store_delay_ms);
-static DEVICE_ATTR(near, S_IROTH  | S_IWOTH, epl_sensor_show_near, NULL);
-static DEVICE_ATTR(als_lux, S_IROTH  | S_IWOTH, epl_sensor_show_als_lux, NULL);
+static DEVICE_ATTR(ps_polling_mode, S_IWUSR | S_IRUGO,
+			epl_sensor_show_ps_polling,
+			epl_sensor_store_ps_polling_mode);
+static DEVICE_ATTR(als_polling_mode, S_IWUSR | S_IRUGO,
+			epl_sensor_show_als_polling,
+			epl_sensor_store_als_polling_mode);
+static DEVICE_ATTR(gain, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_gain);
+static DEVICE_ATTR(ir_mode, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_ir_mode);
+static DEVICE_ATTR(ir_drive, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_ir_drive);
+static DEVICE_ATTR(ir_on, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_ir_contrl);
+static DEVICE_ATTR(interrupt_type, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_interrupt_type);
+static DEVICE_ATTR(integration, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_integration);
+static DEVICE_ATTR(adc, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_adc);
+static DEVICE_ATTR(cycle, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_cycle);
+static DEVICE_ATTR(ps_w_calfile, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_ps_w_calfile);
+static DEVICE_ATTR(i2c_w, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_reg_write);
+static DEVICE_ATTR(unlock, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_unlock);
+static DEVICE_ATTR(als_ch, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_als_ch_sel);
+static DEVICE_ATTR(ps_cancel, S_IWUSR | S_IRUGO, NULL,
+			epl_sensor_store_ps_cancelation);
+static DEVICE_ATTR(run_ps_cali, S_IRUGO,
+			epl_sensor_show_ps_run_cali, NULL);
+static DEVICE_ATTR(pdata, S_IRUGO,
+			epl_sensor_show_pdata, NULL);
+static DEVICE_ATTR(als_data, S_IRUGO,
+			epl_sensor_show_als_data, NULL);
+static DEVICE_ATTR(elan_renvo, S_IRUGO,
+			epl_sensor_show_renvo, NULL);
+static DEVICE_ATTR(set_delay_ms, S_IWUSR | S_IRUGO,
+			epl_sensor_show_delay_ms,
+			epl_sensor_store_delay_ms);
+static DEVICE_ATTR(near, S_IRUGO,
+			epl_sensor_show_near, NULL);
+static DEVICE_ATTR(als_lux, S_IRUGO,
+			epl_sensor_show_als_lux, NULL);
 /*----------------------------------------------------------------------------*/
 static struct attribute *epl_sensor_attr_list[] = {
 	&dev_attr_elan_status.attr,
