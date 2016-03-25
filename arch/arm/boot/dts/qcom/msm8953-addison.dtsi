@@ -16,7 +16,7 @@
  / {
 	model = "addison";
 	compatible = "qcom,msm8953-addison", "qcom,msm8953-moto",
-			"qcom,msmtitanium";
+			"qcom,msm8953";
 };
 
 &soc {
@@ -57,7 +57,7 @@
 	vio_disp_vreg: vio_disp_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "vio_disp";
-		vin-supply = <&pmtitanium_l6>;
+		vin-supply = <&pm8953_l6>;
 		gpio = <&tlmm 33 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
