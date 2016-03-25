@@ -17,6 +17,7 @@
 
 #include <linux/cdev.h>
 #include <linux/i2c.h>
+#include <linux/kthread.h>
 #include <linux/spinlock.h>
 #include <linux/switch.h>
 #include <linux/wakelock.h>
@@ -424,9 +425,15 @@ struct motosh_data {
 	struct motosh_platform_data *pdata;
 	/* to avoid two i2c communications at the same time */
 	struct mutex lock;
-	struct work_struct irq_work;
-	struct delayed_work irq_wake_work;
-	struct workqueue_struct *irq_work_queue;
+
+	struct kthread_worker irq_worker;
+	struct task_struct *irq_task;
+	struct kthread_work irq_work;
+
+	struct kthread_worker wake_irq_worker;
+	struct task_struct *wake_irq_task;
+	struct kthread_work wake_irq_work;
+
 	unsigned int wake_work_delay;
 	struct wake_lock wakelock;
 	struct wake_lock reset_wakelock;
@@ -525,10 +532,10 @@ int motosh_set_derived_sens_update_rate(struct motosh_data *ps_motosh);
 
 
 irqreturn_t motosh_isr(int irq, void *dev);
-void motosh_irq_work_func(struct work_struct *work);
+void motosh_irq_thread_func(struct kthread_work *work);
 
 irqreturn_t motosh_wake_isr(int irq, void *dev);
-void motosh_irq_wake_work_func(struct work_struct *work);
+void motosh_irq_wake_thread_func(struct kthread_work *work);
 int motosh_process_ir_gesture(struct motosh_data *ps_motosh,
 	unsigned char *data);
 

@@ -107,13 +107,13 @@ irqreturn_t motosh_wake_isr(int irq, void *dev)
 				100U, 600000U);
 	}
 
-	queue_delayed_work(ps_motosh->irq_work_queue, &ps_motosh->irq_wake_work,
-		msecs_to_jiffies(ps_motosh->wake_work_delay));
+	queue_kthread_work(&ps_motosh->wake_irq_worker,
+		&ps_motosh->wake_irq_work);
 
 	return IRQ_HANDLED;
 }
 
-void motosh_irq_wake_work_func(struct work_struct *work)
+void motosh_irq_wake_thread_func(struct kthread_work *work)
 {
 	int err;
 	unsigned long irq_status;
@@ -127,14 +127,21 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
 	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
 	struct motosh_data *ps_motosh = container_of(
-			(struct delayed_work *)work,
-			struct motosh_data, irq_wake_work);
+			work,
+			struct motosh_data, wake_irq_work);
 	int log_msg_ctr = 0;
 #ifdef CONFIG_SENSORS_MOTOSH_HEADSET
 	unsigned char new_state;
 #endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
 	struct motosh_platform_data *pdata;
 	pdata = ps_motosh->pdata;
+
+	/* If there is a specified delay for this thread.
+	 * This is used to back off attempting to initialization
+	 * on bad firmware. For normal operations this will be
+	 * set to 0. (See motosh_wake_isr() above) */
+	if (ps_motosh->wake_work_delay != 0)
+		msleep(ps_motosh->wake_work_delay);
 
 	dev_dbg(&ps_motosh->client->dev, "motosh_irq_wake_work_func\n");
 	mutex_lock(&ps_motosh->lock);
