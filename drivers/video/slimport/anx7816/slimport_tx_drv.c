@@ -150,19 +150,17 @@ static void hdmi_rx_new_vsi_int(void);
 #define gen_M_clk_without_downspeading \
 	sp_write_reg_and(TX_P0, SP_TX_M_CALCU_CTRL, (~M_GEN_CLK_SEL))
 
+void anx7816_force_hpd(bool on);
+
 #define hdmi_rx_set_hpd(enable) \
 	do { \
 		if ((bool)enable) { \
 			sp_write_reg_or(TX_P2, SP_TX_VID_CTRL3_REG, HPD_OUT); \
-			/* TODO: hack for P0 HDMI HPD detection */ \
-			hdmi_hpd_hack(1); \
-			pr_debug("%s %s : hdmi_hpd_hack 1 !\n", LOG_TAG, __func__); \
+			anx7816_force_hpd(1); \
 		} else {\
 			sp_write_reg_and(TX_P2, SP_TX_VID_CTRL3_REG, \
 								~HPD_OUT); \
-			/* TODO: hack for P0 HDMI HPD detection */ \
-			hdmi_hpd_hack(0); \
-			pr_debug("%s %s : hdmi_hpd_hack 0 !\n", LOG_TAG, __func__); \
+			anx7816_force_hpd(0); \
 		} \
 	} while (0)
 #define hdmi_rx_set_termination(enable) \
