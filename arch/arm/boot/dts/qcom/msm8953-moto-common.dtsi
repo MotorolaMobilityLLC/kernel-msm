@@ -555,7 +555,7 @@
 			"msm-pcm-afe", "msm-lsm-client",
 			"msm-pcm-routing", "msm-cpe-lsm",
 			"msm-pcm-lpa";
-		asoc-cpu = <&dai_pri_auxpcm>, <&dai_mi2s2>, <&dai_mi2s5>,
+		asoc-cpu = <&dai_pri_auxpcm>, <&dai_mi2s3>, <&dai_mi2s5>,
 			<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
 			<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
 			<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>,
@@ -565,7 +565,7 @@
 			<&incall_music_rx>, <&incall_music_2_rx>,
 			<&sb_5_rx>, <&bt_sco_rx>, <&bt_sco_tx>;
 		asoc-cpu-names = "msm-dai-q6-auxpcm.1",
-			"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.5",
+			"msm-dai-q6-mi2s.3", "msm-dai-q6-mi2s.5",
 			"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
 			"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
 			"msm-dai-q6-dev.16388", "msm-dai-q6-dev.16389",
@@ -579,6 +579,31 @@
 			"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289";
 		asoc-codec = <&stub_codec>;
 		asoc-codec-names = "msm-stub-codec.1";
+	};
+
+	qcom,msm-dai-mi2s {
+		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
+			status = "disabled";
+		};
+		dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
+			status = "disabled";
+		};
+		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
+			status = "disabled";
+		};
+		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
+			pinctrl-names = "default", "idle";
+			pinctrl-0 = <&sec_tlmm_lines_act>;
+			pinctrl-1 = <&sec_tlmm_lines_sus>;
+		};
+		dai_mi2s5: qcom,msm-dai-q6-mi2s-quin {
+			pinctrl-names = "default", "idle";
+			pinctrl-0 = <&pri_tlmm_lines_act>;
+			pinctrl-1 = <&pri_tlmm_lines_sus>;
+		};
+		dai_mi2s6: qcom,msm-dai-q6-mi2s-senary {
+			status = "disabled";
+		};
 	};
 
 	qcom,msm-thermal {
