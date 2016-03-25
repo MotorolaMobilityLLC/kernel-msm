@@ -6,3 +6,10 @@ config SLIMPORT_COMMON
 	help
 	  Slimport Transmitter is a video transmitter chip
 	  over micro-USB connector for smartphone device
+
+config SLIMPORT_MOD_DISPLAY
+	select MOD_DISPLAY
+	bool "Slimport mod display"
+	default n
+	---help---
+	  Slimport support for mod display framework
