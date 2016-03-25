@@ -19,7 +19,7 @@
 		label = "sky81298";
 		qcom,flash-name = "sky81298";
 		qcom,flash-type = <1>;
-		cam_vio-supply = <&pmtitanium_l6>;
+		cam_vio-supply = <&pm8953_l6>;
 		qcom,cam-vreg-name = "cam_vio";
 		qcom,cam-vreg-min-voltage = <1800000>;
 		qcom,cam-vreg-max-voltage = <1800000>;
@@ -45,8 +45,8 @@
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
 		qcom,led-flash-src = <&led_flash0>;
-		cam_vio-supply = <&pmtitanium_l10>;
-		cam_vaf-supply = <&pmtitanium_l17>;
+		cam_vio-supply = <&pm8953_l10>;
+		cam_vaf-supply = <&pm8953_l17>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vaf";
 		qcom,cam-vreg-min-voltage = <1800000 2850000>;
 		qcom,cam-vreg-max-voltage = <1800000 2850000>;
@@ -83,7 +83,7 @@
 		qcom,csid-sd-index = <2>;
 		qcom,mount-angle = <270>;
 		qcom,led-flash-src = <&led_flash0>;
-		cam_vio-supply = <&pmtitanium_l10>;
+		cam_vio-supply = <&pm8953_l10>;
 		qcom,cam-vreg-name = "cam_vio";
 		qcom,cam-vreg-min-voltage = <1800000>;
 		qcom,cam-vreg-max-voltage = <1800000>;
@@ -204,7 +204,7 @@
 &rpm_bus {
 	rpm-regulator-ldoa10 {
 		status = "okay";
-		pmtitanium_l10: regulator-l10 {
+		pm8953_l10: regulator-l10 {
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			qcom,init-voltage = <1800000>;
