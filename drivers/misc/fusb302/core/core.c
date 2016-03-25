@@ -56,7 +56,10 @@ void core_state_machine(void)
 {
 	StateMachineTypeC();
 }
-
+void core_state_machine_imp(void)
+{
+	WakeStateMachineTypeC();
+}
 /*
  * Call this function every 100us for the core's timers.
  */

@@ -5234,6 +5234,18 @@ void fusb_InitChipData(void)
 /*********************************************************************************************************************/
 /*********************************************************************************************************************/
 #ifdef FSC_INTERRUPT_TRIGGERED
+static int fusb_InterruptPinLow(void)
+{
+	FSC_S32 ret = 0;
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
+		return -ENOMEM;
+	}
+	ret = !gpio_get_value(chip->gpio_IntN);
+	return ret;
+}
 
 FSC_S32 fusb_EnableInterrupts(void)
 {
@@ -5294,15 +5306,50 @@ static irqreturn_t _fusb_isr_intn(FSC_S32 irq, void *dev_id)
 		chip->dbgSMRollovers++;	// Record a moderate amount of rollovers
 	}
 #endif // FSC_DEBUG
-
-	pm_stay_awake(&chip->client->dev);
-
-	core_state_machine();	// Run the state machine
-
-	pm_relax(&chip->client->dev);
+	schedule_work(&chip->wake_worker);
 	return IRQ_HANDLED;
 }
 
+void _fusb_WakeWorker(struct work_struct *work)
+{
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
+		return;
+	}
+	pm_stay_awake(&chip->client->dev);
+	if (fusb_InterruptPinLow())
+		core_state_machine();
+	else
+		core_state_machine_imp();
+	pm_relax(&chip->client->dev);
+}
+void fusb_ScheduleWakeWork(void)
+{
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
+		return;
+	}
+	schedule_work(&chip->wake_worker);
+}
+void fusb_InitializeWakeWorker(void)
+{
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	FUSB_LOG("FUSB  %s - Initializing Wakeup threads!\n", __func__);
+	if (!chip) {
+		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
+		return;
+	}
+	INIT_WORK(&chip->wake_worker, _fusb_WakeWorker);
+}
+void platform_run_wake_thread(void)
+{
+	fusb_ScheduleWakeWork();
+}
 #else
 
 /*******************************************************************************
@@ -5349,7 +5396,6 @@ void _fusb_MainWorker(struct work_struct *work)
 	core_state_machine();	// Run the state machine
 	schedule_work(&chip->worker);	// Reschedule ourselves to run again
 }
-
 void fusb_InitializeWorkers(void)
 {
 	struct fusb30x_chip *chip = fusb30x_GetChip();
@@ -5389,5 +5435,4 @@ void fusb_ScheduleWork(void)
 	schedule_delayed_work(&chip->init_worker,
 			      msecs_to_jiffies(chip->InitDelayMS));
 }
-
 #endif // FSC_INTERRUPT_TRIGGERED, else
