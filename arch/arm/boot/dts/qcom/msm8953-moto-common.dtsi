@@ -10,8 +10,8 @@
  * GNU General Public License for more details.
  */
 
-#include "msmtitanium.dtsi"
-#include "msmtitanium-pinctrl.dtsi"
+#include "msm8953.dtsi"
+#include "msm8953-pinctrl.dtsi"
 #include "msm8953-moto-pinctrl.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "msm8953-camera-sensor-mot.dtsi"
@@ -237,8 +237,8 @@
 			ct406_als_lux2_c0_mult = <0x11F>;
 			ct406_als_lux2_c1_mult = <0x1DE>;
 			ct406_als_lux2_div = <0x80>;
-			sensor1-supply = <&pmtitanium_l6>;
-			sensor2-supply = <&pmtitanium_l22>;
+			sensor1-supply = <&pm8953_l6>;
+			sensor2-supply = <&pm8953_l22>;
 			accel_orient = <3>;     /* Accel Orientation value */
 			gyro_orient = <3>;      /* Gyro Orientation value */
 			mag_orient =  <3>;      /* Mag Orientation value */
@@ -309,13 +309,13 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&marley_irq_default &marley_reset_default>;
 
-			AVDD-supply = <&pmtitanium_l6>;
-			DBVDD1-supply = <&pmtitanium_l6>;
-			DBVDD2-supply = <&pmtitanium_l6>;
-			CPVDD-supply = <&pmtitanium_l6>;
-			CPVDD1-supply = <&pmtitanium_l6>;
-			CPVDD2-supply = <&pmtitanium_l6>;
-			DCVDD-supply = <&pmtitanium_l6>;
+			AVDD-supply = <&pm8953_l6>;
+			DBVDD1-supply = <&pm8953_l6>;
+			DBVDD2-supply = <&pm8953_l6>;
+			CPVDD-supply = <&pm8953_l6>;
+			CPVDD1-supply = <&pm8953_l6>;
+			CPVDD2-supply = <&pm8953_l6>;
+			DCVDD-supply = <&pm8953_l6>;
 			SPKVDD-supply = <&dummy_vreg>;
 
 			gpio-controller;
@@ -370,9 +370,9 @@
 			fpc,gpio_irq = <&tlmm 42 0>;
 			fpc,gpio_rst = <&tlmm 47 0>;
 			fpc,txout_boost_enable;
-			vcc_spi-supply = <&pmtitanium_s3>;
-			vcc_ana-supply = <&pmtitanium_l6>;
-			vcc_io-supply  = <&pmtitanium_l6>;
+			vcc_spi-supply = <&pm8953_s3>;
+			vcc_ana-supply = <&pm8953_l6>;
+			vcc_io-supply  = <&pm8953_l6>;
 			clock-names = "iface_clk", "core_clk";
 			clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
 			<&clock_gcc clk_gcc_blsp2_qup4_spi_apps_clk>;
@@ -616,9 +616,9 @@
 
 	fsusb42 {
 		compatible = "fairchild,fsusb42";
-		gpios = <&pmtitanium_gpios 6 0>; /* USB_SELECT, output-low */
+		gpios = <&pm8953_gpios 6 0>; /* USB_SELECT, output-low */
 		gpio-names = "gpio_fsusb_select";
-		vdd-fsusb42-supply = <&pmtitanium_l13>;
+		vdd-fsusb42-supply = <&pm8953_l13>;
 		status = "okay";
 	};
 
@@ -627,13 +627,13 @@
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&hd3ss460_amsel_default>;
 		pinctrl-1 = <&hd3ss460_amsel_active>;
-		gpios = <&pmtitanium_gpios 7 0>, /* USB_SS_MOD_EN, output-low */
+		gpios = <&pm8953_gpios 7 0>, /* USB_SS_MOD_EN, output-low */
 			<&tlmm 130 0>,       	 /* USB_SS_SW_SEL, output-low */
-			<&pmtitanium_gpios 8 0>; /* USB_SS_MOD_MPHY_AP_EN, output-low */
+			<&pm8953_gpios 8 0>; /* USB_SS_MOD_MPHY_AP_EN, output-low */
 		hd3-gpio-labels = "gpio_hd3ss460_pol",
 				"gpio_hd3ss460_amsel",
 				"gpio_hd3ss460_en";
-		vdd-hd3ss460-supply = <&pmtitanium_l6>;
+		vdd-hd3ss460-supply = <&pm8953_l6>;
 		vdd-voltage-level = <1800000 1800000>;
 		vdd-current-level = <200 30000>;
 	};
@@ -755,12 +755,12 @@
 
 &sdhc_1 {
 	/* device core power supply */
-	vdd-supply = <&pmtitanium_l8>;
+	vdd-supply = <&pm8953_l8>;
 	qcom,vdd-voltage-level = <2900000 2900000>;
 	qcom,vdd-current-level = <200 570000>;
 
 	/* device communication power supply */
-	vdd-io-supply = <&pmtitanium_l5>;
+	vdd-io-supply = <&pm8953_l5>;
 	qcom,vdd-io-always-on;
 	qcom,vdd-io-lpm-sup;
 	qcom,vdd-io-voltage-level = <1800000 1800000>;
@@ -780,12 +780,12 @@
 
 &sdhc_2 {
 	/* device core power supply */
-	vdd-supply = <&pmtitanium_l11>;
+	vdd-supply = <&pm8953_l11>;
 	qcom,vdd-voltage-level = <2950000 2950000>;
 	qcom,vdd-current-level = <15000 800000>;
 
 	/* device communication power supply */
-	vdd-io-supply = <&pmtitanium_l12>;
+	vdd-io-supply = <&pm8953_l12>;
 	qcom,vdd-io-voltage-level = <1800000 2950000>;
 	qcom,vdd-io-current-level = <200 22000>;
 
@@ -845,7 +845,7 @@
 	};
 };
 
-&pmtitanium_gpios {
+&pm8953_gpios {
 	gpio@c100 {
 		status = "okay";
 		qcom,mode = <1>; /* Digital output */
@@ -902,7 +902,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&factory_default>;
 	gpios = <&pmi8950_gpios 2 0x0>, /* GPIOF_OUT_INIT_LOW */
-		<&pmtitanium_gpios 5 0x1>, /* GPIOF_IN */
+		<&pm8953_gpios 5 0x1>, /* GPIOF_IN */
 		<&tlmm 110 0x0>; /* GPIOF_OUT_INIT_LOW */
 	gpio-names = "eb_vbus_en",
 		     "factory_warn",
@@ -979,7 +979,7 @@
 	qcom,battery-data = <&mot_batterydata>;
 };
 
-&pmtitanium_typec {
+&pm8953_typec {
 	status = "disabled";
 };
 
@@ -991,7 +991,7 @@
 	qcom,display-id = "primary";
 };
 
-&pmtitanium_vadc {
+&pm8953_vadc {
 	chan@11 {
 		label = "chg_therm";
 	};

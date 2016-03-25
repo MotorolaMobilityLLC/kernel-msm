@@ -56,9 +56,9 @@
 		/delete-property/ pinctrl-names;
 		/delete-property/ pinctrl-0;
 		/delete-property/ pinctrl-1;
-		gpios = <&pmtitanium_gpios 7 0>, /* USB_SS_MOD_EN, output-low */
-			<&pmtitanium_gpios 2 0>, /* USB_SS_SW_SEL, output-low */
-			<&pmtitanium_gpios 8 0>; /* USB_SS_MOD_MPHY_AP_EN, output-low */
+		gpios = <&pm8953_gpios 7 0>, /* USB_SS_MOD_EN, output-low */
+			<&pm8953_gpios 2 0>, /* USB_SS_SW_SEL, output-low */
+			<&pm8953_gpios 8 0>; /* USB_SS_MOD_MPHY_AP_EN, output-low */
 	};
 };
 
@@ -70,7 +70,7 @@
 	};
 };
 
-&pmtitanium_gpios {
+&pm8953_gpios {
 	gpio@c100 { /* GPIO 2 - USB_SS_SW_SEL */
 		qcom,mode = <1>;		/* Digital Output */
 		qcom,pull = <5>;		/* No pull  */
