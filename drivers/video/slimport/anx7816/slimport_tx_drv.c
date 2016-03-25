@@ -775,14 +775,21 @@ unchar is_cable_detected(void)
 void slimport_waitting_cable_plug_process(void)
 {
 	if (is_cable_detected()) {
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+		slimport_set_hdmi_hpd(1);
+#endif
 		hardware_power_ctl(1);
 #ifdef QUICK_CHARGE_SUPPORT
 		/*enable otg,QC2.0*/
 		enable_otg();
 #endif
 		goto_next_system_state();
-	} else
+	} else {
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+		slimport_set_hdmi_hpd(0);
+#endif
 		hardware_power_ctl(0);
+	}
 }
 
 
@@ -3509,6 +3516,9 @@ static void sp_tx_auth_done_int_handler(void)
 static void sp_tx_polling_err_int_handler(void)
 {
 	/*unchar temp;*/
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	slimport_set_hdmi_hpd(0);
+#endif
 
 	pr_debug("%s %s : sp_tx_polling_err_int_handler\n", LOG_TAG, __func__);
 	/*if(AUX_ERR== sp_tx_aux_dpcdread_bytes(0x00, 0x00, 0x00, 1, &temp)) */
