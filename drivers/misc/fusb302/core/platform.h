@@ -142,7 +142,7 @@ void platform_delay_10us(FSC_U32 delayCount);
 
 void platform_disableSuperspeedUSB(void);
 void platform_enableSuperspeedUSB(int CC1, int CC2);
-
+void platform_run_wake_thread(void);
 typedef enum {
 	fsa_lpm = 0,
 	fsa_audio_mode,

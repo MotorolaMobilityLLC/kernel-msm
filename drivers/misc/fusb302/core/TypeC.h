@@ -230,5 +230,6 @@ void ProcessReadTypeCStateLog(FSC_U8 * MsgBuffer, FSC_U8 * retBuffer);
 void setAlternateModes(FSC_U8 mode);
 FSC_U8 getAlternateModes(void);
 #endif // FSC_DEBUG
-
+void StateMachineTypeCImp(void);
+void WakeStateMachineTypeC(void);
 #endif /* __FSC_TYPEC_H__ */

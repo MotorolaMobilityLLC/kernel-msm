@@ -12,7 +12,7 @@ void core_initialize(void);
 void core_state_machine(void);
 void core_tick_at_100us(void);
 void core_enable_typec(FSC_BOOL enable);
-
+void core_state_machine_imp(void);
 void core_set_vbus_transition_time(FSC_U32 time_ms);
 
 #ifdef FSC_DEBUG
