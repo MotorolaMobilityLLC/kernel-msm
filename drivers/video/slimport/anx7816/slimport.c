@@ -21,6 +21,10 @@
 #include "quick_charge.h"
 #endif
 
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+#include "../../msm/mdss/mdss_hdmi_slimport.h"
+#endif
+
 #include <linux/mod_display.h>
 #include <linux/mod_display_ops.h>
 
@@ -155,6 +159,41 @@ static int anx7816_pinctrl_init(struct device *dev,
 
 	return 0;
 }
+
+struct msm_hdmi_slimport_ops *hdmi_slimport_ops;
+
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+void slimport_set_hdmi_hpd(int on)
+{
+	int rc = 0;
+	static int hdmi_hpd_flag;
+
+	pr_info("%s %s:+\n", LOG_TAG, __func__);
+
+	if (on && hdmi_hpd_flag != 1) {
+		hdmi_hpd_flag = 1;
+		rc = hdmi_slimport_ops->set_upstream_hpd(g_pdata->hdmi_pdev, 1);
+		pr_debug("%s %s: hpd on = %s\n", LOG_TAG, __func__,
+				rc ? "failed" : "passed");
+		if (rc) {
+			msleep(2000);
+			rc = hdmi_slimport_ops->set_upstream_hpd(
+							g_pdata->hdmi_pdev, 1);
+		}
+	} else if (!on && hdmi_hpd_flag != 0) {
+		hdmi_hpd_flag = 0;
+		rc = hdmi_slimport_ops->set_upstream_hpd(g_pdata->hdmi_pdev, 0);
+		pr_debug("%s %s: hpd off = %s\n", LOG_TAG, __func__,
+				rc ? "failed" : "passed");
+
+	} else {
+		pr_debug("%s %s: hpd status is stupid.\n", LOG_TAG, __func__);
+	}
+
+	pr_debug("%s %s:-\n", LOG_TAG, __func__);
+}
+#endif
+
 
 #ifdef QUICK_CHARGE_SUPPORT
 extern struct blocking_notifier_head *get_notifier_list_head(void);
@@ -1097,6 +1136,9 @@ void cable_disconnect(void *data)
 	pmic_recovery();
 	reset_process();
 #endif
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	slimport_set_hdmi_hpd(0);
+#endif
 	sp_tx_hardware_powerdown();
 	sp_tx_clean_state_machine();
 	wake_unlock(&anx7816->slimport_lock);
@@ -1606,6 +1648,27 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	/*QC2.0*/
 #ifdef QUICK_CHARGE_SUPPORT
 	BLOCKING_INIT_NOTIFIER_HEAD(get_notifier_list_head());
+#endif
+
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	hdmi_slimport_ops = devm_kzalloc(&client->dev,
+				    sizeof(struct msm_hdmi_slimport_ops),
+				    GFP_KERNEL);
+	if (!hdmi_slimport_ops) {
+		pr_err("%s: alloc hdmi slimport ops failed\n", __func__);
+		ret = -ENOMEM;
+		goto err3;
+	}
+
+	if (anx7816->pdata->hdmi_pdev) {
+		ret = msm_hdmi_register_slimport(anx7816->pdata->hdmi_pdev,
+					   hdmi_slimport_ops, anx7816);
+		if (ret) {
+			pr_err("%s: register with hdmi failed\n", __func__);
+			ret = -EPROBE_DEFER;
+			goto err3;
+		}
+	}
 #endif
 
 	slimport_mod_display_ops.data = (void *)anx7816;
