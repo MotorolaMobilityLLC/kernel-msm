@@ -847,7 +847,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		handle = cpu_to_be32(handle);
 		if (handle == ID_A) {
 			ps_motosh->nwake_flush_req |= FLUSH_ACCEL_REQ;
-			queue_work(ps_motosh->irq_work_queue,
+			queue_kthread_work(&ps_motosh->irq_worker,
 				   &ps_motosh->irq_work);
 		} else
 			motosh_as_data_buffer_write(ps_motosh, DT_FLUSH,
