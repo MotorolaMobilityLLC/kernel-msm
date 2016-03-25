@@ -128,6 +128,7 @@ int fusb_power_supply_set_property(struct power_supply *psy,
 		usbDataDisabled = !!val->intval;
 		break;
 	case POWER_SUPPLY_PROP_WAKEUP:
+		platform_run_wake_thread();
 		break;
 	case POWER_SUPPLY_PROP_MASK_INT:
 		if (val->intval > 0) {
@@ -430,110 +431,145 @@ void EnableTypeCStateMachine(void)
  *                  sub-interval of the 1/4 UI in order to meet timing
  *                  requirements.
  ******************************************************************************/
+void WakeStateMachineTypeC(void)
+{
+	FUSB_LOG("TypeC Kicking ConnState is %d USBPDActive is %d\n",
+			 ConnState, USBPDActive);
+	StateMachineTypeCImp();
+	FUSB_LOG("TypeC End Kicking ConnState is %d USBPDActive is %d\n",
+			 ConnState, USBPDActive);
+}
+void StateMachineTypeCImp(void)
+{
+	if (!blnSMEnabled)
+		return;
+
+	/*
+	*Read the interrupta, interruptb, status0,
+	*status1 and interrupt registers
+	*/
+	if (platform_get_device_irq_state())
+		DeviceRead(regStatus0a, 7, &Registers.Status.byte[0]);
+#ifdef FSC_INTERRUPT_TRIGGERED
+	else if (PolicyState != PE_BIST_Test_Data) {
+		/*Read the status bytes to update RX_EMPTY*/
+		DeviceRead(regStatus1, 1, &Registers.Status.byte[5]);
+	}
+#endif
+	/*
+	*Only call the USB PD routines
+	*if we have enabled the block
+	*/
+	if (USBPDActive) {
+		/*
+		*Call the protocol state machine
+		*to handle any timing critical operations
+		*/
+		USBPDProtocol();
+		/*
+		*Once we have handled any Type-C
+		*and protocol events,
+		*call the USB PD Policy Engine
+		*/
+		USBPDPolicyEngine();
+	}
+	switch (ConnState) {
+	case Disabled:
+		StateMachineDisabled();
+		break;
+	case ErrorRecovery:
+		StateMachineErrorRecovery();
+		break;
+	case Unattached:
+		StateMachineUnattached();
+		break;
+#ifdef FSC_HAVE_SNK
+	case AttachWaitSink:
+		StateMachineAttachWaitSink();
+		break;
+	case AttachedSink:
+		StateMachineAttachedSink();
+		break;
+#ifdef FSC_HAVE_DRP
+	case TryWaitSink:
+		StateMachineTryWaitSink();
+		break;
+	case TrySink:
+		stateMachineTrySink();
+		break;
+#endif
+#endif
+#ifdef FSC_HAVE_SRC
+	case AttachWaitSource:
+		StateMachineAttachWaitSource();
+		break;
+	case AttachedSource:
+		StateMachineAttachedSource();
+		break;
+#ifdef FSC_HAVE_DRP
+	case TryWaitSource:
+		stateMachineTryWaitSource();
+		break;
+	case TrySource:
+		StateMachineTrySource();
+		break;
+#endif
+	case UnattachedSource:
+		stateMachineUnattachedSource();
+		break;
+#endif
+#ifdef FSC_HAVE_ACCMODE
+	case AudioAccessory:
+		StateMachineAudioAccessory();
+		break;
+	case DebugAccessory:
+		StateMachineDebugAccessory();
+		break;
+	case AttachWaitAccessory:
+		StateMachineAttachWaitAccessory();
+		break;
+	case PoweredAccessory:
+		StateMachinePoweredAccessory();
+		break;
+	case UnsupportedAccessory:
+		StateMachineUnsupportedAccessory();
+		break;
+#endif
+	case DelayUnattached:
+		StateMachineDelayUnattached();
+		break;
+	default:
+		/*
+		*We shouldn't get here
+		*so go to the unattached state just in case
+		*/
+		SetStateDelayUnattached();
+		break;
+	}
+	/*
+	*Clear the interrupt register
+	*once we've gone through the state machines
+	*/
+	Registers.Status.Interrupt1 = 0;
+	/*
+	*Clear the advanced interrupt registers
+	*once we've gone through the state machines
+	*/
+	Registers.Status.InterruptAdv = 0;
+}
+
 void StateMachineTypeC(void)
 {
 	FUSB_LOG("TypeC Start ConnState is %d USBPDActive is %d\n",
 			 ConnState, USBPDActive);
-#ifdef  FSC_INTERRUPT_TRIGGERED
-	do {
-#endif // FSC_INTERRUPT_TRIGGERED
-		if (!blnSMEnabled)
-			return;
-
-		if (platform_get_device_irq_state()) {
-			DeviceRead(regStatus0a, 7, &Registers.Status.byte[0]);	// Read the interrupta, interruptb, status0, status1 and interrupt registers
-		}
 #ifdef FSC_INTERRUPT_TRIGGERED
-		else if (PolicyState != PE_BIST_Test_Data) {
-			DeviceRead(regStatus1, 1, &Registers.Status.byte[5]);	// Read the status bytes to update RX_EMPTY
-		}
-#endif // FSC_INTERRUPT_TRIGGERED
-
-		if (USBPDActive)	// Only call the USB PD routines if we have enabled the block
-		{
-
-			USBPDProtocol();	// Call the protocol state machine to handle any timing critical operations
-
-			USBPDPolicyEngine();	// Once we have handled any Type-C and protocol events, call the USB PD Policy Engine
-
-		}
-		switch (ConnState) {
-		case Disabled:
-			StateMachineDisabled();
-			break;
-		case ErrorRecovery:
-			StateMachineErrorRecovery();
-			break;
-		case Unattached:
-			StateMachineUnattached();
-			break;
-#ifdef FSC_HAVE_SNK
-		case AttachWaitSink:
-			StateMachineAttachWaitSink();
-			break;
-		case AttachedSink:
-			StateMachineAttachedSink();
-			break;
-#ifdef FSC_HAVE_DRP
-		case TryWaitSink:
-			StateMachineTryWaitSink();
-			break;
-		case TrySink:
-			stateMachineTrySink();
-			break;
-#endif // FSC_HAVE_DRP
-#endif // FSC_HAVE_SNK
-#ifdef FSC_HAVE_SRC
-		case AttachWaitSource:
-			StateMachineAttachWaitSource();
-			break;
-		case AttachedSource:
-			StateMachineAttachedSource();
-			break;
-#ifdef FSC_HAVE_DRP
-		case TryWaitSource:
-			stateMachineTryWaitSource();
-			break;
-		case TrySource:
-			StateMachineTrySource();
-			break;
-#endif // FSC_HAVE_DRP
-		case UnattachedSource:
-			stateMachineUnattachedSource();
-			break;
-#endif // FSC_HAVE_SRC
-#ifdef FSC_HAVE_ACCMODE
-		case AudioAccessory:
-			StateMachineAudioAccessory();
-			break;
-		case DebugAccessory:
-			StateMachineDebugAccessory();
-			break;
-		case AttachWaitAccessory:
-			StateMachineAttachWaitAccessory();
-			break;
-		case PoweredAccessory:
-			StateMachinePoweredAccessory();
-			break;
-		case UnsupportedAccessory:
-			StateMachineUnsupportedAccessory();
-			break;
-#endif // FSC_HAVE_ACCMODE
-		case DelayUnattached:
-			StateMachineDelayUnattached();
-			break;
-		default:
-			SetStateDelayUnattached();	// We shouldn't get here, so go to the unattached state just in case
-			break;
-		}
-		Registers.Status.Interrupt1 = 0;	// Clear the interrupt register once we've gone through the state machines
-		Registers.Status.InterruptAdv = 0;	// Clear the advanced interrupt registers once we've gone through the state machines
-
-#ifdef  FSC_INTERRUPT_TRIGGERED
-
+	do {
+#endif
+		StateMachineTypeCImp();
+#ifdef FSC_INTERRUPT_TRIGGERED
 		platform_delay_10us(SLEEP_DELAY);
 	} while (g_Idle == FALSE);
-#endif // FSC_INTERRUPT_TRIGGERED
+#endif
 	FUSB_LOG("TypeC End ConnState is %d USBPDActive is %d\n",
 			 ConnState, USBPDActive);
 }
