@@ -289,6 +289,9 @@ Optional Properties:
 					maximum output is 5.4V. This property
 					indicates maximum number of D+ pulses
 					that can be supplied to the adapter.
+- qcom,override-usb-current		A boolean property to override the ICL limit
+					for USB charger(SDP) based on the current
+					reported by USB driver.
 
 Example:
 	qcom,qpnp-smbcharger {
