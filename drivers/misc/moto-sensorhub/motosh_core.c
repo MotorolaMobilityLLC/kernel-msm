@@ -1144,15 +1144,26 @@ static int motosh_probe(struct i2c_client *client,
 	ps_motosh->intp_mask = 0x00;
 
 	ps_motosh->wake_work_delay = 0;
-	INIT_WORK(&ps_motosh->irq_work, motosh_irq_work_func);
-	INIT_DELAYED_WORK(&ps_motosh->irq_wake_work, motosh_irq_wake_work_func);
+	init_kthread_worker(&ps_motosh->irq_worker);
+	init_kthread_worker(&ps_motosh->wake_irq_worker);
 
-	ps_motosh->irq_work_queue = create_singlethread_workqueue("motosh_wq");
-	if (!ps_motosh->irq_work_queue) {
-		err = -ENOMEM;
-		dev_err(&client->dev, "cannot create work queue: %d\n", err);
+	ps_motosh->irq_task = kthread_run(kthread_worker_fn,
+			&ps_motosh->irq_worker,
+			dev_name(&client->dev));
+
+	ps_motosh->wake_irq_task = kthread_run(kthread_worker_fn,
+			&ps_motosh->wake_irq_worker,
+			dev_name(&client->dev));
+
+	if (IS_ERR(ps_motosh->irq_task) || IS_ERR(ps_motosh->wake_irq_task)) {
+		dev_err(&client->dev, "failed to create sensor threads\n");
 		goto err1;
 	}
+
+	init_kthread_work(&ps_motosh->irq_work, motosh_irq_thread_func);
+	init_kthread_work(&ps_motosh->wake_irq_work,
+			motosh_irq_wake_thread_func);
+
 	ps_motosh->pdata = pdata;
 	i2c_set_clientdata(client, ps_motosh);
 	ps_motosh->client->flags &= 0x00;
@@ -1400,7 +1411,6 @@ err4:
 	if (ps_motosh->pdata->exit)
 		ps_motosh->pdata->exit();
 err2:
-	destroy_workqueue(ps_motosh->irq_work_queue);
 err1:
 	mutex_unlock(&ps_motosh->lock);
 	mutex_destroy(&ps_motosh->lock);
@@ -1436,7 +1446,6 @@ static int motosh_remove(struct i2c_client *client)
 	if (ps_motosh->pdata->exit)
 		ps_motosh->pdata->exit();
 	motosh_gpio_free(ps_motosh->pdata);
-	destroy_workqueue(ps_motosh->irq_work_queue);
 	mutex_destroy(&ps_motosh->lock);
 	wake_unlock(&ps_motosh->wakelock);
 	wake_lock_destroy(&ps_motosh->wakelock);
@@ -1471,8 +1480,8 @@ static void motosh_process_ignored_interrupts_locked(
 	if (ps_motosh->ignored_interrupts) {
 		ps_motosh->ignored_interrupts = 0;
 		wake_lock_timeout(&ps_motosh->wakelock, HZ);
-		queue_delayed_work(ps_motosh->irq_work_queue,
-			&ps_motosh->irq_wake_work, 0);
+		queue_kthread_work(&ps_motosh->wake_irq_worker,
+			&ps_motosh->wake_irq_work);
 	}
 }
 
@@ -1495,9 +1504,8 @@ static int motosh_resume(struct device *dev)
 	motosh_process_ignored_interrupts_locked(ps_motosh);
 
 	if (ps_motosh->pending_wake_work) {
-		queue_delayed_work(ps_motosh->irq_work_queue,
-			&ps_motosh->irq_wake_work,
-			msecs_to_jiffies(ps_motosh->wake_work_delay));
+		queue_kthread_work(&ps_motosh->wake_irq_worker,
+			&ps_motosh->wake_irq_work);
 		ps_motosh->pending_wake_work = false;
 	}
 
@@ -1505,7 +1513,7 @@ static int motosh_resume(struct device *dev)
 	 * non-wakeable onchanged events. (display rotate / light sensor / etc.)
 	 * Streaming data is now flushed in irq_work */
 	if (motosh_irq_disable == 0)
-		queue_work(ps_motosh->irq_work_queue,
+		queue_kthread_work(&ps_motosh->irq_worker,
 			&ps_motosh->irq_work);
 
 	mutex_unlock(&ps_motosh->lock);
