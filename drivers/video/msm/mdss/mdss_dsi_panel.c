@@ -192,6 +192,11 @@ static struct dsi_cmd_desc backlight_cmd_otm1901a = {
 	led_pwm2
 };
 
+static struct dsi_cmd_desc backlight_cmd_r63350= {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm2)},
+	led_pwm2
+};
+
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	struct dcs_cmd_req cmdreq;
@@ -210,6 +215,11 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 		led_pwm2[1] = (unsigned char)(level & 0xff);
 		memset(&cmdreq, 0, sizeof(cmdreq));
 		cmdreq.cmds = &backlight_cmd_otm1901a;
+	} else if (!strncmp(ctrl->panel_data.panel_info.panel_name,
+					"truly R63350", 12)) {
+		led_pwm2[1] = (unsigned char)(level & 0xff);
+		memset(&cmdreq, 0, sizeof(cmdreq));
+		cmdreq.cmds = &backlight_cmd_r63350;
 	} else {
 		led_pwm1[1] = (unsigned char)((level >> 8) & 0x0f);
 		led_pwm1[2] = (unsigned char)(level & 0xff);

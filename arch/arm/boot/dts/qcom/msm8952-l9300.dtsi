@@ -15,6 +15,7 @@
 #include "msm8952-camera-sensor-l9300.dtsi"
 #include "dsi-panel-truly-hx8399c-1080p-video.dtsi"
 #include "dsi-panel-dijing-otm1901a-1080p-video.dtsi"
+#include "dsi-panel-truly-r63350-1080p-video.dtsi"
 
 &blsp1_uart2 {
         status = "ok";
