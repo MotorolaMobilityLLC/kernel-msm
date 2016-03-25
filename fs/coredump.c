@@ -507,8 +507,7 @@ static int umh_pipe_setup(struct subprocess_info *info, struct cred *new)
 }
 
 #ifdef CONFIG_COREDUMP_PERMISSION_HACK
-static void adjust_permissions(struct cred *cred, int *flag,
-		bool *need_nonrelative)
+static void adjust_permissions(struct cred *cred, bool *need_nonrelative)
 {
 	cred->uid = GLOBAL_ROOT_UID;
 	cred->fsuid = GLOBAL_ROOT_UID;
@@ -540,12 +539,10 @@ static void adjust_permissions(struct cred *cred, int *flag,
 #undef COREDUMP_SECCTX
 #endif
 
-	*flag = O_EXCL;		/* Stop rewrite attacks */
 	*need_nonrelative = true;
 }
 #else
-static inline void adjust_permissions(struct cred *cred, int *flag,
-		bool *need_nonrelative) {}
+static inline void adjust_permissions(struct cred *cred, bool *need_nonrelative) {}
 #endif
 
 void do_coredump(const siginfo_t *siginfo)
@@ -605,7 +602,7 @@ void do_coredump(const siginfo_t *siginfo)
 	ispipe = format_corename(&cn, &cprm);
 
 	if (!ispipe)
-		adjust_permissions(cred, &flag, &need_nonrelative);
+		adjust_permissions(cred, &need_suid_safe);
 
 	old_cred = override_creds(cred);
 
