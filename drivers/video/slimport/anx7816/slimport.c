@@ -95,7 +95,7 @@ struct anx7816_platform_data {
 	struct pinctrl_state *hdmi_pinctrl_active;
 	struct pinctrl_state *hdmi_pinctrl_suspend;
 	struct platform_device *hdmi_pdev;
-	bool cbl_det_suport;
+	bool cbl_det_hpd_support;
 };
 
 struct anx7816_data {
@@ -216,7 +216,7 @@ bool slimport_dongle_is_connected(void)
 	if (!pdata)
 		return false;
 
-	if (pdata->cbl_det_suport) {
+	if (pdata->cbl_det_hpd_support) {
 		if (gpio_get_value(pdata->gpio_cbl_det) == DONGLE_CABLE_INSERT
 			/*gpio_get_value_cansleep(pdata->gpio_cbl_det)*/) {
 			pr_debug("%s %s : Slimport Dongle is detected\n",
@@ -1125,6 +1125,29 @@ static int anx7816_system_init(void)
 	return 0;
 }
 
+void anx7816_force_hpd(bool on)
+{
+	struct anx7816_data *anx7816;
+
+	pr_info("%s+\n", __func__);
+
+	if (!g_data) {
+		pr_err("%s: g_data is not set \n", __func__);
+		return;
+	} else
+		anx7816 = g_data;
+
+	if (anx7816->pdata->cbl_det_hpd_support) {
+		/* HDMI will see the HPD via interrupt on this hardware */
+		return;
+	}
+
+	pr_info("%s %s : hdmi_hpd_hack(%d)\n", LOG_TAG, __func__, on); \
+	hdmi_hpd_hack(on);
+
+	pr_info("%s-\n", __func__);
+}
+
 void cable_disconnect(void *data)
 {
 	struct anx7816_data *anx7816 = data;
@@ -1136,10 +1159,13 @@ void cable_disconnect(void *data)
 	pmic_recovery();
 	reset_process();
 #endif
+	anx7816_force_hpd(0);
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 	slimport_set_hdmi_hpd(0);
 #endif
 	sp_tx_hardware_powerdown();
+	pr_debug("%s %s : hdmi_hpd_hack 0 !\n", LOG_TAG, __func__);
+	hdmi_hpd_hack(0);
 	sp_tx_clean_state_machine();
 	wake_unlock(&anx7816->slimport_lock);
 	wake_lock_timeout(&anx7816->slimport_lock, 2 * HZ);
@@ -1158,11 +1184,6 @@ static unsigned char confirmed_cable_det(void *data)
 	unsigned char count = 10;
 	unsigned char cable_det_count = 0;
 
-	if (!anx7816->pdata->cbl_det_suport) {
-		/* For some HW doesn't has ANX CBL_DET GPIO connection */
-		return 1;
-	}
-
 	do {
 		if (gpio_get_value(anx7816->pdata->gpio_cbl_det)
 				== DONGLE_CABLE_INSERT)
@@ -1172,17 +1193,8 @@ static unsigned char confirmed_cable_det(void *data)
 
 	return (cable_det_count > 5) ? 0 : 1;
 	#else
-	if (!anx7816->pdata->cbl_det_suport) {
-		/* This returns 1 is not quite right for cbl_det_suport is not
-		 * set. This is OK, because this confirmed_cable_det() is only
-		 * called by anx7816_cbl_det_isr() and at beginning, it has
-		 * a check for cbl_det_suport, before it reaches this point
-		 */
-		return 1;
-	} else {
-		usleep_range(DEBOUNCING_DELAY_US, DEBOUNCING_DELAY_US);
-		return gpio_get_value(anx7816->pdata->gpio_cbl_det);
-	}
+	usleep_range(DEBOUNCING_DELAY_US, DEBOUNCING_DELAY_US);
+	return gpio_get_value(anx7816->pdata->gpio_cbl_det);
 	#endif
 }
 
@@ -1197,6 +1209,11 @@ void anx7816_force_mydp_det(bool connected)
 		return;
 	} else
 		anx7816 = g_data;
+
+	if (anx7816->pdata->cbl_det_hpd_support) {
+		/* We should use the ISR for this type of hardware */
+		return;
+	}
 
 	if (connected) {
 		if (!anx7816->slimport_connected) {
@@ -1227,7 +1244,7 @@ static irqreturn_t anx7816_cbl_det_isr(int irq, void *data)
 	struct anx7816_data *anx7816 = data;
 	int cable_connected = 0;
 
-	if (!anx7816->pdata->cbl_det_suport) {
+	if (!anx7816->pdata->cbl_det_hpd_support) {
 		/* For some HW doesn't has ANX CBL_DET GPIO connection */
 		return IRQ_HANDLED;
 	}
@@ -1377,9 +1394,9 @@ static int anx7816_parse_dt(struct device *dev,
 	    of_get_named_gpio_flags(np, "analogix,cbl-det-gpio", 0, NULL);
 
 	if (gpio_is_valid(pdata->gpio_cbl_det))
-		pdata->cbl_det_suport = true;
+		pdata->cbl_det_hpd_support = true;
 	else
-		pdata->cbl_det_suport = false;
+		pdata->cbl_det_hpd_support = false;
 
 	pr_debug(
 	       "%s gpio p_dwn : %d, reset : %d,  gpio_cbl_det %d\n",
@@ -1434,8 +1451,6 @@ static int slimport_mod_display_handle_available(void *data)
 
 	anx7816 = (struct anx7816_data *)data;
 
-	anx7816_force_mydp_det(true);
-
 	pr_debug("%s-\n", __func__);
 
 	return 0;
@@ -1452,8 +1467,6 @@ static int slimport_mod_display_handle_unavailable(void *data)
 	/* Just in case */
 	mod_display_set_display_state(MOD_DISPLAY_OFF);
 
-	anx7816_force_mydp_det(false);
-
 	pr_debug("%s-\n", __func__);
 
 	return 0;
@@ -1469,6 +1482,8 @@ static int slimport_mod_display_handle_connect(void *data)
 
 	mod_display_set_display_state(MOD_DISPLAY_ON);
 
+	anx7816_force_mydp_det(true);
+
 	pr_debug("%s-\n", __func__);
 
 	return 0;
@@ -1481,6 +1496,8 @@ static int slimport_mod_display_handle_disconnect(void *data)
 	pr_debug("%s+\n", __func__);
 
 	anx7816 = (struct anx7816_data *)data;
+
+	anx7816_force_mydp_det(false);
 
 	mod_display_set_display_state(MOD_DISPLAY_OFF);
 
@@ -1601,7 +1618,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		goto err2;
 	}
 
-	if (anx7816->pdata->cbl_det_suport) {
+	if (anx7816->pdata->cbl_det_hpd_support) {
 		client->irq = gpio_to_irq(anx7816->pdata->gpio_cbl_det);
 		if (client->irq < 0) {
 			pr_err("%s : failed to get gpio irq\n", __func__);
@@ -1612,7 +1629,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	wake_lock_init(&anx7816->slimport_lock,
 		       WAKE_LOCK_SUSPEND, "slimport_wake_lock");
 
-	if (anx7816->pdata->cbl_det_suport) {
+	if (anx7816->pdata->cbl_det_hpd_support) {
 		ret = request_threaded_irq(client->irq, NULL,
 				anx7816_cbl_det_isr,
 				   IRQF_TRIGGER_RISING
