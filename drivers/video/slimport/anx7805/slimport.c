@@ -30,6 +30,8 @@
 #include <linux/of_gpio.h>
 #include <linux/async.h>
 #include <linux/of_platform.h>
+#include <linux/mod_display.h>
+#include <linux/mod_display_ops.h>
 
 #include "slimport_tx_drv.h"
 #include "slimport.h"
@@ -672,6 +674,78 @@ static void anx7805_work_func(struct work_struct *work)
 #endif
 }
 
+static int slimport_mod_display_handle_available(void *data)
+{
+	struct anx7805_data *anx7805;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7805 = (struct anx7805_data *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int slimport_mod_display_handle_unavailable(void *data)
+{
+	struct anx7805_data *anx7805;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7805 = (struct anx7805_data *)data;
+
+	/* Just in case */
+	mod_display_set_display_state(MOD_DISPLAY_OFF);
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int slimport_mod_display_handle_connect(void *data)
+{
+	struct anx7805_data *anx7805;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7805 = (struct anx7805_data *)data;
+
+	mod_display_set_display_state(MOD_DISPLAY_ON);
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int slimport_mod_display_handle_disconnect(void *data)
+{
+	struct anx7805_data *anx7805;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7805 = (struct anx7805_data *)data;
+
+	mod_display_set_display_state(MOD_DISPLAY_OFF);
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static struct mod_display_ops slimport_mod_display_ops = {
+	.handle_available = slimport_mod_display_handle_available,
+	.handle_unavailable = slimport_mod_display_handle_unavailable,
+	.handle_connect = slimport_mod_display_handle_connect,
+	.handle_disconnect = slimport_mod_display_handle_disconnect,
+	.data = NULL,
+};
+
+static struct mod_display_impl_data slimport_mod_display_impl = {
+	.mod_display_type = MOD_DISPLAY_TYPE_DP,
+	.ops = &slimport_mod_display_ops,
+};
+
 static int anx7805_parse_dt(struct device_node *node,
                             struct anx7805_data *anx7805)
 {
@@ -962,6 +1036,9 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 		pr_err("%s: Error registering with DBA %d\n",
 			__func__, ret);
 	}
+
+	slimport_mod_display_ops.data = (void *)anx7805;
+	mod_display_register_impl(&slimport_mod_display_impl);
 
 	pr_info("%s succeed!\n", __func__);
 
