@@ -223,7 +223,8 @@ void fusb_StopThreads(void);
 void fusb_ScheduleWork(void);
 
 #endif // FSC_INTERRUPT_TRIGGERED, else
-
+void  fusb_InitializeWakeWorker(void);
+void fusb_ScheduleWakeWork(void);
 int fusb302_debug_init(void);
 int fusb302_debug_remove(void);
 #endif // __FUSB_PLATFORM_HELPERS_H_
