@@ -3352,12 +3352,9 @@ static irqreturn_t hdmi_tx_isr(int irq, void *data)
 {
 	struct dss_io_data *io = NULL;
 	struct hdmi_tx_ctrl *hdmi_ctrl = (struct hdmi_tx_ctrl *)data;
-/* TODO: hack for P0 HDMI HPD detection */
-#ifdef HDMI_HDP_CONNECTED
 	unsigned long flags;
 	u32 hpd_current_state;
 	u32 reg_val = 0;
-#endif
 
 	if (!hdmi_ctrl) {
 		DEV_WARN("%s: invalid input data, ISR ignored\n", __func__);
@@ -3372,7 +3369,6 @@ static irqreturn_t hdmi_tx_isr(int irq, void *data)
 	}
 
 	if (DSS_REG_R(io, HDMI_HPD_INT_STATUS) & BIT(0)) {
-#ifdef HDMI_HDP_CONNECTED
 		spin_lock_irqsave(&hdmi_ctrl->hpd_state_lock, flags);
 		hpd_current_state = hdmi_ctrl->hpd_state;
 		hdmi_ctrl->hpd_state =
@@ -3410,14 +3406,6 @@ static irqreturn_t hdmi_tx_isr(int irq, void *data)
 		DSS_REG_W(io, HDMI_HPD_INT_CTRL, BIT(0));
 
 		queue_work(hdmi_ctrl->workq, &hdmi_ctrl->hpd_int_work);
-#else
-		/*
-		 * Ack the current hpd interrupt and stop listening to
-		 * new hpd interrupt.
-		 */
-		DSS_REG_W(io, HDMI_HPD_INT_CTRL, BIT(0));
-#endif
-
 	}
 
 	if (hdmi_ddc_isr(&hdmi_ctrl->ddc_ctrl,
