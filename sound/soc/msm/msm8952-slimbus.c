@@ -28,6 +28,7 @@
 #include <sound/info.h>
 #include <soc/qcom/socinfo.h>
 #include <linux/input.h>
+#include <linux/mods/modbus_ext.h>
 #include "qdsp6v2/msm-pcm-routing-v2.h"
 #include "msm-audio-pinctrl.h"
 #include "msm8952-slimbus.h"
@@ -92,6 +93,7 @@ enum btsco_rates {
 	RATE_16KHZ_ID,
 };
 
+static atomic_t mods_mi2s_active;
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_tx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim1_tx_sample_rate = SAMPLING_RATE_48KHZ;
@@ -1845,6 +1847,7 @@ static struct notifier_block adsp_state_notifier_block = {
 void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 {
 	int ret = 0;
+	struct modbus_ext_status modbus_status;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *card = rtd->card;
 	struct msm8952_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
@@ -1852,17 +1855,28 @@ void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 	pr_debug("%s(): substream = %s  stream = %d, ext_pa = %d\n", __func__,
 		 substream->name, substream->stream, pdata->ext_pa);
 
+	if (!atomic_dec_and_test(&mods_mi2s_active)) {
+		pr_debug("%s: port users not zero don't shut down yet\n",
+				__func__);
+		return;
+	}
+	modbus_status.proto = MODBUS_PROTO_I2S;
+	modbus_status.active = false;
+	modbus_ext_set_state(&modbus_status);
+
 	ret = quat_mi2s_clk_ctl(substream, false);
 	if (ret < 0)
 		pr_err("%s:clock disable failed\n", __func__);
 	if (atomic_read(&pdata->clk_ref.quat_mi2s_clk_ref) > 0)
 		atomic_dec(&pdata->clk_ref.quat_mi2s_clk_ref);
+#ifndef CONFIG_SND_SOC_MARLEY
 	ret = msm_gpioset_suspend(CLIENT_WCD_EXT, "quat_i2s");
 	if (ret < 0) {
 		pr_err("%s: failed to disable quat gpio's state\n",
 				__func__);
 		return;
 	}
+#endif
 }
 
 int msm_prim_auxpcm_startup(struct snd_pcm_substream *substream)
@@ -1918,11 +1932,18 @@ int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *card = rtd->card;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct modbus_ext_status modbus_status;
 	struct msm8952_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 	int ret = 0, val;
 
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
+
+	modbus_status.proto = MODBUS_PROTO_I2S;
+	modbus_status.active = true;
+
+	atomic_inc(&mods_mi2s_active);
+	modbus_ext_set_state(&modbus_status);
 
 	/* Configure mux for quaternary i2s */
 	if (pdata->vaddr_gpio_mux_mic_ctl) {
@@ -1936,13 +1957,14 @@ int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 				__func__);
 		return ret;
 	}
+#ifndef CONFIG_SND_SOC_MARLEY
 	ret = msm_gpioset_activate(CLIENT_WCD_EXT, "quat_i2s");
 	if (ret < 0) {
 		pr_err("%s: failed to actiavte the quat gpio's state\n",
 				__func__);
 		goto err;
 	}
-
+#endif
 	if (atomic_inc_return(&pdata->clk_ref.quat_mi2s_clk_ref) == 1) {
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 		if (ret < 0)
@@ -1950,11 +1972,13 @@ int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	}
 	return ret;
 
+#ifndef CONFIG_SND_SOC_MARLEY
 err:
 	ret = quat_mi2s_clk_ctl(substream, false);
 	if (ret < 0)
 		pr_err("%s:failed to disable sclk\n", __func__);
 	return ret;
+#endif
 }
 
 int msm_quin_mi2s_snd_startup(struct snd_pcm_substream *substream)
@@ -1980,22 +2004,26 @@ int msm_quin_mi2s_snd_startup(struct snd_pcm_substream *substream)
 		pr_err("failed to enable sclk\n");
 		return ret;
 	}
+#ifndef CONFIG_SND_SOC_MARLEY
 	ret = msm_gpioset_activate(CLIENT_WCD_EXT, "quin_i2s");
 	if (ret < 0) {
 		pr_err("failed to enable codec gpios\n");
 		goto err;
 	}
+#endif
 	if (atomic_inc_return(&pdata->clk_ref.quin_mi2s_clk_ref) == 1) {
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 		if (ret < 0)
 			pr_debug("%s: set fmt cpu dai failed\n", __func__);
 	}
 	return ret;
+#ifndef CONFIG_SND_SOC_MARLEY
 err:
 	ret = quin_mi2s_sclk_ctl(substream, false);
 	if (ret < 0)
 		pr_err("failed to disable sclk\n");
 	return ret;
+#endif
 }
 
 void msm_quin_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
@@ -2012,12 +2040,14 @@ void msm_quin_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 		pr_err("%s:clock disable failed\n", __func__);
 	if (atomic_read(&pdata->clk_ref.quin_mi2s_clk_ref) > 0)
 		atomic_dec(&pdata->clk_ref.quin_mi2s_clk_ref);
+#ifndef CONFIG_SND_SOC_MARLEY
 	ret = msm_gpioset_suspend(CLIENT_WCD_EXT, "quin_i2s");
 	if (ret < 0) {
 		pr_err("%s: gpio set cannot be de-activated %sd",
 					__func__, "quin_i2s");
 		return;
 	}
+#endif
 }
 
 static int msm8952_wcd93xx_codec_up(struct snd_soc_codec *codec)
@@ -2868,6 +2898,7 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 #endif
+	atomic_set(&mods_mi2s_active, 0);
 	return 0;
 err:
 #ifndef CONFIG_SND_SOC_MARLEY
