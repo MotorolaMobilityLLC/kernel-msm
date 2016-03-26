@@ -60,7 +60,8 @@ struct timeval start_tv, stop_tv;
 static char *devname = "laser";
 
 static struct stmvl53l0_data *gp_vl53l0_data;
-
+static int s_count;
+static int s_prevalue;
 
 static struct stmvl53l0_module_fn_t stmvl53l0_module_func_tbl_cci = {
 	.init = stmvl53l0_init_cci,
@@ -988,8 +989,8 @@ static void stmvl53l0_enter_sar(struct stmvl53l0_data *data, uint8_t from)
 }
 static void stmvl53l0_enter_super(struct stmvl53l0_data *data, uint8_t from)
 {
-	vl53l0_dbgmsg_en("Enter, stmvl53l0_enter_super flag:%d\n", from);
-	if (from == SAR_MODE) {
+	vl53l0_errmsg("Enter, stmvl53l0_enter_super flag:%d\n", from);
+	if (from == SAR_MODE || from == SUPER_MODE) {
 		vl53l0_dbgmsg_en("Call of VL53L0_DEVICEMODE_CONTINUOUS_RANGING\n");
 		papi_func_tbl->ClearInterruptMask(data, 0);
 
@@ -1209,6 +1210,7 @@ VL53L0_RangingMeasurementData_t	   RMData;
 struct stmvl53l0_data *data = gp_vl53l0_data;
 VL53L0_DEV vl53l0_dev = data;
 struct timeval tv;
+int newv;
 
 do_gettimeofday(&tv);
 papi_func_tbl->GetRangingMeasurementData(vl53l0_dev, &RMData);
@@ -1293,8 +1295,14 @@ wake_up(&data->range_data_wait);
 		vl53l0_dbgmsg_en("SAR measurement ready\n");
 	} else if (SUPER_MODE == data->w_mode) {
 		vl53l0_dbgmsg_en("SUPER_MODE\n");
-		stmvl53l0_ps_read_measurement(vl53l0_dev);
 		stmvl53l0_apply_parameters(data);
+		newv = data->rangeData.RangeMilliMeter > data->highv ? 100:10;
+		if (s_prevalue != newv || s_count > 100)
+			stmvl53l0_ps_read_measurement(vl53l0_dev);
+		if (s_count > 100)
+			s_count = 0;
+		s_count++;
+		s_prevalue = newv;
 		papi_func_tbl->StartMeasurement(data);
 	}
 
