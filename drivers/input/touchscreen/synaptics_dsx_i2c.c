@@ -7206,6 +7206,14 @@ static int fps_notifier_callback(struct notifier_block *self,
 
 	if (rmi4_data && event == 0xBEEF &&
 			rmi4_data && rmi4_data->i2c_client) {
+		struct config_modifier *cm =
+			modifier_by_id(rmi4_data, SYNA_MOD_FPS);
+		if (!cm) {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"No FPS modifier found\n");
+			goto done;
+		}
+
 		state = synaptics_dsx_get_state_safe(rmi4_data);
 		dev_dbg(&rmi4_data->i2c_client->dev,
 			"FPS: %s(%d), suspend flag: %d, BL flag: %d\n",
@@ -7214,12 +7222,17 @@ static int fps_notifier_callback(struct notifier_block *self,
 			rmi4_data->in_bootloader);
 		if (fps_state) {/* on */
 			rmi4_data->clipping_on = true;
+			rmi4_data->clipa = cm->clipa;
+			cm->effective = true;
 		} else {/* off */
 			rmi4_data->clipping_on = false;
+			rmi4_data->clipa = NULL;
+			cm->effective = false;
 		}
 		pr_info("FPS: clipping is %s\n",
 			rmi4_data->clipping_on ? "ON" : "OFF");
 	}
+done:
 	return 0;
 }
 
