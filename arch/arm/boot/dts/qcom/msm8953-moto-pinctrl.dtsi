@@ -96,6 +96,31 @@
 			config {
 				pins = "gpio6", "gpio7";
 				drive-strength = <2>;
+				bias-disable;/* No PULL */
+			};
+		};
+
+		laser_active: laser_active {
+			mux {
+				pins = "gpio86", "gpio43";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio86", "gpio43";
+				drive-strength = <2>;
+				bias-disable; /* No PULL */
+			};
+		};
+		laser_suspend: laser_suspend{
+			mux {
+				pins = "gpio86", "gpio43";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio86", "gpio43";
+				drive-strength = <2>;
 				bias-disable; /* No PULL */
 			};
 		};
