@@ -55,7 +55,7 @@
 	/* SensorHub Bus */
 	i2c@7579000 {
 		motosh@43 {
-			mag_config = <1>;     /* Magnetometer config value */
+			mag_config = <3>;     /* Magnetometer config value */
 		};
 	};
 };
