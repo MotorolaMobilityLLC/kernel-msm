@@ -18,3 +18,13 @@
 / {
 	qcom,board-id = <0x45 0x82C0>;
 };
+
+&soc {
+	/* SensorHub Bus */
+	i2c@7579000 {
+		motosh@43 {
+			mag_config = <1>;     /* Magnetometer config value */
+			mag_orient = <2>;     /* Mag Orientation value */
+		};
+	};
+};
