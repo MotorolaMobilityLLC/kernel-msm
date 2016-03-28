@@ -219,6 +219,10 @@ enum vmm_ids {
 #define QUAT_9AXIS_B	10
 #define QUAT_9AXIS_C	12
 #define QUAT_9AXIS_W	14
+#define GAME_RV_A       0
+#define GAME_RV_B       2
+#define GAME_RV_C       4
+#define GAME_RV_W       6
 #define GYRO_RD_X	0
 #define GYRO_RD_Y	2
 #define GYRO_RD_Z	4
@@ -331,6 +335,15 @@ struct motosh_aod_enabled_vote {
 	unsigned int resolved_vote;
 };
 #endif /* CONFIG_SENSORS_MOTOSH_MOTODISP */
+
+/* Note that this must match the sensorhub array */
+struct motosh_derived_sens_rates {
+	uint8_t rv_6axis_delay;
+	uint8_t rv_9axis_delay;
+	uint8_t game_rv_delay;
+	uint8_t gravity_delay;
+	uint8_t lin_accel_delay;
+};
 
 struct motosh_platform_data {
 	int (*init)(void);
@@ -508,18 +521,8 @@ struct motosh_algo_requst_t {
 };
 
 int64_t motosh_timestamp_ns(void);
-int motosh_set_rv_6axis_update_rate(
-	struct motosh_data *ps_motosh,
-	const uint8_t newDelay);
-int motosh_set_rv_9axis_update_rate(
-	struct motosh_data *ps_motosh,
-	const uint8_t newDelay);
-int motosh_set_gravity_update_rate(
-	struct motosh_data *ps_motosh,
-	const uint8_t newDelay);
-int motosh_set_linear_accel_update_rate(
-	struct motosh_data *ps_motosh,
-	const uint8_t newDelay);
+int motosh_set_derived_sens_update_rate(struct motosh_data *ps_motosh);
+
 
 irqreturn_t motosh_isr(int irq, void *dev);
 void motosh_irq_work_func(struct work_struct *work);
@@ -621,12 +624,9 @@ extern struct motosh_data *motosh_misc_data;
 extern struct motosh_moto_sensor_batch_cfg motosh_g_acc_cfg;
 extern unsigned short motosh_g_mag_delay;
 extern unsigned short motosh_g_gyro_delay;
-extern uint8_t motosh_g_rv_6axis_delay;
-extern uint8_t motosh_g_rv_9axis_delay;
-extern uint8_t motosh_g_gravity_delay;
-extern uint8_t motosh_g_linear_accel_delay;
 extern unsigned short motosh_g_baro_delay;
 extern unsigned short motosh_g_als_delay;
+extern struct motosh_derived_sens_rates motosh_g_derived_sens_rates;
 extern unsigned short motosh_g_ir_gesture_delay;
 extern unsigned short motosh_g_ir_raw_delay;
 extern unsigned short motosh_g_step_counter_delay;
