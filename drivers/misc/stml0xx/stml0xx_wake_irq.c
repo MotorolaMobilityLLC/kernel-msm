@@ -366,9 +366,6 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			"Sending Camera: %d",
 			SH_TO_H16(buf + WAKE_IRQ_IDX_CAMERA));
 
-		input_report_key(ps_stml0xx->input_dev, KEY_CAMERA, 1);
-		input_report_key(ps_stml0xx->input_dev, KEY_CAMERA, 0);
-		input_sync(ps_stml0xx->input_dev);
 		dev_dbg(&stml0xx_misc_data->spi->dev, "Report camkey toggle");
 	}
 	if (irq_status & M_CHOPCHOP) {
