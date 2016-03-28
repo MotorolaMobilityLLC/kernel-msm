@@ -1162,6 +1162,7 @@ static void msm_sd_notify(struct v4l2_subdev *sd,
 	}
 }
 
+#ifdef CONFIG_DEBUG_CAMERA
 static ssize_t write_logsync(struct file *file, const char __user *buf,
 		size_t count, loff_t *ppos)
 {
@@ -1185,11 +1186,14 @@ static ssize_t write_logsync(struct file *file, const char __user *buf,
 static const struct file_operations logsync_fops = {
 		.write = write_logsync,
 };
+#endif
 
 static int msm_probe(struct platform_device *pdev)
 {
 	struct msm_video_device *pvdev = NULL;
+#ifdef CONFIG_DEBUG_CAMERA
 	static struct dentry *cam_debugfs_root;
+#endif
 	int rc = 0;
 
 	msm_v4l2_dev = kzalloc(sizeof(*msm_v4l2_dev),
@@ -1271,6 +1275,7 @@ static int msm_probe(struct platform_device *pdev)
 	spin_lock_init(&msm_pid_lock);
 	INIT_LIST_HEAD(&ordered_sd_list);
 
+#ifdef CONFIG_DEBUG_CAMERA
 	cam_debugfs_root = debugfs_create_dir(MSM_CAM_LOGSYNC_FILE_BASEDIR,
 						NULL);
 	if (!cam_debugfs_root) {
@@ -1283,6 +1288,7 @@ static int msm_probe(struct platform_device *pdev)
 					 &logsync_fops))
 			pr_warn("NON-FATAL: failed to create logsync debugfs file\n");
 	}
+#endif
 
 	rc = cam_ahb_clk_init(pdev);
 	if (rc < 0) {
