@@ -1228,23 +1228,25 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	return err;
 }
 
-int motosh_set_rv_6axis_update_rate(
-	struct motosh_data *ps_motosh,
-	const uint8_t newDelay)
+int motosh_set_derived_sens_update_rate(
+	struct motosh_data *ps_motosh)
 {
 	int err = 0;
-	unsigned char cmdbuff[2];
+	unsigned char cmdbuff[6];
 
 	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
 		return -EINTR;
-
-	motosh_g_rv_6axis_delay = newDelay;
 	if (ps_motosh->mode <= BOOTMODE)
 		goto EPILOGUE;
 
-	cmdbuff[0] = QUAT_6AXIS_UPDATE_RATE;
-	cmdbuff[1] = newDelay;
-	err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
+	cmdbuff[0] = DERIVED_SENS_UPDATE_RATE;
+	cmdbuff[1] = motosh_g_derived_sens_rates.rv_6axis_delay;
+	cmdbuff[2] = motosh_g_derived_sens_rates.rv_9axis_delay;
+	cmdbuff[3] = motosh_g_derived_sens_rates.game_rv_delay;
+	cmdbuff[4] = motosh_g_derived_sens_rates.gravity_delay;
+	cmdbuff[5] = motosh_g_derived_sens_rates.lin_accel_delay;
+
+	err = motosh_i2c_write(ps_motosh, cmdbuff, 6);
 
 EPILOGUE:
 	mutex_unlock(&ps_motosh->lock);
@@ -1252,74 +1254,3 @@ EPILOGUE:
 	return err;
 }
 
-int motosh_set_rv_9axis_update_rate(
-	struct motosh_data *ps_motosh,
-	const uint8_t newDelay)
-{
-	int err = 0;
-	unsigned char cmdbuff[2];
-
-	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
-		return -EINTR;
-
-	motosh_g_rv_9axis_delay = newDelay;
-	if (ps_motosh->mode <= BOOTMODE)
-		goto EPILOGUE;
-
-	cmdbuff[0] = QUAT_9AXIS_UPDATE_RATE;
-	cmdbuff[1] = newDelay;
-	err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
-
-EPILOGUE:
-	mutex_unlock(&ps_motosh->lock);
-
-	return err;
-}
-
-int motosh_set_gravity_update_rate(
-	struct motosh_data *ps_motosh,
-	const uint8_t newDelay)
-{
-	int err = 0;
-	unsigned char cmdbuff[2];
-
-	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
-		return -EINTR;
-
-	motosh_g_gravity_delay = newDelay;
-	if (ps_motosh->mode <= BOOTMODE)
-		goto EPILOGUE;
-
-	cmdbuff[0] = GRAVITY_UPDATE_RATE;
-	cmdbuff[1] = newDelay;
-	err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
-
-EPILOGUE:
-	mutex_unlock(&ps_motosh->lock);
-
-	return err;
-}
-
-int motosh_set_linear_accel_update_rate(
-	struct motosh_data *ps_motosh,
-	const uint8_t newDelay)
-{
-	int err = 0;
-	unsigned char cmdbuff[2];
-
-	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
-		return -EINTR;
-
-	motosh_g_linear_accel_delay = newDelay;
-	if (ps_motosh->mode <= BOOTMODE)
-		goto EPILOGUE;
-
-	cmdbuff[0] = LINEAR_ACCEL_UPDATE_RATE;
-	cmdbuff[1] = newDelay;
-	err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
-
-EPILOGUE:
-	mutex_unlock(&ps_motosh->lock);
-
-	return err;
-}
