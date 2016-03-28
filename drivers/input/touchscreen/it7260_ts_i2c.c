@@ -104,6 +104,7 @@
 #define DEVICE_READY_MAX_WAIT		500
 #define DEVICE_READY_MAX_PROBE_WAIT		50
 #define DEVICE_READY_MAX_UPDATE_WAIT		50
+#define DEVICE_READY_MAX_CHECKSUM_WAIT		500
 
 //result of reading with BUF_QUERY bits
 #define CMD_STATUS_BITS			0x07
@@ -309,7 +310,7 @@ static int i2cWriteNoReadyCheck(uint8_t bufferIndex, const uint8_t *dataBuffer, 
  * This function ascertains it is ready for that too. the results of this call often
  * were ignored.
  */
-static int waitDeviceReady(bool forever, bool slowly, bool probe)
+static int waitDeviceReady(bool forever, bool slowly, bool probe, bool checksum)
 {
 	uint8_t ucQuery;
 	uint32_t count;
@@ -318,6 +319,8 @@ static int waitDeviceReady(bool forever, bool slowly, bool probe)
 		count = DEVICE_READY_MAX_PROBE_WAIT;
 	} else if (update_flag) {
 		count = DEVICE_READY_MAX_UPDATE_WAIT;
+	} else if (checksum) {
+		count = DEVICE_READY_MAX_CHECKSUM_WAIT;
 	} else {
 		count = DEVICE_READY_MAX_WAIT;
 	}
@@ -330,6 +333,8 @@ static int waitDeviceReady(bool forever, bool slowly, bool probe)
 			mdelay(1000);
 		} else if (probe_flag) {
 			mdelay(10);
+		} else if (checksum) {
+			mdelay(100);
 		}
 
 		if (update_flag && (ucQuery & CMD_STATUS_BUSY)) {
@@ -346,13 +351,13 @@ static int waitDeviceReady(bool forever, bool slowly, bool probe)
 
 static int i2cRead(uint8_t bufferIndex, uint8_t *dataBuffer, uint16_t dataLength)
 {
-	waitDeviceReady(false, false, false);
+	waitDeviceReady(false, false, false, false);
 	return i2cReadNoReadyCheck(bufferIndex, dataBuffer, dataLength);
 }
 
 static int i2cWrite(uint8_t bufferIndex, const uint8_t *dataBuffer, uint16_t dataLength)
 {
-	waitDeviceReady(false, false, false);
+	waitDeviceReady(false, false, false, false);
 	return i2cWriteNoReadyCheck(bufferIndex, dataBuffer, dataLength);
 }
 
@@ -525,14 +530,15 @@ static bool VerifyChecksum(struct device *dev, uint32_t fwLen, const uint8_t *fw
 	resp[0] = 0xFF;
 	resp[1] = 0xFF;
 
-	waitDeviceReady(false, true, true);
+	waitDeviceReady(false, false, false, true);
+
 
 	if (i2cWriteNoReadyCheck(BUF_COMMAND, pucCommandBuffer, sizeof(pucCommandBuffer)) != 1) {
 		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
 		return false;
 	}
 
-	waitDeviceReady(false, true, true);
+	waitDeviceReady(false, false, false, true);
 
 	if (i2cReadNoReadyCheck(BUF_RESPONSE, resp, sizeof(resp)) != 2) {
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
@@ -944,7 +950,7 @@ static ssize_t sysfsChecksumShow(struct device *dev, struct device_attribute *at
 	resp[0] = 0xFF;
 	resp[1] = 0xFF;
 
-	waitDeviceReady(false, true, true);
+	waitDeviceReady(false, false, false, true);
 
 	if (i2cWriteNoReadyCheck(BUF_COMMAND, pucCommandBuffer, sizeof(pucCommandBuffer)) != 1) {
 		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
@@ -952,7 +958,7 @@ static ssize_t sysfsChecksumShow(struct device *dev, struct device_attribute *at
 		return sprintf(buf, "%s\n", "i2c write failed.");
 	}
 
-	waitDeviceReady(false, true, true);
+	waitDeviceReady(false, false, false, true);
 
 	if (i2cReadNoReadyCheck(BUF_RESPONSE, resp, sizeof(resp)) != 2) {
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
@@ -1179,7 +1185,7 @@ static void chipExternalCalibration(bool autoTuneEnabled)
 	uint8_t resp[2];
 
 	LOGI("sent calibration command -> %d\n", chipSendCalibrationCmd(autoTuneEnabled));
-	waitDeviceReady(true, true, false);
+	waitDeviceReady(true, true, false, false);
 	if (i2cReadNoReadyCheck(BUF_RESPONSE, resp, sizeof(resp)) != 2) {
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
 	}
@@ -1639,14 +1645,14 @@ static bool chipIdentifyIT7260(bool probe)
 
 	LOGI("start to chipIdentifyIT7260...\n");
 
-	waitDeviceReady(false, false, probe);
+	waitDeviceReady(false, false, probe, false);
 
 	if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdIdent, sizeof(cmdIdent)) != 1) {
 		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
 		return false;
 	}
 
-	waitDeviceReady(false, false, probe);
+	waitDeviceReady(false, false, probe, false);
 
 	if (i2cReadNoReadyCheck(BUF_RESPONSE, chipID, sizeof(chipID)) != 2) {
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
