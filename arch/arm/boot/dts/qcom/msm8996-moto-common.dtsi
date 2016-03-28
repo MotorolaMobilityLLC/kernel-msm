@@ -682,12 +682,12 @@
 		motosh@43 {
 			compatible = "stm,motosh";
 			reg = <0x43>;
-			gpios = <&tlmm 96 0>,           /* IRQ     CCP_AP_INT2  */
-				<&pm8994_mpps 5 0>,     /* RESET   CCP_FAULT_N  */
-				<&tlmm 90 0>,           /* BSLEN   CCP_FLASH_EN */
-				<&tlmm 91 0>,           /* WakeIRQ CCP_AP_INT   */
-				<&tlmm 95 0>,           /* SH Wake AP_CCP_WAKE  */
-				<&tlmm 92 0>;           /* SH Wake Resp CCP_AP_WAKE */
+			gpios = <&tlmm 92 0>,         /* IRQ     CCP_AP_WAKE  */
+				<&pm8994_mpps 5 0>,   /* RESET   CCP_FAULT_N  */
+				<&tlmm 90 0>,         /* BSLEN   CCP_FLASH_EN */
+				<&tlmm 91 0>,         /* WakeIRQ CCP_AP_INT   */
+				<&tlmm 95 0>,         /* TSync   AP_CCP_WAKE  */
+				<&tlmm 96 0>;         /* unused  CCP_AP_INT2  */
 			motosh_fw_version = "stml47x";
 			lux_table = <7 60 120 1800 4245 11350>;
 			brightness_table = <5 15 23 48 70 102 168>;
