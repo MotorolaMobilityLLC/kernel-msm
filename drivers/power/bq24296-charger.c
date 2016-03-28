@@ -859,10 +859,25 @@ static int bq24296_reset_vbat_monitoring(struct bq24296_chg *chip)
 static int bq24296_get_prop_batt_present(struct bq24296_chg *chip)
 {
 	bool prev_batt_status;
+	union power_supply_propval ret = {0, };
 
 	prev_batt_status = chip->batt_present;
-	/*now set 1, guaranteed to be able to use, after finish this fuction*/
-	chip->batt_present = 1;
+
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+	if (chip->bms_psy) {
+		chip->bms_psy->get_property(chip->bms_psy,
+				POWER_SUPPLY_PROP_TEMP, &ret);
+
+		if (ret.intval <= -400)
+			chip->batt_present = 0;
+		else
+			chip->batt_present = 1;
+	} else {
+		return 0;
+	}
 
 	if ((prev_batt_status != chip->batt_present)
 		&& (!prev_batt_status))
