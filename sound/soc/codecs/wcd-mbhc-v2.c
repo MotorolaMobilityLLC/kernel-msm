@@ -1255,14 +1255,9 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 		snd_soc_update_bits(codec,
 				    MSM8X16_WCD_A_ANALOG_MASTER_BIAS_CTL,
 				    0x30, 0x30);
-		/* When enter headset irq, make sure Micbias MICB is enable */
 		snd_soc_update_bits(codec,
 				MSM8X16_WCD_A_ANALOG_MICB_1_EN,
-				0x80, 0x80);
-		/* When enter headset irq, make sure CH1_EN enable */
-		snd_soc_update_bits(codec,
-				MSM8X16_WCD_A_ANALOG_TX_1_EN,
-				0xBB, 0xBB);
+				0x04, 0x04);
 		if (!mbhc->mbhc_cfg->hs_ext_micbias)
 			/* Enable Tx2 RBias if the headset
 			 * is using internal micbias*/
