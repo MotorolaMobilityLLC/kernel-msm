@@ -69,7 +69,8 @@
 #define ID_RP (32) /* Moto Rear Proximity */
 #define ID_MOTO_GLANCE_GESTURE (33)
 #define ID_MOTO_MOD_CURRENT_DRAIN (34)
-#define MAX_SENSOR_ID (34)
+#define ID_GAME_RV (35)
+#define MAX_SENSOR_ID (35)
 
 /* structure to hold rate and timeout for sensor batching */
 struct motosh_moto_sensor_batch_cfg {
@@ -277,6 +278,7 @@ struct motosh_moto_sensor_batch_cfg {
 #define M_IR_OBJECT		0x020000
 #define M_QUAT_9AXIS		0x040000
 #define M_MOTO_MOD_CURRENT_DRAIN		0x080000
+#define M_GAME_RV		0x400000
 
 /* wake sensor status */
 #define M_DOCK			0x000001
@@ -391,7 +393,8 @@ enum MOTOSH_data_types {
 	DT_GYRO_CAL,
 	DT_GLANCE,
 	DT_ACCEL_CAL,
-	DT_MOTO_MOD_CURRENT_DRAIN
+	DT_MOTO_MOD_CURRENT_DRAIN,
+	DT_GAME_RV
 };
 
 enum {
