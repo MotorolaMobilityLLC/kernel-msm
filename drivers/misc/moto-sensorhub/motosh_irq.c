@@ -412,10 +412,34 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 8 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
 		case QUATERNION_9AXIS:
+		{
+			unsigned char status = *(data + 8);
 			if (!resuming)
 				motosh_as_data_buffer_write(
 							    ps_motosh,
 							    DT_QUAT_9AXIS,
+							    data,
+							    8,
+							    status, true
+							    );
+
+			dev_dbg(
+				&ps_motosh->client->dev,
+				"Sending 9-axis quat values:%d,%d,%d,%d,%d\n",
+				STM16_TO_HOST(data, QUAT_9AXIS_A),
+				STM16_TO_HOST(data, QUAT_9AXIS_B),
+				STM16_TO_HOST(data, QUAT_9AXIS_C),
+				STM16_TO_HOST(data, QUAT_9AXIS_W),
+				status
+			);
+			queue_index += 9 + MOTOSH_EVENT_TIMESTAMP_LEN;
+		}
+			break;
+		case GAME_RV_DATA:
+			if (!resuming)
+				motosh_as_data_buffer_write(
+							    ps_motosh,
+							    DT_GAME_RV,
 							    data,
 							    8,
 							    0, true
@@ -423,11 +447,11 @@ void motosh_irq_work_func(struct work_struct *work)
 
 			dev_dbg(
 				&ps_motosh->client->dev,
-				"Sending 9-axis quat values:%d,%d,%d,%d\n",
-				STM16_TO_HOST(data, QUAT_9AXIS_A),
-				STM16_TO_HOST(data, QUAT_9AXIS_B),
-				STM16_TO_HOST(data, QUAT_9AXIS_C),
-				STM16_TO_HOST(data, QUAT_9AXIS_W)
+				"Sending game rotation values:%d,%d,%d,%d\n",
+				STM16_TO_HOST(data, GAME_RV_A),
+				STM16_TO_HOST(data, GAME_RV_B),
+				STM16_TO_HOST(data, GAME_RV_C),
+				STM16_TO_HOST(data, GAME_RV_W)
 			);
 			queue_index += 8 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
