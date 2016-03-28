@@ -681,7 +681,7 @@ static void himax_touch_information(void)
 	i2c_himax_read(private_ts->client, 0x5A, data, 12, DEFAULT_RETRY_CNT);
 	HX_RX_NUM = data[0];
 	HX_TX_NUM = data[1];
-	HX_MAX_PT = 5;
+	HX_MAX_PT = 10;
 #ifdef HX_EN_SEL_BUTTON
 	HX_BT_NUM = (data[2] & 0x0F);
 #endif
