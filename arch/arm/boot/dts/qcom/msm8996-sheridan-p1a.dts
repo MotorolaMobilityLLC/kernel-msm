@@ -51,6 +51,14 @@
 	sound {
 		mot,old-l34;
 	};
+
+	/* SensorHub Bus */
+	i2c@7579000 {
+		motosh@43 {
+			mag_config = <2>;     /* Magnetometer config value */
+			mag_orient = <2>;     /* Mag Orientation value */
+		};
+	};
 };
 
 &spi_0 {
