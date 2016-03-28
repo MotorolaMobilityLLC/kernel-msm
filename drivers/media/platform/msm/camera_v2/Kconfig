@@ -241,3 +241,10 @@ config MSM_JPEGDMA
         select V4L2_MEM2MEM_DEV
 	---help---
 	  Enable support for Jpeg dma engine.
+
+config DEBUG_CAMERA
+	bool "Enable Camera Debug"
+	depends on MSMB_CAMERA && DEBUG_FS
+	default n
+	---help---
+		Enable camera debug support.
