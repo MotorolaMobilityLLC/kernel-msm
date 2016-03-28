@@ -127,12 +127,12 @@ VMM_ENTRY(0x10, POSIX_TIME,						TRUE,
 			0)
 #endif /*IRGESTURE*/
 
-VMM_ENTRY(0x14, DISP_ROTATE_UPDATE_RATE,				TRUE,
-		&vmm_disp_rotate_update_rate,
-		sizeof(vmm_disp_rotate_update_rate))
-VMM_ENTRY(0x15, LINEAR_ACCEL_UPDATE_RATE,				TRUE,
-		&vmm_lin_accel_update_rate,
-		sizeof(vmm_lin_accel_update_rate))
+VMM_ENTRY(0x14, UNUSED_14,						FALSE,
+		0,
+		0)
+VMM_ENTRY(0x15, DERIVED_SENS_UPDATE_RATE,				TRUE,
+		vmm_derived_sens_update_rate,
+		sizeof(vmm_derived_sens_update_rate))
 VMM_ENTRY(0x16, ACCEL_UPDATE_RATE,					TRUE,
 		vmm_accel_update_cfg,
 		sizeof(vmm_accel_update_cfg))
@@ -183,15 +183,15 @@ VMM_ENTRY(0x1B, WAKESENSOR_CONFIG,					TRUE,
 VMM_ENTRY(0x20, MOTION_DUR,						TRUE,
 		&vmm_motion_dur0,
 		sizeof(vmm_motion_dur0))
-VMM_ENTRY(0x21, QUAT_6AXIS_UPDATE_RATE,					TRUE,
-		&vmm_rv_6axis_update_rate,
-		sizeof(vmm_rv_6axis_update_rate))
+VMM_ENTRY(0x21, UNUSED_21,						FALSE,
+		0,
+		0)
 VMM_ENTRY(0x22, ZMOTION_DUR,						TRUE,
 		&vmm_zmotion_dur0,
 		sizeof(vmm_zmotion_dur0))
-VMM_ENTRY(0x23, QUAT_9AXIS_UPDATE_RATE,					TRUE,
-		&vmm_rv_9axis_update_rate,
-		sizeof(vmm_rv_9axis_update_rate))
+VMM_ENTRY(0x23, UNUSED_23,						FALSE,
+		0,
+		0)
 VMM_ENTRY(0x24, BYPASS_MODE,						TRUE,
 		vmm_test_mode,
 		sizeof(vmm_test_mode))
@@ -260,9 +260,9 @@ VMM_ENTRY(0x35, BRIGHTNESS_TABLE,					TRUE,
 VMM_ENTRY(0x36, TOUCH_CONFIG,						TRUE,
 		vmm_touch_config,
 		sizeof(vmm_touch_config))
-VMM_ENTRY(0x37, GRAVITY_UPDATE_RATE,					TRUE,
-		&vmm_gravity_update_rate,
-		sizeof(vmm_gravity_update_rate))
+VMM_ENTRY(0x37, UNUSED_37,						FALSE,
+		0,
+		0)
 VMM_ENTRY(0x38, FW_CRC,							FALSE,
 		&vmm_fw_crc,
 		sizeof(vmm_fw_crc))
@@ -290,9 +290,9 @@ VMM_ENTRY(0x3F, DOCKED_DATA,						FALSE,
 VMM_ENTRY(0x40, COVER_DATA,						FALSE,
 		&vmm_cover_data,
 		sizeof(vmm_cover_data))
-VMM_ENTRY(0x41, UNUSED_41,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x41, GAME_RV_DATA,						FALSE,
+		vmm_game_rv,
+		sizeof(vmm_game_rv))
 
 #ifdef GYRO_CALIBRATION
 	VMM_ENTRY(0x42, GYRO_CAL,					TRUE,
