@@ -303,6 +303,13 @@ typedef struct rtt_capabilities {
 } rtt_capabilities_t;
 
 
+/* RTT responder information */
+typedef struct wifi_rtt_responder {
+	wifi_channel_info channel;   /* channel of responder */
+	uint8 preamble;             /* preamble supported by responder */
+ } wifi_rtt_responder_t;
+
+
 typedef void (*dhd_rtt_compl_noti_fn)(void *ctx, void *rtt_data);
 /* Linux wrapper to call common dhd_rtt_set_cfg */
 int

@@ -8613,9 +8613,7 @@ dhd_dev_rtt_enable_responder(struct net_device *dev, wifi_channel_info *channel_
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 
-	dhd_rtt_avail_channel(&dhd->pub, channel_info);
 	return (dhd_rtt_enable_responder(&dhd->pub, channel_info));
-
 }
 
 int dhd_dev_rtt_cancel_responder(struct net_device *dev)
