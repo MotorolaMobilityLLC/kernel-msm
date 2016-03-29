@@ -1652,8 +1652,11 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 	struct msm_camera_cci_ctrl *cci_ctrl)
 {
 	int32_t rc = 0;
+	struct cci_device *cci_dev = NULL;
 	CDBG("%s line %d cmd %d\n", __func__, __LINE__,
 		cci_ctrl->cmd);
+	cci_dev = v4l2_get_subdevdata(sd);
+	mutex_lock(&cci_dev->cfg_mutex);
 	switch (cci_ctrl->cmd) {
 	case MSM_CCI_INIT:
 		rc = msm_cci_init(sd, cci_ctrl);
@@ -1682,6 +1685,7 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 	}
 	CDBG("%s line %d rc %d\n", __func__, __LINE__, rc);
 	cci_ctrl->status = rc;
+	mutex_unlock(&cci_dev->cfg_mutex);
 	return rc;
 }
 
@@ -2156,6 +2160,7 @@ static int msm_cci_probe(struct platform_device *pdev)
 	}
 	CDBG("%s cci subdev %pK\n", __func__, &new_cci_dev->msm_sd.sd);
 	CDBG("%s line %d\n", __func__, __LINE__);
+	mutex_init(&new_cci_dev->cfg_mutex);
 	return 0;
 
 cci_invalid_vreg_data:
