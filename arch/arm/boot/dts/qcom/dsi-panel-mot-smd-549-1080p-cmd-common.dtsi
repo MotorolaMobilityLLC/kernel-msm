@@ -11,7 +11,7 @@
  */
 
 compatible = "qcom,mdss-dsi-panel";
-qcom,mdss-dsi-panel-name = "mipi_mot_cmd_smd_1080p_549_v0";
+qcom,mdss-dsi-panel-name = "mipi_mot_cmd_smd_1080p_549";
 qcom,mdss-dsi-panel-supplier = "smd";
 qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 qcom,mdss-dsi-panel-framerate = <60>;
@@ -39,18 +39,19 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
-	05 01 00 00 78 00 01 11
+	05 01 00 00 14 00 01 11
+	15 01 00 00 00 00 02 35 00
 	29 01 00 00 00 00 03 fc 5a 5a
 	29 01 00 00 00 00 03 f4 00 01
-	15 01 00 00 00 00 02 57 00
 	29 01 00 00 00 00 03 fc a5 a5
-	15 01 00 00 00 00 02 53 20
-	15 01 00 00 00 00 02 55 00
 	15 01 00 00 00 00 02 51 00
+	15 01 00 00 00 00 02 55 00
+	15 01 00 00 00 00 02 53 20
+	15 01 00 00 50 00 02 57 40
 	05 01 00 00 00 00 01 29];	/* display on */
 qcom,mdss-dsi-off-command = [
-	05 01 00 00 0a 00 01 28		/* display_off */
-	05 01 00 00 55 00 01 10];	/* enter sleep mode */
+	05 01 00 00 23 00 01 28		/* display_off */
+	05 01 00 00 96 00 01 10];	/* enter sleep mode */
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
@@ -113,8 +114,7 @@ qcom,panel-supply-entries {
 		qcom,supply-post-on-sleep = <1>;
 		qcom,supply-pre-off-sleep = <0>;
 		qcom,supply-post-off-sleep = <1>;
-	}
-;
+	};
 	qcom,panel-supply-entry@1 {
 		reg = <1>;
 		qcom,supply-name = "vio_disp";
@@ -124,7 +124,7 @@ qcom,panel-supply-entries {
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
 		qcom,supply-post-on-sleep = <3>;
-		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-pre-off-sleep = <11>; /* Give time for reset line */
 		qcom,supply-post-off-sleep = <1>;
 	};
 
@@ -135,10 +135,10 @@ qcom,panel-supply-entries {
 		qcom,supply-max-voltage = <4600000>;
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
-		qcom,supply-pre-on-sleep = <10>;
-		qcom,supply-post-on-sleep = <10>;
-		qcom,supply-pre-off-sleep = <10>;
-		qcom,supply-post-off-sleep = <10>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <0>;
 	};
 
 	qcom,panel-supply-entry@3 {
@@ -148,9 +148,9 @@ qcom,panel-supply-entries {
 		qcom,supply-max-voltage = <5000000>;
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
-		qcom,supply-pre-on-sleep = <10>;
-		qcom,supply-post-on-sleep = <10>;
-		qcom,supply-pre-off-sleep = <10>;
-		qcom,supply-post-off-sleep = <10>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <0>;
 	};
 };
