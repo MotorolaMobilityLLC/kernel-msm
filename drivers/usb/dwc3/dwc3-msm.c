@@ -2496,7 +2496,8 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 			dbg_event(dwc->ctrl_num, 0xFF, "Q RW (vbus)",
 				val->intval);
 			queue_delayed_work(mdwc->dwc3_wq,
-					&mdwc->resume_work, 12);
+					&mdwc->resume_work,
+					msecs_to_jiffies(120));
 		}
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
