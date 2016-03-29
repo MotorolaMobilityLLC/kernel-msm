@@ -4033,6 +4033,13 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 			dev_dbg(mdwc->dev, "b_sess_vld\n");
 			dbg_event(dwc->ctrl_num, 0xFF, "undef_b_sess_vld", 0);
 			switch (mdwc->chg_type) {
+			case DWC3_INVALID_CHARGER:
+				dev_dbg(mdwc->dev, "invalid DCP charger\n");
+				dwc3_msm_gadget_vbus_draw(mdwc,
+							  DWC3_IDEV_CHG_MIN);
+				atomic_set(&dwc->in_lpm, 1);
+				pm_relax(mdwc->dev);
+				break;
 			case DWC3_DCP_CHARGER:
 			case DWC3_PROPRIETARY_CHARGER:
 				dev_dbg(mdwc->dev, "DCP charger\n");
@@ -4091,6 +4098,11 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 		} else if (test_bit(B_SESS_VLD, &mdwc->inputs)) {
 			dbg_event(dwc->ctrl_num, 0xFF, "b_sess_vld", 0);
 			switch (mdwc->chg_type) {
+			case DWC3_INVALID_CHARGER:
+				dev_dbg(mdwc->dev, "invalid, DCP charger\n");
+				dwc3_msm_gadget_vbus_draw(mdwc,
+							  DWC3_IDEV_CHG_MIN);
+				break;
 			case DWC3_DCP_CHARGER:
 			case DWC3_PROPRIETARY_CHARGER:
 				dbg_event(dwc->ctrl_num, 0xFF, "DCPCharger", 0);
