@@ -3677,6 +3677,26 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			mdwc->typec_current_max = 0;
 			dwc3_msm_gadget_vbus_draw(mdwc, 0);
 			dev_dbg(mdwc->dev, "No device, allowing suspend\n");
+
+			/* MMI_STOPSHIP */
+			/*
+			 * if we are not run-time suspended for some reason
+			 * even with no votes, force suspend.
+			 */
+			if ((!pm_runtime_suspended(mdwc->dev) &&
+				!atomic_read(&mdwc->dev->power.usage_count)) ||
+				(!pm_runtime_suspended(dwc->dev) &&
+				!atomic_read(&dwc->dev->power.usage_count))) {
+				dev_err(mdwc->dev,
+					"Not in LPM after disconnect, forcing suspend...\n");
+				dbg_event(dwc->ctrl_num, 0xFF, "B_IDLE:RT SUSP",
+					atomic_read(&mdwc->dev->power.usage_count));
+				dbg_event(dwc->ctrl_num, 0xFF, "B_IDLE:RT SUSP",
+					atomic_read(&dwc->dev->power.usage_count));
+				pm_runtime_suspend(dwc->dev);
+				pm_runtime_suspend(mdwc->dev);
+			}
+			/* MMI_STOPSHIP */
 		}
 		break;
 
