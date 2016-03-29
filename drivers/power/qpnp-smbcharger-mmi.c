@@ -2537,6 +2537,10 @@ static int smbchg_get_aicl_level_ma(struct smbchg_chip *chip)
 		SMB_WARN(chip, "invalid AICL value: %02x\n", reg);
 		return 0;
 	}
+
+	if (chip->usb_suspended)
+		return chip->cl_usb;
+
 	return chip->tables.usb_ilim_ma_table[reg];
 }
 
