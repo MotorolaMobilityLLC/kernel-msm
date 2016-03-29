@@ -1638,6 +1638,7 @@ struct cfg80211_ibss_params {
  * @ht_capa_mask:  The bits of ht_capa which are to be used.
  * @vht_capa:  VHT Capability overrides
  * @vht_capa_mask: The bits of vht_capa which are to be used.
+ * @prev_bssid: previous BSSID, if not %NULL use reassociate frame
  */
 struct cfg80211_connect_params {
 	struct ieee80211_channel *channel;
@@ -1660,6 +1661,7 @@ struct cfg80211_connect_params {
 	struct ieee80211_ht_cap ht_capa_mask;
 	struct ieee80211_vht_cap vht_capa;
 	struct ieee80211_vht_cap vht_capa_mask;
+	const u8 *prev_bssid;
 };
 
 /**
