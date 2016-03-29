@@ -181,6 +181,7 @@ struct cci_device {
 	struct workqueue_struct *write_wq[MASTER_MAX];
 	struct msm_camera_cci_wait_sync_cfg cci_wait_sync_cfg;
 	uint8_t valid_sync;
+	struct mutex cfg_mutex;
 };
 
 enum msm_cci_i2c_cmd_type {
