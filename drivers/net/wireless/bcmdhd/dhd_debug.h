@@ -66,8 +66,6 @@ enum {
 /* DHD connection event ring, ring id 3 */
 #define DHD_EVENT_RING_NAME		"dhd_event"
 #define DHD_EVENT_RING_SIZE		(64 * 1024)
-/* Default interval for all rings */
-#define DEFAULT_INTERVAL 5
 /* driver receive association command from kernel */
 #define WIFI_EVENT_ASSOCIATION_REQUESTED 0
 #define WIFI_EVENT_AUTH_COMPLETE 1

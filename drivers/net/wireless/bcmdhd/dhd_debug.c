@@ -240,28 +240,11 @@ dhd_dbg_ring_push(dhd_pub_t *dhdp, int ring_id, dhd_dbg_ring_entry_t *hdr, void 
 	w_len = ENTRY_LENGTH(hdr);
 	/* prep the space */
 	do {
-		if (ring->rp == ring->wp) {
-			if ((diff = (ring->ring_size - ring->wp)) < w_len) {
+		if (ring->rp <= ring->wp) {
+		 	if ((diff = (ring->ring_size - ring->wp)) <= w_len) {
 				ring->no_space = TRUE;
 				ring->wp_pad = ring->wp;
 				ring->rem_len = ring->ring_size - ring->wp_pad;
-				/* 0 pad insufficient tail space */
-				memset(ring->ring_buf + ring->wp, 0,
-					   DBG_RING_ENTRY_SIZE);
-				ring->wp = 0;
-				continue;
-			}
-			break;
-		}
-		if (ring->rp < ring->wp) {
-		 	if ((diff = (ring->ring_size - ring->wp)) <= w_len) {
-				if (ring->rp == 0) {
-					ring->rp = next_entry(ring, ring->rp);
-				} else {
-					ring->no_space = TRUE;
-					ring->wp_pad = ring->wp;
-					ring->rem_len = ring->ring_size - ring->wp_pad;
-				}
 				/* 0 pad insufficient tail space */
 				memset(ring->ring_buf + ring->wp, 0,
 				       DBG_RING_ENTRY_SIZE);
@@ -292,12 +275,12 @@ dhd_dbg_ring_push(dhd_pub_t *dhdp, int ring_id, dhd_dbg_ring_entry_t *hdr, void 
 
 	/* if the current pending size is bigger than threshold */
 	pending_len = ring->stat.written_bytes - ring->stat.read_bytes;
-	dhd_os_spin_unlock(ring->lock, flags);
 	if (ring->threshold > 0 &&
 		(pending_len >= ring->threshold) && ring->sched_pull) {
 		dhdp->dbg->pullreq(dhdp->dbg->private, ring->id);
 		ring->sched_pull = FALSE;
 	}
+	dhd_os_spin_unlock(ring->lock, flags);
 	return  BCME_OK;
 }
 
@@ -835,8 +818,7 @@ dhd_dbg_set_configuration(dhd_pub_t *dhdp, int ring_id, int log_level, int flags
 	else
 		ring->state = RING_ACTIVE;
 	ring->log_level = log_level;
-
-	ring->threshold = (threshold > ring->threshold) ? ring->ring_size : threshold;
+	ring->threshold = MIN(threshold, DBGRING_FLUSH_THRESHOLD(ring));
 	dhd_os_spin_unlock(ring->lock, lock_flags);
 	if (log_level > 0)
 		set = TRUE;
