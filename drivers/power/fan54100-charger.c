@@ -419,7 +419,7 @@ static int fan54100_chrg_set_property(struct power_supply *psy,
 						    FAN54100_REG_CONTROL0,
 						    FAN54100_BIT_SW_ENABLE,
 						    protect_bits);
-		msleep(350);
+		msleep(35);
 		if (val->intval)
 			fan54100_chrg_enable_protection(chip, true);
 		fan54100_chrg_set_usbc_mask(chip, 0);
