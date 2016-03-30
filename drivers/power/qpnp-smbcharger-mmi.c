@@ -3721,7 +3721,8 @@ static int smbchg_wls_get_property(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
-		if (ret.intval == POWER_SUPPLY_PTP_EXT_PRESENT)
+		if (ret.intval == POWER_SUPPLY_PTP_EXT_WIRELESS_PRESENT ||
+		    ret.intval == POWER_SUPPLY_PTP_EXT_WIRED_WIRELESS_PRESENT)
 			val->intval = 1;
 		else
 			val->intval = 0;
