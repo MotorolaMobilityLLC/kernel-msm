@@ -3184,6 +3184,13 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 		 * pull-up is enabled immediately. The enumeration is
 		 * reliable with 100 msec delay.
 		 */
+
+		if((cdev->desc.idVendor== __constant_cpu_to_le16(0x18D1)) &&
+		      (cdev->desc.idProduct==__constant_cpu_to_le16(0x4EE7))) {
+			cdev->desc.idVendor = __constant_cpu_to_le16(0x0B05);
+			cdev->desc.idProduct = __constant_cpu_to_le16(0x7770);
+		}
+
 		list_for_each_entry(conf, &dev->configs, list_item)
 			list_for_each_entry(f_holder, &conf->enabled_functions,
 						enabled_list) {
