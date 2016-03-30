@@ -9580,12 +9580,20 @@ static int smbchg_reboot(struct notifier_block *nb,
 {
 	struct smbchg_chip *chip =
 			container_of(nb, struct smbchg_chip, smb_reboot);
+	char eb_able;
+	int soc_max = 100;
 
 	SMB_DBG(chip, "SMB Reboot\n");
 	if (!chip) {
 		SMB_WARN(chip, "called before chip valid!\n");
 		return NOTIFY_DONE;
 	}
+
+	smbchg_check_extbat_ability(chip, &eb_able);
+	if (eb_able & EB_SND_NEVER)
+		soc_max = 0;
+	else if (eb_able & EB_SND_LOW)
+		soc_max = eb_low_start_soc;
 
 	atomic_set(&chip->hb_ready, 0);
 	cancel_delayed_work_sync(&chip->heartbeat_work);
@@ -9617,8 +9625,10 @@ static int smbchg_reboot(struct notifier_block *nb,
 		default:
 			break;
 		}
-	} else {
+	} else if ((get_prop_batt_capacity(chip) >= soc_max)  ||
+		   (get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY) <= 0)) {
 		/* Turn off any Ext batt charging */
+		SMB_WARN(chip, "Attempt to Shutdown EB!\n");
 		smbchg_set_extbat_state(chip, EB_OFF);
 		gpio_set_value(chip->ebchg_gpio.gpio, 0);
 		gpio_free(chip->ebchg_gpio.gpio);
