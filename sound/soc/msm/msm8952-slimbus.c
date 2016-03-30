@@ -3346,16 +3346,41 @@ static int msm8952_wcd93xx_codec_up(struct snd_soc_codec *codec)
 static int msm8952_mclk_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
+#ifdef CONFIG_SND_SOC_MARLEY
+	int ret;
+#endif
 	pr_debug("%s: event = %d\n", __func__, event);
 
-#ifndef CONFIG_SND_SOC_MARLEY
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+#ifdef CONFIG_SND_SOC_MARLEY
+		ret = snd_soc_codec_set_pll(w->codec, MARLEY_FLL1,
+			ARIZONA_FLL_SRC_SLIMCLK,
+			1536000, MARLEY_SYSCLK_RATE);
+		if (ret != 0) {
+			dev_err(w->codec->dev, "Failed to set MCLK2 %d\n",
+				ret);
+			return ret;
+		}
+		break;
+#else
 		return msm8952_enable_codec_mclk(w->codec, 1, true);
-	case SND_SOC_DAPM_POST_PMD:
-		return msm8952_enable_codec_mclk(w->codec, 0, true);
-	}
 #endif
+	case SND_SOC_DAPM_POST_PMD:
+#ifdef CONFIG_SND_SOC_MARLEY
+		ret = snd_soc_codec_set_pll(w->codec, MARLEY_FLL1,
+			ARIZONA_FLL_SRC_MCLK2,
+			32768, MARLEY_SYSCLK_RATE);
+		if (ret != 0) {
+			dev_err(w->codec->dev, "Failed to set MCLK2 %d\n",
+				ret);
+			return ret;
+		}
+		break;
+#else
+		return msm8952_enable_codec_mclk(w->codec, 0, true);
+#endif
+	}
 	return 0;
 }
 
@@ -3727,6 +3752,9 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_write(codec, 0x1704, 0);
 	snd_soc_write(codec, 0x1705, 0);
 	snd_soc_write(codec, 0x1704, 0x40);
+
+	/* Set Slimbus FLL input clock to 1.536MHz */
+	snd_soc_write(codec, ARIZONA_SLIMBUS_FRAMER_REF_GEAR, 0x6);
 
 	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS1");
 	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS2");
