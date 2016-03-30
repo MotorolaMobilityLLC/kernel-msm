@@ -158,6 +158,7 @@ enum usb_chg_state {
  *			accessory ports.
  * USB_PROPRIETARY_CHARGER A proprietary charger pull DP and DM to specific
  *			voltages between 2.0-3.3v for identification.
+ * USB_UNSUPPORTED_CHARGER Unsupported Floated charger.
  *
  */
 enum usb_chg_type {
@@ -170,7 +171,7 @@ enum usb_chg_type {
 	USB_ACA_C_CHARGER,
 	USB_ACA_DOCK_CHARGER,
 	USB_PROPRIETARY_CHARGER,
-	USB_FLOATED_CHARGER,
+	USB_UNSUPPORTED_CHARGER,
 };
 
 /**
@@ -223,6 +224,21 @@ enum usb_ctrl {
 enum usb_id_state {
 	USB_ID_GROUND = 0,
 	USB_ID_FLOAT,
+};
+
+/**
+ * Used for different states involved in Floating charger detection.
+ *
+ * FLOATING_AS_SDP		This is used to detect floating charger as SDP
+ * FLOATING_AS_DCP		This is used to detect floating charger as DCP
+ * FLOATING_AS_INVALID		This is used to detect floating charger is not
+ *				supported and detects as INVALID
+ *
+ */
+enum floated_chg_type {
+	FLOATING_AS_SDP = 0,
+	FLOATING_AS_DCP,
+	FLOATING_AS_INVALID,
 };
 
 /**
@@ -287,6 +303,7 @@ enum usb_id_state {
 		for improving data performance.
  * @bool enable_sdp_typec_current_limit: Indicates whether type-c current for
 		sdp charger to be limited.
+ * @enable_floated_charger: Indicates floated charger type (SDP/DCP/INVALID).
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
@@ -325,6 +342,7 @@ struct msm_otg_platform_data {
 	bool enable_streaming;
 	bool enable_axi_prefetch;
 	bool enable_sdp_typec_current_limit;
+	enum floated_chg_type enable_floated_charger;
 	struct clk *system_clk;
 	struct clk *pclk;
 };
@@ -434,6 +452,8 @@ struct msm_otg_platform_data {
  * @typec_current_max: Max charging current allowed as per type-c chg detection
  * @is_ext_chg_dcp: To indicate whether charger detected by external entity
 		SMB hardware is DCP charger or not.
+ * @is_ext_chg_detected: To indicate whether charger detected by external entity
+		SMB hardware or not.
  * @pm_done: It is used to increment the pm counter using pm_runtime_get_sync.
 	     This handles the race case when PM resume thread returns before
 	     the charger detection starts. When USB is disconnected and in lpm
@@ -588,6 +608,7 @@ struct msm_otg {
 	struct completion ext_chg_wait;
 	struct pinctrl *phy_pinctrl;
 	bool is_ext_chg_dcp;
+	bool is_ext_chg_detected;
 	bool pm_done;
 	struct qpnp_vadc_chip	*vadc_dev;
 	int ext_id_irq;
