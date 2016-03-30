@@ -521,7 +521,7 @@ wmitlv_check_and_pad_tlvs(
             }
 
             /* Warning: Needs to allocate a larger structure and pad with zeros */
-            wmi_tlv_print_error("%s: WARN: TLV array of structures needs padding. tlv_size_diff=%d\n",
+            wmi_tlv_print_verbose("%s: WARN: TLV array of structures needs padding. tlv_size_diff=%d\n",
                    __func__, tlv_size_diff);
 
             /* incoming structure length */
