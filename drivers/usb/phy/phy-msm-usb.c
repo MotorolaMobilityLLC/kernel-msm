@@ -4353,6 +4353,7 @@ static void msm_otg_set_vbus_state(int online)
 			return;
 	} else {
 		pr_debug("PMIC: BSV clear\n");
+		motg->typec_current_max = 0;
 		msm_otg_dbg_log_event(&motg->phy, "PMIC: BSV CLEAR",
 				init, motg->inputs);
 		motg->is_ext_chg_detected = false;

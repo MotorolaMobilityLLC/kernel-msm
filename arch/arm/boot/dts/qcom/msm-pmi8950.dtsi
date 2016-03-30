@@ -192,6 +192,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
+			qcom,override-usb-current;
 			qcom,iterm-ma = <100>;
 			qcom,float-voltage-mv = <4200>;
 			qcom,resume-delta-mv = <200>;
