@@ -1766,6 +1766,7 @@ void fusb_StartTimers(void)
 
 	ktime = ktime_set(0, g_fusb_timer_tick_period_ns);	// Convert our timer period (in ns) to ktime
 	hrtimer_start(&chip->timer_state_machine, ktime, HRTIMER_MODE_REL);	// Start the timer
+	FUSB_LOG("FUSB  %s - Timer started!\n", __func__);
 
 }
 
@@ -5170,8 +5171,6 @@ void fusb_InitializeCore(void)
 {
 	core_initialize();
 	FUSB_LOG("FUSB  %s - Core is initialized!\n", __func__);
-	fusb_StartTimers();
-	FUSB_LOG("FUSB  %s - Timers are started!\n", __func__);
 	core_enable_typec(TRUE);
 	FUSB_LOG("FUSB  %s - Type-C State Machine is enabled!\n", __func__);
 }
