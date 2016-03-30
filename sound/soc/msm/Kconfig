@@ -83,45 +83,6 @@ config AUDIO_OCMEM
 	 OCMEM gets exercised for low-power
 	 audio and voice use cases.
 
-config DOLBY_DAP
-	bool "Enable Dolby DAP"
-	depends on SND_SOC_MSM_QDSP6V2_INTF
-	help
-	 To add support for dolby DAP post processing.
-	 This support is to configure the post processing parameters
-	 to DSP. The configuration includes sending the end point
-	 device, end point dependent post processing parameters and
-	 the various posrt processing parameters
-
-config DTS_EAGLE
-	bool "Enable DTS Eagle Support"
-	depends on SND_SOC_MSM_QDSP6V2_INTF
-	select SND_HWDEP
-	help
-	 To add DTS Eagle support on QDSP6 targets.
-	 Eagle is a DTS pre/post processing
-	 package that includes HeadphoneX. The configuration
-	 includes sending tuning parameters of various modules.
-
-config DOLBY_DS2
-	bool "Enable Dolby DS2"
-	depends on SND_SOC_MSM_QDSP6V2_INTF
-	help
-	 To add support for dolby DAP post processing.
-	 This support is to configure the post processing parameters
-	 to DSP. The configuration includes sending the end point
-	 device, end point dependent post processing parameters and
-	 the various posrt processing parameters
-
-config DTS_SRS_TM
-	bool "Enable DTS SRS"
-	depends on SND_SOC_MSM_QDSP6V2_INTF
-	help
-	 To add support for DTS SRS post processing.
-	 This support is to configure the post processing
-	 parameters to DSP. The configuration includes sending
-	 tuning parameters of various modules.
-
 config QTI_PP
 	bool "Enable QTI PP"
 	depends on SND_SOC_MSM_QDSP6V2_INTF
@@ -151,8 +112,6 @@ config SND_SOC_MSM8974
 	select SND_SOC_WCD9320
 	select SND_DYNAMIC_MINORS
 	select AUDIO_OCMEM
-	select DOLBY_DAP
-	select DTS_SRS_TM
 	select QTI_PP
 	help
 	 To add support for SoC audio on MSM8974.
@@ -171,7 +130,6 @@ config SND_SOC_APQ8074
 	select SND_SOC_MSM_HDMI_CODEC_RX
 	select SND_DYNAMIC_MINORS
 	select AUDIO_OCMEM
-	select DTS_SRS_TM
 	select QTI_PP
 	help
 	 To add support for SoC audio on APQ8074.
@@ -188,8 +146,6 @@ config SND_SOC_MSM8226
 	select SND_SOC_MSM_HOSTLESS_PCM
 	select SND_SOC_WCD9306
 	select SND_DYNAMIC_MINORS
-	select DOLBY_DAP
-	select DTS_SRS_TM
 	select QTI_PP
 	select SND_HWDEP
 	help
@@ -234,11 +190,8 @@ config SND_SOC_APQ8084
 	select SND_SOC_WCD9320
 	select SND_DYNAMIC_MINORS
 	select AUDIO_OCMEM
-	select DOLBY_DAP
-	select DTS_SRS_TM
 	select QTI_PP
 	select SND_SOC_CPE
-	select DOLBY_DS2
 	select SND_HWDEP
 	help
 	 To add support for SoC audio on APQ8084.
@@ -258,9 +211,6 @@ config SND_SOC_MSM8X16
 	select MFD_CORE
 	select SND_DYNAMIC_MINORS
 	select QTI_PP
-	select DTS_SRS_TM
-	select DOLBY_DAP
-	select DOLBY_DS2
 	select MSM_QDSP6_APRV3
 	select MSM_QDSP6V2_CODECS
 	select SND_SOC_CPE
@@ -283,12 +233,9 @@ config SND_SOC_MSM8909
 	select MFD_CORE
 	select SND_DYNAMIC_MINORS
 	select QTI_PP
-	select DTS_SRS_TM
-	select DOLBY_DAP
 	select MSM_QDSP6_APRV3
 	select MSM_QDSP6V2_CODECS
 	select SND_HWDEP
-	select DOLBY_DS2
 	help
 	 To add support for SoC audio on MSM8909.
 	 This will enable sound soc drivers which
@@ -319,12 +266,9 @@ config SND_SOC_MSM8994
 	select SND_SOC_WCD9330
 	select SND_SOC_MSM_HDMI_CODEC_RX
 	select QTI_PP
-	select DTS_SRS_TM
 	select SND_SOC_CPE
 	select MSM_ULTRASOUND
-	select DOLBY_DS2
 	select SND_HWDEP
-        select DTS_EAGLE
 	help
 	 To add support for SoC audio on MSM8994.
 	 This will enable sound soc drivers which
