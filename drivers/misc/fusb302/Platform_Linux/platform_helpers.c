@@ -5318,12 +5318,14 @@ void _fusb_WakeWorker(struct work_struct *work)
 		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
 		return;
 	}
+	disable_irq_nosync(chip->gpio_IntN_irq);
 	pm_stay_awake(&chip->client->dev);
 	if (fusb_InterruptPinLow())
 		core_state_machine();
 	else
 		core_state_machine_imp();
 	pm_relax(&chip->client->dev);
+	enable_irq(chip->gpio_IntN_irq);
 }
 void fusb_ScheduleWakeWork(void)
 {
