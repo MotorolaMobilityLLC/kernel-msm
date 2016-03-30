@@ -904,12 +904,11 @@ static void stmvl53l0_enter_cam(struct stmvl53l0_data *data, uint8_t from)
 	/* turn on tof sensor */
 	if (data->enable_ps_sensor == 0)
 		stmvl53l0_start(data);
-
 	papi_func_tbl->SetVcselPulsePeriod(data,
-			VL53L0_VCSEL_PERIOD_PRE_RANGE, 18);
-
+		VL53L0_VCSEL_PERIOD_PRE_RANGE, data->pll_p);
 	papi_func_tbl->SetVcselPulsePeriod(data,
-	VL53L0_VCSEL_PERIOD_FINAL_RANGE, 14);
+		VL53L0_VCSEL_PERIOD_FINAL_RANGE, data->pll_f);
+
 	vl53l0_errmsg("Call of setlimt \n");
 	papi_func_tbl->SetLimitCheckEnable(data,
 		VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,
@@ -2046,20 +2045,24 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 				parameter.status =
 					papi_func_tbl->GetVcselPulsePeriod(vl53l0_dev,
 					VL53L0_VCSEL_PERIOD_PRE_RANGE, (uint8_t *)&parameter.value);
-			else
+			else {
 				parameter.status =
 					papi_func_tbl->SetVcselPulsePeriod(vl53l0_dev,
 					VL53L0_VCSEL_PERIOD_PRE_RANGE, (uint8_t)parameter.value);
+				vl53l0_dev->pll_p = (uint8_t)parameter.value;
+			}
 			break;
 		case (PLLFINAL_PRA):
 			if (parameter.is_read)
 				parameter.status =
 					papi_func_tbl->GetVcselPulsePeriod(vl53l0_dev,
 					VL53L0_VCSEL_PERIOD_FINAL_RANGE, (uint8_t *)&parameter.value);
-			else
+			else {
 				parameter.status =
 					papi_func_tbl->SetVcselPulsePeriod(vl53l0_dev,
 					VL53L0_VCSEL_PERIOD_FINAL_RANGE, (uint8_t)parameter.value);
+				vl53l0_dev->pll_f = (uint8_t)parameter.value;
+			}
 			break;
 		}
 
@@ -2577,6 +2580,8 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	data->c_suspend = 0;
 	data->delay_ms = 2000;	/* delay time to 2s */
 	data->enableDebug = 0;
+	data->pll_p = 18;
+	data->pll_f = 14;
 /*	data->client_object.power_up = 0; */
 
 	vl53l0_dbgmsg("support ver. %s enabled\n", DRIVER_VERSION);
