@@ -175,6 +175,8 @@ struct stmvl53l0_data {
 	uint8_t isApertureSpads;
 	uint8_t VhvSettings;
 	uint8_t PhaseCal;
+	uint8_t pll_p;
+	uint8_t pll_f;
 };
 
 /*
