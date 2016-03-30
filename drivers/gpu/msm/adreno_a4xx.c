@@ -551,10 +551,6 @@ static void a4xx_enable_hwcg(struct kgsl_device *device)
 		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL, 0);
 	else
 		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL, 0xAAAAAAAA);
-
-	/* MMI_STOPSHIP: Disable HW clock gating in all GPU blocks */
-	kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL, 0);
-
 	kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL2, 0);
 }
 
