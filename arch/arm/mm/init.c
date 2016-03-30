@@ -468,7 +468,7 @@ static inline void free_area_high(unsigned long pfn, unsigned long end)
 static void __init free_highpages(void)
 {
 #ifdef CONFIG_HIGHMEM
-	unsigned long max_low = max_low_pfn;
+	unsigned long max_low = max_low_pfn + 0x10000; /* MMI_STOPSHIP */
 	struct memblock_region *mem, *res;
 
 	/* set highmem page free */
