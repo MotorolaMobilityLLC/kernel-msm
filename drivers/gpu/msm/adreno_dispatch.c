@@ -1942,10 +1942,8 @@ void process_cmdbatch_fault(struct kgsl_device *device,
 	 * Clear the replay bit and move on to the next policy level
 	 */
 
-	/* MMI_STOPSHIP: DEBUG: Attempt replay on hard faults
 	if (fault & ADRENO_HARD_FAULT)
 		clear_bit(KGSL_FT_REPLAY, &(cmdbatch->fault_policy));
-	*/
 
 	/*
 	 * A timeout fault means the IB timed out - clear the policy and
