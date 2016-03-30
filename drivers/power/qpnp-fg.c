@@ -2287,6 +2287,7 @@ static int get_monotonic_soc_raw(struct fg_chip *chip)
 static int get_prop_capacity(struct fg_chip *chip)
 {
 	int msoc, rc;
+	static int rsoc_init = -EINVAL;
 	bool vbatt_low_sts;
 
 	if (chip->use_last_soc && chip->last_soc) {
@@ -2300,8 +2301,16 @@ static int get_prop_capacity(struct fg_chip *chip)
 	if (chip->battery_missing)
 		return MISSING_CAPACITY;
 
-	if (!chip->profile_loaded && !chip->use_otp_profile)
-		return DEFAULT_CAPACITY;
+	if (!chip->profile_loaded && !chip->use_otp_profile) {
+		if (rsoc_init == -EINVAL) {
+			rsoc_init = get_prop_capacity_raw(chip);
+			if (rsoc_init <= 2)
+				rsoc_init = EMPTY_CAPACITY;
+			else if (rsoc_init >= 100)
+				rsoc_init = FULL_CAPACITY;
+		}
+		return rsoc_init;
+	}
 
 	if (chip->charge_full)
 		return FULL_CAPACITY;
@@ -6661,7 +6670,6 @@ wait:
 		goto no_profile;
 	}
 
-
 	esr_in_range = ((fg_data[FG_DATA_BATT_ESR].value < ESR_MAX) &&
 			(fg_data[FG_DATA_BATT_ESR].value > ESR_MIN));
 
@@ -6697,15 +6705,15 @@ wait:
 	if (!esr_in_range)
 		pr_info("ESR out of range: ESR %d mohm\n",
 			fg_data[FG_DATA_BATT_ESR].value);
-	if ((fg_debug_mask & FG_STATUS) && !vbat_in_range)
+	if (!vbat_in_range)
 		pr_info("Vbat out of range: v_current_pred: %d, v:%d thres:%d\n",
 				fg_data[FG_DATA_CPRED_VOLTAGE].value,
 			fg_data[FG_DATA_VOLTAGE].value,
 			settings[FG_MEM_VBAT_EST_DIFF].value * 1000);
-	if ((fg_debug_mask & FG_STATUS) && fg_is_batt_empty(chip))
+	if (fg_is_batt_empty(chip))
 		pr_info("battery empty\n");
 
-	if ((fg_debug_mask & FG_STATUS) && !profiles_same)
+	if (!profiles_same)
 		pr_info("profiles differ\n");
 
 	if (fg_debug_mask & FG_STATUS) {
@@ -7226,6 +7234,7 @@ static int fg_of_init(struct fg_chip *chip)
 	if (rc)
 		chip->bms_psy.name = NULL;
 
+	rc = 0;
 	OF_READ_SETTING(FG_MEM_SOFT_HOT, "warm-bat-decidegc", rc, 1);
 	OF_READ_SETTING(FG_MEM_SOFT_COLD, "cool-bat-decidegc", rc, 1);
 	OF_READ_SETTING(FG_MEM_HARD_HOT, "hot-bat-decidegc", rc, 1);
