@@ -35,7 +35,7 @@
 
 #define HS_BOOST_MAX 0x07
 
-static unsigned int boost_val = HS_BOOST_MAX;
+static unsigned int boost_val = 0x05;
 module_param(boost_val, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(boost_val, "Boost Value for the USB3813 hub");
 
