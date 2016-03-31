@@ -232,6 +232,46 @@ static struct snd_soc_dai_link msm8952_marley_fe_dai[] = {
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm8952_slimbus_2_be_ops,
 	},
+	{
+		.name = "CPU-DSP Voice Control",
+		.stream_name = "CPU-DSP Voice Control",
+		.cpu_dai_name = "marley-cpu-voicectrl",
+		.platform_name = "marley-codec",
+		.codec_dai_name = "marley-dsp-voicectrl",
+		.codec_name = "marley-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP Trace",
+		.stream_name = "CPU-DSP Voice Trace",
+		.cpu_dai_name = "marley-cpu-trace",
+		.platform_name = "marley-codec",
+		.codec_dai_name = "marley-dsp-trace",
+		.codec_name = "marley-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP2 Text",
+		.stream_name = "CPU-DSP2 Text",
+		.cpu_dai_name = "marley-dsp2-cpu-txt",
+		.platform_name = "marley-codec",
+		.codec_dai_name = "marley-dsp2-txt",
+		.codec_name = "marley-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP3 Text",
+		.stream_name = "CPU-DSP3 Text",
+		.cpu_dai_name = "marley-dsp3-cpu-txt",
+		.platform_name = "marley-codec",
+		.codec_dai_name = "marley-dsp3-txt",
+		.codec_name = "marley-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	}
 };
 #endif
 
