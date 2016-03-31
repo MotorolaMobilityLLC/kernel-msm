@@ -5305,6 +5305,8 @@ static irqreturn_t _fusb_isr_intn(FSC_S32 irq, void *dev_id)
 		chip->dbgSMRollovers++;	// Record a moderate amount of rollovers
 	}
 #endif // FSC_DEBUG
+	disable_irq_nosync(chip->gpio_IntN_irq);
+	atomic_set(&chip->irq_disabled, 1);
 	schedule_work(&chip->wake_worker);
 	return IRQ_HANDLED;
 }
@@ -5317,14 +5319,16 @@ void _fusb_WakeWorker(struct work_struct *work)
 		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
 		return;
 	}
-	disable_irq_nosync(chip->gpio_IntN_irq);
 	pm_stay_awake(&chip->client->dev);
 	if (fusb_InterruptPinLow())
 		core_state_machine();
 	else
 		core_state_machine_imp();
 	pm_relax(&chip->client->dev);
-	enable_irq(chip->gpio_IntN_irq);
+	if (atomic_read(&chip->irq_disabled) > 0) {
+		atomic_set(&chip->irq_disabled, 0);
+		enable_irq(chip->gpio_IntN_irq);
+	}
 }
 void fusb_ScheduleWakeWork(void)
 {
