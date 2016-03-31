@@ -18,7 +18,7 @@ maxim,bl259-atl-batterydata {
 	config		= /bits/ 16 <0x0254>;
 	full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
 	design_cap	= /bits/ 16 <5508>;	/* mAh times 2 */
-	ichgt_term	= /bits/ 16 <0x034C>;	/* battery attribute */
+	ichgt_term	= /bits/ 16 <0x0280>;	/* battery attribute */
 	learn_cfg	= /bits/ 16 <0x2603>;	/* app note constant */
 	filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
 	relax_cfg	= /bits/ 16 <0x203B>;
