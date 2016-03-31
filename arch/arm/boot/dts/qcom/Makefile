@@ -256,6 +256,7 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-harpia-p0a.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-harpia-p1.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-harpia-p1a.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-harpia-p1ad.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-harpia-p1b.dtb
 
 # Motorola 8939 Devices
 dtb-$(CONFIG_ARCH_MSM8916) += msm8939-lux-p0.dtb
