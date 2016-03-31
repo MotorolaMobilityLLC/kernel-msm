@@ -474,8 +474,8 @@
 					<5 0 20>;
 
 		pinctrl-names = "disconnected", "spi_active";
-		pinctrl-0 = <&muc_attach &spi_1_sleep &muc_spi_ctrl>;
-		pinctrl-1 = <&muc_attach &spi_1_active &muc_spi_ctrl>;
+		pinctrl-0 = <&muc_attach &spi_1_sleep &muc_spi_ctrl &spi1_cs0_sleep>;
+		pinctrl-1 = <&muc_attach &spi_1_active &muc_spi_ctrl &spi1_cs0_active>;
 		transports {
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -498,15 +498,16 @@
 		reg = <0 0>;
 		clock-names = "apba_mclk";
 		clocks = <&clock_gcc clk_bb_clk2_a>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&apba_default>;
-		gpios = <&tlmm 39 2>,      /* APBA_1P1_EN, output-high */
+		pinctrl-names = "default", "spi_active";
+		pinctrl-0 = <&apba_default &spi1_cs1_sleep>;
+		pinctrl-1 = <&apba_default &spi1_cs1_active>;
+		gpios = <&tlmm 39 0>,      /* APBA_1P1_EN, output-low */
 			<&tlmm 140 0>,     /* APBA_BOOTRET, output-low */
 			<&pmi8950_mpps 2 2>, /* MOD_MPHY_I2S_SEL, output-high */
 			<&tlmm 132 0>,     /* APBA_RESET_N, output-low */
 			<&tlmm 62 1>,      /* APBA_INT_N, in */
-			<&tlmm 141 2>,     /* APBA_WAKE, output-high */
-			<&tlmm 41 2>;      /* APBA_SFLASH_EN, output-high */
+			<&tlmm 141 0>,     /* APBA_WAKE, output-low */
+			<&tlmm 41 0>;      /* APBA_SFLASH_EN, output-low */
 		mmi,gpio-labels = "gpio_apba_1p1_en",
 				  "gpio_apba_bootret",
 				  "gpio_mphy_i2s_sel",
@@ -515,14 +516,19 @@
 				  "gpio_apba_wake",
 				  "gpio_apba_sflash_en";
 		mmi,int-index = <4>;
-		mmi,enable-seq = <6 0 0>, <5 1 0>, <0 1 0>, <1 0 0>,
-				 <2 0 0>, <3 0 50>, <3 1 50>;
-		mmi,disable-seq = <1 0 0>, <2 1 0>, <3 0 50>, <5 0 0>, <0 0 0>,
-				  <6 1 0>;
+		/* Notes about boot sequence:  w25q40bw spec says 10 usec needed
+		   from VCC high to first /CS low for read.  It requires 10 msec max
+		   until first write. */
+		/* ES3 AP Bridge power on sequence requires 40 usec minimum between
+		   (APBA_VDDIO + SYS_CLK) and SYS_RESET_N high, and requires RESET_N low during
+		   boot. */
+		mmi,enable-seq = <6 0 0>, <3 0 0>, <5 1 0>, <0 1 0>, <1 0 0>,
+				 <2 0 1>, <3 1 0>;
+		mmi,disable-seq = <1 0 0>, <2 1 0>, <3 0 1>, <5 0 0>, <0 0 0>;
 		mmi,wake-assert-seq = <5 0 0>;
 		mmi,wake-deassert-seq = <5 1 0>;
 		mmi,flash-start-seq = <6 1 0>, <0 1 11>;
-		mmi,flash-end-seq = <6 0 0>, <0 0 0>;
+		mmi,flash-end-seq = <0 0 0>, <6 0 0>;
 	};
 
 	mods_v4l2_hal {
@@ -701,10 +707,6 @@
 	qcom,master-id = <86>;
 	qcom,rt-priority;
 	qcom,active-only;
-	qcom,use-pinctrl;
-	pinctrl-names = "spi_default", "spi_sleep";
-	pinctrl-0 = <&spi1_cs0_active &spi1_cs1_active>;
-	pinctrl-1 = <&spi1_cs0_sleep &spi1_cs1_sleep>;
 
 	clock-names = "iface_clk", "core_clk";
 
