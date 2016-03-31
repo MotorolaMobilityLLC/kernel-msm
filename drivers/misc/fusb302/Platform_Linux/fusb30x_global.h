@@ -14,6 +14,7 @@
 #include <linux/usb/class-dual-role.h>
 #include <linux/power_supply.h>
 #include <linux/ipc_logging.h>
+#include <linux/atomic.h>
 #include "FSCTypes.h"		// FUSB30x custom types
 
 #ifdef FSC_DEBUG
@@ -71,6 +72,7 @@ struct fusb30x_chip		// Contains data required by this driver
 	struct dual_role_phy_desc *desc;
 	struct dentry *debug_root;
 	u32 debug_address;
+	atomic_t irq_disabled;
 };
 
 extern struct fusb30x_chip *g_chip;
