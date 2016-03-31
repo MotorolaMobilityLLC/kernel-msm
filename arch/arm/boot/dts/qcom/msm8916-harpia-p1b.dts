@@ -1,0 +1,35 @@
+/* Copyright (c) 2014, Motorola Mobility LLC. All rights reserved.
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License version 2 and
+* only version 2 as published by the Free Software Foundation.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*/
+
+/dts-v1/;
+
+#include "msm8916-harpia.dtsi"
+/ {
+	qcom,board-id = <0x4D 0x81B0>, <0x4E 0x81B0>;
+};
+
+/*chris over-ride sdcard hotplug cd pin*/
+&tlmm_pinmux {
+        sdhc2_cd_pin {
+               qcom,pins = <&gp 118>;
+        };
+};
+
+/*chris over-ride sdcard hotplug cd pin*/
+&sdhc_2 {
+        interrupt-map = <0 &intc 0 125 0
+                        1 &intc 0 221 0
+                        2 &msm_gpio 118 0>;
+        cd-gpios = <&msm_gpio 118 0x1>;
+};
+
+
