@@ -82,6 +82,10 @@ Optional Properties:
 						during clock scaling. If this property is not
 						defined, then it falls back to the default HS
 						bus speed mode to maintain backward compatibility.
+	- qcom,broken-pwr-cycle-host:	Specifies if SDIO host and card  requires complete
+					power_restore (mmc_sdio_power_restore) while resuming.
+					This is in cases where card cannot go through
+					complete pwr_cycle in suspend/resume.
 
 In the following, <supply> can be vdd (flash core voltage) or vdd-io (I/O voltage).
 	- qcom,<supply>-always-on - specifies whether supply should be kept "on" always.
