@@ -84,9 +84,6 @@
 #define ALS_LOW_THRESHOLD		1000
 #define ALS_HIGH_THRESHOLD		3000
 
-#define PS_LOW_THRESHOLD		500
-#define PS_HIGH_THRESHOLD		800
-
 /*ALS lux per count, 400/1000=0.4*/
 #define LUX_PER_COUNT			400
 #define ALS_LEVEL			16
@@ -207,6 +204,20 @@ struct epl_sensor_priv {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *gpio_state_active;
 	struct pinctrl_state *gpio_state_suspend;
+	u8 dt_wait_time;
+	u8 dt_st_gain;
+	u16 dt_als_c_gain;
+	u8 dt_ps_eg_sign;
+	u8 dt_ps_intt;
+	u8 dt_ps_gain;
+	u8 dt_ps_cycle;
+	u8 dt_ps_ir_drive;
+	u16 dt_ps_low_threshold;
+	u16 dt_ps_high_threshold;
+	u16 dt_ps_max_ct;
+	u16 dt_ps_dyn_l_offset;
+	u16 dt_ps_dyn_h_offset;
+	u8 dt_ps_rs;
 };
 #if ATTR_RANGE_PATH
 static struct kobject *kernel_kobj_dev;
@@ -240,10 +251,7 @@ int epl_sensor_als_dyn_report(bool report_flag);
  ******************************************************************************/
 #if PS_DYN_K_ONE
 static bool ps_dyn_flag = false;
-#define PS_MAX_CT	10000
 #define PS_MAX_IR	50000
-#define PS_DYN_H_OFFSET 270
-#define PS_DYN_L_OFFSET 150
 u32 dynk_thd_low = 0;
 u32 dynk_thd_high = 0;
 #endif
@@ -584,6 +592,7 @@ static void set_als_ps_intr_type(struct i2c_client *client,
 static void write_global_variable(struct i2c_client *client)
 {
 	u8 buf;
+	struct epl_sensor_priv *epld = epl_sensor_obj;
 
 	epl_sensor_I2C_Write(client, 0x11, EPL_POWER_OFF | EPL_RESETN_RESET);
 	/* wake up chip */
@@ -597,7 +606,10 @@ static void write_global_variable(struct i2c_client *client)
 	/*chip refrash*/
 	epl_sensor_I2C_Write(client, 0xfd, 0x8e);
 	epl_sensor_I2C_Write(client, 0xfe, 0x20);
-	epl_sensor_I2C_Write(client, 0xfe, 0x00);
+	if (epld->dt_ps_eg_sign == 0)
+		epl_sensor_I2C_Write(client, 0xfe, 0x02);
+	else
+		epl_sensor_I2C_Write(client, 0xfe, 0x00);
 	epl_sensor_I2C_Write(client, 0xfd, 0x00);
 
 	epl_sensor_I2C_Write(client, 0xfc,
@@ -611,7 +623,7 @@ static void write_global_variable(struct i2c_client *client)
 	buf = epl_sensor.ps.integration_time | epl_sensor.ps.gain;
 	epl_sensor_I2C_Write(client, 0x03, buf);
 
-	buf = epl_sensor.ps.adc | epl_sensor.ps.cycle;
+	buf = epl_sensor.ps.rs | epl_sensor.ps.adc | epl_sensor.ps.cycle;
 	epl_sensor_I2C_Write(client, 0x04, buf);
 
 	buf = epl_sensor.ps.ir_on_control | epl_sensor.ps.ir_mode | epl_sensor.ps.ir_drive;
@@ -655,7 +667,7 @@ static void initial_global_variable(struct i2c_client *client, struct epl_sensor
 	epl_sensor.power = EPL_POWER_ON;
 	epl_sensor.reset = EPL_RESETN_RUN;
 	epl_sensor.mode = EPL_MODE_IDLE;
-	epl_sensor.wait = EPL_WAIT_0_MS;
+	epl_sensor.wait = (obj->dt_wait_time << 4);
 	epl_sensor.osc_sel = EPL_OSC_SEL_1MHZ;
 
 	/* als setting */
@@ -689,25 +701,26 @@ static void initial_global_variable(struct i2c_client *client, struct epl_sensor
 		dynamic_intt_high_thr = als_dynamic_intt_high_thr[dynamic_intt_idx];
 		dynamic_intt_low_thr = als_dynamic_intt_low_thr[dynamic_intt_idx];
 	}
-	c_gain = 100;   /*Lux per count*/
+	c_gain = obj->dt_als_c_gain;
 #endif
 	/* ps setting */
 	epl_sensor.ps.polling_mode = PS_POLLING_MODE;
-	epl_sensor.ps.integration_time = EPL_PS_INTT_144;
-	epl_sensor.ps.gain = EPL_GAIN_LOW;
+	epl_sensor.ps.integration_time = (obj->dt_ps_intt << 2);
+	epl_sensor.ps.gain = obj->dt_ps_gain;
+	epl_sensor.ps.rs = (obj->dt_ps_rs << 5);
+	epl_sensor.ps.cycle = obj->dt_ps_cycle;
+	epl_sensor.ps.ir_drive = obj->dt_ps_ir_drive;
+	epl_sensor.ps.high_threshold = obj->dt_ps_high_threshold;
+	epl_sensor.ps.low_threshold = obj->dt_ps_low_threshold;
 	epl_sensor.ps.adc = EPL_PSALS_ADC_11;
-	epl_sensor.ps.cycle = EPL_CYCLE_16;
 	epl_sensor.ps.persist = EPL_PERIST_1;
 	epl_sensor.ps.ir_on_control = EPL_IR_ON_CTRL_ON;
 	epl_sensor.ps.ir_mode = EPL_IR_MODE_CURRENT;
-	epl_sensor.ps.ir_drive = EPL_IR_DRIVE_100;
 	epl_sensor.ps.compare_reset = EPL_CMP_RUN;
 	epl_sensor.ps.lock = EPL_UN_LOCK;
-	epl_sensor.ps.high_threshold = PS_HIGH_THRESHOLD;
-	epl_sensor.ps.low_threshold = PS_LOW_THRESHOLD;
 	ps_thd_5cm = epl_sensor.ps.low_threshold;
 	ps_thd_3cm = epl_sensor.ps.high_threshold;
-	ps_thd_1cm = 5*epl_sensor.ps.high_threshold;
+	ps_thd_1cm = obj->dt_st_gain*epl_sensor.ps.high_threshold;
 	/* ps factory */
 	epl_sensor.ps.factory.calibration_enable =  false;
 	epl_sensor.ps.factory.calibrated = false;
@@ -1157,8 +1170,8 @@ void epl_sensor_enable_ps(int enable)
 			/* wake_lock(&ps_lock); */
 #if PS_FIRST_REPORT
 			ps_frist_flag = true;
-			set_psensor_intr_threshold(PS_MAX_CT,
-				PS_MAX_CT + 1);
+			set_psensor_intr_threshold(epld->dt_ps_max_ct,
+				epld->dt_ps_max_ct + 1);
 #endif
 #if PS_DYN_K_ONE
 			ps_dyn_flag = true;
@@ -1166,7 +1179,7 @@ void epl_sensor_enable_ps(int enable)
 		} else {
 			/* wake_unlock(&ps_lock); */
 			epl_sensor_I2C_Write(epld->client, 0x04,
-				epl_sensor.ps.adc | epl_sensor.ps.cycle);
+		epl_sensor.ps.rs | epl_sensor.ps.adc | epl_sensor.ps.cycle);
 			epl_sensor_I2C_Write(epld->client, 0x06,
 				epl_sensor.interrupt_control |
 				epl_sensor.ps.persist |
@@ -1320,8 +1333,8 @@ int epl_sensor_als_dyn_report(bool report_flag)
 #if PS_DYN_K_ONE
 void epl_sensor_do_ps_auto_k_one(void)
 {
-#if !PS_FIRST_REPORT
 	struct epl_sensor_priv *epld = epl_sensor_obj;
+#if !PS_FIRST_REPORT
 	int ps_time = 0;
 	ps_time = ps_sensing_time(epl_sensor.ps.integration_time,
 		epl_sensor.ps.adc, epl_sensor.ps.cycle);
@@ -1332,25 +1345,30 @@ void epl_sensor_do_ps_auto_k_one(void)
 		LOG_INFO("[%s]: msleep(%d)\r\n", __func__, ps_time);
 		epl_sensor_read_ps(epld->client);
 #endif
-		if (epl_sensor.ps.data.data < PS_MAX_CT && (epl_sensor.ps.saturation == 0) && (epl_sensor.ps.data.ir_data < PS_MAX_IR)) {
+		if (epl_sensor.ps.data.data < epld->dt_ps_max_ct &&
+				(epl_sensor.ps.saturation == 0)
+				&& (epl_sensor.ps.data.ir_data < PS_MAX_IR)) {
 			LOG_INFO("[%s]: epl_sensor.ps.data.data=%d \r\n", __func__, epl_sensor.ps.data.data);
-			dynk_thd_low = epl_sensor.ps.data.data + PS_DYN_L_OFFSET;
-			dynk_thd_high = epl_sensor.ps.data.data + PS_DYN_H_OFFSET;
+			dynk_thd_low = epl_sensor.ps.data.data +
+				epld->dt_ps_dyn_l_offset;
+			dynk_thd_high = epl_sensor.ps.data.data +
+				epld->dt_ps_dyn_h_offset;
 			set_psensor_intr_threshold(dynk_thd_low, dynk_thd_high);
 			ps_thd_5cm = dynk_thd_low;
 			ps_thd_3cm = dynk_thd_high;
 			ps_thd_1cm = epl_sensor.ps.data.data +
-					5*PS_DYN_H_OFFSET;
+				epld->dt_st_gain*epld->dt_ps_dyn_h_offset;
 		} else {
 			LOG_INFO("[%s]:threshold is err; epl_sensor.ps.data.data=%d \r\n", __func__, epl_sensor.ps.data.data);
-			epl_sensor.ps.high_threshold = PS_HIGH_THRESHOLD;
-			epl_sensor.ps.low_threshold = PS_LOW_THRESHOLD;
+			epl_sensor.ps.high_threshold =
+					epld->dt_ps_high_threshold;
+			epl_sensor.ps.low_threshold = epld->dt_ps_low_threshold;
 			set_psensor_intr_threshold(epl_sensor.ps.low_threshold, epl_sensor.ps.high_threshold);
 			dynk_thd_low = epl_sensor.ps.low_threshold;
 			dynk_thd_high = epl_sensor.ps.high_threshold;
 			ps_thd_5cm = dynk_thd_low;
 			ps_thd_3cm = dynk_thd_high;
-			ps_thd_1cm = 5*dynk_thd_high;
+			ps_thd_1cm = epld->dt_st_gain*dynk_thd_high;
 		}
 
 		if (enable_stowed_flag == true) {
@@ -1637,14 +1655,14 @@ static void epl_sensor_eint_work(struct work_struct *work)
 		if (enable_stowed_flag && enable_ps_flag == false) {
 			if ((epl_sensor.ps.compare_low >> 3) == 0) {
 				epl_sensor_I2C_Write(epld->client, 0x04,
-					ps_stowed_adc | ps_stowed_cycle);
+			epl_sensor.ps.rs | ps_stowed_adc | ps_stowed_cycle);
 				epl_sensor_I2C_Write(epld->client, 0x06,
 					epl_sensor.interrupt_control |
 					epl_sensor.ps.persist |
 					epl_sensor.ps.interrupt_type);
 			} else {
 				epl_sensor_I2C_Write(epld->client, 0x04,
-					ps_stowed_adc | ps_stowed_cycle);
+			epl_sensor.ps.rs | ps_stowed_adc | ps_stowed_cycle);
 				epl_sensor_I2C_Write(epld->client, 0x06,
 					epl_sensor.interrupt_control |
 					ps_stowed_persist |
@@ -2356,9 +2374,9 @@ static ssize_t epl_sensor_store_adc(struct device *dev, struct device_attribute 
 	switch (epl_sensor.mode) {
 	case EPL_MODE_PS:
 		epl_sensor.ps.adc = (value & 0x3) << 3;
-		epl_sensor_I2C_Write(epld->client, 0x04, epl_sensor.ps.adc | epl_sensor.ps.cycle);
+		epl_sensor_I2C_Write(epld->client, 0x04,
+		epl_sensor.ps.rs | epl_sensor.ps.adc | epl_sensor.ps.cycle);
 		epl_sensor_I2C_Read(epld->client, 0x04, 1);
-		LOG_INFO("[%s]:0x04 = 0x%x (0x%x)\n", __FUNCTION__, epl_sensor.ps.adc | epl_sensor.ps.cycle, gRawData.raw_bytes[0]);
 		break;
 	case EPL_MODE_ALS:
 		epl_sensor.als.adc = (value & 0x3) << 3;
@@ -2386,8 +2404,8 @@ static ssize_t epl_sensor_store_cycle(struct device *dev, struct device_attribut
 	switch (epl_sensor.mode) {
 	case EPL_MODE_PS:
 		epl_sensor.ps.cycle = (value & 0x7);
-		epl_sensor_I2C_Write(epld->client, 0x04, epl_sensor.ps.adc | epl_sensor.ps.cycle);
-		LOG_INFO("[%s]:0x04 = 0x%x (0x%x)\n", __FUNCTION__, epl_sensor.ps.adc | epl_sensor.ps.cycle, gRawData.raw_bytes[0]);
+		epl_sensor_I2C_Write(epld->client, 0x04,
+		epl_sensor.ps.rs | epl_sensor.ps.adc | epl_sensor.ps.cycle);
 		break;
 
 	case EPL_MODE_ALS:
@@ -3465,6 +3483,84 @@ static int elan_power_deinit(struct epl_sensor_priv *data)
 	return 0;
 }
 
+static int epl_sensor_parse_dt(struct device *dev, struct epl_sensor_priv *epld)
+{
+	struct property *prop;
+	struct device_node *dt = dev->of_node;
+	uint32_t temp = 0;
+
+	prop = of_find_property(dt, "epl,wait_time", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,wait_time", &temp);
+	epld->dt_wait_time = (u8)temp;
+
+	prop = of_find_property(dt, "epl,st_gain", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,st_gain", &temp);
+	epld->dt_st_gain = (u8)temp;
+
+	prop = of_find_property(dt, "epl,als_c_gain", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,als_c_gain", &temp);
+	epld->dt_als_c_gain = (u8)temp;
+
+	prop = of_find_property(dt, "epl,ps_eg_sign", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_eg_sign", &temp);
+	epld->dt_ps_eg_sign = (u8)temp;
+
+	prop = of_find_property(dt, "epl,ps_intt", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_intt", &temp);
+	epld->dt_ps_intt = (u8)temp;
+
+	prop = of_find_property(dt, "epl,ps_gain", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_gain", &temp);
+	epld->dt_ps_gain = (u8)temp;
+
+	prop = of_find_property(dt, "epl,ps_rs", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_rs", &temp);
+	epld->dt_ps_rs = (u8)temp;
+
+	prop = of_find_property(dt, "epl,ps_cycle", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_cycle", &temp);
+	epld->dt_ps_cycle = (u8)temp;
+
+	prop = of_find_property(dt, "epl,ps_ir_drive", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_ir_drive", &temp);
+	epld->dt_ps_ir_drive = (u8)temp;
+
+	prop = of_find_property(dt, "epl,ps_low_threshold", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_low_threshold", &temp);
+	epld->dt_ps_low_threshold = (u16)temp;
+
+	prop = of_find_property(dt, "epl,ps_high_threshold", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_high_threshold", &temp);
+	epld->dt_ps_high_threshold = (u16)temp;
+
+	prop = of_find_property(dt, "epl,ps_max_ct", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_max_ct", &temp);
+	epld->dt_ps_max_ct = (u16)temp;
+
+	prop = of_find_property(dt, "epl,ps_dyn_l_offset", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_dyn_l_offset", &temp);
+	epld->dt_ps_dyn_l_offset = (u16)temp;
+
+	prop = of_find_property(dt, "epl,ps_dyn_h_offset", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,ps_dyn_h_offset", &temp);
+	epld->dt_ps_dyn_h_offset = (u16)temp;
+
+	return 0;
+}
 /*----------------------------------------------------------------------------*/
 static int epl_sensor_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -3537,6 +3633,7 @@ static int epl_sensor_probe(struct i2c_client *client, const struct i2c_device_i
 	INIT_DELAYED_WORK(&epld->eint_work, epl_sensor_eint_work);
 	INIT_DELAYED_WORK(&epld->polling_work, epl_sensor_polling_work);
 	mutex_init(&sensor_mutex);
+	epl_sensor_parse_dt(&client->dev, epld);
 
 	/* initial global variable and write to senosr */
 	initial_global_variable(client, epld);
