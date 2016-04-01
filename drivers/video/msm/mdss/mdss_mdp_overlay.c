@@ -2501,7 +2501,7 @@ static ssize_t hbm_store(struct device *dev,
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 	r = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_ENABLE_HBM,
-				(void *)(unsigned long)enable);
+				(void *)enable);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 	if (r) {
 		pr_err("Failed sending HBM command, r = %d\n", r);
