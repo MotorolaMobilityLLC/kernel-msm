@@ -379,6 +379,7 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 		if (err)
 			goto out;
 		truncate_setsize(inode, ia->ia_size);
+		esdfs_truncate_share(inode->i_sb, lower_dentry->d_inode, ia->ia_size);
 	}
 
 	/*
