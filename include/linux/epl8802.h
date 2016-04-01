@@ -93,6 +93,15 @@ static int als_intt_value[] = {2, 4, 8, 16, 32, 64, 128, 256, 512, 768, 1024, 20
 #define EPL_PS_INTT_6160		(15<<2)
 static int ps_intt_value[] = {4, 8, 16, 24, 32, 48, 80, 144, 272, 384, 520, 784, 1040, 2064, 4112, 6160};
 
+#define EPL_PS_RS_0			(0<<5)
+#define EPL_PS_RS_2			(1<<5)
+#define EPL_PS_RS_4			(2<<5)
+#define EPL_PS_RS_8			(3<<5)
+#define EPL_PS_RS_16			(4<<5)
+#define EPL_PS_RS_32			(5<<5)
+#define EPL_PS_RS_64			(6<<5)
+#define EPL_PS_RS_128			(7<<5)
+
 #define EPL_WAIT_0_MS			(0x0<<4)
 #define EPL_WAIT_2_MS			(0x1<<4)
 #define EPL_WAIT_4_MS			(0x2<<4)
@@ -260,6 +269,7 @@ struct _ps_setting {
 	bool polling_mode;
 	u8 integration_time;
 	u8 gain;
+	u8 rs;
 	u8 adc;
 	u8 cycle;
 	u16 high_threshold;

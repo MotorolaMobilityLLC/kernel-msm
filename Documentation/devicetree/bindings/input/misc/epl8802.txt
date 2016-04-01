@@ -3,15 +3,28 @@ ELAN epl8802 ambient light + proximity combo driver.
 Required properties:
 
  - compatible					: Should be "epl,epl8802".
- - reg							: i2c slave address of the device.
+ - reg						: i2c slave address of the device.
  - epl,irq-gpio				: The gpio pin for the interrupt.
  - pinctrl-names				: The pinctrl configration names of this sensor driver. Should be
-					"epl8802_default" and "epl8802_suspend".
+						"epl8802_default" and "epl8802_suspend".
  - pinctrl-0					: Should specify pin control groups used for this controller.
  - pinctrl-1					: Should specify pin control groups used for this controller.
  - vdd-supply					: Power supply needed to power up the device.
  - vio-supply					: IO power supply needed for IO and I2C.
-
+ - epl,wait_time				: the wait time of the sensor
+ - epl,st_gain					: the tuning value for PROX saturation
+ - epl,als_c_gain				: the als gain of the sensoor
+ - epl,ps_eg_sign				: the tuning value of Proximity CT value
+ - epl,ps_intt					: the Prox integration time of the sensor
+ - epl,ps_gain					: the Prox gain of the sensor
+ - epl,ps_cycle				: the Prox cycle of the sensor
+ - epl,ps_ir_drive				: the Prox IR current of the sensor
+ - epl,ps_low_threshold			: the Prox low threshold to trigger for far interrupt
+ - epl,ps_high_threshold			: the Prox high threshold to trigger for close interrupt
+ - epl,ps_max_ct				: the Prox MAX ct for auto calibration
+ - epl,ps_dyn_l_offset				: the Prox low offset of the threshold for auto calibration
+ - epl,ps_dyn_h_offset				: the Prox high offset of the threshold for auto calibration
+ - epl,ps_rs					: the Prox rs of the sensor
 
  Example:
 
@@ -23,7 +36,21 @@ Required properties:
 		pinctrl-names = "epl8802_default", "epl8802_suspend";
 		pinctrl-0 = <&epl8802_active>;
 		pinctrl-1 = <&epl8802_suspend>;
-                vdd-supply = <&pm8916_l17>;
-                vio-supply = <&pm8916_l6>;
+        vdd-supply = <&pm8916_l17>;
+        vio-supply = <&pm8916_l6>;
+		epl,wait_time = <0x09>;
+		epl,st_gain = <9>;
+		epl,als_c_gain = <100>;
+		epl,ps_eg_sign = <1>;
+		epl,ps_intt = <5>;
+		epl,ps_gain = <0x01>;
+		epl,ps_cycle = <0x04>;
+		epl,ps_ir_drive = <0x02>;
+		epl,ps_low_threshold = <9200>;
+		epl,ps_high_threshold = <10000>;
+		epl,ps_max_ct = <20000>;
+		epl,ps_dyn_l_offset = <900>;
+		epl,ps_dyn_h_offset = <1700>;
+		epl,ps_rs = <0>;
 	};
 };
