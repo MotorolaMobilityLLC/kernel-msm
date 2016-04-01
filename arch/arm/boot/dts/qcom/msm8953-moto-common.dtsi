@@ -552,6 +552,11 @@
 		mmi,apba-ara-pid = <0xffff0001>;
 	};
 
+	mods_camera_ext {
+		compatible = "mmi,mods-camera-ext";
+		camera_ext_cdsi-supply = <&pm8953_l23>;
+	};
+
 	mods_v4l2_hal {
 		compatible = "mmi,mods-v4l2_hal";
 	};
@@ -1074,6 +1079,11 @@
 &qcom_seecom {
 	reg = <0x84300000 0x2000000>;
 };
+
+&pm8953_l23 {
+	qcom,init-voltage = <1200000>;
+};
+
 &rpm_bus {
 	rpm-regulator-ldoa22 {
 	pm8950_l22: regulator-l22 {
