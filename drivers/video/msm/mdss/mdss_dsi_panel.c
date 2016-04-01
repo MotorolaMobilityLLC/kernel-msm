@@ -818,10 +818,6 @@ end:
 	} else
 		dropbox_count = 0;
 
-	/* Default CABC mode is UI while turning on display */
-	if (pdata->panel_info.dynamic_cabc_enabled)
-		pdata->panel_info.cabc_mode = CABC_UI_MODE;
-
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 	return 0;
 }
@@ -874,10 +870,6 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
-
-	if (pdata->panel_info.dynamic_cabc_enabled)
-		pdata->panel_info.cabc_mode = CABC_OFF_MODE;
-
 	pr_info("%s-:\n", __func__);
 	return 0;
 }
@@ -1530,101 +1522,6 @@ static void mdss_dsi_parse_dfps_config(struct device_node *pan_node,
 	return;
 }
 
-int mdss_dsi_panel_set_cabc(struct mdss_dsi_ctrl_pdata *ctrl, int mode)
-{
-	int rc = -EINVAL;
-	const char *name;
-	struct mdss_panel_info *pinfo;
-	struct dsi_panel_cmds *cmds = NULL;
-
-	if (!ctrl) {
-		pr_err("%s: Invalid ctrl pointer.\n", __func__);
-		goto end;
-	}
-
-	pinfo = &ctrl->panel_data.panel_info;
-	name = mdss_panel_map_cabc_name(mode);
-	if (!name) {
-		pr_err("%s: Invalid mode: %d\n", __func__, mode);
-		goto end;
-	}
-
-	if (pinfo->cabc_mode == mode) {
-		pr_warn("%s: Already in requested mode: %s\n", __func__, name);
-		rc = 0;
-		goto end;
-	}
-
-	if (mode == CABC_MV_MODE && ctrl->cabc_mv_cmds.cmd_cnt)
-		cmds = &ctrl->cabc_mv_cmds;
-	else if (mode == CABC_UI_MODE && ctrl->cabc_ui_cmds.cmd_cnt)
-		cmds = &ctrl->cabc_ui_cmds;
-
-	if (!cmds) {
-		pr_warn("%s: %s mode not supported.\n", __func__, name);
-		goto end;
-	}
-
-	mutex_lock(&ctrl->mutex);
-	if (mdss_panel_is_power_off(pinfo->panel_power_state)) {
-		pr_err("%s: Panel is off\n", __func__);
-		rc = -EPERM;
-		mutex_unlock(&ctrl->mutex);
-		goto end;
-	}
-	mdss_dsi_panel_cmds_send(ctrl, cmds);
-	mutex_unlock(&ctrl->mutex);
-
-	pr_info("%s: Done setting %s mode\n", __func__, name);
-	pinfo->cabc_mode = mode;
-	rc = 0;
-end:
-	return rc;
-}
-
-static int mdss_dsi_parse_optional_dcs_cmds(struct device_node *np,
-		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
-{
-	int rc;
-
-	if (!of_get_property(np, cmd_key, NULL))
-		return 0;
-
-	rc = mdss_dsi_parse_dcs_cmds(np, pcmds, cmd_key, link_key);
-	if (rc)
-		pr_err("%s : Failed parsing %s commands, rc = %d\n",
-			__func__, cmd_key, rc);
-	return rc;
-}
-
-static int mdss_panel_parse_optional_prop(struct device_node *np,
-				struct mdss_panel_info *pinfo,
-				struct mdss_dsi_ctrl_pdata *ctrl)
-{
-	int rc = 0;
-
-	/* Dynamic CABC properties */
-	pinfo->dynamic_cabc_enabled = false;
-	rc = mdss_dsi_parse_optional_dcs_cmds(np, &ctrl->cabc_ui_cmds,
-				"qcom,mdss-dsi-cabc-ui-command", NULL);
-	rc |= mdss_dsi_parse_optional_dcs_cmds(np, &ctrl->cabc_mv_cmds,
-				"qcom,mdss-dsi-cabc-mv-command", NULL);
-	if (ctrl->cabc_ui_cmds.cmd_cnt && ctrl->cabc_mv_cmds.cmd_cnt) {
-		pinfo->dynamic_cabc_enabled = true;
-		pinfo->cabc_mode = CABC_UI_MODE;
-		pr_info("%s: Dynamic CABC enabled.\n", __func__);
-	}
-
-	/* Pre-on command property */
-	rc |= mdss_dsi_parse_optional_dcs_cmds(np, &ctrl->pre_on_cmds,
-		"qcom,mdss-dsi-pre-on-command",
-		"qcom,mdss-dsi-pre-on-command-state");
-	if (ctrl->pre_on_cmds.cmd_cnt)
-		pr_info("%s: pre-on commands configured.\n", __func__);
-
-	return rc;
-}
-
 static int mdss_panel_parse_dt(struct device_node *np,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -2012,8 +1909,18 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pinfo->blank_progress_notify_enabled = of_property_read_bool(np,
 				"qcom,mdss-dsi-use-blank-in-progress-notifier");
 
-	if (mdss_panel_parse_optional_prop(np, pinfo, ctrl_pdata))
-		pr_err("Error parsing optional properties\n");
+	if (of_get_property(np, "qcom,mdss-dsi-pre-on-command", NULL)) {
+		rc = mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->pre_on_cmds,
+			"qcom,mdss-dsi-pre-on-command",
+			"qcom,mdss-dsi-pre-on-command-state");
+		if (rc) {
+			pr_err("%s : Failed parsing pre-on commands, rc = %d\n",
+				__func__, rc);
+			goto error;
+		}
+		if (ctrl_pdata->pre_on_cmds.cmd_cnt)
+			pr_info("%s: pre-on commands configured.\n", __func__);
+	}
 
 	return 0;
 
@@ -2235,7 +2142,6 @@ int mdss_dsi_panel_init(struct device *dev,
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 	ctrl_pdata->bl_on_defer = mdss_dsi_panel_bl_on_defer_start;
-	ctrl_pdata->set_cabc = mdss_dsi_panel_set_cabc;
 
 	return 0;
 }
