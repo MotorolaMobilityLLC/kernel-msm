@@ -799,20 +799,53 @@ static struct panel_param *mdss_fb_dev_to_param(struct device *dev, u16 id)
 	return param;
 }
 
+static int mdss_fb_set_hw_param(struct msm_fb_data_type *mfd,
+		u16 id, u16 value)
+{
+	struct mdss_panel_data *pdata = dev_get_platdata(&mfd->pdev->dev);
+	struct mdss_panel_info *pinfo = mfd->panel_info;
+	struct panel_param *param;
+	int ret = -EINVAL;
+	const char *param_name, *val_name;
+
+	if (!pdata || !pdata->set_param) {
+		pr_err("panel data is null\n");
+		return -EINVAL;
+	}
+
+	param = pinfo->param[id];
+	if (!param)
+		return -EINVAL;
+
+	param_name = param->param_name;
+	if (value >= param->val_max) {
+		pr_err("invalid value %d for %s\n", value, param_name);
+		return -EINVAL;
+	}
+	val_name = param->val_map[value].name;
+
+	ret = pdata->set_param(pdata, id, value);
+	if (ret)
+		pr_err("failed to set %s to %s\n", param_name, val_name);
+	else
+		pr_info("%s = %s\n", param_name, val_name);
+
+	return ret;
+}
+
 static int __maybe_unused mdss_fb_set_param(struct device *dev,
 		u16 id, const char *name)
 {
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
 	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
-	struct mdss_panel_data *pdata = dev_get_platdata(&mfd->pdev->dev);
 	struct panel_param *param;
+	const char *val_name;
 	int ret = -EINVAL;
 	u16 value;
-	const char *param_name, *val_name;
 
-	if (!ctl || !pdata || !pdata->set_param) {
-		pr_err("mdp or panel data is null\n");
+	if (!ctl) {
+		pr_err("ctl data is null\n");
 		return -EINVAL;
 	}
 
@@ -820,33 +853,22 @@ static int __maybe_unused mdss_fb_set_param(struct device *dev,
 	if (!param)
 		return -EINVAL;
 
-	param_name = param->param_name;
 	for (value = 0; value < param->val_max; value++) {
 		val_name = param->val_map[value].name;
 		if (val_name && !strncmp(name, val_name, strlen(val_name)))
 			break;
 	}
 
-	if (value >= param->val_max) {
-		pr_err("invalid value name %s for %s\n", name, param_name);
-		return -EINVAL;
-	}
-
+	mutex_lock(&mfd->param_lock);
 	mutex_lock(&ctl->offlock);
-	if (mdss_fb_is_power_off(mfd)) {
-		pr_warn("panel is not powered\n");
-		ret = -EPERM;
-		goto unlock;
+	if (param->value != value) {
+		if (mdss_fb_is_power_on(mfd))
+			ret = mdss_fb_set_hw_param(mfd, id, value);
+		param->value = value;
 	}
-
-	ret = pdata->set_param(pdata, id, value, true);
-	if (ret)
-		pr_err("failed to set %s at %s\n", param_name, val_name);
-	else
-		pr_info("succeeded to set %s at %s\n", param_name, val_name);
-
-unlock:
 	mutex_unlock(&ctl->offlock);
+	mutex_unlock(&mfd->param_lock);
+
 	return ret;
 }
 
@@ -862,6 +884,22 @@ static int __maybe_unused mdss_fb_get_param(struct device *dev,
 
 	*name = param->val_map[param->value].name;
 	return 0;
+}
+
+static void mdss_fb_restore_param(struct msm_fb_data_type *mfd)
+{
+	struct mdss_panel_info *pinfo = mfd->panel_info;
+	struct panel_param *param;
+	int i;
+
+	mutex_lock(&mfd->param_lock);
+	for (i = 0; i < PARAM_ID_NUM; i++) {
+		param = pinfo->param[i];
+		if (!param || param->value == param->default_value)
+			continue;
+		mdss_fb_set_hw_param(mfd, i, param->value);
+	}
+	mutex_unlock(&mfd->param_lock);
 }
 
 static struct device_attribute param_attrs[PARAM_ID_NUM] = {
@@ -988,6 +1026,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&mfd->proc_list);
 
 	mutex_init(&mfd->bl_lock);
+	mutex_init(&mfd->param_lock);
 
 	fbi_list[fbi_list_index++] = fbi;
 
@@ -1456,6 +1495,9 @@ static int mdss_fb_unblank_sub(struct msm_fb_data_type *mfd)
 			schedule_delayed_work(&mfd->idle_notify_work,
 				msecs_to_jiffies(mfd->idle_time));
 	}
+
+	if (mdss_panel_is_power_off(cur_power_state))
+		mdss_fb_restore_param(mfd);
 
 error:
 	return ret;
