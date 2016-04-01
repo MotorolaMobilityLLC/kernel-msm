@@ -95,6 +95,7 @@ struct sdhci_msm_pltfm_data {
 	bool nonremovable;
 	bool use_mod_dynamic_qos;
 	bool nonhotplug;
+	bool broken_pwr_cycle_host;
 	bool no_1p8v;
 	bool largeaddressbus;
 	bool pin_cfg_sts;
