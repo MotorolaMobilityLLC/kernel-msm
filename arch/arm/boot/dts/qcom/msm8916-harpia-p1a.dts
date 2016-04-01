@@ -31,5 +31,21 @@
                         2 &msm_gpio 118 0>;
         cd-gpios = <&msm_gpio 118 0x1>;
 };
-
-
+&i2c_4 { /* BLSP1 QUP4 on dvt1a/dvt1b */
+	elan@49 {
+		epl,wait_time = <0x09>;
+		epl,dt_st_gain = <9>;
+		epl,als_c_gain = <100>;
+		epl,ps_eg_sign = <1>;
+		epl,ps_intt = <5>;
+		epl,ps_gain = <0x01>;
+		epl,ps_cycle = <0x04>;
+		epl,ps_ir_drive = <0x02>;
+		epl,ps_low_threshold = <9200>;
+		epl,ps_high_threshold = <10000>;
+		epl,ps_max_ct = <10000>;
+		epl,ps_dyn_l_offset = <900>;
+		epl,ps_dyn_h_offset = <1700>;
+		epl,ps_rs = <0>;
+	};
+};
