@@ -306,7 +306,6 @@ struct mdss_dsi_ctrl_pdata {
 	void (*switch_mode) (struct mdss_panel_data *pdata, int mode);
 	void (*bl_on_defer)(struct mdss_dsi_ctrl_pdata *ctrl);
 	int (*set_cabc)(struct mdss_dsi_ctrl_pdata *ctrl, int mode);
-	int (*set_hbm)(struct mdss_dsi_ctrl_pdata *ctrl, int state);
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
 	unsigned char *ctrl_base;
@@ -375,8 +374,6 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds video2cmd;
 	struct dsi_panel_cmds cmd2video;
 
-	struct dsi_panel_cmds hbm_on_cmds;
-	struct dsi_panel_cmds hbm_off_cmds;
 	struct dsi_panel_cmds cabc_ui_cmds;
 	struct dsi_panel_cmds cabc_mv_cmds;
 

@@ -867,9 +867,6 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	if (ctrl->panel_config.bare_board == true)
 		goto end;
 
-	if (ctrl->set_hbm)
-		ctrl->set_hbm(ctrl, 0);
-
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
@@ -1625,46 +1622,7 @@ static int mdss_panel_parse_optional_prop(struct device_node *np,
 	if (ctrl->pre_on_cmds.cmd_cnt)
 		pr_info("%s: pre-on commands configured.\n", __func__);
 
-	/* HBM properties */
-	rc |= mdss_dsi_parse_optional_dcs_cmds(np, &ctrl->hbm_on_cmds,
-				"qcom,mdss-dsi-hbm-on-command", NULL);
-	rc |= mdss_dsi_parse_optional_dcs_cmds(np, &ctrl->hbm_off_cmds,
-				"qcom,mdss-dsi-hbm-off-command", NULL);
-	if (ctrl->hbm_on_cmds.cmd_cnt && ctrl->hbm_off_cmds.cmd_cnt) {
-		pinfo->hbm_feature_enabled = true;
-		pinfo->hbm_state = 0;
-		pr_info("%s: HBM enabled.\n", __func__);
-	}
-
 	return rc;
-}
-
-int mdss_dsi_panel_set_hbm(struct mdss_dsi_ctrl_pdata *ctrl, int state)
-{
-	struct mdss_panel_info *pinfo;
-
-	if (!ctrl) {
-		pr_err("%s: Invalid ctrl pointer.\n", __func__);
-		return -EINVAL;
-	}
-	pinfo = &ctrl->panel_data.panel_info;
-
-	if (!pinfo->hbm_feature_enabled) {
-		pr_err("%s: HBM is disabled, ignore request\n", __func__);
-		return -EPERM;
-	}
-
-	if (pinfo->hbm_state == state) {
-		pr_debug("%s: already in state %d\n", __func__, state);
-		return 0;
-	}
-
-	mdss_dsi_panel_cmds_send(ctrl,
-			state ? &ctrl->hbm_on_cmds : &ctrl->hbm_off_cmds);
-	pinfo->hbm_state = state;
-	pr_info("%s: Done setting state %d\n", __func__, state);
-
-	return 0;
 }
 
 static int mdss_panel_parse_dt(struct device_node *np,
@@ -2278,7 +2236,6 @@ int mdss_dsi_panel_init(struct device *dev,
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 	ctrl_pdata->bl_on_defer = mdss_dsi_panel_bl_on_defer_start;
 	ctrl_pdata->set_cabc = mdss_dsi_panel_set_cabc;
-	ctrl_pdata->set_hbm = mdss_dsi_panel_set_hbm;
 
 	return 0;
 }

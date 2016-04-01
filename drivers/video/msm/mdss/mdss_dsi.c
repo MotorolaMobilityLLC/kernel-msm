@@ -1347,11 +1347,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			rc = ctrl_pdata->set_cabc(ctrl_pdata,
 					(int)(unsigned long)arg);
 		break;
-	case MDSS_EVENT_ENABLE_HBM:
-		if (ctrl_pdata->set_hbm)
-			rc = ctrl_pdata->set_hbm(ctrl_pdata,
-					(int)(unsigned long)arg);
-		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;
