@@ -1562,8 +1562,6 @@ int mdss_dsi_panel_set_cabc(struct mdss_dsi_ctrl_pdata *ctrl, int mode)
 		cmds = &ctrl->cabc_mv_cmds;
 	else if (mode == CABC_UI_MODE && ctrl->cabc_ui_cmds.cmd_cnt)
 		cmds = &ctrl->cabc_ui_cmds;
-	else if (mode == CABC_DIS_MODE && ctrl->cabc_dis_cmds.cmd_cnt)
-		cmds = &ctrl->cabc_dis_cmds;
 
 	if (!cmds) {
 		pr_warn("%s: %s mode not supported.\n", __func__, name);
@@ -1614,8 +1612,6 @@ static int mdss_panel_parse_optional_prop(struct device_node *np,
 				"qcom,mdss-dsi-cabc-ui-command", NULL);
 	rc |= mdss_dsi_parse_optional_dcs_cmds(np, &ctrl->cabc_mv_cmds,
 				"qcom,mdss-dsi-cabc-mv-command", NULL);
-	rc |= mdss_dsi_parse_optional_dcs_cmds(np, &ctrl->cabc_dis_cmds,
-				"qcom,mdss-dsi-cabc-dis-command", NULL);
 	if (ctrl->cabc_ui_cmds.cmd_cnt && ctrl->cabc_mv_cmds.cmd_cnt) {
 		pinfo->dynamic_cabc_enabled = true;
 		pinfo->cabc_mode = CABC_UI_MODE;

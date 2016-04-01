@@ -33,7 +33,6 @@ enum cabc_mode {
 	CABC_UI_MODE = 0,
 	CABC_ST_MODE,
 	CABC_MV_MODE,
-	CABC_DIS_MODE,
 	CABC_OFF_MODE,
 	CABC_MODE_MAX_NUM
 };
@@ -657,7 +656,7 @@ bool mdss_is_ready(void);
  * returns name if mapping succeeds, else returns NULL.
  */
 static const char *cabc_mode_names[CABC_MODE_MAX_NUM] = {
-	"UI", "ST", "MV", "DIS", "OFF"
+	"UI", "ST", "MV", "OFF"
 };
 static inline const char *mdss_panel_map_cabc_name(int mode)
 {
