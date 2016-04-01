@@ -1011,6 +1011,10 @@
 		/* Disable CPU idle power collapse for factory */
 		mmi,pm-qos-latency-factory = <2 2 2>;
 	};
+
+	qcom,bcl {
+		/delete-property/ qcom,bcl-soc-hotplug-list;
+	};
 };
 
 &spi_3 { /* BLSP1 QUP3 */
