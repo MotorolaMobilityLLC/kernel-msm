@@ -21,6 +21,8 @@
 #include "quick_charge.h"
 #endif
 
+#define MML_DYNAMIC_IRQ_SUPPORT 1
+
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 #include "../../msm/mdss/mdss_hdmi_slimport.h"
 #endif
@@ -96,6 +98,7 @@ struct anx7816_platform_data {
 	struct pinctrl_state *hdmi_pinctrl_suspend;
 	struct platform_device *hdmi_pdev;
 	bool cbl_det_hpd_support;
+	bool cbl_det_irq_enabled;
 };
 
 struct anx7816_data {
@@ -1443,6 +1446,52 @@ static int anx7816_parse_dt(struct device *dev,
 }
 #endif
 
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+static int anx7816_enable_irq(int enable)
+{
+	struct anx7816_data *anx7816;
+	int ret = 0;
+
+	pr_debug("%s+ (enable: %d)\n", __func__, enable);
+
+	if (!anx7816_client)
+		return -ENODEV;
+
+	if (!g_data) {
+		pr_err("%s: g_data is not set \n", __func__);
+		return -ENODEV;
+	} else
+		anx7816 = g_data;
+
+	if (!anx7816->pdata->cbl_det_hpd_support) {
+		pr_info("%s: This hardware doesnt support Cable Detect IRQ\n",
+			__func__);
+		goto exit;
+	}
+
+	if (enable && !anx7816->pdata->cbl_det_irq_enabled) {
+		ret = request_threaded_irq(anx7816_client->irq, NULL,
+				anx7816_cbl_det_isr,
+				IRQF_TRIGGER_RISING
+				| IRQF_TRIGGER_FALLING
+				| IRQF_ONESHOT, "anx7816", anx7816);
+		if (ret < 0) {
+			pr_err("%s : failed to request irq\n", __func__);
+			goto exit;
+		}
+
+		anx7816->pdata->cbl_det_irq_enabled = true;
+	} else if (!enable && anx7816->pdata->cbl_det_irq_enabled) {
+		free_irq(anx7816_client->irq, anx7816);
+
+		anx7816->pdata->cbl_det_irq_enabled = false;
+	}
+
+exit:
+	return ret;
+}
+#endif
+
 static int slimport_mod_display_handle_available(void *data)
 {
 	struct anx7816_data *anx7816;
@@ -1474,11 +1523,11 @@ static int slimport_mod_display_handle_unavailable(void *data)
 
 static int slimport_mod_display_handle_connect(void *data)
 {
-	struct anx7816_data *anx7816;
-
 	pr_debug("%s+\n", __func__);
 
-	anx7816 = (struct anx7816_data *)data;
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+	anx7816_enable_irq(1);
+#endif
 
 	mod_display_set_display_state(MOD_DISPLAY_ON);
 
@@ -1491,15 +1540,17 @@ static int slimport_mod_display_handle_connect(void *data)
 
 static int slimport_mod_display_handle_disconnect(void *data)
 {
-	struct anx7816_data *anx7816;
-
 	pr_debug("%s+\n", __func__);
-
-	anx7816 = (struct anx7816_data *)data;
 
 	anx7816_force_mydp_det(false);
 
 	mod_display_set_display_state(MOD_DISPLAY_OFF);
+
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+	msleep(1000);
+
+	anx7816_enable_irq(0);
+#endif
 
 	pr_debug("%s-\n", __func__);
 
@@ -1618,6 +1669,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		goto err2;
 	}
 
+	anx7816->pdata->cbl_det_irq_enabled = false;
 	if (anx7816->pdata->cbl_det_hpd_support) {
 		client->irq = gpio_to_irq(anx7816->pdata->gpio_cbl_det);
 		if (client->irq < 0) {
@@ -1629,6 +1681,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	wake_lock_init(&anx7816->slimport_lock,
 		       WAKE_LOCK_SUSPEND, "slimport_wake_lock");
 
+#ifndef MML_DYNAMIC_IRQ_SUPPORT
 	if (anx7816->pdata->cbl_det_hpd_support) {
 		ret = request_threaded_irq(client->irq, NULL,
 				anx7816_cbl_det_isr,
@@ -1655,6 +1708,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		}
 
 	}
+#endif
 
 	ret = create_sysfs_interfaces(&client->dev);
 	if (ret < 0) {
@@ -1695,7 +1749,9 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	goto exit;
 
 err3:
+#ifndef MML_DYNAMIC_IRQ_SUPPORT
 	free_irq(client->irq, anx7816);
+#endif
 err2:
 	destroy_workqueue(anx7816->workqueue);
 err1:
