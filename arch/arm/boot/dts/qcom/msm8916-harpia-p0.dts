@@ -92,3 +92,21 @@ qcom,camera@0 {
 		qcom,ant-min-max-voltage = <2700000 2700000>;
 	};
 };
+&i2c_4 { /* BLSP1 QUP4 on evb */
+	elan@49 {
+		epl,wait_time = <0x00>;
+		epl,dt_st_gain = <5>;
+		epl,als_c_gain = <100>;
+		epl,ps_eg_sign = <1>;
+		epl,ps_intt = <7>;
+		epl,ps_gain = <0x03>;
+		epl,ps_cycle = <0x04>;
+		epl,ps_ir_drive = <0x01>;
+		epl,ps_low_threshold = <500>;
+		epl,ps_high_threshold = <800>;
+		epl,ps_max_ct = <10000>;
+		epl,ps_dyn_l_offset = <150>;
+		epl,ps_dyn_h_offset = <270>;
+		epl,ps_rs = <0>;
+	};
+};
