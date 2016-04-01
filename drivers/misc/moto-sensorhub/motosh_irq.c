@@ -36,11 +36,8 @@
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
-#include <linux/vmalloc.h>
 
 #include <linux/motosh.h>
-
-#define FAST_READBUFF_SIZE 256
 
 irqreturn_t motosh_isr(int irq, void *dev)
 {
@@ -66,10 +63,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 			struct motosh_data, irq_work);
 	/* Short buffers for command and status reads */
 	unsigned char cmdbuff[8];
-	static unsigned char readbuff[FAST_READBUFF_SIZE];
-
-	/* dynamically allocated on incoming batch of data */
-	unsigned char *queuebuff = NULL;
+	static unsigned char readbuff[MOTOSH_MAX_NWAKE_EVENT_QUEUE_SIZE];
 	u8 resuming = 0;
 
 	if (ps_motosh->is_suspended)
@@ -230,23 +224,6 @@ void motosh_irq_thread_func(struct kthread_work *work)
 		goto EXIT;
 	}
 
-	/* when batching, queue can contain more data but report slowly,
-	   at higher rates use static smaller queue buffer
-	*/
-	if (queue_length > FAST_READBUFF_SIZE) {
-		if (queue_length > PAGE_SIZE)
-			queuebuff = vmalloc(queue_length);
-		else
-			queuebuff = kmalloc(queue_length, GFP_KERNEL);
-
-		if (queuebuff == NULL) {
-			dev_err(&ps_motosh->client->dev, "no memory for queuebuff\n");
-			goto EXIT;
-		}
-	} else {
-		queuebuff = readbuff;
-	}
-
 	/* read nwake queue, due to I2C DMA memory limit
 	   this may take 2 block reads
 	*/
@@ -256,14 +233,14 @@ void motosh_irq_thread_func(struct kthread_work *work)
 		read_size = MOTOSH_MAX_NWAKE_EVENT_QUEUE_READ_SIZE;
 
 	cmdbuff[0] = NWAKE_MSG_QUEUE;
-	err = motosh_i2c_write_read(ps_motosh, cmdbuff, queuebuff,
+	err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 		1, read_size);
 
 	/* get one more packet */
 	if (err >= 0 &&
 	   queue_length > read_size)
 		err = motosh_i2c_write_read(ps_motosh, cmdbuff,
-					    &queuebuff[read_size],
+					    &readbuff[read_size],
 					    1,
 					    queue_length - read_size);
 
@@ -276,14 +253,14 @@ void motosh_irq_thread_func(struct kthread_work *work)
 	}
 
 	/* process each event from the queue */
-	/* NOTE: the queuebuff should not be modified while the event
+	/* NOTE: the readbuff should not be modified while the event
 	   queue is being processed */
 	while (queue_index < queue_length) {
 		unsigned char *data;
-		unsigned char message_id = queuebuff[queue_index];
+		unsigned char message_id = readbuff[queue_index];
 
 		queue_index += MOTOSH_EVENT_QUEUE_MSG_ID_LEN;
-		data = &queuebuff[queue_index];
+		data = &readbuff[queue_index];
 		switch (message_id) {
 		case ACCEL_DATA:
 			/* Accel supports batching while AP suspended, send
@@ -554,13 +531,6 @@ EXIT:
 
 	/* For now HAE needs events even if the activity is still */
 	mutex_unlock(&ps_motosh->lock);
-
-	if (queuebuff != readbuff && queuebuff != NULL) {
-		if (queue_length > PAGE_SIZE)
-			vfree(queuebuff);
-		else
-			kfree(queuebuff);
-	}
 
 }
 
