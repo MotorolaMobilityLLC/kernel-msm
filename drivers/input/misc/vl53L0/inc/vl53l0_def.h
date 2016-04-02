@@ -4,14 +4,14 @@ All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of STMicroelectronics nor the
-      names of its contributors may be used to endorse or promote products
-      derived from this software without specific prior written permission.
+	* Redistributions of source code must retain the above copyright
+	  notice, this list of conditions and the following disclaimer.
+	* Redistributions in binary form must reproduce the above copyright
+	  notice, this list of conditions and the following disclaimer in the
+	  documentation and/or other materials provided with the distribution.
+	* Neither the name of STMicroelectronics nor the
+	  names of its contributors may be used to endorse or promote products
+	  derived from this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -43,8 +43,8 @@ extern "C" {
 #endif
 
 /** @defgroup VL53L0_globaldefine_group VL53L0 Defines
- *  @brief    VL53L0 Defines
- *  @{
+ *	@brief	  VL53L0 Defines
+ *	@{
  */
 
 
@@ -53,36 +53,36 @@ extern "C" {
 /** PAL SPECIFICATION minor version */
 #define VL53L010_SPECIFICATION_VER_MINOR   2
 /** PAL SPECIFICATION sub version */
-#define VL53L010_SPECIFICATION_VER_SUB     7
+#define VL53L010_SPECIFICATION_VER_SUB	   7
 /** PAL SPECIFICATION sub version */
 #define VL53L010_SPECIFICATION_VER_REVISION 1440
 
 /** VL53L0 PAL IMPLEMENTATION major version */
-#define VL53L010_IMPLEMENTATION_VER_MAJOR   1
+#define VL53L010_IMPLEMENTATION_VER_MAJOR	1
 /** VL53L0 PAL IMPLEMENTATION minor version */
-#define VL53L010_IMPLEMENTATION_VER_MINOR   0
+#define VL53L010_IMPLEMENTATION_VER_MINOR	0
 /** VL53L0 PAL IMPLEMENTATION sub version */
-#define VL53L010_IMPLEMENTATION_VER_SUB     9
+#define VL53L010_IMPLEMENTATION_VER_SUB		9
 /** VL53L0 PAL IMPLEMENTATION sub version */
-#define VL53L010_IMPLEMENTATION_VER_REVISION    3673
+#define VL53L010_IMPLEMENTATION_VER_REVISION	3673
 
 /** PAL SPECIFICATION major version */
-#define VL53L0_SPECIFICATION_VER_MAJOR   1
+#define VL53L0_SPECIFICATION_VER_MAJOR	 1
 /** PAL SPECIFICATION minor version */
-#define VL53L0_SPECIFICATION_VER_MINOR   2
+#define VL53L0_SPECIFICATION_VER_MINOR	 2
 /** PAL SPECIFICATION sub version */
-#define VL53L0_SPECIFICATION_VER_SUB     7
+#define VL53L0_SPECIFICATION_VER_SUB	 7
 /** PAL SPECIFICATION sub version */
 #define VL53L0_SPECIFICATION_VER_REVISION 1440
 
 /** VL53L0 PAL IMPLEMENTATION major version */
-#define VL53L0_IMPLEMENTATION_VER_MAJOR   1
+#define VL53L0_IMPLEMENTATION_VER_MAJOR	  1
 /** VL53L0 PAL IMPLEMENTATION minor version */
-#define VL53L0_IMPLEMENTATION_VER_MINOR   1
+#define VL53L0_IMPLEMENTATION_VER_MINOR	  1
 /** VL53L0 PAL IMPLEMENTATION sub version */
-#define VL53L0_IMPLEMENTATION_VER_SUB     15
+#define VL53L0_IMPLEMENTATION_VER_SUB	  18
 /** VL53L0 PAL IMPLEMENTATION sub version */
-#define VL53L0_IMPLEMENTATION_VER_REVISION    4095
+#define VL53L0_IMPLEMENTATION_VER_REVISION	  4357
 #define VL53L0_DEFAULT_MAX_LOOP 200
 #define VL53L0_MAX_STRING_LENGTH 32
 
@@ -98,10 +98,10 @@ extern "C" {
 /** @brief Defines the parameters of the Get Version Functions
  */
 typedef struct {
-	uint32_t     revision; /*!< revision number */
-	uint8_t      major;    /*!< major number */
-	uint8_t      minor;    /*!< minor number */
-	uint8_t      build;    /*!< build number */
+	uint32_t	 revision; /*!< revision number */
+	uint8_t		 major;	   /*!< major number */
+	uint8_t		 minor;	   /*!< minor number */
+	uint8_t		 build;	   /*!< build number */
 } VL53L0_Version_t;
 
 
@@ -113,7 +113,7 @@ typedef struct {
 	char Type[VL53L0_MAX_STRING_LENGTH];
 		/*!< Type of the Device e.g VL53L0 */
 	char ProductId[VL53L0_MAX_STRING_LENGTH];
-		/*!< Product Identifier String  */
+		/*!< Product Identifier String	*/
 	uint8_t ProductType;
 		/*!< Product Type, VL53L0 = 1, VL53L1 = 2 */
 	uint8_t ProductRevisionMajor;
@@ -124,93 +124,93 @@ typedef struct {
 
 
 /** @defgroup VL53L0_define_Error_group Error and Warning code returned by API
- *  The following DEFINE are used to identify the PAL ERROR
- *  @{
+ *	The following DEFINE are used to identify the PAL ERROR
+ *	@{
  */
 
 typedef int8_t VL53L0_Error;
 
-#define VL53L0_ERROR_NONE                              ((VL53L0_Error)  0)
-#define VL53L0_ERROR_CALIBRATION_WARNING               ((VL53L0_Error) - 1)
+#define VL53L0_ERROR_NONE							   ((VL53L0_Error)	0)
+#define VL53L0_ERROR_CALIBRATION_WARNING			   ((VL53L0_Error) - 1)
 	/*!< Warning invalid calibration data may be in used
-		\a  VL53L0_InitData()
+		\a	VL53L0_InitData()
 		\a VL53L0_GetOffsetCalibrationData
 		\a VL53L0_SetOffsetCalibrationData */
-#define VL53L0_ERROR_MIN_CLIPPED                       ((VL53L0_Error) - 2)
+#define VL53L0_ERROR_MIN_CLIPPED					   ((VL53L0_Error) - 2)
 	/*!< Warning parameter passed was clipped to min before to be applied */
 
-#define VL53L0_ERROR_UNDEFINED                         ((VL53L0_Error) - 3)
+#define VL53L0_ERROR_UNDEFINED						   ((VL53L0_Error) - 3)
 	/*!< Unqualified error */
-#define VL53L0_ERROR_INVALID_PARAMS                    ((VL53L0_Error) - 4)
+#define VL53L0_ERROR_INVALID_PARAMS					   ((VL53L0_Error) - 4)
 	/*!< Parameter passed is invalid or out of range */
-#define VL53L0_ERROR_NOT_SUPPORTED                     ((VL53L0_Error) - 5)
+#define VL53L0_ERROR_NOT_SUPPORTED					   ((VL53L0_Error) - 5)
 	/*!< Function is not supported in current mode or configuration */
-#define VL53L0_ERROR_RANGE_ERROR                       ((VL53L0_Error) - 6)
+#define VL53L0_ERROR_RANGE_ERROR					   ((VL53L0_Error) - 6)
 	/*!< Device report a ranging error interrupt status */
-#define VL53L0_ERROR_TIME_OUT                          ((VL53L0_Error) - 7)
+#define VL53L0_ERROR_TIME_OUT						   ((VL53L0_Error) - 7)
 	/*!< Aborted due to time out */
-#define VL53L0_ERROR_MODE_NOT_SUPPORTED                ((VL53L0_Error) - 8)
+#define VL53L0_ERROR_MODE_NOT_SUPPORTED				   ((VL53L0_Error) - 8)
 	/*!< Asked mode is not supported by the device */
-#define VL53L0_ERROR_BUFFER_TOO_SMALL                  ((VL53L0_Error) - 9)
+#define VL53L0_ERROR_BUFFER_TOO_SMALL				   ((VL53L0_Error) - 9)
 	/*!< ... */
-#define VL53L0_ERROR_GPIO_NOT_EXISTING                 ((VL53L0_Error) - 10)
+#define VL53L0_ERROR_GPIO_NOT_EXISTING				   ((VL53L0_Error) - 10)
 	/*!< User tried to setup a non-existing GPIO pin */
 #define VL53L0_ERROR_GPIO_FUNCTIONALITY_NOT_SUPPORTED  ((VL53L0_Error) - 11)
 	/*!< unsupported GPIO functionality */
-#define VL53L0_ERROR_CONTROL_INTERFACE                 ((VL53L0_Error) - 20)
+#define VL53L0_ERROR_CONTROL_INTERFACE				   ((VL53L0_Error) - 20)
 	/*!< error reported from IO functions */
-#define VL53L0_ERROR_INVALID_COMMAND                   ((VL53L0_Error) - 30)
+#define VL53L0_ERROR_INVALID_COMMAND				   ((VL53L0_Error) - 30)
 	/*!< The command is not allowed in the current device state
-	 *  (power down) */
-#define VL53L0_ERROR_DIVISION_BY_ZERO                  ((VL53L0_Error) - 40)
+	 *	(power down) */
+#define VL53L0_ERROR_DIVISION_BY_ZERO				   ((VL53L0_Error) - 40)
 	/*!< In the function a division by zero occurs */
-#define VL53L0_ERROR_REF_SPAD_INIT                     ((VL53L0_Error) - 50)
+#define VL53L0_ERROR_REF_SPAD_INIT					   ((VL53L0_Error) - 50)
 	/*!< Error during reference SPAD initialization */
-#define VL53L0_ERROR_NOT_IMPLEMENTED                   ((VL53L0_Error) - 99)
+#define VL53L0_ERROR_NOT_IMPLEMENTED				   ((VL53L0_Error) - 99)
 	/*!< Tells requested functionality has not been implemented yet or
 	 * not compatible with the device */
 /** @} VL53L0_define_Error_group */
 
 
 /** @defgroup VL53L0_define_DeviceModes_group Defines Device modes
- *  Defines all possible modes for the device
- *  @{
+ *	Defines all possible modes for the device
+ *	@{
  */
 typedef uint8_t VL53L0_DeviceModes;
 
-#define VL53L0_DEVICEMODE_SINGLE_RANGING           ((VL53L0_DeviceModes)  0)
-#define VL53L0_DEVICEMODE_CONTINUOUS_RANGING       ((VL53L0_DeviceModes)  1)
-#define VL53L0_DEVICEMODE_SINGLE_HISTOGRAM         ((VL53L0_DeviceModes)  2)
+#define VL53L0_DEVICEMODE_SINGLE_RANGING		   ((VL53L0_DeviceModes)  0)
+#define VL53L0_DEVICEMODE_CONTINUOUS_RANGING	   ((VL53L0_DeviceModes)  1)
+#define VL53L0_DEVICEMODE_SINGLE_HISTOGRAM		   ((VL53L0_DeviceModes)  2)
 #define VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING ((VL53L0_DeviceModes)  3)
-#define VL53L0_DEVICEMODE_SINGLE_ALS               ((VL53L0_DeviceModes) 10)
-#define VL53L0_DEVICEMODE_GPIO_DRIVE               ((VL53L0_DeviceModes) 20)
-#define VL53L0_DEVICEMODE_GPIO_OSC                 ((VL53L0_DeviceModes) 21)
+#define VL53L0_DEVICEMODE_SINGLE_ALS			   ((VL53L0_DeviceModes) 10)
+#define VL53L0_DEVICEMODE_GPIO_DRIVE			   ((VL53L0_DeviceModes) 20)
+#define VL53L0_DEVICEMODE_GPIO_OSC				   ((VL53L0_DeviceModes) 21)
 	/* ... Modes to be added depending on device */
 /** @} VL53L0_define_DeviceModes_group */
 
 
 
 /** @defgroup VL53L0_define_HistogramModes_group Defines Histogram modes
- *  Defines all possible Histogram modes for the device
- *  @{
+ *	Defines all possible Histogram modes for the device
+ *	@{
  */
 typedef uint8_t VL53L0_HistogramModes;
 
-#define VL53L0_HISTOGRAMMODE_DISABLED        ((VL53L0_HistogramModes) 0)
+#define VL53L0_HISTOGRAMMODE_DISABLED		 ((VL53L0_HistogramModes) 0)
 	/*!< Histogram Disabled */
-#define VL53L0_HISTOGRAMMODE_REFERENCE_ONLY  ((VL53L0_HistogramModes) 1)
+#define VL53L0_HISTOGRAMMODE_REFERENCE_ONLY	 ((VL53L0_HistogramModes) 1)
 	/*!< Histogram Reference array only */
-#define VL53L0_HISTOGRAMMODE_RETURN_ONLY     ((VL53L0_HistogramModes) 2)
+#define VL53L0_HISTOGRAMMODE_RETURN_ONLY	 ((VL53L0_HistogramModes) 2)
 	/*!< Histogram Return array only */
-#define VL53L0_HISTOGRAMMODE_BOTH            ((VL53L0_HistogramModes) 3)
+#define VL53L0_HISTOGRAMMODE_BOTH			 ((VL53L0_HistogramModes) 3)
 	/*!< Histogram both Reference and Return Arrays */
 	/* ... Modes to be added depending on device */
 /** @} VL53L0_define_HistogramModes_group */
 
 
 /** @defgroup VL53L0_define_PowerModes_group List of available Power Modes
- *  List of available Power Modes
- *  @{
+ *	List of available Power Modes
+ *	@{
  */
 
 typedef uint8_t VL53L0_PowerModes;
@@ -219,9 +219,9 @@ typedef uint8_t VL53L0_PowerModes;
 	/*!< Standby level 1 */
 #define VL53L0_POWERMODE_STANDBY_LEVEL2 ((VL53L0_PowerModes) 1)
 	/*!< Standby level 2 */
-#define VL53L0_POWERMODE_IDLE_LEVEL1    ((VL53L0_PowerModes) 2)
+#define VL53L0_POWERMODE_IDLE_LEVEL1	((VL53L0_PowerModes) 2)
 	/*!< Idle level 1 */
-#define VL53L0_POWERMODE_IDLE_LEVEL2    ((VL53L0_PowerModes) 3)
+#define VL53L0_POWERMODE_IDLE_LEVEL2	((VL53L0_PowerModes) 3)
 	/*!< Idle level 2 */
 
 /** @} VL53L0_define_PowerModes_group */
@@ -234,21 +234,21 @@ typedef struct {
 	/*!< Defines type of measurement to be done for the next measure */
 	VL53L0_HistogramModes HistogramMode;
 	/*!< Defines type of histogram measurement to be done for the next
-	 *  measure */
+	 *	measure */
 	uint32_t MeasurementTimingBudgetMicroSeconds;
 	/*!< Defines the allowed total time for a single measurement */
 	uint32_t InterMeasurementPeriodMilliSeconds;
 	/*!< Defines time between two consecutive measurements (between two
-	 *  measurement starts). If set to 0 means back-to-back mode */
+	 *	measurement starts). If set to 0 means back-to-back mode */
 	uint8_t XTalkCompensationEnable;
-	/*!< Tells if Crosstalk compensation shall be enable or not  */
+	/*!< Tells if Crosstalk compensation shall be enable or not	 */
 	uint16_t XTalkCompensationRangeMilliMeter;
-	/*!< CrossTalk compensation range in millimeter  */
+	/*!< CrossTalk compensation range in millimeter	 */
 	FixPoint1616_t XTalkCompensationRateMegaCps;
 	/*!< CrossTalk compensation rate in Mega counts per seconds.
-	 *  Expressed in 16.16 fixed point format.  */
+	 *	Expressed in 16.16 fixed point format.	*/
 	int32_t RangeOffsetMicroMeters;
-	/*!< Range offset adjustment (mm).  */
+	/*!< Range offset adjustment (mm).	*/
 
 	uint8_t LimitChecksEnable[VL53L0_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array store all the Limit Check enable for this device. */
@@ -264,25 +264,25 @@ typedef struct {
 
 
 /** @defgroup VL53L0_define_State_group Defines the current status of the device
- *  Defines the current status of the device
- *  @{
+ *	Defines the current status of the device
+ *	@{
  */
 
 typedef uint8_t VL53L0_State;
 
-#define VL53L0_STATE_POWERDOWN       ((VL53L0_State)  0)
-	/*!< Device is in HW reset  */
+#define VL53L0_STATE_POWERDOWN		 ((VL53L0_State)  0)
+	/*!< Device is in HW reset	*/
 #define VL53L0_STATE_WAIT_STATICINIT ((VL53L0_State)  1)
 	/*!< Device is initialized and wait for static initialization  */
-#define VL53L0_STATE_STANDBY         ((VL53L0_State)  2)
+#define VL53L0_STATE_STANDBY		 ((VL53L0_State)  2)
 	/*!< Device is in Low power Standby mode   */
-#define VL53L0_STATE_IDLE            ((VL53L0_State)  3)
+#define VL53L0_STATE_IDLE			 ((VL53L0_State)  3)
 	/*!< Device has been initialized and ready to do measurements  */
-#define VL53L0_STATE_RUNNING         ((VL53L0_State)  4)
+#define VL53L0_STATE_RUNNING		 ((VL53L0_State)  4)
 	/*!< Device is performing measurement */
-#define VL53L0_STATE_UNKNOWN         ((VL53L0_State)  98)
-	/*!< Device is in unknown state and need to be rebooted  */
-#define VL53L0_STATE_ERROR           ((VL53L0_State)  99)
+#define VL53L0_STATE_UNKNOWN		 ((VL53L0_State)  98)
+	/*!< Device is in unknown state and need to be rebooted	 */
+#define VL53L0_STATE_ERROR			 ((VL53L0_State)  99)
 	/*!< Device is in error state and need to be rebooted  */
 
 /** @} VL53L0_define_State_group */
@@ -302,42 +302,42 @@ typedef struct {
  * @brief Range measurement data.
  */
 typedef struct {
-	uint32_t TimeStamp;               /*!< 32-bit time stamp. */
+	uint32_t TimeStamp;				  /*!< 32-bit time stamp. */
 	uint32_t MeasurementTimeUsec;
 		/*!< Give the Measurement time needed by the device to do the
 		 * measurement.*/
 
 
-	uint16_t RangeMilliMeter;         /*!< range distance in millimeter. */
+	uint16_t RangeMilliMeter;		  /*!< range distance in millimeter. */
 
 	uint16_t RangeDMaxMilliMeter;
 		/*!< Tells what is the maximum detection distance of the device
 		 * in current setup and environment conditions (Filled when
-		 *  applicable) */
+		 *	applicable) */
 
 	FixPoint1616_t SignalRateRtnMegaCps;
 		/*!< Return signal rate (MCPS)\n these is a 16.16 fix point
-		 *  value, which is effectively a measure of target
-		 *   reflectance.*/
+		 *	value, which is effectively a measure of target
+		 *	 reflectance.*/
 	FixPoint1616_t AmbientRateRtnMegaCps;
 		/*!< Return ambient rate (MCPS)\n these is a 16.16 fix point
-		 *  value, which is effectively a measure of the ambien
-		 *  t light.*/
+		 *	value, which is effectively a measure of the ambien
+		 *	t light.*/
 
 	uint16_t EffectiveSpadRtnCount;
 		/*!< Return the effective SPAD count for the return signal.
-		 *  To obtain Real value it should be divided by 256 */
+		 *	To obtain Real value it should be divided by 256 */
 
 	uint8_t ZoneId;
 		/*!< Denotes which zone and range scheduler stage the range
-		 *  data relates to. */
+		 *	data relates to. */
 	uint8_t RangeFractionalPart;
 		/*!< Fractional part of range distance. Final value is a
-		 *  FixPoint168 value. */
+		 *	FixPoint168 value. */
 	uint8_t RangeStatus;
 		/*!< Range Status for the current measurement. This is device
-		 *  dependent. Value = 0 means value is valid.
-		 *  See \ref RangeStatusPage */
+		 *	dependent. Value = 0 means value is valid.
+		 *	See \ref RangeStatusPage */
 	FixPoint1616_t SigmaEstimate;
 } VL53L0_RangingMeasurementData_t;
 
@@ -381,10 +381,29 @@ typedef struct {
 	FixPoint1616_t OscFrequencyMHz; /* Frequency used */
 
 	uint16_t LastEncodedTimeout;
-		/* last encoded Time out used for timing budget*/
+	/* last encoded Time out used for timing budget*/
 
 	VL53L0_GpioFunctionality Pin0GpioFunctionality;
-		/* store the functionality of the GPIO: pin0 */
+	/* store the functionality of the GPIO: pin0 */
+
+	uint32_t FinalRangeTimeoutMicroSecs;
+	 /*!< Execution time of the final range*/
+	uint8_t FinalRangeVcselPulsePeriod;
+	 /*!< Vcsel pulse period (pll clocks) for the final range measurement*/
+	uint32_t PreRangeTimeoutMicroSecs;
+	 /*!< Execution time of the final range*/
+	uint8_t PreRangeVcselPulsePeriod;
+	 /*!< Vcsel pulse period (pll clocks) for the pre-range measurement*/
+
+	uint16_t SigmaEstRefArray;
+	 /*!< Reference array sigma value in 1/100th of [mm] e.g. 100 = 1mm */
+	uint16_t SigmaEstEffPulseWidth;
+	 /*!< Effective Pulse width for sigma estimate in 1/100th
+	  * of ns e.g. 900 = 9.0ns */
+	uint16_t SigmaEstEffAmbWidth;
+	 /*!< Effective Ambient width for sigma estimate in 1/100th of ns
+	  * e.g. 500 = 5.0ns */
+
 
 	uint8_t ReadDataFromDeviceDone; /* Indicate if read from device has
 	been done (==1) or not (==0) */
@@ -393,10 +412,12 @@ typedef struct {
 	char ProductId[VL53L0_MAX_STRING_LENGTH];
 		/* Product Identifier String  */
 	uint8_t ReferenceSpadCount; /* used for ref spad management */
-	uint8_t ReferenceSpadType;  /* used for ref spad management */
+	uint8_t ReferenceSpadType;	/* used for ref spad management */
 	uint8_t RefSpadsInitialised; /* reports if ref spads are initialised. */
 	uint32_t PartUIDUpper; /*!< Unique Part ID Upper */
 	uint32_t PartUIDLower; /*!< Unique Part ID Lower */
+	FixPoint1616_t SignalRateMeasFixed400mm; /*!< Peek Signal rate
+	at 400 mm*/
 
 } VL53L0_DeviceSpecificParameters_t;
 
@@ -411,9 +432,9 @@ typedef struct {
 typedef struct {
 	VL53L0_DMaxData_t DMaxData;
 	/*!< Dmax Data */
-	int32_t  Part2PartOffsetNVMMicroMeter;
+	int32_t	 Part2PartOffsetNVMMicroMeter;
 	/*!< backed up NVM value */
-	int32_t  Part2PartOffsetAdjustmentNVMMicroMeter;
+	int32_t	 Part2PartOffsetAdjustmentNVMMicroMeter;
 	/*!< backed up NVM value representing additional offset adjustment */
 	VL53L0_DeviceParameters_t CurrentParameters;
 	/*!< Current Device Parameter */
@@ -432,7 +453,7 @@ typedef struct {
 	VL53L0_State PalState;
 	/*!< Current state of the PAL for this device */
 	VL53L0_PowerModes PowerMode;
-	/*!< Current Power Mode  */
+	/*!< Current Power Mode	 */
 	uint16_t SigmaEstRefArray;
 	/*!< Reference array sigma value in 1/100th of [mm] e.g. 100 = 1mm */
 	uint16_t SigmaEstEffPulseWidth;
@@ -453,43 +474,39 @@ typedef struct {
 	uint8_t *pTuningSettingsPointer;
 	/*!< Pointer for Tuning Settings table */
 	uint8_t UseInternalTuningSettings;
-	/*!< Indicate if we use  Tuning Settings table */
+	/*!< Indicate if we use	 Tuning Settings table */
 	uint16_t LinearityCorrectiveGain;
 	/*!< Linearity Corrective Gain value in x1000 */
 	uint16_t DmaxCalRangeMilliMeter;
 	/*!< Dmax Calibration Range millimeter */
 	FixPoint1616_t DmaxCalSignalRateRtnMegaCps;
 	/*!< Dmax Calibration Signal Rate Return MegaCps */
-	FixPoint1616_t DmaxCalBlindAmbient;
-	/*!< Dmax Calibration Blind Ambient*/
-
 
 } VL53L0_DevData_t;
 
 
-
 /** @defgroup VL53L0_define_InterruptPolarity_group Defines the Polarity
  * of the Interrupt
- *  Defines the Polarity of the Interrupt
- *  @{
+ *	Defines the Polarity of the Interrupt
+ *	@{
  */
 typedef uint8_t VL53L0_InterruptPolarity;
 
-#define VL53L0_INTERRUPTPOLARITY_LOW       ((VL53L0_InterruptPolarity)  0)
+#define VL53L0_INTERRUPTPOLARITY_LOW	   ((VL53L0_InterruptPolarity)	0)
 /*!< Set active low polarity best setup for falling edge. */
-#define VL53L0_INTERRUPTPOLARITY_HIGH      ((VL53L0_InterruptPolarity)  1)
+#define VL53L0_INTERRUPTPOLARITY_HIGH	   ((VL53L0_InterruptPolarity)	1)
 /*!< Set active high polarity best setup for rising edge. */
 
 /** @} VL53L0_define_InterruptPolarity_group */
 
 
 /** @defgroup VL53L0_define_VcselPeriod_group Vcsel Period Defines
- *  Defines the range measurement for which to access the vcsel period.
- *  @{
+ *	Defines the range measurement for which to access the vcsel period.
+ *	@{
  */
 typedef uint8_t VL53L0_VcselPeriod;
 
-#define VL53L0_VCSEL_PERIOD_PRE_RANGE   ((VL53L0_VcselPeriod) 0)
+#define VL53L0_VCSEL_PERIOD_PRE_RANGE	((VL53L0_VcselPeriod) 0)
 /*!<Identifies the pre-range vcsel period. */
 #define VL53L0_VCSEL_PERIOD_FINAL_RANGE ((VL53L0_VcselPeriod) 1)
 /*!<Identifies the final range vcsel period. */
@@ -498,39 +515,39 @@ typedef uint8_t VL53L0_VcselPeriod;
 
 /** @defgroup VL53L0_define_SchedulerSequence_group Defines the steps
  * carried out by the scheduler during a range measurement.
- *  @{
- *  Defines the states of all the steps in the scheduler
- *  i.e. enabled/disabled.
+ *	@{
+ *	Defines the states of all the steps in the scheduler
+ *	i.e. enabled/disabled.
  */
 typedef struct {
-	uint8_t      TccOn;        /*!<Reports if Target Centre Check On  */
-	uint8_t      MsrcOn;       /*!<Reports if MSRC On  */
-	uint8_t      DssOn;        /*!<Reports if DSS On  */
-	uint8_t      PreRangeOn;   /*!<Reports if Pre-Range On  */
-	uint8_t      FinalRangeOn; /*!<Reports if Final-Range On  */
+	uint8_t		 TccOn;		   /*!<Reports if Target Centre Check On  */
+	uint8_t		 MsrcOn;	   /*!<Reports if MSRC On  */
+	uint8_t		 DssOn;		   /*!<Reports if DSS On  */
+	uint8_t		 PreRangeOn;   /*!<Reports if Pre-Range On	*/
+	uint8_t		 FinalRangeOn; /*!<Reports if Final-Range On  */
 } VL53L0_SchedulerSequenceSteps_t;
 
 /** @} VL53L0_define_SchedulerSequence_group */
 
 /** @defgroup VL53L0_define_SequenceStepId_group Defines the Polarity
- *  of the Interrupt
- *  Defines the the sequence steps performed during ranging..
- *  @{
+ *	of the Interrupt
+ *	Defines the the sequence steps performed during ranging..
+ *	@{
  */
 typedef uint8_t VL53L0_SequenceStepId;
 
-#define  VL53L0_SEQUENCESTEP_TCC         ((VL53L0_VcselPeriod) 0)
+#define	 VL53L0_SEQUENCESTEP_TCC		 ((VL53L0_VcselPeriod) 0)
 /*!<Target CentreCheck identifier. */
-#define  VL53L0_SEQUENCESTEP_DSS         ((VL53L0_VcselPeriod) 1)
+#define	 VL53L0_SEQUENCESTEP_DSS		 ((VL53L0_VcselPeriod) 1)
 /*!<Dynamic Spad Selection function Identifier. */
-#define  VL53L0_SEQUENCESTEP_MSRC        ((VL53L0_VcselPeriod) 2)
+#define	 VL53L0_SEQUENCESTEP_MSRC		 ((VL53L0_VcselPeriod) 2)
 /*!<Minimum Signal Rate Check function Identifier. */
-#define  VL53L0_SEQUENCESTEP_PRE_RANGE   ((VL53L0_VcselPeriod) 3)
+#define	 VL53L0_SEQUENCESTEP_PRE_RANGE	 ((VL53L0_VcselPeriod) 3)
 /*!<Pre-Range check Identifier. */
-#define  VL53L0_SEQUENCESTEP_FINAL_RANGE ((VL53L0_VcselPeriod) 4)
+#define	 VL53L0_SEQUENCESTEP_FINAL_RANGE ((VL53L0_VcselPeriod) 4)
 /*!<Final Range Check Identifier. */
 
-#define  VL53L0_SEQUENCESTEP_NUMBER_OF_CHECKS            5
+#define	 VL53L0_SEQUENCESTEP_NUMBER_OF_CHECKS			 5
 /*!<Number of Sequence Step Managed by the API. */
 
 /** @} VL53L0_define_SequenceStepId_group */
@@ -538,8 +555,8 @@ typedef uint8_t VL53L0_SequenceStepId;
 
 /* MACRO Definitions */
 /** @defgroup VL53L0_define_GeneralMacro_group General Macro Defines
- *  General Macro Defines
- *  @{
+ *	General Macro Defines
+ *	@{
  */
 
 /* Defines */
