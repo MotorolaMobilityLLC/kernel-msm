@@ -79,7 +79,15 @@ VL53L0_Error VL53L0_load_tuning_settings(VL53L0_DEV Dev,
 
 VL53L0_Error VL53L0_calc_sigma_estimate(VL53L0_DEV Dev,
 		VL53L0_RangingMeasurementData_t *pRangingMeasurementData,
-		FixPoint1616_t *pSigmaEstimate);
+        FixPoint1616_t *pSigmaEstimate, uint32_t *pDmax_mm);
+
+VL53L0_Error VL53L0_get_total_xtalk_rate(VL53L0_DEV Dev,
+	VL53L0_RangingMeasurementData_t *pRangingMeasurementData,
+    FixPoint1616_t *ptotal_xtalk_rate_mcps);
+
+VL53L0_Error VL53L0_get_total_signal_rate(VL53L0_DEV Dev,
+	VL53L0_RangingMeasurementData_t *pRangingMeasurementData,
+	FixPoint1616_t *ptotal_signal_rate_mcps);
 
 VL53L0_Error VL53L0_get_pal_range_status(VL53L0_DEV Dev,
 		 uint8_t DeviceRangeStatus,
@@ -88,6 +96,10 @@ VL53L0_Error VL53L0_get_pal_range_status(VL53L0_DEV Dev,
 		 VL53L0_RangingMeasurementData_t *pRangingMeasurementData,
 		 uint8_t *pPalRangeStatus);
 
+uint32_t VL53L0_calc_timeout_mclks(VL53L0_DEV Dev,
+	uint32_t timeout_period_us, uint8_t vcsel_period_pclks);
+
+uint16_t VL53L0_encode_timeout(uint32_t timeout_macro_clks);
 
 #ifdef __cplusplus
 }

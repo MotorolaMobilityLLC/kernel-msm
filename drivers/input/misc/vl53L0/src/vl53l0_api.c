@@ -331,6 +331,24 @@ VL53L0_Error VL53L0_GetUpperLimitMilliMeter(VL53L0_DEV Dev,
 	LOG_FUNCTION_END(Status);
 	return Status;
 }
+
+VL53L0_Error VL53L0_GetTotalSignalRate(VL53L0_DEV Dev,
+	FixPoint1616_t *pTotalSignalRate)
+{
+	VL53L0_Error Status = VL53L0_ERROR_NONE;
+	VL53L0_RangingMeasurementData_t LastRangeDataBuffer;
+
+	LOG_FUNCTION_START("");
+
+	LastRangeDataBuffer = PALDevDataGet(Dev, LastRangeMeasure);
+
+	Status = VL53L0_get_total_signal_rate(
+		Dev, &LastRangeDataBuffer, pTotalSignalRate);
+
+	LOG_FUNCTION_END(Status);
+	return Status;
+}
+
 /* End Group PAL General Functions */
 
 /* Group PAL Init Functions */
@@ -350,7 +368,6 @@ VL53L0_Error VL53L0_DataInit(VL53L0_DEV Dev)
 {
 	VL53L0_Error Status = VL53L0_ERROR_NONE;
 	VL53L0_DeviceParameters_t CurrentParameters;
-
 	int i;
 
 	LOG_FUNCTION_START("");
@@ -379,10 +396,9 @@ VL53L0_Error VL53L0_DataInit(VL53L0_DEV Dev)
 	PALDevDataSet(Dev, LinearityCorrectiveGain, 1000);
 
 	/* Dmax default Parameter */
-	PALDevDataSet(Dev, DmaxCalRangeMilliMeter, 600);
+	PALDevDataSet(Dev, DmaxCalRangeMilliMeter, 400);
 	PALDevDataSet(Dev, DmaxCalSignalRateRtnMegaCps,
-		(FixPoint1616_t)((2 * 65536)));
-	PALDevDataSet(Dev, DmaxCalBlindAmbient, 589824); /* 9 Mcps */
+		(FixPoint1616_t)((0x00016B85))); /* 1.42 No Cover Glass*/
 
 	/* Set Default static parameters
 	 *set first temporary values 9.44MHz * 65536 = 618660 */
@@ -525,13 +541,15 @@ VL53L0_Error VL53L0_StaticInit(VL53L0_DEV Dev)
 	uint8_t isApertureSpads = 0;
 	uint32_t refSpadCount = 0;
 	uint8_t ApertureSpads = 0;
+	uint8_t vcselPulsePeriodPCLK;
+	FixPoint1616_t seqTimeoutMilliSecs;
 
 	LOG_FUNCTION_START("");
 
 	Status = VL53L0_get_info_from_device(Dev, 1);
 
 	/* set the ref spad from NVM */
-	count   = (uint32_t)VL53L0_GETDEVICESPECIFICPARAMETER(Dev,
+	count	= (uint32_t)VL53L0_GETDEVICESPECIFICPARAMETER(Dev,
 		ReferenceSpadCount);
 	ApertureSpads = VL53L0_GETDEVICESPECIFICPARAMETER(Dev,
 		ReferenceSpadType);
@@ -593,9 +611,10 @@ VL53L0_Error VL53L0_StaticInit(VL53L0_DEV Dev)
 
 
 	if (Status == VL53L0_ERROR_NONE) {
-		Status = VL53L0_RdByte(Dev, VL53L0_REG_SYSTEM_RANGE_CONFIG,
-			&tempbyte);
-		PALDevDataSet(Dev, RangeFractionalEnable, tempbyte);
+		Status = VL53L0_GetFractionEnable(Dev, &tempbyte);
+		if (Status == VL53L0_ERROR_NONE)
+			PALDevDataSet(Dev, RangeFractionalEnable, tempbyte);
+
 	}
 
 	if (Status == VL53L0_ERROR_NONE)
@@ -626,6 +645,67 @@ VL53L0_Error VL53L0_StaticInit(VL53L0_DEV Dev)
 	if (Status == VL53L0_ERROR_NONE)
 		PALDevDataSet(Dev, PalState, VL53L0_STATE_IDLE);
 
+
+
+	/* Store pre-range vcsel period */
+	if (Status == VL53L0_ERROR_NONE) {
+		Status = VL53L0_GetVcselPulsePeriod(
+			Dev,
+			VL53L0_VCSEL_PERIOD_PRE_RANGE,
+			&vcselPulsePeriodPCLK);
+	}
+
+	if (Status == VL53L0_ERROR_NONE) {
+			VL53L0_SETDEVICESPECIFICPARAMETER(
+				Dev,
+				PreRangeVcselPulsePeriod,
+				vcselPulsePeriodPCLK);
+	}
+
+	/* Store final-range vcsel period */
+	if (Status == VL53L0_ERROR_NONE) {
+		Status = VL53L0_GetVcselPulsePeriod(
+			Dev,
+			VL53L0_VCSEL_PERIOD_FINAL_RANGE,
+			&vcselPulsePeriodPCLK);
+	}
+
+	if (Status == VL53L0_ERROR_NONE) {
+			VL53L0_SETDEVICESPECIFICPARAMETER(
+				Dev,
+				FinalRangeVcselPulsePeriod,
+				vcselPulsePeriodPCLK);
+	}
+
+	/* Store pre-range timeout */
+	if (Status == VL53L0_ERROR_NONE) {
+		Status = VL53L0_GetSequenceStepTimeout(
+			Dev,
+			VL53L0_SEQUENCESTEP_PRE_RANGE,
+			&seqTimeoutMilliSecs);
+	}
+
+	if (Status == VL53L0_ERROR_NONE) {
+		VL53L0_SETDEVICESPECIFICPARAMETER(
+			Dev,
+			PreRangeTimeoutMicroSecs,
+			seqTimeoutMilliSecs);
+	}
+
+	/* Store final-range timeout */
+	if (Status == VL53L0_ERROR_NONE) {
+		Status = VL53L0_GetSequenceStepTimeout(
+			Dev,
+			VL53L0_SEQUENCESTEP_FINAL_RANGE,
+			&seqTimeoutMilliSecs);
+	}
+
+	if (Status == VL53L0_ERROR_NONE) {
+		VL53L0_SETDEVICESPECIFICPARAMETER(
+			Dev,
+			FinalRangeTimeoutMicroSecs,
+			seqTimeoutMilliSecs);
+	}
 
 	LOG_FUNCTION_END(Status);
 	return Status;
@@ -839,6 +919,35 @@ VL53L0_Error VL53L0_GetDeviceMode(VL53L0_DEV Dev,
 	LOG_FUNCTION_START("");
 
 	VL53L0_GETPARAMETERFIELD(Dev, DeviceMode, *pDeviceMode);
+
+	LOG_FUNCTION_END(Status);
+	return Status;
+}
+
+VL53L0_Error VL53L0_SetRangeFractionEnable(VL53L0_DEV Dev,	uint8_t Enable)
+{
+	VL53L0_Error Status = VL53L0_ERROR_NONE;
+
+	LOG_FUNCTION_START("%d", (int)Enable);
+
+	Status = VL53L0_WrByte(Dev, VL53L0_REG_SYSTEM_RANGE_CONFIG, Enable);
+
+	if (Status == VL53L0_ERROR_NONE)
+		PALDevDataSet(Dev, RangeFractionalEnable, Enable);
+
+	LOG_FUNCTION_END(Status);
+	return Status;
+}
+
+VL53L0_Error VL53L0_GetFractionEnable(VL53L0_DEV Dev, uint8_t *pEnabled)
+{
+	VL53L0_Error Status = VL53L0_ERROR_NONE;
+	LOG_FUNCTION_START("");
+
+	Status = VL53L0_RdByte(Dev, VL53L0_REG_SYSTEM_RANGE_CONFIG, pEnabled);
+
+	if (Status == VL53L0_ERROR_NONE)
+		*pEnabled = (*pEnabled & 1);
 
 	LOG_FUNCTION_END(Status);
 	return Status;
@@ -1558,13 +1667,14 @@ VL53L0_Error VL53L0_GetLimitCheckEnable(VL53L0_DEV Dev, uint16_t LimitCheckId,
 
 	LOG_FUNCTION_START("");
 
-	if (LimitCheckId >= VL53L0_CHECKENABLE_NUMBER_OF_CHECKS)
+	if (LimitCheckId >= VL53L0_CHECKENABLE_NUMBER_OF_CHECKS) {
 		Status = VL53L0_ERROR_INVALID_PARAMS;
-
-
-	VL53L0_GETARRAYPARAMETERFIELD(Dev, LimitChecksEnable, LimitCheckId,
-		Temp8);
-	*pLimitCheckEnable = Temp8;
+		*pLimitCheckEnable = 0;
+	} else {
+		VL53L0_GETARRAYPARAMETERFIELD(Dev, LimitChecksEnable,
+			LimitCheckId, Temp8);
+		*pLimitCheckEnable = Temp8;
+	}
 
 	LOG_FUNCTION_END(Status);
 	return Status;
@@ -1830,24 +1940,41 @@ VL53L0_Error VL53L0_GetWrapAroundCheckEnable(VL53L0_DEV Dev,
 }
 
 VL53L0_Error VL53L0_SetDmaxCalParameters(VL53L0_DEV Dev,
-	uint16_t RangeMilliMeter, FixPoint1616_t SignalRateRtnMegaCps,
-	FixPoint1616_t DmaxCalBlindAmbient)
+	uint16_t RangeMilliMeter, FixPoint1616_t SignalRateRtnMegaCps)
 {
 	VL53L0_Error Status = VL53L0_ERROR_NONE;
+	FixPoint1616_t SignalRateRtnMegaCpsTemp = 0;
 
 	LOG_FUNCTION_START("");
 
-	PALDevDataSet(Dev, DmaxCalRangeMilliMeter, RangeMilliMeter);
-	PALDevDataSet(Dev, DmaxCalSignalRateRtnMegaCps, SignalRateRtnMegaCps);
-	PALDevDataSet(Dev, DmaxCalBlindAmbient, DmaxCalBlindAmbient);
+	/* Check if one of input parameter is zero, in that case the
+	 * value are get from NVM */
+	if ((RangeMilliMeter == 0) || (SignalRateRtnMegaCps == 0)) {
+		/* NVM parameters */
+		/* Run VL53L0_get_info_from_device wit option 4 to get
+		 * signal rate at 400 mm if the value have been already
+		 * get this function will return with no access to device */
+		VL53L0_get_info_from_device(Dev, 4);
+
+		SignalRateRtnMegaCpsTemp = VL53L0_GETDEVICESPECIFICPARAMETER(
+			Dev, SignalRateMeasFixed400mm);
+
+		PALDevDataSet(Dev, DmaxCalRangeMilliMeter, 400);
+		PALDevDataSet(Dev, DmaxCalSignalRateRtnMegaCps,
+			SignalRateRtnMegaCpsTemp);
+	} else {
+		/* User parameters */
+		PALDevDataSet(Dev, DmaxCalRangeMilliMeter, RangeMilliMeter);
+		PALDevDataSet(Dev, DmaxCalSignalRateRtnMegaCps,
+			SignalRateRtnMegaCps);
+	}
 
 	LOG_FUNCTION_END(Status);
 	return Status;
 }
 
 VL53L0_Error VL53L0_GetDmaxCalParameters(VL53L0_DEV Dev,
-	uint16_t *pRangeMilliMeter, FixPoint1616_t *pSignalRateRtnMegaCps,
-	FixPoint1616_t *pDmaxCalBlindAmbient)
+	uint16_t *pRangeMilliMeter, FixPoint1616_t *pSignalRateRtnMegaCps)
 {
 	VL53L0_Error Status = VL53L0_ERROR_NONE;
 
@@ -1856,7 +1983,6 @@ VL53L0_Error VL53L0_GetDmaxCalParameters(VL53L0_DEV Dev,
 	*pRangeMilliMeter = PALDevDataGet(Dev, DmaxCalRangeMilliMeter);
 	*pSignalRateRtnMegaCps = PALDevDataGet(Dev,
 		DmaxCalSignalRateRtnMegaCps);
-	*pDmaxCalBlindAmbient = PALDevDataGet(Dev, DmaxCalBlindAmbient);
 
 	LOG_FUNCTION_END(Status);
 	return Status;
@@ -1917,6 +2043,20 @@ VL53L0_Error VL53L0_PerformRefCalibration(VL53L0_DEV Dev, uint8_t *pVhvSettings,
 
 	Status = VL53L0_perform_ref_calibration(Dev, pVhvSettings,
 		pPhaseCal, 1);
+
+	LOG_FUNCTION_END(Status);
+	return Status;
+}
+
+VL53L0_Error VL53L0_PerformXTalkMeasurement(VL53L0_DEV Dev,
+	uint32_t TimeoutMs, FixPoint1616_t *pXtalkPerSpad,
+	uint8_t *pAmbientTooHigh)
+{
+	VL53L0_Error Status = VL53L0_ERROR_NONE;
+	LOG_FUNCTION_START("");
+
+	Status = VL53L0_perform_xtalk_measurement(Dev, TimeoutMs,
+		pXtalkPerSpad, pAmbientTooHigh);
 
 	LOG_FUNCTION_END(Status);
 	return Status;
@@ -2078,82 +2218,6 @@ VL53L0_Error VL53L0_WaitDeviceReadyForNewMeasurement(VL53L0_DEV Dev,
 	return Status;
 }
 
-VL53L0_Error VL53L0_compute_dmax(VL53L0_DEV Dev, uint16_t *pDmaxVal,
-	uint16_t AmbientRate)
-{
-	VL53L0_Error Status = VL53L0_ERROR_NONE;
-	uint32_t DmaxVal;
-	uint32_t DmaxVal2;
-	uint32_t DmaxVal2_sqrt;
-	uint32_t DmaxCalBlindAmbient97;
-	uint16_t DmaxCalRangeMilliMeter;
-	FixPoint1616_t DmaxCalSignalRateRtnMegaCps;
-	FixPoint1616_t LimitCheckValueRIT;
-	FixPoint1616_t LimitCheckValueSR;
-	FixPoint1616_t MinSignalNeeded;
-	FixPoint1616_t DmaxCalBlindAmbient;
-	uint32_t AmbientDiff97;
-	uint32_t AmbientRatio;
-	uint32_t AmbientRatio_sqr;
-	LOG_FUNCTION_START("");
-
-	/* Note that AmbientRate is in format 9.7 */
-
-	Status |= VL53L0_GetDmaxCalParameters(Dev, &DmaxCalRangeMilliMeter,
-		&DmaxCalSignalRateRtnMegaCps, &DmaxCalBlindAmbient);
-
-	DmaxCalBlindAmbient97 = VL53L0_FIXPOINT1616TOFIXPOINT97(
-			DmaxCalBlindAmbient);
-
-	/* this limit is already per spad */
-	Status |= VL53L0_GetLimitCheckValue(Dev,
-	VL53L0_CHECKENABLE_RANGE_IGNORE_THRESHOLD, &LimitCheckValueRIT);
-
-	Status |= VL53L0_GetLimitCheckValue(Dev,
-	VL53L0_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE, &LimitCheckValueSR);
-
-	/* MinSignalNeeded=Max(SignalLimit,RIT-XTalkComp) */
-	if (LimitCheckValueSR > LimitCheckValueRIT)
-		MinSignalNeeded = LimitCheckValueSR;
-	else
-		MinSignalNeeded = LimitCheckValueRIT;
-
-
-	if ((MinSignalNeeded > 0)
-		&& (DmaxCalSignalRateRtnMegaCps >= 0)
-		&& (AmbientRate < DmaxCalBlindAmbient97)) {
-
-		/* multiply by 65536 to give more precision */
-		AmbientDiff97 = (DmaxCalBlindAmbient97
-					- AmbientRate) ;
-
-		AmbientRatio = (uint32_t)((65536 * AmbientDiff97)
-				/ DmaxCalBlindAmbient97);
-
-		/* The following value is x 16 */
-		AmbientRatio_sqr = VL53L0_isqrt(AmbientRatio);
-
-		/* sqrt(16^2*x) = 16*sqrt(x) need to divide by 16 */
-		DmaxVal2_sqrt = VL53L0_isqrt((256 *
-			DmaxCalSignalRateRtnMegaCps) / MinSignalNeeded);
-
-		DmaxVal2 = DmaxVal2_sqrt * AmbientRatio_sqr;
-
-
-	} else
-		DmaxVal2 = 0;
-
-
-	DmaxVal = DmaxCalRangeMilliMeter * DmaxVal2;
-
-	/* need to divide by 4096 = 16 * 256 */
-	*pDmaxVal = (uint16_t)(DmaxVal / 4096);
-
-	LOG_FUNCTION_END(Status);
-	return Status;
-}
-
-
 
 VL53L0_Error VL53L0_GetRangingMeasurementData(VL53L0_DEV Dev,
 	VL53L0_RangingMeasurementData_t *pRangingMeasurementData)
@@ -2172,8 +2236,6 @@ VL53L0_Error VL53L0_GetRangingMeasurementData(VL53L0_DEV Dev,
 	uint16_t LinearityCorrectiveGain;
 	uint8_t localBuffer[12];
 	VL53L0_RangingMeasurementData_t LastRangeDataBuffer;
-
-	uint16_t DmaxVal16;
 
 	LOG_FUNCTION_START("");
 
@@ -2268,11 +2330,6 @@ VL53L0_Error VL53L0_GetRangingMeasurementData(VL53L0_DEV Dev,
 			pRangingMeasurementData->RangeMilliMeter = tmpuint16;
 			pRangingMeasurementData->RangeFractionalPart = 0;
 		}
-
-		/* Dmax Computation */
-		Status |= VL53L0_compute_dmax(Dev, &DmaxVal16, AmbientRate);
-
-		pRangingMeasurementData->RangeDMaxMilliMeter = DmaxVal16;
 
 		/*
 		 * For a standard definition of RangeStatus, this should
