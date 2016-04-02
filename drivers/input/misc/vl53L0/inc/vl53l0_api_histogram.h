@@ -41,26 +41,27 @@ extern "C" {
 VL53L0_Error VL53L0_confirm_measurement_start(VL53L0_DEV Dev);
 
 VL53L0_Error VL53L0_set_histogram_mode(VL53L0_DEV Dev,
-			VL53L0_HistogramModes HistogramMode);
+	VL53L0_HistogramModes HistogramMode);
 
 VL53L0_Error VL53L0_get_histogram_mode(VL53L0_DEV Dev,
-			VL53L0_HistogramModes *pHistogramMode);
+	VL53L0_HistogramModes *pHistogramMode);
 
 VL53L0_Error VL53L0_start_histogram_measurement(VL53L0_DEV Dev,
-		VL53L0_HistogramModes histoMode,
-		uint32_t count);
+	VL53L0_HistogramModes histoMode,
+	uint32_t count);
 
 VL53L0_Error VL53L0_perform_single_histogram_measurement(VL53L0_DEV Dev,
-		VL53L0_HistogramMeasurementData_t *pHistogramMeasurementData);
+	VL53L0_HistogramMeasurementData_t *pHistogramMeasurementData);
 
 VL53L0_Error VL53L0_get_histogram_measurement_data(VL53L0_DEV Dev,
-		VL53L0_HistogramMeasurementData_t *pHistogramMeasurementData);
+	VL53L0_HistogramMeasurementData_t *pHistogramMeasurementData);
 
 VL53L0_Error VL53L0_read_histo_measurement(VL53L0_DEV Dev,
-				uint32_t *histoData,
-				uint32_t offset,
-				VL53L0_HistogramModes histoMode);
+	uint32_t *histoData, uint32_t offset, VL53L0_HistogramModes histoMode);
 
+VL53L0_Error VL53L0_perform_xtalk_measurement(VL53L0_DEV dev,
+	uint32_t timeout_ms, FixPoint1616_t *pxtalk_per_spad,
+	uint8_t *pambient_too_high);
 
 #ifdef __cplusplus
 }
