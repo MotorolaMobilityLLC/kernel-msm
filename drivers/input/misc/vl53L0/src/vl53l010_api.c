@@ -1086,8 +1086,8 @@ VL53L0_Error VL53L010_GetMeasurementTimingBudgetMicroSeconds(VL53L0_DEV Dev,
 	uint8_t CurrentVCSELPulsePeriod;
 	uint8_t CurrentVCSELPulsePeriodPClk;
 	uint16_t encodedTimeOut;
-	uint32_t RangATimingBudgetMicroSeconds;
-	uint32_t RangBTimingBudgetMicroSeconds;
+	uint32_t RangATimingBudgetMicroSeconds = 0;
+	uint32_t RangBTimingBudgetMicroSeconds = 0;
 	uint8_t Byte;
 
 	LOG_FUNCTION_START("");
@@ -1453,7 +1453,7 @@ VL53L0_Error VL53L010_GetLimitCheckValue(VL53L0_DEV Dev,
 
     LOG_FUNCTION_END(Status);
     return Status;
-
+    
 }
 
 VL53L0_Error VL53L010_GetLimitCheckCurrent(VL53L0_DEV Dev,
