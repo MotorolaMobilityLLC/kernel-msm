@@ -336,6 +336,22 @@ VL53L0_API VL53L0_Error VL53L0_SetGroupParamHold(VL53L0_DEV Dev,
 VL53L0_API VL53L0_Error VL53L0_GetUpperLimitMilliMeter(VL53L0_DEV Dev,
 	uint16_t *pUpperLimitMilliMeter);
 
+
+/**
+ * @brief Get the Total Signal Rate
+ * @par Function Description
+ * This function will return the Total Signal Rate after a good ranging is done.
+ *
+ * @note This function access to Device
+ *
+ * @param   Dev      Device Handle
+ * @param   pTotalSignalRate   Total Signal Rate value in Mega count per second
+ * @return  VL53L0_ERROR_NONE     Success
+ * @return  "Other error code"    See ::VL53L0_Error
+ */
+VL53L0_Error VL53L0_GetTotalSignalRate(VL53L0_DEV Dev,
+	FixPoint1616_t *pTotalSignalRate);
+
 /** @} VL53L0_general_group */
 
 /** @defgroup VL53L0_init_group VL53L0 Init Functions
@@ -556,6 +572,43 @@ VL53L0_API VL53L0_Error VL53L0_SetDeviceMode(VL53L0_DEV Dev,
  */
 VL53L0_API VL53L0_Error VL53L0_GetDeviceMode(VL53L0_DEV Dev,
 	VL53L0_DeviceModes *pDeviceMode);
+
+/**
+ * @brief  Sets the resolution of range measurements.
+ * @par Function Description
+ * Set resolution of range measurements to either 0.25mm if
+ * fraction enabled or 1mm if not enabled.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev               Device Handle
+ * @param   Enable            Enable high resolution
+ *
+ * @return  VL53L0_ERROR_NONE               Success
+ * @return  "Other error code"              See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_SetRangeFractionEnable(VL53L0_DEV Dev,
+	uint8_t Enable);
+
+/**
+ * @brief  Gets the fraction enable parameter indicating the resolution of
+ * range measurements.
+ *
+ * @par Function Description
+ * Gets the fraction enable state, which translates to the resolution of
+ * range measurements as follows :Enabled:=0.25mm resolution,
+ * Not Enabled:=1mm resolution.
+ *
+ * @note This function Accesses the device
+ *
+ * @param   Dev               Device Handle
+ * @param   pEnable           Output Parameter reporting the fraction enable state.
+ *
+ * @return  VL53L0_ERROR_NONE                   Success
+ * @return  "Other error code"                  See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_GetFractionEnable(VL53L0_DEV Dev,
+	uint8_t *pEnable);
 
 /**
  * @brief  Set a new Histogram mode
@@ -1163,19 +1216,18 @@ VL53L0_API VL53L0_Error VL53L0_GetWrapAroundCheckEnable(VL53L0_DEV Dev,
 
 /**
  * @brief   Set Dmax Calibration Parameters for a given device
- *
+ * When one of the parameter is zero, this function will get parameter
+ * from NVM.
  * @note This function doesn't Access to the device
  *
  * @param   Dev                    Device Handle
  * @param   RangeMilliMeter        Calibration Distance
  * @param   SignalRateRtnMegaCps   Signal rate return read at CalDistance
- * @param   DmaxCalBlindAmbient    Dmax Blind Ambient issue from calibration
  * @return  VL53L0_ERROR_NONE      Success
  * @return  "Other error code"     See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_SetDmaxCalParameters(VL53L0_DEV Dev,
-		uint16_t RangeMilliMeter, FixPoint1616_t SignalRateRtnMegaCps,
-		FixPoint1616_t DmaxCalBlindAmbient);
+		uint16_t RangeMilliMeter, FixPoint1616_t SignalRateRtnMegaCps);
 
 /**
  * @brief  Get Dmax Calibration Parameters for a given device
@@ -1186,14 +1238,11 @@ VL53L0_API VL53L0_Error VL53L0_SetDmaxCalParameters(VL53L0_DEV Dev,
  * @param   Dev                     Device Handle
  * @param   pRangeMilliMeter        Pointer to Calibration Distance
  * @param   pSignalRateRtnMegaCps   Pointer to Signal rate return
- * @param   pDmaxCalBlindAmbient    Pointer toDmax Blind Ambient issue from
- * calibration
  * @return  VL53L0_ERROR_NONE       Success
  * @return  "Other error code"      See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_GetDmaxCalParameters(VL53L0_DEV Dev,
-	uint16_t *pRangeMilliMeter, FixPoint1616_t *pSignalRateRtnMegaCps,
-	FixPoint1616_t *pDmaxCalBlindAmbient);
+	uint16_t *pRangeMilliMeter, FixPoint1616_t *pSignalRateRtnMegaCps);
 
 /** @} VL53L0_parameters_group */
 
@@ -1246,6 +1295,37 @@ VL53L0_API VL53L0_Error VL53L0_PerformSingleMeasurement(VL53L0_DEV Dev);
  */
 VL53L0_API VL53L0_Error VL53L0_PerformRefCalibration(VL53L0_DEV Dev,
 	uint8_t *pVhvSettings, uint8_t *pPhaseCal);
+
+/**
+ * @brief Perform XTalk Measurement
+ *
+ * @details Measures the current cross talk from glass in front
+ * of the sensor.
+ * This functions performs a histogram measurement and uses the results
+ * to measure the crosstalk. For the function to be successful, there
+ * must be no target in front of the sensor.
+ *
+ * @warning This function is a blocking function
+ *
+ * @warning This function is not supported when the final range
+ * vcsel clock period is set below 10 PCLKS.
+ *
+ * @note This function Access to the device
+ *
+ * @param   Dev                  Device Handle
+ * @param   TimeoutMs            Histogram measurement duration.
+ * @param   pXtalkPerSpad        Output parameter containing the crosstalk
+ * measurement result, in MCPS/Spad. Format fixpoint 16:16.
+ * @param   pAmbientTooHigh      Output parameter which indicate that
+ * pXtalkPerSpad is not good if the Ambient is too high.
+ * @return  VL53L0_ERROR_NONE    Success
+ * @return  VL53L0_ERROR_INVALID_PARAMS vcsel clock period not supported
+ * for this operation. Must not be less than 10PCLKS.
+ * @return  "Other error code"   See ::VL53L0_Error
+ */
+VL53L0_API VL53L0_Error VL53L0_PerformXTalkMeasurement(VL53L0_DEV Dev,
+	uint32_t TimeoutMs, FixPoint1616_t *pXtalkPerSpad,
+	uint8_t *pAmbientTooHigh);
 
 /**
  * @brief Perform XTalk Calibration

@@ -31,8 +31,8 @@
 #define STMVL53L0_DRV_NAME	"stmvl53l0"
 #define STMVL53L0_SLAVE_ADDR	(0x52>>1)
 
-#define DRIVER_VERSION		"1.1.15"
-#define DRIVER_VERSION_NUM		15
+#define DRIVER_VERSION		"1.1.18"
+#define DRIVER_VERSION_NUM		18
 #define I2C_M_WR			0x00
 /* #define INT_POLLING_DELAY	20 */
 
