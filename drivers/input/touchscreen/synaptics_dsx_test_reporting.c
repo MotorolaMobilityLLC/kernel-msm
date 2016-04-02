@@ -1419,6 +1419,21 @@ struct f54_control_107 {
 	};
 };
 
+struct f54_control_116 {
+	union {
+		struct {
+			unsigned char c116_im_thresh;
+			unsigned char c116_debounce;
+			unsigned char c116_quiet_im;
+			unsigned char c116_filter;
+		} __packed;
+		struct {
+			unsigned char data[4];
+			unsigned short address;
+		} __packed;
+	};
+};
+
 struct f54_control_137 {
 	union {
 		struct {
@@ -1467,6 +1482,7 @@ struct f54_control {
 	struct f54_control_95 *reg_95;
 	struct f54_control_99 *reg_99;
 	struct f54_control_107 *reg_107;
+	struct f54_control_116 *reg_116;
 	struct f54_control_137 *reg_137;
 	struct f55_control_0 *reg_0_f55;
 	struct f55_control_8 *reg_8_f55;
@@ -1912,6 +1928,10 @@ show_store_prototype(c107_abs_stretch_dur)
 show_store_prototype(c107_abs_adc_clock_div)
 show_store_prototype(c107_abs_sub_burtst_size)
 show_store_prototype(c107_abs_trigger_delay)
+show_store_prototype(c116_im_thresh)
+show_store_prototype(c116_debounce)
+show_store_prototype(c116_quiet_im)
+show_store_prototype(c116_filter)
 show_store_prototype(c137_cmnr_adjust)
 show_prototype(f55_q2_has_single_layer_multitouch)
 show_prototype(f55_c0_receivers_on_x)
@@ -2185,6 +2205,13 @@ static struct attribute *attrs_reg_107[] = {
 	NULL,
 };
 
+static struct attribute *attrs_reg_116[] = {
+	attrify(c116_im_thresh),
+	attrify(c116_debounce),
+	attrify(c116_quiet_im),
+	attrify(c116_filter),
+	NULL,
+};
 static struct attribute *attrs_reg_137[] = {
 	attrify(c137_cmnr_adjust),
 	NULL,
@@ -2230,6 +2257,7 @@ static struct attribute_group attrs_ctrl_regs[] = {
 	GROUP(attrs_reg_95),
 	GROUP(attrs_reg_99),
 	GROUP(attrs_reg_107),
+	GROUP(attrs_reg_116),
 	GROUP(attrs_reg_137),
 	GROUP(attrs_f55_c0),
 	GROUP(attrs_f55_c8),
@@ -3367,6 +3395,11 @@ show_store_func_unsigned(control, reg_107, c107_abs_adc_clock_div)
 show_store_func_unsigned(control, reg_107, c107_abs_sub_burtst_size)
 show_store_func_unsigned(control, reg_107, c107_abs_trigger_delay)
 
+show_store_func_unsigned(control, reg_116, c116_im_thresh)
+show_store_func_unsigned(control, reg_116, c116_debounce)
+show_store_func_unsigned(control, reg_116, c116_quiet_im)
+show_store_func_unsigned(control, reg_116, c116_filter)
+
 show_store_func_unsigned(control, reg_137, c137_cmnr_adjust)
 
 simple_show_func_unsigned(query_f55_0_2, f55_q2_has_single_layer_multitouch)
@@ -4323,7 +4356,9 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(113, 1, query27->has_ctrl113);
 	CTRL_REG_PRESENCE(114, 1, query27->has_ctrl114);
 	CTRL_REG_PRESENCE(115, 1, query29->has_ctrl115);
-	CTRL_REG_PRESENCE(116, 1, query29->has_ctrl116);
+
+	CTRL_REG_ADD(116, 1, query29->has_ctrl116);
+
 	CTRL_REG_PRESENCE(117, 1, query29->has_ctrl117);
 	CTRL_REG_PRESENCE(118, 1, query30->has_ctrl118);
 	CTRL_REG_PRESENCE(119, 1, query30->has_ctrl119);
