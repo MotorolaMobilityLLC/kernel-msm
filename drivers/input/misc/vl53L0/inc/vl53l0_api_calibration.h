@@ -62,6 +62,9 @@ VL53L0_Error VL53L0_set_reference_spads(VL53L0_DEV Dev,
 VL53L0_Error VL53L0_get_reference_spads(VL53L0_DEV Dev,
 		uint32_t *pSpadCount, uint8_t *pIsApertureSpads);
 
+VL53L0_Error VL53L0_perform_phase_calibration(VL53L0_DEV Dev,
+	uint8_t *pPhaseCal, const uint8_t get_data_enable,
+	const uint8_t restore_config);
 
 VL53L0_Error VL53L0_perform_ref_calibration(VL53L0_DEV Dev,
 	uint8_t *pVhvSettings, uint8_t *pPhaseCal, uint8_t get_data_enable);
