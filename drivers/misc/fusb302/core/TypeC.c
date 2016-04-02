@@ -823,6 +823,8 @@ void StateMachineAttachedSink(void)
 void StateMachineAttachedSource(void)
 {
 	struct power_supply *usb_psy = power_supply_get_by_name("usb");
+
+	USBPDDisable(TRUE);
 	switch (TypeCSubState) {
 	default:
 	case 0:
@@ -841,7 +843,6 @@ void StateMachineAttachedSource(void)
 #endif // FSC_HAVE_DRP
 				{
 					platform_set_vbus_lvl_enable(VBUS_LVL_ALL, FALSE, FALSE);	// Disable the vbus outputs
-					USBPDDisable(TRUE);	// Disable the USB PD state machine
 					Registers.Switches.byte[0] = 0x00;	// Disabled until vSafe0V
 					DeviceWrite(regSwitches0, 1,
 						    &Registers.Switches.
@@ -876,7 +877,6 @@ void StateMachineAttachedSource(void)
 #endif // FSC_HAVE_DRP
 				{
 					platform_set_vbus_lvl_enable(VBUS_LVL_ALL, FALSE, FALSE);	// Disable the vbus outputs
-					USBPDDisable(TRUE);	// Disable the USB PD state machine
 					Registers.Switches.byte[0] = 0x00;	// Disabled until vSafe0V
 					DeviceWrite(regSwitches0, 1,
 						    &Registers.Switches.
@@ -901,7 +901,10 @@ void StateMachineAttachedSource(void)
 		}
 		break;
 	case 1:
-		if (VbusVSafe0V()) {
+		if (VbusVSafe0V() ||
+			((CC2TermPrevious == CCTypeOpen) &&
+			(CC1TermPrevious == CCTypeOpen))
+		   ) {
 			/* Notify USB driver to exit host mode */
 			if (usb_psy)
 				power_supply_set_usb_otg(usb_psy, 0);
