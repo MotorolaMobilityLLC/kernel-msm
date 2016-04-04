@@ -31,6 +31,7 @@ enum iio_chan_type {
 	IIO_PRESSURE,
 	IIO_HUMIDITYRELATIVE,
 	IIO_RESISTANCE,
+	IIO_PROPRIETARY,
 };
 
 enum iio_modifier {
@@ -69,6 +70,7 @@ enum iio_event_type {
 	IIO_EV_TYPE_ROC,
 	IIO_EV_TYPE_THRESH_ADAPTIVE,
 	IIO_EV_TYPE_MAG_ADAPTIVE,
+	IIO_EV_TYPE_BUFFER_EMPTY,
 };
 
 enum iio_event_info {
