@@ -71,6 +71,7 @@ static const char * const iio_chan_type_name_spec[] = {
 	[IIO_PRESSURE] = "pressure",
 	[IIO_HUMIDITYRELATIVE] = "humidityrelative",
 	[IIO_RESISTANCE] = "resistance",
+	[IIO_PROPRIETARY] = "proprietary",
 };
 
 static const char * const iio_modifier_names[] = {
