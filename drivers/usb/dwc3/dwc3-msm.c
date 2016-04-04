@@ -2750,6 +2750,68 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_REAL_TYPE,
 };
 
+static int dwc3_msm_get_property_usbhost(struct power_supply *psy,
+				  enum power_supply_property psp,
+				  union power_supply_propval *val)
+{
+	struct dwc3_msm *mdwc = container_of(psy, struct dwc3_msm,
+								usb_psy);
+	switch (psp) {
+	case POWER_SUPPLY_PROP_USB_OTG:
+		val->intval = !mdwc->id_state;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int dwc3_msm_set_property_usbhost(struct power_supply *psy,
+				  enum power_supply_property psp,
+				  const union power_supply_propval *val)
+{
+	struct dwc3_msm *mdwc = container_of(psy, struct dwc3_msm,
+								usb_psy);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	enum dwc3_id_state id;
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_USB_OTG:
+		id = val->intval ? DWC3_ID_GROUND : DWC3_ID_FLOAT;
+		if (mdwc->id_state == id)
+			break;
+
+		/* Let OTG know about ID detection */
+		mdwc->id_state = id;
+		dbg_event(dwc->ctrl_num, 0xFF, "id_state", mdwc->id_state);
+		dwc3_ext_event_notify(mdwc);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	power_supply_changed(&mdwc->usb_psy);
+	return 0;
+}
+
+static int
+dwc3_msm_property_is_writeable_usbhost(struct power_supply *psy,
+				enum power_supply_property psp)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_USB_OTG:
+		return 1;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static enum power_supply_property dwc3_msm_props_usbhost[] = {
+	POWER_SUPPLY_PROP_USB_OTG,
+};
+
 static irqreturn_t dwc3_pmic_id_irq(int irq, void *data)
 {
 	struct dwc3_msm *mdwc = data;
@@ -3282,6 +3344,23 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 						__func__);
 			goto err;
 		}
+	} else {
+		mdwc->usb_psy.name = "usb_host";
+		mdwc->usb_psy.type = POWER_SUPPLY_TYPE_USB;
+		mdwc->usb_psy.properties = dwc3_msm_props_usbhost;
+		mdwc->usb_psy.num_properties =
+					ARRAY_SIZE(dwc3_msm_props_usbhost);
+		mdwc->usb_psy.get_property = dwc3_msm_get_property_usbhost;
+		mdwc->usb_psy.set_property = dwc3_msm_set_property_usbhost;
+		mdwc->usb_psy.property_is_writeable =
+				dwc3_msm_property_is_writeable_usbhost;
+		ret = power_supply_register(&pdev->dev, &mdwc->usb_psy);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"%s:power_supply_register usbhost failed\n",
+					__func__);
+			goto err;
+		}
 	}
 
 	ret = of_platform_populate(node, NULL, NULL, &pdev->dev);
@@ -3363,7 +3442,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	if (!dwc->is_drd && host_mode) {
 		dev_dbg(&pdev->dev, "DWC3 in host only mode\n");
 		mdwc->host_only_mode = true;
-		mdwc->id_state = DWC3_ID_GROUND;
+		mdwc->id_state = DWC3_ID_FLOAT;
 		device_create_file(&pdev->dev, &dev_attr_xhci_link_compliance);
 		dwc3_ext_event_notify(mdwc);
 	}
@@ -3731,7 +3810,8 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		 * when moving from host to peripheral. This is required for
 		 * peripheral mode to work.
 		 */
-		dwc3_msm_block_reset(mdwc, true);
+		if (dwc->dr_mode != USB_DR_MODE_HOST)
+			dwc3_msm_block_reset(mdwc, true);
 
 		dwc3_gadget_usb3_phy_suspend(dwc, false);
 		dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
@@ -3739,7 +3819,7 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		mdwc->in_host_mode = false;
 
 		/* re-init core and OTG registers as block reset clears these */
-		if (!mdwc->host_only_mode)
+		if (!mdwc->host_only_mode && (dwc->dr_mode != USB_DR_MODE_HOST))
 			dwc3_post_host_reset_core_init(dwc);
 
 		pm_runtime_mark_last_busy(mdwc->dev);
