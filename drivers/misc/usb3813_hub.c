@@ -25,6 +25,7 @@
 #include <linux/of_gpio.h>
 #include <linux/param.h>
 #include <linux/platform_device.h>
+#include <linux/power_supply.h>
 #include <linux/printk.h>
 #include <linux/clk.h>
 #include <linux/mods/usb_ext_bridge.h>
@@ -52,6 +53,7 @@ struct usb3813_info {
 	bool debug_enabled;
 	bool debug_attach;
 	struct notifier_block usbext_notifier;
+	bool enable_controller;
 };
 
 static int usb3813_write_command(struct usb3813_info *info, u16 command)
@@ -168,6 +170,26 @@ static int usb3813_read_cfg_reg(struct usb3813_info *info, u16 reg)
 	return val[1];
 }
 
+static int usb3813_host_enable(struct usb3813_info *info, bool enable)
+{
+	struct power_supply *usb_psy;
+
+	if (!info->enable_controller)
+		return 0;
+
+	usb_psy = power_supply_get_by_name("usb_host");
+	if (!usb_psy)
+		return -ENODEV;
+
+	if (enable)
+		power_supply_set_usb_otg(usb_psy, 1);
+	else
+		power_supply_set_usb_otg(usb_psy, 0);
+
+	power_supply_put(usb_psy);
+	return 0;
+}
+
 static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 {
 	if (enable == info->hub_enabled)
@@ -178,6 +200,7 @@ static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 	info->hub_enabled = enable;
 
 	if (info->hub_enabled) {
+		usb3813_host_enable(info, true);
 		if (clk_prepare_enable(info->hub_clk)) {
 			dev_err(info->dev, "%s: failed to prepare clock\n",
 				__func__);
@@ -189,6 +212,7 @@ static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 	} else {
 		gpio_set_value(info->hub_reset_n.gpio, 0);
 		clk_disable_unprepare(info->hub_clk);
+		usb3813_host_enable(info, false);
 	}
 
 	return 0;
@@ -471,6 +495,8 @@ static int usb3813_probe(struct i2c_client *client,
 		ret = PTR_ERR(info->hub_clk);
 		goto fail_gpio;
 	}
+
+	info->enable_controller = of_property_read_bool(np, "enable-usbhost");
 
 	INIT_DELAYED_WORK(&info->usb3813_attach_work, usb3813_attach_w);
 
