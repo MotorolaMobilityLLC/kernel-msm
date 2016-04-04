@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -82,6 +82,13 @@ enum msm_vfe_frame_skip_pattern {
 	EVERY_6FRAME,
 	EVERY_7FRAME,
 	EVERY_8FRAME,
+	EVERY_9FRAME,
+	EVERY_10FRAME,
+	EVERY_11FRAME,
+	EVERY_12FRAME,
+	EVERY_13FRAME,
+	EVERY_14FRAME,
+	EVERY_15FRAME,
 	EVERY_16FRAME,
 	EVERY_32FRAME,
 	SKIP_ALL,
