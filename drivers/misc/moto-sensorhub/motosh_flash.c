@@ -60,6 +60,7 @@
 #define WRITE_ACK_NACK_TRIES 10
 #define RESET_PULSE 20
 #define FLASHEN_I2C_DELAY 5
+#define FLASHEN_I2C_INC   25
 
 enum stm_command {
 	GET_VERSION = 0x01,
@@ -388,6 +389,7 @@ int switch_motosh_mode(enum stm_mode mode)
 		motosh_misc_data->pdata->bslen_pin_active_value;
 	int tries = COMMAND_RETRIES;
 	int err = 0;
+	int i2c_delay = FLASHEN_I2C_DELAY;
 
 	pdata = motosh_misc_data->pdata;
 
@@ -401,10 +403,12 @@ int switch_motosh_mode(enum stm_mode mode)
 		motosh_g_booted = 0;
 
 		motosh_misc_data->mode = mode;
-		dev_dbg(&motosh_misc_data->client->dev,
-			"Switching to boot mode\n");
 
 		while (tries) {
+			dev_info(&motosh_misc_data->client->dev,
+				 "Switching to boot mode - i2c delay: %d\n",
+				 i2c_delay);
+
 			/* Assert reset and flash enable and release */
 			gpio_set_value(pdata->gpio_reset, 0);
 			msleep(RESET_PULSE);
@@ -412,7 +416,8 @@ int switch_motosh_mode(enum stm_mode mode)
 				       (bslen_pin_active_value));
 			msleep(RESET_PULSE);
 			gpio_set_value(pdata->gpio_reset, 1);
-			msleep(FLASHEN_I2C_DELAY);
+			msleep(i2c_delay);
+			i2c_delay += FLASHEN_I2C_INC;
 
 			/* de-assert boot pin to reduce chance of collision
 			   with modemm authentication on P2B Clark - hardware
