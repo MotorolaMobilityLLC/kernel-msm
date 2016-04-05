@@ -9,3 +9,14 @@ Description:
 		automated testing or in situations, where other trigger methods
 		are not applicable. For example no RTC or spare GPIOs.
 		X is the IIO index of the trigger.
+
+What:		/sys/bus/iio/devices/triggerX/trigger_poll
+KernelVersion:	4.2.0
+Contact:	linux-iio@xxxxxxxxxxxxxxx
+Description:
+		This file is provided by the iio-trig-sysfs stand-alone trigger
+		driver. Writing this file with positive value (in milliseconds)
+		will start periodic event triggering of the driver, associated
+		with this trigger. Writing this file with 0 will stop perioding
+		triggering.
+		X is the IIO index of the trigger.
