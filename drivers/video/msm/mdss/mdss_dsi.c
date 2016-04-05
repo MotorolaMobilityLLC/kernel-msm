@@ -46,15 +46,6 @@ static int mdss_dsi_hndl_enable_te(struct mdss_dsi_ctrl_pdata *ctrl,
 	return 0;
 }
 
-static int mdss_dsi_hndl_enable_hbm(struct mdss_dsi_ctrl_pdata *ctrl,
-				int enable)
-{
-	int rc = 0;
-	if (ctrl->set_hbm)
-		rc = ctrl->set_hbm(ctrl, enable);
-	return rc;
-}
-
 static int mdss_dsi_labibb_vreg_init(struct platform_device *pdev)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -1682,10 +1673,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_DSI_PANEL_STATUS:
 		if (ctrl_pdata->check_status)
 			rc = ctrl_pdata->check_status(ctrl_pdata);
-		break;
-	case MDSS_EVENT_ENABLE_HBM:
-		rc = mdss_dsi_hndl_enable_hbm(ctrl_pdata,
-					(int)(unsigned long) arg);
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
