@@ -81,8 +81,7 @@ static int mmc_host_runtime_suspend(struct device *dev)
 		mmc_host_clk_hold(host);
 		host->cmdq_ops->enable(host);
 		mmc_host_clk_release(host);
-		ret = mmc_cmdq_halt(host, false);
-		if (ret) {
+		if (mmc_cmdq_halt(host, false)) {
 			pr_err("%s: halt: failed: %d\n", __func__, ret);
 			goto out;
 		}
