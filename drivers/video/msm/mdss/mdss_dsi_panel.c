@@ -1138,8 +1138,13 @@ static int mdss_dsi_parse_optional_dcs_cmds(struct device_node *np,
 	return rc;
 }
 
+static struct panel_param_val_map hbm_map[HBM_STATE_NUM] = {
+	{"0", "qcom,mdss-dsi-hbm-off-command"},
+	{"1", "qcom,mdss-dsi-hbm-on-command"},
+};
+
 static struct panel_param mdss_dsi_panel_param[PARAM_ID_NUM] = {
-	/* parameters to be added */
+	{"HBM", hbm_map, HBM_STATE_NUM, HBM_OFF_STATE, HBM_OFF_STATE, false},
 };
 
 static int mdss_panel_parse_param_prop(struct device_node *np,
