@@ -27,6 +27,7 @@ static DEFINE_MUTEX(list_lock);
 static struct mod_display_impl_data *mod_display_impl;
 static struct mod_display_comm_data *mod_display_comm;
 static int initialized;
+static int connected;
 
 /* External APIs */
 
@@ -186,6 +187,10 @@ int mod_display_notification(enum mod_display_notification event)
 				mod_display_impl->ops->data);
 
 		mod_display_impl = NULL;
+		if (connected)
+			pr_warn("%s: Received Unavailable while still connected\n",
+				__func__);
+		connected = 0;
 
 		break;
 	case MOD_NOTIFY_CONNECT:
@@ -195,9 +200,12 @@ int mod_display_notification(enum mod_display_notification event)
 			break;
 		}
 
-		if (mod_display_impl->ops->handle_connect)
-			mod_display_impl->ops->handle_connect(
-				mod_display_impl->ops->data);
+		if (mod_display_impl->ops->handle_connect) {
+			if (!mod_display_impl->ops->handle_connect(
+				mod_display_impl->ops->data))
+				connected = 1;
+		} else
+			connected = 1;
 
 		break;
 	case MOD_NOTIFY_DISCONNECT:
@@ -210,6 +218,8 @@ int mod_display_notification(enum mod_display_notification event)
 		if (mod_display_impl->ops->handle_disconnect)
 			mod_display_impl->ops->handle_disconnect(
 				mod_display_impl->ops->data);
+
+		connected = 0;
 
 		break;
 	case MOD_NOTIFY_FAILURE:
@@ -368,6 +378,8 @@ int mod_display_unregister_comm(struct mod_display_comm_data *comm)
 
 	if (mod_display_impl) {
 		pr_info("%s: Cleaning up a lost connection\n", __func__);
+		if (connected)
+			mod_display_notification(MOD_NOTIFY_DISCONNECT);
 		mod_display_notification(MOD_NOTIFY_UNAVAILABLE);
 	}
 
