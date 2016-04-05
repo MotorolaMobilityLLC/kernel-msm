@@ -39,6 +39,7 @@
 #ifdef CONFIG_SND_SOC_MARLEY
 #include "../codecs/marley.h"
 #include <linux/mfd/arizona/registers.h>
+#include "../codecs/aov_trigger.h"
 #endif
 #ifndef CONFIG_SND_SOC_MARLEY
 #include "../codecs/wsa881x.h"
@@ -3702,6 +3703,7 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_card *card = codec->component.card;
 
+	aov_trigger_init(codec);
 	ret = snd_soc_codec_set_pll(codec, MARLEY_FLL1_REFCLK,
 			ARIZONA_FLL_SRC_NONE,
 			0, 0);
@@ -3775,6 +3777,9 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX2");
 	snd_soc_dapm_ignore_suspend(dapm, "HPOUTL");
 	snd_soc_dapm_ignore_suspend(dapm, "HPOUTR");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP2 Virtual Output");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP3 Virtual Output");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP Virtual Input");
 
 	ret = snd_soc_add_codec_controls(codec, msm_snd_controls,
 		ARRAY_SIZE(msm_snd_controls));
@@ -3950,7 +3955,7 @@ static int msm8952_populate_dai_link_component_of_node(
 						"asoc-platform-names",
 						dai_link[i].platform_name);
 			if (index < 0) {
-				pr_debug("%s: No match found for platform name: %s\n",
+				pr_err("%s: No match found for platform name: %s\n",
 					__func__, dai_link[i].platform_name);
 				ret = index;
 				goto cpu_dai;
@@ -3975,7 +3980,7 @@ cpu_dai:
 						 "asoc-cpu-names",
 						 dai_link[i].cpu_dai_name);
 			if (index < 0) {
-				pr_debug("cpu-names not found index = %d\n", i);
+				pr_err("cpu-names %s not found index = %d\n", dai_link[i].cpu_dai_name, i);
 				goto codec_dai;
 			}
 			phandle = of_parse_phandle(cdev->of_node, "asoc-cpu",
