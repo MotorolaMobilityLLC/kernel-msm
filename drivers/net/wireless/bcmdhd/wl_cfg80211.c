@@ -7433,8 +7433,13 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 	int pno_freq_expo_max = PNO_FREQ_EXPO_MAX;
 	wlc_ssid_ext_t ssids_local[MAX_PFN_LIST_COUNT];
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
 	struct cfg80211_ssid *ssid = NULL;
 	struct cfg80211_ssid *hidden_ssid_list = NULL;
+	log_conn_event_t *event_data = NULL;
+	tlv_log *tlv_data = NULL;
+	u32 alloc_len;
+	u32 payload_len;
 	int ssid_cnt = 0;
 	int i;
 	int ret = 0;
@@ -7457,6 +7462,17 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 
 	if (request->n_ssids > 0)
 		hidden_ssid_list = request->ssids;
+
+	if (DBG_RING_ACTIVE(dhdp, DHD_EVENT_RING_ID)) {
+		alloc_len = sizeof(log_conn_event_t) + sizeof(tlv_log) +
+			DOT11_MAX_SSID_LEN;
+		event_data = MALLOC(dhdp->osh, alloc_len);
+		if (!event_data) {
+			WL_ERR(("%s: failed to allocate log_conn_event_t with "
+				"length(%d)\n", __func__, alloc_len));
+			return -ENOMEM;
+		}
+	}
 
 	for (i = 0; i < request->n_match_sets && ssid_cnt < MAX_PFN_LIST_COUNT; i++) {
 		ssid = &request->match_sets[i].ssid;
@@ -7485,29 +7501,66 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 		if ((ret = dhd_dev_pno_set_for_ssid(dev, ssids_local, ssid_cnt, pno_time,
 		        pno_repeat, pno_freq_expo_max, NULL, 0)) < 0) {
 			WL_ERR(("PNO setup failed!! ret=%d \n", ret));
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit;
 		}
+
+		if (DBG_RING_ACTIVE(dhdp, DHD_EVENT_RING_ID)) {
+			/*
+			 * XXX: purposefully logging here to make sure that
+			 * firmware configuration was successful
+			 */
+			for (i = 0; i < ssid_cnt; i++) {
+				payload_len = sizeof(log_conn_event_t);
+				memset(event_data, 0, alloc_len);
+				event_data->event = WIFI_EVENT_DRIVER_PNO_ADD;
+				tlv_data = event_data->tlvs;
+
+				/* ssid */
+				tlv_data->tag = WIFI_TAG_SSID;
+				tlv_data->len = ssids_local[i].SSID_len;
+				memcpy(tlv_data->value, ssids_local[i].SSID,
+					ssids_local[i].SSID_len);
+				payload_len += TLV_LOG_SIZE(tlv_data);
+
+				dhd_os_push_push_ring_data(dhdp, DHD_EVENT_RING_ID,
+					event_data, payload_len);
+			}
+		}
+
 		spin_lock_irqsave(&cfg->cfgdrv_lock, flags);
 		cfg->sched_scan_req = request;
 		spin_unlock_irqrestore(&cfg->cfgdrv_lock, flags);
 	} else {
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 
-	return 0;
+exit:
+	if (event_data) {
+		MFREE(dhdp->osh, event_data, alloc_len);
+	}
+	return ret;
 }
 
 static int
 wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev)
 {
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+	dhd_pub_t *dhdp = (dhd_pub_t *)(cfg->pub);
 	unsigned long flags;
 
 	WL_DBG(("Enter \n"));
 	WL_ERR((">>> SCHED SCAN STOP\n"));
 
-	if (dhd_dev_pno_stop_for_ssid(dev) < 0)
+	if (dhd_dev_pno_stop_for_ssid(dev) < 0) {
 		WL_ERR(("PNO Stop for SSID failed"));
+	} else {
+		/*
+		 * XXX: purposefully logging here to make sure that
+		 * firmware configuration was successful
+		 */
+		DBG_EVENT_LOG(dhdp, WIFI_EVENT_DRIVER_PNO_REMOVE);
+	}
 
 	if (cfg->scan_request && cfg->sched_scan_running) {
 		WL_PNO((">>> Sched scan running. Aborting it..\n"));
