@@ -920,9 +920,6 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	if (ctrl->set_hbm)
 		ctrl->set_hbm(ctrl, 0);
 
-	if (ctrl->set_acl)
-		ctrl->set_acl(ctrl, 1);
-
 	if (!ctrl->ndx && pdata->mfd->quickdraw_in_progress)
 		pr_debug("%s: in quickdraw, SH wants the panel SLEEP OUT\n",
 			__func__);
@@ -1779,64 +1776,6 @@ int mdss_dsi_panel_set_hbm(struct mdss_dsi_ctrl_pdata *ctrl, int state)
 	return 0;
 }
 
-static int mdss_panel_parse_acl(struct device_node *np,
-				struct mdss_panel_info *pinfo,
-				struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	int rc;
-	const char *data;
-
-	/* Default ACL feature to on */
-	pinfo->acl_state = 1;	/* TODO.. Do I have make it configureable */
-	pinfo->acl_feature_enabled = 0;
-
-	data = of_get_property(np, "qcom,mdss-dsi-acl-on-command", NULL);
-	if (!data)
-		return 0;
-
-	rc = mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->acl_on_cmds,
-					"qcom,mdss-dsi-acl-on-command", NULL);
-	if (rc) {
-		pr_err("%s : Failed parsing ACL on commands, rc = %d\n",
-								__func__, rc);
-		return rc;
-	}
-
-	rc = mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->acl_off_cmds,
-					"qcom,mdss-dsi-acl-off-command", NULL);
-	if (rc) {
-		pr_err("%s : Failed parsing ACL off commands, rc = %d\n",
-								__func__, rc);
-		return rc;
-	}
-	pinfo->acl_feature_enabled = 1;
-
-	return 0;
-}
-
-int mdss_dsi_panel_set_acl(struct mdss_dsi_ctrl_pdata *ctrl, int state)
-{
-	if (!ctrl->panel_data.panel_info.acl_feature_enabled) {
-		pr_debug("%s: ACL is disabled, ignore request\n", __func__);
-		return 0;
-	}
-
-	if (ctrl->panel_data.panel_info.acl_state == state) {
-		pr_debug("%s: ACL already in request state %d\n",
-							__func__, state);
-		return 0;
-	}
-
-	if (state)
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->acl_on_cmds);
-	else
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->acl_off_cmds);
-
-	ctrl->panel_data.panel_info.acl_state = state;
-
-	return 0;
-}
-
 static int mdss_panel_parse_dt(struct device_node *np,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -2190,11 +2129,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		goto error;
 	}
 
-	if (mdss_panel_parse_acl(np, pinfo, ctrl_pdata)) {
-		pr_err("%s: Error parsing ACL\n", __func__);
-		goto error;
-	}
-
 	ctrl_pdata->sh_control_enabled = of_property_read_bool(np,
 						"mmi,sh-control-enabled");
 	pr_info("%s: MMI SH control %s\n", __func__,
@@ -2409,7 +2343,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 	ctrl_pdata->set_hbm = mdss_dsi_panel_set_hbm;
-	ctrl_pdata->set_acl = mdss_dsi_panel_set_acl;
 
 	return 0;
 }
