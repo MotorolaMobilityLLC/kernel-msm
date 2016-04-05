@@ -87,7 +87,7 @@
 #ifdef CONFIG_SND_SOC_MARLEY
 #define FLL_RATE_MARLEY 294912000
 #define MARLEY_SYSCLK_RATE (FLL_RATE_MARLEY / 3)
-#define DSPCLK_RATE (FLL_RATE_MARLEY / 2)
+#define MARLEY_DSPCLK_RATE (FLL_RATE_MARLEY / 2)
 #define CS35L34_MCLK_RATE 6144000
 #endif
 
@@ -3725,6 +3725,14 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 		SND_SOC_CLOCK_IN);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
+		return ret;
+	}
+
+	ret = snd_soc_codec_set_sysclk(codec, ARIZONA_CLK_DSPCLK,
+		ARIZONA_CLK_SRC_FLL1, MARLEY_DSPCLK_RATE,
+		SND_SOC_CLOCK_IN);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set DSPCLK %d\n", ret);
 		return ret;
 	}
 
