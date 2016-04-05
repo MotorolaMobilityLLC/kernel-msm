@@ -1701,11 +1701,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		rc = mdss_dsi_hndl_enable_acl(ctrl_pdata,
 					(int)(unsigned long) arg);
 		break;
-	case MDSS_EVENT_SET_CABC:
-		if (ctrl_pdata->set_cabc)
-			rc = ctrl_pdata->set_cabc(ctrl_pdata,
-					(int)(unsigned long)arg);
-		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;
