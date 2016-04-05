@@ -40,3 +40,14 @@ Description:
 		associated file, representing the id of the trigger that needs
 		to be removed. If the trigger can't be found, an invalid
 		argument message will be returned to the user.
+
+What:		/sys/bus/iio/devices/triggerX/trigger_poll
+KernelVersion:	4.2.0
+Contact:	linux-iio@xxxxxxxxxxxxxxx
+Description:
+		This file is provided by the iio-trig-sysfs stand-alone trigger
+		driver. Writing this file with positive value (in milliseconds)
+		will start periodic event triggering of the driver, associated
+		with this trigger. Writing this file with 0 will stop perioding
+		triggering.
+		X is the IIO index of the trigger.
