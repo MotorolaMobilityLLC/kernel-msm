@@ -18,6 +18,8 @@
 struct iio_sysfs_trig {
 	struct iio_trigger *trig;
 	struct irq_work work;
+	struct delayed_work poll_work;
+	unsigned int poll_interval; /* msec */
 	int id;
 	struct list_head l;
 };
@@ -110,10 +112,63 @@ static ssize_t iio_sysfs_trigger_poll(struct device *dev,
 	return count;
 }
 
+static void iio_sysfs_trigger_queue_poll_work(struct iio_sysfs_trig *trig)
+{
+	unsigned long delay;
+
+	delay = msecs_to_jiffies(trig->poll_interval);
+	if (delay >= HZ)
+		delay = round_jiffies_relative(delay);
+
+	queue_delayed_work(system_freezable_wq, &trig->poll_work, delay);
+}
+
+static void iio_sysfs_trigger_poll_work(struct work_struct *work)
+{
+	struct iio_sysfs_trig *trig = container_of(work, struct iio_sysfs_trig,
+						   poll_work.work);
+
+	irq_work_queue(&trig->work);
+	iio_sysfs_trigger_queue_poll_work(trig);
+}
+
+static ssize_t iio_sysfs_trigger_get_poll(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct iio_trigger *trig = to_iio_trigger(dev);
+	struct iio_sysfs_trig *sysfs_trig = iio_trigger_get_drvdata(trig);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", sysfs_trig->poll_interval);
+}
+
+static ssize_t iio_sysfs_trigger_set_poll(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct iio_trigger *trig = to_iio_trigger(dev);
+	struct iio_sysfs_trig *sysfs_trig = iio_trigger_get_drvdata(trig);
+	unsigned int interval;
+	int err;
+
+	err = kstrtouint(buf, 0, &interval);
+	if (err)
+		return err;
+
+	sysfs_trig->poll_interval = interval;
+
+	cancel_delayed_work_sync(&sysfs_trig->poll_work);
+	if (sysfs_trig->poll_interval > 0)
+		iio_sysfs_trigger_queue_poll_work(sysfs_trig);
+
+	return count;
+}
+
 static DEVICE_ATTR(trigger_now, S_IWUSR, NULL, iio_sysfs_trigger_poll);
+static DEVICE_ATTR(trigger_poll, S_IRUGO | S_IWUSR, iio_sysfs_trigger_get_poll,
+						    iio_sysfs_trigger_set_poll);
 
 static struct attribute *iio_sysfs_trigger_attrs[] = {
 	&dev_attr_trigger_now.attr,
+	&dev_attr_trigger_poll.attr,
 	NULL,
 };
 
@@ -163,6 +218,7 @@ static int iio_sysfs_trigger_probe(int id)
 	iio_trigger_set_drvdata(t->trig, t);
 
 	init_irq_work(&t->work, iio_sysfs_trigger_work);
+	INIT_DELAYED_WORK(&t->poll_work, iio_sysfs_trigger_poll_work);
 
 	ret = iio_trigger_register(t->trig);
 	if (ret)
@@ -195,6 +251,8 @@ static int iio_sysfs_trigger_remove(int id)
 		mutex_unlock(&iio_sysfs_trig_list_mut);
 		return -EINVAL;
 	}
+
+	cancel_delayed_work_sync(&t->poll_work);
 
 	iio_trigger_unregister(t->trig);
 	iio_trigger_free(t->trig);
