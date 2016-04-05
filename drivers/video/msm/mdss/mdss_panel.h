@@ -32,6 +32,23 @@ struct panel_id {
 /* worst case prefill lines for all chipsets including all vertical blank */
 #define MDSS_MDP_MAX_PREFILL_FETCH 25
 
+enum panel_param_id {
+	PARAM_ID_NUM = 0,
+};
+
+struct panel_param_val_map {
+	char *name;
+	char *prop;
+};
+
+struct panel_param {
+	char *param_name;
+	struct panel_param_val_map *val_map;
+	u16 val_max;
+	u16 value;
+	bool is_supported;
+};
+
 /* panel type list */
 #define NO_PANEL		0xffff	/* No Panel */
 #define MDDI_PANEL		1	/* MDDI */
@@ -475,6 +492,7 @@ struct mdss_panel_info {
 
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;
+	struct panel_param *param[PARAM_ID_NUM];
 };
 
 struct mdss_panel_timing {
@@ -507,6 +525,8 @@ struct mdss_panel_timing {
 struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
+	int (*set_param)(struct mdss_panel_data *pdata,
+		u16 id, u16 value, bool sent_cmd);
 	unsigned char *mmss_cc_base;
 
 	/**
@@ -762,4 +782,15 @@ static inline struct mdss_panel_timing *mdss_panel_get_timing_by_name(
 		struct mdss_panel_data *pdata,
 		const char *name) { return NULL; };
 #endif
+
+static inline bool mdss_panel_param_is_supported(struct mdss_panel_info *p,
+	u16 id)
+{
+	if (id < PARAM_ID_NUM && p && p->param[id] &&
+		p->param[id]->is_supported)
+		return true;
+
+	return false;
+};
+
 #endif /* MDSS_PANEL_H */
