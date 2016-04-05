@@ -1659,7 +1659,9 @@ static inline int venus_hfi_power_off(struct venus_hfi_device *device)
 
 	dprintk(VIDC_DBG, "Entering power collapse\n");
 
-	pm_qos_remove_request(&device->qos);
+        if (device->res->pm_qos_latency_us &&
+                pm_qos_request_active(&device->qos))
+		pm_qos_remove_request(&device->qos);
 	rc = venus_hfi_tzbsp_set_video_state(TZBSP_VIDEO_STATE_SUSPEND);
 	if (rc) {
 		dprintk(VIDC_WARN, "Failed to suspend video core %d\n", rc);
@@ -1803,9 +1805,15 @@ static inline int venus_hfi_power_on(struct venus_hfi_device *device)
 	}
 
 	device->power_enabled = true;
-	if(device->res->pm_qos_latency_us)
+
+	if(device->res->pm_qos_latency_us) {
+#ifdef CONFIG_SMP
+                device->qos.type = PM_QOS_REQ_AFFINE_IRQ;
+                device->qos.irq = device->hal_data->irq;
+#endif
 		pm_qos_add_request(&device->qos, PM_QOS_CPU_DMA_LATENCY,
 					device->res->pm_qos_latency_us);
+	}
 
 	dprintk(VIDC_INFO, "Resumed from power collapse\n");
 	return rc;
@@ -2623,9 +2631,14 @@ static int venus_hfi_core_init(void *device)
 	if (rc || venus_hfi_iface_cmdq_write(dev, &version_pkt))
 		dprintk(VIDC_WARN, "Failed to send image version pkt to f/w\n");
 
-	if (dev->res->pm_qos_latency_us)
+	if (dev->res->pm_qos_latency_us) {
+#ifdef CONFIG_SMP
+		dev->qos.type = PM_QOS_REQ_AFFINE_IRQ;
+		dev->qos.irq = dev->hal_data->irq;
+#endif
 		pm_qos_add_request(&dev->qos, PM_QOS_CPU_DMA_LATENCY,
 				dev->res->pm_qos_latency_us);
+	}
 
 	return rc;
 err_core_init:
@@ -2672,7 +2685,11 @@ static int venus_hfi_core_release(void *device)
 		dev->intr_status = 0;
 	}
 
-	pm_qos_remove_request(&dev->qos);
+
+	if (dev->res->pm_qos_latency_us &&
+                pm_qos_request_active(&dev->qos))
+		pm_qos_remove_request(&dev->qos);
+
 	venus_hfi_set_state(dev, VENUS_STATE_DEINIT);
 
 	dprintk(VIDC_INFO, "HAL exited\n");
