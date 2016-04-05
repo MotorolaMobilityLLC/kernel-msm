@@ -396,7 +396,6 @@ struct mdss_panel_info {
 	bool ulps_suspend_enabled;
 	bool panel_ack_disabled;
 	bool esd_check_enabled;
-	bool panel_status_generic_read_enabled;
 	bool bklt_dcs_12bits_enabled;
 	char dfps_update;
 	int new_fps;
