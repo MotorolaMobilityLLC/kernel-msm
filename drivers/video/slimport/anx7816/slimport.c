@@ -1541,6 +1541,14 @@ static int slimport_mod_display_handle_connect(void *data)
 		pm_qos_add_request(&anx7816->pdata->slimport_pm_qos_request,
 			PM_QOS_CPU_DMA_LATENCY, anx7816->pdata->qos_latency);
 
+	if (anx7816->pdata->cbl_det_hpd_support &&
+	    gpio_get_value(anx7816->pdata->gpio_cbl_det)) {
+		pr_err("%s: Cable Detect already high... Power cycle 7816 to reset\n",
+			__func__);
+		sp_tx_hardware_poweron();
+		sp_tx_hardware_powerdown();
+	}
+
 #ifdef MML_DYNAMIC_IRQ_SUPPORT
 	anx7816_enable_irq(1);
 #endif
