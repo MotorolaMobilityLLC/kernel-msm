@@ -55,16 +55,6 @@ static int mdss_dsi_hndl_enable_hbm(struct mdss_dsi_ctrl_pdata *ctrl,
 	return rc;
 }
 
-static int mdss_dsi_hndl_enable_acl(struct mdss_dsi_ctrl_pdata *ctrl,
-				int enable)
-{
-	int rc = 0;
-	if (ctrl->set_acl)
-		rc = ctrl->set_acl(ctrl, enable);
-	return rc;
-}
-
-
 static int mdss_dsi_labibb_vreg_init(struct platform_device *pdev)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -1695,10 +1685,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_ENABLE_HBM:
 		rc = mdss_dsi_hndl_enable_hbm(ctrl_pdata,
-					(int)(unsigned long) arg);
-		break;
-	case MDSS_EVENT_ENABLE_ACL:
-		rc = mdss_dsi_hndl_enable_acl(ctrl_pdata,
 					(int)(unsigned long) arg);
 		break;
 	default:
