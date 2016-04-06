@@ -883,6 +883,10 @@
 		mmi,wake-deassert-seq = <5 1 0>;
 		mmi,flash-start-seq = <0 1 11>;
 		mmi,flash-end-seq = <0 0 0>;
+		mmi,apba-unipro-mid = <0x00000126>;
+		mmi,apba-unipro-pid = <0x00001001>;
+		mmi,apba-ara-vid = <0xfed70128>;
+		mmi,apba-ara-pid = <0xffff0001>;
 
 		transports {
 			#address-cells = <1>;
