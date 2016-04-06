@@ -90,6 +90,8 @@ qcom,camera@0 {
 	fci_dtv: fc8180@0 {
 		isdbt_ant-supply = <&pm8916_l18>;
 		qcom,ant-min-max-voltage = <2700000 2700000>;
+		qcom,bbm-xtal-freq = <37400>;
+		qcom,using-pmic = <0>;
 	};
 };
 &i2c_4 { /* BLSP1 QUP4 on evb */
