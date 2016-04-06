@@ -85,6 +85,8 @@
 #define SLOW_NO_MOTION_INTERRUPT    REL_Y
 #define REL_TIME_SEC		REL_RX
 #define REL_TIME_NSEC	REL_RY
+#define REL_FLUSH	REL_RZ
+#define REL_INT_FLUSH	REL_X
 
 #define HIGH_G_INTERRUPT_X_HAPPENED                 1
 #define HIGH_G_INTERRUPT_Y_HAPPENED                 2
@@ -1441,6 +1443,7 @@ struct bma25x_data {
 	atomic_t flat_flag;
 	atomic_t flat_sign;
 	int mEnabled;
+	int flat_threshold;
 #endif
 
 	int ref_count;
@@ -2239,7 +2242,7 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 
 	if (TEST_BIT(FlatUp, newstatus) &&
 			!TEST_BIT(FlatUp, bma25x->mEnabled)) {
-		if (acc.z > 962) {
+		if (acc.z > bma25x->flat_threshold) {
 			dev_err(&bma25x->bma25x_client->dev,
 				"first flat up interrupt happened\n");
 			input_report_abs(bma25x->dev_interrupt,
@@ -2255,7 +2258,7 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 	}
 	if (TEST_BIT(FlatDown, newstatus) &&
 			!TEST_BIT(FlatDown, bma25x->mEnabled)) {
-		if (acc.z < -962) {
+		if (acc.z < (-1 * bma25x->flat_threshold)) {
 			dev_err(&bma25x->bma25x_client->dev,
 				"first flat down interrupt happened\n");
 			input_report_abs(bma25x->dev_interrupt,
@@ -2270,7 +2273,7 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 		}
 	}
 	if (newstatus) {
-		if (abs(acc.z) > 962) {
+		if (abs(acc.z) >  bma25x->flat_threshold) {
 			atomic_set(&bma25x->flat_sign, 1);
 			bma25x_set_flat_hold_time(bma25x->bma25x_client, 0x00);
 		} else {
@@ -2350,6 +2353,28 @@ static int bma25x_cdev_poll_delay(struct sensors_classdev *sensors_cdev,
 	atomic_set(&data->delay, (unsigned int) delay_ms);
 
 	return 0;
+}
+
+static ssize_t bma25x_flush_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned long data;
+	int error;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma25x_data *bma25x = i2c_get_clientdata(client);
+
+	error = kstrtoul(buf, 10, &data);
+	if (error)
+		return error;
+	if (1 == data) {
+		input_report_rel(bma25x->input, REL_FLUSH, -1);
+		input_sync(bma25x->input);
+	} else if (2 == data) {
+		input_report_rel(bma25x->dev_interrupt, REL_INT_FLUSH, -1);
+		input_sync(bma25x->dev_interrupt);
+	}
+
+	return count;
 }
 
 static ssize_t bma25x_range_show(struct device *dev,
@@ -2512,21 +2537,74 @@ static ssize_t bma25x_value_show(struct device *dev,
 
 static ssize_t bma25x_debug_reg_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
+
 {
+	ssize_t len = 0;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma25x_data *bma25x = i2c_get_clientdata(client);
 	int i = 0;
 	unsigned char data = 0;
-	int err = 0;
 
-	for (i = 0; i < 0x3F; ++i) {
-		err = bma25x_smbus_read_byte(bma25x->bma25x_client, i, &data);
-		dev_err(&bma25x->bma25x_client->dev,
-			"Reg 0x%x = 0x%x\n",  i, data);
+	if (!bma25x) {
+		dev_err(dev, "bma25x_data is null!!\n");
+		return 0;
 	}
-	return snprintf(buf, PAGE_SIZE, "%d\n", atomic_read(&bma25x->enable));
+	for (i = 0; i < 0x3F; ++i) {
+		bma25x_smbus_read_byte(bma25x->bma25x_client, i, &data);
+		len += snprintf(buf+len, PAGE_SIZE-len,
+			"reg=0x%x value = 0x%x\n", i, data);
+	}
+	return len;
+}
+
+static int bma25x_set_reg_vaule(struct bma25x_data *bma25x,
+		unsigned char reg_ddr, unsigned char databuf)
+{
+	int err = 0;
+	err = bma25x_smbus_write_byte(bma25x->bma25x_client,
+		reg_ddr, &databuf);
+	return err;
+}
+
+static ssize_t bma25x_debug_reg_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma25x_data *bma25x = i2c_get_clientdata(client);
+	int  reg = 0;
+	int data = 0;
+	int ret = 0;
+	ret = sscanf(buf, "%x,%x", &reg, &data);
+	dev_err(dev, "reg=0x%x, data=0x%x ret=%d", reg, data, ret);
+	bma25x_set_reg_vaule(bma25x, (unsigned char)reg, (unsigned char)data);
+	return count;
 }
 #ifdef BMA25X_ENABLE_INT1
+static ssize_t bma25x_flat_threshold_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma25x_data *bma25x = i2c_get_clientdata(client);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", bma25x->flat_threshold);
+}
+
+static ssize_t bma25x_flat_threshold_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned long data;
+	int error;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma25x_data *bma25x = i2c_get_clientdata(client);
+
+	error = kstrtoul(buf, 10, &data);
+	if (error)
+		return error;
+	bma25x->flat_threshold = data;
+
+	return count;
+}
+
 static ssize_t bma25x_int_mode_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -2553,6 +2631,8 @@ static ssize_t bma25x_int_mode_store(struct device *dev,
 	return count;
 }
 #endif
+static DEVICE_ATTR(flush, S_IWUSR|S_IWGRP|S_IRUGO,
+		NULL, bma25x_flush_store);
 static DEVICE_ATTR(range, S_IWUSR|S_IWGRP|S_IRUGO,
 		bma25x_range_show, bma25x_range_store);
 static DEVICE_ATTR(bandwidth, S_IWUSR|S_IWGRP|S_IRUGO,
@@ -2562,12 +2642,16 @@ static DEVICE_ATTR(delay, S_IWUSR|S_IWGRP|S_IRUGO,
 static DEVICE_ATTR(enable, S_IWUSR|S_IWGRP|S_IRUGO,
 		bma25x_enable_show, bma25x_enable_store);
 static DEVICE_ATTR(value, S_IRUGO,  bma25x_value_show, NULL);
-static DEVICE_ATTR(debug_reg,  S_IRUGO, bma25x_debug_reg_show, NULL);
+static DEVICE_ATTR(debug_reg, S_IWUSR|S_IWGRP|S_IRUGO,
+		bma25x_debug_reg_show, bma25x_debug_reg_store);
 #ifdef BMA25X_ENABLE_INT1
+static DEVICE_ATTR(flat_threshold, S_IWUSR|S_IWGRP|S_IRUGO,
+		bma25x_flat_threshold_show, bma25x_flat_threshold_store);
 static DEVICE_ATTR(int_mode, S_IWUSR|S_IWGRP|S_IRUGO,
 		bma25x_int_mode_show, bma25x_int_mode_store);
 #endif
 static struct attribute *bma25x_attributes[] = {
+	&dev_attr_flush.attr,
 	&dev_attr_range.attr,
 	&dev_attr_bandwidth.attr,
 	&dev_attr_delay.attr,
@@ -2575,6 +2659,7 @@ static struct attribute *bma25x_attributes[] = {
 	&dev_attr_value.attr,
 	&dev_attr_debug_reg.attr,
 #ifdef BMA25X_ENABLE_INT1
+	&dev_attr_flat_threshold.attr,
 	&dev_attr_int_mode.attr,
 #endif
 	NULL
@@ -2595,9 +2680,6 @@ static int bma25x_power_ctl(struct bma25x_data *data, bool on)
 				"Regulator vdd disable failed ret=%d\n", ret);
 			return ret;
 		}
-		dev_err(&data->bma25x_client->dev,
-			"bma25x_power_ctl entry222!!\n");
-
 		ret = regulator_disable(data->vio);
 		if (ret) {
 			dev_err(&data->bma25x_client->dev,
@@ -2815,6 +2897,8 @@ static void bma25x_int1_irq_work_func(struct work_struct *work)
 				    &sign_value);
 		bma25x_read_accel_xyz(data->bma25x_client,
 				data->sensor_type, &acc);
+		dev_info(&data->bma25x_client->dev,
+			"flat interrupt acc.z=%d\n", acc.z);
 		if (TEST_BIT(FlatUp, data->mEnabled) && (acc.z > 0)) {
 			if (sign_value == 1) {
 				dev_err(&data->bma25x_client->dev, "flat up interrupt happened\n");
@@ -3425,6 +3509,7 @@ static int bma25x_probe(struct i2c_client *client,
 	input_set_abs_params(dev, ABS_Z, ABSMIN, ABSMAX, 0, 0);
 	input_set_capability(dev, EV_REL, REL_TIME_SEC);
 	input_set_capability(dev, EV_REL, REL_TIME_NSEC);
+	input_set_capability(dev, EV_REL, REL_FLUSH);
 	input_set_drvdata(dev, data);
 	err = input_register_device(dev);
 	if (err < 0) {
@@ -3441,6 +3526,8 @@ static int bma25x_probe(struct i2c_client *client,
 		ORIENT_INTERRUPT);
 	input_set_capability(dev_interrupt, EV_ABS,
 		FLAT_INTERRUPT);
+	input_set_capability(dev_interrupt, EV_REL,
+		REL_INT_FLUSH);
 	input_set_drvdata(dev_interrupt, data);
 	err = input_register_device(dev_interrupt);
 	if (err < 0)
@@ -3473,6 +3560,7 @@ static int bma25x_probe(struct i2c_client *client,
 	data->fifo_datasel = 0;
 	data->fifo_count = 0;
 #ifdef BMA25X_ENABLE_INT1
+	data->flat_threshold = 962;
 	data->mEnabled = 0;
 	atomic_set(&data->flat_flag, 0);
 	atomic_set(&data->flat_sign, 0);
