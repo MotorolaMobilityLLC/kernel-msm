@@ -150,6 +150,7 @@
 			gpio-labels = "gpio_hub_reset_n";
 			clock-names = "hub_clk";
 			clocks = <&clock_gcc clk_bb_clk2_a>;
+			switch-usbhost;
 		};
 	};
 
