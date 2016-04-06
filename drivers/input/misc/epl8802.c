@@ -2667,6 +2667,31 @@ static ssize_t epl_sensor_store_delay_ms(struct device *dev, struct device_attri
 	return count;
 }
 
+static ssize_t epl_sensor_store_flush(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct epl_sensor_priv *epld = epl_sensor_obj;
+	uint16_t value = 0;
+	int ret = 0;
+
+	LOG_FUN();
+
+	ret = sscanf(buf, "%hu", &value);
+	if (ret != 1)
+		return -EINVAL;
+	switch (value) {
+	case 1:
+		input_report_rel(epld->ps_input_dev, REL_Y, -1);
+		input_sync(epld->ps_input_dev);
+		break;
+	case 2:
+		input_report_rel(epld->als_input_dev, REL_Z, -1);
+		input_sync(epld->als_input_dev);
+		break;
+	}
+	return count;
+}
+
 /*----------------------------------------------------------------------------*/
 /*CTS --> S_IWUSR | S_IRUGO*/
 static DEVICE_ATTR(elan_status, S_IRUGO,
@@ -2736,6 +2761,8 @@ static DEVICE_ATTR(near, S_IRUGO,
 			epl_sensor_show_near, NULL);
 static DEVICE_ATTR(als_lux, S_IRUGO,
 			epl_sensor_show_als_lux, NULL);
+static DEVICE_ATTR(flush, S_IWUSR | S_IRUGO,
+			NULL, epl_sensor_store_flush);
 /*----------------------------------------------------------------------------*/
 static struct attribute *epl_sensor_attr_list[] = {
 	&dev_attr_elan_status.attr,
@@ -2770,6 +2797,7 @@ static struct attribute *epl_sensor_attr_list[] = {
 	&dev_attr_set_delay_ms.attr,
 	&dev_attr_near.attr,
 	&dev_attr_als_lux.attr,
+	&dev_attr_flush.attr,
 	NULL,
 };
 /*----------------------------------------------------------------------------*/
@@ -3098,6 +3126,7 @@ static int epl_sensor_setup_lsensor(struct epl_sensor_priv *epld)
 	input_set_abs_params(epld->als_input_dev, ABS_MISC, 0, 9, 0, 0);
 	input_set_capability(epld->als_input_dev, EV_REL, SYN_TIME_SEC);
 	input_set_capability(epld->als_input_dev, EV_REL, SYN_TIME_NSEC);
+	input_set_capability(epld->als_input_dev, EV_REL, REL_Z);
 
 	err = input_register_device(epld->als_input_dev);
 	if (err < 0) {
@@ -3189,6 +3218,7 @@ static int epl_sensor_setup_psensor(struct epl_sensor_priv *epld)
 	input_set_capability(epld->ps_input_dev, EV_REL, SYN_TIME_SEC);
 	input_set_capability(epld->ps_input_dev, EV_REL, SYN_TIME_NSEC);
 	input_set_capability(epld->ps_input_dev, EV_REL, REL_X);
+	input_set_capability(epld->ps_input_dev, EV_REL, REL_Y);
 #if SPREAD
 	set_bit(EV_ABS, epld->ps_input_dev->evbit);
 	input_set_abs_params(epld->ps_input_dev, ABS_MISC, 0, 9, 0, 0);
