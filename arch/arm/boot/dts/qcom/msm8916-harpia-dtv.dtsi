@@ -61,7 +61,8 @@
 		isdbt_ant-supply = <&pm8916_l17>;
 		qcom,vdd-min-max-voltage = <1800000 1800000>;
 		qcom,ant-min-max-voltage = <2850000 2850000>;
-		qcom,bbm-xtal-freq = <37400>;
+		qcom,bbm-xtal-freq = <19200>;
+		qcom,using-pmic = <1>;
 	};
 };
 

@@ -49,3 +49,10 @@
 		epl,ps_rs = <0>;
 	};
 };
+/* DTV use external 37.4M XTAL on DVT1  */
+&spi_5 {
+	fci_dtv: fc8180@0 {
+		qcom,bbm-xtal-freq = <37400>;
+		qcom,using-pmic = <0>;
+	};
+};
