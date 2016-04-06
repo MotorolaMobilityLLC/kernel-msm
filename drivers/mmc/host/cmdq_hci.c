@@ -516,6 +516,7 @@ static void cmdq_prep_task_desc(struct mmc_request *mrq,
 {
 	struct mmc_cmdq_req *cmdq_req = mrq->cmdq_req;
 	u32 req_flags = cmdq_req->cmdq_req_flags;
+	unsigned long flags;
 
 	pr_debug("%s: %s: data-tag: 0x%08x - dir: %d - prio: %d - cnt: 0x%08x -	addr: 0x%llx\n",
 		 mmc_hostname(mrq->host), __func__,
@@ -523,6 +524,7 @@ static void cmdq_prep_task_desc(struct mmc_request *mrq,
 		 !!(req_flags & PRIO), cmdq_req->data.blocks,
 		 (u64)mrq->cmdq_req->blk_addr);
 
+	local_irq_save(flags);
 	*data = VALID(1) |
 		END(1) |
 		INT(intr) |
@@ -542,6 +544,9 @@ static void cmdq_prep_task_desc(struct mmc_request *mrq,
 		lower_32_bits(*data),
 		upper_32_bits(*data),
 		mrq->cmdq_req->data.blocks);
+
+	mb();
+	local_irq_restore(flags);
 }
 
 static int cmdq_dma_map(struct mmc_host *host, struct mmc_request *mrq)
@@ -568,6 +573,9 @@ static void cmdq_set_tran_desc(u8 *desc, dma_addr_t addr, int len,
 				bool end, bool is_dma64)
 {
 	__le32 *attr = (__le32 __force *)desc;
+	unsigned long flags;
+
+	local_irq_save(flags);
 
 	*attr = (VALID(1) |
 		 END(end ? 1 : 0) |
@@ -584,6 +592,9 @@ static void cmdq_set_tran_desc(u8 *desc, dma_addr_t addr, int len,
 
 		dataddr[0] = cpu_to_le32(addr);
 	}
+
+	mb();
+	local_irq_restore(flags);
 }
 
 static int cmdq_prep_tran_desc(struct mmc_request *mrq,
