@@ -36,6 +36,7 @@ static char const *ospl2xx_ext_config_tables[] = {
 	"opalum.tx.ext.config.2",
 };
 
+static int ext_config_loaded;
 static const struct firmware
 		*ospl2xx_config[ARRAY_SIZE(ospl2xx_ext_config_tables)];
 
@@ -48,7 +49,7 @@ static void ospl2xx_config_print(int i, char const *firmware, int size)
 		config[size] = '\0';
 		pr_debug("index[%d] size[%d] config[%s]\n", i, size, config);
 	} else {
-		pr_err("%s: can't find ospl external configs\n", __func__);
+		pr_debug("%s: can't find ospl external configs\n", __func__);
 	}
 }
 
@@ -62,7 +63,7 @@ static void ospl2xx_load_config(struct work_struct *work)
 	struct arizona *arizona = priv->arizona;
 
 	if (arizona == NULL) {
-		pr_err("%s: can't load external configuration\n", __func__);
+		pr_debug("%s: can't load external configuration\n", __func__);
 		return;
 	}
 
@@ -73,12 +74,13 @@ static void ospl2xx_load_config(struct work_struct *work)
 		if (ret ||
 		    ospl2xx_config[i]->data == NULL ||
 		    ospl2xx_config[i]->size <= 0) {
-			pr_err("failed to load config[%d], ret=%d\n", i, ret);
+			pr_debug("failed to load config[%d], ret=%d\n", i, ret);
 		} else {
 			pr_debug("loading external configuration %s\n",
 				ospl2xx_ext_config_tables[i]);
 			ospl2xx_config_print(i, ospl2xx_config[i]->data,
 						ospl2xx_config[i]->size);
+			ext_config_loaded = 1;
 		}
 	}
 	mutex_unlock(&lr_lock);
@@ -457,6 +459,8 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 #define NUM_RX_CONFIGS 3
 static int ext_rxconfig;
 static int ext_txconfig = NUM_RX_CONFIGS;
+static int int_rxconfig;
+static int int_txconfig;
 
 static int ospl2xx_update_rx_ext_config(void)
 {
@@ -522,6 +526,28 @@ static int ospl2xx_update_tx_ext_config(void)
 
 error_return:
 	kfree(config);
+	return 0;
+}
+
+static int ospl2xx_update_rx_int_config(void)
+{
+	pr_debug("%s: set configuration index = %d\n",
+		__func__, int_rxconfig);
+
+	ospl2xx_afe_set_single_param(
+		PARAM_ID_OPALUM_RX_SET_USE_CASE, int_rxconfig);
+
+	return 0;
+}
+
+static int ospl2xx_update_tx_int_config(void)
+{
+	pr_debug("%s: set configuration index = %d\n",
+		__func__, int_txconfig);
+
+	ospl2xx_afe_set_single_param(
+		PARAM_ID_OPALUM_TX_SET_USE_CASE, int_txconfig);
+
 	return 0;
 }
 
@@ -635,18 +661,19 @@ static int ospl2xx_rx_int_config_get(struct snd_kcontrol *kcontrol,
 static int ospl2xx_rx_int_config_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	if (ucontrol->value.integer.value[0] < 0 ||
-	    ucontrol->value.integer.value[0] >= NUM_RX_CONFIGS)
-		return 0;
+	int i = 0, ret = 0;
 
-	pr_debug("%s: set configuration index = %d\n",
-		__func__, (int)ucontrol->value.integer.value[0]);
+	i = ucontrol->value.integer.value[0];
+	if (i < 0 || i >= NUM_RX_CONFIGS)
+		return -ERANGE;
 
-	ospl2xx_afe_set_single_param(
-		PARAM_ID_OPALUM_RX_SET_USE_CASE,
-		(int)ucontrol->value.integer.value[0]);
-
-	return 0;
+	mutex_lock(&lr_lock);
+	if (int_rxconfig != i) {
+		int_rxconfig = i;
+		ret = ospl2xx_update_rx_int_config();
+	}
+	mutex_unlock(&lr_lock);
+	return ret;
 }
 static char const *ospl2xx_rx_int_config_index[] = {
 	"opalum.rx.int.config.0",
@@ -720,7 +747,10 @@ static const struct soc_enum ospl2xx_rx_ext_config_enum[] = {
 static int ospl2xx_audio_mode_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	ucontrol->value.integer.value[0] = ext_rxconfig;
+	if (ext_config_loaded)
+		ucontrol->value.integer.value[0] = ext_rxconfig;
+	else
+		ucontrol->value.integer.value[0] = int_rxconfig;
 	return 0;
 }
 
@@ -734,12 +764,21 @@ static int ospl2xx_audio_mode_put(struct snd_kcontrol *kcontrol,
 		return -ERANGE;
 
 	mutex_lock(&lr_lock);
-	if (ext_rxconfig != i) {
-		ext_rxconfig = i;
-		ext_txconfig = i + NUM_RX_CONFIGS;
-		ret = ospl2xx_update_rx_ext_config();
-		if (ret == 0)
-			ret = ospl2xx_update_tx_ext_config();
+	if (ext_config_loaded) {
+		if (ext_rxconfig != i) {
+			ext_rxconfig = i;
+			ext_txconfig = i + NUM_RX_CONFIGS;
+			ret = ospl2xx_update_rx_ext_config();
+			if (ret == 0)
+				ret = ospl2xx_update_tx_ext_config();
+		}
+	} else {
+		if (int_rxconfig != i) {
+			int_rxconfig = i;
+			int_txconfig = i;
+			ospl2xx_update_rx_int_config();
+			ospl2xx_update_tx_int_config();
+		}
 	}
 	mutex_unlock(&lr_lock);
 	return ret;
@@ -812,8 +851,13 @@ static int ospl2xx_rx_put_temp_cal(struct snd_kcontrol *kcontrol,
 	mutex_unlock(&mr_lock);
 
 	mutex_lock(&lr_lock);
-	ospl2xx_update_rx_ext_config();
-	ospl2xx_update_tx_ext_config();
+	if (ext_config_loaded) {
+		ospl2xx_update_rx_ext_config();
+		ospl2xx_update_tx_ext_config();
+	} else {
+		ospl2xx_update_rx_int_config();
+		ospl2xx_update_tx_int_config();
+	}
 	mutex_unlock(&lr_lock);
 
 	return 0;
@@ -945,18 +989,19 @@ static int ospl2xx_tx_int_config_get(struct snd_kcontrol *kcontrol,
 static int ospl2xx_tx_int_config_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	if (ucontrol->value.integer.value[0] < 0 ||
-	    ucontrol->value.integer.value[0] >= NUM_TX_CONFIGS)
-		return 0;
+	int i = 0, ret = 0;
 
-	pr_debug("%s: set configuration index = %d\n",
-		__func__, (int)ucontrol->value.integer.value[0]);
+	i = ucontrol->value.integer.value[0];
+	if (i < 0 || i >= NUM_TX_CONFIGS)
+		return -ERANGE;
 
-	ospl2xx_afe_set_single_param(
-		PARAM_ID_OPALUM_TX_SET_USE_CASE,
-		(int)ucontrol->value.integer.value[0]);
-
-	return 0;
+	mutex_lock(&lr_lock);
+	if (int_txconfig != i) {
+		int_txconfig = i;
+		ret = ospl2xx_update_tx_int_config();
+	}
+	mutex_unlock(&lr_lock);
+	return ret;
 }
 static char const *ospl2xx_tx_int_config_index[] = {
 	"opalum.tx.int.config.0",
@@ -1012,7 +1057,7 @@ static int ospl2xx_reload_ext_put(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
 	struct marley_priv *marley = snd_soc_codec_get_drvdata(codec);
 
-	if (reload) {
+	if (reload && ext_config_loaded) {
 		pr_debug("re-loading configuration files\n");
 		for (i = 0; i < ARRAY_SIZE(ospl2xx_ext_config_tables); i++)
 			release_firmware(ospl2xx_config[i]);
