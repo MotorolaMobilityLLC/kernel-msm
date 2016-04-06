@@ -1346,7 +1346,7 @@ do_send:
 	ctrl_rev = MIPI_INP(ctrl->ctrl_base);
 	ctrl->cmd_cfg_restore = __mdss_dsi_cmd_mode_config(ctrl, 1);
 
-	if (rlen <= 2) {
+	if (rlen == 0) {
 		short_response = 1;
 		pkt_size = rlen;
 		rx_byte = 4;
