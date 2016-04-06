@@ -386,6 +386,7 @@ struct smbchg_chip {
 	int				bsw_curr_ma;
 	enum bsw_modes			bsw_mode;
 	bool				bsw_ramping;
+	int				bsw_volt_min_mv;
 	bool				usbc_bswchg_pres;
 	bool				fake_factory_type;
 	bool				fg_ready;
@@ -8884,7 +8885,7 @@ static int set_bsw(struct smbchg_chip *chip,
 {
 	union power_supply_propval ret = {0, };
 	int rc = -EINVAL;
-	int bsw_volt_min_uv, bsw_volt_uv, maxbms_volt_uv;
+	int bsw_volt_uv, maxbms_volt_uv;
 	int compen_uv;
 	int index;
 	static bool no_bsw;
@@ -8925,17 +8926,18 @@ static int set_bsw(struct smbchg_chip *chip,
 	compen_uv = PATH_IMPEDANCE_MILLIOHM * curr_ma;
 
 	ret.intval = 0;
-	rc = chip->bsw_psy->get_property(chip->bsw_psy,
-					POWER_SUPPLY_PROP_VOLTAGE_MIN,
-					&ret);
-	if (rc < 0)
-		return rc;
+	if (chip->bsw_volt_min_mv == -EINVAL) {
+		rc = chip->bsw_psy->get_property(chip->bsw_psy,
+						 POWER_SUPPLY_PROP_VOLTAGE_MIN,
+						 &ret);
+		if (rc < 0)
+			return rc;
+		chip->bsw_volt_min_mv = ret.intval / 1000;
+	}
 
-	bsw_volt_min_uv = ret.intval;
-
-	if ((volt_mv * 1000) < bsw_volt_min_uv) {
+	if (volt_mv < chip->bsw_volt_min_mv) {
 		maxbms_volt_uv = (volt_mv * 1000) + compen_uv;
-		bsw_volt_uv = bsw_volt_min_uv;
+		bsw_volt_uv = chip->bsw_volt_min_mv * 1000;
 	} else {
 		index = STEP_END(chip->stepchg_num_steps);
 		maxbms_volt_uv = chip->stepchg_steps[index].max_mv * 1000;
@@ -9132,6 +9134,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int taper_ma = 0;
 	int pmi_max_chrg_ma;
 	bool bsw_chrg_alarm;
+	bool max_chrg_alarm;
 
 	if (!atomic_read(&chip->hb_ready))
 		return;
@@ -9178,7 +9181,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		max_ma = chip->stepchg_steps[index].max_ma;
 		taper_ma = chip->stepchg_steps[index].taper_ma;
 	}
-	bsw_chrg_alarm = (check_bswchg_volt(chip) || check_maxbms_volt(chip));
+	bsw_chrg_alarm = check_bswchg_volt(chip);
+	max_chrg_alarm = check_maxbms_volt(chip);
 
 	if ((!chip->usb_present) && !(eb_able & EB_SND_NEVER)) {
 		switch (chip->ebchg_state) {
@@ -9261,7 +9265,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		chip->bsw_ramping = false;
 	} else if (chip->usbc_bswchg_pres && chip->usb_present &&
 		   (chip->bsw_mode == BSW_RUN) &&
-		   bsw_chrg_alarm) {
+		   (bsw_chrg_alarm || max_chrg_alarm)) {
 		bool change_state = false;
 
 		SMB_INFO(chip, "bsw tripped! BSW Current %d mA\n",
@@ -9270,7 +9274,12 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		set_bsw(chip, max_mv, chip->bsw_curr_ma, false);
 		/* Keep Switch Open for 100 ms to let battery relax */
 		msleep(100);
-		if (chip->bsw_curr_ma <= taper_ma)
+
+		index = STEP_START(chip->stepchg_state);
+		max_mv = chip->stepchg_steps[index].max_mv;
+
+		if ((chip->bsw_curr_ma <= taper_ma) ||
+		    (bsw_chrg_alarm && (max_mv < chip->bsw_volt_min_mv)))
 			change_state = true;
 		else
 			chip->bsw_curr_ma -= BSW_CURR_STEP_MA;
@@ -9860,6 +9869,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->hvdcp_det_done = false;
 	chip->usbc_disabled = false;
 	chip->fg_ready = false;
+	chip->bsw_volt_min_mv = -EINVAL;
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
 	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
 	chip->test_mode = qpnp_smbcharger_test_mode();
