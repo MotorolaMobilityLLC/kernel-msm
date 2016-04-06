@@ -263,7 +263,7 @@ static inline void mcu_wakeup_unlock(struct nanohub_data *data, int key)
 static inline int request_wakeup_user(struct nanohub_data *data)
 {
 	return request_wakeup_ex(data, WAKEUP_TIMEOUT_MS,
-				 KEY_WAKEUP_USER, 0, 0);
+				 KEY_WAKEUP_USER, 0, 1);
 }
 
 static inline void release_wakeup_user(struct nanohub_data *data)
@@ -902,8 +902,9 @@ static ssize_t nanohub_write(struct file *file, const char *buffer,
 	struct nanohub_data *data = io->data;
 	int ret;
 
-	if (request_wakeup(data))
-		return -ERESTARTSYS;
+	ret = request_wakeup_timeout(data, WAKEUP_TIMEOUT_MS);
+	if (ret)
+		return ret;
 
 	ret = nanohub_comms_write(data, buffer, length);
 
