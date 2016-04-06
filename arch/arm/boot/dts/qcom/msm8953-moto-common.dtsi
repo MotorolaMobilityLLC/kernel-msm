@@ -1069,3 +1069,12 @@
 &qcom_seecom {
 	reg = <0x84300000 0x2000000>;
 };
+&rpm_bus {
+	rpm-regulator-ldoa22 {
+	pm8950_l22: regulator-l22 {
+			regulator-min-microvolt = <2850000>;
+			regulator-max-microvolt = <2850000>;
+			qcom,init-voltage = <2850000>;
+		};
+	};
+};
