@@ -303,9 +303,7 @@ static int fan54100_chrg_get_property(struct power_supply *psy,
 		val->intval = chip->health;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
-		if (chip->sovp_tripped
-			|| chip->other_tripped
-		)
+		if (chip->sovp_tripped)
 			val->intval = 1;
 		break;
 	default:
