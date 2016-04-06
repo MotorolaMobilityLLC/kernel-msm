@@ -18,6 +18,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
+#include <linux/wakelock.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -35,7 +36,21 @@
 
 #define MARLEY_NUM_ADSP 3
 
+/* Number of compressed DAI hookups, each pair of DSP and dummy CPU
+ * are counted as one DAI
+ */
+#define MARLEY_NUM_COMPR_DAI 2
+#define MARLEY_NUM_COMPR_DEVICES 4
+
 #define MARLEY_FRF_COEFFICIENT_LEN 4
+
+#define MARLEY_FLL_COUNT 1
+
+#define MARLEY_DEFAULT_FRAGMENTS	1
+#define MARLEY_DEFAULT_FRAGMENT_SIZE	4096
+
+#define ADSP2_CONTROL	0x0
+#define ADSP2_CORE_ENA	0x0002
 
 static int marley_frf_bytes_put(struct snd_kcontrol *kcontrol,
 		      struct snd_ctl_elem_value *ucontrol);
@@ -431,9 +446,6 @@ static int marley_adsp_power_ev(struct snd_soc_dapm_widget *w,
 	struct arizona *arizona = priv->arizona;
 	unsigned int freq;
 	int ret;
-#if 0
-	int i, ret;
-#endif
 
 	ret = regmap_read(arizona->regmap, CLEARWATER_DSP_CLOCK_1, &freq);
 	if (ret != 0) {
@@ -445,25 +457,92 @@ static int marley_adsp_power_ev(struct snd_soc_dapm_widget *w,
 	freq &= CLEARWATER_DSP_CLK_FREQ_LEGACY_MASK;
 	freq >>= CLEARWATER_DSP_CLK_FREQ_LEGACY_SHIFT;
 
-#if 0
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		for (i = 0; i < ARRAY_SIZE(marley->compr_info); ++i) {
-			if (marley->compr_info[i].adsp_compr.dsp->num !=
-			    w->shift + 1)
-				continue;
-
-			mutex_lock(&marley->compr_info[i].trig_lock);
-			marley->compr_info[i].trig = false;
-			mutex_unlock(&marley->compr_info[i].trig_lock);
+		if (w->shift == 2) {
+			mutex_lock(&marley->compr_info[2].lock);
+			marley->compr_info[2].trig = false;
+			mutex_unlock(&marley->compr_info[2].lock);
 		}
 		break;
 	default:
 		break;
 	}
-#endif
 
 	return wm_adsp2_early_event(w, kcontrol, event, freq);
+}
+
+static int marley_virt_dsp_power_ev(struct snd_soc_dapm_widget *w,
+				struct snd_kcontrol *kcontrol, int event)
+{
+	struct marley_priv *marley = snd_soc_codec_get_drvdata(w->codec);
+
+	if (w->shift != 2)
+		return 0;
+
+	mutex_lock(&marley->compr_info[2].lock);
+	if (!marley->compr_info[2].stream)
+		marley->compr_info[2].trig = false;
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		marley->compr_info[2].forced = true;
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		marley->compr_info[2].forced = false;
+		break;
+	default:
+		break;
+	}
+	mutex_unlock(&marley->compr_info[2].lock);
+	return 0;
+}
+
+static int marley_get_trig_state(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct marley_priv *marley = snd_soc_codec_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = marley->compr_info[2].freed;
+	return 0;
+}
+
+static int marley_put_trig_state(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct marley_priv *marley = snd_soc_codec_get_drvdata(codec);
+	int value = ucontrol->value.integer.value[0];
+
+	marley->compr_info[2].freed = value;
+	return 0;
+}
+
+static int marley_get_dsp_state(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct wm_adsp *dsps = snd_soc_codec_get_drvdata(codec);
+	struct soc_mixer_control *mc = (struct soc_mixer_control *)
+		kcontrol->private_value;
+	struct wm_adsp *dsp = &dsps[mc->shift];
+	unsigned int val;
+
+	regmap_read(dsp->regmap, dsp->base + ADSP2_CONTROL, &val);
+	if (val & ADSP2_CORE_ENA)
+		ucontrol->value.integer.value[0] = 1;
+	else
+		ucontrol->value.integer.value[0] = 0;
+
+	return 0;
+
+}
+
+static int marley_put_dsp_state(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
 }
 
 static DECLARE_TLV_DB_SCALE(ana_tlv, 0, 100, 0);
@@ -555,6 +634,9 @@ SOC_SINGLE("IN2L HPF Switch", ARIZONA_IN2L_CONTROL,
 	   ARIZONA_IN2L_HPF_SHIFT, 1, 0),
 SOC_SINGLE("IN2R HPF Switch", ARIZONA_IN2R_CONTROL,
 	   ARIZONA_IN2R_HPF_SHIFT, 1, 0),
+SOC_SINGLE_EXT("Set Trigger State Switch", SND_SOC_NOPM, 0, 1, 0,
+	marley_get_trig_state,
+	marley_put_trig_state),
 
 SOC_SINGLE_TLV("IN1L Digital Volume", ARIZONA_ADC_DIGITAL_VOLUME_1L,
 	       ARIZONA_IN1L_DIG_VOL_SHIFT, 0xbf, 0, digital_tlv),
@@ -564,6 +646,13 @@ SOC_SINGLE_TLV("IN2L Digital Volume", ARIZONA_ADC_DIGITAL_VOLUME_2L,
 	       ARIZONA_IN2L_DIG_VOL_SHIFT, 0xbf, 0, digital_tlv),
 SOC_SINGLE_TLV("IN2R Digital Volume", ARIZONA_ADC_DIGITAL_VOLUME_2R,
 	       ARIZONA_IN2R_DIG_VOL_SHIFT, 0xbf, 0, digital_tlv),
+
+SOC_SINGLE_EXT("Get DSP1 State", SND_SOC_NOPM, 0, 1, 0, marley_get_dsp_state,
+	marley_put_dsp_state),
+SOC_SINGLE_EXT("Get DSP2 State", SND_SOC_NOPM, 1, 1, 0, marley_get_dsp_state,
+	marley_put_dsp_state),
+SOC_SINGLE_EXT("Get DSP3 State", SND_SOC_NOPM, 2, 1, 0, marley_get_dsp_state,
+	marley_put_dsp_state),
 
 SOC_ENUM_EXT("CP Mode", marley_cp_mode[0],
 			marley_cp_mode_get, marley_cp_mode_put),
@@ -855,6 +944,8 @@ CLEARWATER_MUX_ENUMS(ISRC2DEC4, ARIZONA_ISRC2DEC4MIX_INPUT_1_SOURCE);
 
 static const char * const marley_dsp_output_texts[] = {
 	"None",
+	"DSP1",
+	"DSP2",
 	"DSP3",
 };
 
@@ -863,7 +954,8 @@ static const struct soc_enum marley_dsp_output_enum =
 			marley_dsp_output_texts);
 
 static const struct snd_kcontrol_new marley_dsp_output_mux[] = {
-	SOC_DAPM_ENUM("DSP Virtual Output Mux", marley_dsp_output_enum),
+	SOC_DAPM_ENUM("DSP2 Virtual Output Mux", marley_dsp_output_enum),
+	SOC_DAPM_ENUM("DSP3 Virtual Output Mux", marley_dsp_output_enum),
 };
 
 static const char * const marley_memory_mux_texts[] = {
@@ -922,6 +1014,7 @@ SND_SOC_DAPM_INPUT("IN1BL"),
 SND_SOC_DAPM_INPUT("IN1BR"),
 SND_SOC_DAPM_INPUT("IN2L"),
 SND_SOC_DAPM_INPUT("IN2R"),
+SND_SOC_DAPM_INPUT("DSP Virtual Input"),
 
 SND_SOC_DAPM_MUX("IN1L Mux", SND_SOC_NOPM, 0, 0, &marley_in1mux[0]),
 SND_SOC_DAPM_MUX("IN1R Mux", SND_SOC_NOPM, 0, 0, &marley_in1mux[1]),
@@ -929,7 +1022,8 @@ SND_SOC_DAPM_MUX("IN1R Mux", SND_SOC_NOPM, 0, 0, &marley_in1mux[1]),
 SND_SOC_DAPM_OUTPUT("DRC1 Signal Activity"),
 SND_SOC_DAPM_OUTPUT("DRC2 Signal Activity"),
 
-SND_SOC_DAPM_OUTPUT("DSP Virtual Output"),
+SND_SOC_DAPM_OUTPUT("DSP2 Virtual Output"),
+SND_SOC_DAPM_OUTPUT("DSP3 Virtual Output"),
 
 SND_SOC_DAPM_PGA_E("IN1L PGA", ARIZONA_INPUT_ENABLES, ARIZONA_IN1L_ENA_SHIFT,
 		   0, NULL, 0, arizona_in_ev,
@@ -1228,8 +1322,13 @@ SND_SOC_DAPM_MUX("DSP2 Virtual Input", SND_SOC_NOPM, 0, 0,
 SND_SOC_DAPM_MUX("DSP3 Virtual Input", SND_SOC_NOPM, 0, 0,
 		      &marley_memory_mux[1]),
 
-SND_SOC_DAPM_MUX("DSP Virtual Output Mux", SND_SOC_NOPM, 0, 0,
-		      &marley_dsp_output_mux[0]),
+SND_SOC_DAPM_MUX_E("DSP2 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
+		&marley_dsp_output_mux[0], marley_virt_dsp_power_ev,
+		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+
+SND_SOC_DAPM_MUX_E("DSP3 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
+		&marley_dsp_output_mux[1], marley_virt_dsp_power_ev,
+		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 ARIZONA_MUX_WIDGETS(ISRC1DEC1, "ISRC1DEC1"),
 ARIZONA_MUX_WIDGETS(ISRC1DEC2, "ISRC1DEC2"),
@@ -1512,14 +1611,23 @@ static const struct snd_soc_dapm_route marley_dapm_routes[] = {
 	ARIZONA_DSP_ROUTES("DSP2"),
 	ARIZONA_DSP_ROUTES("DSP3"),
 
-	{ "DSP2 Preloader",  NULL, "DSP2 Virtual Input" },
+	{ "DSP2 Preloader", NULL, "DSP2 Virtual Input" },
 	{ "DSP2 Virtual Input", "Shared Memory", "DSP3" },
 	{ "DSP3 Preloader", NULL, "DSP3 Virtual Input" },
 	{ "DSP3 Virtual Input", "Shared Memory", "DSP2" },
 
-	{ "DSP Virtual Output", NULL, "DSP Virtual Output Mux" },
-	{ "DSP Virtual Output Mux", "DSP3", "DSP3" },
-	{ "DSP Virtual Output", NULL, "SYSCLK" },
+	{ "DSP2 Preloader", NULL, "DSP Virtual Input" },
+	{ "DSP2 Virtual Output", NULL, "DSP2 Virtual Output Mux" },
+	{ "DSP2 Virtual Output Mux", "DSP2", "DSP2" },
+	{ "DSP2 Virtual Output", NULL, "SYSCLK" },
+
+	{"LHPF1 Input 1", NULL, "DSP Virtual Input"},
+	{"LHPF2 Input 1", NULL, "DSP Virtual Input"},
+	{"LHPF3 Input 1", NULL, "DSP Virtual Input"},
+
+	{ "DSP3 Virtual Output", NULL, "DSP3 Virtual Output Mux" },
+	{ "DSP3 Virtual Output Mux", "DSP3", "DSP3" },
+	{ "DSP3 Virtual Output", NULL, "SYSCLK" },
 
 	ARIZONA_MUX_ROUTES("ISRC1INT1", "ISRC1INT1"),
 	ARIZONA_MUX_ROUTES("ISRC1INT2", "ISRC1INT2"),
@@ -1730,97 +1838,352 @@ static struct snd_soc_dai_driver marley_dai[] = {
 			.formats = MARLEY_FORMATS,
 		},
 	},
+	{
+		.name = "marley-dsp2-cpu-txt",
+		.capture = {
+			.stream_name = "Text DSP2 CPU",
+			.channels_min = 2,
+			.channels_max = 8,
+			.rates = MARLEY_RATES,
+			.formats = MARLEY_FORMATS,
+		},
+		.compress_dai = 1,
+	},
+	{
+		.name = "marley-dsp2-txt",
+		.capture = {
+			.stream_name = "Text DSP2",
+			.channels_min = 2,
+			.channels_max = 8,
+			.rates = MARLEY_RATES,
+			.formats = MARLEY_FORMATS,
+		},
+	},
+	{
+		.name = "marley-dsp3-cpu-txt",
+		.capture = {
+			.stream_name = "Text DSP3 CPU",
+			.channels_min = 2,
+			.channels_max = 8,
+			.rates = MARLEY_RATES,
+			.formats = MARLEY_FORMATS,
+		},
+		.compress_dai = 1,
+	},
+	{
+		.name = "marley-dsp3-txt",
+		.capture = {
+			.stream_name = "Text DSP3",
+			.channels_min = 2,
+			.channels_max = 8,
+			.rates = MARLEY_RATES,
+			.formats = MARLEY_FORMATS,
+		},
+	},
 };
 
-#if 0
-static void marley_compr_irq(struct marley_priv *marley,
-			     struct marley_compr *compr)
+static int marley_get_compr_index(struct snd_compr_stream *stream)
+{
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+
+	if ((strcmp(rtd->codec_dai->name, "marley-dsp-voicectrl") == 0))
+		return 2;
+	else if ((strcmp(rtd->codec_dai->name, "marley-dsp3-txt") == 0))
+		return 3;
+	else if ((strcmp(rtd->codec_dai->name, "marley-dsp-trace") == 0))
+		return 0;
+	else if ((strcmp(rtd->codec_dai->name, "marley-dsp2-txt") == 0))
+		return 1;
+
+	return -EINVAL;
+}
+
+static int marley_get_dsp_num(struct snd_compr_stream *stream)
+{
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+
+	if ((strcmp(rtd->codec_dai->name, "marley-dsp-voicectrl") == 0)
+		|| (strcmp(rtd->codec_dai->name, "marley-dsp3-txt") == 0))
+		return 2;
+	else if	(strcmp(rtd->codec_dai->name, "marley-dsp2-txt") == 0)
+		return 1;
+	else if (strcmp(rtd->codec_dai->name, "marley-dsp-trace") == 0)
+		return 0;
+
+	return -EINVAL;
+}
+
+static int marley_ez2ctrl_set_trigger(struct marley_priv *marley)
+{
+	if (marley->core.arizona->pdata.ez2ctrl_trigger)
+		marley->core.arizona->pdata.ez2ctrl_trigger();
+	else
+		return -EINVAL;
+
+	return 0;
+}
+
+static bool marley_ez2ctrl_trigger(struct marley_priv *marley, int dev)
+{
+	if ((!marley->compr_info[dev].freed)
+		&& (marley->core.adsp[dev].fw_id == 0x4000d
+		|| marley->core.adsp[dev].fw_id == 0x40036)
+		&& marley->core.adsp[dev].running) {
+		marley->compr_info[dev].trig = true;
+		marley->compr_info[dev].freed = true;
+		return true;
+	}
+	return false;
+}
+
+static int marley_panic_check(struct marley_priv *marley, int dev, int *reg)
 {
 	struct arizona *arizona = marley->core.arizona;
-	bool trigger;
-	int ret;
+	unsigned int val, scratch1;
+	u16 err_msg[4];
 
-	ret = wm_adsp_compr_irq(&compr->adsp_compr, &trigger);
-	if (ret < 0)
-		return;
+	*reg = CLEARWATER_DSP1_SCRATCH_0_1 + (0x80000 * dev);
+	regmap_read(arizona->regmap_32bit, *reg, &val);
 
-	if (trigger && arizona->pdata.ez2ctrl_trigger) {
-		mutex_lock(&compr->trig_lock);
-		if (!compr->trig) {
-			compr->trig = true;
+	val = val >> 16;
+	if ((val & 0x3fff) == 0)
+		return val;
 
-			if (arizona->pdata.ez2ctrl_trigger &&
-			    wm_adsp_fw_has_voice_trig(compr->adsp_compr.dsp))
-				arizona->pdata.ez2ctrl_trigger();
-		}
-		mutex_unlock(&compr->trig_lock);
-	}
+	dev_err(marley->core.arizona->dev, "DSP%d Panic %x\n", dev, val);
+
+	scratch1 = val;
+	memset(err_msg, 0, sizeof(err_msg));
+
+	err_msg[0] = (u16)val;
+	regmap_read(arizona->regmap, *reg-1, &val);
+	err_msg[1] = (u16)val;
+	regmap_read(arizona->regmap, *reg+1, &val);
+	err_msg[2] = (u16)val;
+	regmap_read(arizona->regmap, *reg+2, &val);
+	err_msg[3] = (u16)val;
+
+	/* Panic callback */
+	if (marley->core.arizona->pdata.ez2panic_trigger)
+		marley->core.arizona->pdata.ez2panic_trigger(dev,
+			&err_msg[0]);
+
+	/* Clean panic field */
+	scratch1 &= 0xc000;
+	regmap_write(arizona->regmap_32bit, *reg, (scratch1<<16));
+
+	return scratch1;
 }
-#endif
+
+static int marley_text_event(struct marley_priv *marley, int dev)
+{
+	pr_debug("%s\n", __func__);
+	return 0;
+}
+
+static int handle_stream(struct marley_priv *marley, int dev)
+{
+	struct snd_soc_pcm_runtime *rtd;
+	int ret, avail;
+
+	if (marley->compr_info[dev].stream) {
+		rtd = marley->compr_info[dev].stream->private_data;
+		if (!strcmp(rtd->codec_dai->name, "marley-dsp3-txt")) {
+			pr_debug("HANDLING TEXT STREAM from DSP%d\n", dev);
+			ret = wm_adsp_stream_handle_irq(
+				marley->compr_info[dev].adsp,
+				true);
+		} else {
+			pr_debug("HANDLING AOV STREAM from DSP%d\n", dev);
+			ret = wm_adsp_stream_handle_irq(
+				marley->compr_info[dev].adsp,
+				false);
+		}
+
+		if (ret < 0) {
+			dev_err(marley->core.arizona->dev,
+				"Failed to capture DSP%d data: %d\n", dev,
+				ret);
+			return ret;
+		}
+		marley->compr_info[dev].total_copied += ret;
+		avail = wm_adsp_stream_avail(
+			marley->compr_info[dev].adsp);
+		if (avail > MARLEY_DEFAULT_FRAGMENT_SIZE)
+			snd_compr_fragment_elapsed(
+				marley->compr_info[dev].stream);
+	}
+	return 0;
+}
 
 static irqreturn_t marley_adsp2_irq(int irq, void *data)
 {
-#if 0
 	struct marley_priv *marley = data;
-	int i;
+	int i, scratch_reg, reg;
+	struct arizona *arizona = marley->core.arizona;
 
-	for (i = 0; i < ARRAY_SIZE(marley->compr_info); ++i) {
-		if (!marley->compr_info[i].adsp_compr.dsp->running)
-			continue;
-
-		marley_compr_irq(marley, &marley->compr_info[i]);
+	for (i = 0; i < MARLEY_NUM_COMPR_DEVICES; i++) {
+		mutex_lock(&marley->compr_info[i].lock);
+		scratch_reg = marley_panic_check(marley, i, &reg);
+		pr_debug("dsp %d, scratch_reg %x\n", i, scratch_reg);
+		if ((scratch_reg & 0x3fff) == 0) {
+			if (scratch_reg & 0x4000) {
+				/* Clear event bit */
+				scratch_reg &= 0xbfff;
+				scratch_reg = scratch_reg << 16;
+				regmap_write(arizona->regmap_32bit, reg,
+					scratch_reg);
+				if (marley_ez2ctrl_trigger(marley, i)) {
+					pr_debug("Call AOV callback\n");
+					wake_lock_timeout(&marley->wakelock,
+						msecs_to_jiffies(500));
+					marley_ez2ctrl_set_trigger(marley);
+				}
+			}
+			/* Text interrupt */
+			if (scratch_reg & 0x8000) {
+				/* Clear event bit */
+				scratch_reg &= 0x7fff;
+				scratch_reg = scratch_reg << 16;
+				regmap_write(arizona->regmap_32bit, reg,
+					scratch_reg);
+				pr_debug("Calling Text Callback\n");
+				marley_text_event(marley, i);
+			}
+		}
+		handle_stream(marley, i);
+		mutex_unlock(&marley->compr_info[i].lock);
 	}
-#endif
 	return IRQ_HANDLED;
 }
 
-#if 0
-static struct marley_compr *marley_get_compr(struct snd_soc_pcm_runtime *rtd,
-					     struct marley_priv *marley)
+static bool marley_compr_second_buffer(struct snd_compr_stream *stream)
 {
-	int i;
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
 
-	for (i = 0; i < ARRAY_SIZE(marley->compr_info); ++i) {
-		if (strcmp(rtd->codec_dai->name,
-			   marley->compr_info[i].dai_name) == 0)
-			return &marley->compr_info[i];
-	}
-
-	return NULL;
+	if (!strcmp(rtd->codec_dai->name, "marley-dsp3-txt"))
+		return true;
+	else
+		return false;
 }
 
 static int marley_compr_open(struct snd_compr_stream *stream)
 {
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
 	struct marley_priv *marley = snd_soc_codec_get_drvdata(rtd->codec);
-	struct marley_compr *compr;
+	struct arizona *arizona = marley->core.arizona;
+	int stream_num, dsp_num;
 
-	compr = marley_get_compr(rtd, marley);
-	if (!compr) {
-		dev_err(marley->core.arizona->dev,
-			"No compressed stream for dai '%s'\n",
-			rtd->codec_dai->name);
+	stream->runtime->private_data = NULL;
+
+	stream_num = marley_get_compr_index(stream);
+	if (stream_num < 0)
+		return stream_num;
+
+	dev_dbg(arizona->dev, "in marley_compr_open stream %d\n", stream_num);
+	stream->runtime->private_data = &marley->compr_info[stream_num];
+	marley->compr_info[stream_num].stream_index = stream_num;
+
+	if (!stream->runtime->private_data) {
+		dev_err(arizona->dev,
+			"Compressed device cannot be opened\n");
 		return -EINVAL;
 	}
 
-	return wm_adsp_compr_open(&compr->adsp_compr, stream);
+	mutex_lock(&marley->compr_info[stream_num].lock);
+
+	dsp_num = marley_get_dsp_num(stream);
+	if (!wm_adsp_compress_supported(&marley->core.adsp[dsp_num],
+		stream)) {
+		dev_err(arizona->dev,
+			"No suitable FW for compressed stream\n");
+		goto out;
+	}
+	marley->compr_info[stream_num].adsp = &marley->core.adsp[dsp_num];
+	marley->compr_info[stream_num].stream = stream;
+out:
+	mutex_unlock(&marley->compr_info[stream_num].lock);
+	return 0;
+
+}
+
+static int marley_compr_free(struct snd_compr_stream *stream)
+{
+	struct marley_compr *compr = stream->runtime->private_data;
+	int compr_dev_index = compr->stream_index;
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct marley_priv *marley = snd_soc_codec_get_drvdata(rtd->codec);
+
+	if (compr_dev_index < 0)
+		return compr_dev_index;
+
+	mutex_lock(&marley->compr_info[compr_dev_index].lock);
+	marley->compr_info[compr_dev_index].stream = NULL;
+	marley->compr_info[compr_dev_index].total_copied = 0;
+	if (!marley->compr_info[compr_dev_index].forced)
+		marley->compr_info[compr_dev_index].trig = false;
+
+	marley->compr_info[compr_dev_index].freed = false;
+	if (marley_compr_second_buffer(stream))
+		wm_adsp_stream_free(marley->compr_info[compr_dev_index].adsp,
+			2);
+	else
+		wm_adsp_stream_free(marley->compr_info[compr_dev_index].adsp,
+			1);
+	mutex_unlock(&marley->compr_info[compr_dev_index].lock);
+
+	return 0;
+}
+
+static int marley_set_params(struct snd_compr_stream *stream,
+	struct snd_compr_params *params)
+{
+	struct marley_compr *compr = stream->runtime->private_data;
+	int compr_dev_index = compr->stream_index;
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct marley_priv *marley = snd_soc_codec_get_drvdata(rtd->codec);
+	int ret = 0;
+
+	if (compr_dev_index < 0)
+		return compr_dev_index;
+
+	mutex_lock(&marley->compr_info[compr_dev_index].lock);
+
+	if (marley_compr_second_buffer(stream))
+		ret = wm_adsp_stream_alloc2(compr->adsp, params);
+	else
+		ret = wm_adsp_stream_alloc(compr->adsp, params);
+
+	if (ret == 0)
+		compr->allocated = true;
+
+	mutex_unlock(&marley->compr_info[compr_dev_index].lock);
+	return ret;
+
 }
 
 static int marley_compr_trigger(struct snd_compr_stream *stream, int cmd)
 {
-	struct wm_adsp_compr *adsp_compr =
-			(struct wm_adsp_compr *)stream->runtime->private_data;
-	struct marley_compr *compr = container_of(adsp_compr,
-						  struct marley_compr,
-						  adsp_compr);
-	struct arizona *arizona = compr->priv->core.arizona;
-	int ret;
+	struct marley_compr *compr = stream->runtime->private_data;
+	int compr_dev_index = compr->stream_index;
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct marley_priv *marley = snd_soc_codec_get_drvdata(rtd->codec);
+	struct arizona *arizona = marley->core.arizona;
+	int ret = 0;
 
-	ret = wm_adsp_compr_trigger(stream, cmd);
+	if (compr_dev_index < 0)
+		return compr_dev_index;
 
+	mutex_lock(&marley->compr_info[compr_dev_index].lock);
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
-		if (compr->trig)
+		if (marley_compr_second_buffer(stream))
+			ret = wm_adsp_stream_start2(
+				marley->compr_info[compr_dev_index].adsp);
+		else
+			ret = wm_adsp_stream_start(
+				marley->compr_info[compr_dev_index].adsp);
+
+		if (marley->compr_info[compr_dev_index].trig) {
 			/*
 			 * If the firmware already triggered before the stream
 			 * was opened trigger another interrupt so irq handler
@@ -1828,20 +2191,107 @@ static int marley_compr_trigger(struct snd_compr_stream *stream, int cmd)
 			 */
 			regmap_write(arizona->regmap,
 				     CLEARWATER_ADSP2_IRQ0, 0x01);
+		/*	 pending = true; */
+		}
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
 		break;
 	default:
+		ret = -EINVAL;
 		break;
 	}
+	mutex_unlock(&marley->compr_info[compr_dev_index].lock);
+	/*
+	 * if (pending)
+	 *	marley_adsp2_irq(0, marley);
+	 */
+
 
 	return ret;
 }
-#endif
+
+static int marley_pointer(struct snd_compr_stream *stream,
+			struct snd_compr_tstamp *tstamp)
+{
+	struct marley_compr *compr = stream->runtime->private_data;
+	int compr_dev_index = compr->stream_index;
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct marley_priv *marley = snd_soc_codec_get_drvdata(rtd->codec);
+
+	if (compr_dev_index < 0)
+		return compr_dev_index;
+
+	mutex_lock(&marley->compr_info[compr_dev_index].lock);
+	tstamp->byte_offset = 0;
+	tstamp->copied_total =
+		marley->compr_info[compr_dev_index].total_copied;
+	mutex_unlock(&marley->compr_info[compr_dev_index].lock);
+
+	return 0;
+}
+
+static int marley_copy(struct snd_compr_stream *stream, char __user *buf,
+		size_t count)
+{
+	struct marley_compr *compr = stream->runtime->private_data;
+	int compr_dev_index = compr->stream_index;
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct marley_priv *marley = snd_soc_codec_get_drvdata(rtd->codec);
+	int ret;
+
+	if (compr_dev_index < 0)
+		return compr_dev_index;
+
+	mutex_lock(&marley->compr_info[compr_dev_index].lock);
+	if (stream->direction == SND_COMPRESS_PLAYBACK) {
+		mutex_unlock(&marley->compr_info[compr_dev_index].lock);
+		return -EINVAL;
+	}
+
+	if (marley_compr_second_buffer(stream))
+		ret = wm_adsp_stream_read2(
+			marley->compr_info[compr_dev_index].adsp, buf, count);
+	else
+		ret = wm_adsp_stream_read(
+			marley->compr_info[compr_dev_index].adsp, buf, count);
+
+	mutex_unlock(&marley->compr_info[compr_dev_index].lock);
+
+	return ret;
+}
+
+static int marley_get_caps(struct snd_compr_stream *stream,
+		struct snd_compr_caps *caps)
+{
+	struct marley_compr *compr = stream->runtime->private_data;
+	int compr_dev_index = compr->stream_index;
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct marley_priv *marley = snd_soc_codec_get_drvdata(rtd->codec);
+
+	if (compr_dev_index < 0)
+		return compr_dev_index;
+
+	mutex_lock(&marley->compr_info[compr_dev_index].lock);
+	memset(caps, 0, sizeof(*caps));
+	caps->direction = stream->direction;
+	caps->min_fragment_size = MARLEY_DEFAULT_FRAGMENT_SIZE;
+	caps->max_fragment_size = MARLEY_DEFAULT_FRAGMENT_SIZE;
+	caps->min_fragments = MARLEY_DEFAULT_FRAGMENTS;
+	caps->max_fragments = MARLEY_DEFAULT_FRAGMENTS;
+
+	wm_adsp_get_caps(marley->compr_info[compr_dev_index].adsp, stream,
+		caps);
+
+	mutex_unlock(&marley->compr_info[compr_dev_index].lock);
+
+	return 0;
+}
 
 static int marley_codec_probe(struct snd_soc_codec *codec)
 {
 	struct marley_priv *priv = snd_soc_codec_get_drvdata(codec);
 	struct arizona *arizona = priv->core.arizona;
-	int i, ret;
+	int ret;
 
 	priv->core.arizona->dapm = &codec->dapm;
 
@@ -1853,14 +2303,6 @@ static int marley_codec_probe(struct snd_soc_codec *codec)
 	/* Update Sample Rate 1 to 48kHz for cases when no AIF1 hw_params */
 	regmap_update_bits(arizona->regmap, ARIZONA_SAMPLE_RATE_1,
 			   ARIZONA_SAMPLE_RATE_1_MASK, 0x03);
-
-	for (i = 0; i < MARLEY_NUM_ADSP; ++i) {
-#if 0
-		ret = wm_adsp2_codec_probe(&priv->core.adsp[i], codec);
-		if (ret)
-			return ret;
-#endif
-	}
 
 	ret = snd_soc_add_codec_controls(codec, wm_adsp2v2_fw_controls, 6);
 	if (ret != 0)
@@ -1883,6 +2325,7 @@ static int marley_codec_probe(struct snd_soc_codec *codec)
 			"Failed to set DSP IRQ to wake source: %d\n",
 			ret);
 
+	wake_lock_init(&priv->wakelock, 0, "aov_wakelock");
 	snd_soc_dapm_enable_pin(&codec->dapm, "DRC2 Signal Activity");
 
 	ret = regmap_update_bits(arizona->regmap, CLEARWATER_IRQ2_MASK_9,
@@ -1902,20 +2345,13 @@ static int marley_codec_remove(struct snd_soc_codec *codec)
 {
 	struct marley_priv *priv = snd_soc_codec_get_drvdata(codec);
 	struct arizona *arizona = priv->core.arizona;
-#if 0
-	int i;
-#endif
 
 	irq_set_irq_wake(arizona->irq, 0);
 	arizona_free_irq(arizona, ARIZONA_IRQ_DSP_IRQ1, priv);
+	wake_lock_destroy(&priv->wakelock);
 	regmap_update_bits(arizona->regmap, CLEARWATER_IRQ2_MASK_9,
 			   CLEARWATER_DRC2_SIG_DET_EINT2,
 			   CLEARWATER_DRC2_SIG_DET_EINT2);
-
-#if 0
-	for (i = 0; i < MARLEY_NUM_ADSP; ++i)
-		wm_adsp2_codec_remove(&priv->core.adsp[i], codec);
-#endif
 
 	priv->core.arizona->dapm = NULL;
 
@@ -1962,49 +2398,19 @@ static struct snd_soc_codec_driver soc_codec_dev_marley = {
 };
 
 
-#if 0
 static struct snd_compr_ops marley_compr_ops = {
 	.open = marley_compr_open,
-	.free = wm_adsp_compr_free,
-	.set_params = wm_adsp_compr_set_params,
+	.free = marley_compr_free,
+	.set_params = marley_set_params,
 	.trigger = marley_compr_trigger,
-	.pointer = wm_adsp_compr_pointer,
-	.copy = wm_adsp_compr_copy,
-	.get_caps = wm_adsp_compr_get_caps,
+	.pointer = marley_pointer,
+	.copy = marley_copy,
+	.get_caps = marley_get_caps,
 };
 
 static struct snd_soc_platform_driver marley_compr_platform = {
 	.compr_ops = &marley_compr_ops,
 };
-
-static void marley_init_compr_info(struct marley_priv *marley)
-{
-	struct wm_adsp *dsp;
-	int i;
-
-	BUILD_BUG_ON(ARRAY_SIZE(marley->compr_info) !=
-		     ARRAY_SIZE(compr_dai_mapping));
-
-	for (i = 0; i < ARRAY_SIZE(marley->compr_info); ++i) {
-		marley->compr_info[i].priv = marley;
-		marley->compr_info[i].dai_name =
-			compr_dai_mapping[i].dai_name;
-
-		dsp = &marley->core.adsp[compr_dai_mapping[i].adsp_num],
-		wm_adsp_compr_init(dsp, &marley->compr_info[i].adsp_compr);
-
-		mutex_init(&marley->compr_info[i].trig_lock);
-	}
-}
-
-static void marley_destroy_compr_info(struct marley_priv *marley)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(marley->compr_info); ++i)
-		wm_adsp_compr_destroy(&marley->compr_info[i].adsp_compr);
-}
-#endif
 
 static int marley_probe(struct platform_device *pdev)
 {
@@ -2024,6 +2430,8 @@ static int marley_probe(struct platform_device *pdev)
 	 * locate regulator supplies */
 	pdev->dev.of_node = arizona->dev->of_node;
 
+	for (i = 0; i < MARLEY_NUM_COMPR_DEVICES; i++)
+		mutex_init(&marley->compr_info[i].lock);
 	mutex_init(&marley->fw_lock);
 
 	marley->core.arizona = arizona;
@@ -2059,10 +2467,6 @@ static int marley_probe(struct platform_device *pdev)
 			return ret;
 	}
 
-#if 0
-	marley_init_compr_info(marley);
-#endif
-
 	for (i = 0; i < ARRAY_SIZE(marley->fll); i++) {
 		marley->fll[i].vco_mult = 3;
 		marley->fll[i].min_outdiv = 3;
@@ -2085,7 +2489,6 @@ static int marley_probe(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 	pm_runtime_idle(&pdev->dev);
 
-#if 0
 	ret = snd_soc_register_platform(&pdev->dev, &marley_compr_platform);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
@@ -2093,7 +2496,6 @@ static int marley_probe(struct platform_device *pdev)
 			ret);
 		goto error;
 	}
-#endif
 
 	ret = snd_soc_register_codec(&pdev->dev, &soc_codec_dev_marley,
 				      marley_dai, ARRAY_SIZE(marley_dai));
@@ -2108,9 +2510,6 @@ static int marley_probe(struct platform_device *pdev)
 	return ret;
 
 error:
-#if 0
-	marley_destroy_compr_info(marley);
-#endif
 	mutex_destroy(&marley->fw_lock);
 
 	return ret;
@@ -2123,9 +2522,6 @@ static int marley_remove(struct platform_device *pdev)
 	snd_soc_unregister_codec(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 
-#if 0
-	marley_destroy_compr_info(marley);
-#endif
 	mutex_destroy(&marley->fw_lock);
 
 	return 0;
