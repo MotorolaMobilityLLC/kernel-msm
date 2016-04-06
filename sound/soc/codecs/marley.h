@@ -13,7 +13,9 @@
 #ifndef _MARLEY_H
 #define _MARLEY_H
 
-#include "arizona.h"
+#include "arizona_marley.h"
+#include "wm_adsp.h"
+#include <linux/wakelock.h>
 
 #define MARLEY_FLL1        1
 #define MARLEY_FLL1_REFCLK 3
@@ -22,23 +24,29 @@
  * are counted as one DAI
  */
 #define MARLEY_NUM_COMPR_DAI 2
+#define MARLEY_NUM_COMPR_DEVICES 4
 
 struct marley_compr {
-#if 0
-	struct wm_adsp_compr adsp_compr;
-#endif
 	const char *dai_name;
+	struct snd_compr_stream *stream;
+	struct wm_adsp *adsp;
+
+	size_t total_copied;
 	bool trig;
-	struct mutex trig_lock;
-	struct marley_priv *priv;
+	bool forced;
+	bool allocated;
+	bool freed;
+	int stream_index;
+	struct mutex lock;
 };
 
 struct marley_priv {
 	struct arizona_priv core;
 	struct arizona_fll fll[MARLEY_FLL_COUNT];
-	struct marley_compr compr_info[MARLEY_NUM_COMPR_DAI];
+	struct marley_compr compr_info[MARLEY_NUM_COMPR_DEVICES];
 
 	struct mutex fw_lock;
+	struct wake_lock wakelock;
 
 #ifdef CONFIG_SND_SOC_OPALUM
 	struct workqueue_struct *ospl2xx_wq;
