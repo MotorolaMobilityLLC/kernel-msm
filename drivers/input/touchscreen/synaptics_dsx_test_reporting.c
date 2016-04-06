@@ -218,6 +218,97 @@ static ssize_t concat(synaptics_rmi4_f54, _##propname##_store)(\
 #define show_store_func_unsigned(rtype, rgrp, propname)\
 show_store_func(rtype, rgrp, propname, "%u\n")
 
+#define show_subpkt_func(rtype, rgrp, subpkt, propname, fmt)\
+static ssize_t concat(synaptics_rmi4_f54, _##propname##_show)(\
+		struct device *dev,\
+		struct device_attribute *attr,\
+		char *buf)\
+{\
+	int retval;\
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;\
+\
+	mutex_lock(&f54->rtype##_mutex);\
+\
+	retval = f54->fn_ptr->read(rmi4_data,\
+			f54->rtype.rgrp->address,\
+			f54->rtype.rgrp->data,\
+			f54->rtype.rgrp->size);\
+	mutex_unlock(&f54->rtype##_mutex);\
+	if (retval < 0) {\
+		dev_err(&rmi4_data->i2c_client->dev,\
+				"%s: Failed to read " #rtype\
+				" " #rgrp #subpkt"\n",\
+				__func__);\
+		return retval;\
+	} \
+\
+	return snprintf(buf, PAGE_SIZE, fmt,\
+			f54->rtype.rgrp->sp##subpkt->propname);\
+} \
+
+#define show_subpkt_func_unsigned(rtype, rgrp, subpkt, propname)\
+show_subpkt_func(rtype, rgrp, subpkt, propname, "%u\n")
+
+#define show_store_subpkt_func(rtype, rgrp, subpkt, propname, fmt)\
+show_subpkt_func(rtype, rgrp, subpkt, propname, fmt)\
+\
+static ssize_t concat(synaptics_rmi4_f54, _##propname##_store)(\
+		struct device *dev,\
+		struct device_attribute *attr,\
+		const char *buf, size_t count)\
+{\
+	int retval;\
+	unsigned long setting;\
+	unsigned long o_setting;\
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;\
+\
+	retval = sstrtoul(buf, 10, &setting);\
+	if (retval)\
+		return retval;\
+\
+	mutex_lock(&f54->rtype##_mutex);\
+	retval = f54->fn_ptr->read(rmi4_data,\
+			f54->rtype.rgrp->address,\
+			f54->rtype.rgrp->data,\
+			f54->rtype.rgrp->size);\
+	if (retval < 0) {\
+		mutex_unlock(&f54->rtype##_mutex);\
+		dev_err(&rmi4_data->i2c_client->dev,\
+				"%s: Failed to read " #rtype\
+				" " #rgrp #subpkt"\n",\
+				__func__);\
+		return retval;\
+	} \
+\
+	if (f54->rtype.rgrp->sp##subpkt->propname == setting) {\
+		mutex_unlock(&f54->rtype##_mutex);\
+		return count;\
+	} \
+\
+	o_setting = f54->rtype.rgrp->sp##subpkt->propname;\
+	f54->rtype.rgrp->sp##subpkt->propname = setting;\
+\
+	retval = f54->fn_ptr->write(rmi4_data,\
+			f54->rtype.rgrp->address,\
+			f54->rtype.rgrp->data,\
+			f54->rtype.rgrp->size);\
+	if (retval < 0) {\
+		dev_err(&rmi4_data->i2c_client->dev,\
+				"%s: Failed to write " #rtype\
+				" " #rgrp #subpkt"\n",\
+				__func__);\
+		f54->rtype.rgrp->sp##subpkt->propname = o_setting;\
+		mutex_unlock(&f54->rtype##_mutex);\
+		return retval;\
+	} \
+\
+	mutex_unlock(&f54->rtype##_mutex);\
+	return count;\
+} \
+
+#define show_store_subpkt_func_unsigned(rtype, rgrp, subpkt, propname)\
+show_store_subpkt_func(rtype, rgrp, subpkt, propname, "%u\n")
+
 #define show_replicated_func(rtype, rgrp, propname, fmt)\
 static ssize_t concat(synaptics_rmi4_f54, _##propname##_show)(\
 		struct device *dev,\
@@ -353,8 +444,8 @@ show_store_replicated_func(rtype, rgrp, propname, "%u")
 			GFP_KERNEL);\
 		if (!control->reg_##reg)\
 			goto exit_no_mem;\
-		pr_debug("c%s addr = 0x%02x added\n",\
-			 #reg, reg_addr);\
+		pr_debug("c%s addr = 0x%02x added (%d)\n",\
+			 #reg, reg_addr, reg_num);\
 		control->reg_##reg->address = reg_addr;\
 		reg_addr += skip;\
 	} \
@@ -371,14 +462,55 @@ show_store_replicated_func(rtype, rgrp, propname, "%u")
 		control->reg_##reg->data = kzalloc(size, GFP_KERNEL);\
 		if (!control->reg_##reg->data)\
 			goto exit_no_mem;\
-		pr_debug("c%s addr = 0x%02x size = %zu added\n",\
-			 #reg, reg_addr, size);\
+		pr_debug("c%s addr = 0x%02x size = %zu added (%d)\n",\
+			 #reg, reg_addr, size, reg_num);\
 		control->reg_##reg->length = size;\
 		control->reg_##reg->address = reg_addr;\
 		reg_addr += skip;\
 	} \
 	reg_num++;\
 	} while (0)
+
+#define CTRL_SUBPKT_SZ(reg, subpkt) \
+	sizeof(*((struct f54_control_##reg *)0)->sp##subpkt)
+
+#define CTRL_PKT_REG_START(reg, max_size) \
+	do {\
+		control->reg_##reg = kzalloc(sizeof(*control->reg_##reg),\
+			GFP_KERNEL);\
+		if (!control->reg_##reg)\
+			goto exit_no_mem;\
+		control->reg_##reg->data = kzalloc(max_size,\
+			GFP_KERNEL);\
+		if (!control->reg_##reg->data)\
+			goto exit_no_mem;\
+	} while (0)
+
+#define CTRL_SUBPKT_ADD(reg, subpkt, cond) \
+	do { if (cond) { \
+		attrs_ctrl_regs_exist[reg_num] = true; \
+		pr_debug("subpkt c%s_%d added (%d)\n", \
+			 #reg, subpkt, reg_num); \
+		control->reg_##reg->sp##subpkt = \
+			(void *)control->reg_##reg->data + \
+				control->reg_##reg->size; \
+		control->reg_##reg->size += \
+			sizeof(*control->reg_##reg->sp##subpkt); \
+	} \
+	reg_num++;\
+	} while (0)
+
+#define CTRL_PKT_REG_END(reg, skip) \
+	do { if (control->reg_##reg->size) { \
+		control->reg_##reg->address = reg_addr; \
+		pr_debug("c%s addr = 0x%02x\n", \
+			 #reg, reg_addr); \
+		reg_addr += skip; \
+	} \
+	else { \
+		kfree(control->reg_##reg->data); \
+		kfree(control->reg_##reg); \
+	} } while (0)
 
 #define CTRL_REG_PRESENCE(reg, skip, cond) \
 	do { if ((cond)) {\
@@ -388,19 +520,19 @@ show_store_replicated_func(rtype, rgrp, propname, "%u")
 	} } while (0)
 
 #define CTRL_REG_RESERVED_PRESENCE(reg, skip, cond) \
-	do { if ((cond)) {\
+	do { if ((cond)) { \
 		pr_debug("c%s addr = 0x%02x (reserved)\n",\
 			 #reg, reg_addr);\
 		reg_addr += skip;\
 	} } while (0)
 
 #define QUERY_REG_READ(reg, cond)\
-	do { if (cond) {\
+	do { if (cond) { \
 		retval = f54->fn_ptr->read(rmi4_data,\
 				reg_addr,\
 				f54->query##reg.data,\
 				sizeof(f54->query##reg.data));\
-		if (retval < 0) {\
+		if (retval < 0) { \
 			dev_err(&rmi4_data->i2c_client->dev,\
 				"%s: Failed to read query %s register\n",\
 					#reg, __func__);\
@@ -410,7 +542,7 @@ show_store_replicated_func(rtype, rgrp, propname, "%u")
 			#reg, reg_addr, f54->query##reg.data[0]);\
 		reg_addr += 1;\
 	} \
-	else {\
+	else { \
 		memset(&f54->query##reg.data, 0, sizeof(f54->query##reg.data));\
 	} } while (0)
 
@@ -1344,25 +1476,38 @@ struct f54_control_40 {
 	unsigned char length;
 };
 
+struct f54_control_89_subpkt0 {
+	unsigned char c89_cid_sel_opt:2;
+	unsigned char c89_cid_voltage_sel:3;
+	unsigned char c89_byte0_b5_b7:3;
+	unsigned char c89_cid_im_noise_threshold_lsb;
+	unsigned char c89_cid_im_noise_threshold_msb;
+} __packed;
+
+struct f54_control_89_subpkt1 {
+	unsigned char c89_fnm_pixel_touch_mult;
+	unsigned char c89_freq_scan_threshold_lsb;
+	unsigned char c89_freq_scan_threshold_msb;
+	unsigned char c89_quiet_im_threshold_lsb;
+	unsigned char c89_quiet_im_threshold_msb;
+} __packed;
+
+struct f54_control_89_subpkt2 {
+	unsigned char c89_rail_sel_opt:2;
+	unsigned char c89_byte0_b3_b7:6;
+	unsigned char c89_rail_im_noise_theshold_lsb;
+	unsigned char c89_rail_im_noise_theshold_msb;
+	unsigned char c89_rail_im_quiet_theshold_lsb;
+	unsigned char c89_rail_im_quiet_theshold_msb;
+} __packed;
+
 struct f54_control_89 {
-	union {
-		struct {
-			unsigned char c89_cid_sel_opt:2;
-			unsigned char c89_cid_voltage_sel:3;
-			unsigned char c89_byte0_b5_b7:3;
-			unsigned char c89_cid_im_noise_threshold_lsb;
-			unsigned char c89_cid_im_noise_threshold_msb;
-			unsigned char c89_fnm_pixel_touch_mult;
-			unsigned char c89_freq_scan_threshold_lsb;
-			unsigned char c89_freq_scan_threshold_msb;
-			unsigned char c89_quiet_im_threshold_lsb;
-			unsigned char c89_quiet_im_threshold_msb;
-		} __packed;
-		struct {
-			unsigned char data[8];
-			unsigned short address;
-		} __packed;
-	};
+	unsigned char *data;
+	int size;
+	unsigned short address;
+	struct f54_control_89_subpkt0 *sp0;
+	struct f54_control_89_subpkt1 *sp1;
+	struct f54_control_89_subpkt2 *sp2;
 };
 
 struct f54_control_93 {
@@ -1901,6 +2046,11 @@ show_store_prototype(c89_freq_scan_threshold_lsb)
 show_store_prototype(c89_freq_scan_threshold_msb)
 show_store_prototype(c89_quiet_im_threshold_lsb)
 show_store_prototype(c89_quiet_im_threshold_msb)
+show_store_prototype(c89_rail_sel_opt)
+show_store_prototype(c89_rail_im_noise_theshold_lsb)
+show_store_prototype(c89_rail_im_noise_theshold_msb)
+show_store_prototype(c89_rail_im_quiet_theshold_lsb)
+show_store_prototype(c89_rail_im_quiet_theshold_msb)
 show_store_prototype(c93_freq_shift_noise_threshold_lsb)
 show_store_prototype(c93_freq_shift_noise_threshold_msb)
 show_store_prototype(c95_disable)
@@ -2149,16 +2299,29 @@ static struct attribute *attrs_reg_38__40[] = {
 	NULL,
 };
 
-static struct attribute *attrs_reg_89[] = {
+static struct attribute *attrs_reg_89_subpkt0[] = {
 	attrify(c89_cid_sel_opt),
 	attrify(c89_cid_voltage_sel),
 	attrify(c89_cid_im_noise_threshold_lsb),
 	attrify(c89_cid_im_noise_threshold_msb),
+	NULL,
+};
+
+static struct attribute *attrs_reg_89_subpkt1[] = {
 	attrify(c89_fnm_pixel_touch_mult),
 	attrify(c89_freq_scan_threshold_lsb),
 	attrify(c89_freq_scan_threshold_msb),
 	attrify(c89_quiet_im_threshold_lsb),
 	attrify(c89_quiet_im_threshold_msb),
+	NULL,
+};
+
+static struct attribute *attrs_reg_89_subpkt2[] = {
+	attrify(c89_rail_sel_opt),
+	attrify(c89_rail_im_noise_theshold_msb),
+	attrify(c89_rail_im_noise_theshold_msb),
+	attrify(c89_rail_im_quiet_theshold_lsb),
+	attrify(c89_rail_im_quiet_theshold_msb),
 	NULL,
 };
 
@@ -2252,7 +2415,9 @@ static struct attribute_group attrs_ctrl_regs[] = {
 	GROUP(attrs_reg_36),
 	GROUP(attrs_reg_37),
 	GROUP(attrs_reg_38__40),
-	GROUP(attrs_reg_89),
+	GROUP(attrs_reg_89_subpkt0),
+	GROUP(attrs_reg_89_subpkt1),
+	GROUP(attrs_reg_89_subpkt2),
 	GROUP(attrs_reg_93),
 	GROUP(attrs_reg_95),
 	GROUP(attrs_reg_99),
@@ -3354,15 +3519,28 @@ show_replicated_func_unsigned(control, reg_40, noise_control_3)
 show_store_replicated_func_unsigned(control, reg_36, axis1_comp)
 show_store_replicated_func_unsigned(control, reg_37, axis2_comp)
 
-show_store_func_unsigned(control, reg_89, c89_cid_sel_opt)
-show_store_func_unsigned(control, reg_89, c89_cid_voltage_sel)
-show_store_func_unsigned(control, reg_89, c89_cid_im_noise_threshold_lsb)
-show_store_func_unsigned(control, reg_89, c89_cid_im_noise_threshold_msb)
-show_store_func_unsigned(control, reg_89, c89_fnm_pixel_touch_mult)
-show_store_func_unsigned(control, reg_89, c89_freq_scan_threshold_lsb)
-show_store_func_unsigned(control, reg_89, c89_freq_scan_threshold_msb)
-show_store_func_unsigned(control, reg_89, c89_quiet_im_threshold_lsb)
-show_store_func_unsigned(control, reg_89, c89_quiet_im_threshold_msb)
+show_store_subpkt_func_unsigned(control, reg_89, 0, c89_cid_sel_opt)
+show_store_subpkt_func_unsigned(control, reg_89, 0, c89_cid_voltage_sel)
+show_store_subpkt_func_unsigned(control, reg_89, 0,
+					c89_cid_im_noise_threshold_lsb)
+show_store_subpkt_func_unsigned(control, reg_89, 0,
+					c89_cid_im_noise_threshold_msb)
+
+show_store_subpkt_func_unsigned(control, reg_89, 1, c89_fnm_pixel_touch_mult)
+show_store_subpkt_func_unsigned(control, reg_89, 1, c89_freq_scan_threshold_lsb)
+show_store_subpkt_func_unsigned(control, reg_89, 1, c89_freq_scan_threshold_msb)
+show_store_subpkt_func_unsigned(control, reg_89, 1, c89_quiet_im_threshold_lsb)
+show_store_subpkt_func_unsigned(control, reg_89, 1, c89_quiet_im_threshold_msb)
+
+show_store_subpkt_func_unsigned(control, reg_89, 2, c89_rail_sel_opt);
+show_store_subpkt_func_unsigned(control, reg_89, 2,
+						c89_rail_im_noise_theshold_lsb);
+show_store_subpkt_func_unsigned(control, reg_89, 2,
+						c89_rail_im_noise_theshold_msb);
+show_store_subpkt_func_unsigned(control, reg_89, 2,
+						c89_rail_im_quiet_theshold_lsb);
+show_store_subpkt_func_unsigned(control, reg_89, 2,
+						c89_rail_im_quiet_theshold_msb);
 
 show_store_func_unsigned(control, reg_93, c93_freq_shift_noise_threshold_lsb)
 show_store_func_unsigned(control, reg_93, c93_freq_shift_noise_threshold_msb)
@@ -4190,9 +4368,20 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(87, 1, query13->has_ctrl87);
 	CTRL_REG_PRESENCE(88, 1, query->has_ctrl88);
 
+/*
 	CTRL_REG_ADD(89, 1, query13->has_cid_im ||
 				query13->has_noise_mitigation_enh ||
 				query13->has_rail_im);
+*/
+	CTRL_PKT_REG_START(89,
+		CTRL_SUBPKT_SZ(89, 0) +
+		CTRL_SUBPKT_SZ(89, 1) +
+		CTRL_SUBPKT_SZ(89, 2));
+
+	CTRL_SUBPKT_ADD(89, 0, query13->has_cid_im);
+	CTRL_SUBPKT_ADD(89, 1, query13->has_noise_mitigation_enh);
+	CTRL_SUBPKT_ADD(89, 2, query13->has_rail_im);
+	CTRL_PKT_REG_END(89, 1);
 
 	CTRL_REG_PRESENCE(90, 1, query15->has_ctrl90);
 	CTRL_REG_PRESENCE(91, 1, query21->has_ctrl91);
