@@ -112,8 +112,6 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 	uint8_t sensor_type = 0;
 	uint8_t num_samples = 0;
 	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
-	uint32_t irq_status = (buf[IRQ_IDX_STATUS_HI] << 16) |
-		(buf[IRQ_IDX_STATUS_MED] << 8) | buf[IRQ_IDX_STATUS_LO];
 	unsigned char *queue_buf = &buf[IRQ_IDX_STREAM_SENSOR_QUEUE];
 	static uint64_t last_ts_ns;
 
@@ -190,7 +188,7 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 				SH_TO_H16(sample_buf + SENSOR_Z_IDX));
 			break;
 		case STREAM_SENSOR_TYPE_UNCAL_GYRO:
-			if (irq_status & M_UNCALIB_GYRO) {
+			if (stml0xx_g_nonwake_sensor_state & M_UNCALIB_GYRO) {
 				char uncal_gyro_buf[UNCALIB_GYRO_DATA_SIZE];
 
 				memcpy(uncal_gyro_buf,
@@ -212,7 +210,7 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 					SH_TO_H16(buf + IRQ_IDX_GYRO_CAL_Y),
 					SH_TO_H16(buf + IRQ_IDX_GYRO_CAL_Z));
 			}
-			if  (irq_status & M_GYRO) {
+			if  (stml0xx_g_nonwake_sensor_state & M_GYRO) {
 				int16_t gyro_x, gyro_y, gyro_z;
 
 				/* Apply bias to uncal gyro data */
@@ -288,7 +286,9 @@ void stml0xx_irq_work_func(struct work_struct *work)
 		if (irq_status & M_QUEUE_OVERFLOW)
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Streaming sensor queue full");
-		if (irq_status & (M_ACCEL | M_ACCEL2 | M_GYRO | M_UNCALIB_GYRO))
+		if (stml0xx_g_nonwake_sensor_state
+				& (M_ACCEL | M_ACCEL2
+					| M_GYRO | M_UNCALIB_GYRO))
 			stml0xx_process_stream_sensor_queue(buf, stm_ws->ts_ns);
 	} else {
 		ps_stml0xx->discard_sensor_queue = false;
