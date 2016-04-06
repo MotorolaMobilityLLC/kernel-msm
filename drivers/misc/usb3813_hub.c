@@ -29,6 +29,9 @@
 #include <linux/printk.h>
 #include <linux/clk.h>
 #include <linux/mods/usb_ext_bridge.h>
+#ifdef CONFIG_FSUSB42_MUX
+#include <linux/fsusb42.h>
+#endif
 
 #define USB_ATTACH 0xAA55
 #define CFG_ACCESS 0x9937
@@ -54,6 +57,7 @@ struct usb3813_info {
 	bool debug_attach;
 	struct notifier_block usbext_notifier;
 	bool enable_controller;
+	bool switch_controller;
 };
 
 static int usb3813_write_command(struct usb3813_info *info, u16 command)
@@ -170,23 +174,65 @@ static int usb3813_read_cfg_reg(struct usb3813_info *info, u16 reg)
 	return val[1];
 }
 
+static void disable_usbc(struct usb3813_info *info, bool disable)
+{
+	struct power_supply *usbc_psy;
+	union power_supply_propval prop = {0,};
+	int rc;
+
+	usbc_psy = power_supply_get_by_name("usbc");
+	if (!usbc_psy)
+		return;
+
+	prop.intval = disable;
+	rc = usbc_psy->set_property(usbc_psy,
+		POWER_SUPPLY_PROP_DISABLE_USB,
+		&prop);
+	if (rc < 0)
+		dev_err(info->dev,
+			"could not set USBC disable property, rc=%d\n", rc);
+
+	power_supply_put(usbc_psy);
+}
+
 static int usb3813_host_enable(struct usb3813_info *info, bool enable)
 {
 	struct power_supply *usb_psy;
 
-	if (!info->enable_controller)
-		return 0;
+	if (info->enable_controller) {
 
-	usb_psy = power_supply_get_by_name("usb_host");
-	if (!usb_psy)
-		return -ENODEV;
+		usb_psy = power_supply_get_by_name("usb_host");
+		if (!usb_psy)
+			return -ENODEV;
 
-	if (enable)
-		power_supply_set_usb_otg(usb_psy, 1);
-	else
-		power_supply_set_usb_otg(usb_psy, 0);
+		if (enable)
+			power_supply_set_usb_otg(usb_psy, 1);
+		else
+			power_supply_set_usb_otg(usb_psy, 0);
 
-	power_supply_put(usb_psy);
+		power_supply_put(usb_psy);
+	} else if (info->switch_controller) {
+		usb_psy = power_supply_get_by_name("usb");
+		if (!usb_psy)
+			return -ENODEV;
+
+		if (enable) {
+			disable_usbc(info, true);
+#ifdef CONFIG_FSUSB42_MUX
+			fsusb42_set_state(FSUSB_STATE_EXT);
+#endif
+			power_supply_set_usb_otg(usb_psy, 1);
+		} else {
+			power_supply_set_usb_otg(usb_psy, 0);
+#ifdef CONFIG_FSUSB42_MUX
+			fsusb42_set_state(FSUSB_OFF);
+#endif
+			disable_usbc(info, false);
+		}
+
+		power_supply_put(usb_psy);
+	}
+
 	return 0;
 }
 
@@ -497,6 +543,7 @@ static int usb3813_probe(struct i2c_client *client,
 	}
 
 	info->enable_controller = of_property_read_bool(np, "enable-usbhost");
+	info->switch_controller = of_property_read_bool(np, "switch-usbhost");
 
 	INIT_DELAYED_WORK(&info->usb3813_attach_work, usb3813_attach_w);
 
