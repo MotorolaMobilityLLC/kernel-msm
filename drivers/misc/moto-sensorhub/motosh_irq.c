@@ -397,9 +397,13 @@ void motosh_irq_thread_func(struct kthread_work *work)
 							    ps_motosh,
 							    DT_QUAT_9AXIS,
 							    data,
-							    8,
+							    9, /*timestampidx*/
 							    status, true
 							    );
+			/* Note above that the index of the timestamp in the
+			data buffer is passed instead of the size of the data
+			to work around a bad  motosh_as_data_buffer_write
+			assumption */
 
 			dev_dbg(
 				&ps_motosh->client->dev,
