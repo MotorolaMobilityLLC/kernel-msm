@@ -202,6 +202,8 @@ struct bq24296_chg {
 	bool demo_mode;
 	bool usb_suspended;
 	bool chg_init_finish;
+	struct gpio *gpio_list;
+	int num_gpio_list; /* Number of entries in gpio_list array */
 };
 
 static struct bq24296_chg *the_chip;
@@ -1484,10 +1486,44 @@ static void heartbeat_work(struct work_struct *work)
 	bq_relax(&chip->bq_wake_source);
 }
 
+static  struct gpio *
+bq24296_get_gpio_list(struct device *dev, int *num_gpio_list)
+{
+	struct device_node *np = dev->of_node;
+	struct gpio *gpio_list;
+	int i, num_gpios, gpio_list_size;
+	enum of_gpio_flags flags;
+
+	if (!np)
+		return NULL;
+
+	num_gpios = of_gpio_count(np);
+	if (num_gpios <= 0)
+		return NULL;
+
+	gpio_list_size = sizeof(struct gpio) * num_gpios;
+	gpio_list = devm_kzalloc(dev, gpio_list_size, GFP_KERNEL);
+
+	if (!gpio_list)
+		return NULL;
+
+	*num_gpio_list = num_gpios;
+	for (i = 0; i < num_gpios; i++) {
+		gpio_list[i].gpio = of_get_gpio_flags(np, i, &flags);
+		gpio_list[i].flags = flags;
+		of_property_read_string_index(np, "gpio-names", i,
+					      &gpio_list[i].label);
+	}
+
+	return gpio_list;
+}
+
 static int bq24296_of_init(struct bq24296_chg *chip)
 {
 	int rc;
 	struct device_node *node = chip->dev->of_node;
+
+	chip->gpio_list = bq24296_get_gpio_list(chip->dev, &chip->num_gpio_list);
 
 	rc = of_property_read_string(node, "ti,bms-psy-name",
 				&chip->bms_psy_name);
@@ -2313,6 +2349,15 @@ static int bq24296_charger_probe(struct i2c_client *client,
 			}
 		}
 	}
+
+	if (chip->gpio_list) {
+		rc = gpio_request_array(chip->gpio_list, chip->num_gpio_list);
+		if (rc) {
+			dev_err(&client->dev, "cannot request GPIOs\n");
+			return rc;
+		}
+	} else
+		dev_err(&client->dev, "gpio_list is NULL\n");
 
 	bq24296_hw_init(chip);
 
