@@ -1337,9 +1337,9 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 
 #ifdef SHOW_LOGTRACE
 	case WLC_E_TRACE:
-	{
+		DHD_EVENT(("MACEVENT: %s Logtrace\n", event_name));
 		dhd_dbg_trace_evnt_handler(dhd_pub, event_data, raw_event_ptr, datalen);
-	}
+		break;
 #endif /* SHOW_LOGTRACE */
 
 	case WLC_E_RSSI:
