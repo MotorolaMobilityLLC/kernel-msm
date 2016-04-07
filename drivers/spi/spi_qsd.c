@@ -2907,8 +2907,7 @@ static int msm_spi_remove(struct platform_device *pdev)
 
 	if (dd->dma_teardown)
 		dd->dma_teardown(dd);
-	pm_runtime_disable(&pdev->dev);
-	pm_runtime_set_suspended(&pdev->dev);
+	pm_runtime_force_suspend(&pdev->dev);
 	clk_put(dd->clk);
 	clk_put(dd->pclk);
 	msm_spi_clk_path_teardown(dd);
