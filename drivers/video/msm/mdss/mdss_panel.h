@@ -45,9 +45,16 @@ enum cabc_mode {
 	CABC_MODE_NUM
 };
 
+enum acl_state {
+	ACL_OFF_STATE = 0,
+	ACL_ON_STATE,
+	ACL_STATE_NUM
+};
+
 enum panel_param_id {
 	PARAM_HBM_ID = 0,
 	PARAM_CABC_ID,
+	PARAM_ACL_ID,
 	PARAM_ID_NUM
 };
 
