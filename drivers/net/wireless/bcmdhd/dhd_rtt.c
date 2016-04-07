@@ -1611,14 +1611,14 @@ dhd_rtt_convert_results_to_host(rtt_report_t *rtt_report, uint8 *p_data, uint16 
 	/* rtt_sd */
 	rtt.tmu = ltoh16_ua(&p_data_info->avg_rtt.rtt.tmu);
 	rtt.intvl = ltoh32_ua(&p_data_info->avg_rtt.rtt.intvl);
-	rtt_report->rtt = FTM_INTVL2NSEC(&rtt) * 10; /* nano -> 0.1 nano */
+	rtt_report->rtt = FTM_INTVL2NSEC(&rtt) * 1000; /* nano -> pico seconds */
 	rtt_report->rtt_sd = ltoh16_ua(&p_data_info->sd_rtt); /* nano -> 0.1 nano */
 	DHD_RTT(("rtt_report->rtt : %llu\n", rtt_report->rtt));
 	DHD_RTT(("rtt_report->rssi : %d (0.5db)\n", rtt_report->rssi));
 
 	/* average distance */
 	if (avg_dist != FTM_INVALID) {
-		rtt_report->distance = (avg_dist >> 8) * 100; /* meter -> cm */
+		rtt_report->distance = (avg_dist >> 8) * 1000; /* meter -> mm */
 		rtt_report->distance += (avg_dist & 0xff) * 100 / 256;
 	} else {
 		rtt_report->distance = FTM_INVALID;
