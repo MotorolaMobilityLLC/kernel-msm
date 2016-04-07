@@ -186,6 +186,29 @@ static int max17048_masked_write_word(struct i2c_client *client, int reg,
 	return 0;
 }
 
+static int set_empty_soc(void *data, u64 val)
+{
+	int *empty_soc = data;
+
+	if (val > 1000 || val < 0) {
+		pr_err("max17048: Tried to set empty_soc to illegal value\n");
+		return -1;
+	}
+
+	*empty_soc = (int)val;
+	return 0;
+}
+
+static int get_empty_soc(void *data, u64 *val)
+{
+	int *empty_soc = data;
+
+	*val = (u64)*empty_soc;
+
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(empty_soc_fops, get_empty_soc, set_empty_soc, "%llu\n");
+
 static int set_reg(void *data, u64 val)
 {
 	u32 addr = (u32) data;
@@ -677,6 +700,7 @@ static int max17048_get_property(struct power_supply *psy,
 static int max17048_create_debugfs_entries(struct max17048_chip *chip)
 {
 	int i;
+	struct dentry *file;
 
 	chip->dent = debugfs_create_dir("max17048", NULL);
 	if (IS_ERR(chip->dent)) {
@@ -687,7 +711,6 @@ static int max17048_create_debugfs_entries(struct max17048_chip *chip)
 	for (i = 0 ; i < ARRAY_SIZE(max17048_debug_regs) ; i++) {
 		char *name = max17048_debug_regs[i].name;
 		u32 reg = max17048_debug_regs[i].reg;
-		struct dentry *file;
 
 		file = debugfs_create_file(name, 0644, chip->dent,
 					(void *) reg, &reg_fops);
@@ -695,6 +718,13 @@ static int max17048_create_debugfs_entries(struct max17048_chip *chip)
 			pr_err("debugfs_create_file %s failed.\n", name);
 			return -EFAULT;
 		}
+	}
+
+	file = debugfs_create_file("empty_soc", 0644, chip->dent,
+			(void *) &(chip->empty_soc), &empty_soc_fops);
+	if (IS_ERR(file)) {
+		pr_err("debugfs_create_file empty_soc failed.\n");
+		return -EFAULT;
 	}
 
 	return 0;
