@@ -330,6 +330,10 @@ config DEDUCE_WAKEUP_REASONS
 	bool
 	default n
 
+config PM_SYNC_BEFORE_SUSPEND
+	bool "Sync file systems before suspend"
+	depends on SUSPEND
+	default y
 config QUICK_WAKEUP
 	bool "Quick wakeup"
 	depends on SUSPEND
