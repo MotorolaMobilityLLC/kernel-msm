@@ -13,13 +13,13 @@ qcom,mdss-dsi-panel-height = <1280>;
 qcom,mdss-pan-physical-width-dimension = <62>;
 qcom,mdss-pan-physical-height-dimension = <110>;
 
-qcom,mdss-dsi-panel-clockrate = <0>;
-qcom,mdss-dsi-h-front-porch = <100>;
-qcom,mdss-dsi-h-back-porch = <160>;
+qcom,mdss-dsi-panel-clockrate = <418798080>;
+qcom,mdss-dsi-h-front-porch = <52>;
+qcom,mdss-dsi-h-back-porch = <84>;
 qcom,mdss-dsi-h-pulse-width = <20>;
 qcom,mdss-dsi-h-sync-skew = <0>;
 qcom,mdss-dsi-v-back-porch = <20>;
-qcom,mdss-dsi-v-front-porch = <40>;
+qcom,mdss-dsi-v-front-porch = <20>;
 qcom,mdss-dsi-v-pulse-width = <8>;
 qcom,mdss-dsi-h-left-border = <0>;
 qcom,mdss-dsi-h-right-border = <0>;
@@ -65,9 +65,9 @@ qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 
-qcom,mdss-dsi-panel-timings = [C3 1E 14 00 44 48 18 90 19 03 04 00];
+qcom,mdss-dsi-panel-timings = [DB 1A 10 00 3E 40 16 90 15 03 04 00];
 qcom,mdss-dsi-t-clk-post = <0x04>;
-qcom,mdss-dsi-t-clk-pre = <0x23>;
+qcom,mdss-dsi-t-clk-pre = <0x24>;
 
 qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <4095>;
