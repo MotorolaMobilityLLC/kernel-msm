@@ -398,7 +398,6 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 	}
 
 	mmc_claim_host(card->host);
-	mmc_rpm_hold(card->host, &card->dev);
 
 	if (mmc_card_cmdq(card)) {
 		/* halt cmdq engine */
@@ -517,8 +516,6 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 
 exit:
 	mmc_release_host(card->host);
-	mmc_rpm_release(card->host, &card->dev);
-
 	release_firmware(fw);
 	return err;
 }
