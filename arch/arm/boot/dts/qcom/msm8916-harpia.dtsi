@@ -171,6 +171,16 @@
 	cc_alert {
 		qcom,pins = <&gp 62>;
 	};
+	bq24296_int_pin {
+		qcom,pins = <&gp 120>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "bq24296_int_gpio";
+		bq24296_int_default: bq24296_int_default {
+			drive-strength = <2>;	/* 2 MA */
+			bias-pull-up;		/* PULL UP*/
+		};
+	};
 };
 
 &spi_0 {
@@ -225,6 +235,15 @@
 		ti,input-current-limit = <2000>;
 		ti,sys-vmin-mv = <3500>;
 		ti,chg-current-ma = <2000>;
+
+		gpios = <&pm8916_gpios 4 0x00>, /* GPIOF_OUT_INIT_LOW*/
+			<&msm_gpio 120 0x01>; 	/* GPIOF_DIR_IN */
+
+		gpio-names = "bq24296_en_pin",
+			     "bq24296_int_pin";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&bq24296_int_default>;
 	};
 
 	max17050: max17050-battery@36 {
