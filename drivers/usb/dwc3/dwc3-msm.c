@@ -246,6 +246,7 @@ struct dwc3_msm {
 	unsigned int		lpm_to_suspend_delay;
 	bool			init;
 	struct timer_list       chg_check_timer;
+	bool			disable_bus_vote;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -1940,6 +1941,9 @@ static void dwc3_msm_bus_vote_w(struct work_struct *w)
 	struct dwc3_msm *mdwc = container_of(w, struct dwc3_msm, bus_vote_w);
 	int ret;
 
+	if (mdwc->disable_bus_vote)
+		return;
+
 	ret = msm_bus_scale_client_update_request(mdwc->bus_perf_client,
 			mdwc->bus_vote);
 	if (ret)
@@ -2063,7 +2067,7 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 	}
 
 	/* Remove bus voting */
-	if (mdwc->bus_perf_client) {
+	if (mdwc->bus_perf_client && !mdwc->disable_bus_vote) {
 		mdwc->bus_vote = 0;
 		schedule_work(&mdwc->bus_vote_w);
 	}
@@ -2118,7 +2122,7 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	pm_stay_awake(mdwc->dev);
 
 	/* Enable bus voting */
-	if (mdwc->bus_perf_client) {
+	if (mdwc->bus_perf_client && !mdwc->disable_bus_vote) {
 		mdwc->bus_vote = 1;
 		schedule_work(&mdwc->bus_vote_w);
 	}
@@ -2814,6 +2818,69 @@ static void dwc3_chg_check_timer_func(unsigned long data)
 	}
 }
 
+static int dwc3_busvoting_show(struct seq_file *s, void *unused)
+{
+	struct dwc3_msm *mdwc = s->private;
+
+	if (mdwc->disable_bus_vote)
+		seq_puts(s, "true\n");
+	else
+		seq_puts(s, "false\n");
+
+	return 0;
+}
+
+static int dwc3_busvoting_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dwc3_busvoting_show, inode->i_private);
+}
+
+static ssize_t dwc3_busvoting_write(struct file *file, const char __user *ubuf,
+				size_t count, loff_t *ppos)
+{
+	struct seq_file *s = file->private_data;
+	struct dwc3_msm *mdwc = s->private;
+	char buf[8];
+	int ret;
+
+	memset(buf, 0x00, sizeof(buf));
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	if (!strncmp(buf, "Y", 1) || !strncmp(buf, "true", 4)) {
+		if (mdwc->bus_perf_client && !mdwc->disable_bus_vote) {
+			mdwc->bus_vote = 0;
+			ret = msm_bus_scale_client_update_request(
+						mdwc->bus_perf_client,
+						mdwc->bus_vote);
+			if (ret)
+				dev_err(mdwc->dev, "Failed to clear vote\n");
+		}
+		mdwc->disable_bus_vote = true;
+	} else if (!strncmp(buf, "N", 1) || !strncmp(buf, "false", 5)) {
+		if (mdwc->bus_perf_client && mdwc->disable_bus_vote) {
+			mdwc->bus_vote = 1;
+			ret = msm_bus_scale_client_update_request(
+					mdwc->bus_perf_client,
+					mdwc->bus_vote);
+			if (ret)
+				dev_err(mdwc->dev, "Failed to set vote\n");
+		}
+		mdwc->disable_bus_vote = false;
+	}
+
+	return count;
+}
+
+const struct file_operations dwc3_busvoting_fops = {
+	.open = dwc3_busvoting_open,
+	.read = seq_read,
+	.write = dwc3_busvoting_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
 static int dwc3_msm_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node, *dwc3_node;
@@ -3207,6 +3274,13 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		dwc3_ext_event_notify(mdwc);
 	}
 
+	if (mdwc->bus_perf_client && dwc->root) {
+		if (!debugfs_create_file("disable_bus_vote",
+				S_IRUGO | S_IWUSR, dwc->root,
+				mdwc, &dwc3_busvoting_fops))
+			dev_err(&pdev->dev,
+				"failed to create debugfs for bus vote\n");
+	}
 	return 0;
 
 put_dwc3:
@@ -3595,7 +3669,7 @@ static void dwc3_initialize(struct dwc3_msm *mdwc)
 	dbg_event(dwc->ctrl_num, 0xFF, "Initialized Start",
 			atomic_read(&mdwc->dev->power.usage_count));
 
-	if (mdwc->bus_perf_client) {
+	if (mdwc->bus_perf_client && !mdwc->disable_bus_vote) {
 		mdwc->bus_vote = 1;
 		schedule_work(&mdwc->bus_vote_w);
 	}
