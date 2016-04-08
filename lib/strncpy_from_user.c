@@ -40,10 +40,8 @@ static inline long do_strncpy_from_user(char *dst, const char __user *src, long 
 	/* Copy a byte at a time until we align to 8 bytes */
 	while (max && (!CHECK_ALIGN(src + res, 8))) {
 		char c;
-		int ret;
 
-		ret = __get_user(c, src + res);
-		if (ret)
+		if (unlikely(__get_user(c, src + res)))
 			return -EFAULT;
 		dst[res] = c;
 		if (!c)
