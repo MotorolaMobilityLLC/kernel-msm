@@ -1970,6 +1970,7 @@ show_prototype(has_noise_mitigation2)
 show_prototype(has_noise_state)
 show_prototype(has_energy_ratio_relaxation)
 show_prototype(number_of_sensing_frequencies)
+show_prototype(has_data17)
 show_prototype(q17_num_of_sense_freqs)
 show_store_prototype(no_relax)
 show_store_prototype(no_scan)
@@ -2148,6 +2149,7 @@ static struct attribute *attrs[] = {
 	attrify(has_noise_state),
 	attrify(has_energy_ratio_relaxation),
 	attrify(number_of_sensing_frequencies),
+	attrify(has_data17),
 	attrify(q17_num_of_sense_freqs),
 	attrify(f55_q2_has_single_layer_multitouch),
 	NULL,
@@ -3449,6 +3451,7 @@ simple_show_func_unsigned(query, has_noise_mitigation2)
 simple_show_func_unsigned(query, has_noise_state)
 simple_show_func_unsigned(query, has_energy_ratio_relaxation)
 simple_show_func_unsigned(query12, number_of_sensing_frequencies)
+simple_show_func_unsigned(query16, has_data17)
 simple_show_func_unsigned(query17, q17_num_of_sense_freqs)
 show_store_func_unsigned(data, reg_4, d4_inhibit_freq_shift)
 show_store_func_unsigned(data, reg_4, d4_baseline_sel)
