@@ -11,6 +11,58 @@
  * GNU General Public License for more details.
  */
 
+&tlmm_pinmux {
+	cam_sensor_mclk0 {
+		/* MCLK */
+		qcom,pins = <&gp 26>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cam-sensor-mclk0";
+		/* active state */
+		cam_sensor_mclk0_default: default {
+			drive-strength = <4>; /* 4 MA */
+			bias-disable = <0>; /* No PULL */
+		};
+	};
+
+	cam_sensor_mclk0_sleep {
+		/* MCLK */
+		qcom,pins = <&gp 26>;
+		qcom,num-grp-pins = <1>;
+		label = "cam-sensor-mclk0-sleep";
+		/* suspend state */
+		cam_sensor_mclk0_sleep: sleep {
+			drive-strength = <4>; /* 4 MA */
+			bias-pull-down; /* PULL DOWN */
+		};
+	};
+
+	cam_sensor_mclk1 {
+		/* MCLK */
+		qcom,pins = <&gp 27>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cam-sensor-mclk1";
+		/* active state */
+		cam_sensor_mclk1_default: default {
+			drive-strength = <4>; /* 4 MA */
+			bias-disable = <0>; /* No PULL */
+		};
+	};
+
+	cam_sensor_mclk1_sleep {
+		/* MCLK */
+		qcom,pins = <&gp 27>;
+		qcom,num-grp-pins = <1>;
+		label = "cam-sensor-mclk1-sleep";
+		/* suspend state */
+		cam_sensor_mclk1_sleep: sleep {
+			drive-strength = <4>; /* 4 MA */
+			bias-pull-down; /* PULL DOWN */
+		};
+	};
+};
+
 &rpm_bus {
 	rpm-regulator-ldoa10 {
 		status = "okay";
