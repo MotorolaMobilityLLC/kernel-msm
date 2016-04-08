@@ -3696,6 +3696,9 @@ static int smbchg_dc_is_broadcast(struct power_supply *psy,
 static enum power_supply_property smbchg_wls_properties[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
+	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
+	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS,
 };
 
 static int smbchg_wls_get_property(struct power_supply *psy,
@@ -3731,6 +3734,15 @@ static int smbchg_wls_get_property(struct power_supply *psy,
 		else
 			val->intval = 0;
 		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		val->intval = chip->dc_max_current_ma * 1000;
+		break;
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		val->intval = chip->dc_therm_lvl_sel;
+		break;
+	case POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS:
+		val->intval = chip->dc_thermal_levels;
+		break;
 	default:
 		power_supply_put(eb_pwr_psy);
 		return -EINVAL;
@@ -3755,6 +3767,49 @@ static int smbchg_wls_is_broadcast(struct power_supply *psy,
 		rc = 0;
 		break;
 	}
+	return rc;
+}
+
+static int smbchg_wls_is_writeable(struct power_supply *psy,
+				       enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+
+static int smbchg_wls_set_property(struct power_supply *psy,
+				       enum power_supply_property prop,
+				       const union power_supply_propval *val)
+{
+	int rc = 0;
+	struct smbchg_chip *chip = container_of(psy,
+				struct smbchg_chip, wls_psy);
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+		rc = smbchg_dc_en(chip, val->intval, REASON_POWER_SUPPLY);
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		rc = smbchg_set_dc_current_max(chip, val->intval / 1000);
+		break;
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		smbchg_dc_system_temp_level_set(chip, val->intval);
+		break;
+	default:
+		return -EINVAL;
+	}
+
 	return rc;
 }
 
@@ -9257,6 +9312,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	bool bsw_chrg_alarm;
 	bool max_chrg_alarm;
 	int prev_dcin_curr_ma = chip->dc_target_current_ma;
+	bool wls_present;
 
 	if (!atomic_read(&chip->hb_ready))
 		return;
@@ -9279,7 +9335,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		smbchg_set_extbat_state(chip, EB_OFF);
 	}
 
-	if (is_wls_present(chip))
+	wls_present = is_wls_present(chip);
+
+	if (wls_present)
 		smbchg_stay_awake(chip, PM_WIRELESS);
 	else
 		smbchg_relax(chip, PM_WIRELESS);
@@ -9309,7 +9367,11 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	if ((!chip->usb_present) && !(eb_able & EB_SND_NEVER)) {
 		switch (chip->ebchg_state) {
 		case EB_SRC:
-			if ((eb_soc <= 0) || (eb_on_sw == 0)) {
+			if (wls_present) {
+				chip->dc_target_current_ma = chip->cl_ebsrc;
+				if ((batt_soc == 100) && (eb_soc < 100))
+					smbchg_set_extbat_state(chip, EB_OFF);
+			} else if ((eb_soc <= 0) || (eb_on_sw == 0)) {
 				smbchg_set_extbat_state(chip, EB_OFF);
 				if (chip->cl_ebsrc &&
 				    (chip->cl_ebsrc < chip->dc_eff_current_ma))
@@ -9320,10 +9382,15 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 						chip->dc_eff_current_ma;
 				chip->eb_hotplug = false;
 			}
+			chip->eb_hotplug = false;
 			break;
 		case EB_SINK:
 		case EB_OFF:
-			if ((eb_soc <= 0) || (eb_on_sw == 0))
+			if (wls_present) {
+				chip->dc_target_current_ma = chip->cl_ebsrc;
+				if ((batt_soc < 100) || (eb_soc == 100))
+					smbchg_set_extbat_state(chip, EB_SRC);
+			} else if ((eb_soc <= 0) || (eb_on_sw == 0))
 				smbchg_set_extbat_state(chip, EB_OFF);
 			else if (eb_able & EB_SND_LOW) {
 				if (batt_soc <= eb_low_start_soc)
@@ -10098,8 +10165,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->wls_psy.name		= "wireless";
 	chip->wls_psy.type		= POWER_SUPPLY_TYPE_WIRELESS;
 	chip->wls_psy.get_property	= smbchg_wls_get_property;
-	chip->wls_psy.set_property	= NULL;
-	chip->wls_psy.property_is_writeable = NULL;
+	chip->wls_psy.set_property	= smbchg_wls_set_property;
+	chip->wls_psy.property_is_writeable = smbchg_wls_is_writeable;
 	chip->wls_psy.properties		= smbchg_wls_properties;
 	chip->wls_psy.num_properties = ARRAY_SIZE(smbchg_wls_properties);
 	chip->wls_psy.property_is_broadcast = smbchg_wls_is_broadcast;
