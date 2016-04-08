@@ -92,6 +92,7 @@ enum {
 #define WLAN_RF_DATA2_SHIFT		2
 #define PRONTO_PMU_OFFSET       0x1004
 #define WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP   BIT(5)
+#define WLAN_NV_NAME_SIZE  50
 
 struct device *wcnss_wlan_get_device(void);
 void wcnss_get_monotonic_boottime(struct timespec *ts);
@@ -117,6 +118,7 @@ int wcnss_req_power_on_lock(char *driver_name);
 int wcnss_free_power_on_lock(char *driver_name);
 unsigned int wcnss_get_serial_number(void);
 int wcnss_get_wlan_mac_address(char mac_addr[WLAN_MAC_ADDR_SIZE]);
+int wcnss_get_wlan_nv_name(char nv_name[WLAN_NV_NAME_SIZE]);
 void wcnss_allow_suspend(void);
 void wcnss_prevent_suspend(void);
 int wcnss_hardware_type(void);
