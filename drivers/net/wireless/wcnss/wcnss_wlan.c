@@ -192,6 +192,7 @@ static DEFINE_SPINLOCK(reg_spinlock);
 #define WCNSS_USR_CTRL_MSG_START  0x00000000
 #define WCNSS_USR_HAS_CAL_DATA    (WCNSS_USR_CTRL_MSG_START + 2)
 #define WCNSS_USR_WLAN_MAC_ADDR   (WCNSS_USR_CTRL_MSG_START + 3)
+#define WCNSS_USR_WLAN_NV_NAME    (WCNSS_USR_CTRL_MSG_START + 4)
 
 #define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
 #define SHOW_MAC_ADDRESS_STR	"%02x:%02x:%02x:%02x:%02x:%02x\n"
@@ -429,6 +430,7 @@ static struct {
 	struct clk *snoc_wcnss;
 	unsigned int snoc_wcnss_clock_freq;
 	bool is_dual_band_disabled;
+	char wcnss_nv_name[WLAN_NV_NAME_SIZE];
 } *penv = NULL;
 
 static ssize_t wcnss_wlan_macaddr_store(struct device *dev,
@@ -2649,10 +2651,25 @@ static int wcnss_ctrl_open(struct inode *inode, struct file *file)
 	return rc;
 }
 
+int wcnss_get_wlan_nv_name(char *nv_name)
+{
+	if (!penv)
+		return -ENODEV;
+	if (penv->wcnss_nv_name[0] != 0) {
+		memcpy(nv_name, penv->wcnss_nv_name, WLAN_NV_NAME_SIZE);
+		pr_debug("%s: Get NV name: %s" "\n", __func__,
+			penv->wcnss_nv_name);
+		return 0;
+	}
+	pr_err("%s: No NV name\n", __func__);
+	return 1;
+}
+EXPORT_SYMBOL(wcnss_get_wlan_nv_name);
 
 void process_usr_ctrl_cmd(u8 *buf, size_t len)
 {
 	u16 cmd = buf[0] << 8 | buf[1];
+	s8 fname_length;
 
 	switch (cmd) {
 
@@ -2671,6 +2688,20 @@ void process_usr_ctrl_cmd(u8 *buf, size_t len)
 			penv->wlan_nv_macAddr[0], penv->wlan_nv_macAddr[1],
 			penv->wlan_nv_macAddr[2], penv->wlan_nv_macAddr[3],
 			penv->wlan_nv_macAddr[4], penv->wlan_nv_macAddr[5]);
+		break;
+	case WCNSS_USR_WLAN_NV_NAME:
+		fname_length = (buf[2] < WLAN_NV_NAME_SIZE) ?
+				buf[2]:WLAN_NV_NAME_SIZE-1;
+
+		if (fname_length < 0)
+			pr_debug("%s: Invalid filename length for filename %d\n",
+				 __func__, fname_length);
+		pr_debug("%s: fname length was %d",
+			 __func__, fname_length);
+		memcpy(penv->wcnss_nv_name, &buf[3], fname_length);
+		penv->wcnss_nv_name[WLAN_NV_NAME_SIZE-1] = 0;
+		pr_err("%s: user nv set to %s, fname length was %d",
+			__func__, penv->wcnss_nv_name, fname_length);
 		break;
 
 	default:
@@ -3552,6 +3583,7 @@ wcnss_wlan_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	penv->pdev = pdev;
+	penv->wcnss_nv_name[0] = 0;
 
 	penv->user_cal_data =
 		devm_kzalloc(&pdev->dev, MAX_CALIBRATED_DATA_SIZE, GFP_KERNEL);
