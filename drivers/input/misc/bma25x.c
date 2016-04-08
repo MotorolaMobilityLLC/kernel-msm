@@ -3520,6 +3520,9 @@ static int bma25x_probe(struct i2c_client *client,
 	/* all interrupt generated events are moved to interrupt input devices*/
 	dev_interrupt->name = "bma25x-interrupt";
 	dev_interrupt->id.bustype = BUS_I2C;
+	input_set_abs_params(dev_interrupt, ABS_X, ABSMIN, ABSMAX, 0, 0);
+	input_set_abs_params(dev_interrupt, ABS_Y, ABSMIN, ABSMAX, 0, 0);
+	input_set_abs_params(dev_interrupt, ABS_Z, ABSMIN, ABSMAX, 0, 0);
 	input_set_capability(dev_interrupt, EV_REL,
 		SLOW_NO_MOTION_INTERRUPT);
 	input_set_capability(dev_interrupt, EV_ABS,
