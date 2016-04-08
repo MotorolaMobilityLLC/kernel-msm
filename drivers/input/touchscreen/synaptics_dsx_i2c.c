@@ -7279,7 +7279,7 @@ static int fps_notifier_callback(struct notifier_block *self,
 			rmi4_data->clipa = NULL;
 			cm->effective = false;
 		}
-		pr_info("FPS: clipping is %s\n",
+		dev_dbg(&rmi4_data->i2c_client->dev, "FPS: clipping is %s\n",
 			rmi4_data->clipping_on ? "ON" : "OFF");
 	}
 done:
