@@ -866,11 +866,14 @@ EXPORT_SYMBOL(dump_skip);
 int dump_align(struct coredump_params *cprm, int align)
 {
 	unsigned mod = 0;
+#ifdef CONFIG_COREDUMP_GZ
 	if (!dump_compressed(cprm))
 		mod = cprm->written & (align - 1);
 	else
 		mod = cprm->zstr.total_in & (align - 1);
-
+#else
+	mod = cprm->written & (align - 1);
+#endif
 	if (align & (align - 1))
 		return 0;
 	return mod ? dump_skip(cprm, align - mod) : 1;
