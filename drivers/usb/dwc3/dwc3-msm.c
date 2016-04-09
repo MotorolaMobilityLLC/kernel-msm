@@ -3509,6 +3509,25 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		mdwc->id_state = DWC3_ID_FLOAT;
 		device_create_file(&pdev->dev, &dev_attr_xhci_link_compliance);
 		dwc3_ext_event_notify(mdwc);
+	} else if (!mdwc->pmic_id_irq &&
+		of_property_read_bool(node, "psy,type-c")) {
+		/* Check if type-C connection is in SRC mode */
+		struct power_supply *usbc_psy =
+				power_supply_get_by_name("usbc");
+		union power_supply_propval prop = {0,};
+		int rc;
+
+		if (usbc_psy) {
+			rc = usbc_psy->get_property(usbc_psy,
+				POWER_SUPPLY_PROP_TYPE,
+				&prop);
+			if (rc >= 0  &&
+				prop.intval == POWER_SUPPLY_TYPE_USBC_SRC) {
+				mdwc->id_state = DWC3_ID_GROUND;
+				dwc3_ext_event_notify(mdwc);
+			}
+			power_supply_put(usbc_psy);
+		}
 	}
 
 	/* If the controller is in DRD mode and USB power supply
