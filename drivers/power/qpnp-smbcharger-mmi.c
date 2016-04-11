@@ -8987,17 +8987,29 @@ static int set_bsw_curr(struct smbchg_chip *chip, int chrg_curr_ma)
 	if (!chip->usbc_psy || !chip->usbc_online)
 		return rc;
 
-	if (!chip->usbc_psy->set_property)
+	if (!chip->usbc_psy->set_property || !chip->usbc_psy->get_property)
 		return rc;
 
 	ret.intval = chrg_curr_ma * 1000;
 	rc = chip->usbc_psy->set_property(chip->usbc_psy,
 					  POWER_SUPPLY_PROP_CURRENT_MAX,
 					  &ret);
-	if (rc < 0)
+	if (rc < 0) {
 		SMB_ERR(chip,
 			"Err could not set BSW Current %d mA!\n",
 			chrg_curr_ma);
+		return rc;
+	}
+
+	ret.intval = 0;
+	rc = chip->usbc_psy->get_property(chip->usbc_psy,
+			      POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
+					  &ret);
+	if (rc < 0)
+		SMB_ERR(chip,
+			"Err could not get BSW Current!\n");
+	else
+		chip->bsw_curr_ma = ret.intval / 1000;
 
 	return rc;
 }
@@ -9011,6 +9023,7 @@ static int bsw_ramp_up(struct smbchg_chip *chip)
 	int max_ma;
 	int taper_ma;
 	int index;
+	int prev_bsw_curr_ma = 0;
 
 	if (!chip || !chip->bsw_psy_name)
 		return rc;
@@ -9026,18 +9039,26 @@ static int bsw_ramp_up(struct smbchg_chip *chip)
 
 	set_curr = taper_ma;
 	do {
-		set_bsw(chip, max_mv, set_curr, false);
-		msleep(100);
+		if (prev_bsw_curr_ma != chip->bsw_curr_ma) {
+			set_bsw(chip, max_mv, set_curr, false);
+			msleep(100);
+		}
+
+		prev_bsw_curr_ma = chip->bsw_curr_ma;
+
 		rc = set_bsw_curr(chip, set_curr);
 		if (rc < 0)
 			return rc;
-		set_bsw(chip, max_mv, set_curr, true);
 
-		/* Delay is twice max17050 update period */
-		msleep(350);
+		if (prev_bsw_curr_ma != chip->bsw_curr_ma) {
+			set_bsw(chip, max_mv, set_curr, true);
+
+			/* Delay is twice max17050 update period */
+			msleep(350);
+		}
+
 		if (set_curr >= max_ma)
 			break;
-
 		set_curr += BSW_CURR_STEP_MA;
 		if (set_curr >= max_ma)
 			set_curr = max_ma;
@@ -9057,7 +9078,6 @@ static int bsw_ramp_up(struct smbchg_chip *chip)
 	if (rc < 0)
 		return rc;
 	set_bsw(chip, max_mv, set_curr, true);
-	chip->bsw_curr_ma = set_curr;
 	return 0;
 }
 
@@ -9253,10 +9273,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			    STEP_END(chip->stepchg_num_steps)) {
 				chip->stepchg_state = STEP_TAPER;
 				chip->bsw_mode = BSW_DONE;
-				chip->bsw_curr_ma = BSW_DEFAULT_MA;
-				set_bsw(chip, max_mv, chip->bsw_curr_ma,
+				set_bsw(chip, max_mv, BSW_DEFAULT_MA,
 						false);
-				set_bsw_curr(chip, chip->bsw_curr_ma);
+				set_bsw_curr(chip, BSW_DEFAULT_MA);
 				break;
 			}
 			if (chip->stepchg_state < STEP_NONE)
@@ -9267,34 +9286,34 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		   (chip->bsw_mode == BSW_RUN) &&
 		   (bsw_chrg_alarm || max_chrg_alarm)) {
 		bool change_state = false;
-
+		int curr_lvl = chip->bsw_curr_ma;
 		SMB_INFO(chip, "bsw tripped! BSW Current %d mA\n",
-			 chip->bsw_curr_ma);
+			 curr_lvl);
 		chip->bsw_ramping = true;
-		set_bsw(chip, max_mv, chip->bsw_curr_ma, false);
+		set_bsw(chip, max_mv, curr_lvl, false);
 		/* Keep Switch Open for 100 ms to let battery relax */
 		msleep(100);
 
 		index = STEP_START(chip->stepchg_state);
 		max_mv = chip->stepchg_steps[index].max_mv;
 
-		if ((chip->bsw_curr_ma <= taper_ma) ||
+		if ((curr_lvl <= taper_ma) ||
 		    (bsw_chrg_alarm && (max_mv < chip->bsw_volt_min_mv)))
 			change_state = true;
 		else
-			chip->bsw_curr_ma -= BSW_CURR_STEP_MA;
+			curr_lvl -= BSW_CURR_STEP_MA;
 
 		if (change_state) {
 			if (chip->stepchg_state ==
 			    STEP_END(chip->stepchg_num_steps)) {
 				chip->stepchg_state = STEP_TAPER;
 				chip->bsw_mode = BSW_DONE;
-				chip->bsw_curr_ma = BSW_DEFAULT_MA;
+				curr_lvl = BSW_DEFAULT_MA;
 			} else if (pmi_max_chrg_ma > taper_ma) {
 				if (chip->stepchg_state < STEP_NONE)
 					chip->stepchg_state++;
 				chip->bsw_mode = BSW_DONE;
-				chip->bsw_curr_ma = BSW_DEFAULT_MA;
+				curr_lvl = BSW_DEFAULT_MA;
 			} else {
 				if (chip->stepchg_state < STEP_NONE)
 					chip->stepchg_state++;
@@ -9302,11 +9321,11 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				max_mv = chip->stepchg_steps[index].max_mv;
 				max_ma = chip->stepchg_steps[index].max_ma;
 				taper_ma = chip->stepchg_steps[index].taper_ma;
-				chip->bsw_curr_ma = max_ma;
+				curr_lvl = max_ma;
 		    }
 		}
-		set_bsw_curr(chip, chip->bsw_curr_ma);
-		set_bsw(chip, max_mv, chip->bsw_curr_ma,
+		set_bsw_curr(chip, curr_lvl);
+		set_bsw(chip, max_mv, curr_lvl,
 			(chip->bsw_mode == BSW_RUN));
 		chip->bsw_ramping = false;
 	} else if ((chip->stepchg_state == STEP_NONE) &&
