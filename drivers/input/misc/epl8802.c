@@ -281,8 +281,8 @@ uint32_t dynamic_intt_max_lux = 17000;
 uint32_t dynamic_intt_min_lux = 0;
 uint32_t dynamic_intt_min_unit = 1000;
 
-static int als_dynamic_intt_intt[] = {EPL_ALS_INTT_1024, EPL_ALS_INTT_1024};
-static int als_dynamic_intt_value[] = {1024, 1024};
+static int als_dynamic_intt_intt[] = {EPL_ALS_INTT_1024, EPL_ALS_INTT_256};
+static int als_dynamic_intt_value[] = {1024, 256};
 static int als_dynamic_intt_gain[] = {EPL_GAIN_MID, EPL_GAIN_LOW};
 static int als_dynamic_intt_high_thr[] = {60000, 60000};
 static int als_dynamic_intt_low_thr[] = {200, 200};
@@ -3532,7 +3532,7 @@ static int epl_sensor_parse_dt(struct device *dev, struct epl_sensor_priv *epld)
 	prop = of_find_property(dt, "epl,als_c_gain", NULL);
 	if (prop)
 		of_property_read_u32(dt, "epl,als_c_gain", &temp);
-	epld->dt_als_c_gain = (u8)temp;
+	epld->dt_als_c_gain = (u16)temp;
 
 	prop = of_find_property(dt, "epl,ps_eg_sign", NULL);
 	if (prop)
