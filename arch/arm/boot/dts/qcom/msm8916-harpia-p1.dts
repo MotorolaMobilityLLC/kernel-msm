@@ -38,7 +38,7 @@
 	elan@49 {
 		epl,wait_time = <0x09>;
 		epl,dt_st_gain = <9>;
-		epl,als_c_gain = <100>;
+		epl,als_c_gain = <480>;
 		epl,ps_eg_sign = <1>;
 		epl,ps_intt = <5>;
 		epl,ps_gain = <0x01>;
