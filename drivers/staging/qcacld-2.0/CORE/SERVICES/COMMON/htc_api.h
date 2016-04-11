@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -623,6 +623,18 @@ A_STATUS    HTCAddReceivePktMultiple(HTC_HANDLE HTCHandle, HTC_PACKET_QUEUE *pPk
 A_BOOL      HTCIsEndpointActive(HTC_HANDLE      HTCHandle,
                                 HTC_ENDPOINT_ID Endpoint);
 
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  @desc: Set up nodrop pkt flag for mboxping nodrop pkt
+  @function name: HTCIsEndpointActive
+  @input:  HTCHandle - HTC handle
+           isNodropPkt - indicates whether it is nodrop pkt
+  @output:
+  @return:
+  @notes:
+  @example:
+  @see also:
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+void        HTCSetNodropPkt(HTC_HANDLE HTCHandle, A_BOOL isNodropPkt);
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   @desc: Get the number of recv buffers currently queued into an HTC endpoint

@@ -606,28 +606,3 @@ int adf_nbuf_update_radiotap(struct mon_rx_status *rx_status, adf_nbuf_t nbuf,
 			rtap_hdr_len, rtap_len - rtap_hdr_len);
 	return rtap_len;
 }
-
-EXPORT_SYMBOL(__adf_nbuf_alloc);
-#ifdef QCA_ARP_SPOOFING_WAR
-EXPORT_SYMBOL(__adf_rx_nbuf_alloc);
-#endif
-EXPORT_SYMBOL(__adf_nbuf_free);
-EXPORT_SYMBOL(__adf_nbuf_ref);
-EXPORT_SYMBOL(__adf_nbuf_shared);
-EXPORT_SYMBOL(__adf_nbuf_frag_info);
-EXPORT_SYMBOL(__adf_nbuf_dmamap_create);
-EXPORT_SYMBOL(__adf_nbuf_dmamap_destroy);
-EXPORT_SYMBOL(__adf_nbuf_map);
-EXPORT_SYMBOL(__adf_nbuf_unmap);
-EXPORT_SYMBOL(__adf_nbuf_map_single);
-EXPORT_SYMBOL(__adf_nbuf_unmap_single);
-EXPORT_SYMBOL(__adf_nbuf_dmamap_info);
-EXPORT_SYMBOL(__adf_nbuf_set_rx_cksum);
-EXPORT_SYMBOL(__adf_nbuf_get_tx_cksum);
-EXPORT_SYMBOL(__adf_nbuf_get_vlan_info);
-EXPORT_SYMBOL(__adf_nbuf_get_tid);
-EXPORT_SYMBOL(__adf_nbuf_set_tid);
-EXPORT_SYMBOL(__adf_nbuf_get_exemption_type);
-EXPORT_SYMBOL(__adf_nbuf_dmamap_set_cb);
-EXPORT_SYMBOL(__adf_nbuf_is_dhcp_pkt);
-EXPORT_SYMBOL(__adf_nbuf_is_eapol_pkt);

@@ -126,7 +126,7 @@ typedef struct sPESession           // Added to Support BT-AMP
     tSirNwType              nwType;
     tpSirSmeStartBssReq     pLimStartBssReq;        //handle to smestart bss req
     bool                    osen_association;
-    bool                    wps_registartion;
+    bool                    wps_registration;
     tpSirSmeJoinReq         pLimJoinReq;            // handle to sme join req
     tpSirSmeJoinReq         pLimReAssocReq;         //handle to sme reassoc req
     tpLimMlmJoinReq         pLimMlmJoinReq;         //handle to MLM join Req

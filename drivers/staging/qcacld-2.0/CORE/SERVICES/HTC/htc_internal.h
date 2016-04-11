@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -206,6 +206,11 @@ typedef struct _HTC_TARGET {
     A_UINT32                    rx_bundle_stats[HTC_MAX_MSG_PER_BUNDLE_RX];
     A_UINT32                    tx_bundle_stats[HTC_MAX_MSG_PER_BUNDLE_TX];
 #endif
+    /*
+    * This flag is from the mboxping tool. It indicates that we cannot drop it.
+    * Besides, nodrop pkts have higher priority than normal pkts.
+    */
+    A_BOOL                      is_nodrop_pkt;
 } HTC_TARGET;
 
 #define HTC_ENABLE_BUNDLE(target) (target->MaxMsgsPerHTCBundle > 1)

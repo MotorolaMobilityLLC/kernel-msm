@@ -2367,6 +2367,8 @@ void vos_trigger_recovery(void)
 {
 	pVosContextType vos_context;
 	tp_wma_handle wma_handle;
+	struct ol_softc *scn;
+	struct device *dev;
 	VOS_STATUS status = VOS_STATUS_SUCCESS;
 	void *runtime_context = NULL;
 
@@ -2402,7 +2404,12 @@ void vos_trigger_recovery(void)
 			goto out;
 		}
 		vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
-		vos_schedule_recovery_work();
+		scn = vos_get_context(VOS_MODULE_ID_HIF, vos_context);
+		if (scn && scn->hif_sc) {
+			dev = scn->hif_sc->dev;
+			if (dev)
+				vos_schedule_recovery_work(dev);
+		}
 	}
 
 out:

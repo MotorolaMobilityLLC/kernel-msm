@@ -77,9 +77,17 @@
 
 static void ol_rx_restore_handler(struct work_struct *htt_rx)
 {
+    adf_os_device_t adf_ctx;
+    VosContextType *pvoscontext = NULL;
+
     VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO,
         "Enter: %s", __func__);
-    vos_device_self_recovery();
+
+    pvoscontext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+    adf_ctx = vos_get_context(VOS_MODULE_ID_ADF, pvoscontext);
+    if (adf_ctx)
+       vos_device_self_recovery(adf_ctx->dev);
+
     VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO,
         "Exit: %s", __func__);
 }
@@ -285,6 +293,8 @@ ol_rx_indication_handler(
             ol_rx_reorder_flush(
                 vdev, peer, tid, seq_num_start,
                 seq_num_end, htt_rx_flush_release);
+            ol_rx_reorder_update_history(peer, reorder_flush, tid,
+                 seq_num_start, seq_num_end, 0);
         }
     }
 
@@ -451,6 +461,8 @@ ol_rx_indication_handler(
                     } else {
                         ol_rx_reorder_store(
                             pdev, peer, tid, reorder_idx, head_msdu, tail_msdu);
+                        ol_rx_reorder_update_history(peer, reorder_store, tid,
+                            0, 0, reorder_idx);
                         if (peer->tids_rx_reorder[tid].win_sz_mask == 0) {
                             peer->tids_last_seq[tid] =
                                          htt_rx_mpdu_desc_seq_num(htt_pdev,
@@ -533,6 +545,8 @@ ol_rx_indication_handler(
 
     if ((A_TRUE == rx_ind_release) && peer && vdev) {
         ol_rx_reorder_release(vdev, peer, tid, seq_num_start, seq_num_end);
+        ol_rx_reorder_update_history(peer, reorder_release, tid, seq_num_start,
+                   seq_num_end, 0);
     }
     OL_RX_REORDER_TIMEOUT_UPDATE(peer, tid);
     OL_RX_REORDER_TIMEOUT_MUTEX_UNLOCK(pdev);
@@ -1138,6 +1152,8 @@ ol_rx_peer_cleanup(struct ol_txrx_vdev_t *vdev, struct ol_txrx_peer_t *peer)
 {
     peer->keyinstalled = 0;
     ol_rx_reorder_peer_cleanup(vdev, peer);
+    adf_os_mem_free(peer->reorder_history);
+    peer->reorder_history = NULL;
 }
 
 /*

@@ -218,6 +218,9 @@
  */
 #define EXTTDLS_EVENT_BUF_SIZE 4096
 
+/* (30 Mins) */
+#define MIN_TIME_REQUIRED_FOR_NEXT_BUG_REPORT (30 * 60 * 1000)
+
 static const u32 hdd_cipher_suites[] =
 {
     WLAN_CIPHER_SUITE_WEP40,
@@ -1514,6 +1517,7 @@ __wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
     fset |= WIFI_FEATURE_AP_STA;
 #endif
     fset |= WIFI_FEATURE_RSSI_MONITOR;
+    fset |= WIFI_FEATURE_TX_TRANSMIT_POWER;
 
     if (hdd_link_layer_stats_supported())
         fset |= WIFI_FEATURE_LINK_LAYER_STATS;
@@ -6006,11 +6010,16 @@ static void hdd_link_layer_process_radio_stats(hdd_adapter_t *pAdapter,
                     QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_ON_TIME_HS20,
                     pWifiRadioStat->onTimeHs20)    ||
         nla_put_u32(vendor_event,
+                    QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_NUM_TX_LEVELS,
+                    MAX_TPC_LEVELS)    ||
+        nla_put(vendor_event,
+                QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_TX_TIME_PER_LEVEL,
+                sizeof(u32) * MAX_TPC_LEVELS,
+                pWifiRadioStat->tx_time_per_tpc) ||
+        nla_put_u32(vendor_event,
                     QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_NUM_CHANNELS,
-                    pWifiRadioStat->numChannels))
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR,
-               FL("QCA_WLAN_VENDOR_ATTR put fail"));
+                    pWifiRadioStat->numChannels)) {
+        hddLog(LOGE, FL("QCA_WLAN_VENDOR_ATTR put fail"));
 
         kfree_skb(vendor_event);
         return ;
@@ -8286,6 +8295,8 @@ wlan_hdd_wifi_config_policy[QCA_WLAN_VENDOR_ATTR_CONFIG_MAX
 	[QCA_WLAN_VENDOR_ATTR_CONFIG_GUARD_TIME] = {.type = NLA_U32 },
 	[QCA_WLAN_VENDOR_ATTR_CONFIG_TX_RATE] = {.type = NLA_U16 },
 	[QCA_WLAN_VENDOR_ATTR_CONFIG_CHANNEL_AVOIDANCE_IND] = {.type = NLA_U8 },
+	[QCA_WLAN_VENDOR_ATTR_CONFIG_TX_MPDU_AGGREGATION] = {.type = NLA_U8 },
+	[QCA_WLAN_VENDOR_ATTR_CONFIG_RX_MPDU_AGGREGATION] = {.type = NLA_U8 },
 };
 
 /**
@@ -8298,22 +8309,29 @@ wlan_hdd_wifi_config_policy[QCA_WLAN_VENDOR_ATTR_CONFIG_MAX
 int wlan_hdd_update_tx_rate(hdd_context_t *hddctx, uint16_t tx_rate)
 {
 
-	hdd_adapter_t *adapter = NULL;
-	hdd_station_ctx_t *hddstactx = NULL;
+	hdd_adapter_t *adapter;
+	hdd_station_ctx_t *hddstactx;
 	eHalStatus hstatus;
 	struct sir_txrate_update *buf_txrate_update;
 
 	ENTER();
 	adapter = hdd_get_adapter(hddctx, WLAN_HDD_INFRA_STATION);
-	hddstactx = WLAN_HDD_GET_STATION_CTX_PTR(adapter);
+	if (!adapter) {
+		hddLog(LOGE, FL("hdd adapter is null"));
+		return -EINVAL;
+	}
+	if (WLAN_HDD_ADAPTER_MAGIC != adapter->magic) {
+		hddLog(LOGE, FL("hdd adapter cookie is invalid"));
+		return -EINVAL;
+	}
 
 	if (WLAN_HDD_INFRA_STATION != adapter->device_mode) {
 		hddLog(LOGE, FL("Only Sta Mode supported!"));
 		return -ENOTSUPP;
 	}
 
-	if (!hdd_connIsConnected(
-			WLAN_HDD_GET_STATION_CTX_PTR(adapter))) {
+	hddstactx = WLAN_HDD_GET_STATION_CTX_PTR(adapter);
+	if (!hdd_connIsConnected(hddstactx)) {
 		hddLog(LOGE, FL("Not in Connected state!"));
 		return -ENOTSUPP;
 	}
@@ -8373,6 +8391,8 @@ static int __wlan_hdd_cfg80211_wifi_configuration_set(struct wiphy *wiphy,
 	u32 guard_time;
 	u32 ftm_capab;
 	eHalStatus status;
+	struct sir_set_tx_rx_aggregation_size request;
+	VOS_STATUS vos_status;
 
 	if (VOS_FTM_MODE == hdd_get_conparam()) {
 		hddLog(LOGE, FL("Command not allowed in FTM mode"));
@@ -8453,6 +8473,31 @@ static int __wlan_hdd_cfg80211_wifi_configuration_set(struct wiphy *wiphy,
 			tb[QCA_WLAN_VENDOR_ATTR_CONFIG_CHANNEL_AVOIDANCE_IND]);
 		hddLog(LOG1, "set_value: %d", set_value);
 		ret_val = hdd_enable_disable_ca_event(pHddCtx, set_value);
+	}
+
+	if (tb[QCA_WLAN_VENDOR_ATTR_CONFIG_TX_MPDU_AGGREGATION] ||
+	    tb[QCA_WLAN_VENDOR_ATTR_CONFIG_RX_MPDU_AGGREGATION]) {
+		/* if one is specified, both must be specified */
+		if (!tb[QCA_WLAN_VENDOR_ATTR_CONFIG_TX_MPDU_AGGREGATION] ||
+		    !tb[QCA_WLAN_VENDOR_ATTR_CONFIG_RX_MPDU_AGGREGATION]) {
+			hddLog(LOGE,
+				FL("Both TX and RX MPDU Aggregation required"));
+			return -EINVAL;
+		}
+
+		request.tx_aggregation_size = nla_get_u8(
+			tb[QCA_WLAN_VENDOR_ATTR_CONFIG_TX_MPDU_AGGREGATION]);
+		request.rx_aggregation_size = nla_get_u8(
+			tb[QCA_WLAN_VENDOR_ATTR_CONFIG_RX_MPDU_AGGREGATION]);
+		request.vdev_id = pAdapter->sessionId;
+
+		vos_status = wma_set_tx_rx_aggregation_size(&request);
+		if (vos_status != VOS_STATUS_SUCCESS) {
+			hddLog(LOGE,
+				FL("failed to set aggregation sizes(err=%d)"),
+				vos_status);
+			ret_val = -EPERM;
+		}
 	}
 	return ret_val;
 }
@@ -15981,6 +16026,7 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     hdd_context_t *pHddCtx = NULL;
     bool aborted = false;
     unsigned long rc;
+    unsigned int current_timestamp, time_elapsed;
     int ret = 0;
 
     ENTER();
@@ -16032,8 +16078,26 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     ret = wlan_hdd_cfg80211_update_bss((WLAN_HDD_GET_CTX(pAdapter))->wiphy,
                                         pAdapter);
 
-    if (0 > ret)
+    if (0 > ret) {
         hddLog(VOS_TRACE_LEVEL_INFO, "%s: NO SCAN result", __func__);
+
+        if (pHddCtx->cfg_ini->bug_report_for_scan_results) {
+            current_timestamp = jiffies_to_msecs(jiffies);
+            time_elapsed = current_timestamp -
+                pHddCtx->last_scan_bug_report_timestamp;
+
+            /* check if we have generated bug report in
+             * MIN_TIME_REQUIRED_FOR_NEXT_BUG_REPORT time.
+             * */
+            if (time_elapsed > MIN_TIME_REQUIRED_FOR_NEXT_BUG_REPORT) {
+                vos_flush_logs(WLAN_LOG_TYPE_NON_FATAL,
+                               WLAN_LOG_INDICATOR_HOST_DRIVER,
+                               WLAN_LOG_REASON_NO_SCAN_RESULTS,
+                               true);
+                pHddCtx->last_scan_bug_report_timestamp = current_timestamp;
+            }
+        }
+    }
 
 
     /* If any client wait scan result through WEXT
@@ -17940,11 +18004,6 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
     if (0 != status)
         return status;
 
-    if (vos_max_concurrent_connections_reached()) {
-        hddLog(VOS_TRACE_LEVEL_ERROR, FL("Reached max concurrent connections"));
-        return -ECONNREFUSED;
-    }
-
 #if defined(FEATURE_WLAN_LFR) && defined(WLAN_FEATURE_ROAM_SCAN_OFFLOAD)
     wlan_hdd_disable_roaming(pAdapter);
 #endif
@@ -17965,6 +18024,12 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
         hddLog(VOS_TRACE_LEVEL_ERROR, FL("Failed to disconnect the existing"
                 " connection"));
         return -EALREADY;
+    }
+
+    /* Check for max concurrent connections after doing disconnect if any */
+    if (vos_max_concurrent_connections_reached()) {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("Reached max concurrent connections"));
+        return -ECONNREFUSED;
     }
 
     /*initialise security parameters*/
@@ -20953,8 +21018,10 @@ static int __wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy,
 
     if ((0 == rc) || (TRUE != pAdapter->mgmtTxCompletionStatus)) {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: Mgmt Tx Completion timed out TxCompletion %u",
-                  __func__, pAdapter->mgmtTxCompletionStatus);
+                  "%s: %s rc %ld mgmtTxCompletionStatus %u",
+                  __func__,
+                  !rc ? "Mgmt Tx Completion timed out" :"Mgmt Tx Completion failed",
+                  rc, pAdapter->mgmtTxCompletionStatus);
 
         if (pHddCtx->isLogpInProgress)
         {
@@ -22348,6 +22415,7 @@ int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
     hdd_adapter_list_node_t *pAdapterNode, *pNext;
     VOS_STATUS status = VOS_STATUS_SUCCESS;
     int result;
+    struct device *dev;
     pVosSchedContext vosSchedContext = get_vos_sched_ctxt();
 
     ENTER();
@@ -22361,9 +22429,19 @@ int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
         return -EINVAL;
     }
 
+    /* Driver has been reset by another API(SSR), return success */
+    if (!pHddCtx->isWiphySuspended) {
+        hddLog(LOGE, FL("Driver not suspended"));
+        return 0;
+    }
+
     if (hif_is_80211_fw_wow_required()) {
        result = wma_resume_fw();
        if (result) {
+          /* SSR happened while we were waiting for this */
+          if (result == VOS_STATUS_E_ALREADY)
+              return 0;
+
           hddLog(LOGE, FL("Failed to resume FW err:%d"), result);
           /* Do not panic (VOS_BUG(0)) if FW dump is in progress.
            * Otherwise, the FW dump will be incomplete.
@@ -22374,7 +22452,8 @@ int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
        }
     }
 
-    vos_request_bus_bandwidth(CNSS_BUS_WIDTH_MEDIUM);
+    dev = pHddCtx->parent_dev;
+    vos_request_bus_bandwidth(dev, CNSS_BUS_WIDTH_MEDIUM);
 
     /* Resume MC thread */
     if (pHddCtx->isMcThreadSuspended) {
@@ -22472,6 +22551,7 @@ int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
     hdd_adapter_t *pAdapter;
     hdd_scaninfo_t *pScanInfo;
     VOS_STATUS status;
+    struct device *dev;
     int rc;
 
     ENTER();
@@ -22480,6 +22560,7 @@ int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
     if (0 != rc)
        return rc;
 
+    dev = pHddCtx->parent_dev;
     if (VOS_FTM_MODE == hdd_get_conparam()) {
         hddLog(LOGE, FL("Command not allowed in FTM mode"));
         return -EINVAL;
@@ -22561,6 +22642,10 @@ int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
               return -ETIME;
            }
         }
+
+        if (pAdapter->is_roc_inprogress)
+            wlan_hdd_cleanup_remain_on_channel_ctx(pAdapter);
+
         status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
         pAdapterNode = pNext;
     }
@@ -22634,9 +22719,7 @@ int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
                            NO_SESSION, pHddCtx->isWiphySuspended));
     pHddCtx->isWiphySuspended = TRUE;
 
-#ifdef CONFIG_CNSS
-    vos_request_bus_bandwidth(CNSS_BUS_WIDTH_NONE);
-#endif
+    vos_request_bus_bandwidth(dev, CNSS_BUS_WIDTH_NONE);
 
     if (hif_is_80211_fw_wow_required()) {
        rc = wma_suspend_fw();
@@ -22650,7 +22733,7 @@ int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
     return 0;
 
 fail_suspend:
-    vos_request_bus_bandwidth(CNSS_BUS_WIDTH_MEDIUM);
+    vos_request_bus_bandwidth(dev, CNSS_BUS_WIDTH_MEDIUM);
     pHddCtx->isWiphySuspended = FALSE;
 #ifdef QCA_CONFIG_SMP
     complete(&vosSchedContext->ResumeTlshimRxEvent);

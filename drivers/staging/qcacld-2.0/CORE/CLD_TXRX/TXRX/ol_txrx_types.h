@@ -1010,6 +1010,29 @@ typedef A_STATUS (*ol_tx_filter_func)(struct ol_txrx_msdu_info_t *tx_msdu_info);
 #define OL_TXRX_PEER_SECURITY_UNICAST    1
 #define OL_TXRX_PEER_SECURITY_MAX        2
 
+enum ol_rx_reorder_msg_type {
+	reorder_store = 0,
+	reorder_release,
+	reorder_flush
+};
+
+struct ol_rx_reorder_record {
+	uint8_t msg_type;
+	uint8_t tid;
+	uint16_t peer_id;
+	uint8_t start_seq;
+	uint8_t end_seq;
+	uint8_t reorder_idx;
+};
+
+#define OL_MAX_RX_REORDER_HISTORY  50
+struct ol_rx_reorder_history {
+	uint8_t curr_index;
+	uint8_t wrap_around;
+	struct ol_rx_reorder_record record[OL_MAX_RX_REORDER_HISTORY];
+};
+
+
 struct ol_txrx_peer_t {
 	struct ol_txrx_vdev_t *vdev;
 
@@ -1113,6 +1136,7 @@ struct ol_txrx_peer_t {
 	u_int16_t tx_limit_flag;
 	u_int16_t tx_pause_flag;
 #endif
+	struct ol_rx_reorder_history * reorder_history;
 };
 
 #endif /* _OL_TXRX_TYPES__H_ */

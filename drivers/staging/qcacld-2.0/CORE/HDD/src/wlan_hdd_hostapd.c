@@ -115,6 +115,9 @@ extern int process_wma_set_command(int sessid, int paramid,
 #define SAP_24GHZ_CH_COUNT (14)
 #define ACS_SCAN_EXPIRY_TIMEOUT_S 4
 
+/* EID byte + length byte + four byte WiFi OUI */
+#define DOT11F_EID_HEADER_LEN (6)
+
 /*---------------------------------------------------------------------------
  *   Function definitions
  *-------------------------------------------------------------------------*/
@@ -5315,7 +5318,8 @@ static int __iw_softap_setwpsie(struct net_device *dev,
       switch ( wps_genie[0] )
       {
          case DOT11F_EID_WPA:
-            if (wps_genie[1] < 2 + 4)
+            if (wps_genie[1] < DOT11F_EID_HEADER_LEN ||
+                wps_genie[1] > DOT11F_IE_WPA_MAX_LEN + DOT11F_EID_HEADER_LEN)
             {
                 ret = -EINVAL;
                 goto exit;
@@ -5419,7 +5423,8 @@ static int __iw_softap_setwpsie(struct net_device *dev,
       switch ( wps_genie[0] )
       {
          case DOT11F_EID_WPA:
-            if (wps_genie[1] < 2 + 4)
+            if (wps_genie[1] < DOT11F_EID_HEADER_LEN ||
+                wps_genie[1] > DOT11F_IE_WPA_MAX_LEN + DOT11F_EID_HEADER_LEN)
             {
                 ret = -EINVAL;
                 goto exit;

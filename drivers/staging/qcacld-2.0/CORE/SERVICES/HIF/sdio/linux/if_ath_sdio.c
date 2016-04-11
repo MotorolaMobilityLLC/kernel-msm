@@ -76,10 +76,13 @@ extern void __hdd_wlan_exit(void);
 
 struct ath_hif_sdio_softc *sc = NULL;
 
-#ifdef CONFIG_CNSS_SDIO
+#if defined(CONFIG_CNSS) && defined(HIF_SDIO)
 static inline void *hif_get_virt_ramdump_mem(unsigned long *size)
 {
-	return cnss_get_virt_ramdump_mem(size);
+	if (!sc)
+		return NULL;
+
+	return vos_get_virt_ramdump_mem(sc->dev, size);
 }
 
 static inline void hif_release_ramdump_mem(unsigned long *address)
@@ -162,7 +165,10 @@ ath_hif_sdio_probe(void *context, void *hif_handle)
         target_type = TARGET_TYPE_AR9888;
 #elif defined(CONFIG_AR6320_SUPPORT)
         id = ((HIF_DEVICE*)hif_handle)->id;
-        if ((id->device & MANUFACTURER_ID_AR6K_BASE_MASK) == MANUFACTURER_ID_QCA9377_BASE) {
+        if (((id->device & MANUFACTURER_ID_AR6K_BASE_MASK) ==
+             MANUFACTURER_ID_QCA9377_BASE) ||
+            ((id->device & MANUFACTURER_ID_AR6K_BASE_MASK) ==
+             MANUFACTURER_ID_QCA9379_BASE)) {
             hif_register_tbl_attach(HIF_TYPE_AR6320V2);
             target_register_tbl_attach(TARGET_TYPE_AR6320V2);
         } else if ((id->device & MANUFACTURER_ID_AR6K_BASE_MASK) == MANUFACTURER_ID_AR6320_BASE) {
@@ -182,6 +188,7 @@ ath_hif_sdio_probe(void *context, void *hif_handle)
 #endif
     }
     func = ((HIF_DEVICE*)hif_handle)->func;
+    sc->dev = &func->dev;
 
     ol_sc = A_MALLOC(sizeof(*ol_sc));
     if (!ol_sc){

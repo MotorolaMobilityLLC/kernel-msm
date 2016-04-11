@@ -44,6 +44,12 @@ enum cnss_bus_width_type {
 	CNSS_BUS_WIDTH_HIGH
 };
 
+static inline void vos_wlan_pci_link_down(void){ return; }
+static inline int vos_pcie_shadow_control(struct pci_dev *dev, bool enable)
+{
+	return -ENODEV;
+}
+
 static inline u8 *vos_get_cnss_wlan_mac_buff(struct device *dev, uint32_t *num)
 {
 	*num = 0;
@@ -114,12 +120,13 @@ static inline void vos_get_boottime_ts(struct timespec *ts)
 	ktime_get_ts(ts);
 }
 
-static inline void *vos_get_virt_ramdump_mem(unsigned long *size)
+static inline void *vos_get_virt_ramdump_mem(struct device *dev,
+						unsigned long *size)
 {
 	return NULL;
 }
 
-static inline void vos_device_crashed(void) { return; }
+static inline void vos_device_crashed(struct device *dev) { return; }
 
 #ifdef QCA_CONFIG_SMP
 static inline int vos_set_cpus_allowed_ptr(struct task_struct *task, ulong cpu)
@@ -133,13 +140,16 @@ static inline int vos_set_cpus_allowed_ptr(struct task_struct *task, ulong cpu)
 }
 #endif
 
-static inline void vos_device_self_recovery(void) { return; }
+static inline void vos_device_self_recovery(struct device *dev) { return; }
 static inline void vos_request_pm_qos_type(int latency_type, u32 qos_val)
 {
 	return;
 }
 static inline void vos_remove_pm_qos(void) { return; }
-static inline int vos_request_bus_bandwidth(int bandwidth) { return 0; }
+static inline int vos_request_bus_bandwidth(struct device *dev, int bandwidth)
+{
+	return 0;
+}
 static inline int vos_get_platform_cap(void *cap) { return 1; }
 static inline void vos_set_driver_status(int status) { return; }
 static inline int vos_get_bmi_setup(void) { return 0; }
@@ -183,7 +193,7 @@ static inline void vos_get_monotonic_boottime_ts(struct timespec *ts)
 	get_monotonic_boottime(ts);
 }
 
-static inline void vos_schedule_recovery_work(void) { return; }
+static inline void vos_schedule_recovery_work(struct device *dev) { return; }
 
 static inline bool vos_is_ssr_fw_dump_required(void)
 {
@@ -229,7 +239,7 @@ static inline void vos_dump_stack (struct task_struct *task)
 
 static inline u8 *vos_get_cnss_wlan_mac_buff(struct device *dev, uint32_t *num)
 {
-	return cnss_get_wlan_mac_address(dev, num);
+	return cnss_common_get_wlan_mac_address(dev, num);
 }
 
 static inline void vos_init_work(struct work_struct *work, work_func_t func)
@@ -279,7 +289,7 @@ static inline void vos_get_monotonic_boottime_ts(struct timespec *ts)
         cnss_get_monotonic_boottime(ts);
 }
 
-#ifdef CONFIG_CNSS_PCI
+#if defined(CONFIG_CNSS) && defined(HIF_PCI)
 static inline void vos_set_driver_status(int status)
 {
 	cnss_set_driver_status(status ? CNSS_LOAD_UNLOAD : CNSS_INITIALIZED);
@@ -299,17 +309,11 @@ static inline void vos_init_delayed_work(struct delayed_work *work,
        cnss_init_delayed_work(work, func);
 }
 
-#ifdef CONFIG_CNSS_PCI
-static inline void *vos_get_virt_ramdump_mem(unsigned long *size)
+static inline void *vos_get_virt_ramdump_mem(struct device *dev,
+						unsigned long *size)
 {
-	return cnss_get_virt_ramdump_mem(size);
+	return cnss_common_get_virt_ramdump_mem(dev, size);
 }
-#else
-static inline void *vos_get_virt_ramdump_mem(unsigned long *size)
-{
-	return NULL;
-}
-#endif
 
 static inline int vos_wlan_get_dfs_nol(void *info, u16 info_len)
 {
@@ -321,15 +325,29 @@ static inline void vos_get_boottime_ts(struct timespec *ts)
         cnss_get_boottime(ts);
 }
 
+#ifdef HIF_SDIO
 static inline void vos_request_pm_qos_type(int latency_type, u32 qos_val)
 {
-	cnss_request_pm_qos_type(latency_type, qos_val);
+	cnss_sdio_request_pm_qos_type(latency_type, qos_val);
 }
+#elif defined(HIF_PCI)
+static inline void vos_request_pm_qos_type(int latency_type, u32 qos_val)
+{
+	cnss_pci_request_pm_qos_type(latency_type, qos_val);
+}
+#endif
 
+#ifdef HIF_SDIO
 static inline void vos_remove_pm_qos(void)
 {
-	cnss_remove_pm_qos();
+	cnss_sdio_remove_pm_qos();
 }
+#elif defined(HIF_PCI)
+static inline void vos_remove_pm_qos(void)
+{
+	cnss_pci_remove_pm_qos();
+}
+#endif
 
 static inline int vos_vendor_cmd_reply(struct sk_buff *skb)
 {
@@ -349,31 +367,31 @@ static inline int vos_get_wlan_unsafe_channel(u16 *unsafe_ch_list,
 }
 
 #ifdef CONFIG_CNSS
-static inline void vos_schedule_recovery_work(void)
+static inline void vos_schedule_recovery_work(struct device *dev)
 {
-	cnss_schedule_recovery_work();
+	cnss_common_schedule_recovery_work(dev);
 }
 
-static inline void vos_device_crashed(void)
+static inline void vos_device_crashed(struct device *dev)
 {
-	cnss_device_crashed();
+	cnss_common_device_crashed(dev);
 }
 
-static inline void vos_device_self_recovery(void)
+static inline void vos_device_self_recovery(struct device *dev)
 {
-	cnss_device_self_recovery();
+	cnss_common_device_self_recovery(dev);
 }
 
 #else
-static inline void vos_schedule_recovery_work(void) {};
+static inline void vos_schedule_recovery_work(struct device *dev) {};
 
-static inline void vos_device_crashed(void) {};
+static inline void vos_device_crashed(struct device *dev) {};
 
-static inline void vos_device_self_recovery(void) {};
+static inline void vos_device_self_recovery(struct device *dev) {};
 
 #endif
 
-#ifdef CONFIG_CNSS_SDIO
+#if  defined(CONFIG_CNSS) && defined(HIF_SDIO)
 static inline bool vos_is_ssr_fw_dump_required(void)
 {
 	return (cnss_get_restart_level() != CNSS_RESET_SUBSYS_COUPLED);
@@ -385,7 +403,7 @@ static inline bool vos_is_ssr_fw_dump_required(void)
 }
 #endif
 
-#ifdef CONFIG_CNSS_PCI
+#if defined(CONFIG_CNSS) && defined(HIF_PCI)
 static inline void vos_lock_pm_sem(void)
 {
 	cnss_lock_pm_sem();
@@ -394,7 +412,7 @@ static inline void vos_lock_pm_sem(void)
 static inline void vos_lock_pm_sem(void) {}
 #endif
 
-#ifdef CONFIG_CNSS_PCI
+#if defined(CONFIG_CNSS) && defined(HIF_PCI)
 static inline void vos_release_pm_sem(void)
 {
 	cnss_release_pm_sem();
@@ -404,13 +422,13 @@ static inline void vos_release_pm_sem(void) {}
 #endif
 
 #ifdef FEATURE_BUS_BANDWIDTH
-static inline int vos_request_bus_bandwidth(int bandwidth)
+static inline int vos_request_bus_bandwidth(struct device *dev, int bandwidth)
 {
-	return cnss_request_bus_bandwidth(bandwidth);
+	return cnss_common_request_bus_bandwidth(dev, bandwidth);
 }
 #endif
 
-#if (defined(CONFIG_CNSS_PCI)) && (defined(CONFIG_CNSS_SECURE_FW))
+#if defined(CONFIG_CNSS) && defined(HIF_PCI) && defined(CONFIG_CNSS_SECURE_FW)
 static inline int vos_get_sha_hash(const u8 *data, u32 data_len,
 				u8 *hash_idx, u8 *out)
 {
@@ -429,7 +447,7 @@ static inline int vos_set_cpus_allowed_ptr(struct task_struct *task, ulong cpu)
         return cnss_set_cpus_allowed_ptr(task, cpu);
 }
 
-#ifdef CONFIG_CNSS_PCI
+#if defined(CONFIG_CNSS) && defined(HIF_PCI)
 #ifdef CONFIG_PCI_MSM
 static inline int vos_wlan_pm_control(bool vote)
 {
@@ -489,7 +507,9 @@ static inline void vos_runtime_exit(struct device *dev)
 {
 	cnss_runtime_exit(dev);
 }
+#endif
 
+#if defined(CONFIG_CNSS) && defined(HIF_PCI)
 static inline void vos_wlan_pci_link_down(void)
 {
 	cnss_wlan_pci_link_down();
@@ -499,9 +519,15 @@ static inline int vos_pcie_shadow_control(struct pci_dev *dev, bool enable)
 {
 	return cnss_pcie_shadow_control(dev, enable);
 }
+#else
+static inline void vos_wlan_pci_link_down(void){ return; }
+static inline int vos_pcie_shadow_control(struct pci_dev *dev, bool enable)
+{
+	return -ENODEV;
+}
 #endif
 
-#if defined(CONFIG_CNSS_SDIO) && defined(WLAN_SCPC_FEATURE)
+#if defined(CONFIG_CNSS) && defined(HIF_SDIO) && defined(WLAN_SCPC_FEATURE)
 static inline int vos_update_boarddata(unsigned char *buf, unsigned int len)
 {
 	return cnss_update_boarddata(buf, len);
@@ -525,7 +551,7 @@ static inline int vos_cache_boarddata(unsigned int offset,
 }
 #endif
 
-#ifdef CONFIG_CNSS_SDIO
+#if defined(CONFIG_CNSS) && defined(HIF_SDIO)
 static inline bool vos_oob_enabled(void)
 {
 	bool enabled = true;
@@ -547,13 +573,13 @@ static inline int vos_unregister_oob_irq_handler(void *pm_oob)
 	return cnss_wlan_unregister_oob_irq_handler(pm_oob);
 }
 #else
-typedef void (*oob_irq_handler_t) (void *dev_para);
+typedef void (*oob_pci_irq_handler_t) (void *dev_para);
 static inline bool vos_oob_enabled(void)
 {
 	return false;
 }
 
-static inline int vos_register_oob_irq_handler(oob_irq_handler_t handler,
+static inline int vos_register_oob_irq_handler(oob_pci_irq_handler_t handler,
 		void *pm_oob)
 {
 	return -ENOSYS;

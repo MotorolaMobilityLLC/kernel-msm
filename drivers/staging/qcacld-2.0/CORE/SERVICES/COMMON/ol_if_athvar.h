@@ -85,7 +85,7 @@ enum ol_ath_tx_ecodes  {
 } ;
 
 #ifdef HIF_SDIO
-#define MAX_FILE_NAME     20
+#define MAX_FILE_NAME	NAME_MAX
 struct ol_fw_files {
     char image_file[MAX_FILE_NAME];
     char ibss_image_file[MAX_FILE_NAME];

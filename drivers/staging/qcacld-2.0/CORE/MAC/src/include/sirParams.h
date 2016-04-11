@@ -775,6 +775,8 @@ typedef struct sSirMbMsgP2p
 #define SIR_HAL_NDP_END_IND                 (SIR_HAL_ITC_MSG_TYPES_BEGIN + 358)
 #define SIR_HAL_SEND_FREQ_RANGE_CONTROL_IND  (SIR_HAL_ITC_MSG_TYPES_BEGIN + 359)
 
+#define SIR_BTC_BT_WLAN_INTERVAL_CMD        (SIR_HAL_ITC_MSG_TYPES_BEGIN + 360)
+
 #define SIR_HAL_MSG_TYPES_END              (SIR_HAL_MSG_TYPES_BEGIN + 0x1FF)
 
 // CFG message types

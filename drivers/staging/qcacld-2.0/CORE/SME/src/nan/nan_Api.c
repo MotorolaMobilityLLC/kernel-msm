@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -30,8 +30,8 @@
 #include "csrInsideApi.h"
 #include "smeInside.h"
 #include "nan_Api.h"
-#include "limApi.h"
 #include "cfgApi.h"
+#include "wma.h"
 
 /******************************************************************************
  * Function: sme_NanRegisterCallback
@@ -64,7 +64,7 @@ void sme_NanRegisterCallback(tHalHandle hHal, NanCallback callback)
  *
  * Description:
  * This function gets called when HDD receives NAN vendor command
- * from userspace
+ * from user space
  *
  * Args:
  * Nan Request structure ptr

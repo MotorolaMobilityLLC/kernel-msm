@@ -71,7 +71,7 @@
 
 #define CSR_MAX_2_4_GHZ_SUPPORTED_CHANNELS 14
 
-#define CSR_MAX_BSS_SUPPORT            250
+#define CSR_MAX_BSS_SUPPORT            512
 #define SYSTEM_TIME_MSEC_TO_USEC      1000
 
 /* This number minus 1 means the number of times a channel is scanned

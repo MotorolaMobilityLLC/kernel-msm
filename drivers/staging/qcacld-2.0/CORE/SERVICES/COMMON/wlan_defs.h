@@ -155,6 +155,15 @@ typedef enum {
         ((mode) == MODE_11AC_VHT80))
 #endif
 
+#define IS_MODE_HE(mode) (((mode) == MODE_11AX_HE20) || \
+        ((mode) == MODE_11AX_HE40)     || \
+        ((mode) == MODE_11AX_HE80)     || \
+        ((mode) == MODE_11AX_HE80_80)  || \
+        ((mode) == MODE_11AX_HE160)    || \
+        ((mode) == MODE_11AX_HE20_2G)  || \
+        ((mode) == MODE_11AX_HE40_2G)  || \
+        ((mode) == MODE_11AX_HE80_2G))
+
 #define IS_MODE_VHT_2G(mode) (((mode) == MODE_11AC_VHT20_2G) || \
         ((mode) == MODE_11AC_VHT40_2G) || \
         ((mode) == MODE_11AC_VHT80_2G))

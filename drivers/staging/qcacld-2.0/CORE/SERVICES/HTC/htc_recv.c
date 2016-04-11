@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -33,7 +33,7 @@
 #include "epping_main.h"
 
 /* HTC Control message receive timeout msec */
-#define HTC_CONTROL_RX_TIMEOUT     3000
+#define HTC_CONTROL_RX_TIMEOUT     5000
 
 #ifdef DEBUG
 void DebugDumpBytes(A_UCHAR *buffer, A_UINT16 length, char *pDescription)

@@ -59,10 +59,7 @@
 #include <a_debug.h>
 #define FWLOG_DEBUG   ATH_DEBUG_MAKE_MODULE_MASK(0)
 
-static bool appstarted = FALSE;
-static bool senddriverstatus = FALSE;
 static bool kd_nl_init = FALSE;
-static int cnss_diag_pid = INVALID_PID;
 static int get_version = 0;
 static int gprint_limiter = 0;
 static bool tgt_assert_enable = 0;
@@ -1641,9 +1638,9 @@ dbglog_debugfs_raw_data(wmi_unified_t wmi_handle, const u_int8_t *buf, A_UINT32 
  * Package the data from the fw diag WMI event handler.
  * Pass this data to cnss-diag service
  */
-int
-send_fw_diag_nl_data(wmi_unified_t wmi_handle, const u_int8_t *buffer,
-                           A_UINT32 len, A_UINT32 event_type)
+static int
+send_fw_diag_nl_data(const u_int8_t *buffer,
+                     A_UINT32 len, A_UINT32 event_type)
 {
     struct sk_buff *skb_out;
     struct nlmsghdr *nlh;
@@ -1852,26 +1849,58 @@ diag_fw_handler(ol_scn_t scn, u_int8_t *data, u_int32_t datalen)
     return (0);
 }
 
+/**
+ * process_fw_diag_event_data - process diag events and fw messages
+ * @datap: data to be processed
+ * num_data: number of data chunks
+ *
+ * return: success
+ */
+static int
+process_fw_diag_event_data(uint8_t *datap, uint32_t num_data)
+{
+	uint32_t i;
+	uint32_t diag_type;
+	uint32_t nl_data_len; /* diag hdr + payload */
+	uint32_t diag_data_len; /* each fw diag payload */
+	struct wlan_diag_data *diag_data;
+
+	for (i = 0; i < num_data; i++) {
+		diag_data = (struct wlan_diag_data *)datap;
+		diag_type = WLAN_DIAG_0_TYPE_GET(diag_data->word0);
+		diag_data_len = WLAN_DIAG_0_LEN_GET(diag_data->word0);
+		/* Length of diag struct and len of payload */
+		nl_data_len = sizeof(struct wlan_diag_data) + diag_data_len;
+
+		switch (diag_type) {
+		case DIAG_TYPE_FW_EVENT:
+			return send_fw_diag_nl_data(datap, nl_data_len,
+							diag_type);
+			break;
+		case DIAG_TYPE_FW_LOG:
+			return send_fw_diag_nl_data(datap, nl_data_len,
+							diag_type);
+			break;
+		}
+		/* Move to the next event and send to cnss-diag */
+		datap += nl_data_len;
+	}
+
+	return 0;
+}
 
 /*
  * WMI diag data event handler, this function invoked as a CB
  * when there DIAG_DATA to be forwarded from the FW.
  */
 
-int
+static int
 fw_diag_data_event_handler(ol_scn_t scn, u_int8_t *data, u_int32_t datalen)
 {
 
-    tp_wma_handle wma = (tp_wma_handle)scn;
-    struct wlan_diag_data *diag_data;
     WMI_DIAG_DATA_CONTAINER_EVENTID_param_tlvs *param_buf;
-    wmi_diag_data_container_event_fixed_param *fixed_param;
     u_int8_t *datap;
-    u_int32_t num_data=0; /* Total events */
-    u_int32_t diag_data_len=0; /* each fw diag payload */
-    u_int32_t diag_type=0;
-    u_int32_t i=0;
-    u_int32_t nl_data_len=0; /* diag hdr + payload */
+    u_int32_t num_data; /* Total events */
 
     param_buf = (WMI_DIAG_DATA_CONTAINER_EVENTID_param_tlvs *) data;
     if (!param_buf) {
@@ -1879,44 +1908,11 @@ fw_diag_data_event_handler(ol_scn_t scn, u_int8_t *data, u_int32_t datalen)
         return -1;
     }
 
-    if (!wma) {
-        AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("NULL Pointer assigned\n"));
-        return -1;
-    }
-
-    fixed_param = param_buf->fixed_param;
     num_data = param_buf->num_bufp;
 
     datap = (u_int8_t *)param_buf->bufp;
 
-    /* If cnss-diag service started triggered during the init of services */
-    if (appstarted) {
-        for (i = 0; i < num_data; i++) {
-            diag_data = (struct wlan_diag_data *)datap;
-            diag_type = WLAN_DIAG_0_TYPE_GET(diag_data->word0);
-            diag_data_len = WLAN_DIAG_0_LEN_GET(diag_data->word0);
-
-           /* Length of diag struct and len of payload */
-            nl_data_len = sizeof(struct wlan_diag_data) + diag_data_len;
-#if 0
-            print_hex_dump_bytes("payload: ", DUMP_PREFIX_ADDRESS,
-                                 diag_data->payload, diag_data_len);
-#endif
-            switch (diag_type) {
-                case DIAG_TYPE_FW_EVENT:
-                return send_fw_diag_nl_data((wmi_unified_t)wma->wmi_handle,
-                                           datap, nl_data_len, diag_type);
-                break;
-                case DIAG_TYPE_FW_LOG:
-                return send_fw_diag_nl_data((wmi_unified_t)wma->wmi_handle,
-                                            datap, nl_data_len, diag_type);
-                break;
-            }
-            /* Move to the next event and send to cnss-diag */
-            datap += nl_data_len;
-        }
-    }
-    return 0;
+    return process_fw_diag_event_data(datap, num_data);
 }
 
 
@@ -1972,15 +1968,10 @@ dbglog_parse_debug_logs(ol_scn_t scn, u_int8_t *data, u_int32_t datalen)
         return dbglog_print_raw_data(buffer, length);
     }
 
-    if ( dbglog_process_type == DBGLOG_PROCESS_NET_RAW) {
-        if(appstarted){
-            return dbglog_process_netlink_data((wmi_unified_t)wma->wmi_handle,
-			                                      (A_UINT8 *)buffer,
-					                      len, dropped);
-        } else {
-            return 0;
-        }
-
+    if (dbglog_process_type == DBGLOG_PROCESS_NET_RAW) {
+        return dbglog_process_netlink_data((wmi_unified_t)wma->wmi_handle,
+                                           (A_UINT8 *)buffer,
+                                           len, dropped);
     }
 
 #ifdef WLAN_OPEN_SOURCE
@@ -3924,58 +3915,6 @@ int dbglog_debugfs_remove(wmi_unified_t wmi_handle)
 }
 #endif /* WLAN_OPEN_SOURCE */
 
-static void
-cnss_diag_event_report(A_UINT16 event_Id, A_UINT16 length, void *pPayload)
-{
-    A_UINT8 *pBuf, *pBuf1;
-    event_report_t *pEvent_report;
-    A_UINT16 total_len;
-    total_len = sizeof(event_report_t) + length;
-    pBuf = vos_mem_malloc(total_len);
-    if (!pBuf){
-        AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
-                        ("%s: vos_mem_malloc failed \n", __func__));
-        return;
-    }
-    pBuf1 = pBuf;
-    pEvent_report = (event_report_t*)pBuf;
-    pEvent_report->diag_type = DIAG_TYPE_EVENTS;
-    pEvent_report->event_id = event_Id;
-    pEvent_report->length = length;
-    pBuf += sizeof(event_report_t);
-    memcpy(pBuf, pPayload, length);
-    send_diag_netlink_data((A_UINT8 *) pBuf1, total_len, DIAG_TYPE_HOST_MSG);
-    vos_mem_free((v_VOID_t*)pBuf1);
-    return;
-
-}
-
-static void cnss_diag_send_driver_loaded(void)
-{
-    if (appstarted) {
-        vos_event_wlan_bringup_status_payload_type wlan_bringup_status;
-         /* Send Driver up command */
-        strlcpy(&wlan_bringup_status.driverVersion[0], QWLAN_VERSIONSTR,
-                    sizeof(wlan_bringup_status.driverVersion));
-        wlan_bringup_status.wlanStatus = DIAG_WLAN_DRIVER_LOADED;
-        cnss_diag_event_report(EVENT_WLAN_BRINGUP_STATUS,
-                      sizeof(wlan_bringup_status), &wlan_bringup_status);
-        senddriverstatus = FALSE;
-    }
-    else
-        senddriverstatus = TRUE;
-}
-
-static void cnss_diag_send_driver_unloaded(void)
-{
-    vos_event_wlan_bringup_status_payload_type wlan_bringup_status;
-     /* Send Driver down command */
-    memset(&wlan_bringup_status, 0,
-           sizeof(vos_event_wlan_bringup_status_payload_type));
-    wlan_bringup_status.wlanStatus = DIAG_WLAN_DRIVER_UNLOADED;
-    cnss_diag_event_report(EVENT_WLAN_BRINGUP_STATUS,
-        sizeof(wlan_bringup_status), &wlan_bringup_status);
-}
 /**---------------------------------------------------------------------------
   \brief cnss_diag_msg_callback() - Call back invoked by netlink service
 
@@ -4002,18 +3941,7 @@ int cnss_diag_msg_callback(struct sk_buff *skb)
 
     msg = NLMSG_DATA(nlh);
 
-    /* This check added for backward compatability */
-    if (!memcmp(msg, "Hello", 5)) {
-         appstarted = TRUE;
-         cnss_diag_pid = nlh->nlmsg_pid;
-         AR_DEBUG_PRINTF(ATH_DEBUG_INFO,
-                   ("%s: registered pid %d \n", __func__, cnss_diag_pid));
-         if (senddriverstatus)
-             cnss_diag_send_driver_loaded();
-         return 0;
-    }
-    else
-       slot = (struct dbglog_slot *)msg;
+    slot = (struct dbglog_slot *)msg;
     switch (slot->diag_type) {
     case DIAG_TYPE_CRASH_INJECT:
         if (slot->length == 2) {
@@ -4039,27 +3967,7 @@ int cnss_diag_msg_callback(struct sk_buff *skb)
     return 0;
 
 }
-/**---------------------------------------------------------------------------
-  \brief cnss_diag_notify_wlan_close() - Notify APP driver closed
 
-  This function notifies the user cnss-diag app that wlan driver is closed.
-
-  \param -
-      - None
-
-  \return - 0 for success, non zero for failure
---------------------------------------------------------------------------*/
-int cnss_diag_notify_wlan_close()
-{
-    /* Send nl msg about the wlan close */
-    if (0 != cnss_diag_pid)
-    {
-        cnss_diag_send_driver_unloaded();
-        cnss_diag_pid = 0;
-    }
-    return 0;
-
-}
 /**---------------------------------------------------------------------------
   \brief cnss_diag_activate_service() - Activate cnss_diag message handler
 
@@ -4228,7 +4136,6 @@ dbglog_init(wmi_unified_t wmi_handle)
     if (res != 0)
        return res;
 
-    cnss_diag_send_driver_loaded();
 #ifdef WLAN_OPEN_SOURCE
     /* Initialize the fw debug log queue */
     skb_queue_head_init(&wmi_handle->dbglog.fwlog_queue);

@@ -85,7 +85,6 @@ static char g_log2ceil[] = {
 /*---*/
 
 /* reorder array elements are known to be non-NULL */
-#define OL_RX_REORDER_PTR_CHECK(ptr) /* no-op */
 #define OL_RX_REORDER_LIST_APPEND(head_msdu, tail_msdu, rx_reorder_array_elem) \
     do { \
         if (tail_msdu) { \
@@ -109,6 +108,28 @@ void ol_rx_reorder_init(struct ol_rx_reorder_t *rx_reorder, u_int8_t tid)
     rx_reorder->defrag_waitlist_elem.tqe_prev = NULL;
 }
 
+void ol_rx_reorder_update_history(struct ol_txrx_peer_t *peer,
+	uint8_t msg_type, uint8_t tid, uint8_t start_seq,
+	uint8_t end_seq, uint8_t reorder_idx)
+{
+	uint8_t index;
+
+	if (!peer->reorder_history)
+		return;
+
+	index = peer->reorder_history->curr_index++;
+	peer->reorder_history->record[index].msg_type = msg_type;
+	peer->reorder_history->record[index].peer_id = peer->local_id;
+	peer->reorder_history->record[index].tid = tid;
+	peer->reorder_history->record[index].reorder_idx = reorder_idx;
+	peer->reorder_history->record[index].start_seq = start_seq;
+	peer->reorder_history->record[index].end_seq = end_seq;
+
+	if (peer->reorder_history->curr_index >= OL_MAX_RX_REORDER_HISTORY) {
+		peer->reorder_history->curr_index = 0;
+		peer->reorder_history->wrap_around = 1;
+	}
+}
 
 static enum htt_rx_status
 ol_rx_reorder_seq_num_check(
@@ -269,7 +290,7 @@ ol_rx_reorder_release(
     head_msdu = rx_reorder_array_elem->head;
     tail_msdu = rx_reorder_array_elem->tail;
     rx_reorder_array_elem->head = rx_reorder_array_elem->tail = NULL;
-    OL_RX_REORDER_PTR_CHECK(head_msdu) {
+    if (head_msdu) {
         OL_RX_REORDER_MPDU_CNT_DECR(&peer->tids_rx_reorder[tid], 1);
     }
 
@@ -277,7 +298,7 @@ ol_rx_reorder_release(
     OL_RX_REORDER_IDX_WRAP(idx, win_sz, win_sz_mask);
     while (idx != idx_end) {
         rx_reorder_array_elem = &peer->tids_rx_reorder[tid].array[idx];
-        OL_RX_REORDER_PTR_CHECK(rx_reorder_array_elem->head) {
+        if (rx_reorder_array_elem->head) {
             OL_RX_REORDER_MPDU_CNT_DECR(&peer->tids_rx_reorder[tid], 1);
             OL_RX_REORDER_LIST_APPEND(
                 head_msdu, tail_msdu, rx_reorder_array_elem);
@@ -287,7 +308,7 @@ ol_rx_reorder_release(
         idx++;
         OL_RX_REORDER_IDX_WRAP(idx, win_sz, win_sz_mask);
     }
-    OL_RX_REORDER_PTR_CHECK(head_msdu) {
+    if (head_msdu) {
         u_int16_t seq_num;
         htt_pdev_handle htt_pdev = vdev->pdev->htt_pdev;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -145,7 +145,7 @@ static inline a_uint64_t adf_get_boottime(void)
 
    return (((a_uint64_t)ts.tv_sec * 1000000) + (ts.tv_nsec / 1000));
 #else
-   return adf_os_ticks_to_msecs(adf_os_ticks()) * 1000;
+   return ((a_uint64_t)adf_os_ticks_to_msecs(adf_os_ticks())) * 1000;
 #endif /* CONFIG_CNSS */
 }
 #endif

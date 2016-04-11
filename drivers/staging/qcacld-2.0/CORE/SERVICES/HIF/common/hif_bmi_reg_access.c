@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014,2016 The Linux Foundation. All rights reserved.
  *
  *Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -288,8 +288,10 @@ A_STATUS HIFRegBasedGetTargetInfo(HIF_DEVICE *device, struct bmi_target_info *ta
      * So wait 100 ms here to wait target ready to avoid -110 error
      * when loading driver
      */
-    if ((device->id->device & MANUFACTURER_ID_AR6K_BASE_MASK) ==
-        MANUFACTURER_ID_QCA9377_BASE) {
+    if (((device->id->device & MANUFACTURER_ID_AR6K_BASE_MASK) ==
+        MANUFACTURER_ID_QCA9377_BASE) ||
+        ((device->id->device & MANUFACTURER_ID_AR6K_BASE_MASK) ==
+        MANUFACTURER_ID_QCA9379_BASE)) {
         msleep(100);
     }
 

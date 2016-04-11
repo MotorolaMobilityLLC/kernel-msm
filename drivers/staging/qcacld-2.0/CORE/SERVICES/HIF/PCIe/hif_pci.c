@@ -2858,9 +2858,7 @@ HIFTargetSleepStateAdjust(A_target_id_t targid,
                             VOS_BUG(0);
                     sc->recovery = true;
                     vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
-#ifdef CONFIG_CNSS_PCI
                     vos_wlan_pci_link_down();
-#endif
                     return -EACCES;
                 }
 

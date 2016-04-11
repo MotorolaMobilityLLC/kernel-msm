@@ -656,10 +656,10 @@ limCleanupRxPath(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESession psessionE
              */
             if (LIM_IS_AP_ROLE(psessionEntry) ||
                 LIM_IS_BT_AMP_AP_ROLE(psessionEntry)) {
+                limDelSta(pMac, pStaDs, false, psessionEntry);
                 limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry);
             }
             limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId,psessionEntry);
-
             return retCode;
         }
     }

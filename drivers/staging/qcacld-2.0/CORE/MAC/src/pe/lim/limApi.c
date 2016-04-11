@@ -1057,6 +1057,7 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
                                         pMac->lim.maxStation, 0);
 
     pMac->lim.mgmtFrameSessionId = 0xff;
+    pMac->lim.tdls_frm_session_id = 0xff;
     pMac->lim.deferredMsgCnt = 0;
 
     if (!VOS_IS_STATUS_SUCCESS(vos_lock_init(&pMac->lim.lkPeGlobalLock))) {
@@ -1804,7 +1805,7 @@ lim_enc_type_matched(tpAniSirGlobal mac_ctx,
            FL("session:: Privacy :%d EncyptionType: %d OSEN %d WPS %d"),
            SIR_MAC_GET_PRIVACY(session->limCurrentBssCaps),
            session->encryptType, session->osen_association,
-           session->wps_registartion);
+           session->wps_registration);
 
     /* This is handled by sending probe req due to IOT issues so return TRUE */
     if ((bcn->capabilityInfo.privacy) !=
@@ -1842,10 +1843,10 @@ lim_enc_type_matched(tpAniSirGlobal mac_ctx,
      * in beacon. Therefore no need to
      * check for security type in case
      * OSEN session.
-     * For WPS registration session no need to detect
-     * detect security mismatch as it wont match and
+     * For WPS registration session no need to
+     * detect security mismatch as it won't match and
      * driver may end up sending probe request without
-     * WPS IE during WPS registartion process.
+     * WPS IE during WPS registration process.
      */
      /*TODO: AP capability mismatch
      * is not checked here because
@@ -1853,7 +1854,7 @@ lim_enc_type_matched(tpAniSirGlobal mac_ctx,
      * is avilable for HS2.0
      */
     if (session->osen_association ||
-            session->wps_registartion)
+            session->wps_registration)
         return eSIR_TRUE;
 
     return false;

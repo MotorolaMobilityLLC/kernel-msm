@@ -89,26 +89,28 @@ VOS_STATUS wma_handle_ndp_sched_update_req(tp_wma_handle wma_handle,
  * @event_info: event handler data
  * @len: length of event_info
  *
- * Return: VOS_STATUS_SUCCESS on success; error number otherwise
+ * Handler for WMI_NDP_INDICATION_EVENTID
+ * Return: 0 on success, negative errno on failure
  */
-VOS_STATUS wma_ndp_indication_event_handler(void *handle,
-					uint8_t  *event_info, uint32_t len)
+static int wma_ndp_indication_event_handler(void *handle,
+	uint8_t  *event_info, uint32_t len)
 {
-	return VOS_STATUS_SUCCESS;
+	return 0;
 }
 
 /**
- * wma_ndp_responder_resp_event_handler() - NDP responder response event handler
+ * wma_ndp_responder_rsp_event_handler() - NDP responder response event handler
  * @handle: wma handle
  * @event_info: event handler data
  * @len: length of event_info
  *
- * Return: VOS_STATUS_SUCCESS on success; error number otherwise
+ * Handler for WMI_NDP_RESPONDER_RSP_EVENTID
+ * Return: 0 on success, negative errno on failure
  */
-VOS_STATUS wma_ndp_responder_resp_event_handler(void *handle,
-					uint8_t  *event_info, uint32_t len)
+static int wma_ndp_responder_rsp_event_handler(void *handle,
+	uint8_t  *event_info, uint32_t len)
 {
-	return VOS_STATUS_SUCCESS;
+	return 0;
 }
 
 /**
@@ -117,12 +119,13 @@ VOS_STATUS wma_ndp_responder_resp_event_handler(void *handle,
  * @event_info: event handler data
  * @len: length of event_info
  *
- * Return: VOS_STATUS_SUCCESS on success; error number otherwise
+ * Handler for WMI_NDP_CONFIRM_EVENTID
+ * Return: 0 on success, negative errno on failure
  */
-VOS_STATUS wma_ndp_confirm_event_handler(void *handle,
-					uint8_t  *event_info, uint32_t len)
+static int wma_ndp_confirm_event_handler(void *handle,
+	uint8_t  *event_info, uint32_t len)
 {
-	return VOS_STATUS_SUCCESS;
+	return 0;
 }
 
 /**
@@ -131,12 +134,13 @@ VOS_STATUS wma_ndp_confirm_event_handler(void *handle,
  * @event_info: event handler data
  * @len: length of event_info
  *
- * Return: VOS_STATUS_SUCCESS on success; error number otherwise
+ * Handler for WMI_NDP_END_RSP_EVENTID
+ * Return: 0 on success, negative errno on failure
  */
-VOS_STATUS wma_ndp_end_response_event_handler(void *handle,
-					uint8_t  *event_info, uint32_t len)
+static int wma_ndp_end_response_event_handler(void *handle,
+	uint8_t  *event_info, uint32_t len)
 {
-	return VOS_STATUS_SUCCESS;
+	return 0;
 }
 
 /**
@@ -145,26 +149,247 @@ VOS_STATUS wma_ndp_end_response_event_handler(void *handle,
  * @event_info: event handler data
  * @len: length of event_info
  *
- * Return: VOS_STATUS_SUCCESS on success; error number otherwise
+ * Handler for WMI_NDP_END_INDICATION_EVENTID
+ * Return: 0 on success, negative errno on failure
  */
-VOS_STATUS wma_ndp_end_indication_event_handler(void *handle,
-					uint8_t  *event_info, uint32_t len)
+static int wma_ndp_end_indication_event_handler(void *handle,
+	uint8_t  *event_info, uint32_t len)
 {
-	return VOS_STATUS_SUCCESS;
+	return 0;
 }
 
 /**
- * wma_ndp_sched_update_rsp_event_handler() -NDP sched update rsp event handler
+ * wma_ndp_initiator_rsp_event_handler() -NDP initiator rsp event handler
  * @handle: wma handle
  * @event_info: event handler data
  * @len: length of event_info
  *
- * Return: VOS_STATUS_SUCCESS on success; error number otherwise
+ * Handler for WMI_NDP_INITIATOR_RSP_EVENTID
+ * Return: 0 on success, negative errno on failure
  */
-VOS_STATUS wma_ndp_sched_update_rsp_event_handler(void *handle,
-					uint8_t  *event_info, uint32_t len)
+static int wma_ndp_initiator_rsp_event_handler(void *handle,
+	uint8_t  *event_info, uint32_t len)
 {
-	return VOS_STATUS_SUCCESS;
+	return 0;
+}
+
+/**
+ * wma_ndp_register_all_event_handlers() - Register all NDP event handlers
+ * @wma_handle: WMA context
+ *
+ * Register the event handlers for NAN data path events from firmware.
+ *
+ * Return: None
+ */
+void wma_ndp_register_all_event_handlers(tp_wma_handle wma_handle)
+{
+	WMA_LOGD(FL("Register WMI_NDP_INITIATOR_RSP_EVENTID"));
+	wmi_unified_register_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_INITIATOR_RSP_EVENTID,
+		wma_ndp_initiator_rsp_event_handler);
+
+	WMA_LOGD(FL("Register WMI_NDP_RESPONDER_RSP_EVENTID"));
+	wmi_unified_register_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_RESPONDER_RSP_EVENTID,
+		wma_ndp_responder_rsp_event_handler);
+
+	WMA_LOGD(FL("Register WMI_NDP_END_RSP_EVENTID"));
+	wmi_unified_register_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_END_RSP_EVENTID,
+		wma_ndp_end_response_event_handler);
+
+	WMA_LOGD(FL("Register WMI_NDP_INDICATION_EVENTID"));
+	wmi_unified_register_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_INDICATION_EVENTID,
+		wma_ndp_indication_event_handler);
+
+	WMA_LOGD(FL("Register WMI_NDP_CONFIRM_EVENTID"));
+	wmi_unified_register_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_CONFIRM_EVENTID,
+		wma_ndp_confirm_event_handler);
+
+	WMA_LOGD(FL("Register WMI_NDP_END_INDICATION_EVENTID"));
+	wmi_unified_register_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_END_INDICATION_EVENTID,
+		wma_ndp_end_indication_event_handler);
+}
+
+/**
+ * wma_ndp_unregister_all_event_handlers() - Unregister all NDP event handlers
+ * @wma_handle: WMA context
+ *
+ * Register the event handlers for NAN data path events from firmware.
+ *
+ * Return: None
+ */
+void wma_ndp_unregister_all_event_handlers(tp_wma_handle wma_handle)
+{
+	WMA_LOGD(FL("Unregister WMI_NDP_INITIATOR_RSP_EVENTID"));
+	wmi_unified_unregister_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_INITIATOR_RSP_EVENTID);
+
+	WMA_LOGD(FL("Unregister WMI_NDP_RESPONDER_RSP_EVENTID"));
+	wmi_unified_unregister_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_RESPONDER_RSP_EVENTID);
+
+	WMA_LOGD(FL("Unregister WMI_NDP_END_RSP_EVENTID"));
+	wmi_unified_unregister_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_END_RSP_EVENTID);
+
+	WMA_LOGD(FL("Unregister WMI_NDP_INDICATION_EVENTID"));
+	wmi_unified_unregister_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_INDICATION_EVENTID);
+
+	WMA_LOGD(FL("Unregister WMI_NDP_CONFIRM_EVENTID"));
+	wmi_unified_unregister_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_CONFIRM_EVENTID);
+
+	WMA_LOGD(FL("Unregister WMI_NDP_END_INDICATION_EVENTID"));
+	wmi_unified_unregister_event_handler(wma_handle->wmi_handle,
+		WMI_NDP_END_INDICATION_EVENTID);
+}
+
+/**
+ * wma_ndp_add_wow_wakeup_event() - Add Wake on Wireless event for NDP
+ * @wma_handle: WMA context
+ * @enable: dis/enable flag to enable the bit for WOW_NAN_DATA_EVENT
+ *
+ * Enables the firmware to wake up the host on NAN data path event.
+ * All NDP events such as NDP_INDICATION, NDP_CONFIRM, etc. use the
+ * same event. They can be distinguished using their TLV tags.
+ *
+ * Return: none
+ */
+void wma_ndp_add_wow_wakeup_event(tp_wma_handle wma_handle,
+						bool enable)
+{
+	wma_add_wow_wakeup_event(wma_handle, WOW_NAN_DATA_EVENT, enable);
+}
+
+/**
+ * wma_ndp_get_eventid_from_tlvtag() - map tlv tag to event id
+ * @tag: WMI TLV tag
+ *
+ * map the tag to known NDP event fixed_param tags and return the
+ * corresponding NDP event id.
+ *
+ * Return: 0 if TLV tag is invalid
+ *           else return corresponding WMI event id
+ */
+static int wma_ndp_get_eventid_from_tlvtag(uint32_t tag)
+{
+	uint32_t event_id;
+
+	switch (tag) {
+	case WMITLV_TAG_STRUC_wmi_ndp_initiator_rsp_event_fixed_param:
+		event_id = WMI_NDP_INITIATOR_RSP_EVENTID;
+		break;
+
+	case WMITLV_TAG_STRUC_wmi_ndp_responder_rsp_event_fixed_param:
+		event_id = WMI_NDP_RESPONDER_RSP_EVENTID;
+		break;
+
+	case WMITLV_TAG_STRUC_wmi_ndp_end_rsp_event_fixed_param:
+		event_id = WMI_NDP_END_RSP_EVENTID;
+		break;
+
+	case WMITLV_TAG_STRUC_wmi_ndp_indication_event_fixed_param:
+		event_id = WMI_NDP_INDICATION_EVENTID;
+		break;
+
+	case WMITLV_TAG_STRUC_wmi_ndp_confirm_event_fixed_param:
+		event_id = WMI_NDP_CONFIRM_EVENTID;
+		break;
+
+	case WMITLV_TAG_STRUC_wmi_ndp_end_indication_event_fixed_param:
+		event_id = WMI_NDP_END_INDICATION_EVENTID;
+		break;
+
+	default:
+		event_id = 0;
+		WMA_LOGE(FL("Unknown tag: %d"), tag);
+		break;
+	}
+
+	WMA_LOGI(FL("For tag %d WMI event 0x%x"), tag, event_id);
+	return event_id;
+}
+
+/**
+ * wma_ndp_wow_event_callback() - NAN data path wow event callback
+ * @handle: WMA handle
+ * @event: event buffer
+ * @len: length of @event buffer
+ *
+ * The wow event WOW_REASON_NAN_DATA is followed by the payload of the event
+ * which generated the wow event.
+ * Payload is 4 bytes of length followed by event buffer. First 4 bytes
+ * of event buffer is common tlv header, which is a combination
+ * of tag (higher 2 bytes) and length (lower 2 bytes). The tag is used to
+ * identify the event which triggered wow event.
+ *
+ * Return: none
+ */
+void wma_ndp_wow_event_callback(void *handle, void *event,
+						  uint32_t len)
+{
+	uint32_t id;
+	int tlv_ok_status = 0;
+	void *wmi_cmd_struct_ptr = NULL;
+	uint32_t tag = WMITLV_GET_TLVTAG(WMITLV_GET_HDR(event));
+
+	/* Reverse map fixed params tag to EVENT_ID */
+	id = wma_ndp_get_eventid_from_tlvtag(tag);
+	if (!id) {
+		WMA_LOGE(FL("Invalid  Tag: %d"), tag);
+		return;
+	}
+
+	tlv_ok_status = wmitlv_check_and_pad_event_tlvs(handle, event, len,
+							id,
+							&wmi_cmd_struct_ptr);
+	if (tlv_ok_status != 0) {
+		WMA_LOGE(FL("Invalid Tag: %d could not check and pad tlvs"),
+			 tag);
+		return;
+	}
+
+	switch (id) {
+	case WMI_NDP_INITIATOR_RSP_EVENTID:
+		wma_ndp_initiator_rsp_event_handler(handle,
+						wmi_cmd_struct_ptr, len);
+		break;
+
+	case WMI_NDP_RESPONDER_RSP_EVENTID:
+		wma_ndp_responder_rsp_event_handler(handle,
+						wmi_cmd_struct_ptr, len);
+		break;
+
+	case WMI_NDP_END_RSP_EVENTID:
+		wma_ndp_end_response_event_handler(handle,
+						wmi_cmd_struct_ptr, len);
+		break;
+
+	case WMI_NDP_INDICATION_EVENTID:
+		wma_ndp_indication_event_handler(handle,
+						wmi_cmd_struct_ptr, len);
+		break;
+
+	case WMI_NDP_CONFIRM_EVENTID:
+		wma_ndp_confirm_event_handler(handle,
+						wmi_cmd_struct_ptr, len);
+		break;
+
+	case WMI_NDP_END_INDICATION_EVENTID:
+		wma_ndp_end_indication_event_handler(handle,
+						wmi_cmd_struct_ptr, len);
+		break;
+
+	default:
+		WMA_LOGE(FL("Unknown tag: %d"), tag);
+		break;
+	}
+	wmitlv_free_allocated_event_tlvs(id, &wmi_cmd_struct_ptr);
 }
 
 /**
@@ -182,9 +407,9 @@ void wma_add_bss_ndi_mode(tp_wma_handle wma, tpAddBssParams add_bss)
 	struct wma_vdev_start_req req;
 	ol_txrx_peer_handle peer = NULL;
 	struct wma_target_req *msg;
-	u_int8_t vdev_id, peer_id;
+	uint8_t vdev_id, peer_id;
 	VOS_STATUS status;
-	u_int8_t nss_2g, nss_5g;
+	uint8_t nss_2g, nss_5g;
 
 	WMA_LOGE("%s: enter", __func__);
 	if (NULL == wma_find_vdev_by_addr(wma, add_bss->bssId, &vdev_id)) {

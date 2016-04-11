@@ -1954,7 +1954,7 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->limWmeEnabled = pSmeJoinReq->isWMEenabled;
         psessionEntry->limQosEnabled = pSmeJoinReq->isQosEnabled;
         psessionEntry->osen_association = pSmeJoinReq->osen_association;
-        psessionEntry->wps_registartion = pSmeJoinReq->wps_registartion;
+        psessionEntry->wps_registration = pSmeJoinReq->wps_registration;
 
 
         /* Store vendor specfic IE for CISCO AP */
@@ -4910,8 +4910,14 @@ __limProcessSmeHideSSID(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         return;
     }
 
-    /* Update the session entry */
-    psessionEntry->ssidHidden = pUpdateParams->ssidHidden;
+    if (psessionEntry->ssidHidden != pUpdateParams->ssidHidden) {
+            /* Update the session entry */
+            psessionEntry->ssidHidden = pUpdateParams->ssidHidden;
+    } else {
+            PELOG1(limLog(pMac, LOG1,
+                   FL("Same config already present!")));
+            return;
+    }
 
     /* Send vdev restart */
     limSendVdevRestart(pMac, psessionEntry, pUpdateParams->sessionId);
@@ -5344,6 +5350,8 @@ __limProcessSmeAddStaSelfReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
    pAddStaSelfParams->pkt_err_disconn_th = pSmeReq->pkt_err_disconn_th;
    pAddStaSelfParams->nss_2g = pSmeReq->nss_2g;
    pAddStaSelfParams->nss_5g = pSmeReq->nss_5g;
+   pAddStaSelfParams->tx_aggregation_size = pSmeReq->tx_aggregation_size;
+   pAddStaSelfParams->rx_aggregation_size = pSmeReq->rx_aggregation_size;
 
    msg.type = SIR_HAL_ADD_STA_SELF_REQ;
    msg.reserved = 0;

@@ -31,7 +31,6 @@
 unsigned int vow_config = 0;
 module_param(vow_config, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 MODULE_PARM_DESC(vow_config, "Do VoW Configuration");
-EXPORT_SYMBOL(vow_config);
 
 #ifdef QCA_SUPPORT_TXRX_HL_BUNDLE
 /**
@@ -100,6 +99,10 @@ ol_pdev_handle ol_pdev_cfg_attach(adf_os_device_t osdev,
 	cfg_ctx->vow_config = vow_config;
 	cfg_ctx->target_tx_credit = CFG_TGT_NUM_MSDU_DESC;
 	cfg_ctx->throttle_period_ms = 40;
+	cfg_ctx->dutycycle_level[0] = THROTTLE_DUTY_CYCLE_LEVEL0;
+	cfg_ctx->dutycycle_level[1] = THROTTLE_DUTY_CYCLE_LEVEL1;
+	cfg_ctx->dutycycle_level[2] = THROTTLE_DUTY_CYCLE_LEVEL2;
+	cfg_ctx->dutycycle_level[3] = THROTTLE_DUTY_CYCLE_LEVEL3;
 	cfg_ctx->rx_fwd_disabled = 0;
 	cfg_ctx->is_packet_log_enabled = 0;
 	cfg_ctx->is_full_reorder_offload = cfg_param.is_full_reorder_offload;
@@ -270,6 +273,13 @@ int ol_cfg_throttle_period_ms(ol_pdev_handle pdev)
 	struct txrx_pdev_cfg_t *cfg = (struct txrx_pdev_cfg_t *)pdev;
 	return cfg->throttle_period_ms;
 }
+
+int ol_cfg_throttle_duty_cycle_level(ol_pdev_handle pdev, int level)
+{
+	struct txrx_pdev_cfg_t *cfg = (struct txrx_pdev_cfg_t *)pdev;
+	return cfg->dutycycle_level[level];
+}
+
 
 int ol_cfg_is_full_reorder_offload(ol_pdev_handle pdev)
 {

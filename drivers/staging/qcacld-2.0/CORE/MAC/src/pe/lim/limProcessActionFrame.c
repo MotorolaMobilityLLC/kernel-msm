@@ -562,6 +562,9 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
     }
     pSta = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable);
 
+    if (pSta == NULL)
+        goto end;
+
     operMode = pSta->vhtSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_80MHZ : pSta->htSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_40MHZ: eHT_CHANNEL_WIDTH_20MHZ;
 
     if ((operMode == eHT_CHANNEL_WIDTH_80MHZ) &&
@@ -622,7 +625,7 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
         limSetNssChange( pMac, psessionEntry, pSta->vhtSupportedRxNss,
                          pSta->staIndex, pHdr->sa);
     }
-
+end:
     vos_mem_free(pOperatingModeframe);
     return;
 }
@@ -678,7 +681,7 @@ __limProcessGidManagementActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
     }
     pSta = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable);
 
-    {
+    if (pSta != NULL) {
         limLog(pMac, LOGE,
             FL(" received Gid Management Action Frame , staIdx = %d"),
                pSta->staIndex);

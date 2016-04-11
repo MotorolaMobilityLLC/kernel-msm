@@ -232,12 +232,15 @@ struct sme_bad_peer_txctl_param{
 
 
 #define SME_MAX_THERMAL_LEVELS (4)
+#define SME_MAX_THROTTLE_LEVELS (4)
+
 
 typedef struct {
     /* Array of thermal levels */
     tSmeThermalLevelInfo smeThermalLevels[SME_MAX_THERMAL_LEVELS];
     u_int8_t smeThermalMgmtEnabled;
     u_int32_t smeThrottlePeriod;
+    u_int8_t sme_throttle_duty_cycle_tbl[SME_MAX_THROTTLE_LEVELS];
 } tSmeThermalParams;
 
 #ifdef WLAN_FEATURE_APFIND
@@ -3855,6 +3858,8 @@ eHalStatus sme_UpdateAddIE(tHalHandle hHal,
 
 eHalStatus sme_UpdateConnectDebug(tHalHandle hHal, tANI_U32 set_value);
 const char * sme_requestTypetoString(const v_U8_t requestType);
+const char * sme_scan_type_to_string(const uint8_t scan_type);
+const char * sme_bss_type_to_string(const uint8_t bss_type);
 const char * sme_PmcStatetoString(const v_U8_t pmcState);
 eHalStatus sme_ApDisableIntraBssFwd(tHalHandle hHal, tANI_U8 sessionId,
                                     tANI_BOOLEAN disablefwd);
@@ -4423,6 +4428,13 @@ eHalStatus sme_register_mgmt_frame_ind_callback(tHalHandle hal,
 
 eHalStatus sme_update_nss(tHalHandle h_hal, uint8_t nss);
 void sme_enable_phy_error_logs(tHalHandle hal, bool enable_log);
+
+VOS_STATUS sme_set_btc_bt_wlan_interval_page_p2p(uint32_t bt_interval,
+					uint32_t p2p_interval);
+VOS_STATUS sme_set_btc_bt_wlan_interval_page_sta(uint32_t bt_interval,
+					uint32_t sta_interval);
+VOS_STATUS sme_set_btc_bt_wlan_interval_page_sap(uint32_t bt_interval,
+					uint32_t sap_interval);
 
 uint8_t    sme_is_any_session_in_connected_state(tHalHandle h_hal);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2002-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -591,7 +591,7 @@ dfs_process_radarevent(struct ath_dfs *dfs, struct ieee80211_channel *chan)
                                             This is normally 2 but can be higher for W53.
                                         */
 
-                                        if ( (deltaT > (dfs->dfs_pri_multiplier * rf->rf_maxpri) ) || (deltaT < rf->rf_minpri) ) {
+                                        if ( (deltaT > ((u_int64_t)dfs->dfs_pri_multiplier * rf->rf_maxpri) ) || (deltaT < rf->rf_minpri) ) {
                                                 DFS_DPRINTK(dfs, ATH_DEBUG_DFS2,
                                                 "filterID %d : Rejecting on individual filter max PRI deltaT=%lld rf->rf_minpri=%u",
                                                 rf->rf_pulseid, (unsigned long long)deltaT, rf->rf_minpri);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014,2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -47,6 +47,7 @@
 #define QCA9377_REV1_1_VERSION       0x5020001
 #define AR6320_REV3_2_VERSION        0x5030000
 #define AR6320_REV4_VERSION          AR6320_REV2_1_VERSION
+#define QCA9379_REV1_VERSION         0x5040000
 #define AR6320_DEV_VERSION           0x1000000
 #define QCA_FIRMWARE_FILE            "athwlan.bin"
 #define QCA_UTF_FIRMWARE_FILE        "utf.bin"

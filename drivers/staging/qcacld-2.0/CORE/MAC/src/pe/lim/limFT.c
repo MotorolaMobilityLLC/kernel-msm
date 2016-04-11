@@ -345,7 +345,7 @@ void limPerformFTPreAuth(tpAniSirGlobal pMac, eHalStatus status,
     if (psessionEntry->is11Rconnection &&
         psessionEntry->ftPEContext.pFTPreAuthReq) {
         /* Only 11r assoc has FT IEs */
-        if (psessionEntry->ftPEContext.pFTPreAuthReq->ft_ies == NULL) {
+        if (psessionEntry->ftPEContext.pFTPreAuthReq->ft_ies_length == 0) {
             PELOGE(limLog( pMac, LOGE,
                            "%s: FTIEs for Auth Req Seq 1 is absent",
                            __func__);)

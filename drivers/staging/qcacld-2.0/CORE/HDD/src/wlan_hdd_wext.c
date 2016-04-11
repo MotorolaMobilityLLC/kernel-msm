@@ -575,6 +575,11 @@ static const struct qwlan_hw qwlan_hw_list[] = {
         .id = QCA9377_REV1_1_VERSION,
         .subid = 0x1,
         .name = "QCA93x7_REV1_1",
+    },
+    {
+        .id = QCA9379_REV1_VERSION,
+        .subid = 0xC,
+        .name = "QCA9379_REV1",
     }
 };
 
@@ -1509,6 +1514,10 @@ void hdd_clearRoamProfileIe( hdd_adapter_t *pAdapter)
    else
        pWextState= WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
 
+   if (!pWextState) {
+        hddLog(LOGE, FL("ERROR: pWextState not found"));
+        return;
+   }
    /* clear WPA/RSN/WSC IE information in the profile */
    pWextState->roamProfile.nWPAReqIELength = 0;
    pWextState->roamProfile.pWPAReqIE = (tANI_U8 *)NULL;
@@ -12736,6 +12745,10 @@ int hdd_set_wext(hdd_adapter_t *pAdapter)
        bssid = &pHddStaCtx->conn_info.bssId;
     }
 
+    if (!pwextBuf) {
+        hddLog(LOGE, FL("ERROR: pwextBuf not found"));
+        return VOS_STATUS_E_FAILURE;
+    }
     /* Now configure the roaming profile links. To SSID and bssid */
     pwextBuf->roamProfile.SSIDs.numOfSSIDs = 0;
     pwextBuf->roamProfile.SSIDs.SSIDList = ssid_list;
@@ -12793,6 +12806,10 @@ int hdd_register_wext(struct net_device *dev)
     else
         pwextBuf = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
 
+    if (!pwextBuf) {
+        hddLog(LOGE, FL("ERROR: pwextBuf not found"));
+        return eHAL_STATUS_FAILURE;
+    }
     /* Zero the memory. This zeros the profile structure */
     memset(pwextBuf, 0, sizeof(hdd_wext_state_t));
 

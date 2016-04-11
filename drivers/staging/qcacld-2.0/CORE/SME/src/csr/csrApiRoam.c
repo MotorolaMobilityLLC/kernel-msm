@@ -47,7 +47,6 @@
 #include "aniGlobal.h" //for tpAniSirGlobal
 #include "wlan_qct_wda.h"
 #include "halMsgApi.h" //for HAL_STA_INVALID_IDX.
-#include "limUtils.h"
 #include "palApi.h"
 #include "csrInsideApi.h"
 #include "smsDebug.h"
@@ -72,6 +71,7 @@
 #include "vos_utils.h"
 #include <wlan_logging_sock_svc.h>
 #include "sme_nan_datapath.h"
+#include "cfgApi.h"
 
 #define MAX_PWR_FCC_CHAN_12 8
 #define MAX_PWR_FCC_CHAN_13 2
@@ -2036,6 +2036,27 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
                                pParam->sendDeauthBeforeCon;
         pMac->roam.configParam.enable_fatal_event =
                                         pParam->enable_fatal_event;
+        pMac->roam.configParam.tx_aggregation_size =
+                               pParam->tx_aggregation_size;
+        pMac->roam.configParam.rx_aggregation_size =
+                               pParam->rx_aggregation_size;
+
+        pMac->roam.configParam.enable_edca_params =
+                               pParam->enable_edca_params;
+        pMac->roam.configParam.edca_vo_cwmin = pParam->edca_vo_cwmin;
+        pMac->roam.configParam.edca_vi_cwmin = pParam->edca_vi_cwmin;
+        pMac->roam.configParam.edca_bk_cwmin = pParam->edca_bk_cwmin;
+        pMac->roam.configParam.edca_be_cwmin = pParam->edca_be_cwmin;
+
+        pMac->roam.configParam.edca_vo_cwmax = pParam->edca_vo_cwmax;
+        pMac->roam.configParam.edca_vi_cwmax = pParam->edca_vi_cwmax;
+        pMac->roam.configParam.edca_bk_cwmax = pParam->edca_bk_cwmax;
+        pMac->roam.configParam.edca_be_cwmax = pParam->edca_be_cwmax;
+
+        pMac->roam.configParam.edca_vo_aifs = pParam->edca_vo_aifs;
+        pMac->roam.configParam.edca_vi_aifs = pParam->edca_vi_aifs;
+        pMac->roam.configParam.edca_bk_aifs = pParam->edca_bk_aifs;
+        pMac->roam.configParam.edca_be_aifs = pParam->edca_be_aifs;
     }
 
     return status;
@@ -2212,6 +2233,23 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->htSmps = pMac->roam.configParam.htSmps;
         pParam->enable_fatal_event =
                pMac->roam.configParam.enable_fatal_event;
+
+        pParam->enable_edca_params =
+               pMac->roam.configParam.enable_edca_params;
+        pParam->edca_vo_cwmin = pMac->roam.configParam.edca_vo_cwmin;
+        pParam->edca_vi_cwmin = pMac->roam.configParam.edca_vi_cwmin;
+        pParam->edca_bk_cwmin = pMac->roam.configParam.edca_bk_cwmin;
+        pParam->edca_be_cwmin = pMac->roam.configParam.edca_be_cwmin;
+
+        pParam->edca_vo_cwmax = pMac->roam.configParam.edca_vo_cwmax;
+        pParam->edca_vi_cwmax = pMac->roam.configParam.edca_vi_cwmax;
+        pParam->edca_bk_cwmax = pMac->roam.configParam.edca_bk_cwmax;
+        pParam->edca_be_cwmax = pMac->roam.configParam.edca_be_cwmax;
+
+        pParam->edca_vo_aifs = pMac->roam.configParam.edca_vo_aifs;
+        pParam->edca_vi_aifs = pMac->roam.configParam.edca_vi_aifs;
+        pParam->edca_bk_aifs = pMac->roam.configParam.edca_bk_aifs;
+        pParam->edca_be_aifs = pMac->roam.configParam.edca_be_aifs;
         status = eHAL_STATUS_SUCCESS;
     }
     return (status);
@@ -7237,7 +7275,7 @@ eHalStatus csrRoamConnect(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
     pSession->join_bssid_count = 0;
     smsLog(pMac, LOG1, FL("called  BSSType = %s (%d) authtype = %d "
                                                     "encryType = %d"),
-                lim_BssTypetoString(pProfile->BSSType),
+                sme_bss_type_to_string(pProfile->BSSType),
                 pProfile->BSSType,
                 pProfile->AuthType.authType[0],
                 pProfile->EncryptionType.encryptionType[0]);
@@ -7427,7 +7465,7 @@ eHalStatus csrRoamReassoc(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
    }
    smsLog(pMac, LOG1, FL("called  BSSType = %s (%d) authtype = %d "
                                                   "encryType = %d"),
-            lim_BssTypetoString(pProfile->BSSType),
+            sme_bss_type_to_string(pProfile->BSSType),
             pProfile->BSSType,
             pProfile->AuthType.authType[0],
             pProfile->EncryptionType.encryptionType[0]);
@@ -15470,6 +15508,8 @@ eHalStatus csrSendMBAddSelfStaReqMsg( tpAniSirGlobal pMac,
       pMsg->pkt_err_disconn_th = pMac->roam.configParam.pkt_err_disconn_th;
       pMsg->nss_2g = nss_2g;
       pMsg->nss_5g = nss_5g;
+      pMsg->tx_aggregation_size = pMac->roam.configParam.tx_aggregation_size;
+      pMsg->rx_aggregation_size = pMac->roam.configParam.rx_aggregation_size;
       smsLog( pMac, LOG1, FL("selfMac="MAC_ADDRESS_STR),
               MAC_ADDR_ARRAY(pMsg->selfMacAddr));
       status = palSendMBMessage(pMac->hHdd, pMsg);

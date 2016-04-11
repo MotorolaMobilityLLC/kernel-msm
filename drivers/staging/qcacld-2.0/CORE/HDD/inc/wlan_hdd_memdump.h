@@ -74,6 +74,8 @@ void memdump_deinit(void);
 int wlan_hdd_cfg80211_get_fw_mem_dump(struct wiphy *wiphy,
 				      struct wireless_dev *wdev,
 				      const void *data, int data_len);
+int hdd_driver_memdump_init(void);
+void hdd_driver_memdump_deinit(void);
 #else
 static inline int memdump_init(void)
 {
@@ -90,9 +92,13 @@ static inline int wlan_hdd_cfg80211_get_fw_mem_dump(struct wiphy *wiphy,
 {
 	return -ENOTSUPP;
 }
+static inline int hdd_driver_memdump_init(void)
+{
+		return -EINVAL;
+}
+static inline void hdd_driver_memdump_deinit(void)
+{
+		return;
+}
 #endif
-
-int hdd_driver_memdump_init(void);
-void hdd_driver_memdump_deinit(void);
-
 #endif /* if !defined(WLAN_HDD_MEMDUMP_H)*/

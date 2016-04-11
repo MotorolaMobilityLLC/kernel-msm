@@ -414,7 +414,8 @@ static v_VOID_t wlan_hdd_tdls_discovery_timeout_peer_cb(v_PVOID_t userData)
     return;
 }
 
-static void wlan_hdd_tdls_free_list(tdlsCtx_t *pHddTdlsCtx)
+static void wlan_hdd_tdls_free_list(tdlsCtx_t *pHddTdlsCtx,
+                                    bool del_forced_peer)
 {
     int i;
     struct list_head *head;
@@ -432,6 +433,9 @@ static void wlan_hdd_tdls_free_list(tdlsCtx_t *pHddTdlsCtx)
         head = &pHddTdlsCtx->peer_list[i];
         list_for_each_safe (pos, q, head) {
             tmp = list_entry(pos, hddTdlsPeer_t, node);
+            /* Don't delete TDLS forced peers during STA disconnection */
+            if (!del_forced_peer && tmp->isForcedPeer)
+                continue;
             list_del(pos);
             vos_mem_free(tmp);
             tmp = NULL;
@@ -800,7 +804,7 @@ void wlan_hdd_tdls_exit(hdd_adapter_t *pAdapter)
     /* must stop timer here before freeing peer list, because peerIdleTimer is
     part of peer list structure. */
     wlan_hdd_tdls_timers_destroy(pHddTdlsCtx);
-    wlan_hdd_tdls_free_list(pHddTdlsCtx);
+    wlan_hdd_tdls_free_list(pHddTdlsCtx, true);
 
     mutex_unlock(&pHddCtx->tdls_lock);
 
@@ -2181,7 +2185,7 @@ void wlan_hdd_tdls_disconnection_callback(hdd_adapter_t *pAdapter)
     wlan_hdd_tdls_check_power_save_prohibited(pHddTdlsCtx->pAdapter);
 
     wlan_hdd_tdls_monitor_timers_stop(pHddTdlsCtx);
-    wlan_hdd_tdls_free_list(pHddTdlsCtx);
+    wlan_hdd_tdls_free_list(pHddTdlsCtx, false);
 
     pHddTdlsCtx->curr_candidate = NULL;
 

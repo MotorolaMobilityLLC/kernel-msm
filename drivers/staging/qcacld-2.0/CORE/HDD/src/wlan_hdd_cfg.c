@@ -2187,6 +2187,34 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_THROTTLE_PERIOD_MIN,
                  CFG_THROTTLE_PERIOD_MAX ),
 
+   REG_VARIABLE( CFG_THROTTLE_DUTY_CYCLE_LEVEL0_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, throttle_dutycycle_level0,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL0_DEFAULT,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL0_MIN,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL0_MAX ),
+
+   REG_VARIABLE( CFG_THROTTLE_DUTY_CYCLE_LEVEL1_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, throttle_dutycycle_level1,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL1_DEFAULT,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL1_MIN,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL1_MAX ),
+
+   REG_VARIABLE( CFG_THROTTLE_DUTY_CYCLE_LEVEL2_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, throttle_dutycycle_level2,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL2_DEFAULT,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL2_MIN,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL2_MAX ),
+
+   REG_VARIABLE( CFG_THROTTLE_DUTY_CYCLE_LEVEL3_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, throttle_dutycycle_level3,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL3_DEFAULT,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL3_MIN,
+                 CFG_THROTTLE_DUTY_CYCLE_LEVEL3_MAX ),
+
    REG_VARIABLE( CFG_ENABLE_MODULATED_DTIM_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, enableModulatedDTIM,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -4112,6 +4140,48 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_ENABLE_NON_DFS_CHAN_ON_RADAR_DEFAULT,
                 CFG_ENABLE_NON_DFS_CHAN_ON_RADAR_MIN,
                 CFG_ENABLE_NON_DFS_CHAN_ON_RADAR_MAX),
+/* For P2P */
+   REG_VARIABLE(CFG_BTC_BT_INTERVAL_PAGE_P2P, WLAN_PARAM_Integer,
+                hdd_config_t, coex_page_p2p_bt_interval,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_BTC_BT_INTERVAL_PAGE_P2P_DEFAULT,
+                CFG_BTC_BT_INTERVAL_PAGE_P2P_MIN,
+                CFG_BTC_BT_INTERVAL_PAGE_P2P_MAX),
+
+   REG_VARIABLE(CFG_BTC_WLAN_INTERVAL_PAGE_P2P, WLAN_PARAM_Integer,
+                hdd_config_t, coex_page_p2p_wlan_interval,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_BTC_WLAN_INTERVAL_PAGE_P2P_DEFAULT,
+                CFG_BTC_WLAN_INTERVAL_PAGE_P2P_MIN,
+                CFG_BTC_WLAN_INTERVAL_PAGE_P2P_MAX),
+/* For STA */
+   REG_VARIABLE(CFG_BTC_BT_INTERVAL_PAGE_STA, WLAN_PARAM_Integer,
+                hdd_config_t, coex_page_sta_bt_interval,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_BTC_BT_INTERVAL_PAGE_STA_DEFAULT,
+                CFG_BTC_BT_INTERVAL_PAGE_STA_MIN,
+                CFG_BTC_BT_INTERVAL_PAGE_STA_MAX),
+
+   REG_VARIABLE(CFG_BTC_WLAN_INTERVAL_PAGE_STA, WLAN_PARAM_Integer,
+                hdd_config_t, coex_page_sta_wlan_interval,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_BTC_WLAN_INTERVAL_PAGE_STA_DEFAULT,
+                CFG_BTC_WLAN_INTERVAL_PAGE_STA_MIN,
+                CFG_BTC_WLAN_INTERVAL_PAGE_STA_MAX),
+/* For SAP */
+   REG_VARIABLE(CFG_BTC_BT_INTERVAL_PAGE_SAP, WLAN_PARAM_Integer,
+                hdd_config_t, coex_page_sap_bt_interval,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_BTC_BT_INTERVAL_PAGE_SAP_DEFAULT,
+                CFG_BTC_BT_INTERVAL_PAGE_SAP_MIN,
+                CFG_BTC_BT_INTERVAL_PAGE_SAP_MAX),
+
+   REG_VARIABLE(CFG_BTC_WLAN_INTERVAL_PAGE_SAP, WLAN_PARAM_Integer,
+                hdd_config_t, coex_page_sap_wlan_interval,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_BTC_WLAN_INTERVAL_PAGE_SAP_DEFAULT,
+                CFG_BTC_WLAN_INTERVAL_PAGE_SAP_MIN,
+                CFG_BTC_WLAN_INTERVAL_PAGE_SAP_MAX),
 
    REG_VARIABLE(CFG_INFORM_BSS_RSSI_RAW_NAME, WLAN_PARAM_Integer,
                 hdd_config_t, inform_bss_rssi_raw,
@@ -4353,6 +4423,137 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_OPTIMIZE_CA_EVENT_DEFAULT,
                  CFG_OPTIMIZE_CA_EVENT_DISABLE,
                  CFG_OPTIMIZE_CA_EVENT_ENABLE ),
+
+   REG_VARIABLE(CFG_USE_OTP_MAC, WLAN_PARAM_Integer,
+                hdd_config_t, g_use_otpmac,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_USE_OTP_MAC_DEFAULT,
+                CFG_USE_OTP_MAC_MIN,
+                CFG_USE_OTP_MAC_MAX),
+
+   REG_VARIABLE(CFG_TX_AGGREGATION_SIZE, WLAN_PARAM_Integer,
+                hdd_config_t, tx_aggregation_size,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_TX_AGGREGATION_SIZE_DEFAULT,
+                CFG_TX_AGGREGATION_SIZE_MIN,
+                CFG_TX_AGGREGATION_SIZE_MAX),
+
+   REG_VARIABLE(CFG_RX_AGGREGATION_SIZE, WLAN_PARAM_Integer,
+                hdd_config_t, rx_aggregation_size,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_RX_AGGREGATION_SIZE_DEFAULT,
+                CFG_RX_AGGREGATION_SIZE_MIN,
+                CFG_RX_AGGREGATION_SIZE_MAX),
+   REG_VARIABLE(CFG_CREATE_BUG_REPORT_FOR_SCAN, WLAN_PARAM_Integer,
+                hdd_config_t, bug_report_for_scan_results,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_CREATE_BUG_REPORT_FOR_SCAN_DEFAULT,
+                CFG_CREATE_BUG_REPORT_FOR_SCAN_DISABLE,
+                CFG_CREATE_BUG_REPORT_FOR_SCAN_ENABLE),
+
+   REG_VARIABLE(CFG_ENABLE_EDCA_INI_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, enable_edca_params,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_ENABLE_EDCA_INI_DEFAULT,
+                CFG_ENABLE_EDCA_INI_MIN,
+                CFG_ENABLE_EDCA_INI_MAX),
+
+   REG_VARIABLE(CFG_EDCA_VO_CWMIN_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_vo_cwmin,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_VO_CWMIN_VALUE_DEFAULT,
+                CFG_EDCA_VO_CWMIN_VALUE_MIN,
+                CFG_EDCA_VO_CWMIN_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_VI_CWMIN_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_vi_cwmin,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_VI_CWMIN_VALUE_DEFAULT,
+                CFG_EDCA_VI_CWMIN_VALUE_MIN,
+                CFG_EDCA_VI_CWMIN_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_BK_CWMIN_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_bk_cwmin,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_BK_CWMIN_VALUE_DEFAULT,
+                CFG_EDCA_BK_CWMIN_VALUE_MIN,
+                CFG_EDCA_BK_CWMIN_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_BE_CWMIN_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_be_cwmin,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_BE_CWMIN_VALUE_DEFAULT,
+                CFG_EDCA_BE_CWMIN_VALUE_MIN,
+                CFG_EDCA_BE_CWMIN_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_VO_CWMAX_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_vo_cwmax,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_VO_CWMAX_VALUE_DEFAULT,
+                CFG_EDCA_VO_CWMAX_VALUE_MIN,
+                CFG_EDCA_VO_CWMAX_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_VI_CWMAX_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_vi_cwmax,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_VI_CWMAX_VALUE_DEFAULT,
+                CFG_EDCA_VI_CWMAX_VALUE_MIN,
+                CFG_EDCA_VI_CWMAX_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_BK_CWMAX_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_bk_cwmax,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_BK_CWMAX_VALUE_DEFAULT,
+                CFG_EDCA_BK_CWMAX_VALUE_MIN,
+                CFG_EDCA_BK_CWMAX_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_BE_CWMAX_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_be_cwmax,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_BE_CWMAX_VALUE_DEFAULT,
+                CFG_EDCA_BE_CWMAX_VALUE_MIN,
+                CFG_EDCA_BE_CWMAX_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_VO_AIFS_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_vo_aifs,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_VO_AIFS_VALUE_DEFAULT,
+                CFG_EDCA_VO_AIFS_VALUE_MIN,
+                CFG_EDCA_VO_AIFS_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_VI_AIFS_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_vi_aifs,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_VI_AIFS_VALUE_DEFAULT,
+                CFG_EDCA_VI_AIFS_VALUE_MIN,
+                CFG_EDCA_VI_AIFS_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_BK_AIFS_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_bk_aifs,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_BK_AIFS_VALUE_DEFAULT,
+                CFG_EDCA_BK_AIFS_VALUE_MIN,
+                CFG_EDCA_BK_AIFS_VALUE_MAX),
+
+   REG_VARIABLE(CFG_EDCA_BE_AIFS_VALUE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, edca_be_aifs,
+                VAR_FLAGS_OPTIONAL |
+                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_EDCA_BE_AIFS_VALUE_DEFAULT,
+                CFG_EDCA_BE_AIFS_VALUE_MIN,
+                CFG_EDCA_BE_AIFS_VALUE_MAX),
 };
 
 
@@ -5110,6 +5311,51 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
                    pHddCtx->cfg_ini->min_rest_time_conc);
   hddLog(LOG2, "Name = [gIdleTimeConc] Value = [%u]",
                    pHddCtx->cfg_ini->idle_time_conc);
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+         CFG_USE_OTP_MAC, pHddCtx->cfg_ini->g_use_otpmac);
+
+  hddLog(LOG2,"Name = [%s] Value = [%u]",
+          CFG_ENABLE_EDCA_INI_NAME,
+          pHddCtx->cfg_ini->enable_edca_params);
+
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_VO_CWMIN_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_vo_cwmin);
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_VI_CWMIN_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_vi_cwmin);
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_BK_CWMIN_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_bk_cwmin);
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_BE_CWMIN_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_be_cwmin);
+
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_VO_CWMAX_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_vo_cwmax);
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_VI_CWMAX_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_vi_cwmax);
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_BK_CWMAX_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_bk_cwmax);
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_BE_CWMAX_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_be_cwmax);
+
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_VO_AIFS_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_vo_aifs);
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_VI_AIFS_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_vi_aifs);
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_BK_AIFS_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_bk_aifs);
+  hddLog(LOG2, "Name = [%s] Value = [%u]",
+          CFG_EDCA_BE_AIFS_VALUE_NAME,
+          pHddCtx->cfg_ini->edca_be_aifs);
 
   hdd_ndp_print_ini_config(pHddCtx);
 }
@@ -7005,6 +7251,40 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
                           pConfig->enable_fatal_event;
    smeConfig->csrConfig.sendDeauthBeforeCon = pConfig->sendDeauthBeforeCon;
    smeConfig->csrConfig.ignorePeerErpInfo = pConfig->ignorePeerErpInfo;
+   smeConfig->csrConfig.tx_aggregation_size =
+                   pHddCtx->cfg_ini->tx_aggregation_size;
+   smeConfig->csrConfig.rx_aggregation_size =
+                   pHddCtx->cfg_ini->rx_aggregation_size;
+
+   smeConfig->csrConfig.enable_edca_params =
+                        pHddCtx->cfg_ini->enable_edca_params;
+
+   smeConfig->csrConfig.edca_vo_cwmin =
+                        pHddCtx->cfg_ini->edca_vo_cwmin;
+   smeConfig->csrConfig.edca_vi_cwmin =
+                        pHddCtx->cfg_ini->edca_vi_cwmin;
+   smeConfig->csrConfig.edca_bk_cwmin =
+                        pHddCtx->cfg_ini->edca_bk_cwmin;
+   smeConfig->csrConfig.edca_be_cwmin =
+                        pHddCtx->cfg_ini->edca_be_cwmin;
+
+   smeConfig->csrConfig.edca_vo_cwmax =
+                        pHddCtx->cfg_ini->edca_vo_cwmax;
+   smeConfig->csrConfig.edca_vi_cwmax =
+                        pHddCtx->cfg_ini->edca_vi_cwmax;
+   smeConfig->csrConfig.edca_bk_cwmax =
+                        pHddCtx->cfg_ini->edca_bk_cwmax;
+   smeConfig->csrConfig.edca_be_cwmax =
+                        pHddCtx->cfg_ini->edca_be_cwmax;
+
+   smeConfig->csrConfig.edca_vo_aifs =
+                        pHddCtx->cfg_ini->edca_vo_aifs;
+   smeConfig->csrConfig.edca_vi_aifs =
+                        pHddCtx->cfg_ini->edca_vi_aifs;
+   smeConfig->csrConfig.edca_bk_aifs =
+                        pHddCtx->cfg_ini->edca_bk_aifs;
+   smeConfig->csrConfig.edca_be_aifs =
+                        pHddCtx->cfg_ini->edca_be_aifs;
    halStatus = sme_UpdateConfig( pHddCtx->hHal, smeConfig);
    if ( !HAL_STATUS_SUCCESS( halStatus ) )
    {
@@ -7462,3 +7742,50 @@ VOS_STATUS hdd_update_nss(hdd_context_t *hdd_ctx, uint8_t nss)
 	return (status == FALSE) ? VOS_STATUS_E_FAILURE : VOS_STATUS_SUCCESS;
 }
 
+/**
+ * hdd_set_btc_bt_wlan_interval() - set btc bt/wlan interval page to FW
+ * @hdd_ctx: the pointer to hdd context
+ *
+ * This function set btc bt/wlan interval page (p2p/sta/sap) to FW.
+ *
+ * Return: None
+ */
+void hdd_set_btc_bt_wlan_interval(hdd_context_t *hdd_ctx)
+{
+	hdd_config_t *config = hdd_ctx->cfg_ini;
+	VOS_STATUS status = VOS_STATUS_SUCCESS;
+
+	/** Sanity check.
+	 * If not set in ini file, these parameters will be zero.
+	 * Otherwise hdd_apply_cfg_ini()
+	 * will ensure the valuse to be in the range 20~200 (ms as unit).
+	 * If no parameters sent to firmware,
+	 * firmware will set relevant parameters to default value itself.
+	*/
+	if ((config->coex_page_p2p_bt_interval !=0) &&
+		(config->coex_page_p2p_wlan_interval !=0)) {
+		status = sme_set_btc_bt_wlan_interval_page_p2p(
+					config->coex_page_p2p_bt_interval,
+					config->coex_page_p2p_wlan_interval);
+		if (VOS_STATUS_SUCCESS != status)
+			hddLog(LOGE, "Fail to set coex page p2p bt interval parameters");
+	}
+
+	if ((config->coex_page_sta_bt_interval !=0) &&
+		(config->coex_page_sta_wlan_interval !=0)) {
+		status = sme_set_btc_bt_wlan_interval_page_sta(
+					config->coex_page_sta_bt_interval,
+					config->coex_page_sta_wlan_interval);
+		if (VOS_STATUS_SUCCESS != status)
+			hddLog(LOGE, "Fail to set coex page sta bt interval parameters");
+	}
+
+	if ((config->coex_page_sap_bt_interval !=0) &&
+		(config->coex_page_sap_wlan_interval !=0)) {
+		status = sme_set_btc_bt_wlan_interval_page_sap(
+					config->coex_page_sap_bt_interval,
+					config->coex_page_sap_wlan_interval);
+		if (VOS_STATUS_SUCCESS != status)
+			hddLog(LOGE, "Fail to set coex page sap bt interval parameters");
+	}
+}

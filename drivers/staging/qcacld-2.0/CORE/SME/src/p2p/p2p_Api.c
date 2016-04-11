@@ -33,8 +33,8 @@
 #include "csrInsideApi.h"
 #include "smeInside.h"
 #include "p2p_Api.h"
-#include "limApi.h"
 #include "cfgApi.h"
+#include "wma.h"
 
 
 eHalStatus p2pProcessNoAReq(tpAniSirGlobal pMac, tSmeCmd *pNoACmd);

@@ -101,9 +101,9 @@
 #include "ol_fw.h"
 /* Time in msec */
 #ifdef CONFIG_SLUB_DEBUG_ON
-#define HDD_SSR_BRING_UP_TIME 40000
+#define HDD_SSR_BRING_UP_TIME 50000
 #else
-#define HDD_SSR_BRING_UP_TIME 30000
+#define HDD_SSR_BRING_UP_TIME 40000
 #endif
 
 static eHalStatus g_full_pwr_status;
@@ -1928,6 +1928,9 @@ VOS_STATUS hdd_wlan_shutdown(void)
    }
 
    pHddCtx->isLogpInProgress = TRUE;
+   pHddCtx->isWiphySuspended = FALSE;
+   pHddCtx->isSchedScanUpdatePending = FALSE;
+
    vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
 
    vos_clear_concurrent_session_count();
@@ -2333,7 +2336,6 @@ err_vosclose:
        /* Clean up HDD Nlink Service */
        send_btc_nlink_msg(WLAN_MODULE_DOWN_IND, 0);
 #ifdef WLAN_KD_READY_NOTIFIER
-       cnss_diag_notify_wlan_close();
        nl_srv_exit(pHddCtx->ptt_pid);
 #else
        nl_srv_exit();

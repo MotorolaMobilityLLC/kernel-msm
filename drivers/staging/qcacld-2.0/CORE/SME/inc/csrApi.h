@@ -149,7 +149,6 @@ typedef enum {
 typedef tANI_U8 tCsrBssid[VOS_MAC_ADDR_SIZE];
 
 typedef enum {
-    eCSR_BSS_TYPE_NONE,
     eCSR_BSS_TYPE_INFRASTRUCTURE,
     eCSR_BSS_TYPE_INFRA_AP,       /* Soft AP */
     eCSR_BSS_TYPE_IBSS,           /* IBSS network, will NOT start */
@@ -1318,6 +1317,21 @@ typedef struct tagCsrConfigParam
     v_U16_t    pkt_err_disconn_th;
     int8_t    first_scan_bucket_threshold;
     bool    enable_fatal_event;
+    uint32_t tx_aggregation_size;
+    uint32_t rx_aggregation_size;
+    bool enable_edca_params;
+    uint32_t edca_vo_cwmin;
+    uint32_t edca_vi_cwmin;
+    uint32_t edca_bk_cwmin;
+    uint32_t edca_be_cwmin;
+    uint32_t edca_vo_cwmax;
+    uint32_t edca_vi_cwmax;
+    uint32_t edca_bk_cwmax;
+    uint32_t edca_be_cwmax;
+    uint32_t edca_vo_aifs;
+    uint32_t edca_vi_aifs;
+    uint32_t edca_bk_aifs;
+    uint32_t edca_be_aifs;
 }tCsrConfigParam;
 
 //Tush

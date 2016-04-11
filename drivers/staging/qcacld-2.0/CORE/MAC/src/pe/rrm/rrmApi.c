@@ -644,7 +644,10 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
    mmhMsg.bodyptr = pSmeBcnReportReq;
    MTRACE(macTrace(pMac, TRACE_CODE_TX_SME_MSG, pSessionEntry->peSessionId,
                                                           mmhMsg.type));
-   return limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+   if (eSIR_SUCCESS != limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT))
+      return eRRM_FAILURE;
+
+   return eRRM_SUCCESS;
 }
 
 // --------------------------------------------------------------------

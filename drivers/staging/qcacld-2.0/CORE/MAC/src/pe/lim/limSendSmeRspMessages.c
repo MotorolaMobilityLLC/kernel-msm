@@ -3017,6 +3017,7 @@ void limHandleDeleteBssRsp(tpAniSirGlobal pMac,tpSirMsgQ MsgQ)
     {
         limLog(pMac, LOGE,FL("Session Does not exist for given sessionID %d"),
           pDelBss->sessionId);
+        vos_mem_free(MsgQ->bodyptr);
         return;
     }
     if (LIM_IS_IBSS_ROLE(psessionEntry))

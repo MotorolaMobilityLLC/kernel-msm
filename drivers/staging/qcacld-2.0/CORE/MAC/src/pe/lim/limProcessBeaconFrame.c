@@ -153,10 +153,15 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         if ((pMac->lim.gLimMlmState  == eLIM_MLM_WT_PROBE_RESP_STATE) ||
             (pMac->lim.gLimMlmState  == eLIM_MLM_PASSIVE_SCAN_STATE))
         {
-            limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo,
-                  ((pMac->lim.gLimHalScanState == eLIM_HAL_SCANNING_STATE) ?
-                    eANI_BOOLEAN_TRUE : eANI_BOOLEAN_FALSE),
-                    eANI_BOOLEAN_FALSE);
+            /* If we are scanning for P2P, only accept probe rsp */
+            if((pMac->lim.gLimHalScanState != eLIM_HAL_SCANNING_STATE) ||
+               (NULL == pMac->lim.gpLimMlmScanReq) ||
+               !pMac->lim.gpLimMlmScanReq->p2pSearch) {
+                limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo,
+                     ((pMac->lim.gLimHalScanState == eLIM_HAL_SCANNING_STATE) ?
+                     eANI_BOOLEAN_TRUE : eANI_BOOLEAN_FALSE),
+                     eANI_BOOLEAN_FALSE);
+            }
             /* Calling dfsChannelList which will convert DFS channel
              * to Active channel for x secs if this channel is DFS channel */
              limSetDFSChannelList(pMac, pBeacon->channelNumber,
@@ -282,8 +287,13 @@ limProcessBeaconFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         if ( (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) ||
              (pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE) )
         {
-            limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo,
-                                         eANI_BOOLEAN_TRUE, eANI_BOOLEAN_FALSE);
+            /*If we are scanning for P2P, only accept probe rsp */
+            if((pMac->lim.gLimHalScanState != eLIM_HAL_SCANNING_STATE) ||
+               (NULL == pMac->lim.gpLimMlmScanReq) ||
+               !pMac->lim.gpLimMlmScanReq->p2pSearch) {
+                limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo,
+                      eANI_BOOLEAN_TRUE, eANI_BOOLEAN_FALSE);
+            }
             /* Calling dfsChannelList which will convert DFS channel
              * to Active channel for x secs if this channel is DFS channel */
             limSetDFSChannelList(pMac, pBeacon->channelNumber,

@@ -280,11 +280,8 @@ uint64_t ol_rx_get_fwd_to_tx_packet_count(uint8_t vdev_id)
 	struct ol_txrx_vdev_t *vdev = NULL;
 
 	vdev = (struct ol_txrx_vdev_t *)ol_txrx_get_vdev_from_vdev_id(vdev_id);
-	if (!vdev) {
-		TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
-			"%s: vdev is NULL for vdev id %d", __func__, vdev_id);
+	if (!vdev)
 		return 0;
-	}
 
 	return vdev->fwd_to_tx_packets;
 }

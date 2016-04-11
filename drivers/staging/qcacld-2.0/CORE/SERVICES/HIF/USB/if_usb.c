@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -637,6 +637,7 @@ void hif_get_hw_info(void *ol_sc, u32 *version, u32 *revision)
 					case AR6320_REV3_VERSION:
 					case AR6320_REV3_2_VERSION:
 					case QCA9377_REV1_1_VERSION:
+					case QCA9379_REV1_VERSION:
 						hif_type = HIF_TYPE_AR6320V2;
 						target_type = TARGET_TYPE_AR6320V2;
 						break;

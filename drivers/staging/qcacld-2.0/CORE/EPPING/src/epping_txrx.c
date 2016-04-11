@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -239,24 +239,32 @@ static int epping_set_mac_address(struct net_device *dev, void *addr)
 
 static void epping_stop_adapter(epping_adapter_t *pAdapter)
 {
+   struct device *dev;
+
    if (pAdapter && pAdapter->started) {
       EPPING_LOG(LOG1, FL("Disabling queues"));
       netif_tx_disable(pAdapter->dev);
       netif_carrier_off(pAdapter->dev);
       pAdapter->started = false;
-      vos_request_bus_bandwidth(CNSS_BUS_WIDTH_LOW);
+      dev = pAdapter->pEpping_ctx->parent_dev;
+      if (dev)
+         vos_request_bus_bandwidth(dev, CNSS_BUS_WIDTH_LOW);
    }
 }
 
 static int epping_start_adapter(epping_adapter_t *pAdapter)
 {
+   struct device *dev;
+
    if (!pAdapter) {
       EPPING_LOG(VOS_TRACE_LEVEL_FATAL,
          "%s: pAdapter= NULL\n", __func__);
       return -1;
    }
    if (!pAdapter->started) {
-      vos_request_bus_bandwidth(CNSS_BUS_WIDTH_HIGH);
+      dev = pAdapter->pEpping_ctx->parent_dev;
+      if (dev)
+         vos_request_bus_bandwidth(dev, CNSS_BUS_WIDTH_HIGH);
       netif_carrier_on(pAdapter->dev);
       EPPING_LOG(LOG1, FL("Enabling queues"));
       netif_tx_start_all_queues(pAdapter->dev);

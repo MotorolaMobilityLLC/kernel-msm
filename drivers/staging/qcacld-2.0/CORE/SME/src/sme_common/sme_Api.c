@@ -14807,6 +14807,14 @@ eHalStatus sme_InitThermalInfo( tHalHandle hHal,
 
     pWdaParam->thermalMgmtEnabled = thermalParam.smeThermalMgmtEnabled;
     pWdaParam->throttlePeriod = thermalParam.smeThrottlePeriod;
+    pWdaParam->throttle_duty_cycle_tbl[0]=
+        thermalParam.sme_throttle_duty_cycle_tbl[0];
+    pWdaParam->throttle_duty_cycle_tbl[1]=
+        thermalParam.sme_throttle_duty_cycle_tbl[1];
+    pWdaParam->throttle_duty_cycle_tbl[2]=
+        thermalParam.sme_throttle_duty_cycle_tbl[2];
+    pWdaParam->throttle_duty_cycle_tbl[3]=
+        thermalParam.sme_throttle_duty_cycle_tbl[3];
     pWdaParam->thermalLevels[0].minTempThreshold =
         thermalParam.smeThermalLevels[0].smeMinTempThreshold;
     pWdaParam->thermalLevels[0].maxTempThreshold =
@@ -18131,14 +18139,15 @@ bool sme_is_sta_smps_allowed(tHalHandle hal, uint8_t session_id)
 			  FL("Failed to get mac_ctx"));
 		return false;
 	}
-	if (!CSR_IS_SESSION_VALID(mac_ctx, session_id)) {
-		smsLog(mac_ctx, LOGE, "CSR session not valid: %d", session_id);
-		return false;
-	}
 
 	csr_session = CSR_GET_SESSION(mac_ctx, session_id);
 	if (NULL == csr_session) {
 		smsLog(mac_ctx, LOGE, "SME session not valid: %d", session_id);
+		return false;
+	}
+
+	if (!CSR_IS_SESSION_VALID(mac_ctx, session_id)) {
+		smsLog(mac_ctx, LOGE, "CSR session not valid: %d", session_id);
 		return false;
 	}
 
@@ -18470,6 +18479,7 @@ eHalStatus sme_delete_all_tdls_peers(tHalHandle hal, uint8_t session_id)
 	return status;
 }
 
+
 /**
  * sme_set_beacon_filter() - set the beacon filter configuration
  * @vdev_id: vdev index id
@@ -18503,13 +18513,55 @@ VOS_STATUS sme_set_beacon_filter(uint32_t vdev_id, uint32_t *ie_map)
 		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
 			"%s: Not able to post msg to WDA!",
 			__func__);
-
 		vos_mem_free(filter_param);
+		return VOS_STATUS_E_FAILURE;
 	}
+
 	return vos_status;
 }
 
 /**
+ * sme_set_btc_bt_wlan_interval_page_p2p() - Set the btc bt/p2p interval
+ * @bt_interval: BT Page Interval
+ * @bt_interval: P2P Interval
+ *
+ * Return: Return VOS_STATUS.
+ */
+VOS_STATUS sme_set_btc_bt_wlan_interval_page_p2p(uint32_t bt_interval,
+			uint32_t p2p_interval)
+{
+	vos_msg_t msg = {0};
+	VOS_STATUS vos_status;
+	WMI_COEX_CONFIG_CMD_fixed_param *sme_interval;
+
+	sme_interval = vos_mem_malloc(sizeof(*sme_interval));
+	if (!sme_interval) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  FL("Malloc failed"));
+		return VOS_STATUS_E_NOMEM;
+	}
+
+	sme_interval->config_type = WMI_COEX_CONFIG_PAGE_P2P_TDM;
+	sme_interval->config_arg1 = bt_interval;
+	sme_interval->config_arg2 = p2p_interval;
+
+	msg.type = WDA_BTC_BT_WLAN_INTERVAL_CMD;
+	msg.reserved = 0;
+	msg.bodyptr = sme_interval;
+
+	vos_status = vos_mq_post_message(VOS_MODULE_ID_WDA,&msg);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  FL("Not able to post message to WDA"));
+		vos_mem_free(sme_interval);
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	return vos_status;
+}
+
+/**
+
  * sme_unset_beacon_filter() - set the beacon filter configuration
  * @vdev_id: vdev index id
  *
@@ -18538,9 +18590,90 @@ VOS_STATUS sme_unset_beacon_filter(uint32_t vdev_id)
 		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
 			"%s: Not able to post msg to WDA!",
 			__func__);
-
 		vos_mem_free(filter_param);
+		return VOS_STATUS_E_FAILURE;
 	}
+
+	return vos_status;
+}
+
+/**
+ * sme_set_btc_bt_wlan_interval_page_sta() - Set the btc bt/sta interval
+ * @bt_interval: BT Page Interval
+ * @sta_interval: STA Interval
+ *
+ * Return: Return VOS_STATUS.
+ */
+VOS_STATUS sme_set_btc_bt_wlan_interval_page_sta(uint32_t bt_interval,
+			uint32_t sta_interval)
+{
+	vos_msg_t msg = {0};
+	VOS_STATUS vos_status;
+	WMI_COEX_CONFIG_CMD_fixed_param *sme_interval;
+
+	sme_interval = vos_mem_malloc(sizeof(*sme_interval));
+	if (!sme_interval) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  FL("Malloc failed"));
+		return VOS_STATUS_E_NOMEM;
+	}
+
+	sme_interval->config_type = WMI_COEX_CONFIG_PAGE_STA_TDM;
+	sme_interval->config_arg1 = bt_interval;
+	sme_interval->config_arg2 = sta_interval;
+
+	msg.type = WDA_BTC_BT_WLAN_INTERVAL_CMD;
+	msg.reserved = 0;
+	msg.bodyptr = sme_interval;
+
+	vos_status = vos_mq_post_message(VOS_MODULE_ID_WDA,&msg);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  FL("Not able to post message to WDA"));
+		vos_mem_free(sme_interval);
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	return vos_status;
+}
+
+/**
+ * sme_set_btc_bt_wlan_interval_page_sap() - Set the btc bt/sap interval
+ * @bt_interval: BT Page Interval
+ * @bt_interval: SAP Interval
+ *
+ * Return: Return VOS_STATUS.
+ */
+VOS_STATUS sme_set_btc_bt_wlan_interval_page_sap(uint32_t bt_interval,
+			uint32_t sap_interval)
+{
+	vos_msg_t msg = {0};
+	VOS_STATUS vos_status;
+	WMI_COEX_CONFIG_CMD_fixed_param *sme_interval;
+
+	sme_interval = vos_mem_malloc(sizeof(*sme_interval));
+	if (!sme_interval) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  FL("Malloc failed"));
+		return VOS_STATUS_E_NOMEM;
+	}
+
+	sme_interval->config_type = WMI_COEX_CONFIG_PAGE_SAP_TDM;
+	sme_interval->config_arg1 = bt_interval;
+	sme_interval->config_arg2 = sap_interval;
+
+	msg.type = WDA_BTC_BT_WLAN_INTERVAL_CMD;
+	msg.reserved = 0;
+	msg.bodyptr = sme_interval;
+
+	vos_status = vos_mq_post_message(VOS_MODULE_ID_WDA,&msg);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  FL("Not able to post message to WDA"));
+		vos_mem_free(sme_interval);
+		return VOS_STATUS_E_FAILURE;
+	}
+
 	return vos_status;
 }
 

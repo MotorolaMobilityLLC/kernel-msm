@@ -1436,6 +1436,8 @@ typedef struct sAddStaSelfParams
    tANI_U16        pkt_err_disconn_th;
    uint8_t         nss_2g;
    uint8_t         nss_5g;
+   uint32_t        tx_aggregation_size;
+   uint32_t        rx_aggregation_size;
 }tAddStaSelfParams, *tpAddStaSelfParams;
 
 /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -29,7 +29,6 @@
 #if !defined( __SME_FTAPI_H )
 #define __SME_FTAPI_H
 
-#include <limFTDefs.h>
 
 /**=========================================================================
 

@@ -251,7 +251,6 @@ void epping_driver_exit(v_CONTEXT_t pVosContext)
    }
    else
    {
-      vos_mem_free(pEpping_ctx);
 #ifdef QCA_PKT_PROTO_TRACE
       vos_pkt_proto_trace_close();
 #endif /* QCA_PKT_PROTO_TRACE */
@@ -260,6 +259,7 @@ void epping_driver_exit(v_CONTEXT_t pVosContext)
       vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, TRUE);
    }
    hif_unregister_driver();
+   vos_mem_free(pEpping_ctx);
    vos_preClose( &pVosContext );
 #ifdef MEMORY_DEBUG
    vos_mem_exit();

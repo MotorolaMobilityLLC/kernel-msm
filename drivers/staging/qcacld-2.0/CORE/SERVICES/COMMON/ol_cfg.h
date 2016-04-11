@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -49,6 +49,12 @@ enum wlan_frm_fmt {
     wlan_frm_fmt_802_3,
 };
 
+/* Throttle period Different level Duty Cycle values*/
+#define THROTTLE_DUTY_CYCLE_LEVEL0 (0)
+#define THROTTLE_DUTY_CYCLE_LEVEL1 (50)
+#define THROTTLE_DUTY_CYCLE_LEVEL2 (75)
+#define THROTTLE_DUTY_CYCLE_LEVEL3 (94)
+
 #ifdef IPA_UC_OFFLOAD
 struct wlan_ipa_uc_rsc_t {
    u8  uc_offload_enabled;
@@ -76,6 +82,7 @@ struct txrx_pdev_cfg_t {
 	u32 max_vdev;
 	u32 max_nbuf_frags;
 	u32 throttle_period_ms;
+	u8 dutycycle_level[4];
 	enum wlan_frm_fmt frame_type;
 	u8 rx_fwd_disabled;
 	u8 is_packet_log_enabled;
@@ -352,6 +359,17 @@ int ol_cfg_rx_host_defrag_timeout_duplicate_check(ol_pdev_handle pdev);
  * @return the total throttle period in ms
  */
 int ol_cfg_throttle_period_ms(ol_pdev_handle pdev);
+
+/**
+ * brief Query for the duty cycle in percentage used for throttling for
+ * thermal mitigation
+ *
+ * @param pdev - handle to the physical device
+ * @param level - duty cycle level
+ * @return the duty cycle level in percentage
+ */
+int ol_cfg_throttle_duty_cycle_level(ol_pdev_handle pdev, int level);
+
 
 /**
  * brief Check whether full reorder offload is

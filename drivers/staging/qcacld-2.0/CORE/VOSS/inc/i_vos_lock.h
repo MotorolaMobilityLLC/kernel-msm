@@ -70,6 +70,7 @@ typedef spinlock_t vos_spin_lock_t;
 
 typedef struct wlan_wake_lock {
 	struct wakeup_source lock;
+	bool is_initialized;
 } vos_wake_lock_t;
 
 typedef void *runtime_pm_context_t;

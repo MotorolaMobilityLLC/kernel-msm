@@ -1106,6 +1106,14 @@ enum qca_wlan_vendor_attr_ll_stats_results
     /* Unsigned 32bit value to indicate ll stats result type */
     QCA_WLAN_VENDOR_ATTR_LL_STATS_TYPE,
 
+    /* Unsigned 32bit value */
+    QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_NUM_TX_LEVELS,
+
+    /* Unsigned 32bit value
+     * Number of msecs the radio spent in transmitting for each power level
+     */
+    QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_TX_TIME_PER_LEVEL,
+
     /* keep last */
     QCA_WLAN_VENDOR_ATTR_LL_STATS_AFTER_LAST,
     QCA_WLAN_VENDOR_ATTR_LL_STATS_MAX =
@@ -1463,6 +1471,9 @@ enum qca_wlan_vendor_features {
 #define WIFI_FEATURE_LOGGER             0x20000  /* WiFi Logger */
 #define WIFI_FEATURE_HAL_EPNO           0x40000  /* WiFi PNO enhanced */
 #define WIFI_FEATURE_RSSI_MONITOR       0x80000  /* RSSI Monitor */
+#define WIFI_FEATURE_MKEEP_ALIVE        0x100000  /* WiFi mkeep_alive */
+#define WIFI_FEATURE_CONFIG_NDO         0x200000  /* ND offload configure */
+#define WIFI_FEATURE_TX_TRANSMIT_POWER  0x400000  /* Tx transmit power levels */
 
 /* Add more features here */
 #define WIFI_TDLS_SUPPORT			BIT(0)
@@ -1537,6 +1548,10 @@ enum qca_wlan_vendor_acs_hw_mode {
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_STATS_AVG_FACTOR: stats avg. factor
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_GUARD_TIME: guard time
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_TX_RATE: configure max tx rate
+ * @QCA_WLAN_VENDOR_ATTR_CONFIG_TX_MPDU_AGGREGATION:
+ *                                   Tx aggregation size (8-bit unsigned value)
+ * @QCA_WLAN_VENDOR_ATTR_CONFIG_RX_MPDU_AGGREGATION:
+ *                                   Rx aggregation size (8-bit unsigned value)
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_LAST: last config
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_MAX: max config
  */
@@ -1549,6 +1564,8 @@ enum qca_wlan_vendor_config {
 	QCA_WLAN_VENDOR_ATTR_CONFIG_TX_RATE,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_PENALIZE_AFTER_NCONS_BEACON_MISS,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_CHANNEL_AVOIDANCE_IND,
+	QCA_WLAN_VENDOR_ATTR_CONFIG_TX_MPDU_AGGREGATION,
+	QCA_WLAN_VENDOR_ATTR_CONFIG_RX_MPDU_AGGREGATION,
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -72,7 +72,7 @@ int epping_cookie_init(epping_context_t*pEpping_ctx)
    for (i = 0; i < MAX_COOKIE_SLOTS_NUM; i++) {
       pEpping_ctx->s_cookie_mem[i] =
          vos_mem_malloc(sizeof(struct epping_cookie)*MAX_COOKIE_SLOT_SIZE);
-      if (pEpping_ctx->s_cookie_mem == NULL) {
+      if (pEpping_ctx->s_cookie_mem[i] == NULL) {
          EPPING_LOG(VOS_TRACE_LEVEL_FATAL,
             "%s: no mem for cookie (idx = %d)", __func__, i);
          goto error;

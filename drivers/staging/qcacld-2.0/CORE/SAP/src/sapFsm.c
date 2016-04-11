@@ -2140,10 +2140,6 @@ sapGotoChannelSel
     tHalHandle hHal;
     tANI_U8   con_ch;
 
-#if defined(FEATURE_WLAN_CH_AVOID) || defined(SOFTAP_CHANNEL_RANGE)
-    v_U8_t i;
-#endif
-
     hHal = (tHalHandle)vos_get_context( VOS_MODULE_ID_SME, sapContext->pvosGCtx);
     if (NULL == hHal)
     {
@@ -2324,31 +2320,10 @@ sapGotoChannelSel
 #ifdef SOFTAP_CHANNEL_RANGE
                     if(sapContext->channelList != NULL)
                     {
-                        for ( i = 0 ; i < sapContext->numofChannel ; i++)
-                            if (NV_CHANNEL_ENABLE ==
-		                vos_nv_getChannelEnabledState(sapContext->channelList[i]))
-                            {
-                                sapContext->channel = sapContext->channelList[i];
-                            }
-
-                            vos_mem_free(sapContext->channelList);
-                            sapContext->channelList = NULL;
+                        sapContext->channel = sapContext->channelList[0];
+                        vos_mem_free(sapContext->channelList);
+                        sapContext->channelList = NULL;
                     }
-#ifdef FEATURE_WLAN_CH_AVOID
-                    else
-                    {
-                        for( i = 0; i < NUM_20MHZ_RF_CHANNELS; i++ )
-                        {
-                            if((NV_CHANNEL_ENABLE ==
-                                vos_nv_getChannelEnabledState(safeChannels[i].channelNumber))
-                                    && (VOS_TRUE == safeChannels[i].isSafe))
-                            {
-                                sapContext->channel = safeChannels[i].channelNumber;
-                                break;
-                            }
-                        }
-                    }
-#endif
 #endif
                     if (VOS_TRUE == sapDoAcsPreStartBss)
                     {
@@ -4720,13 +4695,18 @@ void sapDfsCacTimerCallback(void *data)
         return;
     }
 
+    /*
+     * SAP may not be in CAC wait state, when the timer runs out.
+     * if following flag is set, then timer is in initialized state,
+     * destroy timer here.
+     */
+    if (pMac->sap.SapDfsInfo.is_dfs_cac_timer_running == true) {
+        vos_timer_destroy(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
+        pMac->sap.SapDfsInfo.is_dfs_cac_timer_running = false;
+    }
     /* Check to ensure that SAP is in DFS WAIT state*/
     if (sapContext->sapsMachine == eSAP_DFS_CAC_WAIT)
     {
-        vos_timer_destroy(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
-        pMac->sap.SapDfsInfo.is_dfs_cac_timer_running = VOS_FALSE;
-
-
         /*
          * CAC Complete, post eSAP_DFS_CHANNEL_CAC_END to sapFsm
          */
@@ -4771,6 +4751,7 @@ static int sapStopDfsCacTimer(ptSapContext sapContext)
 
     vos_timer_stop(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
     pMac->sap.SapDfsInfo.is_dfs_cac_timer_running = 0;
+    vos_timer_destroy(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
 
     return 0;
 }
@@ -4852,11 +4833,13 @@ int sapStartDfsCacTimer(ptSapContext sapContext)
     status = vos_timer_start(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer, cacTimeOut);
     if (status == VOS_STATUS_SUCCESS)
     {
-        pMac->sap.SapDfsInfo.is_dfs_cac_timer_running = VOS_TRUE;
+        pMac->sap.SapDfsInfo.is_dfs_cac_timer_running = true;
         return 1;
     }
     else
     {
+        pMac->sap.SapDfsInfo.is_dfs_cac_timer_running = false;
+        vos_timer_destroy(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
         return 0;
     }
 }

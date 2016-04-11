@@ -1947,12 +1947,36 @@ typedef enum
 #define CFG_THERMAL_MIGRATION_ENABLE_MAX       ( 1 )
 #define CFG_THERMAL_MIGRATION_ENABLE_DEFAULT   ( 1 )
 
-
-
 #define CFG_THROTTLE_PERIOD_NAME               "gThrottlePeriod"
 #define CFG_THROTTLE_PERIOD_MIN                ( 10 )
 #define CFG_THROTTLE_PERIOD_MAX                ( 10000 )
 #define CFG_THROTTLE_PERIOD_DEFAULT            ( 4000 )
+
+/*
+ * Configure Throttle Period Different Level Duty Cycle in percentage
+ * When temperature measured is greater than threshold at particular level,
+ * then throtling level will get increased by one level and
+ * will reduce TX duty by the given percentage
+ */
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL0_NAME    "gThrottleDutyCycleLevel0"
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL0_MIN     ( 0 )
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL0_MAX     ( 0 )
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL0_DEFAULT ( 0 )
+
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL1_NAME    "gThrottleDutyCycleLevel1"
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL1_MIN     ( 0 )
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL1_MAX     ( 100 )
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL1_DEFAULT ( 50 )
+
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL2_NAME    "gThrottleDutyCycleLevel2"
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL2_MIN     ( 0 )
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL2_MAX     ( 100 )
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL2_DEFAULT ( 75 )
+
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL3_NAME    "gThrottleDutyCycleLevel3"
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL3_MIN     ( 0 )
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL3_MAX     ( 100 )
+#define CFG_THROTTLE_DUTY_CYCLE_LEVEL3_DEFAULT ( 94 )
 
 #define CFG_THERMAL_TEMP_MIN_LEVEL0_NAME      "gThermalTempMinLevel0"
 #define CFG_THERMAL_TEMP_MIN_LEVEL0_MIN       ( 0 )
@@ -3290,6 +3314,68 @@ enum dot11p_mode {
 #define CFG_ENABLE_NON_DFS_CHAN_ON_RADAR_MAX       (1)
 #define CFG_ENABLE_NON_DFS_CHAN_ON_RADAR_DEFAULT   (0)
 
+/**
+* For P2P
+* gBTIntervalPageP2P/gWLIntervalPageP2P intervals length (in ms) during
+* WLAN P2P (single vdev) + BT Paging, min 20ms, max 200ms.
+* Customer could change these parameters' value in qcom_cfg.ini file to improve
+* P2P throughput when BT doing Page. Example as:
+* gBTIntervalPageP2P=30
+* gWLIntervalPageP2P=120
+*/
+
+#define CFG_BTC_BT_INTERVAL_PAGE_P2P           "gBTIntervalPageP2P"
+#define CFG_BTC_BT_INTERVAL_PAGE_P2P_MIN       (20)
+#define CFG_BTC_BT_INTERVAL_PAGE_P2P_MAX       (200)
+#define CFG_BTC_BT_INTERVAL_PAGE_P2P_DEFAULT   (30)
+
+#define CFG_BTC_WLAN_INTERVAL_PAGE_P2P           "gWLIntervalPageP2P"
+#define CFG_BTC_WLAN_INTERVAL_PAGE_P2P_MIN       (20)
+#define CFG_BTC_WLAN_INTERVAL_PAGE_P2P_MAX       (200)
+#define CFG_BTC_WLAN_INTERVAL_PAGE_P2P_DEFAULT   (30)
+
+/**
+* For STA
+* gBTIntervalPageSTA/gWLIntervalPageSTA intervals length (in ms) during
+* WLAN STA (single vdev) + BT Paging, min 20ms, max 200ms.
+* Customer could change these parameters' value in qcom_cfg.ini file to improve
+* STA throughput when BT doing Page. Example as:
+* gBTIntervalPageSTA=30
+* gWLIntervalPageSTA=120
+*/
+
+#define CFG_BTC_BT_INTERVAL_PAGE_STA           "gBTIntervalPageSTA"
+#define CFG_BTC_BT_INTERVAL_PAGE_STA_MIN       (20)
+#define CFG_BTC_BT_INTERVAL_PAGE_STA_MAX       (200)
+#define CFG_BTC_BT_INTERVAL_PAGE_STA_DEFAULT   (30)
+
+#define CFG_BTC_WLAN_INTERVAL_PAGE_STA           "gWLIntervalPageSTA"
+#define CFG_BTC_WLAN_INTERVAL_PAGE_STA_MIN       (20)
+#define CFG_BTC_WLAN_INTERVAL_PAGE_STA_MAX       (200)
+#define CFG_BTC_WLAN_INTERVAL_PAGE_STA_DEFAULT   (30)
+
+
+/**
+* For SAP
+* gBTIntervalPageSAP/gWLIntervalPageSAP intervals length (in ms) during
+* WLAN SAP (single vdev) + BT Paging, min 20ms, max 200ms.
+* Customer could change these parameters' value in qcom_cfg.ini file to improve
+* SAP throughput when BT doing Page. Example as:
+* gBTIntervalPageSAP=30
+* gWLIntervalPageSAP=120
+*/
+
+#define CFG_BTC_BT_INTERVAL_PAGE_SAP           "gBTIntervalPageSAP"
+#define CFG_BTC_BT_INTERVAL_PAGE_SAP_MIN       (20)
+#define CFG_BTC_BT_INTERVAL_PAGE_SAP_MAX       (200)
+#define CFG_BTC_BT_INTERVAL_PAGE_SAP_DEFAULT   (30)
+
+#define CFG_BTC_WLAN_INTERVAL_PAGE_SAP           "gWLIntervalPageSAP"
+#define CFG_BTC_WLAN_INTERVAL_PAGE_SAP_MIN       (20)
+#define CFG_BTC_WLAN_INTERVAL_PAGE_SAP_MAX       (200)
+#define CFG_BTC_WLAN_INTERVAL_PAGE_SAP_DEFAULT   (30)
+
+
 /* Parameters for roaming scans performed at high RSSI */
 
 /* Maximum number of scans after RSSI change */
@@ -3351,6 +3437,24 @@ enum dot11p_mode {
 #define CFG_SELF_GEN_FRM_PWR_MIN      (0)
 #define CFG_SELF_GEN_FRM_PWR_MAX      (0xffff)
 #define CFG_SELF_GEN_FRM_PWR_DEFAULT  (0)
+
+/*
+ * gTxAggregationSize gives an option to configure Tx aggregation size
+ * in no of MPDUs. This can be useful in debugging throughput issues
+ */
+#define CFG_TX_AGGREGATION_SIZE      "gTxAggregationSize"
+#define CFG_TX_AGGREGATION_SIZE_MIN      (0)
+#define CFG_TX_AGGREGATION_SIZE_MAX      (64)
+#define CFG_TX_AGGREGATION_SIZE_DEFAULT  (64)
+
+/*
+ * gRxAggregationSize gives an option to configure Rx aggregation size
+ * in no of MPDUs. This can be useful in debugging throughput issues
+ */
+#define CFG_RX_AGGREGATION_SIZE      "gRxAggregationSize"
+#define CFG_RX_AGGREGATION_SIZE_MIN      (1)
+#define CFG_RX_AGGREGATION_SIZE_MAX      (64)
+#define CFG_RX_AGGREGATION_SIZE_DEFAULT  (64)
 
 /*
  * fine timing measurement capability information
@@ -3594,6 +3698,116 @@ enum dot11p_mode {
 #define CFG_OPTIMIZE_CA_EVENT_DISABLE    (0)
 #define CFG_OPTIMIZE_CA_EVENT_ENABLE     (1)
 #define CFG_OPTIMIZE_CA_EVENT_DEFAULT    (0)
+
+/**
+ * Reading the MAC address has priorities:
+ * 1. Read the provisioned MAC from cnss platform driver (configured by OEM)
+ * 2. Read from provisioned MAC from /persist/wlan_mac.bin (configured by OEM)
+ * 3. Read the default MAC address (otp.bin)
+ *
+ * Setting g_use_otpmac = 1 means if any of the higher priority
+ * provisioned MAC reading fails, use the default otp MAC address.
+ *
+ * Setting g_use_otpmac = 0 means Do not use the otp MAC address even if
+ * higher priority provisioned MAC reading fails, instead
+ * trigger driver load failure.
+ */
+#define CFG_USE_OTP_MAC            "g_use_otpmac"
+#define CFG_USE_OTP_MAC_MIN        (0)
+#define CFG_USE_OTP_MAC_MAX        (1)
+#define CFG_USE_OTP_MAC_DEFAULT    (1)
+
+/*
+ * Create bug report in case of nil scan results
+ */
+#define CFG_CREATE_BUG_REPORT_FOR_SCAN       "gbug_report_for_scan_results"
+#define CFG_CREATE_BUG_REPORT_FOR_SCAN_DISABLE    (0)
+#define CFG_CREATE_BUG_REPORT_FOR_SCAN_ENABLE     (1)
+#define CFG_CREATE_BUG_REPORT_FOR_SCAN_DEFAULT    (0)
+
+/*
+ * If gEnableEdcaParams is set to 1, params gEdcaVoCwmin,
+ * gEdcaViCwmin, gEdcaBkCwmin, gEdcaBeCwmin, gEdcaVoCwmax,
+ * gEdcaViCwmax, gEdcaBkCwmax, gEdcaBeCwmax, gEdcaVoAifs,
+ * gEdcaViAifs, gEdcaBkAifs and gEdcaBeAifs values are used
+ * to overwrite the values received from AP
+ */
+#define CFG_ENABLE_EDCA_INI_NAME       "gEnableEdcaParams"
+#define CFG_ENABLE_EDCA_INI_MIN        (0)
+#define CFG_ENABLE_EDCA_INI_MAX        (1)
+#define CFG_ENABLE_EDCA_INI_DEFAULT    (0)
+
+/* Cwmin value for EDCA_AC_VO. CWVomin = 2^gEdcaVoCwmin -1 */
+#define CFG_EDCA_VO_CWMIN_VALUE_NAME      "gEdcaVoCwmin"
+#define CFG_EDCA_VO_CWMIN_VALUE_MIN       (0x0)
+#define CFG_EDCA_VO_CWMIN_VALUE_MAX       (15)
+#define CFG_EDCA_VO_CWMIN_VALUE_DEFAULT   (2)
+
+/* Cwmin value for EDCA_AC_VI. CWVimin = 2^gEdcaViCwmin -1 */
+#define CFG_EDCA_VI_CWMIN_VALUE_NAME      "gEdcaViCwmin"
+#define CFG_EDCA_VI_CWMIN_VALUE_MIN       (0x0)
+#define CFG_EDCA_VI_CWMIN_VALUE_MAX       (15)
+#define CFG_EDCA_VI_CWMIN_VALUE_DEFAULT   (3)
+
+/* Cwmin value for EDCA_AC_BK. CWBkmin = 2^gEdcaBkCwmin -1 */
+#define CFG_EDCA_BK_CWMIN_VALUE_NAME      "gEdcaBkCwmin"
+#define CFG_EDCA_BK_CWMIN_VALUE_MIN       (0x0)
+#define CFG_EDCA_BK_CWMIN_VALUE_MAX       (15)
+#define CFG_EDCA_BK_CWMIN_VALUE_DEFAULT   (4)
+
+/* Cwmin value for EDCA_AC_BE. CWBemin = 2^gEdcaBeCwmin -1 */
+#define CFG_EDCA_BE_CWMIN_VALUE_NAME      "gEdcaBeCwmin"
+#define CFG_EDCA_BE_CWMIN_VALUE_MIN       (0x0)
+#define CFG_EDCA_BE_CWMIN_VALUE_MAX       (15)
+#define CFG_EDCA_BE_CWMIN_VALUE_DEFAULT   (4)
+
+/* Cwmax value for EDCA_AC_VO. CWVomax = 2^gEdcaVoCwmax -1 */
+#define CFG_EDCA_VO_CWMAX_VALUE_NAME      "gEdcaVoCwmax"
+#define CFG_EDCA_VO_CWMAX_VALUE_MIN       (0)
+#define CFG_EDCA_VO_CWMAX_VALUE_MAX       (15)
+#define CFG_EDCA_VO_CWMAX_VALUE_DEFAULT   (3)
+
+/* Cwmax value for EDCA_AC_VI. CWVimax = 2^gEdcaViCwmax -1 */
+#define CFG_EDCA_VI_CWMAX_VALUE_NAME      "gEdcaViCwmax"
+#define CFG_EDCA_VI_CWMAX_VALUE_MIN       (0)
+#define CFG_EDCA_VI_CWMAX_VALUE_MAX       (15)
+#define CFG_EDCA_VI_CWMAX_VALUE_DEFAULT   (4)
+
+/* Cwmax value for EDCA_AC_BK. CWBkmax = 2^gEdcaBkCwmax -1 */
+#define CFG_EDCA_BK_CWMAX_VALUE_NAME      "gEdcaBkCwmax"
+#define CFG_EDCA_BK_CWMAX_VALUE_MIN       (0)
+#define CFG_EDCA_BK_CWMAX_VALUE_MAX       (15)
+#define CFG_EDCA_BK_CWMAX_VALUE_DEFAULT   (10)
+
+/* Cwmax value for EDCA_AC_BE. CWBemax = 2^gEdcaBeCwmax -1 */
+#define CFG_EDCA_BE_CWMAX_VALUE_NAME      "gEdcaBeCwmax"
+#define CFG_EDCA_BE_CWMAX_VALUE_MIN       (0)
+#define CFG_EDCA_BE_CWMAX_VALUE_MAX       (15)
+#define CFG_EDCA_BE_CWMAX_VALUE_DEFAULT   (10)
+
+/* Aifs value for EDCA_AC_VO.*/
+#define CFG_EDCA_VO_AIFS_VALUE_NAME       "gEdcaVoAifs"
+#define CFG_EDCA_VO_AIFS_VALUE_MIN        (0)
+#define CFG_EDCA_VO_AIFS_VALUE_MAX        (15)
+#define CFG_EDCA_VO_AIFS_VALUE_DEFAULT    (2)
+
+/* Aifs value for EDCA_AC_VI.*/
+#define CFG_EDCA_VI_AIFS_VALUE_NAME       "gEdcaViAifs"
+#define CFG_EDCA_VI_AIFS_VALUE_MIN        (0)
+#define CFG_EDCA_VI_AIFS_VALUE_MAX        (15)
+#define CFG_EDCA_VI_AIFS_VALUE_DEFAULT    (2)
+
+/* Aifs value for EDCA_AC_BK.*/
+#define CFG_EDCA_BK_AIFS_VALUE_NAME       "gEdcaBkAifs"
+#define CFG_EDCA_BK_AIFS_VALUE_MIN        (0)
+#define CFG_EDCA_BK_AIFS_VALUE_MAX        (15)
+#define CFG_EDCA_BK_AIFS_VALUE_DEFAULT    (7)
+
+/* Aifs value for EDCA_AC_BE.*/
+#define CFG_EDCA_BE_AIFS_VALUE_NAME       "gEdcaBeAifs"
+#define CFG_EDCA_BE_AIFS_VALUE_MIN        (0)
+#define CFG_EDCA_BE_AIFS_VALUE_MAX        (15)
+#define CFG_EDCA_BE_AIFS_VALUE_DEFAULT    (3)
 
 /*---------------------------------------------------------------------------
   Type declarations
@@ -3909,6 +4123,10 @@ struct hdd_config {
    v_BOOL_t                    isP2pDeviceAddrAdministrated;
    v_U8_t                      thermalMitigationEnable;
    v_U32_t                     throttlePeriod;
+   uint32_t                    throttle_dutycycle_level0;
+   uint32_t                    throttle_dutycycle_level1;
+   uint32_t                    throttle_dutycycle_level2;
+   uint32_t                    throttle_dutycycle_level3;
 #if defined(CONFIG_HL_SUPPORT) && defined(QCA_BAD_PEER_TX_FLOW_CL)
    bool                        bad_peer_txctl_enable;
    uint32_t                    bad_peer_txctl_prd;
@@ -4267,6 +4485,16 @@ struct hdd_config {
 #endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
    uint8_t                     sap_p2p_11ac_override;
    uint8_t                     prefer_non_dfs_on_radar;
+
+   uint32_t                    coex_page_p2p_bt_interval;
+   uint32_t                    coex_page_p2p_wlan_interval;
+
+   uint32_t                    coex_page_sta_bt_interval;
+   uint32_t                    coex_page_sta_wlan_interval;
+
+   uint32_t                    coex_page_sap_bt_interval;
+   uint32_t                    coex_page_sap_wlan_interval;
+
    uint8_t                     inform_bss_rssi_raw;
 #ifdef WLAN_FEATURE_TSF
    uint32_t                    tsf_gpio_pin;
@@ -4317,6 +4545,23 @@ struct hdd_config {
    uint8_t                     nan_datapath_ndi_channel;
 #endif
    bool                        goptimize_chan_avoid_event;
+   bool                        g_use_otpmac;
+   uint32_t                    tx_aggregation_size;
+   uint32_t                    rx_aggregation_size;
+   bool                        bug_report_for_scan_results;
+   bool                        enable_edca_params;
+   uint32_t                    edca_vo_cwmin;
+   uint32_t                    edca_vi_cwmin;
+   uint32_t                    edca_bk_cwmin;
+   uint32_t                    edca_be_cwmin;
+   uint32_t                    edca_vo_cwmax;
+   uint32_t                    edca_vi_cwmax;
+   uint32_t                    edca_bk_cwmax;
+   uint32_t                    edca_be_cwmax;
+   uint32_t                    edca_vo_aifs;
+   uint32_t                    edca_vi_aifs;
+   uint32_t                    edca_bk_aifs;
+   uint32_t                    edca_be_aifs;
 };
 
 typedef struct hdd_config hdd_config_t;
@@ -4477,5 +4722,8 @@ v_VOID_t hdd_mbssid_apply_def_cfg_ini(hdd_adapter_t *pAdapter);
 #endif
 
 void print_hdd_cfg(hdd_context_t *pHddCtx);
+
+void hdd_set_btc_bt_wlan_interval(hdd_context_t *pHddCtx);
+
 VOS_STATUS hdd_update_nss(hdd_context_t *hdd_ctx, uint8_t nss);
 #endif

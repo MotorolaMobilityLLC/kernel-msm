@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1066,10 +1066,19 @@ static HTC_SEND_QUEUE_RESULT HTCTrySend(HTC_TARGET       *target,
     LOCK_HTC_TX(target);
 
     if (!HTC_QUEUE_EMPTY(&sendQueue)) {
+        if (target->is_nodrop_pkt) {
+            /*
+            * nodrop pkts have higher priority than normal pkts, insert nodrop pkt
+            * to head for proper start/termination of test.
+            */
+            HTC_PACKET_QUEUE_TRANSFER_TO_HEAD(&pEndpoint->TxQueue,&sendQueue);
+            target->is_nodrop_pkt = FALSE;
+        } else {
             /* transfer packets to tail */
-        HTC_PACKET_QUEUE_TRANSFER_TO_TAIL(&pEndpoint->TxQueue,&sendQueue);
-        A_ASSERT(HTC_QUEUE_EMPTY(&sendQueue));
-        INIT_HTC_PACKET_QUEUE(&sendQueue);
+            HTC_PACKET_QUEUE_TRANSFER_TO_TAIL(&pEndpoint->TxQueue,&sendQueue);
+            A_ASSERT(HTC_QUEUE_EMPTY(&sendQueue));
+            INIT_HTC_PACKET_QUEUE(&sendQueue);
+        }
     }
 
         /* increment tx processing count on entry */
@@ -1749,6 +1758,12 @@ A_BOOL HTCIsEndpointActive(HTC_HANDLE      HTCHandle,
     return TRUE;
 }
 
+void HTCSetNodropPkt(HTC_HANDLE HTCHandle, A_BOOL isNodropPkt)
+{
+    HTC_TARGET      *target = GET_HTC_TARGET_FROM_HANDLE(HTCHandle);
+    target->is_nodrop_pkt = isNodropPkt;
+}
+
 /* process credit reports and call distribution function */
 void HTCProcessCreditRpt(HTC_TARGET *target, HTC_CREDIT_REPORT *pRpt, int NumEntries, HTC_ENDPOINT_ID FromEndpoint)
 {
@@ -1820,7 +1835,21 @@ void HTCProcessCreditRpt(HTC_TARGET *target, HTC_CREDIT_REPORT *pRpt, int NumEnt
             if (pEndpoint->ServiceID == HTT_DATA_MSG_SVC){
                 HTCSendDataPkt(target, NULL, 0);
             } else {
-                HTCTrySend(target,pEndpoint,NULL);
+#ifdef HIF_SDIO
+                if (WLAN_IS_EPPING_ENABLED(vos_get_conparam())) {
+                    if (((pEndpoint->ServiceID == WMI_DATA_BE_SVC) &&
+                        (pEndpoint->TxCreditFlowEnabled)          &&
+                        (pEndpoint->TxCredits >= HTC_MAX_MSG_PER_BUNDLE_TX + 1)) ||
+                        (target->is_nodrop_pkt)) {
+                        /* Bundle TX for mboxping test */
+                        HTCTrySend(target, pEndpoint, NULL);
+                    }
+                } else {
+#endif
+                    HTCTrySend(target,pEndpoint,NULL);
+#ifdef HIF_SDIO
+                }
+#endif
             }
 #endif
             LOCK_HTC_TX(target);

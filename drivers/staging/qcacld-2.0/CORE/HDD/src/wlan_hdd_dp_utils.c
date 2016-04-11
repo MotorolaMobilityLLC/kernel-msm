@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -204,11 +204,9 @@ VOS_STATUS hdd_string_to_hex( char *pSrcMac, int length, char *pDescMac )
    char temp[3] = {0};
    int rv;
 
-   //18 is MAC Address length plus the colons
-   if ( !pSrcMac && (length > 18 || length < 18) )
-   {
+   if (!pSrcMac || (length != MAC_ADDRESS_STR_LEN))
       return VOS_STATUS_E_FAILURE;
-   }
+
    i = k = 0;
    while ( i < length )
    {

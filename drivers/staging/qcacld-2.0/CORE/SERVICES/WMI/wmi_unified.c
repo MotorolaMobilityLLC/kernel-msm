@@ -205,7 +205,7 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_PDEV_GET_TPC_CONFIG_CMDID);
 
 		/** set the base MAC address for the physical device before a VDEV is created.
-		 *  For firmware that doesn’t support this feature and this command, the pdev
+		 *  For firmware that doesn't support this feature and this command, the pdev
 		 *  MAC address will not be changed. */
 		CASE_RETURN_STRING(WMI_PDEV_SET_BASE_MACADDR_CMDID);
 
@@ -695,6 +695,9 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_ROAM_SET_MBO_PARAM_CMDID);
 		CASE_RETURN_STRING(WMI_CHAN_AVOID_RPT_ALLOW_CMDID);
 		CASE_RETURN_STRING(WMI_SET_PERIODIC_CHANNEL_STATS_CONFIG_CMDID);
+		CASE_RETURN_STRING(WMI_VDEV_SET_CUSTOM_AGGR_SIZE_CMDID);
+		CASE_RETURN_STRING(WMI_PDEV_WAL_POWER_DEBUG_CMDID);
+		CASE_RETURN_STRING(WMI_VDEV_WISA_CMDID);
         }
 	return "Invalid WMI cmd";
 }
@@ -1130,22 +1133,18 @@ wmi_unified_attach(ol_scn_t scn_handle, wma_wow_tx_complete_cbk func)
 void
 wmi_unified_detach(struct wmi_unified* wmi_handle)
 {
-    wmi_buf_t buf;
+	wmi_buf_t buf;
 
-    if (wmi_handle != NULL) {
-        vos_flush_work(&wmi_handle->rx_event_work);
-        adf_os_spin_lock_bh(&wmi_handle->eventq_lock);
-        buf = adf_nbuf_queue_remove(&wmi_handle->event_queue);
-        while (buf) {
-            adf_nbuf_free(buf);
-            buf = adf_nbuf_queue_remove(&wmi_handle->event_queue);
-        }
-        adf_os_spin_unlock_bh(&wmi_handle->eventq_lock);
-    }
-    if (wmi_handle != NULL) {
-        OS_FREE(wmi_handle);
-        wmi_handle = NULL;
-    }
+	vos_flush_work(&wmi_handle->rx_event_work);
+	adf_os_spin_lock_bh(&wmi_handle->eventq_lock);
+	buf = adf_nbuf_queue_remove(&wmi_handle->event_queue);
+	while (buf) {
+		adf_nbuf_free(buf);
+		buf = adf_nbuf_queue_remove(&wmi_handle->event_queue);
+	}
+	adf_os_spin_unlock_bh(&wmi_handle->eventq_lock);
+
+	OS_FREE(wmi_handle);
 }
 
 /**

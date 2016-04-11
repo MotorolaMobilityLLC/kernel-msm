@@ -29,6 +29,3 @@
 #include <linux/module.h>
 
 #include "adf_os_lock.h"
-
-EXPORT_SYMBOL(adf_os_spin_lock_bh_outline);
-EXPORT_SYMBOL(adf_os_spin_unlock_bh_outline);

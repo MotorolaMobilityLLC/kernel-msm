@@ -1,7 +1,7 @@
 KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 
 KBUILD_OPTIONS := WLAN_ROOT=$(PWD)
-KBUILD_OPTIONS += MODNAME=wlan
+KBUILD_OPTIONS += MODNAME?=wlan
 
 # Determine if the driver license is Open source or proprietary
 # This is determined under the assumption that LICENSE doesn't change.

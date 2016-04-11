@@ -6021,6 +6021,44 @@ const char * sme_requestTypetoString(const v_U8_t requestType)
     }
 }
 
+/**
+ * sme_scan_type_to_string() - converts scan type enum to string.
+ * @scan_type: scan type enum
+ *
+ * Return: printable string for scan type
+ */
+const char * sme_scan_type_to_string(const uint8_t scan_type)
+{
+	switch (scan_type) {
+	CASE_RETURN_STRING(eSIR_PASSIVE_SCAN);
+	CASE_RETURN_STRING(eSIR_ACTIVE_SCAN);
+	CASE_RETURN_STRING(eSIR_BEACON_TABLE);
+	default:
+		return "Unknown ScanType";
+	}
+}
+
+/**
+ * sme_bss_type_to_string() - converts bss type enum to string.
+ * @bss_type: bss type enum
+ *
+ * Return: printable string for bss type
+ */
+const char * sme_bss_type_to_string(const uint8_t bss_type)
+{
+	switch (bss_type) {
+	CASE_RETURN_STRING(eSIR_INFRASTRUCTURE_MODE);
+	CASE_RETURN_STRING(eSIR_INFRA_AP_MODE);
+	CASE_RETURN_STRING(eSIR_IBSS_MODE);
+	CASE_RETURN_STRING(eSIR_BTAMP_STA_MODE);
+	CASE_RETURN_STRING(eSIR_BTAMP_AP_MODE);
+	CASE_RETURN_STRING(eSIR_AUTO_MODE);
+	CASE_RETURN_STRING(eSIR_NDI_MODE);
+	default:
+		return "Unknown BssType";
+	}
+}
+
 VOS_STATUS csrAddToChannelListFront(
         tANI_U8 *pChannelList,
         int  numChannels,

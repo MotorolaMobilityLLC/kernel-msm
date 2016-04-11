@@ -157,7 +157,7 @@ typedef  enum  {
     WMI_SERVICE_TDLS_CONN_TRACKER_IN_HOST_MODE, /* FW supports a new mode that allows to run connection tracker in host */
     WMI_SERVICE_ENHANCED_MCAST_FILTER,/* FW supports enhanced multicast filtering (of mcast IP inside ucast WLAN) */
     WMI_SERVICE_PERIODIC_CHAN_STAT_SUPPORT, /* periodic channel stats service */
-
+    WMI_SERVICE_MESH_11S,
     WMI_MAX_SERVICE=128               /* max service */
 } WMI_SERVICE;
 

@@ -1428,6 +1428,12 @@ ol_txrx_peer_attach(
     }
 
     OL_TXRX_LOCAL_PEER_ID_ALLOC(pdev, peer);
+    peer->reorder_history = adf_os_mem_alloc(NULL,
+            sizeof(struct ol_rx_reorder_history));
+    if (!peer->reorder_history) {
+        TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
+                 "%s: reorder history malloc failed\n", __func__);
+    }
 
     return peer;
 }

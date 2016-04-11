@@ -60,6 +60,10 @@ ol_rx_reorder_flush(
     unsigned seq_num_end,
     enum htt_rx_flush_action action);
 
+void ol_rx_reorder_update_history(struct ol_txrx_peer_t *peer,
+	uint8_t msg_type, uint8_t tid, uint8_t start_seq,
+	uint8_t end_seq, uint8_t reorder_idx);
+
 /**
  * @brief - find end of first range of present MPDUs after the initial rx hole
  * @param[in] peer - which sender's data is being checked

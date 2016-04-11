@@ -78,7 +78,7 @@ static u_int32_t refclk_speed_to_hz[] = {
 #ifdef HIF_SDIO
 
 #ifdef MULTI_IF_NAME
-#define PREFIX MULTI_IF_NAME
+#define PREFIX MULTI_IF_NAME "/"
 #else
 #define PREFIX ""
 #endif
@@ -133,6 +133,7 @@ static int ol_get_fw_files_for_target(struct ol_fw_files *pfw_files,
             memcpy(pfw_files, &FW_FILES_QCA6174_FW_3_0, sizeof(*pfw_files));
             break;
     case QCA9377_REV1_1_VERSION:
+    case QCA9379_REV1_VERSION:
 #ifdef CONFIG_TUFELLO_DUAL_FW_SUPPORT
             memcpy(pfw_files, &FW_FILES_DEFAULT, sizeof(*pfw_files));
 #else
@@ -1018,6 +1019,8 @@ out:
 
 static void ramdump_work_handler(struct work_struct *ramdump)
 {
+	struct device *dev = NULL;
+
 #if !defined(HIF_SDIO)
 #ifdef DEBUG
 	int ret;
@@ -1033,6 +1036,10 @@ static void ramdump_work_handler(struct work_struct *ramdump)
 		printk("No RAM dump will be collected since ramdump_scn is NULL!\n");
 		goto out_fail;
 	}
+
+	if (ramdump_scn->adf_dev && ramdump_scn->adf_dev->dev)
+		dev = ramdump_scn->adf_dev->dev;
+
 #if !defined(HIF_SDIO)
 #ifdef DEBUG
 	ret = hif_pci_check_soc_status(ramdump_scn->hif_sc);
@@ -1054,7 +1061,7 @@ static void ramdump_work_handler(struct work_struct *ramdump)
 		printk(KERN_ERR "HifDiagReadiMem FW Dump Area Pointer failed!\n");
 #if !defined(HIF_SDIO)
 		ol_copy_ramdump(ramdump_scn);
-		vos_device_crashed();
+		vos_device_crashed(dev);
 		return;
 #endif
 		goto out_fail;
@@ -1115,7 +1122,7 @@ static void ramdump_work_handler(struct work_struct *ramdump)
 	panic("CNSS Ram dump collected\n");
 #else
 	/* Notify SSR framework the target has crashed. */
-	vos_device_crashed();
+	vos_device_crashed(dev);
 #endif
 	return;
 
@@ -1123,14 +1130,14 @@ out_fail:
 	/* Silent SSR on dump failure */
 #if defined(CNSS_SELF_RECOVERY) || defined(TARGET_DUMP_FOR_NON_QC_PLATFORM)
 #if !defined(HIF_SDIO)
-	vos_device_self_recovery();
+	vos_device_self_recovery(dev);
 #endif
 #else
 
 #if defined(HIF_SDIO) && !defined(CONFIG_CNSS_SDIO)
 	panic("CNSS Ram dump collection failed \n");
 #else
-	vos_device_crashed();
+	vos_device_crashed(dev);
 #endif
 #endif
 
@@ -1156,7 +1163,13 @@ void ol_schedule_ramdump_work(struct ol_softc *scn)
 static void fw_indication_work_handler(struct work_struct *fw_indication)
 {
 #if !defined(HIF_SDIO)
-	vos_device_self_recovery();
+	struct device *dev = NULL;
+
+	if (ramdump_scn && ramdump_scn->adf_dev
+			&& ramdump_scn->adf_dev->dev)
+		dev = ramdump_scn->adf_dev->dev;
+
+	vos_device_self_recovery(dev);
 #endif
 }
 
@@ -1299,7 +1312,7 @@ void ol_ramdump_handler(struct ol_softc *scn)
 #define REGISTER_DUMP_LEN_MAX   60
 #define REG_DUMP_COUNT		60
 
-#ifdef CONFIG_CNSS_PCI
+#if defined(CONFIG_CNSS) && defined(HIF_PCI)
 static int __ol_target_failure(struct ol_softc *scn, void *wma_hdl)
 {
 	return 0;
@@ -1484,7 +1497,7 @@ int
 ol_configure_target(struct ol_softc *scn)
 {
 	u_int32_t param;
-#ifdef CONFIG_CNSS_PCI
+#if defined(CONFIG_CNSS) && defined(HIF_PCI)
 	struct cnss_platform_cap cap;
 #endif
 
@@ -1557,7 +1570,7 @@ ol_configure_target(struct ol_softc *scn)
 
 #endif /*HIF_PCI*/
 
-#ifdef CONFIG_CNSS_PCI
+#if defined(CONFIG_CNSS) && defined(HIF_PCI)
 	{
 		int ret;
 
@@ -1748,6 +1761,7 @@ A_STATUS ol_patch_pll_switch(struct ol_softc * scn)
 	case AR6320_REV3_VERSION:
 	case AR6320_REV3_2_VERSION:
 	case QCA9377_REV1_1_VERSION:
+	case QCA9379_REV1_VERSION:
 		cmnos_core_clk_div_addr = AR6320V3_CORE_CLK_DIV_ADDR;
 		cmnos_cpu_pll_init_done_addr = AR6320V3_CPU_PLL_INIT_DONE_ADDR;
 		cmnos_cpu_speed_addr = AR6320V3_CPU_SPEED_ADDR;
@@ -2208,6 +2222,7 @@ int ol_download_firmware(struct ol_softc *scn)
 			case AR6320_REV3_VERSION:
 			case AR6320_REV3_2_VERSION:
 			case QCA9377_REV1_1_VERSION:
+			case QCA9379_REV1_VERSION:
 			case AR6320_REV4_VERSION:
 			case AR6320_DEV_VERSION:
 			/* for SDIO, debug uart output gpio is 29, otherwise it is 6. */
@@ -2348,6 +2363,7 @@ static int ol_ath_get_reg_table(A_UINT32 target_version,
 	case AR6320_REV3_VERSION:
 	case AR6320_REV3_2_VERSION:
 	case QCA9377_REV1_1_VERSION:
+	case QCA9379_REV1_VERSION:
 		reg_table->section = (tgt_reg_section *)&ar6320v3_reg_table[0];
 		reg_table->section_size = sizeof(ar6320v3_reg_table)
 					/sizeof(ar6320v3_reg_table[0]);

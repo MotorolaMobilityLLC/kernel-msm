@@ -691,6 +691,14 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_config_enhanced_mcast_filter_fixed_param,
     WMITLV_TAG_STRUC_WMI_CHAN_AVOID_RPT_ALLOW_CMD_fixed_param,
     WMITLV_TAG_STRUC_wmi_set_periodic_channel_stats_config_fixed_param,
+    WMITLV_TAG_STRUC_wmi_vdev_set_custom_aggr_size_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_pdev_wal_power_debug_cmd_fixed_param,
+    WMITLV_TAG_STRUC_WMI_MAC_PHY_CAPABILITIES,
+    WMITLV_TAG_STRUC_WMI_HW_MODE_CAPABILITIES,
+    WMITLV_TAG_STRUC_WMI_SOC_MAC_PHY_HW_MODE_CAPS,
+    WMITLV_TAG_STRUC_WMI_HAL_REG_CAPABILITIES_EXT,
+    WMITLV_TAG_STRUC_WMI_SOC_HAL_REG_CAPABILITIES,
+    WMITLV_TAG_STRUC_wmi_vdev_wisa_cmd_fixed_param,
 } WMITLV_TAG_ID;
 
 /*
@@ -969,7 +977,11 @@ typedef enum {
     OP(WMI_VDEV_SET_QUIET_MODE_CMDID) \
     OP(WMI_COEX_CONFIG_CMDID) \
     OP(WMI_CONFIG_ENHANCED_MCAST_FILTER_CMDID) \
-    OP(WMI_CHAN_AVOID_RPT_ALLOW_CMDID)
+    OP(WMI_CHAN_AVOID_RPT_ALLOW_CMDID) \
+    OP(WMI_SET_PERIODIC_CHANNEL_STATS_CONFIG_CMDID) \
+    OP(WMI_VDEV_SET_CUSTOM_AGGR_SIZE_CMDID) \
+    OP(WMI_PDEV_WAL_POWER_DEBUG_CMDID) \
+    OP(WMI_VDEV_WISA_CMDID)
 
 /*
  * IMPORTANT: Please add _ALL_ WMI Events Here.
@@ -1117,8 +1129,8 @@ typedef enum {
     OP(WMI_NDP_END_INDICATION_EVENTID) \
     OP(WMI_PDEV_SET_HW_MODE_RESP_EVENTID) \
     OP(WMI_PDEV_HW_MODE_TRANSITION_EVENTID) \
-    OP(WMI_PDEV_SET_MAC_CONFIG_RESP_EVENTID) \
-    OP(WMI_SET_PERIODIC_CHANNEL_STATS_CONFIG_CMDID)
+    OP(WMI_PDEV_SET_MAC_CONFIG_RESP_EVENTID)
+
 
 /* TLV definitions of WMI commands */
 
@@ -2003,6 +2015,12 @@ WMITLV_CREATE_PARAM_STRUC(WMI_PDEV_SET_QUIET_MODE_CMDID);
 
 WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_SET_QUIET_MODE_CMDID);
 
+/* Setting custom aggregation size using command */
+#define WMITLV_TABLE_WMI_VDEV_SET_CUSTOM_AGGR_SIZE_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_set_custom_aggr_size_cmd_fixed_param, wmi_vdev_set_custom_aggr_size_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+
+WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_SET_CUSTOM_AGGR_SIZE_CMDID);
+
 /* Vdev create Cmd */
 #define WMITLV_TABLE_WMI_VDEV_CREATE_CMDID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_create_cmd_fixed_param, wmi_vdev_create_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)\
@@ -2321,18 +2339,20 @@ WMITLV_CREATE_PARAM_STRUC(WMI_NAN_CMDID);
 
 /* NAN Data Get Capabilities Cmd */
 #define WMITLV_TABLE_WMI_NDI_GET_CAP_REQ_CMDID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndi_get_cap_req_fixed_param, wmi_ndi_get_cap_req_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndi_get_cap_req_fixed_param, wmi_ndi_get_cap_req_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDI_GET_CAP_REQ_CMDID);
 
 /** NAN Data Initiator Request Cmd
  *
  * TLV (tag length value ) parameters follow the ndp_initiator_req
  * structure. The TLV's are:
- * wmi_ndp_cfg ndp_cfg[];
- * wmi_ndp_app_info ndp_app_info[];
+ * wmi_channel channel;
+ * A_UINT8 ndp_cfg[];
+ * A_UINT8 ndp_app_info[];
  */
 #define WMITLV_TABLE_WMI_NDP_INITIATOR_REQ_CMDID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_initiator_req_fixed_param, wmi_ndp_initiator_req_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_initiator_req_fixed_param, wmi_ndp_initiator_req_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_channel, wmi_channel, channel, WMITLV_SIZE_FIX) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, ndp_cfg, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, ndp_app_info, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDP_INITIATOR_REQ_CMDID);
@@ -2340,11 +2360,11 @@ WMITLV_CREATE_PARAM_STRUC(WMI_NDP_INITIATOR_REQ_CMDID);
 /** NAN Data Responder Request Cmd
  * TLV (tag length value ) parameters follow the ndp_responder_req
  * structure. The TLV's are:
- * wmi_ndp_cfg ndp_cfg[];
- * wmi_ndp_app_info ndp_app_info[];
+ * A_UINT8 ndp_cfg[];
+ * A_UINT8 ndp_app_info[];
  */
 #define WMITLV_TABLE_WMI_NDP_RESPONDER_REQ_CMDID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_responder_rsp_event_fixed_param, wmi_ndp_responder_req_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_responder_req_fixed_param, wmi_ndp_responder_req_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, ndp_cfg, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, ndp_app_info, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDP_RESPONDER_REQ_CMDID);
@@ -2356,8 +2376,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_NDP_RESPONDER_REQ_CMDID);
  * wmi_ndp_end_req wmi_ndp_end_req_list[];
  */
 #define WMITLV_TABLE_WMI_NDP_END_REQ_CMDID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_end_req_fixed_param, wmi_ndp_end_req_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_FIXED_STRUC, wmi_ndp_end_req, ndp_end_req_list, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_end_req_fixed_param, wmi_ndp_end_req_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ndp_end_req_PROTOTYPE, ndp_end_req_list, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDP_END_REQ_CMDID);
 
 /* Modem power state cmd */
@@ -2623,6 +2643,10 @@ WMITLV_CREATE_PARAM_STRUC(WMI_TRANSFER_DATA_TO_FLASH_CMDID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_config_enhanced_mcast_filter_fixed_param, wmi_config_enhanced_mcast_filter_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_CONFIG_ENHANCED_MCAST_FILTER_CMDID);
 
+#define WMITLV_TABLE_WMI_VDEV_WISA_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_wisa_cmd_fixed_param, wmi_vdev_wisa_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_WISA_CMDID);
+
 /* MAWC sensor report indication cmd */
 #define WMITLV_TABLE_WMI_MAWC_SENSOR_REPORT_IND_CMDID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_mawc_sensor_report_ind_cmd_fixed_param, wmi_mawc_sensor_report_ind_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
@@ -2787,6 +2811,12 @@ WMITLV_CREATE_PARAM_STRUC(WMI_PEER_ATF_REQUEST_CMDID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_set_periodic_channel_stats_config_fixed_param, wmi_set_periodic_channel_stats_config_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_SET_PERIODIC_CHANNEL_STATS_CONFIG_CMDID);
 
+/* wal power debug command per pdev */
+#define WMITLV_TABLE_WMI_PDEV_WAL_POWER_DEBUG_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_pdev_wal_power_debug_cmd_fixed_param, wmi_pdev_wal_power_debug_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_UINT32, A_UINT32, args, WMITLV_SIZE_VAR)
+WMITLV_CREATE_PARAM_STRUC(WMI_PDEV_WAL_POWER_DEBUG_CMDID);
+
 /************************** TLV definitions of WMI events *******************************/
 
 /* Service Ready event */
@@ -2800,7 +2830,12 @@ WMITLV_CREATE_PARAM_STRUC(WMI_SERVICE_READY_EVENTID);
 
 /* Service Ready Extension event */
 #define WMITLV_TABLE_WMI_SERVICE_READY_EXT_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_service_ready_ext_event_fixed_param, wmi_service_ready_ext_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_service_ready_ext_event_fixed_param, wmi_service_ready_ext_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_WMI_SOC_MAC_PHY_HW_MODE_CAPS, WMI_SOC_MAC_PHY_HW_MODE_CAPS, soc_hw_mode_caps, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, WMI_HW_MODE_CAPABILITIES, hw_mode_caps, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, WMI_MAC_PHY_CAPABILITIES, mac_phy_caps, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_WMI_SOC_HAL_REG_CAPABILITIES, WMI_SOC_HAL_REG_CAPABILITIES, soc_hal_reg_caps, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, WMI_HAL_REG_CAPABILITIES_EXT, hal_reg_caps, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_SERVICE_READY_EXT_EVENTID);
 
 /* Ready event */
@@ -3287,37 +3322,37 @@ WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, data, WMITLV_SIZE_VAR
 
 /* NAN discovery interface created event */
 #define WMITLV_TABLE_WMI_NAN_DISC_IFACE_CREATED_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_nan_disc_iface_created_event_fixed_param, wmi_nan_disc_iface_created_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_nan_disc_iface_created_event_fixed_param, wmi_nan_disc_iface_created_event_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_NAN_DISC_IFACE_CREATED_EVENTID);
 
 /* NAN discovery interface deleted event */
 #define WMITLV_TABLE_WMI_NAN_DISC_IFACE_DELETED_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_nan_disc_iface_deleted_event_fixed_param, wmi_nan_disc_iface_deleted_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_nan_disc_iface_deleted_event_fixed_param, wmi_nan_disc_iface_deleted_event_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_NAN_DISC_IFACE_DELETED_EVENTID);
 
 /* NAN device started new cluster event */
 #define WMITLV_TABLE_WMI_NAN_STARTED_CLUSTER_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_nan_started_cluster_event_fixed_param, wmi_nan_started_cluster_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_nan_started_cluster_event_fixed_param, wmi_nan_started_cluster_event_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_NAN_STARTED_CLUSTER_EVENTID);
 
 /* NAN device joined to cluster event */
 #define WMITLV_TABLE_WMI_NAN_JOINED_CLUSTER_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_nan_joined_cluster_event_fixed_param, wmi_nan_joined_cluster_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_nan_joined_cluster_event_fixed_param, wmi_nan_joined_cluster_event_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_NAN_JOINED_CLUSTER_EVENTID);
 
 /* NDP capabilities response event */
 #define WMITLV_TABLE_WMI_NDI_CAP_RSP_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndi_cap_rsp_event_fixed_param, wmi_ndi_cap_rsp_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndi_cap_rsp_event_fixed_param, wmi_ndi_cap_rsp_event_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDI_CAP_RSP_EVENTID);
 
 /* NDP initiator response event */
 #define WMITLV_TABLE_WMI_NDP_INITIATOR_RSP_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_initiator_rsp_event_fixed_param, wmi_ndp_initiator_rsp_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_initiator_rsp_event_fixed_param, wmi_ndp_initiator_rsp_event_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDP_INITIATOR_RSP_EVENTID);
 
 /* NDP responder response event */
 #define WMITLV_TABLE_WMI_NDP_RESPONDER_RSP_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_responder_rsp_event_fixed_param, wmi_ndp_responder_rsp_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_responder_rsp_event_fixed_param, wmi_ndp_responder_rsp_event_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDP_RESPONDER_RSP_EVENTID);
 
 /** NDP end response event
@@ -3325,21 +3360,23 @@ WMITLV_CREATE_PARAM_STRUC(WMI_NDP_RESPONDER_RSP_EVENTID);
  * TLV (tag length value ) parameters follow the ndp_end_rsp
  * structure. The TLV's are:
  * wmi_ndp_end_rsp_per_ndi ndp_end_rsp_per_ndi_list[];
+ * wmi_active_ndp_instance_id active_ndp_instances_id[];
  */
 #define WMITLV_TABLE_WMI_NDP_END_RSP_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_end_rsp_event_fixed_param, wmi_ndp_end_rsp_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ndp_end_rsp_per_ndi, ndp_end_rsp_per_ndi_list, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_end_rsp_event_fixed_param, wmi_ndp_end_rsp_event_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ndp_end_rsp_per_ndi_PROTOTYPE, ndp_end_rsp_per_ndi_list, WMITLV_SIZE_VAR) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_active_ndp_instance_id_PROTOTYPE, active_ndp_instances_id, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDP_END_RSP_EVENTID);
 
 /** NDP indication event
  *
  * TLV (tag length value ) parameters follow the ndp_indication
  * structure. The TLV's are:
- * wmi_ndp_cfg ndp_cfg[];
- * wmi_ndp_app_info ndp_app_info[];
+ * A_UINT8 ndp_cfg[];
+ * A_UINT8 ndp_app_info[];
  */
 #define WMITLV_TABLE_WMI_NDP_INDICATION_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_indication_event_fixed_param, wmi_ndp_indication_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_indication_event_fixed_param, wmi_ndp_indication_event_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, ndp_cfg, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, ndp_app_info, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDP_INDICATION_EVENTID);
@@ -3347,11 +3384,11 @@ WMITLV_CREATE_PARAM_STRUC(WMI_NDP_INDICATION_EVENTID);
 /** NDP confirm event
  * TLV (tag length value ) parameters follow the ndp_confirm
  * structure. The TLV's are:
- * wmi_ndp_cfg ndp_cfg[];
- * wmi_ndp_app_info ndp_app_info[];
+ * A_UINT8 ndp_cfg[];
+ * A_UINT8 ndp_app_info[];
  */
 #define WMITLV_TABLE_WMI_NDP_CONFIRM_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_confirm_event_fixed_param, wmi_ndp_confirm_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_confirm_event_fixed_param, wmi_ndp_confirm_event_fixed_param_PROTOTYPE, fixed_param, WMITLV_SIZE_FIX) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, ndp_cfg, WMITLV_SIZE_VAR) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, ndp_app_info, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDP_CONFIRM_EVENTID);
@@ -3363,8 +3400,7 @@ WMITLV_CREATE_PARAM_STRUC(WMI_NDP_CONFIRM_EVENTID);
  * wmi_ndp_end_indication ndp_end_indication_list[];
  */
 #define WMITLV_TABLE_WMI_NDP_END_INDICATION_EVENTID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ndp_end_indication_event_fixed_param, wmi_ndp_end_indication_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ndp_end_indication, ndp_end_indication_list, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_ndp_end_indication_PROTOTYPE, ndp_end_indication_list, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_NDP_END_INDICATION_EVENTID);
 
 /* L1SS track Event */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -79,6 +79,7 @@ limValidateIEInformationInProbeRspFrame (tpAniSirGlobal pMac,
    if ( status == eSIR_SUCCESS )
    {
        WDA_GET_RX_MPDU_LEN(pRxPacketInfo) += nMissingRsnBytes;
+       WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo) += nMissingRsnBytes;
    }
 
    return status;

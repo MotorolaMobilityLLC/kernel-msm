@@ -1254,14 +1254,8 @@ void ol_tx_throttle_set_level(struct ol_txrx_pdev_t *pdev, int level)
     }
 }
 
-/* This table stores the duty cycle for each level.
-   Example "on" time for level 2 with duty period 100ms is:
-   "on" time = duty_period_ms >> throttle_duty_cycle_table[2]
-   "on" time = 100 ms >> 2 = 25ms */
-static u_int8_t g_throttle_duty_cycle_table[THROTTLE_LEVEL_MAX] =
-{ 0, 1, 2, 4 };
-
-void ol_tx_throttle_init_period(struct ol_txrx_pdev_t *pdev, int period)
+void ol_tx_throttle_init_period(struct ol_txrx_pdev_t *pdev, int period,
+    u_int8_t *dutycycle_level)
 {
     int i;
 
@@ -1271,8 +1265,9 @@ void ol_tx_throttle_init_period(struct ol_txrx_pdev_t *pdev, int period)
     TXRX_PRINT(TXRX_PRINT_LEVEL_WARN, "level  OFF  ON\n");
     for (i = 0; i < THROTTLE_LEVEL_MAX; i++) {
         pdev->tx_throttle.throttle_time_ms[i][THROTTLE_PHASE_ON] =
-                pdev->tx_throttle.throttle_period_ms >>
-            g_throttle_duty_cycle_table[i];
+            pdev->tx_throttle.throttle_period_ms -
+                ((dutycycle_level[i] * pdev->tx_throttle.throttle_period_ms)
+                 /100);
         pdev->tx_throttle.throttle_time_ms[i][THROTTLE_PHASE_OFF] =
             pdev->tx_throttle.throttle_period_ms -
             pdev->tx_throttle.throttle_time_ms[i][THROTTLE_PHASE_ON];
@@ -1285,6 +1280,8 @@ void ol_tx_throttle_init_period(struct ol_txrx_pdev_t *pdev, int period)
 void ol_tx_throttle_init(struct ol_txrx_pdev_t *pdev)
 {
     u_int32_t throttle_period;
+    u_int8_t dutycycle_level[THROTTLE_LEVEL_MAX];
+    int i;
 
     pdev->tx_throttle.current_throttle_level = THROTTLE_LEVEL_0;
     pdev->tx_throttle.current_throttle_phase = THROTTLE_PHASE_OFF;
@@ -1292,7 +1289,11 @@ void ol_tx_throttle_init(struct ol_txrx_pdev_t *pdev)
 
     throttle_period = ol_cfg_throttle_period_ms(pdev->ctrl_pdev);
 
-    ol_tx_throttle_init_period(pdev, throttle_period);
+    for (i = 0; i < THROTTLE_LEVEL_MAX; i++)
+        dutycycle_level[i] = ol_cfg_throttle_duty_cycle_level(pdev->ctrl_pdev,
+                                                              i);
+
+    ol_tx_throttle_init_period(pdev, throttle_period, &dutycycle_level[0]);
 
     adf_os_timer_init(
             pdev->osdev,
