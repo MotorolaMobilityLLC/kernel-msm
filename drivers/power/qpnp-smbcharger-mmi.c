@@ -6896,24 +6896,36 @@ static int parse_dt_stepchg_steps(const uint32_t *arr,
 
 static int parse_dt_pchg_current_map(const u32 *arr,
 				     struct pchg_current_map *current_map,
-				     int count)
+				     int count,
+				     bool primary_only)
 {
 	u32 len = 0;
 	u32 requested;
 	u32 primary;
 	u32 secondary;
 	int i;
+	int offset = 3;
 
 	if (!arr)
 		return 0;
 
-	for (i = 0; i < count*3; i += 3) {
-		requested = be32_to_cpu(arr[i]);
-		primary = be32_to_cpu(arr[i + 1]);
-		secondary = be32_to_cpu(arr[i + 2]);
-		current_map->requested = requested;
-		current_map->primary = primary;
-		current_map->secondary = secondary;
+	if (primary_only)
+		offset = 1;
+
+	for (i = 0; i < (count * offset); i += offset) {
+		if (primary_only) {
+			requested = arr[i];
+			current_map->requested = requested;
+			current_map->primary = requested;
+			current_map->secondary = 0;
+		} else {
+			requested = be32_to_cpu(arr[i]);
+			primary = be32_to_cpu(arr[i + 1]);
+			secondary = be32_to_cpu(arr[i + 2]);
+			current_map->requested = requested;
+			current_map->primary = primary;
+			current_map->secondary = secondary;
+		}
 		len++;
 		current_map++;
 	}
@@ -7025,6 +7037,7 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	const char *dc_psy_type, *bpd;
 	const u32 *dt_map;
 	int index;
+	bool primary_only = false;
 
 	if (!node) {
 		SMB_ERR(chip, "device tree info. missing\n");
@@ -7286,41 +7299,6 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 
 	}
 
-	dt_map = of_get_property(node, "qcom,parallel-charge-current-map",
-				      &chip->pchg_current_map_len);
-	if ((!dt_map) || (chip->pchg_current_map_len <= 0))
-		SMB_ERR(chip, "No parallel charge current map defined\n");
-	else {
-		chip->pchg_current_map_len /= 3 * sizeof(u32);
-		SMB_ERR(chip, "length=%d\n", chip->pchg_current_map_len);
-		if (chip->pchg_current_map_len > 30)
-			chip->pchg_current_map_len = 30;
-
-		chip->pchg_current_map_data =
-			devm_kzalloc(chip->dev,
-				     (sizeof(struct pchg_current_map) *
-				      chip->pchg_current_map_len),
-				     GFP_KERNEL);
-		if (chip->pchg_current_map_data == NULL) {
-			SMB_ERR(chip,
-			 "Failed to kzalloc memory for parallel charge map.\n");
-			return -ENOMEM;
-		}
-
-		chip->pchg_current_map_len =
-			parse_dt_pchg_current_map(dt_map,
-						  chip->pchg_current_map_data,
-						  chip->pchg_current_map_len);
-
-		if (chip->pchg_current_map_len <= 0) {
-			SMB_ERR(chip,
-			"Couldn't read parallel charge currents rc = %d\n", rc);
-			return rc;
-		}
-		SMB_ERR(chip, "num parallel charge entries=%d\n",
-			chip->pchg_current_map_len);
-	}
-
 	if (of_find_property(node, "qcom,chg-thermal-mitigation",
 					&chip->chg_thermal_levels)) {
 		chip->chg_thermal_mitigation = devm_kzalloc(chip->dev,
@@ -7395,6 +7373,51 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 		chip->dc_thermal_levels = 0;
 
 	parse_dt_gpio(chip);
+
+
+	dt_map = of_get_property(node, "qcom,parallel-charge-current-map",
+				      &chip->pchg_current_map_len);
+
+	if ((dt_map) && (chip->pchg_current_map_len > 0)) {
+		chip->pchg_current_map_len /= 3 * sizeof(u32);
+		primary_only = false;
+	} else if (chip->chg_thermal_mitigation &&
+		   (chip->chg_thermal_levels > 0)) {
+		chip->pchg_current_map_len = chip->chg_thermal_levels;
+		dt_map = chip->chg_thermal_mitigation;
+		primary_only = true;
+	}
+
+	if (chip->pchg_current_map_len) {
+		SMB_ERR(chip, "length=%d\n", chip->pchg_current_map_len);
+		if (chip->pchg_current_map_len > 30)
+			chip->pchg_current_map_len = 30;
+
+		chip->pchg_current_map_data =
+			devm_kzalloc(chip->dev,
+				     (sizeof(struct pchg_current_map) *
+				      chip->pchg_current_map_len),
+				     GFP_KERNEL);
+		if (chip->pchg_current_map_data == NULL) {
+			SMB_ERR(chip,
+			 "Failed to kzalloc memory for parallel charge map.\n");
+			return -ENOMEM;
+		}
+
+		chip->pchg_current_map_len =
+			parse_dt_pchg_current_map(dt_map,
+						  chip->pchg_current_map_data,
+						  chip->pchg_current_map_len,
+						  primary_only);
+
+		if (chip->pchg_current_map_len <= 0) {
+			SMB_ERR(chip,
+			"Couldn't read parallel charge currents rc = %d\n", rc);
+			return rc;
+		}
+		SMB_ERR(chip, "num parallel charge entries=%d\n",
+			chip->pchg_current_map_len);
+	}
 
 	return 0;
 }
