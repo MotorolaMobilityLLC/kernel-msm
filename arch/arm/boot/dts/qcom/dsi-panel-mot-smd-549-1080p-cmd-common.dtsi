@@ -57,6 +57,9 @@ qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-force-tx-mode = "dsi_hs_mode";
 
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 53 e0];
+qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 53 20];
+
 qcom,mdss-dsi-h-sync-pulse = <0>;
 qcom,mdss-dsi-traffic-mode = "burst_mode";
 qcom,mdss-dsi-bllp-eof-power-mode;
