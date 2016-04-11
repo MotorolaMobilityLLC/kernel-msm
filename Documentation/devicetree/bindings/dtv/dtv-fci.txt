@@ -1,0 +1,60 @@
+Future Communication Mobile Digital TV FC8180 device driver
+
+The FC8180 is connected to host processor via SPI.
+
+Required properties:
+- compatible: Should be "fci,isdbt"
+- reg:  Spi slave address, give it 0.
+- irq-gpio :  GPIO used for interrupt.
+- enable-gpio: GPIO used for power enabling device.
+- enable-active-high: Polarity of GPIO is active high (default is low).
+- pinctrl-names,pinctrl-0: the pincontrol setting to configure muxing properly
+			for pins that connect to FC8180.
+
+Optional properties:
+- qcom,bbm-xtal-freq: the clock speed of external XTAL or PMIC clock in khz.
+			If not set default is 37400 khz. be sure to set it correctly if the
+			clock speed is not equal to the default value.
+- isdbt_vdd-supply: power supply needed to power device.
+			be sure to set it if the power supply is not turned on by default.
+- qcom,vdd-min-max-voltage:  minimum and maximum voltage in uv for vdd-supply.
+			If not set , driver won't change the voltage of vdd-supply and
+			the default voltage of vdd-supply is set by pmic driver.
+- isdbt_ant-supply:  power supply needed to power the antenna of device.
+- qcom,ant-min-max-voltage:   minimum and maximum voltage in uv for ant-supply.
+			If not set, driver won't change the voltage of ant-supply and
+			the default voltage of ant-supply is set by pmic driver.
+- anten-gpio: GPIO used for switching on the antenna.
+- clocks: phandles to the pmic clock source.
+- clock-names: name of the pmic clock.
+- qcom,using-pmic: with pmic clock sources( BBCLK2) this must be set to 1 and
+			require clocks, clock-names entries to work propperly.  If external
+			XTAL clock is used, this entry is not needed or set it to 0.
+- spi-max-frequency : maximum SPI clocking speed of device in Hz, it should be
+			equal to or less than qcom,bbm-xtal-freq.
+
+Example:
+
+&spi_5 {
+	status = "/chosen", "mmi,dtv", "true";
+	fci_dtv: fc8180@0 {
+		status = "/chosen", "mmi,dtv", "true";
+		compatible = "fci,isdbt";
+		reg = <0>;
+		spi-max-frequency = <19200000>;
+		irq-gpio = <&msm_gpio 52 0>;
+		anten-gpio = <&msm_gpio 50 0>;
+		enable-gpio = <&msm_gpio 51 0>;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&dtv_output_default &dtv_input_default>;
+		clocks = <&clock_rpm clk_bb_clk2>;
+		clock-names = "dtv_refclk";
+		isdbt_vdd-supply = <&pm8916_l6>;
+		isdbt_ant-supply = <&pm8916_l17>;
+		qcom,vdd-min-max-voltage = <1800000 1800000>;
+		qcom,ant-min-max-voltage = <2850000 2850000>;
+		qcom,bbm-xtal-freq = <19200>;
+		qcom,using-pmic = <1>;
+	};
+};
