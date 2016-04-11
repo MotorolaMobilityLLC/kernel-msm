@@ -8878,7 +8878,7 @@ static bool check_maxbms_volt(struct smbchg_chip *chip)
 	return false;
 }
 
-#define PATH_IMPEDANCE_MILLIOHM 30
+#define PATH_IMPEDANCE_MILLIOHM 27
 #define DEFAULT_PATH_OFFSET 100000
 static int set_bsw(struct smbchg_chip *chip,
 		   int volt_mv, int curr_ma, bool close)
