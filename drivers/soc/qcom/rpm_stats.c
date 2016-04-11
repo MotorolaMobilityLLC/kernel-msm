@@ -101,12 +101,12 @@ static inline int msm_rpmstats_append_data_to_buf(char *buf,
 	actual_last_sleep = get_time_in_msec(data->accumulated);
 
 	return  snprintf(buf , buflength,
-		"RPM Mode:%s\n\t count:%d\ntime in last mode(msec):%llu\n"
-		"time since last mode(sec):%llu\nactual last sleep(msec):%llu\n"
-		"client votes: %#010x\n\n",
-		stat_type, data->count, time_in_last_mode,
-		time_since_last_mode, actual_last_sleep,
-		data->client_votes);
+		"RPM_Mode:%s\n\t %s_count:%d\ntime_in_%s(msec):%llu\n"
+		"time_since_last_%s(sec):%llu\naccumulated_%s_time(msec):%llu\n"
+		"client_votes_for_%s: %#010x\n\n",
+		stat_type, stat_type, data->count, stat_type,
+		time_in_last_mode, stat_type, time_since_last_mode, stat_type,
+		actual_last_sleep, stat_type, data->client_votes);
 }
 
 static inline u32 msm_rpmstats_read_long_register_v2(void __iomem *regbase,
