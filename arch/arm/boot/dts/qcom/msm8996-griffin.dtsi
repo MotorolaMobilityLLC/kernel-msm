@@ -169,8 +169,8 @@
 					   <700 700 0>,
 					   <500 500 0>,
 					   <300 300 0>;
-	qcom,step-chg-steps = <4100 6000 4000>,
-				<4200 4000 2400>,
+	qcom,step-chg-steps = <4100 6000 4300>,
+				<4200 4300 2400>,
 				<4400 2400 2000>;
 	qcom,stepchg-iterm-ma = <170>;
 	qcom,bsw-psy-name = "charger-switch";
