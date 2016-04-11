@@ -1105,6 +1105,72 @@ static int bq24296_setup_vbat_monitoring(struct bq24296_chg *chip)
 	return 0;
 }
 
+static int bq24296_config_charging_para(struct bq24296_chg *chip)
+{
+	union power_supply_propval prop = {0,};
+	int rc;
+	int input_current_limit = 500;
+
+	if ((!chip->chg_enabled) || (!chip->usb_present)) {
+		dev_dbg(chip->dev, "%s: charging enable = %d, usb_present = %d\n",
+				 __func__, chip->chg_enabled, chip->usb_present);
+		return 0;
+	}
+
+	pr_info("bq24296_config_charging_para...\n");
+
+	rc = bq24296_wdt_rest(chip);
+	if (rc) {
+		pr_err("config-charger: Couldn't rest TMR_RST\n");
+		return rc;
+	}
+
+	rc = bq24296_set_input_vin_limit(chip, chip->vin_limit_mv);
+	if (rc) {
+		pr_err("config-charger: Couldn't set input vin limit\n");
+		return rc;
+	}
+
+	if (chip->usb_psy) {
+		rc = chip->usb_psy->get_property(chip->usb_psy,
+					POWER_SUPPLY_PROP_CURRENT_MAX, &prop);
+		if (rc < 0) {
+			dev_err(chip->dev,
+			"could not read USB current_max property, rc=%d\n", rc);
+			return rc;
+		}
+
+		input_current_limit = prop.intval / 1000;
+		if (input_current_limit > 500)
+			input_current_limit = chip->input_current_limit;
+
+		rc = bq24296_set_input_i_limit(chip, input_current_limit);
+		if (rc) {
+			pr_err("config-charger: Couldn't set input current limit\n");
+			return rc;
+		}
+	}
+
+	rc = bq24296_set_ibat_max(chip, chip->chg_current_ma);
+	if (rc) {
+		pr_err("config-charger: Couldn't set ibat max\n");
+		return rc;
+	}
+
+	rc = bq24296_disable_en_term(chip);
+	if (rc) {
+		pr_err("config-charger: Couldn't disable iterm\n");
+		return rc;
+	}
+
+	rc  = bq24296_set_chg_timer(chip, 0);
+	if (rc) {
+		pr_err("config-charger: Couldn't  disable wdt\n");
+		return rc;
+	}
+
+	return 0;
+}
 static int bq24296_temp_charging(struct bq24296_chg *chip, int enable)
 {
 	int rc = 0;
@@ -1168,8 +1234,10 @@ static void bq24296_set_chrg_path_temp(struct bq24296_chg *chip)
 		chip->batt_hot ||
 		chip->chg_done_batt_full)
 		bq24296_temp_charging(chip, 0);
-	else
+	else {
+		bq24296_config_charging_para(chip);
 		bq24296_temp_charging(chip, 1);
+	}
 }
 
 static int bq24296_check_temp_range(struct bq24296_chg *chip)
