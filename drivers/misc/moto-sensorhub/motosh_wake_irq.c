@@ -315,10 +315,22 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			motosh_as_data_buffer_write(ps_motosh, DT_PROX,
 				data, 1, 0, false);
 
-			dev_dbg(&ps_motosh->client->dev,
-				"Sending Proximity distance %d\n",
-				data[PROX_DISTANCE]);
-			queue_index += 1;
+			dev_info(&ps_motosh->client->dev,
+				"Sending Proximity %d als %d stowed %d raw_prox %d noise_floor %d recal_thresh %d low_thresh %d high_thresh %d\n",
+				data[PROX_DISTANCE],
+				STM16_TO_HOST(&data[PROX_ALS], ALS_VALUE),
+				data[PROX_STOWED],
+				STM16_TO_HOST(&data[PROX_RAW], ZERO_OFFSET),
+				STM16_TO_HOST(&data[PROX_NOISE_FLOOR],
+						ZERO_OFFSET),
+				STM16_TO_HOST(&data[PROX_RECAL_THRESH],
+						ZERO_OFFSET),
+				STM16_TO_HOST(&data[PROX_LOW_THRESH],
+						ZERO_OFFSET),
+				STM16_TO_HOST(&data[PROX_HIGH_THRESH],
+						ZERO_OFFSET));
+
+			queue_index += 14;
 			break;
 		case COVER_DATA:
 			if ((pdata->cover_detect_polarity
@@ -353,11 +365,22 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 				data, 1, 0, false);
 
 			dev_info(&ps_motosh->client->dev,
-				"Sending Stowed status %d, als %d, prox %d\n",
+				"Sending Stowed status %d als %d prox %d raw_prox %d noise_floor %d recal_thresh %d low_thresh %d high_thresh %d\n",
 				data[STOWED_STATUS],
 				STM16_TO_HOST(&data[STOWED_ALS], ALS_VALUE),
-				data[STOWED_PROX]);
-			queue_index += 4;
+				data[STOWED_PROX],
+				STM16_TO_HOST(&data[STOWED_PROX_RAW],
+						ZERO_OFFSET),
+				STM16_TO_HOST(&data[STOWED_NOISE_FLOOR],
+						ZERO_OFFSET),
+				STM16_TO_HOST(&data[STOWED_RECAL_THRESH],
+						ZERO_OFFSET),
+				STM16_TO_HOST(&data[STOWED_LOW_THRESH],
+						ZERO_OFFSET),
+				STM16_TO_HOST(&data[STOWED_HIGH_THRESH],
+						ZERO_OFFSET));
+
+			queue_index += 14;
 			break;
 		case CAMERA_GESTURE:
 			motosh_as_data_buffer_write(ps_motosh, DT_CAMERA_ACT,
