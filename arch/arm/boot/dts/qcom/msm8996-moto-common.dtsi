@@ -541,8 +541,10 @@
 	usb3813@2D {
 		compatible = "microchip,usb3813";
 		reg = <0x2D>;
-		gpios = <&pmi8994_gpios 5 0x20>;   /* HUB_RESET_EN */
-		gpio-labels = "gpio_hub_reset_n";
+		gpios = <&pmi8994_gpios 5 0x0>,   /* HUB_RESET_EN */
+			<&pmi8994_gpios 6 0x1>;    /* HUB_INT_EN */
+		gpio-labels = "gpio_hub_reset_n",
+			"gpio_hub_int_n";
 		clock-names = "hub_clk";
 		clocks = <&clock_gcc clk_bb_clk2_ao>;
 		enable-usbhost;
@@ -1282,6 +1284,15 @@
 		qcom,src-sel = <0>;	/* GPIO */
 		qcom,master-en = <1>;	/* Enable GPIO */
 		qcom,invert = <1>;	/* Output high */
+		status = "okay";
+	};
+
+	gpio@c500 { /* GPIO 6 HSIC_INT_N */
+		qcom,mode = <0>;		/* Digital Input */
+		qcom,pull = <5>;		/* No pull  */
+		qcom,vin-sel = <2>;		/* VIN2 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
 		status = "okay";
 	};
 
