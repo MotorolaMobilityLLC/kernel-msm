@@ -1568,7 +1568,8 @@ static void usbnet_bh (unsigned long param)
 		int	temp = dev->rxq.qlen;
 
 		if (temp < RX_QLEN(dev)) {
-			if (rx_alloc_submit(dev, GFP_KERNEL) == -ENOLINK)
+			gfp_t flags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
+			if (rx_alloc_submit(dev, flags) == -ENOLINK)
 				return;
 			if (temp != dev->rxq.qlen)
 				netif_dbg(dev, link, dev->net,
