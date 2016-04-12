@@ -254,8 +254,9 @@
 
 			config {
 				pins = "gpio27";
-				bias-pull-up; /* PULL Up */
-				drive-strength = <8>; /* 2 MA */
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+				output-high;
 			};
 		};
 
@@ -268,8 +269,9 @@
 
 			config {
 				pins = "gpio27";
-				bias-disable; /* No PULL */
+				bias-disable; /* No PULL*/
 				drive-strength = <2>; /* 2 MA */
+				output-low;
 			};
 		};
 	};
