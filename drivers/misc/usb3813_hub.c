@@ -47,6 +47,7 @@ struct usb3813_info {
 	struct i2c_client *client;
 	struct device *dev;
 	struct gpio hub_reset_n;
+	struct gpio hub_int_n;
 	struct clk *hub_clk;
 	bool   hub_enabled;
 	struct delayed_work usb3813_attach_work;
@@ -520,20 +521,52 @@ static int usb3813_probe(struct i2c_client *client,
 			       info->hub_reset_n.label);
 	if (ret) {
 		dev_err(&client->dev, "failed to request GPIO\n");
-		return -ENODEV;
+		goto fail_info;
 	}
 
-	if (info->hub_reset_n.flags & GPIOF_EXPORT) {
-		ret = gpio_export_link(&client->dev,
-			       info->hub_reset_n.label,
-			       info->hub_reset_n.gpio);
-		if (ret) {
-			dev_err(&client->dev, "Failed to link GPIO %s: %d\n",
-				info->hub_reset_n.label,
-				info->hub_reset_n.gpio);
-			goto fail_gpio;
-		}
+	ret = gpio_export(info->hub_reset_n.gpio, 1);
+	if (ret)
+		dev_err(&client->dev, "Failed to export GPIO %s: %d\n",
+			info->hub_reset_n.label,
+			info->hub_reset_n.gpio);
+
+	ret = gpio_export_link(&client->dev,
+		       info->hub_reset_n.label,
+		       info->hub_reset_n.gpio);
+	if (ret)
+		dev_err(&client->dev, "Failed to link GPIO %s: %d\n",
+			info->hub_reset_n.label,
+			info->hub_reset_n.gpio);
+
+	info->hub_int_n.gpio = of_get_gpio_flags(np, 1, &flags);
+	info->hub_int_n.flags = flags;
+	of_property_read_string_index(np, "gpio-labels", 1,
+				      &info->hub_int_n.label);
+	dev_dbg(&client->dev, "GPIO: %d  FLAGS: %ld  LABEL: %s\n",
+		info->hub_int_n.gpio, info->hub_int_n.flags,
+		info->hub_int_n.label);
+
+	ret = gpio_request_one(info->hub_int_n.gpio,
+			       info->hub_int_n.flags,
+			       info->hub_int_n.label);
+	if (ret) {
+		dev_err(&client->dev, "failed to request GPIO\n");
+		goto fail_gpio_reset;
 	}
+
+	ret = gpio_export(info->hub_int_n.gpio, 1);
+	if (ret)
+		dev_err(&client->dev, "Failed to export GPIO %s: %d\n",
+			info->hub_int_n.label,
+			info->hub_int_n.gpio);
+
+	ret = gpio_export_link(&client->dev,
+		       info->hub_int_n.label,
+		       info->hub_int_n.gpio);
+	if (ret)
+		dev_err(&client->dev, "Failed to link GPIO %s: %d\n",
+			info->hub_int_n.label,
+			info->hub_int_n.gpio);
 
 	info->hub_clk = devm_clk_get(&client->dev, "hub_clk");
 	if (IS_ERR(info->hub_clk)) {
@@ -570,7 +603,10 @@ fail_usb_ext:
 fail_clk:
 	clk_put(info->hub_clk);
 fail_gpio:
+	gpio_free(info->hub_int_n.gpio);
+fail_gpio_reset:
 	gpio_free(info->hub_reset_n.gpio);
+fail_info:
 	kfree(info);
 	return ret;
 }
@@ -582,6 +618,7 @@ static int usb3813_remove(struct i2c_client *client)
 	cancel_delayed_work(&info->usb3813_attach_work);
 	usb_ext_unregister_notifier(&info->usbext_notifier);
 	gpio_free(info->hub_reset_n.gpio);
+	gpio_free(info->hub_int_n.gpio);
 	if (info->hub_enabled)
 		clk_disable_unprepare(info->hub_clk);
 	clk_put(info->hub_clk);
