@@ -589,7 +589,7 @@
 		};
 
 		apba_sflash_en {
-			pins = "gpio48";
+			pins = "gpio41";
 			drive-strength = <2>;
 			bias-pull-down;
 		};
@@ -657,6 +657,14 @@
 			drive-strength = <2>;
 			bias-pull-down;
 			output-low;
+		};
+	};
+
+	hub_int_n_default: hub_int_n_default {
+		config {
+			pins = "gpio48";
+			drive-strength = <2>;
+			bias-disable;
 		};
 	};
 
