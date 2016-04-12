@@ -276,7 +276,6 @@ struct mdss_dsi_ctrl_pdata {
 	int (*set_col_page_addr) (struct mdss_panel_data *pdata);
 	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
-	int (*set_hbm)(struct mdss_dsi_ctrl_pdata *ctrl, int state);
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
 	struct mdss_panel_esd_pdata panel_esd_data;
@@ -353,9 +352,6 @@ struct mdss_dsi_ctrl_pdata {
 	int horizontal_idle_cnt;
 	struct panel_horizontal_idle *line_idle;
 	bool check_status_disabled;
-
-	struct dsi_panel_cmds hbm_on_cmds;
-	struct dsi_panel_cmds hbm_off_cmds;
 
 	struct dsi_pinctrl_res pin_res;
 };

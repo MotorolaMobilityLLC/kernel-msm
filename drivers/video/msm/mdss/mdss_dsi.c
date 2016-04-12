@@ -39,15 +39,6 @@ static int mdss_dsi_hndl_enable_te(struct mdss_dsi_ctrl_pdata *ctrl,
 	return 0;
 }
 
-static int mdss_dsi_hndl_enable_hbm(struct mdss_dsi_ctrl_pdata *ctrl,
-				int enable)
-{
-	int rc = 0;
-	if (ctrl->set_hbm)
-		rc = ctrl->set_hbm(ctrl, enable);
-	return rc;
-}
-
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -1290,9 +1281,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_REGISTER_RECOVERY_HANDLER:
 		rc = mdss_dsi_register_recovery_handler(ctrl_pdata,
 			(struct mdss_panel_recovery *)arg);
-		break;
-	case MDSS_EVENT_ENABLE_HBM:
-		rc = mdss_dsi_hndl_enable_hbm(ctrl_pdata, (int) arg);
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
