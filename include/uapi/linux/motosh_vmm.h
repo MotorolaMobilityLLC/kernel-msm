@@ -461,11 +461,11 @@ VMM_ENTRY(0x6B, DISP_BRIGHTNESS_DATA,					FALSE,
 		&vmm_disp_brightness_data,
 		sizeof(vmm_disp_brightness_data))
 VMM_ENTRY(0x6C, PROXIMITY_DATA,						FALSE,
-		&vmm_proximity_data,
+		vmm_proximity_data,
 		sizeof(vmm_proximity_data))
 VMM_ENTRY(0x6D, STOWED_DATA,						FALSE,
-		&vmm_stowed_data,
-		sizeof(vmm_stowed_data))
+		vmm_stowed_event,
+		sizeof(vmm_stowed_event))
 VMM_ENTRY(0x6E, MEMORY_INFO,						TRUE,
 		vmm_memory_info,
 		sizeof(vmm_memory_info))
