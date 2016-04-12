@@ -316,10 +316,9 @@
 			reg = <0x0>;
 			interrupt-parent = <&tlmm>;
 			interrupts = <46 0>;
-			irq-base = <800>;
-			gpio-base = <200>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
 			wlf,reset = <&tlmm 68 0>;
-			wlf,irq = <&tlmm 46 0>;
 			wlf,out-mono = <1 0 0 0 0 0>;
 			wlf,micbias1 = <1800 1 1 1 1 0>;
 			wlf,micbias2 = <1800 1 1 1 1 0>;
@@ -357,6 +356,30 @@
 				0x00002000 0x0000f000 /* MIF1SCLK  / GPIO16 */
 			>;
 
+			adsps {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				adsp@17fe00 {
+					reg = <0x17fe00>;
+					firmware {
+						frontend {
+							wlf,wmfw-file = "aov-frontend";
+							wlf,bin-file = "aov-vrgain";
+							wlf,compr-caps = <1 1 4 1 16000>;
+						};
+					};
+				};
+				adsp@1ffe00 {
+					reg = <0x1ffe00>;
+					firmware {
+						aov {
+							wlf,wmfw-file = "aov-control";
+							wlf,bin-file = "aov-model";
+							wlf,compr-caps = <1 1 4 1 16000>;
+						};
+					};
+				};
+			};
 		};
 	};
 
@@ -580,14 +603,14 @@
 		/* qcom,marley-mclk-clk-freq = <9600000>; */
 		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
 			<&loopback>, <&compress>, <&hostless>,
-			<&afe>, <&lsm>, <&routing>, <&cpe>, <&lpa>;
+			<&afe>, <&lsm>, <&routing>, <&cpe>, <&lpa>, <&marley>;
 		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
 			"msm-pcm-dsp.2", "msm-voip-dsp",
 			"msm-pcm-voice", "msm-pcm-loopback",
 			"msm-compress-dsp", "msm-pcm-hostless",
 			"msm-pcm-afe", "msm-lsm-client",
 			"msm-pcm-routing", "msm-cpe-lsm",
-			"msm-pcm-lpa";
+			"msm-pcm-lpa", "marley-codec";
 		asoc-cpu = <&dai_pri_auxpcm>, <&dai_mi2s3>, <&dai_mi2s5>,
 			<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
 			<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
