@@ -40,8 +40,7 @@ int msm_isp_axi_create_stream(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_shared_data *axi_data,
 	struct msm_vfe_axi_stream_request_cmd *stream_cfg_cmd)
 {
-	int i = stream_cfg_cmd->stream_src;
-
+	uint32_t i = stream_cfg_cmd->stream_src;
 	if (i >= VFE_AXI_SRC_MAX) {
 		pr_err("%s:%d invalid stream_src %d\n", __func__, __LINE__,
 			stream_cfg_cmd->stream_src);
@@ -1718,6 +1717,8 @@ static void msm_isp_process_done_buf(struct vfe_device *vfe_dev,
 			halt_cmd.blocking_halt = 0;
 
 			msm_isp_axi_halt(vfe_dev, &halt_cmd);
+
+			memset(&error_event, 0, sizeof(error_event));
 			error_event.frame_id =
 				vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
 			error_event.u.error_info.err_type =
@@ -2911,6 +2912,7 @@ static int msm_isp_return_empty_buffer(struct vfe_device *vfe_dev,
 			stream_info->runtime_output_format);
 	}
 
+	memset(&error_event, 0, sizeof(error_event));
 	error_event.frame_id = frame_id;
 	error_event.u.error_info.err_type = ISP_ERROR_RETURN_EMPTY_BUFFER;
 	error_event.u.error_info.session_id = stream_info->session_id;
