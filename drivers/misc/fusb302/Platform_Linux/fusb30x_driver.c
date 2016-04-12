@@ -340,6 +340,7 @@ static int fusb30x_probe(struct i2c_client *client,
 #endif // FSC_DEBUG
 
 #ifdef FSC_INTERRUPT_TRIGGERED
+	fusb_InitializeWakeWorker();
 	/* Enable interrupts after successful core/GPIO initialization */
 	ret = fusb_EnableInterrupts();
 	if (ret) {
@@ -348,7 +349,6 @@ static int fusb30x_probe(struct i2c_client *client,
 			__func__, ret);
 		return -EIO;
 	}
-	fusb_InitializeWakeWorker();
 #else
 	/* Init our workers, but don't start them yet */
 	fusb_InitializeWorkers();
