@@ -27,8 +27,15 @@ struct panel_id {
 #define DEFAULT_ROTATOR_FRAME_RATE 120
 #define MDSS_DSI_RST_SEQ_LEN	10
 
+enum hbm_state {
+	HBM_OFF_STATE = 0,
+	HBM_ON_STATE,
+	HBM_STATE_NUM
+};
+
 enum panel_param_id {
-	PARAM_ID_NUM = 0,
+	PARAM_HBM_ID = 0,
+	PARAM_ID_NUM
 };
 
 struct panel_param_val_map {
