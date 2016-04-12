@@ -88,6 +88,7 @@ void __rcu_read_unlock(void)
 	struct task_struct *t = current;
 
 	if (t->rcu_read_lock_nesting != 1) {
+		BUG_ON(t->rcu_read_lock_nesting == 0);
 		--t->rcu_read_lock_nesting;
 	} else {
 		barrier();  /* critical section before exit code. */
