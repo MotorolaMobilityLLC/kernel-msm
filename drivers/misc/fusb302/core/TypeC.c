@@ -133,8 +133,8 @@ int fusb_power_supply_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_MASK_INT:
 		if (val->intval > 0) {
 			Mask.byte = 0xFF;
-			MaskAdv.byte[0] = 0xFF;
-			MaskAdv.byte[1] = 0xFF;
+			MaskAdv.byte[0] = 0xBF;
+			MaskAdv.byte[1] = 0x01;
 			DeviceWrite(regMask, 1, &Mask.byte);
 			DeviceWrite(regMaska, 1, &MaskAdv.byte[0]);
 			DeviceWrite(regMaskb, 1, &MaskAdv.byte[1]);
