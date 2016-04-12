@@ -18,10 +18,55 @@
 
 #include "arizona.h"
 
+static const struct reg_default marley_16_patch[] = {
+	{ 0x460, 0x0c40 },
+	{ 0x461, 0xcd1a },
+	{ 0x462, 0x0c40 },
+	{ 0x463, 0xb53b },
+	{ 0x464, 0x0c40 },
+	{ 0x465, 0x7503 },
+	{ 0x466, 0x0c40 },
+	{ 0x467, 0x4a41 },
+	{ 0x468, 0x0041 },
+	{ 0x469, 0x3491 },
+	{ 0x46a, 0x0841 },
+	{ 0x46b, 0x1f50 },
+	{ 0x46c, 0x0446 },
+	{ 0x46d, 0x14ed },
+	{ 0x46e, 0x0446 },
+	{ 0x46f, 0x1455 },
+	{ 0x470, 0x04c6 },
+	{ 0x471, 0x1220 },
+	{ 0x472, 0x04c6 },
+	{ 0x473, 0x040f },
+	{ 0x474, 0x04ce },
+	{ 0x475, 0x0339 },
+	{ 0x476, 0x05df },
+	{ 0x477, 0x028f },
+	{ 0x478, 0x05df },
+	{ 0x479, 0x0209 },
+	{ 0x47a, 0x05df },
+	{ 0x47b, 0x00cf },
+	{ 0x47c, 0x05df },
+	{ 0x47d, 0x0001 },
+	{ 0x47e, 0x07ff },
+};
+
 /* We use a function so we can use ARRAY_SIZE() */
 int marley_patch(struct arizona *arizona)
 {
-	return 0;
+	int ret = 0;
+	const struct reg_default *patch16 = NULL;
+	unsigned int num16;
+
+	patch16 = marley_16_patch;
+	num16 = ARRAY_SIZE(marley_16_patch);
+
+	ret = regmap_register_patch(arizona->regmap, patch16, num16);
+	if (ret < 0)
+		dev_err(arizona->dev, "Error applying 16-bit patch: %d\n", ret);
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(marley_patch);
 
@@ -83,6 +128,23 @@ static const struct regmap_irq marley_irqs[ARIZONA_NUM_IRQ] = {
 				.mask = CLEARWATER_SPK_OVERHEAT_WARN_EINT1},
 	[ARIZONA_IRQ_SPK_OVERHEAT] = { .reg_offset = 14,
 				.mask = CLEARWATER_SPK_SHUTDOWN_EINT1},
+
+	[ARIZONA_IRQ_GP1] = { .reg_offset = 16,
+				  .mask = CLEARWATER_GP1_EINT1},
+	[ARIZONA_IRQ_GP2] = { .reg_offset = 16,
+				  .mask = CLEARWATER_GP2_EINT1},
+	[ARIZONA_IRQ_GP3] = { .reg_offset = 16,
+				.mask = CLEARWATER_GP3_EINT1},
+	[ARIZONA_IRQ_GP4] = { .reg_offset = 16,
+				.mask = CLEARWATER_GP4_EINT1},
+	[ARIZONA_IRQ_GP5] = { .reg_offset = 16,
+				  .mask = CLEARWATER_GP5_EINT1},
+	[ARIZONA_IRQ_GP6] = { .reg_offset = 16,
+				  .mask = CLEARWATER_GP6_EINT1},
+	[ARIZONA_IRQ_GP7] = { .reg_offset = 16,
+				.mask = CLEARWATER_GP7_EINT1},
+	[ARIZONA_IRQ_GP8] = { .reg_offset = 16,
+				.mask = CLEARWATER_GP8_EINT1},
 };
 
 const struct regmap_irq_chip marley_irq = {
@@ -90,7 +152,7 @@ const struct regmap_irq_chip marley_irq = {
 	.status_base = CLEARWATER_IRQ1_STATUS_1,
 	.mask_base = CLEARWATER_IRQ1_MASK_1,
 	.ack_base = CLEARWATER_IRQ1_STATUS_1,
-	.num_regs = 15,
+	.num_regs = 32,
 	.irqs = marley_irqs,
 	.num_irqs = ARRAY_SIZE(marley_irqs),
 };
@@ -102,7 +164,6 @@ static const struct reg_default marley_reg_default[] = {
 	{ 0x00000016, 0x0000 }, /* R22 (0x16) - Write Sequencer Ctrl 0 */
 	{ 0x00000017, 0x0000 }, /* R23 (0x17) - Write Sequencer Ctrl 1 */
 	{ 0x00000018, 0x0000 }, /* R24 (0x18) - Write Sequencer Ctrl 2 */
-	{ 0x0000001a, 0x0000 }, /* R26 (0x1A) - Write Sequencer PROM */
 	{ 0x00000020, 0x0000 }, /* R32 (0x20) - Tone Generator 1 */
 	{ 0x00000021, 0x1000 }, /* R33 (0x21) - Tone Generator 2 */
 	{ 0x00000022, 0x0000 }, /* R34 (0x22) - Tone Generator 3 */
@@ -116,10 +177,6 @@ static const struct reg_default marley_reg_default[] = {
 	{ 0x00000062, 0x01ff }, /* R98 (0x62) - Sample Rate Sequence Select 2 */
 	{ 0x00000063, 0x01ff }, /* R99 (0x63) - Sample Rate Sequence Select 3 */
 	{ 0x00000064, 0x01ff }, /* R100 (0x64) - Sample Rate Sequence Select 4*/
-	{ 0x00000066, 0x01ff }, /* R102 (0x66) - Always On Triggers Sequence
-				   Select 1*/
-	{ 0x00000067, 0x01ff }, /* R103 (0x67) - Always On Triggers Sequence
-				   Select 2*/
 	{ 0x00000066, 0x01ff }, /* R102 (0x66) - Always On Triggers Sequence Select 1*/
 	{ 0x00000067, 0x01ff }, /* R103 (0x67) - Always On Triggers Sequence Select 2*/
 	{ 0x00000090, 0x0000 }, /* R144 (0x90) - Haptics Control 1 */
@@ -802,15 +859,17 @@ static const struct reg_default marley_reg_default[] = {
 	{ 0x0000171B, 0xf000 }, /* R5915 (0x171B) - GPIO14 Control 2 */
 	{ 0x0000171D, 0xf000 }, /* R5917 (0x171D) - GPIO15 Control 2 */
 	{ 0x0000171F, 0xf000 }, /* R5919 (0x171F) - GPIO16 Control 2 */
-	{ 0x00001802, 0x0000 },
-	{ 0x00001803, 0x0000 },
-	{ 0x00001804, 0x0000 },
-	{ 0x00001807, 0x0000 },
-	{ 0x00001809, 0x0000 },
-	{ 0x0000180F, 0x0000 },
-	{ 0x00001813, 0x0000 },
-	{ 0x00001819, 0x0000 },
-	{ 0x0000181C, 0x0000 },
+	{ 0x00001802, 0x0000 }, /* R6146 (0x1802) - IRQ1 Status 3 */
+	{ 0x00001803, 0x0000 }, /* R6147 (0x1803) - IRQ1 Status 4 */
+	{ 0x00001804, 0x0000 }, /* R6148 (0x1804) - IRQ1 Status 5 */
+	{ 0x00001807, 0x0000 }, /* R6151 (0x1807) - IRQ1 Status 8 */
+	{ 0x00001809, 0x0000 }, /* R6153 (0x1809) - IRQ1 Status 10 */
+	{ 0x0000180f, 0x0000 }, /* R6159 (0x180f) - IRQ1 Status 16 */
+	{ 0x00001811, 0x0000 }, /* R6161 (0x1811) - IRQ1 Status 18 */
+	{ 0x00001812, 0x0000 }, /* R6162 (0x1812) - IRQ1 Status 19 */
+	{ 0x00001813, 0x0000 }, /* R6163 (0x1813) - IRQ1 Status 20 */
+	{ 0x00001819, 0x0000 }, /* R6169 (0x1819) - IRQ1 Status 26 */
+	{ 0x0000181c, 0x0000 }, /* R6172 (0x181c) - IRQ1 Status 29 */
 	{ 0x00001840, 0xffff }, /* R6208 (0x1840) - IRQ1 Mask 1 */
 	{ 0x00001841, 0xffff }, /* R6209 (0x1841) - IRQ1 Mask 2 */
 	{ 0x00001842, 0xffff }, /* R6210 (0x1842) - IRQ1 Mask 3 */
@@ -826,6 +885,23 @@ static const struct reg_default marley_reg_default[] = {
 	{ 0x0000184c, 0xffff }, /* R6220 (0x184c) - IRQ1 Mask 13 */
 	{ 0x0000184d, 0xffff }, /* R6221 (0x184d) - IRQ1 Mask 14 */
 	{ 0x0000184e, 0xffff }, /* R6222 (0x184e) - IRQ1 Mask 15 */
+	{ 0x0000184f, 0xffff }, /* R6223 (0x184f) - IRQ1 Mask 16 */
+	{ 0x00001850, 0xffff }, /* R6224 (0x1850) - IRQ1 Mask 17 */
+	{ 0x00001851, 0xffff }, /* R6225 (0x1851) - IRQ1 Mask 18 */
+	{ 0x00001852, 0xffff }, /* R6226 (0x1852) - IRQ1 Mask 19 */
+	{ 0x00001853, 0xffff }, /* R6227 (0x1853) - IRQ1 Mask 20 */
+	{ 0x00001854, 0xffff }, /* R6228 (0x1854) - IRQ1 Mask 21 */
+	{ 0x00001855, 0xffff }, /* R6229 (0x1855) - IRQ1 Mask 22 */
+	{ 0x00001856, 0xffff }, /* R6230 (0x1856) - IRQ1 Mask 23 */
+	{ 0x00001857, 0xffff }, /* R6231 (0x1857) - IRQ1 Mask 24 */
+	{ 0x00001858, 0xffff }, /* R6232 (0x1858) - IRQ1 Mask 25 */
+	{ 0x00001859, 0xffff }, /* R6233 (0x1859) - IRQ1 Mask 26 */
+	{ 0x0000185a, 0xffff }, /* R6234 (0x185a) - IRQ1 Mask 27 */
+	{ 0x0000185b, 0xffff }, /* R6235 (0x185b) - IRQ1 Mask 28 */
+	{ 0x0000185c, 0xffff }, /* R6236 (0x185c) - IRQ1 Mask 29 */
+	{ 0x0000185d, 0xffff }, /* R6237 (0x185d) - IRQ1 Mask 30 */
+	{ 0x0000185e, 0xffff }, /* R6238 (0x185e) - IRQ1 Mask 31 */
+	{ 0x0000185f, 0xffff }, /* R6239 (0x185f) - IRQ1 Mask 32 */
 	{ 0x00001948, 0xffff }, /* R6472 (0x1948) - IRQ2 Mask 9 */
 	{ 0x00001A06, 0x0000 }, /* R6662 (0x1a06) - Interrupt Debounce 7 */
 	{ 0x00001a80, 0x4400 }, /* R6784 (0x1a80) - IRQ1 CTRL */
@@ -1629,8 +1705,12 @@ static bool marley_16bit_readable_register(struct device *dev, unsigned int reg)
 	case CLEARWATER_IRQ1_STATUS_32:
 	case CLEARWATER_IRQ1_MASK_1:
 	case CLEARWATER_IRQ1_MASK_2:
+	case CLEARWATER_IRQ1_MASK_3:
+	case CLEARWATER_IRQ1_MASK_4:
+	case CLEARWATER_IRQ1_MASK_5:
 	case CLEARWATER_IRQ1_MASK_6:
 	case CLEARWATER_IRQ1_MASK_7:
+	case CLEARWATER_IRQ1_MASK_8:
 	case CLEARWATER_IRQ1_MASK_9:
 	case CLEARWATER_IRQ1_MASK_10:
 	case CLEARWATER_IRQ1_MASK_11:
@@ -1638,6 +1718,23 @@ static bool marley_16bit_readable_register(struct device *dev, unsigned int reg)
 	case CLEARWATER_IRQ1_MASK_13:
 	case CLEARWATER_IRQ1_MASK_14:
 	case CLEARWATER_IRQ1_MASK_15:
+	case MOON_IRQ1_MASK_16:
+	case CLEARWATER_IRQ1_MASK_17:
+	case CLEARWATER_IRQ1_MASK_18:
+	case CLEARWATER_IRQ1_MASK_19:
+	case MOON_IRQ1_MASK_20:
+	case CLEARWATER_IRQ1_MASK_21:
+	case CLEARWATER_IRQ1_MASK_22:
+	case CLEARWATER_IRQ1_MASK_23:
+	case CLEARWATER_IRQ1_MASK_24:
+	case CLEARWATER_IRQ1_MASK_25:
+	case MOON_IRQ1_MASK_26:
+	case CLEARWATER_IRQ1_MASK_27:
+	case CLEARWATER_IRQ1_MASK_28:
+	case MOON_IRQ1_MASK_29:
+	case CLEARWATER_IRQ1_MASK_30:
+	case CLEARWATER_IRQ1_MASK_31:
+	case CLEARWATER_IRQ1_MASK_32:
 	case CLEARWATER_IRQ1_RAW_STATUS_1:
 	case CLEARWATER_IRQ1_RAW_STATUS_2:
 	case CLEARWATER_IRQ1_RAW_STATUS_7:
@@ -1660,6 +1757,7 @@ static bool marley_16bit_readable_register(struct device *dev, unsigned int reg)
 	case CLEARWATER_IRQ2_RAW_STATUS_9:
 	case CLEARWATER_INTERRUPT_DEBOUNCE_7:
 	case CLEARWATER_IRQ1_CTRL:
+	case CLEARWATER_INTERRUPT_RAW_STATUS_1:
 		return true;
 	default:
 		return false;
@@ -1749,6 +1847,7 @@ static bool marley_16bit_volatile_register(struct device *dev, unsigned int reg)
 	case CLEARWATER_IRQ1_RAW_STATUS_32:
 	case CLEARWATER_IRQ2_STATUS_9:
 	case CLEARWATER_IRQ2_RAW_STATUS_9:
+	case CLEARWATER_INTERRUPT_RAW_STATUS_1:
 		return true;
 	default:
 		return false;
