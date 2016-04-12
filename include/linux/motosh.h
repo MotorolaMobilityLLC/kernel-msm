@@ -179,6 +179,8 @@ enum vmm_ids {
 #define MOTOSH_IR_CONFIG_REG_SIZE  255
 
 /* readbuff offsets */
+#define ZERO_OFFSET  0
+
 #define IRQ_WAKE_LO  0
 #define IRQ_WAKE_MED 1
 #define IRQ_WAKE_HI  2
@@ -189,6 +191,13 @@ enum vmm_ids {
 
 #define DOCK_STATE	0
 #define PROX_DISTANCE	0
+#define PROX_ALS        1
+#define PROX_STOWED     3
+#define PROX_RAW        4
+#define PROX_NOISE_FLOOR 6
+#define PROX_RECAL_THRESH 8
+#define PROX_LOW_THRESH 10
+#define PROX_HIGH_THRESH 12
 #define COVER_STATE	0
 #define TOUCH_REASON	1
 #define FLAT_UP		0
@@ -196,6 +205,11 @@ enum vmm_ids {
 #define STOWED_STATUS	0
 #define STOWED_ALS		1
 #define STOWED_PROX		3
+#define STOWED_PROX_RAW 4
+#define STOWED_NOISE_FLOOR 6
+#define STOWED_RECAL_THRESH 8
+#define STOWED_LOW_THRESH 10
+#define STOWED_HIGH_THRESH 12
 #define NFC_VALUE	0
 #define ALGO_TYPE	7
 #define COMPASS_STATUS	12
