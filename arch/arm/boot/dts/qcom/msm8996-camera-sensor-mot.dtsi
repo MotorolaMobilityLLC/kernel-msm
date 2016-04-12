@@ -333,8 +333,9 @@
 
 			config {
 				pins = "gpio126";
-				bias-pull-up; /* PULL Up */
-				drive-strength = <8>; /* 2 MA */
+				bias-disable; /* No PULL*/
+				drive-strength = <2>; /* 2 MA */
+				output-high;
 			};
 		};
 
@@ -349,6 +350,7 @@
 					pins = "gpio126";
 					bias-disable; /* No PULL */
 					drive-strength = <2>; /* 2 MA */
+					output-low;
 			};
 		};
 
