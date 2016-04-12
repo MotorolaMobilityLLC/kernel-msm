@@ -4223,8 +4223,12 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 	switch (mode) {
 	case PM_HIBERNATION_PREPARE:
 	case PM_SUSPEND_PREPARE:
-		if (host->card && mmc_card_mmc(host->card)) {
-			mmc_claim_host(host);
+		if (host->card && mmc_card_mmc(host->card) &&
+			mmc_card_get_bkops_en_manual(host->card)) {
+
+			if (!mmc_try_claim_host(host)) {
+				return -EBUSY;
+			}
 			err = mmc_stop_bkops(host->card);
 			mmc_release_host(host);
 			if (err) {
