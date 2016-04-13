@@ -264,7 +264,8 @@ dtb-$(CONFIG_ARCH_MSM8953) += msm8953-sim.dtb \
 endif # CONFIG_MMI_DEVICE_DTBS
 
 dtb-$(CONFIG_ARCH_MSM8953) += msm8953-addison-p1.dtb \
-	msm8953-addison-p2a.dtb
+	msm8953-addison-p2a.dtb \
+	msm8953-addison-p3.dtb
 
 dtb-$(CONFIG_ARCH_MDM9607) += mdm9607-rumi.dtb \
 	mdm9607-cdp.dtb \
