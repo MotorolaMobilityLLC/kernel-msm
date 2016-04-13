@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,6 +15,8 @@
 #define _MSM_AUDIO_EFFECTS_H
 
 #include <sound/audio_effects.h>
+
+#define MAX_PP_PARAMS_SZ   128
 
 int msm_audio_effects_reverb_handler(struct audio_client *ac,
 				     struct reverb_params *reverb,
