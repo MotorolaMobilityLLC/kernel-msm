@@ -1125,6 +1125,8 @@ enum battchg_enable_reason {
 	REASON_BATTCHG_THERM		= BIT(2),
 	/* battery charging disabled for OV workaround */
 	REASON_BATTCHG_WRKARND_OV	= BIT(3),
+	/* battery discharge while plugged workaround */
+	REASON_BATTCHG_WRKARND_DISCHG_PLUG	= BIT(4),
 };
 
 static struct power_supply *get_parallel_psy(struct smbchg_chip *chip)
@@ -3525,6 +3527,7 @@ static void smbchg_discharge_while_plugged_check(struct work_struct *work)
 	int rc = 0;
 	u8 reg = 0, chg_type;
 	bool valid_chg_disabled, status_full, chg_inhibit;
+	bool unused;
 	struct smbchg_chip *chip = container_of(work,
 					struct smbchg_chip,
 					discharge_while_plugged_work.work);
@@ -3573,12 +3576,16 @@ static void smbchg_discharge_while_plugged_check(struct work_struct *work)
 	if (atomic_inc_return(&chip->discharge_while_plugged_event_count)
 			>= DISCHARGE_WHILE_PLUGGED_THRESHOLD) {
 		pr_smb(PR_MISC, "discharging while plugged !!\n");
-
+		smbchg_battchg_en(chip, false,
+			REASON_BATTCHG_WRKARND_DISCHG_PLUG, &unused);
+		msleep(200);
+		smbchg_battchg_en(chip, true,
+			REASON_BATTCHG_WRKARND_DISCHG_PLUG, &unused);
+		atomic_set(&chip->discharge_while_plugged_event_count, 0);
 	}
 discharge_while_plugged_check_next:
 discharge_while_plugged_check_error:
-	pr_smb(PR_MISC, "discharging while plugged count:"
-			"%d sf:%d ci:%d ct:%d vd:%d\n",
+	pr_smb(PR_MISC, "count:%d sf:%d ci:%d ct:%d vd:%d\n",
 		atomic_read(&chip->discharge_while_plugged_event_count),
 		status_full, chg_inhibit, chg_type, valid_chg_disabled);
 	schedule_delayed_work(&chip->discharge_while_plugged_work,
