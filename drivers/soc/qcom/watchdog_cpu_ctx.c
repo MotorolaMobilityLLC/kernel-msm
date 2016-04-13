@@ -32,7 +32,7 @@
 
 #define DUMP_MAGIC_NUMBER	0x42445953
 
-#define CPU_FORMAT_VERSION3	0x13
+#define CPU_FORMAT_VERSION4	0x14
 
 struct sysdbg_cpu64_ctxt_regs {
 	uint64_t x0;
@@ -348,7 +348,6 @@ struct msm_wdog_cpuctx_stat {
 	uint64_t stack_va;
 	struct msm_wdog_copy jobs[LNX_CTX_AREAS];
 } __packed __aligned(4);
-
 /* Each CPU register its own dump data to memory dump table v2. */
 struct msm_wdog_cpuctx {
 	union sysdbg_cpuctx sysdbg;
@@ -577,7 +576,7 @@ static void msm_wdt_show_raw_mem(unsigned long addr, int nbytes,
 
 static int msm_wdog_cpu_regs_version_unknown(uint32_t version)
 {
-	if (version != CPU_FORMAT_VERSION3)
+	if (version != CPU_FORMAT_VERSION4)
 		return 1;
 	return 0;
 }
@@ -830,8 +829,8 @@ static void msm_wdog_ctx_print(struct msm_wdog_cpuctx *ctx,
 		}
 
 		this_paddr = paddr + (cpu * sizeof(*ctxi));
-		if ((cpu_data->addr != this_paddr) ||
-				(cpu_data->len != sizeof(*ctxi))) {
+		if (cpu_data->addr != this_paddr) {
+			/* No len checking, since cpu_data->len is hacked */
 			MSMWDTD_IFWDOG("CPU%d: addr %llx len %llx ", cpu,
 					cpu_data->addr, cpu_data->len);
 			MSMWDTD_IFWDOG("expect %pa %zx\n", &this_paddr,
@@ -947,6 +946,9 @@ void msm_wdog_get_cpu_ctx(struct platform_device *pdev,
 	struct msm_wdog_cpuctx *ctx_vaddr;
 	phys_addr_t ctx_paddr;
 	size_t ctx_size;
+	const __be32 *basep;
+	u64 size;
+	u64 base;
 
 	pnode = of_parse_phandle(pdev->dev.of_node,
 			"linux,contiguous-region", 0);
@@ -954,15 +956,19 @@ void msm_wdog_get_cpu_ctx(struct platform_device *pdev,
 		MSMWDT_ERR("Unable to find contiguous-region\n");
 		goto no_reservation;
 	}
-	if (!of_get_address(pnode, 0, NULL, NULL)) {
+	basep = of_get_address(pnode, 0, &size, NULL);
+	if (!basep) {
 		of_node_put(pnode);
 		MSMWDT_ERR("Addr not found for contiguous-region\n");
 		goto no_reservation;
+	} else {
+		base = of_translate_address(pnode, basep);
 	}
+
 	of_node_put(pnode);
 
-	ctx_paddr = cma_get_base(dev_get_cma_area(&pdev->dev));
-	ctx_size = cma_get_size(dev_get_cma_area(&pdev->dev));
+	ctx_paddr = (phys_addr_t)base;
+	ctx_size = size;
 
 	if (ctx_size < WDOG_CPUCTX_SIZE) {
 		MSMWDT_ERR("Mem reserve too small %zx/%zx\n",
