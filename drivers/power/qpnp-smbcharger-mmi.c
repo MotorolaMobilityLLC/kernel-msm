@@ -4438,6 +4438,9 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 		return NOTIFY_DONE;
 	}
 
+	SMB_DBG(chip, "online = %d, type = %d, current = %d, disabled = %d\n",
+			online, prop.intval, chip->cl_usbc, disabled);
+
 	if (online && prop.intval == POWER_SUPPLY_TYPE_USBC_SINK) {
 		/* Skip notifying insertion if already done */
 		if (!chip->usbc_online) {
@@ -5612,6 +5615,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
  */
 static irqreturn_t usbin_ov_handler(int irq, void *_chip)
 {
+#ifdef QCOM_BASE
 	struct smbchg_chip *chip = _chip;
 	int rc;
 	u8 reg;
@@ -5643,6 +5647,7 @@ static irqreturn_t usbin_ov_handler(int irq, void *_chip)
 		}
 	}
 out:
+#endif
 	return IRQ_HANDLED;
 }
 
