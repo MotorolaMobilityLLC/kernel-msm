@@ -110,7 +110,11 @@ struct msm_dump_data {
 	char name[32];
 	uint64_t addr;
 	uint64_t len;
-	uint32_t reserved;
+	/* Version of this structure */
+	/* Updated according to XBL sysdbg.h*/
+	uint32_t structfmt_version;
+	uint64_t arg0;
+	uint64_t arg1;
 };
 
 struct msm_dump_entry {
