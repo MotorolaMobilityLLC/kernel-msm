@@ -65,7 +65,7 @@ enum hdmi_audio_sample_rates {
 struct hdmi_audio {
 	struct dss_io_data *io;
 	struct msm_hdmi_audio_setup_params params;
-	struct switch_dev sdev;
+	struct switch_dev *sdev;
 	u32 pclk;
 	bool ack_enabled;
 	bool audio_ack_enabled;
@@ -380,7 +380,7 @@ static void hdmi_audio_notify(void *ctx, int val)
 		return;
 	}
 
-	state = audio->sdev.state;
+	state = audio->sdev->state;
 	if (state == val)
 		return;
 
@@ -392,14 +392,14 @@ static void hdmi_audio_notify(void *ctx, int val)
 		return;
 	}
 
-	switch_set_state(&audio->sdev, val);
-	switched = audio->sdev.state != state;
+	switch_set_state(audio->sdev, val);
+	switched = audio->sdev->state != state;
 
 	if (audio->ack_enabled && switched)
 		atomic_set(&audio->ack_pending, 1);
 
 	pr_debug("audio %s %s\n", switched ? "switched to" : "same as",
-		audio->sdev.state ? "HDMI" : "SPKR");
+		audio->sdev->state ? "HDMI" : "SPKR");
 }
 
 static void hdmi_audio_ack(void *ctx, u32 ack, u32 hpd)
@@ -462,7 +462,7 @@ static void hdmi_audio_status(void *ctx, struct hdmi_audio_status *status)
 
 	status->ack_enabled = audio->ack_enabled;
 	status->ack_pending = atomic_read(&audio->ack_pending);
-	status->switched = audio->sdev.state;
+	status->switched = audio->sdev->state;
 }
 
 /**
@@ -488,8 +488,7 @@ void *hdmi_audio_register(struct hdmi_audio_init_data *data)
 	if (!audio)
 		goto end;
 
-	audio->sdev.name = "hdmi_audio";
-	rc = switch_dev_register(&audio->sdev);
+	rc = hdmi_utils_init_audio_switch_dev(&audio->sdev);
 	if (rc) {
 		pr_err("audio switch registration failed\n");
 		kzfree(audio);
@@ -519,7 +518,7 @@ void hdmi_audio_unregister(void *ctx)
 	struct hdmi_audio *audio = ctx;
 
 	if (audio) {
-		switch_dev_unregister(&audio->sdev);
+		hdmi_utils_deinit_audio_switch_dev();
 		kfree(ctx);
 	}
 }
