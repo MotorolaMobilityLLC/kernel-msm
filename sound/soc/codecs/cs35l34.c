@@ -247,8 +247,7 @@ static int cs35l34_sdin_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL1,
-			 PDN_ALL, 0);
+		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL2, 1, 0);
 		if (ret < 0) {
 			dev_err(codec->dev, "Cannot set Power bits %d\n", ret);
 			return ret;
@@ -256,8 +255,7 @@ static int cs35l34_sdin_event(struct snd_soc_dapm_widget *w,
 		msleep(5);
 	break;
 	case SND_SOC_DAPM_POST_PMD:
-		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL1,
-			 PDN_ALL, PDN_ALL);
+		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL2, 1, 1);
 	break;
 	default:
 		pr_err("Invalid event = 0x%x\n", event);
@@ -560,10 +558,15 @@ static int cs35l34_probe(struct snd_soc_codec *codec)
 	regmap_write(cs35l34->regmap, CS35L34_PROTECT_CTL, reg);
 
 	/* Set Power control registers 2 and 3 to have everyting
-	 * powered down at initialization
+	*  powered down at initialization, dapm will power up.
 	*/
 	regmap_write(cs35l34->regmap, CS35L34_PWRCTL2, 0xFD);
 	regmap_write(cs35l34->regmap, CS35L34_PWRCTL3, 0x1F);
+
+	/* Make sure PDN_ALL is cleared on initialization.
+	*  Note: Avoid setting PDN_ALL in dapm events.
+	*/
+	regmap_update_bits(cs35l34->regmap, CS35L34_PWRCTL1, PDN_ALL, 0);
 
 	/* Set Platform Data */
 	if (cs35l34->pdata.boost_ctl)
