@@ -148,6 +148,9 @@
 		qcom,mdss-dsi-off-command = [
 			/* display_off */
 			05 01 00 00 01 00 01 28
+			/* set HBM at OFF and CABC at UI */
+			15 01 00 00 00 00 02 51 CC
+			15 01 00 00 00 00 02 55 01
 			/* enter sleep mode */
 			05 01 00 00 46 00 01 10];
 		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
@@ -166,6 +169,7 @@
 		/* for Dynamic CABC */
 		qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
 		qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+		qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
 
 		qcom,panel-roi-alignment = <720 720 16 16 0 0>;
 		qcom,partial-update-enabled;
