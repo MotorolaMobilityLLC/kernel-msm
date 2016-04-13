@@ -17,6 +17,7 @@
 #include <linux/switch.h>
 
 #include "mdss_dba_utils.h"
+#include "mdss_hdmi_util.h"
 #include "mdss_hdmi_edid.h"
 #include "mdss_cec_core.h"
 #include "mdss_fb.h"
@@ -32,8 +33,8 @@ struct mdss_dba_utils_data {
 	bool hpd_state;
 	bool audio_switch_registered;
 	bool display_switch_registered;
-	struct switch_dev sdev_display;
-	struct switch_dev sdev_audio;
+	struct switch_dev *sdev_display;
+	struct switch_dev *sdev_audio;
 	struct kobject *kobj;
 	struct mdss_panel_info *pinfo;
 	void *dba_data;
@@ -101,14 +102,14 @@ static void mdss_dba_utils_notify_display(
 		return;
 	}
 
-	state = udata->sdev_display.state;
+	state = udata->sdev_display->state;
 
-	switch_set_state(&udata->sdev_display, val);
+	switch_set_state(udata->sdev_display, val);
 
 	pr_debug("cable state %s %d\n",
-		udata->sdev_display.state == state ?
+		udata->sdev_display->state == state ?
 		"is same" : "switched to",
-		udata->sdev_display.state);
+		udata->sdev_display->state);
 }
 
 static void mdss_dba_utils_notify_audio(
@@ -126,14 +127,14 @@ static void mdss_dba_utils_notify_audio(
 		return;
 	}
 
-	state = udata->sdev_audio.state;
+	state = udata->sdev_audio->state;
 
-	switch_set_state(&udata->sdev_audio, val);
+	switch_set_state(udata->sdev_audio, val);
 
 	pr_debug("audio state %s %d\n",
-		udata->sdev_audio.state == state ?
+		udata->sdev_audio->state == state ?
 		"is same" : "switched to",
-		udata->sdev_audio.state);
+		udata->sdev_audio->state);
 }
 
 static ssize_t mdss_dba_utils_sysfs_rda_connected(struct device *dev,
@@ -477,16 +478,14 @@ static int mdss_dba_utils_send_cec_msg(void *data, struct cec_msg *msg)
 static int mdss_dba_utils_init_switch_dev(struct mdss_dba_utils_data *udata,
 	u32 fb_node)
 {
-	int rc = -EINVAL, ret;
+	int rc = -EINVAL;
 
 	if (!udata) {
 		pr_err("invalid input\n");
 		goto end;
 	}
 
-	/* create switch device to update display modules */
-	udata->sdev_display.name = "hdmi";
-	rc = switch_dev_register(&udata->sdev_display);
+	rc = hdmi_utils_init_switch_dev(&udata->sdev_display);
 	if (rc) {
 		pr_err("display switch registration failed\n");
 		goto end;
@@ -494,11 +493,10 @@ static int mdss_dba_utils_init_switch_dev(struct mdss_dba_utils_data *udata,
 
 	udata->display_switch_registered = true;
 
-	/* create switch device to update audio modules */
-	udata->sdev_audio.name = "hdmi_audio";
-	ret = switch_dev_register(&udata->sdev_audio);
-	if (ret) {
+	rc = hdmi_utils_init_audio_switch_dev(&udata->sdev_audio);
+	if (rc) {
 		pr_err("audio switch registration failed\n");
+		hdmi_utils_deinit_switch_dev();
 		goto end;
 	}
 
@@ -894,11 +892,17 @@ void mdss_dba_utils_deinit(void *data)
 		udata->pinfo->is_cec_supported = false;
 	}
 
-	if (udata->audio_switch_registered)
-		switch_dev_unregister(&udata->sdev_audio);
+	if (udata->audio_switch_registered) {
+		hdmi_utils_deinit_audio_switch_dev();
+		udata->sdev_audio = NULL;
+		udata->audio_switch_registered = false;
+	}
 
-	if (udata->display_switch_registered)
-		switch_dev_unregister(&udata->sdev_display);
+	if (udata->display_switch_registered) {
+		hdmi_utils_deinit_switch_dev();
+		udata->sdev_display = NULL;
+		udata->display_switch_registered = false;
+	}
 
 	if (udata->kobj)
 		mdss_dba_utils_sysfs_remove(udata->kobj);
