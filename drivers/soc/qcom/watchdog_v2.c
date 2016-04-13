@@ -516,7 +516,11 @@ static void configure_bark_dump(struct msm_watchdog_data *wdog_dd)
 		for_each_cpu(cpu, cpu_present_mask) {
 			cpu_data[cpu].addr = cpu_buf_phys +
 						cpu * buf_size_percpu;
-			cpu_data[cpu].len = buf_size_percpu;
+			/* Hack the dump data len to the sysdbg length only.
+			 * This is to avoid TZ Zero-initialize the whole
+			 * dump structure including the other header contents.
+			 */
+			cpu_data[cpu].len = MAX_CPU_CTX_SIZE;
 			dump_entry.id = MSM_DUMP_DATA_CPU_CTX + cpu;
 			dump_entry.addr = virt_to_phys(&cpu_data[cpu]);
 			ret = msm_dump_data_register(MSM_DUMP_TABLE_APPS,
