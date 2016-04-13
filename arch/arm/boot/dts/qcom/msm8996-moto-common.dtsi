@@ -520,7 +520,7 @@
 		    <&tlmm 28 0>,  /* VEN */
 		    <&tlmm 12 0>;  /* Firmware */
 
-		nxp,pnxxx-discharge-delay = <2000>;
+		nxp,pnxxx-discharge-delay = <100>;
 		nxp,pnxxx-ven-inv-polarity = <0>;
 
 
