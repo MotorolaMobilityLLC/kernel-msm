@@ -24,16 +24,8 @@
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
 		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
-		pinctrl-0 = <&gpio_key_active>;
-		pinctrl-1 = <&gpio_key_suspend>;
-
-		camera_snapshot {
-			label = "camera_snapshot";
-			gpios = <&tlmm 86 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x2fe>;
-			debounce-interval = <15>;
-		};
+		pinctrl-0 = <&gpio_key>;
+		pinctrl-1 = <&gpio_key>;
 
 		vol_up {
 			label = "volume_up";
