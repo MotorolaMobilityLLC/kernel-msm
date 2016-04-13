@@ -76,6 +76,14 @@
 			analogix,vdd10-name = "vdd-1p0";
 			analogix,avdd33-name = "avdd-3p3";
 			analogix,vdd18-name = "avdd-1p8";
+
+			pinctrl-names = "anx_default", "anx_sleep";
+			pinctrl-0 = <&anx_rst_active &anx_dsi_sel_active
+					&anx_chip_pd_active &anx_cbl_det_active
+					&anx_irq_active>;
+			pinctrl-1 = <&anx_rst_suspend &anx_dsi_sel_suspend
+					&anx_chip_pd_suspend &anx_cbl_det_active
+					&anx_irq_active>;
 		};
 	};
 
