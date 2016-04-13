@@ -183,9 +183,9 @@ VMM_ENTRY(0x1B, WAKESENSOR_CONFIG,					TRUE,
 VMM_ENTRY(0x20, MOTION_DUR,						TRUE,
 		&vmm_motion_dur0,
 		sizeof(vmm_motion_dur0))
-VMM_ENTRY(0x21, UNUSED_21,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x21, MOTION_HISTORY,						FALSE,
+		&vmm_motion_history,
+		sizeof(vmm_motion_history))
 VMM_ENTRY(0x22, ZMOTION_DUR,						TRUE,
 		&vmm_zmotion_dur0,
 		sizeof(vmm_zmotion_dur0))
