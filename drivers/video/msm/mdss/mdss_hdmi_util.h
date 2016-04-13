@@ -13,6 +13,7 @@
 #ifndef __HDMI_UTIL_H__
 #define __HDMI_UTIL_H__
 #include <linux/mdss_io_util.h>
+#include <linux/switch.h>
 #include "video/msm_hdmi_modes.h"
 
 /* HDMI_TX Registers */
@@ -510,5 +511,8 @@ void hdmi_hdcp2p2_ddc_disable(struct hdmi_tx_ddc_ctrl *ctrl);
 int hdmi_hdcp2p2_ddc_read_rxstatus(struct hdmi_tx_ddc_ctrl *ctrl);
 int hdmi_utils_get_timeout_in_hysnc(struct msm_hdmi_mode_timing_info *timing,
 	u32 timeout_ms);
-
+int hdmi_utils_init_switch_dev(struct switch_dev **sdev);
+void hdmi_utils_deinit_switch_dev(void);
+int hdmi_utils_init_audio_switch_dev(struct switch_dev **audio_sdev);
+void hdmi_utils_deinit_audio_switch_dev(void);
 #endif /* __HDMI_UTIL_H__ */
