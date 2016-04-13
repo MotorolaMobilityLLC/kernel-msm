@@ -93,7 +93,7 @@
 			/* brightness_ctrl */
 			15 01 00 00 01 00 02 51 00
 			/* acl_enable_disable_settings */
-			15 01 00 00 01 00 02 55 03
+			15 01 00 00 01 00 02 55 00
 			/* Set index for P9 */
 			15 01 00 00 01 00 02 B0 07
 			/* Turn on memory retention */
@@ -121,6 +121,9 @@
 		qcom,mdss-dsi-off-command = [
 			/* display_off */
 			05 01 00 00 22 00 01 28
+			/* set both HBM and ACL at OFF */
+			15 01 00 00 00 00 02 53 20
+			15 01 00 00 00 00 02 55 00
 			/* enter sleep mode */
 			05 01 00 00 78 00 01 10];
 		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
