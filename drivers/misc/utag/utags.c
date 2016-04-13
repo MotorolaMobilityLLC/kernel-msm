@@ -203,7 +203,7 @@ static int no_show_tag(char *name)
 
 static int read_head(struct blkdev *cb, struct utag *htag)
 {
-	size_t bytes;
+	int bytes;
 	struct frozen_utag buf;
 
 	if (!htag) {
@@ -212,14 +212,14 @@ static int read_head(struct blkdev *cb, struct utag *htag)
 	}
 
 	bytes = kernel_read(cb->filep, 0, (void *) &buf, UTAG_MIN_TAG_SIZE);
-	if (UTAG_MIN_TAG_SIZE > bytes) {
-		pr_err("ERR file (%s) read failed ret %zd\n", cb->name, bytes);
+	if ((int) UTAG_MIN_TAG_SIZE > bytes) {
+		pr_err("ERR file (%s) read failed ret %d\n", cb->name, bytes);
 		return -EIO;
 	}
 
 	strlcpy(htag->name, buf.name, MAX_UTAG_NAME - 1);
 	if (strncmp(htag->name, UTAG_HEAD, MAX_UTAG_NAME)) {
-		pr_err("invalid or empty utags partition\n");
+		pr_err("[%s] invalid or empty utags partition\n", cb->name);
 		return -EIO;
 	}
 	htag->flags = ntohl(buf.flags);
@@ -317,7 +317,6 @@ static int open_utags(struct blkdev *cb)
 	cb->filep = filp_open(cb->name, O_RDWR|O_SYNC, 0600);
 	if (IS_ERR_OR_NULL(cb->filep)) {
 		int rc = PTR_ERR(cb->filep);
-
 		pr_err("opening (%s) errno=%d\n", cb->name, rc);
 		cb->filep = NULL;
 		return rc;
@@ -1573,12 +1572,13 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 		return -EIO;
 	}
 
+	mutex_lock(&ctrl->access_lock);
 	if (copy_from_user(&ctrl->reload, buffer, 1)) {
 		pr_err("user copy error\n");
+		mutex_unlock(&ctrl->access_lock);
 		return -EFAULT;
 	}
 
-	mutex_lock(&ctrl->access_lock);
 	pr_debug("[%s] %c\n", ctrl->dir_name, ctrl->reload);
 
 	if (UTAG_STATUS_RELOAD == ctrl->reload) {
@@ -1708,7 +1708,7 @@ static int utags_dt_init(struct platform_device *pdev)
 	ctrl->dir_name = DEFAULT_ROOT;
 	rc = of_property_read_string(node, "mmi,dir-name", &ctrl->dir_name);
 	if (!rc)
-		pr_info("utag dir override %s\n", ctrl->dir_name);
+		pr_debug("utag dir override %s\n", ctrl->dir_name);
 
 	return 0;
 }
@@ -1772,10 +1772,10 @@ static int utags_probe(struct platform_device *pdev)
 	if ((rc == -ENOENT) && (++retry < UTAGS_MAX_DEFERRALS))
 		return -EPROBE_DEFER;
 	else if (rc)
-		pr_err("failed to open, try reload later\n");
+		pr_debug("failed to open, try reload later\n");
 
 	if (!ctrl->backup.name)
-		pr_err("backup storage path not provided\n");
+		pr_debug("backup storage path not provided\n");
 	else
 		open_utags(&ctrl->backup);
 
