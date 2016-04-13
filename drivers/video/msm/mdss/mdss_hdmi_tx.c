@@ -386,14 +386,14 @@ static inline void hdmi_tx_send_cable_notification(
 		DEV_ERR("%s: invalid input\n", __func__);
 		return;
 	}
-	state = hdmi_ctrl->sdev.state;
+	state = hdmi_ctrl->sdev->state;
 
-	switch_set_state(&hdmi_ctrl->sdev, val);
+	switch_set_state(hdmi_ctrl->sdev, val);
 
 	DEV_INFO("%s: cable state %s %d\n", __func__,
-		hdmi_ctrl->sdev.state == state ?
+		hdmi_ctrl->sdev->state == state ?
 			"is same" : "switched to",
-		hdmi_ctrl->sdev.state);
+		hdmi_ctrl->sdev->state);
 
 	/* Notify all registered modules of cable connection status */
 	schedule_work(&hdmi_ctrl->cable_notify_work);
@@ -894,7 +894,7 @@ static ssize_t hdmi_tx_sysfs_wta_hpd(struct device *dev,
 		} else {
 			hdmi_tx_hpd_off(hdmi_ctrl);
 
-			hdmi_ctrl->sdev.state = 0;
+			hdmi_ctrl->sdev->state = 0;
 			hdmi_tx_set_audio_switch_node(hdmi_ctrl, 0);
 		}
 
@@ -3441,7 +3441,8 @@ static void hdmi_tx_dev_deinit(struct hdmi_tx_ctrl *hdmi_ctrl)
 	hdmi_ctrl->hdcp_ops = NULL;
 	hdmi_ctrl->hdcp_data = NULL;
 
-	switch_dev_unregister(&hdmi_ctrl->sdev);
+	hdmi_utils_deinit_switch_dev();
+	hdmi_ctrl->sdev = NULL;
 	if (hdmi_ctrl->workq)
 		destroy_workqueue(hdmi_ctrl->workq);
 	mutex_destroy(&hdmi_ctrl->tx_lock);
@@ -3552,12 +3553,7 @@ static int hdmi_tx_init_switch_dev(struct hdmi_tx_ctrl *hdmi_ctrl)
 		goto end;
 	}
 
-	hdmi_ctrl->sdev.name = "hdmi";
-	rc = switch_dev_register(&hdmi_ctrl->sdev);
-	if (rc) {
-		DEV_ERR("%s: display switch registration failed\n", __func__);
-		goto end;
-	}
+	rc = hdmi_utils_init_switch_dev(&hdmi_ctrl->sdev);
 end:
 	return rc;
 }
@@ -3727,7 +3723,7 @@ static int hdmi_tx_evt_handle_register(struct hdmi_tx_ctrl *hdmi_ctrl)
 	return 0;
 
 primary_err:
-	switch_dev_unregister(&hdmi_ctrl->sdev);
+	switch_dev_unregister(hdmi_ctrl->sdev);
 switch_err:
 	hdmi_tx_deinit_features(hdmi_ctrl, HDMI_TX_FEAT_MAX);
 init_err:
@@ -3782,7 +3778,7 @@ static int hdmi_tx_evt_handle_resume(struct hdmi_tx_ctrl *hdmi_ctrl)
 	}
 #endif
 
-	if (hdmi_ctrl->sdev.state &&
+	if (hdmi_ctrl->sdev->state &&
 		!hdmi_tx_hw_is_cable_connected(hdmi_ctrl)) {
 		u32 timeout;
 
