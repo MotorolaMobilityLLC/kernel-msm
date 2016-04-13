@@ -76,7 +76,7 @@ struct hdmi_tx_ctrl {
 	struct mutex tx_lock;
 	struct list_head cable_notify_handlers;
 	struct kobject *kobj;
-	struct switch_dev sdev;
+	struct switch_dev *sdev;
 	struct workqueue_struct *workq;
 	struct hdmi_util_ds_data ds_data;
 	struct completion hpd_int_done;
