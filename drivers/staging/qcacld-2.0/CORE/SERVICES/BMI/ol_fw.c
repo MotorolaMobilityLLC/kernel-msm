@@ -1022,9 +1022,7 @@ static void ramdump_work_handler(struct work_struct *ramdump)
 	struct device *dev = NULL;
 
 #if !defined(HIF_SDIO)
-#ifdef DEBUG
 	int ret;
-#endif
 #endif
 	u_int32_t host_interest_address;
 	u_int32_t dram_dump_values[4];
