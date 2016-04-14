@@ -307,7 +307,8 @@ static int nanohub_comms_tx_rx(struct nanohub_data *data,
 {
 	int ret;
 
-	ret = data->comms.write(data, (uint8_t *)&pad->packet, packet_size);
+	ret = data->comms.write(data, (uint8_t *)&pad->packet, packet_size,
+				data->comms.timeout_write);
 
 	if (ret == packet_size) {
 		ret = get_reply(data, &pad->packet, seq);
