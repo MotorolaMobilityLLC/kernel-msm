@@ -1546,7 +1546,7 @@ static void epl_sensor_polling_work(struct work_struct *work)
 static irqreturn_t epl_sensor_eint_func(int irqNo, void *handle)
 {
 	struct epl_sensor_priv *epld = (struct epl_sensor_priv *)handle;
-	disable_irq_nosync(epld->irq);
+	disable_irq_wake(epld->irq);
 	schedule_delayed_work(&epld->eint_work, 0);
 
 	return IRQ_HANDLED;
@@ -1714,7 +1714,7 @@ static void epl_sensor_eint_work(struct work_struct *work)
 			set_psensor_intr_threshold(ps_thd_5cm, ps_thd_3cm);
 		}
 	}
-	enable_irq(epld->irq);
+	enable_irq_wake(epld->irq);
 }
 /*----------------------------------------------------------------------------*/
 static int epl_sensor_setup_interrupt(struct epl_sensor_priv *epld)
