@@ -15,7 +15,7 @@
 #define __CAMERA_EXT_DEFS_H__
 
 #define CAMERA_EXT_STREAM_CAP_PREVIEW   (1 << 0)
-#define CAMERA_EXT_STREAM_CAP_VIDEO     (2 << 1)
-#define CAMERA_EXT_STREAM_CAP_SNAPSHOT  (3 << 2)
+#define CAMERA_EXT_STREAM_CAP_VIDEO     (1 << 1)
+#define CAMERA_EXT_STREAM_CAP_SNAPSHOT  (1 << 2)
 
 #endif
