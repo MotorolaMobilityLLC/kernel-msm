@@ -229,22 +229,23 @@ void nanohub_spi_bl_init(struct nanohub_spi_data *spi_data)
 	bl->close = spi_bl_close;
 }
 
-int nanohub_spi_write(void *data, uint8_t *tx, int length)
+int nanohub_spi_write(void *data, uint8_t *tx, int length, int timeout)
 {
 	struct nanohub_spi_data *spi_data = data;
 	const struct nanohub_comms *comms = &spi_data->data.comms;
 	int max_len = sizeof(struct nanohub_packet) + MAX_UINT8 +
-	    sizeof(struct nanohub_packet_crc);
+		      sizeof(struct nanohub_packet_crc);
 	struct spi_message msg;
 	struct spi_transfer xfer = {
-		.len = max_len,
+		.len = max_len + timeout,
 		.tx_buf = comms->tx_buffer,
-		.rx_buf = NULL,
+		.rx_buf = comms->rx_buffer,
 		.cs_change = 1,
 	};
-	spi_data->rx_offset = spi_data->rx_length = 0;
+	spi_data->rx_offset = max_len;
+	spi_data->rx_length = max_len + timeout;
 	memcpy(comms->tx_buffer, tx, length);
-	memset(comms->tx_buffer + length, 0xFF, max_len - length);
+	memset(comms->tx_buffer + length, 0xFF, max_len + timeout - length);
 
 	spi_message_init_with_transfers(&msg, &xfer, 1);
 
@@ -301,8 +302,8 @@ int nanohub_spi_read(void *data, uint8_t *rx, int max_length, int timeout)
 					} else {
 						memcpy(rx, packet,
 						       min_size + packet->len);
-						spi_data->rx_offset =
-						    spi_data->rx_length = 0;
+						spi_data->rx_offset = i +
+						     min_size + packet->len;
 						return min_size + packet->len;
 					}
 				}
@@ -310,9 +311,9 @@ int nanohub_spi_read(void *data, uint8_t *rx, int max_length, int timeout)
 		}
 	}
 
-	memset(comms->tx_buffer, 0xFF, xfer.len);
 	if (xfer.len != 1 && xfer.len < SPI_MIN_DMA)
 		xfer.len = SPI_MIN_DMA;
+	memset(comms->tx_buffer, 0xFF, xfer.len);
 
 	spi_message_init_with_transfers(&msg, &xfer, 1);
 
@@ -393,16 +394,23 @@ static void nanohub_spi_close(void *data)
 void nanohub_spi_comms_init(struct nanohub_spi_data *spi_data)
 {
 	struct nanohub_comms *comms = &spi_data->data.comms;
+	int max_len = sizeof(struct nanohub_packet) + MAX_UINT8 +
+		      sizeof(struct nanohub_packet_crc);
 
 	comms->seq = 1;
+	comms->timeout_write = 544;
 	comms->timeout_ack = 272;
 	comms->timeout_reply = 512;
 	comms->open = nanohub_spi_open;
 	comms->close = nanohub_spi_close;
 	comms->write = nanohub_spi_write;
 	comms->read = nanohub_spi_read;
-	comms->tx_buffer = kmalloc(512, GFP_KERNEL | GFP_DMA);
-	comms->rx_buffer = kmalloc(512, GFP_KERNEL | GFP_DMA);
+
+	max_len += comms->timeout_write;
+	max_len = max(max_len, comms->timeout_ack);
+	max_len = max(max_len, comms->timeout_reply);
+	comms->tx_buffer = kmalloc(max_len, GFP_KERNEL | GFP_DMA);
+	comms->rx_buffer = kmalloc(max_len, GFP_KERNEL | GFP_DMA);
 
 	spi_data->rx_length = 0;
 	spi_data->rx_offset = 0;

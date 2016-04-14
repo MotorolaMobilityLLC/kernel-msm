@@ -30,6 +30,7 @@
 #include <linux/vmalloc.h>
 #include <linux/spinlock.h>
 #include <linux/semaphore.h>
+#include <linux/sched/rt.h>
 #include <linux/platform_data/nanohub.h>
 
 #include "main.h"
@@ -178,8 +179,12 @@ static void nanohub_io_put_buf(struct nanohub_io *io,
 	list_add_tail(&buf->list, &io->buf_list);
 	spin_unlock(&io->buf_wait.lock);
 
-	if (was_empty)
-		wake_up_interruptible(&io->buf_wait);
+	if (was_empty) {
+		if (&io->data->free_pool == io)
+			nanohub_notify_thread(io->data);
+		else
+			wake_up_interruptible(&io->buf_wait);
+	}
 }
 
 static inline int plat_gpio_get(struct nanohub_data *data,
@@ -890,7 +895,6 @@ static ssize_t nanohub_read(struct file *file, char *buffer, size_t length,
 		ret = buf->length;
 
 	nanohub_io_put_buf(&data->free_pool, buf);
-	nanohub_notify_thread(data);
 
 	return ret;
 }
@@ -1044,8 +1048,12 @@ static int nanohub_kthread(void *arg)
 	int ret;
 	uint32_t clear_interrupts[8] = { 0x00000006 };
 	struct device *sensor_dev = data->io[ID_NANOHUB_SENSOR].dev;
+	static const struct sched_param param = {
+		.sched_priority = (MAX_USER_RT_PRIO/2)-1,
+	};
 
 	data->err_cnt = 0;
+	sched_setscheduler(current, SCHED_FIFO, &param);
 	nanohub_set_state(data, ST_IDLE);
 
 	while (!kthread_should_stop()) {
@@ -1082,6 +1090,11 @@ static int nanohub_kthread(void *arg)
 
 			if (ret > 0) {
 				nanohub_process_buffer(data, &buf, ret);
+				if (!nanohub_irq1_fired(data) &&
+				    !nanohub_irq2_fired(data)) {
+					nanohub_set_state(data, ST_IDLE);
+					continue;
+				}
 			} else if (ret == 0) {
 				/* queue empty, go to sleep */
 				data->err_cnt = 0;
@@ -1394,7 +1407,6 @@ struct iio_dev *nanohub_probe(struct device *dev, struct iio_dev *iio_dev)
 	data->pdata = pdata;
 
 	init_waitqueue_head(&data->kthread_wait);
-	atomic_set(&data->kthread_run, 0);
 
 	spin_lock_init(&data->wakeup_lock);
 	nanohub_io_init(&data->free_pool, data, dev);
@@ -1408,6 +1420,7 @@ struct iio_dev *nanohub_probe(struct device *dev, struct iio_dev *iio_dev)
 
 	for (i = 0; i < READ_QUEUE_DEPTH; i++)
 		nanohub_io_put_buf(&data->free_pool, &buf[i]);
+	atomic_set(&data->kthread_run, 0);
 	wake_lock_init(&data->wakelock_read, WAKE_LOCK_SUSPEND,
 		       "nanohub_wakelock_read");
 
