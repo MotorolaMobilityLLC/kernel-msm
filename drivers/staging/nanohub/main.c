@@ -1303,7 +1303,7 @@ static int nanohub_request_irqs(struct nanohub_data *data)
 
 static int nanohub_request_gpios(struct nanohub_data *data)
 {
-	int i, ret;
+	int i, ret = 0;
 
 	for (i = 0; i < ARRAY_SIZE(gconf); ++i) {
 		const struct gpio_config *cfg = &gconf[i];
@@ -1324,12 +1324,13 @@ static int nanohub_request_gpios(struct nanohub_data *data)
 			break;
 		}
 		if (gpio_has_irq(cfg)) {
-			ret = gpio_to_irq(gpio);
-			nanohub_set_irq_data(data, cfg, ret);
-			if (ret <= 0 && !optional) {
+			int irq = gpio_to_irq(gpio);
+			if (irq > 0) {
+				nanohub_set_irq_data(data, cfg, irq);
+			} else if (!optional) {
 				ret = -EINVAL;
 				pr_err("nanohub: no irq; gpio %d[%s];err=%d\n",
-				       gpio, label, ret);
+				       gpio, label, irq);
 				break;
 			}
 		}
