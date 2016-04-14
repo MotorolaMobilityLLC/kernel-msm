@@ -3258,7 +3258,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		pm_runtime_get_noresume(mdwc->dev);
 
 	/* Update initial ID state */
-	if (mdwc->pmic_id_irq) {
+	if (mdwc->pmic_id_irq > 0) {
 		enable_irq(mdwc->pmic_id_irq);
 		local_irq_save(flags);
 		mdwc->id_state = !!irq_read_line(mdwc->pmic_id_irq);
@@ -3272,7 +3272,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "DWC3 in host only mode\n");
 		mdwc->id_state = DWC3_ID_FLOAT;
 		dwc3_ext_event_notify(mdwc);
-	} else if (!mdwc->pmic_id_irq &&
+	} else if (mdwc->pmic_id_irq <= 0 &&
 		of_property_read_bool(node, "psy,type-c")) {
 		/* Check if type-C connection is in SRC mode */
 		struct power_supply *usbc_psy =
