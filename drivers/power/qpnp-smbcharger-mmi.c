@@ -6090,6 +6090,15 @@ static inline int get_bpd(const char *name)
 #define CMD_CHG_LED_REG			0x43
 #define CMD_CHG_LED_BLINK_MASK		SMB_MASK(2, 1)
 #define CMD_CHG_LED_CTRL_BIT		BIT(0)
+#define OTG_CFG                         0xF1
+#define HICCUP_ENABLED_BIT              BIT(6)
+#define OTG_EN_CTRL_MASK                SMB_MASK(3, 2)
+#define OTG_CMD_CTRL_RID_DIS            0x00
+#define OTG_PIN_CTRL_RID_DIS            0x04
+#define OTG_CMD_CTRL_RID_EN             0x08
+#define OTG_ICFG                        0xF3
+#define OTG_ILIMIT_MASK			SMB_MASK(1, 0)
+#define OTG_ILIMIT_1000MA		0x03
 static int smbchg_hw_init(struct smbchg_chip *chip)
 {
 	int rc, i;
@@ -6562,6 +6571,35 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	if (chip->force_aicl_rerun)
 		rc = smbchg_aicl_config(chip);
 
+	/* Configure OTG */
+	if (chip->schg_version == QPNP_SCHG_LITE) {
+		/* enable OTG hiccup mode */
+		rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_CFG,
+			HICCUP_ENABLED_BIT, HICCUP_ENABLED_BIT);
+		if (rc < 0)
+			SMB_ERR(chip, "Couldn't set OTG OC config rc = %d\n",
+				rc);
+	}
+
+	/* configure OTG enable to cmd ctrl */
+	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_CFG,
+			OTG_EN_CTRL_MASK,
+			OTG_CMD_CTRL_RID_DIS);
+	if (rc < 0) {
+		SMB_ERR(chip, "Couldn't set OTG EN config rc = %d\n",
+			rc);
+		return rc;
+	}
+
+	/* Configure OTG current limit */
+	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_ICFG,
+			OTG_ILIMIT_MASK,
+			OTG_ILIMIT_1000MA);
+	if (rc < 0)
+		SMB_ERR(chip, "Couldn't set OTG current config rc = %d\n",
+			rc);
+
+	SMB_DBG(chip, "HW Init Complete\n");
 	return rc;
 }
 
