@@ -566,6 +566,7 @@
 	};
 
 	usb3: ssusb@7000000{
+		psy,type-c;
 		dwc3@7000000 {
 			controller-number = /bits/ 8 <1>;
 		};
