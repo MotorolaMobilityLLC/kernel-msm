@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -365,6 +365,56 @@ int hdd_validate_mcc_config(hdd_adapter_t *pAdapter, v_UINT_t staId,
 int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest, 
                            v_U8_t sessionId);
 #endif
+
+/**---------------------------------------------------------------------------
+
+  \brief mem_alloc_copy_from_user_helper -
+
+   Helper function to allocate buffer and copy user data.
+
+  \param  - wrqu - Pointer to IOCTL Data.
+            len  - size
+
+  \return - On Success pointer to buffer, On failure NULL
+
+  --------------------------------------------------------------------------*/
+static void *mem_alloc_copy_from_user_helper(const void *wrqu_data, size_t len)
+{
+    u8 *ptr = NULL;
+
+  /* in order to protect the code, an extra byte is post appended to the buffer
+   * and the null termination is added.  However, when allocating (len+1) byte
+   * of memory, we need to make sure that there is no uint overflow when doing
+   * addition. In theory check len < UINT_MAX protects the uint overflow. For
+   * wlan private ioctl, the buffer size is much less than UINT_MAX, as a good
+   * guess, now, it is assumed that the private command buffer size is no
+   * greater than 4K (4096 bytes). So we use 4096 as the upper boundary for now.
+   */
+    if (len > MAX_USER_COMMAND_SIZE)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "Invalid length");
+        return NULL;
+    }
+
+    ptr = kmalloc(len + 1, GFP_KERNEL);
+    if (NULL == ptr)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "unable to allocate memory");
+        return NULL;
+    }
+
+    if (copy_from_user(ptr, wrqu_data, len))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+        kfree(ptr);
+        return NULL;
+    }
+    ptr[len] = '\0';
+    return ptr;
+}
 
 /**---------------------------------------------------------------------------
 
@@ -3881,6 +3931,7 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
     VOS_STATUS vstatus;
     int sub_cmd = wrqu->data.flags;
     int ret = 0; /* success */
+    char *pBuffer = NULL;
     hdd_adapter_t *pAdapter = (netdev_priv(dev));
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 #ifdef WLAN_FEATURE_VOWIFI
@@ -3889,13 +3940,10 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
 
     if (!capable(CAP_NET_ADMIN))
     {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-		FL("permission check failed"));
-      return -EPERM;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  FL("permission check failed"));
+        return -EPERM;
     }
-
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Received length %d", __func__, wrqu->data.length);
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Received data %s", __func__, (char*)wrqu->data.pointer);
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
@@ -3904,15 +3952,30 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
         return -EBUSY;
     }
 
+    /* ODD number is used for set, copy data using copy_from_user */
+    pBuffer = mem_alloc_copy_from_user_helper(wrqu->data.pointer,
+                                              wrqu->data.length);
+    if (NULL == pBuffer)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "mem_alloc_copy_from_user_helper fail");
+        return -ENOMEM;
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "%s: Received length %d", __func__, wrqu->data.length);
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "%s: Received data %s", __func__, pBuffer);
+
     switch(sub_cmd)
     {
        case WE_WOWL_ADD_PTRN:
           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "ADD_PTRN\n");
-          hdd_add_wowl_ptrn(pAdapter, (char*)wrqu->data.pointer);
+          hdd_add_wowl_ptrn(pAdapter, pBuffer);
           break;
        case WE_WOWL_DEL_PTRN:
           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "DEL_PTRN\n");
-          hdd_del_wowl_ptrn(pAdapter, (char*)wrqu->data.pointer);
+          hdd_del_wowl_ptrn(pAdapter, pBuffer);
           break;
 #if defined WLAN_FEATURE_VOWIFI
        case WE_NEIGHBOR_REPORT_REQUEST:
@@ -3927,7 +3990,7 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
                 if( !neighborReq.no_ssid )
                 {
                    neighborReq.ssid.length = (wrqu->data.length - 1) > 32 ? 32 : (wrqu->data.length - 1) ;
-                   vos_mem_copy( neighborReq.ssid.ssId, wrqu->data.pointer, neighborReq.ssid.length );
+                   vos_mem_copy( neighborReq.ssid.ssId, pBuffer, neighborReq.ssid.length );
                 }
 
                 callbackInfo.neighborRspCallback = NULL;
@@ -3948,7 +4011,7 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
           sme_updateP2pIe( WLAN_HDD_GET_HAL_CTX(pAdapter), wrqu->data.pointer, wrqu->data.length );
           break;
        case WE_SET_CONFIG:
-          vstatus = hdd_execute_config_command(pHddCtx, wrqu->data.pointer);
+          vstatus = hdd_execute_config_command(pHddCtx, pBuffer);
           if (VOS_STATUS_SUCCESS != vstatus)
           {
              ret = -EINVAL;
@@ -3961,6 +4024,7 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
            break;
        }
     }
+    kfree(pBuffer);
     return ret;
 }
 
@@ -4074,9 +4138,9 @@ int iw_set_three_ints_getnone(struct net_device *dev, struct iw_request_info *in
 
     if (!capable(CAP_NET_ADMIN))
     {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-		FL("permission check failed"));
-      return -EPERM;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  FL("permission check failed"));
+        return -EPERM;
     }
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
@@ -4530,7 +4594,6 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
     int sub_cmd = wrqu->data.flags;
-    int *value = (int*)wrqu->data.pointer;
     int apps_args[MAX_VAR_ARGS] = {0};
     int num_args = wrqu->data.length;
     hdd_station_ctx_t *pStaCtx = NULL ;
@@ -4558,7 +4621,14 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
     {
        num_args = MAX_VAR_ARGS;
     }
-    vos_mem_copy(apps_args, value, (sizeof(int)) * num_args);
+
+    /* ODD number is used for set, copy data using copy_from_user */
+    if (copy_from_user(apps_args, wrqu->data.pointer, (sizeof(int)) * num_args))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+        return -EFAULT;
+    }
 
     if(( sub_cmd == WE_MCC_CONFIG_CREDENTIAL ) ||
         (sub_cmd == WE_MCC_CONFIG_PARAMS ))
@@ -5879,16 +5949,30 @@ static int iw_set_packet_filter_params(struct net_device *dev, struct iw_request
         union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    tpPacketFilterCfg pRequest = (tpPacketFilterCfg)wrqu->data.pointer;
+    tpPacketFilterCfg pRequest = NULL;
+    int ret;
 
     if (!capable(CAP_NET_ADMIN))
     {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-		FL("permission check failed"));
-      return -EPERM;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  FL("permission check failed"));
+        return -EPERM;
     }
 
-    return wlan_hdd_set_filter(WLAN_HDD_GET_CTX(pAdapter), pRequest, pAdapter->sessionId);
+    /* ODD number is used for set, copy data using copy_from_user */
+    pRequest = mem_alloc_copy_from_user_helper(wrqu->data.pointer,
+                                               wrqu->data.length);
+    if (NULL == pRequest)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "mem_alloc_copy_from_user_helper fail");
+        return -ENOMEM;
+    }
+
+    ret = wlan_hdd_set_filter(WLAN_HDD_GET_CTX(pAdapter), pRequest, pAdapter->sessionId);
+    kfree(pRequest);
+
+    return ret;
 }
 #endif
 static int iw_get_statistics(struct net_device *dev,
@@ -6529,17 +6613,17 @@ static int iw_set_band_config(struct net_device *dev,
                            union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    tANI_U8 *ptr = (tANI_U8*)wrqu->data.pointer;
+    tANI_U8 *ptr = NULL;
     int ret = 0;
 
     if (!capable(CAP_NET_ADMIN))
     {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-		FL("permission check failed"));
-      return -EPERM;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  FL("permission check failed"));
+        return -EPERM;
     }
 
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: ", __func__);
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"%s: ", __func__);
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
@@ -6548,30 +6632,56 @@ static int iw_set_band_config(struct net_device *dev,
         return -EBUSY;
     }
 
+    /* ODD number is used for set, copy data using copy_from_user */
+    ptr = mem_alloc_copy_from_user_helper(wrqu->data.pointer,
+                                          wrqu->data.length);
+    if (NULL == ptr)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "mem_alloc_copy_from_user_helper fail");
+        return -ENOMEM;
+    }
+
     if (memcmp(ptr, "SETBAND ", 8) == 0)
     {
         /* Change band request received */
         ret = hdd_setBand_helper(dev, ptr);
-        return ret;
-
     }
-    return 0;
+    kfree(ptr);
+
+    return ret;
 }
 
 static int iw_set_power_params_priv(struct net_device *dev,
                            struct iw_request_info *info,
                            union iwreq_data *wrqu, char *extra)
 {
-  if (!capable(CAP_NET_ADMIN))
-  {
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-	      FL("permission check failed"));
-    return -EPERM;
-  }
+    int ret;
+    char *ptr;
 
-  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                "Set power params Private");
-  return iw_set_power_params(dev,info,wrqu,extra,0);
+    if (!capable(CAP_NET_ADMIN))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  FL("permission check failed"));
+        return -EPERM;
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "Set power params Private");
+
+    /* ODD number is used for set, copy data using copy_from_user */
+    ptr = mem_alloc_copy_from_user_helper(wrqu->data.pointer,
+                                          wrqu->data.length);
+    if (NULL == ptr)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "mem_alloc_copy_from_user_helper fail");
+        return -ENOMEM;
+    }
+
+    ret = iw_set_power_params(dev, info, wrqu, ptr, 0);
+    kfree(ptr);
+    return ret;
 }
 
 
