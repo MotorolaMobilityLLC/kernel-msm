@@ -308,9 +308,6 @@ static int open_utags(struct blkdev *cb)
 {
 	struct inode *inode = NULL;
 
-	if (cb->filep)
-		return 0;
-
 	if (!cb->name)
 		return -EIO;
 
@@ -332,7 +329,7 @@ static int open_utags(struct blkdev *cb)
 	}
 
 	cb->size = i_size_read(inode->i_bdev->bd_inode);
-	pr_info("[%s] (pid %i) open (%s) success\n",
+	pr_debug("[%s] (pid %i) open (%s) success\n",
 		current->comm, current->pid, cb->name);
 	return 0;
 }
@@ -871,6 +868,9 @@ static struct utag *load_utags(struct blkdev *cb)
 	struct utag *head = NULL;
 	struct ctrl *ctrl = container_of(cb, struct ctrl, main);
 
+	if (open_utags(cb))
+		return NULL;
+
 	bytes = data_size(cb);
 
 	/*
@@ -880,15 +880,15 @@ static struct utag *load_utags(struct blkdev *cb)
 	if (UTAG_MIN_TAG_SIZE * 2 > bytes) {
 		pr_err("[%s] invalid tags size %zu\n", ctrl->dir_name, bytes);
 		if (!ctrl->hwtag)
-			return NULL;
+			goto close_fd;
 		if (init_empty(ctrl))
-			return NULL;
+			goto close_fd;
 		bytes = UTAG_MIN_TAG_SIZE * 2;
 	}
 
 	data = vmalloc(bytes);
 	if (!data)
-		return NULL;
+		goto close_fd;
 
 	ret_bytes = kernel_read(cb->filep, 0, data, bytes);
 	if (bytes != ret_bytes) {
@@ -912,6 +912,8 @@ static struct utag *load_utags(struct blkdev *cb)
 
  free_data:
 	vfree(data);
+ close_fd:
+	filp_close(cb->filep, NULL);
 	return head;
 }
 
@@ -1074,7 +1076,7 @@ static int store_utags(struct ctrl *ctrl, struct utag *tags)
 	int rc = 0;
 	mm_segment_t fs;
 	loff_t pos = 0;
-	struct file *fp = ctrl->main.filep;
+	struct file *fp;
 	struct blkdev *cb = &ctrl->main;
 
 	fs = get_fs();
@@ -1088,24 +1090,33 @@ static int store_utags(struct ctrl *ctrl, struct utag *tags)
 		goto out;
 	}
 
+	if (open_utags(cb)) {
+		rc = -EIO;
+		goto out;
+	}
+	fp = cb->filep;
+
 	written = fp->f_op->write(fp, datap, tags_size, &pos);
 	if (written < tags_size) {
 		pr_err("failed to write file (%s), rc=%zu\n",
 			cb->name, written);
 		rc = -EIO;
 	}
+	filp_close(fp, NULL);
 
-	fp = ctrl->backup.filep;
-	cb = &ctrl->backup;
-	pos = 0;
+	/* Only try to use backup partition if it is configured */
+	if (ctrl->backup.name) {
+		cb = &ctrl->backup;
+		if (open_utags(cb))
+			goto out;
+		fp = cb->filep;
+		pos = 0;
 
-	if (fp) {
 		written = fp->f_op->write(fp, datap, tags_size, &pos);
-		if (written < tags_size) {
+		if (written < tags_size)
 			pr_err("failed to write file (%s), rc=%zu\n",
 				cb->name, written);
-			rc = -EIO;
-		}
+		filp_close(fp, NULL);
 	}
 	vfree(datap);
 
@@ -1357,13 +1368,19 @@ static int lock_show(struct seq_file *file, void *v)
 	memset(&htag, 0, sizeof(struct utag));
 	mutex_lock(&ctrl->access_lock);
 
+	if (open_utags(&ctrl->main))
+		return -EIO;
+
 	if (read_head(&ctrl->main, &htag)) {
 		mutex_unlock(&ctrl->access_lock);
+		filp_close(ctrl->main.filep, NULL);
 		return -EIO;
 	}
 
+
 	ctrl->lock = htag.flags & UTAG_FLAG_PROTECTED ? 1 : 0;
 	seq_printf(file, "%u\n", ctrl->lock);
+	filp_close(ctrl->main.filep, NULL);
 	mutex_unlock(&ctrl->access_lock);
 
 	return 0;
@@ -1580,15 +1597,10 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 		return -EFAULT;
 	}
 
-	pr_debug("[%s] %c\n", ctrl->dir_name, ctrl->reload);
+	pr_info("[%s] (pid %i) [%s] %c\n",
+		current->comm, current->pid, ctrl->dir_name, ctrl->reload);
 
 	if (UTAG_STATUS_RELOAD == ctrl->reload) {
-		if (open_utags(&ctrl->main)) {
-			ctrl->reload = UTAG_STATUS_NOT_READY;
-			mutex_unlock(&ctrl->access_lock);
-			return -EFAULT;
-		}
-		open_utags(&ctrl->backup);
 		if (rebuild_utags_directory(ctrl))
 			ctrl->reload = UTAG_STATUS_FAILED;
 	}
@@ -1704,7 +1716,7 @@ static int utags_dt_init(struct platform_device *pdev)
 	rc = of_property_read_string(node, "mmi,backup-utags",
 		&ctrl->backup.name);
 	if (rc)
-		pr_debug("backup storage path not provided\n");
+		pr_info("backup storage path not provided\n");
 
 	ctrl->dir_name = DEFAULT_ROOT;
 	rc = of_property_read_string(node, "mmi,dir-name", &ctrl->dir_name);
