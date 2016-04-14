@@ -33,6 +33,7 @@
 #include <linux/vmalloc.h>
 #include <linux/of.h>
 #include <linux/mutex.h>
+#include <linux/sched.h>
 
 #define MAX_UTAG_SIZE 1024
 #define MAX_UTAG_NAME 32
@@ -41,7 +42,6 @@
 #define UTAG_TAIL  "__UTAG_TAIL__"
 #define ROUNDUP(a, b) (((a) + ((b)-1)) & ~((b)-1))
 #define TO_SECT_SIZE(n)     (((n) + 511) & ~511)
-#define UTAGS_MAX_DEFERRALS 5
 #define DRVNAME "utags"
 #define DEFAULT_ROOT "config"
 #define HW_ROOT "hw"
@@ -332,7 +332,8 @@ static int open_utags(struct blkdev *cb)
 	}
 
 	cb->size = i_size_read(inode->i_bdev->bd_inode);
-	pr_debug("opening (%s) success\n", cb->name);
+	pr_info("[%s] (pid %i) open (%s) success\n",
+		current->comm, current->pid, cb->name);
 	return 0;
 }
 
@@ -1703,7 +1704,7 @@ static int utags_dt_init(struct platform_device *pdev)
 	rc = of_property_read_string(node, "mmi,backup-utags",
 		&ctrl->backup.name);
 	if (rc)
-		pr_err("backup storage path not provided\n");
+		pr_debug("backup storage path not provided\n");
 
 	ctrl->dir_name = DEFAULT_ROOT;
 	rc = of_property_read_string(node, "mmi,dir-name", &ctrl->dir_name);
@@ -1750,7 +1751,6 @@ static void clear_utags_directory(struct ctrl *ctrl)
 static int utags_probe(struct platform_device *pdev)
 {
 	int rc;
-	static int retry;
 	struct ctrl *ctrl;
 
 	ctrl = devm_kzalloc(&pdev->dev, sizeof(struct ctrl), GFP_KERNEL);
@@ -1768,17 +1768,6 @@ static int utags_probe(struct platform_device *pdev)
 	if (rc)
 		return -EIO;
 
-	rc = open_utags(&ctrl->main);
-	if ((rc == -ENOENT) && (++retry < UTAGS_MAX_DEFERRALS))
-		return -EPROBE_DEFER;
-	else if (rc)
-		pr_debug("failed to open, try reload later\n");
-
-	if (!ctrl->backup.name)
-		pr_debug("backup storage path not provided\n");
-	else
-		open_utags(&ctrl->backup);
-
 	ctrl->root = proc_mkdir(ctrl->dir_name, NULL);
 	if (!ctrl->root) {
 		pr_err("Failed to create dir entry\n");
@@ -1787,10 +1776,6 @@ static int utags_probe(struct platform_device *pdev)
 
 	if (!strncmp(ctrl->dir_name, HW_ROOT, sizeof(HW_ROOT)))
 		ctrl->hwtag = 1;
-
-	/* if we were able to open file descriptor, build utags */
-	if (ctrl->main.filep)
-		rebuild_utags_directory(ctrl);
 
 	if (!proc_create_data("reload", 0600, ctrl->root, &reload_fops, ctrl)) {
 		pr_err("Failed to create reload entry\n");
