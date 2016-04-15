@@ -4448,7 +4448,9 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 			schedule_delayed_work(&chip->usb_insertion_work,
 				      msecs_to_jiffies(1000));
 		}
-		if (chip->usbc_bswchg_pres ^ bswchg_pres) {
+		if (!chip->bsw_psy)
+			chip->usbc_bswchg_pres = false;
+		else if (chip->usbc_bswchg_pres ^ bswchg_pres) {
 			chip->usbc_bswchg_pres = bswchg_pres;
 			cancel_delayed_work(&chip->heartbeat_work);
 			schedule_delayed_work(&chip->heartbeat_work,
