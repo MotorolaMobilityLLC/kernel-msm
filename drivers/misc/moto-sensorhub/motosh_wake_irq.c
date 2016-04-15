@@ -40,6 +40,7 @@
 #include <linux/workqueue.h>
 
 #include <linux/motosh.h>
+#include <linux/motosh_vmm_defines.h>
 
 #define SPURIOUS_INT_DELAY 800 /* ms */
 #define MAX_NUM_LOGS_PER_INT  25
@@ -330,7 +331,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 				STM16_TO_HOST(&data[PROX_HIGH_THRESH],
 						ZERO_OFFSET));
 
-			queue_index += 14;
+			queue_index += VMM_PROXIMITY_DATA_S;
 			break;
 		case COVER_DATA:
 			if ((pdata->cover_detect_polarity
@@ -380,7 +381,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 				STM16_TO_HOST(&data[STOWED_HIGH_THRESH],
 						ZERO_OFFSET));
 
-			queue_index += 14;
+			queue_index += VMM_STOWED_EVENT_S;
 			break;
 		case CAMERA_GESTURE:
 			motosh_as_data_buffer_write(ps_motosh, DT_CAMERA_ACT,
