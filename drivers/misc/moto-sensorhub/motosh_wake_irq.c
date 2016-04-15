@@ -391,9 +391,6 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 				"Sending Camera: %d\n", STM16_TO_HOST(data,
 				CAMERA_VALUE));
 
-			input_report_key(ps_motosh->input_dev, KEY_CAMERA, 1);
-			input_report_key(ps_motosh->input_dev, KEY_CAMERA, 0);
-			input_sync(ps_motosh->input_dev);
 			dev_dbg(&ps_motosh->client->dev,
 				"Report camkey toggle\n");
 			queue_index += 2;
