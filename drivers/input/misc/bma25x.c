@@ -2232,47 +2232,31 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 		bma25x_set_bandwidth(
 			bma25x->bma25x_client,  bma25x->bandwidth);
 	}
-
-	bma25x_read_accel_xyz(
-		bma25x->bma25x_client, bma25x->sensor_type, &acc);
-	ISR_INFO(&bma25x->bma25x_client->dev,
-			"int_mode z value = %d\n", acc.z);
-
+	if (newstatus) {
+		bma25x_read_accel_xyz(bma25x->bma25x_client,
+			bma25x->sensor_type, &acc);
+		ISR_INFO(&bma25x->bma25x_client->dev,
+				"int_mode z value = %d\n", acc.z);
+		if (acc.z > bma25x->flat_threshold)
+			bma25x->flat_up_value = FLATUP_GESTURE;
+		else
+			bma25x->flat_up_value = EXIT_FLATUP_GESTURE;
+		if (acc.z < (-1 * bma25x->flat_threshold))
+			bma25x->flat_down_value = FLATDOWN_GESTURE;
+		else
+			bma25x->flat_down_value = EXIT_FLATDOWN_GESTURE;
+	}
 	if (TEST_BIT(FlatUp, newstatus) &&
 			!TEST_BIT(FlatUp, bma25x->mEnabled)) {
-		if (acc.z > bma25x->flat_threshold) {
-			dev_info(&bma25x->bma25x_client->dev,
-				"first flat up interrupt happened\n");
-			bma25x->flat_up_value = FLATUP_GESTURE;
-			input_report_abs(bma25x->dev_interrupt,
-			FLAT_INTERRUPT, bma25x->flat_up_value);
-			input_sync(bma25x->dev_interrupt);
-		} else {
-			dev_info(&bma25x->bma25x_client->dev,
-				"first exit flat up interrupt happened\n");
-			bma25x->flat_up_value = EXIT_FLATUP_GESTURE;
-			input_report_abs(bma25x->dev_interrupt,
-			FLAT_INTERRUPT, bma25x->flat_up_value);
-			input_sync(bma25x->dev_interrupt);
-		}
+		input_report_abs(bma25x->dev_interrupt,
+		FLAT_INTERRUPT, bma25x->flat_up_value);
+		input_sync(bma25x->dev_interrupt);
 	}
 	if (TEST_BIT(FlatDown, newstatus) &&
 			!TEST_BIT(FlatDown, bma25x->mEnabled)) {
-		if (acc.z < (-1 * bma25x->flat_threshold)) {
-			dev_info(&bma25x->bma25x_client->dev,
-				"first flat down interrupt happened\n");
-			bma25x->flat_down_value = FLATDOWN_GESTURE;
-			input_report_abs(bma25x->dev_interrupt,
-			FLAT_INTERRUPT, bma25x->flat_down_value);
-			input_sync(bma25x->dev_interrupt);
-		} else {
-			dev_info(&bma25x->bma25x_client->dev,
-				"first exit flat down interrupt happened\n");
-			bma25x->flat_down_value = EXIT_FLATDOWN_GESTURE;
-			input_report_abs(bma25x->dev_interrupt,
-			FLAT_INTERRUPT, bma25x->flat_down_value);
-			input_sync(bma25x->dev_interrupt);
-		}
+		input_report_abs(bma25x->dev_interrupt,
+		FLAT_INTERRUPT, bma25x->flat_down_value);
+		input_sync(bma25x->dev_interrupt);
 	}
 	if (newstatus) {
 		if (abs(acc.z) >  bma25x->flat_threshold)
