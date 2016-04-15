@@ -567,6 +567,8 @@ enum f54_report_types {
 	F54_TREX_OPENS = 24,
 	F54_TREX_TO_GND = 25,
 	F54_TREX_SHORTS = 26,
+	F54_HYB_ABS_RX_TX_DELTA = 59,
+	F54_HYB_ABS_RX_TX_RAW = 63,
 	INVALID_REPORT_TYPE = -1,
 };
 
@@ -1564,6 +1566,32 @@ struct f54_control_107 {
 	};
 };
 
+struct f54_control_113 {
+	union {
+		struct {
+			unsigned char c113_en_hybrid_on_tx:1;
+			unsigned char c113_en_hybrid_on_rx:1;
+			unsigned char c113_tx_consistency_chk:1;
+			unsigned char c113_rx_consistency_chk:1;
+			unsigned char c113_en_gradient_baseline:1;
+			unsigned char c113_byte0_b5b7:3;
+			unsigned char c113_consistency_thresh;
+			unsigned char c113_tx_obj_thresh;
+			unsigned char c113_rx_obj_thresh;
+			unsigned char c113_tx_thermal_update_int_lsb;
+			unsigned char c113_tx_thermal_update_int_msb;
+			unsigned char c113_rx_thermal_update_int_lsb;
+			unsigned char c113_rx_thermal_update_int_msb;
+			unsigned char c113_tx_negative_thresh;
+			unsigned char c113_rx_negative_thresh;
+		} __packed;
+		struct {
+			unsigned char data[10];
+			unsigned short address;
+		} __packed;
+	};
+};
+
 struct f54_control_116 {
 	union {
 		struct {
@@ -1627,6 +1655,7 @@ struct f54_control {
 	struct f54_control_95 *reg_95;
 	struct f54_control_99 *reg_99;
 	struct f54_control_107 *reg_107;
+	struct f54_control_113 *reg_113;
 	struct f54_control_116 *reg_116;
 	struct f54_control_137 *reg_137;
 	struct f55_control_0 *reg_0_f55;
@@ -1971,6 +2000,7 @@ show_prototype(has_noise_state)
 show_prototype(has_energy_ratio_relaxation)
 show_prototype(number_of_sensing_frequencies)
 show_prototype(has_data17)
+show_prototype(has_ctrl113)
 show_prototype(q17_num_of_sense_freqs)
 show_store_prototype(no_relax)
 show_store_prototype(no_scan)
@@ -2079,6 +2109,20 @@ show_store_prototype(c107_abs_stretch_dur)
 show_store_prototype(c107_abs_adc_clock_div)
 show_store_prototype(c107_abs_sub_burtst_size)
 show_store_prototype(c107_abs_trigger_delay)
+show_store_prototype(c113_en_hybrid_on_tx)
+show_store_prototype(c113_en_hybrid_on_rx)
+show_store_prototype(c113_tx_consistency_chk)
+show_store_prototype(c113_rx_consistency_chk)
+show_store_prototype(c113_en_gradient_baseline)
+show_store_prototype(c113_consistency_thresh)
+show_store_prototype(c113_tx_obj_thresh)
+show_store_prototype(c113_rx_obj_thresh)
+show_store_prototype(c113_tx_thermal_update_int_lsb)
+show_store_prototype(c113_tx_thermal_update_int_msb)
+show_store_prototype(c113_rx_thermal_update_int_lsb)
+show_store_prototype(c113_rx_thermal_update_int_msb)
+show_store_prototype(c113_tx_negative_thresh)
+show_store_prototype(c113_rx_negative_thresh)
 show_store_prototype(c116_im_thresh)
 show_store_prototype(c116_debounce)
 show_store_prototype(c116_quiet_im)
@@ -2150,6 +2194,7 @@ static struct attribute *attrs[] = {
 	attrify(has_energy_ratio_relaxation),
 	attrify(number_of_sensing_frequencies),
 	attrify(has_data17),
+	attrify(has_ctrl113),
 	attrify(q17_num_of_sense_freqs),
 	attrify(f55_q2_has_single_layer_multitouch),
 	NULL,
@@ -2370,6 +2415,24 @@ static struct attribute *attrs_reg_107[] = {
 	NULL,
 };
 
+static struct attribute *attrs_reg_113[] = {
+	attrify(c113_en_hybrid_on_tx),
+	attrify(c113_en_hybrid_on_rx),
+	attrify(c113_tx_consistency_chk),
+	attrify(c113_rx_consistency_chk),
+	attrify(c113_en_gradient_baseline),
+	attrify(c113_consistency_thresh),
+	attrify(c113_tx_obj_thresh),
+	attrify(c113_rx_obj_thresh),
+	attrify(c113_tx_thermal_update_int_lsb),
+	attrify(c113_tx_thermal_update_int_msb),
+	attrify(c113_rx_thermal_update_int_lsb),
+	attrify(c113_rx_thermal_update_int_msb),
+	attrify(c113_tx_negative_thresh),
+	attrify(c113_rx_negative_thresh),
+	NULL,
+};
+
 static struct attribute *attrs_reg_116[] = {
 	attrify(c116_im_thresh),
 	attrify(c116_debounce),
@@ -2424,6 +2487,7 @@ static struct attribute_group attrs_ctrl_regs[] = {
 	GROUP(attrs_reg_95),
 	GROUP(attrs_reg_99),
 	GROUP(attrs_reg_107),
+	GROUP(attrs_reg_113),
 	GROUP(attrs_reg_116),
 	GROUP(attrs_reg_137),
 	GROUP(attrs_f55_c0),
@@ -2559,6 +2623,8 @@ static bool is_report_type_valid(enum f54_report_types report_type)
 	case F54_TREX_OPENS:
 	case F54_TREX_TO_GND:
 	case F54_TREX_SHORTS:
+	case F54_HYB_ABS_RX_TX_DELTA:
+	case F54_HYB_ABS_RX_TX_RAW:
 		return true;
 		break;
 	default:
@@ -2651,6 +2717,10 @@ static void set_report_size(void)
 	case F54_TREX_TO_GND:
 	case F54_TREX_SHORTS:
 		f54->report_size = TREX_DATA_SIZE;
+		break;
+	case F54_HYB_ABS_RX_TX_DELTA:
+	case F54_HYB_ABS_RX_TX_RAW:
+		f54->report_size = 4 * (rx + tx);
 		break;
 	default:
 		f54->report_size = 0;
@@ -3452,6 +3522,7 @@ simple_show_func_unsigned(query, has_noise_state)
 simple_show_func_unsigned(query, has_energy_ratio_relaxation)
 simple_show_func_unsigned(query12, number_of_sensing_frequencies)
 simple_show_func_unsigned(query16, has_data17)
+simple_show_func_unsigned(query27, has_ctrl113)
 simple_show_func_unsigned(query17, q17_num_of_sense_freqs)
 show_store_func_unsigned(data, reg_4, d4_inhibit_freq_shift)
 show_store_func_unsigned(data, reg_4, d4_baseline_sel)
@@ -3575,6 +3646,21 @@ show_store_func_unsigned(control, reg_107, c107_abs_stretch_dur)
 show_store_func_unsigned(control, reg_107, c107_abs_adc_clock_div)
 show_store_func_unsigned(control, reg_107, c107_abs_sub_burtst_size)
 show_store_func_unsigned(control, reg_107, c107_abs_trigger_delay)
+
+show_store_func_unsigned(control, reg_113, c113_en_hybrid_on_tx)
+show_store_func_unsigned(control, reg_113, c113_en_hybrid_on_rx)
+show_store_func_unsigned(control, reg_113, c113_tx_consistency_chk)
+show_store_func_unsigned(control, reg_113, c113_rx_consistency_chk)
+show_store_func_unsigned(control, reg_113, c113_en_gradient_baseline)
+show_store_func_unsigned(control, reg_113, c113_consistency_thresh)
+show_store_func_unsigned(control, reg_113, c113_tx_obj_thresh)
+show_store_func_unsigned(control, reg_113, c113_rx_obj_thresh)
+show_store_func_unsigned(control, reg_113, c113_tx_thermal_update_int_lsb)
+show_store_func_unsigned(control, reg_113, c113_tx_thermal_update_int_msb)
+show_store_func_unsigned(control, reg_113, c113_rx_thermal_update_int_lsb)
+show_store_func_unsigned(control, reg_113, c113_rx_thermal_update_int_msb)
+show_store_func_unsigned(control, reg_113, c113_tx_negative_thresh)
+show_store_func_unsigned(control, reg_113, c113_rx_negative_thresh)
 
 show_store_func_unsigned(control, reg_116, c116_im_thresh)
 show_store_func_unsigned(control, reg_116, c116_debounce)
@@ -4419,7 +4505,9 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(110, 1, query27->has_ctrl110);
 	CTRL_REG_PRESENCE(111, 1, query27->has_ctrl111);
 	CTRL_REG_PRESENCE(112, 1, query27->has_ctrl112);
-	CTRL_REG_PRESENCE(113, 1, query27->has_ctrl113);
+
+	CTRL_REG_ADD(113, 1, query27->has_ctrl113);
+
 	CTRL_REG_PRESENCE(114, 1, query27->has_ctrl114);
 	CTRL_REG_PRESENCE(115, 1, query29->has_ctrl115);
 
