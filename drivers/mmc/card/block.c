@@ -3286,6 +3286,9 @@ void mmc_blk_cmdq_complete_rq(struct request *rq)
 	struct mmc_queue *mq = (struct mmc_queue *)rq->q->queuedata;
 	int err = 0;
 	bool is_dcmd = false;
+	unsigned long flags;
+
+	local_irq_save(flags);
 
 	if (mrq->cmd && mrq->cmd->error)
 		err = mrq->cmd->error;
@@ -3334,6 +3337,8 @@ void mmc_blk_cmdq_complete_rq(struct request *rq)
 	blk_end_request(rq, err, cmdq_req->data.bytes_xfered);
 
 out:
+	local_irq_restore(flags);
+
 	if (host->clk_scaling.enable) {
 		spin_lock_bh(&host->clk_scaling.lock);
 		mmc_update_clk_scaling(host, is_dcmd);
