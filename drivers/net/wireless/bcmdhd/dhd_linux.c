@@ -8858,7 +8858,7 @@ exit:
 #endif /* defined(KEEP_ALIVE) */
 
 #if defined(PKT_FILTER_SUPPORT) && defined(APF)
-static void _dhd_apf_lock_local(dhd_info_t *dhd)
+static void __dhd_apf_lock_local(dhd_info_t *dhd)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
 	if (dhd) {
@@ -8867,7 +8867,7 @@ static void _dhd_apf_lock_local(dhd_info_t *dhd)
 #endif
 }
 
-static void _dhd_apf_unlock_local(dhd_info_t *dhd)
+static void __dhd_apf_unlock_local(dhd_info_t *dhd)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
 	if (dhd) {
@@ -9013,13 +9013,13 @@ __dhd_apf_delete_filter(struct net_device *ndev, uint32 filter_id)
 void dhd_apf_lock(struct net_device *dev)
 {
 	dhd_info_t *dhd = DHD_DEV_INFO(dev);
-	_dhd_apf_lock_local(dhd);
+	__dhd_apf_lock_local(dhd);
 }
 
 void dhd_apf_unlock(struct net_device *dev)
 {
 	dhd_info_t *dhd = DHD_DEV_INFO(dev);
-	_dhd_apf_unlock_local(dhd);
+	__dhd_apf_unlock_local(dhd);
 }
 
 int
@@ -9101,12 +9101,20 @@ dhd_dev_apf_add_filter(struct net_device *ndev, u8* program,
 		if (unlikely(ret)) {
 			goto exit;
 		}
+
 		dhdp->apf_set = FALSE;
 	}
 
 	ret = __dhd_apf_add_filter(ndev, PKT_FILTER_APF_ID, program, program_len);
-	if (!ret) {
-		dhdp->apf_set = TRUE;
+	if (ret) {
+		goto exit;
+	}
+	dhdp->apf_set = TRUE;
+
+	if (dhdp->in_suspend && dhdp->apf_set) {
+		/* Driver is still in (early) suspend state, enable APF filter back */
+		ret = __dhd_apf_config_filter(ndev, PKT_FILTER_APF_ID,
+			PKT_FILTER_MODE_FORWARD_ON_MATCH, TRUE);
 	}
 
 exit:
