@@ -19,7 +19,11 @@
 #include <linux/string.h>
 #include <linux/sysfs.h>
 #include <sound/soc.h>
+#ifndef CONFIG_SND_SOC_MARLEY
 #include "arizona.h"
+#else
+#include "arizona_marley.h"
+#endif
 
 #define MAX_DSP_TO_CHECK 4
 #define MAX_NUM_PANIC_CODE 4
