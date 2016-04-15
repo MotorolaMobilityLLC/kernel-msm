@@ -114,6 +114,8 @@
 		qcom,mdss-dsi-off-command = [
 			/* display_off */
 			05 01 00 00 01 00 02 28 00
+			/* set HBM at OFF */
+			15 01 00 00 00 00 02 53 20
 			/* enter sleep mode */
 			05 01 00 00 78 00 02 10 00];
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
@@ -276,6 +278,8 @@
 		qcom,mdss-dsi-off-command = [
 			/* display_off */
 			05 01 00 00 01 00 02 28 00
+			/* set HBM at OFF */
+			15 01 00 00 00 00 02 53 20
 			/* enter sleep mode */
 			05 01 00 00 78 00 02 10 00];
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
