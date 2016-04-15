@@ -536,6 +536,7 @@
 			status = "ok";
 			reg = <0>;
 			spi-max-frequency = <8000000>;
+			stml0xx_fw_version = "stml05x";
 			gpios = <&msm_gpio 9 0>,       /* IRQ */
 				<&msm_gpio 87 0>,      /* RESET */
 				<&msm_gpio 8 0>,       /* BSLEN */
