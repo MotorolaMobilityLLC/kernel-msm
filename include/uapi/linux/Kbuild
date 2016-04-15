@@ -273,6 +273,7 @@ header-y += mmi_sys_temp.h
 header-y += mmtimer.h
 header-y += motosh.h
 header-y += motosh_vmm.h
+header-y += motosh_vmm_defines.h
 header-y += mpls.h
 header-y += mqueue.h
 header-y += mroute.h
