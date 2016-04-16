@@ -1511,7 +1511,13 @@ struct device_attribute *attr, char *buf)
 	return snprintf(buf, 3, "%d\n", data->w_mode);
 }
 
-/* for debug */
+/*
+ * to set sar working mode for rear proximity sensor
+ * parameter value 0: to turn sar mode off
+ * parameter value 1: to turn sar mode on
+ * parameter value 2: to reply flush call from user space by
+ *                    using current EV_ABS api
+ */
 static ssize_t stmvl53l0_store_enable_sar(struct device *dev,
 struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -1520,6 +1526,17 @@ struct device_attribute *attr, const char *buf, size_t count)
 
 	if (kstrtoul(buf, 10, &on))
 		return count;
+
+	if (on == 2) {
+		/* send flush reply */
+		int dt_flush = 1;
+
+		input_report_abs(data->input_dev_ps, ABS_MISC, dt_flush);
+		input_report_abs(data->input_dev_ps, ABS_MISC, ++dt_flush);
+		input_sync(data->input_dev_ps);
+		return count;
+	}
+
 	if ((on != 0) && (on != 1)) {
 		vl53l0_errmsg("%d,set debug=%ld\n", __LINE__, on);
 		return count;
@@ -2540,6 +2557,9 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	/* dmax */
 	input_set_abs_params(
 		data->input_dev_ps, ABS_HAT3Y, 0, 0xffffffff, 0, 0);
+	/* misc */
+	input_set_abs_params(
+		data->input_dev_ps, ABS_MISC, 0, 0xff, 0, 0);
 	data->input_dev_ps->name = "Rear proximity sensor";
 
 	rc = input_register_device(data->input_dev_ps);
