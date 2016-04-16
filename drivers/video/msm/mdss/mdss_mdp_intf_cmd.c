@@ -545,14 +545,11 @@ static int mdss_mdp_cmd_add_vsync_handler(struct mdss_mdp_ctl *ctl,
 	struct mdss_mdp_cmd_ctx *ctx, *sctx = NULL;
 	unsigned long flags;
 	bool enable_rdptr = false;
-	int ret = 0;
 
-	mutex_unlock(&ctl->offlock);
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->intf_ctx[MASTER_CTX];
 	if (!ctx) {
 		pr_err("%s: invalid ctx\n", __func__);
-		ret = -ENODEV;
-		goto done;
+		return -ENODEV;
 	}
 
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
@@ -587,10 +584,7 @@ static int mdss_mdp_cmd_add_vsync_handler(struct mdss_mdp_ctl *ctl,
 			mutex_unlock(&cmd_clk_mtx);
 	}
 
-done:
-	mutex_unlock(&ctl->offlock);
-
-	return ret;
+	return 0;
 }
 
 static int mdss_mdp_cmd_remove_vsync_handler(struct mdss_mdp_ctl *ctl,
