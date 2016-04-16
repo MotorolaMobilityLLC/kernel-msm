@@ -674,6 +674,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
+	/* Ensure low persistence is disabled */
+	mdss_dsi_panel_apply_display_setting(pdata, 0);
+
 	pinfo = &pdata->panel_info;
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
