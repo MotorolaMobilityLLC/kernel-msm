@@ -254,8 +254,20 @@ static void __init of_blsig(void)
 
 	of_node_put(n);
 }
+static void __init of_systemrev(void)
+{
+	struct device_node *n = of_find_node_by_path("/chosen");
+	if (n == NULL)
+		return;
+
+	of_property_read_u32(n, "linux,hwrev", &system_rev);
+	of_property_read_u32(n, "linux,seriallow", &system_serial_low);
+	of_property_read_u32(n, "linux,serialhigh", &system_serial_high);
+	of_node_put(n);
+}
 #else
 static inline void of_blsig(void) { }
+static inline void of_systemrev(void) { }
 #endif
 
 #define EMIT_BL_BUILD_SIG() \
@@ -369,6 +381,7 @@ static const struct file_operations bootinfo_proc_fops = {
 int __init bootinfo_init_module(void)
 {
 	of_blsig();
+	of_systemrev();
 	proc_bootinfo = &proc_root;
 	if (!proc_create_data("bootinfo", 0, NULL, &bootinfo_proc_fops, NULL))
 		printk(KERN_ERR "Failed to create bootinfo entry");
