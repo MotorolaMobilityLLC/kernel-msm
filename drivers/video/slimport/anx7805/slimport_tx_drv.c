@@ -17,9 +17,9 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
-#include <linux/slimport.h>
 #include "slimport_tx_drv.h"
 #include "slimport_tx_reg.h"
+#include "slimport.h"
 
 BYTE bEDID_extblock[128];
 BYTE bEDID_firstblock[128];
@@ -1318,7 +1318,7 @@ void SP_TX_LVTTL_Bit_Mapping(struct VideoFormat* pInputFormat)//the default mode
 	}
 #endif
 
-	msleep(10);
+	usleep_range(10000, 10001);
 }
 
 BYTE  SP_TX_Config_Video_MIPI (void)
@@ -1426,7 +1426,7 @@ BYTE  SP_TX_Config_Video_MIPI (void)
 		sp_read_reg(MIPI_RX_PORT1_ADDR, MIPI_MISC_CTRL, &c);
 		c&=0xF7;
 		sp_write_reg(MIPI_RX_PORT1_ADDR, MIPI_MISC_CTRL, c);
-		msleep(1);
+		usleep_range(1000, 1001);
 		c|=0x08;
 		sp_write_reg(MIPI_RX_PORT1_ADDR, MIPI_MISC_CTRL, c);
 
@@ -1434,7 +1434,7 @@ BYTE  SP_TX_Config_Video_MIPI (void)
 		sp_read_reg(MIPI_RX_PORT1_ADDR, MIPI_TIMING_REG2, &c);
 		c|=0x01;
 		sp_write_reg(MIPI_RX_PORT1_ADDR, MIPI_TIMING_REG2, c);
-		msleep(1);
+		usleep_range(1000, 1001);
 		c&=0xfe;
 		sp_write_reg(MIPI_RX_PORT1_ADDR, MIPI_TIMING_REG2, c);
 
@@ -1855,7 +1855,7 @@ void SP_TX_AUX_WR (BYTE offset)
 	#endif
 	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_AUX_CTRL_REG2, &c);
 	while(c&0x01) {
-		msleep(10);
+		usleep_range(10000, 10001);
 		cnt ++;
 		//pr_info("cntwr = %.2x\n",(unsigned int)cnt);
 		if(cnt == 10) {
@@ -1884,7 +1884,7 @@ void SP_TX_AUX_RD (BYTE len_cmd)
 	#endif
 	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_AUX_CTRL_REG2, &c);
 	while(c & 0x01) {
-		msleep(10);
+		usleep_range(10000, 10001);
 		cnt ++;
 		//pr_info("cntrd = %.2x\n",(unsigned int)cnt);
 		if(cnt == 10) {
@@ -2069,7 +2069,7 @@ void SP_TX_Config_Audio_SPDIF(void)
 	sp_read_reg (SP_TX_PORT2_ADDR, SPDIF_AUDIO_CTRL0, &c);
 	sp_write_reg(SP_TX_PORT2_ADDR, SPDIF_AUDIO_CTRL0, (c | SPDIF_AUDIO_CTRL0_SPDIF_IN) ); // enable SPDIF input
 
-	msleep(2);
+	usleep_range(2000, 2001);
 
 	sp_read_reg(SP_TX_PORT2_ADDR, SPDIF_AUDIO_STATUS0, &c);
 
@@ -2380,7 +2380,7 @@ void SP_TX_RST_AUX(void)
 
 	sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_RST_CTRL2_REG, &c1);
 	sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_RST_CTRL2_REG, c1|SP_TX_AUX_RST);
-	msleep(1);
+	usleep_range(1000, 1001);
 	sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_RST_CTRL2_REG, c1& (~SP_TX_AUX_RST));
 
 	//set original polling enable
@@ -2416,13 +2416,13 @@ BYTE SP_TX_AUX_DPCDRead_Bytes(BYTE addrh, BYTE addrm, BYTE addrl,BYTE cCount,BYT
 	sp_write_reg(SP_TX_PORT0_ADDR, SP_TX_AUX_CTRL_REG2, c | 0x01);
 
 
-	msleep(2);
+	usleep_range(2000, 2001);
 
 	bOK = SP_TX_Wait_AUX_Finished();
 
 	if(!bOK) {
 #ifdef AUX_DBG
-		pr_info("aux read failed");
+		pr_err("%s: aux read failed", __func__);
 #endif
 		if(SP_TX_HDCP_AUTHENTICATION != get_system_state())
 		{
@@ -2494,7 +2494,7 @@ BYTE SP_TX_AUX_DPCDWrite_Bytes(BYTE addrh, BYTE addrm, BYTE addrl,BYTE cCount,BY
 		return AUX_OK;
 	else {
 #ifdef AUX_DBG
-		pr_info("aux write failed");
+		pr_err("%s: aux write failed", __func__);
 #endif
 		//SP_TX_RST_AUX();
 		return AUX_ERR;
@@ -2518,12 +2518,13 @@ BYTE SP_TX_Wait_AUX_Finished(void)
 	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_AUX_CTRL_REG2, &c);
 	while(c & 0x01) {
 		cCnt++;
-		 delay_ms(1);
+		usleep_range(1000, 1001);
 		sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_AUX_CTRL_REG2, &c);
 
 		if(cCnt>100) {
 #ifdef AUX_DBG
-			pr_info("AUX Operaton does not finished, and tome out.");
+			pr_err("%s: AUX Operaton does not finished, and time out.",
+							__func__);
 #endif
 			return 0;
 		}
@@ -2533,7 +2534,8 @@ BYTE SP_TX_Wait_AUX_Finished(void)
     sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_AUX_STATUS, &c);
 	if(c&0x0F) {
 #ifdef AUX_DBG
-		pr_info("aux operation failed %.2x\n",(unsigned int)c);
+		pr_err("%s: aux operation failed %.2x\n",
+						__func__, (unsigned int)c);
 #endif
 		return 0;
 	} else
@@ -2775,7 +2777,7 @@ BYTE SP_TX_AUX_EDIDRead_Byte(BYTE offset)
 			#endif
 			sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_AUX_CTRL_REG2, &c);
 			while(c & 0x01) {
-				msleep(2);
+				usleep_range(2000, 2001);
 				cnt ++;
 				if(cnt == 10) {
 					pr_info("read break");
@@ -2795,7 +2797,7 @@ BYTE SP_TX_AUX_EDIDRead_Byte(BYTE offset)
 
 			//SP_TX_AUX_WR(offset);
 			SP_TX_RST_AUX();
-			msleep(10);
+			usleep_range(10000, 10001);
 
 			c = 0x05 | ((0x0f - data_cnt) << 4);//Read MOT = 1
 			SP_TX_AUX_RD(c);
@@ -3027,7 +3029,7 @@ void SP_TX_Parse_Segments_EDID(BYTE segment, BYTE offset)
 	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_AUX_CTRL_REG2, &c);
 
 	while(c&0x01) {
-		msleep(10);
+		usleep_range(10000, 10001);
 		cnt ++;
 		//pr_info("cntwr = %.2x\n",(unsigned int)cnt);
 		if(cnt == 10) {
@@ -3054,7 +3056,7 @@ void SP_TX_Parse_Segments_EDID(BYTE segment, BYTE offset)
 	for(i=0; i<16; i++) {
 		sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_BUF_DATA_COUNT_REG, &c);
 		while((c & 0x1f) == 0) {
-			msleep(2);
+			usleep_range(2000, 2001);
 			cnt ++;
 			sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_BUF_DATA_COUNT_REG, &c);
 			if(cnt == 10) {
@@ -3460,7 +3462,7 @@ unsigned int sp_tx_link_err_check(void)
 	unsigned int errl = 0, errh = 0;
 	BYTE bytebuf[2];
 	SP_TX_AUX_DPCDRead_Bytes(0x00, 0x02, 0x10, 2, bytebuf);
-	msleep(5);
+	usleep_range(5000, 5001);
 	SP_TX_AUX_DPCDRead_Bytes(0x00, 0x02, 0x10, 2, bytebuf);
 	errh = bytebuf[1];
 
@@ -3527,7 +3529,7 @@ BYTE sp_tx_lt_pre_config(void)
 #if(REDUCE_REPEAT_PRINT_INFO)
 			loop_print_msg(0x05);
 #else
-			pr_info("****Over bandwidth****");
+			pr_err("%s: ****Over bandwidth****", __func__);
 #endif
 			return 1;
 		} else
@@ -3554,11 +3556,11 @@ BYTE sp_tx_lt_pre_config(void)
 	sp_write_reg(SP_TX_PORT0_ADDR, SP_TX_LANE_COUNT_SET_REG, sp_tx_lane_count);
 
 	sp_write_reg_mask(SP_TX_PORT0_ADDR, SP_TX_ANALOG_PD_REG, 0xFF, CH0_PD);
-	msleep(2);
+	usleep_range(2000, 2001);
 	sp_write_reg_mask(SP_TX_PORT0_ADDR, SP_TX_ANALOG_PD_REG, ~CH0_PD, 0x00);
 
 	sp_write_reg_mask(SP_TX_PORT0_ADDR, SP_TX_PLL_CTRL_REG, 0xFF, PLL_RST);
-	msleep(2);
+	usleep_range(2000, 2001);
 	sp_write_reg_mask(SP_TX_PORT0_ADDR, SP_TX_PLL_CTRL_REG, ~PLL_RST, 0x00);
 	return 0;
 }
@@ -3582,7 +3584,7 @@ BYTE SP_TX_HW_Link_Training (void)
 #if(REDUCE_REPEAT_PRINT_INFO)
 			loop_print_msg(0x07);
 #else
-			pr_info("PLL not lock!");
+			pr_err("%s: PLL not lock!", __func__);
 #endif
 			break;
 		}
@@ -3610,7 +3612,7 @@ BYTE SP_TX_HW_Link_Training (void)
 #if(REDUCE_REPEAT_PRINT_INFO)
 		loop_print_msg(0x08);
 #else
-		pr_info("LINK_TRAINING_ERROR! \r\n");
+		pr_err("%s: LINK_TRAINING_ERROR! \r\n", __func__);
 #endif
 		sp_tx_link_training_state = LINK_TRAINING_INIT;
 		break;
@@ -3981,28 +3983,28 @@ void SP_CTRL_Set_System_State(SP_TX_System_State ss)
 	switch (ss) {
 	case SP_TX_INITIAL:
 		sp_tx_system_state = SP_TX_INITIAL;
-		pr_info("SP_TX_INITIAL");
+		pr_info("SP_TX_INITIAL\n");
 		break;
 	case SP_TX_WAIT_SLIMPORT_PLUGIN:
 		sp_tx_system_state = SP_TX_WAIT_SLIMPORT_PLUGIN;
-		pr_info("SP_TX_WAIT_SLIMPORT_PLUGIN");
+		pr_info("SP_TX_WAIT_SLIMPORT_PLUGIN\n");
 		break;
 	case SP_TX_PARSE_EDID:
 		sp_tx_system_state = SP_TX_PARSE_EDID;
-		pr_info("SP_TX_READ_PARSE_EDID");
+		pr_info("SP_TX_READ_PARSE_EDID\n");
 		break;
 	case SP_TX_CONFIG_VIDEO_INPUT:
 		sp_tx_system_state = SP_TX_CONFIG_VIDEO_INPUT;
-		pr_info("SP_TX_CONFIG_VIDEO_INPUT");
+		pr_info("SP_TX_CONFIG_VIDEO_INPUT\n");
 		break;
 	case SP_TX_CONFIG_AUDIO:
 		sp_tx_system_state = SP_TX_CONFIG_AUDIO;
-		pr_info("SP_TX_CONFIG_AUDIO");
+		pr_info("SP_TX_CONFIG_AUDIO\n");
 		break;
 	case SP_TX_LINK_TRAINING:
 		sp_tx_system_state = SP_TX_LINK_TRAINING;
 		sp_tx_link_training_state = LINK_TRAINING_INIT;
-		pr_info("SP_TX_LINK_TRAINING");
+		pr_info("SP_TX_LINK_TRAINING\n");
 		break;
 	case SP_TX_CONFIG_VIDEO_OUTPUT:
 		sp_tx_system_state = SP_TX_CONFIG_VIDEO_OUTPUT;
@@ -4010,17 +4012,17 @@ void SP_CTRL_Set_System_State(SP_TX_System_State ss)
 	case SP_TX_HDCP_AUTHENTICATION:
 		hdcp_process_state = HDCP_PROCESS_INIT;
 		sp_tx_system_state = SP_TX_HDCP_AUTHENTICATION;
-		pr_info("SP_TX_HDCP_AUTHENTICATION");
+		pr_info("SP_TX_HDCP_AUTHENTICATION\n");
 		break;
 	case SP_TX_PLAY_BACK:
 		sp_tx_system_state = SP_TX_PLAY_BACK;
-		pr_info("SP_TX_PLAY_BACK");
+		pr_info("SP_TX_PLAY_BACK\n");
 #if(UPDATE_ANX7730_SW)
 		sp_write_reg(SP_TX_PORT2_ADDR, SPDIF_AUDIO_CTRL0 , 0x85);
 #endif
 		break;
 	default:
-		pr_info("state error!\n");
+		pr_err("%s: state error!\n", __func__);
 		break;
 	}
 
@@ -4081,7 +4083,7 @@ static BYTE sp_tx_get_cable_type(void)
 		if(AUX_ERR == SP_TX_AUX_DPCDRead_Bytes(0x00, 0x00, 0x05, 1, &ds_port_preset)) {
 			/*time delay for VGA dongle mcu startup*/
 			msleep(50);
-			pr_info(" AUX access error");
+			pr_err("%s: AUX access error", __func__);
 			SP_TX_RST_AUX();
 			if(i==4)
 			{
@@ -4213,12 +4215,13 @@ BYTE sp_tx_check_sink_connection(void)
 void SP_CTRL_Slimport_Plug_Process(void)
 {
 	if(is_cable_detected() == 1) {
-		//pr_info("detected cable: %.2x \n",(unsigned int)is_cable_detected());
+		/*pr_info("detected cable: %.2x\n",
+					(unsigned int)is_cable_detected());*/
 		if(sp_tx_pd_mode) {
 			system_power_ctrl(1);
-			msleep(5);
+			usleep_range(5000, 5001);
 			if((sp_tx_check_sink_connection()==0)||(sp_tx_get_cable_type() == 0)) {
-				pr_info("AUX ERR");
+				pr_err("%s: AUX ERR", __func__);
 				system_power_ctrl(0);
 				return;
 			}
@@ -4272,7 +4275,7 @@ void SP_CTRL_Video_Changed_Int_Handler (BYTE changed_source)
 			//SP_TX_Lanes_PWR_Ctrl(CH0_BLOCK, 0);
 			//SP_TX_Lanes_PWR_Ctrl(CH1_BLOCK, 1);
 			SP_TX_Lanes_PWR_Ctrl(CH0_BLOCK, 1);
-			delay_ms(5);
+			usleep_range(5000, 5001);
 			SP_TX_Lanes_PWR_Ctrl(CH0_BLOCK, 0);
 			SP_CTRL_Set_System_State(SP_TX_CONFIG_VIDEO_INPUT);
 
@@ -4295,7 +4298,7 @@ void SP_CTRL_PLL_Changed_Int_Handler(void)
 	// pr_info("[INT]: SP_CTRL_PLL_Changed_Int_Handler");
 	if (sp_tx_system_state > SP_TX_PARSE_EDID) {
 		if(!SP_TX_Get_PLL_Lock_Status()) {
-			pr_info("PLL:_______________PLL not lock!");
+			pr_err("%s: PLL:______________PLL not lock!", __func__);
 			//SP_CTRL_Clean_HDCP();
 			SP_CTRL_Set_System_State(SP_TX_LINK_TRAINING);
 		}
@@ -4334,7 +4337,7 @@ void  SP_CTRL_Auth_Done_Int_Handler(void)
 			auth_fail_counter = 0;
 		}
 	} else {
-		pr_info("Authentication failed in AUTH_done\n");
+		pr_err("%s: Authentication failed in AUTH_done\n", __func__);
 		auth_fail_counter++;
 		if(auth_fail_counter >= SP_TX_HDCP_FAIL_THRESHOLD) {
 			auth_fail_counter = 0;
@@ -4382,7 +4385,8 @@ void SP_CTRL_LT_DONE_Int_Handler(void)
 	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_LINK_TRAINING_CTRL_REG, &c);
 	if(c & 0x70) {
 		c = (c & 0x70) >> 4;
-		pr_info("HW LT failed in interrupt, ERR code = %.2x\n",(unsigned int)c);
+		pr_err("%s: HW LT failed in interrupt, ERR code = %.2x\n",
+						__func__, (unsigned int)c);
 		SP_CTRL_Set_System_State(SP_TX_LINK_TRAINING);
 		msleep(50);
 
@@ -4406,7 +4410,13 @@ void SP_CTRL_MIPI_Htotal_Chg_Int_Handler(void)
 
 void SP_CTRL_MIPI_Packet_Len_Chg_Int_Handler(void)
 {
-#if 1
+/*
+ * TODO.. need to further investigate why this message keep printing. After
+ * talking with Analogix and they said these message prints are because of
+ * MIPI DSI issue, but I don't see any thing wrong on the image rendering on the
+ * display. Comment this out for now, because don't want to spam the kernel log
+ */
+#if 0
 	if(SP_TX_Video_Input.Interface   == MIPI_DSI) {
 		pr_info("mipi packet length changed\n");
 
@@ -4415,9 +4425,10 @@ void SP_CTRL_MIPI_Packet_Len_Chg_Int_Handler(void)
 #endif
 }
 
+/* TODO..same as above */
 void SP_CTRL_MIPI_Lane_clk_Chg_Int_Handler(void)
 {
-#if 1
+#if 0
 	if(SP_TX_Video_Input.Interface   == MIPI_DSI)
 		pr_info("mipi lane clk changed\n");
 #endif
@@ -4450,9 +4461,9 @@ void SP_CTRL_LINK_CHANGE_Int_Handler(void)
 
 	if(((al & 0x01) == 0) || (sl_cr == 0) ) { //align not done, CR not done
 		if((al & 0x01)==0)
-			pr_info("Lane align not done\n");
+			pr_info("%s: Lane align not done\n", __func__);
 		if(sl_cr == 0)
-			pr_info("Lane clock recovery not done\n");
+			pr_info("%s: Lane clock recovery not done\n", __func__);
 
 		//re-link training only happen when link traing have done
 		if((sp_tx_system_state > SP_TX_LINK_TRAINING )
@@ -4469,16 +4480,14 @@ void SP_CTRL_LINK_CHANGE_Int_Handler(void)
 // c-wire polling error interrupt handle process
 void SP_CTRL_POLLING_ERR_Int_Handler(void)
 {
-	BYTE c;
-	int i;
-
 	//pr_info("[INT]: SP_CTRL_POLLING_ERR_Int_Handler\n");
 	if((sp_tx_system_state < SP_TX_WAIT_SLIMPORT_PLUGIN)||sp_tx_pd_mode)
 		return;
 
 	if(sp_tx_pd_mode ==0) {
 		//pr_info("read dpcd 0x00000=%.2x\n",(unsigned int)c);
-		pr_info("Cwire polling is corrupted,power down ANX7805.\n");
+		pr_warn("%s: Cwire polling is corrupted,power down ANX7805.\n",
+							__func__);
 		system_power_ctrl(0);
 	}
 }
@@ -4711,7 +4720,8 @@ void SP_CTRL_IRQ_ISP(void)
 				if(sp_tx_system_state < SP_TX_HDCP_AUTHENTICATION)
 					break;
 
-				pr_info("Rx specific  IRQ: Link is down!\n");
+				pr_warn("%s: Rx specific  IRQ: Link is down!\n",
+								__func__);
 				SP_TX_AUX_DPCDRead_Bytes(0x00,0x02,DPCD_LANE_ALIGN_STATUS_UPDATED,1,ByteBuf);
 				al = ByteBuf[0];
 
@@ -4725,9 +4735,11 @@ void SP_CTRL_IRQ_ISP(void)
 
 				if(((al & 0x01) == 0) || (sl_cr == 0) ) { //align not done, CR not done
 					if((al & 0x01)==0)
-						pr_info("Lane align not done\n");
+						pr_info("%s: Lane align not done\n",
+								__func__);
 					if(sl_cr == 0)
-						pr_info("Lane clock recovery not done\n");
+						pr_info("%s: Lane clock recovery not done\n",
+								__func__);
 
 					//re-link training only happen when link traing have done
 					if((sp_tx_system_state > SP_TX_LINK_TRAINING )
@@ -4749,7 +4761,8 @@ void SP_CTRL_IRQ_ISP(void)
 				}
 				break;
 			case 0x10:
-				pr_info("Downstream HDCP is fail! \n");
+				pr_err("%s: Downstream HDCP is fail!\n",
+								__func__);
 				break;
 			case 0x20:
 				pr_info(" Downstream HDCP link integrity check fail!");
@@ -4809,9 +4822,11 @@ void SP_CTRL_IRQ_ISP(void)
 		&&sp_tx_link_training_state > LINK_TRAINING_PRE_CONFIG) {
 			if(((al & 0x01) == 0) || (sl_cr == 0) ) { //align not done, CR not done
 				if((al & 0x01)==0)
-					pr_info("Lane align not done\n");
+					pr_info("%s: Lane align not done\n",
+								__func__);
 				if(sl_cr == 0)
-					pr_info("Lane clock recovery not done\n");
+					pr_info("%s: Lane clock recovery not done\n",
+								__func__);
 
 				SP_CTRL_Set_System_State(SP_TX_LINK_TRAINING);
 				pr_info("IRQ:____________re-LT request!");
@@ -4848,9 +4863,11 @@ void SP_CTRL_IRQ_ISP(void)
 		   &&sp_tx_link_training_state > LINK_TRAINING_PRE_CONFIG) {
 		   if(((al & 0x01) == 0) || (sl_cr == 0) ) { //align not done, CR not done
 		   		if((al & 0x01)==0)
-					pr_info("Lane align not done\n");
+					pr_info("%s: Lane align not done\n",
+								__func__);
 				if(sl_cr == 0)
-					pr_info("Lane clock recovery not done\n");
+					pr_info("%s: Lane clock recovery not done\n",
+								__func__);
 
 				//re-link training only happen when link traing have done
 			SP_CTRL_Set_System_State(SP_TX_LINK_TRAINING);
@@ -4993,7 +5010,7 @@ void SP_CTRL_EDID_Read(void)//add adress only cmd before every I2C over AUX acce
 		for(i = 0; i < edid_block; i ++) {
 			if(!bEDIDBreak)
 				SP_TX_AUX_EDIDRead_Byte(i * 16);
-			msleep(10);
+			usleep_range(10000, 10001);
 		}
 
 		//clear the address only bit
@@ -5293,7 +5310,7 @@ void sp_ctrl_hpd_int_handler(BYTE hpd_source)
 		  }
                 break;
             case 2:
-                delay_ms(2);
+		usleep_range(2000, 2001);
 
                	SP_TX_Get_Int_status(SP_INT_STATUS,&c);
                 //debug_printf("2c = %x\n",(unsigned int)c);
@@ -5345,7 +5362,7 @@ void SP_CTRL_Int_Process(void)
        		if (sp_tx_pd_mode)
        		{
        			system_power_ctrl(1);
-       			delay_ms(5);	
+			usleep_range(5000, 5001);
        		}	
 				 sp_ctrl_hpd_int_handler(1);
        	}
