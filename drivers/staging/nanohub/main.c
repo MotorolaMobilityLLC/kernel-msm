@@ -1460,7 +1460,7 @@ int nanohub_reset(struct nanohub_data *data)
 	gpio_set_value(pdata->nreset_gpio, 1);
 	usleep_range(650000, 700000);
 	enable_irq(data->irq1);
-	if (!data->irq2)
+	if (data->irq2)
 		enable_irq(data->irq2);
 	else
 		nanohub_unmask_interrupt(data, 2);
