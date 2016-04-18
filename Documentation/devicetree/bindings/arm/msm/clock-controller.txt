@@ -52,7 +52,7 @@ Required properties:
 			there is one expected base: "cc_base". Optional
 			reg-names are "apcs_base", "meas", "mmss_base",
 			"lpass_base", "apcs_c0_base", "apcs_c1_base",
-			"apcs_cci_base".
+			"apcs_cci_base", "fuse".
 
 Optional properties:
 - vdd_dig-supply:	The digital logic rail supply.
@@ -71,8 +71,8 @@ Optional properties:
 			frequency/voltage pairs that the device can operate at.
 			drivers can use the OPP library API to operate on the
 			list of OPPs registered.
-- qcom,gfxfreq-corner:  List of frequency/voltage pairs that the device can
-			operate at.
+- qcom,gfxfreq-corner-vX:  List of frequency/voltage pairs that the device can
+			operate at for different version (indicated by X).
 - <gpu>_handle:		Device node for which the OPP mappings would be added.
 
 - qcom,pll-disable-vote-threshold:	The TSENS temperature threshold in
