@@ -28,16 +28,15 @@
 #include <linux/regulator/consumer.h>
 #include <linux/err.h>
 #include <linux/of_gpio.h>
-#include <linux/slimport.h>
 #include <linux/async.h>
 #include <linux/of_platform.h>
 
 #include "slimport_tx_drv.h"
+#include "slimport.h"
 
 #include <video/msm_dba.h>
-#include "../msm_dba/msm_dba_internal.h"
+#include "../../msm/msm_dba/msm_dba_internal.h"
 
-#include <linux/slimport.h>
 struct anx7805_data {
 	struct i2c_client *client;
 	struct anx7805_platform_data *pdata;
@@ -50,6 +49,7 @@ struct anx7805_data {
 	int gpio_reset;
 	int gpio_int;
 	int gpio_cbl_det;
+	int gpio_dsi_sel;
 	const char *vdd10_name;
 	const char *vdd18_name;
 	const char *avdd33_name;
@@ -111,7 +111,7 @@ void anx7805_notify_clients(struct msm_dba_device_info *dev,
 	struct msm_dba_client_info *c;
 	struct list_head *pos = NULL;
 
-	pr_info("%s++\n", __func__);
+	pr_debug("%s++\n", __func__);
 
 	if (!dev) {
 		pr_err("%s: invalid input\n", __func__);
@@ -128,7 +128,7 @@ void anx7805_notify_clients(struct msm_dba_device_info *dev,
 			c->cb(c->cb_data, event);
 	}
 
-	pr_info("%s--\n", __func__);
+	pr_debug("%s--\n", __func__);
 }
 EXPORT_SYMBOL(anx7805_notify_clients);
 
@@ -143,7 +143,8 @@ static int anx7805_avdd_3p3_power(struct anx7805_data *chip, int on)
 	}
 
 	if (!chip->avdd_reg) {
-		chip->avdd_reg = regulator_get(NULL, chip->avdd33_name);
+		chip->avdd_reg = regulator_get(&chip->client->dev,
+							chip->avdd33_name);
 		if (IS_ERR(chip->avdd_reg)) {
 			ret = PTR_ERR(chip->avdd_reg);
 			pr_err("regulator_get %s failed. rc = %d\n",
@@ -188,7 +189,8 @@ static int anx7805_vdd_1p8_power(struct anx7805_data *chip, int on)
 	}
 
 	if (!chip->vdd18_reg) {
-		chip->vdd18_reg = regulator_get(NULL, chip->vdd18_name);
+		chip->vdd18_reg = regulator_get(&chip->client->dev,
+							chip->vdd18_name);
 		if (IS_ERR(chip->vdd18_reg)) {
 			ret = PTR_ERR(chip->vdd18_reg);
 			pr_err("regulator_get %s failed. ret = %d\n",
@@ -233,7 +235,8 @@ static int anx7805_vdd_1p0_power(struct anx7805_data *chip, int on)
 	}
 
 	if (!chip->vdd_reg) {
-		chip->vdd_reg = regulator_get(NULL, chip->vdd10_name);
+		chip->vdd_reg = regulator_get(&chip->client->dev,
+							chip->vdd10_name);
 		if (IS_ERR(chip->vdd_reg)) {
 			ret = PTR_ERR(chip->vdd_reg);
 			pr_err("regulator_get %s failed. ret = %d\n",
@@ -305,12 +308,14 @@ void sp_tx_hardware_poweron(void)
 	if (!the_chip)
 		return;
 
+	gpio_direction_output(the_chip->gpio_dsi_sel, 1);
+	usleep_range(1000, 1001);
 	gpio_direction_output(the_chip->gpio_reset, 0);
-	msleep(1);
+	usleep_range(1000, 1001);
 	gpio_direction_output(the_chip->gpio_p_dwn, 0);
-	msleep(2);
+	usleep_range(2000, 2001);
 	anx7805_vdd_1p0_power(the_chip, 1);
-	msleep(5);
+	usleep_range(5000, 5001);
 	gpio_direction_output(the_chip->gpio_reset, 1);
 
 	pr_info("anx7805 power on\n");
@@ -323,12 +328,14 @@ void sp_tx_hardware_powerdown(void)
 	if (!the_chip)
 		return;
 
+	gpio_direction_output(the_chip->gpio_dsi_sel, 0);
+	usleep_range(1000, 1001);
 	gpio_direction_output(the_chip->gpio_reset, 0);
-	msleep(1);
+	usleep_range(1000, 1001);
 	anx7805_vdd_1p0_power(the_chip, 0);
-	msleep(2);
+	usleep_range(2000, 2001);
 	gpio_direction_output(the_chip->gpio_p_dwn, 1);
-	msleep(1);
+	usleep_range(1000, 1001);
 
 	/* turn off hpd */
 	/*
@@ -441,7 +448,9 @@ static int anx7805_mipi_timing_setting(void *client, bool on,
 		mipi_video_timing_table[bMIPIFormatIndex].MIPI_VTOTAL, cfg->v_active, cfg->v_front_porch,
 		cfg->v_pulse_width, cfg->v_back_porch);
 
-	pr_info("pixel clock = %d, lane count = %d, \n", mipi_video_timing_table[bMIPIFormatIndex].MIPI_pixel_frequency, cfg->num_of_input_lanes);
+	pr_info("pixel clock = %lu, lane count = %d,\n",
+		mipi_video_timing_table[bMIPIFormatIndex].MIPI_pixel_frequency,
+		cfg->num_of_input_lanes);
 
 	return 0;
 }
@@ -454,7 +463,7 @@ bool slimport_is_connected(void)
 		return false;
 
 	if (gpio_get_value_cansleep(the_chip->gpio_cbl_det)) {
-		mdelay(10);
+		mdelay(50);
 		if (gpio_get_value_cansleep(the_chip->gpio_cbl_det)) {
 			pr_info("slimport cable is detected\n");
 			result = true;
@@ -468,6 +477,7 @@ EXPORT_SYMBOL(slimport_is_connected);
 
 static void anx7805_free_gpio(struct anx7805_data *anx7805)
 {
+	gpio_free(anx7805->gpio_dsi_sel);
 	gpio_free(anx7805->gpio_cbl_det);
 	gpio_free(anx7805->gpio_int);
 	gpio_free(anx7805->gpio_reset);
@@ -549,13 +559,24 @@ static int anx7805_init_gpio(struct anx7805_data *anx7805)
 		goto err2;
 	}
 
-	gpio_direction_input(anx7805->gpio_cbl_det);
+	ret = gpio_request_one(anx7805->gpio_dsi_sel,
+				GPIOF_IN, "anx7805_dsi_sel");
+	if (ret) {
+		pr_err("failed to request gpio %d\n", anx7805->gpio_dsi_sel);
+		goto err3;
+	}
 
+	gpio_direction_input(anx7805->gpio_cbl_det);
+	gpio_direction_input(anx7805->gpio_int);
+
+	gpio_direction_output(anx7805->gpio_dsi_sel, 0);
 	gpio_direction_output(anx7805->gpio_reset, 0);
 	gpio_direction_output(anx7805->gpio_p_dwn, 1);
 
 	goto out;
 
+err3:
+	gpio_free(anx7805->gpio_cbl_det);
 err2:
 	gpio_free(anx7805->gpio_int);
 err1:
@@ -585,7 +606,7 @@ static irqreturn_t anx7805_cbl_det_isr(int irq, void *data)
 	struct anx7805_data *anx7805 = data;
 	int status;
 
-	if (gpio_get_value(anx7805->gpio_cbl_det)) {
+	if (slimport_is_connected()) {
 		wake_lock(&anx7805->slimport_lock);
 		pr_info("detect cable insertion\n");
 		queue_delayed_work(anx7805->workqueue, &anx7805->work, 0);
@@ -690,6 +711,14 @@ static int anx7805_parse_dt(struct device_node *node,
 		goto out;
 	}
 
+	anx7805->gpio_dsi_sel =
+		of_get_named_gpio(node, "analogix,dsi-sw-sel", 0);
+	if (!gpio_is_valid(anx7805->gpio_dsi_sel)) {
+		pr_err("failed to get analogix,dsi-sw-sel.\n");
+		ret = anx7805->gpio_dsi_sel;
+		goto out;
+	}
+
 	ret = of_property_read_string(node, "analogix,vdd10-name",
 	                              &anx7805->vdd10_name);
 	if (ret) {
@@ -744,10 +773,10 @@ static int anx7805_get_raw_edid(void *client,
 
 	mutex_lock(&pdata->lock);
 
-	pr_info("%s: size=%d\n", __func__, size);
+	pr_debug("%s: size=%d\n", __func__, size);
 	size = min_t(u32, size, sizeof(bEDID_twoblock));
 
-	pr_info("%s: memcpy EDID block, size=%d\n", __func__, size);
+	pr_debug("%s: memcpy EDID block, size=%d\n", __func__, size);
 	memcpy(buf, bEDID_twoblock, size);
 
 	mutex_unlock(&pdata->lock);
@@ -837,6 +866,7 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 		anx7805->gpio_reset = pdata->gpio_reset;
 		anx7805->gpio_int = pdata->gpio_int;
 		anx7805->gpio_cbl_det = pdata->gpio_cbl_det;
+		anx7805->gpio_dsi_sel = pdata->gpio_dsi_sel;
 		anx7805->vdd10_name = pdata->vdd10_name;
 		anx7805->vdd18_name = pdata->vdd18_name;
 		anx7805->avdd33_name = pdata->avdd33_name;		
