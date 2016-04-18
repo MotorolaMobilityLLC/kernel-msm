@@ -299,8 +299,8 @@ u16 factory_dyn_intt_raw = 0;
 static bool enable_ps_flag;
 static bool enable_stowed_flag;
 static u8 ps_stowed_persist = EPL_PERIST_16;
-static u8 ps_stowed_cycle = EPL_CYCLE_64;
-static u8 ps_stowed_adc = EPL_PSALS_ADC_13;
+static u8 ps_stowed_cycle = EPL_CYCLE_1;
+static u8 ps_stowed_adc = EPL_PSALS_ADC_11;
 /******************************************************************************
  *  Sensor calss
  ******************************************************************************/
@@ -1178,12 +1178,24 @@ void epl_sensor_enable_ps(int enable)
 #endif
 		} else {
 			/* wake_unlock(&ps_lock); */
+			mutex_lock(&sensor_mutex);
+			epl_sensor_I2C_Write(epld->client, 0x00,
+				epl_sensor.wait | epl_sensor.mode);
+			epl_sensor_I2C_Write(epld->client, 0x03,
+				epl_sensor.ps.integration_time |
+				epl_sensor.ps.gain);
+			epl_sensor_I2C_Write(epld->client, 0x05,
+				epl_sensor.ps.ir_on_control |
+				epl_sensor.ps.ir_mode |
+				epl_sensor.ps.ir_drive);
 			epl_sensor_I2C_Write(epld->client, 0x04,
-		epl_sensor.ps.rs | epl_sensor.ps.adc | epl_sensor.ps.cycle);
+				epl_sensor.ps.rs | epl_sensor.ps.adc |
+				epl_sensor.ps.cycle);
 			epl_sensor_I2C_Write(epld->client, 0x06,
 				epl_sensor.interrupt_control |
 				epl_sensor.ps.persist |
 				epl_sensor.ps.interrupt_type);
+			mutex_unlock(&sensor_mutex);
 		}
 		epl_sensor_fast_update(epld->client);
 		epl_sensor_update_mode(epld->client);
@@ -1653,9 +1665,18 @@ static void epl_sensor_eint_work(struct work_struct *work)
 	mutex_lock(&sensor_mutex);
 	if (epl_sensor.ps.interrupt_flag == EPL_INT_TRIGGER) {
 		if (enable_stowed_flag && enable_ps_flag == false) {
+			epl_sensor_I2C_Write(epld->client, 0x00,
+				EPL_WAIT_200_MS | epl_sensor.mode);
+			epl_sensor_I2C_Write(epld->client, 0x03,
+				EPL_PS_INTT_272 | EPL_GAIN_LOW);
+			epl_sensor_I2C_Write(epld->client, 0x05,
+				epl_sensor.ps.ir_on_control |
+				epl_sensor.ps.ir_mode |
+				EPL_IR_DRIVE_50);
 			if ((epl_sensor.ps.compare_low >> 3) == 0) {
 				epl_sensor_I2C_Write(epld->client, 0x04,
-			epl_sensor.ps.rs | ps_stowed_adc | ps_stowed_cycle);
+					epl_sensor.ps.rs | ps_stowed_adc |
+					ps_stowed_cycle);
 				epl_sensor_I2C_Write(epld->client, 0x06,
 					epl_sensor.interrupt_control |
 					epl_sensor.ps.persist |
