@@ -21,6 +21,10 @@
 #include "slimport_tx_reg.h"
 #include "slimport.h"
 
+#include <linux/slab.h>
+#include <linux/mod_display.h>
+
+
 BYTE bEDID_extblock[128];
 BYTE bEDID_firstblock[128];
 BYTE bEDID_fourblock[256];
@@ -5075,7 +5079,32 @@ void SP_CTRL_EDID_Read(void)//add adress only cmd before every I2C over AUX acce
 void SP_CTRL_EDID_Process(void)
 {
 	BYTE i,c;
+	struct mod_display_panel_config *display_config = NULL;
+	int ret;
+
 	bEDIDBreak = 0;
+
+	ret = mod_display_get_display_config(&display_config);
+	if (ret) {
+		pr_err("%s: Failed to get display config: %d\n", __func__, ret);
+		memset(bEDID_twoblock, 0, 256);
+		return;
+	} else if (display_config->config_type == MOD_CONFIG_EDID_1_3) {
+		if (display_config->config_size > 256) {
+			pr_err("%s: EDID too big: %d\n", __func__,
+					display_config->config_size);
+		} else if (display_config->config_size == 0) {
+			pr_debug("%s: Reading EDID over HDMI link...\n",
+							__func__);
+		} else {
+			memcpy(bEDID_twoblock, display_config->config_buf,
+						display_config->config_size);
+			goto skip_me;
+		}
+	} else {
+		pr_err("%s: Unknown display config type (%d)... Abort\n",
+					__func__, display_config->config_type);
+	}
 
 	//read DPCD 00000-0000b
 	for(i = 0; i <= 0x0b; i ++)
@@ -5097,6 +5126,10 @@ void SP_CTRL_EDID_Process(void)
 
 	for (i = 0; i < 128; i++)
 		bEDID_twoblock[i + 128] = bEDID_extblock[i];
+
+skip_me:
+	if (display_config)
+		kfree(display_config);
 
 	/* EDID is ready */
 	EDID_ready = 1;
