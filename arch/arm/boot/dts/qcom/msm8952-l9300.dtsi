@@ -550,7 +550,7 @@
 	qcom,parallel-usb-min-current-ma = <1000>;
 	qcom,fastchg-current-ma = <3000>;
 	qcom,fastchg-current-comp = <700>;
-	qcom,thermal-mitigation = <2000 1500 1000 0>;
+	qcom,thermal-mitigation = <2000 1800 1000 0>;
 	status = "okay";
 };
 
