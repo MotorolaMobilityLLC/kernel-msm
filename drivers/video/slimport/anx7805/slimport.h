@@ -15,15 +15,17 @@
 #ifndef _SLIMPORT_H
 #define _SLIMPORT_H
 
-
+#define SW_VERSION 1.12
 struct anx7805_platform_data
 {
-int gpio_p_dwn;
-int gpio_reset;
-int gpio_int;
-int gpio_cbl_det;
-const char *vdd10_name;
-const char *avdd33_name;
+	int gpio_p_dwn;
+	int gpio_reset;
+	int gpio_int;
+	int gpio_cbl_det;
+	int gpio_dsi_sel;
+	const char *vdd10_name;
+	const char *avdd33_name;
+	const char *vdd18_name;
 };
 
 
@@ -79,7 +81,7 @@ const char *avdd33_name;
 #define delay_ms(time) mdelay(time)
 
 #define MIPI_EN  1
-#define EN_3D    1 
+#define EN_3D    0
 #define MIPI_LANE_SEL_0  1
 #define MIPI_LANE_SEL_1  1
 /*Audio interface select*/
@@ -91,7 +93,8 @@ const char *avdd33_name;
 #define AUD_IN_SEL_1  0    
 #define AUD_IN_SEL_2  1
 #define SSC_EN   1
-#define HDCP_EN   1
+/* Disable HDCP */
+#define HDCP_EN   0
 
 #define BIST_EN 0 
 
