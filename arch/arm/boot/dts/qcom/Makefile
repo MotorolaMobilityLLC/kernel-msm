@@ -153,6 +153,10 @@ dtb-$(CONFIG_ARCH_MSM8996) += msm8996-sheridan-p3a.dtb
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-griffin-p3a.dtb
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996pro-sheridan-p3a.dtb
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996pro-griffin-p3a.dtb
+dtb-$(CONFIG_ARCH_MSM8996) += msm8996-sheridan-p3b.dtb
+dtb-$(CONFIG_ARCH_MSM8996) += msm8996-griffin-p3b.dtb
+dtb-$(CONFIG_ARCH_MSM8996) += msm8996pro-sheridan-p3b.dtb
+dtb-$(CONFIG_ARCH_MSM8996) += msm8996pro-griffin-p3b.dtb
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-wabash-p1.dtb
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996pro-wabash-p1.dtb
 
