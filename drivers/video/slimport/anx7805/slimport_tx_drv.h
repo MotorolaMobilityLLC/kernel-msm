@@ -31,7 +31,8 @@ typedef unsigned int uint;
 
 #define Display_NoHDCP
 #define Redo_HDCP
-#define Standard_DP
+/* #define Standard_DP */
+#define AUX_DBG
 
 #define Sink_DPCD_Count 10
 
