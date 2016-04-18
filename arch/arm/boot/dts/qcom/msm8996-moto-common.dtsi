@@ -562,6 +562,7 @@
 		clock-names = "hub_clk";
 		clocks = <&clock_gcc clk_bb_clk2_ao>;
 		enable-usbhost;
+		vdd-hsic-supply = <&pm8994_l11>;
 	};
 
 	analogix_anx78e6@72 {
