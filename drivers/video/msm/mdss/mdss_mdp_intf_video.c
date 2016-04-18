@@ -527,6 +527,7 @@ static int mdss_mdp_video_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 	intfs_num = ctl->intf_num - MDSS_MDP_INTF0;
 	ret = mdss_mdp_video_intfs_stop(ctl, ctl->panel_data, intfs_num);
 	if (IS_ERR_VALUE(ret)) {
+		mutex_unlock(&ctl->offlock);
 		pr_err("unable to stop video interface: %d\n", ret);
 		return ret;
 	}
