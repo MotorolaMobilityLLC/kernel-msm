@@ -102,6 +102,8 @@ struct anx7816_platform_data {
 	bool cbl_det_irq_enabled;
 	int qos_latency;
 	struct pm_qos_request slimport_pm_qos_request;
+	struct mutex sp_tx_power_lock;
+	bool sp_tx_power_state;
 };
 
 struct anx7816_data {
@@ -942,11 +944,18 @@ void sp_tx_hardware_poweron(void)
 
 	pr_debug("%s %s: anx7816 power on\n", LOG_TAG, __func__);
 
+	mutex_lock(&pdata->sp_tx_power_lock);
+
+	if (pdata->sp_tx_power_state) {
+		pr_warn("%s %s: already powered on!\n", LOG_TAG, __func__);
+		goto exit;
+	}
+
 	rc = anx7816_pinctrl_rst_set_state(true);
 	if (rc < 0) {
 		pr_err("%s %s: fail to set_state for reset. ret=%d\n",
 						LOG_TAG, __func__, rc);
-		return;
+		goto exit;
 	}
 
 	if (gpio_is_valid(pdata->gpio_reset))
@@ -984,6 +993,10 @@ void sp_tx_hardware_poweron(void)
 
 	usleep_range(9000, 10000);
 
+	pdata->sp_tx_power_state = 1;
+
+	mutex_unlock(&pdata->sp_tx_power_lock);
+
 	return;
 
 err_vdd_10:
@@ -999,6 +1012,9 @@ err:
 		gpio_set_value(pdata->gpio_p_dwn, 1);
 
 	anx7816_pinctrl_rst_set_state(false);
+
+exit:
+	mutex_unlock(&pdata->sp_tx_power_lock);
 }
 
 void sp_tx_hardware_powerdown(void)
@@ -1010,6 +1026,14 @@ void sp_tx_hardware_powerdown(void)
 	struct anx7816_platform_data *pdata = anx7816_client->dev.platform_data;
 #endif
 	pr_debug("%s %s: anx7816 power down\n", LOG_TAG, __func__);
+
+	mutex_lock(&pdata->sp_tx_power_lock);
+
+	if (!pdata->sp_tx_power_state) {
+		pr_warn("%s %s: already powered off!\n", LOG_TAG, __func__);
+		goto exit;
+	}
+
 	if (gpio_is_valid(pdata->gpio_reset))
 		gpio_set_value(pdata->gpio_reset, 0);
 
@@ -1030,6 +1054,10 @@ void sp_tx_hardware_powerdown(void)
 						LOG_TAG, __func__, rc);
 	usleep_range(1000, 1000);
 
+	pdata->sp_tx_power_state = 0;
+
+exit:
+	mutex_unlock(&pdata->sp_tx_power_lock);
 }
 
 int slimport_read_edid_block(int block, uint8_t *edid_buf)
@@ -1693,6 +1721,9 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	}
 	anx7816->pdata->avdd_power(1);
 /*	anx7816->pdata->dvdd_power(1);*/
+
+	anx7816->pdata->sp_tx_power_state = 0;
+	mutex_init(&anx7816->pdata->sp_tx_power_lock);
 
 	ret = anx7816_system_init();
 	if (ret) {
