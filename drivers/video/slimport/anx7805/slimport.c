@@ -32,12 +32,23 @@
 #include <linux/of_platform.h>
 #include <linux/mod_display.h>
 #include <linux/mod_display_ops.h>
+#include <linux/pinctrl/consumer.h>
 
 #include "slimport_tx_drv.h"
 #include "slimport.h"
 
 #include <video/msm_dba.h>
 #include "../../msm/msm_dba/msm_dba_internal.h"
+
+#define ANX_PINCTRL_STATE_DEFAULT "anx_default"
+#define ANX_PINCTRL_STATE_SLEEP  "anx_sleep"
+
+struct anx7805_pinctrl {
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *gpio_state_active;
+	struct pinctrl_state *gpio_state_suspend;
+};
+
 
 struct anx7805_data {
 	struct i2c_client *client;
@@ -61,6 +72,8 @@ struct anx7805_data {
 //struct platform_device *hdmi_pdev;
 //	struct msm_hdmi_sp_ops *hdmi_sp_ops;
 	bool update_chg_type;
+
+	struct anx7805_pinctrl pinctrl_gpio;
 };
 
 struct anx7805_data *the_chip;
@@ -80,6 +93,63 @@ int EDID_ready = 0;
 EXPORT_SYMBOL(EDID_ready);
 
 extern BYTE bEDID_twoblock[256];
+
+static int anx7805_pinctrl_set_state(bool active)
+{
+	struct anx7805_data *pdata;
+	struct pinctrl_state *pin_state;
+	int rc = -EFAULT;
+
+	if (!the_chip)
+		return -EINVAL;
+
+	pdata = the_chip;
+	if (IS_ERR_OR_NULL(pdata->pinctrl_gpio.pinctrl))
+		return PTR_ERR(pdata->pinctrl_gpio.pinctrl);
+
+	pin_state = active ? pdata->pinctrl_gpio.gpio_state_active
+				: pdata->pinctrl_gpio.gpio_state_suspend;
+
+	if (!IS_ERR_OR_NULL(pin_state)) {
+		rc = pinctrl_select_state(pdata->pinctrl_gpio.pinctrl,
+						pin_state);
+		if (rc)
+			pr_err("%s %s: can not set %s pin\n", LOG_TAG, __func__,
+					active ? ANX_PINCTRL_STATE_DEFAULT
+					: ANX_PINCTRL_STATE_SLEEP);
+	} else
+		pr_err("%s %s: invalid '%s' pinstate\n", LOG_TAG, __func__,
+					active ? ANX_PINCTRL_STATE_DEFAULT
+					: ANX_PINCTRL_STATE_SLEEP);
+
+	return rc;
+}
+
+static int anx7805_pinctrl_init(struct device *dev, struct anx7805_data *pdata)
+{
+	pdata->pinctrl_gpio.pinctrl = devm_pinctrl_get(dev);
+	if (IS_ERR_OR_NULL(pdata->pinctrl_gpio.pinctrl)) {
+		pr_err("%s %s: failed to get pinctrl for reset\n",
+							LOG_TAG, __func__);
+		return PTR_ERR(pdata->pinctrl_gpio.pinctrl);
+	}
+
+	pdata->pinctrl_gpio.gpio_state_active
+		= pinctrl_lookup_state(pdata->pinctrl_gpio.pinctrl,
+					ANX_PINCTRL_STATE_DEFAULT);
+	if (IS_ERR_OR_NULL(pdata->pinctrl_gpio.gpio_state_active))
+		pr_warn("%s %s: can not get default pinstate\n",
+						LOG_TAG, __func__);
+
+	pdata->pinctrl_gpio.gpio_state_suspend
+		= pinctrl_lookup_state(pdata->pinctrl_gpio.pinctrl,
+					ANX_PINCTRL_STATE_SLEEP);
+	if (IS_ERR_OR_NULL(pdata->pinctrl_gpio.gpio_state_suspend))
+		pr_warn("%s %s: can not get sleep pinstate\n",
+						LOG_TAG, __func__);
+
+	return 0;
+}
 
 static struct anx7805_data *anx7805_get_platform_data(void *client)
 {
@@ -307,8 +377,17 @@ int sp_write_reg(uint8_t slave_addr, uint8_t offset, uint8_t value)
 
 void sp_tx_hardware_poweron(void)
 {
+	int rc = 0;
+
 	if (!the_chip)
 		return;
+
+	rc = anx7805_pinctrl_set_state(true);
+	if (rc < 0) {
+		pr_err("%s %s: fail to set_state for anx gpio. ret=%d\n",
+						LOG_TAG, __func__, rc);
+		return;
+	}
 
 	gpio_direction_output(the_chip->gpio_dsi_sel, 1);
 	usleep_range(1000, 1001);
@@ -326,6 +405,7 @@ void sp_tx_hardware_poweron(void)
 void sp_tx_hardware_powerdown(void)
 {
 //int status = 0;
+	int rc = -EFAULT;
 
 	if (!the_chip)
 		return;
@@ -338,6 +418,11 @@ void sp_tx_hardware_powerdown(void)
 	usleep_range(2000, 2001);
 	gpio_direction_output(the_chip->gpio_p_dwn, 1);
 	usleep_range(1000, 1001);
+
+	rc = anx7805_pinctrl_set_state(false);
+	if (rc < 0)
+		pr_err("%s %s: fail to set_state for reset. ret=%d\n",
+						LOG_TAG, __func__, rc);
 
 	/* turn off hpd */
 	/*
@@ -490,6 +575,9 @@ static int anx7805_pinctrl_configure(struct pinctrl *key_pinctrl, bool active)
 {
 	struct pinctrl_state *set_state;
 	int retval;
+
+	/* Using MOT's pinctrl instead */
+	return 0;
 
 	if (active) {
 		set_state = pinctrl_lookup_state(key_pinctrl, "pmx_anx_int_active");
@@ -975,6 +1063,13 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 	if (ret) {
 		pr_err("failed to initialize gpio\n");
 		goto err0;
+	}
+
+	ret = anx7805_pinctrl_init(&client->dev, the_chip);
+	if (ret) {
+		pr_err("%s : failed to call pinctrl_init. ret = %d\n",
+						__func__, ret);
+		goto err1;
 	}
 
 	INIT_DELAYED_WORK(&anx7805->work, anx7805_work_func);
