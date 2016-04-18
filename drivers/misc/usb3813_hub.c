@@ -28,6 +28,7 @@
 #include <linux/power_supply.h>
 #include <linux/printk.h>
 #include <linux/clk.h>
+#include <linux/regulator/consumer.h>
 #include <linux/mods/usb_ext_bridge.h>
 #ifdef CONFIG_FSUSB42_MUX
 #include <linux/fsusb42.h>
@@ -59,6 +60,8 @@ struct usb3813_info {
 	struct notifier_block usbext_notifier;
 	bool enable_controller;
 	bool switch_controller;
+	struct regulator *vdd_hsic;
+	bool hsic_enabled;
 };
 
 static int usb3813_write_command(struct usb3813_info *info, u16 command)
@@ -460,6 +463,30 @@ int usb3813_debug_init(struct usb3813_info *info)
 	return 0;
 }
 
+static int set_hsic_state(struct usb3813_info *info, bool enable)
+{
+	int ret;
+
+	if (enable && !info->hsic_enabled) {
+		ret = regulator_enable(info->vdd_hsic);
+
+		if (ret)
+			dev_err(info->dev, "Unable to enable vdd_hsic\n");
+		else
+			info->hsic_enabled = true;
+
+	} else if (!enable && info->hsic_enabled) {
+		ret = regulator_disable(info->vdd_hsic);
+
+		if (ret)
+			dev_err(info->dev, "Unable to disable vdd_hsic\n");
+		else
+			info->hsic_enabled = false;
+	}
+
+	return ret;
+}
+
 static int usb_ext_notifier_call(struct notifier_block *nb,
 		unsigned long val,
 		void *v)
@@ -472,6 +499,8 @@ static int usb_ext_notifier_call(struct notifier_block *nb,
 	/* If Mod has detached, disconnect the hub */
 	if (status->proto == USB_EXT_PROTO_UNKNOWN && !val) {
 		usb3813_hub_attach(info, 0);
+		if (info->hsic_enabled && regulator_disable(info->vdd_hsic))
+			dev_err(info->dev, "Unable to disable vdd_hsic\n");
 		return NOTIFY_DONE;
 	}
 
@@ -479,6 +508,9 @@ static int usb_ext_notifier_call(struct notifier_block *nb,
 	if (status->proto != USB_EXT_PROTO_2_0 ||
 		status->type != USB_EXT_REMOTE_DEVICE)
 		return NOTIFY_DONE;
+
+	if (status->path == USB_EXT_PATH_BRIDGE && info->vdd_hsic)
+		set_hsic_state(info, val ? true : false);
 
 	usb3813_hub_attach(info, !!val);
 	return NOTIFY_OK;
@@ -578,6 +610,10 @@ static int usb3813_probe(struct i2c_client *client,
 	info->enable_controller = of_property_read_bool(np, "enable-usbhost");
 	info->switch_controller = of_property_read_bool(np, "switch-usbhost");
 
+	info->vdd_hsic = devm_regulator_get(&client->dev, "vdd-hsic");
+	if (IS_ERR(info->vdd_hsic))
+		dev_err(&client->dev, "unable to get hsic supply\n");
+
 	INIT_DELAYED_WORK(&info->usb3813_attach_work, usb3813_attach_w);
 
 	info->usbext_notifier.notifier_call = usb_ext_notifier_call;
@@ -622,6 +658,7 @@ static int usb3813_remove(struct i2c_client *client)
 	if (info->hub_enabled)
 		clk_disable_unprepare(info->hub_clk);
 	clk_put(info->hub_clk);
+	devm_regulator_put(info->vdd_hsic);
 	device_remove_file(&client->dev, &dev_attr_enable);
 	debugfs_remove_recursive(info->debug_root);
 	kfree(info);
