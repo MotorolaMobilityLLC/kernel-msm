@@ -963,6 +963,8 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
 	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS,
+	POWER_SUPPLY_PROP_SYSTEM_TEMP_IN_LEVEL,
+	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_IN_LEVELS,
 	POWER_SUPPLY_PROP_FLASH_CURRENT_MAX,
 	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
@@ -1646,7 +1648,7 @@ static int calc_thermal_limited_current(struct smbchg_chip *chip,
 	int therm_ma;
 
 	if (chip->therm_lvl_sel > 0
-			&& chip->therm_lvl_sel < (chip->thermal_levels - 1)) {
+			&& chip->therm_lvl_sel < chip->thermal_levels) {
 		/*
 		 * consider thermal limit only when it is active and not at
 		 * the highest level
@@ -3098,6 +3100,11 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 			SMB_ERR(chip,
 				"Couldn't set usb suspend rc %d\n", rc);
 	}
+
+	smbchg_stay_awake(chip, PM_HEARTBEAT);
+	cancel_delayed_work(&chip->heartbeat_work);
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(0));
 out:
 	mutex_unlock(&chip->current_change_lock);
 	return rc;
@@ -3370,12 +3377,10 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 		power_supply_changed(&chip->batt_psy);
 		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
-		/* Make charge rate and USB input throttling mutually
-		   exclusive for now */
-		if (chip->chg_thermal_mitigation)
-			smbchg_chg_system_temp_level_set(chip, val->intval);
-		else
-			smbchg_system_temp_level_set(chip, val->intval);
+		smbchg_chg_system_temp_level_set(chip, val->intval);
+		break;
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_IN_LEVEL:
+		smbchg_system_temp_level_set(chip, val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 		rc = smbchg_set_fastchg_current(chip, val->intval / 1000);
@@ -3417,6 +3422,7 @@ static int smbchg_battery_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 	case POWER_SUPPLY_PROP_CAPACITY:
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_IN_LEVEL:
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 	case POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE:
@@ -3508,20 +3514,16 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		val->intval = chip->fastchg_current_ma * 1000;
 		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
-		/* Make charge rate and USB input throttling mutually
-		   exclusive for now */
-		if (chip->chg_thermal_mitigation)
-			val->intval = chip->chg_therm_lvl_sel;
-		else
-			val->intval = chip->therm_lvl_sel;
+		val->intval = chip->chg_therm_lvl_sel;
 		break;
 	case POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS:
-		/* Make charge rate and USB input throttling mutually
-		   exclusive for now */
-		if (chip->chg_thermal_mitigation)
-			val->intval = chip->chg_thermal_levels;
-		else
-			val->intval = chip->thermal_levels;
+		val->intval = chip->chg_thermal_levels;
+		break;
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_IN_LEVEL:
+		val->intval = chip->therm_lvl_sel;
+		break;
+	case POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_IN_LEVELS:
+		val->intval = chip->thermal_levels;
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_MAX:
 		val->intval = smbchg_get_aicl_level_ma(chip) * 1000;
@@ -3716,17 +3718,13 @@ static int smbchg_wls_get_property(struct power_supply *psy,
 	struct power_supply *eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
 
-	if (!eb_pwr_psy) {
-		val->intval = 0;
-		return 0;
-	}
-	rc = eb_pwr_psy->get_property(eb_pwr_psy,
-				      POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
-				      &ret);
-	if (rc) {
-		val->intval = 0;
+	if (eb_pwr_psy) {
+		rc = eb_pwr_psy->get_property(eb_pwr_psy,
+					      POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+					      &ret);
+		if (rc)
+			ret.intval = 0;
 		power_supply_put(eb_pwr_psy);
-		return 0;
 	}
 
 	switch (prop) {
@@ -3748,11 +3746,8 @@ static int smbchg_wls_get_property(struct power_supply *psy,
 		val->intval = chip->dc_thermal_levels;
 		break;
 	default:
-		power_supply_put(eb_pwr_psy);
 		return -EINVAL;
 	}
-
-	power_supply_put(eb_pwr_psy);
 
 	return 0;
 }
@@ -8712,6 +8707,13 @@ static bool smbchg_is_max_thermal_level(struct smbchg_chip *chip)
 	      ((chip->chg_therm_lvl_sel >= (chip->chg_thermal_levels - 1)) ||
 	       (chip->chg_therm_lvl_sel == -EINVAL)))))
 		return true;
+	else if ((chip->thermal_levels == 0) ||
+		 ((chip->thermal_levels > 0) &&
+		  ((chip->usb_present) &&
+		   ((chip->therm_lvl_sel >=
+		     (chip->thermal_levels - 1)) ||
+		    (chip->therm_lvl_sel == -EINVAL)))))
+		return true;
 	else if ((chip->dc_thermal_levels == 0) ||
 		 ((chip->dc_thermal_levels > 0) &&
 		  ((chip->dc_present) &&
@@ -9721,6 +9723,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			mutex_lock(&chip->current_change_lock);
 			chip->usb_target_current_ma = HVDCP_ICL_TAPER;
 			mutex_unlock(&chip->current_change_lock);
+			smbchg_set_thermal_limited_usb_current_max(
+						chip,
+						chip->usb_target_current_ma);
 		}
 		index = STEP_END(chip->stepchg_num_steps);
 		if ((chip->ebchg_state != EB_DISCONN) && chip->usb_present) {
