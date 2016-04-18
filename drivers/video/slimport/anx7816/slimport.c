@@ -18,6 +18,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/pm_qos.h>
 #include <linux/clk.h>
+#include <linux/completion.h>
 #ifdef QUICK_CHARGE_SUPPORT
 #include "quick_charge.h"
 #endif
@@ -112,7 +113,8 @@ struct anx7816_data {
 	struct workqueue_struct *workqueue;
 	struct mutex lock;
 	struct wake_lock slimport_lock;
-	bool slimport_connected;
+	atomic_t slimport_connected;
+	struct completion connect_wait;
 };
 
 static int anx7816_pinctrl_rst_set_state(bool active)
@@ -1250,23 +1252,23 @@ void anx7816_force_mydp_det(bool connected)
 	}
 
 	if (connected) {
-		if (!anx7816->slimport_connected) {
+		if (atomic_add_unless(&anx7816->slimport_connected, 1, 1)) {
 			wake_lock(&anx7816->slimport_lock);
 #ifdef QUICK_CHARGE_SUPPORT
 			reset_process();
 #endif
 			pr_info("%s %s : detect cable insertion\n",
 						LOG_TAG, __func__);
+			complete(&anx7816->connect_wait);
 			queue_delayed_work(anx7816->workqueue,
 							&anx7816->work, 0);
-			anx7816->slimport_connected = true;
 		} else
 			pr_debug("%s: anx7816 is already ON\n", __func__);
 	} else {
-		if (anx7816->slimport_connected) {
-			anx7816->slimport_connected = false;
+		if (atomic_add_unless(&anx7816->slimport_connected, -1, 0)) {
 			pr_info("%s %s : detect cable removal\n",
 							LOG_TAG, __func__);
+			complete(&anx7816->connect_wait);
 			cable_disconnect(anx7816);
 		} else
 			pr_debug("%s: anx7816 is already OFF\n", __func__);
@@ -1278,17 +1280,12 @@ static irqreturn_t anx7816_cbl_det_isr(int irq, void *data)
 	struct anx7816_data *anx7816 = data;
 	int cable_connected = 0;
 
-	if (!anx7816->pdata->cbl_det_hpd_support) {
-		/* For some HW doesn't has ANX CBL_DET GPIO connection */
-		return IRQ_HANDLED;
-	}
-
 	cable_connected = confirmed_cable_det(data);
 	pr_debug("%s %s : detect cable insertion, cable_connected = %d\n",
 					LOG_TAG, __func__, cable_connected);
 
 	if (cable_connected == DONGLE_CABLE_INSERT) {
-		if (anx7816->slimport_connected)
+		if (!atomic_add_unless(&anx7816->slimport_connected, 1, 1))
 			goto out;
 
 		wake_lock(&anx7816->slimport_lock);
@@ -1296,17 +1293,18 @@ static irqreturn_t anx7816_cbl_det_isr(int irq, void *data)
 		reset_process();
 #endif
 		pr_info("%s %s : detect cable insertion\n", LOG_TAG, __func__);
+		complete(&anx7816->connect_wait);
 		queue_delayed_work(anx7816->workqueue, &anx7816->work, 0);
-		anx7816->slimport_connected = true;
 	} else {
-		if (!anx7816->slimport_connected)
+		if (!atomic_add_unless(&anx7816->slimport_connected, -1, 0))
 			goto out;
 
-		anx7816->slimport_connected = false;
 		pr_info("%s %s : detect cable removal\n", LOG_TAG, __func__);
+		complete(&anx7816->connect_wait);
 		cable_disconnect(anx7816);
 		/*msleep(1000);*/
 	}
+
 out:
 	return IRQ_HANDLED;
 }
@@ -1544,22 +1542,27 @@ static int slimport_mod_display_handle_available(void *data)
 static int slimport_mod_display_handle_unavailable(void *data)
 {
 	struct anx7816_data *anx7816;
+	int ret = 0;
 
 	pr_debug("%s+\n", __func__);
 
 	anx7816 = (struct anx7816_data *)data;
 
-	/* Just in case */
-	mod_display_set_display_state(MOD_DISPLAY_OFF);
+	if (atomic_read(&anx7816->slimport_connected)) {
+		pr_err("%s: Slimport should not be connected!\n", __func__);
+		ret = -EBUSY;
+	}
 
 	pr_debug("%s-\n", __func__);
 
-	return 0;
+	return ret;
 }
 
 static int slimport_mod_display_handle_connect(void *data)
 {
 	struct anx7816_data *anx7816;
+	int retries = 2;
+	int ret = 0;
 
 	pr_debug("%s+\n", __func__);
 
@@ -1569,13 +1572,7 @@ static int slimport_mod_display_handle_connect(void *data)
 		pm_qos_add_request(&anx7816->pdata->slimport_pm_qos_request,
 			PM_QOS_CPU_DMA_LATENCY, anx7816->pdata->qos_latency);
 
-	if (anx7816->pdata->cbl_det_hpd_support &&
-	    gpio_get_value(anx7816->pdata->gpio_cbl_det)) {
-		pr_err("%s: Cable Detect already high... Power cycle 7816 to reset\n",
-			__func__);
-		sp_tx_hardware_poweron();
-		sp_tx_hardware_powerdown();
-	}
+	reinit_completion(&anx7816->connect_wait);
 
 #ifdef MML_DYNAMIC_IRQ_SUPPORT
 	anx7816_enable_irq(1);
@@ -1585,30 +1582,64 @@ static int slimport_mod_display_handle_connect(void *data)
 
 	anx7816_force_mydp_det(true);
 
+	while (!wait_for_completion_timeout(&anx7816->connect_wait,
+		msecs_to_jiffies(1000)) && retries) {
+		pr_debug("%s: Slimport not connected... Retries left: %d\n",
+			__func__, retries);
+		retries--;
+
+		/* Power cycle the chip here to work around cable detection
+		   issues we've seen */
+		sp_tx_hardware_poweron();
+		sp_tx_hardware_powerdown();
+	}
+
+	if (!atomic_read(&anx7816->slimport_connected)) {
+		pr_warn("%s: Slimport failed to connect...\n", __func__);
+		ret = -ENODEV;
+	}
+
 	pr_debug("%s-\n", __func__);
 
-	return 0;
+	return ret;
 }
 
 static int slimport_mod_display_handle_disconnect(void *data)
 {
 	struct anx7816_data *anx7816;
+	int retries = 2;
 
 	pr_debug("%s+\n", __func__);
 
 	anx7816 = (struct anx7816_data *)data;
 
+	reinit_completion(&anx7816->connect_wait);
+
 	anx7816_force_mydp_det(false);
 
 	mod_display_set_display_state(MOD_DISPLAY_OFF);
 
-#ifdef MML_DYNAMIC_IRQ_SUPPORT
-	msleep(1000);
+	while (atomic_read(&anx7816->slimport_connected) &&
+	       !wait_for_completion_timeout(&anx7816->connect_wait,
+	       msecs_to_jiffies(1000)) && retries) {
+		pr_debug("%s: Slimport not disconnected... Retries left: %d\n",
+			__func__, retries);
+		retries--;
+	}
 
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
 	anx7816_enable_irq(0);
 #endif
 
-	if (anx7816->pdata->qos_latency >= 0)
+	/* This should never happen, but just in case... */
+	if (atomic_add_unless(&anx7816->slimport_connected, -1, 0)) {
+		pr_err("%s %s : Slimport failed to disconnect... Force cable removal\n",
+			LOG_TAG, __func__);
+		cable_disconnect(anx7816);
+	}
+
+	if (anx7816->pdata->qos_latency >= 0 &&
+	    pm_qos_request_active(&anx7816->pdata->slimport_pm_qos_request))
 		pm_qos_remove_request(&anx7816->pdata->slimport_pm_qos_request);
 
 	pr_debug("%s-\n", __func__);
@@ -1724,6 +1755,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 
 	anx7816->pdata->sp_tx_power_state = 0;
 	mutex_init(&anx7816->pdata->sp_tx_power_lock);
+	atomic_set(&anx7816->slimport_connected, 0);
 
 	ret = anx7816_system_init();
 	if (ret) {
@@ -1806,6 +1838,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 
 	slimport_mod_display_ops.data = (void *)anx7816;
 	mod_display_register_impl(&slimport_mod_display_impl);
+	init_completion(&anx7816->connect_wait);
 
 	pr_debug("%s %s end\n", LOG_TAG, __func__);
 	goto exit;
