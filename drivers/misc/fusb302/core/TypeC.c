@@ -297,6 +297,8 @@ void InitializeRegisters(void)
 	DeviceRead(regStatus0, 1, &Registers.Status.byte[4]);
 	DeviceRead(regStatus1, 1, &Registers.Status.byte[5]);
 	//DeviceRead(regInterrupt, 1, &Registers.Status.byte[6]);
+	Registers.Control4.TOG_USRC_EXIT = 1;
+	DeviceWrite(regControl4, 1, &Registers.Control4.byte);
 }
 
 /*******************************************************************************
