@@ -975,6 +975,10 @@
 			qcom,sensor-type = "adc";
 			qcom,sensor-name = "pcm_therm";
 		};
+		sensor_information39: qcom,sensor-information-39 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "xo_therm_buf";
+		};
 	};
 
 	usb3: ssusb@6a00000{
