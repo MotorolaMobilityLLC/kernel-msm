@@ -25,3 +25,9 @@
 		mot,micdet1-high-imp;
 	};
 };
+
+&i2c_4 {
+	motosh@43 {                /* Sensor Hub */
+		mag_orient =  <3>; /* Mag Orientation value */
+	};
+};
