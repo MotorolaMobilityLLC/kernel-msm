@@ -834,6 +834,7 @@ static enum power_supply_property bq24296_batt_properties[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_OCV,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
@@ -1285,6 +1286,34 @@ static int bq24296_get_prop_batt_health(struct bq24296_chg *chip)
 	return batt_health;
 }
 
+#define DEFAULT_CHARGE_FULL_DESIGN	2750000
+static int bq24296_get_prop_charge_full_design(struct bq24296_chg *chip)
+{
+	int uah, rc;
+	union power_supply_propval ret = {0, };
+
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+	if (!chip->bms_psy) {
+		pr_err("no bms psy found\n");
+		return DEFAULT_CHARGE_FULL_DESIGN;
+	}
+
+	rc = chip->bms_psy->get_property(chip->bms_psy,
+			POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &ret);
+	if (rc) {
+		pr_err("bms psy doesn't support reading prop rc = %d\n", rc);
+		return DEFAULT_CHARGE_FULL_DESIGN;
+	}
+
+	uah = ret.intval;
+	if (uah == 0)
+		uah = DEFAULT_CHARGE_FULL_DESIGN;
+
+	return uah;
+}
+
 static int bq24296_set_prop_batt_health(struct bq24296_chg *chip, int health)
 {
 	switch (health) {
@@ -1444,6 +1473,9 @@ static int bq24296_batt_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = bq24296_get_prop_charge_full_design(chip);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		if (chip->test_mode) {
