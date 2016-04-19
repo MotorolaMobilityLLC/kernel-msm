@@ -827,7 +827,9 @@
 			<&tlmm 82 1>,   /* gpio_muc_rdy_n,    input */
 			<&tlmm 143 0>,  /* gpio_muc_ff,       output-low */
 			<&tlmm 0 0>,    /* gpio_muc_spi_mosi, output-low */
-			<&tlmm 1 1>;    /* gpio_muc_spi_miso, input */
+			<&tlmm 1 1>,    /* gpio_muc_spi_miso, input */
+			<&pmi8994_mpps 2 0>, /* gpio_muc_bplus_iset, cs */
+			<&pmi8994_mpps 4 0>; /* gpio_muc_bplus_discharg, cs */
 		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
 					"gpio_muc_bplus_en",
 					"gpio_muc_int_n",
@@ -835,12 +837,14 @@
 					"gpio_muc_rdy_n",
 					"gpio_muc_ff",
 					"gpio_muc_spi_mosi",
-					"gpio_muc_spi_miso";
+					"gpio_muc_spi_miso",
+					"gpio_muc_bplus_iset",
+					"gpio_muc_bplus_discharg";
 
 		mmi,muc-ctrl-det-hysteresis = <200>;
 		mmi,muc-ctrl-rm-hysteresis = <5>;
-		mmi,muc-ctrl-en-seq =  <1 1 100>;
-		mmi,muc-ctrl-dis-seq = <1 0 505>;
+		mmi,muc-ctrl-en-seq =  <9 0 0>, <1 1 100>;
+		mmi,muc-ctrl-dis-seq = <1 0 0>, <9 1 505>;
 
 		/* v1 FF first, BPLUS second on enable */
 		mmi,muc-ctrl-ff-seq-v1 = <5 1 20>, <1 0 100>,
@@ -1376,6 +1380,18 @@
 		qcom,mode = <4>; /* AIN input */
 		qcom,ain-route = <0>; /* AMUX 5 */
 		qcom,master-en = <1>; /* Enable MPP */
+	};
+	mpp@a100 { /* MPP 2 -  MODBPLUS_ISET */
+		status = "okay";
+		qcom,mode = <6>; /* Current Sink */
+		qcom,cs-out = <0x7>; /* 40 mA */
+		qcom,master-en = <0>; /* Enable MPP */
+	};
+	mpp@a300 { /* MPP 4 - MODBPLUS_DISCHARG */
+		status = "okay";
+		qcom,mode = <6>; /* Current Sink */
+		qcom,cs-out = <0x7>; /* 40 mA */
+		qcom,master-en = <0>; /* Enable MPP */
 	};
 };
 
