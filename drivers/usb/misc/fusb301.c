@@ -1931,6 +1931,8 @@ static int fusb301_probe(struct i2c_client *client,
 
 	enable_irq_wake(chip->irq_gpio);
 
+	queue_work(chip->cc_wq, &chip->dwork);
+
 	return 0;
 
 err5:

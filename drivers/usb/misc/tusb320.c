@@ -1001,10 +1001,10 @@ static int tusb320_probe(struct i2c_client *client,
 	if (IS_ERR_VALUE(ret))
 		dev_err(cdev, "failed to set src free as try snk\n");
 
-	if (is_active) {
-		dev_info(cdev, "presents interrupt initially\n");
-		schedule_work(&chip->dwork);
-	} else {
+	pr_info("force to trigger a interrupt handler\n");
+	schedule_work(&chip->dwork);
+
+	if (!is_active) {
 		ret = tusb320_select_mode(chip, chip->pdata->select_mode);
 		if (IS_ERR_VALUE(ret))
 			dev_err(cdev, "failed to select mode and work as default\n");
