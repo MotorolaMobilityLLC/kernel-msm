@@ -238,6 +238,7 @@ static enum power_supply_property max17042_battery_props[] = {
 	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
 	POWER_SUPPLY_PROP_TAPER_REACHED,
 	POWER_SUPPLY_PROP_HEALTH,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 };
 
 /* input and output temperature is in deci-centigrade */
@@ -583,6 +584,9 @@ static int max17042_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = chip->temp_state;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = chip->charge_full_des;
 		break;
 	default:
 		return -EINVAL;
