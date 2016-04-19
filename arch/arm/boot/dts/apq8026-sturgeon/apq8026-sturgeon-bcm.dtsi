@@ -11,6 +11,16 @@
  */
 
 &soc {
+	qcom,bluesleep {
+		compatible = "qcom,bluesleep";
+		host-wake-gpio = <&msmgpio 64 0>;
+		ext-wake-gpio = <&msmgpio 63 0>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <64 0>;
+		interrupt-names = "host_wake";
+		tx-timer-interval = <1>;
+	};
+
 	/*high speed uart,for BT*/
 	hserial:serial@f9920000 {
 		compatible = "qcom,msm-hsuart-v14";
@@ -29,21 +39,14 @@
 		qcom,bam-tx-ep-pipe-index = <6>;
 		qcom,bam-rx-ep-pipe-index = <7>;
 
+		qcom,rx-char-to-inject = <0xFD>;
+
 		qcom,msm-bus,name = "blsp1_uart3";
 		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,active-only = <0>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
 				<86 512 0 0>,
 				<86 512 500 800>;
-	};
-
-        bt_nitrous {
-		compatible = "goog,nitrous";
-		uart-port = <0>;
-		power-gpio = <&msmgpio 67 0>;
-		host-wake-gpio = <&msmgpio 64 0>;
-		host-wake-polarity = <0>;
-		dev-wake-gpio = <&msmgpio 63 0>;
-		dev-wake-polarity = <0>;
 	};
 };
