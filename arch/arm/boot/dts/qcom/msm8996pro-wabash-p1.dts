@@ -75,5 +75,12 @@
 		<&tlmm 34 1>,   /* gpio_muc_int_n,    input */
 		<&tlmm 74 2>,   /* gpio_muc_wake_n,   output-high */
 		<&tlmm 82 1>,   /* gpio_muc_rdy_n,    input */
-		<&tlmm 143 0>;  /* gpio_muc_ff,       output-low */
+		<&tlmm 143 0>,  /* gpio_muc_ff,       output-low */
+		<&tlmm 0 0>,    /* gpio_muc_spi_mosi, output-low */
+		<&tlmm 1 1>,    /* gpio_muc_spi_miso, input */
+		<0>,            /* gpio_muc_bplus_iset, cs */
+		<0>;            /* gpio_muc_bplus_discharg, cs */
+
+	mmi,muc-ctrl-en-seq =  <1 1 100>;
+	mmi,muc-ctrl-dis-seq = <1 0 505>;
 };
