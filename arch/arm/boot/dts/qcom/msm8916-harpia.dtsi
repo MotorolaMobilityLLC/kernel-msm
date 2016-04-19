@@ -428,6 +428,17 @@
 };
 
 &pm8916_gpios {
+	gpio@c100 { /* GPIO 2 */
+		status = "okay";
+		qcom,mode = <0>;	/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;	/* CMOS logic */
+		qcom,invert = <0>;	/* Output low initially */
+		qcom,pull = <4>; 	/* QPNP_PIN_PULL_DOWN */
+		qcom,vin-sel = <2>; 	/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <3>;/* High */
+		qcom,src-sel = <0>; 	/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;	/* Enable this pin */
+	};
 	gpio@c300 { /* GPIO 4 */
 		status = "okay";
 		qcom,mode = <1>;	/* QPNP_PIN_MODE_DIG_OUT */
