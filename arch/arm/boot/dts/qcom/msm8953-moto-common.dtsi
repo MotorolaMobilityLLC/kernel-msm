@@ -509,8 +509,7 @@
 					<1 1 100>, <5 0 20>;
 
 		/* v2 BPLUS first, FF second on enable */
-		mmi,muc-ctrl-ff-seq-v2 = <5 0 20>, <1 0 20>,
-					<1 1 100>, <5 1 20>,
+		mmi,muc-ctrl-ff-seq-v2 = <1 1 100>, <5 1 20>,
 					<5 0 20>;
 
 		pinctrl-names = "disconnected", "spi_active";
