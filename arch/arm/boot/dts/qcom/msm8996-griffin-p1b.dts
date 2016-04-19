@@ -33,7 +33,12 @@
 		<&tlmm 82 1>,   /* gpio_muc_rdy_n,    input */
 		<0>,            /* gpio_muc_ff,       not used */
 		<&tlmm 0 0>,    /* gpio_muc_spi_mosi, output-low */
-		<&tlmm 1 1>;    /* gpio_muc_spi_miso, input */
+		<&tlmm 1 1>,    /* gpio_muc_spi_miso, input */
+		<0>,            /* gpio_muc_bplus_iset, cs */
+		<0>;            /* gpio_muc_bplus_discharg, cs */
+
+	mmi,muc-ctrl-en-seq =  <1 1 100>;
+	mmi,muc-ctrl-dis-seq = <1 0 505>;
 
 	/* v1 CC first, BPLUS second on enable */
 	mmi,muc-ctrl-ff-seq-v1 = <0 0 20>, <1 0 100>,
