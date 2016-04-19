@@ -490,6 +490,8 @@ struct mdss_panel_info {
 	bool hbm_restore;
 	u32 hbm_type;
 	u32 bl_hbm_off;
+	u32 bl_hbm_on_max;
+	u32 bl_hbm_off_max;
 };
 
 struct mdss_panel_data {

@@ -299,6 +299,16 @@ static int mdss_dsi_panel_set_param(struct mdss_panel_data *pdata,
 	return 0;
 }
 
+static u32 mdss_dsi_panel_bl_scale_ctrl(u32 bl_level,
+	u32 bl_scaled_max, u32 bl_max)
+{
+	if (bl_level) {
+		bl_level = bl_level * bl_scaled_max / bl_max;
+		bl_level = (bl_level < 1) ? 1 : bl_level;
+	}
+	return bl_level;
+}
+
 static bool mdss_dsi_panel_hbm_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 *level)
 {
@@ -316,8 +326,18 @@ static bool mdss_dsi_panel_hbm_bl_ctrl(struct mdss_panel_data *pdata,
 	if (bl_level == BRIGHTNESS_HBM_ON || bl_level == BRIGHTNESS_HBM_OFF) {
 		if (pdata->panel_info.hbm_type == HBM_TYPE_OLED)
 			return true;
-		*level = bl_level == BRIGHTNESS_HBM_ON ?
-			pdata->panel_info.bl_max : pdata->panel_info.bl_hbm_off;
+		if (pdata->panel_info.hbm_type == HBM_TYPE_LCD_DCS_ONLY) {
+			*level = bl_level == BRIGHTNESS_HBM_ON ?
+				pdata->panel_info.bl_hbm_on_max :
+				mdss_dsi_panel_bl_scale_ctrl(
+					pdata->panel_info.bl_hbm_off,
+					pdata->panel_info.bl_hbm_off_max,
+					pdata->panel_info.bl_max);
+		} else {
+			*level = bl_level == BRIGHTNESS_HBM_ON ?
+				pdata->panel_info.bl_max :
+				pdata->panel_info.bl_hbm_off;
+		}
 		return false;
 	}
 
@@ -328,6 +348,10 @@ static bool mdss_dsi_panel_hbm_bl_ctrl(struct mdss_panel_data *pdata,
 				__func__, bl_level);
 			return true;
 		}
+		if (pdata->panel_info.hbm_type == HBM_TYPE_LCD_DCS_ONLY)
+			*level = mdss_dsi_panel_bl_scale_ctrl(bl_level,
+				pdata->panel_info.bl_hbm_off_max,
+				pdata->panel_info.bl_max);
 	}
 
 	return false;
@@ -1131,6 +1155,7 @@ static int mdss_panel_parse_param_prop(struct device_node *np,
 	struct dsi_panel_cmds *cmds;
 	char *prop;
 	const char *data;
+	u32 tmp;
 
 	pinfo->hbm_restore = false;
 
@@ -1150,6 +1175,25 @@ static int mdss_panel_parse_param_prop(struct device_node *np,
 				pinfo->hbm_type = HBM_TYPE_LCD_WLED_ONLY;
 			else
 				pinfo->hbm_type = HBM_TYPE_OLED;
+
+			if (pinfo->hbm_type == HBM_TYPE_LCD_DCS_ONLY) {
+				rc = of_property_read_u32(np,
+					"qcom,mdss-dsi-bl-hbm-on-max", &tmp);
+				pinfo->bl_hbm_on_max = (!rc ? tmp : 0);
+				rc |= of_property_read_u32(np,
+					"qcom,mdss-dsi-bl-hbm-off-max", &tmp);
+				pinfo->bl_hbm_off_max = (!rc ? tmp : 0);
+
+				if (!rc) {
+					param->is_supported = true;
+					pinfo->param[i] = param;
+					pr_info("%s: %s feature enabled with 2 dt props\n",
+						__func__, param->param_name);
+					pr_info("%s: HBM type = %d\n",
+						__func__, pinfo->hbm_type);
+				}
+				continue;
+			}
 		}
 
 		cmds = kcalloc(param->val_max, sizeof(struct dsi_panel_cmds),
