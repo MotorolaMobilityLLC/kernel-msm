@@ -189,17 +189,29 @@ void cpu_hotplug_done(void)
  * hotplug path before performing hotplug operations. So acquiring that lock
  * guarantees mutual exclusion from any currently running hotplug operations.
  */
+
+static void _cpu_hotplug_disable(void)
+{
+	cpu_hotplug_disabled++;
+}
 void cpu_hotplug_disable(void)
 {
 	cpu_maps_update_begin();
-	cpu_hotplug_disabled = 1;
+	_cpu_hotplug_disable();
 	cpu_maps_update_done();
 }
 
+static void _cpu_hotplug_enable(void)
+{
+	if (--cpu_hotplug_disabled < 0) {
+		WARN(1, "unbalanced hotplug enable %d\n", cpu_hotplug_disabled);
+		cpu_hotplug_disabled = 0;
+	}
+}
 void cpu_hotplug_enable(void)
 {
 	cpu_maps_update_begin();
-	cpu_hotplug_disabled = 0;
+	_cpu_hotplug_enable();
 	cpu_maps_update_done();
 }
 
@@ -578,11 +590,11 @@ int disable_nonboot_cpus(void)
 
 	if (!error) {
 		BUG_ON(num_online_cpus() > 1);
-		/* Make sure the CPUs won't be enabled by someone else */
-		cpu_hotplug_disabled = 1;
 	} else {
 		pr_err("Non-boot CPUs are not disabled\n");
 	}
+
+	_cpu_hotplug_disable();
 	cpu_maps_update_done();
 	return error;
 }
@@ -602,7 +614,7 @@ void __ref enable_nonboot_cpus(void)
 
 	/* Allow everyone to use the CPU hotplug again */
 	cpu_maps_update_begin();
-	cpu_hotplug_disabled = 0;
+	_cpu_hotplug_enable();
 	if (cpumask_empty(frozen_cpus))
 		goto out;
 
