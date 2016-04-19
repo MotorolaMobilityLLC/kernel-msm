@@ -123,9 +123,16 @@ static inline bool gpio_has_irq(const struct gpio_config *_cfg)
 	return _cfg->options & GPIO_OPT_HAS_IRQ;
 }
 
+static inline bool nanohub_has_priority_lock_locked(struct nanohub_data *data)
+{
+	return  atomic_read(&data->wakeup_lock_cnt) >
+		atomic_read(&data->wakeup_cnt);
+}
+
 static inline void nanohub_notify_thread(struct nanohub_data *data)
 {
 	atomic_set(&data->kthread_run, 1);
+	/* wake_up implementation works as memory barrier */
 	wake_up_interruptible_sync(&data->kthread_wait);
 }
 
@@ -207,42 +214,50 @@ static inline void nanohub_set_irq_data(struct nanohub_data *data,
 		WARN(1, "No data binding defined for %s", _cfg->label);
 }
 
-static inline void mcu_wakeup_gpio_get_locked(struct nanohub_data *data,
-					      int wakeup_gpio_init)
+static inline void mcu_wakeup_gpio_set_value(struct nanohub_data *data,
+					     int val)
 {
 	const struct nanohub_platform_data *pdata = data->pdata;
 
-	if (atomic_inc_return(&data->wakeup_cnt) == 1) {
-		if (wakeup_gpio_init >= 0)
-			gpio_set_value(pdata->wakeup_gpio,
-				       wakeup_gpio_init ? 1 : 0);
-	}
+	gpio_set_value(pdata->wakeup_gpio, val);
 }
 
-static inline bool mcu_wakeup_gpio_put_locked(struct nanohub_data *data)
+static inline void mcu_wakeup_gpio_get_locked(struct nanohub_data *data,
+					      int priority_lock)
 {
-	const struct nanohub_platform_data *pdata = data->pdata;
-	bool done;
+	atomic_inc(&data->wakeup_lock_cnt);
+	if (!priority_lock && atomic_inc_return(&data->wakeup_cnt) == 1 &&
+	    !nanohub_has_priority_lock_locked(data))
+		mcu_wakeup_gpio_set_value(data, 0);
+}
 
-	if (atomic_dec_and_test(&data->wakeup_cnt)) {
-		gpio_set_value(pdata->wakeup_gpio, 1);
-		done = true;
-	} else {
-		gpio_set_value(pdata->wakeup_gpio, 0);
-		done = false;
-	}
+static inline bool mcu_wakeup_gpio_put_locked(struct nanohub_data *data,
+					      int priority_lock)
+{
+	bool gpio_done = priority_lock ?
+			 atomic_read(&data->wakeup_cnt) == 0 :
+			 atomic_dec_and_test(&data->wakeup_cnt);
+	bool done = atomic_dec_and_test(&data->wakeup_lock_cnt);
+
+	if (!nanohub_has_priority_lock_locked(data))
+		mcu_wakeup_gpio_set_value(data, gpio_done ? 1 : 0);
 
 	return done;
 }
 
 static inline bool mcu_wakeup_gpio_is_locked(struct nanohub_data *data)
 {
-	return atomic_read(&data->wakeup_cnt) != 0;
+	return atomic_read(&data->wakeup_lock_cnt) != 0;
 }
 
 static inline void nanohub_handle_irq1(struct nanohub_data *data)
 {
-	if (!mcu_wakeup_gpio_is_locked(data))
+	bool locked;
+
+	spin_lock(&data->wakeup_wait.lock);
+	locked = mcu_wakeup_gpio_is_locked(data);
+	spin_unlock(&data->wakeup_wait.lock);
+	if (!locked)
 		nanohub_notify_thread(data);
 	else
 		wake_up_interruptible_sync(&data->wakeup_wait);
@@ -255,6 +270,7 @@ static inline void nanohub_handle_irq2(struct nanohub_data *data)
 
 static inline bool mcu_wakeup_try_lock(struct nanohub_data *data, int key)
 {
+	/* implementation contains memory barrier */
 	return atomic_cmpxchg(&data->wakeup_acquired, 0, key) == 0;
 }
 
@@ -265,46 +281,26 @@ static inline void mcu_wakeup_unlock(struct nanohub_data *data, int key)
 	     __func__, key, atomic_read(&data->wakeup_acquired));
 }
 
-static inline int request_wakeup_user(struct nanohub_data *data)
-{
-	return request_wakeup_ex(data, WAKEUP_TIMEOUT_MS,
-				 KEY_WAKEUP_USER, 0, 1);
-}
-
-static inline void release_wakeup_user(struct nanohub_data *data)
-{
-	release_wakeup_ex(data, KEY_WAKEUP_USER);
-}
-
-static inline int request_wakeup_system(struct nanohub_data *data)
-{
-	return request_wakeup_ex(data, SUSPEND_TIMEOUT_MS,
-				 KEY_WAKEUP_SYSTEM, 1, 1);
-}
-
-static inline void release_wakeup_system(struct nanohub_data *data)
-{
-	release_wakeup_ex(data, KEY_WAKEUP_SYSTEM);
-}
-
 static inline void nanohub_set_state(struct nanohub_data *data, int state)
 {
 	atomic_set(&data->thread_state, state);
+	smp_mb__after_atomic(); /* updated thread state is now visible */
 }
 
 static inline int nanohub_get_state(struct nanohub_data *data)
 {
+	smp_mb__before_atomic(); /* wait for all updates to finish */
 	return atomic_read(&data->thread_state);
 }
 
 /* the following fragment is based on wait_event_* code from wait.h */
-#define wait_event_interruptible_exclusive_timeout_locked(q, cond, tmo)	\
+#define wait_event_interruptible_timeout_locked(q, cond, tmo)		\
 ({									\
 	long __ret = (tmo);						\
 	DEFINE_WAIT(__wait);						\
 	if (!(cond)) {							\
 		for (;;) {						\
-			__wait.flags |= WQ_FLAG_EXCLUSIVE;		\
+			__wait.flags &= ~WQ_FLAG_EXCLUSIVE;		\
 			if (list_empty(&__wait.task_list))		\
 				__add_wait_queue_tail(&(q), &__wait);	\
 			set_current_state(TASK_INTERRUPTIBLE);		\
@@ -338,25 +334,26 @@ static inline int nanohub_get_state(struct nanohub_data *data)
 })									\
 
 int request_wakeup_ex(struct nanohub_data *data, long timeout_ms,
-		      int key, int wakeup_gpio_init, bool no_irq)
+		      int key, int lock_mode)
 {
 	long timeout;
+	bool priority_lock = lock_mode > LOCK_MODE_NORMAL;
 
 	spin_lock(&data->wakeup_wait.lock);
-	mcu_wakeup_gpio_get_locked(data, wakeup_gpio_init);
+	mcu_wakeup_gpio_get_locked(data, priority_lock);
 	timeout = (timeout_ms != MAX_SCHEDULE_TIMEOUT) ?
 		   msecs_to_jiffies(timeout_ms) :
 		   MAX_SCHEDULE_TIMEOUT;
 
-	timeout = wait_event_interruptible_exclusive_timeout_locked(
+	timeout = wait_event_interruptible_timeout_locked(
 			data->wakeup_wait,
-			((no_irq || nanohub_irq1_fired(data)) &&
+			((priority_lock || nanohub_irq1_fired(data)) &&
 			 mcu_wakeup_try_lock(data, key)),
 			timeout
 		  );
 
 	if (timeout <= 0) {
-		mcu_wakeup_gpio_put_locked(data);
+		mcu_wakeup_gpio_put_locked(data, priority_lock);
 
 		if (timeout == 0)
 			timeout = -ETIME;
@@ -368,24 +365,24 @@ int request_wakeup_ex(struct nanohub_data *data, long timeout_ms,
 	return timeout;
 }
 
-void release_wakeup_ex(struct nanohub_data *data, int key)
+void release_wakeup_ex(struct nanohub_data *data, int key, int lock_mode)
 {
 	bool done;
+	bool priority_lock = lock_mode > LOCK_MODE_NORMAL;
 
 	spin_lock(&data->wakeup_wait.lock);
-	done = mcu_wakeup_gpio_put_locked(data);
+	done = mcu_wakeup_gpio_put_locked(data, priority_lock);
 	mcu_wakeup_unlock(data, key);
 	spin_unlock(&data->wakeup_wait.lock);
 
-	if (!done && nanohub_irq1_fired(data))
+	if (!done)
 		wake_up_interruptible_sync(&data->wakeup_wait);
-	else if (done && (nanohub_irq1_fired(data) || nanohub_irq2_fired(data)))
+	else if (nanohub_irq1_fired(data) || nanohub_irq2_fired(data))
 		nanohub_notify_thread(data);
 }
 
 int nanohub_wait_for_interrupt(struct nanohub_data *data)
 {
-	const struct nanohub_platform_data *pdata = data->pdata;
 	int ret = -EFAULT;
 
 	/* release the wakeup line, and wait for nanohub to send
@@ -393,10 +390,10 @@ int nanohub_wait_for_interrupt(struct nanohub_data *data)
 	 */
 	spin_lock(&data->wakeup_wait.lock);
 	if (mcu_wakeup_gpio_is_locked(data)) {
-		gpio_set_value(pdata->wakeup_gpio, 1);
+		mcu_wakeup_gpio_set_value(data, 1);
 		ret = wait_event_interruptible_locked(data->wakeup_wait,
 						      nanohub_irq1_fired(data));
-		gpio_set_value(pdata->wakeup_gpio, 0);
+		mcu_wakeup_gpio_set_value(data, 0);
 	}
 	spin_unlock(&data->wakeup_wait.lock);
 
@@ -405,14 +402,13 @@ int nanohub_wait_for_interrupt(struct nanohub_data *data)
 
 int nanohub_wakeup_eom(struct nanohub_data *data, bool repeat)
 {
-	const struct nanohub_platform_data *pdata = data->pdata;
 	int ret = -EFAULT;
 
 	spin_lock(&data->wakeup_wait.lock);
 	if (mcu_wakeup_gpio_is_locked(data)) {
-		gpio_set_value(pdata->wakeup_gpio, 1);
+		mcu_wakeup_gpio_set_value(data, 1);
 		if (repeat)
-			gpio_set_value(pdata->wakeup_gpio, 0);
+			mcu_wakeup_gpio_set_value(data, 0);
 		ret = 0;
 	}
 	spin_unlock(&data->wakeup_wait.lock);
@@ -433,8 +429,8 @@ static void __nanohub_interrupt_cfg(struct nanohub_data *data,
 		ret = request_wakeup_timeout(data, WAKEUP_TIMEOUT_MS);
 		if (ret) {
 			dev_err(dev,
-				"%s: request_wakeup_timeout: returned %d\n",
-				__func__, ret);
+				"%s: interrupt %d %smask failed: ret=%d\n",
+				__func__, interrupt, mask ? "" : "un", ret);
 			return;
 		}
 
@@ -542,38 +538,60 @@ static ssize_t nanohub_firmware_query(struct device *dev,
 	}
 }
 
-static inline int nanohub_wakeup_lock(struct nanohub_data *data)
+static inline int nanohub_wakeup_lock(struct nanohub_data *data, int mode)
 {
-	const struct nanohub_platform_data *pdata = data->pdata;
 	int ret;
 
-	ret = request_wakeup_user(data);
-	if (ret < 0)
-		return ret;
-	ret = nanohub_bl_open(data);
-	if (ret < 0) {
-		release_wakeup_user(data);
-		return ret;
-	}
-	disable_irq(data->irq1);
 	if (data->irq2)
 		disable_irq(data->irq2);
-	gpio_set_value(pdata->wakeup_gpio, 1);
+	else
+		nanohub_mask_interrupt(data, 2);
+
+	ret = request_wakeup_ex(data,
+				mode == LOCK_MODE_SUSPEND_RESUME ?
+				SUSPEND_TIMEOUT_MS : WAKEUP_TIMEOUT_MS,
+				KEY_WAKEUP_LOCK, mode);
+	if (ret < 0) {
+		if (data->irq2)
+			enable_irq(data->irq2);
+		else
+			nanohub_unmask_interrupt(data, 2);
+		return ret;
+	}
+
+	if (mode == LOCK_MODE_IO)
+		ret = nanohub_bl_open(data);
+	if (ret < 0) {
+		release_wakeup_ex(data, KEY_WAKEUP_LOCK, mode);
+		return ret;
+	}
+	if (mode != LOCK_MODE_SUSPEND_RESUME)
+		disable_irq(data->irq1);
+
+	atomic_set(&data->lock_mode, mode);
+	mcu_wakeup_gpio_set_value(data, 1);
 
 	return 0;
 }
 
-static inline void nanohub_wakeup_unlock(struct nanohub_data *data)
+/* returns lock mode used to perform this lock */
+static inline int nanohub_wakeup_unlock(struct nanohub_data *data)
 {
-	enable_irq(data->irq1);
+	int mode = atomic_read(&data->lock_mode);
+
+	atomic_set(&data->lock_mode, LOCK_MODE_NONE);
+	if (mode != LOCK_MODE_SUSPEND_RESUME)
+		enable_irq(data->irq1);
+	if (mode == LOCK_MODE_IO)
+		nanohub_bl_close(data);
 	if (data->irq2)
 		enable_irq(data->irq2);
-
-	nanohub_bl_close(data);
-	release_wakeup_user(data);
-
+	release_wakeup_ex(data, KEY_WAKEUP_LOCK, mode);
 	if (!data->irq2)
 		nanohub_unmask_interrupt(data, 2);
+	nanohub_notify_thread(data);
+
+	return mode;
 }
 
 static void __nanohub_hw_reset(struct nanohub_data *data, int boot0)
@@ -597,7 +615,7 @@ static ssize_t nanohub_hw_reset(struct device *dev,
 	struct nanohub_data *data = dev_get_nanohub_data(dev);
 	int ret;
 
-	ret = nanohub_wakeup_lock(data);
+	ret = nanohub_wakeup_lock(data, LOCK_MODE_RESET);
 	if (!ret) {
 		data->err_cnt = 0;
 		__nanohub_hw_reset(data, 0);
@@ -615,7 +633,7 @@ static ssize_t nanohub_erase_shared(struct device *dev,
 	uint8_t status = CMD_ACK;
 	int ret;
 
-	ret = nanohub_wakeup_lock(data);
+	ret = nanohub_wakeup_lock(data, LOCK_MODE_IO);
 	if (ret < 0)
 		return ret;
 
@@ -642,7 +660,7 @@ static ssize_t nanohub_download_bl(struct device *dev,
 	int ret;
 	uint8_t status = CMD_ACK;
 
-	ret = nanohub_wakeup_lock(data);
+	ret = nanohub_wakeup_lock(data, LOCK_MODE_IO);
 	if (ret < 0)
 		return ret;
 
@@ -1369,7 +1387,7 @@ static void nanohub_release_gpios_irqs(struct nanohub_data *data)
 	gpio_free(pdata->irq1_gpio);
 	gpio_set_value(pdata->nreset_gpio, 0);
 	gpio_free(pdata->nreset_gpio);
-	gpio_set_value(pdata->wakeup_gpio, 1);
+	mcu_wakeup_gpio_set_value(data, 1);
 	gpio_free(pdata->wakeup_gpio);
 	gpio_set_value(pdata->boot0_gpio, 0);
 	gpio_free(pdata->boot0_gpio);
@@ -1408,7 +1426,6 @@ struct iio_dev *nanohub_probe(struct device *dev, struct iio_dev *iio_dev)
 
 	init_waitqueue_head(&data->kthread_wait);
 
-	spin_lock_init(&data->wakeup_lock);
 	nanohub_io_init(&data->free_pool, data, dev);
 
 	buf = vmalloc(sizeof(*buf) * READ_QUEUE_DEPTH);
@@ -1424,7 +1441,9 @@ struct iio_dev *nanohub_probe(struct device *dev, struct iio_dev *iio_dev)
 	wake_lock_init(&data->wakelock_read, WAKE_LOCK_SUSPEND,
 		       "nanohub_wakelock_read");
 
+	atomic_set(&data->lock_mode, LOCK_MODE_NONE);
 	atomic_set(&data->wakeup_cnt, 0);
+	atomic_set(&data->wakeup_lock_cnt, 0);
 	atomic_set(&data->wakeup_acquired, 0);
 	init_waitqueue_head(&data->wakeup_wait);
 
@@ -1503,36 +1522,31 @@ int nanohub_suspend(struct iio_dev *iio_dev)
 	struct nanohub_data *data = iio_priv(iio_dev);
 	int ret;
 
-	if (data->irq2)
-		disable_irq(data->irq2);
-	else
-		nanohub_mask_interrupt(data, 2);
-
-	ret = request_wakeup_system(data);
+	ret = nanohub_wakeup_lock(data, LOCK_MODE_SUSPEND_RESUME);
 	if (!ret) {
-		if (!nanohub_irq1_fired(data)) {
+		int cnt;
+		const int max_cnt = 10;
+
+		for (cnt = 0; cnt < max_cnt; ++cnt) {
+			if (!nanohub_irq1_fired(data))
+				break;
+			usleep_range(10, 15);
+		}
+		if (cnt < max_cnt) {
+			dev_dbg(&iio_dev->dev, "%s: cnt=%d\n", __func__, cnt);
 			enable_irq_wake(data->irq1);
 			return 0;
 		}
-
 		ret = -EBUSY;
 		dev_info(&iio_dev->dev,
 			 "%s: failed to suspend: IRQ1=%d, state=%d\n",
 			 __func__, nanohub_irq1_fired(data),
 			 nanohub_get_state(data));
-		release_wakeup_system(data);
+		nanohub_wakeup_unlock(data);
 	} else {
 		dev_info(&iio_dev->dev, "%s: could not take wakeup lock\n",
 			 __func__);
 	}
-
-	if (data->irq2)
-		enable_irq(data->irq2);
-	else
-		nanohub_unmask_interrupt(data, 2);
-
-	if (nanohub_irq2_fired(data))
-		nanohub_notify_thread(data);
 
 	return ret;
 }
@@ -1542,17 +1556,7 @@ int nanohub_resume(struct iio_dev *iio_dev)
 	struct nanohub_data *data = iio_priv(iio_dev);
 
 	disable_irq_wake(data->irq1);
-	release_wakeup_system(data);
-
-	if (data->irq2)
-		enable_irq(data->irq2);
-	else
-		nanohub_unmask_interrupt(data, 2);
-
-	if (nanohub_irq1_fired(data))
-		nanohub_handle_irq1(data);
-	else if (nanohub_irq2_fired(data))
-		nanohub_handle_irq2(data);
+	nanohub_wakeup_unlock(data);
 
 	return 0;
 }

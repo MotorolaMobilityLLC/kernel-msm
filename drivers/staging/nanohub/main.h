@@ -73,8 +73,10 @@ struct nanohub_data {
 
 	struct nanohub_io free_pool;
 
+	atomic_t lock_mode;
+	/* these 3 vars should be accessed only with wakeup_wait.lock held */
 	atomic_t wakeup_cnt;
-	spinlock_t wakeup_lock;
+	atomic_t wakeup_lock_cnt;
 	atomic_t wakeup_acquired;
 	wait_queue_head_t wakeup_wait;
 
@@ -88,13 +90,20 @@ struct nanohub_data {
 enum {
 	KEY_WAKEUP_NONE,
 	KEY_WAKEUP,
-	KEY_WAKEUP_USER,
-	KEY_WAKEUP_SYSTEM
+	KEY_WAKEUP_LOCK,
+};
+
+enum {
+	LOCK_MODE_NONE,
+	LOCK_MODE_NORMAL,
+	LOCK_MODE_IO,
+	LOCK_MODE_RESET,
+	LOCK_MODE_SUSPEND_RESUME,
 };
 
 int request_wakeup_ex(struct nanohub_data *data, long timeout,
-		      int key, int wakeup_gpio_init, bool no_irq);
-void release_wakeup_ex(struct nanohub_data *data, int key);
+		      int key, int lock_mode);
+void release_wakeup_ex(struct nanohub_data *data, int key, int lock_mode);
 int nanohub_wait_for_interrupt(struct nanohub_data *data);
 int nanohub_wakeup_eom(struct nanohub_data *data, bool repeat);
 struct iio_dev *nanohub_probe(struct device *dev, struct iio_dev *iio_dev);
@@ -119,17 +128,18 @@ static inline int nanohub_irq2_fired(struct nanohub_data *data)
 
 static inline int request_wakeup_timeout(struct nanohub_data *data, int timeout)
 {
-	return request_wakeup_ex(data, timeout, KEY_WAKEUP, 0, 0);
+	return request_wakeup_ex(data, timeout, KEY_WAKEUP, LOCK_MODE_NORMAL);
 }
 
 static inline int request_wakeup(struct nanohub_data *data)
 {
-	return request_wakeup_ex(data, MAX_SCHEDULE_TIMEOUT, KEY_WAKEUP, 0, 0);
+	return request_wakeup_ex(data, MAX_SCHEDULE_TIMEOUT, KEY_WAKEUP,
+				 LOCK_MODE_NORMAL);
 }
 
 static inline void release_wakeup(struct nanohub_data *data)
 {
-	release_wakeup_ex(data, KEY_WAKEUP);
+	release_wakeup_ex(data, KEY_WAKEUP, LOCK_MODE_NORMAL);
 }
 
 #endif
