@@ -258,7 +258,7 @@
 			sensor2-supply = <&pm8953_l22>;
 			accel_orient = <3>;     /* Accel Orientation value */
 			gyro_orient = <3>;      /* Gyro Orientation value */
-			mag_orient =  <3>;      /* Mag Orientation value */
+			mag_orient =  <11>;     /* Mag Orientation value */
 			mag_config = <0>;       /* Magnetometer config value */
 			panel_type = <1>;       /* Panel Type value */
 			IR_config = <1>;        /* IR Config value */
