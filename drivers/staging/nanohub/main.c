@@ -1488,30 +1488,40 @@ int nanohub_remove(struct iio_dev *iio_dev)
 int nanohub_suspend(struct iio_dev *iio_dev)
 {
 	struct nanohub_data *data = iio_priv(iio_dev);
+	int ret;
 
 	if (data->irq2)
 		disable_irq(data->irq2);
 	else
 		nanohub_mask_interrupt(data, 2);
 
-	if (nanohub_irq1_fired(data) ||
-	    nanohub_get_state(data) != ST_IDLE ||
-	    request_wakeup_system(data) < 0) {
-		if (data->irq2)
-			enable_irq(data->irq2);
-		else
-			nanohub_unmask_interrupt(data, 2);
+	ret = request_wakeup_system(data);
+	if (!ret) {
+		if (!nanohub_irq1_fired(data)) {
+			enable_irq_wake(data->irq1);
+			return 0;
+		}
 
-		if (nanohub_irq2_fired(data))
-			nanohub_notify_thread(data);
-
-		dev_err(&iio_dev->dev, "%s: failed to suspend\n", __func__);
-		return -EBUSY;
+		ret = -EBUSY;
+		dev_info(&iio_dev->dev,
+			 "%s: failed to suspend: IRQ1=%d, state=%d\n",
+			 __func__, nanohub_irq1_fired(data),
+			 nanohub_get_state(data));
+		release_wakeup_system(data);
+	} else {
+		dev_info(&iio_dev->dev, "%s: could not take wakeup lock\n",
+			 __func__);
 	}
 
-	enable_irq_wake(data->irq1);
+	if (data->irq2)
+		enable_irq(data->irq2);
+	else
+		nanohub_unmask_interrupt(data, 2);
 
-	return 0;
+	if (nanohub_irq2_fired(data))
+		nanohub_notify_thread(data);
+
+	return ret;
 }
 
 int nanohub_resume(struct iio_dev *iio_dev)
