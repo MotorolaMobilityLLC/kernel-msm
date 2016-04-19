@@ -280,6 +280,7 @@ struct dwc3_msm {
 	enum dwc3_perf_mode	curr_mode;
 	struct timer_list       chg_check_timer;
 	bool			disable_bus_vote;
+	bool			force_lpm_in_idle;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -3362,6 +3363,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	mdwc->disable_host_mode_pm = of_property_read_bool(node,
 				"qcom,disable-host-mode-pm");
+	mdwc->force_lpm_in_idle = of_property_read_bool(node,
+				"qcom,force-lpm-in-idle");
 
 	mdwc->no_wakeup_src_in_hostmode = of_property_read_bool(node,
 				"qcom,no-wakeup-src-in-hostmode");
@@ -4317,8 +4320,35 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 			mdwc->typec_current_max = 0;
 			dwc3_msm_gadget_vbus_draw(mdwc, 0);
 			dev_dbg(mdwc->dev, "No device, allowing suspend\n");
-			dbg_event(0xFF, "RelNodev", 0);
+			dbg_event(dwc->ctrl_num, 0xFF, "RelNodev", 0);
 			pm_relax(mdwc->dev);
+
+			/*
+			 * if we are not run-time suspended for some reason
+			 * even with no votes, force suspend.
+			 * First suspend the child and ensure the child is
+			 * suspended before suspending the parent.
+			 */
+			if (mdwc->force_lpm_in_idle &&
+				!pm_runtime_suspended(dwc->dev) &&
+				!atomic_read(&dwc->dev->power.usage_count)) {
+				dev_err(dwc->dev,
+					"usage count zero, force LPM\n");
+				dbg_event(dwc->ctrl_num, 0xFF, "B_IDLE:C RT SUSP",
+					atomic_read(&dwc->dev->power.usage_count));
+				pm_runtime_suspend(dwc->dev);
+			}
+
+			if (mdwc->force_lpm_in_idle &&
+				pm_runtime_suspended(dwc->dev) &&
+				!pm_runtime_suspended(mdwc->dev) &&
+				!atomic_read(&mdwc->dev->power.usage_count)) {
+				dev_err(mdwc->dev,
+					"Not in LPM , forcing suspend...\n");
+				dbg_event(dwc->ctrl_num, 0xFF, "B_IDLE:P RT SUSP",
+					atomic_read(&mdwc->dev->power.usage_count));
+				pm_runtime_suspend(mdwc->dev);
+			}
 		}
 		break;
 
