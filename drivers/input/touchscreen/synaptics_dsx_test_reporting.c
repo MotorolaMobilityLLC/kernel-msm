@@ -1619,6 +1619,39 @@ struct f54_control_137 {
 	};
 };
 
+struct f54_control_145 {
+	union {
+		struct {
+			unsigned char c145_bursts_per_cluster_rx;
+			unsigned char c145_bursts_per_cluster_tx;
+		} __packed;
+		struct {
+			unsigned char data[2];
+			unsigned short address;
+		} __packed;
+	};
+};
+
+struct f54_control_146 {
+	union {
+		struct {
+			unsigned char c146_int_dur_lsb;
+			unsigned char c146_int_dur_msb;
+			unsigned char c146_reset_dur;
+			unsigned char c146_filter_bandwidth;
+			unsigned char c146_stretch_dur;
+			unsigned char c146_burst_count1;
+			unsigned char c146_burst_count2;
+			unsigned char c146_stretch_dur2;
+			unsigned char c146_adc_clock_div;
+		} __packed;
+		struct {
+			unsigned char data[9];
+			unsigned short address;
+		} __packed;
+	};
+};
+
 struct f54_control {
 	struct f54_control_0 *reg_0;
 	struct f54_control_1 *reg_1;
@@ -1658,6 +1691,8 @@ struct f54_control {
 	struct f54_control_113 *reg_113;
 	struct f54_control_116 *reg_116;
 	struct f54_control_137 *reg_137;
+	struct f54_control_145 *reg_145;
+	struct f54_control_146 *reg_146;
 	struct f55_control_0 *reg_0_f55;
 	struct f55_control_8 *reg_8_f55;
 };
@@ -2001,6 +2036,8 @@ show_prototype(has_energy_ratio_relaxation)
 show_prototype(number_of_sensing_frequencies)
 show_prototype(has_data17)
 show_prototype(has_ctrl113)
+show_prototype(has_ctrl145)
+show_prototype(has_ctrl146)
 show_prototype(q17_num_of_sense_freqs)
 show_store_prototype(no_relax)
 show_store_prototype(no_scan)
@@ -2128,6 +2165,17 @@ show_store_prototype(c116_debounce)
 show_store_prototype(c116_quiet_im)
 show_store_prototype(c116_filter)
 show_store_prototype(c137_cmnr_adjust)
+show_store_prototype(c145_bursts_per_cluster_rx)
+show_store_prototype(c145_bursts_per_cluster_tx)
+show_store_prototype(c146_int_dur_lsb)
+show_store_prototype(c146_int_dur_msb)
+show_store_prototype(c146_reset_dur)
+show_store_prototype(c146_filter_bandwidth)
+show_store_prototype(c146_stretch_dur)
+show_store_prototype(c146_burst_count1)
+show_store_prototype(c146_burst_count2)
+show_store_prototype(c146_stretch_dur2)
+show_store_prototype(c146_adc_clock_div)
 show_prototype(f55_q2_has_single_layer_multitouch)
 show_prototype(f55_c0_receivers_on_x)
 show_prototype(f55_c8_pattern_type)
@@ -2195,6 +2243,8 @@ static struct attribute *attrs[] = {
 	attrify(number_of_sensing_frequencies),
 	attrify(has_data17),
 	attrify(has_ctrl113),
+	attrify(has_ctrl145),
+	attrify(has_ctrl146),
 	attrify(q17_num_of_sense_freqs),
 	attrify(f55_q2_has_single_layer_multitouch),
 	NULL,
@@ -2440,8 +2490,28 @@ static struct attribute *attrs_reg_116[] = {
 	attrify(c116_filter),
 	NULL,
 };
+
 static struct attribute *attrs_reg_137[] = {
 	attrify(c137_cmnr_adjust),
+	NULL,
+};
+
+static struct attribute *attrs_reg_145[] = {
+	attrify(c145_bursts_per_cluster_rx),
+	attrify(c145_bursts_per_cluster_tx),
+	NULL,
+};
+
+static struct attribute *attrs_reg_146[] = {
+	attrify(c146_int_dur_lsb),
+	attrify(c146_int_dur_msb),
+	attrify(c146_reset_dur),
+	attrify(c146_filter_bandwidth),
+	attrify(c146_stretch_dur),
+	attrify(c146_burst_count1),
+	attrify(c146_burst_count2),
+	attrify(c146_stretch_dur2),
+	attrify(c146_adc_clock_div),
 	NULL,
 };
 
@@ -2490,6 +2560,8 @@ static struct attribute_group attrs_ctrl_regs[] = {
 	GROUP(attrs_reg_113),
 	GROUP(attrs_reg_116),
 	GROUP(attrs_reg_137),
+	GROUP(attrs_reg_145),
+	GROUP(attrs_reg_146),
 	GROUP(attrs_f55_c0),
 	GROUP(attrs_f55_c8),
 };
@@ -3523,6 +3595,8 @@ simple_show_func_unsigned(query, has_energy_ratio_relaxation)
 simple_show_func_unsigned(query12, number_of_sensing_frequencies)
 simple_show_func_unsigned(query16, has_data17)
 simple_show_func_unsigned(query27, has_ctrl113)
+simple_show_func_unsigned(query36, has_ctrl145)
+simple_show_func_unsigned(query36, has_ctrl146)
 simple_show_func_unsigned(query17, q17_num_of_sense_freqs)
 show_store_func_unsigned(data, reg_4, d4_inhibit_freq_shift)
 show_store_func_unsigned(data, reg_4, d4_baseline_sel)
@@ -3668,6 +3742,19 @@ show_store_func_unsigned(control, reg_116, c116_quiet_im)
 show_store_func_unsigned(control, reg_116, c116_filter)
 
 show_store_func_unsigned(control, reg_137, c137_cmnr_adjust)
+
+show_store_func_unsigned(control, reg_145, c145_bursts_per_cluster_rx)
+show_store_func_unsigned(control, reg_145, c145_bursts_per_cluster_tx)
+
+show_store_func_unsigned(control, reg_146, c146_int_dur_lsb)
+show_store_func_unsigned(control, reg_146, c146_int_dur_msb)
+show_store_func_unsigned(control, reg_146, c146_reset_dur)
+show_store_func_unsigned(control, reg_146, c146_filter_bandwidth)
+show_store_func_unsigned(control, reg_146, c146_stretch_dur)
+show_store_func_unsigned(control, reg_146, c146_burst_count1)
+show_store_func_unsigned(control, reg_146, c146_burst_count2)
+show_store_func_unsigned(control, reg_146, c146_stretch_dur2)
+show_store_func_unsigned(control, reg_146, c146_adc_clock_div)
 
 simple_show_func_unsigned(query_f55_0_2, f55_q2_has_single_layer_multitouch)
 show_func_unsigned(control, reg_0_f55, f55_c0_receivers_on_x)
@@ -4543,8 +4630,10 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(142, 1, query36->has_ctrl142);
 	CTRL_REG_PRESENCE(143, 1, query36->has_ctrl143);
 	CTRL_REG_PRESENCE(144, 1, query36->has_ctrl144);
-	CTRL_REG_PRESENCE(145, 1, query36->has_ctrl145);
-	CTRL_REG_PRESENCE(146, 1, query36->has_ctrl146);
+
+	CTRL_REG_ADD(145, 1, query36->has_ctrl145);
+	CTRL_REG_ADD(146, 1, query36->has_ctrl146);
+
 	CTRL_REG_PRESENCE(147, 1, query38->has_ctrl147);
 	CTRL_REG_PRESENCE(148, 1, query38->has_ctrl148);
 	CTRL_REG_PRESENCE(149, 1, query38->has_ctrl149);
