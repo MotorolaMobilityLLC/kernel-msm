@@ -93,6 +93,9 @@
 #define EN_CHG_TIMER_MASK	BIT(3)
 #define CHG_TIMER_MASK		(BIT(2)|BIT(1))
 #define I2C_TIMER_SHIFT 4
+#define CHG_SAFETY_TIMER_SHIFT 1
+#define CHG_SAFETY_TIMER_MIN 0
+#define CHG_SAFETY_TIMER_MAX 3
 
 /* BQ06 IR Compensation, Thermal Regulation Control Register MASK */
 #define IR_COMP_R_MASK		(BIT(7)|BIT(6)|BIT(5))
@@ -188,6 +191,7 @@ struct bq24296_chg {
 	int vin_limit_mv;
 	int sys_vmin_mv;
 	int chg_current_ma;
+	int chg_safety_timer;
 	struct bq_wakeup_source bq_wake_source;
 	struct bq_wakeup_source bq_wake_source_charger;
 	struct qpnp_adc_tm_chip		*adc_tm_dev;
@@ -571,6 +575,29 @@ static int bq24296_wdt_rest(struct bq24296_chg *chip)
 	return 0;
 }
 
+static int bq24296_set_chg_safety_timer(struct bq24296_chg *chip, int time)
+{
+	int ret;
+	NULL_CHECK(chip, -EINVAL);
+
+	pr_debug("time = 0x%02x\n", time);
+
+	if (time < CHG_SAFETY_TIMER_MIN)
+		time = CHG_SAFETY_TIMER_MIN;
+	if (time > CHG_SAFETY_TIMER_MAX)
+		time = CHG_SAFETY_TIMER_MAX;
+
+	time = time << CHG_SAFETY_TIMER_SHIFT;
+	ret = bq24296_masked_write(chip, BQ05_CHARGE_TERM_TIMER_CONT_REG,
+						CHG_TIMER_MASK, time);
+	if (ret) {
+		pr_err("failed to set chg safety timer ret=%d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int configure_for_factory_cable_insertion(struct bq24296_chg *chip)
 {
 	int rc = 0;
@@ -714,6 +741,12 @@ static int start_charging(struct bq24296_chg *chip)
 	rc  = bq24296_set_chg_timer(chip, 0);
 	if (rc) {
 		pr_err("failed to disable T32 timer\n");
+		return rc;
+	}
+
+	rc = bq24296_set_chg_safety_timer(chip, chip->chg_safety_timer);
+	if (rc) {
+		pr_err("failed to set chg safety timer\n");
 		return rc;
 	}
 
@@ -1167,6 +1200,12 @@ static int bq24296_config_charging_para(struct bq24296_chg *chip)
 	rc  = bq24296_set_chg_timer(chip, 0);
 	if (rc) {
 		pr_err("config-charger: Couldn't  disable wdt\n");
+		return rc;
+	}
+
+	rc = bq24296_set_chg_safety_timer(chip, chip->chg_safety_timer);
+	if (rc) {
+		pr_err("failed to set chg safety timer\n");
 		return rc;
 	}
 
@@ -1665,6 +1704,11 @@ static int bq24296_of_init(struct bq24296_chg *chip)
 	if (rc < 0)
 		chip->chg_current_ma = 2000;
 
+	rc = of_property_read_u32(node, "ti,chg-safety-timer",
+						&chip->chg_safety_timer);
+	if (rc < 0)
+		chip->chg_safety_timer = 3;
+
 	return 0;
 }
 
@@ -1724,7 +1768,13 @@ static int bq24296_hw_init(struct bq24296_chg *chip)
 
 	ret = bq24296_set_chg_timer(chip, 0);
 	if (ret) {
-		pr_err("failed to disable chg safety timer\n");
+		pr_err("failed to disable chg wdt timer\n");
+		return ret;
+	}
+
+	ret = bq24296_set_chg_safety_timer(chip, chip->chg_safety_timer);
+	if (ret) {
+		pr_err("failed to set chg safety timer\n");
 		return ret;
 	}
 
