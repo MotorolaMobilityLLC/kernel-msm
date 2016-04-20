@@ -241,18 +241,15 @@ static int cs35l34_sdin_event(struct snd_soc_dapm_widget *w,
 	int ret;
 
 	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL1,
-			 PDN_ALL, 0);
+	case SND_SOC_DAPM_PRE_REG:
+		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL2, 1, 0);
 		if (ret < 0) {
 			dev_err(codec->dev, "Cannot set Power bits %d\n", ret);
 			return ret;
 		}
-		usleep_range(5000, 5000);
 	break;
 	case SND_SOC_DAPM_POST_PMD:
-		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL1,
-			 PDN_ALL, PDN_ALL);
+		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL2, 1, 1);
 	break;
 	default:
 		pr_err("Invalid event = 0x%x\n", event);
@@ -359,7 +356,7 @@ static int cs35l34_mclk_event(struct snd_soc_dapm_widget *w,
 static const struct snd_soc_dapm_widget cs35l34_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN_E("SDIN", NULL, 0, CS35L34_PWRCTL3,
 					1, 1, cs35l34_sdin_event,
-					SND_SOC_DAPM_PRE_PMU |
+					SND_SOC_DAPM_PRE_REG |
 					SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_AIF_OUT("SDOUT", NULL, 0, CS35L34_PWRCTL3, 2, 1),
 
@@ -605,10 +602,15 @@ static int cs35l34_probe(struct snd_soc_codec *codec)
 	regmap_write(cs35l34->regmap, CS35L34_PROTECT_CTL, reg);
 
 	/* Set Power control registers 2 and 3 to have everyting
-	 * powered down at initialization
+	*  powered down at initialization, dapm will power up.
 	*/
 	regmap_write(cs35l34->regmap, CS35L34_PWRCTL2, 0xFD);
 	regmap_write(cs35l34->regmap, CS35L34_PWRCTL3, 0x1F);
+
+	/* Make sure PDN_ALL is cleared on initialization.
+	*  Note: Avoid setting PDN_ALL in dapm events.
+	*/
+	regmap_update_bits(cs35l34->regmap, CS35L34_PWRCTL1, PDN_ALL, 0);
 
 	/* Set mute bit at startup */
 	regmap_update_bits(cs35l34->regmap, CS35L34_PROTECT_CTL,
