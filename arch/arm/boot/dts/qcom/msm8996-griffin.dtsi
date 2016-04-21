@@ -146,7 +146,7 @@
 &pm8994_gpios {
 	gpio@c500 { /* GPIO 6 - CC_ALERT */
 		qcom,mode = <0>;		/* Digital Input */
-		qcom,pull = <5>;		/* No pull */
+		qcom,pull = <0>;		/* Pull up */
 		qcom,vin-sel = <2>;
 		qcom,src-sel = <0>;		/* GPIO */
 		qcom,master-en = <1>;		/* Enable GPIO */
