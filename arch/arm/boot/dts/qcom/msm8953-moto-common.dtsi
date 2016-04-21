@@ -487,7 +487,9 @@
 			<&tlmm 59 1>,         /* gpio_muc_rdy_n, input */
 			<&pmi8950_mpps 1 0>,  /* gpio_muc_ff, output-low */
 			<&tlmm 0 0>,          /* gpio_muc_spi_mosi, output-low */
-			<&tlmm 1 1>;          /* gpio_muc_spi_miso, input */
+			<&tlmm 1 1>,          /* gpio_muc_spi_miso, input */
+			<&tlmm 114 0>,        /* gpio_muc_bplus_iset, cs */
+			<0>;                  /* gpio_muc_bplus_discharg, cs */
 		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
 					"gpio_muc_bplus_en",
 					"gpio_muc_int_n",
@@ -495,7 +497,9 @@
 					"gpio_muc_rdy_n",
 					"gpio_muc_ff",
 					"gpio_muc_spi_mosi",
-					"gpio_muc_spi_miso";
+					"gpio_muc_spi_miso",
+					"gpio_muc_bplus_iset",
+					"gpio_muc_bplus_discharg";
 
 		/* Addison has shared muc/flash SPI. */
 		mmi,spi-shared-with-flash;
@@ -513,8 +517,8 @@
 					<5 0 20>;
 
 		pinctrl-names = "disconnected", "spi_active";
-		pinctrl-0 = <&muc_attach &spi_1_sleep &muc_spi_ctrl &spi1_cs0_sleep>;
-		pinctrl-1 = <&muc_attach &spi_1_active &muc_spi_ctrl &spi1_cs0_active>;
+		pinctrl-0 = <&muc_attach &spi_1_sleep &muc_spi_ctrl &spi1_cs0_sleep &muc_bplus_ilim>;
+		pinctrl-1 = <&muc_attach &spi_1_active &muc_spi_ctrl &spi1_cs0_active &muc_bplus_ilim>;
 		transports {
 			#address-cells = <1>;
 			#size-cells = <1>;
