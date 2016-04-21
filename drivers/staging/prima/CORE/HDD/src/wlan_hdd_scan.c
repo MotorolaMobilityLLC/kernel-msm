@@ -687,7 +687,8 @@ int __iw_set_scan(struct net_device *dev, struct iw_request_info *info,
 
       if (wrqu->data.flags & IW_SCAN_THIS_ESSID)  {
 
-          if(scanReq->essid_len) {
+          if(scanReq->essid_len  &&
+               (scanReq->essid_len <= SIR_MAC_MAX_SSID_LENGTH)) {
               scanRequest.SSIDs.numOfSSIDs = 1;
               scanRequest.SSIDs.SSIDList =( tCsrSSIDInfo *)vos_mem_malloc(sizeof(tCsrSSIDInfo));
               if(scanRequest.SSIDs.SSIDList) {
@@ -699,7 +700,11 @@ int __iw_set_scan(struct net_device *dev, struct iw_request_info *info,
                 scanRequest.SSIDs.numOfSSIDs = 0;
                 VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "%s: Unable to allocate memory",__func__);
                 VOS_ASSERT(0);
-              }
+               }
+           }
+          else
+          {
+            hddLog(LOGE, FL("Invalid essid length : %d"), scanReq->essid_len);
           }
       }
 
