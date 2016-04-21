@@ -558,6 +558,19 @@
 		};
 	};
 
+	muc_bplus_ilim: muc_bplus_ilim@0 {
+		mux {
+			pins = "gpio114";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio114";
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+
 	apba_default: apba_default@0 {
 		apba_1p1_en {
 			pins = "gpio39";
