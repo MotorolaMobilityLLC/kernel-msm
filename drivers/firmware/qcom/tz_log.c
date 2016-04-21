@@ -47,7 +47,7 @@
 /*
  * Preprocessor Definitions and Constants
  */
-#define TZBSP_MAX_CPU_COUNT 0x04
+#define TZBSP_MAX_CPU_COUNT 0x08
 /*
  * Number of VMID Tables
  */
@@ -59,7 +59,7 @@
 /*
  * Number of Interrupts
  */
-#define TZBSP_DIAG_INT_NUM  64
+#define TZBSP_DIAG_INT_NUM  32
 /*
  * Length of descriptive name associated with Interrupt
  */
@@ -135,7 +135,7 @@ struct tzdbg_int_t {
 	 * Any additional characters are truncated.
 	 */
 	uint8_t int_desc[TZBSP_MAX_INT_DESC];
-	uint64_t int_count[TZBSP_MAX_CPU_COUNT]; /* # of times seen per CPU */
+	uint32_t int_count[TZBSP_MAX_CPU_COUNT]; /* # of times seen per CPU */
 };
 
 /* warm boot reason for cores */
