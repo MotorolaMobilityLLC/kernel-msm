@@ -130,8 +130,14 @@ enum vmm_ids {
 #define WAKE_IRQ_IDX_MODALITY_ACCUM        50
 #define WAKE_IRQ_IDX_MODALITY_ACCUM_MVMT   52
 #define WAKE_IRQ_IDX_LOG_MSG               56
-#define WAKE_IRQ_IDX_STOWED_ALS		(WAKE_IRQ_IDX_LOG_MSG + LOG_MSG_SIZE)
-#define WAKE_IRQ_IDX_GLANCE                (WAKE_IRQ_IDX_STOWED_ALS + 2)
+#define WAKE_IRQ_IDX_GLANCE               (WAKE_IRQ_IDX_LOG_MSG + LOG_MSG_SIZE)
+#define WAKE_IRQ_IDX_PROX_ALS             (WAKE_IRQ_IDX_GLANCE + 2)
+#define WAKE_IRQ_IDX_PROX_UNUSED          (WAKE_IRQ_IDX_PROX_ALS + 2)
+#define WAKE_IRQ_IDX_PROX_RAW             (WAKE_IRQ_IDX_PROX_UNUSED + 1)
+#define WAKE_IRQ_IDX_PROX_NOISE           (WAKE_IRQ_IDX_PROX_RAW + 2)
+#define WAKE_IRQ_IDX_PROX_RECAL           (WAKE_IRQ_IDX_PROX_NOISE + 2)
+#define WAKE_IRQ_IDX_PROX_LTHRESH         (WAKE_IRQ_IDX_PROX_RECAL + 2)
+#define WAKE_IRQ_IDX_PROX_HTHRESH         (WAKE_IRQ_IDX_PROX_LTHRESH + 2)
 
 /* Non-wake IRQ work function flags */
 #define IRQ_WORK_FLAG_NONE                   0x00
@@ -181,6 +187,7 @@ enum vmm_ids {
 /* The following macros are intended to be called with the sensorhub IRQ
    handlers only and refer to local variables in those functions. */
 #define SH_TO_H16(buf) (int16_t)(*(buf) << 8 | *((buf)+1))
+#define SH_TO_UH16(buf) (uint16_t)(*(buf) << 8 | *((buf)+1))
 #define SH_TO_H32(buf) (int32_t)(*(buf) << 24 | *((buf)+1) << 16 \
 				| *((buf)+2) << 8 | *((buf)+3))
 

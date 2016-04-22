@@ -174,9 +174,16 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			0,
 			stm_ws->ts_ns);
 
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending Proximity distance %d",
-			buf[WAKE_IRQ_IDX_PROX]);
+		dev_info(&stml0xx_misc_data->spi->dev,
+			"Sending Proximity distance %d als %d stowed %d raw_prox %d noise_floor %d recal_thresh %d low_thresh %d high_thresh %d\n",
+			buf[WAKE_IRQ_IDX_PROX],
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_ALS),
+			buf[WAKE_IRQ_IDX_STOWED],
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_RAW),
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_NOISE),
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_RECAL),
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_LTHRESH),
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_HTHRESH));
 	}
 	if (irq_status & M_COVER) {
 		int state = 0;
@@ -352,10 +359,15 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			stm_ws->ts_ns);
 
 		dev_info(&stml0xx_misc_data->spi->dev,
-			"Sending Stowed status %d, als %d, prox %d",
+			"Sending Stowed status %d als %d prox %d raw_prox %d noise_floor %d recal_thresh %d low_thresh %d high_thresh %d\n",
 			buf[WAKE_IRQ_IDX_STOWED],
-			SH_TO_H16(buf + WAKE_IRQ_IDX_STOWED_ALS),
-			buf[WAKE_IRQ_IDX_PROX]);
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_ALS),
+			buf[WAKE_IRQ_IDX_PROX],
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_RAW),
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_NOISE),
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_RECAL),
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_LTHRESH),
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_HTHRESH));
 	}
 	if (irq_status & M_CAMERA_GESTURE) {
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_CAMERA_ACT,
@@ -470,7 +482,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		dev_info(&stml0xx_misc_data->spi->dev,
 			"Sending algo stowed event %d, als %d, prox %d",
 			buf[WAKE_IRQ_IDX_MODALITY_STOWED + 3],
-			SH_TO_H16(buf + WAKE_IRQ_IDX_STOWED_ALS),
+			SH_TO_UH16(buf + WAKE_IRQ_IDX_PROX_ALS),
 			buf[WAKE_IRQ_IDX_PROX]);
 	}
 	if (irq2_status & M_ALGO_ACCUM_MODALITY) {
