@@ -2052,8 +2052,9 @@ eHalStatus hdd_parse_plm_cmd(tANI_U8 *pValue, tSirPlmReq *pPlmRequest)
         if (content < 0)
            return eHAL_STATUS_FAILURE;
 
+        content = VOS_MIN(content, WNI_CFG_VALID_CHANNEL_LIST_LEN);
         pPlmRequest->plmNumCh = content;
-        hddLog(VOS_TRACE_LEVEL_DEBUG, "numch %d", pPlmRequest->plmNumCh);
+        hddLog(LOG1, FL("Numch: %d"), pPlmRequest->plmNumCh);
 
         /* Channel numbers */
         for (count = 0; count < pPlmRequest->plmNumCh; count++)
@@ -2071,10 +2072,9 @@ eHalStatus hdd_parse_plm_cmd(tANI_U8 *pValue, tSirPlmReq *pPlmRequest)
              if (1 != ret) return eHAL_STATUS_FAILURE;
 
              ret = kstrtos32(buf, 10, &content);
-             if ( ret < 0) return eHAL_STATUS_FAILURE;
-
-             if (content <= 0)
-                return eHAL_STATUS_FAILURE;
+             if (ret < 0 || content <= 0 ||
+                 content > WNI_CFG_CURRENT_CHANNEL_STAMAX)
+                 return eHAL_STATUS_FAILURE;
 
              pPlmRequest->plmChList[count]= content;
              hddLog(VOS_TRACE_LEVEL_DEBUG, " ch- %d",
@@ -4318,11 +4318,11 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
        {
            tANI_U8 *value = command;
            eHalStatus status = eHAL_STATUS_SUCCESS;
-           tpSirPlmReq pPlmRequest = NULL;
+           tpSirPlmReq pPlmRequest;
 
            pPlmRequest = vos_mem_malloc(sizeof(tSirPlmReq));
            if (NULL == pPlmRequest){
-               ret = -EINVAL;
+               ret = -ENOMEM;
                goto exit;
            }
 
