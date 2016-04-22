@@ -123,6 +123,49 @@ static int mods_codec_shim_set_dai_sysclk(struct snd_soc_dai *dai,
 	return ret;
 }
 
+static int mods_codec_shim_dai_startup(struct snd_pcm_substream *substream,
+				struct snd_soc_dai *dai)
+{
+	const struct snd_soc_dai_ops *dai_ops;
+	int ret = 0;
+
+	mutex_lock(&mods_shim_lock);
+	if (!mods_codec_dev) {
+		pr_warn("%s(): mods codec not connected yet", __func__);
+		mutex_unlock(&mods_shim_lock);
+		return 0;
+	}
+	dai_ops = mods_codec_dev->ops->dai_ops;
+	if (dai_ops && dai_ops->startup)
+		ret = dai_ops->startup(substream, dai);
+	else
+		pr_warn("%s(): mods codec startup() op not found\n", __func__);
+
+	mutex_unlock(&mods_shim_lock);
+
+	return ret;
+}
+
+static void mods_codec_shim_dai_shutdown(struct snd_pcm_substream *substream,
+				struct snd_soc_dai *dai)
+{
+	const struct snd_soc_dai_ops *dai_ops;
+
+	mutex_lock(&mods_shim_lock);
+	if (!mods_codec_dev) {
+		pr_warn("%s(): mods codec not connected yet", __func__);
+		mutex_unlock(&mods_shim_lock);
+		return;
+	}
+	dai_ops = mods_codec_dev->ops->dai_ops;
+	if (dai_ops && dai_ops->shutdown)
+		dai_ops->shutdown(substream, dai);
+	else
+		pr_warn("%s(): mods codec shutdown() op not found\n", __func__);
+
+	mutex_unlock(&mods_shim_lock);
+}
+
 static const struct snd_soc_dapm_widget mods_dai_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN("MODS_DAI_RX", "Mods Dai Playback", 0, 0, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("MODS_DAI_TX", "Mods Dai Capture", 0, 0, 0, 0),
@@ -181,10 +224,12 @@ static int mods_codec_shim_remove(struct snd_soc_codec *codec)
 }
 
 static const struct snd_soc_dai_ops mods_codec_shim_dai_ops = {
+	.startup = mods_codec_shim_dai_startup,
 	.hw_params = mods_codec_shim_hw_params,
 	.trigger	= mods_codec_shim_dai_trigger,
 	.set_fmt	= mods_codec_shim_dai_set_fmt,
 	.set_sysclk = mods_codec_shim_set_dai_sysclk,
+	.shutdown = mods_codec_shim_dai_shutdown,
 };
 
 static struct snd_soc_codec_driver soc_codec_shim_drv = {
