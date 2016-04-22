@@ -35,4 +35,12 @@ extern volatile uint8_t vmm_stowed_event[VMM_STOWED_EVENT_S];
 #define VMM_PROXIMITY_DATA_S 14
 extern volatile uint8_t vmm_proximity_data[VMM_PROXIMITY_DATA_S];
 
+#define VMM_ALGO_EVT_ACCUM_MODALITY_S 2
+extern volatile uint8_t
+	vmm_algo_evt_accum_modality[VMM_ALGO_EVT_ACCUM_MODALITY_S];
+
+#define VMM_ALGO_EVT_ACCUM_MVMT_S 4
+extern volatile uint8_t
+	vmm_algo_evt_accum_mvmt[VMM_ALGO_EVT_ACCUM_MVMT_S];
+
 #endif /*_UAPI_MOTOSH_VMM_DEFINES_H*/
