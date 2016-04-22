@@ -61,6 +61,7 @@ void motosh_irq_work_func(struct work_struct *work)
 			struct motosh_data, irq_work);
 	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
 	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
+	u16 prev_message_id;
 
 	dev_dbg(&ps_motosh->client->dev, "motosh_irq_work_func\n");
 
@@ -187,6 +188,7 @@ void motosh_irq_work_func(struct work_struct *work)
 	/* process each event from the queue */
 	/* NOTE: the readbuff should not be modified while the event
 	   queue is being processed */
+	prev_message_id = MOTOSH_UNKNOWN_MSG;
 	while (queue_index < queue_length) {
 		unsigned char *data;
 		unsigned char message_id = readbuff[queue_index];
@@ -399,8 +401,9 @@ void motosh_irq_work_func(struct work_struct *work)
 		default:
 			/* ERROR...unknown message
 			   Need to drop the remaining data in this operation. */
-			dev_err(&ps_motosh->client->dev, "ERROR: unknown nwake msg: 0x%02X\n",
-				message_id);
+			dev_err(&ps_motosh->client->dev, "ERROR: unknown nwake msg: 0x%02X prev_msg: 0x%04X\n",
+				message_id,
+				prev_message_id);
 			/* a write to the work queue length causes
 			   it to be reset */
 			cmdbuff[0] = NWAKE_STATUS;
@@ -408,6 +411,8 @@ void motosh_irq_work_func(struct work_struct *work)
 			motosh_i2c_write(ps_motosh, cmdbuff, 2);
 			goto EXIT;
 		};
+
+		prev_message_id = message_id;
 	}
 
 EXIT:
