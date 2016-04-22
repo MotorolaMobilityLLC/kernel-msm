@@ -121,6 +121,7 @@ enum vmm_ids {
 #define N_STEP_COUNTER           0x80
 
 #define MOTOSH_MAX_EVENT_QUEUE_SIZE   248
+#define MOTOSH_UNKNOWN_MSG 0xffff
 
 /* max size of total queue */
 #define MOTOSH_MAX_NWAKE_EVENT_QUEUE_SIZE   5300
