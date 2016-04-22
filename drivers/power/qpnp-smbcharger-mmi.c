@@ -6272,14 +6272,9 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		return rc;
 	}
 
-	/*
-	 * Do not force using current from the register i.e. use auto
-	 * power source detect (APSD) mA ratings for the initial current values.
-	 *
-	 * If this is set, AICL will not rerun at 9V for HVDCPs
-	 */
+	/* Force inital AICL current from the USBIN_IN_CHG reg */
 	rc = smbchg_masked_write(chip, chip->usb_chgpth_base + CMD_IL,
-			USE_REGISTER_FOR_CURRENT, 0);
+			USE_REGISTER_FOR_CURRENT, USE_REGISTER_FOR_CURRENT);
 
 	if (rc < 0) {
 		SMB_ERR(chip, "Couldn't set input limit cmd rc=%d\n", rc);
