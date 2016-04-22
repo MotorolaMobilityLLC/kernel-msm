@@ -127,6 +127,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 	u8 pending_reset_reason;
 	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
 	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
+	u16 prev_message_id;
 	struct motosh_data *ps_motosh = container_of(
 			work,
 			struct motosh_data, wake_irq_work);
@@ -255,6 +256,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 	/* process each event from the queue */
 	/* NOTE: the readbuff should not be modified while the event
 	   queue is being processed */
+	prev_message_id = MOTOSH_UNKNOWN_MSG;
 	while (queue_index < queue_length) {
 		unsigned char *data;
 		unsigned char message_id = readbuff[queue_index];
@@ -490,25 +492,29 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			break;
 		case ALGO_EVT_ACCUM_MODALITY:
 		{
-			u8 algo_transition[8];
-			memcpy(algo_transition, data, 7);
+			u8 algo_transition[ALGO_TYPE + 1] = {0};
+
+			memcpy(algo_transition, data,
+					VMM_ALGO_EVT_ACCUM_MODALITY_S);
 			algo_transition[ALGO_TYPE] = MOTOSH_IDX_ACCUM_MODALITY;
 			motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
 				algo_transition, 8, false);
 			dev_dbg(&ps_motosh->client->dev, "Sending accum modality event\n");
-			queue_index += 7;
+			queue_index += VMM_ALGO_EVT_ACCUM_MODALITY_S;
 		}
 			break;
 		case ALGO_EVT_ACCUM_MVMT:
 		{
-			u8 algo_transition[8];
-			memcpy(algo_transition, data, 7);
+			u8 algo_transition[ALGO_TYPE + 1] = {0};
+
+			memcpy(algo_transition, data,
+					VMM_ALGO_EVT_ACCUM_MVMT_S);
 			algo_transition[ALGO_TYPE] = MOTOSH_IDX_ACCUM_MVMT;
 			motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
 				algo_transition, 8, false);
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending accum mvmt event\n");
-			queue_index += 7;
+			queue_index += VMM_ALGO_EVT_ACCUM_MVMT_S;
 		}
 			break;
 		case IR_GESTURE:
@@ -663,8 +669,9 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			/* ERROR...unknown message
 			   Need to drop the remaining data in this operation. */
 			dev_err(&ps_motosh->client->dev,
-				"ERROR: unknown wake msg: 0x%02X\n",
-				message_id);
+				"ERROR: unknown wake msg: 0x%02X prev_msg: 0x%04X\n",
+				message_id,
+				prev_message_id);
 			/* a write to the work queue length causes
 			   it to be reset */
 			cmdbuff[0] = WAKE_MSG_QUEUE_LEN;
@@ -673,6 +680,8 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			/* exit wake queue loop */
 			queue_length = 0;
 		};
+
+		prev_message_id = message_id;
 	}
 
 PROCESS_LOGS:
