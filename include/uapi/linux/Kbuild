@@ -263,6 +263,7 @@ header-y += minix_fs.h
 header-y += mman.h
 header-y += mmtimer.h
 header-y += motosh.h
+header-y += motosh_vmm_defines.h
 header-y += mqueue.h
 header-y += mroute.h
 header-y += mroute6.h
