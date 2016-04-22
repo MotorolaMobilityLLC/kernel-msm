@@ -60,6 +60,9 @@
 #define MICRO_5V    5000000
 #define MICRO_9V    9000000
 
+/* time out to wait for USB cable status notification (in ms)*/
+#define SM_INIT_TIMEOUT 30000
+
 /* AHB2PHY register offsets */
 #define PERIPH_SS_AHB2PHY_TOP_CFG 0x10
 
@@ -2329,12 +2332,8 @@ static void dwc3_ext_event_notify(struct dwc3_msm *mdwc)
 
 	dbg_event(dwc->ctrl_num, 0xFF, "ext_event", 0);
 
-	/*
-	 * Flush processing any pending events before handling new ones except
-	 * for initial notification during bootup.
-	 */
-	if (mdwc->init)
-		flush_delayed_work(&mdwc->sm_work);
+	/* Flush processing any pending events before handling new ones */
+	flush_delayed_work(&mdwc->sm_work);
 
 	if (mdwc->id_state == DWC3_ID_FLOAT) {
 		dbg_event(dwc->ctrl_num, 0xFF, "ID set", 0);
@@ -3490,6 +3489,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	if (of_property_read_bool(node, "qcom,disable-dev-mode-pm"))
 		pm_runtime_get_noresume(mdwc->dev);
 
+	schedule_delayed_work(&mdwc->sm_work, 0);
+
 	/* Update initial ID state */
 	if (mdwc->pmic_id_irq > 0) {
 		enable_irq(mdwc->pmic_id_irq);
@@ -4317,7 +4318,6 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 				break;
 			}
 		} else {
-			mdwc->typec_current_max = 0;
 			dwc3_msm_gadget_vbus_draw(mdwc, 0);
 			dev_dbg(mdwc->dev, "No device, allowing suspend\n");
 			dbg_event(dwc->ctrl_num, 0xFF, "RelNodev", 0);
