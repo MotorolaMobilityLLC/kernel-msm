@@ -50,7 +50,6 @@
 #define DHD_PNO(args)		do {if (dhd_msg_level & DHD_PNO_VAL) printf args;} while (0)
 #define DHD_RTT(args)		do {if (dhd_msg_level & DHD_RTT_VAL) printf args;} while (0)
 #define DHD_PKT_MON(args)	do {if (dhd_msg_level & DHD_PKT_MON_VAL) printf args;} while (0)
-#define DHD_RPM(args)		do {if (dhd_msg_level & DHD_RPM_VAL) printf args;} while (0)
 
 #define DHD_TRACE_HW4	DHD_TRACE
 
@@ -74,7 +73,6 @@
 #define DHD_RTT_ON()		(dhd_msg_level & DHD_RTT_VAL)
 #define DHD_PKT_MON_ON()	(dhd_msg_level & DHD_PKT_MON_VAL)
 #define DHD_PKT_MON_DUMP_ON()	(dhd_msg_level & DHD_PKT_MON_DUMP_VAL)
-#define DHD_RPM_ON()		(dhd_msg_level & DHD_RPM_VAL)
 
 #else /* defined(BCMDBG) || defined(DHD_DEBUG) */
 
@@ -118,7 +116,6 @@
 #define DHD_RTT_ON()		0
 #define DHD_PKT_MON_ON()	0
 #define DHD_PKT_MON_DUMP_ON()	0
-#define DHD_RPM_ON()		0
 #endif
 
 #define DHD_LOG(args)

@@ -177,7 +177,6 @@ typedef struct {
 /* H2D mail box Data */
 #define H2D_HOST_D3_INFORM	0x00000001
 #define H2D_HOST_DS_ACK		0x00000002
-#define H2D_HOST_ACK_NOINT	0x10000000	/* d2h ack with no interrupt */
 #define H2D_HOST_CONS_INT	0x80000000	/* h2d int for console cmds  */
 
 /* D2H mail box Data */

@@ -181,9 +181,6 @@ typedef struct dhd_bus {
 	struct msm_pcie_register_event pcie_event;
 	bool islinkdown;
 #endif /* MSM_PCIE_LINKDOWN_RECOVERY */
-#ifdef CONFIG_PM_RUNTIME
-	bool rpm_irq_enable;
-#endif /* CONFIG_PM_RUNTIME */
 } dhd_bus_t;
 
 /* function declarations */
