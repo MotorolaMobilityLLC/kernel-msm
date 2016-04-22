@@ -115,6 +115,7 @@ static FSC_U8 alternateModes = 0;	// Set to 1 to enable alternate modes
 FSC_U32 gRequestOpCurrent = 400;/*set default 4000mA*/
 static regMask_t Mask;
 static regMaskAdv_t MaskAdv;
+static FSC_U8 bc_lvl;
 int fusb_power_supply_set_property(struct power_supply *psy,
 				 enum power_supply_property prop,
 				 const union power_supply_propval *val)
@@ -725,7 +726,7 @@ void StateMachineAttachWaitSink(void)
 void StateMachineAttachWaitSource(void)
 {
 	debounceCC();
-
+	bc_lvl = Registers.Status.BC_LVL;
 	if (blnCCPinIsCC1)	// Check other line before attaching
 	{
 		if (CC1TermCCDebounce != CCTypeUndefined) {
@@ -947,7 +948,7 @@ void StateMachineTryWaitSink(void)
 void StateMachineTrySource(void)
 {
 	debounceCC();
-
+	bc_lvl = Registers.Status.BC_LVL;
 	if ((CC1TermPDDebounce > CCTypeRa) && (CC1TermPDDebounce < CCTypeUndefined) && ((CC2TermPDDebounce == CCTypeOpen) || (CC2TermPDDebounce == CCTypeRa)))	// If the CC1 pin is Rd for atleast tPDDebounce...
 	{
 		SetStateAttachedSource();	// Go to the Attached.Src state
@@ -1085,7 +1086,7 @@ void stateMachineTrySink(void)
 void stateMachineTryWaitSource(void)
 {
 	debounceCC();
-
+	bc_lvl = Registers.Status.BC_LVL;
 	if (VbusVSafe0V()) {
 		if (((CC1TermPDDebounce >= CCTypeRdUSB) && (CC1TermPDDebounce < CCTypeUndefined)) && ((CC2TermPDDebounce == CCTypeRa) || CC2TermPDDebounce == CCTypeOpen))	// If the CC1 pin is Rd for atleast tPDDebounce...
 		{
@@ -1524,7 +1525,8 @@ void SetStateAttachedSource(void)
 	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SRC;
 	power_supply_changed(&usbc_psy);
 	/* Notify USB driver to switch to host mode */
-	if (usb_psy)
+	/* Only equal or below Rd*/
+	if (usb_psy && (bc_lvl < 2))
 		power_supply_set_usb_otg(usb_psy, 1);
 #ifdef FSC_DEBUG
 	WriteStateLog(&TypeCStateLog, ConnState, Timer_tms, Timer_S);
