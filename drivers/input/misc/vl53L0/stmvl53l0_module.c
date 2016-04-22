@@ -1059,6 +1059,7 @@ struct stmvl53l0_data *data, uint8_t input)
 {
 	int nochange = 0;
 	uint8_t from = data->w_mode;
+	int temps;
 
 	vl53l0_dbgmsg_en("Enter, stmvl53l0_work_state:%d\n", input);
 	mutex_lock(&data->work_mutex);
@@ -1145,6 +1146,7 @@ struct stmvl53l0_data *data, uint8_t input)
 			stmvl53l0_start(data);
 	}
 
+	temps = data->c_suspend;
 	data->c_suspend = 1;
 	cancel_delayed_work(&data->dwork);
 	switch (data->w_mode) {
@@ -1172,7 +1174,7 @@ struct stmvl53l0_data *data, uint8_t input)
 		pr_err("status unknown, input = %d", input);
 		break;
 	}
-	data->c_suspend = 0;
+	data->c_suspend = temps;
 	mutex_unlock(&data->work_mutex);
 }
 
@@ -1759,14 +1761,18 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 		schedule_delayed_work(&data->initwork, 0);
 		break;
 	case VL53L0_IOCTL_SUSPEND:
+		mutex_lock(&data->work_mutex);
 		vl53l0_dbgmsg_en("VL53L0_IOCTL_SUSPEND\n");
 		data->c_suspend = 1;
+		mutex_unlock(&data->work_mutex);
 		break;
 	case VL53L0_IOCTL_RESUME:
 		vl53l0_dbgmsg_en("VL53L0_IOCTL_RESUME\n");
+		mutex_lock(&data->work_mutex);
 		data->c_suspend = 0;
 		VL53L0_ClearInterruptMask(data, 0);
 		papi_func_tbl->StartMeasurement(data);
+		mutex_unlock(&data->work_mutex);
 		break;
 	case VL53L0_IOCTL_RESET:
 		stmvl53l0_work_state(data, RESET);
