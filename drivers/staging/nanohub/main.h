@@ -114,7 +114,7 @@ static inline int nanohub_irq2_fired(struct nanohub_data *data)
 {
 	const struct nanohub_platform_data *pdata = data->pdata;
 
-	return data->irq2 && !gpio_get_value(pdata->irq1_gpio);
+	return data->irq2 && !gpio_get_value(pdata->irq2_gpio);
 }
 
 static inline int request_wakeup_timeout(struct nanohub_data *data, int timeout)
