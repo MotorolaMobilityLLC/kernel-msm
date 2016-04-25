@@ -920,6 +920,13 @@ config HID_SENSOR_CUSTOM_SENSOR
 	  standard sensors.
 	  Select this config option for custom/generic sensor support.
 
+config HID_MOTOROLA_MODS
+	tristate "MOTOROLA MODS support" if EXPERT
+	depends on HID
+	default !EXPERT
+	---help---
+	Support Motorola Mods Hid devices
+
 endmenu
 
 endif # HID
