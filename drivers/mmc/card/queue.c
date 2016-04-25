@@ -605,9 +605,33 @@ static void mmc_cmdq_error_work(struct work_struct *work)
 enum blk_eh_timer_return mmc_cmdq_rq_timed_out(struct request *req)
 {
 	struct mmc_queue *mq = req->q->queuedata;
+	static ktime_t last_timeout;
+	static int mmc_cmdq_req_timeout_count;
+	ktime_t now;
+	s64 delta;
+
 
 	pr_err("%s: request with tag: %d flags: 0x%llx timed out\n",
 	       mmc_hostname(mq->card->host), req->tag, req->cmd_flags);
+
+	if (!mmc_cmdq_req_timeout_count) {
+		last_timeout = ktime_get();
+		mmc_cmdq_req_timeout_count = 1;
+	} else {
+		now = ktime_get();
+		delta = ktime_to_ms(ktime_sub(now, last_timeout));
+
+		/* count only if two sequenet requests are
+		   timeout within 5 mins */
+		if (delta < 300000)
+			mmc_cmdq_req_timeout_count++;
+		else
+			mmc_cmdq_req_timeout_count = 0;
+		last_timeout = now;
+	}
+
+	if (mmc_cmdq_req_timeout_count >= 10)
+		BUG();
 
 	return mq->cmdq_req_timed_out(req);
 }
