@@ -994,6 +994,7 @@
 
 	usb2s: hsusb@7600000 {
 		status = "okay";
+		mmi,qos_latency = <10999>;
 
 		dwc3@7600000 {
 			dr_mode = "host";
