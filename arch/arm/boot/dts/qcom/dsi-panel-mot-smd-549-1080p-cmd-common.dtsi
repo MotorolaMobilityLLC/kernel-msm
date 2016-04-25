@@ -22,8 +22,7 @@ qcom,mdss-dsi-panel-height = <1920>;
 qcom,mdss-pan-physical-width-dimension = <68>;
 qcom,mdss-pan-physical-height-dimension = <121>;
 
-/* To update clock rate */
-qcom,mdss-dsi-panel-clockrate = <0>;
+qcom,mdss-dsi-panel-clockrate = <814000000>;
 qcom,mdss-dsi-h-front-porch = <44>;
 qcom,mdss-dsi-h-back-porch = <32>;
 qcom,mdss-dsi-h-pulse-width = <12>;
@@ -70,16 +69,16 @@ qcom,mdss-dsi-lane-0-state;
 qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
-/* To caculate timing with final clock rate setting */
 qcom,mdss-dsi-panel-timings-8996 =
-				[22 1e 07 08 04 03 04 a0
-				22 1e 07 08 04 03 04 a0
-				22 1e 07 08 04 03 04 a0
-				22 1e 07 08 04 03 04 a0
-				22 18 07 08 04 03 04 a0];
+	[23 1e 07 08 05 03 04 a0
+	 23 1e 07 08 05 03 04 a0
+	 23 1e 07 08 05 03 04 a0
+	 23 1e 07 08 05 03 04 a0
+	 23 19 07 08 05 03 04 a0];
+
 qcom,mdss-dsi-panel-timings = [d5 32 22 00 60 62 26 34 29 03 04 00];
-qcom,mdss-dsi-t-clk-post = <0x03>;
-qcom,mdss-dsi-t-clk-pre = <0x28>;
+qcom,mdss-dsi-t-clk-post = <0x0d>;
+qcom,mdss-dsi-t-clk-pre = <0x2d>;
 qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <255>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
