@@ -2058,6 +2058,32 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 				msm_hs_enable_flow_control(uport);
 			}
 		}
+		/***************************************************
+		 a)sps connection can be closed in msm_hs_check_clock_off(the first
+		   time invoked).
+		 b)msm_hs_check_clock_off return 0 after send a clk_off_timer msg to
+		   close sps connection
+		 c)when clk_off_timer is timeout, hsuart_clock_off_work will be
+		   invoked, so msm_hs_check_clock_off is invoked for the second time
+		 d)if there is a data/command comes from stack now, uart circular buf
+		   won't be empty, that meas uart_circ_empty(tx_buf) will return false
+		 e)if uart_circ_empty(tx_buf) return fasle, msm_hs_check_clock_off only
+		   set msm_uport->clk_state to MSM_HS_CLK_ON. but the sps connection
+		   will not be opened any more.
+		 f)now if there a data/command from stack  again
+		   because the sps connection is still close, so the uart can't
+		   thansfer the command/data any more.
+		 so here open sps connection again
+		***************************************************/
+		MSM_HS_DBG("%s check whether need to reopen sps %d\n", __func__,
+				msm_uport->rx.flush);
+		if (msm_uport->rx.flush == FLUSH_SHUTDOWN) {
+			spin_unlock_irqrestore(&uport->lock, flags);
+			msm_hs_spsconnect_rx(uport);
+			spin_lock_irqsave(&uport->lock, flags);
+			MSM_HS_WARN("%s reopen spsconnect.\n", __func__);
+			msm_hs_start_rx_locked(uport);
+		}
 		spin_unlock_irqrestore(&uport->lock, flags);
 		mutex_unlock(&msm_uport->clk_mutex);
 		MSM_HS_DBG("%s(): clkstate %d", __func__, msm_uport->clk_state);
