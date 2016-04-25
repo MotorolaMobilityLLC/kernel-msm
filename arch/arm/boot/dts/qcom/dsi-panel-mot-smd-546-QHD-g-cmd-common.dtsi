@@ -43,7 +43,6 @@ qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 qcom,mdss-dsi-tx-eot-append;
-qcom,mdss-panel-opr-stats-enabled;
 
 qcom,mdss-dsi-panel-timings = [97 20 16 00 48 4A 1A 24 1B 03 04 00];
 qcom,mdss-dsi-panel-timings-8996 = [
