@@ -250,6 +250,8 @@ struct dwc3_msm {
 	struct timer_list       chg_check_timer;
 	bool			disable_bus_vote;
 	bool			force_lpm_in_idle;
+	int			qos_latency;
+	struct pm_qos_request   dwc3_pm_qos_request;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2048,6 +2050,9 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 		mdwc->lpm_flags |= MDWC3_ASYNC_IRQ_WAKE_CAPABILITY;
 	}
 
+	if (mdwc->qos_latency >= 0)
+		pm_qos_remove_request(&mdwc->dwc3_pm_qos_request);
+
 	dev_info(mdwc->dev, "DWC3 in low power mode\n");
 	return 0;
 }
@@ -2065,6 +2070,10 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	}
 
 	pm_stay_awake(mdwc->dev);
+
+	if (mdwc->qos_latency >= 0)
+		pm_qos_add_request(&mdwc->dwc3_pm_qos_request,
+			PM_QOS_CPU_DMA_LATENCY, mdwc->qos_latency);
 
 	/* Enable bus voting */
 	if (mdwc->bus_perf_client && !mdwc->disable_bus_vote) {
@@ -3086,6 +3095,10 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 				"qcom,disable-host-mode-pm");
 	mdwc->force_lpm_in_idle = of_property_read_bool(node,
 				"qcom,force-lpm-in-idle");
+
+	if (of_property_read_u32(node, "mmi,qos_latency",
+				&mdwc->qos_latency))
+		mdwc->qos_latency = -1;
 
 	dwc3_set_notifier(&dwc3_msm_notify_event);
 
