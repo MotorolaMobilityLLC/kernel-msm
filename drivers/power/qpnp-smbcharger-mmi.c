@@ -9670,7 +9670,12 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				smbchg_set_extbat_state(chip, EB_SINK);
 			} else {
 				mutex_lock(&chip->current_change_lock);
-				chip->usb_target_current_ma = chip->cl_usb;
+				if (chip->cl_usbc >= 1500)
+					chip->usb_target_current_ma =
+						chip->cl_usb;
+				else
+					chip->usb_target_current_ma =
+						chip->cl_usbc;
 				mutex_unlock(&chip->current_change_lock);
 				chip->cl_ebchg = 0;
 				smbchg_set_thermal_limited_usb_current_max(
@@ -9711,7 +9716,12 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				smbchg_set_extbat_state(chip, EB_SINK);
 			} else {
 				mutex_lock(&chip->current_change_lock);
-				chip->usb_target_current_ma = chip->cl_usb;
+				if (chip->cl_usbc >= 1500)
+					chip->usb_target_current_ma =
+						chip->cl_usb;
+				else
+					chip->usb_target_current_ma =
+						chip->cl_usbc;
 				mutex_unlock(&chip->current_change_lock);
 				chip->cl_ebchg = 0;
 				smbchg_set_thermal_limited_usb_current_max(
