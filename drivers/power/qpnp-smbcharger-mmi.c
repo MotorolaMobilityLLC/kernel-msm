@@ -3857,6 +3857,17 @@ static void smbchg_check_extbat_ability(struct smbchg_chip *chip, char *able)
 		   (ret.intval == POWER_SUPPLY_PTP_INT_RCV_UNKNOWN))
 		*able |= EB_RCV_NEVER;
 
+	rc = eb_pwr_psy->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_POWER_REQUIRED,
+				      &ret);
+	if (rc) {
+		SMB_ERR(chip,
+			"Could not read Power Required rc = %d\n", rc);
+		*able |= EB_RCV_NEVER;
+	} else if ((ret.intval == POWER_SUPPLY_PTP_POWER_NOT_REQUIRED) ||
+		   (ret.intval == POWER_SUPPLY_PTP_POWER_REQUIREMENTS_UNKNOWN))
+		*able |= EB_RCV_NEVER;
+
 	power_supply_put(eb_pwr_psy);
 }
 
@@ -9566,7 +9577,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		   (chip->bsw_mode != BSW_RUN) &&
 		   (chip->usb_present)) {
 		if ((chip->ebchg_state == EB_DISCONN) ||
-		    !eb_chrg_allowed)
+		    !eb_chrg_allowed ||
+		    ((batt_soc < 95) &&
+		     (chip->usb_target_current_ma == 0)))
 			chip->stepchg_state = STEP_TAPER;
 		if ((batt_ma < 0) && chip->usb_target_current_ma) {
 			batt_ma *= -1;
