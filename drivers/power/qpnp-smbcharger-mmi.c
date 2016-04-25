@@ -9377,7 +9377,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	if (chip->cl_ebsrc)
 		max_dcin_ma = chip->cl_ebsrc;
 
-	if ((!chip->usb_present) && !(eb_able & EB_SND_NEVER)) {
+	if ((!chip->usb_present) && !(eb_able & EB_SND_NEVER) &&
+	    (chip->bsw_mode != BSW_RUN)) {
 		switch (chip->ebchg_state) {
 		case EB_SRC:
 			if (wls_present) {
