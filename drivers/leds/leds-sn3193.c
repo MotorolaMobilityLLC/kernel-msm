@@ -66,6 +66,9 @@
 #define SN_CURRENT_30mA		0x0c
 #define SN_CURRENT_42mA		0x00
 
+#define RGB_LED_MIN_MS		50
+#define RGB_LED_MAX_MS		10000
+
 struct sn3193_breath_ctrl {
 	u8 t0;			/* start */
 	u8 t1;			/* rise */
@@ -532,10 +535,147 @@ static ssize_t sn3193_blink_store(struct device *dev,
 	return count;
 }
 
+static ssize_t rgb_on_off_ms_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct sn3193_led_pdata *led;
+	int t2_setting_to_ms[8] = {0, 130, 260, 520, 1040, 2080, 4160, 8320};
+	int t4_setting_to_ms[11] = {0, 130, 260, 520, 1040, 2080, 4160, 8320, 16640,
+				    32280, 66560};
+	unsigned int on_time;
+	unsigned int off_time;
+
+	if (!strcmp(led_cdev->name, "red")) {
+		led =
+		    container_of(led_cdev, struct sn3193_led_pdata, led_cdev_r);
+	} else if (!strcmp(led_cdev->name, "green")) {
+		led =
+		    container_of(led_cdev, struct sn3193_led_pdata, led_cdev_g);
+	} else if (!strcmp(led_cdev->name, "blue")) {
+		led =
+		    container_of(led_cdev, struct sn3193_led_pdata, led_cdev_b);
+	} else {
+		pr_err("%s invalid led color!\n", __func__);
+		return -EINVAL;
+	}
+
+	on_time = led->ctrl.t2 >> 1;
+	off_time = led->ctrl.t4 >> 1;
+
+	if (on_time > sizeof(t2_setting_to_ms)) {
+		on_time = sizeof(t2_setting_to_ms)-1;
+	}
+	if (off_time > sizeof(t4_setting_to_ms)) {
+		off_time = sizeof(t4_setting_to_ms)-1;
+	}
+	return sprintf(buf, "%d %d\n",
+			t2_setting_to_ms[on_time], t4_setting_to_ms[off_time]);
+}
+
+static ssize_t rgb_on_off_ms_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct sn3193_led_pdata *led;
+	int on_ms;
+	int off_ms;
+	int ret;
+	unsigned int on_time;
+	unsigned int off_time;
+	int t2_ms_to_setting[7] = {195, 390, 780, 1560, 3120, 6240, 8320};
+	int t4_ms_to_setting[10] = {195, 390, 780, 1560, 3120, 6240, 12480, 24960,
+				    48420, 66560};
+
+	ret = sscanf(buf, "%d %d", &on_ms, &off_ms);
+	if (ret <= 1)
+		return -EINVAL;
+
+	if (on_ms < RGB_LED_MIN_MS)
+		on_ms = RGB_LED_MIN_MS;
+
+	if (on_ms > RGB_LED_MAX_MS)
+		on_ms = RGB_LED_MAX_MS;
+
+	if (off_ms > RGB_LED_MAX_MS)
+		off_ms = RGB_LED_MAX_MS;
+
+	if (on_ms == 0) {
+		on_time = 0;
+	} else {
+		for (on_time = 1;on_time<sizeof(t2_ms_to_setting);on_time++) {
+			if (on_ms <= t2_ms_to_setting[on_time-1]) {
+				break;
+			}
+		}
+	}
+
+	if (off_ms == 0) {
+		off_time = 0;
+	} else {
+		for (off_time = 1;off_time<sizeof(t4_ms_to_setting);off_time++) {
+			if (off_ms <= t4_ms_to_setting[off_time-1]) {
+				break;
+			}
+		}
+	}
+
+	if (!strcmp(led_cdev->name, "red")) {
+		led =
+		    container_of(led_cdev, struct sn3193_led_pdata, led_cdev_r);
+		led->ctrl.t0 = 0;
+		led->ctrl.t1 = 1 << 5;
+		led->ctrl.t2 = on_time << 1;
+		led->ctrl.t3 = 1 << 5;
+		led->ctrl.t4 = off_time << 1;
+		if (SN3193_ON == led->state_ledr || SN3193_ON == led->state_ledg
+		    || SN3193_ON == led->state_ledb) {
+			sn3193_led_reset_off(led);
+		}
+		led->state_ledr = SN3193_BLINK;
+		sn3193_set_led_blink(led, RED);
+	} else if (!strcmp(led_cdev->name, "green")) {
+		led =
+		    container_of(led_cdev, struct sn3193_led_pdata, led_cdev_g);
+		led->ctrl.t0 = 0;
+		led->ctrl.t1 = 1 << 5;
+		led->ctrl.t2 = on_time << 1;
+		led->ctrl.t3 = 1 << 5;
+		led->ctrl.t4 = off_time << 1;
+	if (SN3193_ON == led->state_ledr || SN3193_ON == led->state_ledg
+		    || SN3193_ON == led->state_ledb) {
+			sn3193_led_reset_off(led);
+		}
+		led->state_ledg = SN3193_BLINK;
+		sn3193_set_led_blink(led, GREEN);
+	} else if (!strcmp(led_cdev->name, "blue")) {
+		led =
+		    container_of(led_cdev, struct sn3193_led_pdata, led_cdev_b);
+		led->ctrl.t0 = 0;
+		led->ctrl.t1 = 1 << 5;
+		led->ctrl.t2 = on_time << 1;
+		led->ctrl.t3 = 1 << 5;
+		led->ctrl.t4 = off_time << 1;
+		if (SN3193_ON == led->state_ledr || SN3193_ON == led->state_ledg
+		    || SN3193_ON == led->state_ledb) {
+			sn3193_led_reset_off(led);
+		}
+		led->state_ledb = SN3193_BLINK;
+		sn3193_set_led_blink(led, BLUE);
+	} else {
+		pr_err("%s invalid led color!\n", __func__);
+		return -EINVAL;
+	}
+
+	return size;
+}
+
 static DEVICE_ATTR(blink, 0664, NULL, sn3193_blink_store);
+static DEVICE_ATTR(on_off_ms, 0660, rgb_on_off_ms_show, rgb_on_off_ms_store);
 
 static struct attribute *blink_attrs[] = {
 	&dev_attr_blink.attr,
+	&dev_attr_on_off_ms.attr,
 	NULL
 };
 
