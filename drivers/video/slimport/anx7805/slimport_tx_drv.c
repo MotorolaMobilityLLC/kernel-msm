@@ -1350,10 +1350,11 @@ BYTE  SP_TX_Config_Video_MIPI (void)
 		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x2A, 0x0b);
 
 		//sp_write_reg(MIPI_RX_PORT1_ADDR, 0x1c, 0x10);
+		/* These 3 regs 0x1c, 0x1b and 0x19 were tuned for our HW */
 		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x1c, 0x31);
-		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x1b, 0xbb);
+		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x1b, 0x64);
 
-		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x19, 0x3e); /* tunning for Mercury*/
+		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x19, 0x3b);
 		//sp_write_reg(MIPI_RX_PORT1_ADDR, 0x19, 0x3a);
 
 		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x08, 0x08);
