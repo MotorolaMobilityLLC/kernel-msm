@@ -34,6 +34,8 @@
 #include <linux/of.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
+#include <linux/completion.h>
+#include <linux/workqueue.h>
 
 #define MAX_UTAG_SIZE 1024
 #define MAX_UTAG_NAME 32
@@ -132,6 +134,13 @@ struct ctrl {
 	struct mutex access_lock;
 	struct utag *attrib;
 	struct utag *features;
+	struct completion load_comp;
+	struct completion store_comp;
+	struct workqueue_struct *load_queue;
+	struct workqueue_struct *store_queue;
+	struct work_struct load_work;
+	struct work_struct store_work;
+	struct utag *head;
 };
 
 static int build_utags_directory(struct ctrl *ctrl);
@@ -237,7 +246,6 @@ static int read_head(struct blkdev *cb, struct utag *htag)
 static int init_empty(struct ctrl *ctrl)
 {
 	struct utag *htag;
-	int rc;
 
 	pr_err("erasing [%s]\n", ctrl->dir_name);
 	htag = kzalloc(sizeof(struct utag), GFP_KERNEL);
@@ -246,11 +254,11 @@ static int init_empty(struct ctrl *ctrl)
 
 	strlcpy(htag->name, UTAG_HEAD, MAX_UTAG_NAME);
 	add_utag_tail(htag, UTAG_TAIL, NULL);
-	rc = store_utags(ctrl, htag);
-	if (rc)
-		pr_err("error erasing [%s]\n", ctrl->dir_name);
+	ctrl->head = htag;
+	queue_work(ctrl->store_queue, &ctrl->store_work);
+	wait_for_completion(&ctrl->store_comp);
 	kfree(htag);
-	return rc;
+	return 0;
 }
 
 static char *get_dir_name(struct ctrl *ctrl, struct proc_dir_entry *dir)
@@ -607,7 +615,7 @@ static int proc_utag_util(struct ctrl *ctrl)
 		return -EIO;
 	}
 
-	if (!proc_create_data("delete", 0600, dir, &delete_fops, ctrl)) {
+	if (!proc_create_data(".delete", 0600, dir, &delete_fops, ctrl)) {
 		pr_err("Failed to create delete entry\n");
 		return -EIO;
 	}
@@ -917,6 +925,18 @@ static struct utag *load_utags(struct blkdev *cb)
 	return head;
 }
 
+/*
+ * Wrapper to call load_utags as a work function
+ *
+ */
+void load_work_func(struct work_struct *work)
+{
+	struct ctrl *ctrl = container_of(work, struct ctrl, load_work);
+
+	ctrl->head = load_utags(&ctrl->main);
+	complete(&ctrl->load_comp);
+}
+
 static int full_utag_name(struct proc_node *pnode, char *tag)
 {
 	int i, subdir, blen;
@@ -1125,6 +1145,21 @@ static int store_utags(struct ctrl *ctrl, struct utag *tags)
 	return rc;
 }
 
+/*
+ * Wrappers to call store_utags as a work function
+ *
+ */
+void store_work_func(struct work_struct *work)
+{
+	int rc;
+	struct ctrl *ctrl = container_of(work, struct ctrl, store_work);
+
+	rc = store_utags(ctrl, ctrl->head);
+	if (rc)
+		pr_err("error storing utags partition\n");
+	complete(&ctrl->store_comp);
+}
+
 static int read_utag(struct seq_file *file, void *v)
 {
 	int i, error;
@@ -1136,7 +1171,9 @@ static int read_utag(struct seq_file *file, void *v)
 	struct ctrl *ctrl = proc->ctrl;
 
 	mutex_lock(&ctrl->access_lock);
-	tags = load_utags(&ctrl->main);
+	queue_work(ctrl->load_queue, &ctrl->load_work);
+	wait_for_completion(&ctrl->load_comp);
+	tags = ctrl->head;
 	if (NULL == tags) {
 		pr_err("load utags error\n");
 		mutex_unlock(&ctrl->access_lock);
@@ -1220,7 +1257,9 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 		length -= 1;
 
 	mutex_lock(&ctrl->access_lock);
-	tags = load_utags(&ctrl->main);
+	queue_work(ctrl->load_queue, &ctrl->load_work);
+	wait_for_completion(&ctrl->load_comp);
+	tags = ctrl->head;
 	if (NULL == tags) {
 		pr_err("[%s] load error\n", ctrl->dir_name);
 		goto free_temp_exit;
@@ -1252,9 +1291,8 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 		goto free_tags_exit;
 	}
 
-	error = store_utags(ctrl, tags);
-	if (error)
-		pr_err("error storing utags partition\n");
+	queue_work(ctrl->store_queue, &ctrl->store_work);
+	wait_for_completion(&ctrl->store_comp);
 free_tags_exit:
 	free_tags(tags);
 free_temp_exit:
@@ -1277,7 +1315,6 @@ static int rebuild_utags_directory(struct ctrl *ctrl)
 static ssize_t delete_utag(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos)
 {
-	int error;
 	char *pattern, expendable[MAX_UTAG_NAME];
 	struct utag *tags, *cur, *next;
 	struct inode *inode = file->f_dentry->d_inode;
@@ -1304,7 +1341,9 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 		return count;
 
 	mutex_lock(&ctrl->access_lock);
-	tags = load_utags(&ctrl->main);
+	queue_work(ctrl->load_queue, &ctrl->load_work);
+	wait_for_completion(&ctrl->load_comp);
+	tags = ctrl->head;
 	if (NULL == tags) {
 		pr_err("[%s] load error\n", ctrl->dir_name);
 		mutex_unlock(&ctrl->access_lock);
@@ -1344,11 +1383,9 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 	}
 
 	/* Store changed partition */
-	error = store_utags(ctrl, tags);
-	if (error)
-		pr_err("error storing utags partition\n");
-	else
-		rebuild_utags_directory(ctrl);
+	queue_work(ctrl->store_queue, &ctrl->store_work);
+	wait_for_completion(&ctrl->store_comp);
+	rebuild_utags_directory(ctrl);
 just_leave:
 	free_tags(tags);
 	mutex_unlock(&ctrl->access_lock);
@@ -1357,7 +1394,6 @@ just_leave:
 
 static int lock_show(struct seq_file *file, void *v)
 {
-	struct utag htag;
 	struct ctrl *ctrl = (struct ctrl *)file->private;
 
 	if (!ctrl) {
@@ -1365,24 +1401,7 @@ static int lock_show(struct seq_file *file, void *v)
 		return -EIO;
 	}
 
-	memset(&htag, 0, sizeof(struct utag));
-	mutex_lock(&ctrl->access_lock);
-
-	if (open_utags(&ctrl->main))
-		return -EIO;
-
-	if (read_head(&ctrl->main, &htag)) {
-		mutex_unlock(&ctrl->access_lock);
-		filp_close(ctrl->main.filep, NULL);
-		return -EIO;
-	}
-
-
-	ctrl->lock = htag.flags & UTAG_FLAG_PROTECTED ? 1 : 0;
 	seq_printf(file, "%u\n", ctrl->lock);
-	filp_close(ctrl->main.filep, NULL);
-	mutex_unlock(&ctrl->access_lock);
-
 	return 0;
 }
 
@@ -1479,7 +1498,9 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	pr_debug("adding [%s] utag\n", expendable);
 
 	mutex_lock(&ctrl->access_lock);
-	tags = load_utags(&ctrl->main);
+	queue_work(ctrl->load_queue, &ctrl->load_work);
+	wait_for_completion(&ctrl->load_comp);
+	tags = ctrl->head;
 	if (NULL == tags) {
 		pr_err("[%s] load error\n", ctrl->dir_name);
 		mutex_unlock(&ctrl->access_lock);
@@ -1555,9 +1576,8 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	walk_proc_nodes(ctrl);
 
 	/* Store changed partition */
-	error = store_utags(ctrl, tags);
-	if (error)
-		pr_err("error storing utags partition\n");
+	queue_work(ctrl->store_queue, &ctrl->store_work);
+	wait_for_completion(&ctrl->store_comp);
 just_leave:
 	free_tags(tags);
 	mutex_unlock(&ctrl->access_lock);
@@ -1591,6 +1611,14 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 	}
 
 	mutex_lock(&ctrl->access_lock);
+
+	if (UTAG_STATUS_LOADED == ctrl->reload) {
+		pr_info("[%s] (pid %i) [%s] already loaded\n",
+			current->comm, current->pid, ctrl->dir_name);
+		mutex_unlock(&ctrl->access_lock);
+		return count;
+	}
+
 	if (copy_from_user(&ctrl->reload, buffer, 1)) {
 		pr_err("user copy error\n");
 		mutex_unlock(&ctrl->access_lock);
@@ -1640,7 +1668,9 @@ static int build_utags_directory(struct ctrl *ctrl)
 	int rc = 0;
 
 	/* try to load utags from primary partition */
-	tags = load_utags(&ctrl->main);
+	queue_work(ctrl->load_queue, &ctrl->load_work);
+	wait_for_completion(&ctrl->load_comp);
+	tags = ctrl->head;
 	if (NULL == tags) {
 		pr_err("[%s] load error\n", ctrl->dir_name);
 		return -EIO;
@@ -1760,10 +1790,12 @@ static void clear_utags_directory(struct ctrl *ctrl)
 }
 
 
+#define UTAGS_QNAME_SIZE 10
 static int utags_probe(struct platform_device *pdev)
 {
 	int rc;
 	struct ctrl *ctrl;
+	char buf[UTAGS_QNAME_SIZE];
 
 	ctrl = devm_kzalloc(&pdev->dev, sizeof(struct ctrl), GFP_KERNEL);
 	if (!ctrl)
@@ -1774,14 +1806,37 @@ static int utags_probe(struct platform_device *pdev)
 	ctrl->pdev = pdev;
 	ctrl->reload = UTAG_STATUS_NOT_READY;
 	mutex_init(&ctrl->access_lock);
+
+	init_completion(&ctrl->load_comp);
+	init_completion(&ctrl->store_comp);
+	INIT_WORK(&ctrl->load_work, load_work_func);
+	INIT_WORK(&ctrl->store_work, store_work_func);
+
 	dev_set_drvdata(&pdev->dev, ctrl);
 
 	rc = utags_dt_init(pdev);
 	if (rc)
 		return -EIO;
 
+	scnprintf(buf, UTAGS_QNAME_SIZE, "%s_load", ctrl->dir_name);
+	ctrl->load_queue = create_workqueue(buf);
+	if (!ctrl->load_queue) {
+		pr_err("Failed to create workqueue %s\n", buf);
+		return -ENOMEM;
+	}
+
+	scnprintf(buf, UTAGS_QNAME_SIZE, "%s_store", ctrl->dir_name);
+	ctrl->store_queue = create_workqueue(buf);
+	if (!ctrl->store_queue) {
+		destroy_workqueue(ctrl->load_queue);
+		pr_err("Failed to create workqueue %s\n", buf);
+		return -ENOMEM;
+	}
+
 	ctrl->root = proc_mkdir(ctrl->dir_name, NULL);
 	if (!ctrl->root) {
+		destroy_workqueue(ctrl->load_queue);
+		destroy_workqueue(ctrl->store_queue);
 		pr_err("Failed to create dir entry\n");
 		return -EIO;
 	}
@@ -1791,12 +1846,16 @@ static int utags_probe(struct platform_device *pdev)
 
 	if (!proc_create_data("reload", 0600, ctrl->root, &reload_fops, ctrl)) {
 		pr_err("Failed to create reload entry\n");
+		destroy_workqueue(ctrl->load_queue);
+		destroy_workqueue(ctrl->store_queue);
 		remove_proc_subtree(ctrl->dir_name, NULL);
 		return -EIO;
 	}
 
 	if (proc_utag_util(ctrl)) {
 		pr_err("Failed to create util dir\n");
+		destroy_workqueue(ctrl->load_queue);
+		destroy_workqueue(ctrl->store_queue);
 		remove_proc_subtree(ctrl->dir_name, NULL);
 		return -EFAULT;
 	}
@@ -1811,6 +1870,8 @@ static int utags_remove(struct platform_device *pdev)
 
 	clear_utags_directory(ctrl);
 	remove_proc_subtree(ctrl->dir_name, NULL);
+	destroy_workqueue(ctrl->load_queue);
+	destroy_workqueue(ctrl->store_queue);
 	return 0;
 }
 
