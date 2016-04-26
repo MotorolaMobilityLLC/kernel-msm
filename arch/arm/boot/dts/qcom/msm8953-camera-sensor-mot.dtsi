@@ -12,6 +12,77 @@
  */
 
 &cci {
+	/* OV16860 EEPROM */
+	eeprom0: qcom,eeprom@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,eeprom";
+		qcom,slave-addr = <0xA0>;
+		qcom,cci-master = <0>;
+
+		cam_vio-supply = <&pm8953_l10>;
+		qcom,cam-vreg-name = "cam_vio";
+		qcom,cam-vreg-min-voltage = <1800000>;
+		qcom,cam-vreg-max-voltage = <1800000>;
+		qcom,cam-vreg-op-mode = <1800000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_default
+			     &cam_sensor_rear_default>;
+		pinctrl-1 = <&cam_sensor_mclk0_sleep
+			     &cam_sensor_rear_sleep>;
+		gpios = <&tlmm 26 0>,
+			<&tlmm 36 0>,
+			<&tlmm 113 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+					  "CAM_RESET0",
+					  "CAM_VDIG0";
+
+		clocks = <&clock_gcc clk_mclk0_clk_src>,
+			 <&clock_gcc clk_gcc_camss_mclk0_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	/* OV5693 OTP */
+	eeprom1: qcom,eeprom@1 {
+		cell-index = <1>;
+		reg = <0x01>;
+		compatible = "qcom,eeprom";
+		qcom,cci-master = <0>;
+
+		cam_vio-supply = <&pm8953_l10>;
+		qcom,cam-vreg-name = "cam_vio";
+		qcom,cam-vreg-min-voltage = <1800000>;
+		qcom,cam-vreg-max-voltage = <1800000>;
+		qcom,cam-vreg-op-mode = <1800000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_default
+			     &cam_sensor_front_default>;
+		pinctrl-1 = <&cam_sensor_mclk2_sleep
+			     &cam_sensor_front_sleep>;
+		gpios = <&tlmm 28 0>,
+			<&tlmm 40 0>,
+			<&tlmm 113 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+					  "CAM_RESET2",
+					  "CAM_VDIG2";
+
+		clocks = <&clock_gcc clk_mclk2_clk_src>,
+			 <&clock_gcc clk_gcc_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
 	/* Skyworks 81298 */
 	led_flash0: qcom,camera-flash@c6 {
 		cell-index = <0xc6>;
@@ -61,6 +132,7 @@
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
 		qcom,actuator-src = <&actuator0>;
+		qcom,eeprom-src = <&eeprom0>;
 		qcom,led-flash-src = <&led_flash0>;
 		cam_vio-supply = <&pm8953_l10>;
 		qcom,cam-vreg-name = "cam_vio";
@@ -100,6 +172,7 @@
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <2>;
 		qcom,mount-angle = <270>;
+		qcom,eeprom-src = <&eeprom1>;
 		qcom,led-flash-src = <&led_flash0>;
 		cam_vio-supply = <&pm8953_l10>;
 		qcom,cam-vreg-name = "cam_vio";
