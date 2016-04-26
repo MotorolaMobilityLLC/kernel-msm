@@ -1291,6 +1291,53 @@ void mdss_dsi_core_clk_deinit(struct device *dev, struct dsi_shared_data *sdata)
 	if (sdata->mdp_core_clk)
 		devm_clk_put(dev, sdata->mdp_core_clk);
 }
+/* To have a match of calculation of the DSI MIPI clock between DSI
+ * and downstream device such as ANX7805, the left/right/top/down
+ * borders must be included in h_active and v_active.
+ *   h_active = xres + border_left + border_right
+ *   v_active = yres + border_top + border_bottom
+ * Since Linux FB doesn't support left/right/top/down borders and
+ * if these values are set, then it will cause big problem because
+ * DSI and downstream devices will have different MIPI Frequencies
+ * Normal, these are usually set to 0, and to avoid a future headache
+ * these values will be zero out and warning message will be printed
+ */
+void mdss_dsi_border_check(struct mdss_panel_data *pdata)
+{
+#ifdef CONFIG_SLIMPORT_ANX7805
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mdss_panel_info *pinfo = NULL;
+
+	if (!pdata) {
+		pr_err("%s: invalid panel data\n", __func__);
+		return;
+	}
+
+	pr_debug("%s+\n", __func__);
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+							panel_data);
+	pinfo = &pdata->panel_info;
+
+	/* anx7805 is using DSI1 */
+	if (ctrl_pdata->ndx == 0)
+		return;
+
+	if (pinfo->lcdc.border_left || pinfo->lcdc.border_right ||
+		pinfo->lcdc.border_top || pinfo->lcdc.border_bottom) {
+		pr_warn("%s: invalid border_left=%d border_right=%d border_top=%d border_bottom=%d\n",
+			__func__,
+			pinfo->lcdc.border_left, pinfo->lcdc.border_right,
+			pinfo->lcdc.border_top, pinfo->lcdc.border_bottom);
+		pr_warn("%s: these values will set to zero\n", __func__);
+
+		pinfo->lcdc.border_left = 0;
+		pinfo->lcdc.border_right = 0;
+		pinfo->lcdc.border_top = 0;
+		pinfo->lcdc.border_bottom = 0;
+	}
+#endif
+}
 
 int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata, bool update_phy)
 {
@@ -1311,6 +1358,8 @@ int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata, bool update_phy)
 		pr_err("%s: invalid ctrl data\n", __func__);
 		return -EINVAL;
 	}
+
+	mdss_dsi_border_check(pdata);
 
 	if (update_phy) {
 		pinfo->mipi.frame_rate = mdss_panel_calc_frame_rate(pinfo);
