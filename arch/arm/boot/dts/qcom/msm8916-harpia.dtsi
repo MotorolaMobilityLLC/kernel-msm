@@ -389,7 +389,7 @@
 		pinctrl-0 = <&bma25x_int1_default &bma25x_int2_default>;
 		pinctrl-1 = <&bma25x_int1_sleep &bma25x_int2_sleep>;
 		interrupt-parent = <&msm_gpio>;
-		interrupts = <119 0x2002>;
+		interrupts = <115 0x2002>;
 		vdd-supply = <&pm8916_l17>;
 		vio-supply = <&pm8916_l6>;
 		bosch,init-interval = <200>;
