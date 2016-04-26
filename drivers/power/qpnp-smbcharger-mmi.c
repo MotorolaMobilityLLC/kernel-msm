@@ -9435,8 +9435,28 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		} else if (!!(chip->usb_suspended & REASON_DEMO) &&
 			(batt_soc <=
 			 (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			if (chip->ebchg_state == EB_SINK) {
+				smbchg_set_extbat_state(chip, EB_OFF);
+				chip->cl_ebchg = 0;
+				smbchg_set_extbat_in_cl(chip);
+			}
 			smbchg_usb_en(chip, true, REASON_DEMO);
 			smbchg_dc_en(chip, true, REASON_DEMO);
+		}
+
+		if (chip->usb_present &&
+		    ((eb_soc >= DEMO_MODE_MAX_SOC) ||
+		     (eb_able & EB_RCV_NEVER))) {
+			smbchg_set_extbat_state(chip, EB_OFF);
+			chip->cl_ebchg = 0;
+			smbchg_set_extbat_in_cl(chip);
+		} else if (chip->usb_present &&
+			   (chip->usb_suspended & REASON_DEMO) &&
+			   (eb_soc <=
+			    (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			chip->cl_ebchg = chip->usb_target_current_ma;
+			smbchg_set_extbat_in_cl(chip);
+			smbchg_set_extbat_state(chip, EB_SINK);
 		}
 	} else if (chip->force_eb_chrg &&
 		   !(eb_able & EB_RCV_NEVER) &&
