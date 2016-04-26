@@ -5836,6 +5836,9 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 	}
 
 
+	if (chip->usbc_disabled)
+		return IRQ_HANDLED;
+
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
 		SMB_ERR(chip,
