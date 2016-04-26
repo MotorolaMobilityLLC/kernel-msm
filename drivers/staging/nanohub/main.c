@@ -30,6 +30,7 @@
 #include <linux/vmalloc.h>
 #include <linux/spinlock.h>
 #include <linux/semaphore.h>
+#include <linux/sched.h>
 #include <linux/sched/rt.h>
 #include <linux/platform_data/nanohub.h>
 
