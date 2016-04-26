@@ -1219,7 +1219,8 @@ void SetStateDelayUnattached(void)
 	platform_disableSuperspeedUSB();
 	platform_toggleAudioSwitch(fsa_lpm);
 #ifdef CONFIG_FSUSB42_MUX
-	fsusb42_set_state(FSUSB_OFF);
+	if (fsusb42_get_state() != FSUSB_STATE_EXT)
+		fsusb42_set_state(FSUSB_OFF);
 #endif
 #ifndef FPGA_BOARD
 	SetStateUnattached();
@@ -1513,7 +1514,8 @@ void SetStateAttachedSource(void)
 	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	platform_toggleAudioSwitch(fsa_usb_mode);
 #ifdef CONFIG_FSUSB42_MUX
-	fsusb42_set_state(FSUSB_STATE_USB);
+	if (fsusb42_get_state() != FSUSB_STATE_EXT)
+		fsusb42_set_state(FSUSB_STATE_USB);
 #endif
 	USBPDEnable(TRUE, TRUE);	// Enable the USB PD state machine if applicable (no need to write to Device again), set as DFP
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
@@ -1574,7 +1576,8 @@ void SetStateAttachedSink(void)
 	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	platform_toggleAudioSwitch(fsa_usb_mode);
 #ifdef CONFIG_FSUSB42_MUX
-	fsusb42_set_state(FSUSB_STATE_USB);
+	if (fsusb42_get_state() != FSUSB_STATE_EXT)
+		fsusb42_set_state(FSUSB_STATE_USB);
 #endif
 	USBPDEnable(TRUE, FALSE);	// Enable the USB PD state machine (no need to write Device again since we are doing it here)
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
