@@ -11815,14 +11815,16 @@ typedef enum {
 
 typedef struct {
     A_UINT32    tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_ARRAY_STRUC */
-    /**RSSI */
+    /** RSSI */
     A_UINT32    rssi;
-    /**time stamp in milliseconds */
+    /** time stamp in milliseconds */
     A_UINT32    tstamp;
     /** Extscan cycle during which this entry was scanned */
     A_UINT32    scan_cycle_id;
     /** flag to indicate if the given result was obtained as part of interrupted (aborted/large time gap preempted) scan */
     A_UINT32    flags;
+    /** Bitmask of buckets (i.e. sets of channels) scanned */
+    A_UINT32    buckets_scanned;
 } wmi_extscan_rssi_info;
 
 typedef struct {
