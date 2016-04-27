@@ -456,6 +456,24 @@ static inline u_int8_t wma_get_vdev_count(tp_wma_handle wma)
 	return vdev_count;
 }
 
+/**
+ * wma_did_ssr_happen() - Check if SSR happened by comparing current
+ * wma handle and new wma handle
+ * @wma: Pointer to wma handle
+ *
+ * This API will compare saved wma handle and new wma handle using global
+ * vos context. If both doesn't match implies that WMA handle got changed
+ * while waiting for command which will happen in SSR.
+ *
+ * Return: True if SSR happened else false
+ */
+static bool wma_did_ssr_happen(tp_wma_handle wma)
+{
+	return vos_get_context(VOS_MODULE_ID_WDA,
+		vos_get_global_context(VOS_MODULE_ID_VOSS, NULL)) != wma;
+}
+
+
 /* Function   : wma_is_vdev_in_ap_mode
  * Description : Helper function to know whether given vdev id
  *              is in AP mode or not.
@@ -21429,6 +21447,11 @@ int wma_enable_wow_in_fw(WMA_HANDLE handle, int runtime_pm)
 				  WMA_TGT_SUSPEND_COMPLETE_TIMEOUT)
 				  != VOS_STATUS_SUCCESS) {
 		WMA_LOGE("Failed to receive WoW Enable Ack from FW");
+		if (wma_did_ssr_happen(wma)) {
+			WMA_LOGE("%s: SSR happened while waiting for response",
+				__func__);
+			return VOS_STATUS_E_FAILURE;
+		}
 		WMA_LOGE("Credits:%d; Pending_Cmds: %d",
 			wmi_get_host_credits(wma->wmi_handle),
 			wmi_get_pending_cmds(wma->wmi_handle));
@@ -22398,23 +22421,6 @@ send_ready_to_suspend:
 	return VOS_STATUS_SUCCESS;
 }
 
-/**
- * wma_did_ssr_happen() - Check if SSR happened by comparing current
- * wma handle and new wma handle
- * @wma: Pointer to wma handle
- *
- * This API will compare saved wma handle and new wma handle using global
- * vos context. If both doesn't match implies that WMA handle got changed
- * while waiting for command which will happen in SSR.
- *
- * Return: True if SSR happened else false
- */
-static bool wma_did_ssr_happen(tp_wma_handle wma)
-{
-	return vos_get_context(VOS_MODULE_ID_WDA,
-		vos_get_global_context(VOS_MODULE_ID_VOSS, NULL)) != wma;
-}
-
 /*
  * Sends host wakeup indication to FW. On receiving this indication,
  * FW will come out of WOW.
@@ -22461,20 +22467,19 @@ static VOS_STATUS wma_send_host_wakeup_ind_to_fw(tp_wma_handle wma)
 	}
 
 	WMA_LOGD("Host wakeup indication sent to fw");
-
 	vos_status = vos_wait_single_event(&(wma->wma_resume_event),
 			WMA_RESUME_TIMEOUT);
 	if (VOS_STATUS_SUCCESS != vos_status) {
 		WMA_LOGE("%s: Timeout waiting for resume event from FW",
 			__func__);
-		WMA_LOGE("%s: Pending commands %d credits %d", __func__,
-				wmi_get_pending_cmds(wma->wmi_handle),
-				wmi_get_host_credits(wma->wmi_handle));
 		if (wma_did_ssr_happen(wma)) {
 			WMA_LOGE("%s: SSR happened while waiting for response",
 				__func__);
 			return VOS_STATUS_E_ALREADY;
 		}
+		WMA_LOGE("%s: Pending commands %d credits %d", __func__,
+				wmi_get_pending_cmds(wma->wmi_handle),
+				wmi_get_host_credits(wma->wmi_handle));
 		if (!vos_is_logp_in_progress(VOS_MODULE_ID_WDA, NULL)) {
 #ifdef CONFIG_CNSS
 			if (pMac->sme.enableSelfRecovery) {
@@ -33494,6 +33499,11 @@ int wma_suspend_target(WMA_HANDLE handle, int disable_target_intr)
 				  timeout)
 				  != VOS_STATUS_SUCCESS) {
 		WMA_LOGE("Failed to get ACK from firmware for pdev suspend");
+		if (wma_did_ssr_happen(wma_handle)) {
+			WMA_LOGE("%s: SSR happened while waiting for response",
+				__func__);
+			return VOS_STATUS_E_FAILURE;
+		}
 		wmi_set_target_suspend(wma_handle->wmi_handle, FALSE);
 #ifdef CONFIG_CNSS
 		if (vos_is_load_unload_in_progress(VOS_MODULE_ID_WDA, NULL) ||
