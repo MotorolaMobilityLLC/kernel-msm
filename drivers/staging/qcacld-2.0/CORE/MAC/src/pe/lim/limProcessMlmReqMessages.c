@@ -1407,7 +1407,9 @@ error:
         return;
     }
 
+    vos_mem_zero(pMlmOemDataRsp, sizeof(*pMlmOemDataRsp));
     pMlmOemDataRsp->target_rsp = false;
+    pMlmOemDataRsp->oem_data_rsp = NULL;
 
     if(NULL != pMac->lim.gpLimMlmOemDataReq)
     {
@@ -2045,11 +2047,11 @@ static void limProcessMlmOemDataReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         /// Return Meas confirm with INVALID_PARAMETERS
         pMlmOemDataRsp = vos_mem_malloc(sizeof(tLimMlmOemDataRsp));
-        if ( pMlmOemDataRsp != NULL)
-        {
+        if (pMlmOemDataRsp != NULL) {
+            vos_mem_zero(pMlmOemDataRsp, sizeof(*pMlmOemDataRsp));
             pMlmOemDataRsp->target_rsp = false;
+            pMlmOemDataRsp->oem_data_rsp = NULL;
             limPostSmeMessage(pMac, LIM_MLM_OEM_DATA_CNF, (tANI_U32*)pMlmOemDataRsp);
-            vos_mem_free(pMlmOemDataRsp);
         }
         else
         {

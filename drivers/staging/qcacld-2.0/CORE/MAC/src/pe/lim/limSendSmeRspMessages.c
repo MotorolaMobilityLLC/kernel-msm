@@ -1441,9 +1441,15 @@ void limSendSmeOemDataRsp(tpAniSirGlobal pMac, tANI_U32* pMsgBuf, tSirResultCode
                  pMlmOemDataRsp->oem_data_rsp,
                  pSirSmeOemDataRsp->rsp_len);
 
-    //Now free the memory from MLM Rsp Message
-    vos_mem_free(pMlmOemDataRsp->oem_data_rsp);
-    pMlmOemDataRsp->oem_data_rsp = NULL;
+    /*
+     * Now free the memory from MLM Rsp Message
+     *
+     * Free oem_data_rsp only if rsp is from target
+     */
+    if (pMlmOemDataRsp->target_rsp && pMlmOemDataRsp->oem_data_rsp) {
+        vos_mem_free(pMlmOemDataRsp->oem_data_rsp);
+        pMlmOemDataRsp->oem_data_rsp = NULL;
+    }
     vos_mem_free(pMlmOemDataRsp);
     pMlmOemDataRsp = NULL;
 
