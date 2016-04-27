@@ -4177,8 +4177,36 @@ typedef struct {
     A_UINT32 on_time_hs20;
     /** number of channels */
     A_UINT32 num_channels;
-    /** tx time (in milliseconds) per TPC level (0.5 dBm) */
+    /** tx time (in milliseconds) per TPC level
+     * TPC levels require a board-specific translation to determine what
+     * actual power corresponds to each power level.
+     * Just as the host has a BDF file available, the host should also have
+     * a data file available that provides the
+     *     power level --> power
+     * translations.
+     */
     A_UINT32 tx_time_per_tpc[MAX_TPC_LEVELS];
+    /** number of tx power levels, including both tx_time_per_tpc and
+     * ext_tx_time_per_power_level
+     * Each power level consumes one A_UINT32.
+     * If num_tx_power_levels <= MAX_TPC_LEVELs, only tx_time_per_tpc is used.
+     * If num_tx_power_levels > MAX_TPC_LEVELS, the first MAX_TPC_LEVELS values
+     * are stored in tx_time_per_tpc, and the remaining
+     * (num_tx_power_levels - MAX_TPC_LEVELS) values are stored in
+     * ext_tx_time_per_power_level.
+     */
+    A_UINT32 num_tx_power_levels;
+    /*
+     * This TLV will be followed by a TLV containing a variable-length array of
+     * A_UINT32 with any additional tx time per power level data, if there are
+     * more than MAX_TPC_LEVELS elements of tx time per TPC to report.
+     * Note that at most one wmi_radio_link_stats object will be present in the
+     * WMI_RADIO_LINK_STATS message.  Thus, even though there is only one
+     * ext_tx_time_per_power_level array in the WMI_RADIO_LINK_STATS message,
+     * it only holds the extra data for a single wmi_radio_link_stats object.
+     *
+     *  A_UINT32 ext_tx_time_per_power_level[num_tx_power_levels - MAX_TPC_LEVELS]
+     */
 } wmi_radio_link_stats;
 
 /** Radio statistics (once started) do not stop or get reset unless wifi_clear_link_stats is invoked */
