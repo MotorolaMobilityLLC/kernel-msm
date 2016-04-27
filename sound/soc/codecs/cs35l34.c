@@ -1,7 +1,7 @@
 /*
  * cs35l34.c -- CS35l34 ALSA SoC audio driver
  *
- * Copyright 2015 Cirrus Logic, Inc.
+ * Copyright 2016 Cirrus Logic, Inc.
  *
  * Author: Alex Kovacs <alex.kovacs@cirrus.com>
  *
@@ -37,8 +37,6 @@
 
 #include "cs35l34.h"
 
-#define PDN_DONE_ATTEMPTS	10
-
 struct  cs35l34_private {
 	struct snd_soc_codec *codec;
 	struct cs35l34_platform_data pdata;
@@ -67,7 +65,7 @@ static const struct reg_default cs35l34_reg[] = {
 	{CS35L34_BST_CONV_COEF_1, 0x24},
 	{CS35L34_BST_CONV_COEF_2, 0x24},
 	{CS35L34_BST_CONV_SLOPE_COMP, 0x4E},
-	{CS35L34_BST_CONV_SW_FREQ, 0x8},
+	{CS35L34_BST_CONV_SW_FREQ, 0x08},
 	{CS35L34_CLASS_H_CTL, 0x0D},
 	{CS35L34_CLASS_H_HEADRM_CTL, 0x0D},
 	{CS35L34_CLASS_H_RELEASE_RATE, 0x08},
@@ -262,16 +260,28 @@ static int cs35l34_main_amp_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct cs35l34_private *priv = snd_soc_codec_get_drvdata(codec);
+	unsigned int status;
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		regmap_update_bits(priv->regmap, CS35L34_BST_CVTR_V_CTL,
 			CS35L34_BST_CTL_MASK,
 			0x30);
-		usleep_range(5000, 5000);
+		usleep_range(5000, 5100);
 		regmap_update_bits(priv->regmap, CS35L34_PROTECT_CTL,
 			AMP_MUTE,
 			0);
+		/* Reading all status bits here so int pin goes high.
+		*  Note: Data sheet calls for 2 consecutive reads.
+		*/
+		regmap_read(priv->regmap, CS35L34_INT_STATUS_1, &status);
+		regmap_read(priv->regmap, CS35L34_INT_STATUS_2, &status);
+		regmap_read(priv->regmap, CS35L34_INT_STATUS_3, &status);
+		regmap_read(priv->regmap, CS35L34_INT_STATUS_4, &status);
+		regmap_read(priv->regmap, CS35L34_INT_STATUS_1, &status);
+		regmap_read(priv->regmap, CS35L34_INT_STATUS_2, &status);
+		regmap_read(priv->regmap, CS35L34_INT_STATUS_3, &status);
+		regmap_read(priv->regmap, CS35L34_INT_STATUS_4, &status);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		regmap_update_bits(priv->regmap, CS35L34_BST_CVTR_V_CTL,
@@ -280,7 +290,9 @@ static int cs35l34_main_amp_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, CS35L34_PROTECT_CTL,
 			AMP_MUTE,
 			AMP_MUTE);
-		usleep_range(5000, 5000);
+		regmap_update_bits(priv->regmap, CS35L34_PWRCTL1, PDN_ALL,
+			PDN_ALL);
+		usleep_range(5000, 5100);
 		break;
 	default:
 		pr_err("Invalid event = 0x%x\n", event);
@@ -313,10 +325,13 @@ static int cs35l34_mclk_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
 	struct cs35l34_private *priv = snd_soc_codec_get_drvdata(w->codec);
-	int ret, i;
+	int ret;
 	unsigned int reg;
 
 	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		regmap_update_bits(priv->regmap, CS35L34_PWRCTL1, PDN_ALL, 0);
+		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		ret = regmap_read(priv->regmap, CS35L34_AMP_DIG_VOL_CTL,
 			&reg);
@@ -328,23 +343,6 @@ static int cs35l34_mclk_event(struct snd_soc_dapm_widget *w,
 			msleep(40);
 		else
 			usleep_range(2000, 2010);
-
-		for (i = 0; i < PDN_DONE_ATTEMPTS; i++) {
-			ret = regmap_read(priv->regmap, CS35L34_INT_STATUS_2,
-				&reg);
-			if (ret != 0) {
-				pr_err("%s regmap read failure %d\n",
-					__func__, ret);
-				return ret;
-			}
-			if (reg & PDN_DONE)
-				break;
-
-			usleep_range(5000, 5010);
-		}
-		if (i == PDN_DONE_ATTEMPTS)
-			pr_err("%s Device did not power down properly\n",
-				__func__);
 		break;
 	default:
 		pr_err("Invalid event = 0x%x\n", event);
@@ -361,7 +359,8 @@ static const struct snd_soc_dapm_widget cs35l34_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_OUT("SDOUT", NULL, 0, CS35L34_PWRCTL3, 2, 1),
 
 	SND_SOC_DAPM_SUPPLY("EXTCLK", CS35L34_PWRCTL3, 7, 1,
-		cs35l34_mclk_event, SND_SOC_DAPM_PRE_PMD),
+		cs35l34_mclk_event, SND_SOC_DAPM_PRE_PMU |
+		SND_SOC_DAPM_PRE_PMD),
 
 	SND_SOC_DAPM_OUTPUT("SPK"),
 
@@ -592,7 +591,7 @@ static int cs35l34_probe(struct snd_soc_codec *codec)
 {
 	int ret = 0;
 	struct cs35l34_private *cs35l34 = snd_soc_codec_get_drvdata(codec);
-	unsigned int reg;
+	unsigned int reg, status;
 
 	codec->control_data = cs35l34->regmap;
 
@@ -607,15 +606,32 @@ static int cs35l34_probe(struct snd_soc_codec *codec)
 	regmap_write(cs35l34->regmap, CS35L34_PWRCTL2, 0xFD);
 	regmap_write(cs35l34->regmap, CS35L34_PWRCTL3, 0x1F);
 
-	/* Make sure PDN_ALL is cleared on initialization.
-	*  Note: Avoid setting PDN_ALL in dapm events.
-	*/
-	regmap_update_bits(cs35l34->regmap, CS35L34_PWRCTL1, PDN_ALL, 0);
+	/* Unmask CS35L34_M_PDN_DONE prior to clearing PDN_ALL */
+	regmap_update_bits(cs35l34->regmap, CS35L34_INT_MASK_2,
+		CS35L34_M_PDN_DONE,
+		0);
 
 	/* Set mute bit at startup */
 	regmap_update_bits(cs35l34->regmap, CS35L34_PROTECT_CTL,
 		AMP_MUTE,
 		AMP_MUTE);
+
+	/* Make sure PDN_ALL is cleared on initialization.
+	*  Note: Use careful placement of PDN_ALL in dapm events.
+	*/
+	regmap_update_bits(cs35l34->regmap, CS35L34_PWRCTL1, PDN_ALL, 0);
+
+	/* Read all status bits in order to clear them.
+	*  Note: Data sheet calls for 2 consecutive reads on status bits.
+	*/
+	regmap_read(cs35l34->regmap, CS35L34_INT_STATUS_1, &status);
+	regmap_read(cs35l34->regmap, CS35L34_INT_STATUS_2, &status);
+	regmap_read(cs35l34->regmap, CS35L34_INT_STATUS_3, &status);
+	regmap_read(cs35l34->regmap, CS35L34_INT_STATUS_4, &status);
+	regmap_read(cs35l34->regmap, CS35L34_INT_STATUS_1, &status);
+	regmap_read(cs35l34->regmap, CS35L34_INT_STATUS_2, &status);
+	regmap_read(cs35l34->regmap, CS35L34_INT_STATUS_3, &status);
+	regmap_read(cs35l34->regmap, CS35L34_INT_STATUS_4, &status);
 
 	/* Set Platform Data */
 	if (cs35l34->pdata.boost_ctl)
@@ -756,7 +772,6 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 	struct cs35l34_private *cs35l34;
 	struct cs35l34_platform_data *pdata =
 		dev_get_platdata(&i2c_client->dev);
-	/*int i;*/
 	int ret;
 	unsigned int devid = 0;
 	unsigned int reg;
