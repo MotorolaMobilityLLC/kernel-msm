@@ -2195,16 +2195,15 @@ hdd_parse_send_action_frame_v1_data(const tANI_U8 *pValue,
 static int
 hdd_sendactionframe(hdd_adapter_t *pAdapter, const tANI_U8 *bssid,
                     const tANI_U8 channel, const tANI_U8 dwell_time,
-                    const tANI_U8 payload_len, const tANI_U8 *payload)
+                    const int payload_len, const tANI_U8 *payload)
 {
    struct ieee80211_channel chan;
-   tANI_U8 frame_len;
+   int frame_len, ret = 0;
    tANI_U8 *frame;
    struct ieee80211_hdr_3addr *hdr;
    u64 cookie;
    hdd_station_ctx_t *pHddStaCtx;
    hdd_context_t *pHddCtx;
-   int ret = 0;
    tpSirMacVendorSpecificFrameHdr pVendorSpecific =
                    (tpSirMacVendorSpecificFrameHdr) payload;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)) || defined(WITH_BACKPORTS)
@@ -2361,45 +2360,57 @@ hdd_parse_sendactionframe_v1(hdd_adapter_t *pAdapter, const char *command)
    return ret;
 }
 
-/*
-  \brief hdd_parse_sendactionframe_v2() - parse version 2 of the
-         SENDACTIONFRAME command
-
-  This function parses the v2 SENDACTIONFRAME command with the format
-
-      SENDACTIONFRAME <android_wifi_af_params>
-
-  \param - pAdapter - Adapter upon which the command was received
-  \param - command - command that was received, ASCII command followed
-                     by binary data
-
-  \return - 0 for success non-zero for failure
-
-  --------------------------------------------------------------------------*/
+/**
+ * hdd_parse_sendactionframe_v2() - parse version 2 of the
+ *                                  SENDACTIONFRAME command
+ * @pAdapter: Adapter upon which the command was received
+ * @command: command that was received, ASCII command followed
+ *           by binary data
+ * @total_len: total length of command
+ *
+ * This function parses the v2 SENDACTIONFRAME command with the format
+ * SENDACTIONFRAME <android_wifi_af_params>
+ *
+ * Return: 0 for success non-zero for failure
+ */
 static int
 hdd_parse_sendactionframe_v2(hdd_adapter_t *pAdapter,
-                             const char *command)
+                             const char *command, int total_len)
 {
-   struct android_wifi_af_params *params;
-   tSirMacAddr bssid;
-   int ret;
+	struct android_wifi_af_params *params;
+	tSirMacAddr bssid;
+	int ret;
 
-   /* params are large so keep off the stack */
-   params = kmalloc(sizeof(*params), GFP_KERNEL);
-   if (!params) return -ENOMEM;
+	/* The params are located after "SENDACTIONFRAME " */
+	total_len -= 16;
+	params = (struct android_wifi_af_params *)(command + 16);
 
-   /* The params are located after "SENDACTIONFRAME " */
-   memcpy(params, command + 16, sizeof(*params));
+	if (params->len <= 0 || params->len > ANDROID_WIFI_ACTION_FRAME_SIZE ||
+            (params->len > total_len)) {
+		hddLog(LOGE, FL("Invalid payload length: %d"), params->len);
+		return -EINVAL;
+	}
 
-   if (!mac_pton(params->bssid, (u8 *)&bssid)) {
-      hddLog(LOGE, "%s: MAC address parsing failed", __func__);
-      ret = -EINVAL;
-   } else {
-      ret = hdd_sendactionframe(pAdapter, bssid, params->channel,
-                                params->dwell_time, params->len, params->data);
-   }
-   kfree(params);
-   return ret;
+	if (!mac_pton(params->bssid, (u8 *)&bssid)) {
+		hddLog(LOGE, FL("MAC address parsing failed"));
+		return -EINVAL;
+	}
+
+	if (params->channel < 0 ||
+	    params->channel > WNI_CFG_CURRENT_CHANNEL_STAMAX) {
+		hddLog(LOGE, FL("Invalid channel: %d"), params->channel);
+		return -EINVAL;
+	}
+
+	if (params->dwell_time < 0) {
+		hddLog(LOGE, FL("Invalid dwell_time: %d"), params->dwell_time);
+		return -EINVAL;
+	}
+
+	ret = hdd_sendactionframe(pAdapter, bssid, params->channel,
+				params->dwell_time, params->len, params->data);
+
+	return ret;
 }
 
 /*
@@ -2419,7 +2430,8 @@ hdd_parse_sendactionframe_v2(hdd_adapter_t *pAdapter,
 
   --------------------------------------------------------------------------*/
 static int
-hdd_parse_sendactionframe(hdd_adapter_t *pAdapter, const char *command)
+hdd_parse_sendactionframe(hdd_adapter_t *pAdapter, const char *command,
+                          int total_len)
 {
    int ret;
 
@@ -2435,11 +2447,19 @@ hdd_parse_sendactionframe(hdd_adapter_t *pAdapter, const char *command)
     * SENDACTIONFRAME xx:xx:xx:xx:xx:xx*
     *           111111111122222222223333
     * 0123456789012345678901234567890123
+    *
+    * For both the commands, a valid command must have atleast first 34 length
+    * of data.
     */
+   if (total_len < 34) {
+       hddLog(LOGE, FL("Invalid command (total_len=%d)"), total_len);
+       return -EINVAL;
+   }
+
    if (command[33]) {
       ret = hdd_parse_sendactionframe_v1(pAdapter, command);
    } else {
-      ret = hdd_parse_sendactionframe_v2(pAdapter, command);
+      ret = hdd_parse_sendactionframe_v2(pAdapter, command, total_len);
    }
 
    return ret;
@@ -5841,7 +5861,8 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
        }
        else if (strncmp(command, "SENDACTIONFRAME", 15) == 0)
        {
-           ret = hdd_parse_sendactionframe(pAdapter, command);
+           ret = hdd_parse_sendactionframe(pAdapter, command,
+                                           priv_data.total_len);
        }
        else if (strncmp(command, "GETROAMSCANCHANNELMINTIME", 25) == 0)
        {
