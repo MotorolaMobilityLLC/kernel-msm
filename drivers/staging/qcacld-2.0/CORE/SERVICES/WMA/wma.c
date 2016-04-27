@@ -4440,8 +4440,7 @@ static int wma_unified_link_iface_stats_event_handler(void *handle,
 		return -ENOMEM;
 	}
 
-	WMA_LOGD("Interface stats from FW event buf");
-	WMA_LOGD("Fixed Param:");
+	WMA_LOGD("Interface stats Fixed Param:");
 	WMA_LOGD("request_id %u vdev_id %u",
 		fixed_param->request_id,fixed_param->vdev_id);
 
@@ -4675,6 +4674,110 @@ static int wma_unified_link_peer_stats_event_handler(void *handle,
 	return 0;
 }
 
+/**
+ * wma_unified_radio_tx_power_level_stats_event_handler() - tx power level stats
+ * @handle: WMI handle
+ * @cmd_param_info: command param info
+ * @len: Length of @cmd_param_info
+ *
+ * This is the WMI event handler function to receive radio stats tx
+ * power level stats.
+ *
+ * Return: 0 on success, error number otherwise.
+*/
+static int wma_unified_radio_tx_power_level_stats_event_handler(void *handle,
+			u_int8_t *cmd_param_info, u_int32_t len)
+{
+	tp_wma_handle wma_handle = (tp_wma_handle) handle;
+	WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID_param_tlvs *param_tlvs;
+	wmi_tx_power_level_stats_evt_fixed_param *fixed_param;
+	uint8_t *tx_power_level_values;
+	tSirLLStatsResults *link_stats_results;
+	tSirWifiRadioStat *rs_results;
+
+	tpAniSirGlobal pMac = (tpAniSirGlobal )vos_get_context(VOS_MODULE_ID_PE,
+				wma_handle->vos_context);
+
+	if (!pMac) {
+		WMA_LOGD("%s: NULL pMac ptr. Exiting", __func__);
+		return -EINVAL;
+	}
+
+	if (!pMac->sme.pLinkLayerStatsIndCallback) {
+		WMA_LOGD("%s: HDD callback is null", __func__);
+		return -EINVAL;
+	}
+
+	param_tlvs = (WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID_param_tlvs *)cmd_param_info;
+	if (!param_tlvs) {
+		WMA_LOGA("%s: Invalid tx power level stats event", __func__);
+		return -EINVAL;
+	}
+
+	fixed_param = param_tlvs->fixed_param;
+	if (!fixed_param) {
+		WMA_LOGA("%s: Invalid param_tlvs for Radio tx_power level Stats", __func__);
+		return -EINVAL;
+	}
+
+	link_stats_results = wma_handle->link_stats_results;
+	rs_results = (tSirWifiRadioStat *) &link_stats_results->results[0];
+	tx_power_level_values = (uint8 *) param_tlvs->tx_time_per_power_level;
+
+	WMA_LOGD("%s: total_num_tx_power_levels: %u num_tx_power_levels: %u power_level_offset: %u",
+			__func__, fixed_param->total_num_tx_power_levels,
+			 fixed_param->num_tx_power_levels,
+			 fixed_param->power_level_offset);
+
+	rs_results->total_num_tx_power_levels =
+				fixed_param->total_num_tx_power_levels;
+	if (!rs_results->total_num_tx_power_levels)
+		goto post_stats;
+
+	if (!rs_results->tx_time_per_power_level) {
+		rs_results->tx_time_per_power_level = vos_mem_malloc(
+				sizeof(uint32_t) *
+				rs_results->total_num_tx_power_levels);
+		if (!rs_results->tx_time_per_power_level) {
+			WMA_LOGA("%s: Mem alloc failed for tx power level stats", __func__);
+			/* In error case, atleast send the radio stats without
+			 * tx_power_level stats */
+			rs_results->total_num_tx_power_levels = 0;
+			goto post_stats;
+		}
+	}
+	vos_mem_copy(&rs_results->tx_time_per_power_level[fixed_param->power_level_offset],
+		tx_power_level_values,
+		sizeof(uint32_t) * fixed_param->num_tx_power_levels);
+	if (rs_results->total_num_tx_power_levels ==
+	   (fixed_param->num_tx_power_levels + fixed_param->power_level_offset))
+		link_stats_results->moreResultToFollow = 0;
+
+	WMA_LOGD("%s: moreResultToFollow: %u",
+			__func__, link_stats_results->moreResultToFollow);
+
+	/* If still data to receive, return from here */
+	if (link_stats_results->moreResultToFollow)
+		return 0;
+
+post_stats:
+	/* call hdd callback with Link Layer Statistics
+	 * vdev_id/ifacId in link_stats_results will be
+	 * used to retrieve the correct HDD context
+	 */
+	pMac->sme.pLinkLayerStatsIndCallback(pMac->hHdd,
+	        WDA_LINK_LAYER_STATS_RESULTS_RSP,
+	        link_stats_results);
+	WMA_LOGD("%s: Radio Stats event posted to HDD", __func__);
+	vos_mem_free(rs_results->tx_time_per_power_level);
+	vos_mem_free(wma_handle->link_stats_results);
+	rs_results->tx_time_per_power_level = NULL;
+	wma_handle->link_stats_results = NULL;
+
+	return 0;
+}
+
+
 static int wma_unified_link_radio_stats_event_handler(void *handle,
 			u_int8_t *cmd_param_info, u_int32_t len)
 {
@@ -4684,8 +4787,10 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 	wmi_radio_link_stats *radio_stats;
 	wmi_channel_stats *channel_stats;
 	tSirLLStatsResults *link_stats_results;
-	u_int8_t *results, *t_radio_stats, *t_channel_stats;
-	u_int32_t next_res_offset, next_chan_offset, count;
+	tSirWifiRadioStat *rs_results;
+	tSirWifiChannelStats *chn_results;
+	uint8_t *results, *t_radio_stats, *t_channel_stats;
+	uint32_t next_chan_offset, count;
 	size_t radio_stats_size, chan_stats_size;
 	size_t link_stats_results_size;
 
@@ -4702,7 +4807,6 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 		return -EINVAL;
 	}
 
-	WMA_LOGD("%s: Posting Radio Stats event to HDD", __func__);
 	param_tlvs = (WMI_RADIO_LINK_STATS_EVENTID_param_tlvs *)cmd_param_info;
 	if (!param_tlvs) {
 		WMA_LOGA("%s: Invalid stats event", __func__);
@@ -4731,15 +4835,14 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 			radio_stats_size +
 			(radio_stats->num_channels * chan_stats_size);
 
-	link_stats_results = vos_mem_malloc(link_stats_results_size);
-	if (NULL == link_stats_results ) {
+	wma_handle->link_stats_results = vos_mem_malloc(link_stats_results_size);
+	if (NULL == wma_handle->link_stats_results) {
 		WMA_LOGD("%s: could not allocate mem for stats results-len %zu",
 		__func__, link_stats_results_size);
 		return -ENOMEM;
 	}
 
-	WMA_LOGD("Radio stats from FW event buf");
-	WMA_LOGD("Fixed Param:");
+	WMA_LOGD("Radio Stats Fixed Param:");
 	WMA_LOGD("request_id %u num_radio %u more_radio_events %u",
 			fixed_param->request_id, fixed_param->num_radio,
 			fixed_param->more_radio_events);
@@ -4757,6 +4860,7 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 			radio_stats->on_time_hs20,
 			radio_stats->num_channels);
 
+	link_stats_results = wma_handle->link_stats_results;
 	vos_mem_zero(link_stats_results, link_stats_results_size);
 
 	link_stats_results->paramId            = WMI_LINK_STATS_RADIO;
@@ -4764,16 +4868,37 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 	link_stats_results->ifaceId            = 0;
 	link_stats_results->num_radio          = fixed_param->num_radio;
 	link_stats_results->peer_event_number  = 0;
+
+	/*
+	 * Backward compatibility:
+	 * There are firmware(s) which will send Radio stats only with
+	 * more_radio_events set to 0 and firmware which sends Radio stats
+	 * followed by tx_power level stats with more_radio_events set to 1.
+	 * if more_radio_events is set to 1, buffer the radio stats and
+	 * wait for tx_power_level stats.
+	 */
 	link_stats_results->moreResultToFollow = fixed_param->more_radio_events;
 
 	results          = (u_int8_t *)link_stats_results->results;
 	t_radio_stats    = (u_int8_t *)radio_stats;
 	t_channel_stats  = (u_int8_t *)channel_stats;
 
-	vos_mem_copy(results, t_radio_stats + WMI_TLV_HDR_SIZE,
-			radio_stats_size);
+	rs_results = (tSirWifiRadioStat *) &results[0];
+	rs_results->radio = radio_stats->radio_id;
+	rs_results->onTime = radio_stats->on_time;
+	rs_results->txTime = radio_stats->tx_time;
+	rs_results->rxTime = radio_stats->rx_time;
+	rs_results->onTimeScan = radio_stats->on_time_scan;
+	rs_results->onTimeNbd = radio_stats->on_time_nbd;
+	rs_results->onTimeGscan = radio_stats->on_time_gscan;
+	rs_results->onTimeRoamScan = radio_stats->on_time_roam_scan;
+	rs_results->onTimePnoScan = radio_stats->on_time_pno_scan;
+	rs_results->onTimeHs20 = radio_stats->on_time_hs20;
+	rs_results->total_num_tx_power_levels = 0;
+	rs_results->tx_time_per_power_level = NULL;
+	rs_results->numChannels = radio_stats->num_channels;
 
-	next_res_offset  = radio_stats_size;
+	chn_results = (tSirWifiChannelStats *) &rs_results->channels[0];
 	next_chan_offset = WMI_TLV_HDR_SIZE;
 	WMA_LOGD("Channel Stats Info");
 	for (count = 0; count < radio_stats->num_channels; count++) {
@@ -4785,22 +4910,23 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 			channel_stats->cca_busy_time);
 		channel_stats++;
 
-		vos_mem_copy(results + next_res_offset,
+		vos_mem_copy(chn_results,
 				t_channel_stats + next_chan_offset,
 				chan_stats_size);
-		next_res_offset  += chan_stats_size;
+		chn_results++;
 		next_chan_offset += sizeof(*channel_stats);
 	}
 
-	/* call hdd callback with Link Layer Statistics
-	 * vdev_id/ifacId in link_stats_results will be
-	 * used to retrieve the correct HDD context
-	 */
+	if (link_stats_results->moreResultToFollow) {
+		/* More results coming, don't post yet */
+		return 0;
+	}
+
 	pMac->sme.pLinkLayerStatsIndCallback(pMac->hHdd,
 	        WDA_LINK_LAYER_STATS_RESULTS_RSP,
 	        link_stats_results);
-	WMA_LOGD("%s: Radio Stats event posted to HDD", __func__);
-	vos_mem_free(link_stats_results);
+	vos_mem_free(wma_handle->link_stats_results);
+	wma_handle->link_stats_results = NULL;
 
 	return 0;
 }
@@ -6255,6 +6381,9 @@ wma_register_ll_stats_event_handler(tp_wma_handle wma_handle)
 	wmi_unified_register_event_handler(wma_handle->wmi_handle,
 			WMI_RADIO_LINK_STATS_EVENTID,
 			wma_unified_link_radio_stats_event_handler);
+	wmi_unified_register_event_handler(wma_handle->wmi_handle,
+			WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID,
+			wma_unified_radio_tx_power_level_stats_event_handler);
 
 	return;
 }
@@ -31871,6 +32000,11 @@ VOS_STATUS wma_close(v_VOID_t *vos_ctx)
 		vos_mem_free(wma_handle->events_logs_list);
 		wma_handle->events_logs_list = NULL;
 		WMA_LOGD("%s: Event log list freed", __func__);
+	}
+
+	if (wma_handle->link_stats_results) {
+		vos_mem_free(wma_handle->link_stats_results);
+		wma_handle->link_stats_results = NULL;
 	}
 
 	/* Free wow pattern cache */

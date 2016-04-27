@@ -5929,27 +5929,20 @@ static void hdd_link_layer_process_radio_stats(hdd_adapter_t *pAdapter,
     if (0 != status)
         return;
 
-    hddLog(VOS_TRACE_LEVEL_INFO,
+    hddLog(LOG1,
            "LL_STATS_RADIO"
-           " number of radios = %u"
-           " radio is %d onTime is %u"
-           " txTime is %u  rxTime is %u"
-           " onTimeScan is %u  onTimeNbd is %u"
-           " onTimeGscan is %u onTimeRoamScan is %u"
-           " onTimePnoScan is %u  onTimeHs20 is %u"
-           " numChannels is %u",
-           num_radio,
-           pWifiRadioStat->radio,
-           pWifiRadioStat->onTime,
-           pWifiRadioStat->txTime,
-           pWifiRadioStat->rxTime,
-           pWifiRadioStat->onTimeScan,
-           pWifiRadioStat->onTimeNbd,
-           pWifiRadioStat->onTimeGscan,
-           pWifiRadioStat->onTimeRoamScan,
-           pWifiRadioStat->onTimePnoScan,
-           pWifiRadioStat->onTimeHs20,
-           pWifiRadioStat->numChannels);
+           " number of radios: %u radio: %d onTime: %u"
+           " txTime: %u rxTime: %u onTimeScan: %u onTimeNbd: %u"
+           " onTimeGscan: %u onTimeRoamScan: %u"
+           " onTimePnoScan: %u onTimeHs20: %u"
+           " numChannels: %u total_num_tx_power_levels: %u",
+           num_radio, pWifiRadioStat->radio, pWifiRadioStat->onTime,
+           pWifiRadioStat->txTime, pWifiRadioStat->rxTime,
+           pWifiRadioStat->onTimeScan, pWifiRadioStat->onTimeNbd,
+           pWifiRadioStat->onTimeGscan, pWifiRadioStat->onTimeRoamScan,
+           pWifiRadioStat->onTimePnoScan, pWifiRadioStat->onTimeHs20,
+           pWifiRadioStat->numChannels,
+           pWifiRadioStat->total_num_tx_power_levels);
 
     /*
      * Allocate a size of 4096 for the Radio stats comprising
@@ -6011,11 +6004,7 @@ static void hdd_link_layer_process_radio_stats(hdd_adapter_t *pAdapter,
                     pWifiRadioStat->onTimeHs20)    ||
         nla_put_u32(vendor_event,
                     QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_NUM_TX_LEVELS,
-                    MAX_TPC_LEVELS)    ||
-        nla_put(vendor_event,
-                QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_TX_TIME_PER_LEVEL,
-                sizeof(u32) * MAX_TPC_LEVELS,
-                pWifiRadioStat->tx_time_per_tpc) ||
+                    pWifiRadioStat->total_num_tx_power_levels)    ||
         nla_put_u32(vendor_event,
                     QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_NUM_CHANNELS,
                     pWifiRadioStat->numChannels)) {
@@ -6023,6 +6012,17 @@ static void hdd_link_layer_process_radio_stats(hdd_adapter_t *pAdapter,
 
         kfree_skb(vendor_event);
         return ;
+    }
+
+    if (pWifiRadioStat->total_num_tx_power_levels) {
+        if (nla_put(vendor_event,
+                QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_TX_TIME_PER_LEVEL,
+                sizeof(u32) * pWifiRadioStat->total_num_tx_power_levels,
+                pWifiRadioStat->tx_time_per_power_level)) {
+            hddLog(LOGE, FL("ATTR_LL_STATS_RADIO_TX_TIME_PER_LEVEL put fail"));
+            kfree_skb(vendor_event);
+            return;
+        }
     }
 
     if (pWifiRadioStat->numChannels)

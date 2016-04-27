@@ -5873,12 +5873,13 @@ typedef struct
      * (32 bits number accruing over time)
      */
     tANI_U32        onTimeHs20;
-    /* number of channels */
-    tANI_U32        numChannels;
 
     /** tx time (in milliseconds) per TPC level (0.5 dBm) */
-    uint32_t tx_time_per_tpc[MAX_TPC_LEVELS];
+    uint32_t total_num_tx_power_levels;
+    uint32_t *tx_time_per_power_level;
 
+    /* number of channels */
+    tANI_U32        numChannels;
     /* channel statistics tSirWifiChannelStats */
     tSirWifiChannelStats channels[0];
 } tSirWifiRadioStat, *tpSirWifiRadioStat;
