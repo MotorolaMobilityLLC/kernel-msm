@@ -1168,7 +1168,7 @@
 	qcom,resume-soc = <99>;
 	qcom,bcl-lm-threshold-ma = <126>;
 	qcom,bcl-mh-threshold-ma = <400>;
-	qcom,fg-iterm-ma = <150>;
+	qcom,fg-iterm-ma = <170>;
 	qcom,irq-volt-empty-mv = <2750>;
 	qcom,fg-cutoff-voltage-mv = <3000>;
 	qcom,fg-vbat-estimate-diff-mv = <1000>;
