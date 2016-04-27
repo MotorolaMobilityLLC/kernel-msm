@@ -6360,6 +6360,7 @@ static int __wlan_hdd_cfg80211_ll_stats_get(struct wiphy *wiphy,
     tSirLLStatsGetReq LinkLayerStatsGetReq;
     struct net_device *dev = wdev->netdev;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_station_ctx_t *hddstactx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     int status;
 
     if (VOS_FTM_MODE == hdd_get_conparam()) {
@@ -6377,6 +6378,12 @@ static int __wlan_hdd_cfg80211_ll_stats_get(struct wiphy *wiphy,
         hddLog(LOGW, FL("isLinkLayerStatsSet : %d"),
                pAdapter->isLinkLayerStatsSet);
         return -EINVAL;
+    }
+
+    if (hddstactx->hdd_ReassocScenario) {
+        hddLog(VOS_TRACE_LEVEL_INFO,
+               FL("Roaming in progress, so unable to proceed this request"));
+        return -EBUSY;
     }
 
     if (nla_parse(tb_vendor, QCA_WLAN_VENDOR_ATTR_LL_STATS_GET_MAX,
