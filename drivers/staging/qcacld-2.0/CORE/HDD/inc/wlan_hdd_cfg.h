@@ -2654,7 +2654,7 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_ENABLE_DEBUG_CONNECT_ISSUE             "gEnableDebugLog"
 #define CFG_ENABLE_DEBUG_CONNECT_ISSUE_MIN         (0)
 #define CFG_ENABLE_DEBUG_CONNECT_ISSUE_MAX         (0xFF)
-#define CFG_ENABLE_DEBUG_CONNECT_ISSUE_DEFAULT     (0)
+#define CFG_ENABLE_DEBUG_CONNECT_ISSUE_DEFAULT     (6)
 
 /*
  * RX packet handling options

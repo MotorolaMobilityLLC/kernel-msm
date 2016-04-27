@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -131,7 +131,7 @@ struct cvg_nbuf_cb {
     unsigned char tx_htt2_frm: 1;
     unsigned char tx_htt2_reserved: 7;
 #endif /* QCA_TX_HTT2_SUPPORT */
-};
+} __packed;
 
 #ifdef QCA_ARP_SPOOFING_WAR
 #define NBUF_CB_PTR(skb) \

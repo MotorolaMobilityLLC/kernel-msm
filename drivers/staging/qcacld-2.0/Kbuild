@@ -1127,6 +1127,7 @@ endif
 
 ifneq ($(TARGET_BUILD_VARIANT),user)
 CDEFINES += -DDEBUG_RX_RING_BUFFER
+CDEFINES += -DQCA_PKT_PROTO_TRACE
 endif
 
 # enable the MAC Address auto-generation feature

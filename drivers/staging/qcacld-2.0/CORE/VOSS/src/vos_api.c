@@ -2880,6 +2880,9 @@ VOS_STATUS vos_flush_logs(uint32_t is_fatal,
 	if (dump_vos_trace)
 		vosTraceDumpAll(vos_context->pMACContext, 0, 0, 500, 0);
 
+#ifdef QCA_PKT_PROTO_TRACE
+	vos_pkt_trace_buf_dump();
+#endif
 	if (WLAN_LOG_INDICATOR_HOST_ONLY == indicator) {
 		vos_wlan_flush_host_logs_for_fatal();
 		return VOS_STATUS_SUCCESS;
