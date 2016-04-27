@@ -183,20 +183,40 @@
 #define OTW_RLS			(1 << 1)
 #define OTE_RLS			1
 
+/* CS35L34_INT_MASK_1 */
+#define CS35L34_M_CAL_ERR_SHIFT		7
+#define CS35L34_M_CAL_ERR		(1 << CS35L34_M_CAL_ERR_SHIFT)
+#define CS35L34_M_ALIVE_ERR_SHIFT	5
+#define CS35L34_M_ALIVE_ERR		(1 << CS35L34_M_ALIVE_ERR_SHIFT)
+#define CS35L34_M_AMP_SHORT_SHIFT	2
+#define CS35L34_M_AMP_SHORT		(1 << CS35L34_M_AMP_SHORT_SHIFT)
+#define CS35L34_M_OTW_SHIFT		1
+#define CS35L34_M_OTW			(1 << CS35L34_M_OTW_SHIFT)
+#define CS35L34_M_OTE_SHIFT		0
+#define CS35L34_M_OTE			(1 << CS35L34_M_OTE_SHIFT)
+
+/* CS35L34_INT_MASK_2 */
+#define CS35L34_M_PDN_DONE		(1 << 4)
+
+/* CS35L34_INT_MASK_3 */
+#define CS35L34_M_BST_HIGH_SHIFT	4
+#define CS35L34_M_BST_HIGH		(1 << CS35L34_M_BST_HIGH_SHIFT)
+#define CS35L34_M_LBST_SHORT_SHIFT	0
+#define CS35L34_M_LBST_SHORT		(1 << CS35L34_M_LBST_SHORT_SHIFT)
+
 /* CS35L34_INT_STATUS_1 */
-#define CAL_ERR			(1 << 6)
-#define ALIVE_ERR		(1 << 5)
-#define ADSPCLK_ERR		(1 << 4)
-#define MCLK_ERR		(1 << 3)
-#define OTW			(1 << 2)
-#define OTE			1
+#define CS35L34_CAL_ERR			(1 << 7)
+#define CS35L34_ALIVE_ERR		(1 << 5)
+#define CS35L34_AMP_SHORT		(1 << 2)
+#define CS35L34_OTW			(1 << 1)
+#define CS35L34_OTE			1
 
 /* CS35L34_INT_STATUS_2 */
-#define VMON_OVFL		(1 << 7)
-#define IMON_OVFL		(1 << 6)
-#define VPMON_OVFL		(1 << 5)
-#define VBSTMON_OVFL		(1 << 4)
-#define PDN_DONE		1
+#define CS35L34_PDN_DONE_STATUS		(1 << 4)
+
+/* CS35L34_INT_STATUS_3 */
+#define CS35L34_BST_HIGH		(1 << 4)
+#define CS35L34_LBST_SHORT		1
 
 /* CS35L34_BST_CTL3 */
 #define BST_COEFF1		0xF0
