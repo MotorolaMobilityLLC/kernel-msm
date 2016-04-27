@@ -264,6 +264,8 @@ typedef enum {
 
     /** set OUI to be used in probe request if enabled */
     WMI_SCAN_PROB_REQ_OUI_CMDID,
+    /** config adaptive dwell scan */
+    WMI_SCAN_ADAPTIVE_DWELL_CONFIG_CMDID,
 
     /* PDEV(physical device) specific commands */
     /** set regulatorty ctl id used by FW to determine the exact ctl power limits */
@@ -2510,6 +2512,27 @@ typedef struct {
 
 /** always do passive scan on passive channels */
 #define WMI_SCAN_FLAG_STRICT_PASSIVE_ON_PCHN 0x10000
+
+/** for adaptive scan mode using 3 bits (21 - 23 bits) */
+#define WMI_SCAN_DWELL_MODE_MASK 0x00E00000
+#define WMI_SCAN_DWELL_MODE_SHIFT        21
+
+typedef enum {
+    WMI_SCAN_DWELL_MODE_DEFAULT      = 0,
+    WMI_SCAN_DWELL_MODE_CONSERVATIVE = 1,
+    WMI_SCAN_DWELL_MODE_MODERATE     = 2,
+    WMI_SCAN_DWELL_MODE_AGGRESSIVE   = 3,
+    WMI_SCAN_DWELL_MODE_STATIC       = 4,
+} WMI_SCAN_DWELL_MODE;
+
+#define WMI_SCAN_SET_DWELL_MODE(flag, mode) \
+    do { \
+        (flag) |= (((mode) << WMI_SCAN_DWELL_MODE_SHIFT) & \
+            WMI_SCAN_DWELL_MODE_MASK); \
+    } while(0)
+
+#define WMI_SCAN_GET_DWELL_MODE(flag) \
+    (((flag) & WMI_SCAN_DWELL_MODE_MASK) >> WMI_SCAN_DWELL_MODE_SHIFT)
 
 /** WMI_SCAN_CLASS_MASK must be the same value as IEEE80211_SCAN_CLASS_MASK */
 #define WMI_SCAN_CLASS_MASK 0xFF000000
@@ -14663,6 +14686,28 @@ typedef struct {
     // num_phy WMI_HAL_REG_CAPABILITIES_EXT TLV's
 } WMI_SOC_HAL_REG_CAPABILITIES;
 
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_scan_adaptive_dwell_parameters_tlv */
+    /** global default adaptive dwell mode, used when WMI_SCAN_DWELL_MODE_DEFAULT */
+    A_UINT32 default_adaptive_dwell_mode;
+   /** the weight to calculate the average low pass filter for channel congestion. 0-100 */
+    A_UINT32 adapative_lpf_weight;
+   /** interval to monitor passive scan in msec */
+    A_UINT32 passive_monitor_interval_ms;
+   /** % of wifi activity to switch from passive to active 0-100 */
+    A_UINT32 wifi_activity_threshold_pct;
+} wmi_scan_adaptive_dwell_parameters_tlv;
+
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_scan_adaptive_dwell_config_fixed_param */
+    /* globally enable/disable adaptive dwell */
+    A_UINT32 enable;
+/**
+ * followed by TLV (tag length value) parameters array
+ * The TLV's are:
+ * wmi_scan_adaptive_dwell_parameters_tlv param[]; (0 or 1 elements)
+ */
+} wmi_scan_adaptive_dwell_config_fixed_param;
 
 /* ADD NEW DEFS HERE */
 

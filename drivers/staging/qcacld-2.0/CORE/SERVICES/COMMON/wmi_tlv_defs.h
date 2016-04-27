@@ -700,6 +700,8 @@ typedef enum {
     WMITLV_TAG_STRUC_WMI_SOC_HAL_REG_CAPABILITIES,
     WMITLV_TAG_STRUC_wmi_vdev_wisa_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_tx_power_level_stats_evt_fixed_param,
+    WMITLV_TAG_STRUC_wmi_scan_adaptive_dwell_parameters_tlv,
+    WMITLV_TAG_STRUC_wmi_scan_adaptive_dwell_config_fixed_param,
 } WMITLV_TAG_ID;
 
 /*
@@ -982,7 +984,8 @@ typedef enum {
     OP(WMI_SET_PERIODIC_CHANNEL_STATS_CONFIG_CMDID) \
     OP(WMI_VDEV_SET_CUSTOM_AGGR_SIZE_CMDID) \
     OP(WMI_PDEV_WAL_POWER_DEBUG_CMDID) \
-    OP(WMI_VDEV_WISA_CMDID)
+    OP(WMI_VDEV_WISA_CMDID) \
+    OP(WMI_SCAN_ADAPTIVE_DWELL_CONFIG_CMDID)
 
 /*
  * IMPORTANT: Please add _ALL_ WMI Events Here.
@@ -1318,6 +1321,13 @@ WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_PLMREQ_STOP_CMDID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_BYTE, A_UINT8, ie_data, WMITLV_SIZE_VAR)
 
 WMITLV_CREATE_PARAM_STRUC(WMI_START_SCAN_CMDID);
+
+/* Scan adaptive dwell mode configuration */
+#define WMITLV_TABLE_WMI_SCAN_ADAPTIVE_DWELL_CONFIG_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_scan_adaptive_dwell_config_fixed_param, wmi_scan_adaptive_dwell_config_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_scan_adaptive_dwell_parameters_tlv, param, WMITLV_SIZE_VAR)
+
+WMITLV_CREATE_PARAM_STRUC(WMI_SCAN_ADAPTIVE_DWELL_CONFIG_CMDID);
 
 /* Start ExtScan Cmd */
 #define WMITLV_TABLE_WMI_EXTSCAN_START_CMDID(id,op,buf,len) \
