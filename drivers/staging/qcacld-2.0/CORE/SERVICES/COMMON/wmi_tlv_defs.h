@@ -699,6 +699,7 @@ typedef enum {
     WMITLV_TAG_STRUC_WMI_HAL_REG_CAPABILITIES_EXT,
     WMITLV_TAG_STRUC_WMI_SOC_HAL_REG_CAPABILITIES,
     WMITLV_TAG_STRUC_wmi_vdev_wisa_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_tx_power_level_stats_evt_fixed_param,
 } WMITLV_TAG_ID;
 
 /*
@@ -1129,7 +1130,8 @@ typedef enum {
     OP(WMI_NDP_END_INDICATION_EVENTID) \
     OP(WMI_PDEV_SET_HW_MODE_RESP_EVENTID) \
     OP(WMI_PDEV_HW_MODE_TRANSITION_EVENTID) \
-    OP(WMI_PDEV_SET_MAC_CONFIG_RESP_EVENTID)
+    OP(WMI_PDEV_SET_MAC_CONFIG_RESP_EVENTID) \
+    OP(WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID)
 
 
 /* TLV definitions of WMI commands */
@@ -3198,8 +3200,7 @@ WMITLV_CREATE_PARAM_STRUC(WMI_PEER_LINK_STATS_EVENTID);
 #define WMITLV_TABLE_WMI_RADIO_LINK_STATS_EVENTID(id,op,buf,len)\
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_radio_link_stats_event_fixed_param, wmi_radio_link_stats_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_radio_link_stats, radio_stats, WMITLV_SIZE_VAR)\
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_channel_stats, channel_stats, WMITLV_SIZE_VAR) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_UINT32, A_UINT32, ext_tx_time_per_power_level, WMITLV_SIZE_VAR)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_channel_stats, channel_stats, WMITLV_SIZE_VAR)
 
 WMITLV_CREATE_PARAM_STRUC(WMI_RADIO_LINK_STATS_EVENTID);
 
@@ -3632,6 +3633,11 @@ WMITLV_CREATE_PARAM_STRUC(WMI_PEER_STA_PS_STATECHG_EVENTID);
 #define WMITLV_TABLE_WMI_INST_RSSI_STATS_EVENTID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_inst_rssi_stats_resp_fixed_param, wmi_inst_rssi_stats_resp_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_INST_RSSI_STATS_EVENTID);
+
+#define WMITLV_TABLE_WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_tx_power_level_stats_evt_fixed_param, wmi_tx_power_level_stats_evt_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_UINT32, A_UINT32, tx_time_per_power_level, WMITLV_SIZE_VAR)
+WMITLV_CREATE_PARAM_STRUC(WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID)
 
 
 #ifdef __cplusplus

@@ -1131,8 +1131,11 @@ typedef enum {
     /** Event indicating the DIAG logs/events supported by FW */
     WMI_DIAG_EVENT_LOG_SUPPORTED_EVENTID,
 
-    /* Instantaneous RSSI event */
+    /** Instantaneous RSSI event */
     WMI_INST_RSSI_STATS_EVENTID,
+
+    /** FW update tx power levels event */
+    WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID,
 
     /* NLO specific events */
     /** NLO match event after the first match */
@@ -4177,37 +4180,41 @@ typedef struct {
     A_UINT32 on_time_hs20;
     /** number of channels */
     A_UINT32 num_channels;
-    /** tx time (in milliseconds) per TPC level
-     * TPC levels require a board-specific translation to determine what
-     * actual power corresponds to each power level.
-     * Just as the host has a BDF file available, the host should also have
-     * a data file available that provides the
-     *     power level --> power
-     * translations.
+    /** tx time per TPC level - DEPRECATED
+     * This field is deprecated.
+     * It is superseded by the WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID message.
      */
     A_UINT32 tx_time_per_tpc[MAX_TPC_LEVELS];
-    /** number of tx power levels, including both tx_time_per_tpc and
-     * ext_tx_time_per_power_level
-     * Each power level consumes one A_UINT32.
-     * If num_tx_power_levels <= MAX_TPC_LEVELs, only tx_time_per_tpc is used.
-     * If num_tx_power_levels > MAX_TPC_LEVELS, the first MAX_TPC_LEVELS values
-     * are stored in tx_time_per_tpc, and the remaining
-     * (num_tx_power_levels - MAX_TPC_LEVELS) values are stored in
-     * ext_tx_time_per_power_level.
-     */
-    A_UINT32 num_tx_power_levels;
-    /*
-     * This TLV will be followed by a TLV containing a variable-length array of
-     * A_UINT32 with any additional tx time per power level data, if there are
-     * more than MAX_TPC_LEVELS elements of tx time per TPC to report.
-     * Note that at most one wmi_radio_link_stats object will be present in the
-     * WMI_RADIO_LINK_STATS message.  Thus, even though there is only one
-     * ext_tx_time_per_power_level array in the WMI_RADIO_LINK_STATS message,
-     * it only holds the extra data for a single wmi_radio_link_stats object.
-     *
-     *  A_UINT32 ext_tx_time_per_power_level[num_tx_power_levels - MAX_TPC_LEVELS]
-     */
 } wmi_radio_link_stats;
+
+/** tx time per power level statistics */
+typedef struct {
+    A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_tx_power_level_stats_evt_fixed_param */
+    /** total number of tx power levels */
+    A_UINT32 total_num_tx_power_levels;
+    /** number of tx power levels that are carried in this event */
+    A_UINT32 num_tx_power_levels;
+    /** offset of current stats
+     * If ((num_tx_power_levels + power_level_offset)) ==
+     *     total_num_tx_power_levels)
+     * this message completes the report of tx time per power levels.
+     * Otherwise, additional WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID messages
+     * will be sent by the target to deliver the remainder of the tx time
+     * per power level stats.
+     */
+    A_UINT32 power_level_offset;
+/*
+ * This TLV will be followed by a TLV containing a variable-length array of
+ * A_UINT32 with tx time per power level data
+ *  A_UINT32 tx_time_per_power_level[num_tx_power_levels]
+ * The tx time is in units of milliseconds.
+ * The power levels are board-specific values; a board-specific translation
+ * has to be applied to determine what actual power corresponds to each
+ * power level.
+ * Just as the host has a BDF file available, the host should also have
+ * a data file available that provides the power level to power translations.
+ */
+} wmi_tx_power_level_stats_evt_fixed_param;
 
 /** Radio statistics (once started) do not stop or get reset unless wifi_clear_link_stats is invoked */
 typedef struct {
