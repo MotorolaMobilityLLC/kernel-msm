@@ -829,7 +829,8 @@
 			<&tlmm 0 0>,    /* gpio_muc_spi_mosi, output-low */
 			<&tlmm 1 1>,    /* gpio_muc_spi_miso, input */
 			<&pmi8994_mpps 2 0>, /* gpio_muc_bplus_iset, cs */
-			<&pmi8994_mpps 4 0>; /* gpio_muc_bplus_discharg, cs */
+			<&pmi8994_mpps 4 0>, /* gpio_muc_bplus_discharg, cs */
+			<&pmi8994_gpios 10 1>; /* gpio_muc_bplus_fault_n, input */
 		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
 					"gpio_muc_bplus_en",
 					"gpio_muc_int_n",
@@ -839,7 +840,8 @@
 					"gpio_muc_spi_mosi",
 					"gpio_muc_spi_miso",
 					"gpio_muc_bplus_iset",
-					"gpio_muc_bplus_discharg";
+					"gpio_muc_bplus_discharg",
+					"gpio_muc_bplus_fault_n";
 
 		mmi,muc-ctrl-det-hysteresis = <200>;
 		mmi,muc-ctrl-rm-hysteresis = <5>;
@@ -1333,6 +1335,16 @@
 		qcom,master-en = <1>;    /* Enable GPIO */
 		status = "okay";
 	};
+
+	gpio@c900 { /* GPIO 10 MOD_BPLUS_FAULT_N */
+		qcom,mode = <0>;		/* Digital Input */
+		qcom,pull = <5>;		/* No pull  */
+		qcom,vin-sel = <2>;		/* VIN2 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
 };
 
 &pm8994_mpps {
