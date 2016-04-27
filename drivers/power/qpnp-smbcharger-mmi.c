@@ -1049,6 +1049,9 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
 		return POWER_SUPPLY_STATUS_FULL;
 
+	if (chip->bsw_mode == BSW_RUN)
+		return POWER_SUPPLY_STATUS_CHARGING;
+
 	charger_present = is_usb_present(chip) | is_dc_present(chip);
 	if (!charger_present)
 		return POWER_SUPPLY_STATUS_DISCHARGING;
