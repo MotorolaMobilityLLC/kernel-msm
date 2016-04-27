@@ -10306,6 +10306,11 @@ void wlan_hdd_set_mc_addr_list(hdd_adapter_t *pAdapter, v_U8_t set)
                     memcpy(pMulticastAddrs->multicastAddr[i],
                            pAdapter->mc_addr_list.addr[i],
                            sizeof(pAdapter->mc_addr_list.addr[i]));
+                    hddLog(VOS_TRACE_LEVEL_INFO,
+                            "%s: clearing multicast filter: addr ="
+                            MAC_ADDRESS_STR,
+                            __func__,
+                            MAC_ADDR_ARRAY(pMulticastAddrs->multicastAddr[i]));
                 }
                 sme_8023MulticastList(hHal, pAdapter->sessionId,
                                       pMulticastAddrs);
