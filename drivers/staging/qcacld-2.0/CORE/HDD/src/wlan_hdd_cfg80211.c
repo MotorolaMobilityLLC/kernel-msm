@@ -16413,6 +16413,7 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     hdd_adapter_t *con_sap_adapter;
     uint16_t con_dfs_ch;
     bool is_p2p_scan = false;
+    uint8_t num_chan = 0;
 
     ENTER();
 
@@ -16614,14 +16615,25 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
        }
        for (i = 0, len = 0; i < request->n_channels ; i++ )
        {
-          channelList[i] = request->channels[i]->hw_value;
-          len += snprintf(chList+len, 5, "%d ", channelList[i]);
+          if (!vos_is_dsrc_channel(vos_chan_to_freq(
+                   request->channels[i]->hw_value))) {
+              channelList[num_chan] = request->channels[i]->hw_value;
+              len += snprintf(chList+len, 5, "%d ", channelList[i]);
+              num_chan++;
+          }
        }
 
        hddLog(VOS_TRACE_LEVEL_INFO, "Channel-List: %s", chList);
 
     }
-    scanRequest.ChannelInfo.numOfChannels = request->n_channels;
+
+    if (!num_chan) {
+       hddLog(LOGE, FL("Received zero non-dsrc channels"));
+       status = -EINVAL;
+       goto free_mem;
+    }
+
+    scanRequest.ChannelInfo.numOfChannels = num_chan;
     scanRequest.ChannelInfo.ChannelList = channelList;
 
     /* set requestType to full scan */
