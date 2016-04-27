@@ -2269,7 +2269,7 @@ typedef enum
 #define CFG_TX_LDPC_ENABLE_FEATURE         "gTxLdpcEnable"
 #define CFG_TX_LDPC_ENABLE_FEATURE_MIN     ( 0 )
 #define CFG_TX_LDPC_ENABLE_FEATURE_MAX     ( 3 )
-#define CFG_TX_LDPC_ENABLE_FEATURE_DEFAULT ( 0 )
+#define CFG_TX_LDPC_ENABLE_FEATURE_DEFAULT ( 3 )
 
 /*
  * Enable / Disable MCC Adaptive Scheduler feature
