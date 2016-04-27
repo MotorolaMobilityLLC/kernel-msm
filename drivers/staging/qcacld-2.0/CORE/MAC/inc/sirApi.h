@@ -5215,6 +5215,7 @@ struct extscan_hotlist_match
  * @scan_id: a unique identifier for the scan unit
  * @flags: a bitmask with additional information about scan
  * @num_results: number of bssids retrieved by the scan
+ * @buckets_scanned: bitmask of buckets scanned in current extscan cycle
  * @ap: wifi scan bssid results info
  */
 struct extscan_cached_scan_result
@@ -5222,6 +5223,7 @@ struct extscan_cached_scan_result
 	uint32_t    scan_id;
 	uint32_t    flags;
 	uint32_t    num_results;
+	uint32_t    buckets_scanned;
 	tSirWifiScanResult *ap;
 };
 
@@ -5251,7 +5253,6 @@ typedef struct
  * @more_data: 0 - for last fragment
  *	       1 - still more fragment(s) coming
  * @num_scan_ids: number of scan ids
- * @buckets_scanned: bitmask of buckets scanned in current extscan cycle
  * @result: wifi scan result
  */
 struct extscan_cached_scan_results
@@ -5259,7 +5260,6 @@ struct extscan_cached_scan_results
 	uint32_t    request_id;
 	bool        more_data;
 	uint32_t    num_scan_ids;
-	uint32_t    buckets_scanned;
 	struct extscan_cached_scan_result  *result;
 };
 

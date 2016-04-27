@@ -23048,12 +23048,12 @@ wlan_hdd_cfg80211_extscan_cached_results_ind(void *ctx,
 #define EXTSCAN_CACHED_NL_FIXED_TLV \
 		(sizeof(data->request_id) + NLA_HDRLEN) + \
 		(sizeof(data->num_scan_ids) + NLA_HDRLEN) + \
-		(sizeof(data->buckets_scanned) + NLA_HDRLEN)+ \
 		(sizeof(data->more_data) + NLA_HDRLEN)
 #define EXTSCAN_CACHED_NL_SCAN_ID_TLV \
 		(sizeof(result->scan_id) + NLA_HDRLEN) + \
 		(sizeof(result->flags) + NLA_HDRLEN) + \
-		(sizeof(result->num_results) + NLA_HDRLEN)
+		(sizeof(result->num_results) + NLA_HDRLEN)+ \
+		(sizeof(result->buckets_scanned) + NLA_HDRLEN)
 #define EXTSCAN_CACHED_NL_SCAN_RESULTS_TLV \
 		(sizeof(ap->ts) + NLA_HDRLEN) + \
 		(sizeof(ap->ssid) + NLA_HDRLEN) + \
@@ -23101,14 +23101,15 @@ wlan_hdd_cfg80211_extscan_cached_results_ind(void *ctx,
 		goto fail;
 	}
 	hddLog(LOG1,
-		FL("ReqId: %u Num_scan_ids: %u buckets_scanned: %u MoreData: %u"),
+		FL("ReqId: %u Num_scan_ids: %u  MoreData: %u"),
 		data->request_id, data->num_scan_ids,
-		data->buckets_scanned, data->more_data);
+		data->more_data);
 
 	result = &data->result[0];
 	for (i = 0; i < data->num_scan_ids; i++) {
-		hddLog(LOG1, "[i=%d] scan_id %u flags %u num_results %u",
-			i, result->scan_id, result->flags, result->num_results);
+		hddLog(LOG1, "[i=%d] scan_id %u flags %u num_results %u buckets_scanned: %u",
+			i, result->scan_id, result->flags, result->num_results,
+			result->buckets_scanned);
 
 		ap = &result->ap[0];
 		for (j = 0; j < result->num_results; j++) {
@@ -23188,7 +23189,7 @@ wlan_hdd_cfg80211_extscan_cached_results_ind(void *ctx,
 				result->flags) ||
 			    nla_put_u32(skb,
 				QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_BUCKETS_SCANNED,
-				data->buckets_scanned) ||
+				result->buckets_scanned) ||
 			    nla_put_u32(skb,
 				QCA_WLAN_VENDOR_ATTR_EXTSCAN_NUM_RESULTS_AVAILABLE,
 				result->num_results)) {
