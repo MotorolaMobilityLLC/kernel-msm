@@ -338,11 +338,12 @@ eHalStatus sme_HandleOemDataRsp(tHalHandle hHal, tANI_U8* pMsg)
         /* Send to upper layer only if rsp is from target */
         if (pOemDataRsp->target_rsp) {
             smsLog(pMac, LOG1, FL("received target oem data resp"));
-            send_oem_data_rsp_msg(sizeof(tOemDataRsp),
-                                  &pOemDataRsp->oemDataRsp[0]);
+            send_oem_data_rsp_msg(pOemDataRsp->rsp_len,
+                                  pOemDataRsp->oem_data_rsp);
         } else {
             smsLog(pMac, LOG1, FL("received internal oem data resp"));
         }
+        vos_mem_free(pOemDataRsp->oem_data_rsp);
     } while(0);
 
     return status;

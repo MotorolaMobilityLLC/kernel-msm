@@ -990,7 +990,8 @@ typedef struct sSirOemDataRsp
     tANI_U16             messageType;
     tANI_U16             length;
     bool                 target_rsp;
-    tANI_U8              oemDataRsp[OEM_DATA_RSP_SIZE];
+    uint32_t             rsp_len;
+    uint8_t              *oem_data_rsp;
 } tSirOemDataRsp, *tpSirOemDataRsp;
 
 #endif //FEATURE_OEM_DATA_SUPPORT

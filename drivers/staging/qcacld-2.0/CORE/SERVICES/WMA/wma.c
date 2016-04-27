@@ -5567,13 +5567,15 @@ static int wma_oem_capability_event_callback(void *handle,
 		return -EINVAL;
 	}
 
-	/* wma puts 4 bytes prefix for msg subtype, so length
+	/*
+	 * wma puts 4 bytes prefix for msg subtype, so length
 	 * of data received from target should be 4 bytes less
 	 * then max allowed
 	 */
-	if (datalen > (OEM_DATA_RSP_SIZE - 4)) {
+	if (datalen > (OEM_DATA_RSP_SIZE - OEM_MESSAGE_SUBTYPE_LEN)) {
 		WMA_LOGE("%s: Received data len (%d) exceeds max value (%d)",
-		         __func__, datalen, (OEM_DATA_RSP_SIZE - 4));
+		         __func__, datalen,
+			(OEM_DATA_RSP_SIZE - OEM_MESSAGE_SUBTYPE_LEN));
 		return -EINVAL;
 	}
 
@@ -5583,14 +5585,23 @@ static int wma_oem_capability_event_callback(void *handle,
 		return -ENOMEM;
 	}
 
-	vos_mem_zero(pStartOemDataRsp, sizeof(tStartOemDataRsp));
-	pStartOemDataRsp->target_rsp = true;
-	msg_subtype = (u_int32_t *)(&pStartOemDataRsp->oemDataRsp[0]);
-	*msg_subtype = WMI_OEM_CAPABILITY_RSP;
-	vos_mem_copy(&pStartOemDataRsp->oemDataRsp[4], data, datalen);
+	pStartOemDataRsp->rsp_len = datalen + OEM_MESSAGE_SUBTYPE_LEN;
+	pStartOemDataRsp->oem_data_rsp = vos_mem_malloc(datalen);
+	if (!pStartOemDataRsp->rsp_len) {
+		WMA_LOGE(FL("malloc failed for data"));
+		vos_mem_free(pStartOemDataRsp);
+		return -ENOMEM;
+	}
 
-	WMA_LOGI("%s: Sending WDA_START_OEM_DATA_RSP, data len (%d)",
-	         __func__, datalen);
+	pStartOemDataRsp->target_rsp = true;
+	msg_subtype = (uint32_t *) pStartOemDataRsp->oem_data_rsp;
+	*msg_subtype = WMI_OEM_CAPABILITY_RSP;
+	/* copy data after msg sub type */
+	vos_mem_copy(pStartOemDataRsp->oem_data_rsp + OEM_MESSAGE_SUBTYPE_LEN,
+		     data, datalen);
+
+	WMA_LOGI(FL("Sending WDA_START_OEM_DATA_RSP, data len (%d)"),
+		 pStartOemDataRsp->rsp_len);
 
 	wma_send_msg(wma, WDA_START_OEM_DATA_RSP, (void *)pStartOemDataRsp, 0);
 	return 0;
@@ -5620,13 +5631,15 @@ static int wma_oem_measurement_report_event_callback(void *handle,
 		return -EINVAL;
 	}
 
-	/* wma puts 4 bytes prefix for msg subtype, so length
+	/*
+	 * wma puts 4 bytes prefix for msg subtype, so length
 	 * of data received from target should be 4 bytes less
 	 * then max allowed
 	 */
-	if (datalen > (OEM_DATA_RSP_SIZE - 4)) {
+	if (datalen > (OEM_DATA_RSP_SIZE - OEM_MESSAGE_SUBTYPE_LEN)) {
 		WMA_LOGE("%s: Received data len (%d) exceeds max value (%d)",
-		         __func__, datalen, (OEM_DATA_RSP_SIZE - 4));
+		         __func__, datalen,
+			(OEM_DATA_RSP_SIZE - OEM_MESSAGE_SUBTYPE_LEN));
 		return -EINVAL;
 	}
 
@@ -5636,14 +5649,23 @@ static int wma_oem_measurement_report_event_callback(void *handle,
 		return -ENOMEM;
 	}
 
-	vos_mem_zero(pStartOemDataRsp, sizeof(tStartOemDataRsp));
-	pStartOemDataRsp->target_rsp = true;
-	msg_subtype = (u_int32_t *)(&pStartOemDataRsp->oemDataRsp[0]);
-	*msg_subtype = WMI_OEM_MEASUREMENT_RSP;
-	vos_mem_copy(&pStartOemDataRsp->oemDataRsp[4], data, datalen);
+	pStartOemDataRsp->rsp_len = datalen + OEM_MESSAGE_SUBTYPE_LEN;
+	pStartOemDataRsp->oem_data_rsp = vos_mem_malloc(datalen);
+	if (!pStartOemDataRsp->rsp_len) {
+		WMA_LOGE(FL("malloc failed for data"));
+		vos_mem_free(pStartOemDataRsp);
+		return -ENOMEM;
+	}
 
-	WMA_LOGI("%s: Sending WDA_START_OEM_DATA_RSP, data len (%d)",
-	         __func__, datalen);
+	pStartOemDataRsp->target_rsp = true;
+	msg_subtype = (uint32_t *) pStartOemDataRsp->oem_data_rsp;
+	*msg_subtype = WMI_OEM_MEASUREMENT_RSP;
+	/* copy data after msg sub type */
+	vos_mem_copy(pStartOemDataRsp->oem_data_rsp + OEM_MESSAGE_SUBTYPE_LEN,
+		     data, pStartOemDataRsp->rsp_len);
+
+	WMA_LOGI(FL("Sending WDA_START_OEM_DATA_RSP, data len (%d)"),
+		 datalen);
 
 	wma_send_msg(wma, WDA_START_OEM_DATA_RSP, (void *)pStartOemDataRsp, 0);
 	return 0;
@@ -5673,13 +5695,15 @@ static int wma_oem_error_report_event_callback(void *handle,
 		return -EINVAL;
 	}
 
-	/* wma puts 4 bytes prefix for msg subtype, so length
+	/*
+	 * wma puts 4 bytes prefix for msg subtype, so length
 	 * of data received from target should be 4 bytes less
 	 * then max allowed
 	 */
-	if (datalen > (OEM_DATA_RSP_SIZE - 4)) {
+	if (datalen > (OEM_DATA_RSP_SIZE - OEM_MESSAGE_SUBTYPE_LEN)) {
 		WMA_LOGE("%s: Received data len (%d) exceeds max value (%d)",
-		         __func__, datalen, (OEM_DATA_RSP_SIZE - 4));
+		         __func__, datalen,
+			(OEM_DATA_RSP_SIZE - OEM_MESSAGE_SUBTYPE_LEN));
 		return -EINVAL;
 	}
 
@@ -5689,14 +5713,23 @@ static int wma_oem_error_report_event_callback(void *handle,
 		return -ENOMEM;
 	}
 
-	vos_mem_zero(pStartOemDataRsp, sizeof(tStartOemDataRsp));
-	pStartOemDataRsp->target_rsp = true;
-	msg_subtype = (u_int32_t *)(&pStartOemDataRsp->oemDataRsp[0]);
-	*msg_subtype = WMI_OEM_ERROR_REPORT_RSP;
-	vos_mem_copy(&pStartOemDataRsp->oemDataRsp[4], data, datalen);
+	pStartOemDataRsp->rsp_len = datalen + OEM_MESSAGE_SUBTYPE_LEN;
+	pStartOemDataRsp->oem_data_rsp = vos_mem_malloc(datalen);
+	if (!pStartOemDataRsp->rsp_len) {
+		WMA_LOGE(FL("malloc failed for data"));
+		vos_mem_free(pStartOemDataRsp);
+		return -ENOMEM;
+	}
 
-	WMA_LOGI("%s: Sending WDA_START_OEM_DATA_RSP, data len (%d)",
-	         __func__, datalen);
+	pStartOemDataRsp->target_rsp = true;
+	msg_subtype = (uint32_t *) pStartOemDataRsp->oem_data_rsp;
+	*msg_subtype = WMI_OEM_ERROR_REPORT_RSP;
+	/* copy data after msg sub type */
+	vos_mem_copy(pStartOemDataRsp->oem_data_rsp + OEM_MESSAGE_SUBTYPE_LEN,
+		     data, pStartOemDataRsp->rsp_len);
+
+	WMA_LOGI(FL("Sending WDA_START_OEM_DATA_RSP, data len (%d)"),
+		 datalen);
 
 	wma_send_msg(wma, WDA_START_OEM_DATA_RSP, (void *)pStartOemDataRsp, 0);
 	return 0;
@@ -5718,7 +5751,7 @@ static int wma_oem_data_response_handler(void *handle,
 	WMI_OEM_RESPONSE_EVENTID_param_tlvs *param_buf;
 	uint8_t *data;
 	uint32_t datalen;
-	tStartOemDataRsp *oem_data_rsp;
+	tStartOemDataRsp *oem_rsp;
 
 	param_buf = (WMI_OEM_RESPONSE_EVENTID_param_tlvs *) datap;
 	if (!param_buf) {
@@ -5740,19 +5773,26 @@ static int wma_oem_data_response_handler(void *handle,
 		return -EINVAL;
 	}
 
-	oem_data_rsp = vos_mem_malloc(sizeof(*oem_data_rsp));
-	if (!oem_data_rsp) {
-		WMA_LOGE(FL("Failed to alloc oem_data_rsp"));
+	oem_rsp = vos_mem_malloc(sizeof(*oem_rsp));
+	if (!oem_rsp) {
+		WMA_LOGE(FL("Failed to alloc oem_rsp"));
 		return -ENOMEM;
 	}
 
-	vos_mem_zero(oem_data_rsp, sizeof(tStartOemDataRsp));
-	oem_data_rsp->target_rsp = true;
-	vos_mem_copy(&oem_data_rsp->oemDataRsp[0], data, datalen);
+	oem_rsp->rsp_len = datalen;
+	oem_rsp->oem_data_rsp = vos_mem_malloc(datalen);
+	if (!oem_rsp->rsp_len) {
+		WMA_LOGE(FL("malloc failed for data"));
+		vos_mem_free(oem_rsp);
+		return -ENOMEM;
+	}
+
+	oem_rsp->target_rsp = true;
+	vos_mem_copy(oem_rsp->oem_data_rsp, data, datalen);
 
 	WMA_LOGI(FL("Sending WMA_START_OEM_DATA_RSP, data len %d"), datalen);
 
-	wma_send_msg(wma, WDA_START_OEM_DATA_RSP, (void *)oem_data_rsp, 0);
+	wma_send_msg(wma, WDA_START_OEM_DATA_RSP, (void *)oem_rsp, 0);
 	return 0;
 }
 

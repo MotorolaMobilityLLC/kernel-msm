@@ -1404,14 +1404,28 @@ void limSendSmeOemDataRsp(tpAniSirGlobal pMac, tANI_U32* pMsgBuf, tSirResultCode
     //get the pointer to the mlm message
     pMlmOemDataRsp = (tLimMlmOemDataRsp*)(pMsgBuf);
 
-    msgLength = sizeof(tSirOemDataRsp);
+    msgLength = sizeof(*pSirSmeOemDataRsp);
 
     //now allocate memory for the char buffer
     pSirSmeOemDataRsp = vos_mem_malloc(msgLength);
     if (NULL == pSirSmeOemDataRsp)
     {
-        limLog(pMac, LOGP, FL("call to AllocateMemory failed for pSirSmeOemDataRsp"));
+        limLog(pMac, LOGP, FL("malloc failed for pSirSmeOemDataRsp"));
+        vos_mem_free(pMlmOemDataRsp->oem_data_rsp);
+        vos_mem_free(pMlmOemDataRsp);
         return;
+    }
+
+    if (pMlmOemDataRsp->rsp_len) {
+        pSirSmeOemDataRsp->oem_data_rsp =
+                vos_mem_malloc(pMlmOemDataRsp->rsp_len);
+        if (!pSirSmeOemDataRsp->oem_data_rsp) {
+            limLog(pMac, LOGE, FL("malloc failed for oem_data_rsp"));
+            vos_mem_free(pSirSmeOemDataRsp);
+            vos_mem_free(pMlmOemDataRsp->oem_data_rsp);
+            vos_mem_free(pMlmOemDataRsp);
+            return;
+        }
     }
 
 #if defined (ANI_LITTLE_BYTE_ENDIAN)
@@ -1422,10 +1436,16 @@ void limSendSmeOemDataRsp(tpAniSirGlobal pMac, tANI_U32* pMsgBuf, tSirResultCode
     pSirSmeOemDataRsp->messageType = eWNI_SME_OEM_DATA_RSP;
 #endif
     pSirSmeOemDataRsp->target_rsp = pMlmOemDataRsp->target_rsp;
-    vos_mem_copy(pSirSmeOemDataRsp->oemDataRsp, pMlmOemDataRsp->oemDataRsp, OEM_DATA_RSP_SIZE);
+    pSirSmeOemDataRsp->rsp_len = pMlmOemDataRsp->rsp_len;
+    vos_mem_copy(pSirSmeOemDataRsp->oem_data_rsp,
+                 pMlmOemDataRsp->oem_data_rsp,
+                 pSirSmeOemDataRsp->rsp_len);
 
     //Now free the memory from MLM Rsp Message
+    vos_mem_free(pMlmOemDataRsp->oem_data_rsp);
+    pMlmOemDataRsp->oem_data_rsp = NULL;
     vos_mem_free(pMlmOemDataRsp);
+    pMlmOemDataRsp = NULL;
 
     mmhMsg.type = eWNI_SME_OEM_DATA_RSP;
     mmhMsg.bodyptr = pSirSmeOemDataRsp;
