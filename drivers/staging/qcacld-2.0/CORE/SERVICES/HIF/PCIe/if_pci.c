@@ -2537,7 +2537,7 @@ void hif_pci_crash_shutdown(struct pci_dev *pdev)
 
     hif_irq_record(HIF_CRASH, sc);
 
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
     if (hif_pci_check_soc_status(scn->hif_sc)
         || dump_CE_register(scn)) {
         goto out;

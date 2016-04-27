@@ -64,7 +64,7 @@ static int get_version = 0;
 static int gprint_limiter = 0;
 static bool tgt_assert_enable = 0;
 
-#if defined(DEBUG)
+#if defined(WLAN_DEBUG)
 
 static ATH_DEBUG_MASK_DESCRIPTION g_fwlogDebugDescription[] = {
     {FWLOG_DEBUG,"fwlog"},

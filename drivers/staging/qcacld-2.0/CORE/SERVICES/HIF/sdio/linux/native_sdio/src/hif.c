@@ -279,7 +279,7 @@ static void ResetAllCards(void);
 static A_STATUS hifDisableFunc(HIF_DEVICE *device, struct sdio_func *func);
 static A_STATUS hifEnableFunc(HIF_DEVICE *device, struct sdio_func *func);
 
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
 
 ATH_DEBUG_INSTANTIATE_MODULE_VAR(hif,
                                  "hif",

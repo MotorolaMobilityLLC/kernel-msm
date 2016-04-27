@@ -35,7 +35,7 @@
 /* HTC Control message receive timeout msec */
 #define HTC_CONTROL_RX_TIMEOUT     5000
 
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
 void DebugDumpBytes(A_UCHAR *buffer, A_UINT16 length, char *pDescription)
 {
     A_CHAR stream[60];

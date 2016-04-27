@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2014, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -205,7 +205,7 @@ void
 htt_t2h_stats_print(u_int8_t *stats_data, int concise);
 
 #ifndef HTT_DEBUG_LEVEL
-#if defined(DEBUG)
+#if defined(WLAN_DEBUG)
 #define HTT_DEBUG_LEVEL 10
 #else
 #define HTT_DEBUG_LEVEL 0

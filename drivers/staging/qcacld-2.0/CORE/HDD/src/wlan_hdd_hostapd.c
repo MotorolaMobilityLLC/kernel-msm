@@ -84,7 +84,7 @@
 #include "tl_shim.h"
 
 #include "wma.h"
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
 #include "wma_api.h"
 #endif
 extern int process_wma_set_command(int sessid, int paramid,
@@ -2565,7 +2565,7 @@ static int __iw_softap_set_two_ints_getnone(struct net_device *dev,
         goto out;
 
     switch(sub_cmd) {
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
     case QCSAP_IOCTL_SET_FW_CRASH_INJECT:
         hddLog(LOGE, "WE_SET_FW_CRASH_INJECT: %d %d", value[1], value[2]);
         if (!pHddCtx->cfg_ini->crash_inject_enabled) {
@@ -6837,7 +6837,7 @@ static const struct iw_priv_args hostapd_private_args[] = {
         0,
         "" },
     /* handlers for sub-ioctl */
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
     {   QCSAP_IOCTL_SET_FW_CRASH_INJECT,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 2,
         0,
