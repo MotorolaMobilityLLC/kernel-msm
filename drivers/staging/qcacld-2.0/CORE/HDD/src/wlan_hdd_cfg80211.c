@@ -9206,7 +9206,7 @@ wlan_hdd_add_tx_ptrn(hdd_adapter_t *adapter, hdd_context_t *hdd_ctx,
 	request_id = nla_get_u32(tb[PARAM_REQUEST_ID]);
 	if (request_id == MAX_REQUEST_ID) {
 		hddLog(LOGE, FL("request_id cannot be MAX"));
-		return -EINVAL;
+		goto fail;
 	}
 
 	hddLog(LOG1, FL("Request Id: %u"), request_id);
