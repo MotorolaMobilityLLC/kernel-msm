@@ -330,6 +330,21 @@ config DEDUCE_WAKEUP_REASONS
 	bool
 	default n
 
+config SUSPEND_WATCHDOG
+	bool "Suspend watchdog timer support"
+	depends on SUSPEND
+	default n
+	---help---
+	  Say Y here if you want to use suspend watchdog timer.
+
+	  If unsure, say N.
+
+config SUSPEND_WATCHDOG_TIMEOUT
+	int "Suspend watchdog timeout in seconds"
+	range 1 120
+	default 60
+	depends on SUSPEND_WATCHDOG
+
 config PM_SYNC_BEFORE_SUSPEND
 	bool "Sync file systems before suspend"
 	depends on SUSPEND
