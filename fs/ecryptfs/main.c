@@ -467,7 +467,8 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 				mount_crypt_stat->global_default_cipher_name,
 				mount_crypt_stat->global_default_cipher_mode,
 				final, sizeof(final)),
-			mount_crypt_stat->global_default_cipher_key_size);
+				(long unsigned int)
+				mount_crypt_stat->global_default_cipher_key_size);
 		rc = -EINVAL;
 		goto out;
 	}
