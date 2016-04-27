@@ -8737,3 +8737,35 @@ bool lim_is_robust_mgmt_action_frame(uint8_t action_catagory)
 	return false;
 }
 
+/**
+ * lim_update_caps_info_for_bss - Update capability info for this BSS
+ *
+ * @mac_ctx: mac context
+ * @caps: Pointer to capability info to be updated
+ * @bss_caps: Capability info of the BSS
+ *
+ * Update the capability info in Assoc/Reassoc request frames and reset
+ * the spectrum management, short preamble, immediate block ack bits
+ * if the BSS doesnot support it
+ *
+ * Return: None
+ */
+void lim_update_caps_info_for_bss(tpAniSirGlobal mac_ctx,
+					uint16_t *caps, uint16_t bss_caps)
+{
+	if (!(bss_caps & LIM_SPECTRUM_MANAGEMENT_BIT_MASK)) {
+		*caps &= (~LIM_SPECTRUM_MANAGEMENT_BIT_MASK);
+		limLog(mac_ctx, LOG1, FL("Clearing spectrum management:no AP support"));
+	}
+
+	if (!(bss_caps & LIM_SHORT_PREAMBLE_BIT_MASK)) {
+		*caps &= (~LIM_SHORT_PREAMBLE_BIT_MASK);
+		limLog(mac_ctx, LOG1, FL("Clearing short preamble:no AP support"));
+	}
+
+	if (!(bss_caps & LIM_IMMEDIATE_BLOCK_ACK_MASK)) {
+		*caps &= (~LIM_IMMEDIATE_BLOCK_ACK_MASK);
+		limLog(mac_ctx, LOG1, FL("Clearing Immed Blk Ack:no AP support"));
+	}
+}
+
