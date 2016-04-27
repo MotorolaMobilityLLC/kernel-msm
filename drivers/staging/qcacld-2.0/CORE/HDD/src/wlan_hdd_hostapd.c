@@ -5749,7 +5749,7 @@ static int iw_softap_version(struct net_device *dev,
 	return ret;
 }
 
-static VOS_STATUS
+static int
 hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int buf_len)
 {
     v_U8_t i;
@@ -5772,7 +5772,11 @@ hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int buf_len)
     if (0 != ret)
         return ret;
 
-    len = scnprintf(pBuf, buf_len, sta_info_header);
+    len = snprintf(pBuf, buf_len, sta_info_header);
+    if (len >= buf_len) {
+        hddLog(LOGE, FL("Insufficient buffer:%d, %d"), buf_len, len);
+        return -E2BIG;
+    }
     pBuf += len;
     buf_len -= len;
 
@@ -5790,6 +5794,10 @@ hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int buf_len)
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[3],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[4],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[5]);
+            if (len >= buf_len) {
+                hddLog(LOGE, FL("Insufficient buffer:%d, %d"), buf_len, len);
+                return -E2BIG;
+            }
             pBuf += len;
             buf_len -= len;
         }
@@ -5799,7 +5807,7 @@ hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int buf_len)
         }
     }
     EXIT();
-    return VOS_STATUS_SUCCESS;
+    return 0;
 }
 
 static int __iw_softap_get_sta_info(struct net_device *dev,
@@ -5808,7 +5816,6 @@ static int __iw_softap_get_sta_info(struct net_device *dev,
                                     char *extra)
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
-    VOS_STATUS status;
     hdd_context_t *hdd_ctx;
     int ret;
 
@@ -5819,10 +5826,10 @@ static int __iw_softap_get_sta_info(struct net_device *dev,
     if (0 != ret)
         return ret;
 
-    status = hdd_softap_get_sta_info(pHostapdAdapter, extra, WE_SAP_MAX_STA_INFO);
-    if ( !VOS_IS_STATUS_SUCCESS( status ) ) {
+    ret = hdd_softap_get_sta_info(pHostapdAdapter, extra, WE_SAP_MAX_STA_INFO);
+    if (ret) {
        hddLog(VOS_TRACE_LEVEL_ERROR, "%s Failed!!!",__func__);
-       return -EINVAL;
+       return ret;
     }
     wrqu->data.length = strlen(extra);
     EXIT();
