@@ -6609,6 +6609,27 @@ static int wlan_hdd_cfg80211_ll_stats_clear(struct wiphy *wiphy,
 	return ret;
 }
 
+/**
+ * wlan_hdd_clear_link_layer_stats() - clear link layer stats
+ * @adapter: pointer to adapter
+ *
+ * Wrapper function to clear link layer stats.
+ * return - void
+ */
+void wlan_hdd_clear_link_layer_stats(hdd_adapter_t *adapter)
+{
+	tSirLLStatsClearReq link_layer_stats_clear_req;
+	tHalHandle hal = WLAN_HDD_GET_HAL_CTX(adapter);
+
+	link_layer_stats_clear_req.statsClearReqMask = WIFI_STATS_IFACE_AC;
+	link_layer_stats_clear_req.stopReq = 0;
+	link_layer_stats_clear_req.reqId = 1;
+	link_layer_stats_clear_req.staId = adapter->sessionId;
+	sme_LLStatsClearReq(hal, &link_layer_stats_clear_req);
+
+	return;
+}
+
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
