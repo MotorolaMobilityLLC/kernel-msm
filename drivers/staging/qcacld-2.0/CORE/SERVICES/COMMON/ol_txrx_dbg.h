@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -141,7 +141,7 @@ void ol_txrx_peer_display(ol_txrx_peer_handle peer, int indent);
 #endif
 
 /*--- txrx stats display debug functions ---*/
-void ol_txrx_stats(ol_txrx_vdev_handle vdev, char *buffer,
+VOS_STATUS ol_txrx_stats(ol_txrx_vdev_handle vdev, char *buffer,
                    unsigned length);
 
 #if TXRX_STATS_LEVEL != TXRX_STATS_LEVEL_OFF
