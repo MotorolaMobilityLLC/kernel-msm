@@ -319,42 +319,4 @@ int nl_srv_is_initialized()
 		return -EPERM;
 }
 
-#else /* ifndef MULTI_IF_NAME */
-
-#include <wlan_nlink_srv.h>
-
-int nl_srv_init(void)
-{
-	return 0;
-}
-
-void nl_srv_exit(int dst_pid)
-{
-}
-
-int nl_srv_register(tWlanNlModTypes msg_type, nl_srv_msg_callback msg_handler)
-{
-	return 0;
-}
-
-int nl_srv_unregister(tWlanNlModTypes msg_type, nl_srv_msg_callback msg_handler)
-{
-	return 0;
-}
-
-int nl_srv_ucast(struct sk_buff *skb, int dst_pid, int flag)
-{
-	return 0;
-}
-
-int nl_srv_bcast(struct sk_buff *skb)
-{
-	return 0;
-}
-
-int nl_srv_is_initialized()
-{
-	return 0;
-}
-
 #endif
