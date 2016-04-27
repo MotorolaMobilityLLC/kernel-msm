@@ -541,6 +541,8 @@ typedef struct
     uint8_t wps_state;
     uint8_t nss_2g;
     uint8_t nss_5g;
+    uint32_t tx_aggregation_size;
+    uint32_t rx_aggregation_size;
 } tAddBssParams, * tpAddBssParams;
 
 typedef struct

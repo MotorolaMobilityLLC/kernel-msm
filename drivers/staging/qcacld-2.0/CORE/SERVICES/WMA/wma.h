@@ -575,6 +575,8 @@ struct wma_txrx_node {
 	uint8_t wps_state;
 	uint8_t nss_2g;
 	uint8_t nss_5g;
+	uint32_t tx_aggregation_size;
+	uint32_t rx_aggregation_size;
 
 	uint8_t wep_default_key_idx;
 	bool is_vdev_valid;

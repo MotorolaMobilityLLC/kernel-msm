@@ -1959,6 +1959,10 @@ static void wma_recreate_ibss_vdev_and_bss_peer(tp_wma_handle wma, u_int8_t vdev
 	add_sta_self_param.status    = 0;
 	add_sta_self_param.nss_2g = wma->interfaces[vdev_id].nss_2g;
 	add_sta_self_param.nss_5g = wma->interfaces[vdev_id].nss_5g;
+	add_sta_self_param.tx_aggregation_size =
+				wma->interfaces[vdev_id].tx_aggregation_size;
+	add_sta_self_param.rx_aggregation_size =
+				wma->interfaces[vdev_id].rx_aggregation_size;
 
 	/* delete old ibss vdev */
 	del_sta_param.sessionId   = vdev_id;
@@ -15366,6 +15370,11 @@ static void wma_add_bss_ibss_mode(tp_wma_handle wma, tpAddBssParams add_bss)
 	nss_5g = wma->interfaces[vdev_id].nss_5g;
 	wma_set_bss_rate_flags(&wma->interfaces[vdev_id], add_bss);
 
+	wma->interfaces[vdev_id].tx_aggregation_size =
+					add_bss->tx_aggregation_size;
+	wma->interfaces[vdev_id].rx_aggregation_size =
+					add_bss->rx_aggregation_size;
+
 	vdev = wma_find_vdev_by_id(wma, vdev_id);
 	if (!vdev) {
 	        WMA_LOGE("%s: vdev not found for vdev id %d.",
@@ -15405,6 +15414,10 @@ static void wma_add_bss_ibss_mode(tp_wma_handle wma, tpAddBssParams add_bss)
 		add_sta_self_param.status    = 0;
 		add_sta_self_param.nss_2g    = add_bss->nss_2g;
 		add_sta_self_param.nss_5g    = add_bss->nss_5g;
+		add_sta_self_param.tx_aggregation_size =
+					add_bss->tx_aggregation_size;
+		add_sta_self_param.rx_aggregation_size =
+					add_bss->rx_aggregation_size;
 
 		vdev = wma_vdev_attach(wma, &add_sta_self_param, 0);
 		if (!vdev) {

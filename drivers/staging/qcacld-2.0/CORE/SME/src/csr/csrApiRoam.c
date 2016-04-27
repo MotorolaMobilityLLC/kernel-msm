@@ -2250,6 +2250,10 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->edca_vi_aifs = pMac->roam.configParam.edca_vi_aifs;
         pParam->edca_bk_aifs = pMac->roam.configParam.edca_bk_aifs;
         pParam->edca_be_aifs = pMac->roam.configParam.edca_be_aifs;
+        pParam->tx_aggregation_size =
+               pMac->roam.configParam.tx_aggregation_size;
+        pParam->rx_aggregation_size =
+               pMac->roam.configParam.rx_aggregation_size;
         status = eHAL_STATUS_SUCCESS;
     }
     return (status);
