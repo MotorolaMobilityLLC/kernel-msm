@@ -427,12 +427,9 @@ static void mdss_mdp_cmd_intf_recovery(void *data, int event)
 
 	spin_lock_irqsave(&ctx->koff_lock, flags);
 	if (reset_done && atomic_add_unless(&ctx->koff_cnt, -1, 0)) {
-		u32 pp_num = ctx->right_only_update ? ctx->right_only_pp_num :
-						      ctx->pp_num;
-
 		pr_debug("%s: intf_num=%d\n", __func__, ctx->ctl->intf_num);
 		mdss_mdp_irq_disable_nosync(MDSS_MDP_IRQ_PING_PONG_COMP,
-			pp_num);
+			ctx->pp_num);
 
 		if (mdss_mdp_cmd_do_notifier(ctx))
 			notify_frame_timeout = true;
@@ -1286,6 +1283,9 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			 * get turned on when the first update comes.
 			 */
 			pr_debug("%s: reset intf_stopped flag.\n", __func__);
+			mdss_mdp_ctl_intf_event(ctl,
+				MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
+				(void *)&ctx->intf_recovery);
 			ctx->intf_stopped = 0;
 			if (sctx)
 				sctx->intf_stopped = 0;
