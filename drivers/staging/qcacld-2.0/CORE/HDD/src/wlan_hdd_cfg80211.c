@@ -19342,11 +19342,17 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
                 }
                 else if (DATA_RATE_11AC_MAX_MCS_9 == vhtMaxMcs)
                 {
-                    //VHT20 is supporting 0~8
-                    if (rate_flags & eHAL_TX_RATE_VHT20)
+                    /*
+                     * 'IEEE_P802.11ac_2013.pdf' page 325, 326
+                     * - MCS9 is valid for VHT20 when Nss = 3 or Nss = 6
+                     * - MCS9 is not valid for VHT20 when Nss = 1,2,4,5,7,8
+                     */
+                    if ((rate_flags & eHAL_TX_RATE_VHT20) &&
+                        (nss != 3 && nss != 6)) {
                         maxMCSIdx = 8;
-                    else
+                    } else {
                         maxMCSIdx = 9;
+                    }
                 }
 
                 if (rssidx != 0)
@@ -19453,6 +19459,20 @@ static int __wlan_hdd_cfg80211_get_station(struct wiphy *wiphy,
            {
               maxSpeedMCS = 1;
               maxMCSIdx = pAdapter->hdd_stats.ClassA_stat.mcs_index;
+              /*
+               * 'IEEE_P802.11ac_2013.pdf' page 325, 326
+               * - MCS9 is valid for VHT20 when Nss = 3 or Nss = 6
+               * - MCS9 is not valid for VHT20 when Nss = 1,2,4,5,7,8
+               */
+              if ((rate_flags & eHAL_TX_RATE_VHT20) &&
+                  (maxMCSIdx > 8) &&
+                  (nss != 3 && nss != 6)) {
+#ifdef LINKSPEED_DEBUG_ENABLED
+                  pr_info("MCS%d is not valid for VHT20 when nss=%d, hence report MCS8.",
+                          maxMCSIdx, nss);
+#endif
+                  maxMCSIdx = 8;
+              }
            }
         }
 
