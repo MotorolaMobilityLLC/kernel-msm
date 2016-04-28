@@ -397,6 +397,7 @@ struct smbchg_chip {
 	atomic_t			hb_ready;
 	int				afvc_mv;
 	int				cl_ebsrc;
+	bool				eb_rechrg;
 };
 
 static struct smbchg_chip *the_chip;
@@ -3903,6 +3904,7 @@ static void smbchg_get_extbat_out_cl(struct smbchg_chip *chip)
 	union power_supply_propval ret = {0, };
 	struct power_supply *eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
+	int prev_cl_ebsrc = chip->cl_ebsrc;
 
 	if (!eb_pwr_psy || !eb_pwr_psy->get_property) {
 		chip->cl_ebsrc = 0;
@@ -3916,16 +3918,21 @@ static void smbchg_get_extbat_out_cl(struct smbchg_chip *chip)
 		SMB_ERR(chip, "Failed to get EB Output Current");
 	else {
 		SMB_DBG(chip, "Get EB Out Current %d uA\n", ret.intval);
-
 		ret.intval /= 1000;
 
-		if (ret.intval < chip->dc_eff_current_ma)
+		if (ret.intval == 0)
+			chip->cl_ebsrc = 0;
+		else if (ret.intval < chip->dc_eff_current_ma)
 			chip->cl_ebsrc = chip->dc_eff_current_ma;
 		else if (ret.intval < chip->dc_ebmax_current_ma)
 			chip->cl_ebsrc = ret.intval;
 		else
 			chip->cl_ebsrc = chip->dc_ebmax_current_ma;
 	}
+
+	if (prev_cl_ebsrc != chip->cl_ebsrc)
+		SMB_WARN(chip, "cl_ebsrc %d mA, retval %d mA\n",
+			 chip->cl_ebsrc, ret.intval);
 
 	power_supply_put(eb_pwr_psy);
 }
@@ -3979,9 +3986,6 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 		power_supply_put(eb_pwr_psy);
 		return;
 	}
-
-	if (chip->cl_ebsrc == 0)
-		smbchg_get_extbat_out_cl(chip);
 
 	SMB_ERR(chip, "EB State is %d setting %d\n",
 		chip->ebchg_state, state);
@@ -9323,7 +9327,6 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	bool bsw_chrg_alarm;
 	bool max_chrg_alarm;
 	int prev_dcin_curr_ma = chip->dc_target_current_ma;
-	int max_dcin_ma;
 	bool wls_present;
 
 	if (!atomic_read(&chip->hb_ready))
@@ -9376,22 +9379,19 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	bsw_chrg_alarm = check_bswchg_volt(chip);
 	max_chrg_alarm = check_maxbms_volt(chip);
 
-	max_dcin_ma = chip->dc_ebmax_current_ma;
-	if (chip->cl_ebsrc)
-		max_dcin_ma = chip->cl_ebsrc;
+	smbchg_get_extbat_out_cl(chip);
 
 	if ((!chip->usb_present) && !(eb_able & EB_SND_NEVER) &&
 	    (chip->bsw_mode != BSW_RUN)) {
 		switch (chip->ebchg_state) {
 		case EB_SRC:
 			if (wls_present) {
-				chip->dc_target_current_ma = max_dcin_ma;
+				chip->eb_rechrg = false;
 				if ((batt_soc == 100) && (eb_soc < 100))
 					smbchg_set_extbat_state(chip, EB_OFF);
 			} else if ((eb_soc <= 0) || (eb_on_sw == 0)) {
 				smbchg_set_extbat_state(chip, EB_OFF);
-				chip->dc_target_current_ma =
-					chip->dc_eff_current_ma;
+				chip->eb_rechrg = true;
 				chip->eb_hotplug = false;
 			}
 			chip->eb_hotplug = false;
@@ -9399,7 +9399,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		case EB_SINK:
 		case EB_OFF:
 			if (wls_present) {
-				chip->dc_target_current_ma = max_dcin_ma;
+				chip->eb_rechrg = false;
 				if ((batt_soc < 100) || (eb_soc == 100))
 					smbchg_set_extbat_state(chip, EB_SRC);
 			} else if ((eb_soc <= 0) || (eb_on_sw == 0))
@@ -9411,8 +9411,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 					smbchg_set_extbat_state(chip, EB_OFF);
 			} else
 				smbchg_set_extbat_state(chip, EB_SRC);
+
 			if ((chip->ebchg_state == EB_SRC) && (batt_soc < 75))
-				chip->dc_target_current_ma = max_dcin_ma;
+				chip->eb_rechrg = false;
+
 			break;
 		case EB_DISCONN:
 			chip->eb_hotplug = false;
@@ -9420,11 +9422,15 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			break;
 		}
 	} else if (chip->usb_present || is_wls_present(chip)) {
-		if (chip->ebchg_state == EB_DISCONN)
-			chip->dc_target_current_ma = chip->dc_ebmax_current_ma;
-		else
-			chip->dc_target_current_ma = max_dcin_ma;
+		chip->eb_rechrg = false;
 	}
+
+	if (chip->eb_rechrg)
+		chip->dc_target_current_ma = chip->dc_eff_current_ma;
+	else if (chip->cl_ebsrc)
+		chip->dc_target_current_ma = chip->cl_ebsrc;
+	else
+		chip->dc_target_current_ma = chip->dc_ebmax_current_ma;
 
 	prev_step = chip->stepchg_state;
 
