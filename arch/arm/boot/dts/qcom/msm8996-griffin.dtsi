@@ -158,8 +158,18 @@
 	qcom,bms-psy-name = "msm_bms";
 	qcom,max-psy-name = "bms";
 	qcom,fastchg-current-ma = <3000>;
-	qcom,chg-thermal-mitigation = <3000>, <2500>, <2000>, <1600>, <1200>,
-				      <1000>, <700>, <500>, <300>;
+	qcom,chg-thermal-mitigation = <3000 6000>,
+				      <2500 5000>,
+				      <2000 4000>,
+				      <1500 3000>,
+				      <1000 2000>,
+				      <500 1700>;
+	qcom,thermal-mitigation = <3000 6000>,
+				  <2500 5000>,
+				  <2000 4000>,
+				  <1500 3000>,
+				  <1000 2000>,
+				  <500 1700>;
 	qcom,step-chg-steps = <4100 6000 4300>,
 				<4200 4300 2400>,
 				<4400 2400 2000>;
