@@ -487,12 +487,10 @@ static int tlshim_mgmt_rx_process(void *context, u_int8_t *data,
 		return 0;
 	}
 
-#ifdef FEATURE_WLAN_D0WOW
 	if (!wma_handle) {
 		TLSHIM_LOGE("%s: Failed to get WMA context!", __func__);
 		return 0;
 	}
-#endif
 
 	adf_os_spin_lock_bh(&tl_shim->mgmt_lock);
 	param_tlvs = (WMI_MGMT_RX_EVENTID_param_tlvs *) data;
