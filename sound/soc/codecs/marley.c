@@ -954,6 +954,7 @@ static const struct soc_enum marley_dsp_output_enum =
 			marley_dsp_output_texts);
 
 static const struct snd_kcontrol_new marley_dsp_output_mux[] = {
+	SOC_DAPM_ENUM("DSP1 Virtual Output Mux", marley_dsp_output_enum),
 	SOC_DAPM_ENUM("DSP2 Virtual Output Mux", marley_dsp_output_enum),
 	SOC_DAPM_ENUM("DSP3 Virtual Output Mux", marley_dsp_output_enum),
 };
@@ -1022,6 +1023,7 @@ SND_SOC_DAPM_MUX("IN1R Mux", SND_SOC_NOPM, 0, 0, &marley_in1mux[1]),
 SND_SOC_DAPM_OUTPUT("DRC1 Signal Activity"),
 SND_SOC_DAPM_OUTPUT("DRC2 Signal Activity"),
 
+SND_SOC_DAPM_OUTPUT("DSP1 Virtual Output"),
 SND_SOC_DAPM_OUTPUT("DSP2 Virtual Output"),
 SND_SOC_DAPM_OUTPUT("DSP3 Virtual Output"),
 
@@ -1322,12 +1324,16 @@ SND_SOC_DAPM_MUX("DSP2 Virtual Input", SND_SOC_NOPM, 0, 0,
 SND_SOC_DAPM_MUX("DSP3 Virtual Input", SND_SOC_NOPM, 0, 0,
 		      &marley_memory_mux[1]),
 
-SND_SOC_DAPM_MUX_E("DSP2 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
+SND_SOC_DAPM_MUX_E("DSP1 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
 		&marley_dsp_output_mux[0], marley_virt_dsp_power_ev,
 		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
-SND_SOC_DAPM_MUX_E("DSP3 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
+SND_SOC_DAPM_MUX_E("DSP2 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
 		&marley_dsp_output_mux[1], marley_virt_dsp_power_ev,
+		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+
+SND_SOC_DAPM_MUX_E("DSP3 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
+		&marley_dsp_output_mux[2], marley_virt_dsp_power_ev,
 		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 ARIZONA_MUX_WIDGETS(ISRC1DEC1, "ISRC1DEC1"),
@@ -1615,6 +1621,11 @@ static const struct snd_soc_dapm_route marley_dapm_routes[] = {
 	{ "DSP2 Virtual Input", "Shared Memory", "DSP3" },
 	{ "DSP3 Preloader", NULL, "DSP3 Virtual Input" },
 	{ "DSP3 Virtual Input", "Shared Memory", "DSP2" },
+
+	{ "DSP1 Preloader", NULL, "DSP Virtual Input" },
+	{ "DSP1 Virtual Output", NULL, "DSP1 Virtual Output Mux" },
+	{ "DSP1 Virtual Output Mux", "DSP1", "DSP1" },
+	{ "DSP1 Virtual Output", NULL, "SYSCLK" },
 
 	{ "DSP2 Preloader", NULL, "DSP Virtual Input" },
 	{ "DSP2 Virtual Output", NULL, "DSP2 Virtual Output Mux" },
