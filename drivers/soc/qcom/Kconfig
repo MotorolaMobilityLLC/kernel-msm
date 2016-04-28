@@ -969,3 +969,9 @@ config MMI_RAM_INFO
 	help
 	Provide mechanism to access RAM size and MR registers values via sysfs.
 
+config MMI_STORAGE_INFO
+	default n
+	bool "Motorola Mobility STORAGE Info"
+	help
+	Provide mechanism to export EMMC/UFS type, size and vendor info.
+
