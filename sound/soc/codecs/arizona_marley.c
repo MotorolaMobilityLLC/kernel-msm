@@ -3189,10 +3189,10 @@ static int arizona_slim_get_la(struct slim_device *dev, u8 *la)
 #define RX_STREAM_3 152
 
 
-static u32 rx_porth1[2], rx_porth2[1], rx_porth3[2], rx_porth1m[1];
+static u32 rx_porth1[2], rx_porth2[2], rx_porth3[2], rx_porth1m[1];
 static u32 tx_porth1[4], tx_porth2[2], tx_porth3[1];
 static u16 rx_handles1[] = { RX_STREAM_1, RX_STREAM_1 + 1 };
-static u16 rx_handles2[] = { RX_STREAM_2 };
+static u16 rx_handles2[] = { RX_STREAM_2, RX_STREAM_2 + 1 };
 static u16 rx_handles3[] = { RX_STREAM_3, RX_STREAM_3 + 1 };
 static u16 tx_handles1[] = { TX_STREAM_1, TX_STREAM_1 + 1,
 			     TX_STREAM_1 + 2, TX_STREAM_1 + 3 };
@@ -3200,6 +3200,8 @@ static u16 tx_handles2[] = { TX_STREAM_2, TX_STREAM_2 + 1 };
 static u16 tx_handles3[] = { TX_STREAM_3 };
 static u16 rx_group1, rx_group2, rx_group3;
 static u16 tx_group1, tx_group2, tx_group3;
+static u32 rx1_samplerate, rx1_sampleszbits;
+static u32 rx2_samplerate, rx2_sampleszbits;
 
 int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		       struct snd_kcontrol *kcontrol,
@@ -3310,6 +3312,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	u32 *porth;
 	u16 *handles, *group;
 	int chcnt;
+	u32 rx_sampleszbits = 16, rx_samplerate = 48000;
 
 	/* BODGE: should do this per port */
 	switch (w->shift) {
@@ -3320,6 +3323,8 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		handles = rx_handles1;
 		group = &rx_group1;
 		chcnt = ARRAY_SIZE(rx_porth1);
+		rx_sampleszbits = rx1_sampleszbits;
+		rx_samplerate = rx1_samplerate;
 		break;
 	case ARIZONA_SLIMRX3_ENA_SHIFT:
 		dev_dbg(codec->dev, "RX1M\n");
@@ -3336,6 +3341,8 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		handles = rx_handles2;
 		group = &rx_group2;
 		chcnt = ARRAY_SIZE(rx_porth2);
+		rx_sampleszbits = rx2_sampleszbits;
+		rx_samplerate = rx2_samplerate;
 		break;
 	case ARIZONA_SLIMRX7_ENA_SHIFT:
 		dev_dbg(codec->dev, "RX3\n");
@@ -3353,13 +3360,14 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	prop.baser = SLIM_RATE_4000HZ;
 	prop.dataf = SLIM_CH_DATAF_NOT_DEFINED;
 	prop.auxf = SLIM_CH_AUXF_NOT_APPLICABLE;
-	prop.ratem = (48000/4000);
-	prop.sampleszbits = 16;
+	prop.ratem = (rx_samplerate/4000);
+	prop.sampleszbits = rx_sampleszbits;
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 	case SND_SOC_DAPM_POST_PMU:
-		dev_dbg(arizona->dev, "Start slimbus\n");
+		dev_dbg(arizona->dev, "Start slimbus RX, rate=%d, bit=%d\n",
+			rx_samplerate, rx_sampleszbits);
 		ret = slim_define_ch(slim_audio_dev, &prop, handles, chcnt,
 				     true, group);
 		if (ret != 0) {
@@ -3478,7 +3486,7 @@ dev_info(arizona->dev, "%s logic addr %d\n", __func__, laddr);
 		}
 	}
 
-	for (i = 0; i < ARRAY_SIZE(rx_handles2); i++) {
+	for (i = 0; i < ARRAY_SIZE(rx_handles3); i++) {
 		ret = slim_query_ch(slim_audio_dev, RX_STREAM_3 + i,
 					&rx_handles3[i]);
 		if (ret != 0) {
@@ -3531,8 +3539,9 @@ dev_info(arizona->dev, "%s logic addr %d\n", __func__, laddr);
 		tx_slot[3] = TX_STREAM_1 + 3;
 		break;
 	case ARIZONA_SLIM2:
-		*rx_num = 1;
+		*rx_num = 2;
 		rx_slot[0] = RX_STREAM_2;
+		rx_slot[1] = RX_STREAM_2 + 1;
 		*tx_num = 2;
 		tx_slot[0] = TX_STREAM_2;
 		tx_slot[1] = TX_STREAM_2 + 1;
@@ -4571,20 +4580,42 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 	const int *sources = NULL;
 	unsigned int cur, tar;
 	bool change_rate = true, slim_dai = false;
+	u32 rx_sampleszbits, rx_samplerate;
+
+	rx_sampleszbits = snd_pcm_format_width(params_format(params));
+	if (rx_sampleszbits < 16)
+		rx_sampleszbits = 16;
 
 	/*
 	 * We will need to be more flexible than this in future,
 	 * currently we use a single sample rate for SYSCLK.
 	 */
 	for (i = 0; i < ARRAY_SIZE(arizona_sr_vals); i++)
-		if (arizona_sr_vals[i] == params_rate(params))
+		if (arizona_sr_vals[i] == params_rate(params)) {
+			rx_samplerate = params_rate(params);
 			break;
+		}
 	if (i == ARRAY_SIZE(arizona_sr_vals)) {
 		arizona_aif_err(dai, "Unsupported sample rate %dHz\n",
 				params_rate(params));
 		return -EINVAL;
 	}
 	sr_val = i;
+
+	switch (dai->id) {
+	case ARIZONA_SLIM1:
+		rx1_sampleszbits = rx_sampleszbits;
+		rx1_samplerate = rx_samplerate;
+		break;
+	case ARIZONA_SLIM2:
+		rx2_sampleszbits = rx_sampleszbits;
+		rx2_samplerate = rx_samplerate;
+		break;
+	case ARIZONA_SLIM3:
+	default:
+		break;
+	}
+
 
 	switch (priv->arizona->type) {
 	case WM5102:
