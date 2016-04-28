@@ -3452,6 +3452,7 @@ static struct snd_soc_dapm_route wcd9335_audio_paths[] = {
 static struct snd_soc_dapm_route marley_audio_routes[] = {
 	{"Slim1 Playback", NULL, "MCLK"},
 	{"Slim1 Capture", NULL, "MCLK"},
+	{"Slim2 Playback", NULL, "MCLK"},
 	{"Slim2 Capture", NULL, "MCLK"},
 
 	/* MICBIAS ? */
