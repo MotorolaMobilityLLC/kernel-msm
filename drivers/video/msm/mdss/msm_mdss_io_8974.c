@@ -1291,6 +1291,7 @@ void mdss_dsi_core_clk_deinit(struct device *dev, struct dsi_shared_data *sdata)
 	if (sdata->mdp_core_clk)
 		devm_clk_put(dev, sdata->mdp_core_clk);
 }
+
 /* To have a match of calculation of the DSI MIPI clock between DSI
  * and downstream device such as ANX7805, the left/right/top/down
  * borders must be included in h_active and v_active.
@@ -1339,6 +1340,64 @@ void mdss_dsi_border_check(struct mdss_panel_data *pdata)
 #endif
 }
 
+/*
+ * The ANX7805 driver has problem to run at low MIPI Freq that will
+ * cause the scrolling the image. To work around this issue, if the screen
+ * resolution is 720p (720x1280) or higher then it will use 4 MIPI data lanes.
+ * This API will calculate the MIPI data rate per lane based on using 4 data
+ * lanes by:
+ *      ((xres+hfp+hbp+hpw) * (yres+vfp+vbp+vpw) * 60fps * 24bitpp)
+ *       ----------------------------------------------------------
+ *              4_datalanes * 2_DDR
+ * with 720p the mipi_ddr_clk_4lanes will be 222750000, therefore
+ * using max_mipi_ddr_clk_4lanes = 200000000 to determine if the screen
+ * resolution is 720p or higher and configure to use 4 data lanes.
+ * TODO: If the disp_config has the number_lanes information then this need
+ * to add a logic to use what it has in the disp_config
+ */
+void mdss_dsi_mipi_lane_select(struct mdss_panel_data *pdata)
+{
+#ifdef CONFIG_SLIMPORT_ANX7805
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mdss_panel_info *pinfo = NULL;
+	u32 pixel_total, mipi_ddr_clk_4lanes;
+	u64 total_data_rate;
+	const u32 max_mipi_ddr_clk_4lanes = 200000000;
+
+	pr_debug("%s+\n", __func__);
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+						panel_data);
+	pinfo = &pdata->panel_info;
+
+	/* anx7805 is using DSI1 */
+	if (ctrl_pdata->ndx == 0)
+		return;
+
+	pixel_total = (pinfo->lcdc.h_back_porch + pinfo->lcdc.h_front_porch +
+			pinfo->lcdc.h_pulse_width + pinfo->xres) *
+			(pinfo->lcdc.v_back_porch + pinfo->lcdc.v_front_porch +
+				pinfo->lcdc.v_pulse_width + pinfo->yres);
+	total_data_rate = (u64)pixel_total * 60 * 24;
+	mipi_ddr_clk_4lanes = (u32)(total_data_rate / 4) / 2;
+
+	if ((mipi_ddr_clk_4lanes > max_mipi_ddr_clk_4lanes) &&
+			(!pinfo->mipi.data_lane2 || !pinfo->mipi.data_lane3)) {
+		pinfo->mipi.data_lane2 = 1;
+		pinfo->mipi.data_lane3 = 1;
+		pr_warn("%s: pixel_total= %d total_data_rate=%llu mipi_ddr_clk_4lanes=%d max_mipi_ddr_clk_4lanes=%d\n",
+			__func__, pixel_total, total_data_rate,
+			mipi_ddr_clk_4lanes, max_mipi_ddr_clk_4lanes);
+
+		pr_warn("%s: forced to use 4 MIPI data lanes. mipi_ddr_clk_4lanes = %d\n",
+			__func__, mipi_ddr_clk_4lanes);
+	} else {
+		/* change back to 2 data lanes for screen resolution < 720p */
+		pinfo->mipi.data_lane2 = 0;
+		pinfo->mipi.data_lane3 = 0;
+	}
+#endif
+}
+
 int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata, bool update_phy)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -1350,6 +1409,7 @@ int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata, bool update_phy)
 		return -EINVAL;
 	}
 
+	pr_debug("%s+\n", __func__);
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 							panel_data);
 	pinfo = &pdata->panel_info;
@@ -1360,6 +1420,7 @@ int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata, bool update_phy)
 	}
 
 	mdss_dsi_border_check(pdata);
+	mdss_dsi_mipi_lane_select(pdata);
 
 	if (update_phy) {
 		pinfo->mipi.frame_rate = mdss_panel_calc_frame_rate(pinfo);
