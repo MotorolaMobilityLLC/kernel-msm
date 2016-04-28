@@ -657,6 +657,7 @@ typedef struct dhd_dbg {
 struct log_level_table {
 	int log_level;
 	uint16 tag;
+	uint8 sets;
 	char *desc;
 };
 
