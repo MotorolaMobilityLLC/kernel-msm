@@ -720,4 +720,7 @@ enum {
 /* int, read only. For GB path, it's packet size. For CSI path, it's line num */
 #define CAM_EXT_CID_MOD_META_DATA_SIZE (CID_CAM_EXT_CLASS_BASE + 104)
 
+/* boolean */
+#define CAM_EXT_CID_ZOOM_LOCK_1X (CID_CAM_EXT_CLASS_BASE + 105)
+
 #endif /* __CAMERA_EXT_CTRLS_H */
