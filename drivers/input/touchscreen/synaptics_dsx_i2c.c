@@ -2063,6 +2063,35 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 			rmi4_data->in_bootloader = true;
 	case STATE_INIT:
 		synaptics_rmi4_irq_enable(rmi4_data, false);
+
+		if (!rmi4_data->in_bootloader) {
+			int retval;
+			unsigned char mode = 1;
+			unsigned char intr_status[MAX_INTR_REGISTERS];
+
+			/* deactivate touch by putting touch IC into */
+			/* sleep mode to prevent interference of touch */
+			/* processing with flashing */
+			pr_debug("enter sleep mode\n");
+			retval = synaptics_rmi4_i2c_write(rmi4_data,
+					rmi4_data->f01_ctrl_base_addr,
+					&mode,
+					sizeof(mode));
+
+			if (retval < 0)
+				pr_notice("failed to enter sleep mode\n");
+
+			/* clear unhandled interrupt if any */
+			pr_debug("clear interrupt\n");
+			retval = synaptics_rmi4_i2c_read(rmi4_data,
+					rmi4_data->f01_data_base_addr + 1,
+					&intr_status[0],
+					rmi4_data->num_of_intr_regs);
+
+			if (retval < 0)
+				pr_notice("failed to clear interrupt\n");
+		}
+
 		/* de-allocate input device earlier to allow */
 		/* EventHub become notified of input removal */
 		if (rmi4_data->input_registered) {
