@@ -4559,7 +4559,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 		if (!chip->usbc_online) {
 			chip->usbc_online = true;
 			schedule_delayed_work(&chip->usb_insertion_work,
-				      msecs_to_jiffies(1000));
+				      msecs_to_jiffies(100));
 		}
 		if (!chip->bsw_psy)
 			chip->usbc_bswchg_pres = false;
