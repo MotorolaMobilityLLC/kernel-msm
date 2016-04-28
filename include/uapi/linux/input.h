@@ -177,6 +177,7 @@ struct input_keymap_entry {
 #define BUS_HIL			0x04
 #define BUS_BLUETOOTH		0x05
 #define BUS_VIRTUAL		0x06
+#define BUS_GREYBUS		0x07
 
 #define BUS_ISA			0x10
 #define BUS_I8042		0x11
