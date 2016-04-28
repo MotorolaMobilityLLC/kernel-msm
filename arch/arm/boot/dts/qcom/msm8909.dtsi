@@ -510,6 +510,7 @@
 			<144000 266670000 0x55555555>, /* VGA@60 X 2 */
 			<108000 133330000 0xffffffff>, /* 720p@30 Decode */
 			<54000 133330000 0x55555555>; /* HVGA@90 Encode */
+		qcom,pm-qos-latency-us = <501>;
 		qcom,hfi = "venus";
 		qcom,reg-presets = <0xE0020 0x05555556>,
 			<0xE0024 0x05555556>,
