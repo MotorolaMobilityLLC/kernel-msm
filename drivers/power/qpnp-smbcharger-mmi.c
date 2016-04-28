@@ -144,6 +144,11 @@ struct pchg_current_map {
 	int secondary;
 };
 
+struct thermal_mitigation {
+	int smb;
+	int bsw;
+};
+
 struct smbchg_version_tables {
 	const int			*dc_ilim_ma_table;
 	int				dc_ilim_ma_len;
@@ -263,11 +268,11 @@ struct smbchg_chip {
 	bool				batt_cool;
 	unsigned int			chg_thermal_levels;
 	unsigned int			chg_therm_lvl_sel;
-	unsigned int			*chg_thermal_mitigation;
+	struct thermal_mitigation	*chg_thermal_mitigation;
 
 	unsigned int			thermal_levels;
 	unsigned int			therm_lvl_sel;
-	unsigned int			*thermal_mitigation;
+	struct thermal_mitigation	*thermal_mitigation;
 
 	unsigned int			dc_thermal_levels;
 	unsigned int			dc_therm_lvl_sel;
@@ -386,6 +391,12 @@ struct smbchg_chip {
 	uint32_t			stepchg_num_steps;
 
 	int				bsw_curr_ma;
+	int                             max_bsw_current_ma;
+	int                             target_bsw_current_ma;
+	int                             thermal_bsw_in_current_ma;
+	int                             thermal_bsw_out_current_ma;
+	int                             thermal_bsw_current_ma;
+	bool                            update_thermal_bsw_current_ma;
 	enum bsw_modes			bsw_mode;
 	bool				bsw_ramping;
 	int				bsw_volt_min_mv;
@@ -1653,7 +1664,8 @@ static int calc_thermal_limited_current(struct smbchg_chip *chip,
 		 * consider thermal limit only when it is active and not at
 		 * the highest level
 		 */
-		therm_ma = (int)chip->thermal_mitigation[chip->therm_lvl_sel];
+		therm_ma =
+			(int)chip->thermal_mitigation[chip->therm_lvl_sel].smb;
 		if (therm_ma < current_ma) {
 			SMB_DBG(chip,
 				"Limiting current due to thermal: %d mA",
@@ -3034,8 +3046,20 @@ static int smbchg_chg_system_temp_level_set(struct smbchg_chip *chip,
 	chip->chg_therm_lvl_sel = lvl_sel;
 
 	chip->allowed_fastchg_current_ma =
-		chip->chg_thermal_mitigation[lvl_sel];
+		chip->chg_thermal_mitigation[lvl_sel].smb;
 	chip->update_allowed_fastchg_current_ma = true;
+
+	chip->thermal_bsw_out_current_ma =
+		chip->chg_thermal_mitigation[lvl_sel].bsw;
+	chip->thermal_bsw_current_ma =
+		min(chip->thermal_bsw_in_current_ma,
+		    chip->thermal_bsw_out_current_ma);
+
+	SMB_ERR(chip, "thermal/out/in=%d/%d/%d\n",
+		chip->thermal_bsw_current_ma,
+		chip->thermal_bsw_out_current_ma,
+		chip->thermal_bsw_in_current_ma);
+	chip->update_thermal_bsw_current_ma = true;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	cancel_delayed_work(&chip->heartbeat_work);
@@ -3074,7 +3098,7 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 	prev_therm_lvl = chip->therm_lvl_sel;
 	chip->therm_lvl_sel = lvl_sel;
 	if ((chip->therm_lvl_sel == (chip->thermal_levels - 1)) &&
-	    (chip->thermal_mitigation[lvl_sel] == 0)) {
+	    (chip->thermal_mitigation[lvl_sel].smb == 0)) {
 		/*
 		 * Disable charging if highest value selected by
 		 * setting the USB path in suspend
@@ -3089,7 +3113,19 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 	rc = smbchg_set_thermal_limited_usb_current_max(chip,
 					chip->usb_target_current_ma);
 
-	if (prev_therm_lvl == chip->thermal_levels - 1) {
+	chip->thermal_bsw_in_current_ma =
+		chip->thermal_mitigation[lvl_sel].bsw;
+	chip->thermal_bsw_current_ma =
+		min(chip->thermal_bsw_in_current_ma,
+		    chip->thermal_bsw_out_current_ma);
+	SMB_ERR(chip, "thermal/out/in=%d/%d/%d\n",
+		chip->thermal_bsw_current_ma,
+		chip->thermal_bsw_out_current_ma,
+		chip->thermal_bsw_in_current_ma);
+	chip->update_thermal_bsw_current_ma = true;
+
+	if ((prev_therm_lvl == chip->thermal_levels - 1) &&
+	    (prev_therm_lvl == 0)) {
 		/*
 		 * If previously highest value was selected charging must have
 		 * been disabed. Enable charging by taking the USB path out of
@@ -3155,7 +3191,8 @@ static int smbchg_dc_system_temp_level_set(struct smbchg_chip *chip,
 		rc = smbchg_set_thermal_limited_dc_current_max(chip,
 						   chip->dc_target_current_ma);
 
-	if (prev_therm_lvl == chip->dc_thermal_levels - 1) {
+	if ((prev_therm_lvl == chip->dc_thermal_levels - 1) &&
+	    (prev_therm_lvl == 0)) {
 		/*
 		 * If previously highest value was selected charging must have
 		 * been disabed. Enable charging by taking the DC path out of
@@ -4923,6 +4960,29 @@ module_param(vf_adjust_trim_steps_per_adjust, int, 0644);
 #define VF_TRIM_OFFSET_MASK		SMB_MASK(3, 0)
 #define VF_STEP_SIZE_MV			10
 #define SCALE_LSB_MV			17
+
+static void set_target_bsw_current_ma(struct smbchg_chip *chip,
+				      int current_ma)
+{
+	int curr;
+
+	if (!chip->usb_present) {
+		SMB_DBG(chip, "NO allowed current, No USB\n");
+		chip->target_bsw_current_ma = current_ma;
+		return;
+	}
+
+	curr = min(current_ma, chip->max_bsw_current_ma);
+	chip->target_bsw_current_ma =
+		min(curr, chip->thermal_bsw_current_ma);
+	SMB_DBG(chip, "requested/thermal/in/out/max/target=%d/%d/%d/%d/%d/%d\n",
+		current_ma,
+		chip->thermal_bsw_current_ma,
+		chip->thermal_bsw_in_current_ma,
+		chip->thermal_bsw_out_current_ma,
+		chip->max_bsw_current_ma,
+		chip->target_bsw_current_ma);
+}
 
 static void set_max_allowed_current_ma(struct smbchg_chip *chip,
 				       int current_ma)
@@ -6889,6 +6949,32 @@ static int parse_dt_stepchg_steps(const uint32_t *arr,
 	return len;
 }
 
+#define DT_TM_OFFSET 2
+static int parse_dt_thermal_mitigation(const u32 *arr,
+				       struct thermal_mitigation *tm,
+				       int count)
+{
+	u32 len = 0;
+	u32 smb;
+	u32 bsw;
+	int i;
+
+	if (!arr)
+		return 0;
+
+	for (i = 0; i < (count * DT_TM_OFFSET); i += DT_TM_OFFSET) {
+		smb = be32_to_cpu(arr[i]);
+		bsw = be32_to_cpu(arr[i + 1]);
+		tm->smb = smb;
+		tm->bsw = bsw;
+
+		len++;
+		tm++;
+	}
+	return len;
+}
+
+#define DT_PCHG_OFFSET 3
 static int parse_dt_pchg_current_map(const u32 *arr,
 				     struct pchg_current_map *current_map,
 				     int count,
@@ -6899,13 +6985,13 @@ static int parse_dt_pchg_current_map(const u32 *arr,
 	u32 primary;
 	u32 secondary;
 	int i;
-	int offset = 3;
+	int offset = DT_PCHG_OFFSET;
 
 	if (!arr)
 		return 0;
 
 	if (primary_only)
-		offset = 1;
+		offset = DT_TM_OFFSET;
 
 	for (i = 0; i < (count * offset); i += offset) {
 		if (primary_only) {
@@ -7292,53 +7378,86 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 				chip->stepchg_steps[index].taper_ma);
 		}
 
+		chip->max_bsw_current_ma = chip->stepchg_steps[0].max_ma;
+		chip->thermal_bsw_out_current_ma =
+			chip->stepchg_steps[0].max_ma;
+		chip->thermal_bsw_in_current_ma = chip->stepchg_steps[0].max_ma;
+		chip->thermal_bsw_current_ma =
+			min(chip->thermal_bsw_in_current_ma,
+			    chip->thermal_bsw_out_current_ma);
+		set_target_bsw_current_ma(chip, chip->stepchg_steps[0].max_ma);
+
 	}
 
-	if (of_find_property(node, "qcom,chg-thermal-mitigation",
-					&chip->chg_thermal_levels)) {
-		chip->chg_thermal_mitigation = devm_kzalloc(chip->dev,
-			chip->chg_thermal_levels,
-			GFP_KERNEL);
+	dt_map = of_get_property(node, "qcom,chg-thermal-mitigation",
+				      &chip->chg_thermal_levels);
 
+	if ((dt_map) && (chip->chg_thermal_levels > 0)) {
+		chip->chg_thermal_levels /= DT_TM_OFFSET * sizeof(u32);
+		SMB_ERR(chip, "num chg-thermal-mitigation levels = %d\n",
+			chip->chg_thermal_levels);
+		if (chip->chg_thermal_levels > 30)
+			chip->chg_thermal_levels = 30;
+
+		chip->chg_thermal_mitigation =
+			devm_kzalloc(chip->dev,
+				     (sizeof(struct thermal_mitigation) *
+				      chip->chg_thermal_levels),
+				     GFP_KERNEL);
 		if (chip->chg_thermal_mitigation == NULL) {
 			SMB_ERR(chip,
-				"thermal mitigation kzalloc() failed.\n");
+			"Failed to kzalloc memory for charge mitigation.\n");
 			return -ENOMEM;
 		}
 
-		chip->chg_thermal_levels /= sizeof(int);
-		rc = of_property_read_u32_array(node,
-						"qcom,chg-thermal-mitigation",
-						chip->chg_thermal_mitigation,
-						chip->chg_thermal_levels);
-		if (rc) {
+		chip->chg_thermal_levels =
+			parse_dt_thermal_mitigation(dt_map,
+						   chip->chg_thermal_mitigation,
+						   chip->chg_thermal_levels);
+
+		if (chip->chg_thermal_levels <= 0) {
 			SMB_ERR(chip,
-				"Couldn't read therm limits rc = %d\n", rc);
+			"Couldn't read charge mitigation rc = %d\n", rc);
 			return rc;
 		}
+		SMB_ERR(chip, "num charge mitigation entries = %d\n",
+			chip->chg_thermal_levels);
 	} else
 		chip->chg_thermal_levels = 0;
 
-	if (of_find_property(node, "qcom,thermal-mitigation",
-					&chip->thermal_levels)) {
-		chip->thermal_mitigation = devm_kzalloc(chip->dev,
-			chip->thermal_levels,
-			GFP_KERNEL);
+	dt_map = of_get_property(node, "qcom,thermal-mitigation",
+				      &chip->thermal_levels);
 
+	if ((dt_map) && (chip->thermal_levels > 0)) {
+		chip->thermal_levels /= 2 * sizeof(u32);
+		SMB_ERR(chip, "num thermal-mitigation levels = %d\n",
+		       chip->thermal_levels);
+		if (chip->thermal_levels > 30)
+			chip->thermal_levels = 30;
+
+		chip->thermal_mitigation =
+			devm_kzalloc(chip->dev,
+				     (sizeof(struct thermal_mitigation) *
+				      chip->thermal_levels),
+				     GFP_KERNEL);
 		if (chip->thermal_mitigation == NULL) {
-			SMB_ERR(chip, "thermal mitigation kzalloc() failed.\n");
+			SMB_ERR(chip,
+			"Failed to kzalloc memory for charge mitigation.\n");
 			return -ENOMEM;
 		}
 
-		chip->thermal_levels /= sizeof(int);
-		rc = of_property_read_u32_array(node,
-				"qcom,thermal-mitigation",
-				chip->thermal_mitigation, chip->thermal_levels);
-		if (rc) {
+		chip->thermal_levels =
+			parse_dt_thermal_mitigation(dt_map,
+						   chip->thermal_mitigation,
+						   chip->thermal_levels);
+
+		if (chip->thermal_levels <= 0) {
 			SMB_ERR(chip,
-				"Couldn't read therm limits rc = %d\n", rc);
+			"Couldn't read charge mitigation rc = %d\n", rc);
 			return rc;
 		}
+		SMB_ERR(chip, "num mitigation entries = %d\n",
+			chip->thermal_levels);
 	} else
 		chip->thermal_levels = 0;
 
@@ -7374,12 +7493,12 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 				      &chip->pchg_current_map_len);
 
 	if ((dt_map) && (chip->pchg_current_map_len > 0)) {
-		chip->pchg_current_map_len /= 3 * sizeof(u32);
+		chip->pchg_current_map_len /= DT_PCHG_OFFSET * sizeof(u32);
 		primary_only = false;
 	} else if (chip->chg_thermal_mitigation &&
 		   (chip->chg_thermal_levels > 0)) {
 		chip->pchg_current_map_len = chip->chg_thermal_levels;
-		dt_map = chip->chg_thermal_mitigation;
+		dt_map = (u32 *)chip->chg_thermal_mitigation;
 		primary_only = true;
 	}
 
@@ -9273,10 +9392,14 @@ static int bsw_ramp_up(struct smbchg_chip *chip)
 		set_curr -= (BSW_CURR_STEP_MA * 2);
 	set_bsw(chip, max_mv, set_curr, false);
 	msleep(100);
-	rc = set_bsw_curr(chip, set_curr);
+
+	chip->max_bsw_current_ma = set_curr;
+	set_target_bsw_current_ma(chip, chip->stepchg_steps[0].max_ma);
+
+	rc = set_bsw_curr(chip, chip->target_bsw_current_ma);
 	if (rc < 0)
 		return rc;
-	set_bsw(chip, max_mv, set_curr, true);
+	set_bsw(chip, max_mv, chip->target_bsw_current_ma, true);
 	return 0;
 }
 
@@ -9318,6 +9441,67 @@ module_param_cb(eb_low_stop_soc, &eb_ops, &eb_low_stop_soc, 0644);
 static int eb_on_sw = 1;
 module_param_cb(eb_on_sw, &eb_ops, &eb_on_sw, 0644);
 
+#define BSW_DEFAULT_MA 3000
+void update_bsw_step(struct smbchg_chip *chip, bool bsw_chrg_alarm,
+		     bool max_chrg_alarm, int pmi_max_chrg_ma, int taper_ma,
+		     int max_ma)
+{
+	int max_mv = 0;
+	int index;
+	bool change_state = false;
+
+	mutex_lock(&chip->current_change_lock);
+	chip->update_thermal_bsw_current_ma = false;
+	mutex_unlock(&chip->current_change_lock);
+
+	chip->bsw_ramping = true;
+
+	/* Keep Switch Open for 100 ms to let battery relax */
+	set_bsw(chip, max_mv, 0, false);
+	msleep(100);
+
+	index = STEP_START(chip->stepchg_state);
+	max_mv = chip->stepchg_steps[index].max_mv;
+
+	if (bsw_chrg_alarm || max_chrg_alarm) {
+		SMB_INFO(chip, "bsw tripped! BSW Current %d mA\n",
+			 chip->bsw_curr_ma);
+
+		if ((chip->bsw_curr_ma <= taper_ma) ||
+		    (bsw_chrg_alarm && (max_mv < chip->bsw_volt_min_mv))) {
+			change_state = true;
+			chip->max_bsw_current_ma = chip->bsw_curr_ma;
+		} else
+			chip->max_bsw_current_ma =
+				chip->bsw_curr_ma - BSW_CURR_STEP_MA;
+
+		if (change_state) {
+			if (chip->stepchg_state ==
+			    STEP_END(chip->stepchg_num_steps)) {
+				chip->stepchg_state = STEP_TAPER;
+				chip->bsw_mode = BSW_DONE;
+				chip->max_bsw_current_ma = BSW_DEFAULT_MA;
+			} else if (pmi_max_chrg_ma > taper_ma) {
+				if (chip->stepchg_state < STEP_NONE)
+					chip->stepchg_state++;
+				chip->bsw_mode = BSW_DONE;
+				chip->max_bsw_current_ma = BSW_DEFAULT_MA;
+			} else {
+				if (chip->stepchg_state < STEP_NONE)
+					chip->stepchg_state++;
+				index = STEP_START(chip->stepchg_state);
+				max_mv = chip->stepchg_steps[index].max_mv;
+			}
+		}
+	}
+
+	set_target_bsw_current_ma(chip, chip->stepchg_steps[0].max_ma);
+	set_bsw_curr(chip, chip->target_bsw_current_ma);
+	set_bsw(chip, max_mv, chip->target_bsw_current_ma,
+		(chip->bsw_mode == BSW_RUN));
+	chip->bsw_ramping = false;
+}
+
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
 #define HEARTBEAT_FG_WAIT_MS 1000
@@ -9328,7 +9512,6 @@ module_param_cb(eb_on_sw, &eb_ops, &eb_on_sw, 0644);
 #define DEMO_MODE_MAX_SOC 35
 #define DEMO_MODE_HYS_SOC 5
 #define HYST_STEP_MV 50
-#define BSW_DEFAULT_MA 3000
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 static void smbchg_heartbeat_work(struct work_struct *work)
 {
@@ -9533,50 +9716,11 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		chip->bsw_ramping = false;
 	} else if (chip->usbc_bswchg_pres && chip->usb_present &&
 		   (chip->bsw_mode == BSW_RUN) &&
-		   (bsw_chrg_alarm || max_chrg_alarm)) {
-		bool change_state = false;
-		int curr_lvl = chip->bsw_curr_ma;
-		SMB_INFO(chip, "bsw tripped! BSW Current %d mA\n",
-			 curr_lvl);
-		chip->bsw_ramping = true;
-		set_bsw(chip, max_mv, curr_lvl, false);
-		/* Keep Switch Open for 100 ms to let battery relax */
-		msleep(100);
+		   (bsw_chrg_alarm || max_chrg_alarm ||
+		    chip->update_thermal_bsw_current_ma)) {
+		update_bsw_step(chip, bsw_chrg_alarm, max_chrg_alarm,
+				pmi_max_chrg_ma, taper_ma, max_ma);
 
-		index = STEP_START(chip->stepchg_state);
-		max_mv = chip->stepchg_steps[index].max_mv;
-
-		if ((curr_lvl <= taper_ma) ||
-		    (bsw_chrg_alarm && (max_mv < chip->bsw_volt_min_mv)))
-			change_state = true;
-		else
-			curr_lvl -= BSW_CURR_STEP_MA;
-
-		if (change_state) {
-			if (chip->stepchg_state ==
-			    STEP_END(chip->stepchg_num_steps)) {
-				chip->stepchg_state = STEP_TAPER;
-				chip->bsw_mode = BSW_DONE;
-				curr_lvl = BSW_DEFAULT_MA;
-			} else if (pmi_max_chrg_ma > taper_ma) {
-				if (chip->stepchg_state < STEP_NONE)
-					chip->stepchg_state++;
-				chip->bsw_mode = BSW_DONE;
-				curr_lvl = BSW_DEFAULT_MA;
-			} else {
-				if (chip->stepchg_state < STEP_NONE)
-					chip->stepchg_state++;
-				index = STEP_START(chip->stepchg_state);
-				max_mv = chip->stepchg_steps[index].max_mv;
-				max_ma = chip->stepchg_steps[index].max_ma;
-				taper_ma = chip->stepchg_steps[index].taper_ma;
-				curr_lvl = max_ma;
-		    }
-		}
-		set_bsw_curr(chip, curr_lvl);
-		set_bsw(chip, max_mv, curr_lvl,
-			(chip->bsw_mode == BSW_RUN));
-		chip->bsw_ramping = false;
 	} else if ((chip->stepchg_state == STEP_NONE) &&
 		   (chip->bsw_mode != BSW_RUN) &&
 		   (chip->usb_present || (chip->ebchg_state == EB_SRC))) {
