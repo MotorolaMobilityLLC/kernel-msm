@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -47,9 +47,6 @@
 #define NUM_TIMES_RESET_RETRY 5
 
 #define KGSL_LOG_LEVEL_DEFAULT 3
-
-/* QFPROM_CORR_PTE2 register offset*/
-#define QFPROM_CORR_PTE2_OFFSET 0xC
 
 #define SECVID_PROGRAM_PATH_UNKNOWN	0x0
 #define SECVID_PROGRAM_PATH_GPU		0x1
@@ -1029,12 +1026,12 @@ static struct device_node *get_gpu_speed_config_data(struct platform_device
 	struct resource *res;
 	void __iomem *base;
 	u32 pte_reg_val;
-	int speed_bin, speed_config;
+	int speed_bin, speed_config[4];
 	char prop_name[32];
 
 	/* Load default configuration, if speed config is not required */
-	if (of_property_read_u32(pdev->dev.of_node,
-			"qcom,gpu-speed-config", &speed_config))
+	if (of_property_read_u32_array(pdev->dev.of_node,
+			"qcom,gpu-speed-config", speed_config, 4))
 		return pdev->dev.of_node;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
@@ -1047,14 +1044,14 @@ static struct device_node *get_gpu_speed_config_data(struct platform_device
 	if (!base)
 		return NULL;
 
-	pte_reg_val = __raw_readl(base + QFPROM_CORR_PTE2_OFFSET);
+	pte_reg_val = __raw_readl(base + speed_config[0]);
+	speed_bin = (pte_reg_val >> speed_config[1]) & speed_config[2];
 
 	iounmap(base);
 
-	speed_bin = (pte_reg_val >> 0x2) & 0x7;
-	if (speed_bin == speed_config) {
+	if (speed_bin == speed_config[3]) {
 		snprintf(prop_name, ARRAY_SIZE(prop_name), "%s%d",
-				"gpu-speed-config@", speed_config);
+				"gpu-speed-config@", speed_bin);
 		return adreno_of_find_subnode(pdev->dev.of_node, prop_name);
 	}
 

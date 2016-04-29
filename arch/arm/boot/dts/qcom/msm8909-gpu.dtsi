@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -46,7 +46,7 @@
 		interrupt-names = "kgsl_3d0_irq";
 		qcom,id = <0>;
 
-		qcom,gpu-speed-config = <0>;
+		qcom,gpu-speed-config = <0xc 0x2 0x7 0x0>;
 
 		qcom,chipid = <0x03000400>;
 
