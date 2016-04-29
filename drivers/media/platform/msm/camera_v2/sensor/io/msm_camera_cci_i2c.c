@@ -410,7 +410,7 @@ int32_t msm_camera_cci_i2c_poll(struct msm_camera_i2c_client *client,
 			__func__, __LINE__, delay_ms, MAX_POLL_DELAY_MS);
 		return -EINVAL;
 	}
-	for (i = 0; i < delay_ms; i++) {
+	for (i = 0; i <= delay_ms; i++) {
 		rc = msm_camera_cci_i2c_compare(client,
 			addr, data, data_type);
 		if (!rc)
