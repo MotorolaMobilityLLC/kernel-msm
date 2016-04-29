@@ -3905,6 +3905,17 @@ static void smbchg_check_extbat_ability(struct smbchg_chip *chip, char *able)
 		   (ret.intval == POWER_SUPPLY_PTP_POWER_REQUIREMENTS_UNKNOWN))
 		*able |= EB_RCV_NEVER;
 
+	rc = eb_pwr_psy->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_POWER_AVAILABLE,
+				      &ret);
+	if (rc) {
+		SMB_ERR(chip,
+			"Could not read Power Available rc = %d\n", rc);
+		*able |= EB_SND_NEVER;
+	} else if ((ret.intval == POWER_SUPPLY_PTP_POWER_NOT_AVAILABLE) ||
+		   (ret.intval == POWER_SUPPLY_PTP_POWER_AVAILABILITY_UNKNOWN))
+		*able |= EB_SND_NEVER;
+
 	power_supply_put(eb_pwr_psy);
 }
 
@@ -9588,7 +9599,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 	smbchg_get_extbat_out_cl(chip);
 
-	if ((!chip->usb_present) && !(eb_able & EB_SND_NEVER) &&
+	if ((!chip->usb_present) &&
 	    (chip->bsw_mode != BSW_RUN)) {
 		switch (chip->ebchg_state) {
 		case EB_SRC:
@@ -9596,7 +9607,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				chip->eb_rechrg = false;
 				if ((batt_soc == 100) && (eb_soc < 100))
 					smbchg_set_extbat_state(chip, EB_OFF);
-			} else if ((eb_soc <= 0) || (eb_on_sw == 0)) {
+			} else if ((eb_soc <= 0) || (eb_able & EB_SND_NEVER) ||
+				   (eb_on_sw == 0)) {
 				smbchg_set_extbat_state(chip, EB_OFF);
 				chip->eb_rechrg = true;
 				chip->eb_hotplug = false;
@@ -9609,7 +9621,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				chip->eb_rechrg = false;
 				if ((batt_soc < 100) || (eb_soc == 100))
 					smbchg_set_extbat_state(chip, EB_SRC);
-			} else if ((eb_soc <= 0) || (eb_on_sw == 0))
+			} else if ((eb_soc <= 0) || (eb_able & EB_SND_NEVER) ||
+				   (eb_on_sw == 0))
 				smbchg_set_extbat_state(chip, EB_OFF);
 			else if (eb_able & EB_SND_LOW) {
 				if (batt_soc <= eb_low_start_soc)
