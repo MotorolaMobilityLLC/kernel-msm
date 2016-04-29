@@ -1228,13 +1228,13 @@ free_tags_exit:
 static ssize_t write_utag(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos)
 {
-	int error;
+	int i, error;
 	char *payload, utag[MAX_UTAG_NAME];
 	struct utag *tags = NULL;
 	struct inode *inode = file->f_dentry->d_inode;
 	struct proc_node *proc = PDE_DATA(inode);
 	struct ctrl *ctrl = proc->ctrl;
-	size_t length = count;
+	size_t lco, length = count;
 
 	pr_debug("%zu bytes write attempt to [%s](%d)\n",
 					count, proc->name, proc->mode);
@@ -1246,8 +1246,8 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 		pr_err("error utag too big %zu\n", count);
 		return count;
 	}
-
-	payload = kzalloc(count, GFP_KERNEL);
+	/* allocate an extra byte in case we need to add null-byte */
+	payload = kzalloc(count + 1, GFP_KERNEL);
 	if (!payload)
 		return -ENOMEM;
 
@@ -1256,15 +1256,26 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 		goto free_temp_exit;
 	}
 
-	/* empty string with \n via shell echo */
-	if (proc->mode == OUT_ASCII && count == 1 && payload[0] == '\n')
-		length = 0;
-
-	/* enforce 0 termination for ASCII strings */
-	if (proc->mode == OUT_ASCII)
-		payload[count-1] = 0;
-	else
-		length -= 1;
+	lco = count - 1; /* last character offset */
+	if (payload[lco] == '\n') {
+		payload[lco] = 0;
+		/* update offset only if input has anything else, but '\n' */
+		if (lco)
+			lco--;
+		length--;
+		pr_debug("replace trailing newline with null-byte\n");
+	}
+	/* make sure ASCII input is properly terminated */
+	if (proc->mode == OUT_ASCII) {
+		for (i = 0; i <= lco; i++)
+			if (payload[i] == 0)
+				break;
+		if (i > lco) {
+			payload[++lco] = 0;
+			length++;
+			pr_debug("add trailing null-byte\n");
+		}
+	}
 
 	mutex_lock(&ctrl->access_lock);
 	queue_work(ctrl->load_queue, &ctrl->load_work);
@@ -1288,12 +1299,11 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 	}
 
 	/* check if this utag has .range child only for hwtags */
-	if (ctrl->hwtag) {
-		error = check_utag_range(utag, tags, payload, count);
+	if (ctrl->hwtag && length) {
+		error = check_utag_range(utag, tags, payload, length);
 		if (error)
 			goto free_tags_exit;
 	}
-
 
 	error = replace_first_utag(tags, utag, payload, length);
 	if (error) {
