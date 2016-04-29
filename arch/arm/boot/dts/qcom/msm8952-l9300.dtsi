@@ -267,6 +267,7 @@
 		qcom,fusb-irq = <&msm_gpio 45 0x00>;
 		pinctrl-names = "default";
 		fusb301,use-try-snk-emulation;
+		fusb301,ccdebounce-timer-value = <300 300 300>;
 		pinctrl-0 = <&fusb_default>;
 	};
 
