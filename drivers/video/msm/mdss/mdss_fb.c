@@ -3107,6 +3107,7 @@ static void mdss_fb_var_to_panelinfo(struct fb_var_screeninfo *var,
 static void mdss_panelinfo_to_fb_var(struct mdss_panel_info *pinfo,
 						struct fb_var_screeninfo *var)
 {
+	u32 frame_rate;
 	struct mdss_panel_data *pdata = container_of(pinfo,
 				struct mdss_panel_data, panel_info);
 
@@ -3118,7 +3119,21 @@ static void mdss_panelinfo_to_fb_var(struct mdss_panel_info *pinfo,
 	var->right_margin = pinfo->lcdc.h_front_porch;
 	var->left_margin = pinfo->lcdc.h_back_porch;
 	var->hsync_len = pinfo->lcdc.h_pulse_width;
-	var->pixclock = pinfo->clk_rate;
+
+	frame_rate = mdss_panel_get_framerate(pinfo);
+	if (frame_rate) {
+		unsigned long clk_rate, h_total, v_total;
+
+		h_total = var->xres + var->left_margin
+			+ var->right_margin + var->hsync_len;
+		v_total = var->yres + var->lower_margin
+			+ var->upper_margin + var->vsync_len;
+		clk_rate = h_total * v_total * frame_rate;
+		var->pixclock = KHZ2PICOS(clk_rate / 1000);
+	} else if (pinfo->clk_rate) {
+		var->pixclock = KHZ2PICOS(
+				(unsigned long int) pinfo->clk_rate / 1000);
+	}
 }
 
 /**
