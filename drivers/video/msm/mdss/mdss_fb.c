@@ -82,6 +82,26 @@
  */
 #define MDP_TIME_PERIOD_CALC_FPS_US	1000000
 
+#define __PARAM_SYSFS_DEFINITION(_name, _id) \
+static ssize_t _name##_show(struct device *dev, \
+		struct device_attribute *attr, char *buf) \
+{ \
+	const char *name; \
+	ssize_t ret; \
+	ret = mdss_fb_get_param(dev, _id, &name); \
+	if (ret < 0) \
+		return ret; \
+	return snprintf(buf, PAGE_SIZE, "%s\n", name); \
+} \
+static ssize_t _name##_store(struct device *dev, \
+		struct device_attribute *attr, \
+		const char *buf, size_t count) \
+{ \
+	ssize_t ret; \
+	ret = mdss_fb_set_param(dev, _id, buf); \
+	return ret ? ret : count; \
+}
+
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
 
@@ -1134,51 +1154,8 @@ static void mdss_fb_restore_param(struct msm_fb_data_type *mfd)
 	mutex_unlock(&mfd->param_lock);
 }
 
-static ssize_t hbm_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	const char *name;
-	ssize_t ret;
-
-	ret = mdss_fb_get_param(dev, PARAM_HBM_ID, &name);
-	if (ret < 0)
-		return ret;
-
-	return snprintf(buf, PAGE_SIZE, "%s\n", name);
-}
-
-static ssize_t hbm_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
-{
-	ssize_t ret;
-
-	ret = mdss_fb_set_param(dev, PARAM_HBM_ID, buf);
-	return ret ? ret : count;
-}
-
-static ssize_t acl_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	const char *name;
-	ssize_t ret;
-
-	ret = mdss_fb_get_param(dev, PARAM_ACL_ID, &name);
-	if (ret < 0)
-		return ret;
-
-	return snprintf(buf, PAGE_SIZE, "%s\n", name);
-}
-
-static ssize_t acl_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
-{
-	ssize_t ret;
-
-	ret = mdss_fb_set_param(dev, PARAM_ACL_ID, buf);
-	return ret ? ret : count;
-}
+__PARAM_SYSFS_DEFINITION(hbm, PARAM_HBM_ID)
+__PARAM_SYSFS_DEFINITION(acl, PARAM_ACL_ID)
 
 static struct device_attribute param_attrs[PARAM_ID_NUM] = {
 	__ATTR(hbm, S_IWUSR | S_IWGRP | S_IRUSR | S_IRGRP, hbm_show, hbm_store),
