@@ -46,7 +46,7 @@
 		qcom,mdss-dsi-t-clk-post = <0x02>;
 		qcom,mdss-dsi-t-clk-pre = <0x2d>;
 		qcom,mdss-dsi-bl-min-level = <160>;
-		qcom,mdss-dsi-bl-max-level = <4095>;
+		qcom,mdss-dsi-bl-max-level = <3562>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
                 qcom,mdss-pan-physical-width-dimension = <69>;
