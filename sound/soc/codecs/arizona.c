@@ -4322,11 +4322,8 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 	u32 rx_sampleszbits, rx_samplerate;
 
 	rx_sampleszbits = snd_pcm_format_width(params_format(params));
-	if (rx_sampleszbits < 16) {
-		arizona_aif_err(dai, "Unsupported SLIM bitwidth %d, set 16\n",
-				rx_sampleszbits);
+	if (rx_sampleszbits < 16)
 		rx_sampleszbits = 16;
-	}
 
 	/*
 	 * We will need to be more flexible than this in future,
