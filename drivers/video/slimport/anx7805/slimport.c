@@ -74,6 +74,7 @@ struct anx7805_data {
 	bool update_chg_type;
 
 	struct anx7805_pinctrl pinctrl_gpio;
+	atomic_t slimport_connected;
 };
 
 struct anx7805_data *the_chip;
@@ -542,7 +543,7 @@ static int anx7805_mipi_timing_setting(void *client, bool on,
 	return 0;
 }
 
-bool slimport_is_connected(void)
+static bool confirmed_cable_det(void *data)
 {
 	bool result = false;
 
@@ -552,10 +553,25 @@ bool slimport_is_connected(void)
 	if (gpio_get_value_cansleep(the_chip->gpio_cbl_det)) {
 		mdelay(50);
 		if (gpio_get_value_cansleep(the_chip->gpio_cbl_det)) {
-			pr_info("slimport cable is detected\n");
+			pr_debug("slimport cable is detected\n");
 			result = true;
 		}
 	}
+
+	return result;
+}
+
+bool slimport_is_connected(void)
+{
+	bool result = false;
+
+	if (!the_chip)
+		return false;
+
+	if (gpio_get_value_cansleep(the_chip->gpio_cbl_det))
+		result = true;
+	else
+		result = false;
 
 	return result;
 }
@@ -696,7 +712,10 @@ static irqreturn_t anx7805_cbl_det_isr(int irq, void *data)
 	struct anx7805_data *anx7805 = data;
 	int status;
 
-	if (slimport_is_connected()) {
+	if (confirmed_cable_det(data)) {
+		if (!atomic_add_unless(&anx7805->slimport_connected, 1, 1))
+			goto out;
+
 		wake_lock(&anx7805->slimport_lock);
 		pr_info("detect cable insertion\n");
 		queue_delayed_work(anx7805->workqueue, &anx7805->work, 0);
@@ -708,6 +727,9 @@ static irqreturn_t anx7805_cbl_det_isr(int irq, void *data)
 		if (!gpio_get_value(anx7805->gpio_cbl_det)) { // if it is one IRQ, should not destroy ANX7805 work queue
 		#endif
 			
+		if (!atomic_add_unless(&anx7805->slimport_connected, -1, 0))
+			goto out;
+
 		pr_info("detect cable removal\n");
 		status = cancel_delayed_work_sync(&anx7805->work);
 		if (status == 0)
@@ -734,6 +756,7 @@ static irqreturn_t anx7805_cbl_det_isr(int irq, void *data)
 		}
 		#endif
 	}
+out:
 	return IRQ_HANDLED;
 }
 
@@ -1106,6 +1129,7 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 		goto err5;
 	}
 
+	atomic_set(&anx7805->slimport_connected, 0);
 	wake_lock_init(&anx7805->slimport_lock, WAKE_LOCK_SUSPEND,
 	               "slimport_wake_lock");
 
