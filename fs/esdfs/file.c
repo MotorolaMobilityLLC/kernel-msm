@@ -190,6 +190,10 @@ static int esdfs_mmap(struct file *file, struct vm_area_struct *vma)
 	if (!ESDFS_F(file)->lower_vm_ops) /* save for our ->fault */
 		ESDFS_F(file)->lower_vm_ops = saved_vm_ops;
 
+	vma->vm_private_data = file;
+	fput(file);
+	get_file(lower_file);
+	vma->vm_file = lower_file;
 out:
 	esdfs_revert_creds(creds, NULL);
 	return err;
