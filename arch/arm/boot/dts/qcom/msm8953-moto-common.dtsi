@@ -864,6 +864,7 @@
 	qcom,correct-lra-drive-freq;
 	qcom,wave-play-rate-us = <4165>;
 	qcom,vmax-mv = <2330>;
+	qcom,brake-pattern = [03 03 03 00];
 };
 
 &blsp1_uart0 {
