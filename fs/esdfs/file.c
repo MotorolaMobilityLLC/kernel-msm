@@ -3,7 +3,7 @@
  * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2014 Stony Brook University
  * Copyright (c) 2003-2014 The Research Foundation of SUNY
- * Copyright (C) 2013-2014 Motorola Mobility, LLC
+ * Copyright (C) 2013-2014, 2016 Motorola Mobility, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -189,6 +189,10 @@ static int esdfs_mmap(struct file *file, struct vm_area_struct *vma)
 	if (!ESDFS_F(file)->lower_vm_ops) /* save for our ->fault */
 		ESDFS_F(file)->lower_vm_ops = saved_vm_ops;
 
+	vma->vm_private_data = file;
+	fput(file);
+	get_file(lower_file);
+	vma->vm_file = lower_file;
 out:
 	esdfs_revert_creds(creds, NULL);
 	return err;
