@@ -4402,7 +4402,6 @@ static bool smbchg_hvdcp_det_check(struct smbchg_chip *chip)
 #define WEAK_CHRG_THRSH 450
 static void smbchg_rate_check(struct smbchg_chip *chip)
 {
-	union power_supply_propval prop = {0,};
 	int prev_chg_rate = chip->charger_rate;
 	char *charge_rate[] = {
 		"None", "Normal", "Weak", "Turbo"
@@ -4416,26 +4415,15 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 	if (!chip->usb_insert_bc1_2)
 		return;
 
-	if (chip->usb_psy &&
-	    !chip->usb_psy->get_property(chip->usb_psy,
-					 POWER_SUPPLY_PROP_TYPE,
-					 &prop)) {
-		if ((prop.intval == POWER_SUPPLY_TYPE_USB_CDP) ||
-		    (prop.intval == POWER_SUPPLY_TYPE_USB))
-			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
-		else if (smbchg_hvdcp_det_check(chip))
-			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
-		else if (!chip->vbat_above_headroom &&
-			 chip->hvdcp_det_done && chip->aicl_complete &&
-			 (smbchg_get_aicl_level_ma(chip) < WEAK_CHRG_THRSH))
-			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
-		else
-			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
-	} else
-		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
+	if (smbchg_hvdcp_det_check(chip))
+		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
+	else if (!chip->vbat_above_headroom &&
+		 chip->hvdcp_det_done && chip->aicl_complete &&
+		 (smbchg_get_aicl_level_ma(chip) < WEAK_CHRG_THRSH))
+		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
 
 	if (prev_chg_rate != chip->charger_rate)
-		SMB_ERR(chip, "%s Charger Detected!\n",
+		SMB_ERR(chip, "%s Charger Detected\n",
 			charge_rate[chip->charger_rate]);
 
 }
@@ -5538,7 +5526,7 @@ static void usb_insertion_work(struct work_struct *work)
 	struct smbchg_chip *chip =
 		container_of(work, struct smbchg_chip,
 			     usb_insertion_work.work);
-	int rc, health;
+	int rc;
 	int hvdcp_en = 0;
 
 	/* If USB C is not online, bail out unless we are in factory mode */
@@ -5557,64 +5545,30 @@ static void usb_insertion_work(struct work_struct *work)
 	if (chip->enable_hvdcp_9v)
 		hvdcp_en = HVDCP_EN_BIT;
 
-	if (chip->cl_usbc < 3000) {
-		SMB_DBG(chip, "Setup BC1.2 Detection\n");
-		chip->usb_insert_bc1_2 = true;
-		chip->usb_present = 0;
-		rc = smbchg_sec_masked_write(chip,
-					     chip->usb_chgpth_base + CHGPTH_CFG,
-					     HVDCP_EN_BIT, hvdcp_en);
-		if (rc < 0)
-			SMB_ERR(chip,
-				"Couldn't enable HVDCP rc=%d\n", rc);
-		rc = smbchg_sec_masked_write(chip,
-					     chip->usb_chgpth_base + APSD_CFG,
-					     APSD_EN_BIT, APSD_EN_BIT);
-		if (rc < 0)
-			SMB_ERR(chip, "Couldn't enable APSD rc=%d\n",
-				rc);
-		rc = smbchg_force_apsd(chip);
-		if (rc < 0)
-			SMB_ERR(chip,
-				"Couldn't rerun apsd rc = %d\n", rc);
-	} else {
-		SMB_DBG(chip, "Running USBC Detection\n");
-		/* Set usb present to type c online, if we don't run BC1.2 */
-		chip->usb_present = chip->usbc_online;
-		smbchg_aicl_deglitch_wa_check(chip);
-		if (!chip->usb_psy)
-			return;
-		/* Set to DCP for the Time Being TODO Make C to C work */
-		SMB_DBG(chip, "setting usb psy type = %d\n",
-		       POWER_SUPPLY_TYPE_USB_DCP);
-		power_supply_set_supply_type(chip->usb_psy,
-					      POWER_SUPPLY_TYPE_USB_DCP);
-		SMB_DBG(chip, "setting usb psy present = %d\n",
-		       chip->usb_present);
-		power_supply_set_present(chip->usb_psy,
-					 chip->usb_present);
-
-		if (!chip->usb_ov_det)
-			health = POWER_SUPPLY_HEALTH_GOOD;
-		else
-			health = POWER_SUPPLY_HEALTH_OVERVOLTAGE;
-
-		rc = power_supply_set_health_state(chip->usb_psy, health);
-		if (rc)
-			SMB_DBG(chip,
-			       "usb psy does not allow prop %d rc = %d\n",
-			       health, rc);
-
-		schedule_work(&chip->usb_set_online_work);
-		chip->hvdcp_det_done = true;
-
+	if (chip->cl_usbc >= 3000)
 		chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_TURBO;
+	else
+		chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NORMAL;
 
-		smbchg_stay_awake(chip, PM_HEARTBEAT);
-		cancel_delayed_work(&chip->heartbeat_work);
-		schedule_delayed_work(&chip->heartbeat_work,
-				      msecs_to_jiffies(0));
-	}
+
+	SMB_DBG(chip, "Setup BC1.2 Detection\n");
+	chip->usb_insert_bc1_2 = true;
+	chip->usb_present = 0;
+	rc = smbchg_sec_masked_write(chip,
+				     chip->usb_chgpth_base + CHGPTH_CFG,
+				     HVDCP_EN_BIT, hvdcp_en);
+	if (rc < 0)
+		SMB_ERR(chip,
+			"Couldn't enable HVDCP rc=%d\n", rc);
+	rc = smbchg_sec_masked_write(chip,
+				     chip->usb_chgpth_base + APSD_CFG,
+				     APSD_EN_BIT, APSD_EN_BIT);
+	if (rc < 0)
+		SMB_ERR(chip, "Couldn't enable APSD rc=%d\n",
+			rc);
+	rc = smbchg_force_apsd(chip);
+	if (rc < 0)
+		SMB_ERR(chip, "Couldn't rerun apsd rc = %d\n", rc);
 }
 
 static int factory_kill_disable;
