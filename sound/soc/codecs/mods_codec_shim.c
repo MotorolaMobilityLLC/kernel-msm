@@ -24,8 +24,14 @@
 #include <sound/tlv.h>
 #include <linux/mods_codec_dev.h>
 
-#define MODS_RATES				SNDRV_PCM_RATE_48000
-#define MODS_FMTS				SNDRV_PCM_FMTBIT_S16_LE
+#define MODS_RATES (SNDRV_PCM_RATE_5512 | SNDRV_PCM_RATE_8000 |\
+		SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_16000 |\
+		SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 |\
+		SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000 |\
+		SNDRV_PCM_RATE_64000 | SNDRV_PCM_RATE_96000 |\
+		SNDRV_PCM_RATE_176400 | SNDRV_PCM_RATE_192000)
+
+#define MODS_FMTS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE)
 
 static struct mods_codec_device *mods_codec_dev;
 static struct snd_soc_codec *priv_codec;
