@@ -319,12 +319,26 @@ static int open_utags(struct blkdev *cb)
 	if (!cb->name)
 		return -EIO;
 
+	if (cb->filep)
+		return 0;
+
 	cb->filep = filp_open(cb->name, O_RDWR|O_SYNC, 0600);
 	if (IS_ERR_OR_NULL(cb->filep)) {
 		int rc = PTR_ERR(cb->filep);
-		pr_err("opening (%s) errno=%d\n", cb->name, rc);
-		cb->filep = NULL;
-		return rc;
+		if (rc == -EROFS) {
+			pr_info("[%s] readonly, open as O_RDONLY\n", cb->name);
+			cb->filep = filp_open(cb->name, O_RDONLY|O_SYNC, 0600);
+			if (IS_ERR_OR_NULL(cb->filep)) {
+				rc = PTR_ERR(cb->filep);
+				pr_err("opening (%s) errno=%d\n", cb->name, rc);
+				cb->filep = NULL;
+				return rc;
+			}
+		} else {
+			pr_err("opening (%s) errno=%d\n", cb->name, rc);
+			cb->filep = NULL;
+			return rc;
+		}
 	}
 
 	if (cb->filep->f_path.dentry)
@@ -888,15 +902,15 @@ static struct utag *load_utags(struct blkdev *cb)
 	if (UTAG_MIN_TAG_SIZE * 2 > bytes) {
 		pr_err("[%s] invalid tags size %zu\n", ctrl->dir_name, bytes);
 		if (!ctrl->hwtag)
-			goto close_fd;
+			return NULL;
 		if (init_empty(ctrl))
-			goto close_fd;
+			return NULL;
 		bytes = UTAG_MIN_TAG_SIZE * 2;
 	}
 
 	data = vmalloc(bytes);
 	if (!data)
-		goto close_fd;
+		return NULL;
 
 	ret_bytes = kernel_read(cb->filep, 0, data, bytes);
 	if (bytes != ret_bytes) {
@@ -920,8 +934,6 @@ static struct utag *load_utags(struct blkdev *cb)
 
  free_data:
 	vfree(data);
- close_fd:
-	filp_close(cb->filep, NULL);
 	return head;
 }
 
@@ -1122,7 +1134,6 @@ static int store_utags(struct ctrl *ctrl, struct utag *tags)
 			cb->name, written);
 		rc = -EIO;
 	}
-	filp_close(fp, NULL);
 
 	/* Only try to use backup partition if it is configured */
 	if (ctrl->backup.name) {
@@ -1136,7 +1147,6 @@ static int store_utags(struct ctrl *ctrl, struct utag *tags)
 		if (written < tags_size)
 			pr_err("failed to write file (%s), rc=%zu\n",
 				cb->name, written);
-		filp_close(fp, NULL);
 	}
 	vfree(datap);
 
@@ -1872,6 +1882,10 @@ static int utags_remove(struct platform_device *pdev)
 	remove_proc_subtree(ctrl->dir_name, NULL);
 	destroy_workqueue(ctrl->load_queue);
 	destroy_workqueue(ctrl->store_queue);
+	if (ctrl->main.filep)
+		filp_close(ctrl->main.filep, NULL);
+	if (ctrl->backup.filep)
+		filp_close(ctrl->backup.filep, NULL);
 	return 0;
 }
 
