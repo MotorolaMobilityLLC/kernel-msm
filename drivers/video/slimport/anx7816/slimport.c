@@ -1172,6 +1172,7 @@ static int anx7816_init_gpio(struct anx7816_data *anx7816)
 			goto err1;
 		}
 		gpio_direction_input(anx7816->pdata->gpio_cbl_det);
+		gpio_export(anx7816->pdata->gpio_cbl_det, false);
 	} else
 		pr_err("%s : Invalid  gpio_cbl_det\n", __func__);
 
