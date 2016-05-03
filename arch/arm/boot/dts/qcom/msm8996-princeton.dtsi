@@ -70,7 +70,7 @@
 };
 
 &mdss_dsi {
-	hw-config = "dual_dsi";
+	hw-config = "single_dsi";
 };
 
 &mdss_mdp {
@@ -92,7 +92,6 @@
 	/delete-property/ qcom,mdss-dsi-te-using-te-pin;
 	/delete-node/ qcom,panel-supply-entries;
 
-	/* These power supplies are for DBA panel */
 	qcom,panel-supply-entries {
 		#address-cells = <1>;
 		#size-cells = <0>;
