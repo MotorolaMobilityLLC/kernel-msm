@@ -1043,12 +1043,12 @@
 	qcom,eb-batt-psy-name = "gb_battery";
 	qcom,eb-pwr-psy-name = "gb_ptp";
 	qcom,charge-unknown-battery;
-	qcom,chg-thermal-mitigation = <3000, 0>,
-				      <2500, 0>,
-				      <2000, 0>,
-				      <1500, 0>,
-				      <1000, 0>,
-				      <500, 0>;
+	qcom,chg-thermal-mitigation = <3000 0>,
+				      <2500 0>,
+				      <2000 0>,
+				      <1500 0>,
+				      <1000 0>,
+				      <500 0>;
 	qcom,dc-thermal-mitigation = <900>,
 				     <600>,
 				     <300>;
