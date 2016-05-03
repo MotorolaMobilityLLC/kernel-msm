@@ -2247,9 +2247,11 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 		else
 			bma25x->flat_down_value = EXIT_FLATDOWN_GESTURE;
 	} else if (bma25x->mEnabled && !newstatus) {
-		databuf = 0x80;
-		bma25x_smbus_write_byte(bma25x->bma25x_client,
+		if (atomic_read(&bma25x->enable) == 0) {
+			databuf = 0x80;
+			bma25x_smbus_write_byte(bma25x->bma25x_client,
 			BMA25X_MODE_CTRL_REG, &databuf);
+		}
 		disable_irq_wake(bma25x->IRQ1);
 		bma25x_set_bandwidth(
 			bma25x->bma25x_client,  bma25x->bandwidth);
