@@ -9890,10 +9890,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				mutex_lock(&chip->current_change_lock);
 				if (chip->cl_usbc >= 1500)
 					chip->usb_target_current_ma =
-						chip->cl_usb;
+						chip->cl_usbc;
 				else
 					chip->usb_target_current_ma =
-						chip->cl_usbc;
+						chip->cl_usb;
 				mutex_unlock(&chip->current_change_lock);
 				chip->cl_ebchg = 0;
 				smbchg_set_thermal_limited_usb_current_max(
@@ -9936,10 +9936,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				mutex_lock(&chip->current_change_lock);
 				if (chip->cl_usbc >= 1500)
 					chip->usb_target_current_ma =
-						chip->cl_usb;
+						chip->cl_usbc;
 				else
 					chip->usb_target_current_ma =
-						chip->cl_usbc;
+						chip->cl_usb;
 				mutex_unlock(&chip->current_change_lock);
 				chip->cl_ebchg = 0;
 				smbchg_set_thermal_limited_usb_current_max(
