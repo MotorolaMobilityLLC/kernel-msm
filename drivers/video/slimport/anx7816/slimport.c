@@ -68,6 +68,7 @@ unchar val_SP_TX_LT_CTRL_REG18;
 #define FALSE 0
 
 static int slimport7816_avdd_power(unsigned int onoff);
+static int anx7816_enable_irq(int enable);
 
 struct i2c_client *anx7816_client;
 
@@ -376,6 +377,42 @@ ssize_t sp_external_block_store(struct device *dev,
 	external_block_en = val;
 	return count;
 }
+
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+/* sysfs interface : Dynamic IRQ Enable Manual Control */
+ssize_t sp_irq_enable_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct anx7816_data *anx7816;
+
+	if (!g_data) {
+		pr_err("%s: g_data is not set \n", __func__);
+		return -ENODEV;
+	} else
+		anx7816 = g_data;
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", anx7816->pdata->cbl_det_irq_enabled);
+}
+
+ssize_t sp_irq_enable_store(struct device *dev,
+			    struct device_attribute *attr,
+			    const char *buf, size_t count)
+{
+	int ret;
+	long val;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret)
+		return ret;
+
+	if (val != !!val)
+		pr_err("%s: Invalid input: %s (%ld)\n", __func__, buf, val);
+	else
+		anx7816_enable_irq(val);
+
+	return count;
+}
+#endif
 
 /*sysfs  interface : i2c_master_read_reg, i2c_master_write_reg
 anx7730 addr id:: DP_rx(0x50:0, 0x8c:1) HDMI_tx(0x72:5, 0x7a:6, 0x70:7)
@@ -849,6 +886,10 @@ static struct device_attribute slimport_device_attrs[] = {
 	       sp_hdcp_feature_store),
 	__ATTR(hdcp_switch, S_IRUGO | S_IWUSR, sp_external_block_show,
 	       sp_external_block_store),
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+	__ATTR(irq_enable, S_IRUGO | S_IWUSR, sp_irq_enable_show,
+	       sp_irq_enable_store),
+#endif
 	__ATTR(anx7730, S_IRUGO | S_IWUSR, NULL, anx7730_write_reg_store),
 	__ATTR(anx7816, S_IRUGO | S_IWUSR, NULL, anx7816_write_reg_store),
 	__ATTR(DPCD, S_IRUGO | S_IWUSR, NULL, anx_dpcd_store),
