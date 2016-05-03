@@ -1918,7 +1918,8 @@ BYTE SP_TX_Chip_Located(void)
 	sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_DEV_IDH_REG , &c2);
 	sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_DEV_REV_REG , &c3);
 	if ((c1==0x05) && (c2==0x78)&&(c3==0xca)) {
-		pr_info("ANX7805 Reversion CA");
+		pr_debug("ANX7805 Reversion CA");
+		pr_info("%s : CHIPID: ANX7805\n", LOG_TAG);
 		return 1;
 	} else {
 		pr_info("dev IDL = %.2x, deb IDH = %.2x, REV= %.2x\n",(unsigned int)c1,(unsigned int)c2,(unsigned int)c3);
