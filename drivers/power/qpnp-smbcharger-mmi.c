@@ -10057,7 +10057,7 @@ static int smbchg_reboot(struct notifier_block *nb,
 	struct smbchg_chip *chip =
 			container_of(nb, struct smbchg_chip, smb_reboot);
 	char eb_able;
-	int soc_max = 100;
+	int soc_max = 99;
 
 	SMB_DBG(chip, "SMB Reboot\n");
 	if (!chip) {
@@ -10108,7 +10108,11 @@ static int smbchg_reboot(struct notifier_block *nb,
 		smbchg_set_extbat_state(chip, EB_OFF);
 		gpio_set_value(chip->ebchg_gpio.gpio, 0);
 		gpio_free(chip->ebchg_gpio.gpio);
+	} else if ((chip->ebchg_state == EB_OFF) && !chip->usb_present) {
+		SMB_WARN(chip, "Attempt to Turn EB ON!\n");
+		smbchg_set_extbat_state(chip, EB_SRC);
 	}
+
 	return NOTIFY_DONE;
 }
 
