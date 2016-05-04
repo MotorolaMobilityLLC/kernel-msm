@@ -2077,6 +2077,7 @@ static void bma25x_set_enable(struct device *dev, int enable)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma25x_data *bma25x = i2c_get_clientdata(client);
+	unsigned char databuf = 0;
 	int pre_enable = atomic_read(&bma25x->enable);
 	mutex_lock(&bma25x->enable_mutex);
 	dev_err(dev, "bma25x_set_enable entry ebable:%d pre_enable:%d!!!\n",
@@ -2086,9 +2087,10 @@ static void bma25x_set_enable(struct device *dev, int enable)
 			if (bma25x_power_ctl(bma25x, true))
 				dev_err(dev, "power failed\n");
 
-			bma25x_set_mode(bma25x->bma25x_client,
-				BMA25X_MODE_NORMAL);
-
+			databuf = 0x00;
+			bma25x_smbus_write_byte(bma25x->bma25x_client,
+				BMA25X_MODE_CTRL_REG, &databuf);
+			usleep(3000);
 #ifndef BMA25X_ENABLE_INT2
 			schedule_delayed_work(&bma25x->work,
 				msecs_to_jiffies(atomic_read(&bma25x->delay)));
@@ -2098,11 +2100,16 @@ static void bma25x_set_enable(struct device *dev, int enable)
 	} else {
 		if (pre_enable == 1) {
 #ifdef BMA25X_ENABLE_INT1
-			if (0 == bma25x->mEnabled)
+			if (0 == bma25x->mEnabled) {
+				databuf = 0x80;
+				bma25x_smbus_write_byte(bma25x->bma25x_client,
+					BMA25X_MODE_CTRL_REG, &databuf);
+			}
+#else
+			databuf = 0x80;
+			bma25x_smbus_write_byte(bma25x->bma25x_client,
+				BMA25X_MODE_CTRL_REG, &databuf);
 #endif
-				bma25x_set_mode(bma25x->bma25x_client,
-				BMA25X_MODE_SUSPEND);
-
 #ifndef BMA25X_ENABLE_INT2
 			cancel_delayed_work_sync(&bma25x->work);
 #endif
@@ -3665,9 +3672,12 @@ void bma25x_shutdown(struct i2c_client *client)
 static int bma25x_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct bma25x_data *data = i2c_get_clientdata(client);
+	unsigned char databuf = 0;
 	mutex_lock(&data->enable_mutex);
 	if (atomic_read(&data->enable) == 1) {
-		bma25x_set_mode(data->bma25x_client, BMA25X_MODE_SUSPEND);
+		databuf = 0x80;
+		bma25x_smbus_write_byte(data->bma25x_client,
+			BMA25X_MODE_CTRL_REG, &databuf);
 #ifndef BMA25X_ENABLE_INT2
 		cancel_delayed_work_sync(&data->work);
 #endif
@@ -3679,9 +3689,13 @@ static int bma25x_suspend(struct i2c_client *client, pm_message_t mesg)
 static int bma25x_resume(struct i2c_client *client)
 {
 	struct bma25x_data *data = i2c_get_clientdata(client);
+	unsigned char databuf = 0;
 	mutex_lock(&data->enable_mutex);
 	if (atomic_read(&data->enable) == 1) {
-		bma25x_set_mode(data->bma25x_client, BMA25X_MODE_NORMAL);
+		databuf = 0x00;
+		bma25x_smbus_write_byte(data->bma25x_client,
+			BMA25X_MODE_CTRL_REG, &databuf);
+		usleep(3000);
 #ifndef BMA25X_ENABLE_INT2
 		schedule_delayed_work(&data->work,
 				msecs_to_jiffies(atomic_read(&data->delay)));
