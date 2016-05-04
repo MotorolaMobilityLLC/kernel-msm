@@ -79,24 +79,24 @@ void loop_print_msg(BYTE msg_id)
 {
 	BYTE i = 0, no_msg = 0;
 	if(maybe_repeat_print_info_flag == REPEAT_PRINT_INFO_CLEAR) {
-		pr_info("Repeat print info clear");
+		pr_info("Repeat print info clear\n");
 		for(i = 0; i < LOOP_PRINT_MSG_MAX; i++)
 			repeat_printf_info_count[i] = 0;
 	}
 	switch(msg_id) {
 	case 0x00:
 		if(repeat_printf_info_count[msg_id] == 0)
-			pr_info("Stream clock not found!");
+			pr_info("Stream clock not found!\n");
 		break;
 	case 0x01:
 		break;
 	case 0x02:
 		if(repeat_printf_info_count[msg_id] == 0)
-			pr_info("video stream not valid!");
+			pr_info("video stream not valid!\n");
 		break;
 	case 0x03:
 		if(repeat_printf_info_count[msg_id] == 0)
-			pr_info("Stream clock not stable!");
+			pr_info("Stream clock not stable!\n");
 		break;
 	case 0x04:
 		if(repeat_printf_info_count[msg_id] == 0)
@@ -115,7 +115,7 @@ void loop_print_msg(BYTE msg_id)
 		break;
 	case 0x07:
 		if(repeat_printf_info_count[msg_id] == 0)
-			pr_info("PLL not lock!");
+			pr_err("PLL not lock!\n");
 		break;
 	case 0x08:
 		if(repeat_printf_info_count[msg_id] == 0)
@@ -316,7 +316,7 @@ void SP_TX_Power_Enable(SP_TX_POWER_BLOCK sp_tx_pd_block, BYTE power)
 		else if((power == SP_TX_POWER_DOWN) && ((c & power_type) == 0))
 			sp_write_reg(SP_TX_PORT2_ADDR, SP_POWERD_CTRL_REG, (c |power_type));
 	}
-	pr_info("SP_TX_Power_Enable\n");
+	pr_debug("SP_TX_Power_Enable\n");
 
 }
 
@@ -358,7 +358,7 @@ void system_power_ctrl(BYTE ON)
 		sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_DEV_IDH_REG , &c2);
 		sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_DEV_REV_REG , &c3);
 		if ((c1==0x05) && (c2==0x78)&&(c3==0xca)) {
-			pr_info("ANX7805 Reversion CA");
+			pr_info("ANX7805 Reversion CA\n");
 		} else {
 			pr_info("dev IDL = %.2x, deb IDH = %.2x, REV= %.2x\n",(unsigned int)c1,(unsigned int)c2,(unsigned int)c3);
 		}
@@ -401,7 +401,7 @@ void SP_TX_BIST_Format_Config(unsigned int sp_tx_bist_select_number)
 	BYTE bInterlace;
 
 
-	pr_info("config bist vid timing");
+	pr_info("config bist vid timing\n");
 	if(!Force_Video_Resolution) {
 		//use prefered timing if EDID read success, otherwise output failsafe mode.
 		if((sp_tx_edid_err_code==0) && (!edid_pclk_out_of_range)) {
@@ -545,7 +545,7 @@ void SP_TX_BIST_Format_Config(unsigned int sp_tx_bist_select_number)
 			SP_TX_BIST_Format_Resolution(5);
 
 			sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL2_REG, 0x00);//18bpp for fail safe mode
-			pr_info("safe mode  = 640*480p@60hz_18bpp");
+			pr_info("safe mode  = 640*480p@60hz_18bpp\n");
 		}
 	} else
 		SP_TX_BIST_Format_Resolution(sp_tx_bist_select_number);
@@ -577,10 +577,10 @@ void SP_TX_BIST_Format_Resolution(unsigned int video_id)
 	sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL10_REG, &c);
 	if(sp_tx_bist_data == 0) {
 		sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL10_REG, (c &(~ SP_TX_VID_CTRL10_I_SCAN)));
-		pr_info("Bist video is progressive.");
+		pr_info("Bist video is progressive.\n");
 	} else {
 		sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL10_REG, (c | SP_TX_VID_CTRL10_I_SCAN));
-		pr_info("Bist video is interlace.");
+		pr_info("Bist video is interlace.\n");
 	}
 
 	//Vsync Polarity set
@@ -588,10 +588,10 @@ void SP_TX_BIST_Format_Resolution(unsigned int video_id)
 	sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL10_REG, &c);
 	if(sp_tx_bist_data == 1) {
 		sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL10_REG, (c | SP_TX_VID_CTRL10_VSYNC_POL));
-		pr_info("Bist video VSYNC polarity: low is active.");
+		pr_info("Bist video VSYNC polarity: low is active.\n");
 	} else {
 		sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL10_REG, (c &(~ SP_TX_VID_CTRL10_VSYNC_POL)));
-		pr_info("Bist video VSYNC polarity: high is active.");
+		pr_info("Bist video VSYNC polarity: high is active.\n");
 	}
 
 	//Hsync Polarity set
@@ -599,10 +599,10 @@ void SP_TX_BIST_Format_Resolution(unsigned int video_id)
 	sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL10_REG, &c);
 	if(sp_tx_bist_data == 1) {
 		sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL10_REG, (c | SP_TX_VID_CTRL10_HSYNC_POL));
-		pr_info("Bist video HSYNC polarity: low is active.");
+		pr_info("Bist video HSYNC polarity: low is active.\n");
 	} else {
 		sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL10_REG, (c &(~ SP_TX_VID_CTRL10_HSYNC_POL)));
-		pr_info("Bist video HSYNC polarity: high is active.");
+		pr_info("Bist video HSYNC polarity: high is active.\n");
 	}
 
 	//H total length set
@@ -669,13 +669,13 @@ void SP_TX_Config_BIST_Video (BYTE cBistIndex,struct VideoFormat* pInputFormat)
 	SP_CTRL_Clean_HDCP();
 	SP_TX_Power_Enable(SP_TX_PWR_VIDEO, SP_TX_POWER_ON);
 
-	pr_info("Configure video format in BIST mode");
+	pr_info("Configure video format in BIST mode\n");
 
 	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_SYS_CTRL1_REG, &c);
 	sp_write_reg(SP_TX_PORT0_ADDR, SP_TX_SYS_CTRL1_REG, c);
 	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_SYS_CTRL1_REG, &c);
 	if(!(c & SP_TX_SYS_CTRL1_DET_STA)) {
-		pr_info("Stream clock not found!");
+		pr_err("Stream clock not found!\n");
 		return;
 	}
 
@@ -683,7 +683,7 @@ void SP_TX_Config_BIST_Video (BYTE cBistIndex,struct VideoFormat* pInputFormat)
 	sp_write_reg(SP_TX_PORT0_ADDR, SP_TX_SYS_CTRL2_REG, c);
 	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_SYS_CTRL2_REG, &c);
 	if(c & SP_TX_SYS_CTRL2_CHA_STA) {
-		pr_info("Stream clock not stable!");
+		pr_warn("Stream clock not stable!\n");
 		return;
 	}
 
@@ -709,7 +709,7 @@ void SP_TX_Config_BIST_Video (BYTE cBistIndex,struct VideoFormat* pInputFormat)
 	sp_write_reg(SP_TX_PORT0_ADDR, SP_TX_SYS_CTRL3_REG, c);
 	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_SYS_CTRL3_REG, &c);
 	if(!(c & SP_TX_SYS_CTRL3_STRM_VALID)) {
-		pr_info("video stream not valid!");
+		pr_err("video stream not valid!\n");
 		return;
 	}
 	SP_TX_Config_Packets(AVI_PACKETS);
@@ -925,7 +925,7 @@ void SP_CTRL_nbc12429_setting(int frequency)
 		MC12429_M7 = (m_setting & 0x080);
 		MC12429_M8 = (m_setting & 0x100);
 	} else
-		pr_info("Wrong value given!");
+		pr_err("Wrong value given!\n");
 }
 #endif
 BYTE get_bandwidth_and_pclk(void)
@@ -1167,7 +1167,7 @@ BYTE SP_TX_Config_Video_LVTTL (struct VideoFormat* pInputFormat)
 #if(REDUCE_REPEAT_PRINT_INFO)
 		loop_print_msg(0x00);
 #else
-		pr_info("Stream clock not found!");
+		pr_warn("Stream clock not found!\n");
 #endif
 		return 1;
 	}
@@ -1179,7 +1179,7 @@ BYTE SP_TX_Config_Video_LVTTL (struct VideoFormat* pInputFormat)
 #if(REDUCE_REPEAT_PRINT_INFO)
 		loop_print_msg(0x03);
 #else
-		pr_info("Stream clock not stable!");
+		pr_err("Stream clock not stable!\n");
 #endif
 		return 1;
 	}
@@ -1318,7 +1318,7 @@ void SP_TX_LVTTL_Bit_Mapping(struct VideoFormat* pInputFormat)//the default mode
 		c = (c & 0x8f);
 		sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL2_REG, c);
 		sp_tx_test_edid = 0;
-		pr_info("***color space is set to 18bit***");
+		pr_info("***color space is set to 18bit***\n");
 	}
 #endif
 
@@ -1389,30 +1389,30 @@ BYTE  SP_TX_Config_Video_MIPI (void)
 		switch(mipi_lane_count)
 		{
 			case 1://correspond with ANX8770 36bit DDR mode
-				pr_info("####1 lane");
+				pr_info("####1 lane\n");
 				//set lane count
 				c&= 0xF9;
 				break;
 			case 2:
-				pr_info("####2 lanes");
+				pr_info("####2 lanes\n");
 				//set lane count
 				c&= 0xF9;
 				c|= 0x02;// two lanes
 				break;
 			case 3:
-				pr_info("####3 lanes");
+				pr_info("####3 lanes\n");
 				//set lane count
 				c&= 0xF9;
 				c|= 0x04;// three lanes
 				break;
 			case 4:
-				pr_info("####4 lanes");
+				pr_info("####4 lanes\n");
 				//set lane count
 				c&= 0xF9;
 				c|= 0x06;// four lanes
 				break;
 			default:
-				pr_info("####4 lanes");
+				pr_info("####4 lanes\n");
 				//set lane count
 				c&= 0xF9;
 				c|= 0x06;// four lanes
@@ -1442,27 +1442,27 @@ BYTE  SP_TX_Config_Video_MIPI (void)
 		c&=0xfe;
 		sp_write_reg(MIPI_RX_PORT1_ADDR, MIPI_TIMING_REG2, c);
 
-		pr_info("MIPI configured!");
+		pr_info("MIPI configured!\n");
 
 		SP_TX_MIPI_CONFIG_Flag_Set(1);
 
 
 	} else
-		pr_info("MIPI interface enabled");
+		pr_info("MIPI interface enabled\n");
 
 
 	sp_read_reg(MIPI_RX_PORT1_ADDR, MIPI_PROTOCOL_STATE, &c);
 	sp_write_reg(MIPI_RX_PORT1_ADDR, MIPI_PROTOCOL_STATE, c);
 	sp_read_reg(MIPI_RX_PORT1_ADDR, MIPI_PROTOCOL_STATE, &c);
 	if(!(c & 0X40)) {
-		pr_info("Stream clock not found!");
+		pr_info("Stream clock not found!\n");
 		pr_info("0x7a:0x11=%.2x\n",(unsigned int)c);
 		msleep(100);
 		return 1;
 	}
 #ifdef MIPI_DEBUG
 	else {
-		pr_info("#######Stream clock found!");
+		pr_info("#######Stream clock found!\n");
 		pr_info("0x7a:0x11=%.2x\n",(unsigned int)c);
 	}
 #endif
@@ -1507,7 +1507,7 @@ void SP_TX_EnhaceMode_Set(void)
 		SP_TX_AUX_DPCDRead_Bytes(0x00,0x01,DPCD_LANE_COUNT_SET,1,&c);
 		SP_TX_AUX_DPCDWrite_Byte(0x00,0x01,DPCD_LANE_COUNT_SET, c | 0x80);
 
-		pr_info("Enhance mode enabled");
+		pr_info("Enhance mode enabled\n");
 	} else {
 
 		sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_SYS_CTRL4_REG, &c);
@@ -1516,7 +1516,7 @@ void SP_TX_EnhaceMode_Set(void)
 		SP_TX_AUX_DPCDRead_Bytes(0x00,0x01,DPCD_LANE_COUNT_SET,1,&c);
 		SP_TX_AUX_DPCDWrite_Byte(0x00,0x01,DPCD_LANE_COUNT_SET, c & (~0x80));
 
-		pr_info("Enhance mode disabled");
+		pr_info("Enhance mode disabled\n");
 	}
 }
 
@@ -1693,11 +1693,13 @@ void SP_TX_Show_Infomation(void)
 
 
 	if(SSC_EN)
-		pr_info("   SSC On");
+		pr_info("   SSC On\n");
 	else
-		pr_info("   SSC Off");
+		pr_info("   SSC Off\n");
 
-	pr_info("   M = %lu, N = %lu, PCLK = %.2x MHz\n",M_val,N_val,(unsigned int)pclk);
+	pr_info("%s: M = %lu, N = %lu, PCLK = 0x%.2x (%d) MHz\n",
+			__func__, M_val, N_val, (unsigned int)pclk,
+			(unsigned int)pclk);
 
 	sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_TOTAL_LINE_STA_L,&c);
 	sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_TOTAL_LINE_STA_H,&c1);
@@ -1929,13 +1931,13 @@ BYTE SP_TX_Chip_Located(void)
 void SP_TX_Hardware_PowerOn(void)
 {
 	sp_tx_hardware_poweron();
-	pr_info("Chip is power on\n");
+	pr_debug("Chip is power on\n");
 }
 
 void SP_TX_Hardware_PowerDown(void)
 {
 	sp_tx_hardware_powerdown();
-	pr_info("Chip is power down\n");
+	pr_debug("Chip is power down\n");
 
 }
 void vbus_power_ctrl(BYTE ON)
@@ -1947,7 +1949,7 @@ void vbus_power_ctrl(BYTE ON)
 		//Power down  5V detect and short portect circuit
 		sp_read_reg (SP_TX_PORT2_ADDR, PLL_FILTER_CTRL6, &c);
 		sp_write_reg(SP_TX_PORT2_ADDR, PLL_FILTER_CTRL6, c|0x30);
-		pr_info("3.3V output disabled");
+		pr_debug("3.3V output disabled");
 	} else {
 		for (i = 0; i < 5; i++) {
 			//Power up  5V detect and short portect circuit
@@ -1962,10 +1964,10 @@ void vbus_power_ctrl(BYTE ON)
 			msleep(100);
 			sp_read_reg (SP_TX_PORT2_ADDR, PLL_FILTER_CTRL6, &c);
 			if (!(c & 0xc0)) {
-				pr_info("3.3V output enabled\n");
+				pr_debug("3.3V output enabled\n");
 				break;
 			} else {
-				pr_info("VBUS power can not be supplied\n");
+				pr_warn("VBUS power can not be supplied\n");
 			}
 		}
 
@@ -3453,9 +3455,9 @@ BYTE SP_TX_BW_LC_Sel(struct VideoFormat* pInputFormat)
 	
 	if(over_bw)
 	    pr_err("over bw!\n");
-	 else
-	 
-	pr_err("The optimized BW =%.2x, Lane cnt=%.2x\n",(unsigned int)sp_tx_bw,(unsigned int)sp_tx_lane_count);
+	else
+		pr_debug("The optimized BW =%.2x, Lane cnt=%.2x\n",
+			(unsigned int)sp_tx_bw, (unsigned int)sp_tx_lane_count);
 	
 	return over_bw;
 
@@ -3534,7 +3536,7 @@ BYTE sp_tx_lt_pre_config(void)
 #if(REDUCE_REPEAT_PRINT_INFO)
 			loop_print_msg(0x05);
 #else
-			pr_err("%s: ****Over bandwidth****", __func__);
+			pr_err("%s: ****Over bandwidth****\n", __func__);
 #endif
 			return 1;
 		} else
@@ -3983,7 +3985,7 @@ void change_system_state_clean(SP_TX_System_State cur_state)
 
 void SP_CTRL_Set_System_State(SP_TX_System_State ss)
 {
-	pr_info("SP_TX To System State: ");
+	pr_debug("SP_TX To System State: ");
 	change_system_state_clean(ss);
 	switch (ss) {
 	case SP_TX_INITIAL:
@@ -4082,7 +4084,7 @@ static BYTE sp_tx_get_cable_type(void)
 	BYTE temp_value;
 	int i,j;
 
-	pr_err("sp_tx_get_cable_type ++.\n");
+	pr_debug("sp_tx_get_cable_type ++.\n");
 
 	for (i = 0; i < 5; i++) {
 		if(AUX_ERR == SP_TX_AUX_DPCDRead_Bytes(0x00, 0x00, 0x05, 1, &ds_port_preset)) {
@@ -4143,7 +4145,7 @@ static BYTE sp_tx_get_cable_type(void)
 			break;
 		default:
 			msleep(100);
-			pr_info("Downstream can not recognized.\n");
+			pr_err("Downstream can not recognized.\n");
 			sp_tx_rx_type = RX_NULL;
 			ds_port_recoginze = 0;
 			break;
@@ -4152,7 +4154,7 @@ static BYTE sp_tx_get_cable_type(void)
 
 		if(ds_port_recoginze !=0)
 		{
-			pr_err("sp_tx_get_cable_type - done.\n");
+			pr_debug("sp_tx_get_cable_type - done.\n");
 			return ds_port_recoginze;
 		}
 	}
