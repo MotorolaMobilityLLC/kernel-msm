@@ -156,6 +156,8 @@ static int mdss_dsi_phy_calc_param_phy_rev_2(struct dsi_phy_t_clk_param *t_clk,
 	s64 actual_intermediate;
 	s32 actual_frac;
 	s64 rec_temp1, rec_temp2, rec_temp3;
+	int g10, g11, g12, g27, g28, temp_rec_min;
+	s64 h10, h12, h27;
 
 	/* clk_prepare calculations */
 	dividend = ((t_param->clk_prepare.rec_max
@@ -426,6 +428,82 @@ static int mdss_dsi_phy_calc_param_phy_rev_2(struct dsi_phy_t_clk_param *t_clk,
 			t_param->hs_rqst_clk.rec_min,
 			t_param->hs_rqst_clk.rec_max,
 			t_param->hs_rqst_clk.rec);
+
+	/* clk post and pre value calculation */
+	tmp = ((60 * (int)t_clk->bitclk_mbps) + (52 * 1000) - (43 * 1000));
+
+	/* clk_post minimum value can be a negetive number */
+	if (tmp % (8 * 1000) != 0) {
+		if (tmp < 0)
+			tmp = (tmp / (8 * 1000))  - 1;
+		else
+			tmp = (tmp / (8 * 1000)) + 1;
+	} else {
+		tmp = tmp / (8 * 1000);
+	}
+	tmp = tmp - 1;
+
+	t_param->clk_post.program_value =
+		DIV_ROUND_UP((63 - tmp) * hs_exit_min_frac, 100);
+	t_param->clk_post.program_value += tmp;
+
+	if (t_param->clk_post.program_value & 0xffffff00) {
+		pr_err("Invalid clk post calculations - %d\n",
+			   t_param->clk_post.program_value);
+		goto error;
+	}
+
+	t_param->clk_post.rec_min = tmp;
+
+	if (t_param->hs_rqst_clk.rec < 0)
+		g27 = 0;
+	else
+		g27 = t_param->hs_rqst_clk.program_value;
+
+	h27 = (g27 + 1);
+
+	g10 = t_param->clk_prepare.program_value;
+
+	g11 = 0;
+
+	if (t_clk->bitclk_mbps > 100)
+		g28 = 0;
+	else
+		g28 = 3;
+
+	h10 = ((g10 * 8) + (g11 * 4) + (g28 * 2));
+
+	g12 = t_param->clk_zero.program_value;
+
+	h12 = ((g12 + 3) * 8) + 11 - (g28 * 2);
+
+	temp_rec_min = (8 * 1000) + (h10 * 1000) + (h12 * 1000) +
+							(h27 * 8 * 1000);
+
+	t_param->clk_pre.rec_min = DIV_ROUND_UP(temp_rec_min, 8 * 1000) - 1;
+
+	if (t_param->clk_pre.rec_min > 63) {
+		t_param->clk_pre.program_value =
+			DIV_ROUND_UP((2 * 63 - t_param->clk_pre.rec_min)
+						* hs_exit_min_frac, 100);
+		t_param->clk_pre.program_value += t_param->clk_pre.rec_min;
+	} else {
+		t_param->clk_pre.program_value =
+			DIV_ROUND_UP((63 - t_param->clk_pre.rec_min)
+						* hs_exit_min_frac, 100);
+		t_param->clk_pre.program_value += t_param->clk_pre.rec_min;
+	}
+
+	if (t_param->clk_pre.program_value & 0xffffff00) {
+		pr_err("Invalid clk pre calculations - %d\n",
+				t_param->clk_pre.program_value);
+		goto error;
+	}
+	pr_debug("t_clk_post: %d t_clk_pre: %d\n",
+			t_param->clk_post.program_value,
+			t_param->clk_pre.program_value);
+
+
 	pr_debug("teot_clk=%d, data=%d\n", teot_clk_lane, teot_data_lane);
 	return 0;
 
@@ -712,6 +790,9 @@ static void mdss_dsi_phy_update_timing_param_rev_2(
 	int i = 0;
 
 	reg = &(pinfo->mipi.dsi_phy_db);
+
+	pinfo->mipi.t_clk_post = t_param->clk_post.program_value;
+	pinfo->mipi.t_clk_pre = t_param->clk_pre.program_value;
 
 	for (i = 0; i < TIMING_PARAM_DLANE_COUNT; i += 8) {
 		reg->timing_8996[i] = t_param->hs_exit.program_value;
