@@ -502,6 +502,12 @@ EXPORT_SYMBOL(sp_get_rx_bw);
 static int anx7805_mipi_timing_setting(void *client, bool on,
 		struct msm_dba_video_cfg *cfg, u32 flags)
 {
+	pr_debug("%s(%d)\n", __func__, on);
+
+	/* This is a video off case, do nothing */
+	if (!on)
+		return 0;
+
 	if (!cfg) {
 		pr_err("%s: invalid input\n", __func__);
 		return 1;
