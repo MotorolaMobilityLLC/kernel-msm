@@ -353,7 +353,8 @@ int sp_read_reg(uint8_t slave_addr, uint8_t offset, uint8_t *buf)
 	the_chip->client->addr = (slave_addr >> 1);
 	ret = i2c_smbus_read_byte_data(the_chip->client, offset);
 	if (ret < 0) {
-		pr_err("failed to read i2c addr=%x\n", slave_addr);
+		pr_err("failed to read i2c addr=%x reg=%x\n",
+							slave_addr, offset);
 		return ret;
 	}
 	*buf = (uint8_t) ret;
@@ -371,7 +372,8 @@ int sp_write_reg(uint8_t slave_addr, uint8_t offset, uint8_t value)
 	the_chip->client->addr = (slave_addr >> 1);
 	ret = i2c_smbus_write_byte_data(the_chip->client, offset, value);
 	if (ret < 0) {
-		pr_err("failed to write i2c addr=%x\n", slave_addr);
+		pr_err("failed to write i2c addr=%x offset=%x\n",
+					slave_addr, offset);
 	}
 	return ret;
 }
