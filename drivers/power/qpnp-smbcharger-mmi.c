@@ -5657,7 +5657,6 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	}
 	chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 	chip->vbat_above_headroom = false;
-	chip->stepchg_state = STEP_NONE;
 	chip->vfloat_mv = chip->stepchg_max_voltage_mv;
 	chip->aicl_wait_retries = 0;
 	index = STEP_END(chip->stepchg_num_steps);
@@ -9353,8 +9352,11 @@ static int bsw_ramp_up(struct smbchg_chip *chip)
 	if (!chip || !chip->bsw_psy_name)
 		return rc;
 
-	if (!((chip->stepchg_state >= STEP_FIRST) &&
-	      (chip->stepchg_state <= STEP_LAST)))
+	if (!chip->usb_present || !chip->usbc_bswchg_pres ||
+	    (chip->stepchg_state == STEP_NONE))
+		return 1;
+	else if (!((chip->stepchg_state >= STEP_FIRST) &&
+		   (chip->stepchg_state <= STEP_LAST)))
 		return rc;
 
 	index = STEP_START(chip->stepchg_state);
@@ -9382,7 +9384,9 @@ static int bsw_ramp_up(struct smbchg_chip *chip)
 			msleep(350);
 		}
 
-		if (set_curr >= max_ma)
+		if ((set_curr >= max_ma) ||
+		    !chip->usb_present || !chip->usbc_bswchg_pres ||
+		    (chip->stepchg_state == STEP_NONE))
 			break;
 		set_curr += BSW_CURR_STEP_MA;
 		if (set_curr >= max_ma)
@@ -9390,7 +9394,9 @@ static int bsw_ramp_up(struct smbchg_chip *chip)
 
 	} while (!check_bswchg_volt(chip) && !check_maxbms_volt(chip));
 
-	if (set_curr == taper_ma) {
+	if ((set_curr == taper_ma) ||
+	    !chip->usb_present || !chip->usbc_bswchg_pres ||
+	    (chip->stepchg_state == STEP_NONE)) {
 		set_bsw(chip, max_mv, taper_ma, false);
 		return 1;
 	} else if (set_curr >= max_ma)
@@ -9460,6 +9466,10 @@ void update_bsw_step(struct smbchg_chip *chip, bool bsw_chrg_alarm,
 	mutex_lock(&chip->current_change_lock);
 	chip->update_thermal_bsw_current_ma = false;
 	mutex_unlock(&chip->current_change_lock);
+
+	if (!chip->usb_present || !chip->usbc_bswchg_pres ||
+	    (chip->stepchg_state == STEP_NONE))
+		return;
 
 	chip->bsw_ramping = true;
 
@@ -9551,9 +9561,14 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		return;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
-	if (smbchg_check_and_kick_aicl(chip) || chip->bsw_ramping ||
+	if (smbchg_check_and_kick_aicl(chip) ||
 	    !smbchg_fg_ready(chip))
 		goto end_hb;
+
+	if (chip->bsw_ramping) {
+		SMB_WARN(chip, "HB Ran, during ramp!\n");
+		goto end_hb;
+	}
 
 	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
 	smbchg_check_extbat_ability(chip, &eb_able);
@@ -9710,6 +9725,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		chip->bsw_mode = BSW_RUN;
 		chip->bsw_ramping = true;
 		while (bsw_ramp_up(chip) == 1) {
+			if (!chip->usb_present || !chip->usbc_bswchg_pres ||
+			    (chip->stepchg_state == STEP_NONE))
+			    break;
+
 			if (chip->stepchg_state ==
 			    STEP_END(chip->stepchg_num_steps)) {
 				chip->stepchg_state = STEP_TAPER;
@@ -9723,13 +9742,26 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				chip->stepchg_state++;
 		}
 		chip->bsw_ramping = false;
+		if (!chip->usb_present || !chip->usbc_bswchg_pres ||
+		    (chip->stepchg_state == STEP_NONE)) {
+			set_bsw(chip, max_mv, chip->target_bsw_current_ma,
+				false);
+			chip->bsw_mode = BSW_OFF;
+			chip->stepchg_state = STEP_NONE;
+		}
 	} else if (chip->usbc_bswchg_pres && chip->usb_present &&
 		   (chip->bsw_mode == BSW_RUN) &&
 		   (bsw_chrg_alarm || max_chrg_alarm ||
 		    chip->update_thermal_bsw_current_ma)) {
 		update_bsw_step(chip, bsw_chrg_alarm, max_chrg_alarm,
 				pmi_max_chrg_ma, taper_ma, max_ma);
-
+		if (!chip->usb_present || !chip->usbc_bswchg_pres ||
+		    (chip->stepchg_state == STEP_NONE)) {
+			set_bsw(chip, max_mv, chip->target_bsw_current_ma,
+				false);
+			chip->bsw_mode = BSW_OFF;
+			chip->stepchg_state = STEP_NONE;	
+		}
 	} else if ((chip->stepchg_state == STEP_NONE) &&
 		   (chip->bsw_mode != BSW_RUN) &&
 		   (chip->usb_present || (chip->ebchg_state == EB_SRC))) {
