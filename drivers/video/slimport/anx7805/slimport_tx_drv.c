@@ -5099,6 +5099,11 @@ void SP_CTRL_EDID_Process(void)
 		} else {
 			memcpy(bEDID_twoblock, display_config->config_buf,
 						display_config->config_size);
+			/* read sink bandwidth */
+			SP_TX_AUX_DPCDRead_Bytes(0x00, 0x00, 01, 1, &c);
+			sp_rx_bw = c;
+			SP_TX_RST_AUX();
+
 			goto skip_me;
 		}
 	} else {
