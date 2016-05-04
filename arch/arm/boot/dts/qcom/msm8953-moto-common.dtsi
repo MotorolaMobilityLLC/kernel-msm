@@ -593,7 +593,7 @@
 		mmi,apba-unipro-mid = <0x00000126>;
 		mmi,apba-unipro-pid = <0x00001001>;
 		mmi,apba-ara-vid = <0xfed70128>;
-		mmi,apba-ara-pid = <0xffff0001>;
+		mmi,apba-ara-pid = <0xfffe0001>;
 	};
 
 	mods_camera_ext {
