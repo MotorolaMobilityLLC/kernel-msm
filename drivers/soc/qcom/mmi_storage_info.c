@@ -23,7 +23,7 @@ struct mmi_storage_info *info;
 static ssize_t sysfsst_fw_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-	return snprintf(buf, 16, "%s\n", info->firmware_version);
+	return snprintf(buf, 32, "%s\n", info->firmware_version);
 }
 
 static ssize_t sysfsst_model_show(struct kobject *kobj,
