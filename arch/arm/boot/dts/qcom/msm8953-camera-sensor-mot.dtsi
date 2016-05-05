@@ -97,7 +97,8 @@
 		qcom,cam-vreg-op-mode = <100000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
-		pinctrl-0 = <&cam_sensor_flash_active>;
+		pinctrl-0 = <&cam_sensor_flash_active
+			     &cam_sensor_pa_on_noflash>;
 		pinctrl-1 = <&cam_sensor_flash_suspend>;
 		gpios = <&tlmm 27 0>;
 		qcom,gpio-flash-en = <0>;
@@ -349,6 +350,21 @@
 
 			config {
 				pins = "gpio27";
+				bias-disable; /* No PULL*/
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+			};
+		};
+
+		cam_sensor_pa_on_noflash: cam_sensor_pa_on_noflash {
+			/* PA_ON_NOFLASH */
+			mux {
+				pins = "gpio112";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio112";
 				bias-disable; /* No PULL*/
 				drive-strength = <2>; /* 2 MA */
 				output-low;
