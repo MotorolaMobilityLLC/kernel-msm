@@ -23,6 +23,7 @@
 #include <linux/power_supply.h>
 #include <linux/regulator/consumer.h>
 #include <linux/mods/modbus_ext.h>
+#include <linux/mods/usb_ext_bridge.h>
 
 enum hd3ss460_device_list {
 	USBC = 0,
@@ -47,6 +48,7 @@ struct hd3ss460_info {
 	struct power_supply *usbc_switch;
 	struct notifier_block switch_notifier;
 	struct notifier_block modbus_notifier;
+	struct notifier_block usbext_notifier;
 	bool switch_is_fusb340;
 	struct delayed_work hd3ss460_switch_work;
 	struct delayed_work hd3ss460_work;
@@ -57,6 +59,7 @@ struct hd3ss460_info {
 	bool vdd_enabled;
 	int usbc_switch_state;
 	int ext_state;
+	enum usb_ext_remote_type usb_type;
 };
 
 static ssize_t switch_to_dev_store(struct device *dev,
@@ -176,8 +179,11 @@ static int modbus_notifier_call(struct notifier_block *nb,
 		info->ext_state |= sl_status->proto;
 	else
 		info->ext_state &= ~(sl_status->proto);
-	schedule_delayed_work(&info->hd3ss460_work,
-				msecs_to_jiffies(0));
+
+	/* If we have not switched the SSUSB lines, run the switch work */
+	if (info->mux_dev == USBC)
+		schedule_delayed_work(&info->hd3ss460_work,
+					msecs_to_jiffies(0));
 
 	return NOTIFY_OK;
 }
@@ -258,14 +264,14 @@ static void hd3ss460_notify_usb_psy(struct hd3ss460_info *info, bool enable)
 		return;
 
 	if (enable) {
-		if (ssusb_peripheral) {
+		if (ssusb_peripheral || info->usb_type == USB_EXT_REMOTE_HOST) {
 			power_supply_set_supply_type(usb_psy,
 					POWER_SUPPLY_TYPE_USB);
 			power_supply_set_present(usb_psy, 1);
 		} else
 			power_supply_set_usb_otg(usb_psy, 1);
 	} else {
-		if (ssusb_peripheral) {
+		if (ssusb_peripheral || info->usb_type == USB_EXT_REMOTE_HOST) {
 			power_supply_set_supply_type(usb_psy,
 					POWER_SUPPLY_TYPE_UNKNOWN);
 			power_supply_set_present(usb_psy, 0);
@@ -395,6 +401,41 @@ static struct hd3ss460_info *hd3ss460_parse_of(struct platform_device *pdev)
 	return info;
 }
 
+static int usb_ext_notifier_call(struct notifier_block *nb,
+		unsigned long val,
+		void *v)
+{
+	struct hd3ss460_info *info = container_of(nb,
+				struct hd3ss460_info, usbext_notifier);
+	struct usb_ext_status *status = v;
+
+	/* If Mod has detached, disconnect the hub */
+	if (status->proto != USB_EXT_PROTO_3_1 || !val) {
+		info->usb_type = USB_EXT_REMOTE_UNKNOWN;
+		if (info->mux_dev != USBC) {
+			dev_err(info->dev, "usb ext: switch SSUSB to USBC\n");
+			info->mux_dev = USBC;
+			hd3ss460_switch_w(&info->hd3ss460_switch_work.work);
+		}
+		return NOTIFY_DONE;
+	}
+
+	if (status->type == USB_EXT_REMOTE_DEVICE ||
+				status->type == USB_EXT_REMOTE_HOST)
+		info->usb_type = status->type;
+	else
+		info->usb_type = USB_EXT_REMOTE_DEVICE;
+
+	if (info->mux_dev != MODS) {
+		dev_err(info->dev, "usb ext: switch SSUSB to MODS, type = %d\n",
+						info->usb_type);
+		info->mux_dev = MODS;
+		hd3ss460_switch_w(&info->hd3ss460_switch_work.work);
+	}
+
+	return NOTIFY_OK;
+}
+
 static int hd3ss460_probe(struct platform_device *pdev)
 {
 	struct hd3ss460_info *info;
@@ -462,6 +503,14 @@ static int hd3ss460_probe(struct platform_device *pdev)
 		goto fail_modbus_reg;
 	}
 
+	info->usbext_notifier.notifier_call = usb_ext_notifier_call;
+	ret = usb_ext_register_notifier(&info->usbext_notifier, NULL);
+	if (ret) {
+		dev_err(&pdev->dev, "couldn't register usb ext notifier\n");
+		goto fail_psy_reg;
+	}
+
+
 	ret = device_create_file(&pdev->dev,
 				 &dev_attr_switch_to_dev);
 	if (ret)
@@ -487,6 +536,8 @@ static int hd3ss460_probe(struct platform_device *pdev)
 
 	return 0;
 
+fail_psy_reg:
+	power_supply_unreg_notifier(&info->switch_notifier);
 fail_modbus_reg:
 	modbus_ext_unregister_notifier(&info->modbus_notifier);
 fail:
@@ -502,6 +553,7 @@ static int hd3ss460_remove(struct platform_device *pdev)
 			   &dev_attr_switch_to_dev);
 
 	if (info) {
+		usb_ext_unregister_notifier(&info->usbext_notifier);
 		modbus_ext_unregister_notifier(&info->modbus_notifier);
 		power_supply_unreg_notifier(&info->switch_notifier);
 		gpio_free_array(info->list, info->num_gpios);
