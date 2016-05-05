@@ -3618,6 +3618,11 @@ static int wm_adsp_stream_capture(struct wm_adsp *dsp)
 	int total_read = 0;
 	int ret = 0;
 
+	if (!dsp) {
+		pr_err("%s Invalid argument\n", __func__);
+		return -EINVAL;
+	}
+
 	dsp->buffer_drain_pending = false;
 
 	do {
