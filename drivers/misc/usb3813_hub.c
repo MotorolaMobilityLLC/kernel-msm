@@ -240,6 +240,31 @@ static int usb3813_host_enable(struct usb3813_info *info, bool enable)
 	return 0;
 }
 
+static void usb3813_send_uevent(struct usb3813_info *info, bool enable)
+{
+	struct kobj_uevent_env *env;
+
+	env = kzalloc(sizeof(*env), GFP_KERNEL);
+	if (!env)
+		return;
+
+	if (enable)
+		add_uevent_var(env, "EXT_USB_STATE=ATTACHED");
+	else
+		add_uevent_var(env, "EXT_USB_STATE=DETACHED");
+
+	add_uevent_var(env, "EXT_USB_PROTOCOL=USB2.0");
+	add_uevent_var(env, "EXT_USB_MODE=DEVICE");
+
+	if (info->enable_controller || !enable)
+		add_uevent_var(env, "MAIN_USB=ALLOWED");
+	else
+		add_uevent_var(env, "MAIN_USB=DISABLED");
+
+	kobject_uevent_env(&info->dev->kobj, KOBJ_CHANGE, env->envp);
+	kfree(env);
+}
+
 static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 {
 	if (enable == info->hub_enabled)
@@ -264,6 +289,8 @@ static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 		clk_disable_unprepare(info->hub_clk);
 		usb3813_host_enable(info, false);
 	}
+
+	usb3813_send_uevent(info, enable);
 
 	return 0;
 }
