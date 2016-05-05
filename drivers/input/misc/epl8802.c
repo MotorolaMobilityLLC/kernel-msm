@@ -1162,47 +1162,67 @@ void epl_sensor_enable_ps(int enable)
 {
 	struct epl_sensor_priv *epld = epl_sensor_obj;
 
-	LOG_INFO("[%s]: ps enable=%d\r\n", __func__, enable);
-
-	if (epld->enable_pflag != enable) {
-		epld->enable_pflag = enable;
-		if (enable) {
-			/* wake_lock(&ps_lock); */
-#if PS_FIRST_REPORT
-			ps_frist_flag = true;
-			set_psensor_intr_threshold(epld->dt_ps_max_ct,
-				epld->dt_ps_max_ct + 1);
-#endif
-#if PS_DYN_K_ONE
-			ps_dyn_flag = true;
-#endif
-		} else {
-			/* wake_unlock(&ps_lock); */
-			mutex_lock(&sensor_mutex);
-			epl_sensor_I2C_Write(epld->client, 0x00,
-				epl_sensor.wait | epl_sensor.mode);
-			epl_sensor_I2C_Write(epld->client, 0x03,
-				epl_sensor.ps.integration_time |
-				epl_sensor.ps.gain);
-			epl_sensor_I2C_Write(epld->client, 0x05,
-				epl_sensor.ps.ir_on_control |
-				epl_sensor.ps.ir_mode |
-				epl_sensor.ps.ir_drive);
-			epl_sensor_I2C_Write(epld->client, 0x04,
-				epl_sensor.ps.rs | epl_sensor.ps.adc |
-				epl_sensor.ps.cycle);
-			epl_sensor_I2C_Write(epld->client, 0x06,
-				epl_sensor.interrupt_control |
-				epl_sensor.ps.persist |
-				epl_sensor.ps.interrupt_type);
-			mutex_unlock(&sensor_mutex);
+	epld->enable_pflag = enable;
+	if (enable) {
+		if (enable_stowed_flag == true &&
+			enable_ps_flag == false) {
+			LOG_INFO("[%s]: stowed enable! \r\n", __func__);
+			epl_sensor.ps.integration_time = EPL_PS_INTT_272;
+			epl_sensor.ps.gain = EPL_GAIN_LOW;
+			epl_sensor.ps.ir_drive = EPL_IR_DRIVE_50;
+		} else if (enable_stowed_flag == false &&
+			enable_ps_flag == true) {
+			LOG_INFO("[%s]: PS enable! \r\n", __func__);
+			epl_sensor.ps.integration_time =
+				(epld->dt_ps_intt << 2);
+			epl_sensor.ps.gain = epld->dt_ps_gain;
+			epl_sensor.ps.ir_drive = epld->dt_ps_ir_drive;
 		}
-		epl_sensor_fast_update(epld->client);
-		epl_sensor_update_mode(epld->client);
-#if PS_DYN_K_ONE
-		epl_sensor_do_ps_auto_k_one();
+		LOG_INFO("[%s]: INTT=%d, Gain=%d, ir_drive=%d \r\n",
+			__func__, epl_sensor.ps.integration_time >> 2,
+			epl_sensor.ps.gain, epl_sensor.ps.ir_drive);
+		mutex_lock(&sensor_mutex);
+		epl_sensor_I2C_Write(epld->client, 0x03,
+			epl_sensor.ps.integration_time |
+			epl_sensor.ps.gain);
+		epl_sensor_I2C_Write(epld->client, 0x05,
+			epl_sensor.ps.ir_on_control | epl_sensor.ps.ir_mode |
+			epl_sensor.ps.ir_drive);
+		mutex_unlock(&sensor_mutex);
+
+#if PS_FIRST_REPORT
+		ps_frist_flag = true;
+		set_psensor_intr_threshold(epld->dt_ps_max_ct,
+			epld->dt_ps_max_ct + 1);
 #endif
+#if PS_DYN_K_ONE
+		ps_dyn_flag = true;
+#endif
+	} else {
+		mutex_lock(&sensor_mutex);
+		epl_sensor_I2C_Write(epld->client, 0x00,
+			epl_sensor.wait | epl_sensor.mode);
+		epl_sensor_I2C_Write(epld->client, 0x03,
+			epl_sensor.ps.integration_time |
+			epl_sensor.ps.gain);
+		epl_sensor_I2C_Write(epld->client, 0x05,
+			epl_sensor.ps.ir_on_control |
+			epl_sensor.ps.ir_mode |
+			epl_sensor.ps.ir_drive);
+		epl_sensor_I2C_Write(epld->client, 0x04,
+			epl_sensor.ps.rs | epl_sensor.ps.adc |
+			epl_sensor.ps.cycle);
+		epl_sensor_I2C_Write(epld->client, 0x06,
+			epl_sensor.interrupt_control |
+			epl_sensor.ps.persist |
+			epl_sensor.ps.interrupt_type);
+		mutex_unlock(&sensor_mutex);
 	}
+	epl_sensor_fast_update(epld->client);
+	epl_sensor_update_mode(epld->client);
+#if PS_DYN_K_ONE
+	epl_sensor_do_ps_auto_k_one();
+#endif
 }
 
 void epl_sensor_enable_als(int enable)
@@ -1667,12 +1687,6 @@ static void epl_sensor_eint_work(struct work_struct *work)
 		if (enable_stowed_flag && enable_ps_flag == false) {
 			epl_sensor_I2C_Write(epld->client, 0x00,
 				EPL_WAIT_200_MS | epl_sensor.mode);
-			epl_sensor_I2C_Write(epld->client, 0x03,
-				EPL_PS_INTT_272 | EPL_GAIN_LOW);
-			epl_sensor_I2C_Write(epld->client, 0x05,
-				epl_sensor.ps.ir_on_control |
-				epl_sensor.ps.ir_mode |
-				EPL_IR_DRIVE_50);
 			if ((epl_sensor.ps.compare_low >> 3) == 0) {
 				epl_sensor_I2C_Write(epld->client, 0x04,
 					epl_sensor.ps.rs | ps_stowed_adc |
