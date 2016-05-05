@@ -18,7 +18,7 @@ struct mmi_storage_info {
 	char size[16];	/* size in GB */
 	char card_manufacturer[32];
 	char product_name[32];	/* model ID */
-	char firmware_version[16];
+	char firmware_version[32];
 };
 
 #endif
