@@ -344,7 +344,8 @@ struct msm_spi {
 	int                      stat_tx;
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *dent_spi;
-	struct dentry *debugfs_spi_regs[ARRAY_SIZE(debugfs_spi_regs)];
+	struct dentry *debugfs_spi_file[ARRAY_SIZE(debugfs_spi_regs)];
+	struct msm_spi_regs *debugfs_spi_reg;
 #endif
 	struct msm_spi_platform_data *pdata; /* Platform data */
 	/* When set indicates multiple transfers in a single message */
