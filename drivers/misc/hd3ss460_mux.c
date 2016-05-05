@@ -281,6 +281,35 @@ static void hd3ss460_notify_usb_psy(struct hd3ss460_info *info, bool enable)
 	power_supply_put(usb_psy);
 }
 
+static void hd3ss460_send_uevent(struct hd3ss460_info *info)
+{
+	struct kobj_uevent_env *env;
+
+	env = kzalloc(sizeof(*env), GFP_KERNEL);
+	if (!env)
+		return;
+
+	if (info->mux_dev == MODS)
+		add_uevent_var(env, "EXT_USB_STATE=ATTACHED");
+	else
+		add_uevent_var(env, "EXT_USB_STATE=DETACHED");
+
+	add_uevent_var(env, "EXT_USB_PROTOCOL=USB3.0");
+
+	if (ssusb_peripheral || info->usb_type == USB_EXT_REMOTE_HOST)
+		add_uevent_var(env, "EXT_USB_MODE=HOST");
+	else
+		add_uevent_var(env, "EXT_USB_MODE=DEVICE");
+
+	if (info->mux_dev == USBC)
+		add_uevent_var(env, "MAIN_USB=ALLOWED");
+	else
+		add_uevent_var(env, "MAIN_USB=DISABLED");
+
+	kobject_uevent_env(&info->dev->kobj, KOBJ_CHANGE, env->envp);
+	kfree(env);
+}
+
 static void hd3ss460_switch_w(struct work_struct *work)
 {
 	struct hd3ss460_info *info =
@@ -315,6 +344,8 @@ static void hd3ss460_switch_w(struct work_struct *work)
 		hd3ss460_notify_usb_psy(info, true);
 	} else
 		dev_err(info->dev, "Invalid mode set\n");
+
+	hd3ss460_send_uevent(info);
 }
 
 static struct hd3ss460_info *hd3ss460_parse_of(struct platform_device *pdev)
