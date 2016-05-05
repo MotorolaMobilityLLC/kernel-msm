@@ -660,7 +660,7 @@ static ssize_t dwc3_store_ep_num(struct file *file, const char __user *ubuf,
 	struct seq_file		*s = file->private_data;
 	struct dwc3		*dwc = s->private;
 	char			kbuf[10];
-	unsigned int		num, dir;
+	unsigned int		num, dir, temp;
 	unsigned long		flags;
 
 	memset(kbuf, 0, 10);
@@ -671,8 +671,15 @@ static ssize_t dwc3_store_ep_num(struct file *file, const char __user *ubuf,
 	if (sscanf(kbuf, "%u %u", &num, &dir) != 2)
 		return -EINVAL;
 
+	if (dir != 0 && dir != 1)
+		return -EINVAL;
+
+	temp = (num << 1) + dir;
+	if (temp >= DWC3_ENDPOINTS_NUM)
+		return -EINVAL;
+
 	spin_lock_irqsave(&dwc->lock, flags);
-	ep_num = (num << 1) + dir;
+	ep_num = temp;
 	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	return count;
