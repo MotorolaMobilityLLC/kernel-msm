@@ -476,6 +476,7 @@ module_param_named(
 );
 
 static int smbchg_force_apsd(struct smbchg_chip *chip);
+static int smb_factory_force_apsd(struct smbchg_chip *chip);
 
 #define SMB_INFO(chip, fmt, arg...) do {                         \
 	if ((chip) && (chip)->ipc_log)   \
@@ -4427,6 +4428,7 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 			charge_rate[chip->charger_rate]);
 
 }
+
 static int bsw_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 								 void *v)
 {
@@ -4463,6 +4465,7 @@ static int bsw_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 						  msecs_to_jiffies(0));
 	return NOTIFY_OK;
 }
+
 static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 				 void *v)
 {
@@ -4486,10 +4489,6 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 				      msecs_to_jiffies(0));
 		return NOTIFY_OK;
 	}
-
-	/* Disregard type C in factory mode since we use src det*/
-	if (chip->factory_mode)
-		return NOTIFY_OK;
 
 	if (val != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
@@ -4522,10 +4521,15 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 		return NOTIFY_OK;
 	} else if (!disabled && chip->usbc_disabled) {
 		chip->usbc_disabled = false;
+		if (chip->factory_mode)
+			smb_factory_force_apsd(chip);
 	} else if (disabled) {
 		return NOTIFY_OK;
 	}
 
+	/* Disregard type C in factory mode since we use src det*/
+	if (chip->factory_mode)
+		return NOTIFY_OK;
 
 	prop.intval = 0;
 
@@ -6753,6 +6757,44 @@ static int smbchg_force_apsd(struct smbchg_chip *chip)
 
 	return rc;
 }
+
+static int smb_factory_force_apsd(struct smbchg_chip *chip)
+{
+	int rc;
+
+	SMB_INFO(chip, "Run APSD in Factory mode\n");
+	rc = smbchg_sec_masked_write_fac(chip,
+				     chip->usb_chgpth_base + APSD_CFG,
+				     APSD_EN_BIT, APSD_EN_BIT);
+	if (rc < 0)
+		SMB_ERR(chip, "Couldn't enable APSD rc=%d\n",
+			rc);
+
+	rc = smbchg_sec_masked_write_fac(chip,
+				     chip->usb_chgpth_base + USBIN_CHGR_CFG,
+				     USBIN_ALLOW_MASK, USBIN_ALLOW_9V);
+	if (rc < 0)
+		SMB_ERR(chip, "Couldn't write usb allowance %d rc=%d\n",
+			USBIN_ALLOW_9V, rc);
+	msleep(10);
+
+	/* RESET to Default 5V to 9V */
+	rc = smbchg_sec_masked_write_fac(chip,
+				     chip->usb_chgpth_base + USBIN_CHGR_CFG,
+				     USBIN_ALLOW_MASK, USBIN_ALLOW_5V_TO_9V);
+	if (rc < 0)
+		SMB_ERR(chip, "Couldn't write usb allowance %d rc=%d\n",
+			USBIN_ALLOW_5V_TO_9V, rc);
+
+	rc = smbchg_sec_masked_write_fac(chip,
+				     chip->usb_chgpth_base + APSD_CFG,
+				     APSD_EN_BIT, 0);
+	if (rc < 0)
+		SMB_ERR(chip, "Couldn't disable APSD rc=%d\n",
+			rc);
+	return rc;
+}
+
 
 static struct of_device_id smbchg_match_table[] = {
 	{
