@@ -33,6 +33,20 @@ static int esdfs_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	return err;
 }
 
+static void esdfs_vm_open(struct vm_area_struct *vma)
+{
+	struct file *file = (struct file *)vma->vm_private_data;
+
+	get_file(file);
+}
+
+static void esdfs_vm_close(struct vm_area_struct *vma)
+{
+	struct file *file = (struct file *)vma->vm_private_data;
+
+	fput(file);
+}
+
 static int esdfs_page_mkwrite(struct vm_area_struct *vma,
 			       struct vm_fault *vmf)
 {
@@ -77,4 +91,6 @@ const struct address_space_operations esdfs_aops = {
 const struct vm_operations_struct esdfs_vm_ops = {
 	.fault		= esdfs_fault,
 	.page_mkwrite	= esdfs_page_mkwrite,
+	.open		= esdfs_vm_open,
+	.close		= esdfs_vm_close,
 };
