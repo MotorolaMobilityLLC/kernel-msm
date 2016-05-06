@@ -891,12 +891,12 @@
 		pinctrl-names = "default", "spi_active";
 		pinctrl-0 = <&apba_default &spi_3_sleep>;
 		pinctrl-1 = <&apba_default &spi_3_active>;
-		gpios = <&pm8994_gpios 7 2>, /* APBA_1P1_EN, output-high */
+		gpios = <&pm8994_gpios 7 0>, /* APBA_1P1_EN, output-low */
 			<&tlmm 27 0>,        /* APBA_BOOTRET, output-low */
 			<&tlmm 81 2>,        /* MOD_MPHY_I2S_SEL, output-high */
 			<&tlmm 36 0>,       /* APBA_RESET_N, output-low */
 			<&tlmm 37 1>,       /* APBA_INT_N, in */
-			<&tlmm 21 2>;        /* APBA_WAKE, output-high */
+			<&tlmm 21 0>;        /* APBA_WAKE, output-low */
 		mmi,gpio-labels = "gpio_apba_1p1_en",
 				  "gpio_apba_bootret",
 				  "gpio_mphy_i2s_sel",
@@ -904,9 +904,9 @@
 				  "gpio_apba_int_n",
 				  "gpio_apba_wake";
 		mmi,int-index = <4>;
-		mmi,enable-seq = <5 1 0>, <0 1 0>, <1 0 0>, <2 0 0>, <3 0 50>,
-				 <3 1 50>;
-		mmi,disable-seq = <1 0 0>, <2 1 0>, <3 0 50>, <5 0 0>, <0 0 0>;
+		mmi,enable-seq = <3 0 0>, <5 1 0>, <0 1 0>, <1 0 0>, <2 0 1>,
+				 <3 1 0>;
+		mmi,disable-seq = <1 0 0>, <2 1 0>, <3 0 1>, <5 0 0>, <0 0 0>;
 		mmi,wake-assert-seq = <5 0 0>;
 		mmi,wake-deassert-seq = <5 1 0>;
 		mmi,flash-start-seq = <0 1 11>;
