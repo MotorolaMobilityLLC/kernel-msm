@@ -494,6 +494,15 @@ static int spich_message(struct spich_data *spich,
 	     --n, ++k_tmp, ++u_tmp) {
 		k_tmp->len = u_tmp->len;
 
+		/* to prevent malicious attacks with extremely large lengths,
+		 * check to make sure each transfer is less than the buffer
+		 * size. This prevents overflow of 'total'.
+		 */
+		if (k_tmp->len > SPICH_BUFFER_SIZE) {
+			status = -EMSGSIZE;
+			goto done;
+		}
+
 		total += k_tmp->len;
 		if (total > SPICH_BUFFER_SIZE) {
 			status = -EMSGSIZE;
