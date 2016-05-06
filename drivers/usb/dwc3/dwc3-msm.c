@@ -2796,7 +2796,8 @@ static int dwc3_msm_set_property_usbhost(struct power_supply *psy,
 		/* Let OTG know about ID detection */
 		mdwc->id_state = id;
 		dbg_event(dwc->ctrl_num, 0xFF, "id_state", mdwc->id_state);
-		dwc3_ext_event_notify(mdwc);
+		queue_delayed_work(mdwc->dwc3_wq,
+				&mdwc->resume_work, 0);
 		break;
 	default:
 		return -EINVAL;
