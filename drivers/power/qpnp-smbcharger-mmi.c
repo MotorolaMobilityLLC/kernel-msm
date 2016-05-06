@@ -5613,7 +5613,8 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	if (chip->factory_mode && chip->factory_cable) {
 		if (!factory_kill_disable) {
 			SMB_ERR(chip, "Factory Cable removed, power-off\n");
-			kernel_power_off();
+			factory_kill_disable = true;
+			orderly_poweroff(true);
 		} else
 			SMB_ERR(chip, "Factory Cable removed, kill disabled\n");
 		chip->factory_cable = false;
