@@ -567,7 +567,6 @@
 			pins = "gpio114";
 			drive-strength = <2>;
 			bias-disable;
-			output-low;
 		};
 	};
 

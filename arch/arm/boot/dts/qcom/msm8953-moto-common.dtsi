@@ -503,7 +503,7 @@
 			<&pmi8950_mpps 1 0>,  /* gpio_muc_ff, output-low */
 			<&tlmm 0 0>,          /* gpio_muc_spi_mosi, output-low */
 			<&tlmm 1 1>,          /* gpio_muc_spi_miso, input */
-			<&tlmm 114 0>,        /* gpio_muc_bplus_iset, cs */
+			<&tlmm 114 2>,        /* gpio_muc_bplus_iset, output-high */
 			<0>,                  /* gpio_muc_bplus_discharg, cs */
 			<&pmi8950_mpps 4 1>;  /* gpio_muc_bplus_fault_n, input */
 
