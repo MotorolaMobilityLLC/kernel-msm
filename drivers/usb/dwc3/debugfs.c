@@ -362,12 +362,37 @@ static const struct debugfs_reg32 dwc3_regs[] = {
 	dump_register(OSTS),
 };
 
+static int dwc3_regdump_show(struct seq_file *s, void *data)
+{
+	struct dwc3 *dwc = s->private;
+	struct debugfs_regset32	*regset = dwc->regset;
+
+	pm_runtime_get_sync(dwc->dev);
+	debugfs_print_regs32(s, regset->regs, regset->nregs, regset->base, "");
+	pm_runtime_mark_last_busy(dwc->dev);
+	pm_runtime_put_autosuspend(dwc->dev);
+
+	return 0;
+}
+
+static int dwc3_regdump_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dwc3_regdump_show, inode->i_private);
+}
+static const struct file_operations dwc3_regdump_fops = {
+	.open =		dwc3_regdump_open,
+	.read =		seq_read,
+	.llseek =	seq_lseek,
+	.release =	single_release,
+};
+
 static int dwc3_mode_show(struct seq_file *s, void *unused)
 {
 	struct dwc3		*dwc = s->private;
 	unsigned long		flags;
 	u32			reg;
 
+	pm_runtime_get_sync(dwc->dev);
 	spin_lock_irqsave(&dwc->lock, flags);
 	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
 	spin_unlock_irqrestore(&dwc->lock, flags);
@@ -386,6 +411,8 @@ static int dwc3_mode_show(struct seq_file *s, void *unused)
 		seq_printf(s, "UNKNOWN %08x\n", DWC3_GCTL_PRTCAP(reg));
 	}
 
+	pm_runtime_mark_last_busy(dwc->dev);
+	pm_runtime_put_autosuspend(dwc->dev);
 	return 0;
 }
 
@@ -416,9 +443,12 @@ static ssize_t dwc3_mode_write(struct file *file,
 		mode |= DWC3_GCTL_PRTCAP_OTG;
 
 	if (mode) {
+		pm_runtime_get_sync(dwc->dev);
 		spin_lock_irqsave(&dwc->lock, flags);
 		dwc3_set_mode(dwc, mode);
 		spin_unlock_irqrestore(&dwc->lock, flags);
+		pm_runtime_mark_last_busy(dwc->dev);
+		pm_runtime_put_autosuspend(dwc->dev);
 	}
 	return count;
 }
@@ -437,11 +467,15 @@ static int dwc3_testmode_show(struct seq_file *s, void *unused)
 	unsigned long		flags;
 	u32			reg;
 
+	pm_runtime_get_sync(dwc->dev);
+
 	spin_lock_irqsave(&dwc->lock, flags);
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	reg &= DWC3_DCTL_TSTCTRL_MASK;
 	reg >>= 1;
 	spin_unlock_irqrestore(&dwc->lock, flags);
+	pm_runtime_mark_last_busy(dwc->dev);
+	pm_runtime_put_autosuspend(dwc->dev);
 
 	switch (reg) {
 	case 0:
@@ -499,9 +533,12 @@ static ssize_t dwc3_testmode_write(struct file *file,
 	else
 		testmode = 0;
 
+	pm_runtime_get_sync(dwc->dev);
 	spin_lock_irqsave(&dwc->lock, flags);
 	dwc3_gadget_set_test_mode(dwc, testmode);
 	spin_unlock_irqrestore(&dwc->lock, flags);
+	pm_runtime_mark_last_busy(dwc->dev);
+	pm_runtime_put_autosuspend(dwc->dev);
 
 	return count;
 }
@@ -521,10 +558,13 @@ static int dwc3_link_state_show(struct seq_file *s, void *unused)
 	enum dwc3_link_state	state;
 	u32			reg;
 
+	pm_runtime_get_sync(dwc->dev);
 	spin_lock_irqsave(&dwc->lock, flags);
 	reg = dwc3_readl(dwc->regs, DWC3_DSTS);
 	state = DWC3_DSTS_USBLNKST(reg);
 	spin_unlock_irqrestore(&dwc->lock, flags);
+	pm_runtime_mark_last_busy(dwc->dev);
+	pm_runtime_put_autosuspend(dwc->dev);
 
 	switch (state) {
 	case DWC3_LINK_STATE_U0:
@@ -608,9 +648,12 @@ static ssize_t dwc3_link_state_write(struct file *file,
 	else
 		return -EINVAL;
 
+	pm_runtime_get_sync(dwc->dev);
 	spin_lock_irqsave(&dwc->lock, flags);
 	dwc3_gadget_set_link_state(dwc, state);
 	spin_unlock_irqrestore(&dwc->lock, flags);
+	pm_runtime_mark_last_busy(dwc->dev);
+	pm_runtime_put_autosuspend(dwc->dev);
 
 	return count;
 }
@@ -1238,7 +1281,8 @@ int dwc3_debugfs_init(struct dwc3 *dwc)
 	dwc->regset->nregs = ARRAY_SIZE(dwc3_regs);
 	dwc->regset->base = dwc->regs;
 
-	file = debugfs_create_regset32("regdump", S_IRUGO, root, dwc->regset);
+	file = debugfs_create_file("regdump", S_IRUGO, root,
+			dwc, &dwc3_regdump_fops);
 	if (!file) {
 		dev_dbg(dwc->dev, "Can't create debugfs regdump\n");
 		goto err1;
