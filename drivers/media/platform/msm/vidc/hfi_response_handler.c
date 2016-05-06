@@ -97,6 +97,26 @@ struct hal_session *hfi_process_get_session(
 	return found_session ? session : NULL;
 }
 
+static int sanitize_session_pkt(struct list_head *sessions,
+		struct hal_session *sess, struct mutex *session_lock)
+{
+	struct hal_session *session;
+	int invalid = 1;
+	if (session_lock) {
+		mutex_lock(session_lock);
+		list_for_each_entry(session, sessions, list) {
+			if (session == sess) {
+				invalid = 0;
+				break;
+			}
+		}
+		mutex_unlock(session_lock);
+	}
+	if (invalid)
+		dprintk(VIDC_WARN, "Invalid session from FW: %p\n", sess);
+	return invalid;
+}
+
 static void hfi_process_sess_evt_seq_changed(
 		msm_vidc_callback callback, u32 device_id,
 		struct hal_session *session,
@@ -1378,10 +1398,19 @@ u32 hfi_process_msg_packet(msm_vidc_callback callback, u32 device_id,
 		return rc;
 	}
 
+#define SANITIZE_SESSION_PKT(msg_pkt) ({ \
+		session = (struct hal_session *) \
+				(((struct vidc_hal_session_cmd_pkt *) \
+				msg_pkt)->session_id); \
+		if (sanitize_session_pkt(sessions, session, session_lock)) \
+			break; \
+	})
+
 	dprintk(VIDC_INFO, "Received: 0x%x\n", msg_hdr->packet);
 	rc = (u32) msg_hdr->packet;
 	switch (msg_hdr->packet) {
 	case HFI_MSG_EVENT_NOTIFY:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_event_notify;
 		break;
@@ -1389,6 +1418,7 @@ u32 hfi_process_msg_packet(msm_vidc_callback callback, u32 device_id,
 		sys_pkt_func = (sys_pkt_func_def)hfi_process_sys_init_done;
 		break;
 	case HFI_MSG_SYS_SESSION_INIT_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_init_done;
 		break;
@@ -1396,38 +1426,47 @@ u32 hfi_process_msg_packet(msm_vidc_callback callback, u32 device_id,
 		sys_pkt_func = (sys_pkt_func_def)hfi_process_sys_property_info;
 		break;
 	case HFI_MSG_SYS_SESSION_END_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_end_done;
 		break;
 	case HFI_MSG_SESSION_LOAD_RESOURCES_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_load_res_done;
 		break;
 	case HFI_MSG_SESSION_START_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_start_done;
 		break;
 	case HFI_MSG_SESSION_STOP_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_stop_done;
 		break;
 	case HFI_MSG_SESSION_EMPTY_BUFFER_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_etb_done;
 		break;
 	case HFI_MSG_SESSION_FILL_BUFFER_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_ftb_done;
 		break;
 	case HFI_MSG_SESSION_FLUSH_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_flush_done;
 		break;
 	case HFI_MSG_SESSION_PROPERTY_INFO:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_prop_info;
 		break;
 	case HFI_MSG_SESSION_RELEASE_RESOURCES_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_rel_res_done;
 		break;
@@ -1436,15 +1475,18 @@ u32 hfi_process_msg_packet(msm_vidc_callback callback, u32 device_id,
 			(sys_pkt_func_def)hfi_process_sys_rel_resource_done;
 		break;
 	case HFI_MSG_SESSION_GET_SEQUENCE_HEADER_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)
 			hfi_process_session_get_seq_hdr_done;
 		break;
 	case HFI_MSG_SESSION_RELEASE_BUFFERS_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_rel_buf_done;
 		break;
 	case HFI_MSG_SYS_SESSION_ABORT_DONE:
+	    SANITIZE_SESSION_PKT(msg_hdr);
 		session_pkt_func =
 			(session_pkt_func_def)hfi_process_session_abort_done;
 		break;
@@ -1478,6 +1520,6 @@ u32 hfi_process_msg_packet(msm_vidc_callback callback, u32 device_id,
 		session_pkt_func(callback, device_id, session, msg_hdr);
 	if (sys_pkt_func)
 		sys_pkt_func(callback, device_id, msg_hdr);
-
+#undef SANITIZE_SESSION_PKT
 	return rc;
 }
