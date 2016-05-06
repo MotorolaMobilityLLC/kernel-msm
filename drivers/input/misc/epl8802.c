@@ -1715,7 +1715,7 @@ static void epl_sensor_eint_work(struct work_struct *work)
 					epl_sensor_I2C_Write(epld->client,
 						0x1b,
 						EPL_CMP_RESET | EPL_UN_LOCK);
-				} else if (read_h_thd == ps_thd_1cm) {
+				} else  {
 					ps_status_moto = 1;
 				}
 			} else {
