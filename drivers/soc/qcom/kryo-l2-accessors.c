@@ -88,14 +88,19 @@ static int debug_target_cpu;
 static void remote_l2_ia_read(void *data)
 {
 	u64 *val = data;
-	*val = get_l2_indirect_reg(debug_addr);
+
+	if (debug_addr)
+		*val = get_l2_indirect_reg(debug_addr);
+	else
+		*val = 0;
 }
 
 static void remote_l2_ia_write(void *data)
 {
 	u64 *val = data;
 
-	set_l2_indirect_reg(debug_addr, *val);
+	if (debug_addr)
+		set_l2_indirect_reg(debug_addr, *val);
 }
 
 static int l2_indirect_target_cpu_set(void *data, u64 val)
