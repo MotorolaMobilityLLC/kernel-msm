@@ -45,5 +45,10 @@ if FB || SGI_NEWPORT_CONSOLE
 
 endif
 
+config PANEL_NOTIFICATIONS
+	bool 'Panel notifications'
+	default n
+	---help---
+	Panel notifications framework
 
 endmenu
