@@ -29,6 +29,96 @@ static struct mod_display_comm_data *mod_display_comm;
 static int initialized;
 static int connected;
 
+static inline void dump_config(struct mod_display_panel_config *display_config)
+{
+	if (display_config->config_type == MOD_CONFIG_EDID_1_3) {
+		pr_debug("%s: === EDID BLOCK ===\n", __func__);
+		print_hex_dump_debug("HDMI EDID: ", DUMP_PREFIX_NONE, 16, 1,
+			display_config->config_buf, display_config->config_size,
+			false);
+		pr_debug("%s: === EDID BLOCK ===\n", __func__);
+	} else if (display_config->config_type == MOD_CONFIG_DSI_CONF) {
+		struct mod_display_dsi_config *dsi_config =
+			(struct mod_display_dsi_config *)
+				display_config->config_buf;
+
+		pr_debug("%s: === DSI CONFIG BLOCK ===\n", __func__);
+		print_hex_dump_debug("DSI_CONFIG: ", DUMP_PREFIX_NONE, 16, 1,
+			display_config->config_buf, display_config->config_size,
+			false);
+		pr_debug("%s: === DSI CONFIG BLOCK ===\n", __func__);
+
+		pr_debug("%s: manufacturer_id: 0x%x\n", __func__,
+			dsi_config->manufacturer_id);
+		pr_debug("%s: mode: %s\n", __func__,
+			dsi_config->mode == MOD_DISPLAY_DSI_CONFIG_MODE_VIDEO ?
+			"VIDEO" : "COMMAND");
+		pr_debug("%s: num_lanes: 0x%x\n", __func__,
+			dsi_config->num_lanes);
+
+		pr_debug("%s: width: 0x%x\n", __func__, dsi_config->width);
+		pr_debug("%s: height: 0x%x\n", __func__, dsi_config->height);
+
+		pr_debug("%s: physical_width_dim: 0x%x\n", __func__,
+			dsi_config->physical_width_dim);
+		pr_debug("%s: physical_length_dim: 0x%x\n", __func__,
+			dsi_config->physical_length_dim);
+
+		pr_debug("%s: framerate: 0x%x\n", __func__,
+			dsi_config->framerate);
+		pr_debug("%s: bpp: 0x%x\n", __func__, dsi_config->bpp);
+
+		pr_debug("%s: clockrate: %llu\n", __func__,
+			dsi_config->clockrate);
+
+		pr_debug("%s: t_clk_pre: 0x%x\n", __func__,
+			dsi_config->t_clk_pre);
+		pr_debug("%s: t_clk_post: 0x%x\n", __func__,
+			dsi_config->t_clk_post);
+
+		pr_debug("%s: continuous_clock: 0x%x\n", __func__,
+			dsi_config->continuous_clock);
+		pr_debug("%s: eot_mode: 0x%x\n", __func__,
+			dsi_config->eot_mode);
+		pr_debug("%s: vsync_mode: 0x%x\n", __func__,
+			dsi_config->vsync_mode);
+		pr_debug("%s: traffic_mode: 0x%x\n", __func__,
+			dsi_config->traffic_mode);
+
+		pr_debug("%s: virtual_channel_id: 0x%x\n", __func__,
+			dsi_config->virtual_channel_id);
+		pr_debug("%s: color_order: 0x%x\n", __func__,
+			dsi_config->color_order);
+		pr_debug("%s: pixel_packing: 0x%x\n", __func__,
+			dsi_config->pixel_packing);
+
+		pr_debug("%s: horizontal_front_porch: 0x%x\n", __func__,
+			dsi_config->horizontal_front_porch);
+		pr_debug("%s: horizontal_pulse_width: 0x%x\n", __func__,
+			dsi_config->horizontal_pulse_width);
+		pr_debug("%s: horizontal_sync_skew: 0x%x\n", __func__,
+			dsi_config->horizontal_sync_skew);
+		pr_debug("%s: horizontal_back_porch: 0x%x\n", __func__,
+			dsi_config->horizontal_back_porch);
+		pr_debug("%s: horizontal_left_border: 0x%x\n", __func__,
+			dsi_config->horizontal_left_border);
+		pr_debug("%s: horizontal_right_border: 0x%x\n", __func__,
+			dsi_config->horizontal_right_border);
+
+		pr_debug("%s: vertical_front_porch: 0x%x\n", __func__,
+			dsi_config->vertical_front_porch);
+		pr_debug("%s: vertical_pulse_width: 0x%x\n", __func__,
+			dsi_config->vertical_pulse_width);
+		pr_debug("%s: vertical_back_porch: 0x%x\n", __func__,
+			dsi_config->vertical_back_porch);
+		pr_debug("%s: vertical_top_border: 0x%x\n", __func__,
+			dsi_config->vertical_top_border);
+		pr_debug("%s: vertical_bottom_border: 0x%x\n", __func__,
+			dsi_config->vertical_bottom_border);
+	}
+}
+
+
 /* External APIs */
 
 int mod_display_get_display_config(
@@ -51,13 +141,7 @@ int mod_display_get_display_config(
 		goto exit;
 	}
 
-	if ((*display_config)->config_type == MOD_CONFIG_EDID_1_3) {
-		pr_debug("%s: === EDID BLOCK ===\n", __func__);
-		print_hex_dump_debug("HDMI EDID: ", DUMP_PREFIX_NONE, 16, 1,
-			(*display_config)->config_buf, (*display_config)->config_size,
-			false);
-		pr_debug("%s: === EDID BLOCK ===\n", __func__);
-	}
+	dump_config(*display_config);
 
 exit:
 	pr_debug("%s-\n", __func__);
