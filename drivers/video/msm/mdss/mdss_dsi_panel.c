@@ -24,6 +24,7 @@
 #include <linux/string.h>
 #include <linux/uaccess.h>
 #include <linux/msm_mdp.h>
+#include <linux/panel_notifier.h>
 
 #include <linux/mod_display.h>
 #include <linux/mod_display_ops.h>
@@ -930,6 +931,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		goto end;
 	}
 
+	panel_notify(PANEL_EVENT_PRE_DISPLAY_ON, pinfo);
+
 	on_cmds = &ctrl->on_cmds;
 
 	if ((pinfo->mipi.dms_mode == DYNAMIC_MODE_SWITCH_IMMEDIATE) &&
@@ -967,6 +970,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		} else
 			panel_recovery_retry = 0;
 	}
+
+	panel_notify(PANEL_EVENT_DISPLAY_ON, pinfo);
+
 end:
 	if (pinfo->forced_tx_mode_ftr_enabled)
 		mdss_dsi_panel_forced_tx_mode_set(pinfo, true);
@@ -1049,6 +1055,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
+	panel_notify(PANEL_EVENT_PRE_DISPLAY_OFF, pinfo);
+
 	if (pinfo->forced_tx_mode_ftr_enabled)
 		mdss_dsi_panel_forced_tx_mode_set(pinfo, false);
 
@@ -1059,6 +1067,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		mdss_dba_utils_video_off(pinfo->dba_data);
 		mdss_dba_utils_hdcp_enable(pinfo->dba_data, false);
 	}
+
+	panel_notify(PANEL_EVENT_DISPLAY_OFF, pinfo);
 
 end:
 	pr_debug("%s:-\n", __func__);
