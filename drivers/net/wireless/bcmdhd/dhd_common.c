@@ -1644,7 +1644,7 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 #endif /* SHOW_EVENTS */
 
 int
-wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, uint16 pktlen,
+wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, size_t pktlen,
 	wl_event_msg_t *event, void **data_ptr, void *raw_event)
 {
 	/* check whether packet is a BRCM event pkt */
@@ -1652,7 +1652,7 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, uint16 pktlen,
 	uint8 *event_data;
 	uint32 type, status, datalen;
 	uint16 flags;
-	int evlen;
+	uint evlen;
 	int hostidx;
 
 	if (pktlen < sizeof(bcm_event_t))

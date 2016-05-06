@@ -748,7 +748,7 @@ static int dhd_toe_get(dhd_info_t *dhd, int idx, uint32 *toe_ol);
 static int dhd_toe_set(dhd_info_t *dhd, int idx, uint32 toe_ol);
 #endif /* TOE */
 
-static int dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata, uint16 pktlen,
+static int dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata, size_t pktlen,
                              wl_event_msg_t *event_ptr, void **data_ptr);
 #ifdef DHD_UNICAST_DHCP
 static const uint8 llc_snap_hdr[SNAP_HDR_LEN] = {0xaa, 0xaa, 0x03, 0x00, 0x00, 0x00};
@@ -3082,7 +3082,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #else
 			skb->mac.raw,
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 22) */
-			len - ETHER_TYPE_LEN,
+			len > ETHER_TYPE_LEN ? len - ETHER_TYPE_LEN : 0,
 			&event,
 			&data);
 
@@ -3212,7 +3212,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 }
 
 void
-dhd_event(struct dhd_info *dhd, char *evpkt, int evlen, int ifidx)
+dhd_event(struct dhd_info *dhd, char *evpkt, uint evlen, int ifidx)
 {
 	/* Linux version has nothing to do */
 	return;
@@ -8016,7 +8016,7 @@ dhd_wlanaudio_event(dhd_info_t *dhd, int *ifidx, void *pktdata,
 }
 #endif /* CUSTOMER_HW20 && WLANAUDIO */
 static int
-dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata, uint16 pktlen,
+dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata, size_t pktlen,
 	wl_event_msg_t *event, void **data)
 {
 	int bcmerror = 0;
