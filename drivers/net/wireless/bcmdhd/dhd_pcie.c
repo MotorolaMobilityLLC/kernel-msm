@@ -841,14 +841,8 @@ dhdpcie_download_firmware(struct dhd_bus *bus, osl_t *osh)
 
 	DHD_OS_WAKE_LOCK(bus->dhd);
 
-	if (pm_runtime_get_sync(dhd_bus_to_dev(bus)) >= 0) {
 
-		ret = _dhdpcie_download_firmware(bus);
-
-		pm_runtime_mark_last_busy(dhd_bus_to_dev(bus));
-		pm_runtime_put_autosuspend(dhd_bus_to_dev(bus));
-
-	}
+	ret = _dhdpcie_download_firmware(bus);
 
 	DHD_OS_WAKE_UNLOCK(bus->dhd);
 	return ret;
@@ -1808,14 +1802,14 @@ toss:
 
 
 void
-dhd_bus_stop_queue(struct dhd_bus *bus)
+dhd_netif_stop_queue(struct dhd_bus *bus)
 {
 	dhd_txflowcontrol(bus->dhd, ALL_INTERFACES, ON);
 	bus->bus_flowctrl = TRUE;
 }
 
 void
-dhd_bus_start_queue(struct dhd_bus *bus)
+dhd_netif_start_queue(struct dhd_bus *bus)
 {
 	dhd_txflowcontrol(bus->dhd, ALL_INTERFACES, OFF);
 	bus->bus_flowctrl = TRUE;
@@ -3689,6 +3683,7 @@ dhdpcie_handle_mb_data(dhd_bus_t *bus)
 		bus->dhd->busstate = DHD_BUS_DOWN;
 		dhd_os_check_hang(bus->dhd, 0, -ETIMEDOUT);
 #endif /* MSM_PCIE_LINKDOWN_RECOVERY */
+		return;
 	}
 	DHD_INFO(("D2H_MB_DATA: 0x%04x\n", d2h_mb_data));
 	if (d2h_mb_data & D2H_DEV_DS_ENTER_REQ)  {
