@@ -707,6 +707,8 @@ static int dwc3_ep_req_list_show(struct seq_file *s, void *unused)
 
 	spin_lock_irqsave(&dwc->lock, flags);
 	dep = dwc->eps[ep_num];
+	if (!dep)
+		goto out;
 
 	seq_printf(s, "%s request list: flags: 0x%x\n", dep->name, dep->flags);
 	list_for_each(ptr, &dep->request_list) {
@@ -717,6 +719,7 @@ static int dwc3_ep_req_list_show(struct seq_file *s, void *unused)
 			req, req->request.length, req->request.status,
 			&req->request.dma, req->request.num_sgs);
 	}
+out:
 	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	return 0;
@@ -745,6 +748,8 @@ static int dwc3_ep_queued_req_show(struct seq_file *s, void *unused)
 
 	spin_lock_irqsave(&dwc->lock, flags);
 	dep = dwc->eps[ep_num];
+	if (!dep)
+		goto out;
 
 	seq_printf(s, "%s queued reqs to HW: flags:0x%x\n", dep->name,
 								dep->flags);
@@ -756,6 +761,7 @@ static int dwc3_ep_queued_req_show(struct seq_file *s, void *unused)
 			req, req->request.length, req->request.status,
 			&req->request.dma, req->request.num_sgs, req->trb);
 	}
+out:
 	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	return 0;
@@ -787,7 +793,7 @@ static int dwc3_ep_trbs_show(struct seq_file *s, void *unused)
 
 	spin_lock_irqsave(&dwc->lock, flags);
 	dep = dwc->eps[ep_num];
-	if (!dep->trb_pool) {
+	if (!dep || !dep->trb_pool) {
 		spin_unlock_irqrestore(&dwc->lock, flags);
 		return 0;
 	}
@@ -1114,6 +1120,8 @@ static ssize_t dwc3_store_int_events(struct file *file,
 	ts = current_kernel_time();
 	for (i = 0; i < DWC3_ENDPOINTS_NUM; i++) {
 		dep = dwc->eps[i];
+		if (!dep)
+			continue;
 		memset(&dep->dbg_ep_events, 0, sizeof(dep->dbg_ep_events));
 		memset(&dep->dbg_ep_events_diff, 0, sizeof(dep->dbg_ep_events));
 		dep->dbg_ep_events_ts = ts;
