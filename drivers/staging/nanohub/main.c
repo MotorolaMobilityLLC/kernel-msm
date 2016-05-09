@@ -1053,10 +1053,10 @@ static void nanohub_process_buffer(struct nanohub_data *data,
 	nanohub_io_put_buf(io, *buf);
 
 	*buf = NULL;
-	/* (for wakeup interrupts): hold a wake lock for 10ms so the sensor hal
+	/* (for wakeup interrupts): hold a wake lock for 250ms so the sensor hal
 	 * has time to grab its own wake lock */
 	if (wakeup)
-		wake_lock_timeout(&data->wakelock_read, msecs_to_jiffies(10));
+		wake_lock_timeout(&data->wakelock_read, msecs_to_jiffies(250));
 	release_wakeup(data);
 }
 
