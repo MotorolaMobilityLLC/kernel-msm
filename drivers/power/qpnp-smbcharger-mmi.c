@@ -229,6 +229,7 @@ struct smbchg_chip {
 	struct ilim_map			wipower_pt;
 	struct ilim_map			wipower_div2;
 	struct qpnp_vadc_chip		*vadc_dev;
+	struct qpnp_vadc_chip		*usb_vadc_dev;
 	bool				wipower_dyn_icl_avail;
 	struct ilim_entry		current_ilim;
 	struct mutex			wipower_config;
@@ -1654,10 +1655,93 @@ static void use_pmi8996_tables(struct smbchg_chip *chip)
 	chip->tables.rchg_thr_mv = 150;
 }
 
+#define USBIN_TOLER 500
+int smbchg_check_usbc_voltage(struct smbchg_chip *chip, int *volt_mv)
+{
+	union power_supply_propval ret = {0, };
+	int rc = -EINVAL;
+	struct qpnp_vadc_result results;
+
+	if (!chip->usbc_psy || !chip->usbc_online)
+		return rc;
+
+	if (!chip->usbc_psy->get_property)
+		return rc;
+
+	rc = chip->usbc_psy->get_property(chip->usbc_psy,
+					  POWER_SUPPLY_PROP_VOLTAGE_NOW,
+					  &ret);
+	if (rc < 0) {
+		SMB_ERR(chip, "Err could not get USBC Voltage!\n");
+		return rc;
+	}
+
+	ret.intval /= 1000;
+
+	rc = qpnp_vadc_read(chip->usb_vadc_dev, USBIN, &results);
+	if (rc) {
+		SMB_ERR(chip, "Unable to read usbin rc=%d\n", rc);
+		return rc;
+	}
+
+	results.physical /= 1000;
+
+	if ((results.physical > (ret.intval - USBIN_TOLER)) &&
+	    (results.physical < (ret.intval + USBIN_TOLER)))
+		*volt_mv = ret.intval;
+	else
+		*volt_mv = results.physical;
+
+	return 0;
+}
+
+#define USBC_5V_MODE 5000
+#define USBC_9V_MODE 9000
+int smbchg_set_usbc_voltage(struct smbchg_chip *chip, int volt_mv)
+{
+	union power_supply_propval ret = {0, };
+	int rc = -EINVAL;
+	int volt_mv_now;
+
+	if (!chip->usbc_psy)
+		return rc;
+
+	if (!chip->usbc_psy->set_property)
+		return rc;
+
+	if (smbchg_check_usbc_voltage(chip, &volt_mv_now) < 0)
+		return rc;
+
+	if (volt_mv_now == volt_mv)
+		return 0;
+
+	ret.intval = volt_mv * 1000;
+
+	rc = chip->usbc_psy->set_property(chip->usbc_psy,
+					  POWER_SUPPLY_PROP_VOLTAGE_MAX,
+					  &ret);
+	if (rc < 0) {
+		SMB_ERR(chip, "Err could not set USBC Voltage!\n");
+		return rc;
+	}
+
+	return 0;
+}
+
+#define MAX_INPUT_PWR_UW 18000000
 static int calc_thermal_limited_current(struct smbchg_chip *chip,
 						int current_ma)
 {
-	int therm_ma;
+	int therm_ma, usbc_volt_mv, max_current_ma;
+
+	if (!smbchg_check_usbc_voltage(chip, &usbc_volt_mv) &&
+	    usbc_volt_mv)
+		max_current_ma = MAX_INPUT_PWR_UW / usbc_volt_mv;
+	else
+		max_current_ma = current_ma;
+
+	if (max_current_ma > current_ma)
+		max_current_ma = current_ma;
 
 	if (chip->therm_lvl_sel > 0
 			&& chip->therm_lvl_sel < chip->thermal_levels) {
@@ -1667,7 +1751,7 @@ static int calc_thermal_limited_current(struct smbchg_chip *chip,
 		 */
 		therm_ma =
 			(int)chip->thermal_mitigation[chip->therm_lvl_sel].smb;
-		if (therm_ma < current_ma) {
+		if (therm_ma < max_current_ma) {
 			SMB_DBG(chip,
 				"Limiting current due to thermal: %d mA",
 				therm_ma);
@@ -1675,7 +1759,7 @@ static int calc_thermal_limited_current(struct smbchg_chip *chip,
 		}
 	}
 
-	return current_ma;
+	return max_current_ma;
 }
 
 static int calc_dc_thermal_limited_current(struct smbchg_chip *chip,
@@ -3987,6 +4071,7 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 {
 	int rc, hvdcp_en = 0;
 	char ability = 0;
+	int usbc_volt_mv = 0;
 	union power_supply_propval ret = {0, };
 	struct power_supply *eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
@@ -4011,6 +4096,12 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 		if (rc < 0)
 			SMB_ERR(chip,
 				"Couldn't set HVDCP rc=%d\n", rc);
+
+		rc = smbchg_set_usbc_voltage(chip, USBC_9V_MODE);
+		if (rc < 0)
+			SMB_ERR(chip,
+				"Couldn't set 9V USBC Voltage rc=%d\n", rc);
+
 		chip->ebchg_state = EB_DISCONN;
 		return;
 	}
@@ -4046,6 +4137,17 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 			return;
 		}
 
+		rc = smbchg_set_usbc_voltage(chip, USBC_5V_MODE);
+		if (rc < 0)
+			SMB_ERR(chip,
+				"Couldn't set 5V USBC Voltage rc=%d\n", rc);
+		msleep(500);
+
+		if (smbchg_check_usbc_voltage(chip, &usbc_volt_mv))
+			return;
+		if (usbc_volt_mv > (USBC_5V_MODE + USBIN_TOLER))
+			return;
+
 		ret.intval = POWER_SUPPLY_PTP_CURRENT_FROM_PHONE;
 		rc = eb_pwr_psy->set_property(eb_pwr_psy,
 					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
@@ -4079,6 +4181,12 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 			if (rc < 0)
 				SMB_ERR(chip,
 					"Couldn't set HVDCP rc=%d\n", rc);
+
+			rc = smbchg_set_usbc_voltage(chip, USBC_9V_MODE);
+			if (rc < 0)
+				SMB_ERR(chip,
+					"Couldn't set 9V USBC Voltage rc=%d\n",
+					rc);
 		}
 		break;
 	case EB_OFF:
@@ -4099,6 +4207,12 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 			if (rc < 0)
 				SMB_ERR(chip,
 					"Couldn't set  HVDCP rc=%d\n", rc);
+
+			rc = smbchg_set_usbc_voltage(chip, USBC_9V_MODE);
+			if (rc < 0)
+				SMB_ERR(chip,
+					"Couldn't set 9V USBC Voltage rc=%d\n",
+					rc);
 		}
 
 		break;
@@ -4805,6 +4919,12 @@ static int smbchg_external_otg_regulator_enable(struct regulator_dev *rdev)
 	if (rc < 0) {
 		SMB_ERR(chip, "Couldn't disable HVDCP rc=%d\n", rc);
 		return rc;
+	}
+
+	rc = smbchg_set_usbc_voltage(chip, USBC_5V_MODE);
+	if (rc < 0) {
+		SMB_ERR(chip,
+			"Couldn't set 5V USBC Voltage rc=%d\n", rc);
 	}
 
 	rc = smbchg_sec_masked_write(chip,
@@ -5545,6 +5665,7 @@ static void usb_insertion_work(struct work_struct *work)
 		container_of(work, struct smbchg_chip,
 			     usb_insertion_work.work);
 	int rc;
+	int usbc_volt;
 	int hvdcp_en = 0;
 
 	/* If USB C is not online, bail out unless we are in factory mode */
@@ -5562,6 +5683,16 @@ static void usb_insertion_work(struct work_struct *work)
 	}
 	if (chip->enable_hvdcp_9v)
 		hvdcp_en = HVDCP_EN_BIT;
+
+	if ((chip->ebchg_state != EB_SINK) && (chip->ebchg_state != EB_SRC))
+		usbc_volt = USBC_9V_MODE;
+	else
+		usbc_volt = USBC_5V_MODE;
+
+	rc = smbchg_set_usbc_voltage(chip, usbc_volt);
+	if (rc < 0)
+		SMB_ERR(chip,
+			"Couldn't set USBC Voltage rc=%d\n", rc);
 
 	if (chip->cl_usbc >= 3000)
 		chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_TURBO;
@@ -5605,6 +5736,12 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	if (rc < 0)
 		SMB_ERR(chip,
 			"Couldn't disable HVDCP rc=%d\n", rc);
+
+	rc = smbchg_set_usbc_voltage(chip, USBC_5V_MODE);
+	if (rc < 0)
+		SMB_ERR(chip,
+			"Couldn't set 5V USBC Voltage rc=%d\n", rc);
+
 	rc = smbchg_sec_masked_write(chip, chip->usb_chgpth_base + APSD_CFG,
 				     APSD_EN_BIT, 0);
 	if (rc < 0)
@@ -6296,6 +6433,11 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	if (rc < 0)
 		SMB_ERR(chip,
 			"Couldn't disable HVDCP rc=%d\n", rc);
+
+	rc = smbchg_set_usbc_voltage(chip, USBC_5V_MODE);
+	if (rc < 0)
+		SMB_ERR(chip,
+			"Couldn't set 5V USBC Voltage rc=%d\n", rc);
 
 	rc = smbchg_sec_masked_write(chip,
 			chip->dc_chgpth_base + AICL_WL_SEL_CFG,
@@ -10000,6 +10142,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		break;
 	case STEP_NONE:
 		index = STEP_END(chip->stepchg_num_steps);
+		smbchg_set_thermal_limited_usb_current_max(chip,
+						chip->usb_target_current_ma);
 		chip->vfloat_mv = chip->stepchg_steps[index].max_mv;
 		chip->vfloat_parallel_mv = chip->stepchg_max_voltage_mv;
 		set_max_allowed_current_ma(chip,
@@ -10277,7 +10421,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	int rc;
 	struct smbchg_chip *chip;
 	struct power_supply *usb_psy, *usbc_psy;
-	struct qpnp_vadc_chip *vadc_dev;
+	struct qpnp_vadc_chip *vadc_dev, *usb_vadc_dev;
 
 	usb_psy = power_supply_get_by_name("usb");
 	if (!usb_psy) {
@@ -10298,6 +10442,17 @@ static int smbchg_probe(struct spmi_device *spmi)
 			if (rc != -EPROBE_DEFER)
 				dev_err(&spmi->dev, "Couldn't get vadc rc=%d\n",
 						rc);
+			return rc;
+		}
+	}
+
+	if (of_find_property(spmi->dev.of_node, "qcom,usbin-vadc", NULL)) {
+		usb_vadc_dev = qpnp_get_vadc(&spmi->dev, "usbin");
+		if (IS_ERR(usb_vadc_dev)) {
+			rc = PTR_ERR(usb_vadc_dev);
+			if (rc != -EPROBE_DEFER)
+				dev_err(&spmi->dev,
+					"Couldn't get usb vadc rc=%d\n", rc);
 			return rc;
 		}
 	}
@@ -10343,6 +10498,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 			  usb_removal_work);
 	INIT_DELAYED_WORK(&chip->warn_irq_work, warn_irq_w);
 	chip->vadc_dev = vadc_dev;
+	chip->usb_vadc_dev = usb_vadc_dev;
 	chip->spmi = spmi;
 	chip->dev = &spmi->dev;
 	chip->usb_psy = usb_psy;
