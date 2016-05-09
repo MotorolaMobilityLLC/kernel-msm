@@ -113,6 +113,9 @@ static FSC_U8 alternateModes = 1;	// Set to 1 to enable alternate modes
 static FSC_U8 alternateModes = 0;	// Set to 1 to enable alternate modes
 #endif
 FSC_U32 gRequestOpCurrent = 400;/*set default 4000mA*/
+FSC_U32 gRequestOpVoltage = 100;/*set default 100*50mv*/
+#define VOLTAGE_50MV 50000
+#define VOLTAGE_9V 9000000
 static regMask_t Mask;
 static regMaskAdv_t MaskAdv;
 static FSC_U8 bc_lvl;
@@ -121,6 +124,25 @@ int fusb_power_supply_set_property(struct power_supply *psy,
 				 const union power_supply_propval *val)
 {
 	switch (prop) {
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+	/*voltage max shall be in (0~9V) range*/
+		if (val->intval > 0 &&
+			val->intval <= VOLTAGE_9V) {
+			SinkRequestMaxVoltage = val->intval/VOLTAGE_50MV;
+			/*Only for Non-Moto Charger*/
+			if ((ConnState == AttachedSink) &&
+				(!gChargerAuthenticated)) {
+				/*Wait 300ms for PD Contract*/
+				if (!PolicyHasContract)
+					platform_delay_10us(
+					SLEEP_DELAY*300);
+				if (PolicyHasContract &&
+					!gChargerAuthenticated)
+					core_send_sink_request_voltage();
+			}
+			return 0;
+		} else
+			return -EINVAL;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		gRequestOpCurrent = val->intval/10000;
 		core_send_sink_request();
@@ -158,6 +180,7 @@ int fusb_power_supply_is_writeable(struct power_supply *psy,
 	int rc;
 
 	switch (prop) {
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_DISABLE_USB:
 	case POWER_SUPPLY_PROP_MASK_INT:
@@ -230,6 +253,15 @@ int fusb_power_supply_get_property(struct power_supply *psy,
 			val->intval = gChargerOpCurrent*10000;
 		else
 			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		val->intval = SinkRequestMaxVoltage*VOLTAGE_50MV;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		if (ConnState != AttachedSink)
+			val->intval = 0;
+		else
+			val->intval = gRequestOpVoltage*VOLTAGE_50MV;
 		break;
 	default:
 		return -EINVAL;
@@ -1320,6 +1352,7 @@ void SetStateUnattached(void)
 	power_supply_changed(&usbc_psy);
 	platform_toggleAudioSwitch(fsa_lpm);
 	gChargerAuthenticated = FALSE;
+	gRequestOpVoltage = 100; /*Reset to default 100*50mv*/
 #ifdef FSC_DEBUG
 	WriteStateLog(&TypeCStateLog, ConnState, Timer_tms, Timer_S);
 #endif // FSC_DEBUG
