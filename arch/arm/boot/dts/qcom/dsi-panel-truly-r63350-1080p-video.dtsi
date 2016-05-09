@@ -134,8 +134,12 @@
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 32 00 02
 			28 00
-			05 01 00 00 10 00 02
+			05 01 00 00 78 00 02
 			10 00
+			29 01 00 00 00 00 02
+			B0 00
+			29 01 00 00 00 00 02
+			B1 01
 		];
 
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
