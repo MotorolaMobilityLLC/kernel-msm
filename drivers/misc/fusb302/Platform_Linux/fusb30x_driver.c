@@ -58,6 +58,8 @@ enum power_supply_property fusb_power_supply_props[] = {
 	POWER_SUPPLY_PROP_WAKEUP,
 	POWER_SUPPLY_PROP_MASK_INT,
 	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
+	POWER_SUPPLY_PROP_VOLTAGE_MAX,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
 
 static enum power_supply_property switch_power_supply_props[] = {
