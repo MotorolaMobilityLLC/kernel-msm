@@ -1060,6 +1060,10 @@
 	qcom,mdss_wb_panel {
 		status = "disabled";
 	};
+
+	dsi_mod_display_driver: dsi_mod_display_driver {
+		compatible = "mmi,dsi_mod_display";
+	};
 };
 
 &spi_3 { /* BLSP1 QUP3 */
@@ -1442,10 +1446,24 @@
         regulator-always-on;
 };
 
+&pm8994_l11 {
+	regulator-min-microvolt = <1100000>;
+	regulator-max-microvolt = <1300000>;
+	qcom,init-voltage = <1250000>;
+};
+
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
+
+	mot_mod_panel: qcom,mdss_dsi_mot_mod_panel{
+		#include "dsi-panel-mot-mod-fwvga-video-common.dtsi"
+	};
+};
+
+&mdss_dsi {
+	hw-config = "dual_dsi";
 };
 
 &mdss_dsi0 {
@@ -1455,6 +1473,41 @@
 	qcom,platform-te-gpio = <&tlmm 10 0>;
 	qcom,platform-reset-gpio = <&tlmm 8 0>;
 	qcom,display-id = "primary";
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&mot_mod_panel>;
+	apba_cdsi-supply = <&pm8994_l11>;
+	qcom,pluggable;
+	qcom,bridge-index = <0>;
+};
+
+&mot_mod_panel {
+	qcom,mdss-dsi-panel-name = "mipi_mot_mod_panel";
+	qcom,bridge-name = "dsi_mod_display";
+	qcom,mdss-dsi-lane-0-state;
+	qcom,mdss-dsi-lane-1-state;
+	qcom,mdss-dsi-lane-2-state;
+	qcom,mdss-dsi-lane-3-state;
+
+	/* These power supplies are for DBA panel */
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "apba_cdsi";
+			qcom,supply-min-voltage = <1100000>;
+			qcom,supply-max-voltage = <1300000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <1>;
+		};
+	};
 };
 
 &mdss_hdmi_tx {
