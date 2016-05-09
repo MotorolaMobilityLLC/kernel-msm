@@ -17,20 +17,6 @@
 	qcom,board-id = <0x4D 0x81A0>;
 };
 
-/*chris over-ride sdcard hotplug cd pin*/
-&tlmm_pinmux {
-        sdhc2_cd_pin {
-               qcom,pins = <&gp 118>;
-        };
-};
-
-/*chris over-ride sdcard hotplug cd pin*/
-&sdhc_2 {
-        interrupt-map = <0 &intc 0 125 0
-                        1 &intc 0 221 0
-                        2 &msm_gpio 118 0>;
-        cd-gpios = <&msm_gpio 118 0x1>;
-};
 &i2c_4 { /* BLSP1 QUP4 on dvt1a/dvt1b */
 	elan@49 {
 		epl,wait_time = <0x09>;

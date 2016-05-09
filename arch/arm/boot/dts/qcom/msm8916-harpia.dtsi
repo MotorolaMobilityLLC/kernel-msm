@@ -181,6 +181,16 @@
 			bias-pull-up;		/* PULL UP*/
 		};
 	};
+	sdhc2_cd_pin {
+		qcom,pins = <&gp 118>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "cd-gpio";
+		sdc2_cd_on: cd_on {
+			/delete-property/ bias-pull-up;
+			bias-disable;
+		};
+	};
 };
 
 &spi_0 {
@@ -475,4 +485,11 @@
 			label = "venus_qseecom_mem";
 		};
 	};
+};
+
+&sdhc_2 {
+	interrupt-map = <0 &intc 0 125 0
+		1 &intc 0 221 0
+		2 &msm_gpio 118 0>;
+	cd-gpios = <&msm_gpio 118 0x1>;
 };
