@@ -67,7 +67,7 @@ enum qca_wlan_vendor_attr_memory_dump {
 #define FW_DRAM_LOCATION    0x00400000
 #define FW_MEM_DUMP_REQ_ID  1
 #define FW_MEM_DUMP_NUM_SEG 1
-#define MEMDUMP_COMPLETION_TIME_MS 5000
+#define MEMDUMP_COMPLETION_TIME_MS 800
 
 int memdump_init(void);
 void memdump_deinit(void);
