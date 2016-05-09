@@ -185,6 +185,7 @@ static int   enable_dfs_chan_scan = -1;
 
 #ifndef MODULE
 static int wlan_hdd_inited;
+static char fwpath_mode_local[BUF_LEN];
 #endif
 
 /*
@@ -9043,8 +9044,18 @@ static inline int wlan_hdd_stop_can_enter_lowpower(hdd_adapter_t *adapter)
  */
 static void kickstart_driver_handler(struct work_struct *work)
 {
+	bool ready;
+
+	ready = vos_is_load_unload_ready(__func__);
+	if (!ready) {
+		VOS_ASSERT(0);
+		return;
+	}
+
+	vos_load_unload_protect(__func__);
 	hdd_driver_exit();
 	wlan_hdd_inited = 0;
+	vos_load_unload_unprotect(__func__);
 }
 
 static DECLARE_WORK(kickstart_driver_work, kickstart_driver_handler);
@@ -9052,6 +9063,7 @@ static DECLARE_WORK(kickstart_driver_work, kickstart_driver_handler);
 /**
  * kickstart_driver() - Initialize and Clean-up driver
  * @load:	True: initialize, False: Clean-up driver
+ * @mode_change: tell if last mode and current mode is same or not
  *
  * Delayed driver initialization when driver is statically linked and Clean-up
  * when all the interfaces are down or any other condition which requires to
@@ -9063,12 +9075,13 @@ static DECLARE_WORK(kickstart_driver_work, kickstart_driver_handler);
  *
  * Return: 0 on success, non zero on failure
  */
-static int kickstart_driver(bool load)
+static int kickstart_driver(bool load, bool mode_change)
 {
 	int ret_status;
 
-	pr_info("%s: load: %d wlan_hdd_inited: %d, caller: %pf\n", __func__,
-			load, wlan_hdd_inited, (void *)_RET_IP_);
+	pr_info("%s: load: %d wlan_hdd_inited: %d, mode_change: %d caller: %pf\n",
+			 __func__, load, wlan_hdd_inited,
+			mode_change, (void *)_RET_IP_);
 
 	/* Make sure unload and load are synchronized */
 	flush_work(&kickstart_driver_work);
@@ -9089,12 +9102,20 @@ static int kickstart_driver(bool load)
 		return ret_status;
 	}
 
-	hdd_driver_exit();
+	if (load && wlan_hdd_inited && !mode_change) {
+		/* Error condition */
+		hdd_driver_exit();
+		wlan_hdd_inited = 0;
+		ret_status = -EINVAL;
+	} else {
+		hdd_driver_exit();
 
-	msleep(200);
+		msleep(200);
 
-	ret_status = hdd_driver_init();
-	wlan_hdd_inited = ret_status ? 0 : 1;
+		ret_status = hdd_driver_init();
+		wlan_hdd_inited = ret_status ? 0 : 1;
+	}
+
 	return ret_status;
 }
 
@@ -9107,11 +9128,22 @@ static int kickstart_driver(bool load)
  */
 static inline void wlan_hdd_stop_enter_lowpower(hdd_context_t *hdd_ctx)
 {
+	bool ready;
+
 	/* Do not clean up n/w ifaces if we are in DRIVER STOP phase or else
 	 * DRIVER START will fail and Wi-Fi will not resume successfully
 	 */
-	if (hdd_ctx && !hdd_ctx->driver_being_stopped)
-		kickstart_driver(false);
+	if (hdd_ctx && !hdd_ctx->driver_being_stopped) {
+		ready = vos_is_load_unload_ready(__func__);
+		if (!ready) {
+			VOS_ASSERT(0);
+			return;
+		}
+
+		vos_load_unload_protect(__func__);
+		kickstart_driver(false, false);
+		vos_load_unload_unprotect(__func__);
+	}
 }
 
 /**
@@ -15532,12 +15564,37 @@ static int con_mode_handler(const char *kmessage,
 static int fwpath_changed_handler(const char *kmessage,
                                   struct kernel_param *kp)
 {
-   int ret;
+	int ret;
+	bool mode_change;
 
-   ret = param_set_copystring(kmessage, kp);
-   if (0 == ret)
-      ret = kickstart_driver(true);
-   return ret;
+	ret = param_set_copystring(kmessage, kp);
+
+	if (!ret) {
+		bool ready;
+
+		ret = strncmp(fwpath_mode_local, kmessage , 3);
+		mode_change = ret ? true : false;
+
+
+		pr_info("%s : new_mode : %s, present_mode : %s\n", __func__,
+			kmessage, fwpath_mode_local);
+
+		strlcpy(fwpath_mode_local, kmessage,
+			sizeof(fwpath_mode_local));
+
+		ready = vos_is_load_unload_ready(__func__);
+
+		if (!ready) {
+			VOS_ASSERT(0);
+			return -EINVAL;
+		}
+
+		vos_load_unload_protect(__func__);
+		ret = kickstart_driver(true, mode_change);
+		vos_load_unload_unprotect(__func__);
+	}
+
+	return ret;
 }
 
 #if ! defined(QCA_WIFI_FTM)
@@ -15560,7 +15617,7 @@ static int con_mode_handler(const char *kmessage, struct kernel_param *kp)
 
    ret = param_set_int(kmessage, kp);
    if (0 == ret)
-      ret = kickstart_driver(true);
+      ret = kickstart_driver(true, false);
    return ret;
 }
 #endif

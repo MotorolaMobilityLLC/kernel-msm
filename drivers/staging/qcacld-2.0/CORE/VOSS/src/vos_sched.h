@@ -634,6 +634,10 @@ void vos_ssr_protect_init(void);
 void vos_ssr_protect(const char *caller_func);
 void vos_ssr_unprotect(const char *caller_func);
 bool vos_is_ssr_ready(const char *caller_func);
+
+void vos_load_unload_protect(const char *caller_func);
+void vos_load_unload_unprotect(const char *caller_func);
+bool vos_is_load_unload_ready(const char *caller_func);
 int vos_get_gfp_flags(void);
 void vos_wd_reset_thread_stuck_count(int thread_id);
 bool vos_is_wd_thread(int thread_id);

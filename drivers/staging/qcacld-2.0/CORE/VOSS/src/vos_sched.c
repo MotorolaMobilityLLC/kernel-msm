@@ -67,16 +67,19 @@
 #define VOS_SCHED_THREAD_HEART_BEAT    INFINITE
 /* Milli seconds to delay SSR thread when an Entry point is Active */
 #define SSR_WAIT_SLEEP_TIME 200
+#define LOAD_UNLOAD_WAIT_SLEEP_TIME 200
 /* MAX iteration count to wait for Entry point to exit before
  * we proceed with SSR in WD Thread
  */
 #define MAX_SSR_WAIT_ITERATIONS 200
+#define MAX_LOAD_UNLOAD_WAIT_ITERATIONS 50
 #define MAX_SSR_PROTECT_LOG (16)
 
 /* Timer value for detecting thread stuck issues */
 #define THREAD_STUCK_TIMER_VAL 5000 /* 5 seconds */
 
 static atomic_t ssr_protect_entry_count;
+static atomic_t load_unload_protect_count;
 
 struct ssr_protect {
    const char* func;
@@ -2015,6 +2018,72 @@ static void vos_print_external_threads(void)
     spin_unlock_irqrestore(&ssr_protect_lock, irq_flags);
 }
 
+
+/**
+ * vos_is_load_unload_ready() - check load/unload ready
+ * @caller_func: Pointer to caller function
+ *
+ * This function will check if calling execution can call
+ * kickstart driver for load/unload
+ *
+ * Return: true if ready else false.
+ */
+bool vos_is_load_unload_ready(const char *caller_func)
+{
+	int count = MAX_LOAD_UNLOAD_WAIT_ITERATIONS;
+
+	while (count) {
+		if (!atomic_read(&load_unload_protect_count))
+			break;
+
+		if (--count) {
+			VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+				"%s: Waiting for load/unload active entry points to exit",
+				__func__);
+			msleep(LOAD_UNLOAD_WAIT_SLEEP_TIME);
+		}
+	}
+	/* at least one external thread is executing */
+	if (!count) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+			"%s : Thread stuck for load/unload", __func__);
+		return false;
+	}
+
+	VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+		"Allowing load/Unload for %s", caller_func);
+
+	return true;
+}
+
+
+/**
+ * vos_load_unload_protect () - Protect load/Unload
+ * @caller_func : Pointer to caller function
+ *
+ * This function will protect the atomic variable by incrementing
+ * its value
+ *
+ * Return: void
+ */
+
+void vos_load_unload_protect(const char *caller_func)
+{
+	atomic_inc(&load_unload_protect_count);
+}
+
+/**
+ * vos_load_unload_unprotect () - Unprotect load/unload
+ * @caller_func : Pointer to caller_func
+ *
+ * This function will decrement the atomic variable value
+ *
+ * Return: void
+ */
+void vos_load_unload_unprotect(const char *caller_func)
+{
+	atomic_dec(&load_unload_protect_count);
+}
 
 /**
   @brief vos_ssr_protect()
