@@ -14666,6 +14666,10 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    rtnl_lock_enable = FALSE;
 #endif
 
+   /* Initialize the RoC Request queue and work. */
+   hdd_list_init((&pHddCtx->hdd_roc_req_q), MAX_ROC_REQ_QUEUE_ENTRY);
+   vos_init_delayed_work(&pHddCtx->rocReqWork, wlan_hdd_roc_request_dequeue);
+
    if (pHddCtx->cfg_ini->dot11p_mode == WLAN_HDD_11P_STANDALONE) {
        /* Create only 802.11p interface */
       pAdapter = hdd_open_adapter(pHddCtx, WLAN_HDD_OCB,
@@ -15073,10 +15077,6 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
                                     hdd_get_bpf_offload_cb);
    if (eHAL_STATUS_SUCCESS != hal_status)
        hddLog(LOGE, FL("set bpf offload callback failed"));
-
-   /* Initialize the RoC Request queue and work. */
-   hdd_list_init((&pHddCtx->hdd_roc_req_q), MAX_ROC_REQ_QUEUE_ENTRY);
-   vos_init_delayed_work(&pHddCtx->rocReqWork, wlan_hdd_roc_request_dequeue);
 
    wlan_hdd_dcc_register_for_dcc_stats_event(pHddCtx);
 
