@@ -29,6 +29,7 @@ void core_set_sink_req(FSC_U8 * buf);
 void core_get_sink_req(FSC_U8 * buf);
 void core_send_hard_reset(void);
 void core_send_sink_request(void);
+void core_send_sink_request_voltage(void);
 void core_process_pd_buffer_read(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
 void core_process_typec_pd_status(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
 void core_process_typec_pd_control(FSC_U8 * InBuffer, FSC_U8 * OutBuffer);
