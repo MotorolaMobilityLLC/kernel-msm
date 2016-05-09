@@ -166,6 +166,35 @@ void core_send_hard_reset(void)
 	PDTxStatus = txIdle;
 	StateMachineTypeC();
 }
+/*Re-evaluate the source capability based on
+* new voltage max from charging driver
+*/
+void core_send_sink_request_voltage(void)
+{
+	static int timeout_count;
+
+	atomic_set(&coreReqCtx.pending, 1);
+	core_wakeup_statemachine();
+	PolicySubIndex = 0;
+	PDTxStatus = txIdle;
+	PolicyStateTimer = 1000;
+	PolicyState = peSinkReady;
+	PolicySinkEvaluateCaps();
+	PolicySinkSelectCapability();
+	ProtocolIdle();
+	if (!wait_for_completion_timeout(&coreReqCtx.complete,
+			msecs_to_jiffies(1000))) {
+		pr_err("core_send_sink_request_voltage timeout!\n");
+		timeout_count++;
+		if (timeout_count > 3) {
+			timeout_count = 0;
+			core_send_hard_reset();
+			platform_delay_10us(SLEEP_DELAY*500);
+		}
+	} else
+		timeout_count = 0;
+	atomic_set(&coreReqCtx.pending, 0);
+}
 void core_send_sink_request(void)
 {
 	static int timeout_count;
