@@ -215,12 +215,12 @@ struct avcs_cmd_deregister_topologies {
 	/* Size in bytes of the valid data in the topology buffer. */
 
 	uint32_t                  mode;
-	/* 0: Deregister selected topologies
-	 * 1: Deregister all topologies
+	/* 1: Deregister selected topologies
+	 * 2: Deregister all topologies
 	 */
 } __packed;
 
-#define AVCS_MODE_DEREGISTER_ALL_CUSTOM_TOPOLOGIES	1
+#define AVCS_MODE_DEREGISTER_ALL_CUSTOM_TOPOLOGIES	2
 
 
 int32_t core_set_license(uint32_t key, uint32_t module_id);
