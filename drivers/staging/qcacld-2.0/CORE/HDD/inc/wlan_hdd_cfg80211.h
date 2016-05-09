@@ -109,7 +109,7 @@
 #endif
 
 
-#define MAX_CHANNEL (MAX_2_4GHZ_CHANNEL + NUM_5GHZ_CHANNELS)
+#define MAX_CHANNEL (NUM_2_4GHZ_CHANNELS + NUM_5GHZ_CHANNELS)
 
 typedef struct {
    u8 element_id;
