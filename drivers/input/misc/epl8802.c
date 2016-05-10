@@ -1188,6 +1188,13 @@ void epl_sensor_enable_ps(int enable)
 		epl_sensor_I2C_Write(epld->client, 0x05,
 			epl_sensor.ps.ir_on_control | epl_sensor.ps.ir_mode |
 			epl_sensor.ps.ir_drive);
+		epl_sensor_I2C_Write(epld->client, 0x04,
+			epl_sensor.ps.rs | epl_sensor.ps.adc |
+			epl_sensor.ps.cycle);
+		epl_sensor_I2C_Write(epld->client, 0x06,
+			epl_sensor.interrupt_control |
+			epl_sensor.ps.persist |
+			epl_sensor.ps.interrupt_type);
 		mutex_unlock(&sensor_mutex);
 
 #if PS_FIRST_REPORT
