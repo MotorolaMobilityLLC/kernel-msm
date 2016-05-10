@@ -450,6 +450,17 @@ void motosh_irq_thread_func(struct kthread_work *work)
 
 			queue_index += 1;
 			break;
+		case CAMSENSORSYNC:
+			/* Sensor Sync always sends a 1 */
+			if (!resuming)
+				motosh_as_data_buffer_write(ps_motosh,
+					DT_SENSOR_SYNC, data, 1, 0, true);
+
+			dev_dbg(&ps_motosh->client->dev,
+				"Sending Camera sync, %d\n", data[0]);
+
+			queue_index += 1;
+			break;
 		case PRESSURE_DATA:
 			dev_err(&ps_motosh->client->dev, "Invalid CURRENT_PRESSURE event\n");
 
