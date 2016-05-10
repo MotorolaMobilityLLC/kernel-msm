@@ -60,6 +60,15 @@
 			<&pm8953_gpios 2 0>, /* USB_SS_SW_SEL, output-low */
 			<&pm8953_gpios 8 0>; /* USB_SS_MOD_MPHY_AP_EN, output-low */
 	};
+
+	/delete-node/ usb_otg_switch;
+
+	usb3 {
+		vbus_dwc3-supply = <&smbcharger_charger_otg>;
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ qcom,otg-fault-gpio;
+	};
 };
 
 &tlmm {
@@ -91,4 +100,8 @@
 	analogix_anx7805@72{
 		status = "disabled";
 	};
+};
+
+&pmi8950_charger {
+	/delete-node/ smbcharger_external_otg;
 };
