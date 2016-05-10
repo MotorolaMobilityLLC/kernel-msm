@@ -24,10 +24,23 @@
 	sound {
 		mot,micdet1-high-imp;
 	};
+
+	/delete-node/ usb_otg_switch;
+
+	usb3 {
+		vbus_dwc3-supply = <&smbcharger_charger_otg>;
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ qcom,otg-fault-gpio;
+	};
 };
 
 &i2c_4 {
 	motosh@43 {                /* Sensor Hub */
 		mag_orient =  <3>; /* Mag Orientation value */
 	};
+};
+
+&pmi8950_charger {
+	/delete-node/ smbcharger_external_otg;
 };
