@@ -75,13 +75,13 @@
 /* wait 10ms for self test  done */
 #define SELF_TEST_DELAY()           usleep_range(10000, 15000)
 
-#define LOW_G_INTERRUPT             REL_Z
+#define LOW_G_INTERRUPT            ABS_DISTANCE
 #define HIGH_G_INTERRUPT            REL_HWHEEL
 #define SLOP_INTERRUPT              REL_DIAL
 #define DOUBLE_TAP_INTERRUPT        REL_WHEEL
 #define SINGLE_TAP_INTERRUPT        REL_MISC
 #define ORIENT_INTERRUPT            ABS_PRESSURE
-#define FLAT_INTERRUPT              ABS_DISTANCE
+#define FLAT_INTERRUPT               REL_Z
 #define SLOW_NO_MOTION_INTERRUPT    REL_Y
 #define REL_TIME_SEC		REL_RX
 #define REL_TIME_NSEC	REL_RY
@@ -1443,8 +1443,10 @@ struct bma25x_data {
 	atomic_t flat_flag;
 	int mEnabled;
 	int flat_threshold;
+	int aod_flag;
 	int flat_up_value;
 	int flat_down_value;
+	struct delayed_work flat_work;
 #endif
 
 	int ref_count;
@@ -2166,9 +2168,6 @@ static int bma25x_set_en_flat_int(struct bma25x_data *bma25x,
 	} else {
 		err = bma25x_set_Int_Enable(client, 11, 0);/*flat*/
 		atomic_set(&bma25x->flat_flag, 0);
-		input_report_abs(bma25x->dev_interrupt,
-			FLAT_INTERRUPT, -1);
-			input_sync(bma25x->dev_interrupt);
 	}
 	return err;
 }
@@ -2222,14 +2221,31 @@ static int bma25x_set_en_no_motion_int(struct bma25x_data *bma25x,
 	return err;
 }
 
+static int bma25x_flat_update(struct bma25x_data *bma25x)
+{
+	static struct bma25xacc acc;
+
+	bma25x_read_accel_xyz(bma25x->bma25x_client,
+			bma25x->sensor_type, &acc);
+	ISR_INFO(&bma25x->bma25x_client->dev,
+		"bma25x_flat_updatez value = %d\n", acc.z);
+	if (acc.z > bma25x->flat_threshold)
+		bma25x->flat_up_value = FLATUP_GESTURE;
+	else
+		bma25x->flat_up_value = EXIT_FLATUP_GESTURE;
+	if (acc.z < (-1 * bma25x->flat_threshold))
+		bma25x->flat_down_value = FLATDOWN_GESTURE;
+	else
+		bma25x->flat_down_value = EXIT_FLATDOWN_GESTURE;
+	return 0;
+}
+
 static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 		int en)
 {
 	int err = 0;
 	int newstatus = en;
-	static struct bma25xacc acc;
 	unsigned char databuf = 0;
-
 	ISR_INFO(&bma25x->bma25x_client->dev,
 			"int_mode entry value = %x  %x\n",
 			bma25x->mEnabled, newstatus);
@@ -2241,18 +2257,7 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 		bma25x_smbus_write_byte(bma25x->bma25x_client,
 			BMA25X_MODE_CTRL_REG, &databuf);
 		usleep(5000);
-		bma25x_read_accel_xyz(bma25x->bma25x_client,
-			bma25x->sensor_type, &acc);
-		ISR_INFO(&bma25x->bma25x_client->dev,
-				"int_mode z value = %d\n", acc.z);
-		if (acc.z > bma25x->flat_threshold)
-			bma25x->flat_up_value = FLATUP_GESTURE;
-		else
-			bma25x->flat_up_value = EXIT_FLATUP_GESTURE;
-		if (acc.z < (-1 * bma25x->flat_threshold))
-			bma25x->flat_down_value = FLATDOWN_GESTURE;
-		else
-			bma25x->flat_down_value = EXIT_FLATDOWN_GESTURE;
+		bma25x_flat_update(bma25x);
 	} else if (bma25x->mEnabled && !newstatus) {
 		if (atomic_read(&bma25x->enable) == 0) {
 			databuf = 0x80;
@@ -2267,7 +2272,7 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 			!TEST_BIT(FlatUp, bma25x->mEnabled)) {
 		ISR_INFO(&bma25x->bma25x_client->dev,
 		"int_mode FlatUp value =%d\n", bma25x->flat_up_value);
-		input_report_abs(bma25x->dev_interrupt,
+		input_report_rel(bma25x->dev_interrupt,
 		FLAT_INTERRUPT, bma25x->flat_up_value);
 		input_sync(bma25x->dev_interrupt);
 	}
@@ -2275,12 +2280,13 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 			!TEST_BIT(FlatDown, bma25x->mEnabled)) {
 		ISR_INFO(&bma25x->bma25x_client->dev,
 		"int_mode FlatDown value =%d\n", bma25x->flat_down_value);
-		input_report_abs(bma25x->dev_interrupt,
+		input_report_rel(bma25x->dev_interrupt,
 		FLAT_INTERRUPT, bma25x->flat_down_value);
 		input_sync(bma25x->dev_interrupt);
 	}
 	if (newstatus) {
-		if (abs(acc.z) >  bma25x->flat_threshold)
+		if ((bma25x->flat_up_value == FLATUP_GESTURE) ||
+			(bma25x->flat_down_value == FLATDOWN_GESTURE))
 			bma25x_set_flat_hold_time(bma25x->bma25x_client, 0x00);
 		else
 			bma25x_set_flat_hold_time(bma25x->bma25x_client, 0x03);
@@ -2288,18 +2294,16 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 			err = bma25x_set_en_flat_int(bma25x, 1);
 	} else
 		bma25x_set_en_flat_int(bma25x, 0);
-
+	if (TEST_BIT(Motion, newstatus)) {
+			bma25x_set_Int_Enable(bma25x->bma25x_client, 11, 0);
+			bma25x->aod_flag = 1;
+	}
 	if (TEST_BIT(Motion, newstatus) &&
 			!TEST_BIT(Motion, bma25x->mEnabled))
 		err = bma25x_set_en_no_motion_int(bma25x, 1);
 	else if (!TEST_BIT(Motion, newstatus) &&
-			TEST_BIT(Motion, bma25x->mEnabled)) {
+			TEST_BIT(Motion, bma25x->mEnabled))
 		err = bma25x_set_en_no_motion_int(bma25x, 0);
-		if (1 == atomic_read(&bma25x->flat_flag))
-			input_report_abs(bma25x->dev_interrupt,
-			FLAT_INTERRUPT, -1);
-			input_sync(bma25x->dev_interrupt);
-	}
 	if (!bma25x->mEnabled && newstatus)
 		enable_irq_wake(bma25x->IRQ1);
 	bma25x->mEnabled = newstatus;
@@ -2505,7 +2509,6 @@ static ssize_t bma25x_enable_store(struct device *dev,
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	unsigned long data = 0;
-
 	if (kstrtoul(buf, 10, &data))
 		return -EINVAL;
 
@@ -2535,6 +2538,20 @@ static ssize_t bma25x_value_show(struct device *dev,
 
 	return snprintf(buf, PAGE_SIZE, "%d %d %d\n",
 			acc_value.x, acc_value.y, acc_value.z);
+}
+static ssize_t bma25x_flatdown_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int databuf = 0;
+#ifdef BMA25X_ENABLE_INT1
+	struct input_dev *input = to_input_dev(dev);
+	struct bma25x_data *bma25x = input_get_drvdata(input);
+	if (FLATDOWN_GESTURE == bma25x->flat_down_value)
+		databuf = 1;
+	else if (EXIT_FLATDOWN_GESTURE == bma25x->flat_down_value)
+		databuf = 0;
+#endif
+	return snprintf(buf, PAGE_SIZE, "%d\n", databuf);
 }
 
 static ssize_t bma25x_debug_reg_show(struct device *dev,
@@ -2644,6 +2661,8 @@ static DEVICE_ATTR(delay, S_IWUSR|S_IWGRP|S_IRUGO,
 static DEVICE_ATTR(enable, S_IWUSR|S_IWGRP|S_IRUGO,
 		bma25x_enable_show, bma25x_enable_store);
 static DEVICE_ATTR(value, S_IRUGO,  bma25x_value_show, NULL);
+static DEVICE_ATTR(flatdown, S_IWUSR|S_IRUGO,
+		bma25x_flatdown_show, NULL);
 static DEVICE_ATTR(debug_reg, S_IWUSR|S_IWGRP|S_IRUGO,
 		bma25x_debug_reg_show, bma25x_debug_reg_store);
 #ifdef BMA25X_ENABLE_INT1
@@ -2659,6 +2678,7 @@ static struct attribute *bma25x_attributes[] = {
 	&dev_attr_delay.attr,
 	&dev_attr_enable.attr,
 	&dev_attr_value.attr,
+	&dev_attr_flatdown.attr,
 	&dev_attr_debug_reg.attr,
 #ifdef BMA25X_ENABLE_INT1
 	&dev_attr_flat_threshold.attr,
@@ -2854,16 +2874,81 @@ static int bma25x_get_orient_flat_status(struct i2c_client *client, unsigned
 	return comres;
 }
 
+static void bma25x_flat_work_func(struct work_struct *work)
+{
+	struct bma25x_data *data = container_of((struct delayed_work *)work,
+		struct bma25x_data, flat_work);
+	static struct bma25xacc acc;
+	unsigned char sign_value = 0;
+	int flat_up_value = 0;
+	int flat_down_value = 0;
+	ISR_INFO(&data->bma25x_client->dev, "bma25x_flat_work_func entry\n");
+	flat_up_value = data->flat_up_value;
+	flat_down_value = data->flat_down_value;
+	bma25x_get_orient_flat_status(data->bma25x_client,
+			&sign_value);
+	ISR_INFO(&data->bma25x_client->dev,
+	"flat interrupt sign_value=%d\n", sign_value);
+	bma25x_read_accel_xyz(data->bma25x_client,
+			data->sensor_type, &acc);
+	ISR_INFO(&data->bma25x_client->dev,
+	"flat interrupt acc x,y,z=%d %d %d\n", acc.x, acc.y, acc.z);
+	if (1 == sign_value) {
+		if (acc.z > 0)
+			data->flat_up_value = FLATUP_GESTURE;
+		else
+			data->flat_up_value = EXIT_FLATUP_GESTURE;
+		if (acc.z < 0)
+			data->flat_down_value = FLATDOWN_GESTURE;
+		else
+			data->flat_down_value = EXIT_FLATDOWN_GESTURE;
+		bma25x_set_flat_hold_time(data->bma25x_client, 0x00);
+	} else {
+		data->flat_up_value = EXIT_FLATUP_GESTURE;
+		data->flat_down_value = EXIT_FLATDOWN_GESTURE;
+		bma25x_set_flat_hold_time(data->bma25x_client, 0x03);
+	}
+	if (TEST_BIT(FlatUp, data->mEnabled) &&
+		(data->flat_up_value != flat_up_value)) {
+		input_report_rel(data->dev_interrupt,
+				FLAT_INTERRUPT, data->flat_up_value);
+		input_sync(data->dev_interrupt);
+	}
+	if (TEST_BIT(FlatDown, data->mEnabled) &&
+		(data->flat_down_value != flat_down_value)) {
+		input_report_rel(data->dev_interrupt,
+				FLAT_INTERRUPT, data->flat_down_value);
+		input_sync(data->dev_interrupt);
+	}
+	if (TEST_BIT(Motion, data->mEnabled)) {
+		if ((data->flat_up_value != flat_up_value) &&
+			(flat_up_value == FLATUP_GESTURE)) {
+			dev_info(&data->bma25x_client->dev,
+				"glance exit flat up interrupt happened\n");
+			input_report_rel(data->dev_interrupt,
+					FLAT_INTERRUPT,
+					GLANCE_EXIT_FLATUP_GESTURE);
+			input_sync(data->dev_interrupt);
+		}
+		if ((data->flat_down_value != flat_down_value) &&
+			(flat_down_value == FLATDOWN_GESTURE)) {
+			dev_info(&data->bma25x_client->dev,
+				"glance exit flat down interrupt happened\n");
+			input_report_rel(data->dev_interrupt,
+					FLAT_INTERRUPT,
+					GLANCE_EXIT_FLATDOWN_GESTURE);
+			input_sync(data->dev_interrupt);
+		}
+	}
+	ISR_INFO(&data->bma25x_client->dev, "bma25x_flat_work_func finished\n");
+}
+
 static void bma25x_int1_irq_work_func(struct work_struct *work)
 {
 	struct bma25x_data *data = container_of((struct work_struct *)work,
 		struct bma25x_data, int1_irq_work);
 	unsigned char status = 0;
-	static struct bma25xacc acc;
-	unsigned char sign_value = 0;
 	unsigned char slow_data = 0;
-	int flat_up_value = 0;
-	int flat_down_value = 0;
 	bma25x_smbus_read_byte(data->bma25x_client,
 		BMA25X_STATUS1_REG, &status);
 	ISR_INFO(&data->bma25x_client->dev,
@@ -2871,84 +2956,39 @@ static void bma25x_int1_irq_work_func(struct work_struct *work)
 	if (0 == data->mEnabled) {
 		dev_info(&data->bma25x_client->dev,
 		"flat interrupt mEnabled=%d\n", data->mEnabled);
-		return;
+		goto exit;
 	}
-	if (0x80 & status) {
-		flat_up_value = data->flat_up_value;
-		flat_down_value = data->flat_down_value;
-		msleep(50);
-		bma25x_get_orient_flat_status(data->bma25x_client,
-				&sign_value);
-		ISR_INFO(&data->bma25x_client->dev,
-		"flat interrupt sign_value=%d\n", sign_value);
-		if (1 == sign_value) {
-			bma25x_read_accel_xyz(data->bma25x_client,
-				data->sensor_type, &acc);
-			ISR_INFO(&data->bma25x_client->dev,
-			"flat interrupt acc.z=%d\n", acc.z);
-			if (acc.z > 0)
-				data->flat_up_value = FLATUP_GESTURE;
-			else
-				data->flat_up_value = EXIT_FLATUP_GESTURE;
-			if (acc.z < 0)
-				data->flat_down_value = FLATDOWN_GESTURE;
-			else
-				data->flat_down_value = EXIT_FLATDOWN_GESTURE;
-			bma25x_set_flat_hold_time(data->bma25x_client, 0x00);
-		} else {
-			data->flat_up_value = EXIT_FLATUP_GESTURE;
-			data->flat_down_value = EXIT_FLATDOWN_GESTURE;
-			bma25x_set_flat_hold_time(data->bma25x_client, 0x03);
-		}
-		if (TEST_BIT(FlatUp, data->mEnabled) &&
-			(data->flat_up_value != flat_up_value)) {
-			input_report_abs(data->dev_interrupt,
-					FLAT_INTERRUPT, data->flat_up_value);
-			input_sync(data->dev_interrupt);
-		}
-		if (TEST_BIT(FlatDown, data->mEnabled) &&
-			(data->flat_down_value != flat_down_value)) {
-			input_report_abs(data->dev_interrupt,
-					FLAT_INTERRUPT, data->flat_down_value);
-			input_sync(data->dev_interrupt);
-		}
-		if (TEST_BIT(Motion, data->mEnabled)) {
-			if ((data->flat_up_value != flat_up_value) &&
-				(flat_up_value == FLATUP_GESTURE)) {
-				dev_info(&data->bma25x_client->dev,
-					"glance exit flat up interrupt happened\n");
-				input_report_abs(data->dev_interrupt,
-						FLAT_INTERRUPT,
-						GLANCE_EXIT_FLATUP_GESTURE);
-				input_sync(data->dev_interrupt);
-				return;
-			}
-			if ((data->flat_down_value != flat_down_value) &&
-				(flat_down_value == FLATDOWN_GESTURE)) {
-				dev_info(&data->bma25x_client->dev,
-					"glance exit flat down interrupt happened\n");
-				input_report_abs(data->dev_interrupt,
-						FLAT_INTERRUPT,
-						GLANCE_EXIT_FLATDOWN_GESTURE);
-				input_sync(data->dev_interrupt);
-				return;
-			}
-		}
-		flat_up_value = data->flat_up_value;
-		flat_down_value = data->flat_down_value;
-	}
-	if (0x08 & status) {
+	switch (status) {
+	case 0x80:
+		queue_delayed_work(data->data_wq,
+		&data->flat_work, msecs_to_jiffies(50));
+		break;
+	case 0x88:
+	case 0x08:
 		bma25x_smbus_read_byte(
-			data->bma25x_client, 0x18, &slow_data);
+		data->bma25x_client, 0x18, &slow_data);
 		if (TEST_BIT(3, slow_data)) {
 			dev_info(&data->bma25x_client->dev,
 				"no motion interrupt happened\n");
+			bma25x_set_Int_Enable(
+				data->bma25x_client, 12, 0);
+			bma25x_set_Int_Enable(
+				data->bma25x_client, 13, 0);
 			bma25x_set_slope_no_mot_duration(
 				data->bma25x_client, 0x00);
 			bma25x_set_slope_no_mot_threshold(
 				data->bma25x_client, 0x32);
 			bma25x_set_Int_Enable(
+				data->bma25x_client, 12, 1);
+			bma25x_set_Int_Enable(
+				data->bma25x_client, 13, 1);
+			bma25x_set_Int_Enable(
 				data->bma25x_client, 15, 0);
+			bma25x_flat_update(data);
+			bma25x_set_flat_hold_time(
+				data->bma25x_client, 0x00);
+			bma25x_set_Int_Enable(
+				data->bma25x_client, 11, 1);
 		} else {
 			dev_info(&data->bma25x_client->dev,
 				"glance slow motion interrupt happened\n");
@@ -2956,14 +2996,32 @@ static void bma25x_int1_irq_work_func(struct work_struct *work)
 				SLOW_NO_MOTION_INTERRUPT,
 				GLANCE_MOVEMENT_GESTURE);
 			input_sync(data->dev_interrupt);
-			bma25x_set_slope_no_mot_duration(
+			bma25x_set_Int_Enable(
+				data->bma25x_client, 12, 0);
+			bma25x_set_Int_Enable(
+				data->bma25x_client, 13, 0);
+			if (data->aod_flag) {
+				bma25x_set_slope_no_mot_duration(
+				data->bma25x_client, 0x01);
+				cancel_delayed_work_sync(&data->flat_work);
+				data->aod_flag = 0;
+			} else
+				bma25x_set_slope_no_mot_duration(
 				data->bma25x_client, 0x02);
 			bma25x_set_slope_no_mot_threshold(
 				data->bma25x_client, 0x09);
 			bma25x_set_Int_Enable(
+				data->bma25x_client, 12, 1);
+			bma25x_set_Int_Enable(
+				data->bma25x_client, 13, 1);
+			bma25x_set_Int_Enable(
 				data->bma25x_client, 15, 1);
 		}
+		break;
+	default:
+		break;
 	}
+exit:
 	ISR_INFO(&data->bma25x_client->dev,
 		"bma25x_int1_irq_work_func finished!!\n");
 }
@@ -2993,7 +3051,7 @@ static void bma25x_int2_irq_work_func(struct work_struct *work)
 	bma25x_smbus_read_byte(
 		data->bma25x_client, BMA25X_STATUS2_REG, &status);
 	ISR_INFO(&data->bma25x_client->dev,
-		"bma25x_int1_irq_work_func entry!!\n");
+		"bma25x_int2_irq_work_func entry!!\n");
 	if ((status&0x80) == 0x80) {
 		bma25x_report_axis_data(data, &acc);
 		input_sync(data->input);
@@ -3486,6 +3544,7 @@ static int bma25x_probe(struct i2c_client *client,
 	if (err)
 		dev_err(&client->dev,  "could not request irq\n");
 	INIT_WORK(&data->int1_irq_work, bma25x_int1_irq_work_func);
+	INIT_DELAYED_WORK(&data->flat_work, bma25x_flat_work_func);
 #endif
 #ifdef BMA25X_ENABLE_INT2
 	err = request_irq(data->IRQ2, bma25x_int2_irq_handler,
@@ -3543,7 +3602,7 @@ static int bma25x_probe(struct i2c_client *client,
 		SLOW_NO_MOTION_INTERRUPT);
 	input_set_capability(dev_interrupt, EV_ABS,
 		ORIENT_INTERRUPT);
-	input_set_capability(dev_interrupt, EV_ABS,
+	input_set_capability(dev_interrupt, EV_REL,
 		FLAT_INTERRUPT);
 	input_set_capability(dev_interrupt, EV_REL,
 		REL_INT_FLUSH);
@@ -3580,6 +3639,7 @@ static int bma25x_probe(struct i2c_client *client,
 	data->fifo_count = 0;
 #ifdef BMA25X_ENABLE_INT1
 	data->flat_threshold = 962;
+	data->aod_flag = 0;
 	data->flat_up_value = 0;
 	data->flat_down_value = 0;
 	data->mEnabled = 0;
