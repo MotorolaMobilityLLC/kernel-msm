@@ -621,6 +621,10 @@
 
 	usb3: ssusb@7000000{
 		mmi,qos_latency = <10999>;
+		vbus_dwc3-supply = <&usb_otg_switch>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&otg_en_default &otg_fault_default>;
+		qcom,otg-fault-gpio = <&tlmm 34  0x1>; /* GPIOF_IN*/
 		psy,type-c;
 		dwc3@7000000 {
 			controller-number = /bits/ 8 <1>;
@@ -776,6 +780,15 @@
 					0x14 0x9C
 					0x9F 0x1C
 					0x00 0x18>;
+	};
+
+	usb_otg_switch: usb-otg-switch {
+		compatible = "regulator-fixed";
+		regulator-name = "usb_otg_vreg";
+		vin-supply = <&smbcharger_external_otg>;
+		enable-active-high;
+		gpio = <&tlmm 109 0>;
+		status = "okay";
 	};
 };
 
@@ -1088,6 +1101,11 @@
 	qcom,force-aicl-rerun;
 	mmi,fake-factory-type;
 	qcom,auto-voltage-comp-mv = <75>;
+
+	smbcharger_external_otg: qcom,smbcharger-external-otg {
+		status = "okay";
+		regulator-name = "smbcharger_external_otg";
+	};
 };
 
 /{
