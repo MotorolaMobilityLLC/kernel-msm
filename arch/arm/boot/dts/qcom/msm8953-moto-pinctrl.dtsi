@@ -704,6 +704,21 @@
 			};
 		};
 	};
+
+	otg_en_default: otg_en_default {
+		config {
+			pins = "gpio109";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+	otg_fault_default: otg_fault_default {
+		config {
+			pins = "gpio34";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
 };
 
 /delete-node/ &hsuart_active;
