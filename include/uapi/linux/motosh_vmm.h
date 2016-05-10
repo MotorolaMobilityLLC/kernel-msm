@@ -528,7 +528,9 @@ VMM_ENTRY(0x7F, PORT_A,							TRUE,
 VMM_ENTRY(0x80, STEP_DETECTOR,						FALSE,
 		0,
 		0)
-
+VMM_ENTRY(0x81, CAMSENSORSYNC,						FALSE,
+		0,
+		0)
 /* Here are a few example expansions:
 
 
