@@ -16,6 +16,8 @@
 
 #include <sound/audio_effects.h>
 
+#define MAX_PP_PARAMS_SZ   128
+
 int msm_audio_effects_reverb_handler(struct audio_client *ac,
 				     struct reverb_params *reverb,
 				     long *values);
