@@ -481,6 +481,7 @@ static inline long copy_from_user_preempt_disabled(void *to, const void __user *
 ({						\
 	int __ret;				\
 	preempt_enable_no_resched();		\
+	barrier();				\
 	__ret = get_user(x, ptr);		\
 	preempt_disable();			\
 	__ret;					\
@@ -490,6 +491,7 @@ static inline long copy_from_user_preempt_disabled(void *to, const void __user *
 ({						\
 	int __ret;				\
 	preempt_enable_no_resched();		\
+	barrier();				\
 	__ret = put_user(x, ptr);		\
 	preempt_disable();			\
 	__ret;					\
