@@ -961,6 +961,8 @@ typedef enum cust_gpio_modes {
 
 extern int wl_iw_iscan_set_scan_broadcast_prep(struct net_device *dev, uint flag);
 extern int wl_iw_send_priv_event(struct net_device *dev, char *flag);
+extern void dhd_flush_rx_tx_wq(dhd_pub_t *dhdp);
+
 /*
  * Insmod parameters for debug/test
  */
