@@ -471,7 +471,8 @@ typedef struct dhd_info {
 	struct notifier_block sar_notifier;
 	s32 sar_enable;
 #endif
-	struct workqueue_struct *rx_tx_wq;
+	struct workqueue_struct *tx_wq;
+	struct workqueue_struct *rx_wq;
 
 } dhd_info_t;
 
@@ -2834,7 +2835,7 @@ dhd_start_xmit_queue_work(struct sk_buff *skb, struct net_device *net)
 	INIT_WORK(&start_xmit_work->work, dhd_start_xmit_wq_adapter);
 	start_xmit_work->skb = skb;
 	start_xmit_work->net = net;
-	queue_work(dhd->rx_tx_wq, &start_xmit_work->work);
+	queue_work(dhd->tx_wq, &start_xmit_work->work);
 
 	return NET_XMIT_SUCCESS;
 }
@@ -3684,7 +3685,7 @@ dhd_sched_dpc(dhd_pub_t *dhdp)
 
 		INIT_WORK(&rx_work->work, dhd_rx_wq_adapter);
 		rx_work->pub = dhdp;
-		queue_work(dhd->rx_tx_wq, &rx_work->work);
+		queue_work(dhd->rx_wq, &rx_work->work);
 	}
 
 }
@@ -5125,6 +5126,19 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 		goto fail;
 	}
 
+	dhd->tx_wq = alloc_workqueue("bcmdhd-tx-wq", WQ_HIGHPRI | WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
+	if (!dhd->tx_wq) {
+		DHD_ERROR(("%s: alloc_workqueue(bcmdhd-tx-wq) failed\n", __FUNCTION__));
+		goto fail;
+	}
+	dhd->rx_wq = alloc_workqueue("bcmdhd-rx-wq", WQ_HIGHPRI | WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
+	if (!dhd->rx_wq) {
+		DHD_ERROR(("%s: alloc_workqueue(bcmdhd-rx-wq) failed\n", __FUNCTION__));
+		destroy_workqueue(dhd->tx_wq);
+		dhd->tx_wq = NULL;
+		goto fail;
+	}
+
 	/* Set up the watchdog timer */
 	init_timer(&dhd->timer);
 	dhd->timer.data = (ulong)dhd;
@@ -5197,7 +5211,6 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	}
 #endif
 	dhd->dhd_deferred_wq = dhd_deferred_work_init((void *)dhd);
-	dhd->rx_tx_wq = alloc_workqueue("bcmdhd-rx-tx-wq", WQ_HIGHPRI | WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
 
 #ifdef DEBUG_CPU_FREQ
 	dhd->new_freq = alloc_percpu(int);
@@ -7135,7 +7148,10 @@ void dhd_detach(dhd_pub_t *dhdp)
 		dhd_monitor_uninit();
 	}
 #endif
-	destroy_workqueue(dhd->rx_tx_wq);
+	destroy_workqueue(dhd->tx_wq);
+	dhd->tx_wq = NULL;
+	destroy_workqueue(dhd->rx_wq);
+	dhd->rx_wq = NULL;
 
 	/* free deferred work queue */
 	dhd_deferred_work_deinit(dhd->dhd_deferred_wq);
@@ -10944,8 +10960,10 @@ dhd_flush_rx_tx_wq(dhd_pub_t *dhdp)
 
 	if (dhdp) {
 		dhd = dhdp->info;
-		if (dhd)
-			flush_workqueue(dhd->rx_tx_wq);
+		if (dhd) {
+			flush_workqueue(dhd->tx_wq);
+			flush_workqueue(dhd->rx_wq);
+		}
 	}
 
 	return;
