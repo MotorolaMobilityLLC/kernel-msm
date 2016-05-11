@@ -977,6 +977,52 @@ static int pmic_arb_pic_disable(struct spmi_controller *ctrl,
 	return 0;
 }
 
+static irqreturn_t pmic_handle_spurious_irq(struct spmi_pmic_arb_dev *pmic_arb)
+{
+	irqreturn_t ret = IRQ_NONE;
+	void __iomem *intr = pmic_arb->intr;
+	u8 pid, sid;
+	u16 apid, ppid;
+	u32 status, enable, owner;
+
+	for (apid = 0; apid < PMIC_ARB_MAX_PERIPHS; apid++) {
+		if (apid >= pmic_arb->min_intr_apid &&
+			apid <= pmic_arb->max_intr_apid)
+			continue;
+
+		owner = SPMI_OWNERSHIP_PERIPH2OWNER(
+				readl_relaxed(pmic_arb->cnfg +
+					SPMI_OWNERSHIP_TABLE_REG(apid)));
+		if (owner != pmic_arb->ee)
+			continue;
+
+		status = readl_relaxed(intr + pmic_arb->ver->irq_status(apid));
+		if (!status)
+			continue;
+
+		/* Clear the spurious peripheral interrupt bits */
+		writel_relaxed(status, intr + pmic_arb->ver->irq_clear(apid));
+		/* Irq needs to be cleared/acknowledged before exiting ISR */
+		mb();
+
+		ppid = get_peripheral_id(pmic_arb, apid);
+		sid = (ppid >> 8) & 0x0F;
+		pid = ppid & 0xFF;
+		enable = spmi_pic_acc_en_rd(pmic_arb, sid, pid, apid, "isr");
+		dev_err(pmic_arb->dev,
+			"Spurious irq detected apid=0x%x en=0x%x status=0x%x\n",
+			apid, enable, status);
+
+		ret = IRQ_HANDLED;
+	}
+
+#ifdef CONFIG_SPMI_MSM_PMIC_ARB_PANIC_ON_SPURIOUS_IRQ
+	if (ret == IRQ_HANDLED)
+		BUG();
+#endif
+	return ret;
+}
+
 static irqreturn_t
 periph_interrupt(struct spmi_pmic_arb_dev *pmic_arb, u8 apid, bool show)
 {
@@ -1077,8 +1123,15 @@ __pmic_arb_periph_irq(int irq, void *dev_id, bool show)
 		}
 	}
 
+	if (ret != IRQ_NONE || show)
+		return ret;
+
 	/* ACC_STATUS is empty but IRQ fired check IRQ_STATUS */
 	if (!acc_valid) {
+		/* In some cases the accumulator status may remain zero
+	 	* and the interrupt remains un-handled.
+	 	* Let's check the spurious irq with Arbiter's IRQ status.
+	 	*/
 		for (i = pmic_arb->min_intr_apid; i <= pmic_arb->max_intr_apid;
 				i++) {
 			if (!is_apid_valid(pmic_arb, i))
@@ -1094,6 +1147,10 @@ __pmic_arb_periph_irq(int irq, void *dev_id, bool show)
 			}
 		}
 	}
+
+	/* Still not found, handle the spurious interrupts */
+	if (ret == IRQ_NONE)
+		ret = pmic_handle_spurious_irq(pmic_arb);
 
 	return ret;
 }
