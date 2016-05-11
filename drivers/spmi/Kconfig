@@ -19,6 +19,14 @@ config SPMI_MSM_PMIC_ARB
 	  This is required for communicating with Qualcomm PMICs and
 	  other devices that have the SPMI interface.
 
+config SPMI_MSM_PMIC_ARB_PANIC_ON_SPURIOUS_IRQ
+	bool "SPMI Arbiter Panic On Spurious IRQ"
+	depends on SPMI_MSM_PMIC_ARB
+	default n
+	help
+	  Say 'y' here to trigger a panic on spurious interrupts for
+	  debugging purpose.
+
 config MSM_QPNP_INT
 	depends on SPARSE_IRQ
 	depends on SPMI
