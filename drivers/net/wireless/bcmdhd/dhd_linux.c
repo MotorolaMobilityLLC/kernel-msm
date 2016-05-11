@@ -50,7 +50,6 @@
 #include <linux/ip.h>
 #include <linux/reboot.h>
 #include <linux/notifier.h>
-#include <linux/workqueue.h>
 #include <net/addrconf.h>
 #ifdef ENABLE_ADAPTIVE_SCHED
 #include <linux/cpufreq.h>
@@ -257,7 +256,6 @@ extern wl_iw_extra_params_t  g_wl_iw_params;
 #include <linux/earlysuspend.h>
 #endif /* defined(CONFIG_HAS_EARLYSUSPEND) && defined(DHD_USE_EARLYSUSPEND) */
 
-#include <linux/pm_runtime.h>
 
 #ifdef PKT_FILTER_SUPPORT
 extern void dhd_pktfilter_offload_set(dhd_pub_t * dhd, char *arg);
@@ -471,8 +469,6 @@ typedef struct dhd_info {
 	struct notifier_block sar_notifier;
 	s32 sar_enable;
 #endif
-	struct workqueue_struct *rx_tx_wq;
-
 } dhd_info_t;
 
 #define DHDIF_FWDER(dhdif)      FALSE
@@ -2749,95 +2745,6 @@ done:
 #endif
 }
 
-struct dhd_rx_tx_work {
-	struct work_struct work;
-	struct sk_buff *skb;
-	struct net_device *net;
-	struct dhd_pub *pub;
-};
-
-void dhd_rx_wq_adapter(struct work_struct *ptr)
-{
-	struct dhd_rx_tx_work *work;
-	struct dhd_pub * pub;
-
-	work = container_of(ptr, struct dhd_rx_tx_work, work);
-
-	pub = work->pub;
-
-	if (pub->busstate == DHD_BUS_DOWN) {
-		kfree(work);
-		return;
-	}
-
-	if (atomic_read(&pub->runtime_pm_status) >= PCI_PM_SYS_SUSPENDED) {
-		kfree(work);
-		return;
-	}
-
-	if (pm_runtime_get_sync(dhd_bus_to_dev(pub->bus)) >= 0) {
-		dhdpci_bus_read_frames(pub->bus);
-		pm_runtime_mark_last_busy(dhd_bus_to_dev(pub->bus));
-		pm_runtime_put_autosuspend(dhd_bus_to_dev(pub->bus));
-	}
-	kfree(work);
-}
-
-void dhd_start_xmit_wq_adapter(struct work_struct *ptr)
-{
-	struct dhd_rx_tx_work *work;
-	int ret;
-	dhd_info_t *dhd;
-	struct dhd_bus * bus;
-
-	work = container_of(ptr, struct dhd_rx_tx_work, work);
-
-	dhd = DHD_DEV_INFO(work->net);
-
-	bus = dhd->pub.bus;
-
-	if (atomic_read(&dhd->pub.runtime_pm_status) >= PCI_PM_SYS_SUSPENDED) {
-		kfree_skb(work->skb);
-		kfree(work);
-		return;
-	}
-
-	if (pm_runtime_get_sync(dhd_bus_to_dev(bus)) >= 0) {
-		ret = dhd_start_xmit(work->skb, work->net);
-		pm_runtime_mark_last_busy(dhd_bus_to_dev(bus));
-		pm_runtime_put_autosuspend(dhd_bus_to_dev(bus));
-	}
-	kfree(work);
-
-	if (ret)
-		netdev_err(work->net,
-			   "error: dhd_start_xmit():%d\n", ret);
-}
-
-int BCMFASTPATH
-dhd_start_xmit_queue_work(struct sk_buff *skb, struct net_device *net)
-{
-	struct dhd_rx_tx_work *start_xmit_work;
-	dhd_info_t *dhd = DHD_DEV_INFO(net);
-
-	if (atomic_read(&dhd->pub.runtime_pm_status) >= PCI_PM_SYS_SUSPENDED)
-		return -ENODEV;
-
-	start_xmit_work = (struct dhd_rx_tx_work*)
-			  kmalloc(sizeof(*start_xmit_work), GFP_ATOMIC);
-	if (!start_xmit_work) {
-		netdev_err(net,
-			   "error: failed to alloc start_xmit_work\n");
-		return -ENOMEM;
-	}
-
-	INIT_WORK(&start_xmit_work->work, dhd_start_xmit_wq_adapter);
-	start_xmit_work->skb = skb;
-	start_xmit_work->net = net;
-	queue_work(dhd->rx_tx_wq, &start_xmit_work->work);
-
-	return NET_XMIT_SUCCESS;
-}
 
 void
 dhd_txflowcontrol(dhd_pub_t *dhdp, int ifidx, bool state)
@@ -3664,7 +3571,6 @@ dhd_dpc(ulong data)
 void
 dhd_sched_dpc(dhd_pub_t *dhdp)
 {
-	struct dhd_rx_tx_work *rx_work;
 	dhd_info_t *dhd = (dhd_info_t *)dhdp->info;
 
 	if (dhd->thr_dpc_ctl.thr_pid >= 0) {
@@ -3676,17 +3582,11 @@ dhd_sched_dpc(dhd_pub_t *dhdp)
 			DHD_OS_WAKE_UNLOCK(dhdp);
 		return;
 	} else {
-		rx_work = kmalloc(sizeof(*rx_work), GFP_ATOMIC);
-		if (!rx_work) {
-			DHD_ERROR(("%s: start_rx_work alloc error. \n", __FUNCTION__));
-			return;
+		if (!test_bit(TASKLET_STATE_SCHED, &dhd->tasklet.state) && !isresched) {
+			DHD_OS_WAKE_LOCK(dhdp);
+			tasklet_schedule(&dhd->tasklet);
 		}
-
-		INIT_WORK(&rx_work->work, dhd_rx_wq_adapter);
-		rx_work->pub = dhdp;
-		queue_work(dhd->rx_tx_wq, &rx_work->work);
 	}
-
 }
 
 static void
@@ -4246,25 +4146,6 @@ done:
 	return OSL_ERROR(bcmerror);
 }
 
-static int
-dhd_ioctl_entry_wrapper(struct net_device *net, struct ifreq *ifr, int cmd)
-{
-	int error;
-	dhd_info_t *dhd = DHD_DEV_INFO(net);
-
-	if (atomic_read(&dhd->pub.runtime_pm_status) >= PCI_PM_SYS_SUSPENDED)
-		return -EHOSTDOWN;
-
-	if (pm_runtime_get_sync(dhd_bus_to_dev(dhd->pub.bus)) < 0)
-		return BCME_ERROR;
-
-	error = dhd_ioctl_entry(net, ifr, cmd);
-
-	pm_runtime_mark_last_busy(dhd_bus_to_dev(dhd->pub.bus));
-	pm_runtime_put_autosuspend(dhd_bus_to_dev(dhd->pub.bus));
-
-	return error;
-}
 
 
 static int
@@ -4275,7 +4156,6 @@ dhd_stop(struct net_device *net)
 	DHD_OS_WAKE_LOCK(&dhd->pub);
 	DHD_PERIM_LOCK(&dhd->pub);
 	DHD_TRACE(("%s: Enter %p\n", __FUNCTION__, net));
-
 	if (dhd->pub.up == 0) {
 		goto exit;
 	}
@@ -4355,7 +4235,6 @@ exit:
 #endif
 	DHD_PERIM_UNLOCK(&dhd->pub);
 	DHD_OS_WAKE_UNLOCK(&dhd->pub);
-
 	return 0;
 }
 
@@ -4502,6 +4381,7 @@ exit:
 
 	DHD_PERIM_UNLOCK(&dhd->pub);
 	DHD_OS_WAKE_UNLOCK(&dhd->pub);
+
 
 	return ret;
 }
@@ -4748,8 +4628,8 @@ static struct net_device_ops dhd_ops_pri = {
 	.ndo_open = dhd_open,
 	.ndo_stop = dhd_stop,
 	.ndo_get_stats = dhd_get_stats,
-	.ndo_do_ioctl = dhd_ioctl_entry_wrapper,
-	.ndo_start_xmit = dhd_start_xmit_queue_work,
+	.ndo_do_ioctl = dhd_ioctl_entry,
+	.ndo_start_xmit = dhd_start_xmit,
 	.ndo_set_mac_address = dhd_set_mac_address,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 	.ndo_set_rx_mode = dhd_set_multicast_list,
@@ -4760,8 +4640,8 @@ static struct net_device_ops dhd_ops_pri = {
 
 static struct net_device_ops dhd_ops_virt = {
 	.ndo_get_stats = dhd_get_stats,
-	.ndo_do_ioctl = dhd_ioctl_entry_wrapper,
-	.ndo_start_xmit = dhd_start_xmit_queue_work,
+	.ndo_do_ioctl = dhd_ioctl_entry,
+	.ndo_start_xmit = dhd_start_xmit,
 	.ndo_set_mac_address = dhd_set_mac_address,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 0))
 	.ndo_set_rx_mode = dhd_set_multicast_list,
@@ -5192,8 +5072,6 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	}
 #endif
 	dhd->dhd_deferred_wq = dhd_deferred_work_init((void *)dhd);
-	dhd->rx_tx_wq = alloc_workqueue("bcmdhd-rx-tx-wq", WQ_HIGHPRI | WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
-
 #ifdef DEBUG_CPU_FREQ
 	dhd->new_freq = alloc_percpu(int);
 	dhd->freq_trans.notifier_call = dhd_cpufreq_notifier;
@@ -5343,7 +5221,6 @@ dhd_bus_start(dhd_pub_t *dhdp)
 
 	DHD_PERIM_LOCK(dhdp);
 
-	atomic_set(&dhd->pub.runtime_pm_status, PCI_PM_RT_SUSPENDED);
 	/* try to download image and nvram to the dongle */
 	if  (dhd->pub.busstate == DHD_BUS_DOWN && dhd_update_fw_nv_path(dhd)) {
 		DHD_INFO(("%s download fw %s, nv %s\n", __FUNCTION__, dhd->fw_path, dhd->nv_path));
@@ -5862,10 +5739,6 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		dhd->dhd_cflags |= WLAN_PLAT_AP_FLAG | WLAN_PLAT_NODFS_FLAG;
 	} else if ((!op_mode && dhd_get_fw_mode(dhd->info) == DHD_FLAG_MFG_MODE) ||
 		(op_mode == DHD_FLAG_MFG_MODE)) {
-#ifdef CONFIG_PM_RUNTIME
-		pm_runtime_get_sync(dhd_bus_to_dev(dhd->bus));
-#endif /* CONFIG_PM_RUNTIME */
-
 #if defined(ARP_OFFLOAD_SUPPORT)
 		arpoe = 0;
 #endif /* ARP_OFFLOAD_SUPPORT */
@@ -6848,8 +6721,8 @@ dhd_register_if(dhd_pub_t *dhdp, int ifidx, bool need_rtnl_lock)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 31))
 	ASSERT(!net->open);
 	net->get_stats = dhd_get_stats;
-	net->do_ioctl = dhd_ioctl_entry_wrapper;
-	net->hard_start_xmit = dhd_start_xmit_queue_work;
+	net->do_ioctl = dhd_ioctl_entry;
+	net->hard_start_xmit = dhd_start_xmit;
 	net->set_mac_address = dhd_set_mac_address;
 	net->set_multicast_list = dhd_set_multicast_list;
 	net->open = net->stop = NULL;
@@ -7131,8 +7004,6 @@ void dhd_detach(dhd_pub_t *dhdp)
 		dhd_monitor_uninit();
 	}
 #endif
-	destroy_workqueue(dhd->rx_tx_wq);
-
 	/* free deferred work queue */
 	dhd_deferred_work_deinit(dhd->dhd_deferred_wq);
 	dhd->dhd_deferred_wq = NULL;
@@ -7845,10 +7716,6 @@ dhd_net_bus_devreset(struct net_device *dev, uint8 flag)
 	int ret = 0;
 
 	dhd_info_t *dhd = DHD_DEV_INFO(dev);
-
-	if (pm_runtime_get_sync(dhd_bus_to_dev(dhd->pub.bus)) < 0)
-		return BCME_ERROR;
-
 	if (flag == TRUE) {
 		/* Issue wl down command before resetting the chip */
 		if (dhd_wl_ioctl_cmd(&dhd->pub, WLC_DOWN, NULL, 0, TRUE, 0) < 0) {
@@ -7882,12 +7749,10 @@ dhd_net_bus_devreset(struct net_device *dev, uint8 flag)
 	}
 #endif /* BCMSDIO */
 	ret = dhd_bus_devreset(&dhd->pub, flag);
-	if (ret)
+	if (ret) {
 		DHD_ERROR(("%s: dhd_bus_devreset: %d\n", __FUNCTION__, ret));
-
-	pm_runtime_mark_last_busy(dhd_bus_to_dev(dhd->pub.bus));
-	pm_runtime_put_autosuspend(dhd_bus_to_dev(dhd->pub.bus));
-
+		return ret;
+	}
 	return ret;
 }
 

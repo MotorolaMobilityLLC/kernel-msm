@@ -186,10 +186,5 @@ extern bool dhdpcie_bus_dongle_attach(struct dhd_bus *bus);
 extern int dhd_bus_release_dongle(struct dhd_bus *bus);
 extern int dhd_bus_request_irq(struct dhd_bus *bus);
 
-#ifdef CONFIG_PM_RUNTIME
-extern struct device * dhd_bus_to_dev(struct dhd_bus *bus);
-extern void dhdpci_bus_read_frames(struct dhd_bus *bus);
-#endif /* CONFIG_PM_RUNTIME */
-
 #endif /* BCMPCIE */
 #endif /* _dhd_bus_h_ */

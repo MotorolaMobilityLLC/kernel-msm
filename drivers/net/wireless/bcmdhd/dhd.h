@@ -170,15 +170,6 @@ enum dhd_dongledump_mode {
 	DUMP_MEMFILE_MAX
 };
 
-#ifdef CONFIG_PM_RUNTIME
-enum pci_power_state {
-	PCI_PM_RT_ACTIVE,
-	PCI_PM_RT_SUSPENDED,
-	PCI_PM_SYS_SUSPENDED,
-	PCI_PM_NETIF_SUSPENDED
-};
-#endif /* CONFIG_PM_RUNTIME */
-
 /* Packet alignment for most efficient SDIO (can change based on platform) */
 #ifndef DHD_SDALIGN
 #define DHD_SDALIGN	32
@@ -449,9 +440,6 @@ typedef struct dhd_pub {
 	bool ndo_enable;		/* ND offload feature enable */
 	bool ndo_host_ip_overflow;	/* # of host ip addr exceed FW capacity */
 #endif /* NDO_CONFIG_SUPPORT */
-#ifdef CONFIG_PM_RUNTIME
-	atomic_t runtime_pm_status;
-#endif /* CONFIG_PM_RUNTIME */
 } dhd_pub_t;
 
 typedef struct {

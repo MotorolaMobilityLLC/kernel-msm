@@ -86,7 +86,6 @@ int dhd_msg_level = DHD_ERROR_VAL;
 
 
 #include <wl_iw.h>
-#include <linux/pm_runtime.h>
 
 #ifdef SOFTAP
 char fw_path2[MOD_PARAM_PATHLEN];
@@ -349,14 +348,6 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifidx, wl_ioctl_t *ioc, void *buf, int len)
 {
 	int ret = BCME_ERROR;
 
-	if (atomic_read(&dhd_pub->runtime_pm_status) >= PCI_PM_SYS_SUSPENDED)
-		return -EHOSTDOWN;
-
-	if (pm_runtime_get_sync(dhd_bus_to_dev(dhd_pub->bus)) < 0) {
-		DHD_RPM(("%s: pm_runtime_get_sync error. \n", __FUNCTION__));
-		return BCME_ERROR;
-	}
-
 	if (dhd_os_proto_block(dhd_pub))
 	{
 #if defined(WL_WLC_SHIM)
@@ -389,9 +380,6 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifidx, wl_ioctl_t *ioc, void *buf, int len)
 		dhd_os_proto_unblock(dhd_pub);
 
 	}
-
-	pm_runtime_mark_last_busy(dhd_bus_to_dev(dhd_pub->bus));
-	pm_runtime_put_autosuspend(dhd_bus_to_dev(dhd_pub->bus));
 
 	return ret;
 }
