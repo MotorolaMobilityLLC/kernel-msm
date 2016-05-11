@@ -4457,12 +4457,7 @@ dhd_open(struct net_device *net)
 
 			/* try to bring up bus */
 			DHD_PERIM_UNLOCK(&dhd->pub);
-			if (pm_runtime_get_sync(dhd_bus_to_dev(dhd->pub.bus)) >= 0) {
-				ret = dhd_bus_start(&dhd->pub);
-				pm_runtime_mark_last_busy(dhd_bus_to_dev(dhd->pub.bus));
-				pm_runtime_put_autosuspend(dhd_bus_to_dev(dhd->pub.bus));
-			}
-
+			ret = dhd_bus_start(&dhd->pub);
 			DHD_PERIM_LOCK(&dhd->pub);
 			if (ret) {
 				DHD_ERROR(("%s: failed with code %d\n", __FUNCTION__, ret));
@@ -5348,6 +5343,7 @@ dhd_bus_start(dhd_pub_t *dhdp)
 
 	DHD_PERIM_LOCK(dhdp);
 
+	atomic_set(&dhd->pub.runtime_pm_status, PCI_PM_RT_SUSPENDED);
 	/* try to download image and nvram to the dongle */
 	if  (dhd->pub.busstate == DHD_BUS_DOWN && dhd_update_fw_nv_path(dhd)) {
 		DHD_INFO(("%s download fw %s, nv %s\n", __FUNCTION__, dhd->fw_path, dhd->nv_path));
@@ -10935,18 +10931,4 @@ dhd_linux_get_primary_netdev(dhd_pub_t *dhdp)
 		return dhd->iflist[0]->net;
 	else
 		return NULL;
-}
-
-void
-dhd_flush_rx_tx_wq(dhd_pub_t *dhdp)
-{
-	dhd_info_t * dhd;
-
-	if (dhdp) {
-		dhd = dhdp->info;
-		if (dhd)
-			flush_workqueue(dhd->rx_tx_wq);
-	}
-
-	return;
 }
