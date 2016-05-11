@@ -4427,12 +4427,15 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 	if (!chip->usb_insert_bc1_2)
 		return;
 
-	if (smbchg_hvdcp_det_check(chip))
+	if (smbchg_hvdcp_det_check(chip) ||
+	    (chip->cl_usbc >= 3000))
 		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 	else if (!chip->vbat_above_headroom &&
 		 chip->hvdcp_det_done && chip->aicl_complete &&
 		 (smbchg_get_aicl_level_ma(chip) < WEAK_CHRG_THRSH))
 		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
+	else
+		chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NORMAL;
 
 	if (prev_chg_rate != chip->charger_rate)
 		SMB_ERR(chip, "%s Charger Detected\n",
