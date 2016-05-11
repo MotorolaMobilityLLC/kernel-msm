@@ -26,6 +26,7 @@
 #include <linux/qpnp/qpnp-revid.h>
 #include <linux/qpnp/qpnp-haptic.h>
 #include "../../staging/android/timed_output.h"
+#include <linux/motosh_context.h>
 
 #define QPNP_IRQ_FLAGS	(IRQF_TRIGGER_RISING | \
 			IRQF_TRIGGER_FALLING | \
@@ -88,6 +89,7 @@
 #define QPNP_HAP_VMAX_SHIFT		1
 #define QPNP_HAP_VMAX_MIN_MV		116
 #define QPNP_HAP_VMAX_MAX_MV		3596
+#define QPNP_HAP_VMAX_LOW_DEFAULT	1160
 #define QPNP_HAP_ILIM_MASK		0xFE
 #define QPNP_HAP_ILIM_MIN_MV		400
 #define QPNP_HAP_ILIM_MAX_MV		800
@@ -357,6 +359,7 @@ struct qpnp_hap {
 	u32 timeout_ms;
 	u32 time_required_to_generate_back_emf_us;
 	u32 vmax_mv;
+	u32 vmax_low_mv;
 	u32 ilim_ma;
 	u32 sc_deb_cycles;
 	u32 int_pwm_freq_khz;
@@ -393,6 +396,7 @@ struct qpnp_hap {
 	bool correct_lra_drive_freq;
 	bool misc_trim_error_rc19p2_clk_reg_present;
 	bool perform_lra_auto_resonance_search;
+	uint8_t low_vmax;
 };
 
 static struct qpnp_hap *ghap;
@@ -795,6 +799,30 @@ static int qpnp_hap_vmax_config(struct qpnp_hap *hap)
 		return rc;
 	reg &= QPNP_HAP_VMAX_MASK;
 	temp = hap->vmax_mv / QPNP_HAP_VMAX_MIN_MV;
+	reg |= (temp << QPNP_HAP_VMAX_SHIFT);
+	rc = qpnp_hap_write_reg(hap, &reg, QPNP_HAP_VMAX_REG(hap->base));
+	if (rc)
+		return rc;
+
+	return 0;
+}
+
+/* configuration api for lower max volatge used for table top*/
+static int qpnp_hap_vmax_low_config(struct qpnp_hap *hap)
+{
+	u8 reg = 0;
+	int rc, temp;
+
+	if (hap->vmax_low_mv < QPNP_HAP_VMAX_MIN_MV)
+		hap->vmax_low_mv = QPNP_HAP_VMAX_MIN_MV;
+	else if (hap->vmax_low_mv > QPNP_HAP_VMAX_MAX_MV)
+		hap->vmax_low_mv = QPNP_HAP_VMAX_MAX_MV;
+
+	rc = qpnp_hap_read_reg(hap, &reg, QPNP_HAP_VMAX_REG(hap->base));
+	if (rc < 0)
+		return rc;
+	reg &= QPNP_HAP_VMAX_MASK;
+	temp = hap->vmax_low_mv / QPNP_HAP_VMAX_MIN_MV;
 	reg |= (temp << QPNP_HAP_VMAX_SHIFT);
 	rc = qpnp_hap_write_reg(hap, &reg, QPNP_HAP_VMAX_REG(hap->base));
 	if (rc)
@@ -1677,6 +1705,7 @@ static int qpnp_hap_set(struct qpnp_hap *hap, int on)
 /* enable interface from timed output class */
 static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 {
+	uint8_t t_top;
 	struct qpnp_hap *hap = container_of(dev, struct qpnp_hap,
 					 timed_dev);
 
@@ -1699,6 +1728,21 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 		value = (value > hap->timeout_ms ?
 				 hap->timeout_ms : value);
 		hap->state = 1;
+
+		t_top = motosh_tabletop_mode_hold(value);
+		if (t_top && value > 100) {
+			if (!hap->low_vmax) {
+				pr_info("%s: table top, long duration, "
+					"lowering the vmax\n", __func__);
+				qpnp_hap_vmax_low_config(hap);
+				hap->low_vmax = 1;
+			}
+		} else if (hap->low_vmax) {
+			pr_info("%s: restore vmax to default\n", __func__);
+			qpnp_hap_vmax_config(hap);
+			hap->low_vmax = 0;
+		}
+
 		hrtimer_start(&hap->hap_timer,
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
 			      HRTIMER_MODE_REL);
@@ -2389,6 +2433,14 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 		dev_err(&spmi->dev, "Unable to read vmax\n");
 		return rc;
 	}
+
+	hap->vmax_low_mv = QPNP_HAP_VMAX_LOW_DEFAULT;
+	rc = of_property_read_u32(spmi->dev.of_node,
+			"qcom,vmax-low-mv", &temp);
+	if (!rc)
+		hap->vmax_low_mv = temp;
+	else
+		dev_info(&spmi->dev, "Unable to read vmax low, using default\n");
 
 	hap->ilim_ma = QPNP_HAP_ILIM_MIN_MV;
 	rc = of_property_read_u32(spmi->dev.of_node,
