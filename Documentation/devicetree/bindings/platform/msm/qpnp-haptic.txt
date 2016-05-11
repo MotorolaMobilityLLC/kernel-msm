@@ -17,6 +17,7 @@ Required Properties:
 Optional Properties:
  - qcom,timeout-ms: timeout in ms.
  - qcom,vmax-mv : maximum output voltage in milli volts
+ - qcom,vmax-low-mv : maximum output voltage in milli volts used with context drivern haptics
  - qcom,ilim-ma : maximum output current limit threshold in milli amps
  - qcom,int-pwm-freq-khz : frequency for internal pwm
  - qcom,en-brake : specify to enable internal reverse braking
