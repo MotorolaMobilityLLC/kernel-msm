@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -680,6 +680,7 @@ static int32_t msm_csiphy_cmd(struct csiphy_device *csiphy_dev, void *arg)
 			break;
 		}
 		csiphy_dev->csiphy_sof_debug = SOF_DEBUG_DISABLE;
+		csiphy_dev->is_combo_mode = csiphy_params.combo_mode;
 		rc = msm_csiphy_lane_config(csiphy_dev, &csiphy_params);
 		break;
 	case CSIPHY_RELEASE:
@@ -690,7 +691,16 @@ static int32_t msm_csiphy_cmd(struct csiphy_device *csiphy_dev, void *arg)
 			rc = -EFAULT;
 			break;
 		}
-		rc = msm_csiphy_release(csiphy_dev, &csi_lane_params);
+		if ((csiphy_dev->is_combo_mode == 1) &&
+			(csiphy_dev->ref_count == 2)) {
+		/*CSIPHY is running in Combo mode do not power down core*/
+			pr_err("%s: %d CSIPHY%d core is running in combo"\
+				"mode so power down for next csiphy_release",
+				__func__, __LINE__, csiphy_dev->pdev->id);
+			csiphy_dev->ref_count--;
+		} else {
+			rc = msm_csiphy_release(csiphy_dev, &csi_lane_params);
+		}
 		break;
 	default:
 		pr_err("%s: %d failed\n", __func__, __LINE__);
