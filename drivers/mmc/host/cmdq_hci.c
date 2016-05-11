@@ -591,7 +591,7 @@ static void cmdq_prep_dcmd_desc(struct mmc_host *mmc,
 		mrq->cmd->opcode, timing, resp_type);
 	dataddr = (__le64 __force *)(desc + 4);
 	dataddr[0] = cpu_to_le64((u64)mrq->cmd->arg);
-
+	mb();
 }
 
 static int cmdq_request(struct mmc_host *mmc, struct mmc_request *mrq)
