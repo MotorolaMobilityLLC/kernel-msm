@@ -47,6 +47,8 @@
 #include "stmvl53l0.h"
 */
 
+#include "vl53l0_api_histogram.h"
+
 #define USE_INT
 #define IRQ_NUM	   59
 #define DATA_TIMEOUT  msecs_to_jiffies(150)
@@ -679,6 +681,11 @@ static void stmvl53l0_setupAPIFunctions(struct stmvl53l0_data *data)
 #define VL53L0_IOCTL_GETDATAS_BLOCK \
 			_IOR('p', 0x0e, VL53L0_RangingMeasurementData_t)
 
+#define VL53L0_FAST_HISTOGRAMMODE_REFERENCE	 ((VL53L0_HistogramTest) 1)
+#define VL53L0_FAST_HISTOGRAMMODE_RETURN	 ((VL53L0_HistogramTest) 2)
+#define VL53L0_FAST_HISTOGRAMMODE_AMBIENT	 ((VL53L0_HistogramTest) 3)
+
+
 static long stmvl53l0_ioctl(struct file *file,
 							unsigned int cmd,
 							unsigned long arg);
@@ -1059,7 +1066,6 @@ struct stmvl53l0_data *data, uint8_t input)
 {
 	int nochange = 0;
 	uint8_t from = data->w_mode;
-	int temps;
 
 	vl53l0_dbgmsg_en("Enter, stmvl53l0_work_state:%d\n", input);
 	mutex_lock(&data->work_mutex);
@@ -1132,6 +1138,8 @@ struct stmvl53l0_data *data, uint8_t input)
 		nochange = 1;
 		break;
 	}
+	if (input == CAM_OFF && data->c_suspend == 1)
+		data->c_suspend = 0;
 
 	if (nochange && input != RESET) {
 		vl53l0_dbgmsg_en("unsopport status= %d,cs = %d",
@@ -1139,6 +1147,7 @@ struct stmvl53l0_data *data, uint8_t input)
 		mutex_unlock(&data->work_mutex);
 		return;
 	}
+	data->c_stopped = 1;
 	if (input == RESET) {
 		stmvl53l0_stop(data);
 		data->reset = 0;
@@ -1146,8 +1155,6 @@ struct stmvl53l0_data *data, uint8_t input)
 			stmvl53l0_start(data);
 	}
 
-	temps = data->c_suspend;
-	data->c_suspend = 1;
 	cancel_delayed_work(&data->dwork);
 	switch (data->w_mode) {
 	case OFF_MODE:
@@ -1174,7 +1181,7 @@ struct stmvl53l0_data *data, uint8_t input)
 		pr_err("status unknown, input = %d", input);
 		break;
 	}
-	data->c_suspend = temps;
+	data->c_stopped = 0;
 	mutex_unlock(&data->work_mutex);
 }
 
@@ -1200,6 +1207,10 @@ static void stmvl53l0_cancel_handler(struct stmvl53l0_data *data)
 	if (ret == 0)
 		vl53l0_errmsg("%d,cancel_delayed_work return FALSE\n",
 		__LINE__);
+		ret = cancel_delayed_work(&data->checkwork);
+		if (ret == 0)
+				vl53l0_errmsg("%d,cancel_delayEd_work return FALSE\n",
+				__LINE__);
 	spin_unlock_irqrestore(&data->update_lock.wait_lock, flags);
 
 	return;
@@ -1326,6 +1337,14 @@ static void stmvl53l0_reset_handler(struct work_struct *work)
 	return;
 
 }
+static void stmvl53l0_check_handler(struct work_struct *work)
+{
+	struct stmvl53l0_data *data = gp_vl53l0_data;
+
+	vl53l0_dbgmsg_en("get in the handler\n");
+	stmvl53l0_livechecking(data);
+	schedule_delayed_work(&data->checkwork, 1800000);
+}
 /* interrupt work handler */
 static void stmvl53l0_work_handler(struct work_struct *work)
 {
@@ -1337,7 +1356,7 @@ static void stmvl53l0_work_handler(struct work_struct *work)
 
 	mutex_lock(&data->work_mutex);
 
-	if (data->enable_ps_sensor == 1 && data->c_suspend == 0) {
+	if (data->enable_ps_sensor == 1 && data->c_suspend == 0 && 7 != data->d_mode && data->c_stopped == 0) {
 		papi_func_tbl->GetInterruptMaskStatus(
 			vl53l0_dev, &InterruptMask);
 
@@ -1426,7 +1445,7 @@ struct device_attribute *attr, const char *buf, size_t count)
 
 	if (kstrtoul(buf, 10, &on))
 		return count;
-	if (on > 6) {
+	if (on > 7) {
 		vl53l0_errmsg("%d,set d_mode=%ld\n", __LINE__, on);
 		return count;
 	}
@@ -1498,6 +1517,35 @@ struct device_attribute *attr, const char *buf, size_t count)
 		stmvl53l0_work_state(data, CAM_ON);
 	else if (6 == data->d_mode)
 		stmvl53l0_work_state(data, CAM_OFF);
+	else if (7 == data->d_mode) {
+		vl53l0_errmsg("call VL53L0_perform_single_histogram3\n");
+		/*changes for feture*/
+		/*papi_func_tbl->SetMeasurementTimingBudgetMicroSeconds(
+			data, 500000);
+		for (hdata.FirstBin = 0; hdata.FirstBin < 12; hdata.FirstBin++)
+			hdata.HistogramData[hdata.FirstBin] = 0;
+		VL53L0_perform_single_histogram(data, 1, 1, 0, &hdata);
+		vl53l0_errmsg("VL53L0_perform_single_histogram	start_bin %d, NumberOfBins %d, ErrorStatus %d\n", hdata.FirstBin, hdata.NumberOfBins, hdata.ErrorStatus);
+		Start_bin = hdata.FirstBin;
+		vl53l0_errmsg("call VL53L0_perform_single_histogram3\n");
+		VL53L0_perform_single_histogram(data, 2,	1, Start_bin, &hdata);
+		vl53l0_errmsg("VL53L0_perform_single_histogram	start_bin %d, NumberOfBins %d, ErrorStatus %d\n", hdata.FirstBin, hdata.NumberOfBins, hdata.ErrorStatus);
+		vl53l0_errmsg("VL53L0_perform_single_histogram	1 %d, 2 %d, 3 %d, 4 %d\n", hdata.HistogramData[hdata.FirstBin], hdata.HistogramData[hdata.FirstBin+1],
+		hdata.HistogramData[hdata.FirstBin+2], hdata.HistogramData[hdata.FirstBin+3]);
+		vl53l0_errmsg("VL53L0_perform_single_histogram	5 %d, 6 %d, 7 %d, 8 %d\n", hdata.HistogramData[hdata.FirstBin+4], hdata.HistogramData[hdata.FirstBin+5],
+		hdata.HistogramData[hdata.FirstBin+6], hdata.HistogramData[hdata.FirstBin+7]);
+		vl53l0_errmsg("VL53L0_perform_single_histogram	9 %d, 10 %d, 11 %d, 12 %d\n", hdata.HistogramData[hdata.FirstBin+8], hdata.HistogramData[hdata.FirstBin+9],
+		hdata.HistogramData[hdata.FirstBin+10], hdata.HistogramData[hdata.FirstBin+11]);
+
+		VL53L0_perform_single_histogram(data, 2, 1, 3, &hdata);
+		vl53l0_errmsg("VL53L0_perform_single_histogram	start_bin %d, NumberOfBins %d, ErrorStatus %d\n", hdata.FirstBin, hdata.NumberOfBins, hdata.ErrorStatus);
+		vl53l0_errmsg("VL53L0_perform_single_histogram	1 %d, 2 %d, 3 %d, 4 %d\n", hdata.HistogramData[hdata.FirstBin], hdata.HistogramData[hdata.FirstBin+1],
+		hdata.HistogramData[hdata.FirstBin+2], hdata.HistogramData[hdata.FirstBin+3]);
+		VL53L0_perform_single_histogram(data, 2, 1, 7, &hdata);
+		vl53l0_errmsg("VL53L0_perform_single_histogram	start_bin %d, NumberOfBins %d, ErrorStatus %d\n", hdata.FirstBin, hdata.NumberOfBins, hdata.ErrorStatus);
+		vl53l0_errmsg("VL53L0_perform_single_histogram	1 %d, 2 %d, 3 %d, 4 %d\n", hdata.HistogramData[hdata.FirstBin], hdata.HistogramData[hdata.FirstBin+1],
+		hdata.HistogramData[hdata.FirstBin+2], hdata.HistogramData[hdata.FirstBin+3]);*/
+	}
 
 	return count;
 }
@@ -1769,9 +1817,11 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 	case VL53L0_IOCTL_RESUME:
 		vl53l0_dbgmsg_en("VL53L0_IOCTL_RESUME\n");
 		mutex_lock(&data->work_mutex);
-		data->c_suspend = 0;
-		VL53L0_ClearInterruptMask(data, 0);
-		papi_func_tbl->StartMeasurement(data);
+		if (data->c_suspend == 1) {
+			data->c_suspend = 0;
+			VL53L0_ClearInterruptMask(data, 0);
+			papi_func_tbl->StartMeasurement(data);
+		}
 		mutex_unlock(&data->work_mutex);
 		break;
 	case VL53L0_IOCTL_RESET:
@@ -2116,8 +2166,9 @@ static int stmvl53l0_close(struct inode *inode, struct file *file)
 {
 	struct stmvl53l0_data *data = gp_vl53l0_data;
 
-	if (data->w_mode == CAM_MODE || data->w_mode == SUPER_MODE)
+	if (data->w_mode == CAM_MODE || data->w_mode == SUPER_MODE) {
 		stmvl53l0_work_state(data, CAM_OFF);
+	}
 	if (data->w_mode == XTALKCAL_MODE || data->w_mode == OFFSETCAL_MODE)
 		stmvl53l0_work_state(data, CAL_OFF);
 	return 0;
@@ -2147,6 +2198,47 @@ static long stmvl53l0_compat_ioctl(struct file *file,
 }
 #endif
 
+int stmvl53l0_livechecking(struct stmvl53l0_data *data)
+{
+	uint8_t id = 0;
+	VL53L0_DEV vl53l0_dev = data;
+	struct timeval tv;
+
+	vl53l0_dbgmsg_en("Enter\n");
+	/* Read Model ID */
+	mutex_lock(&data->work_mutex);
+	if (data->enable_ps_sensor == 1 && SAR_MODE == data->w_mode) {
+		VL53L0_RdByte(vl53l0_dev,
+			VL53L0_REG_IDENTIFICATION_MODEL_ID, &id);
+		vl53l0_errmsg("read MODLE_ID: 0x%x\n", id);
+		if (id == 0xee)
+			vl53l0_errmsg("STM VL53L0 still alive\n");
+		else {
+			vl53l0_errmsg("STM VL53L0 looks dead\n");
+			do_gettimeofday(&tv);
+
+			input_report_abs(data->input_dev_ps, ABS_DISTANCE, 1);
+			input_report_abs(data->input_dev_ps, ABS_HAT0X, tv.tv_sec);
+			input_report_abs(data->input_dev_ps, ABS_HAT0Y, tv.tv_usec);
+			input_report_abs(data->input_dev_ps, ABS_HAT1X,
+				data->rangeData.RangeMilliMeter);
+			input_report_abs(data->input_dev_ps, ABS_HAT1Y,
+				data->rangeData.RangeStatus);
+			input_report_abs(data->input_dev_ps, ABS_HAT2X,
+				data->rangeData.SignalRateRtnMegaCps);
+			input_report_abs(data->input_dev_ps, ABS_HAT2Y,
+				data->rangeData.AmbientRateRtnMegaCps);
+			input_report_abs(data->input_dev_ps, ABS_HAT3X,
+				data->rangeData.MeasurementTimeUsec);
+			input_report_abs(data->input_dev_ps, ABS_HAT3Y,
+				data->rangeData.RangeDMaxMilliMeter);
+			input_sync(data->input_dev_ps);
+		}
+	}
+	mutex_unlock(&data->work_mutex);
+
+return 0;
+}
 int stmvl53l0_checkmoduleid(struct stmvl53l0_data *data,
 	void *client, uint8_t type)
 {
@@ -2202,9 +2294,6 @@ int stmvl53l0_checkmoduleid(struct stmvl53l0_data *data,
 
 	vl53l0_errmsg("Not found STM VL53L0 %d\n", __LINE__);
 		return -EIO;
-
-
-
 }
 
 /*
@@ -2294,6 +2383,7 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 		Status = papi_func_tbl->PerformRefCalibration(vl53l0_dev,
 				&(data->VhvSettings), &(data->PhaseCal)); /* Ref calibration */
 
+		pr_err("VL53L0_PerformRefCalibration %d, %d\n", data->VhvSettings, data->PhaseCal);
 	} else if (Status == VL53L0_ERROR_NONE && data->reset == 0) {
 		pr_err("Call of VL53L0_SetRefCalibration\n");
 		VL53L0_SetRefCalibration(vl53l0_dev, data->VhvSettings, data->PhaseCal);
@@ -2304,6 +2394,7 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 		Status = papi_func_tbl->PerformRefSpadManagement(vl53l0_dev,
 				&(data->refSpadCount), &(data->isApertureSpads));
 		data->reset = 0;
+		pr_err("VL53L0_PerformRefSpadManagement, %d, %d\n", data->refSpadCount, data->isApertureSpads);
 	} else if (Status == VL53L0_ERROR_NONE && data->reset == 0) {
 		pr_err("Call of VL53L0_SetReferenceSpads\n");
 		VL53L0_SetReferenceSpads(vl53l0_dev, data->refSpadCount, data->isApertureSpads);
@@ -2413,6 +2504,7 @@ static int stmvl53l0_start(struct stmvl53l0_data *data)
 	}
 
 	data->enable_ps_sensor = 1;
+	schedule_delayed_work(&data->checkwork, 1800000);
 	vl53l0_dbgmsg_en("End\n");
 
 	return rc;
@@ -2527,6 +2619,7 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	INIT_DELAYED_WORK(&data->dwork, stmvl53l0_work_handler);
 	INIT_DELAYED_WORK(&data->initwork, stmvl53l0_init_handler);
 	INIT_DELAYED_WORK(&data->resetwork, stmvl53l0_reset_handler);
+	INIT_DELAYED_WORK(&data->checkwork, stmvl53l0_check_handler);
 	/* Register to Input Device */
 	data->input_dev_ps = input_allocate_device();
 	if (!data->input_dev_ps) {
@@ -2604,6 +2697,7 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	data->enable_ps_sensor = 0;
 	data->reset = 1;
 	data->c_suspend = 0;
+	data->c_stopped = 0;
 	data->delay_ms = 2000;	/* delay time to 2s */
 	data->enableDebug = 0;
 	data->pll_p = 18;
