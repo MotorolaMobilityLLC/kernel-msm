@@ -222,7 +222,7 @@ typedef struct rtt_status_info {
     int8 status;   /* current status for the current entry */
     int8 txchain; /* current device tx chain */
     int8 mpc; /* indicate we change mpc mode */
-    int8 pm; /* to save current value of pm */
+    int pm; /* to save current value of pm */
     int8 pm_restore; /* flag to reset the old value of pm */
     int8 cur_idx; /* current entry to do RTT */
     bool all_cancel; /* cancel all request once we got the cancel requet */

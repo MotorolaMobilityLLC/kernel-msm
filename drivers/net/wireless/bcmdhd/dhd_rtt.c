@@ -1244,7 +1244,7 @@ dhd_rtt_start(dhd_pub_t *dhd)
 	rtt_status = GET_RTTSTATE(dhd);
 	NULL_CHECK(rtt_status, "rtt_status is NULL", err);
 
-	DHD_RTT((" Enter %s \n",__FUNCTION__));
+	DHD_RTT(("Enter %s\n",__FUNCTION__));
 	if (rtt_status->cur_idx >= rtt_status->rtt_config.rtt_target_cnt) {
 		err = BCME_RANGE;
 		DHD_RTT(("%s : idx %d is out of range\n", __FUNCTION__, rtt_status->cur_idx));
@@ -1268,20 +1268,19 @@ dhd_rtt_start(dhd_pub_t *dhd)
 		rtt_status->mpc = 1; /* Either failure or complete, we need to enable mpc */
 	} else {
 		/* Save the current power mode */
-		err = wldev_ioctl(dev, WLC_GET_PM, &rtt_status->pm, sizeof(pm), false);
+		err = wldev_ioctl(dev, WLC_GET_PM, &rtt_status->pm, sizeof(rtt_status->pm), false);
 		if (err) {
-			DHD_ERROR(("Failed to get the PM value \n"));
+			DHD_ERROR(("Failed to get the PM value\n"));
 		} else {
 			err = wldev_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm), true);
 			if (err) {
-				DHD_ERROR(("Failed to set the PM \n"));
+				DHD_ERROR(("Failed to set the PM\n"));
 				rtt_status->pm_restore = FALSE;
 			} else {
 				rtt_status->pm_restore = TRUE;
 			}
 		}
 	}
-
 	mutex_lock(&rtt_status->rtt_mutex);
 	/* Get a target information */
 	rtt_target = &rtt_status->rtt_config.target_info[rtt_status->cur_idx];
@@ -1846,7 +1845,7 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 		}
 		if (idx < rtt_status->rtt_config.rtt_target_cnt) {
 			/* restart to measure RTT from next device */
-			DHD_ERROR(("restart to measure rtt \n"));
+			DHD_ERROR(("restart to measure rtt\n"));
 			schedule_work(&rtt_status->work);
 		} else {
 			DHD_RTT(("RTT_STOPPED\n"));
@@ -2017,7 +2016,7 @@ dhd_rtt_enable_responder(dhd_pub_t *dhd, wifi_channel_info *channel_info )
 	int err = BCME_OK;
 	char chanbuf[CHANSPEC_STR_LEN];
 	int mpc = 0;
-	int8 pm = PM_OFF;
+	int pm = PM_OFF;
 	int ftm_cfg_cnt = 0;
 	chanspec_t chanspec;
 	wifi_channel_info_t channel;
@@ -2055,8 +2054,8 @@ dhd_rtt_enable_responder(dhd_pub_t *dhd, wifi_channel_info *channel_info )
 		}
 	}
 	/* Need to set PM=0 if STA is going to set as responder. */
-	err = wldev_ioctl(dev, WLC_GET_PM, &rtt_status->pm, sizeof(pm), false);
-	DHD_RTT(("Current PM value read %d \n",rtt_status->pm));
+	err = wldev_ioctl(dev, WLC_GET_PM, &rtt_status->pm, sizeof(rtt_status->pm), false);
+	DHD_RTT(("Current PM value read %d\n", rtt_status->pm));
 	if (err) {
 		DHD_ERROR(("Failed to get the PM value \n"));
 	} else {
