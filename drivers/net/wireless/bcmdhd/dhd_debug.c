@@ -111,25 +111,25 @@ struct map_table event_tag_map[] = {
 
 /* define log level per ring type */
 struct log_level_table fw_verbose_level_map[] = {
-	{1, EVENT_LOG_TAG_PCI_ERROR, "PCI_ERROR"},
-	{1, EVENT_LOG_TAG_PCI_WARN, "PCI_WARN"},
-	{2, EVENT_LOG_TAG_PCI_INFO, "PCI_INFO"},
-	{3, EVENT_LOG_TAG_PCI_DBG, "PCI_DEBUG"},
-	{3, EVENT_LOG_TAG_BEACON_LOG, "BEACON_LOG"},
-	{2, EVENT_LOG_TAG_WL_ASSOC_LOG, "ASSOC_LOG"},
-	{2, EVENT_LOG_TAG_WL_ROAM_LOG, "ROAM_LOG"},
-	{1, EVENT_LOG_TAG_TRACE_WL_INFO, "WL INFO"},
-	{1, EVENT_LOG_TAG_TRACE_BTCOEX_INFO, "BTCOEX INFO"},
-	{1, EVENT_LOG_TAG_SCAN_WARN, "SCAN_WARN"},
-	{1, EVENT_LOG_TAG_SCAN_ERROR, "SCAN_ERROR"},
-	{2, EVENT_LOG_TAG_SCAN_TRACE_LOW, "SCAN_TRACE_LOW"},
-	{2, EVENT_LOG_TAG_SCAN_TRACE_HIGH, "SCAN_TRACE_HIGH"}
+	{1, EVENT_LOG_TAG_PCI_ERROR, EVENT_LOG_SET_BUS, "PCI_ERROR"},
+	{1, EVENT_LOG_TAG_PCI_WARN, EVENT_LOG_SET_BUS, "PCI_WARN"},
+	{2, EVENT_LOG_TAG_PCI_INFO, EVENT_LOG_SET_BUS, "PCI_INFO"},
+	{3, EVENT_LOG_TAG_PCI_DBG, EVENT_LOG_SET_BUS, "PCI_DEBUG"},
+	{3, EVENT_LOG_TAG_BEACON_LOG, EVENT_LOG_SET_WL, "BEACON_LOG"},
+	{2, EVENT_LOG_TAG_WL_ASSOC_LOG, EVENT_LOG_SET_WL, "ASSOC_LOG"},
+	{2, EVENT_LOG_TAG_WL_ROAM_LOG, EVENT_LOG_SET_WL, "ROAM_LOG"},
+	{1, EVENT_LOG_TAG_TRACE_WL_INFO, EVENT_LOG_SET_WL, "WL_INFO"},
+	{1, EVENT_LOG_TAG_TRACE_BTCOEX_INFO, EVENT_LOG_SET_WL, "BTCOEX_INFO"},
+	{1, EVENT_LOG_TAG_SCAN_WARN, EVENT_LOG_SET_WL, "SCAN_WARN"},
+	{1, EVENT_LOG_TAG_SCAN_ERROR, EVENT_LOG_SET_WL, "SCAN_ERROR"},
+	{2, EVENT_LOG_TAG_SCAN_TRACE_LOW, EVENT_LOG_SET_WL, "SCAN_TRACE_LOW"},
+	{2, EVENT_LOG_TAG_SCAN_TRACE_HIGH, EVENT_LOG_SET_WL, "SCAN_TRACE_HIGH"}
 };
 
 struct log_level_table fw_event_level_map[] = {
-	{1, EVENT_LOG_TAG_TRACE_WL_INFO, "WL_INFO"},
-	{1, EVENT_LOG_TAG_TRACE_BTCOEX_INFO, "BTCOEX_INFO"},
-	{2, EVENT_LOG_TAG_BEACON_LOG, "BEACON LOG"},
+	{1, EVENT_LOG_TAG_TRACE_WL_INFO, EVENT_LOG_SET_WL, "WL_INFO"},
+	{1, EVENT_LOG_TAG_TRACE_BTCOEX_INFO, EVENT_LOG_SET_WL, "BTCOEX_INFO"},
+	{2, EVENT_LOG_TAG_BEACON_LOG, EVENT_LOG_SET_WL, "BEACON_LOG"}
 };
 
 /* reference tab table */
@@ -769,6 +769,23 @@ dhd_dbg_ring_deinit(dhd_pub_t *dhdp, dhd_dbg_ring_t *ring)
 	MFREE(dhdp->osh, buf, ring_sz);
 }
 
+uint8
+dhd_dbg_find_sets_by_tag(uint16 tag)
+{
+	uint i;
+	uint8 sets = 0;
+
+	for (i =0; i < ARRAYSIZE(fw_verbose_level_map); i++)
+		if (fw_verbose_level_map[i].tag == tag)
+			sets |= fw_verbose_level_map[i].sets;
+
+	for (i =0; i < ARRAYSIZE(fw_event_level_map); i++)
+		if (fw_event_level_map[i].tag == tag)
+			sets |= fw_event_level_map[i].sets;
+
+	return sets;
+}
+
 /*
  * dhd_dbg_set_event_log_tag : modify the state of an event log tag
  */
@@ -782,8 +799,8 @@ dhd_dbg_set_event_log_tag(dhd_pub_t *dhdp, uint16 tag, uint8 set)
 
 	memset(&pars, 0, sizeof(pars));
 	pars.tag = tag;
-	pars.set = set;
-	pars.flags = EVENT_LOG_TAG_FLAG_LOG;
+	pars.set = dhd_dbg_find_sets_by_tag(tag);
+	pars.flags = set ? EVENT_LOG_TAG_FLAG_LOG : EVENT_LOG_TAG_FLAG_NONE;
 
 	if (!bcm_mkiovar(cmd, (char *)&pars, sizeof(pars), iovbuf, sizeof(iovbuf))) {
 		DHD_ERROR(("%s mkiovar failed\n", __FUNCTION__));
