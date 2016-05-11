@@ -585,6 +585,7 @@ inline static void MUTEX_UNLOCK_SOFTAP_SET(dhd_pub_t * dhdp)
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
 }
 
+#if defined(BCMSDIO)
 #define DHD_OS_WAKE_LOCK(pub)			dhd_os_wake_lock(pub)
 #define DHD_OS_WAKE_UNLOCK(pub)		dhd_os_wake_unlock(pub)
 #define DHD_OS_WAKE_LOCK_TIMEOUT(pub)		dhd_os_wake_lock_timeout(pub)
@@ -596,6 +597,16 @@ inline static void MUTEX_UNLOCK_SOFTAP_SET(dhd_pub_t * dhdp)
 	dhd_os_wake_lock_ctrl_timeout_cancel(pub)
 #define DHD_OS_WAKE_LOCK_WAIVE(pub)             dhd_os_wake_lock_waive(pub)
 #define DHD_OS_WAKE_LOCK_RESTORE(pub)           dhd_os_wake_lock_restore(pub)
+#else /* defined (BCMPCIE) && CONFIG_PM_RUNTIME */
+#define DHD_OS_WAKE_LOCK(pub)
+#define DHD_OS_WAKE_UNLOCK(pub)
+#define DHD_OS_WAKE_LOCK_TIMEOUT(pub)
+#define DHD_OS_WAKE_LOCK_RX_TIMEOUT_ENABLE(pub, val)
+#define DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(pub, val)
+#define DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_CANCEL(pub)
+#define DHD_OS_WAKE_LOCK_WAIVE(pub)
+#define DHD_OS_WAKE_LOCK_RESTORE(pub)
+#endif
 
 #define DHD_OS_WD_WAKE_LOCK(pub)		dhd_os_wd_wake_lock(pub)
 #define DHD_OS_WD_WAKE_UNLOCK(pub)		dhd_os_wd_wake_unlock(pub)
