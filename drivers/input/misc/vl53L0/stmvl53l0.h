@@ -125,6 +125,7 @@ struct stmvl53l0_data {
 	struct delayed_work	dwork;		/* for PS  work handler */
 	struct delayed_work     initwork;
 	struct delayed_work     resetwork;
+	struct delayed_work     checkwork;
 	struct input_dev *input_dev_ps;
 	struct kobject *range_kobj;
 
@@ -171,6 +172,7 @@ struct stmvl53l0_data {
 	unsigned int xtalkcalval;
 	VL53L0_GpioFunctionality gpio_function;
 	uint8_t c_suspend;
+	uint8_t c_stopped;
 	uint32_t refSpadCount;
 	uint8_t isApertureSpads;
 	uint8_t VhvSettings;
@@ -193,6 +195,7 @@ struct stmvl53l0_data *stmvl53l0_getobject(void);
 int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type);
 int stmvl53l0_checkmoduleid(struct stmvl53l0_data *data,
 	void *client, uint8_t type);
+int stmvl53l0_livechecking(struct stmvl53l0_data *data);
 void i2c_setclient(void *client, uint8_t type);
 
 #endif /* STMVL53L0_H */
