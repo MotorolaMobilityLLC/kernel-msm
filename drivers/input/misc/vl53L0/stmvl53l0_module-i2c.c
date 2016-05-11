@@ -301,6 +301,16 @@ static const struct of_device_id st_stmvl53l0_dt_match[] = {
 	{ },
 };
 
+int stmv153l0_resume(struct i2c_client *clt)
+{
+	struct stmvl53l0_data *vl53l0_data = NULL;
+
+	vl53l0_dbgmsg("Enter\n");
+	vl53l0_data = stmvl53l0_getobject();
+	stmvl53l0_livechecking(vl53l0_data);
+	return 0;
+}
+
 static struct i2c_driver stmvl6180_driver = {
 	.driver = {
 		.name	= STMVL53L0_DRV_NAME,
@@ -309,6 +319,7 @@ static struct i2c_driver stmvl6180_driver = {
 	},
 	.probe	= stmvl53l0_probe,
 	.remove	= stmvl53l0_remove,
+	.resume = stmv153l0_resume,
 	.id_table = stmvl53l0_id,
 
 };
