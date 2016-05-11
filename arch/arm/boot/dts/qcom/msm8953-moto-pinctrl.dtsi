@@ -306,7 +306,7 @@
 			mux {
 				/* MOSI, MISO, CLK */
 				pins = "gpio0", "gpio1", "gpio3";
-				function = "blsp_spi1";
+				function = "gpio";
 			};
 
 			config {
@@ -332,13 +332,13 @@
 		spi1_cs0_sleep: cs0_sleep {
 			mux {
 				pins = "gpio2";
-				function = "blsp_spi1";
+				function = "gpio";
 			};
 
 			config {
 				pins = "gpio2";
 				drive-strength = <2>;
-				bias-disable = <0>;
+				bias-pull-down;
 			};
 		};
 
