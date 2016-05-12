@@ -287,6 +287,27 @@ disp_en_gpio_err:
 	return rc;
 }
 
+int mdss_dsi_enable_panel_vddio_gpio(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+		int enable)
+{
+	int rc = 0;
+	if (!gpio_is_valid(ctrl_pdata->panel_vddio_gpio)) {
+		goto end;
+	}
+
+	if (enable) {
+		rc = gpio_request(ctrl_pdata->panel_vddio_gpio, "panel_vddio_gpio");
+		if (!rc) {
+			gpio_set_value(ctrl_pdata->panel_vddio_gpio,1);
+		}
+	} else {
+		gpio_set_value(ctrl_pdata->panel_vddio_gpio,0);
+		gpio_free(ctrl_pdata->panel_vddio_gpio);
+	}
+end:
+	return rc;
+}
+
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;

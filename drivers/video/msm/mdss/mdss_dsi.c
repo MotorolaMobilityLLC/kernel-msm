@@ -291,6 +291,10 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		pr_err("%s: failed to disable vregs for %s\n",
 			__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 
+	ret = mdss_dsi_enable_panel_vddio_gpio(ctrl_pdata, 0);
+	if (ret)
+		pr_err("%s: failed to disable panel vddio gpio for %d\n",
+			__func__, ctrl_pdata->panel_vddio_gpio);
 end:
 	return ret;
 }
@@ -307,6 +311,12 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
+
+	ret = mdss_dsi_enable_panel_vddio_gpio(ctrl_pdata, 1);
+	if (ret) {
+		pr_err("%s: failed to enable panel vddio gpio for %d\n",
+			__func__, ctrl_pdata->panel_vddio_gpio);
+	}
 
 	ret = msm_dss_enable_vreg(
 		ctrl_pdata->panel_power_data.vreg_config,
@@ -3224,6 +3234,13 @@ static int mdss_dsi_parse_gpio_params(struct platform_device *ctrl_pdev,
 			pr_info("%s:%d, mode gpio not specified\n",
 							__func__, __LINE__);
 		ctrl_pdata->lcd_mode_sel_gpio = -EINVAL;
+	}
+
+	ctrl_pdata->panel_vddio_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
+			"sharp,panel-vddio-supply-gpio", 0);
+	if (!gpio_is_valid(ctrl_pdata->panel_vddio_gpio)) {
+		pr_debug("%s:%d, panel_power gpio not specified\n",
+						__func__, __LINE__);
 	}
 
 	return 0;
