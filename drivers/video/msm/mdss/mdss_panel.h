@@ -516,6 +516,7 @@ struct mdss_panel_info {
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;
 	struct panel_param *param[PARAM_ID_NUM];
+	bool hbm_restore;
 };
 
 struct mdss_panel_timing {
