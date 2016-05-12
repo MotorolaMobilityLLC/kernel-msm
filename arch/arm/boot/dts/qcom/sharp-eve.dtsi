@@ -13,6 +13,7 @@
  */
 
 #include "sharp_pinctrl/sharp-pinctrl-eve.dtsi"
+#include "sharp-eve-display.dtsi"
 
 / {
 };

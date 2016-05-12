@@ -1,0 +1,67 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "dsi-panel-sazabi-720p-video.dtsi"
+
+// It is peculiar to a model and overwrites. 
+&dsi_sazabi_720p_vid {
+	status = "ok";
+
+	qcom,mdss-pan-physical-width-dimension = <62>;
+	qcom,mdss-pan-physical-height-dimension = <110>;
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&dsi_panel_pwr_supply {
+	qcom,panel-supply-entry@0 {
+		qcom,supply-min-voltage = <2800000>;
+		qcom,supply-max-voltage = <2800000>;
+		qcom,supply-post-on-sleep = <1>;
+	};
+	/delete-node/ qcom,panel-supply-entry@1; // vddio
+	/delete-node/ qcom,panel-supply-entry@2; // lab
+	/delete-node/ qcom,panel-supply-entry@3; // ibb
+};
+
+&mdss_dsi0 {
+	qcom,platform-strength-ctrl = [FF 06];
+	qcom,dsi-pref-prim-pan=<&dsi_sazabi_720p_vid>;
+	qcom,platform-reset-gpio = <&msm_gpio 0 0>;
+
+	vdd-supply = <&pm8950_l10>;
+	/delete-property/ qcom,platform-enable-gpio;
+	/delete-property/ vddio-supply;
+	/delete-property/ lab-supply;
+	/delete-property/ ibb-supply;
+
+	/delete-property/ qcom,dsi-panel-bias-vreg;
+	/delete-property/ qcom,platform-bklight-en-gpio;
+};
+
+/ {
+	memory {
+		display_mem: display_mem@0 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			reg = <0 0 0 0x00FF0000>;
+			label = "display_mem";
+		};
+	};
+};
+
+&mdss_fb0 {
+	/delete-property/ qcom,mdss-fb-splash-logo-enabled;
+	linux,contiguous-region = <&display_mem>;
+};
