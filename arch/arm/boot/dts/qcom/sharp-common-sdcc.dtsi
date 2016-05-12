@@ -68,3 +68,10 @@
 	qcom,vdd-current-level = <>;
 	sdpwr-gpio = <&msm_gpio 61 0x0>;
 };
+
+/*
+  Clock rates
+ */
+&sdhc_2 {
+	qcom,clk-rates = <400000 25000000 50000000 100000000>;
+};
