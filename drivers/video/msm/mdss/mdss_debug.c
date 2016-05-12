@@ -320,7 +320,7 @@ static ssize_t mdss_debug_stat_read(struct file *file, char __user *buff,
 
 	tot += scnprintf(bp + tot, len - tot, "\n");
 
-	if (copy_to_user(buff, bp, tot))
+	if ((count < sizeof(bp)) || copy_to_user(buff, bp, tot))
 		return -EFAULT;
 
 	*ppos += tot;	/* increase offset */
