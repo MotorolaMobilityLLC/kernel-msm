@@ -1101,6 +1101,7 @@
 	qcom,force-aicl-rerun;
 	mmi,fake-factory-type;
 	qcom,auto-voltage-comp-mv = <75>;
+	qcom,usbin-vadc = <&pmi8950_vadc>;
 
 	smbcharger_external_otg: qcom,smbcharger-external-otg {
 		status = "okay";
