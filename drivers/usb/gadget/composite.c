@@ -20,7 +20,7 @@
 
 #include <linux/usb/composite.h>
 #include <asm/unaligned.h>
-
+#include <soc/qcom/socinfo.h>
 /*
  * The code in this file is utility code, used to build a gadget driver
  * from one or more "function" drivers, one or more "configuration"
@@ -33,6 +33,7 @@ static struct usb_gadget_strings **get_containers_gs(
 {
 	return (struct usb_gadget_strings **)uc->stash;
 }
+#define USB_MS_OS_DESCRIPTOR_ID			(0xEE)
 
 /**
  * next_ep_desc() - advance to the next EP descriptor
@@ -1110,6 +1111,12 @@ int usb_string_id(struct usb_composite_dev *cdev)
 		 * supported languages */
 		/* 255 reserved as well? -- mina86 */
 		cdev->next_string_id++;
+		/* it is reserved too */
+		if(of_board_is_sharp_eve())
+		{
+			if (cdev->next_string_id == USB_MS_OS_DESCRIPTOR_ID)
+				cdev->next_string_id++;
+		}
 		return cdev->next_string_id;
 	}
 	return -ENODEV;

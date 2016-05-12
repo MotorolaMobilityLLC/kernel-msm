@@ -193,6 +193,7 @@ struct ci13xxx {
 	u32			  default_system_clk_rate;	/* max freq at
 						which system clock should run
 						in non streaming mode */;
+	unsigned long              fs_connect_enable; /* force full-speed enable */
 };
 
 /******************************************************************************

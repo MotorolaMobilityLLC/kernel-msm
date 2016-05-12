@@ -484,6 +484,7 @@ struct usb_gadget_ops {
 			struct usb_gadget_driver *);
 	int	(*udc_stop)(struct usb_gadget *,
 			struct usb_gadget_driver *);
+	int	(*set_fullspeed) (struct usb_gadget *, unsigned long);
 };
 
 /**
@@ -928,7 +929,18 @@ static inline void usb_gadget_autopm_put_no_suspend(struct usb_gadget *gadget)
 	if (gadget && gadget->dev.parent)
 		pm_runtime_put_noidle(gadget->dev.parent);
 }
-
+/**
+ * usb_gadget_force_fullspeed - set fullspeed.
+ * @gadget:the device being declared is fullspeed connect
+ *
+ * returns zero on success, else negative errno.
+ */
+static inline int usb_gadget_force_fullspeed( struct usb_gadget *gadget )
+{
+	if (!gadget->ops->set_fullspeed)
+		return -EOPNOTSUPP;
+	return gadget->ops->set_fullspeed(gadget, 1);
+}
 /*-------------------------------------------------------------------------*/
 
 /**

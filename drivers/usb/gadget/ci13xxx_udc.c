@@ -69,6 +69,7 @@
 #include <linux/usb/msm_hsusb.h>
 #include <linux/tracepoint.h>
 #include <linux/qcom/usb_trace.h>
+#include <soc/qcom/socinfo.h>
 
 #include "ci13xxx_udc.h"
 
@@ -3613,6 +3614,18 @@ static const struct usb_ep_ops usb_ep_ops = {
 /******************************************************************************
  * GADGET block
  *****************************************************************************/
+static void ci13xxx_pullup_internal(struct ci13xxx *udc)
+{
+	if (udc->fs_connect_enable) {
+		/* Port force full speed connect */
+		hw_cwrite(CAP_PORTSC, BIT(24), (1<<24));
+	}
+	else {
+		/* Port force full speed connect off */
+		hw_cwrite(CAP_PORTSC, BIT(24), 0);
+	}
+	hw_device_state(udc->ep0out.qh.dma);
+}
 static int ci13xxx_vbus_session(struct usb_gadget *_gadget, int is_active)
 {
 	struct ci13xxx *udc = container_of(_gadget, struct ci13xxx, gadget);
@@ -3635,8 +3648,12 @@ static int ci13xxx_vbus_session(struct usb_gadget *_gadget, int is_active)
 			if (udc->udc_driver->notify_event)
 				udc->udc_driver->notify_event(udc,
 					CI13XXX_CONTROLLER_CONNECT_EVENT);
-			if (udc->softconnect)
-				hw_device_state(udc->ep0out.qh.dma);
+			if (udc->softconnect) {
+				if(of_board_is_sharp_eve())
+					ci13xxx_pullup_internal(udc);
+				else
+					hw_device_state(udc->ep0out.qh.dma);
+			}
 		} else {
 			hw_device_state(0);
 			_gadget_stop_activity(&udc->gadget);
@@ -3704,14 +3721,57 @@ static int ci13xxx_pullup(struct usb_gadget *_gadget, int is_active)
 		return 0;
 	}
 	if (is_active) {
+		if(of_board_is_sharp_eve())
+			ci13xxx_pullup_internal(udc);
 		if (udc->udc_driver->notify_event)
 			udc->udc_driver->notify_event(udc,
 				CI13XXX_CONTROLLER_CONNECT_EVENT);
-		hw_device_state(udc->ep0out.qh.dma);
+		if(!of_board_is_sharp_eve())
+			hw_device_state(udc->ep0out.qh.dma);
 	} else {
 		hw_device_state(0);
 	}
 	spin_unlock_irqrestore(udc->lock, flags);
+
+	return 0;
+}
+static ssize_t show_usb_state(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+	size_t i;
+	int stateVal;
+	char *state[] = {"USB_STATE_NOTATTACHED", "USB_STATE_ATTACHED",
+			"USB_STATE_POWERED", "USB_STATE_RECONNECTING",
+			"USB_STATE_UNAUTHENTICATED", "USB_STATE_DEFAULT",
+			"USB_STATE_ADDRESS", "USB_STATE_CONFIGURED",
+			"USB_STATE_SUSPENDED"
+	};
+
+	struct ci13xxx *udc = container_of(dev, struct ci13xxx, gadget.dev);
+
+	if(udc->suspended == 1)
+		stateVal = USB_STATE_SUSPENDED;
+	else if(udc->configured == 1)
+		stateVal = USB_STATE_CONFIGURED;
+	else
+		stateVal = USB_STATE_NOTATTACHED;
+
+	i = scnprintf(buf, PAGE_SIZE, "%s\n", state[stateVal]);
+	return i;
+}
+
+static DEVICE_ATTR(usb_state, S_IRUSR, show_usb_state, 0);
+int ci13xxx_set_fullspeed_connect( struct usb_gadget *_gadget, unsigned long enable )
+{
+	struct ci13xxx *udc = container_of(_gadget, struct ci13xxx, gadget);
+
+	if (!udc)
+		return -EIO;
+
+	if (enable != 0 && enable != 1)
+		return -EIO;
+
+	udc->fs_connect_enable = enable;
 
 	return 0;
 }
@@ -3733,6 +3793,7 @@ static const struct usb_gadget_ops usb_gadget_ops = {
 	.pullup		= ci13xxx_pullup,
 	.udc_start	= ci13xxx_start,
 	.udc_stop	= ci13xxx_stop,
+	.set_fullspeed = ci13xxx_set_fullspeed_connect,
 };
 
 /**
@@ -3817,8 +3878,11 @@ static int ci13xxx_start(struct usb_gadget *gadget,
 		put = true;
 		goto done;
 	}
-
-	retval = hw_device_state(udc->ep0out.qh.dma);
+	if(of_board_is_sharp_eve()) {
+		ci13xxx_pullup_internal(udc);
+	} else {
+		retval = hw_device_state(udc->ep0out.qh.dma);
+	}
 
  done:
 	spin_unlock_irqrestore(udc->lock, flags);
@@ -4112,6 +4176,10 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 	}
 #endif
 
+	retval = device_create_file(&udc->gadget.dev, &dev_attr_usb_state);
+	if (retval != 0)
+		dev_err(dev, "failed to create sysfs entry:"
+			" (usb_state) error: (%d)\n", retval);
 	pm_runtime_no_callbacks(&udc->gadget.dev);
 	pm_runtime_enable(&udc->gadget.dev);
 
@@ -4171,6 +4239,7 @@ static void udc_remove(void)
 #ifdef CONFIG_USB_GADGET_DEBUG_FILES
 	dbg_remove_files(&udc->gadget.dev);
 #endif
+	device_remove_file(&udc->gadget.dev, &dev_attr_usb_state);
 	destroy_eps(udc);
 	dma_pool_destroy(udc->td_pool);
 	dma_pool_destroy(udc->qh_pool);

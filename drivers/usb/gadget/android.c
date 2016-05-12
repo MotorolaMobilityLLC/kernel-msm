@@ -33,7 +33,8 @@
 #include <linux/usb/android.h>
 
 #include <linux/qcom/diag_dload.h>
-
+#include <soc/qcom/sh_smem.h>
+#include <soc/qcom/socinfo.h>
 #include "gadget_chips.h"
 
 #include "f_fs.c"
@@ -45,6 +46,8 @@
 #endif
 #include "f_mass_storage.c"
 #define USB_ETH_RNDIS y
+#define USBF_OBEX_INCLUDED
+#include "f_obex.c"
 #include "f_diag.c"
 #include "f_qdss.c"
 #include "f_rmnet_smd.c"
@@ -216,6 +219,8 @@ struct android_dev {
 
 	/* A list node inside the android_dev_list */
 	struct list_head list_item;
+	int is_serial_set;
+	bool unlocked;
 };
 
 struct android_configuration {
@@ -245,6 +250,12 @@ static int usb_diag_update_pid_and_serial_num(uint32_t pid, const char *snum);
 #define STRING_MANUFACTURER_IDX		0
 #define STRING_PRODUCT_IDX		1
 #define STRING_SERIAL_IDX		2
+
+#define D_SH_SERIAL_SETUP_PORT_OBEX		(0)
+#define D_SH_SERIAL_SETUP_PORT_MDLM		(1)
+#define D_SH_SERIAL_SETUP_PORT_NUM		(2)
+
+static unsigned char tty_lines[D_SH_SERIAL_SETUP_PORT_NUM];
 
 static char manufacturer_string[256];
 static char product_string[256];
@@ -396,6 +407,75 @@ enum android_device_state {
 	USB_RESUMED
 };
 
+#define	SH_BOOT_O_C    0x20
+#define	SH_BOOT_U_O_C  0x21
+#define	SH_BOOT_D      0x40
+#define	SH_BOOT_F_F    0x44
+#define SH_BOOT_NORMAL 0xFFFF
+
+typedef enum {
+	BOOT_MODE_ERR = -1,
+	BOOT_MODE_NORMAL = 0,
+	BOOT_MODE_TESTMODE,
+	BOOT_MODE_SOFTWARE_UPDATE,
+} android_boot_mode;
+
+static android_boot_mode boot_mode_hold;
+
+static void get_boot_mode_from_smem(void)
+{
+	sharp_smem_common_type *p_smem_addr = NULL;
+	unsigned short bootmode;
+	int smem_softupdateflg = 0;
+
+	p_smem_addr = sh_smem_get_common_address();
+	if (!p_smem_addr) {
+		pr_err("%s: failed to get smem address. \n", __func__);
+		return;
+	}
+	smem_softupdateflg = p_smem_addr->shusb_softupdate_mode_flag;
+	bootmode = p_smem_addr->sh_boot_mode;
+	switch (bootmode) {
+		case SH_BOOT_O_C:
+		case SH_BOOT_U_O_C:
+			boot_mode_hold = BOOT_MODE_NORMAL;
+			break;
+		case SH_BOOT_NORMAL:
+			if (!smem_softupdateflg)
+				boot_mode_hold = BOOT_MODE_NORMAL;
+			else
+				boot_mode_hold = BOOT_MODE_SOFTWARE_UPDATE;
+			break;
+		case SH_BOOT_D:
+		case SH_BOOT_F_F:
+			if (!smem_softupdateflg)
+				boot_mode_hold = BOOT_MODE_TESTMODE;
+			else
+				boot_mode_hold = BOOT_MODE_SOFTWARE_UPDATE;
+			break;
+		default :
+			boot_mode_hold = BOOT_MODE_NORMAL;
+			break;
+	}
+	return;
+}
+
+static int get_diag_enable_from_smem(void)
+{
+	sharp_smem_common_type *p_smem_addr = NULL;
+	int smem_diag_enable = 0;
+
+	/* smem */
+	p_smem_addr = sh_smem_get_common_address();
+	if ( !p_smem_addr ) {
+		pr_err("%s: sh_smem_get_common_address failed\n", __func__);
+		return 0;
+	}
+	smem_diag_enable = p_smem_addr->shusb_qxdm_ena_flag;
+	pr_info("%s: diag_enable smem:%d\n", __func__, smem_diag_enable);
+	return !!smem_diag_enable;
+}
+
 static void android_work(struct work_struct *data)
 {
 	struct android_dev *dev = container_of(data, struct android_dev, work);
@@ -501,7 +581,10 @@ static int android_enable(struct android_dev *dev)
 				return err;
 			}
 		}
-		usb_gadget_connect(cdev->gadget);
+		if(of_board_is_sharp_eve())
+			return usb_gadget_connect(cdev->gadget);
+		else
+			usb_gadget_connect(cdev->gadget);
 	}
 
 	return err;
@@ -1434,9 +1517,47 @@ static ssize_t clients_store(
 	return size;
 }
 
+static ssize_t diag_enable_show(struct device *pdev, struct device_attribute *attr,
+			   char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", get_diag_enable_from_smem());
+}
+
+/* unlock */
+static ssize_t unlocked_show(struct device *pdev, struct device_attribute *attr,
+			   char *buf)
+{
+	struct android_dev *dev = dev_get_drvdata(pdev);
+	return snprintf(buf, PAGE_SIZE, "%d\n", dev->unlocked);
+}
+
+static ssize_t unlocked_store(struct device *pdev, struct device_attribute *attr,
+			    const char *buff, size_t size)
+{
+	struct android_dev *dev = dev_get_drvdata(pdev);
+	int unlocked = 0;
+
+	sscanf(buff, "%d", &unlocked);
+	if (unlocked && !dev->unlocked) {
+		dev->unlocked = true;
+	} else if (!unlocked && dev->unlocked) {
+		dev->unlocked = false;
+	} else {
+		pr_info("unlocked_store: already %s\n",
+				dev->unlocked ? "unlocked" : "locked");
+	}
+	return size;
+}
+
 static DEVICE_ATTR(clients, S_IWUSR, NULL, clients_store);
+
+static struct device_attribute dev_attr_diag_enable =
+	__ATTR(enable, S_IRUGO, diag_enable_show, NULL);
+
 static struct device_attribute *diag_function_attributes[] =
-					 { &dev_attr_clients, NULL };
+					 { &dev_attr_clients,
+					   &dev_attr_diag_enable,
+					   NULL };
 
 static int diag_function_init(struct android_usb_function *f,
 				 struct usb_composite_dev *cdev)
@@ -1671,6 +1792,59 @@ static struct android_usb_function qdss_function = {
 	.attributes	= qdss_function_attributes,
 };
 
+/* OBEX */
+static int sh_obex_function_init(struct android_usb_function *f, struct usb_composite_dev *cdev)
+{
+	struct android_dev *dev = cdev_to_android_dev(cdev);
+	int ret = 0;
+
+	if (!dev->is_serial_set) {
+		ret = gserial_alloc_line(&tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
+		dev->is_serial_set = true;
+	}
+
+	return ret;
+}
+
+static void sh_obex_function_cleanup(struct android_usb_function *f)
+{
+	struct android_dev *dev = f->android_dev;
+
+	if (dev->is_serial_set) {
+		gserial_free_line(tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
+		dev->is_serial_set = false;
+	}
+}
+
+static int sh_obex_function_bind_config(struct android_usb_function *f, struct usb_configuration *c)
+{
+	return obex_bind_config(c, tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
+}
+
+static struct android_usb_function obex_function = {
+	.name			= "obex",
+	.init			= sh_obex_function_init,
+	.cleanup		= sh_obex_function_cleanup,
+	.bind_config	= sh_obex_function_bind_config,
+};
+
+static int obex_notify_uevent(void)
+{
+	int ret;
+	char **uevent_envp = NULL;
+	char *uevent_envp_open[]={"OBEX_STATE=open",NULL};
+	char *uevent_envp_close[]={"OBEX_STATE=close",NULL};
+
+	if (obex_sts->open_sts)
+		uevent_envp = uevent_envp_open;
+	else
+		uevent_envp = uevent_envp_close;
+
+	ret = kobject_uevent_env(&obex_function.dev->kobj, KOBJ_CHANGE, uevent_envp);
+	pr_debug("%s: sent uevent %s ret = %d\n", __func__, uevent_envp[0], ret);
+	return ret;
+}
+
 /* SERIAL */
 #define MAX_SERIAL_INSTANCES 4
 struct serial_function_config {
@@ -1799,7 +1973,7 @@ static int serial_function_bind_config(struct android_usb_function *f,
 					struct usb_configuration *c)
 {
 	char *name, *xport_name = NULL;
-	char buf[32], *b, xport_name_buf[32], *tb;
+	char buf[32], *b, xport_name_buf[32], *tb, *p;
 	int err = -1, i, ports = 0;
 	static int serial_initialized;
 	struct serial_function_config *config = f->config;
@@ -1809,6 +1983,21 @@ static int serial_function_bind_config(struct android_usb_function *f,
 
 	strlcpy(xport_name_buf, serial_xport_names, sizeof(xport_name_buf));
 	tb = strim(xport_name_buf);
+
+	/***************************************************************
+	 * Hardcode serial_transports to "smd,tty", which means dun,gps
+	 ***************************************************************/
+	ports = 0;
+	p = b;
+	while (*p++) {
+		if (*p == ',') ports++;
+	}
+	ports++;
+	if (1 == ports) {
+		strcat(buf, ",tty");
+	}
+	b = strim(buf);
+	ports = 0;
 
 	while (b) {
 		name = strsep(&b, ",");
@@ -1864,6 +2053,17 @@ static int serial_function_bind_config(struct android_usb_function *f,
 	serial_initialized = 1;
 
 bind_config:
+	memset(buf, 0, 32);
+	strcpy(buf, serial_transports);
+	b = strim(buf);
+	ports = 0;
+	while (b) {
+		name = strsep(&b, ",");
+		if (name) {
+			ports++;
+		}
+	}
+
 	for (i = 0; i < ports; i++) {
 		err = usb_add_function(c, config->f_serial[i]);
 		if (err) {
@@ -2896,6 +3096,7 @@ static struct android_usb_function midi_function = {
 #endif
 static struct android_usb_function *supported_functions[] = {
 	&ffs_function,
+	&obex_function,
 	&mbim_function,
 	&ecm_qc_function,
 #ifdef CONFIG_SND_PCM
@@ -3088,6 +3289,20 @@ static int android_enable_function(struct android_dev *dev,
 	struct android_usb_platform_data *pdata = dev->pdata;
 	struct usb_gadget *gadget = dev->cdev->gadget;
 
+	if(of_board_is_sharp_eve()) {
+		if (!strcmp(name, "diag") && !get_diag_enable_from_smem()) {
+			pr_info("%s: diag cannot enable\n", __func__);
+			return 0;
+		}
+		else if (!strcmp(name, "adb") && BOOT_MODE_TESTMODE == boot_mode_hold && !get_diag_enable_from_smem()) {
+			pr_info("%s: adb cannot enable testmode\n", __func__);
+			return 0;
+		}
+		else if (!strcmp(name, "adb") && BOOT_MODE_SOFTWARE_UPDATE == boot_mode_hold && !get_diag_enable_from_smem()) {
+			pr_info("%s: adb cannot enable softupdate\n", __func__);
+			return 0;
+		}
+	}
 	while ((f = *functions++)) {
 		if (!strcmp(name, f->name)) {
 			if (f->android_dev && f->android_dev != dev)
@@ -3323,6 +3538,12 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 
 	sscanf(buff, "%d", &enabled);
 	if (enabled && !dev->enabled) {
+		if(of_board_is_sharp_eve()) {
+			if (!dev->unlocked) {
+				mutex_unlock(&dev->mutex);
+				return size;
+			}
+		}
 		/*
 		 * Update values in composite driver's copy of
 		 * device descriptor.
@@ -3368,6 +3589,10 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 					f_holder->f->disable(f_holder->f);
 			}
 		dev->enabled = false;
+		if(of_board_is_sharp_eve()) {
+			/* wait to prevent disconnect-failure */
+			msleep(150);
+		}
 	} else if (__ratelimit(&rl)) {
 		pr_err("android_usb: already %s\n",
 				dev->enabled ? "enabled" : "disabled");
@@ -3425,6 +3650,28 @@ static ssize_t state_show(struct device *pdev, struct device_attribute *attr,
 	spin_unlock_irqrestore(&cdev->lock, flags);
 out:
 	return snprintf(buf, PAGE_SIZE, "%s\n", state);
+}
+
+static ssize_t bootmode_show(struct device *pdev, struct device_attribute *attr,
+			   char *buf)
+{
+	int bm = 0;
+
+	switch ( boot_mode_hold ) {
+		case BOOT_MODE_NORMAL:
+			bm = 0;
+			break;
+		case BOOT_MODE_TESTMODE:
+			bm = 1;
+			break;
+		case BOOT_MODE_SOFTWARE_UPDATE:
+			bm = 2;
+			break;
+		default :
+			bm = -1;
+			break;
+	}
+	return snprintf(buf, PAGE_SIZE, "%d\n", bm);
 }
 
 #define ANDROID_DEV_ATTR(field, format_string)				\
@@ -3492,7 +3739,6 @@ field ## _store(struct device *dev, struct device_attribute *attr,	\
 }									\
 static DEVICE_ATTR(field, S_IRUGO | S_IWUSR, field ## _show, field ## _store);
 
-
 DESCRIPTOR_ATTR(idVendor, "%04x\n")
 DESCRIPTOR_ATTR(idProduct, "%04x\n")
 DESCRIPTOR_ATTR(bcdDevice, "%04x\n")
@@ -3518,6 +3764,8 @@ ANDROID_DEV_ATTR(idle_pc_rpm_no_int_secs, "%u\n");
 static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
 static DEVICE_ATTR(remote_wakeup, S_IRUGO | S_IWUSR,
 		remote_wakeup_show, remote_wakeup_store);
+static DEVICE_ATTR(bootmode, S_IRUGO, bootmode_show, NULL);
+static DEVICE_ATTR(unlocked, S_IRUGO | S_IWUSR, unlocked_show, unlocked_store);
 
 static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_idVendor,
@@ -3540,6 +3788,8 @@ static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_pm_qos_state,
 	&dev_attr_state,
 	&dev_attr_remote_wakeup,
+	&dev_attr_bootmode,
+	&dev_attr_unlocked,
 	NULL
 };
 
@@ -3623,6 +3873,11 @@ static int android_bind(struct usb_composite_dev *cdev)
 	if (gadget_is_otg(cdev->gadget))
 		list_for_each_entry(conf, &dev->configs, list_item)
 			conf->usb_config.descriptors = otg_desc;
+	if(of_board_is_sharp_eve()) {
+		if ( BOOT_MODE_TESTMODE == boot_mode_hold ) {
+			usb_gadget_force_fullspeed(gadget);
+		}
+	}
 
 	return 0;
 }
@@ -3974,6 +4229,8 @@ static int android_probe(struct platform_device *pdev)
 	android_dev->disable_depth = 1;
 	android_dev->functions = supported_functions;
 	android_dev->configs_num = 0;
+	if(of_board_is_sharp_eve())
+		android_dev->is_serial_set = false;
 	INIT_LIST_HEAD(&android_dev->configs);
 	INIT_WORK(&android_dev->work, android_work);
 	INIT_DELAYED_WORK(&android_dev->pm_qos_work, android_pm_qos_work);
@@ -4129,6 +4386,11 @@ static struct platform_driver android_platform_driver = {
 static int __init init(void)
 {
 	int ret;
+
+    if(of_board_is_sharp_eve()) {
+		/* judge boot mode */
+		get_boot_mode_from_smem();
+	}
 
 	INIT_LIST_HEAD(&android_dev_list);
 	android_dev_count = 0;

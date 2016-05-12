@@ -30,9 +30,9 @@
 #include <linux/module.h>
 #include <linux/debugfs.h>
 #include <linux/workqueue.h>
+#include <soc/qcom/socinfo.h>
 
 #include "u_serial.h"
-
 
 /*
  * This component encapsulates the TTY layer glue needed to provide basic
@@ -450,7 +450,8 @@ __acquires(&port->port_lock)
 		 */
 		if (!port->port_usb) {
 			do_tty_wake = false;
-			gs_free_req(in, req);
+			if(!of_board_is_sharp_eve())
+				gs_free_req(in, req);
 			break;
 		}
 		if (status) {
@@ -507,7 +508,10 @@ __acquires(&port->port_lock)
 
 		req = list_entry(pool->next, struct usb_request, list);
 		list_del(&req->list);
-		req->length = RX_BUF_SIZE;
+		if(of_board_is_sharp_eve())
+			req->length = min((u16)out->maxpacket, (u16)RX_BUF_SIZE);
+		else
+			req->length = RX_BUF_SIZE;
 
 		/* drop lock while we call out; the controller driver
 		 * may need to call us back (e.g. for disconnect)
@@ -829,7 +833,11 @@ static int gs_open(struct tty_struct *tty, struct file *file)
 
 			/* already open?  Great. */
 			if (port->port.count) {
-				status = 0;
+				if(of_board_is_sharp_eve()) {
+					/* already opened ... must return EBUSY after unlock */
+					status = -ENOTSUPP;
+				} else
+					status = 0;
 				port->port.count++;
 
 			/* currently opening/closing? wait ... */
@@ -849,6 +857,8 @@ static int gs_open(struct tty_struct *tty, struct file *file)
 		default:
 			/* fully handled */
 			return status;
+		case -ENOTSUPP:
+			return -EBUSY;
 		case -EAGAIN:
 			/* must do the work */
 			break;
@@ -1537,7 +1547,8 @@ int gserial_connect(struct gserial *gser, u8 port_num)
 		if (gser->disconnect)
 			gser->disconnect(gser);
 	}
-
+	if (of_board_is_sharp_eve() && port->port_usb)
+		status = gs_start_tx(port);
 	spin_unlock_irqrestore(&port->port_lock, flags);
 
 	return status;
@@ -1634,6 +1645,11 @@ static int userial_init(void)
 			B9600 | CS8 | CREAD | HUPCL | CLOCAL;
 	gs_tty_driver->init_termios.c_ispeed = 9600;
 	gs_tty_driver->init_termios.c_ospeed = 9600;
+	if(of_board_is_sharp_eve()) {
+		gs_tty_driver->init_termios.c_iflag = 0;
+		gs_tty_driver->init_termios.c_oflag = 0;
+		gs_tty_driver->init_termios.c_lflag = 0;
+	}
 
 	tty_set_operations(gs_tty_driver, &gs_tty_ops);
 	for (i = 0; i < MAX_U_SERIAL_PORTS; i++)
