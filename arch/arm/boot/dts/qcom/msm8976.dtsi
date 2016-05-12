@@ -216,12 +216,13 @@
 	};
 
 	clock_gcc_gfx: qcom,gcc-gfx@1800000 {
-                compatible = "qcom,gcc-gfx-8976";
-                reg = <0x1800000 0x80000>;
-                reg-names = "cc_base";
+		compatible = "qcom,gcc-gfx-8976";
+		reg = <0x1800000 0x80000>,
+		    <0x00a6004 0x4>;
+		reg-names = "cc_base", "fuse";
 		vdd_gfx-supply = <&gfx_vreg_corner>;
 		gpu_handle = <&msm_gpu>;
-                qcom,gfxfreq-corner =
+		qcom,gfxfreq-corner-v0 =
 			<         0   0 >,
 			< 133333333   1 >,  /* Min SVS   */
 			< 200000000   2 >,  /* Low SVS   */
@@ -232,6 +233,18 @@
 			< 480000000   7 >,  /* Turbo     */
 			< 550000000   8 >,  /* Super Turbo */
 			< 600000000   9 >;  /* Super Turbo */
+		qcom,gfxfreq-corner-v1 =
+			<         0   0 >,
+			< 133333333   1 >,  /* Min SVS   */
+			< 200000000   2 >,  /* Low SVS   */
+			< 266666667   3 >,  /* SVS Minus */
+			< 300000000   4 >,  /* SVS       */
+			< 366670000   5 >,  /* SVS Plus  */
+			< 432000000   6 >,  /* NOM       */
+			< 480000000   7 >,  /* Turbo     */
+			< 550000000   8 >,  /* Super Turbo */
+			< 600000000   9 >,  /* Super Turbo */
+			< 621330000   9 >;  /* Super Turbo */
 		#clock-cells = <1>;
 	};
 
