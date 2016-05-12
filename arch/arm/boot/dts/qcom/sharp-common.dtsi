@@ -18,6 +18,7 @@
 #include "sharp-common-pm8952.dtsi"
 #include "sharp-common-pmi8952.dtsi"
 #include "sharp-pinctrl.dtsi"
+#include "sharp-common-sdcc.dtsi"
 
 /*----------------------------------------*/
 /* Qualcomm settings.                     */
