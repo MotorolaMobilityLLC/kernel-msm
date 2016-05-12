@@ -2770,7 +2770,7 @@ void dhd_rx_wq_adapter(struct work_struct *ptr)
 		return;
 	}
 
-	if (atomic_read(&pub->runtime_pm_status) >= PCI_PM_SYS_SUSPENDED) {
+	if (atomic_read(&pub->runtime_pm_status) == PCI_PM_SYS_SUSPENDED) {
 		kfree(work);
 		return;
 	}
@@ -2796,7 +2796,7 @@ void dhd_start_xmit_wq_adapter(struct work_struct *ptr)
 
 	bus = dhd->pub.bus;
 
-	if (atomic_read(&dhd->pub.runtime_pm_status) >= PCI_PM_SYS_SUSPENDED) {
+	if (atomic_read(&dhd->pub.runtime_pm_status) == PCI_PM_SYS_SUSPENDED) {
 		kfree_skb(work->skb);
 		kfree(work);
 		return;
@@ -2820,7 +2820,7 @@ dhd_start_xmit_queue_work(struct sk_buff *skb, struct net_device *net)
 	struct dhd_rx_tx_work *start_xmit_work;
 	dhd_info_t *dhd = DHD_DEV_INFO(net);
 
-	if (atomic_read(&dhd->pub.runtime_pm_status) >= PCI_PM_SYS_SUSPENDED)
+	if (atomic_read(&dhd->pub.runtime_pm_status) == PCI_PM_SYS_SUSPENDED)
 		return -ENODEV;
 
 	start_xmit_work = (struct dhd_rx_tx_work*)
@@ -4252,7 +4252,7 @@ dhd_ioctl_entry_wrapper(struct net_device *net, struct ifreq *ifr, int cmd)
 	int error;
 	dhd_info_t *dhd = DHD_DEV_INFO(net);
 
-	if (atomic_read(&dhd->pub.runtime_pm_status) >= PCI_PM_SYS_SUSPENDED)
+	if (atomic_read(&dhd->pub.runtime_pm_status) == PCI_PM_SYS_SUSPENDED)
 		return -EHOSTDOWN;
 
 	if (pm_runtime_get_sync(dhd_bus_to_dev(dhd->pub.bus)) < 0)

@@ -349,7 +349,7 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifidx, wl_ioctl_t *ioc, void *buf, int len)
 {
 	int ret = BCME_ERROR;
 
-	if (atomic_read(&dhd_pub->runtime_pm_status) >= PCI_PM_SYS_SUSPENDED)
+	if (atomic_read(&dhd_pub->runtime_pm_status) == PCI_PM_SYS_SUSPENDED)
 		return -EHOSTDOWN;
 
 	if (pm_runtime_get_sync(dhd_bus_to_dev(dhd_pub->bus)) < 0) {

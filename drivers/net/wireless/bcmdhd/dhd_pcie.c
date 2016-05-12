@@ -779,13 +779,17 @@ void dhd_bus_stop(struct dhd_bus *bus, bool enforce_mutex)
 		goto done;
 	}
 	bus->dhd->busstate = DHD_BUS_DOWN;
-	atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_NETIF_SUSPENDED);
+	atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_RT_SUSPENDED);
 
 	dhdpcie_bus_intr_disable(bus);
 	status =  dhdpcie_bus_cfg_read_dword(bus, PCIIntstatus, 4);
 	dhdpcie_bus_cfg_write_dword(bus, PCIIntstatus, 4, status);
 	if (!dhd_download_fw_on_driverload)
 		dhd_dpc_kill(bus->dhd);
+
+	pm_runtime_disable(dhd_bus_to_dev(bus));
+	pm_runtime_set_suspended(dhd_bus_to_dev(bus));
+	pm_runtime_enable(dhd_bus_to_dev(bus));
 
 	/* Clear rx control and wake any waiters */
 	bus->rxlen = 0;
