@@ -1799,8 +1799,9 @@ static int sh_obex_function_init(struct android_usb_function *f, struct usb_comp
 	int ret = 0;
 
 	if (!dev->is_serial_set) {
-		ret = gserial_alloc_line(&tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
-		dev->is_serial_set = true;
+		/* It effect modem port enumeration (temp)*/
+		/*ret = gserial_alloc_line(&tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
+		dev->is_serial_set = true;*/
 	}
 
 	return ret;
