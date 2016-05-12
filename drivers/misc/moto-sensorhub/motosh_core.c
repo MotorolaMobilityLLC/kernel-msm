@@ -1308,6 +1308,11 @@ static int motosh_probe(struct i2c_client *client,
 			SW_HEADPHONE_INSERT);
 	input_set_capability(ps_motosh->input_dev, EV_SW,
 			SW_MICROPHONE_INSERT);
+	input_report_switch(ps_motosh->input_dev,
+			SW_HEADPHONE_INSERT,  0);
+	input_report_switch(ps_motosh->input_dev,
+			SW_MICROPHONE_INSERT, 0);
+	input_sync(ps_motosh->input_dev);
 #endif /* CONFIG_SENSORS_MOTOSH_HEADSET */
 	ps_motosh->input_dev->name = "sensorprocessor";
 
