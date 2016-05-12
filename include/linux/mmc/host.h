@@ -172,6 +172,7 @@ struct mmc_host_ops {
 	unsigned long (*get_max_frequency)(struct mmc_host *host);
 	unsigned long (*get_min_frequency)(struct mmc_host *host);
 	int	(*notify_load)(struct mmc_host *, enum mmc_load);
+	void	(*notify_halt)(struct mmc_host *mmc, bool halt);
 	void	(*notify_pm_status)(struct mmc_host *, enum dev_state);
 	int	(*stop_request)(struct mmc_host *host);
 	unsigned int	(*get_xfer_remain)(struct mmc_host *host);
