@@ -37,6 +37,7 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
+#include <soc/qcom/socinfo.h>
 
 #include "core.h"
 #include "bus.h"
@@ -1558,6 +1559,11 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 	/* Increase the timeout values for some bad INAND MCP devices */
 	if (card->quirks & MMC_QUIRK_INAND_DATA_TIMEOUT) {
 		data->timeout_ns = 4000000000u; /* 4s */
+		data->timeout_clks = 0;
+	}
+	/* Increase the timeout value for eve */
+	if (of_board_is_sharp_eve() && mmc_card_mmc(card)) {
+		data->timeout_ns = 1500000000u; /* 1.5s */
 		data->timeout_clks = 0;
 	}
 	/* Some emmc cards require a longer read/write time */
