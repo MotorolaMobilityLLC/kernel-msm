@@ -272,6 +272,24 @@
 	/*****************************************/
 
 	/*----------------------------------------------*/
+	/* gpio_keys                                    */
+	/*----------------------------------------------*/
+	gpio_keys {
+		/delete-node/ camera_focus;
+		/delete-node/ camera_snapshot;
+		/delete-node/ vol_up;
+
+		vol_down {
+			label = "volume_down";
+			gpios = <&msm_gpio 85 0x1>;
+			linux,input-type = <1>;
+			linux,code = <114>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+
+	/*----------------------------------------------*/
 	/* msm_thermal cpu_clock restriction thresholds */
 	/*----------------------------------------------*/
 	qcom,msm-thermal {
