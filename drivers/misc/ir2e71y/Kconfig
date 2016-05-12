@@ -1,0 +1,11 @@
+#
+# IR2E71Y Configuration
+#
+
+menu "SHARP IR2E71Y devices"
+
+config IR2E71Y
+	bool "uses SHARP_IR2E71Y"
+	default n
+
+endmenu
