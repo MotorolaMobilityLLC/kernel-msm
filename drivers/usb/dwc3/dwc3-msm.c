@@ -286,6 +286,8 @@ struct dwc3_msm {
 	bool			force_lpm_in_idle;
 	int			qos_latency;
 	struct pm_qos_request   dwc3_pm_qos_request;
+	struct gpio		otg_fault_gpio;
+	int			otg_fault_irq;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2840,6 +2842,31 @@ static irqreturn_t dwc3_pmic_id_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static irqreturn_t dwc3_otg_fault_handler(int irq, void *data)
+{
+	struct dwc3_msm *mdwc = data;
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	int ret;
+
+	/*
+	 * if we are still in the fault state and host mode
+	 * handle the fault by disabling and re-enabling vbus.
+	 */
+	if (!IS_ERR_OR_NULL(mdwc->vbus_reg) &&
+			!test_bit(ID, &mdwc->inputs) &&
+			!gpio_get_value(mdwc->otg_fault_gpio.gpio)) {
+		dbg_event(dwc->ctrl_num, 0xFF, "OTG Fault ISR", 0);
+		ret = regulator_disable(mdwc->vbus_reg);
+		if (ret)
+			dev_err(mdwc->dev, "unable to disable vbus_reg\n");
+		mdelay(10);
+		ret = regulator_enable(mdwc->vbus_reg);
+		if (ret)
+			dev_err(mdwc->dev, "unable to enable vbus_reg\n");
+	}
+	return IRQ_HANDLED;
+}
+
 static int dwc3_cpu_notifier_cb(struct notifier_block *nfb,
 		unsigned long action, void *hcpu)
 {
@@ -3111,6 +3138,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	int ret = 0;
 	int ext_hub_reset_gpio;
 	u32 val;
+	enum of_gpio_flags gpio_flags;
 
 	mdwc = devm_kzalloc(&pdev->dev, sizeof(*mdwc), GFP_KERNEL);
 	if (!mdwc)
@@ -3499,6 +3527,25 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	device_init_wakeup(mdwc->dev, 1);
 	pm_stay_awake(mdwc->dev);
 
+	mdwc->otg_fault_gpio.gpio = of_get_named_gpio_flags(node,
+					"qcom,otg-fault-gpio", 0, &gpio_flags);
+
+	if (gpio_is_valid(mdwc->otg_fault_gpio.gpio) &&
+		!devm_gpio_request_one(&pdev->dev, mdwc->otg_fault_gpio.gpio,
+				gpio_flags, "otg_fault_gpio")) {
+		mdwc->otg_fault_irq = gpio_to_irq(mdwc->otg_fault_gpio.gpio);
+		irq_set_status_flags(mdwc->otg_fault_irq, IRQ_NOAUTOEN);
+		ret = devm_request_threaded_irq(&pdev->dev,
+			mdwc->otg_fault_irq,
+			NULL,
+			dwc3_otg_fault_handler,
+			IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+			"dwc3_otg_fault",
+			mdwc);
+		if (ret)
+			dev_err(&pdev->dev, "irqreq otg fault failed\n");
+	}
+
 	if (of_property_read_bool(node, "qcom,disable-dev-mode-pm"))
 		pm_runtime_get_noresume(mdwc->dev);
 
@@ -3814,6 +3861,8 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		mdwc->hs_phy->flags |= PHY_HOST_MODE;
 		mdwc->ss_phy->flags |= PHY_HOST_MODE;
 		usb_phy_notify_connect(mdwc->hs_phy, USB_SPEED_HIGH);
+		if (mdwc->otg_fault_irq)
+			enable_irq(mdwc->otg_fault_irq);
 		if (!IS_ERR(mdwc->vbus_reg))
 			ret = regulator_enable(mdwc->vbus_reg);
 		if (ret) {
@@ -3895,6 +3944,10 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		dev_dbg(mdwc->dev, "%s: turn off host\n", __func__);
 
 		usb_unregister_atomic_notify(&mdwc->usbdev_nb);
+		/* Disable any fault handlers before turning off */
+		if (mdwc->otg_fault_irq)
+			disable_irq(mdwc->otg_fault_irq);
+
 		if (!IS_ERR(mdwc->vbus_reg))
 			ret = regulator_disable(mdwc->vbus_reg);
 		if (ret) {
