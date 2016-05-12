@@ -10,9 +10,27 @@
  * GNU General Public License for more details.
  */
 
+#include "sharp-ir2e71y.dtsi"
 #include "dsi-panel-sazabi-720p-video.dtsi"
 
-// It is peculiar to a model and overwrites. 
+&soc {
+	sharp,ir2e71y8 {
+		status = "ok";
+	};
+};
+
+&soc {
+	i2c@78B6000 {
+		bdic_i2c@54 {
+			status = "ok";
+		};
+
+		bdic_i2c@39 {
+			status = "ok";
+		};
+	};
+};
+
 &dsi_sazabi_720p_vid {
 	status = "ok";
 
@@ -30,9 +48,9 @@
 		qcom,supply-max-voltage = <2800000>;
 		qcom,supply-post-on-sleep = <1>;
 	};
-	/delete-node/ qcom,panel-supply-entry@1; // vddio
-	/delete-node/ qcom,panel-supply-entry@2; // lab
-	/delete-node/ qcom,panel-supply-entry@3; // ibb
+	/delete-node/ qcom,panel-supply-entry@1;
+	/delete-node/ qcom,panel-supply-entry@2;
+	/delete-node/ qcom,panel-supply-entry@3;
 };
 
 &mdss_dsi0 {

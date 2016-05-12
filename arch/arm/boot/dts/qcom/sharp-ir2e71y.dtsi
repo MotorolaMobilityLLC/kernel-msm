@@ -1,0 +1,77 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	/*---------------------*/
+	/* backlight IC        */
+	/*---------------------*/
+	sharp,ir2e71y8 {
+		status = "disable";
+		compatible = "sharp,ir2e71y8";
+		bdic_rst_gpio = <&msm_gpio 129 0>;
+		interrupts = <90 0>;
+		interrupt-parent = <&msm_gpio>;
+
+		bkl_led: wled {
+			linux,name = "wled";
+			linux,default-trigger = "bkl-trigger";
+			max-current = <255>;
+		};
+		red_led: rgb_0 {
+			linux,name = "red";
+			no = <0>;
+			color = <0>;
+			max-current = <255>;
+		};
+		green_led: rgb_1 {
+			linux,name = "green";
+			no = <0>;
+			color = <1>;
+			max-current = <255>;
+		};
+		blue_led: rgb_2 {
+			linux,name = "blue";
+			no = <0>;
+			color = <2>;
+			max-current = <255>;
+		};
+	};
+
+	i2c@78B6000 {
+		bdic_i2c@54 {
+			compatible = "sharp,bdic_i2c";
+			status = "disable";
+			reg = <0x54>;
+		};
+
+		bdic_i2c@39 {
+			compatible = "sharp,sensor_i2c";
+			status = "disable";
+			reg = <0x39>;
+		};
+	};
+};
+
+&spmi_bus{
+	qcom,pmi8994@3 {
+		qcom,leds@d000 {
+			status = "disabled";
+		};
+	};
+
+	qcom,pmi8950@3 {
+		qcom,leds@d800 {
+			status = "disabled";
+		};
+	};
+};
+
