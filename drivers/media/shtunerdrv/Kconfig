@@ -1,0 +1,10 @@
+# drivers/media/shtunerdrv/Kconfig
+
+menu "SHARP DTV Tuner Configuration"
+
+config SHARP_DTV_TUNERDEV
+	bool "set SHARP DTV tuner dev."
+	default n
+
+
+endmenu

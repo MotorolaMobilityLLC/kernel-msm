@@ -73,6 +73,15 @@
 	/*****************************************/
 	spi@7AF6000 {
 		status = "ok";
+
+		shdtv_spi@0 {
+			status = "ok";
+			compatible = "sharp,shdtv_spi";
+			reg = <0>;
+			spi-max-frequency = <20000000>;
+/*			spi-cpol; */
+/*			spi-cpha; */
+		};
 	};
 
 	/*****************************************/
@@ -115,6 +124,15 @@
 		/delete-property/ pinctrl-2;
 		/delete-property/ pinctrl-3;
 		/delete-property/ asoc-wsa-codec-names;
+	};
+
+	tunctrl {
+		compatible = "tunctrl";
+		qcom,dtv-en-gpio = <&msm_gpio 3 0x00>;
+		qcom,spi-mosi-gpio = <&msm_gpio 20 0x00>;
+		qcom,spi-miso-gpio = <&msm_gpio 21 0x00>;
+		qcom,spi-csn-gpio = <&msm_gpio 22 0x00>;
+		qcom,spi-clk-gpio = <&msm_gpio 23 0x00>;
 	};
 };
 &pm8950_1 {
