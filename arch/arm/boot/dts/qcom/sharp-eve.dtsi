@@ -77,5 +77,6 @@
 	/*****************************************/
 
 };
+#include "sharp-eve-vib.dtsi"
 #include "sharp-eve-pm8952.dtsi"
 #include "sharp-eve-pmi8952.dtsi"
