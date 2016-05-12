@@ -5,6 +5,7 @@
  *  SD support Copyright (C) 2004 Ian Molton, All Rights Reserved.
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
  *  MMCv4 support Copyright (C) 2006 Philip Langdale, All Rights Reserved.
+ *  ftrace support Copyright (C) 2013 Sony Mobile Communications AB, All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -46,6 +47,8 @@
 #include "mmc_ops.h"
 #include "sd_ops.h"
 #include "sdio_ops.h"
+
+#include <trace/events/mmc.h>
 
 /* If the device is not responding */
 #define MMC_CORE_TIMEOUT_MS	(10 * 60 * 1000) /* 10 minute timeout */
@@ -244,6 +247,10 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 			cmd->resp[0], cmd->resp[1],
 			cmd->resp[2], cmd->resp[3]);
 
+		trace_mmc_req_done( mmc_hostname(host), cmd->opcode, err,
+				cmd->resp[0], cmd->resp[1],
+				cmd->resp[2], cmd->resp[3]);
+
 		if (mrq->data) {
 #ifdef CONFIG_MMC_PERF_PROFILING
 			if (host->perf_enable) {
@@ -293,12 +300,24 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 	unsigned int i, sz;
 	struct scatterlist *sg;
 #endif
+	unsigned int blksz = 0;
+	unsigned int blocks = 0;
+
+	if (mrq->data) {
+		blksz = mrq->data->blksz;
+		blocks = mrq->data->blocks;
+	}
 
 	if (mrq->sbc) {
 		pr_debug("<%s: starting CMD%u arg %08x flags %08x>\n",
 			 mmc_hostname(host), mrq->sbc->opcode,
 			 mrq->sbc->arg, mrq->sbc->flags);
+		trace_mmc_start_req_sbc( mmc_hostname(host), mrq->sbc->opcode,
+				mrq->sbc->arg, mrq->sbc->flags, blksz, blocks);
 	}
+
+	trace_mmc_start_req_cmd( mmc_hostname(host), mrq->cmd->opcode,
+			mrq->cmd->arg, mrq->cmd->flags, blksz, blocks);
 
 	pr_debug("%s: starting CMD%u arg %08x flags %08x\n",
 		 mmc_hostname(host), mrq->cmd->opcode,
