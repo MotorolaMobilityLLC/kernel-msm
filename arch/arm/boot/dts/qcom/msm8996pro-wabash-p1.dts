@@ -13,75 +13,9 @@
 
 /dts-v1/;
 
-#include "msm8996pro-griffin.dtsi"
+#include "msm8996pro-wabash.dtsi"
 
 / {
-	model = "Wabash";
-	compatible = "qcom,msm8996-wabash", "qcom,msm8996-moto",
-			"qcom,msm8996";
 	qcom,board-id = <0x47 0x8100>;
 };
 
-&soc {
-	/* SensorHub Bus */
-	i2c@7579000 {
-		motosh@43 {
-			mag_config = <1>;     /* Magnetometer config value */
-			mag_orient = <2>;     /* Mag Orientation value */
-		};
-	};
-};
-
-&spi_0 {
-	muc_spi: muc_spi@0 {
-		interrupts = <34 0>;
-	};
-};
-
-&mdss_hdmi_hpd_active {
-	mux {
-		pins = "gpio79";
-	};
-
-	config {
-		pins = "gpio79";
-	};
-};
-
-&mdss_hdmi_hpd_suspend {
-	mux {
-		pins = "gpio79";
-	};
-
-	config {
-		pins = "gpio79";
-	};
-};
-
-&mdss_hdmi_tx {
-	qcom,hdmi-tx-hpd = <&tlmm 79 0>;
-};
-
-&muc_attach {
-	config {
-		pins = "gpio73", "gpio35", "gpio143", "gpio34";
-		bias-disable;
-	};
-};
-
-&muc {
-	gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
-		<&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
-		<&tlmm 34 1>,   /* gpio_muc_int_n,    input */
-		<&tlmm 74 2>,   /* gpio_muc_wake_n,   output-high */
-		<&tlmm 82 1>,   /* gpio_muc_rdy_n,    input */
-		<&tlmm 143 0>,  /* gpio_muc_ff,       output-low */
-		<&tlmm 0 0>,    /* gpio_muc_spi_mosi, output-low */
-		<&tlmm 1 1>,    /* gpio_muc_spi_miso, input */
-		<0>,            /* gpio_muc_bplus_iset, cs */
-		<0>,            /* gpio_muc_bplus_discharg, cs */
-		<0>;            /* gpio_muc_bplus_fault_n, unused */
-
-	mmi,muc-ctrl-en-seq =  <1 1 100>;
-	mmi,muc-ctrl-dis-seq = <1 0 505>;
-};
