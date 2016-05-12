@@ -1106,6 +1106,7 @@
 		status = "okay";
 		regulator-name = "smbcharger_external_otg";
 	};
+	qcom,usbin-vadc = <&pmi8950_vadc>;
 };
 
 /{
