@@ -1793,38 +1793,38 @@ static struct android_usb_function qdss_function = {
 };
 
 /* OBEX */
-static int sh_obex_function_init(struct android_usb_function *f, struct usb_composite_dev *cdev)
-{
-	struct android_dev *dev = cdev_to_android_dev(cdev);
-	int ret = 0;
-
-	if (!dev->is_serial_set) {
-		/* It effect modem port enumeration (temp)*/
-		/*ret = gserial_alloc_line(&tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
-		dev->is_serial_set = true;*/
-	}
-
-	return ret;
-}
-
 static void sh_obex_function_cleanup(struct android_usb_function *f)
 {
 	struct android_dev *dev = f->android_dev;
-
-	if (dev->is_serial_set) {
-		gserial_free_line(tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
-		dev->is_serial_set = false;
+	if(of_board_is_sharp_eve())
+	{
+		if (dev->is_serial_set) {
+			gserial_free_line(tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
+			dev->is_serial_set = false;
+		}
 	}
 }
 
 static int sh_obex_function_bind_config(struct android_usb_function *f, struct usb_configuration *c)
 {
-	return obex_bind_config(c, tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
+	struct android_dev *dev = f->android_dev;
+	int ret = 0;
+	if(of_board_is_sharp_eve())
+	{
+		if (!dev->is_serial_set) {
+			ret = gserial_alloc_line(&tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
+			dev->is_serial_set = true;
+		}
+		if(!ret)
+		{
+			ret = obex_bind_config(c, tty_lines[D_SH_SERIAL_SETUP_PORT_OBEX]);
+		}
+	}
+	return ret;
 }
 
 static struct android_usb_function obex_function = {
 	.name			= "obex",
-	.init			= sh_obex_function_init,
 	.cleanup		= sh_obex_function_cleanup,
 	.bind_config	= sh_obex_function_bind_config,
 };
