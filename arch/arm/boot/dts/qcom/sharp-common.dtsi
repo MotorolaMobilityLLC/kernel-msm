@@ -290,6 +290,17 @@
 	};
 
 	/*----------------------------------------------*/
+	/* proximity                                    */
+	/*----------------------------------------------*/
+	sharp,gp2a_prox {
+		compatible = "sharp,gp2a-prox";
+		qcom,prox-int-gpio  = <&msm_gpio 43 0x00>;
+		interrupt-parent  = <&msm_gpio>;
+		interrupts = <43 0>;
+		interrupt-names = "prox_int";
+	};
+
+	/*----------------------------------------------*/
 	/* msm_thermal cpu_clock restriction thresholds */
 	/*----------------------------------------------*/
 	qcom,msm-thermal {
