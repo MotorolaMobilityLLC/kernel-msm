@@ -35,6 +35,16 @@
 	/*****************************************/
 	i2c@78B7000 {
 		status = "ok";
+		shtps_fts@38 {
+			status = "ok";
+			compatible = "sharp,shtps_fts";
+			reg = <0x38>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <65 0>;
+
+			/* user defined property */
+			shtps_fts,rst_pin = <&msm_gpio 64 0>;
+		};
 	};
 
 	/*****************************************/

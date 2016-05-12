@@ -85,3 +85,4 @@ obj-$(CONFIG_TOUCHSCREEN_HIMAX852X)	+= himax852x/
 obj-$(CONFIG_TOUCHSCREEN_BU21150)	+= bu21150.o
 obj-$(CONFIG_INPUT_MT_WRAPPER)		+= input_mt_wrapper.o
 obj-$(CONFIG_TOUCHSCREEN_IT7260_I2C)	+= it7258_ts_i2c.o
+obj-$(CONFIG_TOUCHSCREEN_FT8607)	+= shtps_fts/
