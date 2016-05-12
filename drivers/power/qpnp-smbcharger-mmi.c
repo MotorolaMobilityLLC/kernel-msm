@@ -1661,6 +1661,7 @@ int smbchg_check_usbc_voltage(struct smbchg_chip *chip, int *volt_mv)
 	union power_supply_propval ret = {0, };
 	int rc = -EINVAL;
 	struct qpnp_vadc_result results;
+	int adc_volt_mv;
 
 	if (!chip->usbc_psy || !chip->usbc_online)
 		return rc;
@@ -1684,13 +1685,13 @@ int smbchg_check_usbc_voltage(struct smbchg_chip *chip, int *volt_mv)
 		return rc;
 	}
 
-	results.physical /= 1000;
+	adc_volt_mv = (int)div_u64(results.physical, 1000);
 
-	if ((results.physical > (ret.intval - USBIN_TOLER)) &&
-	    (results.physical < (ret.intval + USBIN_TOLER)))
+	if ((adc_volt_mv > (ret.intval - USBIN_TOLER)) &&
+	    (adc_volt_mv < (ret.intval + USBIN_TOLER)))
 		*volt_mv = ret.intval;
 	else
-		*volt_mv = results.physical;
+		*volt_mv = adc_volt_mv;
 
 	return 0;
 }
