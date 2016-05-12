@@ -186,7 +186,7 @@ typedef struct
 #define WE_WOWL_ADD_PTRN     1
 #define WE_WOWL_DEL_PTRN     2
 #define QCSAP_IOCTL_SET_TWO_INT_GET_NONE (SIOCIWFIRSTPRIV + 28)
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
 #define QCSAP_IOCTL_SET_FW_CRASH_INJECT 1
 #endif
 

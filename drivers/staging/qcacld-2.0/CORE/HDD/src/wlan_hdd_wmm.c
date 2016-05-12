@@ -2646,7 +2646,8 @@ hdd_wlan_wmm_status_e hdd_wmm_delts( hdd_adapter_t* pAdapter,
              __func__, handle, qosFlowId, acType, pQosContext);
 
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
-   smeStatus = sme_QosReleaseReq( WLAN_HDD_GET_HAL_CTX(pAdapter), qosFlowId );
+   smeStatus = sme_QosReleaseReq(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                 pAdapter->sessionId, qosFlowId);
 
    VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO_LOW,
              "%s: SME flow %d released, SME status %d",

@@ -52,6 +52,7 @@
 
 /* message subtype for internal purpose */
 #define OEM_MESSAGE_SUBTYPE_INTERNAL   0xdeadbeef
+#define OEM_MESSAGE_SUBTYPE_LEN 4
 
 /*************************************************************************************************************
   OEM DATA REQ/RSP - DATA STRUCTURES
@@ -70,7 +71,8 @@ typedef struct tagOemDataReq
 *************************************************************************************************************/
 typedef struct tagOemDataRsp
 {
-    tANI_U8   oemDataRsp[OEM_DATA_RSP_SIZE];
+    uint32_t  rsp_len;
+    uint8_t   *oem_data_rsp;
 } tOemDataRsp;
 
 /*************************************************************************************************************/

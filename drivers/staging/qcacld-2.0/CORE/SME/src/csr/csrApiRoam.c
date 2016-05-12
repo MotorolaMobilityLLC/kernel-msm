@@ -9195,6 +9195,16 @@ void csrRoamingStateMsgProcessor( tpAniSirGlobal pMac, void *pMsgBuf )
         case eWNI_SME_DEAUTH_RSP:    // or the Deauthentication response message...
             if ( CSR_IS_ROAM_SUBSTATE_DEAUTH_REQ( pMac, pSmeRsp->sessionId ) )
             {
+                /*
+                 * Lets remove  eSmeCommandWmStatusChange command from pending
+                 * list as SME got DEAUTH_RSP  msg from PE which means that PE
+                 * already  has deleted the session and there is no need to
+                 * send Diassoc/Deauth CNF  mesg to PE
+                 */
+                csrRemoveCmdWithSessionIdFromPendingList(pMac,
+                                        pSmeRsp->sessionId,
+                                        &pMac->sme.smeScanCmdPendingList,
+                                        eSmeCommandWmStatusChange);
                 csrRoamRoamingStateDeauthRspProcessor( pMac, (tSirSmeDeauthRsp *)pSmeRsp );
             }
             break;

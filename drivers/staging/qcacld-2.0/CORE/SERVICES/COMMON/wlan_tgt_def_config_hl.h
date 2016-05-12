@@ -238,7 +238,7 @@
  */
 #define CFG_TGT_NUM_TDLS_CONC_BUFFER_STAS    1
 
-#define CFG_TGT_MAX_MULTICAST_FILTER_ENTRIES 5
+#define CFG_TGT_MAX_MULTICAST_FILTER_ENTRIES 16
 /*
  * Maximum number of VDEV that beacon tx offload will support
  */

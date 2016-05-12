@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -53,7 +53,7 @@
 
 #define USB_HIF_USE_SINGLE_PIPE_FOR_DATA
 #define USB_HIF_TARGET_CREDIT_SIZE  1664
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
 static ATH_DEBUG_MASK_DESCRIPTION g_HIFDebugDescription[] = {
 	{USB_HIF_DEBUG_CTRL_TRANS, "Control Transfers"},
 	{USB_HIF_DEBUG_BULK_IN, "BULK In Transfers"},

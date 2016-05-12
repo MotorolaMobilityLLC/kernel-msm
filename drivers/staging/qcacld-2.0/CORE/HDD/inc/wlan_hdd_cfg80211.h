@@ -109,7 +109,7 @@
 #endif
 
 
-#define MAX_CHANNEL (MAX_2_4GHZ_CHANNEL + NUM_5GHZ_CHANNELS)
+#define MAX_CHANNEL (NUM_2_4GHZ_CHANNELS + NUM_5GHZ_CHANNELS)
 
 typedef struct {
    u8 element_id;
@@ -1841,6 +1841,7 @@ int wlan_hdd_cfg80211_init(struct device *dev,
                                struct wiphy *wiphy,
                                hdd_config_t *pCfg
                                          );
+void wlan_hdd_cfg80211_deinit(struct wiphy *wiphy);
 
 void wlan_hdd_update_wiphy(struct wiphy *wiphy,
                            hdd_config_t *pCfg);
@@ -1951,4 +1952,11 @@ backported_cfg80211_vendor_event_alloc(struct wiphy *wiphy,
 
 void hdd_get_bpf_offload_cb(void *hdd_context, struct sir_bpf_get_offload *);
 void hdd_init_bpf_completion(void);
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+void wlan_hdd_clear_link_layer_stats(hdd_adapter_t *adapter);
+#else
+static inline void wlan_hdd_clear_link_layer_stats(hdd_adapter_t *adapter) {}
+#endif
+
 #endif

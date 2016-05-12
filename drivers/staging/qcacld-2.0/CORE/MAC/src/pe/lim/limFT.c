@@ -1442,6 +1442,12 @@ void limProcessMlmFTReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf,
         vos_mem_free(pMlmReassocReq);
         goto end;
     }
+
+    lim_update_caps_info_for_bss(pMac, &caps,
+                  psessionEntry->pLimReAssocReq->bssDescription.capabilityInfo);
+
+    limLog(pMac, LOG1, FL("Capabilities info FT Reassoc: 0x%X"), caps);
+
     pMlmReassocReq->capabilityInfo = caps;
 
     /* Update PE sessionId*/

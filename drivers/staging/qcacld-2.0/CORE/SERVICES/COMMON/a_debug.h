@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -99,7 +99,7 @@ void DebugDumpBytes(A_UCHAR *buffer, A_UINT16 length, char *pDescription);
  *
  *   #define ATH_DEBUG_BMI  ATH_DEBUG_MAKE_MODULE_MASK(0)
  *
- *   #ifdef DEBUG
+ *   #ifdef WLAN_DEBUG
  *   static ATH_DEBUG_MASK_DESCRIPTION bmi_debug_desc[] = {
  *       { ATH_DEBUG_BMI , "BMI Tracing"},   <== description of the module specific mask
  *   };
@@ -146,7 +146,7 @@ typedef struct  _ATH_DEBUG_MODULE_DBG_INFO{
 #define GET_ATH_MODULE_DEBUG_VAR_MASK(s) _XGET_ATH_MODULE_NAME_DEBUG_(s).CurrentMask
 #define _XGET_ATH_MODULE_NAME_DEBUG_(s) debug_ ## s
 
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
 
     /* for source files that will instantiate the debug variables */
 #define ATH_DEBUG_INSTANTIATE_MODULE_VAR(s,name,moddesc,initmask,count,descriptions) \
@@ -178,7 +178,7 @@ void a_register_module_debug_info(ATH_DEBUG_MODULE_DBG_INFO *pInfo);
 #define A_REGISTER_MODULE_DEBUG_INFO(s)
 #endif
 
-#else /* !DEBUG */
+#else /* !WLAN_DEBUG */
     /* NON DEBUG */
 #define ATH_DEBUG_INSTANTIATE_MODULE_VAR(s,name,moddesc,initmask,count,descriptions)
 #define AR_DEBUG_LVL_CHECK(lvl) 0

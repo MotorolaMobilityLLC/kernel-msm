@@ -84,7 +84,7 @@
 #include "tl_shim.h"
 
 #include "wma.h"
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
 #include "wma_api.h"
 #endif
 extern int process_wma_set_command(int sessid, int paramid,
@@ -2565,7 +2565,7 @@ static int __iw_softap_set_two_ints_getnone(struct net_device *dev,
         goto out;
 
     switch(sub_cmd) {
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
     case QCSAP_IOCTL_SET_FW_CRASH_INJECT:
         hddLog(LOGE, "WE_SET_FW_CRASH_INJECT: %d %d", value[1], value[2]);
         if (!pHddCtx->cfg_ini->crash_inject_enabled) {
@@ -4236,7 +4236,7 @@ static __iw_softap_ap_stats(struct net_device *dev,
         hddLog(LOG1, "unable to allocate memory");
         return -ENOMEM;
     }
-    len = scnprintf(pstatbuf, wrqu->data.length,
+    len = snprintf(pstatbuf, wrqu->data.length,
                     "RUF=%d RMF=%d RBF=%d "
                     "RUB=%d RMB=%d RBB=%d "
                     "TUF=%d TMF=%d TBF=%d "
@@ -4248,14 +4248,18 @@ static __iw_softap_ap_stats(struct net_device *dev,
                     (int)statBuffer.txBCFcnt, (int)statBuffer.txUCBcnt,
                     (int)statBuffer.txMCBcnt, (int)statBuffer.txBCBcnt);
 
-    if (len > wrqu->data.length ||
-        copy_to_user((void *)wrqu->data.pointer, (void *)pstatbuf, len))
-    {
+    if (len >= wrqu->data.length) {
+        hddLog(LOG1, "%s: Insufficient buffer:%d, %d",
+            __func__, wrqu->data.length, len);
+        kfree(pstatbuf);
+        return -E2BIG;
+    }
+    if (copy_to_user((void *)wrqu->data.pointer, (void *)pstatbuf, len)) {
         hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
         kfree(pstatbuf);
         return -EFAULT;
     }
-    wrqu->data.length -= len;
+    wrqu->data.length = len;
     kfree(pstatbuf);
     EXIT();
     return 0;
@@ -4301,9 +4305,8 @@ static __iw_get_char_setnone(struct net_device *dev,
     {
         case QCSAP_GET_STATS:
         {
-            hdd_wlan_get_stats(pAdapter, &(wrqu->data.length),
+            return hdd_wlan_get_stats(pAdapter, &(wrqu->data.length),
                                extra, WE_MAX_STR_LEN);
-            break;
         }
     }
     return 0;
@@ -5746,7 +5749,7 @@ static int iw_softap_version(struct net_device *dev,
 	return ret;
 }
 
-static VOS_STATUS
+static int
 hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int buf_len)
 {
     v_U8_t i;
@@ -5769,7 +5772,11 @@ hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int buf_len)
     if (0 != ret)
         return ret;
 
-    len = scnprintf(pBuf, buf_len, sta_info_header);
+    len = snprintf(pBuf, buf_len, sta_info_header);
+    if (len >= buf_len) {
+        hddLog(LOGE, FL("Insufficient buffer:%d, %d"), buf_len, len);
+        return -E2BIG;
+    }
     pBuf += len;
     buf_len -= len;
 
@@ -5787,6 +5794,10 @@ hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int buf_len)
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[3],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[4],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[5]);
+            if (len >= buf_len) {
+                hddLog(LOGE, FL("Insufficient buffer:%d, %d"), buf_len, len);
+                return -E2BIG;
+            }
             pBuf += len;
             buf_len -= len;
         }
@@ -5796,7 +5807,7 @@ hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int buf_len)
         }
     }
     EXIT();
-    return VOS_STATUS_SUCCESS;
+    return 0;
 }
 
 static int __iw_softap_get_sta_info(struct net_device *dev,
@@ -5805,7 +5816,6 @@ static int __iw_softap_get_sta_info(struct net_device *dev,
                                     char *extra)
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
-    VOS_STATUS status;
     hdd_context_t *hdd_ctx;
     int ret;
 
@@ -5816,10 +5826,10 @@ static int __iw_softap_get_sta_info(struct net_device *dev,
     if (0 != ret)
         return ret;
 
-    status = hdd_softap_get_sta_info(pHostapdAdapter, extra, WE_SAP_MAX_STA_INFO);
-    if ( !VOS_IS_STATUS_SUCCESS( status ) ) {
+    ret = hdd_softap_get_sta_info(pHostapdAdapter, extra, WE_SAP_MAX_STA_INFO);
+    if (ret) {
        hddLog(VOS_TRACE_LEVEL_ERROR, "%s Failed!!!",__func__);
-       return -EINVAL;
+       return ret;
     }
     wrqu->data.length = strlen(extra);
     EXIT();
@@ -6041,7 +6051,7 @@ __iw_get_softap_linkspeed(struct net_device *dev, struct iw_request_info *info,
           kfree(pmacAddress);
           return -EFAULT;
       }
-      pmacAddress[MAC_ADDRESS_STR_LEN] = '\0';
+      pmacAddress[MAC_ADDRESS_STR_LEN -1] = '\0';
 
       status = hdd_string_to_hex (pmacAddress, MAC_ADDRESS_STR_LEN, macAddress );
       kfree(pmacAddress);
@@ -6837,7 +6847,7 @@ static const struct iw_priv_args hostapd_private_args[] = {
         0,
         "" },
     /* handlers for sub-ioctl */
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
     {   QCSAP_IOCTL_SET_FW_CRASH_INJECT,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 2,
         0,

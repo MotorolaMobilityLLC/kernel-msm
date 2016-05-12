@@ -264,6 +264,8 @@ typedef enum {
 
     /** set OUI to be used in probe request if enabled */
     WMI_SCAN_PROB_REQ_OUI_CMDID,
+    /** config adaptive dwell scan */
+    WMI_SCAN_ADAPTIVE_DWELL_CONFIG_CMDID,
 
     /* PDEV(physical device) specific commands */
     /** set regulatorty ctl id used by FW to determine the exact ctl power limits */
@@ -1131,8 +1133,11 @@ typedef enum {
     /** Event indicating the DIAG logs/events supported by FW */
     WMI_DIAG_EVENT_LOG_SUPPORTED_EVENTID,
 
-    /* Instantaneous RSSI event */
+    /** Instantaneous RSSI event */
     WMI_INST_RSSI_STATS_EVENTID,
+
+    /** FW update tx power levels event */
+    WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID,
 
     /* NLO specific events */
     /** NLO match event after the first match */
@@ -2507,6 +2512,27 @@ typedef struct {
 
 /** always do passive scan on passive channels */
 #define WMI_SCAN_FLAG_STRICT_PASSIVE_ON_PCHN 0x10000
+
+/** for adaptive scan mode using 3 bits (21 - 23 bits) */
+#define WMI_SCAN_DWELL_MODE_MASK 0x00E00000
+#define WMI_SCAN_DWELL_MODE_SHIFT        21
+
+typedef enum {
+    WMI_SCAN_DWELL_MODE_DEFAULT      = 0,
+    WMI_SCAN_DWELL_MODE_CONSERVATIVE = 1,
+    WMI_SCAN_DWELL_MODE_MODERATE     = 2,
+    WMI_SCAN_DWELL_MODE_AGGRESSIVE   = 3,
+    WMI_SCAN_DWELL_MODE_STATIC       = 4,
+} WMI_SCAN_DWELL_MODE;
+
+#define WMI_SCAN_SET_DWELL_MODE(flag, mode) \
+    do { \
+        (flag) |= (((mode) << WMI_SCAN_DWELL_MODE_SHIFT) & \
+            WMI_SCAN_DWELL_MODE_MASK); \
+    } while(0)
+
+#define WMI_SCAN_GET_DWELL_MODE(flag) \
+    (((flag) & WMI_SCAN_DWELL_MODE_MASK) >> WMI_SCAN_DWELL_MODE_SHIFT)
 
 /** WMI_SCAN_CLASS_MASK must be the same value as IEEE80211_SCAN_CLASS_MASK */
 #define WMI_SCAN_CLASS_MASK 0xFF000000
@@ -4177,9 +4203,41 @@ typedef struct {
     A_UINT32 on_time_hs20;
     /** number of channels */
     A_UINT32 num_channels;
-    /** tx time (in milliseconds) per TPC level (0.5 dBm) */
+    /** tx time per TPC level - DEPRECATED
+     * This field is deprecated.
+     * It is superseded by the WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID message.
+     */
     A_UINT32 tx_time_per_tpc[MAX_TPC_LEVELS];
 } wmi_radio_link_stats;
+
+/** tx time per power level statistics */
+typedef struct {
+    A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_tx_power_level_stats_evt_fixed_param */
+    /** total number of tx power levels */
+    A_UINT32 total_num_tx_power_levels;
+    /** number of tx power levels that are carried in this event */
+    A_UINT32 num_tx_power_levels;
+    /** offset of current stats
+     * If ((num_tx_power_levels + power_level_offset)) ==
+     *     total_num_tx_power_levels)
+     * this message completes the report of tx time per power levels.
+     * Otherwise, additional WMI_RADIO_TX_POWER_LEVEL_STATS_EVENTID messages
+     * will be sent by the target to deliver the remainder of the tx time
+     * per power level stats.
+     */
+    A_UINT32 power_level_offset;
+/*
+ * This TLV will be followed by a TLV containing a variable-length array of
+ * A_UINT32 with tx time per power level data
+ *  A_UINT32 tx_time_per_power_level[num_tx_power_levels]
+ * The tx time is in units of milliseconds.
+ * The power levels are board-specific values; a board-specific translation
+ * has to be applied to determine what actual power corresponds to each
+ * power level.
+ * Just as the host has a BDF file available, the host should also have
+ * a data file available that provides the power level to power translations.
+ */
+} wmi_tx_power_level_stats_evt_fixed_param;
 
 /** Radio statistics (once started) do not stop or get reset unless wifi_clear_link_stats is invoked */
 typedef struct {
@@ -11757,14 +11815,16 @@ typedef enum {
 
 typedef struct {
     A_UINT32    tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_ARRAY_STRUC */
-    /**RSSI */
+    /** RSSI */
     A_UINT32    rssi;
-    /**time stamp in milliseconds */
+    /** time stamp in milliseconds */
     A_UINT32    tstamp;
     /** Extscan cycle during which this entry was scanned */
     A_UINT32    scan_cycle_id;
     /** flag to indicate if the given result was obtained as part of interrupted (aborted/large time gap preempted) scan */
     A_UINT32    flags;
+    /** Bitmask of buckets (i.e. sets of channels) scanned */
+    A_UINT32    buckets_scanned;
 } wmi_extscan_rssi_info;
 
 typedef struct {
@@ -14628,6 +14688,28 @@ typedef struct {
     // num_phy WMI_HAL_REG_CAPABILITIES_EXT TLV's
 } WMI_SOC_HAL_REG_CAPABILITIES;
 
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_scan_adaptive_dwell_parameters_tlv */
+    /** global default adaptive dwell mode, used when WMI_SCAN_DWELL_MODE_DEFAULT */
+    A_UINT32 default_adaptive_dwell_mode;
+   /** the weight to calculate the average low pass filter for channel congestion. 0-100 */
+    A_UINT32 adapative_lpf_weight;
+   /** interval to monitor passive scan in msec */
+    A_UINT32 passive_monitor_interval_ms;
+   /** % of wifi activity to switch from passive to active 0-100 */
+    A_UINT32 wifi_activity_threshold_pct;
+} wmi_scan_adaptive_dwell_parameters_tlv;
+
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_scan_adaptive_dwell_config_fixed_param */
+    /* globally enable/disable adaptive dwell */
+    A_UINT32 enable;
+/**
+ * followed by TLV (tag length value) parameters array
+ * The TLV's are:
+ * wmi_scan_adaptive_dwell_parameters_tlv param[]; (0 or 1 elements)
+ */
+} wmi_scan_adaptive_dwell_config_fixed_param;
 
 /* ADD NEW DEFS HERE */
 

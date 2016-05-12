@@ -487,12 +487,10 @@ static int tlshim_mgmt_rx_process(void *context, u_int8_t *data,
 		return 0;
 	}
 
-#ifdef FEATURE_WLAN_D0WOW
 	if (!wma_handle) {
 		TLSHIM_LOGE("%s: Failed to get WMA context!", __func__);
 		return 0;
 	}
-#endif
 
 	adf_os_spin_lock_bh(&tl_shim->mgmt_lock);
 	param_tlvs = (WMI_MGMT_RX_EVENTID_param_tlvs *) data;
@@ -2084,8 +2082,9 @@ WLANTL_PauseUnPauseQs(void *vos_context, v_BOOL_t flag)
  *
  * HDD will call this API to get the OL-TXRX module stats
  *
+ * Return: VOS_STATUS
  */
-void WLANTL_Get_llStats
+VOS_STATUS WLANTL_Get_llStats
 (
 	uint8_t sessionId,
 	char *buffer,
@@ -2097,24 +2096,22 @@ void WLANTL_Get_llStats
 	struct ol_txrx_vdev_t *vdev;
 
 	if (!vos_context) {
-		return;
+		return VOS_STATUS_E_FAILURE;
 	}
 
 	tl_shim = vos_get_context(VOS_MODULE_ID_TL, vos_context);
 	if (!tl_shim) {
 		TLSHIM_LOGD("%s, tl_shim is NULL",
                     __func__);
-		return;
+		return VOS_STATUS_E_FAILURE;
 	}
 
 	vdev = tl_shim->session_flow_control[sessionId].vdev;
 	if (!vdev) {
 		TLSHIM_LOGE("%s, vdev is NULL", __func__);
-		return;
+		return VOS_STATUS_E_FAILURE;
 	}
-	ol_txrx_stats(vdev, buffer, (unsigned)length);
-	return;
-
+	return ol_txrx_stats(vdev, buffer, (unsigned)length);
 }
 
 /*=============================================================================

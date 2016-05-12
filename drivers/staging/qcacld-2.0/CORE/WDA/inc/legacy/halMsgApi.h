@@ -759,7 +759,8 @@ typedef struct
 typedef struct
 {
     bool                target_rsp;
-    tANI_U8             oemDataRsp[OEM_DATA_RSP_SIZE];
+    uint32_t            rsp_len;
+    uint8_t             *oem_data_rsp;
 } tStartOemDataRsp, *tpStartOemDataRsp;
 #endif
 

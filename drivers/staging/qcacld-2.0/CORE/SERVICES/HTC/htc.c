@@ -36,7 +36,7 @@
 #include "epping_main.h"
 #include "htc_api.h"
 
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
 static ATH_DEBUG_MASK_DESCRIPTION g_HTCDebugDescription[] = {
     { ATH_DEBUG_SEND , "Send"},
     { ATH_DEBUG_RECV , "Recv"},

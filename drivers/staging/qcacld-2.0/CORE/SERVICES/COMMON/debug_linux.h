@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013, 2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -32,7 +32,7 @@
     /* macro to remove parens */
 #define ATH_PRINTX_ARG(arg...) arg
 
-#ifdef DEBUG
+#ifdef WLAN_DEBUG
     /* NOTE: the AR_DEBUG_PRINTF macro is defined here to handle special handling of variable arg macros
      * which may be compiler dependent. */
 #define AR_DEBUG_PRINTF(mask, args) do {        \

@@ -1295,7 +1295,7 @@ static void send_packetdump(adf_nbuf_t netbuf, uint8_t status,
 
 	pd_hdr.status = status;
 	pd_hdr.type = type;
-	pd_hdr.driver_ts = vos_timer_get_system_time();
+	pd_hdr.driver_ts = vos_get_monotonic_boottime();
 
 	if ((type == TX_MGMT_PKT) || (type == TX_DATA_PKT))
 		gtx_count++;

@@ -1186,6 +1186,8 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
                    pAdapter->sessionId);
     }
 
+    wlan_hdd_clear_link_layer_stats(pAdapter);
+
     //Unblock anyone waiting for disconnect to complete
     complete(&pAdapter->disconnect_comp_var);
     return( status );
@@ -2135,34 +2137,15 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
             }
             else
             {
-                if (pRoamInfo) {
-                    eCsrAuthType authType =
-                      pWextState->roamProfile.AuthType.authType[0];
-                    eCsrEncryptionType encryptionType =
-                      pWextState->roamProfile.EncryptionType.encryptionType[0];
-                    v_BOOL_t isWep =
-                      (((authType == eCSR_AUTH_TYPE_OPEN_SYSTEM) ||
-                       (authType == eCSR_AUTH_TYPE_SHARED_KEY)) &&
-                       ((encryptionType == eCSR_ENCRYPT_TYPE_WEP40) ||
-                        (encryptionType == eCSR_ENCRYPT_TYPE_WEP104) ||
-                        (encryptionType ==
-                                   eCSR_ENCRYPT_TYPE_WEP40_STATICKEY) ||
-                        (encryptionType ==
-                                   eCSR_ENCRYPT_TYPE_WEP104_STATICKEY)));
-
-                    /* In case of OPEN-WEP or SHARED-WEP authentication,
-                     * send exact protocol reason code. This enables user
-                     * applications to reconnect the station with correct
-                     * configuration.
-                     */
-                    hdd_connect_result(dev, pRoamInfo->bssid,
+               if (pRoamInfo)
+                   hdd_connect_result(dev, pRoamInfo->bssid,
                         NULL, 0, NULL, 0,
-                        (isWep && pRoamInfo->reasonCode) ?
+                        pRoamInfo->reasonCode ?
                         pRoamInfo->reasonCode :
                         WLAN_STATUS_UNSPECIFIED_FAILURE,
                         GFP_KERNEL);
-                } else
-                    hdd_connect_result(dev, pWextState->req_bssId,
+               else
+                   hdd_connect_result(dev, pWextState->req_bssId,
                         NULL, 0, NULL, 0,
                         WLAN_STATUS_UNSPECIFIED_FAILURE,
                         GFP_KERNEL);

@@ -2269,7 +2269,7 @@ typedef enum
 #define CFG_TX_LDPC_ENABLE_FEATURE         "gTxLdpcEnable"
 #define CFG_TX_LDPC_ENABLE_FEATURE_MIN     ( 0 )
 #define CFG_TX_LDPC_ENABLE_FEATURE_MAX     ( 3 )
-#define CFG_TX_LDPC_ENABLE_FEATURE_DEFAULT ( 0 )
+#define CFG_TX_LDPC_ENABLE_FEATURE_DEFAULT ( 3 )
 
 /*
  * Enable / Disable MCC Adaptive Scheduler feature
@@ -2654,7 +2654,7 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_ENABLE_DEBUG_CONNECT_ISSUE             "gEnableDebugLog"
 #define CFG_ENABLE_DEBUG_CONNECT_ISSUE_MIN         (0)
 #define CFG_ENABLE_DEBUG_CONNECT_ISSUE_MAX         (0xFF)
-#define CFG_ENABLE_DEBUG_CONNECT_ISSUE_DEFAULT     (0)
+#define CFG_ENABLE_DEBUG_CONNECT_ISSUE_DEFAULT     (6)
 
 /*
  * RX packet handling options

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -75,7 +75,7 @@ OSDRV_CALLBACKS HIF_osDrvcallback;
 #define HIF_PCI_IPA_UC_ASSIGNED_CE  5
 #endif /* IPA_UC_OFFLOAD */
 
-#if defined(DEBUG)
+#if defined(WLAN_DEBUG)
 static ATH_DEBUG_MASK_DESCRIPTION g_HIFDebugDescription[] = {
     {HIF_PCI_DEBUG,"hif_pci"},
 };
