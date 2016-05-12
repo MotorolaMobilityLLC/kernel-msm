@@ -66,6 +66,8 @@
 
 	/delete-property/ qcom,dsi-panel-bias-vreg;
 	/delete-property/ qcom,platform-bklight-en-gpio;
+
+	sharp,panel-vddio-supply-gpio = <&msm_gpio 66 0>;
 };
 
 / {
