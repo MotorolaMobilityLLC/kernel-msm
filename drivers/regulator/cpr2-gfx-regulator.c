@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1974,6 +1974,47 @@ static int cpr_adjust_init_voltages(struct cpr2_gfx_regulator *cpr_vreg)
 	return rc;
 }
 
+static int cpr_adjust_floor_voltages(struct cpr2_gfx_regulator *cpr_vreg,
+		u32 *fuse_sel, int step_size_uv)
+{
+	struct device_node *of_node = cpr_vreg->dev->of_node;
+	int i, sign, steps, dynamic_floor_volt, rc = 0;
+	u64 efuse_bits;
+	int floor_offset;
+
+	if (!of_find_property(of_node, "qcom,cpr-gfx-dynamic-floor-offset",
+		NULL)) {
+		/* No dynamic floor voltage limits */
+		return 0;
+	}
+
+	rc = of_property_read_u32(of_node, "qcom,cpr-gfx-dynamic-floor-offset",
+			&floor_offset);
+	if (rc) {
+		cpr_err(cpr_vreg, "could not read qcom,cpr-gfx-dynamic-floor-offset, rc=%d\n",
+			rc);
+		return -EINVAL;
+	}
+
+	for (i = CPR_CORNER_MIN; i <= cpr_vreg->num_corners; i++) {
+		efuse_bits = cpr_read_efuse_param(cpr_vreg, fuse_sel[0],
+					fuse_sel[1], fuse_sel[2]);
+		sign = (efuse_bits & (1 << (fuse_sel[2] - 1))) ? -1 : 1;
+		steps = efuse_bits & ((1 << (fuse_sel[2] - 1)) - 1);
+		dynamic_floor_volt = ((9 * cpr_vreg->ceiling_volt[i]) / 10)
+				+ sign * steps * step_size_uv + floor_offset;
+		dynamic_floor_volt = DIV_ROUND_UP(dynamic_floor_volt,
+				cpr_vreg->step_volt) * cpr_vreg->step_volt;
+		dynamic_floor_volt = min(cpr_vreg->ceiling_volt[i],
+					dynamic_floor_volt);
+		cpr_vreg->floor_volt[i] = max(cpr_vreg->floor_volt[i],
+					dynamic_floor_volt);
+		fuse_sel += 3;
+	}
+
+	return rc;
+}
+
 static int cpr_pvs_init(struct cpr2_gfx_regulator *cpr_vreg)
 {
 	struct device_node *of_node = cpr_vreg->dev->of_node;
@@ -2063,6 +2104,10 @@ static int cpr_pvs_init(struct cpr2_gfx_regulator *cpr_vreg)
 	}
 
 	rc = cpr_adjust_init_voltages(cpr_vreg);
+	if (rc)
+		goto done;
+
+	rc = cpr_adjust_floor_voltages(cpr_vreg, tmp, step_size_uv);
 	if (rc)
 		goto done;
 
