@@ -447,6 +447,10 @@ void __init create_kmalloc_caches(unsigned long flags)
 			size_index[size_index_elem(i)] = 8;
 	}
 	for (i = KMALLOC_SHIFT_LOW; i <= KMALLOC_SHIFT_HIGH; i++) {
+
+		if (IS_ENABLED(CONFIG_FORCE_KMALLOC_FROM_DMA_ZONE))
+			flags |= SLAB_CACHE_DMA;
+
 		if (!kmalloc_caches[i]) {
 			kmalloc_caches[i] = create_kmalloc_cache(NULL,
 							1 << i, flags);
