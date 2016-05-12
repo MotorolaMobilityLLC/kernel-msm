@@ -6940,6 +6940,7 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	int rc = 0, ocp_thresh = -EINVAL;
 	struct device_node *node = chip->dev->of_node;
 	const char *dc_psy_type, *bpd;
+	int icl_ma = 0;
 
 	if (!node) {
 		dev_err(chip->dev, "device tree info. missing\n");
@@ -7035,6 +7036,28 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,low-volt-dcin");
 	chip->force_aicl_rerun = of_property_read_bool(node,
 					"qcom,force-aicl-rerun");
+
+	/* parse default icl limit configurations */
+	rc = of_property_read_u32(node, "sharp,batt-default-hvdcp-icl-ma",
+									&icl_ma);
+	if (!rc) {
+		/* Chane default value if property is found */
+		smbchg_default_hvdcp_icl_ma = icl_ma;
+	}
+
+	rc = of_property_read_u32(node, "sharp,batt-default-hvdcp3-icl-ma",
+									&icl_ma);
+	if (!rc) {
+		/* Chane default value if property is found */
+		smbchg_default_hvdcp3_icl_ma = icl_ma;
+	}
+
+	rc = of_property_read_u32(node, "sharp,batt-default-dcp-icl-ma",
+									&icl_ma);
+	if (!rc) {
+		/* Change default value if property is found */
+		smbchg_default_dcp_icl_ma = icl_ma;
+	}
 
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
