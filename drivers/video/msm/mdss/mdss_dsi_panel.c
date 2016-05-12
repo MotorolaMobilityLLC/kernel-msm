@@ -22,6 +22,8 @@
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
 
+#include <linux/ir2e71y.h>
+
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
 
@@ -305,6 +307,22 @@ int mdss_dsi_enable_panel_vddio_gpio(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		gpio_free(ctrl_pdata->panel_vddio_gpio);
 	}
 end:
+	return rc;
+}
+
+int mdss_dsi_enable_panel_analog_power(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+		int enable)
+{
+	int rc = 0;
+	if (!ctrl_pdata->panel_analog_power) {
+		return rc;
+	}
+
+	rc = ir2e71y_enable_analog_power(enable);
+	if (rc < 0) {
+		pr_warn("%s: failed to analog power control. rc=%d\n", __func__, rc);
+		rc = -EIO;
+	}
 	return rc;
 }
 

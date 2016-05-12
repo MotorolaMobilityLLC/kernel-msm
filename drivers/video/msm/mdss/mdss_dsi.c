@@ -284,6 +284,12 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 	if (mdss_dsi_pinctrl_set_state(ctrl_pdata, false))
 		pr_debug("reset disable: pinctrl not enabled\n");
 
+	ret = mdss_dsi_enable_panel_analog_power(ctrl_pdata, 0);
+	if (ret) {
+		pr_err("%s: failed to disable panel_analog_power\n",
+			__func__);
+	}
+
 	ret = msm_dss_enable_vreg(
 		ctrl_pdata->panel_power_data.vreg_config,
 		ctrl_pdata->panel_power_data.num_vreg, 0);
@@ -325,6 +331,12 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 		pr_err("%s: failed to enable vregs for %s\n",
 			__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 		return ret;
+	}
+
+	ret = mdss_dsi_enable_panel_analog_power(ctrl_pdata, 1);
+	if (ret) {
+		pr_err("%s: failed to enable panel_analog_power\n",
+			__func__);
 	}
 
 	/*
@@ -592,6 +604,13 @@ novreg:
 	mp->num_vreg = 0;
 
 	return rc;
+}
+
+static void mdss_dsi_get_panel_analog_power(struct platform_device *ctrl_pdev,
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	ctrl_pdata->panel_analog_power = of_property_read_bool(
+		ctrl_pdev->dev.of_node, "sharp,panel-analog-power");
 }
 
 static int mdss_dsi_get_panel_cfg(char *panel_cfg,
@@ -3302,6 +3321,8 @@ int dsi_panel_device_register(struct platform_device *ctrl_pdev,
 						__func__, rc);
 		return rc;
 	}
+
+	mdss_dsi_get_panel_analog_power(ctrl_pdev, ctrl_pdata);
 
 	if (mdss_dsi_link_clk_init(ctrl_pdev, ctrl_pdata)) {
 		pr_err("%s: unable to initialize Dsi ctrl clks\n", __func__);
