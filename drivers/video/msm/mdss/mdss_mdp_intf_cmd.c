@@ -823,6 +823,11 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 		WARN(rc, "intf %d tearcheck enable error (%d)\n",
 				ctl->intf_num, rc);
 
+		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_TOUCHSCREEN_ENABLE,
+				(void*)1);
+		WARN(rc, "intf %d touchscreen enable error (%d)\n",
+				ctl->intf_num, rc);
+
 		ctx->panel_power_state = MDSS_PANEL_POWER_ON;
 		if (sctx)
 			sctx->panel_power_state = MDSS_PANEL_POWER_ON;
@@ -1294,6 +1299,9 @@ panel_events:
 	if ((!is_panel_split(ctl->mfd) || is_pingpong_split(ctl->mfd) ||
 		(is_panel_split(ctl->mfd) && sctl)) && send_panel_events) {
 		pr_debug("%s: send panel events\n", __func__);
+		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_TOUCHSCREEN_ENABLE,
+				(void *)0);
+		WARN(ret, "intf %d touchscreen error (%d)\n", ctl->intf_num, ret);
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK,
 				(void *) (long int) panel_power_state);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);

@@ -27,6 +27,8 @@
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
 
+#include <linux/input/shtps_dev.h>
+
 #define DT_CMD_HDR 6
 #define MIN_REFRESH_RATE 48
 #define DEFAULT_MDP_TRANSFER_TIME 14000
@@ -1935,6 +1937,14 @@ void mdss_dsi_unregister_bl_settings(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		led_trigger_unregister_simple(bl_led_trigger);
 }
 
+static int mdss_dsi_panel_touchscreen_enable(struct mdss_panel_data *pdata,
+				int enable)
+{
+	pr_debug("%s: panel - pdata= 0x%p, enable=%d\n", __func__, pdata, enable);
+	msm_tps_setsleep(!enable);
+	return 0;
+}
+
 static int mdss_panel_parse_dt(struct device_node *np,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -2213,6 +2223,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pinfo->is_dba_panel = of_property_read_bool(np,
 			"qcom,dba-panel");
 
+	pinfo->touchscreen_control = of_property_read_bool(np,
+		"sharp,touchscreen-control");
+	if (pinfo->touchscreen_control) {
+		ctrl_pdata->touchscreen_enable =
+		mdss_dsi_panel_touchscreen_enable;
+	}
 	return 0;
 
 error:

@@ -440,6 +440,9 @@ static int mdss_mdp_video_ctx_stop(struct mdss_mdp_ctl *ctl,
 	u32 frame_rate = 0;
 
 	if (ctx->timegen_en) {
+		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_TOUCHSCREEN_ENABLE,
+			(void*)0);
+		WARN(rc, "intf %d touchscreen error (%d)\n", ctl->intf_num, rc);
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK, NULL);
 		if (rc == -EBUSY) {
 			pr_debug("intf #%d busy don't turn off\n",
@@ -1070,6 +1073,10 @@ static int mdss_mdp_video_display(struct mdss_mdp_ctl *ctl, void *arg)
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
 		mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_POST_PANEL_ON, NULL);
+
+		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_TOUCHSCREEN_ENABLE, 
+			(void*)1);
+		WARN(rc, "intf %d touchscreen error (%d)\n", ctl->intf_num, rc);
 	}
 
 	return 0;

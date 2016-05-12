@@ -198,7 +198,10 @@ struct mdss_intf_recovery {
  *				- MIPI_CMD_PANEL: switch to command mode
  * @MDSS_EVENT_DSI_RESET_WRITE_PTR: Reset the write pointer coordinates on
  *				the panel.
- */
+ * @MDSS_EVENT_TOUCHSCREEN_ENABLE: TouchScreen On/Off timing
+ * 				- 0: touchscreen disable
+ * 				- 1: touchscreen enable 
+*/
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
 	MDSS_EVENT_LINK_READY,
@@ -225,6 +228,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_DYNAMIC_SWITCH,
 	MDSS_EVENT_DSI_RECONFIG_CMD,
 	MDSS_EVENT_DSI_RESET_WRITE_PTR,
+	MDSS_EVENT_TOUCHSCREEN_ENABLE,
 };
 
 struct lcd_panel_info {
@@ -535,6 +539,7 @@ struct mdss_panel_info {
 	struct edp_panel_info edp;
 
 	bool is_dba_panel;
+	bool touchscreen_control;
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;
 };
