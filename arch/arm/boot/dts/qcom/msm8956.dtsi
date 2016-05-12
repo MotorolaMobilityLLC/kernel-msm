@@ -916,6 +916,7 @@
 		interrupt-names = "hc_irq", "pwr_irq";
 
 		qcom,bus-width = <8>;
+		qcom,large-address-bus;
 
 		qcom,cpu-dma-latency-us = <60 340 900>;
 		qcom,cpu-affinity = "affine_cores";
@@ -960,6 +961,7 @@
 		interrupt-names = "hc_irq", "pwr_irq";
 
 		qcom,bus-width = <4>;
+		qcom,large-address-bus;
 
 		qcom,cpu-dma-latency-us = <701>;
 
