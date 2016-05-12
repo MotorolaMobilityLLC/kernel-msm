@@ -3869,6 +3869,9 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host->mmc->caps2 |= MMC_CAP2_CORE_PM;
 	msm_host->mmc->caps2 |= MMC_CAP2_SANITIZE;
 
+	if (of_board_is_sharp_eve())
+		msm_host->mmc->caps2 &= ~MMC_CAP2_CACHE_CTRL;
+
 	if (msm_host->pdata->nonremovable)
 		msm_host->mmc->caps |= MMC_CAP_NONREMOVABLE;
 
