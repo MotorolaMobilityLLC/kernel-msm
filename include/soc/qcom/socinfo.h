@@ -45,6 +45,7 @@
 #define of_board_is_xpm()	of_machine_is_compatible("qcom,xpm")
 #define of_board_is_skuf()	of_machine_is_compatible("qcom,skuf")
 #define of_board_is_sbc()	of_machine_is_compatible("qcom,sbc")
+#define of_board_is_sharp_eve()	of_machine_is_compatible("qcom,sharp-eve")
 
 #define machine_is_msm8974()	of_machine_is_compatible("qcom,msm8974")
 #define machine_is_msm9625()	of_machine_is_compatible("qcom,msm9625")
@@ -52,8 +53,6 @@
 #define machine_is_msm8226()	of_machine_is_compatible("qcom,msm8226")
 #define machine_is_apq8074()	of_machine_is_compatible("qcom,apq8074")
 #define machine_is_msm8926()	of_machine_is_compatible("qcom,msm8926")
-
-#define machine_is_sharp_eve()	of_machine_is_compatible("qcom,sharp-eve")
 
 #define early_machine_is_msm8610()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8610")
@@ -105,6 +104,7 @@
 #define of_board_is_xpm()		0
 #define of_board_is_skuf()		0
 #define of_board_is_sbc()		0
+#define of_board_is_sharp_eve()	0
 
 #define machine_is_msm8974()		0
 #define machine_is_msm9625()		0
@@ -112,8 +112,6 @@
 #define machine_is_msm8226()		0
 #define machine_is_apq8074()		0
 #define machine_is_msm8926()		0
-
-#define machine_is_sharp_eve()		0
 
 #define early_machine_is_msm8610()		0
 #define early_machine_is_msm8909()		0
