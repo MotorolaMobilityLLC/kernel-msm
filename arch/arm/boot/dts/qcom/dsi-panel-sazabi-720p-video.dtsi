@@ -134,5 +134,7 @@
 		qcom,mdss-dsi-reset-sequence = <1 1>, <0 1>, <1 2>;
 
 		qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+
+		sharp,touchscreen-control;
 	};
 };
