@@ -1774,6 +1774,9 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 	if (of_get_property(np, "qcom,nonhotplug", NULL))
 		pdata->nonhotplug = true;
 
+	pdata->largeaddressbus =
+		of_property_read_bool(np, "qcom,large-address-bus");
+
 	if (of_property_read_bool(np, "qcom,no-1p8v"))
 		pdata->no_1p8v = true;
 
@@ -3413,8 +3416,6 @@ static void sdhci_set_default_hw_caps(struct sdhci_msm_host *msm_host,
 			caps |= CORE_1_8V_SUPPORT;
 		if (msm_host->pdata->mmc_bus_width == MMC_CAP_8_BIT_DATA)
 			caps |= CORE_8_BIT_SUPPORT;
-		writel_relaxed(caps, host->ioaddr +
-				CORE_VENDOR_SPEC_CAPABILITIES0);
 	}
 
 	/*
@@ -3455,10 +3456,10 @@ static void sdhci_set_default_hw_caps(struct sdhci_msm_host *msm_host,
 	/*
 	 * Mask 64-bit support for controller with 32-bit address bus so that
 	 * smaller descriptor size will be used and improve memory consumption.
-	 * In case bus addressing ever changes, controller version should be
-	 * used in order to decide whether or not to mask 64-bit support.
 	 */
-	caps &= ~CORE_SYS_BUS_SUPPORT_64_BIT;
+	if (!msm_host->pdata->largeaddressbus)
+		caps &= ~CORE_SYS_BUS_SUPPORT_64_BIT;
+
 	writel_relaxed(caps, host->ioaddr + CORE_VENDOR_SPEC_CAPABILITIES0);
 	/* keep track of the value in SDHCI_CAPABILITIES */
 	msm_host->caps_0 = caps;
@@ -3747,6 +3748,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	host->quirks |= SDHCI_QUIRK_BROKEN_CARD_DETECTION;
 	host->quirks |= SDHCI_QUIRK_SINGLE_POWER_WRITE;
 	host->quirks |= SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN;
+	host->quirks |= SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC;
 	host->quirks2 |= SDHCI_QUIRK2_ALWAYS_USE_BASE_CLOCK;
 	host->quirks2 |= SDHCI_QUIRK2_USE_MAX_DISCARD_SIZE;
 	host->quirks2 |= SDHCI_QUIRK2_IGNORE_DATATOUT_FOR_R1BCMD;
