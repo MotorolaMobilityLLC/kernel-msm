@@ -85,7 +85,43 @@
 	/*****************************************/
 	/*  BLSP#8                               */
 	/*****************************************/
-
+	sound {
+		compatible = "qcom,msm8952-audio-codec";
+		qcom,model = "msm8952-eve-snd-card";
+		qcom,msm-mbhc-hphl-swh = <1>;
+		qcom,msm-hs-micbias-type = "external";
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"SPK_RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS External", "Handset Mic",
+			"MIC BIAS External2", "Headset Mic",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
+			"AMIC2", "MIC BIAS External2",
+			"AMIC3", "MIC BIAS External";
+		qcom,msm-gpios =
+			"pri_i2s";
+		qcom,pinctrl-names =
+			"all_off",
+			"pri_i2s_act";
+		pinctrl-names =
+			"all_off",
+			"pri_i2s_act";
+		/delete-property/ qcom,msm-micbias1-ext-cap;
+		/delete-property/ qcom,cdc-us-euro-gpios;
+		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act>;
+		/delete-property/ pinctrl-2;
+		/delete-property/ pinctrl-3;
+		/delete-property/ asoc-wsa-codec-names;
+	};
+};
+&pm8950_1 {
+	pm8950_cajon_dig: 8952_wcd_codec@f000 {
+		compatible = "qcom,msm8x16_wcd_codec";
+		qcom,cdc-micbias-cfilt-mv = <2750000>;
+	};
 };
 #include "sharp-eve-vib.dtsi"
 #include "sharp-eve-pm8952.dtsi"
