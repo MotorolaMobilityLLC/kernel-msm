@@ -8,6 +8,7 @@ motosh-objs := motosh_core.o \
 		motosh_display.o \
 		motosh_time.o \
 		motosh_touch.o \
-		motosh_antcap.o
+		motosh_antcap.o \
+		motosh_context.o
 obj-$(CONFIG_MMI_HALL_NOTIFICATIONS) += motosh_mmi_notifications.o
 obj-$(CONFIG_SENSORS_MOTOSH) += motosh.o
