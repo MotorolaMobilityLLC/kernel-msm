@@ -1719,7 +1719,7 @@ enum {
 #define VOWLAN_SESSION_VSID          0x10002000
 #define VOICEMMODE1_VSID             0x11C05000
 #define VOICEMMODE2_VSID             0x11DC5000
-#define ALL_SESSION_VSID             INT_MAX
+#define ALL_SESSION_VSID             0xFFFFFFFF
 #define VSID_MAX                     ALL_SESSION_VSID
 
 /* called  by alsa driver */
