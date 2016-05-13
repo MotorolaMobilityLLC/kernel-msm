@@ -72,3 +72,4 @@ obj-$(CONFIG_USB_EXT_TYPE_C_TI)		+= type-c-ti.o
 obj-$(CONFIG_UID_CPUTIME) 	+= uid_cputime.o
 obj-$(CONFIG_IR2E71Y)	+= ir2e71y/
 obj-$(CONFIG_SHUB_ML630Q790)	+= shsensor_hub/ml630q790/
+obj-$(CONFIG_SHARP_WLAN_FACTORY)	+= sh_wlan_fac/

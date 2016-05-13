@@ -1,0 +1,8 @@
+
+menu "SHARP WLAN factory support"
+
+config SHARP_WLAN_FACTORY
+	bool "Sharp WLAN factory support"
+	default n
+
+endmenu
