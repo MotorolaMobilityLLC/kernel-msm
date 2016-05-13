@@ -889,6 +889,8 @@
 	/* period below corresponds to 175 Hz */
 	qcom,wave-play-rate-us = <5714>;
 	qcom,vmax-mv = <2900>;
+	qcom,vmax-low-mv = <1160>;
+	qcom,context-haptics;
 	qcom,brake-pattern = [03 03 03 00];
 };
 
