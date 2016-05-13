@@ -34,6 +34,11 @@
 
 #include "u_serial.h"
 
+#ifdef of_board_is_sharp_eve
+#undef of_board_is_sharp_eve
+#define of_board_is_sharp_eve() 0
+#endif /* of_board_is_sharp_eve */
+
 /*
  * This component encapsulates the TTY layer glue needed to provide basic
  * "serial port" functionality through the USB gadget stack.  Each such

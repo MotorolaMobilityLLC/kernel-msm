@@ -23,6 +23,10 @@
 #include "u_serial.h"
 #include "gadget_chips.h"
 
+#ifdef of_board_is_sharp_eve
+#undef of_board_is_sharp_eve
+#define of_board_is_sharp_eve() 0
+#endif /* of_board_is_sharp_eve */
 
 /*
  * This CDC OBEX function support just packages a TTY-ish byte stream.

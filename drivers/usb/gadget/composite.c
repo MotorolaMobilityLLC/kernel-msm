@@ -21,6 +21,12 @@
 #include <linux/usb/composite.h>
 #include <asm/unaligned.h>
 #include <soc/qcom/socinfo.h>
+
+#ifdef of_board_is_sharp_eve
+#undef of_board_is_sharp_eve
+#define of_board_is_sharp_eve() 0
+#endif /* of_board_is_sharp_eve */
+
 /*
  * The code in this file is utility code, used to build a gadget driver
  * from one or more "function" drivers, one or more "configuration"

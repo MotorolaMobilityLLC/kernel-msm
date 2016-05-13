@@ -92,6 +92,11 @@ MODULE_VERSION("1.0");
 
 static const char longname[] = "Gadget Android";
 
+#ifdef of_board_is_sharp_eve
+#undef of_board_is_sharp_eve
+#define of_board_is_sharp_eve() 0
+#endif /* of_board_is_sharp_eve */
+
 /* Default vendor and product IDs, overridden by userspace */
 #define VENDOR_ID		0x18D1
 #define PRODUCT_ID		0x0001

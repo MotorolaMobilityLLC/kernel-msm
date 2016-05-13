@@ -77,6 +77,11 @@
  * DEFINE
  *****************************************************************************/
 
+#ifdef of_board_is_sharp_eve
+#undef of_board_is_sharp_eve
+#define of_board_is_sharp_eve() 0
+#endif /* of_board_is_sharp_eve */
+
 #define USB_MAX_TIMEOUT		25 /* 25msec timeout */
 #define EP_PRIME_CHECK_DELAY	(jiffies + msecs_to_jiffies(1000))
 #define MAX_PRIME_CHECK_RETRY	3 /*Wait for 3sec for EP prime failure */
