@@ -334,6 +334,7 @@ struct qpnp_hap {
 	bool correct_lra_drive_freq;
 	bool misc_trim_error_rc19p2_clk_reg_present;
 	uint8_t low_vmax;
+	bool context_haptics;
 };
 
 static struct qpnp_hap *ghap;
@@ -739,6 +740,26 @@ static int qpnp_hap_vmax_low_config(struct qpnp_hap *hap)
 		return rc;
 
 	return 0;
+}
+
+
+/* Switch Vmax voltage using table top detection API from SH */
+static void qpnp_hap_context(struct qpnp_hap *hap, int value)
+{
+	uint8_t t_top;
+
+	t_top = motosh_tabletop_mode_hold(value);
+	if (t_top && value > 100) {
+		if (!hap->low_vmax) {
+			pr_info("%s: table top, long -> low vmax\n", __func__);
+			qpnp_hap_vmax_low_config(hap);
+			hap->low_vmax = 1;
+		}
+	} else if (hap->low_vmax) {
+		pr_info("%s: restore vmax to default\n", __func__);
+		qpnp_hap_vmax_config(hap);
+		hap->low_vmax = 0;
+	}
 }
 
 /* configuration api for short circuit debounce */
@@ -1574,7 +1595,6 @@ static int qpnp_hap_set(struct qpnp_hap *hap, int on)
 /* enable interface from timed output class */
 static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 {
-	uint8_t t_top;
 	struct qpnp_hap *hap = container_of(dev, struct qpnp_hap,
 					 timed_dev);
 
@@ -1597,19 +1617,8 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 				 hap->timeout_ms : value);
 		hap->state = 1;
 
-		t_top = motosh_tabletop_mode_hold(value);
-		if (t_top && value > 100) {
-			if (!hap->low_vmax) {
-				pr_info("%s: table top, long duration, "
-					"lowering the vmax\n", __func__);
-				qpnp_hap_vmax_low_config(hap);
-				hap->low_vmax = 1;
-			}
-		} else if (hap->low_vmax) {
-			pr_info("%s: restore vmax to default\n", __func__);
-			qpnp_hap_vmax_config(hap);
-			hap->low_vmax = 0;
-		}
+		if (hap->context_haptics)
+			qpnp_hap_context(hap, value);
 
 		hrtimer_start(&hap->hap_timer,
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
@@ -2130,13 +2139,18 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 		return rc;
 	}
 
-	hap->vmax_low_mv = QPNP_HAP_VMAX_LOW_DEFAULT;
-	rc = of_property_read_u32(spmi->dev.of_node,
+	hap->context_haptics = of_property_read_bool(spmi->dev.of_node,
+					"qcom,context-haptics");
+
+	if (hap->context_haptics) {
+		hap->vmax_low_mv = QPNP_HAP_VMAX_LOW_DEFAULT;
+		rc = of_property_read_u32(spmi->dev.of_node,
 			"qcom,vmax-low-mv", &temp);
-	if (!rc)
-		hap->vmax_low_mv = temp;
-	else
-		dev_info(&spmi->dev, "Unable to read vmax low, using default\n");
+		if (!rc)
+			hap->vmax_low_mv = temp;
+		else
+			dev_info(&spmi->dev, "using default for vmax low\n");
+	}
 
 	hap->ilim_ma = QPNP_HAP_ILIM_MIN_MV;
 	rc = of_property_read_u32(spmi->dev.of_node,
