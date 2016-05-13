@@ -989,6 +989,10 @@ static int stml0xx_probe(struct spi_device *spi)
 	input_set_capability(ps_stml0xx->input_dev, EV_SW, SW_HEADPHONE_INSERT);
 	input_set_capability(ps_stml0xx->input_dev, EV_SW, SW_MICROPHONE_INSERT);
 	ps_stml0xx->input_dev->name = "sensorprocessor";
+	input_report_switch(ps_stml0xx->input_dev,
+			SW_HEADPHONE_INSERT,  0);
+	input_report_switch(ps_stml0xx->input_dev,
+			SW_MICROPHONE_INSERT, 0);
 
 	err = input_register_device(ps_stml0xx->input_dev);
 	if (err) {
