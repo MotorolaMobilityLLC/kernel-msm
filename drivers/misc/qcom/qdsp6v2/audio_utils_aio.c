@@ -1,6 +1,6 @@
 /* Copyright (C) 2008 Google, Inc.
  * Copyright (C) 2008 HTC Corporation
- * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -26,6 +26,7 @@
 #include <linux/debugfs.h>
 #include <linux/msm_audio_ion.h>
 #include <linux/compat.h>
+#include <sound/q6core.h>
 #include "audio_utils_aio.h"
 #ifdef CONFIG_USE_DEV_CTRL_VOLUME
 #include <linux/qdsp6v2/audio_dev_ctl.h>
@@ -1499,7 +1500,26 @@ static long audio_aio_ioctl(struct file *file, unsigned int cmd,
 		memset(&stats, 0, sizeof(struct msm_audio_stats));
 		stats.byte_count = atomic_read(&audio->in_bytes);
 		stats.sample_count = atomic_read(&audio->in_samples);
-		rc = q6asm_get_session_time(audio->ac, &timestamp);
+		switch (q6core_get_avs_version()) {
+		case (Q6_SUBSYS_AVS2_7):
+		{
+			rc = q6asm_get_session_time(audio->ac, &timestamp);
+			break;
+		}
+		case (Q6_SUBSYS_AVS2_6):
+		{
+			rc = q6asm_get_session_time_legacy(audio->ac,
+							   &timestamp);
+			break;
+		}
+		case (Q6_SUBSYS_INVALID):
+		default:
+		{
+			pr_err("%s: UNKNOWN AVS IMAGE VERSION\n", __func__);
+			rc = -EINVAL;
+			break;
+		}
+		}
 		if (rc >= 0)
 			memcpy(&stats.unused[0], &timestamp, sizeof(timestamp));
 		else
@@ -1787,7 +1807,26 @@ static long audio_aio_compat_ioctl(struct file *file, unsigned int cmd,
 		memset(&stats, 0, sizeof(struct msm_audio_stats32));
 		stats.byte_count = atomic_read(&audio->in_bytes);
 		stats.sample_count = atomic_read(&audio->in_samples);
-		rc = q6asm_get_session_time(audio->ac, &timestamp);
+		switch (q6core_get_avs_version()) {
+		case (Q6_SUBSYS_AVS2_7):
+		{
+			rc = q6asm_get_session_time(audio->ac, &timestamp);
+			break;
+		}
+		case (Q6_SUBSYS_AVS2_6):
+		{
+			rc = q6asm_get_session_time_legacy(audio->ac,
+							   &timestamp);
+			break;
+		}
+		case (Q6_SUBSYS_INVALID):
+		default:
+		{
+			pr_err("%s: UNKNOWN AVS IMAGE VERSION\n", __func__);
+			rc = -EINVAL;
+			break;
+		}
+		}
 		if (rc >= 0)
 			memcpy(&stats.unused[0], &timestamp, sizeof(timestamp));
 		else
