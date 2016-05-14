@@ -62,6 +62,30 @@ static DEFINE_SPINLOCK(rtcdev_lock);
 static struct mutex power_on_alarm_lock;
 
 /**
+ * power_on_alarm_empty - return if the Power ON Alarm queue has a node
+ *
+ */
+int power_on_alarm_empty(void)
+{
+	unsigned long flags;
+	struct timerqueue_node *next;
+	struct alarm_base *base = &alarm_bases[ALARM_POWEROFF_REALTIME];
+
+	if (!base)
+		return -EINVAL;
+
+	spin_lock_irqsave(&base->lock, flags);
+	next = timerqueue_getnext(&base->timerqueue);
+	spin_unlock_irqrestore(&base->lock, flags);
+
+	if (next)
+		return 0;
+
+	/* Power ON Alarm Queue Empty */
+	return 1;
+}
+
+/**
  * set_power_on_alarm - set power on alarm value into rtc register
  *
  * Get the soonest power off alarm timer and set the alarm value into rtc
