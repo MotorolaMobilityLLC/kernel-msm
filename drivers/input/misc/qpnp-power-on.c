@@ -234,6 +234,7 @@ module_param_named(
 int qpnp_pon_key_status;
 
 static struct qpnp_pon *sys_reset_dev;
+static struct qpnp_pon *shipmode_dev;
 static DEFINE_SPINLOCK(spon_list_slock);
 static LIST_HEAD(spon_dev_list);
 
@@ -408,6 +409,44 @@ int qpnp_pon_store_extra_reset_info(u16 mask, u16 val)
 	return rc;
 }
 EXPORT_SYMBOL(qpnp_pon_store_extra_reset_info);
+
+int qpnp_pon_store_shipmode_info(u16 mask, u16 val)
+{
+	int rc = 0;
+	u16 shipmode_info_reg;
+	int value;
+	struct qpnp_pon *pon = shipmode_dev;
+
+	if (!pon)
+		return -ENODEV;
+
+	if (mask & 0xFF) {
+
+		shipmode_info_reg = QPNP_PON_DVDD_RB_SPARE(pon);
+
+		rc = regmap_read(pon->regmap, shipmode_info_reg, &value);
+		if (rc) {
+			dev_err(&pon->pdev->dev,
+				"Unable to check shipmode status, rc(%d)\n",
+				rc);
+		}
+		pr_err("Current shipmode info1 is 0x%x = 0x%x\n",
+		       shipmode_info_reg, value);
+
+		rc = qpnp_pon_masked_write(pon, shipmode_info_reg,
+		    mask & 0xFF, val & 0xFF);
+		if (rc) {
+			pr_err("Failed to store shipmode info to 0x%x\n",
+			    shipmode_info_reg);
+			return rc;
+		}
+		pr_err("Write shipmode info1 to 0x%x with 0x%x\n",
+		       shipmode_info_reg, val);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(qpnp_pon_store_shipmode_info);
 
 /*
  * qpnp_pon_check_hard_reset_stored - Checks if the PMIC need to
@@ -2057,7 +2096,7 @@ static int qpnp_pon_probe(struct platform_device *pdev)
 	unsigned int base;
 	struct device_node *node = NULL;
 	u32 delay = 0, s3_debounce = 0;
-	int rc, sys_reset, index;
+	int rc, sys_reset, index, shipmode;
 	int reason_index_offset = 0;
 	u8 buf[2];
 	uint pon_sts = 0;
@@ -2085,6 +2124,15 @@ static int qpnp_pon_probe(struct platform_device *pdev)
 		return -EINVAL;
 	} else if (sys_reset) {
 		sys_reset_dev = pon;
+	}
+
+	shipmode = of_property_read_bool(pdev->dev.of_node,
+						"qcom,shipmode");
+	if (shipmode && shipmode_dev) {
+		dev_err(&pdev->dev, "qcom,shipmode property can only be specified for one device on the system\n");
+		return -EINVAL;
+	} else if (shipmode) {
+		shipmode_dev = pon;
 	}
 
 	pon->pdev = pdev;
