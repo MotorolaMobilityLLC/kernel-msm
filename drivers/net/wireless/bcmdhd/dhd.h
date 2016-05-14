@@ -447,6 +447,7 @@ typedef struct dhd_pub {
 #ifdef NDO_CONFIG_SUPPORT
 	bool ndo_enable;		/* ND offload feature enable */
 	bool ndo_host_ip_overflow;	/* # of host ip addr exceed FW capacity */
+	uint32 ndo_max_host_ip;		/* # of host ip addr supported by FW */
 #endif /* NDO_CONFIG_SUPPORT */
 #ifdef CONFIG_PM_RUNTIME
 	atomic_t runtime_pm_status;
@@ -699,10 +700,15 @@ extern void dhd_txcomplete(dhd_pub_t *dhdp, void *txp, bool success);
 extern int dhd_dev_get_feature_set(struct net_device *dev);
 extern int *dhd_dev_get_feature_set_matrix(struct net_device *dev, int *num);
 extern int dhd_dev_set_nodfs(struct net_device *dev, u32 nodfs);
+
 #ifdef NDO_CONFIG_SUPPORT
+#ifndef NDO_MAX_HOST_IP_ENTRIES
+#define NDO_MAX_HOST_IP_ENTRIES	10
+#endif /* NDO_MAX_HOST_IP_ENTRIES */
 extern int dhd_dev_ndo_cfg(struct net_device *dev, u8 enable);
 extern int dhd_dev_ndo_update_inet6addr(struct net_device * dev);
 #endif /* NDO_CONFIG_SUPPORT */
+
 extern int dhd_dev_cfg_rand_mac_oui(struct net_device *dev, uint8 *oui);
 extern int dhd_set_rand_mac_oui(dhd_pub_t *dhd);
 
@@ -1160,10 +1166,12 @@ int dhd_tdls_enable(struct net_device *dev, bool tdls_on, bool auto_on, struct e
 void dhd_tdls_update_peer_info(struct net_device *dev, bool connect_disconnect, uint8 *addr);
 #endif /* PCIE_FULL_DONGLE */
 #endif /* WLTDLS */
+
 /* Neighbor Discovery Offload Support */
 int dhd_ndo_enable(dhd_pub_t * dhd, int ndo_enable);
 int dhd_ndo_add_ip(dhd_pub_t *dhd, char* ipaddr, int idx);
 int dhd_ndo_remove_ip(dhd_pub_t *dhd, int idx);
+
 /* Enhanced ND offload support */
 uint16 dhd_ndo_get_version(dhd_pub_t *dhdp);
 int dhd_ndo_add_ip_with_type(dhd_pub_t *dhdp, char *ipv6addr, uint8 type, int idx);

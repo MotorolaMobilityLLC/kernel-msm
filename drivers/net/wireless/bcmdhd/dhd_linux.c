@@ -359,7 +359,7 @@ static uint32 maxdelay = 0, tspktcnt = 0, maxdelaypktno = 0;
 
 struct ipv6_work_info_t {
 	uint8			if_idx;
-	char			ipv6_addr[16];
+	char			ipv6_addr[IPV6_ADDR_LEN];
 	unsigned long		event;
 };
 
@@ -6401,6 +6401,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #ifdef NDO_CONFIG_SUPPORT
 	dhd->ndo_enable = FALSE;
 	dhd->ndo_host_ip_overflow = FALSE;
+	dhd->ndo_max_host_ip = NDO_MAX_HOST_IP_ENTRIES;
 #endif /* NDO_CONFIG_SUPPORT */
 
 	/* ND offload version supported */
@@ -6704,46 +6705,43 @@ static void
 dhd_inet6_work_handler(void *dhd_info, void *event_data, u8 event)
 {
 	struct ipv6_work_info_t *ndo_work = (struct ipv6_work_info_t *)event_data;
-	dhd_pub_t	*pub = &((dhd_info_t *)dhd_info)->pub;
-	int		ret;
+	dhd_info_t *dhd = (dhd_info_t *)dhd_info;
+	dhd_pub_t *dhdp;
+	int ret;
+
+	if (!dhd) {
+		DHD_ERROR(("%s: invalid dhd_info\n", __FUNCTION__));
+		goto done;
+	}
+	dhdp = &dhd->pub;
 
 	if (event != DHD_WQ_WORK_IPV6_NDO) {
-		DHD_ERROR(("%s: unexpected event \n", __FUNCTION__));
-		return;
+		DHD_ERROR(("%s: unexpected event\n", __FUNCTION__));
+		goto done;
 	}
 
 	if (!ndo_work) {
-		DHD_ERROR(("%s: ipv6 work info is not initialized \n", __FUNCTION__));
-		return;
-	}
-
-	if (!pub) {
-		DHD_ERROR(("%s: dhd pub is not initialized \n", __FUNCTION__));
-		return;
-	}
-
-	if (ndo_work->if_idx) {
-		DHD_ERROR(("%s: idx %d \n", __FUNCTION__, ndo_work->if_idx));
+		DHD_ERROR(("%s: ipv6 work info is not initialized\n", __FUNCTION__));
 		return;
 	}
 
 	switch (ndo_work->event) {
 		case NETDEV_UP:
 #ifndef NDO_CONFIG_SUPPORT
-			DHD_TRACE(("%s: Enable NDO\n ", __FUNCTION__));
-			ret = dhd_ndo_enable(pub, TRUE);
+			DHD_TRACE(("%s: Enable NDO\n", __FUNCTION__));
+			ret = dhd_ndo_enable(dhdp, TRUE);
 			if (ret < 0) {
 				DHD_ERROR(("%s: Enabling NDO Failed %d\n", __FUNCTION__, ret));
 			}
 #endif /* !NDO_CONFIG_SUPPORT */
 
 			DHD_TRACE(("%s: Add a host ip for NDO\n", __FUNCTION__));
-			if (pub->ndo_version > 0) {
+			if (dhdp->ndo_version > 0) {
 				/* inet6 addr notifier called only for unicast address */
-				ret = dhd_ndo_add_ip_with_type(pub, &ndo_work->ipv6_addr[0],
+				ret = dhd_ndo_add_ip_with_type(dhdp, ndo_work->ipv6_addr,
 					WL_ND_IPV6_ADDR_TYPE_UNICAST, ndo_work->if_idx);
 			} else {
-				ret = dhd_ndo_add_ip(pub, &ndo_work->ipv6_addr[0],
+				ret = dhd_ndo_add_ip(dhdp, ndo_work->ipv6_addr,
 					ndo_work->if_idx);
 			}
 			if (ret < 0) {
@@ -6751,14 +6749,15 @@ dhd_inet6_work_handler(void *dhd_info, void *event_data, u8 event)
 					__FUNCTION__, ret));
 			}
 			break;
+
 		case NETDEV_DOWN:
-			if (pub->ndo_version > 0) {
+			if (dhdp->ndo_version > 0) {
 				DHD_TRACE(("%s: Remove a host ip for NDO\n", __FUNCTION__));
-				ret = dhd_ndo_remove_ip_by_addr(pub,
-					&ndo_work->ipv6_addr[0], ndo_work->if_idx);
+				ret = dhd_ndo_remove_ip_by_addr(dhdp,
+					ndo_work->ipv6_addr, ndo_work->if_idx);
 			} else {
 				DHD_TRACE(("%s: Clear host ip table for NDO\n", __FUNCTION__));
-				ret = dhd_ndo_remove_ip(pub, ndo_work->if_idx);
+				ret = dhd_ndo_remove_ip(dhdp, ndo_work->if_idx);
 			}
 			if (ret < 0) {
 				DHD_ERROR(("%s: Removing host ip for NDO failed %d\n",
@@ -6767,9 +6766,9 @@ dhd_inet6_work_handler(void *dhd_info, void *event_data, u8 event)
 			}
 
 #ifdef NDO_CONFIG_SUPPORT
-			if (pub->ndo_host_ip_overflow) {
+			if (dhdp->ndo_host_ip_overflow) {
 				ret = dhd_dev_ndo_update_inet6addr(
-					dhd_idx2net(pub, ndo_work->if_idx));
+					dhd_idx2net(dhdp, ndo_work->if_idx));
 				if ((ret < 0) && (ret != BCME_NORESOURCE)) {
 					DHD_ERROR(("%s: Updating host ip for NDO failed %d\n",
 						__FUNCTION__, ret));
@@ -6785,13 +6784,16 @@ dhd_inet6_work_handler(void *dhd_info, void *event_data, u8 event)
 			}
 #endif /* NDO_CONFIG_SUPPORT */
 			break;
+
 		default:
-			DHD_ERROR(("%s: unknown notifier event \n", __FUNCTION__));
+			DHD_ERROR(("%s: unknown notifier event\n", __FUNCTION__));
 			break;
 	}
 done:
 	/* free ndo_work. alloced while scheduling the work */
-	kfree(ndo_work);
+	if (ndo_work) {
+		kfree(ndo_work);
+	}
 
 	return;
 }
@@ -6801,16 +6803,14 @@ done:
  * is assigned with ipv6 address.
  * Handles only primary interface
  */
-static int dhd_inet6addr_notifier_call(struct notifier_block *this,
-	unsigned long event,
-	void *ptr)
+static int
+dhd_inet6addr_notifier_call(struct notifier_block *this, unsigned long event, void *ptr)
 {
 	dhd_info_t *dhd;
-	dhd_pub_t *dhd_pub;
+	dhd_pub_t *dhdp;
 	struct inet6_ifaddr *inet6_ifa = ptr;
-	struct in6_addr *ipv6_addr = &inet6_ifa->addr;
 	struct ipv6_work_info_t *ndo_info;
-	int idx = 0; /* REVISIT */
+	int idx;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31))
 	/* Filter notifications meant for non Broadcom devices */
@@ -6820,14 +6820,21 @@ static int dhd_inet6addr_notifier_call(struct notifier_block *this,
 #endif /* LINUX_VERSION_CODE */
 
 	dhd = DHD_DEV_INFO(inet6_ifa->idev->dev);
-	if (!dhd)
+	if (!dhd) {
 		return NOTIFY_DONE;
+	}
+	dhdp = &dhd->pub;
 
-	if (dhd->iflist[idx] && dhd->iflist[idx]->net != inet6_ifa->idev->dev)
+	/* Supports only primary interface */
+	idx = dhd_net2idx(dhd, inet6_ifa->idev->dev);
+	if (idx != 0) {
 		return NOTIFY_DONE;
-	dhd_pub = &dhd->pub;
-	if (!FW_SUPPORTED(dhd_pub, ndoe))
+	}
+
+	/* FW capability */
+	if (!FW_SUPPORTED(dhdp, ndoe)) {
 		return NOTIFY_DONE;
+	}
 
 	ndo_info = (struct ipv6_work_info_t *)kzalloc(sizeof(struct ipv6_work_info_t), GFP_ATOMIC);
 	if (!ndo_info) {
@@ -6835,9 +6842,10 @@ static int dhd_inet6addr_notifier_call(struct notifier_block *this,
 		return NOTIFY_DONE;
 	}
 
+	/* fill up ndo_info */
 	ndo_info->event = event;
 	ndo_info->if_idx = idx;
-	memcpy(&ndo_info->ipv6_addr[0], ipv6_addr, IPV6_ADDR_LEN);
+	memcpy(ndo_info->ipv6_addr, &inet6_ifa->addr, IPV6_ADDR_LEN);
 
 	/* defer the work to thread as it may block kernel */
 	dhd_deferred_schedule_work(dhd->dhd_deferred_wq, (void *)ndo_info, DHD_WQ_WORK_IPV6_NDO,
@@ -8192,46 +8200,74 @@ dhd_dev_ndo_cfg(struct net_device *dev, u8 enable)
 	if (enable) {
 		/* enable ND offload feature (will be enabled in FW on suspend) */
 		dhdp->ndo_enable = TRUE;
-		/* trigger ipv6 addr scan/update for anycast & DAD failed address */
+
+		/* Update changes of anycast address & DAD failed address */
 		ret = dhd_dev_ndo_update_inet6addr(dev);
 		if ((ret < 0) && (ret != BCME_NORESOURCE)) {
 			DHD_ERROR(("%s: failed to update host ip addr: %d\n", __FUNCTION__, ret));
 			return ret;
 		}
-		if (dhdp->in_suspend) {
-			/* driver is already in (early) suspend state. enable NDO */
-			ret = dhd_ndo_enable(dhdp, 1);
-			if (ret < 0) {
-				DHD_ERROR(("%s: failed to enable NDO: %d\n", __FUNCTION__, ret));
-			}
-		}
 	} else {
 		/* disable ND offload feature */
 		dhdp->ndo_enable = FALSE;
+
 		/* disable ND offload in FW */
 		ret = dhd_ndo_enable(dhdp, 0);
 		if (ret < 0) {
 			DHD_ERROR(("%s: failed to disable NDO: %d\n", __FUNCTION__, ret));
 		}
-
 	}
 	return ret;
+}
+
+static int
+dhd_dev_ndo_get_valid_inet6addr_count(struct inet6_dev *inet6)
+{
+	struct inet6_ifaddr *ifa;
+	struct ifacaddr6 *acaddr = NULL;
+	int addr_count = 0;
+
+	/* lock */
+	read_lock_bh(&inet6->lock);
+
+	/* Count valid unicast address */
+	list_for_each_entry(ifa, &inet6->addr_list, if_list) {
+		if ((ifa->flags & IFA_F_DADFAILED) == 0) {
+			addr_count++;
+		}
+	}
+
+	/* Count anycast address */
+	acaddr = inet6->ac_list;
+	while (acaddr) {
+		addr_count++;
+		acaddr = acaddr->aca_next;
+	}
+
+	/* unlock */
+	read_unlock_bh(&inet6->lock);
+
+	return addr_count;
 }
 
 int
 dhd_dev_ndo_update_inet6addr(struct net_device *dev)
 {
-	dhd_info_t *dhd = DHD_DEV_INFO(dev);
+	dhd_info_t *dhd;
+	dhd_pub_t *dhdp;
 	struct inet6_dev *inet6;
-	struct list_head *p;
 	struct inet6_ifaddr *ifa;
 	struct ifacaddr6 *acaddr = NULL;
-	int ret = 0;
+	struct in6_addr *ipv6_addr = NULL;
+	int cnt, i;
+	int ret = BCME_OK;
 
 	/*
-	 * evaulate host ip address in struct inet6_dev
+	 * this function evaulates host ip address in struct inet6_dev
 	 * unicast addr in inet6_dev->addr_list
 	 * anycast addr in inet6_dev->ac_list
+	 * while evaluating inet6_dev, read_lock_bh() is required to prevent
+	 * access on null(freed) pointer.
 	 */
 
 	if (dev) {
@@ -8239,7 +8275,16 @@ dhd_dev_ndo_update_inet6addr(struct net_device *dev)
 		if (!inet6) {
 			DHD_ERROR(("%s: Invalid inet6_dev\n", __FUNCTION__));
 			return BCME_ERROR;
-		} else if (dhd_net2idx(dhd, dev) != 0) {
+		}
+
+		dhd = DHD_DEV_INFO(dev);
+		if (!dhd) {
+			DHD_ERROR(("%s: Invalid dhd_info\n", __FUNCTION__));
+			return BCME_ERROR;
+		}
+		dhdp = &dhd->pub;
+
+		if (dhd_net2idx(dhd, dev) != 0) {
 			DHD_ERROR(("%s: Not primary interface\n", __FUNCTION__));
 			return BCME_ERROR;
 		}
@@ -8248,65 +8293,123 @@ dhd_dev_ndo_update_inet6addr(struct net_device *dev)
 		return BCME_ERROR;
 	}
 
-	/* Remove address first and then attempt to add address */
-
-	/* Remove DAD failed unicast address */
-	list_for_each(p, &inet6->addr_list) {
-		ifa = list_entry(p, struct inet6_ifaddr, if_list);
-		if (ifa->flags & IFA_F_DADFAILED) {
-			/* Remove DAD failed address */
-			DHD_INFO(("%s: Remove DAD failed addr\n", __FUNCTION__));
-			ret = dhd_ndo_remove_ip_by_addr(&dhd->pub, (char *)&ifa->addr, 0);
-			if (ret < 0) {
-				return ret;
-			}
+	/* Check host IP overflow */
+	cnt = dhd_dev_ndo_get_valid_inet6addr_count(inet6);
+	if (cnt > dhdp->ndo_max_host_ip) {
+		if (!dhdp->ndo_host_ip_overflow) {
+			dhdp->ndo_host_ip_overflow = TRUE;
+			/* Disable ND offload in FW */
+			DHD_INFO(("%s: Host IP overflow, disable NDO\n", __FUNCTION__));
+			ret = dhd_ndo_enable(dhdp, 0);
 		}
-	}
 
-	/* Remove all anycast address */
-	ret = dhd_ndo_remove_ip_by_type(&dhd->pub, WL_ND_IPV6_ADDR_TYPE_ANYCAST, 0);
-	if (ret < 0) {
 		return ret;
 	}
 
 	/*
-	 * if ND offload was disabled due to host ip overflow, attempt to add valid unicast
-	 * address. there can be removed address (DAD failed or anycast)
+	 * Allocate ipv6 addr buffer to store addresses to be added/removed.
+	 * driver need to lock inet6_dev while accessing structure. but, driver
+	 * cannot use ioctl while inet6_dev locked since it requires scheduling
+	 * hence, copy addresses to the buffer and do ioctl after unlock.
 	 */
-	if (dhd->pub.ndo_host_ip_overflow) {
-		list_for_each(p, &inet6->addr_list) {
-			ifa = list_entry(p, struct inet6_ifaddr, if_list);
-			if ((ifa->flags & IFA_F_DADFAILED) == 0) {
-				/* valid unicast address */
-				ret = dhd_ndo_add_ip_with_type(&dhd->pub,
-					(char *)&ifa->addr, WL_ND_IPV6_ADDR_TYPE_UNICAST,  0);
-				if (ret < 0) {
-					return ret;
-				}
+	ipv6_addr = (struct in6_addr *)MALLOC(dhdp->osh,
+		sizeof(struct in6_addr) * dhdp->ndo_max_host_ip);
+	if (!ipv6_addr) {
+		DHD_ERROR(("%s: failed to alloc ipv6 addr buffer\n", __FUNCTION__));
+		return BCME_NOMEM;
+	}
+
+	/* Find DAD failed unicast address to be removed */
+	cnt = 0;
+	read_lock_bh(&inet6->lock);
+	list_for_each_entry(ifa, &inet6->addr_list, if_list) {
+		/* DAD failed unicast address */
+		if ((ifa->flags & IFA_F_DADFAILED)
+				&& (cnt < dhdp->ndo_max_host_ip)) {
+			memcpy(&ipv6_addr[cnt], &ifa->addr, sizeof(struct in6_addr));
+			cnt++;
+		}
+	}
+	read_unlock_bh(&inet6->lock);
+
+	/* Remove DAD failed unicast address */
+	for (i = 0; i < cnt; i++) {
+		DHD_INFO(("%s: Remove DAD failed addr\n", __FUNCTION__));
+		ret = dhd_ndo_remove_ip_by_addr(dhdp, (char *)&ipv6_addr[i], 0);
+		if (ret < 0) {
+			goto done;
+		}
+	}
+
+	/* Remove all anycast address */
+	ret = dhd_ndo_remove_ip_by_type(dhdp, WL_ND_IPV6_ADDR_TYPE_ANYCAST, 0);
+	if (ret < 0) {
+		goto done;
+	}
+
+	/*
+	 * if ND offload was disabled due to host ip overflow,
+	 * attempt to add valid unicast address.
+	 */
+	if (dhdp->ndo_host_ip_overflow) {
+		/* Find valid unicast address */
+		cnt = 0;
+		read_lock_bh(&inet6->lock);
+		list_for_each_entry(ifa, &inet6->addr_list, if_list) {
+			/* valid unicast address */
+			if (!(ifa->flags & IFA_F_DADFAILED)
+					&& (cnt < dhdp->ndo_max_host_ip)) {
+				memcpy(&ipv6_addr[cnt], &ifa->addr, sizeof(struct in6_addr));
+				cnt++;
+			}
+		}
+		read_unlock_bh(&inet6->lock);
+
+		/* Add valid unicast address */
+		for (i = 0; i < cnt; i++) {
+			ret = dhd_ndo_add_ip_with_type(dhdp,
+				(char *)&ipv6_addr[i], WL_ND_IPV6_ADDR_TYPE_UNICAST, 0);
+			if (ret < 0) {
+				goto done;
 			}
 		}
 	}
 
-	/* Attempt to add anycast address */
+	/* Find anycast address */
+	cnt = 0;
+	read_lock_bh(&inet6->lock);
 	acaddr = inet6->ac_list;
 	while (acaddr) {
-		ret = dhd_ndo_add_ip_with_type(&dhd->pub, (char *)&acaddr->aca_addr,
-			WL_ND_IPV6_ADDR_TYPE_ANYCAST,  0);
-		if (ret < 0) {
-			return ret;
+		if (cnt < dhdp->ndo_max_host_ip) {
+			memcpy(&ipv6_addr[cnt], &acaddr->aca_addr, sizeof(struct in6_addr));
+			cnt++;
 		}
 		acaddr = acaddr->aca_next;
 	}
+	read_unlock_bh(&inet6->lock);
 
-	/* Now All host ip addr were added successfully */
-	if (dhd->pub.ndo_host_ip_overflow) {
-		dhd->pub.ndo_host_ip_overflow = FALSE;
-
-		if (dhd->pub.in_suspend) {
-			/* drvier is in (early) suspend state, need to enable NDO in FW */
-			DHD_INFO(("%s: enable NDO\n", __FUNCTION__));
-			ret = dhd_ndo_enable(&dhd->pub, 1);
+	/* Add anycast address */
+	for (i = 0; i < cnt; i++) {
+		ret = dhd_ndo_add_ip_with_type(dhdp,
+			(char *)&ipv6_addr[i], WL_ND_IPV6_ADDR_TYPE_ANYCAST, 0);
+		if (ret < 0) {
+			goto done;
 		}
+	}
+
+	/* Now All host IP addr were added successfully */
+	if (dhdp->ndo_host_ip_overflow) {
+		dhdp->ndo_host_ip_overflow = FALSE;
+		if (dhdp->in_suspend) {
+			/* drvier is in (early) suspend state, need to enable ND offload in FW */
+			DHD_INFO(("%s: enable NDO\n", __FUNCTION__));
+			ret = dhd_ndo_enable(dhdp, 1);
+		}
+	}
+
+done:
+	if (ipv6_addr) {
+		MFREE(dhdp->osh, ipv6_addr, sizeof(struct in6_addr) * dhdp->ndo_max_host_ip);
 	}
 
 	return ret;
