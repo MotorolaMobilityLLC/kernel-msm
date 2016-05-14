@@ -65,6 +65,8 @@ enum pon_restart_reason {
 	PON_RESTART_REASON_OEM_MAX		= 0x3f,
 };
 
+#define RESET_SHIPMODE_INFO_ARMED_REASON        BIT(1)
+#define RESET_SHIPMODE_INFO_SHPMOD_REASON        BIT(0)
 #define RESET_EXTRA_RESET_KUNPOW_REASON        BIT(9)
 #define RESET_EXTRA_POST_PANIC_REASON	(BIT(4) | BIT(5))
 #define RESET_EXTRA_POST_PMICWDT_REASON	BIT(5)
@@ -84,7 +86,7 @@ int qpnp_pon_wd_config(bool enable);
 int qpnp_pon_set_restart_reason(enum pon_restart_reason reason);
 bool qpnp_pon_check_hard_reset_stored(void);
 int qpnp_pon_store_extra_reset_info(u16 mask, u16 val);
-
+int qpnp_pon_store_shipmode_info(u16 mask, u16 val);
 #else
 static int qpnp_pon_system_pwr_off(enum pon_power_off_type type)
 {
@@ -109,6 +111,10 @@ static inline bool qpnp_pon_check_hard_reset_stored(void)
 	return false;
 }
 static inline int qpnp_pon_store_extra_reset_info(u16 mask, u16 val)
+{
+	return -ENODEV;
+}
+static inline int qpnp_pon_store_shipmode_info(u16 mask, u16 val)
 {
 	return -ENODEV;
 }
