@@ -1152,6 +1152,14 @@
 	qcom,battery-data = <&mot_batterydata>;
 };
 
+&spmi_bus {
+	qcom,pmi8950@2 {
+		qcom,power-on@800 {
+			qcom,shipmode;
+		};
+	};
+};
+
 &pm8953_typec {
 	status = "disabled";
 };
