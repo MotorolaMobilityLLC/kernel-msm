@@ -1519,6 +1519,12 @@
 		};
 	};
 
+	qcom,pmi8994@2 {
+		qcom,power-on@800 {
+			qcom,shipmode;
+		};
+	};
+
 	qcom,pmi8994@3 {
 		/* HACK, disable PMIC LED because it keeps detected short */
 		/delete-node/ qcom,leds@d800;
