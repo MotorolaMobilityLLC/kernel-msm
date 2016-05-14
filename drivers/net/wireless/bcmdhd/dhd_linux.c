@@ -4295,11 +4295,25 @@ dhd_stop(struct net_device *net)
 	if (ifidx == 0) {
 		wl_cfg80211_down(net);
 
-		/*
-		 * For CFG80211: Clean up all the left over virtual interfaces
-		 * when the primary Interface is brought down. [ifconfig wlan0 down]
-		 */
 		if (!dhd_download_fw_on_driverload) {
+			/* Deregister address notifier callback */
+#ifdef ARP_OFFLOAD_SUPPORT
+			if (dhd_inetaddr_notifier_registered) {
+				dhd_inetaddr_notifier_registered = FALSE;
+				unregister_inetaddr_notifier(&dhd_inetaddr_notifier);
+			}
+#endif /* ARP_OFFLOAD_SUPPORT */
+#ifdef CONFIG_IPV6
+			if (dhd_inet6addr_notifier_registered) {
+				dhd_inet6addr_notifier_registered = FALSE;
+				unregister_inet6addr_notifier(&dhd_inet6addr_notifier);
+			}
+#endif /* CONFIG_IPV6 */
+
+			/*
+			 * For CFG80211: Clean up all the left over virtual interfaces
+			 * when the primary Interface is brought down. [ifconfig wlan0 down]
+			 */
 			if ((dhd->dhd_state & DHD_ATTACH_STATE_ADD_IF) &&
 				(dhd->dhd_state & DHD_ATTACH_STATE_CFG80211)) {
 				int i;
@@ -4317,7 +4331,7 @@ dhd_stop(struct net_device *net)
 #ifdef PCIE_FULL_DONGLE
 				/* Initialize STA info list */
 				INIT_LIST_HEAD(&ifp->sta_list);
-#endif
+#endif /* PCIE_FULL_DONGLE */
 				dhd_net_if_unlock_local(dhd);
 			}
 		}
@@ -4326,7 +4340,7 @@ dhd_stop(struct net_device *net)
 
 #ifdef PROP_TXSTATUS
 	dhd_wlfc_cleanup(&dhd->pub, NULL, 0);
-#endif
+#endif /* PROP_TXSTATUS */
 
 #ifdef APF
 	dhd_dev_apf_delete_filter(net);
@@ -4489,6 +4503,23 @@ dhd_open(struct net_device *net)
 			DHD_ERROR(("%s: failed to bring up cfg80211\n", __FUNCTION__));
 			ret = -1;
 			goto exit;
+		}
+
+		if (!dhd_download_fw_on_driverload) {
+			/* Register address notifier callback */
+#ifdef ARP_OFFLOAD_SUPPORT
+			dhd->pend_ipaddr = 0;
+			if (!dhd_inetaddr_notifier_registered) {
+				dhd_inetaddr_notifier_registered = TRUE;
+				register_inetaddr_notifier(&dhd_inetaddr_notifier);
+			}
+#endif /* ARP_OFFLOAD_SUPPORT */
+#ifdef CONFIG_IPV6
+			if (!dhd_inet6addr_notifier_registered) {
+				dhd_inet6addr_notifier_registered = TRUE;
+				register_inet6addr_notifier(&dhd_inet6addr_notifier);
+			}
+#endif /* CONFIG_IPV6 */
 		}
 #endif /* WL_CFG80211 */
 	}
