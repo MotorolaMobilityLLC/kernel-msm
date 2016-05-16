@@ -371,6 +371,20 @@ int ir2e71y_bdic_API_TRI_LED_normal_on(unsigned char color)
 
 #ifdef IR2E71Y_SYSFS_LED
 /* ------------------------------------------------------------------------- */
+/*ir2e71y_bdic_API_LED_blink_on                                              */
+/* ------------------------------------------------------------------------- */
+int ir2e71y_bdic_API_LED_blink_on(int no, unsigned char color, struct ir2e71y_tri_led led)
+{
+    if (no == SYSFS_LED_SH_LED_1) {
+        ir2e71y_bdic_seq_led_blink_on(color, led.ontime, led.interval, led.count);
+    } else {
+        /* not support SYSFS_LED_SH_LED_2 */
+        return IR2E71Y_RESULT_FAILURE;
+    }
+
+    return IR2E71Y_RESULT_SUCCESS;
+}
+/* ------------------------------------------------------------------------- */
 /*ir2e71y_bdic_API_LED_on                                                    */
 /* ------------------------------------------------------------------------- */
 int ir2e71y_bdic_API_LED_on(int no, struct ir2e71y_tri_led led)
@@ -2042,7 +2056,7 @@ static void ir2e71y_bdic_PD_TRI_LED_set_anime(void)
         break;
 
     case IR2E71Y_BDIC_TRI_LED_MODE_BLINK:
-        ch_set1_val = 0x46;
+        ch_set1_val = 0x4E;
         if (ir2e71y_bdic_tri_led_ontime > IR2E71Y_TRI_LED_ONTIME_TYPE7) {
             ch_set2_val = IR2E71Y_TRI_LED_ONTIME_TYPE1 + (ir2e71y_bdic_tri_led_ontime - IR2E71Y_TRI_LED_ONTIME_TYPE7);
         } else {
@@ -2739,7 +2753,7 @@ static void ir2e71y_bdic_PD_TRI_LED_set_anime_twin(void)
         break;
 
     case IR2E71Y_BDIC_TRI_LED_MODE_BLINK:
-        ch_set3_val = 0x46;
+        ch_set3_val = 0x4E;
         if (ir2e71y_bdic_tri_led_ontime > IR2E71Y_TRI_LED_ONTIME_TYPE7) {
             ch_set4_val = IR2E71Y_TRI_LED_ONTIME_TYPE1 + (ir2e71y_bdic_tri_led_ontime - IR2E71Y_TRI_LED_ONTIME_TYPE7);
         } else {

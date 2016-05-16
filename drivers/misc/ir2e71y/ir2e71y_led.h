@@ -114,6 +114,7 @@ void ir2e71y_bdic_API_KEY_LED_ctl(unsigned char dim, unsigned char index, int on
 #endif /* IR2E71Y_KEY_LED */
 int  ir2e71y_bdic_API_TRI_LED_normal_on(unsigned char color);
 #ifdef IR2E71Y_SYSFS_LED
+int ir2e71y_bdic_API_LED_blink_on(int no, unsigned char color, struct ir2e71y_tri_led led);
 int ir2e71y_bdic_API_LED_on(int no, struct ir2e71y_tri_led led);
 int ir2e71y_bdic_API_LED_off(int no);
 #endif /* IR2E71Y_SYSFS_LED */
