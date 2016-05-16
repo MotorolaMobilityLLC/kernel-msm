@@ -288,6 +288,7 @@ struct dwc3_msm {
 	struct pm_qos_request   dwc3_pm_qos_request;
 	struct gpio		otg_fault_gpio;
 	int			otg_fault_irq;
+	enum power_supply_usb_priority usb_priority;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2547,6 +2548,9 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_USB_OTG:
 		val->intval = !mdwc->id_state;
 		break;
+	case POWER_SUPPLY_PROP_USB_PRIORITY:
+		val->intval = mdwc->usb_priority;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -2701,6 +2705,13 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_HEALTH:
 		mdwc->health_status = val->intval;
 		break;
+	case POWER_SUPPLY_PROP_USB_PRIORITY:
+		if (val->intval >= PSY_USB_PRIORITY_NONE &&
+			val->intval <= PSY_USB_PRIORITY_USBC) {
+			dbg_event(dwc->ctrl_num, 0xFF, "USB PRIO", val->intval);
+			mdwc->usb_priority = val->intval;
+		}
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -2719,6 +2730,7 @@ dwc3_msm_property_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_REAL_TYPE:
+	case POWER_SUPPLY_PROP_USB_PRIORITY:
 		return 1;
 	default:
 		break;
@@ -2760,6 +2772,7 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_USB_OTG,
 	POWER_SUPPLY_PROP_REAL_TYPE,
+	POWER_SUPPLY_PROP_USB_PRIORITY,
 };
 
 static int dwc3_msm_get_property_usbhost(struct power_supply *psy,
