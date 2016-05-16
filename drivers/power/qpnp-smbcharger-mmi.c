@@ -410,6 +410,7 @@ struct smbchg_chip {
 	int				afvc_mv;
 	int				cl_ebsrc;
 	bool				eb_rechrg;
+	bool				forced_shutdown;
 };
 
 static struct smbchg_chip *the_chip;
@@ -4762,6 +4763,15 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 #endif
 		soc = get_prop_batt_capacity(chip);
 		if (chip->previous_soc != soc) {
+			if ((chip->previous_soc > 0) && (soc == 0)) {
+				SMB_WARN(chip, "Forced Shutdown SOC=0\n");
+				chip->forced_shutdown = true;
+				chip->usb_present = 0;
+				power_supply_set_supply_type(chip->usb_psy,
+							     0);
+				power_supply_set_present(chip->usb_psy,
+							 chip->usb_present);
+			}
 			chip->previous_soc = soc;
 			smbchg_soc_changed(chip);
 		}
@@ -5948,6 +5958,10 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 
 	SMB_DBG(chip, "chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
+
+	if (chip->forced_shutdown)
+		return IRQ_HANDLED;
+
 #ifdef QCOM_BASE
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
@@ -5991,6 +6005,9 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 
 	struct smbchg_chip *chip = _chip;
 	bool usb_present;
+
+	if (chip->forced_shutdown)
+		return IRQ_HANDLED;
 
 	/* Kick the Type C Controller if necessary */
 	if (chip->usbc_psy && chip->usbc_psy->set_property) {
@@ -9172,6 +9189,9 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 	u8 reg = 0;
 	int rc;
 	union power_supply_propval ret = {0, };
+
+	if (chip->forced_shutdown)
+		return;
 
 	/* If BC 1.2 Detection wasn't triggered , skip USB sync */
 	if (!chip->usb_insert_bc1_2)
