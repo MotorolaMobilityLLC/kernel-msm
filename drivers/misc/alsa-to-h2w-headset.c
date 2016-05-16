@@ -189,7 +189,7 @@ static ssize_t headset_print_state(struct switch_dev *sdev, char *buf)
 static int alsa_to_h2w_probe(struct platform_device *pdev)
 {
 	struct alsa_to_h2w_data *switch_data;
-	int ret = 0;
+	int rc = 0;
 
 	switch_data = kzalloc(sizeof(struct alsa_to_h2w_data), GFP_KERNEL);
 	if (!switch_data)
@@ -200,21 +200,30 @@ static int alsa_to_h2w_probe(struct platform_device *pdev)
 	switch_data->sdev.print_name = headset_print_name;
 	switch_data->sdev.print_state = headset_print_state;
 
-	ret = switch_dev_register(&switch_data->sdev);
-	if (ret < 0)
+	rc = switch_dev_register(&switch_data->sdev);
+	if (rc) {
+		dev_err(&pdev->dev, "switch_dev_register error [%d]\n", rc);
 		goto err_switch_dev_register;
+	}
 
 	platform_set_drvdata(pdev, switch_data);
 
 	INIT_WORK(&switch_data->work, alsa_to_h2w_work);
 
-	if (input_register_handler(&alsa_to_h2w_handler))
-		pr_info("input_register_handler failed\n");
+	rc = input_register_handler(&alsa_to_h2w_handler);
+	if (rc) {
+		dev_err(&pdev->dev, "input_register_handler error [%d]\n", rc);
+		goto err_input_handler_register;
+	}
+
+	dev_info(&pdev->dev, "%s success\n", __func__);
 	return 0;
 
+err_input_handler_register:
+	switch_dev_unregister(&switch_data->sdev);
 err_switch_dev_register:
 	kfree(switch_data);
-	return ret;
+	return rc;
 }
 
 static int alsa_to_h2w_remove(struct platform_device *pdev)
