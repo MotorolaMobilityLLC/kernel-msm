@@ -1179,6 +1179,7 @@ static int read_utag(struct seq_file *file, void *v)
 	struct utag *tag = NULL;
 	struct proc_node *proc = (struct proc_node *)file->private;
 	struct ctrl *ctrl = proc->ctrl;
+	int rc = 0;
 
 	mutex_lock(&ctrl->access_lock);
 	queue_work(ctrl->load_queue, &ctrl->load_work);
@@ -1194,12 +1195,14 @@ static int read_utag(struct seq_file *file, void *v)
 	error = full_utag_name(proc, utag_name);
 	if (!error) {
 		seq_puts(file, "cannot find utag associated with this file\n");
+		rc = -EINVAL;
 		goto free_tags_exit;
 	}
 
 	tag = find_first_utag(tags, utag_name);
 	if (NULL == tag) {
 		seq_printf(file, "utag [%s] not found\n", utag_name);
+		rc = -EINVAL;
 		goto free_tags_exit;
 	}
 
@@ -1222,7 +1225,7 @@ static int read_utag(struct seq_file *file, void *v)
 free_tags_exit:
 	free_tags(tags);
 	mutex_unlock(&ctrl->access_lock);
-	return 0;
+	return rc;
 }
 
 static ssize_t write_utag(struct file *file, const char __user *buffer,
@@ -1239,12 +1242,12 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 	pr_debug("%zu bytes write attempt to [%s](%d)\n",
 					count, proc->name, proc->mode);
 	if (OUT_TYPE == proc->mode) {
-		return count;
+		return -EINVAL;
 	}
 
 	if (MAX_UTAG_SIZE < count) {
 		pr_err("error utag too big %zu\n", count);
-		return count;
+		return -EINVAL;
 	}
 	/* allocate an extra byte in case we need to add null-byte */
 	payload = kzalloc(count + 1, GFP_KERNEL);
@@ -1253,6 +1256,7 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 
 	if (copy_from_user(payload, buffer, count)) {
 		pr_err("user copy error\n");
+		count = -EIO;
 		goto free_temp_exit;
 	}
 
@@ -1283,11 +1287,13 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 	tags = ctrl->head;
 	if (NULL == tags) {
 		pr_err("[%s] load error\n", ctrl->dir_name);
+		count = -EIO;
 		goto free_temp_exit;
 	}
 
 	if (ctrl->lock) {
 		pr_err("[%s] [%s] is locked\n", proc->name, ctrl->dir_name);
+		count = -EACCES;
 		goto free_tags_exit;
 	}
 
@@ -1295,19 +1301,23 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 	error = full_utag_name(proc, utag);
 	if (!error) {
 		pr_err("cannot find utag associated with this file\n");
+		count = -EIO;
 		goto free_tags_exit;
 	}
 
 	/* check if this utag has .range child only for hwtags */
 	if (ctrl->hwtag && length) {
 		error = check_utag_range(utag, tags, payload, length);
-		if (error)
+		if (error) {
+			count = -EINVAL;
 			goto free_tags_exit;
+		}
 	}
 
 	error = replace_first_utag(tags, utag, payload, length);
 	if (error) {
 		pr_err("error storing [%s] new payload\n", utag);
+		count = -EIO;
 		goto free_tags_exit;
 	}
 
@@ -1354,11 +1364,11 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 	expendable[count-1] = 0;
 	if (!validate_name(expendable, count-1)) {
 		pr_err("invalid format %s\n", expendable);
-		return count;
+		return -EINVAL;
 	}
 
 	if (check_path(expendable, count-1))
-		return count;
+		return -EINVAL;
 
 	mutex_lock(&ctrl->access_lock);
 	queue_work(ctrl->load_queue, &ctrl->load_work);
@@ -1367,17 +1377,19 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 	if (NULL == tags) {
 		pr_err("[%s] load error\n", ctrl->dir_name);
 		mutex_unlock(&ctrl->access_lock);
-		return count;
+		return -EINVAL;
 	}
 
 	if (ctrl->lock) {
 		pr_err("[%s] [%s] is locked\n", expendable, ctrl->dir_name);
+		count = -EACCES;
 		goto just_leave;
 	}
 
 	cur = find_first_utag(tags, expendable);
 	if (!cur) {
 		pr_err("cannot find utag %s\n", expendable);
+		count = -EINVAL;
 		goto just_leave;
 	}
 
