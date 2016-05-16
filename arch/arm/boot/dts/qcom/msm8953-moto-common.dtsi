@@ -72,6 +72,10 @@
 	/delete-node/ adv_vreg;
 	/delete-node/ sound-9335;
 
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
+
 	dummy_vreg: dummy_vreg {
 		compatible = "regulator-fixed";
 		status = "ok";
