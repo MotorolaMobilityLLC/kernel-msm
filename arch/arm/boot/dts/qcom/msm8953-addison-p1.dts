@@ -93,6 +93,7 @@
 &i2c_4 {
 	motosh@43 {                /* Sensor Hub */
 		mag_orient =  <3>; /* Mag Orientation value */
+		mag_config =  <0>; /* Magnetometer config value */
 	};
 };
 
