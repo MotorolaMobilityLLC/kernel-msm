@@ -1527,10 +1527,61 @@ static int msm_eeprom_config32(struct msm_eeprom_ctrl_t *e_ctrl,
 			if (rc < 0)
 				pr_err("%s:%d Eeprom init failed\n",
 					__func__, __LINE__);
-		} else {
-			CDBG("%s:%d Already read eeprom\n",
+		}
+		break;
+	case CFG_EEPROM_REINIT:
+	{
+		struct msm_eeprom_memory_map_array *mem_map_array;
+		struct msm_eeprom_cfg_data32 *cdata32 = argp;
+
+		CDBG("%s E CFG_EEPROM_REINIT", __func__);
+
+		kfree(e_ctrl->cal_data.mapdata);
+		e_ctrl->cal_data.mapdata = NULL;
+		kfree(e_ctrl->cal_data.map);
+		e_ctrl->cal_data.map = NULL;
+		e_ctrl->cal_data.num_data = 0;
+
+		mem_map_array = kzalloc(
+				sizeof(
+				struct msm_eeprom_memory_map_array),
+				GFP_KERNEL);
+		if (mem_map_array == NULL) {
+			pr_err("%s:%d Mem Alloc Fail\n",
+					__func__, __LINE__);
+			rc = -ENOMEM;
+			return rc;
+		}
+
+		if (copy_from_user(mem_map_array,
+			    (void *)compat_ptr(
+			    cdata32->cfg.eeprom_info.mem_map_array),
+			    sizeof(struct msm_eeprom_memory_map_array))) {
+			pr_err("%s:%d copy_from_user failed\n",
 				__func__, __LINE__);
 		}
+		if (e_ctrl->i2c_client.cci_client) {
+			e_ctrl->i2c_client.cci_client->i2c_freq_mode =
+				cdata32->cfg.eeprom_info.i2c_freq_mode;
+			if (e_ctrl->i2c_client.cci_client->i2c_freq_mode
+						> I2C_MAX_MODES) {
+				pr_err("%s::%d Improper I2C Freq\n",
+					__func__, __LINE__);
+				e_ctrl->i2c_client.cci_client->i2c_freq_mode =
+						I2C_STANDARD_MODE;
+			}
+			CDBG("%s:%d Not CCI probe", __func__, __LINE__);
+		}
+		rc = eeprom_parse_memory_map(e_ctrl, mem_map_array);
+		if (rc < 0) {
+			pr_err("%s:%d memory map parse failed\n",
+			__func__, __LINE__);
+		}
+		kfree(mem_map_array);
+
+		CDBG("%s:%d Already read eeprom freed and read again\n",
+				__func__, __LINE__);
+	}
 		break;
 	default:
 		break;
