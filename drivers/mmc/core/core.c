@@ -48,6 +48,8 @@
 #include "sd_ops.h"
 #include "sdio_ops.h"
 
+extern bool mmc_sd_pending_resume;
+
 /* If the device is not responding */
 #define MMC_CORE_TIMEOUT_MS	(10 * 60 * 1000) /* 10 minute timeout */
 
@@ -4194,6 +4196,10 @@ int mmc_resume_host(struct mmc_host *host)
 	host->pm_flags &= ~MMC_PM_KEEP_POWER;
 	mmc_bus_put(host);
 
+	if ((of_board_is_sharp_eve()) && host->card &&
+		(mmc_card_sd(host->card)))
+		mmc_sd_pending_resume = false;
+
 	trace_mmc_resume_host(mmc_hostname(host), err,
 			ktime_to_us(ktime_sub(ktime_get(), start)));
 	if (host->ops->notify_pm_status)
@@ -4283,6 +4289,11 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 			break;
 		}
 		spin_unlock_irqrestore(&host->lock, flags);
+		if ((of_board_is_sharp_eve()) && host->card &&
+			(mmc_card_sd(host->card))) {
+			mmc_detect_change(host, msecs_to_jiffies(4000));
+			break;
+		}
 		mmc_detect_change(host, 0);
 		break;
 

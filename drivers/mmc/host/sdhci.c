@@ -30,6 +30,7 @@
 #include <linux/mmc/card.h>
 #include <linux/mmc/slot-gpio.h>
 #include <linux/mmc/sdio.h>
+#include <soc/qcom/socinfo.h>
 
 #include <trace/events/mmc.h>
 
@@ -53,6 +54,8 @@
 
 #define SDHCI_DBG_DUMP_RS_INTERVAL (10 * HZ)
 #define SDHCI_DBG_DUMP_RS_BURST 2
+
+extern bool mmc_sd_pending_resume;
 
 static unsigned int debug_quirks = 0;
 static unsigned int debug_quirks2;
@@ -1671,6 +1674,14 @@ static int sdhci_enable(struct mmc_host *mmc)
 
 	if (host->ops->platform_bus_voting)
 		host->ops->platform_bus_voting(host, 1);
+
+	if ((of_board_is_sharp_eve()) && mmc->card &&
+		(mmc_card_sd(mmc->card))) {
+		if (mmc_sd_pending_resume == true) {
+			mmc_sd_pending_resume = false;
+			mmc_resume_host(mmc);
+		}
+	}
 
 	return 0;
 }
