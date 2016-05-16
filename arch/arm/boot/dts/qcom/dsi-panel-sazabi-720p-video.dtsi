@@ -136,5 +136,11 @@
 		qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 
 		sharp,touchscreen-control;
+
+		qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 02 0A 08];
+		qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+		qcom,mdss-dsi-panel-status-value = <0x9c>;
+		qcom,esd-check-enabled;
 	};
 };
