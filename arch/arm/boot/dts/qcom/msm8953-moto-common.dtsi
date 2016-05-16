@@ -278,7 +278,7 @@
 			accel_orient = <3>;     /* Accel Orientation value */
 			gyro_orient = <3>;      /* Gyro Orientation value */
 			mag_orient =  <11>;     /* Mag Orientation value */
-			mag_config = <0>;       /* Magnetometer config value */
+			mag_config = <5>;       /* Magnetometer config value */
 			panel_type = <1>;       /* Panel Type value */
 			IR_config = <1>;        /* IR Config value */
 			cover_detect_polarity = <2>; /*MOTOSH_NORTH_DETECT*/
