@@ -681,6 +681,7 @@ static int anx7805_init_gpio(struct anx7805_data *anx7805)
 	}
 
 	gpio_direction_input(anx7805->gpio_cbl_det);
+	gpio_export(anx7805->gpio_cbl_det, false);
 	gpio_direction_input(anx7805->gpio_int);
 
 	gpio_direction_output(anx7805->gpio_dsi_sel, 0);
