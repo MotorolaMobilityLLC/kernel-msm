@@ -41,6 +41,10 @@
 
 #include <asm/current.h>
 
+#ifdef CONFIG_SHARP_PANIC_ON_SUBSYS
+#include <soc/qcom/sharp/shrlog_hooks.h>
+#endif /* CONFIG_SHARP_PANIC_ON_SUBSYS */
+
 #define DISABLE_SSR 0x9889deed
 /* If set to 0x9889deed, call to subsystem_restart_dev() returns immediately */
 static uint disable_restart_work;
@@ -907,6 +911,11 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 
 	for_each_subsys_device(list, count, NULL, subsystem_free_memory);
 
+#ifdef CONFIG_SHARP_PANIC_ON_SUBSYS
+	if (shrlog_is_enabled())
+		shrlog_subsystem_restart_hook(dev->desc);
+#endif /* CONFIG_SHARP_PANIC_ON_SUBSYS */
+
 	notify_each_subsys_device(list, count, SUBSYS_BEFORE_POWERUP, NULL);
 	for_each_subsys_device(list, count, NULL, subsystem_powerup);
 	notify_each_subsys_device(list, count, SUBSYS_AFTER_POWERUP, NULL);
@@ -960,6 +969,12 @@ static void device_restart_work_hdlr(struct work_struct *work)
 							device_restart_work);
 
 	notify_each_subsys_device(&dev, 1, SUBSYS_SOC_RESET, NULL);
+
+#ifdef CONFIG_SHARP_PANIC_ON_SUBSYS
+	if (shrlog_is_enabled())
+		shrlog_subsystem_device_panic_hook(dev->desc);
+#endif /* CONFIG_SHARP_PANIC_ON_SUBSYS */
+
 	/*
 	 * Temporary workaround until ramdump userspace application calls
 	 * sync() and fclose() on attempting the dump.

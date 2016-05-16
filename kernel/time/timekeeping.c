@@ -1733,3 +1733,11 @@ void xtime_update(unsigned long ticks)
 	do_timer(ticks);
 	write_sequnlock(&jiffies_lock);
 }
+
+#ifdef CONFIG_SHARP_SHLOG
+unsigned long get_xtime_sec_addr(void)
+{
+	return (unsigned long)(&timekeeper.xtime_sec);
+}
+#endif
+

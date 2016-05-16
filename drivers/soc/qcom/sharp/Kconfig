@@ -1,0 +1,41 @@
+# drivers/sharp/shlog/Kconfig
+
+menu "SHARP SHLOG driver"
+
+comment "SHARP SHLOG driver"
+
+config SHARP_SHLOG
+	bool "SHARP SHLOG driver base system."
+	default n
+	help
+	  SHARP SHLOG driver base system.
+
+config SHARP_SHLOG_MODEM
+	bool "Enable SHARP SHLOG for modem."
+	depends on SHARP_SHLOG
+	default n
+	help
+	  Enable SHARP SHLOG for modem.
+
+config SHARP_SHLOG_RAMOOPS
+	bool "Enable SHARP SHLOG for ramoops."
+	depends on SHARP_SHLOG
+	default n
+	help
+	  Enable SHARP SHLOG for ramoops.
+
+config SHARP_HANDLE_PANIC
+	bool "Enable SHARP handler for panic."
+	depends on SHARP_SHLOG
+	default n
+	help
+	  Enable SHARP handler for panic.
+
+config SHARP_PANIC_ON_SUBSYS
+	bool "Enable SHARP handler to call panic when subsystem crashed."
+	depends on SHARP_SHLOG
+	default n
+	help
+	  enable SHARP handler to call panic when subsystem crashed.
+
+endmenu

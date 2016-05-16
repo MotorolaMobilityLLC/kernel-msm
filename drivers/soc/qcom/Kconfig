@@ -699,4 +699,6 @@ config MSM_VSENS
 
 source "drivers/soc/qcom/memshare/Kconfig"
 
+source "drivers/soc/qcom/sharp/Kconfig"
+
 endif # ARCH_MSM

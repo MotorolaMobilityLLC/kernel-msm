@@ -32,6 +32,10 @@
 #include <soc/qcom/restart.h>
 #include <soc/qcom/watchdog.h>
 
+#if defined(CONFIG_SHARP_HANDLE_PANIC)
+#include <soc/qcom/sharp/shrlog_hooks.h>
+#endif /* CONFIG_SHARP_HANDLE_PANIC */
+
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
@@ -228,6 +232,11 @@ static void msm_restart_prepare(const char *cmd)
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
 
+#ifdef CONFIG_SHARP_HANDLE_PANIC
+	if (shrlog_is_enabled())
+		sharp_panic_clear_restart_reason();
+#endif /* CONFIG_SHARP_HANDLE_PANIC */
+
 	if (qpnp_pon_check_hard_reset_stored()) {
 		/* Set warm reset as true when device is in dload mode
 		 *  or device doesn't boot up into recovery, bootloader or rtc.
@@ -242,6 +251,12 @@ static void msm_restart_prepare(const char *cmd)
 		need_warm_reset = (get_dload_mode() ||
 				(cmd != NULL && cmd[0] != '\0'));
 	}
+
+#if defined(CONFIG_SHARP_HANDLE_PANIC)
+	if (shrlog_is_enabled() && (need_warm_reset == false)) {
+		need_warm_reset = sharp_panic_needs_warm_reset(cmd, get_dload_mode(), restart_mode, in_panic);
+	}
+#endif /* CONFIG_SHARP_HANDLE_PANIC */
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
 	if (need_warm_reset) {
@@ -276,6 +291,11 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
+
+#if defined(CONFIG_SHARP_HANDLE_PANIC)
+	if (shrlog_is_enabled())
+		sharp_panic_set_restart_reason(cmd, get_dload_mode(), restart_mode, in_panic);
+#endif /* CONFIG_SHARP_HANDLE_PANIC */
 
 	flush_cache_all();
 
@@ -437,6 +457,12 @@ static int msm_restart_probe(struct platform_device *pdev)
 
 	pm_power_off = do_msm_poweroff;
 	arm_pm_restart = do_msm_restart;
+
+#ifdef CONFIG_SHARP_HANDLE_PANIC
+	sharp_panic_init_restart_reason_addr(restart_reason);
+	if (shrlog_is_enabled())
+		download_mode = sharp_panic_preset_restart_reason(download_mode);
+#endif /* CONFIG_SHARP_HANDLE_PANIC */
 
 	if (scm_is_call_available(SCM_SVC_PWR, SCM_IO_DISABLE_PMIC_ARBITER) > 0)
 		scm_pmic_arbiter_disable_supported = true;
