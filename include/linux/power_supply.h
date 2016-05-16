@@ -352,6 +352,7 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_MASK_INT,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_IN_LEVEL,
 	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_IN_LEVELS,
+	POWER_SUPPLY_PROP_USB_PRIORITY,
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_PROP_CHARGE_COUNTER_EXT,
 	/* Properties of type `const char *' */
@@ -423,6 +424,12 @@ enum power_supply_notifier_events {
 	PSY_EVENT_PROP_CHANGED,
 	PSY_EVENT_PROP_ADDED,
 	PSY_EVENT_PROP_REMOVED,
+};
+
+enum power_supply_usb_priority {
+	PSY_USB_PRIORITY_NONE,
+	PSY_USB_PRIORITY_EXT,
+	PSY_USB_PRIORITY_USBC,
 };
 
 union power_supply_propval {
