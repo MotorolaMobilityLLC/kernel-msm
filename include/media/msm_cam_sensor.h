@@ -50,6 +50,11 @@
 #define MSM_V4L2_PIX_FMT_SRGGB14 v4l2_fourcc('R', 'G', '1', '4')
 	/* 14  RGRG.. GBGB.. */
 
+#if defined(CONFIG_SHARP_CAMERA_SUPPORT)
+#define SHCAM_LED_TORCH_CURRENT 25
+#define SHCAM_LED_FLASH_CURRENT 175
+#endif
+
 enum flash_type {
 	LED_FLASH = 1,
 	STROBE_FLASH,

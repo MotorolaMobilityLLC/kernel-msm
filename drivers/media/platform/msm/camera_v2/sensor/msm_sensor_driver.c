@@ -104,6 +104,17 @@ static int32_t msm_sensor_driver_create_i2c_v4l_subdev
 	s_ctrl->sensordata->sensor_info->session_id = session_id;
 	s_ctrl->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x3;
 	msm_sd_register(&s_ctrl->msm_sd);
+
+#ifdef CONFIG_SHARP_CAMERA_SUPPORT
+	msm_sensor_v4l2_subdev_fops = v4l2_subdev_fops;
+#ifdef CONFIG_COMPAT
+	msm_sensor_v4l2_subdev_fops.compat_ioctl32 =
+		msm_sensor_subdev_fops_ioctl;
+#endif
+	s_ctrl->msm_sd.sd.devnode->fops =
+		&msm_sensor_v4l2_subdev_fops;
+#endif
+
 	CDBG("%s:%d\n", __func__, __LINE__);
 	return rc;
 }
@@ -1392,6 +1403,12 @@ static struct i2c_driver msm_sensor_driver_i2c = {
 	.remove = msm_sensor_driver_i2c_remove,
 	.driver = {
 		.name = SENSOR_DRIVER_I2C,
+
+#ifdef CONFIG_SHARP_CAMERA_SUPPORT
+		.owner = THIS_MODULE,
+		.of_match_table = msm_sensor_driver_dt_match,
+#endif
+
 	},
 };
 
@@ -1400,6 +1417,19 @@ static int __init msm_sensor_driver_init(void)
 	int32_t rc = 0;
 
 	CDBG("Enter");
+
+#ifdef CONFIG_SHARP_CAMERA_SUPPORT
+	rc = i2c_add_driver(&msm_sensor_driver_i2c);
+	if (!rc) {
+		CDBG("%s probe i2c\n", __func__);
+	}
+	rc = platform_driver_probe(&msm_sensor_platform_driver,
+		msm_sensor_driver_platform_probe);
+	if (!rc) {
+		CDBG("%s probe success\n", __func__);
+		return rc;
+	}
+#else
 	rc = platform_driver_probe(&msm_sensor_platform_driver,
 		msm_sensor_driver_platform_probe);
 	if (!rc) {
@@ -1409,6 +1439,7 @@ static int __init msm_sensor_driver_init(void)
 		CDBG("probe i2c");
 		rc = i2c_add_driver(&msm_sensor_driver_i2c);
 	}
+#endif
 
 	return rc;
 }

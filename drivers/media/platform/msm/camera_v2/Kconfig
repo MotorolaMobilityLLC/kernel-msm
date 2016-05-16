@@ -293,3 +293,11 @@ config MSM_FD
 	 depends on MSMB_CAMERA
 	 ---help---
 	    Enables support for the MSM FD face detection engine.
+
+config SHARP_CAMERA_SUPPORT
+	    bool "SHARP camera sensor support"
+	    depends on MSM_CAMERA_SENSOR
+	    default n
+        ---help---
+          This flag enables support for Sharp Camera Support.
+

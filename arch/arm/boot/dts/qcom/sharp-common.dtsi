@@ -337,3 +337,6 @@
 	};
 
 };
+
+#include "sharp-camera-sensor-mtp.dtsi"
+
