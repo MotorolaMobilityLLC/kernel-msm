@@ -1162,11 +1162,8 @@ static struct rcg_clk jpeg0_clk_src = {
 
 static struct clk_freq_tbl ftbl_gcc_camss_mclk0_2_clk[] = {
 
-#ifdef CONFIG_SHARP_CAMERA_SUPPORT
 	F(  6150000,      gpll0,   1,    1,   130),
 	F(  8000000,      gpll0,   1,    1,   100),
-#endif
-
 	F( 24000000,	gpll6,	1,	1,	45),
 	F( 66670000,	gpll0,	12,	0,	0),
 	F_END
