@@ -90,6 +90,16 @@ static long esdfs_unlocked_ioctl(struct file *file, unsigned int cmd,
 	if (!creds)
 		return -ENOMEM;
 
+	if (cmd == ESDFS_IOC_DIS_ACCESS) {
+		if (!capable(CAP_SYS_ADMIN)) {
+			err = -EPERM;
+			goto out;
+		}
+		set_opt(sbi, ACCESS_DISABLE);
+		err = 0;
+		goto out;
+	}
+
 	lower_file = esdfs_lower_file(file);
 
 	/* XXX: use vfs_ioctl if/when VFS exports it */
@@ -203,10 +213,16 @@ static int esdfs_open(struct inode *inode, struct file *file)
 	int err = 0;
 	struct file *lower_file = NULL;
 	struct path lower_path;
+	struct esdfs_sb_info *sbi = ESDFS_SB(inode->i_sb);
 	const struct cred *creds =
 			esdfs_override_creds(ESDFS_SB(inode->i_sb), NULL);
 	if (!creds)
 		return -ENOMEM;
+
+	if (test_opt(sbi, ACCESS_DISABLE)) {
+		esdfs_revert_creds(creds, NULL);
+		return -ENOENT;
+	}
 
 	/* don't open unhashed/deleted files */
 	if (d_unhashed(file->f_path.dentry)) {
