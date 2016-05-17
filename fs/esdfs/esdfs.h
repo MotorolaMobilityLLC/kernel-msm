@@ -33,6 +33,10 @@
 /* the file system name */
 #define ESDFS_NAME "esdfs"
 
+/* ioctl command */
+#define ESDFS_IOCTL_MAGIC	'e'
+#define ESDFS_IOC_DIS_ACCESS	_IO(ESDFS_IOCTL_MAGIC, 1)
+
 /* esdfs root inode number */
 #define ESDFS_ROOT_INO     1
 
@@ -45,6 +49,7 @@
 #define ESDFS_MOUNT_DERIVE_MULTI	0x00000004
 #define ESDFS_MOUNT_DERIVE_PUBLIC	0x00000008
 #define ESDFS_MOUNT_DERIVE_CONFINE	0x00000010
+#define ESDFS_MOUNT_ACCESS_DISABLE	0x00000020
 
 #define clear_opt(sbi, option)	(sbi->options &= ~ESDFS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->options |= ESDFS_MOUNT_##option)
