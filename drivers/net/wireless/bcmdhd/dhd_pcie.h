@@ -181,9 +181,6 @@ typedef struct dhd_bus {
 	struct msm_pcie_register_event pcie_event;
 	bool islinkdown;
 #endif /* MSM_PCIE_LINKDOWN_RECOVERY */
-#ifdef CONFIG_PM_RUNTIME
-	bool rpm_irq_enable;
-#endif /* CONFIG_PM_RUNTIME */
 } dhd_bus_t;
 
 /* function declarations */
@@ -200,7 +197,7 @@ extern void dhdpcie_bus_intr_disable(struct dhd_bus *bus);
 extern void dhdpcie_bus_release(struct dhd_bus *bus);
 extern int32 dhdpcie_bus_isr(struct dhd_bus *bus);
 extern void dhdpcie_free_irq(dhd_bus_t *bus);
-extern int dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state, bool byint);
+extern int dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state);
 extern int dhdpcie_pci_suspend_resume(struct pci_dev *dev, bool state);
 extern int dhdpcie_start_host_pcieclock(dhd_bus_t *bus);
 extern int dhdpcie_stop_host_pcieclock(dhd_bus_t *bus);
