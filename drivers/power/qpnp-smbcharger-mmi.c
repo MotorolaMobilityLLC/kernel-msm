@@ -9767,7 +9767,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	SMB_DBG(chip, "batt=%d mV, %d mA, %d C\n",
 		batt_mv, batt_ma, batt_temp);
 	smbchg_sync_accy_property_status(chip);
-	eb_chrg_allowed = (!(eb_able & EB_RCV_NEVER) && (eb_soc < 100));
+	eb_chrg_allowed = !(eb_able & EB_RCV_NEVER);
 	index = chip->tables.usb_ilim_ma_len - 1;
 	pmi_max_chrg_ma = chip->tables.usb_ilim_ma_table[index];
 	if ((chip->stepchg_state >= STEP_FIRST) &&
@@ -9788,7 +9788,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		case EB_SRC:
 			if (wls_present) {
 				chip->eb_rechrg = false;
-				if ((batt_soc == 100) && (eb_soc < 100))
+				if ((batt_soc == 100) && eb_chrg_allowed)
 					smbchg_set_extbat_state(chip, EB_OFF);
 			} else if ((eb_soc <= 0) || (eb_able & EB_SND_NEVER) ||
 				   (eb_on_sw == 0)) {
@@ -9802,7 +9802,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		case EB_OFF:
 			if (wls_present) {
 				chip->eb_rechrg = false;
-				if ((batt_soc < 100) || (eb_soc == 100))
+				if ((batt_soc < 100) || !eb_chrg_allowed)
 					smbchg_set_extbat_state(chip, EB_SRC);
 			} else if ((eb_soc <= 0) || (eb_able & EB_SND_NEVER) ||
 				   (eb_on_sw == 0))
