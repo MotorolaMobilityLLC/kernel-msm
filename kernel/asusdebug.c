@@ -1247,7 +1247,7 @@ static void do_write_event_worker(struct work_struct *work)
             printk("[adbg] 2. open %s failed, err:%d\n", ASUS_EVTLOG_PATH"ASUSEvtlog.txt", g_hfileEvtlog);
             return;
         }
-        sys_chown(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", AID_SDCARD_RW, AID_SDCARD_RW);
+        //sys_chown(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", AID_SDCARD_RW, AID_SDCARD_RW);
 
         size = sys_lseek(g_hfileEvtlog, 0, SEEK_END);
         if(size >= SZ_2M)
