@@ -4528,6 +4528,7 @@ static bool smbchg_hvdcp_det_check(struct smbchg_chip *chip)
 }
 
 #define WEAK_CHRG_THRSH 450
+#define TURBO_CHRG_THRSH 2000
 static void smbchg_rate_check(struct smbchg_chip *chip)
 {
 	int prev_chg_rate = chip->charger_rate;
@@ -4544,7 +4545,7 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 		return;
 
 	if (smbchg_hvdcp_det_check(chip) ||
-	    (chip->cl_usbc >= 3000))
+	    (chip->cl_usbc >= TURBO_CHRG_THRSH))
 		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 	else if (!chip->vbat_above_headroom &&
 		 chip->hvdcp_det_done && chip->aicl_complete &&
@@ -5705,7 +5706,7 @@ static void usb_insertion_work(struct work_struct *work)
 		SMB_ERR(chip,
 			"Couldn't set USBC Voltage rc=%d\n", rc);
 
-	if (chip->cl_usbc >= 3000)
+	if (chip->cl_usbc >= TURBO_CHRG_THRSH)
 		chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_TURBO;
 	else
 		chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NORMAL;
