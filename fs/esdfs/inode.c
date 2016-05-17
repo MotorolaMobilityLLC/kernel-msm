@@ -78,7 +78,7 @@ static int esdfs_unlink(struct inode *dir, struct dentry *dentry)
 	dget(lower_dentry);
 	lower_dir_dentry = lock_parent(lower_dentry);
 
-	esdfs_drop_shared_icache(dir->i_sb, lower_dentry->d_inode);
+	esdfs_drop_shared_icache(dir->i_sb, d_inode(lower_dentry));
 
 	err = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
 
@@ -379,7 +379,7 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 		if (err)
 			goto out;
 		truncate_setsize(inode, ia->ia_size);
-		esdfs_truncate_share(inode->i_sb, lower_dentry->d_inode, ia->ia_size);
+		esdfs_truncate_share(inode->i_sb, d_inode(lower_dentry), ia->ia_size);
 	}
 
 	/*
