@@ -11234,7 +11234,6 @@ static void wl_wakeup_event(struct bcm_cfg80211 *cfg)
 {
 	dhd_pub_t *dhd = (dhd_pub_t *)(cfg->pub);
 	if (dhd->up && (cfg->event_tsk.thr_pid >= 0)) {
-		DHD_OS_WAKE_LOCK(cfg->pub);
 		up(&cfg->event_tsk.sema);
 	}
 }
@@ -11260,6 +11259,12 @@ static s32 wl_event_handler(void *data)
 			 * there is no corresponding bsscfg for P2P interface. Map it to p2p0
 			 * interface.
 			 */
+
+			if (e->emsg.ifidx > WL_MAX_IFS) {
+				WL_ERR((" Event ifidx not in range. val:%d \n", e->emsg.ifidx));
+				goto fail;
+			}
+
 #if defined(WL_CFG80211_P2P_DEV_IF)
 			if (WL_IS_P2P_DEV_EVENT(e) && (cfg->p2p_wdev)) {
 				cfgdev = bcmcfg_to_p2p_wdev(cfg);
@@ -11286,11 +11291,18 @@ static s32 wl_event_handler(void *data)
 				cfgdev = bcmcfg_to_prmry_ndev(cfg);
 #endif /* WL_CFG80211_P2P_DEV_IF */
 			}
+
 			if (e->etype < WLC_E_LAST && cfg->evt_handler[e->etype]) {
-				cfg->evt_handler[e->etype] (cfg, cfgdev, &e->emsg, e->edata);
+				dhd_pub_t *dhd = (struct dhd_pub *)(cfg->pub);
+				if (dhd->busstate == DHD_BUS_DOWN) {
+					WL_ERR((": BUS is DOWN.\n"));
+				} else {
+					cfg->evt_handler[e->etype] (cfg, cfgdev, &e->emsg, e->edata);
+				}
 			} else {
 				WL_DBG(("Unknown Event (%d): ignoring\n", e->etype));
 			}
+fail:
 			wl_put_event(e);
 			DHD_OS_WAKE_UNLOCK(cfg->pub);
 		}
@@ -11311,6 +11323,11 @@ wl_cfg80211_event(struct net_device *ndev, const wl_event_msg_t * e, void *data)
 	    wl_dbg_estr[event_type] : (s8 *) "Unknown";
 	WL_DBG(("event_type (%d):" "WLC_E_" "%s\n", event_type, estr));
 #endif /* (WL_DBG_LEVEL > 0) */
+	if (cfg->event_tsk.thr_pid == -1) {
+		WL_ERR(("Event handler is not created\n"));
+		return;
+	}
+
 	if (wl_get_p2p_status(cfg, IF_CHANGING) || wl_get_p2p_status(cfg, IF_ADDING)) {
 		WL_ERR(("during IF change, ignore event %d\n", event_type));
 		return;
@@ -11337,8 +11354,12 @@ wl_cfg80211_event(struct net_device *ndev, const wl_event_msg_t * e, void *data)
 		WL_DBG((" PNOEVENT: PNO_NET_LOST\n"));
 	}
 
-	if (likely(!wl_enq_event(cfg, ndev, event_type, e, data)))
+	DHD_OS_WAKE_LOCK(cfg->pub);
+	if (likely(!wl_enq_event(cfg, ndev, event_type, e, data))) {
 		wl_wakeup_event(cfg);
+	} else {
+		DHD_OS_WAKE_UNLOCK(cfg->pub);
+	}
 }
 
 static void wl_init_eq(struct bcm_cfg80211 *cfg)

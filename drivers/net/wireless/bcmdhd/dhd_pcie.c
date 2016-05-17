@@ -2472,6 +2472,11 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 				}
 #endif /* CONFIG_ARCH_MSM */
 				bus->dhd->busstate = DHD_BUS_DOWN;
+
+				/* Make sure all existing wl_wifi lock released when powered off. */
+				while(dhd_os_check_wakelock(dhdp))
+					DHD_OS_WAKE_UNLOCK(dhdp);
+
 			} else {
 				if (bus->intr) {
 					dhdpcie_free_irq(bus);

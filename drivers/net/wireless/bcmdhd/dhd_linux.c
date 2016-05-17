@@ -9791,8 +9791,11 @@ int dhd_os_check_wakelock(dhd_pub_t *pub)
 
 #ifdef CONFIG_HAS_WAKELOCK
 	/* Indicate to the SD Host to avoid going to suspend if internal locks are up */
-	if (dhd && (wake_lock_active(&dhd->wl_wifi) ||
-		(wake_lock_active(&dhd->wl_wdwake))))
+	if (dhd && (wake_lock_active(&dhd->wl_wifi)
+#if defined(BCMSDIO)
+		|| (wake_lock_active(&dhd->wl_wdwake))
+#endif
+	))
 		return 1;
 #elif defined(BCMSDIO) && (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 36))
 	if (dhd && (dhd->wakelock_counter > 0) && dhd_bus_dev_pm_enabled(pub))
