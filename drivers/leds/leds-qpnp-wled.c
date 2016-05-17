@@ -1107,7 +1107,8 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
 	if (rc)
 		return rc;
 
-	if (wled->disp_type_amoled) {
+	/* TEST: change this whole section so it never gets executed */
+	if (0) {
 		/* Configure avdd trim register */
 		rc = qpnp_wled_sec_access(wled, wled->ctrl_base);
 		if (rc)
