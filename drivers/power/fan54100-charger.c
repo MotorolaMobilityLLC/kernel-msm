@@ -494,7 +494,7 @@ static int fan54100_cdp_handler(struct fan54100_chrg_chip *chip)
 static int fan54100_ocp_handler(struct fan54100_chrg_chip *chip)
 {
 	fan54100_chrg_update_health(chip, POWER_SUPPLY_HEALTH_UNSPEC_FAILURE);
-	chip->other_tripped = true;
+	chip->sovp_tripped = true;
 	dev_warn(chip->dev, "FAN54100 OCP IRQ tripped!\n");
 	return 0;
 }
