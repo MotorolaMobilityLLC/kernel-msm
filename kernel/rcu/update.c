@@ -64,53 +64,6 @@ module_param(rcu_expedited, int, 0);
 
 #ifdef CONFIG_PREEMPT_RCU
 
-#ifdef CONFIG_DEBUG_RCU_LOCK_USER
-
-#define RCU_TRACKING_POINT CALLER_ADDR2
-#define RCU_TRACKING_POINT_PARENT CALLER_ADDR1
-
-static void update_rcu_user_hist(unsigned long ip, bool is_lock)
-{
-	unsigned long *hist;
-	int ridx, widx;
-
-	if (is_lock)
-		hist = current->rcu_read_lock_hist;
-	else
-		hist = current->rcu_read_unlock_hist;
-
-	/*push old data back*/
-	widx = CALLER_HIST_BUF_SIZE - 1;
-	ridx = widx - 1;
-	for (; ridx >= 0; --widx, --ridx)
-		hist[widx] = hist[ridx];
-
-	BUG_ON(widx);
-
-	hist[widx] = ip;
-}
-
-void _rcu_read_lock_debug(void)
-{
-	unsigned long ip = (unsigned long)RCU_TRACKING_POINT_PARENT;
-
-	update_rcu_user_hist(ip, 1);
-}
-
-void rcu_read_lock_debug(void)
-{
-	unsigned long ip = (unsigned long)RCU_TRACKING_POINT;
-
-	update_rcu_user_hist(ip, 1);
-}
-void rcu_read_unlock_debug(void)
-{
-	unsigned long ip = (unsigned long)RCU_TRACKING_POINT;
-
-	update_rcu_user_hist(ip, 0);
-}
-#endif
-
 /*
  * Preemptible RCU implementation for rcu_read_lock().
  * Just increment ->rcu_read_lock_nesting, shared state will be updated
@@ -119,7 +72,6 @@ void rcu_read_unlock_debug(void)
 void __rcu_read_lock(void)
 {
 	current->rcu_read_lock_nesting++;
-	rcu_read_lock_debug();
 	barrier();  /* critical section after entry code. */
 }
 EXPORT_SYMBOL_GPL(__rcu_read_lock);
@@ -135,7 +87,6 @@ void __rcu_read_unlock(void)
 {
 	struct task_struct *t = current;
 
-	rcu_read_unlock_debug();
 	if (t->rcu_read_lock_nesting != 1) {
 		BUG_ON(t->rcu_read_lock_nesting == 0);
 		--t->rcu_read_lock_nesting;

@@ -507,13 +507,6 @@ config PREEMPT_RCU
 	  This option enables preemptible-RCU code that is common between
 	  TREE_PREEMPT_RCU and, in the old days, TINY_PREEMPT_RCU.
 
-config DEBUG_RCU_LOCK_USER
-	bool "Debug PREMPT_RCU read lock user"
-	depends on PREEMPT_RCU
-	default n
-	help
-	   it's to debug "lock/unlock" mismatch issue in PREEMPT_RCU.
-
 config TASKS_RCU
 	bool "Task_based RCU implementation using voluntary context switch"
 	default n

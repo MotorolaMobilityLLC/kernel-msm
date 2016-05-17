@@ -913,7 +913,6 @@ void exit_rcu(void)
 
 	if (likely(list_empty(&current->rcu_node_entry)))
 		return;
-	_rcu_read_lock_debug();
 	t->rcu_read_lock_nesting = 1;
 	barrier();
 	t->rcu_read_unlock_special.b.blocked = true;
