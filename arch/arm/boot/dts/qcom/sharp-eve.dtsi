@@ -52,6 +52,38 @@
 	/*****************************************/
 	spi@78B8000 {
 		status = "ok";
+		sensorhub@0 {
+			status = "ok";
+			compatible = "sharp,sensorhub";
+			reg = <0>;
+			spi-max-frequency = <2000000>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <44 0>;
+			spi-cpol;
+			spi-cpha;
+			qcom,shub-gpio-reset = <&msm_gpio 39 0>;
+			qcom,shub-gpio-brmp = <&msm_gpio 86 0>;
+			qcom,shub-gpio-int0 = <&msm_gpio 44 0>;
+			qcom,shub-gpio-int1 = <&msm_gpio 42 0>;
+			pinctrl-names = "shub_reset_active","shub_reset_suspend",
+							"shub_int0_active","shub_int0_suspend",
+							"shub_int0_pullup","shub_int0_pulldown",
+							"shub_int1_active","shub_int1_suspend",
+							"shub_brmp_active","shub_brmp_suspend";
+			pinctrl-0 = <&shub_reset_active>;
+			pinctrl-1 = <&shub_reset_suspend>;
+			pinctrl-2 = <&shub_int0_active>;
+			pinctrl-3 = <&shub_int0_suspend>;
+			pinctrl-4 = <&shub_int0_pullup>;
+			pinctrl-5 = <&shub_int0_pulldown>;
+			pinctrl-6 = <&shub_int1_active>;
+			pinctrl-7 = <&shub_int1_suspend>;
+			pinctrl-8 = <&shub_brmp_active>;
+			pinctrl-9 = <&shub_brmp_suspend>;
+			shub,shub_acc_axis_val = <1>;
+			shub,shub_gyro_axis_val = <1>;
+			shub,shub_mag_axis_val = <1>;
+		};
 	};
 
 	/*****************************************/
@@ -134,6 +166,97 @@
 		qcom,spi-csn-gpio = <&msm_gpio 22 0x00>;
 		qcom,spi-clk-gpio = <&msm_gpio 23 0x00>;
 	};
+
+    sharp,shub_acc {
+	     status = "ok";
+	     compatible = "sharp,shub_acc";
+	};
+
+    sharp,shub_diag {
+	     status = "ok";
+	     compatible = "sharp,shub_diag";
+	};
+
+    sharp,shub_exif {
+	     status = "ok";
+	     compatible = "sharp,shub_exif";
+	};
+
+    sharp,shub_game_rotation_vec {
+	     status = "ok";
+	     compatible = "sharp,shub_rot_gyro";
+	};
+
+    sharp,shub_exif {
+	     status = "ok";
+	     compatible = "sharp,shub_exif";
+	};
+
+    sharp,shub_grav {
+	     status = "ok";
+	     compatible = "sharp,shub_grav";
+	};
+
+    sharp,shub_gyro {
+	     status = "ok";
+	     compatible = "sharp,shub_gyro";
+	};
+
+    sharp,shub_gyro_uncal {
+	     status = "ok";
+	     compatible = "sharp,shub_gyrounc";
+	};
+
+    sharp,shub_linear_acc {
+	     status = "ok";
+	     compatible = "sharp,shub_linearacc";
+	};
+
+    sharp,shub_mag {
+	     status = "ok";
+	     compatible = "sharp,shub_mag";
+	};
+
+    sharp,shub_mag_rotation_vec {
+	     status = "ok";
+	     compatible = "sharp,shub_rot_mag";
+	};
+
+    sharp,shub_mag_uncalib {
+	     status = "ok";
+	     compatible = "sharp,shub_mag_unc";
+	};
+
+    sharp,shub_mcu {
+	     status = "ok";
+	     compatible = "sharp,shub_mcu";
+	};
+
+    sharp,shub_orientation {
+	     status = "ok";
+	     compatible = "sharp,shub_orien";
+	};
+
+    sharp,shub_pedo {
+	     status = "ok";
+	     compatible = "sharp,shub_pedo";
+	};
+
+    sharp,shub_pedodect {
+	     status = "ok";
+	     compatible = "sharp,shub_pedodect";
+	};
+
+    sharp,shub_rotation_vec {
+	     status = "ok";
+	     compatible = "sharp,shub_rot";
+	};
+
+    sharp,shub_significant {
+	     status = "ok";
+	     compatible = "sharp,shub_signif";
+	};
+
 };
 &pm8950_1 {
 	pm8950_cajon_dig: 8952_wcd_codec@f000 {

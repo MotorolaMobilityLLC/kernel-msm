@@ -1,0 +1,88 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	tlmm_pinmux: pinctrl@1000000 {
+		compatible = "qcom,msm-tlmm-8916";
+		reg = <0x1000000 0x300000>;
+		interrupts = <0 208 0>;
+
+		/*****************************************/
+		/*  pinctrl customize setting            */
+		/*  SensorHub                            */
+		/*****************************************/
+		sharp_pinctrl_shub_reset{
+			qcom,pins = <&gp 39>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "shub_pin_reset";
+			shub_reset_active: active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+			shub_reset_suspend: suspend {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+		sharp_pinctrl_shub_int0{
+			qcom,pins = <&gp 44>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "shub_pin_int0";
+			shub_int0_active: active {
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+			shub_int0_suspend: suspend {
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+			shub_int0_pullup: shub_int0_pullup {
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+			shub_int0_pulldown: shub_int0_pulldown {
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+		sharp_pinctrl_shub_int1{
+			qcom,pins = <&gp 42>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "shub_pin_int1";
+			shub_int1_active: active {
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+			shub_int1_suspend: suspend {
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+		sharp_pinctrl_shub_brmp{
+			qcom,pins = <&gp 86>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "shub_pin_brmp";
+			shub_brmp_active: active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+			shub_brmp_suspend: suspend {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+};

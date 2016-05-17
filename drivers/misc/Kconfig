@@ -656,4 +656,5 @@ source "drivers/misc/mei/Kconfig"
 source "drivers/misc/vmw_vmci/Kconfig"
 source "drivers/misc/qcom/Kconfig"
 source "drivers/misc/ir2e71y/Kconfig"
+source "drivers/misc/shsensor_hub/ml630q790/Kconfig"
 endmenu
