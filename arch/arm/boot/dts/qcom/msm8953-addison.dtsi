@@ -189,7 +189,6 @@
 			qcom,ilim-ma = <665>;
 			qcom,ovp-mv = <31000>;
 			qcom,enable-amoled-pulse-skipping;
-			qcom,avdd-trim-steps-from-center = <(-3)>;
 		};
 	};
 };
