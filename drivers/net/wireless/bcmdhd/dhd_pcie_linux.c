@@ -238,9 +238,6 @@ static int dhdpcie_pm_runtime_suspend(struct device * dev)
 	if (atomic_read(&bus->dhd->runtime_pm_status) != PCI_PM_RT_ACTIVE)
 		return 0;
 
-	dhd_netif_stop_queue(bus);
-	dhd_flush_rx_tx_wq(bus->dhd);
-
 	ret = dhdpcie_set_suspend_resume(pdev, TRUE, TRUE);
 
 	if (ret) {
@@ -248,8 +245,6 @@ static int dhdpcie_pm_runtime_suspend(struct device * dev)
 		ret = -EAGAIN;
 	} else
 		atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_RT_SUSPENDED);
-
-	dhd_netif_start_queue(bus);
 
 	return ret;
 }
@@ -295,9 +290,6 @@ static int dhdpcie_pm_system_suspend_noirq(struct device * dev)
 
 	bus = pch->bus;
 
-	dhd_netif_stop_queue(bus);
-	dhd_flush_rx_tx_wq(bus->dhd);
-
 	ret = dhdpcie_set_suspend_resume(pdev, TRUE, FALSE);
 
 	atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_SYS_SUSPENDED);
@@ -324,8 +316,6 @@ static int dhdpcie_pm_system_resume_noirq(struct device * dev)
 	bus = pch->bus;
 
 	DHD_RPM(("%s Enter\n", __FUNCTION__));
-
-	dhd_netif_start_queue(bus);
 
 	atomic_set(&bus->dhd->runtime_pm_status, PCI_PM_RT_SUSPENDED);
 
