@@ -3937,6 +3937,7 @@ static int smbchg_wls_set_property(struct power_supply *psy,
 }
 
 #define EB_RCV_NEVER BIT(7)
+#define EB_EXT_PRES BIT(6)
 #define EB_SND_LOW BIT(1)
 #define EB_SND_NEVER BIT(0)
 static void smbchg_check_extbat_ability(struct smbchg_chip *chip, char *able)
@@ -3990,6 +3991,15 @@ static void smbchg_check_extbat_ability(struct smbchg_chip *chip, char *able)
 	} else if ((ret.intval == POWER_SUPPLY_PTP_POWER_NOT_REQUIRED) ||
 		   (ret.intval == POWER_SUPPLY_PTP_POWER_REQUIREMENTS_UNKNOWN))
 		*able |= EB_RCV_NEVER;
+
+	rc = eb_pwr_psy->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+				      &ret);
+	if (rc) {
+		SMB_ERR(chip,
+			"Could not read External Present rc = %d\n", rc);
+	} else if (ret.intval != POWER_SUPPLY_PTP_EXT_NOT_PRESENT)
+		*able |= EB_EXT_PRES;
 
 	rc = eb_pwr_psy->get_property(eb_pwr_psy,
 				      POWER_SUPPLY_PROP_PTP_POWER_AVAILABLE,
@@ -9724,6 +9734,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	bool max_chrg_alarm;
 	int prev_dcin_curr_ma = chip->dc_target_current_ma;
 	bool wls_present;
+	bool eb_ext_pres;
 
 	if (!atomic_read(&chip->hb_ready))
 		return;
@@ -9768,6 +9779,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		batt_mv, batt_ma, batt_temp);
 	smbchg_sync_accy_property_status(chip);
 	eb_chrg_allowed = !(eb_able & EB_RCV_NEVER);
+	eb_ext_pres = (eb_able & EB_EXT_PRES);
 	index = chip->tables.usb_ilim_ma_len - 1;
 	pmi_max_chrg_ma = chip->tables.usb_ilim_ma_table[index];
 	if ((chip->stepchg_state >= STEP_FIRST) &&
@@ -9988,7 +10000,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		   (chip->bsw_mode != BSW_RUN) &&
 		   (chip->usb_present)) {
 		if ((chip->ebchg_state == EB_DISCONN) ||
-		    !eb_chrg_allowed ||
+		    !eb_chrg_allowed || eb_ext_pres ||
 		    ((batt_soc < 95) &&
 		     (chip->usb_target_current_ma == 0)))
 			chip->stepchg_state = STEP_TAPER;
@@ -10016,7 +10028,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		    (chip->allowed_fastchg_current_ma >=
 		     chip->stepchg_iterm_ma)) {
 			if (chip->stepchg_state_holdoff >= 2) {
-				if (eb_chrg_allowed && chip->usb_present)
+				if (eb_chrg_allowed && !eb_ext_pres &&
+				    chip->usb_present)
 					chip->stepchg_state = STEP_EB;
 				else
 					chip->stepchg_state = STEP_FULL;
@@ -10030,7 +10043,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	} else if ((chip->stepchg_state == STEP_FULL) &&
 		   (chip->bsw_mode != BSW_RUN) &&
 		   (chip->usb_present || (chip->ebchg_state == EB_SRC))) {
-		if (eb_chrg_allowed && chip->usb_present)
+		if (eb_chrg_allowed && !eb_ext_pres && chip->usb_present)
 			chip->stepchg_state = STEP_EB;
 		else if (batt_soc < 100)
 			chip->stepchg_state = STEP_TAPER;
@@ -10082,7 +10095,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		}
 		index = STEP_END(chip->stepchg_num_steps);
 		if ((chip->ebchg_state != EB_DISCONN) && chip->usb_present) {
-			if (eb_chrg_allowed && (chip->bsw_mode != BSW_RUN) &&
+			if (eb_chrg_allowed && !eb_ext_pres &&
+			    (chip->bsw_mode != BSW_RUN) &&
 			    ((chip->cl_usbc - 500) >=
 			     MIN(chip->stepchg_steps[index].max_ma,
 				 pmi_max_chrg_ma))) {
@@ -10127,7 +10141,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 		index = STEP_START(chip->stepchg_state);
 		if ((chip->ebchg_state != EB_DISCONN) && chip->usb_present) {
-			if (eb_chrg_allowed && (chip->bsw_mode != BSW_RUN) &&
+			if (eb_chrg_allowed && !eb_ext_pres &&
+			    (chip->bsw_mode != BSW_RUN) &&
 			    ((chip->cl_usbc - 500) >=
 			     MIN(chip->stepchg_steps[index].max_ma,
 				 pmi_max_chrg_ma))) {
