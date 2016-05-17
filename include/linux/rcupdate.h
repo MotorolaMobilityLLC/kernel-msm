@@ -231,22 +231,6 @@ void synchronize_rcu(void);
  */
 #define rcu_preempt_depth() (current->rcu_read_lock_nesting)
 
-#ifdef CONFIG_DEBUG_RCU_LOCK_USER
-void _rcu_read_lock_debug(void);
-void rcu_read_lock_debug(void);
-void rcu_read_unlock_debug(void);
-#else
-static inline void _rcu_read_lock_debug(void)
-{
-}
-static inline void rcu_read_lock_debug(void)
-{
-}
-static inline void rcu_read_unlock_debug(void)
-{
-}
-#endif
-
 #else /* #ifdef CONFIG_PREEMPT_RCU */
 
 static inline void __rcu_read_lock(void)

@@ -1295,10 +1295,6 @@ enum perf_event_task_context {
 	perf_nr_task_contexts,
 };
 
-#ifdef CONFIG_DEBUG_RCU_LOCK_USER
-#define CALLER_HIST_BUF_SIZE 8
-#endif
-
 struct task_struct {
 	volatile long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
 	void *stack;
@@ -1358,10 +1354,6 @@ struct task_struct {
 
 #ifdef CONFIG_PREEMPT_RCU
 	int rcu_read_lock_nesting;
-#ifdef CONFIG_DEBUG_RCU_LOCK_USER
-	unsigned long rcu_read_lock_hist[CALLER_HIST_BUF_SIZE];
-	unsigned long rcu_read_unlock_hist[CALLER_HIST_BUF_SIZE];
-#endif
 	union rcu_special rcu_read_unlock_special;
 	struct list_head rcu_node_entry;
 #endif /* #ifdef CONFIG_PREEMPT_RCU */
@@ -2179,12 +2171,6 @@ static inline void rcu_copy_process(struct task_struct *p)
 {
 #ifdef CONFIG_PREEMPT_RCU
 	p->rcu_read_lock_nesting = 0;
-#ifdef CONFIG_DEBUG_RCU_LOCK_USER
-	memset(p->rcu_read_lock_hist, 0,
-		sizeof(unsigned long) * CALLER_HIST_BUF_SIZE);
-	memset(p->rcu_read_unlock_hist, 0,
-		sizeof(unsigned long) * CALLER_HIST_BUF_SIZE);
-#endif
 	p->rcu_read_unlock_special.s = 0;
 	p->rcu_blocked_node = NULL;
 	INIT_LIST_HEAD(&p->rcu_node_entry);
