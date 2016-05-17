@@ -53,6 +53,8 @@
 #define machine_is_apq8074()	of_machine_is_compatible("qcom,apq8074")
 #define machine_is_msm8926()	of_machine_is_compatible("qcom,msm8926")
 
+#define machine_is_sharp_eve()	of_machine_is_compatible("qcom,sharp-eve")
+
 #define early_machine_is_msm8610()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8610")
 #define early_machine_is_msm8909()	\
@@ -110,6 +112,8 @@
 #define machine_is_msm8226()		0
 #define machine_is_apq8074()		0
 #define machine_is_msm8926()		0
+
+#define machine_is_sharp_eve()		0
 
 #define early_machine_is_msm8610()		0
 #define early_machine_is_msm8909()		0
