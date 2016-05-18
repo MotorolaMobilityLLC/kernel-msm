@@ -616,6 +616,7 @@ struct dual_vfe_resource {
 	struct msm_vfe_stats_shared_data *stats_data[MAX_VFE];
 	struct msm_vfe_axi_shared_data *axi_data[MAX_VFE];
 	uint32_t wm_reload_mask[MAX_VFE];
+	uint32_t epoch_sync_mask;
 };
 
 struct master_slave_resource_info {
@@ -722,7 +723,6 @@ struct vfe_device {
 	uint32_t isp_raw0_debug;
 	uint32_t isp_raw1_debug;
 	uint32_t isp_raw2_debug;
-	uint8_t is_camif_raw_crop_supported;
 
 	/* irq info */
 	uint32_t irq0_mask;

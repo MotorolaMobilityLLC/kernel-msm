@@ -117,7 +117,7 @@ static int msm_isp_stats_cfg_ping_pong_address(struct vfe_device *vfe_dev,
 					= buf;
 			}
 		}
-	} else if (!vfe_dev->is_split) {
+	} else {
 		if (buf)
 			vfe_dev->hw_info->vfe_ops.stats_ops.
 				update_ping_pong_addr(
@@ -255,46 +255,40 @@ static int32_t msm_isp_stats_buf_divert(struct vfe_device *vfe_dev,
 
 static int32_t msm_isp_stats_configure(struct vfe_device *vfe_dev,
 	uint32_t stats_irq_mask, struct msm_isp_timestamp *ts,
-	bool is_composite)
+	uint32_t pingpong_status, bool is_composite)
 {
 	int i, rc = 0;
 	struct msm_isp_event_data buf_event;
 	struct msm_isp_stats_event *stats_event = &buf_event.u.stats;
-	struct msm_isp_buffer *done_buf;
 	struct msm_vfe_stats_stream *stream_info = NULL;
-	uint32_t pingpong_status;
 	uint32_t comp_stats_type_mask = 0;
+	int result = 0;
 
 	memset(&buf_event, 0, sizeof(struct msm_isp_event_data));
 	buf_event.timestamp = ts->buf_time;
 	buf_event.frame_id = vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
-	pingpong_status = vfe_dev->hw_info->
-		vfe_ops.stats_ops.get_pingpong_status(vfe_dev);
 
 	for (i = 0; i < vfe_dev->hw_info->stats_hw_info->num_stats_type; i++) {
 		if (!(stats_irq_mask & (1 << i)))
 			continue;
 		stream_info = &vfe_dev->stats_data.stream_info[i];
-
 		if (stream_info->state == STATS_INACTIVE) {
 			pr_debug("%s: Warning! Stream already inactive. Drop irq handling\n",
 				__func__);
 			continue;
 		}
 
-		done_buf = NULL;
-		msm_isp_stats_cfg_ping_pong_address(vfe_dev,
-			stream_info, pingpong_status, &done_buf);
-		if (done_buf) {
-			rc = msm_isp_stats_buf_divert(vfe_dev, done_buf, ts,
-				&buf_event, stream_info, &comp_stats_type_mask);
-			if (rc < 0) {
-				pr_err("%s:%d failed: stats buf divert rc %d\n",
-					__func__, __LINE__, rc);
-			}
+		rc = msm_isp_stats_buf_divert(vfe_dev, ts,
+				&buf_event, stream_info,
+				is_composite ? &comp_stats_type_mask : NULL,
+				pingpong_status);
+		if (rc < 0) {
+			pr_err("%s:%d failed: stats buf divert rc %d\n",
+				__func__, __LINE__, rc);
+			result = rc;
 		}
 	}
-	if (is_composite && !rc && comp_stats_type_mask) {
+	if (is_composite && comp_stats_type_mask) {
 		ISP_DBG("%s:vfe_id %d comp_stats frameid %x,comp_mask %x\n",
 			__func__, vfe_dev->pdev->id, buf_event.frame_id,
 			comp_stats_type_mask);
