@@ -794,6 +794,13 @@
 		gpio = <&tlmm 109 0>;
 		status = "okay";
 	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+					"back_temp";
+		status = "ok";
+	};
 };
 
 &spi_1 { /* BLSP1 QUP1 */
