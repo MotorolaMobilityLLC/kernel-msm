@@ -4290,7 +4290,19 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		spin_lock_irqsave(&host->lock, flags);
 		host->rescan_disable = 1;
 		spin_unlock_irqrestore(&host->lock, flags);
-		cancel_delayed_work_sync(&host->detect);
+
+		/* give another 5s for user space to consume the event */
+		if (!(host->caps & MMC_CAP_NEEDS_POLL) &&
+		    work_busy(&host->detect.work) &&
+		    device_can_wakeup(mmc_dev(host))) {
+			pr_err("%s: card detection in progress \n",
+				mmc_hostname(host));
+			pm_wakeup_event(mmc_dev(host), 5000);
+			spin_lock_irqsave(&host->lock, flags);
+			host->rescan_disable = 0;
+			spin_unlock_irqrestore(&host->lock, flags);
+			return notifier_from_errno(-EAGAIN);
+		}
 
 		if (!host->bus_ops)
 			break;
