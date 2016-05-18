@@ -292,5 +292,18 @@
 		/* sharp,shrlog-offset = <0x1fefe0>; */
 	};
 
+	/*----------------------------------------------*/
+	/* thermal sensor information                   */
+	/*----------------------------------------------*/
+	qcom,sensor-information {
+		sensor_information17: qcom,sensor-information-17 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "msm_therm";
+		};
+		sensor_information18: qcom,sensor-information-18 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "lcd_therm";
+		};
+	};
 
 };
