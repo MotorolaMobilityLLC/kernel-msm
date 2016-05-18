@@ -113,6 +113,15 @@ config MSM_ISPIF_V1
           of any CID of MSM_CSI22_HEADER can be routed to of pixel
           or raw data interface in VFE.
 
+config MSM_ISPIF_V2
+        bool "Qualcomm MSM Image Signal Processing interface support"
+        depends on MSMB_CAMERA
+        ---help---
+          Enable support for Image Signal Processing interface module.
+          This module acts as a crossbar between CSID and VFE. Output
+          of any CID of CSID can be routed to of pixel
+          or raw data interface in VFE.
+
 config IMX134
 	bool "Sensor IMX134 (BAYER 8M)"
 	depends on MSMB_CAMERA
@@ -140,15 +149,6 @@ config OV9724
 		hfr video at 60, 90 and 120 fps. This sensor driver does
 		not support auto focus.
 
-config HI256
-        bool "Hynix hi256 (YUV 2MP)"
-        depends on MSMB_CAMERA
-        ---help---
-                OmniVision 8 MP Bayer Sensor with auto focus.uses
-                2 mipi lanes, preview config = 1632*1224 30 fps,
-                snapshot config = 3264 * 2448 at 18 fps.
-                2 lanes max fps is 18, 4 lanes max fps is 24.
-
 config OV5648
 	bool "Sensor OV5648 (BAYER 5M)"
 	depends on MSMB_CAMERA
@@ -158,74 +158,12 @@ config OV5648
 		snapshot set to 2592*1944 at 12 fps,
 		This sensor driver does not support auto focus.
 
-config MT9M114
-	bool "Sensor MT9M114 (YUV 1.26MP)"
-	depends on MSMB_CAMERA
-	---help---
-		MT9M114 is Aptina YUV sensor. It supports 1.26 MP preview
-		and snapshot. The preview and snapshot resolution shall be
-		1280 * 270. It does not support auto focus. It supports
-		few special effects like saturation.
-config OV5645
-	bool "Sensor OV5645 (YUV 5.0MP)"
-	depends on MSMB_CAMERA
-	---help---
-		OV5645 is Omnivision YUV sensor. It supports 5.0 MP preview
-		and snapshot. The preview and snapshot resolution shall be
-		1280 * 270. It does not support auto focus. It supports
-		few special effects like saturation.
-
-config OV7695
-	bool "Sensor OV7695 (YUV 0.3MP)"
-	depends on MSMB_CAMERA
-	---help---
-		OV7695 is Omnivision YUV sensor. It supports 0.3 MP preview
-		and snapshot. The preview and snapshot resolution shall be
-		VGA. It does not support auto focus. It supports
-		few special effects like saturation.
-
-config OV2685
-	bool "Sensor OV2685 (YUV 1.92MP)"
-	depends on MSMB_CAMERA
-	---help---
-		OV2685 is Omnivision YUV sensor. It supports 1.92 MP preview
-		and snapshot. The preview and snapshot resolution shall be
-		1600 * 1200 at 30fps. It supports 1080 * 720 at 60fps.It does
-		not support auto focus. It supports 2 mipi lanes.
-
-config OV2685_SCV3B4035
-	bool "Sensor OV2685 (YUV 1.92MP)"
-	depends on MSMB_CAMERA
-	---help---
-		OV2685 is Omnivision YUV sensor. It supports 1.92 MP preview
-		and snapshot. The preview and snapshot resolution shall be
-		1600 * 1200 at 30fps. It supports 1080 * 720 at 60fps.It does
-		not support auto focus. It supports 2 mipi lanes.
-
-config SP1628
-	bool "Sensor SP1628 (YUV 720P)"
-	depends on MSMB_CAMERA
-	---help---
-		SP1628 is SuperPix YUV sensor. It supports 720P preview
-		and snapshot. The preview and snapshot resolution shall be
-		1280 * 270. It does not support auto focus. It supports
-		few special effects like mono.
-
 config GC0339
 	bool "Sensor GC0339 (BAYER .3M)"
 	depends on MSMB_CAMERA
 	---help---
 		gc0339 is a Galaxycore .3 MP Bayer Sensor.
 		It supports 1 or 2 mipi lanes.
-		Preview and snapshot resolution shall be 640*480 at 30 fps,
-		It does not support auto focus.
-
-config GC0310
-	bool "Sensor GC0310 (YUV .3M)"
-	depends on MSMB_CAMERA
-	---help---
-		0310 is a Galaxycore .3 MP YUV Sensor.
-		It supports 1 mipi lane.
 		Preview and snapshot resolution shall be 640*480 at 30 fps,
 		It does not support auto focus.
 
@@ -286,10 +224,20 @@ config MSM_GEMINI
 	tristate "Qualcomm MSM Gemini JPEG engine support"
 	depends on MSMB_CAMERA && (ARCH_MSM7X30 || ARCH_MSM8X60 || ARCH_MSM8960)
 	---help---
-	  Enables support for the Gemini JPEG encoder engine for 8x60.
+	  Enables support for the Gemini JPEG encoder
+	  Engine for 8x60, 7x30 and 8960.
+	  This module serves as the driver
+	  for JPEG encoding functionality.
 
 config MSM_FD
 	 tristate "Qualcomm MSM FD face detection engine support"
 	 depends on MSMB_CAMERA
 	 ---help---
 	    Enables support for the MSM FD face detection engine.
+
+config MSM_JPEGDMA
+	tristate "Qualcomm Technologies Inc. MSM Jpeg dma"
+        depends on MSMB_CAMERA
+        select V4L2_MEM2MEM_DEV
+	---help---
+	  Enable support for Jpeg dma engine.

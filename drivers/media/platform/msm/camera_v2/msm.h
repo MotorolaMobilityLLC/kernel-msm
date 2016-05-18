@@ -27,7 +27,6 @@
 #include <media/v4l2-event.h>
 #include <media/v4l2-mediabus.h>
 #include <media/videobuf2-dma-contig.h>
-#include <media/videobuf2-msm-mem.h>
 #include <media/msmb_camera.h>
 
 /* Setting MAX timeout to 6.5seconds considering
@@ -107,6 +106,7 @@ struct msm_session {
 	 * session struct msm_stream */
 	struct msm_queue_head stream_q;
 	struct mutex lock;
+	struct mutex lock_q;
 	struct mutex close_lock;
 };
 

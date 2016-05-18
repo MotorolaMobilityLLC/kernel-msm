@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 
+#define pr_fmt(fmt) "CAM-VB2 %s:%d " fmt, __func__, __LINE__
 #include "msm_vb2.h"
 
 static int msm_vb2_queue_setup(struct vb2_queue *q,
@@ -80,7 +81,7 @@ static void msm_vb2_buf_queue(struct vb2_buffer *vb)
 	spin_unlock_irqrestore(&stream->stream_lock, flags);
 }
 
-static int msm_vb2_buf_finish(struct vb2_buffer *vb)
+static void msm_vb2_buf_finish(struct vb2_buffer *vb)
 {
 	struct msm_vb2_buffer *msm_vb2;
 	struct msm_stream *stream;
@@ -91,13 +92,13 @@ static int msm_vb2_buf_finish(struct vb2_buffer *vb)
 
 	if (!msm_vb2) {
 		pr_err("%s:%d] vb2_buf NULL", __func__, __LINE__);
-		return -EINVAL;
+		return; 
 	}
 
 	stream = msm_get_stream_from_vb2q(vb->vb2_queue);
 	if (!stream) {
 		pr_err("%s:%d] NULL stream", __func__, __LINE__);
-		return -EINVAL;
+		return;
 	}
 
 	spin_lock_irqsave(&stream->stream_lock, flags);
@@ -109,30 +110,36 @@ static int msm_vb2_buf_finish(struct vb2_buffer *vb)
 		}
 	}
 	spin_unlock_irqrestore(&stream->stream_lock, flags);
-	return 0;
+	return;
 }
 
-static void msm_vb2_buf_cleanup(struct vb2_buffer *vb)
+static void msm_vb2_stop_stream(struct vb2_queue *q)
 {
-	struct msm_vb2_buffer *msm_vb2;
+	struct msm_vb2_buffer *msm_vb2, *temp;
 	struct msm_stream *stream;
 	unsigned long flags;
+	struct vb2_buffer *vb2_buf;
 
-	msm_vb2 = container_of(vb, struct msm_vb2_buffer, vb2_buf);
-
-	if (!msm_vb2) {
-		pr_err("%s:%d] vb2 NULL", __func__, __LINE__);
-		return;
-	}
-
-	stream = msm_get_stream_from_vb2q(vb->vb2_queue);
+	stream = msm_get_stream_from_vb2q(q);
 	if (!stream) {
 		pr_err_ratelimited("%s:%d] NULL stream", __func__, __LINE__);
 		return;
 	}
 
+	/*
+	 * Release all the buffers enqueued to driver
+	 * when streamoff is issued
+	 */
+
 	spin_lock_irqsave(&stream->stream_lock, flags);
-	INIT_LIST_HEAD(&stream->queued_list);
+	list_for_each_entry_safe(msm_vb2, temp, &(stream->queued_list),
+		list) {
+			vb2_buf = &(msm_vb2->vb2_buf);
+			if (vb2_buf->state == VB2_BUF_STATE_DONE)
+				continue;
+			vb2_buffer_done(vb2_buf, VB2_BUF_STATE_DONE);
+			msm_vb2->in_freeq = 0;
+		}
 	spin_unlock_irqrestore(&stream->stream_lock, flags);
 }
 
@@ -140,8 +147,8 @@ static struct vb2_ops msm_vb2_get_q_op = {
 	.queue_setup	= msm_vb2_queue_setup,
 	.buf_init	= msm_vb2_buf_init,
 	.buf_queue	= msm_vb2_buf_queue,
-	.buf_cleanup	= msm_vb2_buf_cleanup,
 	.buf_finish	= msm_vb2_buf_finish,
+	.stop_streaming = msm_vb2_stop_stream,
 };
 
 
@@ -240,7 +247,7 @@ static int msm_vb2_put_buf(struct vb2_buffer *vb, int session_id,
 			if (vb2_buf == vb)
 				break;
 		}
-		if (vb2_buf != vb) {
+		if (WARN_ON(vb2_buf != vb)) {
 			pr_err("VB buffer is INVALID vb=%p, ses_id=%d, str_id=%d\n",
 					vb, session_id, stream_id);
 			spin_unlock_irqrestore(&stream->stream_lock, flags);
@@ -263,7 +270,8 @@ static int msm_vb2_put_buf(struct vb2_buffer *vb, int session_id,
 }
 
 static int msm_vb2_buf_done(struct vb2_buffer *vb, int session_id,
-				unsigned int stream_id)
+				unsigned int stream_id, uint32_t sequence,
+				struct timeval *ts, uint32_t reserved)
 {
 	unsigned long flags;
 	struct msm_vb2_buffer *msm_vb2;
@@ -281,7 +289,7 @@ static int msm_vb2_buf_done(struct vb2_buffer *vb, int session_id,
 			if (vb2_buf == vb)
 				break;
 		}
-		if (vb2_buf != vb) {
+		if (WARN_ON(vb2_buf != vb)) {
 			pr_err("VB buffer is INVALID ses_id=%d, str_id=%d, vb=%p\n",
 				    session_id, stream_id, vb);
 			spin_unlock_irqrestore(&stream->stream_lock, flags);
@@ -291,6 +299,9 @@ static int msm_vb2_buf_done(struct vb2_buffer *vb, int session_id,
 			container_of(vb, struct msm_vb2_buffer, vb2_buf);
 		/* put buf before buf done */
 		if (msm_vb2->in_freeq) {
+			vb->v4l2_buf.sequence = sequence;
+			vb->v4l2_buf.timestamp = *ts;
+			vb->v4l2_buf.reserved = reserved;
 			vb2_buffer_done(vb, VB2_BUF_STATE_DONE);
 			msm_vb2->in_freeq = 0;
 			rc = 0;

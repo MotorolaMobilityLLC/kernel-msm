@@ -43,6 +43,10 @@ int msm_fd_hw_get_iommu(struct msm_fd_device *fd);
 
 void msm_fd_hw_put_iommu(struct msm_fd_device *fd);
 
+int msm_fd_hw_get_regulators(struct msm_fd_device *fd);
+
+int msm_fd_hw_put_regulators(struct msm_fd_device *fd);
+
 int msm_fd_hw_get_clocks(struct msm_fd_device *fd);
 
 int msm_fd_hw_put_clocks(struct msm_fd_device *fd);

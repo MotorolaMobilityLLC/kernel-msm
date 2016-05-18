@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,6 +13,10 @@
 #define __MSM_ISP_AXI_UTIL_H__
 
 #include "msm_isp.h"
+
+#define SRC_TO_INTF(src) \
+	((src < RDI_INTF_0 || src == VFE_AXI_SRC_MAX) ? VFE_PIX_0 : \
+	(VFE_RAW_0 + src - RDI_INTF_0))
 
 int msm_isp_axi_create_stream(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_shared_data *axi_data,
@@ -38,7 +42,7 @@ int msm_isp_axi_check_stream_state(
 	struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream_cfg_cmd *stream_cfg_cmd);
 
-void msm_isp_calculate_framedrop(
+int msm_isp_calculate_framedrop(
 	struct msm_vfe_axi_shared_data *axi_data,
 	struct msm_vfe_axi_stream_request_cmd *stream_cfg_cmd);
 void msm_isp_reset_framedrop(struct vfe_device *vfe_dev,
@@ -68,17 +72,49 @@ void msm_isp_notify(struct vfe_device *vfe_dev, uint32_t event_type,
 
 void msm_isp_process_axi_irq(struct vfe_device *vfe_dev,
 	uint32_t irq_status0, uint32_t irq_status1,
-	struct msm_isp_timestamp *ts);
+	uint32_t pingpong_status, struct msm_isp_timestamp *ts);
 
 void msm_isp_axi_disable_all_wm(struct vfe_device *vfe_dev);
 
-void msm_isp_halt_send_error(struct vfe_device *vfe_dev, uint32_t event);
-int msm_isp_print_ping_pong_address(struct vfe_device *vfe_dev);
+int msm_isp_print_ping_pong_address(struct vfe_device *vfe_dev,
+	unsigned long fault_addr);
+
 void msm_isp_increment_frame_id(struct vfe_device *vfe_dev,
 	enum msm_vfe_input_src frame_src, struct msm_isp_timestamp *ts);
 
 int msm_isp_drop_frame(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info, struct msm_isp_timestamp *ts,
 	struct msm_isp_sof_info *sof_info);
+
+void msm_isp_halt(struct vfe_device *vfe_dev);
+void msm_isp_halt_send_error(struct vfe_device *vfe_dev, uint32_t event);
+
+void msm_isp_process_axi_irq_stream(struct vfe_device *vfe_dev,
+	struct msm_vfe_axi_stream *stream_info,
+	uint32_t pingpong_status,
+	struct msm_isp_timestamp *ts);
+
+static inline void msm_isp_cfg_wm_scratch(struct vfe_device *vfe_dev,
+				int wm,
+				uint32_t pingpong_bit)
+{
+	vfe_dev->hw_info->vfe_ops.axi_ops.update_ping_pong_addr(
+		vfe_dev->vfe_base, wm,
+		pingpong_bit, vfe_dev->buf_mgr->scratch_buf_addr, 0);
+}
+
+static inline void msm_isp_cfg_stream_scratch(struct vfe_device *vfe_dev,
+				struct msm_vfe_axi_stream *stream_info,
+				uint32_t pingpong_status)
+{
+	int i;
+	uint32_t pingpong_bit;
+
+	pingpong_bit = (~(pingpong_status >> stream_info->wm[0]) & 0x1);
+	for (i = 0; i < stream_info->num_planes; i++)
+		msm_isp_cfg_wm_scratch(vfe_dev, stream_info->wm[i],
+				~pingpong_bit);
+	stream_info->buf[pingpong_bit] = NULL;
+}
 
 #endif /* __MSM_ISP_AXI_UTIL_H__ */

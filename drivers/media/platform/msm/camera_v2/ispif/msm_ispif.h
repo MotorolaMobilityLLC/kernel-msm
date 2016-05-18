@@ -19,7 +19,11 @@
 #include <media/msmb_ispif.h>
 #include "msm_sd.h"
 
-#define ISPIF_CLK_INFO_MAX 24
+/* Maximum number of voltage supply for ispif and vfe */
+#define ISPIF_VDD_INFO_MAX 2
+#define ISPIF_VFE_VDD_INFO_MAX 2
+
+#define ISPIF_CLK_INFO_MAX 27
 
 struct ispif_irq_status {
 	uint32_t ispifIrqStatus0;
@@ -62,6 +66,7 @@ struct ispif_device {
 	struct clk *ahb_clk[ISPIF_CLK_INFO_MAX];
 	struct clk *clk[ISPIF_CLK_INFO_MAX];
 	struct completion reset_complete[VFE_MAX];
+	atomic_t reset_trig[VFE_MAX];
 	uint32_t hw_num_isps;
 	uint32_t num_ahb_clk;
 	uint32_t num_clk;
@@ -70,9 +75,9 @@ struct ispif_device {
 	uint32_t ispif_rdi0_debug;
 	uint32_t ispif_rdi1_debug;
 	uint32_t ispif_rdi2_debug;
-	struct regulator *fs_vfe0;
-	struct regulator *fs_vfe1;
-	struct regulator *fs_mmagic_camss;
-	struct regulator *fs_camss;
+	struct regulator *ispif_vdd[ISPIF_VDD_INFO_MAX];
+	int ispif_vdd_count;
+	struct regulator *vfe_vdd[ISPIF_VFE_VDD_INFO_MAX];
+	int vfe_vdd_count;
 };
 #endif

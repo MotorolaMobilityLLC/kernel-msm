@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,6 +14,8 @@
 #define MSM_CSID_2_0_HWREG_H
 
 #include <sensor/csid/msm_csid.h>
+
+uint8_t csid_lane_assign_v2_0[PHY_LANE_MAX] = {0, 1, 2, 3, 4};
 
 struct csid_reg_parms_t csid_v2_0 = {
 
@@ -52,5 +54,12 @@ struct csid_reg_parms_t csid_v2_0 = {
 	0x2,
 	17,
 	0x02000011,
+	0xFFFFFFFF,
+	0xFFFFFFFF,
+	0xFFFFFFFF,
+	0x7f010800,
+	20,
+	0xFFFFFFFF,
+	0xFFFFFFFF,
 };
 #endif
