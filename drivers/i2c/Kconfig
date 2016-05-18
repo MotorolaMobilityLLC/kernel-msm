@@ -123,4 +123,10 @@ config I2C_DEBUG_BUS
 	  a problem with I2C support and want to see more of what is going
 	  on.
 
+config I2C_XFER_RETRY
+	bool "I2C Driver error retry of master xfer processing"
+	help
+	  Say Y here if you want the I2C drivers to produce a bunch
+	  of error retry of master xfer processing.
+
 endif # I2C

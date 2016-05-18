@@ -38,6 +38,11 @@
 #include <linux/msm-bus-board.h>
 #include <linux/i2c/i2c-msm-v2.h>
 
+#if defined(CONFIG_I2C_XFER_RETRY)
+#define I2C_XFER_RETRY_MAX 2
+#define I2C_XFER_RETRY_DELAY 30
+#endif	/* defined(CONFIG_I2C_XFER_RETRY) */
+
 #ifdef DEBUG
 static const enum msm_i2_debug_level DEFAULT_DBG_LVL = MSM_DBG;
 #else
@@ -2344,6 +2349,32 @@ i2c_msm_frmwrk_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	return ret;
 }
 
+#if defined(CONFIG_I2C_XFER_RETRY)
+static int
+i2c_msm_frmwrk_xfer_retry(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
+{
+	int ret = 0;
+	int xfer_cnt;
+	struct i2c_msm_ctrl      *ctrl = i2c_get_adapdata(adap);
+
+	for(xfer_cnt=0; xfer_cnt<=I2C_XFER_RETRY_MAX; xfer_cnt++) {
+
+		ret = i2c_msm_frmwrk_xfer(adap, msgs, num);
+		if(ret>=0) {
+			break;
+		}
+
+		udelay(I2C_XFER_RETRY_DELAY);
+	}
+
+	if(ret<0) {
+		dev_err(ctrl->dev, "%s:retun %d\n", __func__, ret);
+	}
+
+	return ret;
+}
+#endif	/* defined(CONFIG_I2C_XFER_RETRY) */
+
 enum i2c_msm_dt_entry_status {
 	DT_REQ,  /* Required:  fail if missing */
 	DT_SGST, /* Suggested: warn if missing */
@@ -2796,7 +2827,11 @@ static u32 i2c_msm_frmwrk_func(struct i2c_adapter *adap)
 }
 
 static const struct i2c_algorithm i2c_msm_frmwrk_algrtm = {
+#if defined(CONFIG_I2C_XFER_RETRY)
+	.master_xfer	= i2c_msm_frmwrk_xfer_retry,
+#else	/* !defined(CONFIG_I2C_XFER_RETRY) */
 	.master_xfer	= i2c_msm_frmwrk_xfer,
+#endif	/* defined(CONFIG_I2C_XFER_RETRY) */
 	.functionality	= i2c_msm_frmwrk_func,
 };
 
