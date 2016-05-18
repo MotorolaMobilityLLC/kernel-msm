@@ -90,6 +90,8 @@ enum msm_vfe_frame_skip_pattern {
 	MAX_SKIP,
 };
 
+#define MSM_VFE_STREAM_STOP_PERIOD 15
+
 enum msm_isp_stats_type {
 	MSM_ISP_STATS_AEC,   /* legacy based AEC */
 	MSM_ISP_STATS_AF,    /* legacy based AF */
@@ -155,6 +157,14 @@ struct msm_vfe_fetch_engine_cfg {
 	uint32_t buf_stride;
 };
 
+enum msm_vfe_camif_output_format {
+	CAMIF_QCOM_RAW,
+	CAMIF_MIPI_RAW,
+	CAMIF_PLAIN_8,
+	CAMIF_PLAIN_16,
+	CAMIF_MAX_FORMAT,
+};
+
 /*
  * Camif output general configuration
  */
@@ -164,6 +174,11 @@ struct msm_vfe_camif_subsample_cfg {
 	uint32_t sof_counter_step;
 	uint32_t pixel_skip;
 	uint32_t line_skip;
+	uint32_t first_line;
+	uint32_t last_line;
+	uint32_t first_pixel;
+	uint32_t last_pixel;
+	enum msm_vfe_camif_output_format output_format;
 };
 
 /*
@@ -178,6 +193,7 @@ struct msm_vfe_camif_cfg {
 	uint32_t last_line;
 	uint32_t epoch_line0;
 	uint32_t epoch_line1;
+	uint32_t is_split;
 	enum msm_vfe_camif_input camif_input;
 	struct msm_vfe_camif_subsample_cfg subsample_cfg;
 };
@@ -547,11 +563,12 @@ enum msm_isp_event_mask_index {
 	ISP_EVENT_MASK_INDEX_BUF_DIVERT			= 6,
 	ISP_EVENT_MASK_INDEX_COMP_STATS_NOTIFY		= 7,
 	ISP_EVENT_MASK_INDEX_MASK_FE_READ_DONE		= 8,
-	ISP_EVENT_MASK_INDEX_HW_FATAL_ERROR		= 9,
+	ISP_EVENT_MASK_INDEX_BUF_DONE			= 9,
 	ISP_EVENT_MASK_INDEX_PING_PONG_MISMATCH		= 10,
 	ISP_EVENT_MASK_INDEX_REG_UPDATE_MISSING		= 11,
 	ISP_EVENT_MASK_INDEX_BUF_FATAL_ERROR		= 12,
-	ISP_EVENT_MASK_INDEX_MAX		            = 13
+	ISP_EVENT_MASK_INDEX_HW_FATAL_ERROR		= 13,
+	ISP_EVENT_MASK_INDEX_MAX		            = 14
 };
 
 

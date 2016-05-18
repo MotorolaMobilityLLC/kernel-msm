@@ -333,7 +333,7 @@ int msm_ispif_get_clk_info(struct ispif_device *ispif_dev,
 	rc = of_property_read_u32_array(of_node, "qcom,clock-rates",
 		rates, count);
 	if (rc < 0) {
-		pr_err("%s failed %d\n", __func__, __LINE__);
+		pr_err("SURESH: %s failed %d\n", __func__, __LINE__);
 		return rc;
 	}
 
@@ -349,7 +349,7 @@ int msm_ispif_get_clk_info(struct ispif_device *ispif_dev,
 		rc = of_property_read_string_index(of_node,
 			"qcom,clock-control", i, &clk_ctl);
 		if (rc < 0) {
-			pr_err("%s reading clock-control failed index %d\n",
+			pr_err("SURESH: %s  reading clock-control failed index %d\n",
 				__func__, i);
 			return rc;
 		}
@@ -1588,6 +1588,7 @@ static int ispif_probe(struct platform_device *pdev)
 	int rc;
 	struct ispif_device *ispif;
 
+	pr_err("ispif probe start\n");
 	ispif = kzalloc(sizeof(struct ispif_device), GFP_KERNEL);
 	if (!ispif) {
 		pr_err("%s: no enough memory\n", __func__);
@@ -1684,6 +1685,7 @@ static int ispif_probe(struct platform_device *pdev)
 	init_completion(&ispif->reset_complete[VFE1]);
 	atomic_set(&ispif->reset_trig[VFE0], 0);
 	atomic_set(&ispif->reset_trig[VFE1], 0);
+	pr_err("ispif probe success\n");
 	return 0;
 
 error:

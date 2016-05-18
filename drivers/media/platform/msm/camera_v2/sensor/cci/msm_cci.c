@@ -1276,10 +1276,10 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 			mutex_lock(&cci_dev->cci_master_info[master].mutex);
 			flush_workqueue(cci_dev->write_wq[master]);
 			/* Re-initialize the completion */
-			reinit_completion(&cci_dev->
+			INIT_COMPLETION(cci_dev->
 				cci_master_info[master].reset_complete);
 			for (i = 0; i < NUM_QUEUES; i++)
-				reinit_completion(&cci_dev->
+				INIT_COMPLETION(cci_dev->
 					cci_master_info[master].report_q[i]);
 			/* Set reset pending flag to TRUE */
 			cci_dev->cci_master_info[master].reset_pending = TRUE;
@@ -1340,7 +1340,7 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 
 	clk_rates = msm_cci_get_clk_rates(cci_dev, c_ctrl);
 	if (!clk_rates) {
-		pr_err("%s: clk enable failed\n", __func__);
+		pr_err("SURESH: %s: clk enable failed\n", __func__);
 		goto reg_enable_failed;
 	}
 
@@ -1348,6 +1348,7 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 		cci_dev->cci_clk_info[i].clk_rate =
 			clk_rates[i];
 	}
+	pr_err("SURESH: num_clk = %d\n", (int)cci_dev->num_clk);
 	rc = msm_camera_clk_enable(&cci_dev->pdev->dev,
 		cci_dev->cci_clk_info, cci_dev->cci_clk,
 		cci_dev->num_clk, true);
@@ -1357,9 +1358,9 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 	}
 
 	/* Re-initialize the completion */
-	reinit_completion(&cci_dev->cci_master_info[master].reset_complete);
+	INIT_COMPLETION(cci_dev->cci_master_info[master].reset_complete);
 	for (i = 0; i < NUM_QUEUES; i++)
-		reinit_completion(&cci_dev->cci_master_info[master].
+		INIT_COMPLETION(cci_dev->cci_master_info[master].
 			report_q[i]);
 	rc = msm_camera_enable_irq(cci_dev->irq, true);
 	if (rc < 0)

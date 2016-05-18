@@ -21,7 +21,7 @@
 #include <linux/slab.h>
 #include <linux/qcom_iommu.h>
 #include <linux/dma-mapping.h>
-#include <linux/msm_dma_iommu_mapping.h>
+//#include <linux/msm_dma_iommu_mapping.h>
 #include <linux/workqueue.h>
 #include "cam_smmu_api.h"
 
@@ -785,14 +785,14 @@ static int cam_smmu_map_buffer_and_add_to_list(int idx, int ion_fd,
 		pr_err("Error: dma buf map attachment failed\n");
 		goto err_detach;
 	}
-
-	rc = msm_dma_map_sg_lazy(iommu_cb_set.cb_info[idx].dev, table->sgl,
-			table->nents, dma_dir, buf);
+#if 1
+	rc = dma_map_sg(iommu_cb_set.cb_info[idx].dev, table->sgl,
+			table->nents, dma_dir);
 	if (!rc) {
 		pr_err("Error: msm_dma_map_sg_lazy failed\n");
 		goto err_unmap_sg;
 	}
-
+#endif
 	if (table->sgl) {
 		CDBG("DMA buf: %p, device: %p, attach: %p, table: %p\n",
 				(void *)buf,
@@ -866,9 +866,9 @@ static int cam_smmu_unmap_buf_and_remove_from_list(
 	}
 
 	/* iommu buffer clean up */
-	msm_dma_unmap_sg(iommu_cb_set.cb_info[idx].dev,
+	dma_unmap_sg(iommu_cb_set.cb_info[idx].dev,
 		mapping_info->table->sgl, mapping_info->table->nents,
-		mapping_info->dir, mapping_info->buf);
+		mapping_info->dir);
 	dma_buf_unmap_attachment(mapping_info->attach,
 		mapping_info->table, mapping_info->dir);
 	dma_buf_detach(mapping_info->buf, mapping_info->attach);
@@ -1427,6 +1427,7 @@ static int cam_smmu_setup_cb(struct cam_context_bank_info *cb,
 {
 	int rc = 0;
 	int disable_htw = 1;
+	int order = 0;
 
 	if (!cb || !dev) {
 		pr_err("Error: invalid input params\n");
@@ -1454,16 +1455,16 @@ static int cam_smmu_setup_cb(struct cam_context_bank_info *cb,
 		cb->va_start = SZ_128K;
 		cb->va_len = VA_SPACE_END - SZ_128K;
 	}
-
+#if 1
 	/* create a virtual mapping */
-	cb->mapping = arm_iommu_create_mapping(msm_iommu_get_bus(dev),
-		cb->va_start, cb->va_len);
+	cb->mapping = arm_iommu_create_mapping(&platform_bus_type,
+		cb->va_start, cb->va_len, order);
 	if (IS_ERR(cb->mapping)) {
 		pr_err("Error: create mapping Failed\n");
 		rc = -ENODEV;
 		goto end;
 	}
-
+#endif
 	/*
 	 * Set the domain attributes
 	 * disable L2 redirect since it decreases

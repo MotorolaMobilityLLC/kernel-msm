@@ -79,13 +79,14 @@ int cam_ahb_clk_init(struct platform_device *pdev)
 			data.cnt);
 		return 0;
 	}
-
+#if 0
 	cnt = of_property_count_u32_elems(of_node, "qcom,bus-votes");
 	if (cnt == 0) {
 		pr_err("no vector values found in device tree, count=%d", cnt);
 		return 0;
 	}
-
+#endif
+	cnt = data.cnt;
 	if (data.cnt != cnt) {
 		pr_err("vector mismatch num of strings=%u, num of values %d\n",
 			data.cnt, cnt);
@@ -278,7 +279,7 @@ static int cam_ahb_get_voltage_level(unsigned int corner)
 int cam_config_ahb_clk(struct device *dev, unsigned long freq,
 	enum cam_ahb_clk_client id, enum cam_ahb_clk_vote vote)
 {
-	struct dev_pm_opp *opp;
+	struct opp *opp;
 	unsigned int corner;
 	enum cam_ahb_clk_vote dyn_vote = vote;
 	int rc = -EINVAL;
