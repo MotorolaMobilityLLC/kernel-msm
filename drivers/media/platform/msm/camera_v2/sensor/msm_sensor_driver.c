@@ -653,6 +653,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 	unsigned long                        mount_pos = 0;
 	uint32_t                             is_yuv;
 
+	pr_err("SURESH: msm_sensor_driver_probe: E\n");
 	/* Validate input parameters */
 	if (!setting) {
 		pr_err("failed: slave_info %p", setting);
@@ -907,11 +908,11 @@ CSID_TG:
 	/* Power up and probe sensor */
 	rc = s_ctrl->func_tbl->sensor_power_up(s_ctrl);
 	if (rc < 0) {
-		pr_err("%s power up failed", slave_info->sensor_name);
+		pr_err("SURESH: %s power up failed", slave_info->sensor_name);
 		goto free_camera_info;
 	}
 
-	pr_err("%s probe succeeded", slave_info->sensor_name);
+	pr_err("SURESH: %s probe succeeded", slave_info->sensor_name);
 
 	/*
 	  Set probe succeeded flag to 1 so that no other camera shall

@@ -116,7 +116,7 @@ static  int msm_cpp_update_gdscr_status(struct cpp_device *cpp_dev,
 		__q->len--;		 \
 		qcmd = pop_dir ? list_first_entry(&__q->list,   \
 			struct msm_queue_cmd, member) :    \
-			list_last_entry(&__q->list,   \
+			list_entry(__q->list.prev,   \
 			struct msm_queue_cmd, member);    \
 		list_del_init(&qcmd->member);	 \
 	}			 \
@@ -125,6 +125,7 @@ static  int msm_cpp_update_gdscr_status(struct cpp_device *cpp_dev,
 })
 
 #define MSM_CPP_MAX_TIMEOUT_TRIAL 1
+
 
 struct msm_cpp_timer_data_t {
 	struct cpp_device *cpp_dev;
@@ -147,7 +148,7 @@ static int msm_cpp_init_bandwidth_mgr(struct cpp_device *cpp_dev)
 
 	rc = msm_camera_register_bus_client(cpp_dev->pdev, CAM_BUS_CLIENT_CPP);
 	if (rc < 0) {
-		pr_err("Fail to register bus client\n");
+		pr_err(" Fail to register bus client\n");
 		return -ENOENT;
 	}
 
@@ -3834,14 +3835,6 @@ static int cpp_probe(struct platform_device *pdev)
 
 	cpp_dev->pdev = pdev;
 
-	cpp_dev->camss_cpp_base =
-		msm_camera_get_reg_base(pdev, "camss_cpp", true);
-	if (!cpp_dev->camss_cpp_base) {
-		rc = -ENOMEM;
-		pr_err("failed to get camss_cpp_base\n");
-		goto camss_cpp_base_failed;
-	}
-
 	cpp_dev->base =
 		msm_camera_get_reg_base(pdev, "cpp", true);
 	if (!cpp_dev->base) {
@@ -3977,9 +3970,6 @@ cpp_hw_base_failed:
 vbif_base_failed:
 	msm_camera_put_reg_base(pdev, cpp_dev->base, "cpp", true);
 cpp_base_failed:
-	msm_camera_put_reg_base(pdev, cpp_dev->camss_cpp_base,
-		"camss_cpp", true);
-camss_cpp_base_failed:
 	kfree(cpp_dev);
 	return rc;
 }
@@ -4012,7 +4002,8 @@ static int cpp_device_remove(struct platform_device *dev)
 	else
 		msm_isp_deinit_bandwidth_mgr(ISP_CPP);
 	msm_sd_unregister(&cpp_dev->msm_sd);
-	msm_camera_put_reg_base(dev, cpp_dev->camss_cpp_base,
+	if (cpp_dev->camss_cpp_base)
+		msm_camera_put_reg_base(dev, cpp_dev->camss_cpp_base,
 		"camss_cpp", true);
 	msm_camera_put_reg_base(dev, cpp_dev->base, "cpp", true);
 	msm_camera_put_reg_base(dev, cpp_dev->vbif_base, "cpp_vbif", false);

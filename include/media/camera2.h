@@ -88,7 +88,7 @@ struct msm_camera_power_ctrl_t {
 	struct msm_cam_clk_info *clk_info;
 	struct msm_pinctrl_info pinctrl_info;
 	uint8_t cam_pinctrl_status;
-	uint16_t clk_info_size;
+	size_t clk_info_size;
 };
 
 struct msm_camera_sensor_board_info {

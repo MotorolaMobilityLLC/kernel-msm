@@ -62,13 +62,14 @@ int msm_camera_get_clk_info(struct platform_device *pdev,
 		pr_err("err: No clocks found in DT=%zu\n", cnt);
 		return -EINVAL;
 	}
-
+#if 0
 	tmp = of_property_count_u32_elems(of_node, "qcom,clock-rates");
 	if (tmp <= 0) {
 		pr_err("err: No clk rates device tree, count=%zu", tmp);
 		return -EINVAL;
 	}
-
+#endif
+	tmp = cnt;
 	if (cnt != tmp) {
 		pr_err("err: clk name/rates mismatch, strings=%zu, rates=%zu\n",
 			cnt, tmp);
@@ -211,13 +212,14 @@ int msm_camera_get_clk_info_and_rates(
 		pr_err("err: No clocks found in DT=%d\n", cnt);
 		return -EINVAL;
 	}
-
+	tmp = cnt * 2;
+#if 0
 	tmp = of_property_count_u32_elems(of_node, "qcom,clock-rates");
 	if (tmp <= 0) {
 		pr_err("err: No clk rates device tree, count=%d\n", tmp);
 		return -EINVAL;
 	}
-
+#endif
 	if ((tmp % cnt) != 0) {
 		pr_err("err: clk name/rates mismatch, strings=%d, rates=%d\n",
 			cnt, tmp);
@@ -324,7 +326,7 @@ int msm_camera_clk_enable(struct device *dev,
 
 	if (enable) {
 		for (i = 0; i < num_clk; i++) {
-			CDBG("enable %s\n", clk_info[i].clk_name);
+			pr_err("enable %s\n", clk_info[i].clk_name);
 			if (clk_info[i].clk_rate > 0) {
 				clk_rate = clk_round_rate(clk_ptr[i],
 					clk_info[i].clk_rate);
