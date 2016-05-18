@@ -9769,7 +9769,7 @@ static int msm_voc_session_id_get(struct snd_kcontrol *kcontrol,
 
 static struct snd_kcontrol_new msm_voc_session_controls[] = {
 	SOC_SINGLE_MULTI_EXT("Voc VSID", SND_SOC_NOPM, 0,
-			     0xFFFFFFFF, 0, 1, msm_voc_session_id_get,
+			     INT_MAX, 0, 1, msm_voc_session_id_get,
 			     msm_voc_session_id_put),
 };
 
