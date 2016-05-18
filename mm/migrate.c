@@ -459,7 +459,9 @@ int migrate_page_move_mapping(struct address_space *mapping,
 	if (!mapping) {
 		/* Anonymous page without mapping */
 		if (page_count(page) != expected_count) {
-			page_ease_free(page);
+			/* Avoid deadlock in zsmalloc Moible Page */
+			if (likely(!mobile_page(page)))
+				page_ease_free(page);
 			return -EAGAIN;
 		}
 		return MIGRATEPAGE_SUCCESS;
