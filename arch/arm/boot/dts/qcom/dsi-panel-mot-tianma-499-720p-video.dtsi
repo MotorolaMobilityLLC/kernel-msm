@@ -18,6 +18,10 @@
 	mot_tianma_499_720p_vid_v1: qcom,mdss_dsi_mot_tianma_499_720p_video_v1 {
 		#include "dsi-panel-mot-tianma-499-720p-video-common.dtsi"
 	};
+
+	mot_tianma_499_720p_vid_v2: qcom,mdss_dsi_mot_tianma_499_720p_video_v2 {
+		#include "dsi-panel-mot-tianma-499-720p-video-common.dtsi"
+	};
 };
 
 &mot_tianma_499_720p_vid_v0 {
@@ -214,6 +218,26 @@
 	15 01 00 00 00 00 02 D1 4C
 	15 01 00 00 00 00 02 D2 56
 	15 01 00 00 00 00 02 D3 1D
+
+	39 01 00 00 00 00 04 FF 98 81 02
+	15 01 00 00 00 00 02 06 40
+	15 01 00 00 00 00 02 07 02
+
+	39 01 00 00 00 00 04 FF 98 81 00
+	39 01 00 00 00 00 03 51 00 00
+	15 01 00 00 00 00 02 53 2C
+	15 01 00 00 00 00 02 55 01
+	15 01 00 00 00 00 02 68 06
+	05 01 00 00 78 00 01 11
+	05 01 00 00 14 00 01 29];		/* Display on */
+};
+
+&mot_tianma_499_720p_vid_v1 {
+	/delete-property/ qcom,mdss-dsi-on-command;
+	qcom,mdss-dsi-on-command = [
+	39 01 00 00 00 00 04 FF 98 81 02
+	15 01 00 00 00 00 02 06 40
+	15 01 00 00 00 00 02 07 02
 
 	39 01 00 00 00 00 04 FF 98 81 00
 	39 01 00 00 00 00 03 51 00 00
