@@ -94,6 +94,22 @@
 #define MSM_CPP_TX_FIFO_LEVEL		16
 #define MSM_CPP_RX_FIFO_LEVEL		512
 
+enum cpp_vbif_error {
+	CPP_VBIF_ERROR_HANG,
+	CPP_VBIF_ERROR_MAX,
+};
+
+enum cpp_vbif_client {
+	VBIF_CLIENT_CPP,
+	VBIF_CLIENT_FD,
+	VBIF_CLIENT_MAX,
+};
+
+struct msm_cpp_vbif_data {
+	int (*err_handler[VBIF_CLIENT_MAX])(void *, uint32_t);
+	void *dev[VBIF_CLIENT_MAX];
+};
+
 struct cpp_subscribe_info {
 	struct v4l2_fh *vfh;
 	uint32_t active;
@@ -210,7 +226,7 @@ struct cpp_device {
 	struct clk **cpp_clk;
 	struct msm_cam_clk_info *clk_info;
 	size_t num_clks;
-	struct regulator **cpp_vdd;
+	struct msm_cam_regulator *cpp_vdd;
 	int num_reg;
 	struct mutex mutex;
 	enum cpp_state state;
@@ -260,6 +276,7 @@ struct cpp_device {
 	uint32_t bus_idx;
 	uint32_t bus_master_flag;
 	struct msm_cpp_payload_params payload_params;
+	struct msm_cpp_vbif_data *vbif_data;
 };
 
 int msm_cpp_set_micro_clk(struct cpp_device *cpp_dev);
@@ -268,5 +285,8 @@ int msm_cpp_get_clock_index(struct cpp_device *cpp_dev, const char *clk_name);
 long msm_cpp_set_core_clk(struct cpp_device *cpp_dev, long rate, int idx);
 void msm_cpp_fetch_dt_params(struct cpp_device *cpp_dev);
 int msm_cpp_read_payload_params_from_dt(struct cpp_device *cpp_dev);
+void msm_cpp_vbif_register_error_handler(void *dev,
+	enum cpp_vbif_client client,
+	int (*client_vbif_error_handler)(void *, uint32_t));
 
 #endif /* __MSM_CPP_H__ */

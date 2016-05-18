@@ -46,7 +46,7 @@
 
 #define ISPIF_TIMEOUT_SLEEP_US                1000
 #define ISPIF_TIMEOUT_ALL_US               1000000
-#define ISPIF_SOF_DEBUG_COUNT                    5
+#define ISPIF_SOF_DEBUG_COUNT                    0
 
 #undef CDBG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
@@ -333,7 +333,7 @@ int msm_ispif_get_clk_info(struct ispif_device *ispif_dev,
 	rc = of_property_read_u32_array(of_node, "qcom,clock-rates",
 		rates, count);
 	if (rc < 0) {
-		pr_err("SURESH: %s failed %d\n", __func__, __LINE__);
+		pr_err("%s failed %d\n", __func__, __LINE__);
 		return rc;
 	}
 
@@ -349,7 +349,7 @@ int msm_ispif_get_clk_info(struct ispif_device *ispif_dev,
 		rc = of_property_read_string_index(of_node,
 			"qcom,clock-control", i, &clk_ctl);
 		if (rc < 0) {
-			pr_err("SURESH: %s  reading clock-control failed index %d\n",
+			pr_err("%s reading clock-control failed index %d\n",
 				__func__, i);
 			return rc;
 		}
@@ -467,23 +467,23 @@ static void msm_ispif_sel_csid_core(struct ispif_device *ispif,
 	switch (intftype) {
 	case PIX0:
 		data &= ~(BIT(1) | BIT(0));
-		data |= csid;
+		data |= (uint32_t) csid;
 		break;
 	case RDI0:
 		data &= ~(BIT(5) | BIT(4));
-		data |= (csid << 4);
+		data |= ((uint32_t) csid) << 4;
 		break;
 	case PIX1:
 		data &= ~(BIT(9) | BIT(8));
-		data |= (csid << 8);
+		data |= ((uint32_t) csid) << 8;
 		break;
 	case RDI1:
 		data &= ~(BIT(13) | BIT(12));
-		data |= (csid << 12);
+		data |= ((uint32_t) csid) << 12;
 		break;
 	case RDI2:
 		data &= ~(BIT(21) | BIT(20));
-		data |= (csid << 20);
+		data |= ((uint32_t) csid) << 20;
 		break;
 	}
 
@@ -559,9 +559,9 @@ static void msm_ispif_enable_intf_cids(struct ispif_device *ispif,
 
 	data = msm_camera_io_r(ispif->base + intf_addr);
 	if (enable)
-		data |= cid_mask;
+		data |=  (uint32_t) cid_mask;
 	else
-		data &= ~cid_mask;
+		data &= ~((uint32_t) cid_mask);
 	msm_camera_io_w_mb(data, ispif->base + intf_addr);
 }
 
@@ -1588,7 +1588,6 @@ static int ispif_probe(struct platform_device *pdev)
 	int rc;
 	struct ispif_device *ispif;
 
-	pr_err("ispif probe start\n");
 	ispif = kzalloc(sizeof(struct ispif_device), GFP_KERNEL);
 	if (!ispif) {
 		pr_err("%s: no enough memory\n", __func__);
@@ -1685,7 +1684,6 @@ static int ispif_probe(struct platform_device *pdev)
 	init_completion(&ispif->reset_complete[VFE1]);
 	atomic_set(&ispif->reset_trig[VFE0], 0);
 	atomic_set(&ispif->reset_trig[VFE1], 0);
-	pr_err("ispif probe success\n");
 	return 0;
 
 error:

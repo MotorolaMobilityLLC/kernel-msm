@@ -32,7 +32,7 @@
 #define CYCLES_PER_MICRO_SEC_DEFAULT 4915
 #define CCI_MAX_DELAY 1000000
 
-#define CCI_TIMEOUT msecs_to_jiffies(100)
+#define CCI_TIMEOUT msecs_to_jiffies(500)
 
 /* TODO move this somewhere else */
 #define MSM_CCI_DRV_NAME "msm_cci"
@@ -569,7 +569,7 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 	uint32_t read_val = 0;
 	uint32_t reg_offset;
 	uint32_t val = 0;
-	uint32_t max_queue_size;
+	uint32_t max_queue_size, queue_size = 0;
 
 	if (i2c_cmd == NULL) {
 		pr_err("%s:%d Failed line\n", __func__,
@@ -617,6 +617,11 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 
 	max_queue_size = cci_dev->cci_i2c_queue_info[master][queue].
 			max_queue_size;
+
+	if (c_ctrl->cmd == MSM_CCI_I2C_WRITE_SEQ)
+		queue_size = max_queue_size;
+	else
+		queue_size = max_queue_size/2;
 	reg_addr = i2c_cmd->reg_addr;
 
 	if (sync_en == MSM_SYNC_ENABLE && cci_dev->valid_sync &&
@@ -647,8 +652,8 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 			CCI_I2C_M0_Q0_CUR_WORD_CNT_ADDR + reg_offset);
 		CDBG("%s line %d CUR_WORD_CNT_ADDR %d len %d max %d\n",
 			__func__, __LINE__, read_val, len, max_queue_size);
-		/* + 1 - space alocation for Report CMD*/
-		if ((read_val + len + 1) > max_queue_size/2) {
+		/* + 1 - space alocation for Report CMD */
+		if ((read_val + len + 1) > queue_size) {
 			if ((read_val + len + 1) > max_queue_size) {
 				rc = msm_cci_process_full_q(cci_dev,
 					master, queue);
@@ -1340,7 +1345,7 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 
 	clk_rates = msm_cci_get_clk_rates(cci_dev, c_ctrl);
 	if (!clk_rates) {
-		pr_err("SURESH: %s: clk enable failed\n", __func__);
+		pr_err("%s: clk enable failed\n", __func__);
 		goto reg_enable_failed;
 	}
 
@@ -1348,7 +1353,6 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 		cci_dev->cci_clk_info[i].clk_rate =
 			clk_rates[i];
 	}
-	pr_err("SURESH: num_clk = %d\n", (int)cci_dev->num_clk);
 	rc = msm_camera_clk_enable(&cci_dev->pdev->dev,
 		cci_dev->cci_clk_info, cci_dev->cci_clk,
 		cci_dev->num_clk, true);
@@ -2015,15 +2019,15 @@ static int msm_cci_probe(struct platform_device *pdev)
 		goto cci_no_resource;
 	}
 	new_cci_dev->irq = msm_camera_get_irq(pdev, "cci");
-	CDBG("%s line %d cci irq start %d end %d\n", __func__,
-		__LINE__,
-		(int) new_cci_dev->irq->start,
-		(int) new_cci_dev->irq->end);
 	if (!new_cci_dev->irq) {
 		pr_err("%s: no irq resource?\n", __func__);
 		rc = -ENODEV;
 		goto cci_no_resource;
 	}
+	CDBG("%s line %d cci irq start %d end %d\n", __func__,
+		__LINE__,
+		(int) new_cci_dev->irq->start,
+		(int) new_cci_dev->irq->end);
 	rc = msm_camera_register_irq(pdev, new_cci_dev->irq,
 		msm_cci_irq, IRQF_TRIGGER_RISING, "cci", new_cci_dev);
 	if (rc < 0) {
