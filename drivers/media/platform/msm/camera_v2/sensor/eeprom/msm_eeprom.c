@@ -373,6 +373,7 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 				}
 			}
 			break;
+			case MSM_CAM_POLL_STRICT:
 			case MSM_CAM_POLL: {
 				e_ctrl->i2c_client.addr_type =
 					eeprom_map->mem_settings[i].addr_type;
@@ -382,10 +383,12 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 					eeprom_map->mem_settings[i].reg_data,
 					eeprom_map->mem_settings[i].data_type,
 					eeprom_map->mem_settings[i].delay);
-				if (rc < 0) {
-					pr_err("%s: poll failed\n",
+				if ((rc < 0) ||
+				   ((eeprom_map->mem_settings[i].i2c_operation
+					== MSM_CAM_POLL_STRICT) && (rc != 0))) {
+						pr_err("%s: poll failed\n",
 						__func__);
-					goto clean_up;
+						goto clean_up;
 				}
 			}
 			break;
