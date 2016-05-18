@@ -514,7 +514,7 @@ static int sdcardfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	 * we pass along new_dentry for the name.*/
 	get_derived_permission_new(new_dentry->d_parent, old_dentry, new_dentry);
 	fix_derived_permission(old_dentry->d_inode);
-	get_derive_permissions_recursive(old_dentry);
+	fixup_top_recursive(old_dentry);
 out:
 	unlock_rename(lower_old_dir_dentry, lower_new_dir_dentry);
 	dput(lower_old_dir_dentry);
@@ -599,6 +599,16 @@ static void sdcardfs_put_link(struct dentry *dentry, struct nameidata *nd,
 static int sdcardfs_permission(struct inode *inode, int mask)
 {
 	int err;
+	struct inode *top = grab_top(SDCARDFS_I(inode));
+
+	if (!top)
+		return -EINVAL;
+	/* Ensure owner is up to date */
+	if (!uid_eq(inode->i_uid, top->i_uid)) {
+		SDCARDFS_I(inode)->d_uid = SDCARDFS_I(top)->d_uid;
+		fix_derived_permission(inode);
+	}
+	release_top(SDCARDFS_I(inode));
 
 	/*
 	 * Permission check on sdcardfs inode.
@@ -632,41 +642,6 @@ static int sdcardfs_permission(struct inode *inode, int mask)
 #endif
 	return err;
 
-}
-
-static int sdcardfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
-		 struct kstat *stat)
-{
-	struct dentry *lower_dentry;
-	struct inode *inode;
-	struct inode *lower_inode;
-	struct path lower_path;
-	struct dentry *parent;
-
-	parent = dget_parent(dentry);
-	if(!check_caller_access_to_name(parent->d_inode, dentry->d_name.name)) {
-		printk(KERN_INFO "%s: need to check the caller's gid in packages.list\n"
-						 "  dentry: %s, task:%s\n",
-						 __func__, dentry->d_name.name, current->comm);
-		dput(parent);
-		return -EACCES;
-	}
-	dput(parent);
-
-	inode = dentry->d_inode;
-
-	sdcardfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
-	lower_inode = sdcardfs_lower_inode(inode);
-
-
-	sdcardfs_copy_and_fix_attrs(inode, lower_inode);
-	fsstack_copy_inode_size(inode, lower_inode);
-
-
-	generic_fillattr(inode, stat);
-	sdcardfs_put_lower_path(dentry, &lower_path);
-	return 0;
 }
 
 static int sdcardfs_setattr(struct dentry *dentry, struct iattr *ia)
@@ -771,6 +746,64 @@ out_err:
 	return err;
 }
 
+static int sdcardfs_fillattr(struct inode *inode, struct kstat *stat)
+{
+	struct sdcardfs_inode_info *info = SDCARDFS_I(inode);
+	struct inode *top = grab_top(info);
+	if (!top)
+		return -EINVAL;
+
+	stat->dev = inode->i_sb->s_dev;
+	stat->ino = inode->i_ino;
+	stat->mode = (inode->i_mode  & S_IFMT) | get_mode(SDCARDFS_I(top));
+	stat->nlink = inode->i_nlink;
+	stat->uid = make_kuid(&init_user_ns, SDCARDFS_I(top)->d_uid);
+	stat->gid = make_kgid(&init_user_ns, get_gid(SDCARDFS_I(top)));
+	stat->rdev = inode->i_rdev;
+	stat->size = i_size_read(inode);
+	stat->atime = inode->i_atime;
+	stat->mtime = inode->i_mtime;
+	stat->ctime = inode->i_ctime;
+	stat->blksize = (1 << inode->i_blkbits);
+	stat->blocks = inode->i_blocks;
+	release_top(info);
+	return 0;
+}
+
+static int sdcardfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
+		 struct kstat *stat)
+{
+	struct dentry *lower_dentry;
+	struct inode *inode;
+	struct inode *lower_inode;
+	struct path lower_path;
+	struct dentry *parent;
+	int err;
+
+	parent = dget_parent(dentry);
+	if(!check_caller_access_to_name(parent->d_inode, dentry->d_name.name)) {
+		printk(KERN_INFO "%s: need to check the caller's gid in packages.list\n"
+						 "  dentry: %s, task:%s\n",
+						 __func__, dentry->d_name.name, current->comm);
+		dput(parent);
+		return -EACCES;
+	}
+	dput(parent);
+
+	inode = dentry->d_inode;
+
+	sdcardfs_get_lower_path(dentry, &lower_path);
+	lower_dentry = lower_path.dentry;
+	lower_inode = sdcardfs_lower_inode(inode);
+
+	sdcardfs_copy_and_fix_attrs(inode, lower_inode);
+	fsstack_copy_inode_size(inode, lower_inode);
+
+	err = sdcardfs_fillattr(inode, stat);
+	sdcardfs_put_lower_path(dentry, &lower_path);
+	return err;
+}
+
 const struct inode_operations sdcardfs_symlink_iops = {
 	.permission	= sdcardfs_permission,
 	.setattr	= sdcardfs_setattr,
@@ -786,9 +819,7 @@ const struct inode_operations sdcardfs_symlink_iops = {
 const struct inode_operations sdcardfs_dir_iops = {
 	.create		= sdcardfs_create,
 	.lookup		= sdcardfs_lookup,
-#if 0
 	.permission	= sdcardfs_permission,
-#endif
 	.unlink		= sdcardfs_unlink,
 	.mkdir		= sdcardfs_mkdir,
 	.rmdir		= sdcardfs_rmdir,
