@@ -1,0 +1,251 @@
+/* 
+ * Copyright (c) 2016, Sharp Inc. All rights reserved.
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	tlmm_pinmux: pinctrl@1000000 {
+		compatible = "qcom,msm-tlmm-8916";
+		reg = <0x1000000 0x300000>;
+		interrupts = <0 208 0>;
+
+		/*****************************************/
+		/*  pinctrl customize setting            */
+		/*****************************************/
+
+		/*****************************************/
+		/*  UART/Serial                          */
+		/*****************************************/
+		blsp2_lsuart1_tx_active {
+			qcom,pins = <&gp 16>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <2>;
+			label = "blsp2_lsuart1_tx_active";
+			blsp2_lsuart1_tx_active: default {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		blsp2_lsuart1_tx_sleep {
+			qcom,pins = <&gp 16>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "blsp2_lsuart1_tx_sleep";
+			blsp2_lsuart1_tx_sleep: sleep {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		blsp2_lsuart1_rx_active {
+			qcom,pins = <&gp 17>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <2>;
+			label = "blsp2_lsuart1_rx_active";
+			blsp2_lsuart1_rx_active: default {
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		blsp2_lsuart1_rx_sleep {
+			qcom,pins = <&gp 17>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "blsp2_lsuart1_rx_sleep";
+			blsp2_lsuart1_rx_sleep: sleep {
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		/*****************************************/
+		/*  I2C                                  */
+		/*****************************************/
+		blsp1_i2c_2 {
+			/* CLK, DATA */
+			qcom,pins = <&gp 6>, <&gp 7>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <3>;
+			label = "blsp1_i2c_2";
+			/* active state */
+			blsp1_i2c_2_active: blsp1_i2c_2_active{
+				drive-strength = <4>; /* 4 MA */
+				bias-disable; /* No PULL */
+			};
+			/* suspended state */
+			blsp1_i2c_2_sleep: blsp1_i2c_2_sleep {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		blsp1_i2c_3 {
+			/* CLK, DATA */
+			qcom,pins = <&gp 10>, <&gp 11>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <3>;
+			label = "blsp1_i2c_3";
+
+			blsp1_i2c_3_active: blsp1_i2c_3_active {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable; /* No PULL */
+			};
+
+			blsp1_i2c_3_sleep: blsp1_i2c_3_sleep {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		blsp2_i2c_1 {
+			/* CLK, DATA */
+			qcom,pins = <&gp 18>, <&gp 19>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <3>;
+			label = "blsp2_i2c_1";
+
+			blsp2_i2c_1_active: blsp2_i2c_1_active {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable; /* No PULL */
+			};
+
+			blsp2_i2c_1_sleep: blsp2_i2c_1_sleep {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		blsp2_i2c_3 {
+			/* CLK, DATA */
+			qcom,pins = <&gp 94>, <&gp 95>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <4>;
+			label = "blsp2_i2c_3";
+
+			blsp2_i2c_3_active: blsp2_i2c_3_active {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable; /* No PULL */
+			};
+
+			blsp2_i2c_3_sleep: blsp2_i2c_3_sleep {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		/*****************************************/
+		/*  SPI                                  */
+		/*****************************************/
+		blsp1_spi_4_active {
+			/* MOSI, CS, CLK */
+			qcom,pins = <&gp 12>, <&gp 14>, <&gp 15>;
+			qcom,num-grp-pins = <3>;
+			qcom,pin-func = <1>;
+			label = "blsp1_spi_4_active";
+			/* active state */
+			blsp1_spi_4_default: blsp1_spi_4_default {
+				drive-strength = <6>; /* 6 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		blsp1_spi_4_suspend {
+			/* MOSI, CS, CLK */
+			qcom,pins = <&gp 12>, <&gp 14>, <&gp 15>;
+			qcom,num-grp-pins = <3>;
+			qcom,pin-func = <1>;
+			label = "blsp1_spi_4_suspend";
+			/* suspended state */
+			blsp1_spi_4_sleep: blsp1_spi_4_sleep {
+				drive-strength = <6>; /* 6 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		blsp1_spi_4_miso_active {
+			/* MISO */
+			qcom,pins = <&gp 13>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "blsp1_spi_4_miso_active";
+			blsp1_spi_4_miso_default: blsp1_spi_4_miso_default {
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-down; /* PULL Down */
+			};
+		};
+
+		blsp1_spi_4_miso_suspend {
+			/* MISO */
+			qcom,pins = <&gp 13>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "blsp1_spi_4_miso_suspend";
+			blsp1_spi_4_miso_sleep: blsp1_spi_4_miso_sleep {
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-down; /* PULL Down */
+			};
+		};
+
+		blsp2_spi_2_active {
+			/* MOSI, CS, CLK */
+			qcom,pins = <&gp 20>, <&gp 22>, <&gp 23>;
+			qcom,num-grp-pins = <3>;
+			qcom,pin-func = <1>;
+			label = "blsp2_spi_2_active";
+			/* active state */
+			blsp2_spi_2_default: blsp2_spi_2_default {
+				drive-strength = <6>; /* 6 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		blsp2_spi_2_suspend {
+			/* MOSI, CS, CLK */
+			qcom,pins = <&gp 20>, <&gp 22>, <&gp 23>;
+			qcom,num-grp-pins = <3>;
+			qcom,pin-func = <0>;
+			label = "blsp2_spi_2_suspend";
+			/* suspended state */
+			blsp2_spi_2_sleep: blsp2_spi_2_sleep {
+				drive-strength = <6>; /* 6 MA */
+				bias-pull-down; /* PULL Down */
+			};
+		};
+
+		blsp2_spi_2_miso_active {
+			/* MISO */
+			qcom,pins = <&gp 21>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "blsp2_spi_2_miso_active";
+			blsp2_spi_2_miso_default: blsp2_spi_2_miso_default {
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-down; /* PULL Down */
+			};
+		};
+
+		blsp2_spi_2_miso_suspend {
+			/* MISO */
+			qcom,pins = <&gp 21>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "blsp2_spi_2_miso_suspend";
+			blsp2_spi_2_miso_sleep: blsp2_spi_2_miso_sleep {
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-down; /* PULL Down */
+			};
+		};
+
+	};
+};

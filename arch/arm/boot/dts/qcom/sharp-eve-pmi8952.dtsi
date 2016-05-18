@@ -1,0 +1,71 @@
+/* 
+ * Copyright (c) 2016, Sharp Inc. All rights reserved.
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sharp-eve-chg-param.dtsi"
+
+/*****************************************/
+/*  pmi8950-gpios: qpnp-pin               */
+/*****************************************/
+
+&pmi8950_gpios {
+
+	gpio@c000 { /* GPIO_01 */
+	};
+
+	gpio@c100 { /* GPIO_02 */
+	};
+};
+/*****************************************/
+/*  pmi8950-mpps: qpnp-pin                */
+/*****************************************/
+
+&pmi8950_mpps {
+
+	mpp@a000 { /* MPP_01 */
+	};
+
+	mpp@a100 { /* MPP_02 */
+	};
+
+	mpp@a200 { /* MPP_03 */
+	};
+
+	mpp@a300 { /* MPP_04 */
+	};
+};
+
+/*****************************************/
+/*  qpnp-adc-voltage                     */
+/*****************************************/
+
+&pmi8950_vadc {
+};
+
+/*****************************************/
+/*  pmi8950_charger                     */
+/*****************************************/
+&pmi8950_charger {
+};
+
+/{
+	 sharp_eve_batterydata: qcom,battery-data {
+		#include "batterydata-sharp-eve.dtsi"
+	 };
+};
+/*****************************************/
+/*  pmi8950_fg                           */
+/*****************************************/
+&pmi8950_fg {
+	qcom,battery-data = <&sharp_eve_batterydata>;
+};

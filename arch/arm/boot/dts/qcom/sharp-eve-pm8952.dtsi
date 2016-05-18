@@ -1,0 +1,165 @@
+/* 
+ * Copyright (c) 2016, Sharp Inc. All rights reserved.
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*****************************************/
+/*  pm8950-gpios: qpnp-pin               */
+/*****************************************/
+
+&pm8950_gpios {
+
+	gpio@c000 { /* GPIO_01 */
+	};
+
+	gpio@c100 { /* GPIO_02 */
+	};
+
+	gpio@c200 { /* GPIO_03 */
+	};
+
+	gpio@c300 { /* GPIO_04 */
+	};
+
+	gpio@c400 { /* GPIO_05 */
+	};
+
+	gpio@c500 { /* GPIO_06 */
+	};
+
+	gpio@c600 { /* GPIO_07 */
+	};
+
+	gpio@c700 { /* GPIO_08 */
+	};
+
+};
+
+/*****************************************/
+/*  pm8950-mpps: qpnp-pin                */
+/*****************************************/
+
+&pm8950_mpps {
+
+	mpp@a000 { /* MPP_01 */
+	};
+
+	mpp@a100 { /* MPP_02 */
+	};
+
+	mpp@a200 { /* MPP_03 */
+	};
+
+	mpp@a300 { /* MPP_04 */
+	};
+
+};
+/*****************************************/
+/*  pm8950: rpm-regulator                */
+/*****************************************/
+//&pm8950_l1 { /* 8950_l1 */
+//};
+
+&pm8950_l2 { /* 8950_l2 */
+};
+
+//&pm8950_l3 { /* 8950_l3 */
+//};
+
+//&pm8950_l4 { /* 8950_l4 */
+//};
+
+&pm8950_l5 { /* 8950_l5 */
+};
+
+&pm8950_l6 { /* 8950_l6 */
+};
+
+&pm8950_l7 { /* 8950_l7 */
+};
+
+&pm8950_l8 { /* 8950_l8 */
+};
+
+&pm8950_l9 { /* 8950_l9 */
+};
+
+&pm8950_l10 { /* 8950_l10 */
+};
+
+&pm8950_l11 { /* 8950_l11 */
+};
+
+&pm8950_l12 { /* 8950_l12 */
+};
+
+&pm8950_l13 { /* 8950_l13 */
+};
+
+&pm8950_l14 { /* 8950_l14 */
+};
+
+&pm8950_l15 { /* 8950_l15 */
+};
+
+&pm8950_l16 { /* 8950_l16 */
+};
+
+&pm8950_l17 { /* 8950_l17 */
+};
+
+//&pm8950_l18 { /* 8950_l18 */
+//};
+
+&pm8950_l19 { /* 8950_l19 */
+};
+
+//&pm8950_l20 { /* 8950_l20 */
+//};
+
+//&pm8950_l21 { /* 8950_l21 */
+//};
+
+&pm8950_l22 { /* 8950_l22 */
+};
+
+&pm8950_l23 { /* 8950_l23 */
+};
+
+
+/*****************************************/
+/*  qpnp-adc-voltage                     */
+/*****************************************/
+
+&pm8950_vadc {
+	chan@36 {
+	};
+
+	chan@32 {
+	};
+
+	chan@11 {
+	};
+
+	chan@13 {
+	};
+};
+
+
+/*****************************************/
+/*  qpnp-vadc-tm                         */
+/*****************************************/
+
+&pm8950_adc_tm {
+	chan@36 {
+	};
+};

@@ -1,0 +1,296 @@
+/* 
+ * Copyright (c) 2016, Sharp Inc. All rights reserved.
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*****************************************/
+/*  Add SHARP include                    */
+/*****************************************/
+#include "sharp-common-pm8952.dtsi"
+#include "sharp-common-pmi8952.dtsi"
+#include "sharp-pinctrl.dtsi"
+
+/*----------------------------------------*/
+/* Qualcomm settings.                     */
+/*----------------------------------------*/
+/ {
+	aliases {
+		/delete-property/ spi0;
+		/delete-property/ i2c8;
+		
+		spi3 = &blsp1_spi_4;
+		spi5 = &blsp2_spi_2;
+		
+		i2c2 = &blsp1_i2c_2;
+		i2c3 = &blsp1_i2c_3;
+		i2c5 = &blsp2_i2c_1;
+		i2c7 = &blsp2_i2c_3;
+
+		serial3 = &blsp2_lsuart1;
+	};
+
+	soc {
+		/delete-node/ spi@78B5000;
+
+		/delete-node/ i2c@78b6000;
+		/delete-node/ i2c@78b7000;
+		/delete-node/ i2c@7af5000;
+		/delete-node/ i2c@7af8000;
+		
+		/delete-node/ serial@78b0000;
+	};
+
+	/*----------------------------------------------*/
+	/* shrlog                                       */
+	/*----------------------------------------------*/
+	memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+
+		shrlog_region: shrlog_region@8ec00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0x8ed00000 0x0 0x100000>;
+			label = "shrlog_region";
+		};
+	};
+
+};
+
+/*----------------------------------------*/
+/* Add SHARP settings.                    */
+/*----------------------------------------*/
+&soc {
+	/*****************************************/
+	/*  BLSP#1                               */
+	/*****************************************/
+
+	/*****************************************/
+	/*  BLSP#2(BLSP1_QUP2)                   */
+	/*****************************************/
+	blsp1_i2c_2: i2c@78B6000 {
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x78B6000 0x600>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 96 0>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup2_i2c_apps_clk>;
+
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&blsp1_i2c_2_active>;
+		pinctrl-1 = <&blsp1_i2c_2_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,master-id = <86>;
+		dmas = <&dma_blsp1 6 64 0x20000020 0x20>,
+			<&dma_blsp1 7 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		status = "disabled";
+	};
+
+	/*****************************************/
+	/*  BLSP#3(BLSP1_QUP3)                   */
+	/*****************************************/
+	blsp1_i2c_3: i2c@78B7000 {
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x78B7000 0x600>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 97 0>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp1_qup3_i2c_apps_clk>;
+
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&blsp1_i2c_3_active>;
+		pinctrl-1 = <&blsp1_i2c_3_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,master-id = <86>;
+		dmas = <&dma_blsp1 8 64 0x20000020 0x20>,
+			<&dma_blsp1 9 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		status = "disabled";
+	};
+
+	/*****************************************/
+	/*  BLSP#4(BLSP1_QUP4)                   */
+	/*****************************************/
+	blsp1_spi_4: spi@78B8000 {
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x78B8000 0x600>,
+		      <0x7884000 0x1F000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 98 0>, <0 238 0>;
+		spi-max-frequency = <48000000>;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&blsp1_spi_4_default &blsp1_spi_4_miso_default>;
+		pinctrl-1 = <&blsp1_spi_4_sleep &blsp1_spi_4_miso_sleep>;
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup4_spi_apps_clk>;
+		clock-names = "iface_clk", "core_clk";
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,use-pinctrl;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <10>;
+		qcom,bam-producer-pipe-index = <11>;
+		qcom,master-id = <86>;
+		status = "disabled";
+	};
+
+	/*****************************************/
+	/*  BLSP#5(BLSP2_QUP1)                   */
+	/*****************************************/
+	blsp2_i2c_1: i2c@7AF5000 {
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x7AF5000 0x600>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 299 0>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup1_i2c_apps_clk>;
+
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&blsp2_i2c_1_active>;
+		pinctrl-1 = <&blsp2_i2c_1_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,master-id = <84>;
+		dmas = <&dma_blsp2 4 64 0x20000020 0x20>,
+			<&dma_blsp2 5 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		status = "disabled";
+	};
+
+	/*****************************************/
+	/*  BLSP#5(BLSP2_LSUART1)                */
+	/*****************************************/
+	blsp2_lsuart1: serial@7AEF000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0x7AEF000 0x1000>;
+		interrupts = <0 306 0>;
+		qcom,use-pm;
+		pinctrl-names = "sleep", "active";
+		pinctrl-0 = <&blsp2_lsuart1_tx_sleep &blsp2_lsuart1_rx_sleep>;
+		pinctrl-1 = <&blsp2_lsuart1_tx_active &blsp2_lsuart1_rx_active>;
+		clocks = <&clock_gcc clk_gcc_blsp2_uart1_apps_clk>,
+		<&clock_gcc clk_gcc_blsp2_ahb_clk>;
+		clock-names = "core_clk", "iface_clk";
+		status = "disabled";
+	};
+
+	/*****************************************/
+	/*  BLSP#6(BLSP2_QUP2)                   */
+	/*****************************************/
+	blsp2_spi_2: spi@7AF6000 {
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x7AF6000 0x600>,
+		      <0x7AC4000 0x1F000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 300 0>, <0 239 0>;
+		spi-max-frequency = <48000000>;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&blsp2_spi_2_default &blsp2_spi_2_miso_default>;
+		pinctrl-1 = <&blsp2_spi_2_sleep &blsp2_spi_2_miso_sleep>;
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup2_spi_apps_clk>;
+		clock-names = "iface_clk", "core_clk";
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,use-pinctrl;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <6>;
+		qcom,bam-producer-pipe-index = <7>;
+		qcom,master-id = <84>;
+		status = "disabled";
+	};
+
+	/*****************************************/
+	/*  BLSP#7(BLSP2_QUP3)                   */
+	/*****************************************/
+	blsp2_i2c_3: i2c@7AF7000 {
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x7AF7000 0x600>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 301 0>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup3_i2c_apps_clk>;
+
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&blsp2_i2c_3_active>;
+		pinctrl-1 = <&blsp2_i2c_3_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,master-id = <84>;
+		dmas = <&dma_blsp2 8 64 0x20000020 0x20>,
+			<&dma_blsp2 9 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		status = "disabled";
+	};
+
+	/*****************************************/
+	/*  BLSP#8                               */
+	/*****************************************/
+
+	/*----------------------------------------------*/
+	/* msm_thermal cpu_clock restriction thresholds */
+	/*----------------------------------------------*/
+	qcom,msm-thermal {
+		qcom,limit-temp = <75>;
+		qcom,temp-hysteresis = <5>;
+	};
+
+	/*----------------------------------------------*/
+	/* shrlog                                       */
+	/*----------------------------------------------*/
+	sharp,shrlog {
+		compatible = "sharp,shrlog";
+		/* modem-range = <0x86800000 0x05a00000>; */
+		modem-region = <&modem_mem>;
+		linux,contiguous-region = <&shrlog_region>;
+		/* memory-region = <&shrlog_region>; */
+		sharp,shrlog-offset = <0x0>;
+		/* sharp,shrlog-smem; */
+		/* sharp,shrlog-offset = <0x1fefe0>; */
+	};
+
+
+};

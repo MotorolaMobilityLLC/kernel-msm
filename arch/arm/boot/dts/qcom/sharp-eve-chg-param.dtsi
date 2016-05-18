@@ -1,0 +1,102 @@
+/* 
+ * Copyright (c) 2016, Sharp Inc. All rights reserved.
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/****************************************/
+/*  pmi8950_charger			*/
+/****************************************/
+&pmi8950_charger {
+	qcom,float-voltage-mv = <4350>;
+	qcom,float-voltage-comp = <8>;
+	qcom,fastchg-current-ma = <2100>;
+	qcom,fastchg-current-comp = <1200>;
+	qcom,charging-timeout-mins = <1536>;
+	qcom,precharging-timeout-mins = <24>;
+	/delete-property/ qcom,charging-disabled;
+	qcom,resume-delta-mv = <200>;
+	/delete-property/ qcom,chg-inhibit-en;
+	/delete-property/ qcom,chg-inhibit-fg;
+	/delete-property/ qcom,bmd-algo-disabled;
+	qcom,charge-unknown-battery;
+	qcom,bmd-pin-src = "bpd_none";
+	qcom,iterm-ma = <100>;
+	/delete-property/ qcom,iterm-disabled;
+	qcom,rparasitic-uohm = <100000>;
+// 	qcom,vled-max-uv;
+	/delete-property/ qcom,autoadjust-vfloat;
+	qcom,jeita-temp-hard-limit = <1>;
+	/delete-property/ qcom,low-volt-dcin;
+	/delete-property/ qcom,force-aicl-rerun;
+	qcom,aicl-rerun-period-s = <45>;
+// 	qcom,ibat-ocp-threshold-ua;
+	/delete-property/ qcom,soft-vfloat-comp-disabled;
+	qcom,parallel-usb-min-current-ma = <1400>;
+	qcom,parallel-usb-9v-min-current-ma = <900>;
+	qcom,parallel-allowed-lowering-ma = <500>;
+// 	qcom,parallel-main-chg-fcc-percent;
+	/delete-property/ qcom,chg-led-support;
+	/delete-property/ qcom,chg-led-sw-controls;
+	/delete-property/ qcom,skip-usb-notification;
+	/delete-property/ qcom,step-charging-enable;
+// 	qcom,step-charging-fastchg-current-ma;
+// 	qcom,step-charging-voltage-mv;
+};
+
+/****************************************/
+/*  pmi8950_fg			*/
+/****************************************/
+&pmi8950_fg {
+	qcom,warm-bat-decidegc = <450>;
+	qcom,cool-bat-decidegc = <100>;
+	qcom,hot-bat-decidegc  = <550>;
+	qcom,cold-bat-decidegc = <0>;
+	qcom,cold-hot-jeita-hysteresis = <20 20>;
+	qcom,ext-sense-type;
+	qcom,thermal-coefficients = <0xDA 0x86 0xF0 0x50 0x08 0x3C>;
+	qcom,resume-soc = <90>;
+// 	qcom,resume-soc-raw;
+	qcom,hold-soc-while-full;
+	qcom,bcl-lm-threshold-ma = <127>;
+	qcom,bcl-mh-threshold-ma = <405>;
+	/delete-property/ qcom,use-otp-profile;
+	/delete-property/ qcom,sw-rbias-control;
+	qcom,fg-iterm-ma = <300>;
+	qcom,fg-chg-iterm-ma = <100>;
+	qcom,irq-volt-empty-mv = <3203>;
+	qcom,fg-cutoff-voltage-mv = <3350>;
+	qcom,vbat-estimate-diff-mv = <30>;
+	qcom,fg-delta-soc = <1>;
+	qcom,fg-soc-max = <85>;
+	qcom,fg-soc-min = <15>;
+	qcom,fg-vbatt-low-threshold = <4200>;
+	qcom,cycle-counter-en;
+	/delete-property/qcom,capacity-learning-on;
+	qcom,capacity-learning-feedback;
+	qcom,cl-max-increment-deciperc = <100>;
+	qcom,cl-max-decrement-deciperc = <50>;
+	qcom,cl-max-increment-deciperc-2nd = <40>;
+	qcom,cl-max-decrement-deciperc-2nd = <20>;
+	qcom,cl-max-temp-decidegc = <450>;
+	qcom,cl-min-temp-decidegc = <100>;
+	qcom,cl-max-start-capacity = <50>;
+	qcom,cl-vbat-est-thr-uv = <40000>;
+	/delete-property/ qcom,capacity-estimation-on;
+	qcom,aging-eval-current-ma = <1000>;
+	qcom,fg-cc-cv-threshold-mv = <4310>;
+	/delete-property/ qcom,bad-battery-detection-enable;
+	qcom,stby-current = <0x7AA>;
+	qcom,slope-limit-coefficient = <0x90D5>;
+	qcom,cl-high-thresh = <40>;
+	qcom,cl-low-thresh = <40>;
+};

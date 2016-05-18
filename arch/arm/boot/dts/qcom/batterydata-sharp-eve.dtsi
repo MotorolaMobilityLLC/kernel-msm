@@ -1,0 +1,61 @@
+/* 
+ * Copyright (c) 2016, Sharp Inc. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,sharp-eve {
+	qcom,max-voltage-uv = <4360000>;
+	qcom,nom-batt-capacity-mah = <3010>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <3380>;
+	qcom,battery-type = "sharp";
+	qcom,chg-rslow-comp-c1 = <2965478>;
+	qcom,chg-rslow-comp-c2 = <4471093>;
+	qcom,chg-rs-to-rslow = <820952>;
+	qcom,chg-rslow-comp-thr = <0xAB>;
+	qcom,checksum = <0x9AEA>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.15";
+	qcom,fg-profile-data = [
+		 D4 83 2B 7C
+		 5A 80 AF 75
+		 61 83 B4 74
+		 FF 89 1F 95
+		 9C 82 7E 92
+		 BA B4 9E C0
+		 52 16 E1 83
+		 2C 7C 43 80
+		 70 75 64 83
+		 EB 6D 54 89
+		 E6 94 7E 82
+		 41 98 C9 B6
+		 48 C3 52 11
+		 C0 0B 2C 5B
+		 0F 6F 71 FD
+		 7B 20 1B 46
+		 8E 32 00 00
+		 AB 45 C2 29
+		 1E 32 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 8B 6B 41 6A
+		 92 60 40 81
+		 A0 74 CB 68
+		 9F 68 86 81
+		 A9 6F A9 63
+		 BA 7F 41 A1
+		 1B 1A 68 73
+		 65 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};

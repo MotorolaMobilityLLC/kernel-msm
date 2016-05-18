@@ -1,0 +1,80 @@
+/* 
+ * Copyright (c) 2016, Sharp Inc. All rights reserved.
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "sharp_pinctrl/sharp-pinctrl-eve.dtsi"
+
+/ {
+};
+
+&soc {
+	/*****************************************/
+	/*  BLSP#1                               */
+	/*****************************************/
+
+	/*****************************************/
+	/*  BLSP#2(BLSP1_QUP2)                   */
+	/*****************************************/
+	i2c@78B6000 {
+		status = "ok";
+	};
+
+	/*****************************************/
+	/*  BLSP#3(BLSP1_QUP3)                   */
+	/*****************************************/
+	i2c@78B7000 {
+		status = "ok";
+	};
+
+	/*****************************************/
+	/*  BLSP#4(BLSP1_QUP4)                   */
+	/*****************************************/
+	spi@78B8000 {
+		status = "ok";
+	};
+
+	/*****************************************/
+	/*  BLSP#5(BLSP2_QUP1)                   */
+	/*****************************************/
+	i2c@7AF5000 {
+		status = "ok";
+	};
+
+	/*****************************************/
+	/*  BLSP#5(BLSP2_LSUART1)                */
+	/*****************************************/
+	serial@7AEF000 {
+		status = "disabled";
+	};
+
+	/*****************************************/
+	/*  BLSP#6(BLSP2_QUP2)                   */
+	/*****************************************/
+	spi@7AF6000 {
+		status = "ok";
+	};
+
+	/*****************************************/
+	/*  BLSP#7(BLSP2_QUP3)                   */
+	/*****************************************/
+	i2c@7AF7000 {
+		status = "ok";
+	};
+
+	/*****************************************/
+	/*  BLSP#8                               */
+	/*****************************************/
+
+};
+#include "sharp-eve-pm8952.dtsi"
+#include "sharp-eve-pmi8952.dtsi"

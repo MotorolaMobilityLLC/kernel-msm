@@ -1,0 +1,137 @@
+/* 
+ * Copyright (c) 2016, Sharp Inc. All rights reserved.
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*****************************************/
+/*  pmi8950: qcom,pm8950 alias            */
+/*****************************************/
+
+&spmi_bus {
+	qcom,pmi8950@2 {
+		pmi8950_vadc: vadc@3100 {
+		};
+		pmi8994_charger: qcom,qpnp-smbcharger {
+			qcom,thermal-mitigation = <1500 1500 1500 1500 1500 1500 1400 1200 1100 1000 900 700 600 500 400 300 0>;
+			qcom,thermal-mitigation-hvdcp =  <1500 1400 1200 1100 1000 900 700 600 600 500 500 700 600 500 400 300 0>;
+			qcom,thermal-mitigation-hvdcp-vol = <9 9 9 9 9 9 9 9 9 9 9 5 5 5 5 5 5>;
+		};
+	};
+
+	qcom,pmi8950@3 {
+		qcom,leds@d800 {
+			status = "disabled";
+		};
+	};
+};
+
+/*****************************************/
+/*  pmi8950-gpios: qpnp-pin               */
+/*****************************************/
+
+&pmi8950_gpios {
+
+	gpio@c000 { /* GPIO_01 */
+		/* THEAM_SW_EN_B */
+		qcom,mode = <0>;			/* DIG_IN */
+		qcom,output-type = <0>;		/* CMOS */
+		qcom,invert = <1>;			/* ENABLE */
+		qcom,pull = <5>;			/* NO_PULL */
+		qcom,vin-sel = <0>;			/* VDD_MSM_IO */
+		qcom,out-strength = <3>;	/* HIGH */
+		qcom,src-sel = <0>;			/* CONSTANT */
+		qcom,master-en = <1>;		/* ENABLE */
+		status = "okay";
+	};
+
+	gpio@c100 { /* GPIO_02 */
+		/* Unused */
+		qcom,mode = <0>;			/* DIG_IN */
+		qcom,output-type = <0>;		/* CMOS */
+		qcom,invert = <0>;			/* DISABLE */
+		qcom,pull = <4>;			/* PULL_DN */
+		qcom,vin-sel = <0>;			/* VDD_MSM_IO */
+		qcom,out-strength = <1>;	/* LOW */
+		qcom,src-sel = <0>;			/* CONSTANT */
+		qcom,master-en = <1>;		/* ENABLE */
+		status = "okay";
+	};
+};
+/*****************************************/
+/*  pmi8950-mpps: qpnp-pin                */
+/*****************************************/
+
+&pmi8950_mpps {
+
+	mpp@a000 { /* MPP_01 */
+		/* VBATT_SENSE */
+		qcom,mode = <4>;		/* Analog Input */
+		qcom,src-sel = <1>;		/* MPP is always enabled */
+		qcom,ain-route = <0>;	/* QPNP_PIN_AIN_AMUX_CH5 */
+		qcom,master-en = <1>;	/* ENSABLE */
+		status = "okay";
+	};
+
+	mpp@a100 { /* MPP_02 */
+		/* Unused */
+		qcom,mode = <1>;		/* DIG_OUT */
+		qcom,invert = <0>;		/* DISABLE */
+		qcom,vin-sel = <1>;		/* VDD_MSM_IO */
+		qcom,src-sel = <0>;		/* CONSTANT */
+		qcom,master-en = <1>;	/* ENABLE */
+		status = "okay";
+	};
+
+	mpp@a200 { /* MPP_03 */
+		/* Unused */
+		qcom,mode = <1>;		/* DIG_OUT */
+		qcom,invert = <0>;		/* DISABLE */
+		qcom,vin-sel = <1>;		/* VDD_MSM_IO */
+		qcom,src-sel = <0>;		/* CONSTANT */
+		qcom,master-en = <1>;	/* ENABLE */
+		status = "okay";
+	};
+
+	mpp@a300 { /* MPP_04 */
+		/* FLASH_STROBE_NOW */
+		/* Qualcomm Settings */
+	};
+};
+
+/*****************************************/
+/*  qpnp-adc-voltage                     */
+/*****************************************/
+
+&pmi8950_vadc {
+	chan@3 {
+		label = "vchg_sns";
+		reg = <3>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+};
+
+/*****************************************/
+/*  pmi8950_charger                     */
+/*****************************************/
+
+&pmi8950_charger {
+        qcom,dcin-vadc = <&pmi8950_vadc>;
+	qcom,vchg_sns-vadc = <&pmi8950_vadc>;
+	qcom,vchg-adc-channel-id = <3>;
+        qcom,charge-unknown-battery;
+        /delete-property/ qcom,charging-disabled;
+};
