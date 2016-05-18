@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,8 +19,16 @@
 #include <media/v4l2-subdev.h>
 #include <media/msm_cam_sensor.h>
 #include "msm_sd.h"
+#include "cam_soc_api.h"
 
-#define CSID_NUM_CLK_MAX  16
+enum csiphy_lane_assign {
+	PHY_LANE_D0,
+	PHY_LANE_CLK,
+	PHY_LANE_D1,
+	PHY_LANE_D2,
+	PHY_LANE_D3,
+	PHY_LANE_MAX,
+};
 
 struct csid_reg_parms_t {
 /* MIPI	CSID registers */
@@ -58,10 +66,18 @@ struct csid_reg_parms_t {
 	uint32_t csid_dl_input_sel_shift;
 	uint32_t csid_phy_sel_shift;
 	uint32_t csid_version;
+	uint32_t csid_3p_ctrl_0_addr;
+	uint32_t csid_3p_pkt_hdr_addr;
+	uint32_t csid_test_bus_ctrl;
+	uint32_t csid_irq_mask_val;
+	uint32_t csid_err_lane_overflow_offset_2p;
+	uint32_t csid_err_lane_overflow_offset_3p;
+	uint32_t csid_phy_sel_shift_3p;
 };
 
 struct csid_ctrl_t {
 	struct csid_reg_parms_t csid_reg;
+	uint8_t *csid_lane_assign;
 };
 
 enum msm_csid_state_t {
@@ -72,9 +88,7 @@ enum msm_csid_state_t {
 struct csid_device {
 	struct platform_device *pdev;
 	struct msm_sd_subdev msm_sd;
-	struct resource *mem;
 	struct resource *irq;
-	struct resource *io;
 	struct regulator *csi_vdd;
 	void __iomem *base;
 	struct mutex mutex;
@@ -83,14 +97,19 @@ struct csid_device {
 	uint32_t hw_dts_version;
 	enum msm_csid_state_t csid_state;
 	struct csid_ctrl_t *ctrl_reg;
-	uint32_t num_clk;
-	uint32_t num_clk_src_info;
 	struct regulator *reg_ptr;
-	struct clk *csid_clk[CSID_NUM_CLK_MAX];
+	size_t num_clk;
+	struct clk **csid_clk;
+	struct msm_cam_clk_info *csid_clk_info;
 	uint32_t csid_clk_index;
 	uint32_t csid_max_clk;
+	uint32_t csid_3p_enabled;
+	struct camera_vreg_t *csid_vreg;
+	struct regulator *csid_reg_ptr[MAX_REGULATOR];
+	int32_t regulator_count;
 	uint8_t is_testmode;
 	struct msm_camera_csid_testmode_parms testmode_params;
+	struct msm_camera_csid_params  current_csid_params;
 	uint32_t csid_sof_debug;
 	uint32_t csid_lane_cnt;
 };

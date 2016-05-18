@@ -14,6 +14,7 @@
 #define MSM_CSID_3_4_1_HWREG_H
 
 #include <sensor/csid/msm_csid.h>
+uint8_t csid_lane_assign_v3_4_1[PHY_LANE_MAX] = {0, 1, 2, 3, 4};
 
 struct csid_reg_parms_t csid_v3_4_1 = {
 	/* MIPI	CSID registers */
@@ -51,5 +52,12 @@ struct csid_reg_parms_t csid_v3_4_1 = {
 	0x4,
 	17,
 	0x30040001,
+	0xFFFFFFFF,
+	0xFFFFFFFF,
+	0xFFFFFFFF,
+	0x7f010800,
+	20,
+	0xFFFFFFFF,
+	0xFFFFFFFF,
 };
 #endif

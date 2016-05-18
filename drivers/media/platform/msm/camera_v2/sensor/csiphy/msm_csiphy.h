@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,9 +19,16 @@
 #include <media/v4l2-subdev.h>
 #include <media/msm_cam_sensor.h>
 #include "msm_sd.h"
+#include "msm_camera_io_util.h"
+#include "cam_soc_api.h"
 
 #define MAX_CSIPHY 3
 #define CSIPHY_NUM_CLK_MAX  16
+
+struct csiphy_reg_t {
+	uint32_t addr;
+	uint32_t data;
+};
 
 struct csiphy_reg_parms_t {
 /*MIPI CSI PHY registers*/
@@ -33,7 +40,7 @@ struct csiphy_reg_parms_t {
 	uint32_t mipi_csiphy_lnck_cfg1_addr;
 	uint32_t mipi_csiphy_lnck_cfg2_addr;
 	uint32_t mipi_csiphy_lnck_cfg3_addr;
-	uint32_t mipi_csiphy_glbl_pwg_cfg0_addr;
+	uint32_t mipi_csiphy_lnck_cfg4_addr;
 	uint32_t mipi_csiphy_lnn_test_imp;
 	uint32_t mipi_csiphy_lnn_misc1_addr;
 	uint32_t mipi_csiphy_glbl_reset_addr;
@@ -50,10 +57,80 @@ struct csiphy_reg_parms_t {
 	uint32_t mipi_csiphy_glbl_t_init_cfg0_addr;
 	uint32_t mipi_csiphy_t_wakeup_cfg0_addr;
 	uint32_t csiphy_version;
+	uint32_t combo_clk_mask;
+};
+
+struct csiphy_reg_3ph_parms_t {
+/*MIPI CSI PHY registers*/
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl5;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl6;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl34;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl35;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl36;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl1;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl2;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl3;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl5;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl6;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl7;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl8;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl9;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl10;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl11;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl12;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl13;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl14;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl15;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl16;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl17;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl18;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl19;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl21;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl23;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl24;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl25;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl26;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl27;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl28;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl29;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl30;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl31;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl32;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl33;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnn_ctrl51;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl7;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl11;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl12;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl13;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl14;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl15;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl16;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl17;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl18;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl19;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl20;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl21;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_misc1;
+	struct csiphy_reg_t mipi_csiphy_3ph_cmn_ctrl0;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_cfg1;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_cfg2;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_cfg3;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_cfg4;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_cfg5;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_cfg6;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_cfg7;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_cfg8;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_cfg9;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_ctrl15;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_test_imp;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_test_force;
+	struct csiphy_reg_t mipi_csiphy_2ph_lnn_ctrl5;
+	struct csiphy_reg_t mipi_csiphy_3ph_lnck_cfg1;
 };
 
 struct csiphy_ctrl_t {
 	struct csiphy_reg_parms_t csiphy_reg;
+	struct csiphy_reg_3ph_parms_t csiphy_3ph_reg;
 };
 
 enum msm_csiphy_state_t {
@@ -65,11 +142,7 @@ struct csiphy_device {
 	struct platform_device *pdev;
 	struct msm_sd_subdev msm_sd;
 	struct v4l2_subdev subdev;
-	struct resource *mem;
-	struct resource *clk_mux_mem;
 	struct resource *irq;
-	struct resource *io;
-	struct resource *clk_mux_io;
 	void __iomem *base;
 	void __iomem *clk_mux_base;
 	struct mutex mutex;
@@ -77,14 +150,24 @@ struct csiphy_device {
 	uint32_t hw_dts_version;
 	enum msm_csiphy_state_t csiphy_state;
 	struct csiphy_ctrl_t *ctrl_reg;
+	size_t num_all_clk;
+	struct clk **csiphy_all_clk;
+	struct msm_cam_clk_info *csiphy_all_clk_info;
 	uint32_t num_clk;
 	struct clk *csiphy_clk[CSIPHY_NUM_CLK_MAX];
+	struct msm_cam_clk_info csiphy_clk_info[CSIPHY_NUM_CLK_MAX];
+	struct clk *csiphy_3p_clk[2];
+	struct msm_cam_clk_info csiphy_3p_clk_info[2];
+	unsigned char csi_3phase;
 	int32_t ref_count;
 	uint16_t lane_mask[MAX_CSIPHY];
 	uint32_t is_3_1_20nm_hw;
 	uint32_t csiphy_clk_index;
 	uint32_t csiphy_max_clk;
+	uint8_t csiphy_3phase;
+	uint8_t num_irq_registers;
 	uint32_t csiphy_sof_debug;
+	uint32_t csiphy_sof_debug_count;
 };
 
 #define VIDIOC_MSM_CSIPHY_RELEASE \

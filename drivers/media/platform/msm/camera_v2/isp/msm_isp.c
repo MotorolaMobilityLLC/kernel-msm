@@ -18,7 +18,6 @@
 #include <linux/debugfs.h>
 #include <linux/videodev2.h>
 #include <linux/of_device.h>
-#include <linux/qcom_iommu.h>
 #include <linux/sched_clock.h>
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-device.h>
@@ -39,6 +38,7 @@
 static struct msm_sd_req_vb2_q vfe_vb2_ops;
 static struct msm_isp_buf_mgr vfe_buf_mgr;
 static struct msm_vfe_common_dev_data vfe_common_data;
+static struct dual_vfe_resource dualvfe;
 
 static const struct of_device_id msm_vfe_dt_match[] = {
 	{
@@ -54,8 +54,6 @@ MODULE_DEVICE_TABLE(of, msm_vfe_dt_match);
 #define OVERFLOW_BUFFER_LENGTH 64
 static char stat_line[OVERFLOW_LENGTH];
 
-static struct msm_isp_buf_mgr vfe_buf_mgr;
-static struct dual_vfe_resource dualvfe;
 struct msm_isp_statistics stats;
 struct msm_isp_ub_info ub_info;
 
@@ -434,18 +432,47 @@ static struct v4l2_file_operations msm_isp_v4l2_fops = {
 	.unlocked_ioctl = msm_isp_v4l2_fops_ioctl
 };
 
+static int vfe_set_common_data(struct platform_device *pdev)
+{
+	struct v4l2_subdev *sd = NULL;
+	struct vfe_device *vfe_dev = NULL;
+
+	sd = (struct v4l2_subdev *)platform_get_drvdata(pdev);
+	if (!sd) {
+		pr_err("%s: Error! Cannot find subdev\n", __func__);
+		return -EPERM;
+	}
+	vfe_dev = (struct vfe_device *)v4l2_get_subdevdata(sd);
+	if (!vfe_dev) {
+		pr_err("%s: Error! Cannot find vfe_dev\n", __func__);
+		return -EPERM;
+	}
+
+	vfe_dev->common_data = (struct msm_vfe_common_dev_data *)
+		pdev->dev.platform_data;
+
+	vfe_dev->common_data->dual_vfe_res = &dualvfe;
+	vfe_dev->common_data->dual_vfe_res->axi_data[vfe_dev->pdev->id] =
+		&vfe_dev->axi_data;
+	vfe_dev->common_data->dual_vfe_res->stats_data[vfe_dev->pdev->id] =
+		&vfe_dev->stats_data;
+	vfe_dev->common_data->dual_vfe_res->vfe_dev[vfe_dev->pdev->id] =
+		vfe_dev;
+	return 0;
+}
+
 static int vfe_probe(struct platform_device *pdev)
 {
 	struct vfe_parent_device *vfe_parent_dev;
 	int rc = 0;
 	struct device_node *node;
 	struct platform_device *new_dev = NULL;
-	const struct device_node *dt_node = pdev->dev.of_node;
+	uint32_t i = 0;
+	char name[10] = "\0";
 
 	vfe_parent_dev = kzalloc(sizeof(struct vfe_parent_device),
 		GFP_KERNEL);
 	if (!vfe_parent_dev) {
-		pr_err("%s: no enough memory\n", __func__);
 		rc = -ENOMEM;
 		goto end;
 	}
@@ -453,7 +480,6 @@ static int vfe_probe(struct platform_device *pdev)
 	vfe_parent_dev->common_sd = kzalloc(
 		sizeof(struct msm_vfe_common_subdev), GFP_KERNEL);
 	if (!vfe_parent_dev->common_sd) {
-		pr_err("%s: no enough memory\n", __func__);
 		rc = -ENOMEM;
 		goto probe_fail1;
 	}
@@ -461,20 +487,31 @@ static int vfe_probe(struct platform_device *pdev)
 	vfe_parent_dev->common_sd->common_data = &vfe_common_data;
 	memset(&vfe_common_data, 0, sizeof(vfe_common_data));
 	spin_lock_init(&vfe_common_data.common_dev_data_lock);
-	spin_lock_init(&vfe_common_data.common_dev_axi_lock);
 
-	for_each_available_child_of_node(dt_node, node) {
-		new_dev = of_platform_device_create(node, NULL, &pdev->dev);
-		if (!new_dev) {
-			pr_err("Failed to create device %s\n", node->name);
+	of_property_read_u32(pdev->dev.of_node,
+		"num_child", &vfe_parent_dev->num_hw_sd);
+
+	for (i = 0; i < vfe_parent_dev->num_hw_sd; i++) {
+		node = NULL;
+		snprintf(name, sizeof(name), "qcom,vfe%d", i);
+		node = of_find_node_by_name(NULL, name);
+		if (!node) {
+			pr_err("%s: Error! Cannot find node in dtsi %s\n",
+				__func__, name);
 			goto probe_fail2;
 		}
-		vfe_parent_dev->child_list[vfe_parent_dev->num_hw_sd++] =
-			new_dev;
+		new_dev = of_find_device_by_node(node);
+		if (!new_dev) {
+			pr_err("%s: Failed to find device on bus %s\n",
+				__func__, node->name);
+			goto probe_fail2;
+		}
+		vfe_parent_dev->child_list[i] = new_dev;
 		new_dev->dev.platform_data =
 			(void *)vfe_parent_dev->common_sd->common_data;
-
-		pr_debug("%s: device creation done\n", __func__);
+		rc = vfe_set_common_data(new_dev);
+		if (rc < 0)
+			goto probe_fail2;
 	}
 
 	vfe_parent_dev->num_sd = vfe_parent_dev->num_hw_sd;
@@ -517,9 +554,6 @@ int vfe_hw_probe(struct platform_device *pdev)
 		goto probe_fail2;
 	}
 
-	vfe_dev->common_data = (struct msm_vfe_common_dev_data *)
-		pdev->dev.platform_data;
-
 	if (pdev->dev.of_node) {
 		of_property_read_u32(pdev->dev.of_node,
 			"cell-index", &pdev->id);
@@ -546,13 +580,8 @@ int vfe_hw_probe(struct platform_device *pdev)
 	ISP_DBG("%s: device id = %d\n", __func__, pdev->id);
 
 	vfe_dev->pdev = pdev;
-	vfe_dev->common_data->dual_vfe_res = &dualvfe;
-	vfe_dev->common_data->dual_vfe_res->axi_data[vfe_dev->pdev->id] =
-		&vfe_dev->axi_data;
-	vfe_dev->common_data->dual_vfe_res->stats_data[vfe_dev->pdev->id] =
-		&vfe_dev->stats_data;
-	vfe_dev->common_data->dual_vfe_res->vfe_dev[vfe_dev->pdev->id] =
-		vfe_dev;
+
+
 	rc = vfe_dev->hw_info->vfe_ops.core_ops.get_platform_data(vfe_dev);
 	if (rc < 0) {
 		pr_err("%s: failed to get platform resources\n", __func__);
@@ -576,7 +605,6 @@ int vfe_hw_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, &vfe_dev->subdev.sd);
 	mutex_init(&vfe_dev->realtime_mutex);
 	mutex_init(&vfe_dev->core_mutex);
-	mutex_init(&vfe_dev->buf_mgr_mutex);
 	spin_lock_init(&vfe_dev->tasklet_lock);
 	spin_lock_init(&vfe_dev->shared_data_lock);
 	spin_lock_init(&vfe_dev->reg_update_lock);
@@ -591,25 +619,28 @@ int vfe_hw_probe(struct platform_device *pdev)
 		pr_err("%s: msm_sd_register error = %d\n", __func__, rc);
 		goto probe_fail3;
 	}
-
-	msm_isp_v4l2_fops.owner = v4l2_subdev_fops.owner;
-	msm_isp_v4l2_fops.open = v4l2_subdev_fops.open;
-	msm_isp_v4l2_fops.release = v4l2_subdev_fops.release;
-	msm_isp_v4l2_fops.poll = v4l2_subdev_fops.poll;
-
+	msm_cam_copy_v4l2_subdev_fops(&msm_isp_v4l2_fops);
+	msm_isp_v4l2_fops.unlocked_ioctl = msm_isp_v4l2_fops_ioctl;
+#ifdef CONFIG_COMPAT
+	msm_isp_v4l2_fops.compat_ioctl32 =
+		msm_isp_v4l2_fops_ioctl;
+#endif
 	vfe_dev->subdev.sd.devnode->fops = &msm_isp_v4l2_fops;
 
 	vfe_dev->buf_mgr = &vfe_buf_mgr;
 	v4l2_subdev_notify(&vfe_dev->subdev.sd,
 		MSM_SD_NOTIFY_REQ_CB, &vfe_vb2_ops);
 	rc = msm_isp_create_isp_buf_mgr(vfe_dev->buf_mgr,
-		&vfe_vb2_ops, &pdev->dev);
+		&vfe_vb2_ops, &pdev->dev,
+		vfe_dev->hw_info->axi_hw_info->scratch_buf_range);
 	if (rc < 0) {
 		pr_err("%s: Unable to create buffer manager\n", __func__);
 		rc = -EINVAL;
 		goto probe_fail3;
 	}
 	msm_isp_enable_debugfs(vfe_dev, msm_isp_bw_request_history);
+	vfe_dev->buf_mgr->num_iommu_secure_ctx =
+		vfe_dev->hw_info->num_iommu_secure_ctx;
 	vfe_dev->buf_mgr->init_done = 1;
 	vfe_dev->vfe_open_cnt = 0;
 	return rc;
@@ -643,7 +674,7 @@ static void __exit msm_vfe_exit_module(void)
 	platform_driver_unregister(&vfe_driver);
 }
 
-module_init(msm_vfe_init_module);
+late_initcall(msm_vfe_init_module);
 module_exit(msm_vfe_exit_module);
 MODULE_DESCRIPTION("MSM VFE driver");
 MODULE_LICENSE("GPL v2");

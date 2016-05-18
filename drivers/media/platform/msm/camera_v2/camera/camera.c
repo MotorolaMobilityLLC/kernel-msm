@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -40,6 +40,7 @@ struct camera_v4l2_private {
 	unsigned int stream_id;
 	unsigned int is_vb2_valid; /*0 if no vb2 buffers on stream, else 1*/
 	struct vb2_queue vb2_q;
+	bool stream_created;
 	struct mutex lock;
 };
 
@@ -277,7 +278,9 @@ static int camera_v4l2_streamon(struct file *filep, void *fh,
 	int rc;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
 
+	mutex_lock(&sp->lock);
 	rc = vb2_streamon(&sp->vb2_q, buf_type);
+	mutex_unlock(&sp->lock);
 	camera_pack_event(filep, MSM_CAMERA_SET_PARM,
 		MSM_CAMERA_PRIV_STREAM_ON, -1, &event);
 
@@ -304,7 +307,9 @@ static int camera_v4l2_streamoff(struct file *filep, void *fh,
 		return rc;
 
 	rc = camera_check_event_status(&event);
+	mutex_lock(&sp->lock);
 	vb2_streamoff(&sp->vb2_q, buf_type);
+	mutex_unlock(&sp->lock);
 	return rc;
 }
 
@@ -416,6 +421,7 @@ static int camera_v4l2_s_parm(struct file *filep, void *fh,
 
 	/* use stream_id as stream index */
 	parm->parm.capture.extendedmode = sp->stream_id;
+	sp->stream_created = true;
 
 	return rc;
 
@@ -538,7 +544,7 @@ static int camera_v4l2_vb2_q_init(struct file *filep)
 	q->io_modes = VB2_USERPTR;
 	q->io_flags = 0;
 	q->buf_struct_size = sizeof(struct msm_vb2_buffer);
-	q->timestamp_type = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
 	return vb2_queue_init(q);
 }
 
@@ -547,7 +553,9 @@ static void camera_v4l2_vb2_q_release(struct file *filep)
 	struct camera_v4l2_private *sp = filep->private_data;
 
 	kzfree(sp->vb2_q.drv_priv);
+	mutex_lock(&sp->lock);
 	vb2_queue_release(&sp->vb2_q);
+	mutex_unlock(&sp->lock);
 }
 
 static int camera_v4l2_open(struct file *filep)
@@ -623,7 +631,7 @@ static int camera_v4l2_open(struct file *filep)
 		if (rc < 0) {
 			pr_err("%s : creation of command_ack queue failed Line %d rc %d\n",
 					__func__, __LINE__, rc);
-			goto session_fail;
+			goto stream_fail;
 		}
 	}
 	idx |= (1 << find_first_zero_bit((const unsigned long *)&opn_idx,
@@ -638,6 +646,7 @@ command_ack_q_fail:
 	msm_destroy_session(pvdev->vdev->num);
 session_fail:
 	pm_relax(&pvdev->vdev->dev);
+stream_fail:
 	camera_v4l2_vb2_q_release(filep);
 vb2_q_fail:
 	camera_v4l2_fh_release(filep);
@@ -673,18 +682,21 @@ static int camera_v4l2_close(struct file *filep)
 	if (WARN_ON(!session))
 		return -EIO;
 
+	mutex_lock(&session->close_lock);
 	opn_idx = atomic_read(&pvdev->opened);
-	pr_debug("%s: close stream_id=%d\n", __func__, sp->stream_id);
 	mask = (1 << sp->stream_id);
 	opn_idx &= ~mask;
 	atomic_set(&pvdev->opened, opn_idx);
 
-	if (atomic_read(&pvdev->opened) == 0) {
-		mutex_lock(&session->close_lock);
+	if (sp->stream_created == true) {
+		pr_debug("%s: close stream_id=%d\n", __func__, sp->stream_id);
 		camera_pack_event(filep, MSM_CAMERA_SET_PARM,
 			MSM_CAMERA_PRIV_DEL_STREAM, -1, &event);
 		msm_post_event(&event, MSM_POST_EVT_TIMEOUT);
+		sp->stream_created = false;
+	}
 
+	if (atomic_read(&pvdev->opened) == 0) {
 		camera_pack_event(filep, MSM_CAMERA_DEL_SESSION, 0, -1, &event);
 		msm_post_event(&event, MSM_POST_EVT_TIMEOUT);
 
@@ -693,23 +705,19 @@ static int camera_v4l2_close(struct file *filep)
 		mutex_unlock(&session->close_lock);
 		/* This should take care of both normal close
 		 * and application crashes */
+		camera_v4l2_vb2_q_release(filep);
 		msm_destroy_session(pvdev->vdev->num);
 
 		pm_relax(&pvdev->vdev->dev);
 	} else {
-		mutex_lock(&session->close_lock);
-		camera_pack_event(filep, MSM_CAMERA_SET_PARM,
-			MSM_CAMERA_PRIV_DEL_STREAM, -1, &event);
-		msm_post_event(&event, MSM_POST_EVT_TIMEOUT);
-
 		msm_delete_command_ack_q(pvdev->vdev->num,
 			sp->stream_id);
 
+		camera_v4l2_vb2_q_release(filep);
 		msm_delete_stream(pvdev->vdev->num, sp->stream_id);
 		mutex_unlock(&session->close_lock);
 	}
 
-	camera_v4l2_vb2_q_release(filep);
 	camera_v4l2_fh_release(filep);
 
 	return rc;

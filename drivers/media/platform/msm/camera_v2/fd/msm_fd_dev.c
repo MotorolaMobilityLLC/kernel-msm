@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -260,14 +260,12 @@ out:
  * msm_fd_stop_streaming - vb2_ops stop_streaming callback.
  * @q: Pointer to vb2 queue struct.
  */
-static int msm_fd_stop_streaming(struct vb2_queue *q)
+static void msm_fd_stop_streaming(struct vb2_queue *q)
 {
 	struct fd_ctx *ctx = vb2_get_drv_priv(q);
 
 	msm_fd_hw_remove_buffers_from_queue(ctx->fd_device, q);
 	msm_fd_hw_put(ctx->fd_device);
-
-	return 0;
 }
 
 /* Videobuf2 queue callbacks. */
@@ -368,7 +366,7 @@ static int msm_fd_open(struct file *file)
 	ctx->vb2_q.buf_struct_size = sizeof(struct msm_fd_buffer);
 	ctx->vb2_q.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
 	ctx->vb2_q.io_modes = VB2_USERPTR;
-	ctx->vb2_q.timestamp_type = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+	ctx->vb2_q.timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	ret = vb2_queue_init(&ctx->vb2_q);
 	if (ret < 0) {
 		dev_err(device->dev, "Error queue init\n");
@@ -383,8 +381,17 @@ static int msm_fd_open(struct file *file)
 		goto error_stats_vmalloc;
 	}
 
+	ret = cam_config_ahb_clk(NULL, 0, CAM_AHB_CLIENT_FD,
+			CAM_AHB_SVS_VOTE);
+	if (ret < 0) {
+		pr_err("%s: failed to vote for AHB\n", __func__);
+		goto error_ahb_config;
+	}
+
 	return 0;
 
+error_ahb_config:
+	vfree(ctx->stats);
 error_stats_vmalloc:
 	vb2_queue_release(&ctx->vb2_q);
 error_vb2_queue_init:
@@ -413,6 +420,10 @@ static int msm_fd_release(struct file *file)
 	v4l2_fh_exit(&ctx->fh);
 
 	kfree(ctx);
+
+	if (cam_config_ahb_clk(NULL, 0, CAM_AHB_CLIENT_FD,
+		CAM_AHB_SUSPEND_VOTE) < 0)
+		pr_err("%s: failed to remove vote for AHB\n", __func__);
 
 	return 0;
 }
@@ -1200,6 +1211,7 @@ static int fd_probe(struct platform_device *pdev)
 	spin_lock_init(&fd->slock);
 	init_completion(&fd->hw_halt_completion);
 	INIT_LIST_HEAD(&fd->buf_queue);
+	fd->pdev = pdev;
 	fd->dev = &pdev->dev;
 
 	/* Get resources */
@@ -1210,20 +1222,20 @@ static int fd_probe(struct platform_device *pdev)
 		goto error_mem_resources;
 	}
 
-	fd->vdd = regulator_get(&pdev->dev, "vdd");
-	if (IS_ERR(fd->vdd)) {
-		dev_err(&pdev->dev, "Fail to get vdd regulator\n");
-		ret = -ENODEV;
+	ret = msm_camera_get_regulator_info(pdev, &fd->vdd,
+		&fd->num_reg);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Fail to get regulators\n");
 		goto error_get_regulator;
 	}
-
-	ret = msm_fd_hw_get_clocks(fd);
+	ret = msm_camera_get_clk_info_and_rates(pdev, &fd->clk_info,
+		&fd->clk, &fd->clk_rates, &fd->clk_rates_num, &fd->clk_num);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Fail to get clocks\n");
 		goto error_get_clocks;
 	}
 
-	ret = msm_fd_hw_get_bus(fd);
+	ret = msm_camera_register_bus_client(pdev, CAM_BUS_CLIENT_FD);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Fail to get bus\n");
 		goto error_get_bus;
@@ -1233,7 +1245,7 @@ static int fd_probe(struct platform_device *pdev)
 	ret = msm_fd_hw_get(fd, 0);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Fail to get hw\n");
-		goto error_get_clocks;
+		goto error_hw_get_request_irq;
 	}
 	fd->hw_revision = msm_fd_hw_get_revision(fd);
 
@@ -1279,11 +1291,12 @@ error_video_register:
 error_v4l2_register:
 	msm_fd_hw_release_irq(fd);
 error_hw_get_request_irq:
-	msm_fd_hw_put_bus(fd);
+	msm_camera_unregister_bus_client(CAM_BUS_CLIENT_FD);
 error_get_bus:
-	msm_fd_hw_put_clocks(fd);
+	msm_camera_put_clk_info_and_rates(pdev, &fd->clk_info,
+		&fd->clk, &fd->clk_rates, fd->clk_rates_num, fd->clk_num);
 error_get_clocks:
-	regulator_put(fd->vdd);
+	msm_camera_put_regulators(pdev, &fd->vdd, fd->num_reg);
 error_get_regulator:
 	msm_fd_hw_release_mem_resources(fd);
 error_mem_resources:
@@ -1307,9 +1320,10 @@ static int fd_device_remove(struct platform_device *pdev)
 	video_unregister_device(&fd->video);
 	v4l2_device_unregister(&fd->v4l2_dev);
 	msm_fd_hw_release_irq(fd);
-	msm_fd_hw_put_bus(fd);
-	msm_fd_hw_put_clocks(fd);
-	regulator_put(fd->vdd);
+	msm_camera_unregister_bus_client(CAM_BUS_CLIENT_FD);
+	msm_camera_put_clk_info_and_rates(pdev, &fd->clk_info,
+		&fd->clk, &fd->clk_rates, fd->clk_rates_num, fd->clk_num);
+	msm_camera_put_regulators(pdev, &fd->vdd, fd->num_reg);
 	msm_fd_hw_release_mem_resources(fd);
 	kfree(fd);
 
