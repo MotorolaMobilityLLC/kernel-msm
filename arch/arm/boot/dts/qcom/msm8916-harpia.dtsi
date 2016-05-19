@@ -246,6 +246,7 @@
 		ti,sys-vmin-mv = <3500>;
 		ti,chg-current-ma = <2000>;
 		ti,chg-safety-timer = <3>;
+		regulator-name = "bq24296_otg_vreg";
 
 		gpios = <&pm8916_gpios 4 0x00>, /* GPIOF_OUT_INIT_LOW*/
 			<&msm_gpio 120 0x01>; 	/* GPIOF_DIR_IN */
@@ -444,8 +445,7 @@
 	};
 };
 &usb_otg {
-	qcom,hsusb-otg-mode = <1>;
-	/delete-node/ qcom,usbid-gpio;
+	vbus_otg-supply = <&bq24296>;
 };
 
 &pm8916_gpios {
