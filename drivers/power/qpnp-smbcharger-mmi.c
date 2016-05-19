@@ -10374,7 +10374,14 @@ static void warn_irq_w(struct work_struct *work)
 			*/
 			qpnp_pon_store_extra_reset_info(RESET_EXTRA_RESET_KUNPOW_REASON, 0);
 			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
-			kernel_halt();
+			/*
+			 * pre-empt a battery pull by rebooting if a usb
+			 * charger is present. otherwise halt the kernel
+			 */
+			if (is_usb_present(chip))
+				kernel_restart(NULL);
+			else
+				kernel_halt();
 		} else
 		SMB_INFO(chip, "SW HALT Disabled!\n");
 		return;
