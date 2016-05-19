@@ -1912,7 +1912,7 @@ static int qpnp_hap_config(struct qpnp_hap *hap)
 	 * In PMI8950, TRIM_ERROR_RC19P2_CLK register in MISC module
 	 * holds the frequency error in 19.2Mhz RC clock
 	 */
-	if ((hap->act_type == QPNP_HAP_LRA) && hap->correct_lra_drive_freq
+	if ((hap->act_type == QPNP_HAP_LRA)
 			&& hap->misc_trim_error_rc19p2_clk_reg_present) {
 		unlock_val = MISC_SEC_UNLOCK;
 		rc = spmi_ext_register_writel(hap->spmi->ctrl,
@@ -1926,6 +1926,7 @@ static int qpnp_hap_config(struct qpnp_hap *hap)
 			 MISC_TRIM_ERROR_RC19P2_CLK, &error_code, 1);
 
 		error_value = (error_code & 0x0F) * 7;
+		dev_info(&hap->spmi->dev, "RC trim %#x\n", error_value);
 
 		if (error_code & 0x80)
 			temp = (temp * (1000 - error_value)) / 1000;
