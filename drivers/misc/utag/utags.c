@@ -1002,7 +1002,7 @@ static int check_utag_range(char *tag, struct utag *head, char *data,
 	char *buf, *ptr, *tok;
 	size_t check;
 	bool found = false;
-	size_t len;
+	size_t len, data_len;
 
 	/* copy utag name and append .range */
 	strlcpy(rtag, tag, MAX_UTAG_NAME);
@@ -1040,7 +1040,8 @@ static int check_utag_range(char *tag, struct utag *head, char *data,
 		return -EIO;
 	}
 
-	if (count == strnlen(data, count)) {
+	data_len = strnlen(data, count);
+	if (count == data_len) {
 		pr_err("data for [%s] not a string\n", tag);
 		return -EIO;
 	}
@@ -1056,6 +1057,9 @@ static int check_utag_range(char *tag, struct utag *head, char *data,
 		tok = strsep(&ptr, ",");
 		len = strnlen(tok, MAX_UTAG_SIZE);
 		pr_debug("range value [%s] for [%s]\n", tok, rtag);
+		/* we can skip right away if length does not match */
+		if (data_len != len)
+			continue;
 		if (!strncmp(tok, data, len))
 			found = true;
 	}
@@ -1402,7 +1406,8 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 	/* remove all utags beneath */
 	for (cur = tags->next; cur->next;) {
 		pattern = strnstr(cur->name, expendable, MAX_UTAG_NAME);
-		if (pattern == cur->name) {
+		/* any subutags will start with the suffix followed by a '/' */
+		if ((pattern == cur->name) && (cur->name[count-1] == '/')) {
 			pr_debug("deleting utag [%s]\n", cur->name);
 			next = cur->next;
 			cur->prev->next = cur->next;
