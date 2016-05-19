@@ -63,7 +63,7 @@
 /* BQ01 Power-On Configuration  Register MASK */
 #define RESET_REG_MASK		BIT(7)
 #define WDT_RESET_REG_MASK		BIT(6)
-#define CHG_CONFIG_MASK		(BIT(5)|BIT(4))
+#define CHG_CONFIG_MASK		BIT(4)
 #define OTG_ENABLE_MASK         BIT(5)
 #define CHG_ENABLE_SHIFT  4
 
@@ -117,6 +117,7 @@
 /* BQ09 FAULT_REG Mask */
 #define CHRG_FAULT_MASK		(BIT(5)|BIT(4))
 
+
 #define NULL_CHECK(p, err) \
 do { \
 	if (!(p)) { \
@@ -124,6 +125,11 @@ do { \
 		return err; \
 	} \
 } while (0)
+
+struct bq24296_regulator {
+	struct regulator_desc	rdesc;
+	struct regulator_dev	*rdev;
+};
 
 struct bq24296_reg {
 	char *regname;
@@ -181,6 +187,7 @@ struct bq24296_chg {
 	struct qpnp_vadc_chip	*vadc_dev;
 	struct dentry	    *debug_root;
 	u32    peek_poke_address;
+	struct bq24296_regulator	otg_vreg;
 	int ext_temp_volt_mv;
 	int ext_high_temp;
 	int temp_check;
@@ -198,7 +205,6 @@ struct bq24296_chg {
 	struct qpnp_adc_tm_btm_param	vbat_monitor_params;
 	bool poll_fast;
 	bool shutdown_voltage_tripped;
-	atomic_t otg_enabled;
 	int ic_info_pn;
 	bool factory_configured;
 	int max_rate_cap;
@@ -2379,6 +2385,138 @@ static bool bq24296_charger_test_mode(void)
 	return test;
 }
 
+static int bq24296_boost_read(struct bq24296_chg *chip)
+{
+	int rc;
+	uint8_t reg;
+
+	NULL_CHECK(chip, -EINVAL);
+
+	rc = bq24296_read(chip, BQ01_PWR_ON_CONF_REG, &reg);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read STAT rc = %d\n", rc);
+		return rc;
+	}
+
+	return !!(reg & OTG_ENABLE_MASK);
+}
+
+static int bq24296_chg_otg_regulator_is_enable(struct regulator_dev *rdev)
+{
+	struct bq24296_chg *chip = rdev_get_drvdata(rdev);
+
+	dev_dbg(chip->dev, "bq24296_chg_otg_regulator_is_enable\n");
+	return bq24296_boost_read(chip);
+}
+
+#define OTG_ENABLE_SHIFT  5
+#define OTG_LIM_VAL  0
+static int bq24296_chg_enable_boost(struct bq24296_chg *chip, bool reg_enable)
+{
+	int rc = 0;
+	uint8_t val = (uint8_t)(!!reg_enable << OTG_ENABLE_SHIFT);
+
+	pr_info("otg enable = %d\n", reg_enable);
+	NULL_CHECK(chip, -EINVAL);
+
+	rc = bq24296_masked_write(chip, BQ01_PWR_ON_CONF_REG,
+		OTG_ENABLE_MASK, val);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't enable regulator, rc=%d\n", rc);
+		return rc;
+	}
+
+	if (reg_enable) {
+		rc = bq24296_masked_write(chip, BQ01_PWR_ON_CONF_REG,
+			BOOST_LIM, OTG_LIM_VAL);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't set OTG LIM, rc=%d\n", rc);
+			return rc;
+		}
+	}
+
+	return 0;
+}
+
+static int bq24296_chg_otg_regulator_enable(struct regulator_dev *rdev)
+{
+	struct bq24296_chg *chip = rdev_get_drvdata(rdev);
+	int rc = 0;
+
+	dev_info(chip->dev, "bq24296_chg_otg_regulator_enable\n");
+	if (bq24296_chg_otg_regulator_is_enable(chip->otg_vreg.rdev) == 1)
+		return 0;
+
+	rc = bq24296_chg_enable_boost(chip, 1);
+
+	return rc;
+}
+
+static int bq24296_chg_otg_regulator_disable(struct regulator_dev *rdev)
+{
+	int rc = 0;
+	struct bq24296_chg *chip = rdev_get_drvdata(rdev);
+
+	dev_dbg(chip->dev, "bq24296_chg_otg_regulator_disable\n");
+
+	bq24296_chg_enable_boost(chip, 0);
+
+	return rc;
+}
+
+static struct regulator_ops bq24296_chg_otg_reg_ops = {
+	.enable		= bq24296_chg_otg_regulator_enable,
+	.disable	= bq24296_chg_otg_regulator_disable,
+	.is_enabled	= bq24296_chg_otg_regulator_is_enable,
+};
+
+static int bq24296_regulator_init(struct bq24296_chg *chip)
+{
+	int rc = 0;
+	struct regulator_init_data *init_data;
+	struct regulator_config cfg = {};
+
+	init_data = of_get_regulator_init_data(chip->dev, chip->dev->of_node);
+	if (!init_data) {
+		dev_err(chip->dev, "Unable to allocate memory\n");
+		return -ENOMEM;
+	}
+
+	if (init_data->constraints.name) {
+		chip->otg_vreg.rdesc.owner = THIS_MODULE;
+		chip->otg_vreg.rdesc.type = REGULATOR_VOLTAGE;
+		chip->otg_vreg.rdesc.ops = &bq24296_chg_otg_reg_ops;
+		chip->otg_vreg.rdesc.name = init_data->constraints.name;
+
+		cfg.dev = chip->dev;
+		cfg.init_data = init_data;
+		cfg.driver_data = chip;
+		cfg.of_node = chip->dev->of_node;
+
+		init_data->constraints.valid_ops_mask
+			|= REGULATOR_CHANGE_STATUS;
+
+		chip->otg_vreg.rdev = regulator_register(
+						&chip->otg_vreg.rdesc, &cfg);
+		if (IS_ERR(chip->otg_vreg.rdev)) {
+			rc = PTR_ERR(chip->otg_vreg.rdev);
+			chip->otg_vreg.rdev = NULL;
+			if (rc != -EPROBE_DEFER)
+				dev_err(chip->dev,
+					"OTG reg failed, rc=%d\n", rc);
+		}
+	}
+
+	return rc;
+}
+
+static void bq24296_regulator_deinit(struct bq24296_chg *chip)
+{
+	dev_dbg(chip->dev, "bq24296_regulator_deinit\n");
+	if (chip->otg_vreg.rdev)
+		regulator_unregister(chip->otg_vreg.rdev);
+}
+
 static struct of_device_id bq24296_match_table[] = {
 	{ .compatible = "ti,bq24296-charger", },
 	{ },
@@ -2449,6 +2587,13 @@ static int bq24296_charger_probe(struct i2c_client *client,
 	if (rc < 0) {
 		dev_err(&client->dev,
 			"Unable to register batt_psy rc = %d\n", rc);
+		return rc;
+	}
+
+	rc = bq24296_regulator_init(chip);
+	if  (rc) {
+		dev_err(&client->dev,
+			"Couldn't initialize bq24296 regulator rc=%d\n", rc);
 		return rc;
 	}
 
@@ -2638,6 +2783,7 @@ static int bq24296_charger_probe(struct i2c_client *client,
 unregister_batt_psy:
 	dev_err(&client->dev, "err\n");
 	power_supply_unregister(&chip->batt_psy);
+	bq24296_regulator_deinit(chip);
 	wakeup_source_trash(&chip->bq_wake_source.source);
 	wakeup_source_trash(&chip->bq_wake_source_charger.source);
 	devm_kfree(chip->dev, chip);
@@ -2656,6 +2802,7 @@ static int bq24296_charger_remove(struct i2c_client *client)
 	unregister_reboot_notifier(&chip->notifier);
 	debugfs_remove_recursive(chip->debug_root);
 	power_supply_unregister(&chip->batt_psy);
+	bq24296_regulator_deinit(chip);
 	wakeup_source_trash(&chip->bq_wake_source.source);
 	wakeup_source_trash(&chip->bq_wake_source_charger.source);
 	devm_kfree(chip->dev, chip);
