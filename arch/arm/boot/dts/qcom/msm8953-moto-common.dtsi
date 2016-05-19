@@ -903,6 +903,7 @@
 	qcom,vmax-low-mv = <1160>;
 	qcom,context-haptics;
 	qcom,brake-pattern = [03 03 03 00];
+	qcom,misc-trim-error-rc19p2-clk-reg-present;
 };
 
 &blsp1_uart0 {
