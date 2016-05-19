@@ -3468,6 +3468,7 @@ static struct snd_soc_dapm_route marley_audio_routes[] = {
 
 	{"AIF1 Playback", NULL, "AMP Capture"},
 	{"AMP Playback", NULL, "OPCLK"},
+	{"AMP Capture", NULL, "OPCLK"},
 
 	{"Slim1 Playback", NULL, "MCLK"},
 	{"Slim1 Capture", NULL, "MCLK"},
