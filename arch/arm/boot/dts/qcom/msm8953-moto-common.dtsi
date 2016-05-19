@@ -902,7 +902,7 @@
 	qcom,vmax-mv = <2900>;
 	qcom,vmax-low-mv = <1160>;
 	qcom,context-haptics;
-	qcom,brake-pattern = [03 03 03 00];
+	qcom,brake-pattern = [03 03 02 00];
 	qcom,misc-trim-error-rc19p2-clk-reg-present;
 };
 
