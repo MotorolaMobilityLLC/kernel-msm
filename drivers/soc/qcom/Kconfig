@@ -521,6 +521,12 @@ config MSM_GLINK_BGCOM_XPRT
 	  allows for G-Link communication with remote subsystems that are
 	  external to the System-on-Chip.
 
+config PANIC_ON_GLINK_ERR
+	bool "Cause a Kernel Panic When Repeated glink Errors Occur"
+	help
+	 Select this option to upgrade warnings for potentially unrecoverable
+	 glink failures, to a kernel panic for easier detection and debug
+
 config MSM_SPCOM
 	depends on MSM_GLINK
 	bool "Secure Processor Communication over GLINK"
