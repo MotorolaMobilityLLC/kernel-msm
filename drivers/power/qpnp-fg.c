@@ -646,6 +646,7 @@ struct fg_chip {
 	int			*batt_range_pct;
 	struct notifier_block	fg_reboot;
 	bool			shutdown_in_process;
+	bool			nom_cap_unbound;
 };
 
 /* FG_MEMIF DEBUGFS structures */
@@ -5743,11 +5744,10 @@ static int populate_system_data(struct fg_chip *chip)
 	}
 
 	chip->cutoff_voltage = voltage_2b(buffer);
-	if (fg_debug_mask & FG_AGING)
-		pr_info("cutoff_voltage = %lld, nom_cap_uah = %d p1p2 = %d, p2p3 = %d\n",
-				chip->cutoff_voltage, chip->nom_cap_uah,
-				chip->ocv_junction_p1p2,
-				chip->ocv_junction_p2p3);
+	pr_info("cutoff_voltage = %lld, nom_cap_uah = %d p1p2 = %d, p2p3 = %d\n",
+		chip->cutoff_voltage, chip->nom_cap_uah,
+		chip->ocv_junction_p1p2,
+		chip->ocv_junction_p2p3);
 
 	get_default_rslow_comp_settings(chip);
 done:
@@ -6522,6 +6522,7 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 	bool tried_again = false, vbat_in_range, profiles_same;
 	bool esr_in_range;
 	u8 reg = 0;
+	u8 buffer[24];
 
 wait:
 	fg_stay_awake(&chip->profile_wakeup_source);
@@ -6680,9 +6681,8 @@ wait:
 	if (reg & PROFILE_INTEGRITY_BIT) {
 		fg_cap_learning_load_data(chip);
 		if (vbat_in_range && !fg_is_batt_empty(chip) && profiles_same &&
-		    esr_in_range){
-			if (fg_debug_mask & FG_STATUS)
-				pr_info("Battery profiles same, using default\n");
+		    esr_in_range && !chip->nom_cap_unbound) {
+			pr_info("Battery profiles same, using default\n");
 			if (fg_est_dump)
 				schedule_work(&chip->dump_sram);
 			/*
@@ -6716,7 +6716,7 @@ wait:
 	if (!profiles_same)
 		pr_info("profiles differ\n");
 
-	if (fg_debug_mask & FG_STATUS) {
+	if (chip->nom_cap_unbound) {
 		pr_info("Using new profile\n");
 		print_hex_dump(KERN_INFO, "FG: loaded profile: ",
 				DUMP_PREFIX_NONE, 16, 1,
@@ -6764,6 +6764,24 @@ wait:
 			pr_err("Error in updating ESR, rc=%d\n", rc);
 	}
 done:
+	fg_mem_lock(chip);
+	/* Bound check the Charge Full Design Capacity */
+	rc = fg_mem_read(chip, buffer, NOM_CAP_REG, 2, 0, 0);
+	if (rc) {
+		pr_err("Failed to read nominal capacitance: %d\n", rc);
+		goto reschedule;
+	}
+	fg_mem_release(chip);
+
+	chip->nom_cap_unbound = ((bcap_uah_2b(buffer) > 4500000) ||
+				 (bcap_uah_2b(buffer) < 1500000));
+
+	if (chip->nom_cap_unbound) {
+		pr_err("nominal capacitance unbound: %d\n",
+		       bcap_uah_2b(buffer));
+		goto reschedule;
+	}
+
 	if (chip->charging_disabled) {
 		rc = set_prop_enable_charging(chip, true);
 		if (rc)
