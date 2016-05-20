@@ -182,15 +182,17 @@ int mod_display_notification(enum mod_display_notification event)
 			break;
 		}
 
+		if (connected) {
+			pr_warn("%s: Received Unavailable while still connected, disconnect\n",
+				__func__);
+			mod_display_notification(MOD_NOTIFY_DISCONNECT);
+		}
+
 		if (mod_display_impl->ops->handle_unavailable)
 			mod_display_impl->ops->handle_unavailable(
 				mod_display_impl->ops->data);
 
 		mod_display_impl = NULL;
-		if (connected)
-			pr_warn("%s: Received Unavailable while still connected\n",
-				__func__);
-		connected = 0;
 
 		break;
 	case MOD_NOTIFY_CONNECT:
@@ -378,8 +380,6 @@ int mod_display_unregister_comm(struct mod_display_comm_data *comm)
 
 	if (mod_display_impl) {
 		pr_info("%s: Cleaning up a lost connection\n", __func__);
-		if (connected)
-			mod_display_notification(MOD_NOTIFY_DISCONNECT);
 		mod_display_notification(MOD_NOTIFY_UNAVAILABLE);
 	}
 
