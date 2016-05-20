@@ -4547,7 +4547,10 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 	};
 
 	if (!is_usb_present(chip)) {
-		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
+		if (is_wls_present(chip))
+			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
+		else
+			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 		return;
 	}
 
