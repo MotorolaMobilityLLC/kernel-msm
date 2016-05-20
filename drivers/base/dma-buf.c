@@ -29,8 +29,6 @@
 #include <linux/export.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/file.h>
-#include <linux/fdtable.h>
 
 static inline int is_dma_buf_file(struct file *);
 
@@ -573,37 +571,6 @@ void dma_buf_vunmap(struct dma_buf *dmabuf, void *vaddr)
 EXPORT_SYMBOL_GPL(dma_buf_vunmap);
 
 #ifdef CONFIG_DEBUG_FS
-static void dma_buf_print_fds_slow(struct dma_buf *buf_obj,
-				   struct seq_file *s)
-{
-	struct task_struct *tsk;
-	struct files_struct *files;
-	struct file *file;
-	int fd;
-	int num = 0;
-
-	rcu_read_lock();
-	for_each_process(tsk) {
-		files = get_files_struct(tsk);
-
-		if (!files)
-			continue;
-
-		for (fd = 0; fd < files_fdtable(files)->max_fds; fd++) {
-			file = fcheck_files(files, fd);
-			if (file && (file == buf_obj->file)) {
-				if (num == 0)
-					seq_printf(s, "\tfds:\n");
-				seq_printf(s, "\tproc:%u fd: %d\n", (unsigned)task_pid_nr(tsk), fd);
-				num++;
-			}
-
-		}
-		put_files_struct(files);
-	}
-	rcu_read_unlock();
-}
-
 static int dma_buf_describe(struct seq_file *s)
 {
 	int ret;
@@ -618,8 +585,7 @@ static int dma_buf_describe(struct seq_file *s)
 		return ret;
 
 	seq_printf(s, "\nDma-buf Objects:\n");
-	seq_printf(s, "%-40s %-10s %-5s %-5s %-5s\n",
-		   "exp_name", "size", "flags", "mode", "count");
+	seq_printf(s, "\texp_name\tsize\tflags\tmode\tcount\n");
 
 	list_for_each_entry(buf_obj, &db_list.head, list_node) {
 		ret = mutex_lock_interruptible(&buf_obj->lock);
@@ -630,29 +596,29 @@ static int dma_buf_describe(struct seq_file *s)
 			continue;
 		}
 
-		seq_printf(s, "%-40.40s %-10zu %-5x %-5x %-5ld\n",
+		seq_printf(s, "\t");
+
+		seq_printf(s, "\t%s\t%08zu\t%08x\t%08x\t%08ld\n",
 				buf_obj->exp_name, buf_obj->size,
 				buf_obj->file->f_flags, buf_obj->file->f_mode,
 				(long)(buf_obj->file->f_count.counter));
 
-		if (!list_empty(&buf_obj->attachments)) {
-			seq_printf(s, "\tattached devices:\n");
-			attach_count = 0;
+		seq_printf(s, "\t\tAttached Devices:\n");
+		attach_count = 0;
 
-			list_for_each_entry(attach_obj, &buf_obj->attachments, node) {
-				seq_printf(s, "\t%s\n", dev_name(attach_obj->dev));
-				attach_count++;
-			}
+		list_for_each_entry(attach_obj, &buf_obj->attachments, node) {
+			seq_printf(s, "\t\t");
 
-			seq_printf(s, "\n\tTotal %d devices attached\n",
-				attach_count);
+			seq_printf(s, "%s\n", attach_obj->dev->init_name);
+			attach_count++;
 		}
+
+		seq_printf(s, "\n\t\tTotal %d devices attached\n",
+				attach_count);
 
 		count++;
 		size += buf_obj->size;
-		dma_buf_print_fds_slow(buf_obj, s);
 		mutex_unlock(&buf_obj->lock);
-
 	}
 
 	seq_printf(s, "\nTotal %d objects, %zu bytes\n", count, size);
