@@ -557,20 +557,18 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 		 */
 		if (!PageLRU(page)) {
 			if (unlikely(mobile_page(page))) {
-				if (locked) {
-					err = mobilepage_isolate(page);
-					if (unlikely(err)) {
-						if (err == -EAGAIN)
-							cc->retry = cc->sync;
-						continue;
-					}
-					/* Successfully isolated */
-					cc->finished_update_migrate = true;
-					list_add(&page->lru, migratelist);
-					cc->nr_migratepages++;
-					nr_isolated++;
-					goto check_compact_cluster;
+				err = mobilepage_isolate(page);
+				if (unlikely(err)) {
+					if (err == -EAGAIN)
+						cc->retry = cc->sync;
+					continue;
 				}
+				/* Successfully isolated */
+				cc->finished_update_migrate = true;
+				list_add(&page->lru, migratelist);
+				cc->nr_migratepages++;
+				nr_isolated++;
+				goto check_compact_cluster;
 			} else if (unlikely(balloon_page_movable(page))) {
 				if (locked && balloon_page_isolate(page)) {
 					/* Successfully isolated */
