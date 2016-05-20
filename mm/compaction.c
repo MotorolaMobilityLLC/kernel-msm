@@ -713,17 +713,15 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
 		 */
 		if (!PageLRU(page)) {
 			if (unlikely(mobile_page(page))) {
-				if (locked) {
-					err = mobilepage_isolate(page);
-					if (unlikely(err)) {
-						if (err == -EAGAIN &&
-						    cc->mode == MIGRATE_SYNC)
-							cc->retry = true;
-						continue;
-					}
-					/* Successfully isolated */
-					goto isolate_success;
+				err = mobilepage_isolate(page);
+				if (unlikely(err)) {
+					if (err == -EAGAIN && cc->mode ==
+							MIGRATE_SYNC)
+						cc->retry = true;
+					continue;
 				}
+				/* Successfully isolated */
+				goto isolate_success;
 			} else if (unlikely(balloon_page_movable(page))) {
 				if (balloon_page_isolate(page)) {
 					/* Successfully isolated */
