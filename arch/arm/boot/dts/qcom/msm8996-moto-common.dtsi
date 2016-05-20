@@ -1187,6 +1187,7 @@
 	qcom,fg-max-soc = <100>;
 	qcom,fg-min-soc = <0>;
 	qcom,fg-cc-cv-threshold-mv = <4390>;
+	/delete-property/ qcom,capacity-learning-feedback;
 };
 
 &pm8994_gpios {
