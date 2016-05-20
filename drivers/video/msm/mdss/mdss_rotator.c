@@ -375,7 +375,7 @@ static bool mdss_rotator_is_work_pending(struct mdss_rot_mgr *mgr,
 
 static int mdss_rotator_create_fence(struct mdss_rot_entry *entry)
 {
-	int ret, fd;
+	int ret = 0, fd;
 	u32 val;
 	struct sync_pt *sync_pt;
 	struct sync_fence *fence;
@@ -706,7 +706,7 @@ static struct mdss_rot_hw_resource *mdss_rotator_hw_alloc(
 		goto error;
 	}
 	hw->ctl->wb = hw->wb;
-	hw->mixer = mdss_mdp_mixer_assign(hw->wb->num, true);
+	hw->mixer = mdss_mdp_mixer_assign(hw->wb->num, true, true);
 
 	if (IS_ERR_OR_NULL(hw->mixer)) {
 		pr_err("unable to allocate wb mixer\n");
@@ -1701,11 +1701,13 @@ static int mdss_rotator_config_hw(struct mdss_rot_hw_resource *hw,
 {
 	struct mdss_mdp_pipe *pipe;
 	struct mdp_rotation_item *item;
+	struct mdss_rot_perf *perf;
 	int ret;
 
 	ATRACE_BEGIN(__func__);
 	pipe = hw->pipe;
 	item = &entry->item;
+	perf = entry->perf;
 
 	pipe->flags = mdss_rotator_translate_flags(item->flags);
 	pipe->src_fmt = mdss_mdp_get_format_params(item->input.format);
@@ -1713,7 +1715,8 @@ static int mdss_rotator_config_hw(struct mdss_rot_hw_resource *hw,
 	pipe->img_height = item->input.height;
 	mdss_rotator_translate_rect(&pipe->src, &item->src_rect);
 	mdss_rotator_translate_rect(&pipe->dst, &item->src_rect);
-	pipe->scale.enable_pxl_ext = 0;
+	pipe->scaler.enable = 0;
+	pipe->frame_rate = perf->config.frame_rate;
 
 	pipe->params_changed++;
 
@@ -2518,6 +2521,7 @@ static const struct file_operations mdss_rotator_fops = {
 static int mdss_rotator_parse_dt_bus(struct mdss_rot_mgr *mgr,
 	struct platform_device *dev)
 {
+	struct device_node *node;
 	int ret = 0, i;
 	bool register_bus_needed;
 	int usecases;
@@ -2535,12 +2539,26 @@ static int mdss_rotator_parse_dt_bus(struct mdss_rot_mgr *mgr,
 	register_bus_needed = of_property_read_bool(dev->dev.of_node,
 		"qcom,mdss-has-reg-bus");
 	if (register_bus_needed) {
-		mgr->reg_bus.bus_scale_pdata = &rot_reg_bus_scale_table;
-		usecases = mgr->reg_bus.bus_scale_pdata->num_usecases;
-		for (i = 0; i < usecases; i++) {
-			rot_reg_bus_usecases[i].num_paths = 1;
-			rot_reg_bus_usecases[i].vectors =
-				&rot_reg_bus_vectors[i];
+		node = of_get_child_by_name(
+			    dev->dev.of_node, "qcom,mdss-rot-reg-bus");
+		if (!node) {
+			mgr->reg_bus.bus_scale_pdata = &rot_reg_bus_scale_table;
+			usecases = mgr->reg_bus.bus_scale_pdata->num_usecases;
+			for (i = 0; i < usecases; i++) {
+				rot_reg_bus_usecases[i].num_paths = 1;
+				rot_reg_bus_usecases[i].vectors =
+					&rot_reg_bus_vectors[i];
+			}
+		} else {
+			mgr->reg_bus.bus_scale_pdata =
+				msm_bus_pdata_from_node(dev, node);
+			if (IS_ERR_OR_NULL(mgr->reg_bus.bus_scale_pdata)) {
+				ret = PTR_ERR(mgr->reg_bus.bus_scale_pdata);
+				if (!ret)
+					ret = -EINVAL;
+				pr_err("reg_rot_bus failed rc=%d\n", ret);
+				mgr->reg_bus.bus_scale_pdata = NULL;
+			}
 		}
 	}
 	return ret;

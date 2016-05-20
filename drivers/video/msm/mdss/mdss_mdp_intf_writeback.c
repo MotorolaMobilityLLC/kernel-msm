@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -299,15 +299,14 @@ static int mdss_mdp_writeback_format_setup(struct mdss_mdp_writeback_ctx *ctx,
 	if (fmt->is_yuv && test_bit(MDSS_CAPS_YUV_CONFIG, mdata->mdss_caps_map))
 		dst_format |= BIT(15);
 
-	if (mdata->mdp_rev >= MDSS_MDP_HW_REV_102 &&
-			mdata->mdp_rev < MDSS_MDP_HW_REV_200) {
+	if (mdss_has_quirk(mdata, MDSS_QUIRK_FMT_PACK_PATTERN)) {
 		pattern = (fmt->element[3] << 24) |
-			  (fmt->element[2] << 16) |
+			  (fmt->element[2] << 15) |
 			  (fmt->element[1] << 8)  |
 			  (fmt->element[0] << 0);
 	} else {
 		pattern = (fmt->element[3] << 24) |
-			  (fmt->element[2] << 15) |
+			  (fmt->element[2] << 16) |
 			  (fmt->element[1] << 8)  |
 			  (fmt->element[0] << 0);
 	}
@@ -317,6 +316,8 @@ static int mdss_mdp_writeback_format_setup(struct mdss_mdp_writeback_ctx *ctx,
 		      ((fmt->unpack_count - 1) << 12) |
 		      ((fmt->bpp - 1) << 9);
 
+	dst_format |= (fmt->unpack_dx_format << 21);
+
 	ystride0 = (ctx->dst_planes.ystride[0]) |
 		   (ctx->dst_planes.ystride[1] << 16);
 	ystride1 = (ctx->dst_planes.ystride[2]) |
@@ -324,8 +325,7 @@ static int mdss_mdp_writeback_format_setup(struct mdss_mdp_writeback_ctx *ctx,
 	outsize = (ctx->dst_rect.h << 16) | ctx->dst_rect.w;
 
 	if (mdss_mdp_is_ubwc_format(fmt)) {
-		if (!ctl->cdm)
-			opmode |= BIT(0);
+		opmode |= BIT(0);
 		dst_format |= BIT(31);
 		if (mdata->highest_bank_bit)
 			write_config |= (mdata->highest_bank_bit << 8);
@@ -341,8 +341,7 @@ static int mdss_mdp_writeback_format_setup(struct mdss_mdp_writeback_ctx *ctx,
 	}
 	mdp_wb_write(ctx, MDSS_MDP_REG_WB_ALPHA_X_VALUE, 0xFF);
 	mdp_wb_write(ctx, MDSS_MDP_REG_WB_DST_FORMAT, dst_format);
-	if (!ctl->cdm)
-		mdp_wb_write(ctx, MDSS_MDP_REG_WB_DST_OP_MODE, opmode);
+	mdp_wb_write(ctx, MDSS_MDP_REG_WB_DST_OP_MODE, opmode);
 	mdp_wb_write(ctx, MDSS_MDP_REG_WB_DST_PACK_PATTERN, pattern);
 	mdp_wb_write(ctx, MDSS_MDP_REG_WB_DST_YSTRIDE0, ystride0);
 	mdp_wb_write(ctx, MDSS_MDP_REG_WB_DST_YSTRIDE1, ystride1);
@@ -398,6 +397,7 @@ static int mdss_mdp_writeback_prepare_rot(struct mdss_mdp_ctl *ctl, void *arg)
 	struct mdss_mdp_writeback_arg *wb_args;
 	struct mdss_rot_entry *entry;
 	struct mdp_rotation_item *item;
+	struct mdss_rot_perf *perf;
 	struct mdss_data_type *mdata;
 	u32 format;
 
@@ -414,6 +414,7 @@ static int mdss_mdp_writeback_prepare_rot(struct mdss_mdp_ctl *ctl, void *arg)
 		return -ENODEV;
 	}
 	item = &entry->item;
+	perf = entry->perf;
 	mdata = ctl->mdata;
 	if (!mdata) {
 		pr_err("no mdata attached to ctl=%d", ctl->num);
@@ -434,6 +435,7 @@ static int mdss_mdp_writeback_prepare_rot(struct mdss_mdp_ctl *ctl, void *arg)
 	ctx->height = ctx->dst_rect.h = item->dst_rect.h;
 	ctx->dst_rect.x = item->dst_rect.x;
 	ctx->dst_rect.y = item->dst_rect.y;
+	ctx->frame_rate = perf->config.frame_rate;
 	ctx->dnsc_factor_w = entry->dnsc_factor_w;
 	ctx->dnsc_factor_h = entry->dnsc_factor_h;
 
@@ -826,6 +828,7 @@ int mdss_mdp_writeback_start(struct mdss_mdp_ctl *ctl)
 	struct mdss_mdp_writeback *wb;
 	u32 mem_sel;
 	u32 mixer_type = MDSS_MDP_MIXER_TYPE_UNUSED;
+	bool is_rot;
 
 	pr_debug("start ctl=%d\n", ctl->num);
 
@@ -848,8 +851,17 @@ int mdss_mdp_writeback_start(struct mdss_mdp_ctl *ctl)
 		return -EINVAL;
 	}
 
-	if (ctl->mixer_left)
+	is_rot = (ctx->type == MDSS_MDP_WRITEBACK_TYPE_ROTATOR) ? true : false;
+
+	if (ctl->mixer_left) {
 		mixer_type = ctl->mixer_left->type;
+		/*
+		 * If the WB mixer is dedicated, the rotator uses a virtual
+		 * mixer. Mark the mixer_type as UNUSED in such cases.
+		 */
+		if ((mixer_type == MDSS_MDP_MIXER_TYPE_WRITEBACK) && is_rot)
+			mixer_type = MDSS_MDP_MIXER_TYPE_UNUSED;
+	}
 
 	if (mdss_mdp_is_cdm_supported(ctl->mdata, ctl->intf_type,
 				mixer_type)) {

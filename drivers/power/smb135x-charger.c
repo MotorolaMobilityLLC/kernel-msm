@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -87,8 +87,9 @@
 #define USBIN_SUSPEND_VIA_COMMAND_BIT	BIT(6)
 
 #define CFG_14_REG			0x14
-#define CHG_EN_BY_PIN_BIT			BIT(7)
+#define CHG_EN_BY_PIN_BIT		BIT(7)
 #define CHG_EN_ACTIVE_LOW_BIT		BIT(6)
+#define CHG_EN_ACTIVE_HIGH_BIT		0x0
 #define PRE_TO_FAST_REQ_CMD_BIT		BIT(5)
 #define DISABLE_CURRENT_TERM_BIT	BIT(3)
 #define DISABLE_AUTO_RECHARGE_BIT	BIT(2)
@@ -183,6 +184,9 @@
 #define STATUS_1_REG			0x47
 #define USING_USB_BIT			BIT(1)
 #define USING_DC_BIT			BIT(0)
+
+#define STATUS_2_REG			0x48
+#define HARD_LIMIT_STS_BIT		BIT(6)
 
 #define STATUS_4_REG			0x4A
 #define BATT_NET_CHG_CURRENT_BIT	BIT(7)
@@ -367,6 +371,7 @@ struct smb135x_chg {
 	bool				parallel_charger;
 	bool				parallel_charger_present;
 	bool				bms_controlled_charging;
+	u32				parallel_pin_polarity_setting;
 
 	/* psy */
 	struct power_supply		*usb_psy;
@@ -1726,7 +1731,22 @@ static enum power_supply_property smb135x_parallel_properties[] = {
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
 	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
+	POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED,
 };
+
+static bool smb135x_is_input_current_limited(struct smb135x_chg *chip)
+{
+	int rc;
+	u8 reg;
+
+	rc = smb135x_read(chip, STATUS_2_REG, &reg);
+	if (rc) {
+		pr_debug("Couldn't read _REG for ICL status rc = %d\n", rc);
+		return false;
+	}
+
+	return !!(reg & HARD_LIMIT_STS_BIT);
+}
 
 static int smb135x_parallel_set_chg_present(struct smb135x_chg *chip,
 						int present)
@@ -1787,7 +1807,8 @@ static int smb135x_parallel_set_chg_present(struct smb135x_chg *chip,
 		rc = smb135x_masked_write(chip, CFG_14_REG,
 				CHG_EN_BY_PIN_BIT | CHG_EN_ACTIVE_LOW_BIT
 				| DISABLE_AUTO_RECHARGE_BIT,
-				CHG_EN_BY_PIN_BIT | CHG_EN_ACTIVE_LOW_BIT);
+				CHG_EN_BY_PIN_BIT |
+				chip->parallel_pin_polarity_setting);
 
 		/* set bit 0 = 100mA bit 1 = 500mA and set register control */
 		rc = smb135x_masked_write(chip, CFG_E_REG,
@@ -1965,6 +1986,12 @@ static int smb135x_parallel_get_property(struct power_supply *psy,
 			val->intval = smb135x_get_prop_batt_status(chip);
 		else
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
+		break;
+	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED:
+		if (chip->parallel_charger_present)
+			val->intval = smb135x_is_input_current_limited(chip);
+		else
+			val->intval = 0;
 		break;
 	default:
 		return -EINVAL;
@@ -2224,8 +2251,9 @@ static int smb135x_set_current_tables(struct smb135x_chg *chip)
 			= ARRAY_SIZE(usb_current_table_smb1357_smb1358);
 		chip->dc_current_table = dc_current_table;
 		chip->dc_current_arr_size = ARRAY_SIZE(dc_current_table);
-		chip->fastchg_current_table = NULL;
-		chip->fastchg_current_arr_size = 0;
+		chip->fastchg_current_table = fastchg_current_table;
+		chip->fastchg_current_arr_size
+			= ARRAY_SIZE(fastchg_current_table);
 		break;
 	case V_SMB1359:
 		chip->usb_current_table = usb_current_table_smb1359;
@@ -4292,6 +4320,15 @@ static int smb135x_parallel_charger_probe(struct i2c_client *client,
 						&chip->vfloat_mv);
 	if (rc < 0)
 		chip->vfloat_mv = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,parallel-en-pin-polarity",
+					&chip->parallel_pin_polarity_setting);
+	if (rc)
+		chip->parallel_pin_polarity_setting = CHG_EN_ACTIVE_LOW_BIT;
+	else
+		chip->parallel_pin_polarity_setting =
+				chip->parallel_pin_polarity_setting ?
+				CHG_EN_ACTIVE_HIGH_BIT : CHG_EN_ACTIVE_LOW_BIT;
 
 	mutex_init(&chip->path_suspend_lock);
 	mutex_init(&chip->current_change_lock);

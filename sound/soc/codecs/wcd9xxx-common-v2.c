@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -284,6 +284,8 @@ static void wcd_clsh_set_gain_path(struct snd_soc_codec *codec,
 	case CLS_H_LP:
 		val = 0x01;
 		break;
+	default:
+		return;
 	};
 	snd_soc_update_bits(codec, WCD9XXX_HPH_L_EN, 0xC0, (val << 6));
 	snd_soc_update_bits(codec, WCD9XXX_HPH_R_EN, 0xC0, (val << 6));
@@ -320,6 +322,8 @@ static void wcd_clsh_set_hph_mode(struct snd_soc_codec *codec,
 		val = 0x04;
 		ipeak = DELTA_I_30MA;
 		break;
+	default:
+		return;
 	};
 
 	snd_soc_update_bits(codec, WCD9XXX_A_ANA_HPH, 0x0C, val);
@@ -350,12 +354,8 @@ static void wcd_clsh_set_flyback_current(struct snd_soc_codec *codec, int mode)
 static void wcd_clsh_set_buck_regulator_mode(struct snd_soc_codec *codec,
 					     int mode)
 {
-	if (mode == CLS_AB)
-		snd_soc_update_bits(codec, WCD9XXX_A_ANA_RX_SUPPLIES,
-				    0x02, 0x02);
-	else
-		snd_soc_update_bits(codec, WCD9XXX_A_ANA_RX_SUPPLIES,
-				    0x02, 0x00);
+	snd_soc_update_bits(codec, WCD9XXX_A_ANA_RX_SUPPLIES,
+			    0x02, 0x00);
 }
 
 static void wcd_clsh_state_lo(struct snd_soc_codec *codec,
@@ -409,6 +409,8 @@ static void wcd_clsh_state_hph_ear(struct snd_soc_codec *codec,
 			else if (clsh_d->state & WCD_CLSH_STATE_HPHR)
 				hph_mode = wcd_clsh_get_int_mode(clsh_d,
 						WCD_CLSH_STATE_HPHR);
+			else
+				return;
 			if (hph_mode != CLS_AB && !is_native_44_1_active(codec))
 				snd_soc_update_bits(codec,
 						WCD9XXX_A_CDC_RX0_RX_PATH_CFG0,
@@ -610,6 +612,8 @@ static void wcd_clsh_state_hph_lo(struct snd_soc_codec *codec,
 			else if (clsh_d->state & WCD_CLSH_STATE_HPHR)
 				hph_mode = wcd_clsh_get_int_mode(clsh_d,
 						WCD_CLSH_STATE_HPHR);
+			else
+				return;
 			dev_dbg(codec->dev, "%s: hph_mode = %d\n", __func__,
 				hph_mode);
 

@@ -21,6 +21,7 @@
 
 #include <linux/errno.h>
 #include <linux/err.h>
+#include <linux/of.h>
 #include <linux/types.h>
 #include <trace/events/iommu.h>
 
@@ -100,6 +101,7 @@ enum iommu_attr {
 	DOMAIN_ATTR_PROCID,
 	DOMAIN_ATTR_DYNAMIC,
 	DOMAIN_ATTR_NON_FATAL_FAULTS,
+	DOMAIN_ATTR_S1_BYPASS,
 	DOMAIN_ATTR_MAX,
 };
 
@@ -123,10 +125,12 @@ extern struct dentry *iommu_debugfs_top;
  * @remove_device: remove device from iommu grouping
  * @domain_get_attr: Query domain attributes
  * @domain_set_attr: Change domain attributes
+ * @of_xlate: add OF master IDs to iommu grouping
  * @pgsize_bitmap: bitmap of supported page sizes
  * @trigger_fault: trigger a fault on the device attached to an iommu domain
  * @reg_read: read an IOMMU register
  * @reg_write: write an IOMMU register
+ * @priv: per-instance data private to the iommu driver
  */
 struct iommu_ops {
 	bool (*capable)(enum iommu_cap);
@@ -172,7 +176,12 @@ struct iommu_ops {
 	void (*reg_write)(struct iommu_domain *domain, unsigned long val,
 			  unsigned long offset);
 
+#ifdef CONFIG_OF_IOMMU
+	int (*of_xlate)(struct device *dev, struct of_phandle_args *args);
+#endif
+
 	unsigned long pgsize_bitmap;
+	void *priv;
 };
 
 #define IOMMU_GROUP_NOTIFY_ADD_DEVICE		1 /* Device added */

@@ -394,7 +394,7 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		.maximum = V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_HIGH,
 		.default_value = V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE,
 		.menu_skip_mask = 0,
-		.flags = V4L2_CTRL_FLAG_VOLATILE | V4L2_CTRL_FLAG_READ_ONLY,
+		.flags = V4L2_CTRL_FLAG_VOLATILE,
 		.qmenu = NULL,
 	},
 	{
@@ -404,7 +404,7 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		.maximum = V4L2_MPEG_VIDEO_H264_LEVEL_5_2,
 		.default_value = V4L2_MPEG_VIDEO_H264_LEVEL_1_0,
 		.menu_skip_mask = 0,
-		.flags = V4L2_CTRL_FLAG_VOLATILE | V4L2_CTRL_FLAG_READ_ONLY,
+		.flags = V4L2_CTRL_FLAG_VOLATILE,
 		.qmenu = NULL,
 	},
 	{
@@ -1833,6 +1833,7 @@ static inline int start_streaming(struct msm_vidc_inst *inst)
 {
 	int rc = 0;
 	struct hfi_device *hdev;
+	bool slave_side_cp = inst->core->resources.slave_side_cp;
 
 	hdev = inst->core->device;
 
@@ -1843,7 +1844,8 @@ static inline int start_streaming(struct msm_vidc_inst *inst)
 		dprintk(VIDC_ERR, "H/w scaling is not in valid range\n");
 		return -EINVAL;
 	}
-	if ((inst->flags & VIDC_SECURE) && !inst->in_reconfig) {
+	if ((inst->flags & VIDC_SECURE) && !inst->in_reconfig &&
+		!slave_side_cp) {
 		rc = set_max_internal_buffers_size(inst);
 		if (rc) {
 			dprintk(VIDC_ERR,

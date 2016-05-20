@@ -28,6 +28,8 @@ struct devfreq_msm_adreno_tz_data {
 	struct {
 		s64 total_time;
 		s64 busy_time;
+		u32 ctxt_aware_target_pwrlevel;
+		u32 ctxt_aware_busy_penalty;
 	} bin;
 	struct {
 		u64 total_time;
@@ -46,6 +48,8 @@ struct devfreq_msm_adreno_tz_data {
 	} bus;
 	unsigned int device_id;
 	bool is_64;
+	bool disable_busy_time_burst;
+	bool ctxt_aware_enable;
 };
 
 struct msm_adreno_extended_profile {

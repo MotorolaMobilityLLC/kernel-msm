@@ -1147,21 +1147,6 @@ static struct clock_info *__get_clock(struct venus_hfi_device *device,
 	return NULL;
 }
 
-static struct regulator_info *__get_regulator(struct venus_hfi_device *device,
-			char *name)
-{
-	struct regulator_info *r;
-
-	venus_hfi_for_each_regulator(device, r) {
-		if (!strcmp(r->name, name))
-			return r;
-	}
-
-	dprintk(VIDC_WARN, "%s Regulator %s not found\n", __func__, name);
-
-	return NULL;
-}
-
 static unsigned long __get_clock_rate(struct clock_info *clock,
 	int num_mbs_per_sec, struct vidc_clk_scale_data *data)
 {
@@ -2226,9 +2211,14 @@ static int venus_hfi_core_init(void *device)
 	if (rc || __iface_cmdq_write(dev, &version_pkt))
 		dprintk(VIDC_WARN, "Failed to send image version pkt to f/w\n");
 
-	if (dev->res->pm_qos_latency_us)
+	if (dev->res->pm_qos_latency_us) {
+#ifdef CONFIG_SMP
+		dev->qos.type = PM_QOS_REQ_AFFINE_IRQ;
+		dev->qos.irq = dev->hal_data->irq;
+#endif
 		pm_qos_add_request(&dev->qos, PM_QOS_CPU_DMA_LATENCY,
 				dev->res->pm_qos_latency_us);
+	}
 
 	mutex_unlock(&dev->lock);
 	return rc;
@@ -2252,7 +2242,8 @@ static int venus_hfi_core_release(void *dev)
 
 	mutex_lock(&device->lock);
 
-	if (device->res->pm_qos_latency_us)
+	if (device->res->pm_qos_latency_us &&
+		pm_qos_request_active(&device->qos))
 		pm_qos_remove_request(&device->qos);
 	__set_state(device, VENUS_STATE_DEINIT);
 	__unload_fw(device);
@@ -4066,57 +4057,10 @@ static int __enable_hw_power_collapse(struct venus_hfi_device *device)
 	return rc;
 }
 
-static int __core_clk_reset(struct venus_hfi_device *device,
-				enum clk_reset_action action)
-{
-	int rc = 0;
-	struct regulator_info *rinfo;
-	struct clock_info *vc;
-
-	rinfo = __get_regulator(device, "venus");
-	if (!rinfo)
-		return -EINVAL;
-
-	/*
-	 * This is a workaround for msm8996 V2, because MDP enables
-	 * Venus GDSC. Due to MDP's vote on Venus GDSC, some of Venus
-	 * registers are not cleared after firmware is unloaded. This
-	 * causes subsequent video sessions to fail. By resetting
-	 * core_clk we are forcing a hard reset and ensure each
-	 * firmware load starts on a clean slate.
-	 * For targets which do not need to reset the core_clk, clock
-	 * driver returns -EPERM. Do not consider such cases as erroneous.
-	 */
-	dprintk(VIDC_DBG, "%s core-clk\n",
-		action == CLK_RESET_DEASSERT ? "de-assert" : "assert");
-	vc = __get_clock(device, "core_clk");
-	if (vc) {
-		rc = clk_reset(vc->clk, action);
-		if (rc == -EPERM) {
-			rc = 0;
-			dprintk(VIDC_DBG, "%s No need to reset\n", __func__);
-		} else if (rc) {
-			dprintk(VIDC_ERR,
-				"clk_reset action - %d failed: %d\n",
-				action, rc);
-			return rc;
-		}
-	} else {
-		return -EINVAL;
-	}
-	udelay(1);
-	return rc;
-}
-
 static int __enable_regulators(struct venus_hfi_device *device)
 {
 	int rc = 0, c = 0;
 	struct regulator_info *rinfo;
-
-	rc = __core_clk_reset(device, CLK_RESET_DEASSERT);
-	if (rc)
-		return rc;
-
 
 	dprintk(VIDC_DBG, "Enabling regulators\n");
 
@@ -4152,8 +4096,6 @@ static int __disable_regulators(struct venus_hfi_device *device)
 
 	venus_hfi_for_each_regulator_reverse(device, rinfo)
 		__disable_regulator(rinfo);
-
-	rc = __core_clk_reset(device, CLK_RESET_ASSERT);
 
 	return rc;
 }
@@ -4265,7 +4207,8 @@ static inline int __suspend(struct venus_hfi_device *device)
 
 	dprintk(VIDC_DBG, "Entering power collapse\n");
 
-	if (device->res->pm_qos_latency_us)
+	if (device->res->pm_qos_latency_us &&
+		pm_qos_request_active(&device->qos))
 		pm_qos_remove_request(&device->qos);
 
 	rc = __tzbsp_set_video_state(TZBSP_VIDEO_STATE_SUSPEND);
@@ -4327,9 +4270,14 @@ static inline int __resume(struct venus_hfi_device *device)
 	 */
 	__set_threshold_registers(device);
 
-	if (device->res->pm_qos_latency_us)
+	if (device->res->pm_qos_latency_us) {
+#ifdef CONFIG_SMP
+		device->qos.type = PM_QOS_REQ_AFFINE_IRQ;
+		device->qos.irq = device->hal_data->irq;
+#endif
 		pm_qos_add_request(&device->qos, PM_QOS_CPU_DMA_LATENCY,
 				device->res->pm_qos_latency_us);
+	}
 	dprintk(VIDC_INFO, "Resumed from power collapse\n");
 exit:
 	device->skip_pc_count = 0;
@@ -4412,14 +4360,6 @@ static void __unload_fw(struct venus_hfi_device *device)
 	cancel_delayed_work(&venus_hfi_pm_work);
 	if (device->state != VENUS_STATE_DEINIT)
 		flush_workqueue(device->venus_pm_workq);
-
-	/*
-	 * If the core_clk is asserted, then PIL cannot enable
-	 * any of the venus clocks. So deassert the clock before
-	 * calling subsystem_put.
-	 */
-	if (__core_clk_reset(device, CLK_RESET_DEASSERT))
-		dprintk(VIDC_ERR, "failed to deassert core_clk\n");
 
 	subsystem_put(device->resources.fw.cookie);
 	__interface_queues_release(device);

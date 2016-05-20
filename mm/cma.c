@@ -35,6 +35,7 @@
 #include <linux/cma.h>
 #include <linux/highmem.h>
 #include <linux/delay.h>
+#include <linux/kmemleak.h>
 #include <trace/events/cma.h>
 
 #include "cma.h"
@@ -117,6 +118,10 @@ static int __init cma_activate_area(struct cma *cma)
 	INIT_HLIST_HEAD(&cma->mem_head);
 	spin_lock_init(&cma->mem_head_lock);
 #endif
+
+	if (!PageHighMem(pfn_to_page(cma->base_pfn)))
+		kmemleak_free_part(__va(cma->base_pfn << PAGE_SHIFT),
+				cma->count << PAGE_SHIFT);
 
 	return 0;
 
@@ -310,6 +315,9 @@ int __init cma_declare_contiguous(phys_addr_t base,
 				goto err;
 			}
 		}
+
+		if (addr < highmem_start)
+			kmemleak_no_scan(__va(addr));
 
 		base = addr;
 	}

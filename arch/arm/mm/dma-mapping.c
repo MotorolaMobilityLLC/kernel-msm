@@ -816,6 +816,8 @@ static void arm_dma_unremap(struct device *dev, void *remapped_addr,
 	}
 
 	vunmap(remapped_addr);
+	flush_tlb_kernel_range((unsigned long)remapped_addr,
+			(unsigned long)(remapped_addr + size));
 }
 /*
  * Free a buffer as defined by the above mapping.
@@ -1211,8 +1213,8 @@ static struct page **__iommu_alloc_buffer(struct device *dev, size_t size,
 					  gfp_t gfp, struct dma_attrs *attrs)
 {
 	struct page **pages;
-	int count = size >> PAGE_SHIFT;
-	int array_size = count * sizeof(struct page *);
+	size_t count = size >> PAGE_SHIFT;
+	size_t array_size = count * sizeof(struct page *);
 	int i = 0;
 
 	if (array_size <= PAGE_SIZE)

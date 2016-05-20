@@ -1125,8 +1125,14 @@ static int afe_send_hw_delay(u16 port_id, u32 rate)
 	else if (afe_get_port_type(port_id) == MSM_AFE_PORT_TYPE_RX)
 		ret = afe_get_cal_hw_delay(RX_DEVICE, &delay_entry);
 
+	/*
+	 * HW delay is only used for IMS calls to sync audio with video
+	 * It is only needed for devices & sample rates used for IMS video
+	 * calls. Values are received from ACDB calbration files
+	 */
 	if (ret != 0) {
-		pr_debug("%s: Failed to get hw delay info %d\n", __func__, ret);
+		pr_debug("%s: debug: HW delay info not available %d\n",
+			__func__, ret);
 		goto fail_cmd;
 	}
 
@@ -2700,6 +2706,7 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 		cfg_type = AFE_PARAM_ID_RT_PROXY_CONFIG;
 		break;
 	case INT_BT_SCO_RX:
+	case INT_BT_A2DP_RX:
 	case INT_BT_SCO_TX:
 	case INT_FM_RX:
 	case INT_FM_TX:
@@ -3170,7 +3177,7 @@ int afe_loopback(u16 enable, u16 rx_port, u16 tx_port)
 				  sizeof(struct afe_port_param_data_v2);
 
 	lb_cmd.dst_port_id = rx_port;
-	lb_cmd.routing_mode = LB_MODE_DEFAULT;
+	lb_cmd.routing_mode = LB_MODE_EC_REF_VOICE_AUDIO;
 	lb_cmd.enable = (enable ? 1 : 0);
 	lb_cmd.loopback_cfg_minor_version = AFE_API_VERSION_LOOPBACK_CONFIG;
 
@@ -4532,8 +4539,10 @@ int afe_validate_port(u16 port_id)
 	case AFE_PORT_ID_PRIMARY_MI2S_RX:
 	case AFE_PORT_ID_PRIMARY_MI2S_TX:
 	case AFE_PORT_ID_SECONDARY_MI2S_RX:
+	case AFE_PORT_ID_SECONDARY_MI2S_TX:
 	case AFE_PORT_ID_QUATERNARY_MI2S_RX:
 	case AFE_PORT_ID_QUATERNARY_MI2S_TX:
+	case AFE_PORT_ID_TERTIARY_MI2S_RX:
 	case AFE_PORT_ID_TERTIARY_MI2S_TX:
 	case AFE_PORT_ID_QUINARY_MI2S_RX:
 	case AFE_PORT_ID_QUINARY_MI2S_TX:
@@ -5416,6 +5425,9 @@ int afe_spk_prot_get_calib_data(struct afe_spkr_prot_get_vi_calib *calib_resp)
 		pr_err("%s: Invalid params\n", __func__);
 		goto fail_cmd;
 	}
+	if (this_afe.vi_tx_port != -1)
+		port = this_afe.vi_tx_port;
+
 	ret = q6audio_validate_port(port);
 	if (ret < 0) {
 		pr_err("%s: invalid port 0x%x ret %d\n", __func__, port, ret);

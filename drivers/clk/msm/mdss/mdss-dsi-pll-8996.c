@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -464,7 +464,7 @@ static struct clk_lookup mdss_dsi_pllcc_8996_1[] = {
 int dsi_pll_clock_register_8996(struct platform_device *pdev,
 				struct mdss_pll_resources *pll_res)
 {
-	int rc, ndx;
+	int rc = 0, ndx;
 	int const ssc_freq_default = 31500; /* default h/w recommended value */
 	int const ssc_ppm_default = 5000; /* default h/w recommended value */
 	struct dsi_pll_db *pdb;
@@ -536,7 +536,7 @@ int dsi_pll_clock_register_8996(struct platform_device *pdev,
 
 		pll_res->vco_delay = VCO_DELAY_USEC;
 		if ((pll_res->target_id == MDSS_PLL_TARGET_8996) ||
-			(pll_res->target_id == MDSS_PLL_TARGET_TITANIUM)) {
+			(pll_res->target_id == MDSS_PLL_TARGET_8953)) {
 			rc = of_msm_clock_register(pdev->dev.of_node,
 				mdss_dsi_pllcc_8996_1,
 				ARRAY_SIZE(mdss_dsi_pllcc_8996_1));
@@ -556,7 +556,7 @@ int dsi_pll_clock_register_8996(struct platform_device *pdev,
 
 		pll_res->vco_delay = VCO_DELAY_USEC;
 		if ((pll_res->target_id == MDSS_PLL_TARGET_8996) ||
-			(pll_res->target_id == MDSS_PLL_TARGET_TITANIUM)) {
+			(pll_res->target_id == MDSS_PLL_TARGET_8953)) {
 			rc = of_msm_clock_register(pdev->dev.of_node,
 				mdss_dsi_pllcc_8996,
 				ARRAY_SIZE(mdss_dsi_pllcc_8996));

@@ -744,7 +744,7 @@ static void a4xx_err_callback(struct adreno_device *adreno_dev, int bit)
 		 * Return the word address of the erroring register so that it
 		 * matches the register specification
 		 */
-		KGSL_DRV_CRIT(device,
+		KGSL_DRV_CRIT_RATELIMIT(device,
 			"RBBM | AHB bus error | %s | addr=%x | ports=%x:%x\n",
 			reg & (1 << 28) ? "WRITE" : "READ",
 			(reg & 0xFFFFF) >> 2, (reg >> 20) & 0x3,
@@ -752,7 +752,7 @@ static void a4xx_err_callback(struct adreno_device *adreno_dev, int bit)
 
 		/* Clear the error */
 		kgsl_regwrite(device, A4XX_RBBM_AHB_CMD, (1 << 4));
-		return;
+		break;
 	}
 	case A4XX_INT_RBBM_REG_TIMEOUT:
 		KGSL_DRV_CRIT_RATELIMIT(device, "RBBM: AHB register timeout\n");
@@ -798,11 +798,11 @@ static void a4xx_err_callback(struct adreno_device *adreno_dev, int bit)
 	}
 	case A4XX_INT_CP_REG_PROTECT_FAULT:
 		kgsl_regread(device, A4XX_CP_PROTECT_STATUS, &reg);
-		KGSL_DRV_CRIT(device,
+		KGSL_DRV_CRIT_RATELIMIT(device,
 			"CP | Protected mode error| %s | addr=%x\n",
 			reg & (1 << 24) ? "WRITE" : "READ",
 			(reg & 0xFFFFF) >> 2);
-		return;
+		break;
 	case A4XX_INT_CP_AHB_ERROR_HALT:
 		KGSL_DRV_CRIT_RATELIMIT(device,
 			"ringbuffer AHB error interrupt\n");
@@ -1439,7 +1439,7 @@ static const unsigned int _a4xx_pwron_fixup_fs_instructions[] = {
 };
 
 /**
- * adreno_a4xx_pwron_fixup_init() - Initalize a special command buffer to run a
+ * _a4xx_pwron_fixup() - Initialize a special command buffer to run a
  * post-power collapse shader workaround
  * @adreno_dev: Pointer to a adreno_device struct
  *
@@ -1449,7 +1449,7 @@ static const unsigned int _a4xx_pwron_fixup_fs_instructions[] = {
  *
  * Returns: 0 on success or negative on error
  */
-int adreno_a4xx_pwron_fixup_init(struct adreno_device *adreno_dev)
+static int _a4xx_pwron_fixup(struct adreno_device *adreno_dev)
 {
 	unsigned int *cmds;
 	unsigned int count = ARRAY_SIZE(_a4xx_pwron_fixup_fs_instructions);
@@ -1560,23 +1560,17 @@ int adreno_a4xx_pwron_fixup_init(struct adreno_device *adreno_dev)
 	return 0;
 }
 
-static int a4xx_hw_init(struct adreno_device *adreno_dev)
+/*
+ * a4xx_init() - Initialize gpu specific data
+ * @adreno_dev: Pointer to adreno device
+ */
+static void a4xx_init(struct adreno_device *adreno_dev)
 {
-	a4xx_enable_pc(adreno_dev);
-	a4xx_enable_ppd(adreno_dev);
-
-	return 0;
+	if ((adreno_is_a405(adreno_dev)) || (adreno_is_a420(adreno_dev)))
+		_a4xx_pwron_fixup(adreno_dev);
 }
 
-/*
- * a4xx_rb_init() - Initialize ringbuffer
- * @adreno_dev: Pointer to adreno device
- * @rb: Pointer to the ringbuffer of device
- *
- * Submit commands for ME initialization, common function shared between
- * a4xx devices
- */
-static int a4xx_rb_init(struct adreno_device *adreno_dev,
+static int a4xx_send_me_init(struct adreno_device *adreno_dev,
 			 struct adreno_ringbuffer *rb)
 {
 	unsigned int *cmds;
@@ -1626,6 +1620,47 @@ static int a4xx_rb_init(struct adreno_device *adreno_dev,
 
 		dev_err(device->dev, "CP initialization failed to idle\n");
 		kgsl_device_snapshot(device, NULL);
+	}
+
+	return ret;
+}
+
+/*
+ * a4xx_rb_start() - Start the ringbuffer
+ * @adreno_dev: Pointer to adreno device
+ * @start_type: Warm or cold start
+ */
+static int a4xx_rb_start(struct adreno_device *adreno_dev,
+			 unsigned int start_type)
+{
+	struct adreno_ringbuffer *rb = ADRENO_CURRENT_RINGBUFFER(adreno_dev);
+	int ret;
+
+	/*
+	 * The size of the ringbuffer in the hardware is the log2
+	 * representation of the size in quadwords (sizedwords / 2).
+	 * Also disable the host RPTR shadow register as it might be unreliable
+	 * in certain circumstances.
+	 */
+
+	adreno_writereg(adreno_dev, ADRENO_REG_CP_RB_CNTL,
+		(ilog2(KGSL_RB_DWORDS >> 1) & 0x3F) |
+		(1 << 27));
+
+	adreno_writereg(adreno_dev, ADRENO_REG_CP_RB_BASE,
+			  rb->buffer_desc.gpuaddr);
+
+	ret = a3xx_microcode_load(adreno_dev, start_type);
+	if (ret)
+		return ret;
+
+	/* clear ME_HALT to start micro engine */
+	adreno_writereg(adreno_dev, ADRENO_REG_CP_ME_CNTL, 0);
+
+	ret = a4xx_send_me_init(adreno_dev, rb);
+	if (ret == 0) {
+		a4xx_enable_pc(adreno_dev);
+		a4xx_enable_ppd(adreno_dev);
 	}
 
 	return ret;
@@ -1798,6 +1833,90 @@ static struct adreno_snapshot_data a4xx_snapshot_data = {
 	.sect_sizes = &a4xx_snap_sizes,
 };
 
+#define ADRENO_RB_PREEMPT_TOKEN_DWORDS		125
+
+static int a4xx_submit_preempt_token(struct adreno_ringbuffer *rb,
+					struct adreno_ringbuffer *incoming_rb)
+{
+	struct adreno_device *adreno_dev = ADRENO_RB_DEVICE(rb);
+	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
+	unsigned int *ringcmds, *start;
+	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
+	int ptname;
+	struct kgsl_pagetable *pt;
+	int pt_switch_sizedwords = 0, total_sizedwords = 20;
+	unsigned link[ADRENO_RB_PREEMPT_TOKEN_DWORDS];
+	uint i;
+
+	if (incoming_rb->preempted_midway) {
+
+		kgsl_sharedmem_readl(&incoming_rb->pagetable_desc,
+			&ptname, offsetof(
+			struct adreno_ringbuffer_pagetable_info,
+			current_rb_ptname));
+		pt = kgsl_mmu_get_pt_from_ptname(&(device->mmu),
+			ptname);
+		/*
+		 * always expect a valid pt, else pt refcounting is
+		 * messed up or current pt tracking has a bug which
+		 * could lead to eventual disaster
+		 */
+		BUG_ON(!pt);
+		/* set the ringbuffer for incoming RB */
+		pt_switch_sizedwords =
+			adreno_iommu_set_pt_generate_cmds(incoming_rb,
+							&link[0], pt);
+		total_sizedwords += pt_switch_sizedwords;
+	}
+
+	/*
+	 *  Allocate total_sizedwords space in RB, this is the max space
+	 *  required.
+	 */
+	ringcmds = adreno_ringbuffer_allocspace(rb, total_sizedwords);
+
+	if (IS_ERR(ringcmds))
+		return PTR_ERR(ringcmds);
+
+	start = ringcmds;
+
+	*ringcmds++ = cp_packet(adreno_dev, CP_SET_PROTECTED_MODE, 1);
+	*ringcmds++ = 0;
+
+	if (incoming_rb->preempted_midway) {
+		for (i = 0; i < pt_switch_sizedwords; i++)
+			*ringcmds++ = link[i];
+	}
+
+	*ringcmds++ = cp_register(adreno_dev, adreno_getreg(adreno_dev,
+			ADRENO_REG_CP_PREEMPT_DISABLE), 1);
+	*ringcmds++ = 0;
+
+	*ringcmds++ = cp_packet(adreno_dev, CP_SET_PROTECTED_MODE, 1);
+	*ringcmds++ = 1;
+
+	ringcmds += gpudev->preemption_token(adreno_dev, rb, ringcmds,
+				device->memstore.gpuaddr +
+				KGSL_MEMSTORE_RB_OFFSET(rb, preempted));
+
+	if ((uint)(ringcmds - start) > total_sizedwords) {
+		KGSL_DRV_ERR(device, "Insufficient rb size allocated\n");
+		BUG();
+	}
+
+	/*
+	 * If we have commands less than the space reserved in RB
+	 *  adjust the wptr accordingly
+	 */
+	rb->wptr = rb->wptr - (total_sizedwords - (uint)(ringcmds - start));
+
+	/* submit just the preempt token */
+	mb();
+	kgsl_pwrscale_busy(device);
+	adreno_writereg(adreno_dev, ADRENO_REG_CP_RB_WPTR, rb->wptr);
+	return 0;
+}
+
 /**
  * a4xx_preempt_trig_state() - Schedule preemption in TRIGGERRED
  * state
@@ -1886,7 +2005,7 @@ static void a4xx_preempt_trig_state(
 	/* Submit preempt token to make preemption happen */
 	if (adreno_drawctxt_switch(adreno_dev, adreno_dev->cur_rb, NULL, 0))
 		BUG();
-	if (adreno_ringbuffer_submit_preempt_token(adreno_dev->cur_rb,
+	if (a4xx_submit_preempt_token(adreno_dev->cur_rb,
 						adreno_dev->next_rb))
 		BUG();
 	dispatcher->preempt_token_submit = 1;
@@ -1997,7 +2116,7 @@ static void a4xx_preempt_clear_state(
 			adreno_dev->next_rb, adreno_dev->next_rb->timestamp);
 	/* submit preempt token packet to ensure preemption */
 	if (switch_low_to_high < 0) {
-		ret = adreno_ringbuffer_submit_preempt_token(
+		ret = a4xx_submit_preempt_token(
 			adreno_dev->cur_rb, adreno_dev->next_rb);
 		/*
 		 * unexpected since we are submitting this when rptr = wptr,
@@ -2149,15 +2268,14 @@ struct adreno_gpudev adreno_a4xx_gpudev = {
 	.irq = &a4xx_irq,
 	.irq_trace = trace_kgsl_a4xx_irq_status,
 	.snapshot_data = &a4xx_snapshot_data,
-	.num_prio_levels = ADRENO_PRIORITY_MAX_RB_LEVELS,
+	.num_prio_levels = KGSL_PRIORITY_MAX_RB_LEVELS,
 	.vbif_xin_halt_ctrl0_mask = A4XX_VBIF_XIN_HALT_CTRL0_MASK,
 
 	.perfcounter_init = a4xx_perfcounter_init,
 	.perfcounter_close = a4xx_perfcounter_close,
-	.rb_init = a4xx_rb_init,
-	.hw_init = a4xx_hw_init,
+	.rb_start = a4xx_rb_start,
+	.init = a4xx_init,
 	.microcode_read = a3xx_microcode_read,
-	.microcode_load = a3xx_microcode_load,
 	.coresight = &a4xx_coresight,
 	.start = a4xx_start,
 	.snapshot = a4xx_snapshot,

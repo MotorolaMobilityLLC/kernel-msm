@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,13 +13,6 @@
 
 &soc {
 	/* GCC GDSCs */
-	gdsc_mmss: qcom,gdsc@109004 {
-		compatible = "qcom,gdsc";
-		regulator-name = "gdsc_mmss";
-		reg = <0x109004 0x4>;
-		status = "disabled";
-	};
-
 	gdsc_usb30: qcom,gdsc@10f004 {
 		compatible = "qcom,gdsc";
 		regulator-name = "gdsc_usb30";
@@ -142,6 +135,8 @@
 		      <0x5065130 0x4>,
 		      <0x5066090 0x4>;
 		reg-names = "base", "domain_addr", "sw_reset";
+		qcom,retain-periph;
+		qcom,reset-aon-logic;
 		status = "disabled";
 	};
 };

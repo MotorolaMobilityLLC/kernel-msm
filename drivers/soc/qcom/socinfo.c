@@ -477,6 +477,8 @@ static struct msm_soc_info cpu_of_id[] = {
 	[260] = {MSM_CPU_8909, "MDMFERRUM"},
 	[261] = {MSM_CPU_8909, "MDMFERRUM"},
 	[262] = {MSM_CPU_8909, "MDMFERRUM"},
+	[300] = {MSM_CPU_8909, "MSM8909W"},
+	[301] = {MSM_CPU_8909, "APQ8009W"},
 
 	/* ZIRC IDs */
 	[234] = {MSM_CPU_ZIRC, "MSMZIRC"},
@@ -504,6 +506,8 @@ static struct msm_soc_info cpu_of_id[] = {
 
 	/* 8996 IDs */
 	[246] = {MSM_CPU_8996, "MSM8996"},
+	[310] = {MSM_CPU_8996, "MSM8996"},
+	[311] = {MSM_CPU_8996, "APQ8096"},
 	[291] = {MSM_CPU_8996, "APQ8096"},
 	[305] = {MSM_CPU_8996, "MSM8996pro"},
 	[312] = {MSM_CPU_8996, "APQ8096pro"},
@@ -520,9 +524,9 @@ static struct msm_soc_info cpu_of_id[] = {
 	/* Cobalt ID */
 	[292] = {MSM_CPU_COBALT, "MSMCOBALT"},
 
-	/* Titanium ID */
-	[293] = {MSM_CPU_TITANIUM, "MSMTITANIUM"},
-	[304] = {MSM_CPU_TITANIUM, "APQTITANIUM"},
+	/* 8953 ID */
+	[293] = {MSM_CPU_8953, "MSM8953"},
+	[304] = {MSM_CPU_8953, "APQ8053"},
 
 	/* 9607 IDs */
 	[290] = {MSM_CPU_9607, "MDM9607"},
@@ -542,11 +546,14 @@ static struct msm_soc_info cpu_of_id[] = {
 	[294] = {MSM_CPU_8937, "MSM8937"},
 	[295] = {MSM_CPU_8937, "APQ8937"},
 
-	/* MSMGOLD IDs */
-	[303] = {MSM_CPU_GOLD, "MSMGOLD"},
-	[307] = {MSM_CPU_GOLD, "APQGOLD"},
-	[308] = {MSM_CPU_GOLD, "MSMGOLD"},
-	[309] = {MSM_CPU_GOLD, "MSMGOLD"},
+	/* MSM8917 IDs */
+	[303] = {MSM_CPU_8917, "MSM8917"},
+	[307] = {MSM_CPU_8917, "APQ8017"},
+	[308] = {MSM_CPU_8917, "MSM8217"},
+	[309] = {MSM_CPU_8917, "MSM8617"},
+
+	/* MSM8940 IDs */
+	[313] = {MSM_CPU_8940, "MSM8940"},
 
 	/* Uninitialized IDs are not known to run Linux.
 	   MSM_CPU_UNKNOWN is set to 0 to ensure these IDs are
@@ -1137,13 +1144,17 @@ static void * __init setup_dummy_socinfo(void)
 		dummy_socinfo.id = 246;
 		strlcpy(dummy_socinfo.build_id, "msm8996 - ",
 			sizeof(dummy_socinfo.build_id));
+	} else if (early_machine_is_msm8996_auto()) {
+		dummy_socinfo.id = 310;
+		strlcpy(dummy_socinfo.build_id, "msm8996-auto - ",
+		sizeof(dummy_socinfo.build_id));
 	} else if (early_machine_is_msm8929()) {
 		dummy_socinfo.id = 268;
 		strlcpy(dummy_socinfo.build_id, "msm8929 - ",
 			sizeof(dummy_socinfo.build_id));
-	} else if (early_machine_is_msmtitanium()) {
+	} else if (early_machine_is_msm8953()) {
 		dummy_socinfo.id = 293;
-		strlcpy(dummy_socinfo.build_id, "msmtitanium - ",
+		strlcpy(dummy_socinfo.build_id, "msm8953 - ",
 			sizeof(dummy_socinfo.build_id));
 	} else if (early_machine_is_mdm9607()) {
 		dummy_socinfo.id = 290;
@@ -1157,9 +1168,13 @@ static void * __init setup_dummy_socinfo(void)
 		dummy_socinfo.id = 294;
 		strlcpy(dummy_socinfo.build_id, "msm8937 - ",
 			sizeof(dummy_socinfo.build_id));
-	} else if (early_machine_is_msmgold()) {
+	} else if (early_machine_is_msm8917()) {
 		dummy_socinfo.id = 303;
-		strlcpy(dummy_socinfo.build_id, "msmgold - ",
+		strlcpy(dummy_socinfo.build_id, "msm8917 - ",
+			sizeof(dummy_socinfo.build_id));
+	} else if (early_machine_is_msm8940()) {
+		dummy_socinfo.id = 313;
+		strlcpy(dummy_socinfo.build_id, "msm8940 - ",
 			sizeof(dummy_socinfo.build_id));
 	}
 

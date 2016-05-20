@@ -4,7 +4,7 @@
  *
  * Copyright (c)2013 Maxim Integrated Products, Inc.
  * Copyright (C) 2013, NVIDIA Corporation.  All Rights Reserved.
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -30,6 +30,7 @@
 #include <net/genetlink.h>
 #include <net/sock.h>
 #include <uapi/linux/maxim_sti.h>
+#include <linux/input/mt.h>
 #include <asm/byteorder.h>  /* MUST include this header to get byte order */
 #ifdef CONFIG_OF
 #include <linux/gpio.h>
@@ -76,6 +77,7 @@ struct maxim_sti_pdata {
 	int       (*init)(struct maxim_sti_pdata *pdata, bool init);
 	void      (*reset)(struct maxim_sti_pdata *pdata, int value);
 	int       (*irq)(struct maxim_sti_pdata *pdata);
+	bool	  mt_type_b_enabled;
 };
 
 struct dev_data;
@@ -135,6 +137,8 @@ struct dev_data {
 	u32                          tf_status;
 	bool                         idle;
 	bool                         gesture_reset;
+	bool			     touch_status[INPUT_DEVICES]
+						[MAX_INPUT_EVENTS];
 	u16                          gesture_en;
 	unsigned long int            sysfs_update_type;
 	struct completion            sysfs_ack_glove;
@@ -179,24 +183,15 @@ spi_read_123(struct dev_data *dd, u16 address, u8 *buf, u16 len, bool add_len)
 	u16                  *rx_buf = (u16 *)dd->rx_buf;
 	u16                  words = len / sizeof(u16), header_len = 1;
 	u16                  *ptr2 = rx_buf + 1;
-#ifdef __LITTLE_ENDIAN
-	u16                  *ptr1 = (u16 *)buf, i;
-#endif
 	int                  ret;
 
 	if (tx_buf == NULL || rx_buf == NULL)
 		return -ENOMEM;
 
 	tx_buf[0] = (address << 1) | 0x0001;
-#ifdef __LITTLE_ENDIAN
-	tx_buf[0] = (tx_buf[0] << 8) | (tx_buf[0] >> 8);
-#endif
 
 	if (add_len) {
 		tx_buf[1] = words;
-#ifdef __LITTLE_ENDIAN
-		tx_buf[1] = (tx_buf[1] << 8) | (tx_buf[1] >> 8);
-#endif
 		ptr2++;
 		header_len++;
 	}
@@ -213,12 +208,7 @@ spi_read_123(struct dev_data *dd, u16 address, u8 *buf, u16 len, bool add_len)
 		ret = spi_sync(dd->spi, &message);
 	} while (ret == -EAGAIN);
 
-#ifdef __LITTLE_ENDIAN
-	for (i = 0; i < words; i++)
-		ptr1[i] = (ptr2[i] << 8) | (ptr2[i] >> 8);
-#else
 	memcpy(buf, ptr2, len);
-#endif
 
 	return ret;
 }
@@ -230,9 +220,6 @@ spi_write_123(struct dev_data *dd, u16 address, u8 *buf, u16 len,
 	struct maxim_sti_pdata  *pdata = dd->spi->dev.platform_data;
 	u16                     *tx_buf = (u16 *)dd->tx_buf;
 	u16                     words = len / sizeof(u16), header_len = 1;
-#ifdef __LITTLE_ENDIAN
-	u16                     i;
-#endif
 	int  ret;
 
 	if (tx_buf == NULL)
@@ -244,10 +231,6 @@ spi_write_123(struct dev_data *dd, u16 address, u8 *buf, u16 len,
 		header_len++;
 	}
 	memcpy(tx_buf + header_len, buf, len);
-#ifdef __LITTLE_ENDIAN
-	for (i = 0; i < (words + header_len); i++)
-		tx_buf[i] = (tx_buf[i] << 8) | (tx_buf[i] >> 8);
-#endif
 
 	do {
 		ret = spi_write(dd->spi, tx_buf,
@@ -1001,6 +984,9 @@ static int maxim_parse_dt(struct device *dev, struct maxim_sti_pdata *pdata)
 	pdata->gpio_irq = of_get_named_gpio_flags(np,
 			"maxim_sti,irq-gpio", 0, &flags);
 
+	pdata->mt_type_b_enabled =
+		of_property_read_bool(np, "maxim_sti,mt_type_b_enabled");
+
 	ret = of_property_read_string(np, "maxim_sti,touch_fusion", &str);
 	if (ret) {
 		dev_err(dev, "%s: unable to read touch_fusion location (%d)\n",
@@ -1129,6 +1115,22 @@ nl_callback_noop(struct sk_buff *skb, struct genl_info *info)
 	return 0;
 }
 
+static void
+release_slot_events(struct dev_data *dd, bool *active_touch, int inp)
+{
+	int i;
+
+	for (i = 0; i < MAX_INPUT_EVENTS; i++) {
+		if (dd->touch_status[inp][i] == true &&
+					active_touch[i] == false) {
+			input_mt_slot(dd->input_dev[inp], i);
+			input_mt_report_slot_state(dd->input_dev[inp],
+				MT_TOOL_FINGER, 0);
+		}
+		dd->touch_status[inp][i] = active_touch[i];
+	}
+}
+
 static inline bool
 nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 {
@@ -1152,9 +1154,10 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 	struct dr_sysfs_ack           *sysfs_ack_msg;
 	struct dr_idle                *idle_msg;
 	struct dr_tf_status           *tf_status_msg;
-	u8                            i, inp;
-	int                           ret;
+	u8			      i, inp;
+	int                           ret, id;
 	u16                           read_value[2] = { 0 };
+	bool	active_touch[INPUT_DEVICES][MAX_INPUT_EVENTS] = { {false} };
 
 	if (dd->expect_resume_ack && msg_id != DR_DECONFIG &&
 	    msg_id != DR_RESUME_ACK)
@@ -1315,6 +1318,19 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 				__set_bit(KEY_POWER,
 					  dd->input_dev[i]->keybit);
 			}
+			if (pdata->mt_type_b_enabled &&
+				input_mt_init_slots(dd->input_dev[i],
+						MAX_INPUT_EVENTS, 0)) {
+					ERROR("Error in initialising slots\n");
+					input_free_device(dd->input_dev[i]);
+					dd->input_dev[i] = NULL;
+					continue;
+			} else {
+				input_set_abs_params(dd->input_dev[i],
+						ABS_MT_TRACKING_ID, 0,
+						MAX_INPUT_EVENTS, 0, 0);
+			}
+
 			input_set_abs_params(dd->input_dev[i],
 					     ABS_MT_POSITION_X, 0,
 					     config_input_msg->x_range, 0, 0);
@@ -1323,9 +1339,7 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 					     config_input_msg->y_range, 0, 0);
 			input_set_abs_params(dd->input_dev[i],
 					     ABS_MT_PRESSURE, 0, 0xFF, 0, 0);
-			input_set_abs_params(dd->input_dev[i],
-					     ABS_MT_TRACKING_ID, 0,
-					     MAX_INPUT_EVENTS, 0, 0);
+
 			if (i == (INPUT_DEVICES - 1))
 				input_set_abs_params(dd->input_dev[i],
 						     ABS_MT_TOOL_TYPE, 0,
@@ -1408,23 +1422,49 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 				dd->eraser_active = false;
 			}
 			for (i = 0; i < INPUT_DEVICES; i++) {
-				input_mt_sync(dd->input_dev[i]);
+				if (pdata->mt_type_b_enabled)
+					release_slot_events(dd,
+							active_touch[i], i);
+				else
+					input_mt_sync(dd->input_dev[i]);
+
 				input_sync(dd->input_dev[i]);
 			}
 		} else {
 			for (i = 0; i < input_msg->events; i++) {
+				id = input_msg->event[i].id;
 				switch (input_msg->event[i].tool_type) {
 				case DR_INPUT_FINGER:
 					inp = 0;
-					input_report_abs(dd->input_dev[inp],
-							 ABS_MT_TOOL_TYPE,
-							 MT_TOOL_FINGER);
+					if (pdata->mt_type_b_enabled) {
+						input_mt_slot(
+							dd->input_dev[inp], id);
+						input_mt_report_slot_state(
+							dd->input_dev[inp],
+							MT_TOOL_FINGER, 1);
+						active_touch[inp][id] = true;
+					} else {
+						input_report_abs(
+							dd->input_dev[inp],
+							ABS_MT_TOOL_TYPE,
+							MT_TOOL_FINGER);
+					}
 					break;
 				case DR_INPUT_STYLUS:
 					inp = INPUT_DEVICES - 1;
-					input_report_abs(dd->input_dev[inp],
-							 ABS_MT_TOOL_TYPE,
-							 MT_TOOL_PEN);
+					if (pdata->mt_type_b_enabled) {
+						input_mt_slot(
+							dd->input_dev[inp], id);
+						input_mt_report_slot_state(
+							dd->input_dev[inp],
+							MT_TOOL_PEN, 1);
+						active_touch[inp][id] = true;
+					} else {
+						input_report_abs(
+							dd->input_dev[inp],
+							ABS_MT_TOOL_TYPE,
+							MT_TOOL_PEN);
+					}
 					break;
 				case DR_INPUT_ERASER:
 					inp = INPUT_DEVICES - 1;
@@ -1438,9 +1478,9 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 					      input_msg->event[i].tool_type);
 					break;
 				}
-				input_report_abs(dd->input_dev[inp],
-						 ABS_MT_TRACKING_ID,
-						 input_msg->event[i].id);
+				if (!pdata->mt_type_b_enabled)
+					input_report_abs(dd->input_dev[inp],
+						ABS_MT_TRACKING_ID, id);
 				input_report_abs(dd->input_dev[inp],
 						 ABS_MT_POSITION_X,
 						 input_msg->event[i].x);
@@ -1450,8 +1490,16 @@ nl_process_driver_msg(struct dev_data *dd, u16 msg_id, void *msg)
 				input_report_abs(dd->input_dev[inp],
 						 ABS_MT_PRESSURE,
 						 input_msg->event[i].z);
-				input_mt_sync(dd->input_dev[inp]);
+				if (!pdata->mt_type_b_enabled)
+					input_mt_sync(dd->input_dev[inp]);
 			}
+
+			if (pdata->mt_type_b_enabled) {
+				for (i = 0; i < INPUT_DEVICES; i++)
+					release_slot_events(dd,
+						active_touch[i], i);
+			}
+
 			for (i = 0; i < INPUT_DEVICES; i++)
 				input_sync(dd->input_dev[i]);
 		}
@@ -2490,7 +2538,7 @@ static int probe(struct spi_device *spi)
 
 	/* device context: initialize structure members */
 	spi_set_drvdata(spi, dd);
-	spi->bits_per_word = 8;
+	spi->bits_per_word = 16;
 	spi_setup(spi);
 	dd->spi = spi;
 	dd->nl_seq = 1;

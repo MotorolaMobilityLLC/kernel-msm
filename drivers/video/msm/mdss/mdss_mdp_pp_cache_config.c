@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -112,12 +112,12 @@ static int pp_hist_lut_cache_params_v1_7(struct mdp_hist_lut_data *config,
 		pr_err("invalid config block %d\n", config->block);
 		return -EINVAL;
 	}
-	if (!mdss_pp_res->pp_data_res) {
-		pr_err("invalid pp_data_res %p\n", mdss_pp_res->pp_data_res);
+	if (!mdss_pp_res->pp_data_v1_7) {
+		pr_err("invalid pp_data_v1_7 %p\n", mdss_pp_res->pp_data_v1_7);
 		return -EINVAL;
 	}
 
-	res_cache = mdss_pp_res->pp_data_res;
+	res_cache = mdss_pp_res->pp_data_v1_7;
 	if (config->ops & MDP_PP_OPS_READ) {
 		pr_err("read op is not supported\n");
 		return -EINVAL;
@@ -295,12 +295,12 @@ int pp_dither_cache_params_v1_7(struct mdp_dither_cfg_data *config,
 		pr_err("invalid config block %d\n", config->block);
 		return -EINVAL;
 	}
-	if (!mdss_pp_res->pp_data_res) {
-		pr_err("invalid pp_data_res %p\n", mdss_pp_res->pp_data_res);
+	if (!mdss_pp_res->pp_data_v1_7) {
+		pr_err("invalid pp_data_v1_7 %p\n", mdss_pp_res->pp_data_v1_7);
 		return -EINVAL;
 	}
 
-	res_cache = mdss_pp_res->pp_data_res;
+	res_cache = mdss_pp_res->pp_data_v1_7;
 
 	if ((config->flags & MDSS_PP_SPLIT_MASK) == MDSS_PP_SPLIT_MASK) {
 		pr_warn("Can't set both split bits\n");
@@ -340,6 +340,12 @@ int pp_dither_cache_params_v1_7(struct mdp_dither_cfg_data *config,
 			goto dither_config_exit;
 		}
 		memcpy(v17_cache_data, &v17_usr_config, sizeof(v17_usr_config));
+	}
+	if (v17_cache_data->len &&
+		v17_cache_data->len != MDP_DITHER_DATA_V1_7_SZ) {
+		pr_err("invalid dither len %d expected %d\n",
+			   v17_cache_data->len, MDP_DITHER_DATA_V1_7_SZ);
+		ret = -EINVAL;
 	}
 
 dither_config_exit:
@@ -391,11 +397,11 @@ static int pp_gamut_cache_params_v1_7(struct mdp_gamut_cfg_data *config,
 		pr_err("invalid config block %d\n", config->block);
 		return -EINVAL;
 	}
-	if (!mdss_pp_res->pp_data_res) {
-		pr_err("invalid pp_data_res %p\n", mdss_pp_res->pp_data_res);
+	if (!mdss_pp_res->pp_data_v1_7) {
+		pr_err("invalid pp_data_v1_7 %p\n", mdss_pp_res->pp_data_v1_7);
 		return -EINVAL;
 	}
-	res_cache = mdss_pp_res->pp_data_res;
+	res_cache = mdss_pp_res->pp_data_v1_7;
 	if (config->flags & MDP_PP_OPS_READ) {
 		pr_err("read op is not supported\n");
 		return -EINVAL;
@@ -640,12 +646,12 @@ static int pp_pcc_cache_params_v1_7(struct mdp_pcc_cfg_data *config,
 		pr_err("invalid config block %d\n", config->block);
 		return -EINVAL;
 	}
-	if (!mdss_pp_res->pp_data_res) {
-		pr_err("invalid pp_data_res %p\n", mdss_pp_res->pp_data_res);
+	if (!mdss_pp_res->pp_data_v1_7) {
+		pr_err("invalid pp_data_v1_7 %p\n", mdss_pp_res->pp_data_v1_7);
 		return -EINVAL;
 	}
 
-	res_cache = mdss_pp_res->pp_data_res;
+	res_cache = mdss_pp_res->pp_data_v1_7;
 	if (config->ops & MDP_PP_OPS_READ) {
 		pr_err("read op is not supported\n");
 		return -EINVAL;
@@ -738,11 +744,11 @@ static int pp_igc_lut_cache_params_v1_7(struct mdp_igc_lut_data *config,
 		pr_err("invalid config block %d\n", config->block);
 		return -EINVAL;
 	}
-	if (!mdss_pp_res->pp_data_res) {
-		pr_err("invalid pp_data_res %p\n", mdss_pp_res->pp_data_res);
+	if (!mdss_pp_res->pp_data_v1_7) {
+		pr_err("invalid pp_data_v1_7 %p\n", mdss_pp_res->pp_data_v1_7);
 		return -EINVAL;
 	}
-	res_cache = mdss_pp_res->pp_data_res;
+	res_cache = mdss_pp_res->pp_data_v1_7;
 	if (config->ops & MDP_PP_OPS_READ) {
 		pr_err("read op is not supported\n");
 		return -EINVAL;
@@ -1013,7 +1019,7 @@ static int pp_pgc_lut_cache_params_v1_7(struct mdp_pgc_lut_data *config,
 		pr_err("invalid disp_num %d\n", disp_num);
 		return -EINVAL;
 	}
-	res_cache = mdss_pp_res->pp_data_res;
+	res_cache = mdss_pp_res->pp_data_v1_7;
 	if (!res_cache) {
 		pr_err("invalid resource payload\n");
 		return -EINVAL;
@@ -1133,12 +1139,12 @@ static int pp_pa_cache_params_v1_7(struct mdp_pa_v2_cfg_data *config,
 		return -EINVAL;
 	}
 
-	if (!mdss_pp_res->pp_data_res) {
-		pr_err("Invalid pp_data_res %p\n", mdss_pp_res->pp_data_res);
+	if (!mdss_pp_res->pp_data_v1_7) {
+		pr_err("Invalid pp_data_v1_7 %p\n", mdss_pp_res->pp_data_v1_7);
 		return -EINVAL;
 	}
 
-	res_cache = mdss_pp_res->pp_data_res;
+	res_cache = mdss_pp_res->pp_data_v1_7;
 	if (config->flags & MDP_PP_OPS_READ) {
 		pr_err("Read op is not supported\n");
 		return -EINVAL;

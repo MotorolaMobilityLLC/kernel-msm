@@ -21,8 +21,6 @@
 #include "adreno.h"
 #include "adreno_trace.h"
 
-#define KGSL_INIT_REFTIMESTAMP		0x7FFFFFFF
-
 static void wait_callback(struct kgsl_device *device,
 		struct kgsl_event_group *group, void *priv, int result)
 {
@@ -420,6 +418,8 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 
 	adreno_context_debugfs_init(ADRENO_DEVICE(device), drawctxt);
 
+	INIT_LIST_HEAD(&drawctxt->active_node);
+
 	/* copy back whatever flags we dediced were valid */
 	*flags = drawctxt->base.flags;
 	return &drawctxt->base;
@@ -461,6 +461,10 @@ void adreno_drawctxt_detach(struct kgsl_context *context)
 	adreno_dev = ADRENO_DEVICE(device);
 	drawctxt = ADRENO_CONTEXT(context);
 	rb = drawctxt->rb;
+
+	spin_lock(&adreno_dev->active_list_lock);
+	list_del_init(&drawctxt->active_node);
+	spin_unlock(&adreno_dev->active_list_lock);
 
 	/* deactivate context */
 	mutex_lock(&device->mutex);
@@ -570,6 +574,15 @@ int adreno_drawctxt_switch(struct adreno_device *adreno_dev,
 	if (rb->drawctxt_active == drawctxt)
 		return ret;
 
+	/*
+	 * Submitting pt switch commands from a detached context can
+	 * lead to a race condition where the pt is destroyed before
+	 * the pt switch commands get executed by the GPU, leading to
+	 * pagefaults.
+	 */
+	if (drawctxt != NULL && kgsl_context_detached(&drawctxt->base))
+		return -ENOENT;
+
 	trace_adreno_drawctxt_switch(rb,
 		drawctxt, flags);
 
@@ -583,7 +596,7 @@ int adreno_drawctxt_switch(struct adreno_device *adreno_dev,
 		 /* No context - set the default pagetable and thats it. */
 		new_pt = device->mmu.defaultpagetable;
 	}
-	ret = adreno_iommu_set_pt_ctx(rb, new_pt, drawctxt);
+	ret = adreno_ringbuffer_set_pt_ctx(rb, new_pt, drawctxt);
 	if (ret) {
 		KGSL_DRV_ERR(device,
 			"Failed to set pagetable on rb %d\n", rb->id);

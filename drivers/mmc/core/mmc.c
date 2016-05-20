@@ -597,6 +597,19 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		card->ext_csd.rst_n_function = ext_csd[EXT_CSD_RST_N_FUNCTION];
 
 		/*
+		 * Some eMMC vendors violate eMMC 5.0 spec and set
+		 * REL_WR_SEC_C register to 0x10 to indicate the
+		 * ability of RPMB throughput improvement thus lead
+		 * to failure when TZ module write data to RPMB
+		 * partition. So check bit[4] of EXT_CSD[166] and
+		 * if it is not set then change value of REL_WR_SEC_C
+		 * to 0x1 directly ignoring value of EXT_CSD[222].
+		 */
+		if (!(card->ext_csd.rel_param &
+					EXT_CSD_WR_REL_PARAM_EN_RPMB_REL_WR))
+			card->ext_csd.rel_sectors = 0x1;
+
+		/*
 		 * RPMB regions are defined in multiples of 128K.
 		 */
 		card->ext_csd.raw_rpmb_size_mult = ext_csd[EXT_CSD_RPMB_MULT];
@@ -1406,7 +1419,6 @@ static int mmc_select_hs_ddr52(struct mmc_host *host)
 	int err;
 
 	mmc_select_hs(host->card);
-	mmc_set_clock(host, MMC_HIGH_52_MAX_DTR);
 	err = mmc_select_bus_width(host->card);
 	if (err < 0) {
 		pr_err("%s: %s: select_bus_width failed(%d)\n",
@@ -1415,6 +1427,7 @@ static int mmc_select_hs_ddr52(struct mmc_host *host)
 	}
 
 	err = mmc_select_hs_ddr(host->card);
+	mmc_set_clock(host, MMC_HIGH_52_MAX_DTR);
 
 	return err;
 }
@@ -1465,6 +1478,11 @@ static int mmc_scale_low(struct mmc_host *host, unsigned long freq)
 static int mmc_scale_high(struct mmc_host *host)
 {
 	int err = 0;
+
+	if (mmc_card_ddr52(host->card)) {
+		mmc_set_timing(host, MMC_TIMING_LEGACY);
+		mmc_set_clock(host, MMC_HIGH_26_MAX_DTR);
+	}
 
 	if (!host->card->ext_csd.strobe_support) {
 		if (!(host->card->mmc_avail_type & EXT_CSD_CARD_TYPE_HS200)) {
@@ -2371,9 +2389,16 @@ static int _mmc_suspend(struct mmc_host *host, bool is_suspend)
 		goto out;
 
 	if (mmc_can_sleepawake(host)) {
+		/*
+		 * For caching host->ios to cached_ios we need to
+		 * make sure that clocks are not gated otherwise
+		 * cached_ios->clock will be 0.
+		 */
+		mmc_host_clk_hold(host);
 		memcpy(&host->cached_ios, &host->ios, sizeof(host->cached_ios));
 		mmc_cache_card_ext_csd(host);
 		err = mmc_sleepawake(host, true);
+		mmc_host_clk_release(host);
 	} else if (!mmc_host_is_spi(host)) {
 		err = mmc_deselect_cards(host);
 	}

@@ -268,6 +268,7 @@ struct usb_ep {
 	const struct usb_endpoint_descriptor	*desc;
 	const struct usb_ss_ep_comp_descriptor	*comp_desc;
 	enum ep_type		ep_type;
+	u8			ep_num;
 	u8			ep_intr_num;
 	bool			endless;
 };
@@ -631,7 +632,6 @@ struct usb_gadget_ops {
  * @xfer_isr_count: UI (transfer complete) interrupts count
  * @usb_core_id: Identifies the usb core controlled by this usb_gadget.
  *		 Used in case of more then one core operates concurrently.
- * @streaming_enabled: Enable streaming mode with usb core.
  * @bam2bam_func_enabled; Indicates function using bam2bam is enabled or not.
  * @extra_buf_alloc: Extra allocation size for AXI prefetch so that out of
  * boundary access is protected.
@@ -679,7 +679,6 @@ struct usb_gadget {
 	bool				remote_wakeup;
 	u32				xfer_isr_count;
 	u8				usb_core_id;
-	bool				streaming_enabled;
 	bool				l1_supported;
 	bool				bam2bam_func_enabled;
 	u32				extra_buf_alloc;
@@ -1340,5 +1339,8 @@ extern struct usb_ep *usb_ep_autoconfig_ss(struct usb_gadget *,
 			struct usb_ss_ep_comp_descriptor *);
 
 extern void usb_ep_autoconfig_reset(struct usb_gadget *);
+extern struct usb_ep *usb_ep_autoconfig_by_name(struct usb_gadget *,
+			struct usb_endpoint_descriptor *,
+			const char *ep_name);
 
 #endif /* __LINUX_USB_GADGET_H */

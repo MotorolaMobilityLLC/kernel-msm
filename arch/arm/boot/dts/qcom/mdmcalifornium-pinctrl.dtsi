@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -167,6 +167,34 @@
 				config {
 					pins = "gpio95";
 					drive-strength = <16>;
+					bias-pull-down;
+				};
+			};
+
+			cnss_sdio_active: cnss_sdio_active {
+				mux {
+					pins = "gpio38";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio38";
+					drive-strength = <16>;
+					output-high;
+					bias-pull-up;
+				};
+			};
+
+			cnss_sdio_sleep: cnss_sdio_sleep {
+				mux {
+					pins = "gpio38";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio38";
+					drive-strength = <2>;
+					output-low;
 					bias-pull-down;
 				};
 			};
@@ -345,6 +373,30 @@
 				};
 				config {
 					pins = "gpio16";
+					drive-strength = <2>;
+					bias-pull-down;
+				};
+			};
+
+			pcie_ep_perst_default: pcie_ep_perst_default {
+				mux {
+					pins = "gpio65";
+					function = "gpio";
+				};
+				config {
+					pins = "gpio65";
+					drive-strength = <2>;
+					bias-pull-down;
+				};
+			};
+
+			pcie_ep_wake_default: pcie_ep_wake_default {
+				mux {
+					pins = "gpio61";
+					function = "gpio";
+				};
+				config {
+					pins = "gpio61";
 					drive-strength = <2>;
 					bias-pull-down;
 				};
@@ -776,5 +828,36 @@
 				drive-strength = <2>;	/* 2 MA */
 			};
 		};
+
+		sdc1_wlan_gpio {
+			sdc1_wlan_gpio_active: sdc1_wlan_gpio_active {
+				mux {
+					pins = "gpio80";
+					function  = "gpio";
+				};
+
+				config {
+					pins  = "gpio80";
+					output-high;
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+			};
+
+			sdc1_wlan_gpio_sleep: sdc1_wlan_gpio_sleep {
+				mux {
+					pins = "gpio80";
+					function  = "gpio";
+				};
+
+				config {
+					pins  = "gpio80";
+					drive-strength = <2>;
+					bias-pull-down;
+					output-low;
+				};
+			};
+		};
+
 	};
 };

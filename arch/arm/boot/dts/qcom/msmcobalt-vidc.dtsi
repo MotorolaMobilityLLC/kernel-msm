@@ -1,0 +1,95 @@
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/msm/msm-bus-ids.h>
+
+&soc {
+	msm_vidc: qcom,vidc@cc00000 {
+		compatible = "qcom,msm-vidc";
+		status = "disabled";
+		reg = <0xcc00000 0x100000>;
+		interrupts = <GIC_SPI 287 IRQ_TYPE_LEVEL_HIGH>;
+		qcom,max-hw-load = <2563200>; /* Full 4k @ 60 + 1080p @ 60 */
+		qcom,hfi = "venus";
+		qcom,hfi-version = "3xx";
+		qcom,firmware-name = "venus";
+		qcom,never-unload-fw;
+		qcom,reg-presets =
+			<0x80124 0x0002000>,
+			<0x80550 0x0000001>,
+			<0x80560 0x2222221>,
+			<0x80568 0x3333331>,
+			<0x80570 0x0000001>,
+			<0x80580 0x2222221>,
+			<0x80588 0x3333331>;
+
+		non_secure_cb {
+			compatible = "qcom,msm-vidc,context-bank";
+			label = "venus_ns";
+			iommus =
+				<&mmss_smmu 0x400>,
+				<&mmss_smmu 0x401>,
+				<&mmss_smmu 0x40a>,
+				<&mmss_smmu 0x407>,
+				<&mmss_smmu 0x40e>,
+				<&mmss_smmu 0x40f>,
+				<&mmss_smmu 0x408>,
+				<&mmss_smmu 0x409>,
+				<&mmss_smmu 0x40b>,
+				<&mmss_smmu 0x40c>,
+				<&mmss_smmu 0x40d>,
+				<&mmss_smmu 0x410>,
+				<&mmss_smmu 0x421>,
+				<&mmss_smmu 0x428>,
+				<&mmss_smmu 0x429>,
+				<&mmss_smmu 0x42b>,
+				<&mmss_smmu 0x42c>,
+				<&mmss_smmu 0x42d>,
+				<&mmss_smmu 0x411>,
+				<&mmss_smmu 0x431>;
+			buffer-types = <0xfff>;
+			virtual-addr-pool = <0x70800000 0x8f800000>;
+		};
+
+		firmware_cb {
+			compatible = "qcom,msm-vidc,context-bank";
+			qcom,fw-context-bank;
+			iommus = <&mmss_smmu 0x580>,
+				<&mmss_smmu 0x586>;
+		};
+
+	};
+
+	qcom,vmem@c880000 {
+		compatible = "qcom,msm-vmem";
+		status = "disabled";
+		interrupts = <GIC_SPI 429 IRQ_TYPE_LEVEL_HIGH>;
+
+		reg = <0xc880000 0x6b>,
+		    <0x14800000 0x80000>;
+		reg-names = "reg-base", "mem-base";
+
+		clocks = <&clock_mmss clk_mmss_vmem_ahb_clk>,
+		       <&clock_mmss clk_mmss_vmem_maxi_clk>;
+		clock-names = "ahb", "maxi";
+
+		qcom,msm-bus,name = "vmem";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_VMEM_CFG   0   0>,
+		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_VMEM_CFG 500 800>;
+
+		qcom,bank-size = <524288>; /* 512 kB */
+	};
+};

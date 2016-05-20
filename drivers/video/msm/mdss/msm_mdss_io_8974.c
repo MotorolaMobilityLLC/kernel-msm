@@ -1269,6 +1269,7 @@ int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata, bool update_phy)
 			pr_err("Error in calculating phy timings\n");
 			return rc;
 		}
+		ctrl_pdata->update_phy_timing = false;
 	}
 
 	return rc;
@@ -2090,7 +2091,7 @@ int mdss_dsi_pre_clkoff_cb(void *priv,
 		 * However, when blanking the panel, we should enter ULPS
 		 * only if ULPS during suspend feature is enabled.
 		 */
-		if (!(ctrl->ctrl_state & CTRL_STATE_DSI_ACTIVE)) {
+		if (!(ctrl->ctrl_state & CTRL_STATE_PANEL_INIT)) {
 			if (pdata->panel_info.ulps_suspend_enabled)
 				mdss_dsi_ulps_config(ctrl, 1);
 		} else if (mdss_dsi_ulps_feature_enabled(pdata)) {
@@ -2301,6 +2302,10 @@ int mdss_dsi_pre_clkon_cb(void *priv,
 
 		}
 	}
+
+	/* Disable dynamic clock gating*/
+	if (ctrl->mdss_util->dyn_clk_gating_ctrl)
+		ctrl->mdss_util->dyn_clk_gating_ctrl(0);
 
 	return rc;
 }
