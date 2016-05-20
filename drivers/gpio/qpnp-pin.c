@@ -875,6 +875,31 @@ static int qpnp_pin_get(struct gpio_chip *gpio_chip, unsigned offset)
 	return 0;
 }
 
+static int qpnp_pin_cs_en(struct qpnp_pin_chip *q_chip,
+			  struct qpnp_pin_spec *q_spec, int value)
+{
+	int rc;
+	u8 shift, mask, *reg;
+	u16 address;
+
+	if (!q_chip || !q_spec)
+		return -EINVAL;
+
+	shift = Q_REG_MASTER_EN_SHIFT;
+	mask = Q_REG_MASTER_EN_MASK;
+	reg = &q_spec->regs[Q_REG_I_EN_CTL];
+	address = Q_REG_ADDR(q_spec, Q_REG_EN_CTL);
+
+	q_reg_clr_set(reg, shift, mask, !!value);
+
+	rc = spmi_ext_register_writel(q_chip->spmi->ctrl, q_spec->slave,
+						address, reg, 1);
+	if (rc)
+		dev_err(&q_chip->spmi->dev, "%s: spmi write failed\n",
+								__func__);
+	return rc;
+}
+
 static int __qpnp_pin_set(struct qpnp_pin_chip *q_chip,
 			   struct qpnp_pin_spec *q_spec, int value)
 {
@@ -890,11 +915,6 @@ static int __qpnp_pin_set(struct qpnp_pin_chip *q_chip,
 		mask = Q_REG_DIG_OUT_SRC_INVERT_MASK;
 		reg = &q_spec->regs[Q_REG_I_DIG_OUT_SRC_CTL];
 		address = Q_REG_ADDR(q_spec, Q_REG_DIG_OUT_SRC_CTL);
-	} else if (is_mpp_cs(q_spec)) {
-		shift = Q_REG_MASTER_EN_SHIFT;
-		mask = Q_REG_MASTER_EN_MASK;
-		reg = &q_spec->regs[Q_REG_I_EN_CTL];
-		address = Q_REG_ADDR(q_spec, Q_REG_EN_CTL);
 	} else {
 		shift = Q_REG_OUT_INVERT_SHIFT;
 		mask = Q_REG_OUT_INVERT_MASK;
@@ -909,6 +929,9 @@ static int __qpnp_pin_set(struct qpnp_pin_chip *q_chip,
 	if (rc)
 		dev_err(&q_chip->spmi->dev, "%s: spmi write failed\n",
 								__func__);
+	if (is_mpp_cs(q_spec))
+		qpnp_pin_cs_en(q_chip, q_spec, value);
+
 	return rc;
 }
 
