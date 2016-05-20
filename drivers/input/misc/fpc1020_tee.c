@@ -145,8 +145,8 @@ struct fpc1020_data {
 	int irq_gpio;
 	int rst_gpio;
 	int irq_num;
-	bool clocks_enabled;
-	bool clocks_suspended;
+	int clocks_enabled;
+	int clocks_suspended;
 };
 
 static int vreg_setup(struct fpc1020_data *fpc1020, const char *name,
@@ -208,15 +208,9 @@ found:
 	return rc;
 }
 
-static int set_clks(struct fpc1020_data *fpc1020, bool enable)
+static int __set_clks(struct fpc1020_data *fpc1020, bool enable)
 {
 	int rc = 0;
-
-	if (enable == fpc1020->clocks_enabled) {
-		dev_dbg(fpc1020->dev, "%s: clocks already %s, no change\n",
-			__func__, enable ? "enabled" : "disabled");
-		goto out;
-	}
 
 	if (enable) {
 		dev_dbg(fpc1020->dev, "setting clk rates\n");
@@ -251,17 +245,39 @@ static int set_clks(struct fpc1020_data *fpc1020, bool enable)
 		dev_dbg(fpc1020->dev, "%s ok. clk rate %u hz\n", __func__,
 				fpc1020->spi->max_speed_hz);
 
-		fpc1020->clocks_enabled = true;
 	} else {
 		dev_dbg(fpc1020->dev, "disabling clks\n");
 		clk_disable_unprepare(fpc1020->iface_clk);
 		clk_disable_unprepare(fpc1020->core_clk);
-		fpc1020->clocks_enabled = false;
 		wake_unlock(&fpc1020->wlock);
 	}
 
 out:
 	return rc;
+}
+
+static int set_clks(struct fpc1020_data *fpc1020, bool enable)
+{
+	if (!enable) {
+		if (!fpc1020->clocks_enabled) {
+			dev_err(fpc1020->dev, "%s clock already disabled\n",
+				__func__);
+			return 0;
+		}
+		fpc1020->clocks_enabled--;
+		if (!fpc1020->clocks_enabled)
+			return __set_clks(fpc1020, enable);
+	} else {
+		if (fpc1020->clocks_enabled) {
+			dev_err(fpc1020->dev, "%s: clock already enabled\n",
+				__func__);
+			fpc1020->clocks_enabled++;
+			return 0;
+		}
+		fpc1020->clocks_enabled++;
+		return __set_clks(fpc1020, enable);
+	}
+	return 0;
 }
 
 static ssize_t dev_enable_set(struct device *dev,
@@ -434,8 +450,8 @@ static int fpc1020_probe(struct spi_device *spi)
 	}
 
 
-	fpc1020->clocks_enabled = false;
-	fpc1020->clocks_suspended = false;
+	fpc1020->clocks_enabled = 0;
+	fpc1020->clocks_suspended = 0;
 	irqf = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
 
 	rc = devm_request_threaded_irq(dev, gpio_to_irq(fpc1020->irq_gpio),
@@ -494,7 +510,8 @@ static int fpc1020_suspend(struct spi_device *spi, pm_message_t mesg)
 
 	fpc1020->clocks_suspended = fpc1020->clocks_enabled;
 	dev_info(fpc1020->dev, "fpc1020_suspend\n");
-	set_clks(fpc1020, false);
+	if (fpc1020->clocks_enabled)
+		__set_clks(fpc1020, false);
 	return 0;
 }
 
@@ -504,7 +521,7 @@ static int fpc1020_resume(struct spi_device *spi)
 
 	if (fpc1020->clocks_suspended) {
 		dev_info(fpc1020->dev, "fpc1020_resume\n");
-		set_clks(fpc1020, true);
+		__set_clks(fpc1020, true);
 	}
 	return 0;
 }
