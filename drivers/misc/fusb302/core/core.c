@@ -12,7 +12,6 @@
 static void core_wakeup_statemachine(void)
 {
 	Registers.Mask.byte = 0xFF;
-	Registers.Mask.M_VBUSOK = 0;
 	Registers.Mask.M_ACTIVITY = 0;
 	Registers.Mask.M_COLLISION = 0;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
@@ -164,7 +163,9 @@ void core_send_hard_reset(void)
 	PolicyState = peSinkSendHardReset;
 	PolicySubIndex = 0;
 	PDTxStatus = txIdle;
-	StateMachineTypeC();
+	PolicySinkSendHardReset();
+	ProtocolIdle();
+	platform_run_wake_thread();
 }
 /*Re-evaluate the source capability based on
 * new voltage max from charging driver
