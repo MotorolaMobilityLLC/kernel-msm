@@ -119,6 +119,7 @@ FSC_U32 gRequestOpVoltage = 100;/*set default 100*50mv*/
 static regMask_t Mask;
 static regMaskAdv_t MaskAdv;
 static FSC_U8 bc_lvl;
+
 int fusb_power_supply_set_property(struct power_supply *psy,
 				 enum power_supply_property prop,
 				 const union power_supply_propval *val)
@@ -133,8 +134,7 @@ int fusb_power_supply_set_property(struct power_supply *psy,
 			if ((ConnState == AttachedSink) &&
 				(!gChargerAuthenticated)) {
 				/*Wait 300ms for PD Contract*/
-				if (!PolicyHasContract)
-					platform_delay_10us(
+				platform_delay_10us(
 					SLEEP_DELAY*300);
 				if (PolicyHasContract &&
 					!gChargerAuthenticated)
@@ -360,7 +360,6 @@ void InitializeTypeCVariables(void)
 #endif // FSC_HAVE_ACCMODE
 
 	blnSMEnabled = FALSE;	// Enable the TypeC state machine by default
-
 #ifdef FSC_HAVE_DRP
 	blnSrcPreferred = FALSE;	// Clear the source preferred flag by default
 	blnSnkPreferred = FALSE;	// Clear the sink preferred flag by default
@@ -456,7 +455,6 @@ void DisableTypeCStateMachine(void)
 void EnableTypeCStateMachine(void)
 {
 	blnSMEnabled = TRUE;
-
 #ifdef FSC_DEBUG
 	Timer_tms = 0;
 	Timer_S = 0;
@@ -840,17 +838,8 @@ void StateMachineAttachWaitAccessory(void)
 #ifdef FSC_HAVE_SNK
 void StateMachineAttachedSink(void)
 {
-	//debounceCC();
-
-#ifdef COMPLIANCE
-	if ((!IsPRSwap) && (IsHardReset == FALSE) && VbusUnder5V())	// If VBUS is removed and we are not in the middle of a power role swap...
-#else
-	if ((!IsPRSwap) && (IsHardReset == FALSE) && !Registers.Status.VBUSOK)	// If VBUS is removed and we are not in the middle of a power role swap...   
-#endif // COMPLIANCE
-	{
-		SetStateDelayUnattached();	// Go to the unattached state
-	}
-
+	if ((!IsPRSwap) && (IsHardReset == FALSE) && VbusUnder5V())
+		SetStateDelayUnattached();
 	if (blnCCPinIsCC1) {
 		UpdateSinkCurrent(CC1TermCCDebounce);	// Update the advertised current
 	} else if (blnCCPinIsCC2) {
@@ -2523,108 +2512,22 @@ FSC_U8 GetCCTermination(void)
 /////////////////////////////////////////////////////////////////////////////
 //                        Device I2C Routines
 /////////////////////////////////////////////////////////////////////////////
+
 FSC_BOOL VbusVSafe0V(void)
 {
-#ifdef FPGA_BOARD
-	DeviceRead(regStatus0, 1, &Registers.Status.byte[4]);
-	if (Registers.Status.VBUSOK) {
-		return FALSE;
-	} else {
-		return TRUE;
-	}
-#else
-	regSwitches_t switches;
-	regSwitches_t saved_switches;
-
-	regMeasure_t measure;
-	regMeasure_t saved_measure;
-
-	FSC_U8 val;
-	FSC_BOOL ret;
-
-	DeviceRead(regSwitches0, 1, &(switches.byte[0]));	// Save state of switches
-	saved_switches = switches;
-	switches.MEAS_CC1 = 0;	// Clear out measure CC
-	switches.MEAS_CC2 = 0;
-	DeviceWrite(regSwitches0, 1, &(switches.byte[0]));	// Write it into device
-
-	DeviceRead(regMeasure, 1, &measure.byte);	// Save state of measure
-	saved_measure = measure;
-	measure.MEAS_VBUS = 1;	// Measure VBUS
-	measure.MDAC = VBUS_MDAC_0P8V;	// VSAFE0V = 0.8V max
-	DeviceWrite(regMeasure, 1, &measure.byte);	// Write it into device
-
-	platform_delay_10us(25);	// Delay to allow measurement to settle
-
-	DeviceRead(regStatus0, 1, &val);	// get COMP result
-	val &= 0x20;		// COMP = bit 5 of status0 (Device specific?)
-
-	if (val)
-		ret = FALSE;	// Determine return value based on COMP
-	else
-		ret = TRUE;
-
-	DeviceWrite(regSwitches0, 1, &(saved_switches.byte[0]));	// restore register values
-	DeviceWrite(regMeasure, 1, &saved_measure.byte);
-	platform_delay_10us(25);	// allow time to settle in measurement block
-	return ret;
-#endif
+	return !isVBUSOverVoltage(VBUS_MDAC_0P8V);
 }
 
 #ifdef FSC_HAVE_SNK
-FSC_BOOL VbusUnder5V(void)	// Returns true when Vbus < ~3.8V
+FSC_BOOL VbusUnder5V(void)
 {
-	regMeasure_t measure;
-
-	FSC_U8 val;
-	FSC_BOOL ret;
-
-	measure = Registers.Measure;
-	measure.MEAS_VBUS = 1;	// Measure VBUS
-	measure.MDAC = VBUS_MDAC_3p8;
-	DeviceWrite(regMeasure, 1, &measure.byte);	// Write it into device
-
-	platform_delay_10us(35);	// Delay to allow measurement to settle
-
-	DeviceRead(regStatus0, 1, &val);	// get COMP result
-	val &= 0x20;		// COMP = bit 5 of status0 (Device specific?)
-
-	if (val)
-		ret = FALSE;	// Determine return value based on COMP
-	else
-		ret = TRUE;
-
-	// restore register values
-	DeviceWrite(regMeasure, 1, &Registers.Measure.byte);
-	return ret;
+	return !isVBUSOverVoltage(VBUS_MDAC_2p6);
 }
 #endif // FSC_HAVE_SNK
 
 FSC_BOOL isVSafe5V(void)	// Returns true when Vbus > ~4.6V
 {
-	regMeasure_t measure;
-
-	FSC_U8 val;
-	FSC_BOOL ret;
-
-	measure = Registers.Measure;
-	measure.MEAS_VBUS = 1;	// Measure VBUS
-	measure.MDAC = VBUS_MDAC_4p6;
-	DeviceWrite(regMeasure, 1, &measure.byte);	// Write it into device
-
-	platform_delay_10us(35);	// Delay to allow measurement to settle
-
-	DeviceRead(regStatus0, 1, &val);	// get COMP result
-	val &= 0x20;		// COMP = bit 5 of status0 (Device specific?)
-
-	if (val)
-		ret = TRUE;	// Determine return value based on COMP
-	else
-		ret = FALSE;
-
-	// restore register values
-	DeviceWrite(regMeasure, 1, &Registers.Measure.byte);
-	return ret;
+	return isVBUSOverVoltage(VBUS_MDAC_4p6);
 }
 
 FSC_BOOL isVBUSOverVoltage(FSC_U8 vbusMDAC)	// Returns true when Vbus > ~4.6V
