@@ -58,12 +58,13 @@ FSC_BOOL DeviceRead(FSC_U8 regAddr, FSC_U8 length, FSC_U8 * data);
 #define MDAC_2P6V           0x3E
 
 #define VBUS_MDAC_0P8V      0x01
-#define VBUS_MDAC_3p8       0x09
-#define VBUS_MDAC_4p2       0x0A
-#define VBUS_MDAC_4p6       0x0B
-#define VBUS_MDAC_5p04      0x0C
-#define VBUS_MDAC_5p5       0x0D
-#define VBUS_MDAC_11p8      0x1C
+#define VBUS_MDAC_2p6       0x05
+#define VBUS_MDAC_3p8       0x08
+#define VBUS_MDAC_4p2       0x09
+#define VBUS_MDAC_4p6       0x0A
+#define VBUS_MDAC_5p04      0x0B
+#define VBUS_MDAC_5p5       0x0C
+#define VBUS_MDAC_11p8      0x1B
 #endif
 
 typedef union {
