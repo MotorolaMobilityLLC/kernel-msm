@@ -33,7 +33,6 @@
 #include "PDProtocol.h"
 #include "TypeC.h"
 #include "fusb30X.h"
-
 #ifdef FSC_HAVE_VDM
 #include "vdm/vdm_callbacks.h"
 #include "vdm/vdm_callbacks_defs.h"
@@ -1842,12 +1841,22 @@ void PolicySinkTransitionDefault(void)
 		PolicySubIndex++;
 		break;
 	case 1:
-/*Nitro P1 VBUS is always on, ignore the Vsaft0Check the*/
-		PolicySubIndex++;
-		PolicyStateTimer = 1500;
+		if (VbusVSafe0V()) {
+			PolicySubIndex++;
+			PolicyStateTimer = 1500;
+		} else if (PolicyStateTimer == 0) {
+			if (PolicyHasContract) {
+				PolicyState = peErrorRecovery;
+				PolicySubIndex = 0;
+			} else {
+				PolicyState = peSinkStartup;
+				PolicySubIndex = 0;
+				PolicyStateTimer = 0;
+			}
+		}
 		break;
 	case 2:
-		if (isVBUSOverVoltage(VBUS_MDAC_4p2) || (PolicyStateTimer == 0)) {
+		if (isVBUSOverVoltage(VBUS_MDAC_4p2)) {
 			PolicySubIndex++;
 		} else if (PolicyStateTimer == 0) {
 			if (PolicyHasContract) {
