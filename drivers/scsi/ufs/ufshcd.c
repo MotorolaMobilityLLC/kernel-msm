@@ -4260,6 +4260,7 @@ int ufshcd_change_power_mode(struct ufs_hba *hba,
 		ufshcd_update_error_stats(hba, UFS_ERR_POWER_MODE_CHANGE);
 		dev_err(hba->dev,
 			"%s: power mode change failed %d\n", __func__, ret);
+			BUG();
 	} else {
 		ufshcd_vops_pwr_change_notify(hba, POST_CHANGE, NULL,
 						pwr_mode);
