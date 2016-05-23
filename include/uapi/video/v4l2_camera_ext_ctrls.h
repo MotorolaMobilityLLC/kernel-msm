@@ -754,4 +754,10 @@ enum {
 /* int 0 - 100 */
 #define CAM_EXT_CID_MANUAL_FOCUS_POSITION (CID_CAM_EXT_CLASS_BASE + 111)
 
+/* integer, limit the max zoom level, 100 means 1x, 1000 means 10x */
+#define CAM_EXT_CID_ZOOM_LIMIT (CID_CAM_EXT_CLASS_BASE + 112)
+
+/* boolean */
+#define CAM_EXT_CID_FOCUS_KEY_LOCK (CID_CAM_EXT_CLASS_BASE + 113)
+
 #endif /* __CAMERA_EXT_CTRLS_H */
