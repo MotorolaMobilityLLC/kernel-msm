@@ -9658,6 +9658,19 @@ void update_bsw_step(struct smbchg_chip *chip, bool bsw_chrg_alarm,
 	set_bsw(chip, max_mv, 0, false);
 	msleep(100);
 
+	if ((chip->temp_state == POWER_SUPPLY_HEALTH_COLD) ||
+	    (chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT)) {
+		if ((taper_ma > pmi_max_chrg_ma) &&
+		    (chip->stepchg_state < STEP_NONE))
+			chip->stepchg_state++;
+		chip->bsw_mode = BSW_DONE;
+		chip->max_bsw_current_ma = BSW_DEFAULT_MA;
+		set_target_bsw_current_ma(chip, BSW_DEFAULT_MA);
+		set_bsw_curr(chip, chip->target_bsw_current_ma);
+		chip->bsw_ramping = false;
+		return;
+	}
+
 	index = STEP_START(chip->stepchg_state);
 	max_mv = chip->stepchg_steps[index].max_mv;
 
@@ -9797,6 +9810,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 	smbchg_get_extbat_out_cl(chip);
 
+	if ((chip->temp_state == POWER_SUPPLY_HEALTH_COLD) ||
+	    (chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT))
+		chip->update_thermal_bsw_current_ma = true;
+
 	if ((!chip->usb_present) &&
 	    (chip->bsw_mode != BSW_RUN)) {
 		switch (chip->ebchg_state) {
@@ -9891,7 +9908,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		   chip->usb_present) {
 		chip->stepchg_state = STEP_EB;
 	} else if (chip->usbc_bswchg_pres && chip->usb_present &&
-		   (chip->bsw_mode == BSW_OFF)) {
+		   (chip->bsw_mode == BSW_OFF) &&
+		   (chip->temp_state != POWER_SUPPLY_HEALTH_COLD) &&
+		   (chip->temp_state != POWER_SUPPLY_HEALTH_OVERHEAT)) {
 		for (index = 0; index < chip->stepchg_num_steps; index++) {
 			if (batt_mv < chip->stepchg_steps[index].max_mv) {
 				chip->stepchg_state = STEP_FIRST + index;
