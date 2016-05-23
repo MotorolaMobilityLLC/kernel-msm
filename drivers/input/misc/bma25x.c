@@ -23,6 +23,8 @@
 #include <linux/slab.h>
 #include <linux/mutex.h>
 #include <linux/interrupt.h>
+#include <linux/hrtimer.h>
+#include <linux/ktime.h>
 #include <linux/delay.h>
 #include <asm/irq.h>
 #include <linux/regulator/consumer.h>
@@ -1415,12 +1417,13 @@ struct bma25x_data {
 	struct input_dev *dev_interrupt;
 	struct bst_dev *bst_acc;
 	struct bma25xacc value;
-	struct mutex value_mutex;
 	struct mutex enable_mutex;
 	struct mutex mode_mutex;
 	struct mutex int_mode_mutex;
 	struct workqueue_struct *data_wq;
-	struct delayed_work work;
+	struct work_struct work;
+	struct hrtimer timer;
+	ktime_t work_delay_kt;
 	struct work_struct int1_irq_work;
 	struct work_struct int2_irq_work;
 	int accel_wkp_flag;
@@ -2062,17 +2065,26 @@ static void bma25x_report_axis_data(struct bma25x_data *bma25x,
 #ifndef BMA25X_ENABLE_INT2
 static void bma25x_work_func(struct work_struct *work)
 {
-	struct bma25x_data *bma25x =
-		container_of((struct delayed_work *)work,
+	struct bma25x_data *data = container_of((struct work_struct *)work,
 		struct bma25x_data, work);
 	struct bma25xacc value;
-	unsigned long delay = msecs_to_jiffies(atomic_read(&bma25x->delay));
 
-	bma25x_report_axis_data(bma25x, &value);
-	mutex_lock(&bma25x->value_mutex);
-	bma25x->value = value;
-	mutex_unlock(&bma25x->value_mutex);
-	queue_delayed_work(bma25x->data_wq, &bma25x->work, delay);
+	bma25x_report_axis_data(data, &value);
+	data->value = value;
+}
+
+enum hrtimer_restart poll_function(struct hrtimer *timer)
+{
+	struct bma25x_data *data = container_of((struct hrtimer *)timer,
+		struct bma25x_data, timer);
+	int32_t delay = 0;
+
+	delay = atomic_read(&data->delay);
+	queue_work(data->data_wq, &data->work);
+	data->work_delay_kt = ns_to_ktime(delay*1000000);
+	hrtimer_forward_now(&data->timer, data->work_delay_kt);
+
+	return HRTIMER_RESTART;
 }
 #endif
 static void bma25x_set_enable(struct device *dev, int enable)
@@ -2094,8 +2106,8 @@ static void bma25x_set_enable(struct device *dev, int enable)
 				BMA25X_MODE_CTRL_REG, &databuf);
 			usleep(3000);
 #ifndef BMA25X_ENABLE_INT2
-			schedule_delayed_work(&bma25x->work,
-				msecs_to_jiffies(atomic_read(&bma25x->delay)));
+		hrtimer_start(&bma25x->timer,
+			bma25x->work_delay_kt, HRTIMER_MODE_REL);
 #endif
 			atomic_set(&bma25x->enable, 1);
 		}
@@ -2113,7 +2125,7 @@ static void bma25x_set_enable(struct device *dev, int enable)
 				BMA25X_MODE_CTRL_REG, &databuf);
 #endif
 #ifndef BMA25X_ENABLE_INT2
-			cancel_delayed_work_sync(&bma25x->work);
+			hrtimer_cancel(&bma25x->timer);
 #endif
 			atomic_set(&bma25x->enable, 0);
 			if (bma25x_power_ctl(bma25x, false))
@@ -3055,9 +3067,7 @@ static void bma25x_int2_irq_work_func(struct work_struct *work)
 	if ((status&0x80) == 0x80) {
 		bma25x_report_axis_data(data, &acc);
 		input_sync(data->input);
-		mutex_lock(&data->value_mutex);
 		data->value = acc;
-		mutex_unlock(&data->value_mutex);
 		return;
 	}
 }
@@ -3479,7 +3489,6 @@ static int bma25x_probe(struct i2c_client *client,
 		err = -EINVAL;
 		goto deinit_power_exit;
 	}
-	mutex_init(&data->value_mutex);
 	mutex_init(&data->mode_mutex);
 	mutex_init(&data->enable_mutex);
 	mutex_init(&data->int_mode_mutex);
@@ -3555,12 +3564,15 @@ static int bma25x_probe(struct i2c_client *client,
 #endif
 #endif
 #ifndef BMA25X_ENABLE_INT2
-	INIT_DELAYED_WORK(&data->work, bma25x_work_func);
 	data->data_wq = create_freezable_workqueue("bma25x_data_work");
 	if (!data->data_wq) {
 		dev_err(&client->dev, "Cannot get create workqueue!\n");
 		goto deinit_power_exit;
 	}
+	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	data->timer.function = &poll_function;
+	data->work_delay_kt = ns_to_ktime(10000000);
+	INIT_WORK(&data->work, bma25x_work_func);
 #endif
 	atomic_set(&data->delay, POLL_DEFAULT_INTERVAL_MS);
 	atomic_set(&data->enable, 0);
@@ -3680,6 +3692,8 @@ err_register_input_device_interrupt:
 err_register_input_device:
 	input_free_device(dev);
 deinit_power_exit:
+	flush_workqueue(data->data_wq);
+	destroy_workqueue(data->data_wq);
 	bma25x_power_deinit(data);
 free_i2c_clientdata_exit:
 	i2c_set_clientdata(client, NULL);
@@ -3739,7 +3753,7 @@ static int bma25x_suspend(struct i2c_client *client, pm_message_t mesg)
 		bma25x_smbus_write_byte(data->bma25x_client,
 			BMA25X_MODE_CTRL_REG, &databuf);
 #ifndef BMA25X_ENABLE_INT2
-		cancel_delayed_work_sync(&data->work);
+		hrtimer_cancel(&data->timer);
 #endif
 	}
 	mutex_unlock(&data->enable_mutex);
@@ -3757,8 +3771,8 @@ static int bma25x_resume(struct i2c_client *client)
 			BMA25X_MODE_CTRL_REG, &databuf);
 		usleep(3000);
 #ifndef BMA25X_ENABLE_INT2
-		schedule_delayed_work(&data->work,
-				msecs_to_jiffies(atomic_read(&data->delay)));
+		hrtimer_start(&data->timer,
+			data->work_delay_kt, HRTIMER_MODE_REL);
 #endif
 	}
 	mutex_unlock(&data->enable_mutex);
