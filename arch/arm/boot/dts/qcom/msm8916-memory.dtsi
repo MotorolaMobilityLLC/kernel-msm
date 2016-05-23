@@ -41,12 +41,6 @@
 			label = "peripheral_mem";
 		};
 
-		secure_mem: secure_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0 0 0x6D00000>;
-			label = "secure_mem";
-		};
-
 		venus_qseecom_mem: venus_qseecom_region@0 {
 			linux,reserve-contiguous-region;
 			linux,memory-limit = <0x90000000>;
