@@ -39,7 +39,7 @@
 #include <asm/stacktrace.h>
 
 #include <soc/qcom/cti-pmu-irq.h>
-
+#include <linux/cpu_pm.h>
 /*
  * ARMv8 supports a maximum of 32 events.
  * The cycle counter is included in this total.
@@ -1365,6 +1365,117 @@ cpu_pmu_reset(void)
 arch_initcall(cpu_pmu_reset);
 
 /*
+ * PMU hardware loses all context when a CPU goes offline.
+ * When a CPU is hotplugged back in, since some hardware registers are
+ * UNKNOWN at reset, the PMU must be explicitly reset to avoid reading
+ * junk values out of them.
+ */
+static int __cpuinit cpu_pmu_notify(struct notifier_block *b,
+                                   unsigned long action, void *hcpu)
+{
+	int cpu = (unsigned long)hcpu;
+	struct arm_pmu *pmu = container_of(b, struct arm_pmu, hotplug_nb);
+	if ((action & ~CPU_TASKS_FROZEN) != CPU_STARTING)
+		return NOTIFY_DONE;
+	if (!cpumask_test_cpu(cpu, cpu_online_mask))
+		return NOTIFY_DONE;
+
+	if (pmu->reset)
+		cpu_pmu->reset(pmu);
+	else
+		return NOTIFY_DONE;
+	return NOTIFY_OK;
+}
+
+#ifdef CONFIG_CPU_PM
+static void cpu_pm_pmu_setup(struct arm_pmu *armpmu, unsigned long cmd)
+{
+	struct pmu_hw_events *hw_events = cpu_pmu->get_hw_events();
+	struct perf_event *event;
+	int idx;
+
+	for (idx = 0; idx < armpmu->num_events; idx++) {
+		/*
+		 * If the counter is not used skip it, there is no
+		 * need of stopping/restarting it.
+		 */
+		if (!test_bit(idx, hw_events->used_mask))
+			continue;
+
+		event = hw_events->events[idx];
+
+		switch (cmd) {
+		case CPU_PM_ENTER:
+			/*
+			 * Stop and update the counter
+			*/
+			armpmu_stop(event, PERF_EF_UPDATE);
+			break;
+		case CPU_PM_EXIT:
+		case CPU_PM_ENTER_FAILED:
+			/* Restore and enable the counter */
+			armpmu_start(event, PERF_EF_RELOAD);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+static int cpu_pm_pmu_notify(struct notifier_block *b, unsigned long cmd,
+                             void *v)
+{
+	struct arm_pmu *armpmu = container_of(b, struct arm_pmu, cpu_pm_nb);
+	struct pmu_hw_events *hw_events = cpu_pmu->get_hw_events();
+	int enabled = bitmap_weight(hw_events->used_mask, armpmu->num_events);
+
+	if (!cpumask_test_cpu(smp_processor_id(), cpu_online_mask))
+		return NOTIFY_DONE;
+
+	/*
+	 * Always reset the PMU registers on power-up even if
+	 * there are no events running.
+	 */
+	if (cmd == CPU_PM_EXIT && armpmu->reset)
+		armpmu->reset(armpmu);
+
+	if (!enabled)
+		return NOTIFY_OK;
+
+	switch (cmd) {
+	case CPU_PM_ENTER:
+		armpmu->stop();
+		cpu_pm_pmu_setup(armpmu, cmd);
+		break;
+	case CPU_PM_EXIT:
+		cpu_pm_pmu_setup(armpmu, cmd);
+	case CPU_PM_ENTER_FAILED:
+		armpmu->start();
+		break;
+	default:
+		return NOTIFY_DONE;
+	}
+
+	return NOTIFY_OK;
+}
+
+
+static int cpu_pm_pmu_register(struct arm_pmu *cpu_pmu)
+{
+	cpu_pmu->cpu_pm_nb.notifier_call = cpu_pm_pmu_notify;
+	return cpu_pm_register_notifier(&cpu_pmu->cpu_pm_nb);
+}
+
+static void cpu_pm_pmu_unregister(struct arm_pmu *cpu_pmu)
+{
+	cpu_pm_unregister_notifier(&cpu_pmu->cpu_pm_nb);
+}
+#else
+static inline int cpu_pm_pmu_register(struct arm_pmu *cpu_pmu) { return 0; }
+static inline void cpu_pm_pmu_unregister(struct arm_pmu *cpu_pmu) { }
+#endif
+
+/*
  * PMU platform driver and devicetree bindings.
  */
 static struct of_device_id armpmu_of_device_ids[] = {
@@ -1393,7 +1504,27 @@ static struct platform_driver armpmu_driver = {
 
 static int __init register_pmu_driver(void)
 {
-	return platform_driver_register(&armpmu_driver);
+	int err;
+
+	cpu_pmu->hotplug_nb.notifier_call = cpu_pmu_notify;
+	err = register_cpu_notifier(&cpu_pmu->hotplug_nb);
+	if (err)
+		return err;
+
+	err = cpu_pm_pmu_register(cpu_pmu);
+	if (err)
+		goto err_cpu_pm;
+
+	err = platform_driver_register(&armpmu_driver);
+	if (err)
+		goto err_driver;
+	return 0;
+
+err_driver:
+	cpu_pm_pmu_unregister(cpu_pmu);
+err_cpu_pm:
+	unregister_cpu_notifier(&cpu_pmu->hotplug_nb);
+	return err;
 }
 device_initcall(register_pmu_driver);
 
@@ -1401,6 +1532,7 @@ static struct pmu_hw_events *armpmu_get_cpu_events(void)
 {
 	return this_cpu_ptr(&cpu_hw_events);
 }
+
 
 static void __init cpu_pmu_init(struct arm_pmu *armpmu)
 {
