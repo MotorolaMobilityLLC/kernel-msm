@@ -128,7 +128,7 @@
 
 		fairchild,sotp-limit-c = <150>;
 		fairchild,fovp-limit-mv = <4700>;
-		fairchild,ocp-limit-ma = <6200>;
+		fairchild,ocp-limit-ma = <6900>;
 	};
 };
 
