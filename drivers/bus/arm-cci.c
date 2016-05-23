@@ -65,7 +65,6 @@ static unsigned int nb_cci_ports;
 static void __iomem *cci_ctrl_base;
 static unsigned long cci_ctrl_phys;
 
-static u32 from_idle;
 static u32 cci_version;
 
 #ifdef CONFIG_HW_PERF_EVENTS
@@ -762,7 +761,6 @@ static int __ref cci_pmu_probe(struct platform_device *pdev)
 
 	pmu->hw_events.events = pmu->events;
 	pmu->hw_events.used_mask = pmu->used_mask;
-	pmu->hw_events.from_idle = &from_idle;
 	raw_spin_lock_init(&pmu->hw_events.pmu_lock);
 
 	ret = cci_pmu_init(pmu->cci_pmu, pdev);
