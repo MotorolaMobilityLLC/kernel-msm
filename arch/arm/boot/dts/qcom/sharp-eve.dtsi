@@ -16,6 +16,9 @@
 #include "sharp-eve-display.dtsi"
 
 / {
+	soc {
+		/delete-node/ qcom,msm-ssc-sensors;
+	};
 };
 
 &soc {
