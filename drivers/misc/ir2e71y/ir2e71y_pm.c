@@ -188,8 +188,10 @@ static const struct ir2e71y_pm_psals_state_row
 /* ------------------------------------------------------------------------- */
 /*ir2e71y_pm_API_init                                                        */
 /* ------------------------------------------------------------------------- */
-void ir2e71y_pm_API_init(void)
+void ir2e71y_pm_API_init(struct ir2e71y_boot_context *boot_ctx)
 {
+    memcpy(&(ir2e71y_pm_ctx.bdic_status), &(boot_ctx->bdic_status), sizeof(struct ir2e71y_bdic_status));
+    memcpy(&(ir2e71y_pm_ctx.psals_status), &(boot_ctx->psals_status), sizeof(struct ir2e71y_psals_status));
     ir2e71y_pm_ctx.panel_status.power_status = IR2E71Y_DEV_STATE_OFF;
     ir2e71y_pm_ctx.panel_status.users = IR2E71Y_DEV_TYPE_NONE;
 

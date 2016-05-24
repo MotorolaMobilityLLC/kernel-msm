@@ -71,6 +71,7 @@
 #ifdef IR2E71Y_SYSFS_LED
 #include "ir2e71y_led.h"
 #endif /* IR2E71Y_SYSFS_LED */
+#include <soc/qcom/sh_smem.h>
 
 static int ir2e71y_if_register_driver(void);
 
@@ -861,6 +862,9 @@ static int ir2e71y_bdic_unsubscribe_check(int irq_type)
 /* ------------------------------------------------------------------------- */
 static void ir2e71y_init_context(void)
 {
+#ifndef IR2E71Y_NOT_SUPPORT_NO_OS
+    sharp_smem_common_type *sh_smem_common_adr = NULL;
+#endif  /* IR2E71Y_NOT_SUPPORT_NO_OS */
     if (ir2e71y_smem_read_flag != 0) {
         return;
     }
@@ -895,9 +899,31 @@ static void ir2e71y_init_context(void)
 #endif /* IR2E71Y_COLOR_LED_TWIN */
 #endif /* IR2E71Y_SYSFS_LED */
 
-    ir2e71y_smem_read_flag = 1;
+#ifndef IR2E71Y_NOT_SUPPORT_NO_OS
+    sh_smem_common_adr = (sharp_smem_common_type *)sh_smem_get_common_address();
+    if (sh_smem_common_adr != NULL) {
+        memcpy(&(ir2e71y_if_ctx.boot_ctx), &sh_smem_common_adr->shdisp_data_buf, sizeof(struct ir2e71y_boot_context));
+        ir2e71y_if_ctx.bdic_is_exist = ir2e71y_if_ctx.boot_ctx.bdic_is_exist;
+        ir2e71y_if_ctx.bdic_chipver = ir2e71y_if_ctx.boot_ctx.bdic_chipver;
+
+        ir2e71y_if_ctx.main_bkl.mode = ir2e71y_if_ctx.boot_ctx.main_bkl.mode;
+        ir2e71y_if_ctx.main_bkl.param = ir2e71y_if_ctx.boot_ctx.main_bkl.param;
+
+        ir2e71y_if_ctx.tri_led.red = ir2e71y_if_ctx.boot_ctx.tri_led.red;
+        ir2e71y_if_ctx.tri_led.green = ir2e71y_if_ctx.boot_ctx.tri_led.green;
+        ir2e71y_if_ctx.tri_led.blue = ir2e71y_if_ctx.boot_ctx.tri_led.blue;
+        ir2e71y_if_ctx.tri_led.ext_mode = ir2e71y_if_ctx.boot_ctx.tri_led.ext_mode;
+        ir2e71y_if_ctx.tri_led.led_mode = ir2e71y_if_ctx.boot_ctx.tri_led.led_mode;
+        ir2e71y_if_ctx.tri_led.ontime = ir2e71y_if_ctx.boot_ctx.tri_led.ontime;
+        ir2e71y_if_ctx.tri_led.interval = ir2e71y_if_ctx.boot_ctx.tri_led.interval;
+        ir2e71y_if_ctx.tri_led.count = ir2e71y_if_ctx.boot_ctx.tri_led.count;
+        ir2e71y_smem_read_flag = 1;
+    }
+#endif  /* IR2E71Y_NOT_SUPPORT_NO_OS */
+
 #if defined(CONFIG_ANDROID_ENGINEERING)
 #ifdef IR2E71Y_LOG_ENABLE   /* for debug */
+    ir2e71y_dbg_info_output(IR2E71Y_DEBUG_INFO_TYPE_POWERON);
 #endif  /* IR2E71Y_LOG_ENABLE */
 #endif  /* CONFIG_ANDROID_ENGINEERING */
     return;
@@ -917,7 +943,7 @@ static int ir2e71y_check_initialized(void)
     if (ir2e71y_if_ctx.driver_is_initialized == IR2E71Y_DRIVER_IS_INITIALIZED) {
         return IR2E71Y_RESULT_SUCCESS;
     } else {
-        IR2E71Y_ERR("[IR2E71Y] ir2e71y_check_initialized error : driver is not initialized.");
+        IR2E71Y_DEBUG("[IR2E71Y] ir2e71y_check_initialized error : driver is not initialized.");
         return IR2E71Y_RESULT_FAILURE;
     }
 }
@@ -1427,7 +1453,7 @@ static int ir2e71y_SQE_tri_led_on(int no, struct ir2e71y_tri_led *led)
         led_on.blue  = ir2e71y_led_cnv_current_value(led->blue);
 
         IR2E71Y_DEBUG("leds on. no=%d, red:%d, green:%d, blue:%d",
-                      no, led_on->red, led_on->green, led_on->blue);
+                      no, led_on.red, led_on.green, led_on.blue);
         ret = ir2e71y_bdic_API_LED_on(no, led_on);
         ir2e71y_clean_normal_led();
     }
@@ -3585,6 +3611,29 @@ static void ir2e71y_dbg_info_output(int mode)
 
     case IR2E71Y_DEBUG_INFO_TYPE_POWERON:
         printk("[IR2E71Y] BOOT INFO ->>\n");
+        printk("[IR2E71Y] sizeof(boot_ctx)                       = %ld.\n", (long)sizeof(ir2e71y_if_ctx.boot_ctx));
+        printk("[IR2E71Y] boot_ctx.driver_is_initialized         = %d.\n", ir2e71y_if_ctx.boot_ctx.driver_is_initialized);
+        printk("[IR2E71Y] boot_ctx.hw_handset                    = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.hw_handset);
+        printk("[IR2E71Y] boot_ctx.hw_revision                   = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.hw_revision);
+        printk("[IR2E71Y] boot_ctx.device_code                   = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.device_code);
+        printk("[IR2E71Y] boot_ctx.disp_on_status                = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.disp_on_status);
+        printk("[IR2E71Y] boot_ctx.handset_color                 = %d.\n", ir2e71y_if_ctx.boot_ctx.handset_color);
+        printk("[IR2E71Y] boot_ctx.upper_unit_is_connected       = %d.\n", ir2e71y_if_ctx.boot_ctx.upper_unit_is_connected);
+        printk("[IR2E71Y] boot_ctx.main_disp_status              = %d.\n", ir2e71y_if_ctx.boot_ctx.main_disp_status);
+        printk("[IR2E71Y] boot_ctx.is_trickled                   = %d.\n", ir2e71y_if_ctx.boot_ctx.is_trickled);
+        printk("[IR2E71Y] boot_ctx.main_bkl.mode                 = %d.\n", ir2e71y_if_ctx.boot_ctx.main_bkl.mode);
+        printk("[IR2E71Y] boot_ctx.main_bkl.param                = %d.\n", ir2e71y_if_ctx.boot_ctx.main_bkl.param);
+        printk("[IR2E71Y] boot_ctx.tri_led.red                   = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.tri_led.red);
+        printk("[IR2E71Y] boot_ctx.tri_led.green                 = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.tri_led.green);
+        printk("[IR2E71Y] boot_ctx.tri_led.blue                  = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.tri_led.blue);
+        printk("[IR2E71Y] boot_ctx.bdic_is_exist                 = %d.\n", ir2e71y_if_ctx.boot_ctx.bdic_is_exist);
+        printk("[IR2E71Y] boot_ctx.bdic_chipver                  = %d.\n", ir2e71y_if_ctx.boot_ctx.bdic_chipver);
+        printk("[IR2E71Y] boot_ctx.bdic_status.power_status      = %d.\n", ir2e71y_if_ctx.boot_ctx.bdic_status.power_status);
+        printk("[IR2E71Y] boot_ctx.bdic_status.users             = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.bdic_status.users);
+        printk("[IR2E71Y] boot_ctx.psals_status.power_status     = %d.\n", ir2e71y_if_ctx.boot_ctx.psals_status.power_status);
+        printk("[IR2E71Y] boot_ctx.psals_status.als_users        = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.psals_status.als_users);
+        printk("[IR2E71Y] boot_ctx.psals_status.ps_um_status     = %d.\n", ir2e71y_if_ctx.boot_ctx.psals_status.ps_um_status);
+        printk("[IR2E71Y] boot_ctx.psals_status.als_um_status    = %d.\n", ir2e71y_if_ctx.boot_ctx.psals_status.als_um_status);
         printk("[IR2E71Y] BOOT INFO <<-\n");
         printk("[IR2E71Y] KERNEL INFO ->>\n");
         printk("[IR2E71Y] sizeof(ir2e71y_if_ctx)                = %d.\n", sizeof(ir2e71y_if_ctx));
@@ -4118,6 +4167,7 @@ static int ir2e71y_driver_initialize(struct platform_device *pdev)
         ir2e71y_subscribe_type = IR2E71Y_SUBSCRIBE_TYPE_INT;
         ir2e71y_subscribe_type_table[i] = ir2e71y_subscribe_type;
     }
+    ir2e71y_pm_API_init(&ir2e71y_if_ctx.boot_ctx);
 
     ret = ir2e71y_IO_API_bdic_i2c_init();
     if (ret) {
@@ -4142,6 +4192,7 @@ static int ir2e71y_driver_initialize(struct platform_device *pdev)
     ir2e71y_if_ctx.bdic_chipver = state_str.bdic_chipver;
     ret = ir2e71y_bdic_API_initialize(&state_str);
 #else  /* IR2E71Y_NOT_SUPPORT_NO_OS*/
+    state_str.bdic_chipver = ir2e71y_if_ctx.bdic_chipver;
     if (ir2e71y_check_bdic_exist() == IR2E71Y_RESULT_SUCCESS) {
         ret = ir2e71y_bdic_API_initialize(&state_str);
     }
