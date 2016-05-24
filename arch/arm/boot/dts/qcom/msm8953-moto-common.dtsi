@@ -555,9 +555,10 @@
 		mmi,muc-ctrl-ff-seq-v2 = <1 1 100>, <5 1 20>,
 					<5 0 20>;
 
-		pinctrl-names = "disconnected", "spi_active";
+		pinctrl-names = "disconnected", "spi_active", "spi_ack";
 		pinctrl-0 = <&muc_attach &spi_1_sleep &muc_spi_ctrl &spi1_cs0_sleep &muc_bplus_ilim>;
 		pinctrl-1 = <&muc_attach &spi_1_active &muc_spi_ctrl &spi1_cs0_active &muc_bplus_ilim>;
+		pinctrl-2 = <&spi_1_mosi_ack &spi_1_miso_ack>;
 		transports {
 			#address-cells = <1>;
 			#size-cells = <1>;
