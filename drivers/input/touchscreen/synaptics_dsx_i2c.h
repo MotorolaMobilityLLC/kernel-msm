@@ -28,6 +28,7 @@
 #include <linux/version.h>
 #include <linux/ktime.h>
 #include <linux/semaphore.h>
+#include <linux/pm_qos.h>
 #if defined(USB_CHARGER_DETECTION)
 #include <linux/usb.h>
 #include <linux/power_supply.h>
@@ -577,6 +578,8 @@ struct synaptics_rmi4_data {
 	struct notifier_block fps_notif;
 
 	struct mutex rmi4_exp_init_mutex;
+	int pm_qos_latency;
+	struct pm_qos_request pm_qos_irq;
 };
 
 struct time_keeping {
