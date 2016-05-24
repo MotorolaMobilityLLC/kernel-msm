@@ -494,14 +494,16 @@ static int mdss_dba_utils_init_switch_dev(struct mdss_dba_utils_data *udata,
 
 	udata->display_switch_registered = true;
 
-	rc = hdmi_utils_init_audio_switch_dev(&udata->sdev_audio);
-	if (rc) {
-		pr_err("audio switch registration failed\n");
-		hdmi_utils_deinit_switch_dev();
-		goto end;
-	}
+	if (udata->ops.configure_audio) {
+		rc = hdmi_utils_init_audio_switch_dev(&udata->sdev_audio);
+		if (rc) {
+			pr_err("audio switch registration failed\n");
+			hdmi_utils_deinit_switch_dev();
+			goto end;
+		}
 
-	udata->audio_switch_registered = true;
+		udata->audio_switch_registered = true;
+	}
 end:
 	return rc;
 }
