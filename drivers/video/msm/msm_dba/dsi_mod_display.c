@@ -22,6 +22,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include "video/msm_hdmi_modes.h"
 #include "msm_dba_internal.h"
 #include "../mdss/mdss_dsi.h"
 #include "../mdss/mdss_panel.h"
@@ -367,7 +368,7 @@ static int dsi_mod_display_get_raw_edid(void *client, u32 size, char *buf,
 	return ret;
 }
 
-int dsi_mod_display_get_dsi_config(void *client,
+static int dsi_mod_display_get_dsi_config(void *client,
 	struct msm_dba_dsi_cfg *dsi_config)
 {
 	struct dsi_mod_display *pdata =
@@ -379,6 +380,11 @@ int dsi_mod_display_get_dsi_config(void *client,
 	memcpy(dsi_config, pdata->dsi_config, sizeof(struct msm_dba_dsi_cfg));
 
 	return ret;
+}
+
+static u32 dsi_mod_display_get_default_resolution(void *client)
+{
+	return HDMI_VFRMT_UNKNOWN;
 }
 
 /* Mod Display Implementation */
@@ -516,7 +522,9 @@ static int dsi_mod_display_probe(struct platform_device *pdev)
 	client_ops->hdcp_enable     = dsi_mod_display_hdcp_enable;
 	client_ops->get_edid_size   = dsi_mod_display_get_edid_size;
 	client_ops->get_raw_edid    = dsi_mod_display_get_raw_edid;
-	client_ops->get_dsi_config = dsi_mod_display_get_dsi_config;
+	client_ops->get_dsi_config  = dsi_mod_display_get_dsi_config;
+	client_ops->get_default_resolution =
+		dsi_mod_display_get_default_resolution;
 
 	strlcpy(pdata->dev_info.chip_name, DRVNAME,
 		sizeof(pdata->dev_info.chip_name));
