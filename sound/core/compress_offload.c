@@ -44,6 +44,8 @@
 #include <sound/compress_offload.h>
 #include <sound/compress_driver.h>
 
+#define U32_MAX ((u32)~0U)
+
 /* TODO:
  * - add substream support for multiple devices in case of
  *	SND_DYNAMIC_MINORS is not used
@@ -496,7 +498,7 @@ static int snd_compress_check_input(struct snd_compr_params *params)
 {
 	/* first let's check the buffer parameter's */
 	if (params->buffer.fragment_size == 0 ||
-			params->buffer.fragments > SIZE_MAX / params->buffer.fragment_size)
+			params->buffer.fragments > U32_MAX / params->buffer.fragment_size)
 		return -EINVAL;
 
 	/* now codec parameters */
