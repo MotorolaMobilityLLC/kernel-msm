@@ -1975,15 +1975,22 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 		/* Process special event packets and then discard them */
 		memset(&event, 0, sizeof(event));
 		if (ntoh16(skb->protocol) == ETHER_TYPE_BRCM) {
-			dhd_wl_host_event(dhd, &ifidx,
+			int ret_event;
+
+			ret_event = dhd_wl_host_event(dhd, &ifidx,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 22)
 			skb_mac_header(skb),
 #else
 			skb->mac.raw,
 #endif
-			len - 2,
+			len,
 			&event,
 			&data);
+
+			if (ret_event != BCME_OK) {
+				PKTFREE(dhdp->osh, pktbuf, FALSE);
+				continue;
+			}
 
 			wl_event_to_host_order(&event);
 			if (!tout_ctrl)
@@ -5495,12 +5502,11 @@ dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata, size_t pktlen,
 		/*
 		 * Wireless ext is on primary interface only
 		 */
-
-	ASSERT(dhd->iflist[*ifidx] != NULL);
-	ASSERT(dhd->iflist[*ifidx]->net != NULL);
+		ASSERT(dhd->iflist[*ifidx] != NULL);
+		ASSERT(dhd->iflist[*ifidx]->net != NULL);
 
 		if (dhd->iflist[*ifidx]->net) {
-		wl_iw_event(dhd->iflist[*ifidx]->net, event, *data);
+			wl_iw_event(dhd->iflist[*ifidx]->net, event, *data);
 		}
 	}
 #endif /* defined(WL_WIRELESS_EXT)  */
@@ -5524,6 +5530,7 @@ dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata, size_t pktlen,
 
 	ASSERT(dhd->iflist[*ifidx] != NULL);
 	ASSERT(dhd->iflist[*ifidx]->net != NULL);
+
 	if (dhd->iflist[*ifidx]->event2cfg80211 && dhd->iflist[*ifidx]->net) {
 		wl_cfg80211_event(dhd->iflist[*ifidx]->net, event, *data);
 	}
