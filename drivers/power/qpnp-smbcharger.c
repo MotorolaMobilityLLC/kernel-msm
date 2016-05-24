@@ -5388,8 +5388,8 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 		}
 		pr_smb(PR_MISC, "setting usb psy type = %d\n",
 				POWER_SUPPLY_TYPE_USB_HVDCP);
-		power_supply_set_supply_type(chip->usb_psy,
-				POWER_SUPPLY_TYPE_USB_HVDCP);
+		smbchg_change_usb_supply_type(chip,
+						POWER_SUPPLY_TYPE_USB_HVDCP);
 		if (chip->psy_registered)
 			power_supply_changed(&chip->batt_psy);
 		smbchg_aicl_deglitch_wa_check(chip);
