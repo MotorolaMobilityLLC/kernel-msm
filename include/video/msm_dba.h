@@ -624,6 +624,7 @@ struct msm_dba_ops {
 	void (*get_audio_block)(void *client, u32 size, void *buf);
 	int (*get_dsi_config)(void *client,
 			       struct msm_dba_dsi_cfg *dsi_config);
+	u32 (*get_default_resolution)(void *client);
 };
 
 /**
