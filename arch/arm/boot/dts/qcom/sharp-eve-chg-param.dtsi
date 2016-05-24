@@ -51,6 +51,7 @@
 	/delete-property/ qcom,step-charging-enable;
 // 	qcom,step-charging-fastchg-current-ma;
 // 	qcom,step-charging-voltage-mv;
+	qcom,dp-pulse-count = <0>;
 };
 
 /****************************************/
