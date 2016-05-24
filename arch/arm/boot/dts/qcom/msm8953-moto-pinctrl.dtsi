@@ -368,6 +368,32 @@
 				drive-strength = <2>;
 			};
 		};
+		spi_1_mosi_ack: spi_1_mosi_ack {
+			mux {
+				pins = "gpio0";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio0";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+		spi_1_miso_ack: spi_1_miso_ack {
+			mux {
+				pins = "gpio1";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio1";
+				drive-strength = <2>;
+				bias-disable;
+				input-enable;
+			};
+		};
 	};
 
 	muc_spi_ctrl: muc_spi_ctrl@0 {
