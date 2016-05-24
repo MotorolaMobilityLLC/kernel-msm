@@ -779,6 +779,11 @@ int mdss_dba_utils_reconfigure_dsi(void *data, struct mdss_panel_info *pinfo)
 	/* TODO: pinfo->mipi.rx_eot_ignore */
 	pinfo->mipi.tx_eot_append = dsi_config.eot_mode;
 
+	pinfo->mipi.data_lane0 = dsi_config.num_lanes > 0;
+	pinfo->mipi.data_lane1 = dsi_config.num_lanes > 1;
+	pinfo->mipi.data_lane2 = dsi_config.num_lanes > 2;
+	pinfo->mipi.data_lane3 = dsi_config.num_lanes > 3;
+
 	memset(&pt, 0, sizeof(pt));
 	pt.timing.xres = dsi_config.width;
 	pt.timing.yres = dsi_config.height;
