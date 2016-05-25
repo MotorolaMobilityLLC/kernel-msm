@@ -1172,7 +1172,7 @@
 				mux {
 					pins = "gpio135", "gpio136",
 						"gpio137", "gpio138";
-					function = "gpio";
+					function = "sec_mi2s";
 				};
 
 				config {

@@ -1534,13 +1534,13 @@
 			tert_mi2s_sleep: tert_mi2s_sleep {
 				mux {
 					pins = "gpio75", "gpio76";
-					function = "gpio";
+					function = "ter_mi2s";
 				};
 
 				config {
 					pins = "gpio75", "gpio76";
 					drive-strength = <2>;   /* 2 mA */
-					bias-pull-down;         /* IP-En,P/D */
+					bias-pull-down;         /* PULL DOWN */
 				};
 			};
 			tert_mi2s_active: tert_mi2s_active {
@@ -1562,13 +1562,13 @@
 			tert_mi2s_sd0_sleep: tert_mi2s_sd0_sleep {
 				mux {
 					pins = "gpio77";
-					function = "gpio";
+					function = "ter_mi2s";
 				};
 
 				config {
 					pins = "gpio77";
 					drive-strength = <2>;   /* 2 mA */
-					bias-pull-down;         /* IP-En,P/D */
+					bias-pull-down;         /* PULL DOWN */
 				};
 			};
 			tert_mi2s_sd0_active: tert_mi2s_sd0_active {
