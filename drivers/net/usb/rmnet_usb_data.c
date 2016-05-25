@@ -178,12 +178,16 @@ static void rmnet_usb_disable_hsic_autosuspend(struct usbnet *usbnet,
 	usb_get_dev(usb_dev);
 	if (!enable_autosuspend) {
 		usb_disable_autosuspend(usb_dev);
-		rmnet_udev->autosuspend_disabled = 1;
-		rmnet_udev->autosuspend_dis_cnt++;
+		if (rmnet_udev) {
+			rmnet_udev->autosuspend_disabled = 1;
+			rmnet_udev->autosuspend_dis_cnt++;
+		}
 	} else {
 		usb_enable_autosuspend(usb_dev);
-		rmnet_udev->autosuspend_disabled = 0;
-		rmnet_udev->autosuspend_en_cnt++;
+		if (rmnet_udev) {
+			rmnet_udev->autosuspend_disabled = 0;
+			rmnet_udev->autosuspend_en_cnt++;
+		}
 	}
 	usb_put_dev(usb_dev);
 }
