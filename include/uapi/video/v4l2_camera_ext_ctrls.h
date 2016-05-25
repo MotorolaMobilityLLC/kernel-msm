@@ -760,4 +760,7 @@ enum {
 /* boolean */
 #define CAM_EXT_CID_FOCUS_KEY_LOCK (CID_CAM_EXT_CLASS_BASE + 113)
 
+/* integer [][4]: eis_w, eis_h, w, h. optional for MOD */
+#define CAM_EXT_CID_EIS_FRAME_SIZE_MAP (CID_CAM_EXT_CLASS_BASE + 114)
+
 #endif /* __CAMERA_EXT_CTRLS_H */
