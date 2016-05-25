@@ -71,7 +71,8 @@
 #define ID_MOTO_MOD_CURRENT_DRAIN (34)
 #define ID_GAME_RV (35)
 #define ID_SENSOR_SYNC (36)
-#define MAX_SENSOR_ID (36)
+#define ID_ULTRASOUND_GESTURE (37)
+#define MAX_SENSOR_ID (37)
 
 /* structure to hold rate and timeout for sensor batching */
 struct motosh_moto_sensor_batch_cfg {
