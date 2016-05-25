@@ -40,6 +40,7 @@
 #endif
 /* #include <ethernet.h> -- TODO: req., excluded to overwhelming coupling (break up ethernet.h) */
 #include <proto/bcmeth.h>
+#include <proto/dnglevent.h>
 
 /* This marks the start of a packed structure section. */
 #include <packed_section_start.h>
@@ -93,6 +94,17 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 	wl_event_msg_t		event;
 	/* data portion follows */
 } BWL_POST_PACKED_STRUCT bcm_event_t;
+
+/*
+ * used by host event
+ * Note: If additional event types are added, it should come on is_wlc_event_frame() as well.
+ */
+typedef union bcm_event_msg_u {
+	wl_event_msg_t		event;
+	bcm_dngl_event_msg_t	dngl_event;
+
+	/* add new event here */
+} bcm_event_msg_u_t;
 
 #define BCM_MSG_LEN	(sizeof(bcm_event_t) - sizeof(bcmeth_hdr_t) - sizeof(struct ether_header))
 
@@ -234,6 +246,9 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 /* define an API for getting the string name of an event */
 extern const char *bcmevent_get_name(uint event_type);
 
+/* validate if the event is proper and if valid copy event header to event */
+extern int is_wlc_event_frame(void *pktdata, uint pktlen, uint16 exp_usr_subtype,
+	bcm_event_msg_u_t *out_event);
 
 
 /* Event status codes */
