@@ -1209,7 +1209,7 @@ int q6asm_audio_client_buf_alloc_contiguous(unsigned int dir,
 	ac->port[dir].buf = buf;
 
 	/* check for integer overflow */
-	if ((bufcnt > 0) && ((INT_MAX / bufcnt) < bufsz)) {
+	if ((bufcnt > 0) && ((UINT_MAX / bufcnt) < bufsz)) {
 		pr_err("%s: integer overflow\n", __func__);
 		mutex_unlock(&ac->cmd_lock);
 		goto fail;
