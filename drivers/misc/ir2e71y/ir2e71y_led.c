@@ -124,6 +124,7 @@ static void ir2e71y_bdic_LD_set_led_on_table_twin(unsigned char *rgb_current);
 static bool ir2e71y_bdic_is_led_current_mode(void);
 static bool ir2e71y_bdic_is_led_current_mode_no(int no);
 static void ir2e71y_bdic_clear_current_param(void);
+static unsigned char ir2e71y_bdic_LD_correction_led_fix_clrvari(unsigned char brightness, int color);
 static void ir2e71y_bdic_LD_set_led_fix_current_table(unsigned char *rgb_current);
 #ifdef IR2E71Y_COLOR_LED_TWIN
 static void ir2e71y_bdic_LD_set_led_fix_current_table_twin(unsigned char *rgb_current);
@@ -722,14 +723,14 @@ static int ir2e71y_bdic_seq_led_on(int no, struct ir2e71y_tri_led led)
     IR2E71Y_DEBUG("is_led_current_mode:%d", is_led_current_mode);
 
     if (no == SYSFS_LED_SH_LED_1) {
-        rgb_current1[0] = led.red;
-        rgb_current1[1] = led.green;
-        rgb_current1[2] = led.blue;
+        rgb_current1[0] = ir2e71y_bdic_LD_correction_led_fix_clrvari(led.red,   SYSFS_LED_SH_RED);
+        rgb_current1[1] = ir2e71y_bdic_LD_correction_led_fix_clrvari(led.green, SYSFS_LED_SH_GREEN);
+        rgb_current1[2] = ir2e71y_bdic_LD_correction_led_fix_clrvari(led.blue,  SYSFS_LED_SH_BLUE);
 #ifdef IR2E71Y_COLOR_LED_TWIN
     } else {
-        rgb_current2[0] = led.red;
-        rgb_current2[1] = led.green;
-        rgb_current2[2] = led.blue;
+        rgb_current2[0] = ir2e71y_bdic_LD_correction_led_fix_clrvari(led.red,   SYSFS_LED_SH_RED);
+        rgb_current2[1] = ir2e71y_bdic_LD_correction_led_fix_clrvari(led.green, SYSFS_LED_SH_GREEN);
+        rgb_current2[2] = ir2e71y_bdic_LD_correction_led_fix_clrvari(led.blue,  SYSFS_LED_SH_BLUE);
 #endif /* IR2E71Y_COLOR_LED_TWIN */
     }
 
@@ -1673,6 +1674,28 @@ static void ir2e71y_bdic_LD_set_led_on_table(unsigned char *rgb_current)
 }
 
 #ifdef IR2E71Y_SYSFS_LED
+/* ------------------------------------------------------------------------- */
+/*ir2e71y_bdic_LD_correction_led_fix_clrvari                                 */
+/* ------------------------------------------------------------------------- */
+static unsigned char ir2e71y_bdic_LD_correction_led_fix_clrvari(unsigned char brightness, int color)
+{
+    unsigned int data = 0;
+    unsigned char factor_value = ir2e71y_clrvari_correction_led_tbl[led_state_str.bdic_clrvari_index][color];
+
+    if (brightness == 0) {
+        return 0;
+    }
+
+    data = (unsigned int)brightness * (unsigned int)factor_value;
+    if (data < 255) {
+        data = 255;
+    }
+    data = data / 255;
+    IR2E71Y_DEBUG("brightness:%d to %d", brightness, data);
+
+    return (unsigned char)data;
+}
+
 /* ------------------------------------------------------------------------- */
 /*ir2e71y_bdic_LD_set_led_fix_current_table                                  */
 /* ------------------------------------------------------------------------- */

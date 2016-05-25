@@ -171,7 +171,6 @@ static void ir2e71y_init_context(void);
 #ifdef IR2E71Y_SYSFS_LED
 static int  ir2e71y_SQE_tri_led_on(int no, struct ir2e71y_tri_led *sysfs_ledx);
 static int  ir2e71y_SQE_tri_led_blink_on(int no, struct ir2e71y_tri_led *sysfs_ledx);
-static unsigned int ir2e71y_led_cnv_current_value(unsigned int value);
 static void ir2e71y_led_brightness_set(struct led_classdev *led_cdev, enum led_brightness value);
 static enum led_brightness ir2e71y_led_brightness_get(struct led_classdev *led_cdev);
 static ssize_t ir2e71y_led_blink_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
@@ -1410,7 +1409,6 @@ static int ir2e71y_SQE_main_bkl_ctl(int type, struct ir2e71y_main_bkl_ctl *bkl)
 static int ir2e71y_SQE_tri_led_on(int no, struct ir2e71y_tri_led *led)
 {
     struct ir2e71y_tri_led sys_led;
-    struct ir2e71y_tri_led led_on;
     int ret;
 
     if (ir2e71y_led_set_color_reject()) {
@@ -1447,14 +1445,10 @@ static int ir2e71y_SQE_tri_led_on(int no, struct ir2e71y_tri_led *led)
         ret = ir2e71y_bdic_API_LED_off(no);
     } else {
         led->led_mode = IR2E71Y_TRI_LED_MODE_NORMAL;
-        memcpy(&led_on, led, sizeof(led_on));
-        led_on.red   = ir2e71y_led_cnv_current_value(led->red);
-        led_on.green = ir2e71y_led_cnv_current_value(led->green);
-        led_on.blue  = ir2e71y_led_cnv_current_value(led->blue);
 
         IR2E71Y_DEBUG("leds on. no=%d, red:%d, green:%d, blue:%d",
-                      no, led_on.red, led_on.green, led_on.blue);
-        ret = ir2e71y_bdic_API_LED_on(no, led_on);
+                      no, led->red, led->green, led->blue);
+        ret = ir2e71y_bdic_API_LED_on(no, *led);
         ir2e71y_clean_normal_led();
     }
 
@@ -2675,17 +2669,6 @@ static int ir2e71y_event_subscribe(struct ir2e71y_subscribe *subscribe)
 }
 
 #ifdef IR2E71Y_SYSFS_LED
-static unsigned int ir2e71y_led_cnv_current_value(unsigned int value)
-{
-    if (value) {
-        value = value >> 1;
-        if (!value) {
-            value++;
-        }
-    }
-    return value;
-}
-
 /* ------------------------------------------------------------------------- */
 /*ir2e71y_led_brightness_set                                                 */
 /* ------------------------------------------------------------------------- */
@@ -4043,8 +4026,9 @@ static int ir2e71y_driver_initialize(struct platform_device *pdev)
     struct proc_dir_entry *entry;
 #endif /* CONFIG_ANDROID_ENGINEERING */
 
-    memset(&tri_led, 0x00, sizeof(tri_led));
-    memset(&bkl_ctl, 0x00, sizeof(bkl_ctl));
+    memset(&tri_led,   0x00, sizeof(tri_led));
+    memset(&bkl_ctl,   0x00, sizeof(bkl_ctl));
+    memset(&state_str, 0x00, sizeof(state_str));
 #ifdef IR2E71Y_NOT_SUPPORT_NO_OS
     IR2E71Y_TRACE("in NOT SUPPORT NO_OS\n")
 #else   /* IR2E71Y_NOT_SUPPORT_NO_OS */
@@ -4192,6 +4176,7 @@ static int ir2e71y_driver_initialize(struct platform_device *pdev)
     ir2e71y_if_ctx.bdic_chipver = state_str.bdic_chipver;
     ret = ir2e71y_bdic_API_initialize(&state_str);
 #else  /* IR2E71Y_NOT_SUPPORT_NO_OS*/
+    state_str.handset_color = ir2e71y_if_ctx.boot_ctx.handset_color;
     state_str.bdic_chipver = ir2e71y_if_ctx.bdic_chipver;
     if (ir2e71y_check_bdic_exist() == IR2E71Y_RESULT_SUCCESS) {
         ret = ir2e71y_bdic_API_initialize(&state_str);
