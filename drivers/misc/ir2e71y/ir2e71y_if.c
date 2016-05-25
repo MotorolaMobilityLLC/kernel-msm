@@ -197,6 +197,7 @@ static int ir2e71y_ioctl_set_alsint(void __user *argp);
 static int ir2e71y_ioctl_get_alsint(void __user *argp);
 static int ir2e71y_ioctl_get_light_info(void __user *argp);
 #endif /* IR2E71Y_ALS_INT */
+static int ir2e71y_ioctl_get_lut_info(void __user *argp);
 
 static int ir2e71y_SQE_main_lcd_power_on(void);
 static int ir2e71y_SQE_main_lcd_power_off(void);
@@ -1027,6 +1028,10 @@ static long ir2e71y_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
         ret = ir2e71y_ioctl_get_light_info(argp);
         break;
 #endif /* IR2E71Y_ALS_INT */
+    case IR2E71Y_IOCTL_GET_LUT_INFO:
+        ret = ir2e71y_ioctl_get_lut_info(argp);
+        break;
+
     default:
         IR2E71Y_ERR("<INVALID_VALUE> cmd(0x%08x).", cmd);
         ret = -EFAULT;
@@ -1324,6 +1329,35 @@ static int ir2e71y_ioctl_get_light_info(void __user *argp)
     return IR2E71Y_RESULT_SUCCESS;
 }
 #endif /* IR2E71Y_ALS_INT */
+
+/* ------------------------------------------------------------------------- */
+/* ir2e71y_ioctl_get_lut_info                                                */
+/* ------------------------------------------------------------------------- */
+static int ir2e71y_ioctl_get_lut_info(void __user *argp)
+{
+    int ret = IR2E71Y_RESULT_FAILURE;
+    struct ir2e71y_lut_info lut_info;
+    sharp_smem_common_type *sh_smem = NULL;
+    struct ir2e71y_boot_context *boot_ctx;
+
+    memset(&lut_info, 0x00, sizeof(lut_info));
+    sh_smem = (sharp_smem_common_type *)sh_smem_get_common_address();
+
+    if (sh_smem == NULL) {
+        return ret;
+    }
+    boot_ctx = (struct ir2e71y_boot_context *)sh_smem->shdisp_data_buf;
+
+    lut_info.lut_status = boot_ctx->lut_status;
+    memcpy(&lut_info.lut, &boot_ctx->lut, sizeof(lut_info.lut));
+
+    ret = copy_to_user(argp, &lut_info, sizeof(struct ir2e71y_lut_info));
+    if (ret != 0) {
+        return ret;
+    }
+
+    return IR2E71Y_RESULT_SUCCESS;
+}
 
 /* ------------------------------------------------------------------------- */
 /* SEQUENCE                                                                  */

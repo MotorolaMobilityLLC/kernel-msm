@@ -14,10 +14,11 @@
  */
 #ifndef IR2E71Y_KERL_CONTEXT_H
 #define IR2E71Y_KERL_CONTEXT_H
-#include "ir2e71y_priv.h"
 /* ------------------------------------------------------------------------- */
 /* INCLUDE FILES                                                             */
 /* ------------------------------------------------------------------------- */
+#include "linux/ir2e71y.h"
+#include "ir2e71y_priv.h"
 struct ir2e71y_lcddr_phy_gmm_reg {
     unsigned char  status;
     unsigned short buf[60*3];
@@ -61,6 +62,11 @@ struct ir2e71y_boot_context {
     int bdic_chipver;
     struct ir2e71y_bdic_status bdic_status;
     struct ir2e71y_psals_status psals_status;
+    unsigned long long pad1;
+    char pad2[3];
+    unsigned char pad3[4][3];
+    unsigned short lut_status;
+    struct ir2e71y_lut_data lut;
 };
 
 struct ir2e71y_kernel_context {

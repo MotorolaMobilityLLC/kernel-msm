@@ -21,6 +21,9 @@
 #define IR2E71Y_OPT_CHANGE_INT_1             (0x01)
 #define IR2E71Y_OPT_CHANGE_INT_2             (0x02)
 
+#define IR2E71Y_LUT_MBR_NUM                  (3)
+#define IR2E71Y_LUT_STAGE_NUM                (16)
+
 enum {
     IR2E71Y_PHOTO_SENSOR_TYPE_APP,
     IR2E71Y_PHOTO_SENSOR_TYPE_LUX,
@@ -87,6 +90,18 @@ struct ir2e71y_light_info {
     unsigned int clear_ir_rate;
     int result;
 };
+
+struct ir2e71y_lut_data {
+    unsigned short red[IR2E71Y_LUT_STAGE_NUM][IR2E71Y_LUT_MBR_NUM];
+    unsigned short green[IR2E71Y_LUT_STAGE_NUM][IR2E71Y_LUT_MBR_NUM];
+    unsigned short blue[IR2E71Y_LUT_STAGE_NUM][IR2E71Y_LUT_MBR_NUM];
+};
+
+struct ir2e71y_lut_info {
+    unsigned short lut_status;
+    struct ir2e71y_lut_data lut;
+};
+
 /* ------------------------------------------------------------------------- */
 /* IOCTL                                                                     */
 /* ------------------------------------------------------------------------- */
@@ -97,6 +112,7 @@ struct ir2e71y_light_info {
 #define IR2E71Y_IOCTL_SET_ALSINT                         _IOWR (IR2E71Y_IOC_MAGIC, 4, struct ir2e71y_photo_sensor_int_trigger)
 #define IR2E71Y_IOCTL_GET_ALSINT                         _IOWR (IR2E71Y_IOC_MAGIC, 5, struct ir2e71y_photo_sensor_int_trigger)
 #define IR2E71Y_IOCTL_GET_LIGHT_INFO                     _IOWR (IR2E71Y_IOC_MAGIC, 6, struct ir2e71y_light_info)
+#define IR2E71Y_IOCTL_GET_LUT_INFO                       _IOR  (IR2E71Y_IOC_MAGIC, 7, struct ir2e71y_lut_info)
 
 #endif /* UAPI_IR2E71Y_H */
 
