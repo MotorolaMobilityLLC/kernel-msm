@@ -322,11 +322,31 @@
 		};
 	};
 
+	tert_mi2s {
+		tert_mi2s_sleep: tert_mi2s_sleep {
+			mux {
+				function = "gpio";
+			};
+
+			config {
+				input-enable;
+			};
+		};
+	};
+
+	tert_mi2s_sd0 {
+		tert_mi2s_sd0_sleep: tert_mi2s_sd0_sleep {
+			mux {
+				function = "gpio";
+			};
+		};
+	};
+
 	tert_mi2s_sd1 {
 		tert_mi2s_sd1_sleep: tert_mi2s_sd1_sleep {
 			mux {
 				pins = "gpio78";
-				function = "ter_mi2s";
+				function = "gpio";
 			};
 			config {
 				pins = "gpio78";
