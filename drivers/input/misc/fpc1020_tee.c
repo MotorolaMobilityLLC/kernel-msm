@@ -359,6 +359,7 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 {
 	struct fpc1020_data *fpc1020 = handle;
 
+	wake_lock_timeout(&fpc1020->wlock, msecs_to_jiffies(1000));
 	dev_dbg(fpc1020->dev, "%s\n", __func__);
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 	return IRQ_HANDLED;
