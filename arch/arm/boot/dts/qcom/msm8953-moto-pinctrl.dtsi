@@ -745,6 +745,17 @@
 			bias-disable;
 		};
 	};
+
+	sec-tlmm-lines {
+		sec_tlmm_lines_sus: sec_tlmm_lines_sus {
+			mux {
+				function = "gpio";
+			};
+			config {
+				input-enable;
+			};
+		};
+	};
 };
 
 /delete-node/ &hsuart_active;
