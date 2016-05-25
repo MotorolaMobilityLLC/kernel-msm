@@ -16,11 +16,12 @@
 			qcom,wave-play-rate-us = <4255>;
 			qcom,actuator-type = "lra";
 			qcom,wave-shape = "sine";
-			qcom,vmax-mv = <2204>; 
+			qcom,vmax-mv = <2204>;
 			qcom,brake-pattern = [03 02 01 00];
 			qcom,lra-high-z = "opt1";
 			qcom,lra-auto-res-mode = "qwd";
 			qcom,lra-res-cal-period = <4>;
+			qcom,correct-lra-drive-freq;
 		};
 	};
 };
