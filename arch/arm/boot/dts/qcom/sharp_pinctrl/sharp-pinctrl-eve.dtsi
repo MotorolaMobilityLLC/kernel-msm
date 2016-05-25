@@ -14,4 +14,5 @@
 /*  Add SHARP include                    */
 /*****************************************/
 #include "sharp-pinctrl-eve-sdcc.dtsi"
+#include "sharp-pinctrl-nfc.dtsi"
 #include "sharp-pinctrl-shub.dtsi"

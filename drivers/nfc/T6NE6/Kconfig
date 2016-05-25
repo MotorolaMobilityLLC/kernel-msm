@@ -1,0 +1,9 @@
+#
+# T6NE6 driver Support
+#
+
+menu "Toshiba NFC Chip Driver Support"
+config NFC_T6NE6
+    bool "T6NE6 Driver"
+    default n
+endmenu

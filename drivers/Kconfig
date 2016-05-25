@@ -192,4 +192,6 @@ source "drivers/soc/Kconfig"
 
 source "drivers/firmware/Kconfig"
 
+source "drivers/nfc/T6NE6/Kconfig"
+
 endmenu

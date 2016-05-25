@@ -94,6 +94,16 @@
 	/*****************************************/
 	i2c@7AF5000 {
 		status = "ok";
+
+		nfc_i2c_drv@55 {
+			status = "ok";
+			compatible = "sharp,nfc_i2c_drv";
+			reg = <0x55>;
+			sharp,nfc-nint-gpio = <&msm_gpio 62 0x00>;
+			pinctrl-names = "nfc_nint_active","nfc_nint_suspend";
+			pinctrl-0 = <&nfc_nint_active>;
+			pinctrl-1 = <&nfc_nint_suspend>;
+		};
 	};
 
 	/*****************************************/
@@ -263,6 +273,27 @@
     sharp,shub_significant {
 	     status = "ok";
 	     compatible = "sharp,shub_signif";
+	};
+
+	nfc_gpio_drv {
+		compatible = "sharp,nfc_gpio_drv";
+		qcom,nfc-nint   = <&msm_gpio 62 0x00>;
+		qcom,nfc-pon    = <&msm_gpio 41 0x00>;
+		qcom,nfc-status = <&msm_gpio 63 0x00>;
+		qcom,nfc-vfel   = <&msm_gpio 35 0x00>;
+		qcom,nfc-hvdd   = <&msm_gpio 60 0x00>;
+		pinctrl-names = "nfc_pon_active","nfc_pon_suspend",
+						"nfc_status_active","nfc_status_suspend",
+						"nfc_vfel_active","nfc_vfel_suspend",
+						"nfc_hvdd_active","nfc_hvdd_suspend";
+		pinctrl-0 = <&nfc_pon_active>;
+		pinctrl-1 = <&nfc_pon_suspend>;
+		pinctrl-2 = <&nfc_status_active>;
+		pinctrl-3 = <&nfc_status_suspend>;
+		pinctrl-4 = <&nfc_vfel_active>;
+		pinctrl-5 = <&nfc_vfel_suspend>;
+		pinctrl-6 = <&nfc_hvdd_active>;
+		pinctrl-7 = <&nfc_hvdd_suspend>;
 	};
 
 };
