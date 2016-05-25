@@ -425,4 +425,8 @@
 		qcom,shbatt-pmi-vadc = <&pmi8950_vadc>;
 		status = "ok";
 	};
+	qcom,bcl {
+		qcom,bcl-soc-hotplug-list = <&CPU0 &CPU2 &CPU3>;
+		qcom,bcl-hotplug-list = <&CPU0 &CPU3>;
+	};
 };
