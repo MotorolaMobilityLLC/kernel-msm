@@ -186,7 +186,8 @@
 		qcom,leds@d800 {
 			qcom,disp-type-amoled;
 			qcom,switch-freq-khz = <800>;
-			qcom,ilim-ma = <665>;
+			qcom,loop-ea-gm = <1>;
+			qcom,vref-psm-mv = <550>;
 			qcom,ovp-mv = <31000>;
 			qcom,enable-amoled-pulse-skipping;
 		};
