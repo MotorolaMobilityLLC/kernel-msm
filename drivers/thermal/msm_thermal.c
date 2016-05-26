@@ -2447,11 +2447,14 @@ static int __ref update_offline_cores(int val)
 				continue;
 			trace_thermal_pre_core_offline(cpu);
 			ret = cpu_down(cpu);
-			if (ret)
+			if (ret) {
 				pr_err("Unable to offline CPU%d. err:%d\n",
 					cpu, ret);
-			else
+			} else {
+				struct device *cpu_device = get_cpu_device(cpu);
+				kobject_uevent(&cpu_device->kobj, KOBJ_OFFLINE);
 				pr_debug("Offlined CPU%d\n", cpu);
+			}
 			trace_thermal_post_core_offline(cpu,
 				cpumask_test_cpu(cpu, cpu_online_mask));
 		} else if (online_core && (previous_cpus_offlined & BIT(cpu))) {
@@ -2470,6 +2473,8 @@ static int __ref update_offline_cores(int val)
 				pr_err("Unable to online CPU%d. err:%d\n",
 					cpu, ret);
 			} else {
+				struct device *cpu_device = get_cpu_device(cpu);
+				kobject_uevent(&cpu_device->kobj, KOBJ_ONLINE);
 				pr_debug("Onlined CPU%d\n", cpu);
 			}
 			trace_thermal_post_core_online(cpu,
