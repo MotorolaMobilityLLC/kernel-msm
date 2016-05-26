@@ -1087,6 +1087,8 @@ config TOUCHSCREEN_IT7260_I2C
 	  To compile this driver as a module, choose M here: the
 	  module will be called it7258_ts_i2c.
 
-source "drivers/input/touchscreen/shtps_fts/Kconfig"
+config TOUCHSCREEN_FT8607
+	tristate "FocalTech Touchscreen FT8607"
+	default n
 
 endif
