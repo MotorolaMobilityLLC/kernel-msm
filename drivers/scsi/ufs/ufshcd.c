@@ -4191,7 +4191,7 @@ int ufshcd_change_power_mode(struct ufs_hba *hba,
 			     struct ufs_pa_layer_attr *pwr_mode)
 {
 	int ret = 0;
-
+	int retries = 5;
 	/* if already configured to the requested pwr_mode */
 	if (pwr_mode->gear_rx == hba->pwr_info.gear_rx &&
 	    pwr_mode->gear_tx == hba->pwr_info.gear_tx &&
@@ -4253,8 +4253,10 @@ int ufshcd_change_power_mode(struct ufs_hba *hba,
 	ufshcd_dme_set(hba, UIC_ARG_MIB(DME_LocalAFC0ReqTimeOutVal),
 			DL_AFC0ReqTimeOutVal_Default);
 
-	ret = ufshcd_uic_change_pwr_mode(hba, pwr_mode->pwr_rx << 4
+	do {
+		ret = ufshcd_uic_change_pwr_mode(hba, pwr_mode->pwr_rx << 4
 			| pwr_mode->pwr_tx);
+	} while (ret && retries--);
 
 	if (ret) {
 		ufshcd_update_error_stats(hba, UFS_ERR_POWER_MODE_CHANGE);
