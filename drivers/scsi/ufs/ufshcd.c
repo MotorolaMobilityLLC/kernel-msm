@@ -4192,6 +4192,8 @@ int ufshcd_change_power_mode(struct ufs_hba *hba,
 {
 	int ret = 0;
 	int retries = 5;
+	static int failure_count;
+
 	/* if already configured to the requested pwr_mode */
 	if (pwr_mode->gear_rx == hba->pwr_info.gear_rx &&
 	    pwr_mode->gear_tx == hba->pwr_info.gear_tx &&
@@ -4262,8 +4264,26 @@ int ufshcd_change_power_mode(struct ufs_hba *hba,
 		ufshcd_update_error_stats(hba, UFS_ERR_POWER_MODE_CHANGE);
 		dev_err(hba->dev,
 			"%s: power mode change failed %d\n", __func__, ret);
+
+		dev_err(hba->dev, "[RX,TX]current gear=[%d,%d],lane[%d,%d],pwr[%d,%d],rate=[%d]\n",
+			hba->pwr_info.gear_rx, hba->pwr_info.gear_tx,
+			hba->pwr_info.lane_rx, hba->pwr_info.lane_tx,
+			hba->pwr_info.pwr_rx, hba->pwr_info.pwr_tx,
+			hba->pwr_info.hs_rate);
+
+		dev_err(hba->dev, "[RX,TX]new gear=[%d,%d],lane[%d,%d] pwr[%d,%d],rate=[%d]\n",
+			pwr_mode->gear_rx, pwr_mode->gear_tx,
+			pwr_mode->lane_rx, pwr_mode->lane_tx,
+			pwr_mode->pwr_rx, pwr_mode->pwr_tx,
+			pwr_mode->hs_rate);
+		ufshcd_print_host_state(hba);
+
+		if (++failure_count > 10)
 			BUG();
+
 	} else {
+		failure_count = 0;
+
 		ufshcd_vops_pwr_change_notify(hba, POST_CHANGE, NULL,
 						pwr_mode);
 
