@@ -59,11 +59,6 @@
 		reg = <0x0>;
 		compatible = "qcom,ois";
 		qcom,cci-master = <0>;
-		cam_vaf-supply = <&pm8994_l23>;
-		qcom,cam-vreg-name = "cam_vaf";
-		qcom,cam-vreg-min-voltage = <1850000>;
-		qcom,cam-vreg-max-voltage = <1850000>;
-		qcom,cam-vreg-op-mode = <100000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 =
 			<&cam_sensor_mclk0_active &cam_sensor_rear_active>;
