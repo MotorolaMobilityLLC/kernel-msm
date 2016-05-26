@@ -1088,6 +1088,10 @@ static void __ref do_core_control(long temp)
 			if (ret)
 				pr_err("Error %d online core %d\n",
 						ret, i);
+			else {
+				struct device *cpu_device = get_cpu_device(i);
+				kobject_uevent(&cpu_device->kobj, KOBJ_ONLINE);
+			}
 			break;
 		}
 	}
@@ -1113,8 +1117,11 @@ static int __ref update_offline_cores(int val)
 		if (ret)
 			pr_err("Unable to offline CPU%d. err:%d\n",
 				cpu, ret);
-		else
+		else {
+			struct device *cpu_device = get_cpu_device(cpu);
+			kobject_uevent(&cpu_device->kobj, KOBJ_OFFLINE);
 			pr_debug("Offlined CPU%d\n", cpu);
+                }
 	}
 	return ret;
 }
