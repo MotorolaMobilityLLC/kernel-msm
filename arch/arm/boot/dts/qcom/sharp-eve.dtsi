@@ -205,11 +205,6 @@
 	     compatible = "sharp,shub_rot_gyro";
 	};
 
-    sharp,shub_exif {
-	     status = "ok";
-	     compatible = "sharp,shub_exif";
-	};
-
     sharp,shub_grav {
 	     status = "ok";
 	     compatible = "sharp,shub_grav";
@@ -260,9 +255,9 @@
 	     compatible = "sharp,shub_pedo";
 	};
 
-    sharp,shub_pedodect {
+    sharp,shub_pedodet {
 	     status = "ok";
-	     compatible = "sharp,shub_pedodect";
+	     compatible = "sharp,shub_pedodet";
 	};
 
     sharp,shub_rotation_vec {
