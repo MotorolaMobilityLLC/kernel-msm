@@ -2784,16 +2784,18 @@ uint32_t vos_get_log_indicator(void)
 
 	vos_context = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
 	if (!vos_context) {
-		VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-				"%s: vos context is Invalid", __func__);
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+			  FL("vos context is Invalid"));
 		return WLAN_LOG_INDICATOR_UNUSED;
 	}
 	if (vos_context->isLoadUnloadInProgress ||
 		vos_context->isLogpInProgress ||
 		vos_context->isReInitInProgress) {
-		VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-				"%s: vos context initialization is in progress"
-				, __func__);
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+			  FL("vos context initialization is in progress LoadUnload: %u LogP: %u ReInit: %u"),
+			     vos_context->isLoadUnloadInProgress,
+			     vos_context->isLogpInProgress,
+			     vos_context->isReInitInProgress);
 		return WLAN_LOG_INDICATOR_UNUSED;
 	}
 
