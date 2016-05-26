@@ -97,9 +97,7 @@
 
 &i2c_7 {
 	analogix_anx78e6@72 {
-		/delete-property/ interrupt-parent;
-		/delete-property/ interrupts;
-		/delete-property/ analogix,cbl-det-gpio;
+		status = "disabled";
 	};
 };
 
