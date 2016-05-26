@@ -1131,7 +1131,6 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	}
 
 	if (mfd->panel_info->cont_splash_enabled) {
-		mfd->bl_updated = true;
 		MDSS_BRIGHT_TO_BL(mfd->bl_level,
 				mfd->panel_info->brightness_max,
 				mfd->panel_info->bl_max,
