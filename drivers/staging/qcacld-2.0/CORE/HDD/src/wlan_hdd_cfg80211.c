@@ -17213,6 +17213,22 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
             pRoamProfile->vht_channel_width = ch_width;
         }
         /*
+         * if MFPEnabled is set but the peer AP is non-PMF i.e ieee80211w=2
+         * or pmf=2 is an explicit configuration in the supplicant
+         * configuration, drop the connection request.
+         */
+         if (pWextState->roamProfile.MFPEnabled &&
+            !(pWextState->roamProfile.MFPRequired ||
+            pWextState->roamProfile.MFPCapable)) {
+             hddLog(LOGE,
+                FL("Drop connect req as supplicant has indicated PMF required for the non-PMF peer."
+                   " MFPEnabled %d MFPRequired %d MFPCapable %d"),
+                pWextState->roamProfile.MFPEnabled,
+                pWextState->roamProfile.MFPRequired,
+                pWextState->roamProfile.MFPCapable);
+             return -EINVAL;
+        }
+        /*
          * Change conn_state to connecting before sme_RoamConnect(),
          * because sme_RoamConnect() has a direct path to call
          * hdd_smeRoamCallback(), which will change the conn_state
