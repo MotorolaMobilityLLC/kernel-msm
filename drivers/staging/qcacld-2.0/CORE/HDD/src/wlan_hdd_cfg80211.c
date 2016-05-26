@@ -9999,6 +9999,7 @@ static int hdd_set_reset_bpf_offload(hdd_context_t *hdd_ctx,
 	struct sir_bpf_set_offload *bpf_set_offload;
 	eHalStatus hstatus;
 	int prog_len;
+	int ret_val = -EINVAL;
 
 	ENTER();
 
@@ -10038,6 +10039,11 @@ static int hdd_set_reset_bpf_offload(hdd_context_t *hdd_ctx,
 
 	prog_len = nla_len(tb[BPF_PROGRAM]);
 	bpf_set_offload->program = vos_mem_malloc(sizeof(uint8_t) * prog_len);
+	if (!bpf_set_offload->program) {
+		hddLog(LOGE, FL("failed to allocate memory for bpf filter"));
+		ret_val = -ENOMEM;
+		goto fail;
+	}
 	bpf_set_offload->current_length = prog_len;
 	nla_memcpy(bpf_set_offload->program, tb[BPF_PROGRAM], prog_len);
 	bpf_set_offload->session_id = adapter->sessionId;
@@ -10081,7 +10087,7 @@ fail:
 	if (bpf_set_offload->current_length)
 		vos_mem_free(bpf_set_offload->program);
 	vos_mem_free(bpf_set_offload);
-	return -EINVAL;
+	return ret_val;
 }
 
 /**
