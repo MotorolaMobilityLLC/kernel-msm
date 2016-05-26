@@ -1,4 +1,4 @@
-/* include/sharp/proximity.h  (proximitySensor Driver)
+/* include/linux/input/proximity.h  (proximitySensor Driver)
  *
  * Copyright (C) 2016 SHARP CORPORATION All rights reserved.
  *

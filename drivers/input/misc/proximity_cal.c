@@ -1,4 +1,4 @@
-/* driver/sharp/proximity/proximity.c  (proximitySensor Driver)
+/* drivers/input/misc/proximity_cal.c  (proximitySensor Driver)
  *
  * Copyright (C) 2016 SHARP CORPORATION All rights reserved.
  *
