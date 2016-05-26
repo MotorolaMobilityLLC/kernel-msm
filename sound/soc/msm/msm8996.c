@@ -1578,6 +1578,7 @@ static int msm8996_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct modbus_ext_status modbus_status;
+	int pcm_depth;
 
 	pr_debug("%s: substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
@@ -1589,6 +1590,19 @@ static int msm8996_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	modbus_ext_set_state(&modbus_status);
 
 	mi2s_tx_clk.enable = 1;
+	/* update bit clock which is chans*num of bytes per sample*rate
+	 * if 24 bit pcm depth is used, set number of bit cycles to 32.
+	 */
+	if (tert_mi2s_bit_format == SNDRV_PCM_FORMAT_S24_LE)
+		pcm_depth = 32;
+	else
+		pcm_depth = snd_pcm_format_width(tert_mi2s_bit_format);
+
+	mi2s_tx_clk.clk_freq_in_hz = msm_tert_mi2s_tx_ch*tert_mi2s_sample_rate*
+					pcm_depth;
+
+	pr_debug("%s: bit clk freq set to %d\n", __func__,
+				mi2s_tx_clk.clk_freq_in_hz);
 	ret = afe_set_lpass_clock_v2(AFE_PORT_ID_TERTIARY_MI2S_TX,
 				&mi2s_tx_clk);
 	if (ret < 0) {
