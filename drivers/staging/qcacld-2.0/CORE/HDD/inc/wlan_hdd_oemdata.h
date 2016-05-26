@@ -27,6 +27,8 @@
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
 
+#include "wlan_hdd_main.h"
+
 /**===========================================================================
 
   \file  wlan_hdd_oemdata.h
@@ -158,6 +160,12 @@ typedef PACKED_PRE struct PACKED_POST
     tHddChannelInfo peer_chan_info;
 } tPeerStatusInfo;
 
+void hdd_SendPeerStatusIndToOemApp(v_MACADDR_t *peerMac,
+	uint8_t peerStatus,
+	uint8_t peerTimingMeasCap,
+	uint8_t sessionId,
+	tSirSmeChanInfo *chan_info,
+	device_mode_t dev_mode);
 #endif //__WLAN_HDD_OEM_DATA_H__
 
 #endif //FEATURE_OEM_DATA_SUPPORT

@@ -95,6 +95,7 @@ extern int process_wma_set_command(int sessid, int paramid,
 #include "wlan_hdd_cfg.h"
 #include <wlan_hdd_wowl.h>
 #include "wlan_hdd_tsf.h"
+#include "wlan_hdd_oemdata.h"
 
 #define    IS_UP(_dev) \
     (((_dev)->flags & (IFF_RUNNING|IFF_UP)) == (IFF_RUNNING|IFF_UP))
@@ -1859,7 +1860,8 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                     ePeerConnected,
                     pSapEvent->sapevt.sapStationAssocReassocCompleteEvent.timingMeasCap,
                     pHostapdAdapter->sessionId,
-                    &pSapEvent->sapevt.sapStationAssocReassocCompleteEvent.chan_info);
+                    &pSapEvent->sapevt.sapStationAssocReassocCompleteEvent.chan_info,
+                    pHostapdAdapter->device_mode);
             }
 
             hdd_wlan_green_ap_add_sta(pHddCtx);
@@ -1976,7 +1978,8 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                 hdd_SendPeerStatusIndToOemApp(
                   &pSapEvent->sapevt.sapStationDisassocCompleteEvent.staMac,
                   ePeerDisconnected, 0,
-                  pHostapdAdapter->sessionId, NULL);
+                  pHostapdAdapter->sessionId, NULL,
+                  pHostapdAdapter->device_mode);
             }
 
 #ifdef FEATURE_BUS_BANDWIDTH

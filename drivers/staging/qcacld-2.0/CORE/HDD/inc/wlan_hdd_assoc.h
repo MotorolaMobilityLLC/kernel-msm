@@ -158,12 +158,6 @@ void hdd_PerformRoamSetKeyComplete(hdd_adapter_t *pAdapter);
 
 VOS_STATUS hdd_roamDeregisterTDLSSTA(hdd_adapter_t *adapter, uint8_t staId);
 
-void hdd_SendPeerStatusIndToOemApp(v_MACADDR_t *peerMac,
-                                   tANI_U8 peerStatus,
-                                   tANI_U8 peerTimingMeasCap,
-                                   tANI_U8 sessionId,
-                                   tSirSmeChanInfo *chan_info);
-
 #if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
 void hdd_indicateEseBcnReportNoResults(const hdd_adapter_t *pAdapter,
                                        const tANI_U16 measurementToken,

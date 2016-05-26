@@ -134,6 +134,7 @@ void hdd_ch_avoid_cb(void *hdd_context,void *indi_param);
 #include "wlan_hdd_ocb.h"
 #include "wlan_hdd_tsf.h"
 #include "tl_shim.h"
+#include "wlan_hdd_oemdata.h"
 
 #if defined(LINUX_QCMBR)
 #define SIOCIOCTLTX99 (SIOCDEVPRIVATE+13)

@@ -11920,8 +11920,21 @@ VOS_STATUS wma_process_dhcp_ind(tp_wma_handle wma_handle,
 	return VOS_STATUS_SUCCESS;
 }
 
-static WLAN_PHY_MODE wma_chan_to_mode(u8 chan, ePhyChanBondState chan_offset,
-                                      u8 vht_capable, u8 dot11_mode)
+/**
+ * wma_chan_to_mode() - calculate phy mode corresponding to channel
+ * @chan: channel
+ * @chan_offset: secondary channel offset
+ * @vht_capable: If vht capable
+ * @dot11_mode: dot11 mode
+ *
+ * calculate phy mode corresponding to channel, dot11 mode, vht capability
+ * and secondary channel offset.
+ *
+ * Return: WLAN_PHY_MODE
+ */
+
+WLAN_PHY_MODE wma_chan_to_mode(uint8_t chan, ePhyChanBondState chan_offset,
+	uint8_t vht_capable, uint8_t dot11_mode)
 {
 	WLAN_PHY_MODE phymode = MODE_UNKNOWN;
 

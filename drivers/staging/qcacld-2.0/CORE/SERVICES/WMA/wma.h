@@ -1794,5 +1794,7 @@ void wma_remove_peer(tp_wma_handle wma, u_int8_t *bssid,
 
 void wma_add_wow_wakeup_event(tp_wma_handle wma, WOW_WAKE_EVENT_TYPE event,
 			bool enable);
+WLAN_PHY_MODE wma_chan_to_mode(uint8_t chan, ePhyChanBondState chan_offset,
+		uint8_t vht_capable, uint8_t dot11_mode);
 
 #endif

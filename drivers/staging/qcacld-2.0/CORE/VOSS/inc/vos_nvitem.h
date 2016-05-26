@@ -103,8 +103,45 @@ struct chan_to_ht_40_index_map {
    uint16 ht_40_plus_index;
 };
 
+/**
+ * enum phy_ch_width - physical layer channel width
+ * @CH_WIDTH_20MHZ: channel width 20 mhz
+ * @CH_WIDTH_40MHZ: channel width 40 mhz
+ * @CH_WIDTH_80MHZ: channel width 80 mhz
+ * @CH_WIDTH_5MHZ: channel width 5 mhz
+ * @CH_WIDTH_10MHZ: channel width 10 mhz
+ * @CH_WIDTH_INVALID: invalid channel width
+ * @CH_WIDTH_MAX: maximum channel width
+ */
+enum phy_ch_width {
+	CH_WIDTH_20MHZ = 0,
+	CH_WIDTH_40MHZ,
+	CH_WIDTH_80MHZ,
+	CH_WIDTH_5MHZ,
+	CH_WIDTH_10MHZ,
+	CH_WIDTH_INVALID,
+	CH_WIDTH_MAX
+};
+
+/**
+ * struct ch_params_s
+ * @ch_width: channel width
+ * @sec_ch_offset: secondary channel offset
+ * @center_freq_seg0: center freq for segment 0
+ * @center_freq_seg1: center freq for segment 1
+ */
+struct ch_params_s {
+	enum phy_ch_width ch_width;
+	uint8_t sec_ch_offset;
+	uint32_t center_freq_seg0;
+	uint32_t center_freq_seg1;
+};
+
 // country code type
 typedef v_U8_t v_COUNTRYCODE_t[VOS_COUNTRY_CODE_LEN];
+
+void vos_set_channel_params(uint16_t oper_ch, uint16_t sec_ch_2g,
+	struct ch_params_s *ch_params);
 
 /**------------------------------------------------------------------------
 

@@ -118,6 +118,48 @@ static v_BOOL_t init_by_reg_core = VOS_FALSE;
 #define WORLD_SKU_MASK          0x00F0
 #define WORLD_SKU_PREFIX        0x0060
 
+/**
+ * struct bonded_chan
+ * @start_ch: start channel
+ * @end_ch: end channel
+ */
+struct bonded_chan {
+	uint16_t start_ch;
+	uint16_t end_ch;
+};
+
+static const struct bonded_chan bonded_chan_40mhz_array[] = {
+	{36, 40},
+	{44, 48},
+	{52, 56},
+	{60, 64},
+	{100, 104},
+	{108, 112},
+	{116, 120},
+	{124, 128},
+	{132, 136},
+	{140, 144},
+	{149, 153},
+	{157, 161}
+};
+
+static const struct bonded_chan bonded_chan_80mhz_array[] = {
+	{36, 48},
+	{52, 64},
+	{100, 112},
+	{116, 128},
+	{132, 144},
+	{149, 161}
+};
+
+static const enum phy_ch_width next_lower_bw[] = {
+	[CH_WIDTH_80MHZ] = CH_WIDTH_40MHZ,
+	[CH_WIDTH_40MHZ] = CH_WIDTH_20MHZ,
+	[CH_WIDTH_20MHZ] = CH_WIDTH_10MHZ,
+	[CH_WIDTH_10MHZ] = CH_WIDTH_5MHZ,
+	[CH_WIDTH_5MHZ] = CH_WIDTH_INVALID
+};
+
 static const struct ieee80211_regdomain vos_world_regdom_60_61_62 = {
    .n_reg_rules = 6,
    .alpha2 =  "00",
@@ -494,6 +536,13 @@ const tRfChannelProps rfChannels[NUM_RF_CHANNELS] =
     { 5815, 163, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_163,
 };
 
+#define VOS_IS_CHANNEL_5GHZ(chan_num) \
+	((chan_num >= rfChannels[RF_CHAN_36].channelNum) && \
+	 (chan_num <= rfChannels[RF_CHAN_184].channelNum))
+#define VOS_IS_CHANNEL_24GHZ(chan_num) \
+	((chan_num >= rfChannels[RF_CHAN_1].channelNum) && \
+	 (chan_num <= rfChannels[RF_CHAN_14].channelNum))
+
 extern const sHalNv nvDefaults;
 
 const sRegulatoryChannel * regChannels = nvDefaults.tables.regDomains[0].channels;
@@ -692,6 +741,322 @@ VOS_STATUS vos_nv_close(void)
     vos_mem_free(pnvEFSTable);
     pnvEFSTable=NULL;
     return VOS_STATUS_SUCCESS;
+}
+
+/**
+ * vos_search_5g_bonded_chan_array() - get ptr to bonded channel
+ * @oper_ch: operating channel number
+ * @bonded_chan_ar: bonded channel array
+ * @bonded_chan_ptr_ptr: bonded channel ptr ptr
+ *
+ * Return: eNVChannelEnabledType
+ */
+static eNVChannelEnabledType vos_search_5g_bonded_chan_array(
+	uint32_t oper_chan, const struct bonded_chan bonded_chan_ar[],
+	uint16_t array_size, const struct bonded_chan
+	**bonded_chan_ptr_ptr)
+{
+	int i;
+	uint8_t chan_num;
+	const struct bonded_chan *bonded_chan_ptr = NULL;
+	eNVChannelEnabledType chan_state = NV_CHANNEL_INVALID;
+	eNVChannelEnabledType temp_chan_state;
+
+	for (i = 0; i < array_size; i++) {
+		if ((oper_chan >= bonded_chan_ar[i].start_ch) &&
+		    (oper_chan <= bonded_chan_ar[i].end_ch)) {
+			bonded_chan_ptr =  &(bonded_chan_ar[i]);
+			break;
+		}
+	}
+
+	if (NULL == bonded_chan_ptr)
+		return chan_state;
+
+	*bonded_chan_ptr_ptr = bonded_chan_ptr;
+	chan_num =  bonded_chan_ptr->start_ch;
+	while (chan_num <= bonded_chan_ptr->end_ch) {
+		temp_chan_state = vos_nv_getChannelEnabledState(chan_num);
+		if (temp_chan_state < chan_state)
+			chan_state = temp_chan_state;
+		chan_num = chan_num + 4;
+	}
+
+	return chan_state;
+}
+
+/**
+ * vos_search_5g_bonded_channel() - get the 5G bonded channel state
+ * @chan_num: channel number
+ * @ch_width: channel width
+ * @bonded_chan_ptr_ptr: bonded channel ptr ptr
+ *
+ * Return: channel state
+ */
+static eNVChannelEnabledType vos_search_5g_bonded_channel(uint32_t chan_num,
+						enum phy_ch_width ch_width,
+						const struct bonded_chan
+						**bonded_chan_ptr_ptr)
+{
+
+	if (CH_WIDTH_80MHZ == ch_width)
+		return vos_search_5g_bonded_chan_array(chan_num,
+			bonded_chan_80mhz_array,
+			ARRAY_SIZE(bonded_chan_80mhz_array),
+			bonded_chan_ptr_ptr);
+	else if (CH_WIDTH_40MHZ == ch_width)
+		return vos_search_5g_bonded_chan_array(chan_num,
+			bonded_chan_40mhz_array,
+			ARRAY_SIZE(bonded_chan_40mhz_array),
+			bonded_chan_ptr_ptr);
+	else
+		return vos_nv_getChannelEnabledState(chan_num);
+}
+
+/**
+ * vos_get_5g_bonded_channel_state() - get the 5G bonded channel state
+ * @chan_num: channel number
+ * @ch_width: channel width
+ *
+ * Return: channel state
+ */
+eNVChannelEnabledType vos_get_5g_bonded_channel_state(
+	uint16_t chan_num,
+	enum phy_ch_width ch_width,
+	const struct bonded_chan *bonded_chan_ptr)
+{
+	bool bw_enabled = false;
+	uint32_t flags;
+
+	if (CH_WIDTH_80MHZ < ch_width)
+		return NV_CHANNEL_INVALID;
+
+	flags = vos_nv_get_channel_flags(chan_num);
+
+	if (CH_WIDTH_5MHZ == ch_width) {
+		bw_enabled = true;
+	} else if (CH_WIDTH_10MHZ == ch_width) {
+		bw_enabled = !(flags &
+				IEEE80211_CHAN_NO_10MHZ);
+	} else if (CH_WIDTH_20MHZ == ch_width) {
+		bw_enabled = !(flags &
+				IEEE80211_CHAN_NO_20MHZ);
+	} else if (CH_WIDTH_40MHZ == ch_width) {
+		if (chan_num == bonded_chan_ptr->start_ch)
+			bw_enabled =
+				!(flags & IEEE80211_CHAN_NO_HT40PLUS);
+		else
+			bw_enabled =
+				!(flags & IEEE80211_CHAN_NO_HT40MINUS);
+	} else if (CH_WIDTH_80MHZ == ch_width) {
+		bw_enabled = !(flags &
+				IEEE80211_CHAN_NO_80MHZ);
+	}
+
+	if (bw_enabled)
+		return NV_CHANNEL_ENABLE;
+	else
+		return NV_CHANNEL_DISABLE;
+}
+
+/**
+ * vos_set_sec_chan_offset_vht80() - set sec channel offset for vht80
+ * @oper_ch: operating channel
+ * @center_chan: center channel for operating channel
+ * @ch_params: channel parameters
+ *
+ * Return: void
+ */
+static inline void vos_set_sec_chan_offset_vht80(uint16_t oper_ch,
+	uint16_t center_chan, struct ch_params_s *ch_params)
+{
+	if ((oper_ch + 2 ) == center_chan)
+		ch_params->sec_ch_offset =
+			PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW;
+	else if ((oper_ch + 6 ) == center_chan)
+		ch_params->sec_ch_offset =
+			PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW;
+	else if ((oper_ch - 2 ) == center_chan)
+		ch_params->sec_ch_offset =
+			PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH;
+	else if ((oper_ch - 6 ) == center_chan)
+		ch_params->sec_ch_offset =
+			PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH;
+}
+
+/**
+ * vos_set_5g_channel_params() - set the 5G bonded channel parameters
+ * @oper_ch: operating channel
+ * @ch_params: channel parameters
+ *
+ * Return: void
+ */
+static void vos_set_5g_channel_params(uint16_t oper_ch,
+				      struct ch_params_s *ch_params)
+{
+	eNVChannelEnabledType chan_state = NV_CHANNEL_ENABLE;
+	const struct bonded_chan *bonded_chan_ptr;
+	uint16_t center_chan;
+
+	if (CH_WIDTH_MAX <= ch_params->ch_width)
+		ch_params->ch_width = CH_WIDTH_80MHZ;
+
+	while (ch_params->ch_width < CH_WIDTH_INVALID) {
+		chan_state = vos_search_5g_bonded_channel(oper_ch,
+				ch_params->ch_width, &bonded_chan_ptr);
+		if (((NV_CHANNEL_ENABLE != chan_state) &&
+		   (NV_CHANNEL_DFS != chan_state)))
+			goto next;
+
+		chan_state = vos_get_5g_bonded_channel_state(oper_ch,
+				ch_params->ch_width, bonded_chan_ptr);
+		if (((NV_CHANNEL_ENABLE != chan_state) &&
+		   (NV_CHANNEL_DFS != chan_state)))
+			goto next;
+
+		if (CH_WIDTH_20MHZ >= ch_params->ch_width) {
+			ch_params->sec_ch_offset
+				= PHY_SINGLE_CHANNEL_CENTERED;
+			break;
+		} else if (CH_WIDTH_40MHZ == ch_params->ch_width) {
+			if (oper_ch == bonded_chan_ptr->start_ch)
+				ch_params->sec_ch_offset =
+					PHY_DOUBLE_CHANNEL_LOW_PRIMARY;
+			else
+				ch_params->sec_ch_offset =
+					PHY_DOUBLE_CHANNEL_HIGH_PRIMARY;
+		}
+
+		center_chan = (bonded_chan_ptr->start_ch +
+			 bonded_chan_ptr->end_ch) / 2;
+		ch_params->center_freq_seg0 =
+			vos_chan_to_freq(center_chan);
+
+		if (CH_WIDTH_80MHZ == ch_params->ch_width)
+			vos_set_sec_chan_offset_vht80(oper_ch,
+					center_chan, ch_params);
+
+		break;
+next:
+		ch_params->ch_width = next_lower_bw[ch_params->ch_width];
+	}
+}
+
+/**
+ * vos_get_2g_bonded_channel_state() - get the 2G bonded channel state
+ * @oper_ch: operating channel
+ * @ch_width: channel width
+ * @sec_ch: secondary channel
+ *
+ * Return: channel state
+ */
+eNVChannelEnabledType vos_get_2g_bonded_channel_state(uint16_t oper_ch,
+						  enum phy_ch_width ch_width,
+						  uint16_t sec_ch)
+{
+	eNVChannelEnabledType chan_state;
+	bool bw_enabled = false;
+	uint32_t flags;
+	bool ht_40_plus = false;
+
+	if (CH_WIDTH_40MHZ < ch_width)
+		return NV_CHANNEL_INVALID;
+
+	if (CH_WIDTH_40MHZ == ch_width) {
+		if ((sec_ch + 4 != oper_ch) &&
+		    (oper_ch + 4 != sec_ch))
+			return NV_CHANNEL_INVALID;
+		ht_40_plus = (oper_ch < sec_ch)? true : false;
+	}
+
+	chan_state = vos_nv_getChannelEnabledState(oper_ch);
+	if ((NV_CHANNEL_INVALID == chan_state) ||
+	    (NV_CHANNEL_DISABLE == chan_state))
+		return chan_state;
+
+	flags = vos_nv_get_channel_flags(oper_ch);
+
+	if (CH_WIDTH_5MHZ == ch_width) {
+		bw_enabled = true;
+	} else if (CH_WIDTH_10MHZ == ch_width) {
+		bw_enabled = !(flags &
+				IEEE80211_CHAN_NO_10MHZ);
+	} else if (CH_WIDTH_20MHZ == ch_width) {
+		bw_enabled = !(flags &
+				IEEE80211_CHAN_NO_20MHZ);
+	} else if (CH_WIDTH_40MHZ == ch_width) {
+		if (ht_40_plus)
+			bw_enabled =
+				!(flags & IEEE80211_CHAN_NO_HT40PLUS);
+		else
+			bw_enabled =
+				!(flags & IEEE80211_CHAN_NO_HT40MINUS);
+	}
+
+	if (bw_enabled)
+		return chan_state;
+	else
+		return NV_CHANNEL_DISABLE;
+}
+
+/**
+ * vos_set_2g_channel_params() - set the 2.4G bonded channel parameters
+ * @oper_ch: operating channel
+ * @ch_params: channel parameters
+ * @sec_ch_2g: 2.4G secondary channel
+ *
+ * Return: void
+ */
+static void vos_set_2g_channel_params(uint16_t oper_ch,
+		struct ch_params_s *ch_params,
+		uint16_t sec_ch_2g)
+{
+	eNVChannelEnabledType chan_state = NV_CHANNEL_ENABLE;
+
+	if (CH_WIDTH_MAX <= ch_params->ch_width)
+		ch_params->ch_width = CH_WIDTH_40MHZ;
+
+	while (ch_params->ch_width < CH_WIDTH_INVALID) {
+		chan_state = vos_get_2g_bonded_channel_state(oper_ch,
+							    ch_params->ch_width,
+							    sec_ch_2g);
+		if (NV_CHANNEL_ENABLE == chan_state) {
+			if (CH_WIDTH_40MHZ == ch_params->ch_width) {
+				if (oper_ch < sec_ch_2g)
+					ch_params->sec_ch_offset =
+						PHY_DOUBLE_CHANNEL_LOW_PRIMARY;
+				else
+					ch_params->sec_ch_offset =
+						PHY_DOUBLE_CHANNEL_HIGH_PRIMARY;
+				ch_params->center_freq_seg0 =
+					vos_chan_to_freq(
+						(oper_ch + sec_ch_2g) / 2);
+			} else {
+				ch_params->sec_ch_offset =
+					PHY_SINGLE_CHANNEL_CENTERED;
+			}
+			break;
+		}
+
+		ch_params->ch_width = next_lower_bw[ch_params->ch_width];
+	}
+}
+
+/**
+ * vos_set_channel_params() - set the bonded channel parameters
+ * @oper_ch: operating channel
+ * @sec_ch_2g: 2.4G secondary channel
+ * @ch_params: chanel parameters
+ *
+ * Return: void
+ */
+void vos_set_channel_params(uint16_t oper_ch, uint16_t sec_ch_2g,
+	struct ch_params_s *ch_params)
+{
+	if (VOS_IS_CHANNEL_5GHZ(oper_ch))
+		vos_set_5g_channel_params(oper_ch, ch_params);
+	else if (VOS_IS_CHANNEL_24GHZ(oper_ch))
+		vos_set_2g_channel_params(oper_ch, ch_params, sec_ch_2g);
 }
 
 /**------------------------------------------------------------------------

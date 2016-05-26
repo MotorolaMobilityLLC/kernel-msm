@@ -111,6 +111,7 @@
 #include "wlan_hdd_tsf.h"
 #include "vos_nvitem.h"
 #include "wlan_hdd_nan_datapath.h"
+#include "wlan_hdd_oemdata.h"
 
 #define HDD_FINISH_ULA_TIME_OUT         800
 #define HDD_SET_MCBC_FILTERS_TO_FW      1
