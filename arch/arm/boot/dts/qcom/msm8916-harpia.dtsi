@@ -473,6 +473,10 @@
 	};
 };
 
+&secure_mem {
+	reg = <0 0 0 0x3C00000>;
+};
+
 &spmi_bus {
         qcom,pm8916@1 {
                 qcom,vibrator@c000 {
