@@ -27,7 +27,7 @@
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
 
-#include <linux/input/shtps_dev.h>
+#include <linux/input/fts_dev.h>
 
 #define DT_CMD_HDR 6
 #define MIN_REFRESH_RATE 48
@@ -1941,7 +1941,7 @@ static int mdss_dsi_panel_touchscreen_enable(struct mdss_panel_data *pdata,
 				int enable)
 {
 	pr_debug("%s: panel - pdata= 0x%p, enable=%d\n", __func__, pdata, enable);
-	msm_tps_setsleep(!enable);
+	fts_setsleep(!enable);
 	return 0;
 }
 

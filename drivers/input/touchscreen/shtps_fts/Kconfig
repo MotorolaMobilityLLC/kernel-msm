@@ -1,7 +1,0 @@
-#
-# Sharp Touchscreen configuration
-#
-
-config TOUCHSCREEN_FT8607
-	tristate "SHARP Touchscreen FT8607"
-	default n

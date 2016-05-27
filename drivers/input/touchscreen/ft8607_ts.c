@@ -1,4 +1,7 @@
 /*
+ * FocalTech ft8607 TouchScreen driver.
+ *
+ * Copyright (c) 2016  Focal tech Ltd.
  * Copyright (c) 2016, Sharp. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
@@ -12,147 +15,147 @@
  *
  */
 
-#include "shtps_fts.h"
+#include "ft8607_ts.h"
 
 /* -----------------------------------------------------------------------------------
  */
-static DEFINE_MUTEX(shtps_ctrl_lock);
-static DEFINE_MUTEX(shtps_loader_lock);
-static DEFINE_MUTEX(shtps_proc_lock);
+static DEFINE_MUTEX(fts_ctrl_lock);
+static DEFINE_MUTEX(fts_loader_lock);
+static DEFINE_MUTEX(fts_proc_lock);
 
 /* -----------------------------------------------------------------------------------
  */
-struct shtps_fts*	gShtps_fts = NULL;
+struct fts_data*	gFts_data = NULL;
 
 /* -----------------------------------------------------------------------------------
  */
-typedef int (shtps_state_func)(struct shtps_fts *ts, int param);
-struct shtps_state_func {
-	shtps_state_func	*enter;
-	shtps_state_func	*start;
-	shtps_state_func	*stop;
-	shtps_state_func	*sleep;
-	shtps_state_func	*wakeup;
-	shtps_state_func	*start_ldr;
-	shtps_state_func	*interrupt;
+typedef int (fts_state_func)(struct fts_data *ts, int param);
+struct fts_state_func {
+	fts_state_func	*enter;
+	fts_state_func	*start;
+	fts_state_func	*stop;
+	fts_state_func	*sleep;
+	fts_state_func	*wakeup;
+	fts_state_func	*start_ldr;
+	fts_state_func	*interrupt;
 };
 
 /* -----------------------------------------------------------------------------------
  */
-static int shtpsif_init(void);
-static void shtpsif_exit(void);
+static int ftsif_init(void);
+static void ftsif_exit(void);
 
-static void shtps_irq_proc(struct shtps_fts *ts, u8 dummy);
-static void shtps_setsleep_proc(struct shtps_fts *ts, u8 sleep);
-static void shtps_async_open_proc(struct shtps_fts *ts, u8 dummy);
-static void shtps_async_close_proc(struct shtps_fts *ts, u8 dummy);
-static void shtps_async_enable_proc(struct shtps_fts *ts, u8 dummy);
-static void shtps_suspend_i2c_wake_lock(struct shtps_fts *ts, u8 lock);
-static void shtps_exec_suspend_pending_proc(struct shtps_fts *ts);
-static void shtps_deter_suspend_i2c_pending_proc_work_function(struct work_struct *work);
+static void fts_irq_proc(struct fts_data *ts, u8 dummy);
+static void fts_setsleep_proc(struct fts_data *ts, u8 sleep);
+static void fts_async_open_proc(struct fts_data *ts, u8 dummy);
+static void fts_async_close_proc(struct fts_data *ts, u8 dummy);
+static void fts_async_enable_proc(struct fts_data *ts, u8 dummy);
+static void fts_suspend_i2c_wake_lock(struct fts_data *ts, u8 lock);
+static void fts_exec_suspend_pending_proc(struct fts_data *ts);
+static void fts_deter_suspend_i2c_pending_proc_work_function(struct work_struct *work);
 
-static irqreturn_t shtps_irq_handler(int irq, void *dev_id);
-static irqreturn_t shtps_irq(int irq, void *dev_id);
+static irqreturn_t fts_irq_handler(int irq, void *dev_id);
+static irqreturn_t fts_irq(int irq, void *dev_id);
 
-static int shtps_init_param(struct shtps_fts *ts);
-static void shtps_standby_param(struct shtps_fts *ts);
-static void shtps_set_touch_info(struct shtps_fts *ts, u8 *buf, struct shtps_touch_info *info);
-static void shtps_calc_notify(struct shtps_fts *ts, u8 *buf, struct shtps_touch_info *info, u8 *event);
+static int fts_init_param(struct fts_data *ts);
+static void fts_standby_param(struct fts_data *ts);
+static void fts_set_touch_info(struct fts_data *ts, u8 *buf, struct fts_touch_info *info);
+static void fts_calc_notify(struct fts_data *ts, u8 *buf, struct fts_touch_info *info, u8 *event);
 
-static int shtps_irq_resuest(struct shtps_fts *ts);
+static int fts_irq_resuest(struct fts_data *ts);
 
-static int state_change(struct shtps_fts *ts, int state);
-static int shtps_statef_nop(struct shtps_fts *ts, int param);
-static int shtps_statef_cmn_stop(struct shtps_fts *ts, int param);
-static int shtps_statef_idle_start(struct shtps_fts *ts, int param);
-static int shtps_statef_idle_wakeup(struct shtps_fts *ts, int param);
-static int shtps_statef_idle_start_ldr(struct shtps_fts *ts, int param);
-static int shtps_statef_idle_int(struct shtps_fts *ts, int param);
-static int shtps_statef_active_enter(struct shtps_fts *ts, int param);
-static int shtps_statef_active_stop(struct shtps_fts *ts, int param);
-static int shtps_statef_active_sleep(struct shtps_fts *ts, int param);
-static int shtps_statef_active_start_ldr(struct shtps_fts *ts, int param);
-static int shtps_statef_active_int(struct shtps_fts *ts, int param);
-static int shtps_statef_loader_enter(struct shtps_fts *ts, int param);
-static int shtps_statef_loader_start(struct shtps_fts *ts, int param);
-static int shtps_statef_loader_stop(struct shtps_fts *ts, int param);
-static int shtps_statef_loader_int(struct shtps_fts *ts, int param);
-static int shtps_statef_sleep_enter(struct shtps_fts *ts, int param);
-static int shtps_statef_sleep_wakeup(struct shtps_fts *ts, int param);
-static int shtps_statef_sleep_start_ldr(struct shtps_fts *ts, int param);
-static int shtps_statef_sleep_int(struct shtps_fts *ts, int param);
-static int shtps_fts_open(struct input_dev *dev);
-static void shtps_fts_close(struct input_dev *dev);
-static int shtps_init_internal_variables(struct shtps_fts *ts);
-static void shtps_deinit_internal_variables(struct shtps_fts *ts);
-static int shtps_init_inputdev(struct shtps_fts *ts, struct device *ctrl_dev_p, char *modalias);
-static void shtps_deinit_inputdev(struct shtps_fts *ts);
+static int state_change(struct fts_data *ts, int state);
+static int fts_statef_nop(struct fts_data *ts, int param);
+static int fts_statef_cmn_stop(struct fts_data *ts, int param);
+static int fts_statef_idle_start(struct fts_data *ts, int param);
+static int fts_statef_idle_wakeup(struct fts_data *ts, int param);
+static int fts_statef_idle_start_ldr(struct fts_data *ts, int param);
+static int fts_statef_idle_int(struct fts_data *ts, int param);
+static int fts_statef_active_enter(struct fts_data *ts, int param);
+static int fts_statef_active_stop(struct fts_data *ts, int param);
+static int fts_statef_active_sleep(struct fts_data *ts, int param);
+static int fts_statef_active_start_ldr(struct fts_data *ts, int param);
+static int fts_statef_active_int(struct fts_data *ts, int param);
+static int fts_statef_loader_enter(struct fts_data *ts, int param);
+static int fts_statef_loader_start(struct fts_data *ts, int param);
+static int fts_statef_loader_stop(struct fts_data *ts, int param);
+static int fts_statef_loader_int(struct fts_data *ts, int param);
+static int fts_statef_sleep_enter(struct fts_data *ts, int param);
+static int fts_statef_sleep_wakeup(struct fts_data *ts, int param);
+static int fts_statef_sleep_start_ldr(struct fts_data *ts, int param);
+static int fts_statef_sleep_int(struct fts_data *ts, int param);
+static int fts_open(struct input_dev *dev);
+static void fts_close(struct input_dev *dev);
+static int fts_init_internal_variables(struct fts_data *ts);
+static void fts_deinit_internal_variables(struct fts_data *ts);
+static int fts_init_inputdev(struct fts_data *ts, struct device *ctrl_dev_p, char *modalias);
+static void fts_deinit_inputdev(struct fts_data *ts);
 
 /* -----------------------------------------------------------------------------------
  */
-const static struct shtps_state_func state_idle = {
-    .enter          = shtps_statef_nop,
-    .start          = shtps_statef_idle_start,
-    .stop           = shtps_statef_nop,
-    .sleep          = shtps_statef_nop,
-    .wakeup         = shtps_statef_idle_wakeup,
-    .start_ldr      = shtps_statef_idle_start_ldr,
-    .interrupt      = shtps_statef_idle_int,
+const static struct fts_state_func state_idle = {
+    .enter          = fts_statef_nop,
+    .start          = fts_statef_idle_start,
+    .stop           = fts_statef_nop,
+    .sleep          = fts_statef_nop,
+    .wakeup         = fts_statef_idle_wakeup,
+    .start_ldr      = fts_statef_idle_start_ldr,
+    .interrupt      = fts_statef_idle_int,
 };
 
-const static struct shtps_state_func state_active = {
-    .enter          = shtps_statef_active_enter,
-    .start          = shtps_statef_nop,
-    .stop           = shtps_statef_active_stop,
-    .sleep          = shtps_statef_active_sleep,
-    .wakeup         = shtps_statef_nop,
-    .start_ldr      = shtps_statef_active_start_ldr,
-    .interrupt      = shtps_statef_active_int,
+const static struct fts_state_func state_active = {
+    .enter          = fts_statef_active_enter,
+    .start          = fts_statef_nop,
+    .stop           = fts_statef_active_stop,
+    .sleep          = fts_statef_active_sleep,
+    .wakeup         = fts_statef_nop,
+    .start_ldr      = fts_statef_active_start_ldr,
+    .interrupt      = fts_statef_active_int,
 };
 
-const static struct shtps_state_func state_loader = {
-    .enter          = shtps_statef_loader_enter,
-    .start          = shtps_statef_loader_start,
-    .stop           = shtps_statef_loader_stop,
-    .sleep          = shtps_statef_nop,
-    .wakeup         = shtps_statef_nop,
-    .start_ldr      = shtps_statef_nop,
-    .interrupt      = shtps_statef_loader_int,
+const static struct fts_state_func state_loader = {
+    .enter          = fts_statef_loader_enter,
+    .start          = fts_statef_loader_start,
+    .stop           = fts_statef_loader_stop,
+    .sleep          = fts_statef_nop,
+    .wakeup         = fts_statef_nop,
+    .start_ldr      = fts_statef_nop,
+    .interrupt      = fts_statef_loader_int,
 };
 
-const static struct shtps_state_func state_sleep = {
-    .enter          = shtps_statef_sleep_enter,
-    .start          = shtps_statef_nop,
-    .stop           = shtps_statef_cmn_stop,
-    .sleep          = shtps_statef_nop,
-    .wakeup         = shtps_statef_sleep_wakeup,
-    .start_ldr      = shtps_statef_sleep_start_ldr,
-    .interrupt      = shtps_statef_sleep_int,
+const static struct fts_state_func state_sleep = {
+    .enter          = fts_statef_sleep_enter,
+    .start          = fts_statef_nop,
+    .stop           = fts_statef_cmn_stop,
+    .sleep          = fts_statef_nop,
+    .wakeup         = fts_statef_sleep_wakeup,
+    .start_ldr      = fts_statef_sleep_start_ldr,
+    .interrupt      = fts_statef_sleep_int,
 };
 
-const static struct shtps_state_func *state_func_tbl[] = {
+const static struct fts_state_func *state_func_tbl[] = {
 	&state_idle,
 	&state_active,
 	&state_loader,
 	&state_sleep,
 };
 
-typedef void (*shtps_deter_suspend_i2c_pending_func_t)(struct shtps_fts*, u8);
-static const shtps_deter_suspend_i2c_pending_func_t SHTPS_SUSPEND_PENDING_FUNC_TBL[] = {
-	shtps_irq_proc,							/**< SHTPS_DETER_SUSPEND_I2C_PROC_IRQ */
-	shtps_setsleep_proc,					/**< SHTPS_DETER_SUSPEND_I2C_PROC_SETSLEEP */
-	shtps_async_open_proc,					/**< SHTPS_DETER_SUSPEND_I2C_PROC_OPEN */
-	shtps_async_close_proc,					/**< SHTPS_DETER_SUSPEND_I2C_PROC_CLOSE */
-	shtps_async_enable_proc,				/**< SHTPS_DETER_SUSPEND_I2C_PROC_ENABLE */
+typedef void (*fts_deter_suspend_i2c_pending_func_t)(struct fts_data*, u8);
+static const fts_deter_suspend_i2c_pending_func_t FTS_SUSPEND_PENDING_FUNC_TBL[] = {
+	fts_irq_proc,						/**< FTS_DETER_SUSPEND_I2C_PROC_IRQ */
+	fts_setsleep_proc,					/**< FTS_DETER_SUSPEND_I2C_PROC_SETSLEEP */
+	fts_async_open_proc,				/**< FTS_DETER_SUSPEND_I2C_PROC_OPEN */
+	fts_async_close_proc,				/**< FTS_DETER_SUSPEND_I2C_PROC_CLOSE */
+	fts_async_enable_proc,				/**< FTS_DETER_SUSPEND_I2C_PROC_ENABLE */
 };
 
 /* -----------------------------------------------------------------------------------
  */
-int shtps_device_setup(int irq, int rst)
+int fts_device_setup(int irq, int rst)
 {
 	int rc = 0;
 
-	rc = gpio_request(rst, "shtps_rst");
+	rc = gpio_request(rst, "fts_rst");
 	if (rc) {
 		return rc;
 	}
@@ -160,114 +163,119 @@ int shtps_device_setup(int irq, int rst)
 	return 0;
 }
 
-void shtps_device_teardown(int irq, int rst)
+void fts_device_teardown(int irq, int rst)
 {
 	gpio_free(rst);
 }
 
-void shtps_device_reset(int rst)
+void fts_device_reset(int rst)
 {
 	gpio_set_value(rst, 0);
 	mb();
-	mdelay(SHTPS_HWRESET_TIME_MS);
+	mdelay(FTS_HWRESET_TIME_MS);
 
 	gpio_set_value(rst, 1);
 	mb();
-	mdelay(SHTPS_HWRESET_AFTER_TIME_MS);
+	mdelay(FTS_HWRESET_AFTER_TIME_MS);
 }
 
-void shtps_device_poweroff_reset(int rst)
+void fts_device_poweroff_reset(int rst)
 {
 	gpio_set_value(rst, 0);
 	mb();
-	mdelay(SHTPS_HWRESET_TIME_MS);
+	mdelay(FTS_HWRESET_TIME_MS);
 }
 
 /* -----------------------------------------------------------------------------------
  */
-void shtps_mutex_lock_ctrl(void)
+void fts_mutex_lock_ctrl(void)
 {
-	mutex_lock(&shtps_ctrl_lock);
+	mutex_lock(&fts_ctrl_lock);
 }
 
-void shtps_mutex_unlock_ctrl(void)
+void fts_mutex_unlock_ctrl(void)
 {
-	mutex_unlock(&shtps_ctrl_lock);
+	mutex_unlock(&fts_ctrl_lock);
 }
 
-void shtps_mutex_lock_loader(void)
+void fts_mutex_lock_loader(void)
 {
-	mutex_lock(&shtps_loader_lock);
+	mutex_lock(&fts_loader_lock);
 }
 
-void shtps_mutex_unlock_loader(void)
+void fts_mutex_unlock_loader(void)
 {
-	mutex_unlock(&shtps_loader_lock);
+	mutex_unlock(&fts_loader_lock);
 }
 
-void shtps_mutex_lock_proc(void)
+void fts_mutex_lock_proc(void)
 {
-	mutex_lock(&shtps_proc_lock);
+	mutex_lock(&fts_proc_lock);
 }
 
-void shtps_mutex_unlock_proc(void)
+void fts_mutex_unlock_proc(void)
 {
-	mutex_unlock(&shtps_proc_lock);
-}
-
-/* -----------------------------------------------------------------------------------
- */
-void shtps_system_set_sleep(struct shtps_fts *ts)
-{
-	shtps_device_poweroff_reset(ts->rst_pin);
-}
-
-void shtps_system_set_wakeup(struct shtps_fts *ts)
-{
+	mutex_unlock(&fts_proc_lock);
 }
 
 /* -----------------------------------------------------------------------------------
  */
-static void shtps_irq_proc(struct shtps_fts *ts, u8 dummy)
+void fts_system_set_sleep(struct fts_data *ts)
 {
-	shtps_wake_lock_idle(ts);
-
-	request_event(ts, SHTPS_EVENT_INTERRUPT, 1);
-
-	shtps_wake_unlock_idle(ts);
+	fts_device_poweroff_reset(ts->rst_pin);
 }
 
-static void shtps_setsleep_proc(struct shtps_fts *ts, u8 sleep)
+void fts_system_set_wakeup(struct fts_data *ts)
+{
+}
+
+/* -----------------------------------------------------------------------------------
+ */
+static void fts_irq_proc(struct fts_data *ts, u8 dummy)
+{
+	fts_wake_lock_idle(ts);
+
+	request_event(ts, FTS_EVENT_INTERRUPT, 1);
+
+	fts_wake_unlock_idle(ts);
+}
+
+static void fts_setsleep_proc(struct fts_data *ts, u8 sleep)
 {
 	if(sleep){
-		shtps_func_request_sync(ts, SHTPS_FUNC_REQ_EVEMT_LCD_OFF);
+		fts_func_request_sync(ts, FTS_FUNC_REQ_EVEMT_LCD_OFF);
 	}else{
-		shtps_func_request_sync(ts, SHTPS_FUNC_REQ_EVEMT_LCD_ON);
+		fts_func_request_sync(ts, FTS_FUNC_REQ_EVEMT_LCD_ON);
+
+		if(ts->boot_fw_update_checked == 0){
+			ts->boot_fw_update_checked = 1;
+			fts_func_request_async(ts, FTS_FUNC_REQ_BOOT_FW_UPDATE);
+		}
 	}
 }
 
-static void shtps_async_open_proc(struct shtps_fts *ts, u8 dummy)
+static void fts_async_open_proc(struct fts_data *ts, u8 dummy)
 {
-	shtps_func_request_async(ts, SHTPS_FUNC_REQ_EVEMT_OPEN);
+	fts_func_request_async(ts, FTS_FUNC_REQ_EVEMT_OPEN);
 }
 
-static void shtps_async_close_proc(struct shtps_fts *ts, u8 dummy)
+static void fts_async_close_proc(struct fts_data *ts, u8 dummy)
 {
-	shtps_func_request_async(ts, SHTPS_FUNC_REQ_EVEMT_CLOSE);
+	fts_func_request_async(ts, FTS_FUNC_REQ_EVEMT_CLOSE);
 }
 
-static void shtps_async_enable_proc(struct shtps_fts *ts, u8 dummy)
+static void fts_async_enable_proc(struct fts_data *ts, u8 dummy)
 {
-	shtps_func_request_async(ts, SHTPS_FUNC_REQ_EVEMT_ENABLE);
+	fts_func_request_async(ts, FTS_FUNC_REQ_EVEMT_ENABLE);
 }
 
-static void shtps_suspend_i2c_wake_lock(struct shtps_fts *ts, u8 lock)
+static void fts_suspend_i2c_wake_lock(struct fts_data *ts, u8 lock)
 {
 	if(lock){
 		if(ts->deter_suspend_i2c.wake_lock_state == 0){
 			ts->deter_suspend_i2c.wake_lock_state = 1;
 			wake_lock(&ts->deter_suspend_i2c.wake_lock);
-			pm_qos_update_request(&ts->deter_suspend_i2c.pm_qos_lock_idle, SHTPS_QOS_LATENCY_DEF_VALUE);
+			pm_qos_update_request(&ts->deter_suspend_i2c.pm_qos_lock_idle, FTS_QOS_LATENCY_DEF_VALUE);
 		}
 	}else{
 		if(ts->deter_suspend_i2c.wake_lock_state == 1){
@@ -278,13 +286,13 @@ static void shtps_suspend_i2c_wake_lock(struct shtps_fts *ts, u8 lock)
 	}
 }
 
-int shtps_check_suspend_state(struct shtps_fts *ts, int proc, u8 param)
+int fts_check_suspend_state(struct fts_data *ts, int proc, u8 param)
 {
 	int ret = 0;
 
-	shtps_mutex_lock_proc();
+	fts_mutex_lock_proc();
 	if(ts->deter_suspend_i2c.suspend){
-		shtps_suspend_i2c_wake_lock(ts, 1);
+		fts_suspend_i2c_wake_lock(ts, 1);
 		ts->deter_suspend_i2c.pending_info[proc].pending= 1;
 		ts->deter_suspend_i2c.pending_info[proc].param  = param;
 		ret = 1;
@@ -293,65 +301,65 @@ int shtps_check_suspend_state(struct shtps_fts *ts, int proc, u8 param)
 		ret = 0;
 	}
 
-	if(proc == SHTPS_DETER_SUSPEND_I2C_PROC_OPEN ||
-		proc == SHTPS_DETER_SUSPEND_I2C_PROC_ENABLE)
+	if(proc == FTS_DETER_SUSPEND_I2C_PROC_OPEN ||
+		proc == FTS_DETER_SUSPEND_I2C_PROC_ENABLE)
 	{
-		if(ts->deter_suspend_i2c.pending_info[SHTPS_DETER_SUSPEND_I2C_PROC_CLOSE].pending){
-			ts->deter_suspend_i2c.pending_info[SHTPS_DETER_SUSPEND_I2C_PROC_CLOSE].pending = 0;
+		if(ts->deter_suspend_i2c.pending_info[FTS_DETER_SUSPEND_I2C_PROC_CLOSE].pending){
+			ts->deter_suspend_i2c.pending_info[FTS_DETER_SUSPEND_I2C_PROC_CLOSE].pending = 0;
 		}
-	}else if(proc == SHTPS_DETER_SUSPEND_I2C_PROC_CLOSE){
-		if(ts->deter_suspend_i2c.pending_info[SHTPS_DETER_SUSPEND_I2C_PROC_OPEN].pending){
-			ts->deter_suspend_i2c.pending_info[SHTPS_DETER_SUSPEND_I2C_PROC_OPEN].pending  = 0;
+	}else if(proc == FTS_DETER_SUSPEND_I2C_PROC_CLOSE){
+		if(ts->deter_suspend_i2c.pending_info[FTS_DETER_SUSPEND_I2C_PROC_OPEN].pending){
+			ts->deter_suspend_i2c.pending_info[FTS_DETER_SUSPEND_I2C_PROC_OPEN].pending  = 0;
 		}
-		if(ts->deter_suspend_i2c.pending_info[SHTPS_DETER_SUSPEND_I2C_PROC_ENABLE].pending){
-			ts->deter_suspend_i2c.pending_info[SHTPS_DETER_SUSPEND_I2C_PROC_ENABLE].pending= 0;
+		if(ts->deter_suspend_i2c.pending_info[FTS_DETER_SUSPEND_I2C_PROC_ENABLE].pending){
+			ts->deter_suspend_i2c.pending_info[FTS_DETER_SUSPEND_I2C_PROC_ENABLE].pending= 0;
 		}
 	}
-	shtps_mutex_unlock_proc();
+	fts_mutex_unlock_proc();
 	return ret;
 }
 
-static void shtps_exec_suspend_pending_proc(struct shtps_fts *ts)
+static void fts_exec_suspend_pending_proc(struct fts_data *ts)
 {
 	cancel_work_sync(&ts->deter_suspend_i2c.pending_proc_work);
 
 	schedule_work(&ts->deter_suspend_i2c.pending_proc_work);
 }
 
-static void shtps_deter_suspend_i2c_pending_proc_work_function(struct work_struct *work)
+static void fts_deter_suspend_i2c_pending_proc_work_function(struct work_struct *work)
 {
-	struct shtps_deter_suspend_i2c *dss = container_of(work, struct shtps_deter_suspend_i2c, pending_proc_work);
-	struct shtps_fts *ts = container_of(dss, struct shtps_fts, deter_suspend_i2c);
+	struct fts_deter_suspend_i2c *dss = container_of(work, struct fts_deter_suspend_i2c, pending_proc_work);
+	struct fts_data *ts = container_of(dss, struct fts_data, deter_suspend_i2c);
 	int i;
 
-	shtps_mutex_lock_proc();
+	fts_mutex_lock_proc();
 
-	for(i = 0;i < SHTPS_DETER_SUSPEND_I2C_PROC_NUM;i++){
+	for(i = 0;i < FTS_DETER_SUSPEND_I2C_PROC_NUM;i++){
 		if(ts->deter_suspend_i2c.pending_info[i].pending){
-			SHTPS_SUSPEND_PENDING_FUNC_TBL[i](ts, ts->deter_suspend_i2c.pending_info[i].param);
+			FTS_SUSPEND_PENDING_FUNC_TBL[i](ts, ts->deter_suspend_i2c.pending_info[i].param);
 			ts->deter_suspend_i2c.pending_info[i].pending = 0;
 		}
 	}
-	shtps_suspend_i2c_wake_lock(ts, 0);
+	fts_suspend_i2c_wake_lock(ts, 0);
 
-	shtps_mutex_unlock_proc();
+	fts_mutex_unlock_proc();
 }
 
-void shtps_set_suspend_state(struct shtps_fts *ts)
+void fts_set_suspend_state(struct fts_data *ts)
 {
-	shtps_mutex_lock_proc();
+	fts_mutex_lock_proc();
 	ts->deter_suspend_i2c.suspend = 1;
-	shtps_mutex_unlock_proc();
+	fts_mutex_unlock_proc();
 }
 
-void shtps_clr_suspend_state(struct shtps_fts *ts)
+void fts_clr_suspend_state(struct fts_data *ts)
 {
 	int i;
 	int hold_process = 0;
 
-	shtps_mutex_lock_proc();
+	fts_mutex_lock_proc();
 	ts->deter_suspend_i2c.suspend = 0;
-	for(i = 0;i < SHTPS_DETER_SUSPEND_I2C_PROC_NUM;i++){
+	for(i = 0;i < FTS_DETER_SUSPEND_I2C_PROC_NUM;i++){
 		if(ts->deter_suspend_i2c.pending_info[i].pending){
 			hold_process = 1;
 			break;
@@ -359,43 +367,43 @@ void shtps_clr_suspend_state(struct shtps_fts *ts)
 	}
 
 	if(hold_process){
-		shtps_exec_suspend_pending_proc(ts);
+		fts_exec_suspend_pending_proc(ts);
 	}else{
-		shtps_suspend_i2c_wake_lock(ts, 0);
+		fts_suspend_i2c_wake_lock(ts, 0);
 	}
-	shtps_mutex_unlock_proc();
+	fts_mutex_unlock_proc();
 
-	shtps_mutex_lock_ctrl();
+	fts_mutex_lock_ctrl();
 	if(ts->deter_suspend_i2c.suspend_irq_detect != 0){
-		if(ts->deter_suspend_i2c.suspend_irq_state == SHTPS_IRQ_STATE_ENABLE){
-			shtps_irq_enable(ts);
+		if(ts->deter_suspend_i2c.suspend_irq_state == FTS_IRQ_STATE_ENABLE){
+			fts_irq_enable(ts);
 		}
 
 		ts->deter_suspend_i2c.suspend_irq_detect = 0;
 	}
-	shtps_mutex_unlock_ctrl();
+	fts_mutex_unlock_ctrl();
 }
 
 /* -----------------------------------------------------------------------------------
  */
-static irqreturn_t shtps_irq_handler(int irq, void *dev_id)
+static irqreturn_t fts_irq_handler(int irq, void *dev_id)
 {
 	return IRQ_WAKE_THREAD;
 }
 
-static irqreturn_t shtps_irq(int irq, void *dev_id)
+static irqreturn_t fts_irq(int irq, void *dev_id)
 {
-	struct shtps_fts	*ts = dev_id;
+	struct fts_data	*ts = dev_id;
 
-	if(shtps_check_suspend_state(ts, SHTPS_DETER_SUSPEND_I2C_PROC_IRQ, 0) == 0){
-		shtps_irq_proc(ts, 0);
+	if(fts_check_suspend_state(ts, FTS_DETER_SUSPEND_I2C_PROC_IRQ, 0) == 0){
+		fts_irq_proc(ts, 0);
 	}else{
-		shtps_mutex_lock_ctrl();
+		fts_mutex_lock_ctrl();
 		ts->deter_suspend_i2c.suspend_irq_state = ts->irq_mgr.state;
 		ts->deter_suspend_i2c.suspend_irq_wake_state = ts->irq_mgr.wake;
 		ts->deter_suspend_i2c.suspend_irq_detect = 1;
-		shtps_irq_disable(ts);
-		shtps_mutex_unlock_ctrl();
+		fts_irq_disable(ts);
+		fts_mutex_unlock_ctrl();
 	}
 
 	return IRQ_HANDLED;
@@ -403,80 +411,80 @@ static irqreturn_t shtps_irq(int irq, void *dev_id)
 
 /* -----------------------------------------------------------------------------------
  */
-int shtps_start(struct shtps_fts *ts)
+int fts_start(struct fts_data *ts)
 {
-	return request_event(ts, SHTPS_EVENT_START, 0);
+	return request_event(ts, FTS_EVENT_START, 0);
 }
 
-void shtps_shutdown(struct shtps_fts *ts)
+void fts_shutdown(struct fts_data *ts)
 {
-	request_event(ts, SHTPS_EVENT_STOP, 0);
+	request_event(ts, FTS_EVENT_STOP, 0);
 }
 
 /* -----------------------------------------------------------------------------------
  */
-void shtps_reset(struct shtps_fts *ts)
+void fts_reset(struct fts_data *ts)
 {
-	shtps_irq_disable(ts);
-	shtps_device_reset(ts->rst_pin);
+	fts_irq_disable(ts);
+	fts_device_reset(ts->rst_pin);
 }
 
-void shtps_sleep(struct shtps_fts *ts, int on)
+void fts_sleep(struct fts_data *ts, int on)
 {
 	if(on){
-		shtps_fwctl_set_sleepmode_on(ts);
+		fts_fwctl_set_sleepmode_on(ts);
 	}else{
-		shtps_fwctl_set_sleepmode_off(ts);
+		fts_fwctl_set_sleepmode_off(ts);
 	}
 }
 
-u16 shtps_fwver(struct shtps_fts *ts)
+u16 fts_fwver(struct fts_data *ts)
 {
 	int rc;
 	u16 ver = 0;
 	u8 retry = 3;
 
 	do{
-		rc = shtps_fwctl_get_fwver(ts, &ver);
+		rc = fts_fwctl_get_fwver(ts, &ver);
 		if(rc == 0)	break;
 	}while(retry-- > 0);
 
 	return ver;
 }
 
-u16 shtps_fwver_builtin(struct shtps_fts *ts)
+u16 fts_fwver_builtin(struct fts_data *ts)
 {
 	u16 ver = 0;
 
-	ver = SHTPS_FWVER_NEWER;
+	ver = FTS_FWVER_NEWER;
 
 	return ver;
 }
 
-int shtps_fwsize_builtin(struct shtps_fts *ts)
+int fts_fwsize_builtin(struct fts_data *ts)
 {
 	int size = 0;
 
-	size = SHTPS_FWSIZE_NEWER;
+	size = FTS_FWSIZE_NEWER;
 
 	return size;
 }
 
-unsigned char* shtps_fwdata_builtin(struct shtps_fts *ts)
+unsigned char* fts_fwdata_builtin(struct fts_data *ts)
 {
 	unsigned char *data = NULL;
 
-	data = (unsigned char *)tps_fw_data;
+	data = (unsigned char *)fts_fw_data;
 
 	return data;
 }
 
-static int shtps_init_param(struct shtps_fts *ts)
+static int fts_init_param(struct fts_data *ts)
 {
 	int rc;
 
-	rc = shtps_fwctl_initparam(ts);
-	SHTPS_ERR_CHECK(rc, err_exit);
+	rc = fts_fwctl_initparam(ts);
+	FTS_ERR_CHECK(rc, err_exit);
 
 	return 0;
 
@@ -484,62 +492,62 @@ err_exit:
 	return -1;
 }
 
-static void shtps_standby_param(struct shtps_fts *ts)
+static void fts_standby_param(struct fts_data *ts)
 {
-	shtps_sleep(ts, 1);
+	fts_sleep(ts, 1);
 }
 
-int shtps_get_fingermax(struct shtps_fts *ts)
+int fts_get_fingermax(struct fts_data *ts)
 {
-	return shtps_fwctl_get_fingermax(ts);
+	return fts_fwctl_get_fingermax(ts);
 }
 
 /* -----------------------------------------------------------------------------------
  */
-int shtps_get_diff(unsigned short pos1, unsigned short pos2)
+int fts_get_diff(unsigned short pos1, unsigned short pos2)
 {
 	int diff;
 	diff = pos1 - pos2;
 	return (diff >= 0)? diff : -diff;
 }
 
-int shtps_get_fingerwidth(struct shtps_fts *ts, int num, struct shtps_touch_info *info)
+int fts_get_fingerwidth(struct fts_data *ts, int num, struct fts_touch_info *info)
 {
 	int w = (info->fingers[num].wx >= info->fingers[num].wy)? info->fingers[num].wx : info->fingers[num].wy;
 
 	return (w < 1)? 1 : w;
 }
 
-void shtps_set_eventtype(u8 *event, u8 type)
+void fts_set_eventtype(u8 *event, u8 type)
 {
 	*event = type;
 }
 
-static void shtps_set_touch_info(struct shtps_fts *ts, u8 *buf, struct shtps_touch_info *info)
+static void fts_set_touch_info(struct fts_data *ts, u8 *buf, struct fts_touch_info *info)
 {
 	u8* fingerInfo;
 	int FingerNum = 0;
-	int fingerMax = shtps_get_fingermax(ts);
-	int point_num = shtps_fwctl_get_num_of_touch_fingers(ts, buf);
+	int fingerMax = fts_get_fingermax(ts);
+	int point_num = fts_fwctl_get_num_of_touch_fingers(ts, buf);
 	int i;
 	int pointid;
 
 	memset(&ts->fw_report_info, 0, sizeof(ts->fw_report_info));
-	memset(info, 0, sizeof(struct shtps_touch_info));
+	memset(info, 0, sizeof(struct fts_touch_info));
 
 	for(i = 0; i < point_num; i++){
-		fingerInfo = shtps_fwctl_get_finger_info_buf(ts, i, fingerMax, buf);
-		pointid = shtps_fwctl_get_finger_pointid(ts, fingerInfo);
+		fingerInfo = fts_fwctl_get_finger_info_buf(ts, i, fingerMax, buf);
+		pointid = fts_fwctl_get_finger_pointid(ts, fingerInfo);
 		if (pointid >= fingerMax){
 			break;
 		}
 
-		ts->fw_report_info.fingers[pointid].state	= shtps_fwctl_get_finger_state(ts, i, fingerMax, buf);
-		ts->fw_report_info.fingers[pointid].x		= shtps_fwctl_get_finger_pos_x(ts, fingerInfo);
-		ts->fw_report_info.fingers[pointid].y		= shtps_fwctl_get_finger_pos_y(ts, fingerInfo);
-		ts->fw_report_info.fingers[pointid].wx		= shtps_fwctl_get_finger_wx(ts, fingerInfo);
-		ts->fw_report_info.fingers[pointid].wy		= shtps_fwctl_get_finger_wy(ts, fingerInfo);
-		ts->fw_report_info.fingers[pointid].z		= shtps_fwctl_get_finger_z(ts, fingerInfo);
+		ts->fw_report_info.fingers[pointid].state	= fts_fwctl_get_finger_state(ts, i, fingerMax, buf);
+		ts->fw_report_info.fingers[pointid].x		= fts_fwctl_get_finger_pos_x(ts, fingerInfo);
+		ts->fw_report_info.fingers[pointid].y		= fts_fwctl_get_finger_pos_y(ts, fingerInfo);
+		ts->fw_report_info.fingers[pointid].wx		= fts_fwctl_get_finger_wx(ts, fingerInfo);
+		ts->fw_report_info.fingers[pointid].wy		= fts_fwctl_get_finger_wy(ts, fingerInfo);
+		ts->fw_report_info.fingers[pointid].z		= fts_fwctl_get_finger_z(ts, fingerInfo);
 
 		info->fingers[pointid].state	= ts->fw_report_info.fingers[pointid].state;
 		info->fingers[pointid].x		= ts->fw_report_info.fingers[pointid].x;
@@ -550,10 +558,10 @@ static void shtps_set_touch_info(struct shtps_fts *ts, u8 *buf, struct shtps_tou
 	}
 
 	for(i = 0; i < fingerMax; i++){
-		if(ts->fw_report_info.fingers[i].state != SHTPS_TOUCH_STATE_NO_TOUCH){
+		if(ts->fw_report_info.fingers[i].state != FTS_TOUCH_STATE_NO_TOUCH){
 			FingerNum++;
 		}
-		else if(ts->fw_report_info_store.fingers[i].state != SHTPS_TOUCH_STATE_NO_TOUCH){
+		else if(ts->fw_report_info_store.fingers[i].state != FTS_TOUCH_STATE_NO_TOUCH){
 		}
 	}
 
@@ -561,19 +569,19 @@ static void shtps_set_touch_info(struct shtps_fts *ts, u8 *buf, struct shtps_tou
 }
 
 
-static void shtps_calc_notify(struct shtps_fts *ts, u8 *buf, struct shtps_touch_info *info, u8 *event)
+static void fts_calc_notify(struct fts_data *ts, u8 *buf, struct fts_touch_info *info, u8 *event)
 {
 	int i;
-	int fingerMax = shtps_get_fingermax(ts);
+	int fingerMax = fts_get_fingermax(ts);
 	int numOfFingers = 0;
 	int diff_x;
 	int diff_y;
 
-	shtps_set_eventtype(event, 0xff);
-	shtps_set_touch_info(ts, buf, info);
+	fts_set_eventtype(event, 0xff);
+	fts_set_touch_info(ts, buf, info);
 
 	for (i = 0; i < fingerMax; i++) {
-		if(info->fingers[i].state != SHTPS_TOUCH_STATE_NO_TOUCH){
+		if(info->fingers[i].state != FTS_TOUCH_STATE_NO_TOUCH){
 			numOfFingers++;
 		}
 	}
@@ -581,46 +589,46 @@ static void shtps_calc_notify(struct shtps_fts *ts, u8 *buf, struct shtps_touch_
 
 	/* set event type */
 	for(i = 0;i < fingerMax;i++){
-		if(info->fingers[i].state != SHTPS_TOUCH_STATE_NO_TOUCH){
-			if(ts->report_info.fingers[i].state != SHTPS_TOUCH_STATE_NO_TOUCH){
-				diff_x = shtps_get_diff(info->fingers[i].x, ts->report_info.fingers[i].x);
-				diff_y = shtps_get_diff(info->fingers[i].y, ts->report_info.fingers[i].y);
+		if(info->fingers[i].state != FTS_TOUCH_STATE_NO_TOUCH){
+			if(ts->report_info.fingers[i].state != FTS_TOUCH_STATE_NO_TOUCH){
+				diff_x = fts_get_diff(info->fingers[i].x, ts->report_info.fingers[i].x);
+				diff_y = fts_get_diff(info->fingers[i].y, ts->report_info.fingers[i].y);
 
 				if((diff_x > 0) || (diff_y > 0)){
-					shtps_set_eventtype(event, SHTPS_EVENT_DRAG);
+					fts_set_eventtype(event, FTS_EVENT_DRAG);
 				}
 			}
 		}
 
 		if(info->fingers[i].state != ts->report_info.fingers[i].state){
-			shtps_set_eventtype(event, SHTPS_EVENT_MTDU);
+			fts_set_eventtype(event, FTS_EVENT_MTDU);
 		}
 	}
 
 	if(numOfFingers > 0){
 		if(ts->touch_state.numOfFingers == 0){
-			shtps_set_eventtype(event, SHTPS_EVENT_TD);
+			fts_set_eventtype(event, FTS_EVENT_TD);
 		}
 	}else{
 		if(ts->touch_state.numOfFingers != 0){
-			shtps_set_eventtype(event, SHTPS_EVENT_TU);
+			fts_set_eventtype(event, FTS_EVENT_TU);
 		}
 	}
 }
 
 
-void shtps_report_touch_on(struct shtps_fts *ts, int finger, int x, int y, int w, int wx, int wy, int z)
+void fts_report_touch_on(struct fts_data *ts, int finger, int x, int y, int w, int wx, int wy, int z)
 {
 	int lcd_x;
 	int lcd_y;
 
 	lcd_x = x;
 	lcd_y = y;
-	if(lcd_x >= CONFIG_SHTPS_LCD_SIZE_X){
-		lcd_x = CONFIG_SHTPS_LCD_SIZE_X - 1;
+	if(lcd_x >= CONFIG_FTS_LCD_SIZE_X){
+		lcd_x = CONFIG_FTS_LCD_SIZE_X - 1;
 	}
-	if(lcd_y >= CONFIG_SHTPS_LCD_SIZE_Y){
-		lcd_y = CONFIG_SHTPS_LCD_SIZE_Y - 1;
+	if(lcd_y >= CONFIG_FTS_LCD_SIZE_Y){
+		lcd_y = CONFIG_FTS_LCD_SIZE_Y - 1;
 	}
 
 	input_mt_slot(ts->input, finger);
@@ -631,32 +639,32 @@ void shtps_report_touch_on(struct shtps_fts *ts, int finger, int x, int y, int w
 	input_report_abs(ts->input, ABS_MT_PRESSURE,    z);
 }
 
-void shtps_report_touch_off(struct shtps_fts *ts, int finger, int x, int y, int w, int wx, int wy, int z)
+void fts_report_touch_off(struct fts_data *ts, int finger, int x, int y, int w, int wx, int wy, int z)
 {
 	input_mt_slot(ts->input, finger);
 	input_mt_report_slot_state(ts->input, MT_TOOL_FINGER, false);
 }
 
-void shtps_event_report(struct shtps_fts *ts, struct shtps_touch_info *info, u8 event)
+void fts_event_report(struct fts_data *ts, struct fts_touch_info *info, u8 event)
 {
 	int	i;
-	int fingerMax = shtps_get_fingermax(ts);
+	int fingerMax = fts_get_fingermax(ts);
 
 	for(i = 0;i < fingerMax;i++){
-		if(info->fingers[i].state == SHTPS_TOUCH_STATE_FINGER){
-			shtps_report_touch_on(ts, i,
+		if(info->fingers[i].state == FTS_TOUCH_STATE_FINGER){
+			fts_report_touch_on(ts, i,
 								  info->fingers[i].x,
 								  info->fingers[i].y,
-								  shtps_get_fingerwidth(ts, i, info),
+								  fts_get_fingerwidth(ts, i, info),
 								  info->fingers[i].wx,
 								  info->fingers[i].wy,
 								  info->fingers[i].z);
 
-		}else if(ts->report_info.fingers[i].state != SHTPS_TOUCH_STATE_NO_TOUCH){
-			shtps_report_touch_off(ts, i,
+		}else if(ts->report_info.fingers[i].state != FTS_TOUCH_STATE_NO_TOUCH){
+			fts_report_touch_off(ts, i,
 								  info->fingers[i].x,
 								  info->fingers[i].y,
-								  shtps_get_fingerwidth(ts, i, info),
+								  fts_get_fingerwidth(ts, i, info),
 								  info->fingers[i].wx,
 								  info->fingers[i].wy,
 								  info->fingers[i].z);
@@ -669,16 +677,16 @@ void shtps_event_report(struct shtps_fts *ts, struct shtps_touch_info *info, u8 
 	memcpy(&ts->report_info, info, sizeof(ts->report_info));
 }
 
-void shtps_event_force_touchup(struct shtps_fts *ts)
+void fts_event_force_touchup(struct fts_data *ts)
 {
 	int	i;
 	int isEvent = 0;
-	int fingerMax = shtps_get_fingermax(ts);
+	int fingerMax = fts_get_fingermax(ts);
 
 	for(i = 0;i < fingerMax;i++){
 		if(ts->report_info.fingers[i].state != 0x00){
 			isEvent = 1;
-			shtps_report_touch_off(ts, i,
+			fts_report_touch_off(ts, i,
 								  ts->report_info.fingers[i].x,
 								  ts->report_info.fingers[i].y,
 								  0,
@@ -696,76 +704,76 @@ void shtps_event_force_touchup(struct shtps_fts *ts)
 
 /* -----------------------------------------------------------------------------------
  */
-void shtps_irq_disable(struct shtps_fts *ts)
+void fts_irq_disable(struct fts_data *ts)
 {
-	if(ts->irq_mgr.state != SHTPS_IRQ_STATE_DISABLE){
+	if(ts->irq_mgr.state != FTS_IRQ_STATE_DISABLE){
 		disable_irq_nosync(ts->irq_mgr.irq);
-		ts->irq_mgr.state = SHTPS_IRQ_STATE_DISABLE;
+		ts->irq_mgr.state = FTS_IRQ_STATE_DISABLE;
 	}
 
-	if(ts->irq_mgr.wake != SHTPS_IRQ_WAKE_DISABLE){
+	if(ts->irq_mgr.wake != FTS_IRQ_WAKE_DISABLE){
 		disable_irq_wake(ts->irq_mgr.irq);
-		ts->irq_mgr.wake = SHTPS_IRQ_WAKE_DISABLE;
+		ts->irq_mgr.wake = FTS_IRQ_WAKE_DISABLE;
 	}
 }
 
-void shtps_irq_enable(struct shtps_fts *ts)
+void fts_irq_enable(struct fts_data *ts)
 {
-	if(ts->irq_mgr.wake != SHTPS_IRQ_WAKE_ENABLE){
+	if(ts->irq_mgr.wake != FTS_IRQ_WAKE_ENABLE){
 		enable_irq_wake(ts->irq_mgr.irq);
-		ts->irq_mgr.wake = SHTPS_IRQ_WAKE_ENABLE;
+		ts->irq_mgr.wake = FTS_IRQ_WAKE_ENABLE;
 	}
 
-	if(ts->irq_mgr.state != SHTPS_IRQ_STATE_ENABLE){
+	if(ts->irq_mgr.state != FTS_IRQ_STATE_ENABLE){
 		enable_irq(ts->irq_mgr.irq);
-		ts->irq_mgr.state = SHTPS_IRQ_STATE_ENABLE;
+		ts->irq_mgr.state = FTS_IRQ_STATE_ENABLE;
 	}
 }
 
-static int shtps_irq_resuest(struct shtps_fts *ts)
+static int fts_irq_resuest(struct fts_data *ts)
 {
 	int rc;
 
 	rc = request_threaded_irq(ts->irq_mgr.irq,
-						  shtps_irq_handler,
-						  shtps_irq,
+						  fts_irq_handler,
+						  fts_irq,
 						  IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-						  SH_TOUCH_DEVNAME,
+						  FTS_TOUCH_DEVNAME,
 						  ts);
 
 	if(rc){
 		return -1;
 	}
 
-	ts->irq_mgr.state = SHTPS_IRQ_STATE_ENABLE;
-	ts->irq_mgr.wake  = SHTPS_IRQ_WAKE_DISABLE;
-	shtps_irq_disable(ts);
+	ts->irq_mgr.state = FTS_IRQ_STATE_ENABLE;
+	ts->irq_mgr.wake  = FTS_IRQ_WAKE_DISABLE;
+	fts_irq_disable(ts);
 	return 0;
 }
 
-void shtps_read_touchevent(struct shtps_fts *ts, int state)
+void fts_read_touchevent(struct fts_data *ts, int state)
 {
 	u8 buf[3 + (10 * 6)];
 	u8 event;
 	u8 irq_sts, ext_sts;
 	u8 *pFingerInfoBuf;
-	struct shtps_touch_info info;
+	struct fts_touch_info info;
 
 	memset(buf, 0, sizeof(buf));
 	memset(&info, 0, sizeof(info));
-	shtps_fwctl_get_fingerinfo(ts, buf, 0, &irq_sts, &ext_sts, &pFingerInfoBuf);
+	fts_fwctl_get_fingerinfo(ts, buf, 0, &irq_sts, &ext_sts, &pFingerInfoBuf);
 
 	switch(state){
-	case SHTPS_STATE_SLEEP:
-	case SHTPS_STATE_IDLE:
+	case FTS_STATE_SLEEP:
+	case FTS_STATE_IDLE:
 		break;
 
-	case SHTPS_STATE_ACTIVE:
+	case FTS_STATE_ACTIVE:
 	default:
-		shtps_calc_notify(ts, pFingerInfoBuf, &info, &event);
+		fts_calc_notify(ts, pFingerInfoBuf, &info, &event);
 
 		if(event != 0xff){
-			shtps_event_report(ts, &info, event);
+			fts_event_report(ts, &info, event);
 		}
 
 		memcpy(&ts->fw_report_info_store, &ts->fw_report_info, sizeof(ts->fw_report_info));
@@ -776,55 +784,55 @@ void shtps_read_touchevent(struct shtps_fts *ts, int state)
 
 /* -----------------------------------------------------------------------------------
  */
-int shtps_enter_bootloader(struct shtps_fts *ts)
+int fts_enter_bootloader(struct fts_data *ts)
 {
-	shtps_mutex_lock_loader();
+	fts_mutex_lock_loader();
 
-	if(request_event(ts, SHTPS_EVENT_STARTLOADER, 0) != 0){
+	if(request_event(ts, FTS_EVENT_STARTLOADER, 0) != 0){
 		goto err_exit;
 	}
-	shtps_fwctl_set_dev_state(ts, SHTPS_DEV_STATE_LOADER);
+	fts_fwctl_set_dev_state(ts, FTS_DEV_STATE_LOADER);
 
-	shtps_mutex_unlock_loader();
+	fts_mutex_unlock_loader();
 	return 0;
 
 err_exit:
-	shtps_mutex_unlock_loader();
+	fts_mutex_unlock_loader();
 	return -1;
 }
 
-static int shtps_exit_bootloader(struct shtps_fts *ts)
+static int fts_exit_bootloader(struct fts_data *ts)
 {
-	request_event(ts, SHTPS_EVENT_START, 0);
+	request_event(ts, FTS_EVENT_START, 0);
 
 	return 0;
 }
 
 /* -----------------------------------------------------------------------------------
  */
-int request_event(struct shtps_fts *ts, int event, int param)
+int request_event(struct fts_data *ts, int event, int param)
 {
 	int ret;
 
-	shtps_mutex_lock_ctrl();
+	fts_mutex_lock_ctrl();
 
 	switch(event){
-	case SHTPS_EVENT_START:
+	case FTS_EVENT_START:
 		ret = state_func_tbl[ts->state_mgr.state]->start(ts, param);
 		break;
-	case SHTPS_EVENT_STOP:
+	case FTS_EVENT_STOP:
 		ret = state_func_tbl[ts->state_mgr.state]->stop(ts, param);
 		break;
-	case SHTPS_EVENT_SLEEP:
+	case FTS_EVENT_SLEEP:
 		ret = state_func_tbl[ts->state_mgr.state]->sleep(ts, param);
 		break;
-	case SHTPS_EVENT_WAKEUP:
+	case FTS_EVENT_WAKEUP:
 		ret = state_func_tbl[ts->state_mgr.state]->wakeup(ts, param);
 		break;
-	case SHTPS_EVENT_STARTLOADER:
+	case FTS_EVENT_STARTLOADER:
 		ret = state_func_tbl[ts->state_mgr.state]->start_ldr(ts, param);
 		break;
-	case SHTPS_EVENT_INTERRUPT:
+	case FTS_EVENT_INTERRUPT:
 		ret = state_func_tbl[ts->state_mgr.state]->interrupt(ts, param);
 		break;
 	default:
@@ -832,12 +840,12 @@ int request_event(struct shtps_fts *ts, int event, int param)
 		break;
 	}
 
-	shtps_mutex_unlock_ctrl();
+	fts_mutex_unlock_ctrl();
 
 	return ret;
 }
 
-static int state_change(struct shtps_fts *ts, int state)
+static int state_change(struct fts_data *ts, int state)
 {
 	int ret = 0;
 	int old_state = ts->state_mgr.state;
@@ -851,239 +859,239 @@ static int state_change(struct shtps_fts *ts, int state)
 
 /* -----------------------------------------------------------------------------------
  */
-static int shtps_statef_nop(struct shtps_fts *ts, int param)
+static int fts_statef_nop(struct fts_data *ts, int param)
 {
 	return 0;
 }
 
-static int shtps_statef_cmn_stop(struct shtps_fts *ts, int param)
+static int fts_statef_cmn_stop(struct fts_data *ts, int param)
 {
-	shtps_standby_param(ts);
-	shtps_irq_disable(ts);
-	shtps_system_set_sleep(ts);
-	state_change(ts, SHTPS_STATE_IDLE);
+	fts_standby_param(ts);
+	fts_irq_disable(ts);
+	fts_system_set_sleep(ts);
+	state_change(ts, FTS_STATE_IDLE);
 	return 0;
 }
 
 /* -----------------------------------------------------------------------------------
  */
-static int shtps_statef_idle_start(struct shtps_fts *ts, int param)
+static int fts_statef_idle_start(struct fts_data *ts, int param)
 {
 	u8 buf;
 
-	shtps_system_set_wakeup(ts);
-	shtps_reset(ts);
+	fts_system_set_wakeup(ts);
+	fts_reset(ts);
 
-	shtps_fwctl_get_device_status(ts, &buf);
-	if(buf == SHTPS_REGVAL_STATUS_CRC_ERROR){
-		shtps_reset(ts);
+	fts_fwctl_get_device_status(ts, &buf);
+	if(buf == FTS_REGVAL_STATUS_CRC_ERROR){
+		fts_reset(ts);
 	}
 
-	state_change(ts, SHTPS_STATE_ACTIVE);
+	state_change(ts, FTS_STATE_ACTIVE);
 
 	return 0;
 }
 
-static int shtps_statef_idle_start_ldr(struct shtps_fts *ts, int param)
+static int fts_statef_idle_start_ldr(struct fts_data *ts, int param)
 {
-	shtps_system_set_wakeup(ts);
-	shtps_reset(ts);
+	fts_system_set_wakeup(ts);
+	fts_reset(ts);
 
-	state_change(ts, SHTPS_STATE_BOOTLOADER);
+	state_change(ts, FTS_STATE_BOOTLOADER);
 
 	return 0;
 }
 
-static int shtps_statef_idle_wakeup(struct shtps_fts *ts, int param)
+static int fts_statef_idle_wakeup(struct fts_data *ts, int param)
 {
-	shtps_statef_idle_start(ts, param);
+	fts_statef_idle_start(ts, param);
 	return 0;
 }
 
-static int shtps_statef_idle_int(struct shtps_fts *ts, int param)
+static int fts_statef_idle_int(struct fts_data *ts, int param)
 {
-	shtps_read_touchevent(ts, SHTPS_STATE_IDLE);
+	fts_read_touchevent(ts, FTS_STATE_IDLE);
 	return 0;
 }
 
 /* -----------------------------------------------------------------------------------
  */
-static int shtps_statef_active_enter(struct shtps_fts *ts, int param)
+static int fts_statef_active_enter(struct fts_data *ts, int param)
 {
-	if((param == SHTPS_STATE_IDLE) || (param == SHTPS_STATE_SLEEP) || (param == SHTPS_STATE_BOOTLOADER)){
-		shtps_init_param(ts);
-		shtps_irq_enable(ts);
+	if((param == FTS_STATE_IDLE) || (param == FTS_STATE_SLEEP) || (param == FTS_STATE_BOOTLOADER)){
+		fts_init_param(ts);
+		fts_irq_enable(ts);
 	}
 
 	return 0;
 }
 
-static int shtps_statef_active_stop(struct shtps_fts *ts, int param)
+static int fts_statef_active_stop(struct fts_data *ts, int param)
 {
-	shtps_irq_disable(ts);
+	fts_irq_disable(ts);
 
-	return shtps_statef_cmn_stop(ts, param);
+	return fts_statef_cmn_stop(ts, param);
 }
 
-static int shtps_statef_active_sleep(struct shtps_fts *ts, int param)
+static int fts_statef_active_sleep(struct fts_data *ts, int param)
 {
-	state_change(ts, SHTPS_STATE_SLEEP);
+	state_change(ts, FTS_STATE_SLEEP);
 	return 0;
 }
 
-static int shtps_statef_active_start_ldr(struct shtps_fts *ts, int param)
+static int fts_statef_active_start_ldr(struct fts_data *ts, int param)
 {
-	state_change(ts, SHTPS_STATE_BOOTLOADER);
+	state_change(ts, FTS_STATE_BOOTLOADER);
 	return 0;
 }
 
-static int shtps_statef_active_int(struct shtps_fts *ts, int param)
+static int fts_statef_active_int(struct fts_data *ts, int param)
 {
-	shtps_read_touchevent(ts, SHTPS_STATE_ACTIVE);
-	return 0;
-}
-
-/* -----------------------------------------------------------------------------------
- */
-static int shtps_statef_loader_enter(struct shtps_fts *ts, int param)
-{
-	shtps_wake_lock_for_fwupdate(ts);
-
-	shtps_irq_disable(ts);
-
-	return 0;
-}
-
-static int shtps_statef_loader_start(struct shtps_fts *ts, int param)
-{
-	shtps_wake_unlock_for_fwupdate(ts);
-
-	state_change(ts, SHTPS_STATE_ACTIVE);
-
-	return 0;
-}
-
-static int shtps_statef_loader_stop(struct shtps_fts *ts, int param)
-{
-	shtps_irq_disable(ts);
-
-	shtps_wake_unlock_for_fwupdate(ts);
-
-	return shtps_statef_cmn_stop(ts, param);
-}
-
-static int shtps_statef_loader_int(struct shtps_fts *ts, int param)
-{
+	fts_read_touchevent(ts, FTS_STATE_ACTIVE);
 	return 0;
 }
 
 /* -----------------------------------------------------------------------------------
  */
-static int shtps_statef_sleep_enter(struct shtps_fts *ts, int param)
+static int fts_statef_loader_enter(struct fts_data *ts, int param)
 {
-	shtps_event_force_touchup(ts);
+	fts_wake_lock_for_fwupdate(ts);
 
-	shtps_irq_disable(ts);
-
-	shtps_statef_cmn_stop(ts, 0);
+	fts_irq_disable(ts);
 
 	return 0;
 }
 
-static int shtps_statef_sleep_wakeup(struct shtps_fts *ts, int param)
+static int fts_statef_loader_start(struct fts_data *ts, int param)
 {
-	shtps_irq_enable(ts);
+	fts_wake_unlock_for_fwupdate(ts);
 
-	shtps_system_set_wakeup(ts);
+	state_change(ts, FTS_STATE_ACTIVE);
 
-	shtps_sleep(ts, 0);
-
-	shtps_reset(ts);
-
-	state_change(ts, SHTPS_STATE_ACTIVE);
 	return 0;
 }
 
-static int shtps_statef_sleep_start_ldr(struct shtps_fts *ts, int param)
+static int fts_statef_loader_stop(struct fts_data *ts, int param)
 {
-	state_change(ts, SHTPS_STATE_BOOTLOADER);
+	fts_irq_disable(ts);
+
+	fts_wake_unlock_for_fwupdate(ts);
+
+	return fts_statef_cmn_stop(ts, param);
+}
+
+static int fts_statef_loader_int(struct fts_data *ts, int param)
+{
 	return 0;
 }
 
-static int shtps_statef_sleep_int(struct shtps_fts *ts, int param)
+/* -----------------------------------------------------------------------------------
+ */
+static int fts_statef_sleep_enter(struct fts_data *ts, int param)
 {
-	shtps_read_touchevent(ts, SHTPS_STATE_SLEEP);
+	fts_event_force_touchup(ts);
+
+	fts_irq_disable(ts);
+
+	fts_statef_cmn_stop(ts, 0);
+
+	return 0;
+}
+
+static int fts_statef_sleep_wakeup(struct fts_data *ts, int param)
+{
+	fts_irq_enable(ts);
+
+	fts_system_set_wakeup(ts);
+
+	fts_sleep(ts, 0);
+
+	fts_reset(ts);
+
+	state_change(ts, FTS_STATE_ACTIVE);
+	return 0;
+}
+
+static int fts_statef_sleep_start_ldr(struct fts_data *ts, int param)
+{
+	state_change(ts, FTS_STATE_BOOTLOADER);
+	return 0;
+}
+
+static int fts_statef_sleep_int(struct fts_data *ts, int param)
+{
+	fts_read_touchevent(ts, FTS_STATE_SLEEP);
 
 	return 0;
 }
 
 /* -----------------------------------------------------------------------------------
  */
-static int shtps_fts_open(struct input_dev *dev)
+static int fts_open(struct input_dev *dev)
 {
-	struct shtps_fts *ts = (struct shtps_fts*)input_get_drvdata(dev);
+	struct fts_data *ts = (struct fts_data*)input_get_drvdata(dev);
 
-	shtps_func_request_async(ts, SHTPS_FUNC_REQ_EVEMT_OPEN);
+	fts_func_request_async(ts, FTS_FUNC_REQ_EVEMT_OPEN);
 
 	return 0;
 }
 
-static void shtps_fts_close(struct input_dev *dev)
+static void fts_close(struct input_dev *dev)
 {
-	struct shtps_fts *ts = (struct shtps_fts*)input_get_drvdata(dev);
+	struct fts_data *ts = (struct fts_data*)input_get_drvdata(dev);
 
-	shtps_func_request_async(ts, SHTPS_FUNC_REQ_EVEMT_CLOSE);
+	fts_func_request_async(ts, FTS_FUNC_REQ_EVEMT_CLOSE);
 }
 
-static int shtps_init_internal_variables(struct shtps_fts *ts)
+static int fts_init_internal_variables(struct fts_data *ts)
 {
 	int result = 0;
 
-	result = shtps_func_async_init(ts);
+	result = fts_func_async_init(ts);
 	if(result < 0){
 		goto fail_init;
 	}
 
-	ts->state_mgr.state = SHTPS_STATE_IDLE;
+	ts->state_mgr.state = FTS_STATE_IDLE;
 
 	memset(&ts->fw_report_info, 0, sizeof(ts->fw_report_info));
 	memset(&ts->fw_report_info_store, 0, sizeof(ts->fw_report_info_store));
 	memset(&ts->report_info, 0, sizeof(ts->report_info));
 	memset(&ts->touch_state, 0, sizeof(ts->touch_state));
 
-	shtps_cpu_idle_sleep_wake_lock_init(ts);
-	shtps_fwupdate_wake_lock_init(ts);
+	fts_cpu_idle_sleep_wake_lock_init(ts);
+	fts_fwupdate_wake_lock_init(ts);
 
-	shtps_fwctl_set_dev_state(ts, SHTPS_DEV_STATE_SLEEP);
+	fts_fwctl_set_dev_state(ts, FTS_DEV_STATE_SLEEP);
 
     ts->deter_suspend_i2c.wake_lock_state = 0;
 	memset(&ts->deter_suspend_i2c, 0, sizeof(ts->deter_suspend_i2c));
-    wake_lock_init(&ts->deter_suspend_i2c.wake_lock, WAKE_LOCK_SUSPEND, "shtps_resume_wake_lock");
+    wake_lock_init(&ts->deter_suspend_i2c.wake_lock, WAKE_LOCK_SUSPEND, "fts_resume_wake_lock");
 	ts->deter_suspend_i2c.pm_qos_lock_idle.type = PM_QOS_REQ_AFFINE_CORES;
 	ts->deter_suspend_i2c.pm_qos_lock_idle.cpus_affine.bits[0] = 0x0f;
 	pm_qos_add_request(&ts->deter_suspend_i2c.pm_qos_lock_idle, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
-	INIT_WORK(&ts->deter_suspend_i2c.pending_proc_work, shtps_deter_suspend_i2c_pending_proc_work_function);
+	INIT_WORK(&ts->deter_suspend_i2c.pending_proc_work, fts_deter_suspend_i2c_pending_proc_work_function);
 
 	/* -------------------------------------------------------------------------- */
 	return 0;
 
 fail_init:
-	shtps_func_async_deinit(ts);
+	fts_func_async_deinit(ts);
 
 	return result;
 }
 
 
-static void shtps_deinit_internal_variables(struct shtps_fts *ts)
+static void fts_deinit_internal_variables(struct fts_data *ts)
 {
 	if(ts){
-		shtps_func_async_deinit(ts);
-		shtps_cpu_idle_sleep_wake_lock_deinit(ts);
-		shtps_fwupdate_wake_lock_deinit(ts);
+		fts_func_async_deinit(ts);
+		fts_cpu_idle_sleep_wake_lock_deinit(ts);
+		fts_fwupdate_wake_lock_deinit(ts);
 	}
 }
 
-static int shtps_init_inputdev(struct shtps_fts *ts, struct device *ctrl_dev_p, char *modalias)
+static int fts_init_inputdev(struct fts_data *ts, struct device *ctrl_dev_p, char *modalias)
 {
 	ts->input = input_allocate_device();
 	if (!ts->input){
@@ -1096,15 +1104,15 @@ static int shtps_init_inputdev(struct shtps_fts *ts, struct device *ctrl_dev_p, 
 	ts->input->id.product	= 0x0002;
 	ts->input->id.version	= 0x0100;
 	ts->input->dev.parent	= ctrl_dev_p;
-	ts->input->open			= shtps_fts_open;
-	ts->input->close		= shtps_fts_close;
+	ts->input->open			= fts_open;
+	ts->input->close		= fts_close;
 
 	/** set properties */
 	__set_bit(EV_ABS, ts->input->evbit);
 	__set_bit(INPUT_PROP_DIRECT, ts->input->propbit);
 
 	input_set_drvdata(ts->input, ts);
-	input_mt_init_slots(ts->input, SHTPS_FINGER_MAX, 0);
+	input_mt_init_slots(ts->input, FTS_FINGER_MAX, 0);
 
 	if(ts->input->mt == NULL){
 		input_free_device(ts->input);
@@ -1112,9 +1120,9 @@ static int shtps_init_inputdev(struct shtps_fts *ts, struct device *ctrl_dev_p, 
 	}
 
 	/** set parameters */
-	input_set_abs_params(ts->input, ABS_MT_TOUCH_MAJOR, 0, SHTPS_VAL_FINGER_WIDTH_MAXSIZE, 0, 0);
-	input_set_abs_params(ts->input, ABS_MT_POSITION_X,  0, CONFIG_SHTPS_LCD_SIZE_X - 1, 0, 0);
-	input_set_abs_params(ts->input, ABS_MT_POSITION_Y,  0, CONFIG_SHTPS_LCD_SIZE_Y - 1, 0, 0);
+	input_set_abs_params(ts->input, ABS_MT_TOUCH_MAJOR, 0, FTS_VAL_FINGER_WIDTH_MAXSIZE, 0, 0);
+	input_set_abs_params(ts->input, ABS_MT_POSITION_X,  0, CONFIG_FTS_LCD_SIZE_X - 1, 0, 0);
+	input_set_abs_params(ts->input, ABS_MT_POSITION_Y,  0, CONFIG_FTS_LCD_SIZE_Y - 1, 0, 0);
 
 	input_set_abs_params(ts->input, ABS_MT_PRESSURE,    0, 255, 0, 0);
 
@@ -1127,7 +1135,7 @@ static int shtps_init_inputdev(struct shtps_fts *ts, struct device *ctrl_dev_p, 
 	return 0;
 }
 
-static void shtps_deinit_inputdev(struct shtps_fts *ts)
+static void fts_deinit_inputdev(struct fts_data *ts)
 {
 	if(ts && ts->input){
 		if(ts->input->mt){
@@ -1137,52 +1145,52 @@ static void shtps_deinit_inputdev(struct shtps_fts *ts)
 	}
 }
 
-int shtps_fts_core_probe(
+int fts_core_probe(
 						struct device *ctrl_dev_p,
-						struct shtps_ctrl_functbl *func_p,
+						struct fts_ctrl_functbl *func_p,
 						void *ctrl_p,
 						char *modalias,
 						int gpio_irq)
 {
 	int result = 0;
-	struct shtps_fts *ts;
+	struct fts_data *ts;
 	#ifdef CONFIG_OF
 		; // nothing
 	#else
-		struct shtps_platform_data *pdata = ctrl_dev_p->platform_data;
+		struct fts_platform_data *pdata = ctrl_dev_p->platform_data;
 	#endif /* CONFIG_OF */
 
-	shtpsif_init();
+	ftsif_init();
 
-	shtps_mutex_lock_ctrl();
+	fts_mutex_lock_ctrl();
 
-	ts = kzalloc(sizeof(struct shtps_fts), GFP_KERNEL);
+	ts = kzalloc(sizeof(struct fts_data), GFP_KERNEL);
 	if(!ts){
 		result = -ENOMEM;
-		shtps_mutex_unlock_ctrl();
+		fts_mutex_unlock_ctrl();
 		goto fail_alloc_mem;
 	}
 
-	result = shtps_fwctl_init(ts, ctrl_p, func_p);
+	result = fts_fwctl_init(ts, ctrl_p, func_p);
 	if(result){
 		result = -EFAULT;
-		shtps_mutex_unlock_ctrl();
+		fts_mutex_unlock_ctrl();
 		goto fail_alloc_mem;
 	}
 
-	if(shtps_init_internal_variables(ts)){
-		shtps_mutex_unlock_ctrl();
+	if(fts_init_internal_variables(ts)){
+		fts_mutex_unlock_ctrl();
 		goto fail_init_internal_variables;
 	}
 
 	/** set device info */
 	dev_set_drvdata(ctrl_dev_p, ts);
-	gShtps_fts = ts;
+	gFts_data = ts;
 
 
 	#ifdef CONFIG_OF
 		ts->irq_mgr.irq	= irq_of_parse_and_map(ctrl_dev_p->of_node, 0);
-		ts->rst_pin		= of_get_named_gpio(ctrl_dev_p->of_node, "shtps_fts,rst_pin", 0);
+		ts->rst_pin		= of_get_named_gpio(ctrl_dev_p->of_node, "fts_ts,rst_pin", 0);
 	#else
 		ts->rst_pin		= pdata->gpio_rst;
 		ts->irq_mgr.irq	= gpio_irq;
@@ -1190,7 +1198,7 @@ int shtps_fts_core_probe(
 
     if(!gpio_is_valid(ts->rst_pin)){
 		result = -EFAULT;
-		shtps_mutex_unlock_ctrl();
+		fts_mutex_unlock_ctrl();
 		goto fail_get_dtsinfo;
 	}
 
@@ -1198,32 +1206,32 @@ int shtps_fts_core_probe(
 
 	/** setup device */
 	#ifdef CONFIG_OF
-		result = shtps_device_setup(ts->irq_mgr.irq, ts->rst_pin);
+		result = fts_device_setup(ts->irq_mgr.irq, ts->rst_pin);
 		if(result){
-			shtps_mutex_unlock_ctrl();
+			fts_mutex_unlock_ctrl();
 			goto fail_device_setup;
 		}
 	#else
 		if (pdata && pdata->setup) {
 			result = pdata->setup(ctrl_dev_p);
 			if (result){
-				shtps_mutex_unlock_ctrl();
+				fts_mutex_unlock_ctrl();
 				goto fail_alloc_mem;
 			}
 		}
 	#endif /* CONFIG_OF */
 
-	if(shtps_irq_resuest(ts)){
+	if(fts_irq_resuest(ts)){
 		result = -EFAULT;
-		shtps_mutex_unlock_ctrl();
+		fts_mutex_unlock_ctrl();
 		goto fail_irq_request;
 	}
 
-	shtps_mutex_unlock_ctrl();
+	fts_mutex_unlock_ctrl();
 
 
 	/** init device info */
-	result = shtps_init_inputdev(ts, ctrl_dev_p, modalias);
+	result = fts_init_inputdev(ts, ctrl_dev_p, modalias);
 	if(result != 0){
 		goto fail_init_inputdev;
 	}
@@ -1233,60 +1241,60 @@ int shtps_fts_core_probe(
 fail_init_inputdev:
 fail_irq_request:
 fail_get_dtsinfo:
-	shtps_deinit_internal_variables(ts);
+	fts_deinit_internal_variables(ts);
 
 fail_init_internal_variables:
 fail_device_setup:
 	kfree(ts);
 
 fail_alloc_mem:
-	shtpsif_exit();
+	ftsif_exit();
 	return result;
 }
 
-int shtps_fts_core_remove(struct shtps_fts *ts, struct device *ctrl_dev_p)
+int fts_core_remove(struct fts_data *ts, struct device *ctrl_dev_p)
 {
 	#ifndef CONFIG_OF
-		struct shtps_platform_data *pdata = (struct shtps_platform_data *)&ctrl_dev_p->platform_data;
+		struct fts_platform_data *pdata = (struct fts_platform_data *)&ctrl_dev_p->platform_data;
 	#endif /* !CONFIG_OF */
 
-	gShtps_fts = NULL;
+	gFts_data = NULL;
 
 	if(ts){
 		free_irq(ts->irq_mgr.irq, ts);
 
 		#ifdef CONFIG_OF
-			shtps_device_teardown(ts->irq_mgr.irq, ts->rst_pin);
+			fts_device_teardown(ts->irq_mgr.irq, ts->rst_pin);
 		#else
 			if (pdata && pdata->teardown){
 				pdata->teardown(&ctrl_dev_p);
 			}
 		#endif /* CONFIG_OF */
 
-		shtps_deinit_internal_variables(ts);
+		fts_deinit_internal_variables(ts);
 
-		shtps_deinit_inputdev(ts);
+		fts_deinit_inputdev(ts);
 
-		shtps_fwctl_deinit(ts);
+		fts_fwctl_deinit(ts);
 
 		kfree(ts);
 	}
 
-	shtpsif_exit();
+	ftsif_exit();
 
 	return 0;
 }
 
-int shtps_fts_core_suspend(struct shtps_fts *ts, pm_message_t mesg)
+int fts_core_suspend(struct fts_data *ts, pm_message_t mesg)
 {
-	shtps_set_suspend_state(ts);
+	fts_set_suspend_state(ts);
 
 	return 0;
 }
 
-int shtps_fts_core_resume(struct shtps_fts *ts)
+int fts_core_resume(struct fts_data *ts)
 {
-	shtps_clr_suspend_state(ts);
+	fts_clr_suspend_state(ts);
 
 	return 0;
 }
@@ -1294,7 +1302,7 @@ int shtps_fts_core_resume(struct shtps_fts *ts)
 
 /* -----------------------------------------------------------------------------------
  */
-int shtps_fw_update(struct shtps_fts *ts, const unsigned char *fw_data, int fw_size)
+int fts_fw_update(struct fts_data *ts, const unsigned char *fw_data, int fw_size)
 {
 	int ret_update;
 	u8 buf;
@@ -1303,22 +1311,22 @@ int shtps_fw_update(struct shtps_fts *ts, const unsigned char *fw_data, int fw_s
 		return -1;
 	}
 
-	if(shtps_enter_bootloader(ts) != 0){
+	if(fts_enter_bootloader(ts) != 0){
 		return -1;
 	}
 
-	ret_update = shtps_fwctl_loader_write_pram(ts, (u8*)tps_fw_pram, sizeof(tps_fw_pram));
+	ret_update = fts_fwctl_loader_write_pram(ts, (u8*)fts_fw_pram, sizeof(fts_fw_pram));
 	if(ret_update == 0){
-		ret_update = shtps_fwctl_loader_upgrade(ts, (u8*)fw_data, fw_size);
+		ret_update = fts_fwctl_loader_upgrade(ts, (u8*)fw_data, fw_size);
 		if(ret_update == 0){
-			shtps_fwctl_get_device_status(ts, &buf);
-			if(buf == SHTPS_REGVAL_STATUS_CRC_ERROR){
+			fts_fwctl_get_device_status(ts, &buf);
+			if(buf == FTS_REGVAL_STATUS_CRC_ERROR){
 				ret_update = -1;
 			}
 		}
 	}
 
-	if(shtps_exit_bootloader(ts) != 0){
+	if(fts_exit_bootloader(ts) != 0){
 		return -1;
 	}
 
@@ -1327,30 +1335,30 @@ int shtps_fw_update(struct shtps_fts *ts, const unsigned char *fw_data, int fw_s
 
 /* -----------------------------------------------------------------------------------
  */
-static DEFINE_MUTEX(shtps_cpu_idle_sleep_ctrl_lock);
-static DEFINE_MUTEX(shtps_cpu_sleep_ctrl_for_fwupdate_lock);
+static DEFINE_MUTEX(fts_cpu_idle_sleep_ctrl_lock);
+static DEFINE_MUTEX(fts_cpu_sleep_ctrl_for_fwupdate_lock);
 
 /* -----------------------------------------------------------------------------------
  */
-static void shtps_mutex_lock_cpu_idle_sleep_ctrl(void);
-static void shtps_mutex_unlock_cpu_idle_sleep_ctrl(void);
-static void shtps_wake_lock_idle_l(struct shtps_fts *ts);
-static void shtps_wake_unlock_idle_l(struct shtps_fts *ts);
+static void fts_mutex_lock_cpu_idle_sleep_ctrl(void);
+static void fts_mutex_unlock_cpu_idle_sleep_ctrl(void);
+static void fts_wake_lock_idle_l(struct fts_data *ts);
+static void fts_wake_unlock_idle_l(struct fts_data *ts);
 
-static void shtps_mutex_lock_cpu_sleep_ctrl(void);
-static void shtps_mutex_unlock_cpu_sleep_ctrl(void);
+static void fts_mutex_lock_cpu_sleep_ctrl(void);
+static void fts_mutex_unlock_cpu_sleep_ctrl(void);
 
-static void shtps_func_open(struct shtps_fts *ts);
-static void shtps_func_close(struct shtps_fts *ts);
-static int shtps_func_enable(struct shtps_fts *ts);
-static void shtps_func_disable(struct shtps_fts *ts);
+static void fts_func_open(struct fts_data *ts);
+static void fts_func_close(struct fts_data *ts);
+static int fts_func_enable(struct fts_data *ts);
+static void fts_func_disable(struct fts_data *ts);
 
-static void shtps_func_request_async_complete(void *arg_p);
-static void shtps_func_request_sync_complete(void *arg_p);
-static void shtps_func_workq( struct work_struct *work_p );
+static void fts_func_request_async_complete(void *arg_p);
+static void fts_func_request_sync_complete(void *arg_p);
+static void fts_func_workq( struct work_struct *work_p );
 
 /* -------------------------------------------------------------------------- */
-struct shtps_req_msg {	//**********	SHTPS_ASYNC_OPEN_ENABLE
+struct fts_req_msg {	//**********	FTS_ASYNC_OPEN_ENABLE
 	struct list_head queue;
 	void	(*complete)(void *context);
 	void	*context;
@@ -1361,51 +1369,51 @@ struct shtps_req_msg {	//**********	SHTPS_ASYNC_OPEN_ENABLE
 
 /* -----------------------------------------------------------------------------------
  */
-static void shtps_mutex_lock_cpu_idle_sleep_ctrl(void)
+static void fts_mutex_lock_cpu_idle_sleep_ctrl(void)
 {
-	mutex_lock(&shtps_cpu_idle_sleep_ctrl_lock);
+	mutex_lock(&fts_cpu_idle_sleep_ctrl_lock);
 }
 
-static void shtps_mutex_unlock_cpu_idle_sleep_ctrl(void)
+static void fts_mutex_unlock_cpu_idle_sleep_ctrl(void)
 {
-	mutex_unlock(&shtps_cpu_idle_sleep_ctrl_lock);
+	mutex_unlock(&fts_cpu_idle_sleep_ctrl_lock);
 }
 
-static void shtps_wake_lock_idle_l(struct shtps_fts *ts)
+static void fts_wake_lock_idle_l(struct fts_data *ts)
 {
-	shtps_mutex_lock_cpu_idle_sleep_ctrl();
+	fts_mutex_lock_cpu_idle_sleep_ctrl();
 	if(ts->cpu_idle_sleep_ctrl_p->wake_lock_idle_state == 0){
-		pm_qos_update_request(&ts->cpu_idle_sleep_ctrl_p->qos_cpu_latency, SHTPS_QOS_LATENCY_DEF_VALUE);
+		pm_qos_update_request(&ts->cpu_idle_sleep_ctrl_p->qos_cpu_latency, FTS_QOS_LATENCY_DEF_VALUE);
 		ts->cpu_idle_sleep_ctrl_p->wake_lock_idle_state = 1;
 	}
-	shtps_mutex_unlock_cpu_idle_sleep_ctrl();
+	fts_mutex_unlock_cpu_idle_sleep_ctrl();
 }
 
-static void shtps_wake_unlock_idle_l(struct shtps_fts *ts)
+static void fts_wake_unlock_idle_l(struct fts_data *ts)
 {
-	shtps_mutex_lock_cpu_idle_sleep_ctrl();
+	fts_mutex_lock_cpu_idle_sleep_ctrl();
 	if(ts->cpu_idle_sleep_ctrl_p->wake_lock_idle_state != 0){
 		pm_qos_update_request(&ts->cpu_idle_sleep_ctrl_p->qos_cpu_latency, PM_QOS_DEFAULT_VALUE);
 		ts->cpu_idle_sleep_ctrl_p->wake_lock_idle_state = 0;
 	}
-	shtps_mutex_unlock_cpu_idle_sleep_ctrl();
+	fts_mutex_unlock_cpu_idle_sleep_ctrl();
 }
 
-void shtps_wake_lock_idle(struct shtps_fts *ts)
+void fts_wake_lock_idle(struct fts_data *ts)
 {
-	if(SHTPS_STATE_ACTIVE == ts->state_mgr.state){
-		shtps_wake_lock_idle_l(ts);
+	if(FTS_STATE_ACTIVE == ts->state_mgr.state){
+		fts_wake_lock_idle_l(ts);
 	}
 }
 
-void shtps_wake_unlock_idle(struct shtps_fts *ts)
+void fts_wake_unlock_idle(struct fts_data *ts)
 {
-	shtps_wake_unlock_idle_l(ts);
+	fts_wake_unlock_idle_l(ts);
 }
 
-void shtps_cpu_idle_sleep_wake_lock_init( struct shtps_fts *ts )
+void fts_cpu_idle_sleep_wake_lock_init( struct fts_data *ts )
 {
-	ts->cpu_idle_sleep_ctrl_p = kzalloc(sizeof(struct shtps_cpu_idle_sleep_ctrl_info), GFP_KERNEL);
+	ts->cpu_idle_sleep_ctrl_p = kzalloc(sizeof(struct fts_cpu_idle_sleep_ctrl_info), GFP_KERNEL);
 	if(ts->cpu_idle_sleep_ctrl_p == NULL){
 		return;
 	}
@@ -1414,7 +1422,7 @@ void shtps_cpu_idle_sleep_wake_lock_init( struct shtps_fts *ts )
 	pm_qos_add_request(&ts->cpu_idle_sleep_ctrl_p->qos_cpu_latency, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
 }
 
-void shtps_cpu_idle_sleep_wake_lock_deinit( struct shtps_fts *ts )
+void fts_cpu_idle_sleep_wake_lock_deinit( struct fts_data *ts )
 {
 	pm_qos_remove_request(&ts->cpu_idle_sleep_ctrl_p->qos_cpu_latency);
 
@@ -1424,52 +1432,52 @@ void shtps_cpu_idle_sleep_wake_lock_deinit( struct shtps_fts *ts )
 
 /* -----------------------------------------------------------------------------------
  */
-static void shtps_mutex_lock_cpu_sleep_ctrl(void)
+static void fts_mutex_lock_cpu_sleep_ctrl(void)
 {
-	mutex_lock(&shtps_cpu_sleep_ctrl_for_fwupdate_lock);
+	mutex_lock(&fts_cpu_sleep_ctrl_for_fwupdate_lock);
 }
 
-static void shtps_mutex_unlock_cpu_sleep_ctrl(void)
+static void fts_mutex_unlock_cpu_sleep_ctrl(void)
 {
-	mutex_unlock(&shtps_cpu_sleep_ctrl_for_fwupdate_lock);
+	mutex_unlock(&fts_cpu_sleep_ctrl_for_fwupdate_lock);
 }
 
-void shtps_wake_lock_for_fwupdate(struct shtps_fts *ts)
+void fts_wake_lock_for_fwupdate(struct fts_data *ts)
 {
-	shtps_mutex_lock_cpu_sleep_ctrl();
+	fts_mutex_lock_cpu_sleep_ctrl();
 	if(ts->cpu_sleep_ctrl_fwupdate_p->wake_lock_for_fwupdate_state == 0){
 		wake_lock(&ts->cpu_sleep_ctrl_fwupdate_p->wake_lock_for_fwupdate);
-		pm_qos_update_request(&ts->cpu_sleep_ctrl_fwupdate_p->qos_cpu_latency_for_fwupdate, SHTPS_QOS_LATENCY_DEF_VALUE);
+		pm_qos_update_request(&ts->cpu_sleep_ctrl_fwupdate_p->qos_cpu_latency_for_fwupdate, FTS_QOS_LATENCY_DEF_VALUE);
 		ts->cpu_sleep_ctrl_fwupdate_p->wake_lock_for_fwupdate_state = 1;
 	}
-	shtps_mutex_unlock_cpu_sleep_ctrl();
+	fts_mutex_unlock_cpu_sleep_ctrl();
 }
 
-void shtps_wake_unlock_for_fwupdate(struct shtps_fts *ts)
+void fts_wake_unlock_for_fwupdate(struct fts_data *ts)
 {
-	shtps_mutex_lock_cpu_sleep_ctrl();
+	fts_mutex_lock_cpu_sleep_ctrl();
 	if(ts->cpu_sleep_ctrl_fwupdate_p->wake_lock_for_fwupdate_state != 0){
 		wake_unlock(&ts->cpu_sleep_ctrl_fwupdate_p->wake_lock_for_fwupdate);
 		pm_qos_update_request(&ts->cpu_sleep_ctrl_fwupdate_p->qos_cpu_latency_for_fwupdate, PM_QOS_DEFAULT_VALUE);
 		ts->cpu_sleep_ctrl_fwupdate_p->wake_lock_for_fwupdate_state = 0;
 	}
-	shtps_mutex_unlock_cpu_sleep_ctrl();
+	fts_mutex_unlock_cpu_sleep_ctrl();
 }
 
-void shtps_fwupdate_wake_lock_init( struct shtps_fts *ts )
+void fts_fwupdate_wake_lock_init( struct fts_data *ts )
 {
-	ts->cpu_sleep_ctrl_fwupdate_p = kzalloc(sizeof(struct shtps_cpu_sleep_ctrl_fwupdate_info), GFP_KERNEL);
+	ts->cpu_sleep_ctrl_fwupdate_p = kzalloc(sizeof(struct fts_cpu_sleep_ctrl_fwupdate_info), GFP_KERNEL);
 	if(ts->cpu_sleep_ctrl_fwupdate_p == NULL){
 		return;
 	}
 
-	wake_lock_init(&ts->cpu_sleep_ctrl_fwupdate_p->wake_lock_for_fwupdate, WAKE_LOCK_SUSPEND, "shtps_wake_lock_for_fwupdate");
+	wake_lock_init(&ts->cpu_sleep_ctrl_fwupdate_p->wake_lock_for_fwupdate, WAKE_LOCK_SUSPEND, "fts_wake_lock_for_fwupdate");
 	ts->cpu_sleep_ctrl_fwupdate_p->qos_cpu_latency_for_fwupdate.type = PM_QOS_REQ_AFFINE_CORES;
 	ts->cpu_sleep_ctrl_fwupdate_p->qos_cpu_latency_for_fwupdate.cpus_affine.bits[0] = 0x0f;
 	pm_qos_add_request(&ts->cpu_sleep_ctrl_fwupdate_p->qos_cpu_latency_for_fwupdate, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
 }
 
-void shtps_fwupdate_wake_lock_deinit( struct shtps_fts *ts )
+void fts_fwupdate_wake_lock_deinit( struct fts_data *ts )
 {
 	pm_qos_remove_request(&ts->cpu_sleep_ctrl_fwupdate_p->qos_cpu_latency_for_fwupdate);
 	wake_lock_destroy(&ts->cpu_sleep_ctrl_fwupdate_p->wake_lock_for_fwupdate);
@@ -1480,121 +1488,121 @@ void shtps_fwupdate_wake_lock_deinit( struct shtps_fts *ts )
 
 /* -----------------------------------------------------------------------------------
  */
-static void shtps_func_lcd_on(struct shtps_fts *ts)
+static void fts_func_lcd_on(struct fts_data *ts)
 {
-	request_event(ts, SHTPS_EVENT_WAKEUP, 0);
+	request_event(ts, FTS_EVENT_WAKEUP, 0);
 }
 
-static void shtps_func_lcd_off(struct shtps_fts *ts)
+static void fts_func_lcd_off(struct fts_data *ts)
 {
-	request_event(ts, SHTPS_EVENT_SLEEP, 0);
+	request_event(ts, FTS_EVENT_SLEEP, 0);
 }
 
 /* -----------------------------------------------------------------------------------
  */
-static void shtps_func_boot_fw_update(struct shtps_fts *ts)
+static void fts_func_boot_fw_update(struct fts_data *ts)
 {
 	u8 buf;
 	const unsigned char* fw_data = NULL;
 	int ver;
 	u8 update = 0;
 
-	shtps_start(ts);
+	fts_start(ts);
 
-	shtps_fwctl_get_device_status(ts, &buf);
+	fts_fwctl_get_device_status(ts, &buf);
 
-	ver = shtps_fwver(ts);
-	if(ver != shtps_fwver_builtin(ts)){
+	ver = fts_fwver(ts);
+	if(ver != fts_fwver_builtin(ts)){
 		update = 1;
 	}
 
-	if(buf == SHTPS_REGVAL_STATUS_CRC_ERROR){
+	if(buf == FTS_REGVAL_STATUS_CRC_ERROR){
 		update = 1;
 	}
 
 	if(update != 0){
-		fw_data = shtps_fwdata_builtin(ts);
+		fw_data = fts_fwdata_builtin(ts);
 		if(fw_data){
 			int ret;
 			int retry = 5;
 			do{
-				ret = shtps_fw_update(ts, fw_data, shtps_fwsize_builtin(ts));
+				ret = fts_fw_update(ts, fw_data, fts_fwsize_builtin(ts));
 			}while(ret != 0 && (retry-- > 0));
 		}
 	}
 
 	if(ts->is_lcd_on == 0){
-		shtps_shutdown(ts);
+		fts_shutdown(ts);
 	}
 }
 
 /* -----------------------------------------------------------------------------------
  */
-static void shtps_func_open(struct shtps_fts *ts)
+static void fts_func_open(struct fts_data *ts)
 {
 }
 
-static void shtps_func_close(struct shtps_fts *ts)
+static void fts_func_close(struct fts_data *ts)
 {
-	shtps_shutdown(ts);
+	fts_shutdown(ts);
 }
 
-static int shtps_func_enable(struct shtps_fts *ts)
+static int fts_func_enable(struct fts_data *ts)
 {
-	if(shtps_start(ts) != 0){
+	if(fts_start(ts) != 0){
 		return -EFAULT;
 	}
 
 	return 0;
 }
 
-static void shtps_func_wakelock_init(struct shtps_fts *ts)
+static void fts_func_wakelock_init(struct fts_data *ts)
 {
-	wake_lock_init(&ts->work_wake_lock, WAKE_LOCK_SUSPEND, "shtps_work_wake_lock");
+	wake_lock_init(&ts->work_wake_lock, WAKE_LOCK_SUSPEND, "fts_work_wake_lock");
 	ts->work_pm_qos_lock_idle.type = PM_QOS_REQ_AFFINE_CORES;
 	ts->work_pm_qos_lock_idle.cpus_affine.bits[0] = 0x0f;
 	pm_qos_add_request(&ts->work_pm_qos_lock_idle, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
 }
 
-static void shtps_func_wakelock_deinit(struct shtps_fts *ts)
+static void fts_func_wakelock_deinit(struct fts_data *ts)
 {
 	wake_lock_destroy(&ts->work_wake_lock);
 	pm_qos_remove_request(&ts->work_pm_qos_lock_idle);
 }
 
-static void shtps_func_wakelock(struct shtps_fts *ts, int on)
+static void fts_func_wakelock(struct fts_data *ts, int on)
 {
 	if(on){
 		wake_lock(&ts->work_wake_lock);
-		pm_qos_update_request(&ts->work_pm_qos_lock_idle, SHTPS_QOS_LATENCY_DEF_VALUE);
+		pm_qos_update_request(&ts->work_pm_qos_lock_idle, FTS_QOS_LATENCY_DEF_VALUE);
 	}else{
 		wake_unlock(&ts->work_wake_lock);
 		pm_qos_update_request(&ts->work_pm_qos_lock_idle, PM_QOS_DEFAULT_VALUE);
 	}
 }
 
-static void shtps_func_disable(struct shtps_fts *ts)
+static void fts_func_disable(struct fts_data *ts)
 {
-	shtps_shutdown(ts);
+	fts_shutdown(ts);
 }
 
 
-static void shtps_func_request_async_complete(void *arg_p)
+static void fts_func_request_async_complete(void *arg_p)
 {
 	kfree( arg_p );
 }
 
-void shtps_func_request_async( struct shtps_fts *ts, int event)
+void fts_func_request_async( struct fts_data *ts, int event)
 {
-	struct shtps_req_msg		*msg_p;
+	struct fts_req_msg		*msg_p;
 	unsigned long	flags;
 
-	msg_p = (struct shtps_req_msg *)kzalloc( sizeof( struct shtps_req_msg ), GFP_KERNEL );
+	msg_p = (struct fts_req_msg *)kzalloc( sizeof( struct fts_req_msg ), GFP_KERNEL );
 	if ( msg_p == NULL ){
 		return;
 	}
 
-	msg_p->complete = shtps_func_request_async_complete;
+	msg_p->complete = fts_func_request_async_complete;
 	msg_p->event = event;
 	msg_p->context = msg_p;
 	msg_p->status = -1;
@@ -1605,18 +1613,18 @@ void shtps_func_request_async( struct shtps_fts *ts, int event)
 	queue_work(ts->workqueue_p, &(ts->work_data) );
 }
 
-static void shtps_func_request_sync_complete(void *arg_p)
+static void fts_func_request_sync_complete(void *arg_p)
 {
 	complete( arg_p );
 }
 
-int shtps_func_request_sync( struct shtps_fts *ts, int event)
+int fts_func_request_sync( struct fts_data *ts, int event)
 {
 	DECLARE_COMPLETION_ONSTACK(done);
-	struct shtps_req_msg msg;
+	struct fts_req_msg msg;
 	unsigned long	flags;
 
-	msg.complete = shtps_func_request_sync_complete;
+	msg.complete = fts_func_request_sync_complete;
 	msg.event = event;
 	msg.context = &done;
 	msg.status = -1;
@@ -1631,7 +1639,7 @@ int shtps_func_request_sync( struct shtps_fts *ts, int event)
 	return msg.status;
 }
 
-static void shtps_overlap_event_check(struct shtps_fts *ts)
+static void fts_overlap_event_check(struct fts_data *ts)
 {
 	unsigned long flags;
 	struct list_head *list_p;
@@ -1639,11 +1647,11 @@ static void shtps_overlap_event_check(struct shtps_fts *ts)
 
 	spin_lock_irqsave( &(ts->queue_lock), flags );
 	list_for_each(list_p, &(ts->queue)){
-		ts->cur_msg_p = list_entry(list_p, struct shtps_req_msg, queue);
+		ts->cur_msg_p = list_entry(list_p, struct fts_req_msg, queue);
 		spin_unlock_irqrestore( &(ts->queue_lock), flags );
 
-		if( (ts->cur_msg_p->event == SHTPS_FUNC_REQ_EVEMT_LCD_ON) ||
-			(ts->cur_msg_p->event == SHTPS_FUNC_REQ_EVEMT_LCD_OFF) )
+		if( (ts->cur_msg_p->event == FTS_FUNC_REQ_EVEMT_LCD_ON) ||
+			(ts->cur_msg_p->event == FTS_FUNC_REQ_EVEMT_LCD_OFF) )
 		{
 			overlap_req_cnt_lcd++;
 		}
@@ -1655,12 +1663,12 @@ static void shtps_overlap_event_check(struct shtps_fts *ts)
 	if(overlap_req_cnt_lcd > 0){
 		spin_lock_irqsave( &(ts->queue_lock), flags );
 		list_for_each(list_p, &(ts->queue)){
-			ts->cur_msg_p = list_entry(list_p, struct shtps_req_msg, queue);
+			ts->cur_msg_p = list_entry(list_p, struct fts_req_msg, queue);
 			spin_unlock_irqrestore( &(ts->queue_lock), flags );
 
 			if(ts->cur_msg_p != NULL){
-				if( (ts->cur_msg_p->event == SHTPS_FUNC_REQ_EVEMT_LCD_ON) ||
-					(ts->cur_msg_p->event == SHTPS_FUNC_REQ_EVEMT_LCD_OFF) )
+				if( (ts->cur_msg_p->event == FTS_FUNC_REQ_EVEMT_LCD_ON) ||
+					(ts->cur_msg_p->event == FTS_FUNC_REQ_EVEMT_LCD_OFF) )
 				{
 					if(overlap_req_cnt_lcd > 0){
 						spin_lock_irqsave( &(ts->queue_lock), flags );
@@ -1683,61 +1691,61 @@ static void shtps_overlap_event_check(struct shtps_fts *ts)
 	}
 }
 
-static void shtps_func_workq( struct work_struct *work_p )
+static void fts_func_workq( struct work_struct *work_p )
 {
-	struct shtps_fts	*ts;
+	struct fts_data	*ts;
 	unsigned long			flags;
 
-	ts = container_of(work_p, struct shtps_fts, work_data);
+	ts = container_of(work_p, struct fts_data, work_data);
 
 	spin_lock_irqsave( &(ts->queue_lock), flags );
 	while( list_empty( &(ts->queue) ) == 0 ){
-		ts->cur_msg_p = list_entry( ts->queue.next, struct shtps_req_msg, queue);
+		ts->cur_msg_p = list_entry( ts->queue.next, struct fts_req_msg, queue);
 		list_del_init( &(ts->cur_msg_p->queue) );
 		spin_unlock_irqrestore( &(ts->queue_lock), flags );
 
-		shtps_func_wakelock(ts, 1);
+		fts_func_wakelock(ts, 1);
 
 		switch(ts->cur_msg_p->event){
-			case SHTPS_FUNC_REQ_EVEMT_OPEN:
-				if(shtps_check_suspend_state(ts, SHTPS_DETER_SUSPEND_I2C_PROC_OPEN, 0) == 0){
-					shtps_func_open(ts);
+			case FTS_FUNC_REQ_EVEMT_OPEN:
+				if(fts_check_suspend_state(ts, FTS_DETER_SUSPEND_I2C_PROC_OPEN, 0) == 0){
+					fts_func_open(ts);
 				}
 				ts->cur_msg_p->status = 0;
 				break;
 
-			case SHTPS_FUNC_REQ_EVEMT_CLOSE:
-				if(shtps_check_suspend_state(ts, SHTPS_DETER_SUSPEND_I2C_PROC_CLOSE, 0) == 0){
-					shtps_func_close(ts);
+			case FTS_FUNC_REQ_EVEMT_CLOSE:
+				if(fts_check_suspend_state(ts, FTS_DETER_SUSPEND_I2C_PROC_CLOSE, 0) == 0){
+					fts_func_close(ts);
 				}
 				ts->cur_msg_p->status = 0;
 				break;
 
-			case SHTPS_FUNC_REQ_EVEMT_ENABLE:
-				if(shtps_check_suspend_state(ts, SHTPS_DETER_SUSPEND_I2C_PROC_ENABLE, 0) == 0){
-					ts->cur_msg_p->status = shtps_func_enable(ts);
+			case FTS_FUNC_REQ_EVEMT_ENABLE:
+				if(fts_check_suspend_state(ts, FTS_DETER_SUSPEND_I2C_PROC_ENABLE, 0) == 0){
+					ts->cur_msg_p->status = fts_func_enable(ts);
 				}else{
 					ts->cur_msg_p->status = 0;
 				}
 				break;
 
-			case SHTPS_FUNC_REQ_EVEMT_DISABLE:
-				shtps_func_disable(ts);
+			case FTS_FUNC_REQ_EVEMT_DISABLE:
+				fts_func_disable(ts);
 				ts->cur_msg_p->status = 0;
 				break;
 
-			case SHTPS_FUNC_REQ_EVEMT_LCD_ON:
-				shtps_func_lcd_on(ts);
+			case FTS_FUNC_REQ_EVEMT_LCD_ON:
+				fts_func_lcd_on(ts);
 				ts->cur_msg_p->status = 0;
 				break;
 
-			case SHTPS_FUNC_REQ_EVEMT_LCD_OFF:
-				shtps_func_lcd_off(ts);
+			case FTS_FUNC_REQ_EVEMT_LCD_OFF:
+				fts_func_lcd_off(ts);
 				ts->cur_msg_p->status = 0;
 				break;
 
-			case SHTPS_FUNC_REQ_BOOT_FW_UPDATE:
-				shtps_func_boot_fw_update(ts);
+			case FTS_FUNC_REQ_BOOT_FW_UPDATE:
+				fts_func_boot_fw_update(ts);
 				ts->cur_msg_p->status = 0;
 				break;
 
@@ -1750,45 +1758,45 @@ static void shtps_func_workq( struct work_struct *work_p )
 			ts->cur_msg_p->complete( ts->cur_msg_p->context );
 		}
 
-		shtps_overlap_event_check(ts);
+		fts_overlap_event_check(ts);
 
-		shtps_func_wakelock(ts, 0);
+		fts_func_wakelock(ts, 0);
 
 		spin_lock_irqsave( &(ts->queue_lock), flags );
 	}
 	spin_unlock_irqrestore( &(ts->queue_lock), flags );
 }
 
-int shtps_func_async_init( struct shtps_fts *ts)
+int fts_func_async_init( struct fts_data *ts)
 {
-	ts->workqueue_p = alloc_workqueue("TPS_WORK", WQ_UNBOUND, 1);
+	ts->workqueue_p = alloc_workqueue("FTS_WORK", WQ_UNBOUND, 1);
 	if(ts->workqueue_p == NULL){
 		return -ENOMEM;
 	}
-	INIT_WORK( &(ts->work_data), shtps_func_workq );
+	INIT_WORK( &(ts->work_data), fts_func_workq );
 	INIT_LIST_HEAD( &(ts->queue) );
 	spin_lock_init( &(ts->queue_lock) );
-	shtps_func_wakelock_init(ts);
+	fts_func_wakelock_init(ts);
 
 	return 0;
 }
 
-void shtps_func_async_deinit( struct shtps_fts *ts)
+void fts_func_async_deinit( struct fts_data *ts)
 {
-	shtps_func_wakelock_deinit(ts);
+	fts_func_wakelock_deinit(ts);
 	if(ts->workqueue_p){
 		destroy_workqueue(ts->workqueue_p);
 	}
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_ic_init(struct shtps_fts *ts_p)
+int fts_fwctl_ic_init(struct fts_data *ts_p)
 {
 	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
-static int shtps_Upgrade_ReadPram(struct shtps_fwctl_info *fc_p, unsigned int Addr, unsigned char * pData, unsigned short Datalen)
+static int fts_Upgrade_ReadPram(struct fts_fwctl_info *fc_p, unsigned int Addr, unsigned char * pData, unsigned short Datalen)
 {
 	int ret=-1;
 	unsigned char pDataSend[16];
@@ -1809,9 +1817,9 @@ static int shtps_Upgrade_ReadPram(struct shtps_fwctl_info *fc_p, unsigned int Ad
 
 	return 0;
 }
-int shtps_fwctl_loader_write_pram(struct shtps_fts *ts_p, u8 *pbt_buf, u32 dw_lenth)
+int fts_fwctl_loader_write_pram(struct fts_data *ts_p, u8 *pbt_buf, u32 dw_lenth)
 {
-	struct shtps_fwctl_info *fc_p = ts_p->fwctl_p;
+	struct fts_fwctl_info *fc_p = ts_p->fwctl_p;
 	u8 reg_val[4] = {0};
 	u32 i = 0;
 	u32 packet_number;
@@ -1938,7 +1946,7 @@ int shtps_fwctl_loader_write_pram(struct shtps_fts *ts_p, u8 *pbt_buf, u32 dw_le
 			}
 			else if(FlashAddr+FTS_PACKET_LENGTH > dw_lenth)
 			{
-				if(shtps_Upgrade_ReadPram(fc_p,StartFlashAddr, pCheckBuffer+FlashAddr, dw_lenth-FlashAddr))
+				if(fts_Upgrade_ReadPram(fc_p,StartFlashAddr, pCheckBuffer+FlashAddr, dw_lenth-FlashAddr))
 				{
 					i_ret = -EIO;
 					goto ERROR;
@@ -1948,7 +1956,7 @@ int shtps_fwctl_loader_write_pram(struct shtps_fts *ts_p, u8 *pbt_buf, u32 dw_le
 			}
 			else
 			{
-				if(shtps_Upgrade_ReadPram(fc_p,StartFlashAddr, pCheckBuffer+FlashAddr, FTS_PACKET_LENGTH))
+				if(fts_Upgrade_ReadPram(fc_p,StartFlashAddr, pCheckBuffer+FlashAddr, FTS_PACKET_LENGTH))
 				{
 					i_ret = -EIO;
 					goto ERROR;
@@ -1997,9 +2005,9 @@ ERROR:
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_loader_upgrade(struct shtps_fts *ts_p, u8 *pbt_buf, u32 dw_lenth)
+int fts_fwctl_loader_upgrade(struct fts_data *ts_p, u8 *pbt_buf, u32 dw_lenth)
 {
-	struct shtps_fwctl_info *fc_p = ts_p->fwctl_p;
+	struct fts_fwctl_info *fc_p = ts_p->fwctl_p;
 	u8 reg_val[4] = {0};
 	u8 reg_val_id[4] = {0};
 	u32 i = 0;
@@ -2286,9 +2294,9 @@ int shtps_fwctl_loader_upgrade(struct shtps_fts *ts_p, u8 *pbt_buf, u32 dw_lenth
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_device_status(struct shtps_fts *ts_p, u8 *status_p)
+int fts_fwctl_get_device_status(struct fts_data *ts_p, u8 *status_p)
 {
-	struct shtps_fwctl_info *fc_p = ts_p->fwctl_p;
+	struct fts_fwctl_info *fc_p = ts_p->fwctl_p;
 	int rc=0;
 	u8 buf;
 
@@ -2303,37 +2311,37 @@ int shtps_fwctl_get_device_status(struct shtps_fts *ts_p, u8 *status_p)
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_set_active(struct shtps_fts *ts_p)
+int fts_fwctl_set_active(struct fts_data *ts_p)
 {
-	shtps_fwctl_set_dev_state(ts_p, SHTPS_DEV_STATE_ACTIVE);
+	fts_fwctl_set_dev_state(ts_p, FTS_DEV_STATE_ACTIVE);
 	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_set_sleepmode_on(struct shtps_fts *ts_p)
+int fts_fwctl_set_sleepmode_on(struct fts_data *ts_p)
 {
-	struct shtps_fwctl_info *fc_p = ts_p->fwctl_p;
+	struct fts_fwctl_info *fc_p = ts_p->fwctl_p;
 	M_WRITE_FUNC(fc_p, FTS_REG_PMODE, FTS_PMODE_HIBERNATE);
-	shtps_fwctl_set_dev_state(ts_p, SHTPS_DEV_STATE_SLEEP);
+	fts_fwctl_set_dev_state(ts_p, FTS_DEV_STATE_SLEEP);
 	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_set_sleepmode_off(struct shtps_fts *ts_p)
+int fts_fwctl_set_sleepmode_off(struct fts_data *ts_p)
 {
 	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_fingermax(struct shtps_fts *ts_p)
+int fts_fwctl_get_fingermax(struct fts_data *ts_p)
 {
-	return SHTPS_FINGER_MAX;
+	return FTS_FINGER_MAX;
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_fingerinfo(struct shtps_fts *ts_p, u8 *buf_p, int read_cnt, u8 *irqsts_p, u8 *extsts_p, u8 **finger_pp)
+int fts_fwctl_get_fingerinfo(struct fts_data *ts_p, u8 *buf_p, int read_cnt, u8 *irqsts_p, u8 *extsts_p, u8 **finger_pp)
 {
-	struct shtps_fwctl_info *fc_p = ts_p->fwctl_p;
+	struct fts_fwctl_info *fc_p = ts_p->fwctl_p;
 	buf_p[0] = 0x00;
 	buf_p[1] = 0x00;
 	M_READ_PACKET_FUNC(fc_p, 0x02, &buf_p[2], 1);
@@ -2348,61 +2356,61 @@ int shtps_fwctl_get_fingerinfo(struct shtps_fts *ts_p, u8 *buf_p, int read_cnt, 
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_num_of_touch_fingers(struct shtps_fts *ts_p, u8 *buf_p)
+int fts_fwctl_get_num_of_touch_fingers(struct fts_data *ts_p, u8 *buf_p)
 {
 	return buf_p[FTS_TOUCH_POINT_NUM];
 }
 
 /* -------------------------------------------------------------------------- */
-u8* shtps_fwctl_get_finger_info_buf(struct shtps_fts *ts_p, int fingerid, int fingerMax, u8 *buf_p)
+u8* fts_fwctl_get_finger_info_buf(struct fts_data *ts_p, int fingerid, int fingerMax, u8 *buf_p)
 {
 	return &buf_p[FTS_TCH_LEN(fingerid)];
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_finger_state(struct shtps_fts *ts_p, int fingerid, int fingerMax, u8 *buf_p)
+int fts_fwctl_get_finger_state(struct fts_data *ts_p, int fingerid, int fingerMax, u8 *buf_p)
 {
 	u8 event = buf_p[FTS_TOUCH_EVENT_POS] >> 6;
 	if(event == FTS_TOUCH_DOWN || event == FTS_TOUCH_CONTACT){
-		return SHTPS_TOUCH_STATE_FINGER;
+		return FTS_TOUCH_STATE_FINGER;
 	}
-	return SHTPS_TOUCH_STATE_NO_TOUCH;
+	return FTS_TOUCH_STATE_NO_TOUCH;
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_finger_pointid(struct shtps_fts *ts_p, u8 *buf_p)
+int fts_fwctl_get_finger_pointid(struct fts_data *ts_p, u8 *buf_p)
 {
 	return buf_p[FTS_TOUCH_ID_POS] >> 4;
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_finger_pos_x(struct shtps_fts *ts_p, u8 *buf_p)
+int fts_fwctl_get_finger_pos_x(struct fts_data *ts_p, u8 *buf_p)
 {
 	return (s16) (buf_p[FTS_TOUCH_X_H_POS] & 0x0F) << 8
 	     | (s16) buf_p[FTS_TOUCH_X_L_POS];
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_finger_pos_y(struct shtps_fts *ts_p, u8 *buf_p)
+int fts_fwctl_get_finger_pos_y(struct fts_data *ts_p, u8 *buf_p)
 {
 	return (s16) (buf_p[FTS_TOUCH_Y_H_POS] & 0x0F) << 8
 	     | (s16) buf_p[FTS_TOUCH_Y_L_POS];
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_finger_wx(struct shtps_fts *ts_p, u8 *buf_p)
+int fts_fwctl_get_finger_wx(struct fts_data *ts_p, u8 *buf_p)
 {
 	return buf_p[FTS_TOUCH_AREA] >> 4;
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_finger_wy(struct shtps_fts *ts_p, u8 *buf_p)
+int fts_fwctl_get_finger_wy(struct fts_data *ts_p, u8 *buf_p)
 {
 	return buf_p[FTS_TOUCH_AREA] >> 4;
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_finger_z(struct shtps_fts *ts_p, u8 *buf_p)
+int fts_fwctl_get_finger_z(struct fts_data *ts_p, u8 *buf_p)
 {
 	u8 weight = buf_p[FTS_TOUCH_WEIGHT];
 	if(weight == 0){
@@ -2412,9 +2420,9 @@ int shtps_fwctl_get_finger_z(struct shtps_fts *ts_p, u8 *buf_p)
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_fwver(struct shtps_fts *ts_p, u16 *ver_p)
+int fts_fwctl_get_fwver(struct fts_data *ts_p, u16 *ver_p)
 {
-	struct shtps_fwctl_info *fc_p = ts_p->fwctl_p;
+	struct fts_fwctl_info *fc_p = ts_p->fwctl_p;
 	int rc=0;
 	u8 buf[2] = { 0x00, 0x00 };
 
@@ -2431,56 +2439,56 @@ int shtps_fwctl_get_fwver(struct shtps_fts *ts_p, u16 *ver_p)
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_initparam(struct shtps_fts *ts_p)
+int fts_fwctl_initparam(struct fts_data *ts_p)
 {
 	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
-void shtps_fwctl_set_dev_state(struct shtps_fts *ts_p, u8 state)
+void fts_fwctl_set_dev_state(struct fts_data *ts_p, u8 state)
 {
-	struct shtps_fwctl_info *fc_p = ts_p->fwctl_p;
+	struct fts_fwctl_info *fc_p = ts_p->fwctl_p;
 	fc_p->dev_state = state;
 }
 
 /* -------------------------------------------------------------------------- */
-u8 shtps_fwctl_get_dev_state(struct shtps_fts *ts_p)
+u8 fts_fwctl_get_dev_state(struct fts_data *ts_p)
 {
-	struct shtps_fwctl_info *fc_p = ts_p->fwctl_p;
+	struct fts_fwctl_info *fc_p = ts_p->fwctl_p;
 	return fc_p->dev_state;
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_maxXPosition(struct shtps_fts *ts_p)
+int fts_fwctl_get_maxXPosition(struct fts_data *ts_p)
 {
-	return CONFIG_SHTPS_LCD_SIZE_X;
+	return CONFIG_FTS_LCD_SIZE_X;
 }
 
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_get_maxYPosition(struct shtps_fts *ts_p)
+int fts_fwctl_get_maxYPosition(struct fts_data *ts_p)
 {
-	return CONFIG_SHTPS_LCD_SIZE_Y;
+	return CONFIG_FTS_LCD_SIZE_Y;
 }
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
-int shtps_fwctl_init(struct shtps_fts *ts_p, void *tps_ctrl_p, struct shtps_ctrl_functbl *func_p)
+int fts_fwctl_init(struct fts_data *ts_p, void *fts_ctrl_p, struct fts_ctrl_functbl *func_p)
 {
-	ts_p->fwctl_p = kzalloc(sizeof(struct shtps_fwctl_info), GFP_KERNEL);
+	ts_p->fwctl_p = kzalloc(sizeof(struct fts_fwctl_info), GFP_KERNEL);
 	if(ts_p->fwctl_p == NULL){
 		return -ENOMEM;
 	}
 	ts_p->fwctl_p->devctrl_func_p = func_p;	/* func.table i2c */
-	ts_p->fwctl_p->tps_ctrl_p = tps_ctrl_p;	/* struct device */
+	ts_p->fwctl_p->fts_ctrl_p = fts_ctrl_p;	/* struct device */
 
-	shtps_fwctl_ic_init(ts_p);
+	fts_fwctl_ic_init(ts_p);
 
 	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
-void shtps_fwctl_deinit(struct shtps_fts *ts_p)
+void fts_fwctl_deinit(struct fts_data *ts_p)
 {
 	if(ts_p->fwctl_p)	kfree(ts_p->fwctl_p);
 	ts_p->fwctl_p = NULL;
@@ -2488,14 +2496,14 @@ void shtps_fwctl_deinit(struct shtps_fts *ts_p)
 
 /* -----------------------------------------------------------------------------------
  */
-dev_t 					shtpsif_devid;
-struct class*			shtpsif_class = NULL;
-struct device*			shtpsif_device = NULL;
-struct cdev 			shtpsif_cdev;
+dev_t 					ftsif_devid;
+struct class*			ftsif_class = NULL;
+struct device*			ftsif_device = NULL;
+struct cdev 			ftsif_cdev;
 
 /* -----------------------------------------------------------------------------------
  */
-static int shtps_copy_to_user(u8 *krnl, unsigned long arg, int size, int isCompat)
+static int fts_copy_to_user(u8 *krnl, unsigned long arg, int size, int isCompat)
 {
 #ifdef CONFIG_COMPAT
 	if(isCompat == 1){
@@ -2514,15 +2522,15 @@ static int shtps_copy_to_user(u8 *krnl, unsigned long arg, int size, int isCompa
 	}
 }
 
-static int shtps_fw_upgrade_copy_from_user(struct shtps_ioctl_param *krnl, unsigned long arg, int isCompat)
+static int fts_fw_upgrade_copy_from_user(struct fts_ioctl_param *krnl, unsigned long arg, int isCompat)
 {
 #ifdef CONFIG_COMPAT
 	if(isCompat == 1)
 	{
 		int err = 0;
 		int size = 0;
-		struct shtps_compat_ioctl_param *usr =
-			(struct shtps_compat_ioctl_param __user *) arg;
+		struct fts_compat_ioctl_param *usr =
+			(struct fts_compat_ioctl_param __user *) arg;
 
 		if(!usr){
 			return -EINVAL;
@@ -2554,8 +2562,8 @@ static int shtps_fw_upgrade_copy_from_user(struct shtps_ioctl_param *krnl, unsig
 	{
 		int err = 0;
 		int size = 0;
-		struct shtps_ioctl_param *usr =
-			(struct shtps_ioctl_param __user *) arg;
+		struct fts_ioctl_param *usr =
+			(struct fts_ioctl_param __user *) arg;
 
 		if(!usr){
 			return -EINVAL;
@@ -2584,92 +2592,92 @@ static int shtps_fw_upgrade_copy_from_user(struct shtps_ioctl_param *krnl, unsig
 	}
 }
 
-static void shtps_fw_upgrade_release(struct shtps_ioctl_param *krnl)
+static void fts_fw_upgrade_release(struct fts_ioctl_param *krnl)
 {
 	if(krnl->data){
 		kfree(krnl->data);
 	}
 }
 
-static int shtps_ioctl_getver(struct shtps_fts *ts, unsigned long arg, int isCompat)
+static int fts_ioctl_getver(struct fts_data *ts, unsigned long arg, int isCompat)
 {
-	u8  tps_stop_request = 0;
+	u8  fts_stop_request = 0;
 	u16 ver;
 
 	if(0 == arg){
 		return -EINVAL;
 	}
 
-	if(ts->state_mgr.state == SHTPS_STATE_IDLE){
-		tps_stop_request = 1;
+	if(ts->state_mgr.state == FTS_STATE_IDLE){
+		fts_stop_request = 1;
 	}
 
-	if(0 != shtps_start(ts)){
+	if(0 != fts_start(ts)){
 		return -EFAULT;
 	}
 
-	shtps_mutex_lock_ctrl();
+	fts_mutex_lock_ctrl();
 
-	ver = shtps_fwver(ts);
+	ver = fts_fwver(ts);
 
-	shtps_mutex_unlock_ctrl();
+	fts_mutex_unlock_ctrl();
 
-	if(tps_stop_request){
-		shtps_shutdown(ts);
+	if(fts_stop_request){
+		fts_shutdown(ts);
 	}
 
-	if(shtps_copy_to_user((u8*)&ver, arg, sizeof(ver), isCompat)){
+	if(fts_copy_to_user((u8*)&ver, arg, sizeof(ver), isCompat)){
 		return -EFAULT;
 	}
 
 	return 0;
 }
 
-static int shtps_ioctl_getver_builtin(struct shtps_fts *ts, unsigned long arg, int isCompat)
+static int fts_ioctl_getver_builtin(struct fts_data *ts, unsigned long arg, int isCompat)
 {
-	u16 ver = shtps_fwver_builtin(ts);
+	u16 ver = fts_fwver_builtin(ts);
 
-	if(shtps_fwdata_builtin(ts) == NULL){
+	if(fts_fwdata_builtin(ts) == NULL){
 		return -EFAULT;
 	}
 	if(0 == arg){
 		return -EINVAL;
 	}
 
-	if(shtps_copy_to_user((u8*)&ver, arg, sizeof(ver), isCompat)){
+	if(fts_copy_to_user((u8*)&ver, arg, sizeof(ver), isCompat)){
 		return -EFAULT;
 	}
 	return 0;
 }
 
-static int shtps_ioctl_fw_upgrade(struct shtps_fts *ts, unsigned long arg, int isCompat)
+static int fts_ioctl_fw_upgrade(struct fts_data *ts, unsigned long arg, int isCompat)
 {
 	int rc;
-	struct shtps_ioctl_param param;
+	struct fts_ioctl_param param;
 	const unsigned char* fw_data = NULL;
 
-	if(0 == arg || 0 != shtps_fw_upgrade_copy_from_user(&param, arg, isCompat)){
+	if(0 == arg || 0 != fts_fw_upgrade_copy_from_user(&param, arg, isCompat)){
 		return -EINVAL;
 	}
 
 	if(param.size == 0){
-		fw_data = shtps_fwdata_builtin(ts);
+		fw_data = fts_fwdata_builtin(ts);
 		if(fw_data){
-			rc = shtps_fw_update(ts, (u8*)fw_data, shtps_fwsize_builtin(ts));
+			rc = fts_fw_update(ts, (u8*)fw_data, fts_fwsize_builtin(ts));
 		}
 		else{
 			rc = -1;
 		}
 	}
 	else{
-		rc = shtps_fw_update(ts, param.data, param.size);
+		rc = fts_fw_update(ts, param.data, param.size);
 	}
 
 	if(ts->is_lcd_on == 0){
-		shtps_shutdown(ts);
+		fts_shutdown(ts);
 	}
 
-	shtps_fw_upgrade_release(&param);
+	fts_fw_upgrade_release(&param);
 	if(rc){
 		return -EFAULT;
 	}
@@ -2679,24 +2687,24 @@ static int shtps_ioctl_fw_upgrade(struct shtps_fts *ts, unsigned long arg, int i
 
 /* -----------------------------------------------------------------------------------
  */
-static int shtpsif_open(struct inode *inode, struct file *file)
+static int ftsif_open(struct inode *inode, struct file *file)
 {
 	return 0;
 }
 
-static int shtpsif_release(struct inode *inode, struct file *file)
+static int ftsif_release(struct inode *inode, struct file *file)
 {
 	return 0;
 }
 
-static long shtpsif_ioctl_cmd(struct shtps_fts *ts, unsigned int cmd, unsigned long arg, int isCompat)
+static long ftsif_ioctl_cmd(struct fts_data *ts, unsigned int cmd, unsigned long arg, int isCompat)
 {
 	int	rc = 0;
 
 	switch(cmd){
-	case TPSDEV_GET_FW_VERSION:			rc = shtps_ioctl_getver(ts, arg, isCompat);		break;
-	case TPSDEV_GET_FW_VERSION_BUILTIN:	rc = shtps_ioctl_getver_builtin(ts, arg, isCompat);	break;
-	case TPSDEV_FW_UPGRADE:				rc = shtps_ioctl_fw_upgrade(ts, arg, isCompat);	break;
+	case FTSDEV_GET_FW_VERSION:			rc = fts_ioctl_getver(ts, arg, isCompat);		break;
+	case FTSDEV_GET_FW_VERSION_BUILTIN:	rc = fts_ioctl_getver_builtin(ts, arg, isCompat);	break;
+	case FTSDEV_FW_UPGRADE:				rc = fts_ioctl_fw_upgrade(ts, arg, isCompat);	break;
 
 	default:
 		rc = -ENOIOCTLCMD;
@@ -2706,26 +2714,26 @@ static long shtpsif_ioctl_cmd(struct shtps_fts *ts, unsigned int cmd, unsigned l
 	return rc;
 }
 
-static long shtpsif_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static long ftsif_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int	rc = 0;
-	struct shtps_fts *ts = gShtps_fts;
+	struct fts_data *ts = gFts_data;
 	int isCompat = 0;
 
 	if(ts == NULL){
 		return -EFAULT;
 	}
 
-	rc = shtpsif_ioctl_cmd(ts, cmd, arg, isCompat);
+	rc = ftsif_ioctl_cmd(ts, cmd, arg, isCompat);
 
 	return rc;
 }
 
 #ifdef CONFIG_COMPAT
-static long shtpsif_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static long ftsif_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int	rc = 0;
-	struct shtps_fts *ts = gShtps_fts;
+	struct fts_data *ts = gFts_data;
 	int isCompat = 1;
 
 	if(ts == NULL){
@@ -2733,51 +2741,51 @@ static long shtpsif_compat_ioctl(struct file *file, unsigned int cmd, unsigned l
 	}
 
 	switch(cmd){
-	case COMPAT_TPSDEV_FW_UPGRADE:				cmd = TPSDEV_FW_UPGRADE;			break;
+	case COMPAT_FTSDEV_FW_UPGRADE:				cmd = FTSDEV_FW_UPGRADE;			break;
 	}
 
-	rc = shtpsif_ioctl_cmd(ts, cmd, arg, isCompat);
+	rc = ftsif_ioctl_cmd(ts, cmd, arg, isCompat);
 
 	return rc;
 }
 #endif /* CONFIG_COMPAT */
 
-static const struct file_operations shtpsif_fileops = {
+static const struct file_operations ftsif_fileops = {
 	.owner   = THIS_MODULE,
-	.open    = shtpsif_open,
-	.release = shtpsif_release,
-	.unlocked_ioctl   = shtpsif_ioctl,
+	.open    = ftsif_open,
+	.release = ftsif_release,
+	.unlocked_ioctl   = ftsif_ioctl,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl =	shtpsif_compat_ioctl,
+	.compat_ioctl =	ftsif_compat_ioctl,
 #endif /* CONFIG_COMPAT */
 };
 
-static int shtpsif_init(void)
+static int ftsif_init(void)
 {
 	int rc;
 
-	rc = alloc_chrdev_region(&shtpsif_devid, 0, 1, SH_TOUCH_IF_DEVNAME);
+	rc = alloc_chrdev_region(&ftsif_devid, 0, 1, FTS_TOUCH_IF_DEVNAME);
 	if(rc < 0){
 		return rc;
 	}
 
-	shtpsif_class = class_create(THIS_MODULE, SH_TOUCH_IF_DEVNAME);
-	if (IS_ERR(shtpsif_class)) {
-		rc = PTR_ERR(shtpsif_class);
+	ftsif_class = class_create(THIS_MODULE, FTS_TOUCH_IF_DEVNAME);
+	if (IS_ERR(ftsif_class)) {
+		rc = PTR_ERR(ftsif_class);
 		goto error_vid_class_create;
 	}
 
-	shtpsif_device = device_create(shtpsif_class, NULL,
-								shtpsif_devid, &shtpsif_cdev,
-								SH_TOUCH_IF_DEVNAME);
-	if (IS_ERR(shtpsif_device)) {
-		rc = PTR_ERR(shtpsif_device);
+	ftsif_device = device_create(ftsif_class, NULL,
+								ftsif_devid, &ftsif_cdev,
+								FTS_TOUCH_IF_DEVNAME);
+	if (IS_ERR(ftsif_device)) {
+		rc = PTR_ERR(ftsif_device);
 		goto error_vid_class_device_create;
 	}
 
-	cdev_init(&shtpsif_cdev, &shtpsif_fileops);
-	shtpsif_cdev.owner = THIS_MODULE;
-	rc = cdev_add(&shtpsif_cdev, shtpsif_devid, 1);
+	cdev_init(&ftsif_cdev, &ftsif_fileops);
+	ftsif_cdev.owner = THIS_MODULE;
+	rc = cdev_add(&ftsif_cdev, ftsif_devid, 1);
 	if(rc < 0){
 		goto err_via_cdev_add;
 	}
@@ -2785,39 +2793,39 @@ static int shtpsif_init(void)
 	return 0;
 
 err_via_cdev_add:
-	cdev_del(&shtpsif_cdev);
+	cdev_del(&ftsif_cdev);
 error_vid_class_device_create:
-	class_destroy(shtpsif_class);
-	shtpsif_class = NULL;
+	class_destroy(ftsif_class);
+	ftsif_class = NULL;
 error_vid_class_create:
-	unregister_chrdev_region(shtpsif_devid, 1);
+	unregister_chrdev_region(ftsif_devid, 1);
 
 	return rc;
 }
 
-static void shtpsif_exit(void)
+static void ftsif_exit(void)
 {
-	if(shtpsif_class != NULL){
-		cdev_del(&shtpsif_cdev);
-		class_destroy(shtpsif_class);
-		shtpsif_class = NULL;
-		unregister_chrdev_region(shtpsif_devid, 1);
+	if(ftsif_class != NULL){
+		cdev_del(&ftsif_cdev);
+		class_destroy(ftsif_class);
+		ftsif_class = NULL;
+		unregister_chrdev_region(ftsif_devid, 1);
 	}
 }
 
 /* -------------------------------------------------------------------------- */
 static DEFINE_MUTEX(i2c_rw_access);
 
-static int shtps_i2c_write_main(void *client, u16 addr, u8 *writebuf, u32 size);
-static int shtps_i2c_write(void *client, u16 addr, u8 data);
-static int shtps_i2c_write_packet(void *client, u16 addr, u8 *data, u32 size);
+static int fts_i2c_write_main(void *client, u16 addr, u8 *writebuf, u32 size);
+static int fts_i2c_write(void *client, u16 addr, u8 data);
+static int fts_i2c_write_packet(void *client, u16 addr, u8 *data, u32 size);
 
-static int shtps_i2c_read(void *client, u16 addr, u8 *buf, u32 size);
-static int shtps_i2c_read_packet (void *client, u16 addr, u8 *buf,  u32 size);
+static int fts_i2c_read(void *client, u16 addr, u8 *buf, u32 size);
+static int fts_i2c_read_packet (void *client, u16 addr, u8 *buf,  u32 size);
 
 /* -----------------------------------------------------------------------------------
  */
-static int shtps_i2c_transfer(struct i2c_client *client, char *writebuf, int writelen, char *readbuf, int readlen)
+static int fts_i2c_transfer(struct i2c_client *client, char *writebuf, int writelen, char *readbuf, int readlen)
 {
 	int ret;
 
@@ -2871,14 +2879,14 @@ static int shtps_i2c_transfer(struct i2c_client *client, char *writebuf, int wri
 }
 /* -----------------------------------------------------------------------------------
  */
-static int shtps_i2c_write_main(void *client, u16 addr, u8 *writebuf, u32 size)
+static int fts_i2c_write_main(void *client, u16 addr, u8 *writebuf, u32 size)
 {
 	int ret = 0;
 	u8 *buf;
-	u8 buf_local[1 + SHTPS_I2C_BLOCKWRITE_BUFSIZE];
+	u8 buf_local[1 + FTS_I2C_BLOCKWRITE_BUFSIZE];
 	int allocSize = 0;
 
-	if(size > SHTPS_I2C_BLOCKWRITE_BUFSIZE){
+	if(size > FTS_I2C_BLOCKWRITE_BUFSIZE){
 		allocSize = sizeof(u8) * (1 + size);
 		buf = (u8 *)kzalloc(allocSize, GFP_KERNEL);
 		if(buf == NULL){
@@ -2892,7 +2900,7 @@ static int shtps_i2c_write_main(void *client, u16 addr, u8 *writebuf, u32 size)
 	buf[0] = addr;
 	memcpy(&buf[1], writebuf, size);
 
-	ret = shtps_i2c_transfer((struct i2c_client *)client, buf, (1 + size), NULL, 0);
+	ret = fts_i2c_transfer((struct i2c_client *)client, buf, (1 + size), NULL, 0);
 	if(ret >= 0){
 		ret = 0;
 	}
@@ -2903,18 +2911,18 @@ static int shtps_i2c_write_main(void *client, u16 addr, u8 *writebuf, u32 size)
 	return ret;
 }
 
-static int shtps_i2c_write(void *client, u16 addr, u8 data)
+static int fts_i2c_write(void *client, u16 addr, u8 data)
 {
-	return shtps_i2c_write_packet(client, addr, &data, 1);
+	return fts_i2c_write_packet(client, addr, &data, 1);
 }
 
-static int shtps_i2c_write_packet(void *client, u16 addr, u8 *data, u32 size)
+static int fts_i2c_write_packet(void *client, u16 addr, u8 *data, u32 size)
 {
 	int status = 0;
-	int retry = SHTPS_I2C_RETRY_COUNT;
+	int retry = FTS_I2C_RETRY_COUNT;
 
 	do{
-		status = shtps_i2c_write_main(client,
+		status = fts_i2c_write_main(client,
 			addr,
 			data,
 			size);
@@ -2922,7 +2930,7 @@ static int shtps_i2c_write_packet(void *client, u16 addr, u8 *data, u32 size)
 		if(status){
 			struct timespec tu;
 			tu.tv_sec = (time_t)0;
-			tu.tv_nsec = SHTPS_I2C_RETRY_WAIT * 1000000;
+			tu.tv_nsec = FTS_I2C_RETRY_WAIT * 1000000;
 			hrtimer_nanosleep(&tu, NULL, HRTIMER_MODE_REL, CLOCK_MONOTONIC);
 		}
 	}while(status != 0 && retry-- > 0);
@@ -2930,7 +2938,7 @@ static int shtps_i2c_write_packet(void *client, u16 addr, u8 *data, u32 size)
 	return status;
 }
 
-static int shtps_i2c_read_main(void *client, u16 addr, u8 *readbuf, u32 size)
+static int fts_i2c_read_main(void *client, u16 addr, u8 *readbuf, u32 size)
 {
 	int ret;
 
@@ -2939,13 +2947,13 @@ static int shtps_i2c_read_main(void *client, u16 addr, u8 *readbuf, u32 size)
 
 		writebuf[0] = addr;
 
-		ret = shtps_i2c_transfer((struct i2c_client *)client, writebuf, 1, readbuf, size);
+		ret = fts_i2c_transfer((struct i2c_client *)client, writebuf, 1, readbuf, size);
 		if(ret >= 0){
 			ret = 0;
 		}
 	}
 	else{
-		ret = shtps_i2c_transfer((struct i2c_client *)client, NULL, 0, readbuf, size);
+		ret = fts_i2c_transfer((struct i2c_client *)client, NULL, 0, readbuf, size);
 		if(ret >= 0){
 			ret = 0;
 		}
@@ -2954,34 +2962,34 @@ static int shtps_i2c_read_main(void *client, u16 addr, u8 *readbuf, u32 size)
 	return ret;
 }
 
-static int shtps_i2c_read(void *client, u16 addr, u8 *buf, u32 size)
+static int fts_i2c_read(void *client, u16 addr, u8 *buf, u32 size)
 {
-	return shtps_i2c_read_packet(client, addr, buf, size);
+	return fts_i2c_read_packet(client, addr, buf, size);
 }
 
-static int shtps_i2c_read_packet(void *client, u16 addr, u8 *buf, u32 size)
+static int fts_i2c_read_packet(void *client, u16 addr, u8 *buf, u32 size)
 {
 	int status = 0;
 	int i;
 	u32 s;
-	int retry = SHTPS_I2C_RETRY_COUNT;
+	int retry = FTS_I2C_RETRY_COUNT;
 
 	do{
 		s = size;
-		for(i = 0; i < size; i += SHTPS_I2C_BLOCKREAD_BUFSIZE){
-			status = shtps_i2c_read_main(client,
+		for(i = 0; i < size; i += FTS_I2C_BLOCKREAD_BUFSIZE){
+			status = fts_i2c_read_main(client,
 				addr,
 				buf + i,
-				(s > SHTPS_I2C_BLOCKREAD_BUFSIZE) ? (SHTPS_I2C_BLOCKREAD_BUFSIZE) : (s));
+				(s > FTS_I2C_BLOCKREAD_BUFSIZE) ? (FTS_I2C_BLOCKREAD_BUFSIZE) : (s));
 			//
 			if(status){
 				struct timespec tu;
 				tu.tv_sec = (time_t)0;
-				tu.tv_nsec = SHTPS_I2C_RETRY_WAIT * 1000000;
+				tu.tv_nsec = FTS_I2C_RETRY_WAIT * 1000000;
 				hrtimer_nanosleep(&tu, NULL, HRTIMER_MODE_REL, CLOCK_MONOTONIC);
 				break;
 			}
-			s -= SHTPS_I2C_BLOCKREAD_BUFSIZE;
+			s -= FTS_I2C_BLOCKREAD_BUFSIZE;
 			addr = 0x7FFF;	/* specifying no address after first read */
 		}
 	}while(status != 0 && retry-- > 0);
@@ -2989,24 +2997,24 @@ static int shtps_i2c_read_packet(void *client, u16 addr, u8 *buf, u32 size)
 	return status;
 }
 
-static int shtps_i2c_direct_write(void *client, u8 *writebuf, u32 writelen)
+static int fts_i2c_direct_write(void *client, u8 *writebuf, u32 writelen)
 {
 	int ret = 0;
 
 	if (writelen > 0) {
-		ret = shtps_i2c_transfer((struct i2c_client *)client, writebuf, writelen, NULL, 0);
+		ret = fts_i2c_transfer((struct i2c_client *)client, writebuf, writelen, NULL, 0);
 	}
 	return ret;
 }
 
-static int shtps_i2c_direct_read(void *client, u8 *writebuf, u32 writelen, u8 *readbuf, u32 readlen)
+static int fts_i2c_direct_read(void *client, u8 *writebuf, u32 writelen, u8 *readbuf, u32 readlen)
 {
 	int ret;
 
 	if (writelen > 0) {
-		ret = shtps_i2c_transfer((struct i2c_client *)client, writebuf, writelen, readbuf, readlen);
+		ret = fts_i2c_transfer((struct i2c_client *)client, writebuf, writelen, readbuf, readlen);
 	} else {
-		ret = shtps_i2c_transfer((struct i2c_client *)client, NULL, 0, readbuf, readlen);
+		ret = fts_i2c_transfer((struct i2c_client *)client, NULL, 0, readbuf, readlen);
 	}
 
 	return ret;
@@ -3014,21 +3022,21 @@ static int shtps_i2c_direct_read(void *client, u8 *writebuf, u32 writelen, u8 *r
 
 /* -----------------------------------------------------------------------------------
 */
-static const struct shtps_ctrl_functbl TpsCtrl_I2cFuncTbl = {
-	.write_f          = shtps_i2c_write,
-	.read_f           = shtps_i2c_read,
-	.packet_write_f   = shtps_i2c_write_packet,
-	.packet_read_f    = shtps_i2c_read_packet,
-	.direct_write_f   = shtps_i2c_direct_write,
-	.direct_read_f    = shtps_i2c_direct_read,
+static const struct fts_ctrl_functbl FtsCtrl_I2cFuncTbl = {
+	.write_f          = fts_i2c_write,
+	.read_f           = fts_i2c_read,
+	.packet_write_f   = fts_i2c_write_packet,
+	.packet_read_f    = fts_i2c_read_packet,
+	.direct_write_f   = fts_i2c_direct_write,
+	.direct_read_f    = fts_i2c_direct_read,
 };
 
 /* -----------------------------------------------------------------------------------
 */
-static int shtps_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int fts_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	extern	int shtps_fts_core_probe( struct device *ctrl_dev_p,
-									struct shtps_ctrl_functbl *func_p,
+	extern	int fts_core_probe( struct device *ctrl_dev_p,
+									struct fts_ctrl_functbl *func_p,
 									void *ctrl_p,
 									char *modalias,
 									int gpio_irq);
@@ -3041,9 +3049,9 @@ static int shtps_i2c_probe(struct i2c_client *client, const struct i2c_device_id
 	}
 
 	/* ---------------------------------------------------------------- */
-	result = shtps_fts_core_probe(
+	result = fts_core_probe(
 							&client->dev,
-							(struct shtps_ctrl_functbl*)&TpsCtrl_I2cFuncTbl,
+							(struct fts_ctrl_functbl*)&FtsCtrl_I2cFuncTbl,
 							(void *)client,
 							client->name,
 							client->irq );
@@ -3063,94 +3071,94 @@ fail_err:
 
 /* -----------------------------------------------------------------------------------
 */
-static int shtps_i2c_remove(struct i2c_client *client)
+static int fts_i2c_remove(struct i2c_client *client)
 {
-	extern int shtps_fts_core_remove(struct shtps_fts *, struct device *);
-	struct shtps_fts *ts_p = i2c_get_clientdata(client);
-	int ret = shtps_fts_core_remove(ts_p, &client->dev);
+	extern int fts_core_remove(struct fts_data *, struct device *);
+	struct fts_data *ts_p = i2c_get_clientdata(client);
+	int ret = fts_core_remove(ts_p, &client->dev);
 
 	return ret;
 }
 
 /* -----------------------------------------------------------------------------------
 */
-static int shtps_i2c_suspend(struct i2c_client *client, pm_message_t mesg)
+static int fts_i2c_suspend(struct i2c_client *client, pm_message_t mesg)
 {
-	extern int shtps_fts_core_suspend(struct shtps_fts *, pm_message_t);
-	struct shtps_fts *ts_p = i2c_get_clientdata(client);
-	int ret = shtps_fts_core_suspend(ts_p, mesg);
+	extern int fts_core_suspend(struct fts_data *, pm_message_t);
+	struct fts_data *ts_p = i2c_get_clientdata(client);
+	int ret = fts_core_suspend(ts_p, mesg);
 
 	return ret;
 }
 
 /* -----------------------------------------------------------------------------------
 */
-static int shtps_i2c_resume(struct i2c_client *client)
+static int fts_i2c_resume(struct i2c_client *client)
 {
-	extern int shtps_fts_core_resume(struct shtps_fts *);
-	struct shtps_fts *ts_p = i2c_get_clientdata(client);
-	int ret = shtps_fts_core_resume(ts_p);
+	extern int fts_core_resume(struct fts_data *);
+	struct fts_data *ts_p = i2c_get_clientdata(client);
+	int ret = fts_core_resume(ts_p);
 
 	return ret;
 }
 
 /* -----------------------------------------------------------------------------------
 */
-static const struct dev_pm_ops shtps_fts_ts_pm_ops = {
+static const struct dev_pm_ops fts_ts_pm_ops = {
 };
-static const struct i2c_device_id shtps_fts_ts_id[] = {
+static const struct i2c_device_id fts_ts_id[] = {
 	{"fts_ts", 0},
 	{},
 };
 
-MODULE_DEVICE_TABLE(i2c, shtps_fts_ts_id);
+MODULE_DEVICE_TABLE(i2c, fts_ts_id);
 
 #ifdef CONFIG_OF // Open firmware must be defined for dts useage
-static struct of_device_id shtps_fts_table[] = {
-	{ . compatible = "sharp,shtps_fts" ,}, // Compatible node must match dts
+static struct of_device_id fts_table[] = {
+	{ . compatible = "sharp,fts_ts" ,}, // Compatible node must match dts
 	{ },
 };
 #endif
 
-static struct i2c_driver shtps_i2c_driver = {
-	.probe		= shtps_i2c_probe,
-	.remove		= shtps_i2c_remove,
-	.suspend	= shtps_i2c_suspend,
-	.resume		= shtps_i2c_resume,
+static struct i2c_driver fts_i2c_driver = {
+	.probe		= fts_i2c_probe,
+	.remove		= fts_i2c_remove,
+	.suspend	= fts_i2c_suspend,
+	.resume		= fts_i2c_resume,
 	.driver		= {
 		#ifdef CONFIG_OF // Open firmware must be defined for dts useage
-			.of_match_table = shtps_fts_table,
+			.of_match_table = fts_table,
 		#endif
-		.name = "shtps_fts",	// SH_TOUCH_DEVNAME,
+		.name = FTS_TOUCH_IF_DEVNAME,
 		.owner = THIS_MODULE,
 #ifdef CONFIG_PM
-		.pm = &shtps_fts_ts_pm_ops,
+		.pm = &fts_ts_pm_ops,
 #endif
 	},
-	.id_table = shtps_fts_ts_id,
+	.id_table = fts_ts_id,
 };
 
 /* -----------------------------------------------------------------------------------
 */
-static int __init shtps_i2c_init(void)
+static int __init fts_i2c_init(void)
 {
-	return i2c_add_driver(&shtps_i2c_driver);
+	return i2c_add_driver(&fts_i2c_driver);
 }
-module_init(shtps_i2c_init);
+module_init(fts_i2c_init);
 
 /* -----------------------------------------------------------------------------------
 */
-static void __exit shtps_i2c_exit(void)
+static void __exit fts_i2c_exit(void)
 {
-	i2c_del_driver(&shtps_i2c_driver);
+	i2c_del_driver(&fts_i2c_driver);
 }
-module_exit(shtps_i2c_exit);
+module_exit(fts_i2c_exit);
 
 /* -----------------------------------------------------------------------------------
 */
-void msm_tps_setsleep(int on)
+void fts_setsleep(int on)
 {
-	struct shtps_fts *ts = gShtps_fts;
+	struct fts_data *ts = gFts_data;
 
 	if(ts){
 		if(on == 1){
@@ -3160,17 +3168,15 @@ void msm_tps_setsleep(int on)
 			ts->is_lcd_on = 1;
 		}
 
-		if(shtps_check_suspend_state(ts, SHTPS_DETER_SUSPEND_I2C_PROC_SETSLEEP, (u8)on) == 0){
-			shtps_setsleep_proc(ts, (u8)on);
+		if(fts_check_suspend_state(ts, FTS_DETER_SUSPEND_I2C_PROC_SETSLEEP, (u8)on) == 0){
+			fts_setsleep_proc(ts, (u8)on);
 		}
 	}
 }
-EXPORT_SYMBOL(msm_tps_setsleep);
+EXPORT_SYMBOL(fts_setsleep);
 
 
 /* -----------------------------------------------------------------------------------
 */
-MODULE_DESCRIPTION("SHARP TOUCHPANEL DRIVER MODULE");
-MODULE_LICENSE("GPL v2");
-MODULE_AUTHOR("SHARP CORPORATION");
-MODULE_VERSION("1.00");
+MODULE_DESCRIPTION("FocalTech fts TouchScreen driver"); 
+MODULE_LICENSE("GPLv2");
