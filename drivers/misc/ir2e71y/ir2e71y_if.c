@@ -4233,6 +4233,16 @@ static int ir2e71y_driver_initialize(struct platform_device *pdev)
     tri_led.ontime   = ir2e71y_if_ctx.tri_led.ontime;
     tri_led.interval = ir2e71y_if_ctx.tri_led.interval;
     tri_led.count    = ir2e71y_if_ctx.tri_led.count;
+
+    ir2e71y_if_ctx.sysfs_led1.red   = ((ir2e71y_if_ctx.tri_led.red   > 0) ? 255 : 0);
+    ir2e71y_if_ctx.sysfs_led1.green = ((ir2e71y_if_ctx.tri_led.green > 0) ? 255 : 0);
+    ir2e71y_if_ctx.sysfs_led1.blue  = ((ir2e71y_if_ctx.tri_led.blue  > 0) ? 255 : 0);
+    if ((tri_led.red + tri_led.green + tri_led.blue) != 0) {
+        ir2e71y_if_ctx.sysfs_led1.led_mode = IR2E71Y_TRI_LED_MODE_NORMAL;
+    } else {
+        ir2e71y_if_ctx.sysfs_led1.led_mode = IR2E71Y_TRI_LED_MODE_OFF;
+    }
+
     ir2e71y_bdic_API_TRI_LED_set_request(&tri_led);
     ret = ir2e71y_IO_API_request_irq(ir2e71y_gpio_int_isr);
 
