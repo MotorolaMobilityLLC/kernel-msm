@@ -40,6 +40,10 @@ static bool ssusb_peripheral;
 module_param(ssusb_peripheral, bool, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(ssusb_peripheral, "SSUSB goes to Peripheral mode on the mod connector");
 
+static bool ignore_ext;
+module_param(ignore_ext, bool, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(ignore_ext, "Ignores EXT notifications from the mod");
+
 struct hd3ss460_info {
 	int num_gpios;
 	struct gpio *list;
@@ -439,6 +443,9 @@ static int usb_ext_notifier_call(struct notifier_block *nb,
 	struct hd3ss460_info *info = container_of(nb,
 				struct hd3ss460_info, usbext_notifier);
 	struct usb_ext_status *status = v;
+
+	if (ignore_ext)
+		return NOTIFY_DONE;
 
 	/* If Mod has detached, disconnect the hub */
 	if (status->proto != USB_EXT_PROTO_3_1 || !val) {
