@@ -3175,7 +3175,7 @@ static int arizona_slim_get_la(struct slim_device *dev, u8 *la)
 		}
 	} while (!la);
 
-	dev_info(&dev->dev, "LA %d\n", *la);
+	dev_dbg(&dev->dev, "LA %d\n", *la);
 
 	return 0;
 }
@@ -3421,15 +3421,15 @@ static int arizona_get_channel_map(struct snd_soc_dai *dai,
 	int i, ret;
 	u8 laddr;
 
-dev_info(arizona->dev, "************\n");
-dev_info(arizona->dev, "%s!!!!!\n", __func__);
-dev_info(arizona->dev, "************\n");
+dev_dbg(arizona->dev, "************\n");
+dev_dbg(arizona->dev, "%s!!!!!\n", __func__);
+dev_dbg(arizona->dev, "************\n");
 	if (slim_logic_addr == 0)
 		arizona_slim_get_la(slim_audio_dev, &laddr);
 	else
 		laddr = slim_logic_addr;
 
-dev_info(arizona->dev, "%s logic addr %d\n", __func__, laddr);
+dev_dbg(arizona->dev, "%s logic addr %d\n", __func__, laddr);
 	for (i = 0; i < ARRAY_SIZE(rx_porth1); i++) {
 		slim_get_slaveport(laddr, i,
 				   &rx_porth1[i], SLIM_SINK);
@@ -4039,8 +4039,6 @@ int arizona_set_sysclk(struct snd_soc_codec *codec, int clk_id,
 	struct reg_default cw_dspclk_seq[2];
 
 	reg2 = val2 = 0;
-
-	dev_info(arizona->dev, "JAS: arizona type is %d\n", arizona->type);
 
 	switch (arizona->type) {
 	case WM8997:
