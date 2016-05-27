@@ -69,6 +69,8 @@
 
 	sharp,panel-vddio-supply-gpio = <&msm_gpio 66 0>;
 	sharp,panel-analog-power;
+
+	sharp,dsi-mipiclkchg-control;
 };
 
 / {
