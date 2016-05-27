@@ -517,6 +517,9 @@ int wcd_mbhc_get_impedance(struct wcd_mbhc *mbhc, uint32_t *zl,
 static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				enum snd_jack_types jack_type)
 {
+	int ret;
+	const char *lineout_report = NULL;
+
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
 	pr_debug("%s: enter insertion %d hph_status %x\n",
@@ -656,9 +659,24 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 
 		pr_debug("%s: Reporting insertion %d(%x)\n", __func__,
 			 jack_type, mbhc->hph_status);
-		wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
-				    (mbhc->hph_status | SND_JACK_MECHANICAL),
-				    WCD_MBHC_JACK_MASK);
+
+		ret = of_property_read_string(mbhc->codec->card->dev->of_node,"sharp,jack-lineout-report",&lineout_report);
+		if(!ret && !strcmp(lineout_report, "notsend")){
+			if(mbhc->hph_status == SND_JACK_LINEOUT){
+				wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
+						    (SND_JACK_UNSUPPORTED | SND_JACK_MECHANICAL),
+						    WCD_MBHC_JACK_MASK);
+			}else{
+				wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
+						    (mbhc->hph_status | SND_JACK_MECHANICAL),
+						    WCD_MBHC_JACK_MASK);
+			}
+		}else{
+			wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
+					    (mbhc->hph_status | SND_JACK_MECHANICAL),
+					    WCD_MBHC_JACK_MASK);
+		}
+
 		wcd_mbhc_clr_and_turnon_hph_padac(mbhc);
 	}
 	pr_debug("%s: leave hph_status %x\n", __func__, mbhc->hph_status);
