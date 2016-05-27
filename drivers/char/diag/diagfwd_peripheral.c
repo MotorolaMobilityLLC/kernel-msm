@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -247,7 +247,7 @@ static void diagfwd_data_read_done(struct diagfwd_info *fwd_info,
 			temp_buf = fwd_info->buf_2;
 			write_buf = fwd_info->buf_2->data;
 		} else {
-			pr_err("diag: In %s, no match for buffer %p, peripheral %d, type: %d\n",
+			pr_err("diag: In %s, no match for buffer %pK, peripheral %d, type: %d\n",
 			       __func__, buf, fwd_info->peripheral,
 			       fwd_info->type);
 			goto end;
@@ -261,7 +261,7 @@ static void diagfwd_data_read_done(struct diagfwd_info *fwd_info,
 			   fwd_info->buf_2->data_raw == buf) {
 			temp_buf = fwd_info->buf_2;
 		} else {
-			pr_err("diag: In %s, no match for non encode buffer %p, peripheral %d, type: %d\n",
+			pr_err("diag: In %s, no match for non encode buffer %pK, peripheral %d, type: %d\n",
 			       __func__, buf, fwd_info->peripheral,
 			       fwd_info->type);
 			goto end;
@@ -281,7 +281,7 @@ static void diagfwd_data_read_done(struct diagfwd_info *fwd_info,
 			   fwd_info->buf_2->data_raw == buf) {
 			temp_buf = fwd_info->buf_2;
 		} else {
-			pr_err("diag: In %s, no match for non encode buffer %p, peripheral %d, type: %d\n",
+			pr_err("diag: In %s, no match for non encode buffer %pK, peripheral %d, type: %d\n",
 			       __func__, buf, fwd_info->peripheral,
 			       fwd_info->type);
 			goto end;
@@ -914,7 +914,7 @@ void diagfwd_channel_read(struct diagfwd_info *fwd_info)
 	if (!(fwd_info->p_ops && fwd_info->p_ops->read && fwd_info->ctxt))
 		goto fail_return;
 
-	DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "issued a read p: %d t: %d buf: %p\n",
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "issued a read p: %d t: %d buf: %pK\n",
 		 fwd_info->peripheral, fwd_info->type, read_buf);
 	err = fwd_info->p_ops->read(fwd_info->ctxt, read_buf, read_len);
 	if (err)
