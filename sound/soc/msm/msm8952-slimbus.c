@@ -104,7 +104,6 @@ static void *adsp_state_notifier;
 
 static int msm8952_enable_codec_mclk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
-
 /*
  * Android L spec
  * Need to report LINEIN
@@ -2460,6 +2459,13 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	ret = core_get_adsp_ver();
+	if (ret < 0) {
+		ret = -EPROBE_DEFER;
+		dev_dbg(&pdev->dev, "%s: Get adsp version failed (%d)\n",
+						__func__, ret);
+		goto err;
+	}
 	ret = snd_soc_register_card(card);
 	if (ret) {
 		if (codec_reg_done)
