@@ -763,4 +763,10 @@ enum {
 /* integer [][4]: eis_w, eis_h, w, h. optional for MOD */
 #define CAM_EXT_CID_EIS_FRAME_SIZE_MAP (CID_CAM_EXT_CLASS_BASE + 114)
 
+/* integer (float value x100; e.g., 5480 is 54.80) */
+#define CAM_EXT_CID_HORIZONTAL_VIEW_ANGLE (CID_CAM_EXT_CLASS_BASE + 115)
+
+/* integer (float value x100; e.g., 4250 is 42.50) */
+#define CAM_EXT_CID_VERTICAL_VIEW_ANGLE (CID_CAM_EXT_CLASS_BASE + 116)
+
 #endif /* __CAMERA_EXT_CTRLS_H */
