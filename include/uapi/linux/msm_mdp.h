@@ -68,6 +68,8 @@
 						struct mdp_overlay_list)
 #define MSMFB_LPM_ENABLE	_IOWR(MSMFB_IOCTL_MAGIC, 170, unsigned int)
 
+#define MSMFB_MIPI_DSI_CLKCHG _IOW(MSMFB_IOCTL_MAGIC, 180, struct mdp_update_mipiclk)
+
 #define FB_TYPE_3D_PANEL 0x10101010
 #define MDP_IMGTYPE2_START 0x10000
 #define MSMFB_DRIVER_VERSION	0xF9E8D701
@@ -1185,6 +1187,21 @@ struct msmfb_mixer_info_req {
 	int mixer_num;
 	int cnt;
 	struct mdp_mixer_info info[MAX_PIPE_PER_MIXER];
+};
+
+struct mdp_update_mipiclk {
+	unsigned int clock_rate;
+	unsigned short display_width;
+	unsigned short display_height;
+	unsigned short hsync_pulse_width;
+	unsigned short h_back_porch;
+	unsigned short h_front_porch;
+	unsigned short vsync_pulse_width;
+	unsigned short v_back_porch;
+	unsigned short v_front_porch;
+	unsigned char t_clk_post;
+	unsigned char t_clk_pre;
+	unsigned char timing_ctrl[12];
 };
 
 enum {

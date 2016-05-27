@@ -201,6 +201,8 @@ struct mdss_intf_recovery {
  * @MDSS_EVENT_TOUCHSCREEN_ENABLE: TouchScreen On/Off timing
  * 				- 0: touchscreen disable
  * 				- 1: touchscreen enable 
+ * @MDSS_EVENT_MIPICLK_UPDATE_CLK: Event to update dsi clocks for dynamic DSI clock change.
+ * @MDSS_EVENT_MIPICLK_CONFIG_DSI: Event to setup DSI controller for dynamic DSI clock change.
 */
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
@@ -229,6 +231,8 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_RECONFIG_CMD,
 	MDSS_EVENT_DSI_RESET_WRITE_PTR,
 	MDSS_EVENT_TOUCHSCREEN_ENABLE,
+	MDSS_EVENT_MIPICLK_UPDATE_CLK,
+	MDSS_EVENT_MIPICLK_CONFIG_DSI,
 };
 
 struct lcd_panel_info {

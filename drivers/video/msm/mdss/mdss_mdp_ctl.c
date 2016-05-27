@@ -1711,6 +1711,7 @@ static struct mdss_mdp_ctl *mdss_mdp_ctl_alloc(struct mdss_data_type *mdata,
 			spin_lock_init(&ctl->spin_lock);
 			BLOCKING_INIT_NOTIFIER_HEAD(&ctl->notifier_head);
 			pr_debug("alloc ctl_num=%d\n", ctl->num);
+			mutex_init(&ctl->mipiclk_lock);
 			break;
 		}
 		ctl = NULL;
@@ -3791,6 +3792,51 @@ int mdss_mdp_ctl_update_fps(struct mdss_mdp_ctl *ctl)
 				new_fps, ret);
 	}
 	ATRACE_END("config_fps");
+
+exit:
+	return ret;
+}
+
+int mdss_mdp_ctl_update_mipiclk(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_panel_info *pinfo;
+	struct mdss_overlay_private *mdp5_data;
+	int ret = 0;
+	struct mdp_update_mipiclk request_mipiclk;
+
+	if (!ctl->mipiclk_pending) {
+		goto exit;
+	}
+
+	pinfo = &ctl->panel_data->panel_info;
+	if (!pinfo) {
+		ret = -ENODEV;
+		goto exit;
+	}
+
+	if (!ctl->ops.config_mipiclk_fnc)
+		goto exit;
+
+	if (ctl->mfd)
+		mdp5_data = mfd_to_mdp5_data(ctl->mfd);
+
+	if (!mdp5_data) {
+		ret = -ENODEV;
+		goto exit;
+	}
+
+	mutex_lock(&ctl->mipiclk_lock);
+	memcpy(&request_mipiclk, &ctl->request_mipiclk
+		, sizeof(request_mipiclk));
+	ctl->mipiclk_pending = false;
+	mutex_unlock(&ctl->mipiclk_lock);
+
+	ATRACE_BEGIN("config_mipiclk_fnc");
+	ret = ctl->ops.config_mipiclk_fnc(ctl, &request_mipiclk);
+	if (ret) {
+		pr_err("Failed to change clk. rc = %d\n", ret);
+	}
+	ATRACE_END("config_mipiclk_fnc");
 
 exit:
 	return ret;

@@ -36,6 +36,7 @@
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
+#include "mdss_dsi.h"
 
 #define VSYNC_PERIOD 16
 #define BORDERFILL_NDX	0x0BF000BF
@@ -2081,6 +2082,8 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 
 	if (IS_ERR_VALUE(ret))
 		goto commit_fail;
+
+	ret = mdss_mdp_ctl_update_mipiclk(ctl);
 
 	ret = mdss_mdp_ctl_update_fps(ctl);
 
@@ -4381,6 +4384,43 @@ validate_exit:
 	return ret;
 }
 
+static int __handle_ioctl_mipi_clkchg(struct msm_fb_data_type *mfd,
+		void __user *argp)
+{
+	int ret = 0;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	struct mdss_panel_data *pdata;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
+
+	pr_debug("%s: called fb%d\n", __func__, mfd->index);
+
+	pdata = ctl->panel_data;
+	if (!pdata) {
+		pr_err("invalid pdata\n");
+		return -ENODEV;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+	if (!ctrl_pdata->mipiclkchg_control) {
+		pr_debug("%s: mipiclkchg = %d\n", __func__, ctrl_pdata->mipiclkchg_control);
+		return ret;
+	}
+
+	mutex_lock(&ctl->mipiclk_lock);
+	ret = copy_from_user(&ctl->request_mipiclk, argp,
+			sizeof(ctl->request_mipiclk));
+
+	if (ret) {
+		pr_err("%s:copy from user failed\n", __func__);
+		mutex_unlock(&ctl->mipiclk_lock);
+		return ret;
+	}
+	ctl->mipiclk_pending = true;
+	mutex_unlock(&ctl->mipiclk_lock);
+	return ret;
+}
+
 static int mdss_mdp_overlay_ioctl_handler(struct msm_fb_data_type *mfd,
 					  u32 cmd, void __user *argp)
 {
@@ -4506,6 +4546,9 @@ static int mdss_mdp_overlay_ioctl_handler(struct msm_fb_data_type *mfd,
 		break;
 	case MSMFB_OVERLAY_PREPARE:
 		ret = __handle_ioctl_overlay_prepare(mfd, argp);
+		break;
+	case MSMFB_MIPI_DSI_CLKCHG:
+		ret = __handle_ioctl_mipi_clkchg(mfd, argp);
 		break;
 	default:
 		if (mfd->panel.type == WRITEBACK_PANEL)

@@ -23,6 +23,7 @@
 #include "mdss_panel.h"
 #include "mdss_debug.h"
 #include "mdss_mdp_trace.h"
+#include "mdss_dsi.h"
 
 /* wait for at least 2 vsyncs for lowest refresh rate (24hz) */
 #define VSYNC_TIMEOUT_US 100000
@@ -78,6 +79,9 @@ struct mdss_mdp_video_ctx {
 
 static void mdss_mdp_fetch_start_config(struct mdss_mdp_video_ctx *ctx,
 		struct mdss_mdp_ctl *ctl);
+
+static int mdss_mdp_video_config_mipiclk(struct mdss_mdp_ctl *ctl,
+		struct mdp_update_mipiclk *request_mipiclk);
 
 static inline void mdp_video_write(struct mdss_mdp_video_ctx *ctx,
 				   u32 reg, u32 val)
@@ -1432,6 +1436,7 @@ int mdss_mdp_video_start(struct mdss_mdp_ctl *ctl)
 	ctl->ops.add_vsync_handler = mdss_mdp_video_add_vsync_handler;
 	ctl->ops.remove_vsync_handler = mdss_mdp_video_remove_vsync_handler;
 	ctl->ops.config_fps_fnc = mdss_mdp_video_config_fps;
+	ctl->ops.config_mipiclk_fnc = mdss_mdp_video_config_mipiclk;
 
 	return 0;
 }
@@ -1442,4 +1447,94 @@ void *mdss_mdp_get_intf_base_addr(struct mdss_data_type *mdata,
 	struct mdss_mdp_video_ctx *ctx;
 	ctx = ((struct mdss_mdp_video_ctx *) mdata->video_intf) + interface_id;
 	return (void *)(ctx->base);
+}
+
+void mdss_mdp_video_transfer_ctrl(struct mdss_mdp_ctl *ctl, int onoff)
+{
+	struct mdss_mdp_video_ctx *ctx;
+	struct mdss_panel_data *pdata;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
+
+	if (!ctl) {
+		pr_err("invalid ctl\n");
+		return;
+	}
+
+	ctx = (struct mdss_mdp_video_ctx *) ctl->intf_ctx[MASTER_CTX];
+	if (!ctx) {
+		pr_err("invalid ctx\n");
+		return;
+	}
+
+	pdata = ctl->panel_data;
+	if (!pdata) {
+		pr_err("invalid pdata\n");
+		return;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	if (onoff) {
+		mdp_video_write(ctx, MDSS_MDP_REG_INTF_TIMING_ENGINE_EN, 1);
+		wmb();
+		ctrl_pdata->ctrl_state |= CTRL_STATE_MDP_ACTIVE;
+	} else {
+		mdp_video_write(ctx, MDSS_MDP_REG_INTF_TIMING_ENGINE_EN, 0);
+		wmb();
+		msleep(20);
+		ctrl_pdata->ctrl_state &= ~CTRL_STATE_MDP_ACTIVE;
+		mdss_dsi_controller_cfg(true, pdata);
+	}
+}
+
+static int mdss_mdp_video_config_mipiclk(struct mdss_mdp_ctl *ctl,
+	struct mdp_update_mipiclk *request_mipiclk)
+{
+	int rc = 0;
+	struct mdss_mdp_video_ctx *ctx;
+	struct mdss_panel_data *pdata;
+	u32 ctl_flush;
+
+	ctx = (struct mdss_mdp_video_ctx *) ctl->intf_ctx[MASTER_CTX];
+
+	pr_debug("%s: ctl=%d\n", __func__, ctl->num);
+
+	mdss_mdp_video_transfer_ctrl(ctl, false);
+
+	pdata = ctl->panel_data;
+	rc = mdss_mdp_ctl_intf_event(ctl,
+		MDSS_EVENT_MIPICLK_UPDATE_CLK, &ctl->request_mipiclk);
+	if (rc) {
+		pr_err("%s: failed to update dsi mipi clk, intf #%d, rc=%d\n",
+			 __func__, ctl->intf_num, rc);
+		return rc;
+	}
+
+	ctx->saved_vtotal = mdss_panel_get_vtotal(&pdata->panel_info);
+	ctx->saved_vfporch = pdata->panel_info.lcdc.v_front_porch;
+
+	rc = mdss_mdp_video_timegen_update(ctx,
+		&pdata->panel_info);
+	if (rc) {
+		pr_err("%s: failed to update mdp Timing, intf #%d, rc=%d\n",
+			 __func__, ctl->intf_num, rc);
+		return rc;
+	}
+
+	rc = mdss_mdp_ctl_intf_event(ctl,
+		MDSS_EVENT_MIPICLK_CONFIG_DSI, &ctl->request_mipiclk);
+	if (rc) {
+		pr_err("%s: failed to update dsi host, intf #%d, rc=%d\n",
+			 __func__, ctl->intf_num, rc);
+		return rc;
+	}
+
+	ctl_flush = (BIT(31) >> (ctl->intf_num - MDSS_MDP_INTF0));
+	ctl_flush |= (BIT(31) >> ((ctl->intf_num + 1) - MDSS_MDP_INTF0));
+	mdss_mdp_ctl_write(ctl, MDSS_MDP_REG_CTL_FLUSH, ctl_flush);
+
+	mdss_mdp_video_transfer_ctrl(ctl, true);
+
+	return rc;
 }

@@ -25,6 +25,7 @@
 #include <linux/clk.h>
 #include <linux/uaccess.h>
 #include <linux/pm_qos.h>
+#include <linux/msm_mdp.h>
 
 #include "mdss.h"
 #include "mdss_panel.h"
@@ -611,6 +612,13 @@ static void mdss_dsi_get_panel_analog_power(struct platform_device *ctrl_pdev,
 {
 	ctrl_pdata->panel_analog_power = of_property_read_bool(
 		ctrl_pdev->dev.of_node, "sharp,panel-analog-power");
+}
+
+static void mdss_dsi_get_mipiclk_control(struct platform_device *ctrl_pdev,
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	ctrl_pdata->mipiclkchg_control = of_property_read_bool(
+		ctrl_pdev->dev.of_node, "sharp,dsi-mipiclkchg-control");
 }
 
 static int mdss_dsi_get_panel_cfg(char *panel_cfg,
@@ -1901,6 +1909,43 @@ static int mdss_dsi_dfps_config(struct mdss_panel_data *pdata, int new_fps)
 	return rc;
 }
 
+static int mdss_dsi_mipiclk_update_clks(struct mdss_panel_data *pdata,
+		struct mdp_update_mipiclk * req)
+{
+	int rc = 0;
+	struct mdss_panel_data * p = pdata;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mdss_panel_info *pinfo = NULL;
+	pr_debug("%s: called\n", __func__);
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	ctrl_pdata->update_info(p, req);
+
+	pinfo = &pdata->panel_info;
+	rc = __mdss_dsi_dfps_update_clks(pdata, pinfo->mipi.frame_rate);
+
+	mdss_dsi_pll_relock(ctrl_pdata);
+
+	return rc;
+}
+
+
+static int mdss_dsi_mipiclk_config_dsi(struct mdss_panel_data *pdata,
+		struct mdp_update_mipiclk * req)
+{
+	int rc = 0;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	pr_debug("%s: called\n", __func__);
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+	mdss_dsi_phy_init(ctrl_pdata);
+	mdss_dsi_ctrl_setup(ctrl_pdata);
+	return rc;
+}
+
 static int mdss_dsi_ctl_partial_roi(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -2321,6 +2366,14 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		if (ctrl_pdata->touchscreen_enable) {
 			rc = ctrl_pdata->touchscreen_enable(pdata, (int)arg);
 		}
+		break;
+	case MDSS_EVENT_MIPICLK_UPDATE_CLK:
+		rc = mdss_dsi_mipiclk_update_clks(pdata,
+			(struct mdp_update_mipiclk*)arg);
+		break;
+	case MDSS_EVENT_MIPICLK_CONFIG_DSI:
+		rc = mdss_dsi_mipiclk_config_dsi(pdata,
+			(struct mdp_update_mipiclk*)arg);
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
@@ -3328,6 +3381,8 @@ int dsi_panel_device_register(struct platform_device *ctrl_pdev,
 	}
 
 	mdss_dsi_get_panel_analog_power(ctrl_pdev, ctrl_pdata);
+
+	mdss_dsi_get_mipiclk_control(ctrl_pdev, ctrl_pdata);
 
 	if (mdss_dsi_link_clk_init(ctrl_pdev, ctrl_pdata)) {
 		pr_err("%s: unable to initialize Dsi ctrl clks\n", __func__);
