@@ -313,6 +313,19 @@ This document describes the bindings that apply for GFX CPR controller.
 		    a given virtual corner may be reduced to the initial voltage
 		    value.
 
+- qcom,cpr-gfx-dynamic-floor-offset
+	Usage:	    optional
+	Value type: <u32>
+	Definition: An integer value specifying the offset in microvolts to be
+		    used in calculating dynamic floor voltage limits from
+		    open-loop voltage fuse offsets as shown below:
+		       Dynamic_floor = (0.9 * Ceiling voltage -
+				initial-voltage-step * open-loop fuse offset)
+		                + dynamic floor offset.
+
+		    Dynamic floor voltage limits are used only when this
+		    property is specified.
+
  - qcom,cpr-enable
 	Usage:      optional
 	Value type: <empty>
@@ -522,6 +535,7 @@ gfx_vreg_corner: regulator@98000 {
 			<1010 971  1138 1080 579 626 428 479>,
 			<1086 1039 1210 1146 643 684 489 538>,
 			<1238 1179 1367 1290 752 789 586 633>;
+	qcom,cpr-gfx-dynamic-floor-offset = <40000>;
 
 	qcom,fuse-remap-base-row = <1000>;
 	qcom,fuse-remap-source =
