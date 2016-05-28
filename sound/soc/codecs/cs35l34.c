@@ -37,15 +37,12 @@
 
 #include "cs35l34.h"
 
-#define CS35L34_DIGITAL_MUTE 0x33
-
 struct  cs35l34_private {
 	struct snd_soc_codec *codec;
 	struct cs35l34_platform_data pdata;
 	struct regmap *regmap;
 	void *control_data;
 	int mclk_int;
-	unsigned int dig_vol;
 	/* GPIO for !RST */
 	struct gpio_desc *gpio_nreset;
 };
@@ -249,47 +246,8 @@ static int cs35l34_sdin_event(struct snd_soc_dapm_widget *w,
 			return ret;
 		}
 	break;
-	case SND_SOC_DAPM_PRE_PMD:
-		regmap_read(priv->regmap, CS35L34_AMP_DIG_VOL, &priv->dig_vol);
-		/* Mute DAC */
-		regmap_write(priv->regmap, CS35L34_AMP_DIG_VOL,
-			CS35L34_DIGITAL_MUTE);
-		regmap_update_bits(priv->regmap, CS35L34_PROTECT_CTL,
-			AMP_MUTE, AMP_MUTE);
+	case SND_SOC_DAPM_POST_PMD:
 		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL2, 1, 1);
-		if (ret < 0) {
-			dev_err(codec->dev, "Cannot set Power bits %d\n", ret);
-			return ret;
-		}
-		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL2, 1, 1);
-		if (ret < 0) {
-			dev_err(codec->dev, "Cannot set Power bits %d\n", ret);
-			return ret;
-		}
-	break;
-	default:
-		pr_err("Invalid event = 0x%x\n", event);
-	}
-	return 0;
-}
-
-static int cs35l34_sdout_event(struct snd_soc_dapm_widget *w,
-		struct snd_kcontrol *kcontrol, int event)
-{
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-	struct cs35l34_private *priv = snd_soc_codec_get_drvdata(codec);
-	unsigned int current_vol;
-
-	switch (event) {
-	case SND_SOC_DAPM_POST_PMU:
-		/* Restore Volume setting if still muted */
-		regmap_read(priv->regmap, CS35L34_AMP_DIG_VOL,
-			&current_vol);
-		if (current_vol == CS35L34_DIGITAL_MUTE)
-			regmap_write(priv->regmap, CS35L34_AMP_DIG_VOL,
-				priv->dig_vol);
-		regmap_update_bits(priv->regmap, CS35L34_PROTECT_CTL,
-			AMP_MUTE, 0);
 	break;
 	default:
 		pr_err("Invalid event = 0x%x\n", event);
@@ -310,6 +268,9 @@ static int cs35l34_main_amp_event(struct snd_soc_dapm_widget *w,
 			CS35L34_BST_CTL_MASK,
 			0x30);
 		usleep_range(5000, 5100);
+		regmap_update_bits(priv->regmap, CS35L34_PROTECT_CTL,
+			AMP_MUTE,
+			0);
 		/* Reading all status bits here so int pin goes high.
 		*  Note: Data sheet calls for 2 consecutive reads.
 		*/
@@ -326,6 +287,9 @@ static int cs35l34_main_amp_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, CS35L34_BST_CVTR_V_CTL,
 			CS35L34_BST_CTL_MASK,
 			0x00);
+		regmap_update_bits(priv->regmap, CS35L34_PROTECT_CTL,
+			AMP_MUTE,
+			AMP_MUTE);
 		regmap_update_bits(priv->regmap, CS35L34_PWRCTL1, PDN_ALL,
 			PDN_ALL);
 		usleep_range(5000, 5100);
@@ -391,9 +355,8 @@ static const struct snd_soc_dapm_widget cs35l34_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN_E("SDIN", NULL, 0, CS35L34_PWRCTL3,
 					1, 1, cs35l34_sdin_event,
 					SND_SOC_DAPM_PRE_REG |
-					SND_SOC_DAPM_PRE_PMD),
-	SND_SOC_DAPM_AIF_OUT_E("SDOUT", NULL, 0, CS35L34_PWRCTL3, 2, 1,
-		cs35l34_sdout_event, SND_SOC_DAPM_POST_PMU),
+					SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_AIF_OUT("SDOUT", NULL, 0, CS35L34_PWRCTL3, 2, 1),
 
 	SND_SOC_DAPM_SUPPLY("EXTCLK", CS35L34_PWRCTL3, 7, 1,
 		cs35l34_mclk_event, SND_SOC_DAPM_PRE_PMU |
