@@ -121,6 +121,10 @@ static int esdfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
 	int err;
 	struct path lower_path;
+	struct inode *inode = d_inode(dentry);
+
+	if (test_opt(ESDFS_SB(inode->i_sb), ACCESS_DISABLE))
+		return -ENOENT;
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	err = vfs_statfs(&lower_path, buf);

@@ -32,6 +32,9 @@ static int esdfs_create(struct inode *dir, struct dentry *dentry,
 	    esdfs_check_derived_permission(dir, ESDFS_MAY_CREATE) != 0)
 		return -EACCES;
 
+	if (test_opt(ESDFS_SB(dir->i_sb), ACCESS_DISABLE))
+		return -ENOENT;
+
 	creds = esdfs_override_creds(ESDFS_SB(dir->i_sb), &mask);
 	if (!creds)
 		return -ENOMEM;
@@ -72,6 +75,11 @@ static int esdfs_unlink(struct inode *dir, struct dentry *dentry)
 	creds = esdfs_override_creds(ESDFS_SB(dir->i_sb), NULL);
 	if (!creds)
 		return -ENOMEM;
+
+	if (test_opt(ESDFS_SB(dir->i_sb), ACCESS_DISABLE)) {
+		esdfs_revert_creds(creds, NULL);
+		return -ENOENT;
+	}
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
@@ -153,6 +161,11 @@ static int esdfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 			esdfs_override_creds(ESDFS_SB(dir->i_sb), &mask);
 	if (!creds)
 		return -ENOMEM;
+
+	if (test_opt(ESDFS_SB(dir->i_sb), ACCESS_DISABLE)) {
+		esdfs_revert_creds(creds, NULL);
+		return -ENOENT;
+	}
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
@@ -242,6 +255,11 @@ static int esdfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 			esdfs_override_creds(ESDFS_SB(old_dir->i_sb), &mask);
 	if (!creds)
 		return -ENOMEM;
+
+	if (test_opt(ESDFS_SB(old_dir->i_sb), ACCESS_DISABLE)) {
+		esdfs_revert_creds(creds, NULL);
+		return -ENOENT;
+	}
 
 	/* Never rename to or from a pseudo hard link target. */
 	if (ESDFS_DENTRY_HAS_STUB(old_dentry))
@@ -344,6 +362,9 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 
 	inode = d_inode(dentry);
 
+	if (test_opt(ESDFS_SB(inode->i_sb), ACCESS_DISABLE))
+		return -ENOENT;
+
 	/*
 	 * Check if user has permission to change inode.  We don't check if
 	 * this user can change the lower inode: that should happen when
@@ -428,6 +449,11 @@ static int esdfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
 			esdfs_override_creds(ESDFS_SB(inode->i_sb), NULL);
 	if (!creds)
 		return -ENOMEM;
+
+	if (test_opt(ESDFS_SB(inode->i_sb), ACCESS_DISABLE)) {
+		esdfs_revert_creds(creds, NULL);
+		return -ENOENT;
+	}
 
 	esdfs_get_lower_path(dentry, &lower_path);
 
