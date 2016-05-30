@@ -3644,6 +3644,30 @@ static void ir2e71y_dbg_info_output(int mode)
         printk("[IR2E71Y] boot_ctx.tri_led.green                 = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.tri_led.green);
         printk("[IR2E71Y] boot_ctx.tri_led.blue                  = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.tri_led.blue);
         printk("[IR2E71Y] boot_ctx.bdic_is_exist                 = %d.\n", ir2e71y_if_ctx.boot_ctx.bdic_is_exist);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.status       = 0x%02X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.status);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.als_adj0     = 0x%04X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.als_adjust[0].als_adj0);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.als_adj1     = 0x%04X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.als_adjust[0].als_adj1);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.als_shift    = 0x%02X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.als_adjust[0].als_shift);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.clear_offset = 0x%02X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.als_adjust[0].clear_offset);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.ir_offset    = 0x%02X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.als_adjust[0].ir_offset);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.als_adj0     = 0x%04X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.als_adjust[1].als_adj0);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.als_adj1     = 0x%04X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.als_adjust[1].als_adj1);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.als_shift    = 0x%02X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.als_adjust[1].als_shift);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.clear_offset = 0x%02X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.als_adjust[1].clear_offset);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.ir_offset    = 0x%02X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.als_adjust[1].ir_offset);
+        printk("[IR2E71Y] boot_ctx.photo_sensor_adj.chksum       = 0x%06X.\n",
+                (unsigned int)ir2e71y_if_ctx.boot_ctx.photo_sensor_adj.chksum);
         printk("[IR2E71Y] boot_ctx.bdic_chipver                  = %d.\n", ir2e71y_if_ctx.boot_ctx.bdic_chipver);
         printk("[IR2E71Y] boot_ctx.bdic_status.power_status      = %d.\n", ir2e71y_if_ctx.boot_ctx.bdic_status.power_status);
         printk("[IR2E71Y] boot_ctx.bdic_status.users             = %d.\n", (int)ir2e71y_if_ctx.boot_ctx.bdic_status.users);
@@ -4212,6 +4236,8 @@ static int ir2e71y_driver_initialize(struct platform_device *pdev)
 #else  /* IR2E71Y_NOT_SUPPORT_NO_OS*/
     state_str.handset_color = ir2e71y_if_ctx.boot_ctx.handset_color;
     state_str.bdic_chipver = ir2e71y_if_ctx.bdic_chipver;
+    memcpy(&(state_str.photo_sensor_adj),
+        &(ir2e71y_if_ctx.boot_ctx.photo_sensor_adj), sizeof(struct ir2e71y_photo_sensor_adj));
     if (ir2e71y_check_bdic_exist() == IR2E71Y_RESULT_SUCCESS) {
         ret = ir2e71y_bdic_API_initialize(&state_str);
     }

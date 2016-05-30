@@ -822,6 +822,19 @@ void ir2e71y_bdic_API_DBG_INFO_output(void)
     printk("[BL71Y8] trv_param.adjust                       = %d.\n", s_state_str.trv_param.adjust);
 #endif /* IR2E71Y_TRV_NM2 */
 
+    printk("[BL71Y8] photo_sensor_adj.status                = 0x%02X.\n", s_state_str.photo_sensor_adj.status);
+    printk("[BL71Y8] photo_sensor_adj.als_adj0              = 0x%04X.\n", s_state_str.photo_sensor_adj.als_adjust[0].als_adj0);
+    printk("[BL71Y8] photo_sensor_adj.als_adj1              = 0x%04X.\n", s_state_str.photo_sensor_adj.als_adjust[0].als_adj1);
+    printk("[BL71Y8] photo_sensor_adj.als_shift             = 0x%02X.\n", s_state_str.photo_sensor_adj.als_adjust[0].als_shift);
+    printk("[BL71Y8] photo_sensor_adj.clear_offset          = 0x%02X.\n", s_state_str.photo_sensor_adj.als_adjust[0].clear_offset);
+    printk("[BL71Y8] photo_sensor_adj.ir_offset             = 0x%02X.\n", s_state_str.photo_sensor_adj.als_adjust[0].ir_offset);
+    printk("[BL71Y8] photo_sensor_adj.als_adj0              = 0x%04X.\n", s_state_str.photo_sensor_adj.als_adjust[1].als_adj0);
+    printk("[BL71Y8] photo_sensor_adj.als_adj1              = 0x%04X.\n", s_state_str.photo_sensor_adj.als_adjust[1].als_adj1);
+    printk("[BL71Y8] photo_sensor_adj.als_shift             = 0x%02X.\n", s_state_str.photo_sensor_adj.als_adjust[1].als_shift);
+    printk("[BL71Y8] photo_sensor_adj.clear_offset          = 0x%02X.\n", s_state_str.photo_sensor_adj.als_adjust[1].clear_offset);
+    printk("[BL71Y8] photo_sensor_adj.ir_offset             = 0x%02X.\n", s_state_str.photo_sensor_adj.als_adjust[1].ir_offset);
+    printk("[BL71Y8] photo_sensor_adj.chksum                = 0x%06X.\n", s_state_str.photo_sensor_adj.chksum);
+
     for (idx = 0; idx < NUM_IR2E71Y_MAIN_BKL_DEV_TYPE; idx++) {
         printk("[BL71Y8] ir2e71y_bkl_priority_table[%d]       = (mode:%d, param:%d).\n",
                                     idx, ir2e71y_bkl_priority_table[idx].mode, ir2e71y_bkl_priority_table[idx].param);
