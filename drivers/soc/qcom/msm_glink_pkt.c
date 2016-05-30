@@ -215,7 +215,7 @@ do { \
 
 #define GLINK_PKT_ERR(x...) \
 do { \
-	pr_err("<GLINK_PKT> err: "x); \
+	pr_err_ratelimited("<GLINK_PKT> err: "x); \
 	GLINK_PKT_LOG_STRING(x); \
 } while (0)
 
