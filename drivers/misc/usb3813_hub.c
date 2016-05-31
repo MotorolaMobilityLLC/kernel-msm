@@ -293,9 +293,9 @@ static void usb3813_send_uevent(struct usb3813_info *info)
 	add_uevent_var(env, "MAIN_USB=ALLOWED");
 
 	if (usb_present)
-		add_uevent_var(env, "MAIN_USB_STATUS=ATTACHED");
+		add_uevent_var(env, "MAIN_USB_STATE=ATTACHED");
 	else
-		add_uevent_var(env, "MAIN_USB_STATUS=DETACHED");
+		add_uevent_var(env, "MAIN_USB_STATE=DETACHED");
 
 	kobject_uevent_env(&info->dev->kobj, KOBJ_CHANGE, env->envp);
 	kfree(env);
