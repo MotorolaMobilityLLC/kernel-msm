@@ -116,6 +116,13 @@ config IOMMU_AARCH64
 
 	  If unsure, say N here.
 
+config IOMMU_MAX_VA
+	int "Max Supported VA in AARCH64 IOMMU"
+	depends on (IOMMU_AARCH64)
+	default 39
+	help
+	    Sets the max VA size in bits for AARCH64.Supported values 48 and 39.
+
 config MSM_IOMMU_VBIF_CHECK
 	bool "Enable support for VBIF check when IOMMU gets stuck"
 	depends on MSM_IOMMU
