@@ -27,6 +27,9 @@
 #include <linux/qpnp/qpnp-haptic.h>
 #include "../../staging/android/timed_output.h"
 #include <linux/motosh_context.h>
+#include <soc/qcom/bootinfo.h>
+
+#define FACTORY_MODE_STR "mot-factory"
 
 #define QPNP_IRQ_FLAGS	(IRQF_TRIGGER_RISING | \
 			IRQF_TRIGGER_FALLING | \
@@ -1730,6 +1733,7 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 					 timed_dev);
 
 	mutex_lock(&hap->lock);
+	pr_debug("%s: duration is %d\n", __func__, value);
 
 	if (hap->act_type == QPNP_HAP_LRA &&
 				hap->correct_lra_drive_freq &&
@@ -2443,17 +2447,20 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 		return rc;
 	}
 
-	hap->context_haptics = of_property_read_bool(spmi->dev.of_node,
-					"qcom,context-haptics");
+	if (strncmp(bi_bootmode(), FACTORY_MODE_STR, BOOTMODE_MAX_LEN)) {
 
-	if (hap->context_haptics) {
-		hap->vmax_low_mv = QPNP_HAP_VMAX_LOW_DEFAULT;
-		rc = of_property_read_u32(spmi->dev.of_node,
-			"qcom,vmax-low-mv", &temp);
-		if (!rc)
-			hap->vmax_low_mv = temp;
-		else
-			dev_info(&spmi->dev, "using default for vmax low\n");
+		hap->context_haptics = of_property_read_bool(spmi->dev.of_node,
+						"qcom,context-haptics");
+
+		if (hap->context_haptics) {
+			hap->vmax_low_mv = QPNP_HAP_VMAX_LOW_DEFAULT;
+			rc = of_property_read_u32(spmi->dev.of_node,
+				"qcom,vmax-low-mv", &temp);
+			if (!rc)
+				hap->vmax_low_mv = temp;
+			else
+				dev_info(&spmi->dev, "default vmax low\n");
+		}
 	}
 
 	hap->ilim_ma = QPNP_HAP_ILIM_MIN_MV;
