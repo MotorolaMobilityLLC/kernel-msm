@@ -313,6 +313,7 @@
 				pins = "gpio0", "gpio1", "gpio3";
 				drive-strength = <2>; /* 2 MA */
 				bias-pull-down; /* PULL Down */
+				input-enable;
 			};
 		};
 
