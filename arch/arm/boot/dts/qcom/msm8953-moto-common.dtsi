@@ -1087,6 +1087,7 @@
 	qcom,iterm-disabled;
 	/delete-property/ qcom,autoadjust-vfloat;
 	qcom,fastchg-current-ma = <3000>;
+	qcom,max-usbin-current-ma = <2600>;
 	qcom,float-voltage-mv = <4400>;
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
