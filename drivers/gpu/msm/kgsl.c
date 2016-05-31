@@ -533,20 +533,17 @@ void kgsl_context_dump(struct kgsl_context *context)
 EXPORT_SYMBOL(kgsl_context_dump);
 
 /* Allocate a new context ID */
-int _kgsl_get_context_id(struct kgsl_device *device,
-		struct kgsl_context *context)
+static int _kgsl_get_context_id(struct kgsl_device *device)
 {
 	int id;
 
 	idr_preload(GFP_KERNEL);
 	write_lock(&device->context_lock);
-	id = idr_alloc(&device->context_idr, context, 1,
+	/* Allocate the slot but don't put a pointer in it yet */
+	id = idr_alloc(&device->context_idr, NULL, 1,
 		KGSL_MEMSTORE_MAX, GFP_NOWAIT);
 	write_unlock(&device->context_lock);
 	idr_preload_end();
-
-	if (id > 0)
-		context->id = id;
 
 	return id;
 }
@@ -571,7 +568,7 @@ int kgsl_context_init(struct kgsl_device_private *dev_priv,
 	char name[64];
 	int ret = 0, id;
 
-	id = _kgsl_get_context_id(device, context);
+	id = _kgsl_get_context_id(device);
 	if (id == -ENOSPC) {
 		/*
 		 * Before declaring that there are no contexts left try
@@ -580,7 +577,7 @@ int kgsl_context_init(struct kgsl_device_private *dev_priv,
 		 */
 
 		flush_workqueue(device->events_wq);
-		id = _kgsl_get_context_id(device, context);
+		id = _kgsl_get_context_id(device);
 	}
 
 	if (id < 0) {
@@ -591,6 +588,8 @@ int kgsl_context_init(struct kgsl_device_private *dev_priv,
 
 		return id;
 	}
+
+	context->id = id;
 
 	kref_init(&context->refcount);
 	/*
@@ -1805,6 +1804,12 @@ long kgsl_ioctl_drawctxt_create(struct kgsl_device_private *dev_priv,
 		goto done;
 	}
 	trace_kgsl_context_create(dev_priv->device, context, param->flags);
+
+	/* Commit the pointer to the context in context_idr */
+	write_lock(&device->context_lock);
+	idr_replace(&device->context_idr, context, context->id);
+	write_unlock(&device->context_lock);
+
 	param->drawctxt_id = context->id;
 done:
 	return result;
