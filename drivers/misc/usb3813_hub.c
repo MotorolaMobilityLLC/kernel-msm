@@ -92,7 +92,8 @@ static bool is_typec_usb_present(struct usb3813_info *info)
 			POWER_SUPPLY_PROP_TYPE,
 			&prop);
 
-	if (rc < 0 || (prop.intval != POWER_SUPPLY_TYPE_USB))
+	if (rc < 0 || (prop.intval != POWER_SUPPLY_TYPE_USB &&
+		prop.intval != POWER_SUPPLY_TYPE_USB_CDP))
 		return false;
 
 	return true;
