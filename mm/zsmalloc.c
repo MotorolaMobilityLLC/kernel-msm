@@ -1120,7 +1120,6 @@ static struct page *alloc_zspage(struct size_class *class, gfp_t flags)
 		if (i == class->pages_per_zspage - 1)	/* last page */
 			SetPagePrivate2(page);
 		page->mapping = class->pool->inode->i_mapping;
-		SetPageMobile(page);
 		prev_page = page;
 	}
 
@@ -1540,6 +1539,8 @@ unsigned long zs_malloc(struct zs_pool *pool, size_t size)
 	first_page = find_get_zspage(class);
 
 	if (!first_page) {
+		struct page *page;
+
 		spin_unlock(&class->lock);
 		first_page = alloc_zspage(class, pool->flags);
 		if (unlikely(!first_page)) {
@@ -1552,6 +1553,11 @@ unsigned long zs_malloc(struct zs_pool *pool, size_t size)
 					&pool->pages_allocated);
 
 		spin_lock(&class->lock);
+		page = first_page;
+		while (page) {
+			SetPageMobile(page);
+			page = get_next_page(page);
+		}
 		zs_stat_inc(class, OBJ_ALLOCATED, get_maxobj_per_zspage(
 				class->size, class->pages_per_zspage));
 	}
@@ -2215,6 +2221,12 @@ static int zs_migrate_isolate(struct page *page)
 	 * obj_malloc()/obj_free().
 	 */
 	spin_lock(&class->lock);
+
+	/* Recheck. Other process could have just isolated this zspage. */
+	if (unlikely(is_page_isolated(first_page))) {
+		spin_unlock(&class->lock);
+		return -EAGAIN;
+	}
 
 	if (is_first_page(page)) {
 		/*
