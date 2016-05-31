@@ -23,8 +23,18 @@ config MSM_DBA_ADV7533
 	  controls the ADV7533 HW through the I2C interface and configures
 	  the DSI input and HDMI output video format.
 
+config MSM_DBA_MOT_DBA
+	bool "MOT DBA driver support through MSM DBA interface"
+	select MSM_DBA
+	default n
+	---help---
+	 Support for MOT DBA Framework. Since QCOM MSM DBA only support
+	 single DBA driver to connect to the MSM DBA framework at a time.
+	 With MOT DBA framework, it will register with QCOM MSM DBA as a
+         DBA driver but it will control many other sub-DBA drivers.
+
 config MSM_DBA_DSI_MOD_DISPLAY
 	bool "DSI Mod Display driver support through MSM DBA interface"
-	select MSM_DBA
+	select MSM_DBA_MOT_DBA
 	select PANEL_NOTIFICATIONS
 	default n
