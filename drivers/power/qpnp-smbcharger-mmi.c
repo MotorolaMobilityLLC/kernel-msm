@@ -45,6 +45,7 @@
 		_SMB_MASK((LEFT_BIT_POS) - (RIGHT_BIT_POS) + 1, \
 				(RIGHT_BIT_POS))
 #define QPNP_LOG_PAGES (50)
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 /* Config registers */
 struct smbchg_regulator {
 	struct regulator_desc	rdesc;
@@ -411,6 +412,7 @@ struct smbchg_chip {
 	int				cl_ebsrc;
 	bool				eb_rechrg;
 	bool				forced_shutdown;
+	int				max_usbin_ma;
 };
 
 static struct smbchg_chip *the_chip;
@@ -1734,17 +1736,19 @@ int smbchg_set_usbc_voltage(struct smbchg_chip *chip, int volt_mv)
 static int calc_thermal_limited_current(struct smbchg_chip *chip,
 						int current_ma)
 {
-	int therm_ma, usbc_volt_mv, max_current_ma;
+	int therm_ma, usbc_volt_mv;
+	int max_current_ma = current_ma;
 
 	if (!smbchg_check_usbc_voltage(chip, &usbc_volt_mv) &&
 	    usbc_volt_mv)
-		max_current_ma = MAX_INPUT_PWR_UW / usbc_volt_mv;
-	else
-		max_current_ma = current_ma;
+		max_current_ma = MIN((MAX_INPUT_PWR_UW / usbc_volt_mv),
+				     current_ma);
 
-	if (max_current_ma > current_ma)
-		max_current_ma = current_ma;
-
+	if (chip->max_usbin_ma)
+		max_current_ma = MIN(max_current_ma, chip->max_usbin_ma);
+	SMB_DBG(chip,
+		"Limiting current to: %d mA",
+		max_current_ma);
 	if (chip->therm_lvl_sel > 0
 			&& chip->therm_lvl_sel < chip->thermal_levels) {
 		/*
@@ -7313,6 +7317,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	OF_PROP_READ(chip, chip->iterm_ma, "iterm-ma", rc, 1);
 	OF_PROP_READ(chip, chip->target_fastchg_current_ma,
 			"fastchg-current-ma", rc, 1);
+	OF_PROP_READ(chip, chip->max_usbin_ma,
+			"max-usbin-current-ma", rc, 1);
 	OF_PROP_READ(chip, chip->vfloat_mv, "float-voltage-mv", rc, 1);
 	OF_PROP_READ(chip, chip->safety_time, "charging-timeout-mins", rc, 1);
 	OF_PROP_READ(chip, chip->rpara_uohm, "rparasitic-uohm", rc, 1);
@@ -9723,7 +9729,6 @@ void update_bsw_step(struct smbchg_chip *chip, bool bsw_chrg_alarm,
 #define DEMO_MODE_MAX_SOC 35
 #define DEMO_MODE_HYS_SOC 5
 #define HYST_STEP_MV 50
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
 static void smbchg_heartbeat_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work,
@@ -9751,6 +9756,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_dcin_curr_ma = chip->dc_target_current_ma;
 	bool wls_present;
 	bool eb_ext_pres;
+	bool extra_in_pwr = chip->max_usbin_ma && (chip->cl_usbc >
+						   chip->max_usbin_ma);
 
 	if (!atomic_read(&chip->hb_ready))
 		return;
@@ -10119,9 +10126,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		if ((chip->ebchg_state != EB_DISCONN) && chip->usb_present) {
 			if (eb_chrg_allowed && !eb_ext_pres &&
 			    (chip->bsw_mode != BSW_RUN) &&
-			    ((chip->cl_usbc - 500) >=
+			    (((chip->cl_usbc - 500) >=
 			     MIN(chip->stepchg_steps[index].max_ma,
-				 pmi_max_chrg_ma))) {
+				 pmi_max_chrg_ma)) || extra_in_pwr)) {
 				mutex_lock(&chip->current_change_lock);
 				chip->usb_target_current_ma = 500;
 				mutex_unlock(&chip->current_change_lock);
@@ -10165,9 +10172,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		if ((chip->ebchg_state != EB_DISCONN) && chip->usb_present) {
 			if (eb_chrg_allowed && !eb_ext_pres &&
 			    (chip->bsw_mode != BSW_RUN) &&
-			    ((chip->cl_usbc - 500) >=
+			    (((chip->cl_usbc - 500) >=
 			     MIN(chip->stepchg_steps[index].max_ma,
-				 pmi_max_chrg_ma))) {
+				 pmi_max_chrg_ma)) || extra_in_pwr)) {
 				mutex_lock(&chip->current_change_lock);
 				chip->usb_target_current_ma =
 					chip->cl_usbc - 500;
@@ -10217,7 +10224,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 						  chip->dc_target_current_ma);
 	SMB_WARN(chip,
 		 "EB Input %d mA, PMI Input %d mA, USBC CL %d mA, DC %d mA\n",
-		 chip->cl_ebchg, chip->usb_target_current_ma, chip->cl_usbc,
+		 chip->cl_ebchg, chip->usb_tl_current_ma, chip->cl_usbc,
 		 chip->dc_target_current_ma);
 	SMB_WARN(chip, "Step State = %s, BSW Mode %s, EB State %s\n",
 		 stepchg_str[(int)chip->stepchg_state],
