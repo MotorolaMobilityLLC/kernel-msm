@@ -44,6 +44,10 @@ static unsigned int boost_val = 0x05;
 module_param(boost_val, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(boost_val, "Boost Value for the USB3813 hub");
 
+static bool ignore_typec;
+module_param(ignore_typec, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(ignore_typec, "Ignore TypeC when enabling Hub");
+
 struct usb3813_info {
 	struct i2c_client *client;
 	struct device *dev;
@@ -582,7 +586,7 @@ static int usb_ext_notifier_call(struct notifier_block *nb,
 
 	struct usb_ext_status *status = v;
 
-	dev_dbg(info->dev, "%s - val = %lu, proto = %d, type = %d, path = %d\n",
+	dev_info(info->dev, "%s - val = %lu, proto = %d, type = %d, path = %d\n",
 			__func__, val,
 			status->proto, status->type, status->path);
 
@@ -598,8 +602,8 @@ static int usb_ext_notifier_call(struct notifier_block *nb,
 	info->mod_attached = attached;
 	info->mod_path = status->path;
 
-	if (is_typec_usb_present(info)) {
-		dev_dbg(info->dev, "Type C USB present, Ignore EXT\n");
+	if (!ignore_typec && is_typec_usb_present(info)) {
+		dev_info(info->dev, "Type C USB present, Ignore EXT\n");
 		/* Notify User space of conflict */
 		usb3813_send_uevent(info);
 		return NOTIFY_OK;
@@ -625,7 +629,7 @@ static int psy_notifier_call(struct notifier_block *nb,
 	if (val != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
 
-	if (!psy || (psy != info->usb_psy))
+	if (ignore_typec || !psy || (psy != info->usb_psy))
 		return NOTIFY_OK;
 
 	/* We don't care about usb events if a mod is not attached */
@@ -636,7 +640,7 @@ static int psy_notifier_call(struct notifier_block *nb,
 
 	usb_present = is_typec_usb_present(info);
 
-	dev_dbg(info->dev, "%s - usb_present = %d, hub_enabled = %d\n",
+	dev_info(info->dev, "%s - usb_present = %d, hub_enabled = %d\n",
 		__func__, usb_present, info->hub_enabled);
 
 	/*
