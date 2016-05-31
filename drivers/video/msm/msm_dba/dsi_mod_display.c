@@ -26,6 +26,7 @@
 #include "msm_dba_internal.h"
 #include "../mdss/mdss_dsi.h"
 #include "../mdss/mdss_panel.h"
+#include "mot_dba.h"
 
 #define DRVNAME "dsi_mod_display"
 
@@ -43,23 +44,16 @@ struct dsi_mod_display {
 	struct completion apba_on_wait;
 	struct notifier_block panel_nb;
 	struct mutex ops_mutex;
+
+	int dsi_connect;
 };
 
 /* Helper Functions */
-
 static struct dsi_mod_display *dsi_mod_display_get_platform_data(void *client)
 {
 	struct dsi_mod_display *pdata = NULL;
-	struct msm_dba_device_info *dev;
-	struct msm_dba_client_info *cinfo =
-		(struct msm_dba_client_info *)client;
+	struct msm_dba_device_info *dev = (struct msm_dba_device_info *)client;
 
-	if (!cinfo) {
-		pr_err("%s: invalid client data\n", __func__);
-		goto end;
-	}
-
-	dev = cinfo->dev;
 	if (!dev) {
 		pr_err("%s: invalid device data\n", __func__);
 		goto end;
@@ -73,27 +67,6 @@ end:
 	return pdata;
 }
 
-static void dsi_mod_display_notify_clients(struct msm_dba_device_info *dev,
-		enum msm_dba_callback_event event)
-{
-	struct msm_dba_client_info *c;
-	struct list_head *pos = NULL;
-
-	if (!dev) {
-		pr_err("%s: invalid input\n", __func__);
-		return;
-	}
-
-	list_for_each(pos, &dev->client_list) {
-		c = list_entry(pos, struct msm_dba_client_info, list);
-
-		pr_debug("%s: notifying event %d to client %s\n", __func__,
-			event, c->client_name);
-
-		if (c && c->cb)
-			c->cb(c->cb_data, event);
-	}
-}
 
 struct __attribute__((__packed__)) DTD {
 	u16 pixel_clock;
@@ -232,6 +205,8 @@ static int dsi_mod_display_conf_to_edid(struct dsi_mod_display *pdata)
 	if (!pdata->edid_buf)
 		return -ENOMEM;
 
+	pr_debug("%s: total_pixels =%d framerate=%d\n",
+			__func__, total_pixels, dsi_config->framerate);
 	memcpy(pdata->edid_buf, &edid, pdata->edid_size);
 
 	return 0;
@@ -243,11 +218,9 @@ static void dsi_mod_display_do_hotplug(struct dsi_mod_display *pdata,
 	pr_debug("%s: %d\n", __func__, attached);
 
 	if (attached)
-		dsi_mod_display_notify_clients(&pdata->dev_info,
-			MSM_DBA_CB_HPD_CONNECT);
+		mot_dba_notify_clients(MSM_DBA_CB_HPD_CONNECT);
 	else
-		dsi_mod_display_notify_clients(&pdata->dev_info,
-			MSM_DBA_CB_HPD_DISCONNECT);
+		mot_dba_notify_clients(MSM_DBA_CB_HPD_DISCONNECT);
 }
 
 static int dsi_mod_display_panel_event_handler(struct notifier_block *nb,
@@ -261,9 +234,10 @@ static int dsi_mod_display_panel_event_handler(struct notifier_block *nb,
 	struct mdss_dsi_ctrl_pdata *ctrl = container_of(panel_data,
 		struct mdss_dsi_ctrl_pdata, panel_data);
 
-	pr_debug("%s+: Received panel event: %lu\n", __func__, event);
+	pr_debug("%s+: Received panel event: %lu dsi_ndx=%d dsi_connect=%d\n",
+				__func__, event, ctrl->ndx, pdata->dsi_connect);
 
-	if (strcmp(pdata->dev_info.chip_name, ctrl->bridge_name)) {
+	if (ctrl->ndx != pdata->dsi_connect) {
 		pr_debug("%s: Event not for this DBA\n", __func__);
 		goto exit;
 	}
@@ -280,8 +254,7 @@ static int dsi_mod_display_panel_event_handler(struct notifier_block *nb,
 		complete(&pdata->dsi_on_wait);
 
 		/* Block here until APBA is happy */
-		pr_debug("%s: Block panel on returning...\n",
-			__func__);
+		pr_debug("%s: Block panel on returning...\n", __func__);
 		wait_for_completion(&pdata->apba_on_wait);
 		break;
 	default:
@@ -300,26 +273,13 @@ exit:
 static int dsi_mod_display_hdcp_enable(void *client, bool hdcp_on,
 	bool enc_on, u32 flags)
 {
-	struct dsi_mod_display *pdata =
-		dsi_mod_display_get_platform_data(client);
-	int ret = -EINVAL;
-
-	if (!pdata) {
-		pr_err("%s: invalid platform data\n", __func__);
-		return ret;
-	}
-
-	mutex_lock(&pdata->ops_mutex);
-	ret = 0;
-	mutex_unlock(&pdata->ops_mutex);
-
-	return ret;
+	return 0;
 }
 
 static int dsi_mod_display_get_edid_size(void *client, u32 *size, u32 flags)
 {
 	struct dsi_mod_display *pdata =
-		dsi_mod_display_get_platform_data(client);
+			dsi_mod_display_get_platform_data(client);
 	int ret = 0;
 
 	if (!pdata) {
@@ -327,6 +287,7 @@ static int dsi_mod_display_get_edid_size(void *client, u32 *size, u32 flags)
 		return ret;
 	}
 
+	pr_debug("%s\n", __func__);
 	mutex_lock(&pdata->ops_mutex);
 
 	if (pdata->edid_buf)
@@ -345,7 +306,7 @@ static int dsi_mod_display_get_raw_edid(void *client, u32 size, char *buf,
 	u32 flags)
 {
 	struct dsi_mod_display *pdata =
-		dsi_mod_display_get_platform_data(client);
+			dsi_mod_display_get_platform_data(client);
 	int ret = 0;
 
 	if (!pdata || !buf) {
@@ -353,6 +314,7 @@ static int dsi_mod_display_get_raw_edid(void *client, u32 size, char *buf,
 		return -EINVAL;
 	}
 
+	pr_debug("%s+\n", __func__);
 	mutex_lock(&pdata->ops_mutex);
 
 	if (pdata->edid_buf) {
@@ -372,15 +334,38 @@ static int dsi_mod_display_get_dsi_config(void *client,
 	struct msm_dba_dsi_cfg *dsi_config)
 {
 	struct dsi_mod_display *pdata =
-		dsi_mod_display_get_platform_data(client);
+				dsi_mod_display_get_platform_data(client);
 	int ret = 0;
 
+	pr_debug("%s\n", __func__);
 	BUG_ON(!dsi_config);
 
 	memcpy(dsi_config, pdata->dsi_config, sizeof(struct msm_dba_dsi_cfg));
 
 	return ret;
 }
+
+
+static int dsi_mod_display_parse_dt(struct platform_device *pdev,
+					struct dsi_mod_display *pdata)
+{
+	int ret = 0;
+	u32 temp_val = 0;
+
+	ret = of_property_read_u32(pdev->dev.of_node, "mod_display,dsi_connect",
+								&temp_val);
+	if (ret) {
+		pr_warn("%s: can not find mod_display,dsi_connect. ret =%d\n",
+							__func__, ret);
+		pdata->dsi_connect = -1;
+		/* return 0 because it is ok if dsi_connect is not defined */
+		ret = 0;
+	} else
+		pdata->dsi_connect = temp_val;
+
+	return ret;
+}
+
 
 static u32 dsi_mod_display_get_default_resolution(void *client)
 {
@@ -392,27 +377,37 @@ static u32 dsi_mod_display_get_default_resolution(void *client)
 static int dsi_mod_display_handle_available(void *data)
 {
 	struct dsi_mod_display *pdata;
+	int ret = 0;
 
 	pr_debug("%s+\n", __func__);
 
 	pdata = (struct dsi_mod_display *)data;
+	ret = mot_dba_device_enable(MOD_DISPLAY_TYPE_DSI);
+	if (ret)
+		pr_err("%s: fail to enable DBA device MOD_DISPLAY_TYPE_DSI\n",
+						__func__);
 
 	pr_debug("%s-\n", __func__);
 
-	return 0;
+	return ret;
 }
 
 static int dsi_mod_display_handle_unavailable(void *data)
 {
 	struct dsi_mod_display *pdata;
+	int ret = 0;
 
 	pr_debug("%s+\n", __func__);
 
 	pdata = (struct dsi_mod_display *)data;
+	ret = mot_dba_device_disable(MOD_DISPLAY_TYPE_DSI);
+	if (ret)
+		pr_err("%s: fail to disable DBA device MOD_DISPLAY_TYPE_DSI\n",
+							__func__);
 
 	pr_debug("%s-\n", __func__);
 
-	return 0;
+	return ret;
 }
 
 static int dsi_mod_display_handle_connect(void *data)
@@ -510,6 +505,11 @@ static int dsi_mod_display_probe(struct platform_device *pdev)
 	struct msm_dba_ops *client_ops;
 	int ret = 0;
 
+	if (!pdev->dev.of_node) {
+		pr_err("%s: pdev not found for dsi_mod_display\n", __func__);
+		return -ENODEV;
+	}
+
 	pdata = devm_kzalloc(&pdev->dev, sizeof(struct dsi_mod_display),
 		GFP_KERNEL);
 	if (!pdata) {
@@ -531,12 +531,18 @@ static int dsi_mod_display_probe(struct platform_device *pdev)
 
 	pdata->dev_info.instance_id = 0;
 
+	ret = dsi_mod_display_parse_dt(pdev, pdata);
+	if (ret) {
+		pr_err("%s: failed to parse dt. ret = %d\n", __func__, ret);
+		goto exit;
+	}
+
 	mutex_init(&pdata->ops_mutex);
 	mutex_init(&pdata->dev_info.dev_mutex);
 
 	INIT_LIST_HEAD(&pdata->dev_info.client_list);
 
-	ret = msm_dba_add_probed_device(&pdata->dev_info);
+	ret = mot_dba_add_device(&pdata->dev_info, MOD_DISPLAY_TYPE_DSI);
 
 	dev_set_drvdata(&pdev->dev, &pdata->dev_info);
 	ret = msm_dba_helper_sysfs_init(&pdev->dev);
