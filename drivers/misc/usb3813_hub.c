@@ -246,6 +246,8 @@ static int usb3813_host_enable(struct usb3813_info *info, bool enable)
 
 		power_supply_put(usb_psy);
 	} else if (info->switch_controller) {
+		usb_psy = info->usb_psy;
+
 		if (enable) {
 			disable_usbc(info, true);
 #ifdef CONFIG_FSUSB42_MUX
