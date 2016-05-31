@@ -1647,6 +1647,9 @@
 };
 
 &i2c_8 {
+	dmas = <&dma_blsp2 14 64 0x20000020 0x20>,
+		<&dma_blsp2 15 32 0x20000020 0x20>;
+
 	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x20>;
