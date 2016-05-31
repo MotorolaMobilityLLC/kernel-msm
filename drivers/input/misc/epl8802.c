@@ -108,6 +108,7 @@ unsigned long als_adc_intr_level[10] = {0};
 
 int als_frame_time = 0;
 int ps_frame_time = 0;
+static int low_cross_talk;
 /******************************************************************************
  *  factory setting
  ******************************************************************************/
@@ -241,7 +242,7 @@ static int elan_power_on(struct epl_sensor_priv *data, bool on);
 int factory_ps_data(void);
 int factory_als_data(void);
 #if PS_DYN_K_ONE
-void epl_sensor_do_ps_auto_k_one(void);
+static void epl_sensor_do_ps_auto_k_one(bool ps_far_k_flag);
 #endif
 #if ALS_DYN_INTT_REPORT
 int epl_sensor_als_dyn_report(bool report_flag);
@@ -725,6 +726,7 @@ static void initial_global_variable(struct i2c_client *client, struct epl_sensor
 	epl_sensor.ps.factory.calibration_enable =  false;
 	epl_sensor.ps.factory.calibrated = false;
 	epl_sensor.ps.factory.cancelation = 0;
+	low_cross_talk = obj->dt_ps_max_ct;
 
 	/* write setting to sensor */
 	write_global_variable(client);
@@ -1177,6 +1179,7 @@ void epl_sensor_enable_ps(int enable)
 				(epld->dt_ps_intt << 2);
 			epl_sensor.ps.gain = epld->dt_ps_gain;
 			epl_sensor.ps.ir_drive = epld->dt_ps_ir_drive;
+			low_cross_talk = epld->dt_ps_max_ct;
 		}
 		LOG_INFO("[%s]: INTT=%d, Gain=%d, ir_drive=%d \r\n",
 			__func__, epl_sensor.ps.integration_time >> 2,
@@ -1228,7 +1231,7 @@ void epl_sensor_enable_ps(int enable)
 	epl_sensor_fast_update(epld->client);
 	epl_sensor_update_mode(epld->client);
 #if PS_DYN_K_ONE
-	epl_sensor_do_ps_auto_k_one();
+		epl_sensor_do_ps_auto_k_one(false);
 #endif
 }
 
@@ -1370,7 +1373,7 @@ int epl_sensor_als_dyn_report(bool report_flag)
 #endif
 
 #if PS_DYN_K_ONE
-void epl_sensor_do_ps_auto_k_one(void)
+static void epl_sensor_do_ps_auto_k_one(bool ps_far_k_flag)
 {
 	struct epl_sensor_priv *epld = epl_sensor_obj;
 #if !PS_FIRST_REPORT
@@ -1378,7 +1381,7 @@ void epl_sensor_do_ps_auto_k_one(void)
 	ps_time = ps_sensing_time(epl_sensor.ps.integration_time,
 		epl_sensor.ps.adc, epl_sensor.ps.cycle);
 #endif
-	if (ps_dyn_flag == true) {
+	if (ps_dyn_flag == true || ps_far_k_flag == true) {
 #if !PS_FIRST_REPORT
 		msleep(ps_time);
 		LOG_INFO("[%s]: msleep(%d)\r\n", __func__, ps_time);
@@ -1388,16 +1391,30 @@ void epl_sensor_do_ps_auto_k_one(void)
 				(epl_sensor.ps.saturation == 0)
 				&& (epl_sensor.ps.data.ir_data < PS_MAX_IR)) {
 			LOG_INFO("[%s]: epl_sensor.ps.data.data=%d \r\n", __func__, epl_sensor.ps.data.data);
+			if (enable_ps_flag == true) {
+				if (low_cross_talk < epl_sensor.ps.data.data)
+					epl_sensor.ps.data.data =
+						low_cross_talk;
+				else
+					low_cross_talk =
+						epl_sensor.ps.data.data;
+			}
+
 			dynk_thd_low = epl_sensor.ps.data.data +
 				epld->dt_ps_dyn_l_offset;
 			dynk_thd_high = epl_sensor.ps.data.data +
 				epld->dt_ps_dyn_h_offset;
-			set_psensor_intr_threshold(dynk_thd_low, dynk_thd_high);
+			if (enable_stowed_flag == true)
+				set_psensor_intr_threshold(dynk_thd_low,
+					dynk_thd_high);
+			else
+				set_psensor_intr_threshold((low_cross_talk-50),
+					dynk_thd_high);
 			ps_thd_5cm = dynk_thd_low;
 			ps_thd_3cm = dynk_thd_high;
 			ps_thd_1cm = epl_sensor.ps.data.data +
 				epld->dt_st_gain*epld->dt_ps_dyn_h_offset;
-		} else {
+		} else if (ps_dyn_flag == true) {
 			LOG_INFO("[%s]:threshold is err; epl_sensor.ps.data.data=%d \r\n", __func__, epl_sensor.ps.data.data);
 			epl_sensor.ps.high_threshold =
 					epld->dt_ps_high_threshold;
@@ -1727,6 +1744,9 @@ static void epl_sensor_eint_work(struct work_struct *work)
 				}
 			} else {
 				ps_status_moto = 100;
+				epl_sensor_I2C_Write(epld->client,
+					0x1b,
+					EPL_CMP_RESET | EPL_UN_LOCK);
 			}
 		}
 		if (enable_ps) {
@@ -1753,7 +1773,7 @@ static void epl_sensor_eint_work(struct work_struct *work)
 					ps_thd_3cm);
 			}
 		} else {
-			set_psensor_intr_threshold(ps_thd_5cm, ps_thd_3cm);
+			epl_sensor_do_ps_auto_k_one(true);
 		}
 	}
 	enable_irq_wake(epld->irq);
