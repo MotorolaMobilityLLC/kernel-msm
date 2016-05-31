@@ -743,17 +743,23 @@ int mdss_dba_utils_reconfigure_dsi(void *data, struct mdss_panel_info *pinfo)
 		goto exit;
 	}
 
+	pr_debug("%s+\n", __func__);
+
 	panel_data = container_of(pinfo, struct mdss_panel_data, panel_info);
 
 	ctrl = container_of(panel_data, struct mdss_dsi_ctrl_pdata, panel_data);
 
-	if (!ud->ops.get_dsi_config) {
+	if (ud->ops.get_dsi_config) {
+		ret = ud->ops.get_dsi_config(ud->dba_data, &dsi_config);
+		if (ret) {
+			pr_err("%s: get_dsi_config not supported\n", __func__);
+			goto exit;
+		}
+	} else {
 		pr_err("%s: get_dsi_config not implemented\n", __func__);
 		ret = -ENODEV;
 		goto exit;
 	}
-
-	ud->ops.get_dsi_config(ud->dba_data, &dsi_config);
 
 	pinfo->physical_width = dsi_config.physical_width_dim;
 	pinfo->physical_height = dsi_config.physical_length_dim;
