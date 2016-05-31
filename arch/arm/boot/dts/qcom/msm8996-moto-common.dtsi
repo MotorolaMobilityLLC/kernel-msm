@@ -1065,6 +1065,12 @@
 
 	dsi_mod_display_driver: dsi_mod_display_driver {
 		compatible = "mmi,dsi_mod_display";
+
+		mod_display,dsi_connect = <1>;
+	};
+
+	mot_dba_driver: mot_dba_driver {
+		compatible = "mmi,mot_dba";
 	};
 };
 
@@ -1461,7 +1467,7 @@
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 
-	mot_mod_panel: qcom,mdss_dsi_mot_mod_panel{
+	mot_dba_panel: qcom,mdss_dsi_mot_dba_panel{
 		#include "dsi-panel-mot-mod-fwvga-video-common.dtsi"
 	};
 };
@@ -1480,15 +1486,15 @@
 };
 
 &mdss_dsi1 {
-	qcom,dsi-pref-prim-pan = <&mot_mod_panel>;
+	qcom,dsi-pref-prim-pan = <&mot_dba_panel>;
 	apba_cdsi-supply = <&pm8994_l11>;
 	qcom,pluggable;
 	qcom,bridge-index = <0>;
 };
 
-&mot_mod_panel {
-	qcom,mdss-dsi-panel-name = "mipi_mot_mod_panel";
-	qcom,bridge-name = "dsi_mod_display";
+&mot_dba_panel {
+	qcom,mdss-dsi-panel-name = "mipi_mot_dba_panel";
+	qcom,bridge-name = "mot_dba";
 	qcom,mdss-dsi-lane-0-state;
 	qcom,mdss-dsi-lane-1-state;
 	qcom,mdss-dsi-lane-2-state;
