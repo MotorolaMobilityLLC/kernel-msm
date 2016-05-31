@@ -321,6 +321,20 @@ const char *bi_bootreason(void)
 }
 EXPORT_SYMBOL(bi_bootreason);
 
+static char bootmode[BOOTMODE_MAX_LEN];
+int __init bootinfo_bootmode_init(char *s)
+{
+	strlcpy(bootmode, s, BOOTMODE_MAX_LEN);
+	return 1;
+}
+__setup("androidboot.mode=", bootinfo_bootmode_init);
+
+const char *bi_bootmode(void)
+{
+	return bootmode;
+}
+EXPORT_SYMBOL(bi_bootmode);
+
 static void bootinfo_lastkmsg_annotate_bl(struct bl_build_sig *bl)
 {
 	int i;
