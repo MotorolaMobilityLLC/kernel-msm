@@ -904,8 +904,9 @@
 				  "gpio_apba_int_n",
 				  "gpio_apba_wake";
 		mmi,int-index = <4>;
-		mmi,enable-seq = <3 0 0>, <5 1 0>, <0 1 0>, <1 0 0>, <2 0 1>,
-				 <3 1 0>;
+		mmi,enable-preclk-seq = <3 0 0>, <5 1 0>, <0 1 0>, <1 0 0>,
+					<2 0 1>;
+		mmi,enable-postclk-seq = <3 1 0>;
 		mmi,disable-seq = <1 0 0>, <2 1 0>, <3 0 1>, <5 0 0>, <0 0 0>;
 		mmi,wake-assert-seq = <5 0 0>;
 		mmi,wake-deassert-seq = <5 1 0>;
