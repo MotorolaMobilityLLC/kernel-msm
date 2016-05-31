@@ -39,6 +39,7 @@
 
 #include <video/msm_dba.h>
 #include "../../msm/msm_dba/msm_dba_internal.h"
+#include "../../msm/msm_dba/mot_dba.h"
 
 #define ANX_PINCTRL_STATE_DEFAULT "anx_default"
 #define ANX_PINCTRL_STATE_SLEEP  "anx_sleep"
@@ -152,57 +153,13 @@ static int anx7805_pinctrl_init(struct device *dev, struct anx7805_data *pdata)
 	return 0;
 }
 
-static struct anx7805_data *anx7805_get_platform_data(void *client)
-{
-	struct anx7805_data *pdata = NULL;
-	struct msm_dba_device_info *dev;
-	struct msm_dba_client_info *cinfo =
-		(struct msm_dba_client_info *)client;
-
-	if (!cinfo) {
-		pr_err("%s: invalid client data\n", __func__);
-		goto end;
-	}
-
-	dev = cinfo->dev;
-	if (!dev) {
-		pr_err("%s: invalid device data\n", __func__);
-		goto end;
-	}
-
-	pdata = container_of(dev, struct anx7805_data, dev_info);
-	if (!pdata)
-		pr_err("%s: invalid platform data\n", __func__);
-
-end:
-	return pdata;
-}
-
 void anx7805_notify_clients(struct msm_dba_device_info *dev,
 		enum msm_dba_callback_event event)
 {
-	struct msm_dba_client_info *c;
-	struct list_head *pos = NULL;
-
-	pr_debug("%s++\n", __func__);
-
-	if (!dev) {
-		pr_err("%s: invalid input\n", __func__);
-		return;
-	}
-
-	list_for_each(pos, &dev->client_list) {
-		c = list_entry(pos, struct msm_dba_client_info, list);
-
-		pr_info("%s: notifying event %d to client %s\n", __func__,
-			event, c->client_name);
-
-		if (c && c->cb)
-			c->cb(c->cb_data, event);
-	}
-
-	pr_debug("%s--\n", __func__);
+	pr_debug("%s+\n", __func__);
+	mot_dba_notify_clients(event);
 }
+
 EXPORT_SYMBOL(anx7805_notify_clients);
 
 static int anx7805_avdd_3p3_power(struct anx7805_data *chip, int on)
@@ -822,30 +779,42 @@ static void anx7805_work_func(struct work_struct *work)
 static int slimport_mod_display_handle_available(void *data)
 {
 	struct anx7805_data *anx7805;
+	int ret = 0;
 
 	pr_debug("%s+\n", __func__);
 
 	anx7805 = (struct anx7805_data *)data;
 
+	ret = mot_dba_device_enable(MOD_DISPLAY_TYPE_DP);
+	if (ret)
+		pr_err("%s: fail to enable DBA device MOD_DISPLAY_TYPE_DP\n",
+							__func__);
+
 	pr_debug("%s-\n", __func__);
 
-	return 0;
+	return ret;
 }
 
 static int slimport_mod_display_handle_unavailable(void *data)
 {
 	struct anx7805_data *anx7805;
+	int ret = 0;
 
 	pr_debug("%s+\n", __func__);
 
 	anx7805 = (struct anx7805_data *)data;
+
+	ret = mot_dba_device_disable(MOD_DISPLAY_TYPE_DP);
+	if (ret)
+		pr_err("%s: fail to disable DBA device MOD_DISPLAY_TYPE_DP\n",
+								__func__);
 
 	/* Just in case */
 	mod_display_set_display_state(MOD_DISPLAY_OFF);
 
 	pr_debug("%s-\n", __func__);
 
-	return 0;
+	return ret;
 }
 
 static int slimport_mod_display_handle_connect(void *data)
@@ -982,8 +951,7 @@ out:
 static int anx7805_get_raw_edid(void *client,
 	u32 size, char *buf, u32 flags)
 {
-	struct anx7805_data *pdata =
-		anx7805_get_platform_data(client);
+	struct anx7805_data *pdata = the_chip;
 
 	if (!pdata || !buf) {
 		pr_err("%s: invalid data\n", __func__);
@@ -1034,7 +1002,7 @@ static int anx7805_register_dba(struct anx7805_data *pdata)
 
 	INIT_LIST_HEAD(&pdata->dev_info.client_list);
 
-	return msm_dba_add_probed_device(&pdata->dev_info);
+	return mot_dba_add_device(&pdata->dev_info, MOD_DISPLAY_TYPE_DP);
 }
 
 static int anx7805_i2c_probe(struct i2c_client *client,
