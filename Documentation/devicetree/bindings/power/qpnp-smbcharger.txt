@@ -123,6 +123,8 @@ Optional Properties:
 				Value ranges from 25 mV to 175 mV
 - qcom,fastchg-current-ma	Specifies the fast charge current in mA. Supported
 				range is from 300mA to 3000mA.
+- qcom,max-usbin-current-ma	Specifies the maximum usbin current in mA. Supported
+				range is from 300mA to 3000mA.
 - qcom,fastchg-current-comp	Specifies the fast charge current compensation in
 				mA. Supported values are 250, 700, 900 and 1200mA.
 - qcom,charging-timeout-mins	Maximum duration in minutes that a single
