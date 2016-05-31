@@ -43,8 +43,11 @@ enum _wq_event {
 /*
  *	Work event priority
  */
-#define DHD_WORK_PRIORITY_LOW	0
-#define DHD_WORK_PRIORITY_HIGH	1
+enum wq_priority {
+	DHD_WQ_WORK_PRIORITY_LOW = 1,
+	DHD_WQ_WORK_PRIORITY_HIGH,
+	DHD_WQ_MAX_PRIORITY
+};
 
 /*
  *	Error definitions
@@ -54,6 +57,7 @@ enum _wq_event {
 #define DHD_WQ_STS_UNINITIALIZED	-2
 #define DHD_WQ_STS_SCHED_FAILED		-3
 #define DHD_WQ_STS_UNKNOWN_EVENT	-4
+#define DHD_WQ_STS_UNKNOWN_PRIORITY	-5
 
 typedef void (*event_handler_t)(void *handle, void *event_data, u8 event);
 
