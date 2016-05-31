@@ -103,6 +103,15 @@
 	};
 
 
+	dsi_mod_display_driver: dsi_mod_display_driver {
+		compatible = "mmi,dsi_mod_display";
+
+		mod_display,dsi_connect = <1>;
+	};
+
+	mot_dba_driver: mot_dba_driver {
+		compatible = "mmi,mot_dba";
+	};
 	/delete-node/ eldo2;
 };
 
@@ -134,6 +143,14 @@
 	};
 };
 
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+
+	mot_dba_panel: qcom,mdss_dsi_mot_dba_panel{
+		#include "dsi-panel-mot-mod-fwvga-video-common.dtsi"
+	};
+};
+
 &mdss_dsi {
 	hw-config = "dual_dsi";
 };
@@ -153,10 +170,36 @@
 };
 
 &mdss_dsi1 {
-	qcom,dsi-pref-prim-pan = <&mot_mod_fwvga_video>;
+	qcom,dsi-pref-prim-pan = <&mot_dba_panel>;
 	qcom,pluggable;
 	qcom,bridge-index = <0>;
+	apba_cdsi-supply = <&pm8953_l23>;
 };
+
+&mot_dba_panel {
+	qcom,mdss-dsi-panel-name = "mipi_mot_dba_panel";
+	qcom,bridge-name = "mot_dba";
+
+	/* These power supplies are for DBA panel */
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "apba_cdsi";
+			qcom,supply-min-voltage = <1200000>;
+			qcom,supply-max-voltage = <1300000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <1>;
+		};
+	};
+};
+
 
 /* display boost and inverting boost regulators */
 &labibb {
