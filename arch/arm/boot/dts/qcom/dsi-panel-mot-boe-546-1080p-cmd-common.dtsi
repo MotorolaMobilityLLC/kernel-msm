@@ -41,23 +41,24 @@ qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
 	05 01 00 00 78 00 01 11
 	/* MCS Protect */
-	23 01 00 00 00 00 02 B0 00
+	23 00 00 00 00 00 02 B0 00
 	/* CABC RGB full PWM */
-	29 01 00 00 00 00 02 FA 20
+	29 00 00 00 00 00 02 FA 20
 	/* CABC PWM setting */
-	29 01 00 00 00 00 18 CE 5D 40 43 49 55 62 71 82 94 A8 B9 CB DB E9 FE FE FF 03 15 04 04 00 00
+	29 00 00 00 00 00 18 CE 5D 40 43 49 55 62 71 82 94 A8 B9 CB DB E9 FE FE
+		FF 03 15 04 04 00 00
 	/* CABC UI mode setting */
-	29 01 00 00 00 00 07 B8 07 8B 19 08 0C 21
+	29 00 00 00 00 00 07 B8 07 8B 19 08 0C 21
 	/* CABC Moving Image mode setting */
-	29 01 00 00 00 00 07 BA 07 7A 64 18 30 8D
+	29 00 00 00 00 00 07 BA 07 7A 64 18 30 8D
 	/* Set Max Brightness */
-	15 01 00 00 00 00 02 51 CC
+	15 00 00 00 00 00 02 51 CC
 	/* Set Minimum Brightness */
-	15 01 00 00 00 00 02 5E 00
+	15 00 00 00 00 00 02 5E 00
 	/* BLU control */
-	15 01 00 00 00 00 02 53 2C
+	15 00 00 00 00 00 02 53 2C
 	/* set defaut CABC to UI mode */
-	15 01 00 00 00 00 02 55 01
+	15 00 00 00 00 00 02 55 01
 	05 01 00 00 00 00 01 29];
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 0a 00 01 28
