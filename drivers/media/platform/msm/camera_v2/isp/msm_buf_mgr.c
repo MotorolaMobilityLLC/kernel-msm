@@ -20,7 +20,7 @@
 #include <linux/proc_fs.h>
 #include <linux/videodev2.h>
 #include <linux/vmalloc.h>
-
+#include <linux/irqchip/arm-gic.h>
 
 #include <media/v4l2-dev.h>
 #include <media/v4l2-ioctl.h>
@@ -30,6 +30,7 @@
 #include "msm.h"
 #include "msm_buf_mgr.h"
 #include "cam_smmu_api.h"
+#include "msm_isp_util.h"
 
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
@@ -732,6 +733,8 @@ static int msm_isp_update_put_buf_cnt(struct msm_isp_buf_mgr *buf_mgr,
 	if (-ENOTEMPTY == rc) {
 		pr_err("%s: Error! Uncleared put_buf_mask for pingpong(%d) from vfe %d bufq 0x%x buf_idx %d\n",
 			__func__, pingpong_bit, id, bufq_handle, buf_index);
+		gic_show_pending_irq();
+		msm_isp_dump_ping_pong_mismatch();
 		rc = -EFAULT;
 	}
 	spin_unlock_irqrestore(&bufq->bufq_lock, flags);
