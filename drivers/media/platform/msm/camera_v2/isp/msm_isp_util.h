@@ -25,6 +25,26 @@
 #endif
 
 #define ALT_VECTOR_IDX(x) {x = 3 - x; }
+#define MAX_ISP_PING_PONG_DUMP_SIZE 10
+
+struct ping_pong_state {
+	uint32_t vfe_id;
+	uint32_t irq_status0;
+	uint32_t irq_status1;
+	uint32_t ping_pong_status;
+	struct msm_isp_timestamp ts;
+};
+struct vfe_other_vfe_state {
+	struct ping_pong_state current_vfe_irq;
+	struct ping_pong_state other_vfe;
+};
+struct dump_ping_pong_state {
+	struct vfe_other_vfe_state arr[MAX_ISP_PING_PONG_DUMP_SIZE];
+	int first;
+	int fill_count;
+};
+
+void msm_isp_dump_ping_pong_mismatch(void);
 
 uint32_t msm_isp_get_framedrop_period(
 	enum msm_vfe_frame_skip_pattern frame_skip_pattern);
