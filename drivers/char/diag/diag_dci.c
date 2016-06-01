@@ -226,18 +226,24 @@ void extract_dci_events(unsigned char *buf)
 
 void extract_dci_log(unsigned char *buf)
 {
-	uint16_t log_code, item_num;
+	uint16_t log_code, item_num, log_length;
 	uint8_t equip_id, *log_mask_ptr, byte_mask;
 	unsigned int byte_index;
 	int i, found = 0;
 	struct diag_dci_client_tbl *entry;
 
+	log_length = *(uint16_t *)(buf + 2);
 	log_code = *(uint16_t *)(buf+6);
 	equip_id = LOG_GET_EQUIP_ID(log_code);
 	item_num = LOG_GET_ITEM_NUM(log_code);
 	byte_index = item_num/8 + 2;
 	byte_mask = 0x01 << (item_num % 8);
 
+	if (log_length > USHRT_MAX - 4) {
+		pr_err("diag: Integer overflow in %s, log_len:%d",
+				__func__, log_length);
+		return;
+	}
 	/* parse through log mask table of each client and check mask */
 	for (i = 0; i < MAX_DCI_CLIENTS; i++) {
 		if (driver->dci_client_tbl[i].client) {
@@ -273,9 +279,9 @@ void extract_dci_log(unsigned char *buf)
 				driver->dci_client_tbl[i].received_logs++;
 				*(int *)(entry->dci_data+entry->data_len) =
 								DCI_LOG_TYPE;
-				memcpy(entry->dci_data+entry->data_len+4, buf+4,
-						 *(uint16_t *)(buf+2));
-				entry->data_len += 4 + *(uint16_t *)(buf+2);
+				memcpy(entry->dci_data+entry->data_len+4,
+                                       buf + 4, log_length);
+				entry->data_len += 4 + log_length;
 			}
 		}
 	}
