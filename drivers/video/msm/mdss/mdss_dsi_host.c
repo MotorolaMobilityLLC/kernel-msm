@@ -2339,7 +2339,14 @@ void mdss_dsi_fifo_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	/* fifo underflow, overflow and empty*/
 	if (status & 0xcccc4489) {
 		MIPI_OUTP(base + 0x000c, status);
-		pr_err("%s: status=%x\n", __func__, status);
+
+		/*
+                 * During dynamic refresh rate update, DSI fifo errors are
+                 * expected, Check the dfps status and avoid the log. However,
+                 * FIFO errors needs to be cleared.
+                 */
+		if (!ctrl->dfps_status)
+			pr_err("%s: status=%x\n", __func__, status);
 
 		/*
 		 * if DSI FIFO overflow is masked,
@@ -2358,6 +2365,9 @@ void mdss_dsi_fifo_status(struct mdss_dsi_ctrl_pdata *ctrl)
 		if (status & 0x11110000) /* DLN_FIFO_EMPTY */
 			dsi_send_events(ctrl, DSI_EV_DSI_FIFO_EMPTY, 0);
 	}
+
+	if (ctrl->dfps_status)
+		ctrl->dfps_status = false;
 }
 
 void mdss_dsi_status(struct mdss_dsi_ctrl_pdata *ctrl)
