@@ -23,6 +23,9 @@
 #define SET_LOG_MASK		1
 #define DISABLE_LOG_MASK	0
 #define MAX_EVENT_SIZE		100
+#define DCI_PKT_REQ_MIN_LEN	8
+#define DCI_LOG_CON_MIN_LEN	14
+#define DCI_EVENT_CON_MIN_LEN	16
 
 /* 16 log code categories, each has:
  * 1 bytes equip id + 1 dirty byte + 512 byte max log mask
