@@ -652,8 +652,12 @@ int wcd_mbhc_get_impedance(struct wcd_mbhc *mbhc, uint32_t *zl,
 	*zl = mbhc->zl;
 	*zr = mbhc->zr;
 
-	if (*zl && *zr)
-		return 0;
+	if (*zl && *zr){
+		if (*zl > 20000 && *zr > 20000)
+			return 1;
+		else
+			return 0;
+	}
 	else
 		return -EINVAL;
 }
@@ -790,7 +794,16 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 						SND_JACK_HEADPHONE);
 			if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADSET)
 				wcd_mbhc_report_plug(mbhc, 0, SND_JACK_HEADSET);
-		wcd_mbhc_report_plug(mbhc, 1, SND_JACK_UNSUPPORTED);
+			if (mbhc->impedance_detect){
+				int impe;
+				wcd_mbhc_calc_impedance(mbhc, &mbhc->zl, &mbhc->zr);
+				impe = wcd_mbhc_get_impedance(mbhc, &mbhc->zl, &mbhc->zr);
+				if (impe){
+					wcd_mbhc_report_plug(mbhc, 1, SND_JACK_HEADSET);
+				}
+				else
+					wcd_mbhc_report_plug(mbhc, 1, SND_JACK_UNSUPPORTED);
+			}
 	} else if (plug_type == MBHC_PLUG_TYPE_HEADSET) {
 		/*
 		 * If Headphone was reported previously, this will
@@ -832,7 +845,7 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 }
 
 /* To determine if cross connection occured */
-static bool wcd_check_cross_conn(struct wcd_mbhc *mbhc)
+static int wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 {
 	u16 swap_res;
 	struct snd_soc_codec *codec = mbhc->codec;
@@ -841,7 +854,7 @@ static bool wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 
 	if (wcd_swch_level_remove(mbhc)) {
 		pr_debug("%s: Switch level is low\n", __func__);
-		return false;
+		return -EINVAL;
 	}
 
 	reg1 = snd_soc_read(codec, MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_2);
@@ -942,6 +955,7 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	bool is_pa_on;
 	bool micbias2;
 	bool micbias1;
+	int ret=0;
 
 	pr_debug("%s: enter\n", __func__);
 
@@ -975,8 +989,11 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 					0x30;
 
 		if ((!(result2 & 0x01)) && (!is_pa_on)) {
+			ret = wcd_check_cross_conn(mbhc);
 			/* Check for cross connection*/
-			if (wcd_check_cross_conn(mbhc)) {
+			if (ret<0) {
+				continue;
+				}else if (ret > 0){
 				plug_type = MBHC_PLUG_TYPE_GND_MIC_SWAP;
 				pt_gnd_mic_swap_cnt++;
 				if (pt_gnd_mic_swap_cnt <
