@@ -34,6 +34,10 @@
 #include <linux/mmi_hall_notifier.h>
 #endif
 
+#ifdef CONFIG_SENSORS_SH_AK09912
+#include "linux/stml0xx_akm.h"
+#endif
+
 /* Log macros */
 #define ENABLE_VERBOSE_LOGGING 0
 
@@ -61,7 +65,7 @@ enum sh_spi_msg {
 #define VMM_ENTRY(reg, id, writable, addr, size) id,
 #define DSP
 enum vmm_ids {
-#include <linux/motosh_vmm.h>
+#include <linux/stml0xx_vmm.h>
 };
 #undef VMM_ENTRY
 #undef GYRO_CALIBRATION
@@ -89,8 +93,11 @@ enum vmm_ids {
 #define STREAM_SENSOR_TYPE_ACCEL1        1
 #define STREAM_SENSOR_TYPE_ACCEL2        2
 #define STREAM_SENSOR_TYPE_UNCAL_GYRO    3
-#define STREAM_SENSOR_QUEUE_DEPTH        16
-#define STREAM_SENSOR_QUEUE_ENTRY_SIZE   9
+#define STREAM_SENSOR_TYPE_UNCAL_MAG     4
+#define STREAM_SENSOR_QUEUE_DEPTH        20
+#define STREAM_SENSOR_QUEUE_ENTRY_SIZE   11
+#define STREAM_SENSOR_QUEUE_SIZE \
+	(STREAM_SENSOR_QUEUE_DEPTH * STREAM_SENSOR_QUEUE_ENTRY_SIZE + 5)
 #define STREAM_SENSOR_QUEUE_INSERT_IDX \
 	(STREAM_SENSOR_QUEUE_DEPTH * STREAM_SENSOR_QUEUE_ENTRY_SIZE)
 #define STREAM_SENSOR_QUEUE_REMOVE_IDX \
@@ -101,12 +108,13 @@ enum vmm_ids {
 #define IRQ_IDX_STATUS_MED           1
 #define IRQ_IDX_STATUS_HI            2
 #define IRQ_IDX_STREAM_SENSOR_QUEUE  3
-#define IRQ_IDX_GYRO_CAL_X           152
-#define IRQ_IDX_GYRO_CAL_Y           154
-#define IRQ_IDX_GYRO_CAL_Z           156
-#define IRQ_IDX_ALS                  158
-#define IRQ_IDX_DISP_ROTATE          160
-#define IRQ_IDX_STEP_COUNTER         161
+#define IRQ_IDX_GYRO_CAL_X           (IRQ_IDX_STREAM_SENSOR_QUEUE \
+				      + STREAM_SENSOR_QUEUE_SIZE)
+#define IRQ_IDX_GYRO_CAL_Y           (IRQ_IDX_GYRO_CAL_X + 2)
+#define IRQ_IDX_GYRO_CAL_Z           (IRQ_IDX_GYRO_CAL_Y + 2)
+#define IRQ_IDX_ALS                  (IRQ_IDX_GYRO_CAL_Z + 2)
+#define IRQ_IDX_DISP_ROTATE          (IRQ_IDX_ALS + 2)
+#define IRQ_IDX_STEP_COUNTER         (IRQ_IDX_DISP_ROTATE + 1)
 
 /* stml0xx wake IRQ SPI buffer indexes */
 #define WAKE_IRQ_IDX_STATUS_LO              0
@@ -158,8 +166,9 @@ enum vmm_ids {
 #define SENSOR_Y_IDX  5
 #define SENSOR_Z_IDX  7
 
-#define SENSOR_DATA_SIZE       6
-#define UNCALIB_GYRO_DATA_SIZE 12
+#define SENSOR_DATA_SIZE         6
+#define RAW_MAG_DATA_SIZE        8
+#define UNCALIB_SENSOR_DATA_SIZE 12
 
 #define DOCK_STATE	0
 #define PROX_DISTANCE	0
@@ -337,6 +346,27 @@ struct stml0xx_data {
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	struct mmi_hall_data *hall_data;
 #endif
+
+#ifdef CONFIG_SENSORS_SH_AK09912
+	struct akm_data_queue_t akm_data_queue;
+	uint8_t akm_sense_info[AKM_SENSOR_INFO_SIZE];
+	uint8_t akm_sense_conf[AKM_SENSOR_CONF_SIZE];
+	struct mutex akm_sensor_mutex;
+	struct mutex akm_val_mutex;
+	struct mutex akm_accel_mutex;
+	atomic_t akm_active;
+	atomic_t akm_drdy;
+	/* Positive value means the device is working.
+	 * 0 or negative value means the device is not woking,
+	 * i.e. in power-down mode.
+	 */
+	int8_t akm_is_busy;
+	uint32_t akm_enable_flag;
+	wait_queue_head_t akm_drdy_wq;
+	wait_queue_head_t akm_open_wq;
+	char akm_layout;
+	int16_t akm_accel_data[3];
+#endif
 };
 
 #ifndef ts_to_ns
@@ -454,6 +484,15 @@ int stml0xx_blink_set(struct led_classdev *led_cdev,
 	unsigned long *delay_on, unsigned long *delay_off);
 uint8_t stml0xx_set_lowpower_mode(enum lowpower_mode lp_type,
 		enum reset_option reset);
+
+#ifdef CONFIG_SENSORS_SH_AK09912
+void stml0xx_akm_init(struct stml0xx_data *ps_stml0xx);
+int akm09912_i2c_check_device(struct stml0xx_data *ps_stml0xx);
+int akm09912_enable_mag(int enable, struct stml0xx_data *ps_stml0xx);
+int stml0xx_akm_data_queue_insert(struct stml0xx_data *ps_stml0xx,
+					uint8_t *data);
+uint8_t *stml0xx_akm_data_queue_remove(struct stml0xx_data *ps_stml0xx);
+#endif
 
 extern struct stml0xx_data *stml0xx_misc_data;
 
