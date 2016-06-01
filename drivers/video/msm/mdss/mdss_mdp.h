@@ -224,6 +224,8 @@ struct mdss_mdp_ctl_intfs_ops {
 					struct mdss_mdp_vsync_handler *);
 	int (*config_fps_fnc)(struct mdss_mdp_ctl *ctl, int new_fps);
 	int (*restore_fnc)(struct mdss_mdp_ctl *ctl);
+	int (*config_mipiclk_fnc)(struct mdss_mdp_ctl *,
+					struct mdp_update_mipiclk *);
 };
 
 struct mdss_mdp_ctl {
@@ -301,6 +303,10 @@ struct mdss_mdp_ctl {
 	bool force_ctl_start;
 
 	u16 frame_rate;
+
+	bool mipiclk_pending;
+	struct mdp_update_mipiclk request_mipiclk;
+	struct mutex mipiclk_lock;
 };
 
 struct mdss_mdp_mixer {
@@ -1164,6 +1170,7 @@ int mdss_mdp_calib_config(struct mdp_calib_config_data *cfg, u32 *copyback);
 int mdss_mdp_calib_config_buffer(struct mdp_calib_config_buffer *cfg,
 						u32 *copyback);
 int mdss_mdp_ctl_update_fps(struct mdss_mdp_ctl *ctl);
+int mdss_mdp_ctl_update_mipiclk(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_pipe_is_staged(struct mdss_mdp_pipe *pipe);
 int mdss_mdp_writeback_display_commit(struct mdss_mdp_ctl *ctl, void *arg);
 struct mdss_mdp_ctl *mdss_mdp_ctl_mixer_switch(struct mdss_mdp_ctl *ctl,

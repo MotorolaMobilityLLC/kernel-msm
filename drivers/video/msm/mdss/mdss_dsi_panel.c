@@ -881,6 +881,48 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	return 0;
 }
 
+void mdss_dsi_panel_update_info(struct mdss_panel_data *pdata,
+	struct mdp_update_mipiclk *update_clk)
+{
+	int i;
+	struct mdss_panel_info *pinfo = &(pdata->panel_info);
+	pr_debug("%s: clk_rate = %10d, xres = %10d, yres = %10d\n",
+		__func__, update_clk->clock_rate,
+		update_clk->display_width, update_clk->display_height);
+	pr_debug("%s: hpw = %10d, hbp = %10d, hfp = %10d\n",
+		__func__, update_clk->hsync_pulse_width,
+		update_clk->h_back_porch, update_clk->h_front_porch);
+	pr_debug("%s: vpw = %10d, vbp = %10d, vfp = %10d\n",
+		__func__, update_clk->vsync_pulse_width,
+		update_clk->v_back_porch, update_clk->v_front_porch);
+	pr_debug("%s: t_clk_post = 0x%02X, t_clk_pre = 0x%02X\n",
+		__func__, update_clk->t_clk_post, update_clk->t_clk_pre);
+	pr_debug("%s: dsi_phy_db.timing[0-11] = 0x%02X, 0x%02X, 0x%02X, 0x%02X,"
+			" 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X\n",
+			__func__, update_clk->timing_ctrl[0], update_clk->timing_ctrl[1],
+			update_clk->timing_ctrl[2], update_clk->timing_ctrl[3],
+			update_clk->timing_ctrl[4], update_clk->timing_ctrl[5],
+			update_clk->timing_ctrl[6], update_clk->timing_ctrl[7],
+			update_clk->timing_ctrl[8], update_clk->timing_ctrl[9],
+			update_clk->timing_ctrl[10], update_clk->timing_ctrl[11]);
+
+	pinfo->clk_rate = update_clk->clock_rate;
+	pinfo->xres = update_clk->display_width;
+	pinfo->yres = update_clk->display_height;
+	pinfo->lcdc.h_pulse_width = update_clk->hsync_pulse_width;
+	pinfo->lcdc.h_back_porch = update_clk->h_back_porch;
+	pinfo->lcdc.h_front_porch = update_clk->h_front_porch;
+	pinfo->lcdc.v_pulse_width = update_clk->vsync_pulse_width;
+	pinfo->lcdc.v_back_porch = update_clk->v_back_porch;
+	pinfo->lcdc.v_front_porch = update_clk->v_front_porch;
+	pinfo->mipi.t_clk_post = update_clk->t_clk_post;
+	pinfo->mipi.t_clk_pre = update_clk->t_clk_pre;
+	for (i=0; i<12; i++) {
+		pinfo->mipi.dsi_phy_db.timing[i]
+			= update_clk->timing_ctrl[i];
+	}
+}
+
 static void mdss_dsi_parse_trigger(struct device_node *np, char *trigger,
 		char *trigger_key)
 {
@@ -2303,6 +2345,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->low_power_config = mdss_dsi_panel_low_power_config;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
+	ctrl_pdata->update_info = mdss_dsi_panel_update_info;
 
 	return 0;
 }
