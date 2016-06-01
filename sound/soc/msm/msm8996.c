@@ -133,6 +133,7 @@ static const char *const proxy_rx_ch_text[] = {"One", "Two", "Three", "Four",
 
 static char const *hdmi_rx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 					"KHZ_192"};
+static char const *tert_mi2s_ch_text[] = {"One", "Two"};
 
 static const char *const auxpcm_rate_text[] = {"8000", "16000"};
 static const struct soc_enum msm8996_auxpcm_enum[] = {
@@ -145,6 +146,7 @@ static const char *const tert_mi2s_format_text[] = {"S16_LE", "S24_LE"};
 static const struct soc_enum msm8996_tert_mi2s_enum[] = {
 		SOC_ENUM_SINGLE_EXT(3, tert_mi2s_rate_text),
 		SOC_ENUM_SINGLE_EXT(2, tert_mi2s_format_text),
+		SOC_ENUM_SINGLE_EXT(2, tert_mi2s_ch_text),
 };
 
 
@@ -1477,6 +1479,24 @@ static int tert_mi2s_format_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int msm_tert_mi2s_ch_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	msm_tert_mi2s_tx_ch = ucontrol->value.integer.value[0] + 1;
+	pr_debug("%s: msm_tert_mi2s_tx_ch = %d\n", __func__,
+		 msm_slim_0_rx_ch);
+	return 1;
+}
+
+static int msm_tert_mi2s_ch_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_tert_mi2s_tx_ch  = %d\n", __func__,
+		 msm_slim_0_tx_ch);
+	ucontrol->value.integer.value[0] = msm_tert_mi2s_tx_ch - 1;
+	return 0;
+}
+
 static int msm_proxy_rx_ch_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
@@ -1598,7 +1618,7 @@ static int msm8996_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	else
 		pcm_depth = snd_pcm_format_width(tert_mi2s_bit_format);
 
-	mi2s_tx_clk.clk_freq_in_hz = msm_tert_mi2s_tx_ch*tert_mi2s_sample_rate*
+	mi2s_tx_clk.clk_freq_in_hz = 2*tert_mi2s_sample_rate*
 					pcm_depth;
 
 	pr_debug("%s: bit clk freq set to %d\n", __func__,
@@ -1867,6 +1887,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			tert_mi2s_rate_get, tert_mi2s_rate_put),
 	SOC_ENUM_EXT("TERT_MI2S Format", msm8996_tert_mi2s_enum[1],
 			tert_mi2s_format_get, tert_mi2s_format_put),
+	SOC_ENUM_EXT("TERT_MI2S Channels", msm8996_tert_mi2s_enum[2],
+			msm_tert_mi2s_ch_get, msm_tert_mi2s_ch_put),
 };
 
 #ifndef CONFIG_SND_SOC_FLORIDA
