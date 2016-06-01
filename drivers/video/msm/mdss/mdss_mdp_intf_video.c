@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -213,7 +213,7 @@ static void mdss_mdp_video_intf_recovery(void *data, int event)
 			mutex_unlock(&ctl->offlock);
 			return;
 		} else {
-			pr_warn("line count is less. line_cnt = %d\n",
+			pr_warn_once("line count is less. line_cnt = %d\n",
 								line_cnt);
 			/* Add delay so that line count is in active region */
 			udelay(delay);
