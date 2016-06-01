@@ -514,8 +514,12 @@ int wcd_mbhc_get_impedance(struct wcd_mbhc *mbhc, uint32_t *zl,
 	*zl = mbhc->zl;
 	*zr = mbhc->zr;
 
-	if (*zl && *zr)
-		return 0;
+	if (*zl && *zr){
+		if (*zl > 20000 && *zr > 20000)
+			return 1;
+		else
+			return 0;
+	}
 	else
 		return -EINVAL;
 }
@@ -708,7 +712,16 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 						SND_JACK_HEADPHONE);
 			if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADSET)
 				wcd_mbhc_report_plug(mbhc, 0, SND_JACK_HEADSET);
-		wcd_mbhc_report_plug(mbhc, 1, SND_JACK_UNSUPPORTED);
+			if (mbhc->impedance_detect){
+				int impe;
+				wcd_mbhc_calc_impedance(mbhc, &mbhc->zl, &mbhc->zr);
+				impe = wcd_mbhc_get_impedance(mbhc, &mbhc->zl, &mbhc->zr);
+				if (impe){
+					wcd_mbhc_report_plug(mbhc, 1, SND_JACK_HEADSET);
+				}
+				else
+					wcd_mbhc_report_plug(mbhc, 1, SND_JACK_UNSUPPORTED);
+			}
 	} else if (plug_type == MBHC_PLUG_TYPE_HEADSET) {
 		/*
 		 * If Headphone was reported previously, this will
