@@ -594,6 +594,7 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	init_waitqueue_head(&host->wq);
 	INIT_DELAYED_WORK(&host->detect, mmc_rescan);
 #ifdef CONFIG_PM
+	wakeup_source_init(&host->pm_ws, dev_name(&host->class_dev));
 	host->pm_notify.notifier_call = mmc_pm_notify;
 #endif
 	setup_timer(&host->retune_timer, mmc_retune_timer, (unsigned long)host);
@@ -921,6 +922,8 @@ void mmc_free_host(struct mmc_host *host)
 	spin_lock(&mmc_host_lock);
 	idr_remove(&mmc_host_idr, host->index);
 	spin_unlock(&mmc_host_lock);
+
+	wakeup_source_trash(&host->pm_ws);
 
 	put_device(&host->class_dev);
 }
