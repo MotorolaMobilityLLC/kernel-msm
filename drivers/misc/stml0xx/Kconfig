@@ -19,3 +19,11 @@ config MMI_HALL_NOTIFICATIONS
 	depends on SENSORS_STML0XX
 	help
 	  Support for hall effect sensor notifications.
+
+config SENSORS_SH_AK09912
+	bool "Enable sensor processor connected ak09912"
+	default n
+	depends on SENSORS_STML0XX
+	help
+	  Support for a sensor processor connected ak09912 magnetometer.
+
