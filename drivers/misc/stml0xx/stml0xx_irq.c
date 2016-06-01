@@ -86,19 +86,19 @@ irqreturn_t stml0xx_isr(int irq, void *dev)
  *   where N = STREAM_SENSOR_QUEUE_DEPTH
  *   (so only N-1 of the N slots are ever filled).
  *
- *   Byte  0   - slot 0: sensor type
- *   Bytes 1~2 - slot 0: number of ticks elapsed since previous sample
- *   Bytes 3~8 - slot 0: 6-byte data
+ *   Byte  0    - slot 0: sensor type
+ *   Bytes 1~2  - slot 0: number of ticks elapsed since previous sample
+ *   Bytes 3~10 - slot 0: 8-byte data
  *   ...
- *   Bytes [n*9]               - slot n: sensor type
- *   Bytes [n*9 + 1]~[n*9 + 2] - slot n: number of ticks elapsed since
+ *   Bytes [n*11]                - slot n: sensor type
+ *   Bytes [n*11 + 1]~[n*11 + 2] - slot n: number of ticks elapsed since
  *                                       previous sample
- *   Bytes [n*9 + 3]~[n*9 + 8] - slot n: 6-byte data
+ *   Bytes [n*11 + 3]~[n*11 + 8] - slot n: 6-byte data
  *
- *   Bytes [N*9]               - Insert index (0,1,2,3..N-1)
- *   Bytes [N*9 + 1]~[N*9 + 3] - Nothing (buffer to ensure insert and remove
+ *   Bytes [N*11]                - Insert index (0,1,2,3..N-1)
+ *   Bytes [N*11 + 1]~[N*11 + 3] - Nothing (buffer to ensure insert and remove
  *                                        indices are in separate words)
- *   Bytes [N*9 + 4]           - Remove index (0,1,2,3..N-1)
+ *   Bytes [N*11 + 4]            - Remove index (0,1,2,3..N-1)
  *
  *   where n = slot (0..N-1), N = STREAM_SENSOR_QUEUE_DEPTH
 */
@@ -114,6 +114,9 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
 	unsigned char *queue_buf = &buf[IRQ_IDX_STREAM_SENSOR_QUEUE];
 	static uint64_t last_ts_ns;
+#ifdef CONFIG_SENSORS_SH_AK09912
+	uint8_t mag_data[AKM_DATA_QUEUE_ENTRY_SIZE];
+#endif
 
 	insert_idx = queue_buf[STREAM_SENSOR_QUEUE_INSERT_IDX];
 	remove_idx = queue_buf[STREAM_SENSOR_QUEUE_REMOVE_IDX];
@@ -124,9 +127,9 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 		num_samples = insert_idx + STREAM_SENSOR_QUEUE_DEPTH
 				- remove_idx;
 
-#if ENABLE_VERBOSE_LOGGING
 	dev_dbg(&stml0xx_misc_data->spi->dev, "Samples in Queue: %d",
 			num_samples);
+#if ENABLE_VERBOSE_LOGGING
 
 	for (i = 0; i < STREAM_SENSOR_QUEUE_DEPTH *
 			STREAM_SENSOR_QUEUE_ENTRY_SIZE; i++) {
@@ -171,6 +174,19 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 			stml0xx_as_data_buffer_write(ps_stml0xx,
 				DT_ACCEL, &sample_buf[SENSOR_X_IDX],
 				SENSOR_DATA_SIZE, 0, ts_ns);
+#ifdef CONFIG_SENSORS_SH_AK09912
+			mutex_lock(&ps_stml0xx->akm_accel_mutex);
+			stml0xx_misc_data->akm_accel_data[0] =
+					sample_buf[SENSOR_X_IDX] << 8 |
+					sample_buf[SENSOR_X_IDX + 1];
+			stml0xx_misc_data->akm_accel_data[1] =
+					sample_buf[SENSOR_Y_IDX] << 8 |
+					sample_buf[SENSOR_Y_IDX + 1];
+			stml0xx_misc_data->akm_accel_data[2] =
+					sample_buf[SENSOR_Z_IDX] << 8 |
+					sample_buf[SENSOR_Z_IDX + 1];
+			mutex_unlock(&ps_stml0xx->akm_accel_mutex);
+#endif
 			dev_dbg(&stml0xx_misc_data->spi->dev,
 				"Sending acc(x,y,z)values:x=%d,y=%d,z=%d",
 				SH_TO_H16(sample_buf + SENSOR_X_IDX),
@@ -187,9 +203,26 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 				SH_TO_H16(sample_buf + SENSOR_Y_IDX),
 				SH_TO_H16(sample_buf + SENSOR_Z_IDX));
 			break;
+#ifdef CONFIG_SENSORS_SH_AK09912
+		case STREAM_SENSOR_TYPE_UNCAL_MAG:
+			mag_data[0] = sample_buf[SENSOR_X_IDX + 6]; /* ST1 */
+			memcpy(&mag_data[1], sample_buf + SENSOR_X_IDX, 6);
+			mag_data[7] = 0; /* unused field for temperature */
+			mag_data[8] = sample_buf[SENSOR_X_IDX + 7]; /* ST2 */
+			memcpy(&mag_data[AKM_SENSOR_DATA_SIZE], &ts_ns,
+				AKM_SENSOR_TIME_SIZE);
+
+			/* Add data to queue */
+			mutex_lock(&ps_stml0xx->akm_sensor_mutex);
+			stml0xx_akm_data_queue_insert(ps_stml0xx, mag_data);
+			atomic_set(&ps_stml0xx->akm_drdy, 1);
+			mutex_unlock(&ps_stml0xx->akm_sensor_mutex);
+			wake_up(&ps_stml0xx->akm_drdy_wq);
+			break;
+#endif
 		case STREAM_SENSOR_TYPE_UNCAL_GYRO:
 			if (stml0xx_g_nonwake_sensor_state & M_UNCALIB_GYRO) {
-				char uncal_gyro_buf[UNCALIB_GYRO_DATA_SIZE];
+				char uncal_gyro_buf[UNCALIB_SENSOR_DATA_SIZE];
 
 				memcpy(uncal_gyro_buf,
 					sample_buf + SENSOR_X_IDX,
@@ -200,7 +233,7 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 				stml0xx_as_data_buffer_write(ps_stml0xx,
 					DT_UNCALIB_GYRO,
 					uncal_gyro_buf,
-					UNCALIB_GYRO_DATA_SIZE, 0, ts_ns);
+					UNCALIB_SENSOR_DATA_SIZE, 0, ts_ns);
 				dev_dbg(&stml0xx_misc_data->spi->dev,
 				  "Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d",
 					SH_TO_H16(sample_buf + SENSOR_X_IDX),
@@ -286,9 +319,9 @@ void stml0xx_irq_work_func(struct work_struct *work)
 		if (irq_status & M_QUEUE_OVERFLOW)
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Streaming sensor queue full");
-		if (stml0xx_g_nonwake_sensor_state
-				& (M_ACCEL | M_ACCEL2
-					| M_GYRO | M_UNCALIB_GYRO))
+		if (stml0xx_g_nonwake_sensor_state &
+				(M_ACCEL | M_ACCEL2 | M_GYRO |
+					M_UNCALIB_GYRO | M_ECOMPASS))
 			stml0xx_process_stream_sensor_queue(buf, stm_ws->ts_ns);
 	} else {
 		ps_stml0xx->discard_sensor_queue = false;

@@ -144,7 +144,7 @@
 		_IOR(STML0XX_IOCTL_BASE, 58, char[STML0XX_ACCEL_CAL_SIZE])
 
 /* SPI contants */
-#define SPI_MSG_SIZE        192
+#define SPI_MSG_SIZE        256
 #define SPI_TX_HDR_SIZE     6
 #define SPI_CRC_SIZE        2
 #define SPI_TX_PAYLOAD_LEN  (SPI_MSG_SIZE - SPI_TX_HDR_SIZE - SPI_CRC_SIZE)

@@ -43,6 +43,10 @@
 #include <linux/dropbox.h>
 #include <linux/string.h>
 
+#ifdef CONFIG_SENSORS_SH_AK09912
+#include <linux/stml0xx_akm.h>
+#endif
+
 #include <linux/stml0xx.h>
 
 #define NAME                "stml0xx"
@@ -1017,6 +1021,10 @@ static int stml0xx_probe(struct spi_device *spi)
 
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	ps_stml0xx->hall_data = mmi_hall_init();
+#endif
+
+#ifdef CONFIG_SENSORS_SH_AK09912
+	stml0xx_akm_init(ps_stml0xx);
 #endif
 
 	mutex_unlock(&ps_stml0xx->lock);

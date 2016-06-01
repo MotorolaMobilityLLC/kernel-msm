@@ -97,9 +97,9 @@ VMM_ENTRY(0x15, STEP_COUNTER_INFO,					TRUE,
 VMM_ENTRY(0x16, ACCEL_UPDATE_RATE,					TRUE,
 		&vmm_accel_update_rate,
 		sizeof(vmm_accel_update_rate))
-VMM_ENTRY(0x17, UNUSED_17,						FALSE,
-		0, /* &vmm_mag_update_rate */
-		0)
+VMM_ENTRY(0x17, MAG_UPDATE_RATE,					TRUE,
+		&vmm_mag_update_rate,
+		sizeof(vmm_mag_update_rate))
 VMM_ENTRY(0x18, UNUSED_18,						FALSE,
 		0, /* vmm_pressure_update_rate */
 		0)
@@ -247,9 +247,9 @@ VMM_ENTRY(0x44, UNUSED_44,						FALSE,
 VMM_ENTRY(0x45, UNCALIB_GYRO_DATA,					FALSE,
 		vmm_uncalib_gyro_data,
 		sizeof(vmm_uncalib_gyro_data))
-VMM_ENTRY(0x46, UNUSED_46,						FALSE,
-		0, /* vmm_uncalib_mag_data */
-		0)
+VMM_ENTRY(0x46, UNCALIB_MAG_DATA,					FALSE,
+		vmm_uncalib_mag_data,
+		sizeof(vmm_uncalib_mag_data))
 VMM_ENTRY(0x47, UNUSED_47,						FALSE,
 		0,
 		0)
