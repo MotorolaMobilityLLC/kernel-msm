@@ -1472,11 +1472,12 @@ int wlan_hdd_tdls_get_all_peers(hdd_adapter_t *pAdapter, char *buf, int buflen)
 
 
     init_len = buflen;
-    len = snprintf(buf, buflen, "\n%-18s%-3s%-4s%-3s%-5s\n", "MAC", "Id", "cap", "up", "RSSI");
+    len = scnprintf(buf, buflen, "\n%-18s%-3s%-4s%-3s%-5s\n",
+            "MAC", "Id", "cap", "up", "RSSI");
     buf += len;
     buflen -= len;
     /*                           1234567890123456789012345678901234567 */
-    len = snprintf(buf, buflen, "---------------------------------\n");
+    len = scnprintf(buf, buflen, "---------------------------------\n");
     buf += len;
     buflen -= len;
 
@@ -1489,7 +1490,7 @@ int wlan_hdd_tdls_get_all_peers(hdd_adapter_t *pAdapter, char *buf, int buflen)
     pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
     if (NULL == pHddTdlsCtx) {
         mutex_unlock(&tdls_lock);
-        len = snprintf(buf, buflen, "TDLS not enabled\n");
+        len = scnprintf(buf, buflen, "TDLS not enabled\n");
         return len;
     }
     for (i = 0; i < 256; i++) {
@@ -1500,7 +1501,7 @@ int wlan_hdd_tdls_get_all_peers(hdd_adapter_t *pAdapter, char *buf, int buflen)
 
             if (buflen < 32+1)
                 break;
-            len = snprintf(buf, buflen,
+            len = scnprintf(buf, buflen,
                 MAC_ADDRESS_STR"%3d%4s%3s%5d\n",
                 MAC_ADDR_ARRAY(curr_peer->peerMac),
                 curr_peer->staId,
