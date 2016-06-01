@@ -169,6 +169,8 @@ Optional properties:
 		   ETR configuration.
 - qcom,force-reg-dump : boolean, indicate whether TMC register need to be dumped.
 			Used for TMC component
+- qcom,force-alloc-from-dma-region : boolean, indicate whether sg-table allocations
+			are limited to 32bit.Used for TMC component.
 - qcom,nidntsw : boolean, indicating NIDnT software debug or trace support
 		 present. Used for tpiu component
 - qcom,nidnthw : boolean, indicating NIDnT hardware sensing support present.
