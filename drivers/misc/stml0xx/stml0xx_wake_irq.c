@@ -116,6 +116,9 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			(struct stml0xx_delayed_work_struct *)work;
 	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
 	unsigned char buf[SPI_MSG_SIZE];
+#ifdef CONFIG_SENSORS_SH_AK09912
+	static bool akm_init;
+#endif
 
 	struct stml0xx_platform_data *pdata;
 	pdata = ps_stml0xx->pdata;
@@ -531,6 +534,16 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		dev_info(&stml0xx_misc_data->spi->dev,
 			"Sensor Hub reports reset");
 		stml0xx_g_booted = 1;
+#ifdef CONFIG_SENSORS_SH_AK09912
+		if (akm_init == false) {
+			err = akm09912_i2c_check_device(ps_stml0xx);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"akm09912 device check failed");
+			} else
+				akm_init = true;
+		}
+#endif
 	}
 	/* check for a reset request */
 	if (irq_status & M_HUB_RESET) {

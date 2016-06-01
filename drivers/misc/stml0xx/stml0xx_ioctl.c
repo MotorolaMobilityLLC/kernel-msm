@@ -80,6 +80,11 @@ void stml0xx_ioctl_work_func(struct work_struct *ws)
 		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(NONWAKESENSOR_CONFIG,
 							buf, 3);
+#ifdef CONFIG_SENSORS_SH_AK09912
+		akm09912_enable_mag(
+				(stml0xx_g_nonwake_sensor_state & M_ECOMPASS),
+				ps_stml0xx);
+#endif
 		dev_dbg(&stml0xx_misc_data->spi->dev, "Sensor enable = 0x%lx\n",
 			stml0xx_g_nonwake_sensor_state);
 		break;
@@ -112,6 +117,16 @@ void stml0xx_ioctl_work_func(struct work_struct *ws)
 		if (stml0xx_g_booted) {
 			buf[0] = ioctl_ws->data.delay;
 			err = stml0xx_spi_send_write_reg(GYRO_UPDATE_RATE,
+							buf, 1);
+		}
+		break;
+	case STML0XX_IOCTL_SET_MAG_DELAY:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_MAG_DELAY");
+		stml0xx_g_mag_delay = ioctl_ws->data.delay;
+		if (stml0xx_g_booted) {
+			buf[0] = ioctl_ws->data.delay;
+			err = stml0xx_spi_send_write_reg(MAG_UPDATE_RATE,
 							buf, 1);
 		}
 		break;
@@ -289,8 +304,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		);
 		INIT_IOCTL_WS
 		ioctl_ws->cmd = cmd;
-		if (
-			copy_from_user(
+		if (copy_from_user(
 				ioctl_ws->data.bytes,
 				argp,
 				3 * sizeof(unsigned char))) {
@@ -311,8 +325,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		);
 		INIT_IOCTL_WS
 		ioctl_ws->cmd = cmd;
-		if (
-			copy_from_user(
+		if (copy_from_user(
 				&(ioctl_ws->data.delay),
 				argp,
 				sizeof(ioctl_ws->data.delay))) {
@@ -333,8 +346,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		);
 		INIT_IOCTL_WS
 		ioctl_ws->cmd = cmd;
-		if (
-			copy_from_user(
+		if (copy_from_user(
 				&(ioctl_ws->data.delay),
 				argp,
 				sizeof(ioctl_ws->data.delay))) {
@@ -355,13 +367,33 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		);
 		INIT_IOCTL_WS
 		ioctl_ws->cmd = cmd;
-		if (
-			copy_from_user(
+		if (copy_from_user(
 				&(ioctl_ws->data.delay),
 				argp,
 				sizeof(ioctl_ws->data.delay))) {
 			dev_dbg(&stml0xx_misc_data->spi->dev,
 				"Copy gyro delay returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_MAG_DELAY:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_MAG_DELAY"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (copy_from_user(
+				&(ioctl_ws->data.delay),
+				argp,
+				sizeof(ioctl_ws->data.delay))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy mag delay returned error\n");
 			kfree(ioctl_ws);
 			return -EFAULT;
 		}
@@ -412,8 +444,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		);
 		INIT_IOCTL_WS
 		ioctl_ws->cmd = cmd;
-		if (
-			copy_from_user(
+		if (copy_from_user(
 				ioctl_ws->data.bytes,
 				argp,
 				3 * sizeof(unsigned char))) {
@@ -434,8 +465,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		);
 		INIT_IOCTL_WS
 		ioctl_ws->cmd = cmd;
-		if (
-			copy_from_user(
+		if (copy_from_user(
 				ioctl_ws->data.bytes,
 				argp,
 				2 * sizeof(unsigned char))) {
@@ -495,8 +525,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		INIT_IOCTL_WS
 		ioctl_ws->cmd = cmd;
 		/* copy algo into bytes[2] */
-		if (
-			copy_from_user(
+		if (copy_from_user(
 				bytes,
 				argp,
 				2 * sizeof(unsigned char)
@@ -509,8 +538,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		addr = (bytes[1] << 8) | bytes[0];
 		ioctl_ws->algo_req_ndx = addr;
 		/* copy len */
-		if (
-			copy_from_user(
+		if (copy_from_user(
 				&(ioctl_ws->data_len),
 				argp + 2 * sizeof(unsigned char),
 				sizeof(ioctl_ws->data_len)
