@@ -175,8 +175,8 @@ int diag_hdlc_decode(struct diag_hdlc_decode_type *hdlc)
 	int pkt_bnd = 0;
 
 	if (hdlc && hdlc->src_ptr && hdlc->dest_ptr &&
-	    (hdlc->src_size - hdlc->src_idx > 0) &&
-	    (hdlc->dest_size - hdlc->dest_idx > 0)) {
+	    (hdlc->src_size > hdlc->src_idx) &&
+	    (hdlc->dest_size > hdlc->dest_idx)) {
 
 		src_ptr = hdlc->src_ptr;
 		src_ptr = &src_ptr[hdlc->src_idx];
