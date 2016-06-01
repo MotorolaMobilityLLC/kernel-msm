@@ -1361,7 +1361,7 @@ dhd_rtt_start(dhd_pub_t *dhd)
 	/* burst-duration */
 	if (rtt_target->burst_duration) {
 		ftm_params[ftm_param_cnt].data_intvl.intvl =
-			htol32(rtt_target->burst_period); /* ms */
+			htol32(rtt_target->burst_duration); /* ms */
 		ftm_params[ftm_param_cnt].data_intvl.tmu = WL_PROXD_TMU_MILLI_SEC;
 		ftm_params[ftm_param_cnt++].tlvid = WL_PROXD_TLV_ID_BURST_DURATION;
 		DHD_RTT((">\t burst duration : %d ms\n",

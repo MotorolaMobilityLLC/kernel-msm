@@ -1562,7 +1562,7 @@ wl_cfgvendor_rtt_set_config(struct wiphy *wiphy, struct wireless_dev *wdev,
 							dhd_rtt_idx_to_burst_duration(nla_get_u32(iter2));
 						} else if (nla_get_u32(iter2) == 15) {
 							/* use default value */
-							rtt_target->burst_duration = 0;
+							rtt_target->burst_duration = 128; //ms
 						} else {
 							WL_ERR(("%d value must in (2-11) or 15\n",
 								nla_get_u32(iter2)));
