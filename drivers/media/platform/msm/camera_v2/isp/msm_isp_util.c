@@ -26,6 +26,7 @@ static DEFINE_MUTEX(bandwidth_mgr_mutex);
 static struct msm_isp_bandwidth_mgr isp_bandwidth_mgr;
 
 static uint64_t msm_isp_cpp_clk_rate;
+static struct dump_ping_pong_state dump_data;
 
 #define VFE40_8974V2_VERSION 0x1001001A
 
@@ -1906,12 +1907,74 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 		return IRQ_HANDLED;
 	}
 
+	if (vfe_dev->is_split) {
+		if ((vfe_dev->common_data->dual_vfe_res->vfe_dev[
+			!vfe_dev->pdev->id]) &&
+			(vfe_dev->common_data->dual_vfe_res->vfe_dev[
+				!vfe_dev->pdev->id]->vfe_open_cnt)){
+			dump_data.arr[dump_data.first].current_vfe_irq.
+			vfe_id = vfe_dev->pdev->id;
+			dump_data.arr[dump_data.first].current_vfe_irq.
+			irq_status0 = irq_status0;
+			dump_data.arr[dump_data.first].current_vfe_irq.
+			irq_status1 = irq_status1;
+			dump_data.arr[dump_data.first].current_vfe_irq.
+			ping_pong_status = ping_pong_status;
+
+			dump_data.arr[dump_data.first].other_vfe.
+			vfe_id = (!vfe_dev->pdev->id);
+			dump_data.arr[dump_data.first].other_vfe.irq_status0 =
+			msm_camera_io_r(vfe_dev->common_data->dual_vfe_res->vfe_base[
+			!vfe_dev->pdev->id] + 0x38);
+			dump_data.arr[dump_data.first].other_vfe.irq_status1 =
+			msm_camera_io_r(vfe_dev->common_data->dual_vfe_res->vfe_base[
+				!vfe_dev->pdev->id] + 0x3C);
+			dump_data.arr[dump_data.first].other_vfe.ping_pong_status =
+			msm_camera_io_r(vfe_dev->common_data->dual_vfe_res->vfe_base[
+			!vfe_dev->pdev->id] + 0x268);
+			msm_isp_get_timestamp(&dump_data.arr[dump_data.first].
+			other_vfe.ts);
+
+			dump_data.first =
+				(dump_data.first+1)%MAX_ISP_PING_PONG_DUMP_SIZE;
+			dump_data.fill_count++;
+		}
+	}
+
 	msm_isp_enqueue_tasklet_cmd(vfe_dev, irq_status0, irq_status1,
 					ping_pong_status);
 
 	return IRQ_HANDLED;
 }
+void msm_isp_dump_ping_pong_mismatch(void)
+{
+	int index, count;
 
+	index = dump_data.first-1;
+	if (dump_data.fill_count > MAX_ISP_PING_PONG_DUMP_SIZE)
+		count = MAX_ISP_PING_PONG_DUMP_SIZE-1;
+	else
+		count = dump_data.first;
+	while (count >= 0) {
+		pr_err("vfe_id %d:  irq_status0  0x%.8x:  irq_status1  0x%.8x:"
+		"  ping_pong_status  0x%.8x: ****** othervfe  %d :   "
+		"irq_status0  0x%.8x:  irq_status1  0x%.8x:   "
+		"ping_pong_status  0x%.8x:   timestamp  %u:%u\n",
+		dump_data.arr[index].current_vfe_irq.vfe_id,
+		dump_data.arr[index].current_vfe_irq.irq_status0,
+		dump_data.arr[index].current_vfe_irq.irq_status1,
+		dump_data.arr[index].current_vfe_irq.ping_pong_status,
+		dump_data.arr[index].other_vfe.vfe_id,
+		dump_data.arr[index].other_vfe.irq_status0,
+		dump_data.arr[index].other_vfe.irq_status1,
+		dump_data.arr[index].other_vfe.ping_pong_status,
+		(uint32_t)dump_data.arr[index].other_vfe.ts.buf_time.tv_sec,
+		(uint32_t)dump_data.arr[index].other_vfe.ts.buf_time.tv_usec);
+
+		index = (index+1)%MAX_ISP_PING_PONG_DUMP_SIZE;
+		count--;
+	}
+}
 void msm_isp_do_tasklet(unsigned long data)
 {
 	unsigned long flags;
