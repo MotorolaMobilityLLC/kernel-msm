@@ -282,6 +282,7 @@ struct ufs_qcom_pm_qos_cpu_group {
  * @num_clusters: number of clusters defined
  * @default_cpu: cpu to use for voting for request not specifying a cpu
  * @is_enabled: flag specifying whether voting logic is enabled
+ * @lock: lock to protect qos status
  */
 struct ufs_qcom_pm_qos {
 	struct ufs_qcom_pm_qos_cpu_group *groups;
@@ -293,6 +294,7 @@ struct ufs_qcom_pm_qos {
 	int default_cpu;
 	int unvote_delay;
 	bool is_enabled;
+	spinlock_t lock;
 };
 
 struct ufs_qcom_host {
