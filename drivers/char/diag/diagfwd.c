@@ -1263,6 +1263,18 @@ void diag_process_hdlc(void *data, unsigned len)
 	hdlc.escaping = 0;
 
 	ret = diag_hdlc_decode(&hdlc);
+        /*
+	 * If the message is 3 bytes or less in length then the message is
+	 * too short. A message will need 4 bytes minimum, since there are
+	 * 2 bytes for the CRC and 1 byte for the ending 0x7e for the hdlc
+	 * encoding
+	 */
+ 	if (hdlc.dest_idx < 4) {
+		pr_err_ratelimited("diag: In %s, message is too short, len: %d,"
+			" dest len: %d\n", __func__, len, hdlc.dest_idx);
+                mutex_unlock(&driver->diag_hdlc_mutex);
+ 		return;
+ 	}
 	if (ret) {
 		crc_chk = crc_check(hdlc.dest_ptr, hdlc.dest_idx);
 		if (crc_chk) {
