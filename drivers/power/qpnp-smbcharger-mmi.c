@@ -1744,7 +1744,7 @@ static int calc_thermal_limited_current(struct smbchg_chip *chip,
 		max_current_ma = MIN((MAX_INPUT_PWR_UW / usbc_volt_mv),
 				     current_ma);
 
-	if (chip->max_usbin_ma)
+	if (chip->max_usbin_ma > 0)
 		max_current_ma = MIN(max_current_ma, chip->max_usbin_ma);
 	SMB_DBG(chip,
 		"Limiting current to: %d mA",
@@ -9756,8 +9756,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_dcin_curr_ma = chip->dc_target_current_ma;
 	bool wls_present;
 	bool eb_ext_pres;
-	bool extra_in_pwr = chip->max_usbin_ma && (chip->cl_usbc >
-						   chip->max_usbin_ma);
+	bool extra_in_pwr = (chip->max_usbin_ma > 0) && (chip->cl_usbc >
+							 chip->max_usbin_ma);
 
 	if (!atomic_read(&chip->hb_ready))
 		return;
