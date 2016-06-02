@@ -857,7 +857,8 @@ static int mdss_fb_set_hw_param(struct msm_fb_data_type *mfd,
 	int ret = -EINVAL;
 	const char *param_name, *val_name;
 
-	if (pinfo->hbm_type == HBM_TYPE_LCD_DCS_ONLY)
+	if ((pinfo->hbm_type == HBM_TYPE_LCD_DCS_ONLY) &&
+		(id == PARAM_HBM_ID))
 		return 0;
 
 	if (!pdata || !pdata->set_param) {
