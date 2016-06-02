@@ -296,6 +296,9 @@ void nls_uniname_to_cstring(struct super_block *sb, u8 *p_cstring, UNI_NAME_T *p
 
 	if (nls == NULL) {
 		len = utf16s_to_utf8s(uniname, MAX_NAME_LENGTH, UTF16_HOST_ENDIAN, p_cstring, MAX_NAME_LENGTH);
+		if (len >= MAX_NAME_LENGTH * MAX_CHARSET_SIZE)
+			len--;
+
 		p_cstring[len] = 0;
 		return;
 	}
@@ -360,7 +363,11 @@ void nls_cstring_to_uniname(struct super_block *sb, UNI_NAME_T *p_uniname, u8 *p
 #endif
 		for (j = 0; j < i; j++)
 			SET16_A(upname + j * 2, nls_upper(sb, uniname[j]));
-		uniname[i] = '\0';
+
+		if (i >= 0 && i < MAX_NAME_LENGTH)
+			uniname[i] = '\0';
+		else
+			lossy = TRUE;
 	}
 	else {
 		i = j = 0;
