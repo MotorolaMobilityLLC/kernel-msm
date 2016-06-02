@@ -43,6 +43,7 @@ int reboot_default = 1;
 int reboot_cpu;
 enum reboot_type reboot_type = BOOT_ACPI;
 int reboot_force;
+int reboot_in_progress = 0;
 
 /*
  * If set, this is used for preparing the system to power off.
@@ -213,6 +214,13 @@ void migrate_to_reboot_cpu(void)
  */
 void kernel_restart(char *cmd)
 {
+	if (reboot_in_progress) {
+		pr_emerg("skip restart by task %s(%d),restarting system"
+				" in progress\n", current->comm, current->pid);
+		return;
+	}
+	reboot_in_progress = 1;
+
 	kernel_restart_prepare(cmd);
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
@@ -226,6 +234,7 @@ void kernel_restart(char *cmd)
 		current->real_parent->pid);
 	kmsg_dump(KMSG_DUMP_RESTART);
 	machine_restart(cmd);
+	reboot_in_progress = 0;
 }
 EXPORT_SYMBOL_GPL(kernel_restart);
 
@@ -244,12 +253,19 @@ static void kernel_shutdown_prepare(enum system_states state)
  */
 void kernel_halt(void)
 {
+	if (reboot_in_progress) {
+		pr_emerg("skip halt by task %s(%d),restarting system"
+				" in progress\n", current->comm, current->pid);
+		return;
+	}
+	reboot_in_progress = 1;
 	kernel_shutdown_prepare(SYSTEM_HALT);
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
 	pr_emerg("System halted\n");
 	kmsg_dump(KMSG_DUMP_HALT);
 	machine_halt();
+	reboot_in_progress = 0;
 }
 EXPORT_SYMBOL_GPL(kernel_halt);
 
@@ -260,6 +276,12 @@ EXPORT_SYMBOL_GPL(kernel_halt);
  */
 void kernel_power_off(void)
 {
+	if (reboot_in_progress) {
+		pr_emerg("skip poweroff by task %s(%d),restarting system"
+				" in progress\n", current->comm, current->pid);
+		return;
+	}
+	reboot_in_progress = 1;
 	kernel_shutdown_prepare(SYSTEM_POWER_OFF);
 	if (pm_power_off_prepare)
 		pm_power_off_prepare();
@@ -272,6 +294,7 @@ void kernel_power_off(void)
 		current->real_parent->pid);
 	kmsg_dump(KMSG_DUMP_POWEROFF);
 	machine_power_off();
+	reboot_in_progress = 0;
 }
 EXPORT_SYMBOL_GPL(kernel_power_off);
 
