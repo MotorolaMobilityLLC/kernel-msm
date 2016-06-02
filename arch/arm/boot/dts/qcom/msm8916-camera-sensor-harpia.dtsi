@@ -150,7 +150,7 @@
 
 		qcom,page7 = <1 0x3d81 2 0x01 1 10>;
 		qcom,poll7 = <0 0x0 2 0 1 1>;
-		qcom,mem7 = <262 0x7010 2 0 1 1>;
+		qcom,mem7 = <278 0x7000 2 0 1 1>;
 
 		qcom,page8 = <1 0x5002 2 0x08 1 1>;
 		qcom,poll8 = <0 0x0 2 0 1 1>;
