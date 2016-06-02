@@ -49,6 +49,11 @@ static int media_device_get_info(struct media_device *dev,
 {
 	struct media_device_info info;
 
+	if (!(dev->dev && dev->dev->driver)) {
+		WARN(1, "null handle to media device\n");
+		return -EFAULT;
+	}
+
 	memset(&info, 0, sizeof(info));
 
 	strlcpy(info.driver, dev->dev->driver->name, sizeof(info.driver));
