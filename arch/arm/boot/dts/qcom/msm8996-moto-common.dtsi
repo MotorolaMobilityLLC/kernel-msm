@@ -991,6 +991,7 @@
 	usb3: ssusb@6a00000{
 		psy,type-c;
 		qcom,force-lpm-in-idle;
+		qcom,ssusb-compliance;
 		dwc3@6a00000 {
 			controller-number = /bits/ 8 <1>;
 		};
