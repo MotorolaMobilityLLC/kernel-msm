@@ -313,7 +313,7 @@ static int perf_cpu_pm_notifier(struct notifier_block *self, unsigned long cmd,
 			 * to re-enable active counters.
 			 */
 			__get_cpu_var(from_idle) = 1;
-			cpu_pmu->reset(NULL);
+			cpu_pmu->reset(cpu_pmu);
 			pmu = &cpu_pmu->pmu;
 			pmu->pmu_enable(pmu);
 		}
