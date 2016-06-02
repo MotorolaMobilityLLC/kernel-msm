@@ -3295,20 +3295,6 @@ static int android_enable_function(struct android_dev *dev,
 	struct android_usb_platform_data *pdata = dev->pdata;
 	struct usb_gadget *gadget = dev->cdev->gadget;
 
-	if(of_board_is_sharp_eve()) {
-		if (!strcmp(name, "diag") && !get_diag_enable_from_smem()) {
-			pr_info("%s: diag cannot enable\n", __func__);
-			return 0;
-		}
-		else if (!strcmp(name, "adb") && BOOT_MODE_TESTMODE == boot_mode_hold && !get_diag_enable_from_smem()) {
-			pr_info("%s: adb cannot enable testmode\n", __func__);
-			return 0;
-		}
-		else if (!strcmp(name, "adb") && BOOT_MODE_SOFTWARE_UPDATE == boot_mode_hold && !get_diag_enable_from_smem()) {
-			pr_info("%s: adb cannot enable softupdate\n", __func__);
-			return 0;
-		}
-	}
 	while ((f = *functions++)) {
 		if (!strcmp(name, f->name)) {
 			if (f->android_dev && f->android_dev != dev)
