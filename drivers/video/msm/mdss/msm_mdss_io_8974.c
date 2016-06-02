@@ -1372,16 +1372,19 @@ void mdss_dsi_mipi_lane_select(struct mdss_panel_data *pdata)
 	total_data_rate = (u64)pixel_total * 60 * 24;
 	mipi_ddr_clk_4lanes = (u32)(total_data_rate / 4) / 2;
 
-	if ((mipi_ddr_clk_4lanes > max_mipi_ddr_clk_4lanes) &&
-			(!pinfo->mipi.data_lane2 || !pinfo->mipi.data_lane3)) {
-		pinfo->mipi.data_lane2 = 1;
-		pinfo->mipi.data_lane3 = 1;
-		pr_warn("%s: pixel_total= %d total_data_rate=%llu mipi_ddr_clk_4lanes=%d max_mipi_ddr_clk_4lanes=%d\n",
-			__func__, pixel_total, total_data_rate,
-			mipi_ddr_clk_4lanes, max_mipi_ddr_clk_4lanes);
+	if (mipi_ddr_clk_4lanes > max_mipi_ddr_clk_4lanes) {
+		if (!pinfo->mipi.data_lane2 || !pinfo->mipi.data_lane3) {
+			pinfo->mipi.data_lane0 = 1;
+			pinfo->mipi.data_lane1 = 1;
+			pinfo->mipi.data_lane2 = 1;
+			pinfo->mipi.data_lane3 = 1;
+			pr_warn("%s: pixel_total= %d total_data_rate=%llu mipi_ddr_clk_4lanes=%d max_mipi_ddr_clk_4lanes=%d\n",
+				__func__, pixel_total, total_data_rate,
+				mipi_ddr_clk_4lanes, max_mipi_ddr_clk_4lanes);
 
-		pr_warn("%s: forced to use 4 MIPI data lanes. mipi_ddr_clk_4lanes = %d\n",
-			__func__, mipi_ddr_clk_4lanes);
+			pr_warn("%s: forced to use 4 MIPI data lanes. mipi_ddr_clk_4lanes = %d\n",
+				__func__, mipi_ddr_clk_4lanes);
+		}
 	} else {
 		/* change back to 2 data lanes for screen resolution < 720p */
 		pinfo->mipi.data_lane2 = 0;
