@@ -58,6 +58,8 @@
 #include "regdb.h"
 #include "nl80211.h"
 
+#include <soc/qcom/socinfo.h>
+
 #ifdef CONFIG_CFG80211_REG_DEBUG
 #define REG_DBG_PRINT(format, args...)			\
 	printk(KERN_DEBUG pr_fmt(format), ##args)
@@ -846,6 +848,13 @@ static void handle_channel(struct wiphy *wiphy,
 	const struct ieee80211_freq_range *freq_range = NULL;
 	struct wiphy *request_wiphy = NULL;
 	struct regulatory_request *lr = get_last_request();
+
+	if(of_board_is_sharp_eve()){
+		if(chan->center_freq == 2484){
+			chan->flags |= IEEE80211_CHAN_DISABLED;
+			return;
+		}
+	}
 
 	request_wiphy = wiphy_idx_to_wiphy(lr->wiphy_idx);
 
