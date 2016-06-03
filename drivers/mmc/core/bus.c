@@ -27,6 +27,8 @@
 
 #define to_mmc_driver(d)	container_of(d, struct mmc_driver, drv)
 
+#define CARD_ADD_REMOVE_DELAY	2000
+
 static ssize_t type_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -386,6 +388,9 @@ int mmc_add_card(struct mmc_card *card)
 			pr_err("%s: %s: failed to init wakeup: %d\n",
 			       mmc_hostname(card->host), __func__, ret);
 	}
+
+	/* wait for user space to consume the event */
+	__pm_wakeup_event(&card->host->pm_ws, CARD_ADD_REMOVE_DELAY);
 	ret = device_add(&card->dev);
 	if (ret)
 		return ret;
@@ -413,6 +418,8 @@ void mmc_remove_card(struct mmc_card *card)
 			pr_info("%s: card %04x removed\n",
 				mmc_hostname(card->host), card->rca);
 		}
+		/* wait for user space to consume the event */
+		__pm_wakeup_event(&card->host->pm_ws, CARD_ADD_REMOVE_DELAY);
 		device_del(&card->dev);
 	}
 
