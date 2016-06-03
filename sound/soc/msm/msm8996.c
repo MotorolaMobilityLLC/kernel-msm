@@ -716,6 +716,7 @@ static const struct snd_soc_dapm_route florida_audio_routes[] = {
 	{"AMP Playback", NULL, "AIF1 Capture"},
 	{"AIF1 Playback", NULL, "AMP Capture"},
 	{"AMP Playback", NULL, "OPCLK"},
+	{"AMP Capture", NULL, "OPCLK"},
 
 	{"DSP2 Virtual Output", NULL, "DSPSWITCH"},
 	{"DSP3 Virtual Output", NULL, "DSPSWITCH"},
