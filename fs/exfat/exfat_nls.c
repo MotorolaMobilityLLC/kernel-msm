@@ -295,7 +295,9 @@ void nls_uniname_to_cstring(struct super_block *sb, u8 *p_cstring, UNI_NAME_T *p
 	struct nls_table *nls = EXFAT_SB(sb)->nls_io;
 
 	if (nls == NULL) {
-		len = utf16s_to_utf8s(uniname, MAX_NAME_LENGTH, UTF16_HOST_ENDIAN, p_cstring, MAX_NAME_LENGTH);
+		len = utf16s_to_utf8s(uniname, MAX_NAME_LENGTH,
+			UTF16_HOST_ENDIAN, p_cstring,
+			MAX_NAME_LENGTH * MAX_CHARSET_SIZE);
 		if (len >= MAX_NAME_LENGTH * MAX_CHARSET_SIZE)
 			len--;
 
@@ -359,7 +361,8 @@ void nls_cstring_to_uniname(struct super_block *sb, UNI_NAME_T *p_uniname, u8 *p
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,101)
 		i = utf8s_to_utf16s(p_cstring, MAX_NAME_LENGTH, uniname);
 #else
-		i = utf8s_to_utf16s(p_cstring, MAX_NAME_LENGTH, UTF16_HOST_ENDIAN, uniname, MAX_NAME_LENGTH);
+		i = utf8s_to_utf16s(p_cstring, MAX_NAME_LENGTH * MAX_CHARSET_SIZE,
+			UTF16_HOST_ENDIAN, uniname, MAX_NAME_LENGTH);
 #endif
 		for (j = 0; j < i; j++)
 			SET16_A(upname + j * 2, nls_upper(sb, uniname[j]));
