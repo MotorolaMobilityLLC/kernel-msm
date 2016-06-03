@@ -631,8 +631,8 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	spin_lock_init(&host->lock);
 	init_waitqueue_head(&host->wq);
 	INIT_DELAYED_WORK(&host->detect, mmc_rescan);
-#ifdef CONFIG_PM
 	wakeup_source_init(&host->pm_ws, dev_name(&host->class_dev));
+#ifdef CONFIG_PM
 	host->pm_notify.notifier_call = mmc_pm_notify;
 #endif
 	setup_timer(&host->retune_timer, mmc_retune_timer, (unsigned long)host);
