@@ -22,7 +22,6 @@ struct anx7805_platform_data
 	int gpio_reset;
 	int gpio_int;
 	int gpio_cbl_det;
-	int gpio_dsi_sel;
 	const char *vdd10_name;
 	const char *avdd33_name;
 	const char *vdd18_name;
