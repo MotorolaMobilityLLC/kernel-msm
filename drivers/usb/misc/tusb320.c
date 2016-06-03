@@ -12,6 +12,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+#define pr_fmt(fmt) "TUSB: %s: " fmt, __func__
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -143,9 +144,14 @@ struct tusb320_chip {
 	struct power_supply *usb_psy;
         struct mutex mlock;
 	struct dual_role_phy_instance *dual_role;
-	bool role_switch;
 	struct dual_role_phy_desc *desc;
 };
+
+#define tusb_update_state(chip) \
+	if (chip) { \
+		wake_up_interruptible(&tusb_mode_switch); \
+	}
+
 
 DECLARE_WAIT_QUEUE_HEAD(tusb_mode_switch);
 
@@ -223,12 +229,6 @@ static int tusb320_select_mode(struct tusb320_chip *chip, u8 sel_mode)
 		return -EINVAL;
 	}
 
-	/* mode selection is possibel only in standby/unattached mode */
-	if (chip->state != TUBS320_NOT_ATTACH) {
-		dev_err(cdev, "%s: unavailable in attached state (%d)\n",
-				__func__, chip->state);
-		return -EPERM;
-	}
 
 	if (chip->mode != sel_mode) {
 		rc = tusb320_write_masked_byte(chip->client,
@@ -243,7 +243,7 @@ static int tusb320_select_mode(struct tusb320_chip *chip, u8 sel_mode)
 		chip->mode = sel_mode;
 	}
 
-	dev_dbg(cdev, "%s: mode (%d)\n", __func__, chip->mode);
+	pr_warn(": mode (%d)\n", chip->mode);
 
 	return rc;
 }
@@ -465,6 +465,8 @@ static int tusb320_set_current_max(struct power_supply *psy,
 	return -ENXIO;
 }
 
+static bool switch_flag = 0;
+
 static void tusb320_not_attach(struct tusb320_chip *chip)
 {
 	struct device *cdev = &chip->client->dev;
@@ -485,10 +487,20 @@ static void tusb320_not_attach(struct tusb320_chip *chip)
 		break;
 	}
 
+	if (switch_flag) {
+		tusb320_select_mode(chip, TUBS320_MODE_DRP);
+		tusb320_set_source_free(chip);
+		tusb320_i2c_reset_device(chip);
+		switch_flag = 0;
+	}
+
 	chip->state = TUBS320_NOT_ATTACH;
 	chip->cable_direction = 0;
 	chip->ufp_power = TUBS320_UFP_POWER_DEFAULT;
 	chip->accessory_mode = TUBS320_ACC_NOT_ATTACH;
+
+	tusb_update_state(chip);
+	dual_role_instance_changed(chip->dual_role);
 }
 
 static void tusb320_dfp_attach_ufp(struct tusb320_chip *chip, u8 detail)
@@ -515,6 +527,9 @@ static void tusb320_dfp_attach_ufp(struct tusb320_chip *chip, u8 detail)
 		dev_err(cdev, "%s: Invaild state\n", __func__);
 		break;
 	}
+
+	tusb_update_state(chip);
+	dual_role_instance_changed(chip->dual_role);
 }
 
 static void tusb320_ufp_attach_dfp(struct tusb320_chip *chip, u8 detail)
@@ -554,6 +569,9 @@ static void tusb320_ufp_attach_dfp(struct tusb320_chip *chip, u8 detail)
 		dev_err(cdev, "%s: Invaild state\n", __func__);
 		break;
 	}
+
+	tusb_update_state(chip);
+	dual_role_instance_changed(chip->dual_role);
 }
 
 static void tusb320_attach_accessory_detail(struct tusb320_chip *chip,
@@ -738,7 +756,7 @@ static int tusb320_parse_dt(struct device *cdev, struct tusb320_data *data)
 		rc = 0;
 	}
 
-	dev_info(cdev, "select_mode: %d dfp_power %d\n",
+	pr_warn("select_mode: %d dfp_power %d\n",
 			data->select_mode, data->dfp_power);
 
 out:
@@ -825,7 +843,7 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 				const unsigned int *val) {
 	struct tusb320_chip *chip;
 	struct i2c_client *client = dual_role_get_drvdata(dual_role);
-	u8 mode, target_state, fallback_mode, fallback_state;
+	u8 mode, target_state;
 	int rc;
 	struct device *cdev;
 	long timeout;
@@ -839,16 +857,12 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 	if (prop == DUAL_ROLE_PROP_MODE) {
 		if (*val == DUAL_ROLE_PROP_MODE_DFP) {
 			dev_dbg(cdev, "%s: Setting SRC mode\n", __func__);
-			mode = TUBS320_MODE_UFP;
-			fallback_mode = TUBS320_MODE_DFP;
+			mode = TUBS320_MODE_DFP;
 			target_state = TUBS320_DFP_ATTACH_UFP;
-			fallback_state = TUBS320_UFP_ATTACH_DFP;
 		} else if (*val == DUAL_ROLE_PROP_MODE_UFP) {
 			dev_dbg(cdev, "%s: Setting SNK mode\n", __func__);
-			mode = TUBS320_MODE_DFP;
-			fallback_mode = TUBS320_MODE_UFP;
+			mode = TUBS320_MODE_UFP;
 			target_state = TUBS320_UFP_ATTACH_DFP;
-			fallback_state = TUBS320_DFP_ATTACH_UFP;
 		} else {
 			dev_err(cdev, "%s: Trying to set invalid mode\n",
 								__func__);
@@ -863,34 +877,33 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 		return 0;
 
 	mutex_lock(&chip->mlock);
-	/* role_switch is used a flag to force the chip back Try.SNK
-	 * state machine. */
-	chip->role_switch = false;
+        switch_flag = 0;
 	rc = tusb320_select_mode(chip, mode);
 	if (IS_ERR_VALUE(rc))
 		dev_err(cdev, "failed to select mode\n");
 
 	tusb320_i2c_reset_device(chip);
-	chip->role_switch = true;
 	mutex_unlock(&chip->mlock);
 
 	timeout = wait_event_interruptible_timeout(tusb_mode_switch,
 			chip->state == target_state,
 			msecs_to_jiffies(ROLE_SWITCH_TIMEOUT));
 
-	if (timeout > 0)
+	if (timeout > 0) {
+		switch_flag = 1;
 		return 0;
+	}
 
 	mutex_lock(&chip->mlock);
-	rc = tusb320_select_mode(chip, fallback_mode);
+	rc = tusb320_select_mode(chip, TUBS320_MODE_DRP);
 	if (IS_ERR_VALUE(rc))
 		dev_err(cdev, "failed to select back mode\n");
+
+	tusb320_set_source_free(chip);
 	tusb320_i2c_reset_device(chip);
 	mutex_unlock(&chip->mlock);
 
-	timeout = wait_event_interruptible_timeout(tusb_mode_switch,
-			chip->state == fallback_state,
-			msecs_to_jiffies(ROLE_SWITCH_TIMEOUT));
+	switch_flag = 1;
 
 	return -EIO;
 }
@@ -1001,14 +1014,9 @@ static int tusb320_probe(struct i2c_client *client,
 	if (IS_ERR_VALUE(ret))
 		dev_err(cdev, "failed to set src free as try snk\n");
 
-	pr_info("force to trigger a interrupt handler\n");
-	schedule_work(&chip->dwork);
-
-	if (!is_active) {
-		ret = tusb320_select_mode(chip, chip->pdata->select_mode);
-		if (IS_ERR_VALUE(ret))
-			dev_err(cdev, "failed to select mode and work as default\n");
-	}
+	ret = tusb320_select_mode(chip, chip->pdata->select_mode);
+	if (IS_ERR_VALUE(ret))
+		dev_err(cdev, "failed to select mode and work as default\n");
 
 	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
                 pr_err("to support select mode\n");
@@ -1031,6 +1039,9 @@ static int tusb320_probe(struct i2c_client *client,
 		chip->dual_role = dual_role;
 		chip->desc = desc;
 	}
+
+	pr_info("force to trigger a interrupt handler\n");
+	schedule_work(&chip->dwork);
 
 	return 0;
 
@@ -1057,6 +1068,11 @@ static int tusb320_remove(struct i2c_client *client)
 	if (!chip) {
 		pr_err("%s : chip is null\n", __func__);
 		return -ENODEV;
+	}
+
+	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
+		devm_dual_role_instance_unregister(cdev, chip->dual_role);
+		devm_kfree(cdev, chip->desc);
 	}
 
 	if (chip->irq_gpio > 0)

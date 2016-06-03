@@ -277,6 +277,7 @@
 		qcom,fusb-irq = <&msm_gpio 45 0x00>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb_default>;
+		tusb320,select-mode =  /bits/ 8 <3>;
 	};
 
 	tpa6130a2@60 {
