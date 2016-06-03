@@ -2276,8 +2276,11 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 		mdwc->lpm_flags |= MDWC3_ASYNC_IRQ_WAKE_CAPABILITY;
 	}
 
-	if (mdwc->qos_latency >= 0)
-		pm_qos_remove_request(&mdwc->dwc3_pm_qos_request);
+	if (mdwc->qos_latency >= 0) {
+		pm_qos_update_request(&mdwc->dwc3_pm_qos_request,
+					PM_QOS_DEFAULT_VALUE);
+		dbg_event(dwc->ctrl_num, 0xFF, "PM QOS OFF", 0);
+	}
 
 	dev_info(mdwc->dev, "DWC3 in low power mode\n");
 	dbg_event(0xFF, "SUSComplete", mdwc->lpm_to_suspend_delay);
@@ -2300,9 +2303,11 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 
 	pm_stay_awake(mdwc->dev);
 
-	if (mdwc->qos_latency >= 0)
-		pm_qos_add_request(&mdwc->dwc3_pm_qos_request,
-			PM_QOS_CPU_DMA_LATENCY, mdwc->qos_latency);
+	if (mdwc->qos_latency >= 0) {
+		pm_qos_update_request(&mdwc->dwc3_pm_qos_request,
+						mdwc->qos_latency);
+		dbg_event(dwc->ctrl_num, 0xFF, "PM QOS ON", 0);
+	}
 
 	/* Vote for TCXO while waking up USB HSPHY */
 	ret = clk_prepare_enable(mdwc->xo_clk);
@@ -3701,6 +3706,11 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		device_create_file(&pdev->dev, &dev_attr_enable_ss_compliance);
 		device_create_file(&pdev->dev, &dev_attr_toggle_pattern);
 	}
+
+	if (mdwc->qos_latency >= 0)
+		pm_qos_add_request(&mdwc->dwc3_pm_qos_request,
+			PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+
 	return 0;
 
 put_dwc3:
@@ -3797,6 +3807,9 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 	clk_put(mdwc->xo_clk);
 
 	dwc3_msm_config_gdsc(mdwc, 0);
+
+	if (mdwc->qos_latency >= 0)
+		pm_qos_remove_request(&mdwc->dwc3_pm_qos_request);
 
 	return 0;
 }
