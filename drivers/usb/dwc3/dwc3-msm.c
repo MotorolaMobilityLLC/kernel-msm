@@ -90,7 +90,13 @@ MODULE_PARM_DESC(dcp_max_current, "max current drawn for DCP charger");
 
 /* XHCI registers */
 #define USB3_HCSPARAMS1		(0x4)
+#define USB3_USBCMD             (0x20)
 #define USB3_PORTSC		(0x420)
+
+#define USBCMD_HCRST		BIT(1)
+#define PORTSC_PP		BIT(9)
+#define HSTPRTCMPL		BIT(30)
+
 
 /**
  *  USB QSCRATCH Hardware registers
@@ -255,6 +261,7 @@ struct dwc3_msm {
 	struct gpio		otg_fault_gpio;
 	int			otg_fault_irq;
 	enum power_supply_usb_priority usb_priority;
+	bool			ss_compliance;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -387,6 +394,68 @@ static bool dwc3_msm_is_host_superspeed(struct dwc3_msm *mdwc)
 
 	return false;
 }
+
+static ssize_t ss_compliance_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	int i, num_ports;
+	u32 reg;
+
+	reg = dwc3_msm_read_reg(mdwc->base, USB3_HCSPARAMS1);
+	num_ports = HCS_MAX_PORTS(reg);
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	/* Handle the mode change if it is valid */
+	if (mode) {
+		dwc3_msm_write_reg_field(mdwc->base,
+				USB3_USBCMD, USBCMD_HCRST, USBCMD_HCRST);
+		for (i = 0; i < num_ports; i++) {
+			dwc3_msm_write_reg_field(mdwc->base,
+			USB3_PORTSC + i*0x10, PORTSC_PP, 0x0);
+		}
+		reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg|HSTPRTCMPL);
+	} else {
+		reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg&(~HSTPRTCMPL));
+		dwc3_msm_write_reg_field(mdwc->base,
+				USB3_USBCMD, USBCMD_HCRST, USBCMD_HCRST);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(enable_ss_compliance, 0664,
+			NULL,
+			ss_compliance_store);
+
+static ssize_t toggle_pattern_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	u32 reg;
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg&(~HSTPRTCMPL));
+	mdelay(2);
+	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg|HSTPRTCMPL);
+	return count;
+}
+
+static DEVICE_ATTR(toggle_pattern, 0664,
+			NULL,
+			toggle_pattern_store);
 
 static inline bool dwc3_msm_is_dev_superspeed(struct dwc3_msm *mdwc)
 {
@@ -688,6 +757,14 @@ static int dwc3_msm_ep_queue(struct usb_ep *ep,
 		return -EPERM;
 	}
 
+	if (!mdwc->original_ep_ops[dep->number]) {
+		dev_err(mdwc->dev,
+			"ep [%s,%d] was unconfigured as msm endpoint\n",
+			ep->name, dep->number);
+		spin_unlock_irqrestore(&dwc->lock, flags);
+		return -EINVAL;
+	}
+
 	if (!request) {
 		dev_err(mdwc->dev, "%s: request is NULL\n", __func__);
 		spin_unlock_irqrestore(&dwc->lock, flags);
@@ -695,14 +772,11 @@ static int dwc3_msm_ep_queue(struct usb_ep *ep,
 	}
 
 	if (!(request->udc_priv & MSM_SPS_MODE)) {
-		/* Not SPS mode, call original queue */
-		dev_vdbg(mdwc->dev, "%s: not sps mode, use regular queue\n",
+		dev_err(mdwc->dev, "%s: sps mode is not set\n",
 					__func__);
 
 		spin_unlock_irqrestore(&dwc->lock, flags);
-		return (mdwc->original_ep_ops[dep->number])->queue(ep,
-								request,
-								gfp_flags);
+		return -EINVAL;
 	}
 
 	/* HW restriction regarding TRB size (8KB) */
@@ -1365,8 +1439,7 @@ static int dwc3_msm_gsi_ep_op(struct usb_ep *ep,
  *
  * @return int - 0 on success, negetive on error.
  */
-int msm_ep_config(struct usb_ep *ep, struct usb_request *request,
-							gfp_t gfp_flags)
+int msm_ep_config(struct usb_ep *ep, struct usb_request *request)
 {
 	struct dwc3_ep *dep = to_dwc3_ep(ep);
 	struct dwc3 *dwc = dep->dwc;
@@ -1378,23 +1451,27 @@ int msm_ep_config(struct usb_ep *ep, struct usb_request *request,
 	bool disable_wb;
 	bool internal_mem;
 	bool ioc;
+	unsigned long flags;
 
 
+	spin_lock_irqsave(&dwc->lock, flags);
 	/* Save original ep ops for future restore*/
 	if (mdwc->original_ep_ops[dep->number]) {
 		dev_err(mdwc->dev,
 			"ep [%s,%d] already configured as msm endpoint\n",
 			ep->name, dep->number);
+		spin_unlock_irqrestore(&dwc->lock, flags);
 		return -EPERM;
 	}
 	mdwc->original_ep_ops[dep->number] = ep->ops;
 
 	/* Set new usb ops as we like */
-	new_ep_ops = kzalloc(sizeof(struct usb_ep_ops), gfp_flags);
+	new_ep_ops = kzalloc(sizeof(struct usb_ep_ops), GFP_ATOMIC);
 	if (!new_ep_ops) {
 		dev_err(mdwc->dev,
 			"%s: unable to allocate mem for new usb ep ops\n",
 			__func__);
+		spin_unlock_irqrestore(&dwc->lock, flags);
 		return -ENOMEM;
 	}
 	(*new_ep_ops) = (*ep->ops);
@@ -1402,8 +1479,10 @@ int msm_ep_config(struct usb_ep *ep, struct usb_request *request,
 	new_ep_ops->gsi_ep_op = dwc3_msm_gsi_ep_op;
 	ep->ops = new_ep_ops;
 
-	if (!mdwc->dbm || !request || (dep->endpoint.ep_type == EP_TYPE_GSI))
+	if (!mdwc->dbm || !request || (dep->endpoint.ep_type == EP_TYPE_GSI)) {
+		spin_unlock_irqrestore(&dwc->lock, flags);
 		return 0;
+	}
 
 	/*
 	 * Configure the DBM endpoint if required.
@@ -1419,8 +1498,11 @@ int msm_ep_config(struct usb_ep *ep, struct usb_request *request,
 	if (ret < 0) {
 		dev_err(mdwc->dev,
 			"error %d after calling dbm_ep_config\n", ret);
+		spin_unlock_irqrestore(&dwc->lock, flags);
 		return ret;
 	}
+
+	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	return 0;
 }
@@ -1441,12 +1523,15 @@ int msm_ep_unconfig(struct usb_ep *ep)
 	struct dwc3 *dwc = dep->dwc;
 	struct dwc3_msm *mdwc = dev_get_drvdata(dwc->dev->parent);
 	struct usb_ep_ops *old_ep_ops;
+	unsigned long flags;
 
+	spin_lock_irqsave(&dwc->lock, flags);
 	/* Restore original ep ops */
 	if (!mdwc->original_ep_ops[dep->number]) {
 		dev_dbg(mdwc->dev,
 			"ep [%s,%d] was not configured as msm endpoint\n",
 			ep->name, dep->number);
+		spin_unlock_irqrestore(&dwc->lock, flags);
 		return -EINVAL;
 	}
 	old_ep_ops = (struct usb_ep_ops	*)ep->ops;
@@ -1458,8 +1543,10 @@ int msm_ep_unconfig(struct usb_ep *ep)
 	 * Do HERE more usb endpoint un-configurations
 	 * which are specific to MSM.
 	 */
-	if (!mdwc->dbm || (dep->endpoint.ep_type == EP_TYPE_GSI))
+	if (!mdwc->dbm || (dep->endpoint.ep_type == EP_TYPE_GSI)) {
+		spin_unlock_irqrestore(&dwc->lock, flags);
 		return 0;
+	}
 
 	if (dep->busy_slot == dep->free_slot && list_empty(&dep->request_list)
 					 && list_empty(&dep->req_queued)) {
@@ -1479,6 +1566,8 @@ int msm_ep_unconfig(struct usb_ep *ep)
 				!dbm_reset_ep_after_lpm(mdwc->dbm))
 			dbm_event_buffer_config(mdwc->dbm, 0, 0, 0);
 	}
+
+	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	return 0;
 }
@@ -2052,8 +2141,11 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 		mdwc->lpm_flags |= MDWC3_ASYNC_IRQ_WAKE_CAPABILITY;
 	}
 
-	if (mdwc->qos_latency >= 0)
-		pm_qos_remove_request(&mdwc->dwc3_pm_qos_request);
+	if (mdwc->qos_latency >= 0) {
+		pm_qos_update_request(&mdwc->dwc3_pm_qos_request,
+					PM_QOS_DEFAULT_VALUE);
+		dbg_event(dwc->ctrl_num, 0xFF, "PM QOS OFF", 0);
+	}
 
 	dev_info(mdwc->dev, "DWC3 in low power mode\n");
 	return 0;
@@ -2073,9 +2165,11 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 
 	pm_stay_awake(mdwc->dev);
 
-	if (mdwc->qos_latency >= 0)
-		pm_qos_add_request(&mdwc->dwc3_pm_qos_request,
-			PM_QOS_CPU_DMA_LATENCY, mdwc->qos_latency);
+	if (mdwc->qos_latency >= 0) {
+		pm_qos_update_request(&mdwc->dwc3_pm_qos_request,
+						mdwc->qos_latency);
+		dbg_event(dwc->ctrl_num, 0xFF, "PM QOS ON", 0);
+	}
 
 	/* Enable bus voting */
 	if (mdwc->bus_perf_client && !mdwc->disable_bus_vote) {
@@ -2939,6 +3033,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	set_bit(ID, &mdwc->inputs);
 	mdwc->charging_disabled = of_property_read_bool(node,
 				"qcom,charging-disabled");
+	mdwc->ss_compliance = of_property_read_bool(node,
+				"qcom,ssusb-compliance");
 
 	ret = of_property_read_u32(node, "qcom,lpm-to-suspend-delay-ms",
 				&mdwc->lpm_to_suspend_delay);
@@ -3319,6 +3415,16 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev,
 				"failed to create debugfs for bus vote\n");
 	}
+
+	if (mdwc->ss_compliance) {
+		device_create_file(&pdev->dev, &dev_attr_enable_ss_compliance);
+		device_create_file(&pdev->dev, &dev_attr_toggle_pattern);
+	}
+
+	if (mdwc->qos_latency >= 0)
+		pm_qos_add_request(&mdwc->dwc3_pm_qos_request,
+			PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+
 	return 0;
 
 put_dwc3:
@@ -3374,6 +3480,11 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 		power_supply_unregister(&mdwc->usb_psy);
 	if (mdwc->hs_phy)
 		mdwc->hs_phy->flags &= ~PHY_HOST_MODE;
+	if (mdwc->ss_compliance) {
+		device_remove_file(&pdev->dev, &dev_attr_enable_ss_compliance);
+		device_remove_file(&pdev->dev, &dev_attr_toggle_pattern);
+	}
+
 	platform_device_put(mdwc->dwc3);
 	device_for_each_child(&pdev->dev, NULL, dwc3_msm_remove_children);
 
@@ -3404,6 +3515,9 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 	clk_put(mdwc->xo_clk);
 
 	dwc3_msm_config_gdsc(mdwc, 0);
+
+	if (mdwc->qos_latency >= 0)
+		pm_qos_remove_request(&mdwc->dwc3_pm_qos_request);
 
 	return 0;
 }
