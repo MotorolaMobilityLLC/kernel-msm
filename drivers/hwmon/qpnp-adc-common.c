@@ -746,6 +746,37 @@ static const struct qpnp_vadc_map_pt adcmap_ncp03wf683[] = {
 	{30,	125}
 };
 
+/* Voltage to temperature for XO_THERM */
+static const struct qpnp_vadc_map_pt adcmap_epson_fa_128s[] = {
+	{1800,-40},
+	{1657,-20},
+	{1554,-10},
+	{1407,0},
+	{1222,10},
+	{1009,20},
+	{797,30},
+	{604,40},
+	{446,50},
+	{324,60},
+	{234,70},
+	{0,122}
+};
+
+static const struct qpnp_vadc_map_pt adcmap_tdk_ntcg064ef104ftbx[] = {
+	{1800,-40},
+	{1655,-20},
+	{1552,-10},
+	{1406, 0},
+	{1221,10},
+	{1009,20},
+	{797,30},
+	{604,40},
+	{447,50},
+	{324,60},
+	{234,70},
+	{0,122}
+};
+
 static int32_t qpnp_adc_map_voltage_temp(const struct qpnp_vadc_map_pt *pts,
 		uint32_t tablesize, int32_t input, int64_t *output)
 {
@@ -2250,3 +2281,116 @@ int32_t qpnp_adc_get_devicetree_data(struct spmi_device *spmi,
 	return 0;
 }
 EXPORT_SYMBOL(qpnp_adc_get_devicetree_data);
+
+int32_t qpnp_adc_epsonfa_therm(struct qpnp_vadc_chip *chip,
+		int32_t adc_code,
+		const struct qpnp_adc_properties *adc_properties,
+		const struct qpnp_vadc_chan_properties *chan_properties,
+		struct qpnp_vadc_result *adc_chan_result)
+{
+	int64_t xo_thm = 0;
+
+	if (!chan_properties || !chan_properties->offset_gain_numerator ||
+		!chan_properties->offset_gain_denominator || !adc_properties
+		|| !adc_chan_result)
+		return -EINVAL;
+
+	if (chan_properties->calib_type == CALIB_ABSOLUTE) {
+		xo_thm = qpnp_adc_scale_absolute_calib(adc_code,
+			adc_properties, chan_properties);
+		do_div(xo_thm , 1000);
+	} else {
+		xo_thm = qpnp_adc_scale_ratiometric_calib(adc_code,
+			adc_properties, chan_properties);
+	}
+	qpnp_adc_map_voltage_temp(adcmap_epson_fa_128s,
+		ARRAY_SIZE(adcmap_epson_fa_128s),
+		xo_thm, &adc_chan_result->physical);
+
+	return 0;
+}
+EXPORT_SYMBOL(qpnp_adc_epsonfa_therm);
+
+int32_t qpnp_adc_scale_therm_tdkntc(struct qpnp_vadc_chip *chip,
+		int32_t adc_code,
+		const struct qpnp_adc_properties *adc_properties,
+		const struct qpnp_vadc_chan_properties *chan_properties,
+		struct qpnp_vadc_result *adc_chan_result)
+{
+	int64_t therm_voltage = 0;
+
+	if (chan_properties->calib_type == CALIB_ABSOLUTE) {
+		therm_voltage = qpnp_adc_scale_absolute_calib(adc_code,
+			adc_properties, chan_properties);
+		do_div(therm_voltage , 1000);
+	} else {
+		therm_voltage = qpnp_adc_scale_ratiometric_calib(adc_code,
+			adc_properties, chan_properties);
+	}
+
+	qpnp_adc_map_voltage_temp(adcmap_tdk_ntcg064ef104ftbx,
+		ARRAY_SIZE(adcmap_tdk_ntcg064ef104ftbx),
+		therm_voltage, &adc_chan_result->physical);
+
+	return 0;
+}
+EXPORT_SYMBOL(qpnp_adc_scale_therm_tdkntc);
+
+int32_t qpnp_adc_tm_scale_voltage_therm_tdkntc(struct qpnp_vadc_chip *chip,
+					uint32_t reg, int64_t *result)
+{
+	int64_t adc_voltage = 0;
+	struct qpnp_vadc_linear_graph param1;
+	int negative_offset;
+
+	qpnp_get_vadc_gain_and_offset(chip, &param1, CALIB_RATIOMETRIC);
+
+	adc_voltage = (reg - param1.adc_gnd) * param1.adc_vref;
+	if (adc_voltage < 0) {
+		negative_offset = 1;
+		adc_voltage = -adc_voltage;
+	}
+
+	do_div(adc_voltage, param1.dy);
+
+	qpnp_adc_map_voltage_temp(adcmap_tdk_ntcg064ef104ftbx,
+		ARRAY_SIZE(adcmap_tdk_ntcg064ef104ftbx),
+		adc_voltage, result);
+	if (negative_offset)
+		adc_voltage = -adc_voltage;
+
+	return 0;
+}
+EXPORT_SYMBOL(qpnp_adc_tm_scale_voltage_therm_tdkntc);
+
+int32_t qpnp_adc_tm_scale_therm_voltage_tdkntc(struct qpnp_vadc_chip *chip,
+				struct qpnp_adc_tm_config *param)
+{
+	struct qpnp_vadc_linear_graph param1;
+	int rc;
+
+	qpnp_get_vadc_gain_and_offset(chip, &param1, CALIB_RATIOMETRIC);
+
+	rc = qpnp_adc_map_temp_voltage(adcmap_100k_104ef_104fb,
+		ARRAY_SIZE(adcmap_100k_104ef_104fb),
+		param->low_thr_temp, &param->low_thr_voltage);
+	if (rc)
+		return rc;
+
+	param->low_thr_voltage *= param1.dy;
+	do_div(param->low_thr_voltage, param1.adc_vref);
+	param->low_thr_voltage += param1.adc_gnd;
+
+	rc = qpnp_adc_map_temp_voltage(adcmap_tdk_ntcg064ef104ftbx,
+		ARRAY_SIZE(adcmap_tdk_ntcg064ef104ftbx),
+		param->high_thr_temp, &param->high_thr_voltage);
+	if (rc)
+		return rc;
+
+	param->high_thr_voltage *= param1.dy;
+	do_div(param->high_thr_voltage, param1.adc_vref);
+	param->high_thr_voltage += param1.adc_gnd;
+
+	return 0;
+}
+EXPORT_SYMBOL(qpnp_adc_tm_scale_therm_voltage_tdkntc);
