@@ -1497,10 +1497,10 @@ struct f54_control_89_subpkt1 {
 struct f54_control_89_subpkt2 {
 	unsigned char c89_rail_sel_opt:2;
 	unsigned char c89_byte0_b3_b7:6;
-	unsigned char c89_rail_im_noise_theshold_lsb;
-	unsigned char c89_rail_im_noise_theshold_msb;
-	unsigned char c89_rail_im_quiet_theshold_lsb;
-	unsigned char c89_rail_im_quiet_theshold_msb;
+	unsigned char c89_rail_im_noise_threshold_lsb;
+	unsigned char c89_rail_im_noise_threshold_msb;
+	unsigned char c89_rail_im_quiet_threshold_lsb;
+	unsigned char c89_rail_im_quiet_threshold_msb;
 } __packed;
 
 struct f54_control_89 {
@@ -2115,10 +2115,10 @@ show_store_prototype(c89_freq_scan_threshold_msb)
 show_store_prototype(c89_quiet_im_threshold_lsb)
 show_store_prototype(c89_quiet_im_threshold_msb)
 show_store_prototype(c89_rail_sel_opt)
-show_store_prototype(c89_rail_im_noise_theshold_lsb)
-show_store_prototype(c89_rail_im_noise_theshold_msb)
-show_store_prototype(c89_rail_im_quiet_theshold_lsb)
-show_store_prototype(c89_rail_im_quiet_theshold_msb)
+show_store_prototype(c89_rail_im_noise_threshold_lsb)
+show_store_prototype(c89_rail_im_noise_threshold_msb)
+show_store_prototype(c89_rail_im_quiet_threshold_lsb)
+show_store_prototype(c89_rail_im_quiet_threshold_msb)
 show_store_prototype(c93_freq_shift_noise_threshold_lsb)
 show_store_prototype(c93_freq_shift_noise_threshold_msb)
 show_store_prototype(c95_disable)
@@ -2415,10 +2415,10 @@ static struct attribute *attrs_reg_89_subpkt1[] = {
 
 static struct attribute *attrs_reg_89_subpkt2[] = {
 	attrify(c89_rail_sel_opt),
-	attrify(c89_rail_im_noise_theshold_msb),
-	attrify(c89_rail_im_noise_theshold_msb),
-	attrify(c89_rail_im_quiet_theshold_lsb),
-	attrify(c89_rail_im_quiet_theshold_msb),
+	attrify(c89_rail_im_noise_threshold_lsb),
+	attrify(c89_rail_im_noise_threshold_msb),
+	attrify(c89_rail_im_quiet_threshold_lsb),
+	attrify(c89_rail_im_quiet_threshold_msb),
 	NULL,
 };
 
@@ -3028,7 +3028,7 @@ static void free_control_mem(void)
 	kfree(control.reg_89);
 	kfree(control.reg_95->data);
 	kfree(control.reg_95);
-	kfree(control.reg_99);
+	kfree(control.reg_99->data);
 	kfree(control.reg_99);
 
 	return;
@@ -3682,13 +3682,13 @@ show_store_subpkt_func_unsigned(control, reg_89, 1, c89_quiet_im_threshold_msb)
 
 show_store_subpkt_func_unsigned(control, reg_89, 2, c89_rail_sel_opt);
 show_store_subpkt_func_unsigned(control, reg_89, 2,
-						c89_rail_im_noise_theshold_lsb);
+						c89_rail_im_noise_threshold_lsb);
 show_store_subpkt_func_unsigned(control, reg_89, 2,
-						c89_rail_im_noise_theshold_msb);
+						c89_rail_im_noise_threshold_msb);
 show_store_subpkt_func_unsigned(control, reg_89, 2,
-						c89_rail_im_quiet_theshold_lsb);
+						c89_rail_im_quiet_threshold_lsb);
 show_store_subpkt_func_unsigned(control, reg_89, 2,
-						c89_rail_im_quiet_theshold_msb);
+						c89_rail_im_quiet_threshold_msb);
 
 show_store_func_unsigned(control, reg_93, c93_freq_shift_noise_threshold_lsb)
 show_store_func_unsigned(control, reg_93, c93_freq_shift_noise_threshold_msb)
