@@ -63,7 +63,6 @@ struct anx7805_data {
 	int gpio_reset;
 	int gpio_int;
 	int gpio_cbl_det;
-	int gpio_dsi_sel;
 	const char *vdd10_name;
 	const char *vdd18_name;
 	const char *avdd33_name;
@@ -349,8 +348,6 @@ void sp_tx_hardware_poweron(void)
 		return;
 	}
 
-	gpio_direction_output(the_chip->gpio_dsi_sel, 1);
-	usleep_range(1000, 1001);
 	gpio_direction_output(the_chip->gpio_reset, 0);
 	usleep_range(1000, 1001);
 	gpio_direction_output(the_chip->gpio_p_dwn, 0);
@@ -370,8 +367,6 @@ void sp_tx_hardware_powerdown(void)
 	if (!the_chip)
 		return;
 
-	gpio_direction_output(the_chip->gpio_dsi_sel, 0);
-	usleep_range(1000, 1001);
 	gpio_direction_output(the_chip->gpio_reset, 0);
 	usleep_range(1000, 1001);
 	anx7805_vdd_1p0_power(the_chip, 0);
@@ -570,7 +565,6 @@ EXPORT_SYMBOL(slimport_is_connected);
 
 static void anx7805_free_gpio(struct anx7805_data *anx7805)
 {
-	gpio_free(anx7805->gpio_dsi_sel);
 	gpio_free(anx7805->gpio_cbl_det);
 	gpio_free(anx7805->gpio_int);
 	gpio_free(anx7805->gpio_reset);
@@ -655,25 +649,15 @@ static int anx7805_init_gpio(struct anx7805_data *anx7805)
 		goto err2;
 	}
 
-	ret = gpio_request_one(anx7805->gpio_dsi_sel,
-				GPIOF_IN, "anx7805_dsi_sel");
-	if (ret) {
-		pr_err("failed to request gpio %d\n", anx7805->gpio_dsi_sel);
-		goto err3;
-	}
-
 	gpio_direction_input(anx7805->gpio_cbl_det);
 	gpio_export(anx7805->gpio_cbl_det, false);
 	gpio_direction_input(anx7805->gpio_int);
 
-	gpio_direction_output(anx7805->gpio_dsi_sel, 0);
 	gpio_direction_output(anx7805->gpio_reset, 0);
 	gpio_direction_output(anx7805->gpio_p_dwn, 1);
 
 	goto out;
 
-err3:
-	gpio_free(anx7805->gpio_cbl_det);
 err2:
 	gpio_free(anx7805->gpio_int);
 err1:
@@ -899,14 +883,6 @@ static int anx7805_parse_dt(struct device_node *node,
 		goto out;
 	}
 
-	anx7805->gpio_dsi_sel =
-		of_get_named_gpio(node, "analogix,dsi-sw-sel", 0);
-	if (!gpio_is_valid(anx7805->gpio_dsi_sel)) {
-		pr_err("failed to get analogix,dsi-sw-sel.\n");
-		ret = anx7805->gpio_dsi_sel;
-		goto out;
-	}
-
 	ret = of_property_read_string(node, "analogix,vdd10-name",
 	                              &anx7805->vdd10_name);
 	if (ret) {
@@ -1053,7 +1029,6 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 		anx7805->gpio_reset = pdata->gpio_reset;
 		anx7805->gpio_int = pdata->gpio_int;
 		anx7805->gpio_cbl_det = pdata->gpio_cbl_det;
-		anx7805->gpio_dsi_sel = pdata->gpio_dsi_sel;
 		anx7805->vdd10_name = pdata->vdd10_name;
 		anx7805->vdd18_name = pdata->vdd18_name;
 		anx7805->avdd33_name = pdata->avdd33_name;		
