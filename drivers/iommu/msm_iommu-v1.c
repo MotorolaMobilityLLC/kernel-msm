@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -629,12 +629,8 @@ static inline phys_addr_t msm_iommu_get_phy_from_PAR(unsigned long va, u64 par)
 
 static void msm_iommu_setup_ctx(void __iomem *base, unsigned int ctx)
 {
-	/*
-	 * TCR2 presently sets PA size as 32-bits. When entire platform
-	 * gets more physical size, we need to change for SMMU too.
-	 * Change CB_TCR2_PA in that case.
-	 */
 	SET_CB_TCR2_SEP(base, ctx, 7); /* bit[48] as sign bit */
+	SET_CB_TCR2_PA(base, ctx, 1);  /* PASize 36 bit, 64 GB*/
 }
 
 static void msm_iommu_setup_memory_remap(void __iomem *base, unsigned int ctx)
@@ -1562,8 +1558,8 @@ irqreturn_t msm_iommu_fault_handler_v2(int irq, void *dev_id)
 				pagetable_phys = msm_iommu_iova_to_phys_soft(
 					ctx_drvdata->attached_domain,
 					faulty_iova);
-				pr_err("Page table in DDR shows PA = %x\n",
-					(unsigned int) pagetable_phys);
+				pr_err("Page table in DDR shows PA = %lx\n",
+					(unsigned long) pagetable_phys);
 			}
 		}
 
