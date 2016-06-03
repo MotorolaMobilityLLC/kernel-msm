@@ -717,9 +717,7 @@ again:
 	spin_lock_init(&host->lock);
 	init_waitqueue_head(&host->wq);
 	INIT_DELAYED_WORK(&host->detect, mmc_rescan);
-  #ifdef CONFIG_PM
 	wakeup_source_init(&host->pm_ws, dev_name(&host->class_dev));
-  #endif
 	setup_timer(&host->retune_timer, mmc_retune_timer, (unsigned long)host);
 
 	mutex_init(&host->rpmb_req_mutex);
