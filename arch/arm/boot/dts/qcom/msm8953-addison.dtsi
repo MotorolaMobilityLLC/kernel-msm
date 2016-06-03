@@ -68,7 +68,6 @@
 			analogix,irq-gpio = <&tlmm 73 0x00>;
 			analogix,p-dwn-gpio = <&tlmm 50 0x0>;
 			analogix,cbl-det-gpio = <&tlmm 44 0x0>;
-			analogix,dsi-sw-sel = <&tlmm 111 0x0>;
 			analogix,i2c-pull-up = <1>;
 			vdd-1p0-supply = <&pm8953_l2>;
 			avdd-3p3-supply = <&pm8953_l6>;
@@ -78,10 +77,10 @@
 			analogix,vdd18-name = "avdd-1p8";
 
 			pinctrl-names = "anx_default", "anx_sleep";
-			pinctrl-0 = <&anx_rst_active &anx_dsi_sel_active
+			pinctrl-0 = <&anx_rst_active
 					&anx_chip_pd_active &anx_cbl_det_active
 					&anx_irq_active>;
-			pinctrl-1 = <&anx_rst_suspend &anx_dsi_sel_suspend
+			pinctrl-1 = <&anx_rst_suspend
 					&anx_chip_pd_suspend &anx_cbl_det_active
 					&anx_irq_active>;
 		};
@@ -111,6 +110,12 @@
 
 	mot_dba_driver: mot_dba_driver {
 		compatible = "mmi,mot_dba";
+		status = "ok";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&mot_dba_sel_dsi_active>;
+		mot_dba,sel-dsi-gpio = <&tlmm 111 0x0>;
+		mot_dba,sel-dsi-val = <0>;
 	};
 	/delete-node/ eldo2;
 };
