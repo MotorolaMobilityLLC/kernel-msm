@@ -1,0 +1,102 @@
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	tlmm_pinmux: pinctrl@1000000 {
+		compatible = "qcom,msm-tlmm-8916";
+		reg = <0x1000000 0x300000>;
+		interrupts = <0 208 0>;
+
+		/*****************************************/
+		/*  pinctrl customize setting            */
+		/*  Camera                                      */
+		/*****************************************/
+
+		cam_sensor_mclk0_default {
+			/* MCLK0 */
+			qcom,pins = <&gp 26>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "cam_sensor_mclk0_default";
+			/* active state */
+			cam_sensor_mclk0_default: cam_sensor_mclk0_default {
+				drive-strength = <6>; /* 6 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		cam_sensor_mclk0_sleep {
+			/* MCLK0 */
+			qcom,pins = <&gp 26>;
+			qcom,num-grp-pins = <1>;
+			label = "cam_sensor_mclk0_sleep";
+			/*suspended state */
+			cam_sensor_mclk0_sleep: cam_sensor_mclk0_sleep {
+				drive-strength = <6>; /* 6 MA */
+				bias-pull-down; /* PULL DOWN */
+			};
+		};
+
+		cam_sensor_mclk2_default {
+			/* MCLK2 */
+			qcom,pins = <&gp 28>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "cam_sensor_mclk2_default";
+			/* active state */
+			cam_sensor_mclk2_default: cam_sensor_mclk2_default {
+				drive-strength = <6>; /* 6 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		cam_sensor_mclk2_sleep {
+			/* MCLK2 */
+			qcom,pins = <&gp 28>;
+			qcom,num-grp-pins = <1>;
+			label = "cam_sensor_mclk2_sleep";
+			/*suspended state */
+			cam_sensor_mclk2_sleep: cam_sensor_mclk2_sleep {
+				drive-strength = <6>; /* 6 MA */
+				bias-pull-down; /* PULL DOWN */
+			};
+		};
+
+		/* cci */
+		cci0_active {
+			/* CLK, DATA */
+			qcom,pins = <&gp 29>, <&gp 30>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <1>;
+			label = "cci0-active";
+			/* active state */
+			cci0_active: cci0_active {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		cci0_suspend {
+			/* CLK, DATA */
+			qcom,pins = <&gp 29>, <&gp 30>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "cci0-suspend";
+			/*suspended state */
+			cci0_suspend: cci0_suspend {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+	};
+};
