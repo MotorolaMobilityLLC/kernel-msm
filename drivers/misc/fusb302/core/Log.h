@@ -18,7 +18,7 @@ extern "C" {
 
 #include "platform.h"
 
-#define LOG_SIZE 64
+#define LOG_SIZE 512
 
 	typedef struct {
 		FSC_U16 state;
