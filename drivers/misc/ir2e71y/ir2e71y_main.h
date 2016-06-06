@@ -1,4 +1,4 @@
-/* drivers/misc/ir2e71y8/ir2e71y_ir2e71y_main.h  (Display Driver)
+/* drivers/misc/ir2e71y/ir2e71y_main.h  (Display Driver)
  *
  * Copyright (C) 2016 SHARP CORPORATION
  *
