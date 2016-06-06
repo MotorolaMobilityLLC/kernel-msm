@@ -1,3 +1,5 @@
+#include <linux/printk.h>
+#include <linux/jiffies.h>
 #include "core.h"
 #include "TypeC.h"
 #include "PDProtocol.h"
@@ -5,19 +7,29 @@
 #include "TypeC_Types.h"
 #include "PD_Types.h"
 
-/* WIP
-#include "timeQueue.h"
- * */
-
+#include "vdm/vdm.h"
 #ifdef FSC_DEBUG
 #include "version.h"
 #endif // FSC_DEBUG
-
 extern FSC_BOOL PolicyHasContract;
 extern doDataObject_t USBPDContract;
 extern SourceOrSink sourceOrSink;
 extern USBTypeCCurrent SinkCurrent;
 
+static void core_wakeup_statemachine(void)
+{
+	Registers.Mask.M_COMP_CHNG = 0;
+	Registers.Mask.M_ACTIVITY = 0;
+	Registers.Mask.M_COLLISION = 0;
+	DeviceWrite(regMask, 1, &Registers.Mask.byte);
+	Registers.MaskAdv.M_RETRYFAIL = 0;
+	Registers.MaskAdv.M_TXSENT = 0;
+	Registers.MaskAdv.M_SOFTRST = 0;
+	Registers.MaskAdv.M_HARDRST = 0;
+	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
+	Registers.MaskAdv.M_GCRCSENT = 0;
+	DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
+}
 /*
  * Call this function to initialize the core.
  */
@@ -49,7 +61,10 @@ void core_state_machine(void)
 {
 	StateMachineTypeC();
 }
-
+void core_state_machine_imp(void)
+{
+	WakeStateMachineTypeC();
+}
 /*
  * Call this function every 100us for the core's timers.
  */
@@ -117,6 +132,12 @@ void core_set_source_caps(FSC_U8 * buf)
 void core_get_source_caps(FSC_U8 * buf)
 {
 	ReadSourceCapabilities(buf);
+	core_wakeup_statemachine();
+	PolicyState = peSinkGetSourceCap;
+	PolicySubIndex = 0;
+	PDTxStatus = txIdle;
+	PolicySinkGetSourceCap();
+	ProtocolIdle();
 }
 #endif // FSC_HAVE_SRC
 
@@ -141,10 +162,72 @@ void core_get_sink_req(FSC_U8 * buf)
 	ReadSinkRequestSettings(buf);
 }
 #endif // FSC_HAVE_SNK
-
 void core_send_hard_reset(void)
 {
-	SendUSBPDHardReset();
+	core_wakeup_statemachine();
+	PolicyState = peSinkSendHardReset;
+	PolicySubIndex = 0;
+	PDTxStatus = txIdle;
+	PolicySinkSendHardReset();
+	ProtocolIdle();
+	platform_run_wake_thread();
+}
+/*Re-evaluate the source capability based on
+* new voltage max from charging driver
+*/
+void core_send_sink_request_voltage(void)
+{
+	static int timeout_count;
+
+	atomic_set(&coreReqCtx.pending, 1);
+	core_wakeup_statemachine();
+	PolicySubIndex = 0;
+	PDTxStatus = txIdle;
+	PolicyStateTimer = 1000;
+	PolicyState = peSinkReady;
+	PolicySinkEvaluateCaps();
+	PolicySinkSelectCapability();
+	ProtocolIdle();
+	if (!wait_for_completion_timeout(&coreReqCtx.complete,
+			msecs_to_jiffies(1000))) {
+		pr_err("core_send_sink_request_voltage timeout!\n");
+		timeout_count++;
+		if (timeout_count > 3) {
+			timeout_count = 0;
+			core_send_hard_reset();
+			platform_delay_10us(SLEEP_DELAY*500);
+		}
+	} else
+		timeout_count = 0;
+	atomic_set(&coreReqCtx.pending, 0);
+}
+void core_send_sink_request(void)
+{
+	static int timeout_count;
+
+	atomic_set(&coreReqCtx.pending, 1);
+	core_wakeup_statemachine();
+	PolicySubIndex = 0;
+	PDTxStatus = txIdle;
+	PolicyStateTimer = 1000;
+	PolicyState = peSinkReady;
+	requestCurLimit(gRequestOpCurrent);
+	USBPDPolicyEngine();
+	ProtocolIdle();
+	if (!wait_for_completion_timeout(&coreReqCtx.complete,
+			msecs_to_jiffies(1000))) {
+		pr_err("core_send_sink_request timeout!\n");
+		timeout_count++;
+		if (timeout_count > 3) {
+			timeout_count = 0;
+			core_send_hard_reset();
+			platform_delay_10us(SLEEP_DELAY*500);
+		}
+	} else
+		timeout_count = 0;
+	atomic_set(&coreReqCtx.pending, 0);
+	/*Wait 100 ms for charger to do its job*/
+	platform_delay_10us(SLEEP_DELAY*100);
 }
 
 void core_process_pd_buffer_read(FSC_U8 * InBuffer, FSC_U8 * OutBuffer)
@@ -181,7 +264,26 @@ void core_process_read_pd_state_log(FSC_U8 * InBuffer, FSC_U8 * OutBuffer)
 {
 	ProcessReadPDStateLog(InBuffer, OutBuffer);
 }
-
+void core_process_send_dr_swap(void)
+{
+	core_wakeup_statemachine();
+	PolicySubIndex = 0;
+	PDTxStatus = txIdle;
+	PolicyState = peSinkSendDRSwap;
+	PolicySinkSendDRSwap();
+	USBPDPolicyEngine();
+	ProtocolIdle();
+}
+void core_process_send_vdm(void)
+{
+	core_wakeup_statemachine();
+	PolicySubIndex = 1;
+	PDTxStatus = txIdle;
+	PolicyState = peSinkReady;
+	requestDiscoverIdentity(SOP_TYPE_SOP);
+	USBPDPolicyEngine();
+	ProtocolIdle();
+}
 void core_set_alternate_modes(FSC_U8 * InBuffer, FSC_U8 * OutBuffer)
 {
 	// Deprecated
@@ -191,10 +293,8 @@ void core_set_manual_retries(FSC_U8 * InBuffer, FSC_U8 * OutBuffer)
 {
 	setManualRetries(InBuffer[4]);
 }
-
 FSC_U8 core_get_alternate_modes(void)
 {
-	// Deprecated
 	return 0;
 }
 
@@ -208,51 +308,4 @@ void core_set_state_unattached(void)
 	SetStateUnattached();
 }
 
-FSC_U16 core_get_advertised_current(void)
-{
-	FSC_U16 current = 0;	// Current advertisement in mA
-	if (sourceOrSink == SINK) {
-		if (PolicyHasContract)	// If there is a PD contract
-		{
-			current = USBPDContract.FVRDO.OpCurrent * 10;	// Return contracted current in mA
-		} else		// We check Type-C current
-		{
-			switch (SinkCurrent) {
-				/* Note for Default: This can be  
-				 * 500mA for USB 2.0
-				 * 900mA for USB 3.1
-				 * Up to 1.5A for USB BC 1.2
-				 */
-			case utccDefault:
-				current = 500;
-				break;
-			case utcc1p5A:
-				current = 1500;
-				break;
-			case utcc3p0A:
-				current = 3000;
-				break;
-			case utccNone:
-			default:
-				current = 0;
-				break;
-			}
-		}
-	}
-	return current;
-}
-
-void core_reset_pd(void)
-{
-	EnableUSBPD();
-	USBPDEnable(TRUE, sourceOrSink);
-}
-
-/* WIP
-// Timer interrupt should call this
-void core_expire_timer(void)
-{
-    expireTimer();
-}
-*/
 #endif // FSC_DEBUG
