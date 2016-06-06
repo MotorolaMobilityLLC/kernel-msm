@@ -1494,11 +1494,22 @@ static int mdss_mdp_video_config_mipiclk(struct mdss_mdp_ctl *ctl,
 	int rc = 0;
 	struct mdss_mdp_video_ctx *ctx;
 	struct mdss_panel_data *pdata;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
 	u32 ctl_flush;
 
 	ctx = (struct mdss_mdp_video_ctx *) ctl->intf_ctx[MASTER_CTX];
 
 	pr_debug("%s: ctl=%d\n", __func__, ctl->num);
+
+	ctrl_pdata = container_of(ctl->panel_data, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+	if(!ctrl_pdata) {
+		pr_err("%s: failed to get DSI ctrl, intf #%d\n",
+			 __func__, ctl->intf_num);
+		return -EINVAL;
+	}
+
+	mutex_lock(&ctrl_pdata->cmd_mutex);
 
 	mdss_mdp_video_transfer_ctrl(ctl, false);
 
@@ -1508,6 +1519,7 @@ static int mdss_mdp_video_config_mipiclk(struct mdss_mdp_ctl *ctl,
 	if (rc) {
 		pr_err("%s: failed to update dsi mipi clk, intf #%d, rc=%d\n",
 			 __func__, ctl->intf_num, rc);
+		mutex_unlock(&ctrl_pdata->cmd_mutex);
 		return rc;
 	}
 
@@ -1519,6 +1531,7 @@ static int mdss_mdp_video_config_mipiclk(struct mdss_mdp_ctl *ctl,
 	if (rc) {
 		pr_err("%s: failed to update mdp Timing, intf #%d, rc=%d\n",
 			 __func__, ctl->intf_num, rc);
+		mutex_unlock(&ctrl_pdata->cmd_mutex);
 		return rc;
 	}
 
@@ -1527,6 +1540,7 @@ static int mdss_mdp_video_config_mipiclk(struct mdss_mdp_ctl *ctl,
 	if (rc) {
 		pr_err("%s: failed to update dsi host, intf #%d, rc=%d\n",
 			 __func__, ctl->intf_num, rc);
+		mutex_unlock(&ctrl_pdata->cmd_mutex);
 		return rc;
 	}
 
@@ -1535,6 +1549,8 @@ static int mdss_mdp_video_config_mipiclk(struct mdss_mdp_ctl *ctl,
 	mdss_mdp_ctl_write(ctl, MDSS_MDP_REG_CTL_FLUSH, ctl_flush);
 
 	mdss_mdp_video_transfer_ctrl(ctl, true);
+
+	mutex_unlock(&ctrl_pdata->cmd_mutex);
 
 	return rc;
 }
