@@ -1,7 +1,6 @@
 #ifndef __USBPD_TYPES_H__
 #define __USBPD_TYPES_H__
-#include <linux/completion.h>
-#include <linux/atomic.h>
+
 #include "platform.h"
 
 #ifdef FSC_DEBUG
@@ -16,9 +15,6 @@
 
 // Device FIFO Token Definitions
 #define TXON                    0xA1
-#define SOP1                    0x12	// TODO - SOPn and SYNCn_TOKEN appear to
-#define SOP2                    0x13	//        be repeats???
-#define SOP3                    0x1B
 #define SYNC1_TOKEN             0x12
 #define SYNC2_TOKEN             0x13
 #define SYNC3_TOKEN             0x1B
@@ -73,30 +69,33 @@
 #define BDO_BIST_Test_Data      0b1000	// Implemented
 
 // USB PD Timing Parameters
-/*Units are in ms to be ticked by a 1ms timer.*/
+// Units are in ms * 1 to be ticked by a 1ms timer.
 #define TICK_SCALE_TO_MS        1
 
-#define tNoResponse             (2000    * TICK_SCALE_TO_MS)
-#define tSenderResponse         (27	   * TICK_SCALE_TO_MS)
-#define tTypeCSendSourceCap     (150     * TICK_SCALE_TO_MS)
-#define tSinkWaitCap            (500     * TICK_SCALE_TO_MS)
-#define tTypeCSinkWaitCap       (150     * TICK_SCALE_TO_MS)
-#define tSrcTransition          (30      * TICK_SCALE_TO_MS)
-#define tPSHardReset            (30      * TICK_SCALE_TO_MS)
-#define tPSTransition           (500     * TICK_SCALE_TO_MS)
-#define tPSSourceOff            (835     * TICK_SCALE_TO_MS)
-#define tPSSourceOn             (435     * TICK_SCALE_TO_MS)
-#define tSourceOnDelay          (30      * TICK_SCALE_TO_MS)
-#define tVCONNSourceOn          (90      * TICK_SCALE_TO_MS)
-#define tBMCTimeout             (5       * TICK_SCALE_TO_MS)
-#define tPRSwapBailout          (5000    * TICK_SCALE_TO_MS)
-#define tBISTContMode           (50      * TICK_SCALE_TO_MS)
-#define tSwapSourceStart        (25      * TICK_SCALE_TO_MS)
-#define tSrcRecover             (830     * TICK_SCALE_TO_MS)
-#define tGoodCRCDelay           (1       * TICK_SCALE_TO_MS)
-#define t5To12VTransition       (8       * TICK_SCALE_TO_MS)
-#define tPSHardResetMax         (35      * TICK_SCALE_TO_MS)
-#define tSafe0V                 (30     * TICK_SCALE_TO_MS)
+#define tNoResponse             5000    * TICK_SCALE_TO_MS
+#define tSenderResponse         28      * TICK_SCALE_TO_MS
+#define tTypeCSendSourceCap     150     * TICK_SCALE_TO_MS
+#define tSinkWaitCap            500     * TICK_SCALE_TO_MS	// Setting to tTypeCSinkWaitCap for now
+#define tTypeCSinkWaitCap       500     * TICK_SCALE_TO_MS
+#define tSrcTransition          30      * TICK_SCALE_TO_MS
+#define tPSHardReset            30      * TICK_SCALE_TO_MS
+#define tPSHardResetMax         35      * TICK_SCALE_TO_MS
+#define tPSTransition           500     * TICK_SCALE_TO_MS
+#define tPSSourceOff            835     * TICK_SCALE_TO_MS
+#define tPSSourceOn             435     * TICK_SCALE_TO_MS
+#define tVCONNSourceOn          90      * TICK_SCALE_TO_MS
+#define tBISTContMode           50      * TICK_SCALE_TO_MS
+#define tSwapSourceStart        25      * TICK_SCALE_TO_MS
+#define tSrcRecover             675     * TICK_SCALE_TO_MS
+#define tSrcRecoverMax          1000    * TICK_SCALE_TO_MS
+#define tGoodCRCDelay           1       * TICK_SCALE_TO_MS
+#define t5To12VTransition       8       * TICK_SCALE_TO_MS
+#define tSafe0V                 650     * TICK_SCALE_TO_MS
+#define tSrcTurnOn              275     * TICK_SCALE_TO_MS
+#define tFPF2498Transition      20      * TICK_SCALE_TO_MS
+#define tSourceRiseTimeout      350     * TICK_SCALE_TO_MS
+#define tHardResetOverhead      0       * TICK_SCALE_TO_MS
+
 #define nHardResetCount         2
 #define nRetryCount             3
 #define nCapsCount              50
@@ -214,26 +213,6 @@ typedef union {
 		unsigned VDMType:1;	// Unstructured or structured message header
 		unsigned SVID:16;	// Unique 16-bit unsigned integer assigned by the USB-IF
 	} SVDM;
-	struct {
-		unsigned Command:5;
-		unsigned Reserverd2:2;
-		unsigned CommandStatus:1;
-		unsigned ModeObjPos:3;
-		unsigned Reserverd1:2;
-		unsigned UVDMVersion:2;
-		unsigned VDMType:1;
-		unsigned VendorID:16;
-	} UVDMReqRsp;
-	struct {
-		unsigned Current:22;
-		unsigned Unused:10;
-	} UVDMDO;
-	struct {
-		unsigned MaxCurrentLimit:10;
-		unsigned MiniCurrentLimit:10;
-		unsigned Voltage:10;
-		unsigned ModeID:2;
-	} ModeInfo;
 } doDataObject_t;
 
 typedef enum {
@@ -257,7 +236,7 @@ typedef enum {
 	peSourceDiscovery,	// Waiting to detect a USB PD sink
 	peSourceDisabled,	// Disabled state
 
-	peSourceTransitionDefault,	// Transition to default 5V state
+	peSourceTransitionDefault,	// Transition to default 5V state /10
 	peSourceNegotiateCap,	// Negotiate capability and PD contract
 	peSourceCapabilityResponse,	// Respond to a request message with a reject/wait
 	peSourceTransitionSupply,	// Transition the power supply to the new setting (accept request)
@@ -268,7 +247,7 @@ typedef enum {
 	peSourceGotoMin,	// State to send the gotoMin and ready the power supply
 	peSourceGiveSinkCaps,	// State to send the sink capabilities if dual-role
 
-	peSourceGetSourceCaps,	// State to request the source caps from the UFP
+	peSourceGetSourceCaps,	// State to request the source caps from the UFP /20
 	peSourceSendDRSwap,	// State to send a DR_Swap message
 	peSourceEvaluateDRSwap,	// Evaluate whether we are going to accept or reject the swap
 
@@ -277,10 +256,10 @@ typedef enum {
 	peSinkSoftReset,	// Sink soft reset
 	peSinkSendSoftReset,	// Sink send soft reset
 	peSinkTransitionDefault,	// Transition to the default state
-	peSinkStartup,		// Initial sink state
+	peSinkStartup,		// Initial sink state           
+	peSinkDiscovery,	// Sink discovery state
 
-	peSinkDiscovery,	// Sink discovery state 
-	peSinkWaitCaps,		// Sink wait for capabilities state
+	peSinkWaitCaps,		// Sink wait for capabilities state //30
 	peSinkEvaluateCaps,	// Sink state to evaluate the received source capabilities
 	peSinkSelectCapability,	// Sink state for selecting a capability
 	peSinkTransitionSink,	// Sink state for transitioning the current power
@@ -288,10 +267,10 @@ typedef enum {
 	peSinkGiveSinkCap,	// Sink send capabilities state
 	peSinkGetSourceCap,	// Sink get source capabilities state
 	peSinkGetSinkCap,	// Sink state to get the sink capabilities of the connected source
-	peSinkGiveSourceCap,	// Sink state to send the source capabilities if dual-role
+	peSinkGiveSourceCap,	// Sink state to send the source capabilities if dual-role           
+	peSinkSendDRSwap,	// State to send a DR_Swap message 
 
-	peSinkSendDRSwap,	// State to send a DR_Swap message
-	peSinkEvaluateDRSwap,	// Evaluate whether we are going to accept or reject the swap
+	peSinkEvaluateDRSwap,	// Evaluate whether we are going to accept or reject the swap //40
 	// Adding new commands to the end here to avoid messing up the ones above with the older software (backwards compatibility)
 	peSourceSendVCONNSwap,	// Initiate a VCONN swap sequence
 	peSinkEvaluateVCONNSwap,	// Evaluate whether we are going to accept or reject the swap
@@ -305,7 +284,7 @@ typedef enum {
 	peUfpVdmGetIdentity,	// Requesting Identity information from DPM           
 	FIRST_VDM_STATE = peUfpVdmGetIdentity,
 
-	peUfpVdmSendIdentity,	// Sending Discover Identity ACK
+	peUfpVdmSendIdentity,	// Sending Discover Identity ACK //50
 	peUfpVdmGetSvids,	// Requesting SVID info from DPM
 	peUfpVdmSendSvids,	// Sending Discover SVIDs ACK
 	peUfpVdmGetModes,	// Requesting Mode info from DPM
@@ -314,9 +293,9 @@ typedef enum {
 	peUfpVdmModeEntryNak,	// Sending Enter Mode NAK response
 	peUfpVdmModeEntryAck,	// Sending Enter Mode ACK response
 	peUfpVdmModeExit,	// Requesting DPM to evalute request to exit mode
-	peUfpVdmModeExitNak,	// Sending Exit Mode NAK reponse
+	peUfpVdmModeExitNak,	// Sending Exit Mode NAK reponse //60
 
-	peUfpVdmModeExitAck,	// Sending Exit Mode ACK Response
+	peUfpVdmModeExitAck,	// Sending Exit Mode ACK Response //60
 	// ---------- UFP VDM Attention State Diagram ----------
 	peUfpVdmAttentionRequest,	// Sending Attention Command
 	// ---------- DFP to UFP VDM Discover Identity State Diagram ----------
@@ -331,7 +310,7 @@ typedef enum {
 	peDfpVdmSvidsRequest,	// Sending Discover SVIDs request
 	peDfpVdmSvidsAcked,	// Inform DPM
 
-	peDfpVdmSvidsNaked,	// Inform DPM
+	peDfpVdmSvidsNaked,	// Inform DPM //70
 	// ---------- DFP VDM Discover Modes State Diagram ----------
 	peDfpVdmModesRequest,	// Sending Discover Modes request
 	peDfpVdmModesAcked,	// Inform DPM
@@ -347,7 +326,7 @@ typedef enum {
 	// ---------- Source Startup VDM Discover Identity State Diagram ----------
 	peSrcVdmIdentityRequest,	// sending Discover Identity request
 
-	peSrcVdmIdentityAcked,	// inform DPM
+	peSrcVdmIdentityAcked,	// inform DPM //80
 	peSrcVdmIdentityNaked,	// inform DPM
 	// ---------- DFP VDM Attention State Diagram ----------
 	peDfpVdmAttentionRequest,	// Attention Request received
@@ -363,7 +342,7 @@ typedef enum {
 	peCblSendSvids,		// Respond with ACK
 
 	// ---------- Cable Discover Modes VDM State Diagram ----------
-	peCblGetModes,		// Discover Modes request received           
+	peCblGetModes,		// Discover Modes request received           //90
 	peCblGetModesNak,	// Respond with NAK
 	peCblSendModes,		// Respond with ACK
 	// ---------- Cable Enter Mode VDM State Diagram ----------
@@ -378,7 +357,7 @@ typedef enum {
 	peDpRequestStatus,	// Requesting PP Status                          
 
 	// ---------- BIST Receive Mode --------------------- //
-	PE_BIST_Receive_Mode,	// Bist Receive Mode            
+	PE_BIST_Receive_Mode,	// Bist Receive Mode            //100
 	PE_BIST_Frame_Received,	// Test Frame received by Protocol layer
 	// ---------- BIST Carrier Mode and Eye Pattern ----- //
 	PE_BIST_Carrier_Mode_2,	// BIST Carrier Mode 2
@@ -433,7 +412,7 @@ typedef enum {
 	AUTO_VDM_DISCOVER_ID_PP,
 	AUTO_VDM_DISCOVER_SVIDS_PP,
 	AUTO_VDM_DISCOVER_MODES_PP,
-	AUTO_VDM_ENTER_DP_MODE_PP,
+	AUTO_VDM_ENTER_MODE_PP,
 	AUTO_VDM_DP_GET_STATUS,
 	AUTO_VDM_DONE
 } VdmDiscoveryState_t;
@@ -447,8 +426,4 @@ typedef enum {
 	SOP_TYPE_ERROR = 0xFF
 } SopType;
 
-typedef struct {
-	struct completion	complete;
-	atomic_t		pending;
-} ReqContextType;
 #endif // __USBPD_TYPES_H__
