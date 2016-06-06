@@ -233,5 +233,65 @@ void platform_enable_timer(FSC_BOOL enable)
 ******************************************************************************/
 void platform_delay_10us(FSC_U32 delayCount)
 {
-	fusb_Delay10us(delayCount);
-}
+	
+fusb_Delay10us(delayCount);
+
+} 
+ 
+
+/*******************************************************************************
+* Function:        platform_notify_cc_orientation
+* Input:           orientation - Orientation of CC (NONE, CC1, CC2)
+* Return:          None
+* Description:     A callback used by the core to report to the platform the
+*                  current CC orientation. Called in SetStateAttached... and
+*                  SetStateUnattached functions.
+******************************************************************************/ 
+void platform_notify_cc_orientation(CC_ORIENTATION orientation) 
+{
+	
+	    // Optional: Notify platform of CC orientation
+} 
+ 
+
+/*******************************************************************************
+* Function:        platform_notify_pd_contract
+* Input:           contract - TRUE: Contract, FALSE: No Contract
+* Return:          None
+* Description:     A callback used by the core to report to the platform the
+*                  current PD contract status. Called in PDPolicy.
+*******************************************************************************/ 
+void platform_notify_pd_contract(FSC_BOOL contract) 
+{
+	
+	    // Optional: Notify platform of PD contract
+} 
+ 
+
+/*******************************************************************************
+* Function:        platform_notify_unsupported_accessory
+* Input:           None
+* Return:          None
+* Description:     A callback used by the core to report entry to the
+*                  Unsupported Accessory state. The platform may implement
+*                  USB Billboard.
+*******************************************************************************/ 
+void platform_notify_unsupported_accessory(void) 
+{
+	
+	    // Optional: Implement USB Billboard
+} 
+ 
+
+/*******************************************************************************
+* Function:        platform_set_data_role
+* Input:           PolicyIsDFP - Current data role
+* Return:          None
+* Description:     A callback used by the core to report the new data role after
+*                  a data role swap.
+*******************************************************************************/ 
+void platform_set_data_role(FSC_BOOL PolicyIsDFP) 
+{
+	
+	    // Optional: Control Data Direction
+} 
