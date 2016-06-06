@@ -1718,7 +1718,7 @@ enum hrtimer_restart _fusb_TimerHandler(struct hrtimer *timer)
 		return HRTIMER_NORESTART;
 	}
 
-	core_tick_at_100us();
+	core_tick();
 
 #ifdef FSC_DEBUG
 	if (chip->dbgTimerTicks++ >= U8_MAX) {
@@ -3373,11 +3373,11 @@ static ssize_t _fusb_Sysfs_Hostcomm_show(struct device *dev,
 					break;
 				}
 
-			case DebugAccessory:
+			case DebugAccessorySource:
 				{
 					numChars +=
 					    sprintf(tempBuf,
-						    "[%u.%04u]\tDebugAccessory\n",
+						    "[%u.%04u]\tDebugAccessorySource\n",
 						    TimeStampSeconds,
 						    TimeStampMS10ths);
 					strcat(buf, tempBuf);
@@ -4792,11 +4792,11 @@ static ssize_t _fusb_Sysfs_TypeCStateLog_show(struct device *dev,
 				break;
 			}
 
-		case DebugAccessory:
+		case DebugAccessorySource:
 			{
 				numChars +=
 				    sprintf(tempBuf,
-					    "[%u.%04u]\tDebugAccessory\n",
+					    "[%u.%04u]\tDebugAccessorySource\n",
 					    TimeStampSeconds, TimeStampMS10ths);
 				strcat(buf, tempBuf);
 				break;
