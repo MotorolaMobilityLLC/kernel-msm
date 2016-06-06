@@ -6,7 +6,7 @@
  *
  * Software License Agreement:
  *
- * The software supplied herewith by Fairchild Semiconductor (the Company)
+ * The software supplied herewith by Fairchild Semiconductor (the “Company”)
  * is supplied to you, the Company's customer, for exclusive use with its
  * USB Type C / USB PD products.  The software is owned by the Company and/or
  * its supplier, and is protected under applicable copyright laws.
@@ -15,7 +15,7 @@
  * as to civil liability for the breach of the terms and conditions of this
  * license.
  *
- * THIS SOFTWARE IS PROVIDED IN AN AS IS CONDITION. NO WARRANTIES,
+ * THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
  * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
  * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
@@ -23,7 +23,6 @@
  * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
  *
  *****************************************************************************/
-#include <linux/printk.h>
 #include "PDProtocol.h"
 #include "PDPolicy.h"
 #include "TypeC.h"
@@ -59,11 +58,8 @@ static FSC_U8 USBPDBufStart;	// Pointer to the first byte of the first message
 static FSC_U8 USBPDBufEnd;	// Pointer to the last byte of the last message
 static FSC_BOOL USBPDBufOverflow;	// Flag to indicate that there was a buffer overflow since last read
 
-#ifdef FM150911A
-FSC_U8 manualRetries = 1;	// Set to 1 to enable manual retries (instead of automatic)
-#else
 FSC_U8 manualRetries = 0;	// Set to 1 to enable manual retries (instead of automatic)
-#endif // (FM150911A && FSC_DEBUG) elif FSC_DEBUG
+
 FSC_U8 nTries = 4;		// Number of tries (1 + 3 retries)
 #endif // FSC_DEBUG
 
@@ -77,21 +73,12 @@ SopType ProtocolMsgRxSop;	// SOP type of message received
 static FSC_U8 ProtocolTxBytes;	// Number of bytes for the Tx FIFO
 static FSC_U8 ProtocolTxBuffer[FSC_PROTOCOL_BUFFER_SIZE];	// Buffer for device Tx FIFO
 static FSC_U8 ProtocolRxBuffer[FSC_PROTOCOL_BUFFER_SIZE];	// Buffer for device Rx FIFO
-static FSC_U16 ProtocolTimer;	// Multi-function timer for the different protocol states
 static FSC_U8 ProtocolCRC[4];
 FSC_BOOL ProtocolCheckRxBeforeTx;
 
 /////////////////////////////////////////////////////////////////////////////
 //                  Timer Interrupt service routine
 /////////////////////////////////////////////////////////////////////////////
-void ProtocolTickAt100us(void)
-{
-	if (!USBPDActive)
-		return;
-
-	if (ProtocolTimer > 0)
-		ProtocolTimer--;	// Decrement it
-}
 
 void InitializePDProtocolVariables(void)
 {
@@ -102,18 +89,9 @@ void InitializePDProtocolVariables(void)
 void USBPDProtocol(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
-	if (g_Idle == TRUE) {
-		g_Idle = FALSE;	// Mask for general use:
-		Registers.Mask.byte = 0xFF;
-		Registers.Mask.M_COLLISION = 0;
-		DeviceWrite(regMask, 1, &Registers.Mask.byte);
-		Registers.MaskAdv.byte[0] = 0xFF;
-		Registers.MaskAdv.M_RETRYFAIL = 0;
-		Registers.MaskAdv.M_TXCRCSENT = 0;
-		Registers.MaskAdv.M_HARDRST = 0;
-		DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
-		Registers.MaskAdv.M_GCRCSENT = 0;
-		DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
+	if (g_Idle == TRUE)	// Go into active mode
+	{
+		g_Idle = FALSE;
 		platform_enable_timer(TRUE);
 	}
 #endif
@@ -135,7 +113,6 @@ void USBPDProtocol(void)
 			ProtocolSendHardReset();	// Send a Hard Reset sequence
 			PDTxStatus = txWait;	// Set the transmission status to wait to signal the policy engine
 			ProtocolState = PRLResetWait;	// Go to the next state to wait for the reset signaling to complete
-			ProtocolTimer = tBMCTimeout;	// Set a timeout so that we don't hang waiting for the reset to complete
 			break;
 		case PRLResetWait:	// Wait for the reset signaling to complete
 			ProtocolResetWait();
@@ -149,18 +126,6 @@ void USBPDProtocol(void)
 		case PRLTxVerifyGoodCRC:	// Wait for message to be received and handle...
 			ProtocolVerifyGoodCRC();
 			break;
-		case PRL_BIST_Rx_Reset_Counter:	// Reset BISTErrorCounter and preload PRBS
-			protocolBISTRxResetCounter();
-			break;
-		case PRL_BIST_Rx_Test_Frame:	// Wait for test Frame form PHY
-			protocolBISTRxTestFrame();
-			break;
-		case PRL_BIST_Rx_Error_Count:	// Construct and send BIST error count message to PHY
-			protocolBISTRxErrorCount();
-			break;
-		case PRL_BIST_Rx_Inform_Policy:	// Inform policy engine error count has been sent
-			protocolBISTRxInformPolicy();
-			break;
 		case PRLDisabled:	// In the disabled state, don't do anything
 			break;
 		default:
@@ -173,11 +138,7 @@ void ProtocolIdle(void)
 {
 	if (PDTxStatus == txReset)	// If we need to send a hard reset...
 		ProtocolState = PRLReset;	// Set the protocol state to send it
-#ifndef FSC_INTERRUPT_TRIGGERED
 	else if (Registers.Status.I_GCRCSENT)	// Otherwise check to see if we have received a message and sent a GoodCRC in response
-#else
-	else if (!Registers.Status.RX_EMPTY)	// Otherwise check to see if we have received a message and sent a GoodCRC in response       
-#endif
 	{
 
 		ProtocolGetRxPacket();	// Grab the received message to pass up to the policy engine
@@ -195,10 +156,6 @@ void ProtocolResetWait(void)
 	{
 		ProtocolState = PRLIdle;	// Have the protocol state go to idle
 		PDTxStatus = txSuccess;	// Alert the policy engine that the reset signaling has completed
-	} else if (ProtocolTimer == 0)	// Wait for the BMCTimeout period before stating success in case the interrupts don't line up
-	{
-		ProtocolState = PRLIdle;	// Have the protocol state go to idle
-		PDTxStatus = txSuccess;	// Assume that we have successfully sent a hard reset for now (may change in future)
 	}
 }
 
@@ -225,6 +182,7 @@ void ProtocolGetRxPacket(void)
 
 	// figure out what SOP* the data came in on
 	rx_sop = TokenToSopType(data[0]);
+
 	if ((PolicyRxHeader.NumDataObjects == 0)
 	    && (PolicyRxHeader.MessageType == CMTSoftReset)) {
 		MessageIDCounter = 0;	// Clear the message ID counter for tx
@@ -243,15 +201,15 @@ void ProtocolGetRxPacket(void)
 
 	if (PolicyRxHeader.NumDataObjects > 0)	// Did we receive a data message? If so, we want to retrieve the data
 	{
-		DeviceRead(regFIFO, ((PolicyRxHeader.NumDataObjects << 2)), &ProtocolRxBuffer[0]);	// Grab the data from the FIFO
+		DeviceRead(regFIFO, ((PolicyRxHeader.NumDataObjects << 2) + 4), &ProtocolRxBuffer[0]);	// Grab the data from the FIFO
 		for (i = 0; i < PolicyRxHeader.NumDataObjects; i++)	// Load the FIFO data into the data objects (loop through each object)
 		{
 			for (j = 0; j < 4; j++)	// Loop through each byte in the object
 				PolicyRxDataObj[i].byte[j] = ProtocolRxBuffer[j + (i << 2)];	// Store the actual bytes
 		}
+	} else {
+		DeviceRead(regFIFO, 4, &ProtocolCRC[0]);	// Read out the 4 CRC bytes to move the address to the next packet beginning
 	}
-
-	DeviceRead(regFIFO, 4, &ProtocolCRC[0]);	// Read out the 4 CRC bytes to move the address to the next packet beginning
 
 #ifdef FSC_DEBUG
 	StoreUSBPDMessage(PolicyRxHeader, &PolicyRxDataObj[0], FALSE, data[0]);	// Store the received PD message for the device policy manager (VB GUI)
@@ -287,8 +245,7 @@ void ProtocolTransmitMessage(void)
 	FSC_U8 sop_token = 0xE0;
 #endif // FSC_DEBUG
 
-	ProtocolFlushTxFIFO();	// Flush the Tx FIFO and disable the auto preamble
-
+	/* Note: Power needs to be set a bit before we write TX_START to update */
 	ProtocolLoadSOP();
 
 	temp_PolicyTxHeader.word = PolicyTxHeader.word;
@@ -322,7 +279,6 @@ void ProtocolTransmitMessage(void)
 		manualRetriesTakeTwo();
 	} else {
 #endif // FSC_DEBUG
-		DeviceWrite(regFIFO, ProtocolTxBytes, &ProtocolTxBuffer[0]);	// Commit the FIFO to the device
 
 		/* sometimes it's important to check for a received message before sending */
 		if (ProtocolCheckRxBeforeTx) {
@@ -331,11 +287,11 @@ void ProtocolTransmitMessage(void)
 			if (Registers.Status.I_GCRCSENT) {
 				/* if a message was received, bail */
 				Registers.Status.I_GCRCSENT = 0;
-				ProtocolFlushTxFIFO();
 				PDTxStatus = txError;
 				return;
 			}
 		}
+		DeviceWrite(regFIFO, ProtocolTxBytes, &ProtocolTxBuffer[0]);	// Commit the FIFO to the device
 
 		Registers.Control.TX_START = 1;	// Set the bit to enable the transmitter
 		DeviceWrite(regControl0, 1, &Registers.Control.byte[0]);	// Commit TX_START to the device
@@ -343,7 +299,6 @@ void ProtocolTransmitMessage(void)
 
 		PDTxStatus = txBusy;	// Set the transmitter status to busy
 		ProtocolState = PRLTxSendingMessage;	// Set the protocol state to wait for the transmission to complete
-		ProtocolTimer = tBMCTimeout;	// Set the protocol timer for ~2.5ms to allow the BMC to finish transmitting before timing out
 #ifdef FSC_DEBUG
 	}
 	StoreUSBPDMessage(temp_PolicyTxHeader, &PolicyTxDataObj[0], TRUE, sop_token);	// Store all messages that we attempt to send for debugging (SOP)
@@ -354,22 +309,17 @@ void ProtocolTransmitMessage(void)
 void ProtocolSendingMessage(void)
 {
 	if (Registers.Status.I_TXSENT) {
-		ProtocolFlushTxFIFO();	// Flush the Tx FIFO
+		Registers.Status.I_TXSENT = 0;
 		ProtocolVerifyGoodCRC();
-	}
-#ifdef FSC_DEBUG
-	else if (Registers.Status.I_COLLISION && manualRetries)	// If there was a collision on the bus...
+	} else if (Registers.Status.I_COLLISION)	// If there was a collision on the bus...
 	{
-		/* only really care about collisions for firmware retries */
-		ProtocolFlushTxFIFO();	// Discard the message and flush the Tx FIFO
+		// TODO: Update collision handling (protocol + policy)
+		Registers.Status.I_COLLISION = 0;
 		PDTxStatus = txCollision;	// Indicate to the policy engine that there was a collision with the last transmission
-		ProtocolTimer = tBMCTimeout;	// Set a timeout so that we don't hang waiting for a packet
 		ProtocolState = PRLRxWait;	// Go to the RxWait state to receive whatever message is incoming...
-	}
-#endif // FSC_DEBUG
-	else if (!Registers.Status.I_COLLISION && ProtocolTimer == 0)	// If we have timed out waiting for the transmitter to complete...
+	} else if (Registers.Status.I_RETRYFAIL)	// If we have timed out waiting for the transmitter to complete...
 	{
-		ProtocolFlushTxFIFO();	// Discard the message and flush the Tx FIFO
+		Registers.Status.I_RETRYFAIL = 0;
 		ProtocolFlushRxFIFO();	// Flush the Rx FIFO
 		PDTxStatus = txError;	// Set the transmission status to error to signal the policy engine
 		ProtocolState = PRLIdle;	// Set the state variable to the idle state
@@ -485,7 +435,6 @@ void ProtocolLoadSOP(void)
 	ProtocolTxBuffer[ProtocolTxBytes++] = SYNC1_TOKEN;	// Load in the Sync-1 pattern
 	ProtocolTxBuffer[ProtocolTxBytes++] = SYNC1_TOKEN;	// Load in the Sync-1 pattern
 	ProtocolTxBuffer[ProtocolTxBytes++] = SYNC2_TOKEN;	// Load in the Sync-2 pattern
-//    current_sop = SOP_TYPE_SOP;
 }
 
 void ProtocolLoadEOP(void)
@@ -530,8 +479,7 @@ void ResetProtocolLayer(FSC_BOOL ResetPDLogic)
 	ProtocolFlushRxFIFO();	// Flush the Rx FIFO
 	ProtocolFlushTxFIFO();	// Flush the Tx FIFO
 	ProtocolState = PRLIdle;	// Initialize the protocol layer to the idle state
-	PDTxStatus = txIdle;	// Initialize the transmitter status
-	ProtocolTimer = 0;	// Reset the protocol state timer
+	PDTxStatus = txIdle;	// Initialize the transmitter status                                                       // Reset the protocol state timer
 
 #ifdef FSC_HAVE_VDM
 	VdmTimer = 0;
@@ -554,33 +502,6 @@ void ResetProtocolLayer(FSC_BOOL ResetPDLogic)
 		CapsReceived[i].object = 0;	// Clear each object
 	Registers.Switches.AUTO_CRC = 1;
 	DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);
-}
-
-// ------- BIST Receiver Test -------- //
-
-void protocolBISTRxResetCounter(void)	// Reset BISTErrorCounter and preload PRBS
-{
-	// Preload PRBS
-	ProtocolState = PRL_BIST_Rx_Test_Frame;	// Transition to PRL_BIST_Rx_Test_Frame when BISTErrorCounter has been reset
-}
-
-void protocolBISTRxTestFrame(void)	// Wait for test Frame form PHY
-{
-	// Wait for the Physical Layer to receive the next test frame
-	// Transition to PRL_BIST_Rx_Error_count when current value of BISTErrorCounter is received from PHY layer
-}
-
-void protocolBISTRxErrorCount(void)	// Construct and send BIST error count message to PHY
-{
-	// Construct a BIST message with BIST Data Object of Returned BIST Counters using BISTErrorCounter value from PHY layer
-	// Pass BIST Message to PHY layer for transmission
-	// Transition to PRL_BIST_Rx_Inform_Policy when BIST message has been sent
-}
-
-void protocolBISTRxInformPolicy(void)	// Inform policy engine error count has been sent
-{
-	// Inform policy engine that BIST message containing BISTErrorCounter has been sent
-	// Transition to PRL_BIST_Rx_Test_Frame when policy engine has been informed
 }
 
 #ifdef FSC_DEBUG

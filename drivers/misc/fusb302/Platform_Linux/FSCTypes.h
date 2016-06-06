@@ -30,7 +30,7 @@
 /* get linux-specific type definitions (NULL, size_t, etc) */
 #include <linux/types.h>
 
-
+    
 #if !defined(BOOL) && !defined(FALSE) && !defined(TRUE)
 typedef enum _BOOL { FALSE = 0, TRUE } FSC_BOOL;	/* Undefined size */
 #endif // !BOOL && !FALSE && !TRUE
