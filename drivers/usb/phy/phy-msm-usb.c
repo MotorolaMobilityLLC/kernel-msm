@@ -6628,9 +6628,15 @@ static int msm_otg_pm_resume(struct device *dev)
 
 	motg->pm_done = 0;
 
-	if (motg->async_int || motg->sm_work_pending ||
-			motg->phy_irq_pending ||
-			!pm_runtime_suspended(dev)) {
+	/*
+	 * Flush pending requests and wait for all runtime PM operations
+	 * involving the device in progress to complete.
+	 */
+	pm_runtime_barrier(dev);
+	/* Process msm_otg_resume only if USB is in lpm */
+	if (atomic_read(&motg->in_lpm) && (motg->async_int ||
+			motg->sm_work_pending || motg->phy_irq_pending ||
+			!pm_runtime_suspended(dev))) {
 		msm_otg_dbg_log_event(&motg->phy, "PM RESUME BY USB",
 				motg->async_int, motg->phy_irq_pending);
 		pm_runtime_get_noresume(dev);
