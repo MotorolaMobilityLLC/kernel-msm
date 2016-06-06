@@ -14,7 +14,6 @@
  */
 #ifndef _FSC_PLATFORM_H_
 #define _FSC_PLATFORM_H_
-
 /* PLATFORM_NONE
  * 
  * This is a set of stubs for no platform in particular.
@@ -197,5 +196,16 @@ void platform_notify_unsupported_accessory(void);
 *                  a data role swap.
 *******************************************************************************/
 void platform_set_data_role(FSC_BOOL PolicyIsDFP);
+
+void platform_disableSuperspeedUSB(void);
+void platform_enableSuperspeedUSB(int CC1, int CC2);
+void platform_run_wake_thread(void);
+typedef enum {
+	fsa_lpm = 0,
+	fsa_audio_mode,
+	fsa_usb_mode,
+	fsa_audio_override
+} FSASwitchState;
+void platform_toggleAudioSwitch(FSASwitchState state);
 
 #endif // _FSC_PLATFORM_H_
