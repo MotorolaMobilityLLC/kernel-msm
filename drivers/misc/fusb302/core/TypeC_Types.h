@@ -5,6 +5,7 @@ typedef enum {
 	USBTypeC_Sink = 0,
 	USBTypeC_Source,
 	USBTypeC_DRP,
+	USBTypeC_Debug,
 	USBTypeC_UNDEFINED = 99
 } USBTypeCPort;
 
@@ -21,12 +22,20 @@ typedef enum {
 	TrySink,
 	TryWaitSource,
 	AudioAccessory,
-	DebugAccessory,
+	DebugAccessorySource,
 	AttachWaitAccessory,
 	PoweredAccessory,
 	UnsupportedAccessory,
 	DelayUnattached,
-	UnattachedSource
+	UnattachedSource,
+	DebugAccessorySink,
+	AttachWaitDebSink,
+	AttachedDebSink,
+	AttachWaitDebSource,
+	AttachedDebSource,
+	TryDebSource,
+	TryWaitDebSink,
+	UnattachedDebSource,
 } ConnectionState;
 
 typedef enum {
