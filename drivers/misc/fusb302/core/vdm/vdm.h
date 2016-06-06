@@ -10,7 +10,7 @@
  *
  * Software License Agreement:
  *
- * The software supplied herewith by Fairchild Semiconductor (the Company)
+ * The software supplied herewith by Fairchild Semiconductor (the “Company”)
  * is supplied to you, the Company's customer, for exclusive use with its
  * USB Type C / USB PD products.  The software is owned by the Company and/or
  * its supplier, and is protected under applicable copyright laws.
@@ -19,7 +19,7 @@
  * as to civil liability for the breach of the terms and conditions of this
  * license.
  *
- * THIS SOFTWARE IS PROVIDED IN AN AS IS CONDITION. NO WARRANTIES,
+ * THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
  * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
  * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
@@ -37,15 +37,20 @@
 #include "vdm_callbacks_defs.h"
 #include "../PD_Types.h"
 
+#define SVID_DEFAULT 0x0779	// 0x0779 = FC VID
+#define MODE_DEFAULT 0x0001
+#define SVID_AUTO_ENTRY 0x05AC
+#define MODE_AUTO_ENTRY 0x0001
+
 #define NUM_VDM_MODES 6
 #define MAX_NUM_SVIDS_PER_SOP 30
 #define MAX_SVIDS_PER_MESSAGE 12
 #define MIN_DISC_ID_RESP_SIZE 3
 
-// Millisecond values ticked by 0.1ms timer.
-#define tVDMSenderResponse (50 * 10)
-#define tVDMWaitModeEntry  (50 * 10)
-#define tVDMWaitModeExit   (50 * 10)
+// Millisecond values ticked by 1ms timer.
+#define tVDMSenderResponse 27 * 1
+#define tVDMWaitModeEntry  45 * 1
+#define tVDMWaitModeExit   45 * 1
 
 /*
  * VDM Manager object, so I can have multiple instances intercommunicating using the same functions!
@@ -64,6 +69,7 @@ typedef struct {
 	InformModes inform_modes;
 	InformAttention inform_attention;
 } VdmManager;
+
 /*
  * Initialization functions.
  */
