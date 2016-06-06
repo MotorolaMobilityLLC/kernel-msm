@@ -267,7 +267,8 @@ endif # CONFIG_MMI_DEVICE_DTBS
 dtb-$(CONFIG_ARCH_MSM8953) += msm8953-addison-p1.dtb \
 	msm8953-addison-p2a.dtb \
 	msm8953-addison-p3.dtb \
-	msm8953-addison-p4.dtb
+	msm8953-addison-p4.dtb \
+	msm8953-addison-p7.dtb
 
 dtb-$(CONFIG_ARCH_MSM8937) += msm8937-cedric-p1.dtb
 
