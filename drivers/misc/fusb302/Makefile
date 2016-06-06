@@ -27,7 +27,6 @@ fusb302-objs         := Platform_Linux/fusb30x_driver.o \
                      Platform_Linux/platform.o \
                      Platform_Linux/platform_helpers.o \
                      Platform_Linux/hostcomm.o \
-                     core/AlternateModes.o \
                      core/core.o \
                      core/fusb30X.o \
                      core/Log.o \
