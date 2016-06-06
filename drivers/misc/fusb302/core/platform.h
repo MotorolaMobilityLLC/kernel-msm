@@ -14,6 +14,7 @@
  */
 #ifndef _FSC_PLATFORM_H_
 #define _FSC_PLATFORM_H_
+
 /* PLATFORM_NONE
  * 
  * This is a set of stubs for no platform in particular.
@@ -38,6 +39,14 @@
 #include "../Platform_ARM/app/FSCTypes.h"
 #endif // PLATFORM_ARM
 
+/* PLATFORM_ARM_M7
+ *
+ * This platform is for the ARM M7.
+ */
+#ifdef PLATFORM_ARM_M7
+#include "../Platform_ARM_M7/app/FSCTypes.h"
+#endif // PLATFORM_ARM_M7
+
 /* FSC_PLATFORM_LINUX
  * 
  * This platform is for the Linux kernel driver.
@@ -55,6 +64,17 @@ typedef enum {
 	VBUS_LVL_COUNT,
 	VBUS_LVL_ALL = 99
 } VBUS_LVL;
+
+typedef enum {
+	CC1,
+	CC2,
+	NONE,
+} CC_ORIENTATION;
+
+typedef enum {
+	SINK = 0,
+	SOURCE
+} SourceOrSink;
 
 /*******************************************************************************
 * Function:        platform_set/get_vbus_lvl_enable
@@ -140,16 +160,42 @@ void platform_enable_timer(FSC_BOOL enable);
  ******************************************************************************/
 void platform_delay_10us(FSC_U32 delayCount);
 
-void platform_disableSuperspeedUSB(void);
-void platform_enableSuperspeedUSB(int CC1, int CC2);
-void platform_run_wake_thread(void);
-typedef enum {
-	fsa_lpm = 0,
-	fsa_audio_mode,
-	fsa_usb_mode,
-	fsa_audio_override
-} FSASwitchState;
+/*******************************************************************************
+* Function:        platform_notify_cc_orientation
+* Input:           orientation - Orientation of CC (NONE, CC1, CC2)
+* Return:          None
+* Description:     A callback used by the core to report to the platform the 
+*                  current CC orientation. Called in SetStateAttached... and
+*                  SetStateUnattached functions.                 
+******************************************************************************/
+void platform_notify_cc_orientation(CC_ORIENTATION orientation);
 
-void platform_toggleAudioSwitch(FSASwitchState state);
+/*******************************************************************************
+* Function:        platform_notify_pd_contract
+* Input:           contract - TRUE: Contract, FALSE: No Contract
+* Return:          None
+* Description:     A callback used by the core to report to the platform the 
+*                  current PD contract status. Called in PDPolicy.
+*******************************************************************************/
+void platform_notify_pd_contract(FSC_BOOL contract);
+
+/*******************************************************************************
+* Function:        platform_notify_unsupported_accessory
+* Input:           None
+* Return:          None
+* Description:     A callback used by the core to report entry to the
+*                  Unsupported Accessory state. The platform may implement
+*                  USB Billboard.
+*******************************************************************************/
+void platform_notify_unsupported_accessory(void);
+
+/*******************************************************************************
+* Function:        platform_set_data_role
+* Input:           PolicyIsDFP - Current data role
+* Return:          None
+* Description:     A callback used by the core to report the new data role after
+*                  a data role swap.
+*******************************************************************************/
+void platform_set_data_role(FSC_BOOL PolicyIsDFP);
 
 #endif // _FSC_PLATFORM_H_

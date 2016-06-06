@@ -23,16 +23,17 @@
  * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
  *
  *****************************************************************************/
-#include <linux/printk.h>
-#include <linux/power_supply.h>
+
 #ifdef FSC_DEBUG
 #include "Log.h"
 #endif // FSC_DEBUG
+
 #include "PD_Types.h"
 #include "PDPolicy.h"
 #include "PDProtocol.h"
 #include "TypeC.h"
 #include "fusb30X.h"
+
 #ifdef FSC_HAVE_VDM
 #include "vdm/vdm_callbacks.h"
 #include "vdm/vdm_callbacks_defs.h"
@@ -43,7 +44,7 @@
 #include "vdm/DisplayPort/dp.h"
 #include "vdm/DisplayPort/interface_dp.h"
 #endif // FSC_HAVE_VDM
-#include "../Platform_Linux/fusb30x_global.h"
+
 /////////////////////////////////////////////////////////////////////////////
 //      Variables for use with the USB PD state machine
 /////////////////////////////////////////////////////////////////////////////
@@ -57,18 +58,15 @@ extern FSC_U8 nTries;		// Number of tries for manual retry
 #endif // FSC_DEBUG
 
 extern FSC_BOOL g_Idle;		// Puts state machine into Idle state
-FSC_U32 gChargerMaxCurrent;
+extern USBTypeCCurrent SourceCurrent;	// TypeC advertised current
+extern FSC_U8 DetachThreshold;
+
 // Device Policy Manager Variables 
 FSC_BOOL USBPDTxFlag;		// Flag to indicate that we need to send a message (set by device policy manager)
 FSC_BOOL IsHardReset;		// Variable indicating that a Hard Reset is occurring
 FSC_BOOL IsPRSwap;		// Variable indicating that a PRSwap is occurring
 FSC_BOOL IsVCONNSource;		// Indicates who is the VCONN source
-sopMainHeader_t PDTransmitHeader;	// Definition of the PD packet to send
 
-#ifdef FSC_HAVE_SNK
-sopMainHeader_t CapsHeaderSink;	// Definition of the sink capabilities of the device
-doDataObject_t CapsSink[7];	// Power object definitions of the sink capabilities of the device
-doDataObject_t SinkRequest;	// Sink request message
 sopMainHeader_t PDTransmitHeader = { 0 };	// Definition of the PD packet to send
 sopMainHeader_t CapsHeaderSink = { 0 };	// Definition of the sink capabilities of the device
 sopMainHeader_t CapsHeaderSource = { 0 };	// Definition of the source capabilities of the device
@@ -86,23 +84,12 @@ FSC_U32 SinkRequestOpPower;	// Operating power the sink will request (used to ca
 FSC_BOOL SinkGotoMinCompatible;	// Whether the sink will respond to the GotoMin command
 FSC_BOOL SinkUSBSuspendOperation;	// Whether the sink wants to continue operation during USB suspend
 FSC_BOOL SinkUSBCommCapable;	// Whether the sink is USB communications capable
-#endif // FSC_HAVE_SNK
 
 doDataObject_t PartnerCaps = { 0 };	// Partner's Sink Capabilities
-
-#ifdef FSC_HAVE_SRC
-sopMainHeader_t CapsHeaderSource;	// Definition of the source capabilities of the device
-doDataObject_t CapsSource[7];	// Power object definitions of the source capabilities of the device
-#endif // FSC_HAVE_SRC
 
 #ifdef FSC_DEBUG
 FSC_BOOL SourceCapsUpdated;	// Flag to indicate whether we have updated the source caps (for the GUI)
 #endif // FSC_DEBUG
-
-sopMainHeader_t CapsHeaderReceived;	// Last capabilities header received (source or sink)
-doDataObject_t PDTransmitObjects[7];	// Data objects to send
-doDataObject_t CapsReceived[7];	// Last power objects received (source or sink)
-doDataObject_t USBPDContract;	// Current USB PD contract (request object)
 
 // Policy Variables
 // removing static qualifier so PolicyState is visible to other code blocks.
@@ -117,9 +104,9 @@ FSC_U32 VbusTransitionTime;	// Time to wait for VBUS switch to transition
 static FSC_U8 CollisionCounter;	// Collision counter for the policy engine
 static FSC_U8 HardResetCounter;	// The number of times a hard reset has been generated
 static FSC_U8 CapsCounter;	// Number of capabilities messages sent
-FSC_U32 PolicyStateTimer;	// Multi-function timer for the different policy states
-FSC_U32 NoResponseTimer;	// Policy engine no response timer
-static FSC_U32 SwapSourceStartTimer;	// Delay after power role swap before starting source PD
+volatile FSC_U32 PolicyStateTimer;	// Multi-function timer for the different policy states
+volatile FSC_U32 NoResponseTimer;	// Policy engine no response timer
+volatile static FSC_U32 SwapSourceStartTimer;	// Delay after power role swap before starting source PD
 sopMainHeader_t PolicyRxHeader = { 0 };	// Header object for USB PD messages received
 sopMainHeader_t PolicyTxHeader = { 0 };	// Header object for USB PD messages to send
 doDataObject_t PolicyRxDataObj[7] = { {0} };	// Buffer for data objects received
@@ -138,7 +125,7 @@ doDataObject_t vdm_msg_obj[7] = { {0} };
 PolicyState_t vdm_next_ps;
 FSC_BOOL sendingVdmData;
 
-FSC_U32 VdmTimer;
+volatile FSC_U32 VdmTimer;
 FSC_BOOL VdmTimerStarted;
 
 FSC_U16 auto_mode_disc_tracker;
@@ -149,20 +136,21 @@ extern SvidInfo core_svid_info;
 
 #ifdef FSC_HAVE_DP
 extern FSC_U32 DpModeEntered;
-extern FSC_S32 AutoDpModeEntryObjPos;
+extern FSC_S32 AutoModeEntryObjPos;
 #endif // FSC_HAVE_DP
 
 extern FSC_BOOL ProtocolCheckRxBeforeTx;
-ReqContextType coreReqCtx;
+extern FSC_U8 loopCounter;	// Used to count the number of Unattach<->AttachWait loops
+
 /////////////////////////////////////////////////////////////////////////////
 //                  Timer Interrupt service routine
 /////////////////////////////////////////////////////////////////////////////
-void PolicyTickAt100us(void)
+void PolicyTick(void)
 {
 	if (!USBPDActive)
 		return;
 
-	if (PolicyStateTimer > 0)
+	if (PolicyStateTimer)	// If the PolicyStateTimer is greater than zero...
 		PolicyStateTimer--;	// Decrement it
 	if ((NoResponseTimer < T_TIMER_DISABLE) && (NoResponseTimer > 0))	// If the timer is enabled and hasn't expired
 		NoResponseTimer--;	// Decrement it
@@ -180,11 +168,9 @@ void InitializePDPolicyVariables(void)
 	SwapSourceStartTimer = 0;
 
 #ifdef FSC_HAVE_SNK
-	/* Maximum voltage that the sink will request (9V)*/
-	SinkRequestMaxVoltage = 180;
-	/* Maximum power the sink will request first(0.5W*60)*/
-	SinkRequestMaxPower = 60000;
-	SinkRequestOpPower = 60000;
+	SinkRequestMaxVoltage = 180;	// Maximum voltage that the sink will request (9V)
+	SinkRequestMaxPower = 1800;	// Maximum power the sink will request (0.5W, used to calculate current as well)
+	SinkRequestOpPower = 1800;	// Operating power the sink will request (0.5W, sed to calculate current as well)
 	SinkGotoMinCompatible = FALSE;	// Whether the sink will respond to the GotoMin command
 	SinkUSBSuspendOperation = FALSE;	// Whether the sink wants to continue operation during USB suspend
 	SinkUSBCommCapable = FALSE;	// Whether the sink is USB communications capable
@@ -204,7 +190,7 @@ void InitializePDPolicyVariables(void)
 	CapsSink[0].FPDOSink.DualRolePower = 1;	// By default, enable PR_SWAP
 	CapsSink[0].FPDOSink.Reserved = 0;
 
-	CapsSink[1].FPDOSink.Voltage = 240;	// Set 12V for the second supply option
+	CapsSink[1].FPDOSink.Voltage = 180;	// Set 12V for the second supply option
 	CapsSink[1].FPDOSink.OperationalCurrent = 10;	// Set that our device will consume 100mA for this object
 	CapsSink[1].FPDOSink.DataRoleSwap = 0;	// Not used
 	CapsSink[1].FPDOSink.USBCommCapable = 0;	// Not used
@@ -213,10 +199,10 @@ void InitializePDPolicyVariables(void)
 	CapsSink[1].FPDOSink.DualRolePower = 0;	// Not used
 #endif // FSC_HAVE_SNK
 
-#ifdef FSC_HAVE_SRC
+#if defined(FSC_HAVE_SRC) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
 
 #ifdef FM150911A
-	CapsHeaderSource.NumDataObjects = 2;	// Set the number of power objects to 2
+	CapsHeaderSource.NumDataObjects = 1;	// Set the number of power objects to 2
 #else
 	CapsHeaderSource.NumDataObjects = 1;	// Set the number of power objects to 1
 #endif // FM150911A
@@ -227,7 +213,7 @@ void InitializePDPolicyVariables(void)
 	CapsHeaderSource.Reserved1 = 0;
 
 	CapsSource[0].FPDOSupply.Voltage = 100;	// Set 5V for the first supply option
-	CapsSource[0].FPDOSupply.MaxCurrent = 150;	// Set 500mA for the first supply option
+	CapsSource[0].FPDOSupply.MaxCurrent = 150;	// Set 1.5A for the first supply option
 	CapsSource[0].FPDOSupply.PeakCurrent = 0;	// Set peak equal to max
 	CapsSource[0].FPDOSupply.DataRoleSwap = TRUE;	// By default, don't enable DR_SWAP
 	CapsSource[0].FPDOSupply.USBCommCapable = FALSE;	// By default, USB communications is not allowed
@@ -248,15 +234,13 @@ void InitializePDPolicyVariables(void)
 	CapsSource[1].FPDOSupply.DualRolePower = 0;	// Allows PR_SWAP
 	CapsSource[1].FPDOSupply.SupplyType = 0;	// Fixed supply
 #endif // FM150911A
-
-	CapsSource[0].FPDOSupply.Reserved = 0;	// Clearing reserved bits  
 #endif // FSC_HAVE_SRC
 
 #ifdef FSC_DEBUG
 	SourceCapsUpdated = FALSE;	// Set the flag to indicate to the GUI that our source caps have been updated
 #endif // FSC_DEBUG
 
-	VbusTransitionTime = 20 * TICK_SCALE_TO_MS;	// Default VBUS transition time 20ms
+	VbusTransitionTime = tFPF2498Transition;	// Default VBUS transition time 20ms
 
 #ifdef FSC_HAVE_VDM
 	InitializeVdmManager();	// Initialize VDM Manager
@@ -266,7 +250,7 @@ void InitializePDPolicyVariables(void)
 #endif // FSC_HAVE_VDM
 
 #ifdef FSC_HAVE_DP
-	AutoDpModeEntryObjPos = -1;
+	AutoModeEntryObjPos = -1;
 #endif // FSC_HAVE_DP
 
 	ProtocolCheckRxBeforeTx = FALSE;
@@ -275,9 +259,7 @@ void InitializePDPolicyVariables(void)
 	Registers.Slice.SDAC = SDAC_DEFAULT;	// Set the SDAC threshold to "default"
 	Registers.Slice.SDAC_HYS = 0b01;	// Set hysteresis to 85mV
 	DeviceWrite(regSlice, 1, &Registers.Slice.byte);
-	gChargerMaxCurrent = 0;
-	init_completion(&coreReqCtx.complete);
-	atomic_set(&coreReqCtx.pending, 0);
+
 #ifdef FSC_DEBUG
 	InitializeStateLog(&PDStateLog);
 #endif // FSC_DEBUG
@@ -285,7 +267,7 @@ void InitializePDPolicyVariables(void)
 
 // ##################### USB PD Enable / Disable Routines ################### //
 
-void USBPDEnable(FSC_BOOL DeviceUpdate, FSC_BOOL TypeCDFP)
+void USBPDEnable(FSC_BOOL DeviceUpdate, SourceOrSink TypeCDFP)
 {
 	FSC_U8 data[5];
 	IsHardReset = FALSE;
@@ -322,11 +304,6 @@ void USBPDEnable(FSC_BOOL DeviceUpdate, FSC_BOOL TypeCDFP)
 				LastPolicyState = peDisabled;
 				Registers.Switches.POWERROLE = 1;	// Initialize to a SRC
 				Registers.Switches.DATAROLE = 1;	// Initialize to a DFP
-
-//                Registers.Control.ENSOP1 = 1;
-//                Registers.Control.ENSOP1DP = 1;
-//                Registers.Control.ENSOP2 = 1;
-//                Registers.Control.ENSOP2DB = 1;
 			} else	// Otherwise we are a sink...
 			{
 				PolicyState = peSinkStartup;	// initialize the policy engine state to sink startup
@@ -342,9 +319,10 @@ void USBPDEnable(FSC_BOOL DeviceUpdate, FSC_BOOL TypeCDFP)
 				Registers.Control.ENSOP2DB = 0;
 			}
 			Registers.Switches.AUTO_CRC = 0;	// Disable auto CRC until startup
-			Registers.Power.PWR |= 0x8;	// Enable the internal oscillator for USB PD
 			Registers.Control.AUTO_PRE = 0;	// Disable AUTO_PRE since we are going to use AUTO_CRC
 			Registers.Control.N_RETRIES = 3;	// Set the number of retries to 3
+			Registers.Power.PWR = 0xF;	// Enable the internal oscillator for USB PD
+			DeviceWrite(regPower, 1, &Registers.Power.byte);	// Commit the power setting
 #ifdef FSC_DEBUG
 			if (manualRetries) {
 				Registers.Control.N_RETRIES = 0;	// Set the number of retries to 0
@@ -358,36 +336,32 @@ void USBPDEnable(FSC_BOOL DeviceUpdate, FSC_BOOL TypeCDFP)
 			data[2] = Registers.Control.byte[1] | 0x04;	// Set the Control1 byte and set the RX_FLUSH bit (auto-clears)
 			data[3] = Registers.Control.byte[2];
 			data[4] = Registers.Control.byte[3];
-			//DeviceWrite(regSlice, 1, &data[0]);                               // Commit the slice and control registers
 			DeviceWrite(regControl0, 4, &data[1]);
 			if (DeviceUpdate) {
-				DeviceWrite(regPower, 1, &Registers.Power.byte);	// Commit the power setting
 				DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);	// Commit the switch1 setting
 			}
+			Registers.Power.PWR = 0xF;	// Enable the internal oscillator for USB PD
+			DeviceWrite(regPower, 1, &Registers.Power.byte);	// Commit the power setting
+
 #ifdef FSC_DEBUG
 			StoreUSBPDToken(TRUE, pdtAttach);	// Store the PD attach token
 #endif // FSC_DEBUG
 		}
 #ifdef FSC_INTERRUPT_TRIGGERED
-		g_Idle = FALSE;	// Mask for general use:
-		Registers.Mask.byte = 0xFF;
-		Registers.Mask.M_COLLISION = 0;
-		DeviceWrite(regMask, 1, &Registers.Mask.byte);
-		Registers.MaskAdv.byte[0] = 0xFF;
-		Registers.MaskAdv.M_RETRYFAIL = 0;
-		Registers.MaskAdv.M_TXCRCSENT = 0;
-		Registers.MaskAdv.M_HARDRST = 0;
-		DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
-		Registers.MaskAdv.M_GCRCSENT = 0;
-		DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
+		g_Idle = FALSE;	// Go into active mode
 		platform_enable_timer(TRUE);
 #endif // FSC_INTERRUPT_TRIGGERED
+
+#ifdef FSC_HAVE_VDM
+		AutoVdmState = AUTO_VDM_INIT;
+#endif /* FSC_HAVE_VDM */
 	}
 }
 
 void USBPDDisable(FSC_BOOL DeviceUpdate)
 {
 	IsHardReset = FALSE;
+	IsPRSwap = FALSE;
 #ifdef FSC_DEBUG
 	if (USBPDActive == TRUE)	// If we were previously active...
 		StoreUSBPDToken(TRUE, pdtDetach);	// Store the PD detach token
@@ -399,18 +373,31 @@ void USBPDDisable(FSC_BOOL DeviceUpdate)
 	PDTxStatus = txIdle;	// Reset the transmitter status
 	PolicyIsSource = FALSE;	// Clear the is source flag until we connect again
 	PolicyHasContract = FALSE;	// Clear the has contract flag
+	DetachThreshold = VBUS_MDAC_3P78;	// Default to 5V detach threshold
+	platform_notify_pd_contract(FALSE);
 
 	if (DeviceUpdate) {
 		Registers.Switches.TXCC1 = 0;	// Disable the BMC transmitter (both CC1 & CC2)
 		Registers.Switches.TXCC2 = 0;
 		Registers.Switches.AUTO_CRC = 0;	// turn off Auto CRC
-		Registers.Power.PWR &= 0x7;	// Disable the internal oscillator
-
-		DeviceWrite(regPower, 1, &Registers.Power.byte);	// Commit the power setting
 		DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);	// Commit the switch setting
 	}
+	Registers.Power.PWR = 0x7;	// Disable the internal oscillator for USB PD
+	DeviceWrite(regPower, 1, &Registers.Power.byte);	// Commit the power setting
 	ProtocolFlushRxFIFO();
 	ProtocolFlushTxFIFO();
+
+#ifdef FSC_INTERRUPT_TRIGGERED
+	Registers.Mask.M_COLLISION = 1;	// Mask PD Interrupts
+	DeviceWrite(regMask, 1, &Registers.Mask.byte);
+	Registers.MaskAdv.M_RETRYFAIL = 1;
+	Registers.MaskAdv.M_TXSENT = 1;
+	Registers.MaskAdv.M_HARDRST = 1;
+	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
+	Registers.MaskAdv.M_GCRCSENT = 1;
+	DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
+#endif // FSC_INTERRUPT_TRIGGERED
+
 }
 
 // ##################### USB PD Policy Engine Routines ###################### //
@@ -433,7 +420,7 @@ void USBPDPolicyEngine(void)
 		PolicyErrorRecovery();
 		break;
 		// ###################### Source States  ##################### //
-#ifdef FSC_HAVE_SRC
+#if defined(FSC_HAVE_SRC) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
 	case peSourceSendHardReset:
 		PolicySourceSendHardReset();
 		break;
@@ -611,8 +598,6 @@ void USBPDPolicyEngine(void)
 		}
 		break;
 	}
-
-	USBPDTxFlag = FALSE;	// Clear the transmit flag after going through the loop to avoid sending a message inadvertantly
 }
 
 // ############################# Source States  ############################# //
@@ -622,7 +607,7 @@ void PolicyErrorRecovery(void)
 	SetStateErrorRecovery();
 }
 
-#ifdef FSC_HAVE_SRC
+#if defined(FSC_HAVE_SRC) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
 void PolicySourceSendHardReset(void)
 {
 	PolicySendHardReset(peSourceTransitionDefault, 0);
@@ -635,20 +620,12 @@ void PolicySourceSoftReset(void)
 
 void PolicySourceSendSoftReset(void)
 {
-#ifdef FSC_DEBUG
-	if (manualRetries && nTries != 4) {
-		nTries = 4;	// Enable retries
-	} else
-#endif // FSC_DEBUG
-	if (Registers.Control.N_RETRIES == 0) {
-		Registers.Control.N_RETRIES = 3;	// Enable retries
-		DeviceWrite(regControl3, 1, &Registers.Control.byte[3]);
-	}
-
 	switch (PolicySubIndex) {
 	case 0:
 		if (PolicySendCommand(CMTSoftReset, peSourceSendSoftReset, 1) == STAT_SUCCESS)	// Send the soft reset command to the protocol layer
+		{
 			PolicyStateTimer = tSenderResponse;	// Start the sender response timer to wait for an accept message once successfully sent
+		}
 		break;
 	default:
 		if (ProtocolMsgRx)	// If we have received a message
@@ -677,26 +654,27 @@ void PolicySourceStartup(void)
 	FSC_S32 i;
 #endif // FSC_HAVE_VDM
 
-	// Re-enable Masks
-	Registers.Mask.byte = 0x00;
+// Set masks for PD
+	Registers.Mask.M_COLLISION = 0;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
-	Registers.MaskAdv.byte[0] = 0x00;
+	Registers.MaskAdv.M_RETRYFAIL = 0;
+	Registers.MaskAdv.M_HARDSENT = 0;
+	Registers.MaskAdv.M_TXSENT = 0;
+	Registers.MaskAdv.M_HARDRST = 0;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
 	Registers.MaskAdv.M_GCRCSENT = 0;
 	DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
-	if (Registers.Control.RX_FLUSH == 1)	// Disable Rx flushing if it has been enabled
-	{
-		Registers.Control.RX_FLUSH = 0;
-		DeviceWrite(regControl1, 1, &Registers.Control.byte[1]);
-	}
-#ifdef FSC_DEBUG
-	if (manualRetries && nTries != 1) {
-		nTries = 1;	// Disable retries
-	} else
-#endif // FSC_DEBUG
-	if (Registers.Control.N_RETRIES != 0) {
-		Registers.Control.N_RETRIES = 0;	// Disable retries
-		DeviceWrite(regControl3, 1, &Registers.Control.byte[3]);
+
+	if (Registers.DeviceID.VERSION_ID == VERSION_302B) {
+		if (Registers.Control.BIST_TMODE == 1) {
+			Registers.Control.BIST_TMODE = 0;	// Disable auto-flush RxFIFO
+			DeviceWrite(regControl3, 1, &Registers.Control.byte[3]);
+		}
+	} else {
+		if (Registers.Control.RX_FLUSH == 1)	// Disable Rx flushing if it has been enabled
+		{
+			Registers.Control.RX_FLUSH = 0;
+		}
 	}
 
 	switch (PolicySubIndex) {
@@ -708,14 +686,12 @@ void PolicySourceStartup(void)
 		Registers.Switches.POWERROLE = PolicyIsSource;
 		DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);
 		ResetProtocolLayer(TRUE);	// Reset the protocol layer
-		PRSwapTimer = 0;	// Clear the swap timer 
 		CapsCounter = 0;	// Clear the caps counter
 		CollisionCounter = 0;	// Reset the collision counter
-		PolicyStateTimer = 150;	/* 150ms timeout for VBUS*/
 		PolicySubIndex++;
 		break;
 	case 1:
-		if ((isVBUSOverVoltage(VBUS_MDAC_4p6) && (SwapSourceStartTimer == 0)) || (PolicyStateTimer == 0))	// Wait until we reach vSafe0V and delay if coming from PR Swap
+		if (isVBUSOverVoltage(VBUS_MDAC_4P62) && (SwapSourceStartTimer == 0))	// Wait until we reach vSafe0V and delay if coming from PR Swap
 		{
 			PolicySubIndex++;
 		}
@@ -726,8 +702,6 @@ void PolicySourceStartup(void)
 		PolicySubIndex = 0;	// Reset the sub index
 
 #ifdef FSC_HAVE_VDM
-		AutoVdmState = AUTO_VDM_INIT;
-
 		mode_entered = FALSE;
 
 		auto_mode_disc_tracker = 0;
@@ -739,7 +713,7 @@ void PolicySourceStartup(void)
 #endif // FSC_HAVE_VDM
 
 #ifdef FSC_HAVE_DP
-		AutoDpModeEntryObjPos = -1;
+		AutoModeEntryObjPos = -1;
 
 		resetDp();
 #endif // FSC_HAVE_DP
@@ -780,17 +754,6 @@ void PolicySourceDiscovery(void)
 
 void PolicySourceSendCaps(void)
 {
-#ifdef FSC_DEBUG
-	if (manualRetries && nTries != 1)	// Disable retries for sending source caps
-	{
-		nTries = 1;	// Disable retries
-	} else
-#endif // FSC_DEBUG
-	if (Registers.Control.N_RETRIES != 0) {
-		Registers.Control.N_RETRIES = 0;	// Disable retries
-		DeviceWrite(regControl3, 1, &Registers.Control.byte[3]);
-	}
-
 	if ((HardResetCounter > nHardResetCount) && (NoResponseTimer == 0))	// Check our higher level timeout
 	{
 		if (PolicyHasContract)	// If USB PD was previously established...
@@ -809,22 +772,10 @@ void PolicySourceSendCaps(void)
 				HardResetCounter = 0;	// Clear the hard reset counter
 				CapsCounter = 0;	// Clear the caps counter
 				NoResponseTimer = T_TIMER_DISABLE;	// Stop the no response timer
-				//TODO: Adjusted for compliance
-				PolicyStateTimer = tSenderResponse - 25;	// Set the sender response timer
+				PolicyStateTimer = tSenderResponse - tHardResetOverhead;	// Set the sender response timer
 			}
 			break;
 		default:
-#ifdef FSC_DEBUG
-			if (manualRetries && nTries != 4) {
-				nTries = 4;	// Enable retries
-			} else
-#endif // FSC_DEBUG
-			if (Registers.Control.N_RETRIES == 0) {
-				Registers.Control.N_RETRIES = 3;	// Enable retries
-				DeviceWrite(regControl3, 1,
-					    &Registers.Control.byte[3]);
-			}
-
 			if (ProtocolMsgRx)	// If we have received a message
 			{
 				ProtocolMsgRx = FALSE;	// Reset the message ready flag since we're handling it here
@@ -851,16 +802,10 @@ void PolicySourceDisabled(void)
 	USBPDContract.object = 0;	// Clear the USB PD contract (output power to 5V default)
 	// Wait for a hard reset or detach...
 #ifdef FSC_INTERRUPT_TRIGGERED
-	g_Idle = TRUE;		// Idle until COMP or HARDRST or GCRCSENT
-	Registers.Mask.byte = 0xFF;
-	Registers.Mask.M_COMP_CHNG = 0;
-	DeviceWrite(regMask, 1, &Registers.Mask.byte);
-	Registers.MaskAdv.byte[0] = 0xFF;
-	Registers.MaskAdv.M_HARDRST = 0;
-	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
-	Registers.MaskAdv.M_GCRCSENT = 0;
-	DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
-	platform_enable_timer(FALSE);
+	if (loopCounter == 0) {
+		g_Idle = TRUE;	// Idle until COMP or HARDRST or GCRCSENT
+		platform_enable_timer(FALSE);
+	}
 #endif // FSC_INTERRUPT_TRIGGERED
 }
 
@@ -869,6 +814,9 @@ void PolicySourceTransitionDefault(void)
 	switch (PolicySubIndex) {
 	case 0:
 		if (PolicyStateTimer == 0) {
+			PolicyHasContract = FALSE;
+			DetachThreshold = VBUS_MDAC_3P78;	// Default to 5V detach threshold
+			platform_notify_pd_contract(FALSE);
 			PolicySubIndex++;
 		}
 		break;
@@ -1020,29 +968,43 @@ void PolicySourceTransitionSupply(void)
 				platform_set_vbus_lvl_enable(VBUS_LVL_5V, TRUE, TRUE);	// Disable the "other" vbus outputs
 			}
 
-			PolicyStateTimer = 350;
+			PolicyStateTimer = tSourceRiseTimeout;	// Source rise timeout 
 			PolicySubIndex++;	// Increment to move to the next sub state
 		}
 		break;
-	default:
+	case 5:
 		if (CapsSource[USBPDContract.FVRDO.ObjectPosition - 1].
 		    FPDOSupply.Voltage == 100) {
-			if ((!isVBUSOverVoltage(VBUS_MDAC_5p04) && isVBUSOverVoltage(VBUS_MDAC_4p6)) || (PolicyStateTimer == 0))	// Check that VBUS is between 4.6 and 5.5 V
+			if ((!isVBUSOverVoltage(VBUS_MDAC_5P04) && isVBUSOverVoltage(VBUS_MDAC_4P62)) || (PolicyStateTimer == 0))	// Check that VBUS is between 4.6 and 5.5 V
 			{
-				PolicySendCommand(CMTPS_RDY, peSourceReady, 0);	// Send the PS_RDY message and move onto the Source Ready state
+				DetachThreshold = VBUS_MDAC_3P78;	// 5V detach threshold
+				PolicySubIndex++;
 			}
 		}
 #ifdef FM150911A
 		else if (CapsSource[USBPDContract.FVRDO.ObjectPosition - 1].
 			 FPDOSupply.Voltage == 240) {
-			if ((isVBUSOverVoltage(VBUS_MDAC_11p8)) || (PolicyStateTimer == 0))	// Check that VBUS is over 11.8V
+			if ((isVBUSOverVoltage(VBUS_MDAC_11P76)) || (PolicyStateTimer == 0))	// Check that VBUS is over 11.8V
 			{
-				PolicySendCommand(CMTPS_RDY, peSourceReady, 0);	// Send the PS_RDY message and move onto the Source Ready state
+				DetachThreshold = VBUS_MDAC_9P66;	// 12V detach threshold
+				PolicySubIndex++;
 			}
 		}
 #endif // FM150911A
 		else if (PolicyStateTimer == 0) {
-			PolicySendCommand(CMTPS_RDY, peSourceReady, 0);
+			PolicySubIndex++;
+		}
+		break;
+	default:
+		if (PolicySendCommand(CMTPS_RDY, peSourceReady, 0) == STAT_SUCCESS)	// Send the PS_RDY message and move onto the Source Ready state
+		{
+			if (Registers.Control.HOST_CUR == 0b01)	// Host current must be set to 1.5A or 3.0A in explicit contract
+			{
+				Registers.Control.HOST_CUR = 0b10;
+				DeviceWrite(regControl0, 1,
+					    &Registers.Control.byte[0]);
+			}
+			platform_notify_pd_contract(TRUE);
 		}
 		break;
 	}
@@ -1192,29 +1154,23 @@ void PolicySourceReady(void)
 				break;
 			}
 		}
+		USBPDTxFlag = FALSE;
 	} else if (PartnerCaps.object == 0) {
 		PolicyState = peSourceGetSinkCaps;	// Go to the get sink caps state
 		PolicySubIndex = 0;	// Clear the sub index
 		PDTxStatus = txIdle;	// Clear the transmitter status
 	}
 #ifdef FSC_HAVE_VDM
-	else if (PolicyIsDFP && (AutoVdmState != AUTO_VDM_DONE)
-	    ) {
+	else if (PolicyIsDFP && (AutoVdmState != AUTO_VDM_DONE)) {
 		autoVdmDiscovery();
 	}
 #endif // FSC_HAVE_VDM
 	else {
 #ifdef FSC_INTERRUPT_TRIGGERED
-		g_Idle = TRUE;	// Wait for COMP or HARDRST or GCRCSENT
-		Registers.Mask.byte = 0xFF;
-		Registers.Mask.M_COMP_CHNG = 0;
-		DeviceWrite(regMask, 1, &Registers.Mask.byte);
-		Registers.MaskAdv.byte[0] = 0xFF;
-		Registers.MaskAdv.M_HARDRST = 0;
-		DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
-		Registers.MaskAdv.M_GCRCSENT = 0;
-		DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
-		platform_enable_timer(FALSE);
+		if (loopCounter == 0) {
+			g_Idle = TRUE;	// Idle until COMP or HARDRST or GCRCSENT
+			platform_enable_timer(FALSE);
+		}
 #endif // FSC_INTERRUPT_TRIGGERED
 	}
 
@@ -1381,6 +1337,7 @@ void PolicySourceEvaluateDRSwap(void)
 	{
 		PolicyState = peSourceSendHardReset;
 		PolicySubIndex = 0;
+		return;
 	}
 #endif // FSC_HAVE_VDM
 
@@ -1505,7 +1462,9 @@ void PolicySourceSendPRSwap(void)
 				{
 				case CMTAccept:	// If we get the Accept message...
 					IsPRSwap = TRUE;
-					PRSwapTimer = tPRSwapBailout;	// Initialize the PRSwapTimer to indicate we are in the middle of a swap
+					PolicyHasContract = FALSE;
+					DetachThreshold = VBUS_MDAC_3P78;	// Default to 5V detach threshold
+					platform_notify_pd_contract(FALSE);
 					PolicyStateTimer = tSrcTransition;	// Start the sink transition timer
 					PolicySubIndex++;	// Increment the subindex to move onto the next step
 					break;
@@ -1603,6 +1562,9 @@ void PolicySourceEvaluatePRSwap(void)
 			if (PolicySendCommand(CMTAccept, peSourceEvaluatePRSwap, 1) == STAT_SUCCESS)	// Send the Accept message and wait for the good CRC
 			{
 				IsPRSwap = TRUE;
+				PolicyHasContract = FALSE;
+				DetachThreshold = VBUS_MDAC_3P78;	// Default to 5V detach threshold
+				platform_notify_pd_contract(FALSE);
 				RoleSwapToAttachedSink();
 				PolicyStateTimer = tSrcTransition;
 			}
@@ -1618,7 +1580,6 @@ void PolicySourceEvaluatePRSwap(void)
 	case 2:
 		if (VbusVSafe0V())	// Allow time for the supply to fall and then send the PS_RDY message
 		{
-			//RoleSwapToAttachedSink();
 			PolicyStateTimer = tSrcTransition;	// Allow some extra time for VBUS to discharge
 			PolicyIsSource = FALSE;
 			Registers.Switches.POWERROLE = PolicyIsSource;
@@ -1630,7 +1591,6 @@ void PolicySourceEvaluatePRSwap(void)
 	case 3:
 		if (PolicyStateTimer == 0) {
 			platform_set_vbus_discharge(FALSE);	// Disable VBUS discharge path
-			//RoleSwapToAttachedSink();
 			PolicySubIndex++;
 		}
 		break;
@@ -1651,6 +1611,7 @@ void PolicySourceEvaluatePRSwap(void)
 				{
 				case CMTPS_RDY:	// If we get the PS_RDY message...
 					PolicySubIndex++;	// Increment the sub index
+					IsPRSwap = FALSE;
 					PolicyStateTimer = tGoodCRCDelay;	// Make sure GoodCRC has time to send
 					break;
 				default:	// For all other commands received, simply ignore them
@@ -1659,7 +1620,8 @@ void PolicySourceEvaluatePRSwap(void)
 			}
 		} else if (!PolicyStateTimer)	// If the PSSourceOn times out...
 		{
-			PolicyState = peSourceSendHardReset;	// Go to the error recovery state
+			IsPRSwap = FALSE;
+			PolicyState = peErrorRecovery;	// Go to the error recovery state
 			PolicySubIndex = 0;	// Clear the sub index
 			PDTxStatus = txIdle;	// Clear the transmitter status
 		}
@@ -1680,16 +1642,16 @@ void PolicySourceEvaluatePRSwap(void)
 void PolicySourceWaitNewCapabilities(void)	// TODO: DPM integration
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
-	g_Idle = TRUE;		// Wait for COMP or HARDRST or GCRCSENT
-	Registers.Mask.byte = 0xFF;
-	Registers.Mask.M_COMP_CHNG = 0;
-	DeviceWrite(regMask, 1, &Registers.Mask.byte);
-	Registers.MaskAdv.byte[0] = 0xFF;
-	Registers.MaskAdv.M_HARDRST = 0;
-	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
-	Registers.MaskAdv.M_GCRCSENT = 0;
-	DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
-	platform_enable_timer(FALSE);
+	if (loopCounter == 0) {
+		g_Idle = TRUE;	// Wait for COMP or HARDRST or GCRCSENT
+		Registers.Mask.M_COMP_CHNG = 0;
+		DeviceWrite(regMask, 1, &Registers.Mask.byte);
+		Registers.MaskAdv.M_HARDRST = 0;
+		DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
+		Registers.MaskAdv.M_GCRCSENT = 0;
+		DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
+		platform_enable_timer(FALSE);
+	}
 #endif // FSC_INTERRUPT_TRIGGERED
 	switch (PolicySubIndex) {
 	case 0:
@@ -1790,7 +1752,9 @@ void PolicySinkSendSoftReset(void)
 	switch (PolicySubIndex) {
 	case 0:
 		if (PolicySendCommand(CMTSoftReset, peSinkSendSoftReset, 1) == STAT_SUCCESS)	// Send the soft reset command to the protocol layer
+		{
 			PolicyStateTimer = tSenderResponse;	// Start the sender response timer to wait for an accept message once successfully sent
+		}
 		break;
 	default:
 		if (ProtocolMsgRx)	// If we have received a message
@@ -1820,9 +1784,11 @@ void PolicySinkTransitionDefault(void)
 	case 0:
 		IsHardReset = TRUE;
 		PolicyHasContract = FALSE;
+		DetachThreshold = VBUS_MDAC_3P78;	// Default to 5V detach threshold
+		platform_notify_pd_contract(FALSE);
 		Registers.Switches.AUTO_CRC = 0;	// turn off Auto CRC
 		DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);
-		PolicyStateTimer = tPSHardResetMax + tSafe0V;
+		PolicyStateTimer = tPSHardResetMax + tSafe0V;	// Timeout wait for vSafe0V
 		NoResponseTimer = tNoResponse;	// Initialize the no response timer
 		if (PolicyIsDFP)	// Make sure data role is UFP
 		{
@@ -1843,8 +1809,9 @@ void PolicySinkTransitionDefault(void)
 	case 1:
 		if (VbusVSafe0V()) {
 			PolicySubIndex++;
-			PolicyStateTimer = 1500;
-		} else if (PolicyStateTimer == 0) {
+			PolicyStateTimer = tSrcRecoverMax + tSrcTurnOn;	// Timeout wait for vSafe5V
+		} else if (PolicyStateTimer == 0)	// Break out if we never see 0V
+		{
 			if (PolicyHasContract) {
 				PolicyState = peErrorRecovery;
 				PolicySubIndex = 0;
@@ -1856,9 +1823,10 @@ void PolicySinkTransitionDefault(void)
 		}
 		break;
 	case 2:
-		if (isVBUSOverVoltage(VBUS_MDAC_4p2)) {
+		if (isVBUSOverVoltage(VBUS_MDAC_4P20)) {
 			PolicySubIndex++;
-		} else if (PolicyStateTimer == 0) {
+		} else if (PolicyStateTimer == 0)	// Break out if we never see 0V
+		{
 			if (PolicyHasContract) {
 				PolicyState = peErrorRecovery;
 				PolicySubIndex = 0;
@@ -1884,28 +1852,28 @@ void PolicySinkStartup(void)
 #ifdef FSC_HAVE_VDM
 	FSC_S32 i;
 #endif // FSC_HAVE_VDM
-
-	// Re-enable Masks
-	Registers.Mask.byte = 0x00;
+	// Set masks for PD
+	Registers.Mask.M_COLLISION = 0;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
-	Registers.MaskAdv.byte[0] = 0x00;
+	Registers.MaskAdv.M_RETRYFAIL = 0;
+	Registers.MaskAdv.M_HARDSENT = 0;
+	Registers.MaskAdv.M_TXSENT = 0;
+	Registers.MaskAdv.M_HARDRST = 0;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
 	Registers.MaskAdv.M_GCRCSENT = 0;
 	DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
 
-	if (Registers.Control.RX_FLUSH == 1)	// Disable Rx flushing if it has been enabled
-	{
-		Registers.Control.RX_FLUSH = 0;
-		DeviceWrite(regControl1, 1, &Registers.Control.byte[1]);
-	}
-#ifdef FSC_DEBUG
-	if (manualRetries && nTries != 4) {
-		nTries = 4;	// Enable retries
-	} else
-#endif // FSC_DEBUG
-	if (Registers.Control.N_RETRIES == 0) {
-		Registers.Control.N_RETRIES = 3;	// Enable retries
-		DeviceWrite(regControl3, 1, &Registers.Control.byte[3]);
+	if (Registers.DeviceID.VERSION_ID == VERSION_302B) {
+		if (Registers.Control.BIST_TMODE == 1) {
+			Registers.Control.BIST_TMODE = 0;	// Disable auto-flush RxFIFO
+			DeviceWrite(regControl3, 1, &Registers.Control.byte[3]);
+		}
+	} else {
+		if (Registers.Control.RX_FLUSH == 1)	// Disable Rx flushing if it has been enabled
+		{
+			Registers.Control.RX_FLUSH = 0;
+			DeviceWrite(regControl1, 1, &Registers.Control.byte[1]);
+		}
 	}
 
 	USBPDContract.object = 0;	// Clear the USB PD contract (output power to 5V default)
@@ -1925,8 +1893,6 @@ void PolicySinkStartup(void)
 	PolicySubIndex = 0;	// Reset the sub index
 
 #ifdef FSC_HAVE_VDM
-	AutoVdmState = AUTO_VDM_INIT;
-
 	auto_mode_disc_tracker = 0;
 
 	mode_entered = FALSE;
@@ -1938,7 +1904,7 @@ void PolicySinkStartup(void)
 #endif // FSC_HAVE_VDM
 
 #ifdef FSC_HAVE_DP
-	AutoDpModeEntryObjPos = -1;
+	AutoModeEntryObjPos = -1;
 
 	resetDp();
 #endif // FSC_HAVE_DP
@@ -1948,7 +1914,6 @@ void PolicySinkDiscovery(void)
 {
 
 	IsHardReset = FALSE;
-	PRSwapTimer = 0;	// Clear the swap timer
 	PolicyState = peSinkWaitCaps;
 	PolicySubIndex = 0;
 	PolicyStateTimer = tTypeCSinkWaitCap;
@@ -1980,14 +1945,6 @@ void PolicySinkWaitCaps(void)
 		   && (HardResetCounter > nHardResetCount)) {
 #ifdef FSC_INTERRUPT_TRIGGERED
 		g_Idle = TRUE;	// Wait for VBUSOK or HARDRST or GCRCSENT
-		Registers.Mask.byte = 0xFF;
-		Registers.Mask.M_VBUSOK = 0;
-		DeviceWrite(regMask, 1, &Registers.Mask.byte);
-		Registers.MaskAdv.byte[0] = 0xFF;
-		Registers.MaskAdv.M_HARDRST = 0;
-		DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
-		Registers.MaskAdv.M_GCRCSENT = 0;
-		DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
 		platform_enable_timer(FALSE);
 #endif // FSC_INTERRUPT_TRIGGERED
 	}
@@ -2014,7 +1971,7 @@ void PolicySinkEvaluateCaps(void)
 		case pdoTypeFixed:
 			objVoltage = CapsReceived[i].FPDOSupply.Voltage;	// Get the output voltage of the fixed supply
 			if (objVoltage > SinkRequestMaxVoltage)	// If the voltage is greater than our limit...
-				objPower = 0;	// Set the power to zero to ignore the object
+				continue;	// Set the power to zero to ignore the object
 			else	// Otherwise...
 			{
 				objCurrent =
@@ -2023,14 +1980,13 @@ void PolicySinkEvaluateCaps(void)
 			}
 			break;
 		case pdoTypeVariable:
-			/*Grab the Maxvoltage of Variable PDO for MaxPower*/
-			objVoltage = CapsReceived[i].VPDO.MaxVoltage;
+			objVoltage = CapsReceived[i].VPDO.MaxVoltage;	// Grab the maximum voltage of the variable supply
 			if (objVoltage > SinkRequestMaxVoltage)	// If the max voltage is greater than our limit...
-				objPower = 0;	// Set the power to zero to ignore the object
+				continue;	// Set the power to zero to ignore the object
 			else	// Otherwise...
 			{
-				objVoltage = CapsReceived[i].VPDO.MaxVoltage;
-				objCurrent = CapsReceived[i].VPDO.MaxCurrent;
+				objVoltage = CapsReceived[i].VPDO.MinVoltage;	// Get the minimum output voltage of the variable supply
+				objCurrent = CapsReceived[i].VPDO.MaxCurrent;	// Get the maximum output current of the variable supply
 				objPower = objVoltage * objCurrent;	// Calculate the power for comparison (based on min V/max I)
 			}
 			break;
@@ -2045,14 +2001,7 @@ void PolicySinkEvaluateCaps(void)
 			SelVoltage = objVoltage;	// Store the objects voltage (used for calculations)
 			reqPos = i + 1;	// Store the position of the object
 		}
-		FUSB_LOG("reqPos = %d objPower %d MaxPower is %d\n",
-				 reqPos, objPower, MaxPower);
 	}
-	if (MaxPower > SinkRequestMaxPower)
-		SinkRequestMaxPower = MaxPower;
-	gChargerMaxCurrent = MaxPower/SelVoltage;
-	gRequestOpVoltage = SelVoltage;
-	SinkRequestOpPower = gRequestOpCurrent * SelVoltage;
 	if ((reqPos > 0) && (SelVoltage > 0)) {
 		PartnerCaps.object = CapsReceived[0].object;
 		SinkRequest.FVRDO.ObjectPosition = reqPos & 0x07;	// Set the object position selected
@@ -2061,10 +2010,8 @@ void PolicySinkEvaluateCaps(void)
 		SinkRequest.FVRDO.USBCommCapable = SinkUSBCommCapable;	// Set whether USB communications is active
 		ReqCurrent = SinkRequestOpPower / SelVoltage;	// Calculate the requested operating current
 		SinkRequest.FVRDO.OpCurrent = (ReqCurrent & 0x3FF);	// Set the current based on the selected voltage (in 10mA units)
-		/*Nitro charger does not care about OpCurrent
-		* Make it same as MaxCurrent
-		*/
-		SinkRequest.FVRDO.MinMaxCurrent = (ReqCurrent & 0x3FF);
+		ReqCurrent = SinkRequestMaxPower / SelVoltage;	// Calculate the requested maximum current
+		SinkRequest.FVRDO.MinMaxCurrent = (ReqCurrent & 0x3FF);	// Set the min/max current based on the selected voltage (in 10mA units)
 		if (SinkGotoMinCompatible)	// If the give back flag is set...
 			SinkRequest.FVRDO.CapabilityMismatch = FALSE;	// There can't be a capabilities mismatch
 		else		// Otherwise...
@@ -2096,7 +2043,7 @@ void PolicySinkSelectCapability(void)
 		if (PolicySendData
 		    (DMTRequest, 1, &SinkRequest, peSinkSelectCapability, 1,
 		     SOP_TYPE_SOP) == STAT_SUCCESS) {
-			NoResponseTimer = tSenderResponse + 25;	// If there is a good CRC start retry timer
+			NoResponseTimer = tSenderResponse;	// If there is a good CRC start retry timer
 		}
 		break;
 	case 1:
@@ -2151,6 +2098,7 @@ void PolicySinkSelectCapability(void)
 		break;
 	}
 }
+
 void PolicySinkTransitionSink(void)
 {
 	if (ProtocolMsgRx) {
@@ -2161,6 +2109,7 @@ void PolicySinkTransitionSink(void)
 			{
 			case CMTPS_RDY:
 				PolicyState = peSinkReady;	// Go to the ready state
+				platform_notify_pd_contract(TRUE);
 				break;
 			case CMTSoftReset:
 				PolicyState = peSinkSoftReset;	// Go to the soft reset state if we received a reset command
@@ -2245,13 +2194,8 @@ void PolicySinkReady(void)
 		} else {
 			switch (PolicyRxHeader.MessageType) {
 			case DMTSourceCapabilities:
-				UpdateCapabilitiesRx(TRUE);
-				/*Special request from charger team
-				*do not restart the request again
-				*after we get the updated source capability
-				*we will evaluate it before we send request
-				*/
-				PolicyState = peSinkReady;
+				UpdateCapabilitiesRx(TRUE);	// Update the received capabilities
+				PolicyState = peSinkEvaluateCaps;	// Go to the evaluate capabilities state
 				PolicySubIndex = 0;	// Clear the sub index
 				PDTxStatus = txIdle;	// Clear the transmitter status
 				break;
@@ -2320,36 +2264,18 @@ void PolicySinkReady(void)
 				break;
 			}
 		}
+		USBPDTxFlag = FALSE;
 	}
 #ifdef FSC_HAVE_VDM
-	else if (PolicyIsDFP && (AutoVdmState != AUTO_VDM_DONE)
-	    ) {
+	else if (PolicyIsDFP && (AutoVdmState != AUTO_VDM_DONE)) {
 		autoVdmDiscovery();
 	}
 #endif // FSC_HAVE_VDM
 	else {
-		if (!PolicyIsDFP) {
-			/*Send DRSwap to get VDM enabled */
-			PolicySubIndex = 0;
-			PDTxStatus = txIdle;
-			PolicyState = peSinkSendDRSwap;
-		} else {
 #ifdef FSC_INTERRUPT_TRIGGERED
 		g_Idle = TRUE;	// Wait for VBUSOK or HARDRST or GCRCSENT
-		Registers.Mask.byte = 0xFF;
-		Registers.Mask.M_VBUSOK = 0;
-		DeviceWrite(regMask, 1, &Registers.Mask.byte);
-		Registers.MaskAdv.byte[0] = 0xFF;
-		Registers.MaskAdv.M_HARDRST = 0;
-		DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
-		Registers.MaskAdv.M_GCRCSENT = 0;
-		DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
 		platform_enable_timer(FALSE);
 #endif // FSC_INTERRUPT_TRIGGERED
-		power_supply_changed(&usbc_psy);
-		if (atomic_read(&coreReqCtx.pending) > 0)
-			complete(&coreReqCtx.complete);
-		}
 	}
 }
 
@@ -2387,26 +2313,10 @@ void PolicySinkSendDRSwap(void)
 	switch (PolicySubIndex) {
 	case 0:
 		Status = PolicySendCommandNoReset(CMTDR_Swap, peSinkSendDRSwap, 1);	// Send the DR_Swap command
-		if (Status == STAT_SUCCESS)
+		if (Status == STAT_SUCCESS)	// If we received a good CRC message...
 			PolicyStateTimer = tSenderResponse;	// Initialize for SenderResponseTimer if we received the GoodCRC
 		else if (Status == STAT_ERROR)	// If there was an error...
 			PolicyState = peErrorRecovery;	// Go directly to the error recovery state
-		if (ProtocolMsgRx) {
-			ProtocolMsgRx = FALSE;
-			 /*If received data message*/
-			if (PolicyRxHeader.NumDataObjects != 0) {
-				switch (PolicyRxHeader.MessageType) {
-#ifdef FSC_HAVE_VDM
-				case DMTVenderDefined:
-					convertAndProcessVdmMessage(
-						ProtocolMsgRxSop);
-				break;
-#endif
-				default:
-					break;
-				}
-			}
-		}
 		break;
 	default:
 		if (ProtocolMsgRx) {
@@ -2417,15 +2327,10 @@ void PolicySinkSendDRSwap(void)
 				{
 				case CMTAccept:
 					PolicyIsDFP = (PolicyIsDFP == TRUE) ? FALSE : TRUE;	// Flip the current data role
+
 					Registers.Switches.DATAROLE = PolicyIsDFP;	// Update the data role
 					DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);	// Commit the data role in the 302 for the auto CRC
 					PolicyState = peSinkReady;	// Sink ready state
-					if (PolicyIsDFP) {
-						AutoVdmState =
-							AUTO_VDM_DISCOVER_ID_PP;
-						PDTxStatus = txIdle;
-						PolicySubIndex = 0;
-					}
 					break;
 				case CMTSoftReset:
 					PolicyState = peSinkSoftReset;	// Go to the soft reset state if we received a reset command
@@ -2436,16 +2341,6 @@ void PolicySinkSendDRSwap(void)
 				}
 			} else	// Otherwise we received a data message...
 			{
-				switch (PolicyRxHeader.MessageType) {
-#ifdef FSC_HAVE_VDM
-				case DMTVenderDefined:
-					convertAndProcessVdmMessage(
-						ProtocolMsgRxSop);
-				break;
-#endif
-				default:
-					break;
-				}
 				PolicyState = peSinkReady;	// Go to the sink ready state if we received a unexpected data message (ignoring message)
 			}
 			PolicySubIndex = 0;	// Reset the sub index
@@ -2469,6 +2364,7 @@ void PolicySinkEvaluateDRSwap(void)
 	{
 		PolicyState = peSinkSendHardReset;
 		PolicySubIndex = 0;
+		return;
 	}
 #endif // FSC_HAVE_VDM
 
@@ -2571,7 +2467,9 @@ void PolicySinkSendPRSwap(void)
 				{
 				case CMTAccept:	// If we get the Accept message...
 					IsPRSwap = TRUE;
-					PRSwapTimer = tPRSwapBailout;	// Initialize the PRSwapTimer to indicate we are in the middle of a swap
+					PolicyHasContract = FALSE;
+					DetachThreshold = VBUS_MDAC_3P78;	// Default to 5V detach threshold
+					platform_notify_pd_contract(FALSE);
 					PolicyStateTimer = tPSSourceOff;	// Start the sink transition timer
 					PolicySubIndex++;	// Increment the subindex to move onto the next step
 					break;
@@ -2610,7 +2508,7 @@ void PolicySinkSendPRSwap(void)
 					DeviceWrite(regSwitches1, 1,
 						    &Registers.Switches.
 						    byte[1]);
-					PolicyStateTimer = tSourceOnDelay;	// Allow the output voltage to rise before sending the PS_RDY message
+					PolicyStateTimer = 0;
 					PolicySubIndex++;	// Increment the sub-index to move onto the next state
 					break;
 				default:	// For all other commands received, simply ignore them
@@ -2625,7 +2523,7 @@ void PolicySinkSendPRSwap(void)
 		}
 		break;
 	default:		// Allow time for the supply to rise and then send the PS_RDY message
-		if (!PolicyStateTimer) {
+		if (isVBUSOverVoltage(VBUS_MDAC_4P20)) {
 			Status = PolicySendCommandNoReset(CMTPS_RDY, peSourceStartup, 0);	// When we get the good CRC, we move onto the source startup state to complete the swap
 			if (Status == STAT_ERROR)
 				PolicyState = peErrorRecovery;	// If we get an error, go to the error recovery state
@@ -2642,16 +2540,16 @@ void PolicySinkEvaluatePRSwap(void)
 	FSC_U8 Status;
 	switch (PolicySubIndex) {
 	case 0:		// Send either the Accept or Reject command
-		if ((PartnerCaps.FPDOSupply.SupplyType == pdoTypeFixed) && (PartnerCaps.FPDOSupply.DualRolePower == FALSE))	//|| // Determine Accept/Reject based on partner's Dual Role Power
-			//(CapsSink[0].FPDOSink.DualRolePower == FALSE) ||
-			//((CapsSink[0].FPDOSink.ExternallyPowered == TRUE) && (PartnerCaps.FPDOSupply.ExternallyPowered == FALSE)))  // Must also reject if we are externally powered and partner is not           
+		if ((PartnerCaps.FPDOSupply.SupplyType == pdoTypeFixed) && (PartnerCaps.FPDOSupply.DualRolePower == FALSE))	// Determine Accept/Reject based on partner's Dual Role Power
 		{
 			PolicySendCommand(CMTReject, peSinkReady, 0);	// Send the reject if we are not a DRP
 		} else {
 			if (PolicySendCommand(CMTAccept, peSinkEvaluatePRSwap, 1) == STAT_SUCCESS)	// Send the Accept message and wait for the good CRC
 			{
 				IsPRSwap = TRUE;
-				PRSwapTimer = tPRSwapBailout;	// Initialize the PRSwapTimer to indicate we are in the middle of a swap
+				PolicyHasContract = FALSE;
+				DetachThreshold = VBUS_MDAC_3P78;	// Default to 5V detach threshold
+				platform_notify_pd_contract(FALSE);
 				PolicyStateTimer = tPSSourceOff;	// Start the sink transition timer
 			}
 		}
@@ -2672,7 +2570,7 @@ void PolicySinkEvaluatePRSwap(void)
 					DeviceWrite(regSwitches1, 1,
 						    &Registers.Switches.
 						    byte[1]);
-					PolicyStateTimer = tSourceOnDelay;	// Allow the output voltage to rise before sending the PS_RDY message
+					PolicyStateTimer = 0;	// Deprecated to use VBUS voltage
 					PolicySubIndex++;	// Increment the sub-index to move onto the next state
 					break;
 				default:	// For all other commands received, simply ignore them
@@ -2681,16 +2579,17 @@ void PolicySinkEvaluatePRSwap(void)
 			}
 		} else if (!PolicyStateTimer)	// If the PSSourceOn times out...
 		{
-			PolicyState = peSinkSendHardReset;	// Go to the error recovery state
+			PolicyState = peErrorRecovery;	// Go to the error recovery state
 			PolicySubIndex = 0;	// Clear the sub index
 			PDTxStatus = txIdle;	// Clear the transmitter status
 		}
 		break;
 	default:		// Wait for VBUS to rise and then send the PS_RDY message
-		if (!PolicyStateTimer) {
+		if (isVBUSOverVoltage(VBUS_MDAC_4P20)) {
 			Status = PolicySendCommandNoReset(CMTPS_RDY, peSourceStartup, 0);	// When we get the good CRC, we move onto the source startup state to complete the swap
 			if (Status == STAT_ERROR)
 				PolicyState = peErrorRecovery;	// If we get an error, go to the error recovery state
+			IsPRSwap = FALSE;
 			SwapSourceStartTimer = tSwapSourceStart;
 		}
 		break;
@@ -2739,6 +2638,8 @@ void PolicyGiveVdm(void)
 void PolicyVdm(void)
 {
 
+	FSC_U8 result;
+
 	if (ProtocolMsgRx)	// Have we received a message from the source?
 	{
 		ProtocolMsgRx = FALSE;	// Reset the message received flag since we're handling it here
@@ -2761,7 +2662,7 @@ void PolicyVdm(void)
 		PDTxStatus = txIdle;	// Reset the transmitter status
 	} else {
 		if (sendingVdmData) {
-			FSC_U8 result =
+			result =
 			    PolicySendData(DMTVenderDefined, vdm_msg_length,
 					   vdm_msg_obj, vdm_next_ps, 0,
 					   SOP_TYPE_SOP);
@@ -2817,7 +2718,7 @@ FSC_BOOL PolicySendHardReset(PolicyState_t nextState, FSC_U32 delay)
 	default:
 		if (PolicyStateTimer == 0)	// Once tPSHardReset has elapsed...
 		{
-			PolicyStateTimer = tPSHardReset;
+			PolicyStateTimer = tPSHardReset - tHardResetOverhead;
 			HardResetCounter++;	// Increment the hard reset counter once successfully sent
 			PolicyState = nextState;	// Go to the state to transition to the default sink state
 			PolicySubIndex = 0;	// Clear the sub index
@@ -3087,12 +2988,13 @@ void policyBISTCarrierMode2(void)
 			PolicyStateTimer = tGoodCRCDelay;	// Delay for >200us to allow preamble to finish
 			PolicySubIndex++;
 		}
+		break;
 	case 2:
 		if (PolicyStateTimer == 0)	// Transition to SRC_Transition_to_Default, SNK_Transition_to_Default, or CBL_Ready when BISTContModeTimer times out
 		{
 			if (PolicyIsSource)	// If we are the source...
 			{
-#ifdef FSC_HAVE_SRC
+#if defined(FSC_HAVE_SRC) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
 				PolicyState = peSourceSendHardReset;	// This will hard reset then transition to default
 				PolicySubIndex = 0;
 #endif // FSC_HAVE_SRC
@@ -3111,31 +3013,15 @@ void policyBISTCarrierMode2(void)
 
 void policyBISTTestData(void)
 {
-	DeviceWrite(regControl1, 1, &Registers.Control.byte[1]);
+	if (Registers.DeviceID.VERSION_ID == VERSION_302B) {
+		// Do Nothing
+	} else {
+		DeviceWrite(regControl1, 1, &Registers.Control.byte[1]);
+	}
 }
 
 #ifdef FSC_HAVE_VDM
 
-void requestCurLimit(FSC_U16 currentLimit)
-{
-	doDataObject_t __uvdmh = { 0 };
-	doDataObject_t __uvdmDo = { 0 };
-	FSC_U32 __length = 2;
-	FSC_U32 __arr[2] = { 0 };
-
-	__uvdmh.UVDMReqRsp.VendorID = MOTOROL_VENDOR_ID;
-	__uvdmh.UVDMReqRsp.VDMType = UNSTRUCTURED_VDM;
-	__uvdmh.UVDMReqRsp.CommandStatus = 0;
-	__uvdmh.UVDMReqRsp.Command = 1;
-	__uvdmh.UVDMReqRsp.ModeObjPos = 1;
-	__uvdmDo.UVDMDO.Current = currentLimit;
-	__arr[0] = __uvdmh.object;
-	__arr[1] = __uvdmDo.object;
-	FUSB_LOG("VDMReq is %x Data %x Current is %d ma",
-			 __arr[0], __arr[1], currentLimit*10);
-	sendVdmMessageWithTimeout(SOP_TYPE_SOP, __arr, __length,
-							  peDpRequestStatus);
-}
 void InitializeVdmManager(void)
 {
 	initializeVdm();
@@ -3171,7 +3057,6 @@ void sendVdmMessage(SopType sop, FSC_U32 * arr, FSC_U32 length,
 		    PolicyState_t next_ps)
 {
 	FSC_U32 i;
-//    doDataObject_t                  temp[7] = {{0}};
 	// 'cast' to type that PolicySendData expects
 	// didn't think this was necessary, but it fixed some problems. - Gabe
 	vdm_msg_length = length;
@@ -3187,8 +3072,6 @@ void sendVdmMessage(SopType sop, FSC_U32 * arr, FSC_U32 length,
 
 void doVdmCommand(void)
 {
-//    StructuredVdmHeader svdm_header;
-//    FSC_U32 i;
 	FSC_U32 command;
 	FSC_U32 svid;
 	FSC_U32 mode_index;
@@ -3234,9 +3117,6 @@ void doVdmCommand(void)
 // this function assumes we're already in either Source or Sink Ready states!
 void autoVdmDiscovery(void)
 {
-	if (!PolicyIsDFP)
-		return;		// only auto-discover for DFPs - but allow SM to start for DR swaps in the future
-
 	if (PDTxStatus == txIdle) {	// wait for protocol layer to become idle
 		switch (AutoVdmState) {
 		case AUTO_VDM_INIT:
@@ -3250,11 +3130,7 @@ void autoVdmDiscovery(void)
 			break;
 		case AUTO_VDM_DISCOVER_MODES_PP:
 			if (auto_mode_disc_tracker == core_svid_info.num_svids) {
-#ifdef FSC_HAVE_DP
-				AutoVdmState = AUTO_VDM_ENTER_DP_MODE_PP;
-#else
-				AutoVdmState = AUTO_VDM_DONE;
-#endif // FSC_HAVE_DP
+				AutoVdmState = AUTO_VDM_ENTER_MODE_PP;
 				auto_mode_disc_tracker = 0;
 			} else {
 				requestDiscoverModes(SOP_TYPE_SOP,
@@ -3264,12 +3140,10 @@ void autoVdmDiscovery(void)
 				auto_mode_disc_tracker++;
 			}
 			break;
-#ifdef FSC_HAVE_DP
-		case AUTO_VDM_ENTER_DP_MODE_PP:
-			if (AutoDpModeEntryObjPos > 0) {
-				requestEnterMode(SOP_TYPE_SOP,
-						MOTOROL_VENDOR_ID,
-						AutoDpModeEntryObjPos);
+		case AUTO_VDM_ENTER_MODE_PP:
+			if (AutoModeEntryObjPos > 0) {
+				requestEnterMode(SOP_TYPE_SOP, SVID_AUTO_ENTRY,
+						 AutoModeEntryObjPos);
 				AutoVdmState = AUTO_VDM_DP_GET_STATUS;
 			} else {
 				AutoVdmState = AUTO_VDM_DONE;
@@ -3277,11 +3151,10 @@ void autoVdmDiscovery(void)
 			break;
 		case AUTO_VDM_DP_GET_STATUS:
 			if (DpModeEntered) {
-				requestCurLimit(gRequestOpCurrent);
+				requestDpStatus();
 			}
 			AutoVdmState = AUTO_VDM_DONE;
 			break;
-#endif // FSC_HAVE_DP
 		default:
 			AutoVdmState = AUTO_VDM_DONE;
 			break;
@@ -3332,31 +3205,42 @@ void resetLocalHardware(void)
 void processDMTBIST(void)
 {
 	FSC_U8 bdo = PolicyRxDataObj[0].byte[3] >> 4;
+
 	switch (bdo) {
 	case BDO_BIST_Carrier_Mode_2:
-		if (CapsSource[USBPDContract.FVRDO.ObjectPosition - 1].
-		    FPDOSupply.Voltage == 100) {
+		if (CapsSource[USBPDContract.FVRDO.ObjectPosition - 1].FPDOSupply.Voltage == 100)	// Only enter BIST for 5V contract
+		{
 			PolicyState = PE_BIST_Carrier_Mode_2;
 			PolicySubIndex = 0;
 			ProtocolState = PRLIdle;
 		}
 		break;
-	case BDO_BIST_Test_Data:	// Mask everything but I_HARDRST
-		if (CapsSource[USBPDContract.FVRDO.ObjectPosition - 1].
-		    FPDOSupply.Voltage == 100) {
-			Registers.Mask.byte = 0xFF;
-			DeviceWrite(regMask, 1, &Registers.Mask.byte);
-			Registers.MaskAdv.byte[0] = 0xFF;
-			Registers.MaskAdv.M_HARDRST = 0;
-			DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
-			Registers.MaskAdv.M_GCRCSENT = 1;
-			DeviceWrite(regMaskb, 1, &Registers.MaskAdv.byte[1]);
-			Registers.Control.RX_FLUSH = 1;	// Enable RxFIFO flushing
+	default:
+	case BDO_BIST_Test_Data:
+		if (CapsSource[USBPDContract.FVRDO.ObjectPosition - 1].FPDOSupply.Voltage == 100)	// Only enter BIST for 5V contract
+		{
+			if (Registers.DeviceID.VERSION_ID == VERSION_302B) {
+				Registers.Control.BIST_TMODE = 1;	// Auto-flush RxFIFO
+				DeviceWrite(regControl3, 1,
+					    &Registers.Control.byte[3]);
+			} else {
+				Registers.Mask.byte = 0xFF;	// Mask for VBUS and Hard Reset
+				Registers.Mask.M_VBUSOK = 0;
+				Registers.Mask.M_COMP_CHNG = 0;
+				DeviceWrite(regMask, 1, &Registers.Mask.byte);
+				Registers.MaskAdv.byte[0] = 0xFF;
+				Registers.MaskAdv.M_HARDRST = 0;
+				DeviceWrite(regMaska, 1,
+					    &Registers.MaskAdv.byte[0]);
+				Registers.MaskAdv.M_GCRCSENT = 1;
+				DeviceWrite(regMaskb, 1,
+					    &Registers.MaskAdv.byte[1]);
+
+				Registers.Control.RX_FLUSH = 1;	// Enable RxFIFO flushing
+			}
 			PolicyState = PE_BIST_Test_Data;
 			ProtocolState = PRLDisabled;	// Disable Protocol layer so we don't read FIFO
 		}
-		break;
-	default:
 		break;
 	}
 }
@@ -3372,7 +3256,7 @@ void SendUSBPDHardReset(void)
 	PDTxStatus = txIdle;	// Reset the transmitter status
 }
 
-#ifdef FSC_HAVE_SRC
+#if defined(FSC_HAVE_SRC) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
 void WriteSourceCapabilities(FSC_U8 * abytData)
 {
 	FSC_U32 i, j;
@@ -3395,6 +3279,7 @@ void WriteSourceCapabilities(FSC_U8 * abytData)
 		}
 	}
 }
+#endif // FSC_HAVE_SRC
 
 void ReadSourceCapabilities(FSC_U8 * abytData)
 {
@@ -3406,7 +3291,6 @@ void ReadSourceCapabilities(FSC_U8 * abytData)
 			*abytData++ = CapsSource[i].byte[j];
 	}
 }
-#endif // FSC_HAVE_SRC
 
 #ifdef FSC_HAVE_SNK
 void WriteSinkCapabilities(FSC_U8 * abytData)
@@ -3424,17 +3308,6 @@ void WriteSinkCapabilities(FSC_U8 * abytData)
 				CapsSink[i].byte[j] = *abytData++;	// Set the actual bytes
 		}
 		// We could also trigger sending the caps or re-evaluating, but we don't do anything with this info here...
-	}
-}
-
-void ReadSinkCapabilities(FSC_U8 * abytData)
-{
-	FSC_U32 i, j;
-	*abytData++ = CapsHeaderSink.byte[0];
-	*abytData++ = CapsHeaderSink.byte[1];
-	for (i = 0; i < CapsHeaderSink.NumDataObjects; i++) {
-		for (j = 0; j < 4; j++)
-			*abytData++ = CapsSink[i].byte[j];
 	}
 }
 
@@ -3465,7 +3338,7 @@ void ReadSinkRequestSettings(FSC_U8 * abytData)
 	*abytData |= SinkUSBSuspendOperation ? 0x02 : 0;
 	*abytData++ |= SinkUSBCommCapable ? 0x04 : 0;
 	*abytData++ = (FSC_U8) (SinkRequestMaxVoltage & 0xFF);
-	*abytData++ = (FSC_U8) ((SinkRequestMaxVoltage & 0xFF) >> 8);
+	*abytData++ = (FSC_U8) ((SinkRequestMaxVoltage >> 8) & 0xFF);
 	*abytData++ = (FSC_U8) (SinkRequestOpPower & 0xFF);
 	*abytData++ = (FSC_U8) ((SinkRequestOpPower >> 8) & 0xFF);
 	*abytData++ = (FSC_U8) ((SinkRequestOpPower >> 16) & 0xFF);
@@ -3475,32 +3348,32 @@ void ReadSinkRequestSettings(FSC_U8 * abytData)
 	*abytData++ = (FSC_U8) ((SinkRequestMaxPower >> 16) & 0xFF);
 	*abytData++ = (FSC_U8) ((SinkRequestMaxPower >> 24) & 0xFF);
 }
-
 #endif // FSC_HAVE_SNK
+
+void ReadSinkCapabilities(FSC_U8 * abytData)
+{
+	FSC_U32 i, j;
+	*abytData++ = CapsHeaderSink.byte[0];
+	*abytData++ = CapsHeaderSink.byte[1];
+	for (i = 0; i < CapsHeaderSink.NumDataObjects; i++) {
+		for (j = 0; j < 4; j++)
+			*abytData++ = CapsSink[i].byte[j];
+	}
+}
 
 void EnableUSBPD(void)
 {
-	FSC_BOOL enabled = blnSMEnabled;	// Store the current 300 state machine enabled state
-	if (USBPDEnabled)	// If we are already enabled...
-		return;		// return since we don't have to do anything
-	else {
-		DisableTypeCStateMachine();	// Disable the TypeC state machine to get to a known state
-		USBPDEnabled = TRUE;	// Set the USBPD state machine to enabled
-		if (enabled)	// If we were previously enabled...
-			EnableTypeCStateMachine();	// Re-enable the TypeC state machine
+	if (!USBPDEnabled)	// If we are not already enabled...
+	{
+		USBPDEnabled = TRUE;	// Set the USBPD state machine to enabled                                                               // return since we don't have to do anything
 	}
 }
 
 void DisableUSBPD(void)
 {
-	FSC_BOOL enabled = blnSMEnabled;	// Store the current 300 state machine enabled state
-	if (!USBPDEnabled)	// If we are already disabled...
-		return;		// return since we don't need to do anything
-	else {
-		DisableTypeCStateMachine();	// Disable the TypeC state machine to get to a known state
+	if (USBPDEnabled)	// If we are already disabled...
+	{
 		USBPDEnabled = FALSE;	// Set the USBPD state machine to enabled
-		if (enabled)	// If we were previously enabled...
-			EnableTypeCStateMachine();	// Re-enable the state machine
 	}
 }
 
