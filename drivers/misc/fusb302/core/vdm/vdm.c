@@ -10,7 +10,7 @@
  *
  * Software License Agreement:
  *
- * The software supplied herewith by Fairchild Semiconductor (the Company)
+ * The software supplied herewith by Fairchild Semiconductor (the “Company”)
  * is supplied to you, the Company's customer, for exclusive use with its
  * USB Type C / USB PD products.  The software is owned by the Company and/or
  * its supplier, and is protected under applicable copyright laws.
@@ -19,7 +19,7 @@
  * as to civil liability for the breach of the terms and conditions of this
  * license.
  *
- * THIS SOFTWARE IS PROVIDED IN AN AS IS CONDITION. NO WARRANTIES,
+ * THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
  * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
  * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
@@ -28,48 +28,31 @@
  *
  *****************************************************************************/
 #ifdef FSC_HAVE_VDM
-#include <linux/printk.h>
+
 #include "vdm.h"
 #include "../platform.h"
 #include "../PDPolicy.h"
 #include "../PD_Types.h"
-#include "../TypeC.h"
 #include "vdm_types.h"
 #include "bitfield_translators.h"
 #include "fsc_vdm_defs.h"
-#include "../../Platform_Linux/fusb30x_global.h"
+
 #ifdef FSC_HAVE_DP
 #include "DisplayPort/dp.h"
 #endif // FSC_HAVE_DP
 
 // assuming policy state is made elsewhere
-extern FSC_U32 VdmTimer;
+extern PolicyState_t PolicyState;
+volatile extern FSC_U32 VdmTimer;
 extern FSC_BOOL VdmTimerStarted;
 extern PolicyState_t vdm_next_ps;
+extern VdmDiscoveryState_t AutoVdmState;
+
 VdmManager vdmm;
 PolicyState_t originalPolicyState;
 FSC_BOOL vdm_timeout;
 FSC_BOOL ExpectingVdmResponse;
-FSC_U32 gChargerOpCurrent = 0;
-static const UsbVidPid id_table[] = {
-	{CYPRESS_VENDOR_ID, CYPRESS_CCG2_PID1},
-	{MOTOROL_VENDOR_ID, CYPRESS_CCG2_PID1},
-	{MOTOROL_VENDOR_ID, MOTOROLA_PID_NITRO1},
-	{MOTOROL_VENDOR_ID, MOTOROLA_PID_NITRO2},
-	{MOTOROL_VENDOR_ID, MOTOROLA_PID_NITRO3},
-	{}
-};
-FSC_BOOL usbMatchId(FSC_U16 vid, FSC_U16 pid)
-{
-	const UsbVidPid *id = id_table;
 
-	for ( ; id->usb_vid || id->usb_pid; id++) {
-		if ((id->usb_vid == vid) &&
-				(id->usb_pid == pid))
-			return TRUE;
-	}
-	return FALSE;
-}
 // initialize the VDM Manager (no definition/configuration object necessary). returns 0 on success.
 FSC_S32 initializeVdm()
 {
@@ -342,6 +325,7 @@ FSC_S32 processDiscoverIdentity(SopType sop, FSC_U32 * arr_in,
 		    (PolicyState != peDfpCblVdmIdentityRequest) &&
 		    (PolicyState != peSrcVdmIdentityRequest))
 			return 0;
+
 		// Discover Identity responses should have at least VDM Header, ID Header, and Cert Stat VDO
 		if (length_in < MIN_DISC_ID_RESP_SIZE) {
 			PolicyState = originalPolicyState;
@@ -353,6 +337,7 @@ FSC_S32 processDiscoverIdentity(SopType sop, FSC_U32 * arr_in,
 				PolicyState = peDfpUfpVdmIdentityAcked;
 			} else {
 				PolicyState = peDfpUfpVdmIdentityNaked;
+				AutoVdmState = AUTO_VDM_DONE;
 			}
 		} else if ((PolicyState == peDfpCblVdmIdentityRequest)
 			   && (sop == SOP_TYPE_SOP1)) {
@@ -393,11 +378,6 @@ FSC_S32 processDiscoverIdentity(SopType sop, FSC_U32 * arr_in,
 				__id.has_ama_vdo = TRUE;
 				__id.ama_vdo = getAmaVdo(arr_in[4]);	// !!! assuming it is after Product VDO
 			}
-			__id.product_vdo = getProductVdo(arr_in[3]);
-			FUSB_LOG("VDM Acked, usb vid is %d\n product id is %d",
-				   __id.id_header.usb_vid,
-				   __id.product_vdo.usb_product_id
-				  );
 		}
 
 		__result = (PolicyState == peDfpUfpVdmIdentityAcked) ||
@@ -702,12 +682,10 @@ FSC_S32 processEnterMode(SopType sop, FSC_U32 * arr_in, FSC_U32 length_in)
 			PolicyState = peDfpVdmModeEntryNaked;
 			vdmm.enter_mode_result(FALSE, __svdmh_in.SVDM.SVID,
 					       __svdmh_in.SVDM.ObjPos);
-			gChargerAuthenticated = FALSE;
 		} else {
 			PolicyState = peDfpVdmModeEntryAcked;
 			vdmm.enter_mode_result(TRUE, __svdmh_in.SVDM.SVID,
 					       __svdmh_in.SVDM.ObjPos);
-			gChargerAuthenticated = TRUE;
 		}
 		PolicyState = originalPolicyState;
 		ExpectingVdmResponse = FALSE;
@@ -845,26 +823,7 @@ FSC_S32 processSvidSpecific(SopType sop, FSC_U32 * arr_in, FSC_U32 length_in)
 	sendVdmMessage(sop, __arr, __length, originalPolicyState);
 	return 0;
 }
-FSC_S32  processUVDM(SopType sop, FSC_U32 *arr_in, FSC_U32 length_in)
-{
-	doDataObject_t __uvdmh_in = { 0 };
-	doDataObject_t __uvdmDo_in = { 0 };
 
-	__uvdmh_in.object = arr_in[0];
-	if (__uvdmh_in.UVDM.VendorID ==
-			MOTOROL_VENDOR_ID) {
-		FUSB_LOG("uvdm command %d status %d",
-				 __uvdmh_in.UVDMReqRsp.Command,
-				 __uvdmh_in.UVDMReqRsp.CommandStatus);
-		if (length_in > 1) {
-			__uvdmDo_in.object = arr_in[1];
-			FUSB_LOG("current %d ma",
-					 __uvdmDo_in.UVDMDO.Current*10);
-			gChargerOpCurrent = __uvdmDo_in.UVDMDO.Current;
-		}
-	}
-	return 0;
-}
 // returns 0 on success, 1+ otherwise
 FSC_S32 processVdmMessage(SopType sop, FSC_U32 * arr_in, FSC_U32 length_in)
 {
@@ -877,26 +836,29 @@ FSC_S32 processVdmMessage(SopType sop, FSC_U32 * arr_in, FSC_U32 length_in)
 		switch (__vdmh_in.SVDM.Command) {
 		case DISCOVER_IDENTITY:
 			return processDiscoverIdentity(sop, arr_in, length_in);
+			break;
 		case DISCOVER_SVIDS:
 			return processDiscoverSvids(sop, arr_in, length_in);
+			break;
 		case DISCOVER_MODES:
 			return processDiscoverModes(sop, arr_in, length_in);
+			break;
 		case ENTER_MODE:
 			return processEnterMode(sop, arr_in, length_in);
+			break;
 		case EXIT_MODE:
 			return processExitMode(sop, arr_in, length_in);
+			break;
 		case ATTENTION:
 			return processAttention(sop, arr_in, length_in);
+			break;
 		default:
 			// SVID-Specific commands go here
 			return processSvidSpecific(sop, arr_in, length_in);
+			break;
 		}
 	} else {
 		// TODO: Unstructured messages
-		if (__vdmh_in.UVDM.VDMType == UNSTRUCTURED_VDM) {
-			processUVDM(sop, arr_in, length_in);
-			return 0;
-		}
 		return 1;
 	}
 }
@@ -1009,7 +971,7 @@ void startVdmTimer(FSC_S32 n_pe)
 	default:
 		VdmTimer = 0;
 		VdmTimerStarted = TRUE;	// timeout immediately
-		return;
+		break;
 	}
 }
 
