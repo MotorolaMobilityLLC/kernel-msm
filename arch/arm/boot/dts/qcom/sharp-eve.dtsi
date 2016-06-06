@@ -18,6 +18,115 @@
 / {
 	soc {
 		/delete-node/ qcom,msm-ssc-sensors;
+
+		qcom,mpm@601d0 {
+			qcom,gic-map = <2 216>, /* tsens_upper_lower_int */
+				<49 172>, /* usb1_hs_async_wakeup_irq */
+				<58 166>, /* usb_hs_irq */
+				<53 104>, /* mdss_irq */
+				<62 222>, /* ee0_krait_hlos_spmi_periph_irq */
+				<0xff 18>,  /* APC_qgicQTmrSecPhysIrptReq */
+				<0xff 19>,  /* APC_qgicQTmrNonSecPhysIrptReq */
+				<0xff 20>,  /* qgicQTmrVirtIrptReq */
+				<0xff 35>,  /* WDT_barkInt */
+				<0xff 39>,  /* arch_mem_timer */
+				<0xff 40>,  /* qtmr_phy_irq[0] */
+				<0xff 47>,  /* rbif_irq[0] */
+				<0xff 56>,  /* q6_wdog_expired_irq */
+				<0xff 57>,  /* mss_to_apps_irq(0) */
+				<0xff 58>,  /* mss_to_apps_irq(1) */
+				<0xff 59>,  /* mss_to_apps_irq(2) */
+				<0xff 60>,  /* mss_to_apps_irq(3) */
+				<0xff 61>,  /* mss_a2_bam_irq */
+				<0xff 65>,  /* o_gc_sys_irq[0] */
+				<0xff 73>,  /* smmu_intr_bus[1] */
+				<0xff 74>,  /* smmu_bus_intr[2] */
+				<0xff 75>,  /* smmu_bus_intr[3] */
+				<0xff 76>,  /* venus_irq */
+				<0xff 78>,  /* smmu_bus_intr[5] */
+				<0xff 79>,  /* smmu_bus_intr[6] */
+				<0xff 85>,  /* smmu_bus_intr[31] */
+				<0xff 86>,  /* smmu_bus_intr[32] */
+				<0xff 90>,  /* smmu_bus_intr[33] */
+				<0xff 92>,  /* smmu_bus_intr[34] */
+				<0xff 93>,  /* smmu_bus_intr[35] */
+				<0xff 97>,  /* smmu_bus_intr[10] */
+				<0xff 102>, /* smmu_bus_intr[14] */
+				<0xff 108>, /* smmu_bus_intr[36] */
+				<0xff 109>, /* smmu_bus_intr[37] */
+				<0xff 112>, /* smmu_bus_intr[38] */
+				<0xff 114>, /* qdsd_intr_out */
+				<0xff 128>, /* blsp1_peripheral_irq[3] */
+				<0xff 129>, /* blsp1_peripheral_irq[4] */
+				<0xff 131>, /* qup_irq */
+				<0xff 137>, /* smmu_intr_bus[44] */
+				<0xff 138>, /* smmu_intr_bus[45] */
+				<0xff 140>, /* uart_dm_intr */
+				<0xff 142>, /* smmu_bus_intr[47] */
+				<0xff 143>, /* smmu_bus_intr[48] */
+				<0xff 144>, /* smmu_bus_intr[49] */
+				<0xff 145>, /* smmu_bus_intr[50] */
+				<0xff 146>, /* smmu_bus_intr[51] */
+				<0xff 147>, /* smmu_bus_intr[52] */
+				<0xff 148>, /* smmu_bus_intr[53] */
+				<0xff 149>, /* smmu_bus_intr[54] */
+				<0xff 150>, /* smmu_bus_intr[55] */
+				<0xff 151>, /* smmu_bus_intr[56] */
+				<0xff 152>, /* smmu_bus_intr[57] */
+				<0xff 153>, /* smmu_bus_intr[58] */
+				<0xff 155>, /* sdc1_irq(0) */
+				<0xff 157>, /* sdc2_irq(0) */
+				<0xff 167>, /* usb1_hs_bam_irq */
+				<0xff 170>, /* sdc1_pwr_cmd_irq */
+				<0xff 173>, /* o_wcss_apss_smd_hi */
+				<0xff 174>, /* o_wcss_apss_smd_med */
+				<0xff 175>, /* o_wcss_apss_smd_low */
+				<0xff 176>, /* o_wcss_apss_smsm_irq */
+				<0xff 177>, /* o_wcss_apss_wlan_data_xfer_done */
+				<0xff 178>, /* o_wcss_apss_wlan_rx_data_avail */
+				<0xff 179>, /* o_wcss_apss_asic_intr */
+				<0xff 181>, /* o_wcss_apss_wdog_bite_and_reset_rdy */
+				<0xff 188>, /* lpass_irq_out_apcs(0) */
+				<0xff 189>, /* lpass_irq_out_apcs(1) */
+				<0xff 190>, /* lpass_irq_out_apcs(2) */
+				<0xff 191>, /* lpass_irq_out_apcs(3) */
+				<0xff 192>, /* lpass_irq_out_apcs(4) */
+				<0xff 193>, /* lpass_irq_out_apcs(5) */
+				<0xff 194>, /* lpass_irq_out_apcs(6) */
+				<0xff 195>, /* lpass_irq_out_apcs(7) */
+				<0xff 196>, /* lpass_irq_out_apcs(8) */
+				<0xff 197>, /* lpass_irq_out_apcs(9) */
+				<0xff 198>, /* coresight-tmc-etr interrupt */
+				<0xff 200>, /* rpm_ipc(4) */
+				<0xff 201>, /* rpm_ipc(5) */
+				<0xff 202>, /* rpm_ipc(6) */
+				<0xff 203>, /* rpm_ipc(7) */
+				<0xff 204>, /* rpm_ipc(24) */
+				<0xff 205>, /* rpm_ipc(25) */
+				<0xff 206>, /* rpm_ipc(26) */
+				<0xff 207>, /* rpm_ipc(27) */
+				<0xff 215>, /* o_bimc_intr[0] */
+				<0xff 224>, /* SPDM interrupt */
+				<0xff 239>, /* crypto_bam_irq[1]*/
+				<0xff 240>, /* summary_irq_kpss */
+				<0xff 253>, /* sdc2_pwr_cmd_irq */
+				<0xff 260>, /* ipa_irq[0] */
+				<0xff 262>, /* ipa_bam_irq[2] */
+				<0xff 269>, /* rpm_wdog_expired_irq */
+				<0xff 270>, /* blsp1_bam_irq[0] */
+				<0xff 271>, /* blsp2_bam_irq[0] */
+				<0xff 272>, /* smmu_intr_bus[17] */
+				<0xff 273>, /* smmu_bus_intr[18] */
+				<0xff 274>, /* smmu_bus_intr[19] */
+				<0xff 275>, /* rpm_ipc(30) */
+				<0xff 276>, /* rpm_ipc(31) */
+				<0xff 277>, /* smmu_intr_bus[20] */
+				<0xff 321>, /* q6ss_irq_out(4) */
+				<0xff 322>, /* q6ss_irq_out(5) */
+				<0xff 323>, /* q6ss_irq_out(6) */
+				<0xff 325>; /* q6ss_wdog_exp_irq */
+		};
+
 	};
 };
 
