@@ -19,7 +19,8 @@
 #define CAMERA_EXT_STREAM_CAP_SNAPSHOT  (1 << 2)
 
 /* Async message sent from MOD to AP */
-#define CAMERA_EXT_REPORT_ERROR	0x00
+#define CAMERA_EXT_REPORT_ERROR		0x00
+#define CAMERA_EXT_REPORT_METADATA	0x01
 
 /* error code for CAMERA_EXT_REPORT_ERROR */
 #define CAMERA_EXT_ERROR_FATAL		0x00
