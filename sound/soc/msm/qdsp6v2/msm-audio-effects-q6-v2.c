@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,6 +15,23 @@
 #include <sound/q6asm-v2.h>
 #include <sound/compress_params.h>
 #include "msm-audio-effects-q6-v2.h"
+
+#define GET_NEXT(ptr, upper_limit, rc)					\
+({									\
+	if (((ptr) + 1) > (upper_limit)) {				\
+		pr_err("%s: param list out of boundary\n", __func__);	\
+		(rc) = -EINVAL;						\
+	}								\
+	((rc) == 0) ? *(ptr)++ :  -EINVAL;				\
+})
+
+#define CHECK_PARAM_LEN(len, max_len, tag, rc)				\
+do {									\
+	if ((len) > (max_len)) {					\
+		pr_err("%s: params length overflows\n", (tag));		\
+		(rc) = -EINVAL;						\
+	}								\
+} while (0)
 
 int msm_audio_effects_virtualizer_handler(struct audio_client *ac,
 				struct virtualizer_params *virtualizer,
@@ -569,15 +586,16 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 					 struct eq_params *eq,
 					 long *values)
 {
-	int devices = *values++;
-	int num_commands = *values++;
-	char *params;
+	long *param_max_offset = values + MAX_PP_PARAMS_SZ - 1;
+	char *params = NULL;
+	int rc = 0;
+	int devices = GET_NEXT(values, param_max_offset, rc);
+	int num_commands = GET_NEXT(values, param_max_offset, rc);
 	int *updt_params, i, prev_enable_flag;
 	uint32_t params_length = (MAX_INBAND_PARAM_SZ);
-	int rc = 0;
 
 	pr_debug("%s\n", __func__);
-	if (!ac) {
+	if (!ac || (devices == -EINVAL) || (num_commands == -EINVAL)) {
 		pr_err("%s: cannot set audio effects\n", __func__);
 		return -EINVAL;
 	}
@@ -590,11 +608,16 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 	updt_params = (int *)params;
 	params_length = 0;
 	for (i = 0; i < num_commands; i++) {
-		uint32_t command_id = *values++;
-		uint32_t command_config_state = *values++;
-		uint32_t index_offset = *values++;
-		uint32_t length = *values++;
-		int idx, j;
+		uint32_t command_id =
+			GET_NEXT(values, param_max_offset, rc);
+		uint32_t command_config_state =
+			GET_NEXT(values, param_max_offset, rc);
+		uint32_t index_offset =
+			GET_NEXT(values, param_max_offset, rc);
+		uint32_t length =
+			GET_NEXT(values, param_max_offset, rc);
+		uint32_t idx;
+		int j;
 		switch (command_id) {
 		case EQ_ENABLE:
 			if (length != 1 || index_offset != 0) {
@@ -603,17 +626,26 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 				goto invalid_config;
 			}
 			prev_enable_flag = eq->enable_flag;
-			eq->enable_flag = *values++;
+			eq->enable_flag =
+				GET_NEXT(values, param_max_offset, rc);
 			pr_debug("%s: EQ_ENABLE prev:%d new:%d\n", __func__,
 				prev_enable_flag, eq->enable_flag);
 			if (prev_enable_flag != eq->enable_flag) {
-				*updt_params++ =
-					AUDPROC_MODULE_ID_POPLESS_EQUALIZER;
-				*updt_params++ = AUDPROC_PARAM_ID_EQ_ENABLE;
-				*updt_params++ = EQ_ENABLE_PARAM_SZ;
-				*updt_params++ = eq->enable_flag;
 				params_length += COMMAND_PAYLOAD_SZ +
 					EQ_ENABLE_PARAM_SZ;
+				CHECK_PARAM_LEN(params_length,
+						MAX_INBAND_PARAM_SZ,
+						"EQ_ENABLE", rc);
+				if (rc != 0)
+					break;
+				*updt_params++ =
+					AUDPROC_MODULE_ID_POPLESS_EQUALIZER;
+				*updt_params++ =
+					AUDPROC_PARAM_ID_EQ_ENABLE;
+				*updt_params++ =
+					EQ_ENABLE_PARAM_SZ;
+				*updt_params++ =
+					eq->enable_flag;
 			}
 			break;
 		case EQ_CONFIG:
@@ -627,9 +659,12 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 				eq->config.eq_pregain, eq->config.preset_id);
 			for (idx = 0; idx < MAX_EQ_BANDS; idx++)
 				eq->per_band_cfg[idx].band_idx = -1;
-			eq->config.eq_pregain = *values++;
-			eq->config.preset_id = *values++;
-			eq->config.num_bands = *values++;
+			eq->config.eq_pregain =
+				GET_NEXT(values, param_max_offset, rc);
+			eq->config.preset_id =
+				GET_NEXT(values, param_max_offset, rc);
+			eq->config.num_bands =
+				GET_NEXT(values, param_max_offset, rc);
 			if (eq->config.num_bands > MAX_EQ_BANDS) {
 				pr_err("EQ_CONFIG:invalid num of bands\n");
 				rc = -EINVAL;
@@ -644,48 +679,59 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 				goto invalid_config;
 			}
 			for (j = 0; j < eq->config.num_bands; j++) {
-				idx = *values++;
+				idx = GET_NEXT(values, param_max_offset, rc);
 				if (idx >= MAX_EQ_BANDS) {
 					pr_err("EQ_CONFIG:invalid band index\n");
 					rc = -EINVAL;
 					goto invalid_config;
 				}
 				eq->per_band_cfg[idx].band_idx = idx;
-				eq->per_band_cfg[idx].filter_type = *values++;
+				eq->per_band_cfg[idx].filter_type =
+					GET_NEXT(values, param_max_offset, rc);
 				eq->per_band_cfg[idx].freq_millihertz =
-								*values++;
+					GET_NEXT(values, param_max_offset, rc);
 				eq->per_band_cfg[idx].gain_millibels =
-								*values++;
+					GET_NEXT(values, param_max_offset, rc);
 				eq->per_band_cfg[idx].quality_factor =
-								*values++;
+					GET_NEXT(values, param_max_offset, rc);
 			}
 			if (command_config_state == CONFIG_SET) {
 				int config_param_length = EQ_CONFIG_PARAM_SZ +
 					(EQ_CONFIG_PER_BAND_PARAM_SZ*
 					 eq->config.num_bands);
+				params_length += COMMAND_PAYLOAD_SZ +
+						config_param_length;
+				CHECK_PARAM_LEN(params_length,
+						MAX_INBAND_PARAM_SZ,
+						"EQ_CONFIG", rc);
+				if (rc != 0)
+					break;
 				*updt_params++ =
 					AUDPROC_MODULE_ID_POPLESS_EQUALIZER;
-				*updt_params++ = AUDPROC_PARAM_ID_EQ_CONFIG;
-				*updt_params++ = config_param_length;
-				*updt_params++ = eq->config.eq_pregain;
-				*updt_params++ = eq->config.preset_id;
-				*updt_params++ = eq->config.num_bands;
+				*updt_params++ =
+					AUDPROC_PARAM_ID_EQ_CONFIG;
+				*updt_params++ =
+					config_param_length;
+				*updt_params++ =
+					eq->config.eq_pregain;
+				*updt_params++ =
+					eq->config.preset_id;
+				*updt_params++ =
+					eq->config.num_bands;
 				for (idx = 0; idx < MAX_EQ_BANDS; idx++) {
 					if (eq->per_band_cfg[idx].band_idx < 0)
 						continue;
 					*updt_params++ =
-					  eq->per_band_cfg[idx].filter_type;
+					eq->per_band_cfg[idx].filter_type;
 					*updt_params++ =
-					  eq->per_band_cfg[idx].freq_millihertz;
+					eq->per_band_cfg[idx].freq_millihertz;
 					*updt_params++ =
-					  eq->per_band_cfg[idx].gain_millibels;
+					eq->per_band_cfg[idx].gain_millibels;
 					*updt_params++ =
-					  eq->per_band_cfg[idx].quality_factor;
+					eq->per_band_cfg[idx].quality_factor;
 					*updt_params++ =
-					  eq->per_band_cfg[idx].band_idx;
+					eq->per_band_cfg[idx].band_idx;
 				}
-				params_length += COMMAND_PAYLOAD_SZ +
-						config_param_length;
 			}
 			break;
 		case EQ_BAND_INDEX:
@@ -694,7 +740,7 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 				rc = -EINVAL;
 				goto invalid_config;
 			}
-			idx = *values++;
+			idx = GET_NEXT(values, param_max_offset, rc);
 			if (idx > MAX_EQ_BANDS) {
 				pr_err("EQ_BAND_INDEX:invalid band index\n");
 				rc = -EINVAL;
@@ -704,14 +750,21 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 			pr_debug("%s: EQ_BAND_INDEX val:%d\n",
 				__func__, eq->band_index);
 			if (command_config_state == CONFIG_SET) {
+				params_length += COMMAND_PAYLOAD_SZ +
+					EQ_BAND_INDEX_PARAM_SZ;
+				CHECK_PARAM_LEN(params_length,
+						MAX_INBAND_PARAM_SZ,
+						"EQ_BAND_INDEX", rc);
+				if (rc != 0)
+					break;
 				*updt_params++ =
 					AUDPROC_MODULE_ID_POPLESS_EQUALIZER;
 				*updt_params++ =
 					AUDPROC_PARAM_ID_EQ_BAND_INDEX;
-				*updt_params++ = EQ_BAND_INDEX_PARAM_SZ;
-				*updt_params++ = eq->band_index;
-				params_length += COMMAND_PAYLOAD_SZ +
+				*updt_params++ =
 					EQ_BAND_INDEX_PARAM_SZ;
+				*updt_params++ =
+					eq->band_index;
 			}
 			break;
 		case EQ_SINGLE_BAND_FREQ:
@@ -724,18 +777,26 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 				pr_err("EQ_SINGLE_BAND_FREQ:invalid index\n");
 				break;
 			}
-			eq->freq_millihertz = *values++;
+			eq->freq_millihertz =
+				GET_NEXT(values, param_max_offset, rc);
 			pr_debug("%s: EQ_SINGLE_BAND_FREQ idx:%d, val:%d\n",
 				__func__, eq->band_index, eq->freq_millihertz);
 			if (command_config_state == CONFIG_SET) {
+				params_length += COMMAND_PAYLOAD_SZ +
+					EQ_SINGLE_BAND_FREQ_PARAM_SZ;
+				CHECK_PARAM_LEN(params_length,
+						MAX_INBAND_PARAM_SZ,
+						"EQ_SINGLE_BAND_FREQ", rc);
+				if (rc != 0)
+					break;
 				*updt_params++ =
 					AUDPROC_MODULE_ID_POPLESS_EQUALIZER;
 				*updt_params++ =
 					AUDPROC_PARAM_ID_EQ_SINGLE_BAND_FREQ;
-				*updt_params++ = EQ_SINGLE_BAND_FREQ_PARAM_SZ;
-				*updt_params++ = eq->freq_millihertz;
-				params_length += COMMAND_PAYLOAD_SZ +
+				*updt_params++ =
 					EQ_SINGLE_BAND_FREQ_PARAM_SZ;
+				*updt_params++ =
+					eq->freq_millihertz;
 			}
 			break;
 		default:
@@ -743,7 +804,7 @@ int msm_audio_effects_popless_eq_handler(struct audio_client *ac,
 			break;
 		}
 	}
-	if (params_length)
+	if (params_length && (rc == 0))
 		q6asm_send_audio_effects_params(ac, params,
 						params_length);
 invalid_config:
