@@ -1,6 +1,7 @@
 #ifndef __USBPD_TYPES_H__
 #define __USBPD_TYPES_H__
-
+#include <linux/completion.h>
+#include <linux/atomic.h>
 #include "platform.h"
 
 #ifdef FSC_DEBUG
@@ -69,32 +70,32 @@
 #define BDO_BIST_Test_Data      0b1000	// Implemented
 
 // USB PD Timing Parameters
-// Units are in ms * 1 to be ticked by a 1ms timer.
+/*Units are in ms to be ticked by a 1ms timer.*/
 #define TICK_SCALE_TO_MS        1
 
-#define tNoResponse             5000    * TICK_SCALE_TO_MS
-#define tSenderResponse         28      * TICK_SCALE_TO_MS
-#define tTypeCSendSourceCap     150     * TICK_SCALE_TO_MS
-#define tSinkWaitCap            500     * TICK_SCALE_TO_MS	// Setting to tTypeCSinkWaitCap for now
-#define tTypeCSinkWaitCap       500     * TICK_SCALE_TO_MS
-#define tSrcTransition          30      * TICK_SCALE_TO_MS
-#define tPSHardReset            30      * TICK_SCALE_TO_MS
-#define tPSHardResetMax         35      * TICK_SCALE_TO_MS
-#define tPSTransition           500     * TICK_SCALE_TO_MS
-#define tPSSourceOff            835     * TICK_SCALE_TO_MS
-#define tPSSourceOn             435     * TICK_SCALE_TO_MS
-#define tVCONNSourceOn          90      * TICK_SCALE_TO_MS
-#define tBISTContMode           50      * TICK_SCALE_TO_MS
-#define tSwapSourceStart        25      * TICK_SCALE_TO_MS
-#define tSrcRecover             675     * TICK_SCALE_TO_MS
-#define tSrcRecoverMax          1000    * TICK_SCALE_TO_MS
-#define tGoodCRCDelay           1       * TICK_SCALE_TO_MS
-#define t5To12VTransition       8       * TICK_SCALE_TO_MS
-#define tSafe0V                 650     * TICK_SCALE_TO_MS
-#define tSrcTurnOn              275     * TICK_SCALE_TO_MS
-#define tFPF2498Transition      20      * TICK_SCALE_TO_MS
-#define tSourceRiseTimeout      350     * TICK_SCALE_TO_MS
-#define tHardResetOverhead      0       * TICK_SCALE_TO_MS
+#define tNoResponse             (5000    * TICK_SCALE_TO_MS)
+#define tSenderResponse         (25      * TICK_SCALE_TO_MS)
+#define tTypeCSendSourceCap     (150     * TICK_SCALE_TO_MS)
+#define tSinkWaitCap            (500     * TICK_SCALE_TO_MS)
+#define tTypeCSinkWaitCap       (500     * TICK_SCALE_TO_MS)
+#define tSrcTransition          (30      * TICK_SCALE_TO_MS)
+#define tPSHardReset            (30      * TICK_SCALE_TO_MS)
+#define tPSHardResetMax         (35      * TICK_SCALE_TO_MS)
+#define tPSTransition           (500     * TICK_SCALE_TO_MS)
+#define tPSSourceOff            (835     * TICK_SCALE_TO_MS)
+#define tPSSourceOn             (435     * TICK_SCALE_TO_MS)
+#define tVCONNSourceOn          (90      * TICK_SCALE_TO_MS)
+#define tBISTContMode           (50      * TICK_SCALE_TO_MS)
+#define tSwapSourceStart        (25      * TICK_SCALE_TO_MS)
+#define tSrcRecover             (675     * TICK_SCALE_TO_MS)
+#define tSrcRecoverMax          (1000    * TICK_SCALE_TO_MS)
+#define tGoodCRCDelay           (1       * TICK_SCALE_TO_MS)
+#define t5To12VTransition       (8       * TICK_SCALE_TO_MS)
+#define tSafe0V                 (650     * TICK_SCALE_TO_MS)
+#define tSrcTurnOn              (275     * TICK_SCALE_TO_MS)
+#define tFPF2498Transition      (20      * TICK_SCALE_TO_MS)
+#define tSourceRiseTimeout      (350     * TICK_SCALE_TO_MS)
+#define tHardResetOverhead      (0       * TICK_SCALE_TO_MS)
 
 #define nHardResetCount         2
 #define nRetryCount             3
@@ -213,6 +214,26 @@ typedef union {
 		unsigned VDMType:1;	// Unstructured or structured message header
 		unsigned SVID:16;	// Unique 16-bit unsigned integer assigned by the USB-IF
 	} SVDM;
+	struct {
+		unsigned Command:5;
+		unsigned Reserverd2:2;
+		unsigned CommandStatus:1;
+		unsigned ModeObjPos:3;
+		unsigned Reserverd1:2;
+		unsigned UVDMVersion:2;
+		unsigned VDMType:1;
+		unsigned VendorID:16;
+	} UVDMReqRsp;
+	struct {
+		unsigned Current:22;
+		unsigned Unused:10;
+	} UVDMDO;
+	struct {
+		unsigned MaxCurrentLimit:10;
+		unsigned MiniCurrentLimit:10;
+		unsigned Voltage:10;
+		unsigned ModeID:2;
+	} ModeInfo;
 } doDataObject_t;
 
 typedef enum {
@@ -426,4 +447,8 @@ typedef enum {
 	SOP_TYPE_ERROR = 0xFF
 } SopType;
 
+typedef struct {
+	struct completion	complete;
+	atomic_t		pending;
+} ReqContextType;
 #endif // __USBPD_TYPES_H__
