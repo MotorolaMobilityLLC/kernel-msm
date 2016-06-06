@@ -120,7 +120,7 @@ static int fusb_enableSuperspeedUSB(int CC1, int CC2)
 	}
 	if (disable_ss_switch)
 		return 0;
-	SwitchState = CC1 ? 1 : 2;
+	SwitchState = CC2 ? 2 : 1;
 	power_supply_changed(&switch_psy);
 	FUSB_LOG("Enabling SS lines for CC%d\n", SwitchState);
 	return 0;
@@ -609,7 +609,6 @@ FSC_BOOL fusb_I2C_WriteData(FSC_U8 address, FSC_U8 length, FSC_U8 * data)
 							    "Write data buffer")));
 		return false;
 	}
-
 	mutex_lock(&chip->lock);
 	// Retry on failure up to the retry limit
 	for (i = 0; i <= chip->numRetriesI2C; i++) {
@@ -5270,7 +5269,9 @@ FSC_S32 fusb_EnableInterrupts(void)
 		 chip->gpio_IntN_irq);
 
 	/* Request threaded IRQ because we will likely sleep while handling the interrupt, trigger is active-low, don't handle concurrent interrupts */
-	ret = devm_request_threaded_irq(&chip->client->dev, chip->gpio_IntN_irq, NULL, _fusb_isr_intn, IRQF_ONESHOT | IRQF_TRIGGER_LOW, FUSB_DT_INTERRUPT_INTN, chip);	// devm_* allocation/free handled by system
+	ret = devm_request_irq(&chip->client->dev, chip->gpio_IntN_irq,
+			_fusb_isr_intn, IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+			FUSB_DT_INTERRUPT_INTN, chip);
 	if (ret) {
 		dev_err(&chip->client->dev,
 			"%s - Error: Unable to request threaded IRQ for INT_N GPIO! Error code: %d\n",
@@ -5297,17 +5298,9 @@ static irqreturn_t _fusb_isr_intn(FSC_S32 irq, void *dev_id)
 		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
 		return IRQ_NONE;
 	}
-#ifdef FSC_DEBUG
-	dbg_fusb_GPIO_Set_SM_Toggle(!chip->dbg_gpio_StateMachine_value);	// Optionally toggle debug GPIO when SM is called to measure thread tick rate
-
-	if (chip->dbgSMTicks++ >= U8_MAX)	// Tick our state machine tick counter
-	{
-		chip->dbgSMRollovers++;	// Record a moderate amount of rollovers
-	}
-#endif // FSC_DEBUG
 	disable_irq_nosync(chip->gpio_IntN_irq);
 	atomic_set(&chip->irq_disabled, 1);
-	schedule_work(&chip->wake_worker);
+	platform_run_wake_thread();
 	return IRQ_HANDLED;
 }
 
@@ -5320,9 +5313,11 @@ void _fusb_WakeWorker(struct work_struct *work)
 		return;
 	}
 	pm_stay_awake(&chip->client->dev);
-	if (fusb_InterruptPinLow())
-		core_state_machine();
-	else
+	if (fusb_InterruptPinLow()) {
+		do {
+			core_state_machine();
+		} while (platform_get_device_irq_state());
+	} else
 		core_state_machine_imp();
 	pm_relax(&chip->client->dev);
 	if (atomic_read(&chip->irq_disabled) > 0) {
@@ -5338,7 +5333,10 @@ void fusb_ScheduleWakeWork(void)
 		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
 		return;
 	}
-	schedule_work(&chip->wake_worker);
+	if (chip->wake_worker_wq)
+		queue_work(chip->wake_worker_wq, &chip->wake_worker);
+	else
+		schedule_work(&chip->wake_worker);
 }
 void fusb_InitializeWakeWorker(void)
 {
@@ -5349,6 +5347,11 @@ void fusb_InitializeWakeWorker(void)
 		pr_err("FUSB  %s - Error: Chip structure is NULL!\n", __func__);
 		return;
 	}
+	chip->wake_worker_wq = alloc_workqueue(
+				"fusb302_worker", WQ_HIGHPRI, 1);
+	if (!chip->wake_worker_wq)
+		pr_err("FUSB %s -Error: Failed to allocate workqueue\n",
+				__func__);
 	INIT_WORK(&chip->wake_worker, _fusb_WakeWorker);
 }
 void platform_run_wake_thread(void)

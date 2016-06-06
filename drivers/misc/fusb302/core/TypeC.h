@@ -14,7 +14,7 @@
  *
  * Software License Agreement:
  *
- * The software supplied herewith by Fairchild Semiconductor (the “Company”)
+ * The software supplied herewith by Fairchild Semiconductor (the Company)
  * is supplied to you, the Company's customer, for exclusive use with its
  * USB Type C / USB PD products.  The software is owned by the Company and/or
  * its supplier, and is protected under applicable copyright laws.
@@ -23,7 +23,7 @@
  * as to civil liability for the breach of the terms and conditions of this
  * license.
  *
- * THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
+ * THIS SOFTWARE IS PROVIDED IN AN AS IS CONDITION. NO WARRANTIES,
  * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
  * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
@@ -46,17 +46,21 @@
 
 // Type C Timing Parameters
 // Units are in ms * 1 to be ticked by a 1ms timer.
-#define tAMETimeout     900 * 1
-#define tCCDebounce     120 * 1
-#define tPDDebounce     15 * 1
-#define tDRPTry         90 * 1
-#define tDRPTryWait     600 * 1
-#define tErrorRecovery  30 * 1
-
-#define tDeviceToggle   3 * 1	// Duration in ms to wait before checking other CC pin for the device
-#define tTOG2           30 * 1	//When TOGGLE=1, time at which internal versions of PU_EN1=1 or PU_EN2=1 and PWDN1=PDWN2=0 selected to present externally as a DFP in the DRP toggle
-#define tIllegalCable   150 * 1
-#define tOrientedDebug  100 * 1	// Time alloted for detection DegugAccessory orientation
+#define tAMETimeout     (900 * 1)
+#define tCCDebounce     (120 * 1)
+#define tPDDebounce     (15 * 1)
+#define tDRPTry         (90 * 1)
+#define tDRPTryWait     (600 * 1)
+#define tErrorRecovery  (30 * 1)
+/*Duration in ms to wait before checking other CC pin for the device*/
+#define tDeviceToggle   (3 * 1)
+/*When TOGGLE=1, time at which internal versions of PU_EN1=1 or PU_EN2=1
+*and PWDN1=PDWN2=0 selected to present externally as a DFP in the DRP toggle
+*/
+#define tTOG2           (30 * 1)
+#define tIllegalCable   (0 * 1)
+/*Time alloted for detection DegugAccessory orientation*/
+#define tOrientedDebug  (100 * 1)
 
 #define T_TIMER_DISABLE (0xFFFF)
 #define SLEEP_DELAY     80	// *10 us
@@ -76,6 +80,14 @@ extern FSC_BOOL IsPRSwap;
 extern FSC_BOOL PolicyHasContract;	// Indicates that policy layer has a PD contract
 extern PolicyState_t PolicyState;
 extern FSC_BOOL mode_entered;
+extern FSC_BOOL gChargerAuthenticated;
+extern FSC_U32 gChargerMaxCurrent;
+extern FSC_U32 gRequestOpCurrent;
+extern FSC_U32 gChargerOpCurrent;
+extern FSC_U32 gRequestOpVoltage;
+extern struct power_supply usbc_psy;
+extern struct power_supply switch_psy;
+extern u16 SwitchState;
 /////////////////////////////////////////////////////////////////////////////
 //                            LOCAL PROTOTYPES
 /////////////////////////////////////////////////////////////////////////////
@@ -255,4 +267,6 @@ FSC_U8 getAlternateModes(void);
 
 void toggleCurrentSwap(void);
 
+void StateMachineTypeCImp(void);
+void WakeStateMachineTypeC(void);
 #endif /* __FSC_TYPEC_H__ */
