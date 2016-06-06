@@ -62,6 +62,7 @@ struct fusb30x_chip		// Contains data required by this driver
 	struct delayed_work init_worker;	// Kicks off our runtime worker
 	struct work_struct worker;	// Main state machine actions
 	struct work_struct wake_worker;
+	struct workqueue_struct		*wake_worker_wq;
 
 	/* Timers */
 	struct hrtimer timer_state_machine;	// High-resolution timer for the state machine
