@@ -18,41 +18,41 @@ qcom,gl40-sony {
 	qcom,batt-id-kohm = <243>;
 	qcom,battery-beta = <3900>;
 	qcom,battery-type = "GL40-SONY-3510mah";
-	qcom,chg-rslow-comp-c1 = <2955215>;
-	qcom,chg-rslow-comp-c2 = <4320965>;
-	qcom,chg-rs-to-rslow = <891473>;
-	qcom,chg-rslow-comp-thr = <0xA8>;
-	qcom,checksum = <0x6830>;
-	qcom,gui-version = "PMI8950GUI - 2.0.0.15";
+	qcom,chg-rslow-comp-c1 = <3181483>;
+	qcom,chg-rslow-comp-c2 = <5106101>;
+	qcom,chg-rs-to-rslow = <886839>;
+	qcom,chg-rslow-comp-thr = <0xAF>;
+	qcom,checksum = <0x0FC7>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
 	qcom,fg-profile-data = [
-		 E3 83 D9 7C
-		 09 81 20 77
-		 38 83 1E 70
-		 76 70 4A 7E
-		 03 82 82 99
-		 FF B7 04 C8
-		 51 0F EF 83
-		 D3 7C FA 80
-		 F5 76 34 83
-		 B4 73 FC 76
-		 50 6F 11 82
-		 37 9A 5E BD
-		 A8 CA 5A 0E
-		 EA 0D 5E 5A
+		 E7 83 FD 7C
+		 28 81 57 77
+		 3A 83 37 70
+		 B4 6A 2E 7D
+		 FA 81 D5 99
+		 5E BC 8E C8
+		 51 0F E4 83
+		 78 7C BD 80
+		 89 76 42 83
+		 A7 6B 95 7A
+		 7D 8C 13 82
+		 34 9A 65 BD
+		 BC CA 55 0E
+		 FB 0D 04 5A
 		 14 70 A6 FB
-		 75 3A 02 3F
-		 5E 34 00 00
-		 72 3D 27 29
-		 CE 34 00 00
+		 AF 33 47 45
+		 00 00 00 00
+		 C7 3E 10 30
+		 FD 16 00 00
 		 00 00 00 00
 		 00 00 00 00
-		 2D 70 FD 6A
-		 6F 76 44 80
-		 56 7C 49 70
-		 F2 74 15 7B
-		 4B 7C 2E 70
-		 4A 71 6C B2
-		 18 1D 5B BA
+		 03 70 D3 6A
+		 E2 75 DB 7B
+		 07 7C C8 6B
+		 AD 74 D2 7A
+		 00 7C A3 6B
+		 3A 86 8F BA
+		 0F AD 5A 85
 		 55 A0 71 0C
 		 28 00 FF 36
 		 F0 11 30 03
