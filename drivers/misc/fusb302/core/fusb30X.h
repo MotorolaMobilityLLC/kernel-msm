@@ -3,6 +3,10 @@
 
 #include "platform.h"
 
+// 302 Device ID
+#define VERSION_302A 0x08
+#define VERSION_302B 0x09
+
 // Convenience interfaces to I2C_WriteData() and I2C_ReadData()
 FSC_BOOL DeviceWrite(FSC_U8 regAddr, FSC_U8 length, FSC_U8 * data);
 FSC_BOOL DeviceRead(FSC_U8 regAddr, FSC_U8 length, FSC_U8 * data);
@@ -38,40 +42,47 @@ FSC_BOOL DeviceRead(FSC_U8 regAddr, FSC_U8 length, FSC_U8 * data);
 #define regInterrupt    0x42
 #define regFIFO         0x43
 
+/* Note: MDAC values are actually (MDAC + 1) * 42/420mV *
+ * Data sheet is incorrect                              */
 #ifdef FPGA_BOARD
-#define SDAC_DEFAULT        0x2A
-#define MDAC_0P2V           0x04
-#define MDAC_0P4V           0x08
-#define MDAC_0P8V           0x10
-#define MDAC_1P6V           0x1F
-#define MDAC_2P05V          0x28
-#define MDAC_2P6V           0x32
+#define SDAC_DEFAULT        0x29
+#define MDAC_0P210V         0x03
+#define MDAC_0P420V         0x07
+#define MDAC_0P798V         0x0F
+#define MDAC_1P596V         0x1E
+#define MDAC_2P058V         0x27
+#define MDAC_2P604V         0x31
 
-#define VBUS_MDAC_0P8V      0x01
+#define VBUS_MDAC_0P84V     0x00
 #else
-#define SDAC_DEFAULT        0x20
-#define MDAC_0P2V           0x05
-#define MDAC_0P4V           0x0A
-#define MDAC_0P8V           0x13
-#define MDAC_1P6V           0x26
-#define MDAC_2P05V          0x31
-#define MDAC_2P6V           0x3E
+#define SDAC_DEFAULT        0x1F
+#define MDAC_0P210V         0x04
+#define MDAC_0P420V         0x09
+#define MDAC_0P798V         0x12
+#define MDAC_1P596V         0x25
+#define MDAC_2P058V         0x30
+#define MDAC_2P604V         0x3D
 
-#define VBUS_MDAC_0P8V      0x01
-#define VBUS_MDAC_2p6       0x05
-#define VBUS_MDAC_3p8       0x08
-#define VBUS_MDAC_4p2       0x09
-#define VBUS_MDAC_4p6       0x0A
-#define VBUS_MDAC_5p04      0x0B
-#define VBUS_MDAC_5p5       0x0C
-#define VBUS_MDAC_11p8      0x1B
+#define VBUS_MDAC_0P84V     0x01
+#define VBUS_MDAC_3P36      0x07
+#define VBUS_MDAC_3P78      0x08
+#define VBUS_MDAC_4P20      0x09
+#define VBUS_MDAC_4P62      0x0A
+#define VBUS_MDAC_5P04      0x0B
+#define VBUS_MDAC_5P46      0x0C
+#define VBUS_MDAC_7P14      0x10	// (9V detach)
+#define VBUS_MDAC_9P66      0x16	// (12V detach)
+#define VBUS_MDAC_11P76     0x1B
+#define VBUS_MDAC_12P18     0x1C	// (15V detach)
+#define VBUS_MDAC_15P96     0x25	// (20V detach)
 #endif
 
 typedef union {
 	FSC_U8 byte;
 	struct {
-		unsigned REVISION:3;
-		unsigned VERSION:5;
+		unsigned REVISION_ID:2;
+		unsigned PRODUCT_ID:2;
+		unsigned VERSION_ID:4;
 	};
 } regDeviceID_t;
 
@@ -149,7 +160,7 @@ typedef union {
 		unsigned N_RETRIES:2;
 		unsigned AUTO_SOFTRESET:1;
 		unsigned AUTO_HARDRESET:1;
-		unsigned:1;
+		unsigned BIST_TMODE:1;	// 302B Only
 		unsigned SEND_HARDRESET:1;
 		unsigned:1;
 	};
@@ -201,7 +212,7 @@ typedef union {
 		// Maska
 		unsigned M_HARDRST:1;
 		unsigned M_SOFTRST:1;
-		unsigned M_TXCRCSENT:1;
+		unsigned M_TXSENT:1;
 		unsigned M_HARDSENT:1;
 		unsigned M_RETRYFAIL:1;
 		unsigned M_SOFTFAIL:1;

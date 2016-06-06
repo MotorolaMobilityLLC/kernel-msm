@@ -10,7 +10,7 @@
  *
  * Software License Agreement:
  *
- * The software supplied herewith by Fairchild Semiconductor (the Company)
+ * The software supplied herewith by Fairchild Semiconductor (the �Company�)
  * is supplied to you, the Company's customer, for exclusive use with its
  * USB Type C / USB PD products.  The software is owned by the Company and/or
  * its supplier, and is protected under applicable copyright laws.
@@ -19,7 +19,7 @@
  * as to civil liability for the breach of the terms and conditions of this
  * license.
  *
- * THIS SOFTWARE IS PROVIDED IN AN AS IS CONDITION. NO WARRANTIES,
+ * THIS SOFTWARE IS PROVIDED IN AN �AS IS� CONDITION. NO WARRANTIES,
  * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
  * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
@@ -141,10 +141,6 @@ typedef struct {
 	FSC_U16 bcd_device:16;
 } ProductVdo;
 
-typedef struct {
-	FSC_U16 usb_vid:16;
-	FSC_U16 usb_pid:16;
-} UsbVidPid;
 // enumeration of what I'm calling 'Cable To Letter Type'
 // ie. Type-C to Type-A/B/C
 typedef enum {
@@ -319,13 +315,6 @@ typedef struct {
 	FSC_U32 modes[MAX_MODES_PER_SVID];
 } ModesInfo;
 
-#define MOTOROL_VENDOR_ID 0x22B8
-#define MOTOROLA_PID_NITRO1 0xF686
-#define MOTOROLA_PID_NITRO2 0xF687
-#define MOTOROLA_PID_NITRO3 0xF688
-#define CYPRESS_VENDOR_ID 0x04B4
-#define CYPRESS_CCG2_PID1 0xF686
-#define CYPRESS_CCG1_PID2 0xF604
 #endif // header guard
 
 #endif // FSC_HAVE_VDM
