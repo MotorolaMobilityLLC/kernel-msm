@@ -14,7 +14,7 @@
  *
  * Software License Agreement:
  *
- * The software supplied herewith by Fairchild Semiconductor (the Company)
+ * The software supplied herewith by Fairchild Semiconductor (the “Company”)
  * is supplied to you, the Company's customer, for exclusive use with its
  * USB Type C / USB PD products.  The software is owned by the Company and/or
  * its supplier, and is protected under applicable copyright laws.
@@ -23,7 +23,7 @@
  * as to civil liability for the breach of the terms and conditions of this
  * license.
  *
- * THIS SOFTWARE IS PROVIDED IN AN AS IS CONDITION. NO WARRANTIES,
+ * THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
  * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
  * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
  * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
@@ -45,36 +45,27 @@
 #include "TypeC_Types.h"
 
 // Type C Timing Parameters
-/*Units are in ms  to be ticked by a 1ms timer.*/
-#define tAMETimeout     (900 * 1)
-#define tCCDebounce     (120 * 1)
-#define tPDDebounce     (15 * 1)
-#define tDRPTry         (125 * 1)
-#define tDRPTryWait     (600 * 1)
-#define tErrorRecovery  (30 * 1)
-/*Duration in ms to wait before checking other CC pin for the device*/
-#define tDeviceToggle   (3 * 1)
-/*
-*When TOGGLE=1, time at which internal versions of PU_EN1=1
-*or PU_EN2=1 and PWDN1=PDWN2=0 selected to present externally
-*as a DFP in the DRP toggle
-*/
-#define tTOG2           (30 * 1)
+// Units are in ms * 1 to be ticked by a 1ms timer.
+#define tAMETimeout     900 * 1
+#define tCCDebounce     120 * 1
+#define tPDDebounce     15 * 1
+#define tDRPTry         90 * 1
+#define tDRPTryWait     600 * 1
+#define tErrorRecovery  30 * 1
 
+#define tDeviceToggle   3 * 1	// Duration in ms to wait before checking other CC pin for the device
+#define tTOG2           30 * 1	//When TOGGLE=1, time at which internal versions of PU_EN1=1 or PU_EN2=1 and PWDN1=PDWN2=0 selected to present externally as a DFP in the DRP toggle
+#define tIllegalCable   150 * 1
+#define tOrientedDebug  100 * 1	// Time alloted for detection DegugAccessory orientation
 
 #define T_TIMER_DISABLE (0xFFFF)
-#define SLEEP_DELAY     100
-
-typedef enum {
-	Source = 0,
-	Sink
-} SourceOrSink;
+#define SLEEP_DELAY     80	// *10 us
+#define MAX_CABLE_LOOP  2
 
 // EXTERNS
 extern DeviceReg_t Registers;	// Variable holding the current status of the device registers
 extern FSC_BOOL USBPDActive;	// Variable to indicate whether the USB PD state machine is active or not
 extern FSC_BOOL USBPDEnabled;	// Variable to indicate whether USB PD is enabled (by the host)
-extern FSC_U32 PRSwapTimer;	// Timer used to bail out of a PR_Swap from the Type-C side if necessary
 extern USBTypeCPort PortType;	// Variable indicating which type of port we are implementing
 extern FSC_BOOL blnCCPinIsCC1;	// Flag to indicate if the CC1 pin has been detected as the CC pin
 extern FSC_BOOL blnCCPinIsCC2;	// Flag to indicate if the CC2 pin has been detected as the CC pin
@@ -84,18 +75,11 @@ extern FSC_BOOL IsHardReset;	// Variable indicating that a Hard Reset is occurri
 extern FSC_BOOL IsPRSwap;
 extern FSC_BOOL PolicyHasContract;	// Indicates that policy layer has a PD contract
 extern PolicyState_t PolicyState;
-extern FSC_BOOL gChargerAuthenticated;
-extern FSC_U32 gChargerMaxCurrent;
-extern FSC_U32 gRequestOpCurrent;
-extern FSC_U32 gChargerOpCurrent;
-extern FSC_U32 gRequestOpVoltage;
-extern struct power_supply usbc_psy;
-extern struct power_supply switch_psy;
-extern u16 SwitchState;
+extern FSC_BOOL mode_entered;
 /////////////////////////////////////////////////////////////////////////////
 //                            LOCAL PROTOTYPES
 /////////////////////////////////////////////////////////////////////////////
-void TypeCTickAt100us(void);
+void TypeCTick(void);
 
 void InitializeRegisters(void);
 void InitializeTypeCVariables(void);
@@ -114,8 +98,11 @@ void StateMachineUnattached(void);
 void StateMachineAttachWaitSink(void);
 void StateMachineAttachedSink(void);
 void StateMachineTryWaitSink(void);
-void stateMachineTrySink(void);
 #endif // FSC_HAVE_SNK
+
+#if (defined(FSC_HAVE_DRP) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE)))
+void stateMachineTrySink(void);
+#endif /* (defined(FSC_HAVE_DRP) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))) */
 
 #ifdef FSC_HAVE_SRC
 void StateMachineAttachWaitSource(void);
@@ -127,11 +114,24 @@ void StateMachineTrySource(void);
 
 #ifdef FSC_HAVE_ACCMODE
 void StateMachineAttachWaitAccessory(void);
-void StateMachineDebugAccessory(void);
+void StateMachineDebugAccessorySource(void);
 void StateMachineAudioAccessory(void);
 void StateMachinePoweredAccessory(void);
 void StateMachineUnsupportedAccessory(void);
+#ifdef FSC_HAVE_SNK
+void StateMachineDebugAccessorySink(void);
+#endif /* FSC_HAVE_SNK */
 #endif // FSC_HAVE_ACCMODE
+
+#ifdef FSC_DTS
+void StateMachineAttachWaitDebugSink(void);
+void StateMachineAttachedDebugSink(void);
+void StateMachineAttachWaitDebugSource(void);
+void StateMachineAttachedDebugSource(void);
+void StateMachineTryDebugSource(void);
+void StateMachineTryWaitDebugSink(void);
+void StateMachineUnattachedDebugSource(void);
+#endif /* FSC_DTS */
 
 void SetStateErrorRecovery(void);
 void SetStateDelayUnattached(void);
@@ -144,8 +144,11 @@ void SetStateAttachedSink(void);
 void RoleSwapToAttachedSink(void);
 #endif // FSC_HAVE_DRP
 void SetStateTryWaitSink(void);
-void SetStateTrySink(void);
 #endif // FSC_HAVE_SNK
+
+#if (defined(FSC_HAVE_DRP) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE)))
+void SetStateTrySink(void);
+#endif /* (defined(FSC_HAVE_DRP) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))) */
 
 #ifdef FSC_HAVE_SRC
 void SetStateAttachWaitSource(void);
@@ -159,19 +162,32 @@ void SetStateUnattachedSource(void);	// Temporary software workaround for enteri
 #endif // FSC_HAVE_SRC
 
 #ifdef FSC_HAVE_ACCMODE
-void SetStateAttachWaitAccessory(void);
-void SetStateDebugAccessory(void);
+void SetStateDebugAccessorySource(void);
 void SetStateAudioAccessory(void);
-void SetStatePoweredAccessory(void);
-void SetStateUnsupportedAccessory(void);
+void SetStateDebugAccessorySink(void);
 #endif // FSC_HAVE_ACCMODE
+
+#if (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
+void SetStateAttachWaitAccessory(void);
+void SetStateUnsupportedAccessory(void);
+void SetStatePoweredAccessory(void);
+#endif /* (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE)) */
+
+#ifdef FSC_DTS
+void SetStateAttachWaitDebugSink(void);
+void SetStateAttachedDebugSink(void);
+void SetStateAttachWaitDebugSource(void);
+void SetStateAttachedDebugSource(void);
+void SetStateTryDebugSource(void);
+void SetStateTryWaitDebugSink(void);
+void SetStateUnattachedDebugSource(void);
+#endif /* FSC_DTS */
 
 void updateSourceCurrent(void);
 void updateSourceMDACHigh(void);
 void updateSourceMDACLow(void);
 
-void ToggleMeasureCC1(void);
-void ToggleMeasureCC2(void);
+void ToggleMeasure(void);
 
 CCTermType DecodeCCTermination(void);
 #if defined(FSC_HAVE_SRC) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
@@ -181,7 +197,7 @@ CCTermType DecodeCCTerminationSource(void);
 CCTermType DecodeCCTerminationSink(void);
 #endif // FSC_HAVE_SNK
 
-void UpdateSinkCurrent(CCTermType Termination);
+void UpdateSinkCurrent(void);
 FSC_BOOL VbusVSafe0V(void);
 
 #ifdef FSC_HAVE_SNK
@@ -191,21 +207,25 @@ FSC_BOOL VbusUnder5V(void);
 FSC_BOOL isVSafe5V(void);
 FSC_BOOL isVBUSOverVoltage(FSC_U8 vbusMDAC);
 void resetDebounceVariables(void);
-void setDebounceVariablesCC1(CCTermType term);
-void setDebounceVariablesCC2(CCTermType term);
+void setDebounceVariables(CCTermType term);
+void setDebounceVariables(CCTermType term);
 void debounceCC(void);
 
 #if defined(FSC_HAVE_SRC) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
+void setStateSource(FSC_BOOL vconn);
 void DetectCCPinSource(void);
-void peekCC1Source(void);
-void peekCC2Source(void);
+void updateVCONNSource(void);
+void updateVCONNSource(void);
 #endif // FSC_HAVE_SRC || (FSC_HAVE_SNK && FSC_HAVE_ACCMODE)
 
 #ifdef FSC_HAVE_SNK
+void setStateSink(void);
 void DetectCCPinSink(void);
-void peekCC1Sink(void);
-void peekCC2Sink(void);
+void updateVCONNSource(void);
+void updateVCONNSink(void);
 #endif // FSC_HAVE_SNK
+
+void clearState(void);
 
 #ifdef FSC_HAVE_ACCMODE
 void checkForAccessory(void);
@@ -232,6 +252,7 @@ void ProcessReadTypeCStateLog(FSC_U8 * MsgBuffer, FSC_U8 * retBuffer);
 void setAlternateModes(FSC_U8 mode);
 FSC_U8 getAlternateModes(void);
 #endif // FSC_DEBUG
-void StateMachineTypeCImp(void);
-void WakeStateMachineTypeC(void);
+
+void toggleCurrentSwap(void);
+
 #endif /* __FSC_TYPEC_H__ */

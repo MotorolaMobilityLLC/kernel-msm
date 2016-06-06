@@ -14,6 +14,7 @@
 /* 1 in mask = don't care. 0 in mask = compare to specified value */
 FSC_BOOL DpEnabled;
 FSC_BOOL DpAutoModeEntryEnabled;
+FSC_BOOL AutoModeEntryEnabled;
 DisplayPortCaps_t DpModeEntryMask;
 DisplayPortCaps_t DpModeEntryValue;
 
@@ -48,6 +49,8 @@ void initializeDp(void)
 	DpEnabled = FALSE;
 	DpAutoModeEntryEnabled = FALSE;
 	DpModeEntered = 0x0;
+
+	AutoModeEntryEnabled = FALSE;
 }
 
 void resetDp(void)
@@ -208,6 +211,11 @@ FSC_BOOL dpEvaluateModeEntry(FSC_U32 mode_in)
 	} else {
 		return FALSE;
 	}
+}
+
+FSC_BOOL evaluateModeEntry(FSC_U32 mode_in)
+{
+	return AutoModeEntryEnabled ? TRUE : FALSE;
 }
 
 void requestDpStatus(void)
