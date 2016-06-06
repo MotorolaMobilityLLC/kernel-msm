@@ -62,6 +62,10 @@ FSC_BOOL DeviceRead(FSC_U8 regAddr, FSC_U8 length, FSC_U8 * data);
 #define MDAC_1P596V         0x25
 #define MDAC_2P058V         0x30
 #define MDAC_2P604V         0x3D
+#define MDAC_2P05V          0x30
+
+#define VBUS_MDAC_0P8V      0x01
+#define VBUS_MDAC_2p6       0x05
 
 #define VBUS_MDAC_0P84V     0x01
 #define VBUS_MDAC_3P36      0x07
@@ -184,7 +188,8 @@ typedef union {
 	FSC_U8 byte;
 	struct {
 		unsigned PWR:4;
-		unsigned:4;
+		unsigned PD_RCVR_DIS:1;
+		unsigned:3;
 	};
 } regPower_t;
 
