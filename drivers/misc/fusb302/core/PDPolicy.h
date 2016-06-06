@@ -7,7 +7,7 @@
 *
 * Software License Agreement:
 *
-*The software supplied herewith by Fairchild Semiconductor(theCompany)
+* The software supplied herewith by Fairchild Semiconductor (the “Company”)
 * is supplied to you, the Company's customer, for exclusive use with its
 * USB Type C / USB PD products.  The software is owned by the Company and/or
 * its supplier, and is protected under applicable copyright laws.
@@ -16,7 +16,7 @@
 * as to civil liability for the breach of the terms and conditions of this
 * license.
 *
-*THIS SOFTWARE IS PROVIDED IN AN AS IS CONDITION. NO WARRANTIES,
+* THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
 * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
 * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
 * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
@@ -51,7 +51,7 @@ extern FSC_BOOL SinkUSBSuspendOperation;	// Whether the sink wants to continue o
 extern FSC_BOOL SinkUSBCommCapable;	// Whether the sink is USB communications capable
 #endif // FSC_HAVE_SNK
 
-#ifdef FSC_HAVE_SRC
+#if defined(FSC_HAVE_SRC) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
 extern sopMainHeader_t CapsHeaderSource;	// Definition of the source capabilities of the device
 extern doDataObject_t CapsSource[7];	// Power object definitions of the source capabilities of the device
 #endif // FSC_HAVE_SRC
@@ -77,26 +77,24 @@ extern sopMainHeader_t PolicyTxHeader;	// Header object for USB PD messages to s
 extern doDataObject_t PolicyRxDataObj[7];	// Buffer for data objects received
 extern doDataObject_t PolicyTxDataObj[7];	// Buffer for data objects to send
 
-extern FSC_U32 NoResponseTimer;	// Policy engine no response timer
-/*Multi-function timer for the different policy states*/
-extern FSC_U32 PolicyStateTimer;
+volatile extern FSC_U32 NoResponseTimer;	// Policy engine no response timer
+
 #ifdef FSC_HAVE_VDM
-extern FSC_U32 VdmTimer;
+volatile extern FSC_U32 VdmTimer;
 extern FSC_BOOL VdmTimerStarted;
 #endif // FSC_HAVE_VDM
-extern ReqContextType coreReqCtx;
 
 /////////////////////////////////////////////////////////////////////////////
 //                            LOCAL PROTOTYPES
 /////////////////////////////////////////////////////////////////////////////
-void PolicyTickAt100us(void);
+void PolicyTick(void);
 void InitializePDPolicyVariables(void);
-void USBPDEnable(FSC_BOOL DeviceUpdate, FSC_BOOL TypeCDFP);
+void USBPDEnable(FSC_BOOL DeviceUpdate, SourceOrSink TypeCDFP);
 void USBPDDisable(FSC_BOOL DeviceUpdate);
 void USBPDPolicyEngine(void);
 void PolicyErrorRecovery(void);
 
-#ifdef FSC_HAVE_SRC
+#if defined(FSC_HAVE_SRC) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
 void PolicySourceSendHardReset(void);
 void PolicySourceSoftReset(void);
 void PolicySourceSendSoftReset(void);
@@ -180,24 +178,23 @@ void doDiscoverSvids(void);
 void PolicyGiveVdm(void);
 void PolicyVdm(void);
 void autoVdmDiscovery(void);
-void requestCurLimit(FSC_U16 currentLimit);
 #endif // FSC_HAVE_VDM
 
 SopType TokenToSopType(FSC_U8 data);
 
 #ifdef FSC_DEBUG
-#ifdef FSC_HAVE_SRC
+#if defined(FSC_HAVE_SRC) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
 void WriteSourceCapabilities(FSC_U8 * abytData);
 void ReadSourceCapabilities(FSC_U8 * abytData);
 #endif // FSC_HAVE_SRC
 
 #ifdef FSC_HAVE_SNK
 void WriteSinkCapabilities(FSC_U8 * abytData);
-void ReadSinkCapabilities(FSC_U8 * abytData);
 void WriteSinkRequestSettings(FSC_U8 * abytData);
 void ReadSinkRequestSettings(FSC_U8 * abytData);
-
 #endif // FSC_HAVE_SNK
+
+void ReadSinkCapabilities(FSC_U8 * abytData);
 
 void EnableUSBPD(void);
 void DisableUSBPD(void);

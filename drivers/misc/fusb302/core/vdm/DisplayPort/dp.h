@@ -37,6 +37,7 @@ void replyToConfig(doDataObject_t svdmh_in, FSC_BOOL success);
 
 /* Evaluate a mode VDO for mode entry */
 FSC_BOOL dpEvaluateModeEntry(FSC_U32 mode_in);
+FSC_BOOL evaluateModeEntry(FSC_U32 mode_in);
 
 #endif // __DISPLAYPORT_DP_H__
 
