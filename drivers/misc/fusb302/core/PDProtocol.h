@@ -66,7 +66,6 @@ extern StateLog PDStateLog;
 /////////////////////////////////////////////////////////////////////////////
 //                            LOCAL PROTOTYPES
 /////////////////////////////////////////////////////////////////////////////
-void ProtocolTickAt100us(void);
 void InitializePDProtocolVariables(void);
 void UpdateCapabilitiesRx(FSC_BOOL IsSourceCaps);
 void USBPDProtocol(void);
@@ -85,10 +84,6 @@ void ProtocolSendHardReset(void);
 void ProtocolFlushRxFIFO(void);
 void ProtocolFlushTxFIFO(void);
 void ResetProtocolLayer(FSC_BOOL ResetPDLogic);
-void protocolBISTRxResetCounter(void);
-void protocolBISTRxTestFrame(void);
-void protocolBISTRxErrorCount(void);
-void protocolBISTRxInformPolicy(void);
 
 #ifdef FSC_DEBUG
 FSC_BOOL StoreUSBPDToken(FSC_BOOL transmitter, USBPD_BufferTokens_t token);
