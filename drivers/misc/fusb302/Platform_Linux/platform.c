@@ -14,14 +14,19 @@
 void platform_set_vbus_lvl_enable(VBUS_LVL level, FSC_BOOL blnEnable,
 				  FSC_BOOL blnDisableOthers)
 {
-#ifdef FPGA_BOARD
-	FSC_U32 i;
-
+	struct power_supply *usb_psy = power_supply_get_by_name("usb");
 	// Additional VBUS levels can be added here as needed.
 	switch (level) {
 	case VBUS_LVL_5V:
 		// Enable/Disable the 5V Source
-		fusb_GPIO_Set_VBus5v(blnEnable == TRUE ? true : false);
+		/*TODO!!!! Hack!!!!*/
+		FUSB_LOG("platform_set_vbus_lvl_enable %d level %d\n",
+					blnEnable, level);
+		/* Notify USB driver to switch to host mode */
+		/* Only equal or below Rd*/
+		if (usb_psy)
+			power_supply_set_usb_otg(usb_psy,
+				(blnEnable == TRUE ? 1 : 0));
 		break;
 	case VBUS_LVL_12V:
 		// Enable/Disable the 12V Source
@@ -29,24 +34,15 @@ void platform_set_vbus_lvl_enable(VBUS_LVL level, FSC_BOOL blnEnable,
 		break;
 	default:
 		// Otherwise, do nothing.
+		/*TODO!!!! Hack!!!!*/
+		FUSB_LOG(
+			"platform_set_vbus_lvl_enable default:%d level %d\n",
+			blnEnable, level);
+
+		if (usb_psy)
+			power_supply_set_usb_otg(usb_psy, 0);
 		break;
 	}
-
-	// Turn off other levels, if requested
-	if (blnDisableOthers
-	    || ((level == VBUS_LVL_ALL) && (blnEnable == FALSE))) {
-		i = 0;
-
-		do {
-			// Skip the current level
-			if (i == level)
-				continue;
-
-			// Turn off the other level(s)
-			platform_set_vbus_lvl_enable(i, FALSE, FALSE);
-		} while (++i < VBUS_LVL_COUNT);
-	}
-#endif
 	return;
 }
 
@@ -150,6 +146,7 @@ FSC_BOOL platform_i2c_write(FSC_U8 SlaveAddress,
 		ret = TRUE;
 	} else			// I2C Write failure
 	{
+		FUSB_LOG("fusb_I2C_WriteData error!\n");
 		ret = FALSE;	// Write data block to the device
 	}
 	return ret;
@@ -189,6 +186,7 @@ FSC_BOOL platform_i2c_read(FSC_U8 SlaveAddress,
 	} else if (DataLength > 1 && chip->use_i2c_blocks)	// Do block reads if able and necessary
 	{
 		if (!fusb_I2C_ReadBlockData(RegisterAddress, DataLength, Data)) {
+			FUSB_LOG("fusb_I2C_ReadBlockData error!\n");
 			ret = FALSE;
 		} else {
 			dump_usbpdlog(RegisterAddress, DataLength, Data, TRUE);
