@@ -30,10 +30,15 @@
  * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
  *
  *****************************************************************************/
-
+#include <linux/printk.h>
+#include <linux/kernel.h>
+#include <linux/power_supply.h>
 #include "TypeC.h"
 #include "fusb30X.h"
-
+#include "AlternateModes.h"
+#ifdef CONFIG_FSUSB42_MUX
+#include <linux/fsusb42.h>
+#endif
 #include "PDPolicy.h"
 
 #ifdef FSC_HAVE_VDM
@@ -43,7 +48,8 @@
 #ifdef FSC_DEBUG
 #include "Log.h"
 #endif // FSC_DEBUG
-
+#include "core.h"
+#include "../Platform_Linux/fusb30x_global.h"
 /////////////////////////////////////////////////////////////////////////////
 //      Variables accessible outside of the TypeC state machine
 /////////////////////////////////////////////////////////////////////////////
@@ -52,6 +58,8 @@ DeviceReg_t Registers = { {0} };	// Variable holding the current status of the d
 
 FSC_BOOL USBPDActive;		// Variable to indicate whether the USB PD state machine is active or not
 FSC_BOOL USBPDEnabled;		// Variable to indicate whether USB PD is enabled (by the host)
+/*Timer used to bail out of a PR_Swap from the Type-C side if necessary*/
+FSC_U32 PRSwapTimer;
 SourceOrSink sourceOrSink;	// Are we currently a source or a sink?
 FSC_BOOL g_Idle;		// Set to be woken by interrupt_n
 
@@ -61,7 +69,6 @@ FSC_BOOL blnCCPinIsCC2;		// Flag to indicate if the CC2 pin has been detected as
 FSC_BOOL blnSMEnabled = FALSE;	// Flag to indicate whether the TypeC state machine is enabled
 ConnectionState ConnState;	// Variable indicating the current connection state
 FSC_U8 TypeCSubState = 0;	// Substate to allow for non-blocking checks
-FSC_U8 DetachThreshold;		// MDAC value for Type-C detach threshold
 
 #ifdef FSC_DTS
 FSC_BOOL DTSMode;		// Flag to indicate if we are in debug mode
@@ -72,6 +79,7 @@ StateLog TypeCStateLog;		// Log for tracking state transitions and times
 volatile FSC_U16 Timer_S;	// Tracks seconds elapsed for log timestamp
 volatile FSC_U16 Timer_tms;	// Tracks tenths of milliseconds elapsed for log timestamp
 #endif // FSC_DEBUG
+FSC_BOOL gChargerAuthenticated;
 /////////////////////////////////////////////////////////////////////////////
 //      Variables accessible only inside TypeC state machine
 /////////////////////////////////////////////////////////////////////////////
@@ -101,9 +109,156 @@ FSC_U8 loopCounter = 0;		// Used to count the number of Unattach<->AttachWait lo
 static USBTypeCCurrent toggleCurrent;	// Current used for toggle state machine
 USBTypeCCurrent SourceCurrent;	// Variable to indicate the current capability we are broadcasting
 
-/////////////////////////////////////////////////////////////////////////////
-// Tick at 100us
-/////////////////////////////////////////////////////////////////////////////
+struct power_supply usbc_psy;
+/* Flag to indicate Data lines on USB are disabled */
+static bool usbDataDisabled;
+FSC_U32 gRequestOpCurrent = 400;/*set default 4000mA*/
+FSC_U32 gRequestOpVoltage = 100;/*set default 100*50mv*/
+#define VOLTAGE_50MV 50000
+#define VOLTAGE_9V 9000000
+static regMask_t Mask;
+static regMaskAdv_t MaskAdv;
+
+int fusb_power_supply_set_property(struct power_supply *psy,
+				 enum power_supply_property prop,
+				 const union power_supply_propval *val)
+{
+	switch (prop) {
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+	/*voltage max shall be in (0~9V) range*/
+		if (val->intval > 0 &&
+			val->intval <= VOLTAGE_9V) {
+			SinkRequestMaxVoltage = val->intval/VOLTAGE_50MV;
+			/*Only for Non-Moto Charger*/
+			if ((ConnState == AttachedSink) &&
+				(!gChargerAuthenticated)) {
+				/*Wait 300ms for PD Contract*/
+				platform_delay_10us(
+					SLEEP_DELAY*300);
+				if (PolicyHasContract &&
+					!gChargerAuthenticated)
+					core_send_sink_request_voltage();
+			}
+			return 0;
+		} else
+			return -EINVAL;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		gRequestOpCurrent = val->intval/10000;
+		core_send_sink_request();
+		return 0;
+	case POWER_SUPPLY_PROP_DISABLE_USB:
+		usbDataDisabled = !!val->intval;
+		break;
+	case POWER_SUPPLY_PROP_WAKEUP:
+		platform_run_wake_thread();
+		break;
+	case POWER_SUPPLY_PROP_MASK_INT:
+		return 0;
+	default:
+		return -EINVAL;
+	}
+	power_supply_changed(&usbc_psy);
+	return 0;
+}
+
+int fusb_power_supply_is_writeable(struct power_supply *psy,
+				 enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+	case POWER_SUPPLY_PROP_DISABLE_USB:
+	case POWER_SUPPLY_PROP_MASK_INT:
+	case POWER_SUPPLY_PROP_WAKEUP:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+
+int fusb_power_supply_get_property(struct power_supply *psy,
+			    enum power_supply_property psp,
+			    union power_supply_propval *val)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_PRESENT:
+		if ((ConnState > Unattached) && (ConnState < DelayUnattached))
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_ONLINE:
+		if ((ConnState == PoweredAccessory) ||
+		    (ConnState == UnsupportedAccessory) ||
+		    (ConnState == DebugAccessorySource) ||
+		    (ConnState == AudioAccessory) ||
+		    (ConnState == AttachedSink) ||
+		    (ConnState == AttachedSource))
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		if (ConnState != AttachedSink)
+			val->intval = 0;
+		else if (SinkCurrent == utcc1p5A)
+			val->intval = 1500000;
+		else if (SinkCurrent == utcc3p0A)
+			val->intval = 3000000;
+		else if (SinkCurrent == utccDefault)
+			val->intval = 500000;
+		if (PolicyHasContract)
+			val->intval = gChargerMaxCurrent * 10000;
+		break;
+	case POWER_SUPPLY_PROP_AUTHENTIC:
+		val->intval = gChargerAuthenticated;
+		break;
+	case POWER_SUPPLY_PROP_TYPE:
+		val->intval = psy->type;
+		break;
+	case POWER_SUPPLY_PROP_DISABLE_USB:
+		val->intval = usbDataDisabled;
+		break;
+	case POWER_SUPPLY_PROP_WAKEUP:
+		val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_MASK_INT:
+		DeviceRead(regMask, 1, &Mask.byte);
+		DeviceRead(regMaska, 1, &MaskAdv.byte[0]);
+		DeviceRead(regMaskb, 1, &MaskAdv.byte[1]);
+		val->intval = (Mask.byte << 16) |
+					(MaskAdv.byte[0] << 8) |
+					MaskAdv.byte[1];
+		break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
+		if (gChargerAuthenticated)
+			val->intval = gChargerOpCurrent*10000;
+		else
+			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		val->intval = SinkRequestMaxVoltage*VOLTAGE_50MV;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		if (ConnState != AttachedSink)
+			val->intval = 0;
+		else
+			val->intval = gRequestOpVoltage*VOLTAGE_50MV;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/*////////////////////////////////////////////////////////////////////////////
+// Tick at 1ms
+////////////////////////////////////////////////////////////////////////////*/
 void TypeCTick(void)
 {
 	if ((StateTimer < T_TIMER_DISABLE) && (StateTimer > 0))
@@ -123,7 +278,7 @@ void TypeCTick(void)
 void LogTickAt100us(void)
 {
 	Timer_tms++;
-	if (Timer_tms == 10000) {
+	if (Timer_tms == 1000) {
 		Timer_S++;
 		Timer_tms = 0;
 	}
@@ -180,14 +335,10 @@ void InitializeTypeCVariables(void)
 	Registers.Control.TOG_RD_ONLY = 1;	// Do not stop toggle for Ra
 	DeviceWrite(regControl2, 1, &Registers.Control.byte[2]);
 
-//    Registers.Switches.SPECREV = 0b10;                                          // Set Spec Rev to v3.0
-//    DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);
-
-	SourceCurrent = utcc1p5A;	// Set 1.5A host current
+	SourceCurrent = utcc1p5A;
 	updateSourceCurrent();
 
 	blnSMEnabled = FALSE;	// Enable the TypeC state machine by default
-	DetachThreshold = VBUS_MDAC_3P78;	// Default to 5V detach threshold
 
 #ifdef FSC_DTS
 	DTSMode = FALSE;
@@ -215,7 +366,7 @@ void InitializeTypeCVariables(void)
 	PortType = USBTypeC_Sink;
 #endif // FSC_HAVE_DRP / FSC_HAVE_SRC / FSC_HAVE_SNK
 
-	ConnState = Disabled;	// Initialize to the disabled state    
+	ConnState = Disabled;	/* Initialize to the disabled state*/
 	blnCCPinIsCC1 = FALSE;	// Clear the flag to indicate CC1 is CC
 	blnCCPinIsCC2 = FALSE;	// Clear the flag to indicate CC2 is CC
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer
@@ -232,6 +383,10 @@ void InitializeTypeCVariables(void)
 	IsHardReset = FALSE;	// Initialize to no Hard Reset
 	TypeCSubState = 0;	// Initialize substate to 0
 	toggleCurrent = utccDefault;	// Initialise toggle current to default
+	SwitchState = 0;
+	gChargerAuthenticated = FALSE;
+	Registers.Switches.SPECREV = USBPDSPECREV;
+	DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);
 }
 
 void InitializeTypeC(void)
@@ -270,101 +425,113 @@ void EnableTypeCStateMachine(void)
  *                  sub-interval of the 1/4 UI in order to meet timing
  *                  requirements.
  ******************************************************************************/
-void StateMachineTypeC(void)
+void WakeStateMachineTypeC(void)
 {
-#ifdef  FSC_INTERRUPT_TRIGGERED
-	do {
-#endif // FSC_INTERRUPT_TRIGGERED
-		if (!blnSMEnabled)
-			return;
+	FUSB_LOG("TypeC Kicking ConnState is %d USBPDActive is %d\n",
+			 ConnState, USBPDActive);
+	StateMachineTypeCImp();
+	FUSB_LOG("TypeC End Kicking ConnState is %d USBPDActive is %d\n",
+			 ConnState, USBPDActive);
+}
+void StateMachineTypeCImp(void)
+{
+	if (!blnSMEnabled)
+		return;
 
-		if (platform_get_device_irq_state()) {
-			DeviceRead(regInterrupta, 5, &Registers.Status.byte[2]);	// Read the interrupta, interruptb, status0, status1 and interrupt registers
-		}
-
-		if (USBPDActive)	// Only call the USB PD routines if we have enabled the block
-		{
-
-			USBPDProtocol();	// Call the protocol state machine to handle any timing critical operations
-
-			USBPDPolicyEngine();	// Once we have handled any Type-C and protocol events, call the USB PD Policy Engine
-
-		}
-
-		switch (ConnState) {
-		case Disabled:
-			StateMachineDisabled();
-			break;
-		case ErrorRecovery:
-			StateMachineErrorRecovery();
-			break;
-		case Unattached:
-			StateMachineUnattached();
-			break;
+	/*
+	*Read the interrupta, interruptb, status0,
+	*status1 and interrupt registers
+	*/
+	if (platform_get_device_irq_state())
+		DeviceRead(regInterrupta, 5, &Registers.Status.byte[2]);
+	/*
+	*Only call the USB PD routines
+	*if we have enabled the block
+	*/
+	if (USBPDActive) {
+		/*
+		*Call the protocol state machine
+		*to handle any timing critical operations
+		*/
+		USBPDProtocol();
+		/*
+		*Once we have handled any Type-C
+		*and protocol events,
+		*call the USB PD Policy Engine
+		*/
+		USBPDPolicyEngine();
+	}
+	switch (ConnState) {
+	case Disabled:
+		StateMachineDisabled();
+		break;
+	case ErrorRecovery:
+		StateMachineErrorRecovery();
+		break;
+	case Unattached:
+		StateMachineUnattached();
+		break;
 #ifdef FSC_HAVE_SNK
-		case AttachWaitSink:
-			StateMachineAttachWaitSink();
-			break;
-		case AttachedSink:
-			StateMachineAttachedSink();
-			break;
+	case AttachWaitSink:
+		StateMachineAttachWaitSink();
+		break;
+	case AttachedSink:
+		StateMachineAttachedSink();
+		break;
 #ifdef FSC_HAVE_DRP
-		case TryWaitSink:
-			StateMachineTryWaitSink();
-			break;
-#endif // FSC_HAVE_DRP
-#endif // FSC_HAVE_SNK
-#if (defined(FSC_HAVE_DRP) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE)))
-		case TrySink:
-			stateMachineTrySink();
-			break;
-#endif /* (defined(FSC_HAVE_DRP) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))) */
+	case TryWaitSink:
+		StateMachineTryWaitSink();
+		break;
+	case TrySink:
+		stateMachineTrySink();
+		break;
+#endif
+#endif
 #ifdef FSC_HAVE_SRC
-		case AttachWaitSource:
-			StateMachineAttachWaitSource();
-			break;
-		case AttachedSource:
-			StateMachineAttachedSource();
-			break;
+	case AttachWaitSource:
+		StateMachineAttachWaitSource();
+		break;
+	case AttachedSource:
+		StateMachineAttachedSource();
+		break;
 #ifdef FSC_HAVE_DRP
-		case TryWaitSource:
-			stateMachineTryWaitSource();
-			break;
-		case TrySource:
-			StateMachineTrySource();
-			break;
-#endif // FSC_HAVE_DRP
-		case UnattachedSource:
-			stateMachineUnattachedSource();
-			break;
-#endif // FSC_HAVE_SRC
+	case TryWaitSource:
+		stateMachineTryWaitSource();
+		break;
+	case TrySource:
+		StateMachineTrySource();
+		break;
+#endif
+	case UnattachedSource:
+		stateMachineUnattachedSource();
+		break;
+#endif
 #ifdef FSC_HAVE_ACCMODE
-		case AudioAccessory:
-			StateMachineAudioAccessory();
-			break;
-		case DebugAccessorySource:
-			StateMachineDebugAccessorySource();
-			break;
+	case AudioAccessory:
+		StateMachineAudioAccessory();
+		break;
+	case DebugAccessorySource:
+		StateMachineDebugAccessorySource();
+		break;
 #ifdef FSC_HAVE_SNK
 		case DebugAccessorySink:
 			StateMachineDebugAccessorySink();
 			break;
 #endif /* FSC_HAVE_SNK */
-#endif // FSC_HAVE_ACCMODE
-#if (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))
-		case AttachWaitAccessory:
-			StateMachineAttachWaitAccessory();
-			break;
-		case UnsupportedAccessory:
-			StateMachineUnsupportedAccessory();
-			break;
-		case PoweredAccessory:
-			StateMachinePoweredAccessory();
-			break;
-#endif /* (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE)) */
-		case DelayUnattached:
-			StateMachineDelayUnattached();
-			break;
+#endif
+
+	case AttachWaitAccessory:
+		StateMachineAttachWaitAccessory();
+		break;
+	case PoweredAccessory:
+		StateMachinePoweredAccessory();
+		break;
+	case UnsupportedAccessory:
+		StateMachineUnsupportedAccessory();
+		break;
+	case DelayUnattached:
+		StateMachineDelayUnattached();
+		break;
 #ifdef FSC_DTS
 		case AttachWaitDebSink:
 			StateMachineAttachWaitDebugSink();
@@ -388,17 +555,40 @@ void StateMachineTypeC(void)
 			StateMachineUnattachedDebugSource();
 			break;
 #endif /* FSC_DTS */
-		default:
-			SetStateDelayUnattached();	// We shouldn't get here, so go to the unattached state just in case
-			break;
-		}
-		Registers.Status.Interrupt1 = 0;	// Clear the interrupt register once we've gone through the state machines
-		Registers.Status.InterruptAdv = 0;	// Clear the advanced interrupt registers once we've gone through the state machines
 
-#ifdef  FSC_INTERRUPT_TRIGGERED
+	default:
+		/*
+		*We shouldn't get here
+		*so go to the unattached state just in case
+		*/
+		SetStateDelayUnattached();
+		break;
+	}
+	/*
+	*Clear the interrupt register
+	*once we've gone through the state machines
+	*/
+	Registers.Status.Interrupt1 = 0;
+	/*
+	*Clear the advanced interrupt registers
+	*once we've gone through the state machines
+	*/
+	Registers.Status.InterruptAdv = 0;
+}
 
+void StateMachineTypeC(void)
+{
+	FUSB_LOG("TypeC Start ConnState is %d USBPDActive is %d\n",
+			 ConnState, USBPDActive);
+#ifdef FSC_INTERRUPT_TRIGGERED
+	do {
+#endif
+		StateMachineTypeCImp();
+#ifdef FSC_INTERRUPT_TRIGGERED
 	} while (g_Idle == FALSE);
-#endif // FSC_INTERRUPT_TRIGGERED
+#endif
+	FUSB_LOG("TypeC End ConnState is %d USBPDActive is %d\n",
+			 ConnState, USBPDActive);
 }
 
 void StateMachineDisabled(void)
@@ -419,7 +609,7 @@ void StateMachineDelayUnattached(void)
 		SetStateUnattached();
 	}
 }
-
+/*TODO: Update to account for Ra detection (TOG_RD_ONLY == 0)*/
 void StateMachineUnattached(void)
 {
 
@@ -588,9 +778,7 @@ void StateMachineAttachWaitSink(void)
 				SetStateTrySource();	// Go to the Try.Src state
 			else	// Otherwise we are free to attach as a sink
 #endif // FSC_HAVE_DRP
-			{
-				SetStateAttachedSink();	// Go to the Attached.Snk state               
-			}
+				SetStateAttachedSink();
 		}
 	}
 }
@@ -600,7 +788,6 @@ void StateMachineAttachWaitSink(void)
 void StateMachineAttachWaitSource(void)
 {
 	debounceCC();
-
 	if (CCTermCCDebounce != CCTypeUndefined)	// Check VCONN before attaching
 	{
 		updateVCONNSource();
@@ -633,7 +820,7 @@ void StateMachineAttachWaitSource(void)
 				SetStateAttachedSource();	// Go to the Attached.Src state
 			}	// Go to the Attached.Src state
 		}
-	} else if ((CCTermPrevious == CCTypeOpen) || (CCTermPrevious == CCTypeRa))	// If our debounced signal is open or Ra, go to the unattached state
+	} else if (CCTermPrevious == CCTypeOpen)
 		SetStateDelayUnattached();
 }
 #endif // FSC_HAVE_SRC
@@ -642,30 +829,28 @@ void StateMachineAttachWaitSource(void)
 void StateMachineAttachedSink(void)
 {
 	if (Registers.Status.I_COMP_CHNG == 1) {
-		if ((!IsPRSwap) && (IsHardReset == FALSE) && !isVBUSOverVoltage(DetachThreshold))	// If VBUS is removed and we are not in the middle of a power role swap...   
-		{
-			SetStateDelayUnattached();	// Go to the unattached state
-		}
+		if ((!IsPRSwap) && (IsHardReset == FALSE) && VbusUnder5V())
+			SetStateDelayUnattached();
 	}
+	UpdateSinkCurrent();
 
-	/* Can not check CC without generating extra interrupts */
-	//debounceCC();
-	//UpdateSinkCurrent();                                   // Update the advertised current
 }
 #endif // FSC_HAVE_SNK
 
 #ifdef FSC_HAVE_SRC
 void StateMachineAttachedSource(void)
 {
+
 	switch (TypeCSubState) {
 	case 0:
 
-		if (Registers.Status.I_COMP_CHNG == 1) {
+		/*if (Registers.Status.I_COMP_CHNG == 1)*/ {
 			CCTermPrevious = DecodeCCTermination();
 		}
 
 		if ((CCTermPrevious == CCTypeOpen) && (!IsPRSwap))	// If the debounced CC pin is detected as open and we aren't in the middle of a PR_Swap
 		{
+
 #ifdef FSC_HAVE_DRP
 			if ((PortType == USBTypeC_DRP) && blnSrcPreferred)	// Check to see if we need to go to the TryWait.SNK state...
 				SetStateTryWaitSink();
@@ -675,7 +860,8 @@ void StateMachineAttachedSource(void)
 				platform_set_vbus_lvl_enable(VBUS_LVL_ALL, FALSE, FALSE);	// Disable the vbus outputs
 				platform_notify_cc_orientation(NONE);
 				USBPDDisable(TRUE);	// Disable the USB PD state machine
-				Registers.Switches.byte[0] = 0x00;	// Disabled until vSafe0V
+				/*Disabled until vSafe0V*/
+				Registers.Switches.byte[0] = 0x03;
 				DeviceWrite(regSwitches0, 1,
 					    &Registers.Switches.byte[0]);
 				TypeCSubState++;
@@ -697,8 +883,9 @@ void StateMachineAttachedSource(void)
 
 		break;
 	case 1:
-		if (VbusVSafe0V()) {
-			platform_set_vbus_discharge(FALSE);
+		if (VbusVSafe0V() ||
+			((CCTermPrevious == CCTypeOpen))
+		   ) {
 			SetStateDelayUnattached();
 		}
 		break;
@@ -730,7 +917,6 @@ void StateMachineTryWaitSink(void)
 void StateMachineTrySource(void)
 {
 	debounceCC();
-
 	if ((CCTermPDDebounce > CCTypeRa) && (CCTermPDDebounce < CCTypeUndefined) && ((VCONNTerm == CCTypeOpen) || (VCONNTerm == CCTypeRa)))	// If the CC1 pin is Rd for at least tPDDebounce
 	{
 		SetStateAttachedSource();	// Go to the Attached.Src state
@@ -746,10 +932,10 @@ void StateMachineDebugAccessorySource(void)
 {
 	debounceCC();
 
-	if (CCTermPrevious == CCTypeOpen)	// If we have detected an open
-	{
+	/* If we have detected an open*/
+	if (CCTermPrevious == CCTypeOpen)
 		SetStateDelayUnattached();
-	} else
+	else
 	    if (((CCTermPDDebounce >= CCTypeRdUSB)
 		 && (CCTermPDDebounce < CCTypeUndefined))
 		&& (VCONNTerm >= CCTypeRdUSB) && (VCONNTerm < CCTypeUndefined)) {
@@ -772,10 +958,8 @@ void StateMachineAudioAccessory(void)
 {
 	debounceCC();
 
-	if (CCTermCCDebounce == CCTypeOpen)	// If we have detected an open for > tCCDebounce 
-	{
+	if (CCTermPrevious == CCTypeOpen)
 		SetStateDelayUnattached();
-	}
 #ifdef FSC_INTERRUPT_TRIGGERED
 //    if((CCTermPrevious == CCTypeOpen) && (g_Idle == TRUE))
 //    {
@@ -784,13 +968,14 @@ void StateMachineAudioAccessory(void)
 //        DeviceWrite(regMask, 1, &Registers.Mask.byte);
 //        platform_enable_timer(TRUE);
 //    }
-//    if((CCTermPDDebounce == CCTypeRa) && (VCONNTerm == CCTypeRa))      // && because one Pin will always stay detected as Ra
-//    {
-//        g_Idle = TRUE;                                                          // Idle until COMP because CC timer has reset to Ra
-//        Registers.Mask.M_COMP_CHNG = 0;
-//        DeviceWrite(regMask, 1, &Registers.Mask.byte);
-//        platform_enable_timer(FALSE);
-//    }
+     /* because one Pin will always stay detected as Ra*/
+	if ((CCTermPDDebounce == CCTypeRa) && (VCONNTerm == CCTypeRa)) {
+		g_Idle = TRUE;
+		/*Idle until COMP because CC timer has reset to Ra*/
+		Registers.Mask.M_COMP_CHNG = 0;
+		DeviceWrite(regMask, 1, &Registers.Mask.byte);
+		platform_enable_timer(FALSE);
+	}
 #endif // FSC_INTERRUPT_TRIGGERED
 }
 #endif // FSC_HAVE_ACCMODE
@@ -905,7 +1090,6 @@ void stateMachineTrySink(void)
 void stateMachineTryWaitSource(void)
 {
 	debounceCC();
-
 	if (VbusVSafe0V()) {
 		if (((CCTermPDDebounce >= CCTypeRdUSB) && (CCTermPDDebounce < CCTypeUndefined)) && ((VCONNTerm == CCTypeRa) || VCONNTerm == CCTypeOpen))	// If the CC1 pin is Rd for atleast tPDDebounce...
 		{
@@ -965,7 +1149,7 @@ void StateMachineDebugAccessorySink(void)
 {
 	debounceCC();
 
-	if (!isVBUSOverVoltage(DetachThreshold)) {
+	if (!isVBUSOverVoltage(VBUS_MDAC_2p6)) {
 		SetStateDelayUnattached();
 	} else
 	    if (((CCTermPDDebounce >= CCTypeRdUSB)
@@ -1168,6 +1352,13 @@ void SetStateErrorRecovery(void)
 
 void SetStateDelayUnattached(void)
 {
+
+	platform_disableSuperspeedUSB();
+	platform_toggleAudioSwitch(fsa_lpm);
+#ifdef CONFIG_FSUSB42_MUX
+	if (fsusb42_get_state() != FSUSB_STATE_EXT)
+		fsusb42_set_state(FSUSB_OFF);
+#endif
 #ifndef FPGA_BOARD
 	SetStateUnattached();
 	return;
@@ -1226,9 +1417,15 @@ void SetStateUnattached(void)
 
 	Registers.Control.TOGGLE = 1;	// Enable the toggle
 	platform_delay_10us(1);	// Delay before re-enabling toggle
-	DeviceWrite(regControl0, 3, &Registers.Control.byte[0]);	// Commit the control state 
+	/*Commit the control state*/
+	DeviceWrite(regControl0, 3, &Registers.Control.byte[0]);
 
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
+	power_supply_changed(&usbc_psy);
+	platform_toggleAudioSwitch(fsa_lpm);
+	gChargerAuthenticated = FALSE;
+	gRequestOpVoltage = 100; /*Reset to default 100*50mv*/
 }
 
 #ifdef FSC_HAVE_SNK
@@ -1247,6 +1444,9 @@ void SetStateAttachWaitSink(void)
 	blnCCPinIsCC1 = FALSE;	// Clear orientation to handle Rd-Rd case
 	blnCCPinIsCC2 = FALSE;
 	StateTimer = T_TIMER_DISABLE;
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
+	power_supply_changed(&usbc_psy);
+
 }
 
 void SetStateDebugAccessorySink(void)
@@ -1276,12 +1476,13 @@ void SetStateAttachWaitSource(void)
 	platform_set_vbus_lvl_enable(VBUS_LVL_ALL, FALSE, FALSE);	// Disable the vbus outputs
 	Registers.Control.TOGGLE = 0;	// Disable the toggle
 	DeviceWrite(regControl2, 1, &Registers.Control.byte[2]);	// Commit the toggle
-
 	ConnState = AttachWaitSource;	// Set the state machine variable to AttachWait.Src
 
 	setStateSource(FALSE);
 
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
+	power_supply_changed(&usbc_psy);
 }
 #endif // FSC_HAVE_SRC
 
@@ -1309,15 +1510,15 @@ void SetStateAttachWaitAccessory(void)
 	setStateSource(FALSE);
 
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
+	power_supply_changed(&usbc_psy);
 }
 #endif // FSC_HAVE_ACCMODE
 
 #ifdef FSC_HAVE_SRC
 void SetStateAttachedSource(void)
 {
-#ifdef FSC_INTERRUPT_TRIGGERED
 
-#endif // FSC_INTERRUPT_TRIGGERED
 	Registers.Mask.M_COMP_CHNG = 0;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 
@@ -1331,6 +1532,16 @@ void SetStateAttachedSource(void)
 
 	USBPDEnable(TRUE, TRUE);	// Enable the USB PD state machine if applicable (no need to write to Device again), set as DFP
 	StateTimer = tIllegalCable;	// Start dangling illegal cable timeout
+
+	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
+	platform_toggleAudioSwitch(fsa_usb_mode);
+#ifdef CONFIG_FSUSB42_MUX
+	if (fsusb42_get_state() != FSUSB_STATE_EXT)
+		fsusb42_set_state(FSUSB_STATE_USB);
+#endif
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SRC;
+	power_supply_changed(&usbc_psy);
+
 }
 #endif // FSC_HAVE_SRC
 
@@ -1343,9 +1554,9 @@ void SetStateAttachedSink(void)
 #endif
 
 	Registers.Measure.MEAS_VBUS = 1;
-	Registers.Measure.MDAC = DetachThreshold;
+	Registers.Measure.MDAC = VBUS_MDAC_2p6;
 	Registers.Mask.M_COMP_CHNG = 0;
-	/* TODO: PACK Register Map Because: 
+	/* TODO: PACK Register Map Because:
 	 * Large block writes are faster if there is a delay between I2C packets */
 	DeviceWrite(regMeasure, 1, &Registers.Measure.byte);
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
@@ -1357,18 +1568,27 @@ void SetStateAttachedSink(void)
 
 	USBPDEnable(TRUE, FALSE);	// Enable the USB PD state machine (no need to write Device again since we are doing it here)
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
+	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
+	platform_toggleAudioSwitch(fsa_usb_mode);
+#ifdef CONFIG_FSUSB42_MUX
+	if (fsusb42_get_state() != FSUSB_STATE_EXT)
+		fsusb42_set_state(FSUSB_STATE_USB);
+#endif
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SINK;
+	power_supply_changed(&usbc_psy);
 }
 #endif // FSC_HAVE_SNK
 
 #ifdef FSC_HAVE_DRP
 void RoleSwapToAttachedSink(void)
 {
-	ConnState = AttachedSink;	// Set the state machine variable to Attached.Sink   
+	/*Set the state machine variable to Attached.Sink*/
+	ConnState = AttachedSink;
 	sourceOrSink = SINK;
 	Registers.Measure.MEAS_VBUS = 1;
-	Registers.Measure.MDAC = DetachThreshold;
+	Registers.Measure.MDAC = VBUS_MDAC_2p6;
 	Registers.Mask.M_COMP_CHNG = 0;
-	/* TODO: PACK Register Map Because: 
+	/* TODO: PACK Register Map Because:
 	 * Large block writes are faster if there is a delay between I2C packets */
 	DeviceWrite(regMeasure, 1, &Registers.Measure.byte);
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
@@ -1380,13 +1600,14 @@ void RoleSwapToAttachedSink(void)
 	} else {
 		// Maintain VCONN
 		Registers.Switches.PU_EN2 = 0;	// Disable the pull-up on CC2
-		Registers.Switches.PDWN2 = 1;	// Enable the pull-down on CC2                                   
+		Registers.Switches.PDWN2 = 1;	/*Enable the pull-down on CC2*/
 	}
 	DeviceWrite(regSwitches0, 1, &Registers.Switches.byte[0]);	// Commit the switch state
 	SinkCurrent = utccNone;	// Set the current advertisment variable to none until we determine what the current is
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
 	PDDebounceTimer = tPDDebounce;	// Set the debounce timer to tPDDebounceMin for detecting changes in advertised current
-	CCDebounceTimer = tCCDebounce;	// Disable the 2nd level debounce timer, not used in this state                                      
+	/*Disable the 2nd level debounce timer, not used in this state*/
+	CCDebounceTimer = tCCDebounce;
 	PDFilterTimer = T_TIMER_DISABLE;	// Disable PD filter timer
 #ifdef FSC_DEBUG
 	WriteStateLog(&TypeCStateLog, ConnState, Timer_tms, Timer_S);
@@ -1447,6 +1668,9 @@ void SetStateTryWaitSink(void)
 	setStateSink();
 
 	StateTimer = T_TIMER_DISABLE;	// Set the state timer to disabled
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
+	power_supply_changed(&usbc_psy);
+
 }
 #endif // FSC_HAVE_DRP
 
@@ -1463,6 +1687,8 @@ void SetStateTrySource(void)
 	setStateSource(FALSE);
 
 	StateTimer = tDRPTry;	// Set the state timer to disabled
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
+	power_supply_changed(&usbc_psy);
 
 }
 #endif // FSC_HAVE_DRP
@@ -1481,6 +1707,9 @@ void SetStateTrySink(void)
 	setStateSink();
 
 	StateTimer = tDRPTry;
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
+	power_supply_changed(&usbc_psy);
+
 }
 #endif /* (defined(FSC_HAVE_DRP) || (defined(FSC_HAVE_SNK) && defined(FSC_HAVE_ACCMODE))) */
 
@@ -1498,6 +1727,8 @@ void SetStateTryWaitSource(void)
 	setStateSource(FALSE);
 
 	StateTimer = tDRPTry;	// Disable the state timer, not used in this state
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
+	power_supply_changed(&usbc_psy);
 }
 #endif // FSC_HAVE_DRP
 
@@ -1515,6 +1746,9 @@ void SetStateDebugAccessorySource(void)
 	setStateSource(FALSE);
 
 	StateTimer = tOrientedDebug;	// Disable the state timer, not used in this state
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_DBG;
+	power_supply_changed(&usbc_psy);
+	platform_toggleAudioSwitch(fsa_usb_mode);
 }
 
 void SetStateAudioAccessory(void)
@@ -1531,6 +1765,14 @@ void SetStateAudioAccessory(void)
 	setStateSource(FALSE);
 
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
+	if (Registers.Status.VBUSOK && debug_audio) {
+		FUSB_LOG("Audio Debug Accesory, Enable SS\n");
+		platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
+		usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SINK;
+	} else
+		usbc_psy.type = POWER_SUPPLY_TYPE_USBC_AUDIO;
+	platform_toggleAudioSwitch(fsa_audio_mode);
+	power_supply_changed(&usbc_psy);
 }
 #endif /* FSC_HAVE_ACCMODE */
 
@@ -1556,7 +1798,9 @@ void SetStatePoweredAccessory(void)
 
 	USBPDEnable(TRUE, TRUE);
 
-	StateTimer = tAMETimeout;	//T_TIMER_DISABLE; //tAMETimeout;                 // Set the state timer to tAMETimeout (need to enter alternate mode by this time)
+	StateTimer = tAMETimeout;
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_AUDIO;
+	power_supply_changed(&usbc_psy);
 }
 
 void SetStateUnsupportedAccessory(void)
@@ -1575,6 +1819,8 @@ void SetStateUnsupportedAccessory(void)
 	USBPDDisable(TRUE);
 
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_UNSUPP;
+	power_supply_changed(&usbc_psy);
 
 	platform_notify_unsupported_accessory();
 }
@@ -1590,14 +1836,17 @@ void SetStateUnattachedSource(void)	// Currently only implemented for transition
 #endif
 	platform_set_vbus_lvl_enable(VBUS_LVL_ALL, FALSE, FALSE);	// Disable the vbus outputs
 	ConnState = UnattachedSource;	// Set the state machine variable to unattached
-	blnCCPinIsCC1 = FALSE;	// Clear the CC1 pin flag 
-	blnCCPinIsCC2 = FALSE;	// Clear the CC2 pin flag
+	blnCCPinIsCC1 = FALSE;	/* Clear the CC1 pin flag*/
+	blnCCPinIsCC2 = FALSE;	/* Clear the CC2 pin flag*/
 
 	setStateSource(FALSE);
 
 	USBPDDisable(TRUE);	// Disable the USB PD state machine (no need to write Device again since we are doing it here)
 
 	StateTimer = tTOG2;	// Disable the state timer, not used in this state
+
+	usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
+	power_supply_changed(&usbc_psy);
 }
 #endif // FSC_HAVE_SRC
 
@@ -1670,9 +1919,10 @@ void SetStateUnattachedDebugSource(void)
 	g_Idle = FALSE;
 	platform_enable_timer(TRUE);
 #endif
-	ConnState = UnattachedDebSource;	// Set the state machine variable to unattached
-	blnCCPinIsCC1 = FALSE;	// Clear the CC1 pin flag 
-	blnCCPinIsCC2 = FALSE;	// Clear the CC2 pin flag
+	/*Set the state machine variable to unattached*/
+	ConnState = UnattachedDebSource;
+	blnCCPinIsCC1 = FALSE;	/* Clear the CC1 pin flag*/
+	blnCCPinIsCC2 = FALSE;	/*Clear the CC2 pin flag*/
 
 	setStateSource(FALSE);
 
@@ -2030,7 +2280,7 @@ FSC_U8 GetTypeCSMControl(void)
 	}
 
 #ifdef FSC_HAVE_ACCMODE
-	if (blnAccSupport)	// Set the flag if we support accessories 
+	if (blnAccSupport)	/*Set the flag if we support accessories*/
 		status |= 0x04;
 #endif // FSC_HAVE_ACCMODE
 
@@ -2062,10 +2312,18 @@ FSC_U8 GetCCTermination(void)
 /////////////////////////////////////////////////////////////////////////////
 //                        Device I2C Routines
 /////////////////////////////////////////////////////////////////////////////
+
 FSC_BOOL VbusVSafe0V(void)
 {
 	return !isVBUSOverVoltage(VBUS_MDAC_0P84V);
 }
+
+#ifdef FSC_HAVE_SNK
+FSC_BOOL VbusUnder5V(void)
+{
+	return !isVBUSOverVoltage(VBUS_MDAC_2p6);
+}
+#endif
 
 FSC_BOOL isVSafe5V(void)	// Returns true when Vbus > ~4.6V
 {
@@ -2164,9 +2422,9 @@ void resetDebounceVariables(void)
 	VCONNTerm = CCTypeUndefined;
 }
 
-////////////////////////////////////////////////////////////////////////////
-//                     
-////////////////////////////////////////////////////////////////////////////
+/*//////////////////////////////////////////////////////////////////////////
+//
+/////////////////////////////////////////////////////////////////////////*/
 #ifdef FSC_DEBUG
 FSC_BOOL GetLocalRegisters(FSC_U8 * data, FSC_S32 size)	// Returns local registers as data array
 {
@@ -2354,10 +2612,12 @@ void setStateSink(void)
 	{
 		Registers.Switches.byte[0] = 0x07;	// Enable the pull-downs on the CC pins
 	} else {
-		Registers.Switches.byte[0] = 0x0B;	// Enable the pull-downs on the CC pins                    
+		/*Enable the pull-downs on the CC2 pins*/
+		Registers.Switches.byte[0] = 0x0B;
 	}
 
-	DeviceWrite(regSwitches0, 1, &Registers.Switches.byte[0]);	// Commit the switch state 
+	/*Commit the switch state*/
+	DeviceWrite(regSwitches0, 1, &Registers.Switches.byte[0]);
 	updateVCONNSink();
 
 	PDDebounceTimer = tPDDebounce;	// Set the tPDDebounce for validating signals to transition to
