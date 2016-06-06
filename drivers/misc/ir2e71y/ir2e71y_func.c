@@ -1,4 +1,4 @@
-/* drivers/misc/ir2e71y8/bl71y8func.c  (Display Driver)
+/* drivers/misc/ir2e71y/ir2e71y_func.c  (Display Driver)
  *
  * Copyright (C) 2016 SHARP CORPORATION
  *
