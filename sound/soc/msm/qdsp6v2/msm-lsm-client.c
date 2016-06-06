@@ -1112,6 +1112,7 @@ struct snd_lsm_detection_params_32 {
 	enum lsm_detection_mode detect_mode;
 	u8 num_confidence_levels;
 	bool detect_failure;
+	bool poll_enable;
 };
 
 struct lsm_params_info_32 {
@@ -1293,6 +1294,7 @@ static int msm_lsm_ioctl_compat(struct snd_pcm_substream *substream,
 				det_params32.num_confidence_levels;
 			det_params.detect_failure =
 				det_params32.detect_failure;
+			det_params.poll_enable = det_params32.poll_enable;
 			cmd = SNDRV_LSM_SET_PARAMS;
 			err = msm_lsm_ioctl_shared(substream, cmd,
 					&det_params);
