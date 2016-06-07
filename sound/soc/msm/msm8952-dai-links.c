@@ -271,6 +271,16 @@ static struct snd_soc_dai_link msm8952_marley_fe_dai[] = {
 		.codec_name = "marley-codec",
 		.ignore_suspend = 1,
 		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP1 Text",
+		.stream_name = "CPU-DSP1 Text",
+		.cpu_dai_name = "marley-dsp1-cpu-txt",
+		.platform_name = "marley-codec",
+		.codec_dai_name = "marley-dsp1-txt",
+		.codec_name = "marley-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
 	}
 };
 #endif
