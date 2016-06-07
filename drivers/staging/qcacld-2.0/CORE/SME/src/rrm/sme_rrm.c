@@ -1191,11 +1191,11 @@ eHalStatus sme_RrmProcessNeighborReport(tpAniSirGlobal pMac, void *pMsgBuf)
    tpRrmNeighborReportDesc  pNeighborReportDesc;
    tANI_U8 i = 0;
    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
-   tANI_U8 sessionId;
+   tANI_U32 sessionId;
 
    /* Get the session id */
    status = csrRoamGetSessionIdFromBSSID(pMac, (tCsrBssid *)pNeighborRpt->bssId,
-                                        (tANI_U32*) &sessionId);
+                                         &sessionId);
    if (HAL_STATUS_SUCCESS(status)) {
 #ifdef FEATURE_WLAN_ESE
        /* Clear the cache for ESE. */
