@@ -1004,8 +1004,7 @@ int msm_vidc_dqbuf(void *instance, struct v4l2_buffer *b)
 		if (!inst->map_output_buffer)
 			continue;
 		if (EXTRADATA_IDX(b->length) &&
-			(i == EXTRADATA_IDX(b->length)) &&
-			!b->m.planes[i].m.userptr) {
+			i == EXTRADATA_IDX(b->length)) {
 			continue;
 		}
 		buffer_info = device_to_uvaddr(&inst->registeredbufs,
