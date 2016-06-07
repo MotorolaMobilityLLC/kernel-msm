@@ -3199,13 +3199,19 @@ static int wm_adsp_read_buffer2(struct wm_adsp *adsp, int32_t read_index,
 
 static int wm_adsp_capture_block(struct wm_adsp *dsp, int *avail)
 {
-	int last_region = dsp->firmwares[dsp->fw].caps->num_host_regions - 1;
-	int host_size = dsp->host_regions[last_region].cumulative_size;
+	int last_region;
+	int host_size;
 	int num_words;
 	u32 next_read_index, next_write_index;
 	int32_t write_index, read_index;
 	int ret;
 
+	if (!dsp->host_regions) {
+		adsp_err(dsp, "%s host_regions NULL\n", __func__);
+		return -EINVAL;
+	}
+	last_region = dsp->firmwares[dsp->fw].caps->num_host_regions - 1;
+	host_size = dsp->host_regions[last_region].cumulative_size;
 	/* Get current host buffer status */
 	ret = wm_adsp_host_buffer_read(dsp,
 				       HOST_BUFFER_FIELD(next_read_index),
