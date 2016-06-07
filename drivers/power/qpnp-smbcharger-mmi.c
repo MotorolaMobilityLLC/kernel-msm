@@ -5898,10 +5898,14 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 					POWER_SUPPLY_HEALTH_GOOD, rc);
 		}
 		schedule_work(&chip->usb_set_online_work);
-		if (!chip->fake_factory_type && !chip->factory_mode) {
-			chip->hvdcp_det_done = false;
-			schedule_delayed_work(&chip->hvdcp_det_work,
-						msecs_to_jiffies(HVDCP_NOTIFY_MS));
+		if (!chip->factory_mode) {
+			if (!chip->enable_hvdcp_9v)
+				chip->hvdcp_det_done = true;
+			else {
+				chip->hvdcp_det_done = false;
+				schedule_delayed_work(&chip->hvdcp_det_work,
+						      msecs_to_jiffies(HVDCP_NOTIFY_MS));
+			}
 		}
 	}
 
