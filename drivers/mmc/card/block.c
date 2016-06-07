@@ -1170,6 +1170,9 @@ static inline int mmc_blk_part_switch(struct mmc_card *card,
 		if (ret)
 			return ret;
 
+		if (md->part_type == EXT_CSD_PART_CONFIG_ACC_RPMB)
+			udelay(50);
+
 		card->ext_csd.part_config = part_config;
 		card->part_curr = md->part_type;
 	}
