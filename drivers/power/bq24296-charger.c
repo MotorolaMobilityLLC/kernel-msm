@@ -214,6 +214,10 @@ struct bq24296_chg {
 	bool chg_init_finish;
 	struct gpio *gpio_list;
 	int num_gpio_list; /* Number of entries in gpio_list array */
+	unsigned int			chg_thermal_levels;
+	unsigned int			chg_therm_lvl_sel;
+	unsigned int			*chg_thermal_mitigation;
+	int				allowed_fastchg_current_ma;
 };
 
 static struct bq24296_chg *the_chip;
@@ -882,6 +886,8 @@ static enum power_supply_property bq24296_batt_properties[] = {
 	/* Notification from Fuel Gauge */
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 	POWER_SUPPLY_PROP_HEALTH,
+	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
+	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS,
 };
 
 static int bq24296_reset_vbat_monitoring(struct bq24296_chg *chip)
@@ -1145,6 +1151,55 @@ static int bq24296_setup_vbat_monitoring(struct bq24296_chg *chip)
 	return 0;
 }
 
+static int set_max_allowed_current_ma(struct bq24296_chg *chip,
+				       int current_ma)
+{
+	int target_current;
+
+	target_current = min(current_ma, chip->allowed_fastchg_current_ma);
+	dev_info(chip->dev, "set_max_allowed_current_ma:current_ma=%d,allowed_fastchg_current_ma=%d,target_current=%d\n",
+		current_ma, chip->allowed_fastchg_current_ma, target_current);
+
+	return target_current;
+}
+
+static int bq24296_chg_system_temp_level_set(struct bq24296_chg *chip,
+					    int lvl_sel)
+{
+	int rc = 0;
+
+	if (!chip->chg_thermal_mitigation) {
+		dev_err(chip->dev, "Charge thermal mitigation not supported\n");
+		return -EINVAL;
+	}
+
+	if (lvl_sel < 0) {
+		dev_err(chip->dev, "Unsupported charge level selected %d\n",
+			lvl_sel);
+		return -EINVAL;
+	}
+
+	if (lvl_sel >= chip->chg_thermal_levels) {
+		dev_err(chip->dev,
+			"Unsupported charge level selected %d forcing %d\n",
+			lvl_sel, chip->chg_thermal_levels - 1);
+		lvl_sel = chip->chg_thermal_levels - 1;
+	}
+
+	if (lvl_sel == chip->chg_therm_lvl_sel)
+		return 0;
+
+	chip->chg_therm_lvl_sel = lvl_sel;
+
+	chip->allowed_fastchg_current_ma =
+		chip->chg_thermal_mitigation[lvl_sel];
+
+	dev_info(chip->dev, "set temp level %d current %d\n",
+			lvl_sel, chip->allowed_fastchg_current_ma);
+
+	return rc;
+}
+
 static int bq24296_config_charging_para(struct bq24296_chg *chip)
 {
 	union power_supply_propval prop = {0,};
@@ -1191,7 +1246,8 @@ static int bq24296_config_charging_para(struct bq24296_chg *chip)
 		}
 	}
 
-	rc = bq24296_set_ibat_max(chip, chip->chg_current_ma);
+	rc = bq24296_set_ibat_max(chip, set_max_allowed_current_ma(chip,
+		chip->chg_current_ma));
 	if (rc) {
 		pr_err("config-charger: Couldn't set ibat max\n");
 		return rc;
@@ -1426,6 +1482,10 @@ static int bq24296_batt_set_property(struct power_supply *psy,
 		if (chip->test_mode)
 			chip->test_mode_temp = val->intval;
 		break;
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		if (chip->chg_thermal_mitigation)
+			bq24296_chg_system_temp_level_set(chip, val->intval);
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -1448,6 +1508,7 @@ static int bq24296_batt_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 	case POWER_SUPPLY_PROP_HEALTH:
 	case POWER_SUPPLY_PROP_TEMP:
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		rc = 1;
 		break;
 	default:
@@ -1521,6 +1582,14 @@ static int bq24296_batt_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		val->intval = bq24296_get_prop_charge_full_design(chip);
+		break;
+	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
+		if (chip->chg_thermal_mitigation)
+			val->intval = chip->chg_therm_lvl_sel;
+		break;
+	case POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_LEVELS:
+		if (chip->chg_thermal_mitigation)
+			val->intval = chip->chg_thermal_levels;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		if (chip->test_mode) {
@@ -1714,6 +1783,36 @@ static int bq24296_of_init(struct bq24296_chg *chip)
 						&chip->chg_safety_timer);
 	if (rc < 0)
 		chip->chg_safety_timer = 3;
+
+	if (of_find_property(node, "ti,chg-thermal-mitigation",
+					&chip->chg_thermal_levels)) {
+		chip->chg_thermal_mitigation = devm_kzalloc(chip->dev,
+			chip->chg_thermal_levels,
+			GFP_KERNEL);
+
+		if (chip->chg_thermal_mitigation == NULL) {
+			dev_err(chip->dev,
+				"thermal mitigation kzalloc() failed.\n");
+			return -ENOMEM;
+		}
+
+		chip->chg_thermal_levels /= sizeof(int);
+		rc = of_property_read_u32_array(node,
+						"ti,chg-thermal-mitigation",
+						chip->chg_thermal_mitigation,
+						chip->chg_thermal_levels);
+		if (rc) {
+			dev_err(chip->dev,
+				"Couldn't read therm limits rc = %d\n", rc);
+			return rc;
+		}
+	} else {
+		chip->chg_thermal_mitigation = NULL;
+		chip->chg_thermal_levels = 0;
+	}
+
+
+	chip->allowed_fastchg_current_ma = chip->chg_current_ma;
 
 	return 0;
 }
