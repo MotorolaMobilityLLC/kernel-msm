@@ -25,7 +25,6 @@
 #include "mdss_dsi.h"
 
 #define DT_CMD_HDR 6
-#define MDSS_IDLE_ON_DELAY_MS   5000
 
 static int mdss_panel_height = 480;
 static bool mdss_flip_ud = false;
@@ -318,9 +317,7 @@ static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
 
 	if (enable) {
 		if (ctrl->idle_on_cmds.cmd_cnt)
-			alarm_start_relative(&ctrl->idle_on_alarm,
-				ns_to_ktime((u64)MDSS_IDLE_ON_DELAY_MS *
-					NSEC_PER_MSEC));
+			schedule_work(&ctrl->idle_on_work);
 	} else {
 		/* off the display. it will be on during setting
 		 * backlight level later
@@ -328,7 +325,6 @@ static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
 		mdss_dsi_panel_bklt_dcs(ctrl, 0);
 
 		if (ctrl->idle_off_cmds.cmd_cnt) {
-			alarm_cancel(&ctrl->idle_on_alarm);
 			cancel_work_sync(&ctrl->idle_on_work);
 			pr_debug("idle off ++\n");
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
@@ -1704,16 +1700,6 @@ error:
 	return -EINVAL;
 }
 
-static enum alarmtimer_restart idle_on_alarm_func(
-		struct alarm *alarm, ktime_t now)
-{
-	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
-	ctrl = container_of(alarm, struct mdss_dsi_ctrl_pdata, idle_on_alarm);
-
-	schedule_work(&ctrl->idle_on_work);
-	return ALARMTIMER_NORESTART;
-}
-
 int mdss_dsi_panel_init(struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	bool cmd_cfg_cont_splash)
@@ -1763,10 +1749,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 							"IDLE_ON_WAKELOCK");
 
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
-
-	/* init alarm */
-	alarm_init(&ctrl_pdata->idle_on_alarm, ALARM_BOOTTIME,
-			idle_on_alarm_func);
 
 	return 0;
 }
