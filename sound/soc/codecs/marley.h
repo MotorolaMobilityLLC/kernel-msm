@@ -24,7 +24,7 @@
  * are counted as one DAI
  */
 #define MARLEY_NUM_COMPR_DAI 2
-#define MARLEY_NUM_COMPR_DEVICES 4
+#define MARLEY_NUM_COMPR_DEVICES 6
 
 struct marley_compr {
 	const char *dai_name;
