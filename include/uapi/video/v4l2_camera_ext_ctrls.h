@@ -763,10 +763,40 @@ enum {
 /* integer [][4]: eis_w, eis_h, w, h. optional for MOD */
 #define CAM_EXT_CID_EIS_FRAME_SIZE_MAP (CID_CAM_EXT_CLASS_BASE + 114)
 
-/* integer (float value x100; e.g., 5480 is 54.80) */
-#define CAM_EXT_CID_HORIZONTAL_VIEW_ANGLE (CID_CAM_EXT_CLASS_BASE + 115)
+/* integer [][2]: w, h for thumbnail */
+#define CAM_EXT_CID_JPEG_AVAILABLE_THUMBNAIL_SIZES \
+		(CID_CAM_EXT_CLASS_BASE + 115)
 
-/* integer (float value x100; e.g., 4250 is 42.50) */
-#define CAM_EXT_CID_VERTICAL_VIEW_ANGLE (CID_CAM_EXT_CLASS_BASE + 116)
+/* int: index of thumbnail in JPEG_AVAILABLE_THUMBNAIL_SIZE, [0...] */
+#define CAM_EXT_CID_JPEG_THUMBNAIL_SIZE_INDEX (CID_CAM_EXT_CLASS_BASE + 116)
+
+/* string */
+#define CAM_EXT_CID_PHONE_VERSION (CID_CAM_EXT_CLASS_BASE + 117)
+
+/* int, mask for key capability, read only */
+#define CAM_EXT_CID_SUPPLEMENTAL_KEY_MASK (CID_CAM_EXT_CLASS_BASE + 118)
+enum {
+	CAM_EXT_HW_KEY_POWER            = 1,
+	CAM_EXT_HW_KEY_POWER_EVT        = 1 << 1,
+	CAM_EXT_HW_KEY_ZOOM_IN          = 1 << 2,
+	CAM_EXT_HW_KEY_ZOOM_IN_EVT      = 1 << 3,
+	CAM_EXT_HW_KEY_ZOOM_OUT         = 1 << 4,
+	CAM_EXT_HW_KEY_ZOOM_OUT_EVT     = 1 << 5,
+	CAM_EXT_HW_KEY_FOCUS            = 1 << 6,
+	CAM_EXT_HW_KEY_FOCUS_EVT        = 1 << 7,
+	CAM_EXT_HW_KEY_CAMERA           = 1 << 8,
+	CAM_EXT_HW_KEY_CAMERA_EVT       = 1 << 9,
+
+	CAM_EXT_HW_KEY_MAX = CAM_EXT_HW_KEY_POWER
+					| CAM_EXT_HW_KEY_POWER_EVT
+					| CAM_EXT_HW_KEY_ZOOM_IN
+					| CAM_EXT_HW_KEY_ZOOM_IN_EVT
+					| CAM_EXT_HW_KEY_ZOOM_OUT
+					| CAM_EXT_HW_KEY_ZOOM_OUT_EVT
+					| CAM_EXT_HW_KEY_FOCUS
+					| CAM_EXT_HW_KEY_FOCUS_EVT
+					| CAM_EXT_HW_KEY_CAMERA
+					| CAM_EXT_HW_KEY_CAMERA_EVT
+};
 
 #endif /* __CAMERA_EXT_CTRLS_H */
