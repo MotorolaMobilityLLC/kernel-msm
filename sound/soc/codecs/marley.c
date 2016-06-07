@@ -40,7 +40,6 @@
  * are counted as one DAI
  */
 #define MARLEY_NUM_COMPR_DAI 2
-#define MARLEY_NUM_COMPR_DEVICES 4
 
 #define MARLEY_FRF_COEFFICIENT_LEN 4
 
@@ -1850,6 +1849,27 @@ static struct snd_soc_dai_driver marley_dai[] = {
 		},
 	},
 	{
+		.name = "marley-dsp1-cpu-txt",
+		.capture = {
+			.stream_name = "Text DSP1 CPU",
+			.channels_min = 2,
+			.channels_max = 8,
+			.rates = MARLEY_RATES,
+			.formats = MARLEY_FORMATS,
+		},
+		.compress_dai = 1,
+	},
+	{
+		.name = "marley-dsp1-txt",
+		.capture = {
+			.stream_name = "Text DSP1",
+			.channels_min = 2,
+			.channels_max = 8,
+			.rates = MARLEY_RATES,
+			.formats = MARLEY_FORMATS,
+		},
+	},
+	{
 		.name = "marley-dsp2-cpu-txt",
 		.capture = {
 			.stream_name = "Text DSP2 CPU",
@@ -1905,6 +1925,8 @@ static int marley_get_compr_index(struct snd_compr_stream *stream)
 		return 0;
 	else if ((strcmp(rtd->codec_dai->name, "marley-dsp2-txt") == 0))
 		return 1;
+	else if ((strcmp(rtd->codec_dai->name, "marley-dsp1-txt") == 0))
+		return 4;
 
 	return -EINVAL;
 }
@@ -1918,7 +1940,8 @@ static int marley_get_dsp_num(struct snd_compr_stream *stream)
 		return 2;
 	else if	(strcmp(rtd->codec_dai->name, "marley-dsp2-txt") == 0)
 		return 1;
-	else if (strcmp(rtd->codec_dai->name, "marley-dsp-trace") == 0)
+	else if ((strcmp(rtd->codec_dai->name, "marley-dsp-trace") == 0)
+		|| (strcmp(rtd->codec_dai->name, "marley-dsp1-txt") == 0))
 		return 0;
 
 	return -EINVAL;
@@ -1991,14 +2014,26 @@ static int marley_text_event(struct marley_priv *marley, int dev)
 	return 0;
 }
 
+static bool marley_compr_second_buffer(struct snd_compr_stream *stream)
+{
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+
+	if (!strcmp(rtd->codec_dai->name, "marley-dsp3-txt")
+		|| !strcmp(rtd->codec_dai->name, "marley-dsp1-txt"))
+		return true;
+	else
+		return false;
+}
+
 static int handle_stream(struct marley_priv *marley, int dev)
 {
 	struct snd_soc_pcm_runtime *rtd;
+	struct snd_compr_stream *stream = marley->compr_info[dev].stream;
 	int ret, avail;
 
 	if (marley->compr_info[dev].stream) {
 		rtd = marley->compr_info[dev].stream->private_data;
-		if (!strcmp(rtd->codec_dai->name, "marley-dsp3-txt")) {
+		if (marley_compr_second_buffer(stream)) {
 			pr_debug("HANDLING TEXT STREAM from DSP%d\n", dev);
 			ret = wm_adsp_stream_handle_irq(
 				marley->compr_info[dev].adsp,
@@ -2065,16 +2100,6 @@ static irqreturn_t marley_adsp2_irq(int irq, void *data)
 		mutex_unlock(&marley->compr_info[i].lock);
 	}
 	return IRQ_HANDLED;
-}
-
-static bool marley_compr_second_buffer(struct snd_compr_stream *stream)
-{
-	struct snd_soc_pcm_runtime *rtd = stream->private_data;
-
-	if (!strcmp(rtd->codec_dai->name, "marley-dsp3-txt"))
-		return true;
-	else
-		return false;
 }
 
 static int marley_compr_open(struct snd_compr_stream *stream)
