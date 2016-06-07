@@ -279,6 +279,7 @@
 		/delete-property/ pinctrl-3;
 		/delete-property/ asoc-wsa-codec-names;
 		sharp,jack-lineout-report = "notsend";
+		sharp,jack-detect-port = "gnd";
 	};
 
 	usb_otg: usb@78db000 {

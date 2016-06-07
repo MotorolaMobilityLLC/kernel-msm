@@ -961,11 +961,18 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	bool micbias1 = false;
 	int ret = 0;
 	int rc;
+	int headphone_reported = 0;
+	const char *detect_port = NULL;
 
 	pr_debug("%s: enter\n", __func__);
 
 	mbhc = container_of(work, struct wcd_mbhc, correct_plug_swch);
 	codec = mbhc->codec;
+
+	ret = of_property_read_string(codec->card->dev->of_node,"sharp,jack-detect-port",&detect_port);
+	if(!ret && !strcmp(detect_port, "gnd")){
+		msleep(200);
+	}
 
 	/*
 	 * Enable micbias/pullup for detection in correct work.
@@ -1012,11 +1019,19 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 
 	pr_debug("%s: Valid plug found, plug type is %d\n",
 			 __func__, plug_type);
-	if (plug_type == MBHC_PLUG_TYPE_HEADSET ||
-	    plug_type == MBHC_PLUG_TYPE_HEADPHONE) {
-		WCD_MBHC_RSC_LOCK(mbhc);
-		wcd_mbhc_find_plug_and_report(mbhc, plug_type);
-		WCD_MBHC_RSC_UNLOCK(mbhc);
+	if(!ret && !strcmp(detect_port, "gnd")){
+		if (plug_type == MBHC_PLUG_TYPE_HEADSET) {
+			WCD_MBHC_RSC_LOCK(mbhc);
+			wcd_mbhc_find_plug_and_report(mbhc, plug_type);
+			WCD_MBHC_RSC_UNLOCK(mbhc);
+		}
+	}else{
+		if (plug_type == MBHC_PLUG_TYPE_HEADSET ||
+		    plug_type == MBHC_PLUG_TYPE_HEADPHONE) {
+			WCD_MBHC_RSC_LOCK(mbhc);
+			wcd_mbhc_find_plug_and_report(mbhc, plug_type);
+			WCD_MBHC_RSC_UNLOCK(mbhc);
+		}
 	}
 
 correct_plug_type:
@@ -1133,6 +1148,19 @@ correct_plug_type:
 				}
 			}
 			wrk_complete = false;
+		}
+
+		ret = of_property_read_string(codec->card->dev->of_node,"sharp,jack-detect-port",&detect_port);
+		if(!ret && !strcmp(detect_port, "gnd")){
+			if (!wrk_complete && mbhc->btn_press_intr) {
+				if(headphone_reported == 0){
+					plug_type = MBHC_PLUG_TYPE_HEADPHONE;
+					WCD_MBHC_RSC_LOCK(mbhc);
+					wcd_mbhc_find_plug_and_report(mbhc, plug_type);
+					WCD_MBHC_RSC_UNLOCK(mbhc);
+					headphone_reported++;
+				}
+			}
 		}
 	}
 	if (!wrk_complete && mbhc->btn_press_intr) {
