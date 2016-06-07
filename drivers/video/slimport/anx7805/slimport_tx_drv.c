@@ -324,7 +324,7 @@ void system_power_ctrl(BYTE ON)
 {
 	BYTE c1,c2,c3;
 
-	if ((ON == 0) && (sp_tx_pd_mode == 0)) {
+	if(ON == 0) {
 		SP_CTRL_Set_System_State(SP_TX_WAIT_SLIMPORT_PLUGIN);
 		#ifndef Standard_DP
 		vbus_power_ctrl(0);
@@ -340,7 +340,7 @@ void system_power_ctrl(BYTE ON)
 		memset(bEDID_extblock, 0, 128);
 		memset(bEDID_firstblock, 0, 128);
 		memset(bEDID_fourblock, 0, 256);
-	} else if ((ON == 1) && (sp_tx_pd_mode == 1)) {
+	} else {
 		sp_tx_pd_mode = 0;
 		SP_TX_Hardware_PowerOn();
 		SP_TX_Power_Enable(SP_TX_PWR_REG, SP_TX_POWER_ON);
