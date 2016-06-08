@@ -1486,12 +1486,13 @@ BYTE  SP_TX_Config_Video_MIPI (void)
 	}
 #endif
 
+/* It is up to source
 	if(bEDIDBreak) {
 		sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL2_REG, &c);
 		sp_write_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL2_REG, c & 0x8f);
 		debug_puts("6bits!\n");
 	 } //jgliu add 160216 for link CTS
-
+*/
 	return 0;
 
 }
@@ -4198,6 +4199,7 @@ BYTE is_cable_detected(void)
 {	
 	return slimport_is_connected();
 }
+#ifndef Standard_DP
 BYTE sp_tx_check_sink_connection(void)
 {
 	BYTE c,i,connection=Sink_DPCD_Count;
@@ -4208,6 +4210,7 @@ BYTE sp_tx_check_sink_connection(void)
 			connection--;
 			if(i==Sink_DPCD_Count-1){
 				last_time=1;
+				pr_info("the last time AUX access if failed when cable detect");
 			}
 		}	
 		msleep(10);
@@ -4267,7 +4270,7 @@ void SP_CTRL_Slimport_Plug_Process(void)
 	}
 
 }
-
+#endif
 void SP_CTRL_Video_Changed_Int_Handler (BYTE changed_source)
 {
 	//pr_info("[INT]: SP_CTRL_Video_Changed_Int_Handler");
@@ -4422,11 +4425,12 @@ void SP_CTRL_MIPI_Packet_Len_Chg_Int_Handler(void)
  * TODO.. need to further investigate why this message keep printing. After
  * talking with Analogix and they said these message prints are because of
  * MIPI DSI issue, but I don't see any thing wrong on the image rendering on the
- * display. Comment this out for now, because don't want to spam the kernel log
+ * display. Change pr_info to pr_debug for now, because don't want to spam the
+ * kernel log
  */
-#if 0
+#if 1
 	if(SP_TX_Video_Input.Interface   == MIPI_DSI) {
-		pr_info("mipi packet length changed\n");
+		pr_debug("mipi packet length changed\n");
 
 		//SP_CTRL_Set_System_State(SP_TX_CONFIG_VIDEO);
 	}
@@ -4436,11 +4440,40 @@ void SP_CTRL_MIPI_Packet_Len_Chg_Int_Handler(void)
 /* TODO..same as above */
 void SP_CTRL_MIPI_Lane_clk_Chg_Int_Handler(void)
 {
-#if 0
-	if(SP_TX_Video_Input.Interface   == MIPI_DSI)
-		pr_info("mipi lane clk changed\n");
+	BYTE c, c2;
+#if 1
+	if (SP_TX_Video_Input.Interface == MIPI_DSI) {
+		pr_debug("mipi lane clk changed\n");
+		sp_read_reg(MIPI_RX_PORT1_ADDR, MIPI_PROTOCOL_STATE, &c2);
+		if ((c2&0x10)==0x10) {
+			pr_debug("MIPI RX protocol state Register 0x%.2x\n",
+									c2);
+			sp_read_reg(MIPI_RX_PORT1_ADDR, 0x2f, &c2);
+			c2 = c2 | 0x04;
+			sp_write_reg(MIPI_RX_PORT1_ADDR, 0x2f, c2);
+			c2 = c2 & 0xfb;
+			sp_write_reg(MIPI_RX_PORT1_ADDR, 0x2f, c2);
+
+			mdelay(5);
+		}
+		sp_read_reg(MIPI_RX_PORT1_ADDR, MIPI_PROTOCOL_STATE, &c2);
+
+		if  (((c2&0x20)==0x20)||((c2&0x10)==0x10)) {
+			pr_debug("MIPI RX protocol state Register 0x%.2x\n",
+								c2);
+
+			sp_read_reg(MIPI_RX_PORT1_ADDR, MIPI_MISC_CTRL, &c);
+			c = c & 0xF7;
+			sp_write_reg(MIPI_RX_PORT1_ADDR, MIPI_MISC_CTRL, c);
+			mdelay(1);
+			c = c | 0x08;
+			sp_write_reg(MIPI_RX_PORT1_ADDR, MIPI_MISC_CTRL, c);
+		}
+
+	}
 #endif
 }
+
 void SP_CTRL_LINK_CHANGE_Int_Handler(void)
 {
 
@@ -5057,11 +5090,13 @@ void SP_CTRL_EDID_Read(void)//add adress only cmd before every I2C over AUX acce
 
 
 	SP_TX_RST_AUX();
-#if 0
-	if(sp_tx_ds_edid_hdmi)
-		SP_TX_AUX_DPCDWrite_Byte(0x00,0x05,0x26, 0x01);//inform ANX7730 the downstream is HDMI
-	else
-		SP_TX_AUX_DPCDWrite_Byte(0x00,0x05,0x26, 0x00);//inform ANX7730 the downstream is not HDMI
+#ifndef Standard_DP
+	if(sp_tx_rx_type == RX_HDMI){
+		if(sp_tx_ds_edid_hdmi)
+			SP_TX_AUX_DPCDWrite_Byte(0x00,0x05,0x26, 0x01);//inform ANX7730 the downstream is HDMI
+		else
+			SP_TX_AUX_DPCDWrite_Byte(0x00,0x05,0x26, 0x00);//inform ANX7730 the downstream is not HDMI
+	}
 #endif
 
 	SP_TX_AUX_DPCDRead_Bytes(0x00,0x02,0x18,1,ByteBuf);
@@ -5116,13 +5151,32 @@ void SP_CTRL_EDID_Process(void)
 	}
 
 	//read DPCD 00000-0000b
-	for(i = 0; i <= 0x0b; i ++)
+	for(i = 0; i <= 0x0b; i ++) {
 		SP_TX_AUX_DPCDRead_Bytes(0x00,0x00,i,1,&c);
-	
-        SP_TX_AUX_DPCDRead_Bytes(0x00,0x02,00,1,&c);//read  sink_count for link_cts 4.2.2.7
 
-        SP_TX_AUX_DPCDRead_Bytes(0x00,0x00,01,1,&c);//read sink bandwidth
-        sp_rx_bw=c;
+		/* print the DPCD register values of addr 00000h and 00001h */
+		if (i == 0x0 || i == 0x1)
+			pr_info("DPCD 0x0000%x = 0x%.2x\n", i, (unsigned int)c);
+
+		if (i == 0x01) {
+			switch (c) {
+			case 0x06:
+				sp_tx_bw = BW_162G;
+				break;
+			case 0x0a:
+				sp_tx_bw = BW_27G;
+				break;
+			case 0x14:
+				sp_tx_bw = BW_54G;
+				break;
+			default:
+				sp_tx_bw = BW_54G;
+				break;
+			}
+		}
+	}
+
+        SP_TX_AUX_DPCDRead_Bytes(0x00,0x02,00,1,&c);//read  sink_count for link_cts 4.2.2.7
 
 	SP_CTRL_EDID_Read();
 	SP_TX_RST_AUX();
@@ -5169,6 +5223,9 @@ void SP_CTRL_HDCP_Process(void)
 	switch(hdcp_process_state) {
 	case HDCP_PROCESS_INIT:
 		hdcp_process_state = HDCP_CAPABLE_CHECK;
+                #ifdef Redo_HDCP
+                HDCP_fail_count = 0;
+                #endif
 		break;
 	case HDCP_CAPABLE_CHECK:
 		SP_TX_AUX_DPCDRead_Bytes(0x06, 0x80, 0x28,1,&c);
@@ -5264,8 +5321,13 @@ void SP_CTRL_HDCP_Process(void)
 		break;
 	}
 }
-
-
+#ifdef MIPI_Auto_Adjust
+static int count=0;
+static int stop=0;
+static BYTE 1b_reg=0xe1;
+static BYTE 1c_reg=0xb1;
+static BYTE 19_reg=0x38;
+#endif
 void SP_CTRL_PlayBack_Process(void)
 {
 	//BYTE c;
@@ -5289,6 +5351,37 @@ if (audio_format_change) {
 		}
 		//else
 		//pr_info("mipi checksum ok!");
+	}
+#endif
+
+
+#ifdef MIPI_Auto_Adjust
+	if(((count++)%30==0)&&(stop==0))
+	{
+		if(1b_reg>0x01)
+		{
+			1b_reg =1b_reg-0x20;
+		}
+		else if((1b_reg==0x01)&&(1c_reg==0xb1))
+		{
+			1b_reg =0xe1;
+			1c_reg =0x31;
+		}
+		else if((1b_reg==0x01)&&(1c_reg==0x31)&&(19_reg<0x3f))
+		{
+			1b_reg =0xe1;
+			1c_reg =0xb1;
+			19_reg =19_reg+0x01;
+		}
+		else if((19_reg>=0x3f))
+		{
+			stop=1;
+		}
+		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x1b, 1b_reg);
+		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x1c, 1c_reg);
+		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x19, 19_reg);
+
+		pr_info(" SP_CTRL_PlayBack_Process 1b_reg=0x%.2x, 1c_reg = 0x%.2x, 19_reg = 0x%.2x\n", (uint)1b_reg, (uint)1c_reg,(uint)19_reg);
 	}
 #endif
 
@@ -5603,6 +5696,102 @@ void slimport_hdcp_authentication(BYTE enable)
 		SP_CTRL_Set_System_State(SP_TX_CONFIG_AUDIO);
 	}
 }
+#ifndef Standard_DP
+bool Source_AUX_Read_ANXDPCD(long addr,BYTE cCount,unchar *pBuf)
+{
+    BYTE c;
+    BYTE addr_l;
+    BYTE addr_m;
+    BYTE addr_h;
+    addr_l = (BYTE)addr;
+    addr_m = (BYTE)(addr>>8);
+    addr_h = (BYTE)(addr>>16);
+    c = 0;
+    while (1) {
+        if (SP_TX_AUX_DPCDRead_Bytes(addr_h,addr_m,addr_l,cCount,pBuf) == AUX_OK)
+            return SOURCE_AUX_OK;
+        c++;
+        if (c > 3) {
+            return SOURCE_AUX_ERR;
+        }
+    }
+}
+
+bool Source_AUX_Write_ANXDPCD(long addr,BYTE cCount,unchar *pBuf)
+{
+    BYTE c;
+    BYTE addr_l;
+    BYTE addr_m;
+    BYTE addr_h;
+    addr_l = (BYTE)addr;
+    addr_m = (BYTE)(addr>>8);
+    addr_h = (BYTE)(addr>>16);
+    c = 0;
+    while (1) {
+        if (SP_TX_AUX_DPCDWrite_Bytes(addr_h,addr_m,addr_l,cCount,pBuf) == AUX_OK)
+            return SOURCE_AUX_OK;
+        c++;
+        if (c > 3) {
+            return SOURCE_AUX_ERR;
+        }
+    }
+}
+bool I2C_Master_Read_Reg(unchar Sink_device_sel, unchar offset, unchar *Buf)
+{
+    BYTE sByteBuf[2]= {0};
+    long a0, a1;
+
+    a0 = SINK_DEV_SEL;
+    a1 = SINK_ACC_REG;
+    sByteBuf[0] = Sink_device_sel;
+    sByteBuf[1] = offset;
+
+    if(Source_AUX_Write_ANXDPCD(a0,2,sByteBuf) == SOURCE_AUX_OK)
+    {
+        if(Source_AUX_Read_ANXDPCD(a1,1,Buf)==SOURCE_AUX_OK)
+                        return SOURCE_REG_OK;
+    }
+
+    return SOURCE_REG_ERR;
+
+}
+
+bool I2C_Master_Write_Reg(unchar Sink_device_sel,unchar offset, unchar value)
+{
+    BYTE sByteBuf[3]= {0};
+    long a0;
+
+    a0 = SINK_DEV_SEL;
+    sByteBuf[0] = Sink_device_sel;
+    sByteBuf[1] = offset;
+    sByteBuf[2] = value;
+
+    if(Source_AUX_Write_ANXDPCD(a0,3,sByteBuf) == SOURCE_AUX_OK)
+                return SOURCE_REG_OK;
+    else
+                return SOURCE_REG_ERR;
+
+}
+
+
+void sp_tx_sink_colorspace(void)
+{
+        BYTE c, c1,data_buf[4];
+        if(sp_tx_rx_type == RX_DP)
+        {
+                SP_TX_AUX_DPCDRead_Bytes(0x00, 0x05, 0x03, 0x04, data_buf);
+                if ((data_buf[0] == 0x37) && (data_buf[1] == 0x37)
+                    && (data_buf[2] == 0x35) && (data_buf[3] == 0x31))
+                {
+                        sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL2_REG, &c1);
+                        I2C_Master_Read_Reg(0x09,0x09, &c);
+                        //debug_printf("c=%.2x,c1=%.2x\n", (unsigned int)c, (unsigned int)c1);
+                        c=(c&0x8f)|(c1&0x70);
+                        I2C_Master_Write_Reg(0x09,0x09, c);
+                }
+        }
+}
+#endif
 
 void SP_CTRL_TimerProcess (void)
 {
@@ -5639,6 +5828,9 @@ void SP_CTRL_TimerProcess (void)
 		SP_TX_Config_Audio(&SP_TX_Audio_Input);
 		break;
 	case SP_TX_HDCP_AUTHENTICATION:
+		#ifndef Standard_DP
+		sp_tx_sink_colorspace();
+		#endif
 		slimport_hdcp_authentication((hdcp_enable == 0 ? 0 : 1));
 		break;
 	case SP_TX_PLAY_BACK:
