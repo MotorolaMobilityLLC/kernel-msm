@@ -93,7 +93,7 @@ struct anx7805_platform_data
 #define AUD_IN_SEL_2  1
 #define SSC_EN   1
 /* Disable HDCP */
-#define HDCP_EN   0
+#define HDCP_EN   1
 
 #define BIST_EN 0 
 
