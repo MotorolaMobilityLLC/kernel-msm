@@ -1940,8 +1940,13 @@ void sp_tx_set_colordepth(void)
 		    && (data_buf[2] == 0x35) && (data_buf[3] == 0x31)) {
 			sp_read_reg(TX_P2, SP_TX_VID_CTRL2_REG, &color_depth);
 			i2c_master_read_reg(0x09, 0x09, &tmp2);
-			tmp = (tmp2 & 0x8f) | (color_depth & 0x70);
-			i2c_master_write_reg(0x09, 0x09, tmp);
+			if ((color_depth & 0x70) != (tmp2 & 0x70)) {
+				pr_info("%s: reprogramming bits per channel: %d -> %d\n",
+					__func__, ((tmp2 & 0x70) >> 3) + 6,
+					((color_depth & 0x70) >> 3) + 6);
+				tmp = (tmp2 & 0x8f) | (color_depth & 0x70);
+				i2c_master_write_reg(0x09, 0x09, tmp);
+			}
 		}
 	}
 }
