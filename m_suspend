@@ -1,0 +1,127 @@
+[33mcommit af71d9fec37585c4a5e89efc38dfdc4214e9ec1e[m
+Author: Ravi Vembu <raviv@motorola.com>
+Date:   Wed Jun 8 11:31:33 2016 -0500
+
+    IKSWM-43690: dwc3-msm: Fix racy suspend/resume on dwc3.
+    
+    The dwc3 msm suspend/resume routines are called from the pm
+    work queue, but there is also a path for the resume to be triggered
+    from the dwc3 driver. This can cause the clocks to be left on if
+    there are multiple resumes followed by a suspend since the clock
+    enable/disable's aren't balanced. Add a mutex around the suspend/
+    resume routines.
+    
+    Change-Id: Idfdcb5152b02171246b16a8b24b17590015a6cf7
+    Signed-off-by: Ravi Vembu <raviv@motorola.com>
+    Reviewed-on: http://gerrit.mot.com/865202
+    SME-Granted: SME Approvals Granted
+    SLTApproved: Slta Waiver <sltawvr@motorola.com>
+    Tested-by: Jira Key <jirakey@motorola.com>
+    Reviewed-by: Ravi Chebolu <arc095@motorola.com>
+    Submit-Approved: Jira Key <jirakey@motorola.com>
+
+[1mdiff --git a/drivers/usb/dwc3/dwc3-msm.c b/drivers/usb/dwc3/dwc3-msm.c[m
+[1mindex d320d1b..2a4576b 100644[m
+[1m--- a/drivers/usb/dwc3/dwc3-msm.c[m
+[1m+++ b/drivers/usb/dwc3/dwc3-msm.c[m
+[36m@@ -259,6 +259,7 @@[m [mstruct dwc3_msm {[m
+ 	int			otg_fault_irq;[m
+ 	enum power_supply_usb_priority usb_priority;[m
+ 	bool			ss_compliance;[m
+[32m+[m	[32mstruct mutex		pm_lock;[m
+ };[m
+ [m
+ #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */[m
+[36m@@ -1990,10 +1991,14 @@[m [mstatic int dwc3_msm_suspend(struct dwc3_msm *mdwc)[m
+ 	bool can_suspend_ssphy;[m
+ 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);[m
+ [m
+[31m-	dbg_event(dwc->ctrl_num, 0xFF, "Ctl Sus", atomic_read(&dwc->in_lpm));[m
+[32m+[m
+[32m+[m	[32mdbg_event(dwc->ctrl_num, 0xFF, "Ctl Sus Strt", atomic_read(&dwc->in_lpm));[m
+[32m+[m	[32mmutex_lock(&mdwc->pm_lock);[m
+ [m
+ 	if (atomic_read(&dwc->in_lpm)) {[m
+ 		dev_dbg(mdwc->dev, "%s: Already suspended\n", __func__);[m
+[32m+[m		[32mdbg_event(dwc->ctrl_num, 0xFF, "Ctl Alr Sus", 0);[m
+[32m+[m		[32mmutex_unlock(&mdwc->pm_lock);[m
+ 		return 0;[m
+ 	}[m
+ [m
+[36m@@ -2008,6 +2013,7 @@[m [mstatic int dwc3_msm_suspend(struct dwc3_msm *mdwc)[m
+ 				dbg_print_reg(dwc->ctrl_num,[m
+ 						"PENDING DEVICE EVENT",[m
+ 						*(u32 *)(evt->buf + evt->lpos));[m
+[32m+[m				[32mmutex_unlock(&mdwc->pm_lock);[m
+ 				return -EBUSY;[m
+ 			}[m
+ 		}[m
+[36m@@ -2027,6 +2033,8 @@[m [mstatic int dwc3_msm_suspend(struct dwc3_msm *mdwc)[m
+ 		dev_dbg(mdwc->dev,[m
+ 			"%s: cable disconnected while not in idle otg state\n",[m
+ 			__func__);[m
+[32m+[m		[32mdbg_event(dwc->ctrl_num, 0xFF, "Sus Abrt 1", 0);[m
+[32m+[m		[32mmutex_unlock(&mdwc->pm_lock);[m
+ 		return -EBUSY;[m
+ 	}[m
+ [m
+[36m@@ -2040,12 +2048,17 @@[m [mstatic int dwc3_msm_suspend(struct dwc3_msm *mdwc)[m
+ 		pr_err("%s(): Trying to go in LPM with state:%d\n",[m
+ 					__func__, dwc->gadget.state);[m
+ 		pr_err("%s(): LPM is not performed.\n", __func__);[m
+[32m+[m		[32mdbg_event(dwc->ctrl_num, 0xFF, "Sus Abrt 2", 0);[m
+[32m+[m		[32mmutex_unlock(&mdwc->pm_lock);[m
+ 		return -EBUSY;[m
+ 	}[m
+ [m
+ 	ret = dwc3_msm_prepare_suspend(mdwc);[m
+[31m-	if (ret)[m
+[32m+[m	[32mif (ret) {[m
+[32m+[m		[32mdbg_event(dwc->ctrl_num, 0xFF, "Sus Abrt 3", 0);[m
+[32m+[m		[32mmutex_unlock(&mdwc->pm_lock);[m
+ 		return ret;[m
+[32m+[m	[32m}[m
+ [m
+ 	/* Initialize variables here */[m
+ 	can_suspend_ssphy = !(mdwc->in_host_mode &&[m
+[36m@@ -2144,6 +2157,8 @@[m [mstatic int dwc3_msm_suspend(struct dwc3_msm *mdwc)[m
+ 	}[m
+ [m
+ 	dev_info(mdwc->dev, "DWC3 in low power mode\n");[m
+[32m+[m	[32mdbg_event(dwc->ctrl_num, 0xFF, "Ctl Sus End", 0);[m
+[32m+[m	[32mmutex_unlock(&mdwc->pm_lock);[m
+ 	return 0;[m
+ }[m
+ [m
+[36m@@ -2153,9 +2168,13 @@[m [mstatic int dwc3_msm_resume(struct dwc3_msm *mdwc)[m
+ 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);[m
+ [m
+ 	dev_dbg(mdwc->dev, "%s: exiting lpm\n", __func__);[m
+[32m+[m	[32mdbg_event(dwc->ctrl_num, 0xFF, "Ctl Res Strt", 0);[m
+[32m+[m	[32mmutex_lock(&mdwc->pm_lock);[m
+ [m
+ 	if (!atomic_read(&dwc->in_lpm)) {[m
+ 		dev_dbg(mdwc->dev, "%s: Already resumed\n", __func__);[m
+[32m+[m		[32mdbg_event(dwc->ctrl_num, 0xFF, "Ctl Alr Res", 0);[m
+[32m+[m		[32mmutex_unlock(&mdwc->pm_lock);[m
+ 		return 0;[m
+ 	}[m
+ [m
+[36m@@ -2259,7 +2278,8 @@[m [mstatic int dwc3_msm_resume(struct dwc3_msm *mdwc)[m
+ 	 */[m
+ 	dwc3_pwr_event_handler(mdwc);[m
+ [m
+[31m-	dbg_event(dwc->ctrl_num, 0xFF, "Ctl Res", atomic_read(&dwc->in_lpm));[m
+[32m+[m	[32mdbg_event(dwc->ctrl_num, 0xFF, "Ctl Res End", atomic_read(&dwc->in_lpm));[m
+[32m+[m	[32mmutex_unlock(&mdwc->pm_lock);[m
+ [m
+ 	return 0;[m
+ }[m
+[36m@@ -3000,6 +3020,7 @@[m [mstatic int dwc3_msm_probe(struct platform_device *pdev)[m
+ 	platform_set_drvdata(pdev, mdwc);[m
+ 	mdwc->dev = &pdev->dev;[m
+ [m
+[32m+[m	[32mmutex_init(&mdwc->pm_lock);[m
+ 	INIT_LIST_HEAD(&mdwc->req_complete_list);[m
+ 	INIT_DELAYED_WORK(&mdwc->resume_work, dwc3_resume_work);[m
+ 	INIT_WORK(&mdwc->restart_usb_work, dwc3_restart_usb_work);[m
