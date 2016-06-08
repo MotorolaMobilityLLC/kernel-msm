@@ -259,6 +259,7 @@ struct dwc3_msm {
 	int			otg_fault_irq;
 	enum power_supply_usb_priority usb_priority;
 	bool			ss_compliance;
+	struct mutex		pm_lock;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -1986,10 +1987,14 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 	bool can_suspend_ssphy;
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 
-	dbg_event(dwc->ctrl_num, 0xFF, "Ctl Sus", atomic_read(&dwc->in_lpm));
+
+	dbg_event(dwc->ctrl_num, 0xFF, "Ctl Sus Strt", atomic_read(&dwc->in_lpm));
+	mutex_lock(&mdwc->pm_lock);
 
 	if (atomic_read(&dwc->in_lpm)) {
 		dev_dbg(mdwc->dev, "%s: Already suspended\n", __func__);
+		dbg_event(dwc->ctrl_num, 0xFF, "Ctl Alr Sus", 0);
+		mutex_unlock(&mdwc->pm_lock);
 		return 0;
 	}
 
@@ -2004,6 +2009,7 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 				dbg_print_reg(dwc->ctrl_num,
 						"PENDING DEVICE EVENT",
 						*(u32 *)(evt->buf + evt->lpos));
+				mutex_unlock(&mdwc->pm_lock);
 				return -EBUSY;
 			}
 		}
@@ -2023,6 +2029,8 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 		dev_dbg(mdwc->dev,
 			"%s: cable disconnected while not in idle otg state\n",
 			__func__);
+		dbg_event(dwc->ctrl_num, 0xFF, "Sus Abrt 1", 0);
+		mutex_unlock(&mdwc->pm_lock);
 		return -EBUSY;
 	}
 
@@ -2036,12 +2044,17 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 		pr_err("%s(): Trying to go in LPM with state:%d\n",
 					__func__, dwc->gadget.state);
 		pr_err("%s(): LPM is not performed.\n", __func__);
+		dbg_event(dwc->ctrl_num, 0xFF, "Sus Abrt 2", 0);
+		mutex_unlock(&mdwc->pm_lock);
 		return -EBUSY;
 	}
 
 	ret = dwc3_msm_prepare_suspend(mdwc);
-	if (ret)
+	if (ret) {
+		dbg_event(dwc->ctrl_num, 0xFF, "Sus Abrt 3", 0);
+		mutex_unlock(&mdwc->pm_lock);
 		return ret;
+	}
 
 	/* Initialize variables here */
 	can_suspend_ssphy = !(mdwc->in_host_mode &&
@@ -2148,6 +2161,8 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 	}
 
 	dev_info(mdwc->dev, "DWC3 in low power mode\n");
+	dbg_event(dwc->ctrl_num, 0xFF, "Ctl Sus End", 0);
+	mutex_unlock(&mdwc->pm_lock);
 	return 0;
 }
 
@@ -2157,9 +2172,13 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 
 	dev_dbg(mdwc->dev, "%s: exiting lpm\n", __func__);
+	dbg_event(dwc->ctrl_num, 0xFF, "Ctl Res Strt", 0);
+	mutex_lock(&mdwc->pm_lock);
 
 	if (!atomic_read(&dwc->in_lpm)) {
 		dev_dbg(mdwc->dev, "%s: Already resumed\n", __func__);
+		dbg_event(dwc->ctrl_num, 0xFF, "Ctl Alr Res", 0);
+		mutex_unlock(&mdwc->pm_lock);
 		return 0;
 	}
 
@@ -2267,7 +2286,8 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	 */
 	dwc3_pwr_event_handler(mdwc);
 
-	dbg_event(dwc->ctrl_num, 0xFF, "Ctl Res", atomic_read(&dwc->in_lpm));
+	dbg_event(dwc->ctrl_num, 0xFF, "Ctl Res End", atomic_read(&dwc->in_lpm));
+	mutex_unlock(&mdwc->pm_lock);
 
 	return 0;
 }
@@ -3008,6 +3028,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, mdwc);
 	mdwc->dev = &pdev->dev;
 
+	mutex_init(&mdwc->pm_lock);
 	INIT_LIST_HEAD(&mdwc->req_complete_list);
 	INIT_DELAYED_WORK(&mdwc->resume_work, dwc3_resume_work);
 	INIT_WORK(&mdwc->restart_usb_work, dwc3_restart_usb_work);
