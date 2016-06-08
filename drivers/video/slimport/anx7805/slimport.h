@@ -15,7 +15,7 @@
 #ifndef _SLIMPORT_H
 #define _SLIMPORT_H
 
-#define SW_VERSION 1.12
+#define SW_VERSION 1.14
 struct anx7805_platform_data
 {
 	int gpio_p_dwn;

@@ -710,8 +710,11 @@ static irqreturn_t anx7805_cbl_det_isr(int irq, void *data)
 		if (status == 0)
 			flush_workqueue(anx7805->workqueue);
 		//when HPD low, power down ANX7805
-		SP_CTRL_Set_System_State(SP_TX_WAIT_SLIMPORT_PLUGIN);
-		system_power_ctrl(0);
+		if(sp_tx_pd_mode==0)
+		{
+			SP_CTRL_Set_System_State(SP_TX_WAIT_SLIMPORT_PLUGIN);
+			system_power_ctrl(0);
+		}
 		
 		wake_unlock(&anx7805->slimport_lock);
 		wake_lock_timeout(&anx7805->slimport_lock, 2*HZ);
