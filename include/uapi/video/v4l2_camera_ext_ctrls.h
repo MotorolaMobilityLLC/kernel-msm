@@ -799,4 +799,12 @@ enum {
 					| CAM_EXT_HW_KEY_CAMERA_EVT
 };
 
+/* interger, to group controls */
+#define CAM_EXT_CID_GROUP_IND (CID_CAM_EXT_CLASS_BASE + 119)
+enum {
+	CAM_EXT_CID_GROUP_IND_BEGIN,
+	CAM_EXT_CID_GROUP_IND_END,
+
+	CAM_EXT_CID_GROUP_IND_MAX = CAM_EXT_CID_GROUP_IND_END,
+};
 #endif /* __CAMERA_EXT_CTRLS_H */
