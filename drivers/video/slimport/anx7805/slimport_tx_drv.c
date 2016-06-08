@@ -5786,8 +5786,13 @@ void sp_tx_sink_colorspace(void)
                         sp_read_reg(SP_TX_PORT2_ADDR, SP_TX_VID_CTRL2_REG, &c1);
                         I2C_Master_Read_Reg(0x09,0x09, &c);
                         //debug_printf("c=%.2x,c1=%.2x\n", (unsigned int)c, (unsigned int)c1);
-                        c=(c&0x8f)|(c1&0x70);
-                        I2C_Master_Write_Reg(0x09,0x09, c);
+			if ((c & 0x70) != (c1 & 0x70)) {
+				pr_info("%s: Reprogramming bits per channel (%d -> %d)\n",
+					__func__, ((c & 0x70) >> 3) + 6,
+					((c1 & 0x70) >> 3) + 6);
+					c = (c & 0x8f) | (c1 & 0x70);
+				I2C_Master_Write_Reg(0x09, 0x09, c);
+			}
                 }
         }
 }
