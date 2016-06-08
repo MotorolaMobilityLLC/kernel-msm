@@ -1928,6 +1928,24 @@ void slimport_link_training(void)
 
 /******************End Link training process********************/
 /******************Start Output video process********************/
+void sp_tx_set_colordepth(void)
+{
+	unsigned char color_depth;
+	unsigned char tmp, tmp2;
+	unsigned char data_buf[4];
+
+	if (is_anx_dongle()) {
+		sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x03, 0x04, data_buf);
+		if ((data_buf[0] == 0x37) && (data_buf[1] == 0x37)
+		    && (data_buf[2] == 0x35) && (data_buf[3] == 0x31)) {
+			sp_read_reg(TX_P2, SP_TX_VID_CTRL2_REG, &color_depth);
+			i2c_master_read_reg(0x09, 0x09, &tmp2);
+			tmp = (tmp2 & 0x8f) | (color_depth & 0x70);
+			i2c_master_write_reg(0x09, 0x09, tmp);
+		}
+	}
+}
+
 void sp_tx_set_colorspace(void)
 {
 	unchar color_space;
@@ -2866,6 +2884,7 @@ void slimport_state_process(void)
 	case STATE_HDCP_AUTH:
 		if (!HDCP_REPEATER_MODE) {
 			slimport_hdcp_process();
+			sp_tx_set_colordepth();
 			SP_BREAK(STATE_HDCP_AUTH, sp_tx_system_state);
 		} else
 			goto_next_system_state();
@@ -3608,6 +3627,8 @@ static void hdmi_rx_new_avi_int(void)
 	sp_tx_set_colorspace();
 	sp_tx_avi_setup();
 	sp_tx_config_packets(AVI_PACKETS);
+	mdelay(50);
+	sp_tx_set_colordepth();
 }
 
 static void hdmi_rx_new_vsi_int(void)
