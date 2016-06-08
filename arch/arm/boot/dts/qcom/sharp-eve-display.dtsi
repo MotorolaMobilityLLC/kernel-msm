@@ -67,6 +67,10 @@
 	/delete-property/ qcom,dsi-panel-bias-vreg;
 	/delete-property/ qcom,platform-bklight-en-gpio;
 
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+
 	sharp,panel-vddio-supply-gpio = <&msm_gpio 66 0>;
 	sharp,panel-analog-power;
 
