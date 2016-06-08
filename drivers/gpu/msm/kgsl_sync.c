@@ -402,12 +402,13 @@ long kgsl_ioctl_syncsource_create(struct kgsl_device_private *dev_priv,
 		goto out;
 	}
 
+	kref_init(&syncsource->refcount);
+	syncsource->private = private;
+
 	mutex_lock(&private->process_private_mutex);
 	id = idr_alloc(&private->syncsource_idr, syncsource, 1, 0, GFP_KERNEL);
 	if (id > 0) {
-		kref_init(&syncsource->refcount);
 		syncsource->id = id;
-		syncsource->private = private;
 
 		param->id = id;
 		ret = 0;
@@ -415,6 +416,8 @@ long kgsl_ioctl_syncsource_create(struct kgsl_device_private *dev_priv,
 		ret = id;
 	}
 	mutex_unlock(&private->process_private_mutex);
+	idr_preload_end();
+
 out:
 	if (ret) {
 		if (syncsource && syncsource->oneshot)
@@ -472,24 +475,23 @@ long kgsl_ioctl_syncsource_destroy(struct kgsl_device_private *dev_priv,
 {
 	struct kgsl_syncsource_destroy *param = data;
 	struct kgsl_syncsource *syncsource = NULL;
-	struct kgsl_process_private *private;
 
-	syncsource = kgsl_syncsource_get(dev_priv->process_priv,
-				     param->id);
+	struct kgsl_process_private *private = dev_priv->process_priv;
+
+	mutex_lock(&private->process_private_mutex);
+	syncsource = idr_find(&private->syncsource_idr, param->id);
+
+	if (syncsource) {
+		idr_remove(&private->syncsource_idr, param->id);
+		syncsource->id = 0;
+	}
+
+	mutex_unlock(&private->process_private_mutex);
 
 	if (syncsource == NULL)
 		return -EINVAL;
 
-	private = syncsource->private;
-
-	mutex_lock(&private->process_private_mutex);
-	idr_remove(&private->syncsource_idr, param->id);
-	syncsource->id = 0;
-	mutex_unlock(&private->process_private_mutex);
-
 	/* put reference from syncsource creation */
-	kgsl_syncsource_put(syncsource);
-	/* put reference from getting the syncsource above */
 	kgsl_syncsource_put(syncsource);
 	return 0;
 }
