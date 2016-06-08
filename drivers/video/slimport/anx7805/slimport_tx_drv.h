@@ -62,6 +62,16 @@ typedef unsigned int uint;
 #define SP_TX_PORT2_ADDR 0x72
 #define MIPI_RX_PORT1_ADDR 0x7A
 
+#ifndef Standard_DP
+#define SOURCE_AUX_OK   1
+#define SOURCE_AUX_ERR  0
+#define SOURCE_REG_OK   1
+#define SOURCE_REG_ERR  0
+
+#define SINK_DEV_SEL  0x005f0
+#define SINK_ACC_OFS  0x005f1
+#define SINK_ACC_REG  0x005f2
+#endif
 
 struct Bist_Video_Format {
 	char number;
@@ -462,7 +472,13 @@ void system_power_ctrl(BYTE ON);
 void slimport_config_video_output(void);
 void SP_CTRL_AUDIO_FORMAT_Set(AudioType cAudio_Type,AudioFs cAudio_Fs,AudioWdLen cAudio_Word_Len);
 void SP_CTRL_I2S_CONFIG_Set(I2SChNum cCh_Num, I2SLayOut cI2S_Layout);
-
+#ifndef Standard_DP
+bool Source_AUX_Read_ANXDPCD(long addr, BYTE cCount,unchar *pBuf);
+bool Source_AUX_Write_ANXDPCD(long addr, BYTE cCount,unchar *pBuf);
+bool I2C_Master_Read_Reg(unchar Sink_device_sel, unchar offset, unchar *Buf);
+bool I2C_Master_Write_Reg(unchar Sink_device_sel, unchar offset, unchar value);
+void sp_tx_sink_colorspace(void);
+#endif
 #define	EmbededSync     1
 #define	SeparateSync     0
 #define	NoDE     1
