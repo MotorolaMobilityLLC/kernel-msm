@@ -240,6 +240,8 @@ struct mmc_async_req {
  * such slot-function drivers.
  */
 struct mmc_slot {
+	bool cd_wakeup;
+	int cd_status;
 	int cd_irq;
 	void *handler_priv;
 };
