@@ -40,6 +40,9 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 	pr_debug("%s: cd gpio irq, gpio state %d (CARD_%s)\n",
 		mmc_hostname(host), present, present?"INSERT":"REMOVAL");
 
+	host->slot.cd_status = mmc_gpio_get_cd(host);
+	pr_info("%s: mmc cd gpio status: %d\n", __func__, host->slot.cd_status);
+
 	host->trigger_card_event = true;
 	mmc_detect_change(host, msecs_to_jiffies(200));
 
