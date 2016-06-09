@@ -1671,6 +1671,9 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 	if (gpio_is_valid(pdata->status_gpio) & !(flags & OF_GPIO_ACTIVE_LOW))
 		pdata->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
 
+	if (of_get_property(np, "qcom,cd-wakeup", NULL))
+		msm_host->mmc->slot.cd_wakeup = true;
+
 	of_property_read_u32(np, "qcom,bus-width", &bus_width);
 	if (bus_width == 8)
 		pdata->mmc_bus_width = MMC_CAP_8_BIT_DATA;
@@ -4736,9 +4739,11 @@ static int sdhci_msm_suspend(struct device *dev)
 	ktime_t start = ktime_get();
 
 	if (gpio_is_valid(msm_host->pdata->status_gpio) &&
-		(msm_host->mmc->slot.cd_irq >= 0))
-			disable_irq(msm_host->mmc->slot.cd_irq);
-
+			(msm_host->mmc->slot.cd_irq >= 0)) {
+		disable_irq(msm_host->mmc->slot.cd_irq);
+		if (msm_host->mmc->slot.cd_wakeup)
+			enable_irq_wake(msm_host->mmc->slot.cd_irq);
+	}
 	if (pm_runtime_suspended(dev)) {
 		pr_debug("%s: %s: already runtime suspended\n",
 		mmc_hostname(host->mmc), __func__);
@@ -4768,8 +4773,11 @@ static int sdhci_msm_resume(struct device *dev)
 	ktime_t start = ktime_get();
 
 	if (gpio_is_valid(msm_host->pdata->status_gpio) &&
-		(msm_host->mmc->slot.cd_irq >= 0))
-			enable_irq(msm_host->mmc->slot.cd_irq);
+			(msm_host->mmc->slot.cd_irq >= 0)) {
+		enable_irq(msm_host->mmc->slot.cd_irq);
+		if (msm_host->mmc->slot.cd_wakeup)
+			disable_irq_wake(msm_host->mmc->slot.cd_irq);
+	}
 
 	if (pm_runtime_suspended(dev)) {
 		pr_debug("%s: %s: runtime suspended, defer system resume\n",
