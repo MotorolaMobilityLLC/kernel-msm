@@ -275,7 +275,8 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 
 		if ((brightness_table_loaded == 0)
-				&& (bytes[1] & (M_DISP_BRIGHTNESS >> 8))) {
+				&& (bytes[1] & (M_DISP_BRIGHTNESS >> 8))
+				&& (ps_motosh->mode > BOOTMODE)) {
 			err = motosh_load_brightness_table(ps_motosh,
 					cmdbuff);
 			if (err) {
