@@ -32,6 +32,9 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 	/* Schedule a card detection after a debounce timeout */
 	struct mmc_host *host = dev_id;
 
+	host->slot.cd_status = mmc_gpio_get_cd(host);
+	pr_info("%s: mmc cd gpio status: %d\n", __func__, host->slot.cd_status);
+
 	host->trigger_card_event = true;
 	mmc_detect_change(host, msecs_to_jiffies(200));
 
