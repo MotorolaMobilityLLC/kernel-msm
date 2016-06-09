@@ -2966,7 +2966,7 @@ tANI_U32 dot11fUnpackIeCountry(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen
     else
     {
         pDst->num_triplets = (tANI_U8)( ielen / 3 );
-        if (ielen / 3 > 84){
+        if (ielen > 84 * 3){
                 pDst->present = 0;
                 return DOT11F_SKIPPED_BAD_IE;
         }
@@ -4630,7 +4630,7 @@ tANI_U32 dot11fUnpackIeSuppChannels(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 
     if (pDst->present) status = DOT11F_DUPLICATE_IE;
     pDst->present = 1;
     pDst->num_bands = (tANI_U8)( ielen / 2 );
-    if (ielen / 2 > 48){
+    if (ielen > 48 * 2){
         pDst->present = 0;
         return DOT11F_SKIPPED_BAD_IE;
     }
