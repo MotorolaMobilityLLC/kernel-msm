@@ -366,7 +366,7 @@ long msm_isp_ioctl(struct v4l2_subdev *sd,
 		break;
 	case VIDIOC_MSM_ISP_SET_SRC_STATE:
 		mutex_lock(&vfe_dev->core_mutex);
-		msm_isp_set_src_state(vfe_dev, arg);
+		rc = msm_isp_set_src_state(vfe_dev, arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
 	case VIDIOC_MSM_ISP_REQUEST_STATS_STREAM:
@@ -642,6 +642,11 @@ int msm_isp_proc_cmd(struct vfe_device *vfe_dev, void *arg)
 	struct msm_vfe_reg_cfg_cmd *reg_cfg_cmd;
 	uint32_t *cfg_data;
 
+	if (!proc_cmd->num_cfg) {
+		pr_err("%s: Passed num_cfg as 0\n", __func__);
+		return -EINVAL;
+	}
+
 	if (proc_cmd->num_cfg > ISP_REG_CFG_NUM_CFG_MAX) {
 		pr_err("%s: Unsupported number of commands %d!\n",
 				__func__, proc_cmd->num_cfg);
@@ -826,6 +831,8 @@ void msm_isp_update_error_frame_count(struct vfe_device *vfe_dev)
 void msm_isp_process_error_info(struct vfe_device *vfe_dev)
 {
 	int i;
+	uint8_t num_stats_type =
+		vfe_dev->hw_info->stats_hw_info->num_stats_type;
 	struct msm_vfe_error_info *error_info = &vfe_dev->error_info;
 	static DEFINE_RATELIMIT_STATE(rs,
 		DEFAULT_RATELIMIT_INTERVAL, DEFAULT_RATELIMIT_BURST);
@@ -849,7 +856,7 @@ void msm_isp_process_error_info(struct vfe_device *vfe_dev)
 				error_info->stream_framedrop_count[i] = 0;
 			}
 		}
-		for (i = 0; i < MSM_ISP_STATS_MAX; i++) {
+		for (i = 0; i < num_stats_type; i++) {
 			if (error_info->stats_framedrop_count[i] != 0 &&
 				__ratelimit(&rs_stats)) {
 				pr_err("%s: Stats stream[%d]: dropped %d frames\n",
@@ -960,11 +967,14 @@ void msm_isp_do_tasklet(unsigned long data)
 	}
 }
 
-void msm_isp_set_src_state(struct vfe_device *vfe_dev, void *arg)
+int msm_isp_set_src_state(struct vfe_device *vfe_dev, void *arg)
 {
 	struct msm_vfe_axi_src_state *src_state = arg;
+	if (src_state->input_src >= VFE_SRC_MAX)
+		return -EINVAL;
 	vfe_dev->axi_data.src_info[src_state->input_src].active =
 	src_state->src_active;
+	return 0;
 }
 
 int msm_isp_config_done(struct vfe_device *vfe_dev, void *arg)

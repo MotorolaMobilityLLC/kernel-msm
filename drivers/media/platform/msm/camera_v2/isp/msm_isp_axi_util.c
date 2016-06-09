@@ -329,6 +329,10 @@ int msm_isp_axi_check_stream_state(
 	enum msm_vfe_axi_state valid_state =
 		(stream_cfg_cmd->cmd == START_STREAM) ? INACTIVE : ACTIVE;
 
+	if (stream_cfg_cmd->num_streams > MAX_NUM_STREAM) {
+		return -EINVAL;
+	}
+
 	for (i = 0; i < stream_cfg_cmd->num_streams; i++) {
 		if (HANDLE_TO_IDX(stream_cfg_cmd->stream_handle[i]) >=
 			MAX_NUM_STREAM) {
@@ -880,6 +884,11 @@ static void msm_isp_update_camif_output_count(
 	int i;
 	struct msm_vfe_axi_stream *stream_info;
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
+
+	if (stream_cfg_cmd->num_streams > MAX_NUM_STREAM) {
+		return;
+	}
+
 	for (i = 0; i < stream_cfg_cmd->num_streams; i++) {
 		if (HANDLE_TO_IDX(stream_cfg_cmd->stream_handle[i]) >=
 			MAX_NUM_STREAM) {
@@ -1064,6 +1073,11 @@ static int msm_isp_start_axi_stream(struct vfe_device *vfe_dev,
 	uint32_t wm_reload_mask = 0x0;
 	struct msm_vfe_axi_stream *stream_info;
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
+
+	if (stream_cfg_cmd->num_streams > MAX_NUM_STREAM) {
+		return -EINVAL;
+	}
+
 	for (i = 0; i < stream_cfg_cmd->num_streams; i++) {
 		if (HANDLE_TO_IDX(stream_cfg_cmd->stream_handle[i]) >=
 			MAX_NUM_STREAM) {
@@ -1120,6 +1134,11 @@ static int msm_isp_stop_axi_stream(struct vfe_device *vfe_dev,
 	uint8_t wait_for_complete = 0;
 	struct msm_vfe_axi_stream *stream_info;
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
+
+	if (stream_cfg_cmd->num_streams > MAX_NUM_STREAM) {
+		return -EINVAL;
+	}
+
 	for (i = 0; i < stream_cfg_cmd->num_streams; i++) {
 		if (HANDLE_TO_IDX(stream_cfg_cmd->stream_handle[i]) >=
 			MAX_NUM_STREAM) {
@@ -1205,6 +1224,12 @@ int msm_isp_update_axi_stream(struct vfe_device *vfe_dev, void *arg)
 	struct msm_vfe_axi_stream *stream_info;
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
 	struct msm_vfe_axi_stream_update_cmd *update_cmd = arg;
+
+	if (HANDLE_TO_IDX(update_cmd->stream_handle) >=
+		MAX_NUM_STREAM) {
+		return -EINVAL;
+	}
+
 	stream_info = &axi_data->stream_info[
 			HANDLE_TO_IDX(update_cmd->stream_handle)];
 	if (stream_info->state != ACTIVE && stream_info->state != INACTIVE) {

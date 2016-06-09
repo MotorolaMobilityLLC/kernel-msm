@@ -95,7 +95,11 @@ void extract_dci_pkt_rsp(struct diag_smd_info *smd_info, unsigned char *buf)
 	if (recv_pkt_cmd_code != DCI_PKT_RSP_CODE)
 		cmd_code_len = 4; /* delayed response */
 	write_len = (int)(*(uint16_t *)(buf+2)) - cmd_code_len;
-
+	if (write_len <= 0) {
+		pr_err("diag: Invalid length in %s, write_len: %d",
+					__func__, write_len);
+		return;
+	}
 	pr_debug("diag: len = %d\n", write_len);
 	/* look up DCI client with tag */
 	for (i = 0; i < dci_max_reg; i++) {
@@ -243,17 +247,23 @@ void extract_dci_events(unsigned char *buf)
 
 void extract_dci_log(unsigned char *buf)
 {
-	uint16_t log_code, item_num;
+	uint16_t log_code, item_num, log_length;
 	uint8_t equip_id, *log_mask_ptr, byte_mask;
 	unsigned int i, byte_index, byte_offset = 0;
 	struct diag_dci_client_tbl *entry;
 
+	log_length = *(uint16_t *)(buf + 2);
 	log_code = *(uint16_t *)(buf + 6);
 	equip_id = LOG_GET_EQUIP_ID(log_code);
 	item_num = LOG_GET_ITEM_NUM(log_code);
 	byte_index = item_num/8 + 2;
 	byte_mask = 0x01 << (item_num % 8);
 
+	if (log_length > USHRT_MAX - 4) {
+		pr_err("diag: Integer overflow in %s, log_len:%d",
+				__func__, log_length);
+		return;
+	}
 	byte_offset = (equip_id * 514) + byte_index;
 	if (byte_offset >=  DCI_LOG_MASK_SIZE) {
 		pr_err("diag: Invalid byte_offset %d in dci log\n",
@@ -287,8 +297,8 @@ void extract_dci_log(unsigned char *buf)
 				*(int *)(entry->dci_data+entry->data_len) =
 								DCI_LOG_TYPE;
 				memcpy(entry->dci_data + entry->data_len + 4,
-					    buf + 4, *(uint16_t *)(buf + 2));
-				entry->data_len += 4 + *(uint16_t *)(buf + 2);
+					    buf + 4, log_length);
+				entry->data_len += 4 + log_length;
 			}
 			mutex_unlock(&dci_health_mutex);
 		}
@@ -707,6 +717,22 @@ int diag_process_dci_transaction(unsigned char *buf, int len)
 		ret = diag_send_dci_event_mask(driver->smd_cntl[MODEM_DATA].ch);
 	} else {
 		pr_alert("diag: Incorrect DCI transaction\n");
+	}
+	return ret;
+}
+
+int diag_dci_find_client_index_health(int client_id)
+{
+	int i, ret = DCI_CLIENT_INDEX_INVALID;
+
+	for (i = 0; i < MAX_DCI_CLIENTS; i++) {
+		if (driver->dci_client_tbl[i].client != NULL) {
+			if (driver->dci_client_tbl[i].client_id ==
+					client_id) {
+				ret = i;
+				break;
+			}
+		}
 	}
 	return ret;
 }
