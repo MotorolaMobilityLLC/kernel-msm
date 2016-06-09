@@ -128,7 +128,7 @@
 			pinctrl-names = "laser_default", "laser_suspend";
 			pinctrl-0 = <&laser_active >;
 			pinctrl-1 = <&laser_suspend >;
-			st,sensorthreshold = <40 50>;
+			st,sensorthreshold = <60 65>;
 			st,xtalkval = <19>;
 		};
 
