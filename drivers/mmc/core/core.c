@@ -4324,6 +4324,18 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 			break;
 		}
 		spin_unlock_irqrestore(&host->lock, flags);
+		if (!(host->caps & MMC_CAP_NEEDS_POLL) &&
+		    host->slot.cd_irq >= 0 && host->slot.cd_wakeup) {
+			int status = mmc_gpio_get_cd(host);
+
+			if (status >= 0) {
+				if (host->slot.cd_status == status)
+					break;
+				host->slot.cd_status = status;
+			}
+		}
+		if ((host->caps & MMC_CAP_NONREMOVABLE) && host->rescan_entered)
+			break;
 		_mmc_detect_change(host, 0, false);
 
 	}
