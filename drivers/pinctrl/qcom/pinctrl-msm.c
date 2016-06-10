@@ -75,6 +75,23 @@ struct msm_pinctrl {
 
 static struct msm_pinctrl *msm_pinctrl_data;
 
+static inline u32 paranoid_readl(const void __iomem *addr)
+{
+	u32 val = readl_relaxed(addr);
+#ifdef CONFIG_PINCTRL_PARANOID
+	u32 val2 = readl_relaxed(addr);
+
+	while (val != val2) {
+		pr_err("pinctrl: %p read as %X and %X\n", addr, val, val2);
+		val = val2;
+		val2 = readl_relaxed(addr);
+		pr_err("pinctrl: %p reread as %x\n", addr, val2);
+	}
+#endif
+	rmb();
+	return val;
+}
+
 static inline struct msm_pinctrl *to_msm_pinctrl(struct gpio_chip *gc)
 {
 	return container_of(gc, struct msm_pinctrl, chip);
@@ -164,7 +181,7 @@ static int msm_pinmux_set_mux(struct pinctrl_dev *pctldev,
 
 	spin_lock_irqsave(&pctrl->lock, flags);
 
-	val = readl(pctrl->regs + g->ctl_reg);
+	val = paranoid_readl(pctrl->regs + g->ctl_reg);
 	val &= ~(0x7 << g->mux_bit);
 	val |= i << g->mux_bit;
 	writel(val, pctrl->regs + g->ctl_reg);
@@ -256,7 +273,7 @@ static int msm_config_group_get(struct pinctrl_dev *pctldev,
 	if (ret < 0)
 		return ret;
 
-	val = readl(pctrl->regs + g->ctl_reg);
+	val = paranoid_readl(pctrl->regs + g->ctl_reg);
 	arg = (val >> bit) & mask;
 
 	/* Convert register value to pinconf value */
@@ -379,7 +396,7 @@ static int msm_config_group_set(struct pinctrl_dev *pctldev,
 		}
 
 		spin_lock_irqsave(&pctrl->lock, flags);
-		val = readl(pctrl->regs + g->ctl_reg);
+		val = paranoid_readl(pctrl->regs + g->ctl_reg);
 		val &= ~(mask << bit);
 		val |= arg << bit;
 		writel(val, pctrl->regs + g->ctl_reg);
@@ -414,7 +431,7 @@ static int msm_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
 
 	spin_lock_irqsave(&pctrl->lock, flags);
 
-	val = readl(pctrl->regs + g->ctl_reg);
+	val = paranoid_readl(pctrl->regs + g->ctl_reg);
 	val &= ~BIT(g->oe_bit);
 	writel(val, pctrl->regs + g->ctl_reg);
 
@@ -441,7 +458,7 @@ static int msm_gpio_direction_output(struct gpio_chip *chip, unsigned offset, in
 		val &= ~BIT(g->out_bit);
 	writel(val, pctrl->regs + g->io_reg);
 
-	val = readl(pctrl->regs + g->ctl_reg);
+	val = paranoid_readl(pctrl->regs + g->ctl_reg);
 	val |= BIT(g->oe_bit);
 	writel(val, pctrl->regs + g->ctl_reg);
 
@@ -525,7 +542,7 @@ static void msm_gpio_dbg_show_one(struct seq_file *s,
 	}
 
 	g = &pctrl->soc->groups[offset];
-	ctl_reg = readl(pctrl->regs + g->ctl_reg);
+	ctl_reg = paranoid_readl(pctrl->regs + g->ctl_reg);
 
 	is_out = !!(ctl_reg & BIT(g->oe_bit));
 	func = (ctl_reg >> g->mux_bit) & 7;
@@ -593,7 +610,7 @@ static void msm_gpio_update_dual_edge_pos(struct msm_pinctrl *pctrl,
 	do {
 		val = readl(pctrl->regs + g->io_reg) & BIT(g->in_bit);
 
-		pol = readl(pctrl->regs + g->intr_cfg_reg);
+		pol = paranoid_readl(pctrl->regs + g->intr_cfg_reg);
 		pol ^= BIT(g->intr_polarity_bit);
 		writel(pol, pctrl->regs + g->intr_cfg_reg);
 
@@ -618,7 +635,7 @@ static void msm_gpio_irq_mask(struct irq_data *d)
 
 	spin_lock_irqsave(&pctrl->lock, flags);
 
-	val = readl(pctrl->regs + g->intr_cfg_reg);
+	val = paranoid_readl(pctrl->regs + g->intr_cfg_reg);
 	val &= ~BIT(g->intr_enable_bit);
 	writel(val, pctrl->regs + g->intr_cfg_reg);
 
@@ -645,7 +662,7 @@ static void msm_gpio_irq_unmask(struct irq_data *d)
 	val &= ~BIT(g->intr_status_bit);
 	writel(val, pctrl->regs + g->intr_status_reg);
 
-	val = readl(pctrl->regs + g->intr_cfg_reg);
+	val = paranoid_readl(pctrl->regs + g->intr_cfg_reg);
 	val |= BIT(g->intr_enable_bit);
 	writel(val, pctrl->regs + g->intr_cfg_reg);
 
@@ -702,7 +719,7 @@ static int msm_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 		clear_bit(d->hwirq, pctrl->dual_edge_irqs);
 
 	/* Route interrupts to application cpu */
-	val = readl(pctrl->regs + g->intr_target_reg);
+	val = paranoid_readl(pctrl->regs + g->intr_target_reg);
 	val &= ~(7 << g->intr_target_bit);
 	val |= g->intr_target_kpss_val << g->intr_target_bit;
 	writel(val, pctrl->regs + g->intr_target_reg);
@@ -712,7 +729,7 @@ static int msm_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	 * internal circuitry of TLMM, toggling the RAW_STATUS
 	 * could cause the INTR_STATUS to be set for EDGE interrupts.
 	 */
-	val = readl(pctrl->regs + g->intr_cfg_reg);
+	val = paranoid_readl(pctrl->regs + g->intr_cfg_reg);
 	val |= BIT(g->intr_raw_status_bit);
 	if (g->intr_detection_width == 2) {
 		val &= ~(3 << g->intr_detection_bit);
