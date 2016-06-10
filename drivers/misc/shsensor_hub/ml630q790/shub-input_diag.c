@@ -31,6 +31,7 @@
 #include <linux/gpio.h>
 #include <linux/irq.h>
 #include <asm/uaccess.h> 
+#include <soc/qcom/sh_smem.h>
 
 #include "shub_io.h"
 #include "ml630q790.h"
@@ -164,6 +165,8 @@ module_param(shub_diag_log, int, 0600);
 #define LIS2DH_OUT_Z_L                  (0x2C)
 #define LIS2DH_OUT_Z_H                  (0x2D)
 #endif
+
+#define SHUB_ACC_SHIFT_VAL     2
 
 struct yas_cal {
     int8_t a2, a3, a4, a6, a7, a8;
@@ -2241,24 +2244,28 @@ static long shub_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             break;
         case SHUB_DIAG_ACC_SET_CAL:
             {
+                unsigned char flg = 0;
+                static sharp_smem_common_type *sh_smem_common;
                 struct IoctlDiagAccCalibration res;
+                memset(&res, 0, sizeof(struct IoctlDiagAccCalibration));
                 
-                ret = copy_from_user(&res,argp,sizeof(struct IoctlDiagAccCalibration));
-                if (ret) {
-                    printk("error : copy_from_user(cmd = SHUB_DIAG_ACC_SET_CAL)ret=%d\n", ret);
-                    return -EFAULT;
+                sh_smem_common = sh_smem_get_common_address();
+                if (sh_smem_common != NULL ) {
+                    res.AccCal[0] = sh_smem_common->sh_shub_offset_acc_xyz[0];
+                    res.AccCal[1] = sh_smem_common->sh_shub_offset_acc_xyz[1];
+                    res.AccCal[2] = sh_smem_common->sh_shub_offset_acc_xyz[2];
+                    flg = sh_smem_common->sh_shub_offset_acc_flg;
                 }
-                
-                DBG_DIAG_IO("ioctl(cmd = Acc_set_call) : x=%d, y=%d, z=%d\n", res.AccCal[0], res.AccCal[1], res.AccCal[2]);
-                ret = shub_set_acc_offset(&res.AccCal[0]);
-                if (ret) {
-                    printk("error : shub_set_acc_offset(cmd = SHUB_DIAG_ACC_SET_CAL)ret=%d\n", ret);
-                    return -EFAULT;
-                }
-                ret = copy_to_user(argp, &res, sizeof(struct IoctlDiagAccCalibration));
-                if (ret) {
-                    printk("error : copy_to_user(cmd = SHUB_DIAG_ACC_SET_CAL)ret=%d\n", ret);
-                    return -EFAULT;
+                DBG_DIAG_IO("ioctl(cmd = Acc_set_call) : x=%d, y=%d, z=%d, flg=%d\n", res.AccCal[0], res.AccCal[1], res.AccCal[2], flg);
+                if( flg == 1 ) {
+                    res.AccCal[0] >>= SHUB_ACC_SHIFT_VAL;
+                    res.AccCal[1] >>= SHUB_ACC_SHIFT_VAL;
+                    res.AccCal[2] >>= SHUB_ACC_SHIFT_VAL;
+                    ret = shub_set_acc_offset(&res.AccCal[0]);
+                    if (ret) {
+                        printk("error : shub_set_acc_offset(cmd = SHUB_DIAG_ACC_SET_CAL)ret=%d\n", ret);
+                        return -EFAULT;
+                    }
                 }
             }
             break;
