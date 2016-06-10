@@ -2813,6 +2813,7 @@ struct mass_storage_function_config {
 	struct usb_function *f_ms;
 	struct usb_function_instance *f_ms_inst;
 	char inquiry_string[INQUIRY_MAX_LEN];
+	bool cdrom;
 };
 
 #ifdef CONFIG_USB_GADGET_DEBUG_FILES
@@ -2845,8 +2846,6 @@ static int mass_storage_function_init(struct android_usb_function *f,
 	}
 
 	fsg_mod_data.removable[0] = true;
-	fsg_mod_data.cdrom[0] = true;
-	fsg_mod_data.ro[0] = true;
 	fsg_config_from_params(&m_config, &fsg_mod_data, fsg_num_buffers);
 	fsg_opts = fsg_opts_from_func_inst(config->f_ms_inst);
 	ret = fsg_common_set_num_buffers(fsg_opts->common, fsg_num_buffers);
@@ -2937,6 +2936,8 @@ static int mass_storage_function_bind_config(struct android_usb_function *f,
 
 	fsg_opts = fsg_opts_from_func_inst(config->f_ms_inst);
 	fsg_opts->no_configfs = true;
+	fsg_opts->lun0.lun->cdrom = config->cdrom;
+	fsg_opts->lun0.lun->ro = config->cdrom;
 
 	return 0;
 
@@ -2982,8 +2983,26 @@ static DEVICE_ATTR(inquiry_string, S_IRUGO | S_IWUSR,
 					mass_storage_inquiry_show,
 					mass_storage_inquiry_store);
 
+static ssize_t mass_storage_cdrom_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct mass_storage_function_config *config = f->config;
+	unsigned long value;
+
+	if (kstrtoul(buf, 0, &value))
+		return -EINVAL;
+
+	config->cdrom = !!value;
+	pr_info("android_usb: cdrom_enable =  %d\n", config->cdrom);
+	return size;
+}
+
+static DEVICE_ATTR(cdrom, S_IWUSR, NULL, mass_storage_cdrom_store);
+
 static struct device_attribute *mass_storage_function_attributes[] = {
 	&dev_attr_inquiry_string,
+	&dev_attr_cdrom,
 	NULL
 };
 
