@@ -791,9 +791,9 @@ dont_tag:
 		HTC_dump_counter_info(wmi_handle->htc_handle);
 		//dump_CE_register(scn);
 		//dump_CE_debug_register(scn->hif_sc);
+		pr_err("%s: WMI Pending cmds: %d reached MAX: %d\n",
+			__func__, adf_os_atomic_read(&wmi_handle->pending_cmds), WMI_MAX_CMDS);
 		adf_os_atomic_dec(&wmi_handle->pending_cmds);
-		pr_err("%s: MAX %d WMI Pending cmds reached.\n",
-			__func__, WMI_MAX_CMDS);
 		VOS_BUG(0);
 		return -EBUSY;
 	}

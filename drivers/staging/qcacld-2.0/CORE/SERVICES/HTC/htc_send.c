@@ -644,11 +644,9 @@ static A_STATUS HTCIssuePackets(HTC_TARGET       *target,
 	target->CE_send_cnt++;
 
         if (adf_os_unlikely(A_FAILED(status))) {
-            if (status != A_NO_RESOURCE) {
                 /* TODO : if more than 1 endpoint maps to the same PipeID it is possible
                  * to run out of resources in the HIF layer. Don't emit the error */
                 AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("HIFSend Failed status:%d \n",status));
-            }
             LOCK_HTC_TX(target);
 	    target->CE_send_cnt--;
             pEndpoint->ul_outstanding_cnt--;
@@ -674,19 +672,10 @@ static A_STATUS HTCIssuePackets(HTC_TARGET       *target,
         }
     }
 
-    if (adf_os_unlikely(A_FAILED(status))) {
-        while (!HTC_QUEUE_EMPTY(pPktQueue)) {
-            if (status != A_NO_RESOURCE) {
-                AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("HTCIssuePackets, failed pkt:0x%p status:%d \n",pPacket,status));
-            }
-            pPacket = HTC_PACKET_DEQUEUE(pPktQueue);
-            if (pPacket) {
-               pPacket->Status = status;
-               hif_pm_runtime_put(target->hif_dev);
-               SendPacketCompletion(target,pPacket);
-            }
-        }
-    }
+    if (adf_os_unlikely(A_FAILED(status)))
+        AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
+            ("htc_issue_packets, failed pkt:0x%p status:%d",
+            pPacket, status));
 
     AR_DEBUG_PRINTF(ATH_DEBUG_SEND, ("-HTCIssuePackets \n"));
 
@@ -971,6 +960,7 @@ static HTC_SEND_QUEUE_RESULT HTCTrySend(HTC_TARGET       *target,
         if (HTC_QUEUE_EMPTY(pCallersSendQueue)) {
                 /* empty queue */
             OL_ATH_HTC_PKT_ERROR_COUNT_INCR(target,HTC_PKT_Q_EMPTY);
+            AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Empty queue\n"));
             result = HTC_SEND_QUEUE_DROP;
             break;
         }
@@ -1142,7 +1132,16 @@ static HTC_SEND_QUEUE_RESULT HTCTrySend(HTC_TARGET       *target,
         UNLOCK_HTC_TX(target);
 
             /* send what we can */
-        HTCIssuePackets(target,pEndpoint,&sendQueue);
+        result = HTCIssuePackets(target,pEndpoint,&sendQueue);
+        if (result) {
+            AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
+               ("htc_issue_packets, failed status:%d put it back to head of callers SendQueue",
+               result));
+            HTC_PACKET_QUEUE_TRANSFER_TO_HEAD(&pEndpoint->TxQueue,
+                             &sendQueue);
+            LOCK_HTC_TX(target);
+            break;
+        }
 
         if (!IS_TX_CREDIT_FLOW_ENABLED(pEndpoint)) {
             tx_resources = HIFGetFreeQueueNumber(target->hif_dev,pEndpoint->UL_PipeID);
@@ -1176,7 +1175,7 @@ A_STATUS HTCSendPktsMultiple(HTC_HANDLE HTCHandle, HTC_PACKET_QUEUE *pPktQueue)
     pPacket = HTC_GET_PKT_AT_HEAD(pPktQueue);
     if (NULL == pPacket) {
         OL_ATH_HTC_PKT_ERROR_COUNT_INCR(target,GET_HTC_PKT_Q_FAIL);
-        AR_DEBUG_PRINTF(ATH_DEBUG_SEND, ("-HTCSendPktsMultiple \n"));
+        AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("-HTCSendPktsMultiple \n"));
         return A_EINVAL;
     }
 
@@ -1184,7 +1183,7 @@ A_STATUS HTCSendPktsMultiple(HTC_HANDLE HTCHandle, HTC_PACKET_QUEUE *pPktQueue)
     pEndpoint = &target->EndPoint[pPacket->Endpoint];
 
     if (!pEndpoint->ServiceID) {
-       AR_DEBUG_PRINTF(ATH_DEBUG_SEND, ("%s: ServiceID is invalid\n",
+       AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("%s: ServiceID is invalid\n",
                                                  __func__));
        return A_EINVAL;
     }
