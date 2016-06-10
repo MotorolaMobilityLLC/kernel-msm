@@ -161,6 +161,13 @@ static int ir2e71y_dbg_recovery_check_error_flag = IR2E71Y_DBG_RECOVERY_ERROR_NO
 static int ir2e71y_dbg_recovery_check_error_count = 0;
 #endif /* CONFIG_ANDROID_ENGINEERING */
 
+struct leds_led_data {
+    struct led_classdev cdev;
+    int no;
+    int color;
+    int num_leds;
+};
+
 /* ------------------------------------------------------------------------- */
 /* PROTOTYPES                                                                */
 /* ------------------------------------------------------------------------- */
@@ -171,10 +178,12 @@ static void ir2e71y_init_context(void);
 #ifdef IR2E71Y_SYSFS_LED
 static int  ir2e71y_SQE_tri_led_on(int no, struct ir2e71y_tri_led *sysfs_ledx);
 static int  ir2e71y_SQE_tri_led_blink_on(int no, struct ir2e71y_tri_led *sysfs_ledx);
+static int  ir2e71y_SQE_tri_led_blink_store(struct leds_led_data *led_sys, unsigned int data);
 static void ir2e71y_led_brightness_set(struct led_classdev *led_cdev, enum led_brightness value);
 static enum led_brightness ir2e71y_led_brightness_get(struct led_classdev *led_cdev);
 static ssize_t ir2e71y_led_blink_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t ir2e71y_led_blink_show(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t ir2e71y_led_on_off_ms_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size);
 static void ir2e71y_clean_sysfs_led(void);
 static void ir2e71y_clean_normal_led(void);
 #endif /* IR2E71Y_SYSFS_LED */
@@ -284,18 +293,13 @@ static struct file_operations ir2e71y_fops = {
     .release        = ir2e71y_release,
 };
 
-struct leds_led_data {
-    struct led_classdev cdev;
-    int no;
-    int color;
-    int num_leds;
-};
-
 #ifdef IR2E71Y_SYSFS_LED
 static DEVICE_ATTR(blink, 0664, ir2e71y_led_blink_show, ir2e71y_led_blink_store);
+static DEVICE_ATTR(on_off_ms, 0664, NULL, ir2e71y_led_on_off_ms_store);
 
 static struct attribute *blink_attrs[] = {
     &dev_attr_blink.attr,
+    &dev_attr_on_off_ms.attr,
     NULL
 };
 
@@ -1547,6 +1551,88 @@ static int ir2e71y_SQE_tri_led_blink_on(int no, struct ir2e71y_tri_led *led)
         break;
     }
     return ret;
+}
+
+/* ------------------------------------------------------------------------- */
+/*ir2e71y_SQE_tri_led_blink_store                                            */
+/* ------------------------------------------------------------------------- */
+static int ir2e71y_SQE_tri_led_blink_store(struct leds_led_data *led_sys, unsigned int data)
+{
+    struct ir2e71y_tri_led led;
+
+    memset(&led, 0x00, sizeof(led));
+
+    if (ir2e71y_check_initialized() != IR2E71Y_RESULT_SUCCESS) {
+        IR2E71Y_DEBUG("out1");
+        return IR2E71Y_RESULT_FAILURE;
+    }
+
+    if (ir2e71y_check_bdic_exist() != IR2E71Y_RESULT_SUCCESS) {
+        IR2E71Y_DEBUG("out2");
+        return IR2E71Y_RESULT_FAILURE;
+    }
+
+    IR2E71Y_DEBUG("before mode:%d", ir2e71y_if_ctx.sysfs_led1.led_mode);
+    switch (ir2e71y_if_ctx.sysfs_led1.led_mode) {
+    case IR2E71Y_TRI_LED_MODE_OFF:
+        break;
+
+    case IR2E71Y_TRI_LED_MODE_BLINK:
+        switch (led_sys->no) {
+        case SYSFS_LED_SH_LED_1:
+            led.red   = ir2e71y_if_ctx.sysfs_led1.red;
+            led.green = ir2e71y_if_ctx.sysfs_led1.green;
+            led.blue  = ir2e71y_if_ctx.sysfs_led1.blue;
+            break;
+#ifdef IR2E71Y_COLOR_LED_TWIN
+        case SYSFS_LED_SH_LED_2:
+            led.red   = ir2e71y_if_ctx.sysfs_led2.red;
+            led.green = ir2e71y_if_ctx.sysfs_led2.green;
+            led.blue  = ir2e71y_if_ctx.sysfs_led2.blue;
+            break;
+#endif /* IR2E71Y_COLOR_LED_TWIN */
+        default:
+            IR2E71Y_ERR("invalid id. id no:%d", led_sys->no);
+            return IR2E71Y_RESULT_FAILURE;
+        }
+        break;
+
+    case IR2E71Y_TRI_LED_MODE_NORMAL:
+    default:
+        ir2e71y_clean_sysfs_led();
+        if (data == 0) {
+            IR2E71Y_DEBUG("leds off. no=%d", led_sys->no);
+            ir2e71y_semaphore_start();
+            ir2e71y_bdic_API_TRI_LED_off();
+            ir2e71y_semaphore_end(__func__);
+            return IR2E71Y_RESULT_SUCCESS;
+        }
+        break;
+    }
+
+    switch (led_sys->color) {
+    case SYSFS_LED_SH_RED:
+        led.red   = (unsigned int)data;
+        break;
+    case SYSFS_LED_SH_GREEN:
+        led.green = (unsigned int)data;
+        break;
+    case SYSFS_LED_SH_BLUE:
+        led.blue  = (unsigned int)data;
+        break;
+    default:
+        IR2E71Y_ERR("invalid color. color no:%d", led_sys->color);
+        return IR2E71Y_RESULT_FAILURE;
+    }
+
+    IR2E71Y_DEBUG("%s: name:%s(id:%d, color:%d) value:%d\n", __func__, led_sys->cdev.name, led_sys->no, led_sys->color, (int)data);
+
+    ir2e71y_semaphore_start();
+
+    ir2e71y_SQE_tri_led_blink_on(led_sys->no, &led);
+
+    ir2e71y_semaphore_end(__func__);
+    return IR2E71Y_RESULT_SUCCESS;
 }
 #endif /* IR2E71Y_SYSFS_LED */
 
@@ -2862,85 +2948,13 @@ static ssize_t ir2e71y_led_blink_store(struct device *dev, struct device_attribu
     ssize_t ret = -EINVAL;
     struct led_classdev *led_cdev = dev_get_drvdata(dev);
     struct leds_led_data *led_sys = container_of(led_cdev, struct leds_led_data, cdev);
-    struct ir2e71y_tri_led led;
-
-    memset(&led, 0x00, sizeof(led));
 
     ret = kstrtoul(buf, 10, &data);
     if (ret) {
         return ret;
     }
 
-    if (ir2e71y_check_initialized() != IR2E71Y_RESULT_SUCCESS) {
-        IR2E71Y_DEBUG("out1");
-        return count;
-    }
-
-    if (ir2e71y_check_bdic_exist() != IR2E71Y_RESULT_SUCCESS) {
-        IR2E71Y_DEBUG("out2");
-        return count;
-    }
-
-    IR2E71Y_DEBUG("before mode:%d", ir2e71y_if_ctx.sysfs_led1.led_mode);
-    switch (ir2e71y_if_ctx.sysfs_led1.led_mode) {
-    case IR2E71Y_TRI_LED_MODE_OFF:
-        break;
-
-    case IR2E71Y_TRI_LED_MODE_BLINK:
-        switch (led_sys->no) {
-        case SYSFS_LED_SH_LED_1:
-            led.red   = ir2e71y_if_ctx.sysfs_led1.red;
-            led.green = ir2e71y_if_ctx.sysfs_led1.green;
-            led.blue  = ir2e71y_if_ctx.sysfs_led1.blue;
-            break;
-#ifdef IR2E71Y_COLOR_LED_TWIN
-        case SYSFS_LED_SH_LED_2:
-            led.red   = ir2e71y_if_ctx.sysfs_led2.red;
-            led.green = ir2e71y_if_ctx.sysfs_led2.green;
-            led.blue  = ir2e71y_if_ctx.sysfs_led2.blue;
-            break;
-#endif /* IR2E71Y_COLOR_LED_TWIN */
-        default:
-            IR2E71Y_ERR("invalid id. id no:%d", led_sys->no);
-            return count;
-        }
-        break;
-
-    case IR2E71Y_TRI_LED_MODE_NORMAL:
-    default:
-        ir2e71y_clean_sysfs_led();
-        if (data == 0) {
-            IR2E71Y_DEBUG("leds off. no=%d", led_sys->no);
-            ir2e71y_semaphore_start();
-            ir2e71y_bdic_API_TRI_LED_off();
-            ir2e71y_semaphore_end(__func__);
-            return count;
-        }
-        break;
-    }
-
-    switch (led_sys->color) {
-    case SYSFS_LED_SH_RED:
-        led.red   = (unsigned int)data;
-        break;
-    case SYSFS_LED_SH_GREEN:
-        led.green = (unsigned int)data;
-        break;
-    case SYSFS_LED_SH_BLUE:
-        led.blue  = (unsigned int)data;
-        break;
-    default:
-        IR2E71Y_ERR("invalid color. color no:%d", led_sys->color);
-        return count;
-    }
-
-    IR2E71Y_DEBUG("%s: name:%s(id:%d, color:%d) value:%d\n", __func__, led_sys->cdev.name, led_sys->no, led_sys->color, (int)data);
-
-    ir2e71y_semaphore_start();
-
-    ir2e71y_SQE_tri_led_blink_on(led_sys->no, &led);
-
-    ir2e71y_semaphore_end(__func__);
+    ir2e71y_SQE_tri_led_blink_store(led_sys, (unsigned int)data);
 
     return count;
 }
@@ -3005,6 +3019,35 @@ static ssize_t ir2e71y_led_blink_show(struct device *dev, struct device_attribut
 
 blink_read_fail:
     return snprintf(buf, PAGE_SIZE, "%d\n", blinking);
+}
+
+/* ------------------------------------------------------------------------- */
+/*ir2e71y_led_on_off_ms_store                                                */
+/* ------------------------------------------------------------------------- */
+static ssize_t ir2e71y_led_on_off_ms_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+    struct led_classdev *led_cdev = dev_get_drvdata(dev);
+    struct leds_led_data *led_sys = container_of(led_cdev, struct leds_led_data, cdev);
+    int on_ms  = 0;
+    int off_ms = 0;
+    int ret;
+    unsigned int data = 1;
+
+    IR2E71Y_TRACE("in");
+    ret = sscanf(buf, "%d %d", &on_ms, &off_ms);
+    if (ret < 2) {
+        return -EINVAL;
+    }
+
+    if ((on_ms <= 0) && (off_ms <= 0)) {
+        data = 0;
+    }
+
+    IR2E71Y_DEBUG("on_ms:%d, off_ms:%d", on_ms, off_ms);
+    ir2e71y_SQE_tri_led_blink_store(led_sys, data);
+    IR2E71Y_TRACE("out");
+
+    return size;
 }
 
 /* ------------------------------------------------------------------------- */
