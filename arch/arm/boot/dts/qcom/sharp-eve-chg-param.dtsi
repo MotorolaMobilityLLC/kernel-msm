@@ -84,8 +84,8 @@
 	qcom,cycle-counter-en;
 	qcom,capacity-learning-on;
 	qcom,capacity-learning-feedback;
-	qcom,cl-max-increment-deciperc = <20>;
-	qcom,cl-max-decrement-deciperc = <40>;
+	qcom,cl-max-increment-deciperc = <15>;
+	qcom,cl-max-decrement-deciperc = <15>;
 	qcom,cl-max-increment-deciperc-2nd = <10>;
 	qcom,cl-max-decrement-deciperc-2nd = <10>;
 	qcom,cl-max-temp-decidegc = <450>;
