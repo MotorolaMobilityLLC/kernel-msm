@@ -142,4 +142,12 @@ config PINCTRL_MSM8909
 	help
 	  This is the pinctrl, pinmux, pinconf and gpiolib driver for the
 	  QTI TLMM block found in the QTI MSM8909 platform.
+
+config PINCTRL_PARANOID
+	tristate "Workaround for broken readl on GPIO config regs"
+	depends on PINCTRL_MSM
+	help
+	  In some revisions of silicon, we have seen readl return bad
+	  values.  With this set, retry all reads in this suspect area on non
+	  volatile registers.
 endif
