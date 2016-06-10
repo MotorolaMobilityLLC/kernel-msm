@@ -1604,14 +1604,6 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 					__func__, __LINE__,
 					power_setting->seq_val, ctrl->num_vreg);
 
-			rc = msm_cam_sensor_handle_reg_gpio(
-				power_setting->seq_val,
-				ctrl->gpio_conf, 1);
-			if (rc < 0) {
-				pr_err("ERR:%s Error in handling VREG GPIO\n",
-					__func__);
-				goto power_up_failed;
-			}
 			break;
 		case SENSOR_I2C_MUX:
 			if (ctrl->i2c_conf && ctrl->i2c_conf->use_i2c_mux)
