@@ -949,6 +949,15 @@ int q6lsm_snd_model_buf_alloc(struct lsm_client *client, size_t len)
 		client->sound_model.size = len;
 		pad_zero = (LSM_ALIGN_BOUNDARY -
 			    (len % LSM_ALIGN_BOUNDARY));
+               if ((len > SIZE_MAX - pad_zero) ||
+                   (len + pad_zero >
+                    SIZE_MAX - lsm_cal.cal_size)) {
+                    pr_err("%s: invalid allocation size, len = %zd, pad_zero =%zd, cal_size = %zd\n",
+                               __func__, len, pad_zero,
+                             lsm_cal.cal_size);
+                       rc = -EINVAL;
+                       goto fail;
+               }
 		total_mem = PAGE_ALIGN(pad_zero + len + lsm_cal.cal_size);
 		pr_debug("%s: Pad zeros sound model %zd Total mem %zd\n",
 				 __func__, pad_zero, total_mem);
