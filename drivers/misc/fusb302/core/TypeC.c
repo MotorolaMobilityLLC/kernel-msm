@@ -986,7 +986,7 @@ void StateMachineDebugAccessory(void)
 {
 	debounceCC();
 
-	if ((CC1TermCCDebounce == CCTypeOpen) || (CC2TermCCDebounce == CCTypeOpen))	// If we have detected an open for > tCCDebounce 
+	if ((CC1TermPrevious == CCTypeOpen) || (CC2TermPrevious == CCTypeOpen))
 	{
 #ifdef FSC_HAVE_SRC
 		if (PortType == USBTypeC_Source) {
