@@ -312,6 +312,7 @@ struct smbchg_chip {
 	/* psy */
 	struct power_supply		*usb_psy;
 	struct power_supply		*usbc_psy;
+	struct power_supply		usbeb_psy;
 	struct power_supply		batt_psy;
 	struct power_supply		dc_psy;
 	struct power_supply		wls_psy;
@@ -377,7 +378,6 @@ struct smbchg_chip {
 	enum ebchg_state		ebchg_state;
 	struct gpio			ebchg_gpio;
 	bool				force_eb_chrg;
-	bool				eb_hotplug;
 	struct gpio			warn_gpio;
 	struct delayed_work		warn_irq_work;
 	int				warn_irq;
@@ -880,6 +880,25 @@ static bool is_wls_present(struct smbchg_chip *chip)
 	return ret.intval ? true : false;
 }
 
+static bool is_usbeb_present(struct smbchg_chip *chip)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+
+	if (!chip->usbeb_psy.get_property)
+		return false;
+
+	rc = chip->usbeb_psy.get_property(&chip->usbeb_psy,
+					  POWER_SUPPLY_PROP_PRESENT,
+					  &ret);
+	if (rc < 0) {
+		SMB_ERR(chip, "Couldn't get usbeb status\n");
+		return false;
+	}
+
+	return ret.intval ? true : false;
+}
+
 #define USBIN_9V			BIT(5)
 #define USBIN_UNREG			BIT(4)
 #define USBIN_LV			BIT(3)
@@ -1001,6 +1020,33 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_EXTERN_STATE,
 };
 
+static int get_eb_pwr_prop(struct smbchg_chip *chip,
+			   enum power_supply_property prop)
+{
+	union power_supply_propval ret = {0, };
+	int eb_prop;
+	int rc;
+	struct power_supply *eb_pwr_psy;
+
+	eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
+	if (!eb_pwr_psy)
+		return -ENODEV;
+
+	rc = eb_pwr_psy->get_property(eb_pwr_psy, prop, &ret);
+	if (rc) {
+		SMB_DBG(chip,
+			"eb pwr error reading Prop %d rc = %d\n",
+			prop, rc);
+		ret.intval = -EINVAL;
+	}
+	eb_prop = ret.intval;
+
+	power_supply_put(eb_pwr_psy);
+
+	return eb_prop;
+}
+
 static int get_eb_prop(struct smbchg_chip *chip,
 		       enum power_supply_property prop)
 {
@@ -1008,19 +1054,11 @@ static int get_eb_prop(struct smbchg_chip *chip,
 	int eb_prop;
 	int rc;
 	struct power_supply *eb_batt_psy;
-	struct power_supply *eb_pwr_psy;
 
 	eb_batt_psy =
 		power_supply_get_by_name((char *)chip->eb_batt_psy_name);
 	if (!eb_batt_psy)
 		return -ENODEV;
-
-	eb_pwr_psy =
-		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
-	if (!eb_pwr_psy) {
-		power_supply_put(eb_batt_psy);
-		return -ENODEV;
-	}
 
 	rc = eb_batt_psy->get_property(eb_batt_psy, prop, &ret);
 	if (rc) {
@@ -1032,7 +1070,6 @@ static int get_eb_prop(struct smbchg_chip *chip,
 	eb_prop = ret.intval;
 
 	power_supply_put(eb_batt_psy);
-	power_supply_put(eb_pwr_psy);
 
 	return eb_prop;
 }
@@ -3939,9 +3976,104 @@ static int smbchg_wls_set_property(struct power_supply *psy,
 
 	return rc;
 }
+static enum power_supply_property smbchg_usbeb_properties[] = {
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
+};
+
+static int smbchg_usbeb_get_property(struct power_supply *psy,
+				       enum power_supply_property prop,
+				       union power_supply_propval *val)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct smbchg_chip *chip = container_of(psy,
+						struct smbchg_chip, usbeb_psy);
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
+
+	if (eb_pwr_psy) {
+		rc = eb_pwr_psy->get_property(eb_pwr_psy,
+					      POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+					      &ret);
+		if (rc)
+			ret.intval = 0;
+		power_supply_put(eb_pwr_psy);
+	}
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_ONLINE:
+		if (ret.intval == POWER_SUPPLY_PTP_EXT_WIRED_PRESENT ||
+		    ret.intval == POWER_SUPPLY_PTP_EXT_WIRED_WIRELESS_PRESENT)
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		val->intval = chip->dc_max_current_ma * 1000;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int smbchg_usbeb_is_broadcast(struct power_supply *psy,
+				     enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_ONLINE:
+	case POWER_SUPPLY_PROP_PRESENT:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+
+static int smbchg_usbeb_is_writeable(struct power_supply *psy,
+				     enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+
+static int smbchg_usbeb_set_property(struct power_supply *psy,
+				     enum power_supply_property prop,
+				     const union power_supply_propval *val)
+{
+	int rc = 0;
+	struct smbchg_chip *chip = container_of(psy,
+				struct smbchg_chip, usbeb_psy);
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		rc = smbchg_set_dc_current_max(chip, val->intval / 1000);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return rc;
+}
 
 #define EB_RCV_NEVER BIT(7)
-#define EB_EXT_PRES BIT(6)
 #define EB_SND_LOW BIT(1)
 #define EB_SND_NEVER BIT(0)
 static void smbchg_check_extbat_ability(struct smbchg_chip *chip, char *able)
@@ -3997,15 +4129,6 @@ static void smbchg_check_extbat_ability(struct smbchg_chip *chip, char *able)
 		*able |= EB_RCV_NEVER;
 
 	rc = eb_pwr_psy->get_property(eb_pwr_psy,
-				      POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
-				      &ret);
-	if (rc) {
-		SMB_ERR(chip,
-			"Could not read External Present rc = %d\n", rc);
-	} else if (ret.intval != POWER_SUPPLY_PTP_EXT_NOT_PRESENT)
-		*able |= EB_EXT_PRES;
-
-	rc = eb_pwr_psy->get_property(eb_pwr_psy,
 				      POWER_SUPPLY_PROP_PTP_POWER_AVAILABLE,
 				      &ret);
 	if (rc) {
@@ -4049,6 +4172,9 @@ static void smbchg_get_extbat_out_cl(struct smbchg_chip *chip)
 	struct power_supply *eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
 	int prev_cl_ebsrc = chip->cl_ebsrc;
+	int dcin_len = chip->tables.dc_ilim_ma_len - 1;
+	int dcin_min_ma = chip->tables.dc_ilim_ma_table[0];
+	int dcin_max_ma = chip->tables.dc_ilim_ma_table[dcin_len];
 
 	if (!eb_pwr_psy || !eb_pwr_psy->get_property) {
 		chip->cl_ebsrc = 0;
@@ -4064,12 +4190,17 @@ static void smbchg_get_extbat_out_cl(struct smbchg_chip *chip)
 		SMB_DBG(chip, "Get EB Out Current %d uA\n", ret.intval);
 		ret.intval /= 1000;
 
+		if (ret.intval < dcin_min_ma) {
+			if (ret.intval != 0)
+				ret.intval = dcin_min_ma;
+		} else if (ret.intval > dcin_max_ma)
+			ret.intval = dcin_max_ma;
+
 		if (ret.intval == 0)
 			chip->cl_ebsrc = 0;
-		else if (ret.intval < chip->dc_eff_current_ma)
-			chip->cl_ebsrc = chip->dc_eff_current_ma;
-		else if (ret.intval < chip->dc_ebmax_current_ma)
-			chip->cl_ebsrc = ret.intval;
+		else if ((ret.intval < chip->dc_ebmax_current_ma) ||
+			 is_usbeb_present(chip))
+			  chip->cl_ebsrc = ret.intval;
 		else
 			chip->cl_ebsrc = chip->dc_ebmax_current_ma;
 	}
@@ -4169,8 +4300,6 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
 					    &ret);
 		if (!rc) {
-			if (chip->ebchg_state == EB_SRC)
-				chip->eb_hotplug = false;
 			chip->ebchg_state = state;
 
 			smbchg_usb_en(chip,
@@ -4211,8 +4340,6 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
 					    &ret);
 		if (!rc) {
-			if (chip->ebchg_state == EB_SRC)
-				chip->eb_hotplug = false;
 			chip->ebchg_state = state;
 			gpio_set_value(chip->ebchg_gpio.gpio, 0);
 			smbchg_usb_en(chip, true, REASON_EB);
@@ -4551,7 +4678,7 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 	};
 
 	if (!is_usb_present(chip)) {
-		if (is_wls_present(chip))
+		if (is_wls_present(chip) || is_usbeb_present(chip))
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
 		else
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
@@ -9759,7 +9886,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	bool max_chrg_alarm;
 	int prev_dcin_curr_ma = chip->dc_target_current_ma;
 	bool wls_present;
-	bool eb_ext_pres;
+	bool eb_ext_pres = false;
+	int pwr_ext;
 	bool extra_in_pwr = (chip->max_usbin_ma > 0) && (chip->cl_usbc >
 							 chip->max_usbin_ma);
 
@@ -9777,21 +9905,23 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	}
 
 	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
+	pwr_ext = get_eb_pwr_prop(chip, POWER_SUPPLY_PROP_PTP_EXTERNAL);
 	smbchg_check_extbat_ability(chip, &eb_able);
 
-	if (eb_soc == -ENODEV) {
-		chip->eb_hotplug = false;
-		smbchg_set_extbat_state(chip, EB_DISCONN);
-	} else if (eb_soc == -EINVAL)
+	if (eb_soc == -EINVAL)
 		eb_soc = 0;
-	else if (chip->ebchg_state == EB_DISCONN) {
-		chip->eb_hotplug = true;
+
+	if ((eb_soc == -ENODEV) && (pwr_ext == -ENODEV))
+		smbchg_set_extbat_state(chip, EB_DISCONN);
+	else if (chip->ebchg_state == EB_DISCONN)
 		smbchg_set_extbat_state(chip, EB_OFF);
-	}
+
+	if (pwr_ext == POWER_SUPPLY_PTP_EXT_SUPPORTED)
+		eb_ext_pres = is_usbeb_present(chip);
 
 	wls_present = is_wls_present(chip);
 
-	if (wls_present)
+	if ((wls_present || eb_ext_pres) && (chip->ebchg_state == EB_SRC))
 		smbchg_stay_awake(chip, PM_WIRELESS);
 	else
 		smbchg_relax(chip, PM_WIRELESS);
@@ -9806,7 +9936,6 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		batt_mv, batt_ma, batt_temp);
 	smbchg_sync_accy_property_status(chip);
 	eb_chrg_allowed = !(eb_able & EB_RCV_NEVER);
-	eb_ext_pres = (eb_able & EB_EXT_PRES);
 	index = chip->tables.usb_ilim_ma_len - 1;
 	pmi_max_chrg_ma = chip->tables.usb_ilim_ma_table[index];
 	if ((chip->stepchg_state >= STEP_FIRST) &&
@@ -9829,25 +9958,24 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	    (chip->bsw_mode != BSW_RUN)) {
 		switch (chip->ebchg_state) {
 		case EB_SRC:
-			if (wls_present) {
+			if (wls_present || eb_ext_pres) {
 				chip->eb_rechrg = false;
 				if ((batt_soc == 100) && eb_chrg_allowed)
 					smbchg_set_extbat_state(chip, EB_OFF);
-			} else if ((eb_soc <= 0) || (eb_able & EB_SND_NEVER) ||
+			} else if ((eb_able & EB_SND_NEVER) ||
 				   (eb_on_sw == 0)) {
 				smbchg_set_extbat_state(chip, EB_OFF);
 				chip->eb_rechrg = true;
-				chip->eb_hotplug = false;
 			}
-			chip->eb_hotplug = false;
+
 			break;
 		case EB_SINK:
 		case EB_OFF:
-			if (wls_present) {
+			if (wls_present || eb_ext_pres) {
 				chip->eb_rechrg = false;
 				if ((batt_soc < 100) || !eb_chrg_allowed)
 					smbchg_set_extbat_state(chip, EB_SRC);
-			} else if ((eb_soc <= 0) || (eb_able & EB_SND_NEVER) ||
+			} else if ((eb_able & EB_SND_NEVER) ||
 				   (eb_on_sw == 0))
 				smbchg_set_extbat_state(chip, EB_OFF);
 			else if (eb_able & EB_SND_LOW) {
@@ -9863,11 +9991,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 			break;
 		case EB_DISCONN:
-			chip->eb_hotplug = false;
 		default:
 			break;
 		}
-	} else if (chip->usb_present || is_wls_present(chip)) {
+	} else if (chip->usb_present || is_wls_present(chip) || eb_ext_pres) {
 		chip->eb_rechrg = false;
 	}
 
@@ -10684,6 +10811,21 @@ static int smbchg_probe(struct spmi_device *spmi)
 		goto unregister_batt_psy;
 	}
 
+	chip->usbeb_psy.name		= "usbeb";
+	chip->usbeb_psy.type		= POWER_SUPPLY_TYPE_USB_DCP;
+	chip->usbeb_psy.get_property	= smbchg_usbeb_get_property;
+	chip->usbeb_psy.set_property	= smbchg_usbeb_set_property;
+	chip->usbeb_psy.property_is_writeable = smbchg_usbeb_is_writeable;
+	chip->usbeb_psy.properties		= smbchg_usbeb_properties;
+	chip->usbeb_psy.num_properties = ARRAY_SIZE(smbchg_usbeb_properties);
+	chip->usbeb_psy.property_is_broadcast = smbchg_usbeb_is_broadcast;
+	rc = power_supply_register(chip->dev, &chip->usbeb_psy);
+	if (rc < 0) {
+		SMB_ERR(chip,
+			"Unable to register usbeb_psy rc = %d\n", rc);
+		goto unregister_wls_psy;
+	}
+
 	if (chip->dc_psy_type != -EINVAL) {
 		chip->dc_psy.name		= "dc";
 		chip->dc_psy.type		= chip->dc_psy_type;
@@ -10697,7 +10839,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 		if (rc < 0) {
 			SMB_ERR(chip,
 				"Unable to register dc_psy rc = %d\n", rc);
-			goto unregister_wls_psy;
+			goto unregister_usbeb_psy;
 		}
 	}
 
@@ -10836,6 +10978,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 
 unregister_dc_psy:
 	power_supply_unregister(&chip->dc_psy);
+unregister_usbeb_psy:
+	power_supply_unregister(&chip->usbeb_psy);
 unregister_wls_psy:
 	power_supply_unregister(&chip->wls_psy);
 unregister_batt_psy:
@@ -10893,6 +11037,7 @@ static int smbchg_remove(struct spmi_device *spmi)
 
 	power_supply_unregister(&chip->batt_psy);
 	power_supply_unregister(&chip->wls_psy);
+	power_supply_unregister(&chip->usbeb_psy);
 	wakeup_source_trash(&chip->smbchg_wake_source);
 
 	return 0;
