@@ -25,7 +25,20 @@
 			qcom,pins = <&gp 85>;
 			qcom,num-grp-pins = <1>;
 		};
-		
+
+		cci1_active {
+			cci1_active: cci1_active {
+				/delete-property/ bias-disable;
+				bias-pull-down; /* PULL Down */
+			};
+		};
+		cci1_suspend {
+			cci1_suspend: cci1_suspend {
+				/delete-property/ bias-disable;
+				bias-pull-down; /* PULL Down */
+			};
+		};
+
 		/*****************************************/
 		/*  UART/Serial                          */
 		/*****************************************/
