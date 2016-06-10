@@ -511,7 +511,7 @@ int mmc_ffu_invoke(struct mmc_card *card, const char *name)
 		   //TODO: find a more grace way to avoid power cycle.
 		*/
 		pr_info("eMMC firmware updated, reboot now\n");
-		kernel_restart(NULL);
+		machine_restart(NULL);
 	}
 
 exit:
