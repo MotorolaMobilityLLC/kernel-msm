@@ -39,6 +39,7 @@
 #include <linux/msm_bcl.h>
 #include <linux/ktime.h>
 #include "pmic-voter.h"
+#include <soc/qcom/socinfo.h>
 
 /* Mask/Bit helpers */
 #define _SMB_MASK(BITS, POS) \
@@ -363,6 +364,10 @@ enum enable_voters {
 	 * the charger is very weak, do not draw any current from it
 	 */
 	WEAK_CHARGER_EN_VOTER,
+	/*
+	 * for JEITA temperature control
+	 */
+	JEITA_EN_VOTER,
 	NUM_EN_VOTERS,
 };
 
@@ -5730,6 +5735,15 @@ static irqreturn_t batt_hot_handler(int irq, void *_chip)
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	chip->batt_hot = !!(reg & HOT_BAT_HARD_BIT);
+	if(of_board_is_sharp_eve()){
+		if(chip->batt_hot){
+			vote(chip->usb_suspend_votable, JEITA_EN_VOTER,
+												!false, 0);
+		}else{
+			vote(chip->usb_suspend_votable, JEITA_EN_VOTER,
+												!true, 0);
+		}
+	}
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->psy_registered)
@@ -5770,6 +5784,14 @@ static irqreturn_t batt_warm_handler(int irq, void *_chip)
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
+	if(of_board_is_sharp_eve()){
+		if (!chip->batt_warm){
+			vote(chip->usb_suspend_votable, JEITA_EN_VOTER,
+												!false, 0);
+			vote(chip->usb_suspend_votable, JEITA_EN_VOTER,
+												!true, 0);
+		}
+	}
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_HEALTH,
 			get_prop_batt_health(chip));
 	return IRQ_HANDLED;
@@ -5786,6 +5808,14 @@ static irqreturn_t batt_cool_handler(int irq, void *_chip)
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
+	if(of_board_is_sharp_eve()){
+		if (!chip->batt_cool){
+			vote(chip->usb_suspend_votable, JEITA_EN_VOTER,
+											!false, 0);
+			vote(chip->usb_suspend_votable, JEITA_EN_VOTER,
+											!true, 0);
+		}
+	}
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_HEALTH,
 			get_prop_batt_health(chip));
 	return IRQ_HANDLED;
