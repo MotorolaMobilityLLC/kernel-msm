@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014, 2016 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -487,7 +487,7 @@ int msm_dts_eagle_ioctl(unsigned int cmd, unsigned long arg)
 		pr_info("DTS_EAGLE_DRIVER_POST: %s called with control 0x%X (allocate param cache)\n",
 			__func__, cmd);
 		if (copy_from_user((void *)&size, (void *)arg, sizeof(size))) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error copying size (src:%p, tgt:%p, size:%zu)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error copying size (src:%pK, tgt:%pK, size:%zu)\n",
 				(void *)arg, &size, sizeof(size));
 			return -EFAULT;
 		} else if (size < 0 || size > DEPC_MAX_SIZE) {
@@ -527,7 +527,7 @@ int msm_dts_eagle_ioctl(unsigned int cmd, unsigned long arg)
 		pr_info("DTS_EAGLE_DRIVER_POST: %s called, control 0x%X (get param)\n",
 			__func__, cmd);
 		if (copy_from_user((void *)&depd, (void *)arg, sizeof(depd))) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error copying dts_eagle_param_desc (src:%p, tgt:%p, size:%zu)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error copying dts_eagle_param_desc (src:%pK, tgt:%pK, size:%zu)\n",
 				(void *)arg, &depd, sizeof(depd));
 			return -EFAULT;
 		}
@@ -583,7 +583,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 		pr_info("DTS_EAGLE_DRIVER_POST: %s called, control 0x%X (set param)\n",
 			__func__, cmd);
 		if (copy_from_user((void *)&depd, (void *)arg, sizeof(depd))) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error copying dts_eagle_param_desc (src:%p, tgt:%p, size:%zu)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error copying dts_eagle_param_desc (src:%pK, tgt:%pK, size:%zu)\n",
 				(void *)arg, &depd, sizeof(depd));
 			return -EFAULT;
 		}
@@ -603,7 +603,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 		if (copy_from_user((void *)&_depc[offset],
 				   (void *)(((char *)arg)+sizeof(depd)),
 					depd.size)) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error copying param to cache (src:%p, tgt:%p, size:%i)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error copying param to cache (src:%pK, tgt:%pK, size:%i)\n",
 				((char *)arg)+sizeof(depd),
 				&_depc[offset], depd.size);
 			return -EFAULT;
@@ -639,7 +639,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 		pr_info("DTS_EAGLE_DRIVER_POST: %s called with control 0x%X (set param cache block)\n",
 			__func__, cmd);
 		if (copy_from_user((void *)b_, (void *)arg, sizeof(b_))) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error copying cache block data (src:%p, tgt:%p, size:%zu)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error copying cache block data (src:%pK, tgt:%pK, size:%zu)\n",
 				(void *)arg, b_, sizeof(b_));
 			return -EFAULT;
 		}
@@ -669,7 +669,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 		pr_info("DTS_EAGLE_DRIVER_POST: %s called with control 0x%X (set active device)\n",
 			__func__, cmd);
 		if (copy_from_user((void *)data, (void *)arg, sizeof(data))) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error copying active device data (src:%p, tgt:%p, size:%zu)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error copying active device data (src:%pK, tgt:%pK, size:%zu)\n",
 				(void *)arg, data, sizeof(data));
 			return -EFAULT;
 		}
@@ -691,7 +691,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 			__func__, cmd);
 		if (copy_from_user((void *)&target, (void *)arg,
 				   sizeof(target))) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error reading license index. (src:%p, tgt:%p, size:%zu)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error reading license index. (src:%pK, tgt:%pK, size:%zu)\n",
 				(void *)arg, &target, sizeof(target));
 			return -EFAULT;
 		}
@@ -736,7 +736,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 			__func__, cmd);
 		if (copy_from_user((void *)target, (void *)arg,
 				   sizeof(target))) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error reading license index (src:%p, tgt:%p, size:%zu)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error reading license index (src:%pK, tgt:%pK, size:%zu)\n",
 				(void *)arg, target, sizeof(target));
 			return -EFAULT;
 		}
@@ -777,7 +777,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 		if (copy_from_user((void *)&(((__s32 *)sec_blob[target[0]])[1]),
 				(void *)(((char *)arg)+sizeof(target)),
 				target[1])) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error copying license to index %i, size %i (src:%p, tgt:%p, size:%i)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error copying license to index %i, size %i (src:%pK, tgt:%pK, size:%i)\n",
 					target[0], target[1],
 					((char *)arg)+sizeof(target),
 					&(((__s32 *)sec_blob[target[0]])[1]),
@@ -795,7 +795,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 			__func__, cmd);
 		if (copy_from_user((void *)&target, (void *)arg,
 				   sizeof(target))) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error reading license index (src:%p, tgt:%p, size:%zu)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error reading license index (src:%pK, tgt:%pK, size:%zu)\n",
 				(void *)arg, &target, sizeof(target));
 			return -EFAULT;
 		}
@@ -825,7 +825,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 			__func__, cmd);
 		if (copy_from_user((void *)&spec, (void *)arg,
 					sizeof(spec))) {
-			pr_err("DTS_EAGLE_DRIVER_POST: error reading volume command specifier (src:%p, tgt:%p, size:%zu)\n",
+			pr_err("DTS_EAGLE_DRIVER_POST: error reading volume command specifier (src:%pK, tgt:%pK, size:%zu)\n",
 				(void *)arg, &spec, sizeof(spec));
 			return -EFAULT;
 		}
@@ -846,7 +846,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 			if (copy_from_user((void *)&vol_cmds_d[idx],
 					(void *)(((char *)arg) + sizeof(int)),
 					sizeof(struct vol_cmds_d_))) {
-				pr_err("DTS_EAGLE_DRIVER_POST: error reading volume command descriptor (src:%p, tgt:%p, size:%zu)\n",
+				pr_err("DTS_EAGLE_DRIVER_POST: error reading volume command descriptor (src:%pK, tgt:%pK, size:%zu)\n",
 					((char *)arg) + sizeof(int),
 					&vol_cmds_d[idx],
 					sizeof(struct vol_cmds_d_));
@@ -859,7 +859,7 @@ DTS_EAGLE_IOCTL_GET_PARAM_EXIT:
 			if (copy_from_user((void *)vol_cmds[idx],
 					(void *)(((char *)arg) + (sizeof(int) +
 					sizeof(struct vol_cmds_d_))), size)) {
-				pr_err("DTS_EAGLE_DRIVER_POST: error reading volume command string (src:%p, tgt:%p, size:%i)\n",
+				pr_err("DTS_EAGLE_DRIVER_POST: error reading volume command string (src:%pK, tgt:%pK, size:%i)\n",
 					((char *)arg) + (sizeof(int) +
 					sizeof(struct vol_cmds_d_)),
 					vol_cmds[idx], size);
@@ -909,7 +909,7 @@ int msm_dts_eagle_init_pre(struct audio_client *ac)
 
 	if (_depc_size == 0 || !_depc || offset < 0 || size <= 0 || cmd == 0 ||
 	    (offset + size) > _depc_size) {
-		pr_err("DTS_EAGLE_DRIVER_SENDCACHE_PRE: in %s, primary device %i cache index %i general error - cache size = %u, cache ptr = %p, offset = %i, size = %i, cmd = %i\n",
+		pr_err("DTS_EAGLE_DRIVER_SENDCACHE_PRE: in %s, primary device %i cache index %i general error - cache size = %u, cache ptr = %pK, offset = %i, size = %i, cmd = %i\n",
 			__func__, _device_primary, cidx, _depc_size, _depc,
 			offset, size, cmd);
 		return -EINVAL;
@@ -984,7 +984,7 @@ int msm_dts_eagle_init_post(int port_id, int copp_idx, int topology)
 
 	if (_depc_size == 0 || !_depc || offset < 0 || size <= 0 || cmd == 0 ||
 		(offset + size) > _depc_size) {
-		pr_err("DTS_EAGLE_DRIVER_SENDCACHE_POST: in %s, primary device %i cache index %i port_id 0x%X general error - cache size = %u, cache ptr = %p, offset = %i, size = %i, cmd = %i\n",
+		pr_err("DTS_EAGLE_DRIVER_SENDCACHE_POST: in %s, primary device %i cache index %i port_id 0x%X general error - cache size = %u, cache ptr = %pK, offset = %i, size = %i, cmd = %i\n",
 			__func__, _device_primary, cidx, port_id,
 			_depc_size, _depc, offset, size, cmd);
 		return -EINVAL;
