@@ -167,6 +167,9 @@ static void diag_state_open_smd(void *ctxt)
 		return;
 
 	smd_info = (struct diag_smd_info *)(ctxt);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"opening smd channel for peripheral %d type %d\n",
+		smd_info->peripheral, smd_info->type);
 	atomic_set(&smd_info->diag_state, 1);
 	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 		 "%s setting diag state to 1", smd_info->name);
@@ -180,6 +183,9 @@ static void diag_state_close_smd(void *ctxt)
 		return;
 
 	smd_info = (struct diag_smd_info *)(ctxt);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"closing smd channel for peripheral %d type %d\n",
+		smd_info->peripheral, smd_info->type);
 	atomic_set(&smd_info->diag_state, 0);
 	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 		 "%s setting diag state to 0", smd_info->name);
