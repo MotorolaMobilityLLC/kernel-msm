@@ -197,6 +197,8 @@ static void diag_state_open_socket(void *ctxt)
 		return;
 
 	info = (struct diag_socket_info *)(ctxt);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"openingsocket channel for %s\n", info->name);
 	atomic_set(&info->diag_state, 1);
 	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 		 "%s setting diag state to 1", info->name);
@@ -210,6 +212,9 @@ static void diag_state_close_socket(void *ctxt)
 		return;
 
 	info = (struct diag_socket_info *)(ctxt);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"closing socket statefor port type %dsvcid %d isntance %d",
+		info->port_type, info->svc_id, info->ins_id);
 	atomic_set(&info->diag_state, 0);
 	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 		 "%s setting diag state to 0", info->name);
@@ -222,6 +227,7 @@ static void socket_data_ready(struct sock *sk_ptr)
 	unsigned long flags;
 	struct diag_socket_info *info = NULL;
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "entered socket data ready\n");
 	if (!sk_ptr) {
 		pr_err_ratelimited("diag: In %s, invalid sk_ptr", __func__);
 		return;
@@ -232,13 +238,18 @@ static void socket_data_ready(struct sock *sk_ptr)
 		pr_err_ratelimited("diag: In %s, invalid info\n", __func__);
 		return;
 	}
-
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"Received interrupt for instance %d svcid %d\n",
+		info->ins_id, info->svc_id);
 	spin_lock_irqsave(&info->lock, flags);
 	info->data_ready++;
 	spin_unlock_irqrestore(&info->lock, flags);
 	diag_ws_on_notify();
 
 	queue_work(info->wq, &(info->read_work));
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"waking up read wait queue for instance %d svcid %d\n",
+		info->ins_id, info->svc_id);
 	wake_up_interruptible(&info->read_wait_q);
 	return;
 }
@@ -253,6 +264,9 @@ static void cntl_socket_data_ready(struct sock *sk_ptr)
 
 	atomic_inc(&cntl_socket->data_ready);
 	wake_up_interruptible(&cntl_socket->read_wait_q);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"waking up read wait queue for instance %d svcid %d\n",
+		cntl_socket->ins_id, cntl_socket->svc_id);
 	queue_work(cntl_socket->wq, &(cntl_socket->read_work));
 }
 
@@ -655,6 +669,9 @@ static void socket_read_work_fn(struct work_struct *work)
 	if (!atomic_read(&info->opened) && info->port_type == PORT_TYPE_SERVER)
 		diagfwd_buffers_init(info->fwd_ctxt);
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"calling fwd channel read for svc id %d ins %d\n",
+		info->svc_id, info->ins_id);
 	diagfwd_channel_read(info->fwd_ctxt);
 }
 
@@ -662,12 +679,21 @@ static void diag_socket_queue_read(void *ctxt)
 {
 	struct diag_socket_info *info = NULL;
 
-	if (!ctxt)
+	if (!ctxt) {
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "context invalid\n");
 		return;
+	}
 
 	info = (struct diag_socket_info *)ctxt;
-	if (info->hdl && info->wq)
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"about to queue read for instance %d svc %d\n",
+		info->ins_id, info->svc_id);
+	if (info->hdl && info->wq) {
 		queue_work(info->wq, &(info->read_work));
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+			"queued work function in socket queue read for instance %d svc %d\n",
+			info->ins_id, info->svc_id);
+	}
 }
 
 void diag_socket_invalidate(void *ctxt, struct diagfwd_info *fwd_ctxt)
@@ -1016,6 +1042,9 @@ static int diag_socket_read(void *ctxt, unsigned char *buf, int buf_len)
 	temp = buf;
 	bytes_remaining = buf_len;
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"wait event interruptible for instance %d svc %d ",
+		info->ins_id, info->svc_id);
 	err = wait_event_interruptible(info->read_wait_q,
 				      (info->data_ready > 0) || (!info->hdl) ||
 				      (atomic_read(&info->diag_state) == 0));
@@ -1052,7 +1081,9 @@ static int diag_socket_read(void *ctxt, unsigned char *buf, int buf_len)
 		iov.iov_len = bytes_remaining;
 		read_msg.msg_name = &src_addr;
 		read_msg.msg_namelen = sizeof(src_addr);
-
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+			"reading data for instance %d svc %d ",
+			info->ins_id, info->svc_id);
 		pkt_len = kernel_recvmsg(info->hdl, &read_msg, &iov, 1, 0,
 					 MSG_PEEK);
 		if (pkt_len <= 0)
@@ -1072,6 +1103,9 @@ static int diag_socket_read(void *ctxt, unsigned char *buf, int buf_len)
 		if (read_len <= 0)
 			goto fail;
 
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+			"completed reading data for instance %d svc %d ",
+			info->ins_id, info->svc_id);
 		if (!atomic_read(&info->opened) &&
 		    info->port_type == PORT_TYPE_SERVER) {
 			/*
@@ -1107,18 +1141,28 @@ static int diag_socket_read(void *ctxt, unsigned char *buf, int buf_len)
 		err = diagfwd_channel_read_done(info->fwd_ctxt,
 						buf, total_recd);
 		mutex_unlock(&driver->diagfwd_channel_mutex[info->peripheral]);
-		if (err)
+		if (err) {
+			DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+				"%s failed read done read total bytes: %d err%d\n",
+				info->name, total_recd, err);
 			goto fail;
+		}
 	} else {
 		DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "%s error in read, err: %d\n",
 			 info->name, total_recd);
 		goto fail;
 	}
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"%s queuing socket read total bytes: %d\n",
+		info->name, total_recd);
 	diag_socket_queue_read(info);
 	return 0;
 
 fail:
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
+		"%s calling channel read done in fail case with len zero: %d\n",
+		info->name, total_recd);
 	mutex_lock(&driver->diagfwd_channel_mutex[info->peripheral]);
 	diagfwd_channel_read_done(info->fwd_ctxt, buf, 0);
 	mutex_unlock(&driver->diagfwd_channel_mutex[info->peripheral]);
