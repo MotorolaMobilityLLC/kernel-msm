@@ -753,9 +753,11 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		else if (jack_type == SND_JACK_HEADSET) {
 			mbhc->current_plug = MBHC_PLUG_TYPE_HEADSET;
 			mbhc->jiffies_atreport = jiffies;
-		}
-		else if (jack_type == SND_JACK_LINEOUT)
+		} else if (jack_type == SND_JACK_LINEOUT) {
 			mbhc->current_plug = MBHC_PLUG_TYPE_HIGH_HPH;
+			/* Do not report line-out to upper layers */
+			mbhc->hph_status = 0;
+		}
 
 		if (mbhc->impedance_detect)
 			wcd_mbhc_calc_impedance(mbhc,
