@@ -66,8 +66,10 @@ void esdfs_truncate_share(struct super_block *sb, struct inode *lower_inode, lof
 		}
 		spin_unlock(&esdfs_list_lock);
 		inode = ilookup(sbi->s_sb, lower_inode->i_ino);
-		if (inode)
+		if (inode) {
 			truncate_setsize(inode, newsize);
+			iput(inode);
+		}
 		spin_lock(&esdfs_list_lock);
 		p = p->next;
 	}
