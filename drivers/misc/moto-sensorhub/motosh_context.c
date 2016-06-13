@@ -63,6 +63,9 @@ uint8_t motosh_tabletop_mode_hold(int millis)
 	if (now_ns - last_read_time_ns < MAX_READ_RATE)
 		return tabletop;
 
+	if (motosh_misc_data == NULL)
+		return tabletop;
+
 	if (motosh_misc_data->mode > BOOTMODE) {
 
 		if (millis < 0)
