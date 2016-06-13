@@ -2715,7 +2715,7 @@ static int correction_factors[] = {
 };
 
 #define FG_CONVERSION_FACTOR	(64198531LL)
-static int iavg_3b_to_uah(u8 *buffer, int delta_ms)
+static int64_t iavg_3b_to_uah(u8 *buffer, int delta_ms)
 {
 	int64_t val, i_filtered;
 	int i, correction_factor;
@@ -2774,7 +2774,8 @@ static void fg_cap_learning_work(struct work_struct *work)
 				struct fg_chip,
 				fg_cap_learning_work);
 	u8 i_filtered[3], data[3];
-	int rc, cc_uah, delta_ms;
+	int rc, delta_ms;
+	int64_t cc_uah;
 	ktime_t now_kt, delta_kt;
 
 	mutex_lock(&chip->learning_data.learning_lock);
@@ -2871,9 +2872,7 @@ static int fg_cap_learning_process_full_data(struct fg_chip *chip)
 		goto fail;
 	}
 
-	cc_soc_delta_pc = DIV_ROUND_CLOSEST(
-			abs(cc_pc_val - chip->learning_data.init_cc_pc_val)
-			* 100, FULL_PERCENT_28BIT);
+	cc_soc_delta_pc = (unsigned int)div64_s64((int64_t)(abs(cc_pc_val - chip->learning_data.init_cc_pc_val)) * 100 + FULL_PERCENT_28BIT / 2, FULL_PERCENT_28BIT);
 
 	delta_cc_uah = div64_s64(
 			chip->learning_data.learned_cc_uah * cc_soc_delta_pc,
