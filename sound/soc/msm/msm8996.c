@@ -140,11 +140,12 @@ static const struct soc_enum msm8996_auxpcm_enum[] = {
 		SOC_ENUM_SINGLE_EXT(2, auxpcm_rate_text),
 };
 
-static const char *const tert_mi2s_rate_text[] = {"KHZ_16", "KHZ_48", "KHZ_96"};
+static const char *const tert_mi2s_rate_text[] = {"KHZ_16", "KHZ_32",
+			"KHZ_48", "KHZ_96", "KHZ_192"};
 static const char *const tert_mi2s_format_text[] = {"S16_LE", "S24_LE"};
 
 static const struct soc_enum msm8996_tert_mi2s_enum[] = {
-		SOC_ENUM_SINGLE_EXT(3, tert_mi2s_rate_text),
+		SOC_ENUM_SINGLE_EXT(5, tert_mi2s_rate_text),
 		SOC_ENUM_SINGLE_EXT(2, tert_mi2s_format_text),
 		SOC_ENUM_SINGLE_EXT(2, tert_mi2s_ch_text),
 };
@@ -1413,14 +1414,20 @@ static int tert_mi2s_rate_get(struct snd_kcontrol *kcontrol,
 	case SAMPLING_RATE_16KHZ:
 		ucontrol->value.integer.value[0] = 0;
 		break;
-	case SAMPLING_RATE_48KHZ:
+	case SAMPLING_RATE_32KHZ:
 		ucontrol->value.integer.value[0] = 1;
 		break;
-	case SAMPLING_RATE_96KHZ:
+	case SAMPLING_RATE_48KHZ:
 		ucontrol->value.integer.value[0] = 2;
 		break;
+	case SAMPLING_RATE_96KHZ:
+		ucontrol->value.integer.value[0] = 3;
+		break;
+	case SAMPLING_RATE_192KHZ:
+		ucontrol->value.integer.value[0] = 4;
+		break;
 	default:
-		ucontrol->value.integer.value[0] = 1;
+		ucontrol->value.integer.value[0] = 2;
 		break;
 	}
 	return 0;
@@ -1434,10 +1441,16 @@ static int tert_mi2s_rate_put(struct snd_kcontrol *kcontrol,
 		tert_mi2s_sample_rate = SAMPLING_RATE_16KHZ;
 		break;
 	case 1:
-		tert_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+		tert_mi2s_sample_rate = SAMPLING_RATE_32KHZ;
 		break;
 	case 2:
+		tert_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+		break;
+	case 3:
 		tert_mi2s_sample_rate = SAMPLING_RATE_96KHZ;
+		break;
+	case 4:
+		tert_mi2s_sample_rate = SAMPLING_RATE_192KHZ;
 		break;
 	default:
 		tert_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
