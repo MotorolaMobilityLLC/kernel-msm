@@ -294,14 +294,6 @@
 };
 
 &pmi8950_mpps {
-	mpp@a000 { /* MPP1 MOD_MPHY_I2S_EN */
-		qcom,mode = <1>;	/* Digital output */
-		qcom,vin-sel = <2>;	/* 1.8 */
-		qcom,src-sel = <0>;	/* GPIO */
-		qcom,master-en = <1>;	/* Enable GPIO */
-		qcom,invert = <0>;	/* Output low (disabled) */
-		status = "okay";
-	};
 
 	mpp@a100 { /* MPP2 MOD_MPHY_I2S_SEL */
 		qcom,mode = <1>;	/* Digital output */
@@ -418,17 +410,6 @@
 		qcom,src-sel = <0>;	/* GPIO */
 		qcom,master-en = <1>;	/* Enable GPIO */
 		qcom,invert = <0>;	/* Output Low */
-		status = "okay";
-	};
-};
-
-&pmi8950_mpps {
-	mpp@a000 { /* MPP 1 - MOD_F_FLASH */
-		qcom,mode = <1>;	/* Digital output */
-		qcom,vin-sel = <2>;	/* 1.8 */
-		qcom,src-sel = <0>;	/* GPIO */
-		qcom,master-en = <1>;	/* Enable GPIO */
-		qcom,invert = <0>;	/* Output low */
 		status = "okay";
 	};
 };
