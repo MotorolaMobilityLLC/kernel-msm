@@ -1855,7 +1855,8 @@ ARRAY_SIZE(msm8952_marley_fe_dai) +
 ARRAY_SIZE(msm8952_common_be_dai) +
 ARRAY_SIZE(msm8952_marley_l34_dai_link) +
 ARRAY_SIZE(msm8952_marley_be_dai) +
-ARRAY_SIZE(msm8952_marley_mods_be_dai)];
+ARRAY_SIZE(msm8952_marley_mods_be_dai) +
+ARRAY_SIZE(msm8952_hdmi_dba_dai_link)];
 #else
 int msm8952_init_wsa_dev(struct platform_device *pdev,
 			struct snd_soc_card *card)
@@ -2128,7 +2129,6 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	}
 #endif
 
-#ifndef CONFIG_SND_SOC_MARLEY
         if (msm8952_dai_links) {
 		if (of_property_read_bool(dev->of_node, "qcom,hdmi-dba-codec-rx")) {
 			dev_dbg(dev, "%s(): hdmi dba audio support present\n",
@@ -2159,7 +2159,6 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 			len6 += ARRAY_SIZE(msm8952_afe_rxtx_lb_be_dai_link);
 		}
 	}
-#endif
 	card->dai_link = msm8952_dai_links;
 	card->num_links = len6;
 	card->dev = dev;
