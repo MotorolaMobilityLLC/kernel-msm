@@ -87,6 +87,22 @@
 		};
 	};
 
+	/delete-node/ hdmi_dba;
+	hdmi_dba: qcom,msm-hdmi-dba-codec-rx {
+		compatible = "qcom,msm-hdmi-dba-codec-rx";
+		qcom,dba-bridge-chip = "anx7805";
+	};
+
+	sound {
+		/delete-property/ asoc-codec;
+		/delete-property/ asoc-codec-names;
+
+		qcom,hdmi-dba-codec-rx;
+		asoc-codec = <&stub_codec>, <&hdmi_dba>;
+		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-dba-codec-rx";
+	};
+
+
 	/delete-node/ eldo2;
 };
 
