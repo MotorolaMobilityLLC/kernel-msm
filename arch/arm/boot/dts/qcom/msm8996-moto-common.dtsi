@@ -218,6 +218,7 @@
 	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
 
 	cd-gpios = <&pm8994_gpios 22 0x1>;
+	qcom,cd-wakeup;
 
 	status = "ok";
 };
