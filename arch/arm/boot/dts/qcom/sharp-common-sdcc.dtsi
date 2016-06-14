@@ -79,3 +79,7 @@
 &sdhc_1 {
 	reg-names = "hc_mem", "core_mem";
 };
+
+&sdcc1_ice {
+	status = "disabled";
+};
