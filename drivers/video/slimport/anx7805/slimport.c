@@ -33,6 +33,7 @@
 #include <linux/mod_display.h>
 #include <linux/mod_display_ops.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/completion.h>
 
 #include "slimport_tx_drv.h"
 #include "slimport.h"
@@ -40,6 +41,8 @@
 #include <video/msm_dba.h>
 #include "../../msm/msm_dba/msm_dba_internal.h"
 #include "../../msm/msm_dba/mot_dba.h"
+
+#define MML_DYNAMIC_IRQ_SUPPORT 1
 
 #define ANX_PINCTRL_STATE_DEFAULT "anx_default"
 #define ANX_PINCTRL_STATE_SLEEP  "anx_sleep"
@@ -72,12 +75,22 @@ struct anx7805_data {
 //struct platform_device *hdmi_pdev;
 //	struct msm_hdmi_sp_ops *hdmi_sp_ops;
 	bool update_chg_type;
+	bool cbl_det_irq_enabled;
+	struct mutex sp_tx_power_lock;
+	bool sp_tx_power_state;
 
 	struct anx7805_pinctrl pinctrl_gpio;
 	atomic_t slimport_connected;
+	struct completion connect_wait;
 };
 
 struct anx7805_data *the_chip;
+struct i2c_client *anx7805_client;
+
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+static int anx7805_enable_irq(int enable);
+#endif
+
 /*
 #ifdef HDCP_EN
 static bool hdcp_enable = 1;
@@ -341,11 +354,18 @@ void sp_tx_hardware_poweron(void)
 	if (!the_chip)
 		return;
 
+	mutex_lock(&the_chip->sp_tx_power_lock);
+
+	if (the_chip->sp_tx_power_state) {
+		pr_warn("%s %s: already powered on!\n", LOG_TAG, __func__);
+		goto exit;
+	}
+
 	rc = anx7805_pinctrl_set_state(true);
 	if (rc < 0) {
 		pr_err("%s %s: fail to set_state for anx gpio. ret=%d\n",
 						LOG_TAG, __func__, rc);
-		return;
+		goto exit;
 	}
 
 	gpio_direction_output(the_chip->gpio_reset, 0);
@@ -357,6 +377,11 @@ void sp_tx_hardware_poweron(void)
 	gpio_direction_output(the_chip->gpio_reset, 1);
 
 	pr_info("anx7805 power on\n");
+
+	the_chip->sp_tx_power_state = 1;
+
+exit:
+	mutex_unlock(&the_chip->sp_tx_power_lock);
 }
 
 void sp_tx_hardware_powerdown(void)
@@ -366,6 +391,13 @@ void sp_tx_hardware_powerdown(void)
 
 	if (!the_chip)
 		return;
+
+	mutex_lock(&the_chip->sp_tx_power_lock);
+
+	if (!the_chip->sp_tx_power_state) {
+		pr_warn("%s %s: already powered off!\n", LOG_TAG, __func__);
+		goto exit;
+	}
 
 	gpio_direction_output(the_chip->gpio_reset, 0);
 	usleep_range(1000, 1001);
@@ -389,6 +421,11 @@ void sp_tx_hardware_powerdown(void)
 	}
 	*/
 	pr_info("anx7805 power down\n");
+
+	the_chip->sp_tx_power_state = 0;
+
+exit:
+	mutex_unlock(&the_chip->sp_tx_power_lock);
 }
 
 /*
@@ -682,10 +719,38 @@ static int anx7805_system_init(void)
 	return 0;
 }
 
-static irqreturn_t anx7805_cbl_det_isr(int irq, void *data)
+void cable_disconnect(void *data)
 {
 	struct anx7805_data *anx7805 = data;
 	int status;
+
+	status = cancel_delayed_work_sync(&anx7805->work);
+	if (status == 0)
+		flush_workqueue(anx7805->workqueue);
+	//when HPD low, power down ANX7805
+	if(sp_tx_pd_mode==0)
+	{
+		SP_CTRL_Set_System_State(SP_TX_WAIT_SLIMPORT_PLUGIN);
+		system_power_ctrl(0);
+	}
+
+	wake_unlock(&anx7805->slimport_lock);
+	wake_lock_timeout(&anx7805->slimport_lock, 2*HZ);
+
+	/* Notify DBA framework disconnect event */
+	anx7805_notify_clients(&anx7805->dev_info,
+		MSM_DBA_CB_HPD_DISCONNECT);
+
+	/* clear notify_control */
+	notify_control = 0;
+
+	/* clear EDID_ready */
+	EDID_ready = 0;
+}
+
+static irqreturn_t anx7805_cbl_det_isr(int irq, void *data)
+{
+	struct anx7805_data *anx7805 = data;
 
 	if (confirmed_cable_det(data)) {
 		if (!atomic_add_unless(&anx7805->slimport_connected, 1, 1))
@@ -693,6 +758,7 @@ static irqreturn_t anx7805_cbl_det_isr(int irq, void *data)
 
 		wake_lock(&anx7805->slimport_lock);
 		pr_info("detect cable insertion\n");
+		complete(&anx7805->connect_wait);
 		queue_delayed_work(anx7805->workqueue, &anx7805->work, 0);
 	} else {		
 		/* check HPD state again after 5 ms to see if it is HPD irq event */
@@ -706,30 +772,8 @@ static irqreturn_t anx7805_cbl_det_isr(int irq, void *data)
 			goto out;
 
 		pr_info("detect cable removal\n");
-		status = cancel_delayed_work_sync(&anx7805->work);
-		if (status == 0)
-			flush_workqueue(anx7805->workqueue);
-		//when HPD low, power down ANX7805
-		if(sp_tx_pd_mode==0)
-		{
-			SP_CTRL_Set_System_State(SP_TX_WAIT_SLIMPORT_PLUGIN);
-			system_power_ctrl(0);
-		}
-		
-		wake_unlock(&anx7805->slimport_lock);
-		wake_lock_timeout(&anx7805->slimport_lock, 2*HZ);
-
-
-
-			/* Notify DBA framework disconnect event */
-			anx7805_notify_clients(&anx7805->dev_info,
-				MSM_DBA_CB_HPD_DISCONNECT);
-
-			/* clear notify_control */
-			notify_control = 0;
-
-			/* clear EDID_ready */
-			EDID_ready = 0;
+		complete(&anx7805->connect_wait);
+		cable_disconnect(anx7805);
 		#ifdef Standard_DP
 		}
 		#endif
@@ -763,6 +807,47 @@ static void anx7805_work_func(struct work_struct *work)
 #endif
 }
 
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+static int anx7805_enable_irq(int enable)
+{
+	struct anx7805_data *anx7805;
+	int ret = 0;
+
+	pr_debug("%s+ (enable: %d)\n", __func__, enable);
+
+	if (!anx7805_client)
+		return -ENODEV;
+
+	if (!the_chip) {
+		pr_err("%s: the_chip is not set\n", __func__);
+		return -ENODEV;
+	}
+
+	anx7805 = the_chip;
+
+	if (enable && !anx7805->cbl_det_irq_enabled) {
+		ret = request_threaded_irq(anx7805_client->irq, NULL,
+			anx7805_cbl_det_isr, IRQF_TRIGGER_RISING
+			| IRQF_TRIGGER_FALLING
+			| IRQF_ONESHOT,
+			"anx7805", anx7805);
+		if (ret < 0) {
+			pr_err("%s : failed to request irq\n", __func__);
+			goto exit;
+		}
+
+		anx7805->cbl_det_irq_enabled = true;
+	} else if (!enable && anx7805->cbl_det_irq_enabled) {
+		free_irq(anx7805_client->irq, anx7805);
+
+		anx7805->cbl_det_irq_enabled = false;
+	}
+
+exit:
+	return ret;
+}
+#endif
+
 static int slimport_mod_display_handle_available(void *data)
 {
 	struct anx7805_data *anx7805;
@@ -791,6 +876,11 @@ static int slimport_mod_display_handle_unavailable(void *data)
 
 	anx7805 = (struct anx7805_data *)data;
 
+	if (atomic_read(&anx7805->slimport_connected)) {
+		pr_err("%s: Slimport should not be connected!\n", __func__);
+		ret = -EBUSY;
+	}
+
 	ret = mot_dba_device_disable(MOD_DISPLAY_TYPE_DP);
 	if (ret)
 		pr_err("%s: fail to disable DBA device MOD_DISPLAY_TYPE_DP\n",
@@ -804,27 +894,74 @@ static int slimport_mod_display_handle_unavailable(void *data)
 static int slimport_mod_display_handle_connect(void *data)
 {
 	struct anx7805_data *anx7805;
+	int retries = 2;
+	int ret = 0;
 
 	pr_debug("%s+\n", __func__);
 
 	anx7805 = (struct anx7805_data *)data;
 
+	reinit_completion(&anx7805->connect_wait);
+
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+	anx7805_enable_irq(1);
+#endif
+
 	mod_display_set_display_state(MOD_DISPLAY_ON);
+
+	while (!wait_for_completion_timeout(&anx7805->connect_wait,
+		msecs_to_jiffies(1000)) && retries) {
+		pr_debug("%s: Slimport not connected... Retries left: %d\n",
+			__func__, retries);
+		retries--;
+
+		/* Power cycle the chip here to work around cable detection
+		   issues we've seen */
+		sp_tx_hardware_poweron();
+		sp_tx_hardware_powerdown();
+	}
+
+	if (!atomic_read(&anx7805->slimport_connected)) {
+		pr_warn("%s: Slimport failed to connect...\n", __func__);
+		ret = -ENODEV;
+	}
 
 	pr_debug("%s-\n", __func__);
 
-	return 0;
+	return ret;
 }
 
 static int slimport_mod_display_handle_disconnect(void *data)
 {
 	struct anx7805_data *anx7805;
+	int retries = 2;
 
 	pr_debug("%s+\n", __func__);
 
 	anx7805 = (struct anx7805_data *)data;
 
+	reinit_completion(&anx7805->connect_wait);
+
 	mod_display_set_display_state(MOD_DISPLAY_OFF);
+
+	while (atomic_read(&anx7805->slimport_connected) &&
+	       !wait_for_completion_timeout(&anx7805->connect_wait,
+	       msecs_to_jiffies(1000)) && retries) {
+		pr_debug("%s: Slimport not disconnected... Retries left: %d\n",
+			__func__, retries);
+		retries--;
+	}
+
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+	anx7805_enable_irq(0);
+#endif
+
+	/* This should never happen, but just in case... */
+	if (atomic_add_unless(&anx7805->slimport_connected, -1, 0)) {
+		pr_err("%s %s : Slimport failed to disconnect... Force cable removal\n",
+			LOG_TAG, __func__);
+		cable_disconnect(anx7805);
+	}
 
 	pr_debug("%s-\n", __func__);
 
@@ -1056,6 +1193,7 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 	anx7805->hdmi_sp_ops = hdmi_sp_ops;
 */
 	the_chip = anx7805;
+	anx7805_client = client;
 
 	mutex_init(&anx7805->lock);
 	init_completion(&init_aux_ch_completion);
@@ -1093,6 +1231,8 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 	if (ret)
 		goto err4;
 	
+	anx7805->sp_tx_power_state = 0;
+	mutex_init(&anx7805->sp_tx_power_lock);
 
 	ret = anx7805_system_init();
 	if (ret) {
@@ -1100,6 +1240,7 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 		goto err5;
 	}
 
+	anx7805->cbl_det_irq_enabled = false;
 	client->irq = gpio_to_irq(anx7805->gpio_cbl_det);
 	if (client->irq < 0) {
 		pr_err("failed to get gpio irq\n");
@@ -1110,6 +1251,7 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 	wake_lock_init(&anx7805->slimport_lock, WAKE_LOCK_SUSPEND,
 	               "slimport_wake_lock");
 
+#ifndef MML_DYNAMIC_IRQ_SUPPORT
 	ret = request_threaded_irq(client->irq, NULL, anx7805_cbl_det_isr,
 	                           IRQF_TRIGGER_RISING
 	                           | IRQF_TRIGGER_FALLING
@@ -1125,24 +1267,29 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 		pr_err("interrupt wake enable fail\n");
 		goto err7;
 	}
+#endif
 
 	/* Register msm dba device */
 	ret = anx7805_register_dba(anx7805);
 	if (ret) {
 		pr_err("%s: Error registering with DBA %d\n",
 			__func__, ret);
+		goto err7;
 	}
 
 	slimport_mod_display_ops.data = (void *)anx7805;
 	mod_display_register_impl(&slimport_mod_display_impl);
+	init_completion(&anx7805->connect_wait);
 
 	pr_info("%s succeed!\n", __func__);
 
 	goto exit;
 
 err7:
+#ifndef MML_DYNAMIC_IRQ_SUPPORT
 	free_irq(client->irq, anx7805);
 err6:
+#endif
 	wake_lock_destroy(&anx7805->slimport_lock);
 err5:
 	if (!anx7805->vdd_reg)
