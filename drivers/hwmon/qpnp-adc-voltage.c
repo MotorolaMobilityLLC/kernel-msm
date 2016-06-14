@@ -178,6 +178,8 @@ static struct qpnp_vadc_scale_fn vadc_scale_fn[] = {
 	[SCALE_QRD_SKUE_BATT_THERM] = {qpnp_adc_scale_qrd_skue_batt_therm},
 	[SCALE_QRD_SKUL_BATT_THERM] = {qpnp_adc_scale_qrd_skul_batt_therm},
 	[SCALE_PMI_CHG_TEMP] = {qpnp_adc_scale_pmi_chg_temp},
+	[SCALE_XOTHERM_EPSONFA] = {qpnp_adc_epsonfa_therm},
+	[SCALE_THERM_100K_PULLUP_TDKNTC] = {qpnp_adc_scale_therm_tdkntc},
 };
 
 static struct qpnp_vadc_rscale_fn adc_vadc_rscale_fn[] = {
