@@ -67,10 +67,10 @@ void motosh_irq_thread_func(struct kthread_work *work)
 	u16 prev_message_id;
 	u8 resuming = 0;
 
-	if (ps_motosh->is_suspended)
-		return;
-
 	mutex_lock(&ps_motosh->lock);
+
+	if (ps_motosh->is_suspended)
+		goto EXIT;
 
 	if (ps_motosh->mode <= BOOTMODE)
 		goto EXIT;
