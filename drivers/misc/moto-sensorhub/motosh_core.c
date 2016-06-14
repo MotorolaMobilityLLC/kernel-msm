@@ -1494,10 +1494,10 @@ static int motosh_resume(struct device *dev)
 	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
 	dev_dbg(dev, "%s\n", __func__);
 
+	mutex_lock(&ps_motosh->lock);
+
 	ps_motosh->resume_cleanup = true;
 	ps_motosh->is_suspended = false;
-
-	mutex_lock(&ps_motosh->lock);
 
 	/* During a quickwake interrupts will be set as ignored at the end of
 	   quickpeek_work_func while the system is being re-suspended.  It is
