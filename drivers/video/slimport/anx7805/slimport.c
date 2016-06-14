@@ -477,7 +477,8 @@ EXPORT_SYMBOL(slimport_read_edid_block);
 
 int update_audio_format_setting(unsigned char  bAudio_Fs, unsigned char bAudio_word_len, int Channel_Num, I2SLayOut layout)
 {
-	//pr_info("bAudio_Fs = %d, bAudio_word_len = %d, Channel_Num = %d, layout = %d\n", bAudio_Fs, bAudio_word_len, Channel_Num, layout); //liu
+	pr_info("bAudio_Fs = %d, bAudio_word_len = %d, Channel_Num = %d, layout = %d\n",
+			bAudio_Fs, bAudio_word_len, Channel_Num, layout);
 	SP_CTRL_AUDIO_FORMAT_Set(AUDIO_I2S,bAudio_Fs ,bAudio_word_len);
 	SP_CTRL_I2S_CONFIG_Set(Channel_Num , layout);
 	audio_format_change=1;
@@ -498,6 +499,30 @@ unchar sp_get_rx_bw(void)
 	return sp_rx_bw;
 }
 EXPORT_SYMBOL(sp_get_rx_bw);
+
+static int anx7805_configure_audio(void *client,
+		struct msm_dba_audio_cfg *cfg, u32 flags)
+{
+	unsigned char word_len, Fs;
+	int Channels = 0;
+
+	/* added basic functionality. To be extended later as per
+	   requirement */
+	if (cfg->channels == MSM_DBA_AUDIO_CHANNEL_2)
+		Channels = I2S_CH_2;
+
+	if (cfg->channel_status_word_length == MSM_DBA_AUDIO_WORD_16BIT)
+		word_len = AUDIO_W_LEN_16_20MAX;
+	else if (cfg->channel_status_word_length == MSM_DBA_AUDIO_WORD_24BIT)
+		word_len = AUDIO_W_LEN_24_24MAX;
+
+	if (cfg->sampling_rate == MSM_DBA_AUDIO_48KHZ)
+		Fs = AUDIO_FS_48K;
+
+	pr_debug("%s: configure anx7805 I2S\n", __func__);
+	update_audio_format_setting(Fs, word_len, Channels, I2S_LAYOUT_0);
+	return 0;
+}
 
 static int anx7805_mipi_timing_setting(void *client, bool on,
 		struct msm_dba_video_cfg *cfg, u32 flags)
@@ -991,7 +1016,7 @@ static int anx7805_register_dba(struct anx7805_data *pdata)
 
 	client_ops->power_on        = NULL;
 	client_ops->video_on        = anx7805_mipi_timing_setting;
-	client_ops->configure_audio = NULL;
+	client_ops->configure_audio = anx7805_configure_audio;
 	client_ops->hdcp_enable     = NULL;
 	client_ops->hdmi_cec_on     = NULL;
 	client_ops->hdmi_cec_write  = NULL;
