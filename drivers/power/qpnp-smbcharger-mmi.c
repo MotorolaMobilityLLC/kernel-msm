@@ -4785,6 +4785,14 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 	if (val != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
 
+	if (psy && (strcmp(psy->name, (char *)chip->eb_pwr_psy_name) == 0)) {
+		SMB_WARN(chip, "PSY changed on PTP\n");
+		cancel_delayed_work(&chip->heartbeat_work);
+		schedule_delayed_work(&chip->heartbeat_work,
+				      msecs_to_jiffies(100));
+		return NOTIFY_OK;
+	}
+
 	if (!psy || (psy != chip->usbc_psy))
 		return NOTIFY_OK;
 
