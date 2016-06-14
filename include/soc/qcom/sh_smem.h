@@ -77,6 +77,8 @@ typedef struct
     unsigned short      sh_proxgrip_p3ave[2];        /* Grip Sensor Count Value 3mm AVE*/
     unsigned short      sh_proxgrip_p3min[2];        /* Grip Sensor Count Value 3mm MIN*/
     unsigned char       shdarea_WlanNVSwitch[8];     /* WLAN NV file switch flags */
+    signed short        sh_shub_offset_acc_xyz[3];   /* Sensor Hub Accelerometer offset data */
+    unsigned char       sh_shub_offset_acc_flg;      /* Sensor Hub Accelerometer offset flag */
 } sharp_smem_common_type;
 
 #define SH_SMEM_COMMON_SIZE 30720
