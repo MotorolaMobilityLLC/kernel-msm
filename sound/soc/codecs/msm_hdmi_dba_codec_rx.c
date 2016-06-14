@@ -433,6 +433,9 @@ static int msm_hdmi_dba_codec_rx_dai_hw_params(
 	struct msm_hdmi_dba_codec_rx_data *codec_data =
 					dev_get_drvdata(dai->codec->dev);
 
+	/* Stereo support ONLY for now */
+	codec_data->audio_cfg.channels = MSM_DBA_AUDIO_CHANNEL_2;
+
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
 	case SNDRV_PCM_FORMAT_SPECIAL:
@@ -448,6 +451,19 @@ static int msm_hdmi_dba_codec_rx_dai_hw_params(
 			__func__, params_format(params));
 		return -EINVAL;
 	}
+
+	/* rate=48kHz support ONLY for now */
+	switch (params_rate(params)) {
+	case 48000:
+		codec_data->audio_cfg.sampling_rate =
+			MSM_DBA_AUDIO_48KHZ;
+		break;
+	default:
+		pr_err_ratelimited("%s: rate %d\n",
+			__func__, params_rate(params));
+		return -EINVAL;
+	}
+
 	/* configure channel status information */
 	if (codec_data->dba_ops.configure_audio)
 		codec_data->dba_ops.configure_audio(codec_data->dba_data,
