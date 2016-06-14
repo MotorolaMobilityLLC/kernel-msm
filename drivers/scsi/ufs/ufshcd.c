@@ -6459,6 +6459,11 @@ static int ufshcd_eh_host_reset_handler(struct scsi_cmnd *cmd)
 
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 
+	if (err == FAILED) {
+		pr_err("%s, fail to recovery ufs", __func__);
+		BUG();
+	}
+
 	return err;
 }
 
