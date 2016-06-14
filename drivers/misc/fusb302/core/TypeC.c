@@ -119,6 +119,43 @@ FSC_U32 gRequestOpVoltage = 100;/*set default 100*50mv*/
 static regMask_t Mask;
 static regMaskAdv_t MaskAdv;
 
+const char *fusb_state_string(ConnectionState state)
+{
+	static const char *const names[] = {
+		"Disabled",
+		"ErrorRecovery",
+		"Unattached",
+		"AttachWaitSink",
+		"AttachedSink",
+		"AttachWaitSource",
+		"AttachedSource",
+		"TrySource",
+		"TryWaitSink",
+		"TrySink",
+		"TryWaitSource",
+		"AudioAccessory",
+		"DebugAccessorySource",
+		"AttachWaitAccessory",
+		"PoweredAccessory",
+		"UnsupportedAccessory",
+		"DelayUnattached",
+		"UnattachedSource",
+		"DebugAccessorySink",
+		"AttachWaitDebSink",
+		"AttachedDebSink",
+		"AttachWaitDebSource",
+		"AttachedDebSource",
+		"TryDebSource",
+		"TryWaitDebSink",
+		"UnattachedDebSource",
+	};
+
+	if (state < 0 || state >= ARRAY_SIZE(names))
+		return "undefined";
+
+	return names[state];
+}
+
 int fusb_power_supply_set_property(struct power_supply *psy,
 				 enum power_supply_property prop,
 				 const union power_supply_propval *val)
@@ -427,11 +464,11 @@ void EnableTypeCStateMachine(void)
  ******************************************************************************/
 void WakeStateMachineTypeC(void)
 {
-	FUSB_LOG("TypeC Kicking ConnState is %d USBPDActive is %d\n",
-			 ConnState, USBPDActive);
+	FUSB_LOG("TypeC Kicking ConnState is %s USBPDActive is %d\n",
+			 fusb_state_string(ConnState), USBPDActive);
 	StateMachineTypeCImp();
-	FUSB_LOG("TypeC End Kicking ConnState is %d USBPDActive is %d\n",
-			 ConnState, USBPDActive);
+	FUSB_LOG("TypeC End Kicking ConnState is %s USBPDActive is %d\n",
+			 fusb_state_string(ConnState), USBPDActive);
 }
 void StateMachineTypeCImp(void)
 {
@@ -578,8 +615,8 @@ void StateMachineTypeCImp(void)
 
 void StateMachineTypeC(void)
 {
-	FUSB_LOG("TypeC Start ConnState is %d USBPDActive is %d\n",
-			 ConnState, USBPDActive);
+	FUSB_LOG("TypeC Start ConnState is %s USBPDActive is %d\n",
+			 fusb_state_string(ConnState), USBPDActive);
 #ifdef FSC_INTERRUPT_TRIGGERED
 	do {
 #endif
@@ -587,8 +624,8 @@ void StateMachineTypeC(void)
 #ifdef FSC_INTERRUPT_TRIGGERED
 	} while (g_Idle == FALSE);
 #endif
-	FUSB_LOG("TypeC End ConnState is %d USBPDActive is %d\n",
-			 ConnState, USBPDActive);
+	FUSB_LOG("TypeC End ConnState is %s USBPDActive is %d\n",
+			 fusb_state_string(ConnState), USBPDActive);
 }
 
 void StateMachineDisabled(void)
