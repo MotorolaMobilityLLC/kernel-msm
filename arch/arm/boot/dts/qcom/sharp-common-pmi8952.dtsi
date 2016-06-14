@@ -21,6 +21,7 @@
 		pmi8950_vadc: vadc@3100 {
 		};
 		pmi8994_charger: qcom,qpnp-smbcharger {
+			qcom,thermal-mitigation = <1500 400 300 0>;
 			sharp,batt-default-hvdcp-icl-ma = <1400>;
 			sharp,batt-default-hvdcp3-icl-ma = <1400>;
 			sharp,batt-default-dcp-icl-ma = <1500>;
