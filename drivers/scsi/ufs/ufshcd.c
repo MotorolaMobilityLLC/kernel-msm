@@ -8657,6 +8657,7 @@ int ufshcd_shutdown(struct ufs_hba *hba)
 {
 	int ret = 0;
 	struct Scsi_Host *host = hba->host;
+	unsigned long flags;
 
 	if (ufshcd_is_ufs_dev_poweroff(hba) && ufshcd_is_link_off(hba))
 		goto out;
@@ -8671,6 +8672,12 @@ int ufshcd_shutdown(struct ufs_hba *hba)
 		kthread_stop(host->ehandler);
 
 	ret = ufshcd_suspend(hba, UFS_SHUTDOWN_PM);
+
+	spin_lock_irqsave(host->host_lock, flags);
+	scsi_block_requests(host);
+	hba->is_powered = false;
+	spin_unlock_irqrestore(host->host_lock, flags);
+
 out:
 	if (ret)
 		dev_err(hba->dev, "%s failed, err %d\n", __func__, ret);
