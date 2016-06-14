@@ -704,9 +704,10 @@
 			pinctrl-1 = <&sec_tlmm_lines_sus>;
 		};
 		dai_mi2s5: qcom,msm-dai-q6-mi2s-quin {
+			qcom,msm-mi2s-rx-lines = <2>;
 			pinctrl-names = "default", "idle";
-			pinctrl-0 = <&pri_tlmm_lines_act>;
-			pinctrl-1 = <&pri_tlmm_lines_sus>;
+			pinctrl-0 = <&pri_tlmm_lines_act>, <&pri_tlmm_ws_act>;
+			pinctrl-1 = <&pri_tlmm_lines_sus>, <&pri_tlmm_ws_sus>;
 		};
 		dai_mi2s6: qcom,msm-dai-q6-mi2s-senary {
 			status = "disabled";
