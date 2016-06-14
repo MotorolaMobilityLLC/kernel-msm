@@ -13,7 +13,7 @@
  */
 
 qcom,sharp-eve {
-	qcom,max-voltage-uv = <4360000>;
+	qcom,max-voltage-uv = <4350000>;
 	qcom,nom-batt-capacity-mah = <3010>;
 	qcom,batt-id-kohm = <47>;
 	qcom,battery-beta = <3380>;
