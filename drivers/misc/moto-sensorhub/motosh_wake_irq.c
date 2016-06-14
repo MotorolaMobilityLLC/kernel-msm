@@ -148,6 +148,13 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 	dev_dbg(&ps_motosh->client->dev, "motosh_irq_wake_work_func\n");
 	mutex_lock(&ps_motosh->lock);
 
+	if (ps_motosh->is_suspended) {
+		dev_dbg(&ps_motosh->client->dev,
+			"setting pending_wake_work [true]");
+		ps_motosh->pending_wake_work = true;
+		goto EXIT_NO_WAKE;
+	}
+
 	if (ps_motosh->mode == BOOTMODE)
 		goto EXIT_NO_WAKE;
 
