@@ -6838,6 +6838,14 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		pr_err("Couldn't write to MISC_TRIM_OPTIONS_15_8 rc=%d\n",
 			rc);
 
+	if(of_board_is_sharp_eve()){
+		rc = smbchg_sec_masked_write(chip,
+			chip->misc_base + MISC_TRIM_OPT_15_8, AICL_RERUN_MASK, AICL_RERUN_ON);
+		if (rc)
+			pr_err("Couldn't write to MISC_TRIM_OPTIONS_15_8 RERUN_AICL rc=%d\n",
+				rc);
+	}
+
 	return rc;
 }
 
@@ -7712,6 +7720,13 @@ static int smbchg_probe(struct spmi_device *spmi)
 		dev_err(&spmi->dev,
 			"Unable to intialize hardware rc = %d\n", rc);
 		goto free_regulator;
+	}
+
+	if(of_board_is_sharp_eve()){
+		rc = smbchg_sec_masked_write(chip, chip->chgr_base + CHGR_CFG1,
+					TERM_I_SRC_BIT | RECHG_THRESHOLD_SRC_BIT, TERM_SRC_FG);
+		if (rc)
+			pr_err("set chg value failed rc=%d\n", rc);
 	}
 
 	rc = determine_initial_status(chip);
