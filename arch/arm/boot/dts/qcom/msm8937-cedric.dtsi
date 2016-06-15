@@ -79,6 +79,12 @@
 	qcom,qpnp-ibb-discharge-resistor = <32>;
 };
 
+&wled {
+	qcom,fs-curr-ua = <25000>;
+	qcom,cons-sync-write-delay-us = <1000>;
+	qcom,en-cabc;
+};
+
 &spmi_bus {
 	qcom,pmi8950@2 {
 		/delete-node/ qcom,leds@a100;
