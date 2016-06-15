@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -207,6 +207,7 @@ struct tmc_drvdata {
 	uint32_t		mem_size;
 	bool			sticky_enable;
 	bool			force_reg_dump;
+	bool			force_alloc_from_dma_region;
 	bool			dump_reg;
 	bool			sg_enable;
 	enum tmc_etr_mem_type	mem_type;
@@ -436,7 +437,12 @@ static int tmc_etr_sg_tbl_alloc(struct tmc_drvdata *drvdata)
 	int total_ents = DIV_ROUND_UP(drvdata->size, PAGE_SIZE);
 	int ents_per_blk = PAGE_SIZE/sizeof(uint32_t);
 
-	virt_pgdir = (uint32_t *)get_zeroed_page(GFP_KERNEL);
+	if (drvdata->force_alloc_from_dma_region)
+		virt_pgdir = (uint32_t *)
+			      get_zeroed_page(GFP_KERNEL | GFP_DMA);
+	else
+		virt_pgdir = (uint32_t *)get_zeroed_page(GFP_KERNEL);
+
 	if (!virt_pgdir)
 		return -ENOMEM;
 
@@ -446,7 +452,12 @@ static int tmc_etr_sg_tbl_alloc(struct tmc_drvdata *drvdata)
 		last_pte = ((i + ents_per_blk) > total_ents) ?
 			   total_ents : (i + ents_per_blk);
 		while (i < last_pte) {
-			virt_pte = (void *)get_zeroed_page(GFP_KERNEL);
+			if (drvdata->force_alloc_from_dma_region)
+				virt_pte = (uint32_t *)
+					get_zeroed_page(GFP_KERNEL | GFP_DMA);
+			else
+				virt_pte = (uint32_t *)
+						get_zeroed_page(GFP_KERNEL);
 			if (!virt_pte) {
 				ret = -ENOMEM;
 				goto err;
@@ -2393,6 +2404,10 @@ static int tmc_probe(struct platform_device *pdev)
 	drvdata->force_reg_dump = of_property_read_bool
 				  (pdev->dev.of_node,
 				  "qcom,force-reg-dump");
+
+	drvdata->force_alloc_from_dma_region = of_property_read_bool
+				  (pdev->dev.of_node,
+				  "qcom,force-alloc-from-dma-region");
 
 	devid = tmc_readl(drvdata, CORESIGHT_DEVID);
 	drvdata->config_type = BMVAL(devid, 6, 7);
