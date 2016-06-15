@@ -1443,7 +1443,7 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 
 	mdata->iclient = msm_ion_client_create(mdata->pdev->name);
 	if (IS_ERR_OR_NULL(mdata->iclient)) {
-		pr_err("msm_ion_client_create() return error (%p)\n",
+		pr_err("msm_ion_client_create() return error (%pK)\n",
 				mdata->iclient);
 		mdata->iclient = NULL;
 	}
@@ -1812,7 +1812,7 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 	if (rc)
 		pr_debug("unable to map MDSS VBIF non-realtime base\n");
 	else
-		pr_debug("MDSS VBIF NRT HW Base addr=%p len=0x%x\n",
+		pr_debug("MDSS VBIF NRT HW Base addr=%pK len=0x%x\n",
 			mdata->vbif_nrt_io.base, mdata->vbif_nrt_io.len);
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
@@ -2665,7 +2665,7 @@ static int mdss_mdp_dsc_addr_setup(struct mdss_data_type *mdata,
 	for (i = 0; i < len; i++) {
 		head[i].num = i;
 		head[i].base = (mdata->mdss_io.base) + dsc_offsets[i];
-		pr_debug("%s: dsc off (%d) = %p\n", __func__, i, head[i].base);
+		pr_debug("%s: dsc off (%d) = %pK\n", __func__, i, head[i].base);
 	}
 
 	mdata->dsc_off = head;
