@@ -176,6 +176,8 @@
 			interrupts = <65 0x2008>;
 			gpios = <&tlmm 65 0x2008>, /* IRQ */
 				<&tlmm 64 0>; /* RESET */
+			touch_vdd-supply = <&pm8953_l22>;
+			vdd_quirk-supply = <&pm8953_l6>;
 			synaptics,gpio-config;
 			pinctrl-names = "default", "active";
 			pinctrl-0 = <&touch_reset_default &touch_int_default>;
