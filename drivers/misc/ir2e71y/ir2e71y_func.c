@@ -231,7 +231,7 @@ static int ir2e71y_bdic_lowbkl_before;
 static int psals_recovery_flag = IR2E71Y_BDIC_PSALS_RECOVERY_NONE;
 
 static int mled_delay_ms1   = 400;
-static int slope_fast       = 0x21;
+static int slope_fast       = 0xD8;
 
 #if defined(CONFIG_ANDROID_ENGINEERING)
 module_param(mled_delay_ms1, int, 0600);
@@ -2573,6 +2573,7 @@ static void ir2e71y_bdic_PD_BKL_set_led_value(void)
         }
         switch (slope_mode) {
         case IR2E71Y_BDIC_BKL_SLOPE_MODE_FAST:
+            ir2e71y_bdic_bkl_slope_fast[1].data  = (unsigned char)slope_fast;
             IR2E71Y_BDIC_REGSET(ir2e71y_bdic_bkl_slope_fast);
             break;
         case IR2E71Y_BDIC_BKL_SLOPE_MODE_SLOW:
