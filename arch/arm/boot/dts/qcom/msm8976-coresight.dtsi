@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,6 +23,7 @@
 		qcom,sg-enable;
 		coresight-default-sink;
 		qcom,force-reg-dump;
+		qcom,force-alloc-from-dma-region;
 
 		coresight-id = <0>;
 		coresight-name = "coresight-tmc-etr";
