@@ -613,6 +613,7 @@ int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 	struct qstr nomedia;
 	struct dentry *lower_dentry;
 	struct path lower_dir_path, lower_path;
+	struct dentry *lower_parent_dentry = NULL;
 	umode_t mode;
 	int err = 0;
 
@@ -661,9 +662,11 @@ int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 
 	/* Now create the lower file. */
 	mode = S_IFREG;
+	lower_parent_dentry = lock_parent(lower_dentry);
 	esdfs_set_lower_mode(ESDFS_SB(dir_dentry->d_sb), &mode);
 	err = vfs_create(lower_dir_path.dentry->d_inode, lower_dentry, mode,
 			 true);
+	unlock_dir(lower_parent_dentry);
 	dput(lower_dentry);
 
 out:
