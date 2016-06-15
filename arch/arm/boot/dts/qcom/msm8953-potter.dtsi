@@ -617,6 +617,13 @@
 	};
 };
 
+&wled {
+	qcom,fs-curr-ua = <25000>;
+	qcom,cons-sync-write-delay-us = <1000>;
+	qcom,led-strings-list = [00 01 02];
+	qcom,en-cabc;
+};
+
 &pm8953_l2 {
 	regulator-min-microvolt = <1000000>;
 	regulator-max-microvolt = <1000000>;
