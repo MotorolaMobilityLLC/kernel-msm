@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014,2016 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -57,13 +57,13 @@ static void __dump_pipe(struct seq_file *s, struct mdss_mdp_pipe *pipe)
 	seq_puts(s, "Data:\n");
 	if (pipe->front_buf.num_planes) {
 		buf = pipe->front_buf.p;
-		seq_printf(s, "\tfront_buf ihdl=0x%p addr=%pa size=%lu\n",
+		seq_printf(s, "\tfront_buf ihdl=0x%pK addr=%pa size=%lu\n",
 				buf->srcp_ihdl, &buf->addr, buf->len);
 	}
 
 	if (pipe->back_buf.num_planes) {
 		buf = pipe->back_buf.p;
-		seq_printf(s, "\tback_buf ihdl=0x%p addr=%pa size=%lu\n",
+		seq_printf(s, "\tback_buf ihdl=0x%pK addr=%pa size=%lu\n",
 				buf->srcp_ihdl, &buf->addr, buf->len);
 	}
 }
