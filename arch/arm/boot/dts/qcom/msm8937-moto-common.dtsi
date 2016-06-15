@@ -84,6 +84,29 @@
 		};
 
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "cedric";
+	};
+
+	qcom,sensor-information {
+		sensor_information12: qcom,sensor-information-12 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "chg_therm";
+		};
+
+		sensor_information15: qcom,sensor-information-15 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "msm_therm";
+		};
+
+		sensor_information17: qcom,sensor-information-17 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "battery";
+			qcom,alias-name  = "batt_therm";
+			qcom,scaling-factor = <1000>;
+		};
+	};
 };
 
 &blsp1_uart2 {
@@ -157,3 +180,14 @@
 &mdss_dsi0 {
 	qcom,display-id = "primary";
 };
+
+&pm8937_vadc {
+	chan@11 {
+		label = "chg_therm";
+	};
+
+	chan@13 {
+		label = "msm_therm";
+	};
+};
+
