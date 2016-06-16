@@ -11,6 +11,10 @@
  */
 
 &mdss_mdp {
+	mot_smd_546_QHD_p_cmd_v2: qcom,mdss_dsi_mot_smd_546_QHD_p_cmd_v2 {
+		#include "dsi-panel-mot-smd-546-QHD-p-cmd-common.dtsi"
+	};
+
 	mot_smd_546_QHD_p_cmd_v1: qcom,mdss_dsi_mot_smd_546_QHD_p_cmd_v1 {
 		#include "dsi-panel-mot-smd-546-QHD-p-cmd-common.dtsi"
 	};
@@ -35,4 +39,35 @@
 	/* HBM doesn't work on older HW */
 	/delete-property/ qcom,mdss-dsi-hbm-on-command;
 	/delete-property/ qcom,mdss-dsi-hbm-off-command;
+	qcom,mdss-dsi-on-command = [
+		39 00 00 00 00 00 03 F0 5A 5A
+		39 00 00 00 00 00 03 FC 5A 5A
+		07 00 00 00 00 00 01 01
+		05 01 00 00 78 00 01 11
+		15 00 00 00 00 00 02 E6 01
+		15 00 00 00 00 00 02 35 00
+		39 00 00 00 00 00 11 B1 10 03 10 10 10 80 40
+			48 20 01 02 12 24 48 7F FF
+		15 00 00 00 00 00 02 53 20
+		15 00 00 00 00 00 02 51 00
+		15 00 00 00 00 00 02 55 00
+		05 01 00 00 00 00 01 29
+	];
+};
+
+&mot_smd_546_QHD_p_cmd_v1 {
+	qcom,mdss-dsi-on-command = [
+		39 00 00 00 00 00 03 F0 5A 5A
+		39 00 00 00 00 00 03 FC 5A 5A
+		07 00 00 00 00 00 01 01
+		05 01 00 00 78 00 01 11
+		15 00 00 00 00 00 02 E6 01
+		15 00 00 00 00 00 02 35 00
+		39 00 00 00 00 00 11 B1 10 03 10 10 10 80 40
+			48 20 01 02 12 24 48 7F FF
+		15 00 00 00 00 00 02 53 20
+		15 00 00 00 00 00 02 51 00
+		15 00 00 00 00 00 02 55 00
+		05 01 00 00 00 00 01 29
+	];
 };
