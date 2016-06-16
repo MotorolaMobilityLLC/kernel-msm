@@ -17,6 +17,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/workqueue.h>
+#include <linux/delay.h>
 #include <sound/core.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
@@ -38,6 +39,7 @@
 #include "../codecs/wcd-mbhc-v2.h"
 #ifdef CONFIG_SND_SOC_MARLEY
 #include "../codecs/marley.h"
+#include "../codecs/cs35l34.h"
 #include <linux/mfd/arizona/registers.h>
 #include "../codecs/aov_trigger.h"
 #endif
@@ -3833,6 +3835,12 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 		snd_soc_write(codec, ARIZONA_LDO2_CONTROL_1, 0x484);
 	}
 
+	/* Disable the MCLK */
+	snd_soc_update_bits(codec, ARIZONA_SYSTEM_CLOCK_1,
+		1 << ARIZONA_SYSCLK_ENA_SHIFT, 0);
+	snd_soc_update_bits(codec, ARIZONA_OUTPUT_SYSTEM_CLOCK,
+		1 << ARIZONA_OPCLK_ENA_SHIFT, 0);
+
 	return 0;
 }
 
@@ -3843,6 +3851,7 @@ int marley_cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_dai *aif1_dai = rtd->cpu_dai;
 	struct snd_soc_dai *cs35l34_dai = rtd->codec_dai;
+	struct snd_soc_codec *codec_marley = rtd->cpu_dai->codec;
 
 	ret = snd_soc_dai_set_sysclk(aif1_dai, ARIZONA_CLK_SYSCLK, 0, 0);
 	if (ret != 0) {
@@ -3854,8 +3863,34 @@ int marley_cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
 		return ret;
 	}
+	ret = snd_soc_codec_set_pll(codec, MARLEY_FLL1_REFCLK,
+			ARIZONA_FLL_SRC_NONE,
+			0, 0);
+	ret = snd_soc_codec_set_pll(codec_marley, MARLEY_FLL1,
+		ARIZONA_FLL_SRC_MCLK2,
+		32768, MARLEY_SYSCLK_RATE);
+	ret = snd_soc_codec_set_sysclk(codec_marley, ARIZONA_CLK_SYSCLK,
+		ARIZONA_CLK_SRC_FLL1, MARLEY_SYSCLK_RATE,
+		SND_SOC_CLOCK_IN);
+
+	ret = snd_soc_codec_set_sysclk(codec_marley, ARIZONA_CLK_OPCLK,
+		0, CS35L34_MCLK_RATE,
+		SND_SOC_CLOCK_OUT);
 	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
 	snd_soc_dapm_sync(dapm);
+
+	/* Startup MCLK to initailize the cs35l34 */
+	snd_soc_update_bits(codec_marley, ARIZONA_SYSTEM_CLOCK_1,
+		1 << ARIZONA_SYSCLK_ENA_SHIFT, 1 << ARIZONA_SYSCLK_ENA_SHIFT);
+	snd_soc_update_bits(codec_marley, ARIZONA_OUTPUT_SYSTEM_CLOCK,
+		1 << ARIZONA_OPCLK_ENA_SHIFT, 1 << ARIZONA_OPCLK_ENA_SHIFT);
+
+	usleep_range(1000, 1001);
+	snd_soc_update_bits(codec, CS35L34_PWRCTL1,
+		PDN_ALL, PDN_ALL);
+	/* Wait 45ms for the interrupt pin to go low */
+	msleep(45);
+
 	return 0;
 }
 #endif
