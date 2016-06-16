@@ -4671,7 +4671,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	chip->hvdcp_det_done = false;
 
 	if (chip->factory_cable) {
-		if (!factory_kill_disable && !reboot_in_progress()) {
+		if (!factory_kill_disable) {
 			pr_err("SMB - Factory Cable removed, power-off\n");
 			kernel_power_off();
 		} else
