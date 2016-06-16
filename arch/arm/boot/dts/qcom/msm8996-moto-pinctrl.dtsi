@@ -287,8 +287,16 @@
 
 	muc_attach: muc_attach@0 {
 		config {
-			pins = "gpio73", "gpio35", "gpio143", "gpio79";
+			pins = "gpio35", "gpio143", "gpio79";
 			bias-disable;
+		};
+	};
+
+	muc_det: muc_det@0 {
+		config {
+			pins = "gpio73";
+			bias-disable;
+			drive-strength = <16>;
 		};
 	};
 
