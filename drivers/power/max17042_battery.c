@@ -361,7 +361,7 @@ static int max17042_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		chip->batt_max_uv = val->intval;
-		regmap_read(map, MAX17042_VALRT_Th, &data);
+		ret = regmap_read(map, MAX17042_VALRT_Th, &data);
 		if (ret < 0)
 			return ret;
 
@@ -369,7 +369,7 @@ static int max17042_set_property(struct power_supply *psy,
 		/* Units of LSB = 20mV */
 		data |= (chip->batt_max_uv / 20000) << 8;
 
-		regmap_write(map, MAX17042_VALRT_Th, data);
+		ret = regmap_write(map, MAX17042_VALRT_Th, data);
 		if (ret < 0)
 			return ret;
 		break;
