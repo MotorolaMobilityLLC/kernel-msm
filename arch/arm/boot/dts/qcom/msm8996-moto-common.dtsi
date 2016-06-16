@@ -859,8 +859,8 @@
 					<5 0 20>;
 
 		pinctrl-names = "disconnected", "spi_active", "spi_ack";
-		pinctrl-0 = <&muc_attach &spi_0_sleep &muc_spi_ctrl>;
-		pinctrl-1 = <&muc_attach &spi_0_active &muc_spi_ctrl>;
+		pinctrl-0 = <&muc_attach &muc_det &spi_0_sleep &muc_spi_ctrl>;
+		pinctrl-1 = <&muc_attach &muc_det &spi_0_active &muc_spi_ctrl>;
 		pinctrl-2 = <&spi_0_mosi_ack &spi_0_miso_ack>;
 
 		transports {
