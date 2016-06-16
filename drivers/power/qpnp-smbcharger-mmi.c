@@ -5007,6 +5007,27 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 	power_supply_changed(&chip->batt_psy);
 }
 
+#define OTG_TRIM6               0xF6
+#define TR_ENB_SKIP_BIT         BIT(2)
+
+static int smbchg_otg_pulse_skip_disable(struct smbchg_chip *chip, bool disable)
+{
+	int rc;
+
+	SMB_DBG(chip, "%s pulse skip\n", disable ? "disabling" : "enabling");
+
+	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_TRIM6,
+			TR_ENB_SKIP_BIT, disable ? TR_ENB_SKIP_BIT : 0);
+	if (rc < 0) {
+		SMB_ERR(chip, "Couldn't %s otg pulse skip rc = %d\n",
+			disable ? "disable" : "enable", rc);
+		return rc;
+	}
+
+	return 0;
+}
+
+
 #define OTG_EN		BIT(0)
 static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 {
@@ -5016,6 +5037,8 @@ static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 	if (chip->usbc_disabled)
 		return 0;
 
+	smbchg_otg_pulse_skip_disable(chip, true);
+	msleep(20);
 	chip->otg_retries = 0;
 	rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
 			OTG_EN, OTG_EN);
@@ -5039,6 +5062,7 @@ static int smbchg_otg_regulator_disable(struct regulator_dev *rdev)
 			OTG_EN, 0);
 	if (rc < 0)
 		SMB_ERR(chip, "Couldn't disable OTG mode rc=%d\n", rc);
+	smbchg_otg_pulse_skip_disable(chip, false);
 	SMB_DBG(chip, "Disabling OTG Boost\n");
 	return rc;
 }
