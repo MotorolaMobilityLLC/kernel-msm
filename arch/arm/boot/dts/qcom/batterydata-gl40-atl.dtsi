@@ -12,47 +12,47 @@
 
 qcom,gl40-atl {
 	serialnum = "SNN5974";
-	/* #2371683_Moto_GL40ATL_3510mAh_averaged_MasterSlave_Mar21st2016*/
+	/* #2479243_Moto_AddisonGL40_3510mAh_averaged_MasterSlave_Jun10th2016*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <3510>;
 	qcom,batt-id-kohm = <243>;
 	qcom,battery-beta = <3900>;
 	qcom,battery-type = "GL40-ATL-3510mah";
-	qcom,chg-rslow-comp-c1 = <3424202>;
-	qcom,chg-rslow-comp-c2 = <5839715>;
-	qcom,chg-rs-to-rslow = <779204>;
-	qcom,chg-rslow-comp-thr = <0xB5>;
-	qcom,checksum = <0xFE98>;
-	qcom,gui-version = "PMI8950GUI - 2.0.0.15";
+	qcom,chg-rslow-comp-c1 = <4357052>;
+	qcom,chg-rslow-comp-c2 = <9260418>;
+	qcom,chg-rs-to-rslow = <894570>;
+	qcom,chg-rslow-comp-thr = <0xC3>;
+	qcom,checksum = <0xB700>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
 	qcom,fg-profile-data = [
-		 DD 83 A3 7C
-		 ED 80 F5 76
-		 5D 83 30 6D
-		 61 88 66 8F
-		 81 82 59 93
-		 39 B5 F7 C0
-		 52 17 F8 83
-		 2B 7D 3E 81
-		 79 77 66 83
-		 F7 6C F5 88
-		 94 94 50 82
-		 D3 99 26 BD
-		 28 CA 52 0D
-		 05 0E 8F 5A
+		 DE 83 AB 7C
+		 EF 80 F1 76
+		 60 83 B8 6E
+		 E4 88 21 94
+		 4C 82 AA 98
+		 CD B6 A3 C2
+		 52 16 F7 83
+		 1F 7D 29 81
+		 3E 77 63 83
+		 A2 65 5F 88
+		 36 94 51 82
+		 DC 99 3F BD
+		 54 CA 52 0D
+		 0D 0E 1D 5A
 		 14 70 A6 FB
-		 B6 37 E1 3E
-		 E6 39 00 00
-		 43 46 0F 2D
-		 97 38 00 00
+		 4B 3D 19 45
+		 3A 42 00 00
+		 9F 46 74 24
+		 DE 3B 00 00
 		 00 00 00 00
 		 00 00 00 00
-		 ED 6A 13 6A
-		 0A 72 51 8A
-		 1E 77 C2 6A
-		 FA 60 BE 82
-		 6A 76 BB 69
-		 8E 6D 94 A8
-		 18 B0 61 8D
+		 82 6B 7A 6A
+		 66 69 94 8A
+		 F1 77 1A 70
+		 2C 6C 1B 81
+		 A0 76 F9 69
+		 4C 6D 5A AA
+		 1A BF 61 46
 		 5F A0 71 0C
 		 28 00 FF 36
 		 F0 11 30 03
