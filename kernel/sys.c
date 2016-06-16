@@ -126,7 +126,7 @@ int C_A_D = 1;
 struct pid *cad_pid;
 EXPORT_SYMBOL(cad_pid);
 
-atomic_t reboot_triggered;
+static atomic_t reboot_triggered = ATOMIC_INIT(0);
 /*
  * If set, this is used for preparing the system to power off.
  */
@@ -371,6 +371,16 @@ EXPORT_SYMBOL(unregister_reboot_notifier);
 #define PF_NO_SETAFFINITY		PF_THREAD_BOUND
 #endif
 
+static int reboot_in_progress(void)
+{
+	int ret = atomic_cmpxchg(&reboot_triggered, 0, 1);
+
+	if (ret)
+		pr_err("Reboot in progress\n");
+
+	return ret;
+}
+
 static void migrate_to_reboot_cpu(void)
 {
 	/* The boot cpu is always logical cpu 0 */
@@ -399,6 +409,9 @@ static void migrate_to_reboot_cpu(void)
  */
 void kernel_restart(char *cmd)
 {
+	if (reboot_in_progress())
+		return;
+
 	kernel_restart_prepare(cmd);
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
@@ -430,6 +443,9 @@ static void kernel_shutdown_prepare(enum system_states state)
  */
 void kernel_halt(void)
 {
+	if (reboot_in_progress())
+		return;
+
 	kernel_shutdown_prepare(SYSTEM_HALT);
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
@@ -447,6 +463,9 @@ EXPORT_SYMBOL_GPL(kernel_halt);
  */
 void kernel_power_off(void)
 {
+	if (reboot_in_progress())
+		return;
+
 	kernel_shutdown_prepare(SYSTEM_POWER_OFF);
 	if (pm_power_off_prepare)
 		pm_power_off_prepare();
@@ -461,12 +480,6 @@ void kernel_power_off(void)
 	machine_power_off();
 }
 EXPORT_SYMBOL_GPL(kernel_power_off);
-
-int reboot_in_progress(void)
-{
-	return atomic_cmpxchg(&reboot_triggered, 0, 1);
-}
-EXPORT_SYMBOL_GPL(reboot_in_progress);
 
 static DEFINE_MUTEX(reboot_mutex);
 
@@ -505,12 +518,6 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 	ret = reboot_pid_ns(pid_ns, cmd);
 	if (ret)
 		return ret;
-
-	/* return if reboot is already triggered */
-	if (atomic_cmpxchg(&reboot_triggered, 0, 1)) {
-		pr_err("Reboot already triggered\n");
-		return ret;
-	}
 
 	/* Instead of trying to make the power_off code look like
 	 * halt when pm_power_off is not set do it the easy way.
