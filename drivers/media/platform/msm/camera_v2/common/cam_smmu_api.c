@@ -23,6 +23,7 @@
 #include <linux/dma-mapping.h>
 //#include <linux/msm_dma_iommu_mapping.h>
 #include <linux/workqueue.h>
+#include <linux/ratelimit.h>
 #include "cam_smmu_api.h"
 
 #define SCRATCH_ALLOC_START SZ_128K
@@ -306,7 +307,7 @@ static void cam_smmu_check_vaddr_in_range(int idx, void *vaddr)
 		end_addr = (unsigned long)mapping->paddr + mapping->len;
 
 		if (start_addr <= current_addr && current_addr < end_addr) {
-			pr_err("Error: va %p is valid: range:%p-%p, fd = %d cb: %s\n",
+			pr_err_ratelimited("Error: va %p is valid: range:%p-%p, fd = %d cb: %s\n",
 				vaddr, (void *)start_addr, (void *)end_addr,
 				mapping->ion_fd,
 				iommu_cb_set.cb_info[idx].name);
@@ -317,7 +318,7 @@ static void cam_smmu_check_vaddr_in_range(int idx, void *vaddr)
 				mapping->ion_fd);
 		}
 	}
-	pr_err("Cannot find vaddr:%p in SMMU. %s uses invalid virtual address\n",
+	pr_err_ratelimited("Cannot find vaddr:%p in SMMU. %s uses invalid virtual address\n",
 		vaddr, iommu_cb_set.cb_info[idx].name);
 	return;
 }
