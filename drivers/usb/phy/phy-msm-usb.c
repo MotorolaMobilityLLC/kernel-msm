@@ -3136,6 +3136,9 @@ static void msm_chg_detect_work(struct work_struct *w)
 					== FLOATING_AS_INVALID)
 					motg->chg_type =
 						USB_UNSUPPORTED_CHARGER;
+				else if (motg->pdata->enable_floated_charger
+					== FLOATING_AS_SDP)
+					motg->chg_type = USB_SDP_CHARGER;
 			} else {
 				motg->chg_type = USB_SDP_CHARGER;
 			}
@@ -3505,6 +3508,9 @@ static void msm_otg_sm_work(struct work_struct *w)
 						work = 1;
 						break;
 					}
+					if (motg->pdata->enable_floated_charger
+						== FLOATING_AS_SDP)
+						msm_otg_notify_charger(motg, 500);
 					msm_otg_dbg_log_event(
 						&motg->phy,
 						"SDP CHARGER", 0, 0);

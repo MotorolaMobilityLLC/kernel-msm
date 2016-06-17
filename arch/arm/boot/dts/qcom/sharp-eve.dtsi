@@ -285,6 +285,7 @@
 	usb_otg: usb@78db000 {
 		qcom,hsusb-otg-phy-init-seq =
 			<0x73 0x80 0x6F 0x81 0x34 0x82 0xffffffff>;
+		qcom,floated-charger-enable = <0>;
 	};
 
 	tunctrl {
