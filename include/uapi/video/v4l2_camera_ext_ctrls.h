@@ -835,4 +835,7 @@ enum {
 /* int */
 #define CAM_EXT_CID_ZSL_BUFFER_DEPTH (CID_CAM_EXT_CLASS_BASE + 123)
 
+/* string */
+#define CAM_EXT_CID_CUSTOM_PARAMETER (CID_CAM_EXT_CLASS_BASE + 124)
+
 #endif /* __CAMERA_EXT_CTRLS_H */
