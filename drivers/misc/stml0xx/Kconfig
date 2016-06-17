@@ -1,0 +1,29 @@
+config SENSORHUB_DEBUG_LOGGING
+	bool "sensorhub debug logging"
+	default n
+	help
+	  Say yes here if you wish to enable debug
+	  logging from the sensorhub.
+
+config SENSORS_STML0XX
+	tristate "STML0XX Sensor Processor"
+	default n
+	depends on SPI
+	help
+	  Say yes here if you wish to include the STM
+	  STML0XX Sensor processor driver.
+
+config MMI_HALL_NOTIFICATIONS
+	bool "Enable hall effect sensor notifier"
+	default n
+	depends on SENSORS_STML0XX
+	help
+	  Support for hall effect sensor notifications.
+
+config SENSORS_SH_AK09912
+	bool "Enable sensor processor connected ak09912"
+	default n
+	depends on SENSORS_STML0XX
+	help
+	  Support for a sensor processor connected ak09912 magnetometer.
+
