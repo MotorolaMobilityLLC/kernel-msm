@@ -285,12 +285,6 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 
 		dev_dbg(&ps_stm401->client->dev,
 			"Sending Camera: %d\n", STM16_TO_HOST(CAMERA_VALUE));
-
-		input_report_key(ps_stm401->input_dev, KEY_CAMERA, 1);
-		input_report_key(ps_stm401->input_dev, KEY_CAMERA, 0);
-		input_sync(ps_stm401->input_dev);
-		dev_dbg(&ps_stm401->client->dev,
-			"Report camkey toggle\n");
 	}
 	if (irq_status & M_NFC) {
 		stm401_cmdbuff[0] = NFC;
