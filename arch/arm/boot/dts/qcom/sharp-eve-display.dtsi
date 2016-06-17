@@ -77,18 +77,6 @@
 	sharp,dsi-mipiclkchg-control;
 };
 
-/ {
-	memory {
-		display_mem: display_mem@0 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			reg = <0 0 0 0x00FF0000>;
-			label = "display_mem";
-		};
-	};
-};
-
 &mdss_fb0 {
 	/delete-property/ qcom,mdss-fb-splash-logo-enabled;
-	linux,contiguous-region = <&display_mem>;
 };
