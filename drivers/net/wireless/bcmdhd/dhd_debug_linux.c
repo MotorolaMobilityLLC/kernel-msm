@@ -92,6 +92,8 @@ static void
 dbg_ring_poll_worker(struct work_struct *work)
 {
 	struct delayed_work *d_work = to_delayed_work(work);
+	bool sched = TRUE;
+	dhd_dbg_ring_t *ring;
 	linux_dbgring_info_t *ring_info =
 		container_of(d_work, linux_dbgring_info_t, work);
 	dhd_pub_t *dhdp = ring_info->dhdp;
@@ -100,21 +102,33 @@ dbg_ring_poll_worker(struct work_struct *work)
 	void *buf;
 	dhd_dbg_ring_entry_t *hdr;
 	uint32 buflen, rlen;
+	unsigned long flags;
 
+	ring = &dhdp->dbg->dbg_rings[ringid];
+	flags = dhd_os_spin_lock(ring->lock);
 	dhd_dbg_get_ring_status(dhdp, ringid, &ring_status);
+
 	if (ring_status.written_bytes > ring_status.read_bytes)
 		buflen = ring_status.written_bytes - ring_status.read_bytes;
 	else if (ring_status.written_bytes < ring_status.read_bytes)
 		buflen = 0xFFFFFFFF + ring_status.written_bytes -
 			ring_status.read_bytes;
-	else
+	else {
 		goto exit;
+	}
+
 	buf = MALLOC(dhdp->osh, buflen);
 	if (!buf) {
 		DHD_ERROR(("%s failed to allocate read buf\n", __FUNCTION__));
-		return;
+		sched = FALSE;
+		goto exit;
 	}
+
 	rlen = dhd_dbg_ring_pull(dhdp, ringid, buf, buflen);
+	if (!ring->sched_pull) {
+		ring->sched_pull = TRUE;
+	}
+
 	hdr = (dhd_dbg_ring_entry_t *)buf;
 	while (rlen > 0) {
 		ring_status.read_bytes += ENTRY_LENGTH(hdr);
@@ -127,18 +141,14 @@ dbg_ring_poll_worker(struct work_struct *work)
 	}
 	MFREE(dhdp->osh, buf, buflen);
 
-	if (!ring_info->interval)
-		return;
-	dhd_dbg_get_ring_status(dhdp, ring_info->ring_id, &ring_status);
-
 exit:
-	if (ring_info->interval) {
+	if (sched) {
 		/* retrigger the work at same interval */
-		if (ring_status.written_bytes == ring_status.read_bytes)
+		if ((ring_status.written_bytes == ring_status.read_bytes) && (ring_info->interval)) {
 			schedule_delayed_work(d_work, ring_info->interval);
-		else
-			schedule_delayed_work(d_work, 0);
+		}
 	}
+	dhd_os_spin_unlock(ring->lock, flags);
 
 	return;
 }
@@ -204,6 +214,7 @@ dhd_os_start_logging(dhd_pub_t *dhdp, char *ring_name, int log_level,
 		cancel_delayed_work_sync(&ring_info->work);
 	} else {
 		ring_info->interval = msecs_to_jiffies(time_intval * MSEC_PER_SEC);
+		cancel_delayed_work_sync(&ring_info->work);
 		schedule_delayed_work(&ring_info->work, ring_info->interval);
 	}
 
@@ -360,8 +371,8 @@ dhd_os_dbg_pullreq(void *os_priv, int ring_id)
 	linux_dbgring_info_t *ring_info;
 
 	ring_info = &((linux_dbgring_info_t *)os_priv)[ring_id];
-	if (ring_info->interval != 0)
-		schedule_delayed_work(&ring_info->work, 0);
+	cancel_delayed_work(&ring_info->work);
+	schedule_delayed_work(&ring_info->work, 0);
 }
 
 int

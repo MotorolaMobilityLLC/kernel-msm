@@ -64,7 +64,6 @@ enum {
 /* DHD connection event ring, ring id 3 */
 #define DHD_EVENT_RING_NAME		"dhd_event"
 #define DHD_EVENT_RING_SIZE		(64 * 1024)
-
 #define DBG_RING_STATUS_SIZE (sizeof(dhd_dbg_ring_status_t))
 
 #define VALID_RING(id)	\
@@ -230,6 +229,8 @@ enum {
 	DBG_RING_ENTRY_DATA_TYPE
 };
 
+typedef void (*dbg_pullreq_t)(void *os_priv, const int ring_id);
+typedef void (*dbg_urgent_noti_t) (dhd_pub_t *dhdp, const void *data, const uint32 len);
 typedef struct dhd_dbg_ring_entry {
 	uint16 len; /* payload length excluding the header */
 	uint8 flags;
@@ -261,15 +262,52 @@ typedef struct dhd_dbg_ring_status {
 	uint32 written_records;
 } dhd_dbg_ring_status_t;
 
+struct ring_statistics {
+	/* number of bytes that was written to the buffer by driver */
+	uint32 written_bytes;
+	/* number of bytes that was read from the buffer by user land */
+	uint32 read_bytes;
+	/* number of records that was written to the buffer by driver */
+	uint32 written_records;
+};
+
+enum dbg_ring_state {
+	RING_STOP	= 0,	/* ring is not initialized */
+	RING_ACTIVE,	/* ring is live and logging */
+	RING_SUSPEND	/* ring is initialized but not logging */
+};
+
+typedef struct dhd_dbg_ring {
+	int	id;		/* ring id */
+	uint8	name[DBGRING_NAME_MAX];	/* name string */
+	uint32	ring_size;	/* numbers of item in ring */
+	uint32	wp;		/* write pointer */
+	uint32	rp;		/* read pointer */
+	uint32  log_level; /* log_level */
+	uint32	threshold; /* threshold bytes */
+	void *	ring_buf;	/* pointer of actually ring buffer */
+	void *	lock;		/* spin lock for ring access */
+	struct ring_statistics stat; /* statistics */
+	enum dbg_ring_state state;	/* ring state enum */
+	bool no_space; /* writer does not have enough space */
+	uint32 rem_len; /* number of bytes from wp_pad to end */
+	bool sched_pull; /* schedule reader immediately */
+
+} dhd_dbg_ring_t;
+
+typedef struct dhd_dbg {
+	dhd_dbg_ring_t dbg_rings[DEBUG_RING_ID_MAX];
+	void *private;		/* os private_data */
+	dbg_pullreq_t pullreq;
+	dbg_urgent_noti_t urgent_notifier;
+} dhd_dbg_t;
+
 struct log_level_table {
 	int log_level;
 	uint16 tag;
 	char *desc;
 };
 
-typedef void (*dbg_pullreq_t)(void *os_priv, const int ring_id);
-
-typedef void (*dbg_urgent_noti_t) (dhd_pub_t *dhdp, const void *data, const uint32 len);
 /* dhd_dbg functions */
 extern int dhd_dbg_attach(dhd_pub_t *dhdp, dbg_pullreq_t os_pullreq,
 	dbg_urgent_noti_t os_urgent_notifier, void *os_priv);
