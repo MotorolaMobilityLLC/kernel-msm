@@ -6643,6 +6643,13 @@ static int rmi_reboot(struct notifier_block *nb,
 #elif defined(CONFIG_FB)
 	fb_unregister_client(&rmi4_data->panel_nb);
 #endif
+	if (rmi4_data->irq_enabled) {
+		disable_irq(rmi4_data->irq);
+		free_irq(rmi4_data->irq, rmi4_data);
+		rmi4_data->irq_enabled = false;
+	}
+	dev_info(&rmi4_data->i2c_client->dev, "touch shutdown\n");
+
 	if (platform_data->regulator_en) {
 		pr_debug("touch reboot - disable regulators\n");
 		regulator_force_disable(rmi4_data->regulator);
