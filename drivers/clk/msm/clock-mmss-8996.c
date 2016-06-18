@@ -3863,6 +3863,8 @@ int msm_gpucc_8996_probe(struct platform_device *pdev)
 	char speedbin_str[] = "qcom,gfxfreq-speedbin0";
 	char mx_speedbin_str[] = "qcom,gfxfreq-mx-speedbin0";
 
+	int gpu_speed_bin_override = CONFIG_GPU_SPEED_BIN_OVERRIDE;
+
 	if (!of_node)
 		return -EINVAL;
 
@@ -3908,11 +3910,20 @@ int msm_gpucc_8996_probe(struct platform_device *pdev)
 	is_v3_0_gpu = of_device_is_compatible(of_node, "qcom,gpucc-8996-v3.0");
 	is_pro_gpu = of_device_is_compatible(of_node, "qcom,gpucc-8996-pro");
 
-	dev_info(&pdev->dev, "using speed bin %u\n", gpu_speed_bin);
-	snprintf(speedbin_str, ARRAY_SIZE(speedbin_str),
-				"qcom,gfxfreq-speedbin%d", gpu_speed_bin);
-	snprintf(mx_speedbin_str, ARRAY_SIZE(mx_speedbin_str),
-				"qcom,gfxfreq-mx-speedbin%d", gpu_speed_bin);
+	if (gpu_speed_bin_override) {
+		dev_info(&pdev->dev, "8996-lite speed bin %u override to %u\n",
+			gpu_speed_bin, gpu_speed_bin_override);
+		snprintf(speedbin_str, ARRAY_SIZE(speedbin_str),
+			"qcom,gfxfreq-speedbin%d", gpu_speed_bin_override);
+		snprintf(mx_speedbin_str, ARRAY_SIZE(mx_speedbin_str),
+			"qcom,gfxfreq-mx-speedbin%d", gpu_speed_bin_override);
+	} else {
+		dev_info(&pdev->dev, "using speed bin %u\n", gpu_speed_bin);
+		snprintf(speedbin_str, ARRAY_SIZE(speedbin_str),
+			"qcom,gfxfreq-speedbin%d", gpu_speed_bin);
+		snprintf(mx_speedbin_str, ARRAY_SIZE(mx_speedbin_str),
+			"qcom,gfxfreq-mx-speedbin%d", gpu_speed_bin);
+	}
 
 	rc = of_get_fmax_vdd_class(pdev, &gpu_mx_clk.c, mx_speedbin_str);
 	if (rc) {
