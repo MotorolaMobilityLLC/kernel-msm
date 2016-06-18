@@ -394,10 +394,17 @@ FSC_S32 processDiscoverIdentity(SopType sop, FSC_U32 * arr_in,
 				__id.ama_vdo = getAmaVdo(arr_in[4]);	// !!! assuming it is after Product VDO
 			}
 			__id.product_vdo = getProductVdo(arr_in[3]);
-			FUSB_LOG("VDM Acked, usb vid is %d\n product id is %d",
+			FUSB_LOG("VDM Acked,vid:%x product id:%x bcd:%x",
 				   __id.id_header.usb_vid,
-				   __id.product_vdo.usb_product_id
+				   __id.product_vdo.usb_product_id,
+				   __id.product_vdo.bcd_device
 				  );
+			pr_info("VDM Acked,vid:%x product id:%x bcd:%x",
+				   __id.id_header.usb_vid,
+				   __id.product_vdo.usb_product_id,
+				   __id.product_vdo.bcd_device
+				  );
+			gBcdDevice = __id.product_vdo.bcd_device;
 		}
 
 		__result = (PolicyState == peDfpUfpVdmIdentityAcked) ||
