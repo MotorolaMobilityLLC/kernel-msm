@@ -44,7 +44,7 @@ bool debug_audio = false;
 /* Internal forward declarations */
 static irqreturn_t _fusb_isr_intn(int irq, void *dev_id);
 #endif // FSC_INTERRUPT_TRIGGERED
-
+FSC_U16 gBcdDevice = 0;
 static int FSA321_setSwitchState(FSASwitchState state)
 {
 	int aud_det_gpio, aud_sw_sel_gpio;
@@ -4865,6 +4865,13 @@ static ssize_t _fusb_Sysfs_TypeCStateLog_show(struct device *dev,
 	strcat(buf, "\n");	// Append a newline for pretty++
 	return ++numChars;	// Account for newline and return number of bytes to be shown
 }
+static ssize_t _fusb_Sysfs_bcd_device_show(struct device *dev,
+					      struct device_attribute *attr,
+					      char *buf)
+{
+	return snprintf(buf, PAGE_SIZE - 2,
+		"bcd device %x\n", gBcdDevice);
+}
 
 /* Reinitialize the FUSB302 */
 static ssize_t _fusb_Sysfs_Reinitialize_fusb302(struct device *dev,
@@ -4910,6 +4917,8 @@ static DEVICE_ATTR(typec_state_log, S_IRUSR | S_IRGRP | S_IROTH,
 		   _fusb_Sysfs_TypeCStateLog_show, NULL);
 static DEVICE_ATTR(reinitialize, S_IRUSR | S_IRGRP | S_IROTH,
 		   _fusb_Sysfs_Reinitialize_fusb302, NULL);
+static DEVICE_ATTR(bcd_device, S_IRUSR | S_IRGRP | S_IROTH,
+		   _fusb_Sysfs_bcd_device_show, NULL);
 static int fusb302_reg_dump(struct seq_file *m, void *data)
 {
 	int reg_addr[] = {
@@ -5100,6 +5109,7 @@ static struct attribute *fusb302_sysfs_attrs[] = {
 	&dev_attr_pd_state_log.attr,
 	&dev_attr_typec_state_log.attr,
 	&dev_attr_reinitialize.attr,
+	&dev_attr_bcd_device.attr,
 	&dev_attr_CC_state.attr,
 	&dev_attr_enable_vconn.attr,
 	&dev_attr_state.attr,
