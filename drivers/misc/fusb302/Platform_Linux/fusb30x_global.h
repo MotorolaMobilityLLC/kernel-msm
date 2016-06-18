@@ -94,6 +94,7 @@ struct fusb30x_chip *fusb30x_GetChip(void);	// Getter for the global chip struct
 void fusb30x_SetChip(struct fusb30x_chip *newChip);	// Setter for the global chip structure
 extern void *fusb302_ipc_log;
 extern bool debug_audio;
+extern FSC_U16 gBcdDevice;
 #ifdef FSC_DEBUG
 #define FUSB_LOG(fmt, args...) do {                         \
 if (fusb302_ipc_log)   \
