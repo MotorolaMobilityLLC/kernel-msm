@@ -1757,3 +1757,82 @@
 	};
 };
 
+/* GPU overrides */
+&msm_gpu {
+
+	qcom,gpu-pwrlevel-bins {
+		qcom,gpu-pwrlevels-9 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			qcom,speed-bin = <9>;
+
+			qcom,initial-pwrlevel = <3>;
+
+			qcom,gpu-pwrlevel@0 {
+				reg = <0>;
+				qcom,gpu-freq = <510000000>;
+				qcom,bus-freq = <9>;
+				qcom,bus-min = <8>;
+				qcom,bus-max = <11>;
+			};
+
+			qcom,gpu-pwrlevel@1 {
+				reg = <1>;
+				qcom,gpu-freq = <401800000>;
+				qcom,bus-freq = <8>;
+				qcom,bus-min = <7>;
+				qcom,bus-max = <9>;
+			};
+			qcom,gpu-pwrlevel@2 {
+				reg = <2>;
+				qcom,gpu-freq = <315000000>;
+				qcom,bus-freq = <6>;
+				qcom,bus-min = <5>;
+				qcom,bus-max = <7>;
+			};
+
+			qcom,gpu-pwrlevel@3 {
+				reg = <3>;
+				qcom,gpu-freq = <214000000>;
+				qcom,bus-freq = <4>;
+				qcom,bus-min = <3>;
+				qcom,bus-max = <5>;
+			};
+			qcom,gpu-pwrlevel@4 {
+				reg = <4>;
+				qcom,gpu-freq = <133000000>;
+				qcom,bus-freq = <3>;
+				qcom,bus-min = <2>;
+				qcom,bus-max = <4>;
+			};
+
+			qcom,gpu-pwrlevel@5 {
+				reg = <5>;
+				qcom,gpu-freq = <27000000>;
+				qcom,bus-freq = <0>;
+				qcom,bus-min = <0>;
+				qcom,bus-max = <0>;
+			};
+		};
+	};
+};
+
+&clock_gpu {
+
+	qcom,gfxfreq-speedbin9 =
+		<          0  0  0 >,
+		<  133000000  2  4 >,
+		<  214000000  3  4 >,
+		<  315000000  4  4 >,
+		<  401800000  5  5 >,
+		<  510000000  6  5 >;
+
+	qcom,gfxfreq-mx-speedbin9 =
+		<          0  0 >,
+		<  133000000  4 >,
+		<  214000000  4 >,
+		<  315000000  4 >,
+		<  401800000  5 >,
+		<  510000000  5 >;
+};
