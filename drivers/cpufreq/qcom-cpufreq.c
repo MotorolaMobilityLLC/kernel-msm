@@ -321,6 +321,7 @@ static struct cpufreq_frequency_table *cpufreq_parse_dt(struct device *dev,
 	int ret, nf, i;
 	u32 *data;
 	struct cpufreq_frequency_table *ftbl;
+	int max_cpu_freq = CONFIG_MAX_CPU_FREQ_KHZ;
 
 	/* Parse list of usable CPU frequencies. */
 	if (!of_find_property(dev->of_node, tbl_name, &nf))
@@ -344,6 +345,12 @@ static struct cpufreq_frequency_table *cpufreq_parse_dt(struct device *dev,
 
 	for (i = 0; i < nf; i++) {
 		unsigned long f;
+
+		if (max_cpu_freq && data[i] > max_cpu_freq) {
+			pr_info("%s: 8996-lite Ignore freqs higher than %d",
+				__func__, max_cpu_freq);
+			break;
+		}
 
 		f = clk_round_rate(cpu_clk[cpu], data[i] * 1000);
 		if (IS_ERR_VALUE(f))
