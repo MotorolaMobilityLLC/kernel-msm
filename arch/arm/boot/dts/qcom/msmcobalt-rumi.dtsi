@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,13 +10,17 @@
  * GNU General Public License for more details.
  */
 
+#include "msmcobalt-pinctrl.dtsi"
+
 &uartblsp2dm1 {
 	status = "ok";
 };
 
 &ufsphy1 {
 	compatible = "qcom,ufs-phy-qrbtc-v2";
-	reg = <0x1da7000 0x11100>;
+	reg = <0x1da7000 0xda8>, /* PHY regs */
+		<0x1db8000 0x100>; /* U11 user regs */
+	reg-names = "phy_mem", "u11_user";
 	vdda-phy-supply = <&pmcobalt_l28>;
 	vdda-pll-supply = <&pmcobalt_l2>;
 	vddp-ref-clk-supply = <&pmcobalt_l26>;
@@ -27,6 +31,11 @@
 	vcc-supply = <&pmcobalt_l20>;
 	vccq-supply = <&pmcobalt_l26>;
 	vccq2-supply = <&pmcobalt_s4>;
+
+	qcom,disable-lpm;
+	rpm-level = <0>;
+	spm-level = <0>;
+
 	status = "ok";
 };
 
@@ -50,28 +59,75 @@
 	status = "ok";
 };
 
-&clock_gcc {
-	compatible = "qcom,dummycc";
-	#clock-cells = <1>;
-};
-
 &soc {
 	qcom,icnss@18800000 {
-	compatible = "qcom,icnss";
-	reg = <0x18800000 0x800000>;
-	reg-names = "membase";
-	interrupts =
-		<0 413 0 /* CE0 */ >,
-		<0 414 0 /* CE1 */ >,
-		<0 415 0 /* CE2 */ >,
-		<0 416 0 /* CE3 */ >,
-		<0 417 0 /* CE4 */ >,
-		<0 418 0 /* CE5 */ >,
-		<0 420 0 /* CE6 */ >,
-		<0 421 0 /* CE7 */ >,
-		<0 422 0 /* CE8 */ >,
-		<0 423 0 /* CE9 */ >,
-		<0 424 0 /* CE10 */ >,
-		<0 425 0 /* CE11 */ >;
+		compatible = "qcom,icnss";
+		reg = <0x18800000 0x800000>;
+		reg-names = "membase";
+		interrupts = <0 413 0 /* CE0 */ >,
+			     <0 414 0 /* CE1 */ >,
+			     <0 415 0 /* CE2 */ >,
+			     <0 416 0 /* CE3 */ >,
+			     <0 417 0 /* CE4 */ >,
+			     <0 418 0 /* CE5 */ >,
+			     <0 420 0 /* CE6 */ >,
+			     <0 421 0 /* CE7 */ >,
+			     <0 422 0 /* CE8 */ >,
+			     <0 423 0 /* CE9 */ >,
+			     <0 424 0 /* CE10 */ >,
+			     <0 425 0 /* CE11 */ >;
+		qcom,wlan-msa-memory = <0x100000>;
+		vdd-io-supply = <&pmcobalt_l5>;
+		qcom,vdd-io-voltage-level = <800000 800000>;
 	};
+
+	msm_cpufreq: qcom,msm-cpufreq {
+		compatible = "qcom,msm-cpufreq";
+		clock-names = "cpu0_clk", "cpu1_clk", "cpu2_clk",
+				"cpu3_clk", "cpu4_clk", "cpu5_clk",
+				"cpu6_clk", "cpu7_clk";
+		clocks = <&clock_cpu clk_pwrcl_clk>,
+			 <&clock_cpu clk_pwrcl_clk>,
+			 <&clock_cpu clk_pwrcl_clk>,
+			 <&clock_cpu clk_pwrcl_clk>,
+			 <&clock_cpu clk_perfcl_clk>,
+			 <&clock_cpu clk_perfcl_clk>,
+			 <&clock_cpu clk_perfcl_clk>,
+			 <&clock_cpu clk_perfcl_clk>;
+
+		qcom,governor-per-policy;
+
+		qcom,cpufreq-table-0 =
+			<  300000 >,
+			<  345600 >,
+			<  422400 >,
+			<  499200 >,
+			<  576000 >,
+			<  633600 >,
+			<  710400 >,
+			<  806400 >,
+			<  883200 >,
+			<  960000 >,
+			< 1036800 >,
+			< 1113600 >;
+
+		qcom,cpufreq-table-4 =
+			<  300000 >,
+			<  345600 >,
+			<  422400 >,
+			<  480000 >,
+			<  556800 >,
+			<  633600 >,
+			<  710400 >,
+			<  787200 >,
+			<  844800 >,
+			<  902400 >,
+			<  979200 >,
+			< 1056000 >,
+			< 1171200 >;
+	};
+};
+
+&gdsc_ufs {
+	compatible = "regulator-fixed";
 };

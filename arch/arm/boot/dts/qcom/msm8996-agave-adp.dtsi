@@ -308,6 +308,7 @@
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 	qcom,display-id = "primary";
+	qcom,bridge-index = <0>;
 
 	qcom,panel-supply-entries {
 			#address-cells = <1>;
@@ -339,6 +340,7 @@
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 	qcom,display-id = "tertiary";
+	qcom,bridge-index = <1>;
 
 	qcom,panel-supply-entries {
 		#address-cells = <1>;
@@ -643,11 +645,31 @@
 	};
 
 	qcom,msm-dai-mi2s {
+		dai_mi2s_sec: qcom,msm-dai-q6-mi2s-sec {
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&sec_mi2s_active &sec_mi2s_sd0_active
+				&sec_mi2s_sd1_active>;
+			pinctrl-1 = <&sec_mi2s_sleep &sec_mi2s_sd0_sleep
+				&sec_mi2s_sd1_sleep>;
+		};
+
+		dai_mi2s: qcom,msm-dai-q6-mi2s-tert {
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&tert_mi2s_active &tert_mi2s_sd0_active>;
+			pinctrl-1 = <&tert_mi2s_sleep &tert_mi2s_sd0_sleep>;
+		};
+
 		dai_mi2s_quat: qcom,msm-dai-q6-mi2s-quat {
 			pinctrl-names = "default", "sleep";
 			pinctrl-0 = <&quat_mi2s_active &quat_mi2s_sd0_active>;
 			pinctrl-1 = <&quat_mi2s_sleep &quat_mi2s_sd0_sleep>;
 		};
+	};
+
+	qcom,msm-dai-tdm-tert-rx {
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&tert_tdm_dout_active>;
+		pinctrl-1 = <&tert_tdm_dout_sleep>;
 	};
 
 	qcom,msm-dai-tdm-quat-rx {
@@ -802,13 +824,15 @@
 
 &usb3 {
 	interrupt-parent = <&usb3>;
-	interrupts = <0 1 2>;
+	interrupts = <0 1 2 3>;
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0x0 0xffffffff>;
-	interrupt-map = <0x0 0 &intc 0 133 0
-			 0x0 1 &intc 0 180 0
-			 0x0 2 &spmi_bus 0x0 0x0 0x9 0x0>;
-	interrupt-names = "hs_phy_irq", "pwr_event_irq", "pmic_id_irq";
+	interrupt-map = <0x0 0 &intc 0 0 347 0
+			 0x0 1 &intc 0 0 243 0
+			 0x0 2 &intc 0 0 180 0
+			 0x0 3 &spmi_bus 0x0 0x0 0x9 0x0>;
+	interrupt-names = "hs_phy_irq", "ss_phy_irq", "pwr_event_irq",
+				"pmic_id_irq";
 
 	vbus_dwc3-supply = <&usb_otg_switch>;
 	vdda33-supply = <&pm8994_l24>;

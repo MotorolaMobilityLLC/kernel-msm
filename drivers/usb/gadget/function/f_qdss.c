@@ -697,11 +697,6 @@ static void usb_qdss_connect_work(struct work_struct *work)
 
 	switch (dxport) {
 	case USB_GADGET_XPORT_BAM2BAM:
-		status = init_data(qdss->port.data);
-		if (status) {
-			pr_err("init_data error");
-			break;
-		}
 		status = set_qdss_data_connection(
 				qdss->cdev->gadget,
 				qdss->port.data,
@@ -716,9 +711,10 @@ static void usb_qdss_connect_work(struct work_struct *work)
 			USB_QDSS_CONNECT,
 			NULL,
 			&qdss->ch);
-		status = send_sps_req(qdss->port.data);
-		if (status) {
-			pr_err("send_sps_req error\n");
+
+		if (usb_ep_queue(qdss->port.data, qdss->endless_req,
+								GFP_ATOMIC)) {
+			pr_err("%s: usb_ep_queue error\n", __func__);
 			break;
 		}
 		break;
@@ -1111,32 +1107,37 @@ EXPORT_SYMBOL(usb_qdss_open);
 void usb_qdss_close(struct usb_qdss_ch *ch)
 {
 	struct f_qdss *qdss = ch->priv_usb;
-	struct usb_gadget *gadget = qdss->cdev->gadget;
+	struct usb_gadget *gadget;
 	unsigned long flags;
 	int status;
 
 	pr_debug("usb_qdss_close\n");
 
 	spin_lock_irqsave(&qdss_lock, flags);
+	if (!qdss || !qdss->usb_connected) {
+		ch->app_conn = 0;
+		spin_unlock_irqrestore(&qdss_lock, flags);
+		return;
+	}
+
 	usb_ep_dequeue(qdss->port.data, qdss->endless_req);
 	usb_ep_free_request(qdss->port.data, qdss->endless_req);
 	qdss->endless_req = NULL;
+	gadget = qdss->cdev->gadget;
 	ch->app_conn = 0;
 	spin_unlock_irqrestore(&qdss_lock, flags);
 
-	if (qdss->usb_connected) {
-		status = uninit_data(qdss->port.data);
-		if (status)
-			pr_err("%s: uninit_data error\n", __func__);
+	status = uninit_data(qdss->port.data);
+	if (status)
+		pr_err("%s: uninit_data error\n", __func__);
 
-		status = set_qdss_data_connection(
+	status = set_qdss_data_connection(
 				gadget,
 				qdss->port.data,
 				qdss->port.data->address,
 				0);
-		if (status)
-			pr_err("%s:qdss_disconnect error\n", __func__);
-	}
+	if (status)
+		pr_err("%s:qdss_disconnect error\n", __func__);
 	usb_gadget_restart(gadget);
 }
 EXPORT_SYMBOL(usb_qdss_close);

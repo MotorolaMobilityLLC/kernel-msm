@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -69,17 +69,20 @@ enum p_subsys_state {
 
 /**
  * enum subsys_state - state of a subsystem (public)
+ * @SUBSYS_OFFLINING: subsystem is offlining
  * @SUBSYS_OFFLINE: subsystem is offline
  * @SUBSYS_ONLINE: subsystem is online
  *
  * The 'public' side of the subsytem state, exposed to userspace.
  */
 enum subsys_state {
+	SUBSYS_OFFLINING,
 	SUBSYS_OFFLINE,
 	SUBSYS_ONLINE,
 };
 
 static const char * const subsys_states[] = {
+	[SUBSYS_OFFLINING] = "OFFLINING",
 	[SUBSYS_OFFLINE] = "OFFLINE",
 	[SUBSYS_ONLINE] = "ONLINE",
 };
@@ -182,6 +185,11 @@ struct subsys_device {
 static struct subsys_device *to_subsys(struct device *d)
 {
 	return container_of(d, struct subsys_device, dev);
+}
+
+void complete_err_ready(struct subsys_device *subsys)
+{
+	complete(&subsys->err_ready);
 }
 
 static struct subsys_tracking *subsys_get_track(struct subsys_device *subsys)
@@ -538,6 +546,10 @@ static void enable_all_irqs(struct subsys_device *dev)
 		enable_irq(dev->desc->err_fatal_irq);
 	if (dev->desc->stop_ack_irq && dev->desc->stop_ack_handler)
 		enable_irq(dev->desc->stop_ack_irq);
+	if (dev->desc->generic_irq && dev->desc->generic_handler) {
+		enable_irq(dev->desc->generic_irq);
+		irq_set_irq_wake(dev->desc->generic_irq, 1);
+	}
 }
 
 static void disable_all_irqs(struct subsys_device *dev)
@@ -552,13 +564,17 @@ static void disable_all_irqs(struct subsys_device *dev)
 		disable_irq(dev->desc->err_fatal_irq);
 	if (dev->desc->stop_ack_irq && dev->desc->stop_ack_handler)
 		disable_irq(dev->desc->stop_ack_irq);
+	if (dev->desc->generic_irq && dev->desc->generic_handler) {
+		disable_irq(dev->desc->generic_irq);
+		irq_set_irq_wake(dev->desc->generic_irq, 0);
+	}
 }
 
 int wait_for_shutdown_ack(struct subsys_desc *desc)
 {
 	int count;
 
-	if (desc && !desc->shutdown_ack_gpio)
+	if (!desc || !desc->shutdown_ack_gpio)
 		return 0;
 
 	for (count = SHUTDOWN_ACK_MAX_LOOPS; count > 0; count--) {
@@ -577,7 +593,12 @@ static int wait_for_err_ready(struct subsys_device *subsys)
 {
 	int ret;
 
-	if (!subsys->desc->err_ready_irq || enable_debug == 1)
+	/*
+	 * If subsys is using generic_irq in which case err_ready_irq will be 0,
+	 * don't return.
+	 */
+	if ((subsys->desc->generic_irq <= 0 && !subsys->desc->err_ready_irq)
+							|| enable_debug == 1)
 		return 0;
 
 	ret = wait_for_completion_timeout(&subsys->err_ready,
@@ -709,6 +730,7 @@ static void subsys_stop(struct subsys_device *subsys)
 
 	if (!of_property_read_bool(subsys->desc->dev->of_node,
 					"qcom,pil-force-shutdown")) {
+		subsys_set_state(subsys, SUBSYS_OFFLINING);
 		subsys->desc->sysmon_shutdown_ret =
 				sysmon_send_shutdown(subsys->desc);
 		if (subsys->desc->sysmon_shutdown_ret)
@@ -870,6 +892,18 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 		list = &dev;
 		count = 1;
 		track = &dev->track;
+	}
+
+	/*
+	 * If a system reboot/shutdown is under way, ignore subsystem errors.
+	 * However, print a message so that we know that a subsystem behaved
+	 * unexpectedly here.
+	 */
+	if (system_state == SYSTEM_RESTART
+		|| system_state == SYSTEM_POWER_OFF) {
+		WARN(1, "SSR aborted: %s, system reboot/shutdown is under way\n",
+			desc->name);
+		return;
 	}
 
 	mutex_lock(&track->lock);
@@ -1475,6 +1509,13 @@ static int subsys_parse_devicetree(struct subsys_desc *desc)
 	if (ret > 0)
 		desc->wdog_bite_irq = ret;
 
+	if (of_property_read_bool(pdev->dev.of_node,
+					"qcom,pil-generic-irq-handler")) {
+		ret = platform_get_irq(pdev, 0);
+		if (ret > 0)
+			desc->generic_irq = ret;
+	}
+
 	order = ssr_parse_restart_orders(desc);
 	if (IS_ERR(order)) {
 		pr_err("Could not initialize SSR restart order, err = %ld\n",
@@ -1524,6 +1565,18 @@ static int subsys_setup_irqs(struct subsys_device *subsys)
 			return ret;
 		}
 		disable_irq(desc->wdog_bite_irq);
+	}
+
+	if (desc->generic_irq && desc->generic_handler) {
+		ret = devm_request_irq(desc->dev, desc->generic_irq,
+			desc->generic_handler,
+			IRQF_TRIGGER_HIGH, desc->name, desc);
+		if (ret < 0) {
+			dev_err(desc->dev, "[%s]: Unable to register generic irq handler!: %d\n",
+				desc->name, ret);
+			return ret;
+		}
+		disable_irq(desc->generic_irq);
 	}
 
 	if (desc->err_ready_irq) {

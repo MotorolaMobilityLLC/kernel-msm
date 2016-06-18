@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -97,7 +97,9 @@ static int audio_ext_clk_prepare(struct clk *clk)
 	struct audio_ext_ap_clk *audio_clk = to_audio_ap_clk(clk);
 
 	pr_debug("%s: gpio: %d\n", __func__, audio_clk->gpio);
-	return gpio_direction_output(audio_clk->gpio, 1);
+	if (gpio_is_valid(audio_clk->gpio))
+		return gpio_direction_output(audio_clk->gpio, 1);
+	return 0;
 }
 
 static void audio_ext_clk_unprepare(struct clk *clk)
@@ -105,7 +107,8 @@ static void audio_ext_clk_unprepare(struct clk *clk)
 	struct audio_ext_ap_clk *audio_clk = to_audio_ap_clk(clk);
 
 	pr_debug("%s: gpio: %d\n", __func__, audio_clk->gpio);
-	gpio_direction_output(audio_clk->gpio, 0);
+	if (gpio_is_valid(audio_clk->gpio))
+		gpio_direction_output(audio_clk->gpio, 0);
 }
 
 static inline struct audio_ext_ap_clk2 *to_audio_ap_clk2(struct clk *clk)
@@ -183,7 +186,7 @@ static int audio_ext_lpass_mclk_prepare(struct clk *clk)
 	memcpy(lpass_clk, &lpass_default, sizeof(struct afe_clk_cfg));
 	lpass_clk->clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
 	lpass_clk->clk_set_mode = Q6AFE_LPASS_MODE_CLK2_VALID;
-	ret = afe_set_lpass_clock(MI2S_RX, lpass_clk);
+	ret = afe_set_lpass_clock(AFE_PORT_ID_SECONDARY_MI2S_RX, lpass_clk);
 	if (ret < 0) {
 		pr_err("%s afe_set_lpass_clock failed, ret = %d\n",
 			__func__, ret);
@@ -223,7 +226,7 @@ static void audio_ext_lpass_mclk_unprepare(struct clk *clk)
 	memcpy(lpass_clk, &lpass_default, sizeof(struct afe_clk_cfg));
 	lpass_clk->clk_val2 = 0;
 	lpass_clk->clk_set_mode = Q6AFE_LPASS_MODE_CLK2_VALID;
-	ret = afe_set_lpass_clock(MI2S_RX, lpass_clk);
+	ret = afe_set_lpass_clock(AFE_PORT_ID_SECONDARY_MI2S_RX, lpass_clk);
 	if (ret < 0)
 		pr_err("%s: afe_set_lpass_clock failed, ret = %d\n",
 			__func__, ret);
@@ -304,6 +307,7 @@ static struct clk_ops audio_ext_lpass_mclk2_ops = {
 };
 
 static struct audio_ext_pmi_clk audio_pmi_clk = {
+	.gpio = -EINVAL,
 	.c = {
 		.dbg_name = "audio_ext_pmi_clk",
 		.ops = &clk_ops_dummy,
@@ -312,6 +316,7 @@ static struct audio_ext_pmi_clk audio_pmi_clk = {
 };
 
 static struct audio_ext_ap_clk audio_ap_clk = {
+	.gpio = -EINVAL,
 	.c = {
 		.dbg_name = "audio_ext_ap_clk",
 		.ops = &audio_ext_ap_clk_ops,
@@ -408,12 +413,30 @@ err:
 	return -EINVAL;
 }
 
+static void audio_ref_update_afe_mclk_id(const char *ptr)
+{
+	if (!strcmp(ptr, "pri_mclk")) {
+		pr_debug("%s: updating the mclk id with primary mclk\n",
+				__func__);
+		clk2_config.clk_id = Q6AFE_LPASS_CLK_ID_MCLK_1;
+	} else if (!strcmp(ptr, "sec_mclk")) {
+		pr_debug("%s: updating the mclk id with secondary mclk\n",
+				__func__);
+		clk2_config.clk_id = Q6AFE_LPASS_CLK_ID_MCLK_2;
+	} else {
+		pr_debug("%s: updating the mclk id with default\n", __func__);
+	}
+	pr_debug("%s: clk_id = 0x%x\n", __func__, clk2_config.clk_id);
+}
+
 static int audio_ref_clk_probe(struct platform_device *pdev)
 {
 	int clk_gpio;
 	int ret;
 	struct clk *div_clk1;
 	u32 mclk_freq;
+	const char *mclk_id = "qcom,lpass-mclk-id";
+	const char *mclk_str = NULL;
 
 	ret = of_property_read_u32(pdev->dev.of_node,
 				   "qcom,codec-mclk-clk-freq",
@@ -436,6 +459,15 @@ static int audio_ref_clk_probe(struct platform_device *pdev)
 				__func__);
 		return ret;
 	}
+
+	ret = of_property_read_string(pdev->dev.of_node,
+				mclk_id, &mclk_str);
+	if (ret)
+		dev_dbg(&pdev->dev, "%s:of read string %s not present %d\n",
+				__func__, mclk_id, ret);
+
+	if (mclk_str)
+		audio_ref_update_afe_mclk_id(mclk_str);
 
 	clk_gpio = of_get_named_gpio(pdev->dev.of_node,
 				     "qcom,audio-ref-clk-gpio", 0);

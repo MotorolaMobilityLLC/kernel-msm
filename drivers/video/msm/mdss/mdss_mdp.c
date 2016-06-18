@@ -40,6 +40,8 @@
 #include <linux/semaphore.h>
 #include <linux/uaccess.h>
 #include <linux/clk/msm-clk.h>
+#include <linux/irqdomain.h>
+#include <linux/irq.h>
 
 #include <linux/msm-bus.h>
 #include <linux/msm-bus-board.h>
@@ -64,6 +66,7 @@
 #define RES_UHD			(3840*2160)
 
 struct mdss_data_type *mdss_res;
+static u32 mem_protect_sd_ctrl_id;
 
 static int mdss_fb_mem_get_iommu_domain(void)
 {
@@ -108,6 +111,14 @@ struct mdss_hw mdss_mdp_hw = {
 	.irq_handler = mdss_mdp_isr,
 };
 
+/* define for h/w block with external driver */
+struct mdss_hw mdss_misc_hw = {
+	.hw_ndx = MDSS_HW_MISC,
+	.ptr = NULL,
+	.irq_handler = NULL,
+};
+
+#ifdef CONFIG_MSM_BUS_SCALING
 #define MDP_REG_BUS_VECTOR_ENTRY(ab_val, ib_val)	\
 	{						\
 		.src = MSM_BUS_MASTER_AMPSS_M0,		\
@@ -134,6 +145,7 @@ static struct msm_bus_scale_pdata mdp_reg_bus_scale_table = {
 	.name = "mdss_reg",
 	.active_only = true,
 };
+#endif
 
 u32 invalid_mdp107_wb_output_fmts[] = {
 	MDP_XRGB_8888,
@@ -174,6 +186,62 @@ u32 mdss_mdp_fb_stride(u32 fb_index, u32 xres, int bpp)
 		return xres * bpp;
 }
 
+static void mdss_irq_mask(struct irq_data *data)
+{
+	struct mdss_data_type *mdata = irq_data_get_irq_chip_data(data);
+	unsigned long irq_flags;
+
+	if (!mdata)
+		return;
+
+	pr_debug("irq_domain_mask %lu\n", data->hwirq);
+
+	if (data->hwirq < 32) {
+		spin_lock_irqsave(&mdp_lock, irq_flags);
+		mdata->mdss_util->disable_irq(&mdss_misc_hw);
+		spin_unlock_irqrestore(&mdp_lock, irq_flags);
+	}
+}
+
+static void mdss_irq_unmask(struct irq_data *data)
+{
+	struct mdss_data_type *mdata = irq_data_get_irq_chip_data(data);
+	unsigned long irq_flags;
+
+	if (!mdata)
+		return;
+
+	pr_debug("irq_domain_unmask %lu\n", data->hwirq);
+
+	if (data->hwirq < 32) {
+		spin_lock_irqsave(&mdp_lock, irq_flags);
+		mdata->mdss_util->enable_irq(&mdss_misc_hw);
+		spin_unlock_irqrestore(&mdp_lock, irq_flags);
+	}
+}
+
+static struct irq_chip mdss_irq_chip = {
+	.name		= "mdss",
+	.irq_mask	= mdss_irq_mask,
+	.irq_unmask	= mdss_irq_unmask,
+};
+
+static int mdss_irq_domain_map(struct irq_domain *d,
+		unsigned int virq, irq_hw_number_t hw)
+{
+	struct mdss_data_type *mdata = d->host_data;
+	/* check here if virq is a valid interrupt line */
+	irq_set_chip_and_handler(virq, &mdss_irq_chip, handle_level_irq);
+	irq_set_chip_data(virq, mdata);
+	set_irq_flags(virq, IRQF_VALID);
+	return 0;
+}
+
+static struct irq_domain_ops mdss_irq_domain_ops = {
+	.map = mdss_irq_domain_map,
+	.xlate = irq_domain_xlate_onecell,
+};
+
 static irqreturn_t mdss_irq_handler(int irq, void *ptr)
 {
 	struct mdss_data_type *mdata = ptr;
@@ -192,31 +260,56 @@ static irqreturn_t mdss_irq_handler(int irq, void *ptr)
 		spin_lock(&mdp_lock);
 		mdata->mdss_util->irq_dispatch(MDSS_HW_MDP, irq, ptr);
 		spin_unlock(&mdp_lock);
+		intr &= ~MDSS_INTR_MDP;
 	}
 
-	if (intr & MDSS_INTR_DSI0)
+	if (intr & MDSS_INTR_DSI0) {
 		mdata->mdss_util->irq_dispatch(MDSS_HW_DSI0, irq, ptr);
+		intr &= ~MDSS_INTR_DSI0;
+	}
 
-	if (intr & MDSS_INTR_DSI1)
+	if (intr & MDSS_INTR_DSI1) {
 		mdata->mdss_util->irq_dispatch(MDSS_HW_DSI1, irq, ptr);
+		intr &= ~MDSS_INTR_DSI1;
+	}
 
-	if (intr & MDSS_INTR_EDP)
+	if (intr & MDSS_INTR_EDP) {
 		mdata->mdss_util->irq_dispatch(MDSS_HW_EDP, irq, ptr);
+		intr &= ~MDSS_INTR_EDP;
+	}
 
-	if (intr & MDSS_INTR_HDMI)
+	if (intr & MDSS_INTR_HDMI) {
 		mdata->mdss_util->irq_dispatch(MDSS_HW_HDMI, irq, ptr);
+		intr &= ~MDSS_INTR_HDMI;
+	}
+
+	/* route misc. interrupts to external drivers */
+	while (intr) {
+		irq_hw_number_t hwirq = fls(intr) - 1;
+
+		generic_handle_irq(irq_find_mapping(
+				mdata->irq_domain, hwirq));
+		intr &= ~(1 << hwirq);
+	}
 
 	mdss_mdp_hw.irq_info->irq_buzy = false;
 
 	return IRQ_HANDLED;
 }
 
+#ifdef CONFIG_MSM_BUS_SCALING
 static int mdss_mdp_bus_scale_register(struct mdss_data_type *mdata)
 {
 	struct msm_bus_scale_pdata *reg_bus_pdata;
-	int i;
+	int i, rc;
 
 	if (!mdata->bus_hdl) {
+		rc = mdss_mdp_parse_dt_bus_scale(mdata->pdev);
+		if (rc) {
+			pr_err("Error in device tree : bus scale\n");
+			return rc;
+		}
+
 		mdata->bus_hdl =
 			msm_bus_scale_register_client(mdata->bus_scale_table);
 		if (!mdata->bus_hdl) {
@@ -227,22 +320,38 @@ static int mdss_mdp_bus_scale_register(struct mdss_data_type *mdata)
 		pr_debug("register bus_hdl=%x\n", mdata->bus_hdl);
 	}
 
-	if (!mdata->reg_bus_hdl) {
+	if (!mdata->reg_bus_scale_table) {
 		reg_bus_pdata = &mdp_reg_bus_scale_table;
 		for (i = 0; i < reg_bus_pdata->num_usecases; i++) {
 			mdp_reg_bus_usecases[i].num_paths = 1;
 			mdp_reg_bus_usecases[i].vectors =
 				&mdp_reg_bus_vectors[i];
 		}
+		mdata->reg_bus_scale_table = reg_bus_pdata;
+	}
 
+	if (!mdata->reg_bus_hdl) {
 		mdata->reg_bus_hdl =
-			msm_bus_scale_register_client(reg_bus_pdata);
-		if (!mdata->reg_bus_hdl) {
+			msm_bus_scale_register_client(
+			      mdata->reg_bus_scale_table);
+		if (!mdata->reg_bus_hdl)
 			/* Continue without reg_bus scaling */
 			pr_warn("reg_bus_client register failed\n");
-		} else
+		else
 			pr_debug("register reg_bus_hdl=%x\n",
 					mdata->reg_bus_hdl);
+	}
+
+	if (mdata->hw_rt_bus_scale_table && !mdata->hw_rt_bus_hdl) {
+		mdata->hw_rt_bus_hdl =
+			msm_bus_scale_register_client(
+			      mdata->hw_rt_bus_scale_table);
+		if (!mdata->hw_rt_bus_hdl)
+			/* Continue without reg_bus scaling */
+			pr_warn("hw_rt_bus client register failed\n");
+		else
+			pr_debug("register hw_rt_bus=%x\n",
+					mdata->hw_rt_bus_hdl);
 	}
 
 	/*
@@ -265,6 +374,11 @@ static void mdss_mdp_bus_scale_unregister(struct mdss_data_type *mdata)
 	if (mdata->reg_bus_hdl) {
 		msm_bus_scale_unregister_client(mdata->reg_bus_hdl);
 		mdata->reg_bus_hdl = 0;
+	}
+
+	if (mdata->hw_rt_bus_hdl) {
+		msm_bus_scale_unregister_client(mdata->hw_rt_bus_hdl);
+		mdata->hw_rt_bus_hdl = 0;
 	}
 }
 
@@ -484,6 +598,42 @@ int mdss_bus_scale_set_quota(int client, u64 ab_quota, u64 ib_quota)
 
 	return rc;
 }
+#else
+static int mdss_mdp_bus_scale_register(struct mdss_data_type *mdata)
+{
+	return 0;
+}
+
+static void mdss_mdp_bus_scale_unregister(struct mdss_data_type *mdata)
+{
+}
+
+int mdss_bus_scale_set_quota(int client, u64 ab_quota, u64 ib_quota)
+{
+	pr_debug("No bus scaling! client=%d ab=%llu ib=%llu\n",
+			client, ab_quota, ib_quota);
+
+	return 0;
+}
+
+struct reg_bus_client *mdss_reg_bus_vote_client_create(char *client_name)
+{
+	return NULL;
+}
+
+void mdss_reg_bus_vote_client_destroy(struct reg_bus_client *client)
+{
+}
+
+int mdss_update_reg_bus_vote(struct reg_bus_client *bus_client, u32 usecase_ndx)
+{
+	pr_debug("%pS: No reg scaling! usecase=%u\n",
+			__builtin_return_address(0), usecase_ndx);
+
+	return 0;
+}
+#endif
+
 
 static inline u32 mdss_mdp_irq_mask(u32 intr_type, u32 intf_num)
 {
@@ -754,6 +904,54 @@ unsigned long mdss_mdp_get_clk_rate(u32 clk_idx, bool locked)
 }
 
 /**
+ * mdss_bus_rt_bw_vote() -- place bus bandwidth request
+ * @enable: value of enable or disable
+ *
+ * hw_rt table has two entries, 0 and Min Vote (1Mhz)
+ * while attaching SMMU and for few TZ operations which
+ * happen at very early stage, we will request Min Vote
+ * thru this handle.
+ *
+ */
+static int mdss_bus_rt_bw_vote(bool enable)
+{
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+	int rc = 0;
+	bool changed = false;
+
+	if (!mdata->hw_rt_bus_hdl)
+		return 0;
+
+	if (enable) {
+		if (mdata->hw_rt_bus_ref_cnt == 0)
+			changed = true;
+		mdata->hw_rt_bus_ref_cnt++;
+	} else {
+		if (mdata->hw_rt_bus_ref_cnt != 0) {
+			mdata->hw_rt_bus_ref_cnt--;
+			if (mdata->hw_rt_bus_ref_cnt == 0)
+				changed = true;
+		} else {
+			pr_warn("%s: bus bw votes are not balanced\n",
+				__func__);
+		}
+	}
+
+	pr_debug("%pS: task:%s bw_cnt=%d changed=%d enable=%d\n",
+		__builtin_return_address(0), current->group_leader->comm,
+		mdata->hw_rt_bus_ref_cnt, changed, enable);
+
+	if (changed) {
+		rc = msm_bus_scale_client_update_request(mdata->hw_rt_bus_hdl,
+							 enable ? 1 : 0);
+		if (rc)
+			pr_err("%s: Bus bandwidth vote failed\n", __func__);
+	}
+
+	return rc;
+}
+
+/**
  * __mdss_mdp_reg_access_clk_enable - Enable minimum MDSS clocks required
  * for register access
  */
@@ -762,10 +960,8 @@ static inline void __mdss_mdp_reg_access_clk_enable(
 {
 	if (enable) {
 		mdss_update_reg_bus_vote(mdata->reg_bus_clt,
-				VOTE_INDEX_19_MHZ);
-		if (mdss_has_quirk(mdata, MDSS_QUIRK_MIN_BUS_VOTE))
-				mdss_bus_scale_set_quota(MDSS_HW_RT,
-					SZ_1M, SZ_1M);
+				VOTE_INDEX_LOW);
+		mdss_bus_rt_bw_vote(true);
 		mdss_mdp_clk_update(MDSS_CLK_AHB, 1);
 		mdss_mdp_clk_update(MDSS_CLK_AXI, 1);
 		mdss_mdp_clk_update(MDSS_CLK_MDP_CORE, 1);
@@ -773,8 +969,7 @@ static inline void __mdss_mdp_reg_access_clk_enable(
 		mdss_mdp_clk_update(MDSS_CLK_MDP_CORE, 0);
 		mdss_mdp_clk_update(MDSS_CLK_AXI, 0);
 		mdss_mdp_clk_update(MDSS_CLK_AHB, 0);
-		if (mdss_has_quirk(mdata, MDSS_QUIRK_MIN_BUS_VOTE))
-			mdss_bus_scale_set_quota(MDSS_HW_RT, 0, 0);
+		mdss_bus_rt_bw_vote(false);
 		mdss_update_reg_bus_vote(mdata->reg_bus_clt,
 				VOTE_INDEX_DISABLE);
 	}
@@ -854,9 +1049,7 @@ int mdss_iommu_ctrl(int enable)
 		 * finished handoff, as it may still be working with phys addr
 		 */
 		if (!mdata->iommu_attached && !mdata->handoff_pending) {
-			if (mdss_has_quirk(mdata, MDSS_QUIRK_MIN_BUS_VOTE))
-				mdss_bus_scale_set_quota(MDSS_HW_RT,
-					 SZ_1M, SZ_1M);
+			mdss_bus_rt_bw_vote(true);
 			rc = mdss_smmu_attach(mdata);
 		}
 		mdata->iommu_ref_cnt++;
@@ -865,10 +1058,7 @@ int mdss_iommu_ctrl(int enable)
 			mdata->iommu_ref_cnt--;
 			if (mdata->iommu_ref_cnt == 0) {
 				rc = mdss_smmu_detach(mdata);
-				if (mdss_has_quirk(mdata,
-					MDSS_QUIRK_MIN_BUS_VOTE))
-					mdss_bus_scale_set_quota(MDSS_HW_RT,
-								0, 0);
+				mdss_bus_rt_bw_vote(false);
 			}
 		} else {
 			pr_err("unbalanced iommu ref\n");
@@ -1045,7 +1235,7 @@ void mdss_mdp_clk_ctrl(int enable)
 			pm_runtime_get_sync(&mdata->pdev->dev);
 
 			mdss_update_reg_bus_vote(mdata->reg_bus_clt,
-				VOTE_INDEX_19_MHZ);
+				VOTE_INDEX_LOW);
 
 			rc = mdss_iommu_ctrl(1);
 			if (IS_ERR_VALUE(rc))
@@ -1200,7 +1390,7 @@ static int mdss_mdp_irq_clk_setup(struct mdss_data_type *mdata)
 	}
 
 	mdata->reg_bus_clt = mdss_reg_bus_vote_client_create("mdp\0");
-	if (IS_ERR_OR_NULL(mdata->reg_bus_clt)) {
+	if (IS_ERR(mdata->reg_bus_clt)) {
 		pr_err("bus client register failed\n");
 		return PTR_ERR(mdata->reg_bus_clt);
 	}
@@ -1290,9 +1480,10 @@ static void mdss_mdp_hw_rev_caps_init(struct mdss_data_type *mdata)
 	mdata->hflip_buffer_reused = true;
 	/* prevent disable of prefill calculations */
 	mdata->min_prefill_lines = 0xffff;
-	/* clock gating feature is disabled by default */
+	/* clock gating feature is enabled by default */
 	mdata->enable_gate = true;
 	mdata->pixel_ram_size = 0;
+	mem_protect_sd_ctrl_id = MEM_PROTECT_SD_CTRL_FLAT;
 
 	mdss_mdp_hw_rev_debug_caps_init(mdata);
 
@@ -1352,28 +1543,75 @@ static void mdss_mdp_hw_rev_caps_init(struct mdss_data_type *mdata)
 		set_bit(MDSS_QOS_OTLIM, mdata->mdss_qos_map);
 		break;
 	case MDSS_MDP_HW_REV_114:
-	case MDSS_MDP_HW_REV_115:
+		/* disable ECG for 28nm PHY platform */
+		mdata->enable_gate = false;
 	case MDSS_MDP_HW_REV_116:
 		mdata->max_target_zorder = 4; /* excluding base layer */
 		mdata->max_cursor_size = 128;
 		mdata->min_prefill_lines = 14;
-		mdata->has_ubwc =
-			(mdata->mdp_rev == MDSS_MDP_HW_REV_115) ?
-			false : true;
-		mdata->pixel_ram_size =
-			(mdata->mdp_rev == MDSS_MDP_HW_REV_115) ?
-			(16 * 1024) : (40 * 1024);
+		mdata->has_ubwc = true;
+		mdata->pixel_ram_size = 40 * 1024;
 		mdata->apply_post_scale_bytes = false;
 		mdata->hflip_buffer_reused = false;
+		mem_protect_sd_ctrl_id = MEM_PROTECT_SD_CTRL;
 		set_bit(MDSS_QOS_OVERHEAD_FACTOR, mdata->mdss_qos_map);
-		set_bit(MDSS_QOS_CDP, mdata->mdss_qos_map);
 		set_bit(MDSS_QOS_PER_PIPE_LUT, mdata->mdss_qos_map);
 		set_bit(MDSS_QOS_SIMPLIFIED_PREFILL, mdata->mdss_qos_map);
 		set_bit(MDSS_CAPS_YUV_CONFIG, mdata->mdss_caps_map);
 		mdss_mdp_init_default_prefill_factors(mdata);
 		set_bit(MDSS_QOS_OTLIM, mdata->mdss_qos_map);
 		mdss_set_quirk(mdata, MDSS_QUIRK_DMA_BI_DIR);
-		mdss_set_quirk(mdata, MDSS_QUIRK_MIN_BUS_VOTE);
+		mdss_set_quirk(mdata, MDSS_QUIRK_NEED_SECURE_MAP);
+		break;
+	case MDSS_MDP_HW_REV_115:
+		mdata->max_target_zorder = 4; /* excluding base layer */
+		mdata->max_cursor_size = 128;
+		mdata->min_prefill_lines = 14;
+		mdata->has_ubwc = false;
+		mdata->pixel_ram_size = 16 * 1024;
+		mdata->apply_post_scale_bytes = false;
+		mdata->hflip_buffer_reused = false;
+		/* disable ECG for 28nm PHY platform */
+		mdata->enable_gate = false;
+		mem_protect_sd_ctrl_id = MEM_PROTECT_SD_CTRL;
+		set_bit(MDSS_QOS_PER_PIPE_LUT, mdata->mdss_qos_map);
+		set_bit(MDSS_QOS_SIMPLIFIED_PREFILL, mdata->mdss_qos_map);
+		set_bit(MDSS_CAPS_YUV_CONFIG, mdata->mdss_caps_map);
+		set_bit(MDSS_CAPS_MIXER_1_FOR_WB, mdata->mdss_caps_map);
+		mdss_mdp_init_default_prefill_factors(mdata);
+		set_bit(MDSS_QOS_OTLIM, mdata->mdss_qos_map);
+		mdss_set_quirk(mdata, MDSS_QUIRK_DMA_BI_DIR);
+		mdss_set_quirk(mdata, MDSS_QUIRK_NEED_SECURE_MAP);
+		break;
+	case MDSS_MDP_HW_REV_300:
+	case MDSS_MDP_HW_REV_301:
+		mdata->max_target_zorder = 7; /* excluding base layer */
+		mdata->max_cursor_size = 384;
+		mdata->per_pipe_ib_factor.numer = 8;
+		mdata->per_pipe_ib_factor.denom = 5;
+		mdata->apply_post_scale_bytes = false;
+		mdata->hflip_buffer_reused = false;
+		mdata->min_prefill_lines = 21;
+		mdata->has_ubwc = true;
+		mdata->pixel_ram_size = 50 * 1024;
+		set_bit(MDSS_QOS_PER_PIPE_IB, mdata->mdss_qos_map);
+		set_bit(MDSS_QOS_OVERHEAD_FACTOR, mdata->mdss_qos_map);
+		set_bit(MDSS_QOS_CDP, mdata->mdss_qos_map);
+		set_bit(MDSS_QOS_OTLIM, mdata->mdss_qos_map);
+		set_bit(MDSS_QOS_PER_PIPE_LUT, mdata->mdss_qos_map);
+		set_bit(MDSS_QOS_SIMPLIFIED_PREFILL, mdata->mdss_qos_map);
+		set_bit(MDSS_CAPS_YUV_CONFIG, mdata->mdss_caps_map);
+		set_bit(MDSS_CAPS_SCM_RESTORE_NOT_REQUIRED,
+			mdata->mdss_caps_map);
+		set_bit(MDSS_CAPS_3D_MUX_UNDERRUN_RECOVERY_SUPPORTED,
+			mdata->mdss_caps_map);
+		set_bit(MDSS_CAPS_QSEED3, mdata->mdss_caps_map);
+		set_bit(MDSS_CAPS_DEST_SCALER, mdata->mdss_caps_map);
+		mdss_mdp_init_default_prefill_factors(mdata);
+		mdss_set_quirk(mdata, MDSS_QUIRK_DSC_RIGHT_ONLY_PU);
+		mdss_set_quirk(mdata, MDSS_QUIRK_DSC_2SLICE_PU_THRPUT);
+		mdata->has_wb_ubwc = true;
+		set_bit(MDSS_CAPS_10_BIT_SUPPORTED, mdata->mdss_caps_map);
 		break;
 	default:
 		mdata->max_target_zorder = 4; /* excluding base layer */
@@ -1382,6 +1620,10 @@ static void mdss_mdp_hw_rev_caps_init(struct mdss_data_type *mdata)
 
 	if (mdata->mdp_rev < MDSS_MDP_HW_REV_103)
 		mdss_set_quirk(mdata, MDSS_QUIRK_DOWNSCALE_HANG);
+
+	if (mdata->mdp_rev < MDSS_MDP_HW_REV_102 ||
+			mdata->mdp_rev == MDSS_MDP_HW_REV_200)
+		mdss_set_quirk(mdata, MDSS_QUIRK_FMT_PACK_PATTERN);
 }
 
 static void mdss_hw_rev_init(struct mdss_data_type *mdata)
@@ -1403,8 +1645,6 @@ static void mdss_hw_rev_init(struct mdss_data_type *mdata)
  */
 void mdss_hw_init(struct mdss_data_type *mdata)
 {
-	int i, j;
-	char *offset;
 	struct mdss_mdp_pipe *vig;
 
 	mdss_hw_rev_init(mdata);
@@ -1423,24 +1663,7 @@ void mdss_hw_init(struct mdss_data_type *mdata)
 		}
 	}
 
-	for (i = 0; i < mdata->ndspp; i++) {
-		offset = mdata->mixer_intf[i].dspp_base +
-				MDSS_MDP_REG_DSPP_HIST_LUT_BASE;
-		for (j = 0; j < ENHIST_LUT_ENTRIES; j++)
-			writel_relaxed(j, offset);
-
-		/* swap */
-		writel_relaxed(1, offset + 4);
-	}
 	vig = mdata->vig_pipes;
-	for (i = 0; i < mdata->nvig_pipes; i++) {
-		offset = vig[i].base +
-			MDSS_MDP_REG_VIG_HIST_LUT_BASE;
-		for (j = 0; j < ENHIST_LUT_ENTRIES; j++)
-			writel_relaxed(j, offset);
-		/* swap */
-		writel_relaxed(1, offset + 16);
-	}
 
 	mdata->nmax_concurrent_ad_hw =
 		(mdata->mdp_rev < MDSS_MDP_HW_REV_103) ? 1 : 2;
@@ -1481,6 +1704,96 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 	return rc;
 }
 
+static u32 mdss_mdp_scaler_init(struct mdss_data_type *mdata,
+				struct device *dev)
+{
+	int ret;
+	struct device_node *node;
+	u32 prop_val;
+
+	if (!dev)
+		return -EPERM;
+
+	node = of_get_child_by_name(dev->of_node, "qcom,mdss-scaler-offsets");
+	if (!node)
+		return 0;
+
+	if (mdata->scaler_off)
+		return -EFAULT;
+
+	mdata->scaler_off = devm_kzalloc(&mdata->pdev->dev,
+			sizeof(*mdata->scaler_off), GFP_KERNEL);
+	if (!mdata->scaler_off)
+		return -ENOMEM;
+
+	ret = of_property_read_u32(node,
+			"qcom,mdss-vig-scaler-off",
+			&prop_val);
+	if (ret) {
+		pr_err("read property %s failed ret %d\n",
+				"qcom,mdss-vig-scaler-off", ret);
+		return -EINVAL;
+	}
+	mdata->scaler_off->vig_scaler_off = prop_val;
+	ret = of_property_read_u32(node,
+			"qcom,mdss-vig-scaler-lut-off",
+			&prop_val);
+	if (ret) {
+		pr_err("read property %s failed ret %d\n",
+				"qcom,mdss-vig-scaler-lut-off", ret);
+		return -EINVAL;
+	}
+	mdata->scaler_off->vig_scaler_lut_off = prop_val;
+	mdata->scaler_off->has_dest_scaler =
+		of_property_read_bool(mdata->pdev->dev.of_node,
+				"qcom,mdss-has-dest-scaler");
+	if (mdata->scaler_off->has_dest_scaler) {
+		ret = of_property_read_u32(node,
+				"qcom,mdss-dest-block-off",
+				&prop_val);
+		if (ret) {
+			pr_err("read property %s failed ret %d\n",
+					"qcom,mdss-dest-block-off", ret);
+			return -EINVAL;
+		}
+		mdata->scaler_off->dest_base = mdata->mdss_io.base +
+			prop_val;
+		mdata->scaler_off->ndest_scalers =
+			mdss_mdp_parse_dt_prop_len(mdata->pdev,
+					"qcom,mdss-dest-scalers-off");
+		mdata->scaler_off->dest_scaler_off =
+			devm_kzalloc(&mdata->pdev->dev, sizeof(u32) *
+					mdata->scaler_off->ndest_scalers,
+					GFP_KERNEL);
+		if  (!mdata->scaler_off->dest_scaler_off) {
+			kfree(mdata->scaler_off->dest_scaler_off);
+			return -ENOMEM;
+		}
+		ret = mdss_mdp_parse_dt_handler(mdata->pdev,
+				"qcom,mdss-dest-scaler-off",
+				mdata->scaler_off->dest_scaler_off,
+				mdata->scaler_off->ndest_scalers);
+		if (ret)
+			return -EINVAL;
+		mdata->scaler_off->dest_scaler_lut_off =
+			devm_kzalloc(&mdata->pdev->dev, sizeof(u32) *
+					mdata->scaler_off->ndest_scalers,
+					GFP_KERNEL);
+		if  (!mdata->scaler_off->dest_scaler_lut_off) {
+			kfree(mdata->scaler_off->dest_scaler_lut_off);
+			return -ENOMEM;
+		}
+		ret = mdss_mdp_parse_dt_handler(mdata->pdev,
+				"qcom,mdss-dest-scalers-lut-off",
+				mdata->scaler_off->dest_scaler_lut_off,
+				mdata->scaler_off->ndest_scalers);
+		if (ret)
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
 /**
  * mdss_mdp_footswitch_ctrl_splash() - clocks handoff for cont. splash screen
  * @on: 1 to start handoff, 0 to complete the handoff after first frame update
@@ -1495,6 +1808,7 @@ void mdss_mdp_footswitch_ctrl_splash(int on)
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	if (mdata != NULL) {
 		if (on) {
+			mdata->handoff_pending = true;
 			pr_debug("Enable MDP FS for splash.\n");
 			if (mdata->venus) {
 				ret = regulator_enable(mdata->venus);
@@ -1640,26 +1954,32 @@ static int mdss_mdp_get_cmdline_config(struct platform_device *pdev)
 	rc = mdss_mdp_parse_dt_pan_intf(pdev);
 	/* if pref pan intf is not present */
 	if (rc)
-		pr_err("unable to parse device tree for pan intf\n");
-	else
-		pan_cfg->init_done = true;
+		pr_warn("unable to parse device tree for pan intf\n");
 
-	return rc;
+	pan_cfg->init_done = true;
+
+	return 0;
 }
 
 static void __update_sspp_info(struct mdss_mdp_pipe *pipe,
 	int pipe_cnt, char *type, char *buf, int *cnt)
 {
 	int i;
+	int j;
 	size_t len = PAGE_SIZE;
+	int num_bytes = BITS_TO_BYTES(MDP_IMGTYPE_LIMIT1);
 
 #define SPRINT(fmt, ...) \
 		(*cnt += scnprintf(buf + *cnt, len - *cnt, fmt, ##__VA_ARGS__))
 
 	for (i = 0; i < pipe_cnt; i++) {
-		SPRINT("pipe_num:%d pipe_type:%s pipe_ndx:%d pipe_is_handoff:%d display_id:%d\n",
+		SPRINT("pipe_num:%d pipe_type:%s pipe_ndx:%d pipe_is_handoff:%d display_id:%d ",
 			pipe->num, type, pipe->ndx, pipe->is_handed_off,
 			mdss_mdp_get_display_id(pipe));
+		SPRINT("fmts_supported:");
+		for (j = 0; j < num_bytes && pipe; j++)
+			SPRINT("%d,", pipe->supported_formats[j]);
+		SPRINT("\n");
 		pipe++;
 	}
 #undef SPRINT
@@ -1678,7 +1998,29 @@ static void mdss_mdp_update_sspp_info(struct mdss_data_type *mdata,
 		"cursor", buf, cnt);
 }
 
-static ssize_t mdss_mdp_show_capabilities(struct device *dev,
+static void mdss_mdp_update_wb_info(struct mdss_data_type *mdata,
+	char *buf, int *cnt)
+{
+#define SPRINT(fmt, ...) \
+		(*cnt += scnprintf(buf + *cnt, len - *cnt, fmt, ##__VA_ARGS__))
+	size_t len = PAGE_SIZE;
+	int i;
+	int num_bytes = BITS_TO_BYTES(MDP_IMGTYPE_LIMIT1);
+
+	SPRINT("rot_input_fmts=");
+	for (i = 0; i < num_bytes && mdata->wb; i++)
+		SPRINT("%d ", mdata->wb->supported_input_formats[i]);
+	SPRINT("\nrot_output_fmts=");
+	for (i = 0; i < num_bytes && mdata->wb; i++)
+		SPRINT("%d ", mdata->wb->supported_input_formats[i]);
+	SPRINT("\nwb_output_fmts=");
+	for (i = 0; i < num_bytes && mdata->wb; i++)
+		SPRINT("%d ", mdata->wb->supported_output_formats[i]);
+	SPRINT("\n");
+#undef SPRINT
+}
+
+ssize_t mdss_mdp_show_capabilities(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct mdss_data_type *mdata = dev_get_drvdata(dev);
@@ -1693,6 +2035,8 @@ static ssize_t mdss_mdp_show_capabilities(struct device *dev,
 	SPRINT("pipe_count:%d\n", mdata->nvig_pipes + mdata->nrgb_pipes +
 		mdata->ndma_pipes + mdata->ncursor_pipes);
 	mdss_mdp_update_sspp_info(mdata, buf, &cnt);
+	mdss_mdp_update_wb_info(mdata, buf, &cnt);
+	/* TODO : need to remove num pipes info */
 	SPRINT("rgb_pipes=%d\n", mdata->nrgb_pipes);
 	SPRINT("vig_pipes=%d\n", mdata->nvig_pipes);
 	SPRINT("dma_pipes=%d\n", mdata->ndma_pipes);
@@ -1740,6 +2084,8 @@ static ssize_t mdss_mdp_show_capabilities(struct device *dev,
 		SPRINT(" bwc");
 	if (mdata->has_ubwc)
 		SPRINT(" ubwc");
+	if (mdata->has_wb_ubwc)
+		SPRINT(" wb_ubwc");
 	if (mdata->has_decimation)
 		SPRINT(" decimation");
 	if (mdata->highest_bank_bit && !mdss_mdp_is_ubwc_supported(mdata))
@@ -1752,6 +2098,10 @@ static ssize_t mdss_mdp_show_capabilities(struct device *dev,
 		SPRINT(" rotator_downscale");
 	if (mdata->max_bw_settings_cnt)
 		SPRINT(" dynamic_bw_limit");
+	if (test_bit(MDSS_CAPS_QSEED3, mdata->mdss_caps_map))
+		SPRINT("qseed3");
+	if (test_bit(MDSS_CAPS_DEST_SCALER, mdata->mdss_caps_map))
+		SPRINT("dest_scaler");
 	SPRINT("\n");
 #undef SPRINT
 
@@ -1877,7 +2227,7 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 	struct resource *res;
 	int rc;
 	struct mdss_data_type *mdata;
-	bool display_on;
+	bool display_on = false;
 
 	if (!pdev->dev.of_node) {
 		pr_err("MDP driver only supports device tree probe\n");
@@ -1958,6 +2308,48 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 	mdss_mdp_hw.irq_info->irq = res->start;
 	mdss_mdp_hw.ptr = mdata;
 
+	/* export misc. interrupts to external driver */
+	mdata->irq_domain = irq_domain_add_linear(pdev->dev.of_node, 32,
+			&mdss_irq_domain_ops, mdata);
+	if (!mdata->irq_domain) {
+		pr_err("unable to add linear domain\n");
+		rc = -ENOMEM;
+		goto probe_done;
+	}
+
+	mdss_misc_hw.irq_info = mdss_intr_line();
+	rc = mdss_res->mdss_util->register_irq(&mdss_misc_hw);
+	if (rc)
+		pr_err("mdss_register_irq failed.\n");
+
+	rc = mdss_mdp_res_init(mdata);
+	if (rc) {
+		pr_err("unable to initialize mdss mdp resources\n");
+		goto probe_done;
+	}
+
+	pm_runtime_set_autosuspend_delay(&pdev->dev, AUTOSUSPEND_TIMEOUT_MS);
+	if (mdata->idle_pc_enabled)
+		pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_set_suspended(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	if (!pm_runtime_enabled(&pdev->dev))
+		mdss_mdp_footswitch_ctrl(mdata, true);
+
+	rc = mdss_mdp_bus_scale_register(mdata);
+	if (rc) {
+		pr_err("unable to register bus scaling\n");
+		goto probe_done;
+	}
+
+	/*
+	 * enable clocks and read mdp_rev as soon as possible once
+	 * kernel is up.
+	 */
+	mdss_mdp_footswitch_ctrl_splash(true);
+	mdss_hw_rev_init(mdata);
+	display_on = true;
+
 	/*populate hw iomem base info from device tree*/
 	rc = mdss_mdp_parse_dt(pdev);
 	if (rc) {
@@ -1968,22 +2360,6 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 	rc = mdss_mdp_get_cmdline_config(pdev);
 	if (rc) {
 		pr_err("Error in panel override:rc=[%d]\n", rc);
-		goto probe_done;
-	}
-
-	rc = mdss_mdp_res_init(mdata);
-	if (rc) {
-		pr_err("unable to initialize mdss mdp resources\n");
-		goto probe_done;
-	}
-	rc = mdss_mdp_pp_init(&pdev->dev);
-	if (rc) {
-		pr_err("unable to initialize mdss pp resources\n");
-		goto probe_done;
-	}
-	rc = mdss_mdp_bus_scale_register(mdata);
-	if (rc) {
-		pr_err("unable to register bus scaling\n");
 		goto probe_done;
 	}
 	rc = mdss_mdp_rot_mgr_init();
@@ -1997,14 +2373,9 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 		pr_err("unable to initialize mdp debugging\n");
 		goto probe_done;
 	}
-
-	pm_runtime_set_autosuspend_delay(&pdev->dev, AUTOSUSPEND_TIMEOUT_MS);
-	if (mdata->idle_pc_enabled)
-		pm_runtime_use_autosuspend(&pdev->dev);
-	pm_runtime_set_suspended(&pdev->dev);
-	pm_runtime_enable(&pdev->dev);
-	if (!pm_runtime_enabled(&pdev->dev))
-		mdss_mdp_footswitch_ctrl(mdata, true);
+	rc = mdss_mdp_scaler_init(mdata, &pdev->dev);
+	if (rc)
+		goto probe_done;
 
 	rc = mdss_mdp_register_sysfs(mdata);
 	if (rc)
@@ -2022,17 +2393,15 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 	if (rc)
 		pr_err("mdss smmu init failed\n");
 
+	mdss_mdp_set_supported_formats(mdata);
+
 	mdss_res->mdss_util->mdp_probe_done = true;
 
-	/*
-	 * enable clocks and read mdp_rev as soon as possible once
-	 * kernel is up. Read the DISP_INTF_SEL register to check if
-	 * display was enabled in bootloader or not. If yes, let handoff
-	 * handle removing the extra clk/regulator votes else turn off
-	 * clk/regulators because purpose here is to get mdp_rev.
-	 */
-	mdss_mdp_footswitch_ctrl_splash(true);
 	mdss_hw_init(mdata);
+
+	rc = mdss_mdp_pp_init(&pdev->dev);
+	if (rc)
+		pr_err("unable to initialize mdss pp resources\n");
 
 	/* Restoring Secure configuration during boot-up */
 	if (mdss_mdp_req_init_restore_cfg(mdata))
@@ -2047,18 +2416,25 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 			MMSS_MDP_ROBUST_LUT);
 	}
 
+	/*
+	 * Read the DISP_INTF_SEL register to check if display was enabled in
+	 * bootloader or not. If yes, let handoff handle removing the extra
+	 * clk/regulator votes else turn off clk/regulators because purpose
+	 * here is to get mdp_rev.
+	 */
 	display_on = (bool)readl_relaxed(mdata->mdp_base +
 		MDSS_MDP_REG_DISP_INTF_SEL);
 	if (!display_on)
 		mdss_mdp_footswitch_ctrl_splash(false);
-	else
-		mdata->handoff_pending = true;
 
 	pr_info("mdss version = 0x%x, bootloader display is %s\n",
 		mdata->mdp_rev, display_on ? "on" : "off");
 
 probe_done:
 	if (IS_ERR_VALUE(rc)) {
+		if (display_on)
+			mdss_mdp_footswitch_ctrl_splash(false);
+
 		if (mdata->regulator_notif_register)
 			regulator_unregister_notifier(mdata->fs,
 						&(mdata->gdsc_cb));
@@ -2208,12 +2584,6 @@ static int mdss_mdp_parse_dt(struct platform_device *pdev)
 		return rc;
 	}
 
-	rc = mdss_mdp_parse_dt_bus_scale(pdev);
-	if (rc) {
-		pr_err("Error in device tree : bus scale\n");
-		return rc;
-	}
-
 	rc = mdss_mdp_parse_dt_cdm(pdev);
 	if (rc)
 		pr_debug("CDM offset not found in device tree\n");
@@ -2345,86 +2715,112 @@ static void mdss_mdp_parse_dt_pipe_panic_ctrl(struct platform_device *pdev,
 	}
 }
 
-static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
+static int mdss_mdp_parse_dt_pipe_helper(struct platform_device *pdev,
+		u32 npipes,
+		u32 nfids)
 {
-	u32 npipes, dma_off;
-	int rc = 0, i;
-	u32 nfids = 0, setup_cnt = 0, len, nxids = 0;
+	u32 dma_off;
 	u32 *offsets = NULL, *ftch_id = NULL, *xin_id = NULL;
-	u32 sw_reset_offset = 0;
-	u32 data[4];
-
+	u32 len;
+	uint32_t setup_cnt = 0;
+	int rc = 0, i;
 	struct mdss_data_type *mdata = platform_get_drvdata(pdev);
 
-	mdata->has_pixel_ram = !mdss_mdp_parse_dt_prop_len(pdev,
-						"qcom,mdss-smp-data");
-
-	mdata->nvig_pipes = mdss_mdp_parse_dt_prop_len(pdev,
-				"qcom,mdss-pipe-vig-off");
-	mdata->nrgb_pipes = mdss_mdp_parse_dt_prop_len(pdev,
-				"qcom,mdss-pipe-rgb-off");
-	mdata->ndma_pipes = mdss_mdp_parse_dt_prop_len(pdev,
-				"qcom,mdss-pipe-dma-off");
-	mdata->ncursor_pipes = mdss_mdp_parse_dt_prop_len(pdev,
-				"qcom,mdss-pipe-cursor-off");
-
-	npipes = mdata->nvig_pipes + mdata->nrgb_pipes + mdata->ndma_pipes;
-
-	if (!mdata->has_pixel_ram) {
-		nfids  += mdss_mdp_parse_dt_prop_len(pdev,
-				"qcom,mdss-pipe-vig-fetch-id");
-		nfids  += mdss_mdp_parse_dt_prop_len(pdev,
-				"qcom,mdss-pipe-rgb-fetch-id");
-		nfids  += mdss_mdp_parse_dt_prop_len(pdev,
-				"qcom,mdss-pipe-dma-fetch-id");
-		if (npipes != nfids) {
-			pr_err("device tree err: unequal number of pipes and smp ids");
-			return -EINVAL;
-		}
-	}
-
-	nxids += mdss_mdp_parse_dt_prop_len(pdev, "qcom,mdss-pipe-vig-xin-id");
-	nxids += mdss_mdp_parse_dt_prop_len(pdev, "qcom,mdss-pipe-rgb-xin-id");
-	nxids += mdss_mdp_parse_dt_prop_len(pdev, "qcom,mdss-pipe-dma-xin-id");
-	if (npipes != nxids) {
-		pr_err("device tree err: unequal number of pipes and xin ids\n");
-		return -EINVAL;
-	}
-
-	offsets = kzalloc(sizeof(u32) * npipes, GFP_KERNEL);
-	if (!offsets) {
-		pr_err("no mem assigned for offsets: kzalloc fail\n");
+	offsets = kcalloc(npipes, sizeof(u32), GFP_KERNEL);
+	if (!offsets)
 		return -ENOMEM;
-	}
 
-	ftch_id = kzalloc(sizeof(u32) * npipes, GFP_KERNEL);
+	ftch_id = kcalloc(npipes, sizeof(u32), GFP_KERNEL);
 	if (!ftch_id) {
-		pr_err("no mem assigned for ftch_id: kzalloc fail\n");
 		rc = -ENOMEM;
 		goto ftch_alloc_fail;
 	}
 
-	xin_id = kzalloc(sizeof(u32) * nxids, GFP_KERNEL);
+	xin_id = kcalloc(npipes, sizeof(u32), GFP_KERNEL);
 	if (!xin_id) {
-		pr_err("no mem assigned for xin_id: kzalloc fail\n");
 		rc = -ENOMEM;
 		goto xin_alloc_fail;
 	}
 
-	mdata->vig_pipes = devm_kzalloc(&mdata->pdev->dev,
-		sizeof(struct mdss_mdp_pipe) * mdata->nvig_pipes, GFP_KERNEL);
-	if (!mdata->vig_pipes) {
-		pr_err("no mem for vig_pipes: kzalloc fail\n");
-		rc = -ENOMEM;
-		goto vig_alloc_fail;
+	if (mdata->nvig_pipes) {
+		mdata->vig_pipes = devm_kzalloc(&mdata->pdev->dev,
+				    (sizeof(struct mdss_mdp_pipe)
+				     * mdata->nvig_pipes), GFP_KERNEL);
+		if (!mdata->vig_pipes) {
+			rc = -ENOMEM;
+			goto vig_alloc_fail;
+		}
+		if (nfids) {
+			rc = mdss_mdp_parse_dt_handler(pdev,
+					"qcom,mdss-pipe-vig-fetch-id", ftch_id,
+					mdata->nvig_pipes);
+			if (rc)
+				goto parse_fail;
+		}
+
+		rc = mdss_mdp_parse_dt_handler(pdev,
+				"qcom,mdss-pipe-vig-xin-id", xin_id,
+				mdata->nvig_pipes);
+		if (rc)
+			goto parse_fail;
+
+		rc = mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-pipe-vig-off",
+				offsets, mdata->nvig_pipes);
+		if (rc)
+			goto parse_fail;
+
+		len = min_t(int, DEFAULT_TOTAL_VIG_PIPES,
+			    (int)mdata->nvig_pipes);
+		rc = mdss_mdp_pipe_addr_setup(mdata, mdata->vig_pipes, offsets,
+					ftch_id, xin_id, MDSS_MDP_PIPE_TYPE_VIG,
+					MDSS_MDP_SSPP_VIG0, len, 0);
+		if (rc)
+			goto parse_fail;
+
+		setup_cnt += len;
 	}
 
-	mdata->rgb_pipes = devm_kzalloc(&mdata->pdev->dev,
-		sizeof(struct mdss_mdp_pipe) * mdata->nrgb_pipes, GFP_KERNEL);
-	if (!mdata->rgb_pipes) {
-		pr_err("no mem for rgb_pipes: kzalloc fail\n");
-		rc = -ENOMEM;
-		goto rgb_alloc_fail;
+	if (mdata->nrgb_pipes) {
+		mdata->rgb_pipes = devm_kzalloc(&mdata->pdev->dev,
+				(sizeof(struct mdss_mdp_pipe) *
+				 mdata->nrgb_pipes), GFP_KERNEL);
+		if (!mdata->rgb_pipes) {
+			rc = -ENOMEM;
+			goto rgb_alloc_fail;
+		}
+
+		if (nfids) {
+			rc = mdss_mdp_parse_dt_handler(pdev,
+					"qcom,mdss-pipe-rgb-fetch-id",
+					ftch_id + mdata->nvig_pipes,
+					mdata->nrgb_pipes);
+			if (rc)
+				goto parse_fail;
+		}
+
+		rc = mdss_mdp_parse_dt_handler(pdev,
+				"qcom,mdss-pipe-rgb-xin-id",
+				xin_id + mdata->nvig_pipes, mdata->nrgb_pipes);
+		if (rc)
+			goto parse_fail;
+
+		rc = mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-pipe-rgb-off",
+				offsets + mdata->nvig_pipes, mdata->nrgb_pipes);
+		if (rc)
+			goto parse_fail;
+
+		len = min_t(int, DEFAULT_TOTAL_RGB_PIPES,
+			    (int)mdata->nrgb_pipes);
+		rc = mdss_mdp_pipe_addr_setup(mdata, mdata->rgb_pipes,
+				offsets + mdata->nvig_pipes,
+				ftch_id + mdata->nvig_pipes,
+				xin_id + mdata->nvig_pipes,
+				MDSS_MDP_PIPE_TYPE_RGB,
+				MDSS_MDP_SSPP_RGB0, len, mdata->nvig_pipes);
+		if (rc)
+			goto parse_fail;
+
+		setup_cnt += len;
 	}
 
 	if (mdata->ndma_pipes) {
@@ -2436,63 +2832,7 @@ static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
 			rc = -ENOMEM;
 			goto dma_alloc_fail;
 		}
-	}
 
-	if (nfids) {
-		rc = mdss_mdp_parse_dt_handler(pdev,
-			"qcom,mdss-pipe-vig-fetch-id", ftch_id,
-			mdata->nvig_pipes);
-		if (rc)
-			goto parse_fail;
-	}
-
-	rc = mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-pipe-vig-xin-id",
-		xin_id, mdata->nvig_pipes);
-	if (rc)
-		goto parse_fail;
-
-	rc = mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-pipe-vig-off",
-		offsets, mdata->nvig_pipes);
-	if (rc)
-		goto parse_fail;
-
-	len = min_t(int, DEFAULT_TOTAL_VIG_PIPES, (int)mdata->nvig_pipes);
-	rc = mdss_mdp_pipe_addr_setup(mdata, mdata->vig_pipes, offsets, ftch_id,
-		xin_id, MDSS_MDP_PIPE_TYPE_VIG, MDSS_MDP_SSPP_VIG0, len, 0);
-	if (rc)
-		goto parse_fail;
-
-	setup_cnt += len;
-
-	if (nfids) {
-		rc = mdss_mdp_parse_dt_handler(pdev,
-			"qcom,mdss-pipe-rgb-fetch-id",
-			ftch_id + mdata->nvig_pipes, mdata->nrgb_pipes);
-		if (rc)
-			goto parse_fail;
-	}
-
-	rc = mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-pipe-rgb-xin-id",
-		xin_id + mdata->nvig_pipes, mdata->nrgb_pipes);
-	if (rc)
-		goto parse_fail;
-
-	rc = mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-pipe-rgb-off",
-		offsets + mdata->nvig_pipes, mdata->nrgb_pipes);
-	if (rc)
-		goto parse_fail;
-
-	len = min_t(int, DEFAULT_TOTAL_RGB_PIPES, (int)mdata->nrgb_pipes);
-	rc = mdss_mdp_pipe_addr_setup(mdata, mdata->rgb_pipes,
-		offsets + mdata->nvig_pipes, ftch_id + mdata->nvig_pipes,
-		xin_id + mdata->nvig_pipes, MDSS_MDP_PIPE_TYPE_RGB,
-		MDSS_MDP_SSPP_RGB0, len, mdata->nvig_pipes);
-	if (rc)
-		goto parse_fail;
-
-	setup_cnt += len;
-
-	if (mdata->ndma_pipes) {
 		dma_off = mdata->nvig_pipes + mdata->nrgb_pipes;
 
 		if (nfids) {
@@ -2555,17 +2895,23 @@ static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
 		setup_cnt += mdata->nrgb_pipes - DEFAULT_TOTAL_RGB_PIPES;
 	}
 
-	rc = mdss_mdp_parse_dt_pipe_clk_ctrl(pdev,
-		"qcom,mdss-pipe-vig-clk-ctrl-offsets", mdata->vig_pipes,
-		mdata->nvig_pipes);
-	if (rc)
-		goto parse_fail;
+	if (mdata->nvig_pipes) {
+		rc = mdss_mdp_parse_dt_pipe_clk_ctrl(pdev,
+				"qcom,mdss-pipe-vig-clk-ctrl-offsets",
+				mdata->vig_pipes,
+				mdata->nvig_pipes);
+		if (rc)
+			goto parse_fail;
+	}
 
-	rc = mdss_mdp_parse_dt_pipe_clk_ctrl(pdev,
-		"qcom,mdss-pipe-rgb-clk-ctrl-offsets", mdata->rgb_pipes,
-		mdata->nrgb_pipes);
-	if (rc)
-		goto parse_fail;
+	if (mdata->nrgb_pipes) {
+		rc = mdss_mdp_parse_dt_pipe_clk_ctrl(pdev,
+				"qcom,mdss-pipe-rgb-clk-ctrl-offsets",
+				mdata->rgb_pipes,
+				mdata->nrgb_pipes);
+		if (rc)
+			goto parse_fail;
+	}
 
 	if (mdata->ndma_pipes) {
 		rc = mdss_mdp_parse_dt_pipe_clk_ctrl(pdev,
@@ -2573,48 +2919,6 @@ static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
 			mdata->ndma_pipes);
 		if (rc)
 			goto parse_fail;
-	}
-
-	mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-pipe-sw-reset-off",
-		&sw_reset_offset, 1);
-	if (sw_reset_offset) {
-		mdss_mdp_parse_dt_pipe_sw_reset(pdev, sw_reset_offset,
-			"qcom,mdss-pipe-vig-sw-reset-map", mdata->vig_pipes,
-			mdata->nvig_pipes);
-		mdss_mdp_parse_dt_pipe_sw_reset(pdev, sw_reset_offset,
-			"qcom,mdss-pipe-rgb-sw-reset-map", mdata->rgb_pipes,
-			mdata->nrgb_pipes);
-		mdss_mdp_parse_dt_pipe_sw_reset(pdev, sw_reset_offset,
-			"qcom,mdss-pipe-dma-sw-reset-map", mdata->dma_pipes,
-			mdata->ndma_pipes);
-	}
-
-	mdata->has_panic_ctrl = of_property_read_bool(pdev->dev.of_node,
-		"qcom,mdss-has-panic-ctrl");
-	if (mdata->has_panic_ctrl) {
-		mdss_mdp_parse_dt_pipe_panic_ctrl(pdev,
-			"qcom,mdss-pipe-vig-panic-ctrl-offsets",
-				mdata->vig_pipes, mdata->nvig_pipes);
-		mdss_mdp_parse_dt_pipe_panic_ctrl(pdev,
-			"qcom,mdss-pipe-rgb-panic-ctrl-offsets",
-				mdata->rgb_pipes, mdata->nrgb_pipes);
-		mdss_mdp_parse_dt_pipe_panic_ctrl(pdev,
-			"qcom,mdss-pipe-dma-panic-ctrl-offsets",
-				mdata->dma_pipes, mdata->ndma_pipes);
-	}
-
-	len = mdss_mdp_parse_dt_prop_len(pdev, "qcom,mdss-per-pipe-panic-luts");
-	if (len != 4) {
-		pr_debug("Unable to read per-pipe-panic-luts\n");
-	} else {
-		rc = mdss_mdp_parse_dt_handler(pdev,
-			"qcom,mdss-per-pipe-panic-luts", data, len);
-		mdata->default_panic_lut_per_pipe_linear = data[0];
-		mdata->default_panic_lut_per_pipe_tile = data[1];
-		mdata->default_robust_lut_per_pipe_linear = data[2];
-		mdata->default_robust_lut_per_pipe_tile = data[3];
-		pr_debug("per pipe panic lut [0]:0x%x [1]:0x%x [2]:0x%x [3]:0x%x\n",
-			data[0], data[1], data[2], data[3]);
 	}
 
 	if (mdata->ncursor_pipes) {
@@ -2661,18 +2965,118 @@ static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
 parse_fail:
 	kfree(mdata->cursor_pipes);
 cursor_alloc_fail:
-	kfree(mdata->dma_pipes);
+	kfree(mdata->cursor_pipes);
 dma_alloc_fail:
 	kfree(mdata->rgb_pipes);
 rgb_alloc_fail:
 	kfree(mdata->vig_pipes);
-parse_done:
 vig_alloc_fail:
 	kfree(xin_id);
 xin_alloc_fail:
 	kfree(ftch_id);
 ftch_alloc_fail:
 	kfree(offsets);
+parse_done:
+	return rc;
+}
+
+static int mdss_mdp_parse_dt_pipe(struct platform_device *pdev)
+{
+	int rc = 0;
+	u32 nfids = 0, len, nxids = 0, npipes = 0;
+	u32 sw_reset_offset = 0;
+	u32 data[4];
+
+	struct mdss_data_type *mdata = platform_get_drvdata(pdev);
+
+	mdata->has_pixel_ram = !mdss_mdp_parse_dt_prop_len(pdev,
+						"qcom,mdss-smp-data");
+
+	mdata->nvig_pipes = mdss_mdp_parse_dt_prop_len(pdev,
+				"qcom,mdss-pipe-vig-off");
+	mdata->nrgb_pipes = mdss_mdp_parse_dt_prop_len(pdev,
+				"qcom,mdss-pipe-rgb-off");
+	mdata->ndma_pipes = mdss_mdp_parse_dt_prop_len(pdev,
+				"qcom,mdss-pipe-dma-off");
+	mdata->ncursor_pipes = mdss_mdp_parse_dt_prop_len(pdev,
+				"qcom,mdss-pipe-cursor-off");
+
+	npipes = mdata->nvig_pipes + mdata->nrgb_pipes + mdata->ndma_pipes;
+
+	if (!mdata->has_pixel_ram) {
+		nfids  += mdss_mdp_parse_dt_prop_len(pdev,
+				"qcom,mdss-pipe-vig-fetch-id");
+		nfids  += mdss_mdp_parse_dt_prop_len(pdev,
+				"qcom,mdss-pipe-rgb-fetch-id");
+		nfids  += mdss_mdp_parse_dt_prop_len(pdev,
+				"qcom,mdss-pipe-dma-fetch-id");
+		if (npipes != nfids) {
+			pr_err("device tree err: unequal number of pipes and smp ids");
+			return -EINVAL;
+		}
+	}
+
+	if (mdata->nvig_pipes)
+		nxids += mdss_mdp_parse_dt_prop_len(pdev,
+				"qcom,mdss-pipe-vig-xin-id");
+	if (mdata->nrgb_pipes)
+		nxids += mdss_mdp_parse_dt_prop_len(pdev,
+				"qcom,mdss-pipe-rgb-xin-id");
+	if (mdata->ndma_pipes)
+		nxids += mdss_mdp_parse_dt_prop_len(pdev,
+				"qcom,mdss-pipe-dma-xin-id");
+	if (npipes != nxids) {
+		pr_err("device tree err: unequal number of pipes and xin ids\n");
+		return -EINVAL;
+	}
+
+	rc = mdss_mdp_parse_dt_pipe_helper(pdev, npipes, nfids);
+	if (rc)
+		goto parse_fail;
+
+	mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-pipe-sw-reset-off",
+		&sw_reset_offset, 1);
+	if (sw_reset_offset) {
+		mdss_mdp_parse_dt_pipe_sw_reset(pdev, sw_reset_offset,
+			"qcom,mdss-pipe-vig-sw-reset-map", mdata->vig_pipes,
+			mdata->nvig_pipes);
+		mdss_mdp_parse_dt_pipe_sw_reset(pdev, sw_reset_offset,
+			"qcom,mdss-pipe-rgb-sw-reset-map", mdata->rgb_pipes,
+			mdata->nrgb_pipes);
+		mdss_mdp_parse_dt_pipe_sw_reset(pdev, sw_reset_offset,
+			"qcom,mdss-pipe-dma-sw-reset-map", mdata->dma_pipes,
+			mdata->ndma_pipes);
+	}
+
+	mdata->has_panic_ctrl = of_property_read_bool(pdev->dev.of_node,
+		"qcom,mdss-has-panic-ctrl");
+	if (mdata->has_panic_ctrl) {
+		mdss_mdp_parse_dt_pipe_panic_ctrl(pdev,
+			"qcom,mdss-pipe-vig-panic-ctrl-offsets",
+				mdata->vig_pipes, mdata->nvig_pipes);
+		mdss_mdp_parse_dt_pipe_panic_ctrl(pdev,
+			"qcom,mdss-pipe-rgb-panic-ctrl-offsets",
+				mdata->rgb_pipes, mdata->nrgb_pipes);
+		mdss_mdp_parse_dt_pipe_panic_ctrl(pdev,
+			"qcom,mdss-pipe-dma-panic-ctrl-offsets",
+				mdata->dma_pipes, mdata->ndma_pipes);
+	}
+
+	len = mdss_mdp_parse_dt_prop_len(pdev, "qcom,mdss-per-pipe-panic-luts");
+	if (len != 4) {
+		pr_debug("Unable to read per-pipe-panic-luts\n");
+	} else {
+		rc = mdss_mdp_parse_dt_handler(pdev,
+			"qcom,mdss-per-pipe-panic-luts", data, len);
+		mdata->default_panic_lut_per_pipe_linear = data[0];
+		mdata->default_panic_lut_per_pipe_tile = data[1];
+		mdata->default_robust_lut_per_pipe_linear = data[2];
+		mdata->default_robust_lut_per_pipe_tile = data[3];
+		pr_debug("per pipe panic lut [0]:0x%x [1]:0x%x [2]:0x%x [3]:0x%x\n",
+			data[0], data[1], data[2], data[3]);
+	}
+
+parse_fail:
 	return rc;
 }
 
@@ -2738,13 +3142,15 @@ static int mdss_mdp_parse_dt_mixer(struct platform_device *pdev)
 	if (rc)
 		goto parse_done;
 
+	mdata->has_separate_rotator = of_property_read_bool(pdev->dev.of_node,
+		"qcom,mdss-has-separate-rotator");
 	if (mdata->nmixers_wb) {
 		rc = mdss_mdp_parse_dt_handler(pdev, "qcom,mdss-mixer-wb-off",
 				mixer_offsets + mdata->nmixers_intf,
 				mdata->nmixers_wb);
 		if (rc)
 			goto parse_done;
-	} else {
+	} else if (!mdata->has_separate_rotator) {
 		/*
 		 * If writeback mixers are not available, put the number of
 		 * writeback mixers equal to number of DMA pipes so that
@@ -3618,9 +4024,11 @@ static int mdss_mdp_parse_dt_ppb_off(struct platform_device *pdev)
 	return -EINVAL;
 }
 
+#ifdef CONFIG_MSM_BUS_SCALING
 static int mdss_mdp_parse_dt_bus_scale(struct platform_device *pdev)
 {
 	int rc, paths;
+	struct device_node *node;
 	struct mdss_data_type *mdata = platform_get_drvdata(pdev);
 
 	rc = of_property_read_u32(pdev->dev.of_node,
@@ -3649,10 +4057,56 @@ static int mdss_mdp_parse_dt_bus_scale(struct platform_device *pdev)
 			rc = -EINVAL;
 		pr_err("msm_bus_cl_get_pdata failed. rc=%d\n", rc);
 		mdata->bus_scale_table = NULL;
+		return rc;
+	}
+
+	/*
+	 * if mdss-reg-bus is not found then default table is picked
+	 * hence below code wont return error.
+	 */
+	node = of_get_child_by_name(pdev->dev.of_node, "qcom,mdss-reg-bus");
+	if (node) {
+		mdata->reg_bus_scale_table =
+			msm_bus_pdata_from_node(pdev, node);
+		if (IS_ERR_OR_NULL(mdata->reg_bus_scale_table)) {
+			rc = PTR_ERR(mdata->reg_bus_scale_table);
+			if (!rc)
+				pr_err("bus_pdata reg_bus failed rc=%d\n", rc);
+			rc = 0;
+			mdata->reg_bus_scale_table = NULL;
+		}
+	} else {
+		rc = 0;
+		mdata->reg_bus_scale_table = NULL;
+		pr_debug("mdss-reg-bus not found\n");
+	}
+
+	node = of_get_child_by_name(pdev->dev.of_node, "qcom,mdss-hw-rt-bus");
+	if (node) {
+		mdata->hw_rt_bus_scale_table =
+			msm_bus_pdata_from_node(pdev, node);
+		if (IS_ERR_OR_NULL(mdata->hw_rt_bus_scale_table)) {
+			rc = PTR_ERR(mdata->hw_rt_bus_scale_table);
+			if (!rc)
+				pr_err("hw_rt_bus_scale failed rc=%d\n", rc);
+			rc = 0;
+			mdata->hw_rt_bus_scale_table = NULL;
+		}
+	} else {
+		rc = 0;
+		mdata->hw_rt_bus_scale_table = NULL;
+		pr_debug("mdss-hw-rt-bus not found\n");
 	}
 
 	return rc;
 }
+#else
+static int mdss_mdp_parse_dt_bus_scale(struct platform_device *pdev)
+{
+	return 0;
+}
+
+#endif
 
 static int mdss_mdp_parse_dt_handler(struct platform_device *pdev,
 		char *prop_name, u32 *offsets, int len)
@@ -3833,7 +4287,8 @@ static void apply_dynamic_ot_limit(u32 *ot_lim,
 	struct mdss_mdp_set_ot_params *params)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
-	u32 res;
+	u32 res, read_vbif_ot;
+	u32 rot_ot = 4;
 
 	if (false == test_bit(MDSS_QOS_OTLIM, mdata->mdss_qos_map))
 		return;
@@ -3844,18 +4299,25 @@ static void apply_dynamic_ot_limit(u32 *ot_lim,
 
 	res = params->width * params->height;
 
-	pr_debug("w:%d h:%d rot:%d yuv:%d wb:%d res:%d\n",
+	pr_debug("w:%d h:%d rot:%d yuv:%d wb:%d res:%d fps:%d\n",
 		params->width, params->height, params->is_rot,
-		params->is_yuv, params->is_wb, res);
+		params->is_yuv, params->is_wb, res, params->frame_rate);
 
 	switch (mdata->mdp_rev) {
 	case MDSS_MDP_HW_REV_114:
+		/*
+		 * MDP rev is same for msm8937 and msm8940, but rotator OT
+		 * recommendations are different. Setting it based on AXI OT.
+		 */
+		read_vbif_ot = MDSS_VBIF_READ(mdata, MMSS_VBIF_OUT_RD_LIM_CONF0,
+					false);
+		rot_ot  = (read_vbif_ot == 0x10) ? 4 : 8;
 	case MDSS_MDP_HW_REV_115:
 	case MDSS_MDP_HW_REV_116:
 		if ((res <= RES_1080p) && (params->frame_rate <= 30))
 			*ot_lim = 2;
 		else if (params->is_rot && params->is_yuv)
-			*ot_lim = 4;
+			*ot_lim = rot_ot;
 		else
 			*ot_lim = 6;
 		break;
@@ -4148,7 +4610,7 @@ int mdss_mdp_secure_display_ctrl(unsigned int enable)
 			&request, sizeof(request), &resp, sizeof(resp));
 	} else {
 		ret = scm_call2(SCM_SIP_FNID(SCM_SVC_MP,
-				MEM_PROTECT_SD_CTRL_FLAT), &desc);
+				mem_protect_sd_ctrl_id), &desc);
 		resp = desc.ret[0];
 	}
 

@@ -20,6 +20,7 @@
 #include <linux/types.h>
 #include <linux/workqueue.h>
 #include <linux/irqreturn.h>
+#include <linux/irqdomain.h>
 #include <linux/mdss_io_util.h>
 
 #include <linux/msm-bus.h>
@@ -54,9 +55,9 @@ enum mdss_iommu_domain_type {
 
 enum mdss_bus_vote_type {
 	VOTE_INDEX_DISABLE,
-	VOTE_INDEX_19_MHZ,
-	VOTE_INDEX_40_MHZ,
-	VOTE_INDEX_80_MHZ,
+	VOTE_INDEX_LOW,
+	VOTE_INDEX_MID,
+	VOTE_INDEX_HIGH,
 	VOTE_INDEX_MAX,
 };
 
@@ -128,6 +129,7 @@ enum mdss_hw_index {
 	MDSS_HW_DSI1,
 	MDSS_HW_HDMI,
 	MDSS_HW_EDP,
+	MDSS_HW_MISC,
 	MDSS_MAX_HW_BLK
 };
 
@@ -157,7 +159,8 @@ enum mdss_hw_quirk {
 	MDSS_QUIRK_DSC_RIGHT_ONLY_PU,
 	MDSS_QUIRK_DSC_2SLICE_PU_THRPUT,
 	MDSS_QUIRK_DMA_BI_DIR,
-	MDSS_QUIRK_MIN_BUS_VOTE,
+	MDSS_QUIRK_FMT_PACK_PATTERN,
+	MDSS_QUIRK_NEED_SECURE_MAP,
 	MDSS_QUIRK_MAX,
 };
 
@@ -165,6 +168,10 @@ enum mdss_hw_capabilities {
 	MDSS_CAPS_YUV_CONFIG,
 	MDSS_CAPS_SCM_RESTORE_NOT_REQUIRED,
 	MDSS_CAPS_3D_MUX_UNDERRUN_RECOVERY_SUPPORTED,
+	MDSS_CAPS_MIXER_1_FOR_WB,
+	MDSS_CAPS_QSEED3,
+	MDSS_CAPS_DEST_SCALER,
+	MDSS_CAPS_10_BIT_SUPPORTED,
 	MDSS_CAPS_MAX,
 };
 
@@ -194,6 +201,24 @@ struct mdss_smmu_client {
 	bool domain_attached;
 	bool handoff_pending;
 	char __iomem *mmu_base;
+};
+
+struct mdss_mdp_qseed3_lut_tbl {
+	bool valid;
+	u32 *dir_lut;
+	u32 *cir_lut;
+	u32 *sep_lut;
+};
+
+struct mdss_scaler_block {
+	u32 vig_scaler_off;
+	u32 vig_scaler_lut_off;
+	u32 has_dest_scaler;
+	char __iomem *dest_base;
+	u32 ndest_scalers;
+	u32 *dest_scaler_off;
+	u32 *dest_scaler_lut_off;
+	struct mdss_mdp_qseed3_lut_tbl lut_tbl;
 };
 
 struct mdss_data_type;
@@ -288,10 +313,13 @@ struct mdss_data_type {
 	bool has_pixel_ram;
 	bool needs_hist_vote;
 	bool has_ubwc;
+	bool has_wb_ubwc;
+	bool has_separate_rotator;
 
 	u32 default_ot_rd_limit;
 	u32 default_ot_wr_limit;
 
+	struct irq_domain *irq_domain;
 	u32 mdp_irq_mask;
 	u32 mdp_hist_irq_mask;
 	u32 mdp_intf_irq_mask;
@@ -313,6 +341,10 @@ struct mdss_data_type {
 
 	u32 rot_block_size;
 
+	/* HW RT  bus (AXI) */
+	u32 hw_rt_bus_hdl;
+	u32 hw_rt_bus_ref_cnt;
+
 	/* data bus (AXI) */
 	u32 bus_hdl;
 	u32 bus_ref_cnt;
@@ -332,6 +364,8 @@ struct mdss_data_type {
 	u32 curr_bw_uc_idx;
 	u32 ao_bw_uc_idx; /* active only idx */
 	struct msm_bus_scale_pdata *bus_scale_table;
+	struct msm_bus_scale_pdata *reg_bus_scale_table;
+	struct msm_bus_scale_pdata *hw_rt_bus_scale_table;
 	u32 max_bw_low;
 	u32 max_bw_high;
 	u32 max_bw_per_pipe;
@@ -455,7 +489,9 @@ struct mdss_data_type {
 	u32 bcolor0;
 	u32 bcolor1;
 	u32 bcolor2;
+	struct mdss_scaler_block *scaler_off;
 };
+
 extern struct mdss_data_type *mdss_res;
 
 struct irq_info {
@@ -500,6 +536,7 @@ struct mdss_util_intf {
 	int (*bus_scale_set_quota)(int client, u64 ab_quota, u64 ib_quota);
 	int (*panel_intf_status)(u32 disp_num, u32 intf_type);
 	struct mdss_panel_cfg* (*panel_intf_type)(int intf_val);
+	int (*dyn_clk_gating_ctrl)(int enable);
 };
 
 struct mdss_util_intf *mdss_get_util_intf(void);

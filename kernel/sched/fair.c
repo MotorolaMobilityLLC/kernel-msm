@@ -2480,6 +2480,13 @@ unsigned int __read_mostly sched_big_waker_task_load;
 unsigned int __read_mostly sysctl_sched_big_waker_task_load_pct = 25;
 
 /*
+ * Prefer the waker CPU for sync wakee task, if the CPU has only 1 runnable
+ * task. This eliminates the LPM exit latency associated with the idle
+ * CPUs in the waker cluster.
+ */
+unsigned int __read_mostly sysctl_sched_prefer_sync_wakee_to_waker;
+
+/*
  * CPUs with load greater than the sched_spill_load_threshold are not
  * eligible for task placement. When all CPUs in a cluster achieve a
  * load higher than this level, tasks becomes eligible for inter
@@ -2548,6 +2555,9 @@ static unsigned int __read_mostly
 sched_short_sleep_task_threshold = 2000 * NSEC_PER_USEC;
 unsigned int __read_mostly sysctl_sched_select_prev_cpu_us = 2000;
 
+static unsigned int __read_mostly
+sched_long_cpu_selection_threshold = 100 * NSEC_PER_MSEC;
+
 unsigned int __read_mostly sysctl_sched_restrict_cluster_spill;
 
 void update_up_down_migrate(void)
@@ -2589,6 +2599,8 @@ void set_hmp_defaults(void)
 #ifdef CONFIG_SCHED_FREQ_INPUT
 	sched_heavy_task =
 		pct_to_real(sysctl_sched_heavy_task_pct);
+	sched_major_task_runtime =
+		mult_frac(sched_ravg_window, MAJOR_TASK_PCT, 100);
 #endif
 
 	sched_init_task_load_pelt =
@@ -3237,12 +3249,17 @@ bias_to_prev_cpu(struct cpu_select_env *env, struct cluster_cpu_stats *stats)
 	struct sched_cluster *cluster;
 
 	if (env->boost || env->reason || env->need_idle ||
+				!task->ravg.mark_start ||
 				!sched_short_sleep_task_threshold)
 		return false;
 
 	prev_cpu = env->prev_cpu;
 	if (!cpumask_test_cpu(prev_cpu, tsk_cpus_allowed(task)) ||
 					unlikely(!cpu_active(prev_cpu)))
+		return false;
+
+	if (task->ravg.mark_start - task->last_cpu_selected_ts >=
+				sched_long_cpu_selection_threshold)
 		return false;
 
 	/*
@@ -3305,6 +3322,7 @@ static int select_best_cpu(struct task_struct *p, int target, int reason,
 	struct cluster_cpu_stats stats;
 	bool fast_path = false;
 	struct related_thread_group *grp;
+	int cpu = raw_smp_processor_id();
 
 	struct cpu_select_env env = {
 		.p			= p,
@@ -3334,12 +3352,20 @@ static int select_best_cpu(struct task_struct *p, int target, int reason,
 		else
 			env.rtg = grp;
 	} else {
-		cluster = cpu_rq(smp_processor_id())->cluster;
-		if (wake_to_waker_cluster(&env) &&
-		    cluster_allowed(p, cluster)) {
-			env.need_waker_cluster = 1;
-			bitmap_zero(env.candidate_list, NR_CPUS);
-			__set_bit(cluster->id, env.candidate_list);
+		cluster = cpu_rq(cpu)->cluster;
+		if (wake_to_waker_cluster(&env)) {
+			if (sysctl_sched_prefer_sync_wakee_to_waker &&
+				cpu_rq(cpu)->nr_running == 1 &&
+				cpumask_test_cpu(cpu, tsk_cpus_allowed(p)) &&
+				cpu_active(cpu)) {
+				fast_path = true;
+				target = cpu;
+				goto out;
+			} else if (cluster_allowed(p, cluster)) {
+				env.need_waker_cluster = 1;
+				bitmap_zero(env.candidate_list, NR_CPUS);
+				__set_bit(cluster->id, env.candidate_list);
+			}
 		} else if (bias_to_prev_cpu(&env, &stats)) {
 			fast_path = true;
 			goto out;
@@ -3382,6 +3408,7 @@ retry:
 		if (stats.best_capacity_cpu >= 0)
 			target = stats.best_capacity_cpu;
 	}
+	p->last_cpu_selected_ts = sched_ktime_clock();
 
 out:
 	rcu_read_unlock();
@@ -3431,8 +3458,10 @@ dec_rq_hmp_stats(struct rq *rq, struct task_struct *p, int change_cra)
 static void reset_hmp_stats(struct hmp_sched_stats *stats, int reset_cra)
 {
 	stats->nr_big_tasks = 0;
-	if (reset_cra)
+	if (reset_cra) {
 		stats->cumulative_runnable_avg = 0;
+		set_pred_demands_sum(stats, 0);
+	}
 }
 
 
@@ -3593,17 +3622,19 @@ static void dec_hmp_sched_stats_fair(struct rq *rq, struct task_struct *p)
 }
 
 static void fixup_hmp_sched_stats_fair(struct rq *rq, struct task_struct *p,
-				       u32 new_task_load)
+				       u32 new_task_load, u32 new_pred_demand)
 {
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
 	s64 task_load_delta = (s64)new_task_load - task_load(p);
+	s64 pred_demand_delta = PRED_DEMAND_DELTA;
 
 	for_each_sched_entity(se) {
 		cfs_rq = cfs_rq_of(se);
 
 		fixup_cumulative_runnable_avg(&cfs_rq->hmp_stats, p,
-					      task_load_delta);
+					      task_load_delta,
+					      pred_demand_delta);
 		fixup_nr_big_tasks(&cfs_rq->hmp_stats, p, task_load_delta);
 		if (cfs_rq_throttled(cfs_rq))
 			break;
@@ -3612,7 +3643,8 @@ static void fixup_hmp_sched_stats_fair(struct rq *rq, struct task_struct *p,
 	/* Fix up rq->hmp_stats only if we didn't find any throttled cfs_rq */
 	if (!se) {
 		fixup_cumulative_runnable_avg(&rq->hmp_stats, p,
-					      task_load_delta);
+					      task_load_delta,
+					      pred_demand_delta);
 		fixup_nr_big_tasks(&rq->hmp_stats, p, task_load_delta);
 	}
 }
@@ -3636,11 +3668,13 @@ dec_hmp_sched_stats_fair(struct rq *rq, struct task_struct *p)
 }
 static void
 fixup_hmp_sched_stats_fair(struct rq *rq, struct task_struct *p,
-			   u32 new_task_load)
+			   u32 new_task_load, u32 new_pred_demand)
 {
 	s64 task_load_delta = (s64)new_task_load - task_load(p);
+	s64 pred_demand_delta = PRED_DEMAND_DELTA;
 
-	fixup_cumulative_runnable_avg(&rq->hmp_stats, p, task_load_delta);
+	fixup_cumulative_runnable_avg(&rq->hmp_stats, p, task_load_delta,
+				      pred_demand_delta);
 	fixup_nr_big_tasks(&rq->hmp_stats, p, task_load_delta);
 }
 
@@ -3806,8 +3840,11 @@ int sched_hmp_proc_update_handler(struct ctl_table *table, int write,
 			goto done;
 		}
 		update_min_nice = 1;
-	} else {
-		/* all tunables other than min_nice are in percentage */
+	} else if (data != &sysctl_sched_select_prev_cpu_us) {
+		/*
+		 * all tunables other than min_nice and prev_cpu_us are
+		 * in percentage.
+		 */
 		if (sysctl_sched_downmigrate_pct >
 		    sysctl_sched_upmigrate_pct || *data > 100) {
 			*data = old_val;
@@ -4040,6 +4077,11 @@ preferred_cluster(struct sched_cluster *cluster, struct task_struct *p)
 
 #ifdef CONFIG_SCHED_HMP
 
+#ifdef CONFIG_SCHED_FREQ_INPUT
+#define clear_ravg_pred_demand() (p->ravg.pred_demand = 0)
+#else
+#define clear_ravg_pred_demand()
+#endif
 void init_new_task_load(struct task_struct *p)
 {
 	int i;
@@ -4061,6 +4103,7 @@ void init_new_task_load(struct task_struct *p)
 	}
 
 	p->ravg.demand = init_load_windows;
+	clear_ravg_pred_demand();
 	for (i = 0; i < RAVG_HIST_SIZE_MAX; ++i)
 		p->ravg.sum_history[i] = init_load_windows;
 
@@ -4575,6 +4618,7 @@ static void init_cfs_rq_hmp_stats(struct cfs_rq *cfs_rq)
 {
 	cfs_rq->hmp_stats.nr_big_tasks = 0;
 	cfs_rq->hmp_stats.cumulative_runnable_avg = 0;
+	set_pred_demands_sum(&cfs_rq->hmp_stats, 0);
 }
 
 static void inc_cfs_rq_hmp_stats(struct cfs_rq *cfs_rq,
@@ -4599,6 +4643,8 @@ static void inc_throttled_cfs_rq_hmp_stats(struct hmp_sched_stats *stats,
 	stats->nr_big_tasks += cfs_rq->hmp_stats.nr_big_tasks;
 	stats->cumulative_runnable_avg +=
 				cfs_rq->hmp_stats.cumulative_runnable_avg;
+	set_pred_demands_sum(stats, stats->pred_demands_sum +
+			     cfs_rq->hmp_stats.pred_demands_sum);
 }
 
 static void dec_throttled_cfs_rq_hmp_stats(struct hmp_sched_stats *stats,
@@ -4607,9 +4653,12 @@ static void dec_throttled_cfs_rq_hmp_stats(struct hmp_sched_stats *stats,
 	stats->nr_big_tasks -= cfs_rq->hmp_stats.nr_big_tasks;
 	stats->cumulative_runnable_avg -=
 				cfs_rq->hmp_stats.cumulative_runnable_avg;
+	set_pred_demands_sum(stats, stats->pred_demands_sum -
+			     cfs_rq->hmp_stats.pred_demands_sum);
 
 	BUG_ON(stats->nr_big_tasks < 0 ||
 		(s64)stats->cumulative_runnable_avg < 0);
+	verify_pred_demands_sum(stats);
 }
 
 #else	/* CONFIG_CFS_BANDWIDTH */
@@ -4698,6 +4747,7 @@ static void enqueue_sleeper(struct cfs_rq *cfs_rq, struct sched_entity *se)
 			}
 
 			trace_sched_stat_blocked(tsk, delta);
+			trace_sched_blocked_reason(tsk);
 
 			/*
 			 * Blocking time is in units of nanosecs, so shift by
@@ -6852,18 +6902,21 @@ again:
 		 * entity, update_curr() will update its vruntime, otherwise
 		 * forget we've ever seen it.
 		 */
-		if (curr && curr->on_rq)
-			update_curr(cfs_rq);
-		else
-			curr = NULL;
+		if (curr) {
+			if (curr->on_rq)
+				update_curr(cfs_rq);
+			else
+				curr = NULL;
 
-		/*
-		 * This call to check_cfs_rq_runtime() will do the throttle and
-		 * dequeue its entity in the parent(s). Therefore the 'simple'
-		 * nr_running test will indeed be correct.
-		 */
-		if (unlikely(check_cfs_rq_runtime(cfs_rq)))
-			goto simple;
+			/*
+			 * This call to check_cfs_rq_runtime() will do the
+			 * throttle and dequeue its entity in the parent(s).
+			 * Therefore the 'simple' nr_running test will indeed
+			 * be correct.
+			 */
+			if (unlikely(check_cfs_rq_runtime(cfs_rq)))
+				goto simple;
+		}
 
 		se = pick_next_entity(cfs_rq, curr);
 		cfs_rq = group_cfs_rq(se);
@@ -9118,8 +9171,10 @@ no_move:
 
 		/* Assumes one 'busiest' cpu that we pulled tasks from */
 		if (!same_freq_domain(this_cpu, cpu_of(busiest))) {
-			check_for_freq_change(this_rq);
-			check_for_freq_change(busiest);
+			check_for_freq_change(this_rq, false);
+			check_for_freq_change(busiest, false);
+		} else {
+			check_for_freq_change(this_rq, true);
 		}
 	}
 	if (likely(!active_balance)) {
@@ -9420,8 +9475,10 @@ out_unlock:
 	local_irq_enable();
 
 	if (moved && !same_freq_domain(busiest_cpu, target_cpu)) {
-		check_for_freq_change(busiest_rq);
-		check_for_freq_change(target_rq);
+		check_for_freq_change(busiest_rq, false);
+		check_for_freq_change(target_rq, false);
+	} else if (moved) {
+		check_for_freq_change(target_rq, true);
 	}
 
 	if (per_cpu(dbs_boost_needed, target_cpu)) {
@@ -9789,7 +9846,7 @@ static inline int _nohz_kick_needed_hmp(struct rq *rq, int cpu, int *type)
 	if (rq->nr_running < 2)
 		return 0;
 
-	if (!sysctl_sched_restrict_cluster_spill)
+	if (!sysctl_sched_restrict_cluster_spill || sched_boost())
 		return 1;
 
 	if (hmp_capable() && cpu_max_possible_capacity(cpu) ==

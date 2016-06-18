@@ -147,11 +147,18 @@ void mdss_debug_register_dump_range(struct platform_device *pdev,
 	const char *name_prop, const char *xin_prop);
 int panel_debug_register_base(const char *name, void __iomem *base,
 				    size_t max_offset);
-int mdss_misr_set(struct mdss_data_type *mdata, struct mdp_misr *req,
+int mdss_misr_set(struct mdss_data_type *mdata,
+			struct mdp_misr *req,
 			struct mdss_mdp_ctl *ctl);
-int mdss_misr_get(struct mdss_data_type *mdata, struct mdp_misr *resp,
+int mdss_misr_get(struct mdss_data_type *mdata,
+			struct mdp_misr *resp,
+			struct mdss_mdp_ctl *ctl,
+			bool is_video_mode);
+void mdss_misr_disable(struct mdss_data_type *mdata,
+			struct mdp_misr *req,
 			struct mdss_mdp_ctl *ctl);
-void mdss_misr_crc_collect(struct mdss_data_type *mdata, int block_id);
+void mdss_misr_crc_collect(struct mdss_data_type *mdata, int block_id,
+	bool is_video_mode);
 
 int mdss_create_xlog_debug(struct mdss_debug_data *mdd);
 void mdss_xlog(const char *name, int line, int flag, ...);
@@ -184,10 +191,16 @@ static inline int mdss_misr_set(struct mdss_data_type *mdata,
 { return 0; }
 static inline int mdss_misr_get(struct mdss_data_type *mdata,
 					struct mdp_misr *resp,
-					struct mdss_mdp_ctl *ctl)
+					struct mdss_mdp_ctl *ctl,
+					bool is_video_mode)
 { return 0; }
+static inline void mdss_misr_disable(struct mdss_data_type *mdata,
+					struct mdp_misr *req,
+					struct mdss_mdp_ctl *ctl)
+{ return; }
+
 static inline void mdss_misr_crc_collect(struct mdss_data_type *mdata,
-						int block_id) { }
+					int block_id, bool is_video_mode) { }
 
 static inline int create_xlog_debug(struct mdss_data_type *mdata) { return 0; }
 static inline void mdss_xlog_dump(void) { }
@@ -202,6 +215,8 @@ void mdss_dump_reg(const char *dump_name, u32 reg_dump_flag, char *addr,
 	int len, u32 **dump_mem, bool from_isr) { }
 void mdss_mdp_debug_mid(u32 mid) { }
 #endif
+
+int mdss_dump_misr_data(char **buf, u32 size);
 
 static inline int mdss_debug_register_io(const char *name,
 		struct dss_io_data *io_data, struct mdss_debug_base **dbg_blk)

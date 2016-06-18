@@ -15,9 +15,12 @@ obj-$(CONFIG_DEBUG_FS)		+= clock-debug.o
 obj-$(CONFIG_ARCH_MSM8996)	+= clock-gcc-8996.o
 obj-$(CONFIG_ARCH_MSM8996)	+= clock-mmss-8996.o
 obj-$(CONFIG_ARCH_MSM8996)	+= clock-cpu-8996.o
+obj-$(CONFIG_ARCH_MSMCOBALT)	+= clock-osm.o
 
 # MSM COBALT
 obj-$(CONFIG_ARCH_MSMCOBALT)	+= clock-gcc-cobalt.o
+obj-$(CONFIG_ARCH_MSMCOBALT)	+= clock-gpu-cobalt.o
+obj-$(CONFIG_ARCH_MSMCOBALT)	+= clock-mmss-cobalt.o
 
 # MDMCALIFORNIUM
 obj-$(CONFIG_ARCH_MDMCALIFORNIUM)	+= clock-gcc-californium.o
@@ -37,9 +40,9 @@ obj-$(CONFIG_ARCH_MSM8916)	+= clock-a7.o
 obj-$(CONFIG_ARCH_MSM8909)	+= clock-a7.o
 obj-$(CONFIG_ARCH_MSM8916)	+= clock-cpu-8939.o
 obj-$(CONFIG_ARCH_MSM8916)	+= clock-gcc-8952.o
-obj-$(CONFIG_ARCH_MSM8916)	+= clock-gcc-titanium.o
+obj-$(CONFIG_ARCH_MSM8916)	+= clock-gcc-8953.o
 obj-$(CONFIG_ARCH_MSM8916)	+= clock-rcgwr.o
-obj-$(CONFIG_ARCH_MSM8916)      += clock-cpu-titanium.o
+obj-$(CONFIG_ARCH_MSM8916)      += clock-cpu-8953.o
 
 obj-y				+= gdsc.o
 obj-y				+= mdss/

@@ -81,7 +81,7 @@ static struct glink_apps_rpm_data *glink_data;
 #define DEFAULT_BUFFER_SIZE 256
 #define DEBUG_PRINT_BUFFER_SIZE 512
 #define MAX_SLEEP_BUFFER 128
-#define GFP_FLAG(noirq) (noirq ? GFP_ATOMIC : GFP_KERNEL)
+#define GFP_FLAG(noirq) (noirq ? GFP_ATOMIC : GFP_NOFS)
 #define INV_RSC "resource does not exist"
 #define ERR "err\0"
 #define MAX_ERR_BUFFER_SIZE 128
@@ -92,6 +92,7 @@ static ATOMIC_NOTIFIER_HEAD(msm_rpm_sleep_notifier);
 static bool standalone;
 static int probe_status = -EPROBE_DEFER;
 static int msm_rpm_read_smd_data(char *buf);
+static void msm_rpm_process_ack(uint32_t msg_id, int errno);
 
 int msm_rpm_register_notifier(struct notifier_block *nb)
 {
@@ -351,6 +352,7 @@ struct msm_rpm_wait_data {
 	bool ack_recd;
 	int errno;
 	struct completion ack;
+	bool delete_on_ack;
 };
 DEFINE_SPINLOCK(msm_rpm_list_lock);
 
@@ -525,6 +527,31 @@ static int msm_rpm_read_sleep_ack(void)
 	if (glink_enabled)
 		ret = msm_rpm_glink_rx_poll(glink_data->glink_handle);
 	else {
+		int timeout = 10;
+
+		while (timeout) {
+			if (smd_is_pkt_avail(msm_rpm_data.ch_info))
+				break;
+			/*
+			 * Sleep for 50us at a time before checking
+			 * for packet availability. The 50us is based
+			 * on the the max time rpm could take to process
+			 * and send an ack for sleep set request.
+			 */
+			udelay(50);
+			timeout--;
+		}
+
+		/*
+		 * On timeout return an error and exit the spinlock
+		 * control on this cpu. This will allow any other
+		 * core that has wokenup and trying to acquire the
+		 * spinlock from being locked out.
+		 */
+
+		if (!timeout)
+			return -EAGAIN;
+
 		ret = msm_rpm_read_smd_data(buf);
 		if (!ret)
 			ret = smd_is_pkt_avail(msm_rpm_data.ch_info);
@@ -577,8 +604,10 @@ static int msm_rpm_flush_requests(bool print)
 
 			if (ret >= 0)
 				count--;
-			else
+			else {
+				pr_err("Timed out waiting for RPM ACK\n");
 				return ret;
+			}
 		}
 	}
 	return 0;
@@ -840,7 +869,7 @@ static uint32_t msm_rpm_get_next_msg_id(void)
 	return id;
 }
 
-static int msm_rpm_add_wait_list(uint32_t msg_id)
+static int msm_rpm_add_wait_list(uint32_t msg_id, bool delete_on_ack)
 {
 	unsigned long flags;
 	struct msm_rpm_wait_data *data =
@@ -853,8 +882,12 @@ static int msm_rpm_add_wait_list(uint32_t msg_id)
 	data->ack_recd = false;
 	data->msg_id = msg_id;
 	data->errno = INIT_ERROR;
+	data->delete_on_ack = delete_on_ack;
 	spin_lock_irqsave(&msm_rpm_list_lock, flags);
-	list_add(&data->list, &msm_rpm_wait_list);
+	if (delete_on_ack)
+		list_add_tail(&data->list, &msm_rpm_wait_list);
+	else
+		list_add(&data->list, &msm_rpm_wait_list);
 	spin_unlock_irqrestore(&msm_rpm_list_lock, flags);
 
 	return 0;
@@ -872,18 +905,22 @@ static void msm_rpm_free_list_entry(struct msm_rpm_wait_data *elem)
 
 static void msm_rpm_process_ack(uint32_t msg_id, int errno)
 {
-	struct list_head *ptr;
+	struct list_head *ptr, *next;
 	struct msm_rpm_wait_data *elem = NULL;
 	unsigned long flags;
 
 	spin_lock_irqsave(&msm_rpm_list_lock, flags);
 
-	list_for_each(ptr, &msm_rpm_wait_list) {
+	list_for_each_safe(ptr, next, &msm_rpm_wait_list) {
 		elem = list_entry(ptr, struct msm_rpm_wait_data, list);
 		if (elem && (elem->msg_id == msg_id)) {
 			elem->errno = errno;
 			elem->ack_recd = true;
 			complete(&elem->ack);
+			if (elem->delete_on_ack) {
+				list_del(&elem->list);
+				kfree(elem);
+			}
 			break;
 		}
 		elem = NULL;
@@ -1130,7 +1167,7 @@ static int msm_rpm_glink_send_buffer(char *buf, uint32_t size, bool noirq)
 {
 	int ret;
 	unsigned long flags;
-	int timeout = 50;
+	int timeout = 5;
 
 	spin_lock_irqsave(&msm_rpm_data.smd_lock_write, flags);
 	do {
@@ -1144,7 +1181,7 @@ static int msm_rpm_glink_send_buffer(char *buf, uint32_t size, bool noirq)
 				spin_lock_irqsave(
 					&msm_rpm_data.smd_lock_write, flags);
 			} else {
-				udelay(5);
+				udelay(100);
 			}
 			timeout--;
 		} else {
@@ -1244,8 +1281,7 @@ static int msm_rpm_send_data(struct msm_rpm_request *cdata,
 		return ret;
 	}
 
-	if (!noack)
-		msm_rpm_add_wait_list(cdata->msg_hdr.msg_id);
+	msm_rpm_add_wait_list(cdata->msg_hdr.msg_id, noack);
 
 	ret = msm_rpm_send_buffer(&cdata->buf[0], msg_size, noirq);
 

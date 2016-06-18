@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -917,14 +917,17 @@ int msm_bam_dmux_write(uint32_t id, struct sk_buff *skb)
 
 	read_lock(&ul_wakeup_lock);
 	if (!bam_is_connected) {
+		atomic_inc(&ul_ondemand_vote);
 		read_unlock(&ul_wakeup_lock);
 		ul_wakeup();
 		if (unlikely(in_global_reset == 1)) {
 			srcu_read_unlock(&bam_dmux_srcu, rcu_id);
+			atomic_dec(&ul_ondemand_vote);
 			return -EFAULT;
 		}
 		read_lock(&ul_wakeup_lock);
 		notify_all(BAM_DMUX_UL_CONNECTED, (unsigned long)(NULL));
+		atomic_dec(&ul_ondemand_vote);
 	}
 
 	/* if skb do not have any tailroom for padding,
@@ -1124,14 +1127,17 @@ int msm_bam_dmux_open(uint32_t id, void *priv,
 
 	read_lock(&ul_wakeup_lock);
 	if (!bam_is_connected) {
+		atomic_inc(&ul_ondemand_vote);
 		read_unlock(&ul_wakeup_lock);
 		ul_wakeup();
 		if (unlikely(in_global_reset == 1)) {
+			atomic_dec(&ul_ondemand_vote);
 			kfree(hdr);
 			return -EFAULT;
 		}
 		read_lock(&ul_wakeup_lock);
 		notify_all(BAM_DMUX_UL_CONNECTED, (unsigned long)(NULL));
+		atomic_dec(&ul_ondemand_vote);
 	}
 
 	hdr->magic_num = BAM_MUX_HDR_MAGIC_NO;
@@ -1163,12 +1169,16 @@ int msm_bam_dmux_close(uint32_t id)
 
 	read_lock(&ul_wakeup_lock);
 	if (!bam_is_connected && !bam_ch_is_in_reset(id)) {
+		atomic_inc(&ul_ondemand_vote);
 		read_unlock(&ul_wakeup_lock);
 		ul_wakeup();
-		if (unlikely(in_global_reset == 1))
+		if (unlikely(in_global_reset == 1)) {
+			atomic_dec(&ul_ondemand_vote);
 			return -EFAULT;
+		}
 		read_lock(&ul_wakeup_lock);
 		notify_all(BAM_DMUX_UL_CONNECTED, (unsigned long)(NULL));
+		atomic_dec(&ul_ondemand_vote);
 	}
 
 	spin_lock_irqsave(&bam_ch[id].lock, flags);
@@ -1675,13 +1685,17 @@ static void kickoff_ul_wakeup_func(struct work_struct *work)
 {
 	read_lock(&ul_wakeup_lock);
 	if (!bam_is_connected) {
+		atomic_inc(&ul_ondemand_vote);
 		read_unlock(&ul_wakeup_lock);
 		ul_wakeup();
-		if (unlikely(in_global_reset == 1))
+		if (unlikely(in_global_reset == 1)) {
+			atomic_dec(&ul_ondemand_vote);
 			return;
+		}
 		read_lock(&ul_wakeup_lock);
 		ul_packet_written = 1;
 		notify_all(BAM_DMUX_UL_CONNECTED, (unsigned long)(NULL));
+		atomic_dec(&ul_ondemand_vote);
 	}
 	read_unlock(&ul_wakeup_lock);
 }
@@ -1942,7 +1956,8 @@ static void ul_wakeup(void)
 					&ul_wakeup_ack_completion,
 					msecs_to_jiffies(UL_WAKEUP_TIMEOUT_MS));
 		wait_for_ack = 0;
-		if (unlikely(ret == 0) && ssrestart_check()) {
+		if (unlikely(in_global_reset == 1)
+			|| (unlikely(ret == 0) && ssrestart_check())) {
 			mutex_unlock(&wakeup_lock);
 			BAM_DMUX_LOG("%s timeout previous ack\n", __func__);
 			return;
@@ -1953,7 +1968,8 @@ static void ul_wakeup(void)
 	BAM_DMUX_LOG("%s waiting for wakeup ack\n", __func__);
 	ret = wait_for_completion_timeout(&ul_wakeup_ack_completion,
 					msecs_to_jiffies(UL_WAKEUP_TIMEOUT_MS));
-	if (unlikely(ret == 0) && ssrestart_check()) {
+	if (unlikely(in_global_reset == 1)
+		|| (unlikely(ret == 0) && ssrestart_check())) {
 		mutex_unlock(&wakeup_lock);
 		BAM_DMUX_LOG("%s timeout wakeup ack\n", __func__);
 		return;
@@ -1961,7 +1977,8 @@ static void ul_wakeup(void)
 	BAM_DMUX_LOG("%s waiting completion\n", __func__);
 	ret = wait_for_completion_timeout(&bam_connection_completion,
 					msecs_to_jiffies(UL_WAKEUP_TIMEOUT_MS));
-	if (unlikely(ret == 0) && ssrestart_check()) {
+	if (unlikely(in_global_reset == 1)
+		|| (unlikely(ret == 0) && ssrestart_check())) {
 		mutex_unlock(&wakeup_lock);
 		BAM_DMUX_LOG("%s timeout power on\n", __func__);
 		return;
@@ -2193,6 +2210,9 @@ static int restart_notifier_cb(struct notifier_block *this,
 	if (code == SUBSYS_BEFORE_SHUTDOWN) {
 		BAM_DMUX_LOG("%s: begin\n", __func__);
 		in_global_reset = 1;
+		/* wakeup ul_wakeup() thread*/
+		complete_all(&ul_wakeup_ack_completion);
+		complete_all(&bam_connection_completion);
 		/* sync to ensure the driver sees SSR */
 		synchronize_srcu(&bam_dmux_srcu);
 		BAM_DMUX_LOG("%s: ssr signaling complete\n", __func__);

@@ -141,6 +141,140 @@ void lpm_suspend_wake_time(uint64_t wakeup_time)
 }
 EXPORT_SYMBOL(lpm_suspend_wake_time);
 
+static uint32_t least_cluster_latency(struct lpm_cluster *cluster,
+					struct latency_level *lat_level)
+{
+	struct list_head *list;
+	struct lpm_cluster_level *level;
+	struct lpm_cluster *n;
+	struct power_params *pwr_params;
+	uint32_t latency = 0;
+	int i;
+
+	if (!cluster->list.next) {
+		for (i = 0; i < cluster->nlevels; i++) {
+			level = &cluster->levels[i];
+			pwr_params = &level->pwr;
+			if (lat_level->reset_level == level->reset_level) {
+				if ((latency > pwr_params->latency_us)
+						|| (!latency))
+					latency = pwr_params->latency_us;
+				break;
+			}
+		}
+	} else {
+		list_for_each(list, &cluster->parent->child) {
+			n = list_entry(list, typeof(*n), list);
+			if (lat_level->level_name) {
+				if (strcmp(lat_level->level_name,
+						 n->cluster_name))
+					continue;
+			}
+			for (i = 0; i < n->nlevels; i++) {
+				level = &n->levels[i];
+				pwr_params = &level->pwr;
+				if (lat_level->reset_level ==
+						level->reset_level) {
+					if ((latency > pwr_params->latency_us)
+								|| (!latency))
+						latency =
+						pwr_params->latency_us;
+					break;
+				}
+			}
+		}
+	}
+	return latency;
+}
+
+static uint32_t least_cpu_latency(struct list_head *child,
+				struct latency_level *lat_level)
+{
+	struct list_head *list;
+	struct lpm_cpu_level *level;
+	struct power_params *pwr_params;
+	struct lpm_cpu *cpu;
+	struct lpm_cluster *n;
+	uint32_t latency = 0;
+	int i;
+
+	list_for_each(list, child) {
+		n = list_entry(list, typeof(*n), list);
+		if (lat_level->level_name) {
+			if (strcmp(lat_level->level_name, n->cluster_name))
+				continue;
+		}
+		cpu = n->cpu;
+		for (i = 0; i < cpu->nlevels; i++) {
+			level = &cpu->levels[i];
+			pwr_params = &level->pwr;
+			if (lat_level->reset_level == level->reset_level) {
+				if ((latency > pwr_params->latency_us)
+							|| (!latency))
+					latency = pwr_params->latency_us;
+				break;
+			}
+		}
+	}
+	return latency;
+}
+
+static struct lpm_cluster *cluster_aff_match(struct lpm_cluster *cluster,
+							int affinity_level)
+{
+	struct lpm_cluster *n;
+
+	if ((cluster->aff_level == affinity_level)
+		|| ((cluster->cpu) && (affinity_level == 0)))
+		return cluster;
+	else if (!cluster->cpu) {
+		n =  list_entry(cluster->child.next, typeof(*n), list);
+		return cluster_aff_match(n, affinity_level);
+	} else
+		return NULL;
+}
+
+int lpm_get_latency(struct latency_level *level, uint32_t *latency)
+{
+	struct lpm_cluster *cluster;
+	uint32_t val;
+
+	if (!lpm_root_node) {
+		pr_err("%s: lpm_probe not completed\n", __func__);
+		return -EAGAIN;
+	}
+
+	if ((level->affinity_level < 0)
+		|| (level->affinity_level > lpm_root_node->aff_level)
+		|| (level->reset_level < LPM_RESET_LVL_RET)
+		|| (level->reset_level > LPM_RESET_LVL_PC)
+		|| !latency)
+		return -EINVAL;
+
+	cluster = cluster_aff_match(lpm_root_node, level->affinity_level);
+	if (!cluster) {
+		pr_err("%s:No matching cluster found for affinity_level:%d\n",
+					__func__, level->affinity_level);
+		return -EINVAL;
+	}
+
+	if (level->affinity_level == 0)
+		val = least_cpu_latency(&cluster->parent->child, level);
+	else
+		val = least_cluster_latency(cluster, level);
+
+	if (!val) {
+		pr_err("%s:No mode with affinity_level:%d reset_level:%d\n",
+			__func__, level->affinity_level, level->reset_level);
+		return -EINVAL;
+	}
+
+	*latency = val;
+
+	return 0;
+}
+EXPORT_SYMBOL(lpm_get_latency);
+
 static void update_debug_pc_event(enum debug_event event, uint32_t arg1,
 		uint32_t arg2, uint32_t arg3, uint32_t arg4)
 {
@@ -803,20 +937,31 @@ bool psci_enter_sleep(struct lpm_cluster *cluster, int idx, bool from_idle)
 #elif defined(CONFIG_ARM_PSCI)
 bool psci_enter_sleep(struct lpm_cluster *cluster, int idx, bool from_idle)
 {
-	int affinity_level = 0;
-	int state_id = get_cluster_id(cluster, &affinity_level);
-	int power_state = PSCI_POWER_STATE(cluster->cpu->levels[idx].is_reset);
-
-	affinity_level = PSCI_AFFINITY_LEVEL(affinity_level);
 	if (!idx) {
+		stop_critical_timings();
 		wfi();
+		start_critical_timings();
 		return 1;
+	} else {
+		int affinity_level = 0;
+		int state_id = get_cluster_id(cluster, &affinity_level);
+		int power_state =
+			PSCI_POWER_STATE(cluster->cpu->levels[idx].is_reset);
+		bool success = false;
+
+		affinity_level = PSCI_AFFINITY_LEVEL(affinity_level);
+		state_id |= (power_state | affinity_level
+			| cluster->cpu->levels[idx].psci_id);
+
+		update_debug_pc_event(CPU_ENTER, state_id,
+						0xdeaffeed, 0xdeaffeed, true);
+		stop_critical_timings();
+		success = !cpu_suspend(state_id);
+		start_critical_timings();
+		update_debug_pc_event(CPU_EXIT, state_id,
+						success, 0xdeaffeed, true);
+		return success;
 	}
-
-	state_id |= (power_state | affinity_level
-				| cluster->cpu->levels[idx].psci_id);
-
-	return !cpu_suspend(state_id);
 }
 #else
 bool psci_enter_sleep(struct lpm_cluster *cluster, int idx, bool from_idle)
@@ -837,10 +982,8 @@ static int lpm_cpuidle_select(struct cpuidle_driver *drv,
 
 	idx = cpu_power_select(dev, cluster->cpu);
 
-	if (idx < 0) {
-		local_irq_enable();
+	if (idx < 0)
 		return -EPERM;
-	}
 
 	trace_cpu_idle_rcuidle(idx, dev->cpu);
 	return idx;
@@ -1098,7 +1241,6 @@ static int lpm_suspend_enter(suspend_state_t state)
 	struct lpm_cpu *lpm_cpu = cluster->cpu;
 	const struct cpumask *cpumask = get_cpu_mask(cpu);
 	int idx;
-	int64_t time = ktime_to_ns(ktime_get());
 
 	for (idx = lpm_cpu->nlevels - 1; idx >= 0; idx--) {
 
@@ -1110,7 +1252,7 @@ static int lpm_suspend_enter(suspend_state_t state)
 		return 0;
 	}
 	cpu_prepare(cluster, idx, false);
-	cluster_prepare(cluster, cpumask, idx, false, time);
+	cluster_prepare(cluster, cpumask, idx, false, 0);
 	if (idx > 0)
 		update_debug_pc_event(CPU_ENTER, idx, 0xdeaffeed,
 					0xdeaffeed, false);
@@ -1132,8 +1274,7 @@ static int lpm_suspend_enter(suspend_state_t state)
 		update_debug_pc_event(CPU_EXIT, idx, true, 0xdeaffeed,
 					false);
 
-	time = ktime_to_ns(ktime_get());
-	cluster_unprepare(cluster, cpumask, idx, false, time);
+	cluster_unprepare(cluster, cpumask, idx, false, 0);
 	cpu_unprepare(cluster, idx, false);
 	return 0;
 }
@@ -1151,10 +1292,12 @@ static int lpm_probe(struct platform_device *pdev)
 	int size;
 	struct kobject *module_kobj = NULL;
 
+	get_online_cpus();
 	lpm_root_node = lpm_of_parse_cluster(pdev);
 
 	if (IS_ERR_OR_NULL(lpm_root_node)) {
 		pr_err("%s(): Failed to probe low power modes\n", __func__);
+		put_online_cpus();
 		return PTR_ERR(lpm_root_node);
 	}
 
@@ -1167,7 +1310,6 @@ static int lpm_probe(struct platform_device *pdev)
 	 * core.  BUG in existing code but no known issues possibly because of
 	 * how late lpm_levels gets initialized.
 	 */
-	register_hotcpu_notifier(&lpm_cpu_nblk);
 	get_cpu();
 	on_each_cpu(setup_broadcast_timer, (void *)true, 1);
 	put_cpu();
@@ -1178,6 +1320,7 @@ static int lpm_probe(struct platform_device *pdev)
 	if (ret) {
 		pr_err("%s: Failed initializing scm_handoff_lock (%d)\n",
 			__func__, ret);
+		put_online_cpus();
 		return ret;
 	}
 
@@ -1187,12 +1330,13 @@ static int lpm_probe(struct platform_device *pdev)
 	register_cluster_lpm_stats(lpm_root_node, NULL);
 
 	ret = cluster_cpuidle_register(lpm_root_node);
+	put_online_cpus();
 	if (ret) {
 		pr_err("%s()Failed to register with cpuidle framework\n",
 				__func__);
 		goto failed;
 	}
-
+	register_hotcpu_notifier(&lpm_cpu_nblk);
 	module_kobj = kset_find_obj(module_kset, KBUILD_MODNAME);
 	if (!module_kobj) {
 		pr_err("%s: cannot find kobject for module %s\n",

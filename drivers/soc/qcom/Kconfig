@@ -58,6 +58,25 @@ config PANIC_ON_GLADIATOR_ERROR
 
 	  If unsure, say N.
 
+config MSM_GLADIATOR_ERP_V2
+	tristate "GLADIATOR coherency interconnect error reporting driver v2"
+	help
+	  Support dumping debug information for the GLADIATOR
+	  cache interconnect in the error interrupt handler.
+	  Meant to be used for debug scenarios only.
+
+	  If unsure, say N.
+
+config PANIC_ON_GLADIATOR_ERROR_V2
+	depends on MSM_GLADIATOR_ERP_V2
+	bool "Panic on GLADIATOR error report v2"
+	help
+	  Panic upon detection of an Gladiator coherency interconnect error
+	  in order to support dumping debug information.
+	  Meant to be used for debug scenarios only.
+
+	  If unsure, say N.
+
 config MSM_QDSP6_APRV3
 	bool "Audio QDSP6 APRv3 support"
 	depends on MSM_SMD
@@ -67,10 +86,29 @@ config MSM_QDSP6_APRV3
 	  used by audio driver to configure QDSP6v2's
 	  ASM, ADM and AFE.
 
+config MSM_QDSP6_APRV2_GLINK
+	bool "Audio QDSP6 APRv2 over Glink support"
+	depends on MSM_GLINK
+	help
+	  Enable APRv2 IPC protocol support over
+	  Glink between application processor and
+	  QDSP6. APR is used by audio driver to
+	  configure QDSP6's ASM, ADM and AFE.
+
+config MSM_QDSP6_APRV3_GLINK
+	bool "Audio QDSP6 APRv3 over Glink support"
+	depends on MSM_GLINK
+	help
+	  Enable APRv3 IPC protocol support over
+	  Glink between application processor and
+	  QDSP6. APR is used by audio driver to
+	  configure QDSP6v2's ASM, ADM and AFE.
+
 config MSM_ADSP_LOADER
 	tristate "ADSP loader support"
 	select SND_SOC_MSM_APRV2_INTF
-	depends on MSM_QDSP6_APRV2 || MSM_QDSP6_APRV3
+	depends on MSM_QDSP6_APRV2 || MSM_QDSP6_APRV3 || \
+		MSM_QDSP6_APRV2_GLINK || MSM_QDSP6_APRV3_GLINK
 	help
 	  Enable ADSP image loader.
 	  The ADSP loader brings ADSP out of reset
@@ -584,7 +622,7 @@ config MSM_GLINK_PKT
 
 config MSM_TZ_SMMU
 	bool "Helper functions for SMMU configuration through TZ"
-	depends on ARCH_MSMTHULIUM
+	depends on ARCH_MSMTHULIUM || ARCH_MSM8953
 	help
 	  Say 'Y' here for targets that need to call into TZ to configure
 	  SMMUs for any reason (for example, for errata workarounds or
@@ -601,6 +639,14 @@ config MSM_SUBSYSTEM_RESTART
 	  shutdown, and restart subsystems with a reference counted API.
 	  It also notifies userspace of transitions between these states via
 	  sysfs.
+
+config MSM_SYSMON_COMM
+	bool "MSM System Monitor communication support"
+	depends on MSM_SMD && MSM_SUBSYSTEM_RESTART
+	help
+	  This option adds support for MSM System Monitor library, which
+	  provides an API that may be used for notifying subsystems within
+	  the SoC about other subsystems' power-up/down state-changes.
 
 config MSM_PIL
 	bool "Peripheral image loading"
@@ -748,6 +794,15 @@ config MSM_KERNEL_PROTECT_TEST
           Attempts to write to the kernel text after making the kernel text
           read-only.  This test is FATAL whether it passes or fails!
           Success is signaled by a stage-2 fault.
+
+config MSM_REMOTEQDSS
+	bool "Allow debug tools to enable events on other processors"
+	depends on MSM_SCM && DEBUG_FS
+	help
+	  Other onchip processors/execution environments may support debug
+	  events. Provide a sysfs interface for debug tools to dynamically
+	  enable/disable these events. Interface located in
+	  /sys/class/remoteqdss.
 
 source "drivers/soc/qcom/memshare/Kconfig"
 

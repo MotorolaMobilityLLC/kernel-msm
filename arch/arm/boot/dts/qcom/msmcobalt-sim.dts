@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,6 +21,16 @@
 	model = "Qualcomm Technologies, Inc. MSM COBALT SIM";
 	compatible = "qcom,msmcobalt-sim", "qcom,msmcobalt", "qcom,sim";
 	qcom,board-id = <16 0>;
+};
+
+&wdog {
+	status = "disabled";
+};
+
+&clock_cpu {
+	qcom,cc-factor = <1>;
+	qcom,osm-clk-rate = <19200000>;
+	qcom,xo-clk-rate = <19200000>;
 };
 
 &ufsphy1 {

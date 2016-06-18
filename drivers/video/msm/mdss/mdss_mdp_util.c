@@ -195,11 +195,15 @@ irqreturn_t mdss_mdp_isr(int irq, void *ptr)
 	if (isr & MDSS_MDP_INTR_INTF_3_UNDERRUN)
 		mdss_mdp_intr_done(MDP_INTR_UNDERRUN_INTF_3);
 
-	if (isr & MDSS_MDP_INTR_PING_PONG_0_DONE)
+	if (isr & MDSS_MDP_INTR_PING_PONG_0_DONE) {
 		mdss_mdp_intr_done(MDP_INTR_PING_PONG_0);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_DSI0, false);
+	}
 
-	if (isr & MDSS_MDP_INTR_PING_PONG_1_DONE)
+	if (isr & MDSS_MDP_INTR_PING_PONG_1_DONE) {
 		mdss_mdp_intr_done(MDP_INTR_PING_PONG_1);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_DSI1, false);
+	}
 
 	if (isr & MDSS_MDP_INTR_PING_PONG_2_DONE)
 		mdss_mdp_intr_done(MDP_INTR_PING_PONG_2);
@@ -233,38 +237,38 @@ irqreturn_t mdss_mdp_isr(int irq, void *ptr)
 
 	if (isr & MDSS_MDP_INTR_INTF_0_VSYNC) {
 		mdss_mdp_intr_done(MDP_INTR_VSYNC_INTF_0);
-		mdss_misr_crc_collect(mdata, DISPLAY_MISR_EDP);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_EDP, true);
 	}
 
 	if (isr & MDSS_MDP_INTR_INTF_1_VSYNC) {
 		mdss_mdp_intr_done(MDP_INTR_VSYNC_INTF_1);
-		mdss_misr_crc_collect(mdata, DISPLAY_MISR_DSI0);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_DSI0, true);
 	}
 
 	if (isr & MDSS_MDP_INTR_INTF_2_VSYNC) {
 		mdss_mdp_intr_done(MDP_INTR_VSYNC_INTF_2);
-		mdss_misr_crc_collect(mdata, DISPLAY_MISR_DSI1);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_DSI1, true);
 	}
 
 	if (isr & MDSS_MDP_INTR_INTF_3_VSYNC) {
 		mdss_mdp_intr_done(MDP_INTR_VSYNC_INTF_3);
-		mdss_misr_crc_collect(mdata, DISPLAY_MISR_HDMI);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_HDMI, true);
 	}
 
 	if (isr & MDSS_MDP_INTR_WB_0_DONE) {
 		mdss_mdp_intr_done(MDP_INTR_WB_0);
-		mdss_misr_crc_collect(mdata, DISPLAY_MISR_MDP);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_MDP, true);
 	}
 
 	if (isr & MDSS_MDP_INTR_WB_1_DONE) {
 		mdss_mdp_intr_done(MDP_INTR_WB_1);
-		mdss_misr_crc_collect(mdata, DISPLAY_MISR_MDP);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_MDP, true);
 	}
 
 	if (isr & ((mdata->mdp_rev == MDSS_MDP_HW_REV_108) ?
 		MDSS_MDP_INTR_WB_2_DONE >> 2 : MDSS_MDP_INTR_WB_2_DONE)) {
 		mdss_mdp_intr_done(MDP_INTR_WB_2);
-		mdss_misr_crc_collect(mdata, DISPLAY_MISR_MDP);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_MDP, true);
 	}
 
 	if (isr & MDSS_MDP_INTR_PING_PONG_0_AUTOREFRESH_DONE)
@@ -310,10 +314,6 @@ void mdss_mdp_format_flag_removal(u32 *table, u32 num, u32 remove_bits)
 	}
 
 	for (i = 0; i < num; i++) {
-		if (table[i] > MDP_IMGTYPE_LIMIT) {
-			pr_err("Invalid format:%d, idx:%d\n", table[i], i);
-			continue;
-		}
 		for (j = 0; j < ARRAY_SIZE(mdss_mdp_format_map); j++) {
 			fmt = &mdss_mdp_format_map[i];
 			if (table[i] == fmt->format) {
@@ -324,15 +324,113 @@ void mdss_mdp_format_flag_removal(u32 *table, u32 num, u32 remove_bits)
 	}
 }
 
+void mdss_mdp_set_supported_formats(struct mdss_data_type *mdata)
+{
+#define SET_BIT(value, bit_num) \
+	{ \
+		value[bit_num >> 3] |= (1 << (bit_num & 7)); \
+	} \
+
+	struct mdss_mdp_pipe *vig_pipes = mdata->vig_pipes;
+	struct mdss_mdp_pipe *rgb_pipes = mdata->rgb_pipes;
+	struct mdss_mdp_pipe *dma_pipes = mdata->dma_pipes;
+	struct mdss_mdp_pipe *cur_pipes = mdata->cursor_pipes;
+	struct mdss_mdp_writeback *wb = mdata->wb;
+	bool has_tile = mdata->highest_bank_bit && !mdata->has_ubwc;
+	bool has_ubwc = mdata->has_ubwc;
+	int i;
+	int j;
+
+	for (i = 0; i < ARRAY_SIZE(mdss_mdp_format_map); i++) {
+		struct mdss_mdp_format_params *fmt = &mdss_mdp_format_map[i];
+
+		if ((fmt->fetch_mode == MDSS_MDP_FETCH_TILE && has_tile) ||
+			(fmt->fetch_mode == MDSS_MDP_FETCH_LINEAR)) {
+			if (fmt->unpack_dx_format &&
+				!test_bit(MDSS_CAPS_10_BIT_SUPPORTED,
+				mdata->mdss_caps_map))
+				continue;
+
+			for (j = 0; j < mdata->nvig_pipes; j++)
+				SET_BIT(vig_pipes[j].supported_formats,
+						fmt->format);
+
+			if (fmt->flag & VALID_ROT_WB_FORMAT) {
+				for (j = 0; j < mdata->nwb; j++)
+					SET_BIT(wb[j].supported_input_formats,
+							fmt->format);
+			}
+			if (fmt->flag & VALID_MDP_WB_INTF_FORMAT) {
+				for (j = 0; j < mdata->nwb; j++)
+					SET_BIT(wb[j].supported_output_formats,
+							fmt->format);
+			}
+			if (fmt->flag & VALID_MDP_CURSOR_FORMAT &&
+					mdata->ncursor_pipes) {
+				for (j = 0; j < mdata->ncursor_pipes; j++)
+					SET_BIT(cur_pipes[j].supported_formats,
+							fmt->format);
+			}
+
+			if (!fmt->is_yuv) {
+				for (j = 0; j < mdata->nrgb_pipes; j++)
+					SET_BIT(rgb_pipes[j].supported_formats,
+							fmt->format);
+
+				for (j = 0; j < mdata->ndma_pipes; j++)
+					SET_BIT(dma_pipes[j].supported_formats,
+							fmt->format);
+			}
+		}
+	}
+
+	for (i = 0; i < ARRAY_SIZE(mdss_mdp_format_ubwc_map) && has_ubwc; i++) {
+		struct mdss_mdp_format_params *fmt =
+			&mdss_mdp_format_ubwc_map[i].mdp_format;
+
+		if (fmt->unpack_dx_format &&
+			!test_bit(MDSS_CAPS_10_BIT_SUPPORTED,
+			mdata->mdss_caps_map))
+			continue;
+
+		for (j = 0; j < mdata->nvig_pipes; j++)
+			SET_BIT(vig_pipes[j].supported_formats, fmt->format);
+
+		if (fmt->flag & VALID_ROT_WB_FORMAT) {
+			for (j = 0; j < mdata->nwb; j++)
+				SET_BIT(wb[j].supported_input_formats,
+						fmt->format);
+		}
+		if (fmt->flag & VALID_MDP_WB_INTF_FORMAT) {
+			for (j = 0; j < mdata->nwb; j++)
+				SET_BIT(wb[j].supported_output_formats,
+						fmt->format);
+		}
+		if (fmt->flag & VALID_MDP_CURSOR_FORMAT &&
+				mdata->ncursor_pipes) {
+			for (j = 0; j < mdata->ncursor_pipes; j++)
+				SET_BIT(cur_pipes[j].supported_formats,
+						fmt->format);
+		}
+
+		if (!fmt->is_yuv) {
+			for (j = 0; j < mdata->nrgb_pipes; j++)
+				SET_BIT(rgb_pipes[j].supported_formats,
+						fmt->format);
+
+			for (j = 0; j < mdata->ndma_pipes; j++)
+				SET_BIT(dma_pipes[j].supported_formats,
+						fmt->format);
+		}
+	}
+}
+
 struct mdss_mdp_format_params *mdss_mdp_get_format_params(u32 format)
 {
 	struct mdss_mdp_format_params *fmt = NULL;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	int i;
 	bool fmt_found = false;
-
-	if (format > MDP_IMGTYPE_LIMIT)
-		goto end;
 
 	for (i = 0; i < ARRAY_SIZE(mdss_mdp_format_map); i++) {
 		fmt = &mdss_mdp_format_map[i];
@@ -350,7 +448,6 @@ struct mdss_mdp_format_params *mdss_mdp_get_format_params(u32 format)
 		}
 	}
 
-end:
 	return (mdss_mdp_is_ubwc_format(fmt) &&
 		!mdss_mdp_is_ubwc_supported(mdata)) ? NULL : fmt;
 }
@@ -585,6 +682,8 @@ static int mdss_mdp_get_ubwc_plane_size(struct mdss_mdp_format_params *fmt,
 {
 	int rc = 0;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+	struct mdss_mdp_format_params_ubwc *fmt_ubwc =
+		(struct mdss_mdp_format_params_ubwc *)fmt;
 
 	if (!mdss_mdp_is_ubwc_supported(mdata)) {
 		pr_err("ubwc format is not supported for format: %d\n",
@@ -592,31 +691,65 @@ static int mdss_mdp_get_ubwc_plane_size(struct mdss_mdp_format_params *fmt,
 		return -EINVAL;
 	}
 
-	if (fmt->format == MDP_Y_CBCR_H2V2_UBWC) {
+	if (fmt->format == MDP_Y_CBCR_H2V2_UBWC ||
+		fmt->format == MDP_Y_CBCR_H2V2_TP10_UBWC) {
+		uint32_t y_stride_alignment, uv_stride_alignment;
+		uint32_t y_height_alignment, uv_height_alignment;
+		uint32_t y_tile_width = fmt_ubwc->micro.tile_width;
+		uint32_t y_tile_height = fmt_ubwc->micro.tile_height;
+		uint32_t uv_tile_width = y_tile_width / 2;
+		uint32_t uv_tile_height = y_tile_height;
+		uint32_t y_bpp_numer = 1, y_bpp_denom = 1;
+		uint32_t uv_bpp_numer = 1, uv_bpp_denom = 1;
+
 		ps->num_planes = 4;
+		if (fmt->format == MDP_Y_CBCR_H2V2_UBWC) {
+			y_stride_alignment = 128;
+			uv_stride_alignment = 64;
+			y_height_alignment = 32;
+			uv_height_alignment = 32;
+			y_bpp_numer = 1;
+			uv_bpp_numer = 2;
+			y_bpp_denom = 1;
+			uv_bpp_denom = 1;
+		} else if (fmt->format == MDP_Y_CBCR_H2V2_TP10_UBWC) {
+			y_stride_alignment = 192;
+			uv_stride_alignment = 96;
+			y_height_alignment = 16;
+			uv_height_alignment = 16;
+			y_bpp_numer = 4;
+			uv_bpp_numer = 8;
+			y_bpp_denom = 3;
+			uv_bpp_denom = 3;
+		}
+
 		/* Y bitstream stride and plane size */
-		ps->ystride[0] = ALIGN(width, 128);
-		ps->plane_size[0] = ALIGN(ps->ystride[0] * ALIGN(height, 32),
-					4096);
+		ps->ystride[0] = ALIGN(width, y_stride_alignment);
+		ps->ystride[0] = (ps->ystride[0] * y_bpp_numer) / y_bpp_denom;
+		ps->plane_size[0] = ALIGN(ps->ystride[0] *
+			ALIGN(height, y_height_alignment), 4096);
 
 		/* CbCr bitstream stride and plane size */
-		ps->ystride[1] = ALIGN(width, 64);
+		ps->ystride[1] = ALIGN(width / 2, uv_stride_alignment);
+		ps->ystride[1] = (ps->ystride[1] * uv_bpp_numer) / uv_bpp_denom;
 		ps->plane_size[1] = ALIGN(ps->ystride[1] *
-			ALIGN(height / 2, 32), 4096);
+			ALIGN(height / 2, uv_height_alignment), 4096);
 
 		/* Y meta data stride and plane size */
-		ps->ystride[2] = ALIGN(DIV_ROUND_UP(width, 32), 64);
+		ps->ystride[2] = ALIGN(DIV_ROUND_UP(width, y_tile_width), 64);
 		ps->plane_size[2] = ALIGN(ps->ystride[2] *
-			ALIGN(DIV_ROUND_UP(height, 8), 16), 4096);
+			ALIGN(DIV_ROUND_UP(height, y_tile_height), 16), 4096);
 
 		/* CbCr meta data stride and plane size */
-		ps->ystride[3] = ALIGN(DIV_ROUND_UP(width / 2, 16), 64);
-		ps->plane_size[3] = ALIGN(ps->ystride[3] *
-			ALIGN(DIV_ROUND_UP(height / 2, 8), 16), 4096);
-
+		ps->ystride[3] =
+			ALIGN(DIV_ROUND_UP(width / 2, uv_tile_width), 64);
+		ps->plane_size[3] = ALIGN(ps->ystride[3] * ALIGN(
+			DIV_ROUND_UP(height / 2, uv_tile_height), 16), 4096);
 	} else if (fmt->format == MDP_RGBA_8888_UBWC ||
 		fmt->format == MDP_RGBX_8888_UBWC ||
-		fmt->format == MDP_RGB_565_UBWC) {
+		fmt->format == MDP_RGB_565_UBWC ||
+		fmt->format == MDP_RGBA_1010102_UBWC ||
+		fmt->format == MDP_RGBX_1010102_UBWC) {
 		uint32_t stride_alignment, bpp, aligned_bitstream_width;
 
 		if (fmt->format == MDP_RGB_565_UBWC) {
@@ -635,8 +768,8 @@ static int mdss_mdp_get_ubwc_plane_size(struct mdss_mdp_format_params *fmt,
 			ALIGN(height, 16), 4096);
 
 		/* RGB meta data stride and plane size */
-		ps->ystride[2] = ALIGN(DIV_ROUND_UP(aligned_bitstream_width,
-			16), 64);
+		ps->ystride[2] =
+			ALIGN(DIV_ROUND_UP(aligned_bitstream_width, 16), 64);
 		ps->plane_size[2] = ALIGN(ps->ystride[2] *
 			ALIGN(DIV_ROUND_UP(height, 4), 16), 4096);
 	} else {
@@ -719,6 +852,8 @@ int mdss_mdp_get_plane_sizes(struct mdss_mdp_format_params *fmt, u32 w, u32 h,
 				break;
 			}
 
+			w = w << fmt->unpack_dx_format;
+
 			ps->ystride[0] = ALIGN(w, stride_align);
 			ps->ystride[1] = ALIGN(w / h_subsample, stride_align);
 			ps->plane_size[0] = ps->ystride[0] *
@@ -772,7 +907,8 @@ static int mdss_mdp_ubwc_data_check(struct mdss_mdp_data *data,
 
 	base_addr = data->p[0].addr;
 
-	if (fmt->format == MDP_Y_CBCR_H2V2_UBWC) {
+	if (fmt->format == MDP_Y_CBCR_H2V2_UBWC ||
+		fmt->format == MDP_Y_CBCR_H2V2_TP10_UBWC) {
 		/************************************************/
 		/*      UBWC            **                      */
 		/*      buffer          **      MDP PLANE       */
@@ -845,7 +981,8 @@ end:
 		return -EINVAL;
 	}
 
-	inc = ((fmt->format == MDP_Y_CBCR_H2V2_UBWC) ? 1 : 2);
+	inc = ((fmt->format == MDP_Y_CBCR_H2V2_UBWC ||
+		fmt->format == MDP_Y_CBCR_H2V2_TP10_UBWC) ? 1 : 2);
 	for (i = 0; i < MAX_PLANES; i += inc) {
 		if (data->p[i].len != ps->plane_size[i]) {
 			pr_err("plane:%d fmt:%d, len does not match: data:%lu, ps:%d\n",
@@ -949,7 +1086,8 @@ void mdss_mdp_ubwc_data_calc_offset(struct mdss_mdp_data *data, u16 x, u16 y,
 	}
 	macro_w = 4 * micro_w;
 
-	if (fmt->format == MDP_Y_CBCR_H2V2_UBWC) {
+	if (fmt->format == MDP_Y_CBCR_H2V2_UBWC ||
+		fmt->format == MDP_Y_CBCR_H2V2_TP10_UBWC) {
 		u16 chroma_macro_w = macro_w / 2;
 		u16 chroma_micro_w = micro_w / 2;
 
@@ -1095,6 +1233,10 @@ static int mdss_mdp_put_img(struct mdss_mdp_img_data *data, bool rotator,
 		/*
 		 * skip memory unmapping - secure display uses physical
 		 * address which does not require buffer unmapping
+		 *
+		 * For LT targets in secure display usecase, srcp_dma_buf will
+		 * be filled due to map call which will be unmapped above.
+		 *
 		 */
 		pr_debug("skip memory unmapping for secure display content\n");
 	} else {
@@ -1115,6 +1257,7 @@ static int mdss_mdp_get_img(struct msmfb_data *img,
 	u32 domain;
 	dma_addr_t *start;
 	struct ion_client *iclient = mdss_get_ionclient();
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	start = &data->addr;
 	len = &data->len;
@@ -1138,84 +1281,85 @@ static int mdss_mdp_get_img(struct msmfb_data *img,
 			pr_err("invalid FB_MAJOR\n");
 			ret = -1;
 		}
-	} else if (iclient &&
-			!(data->flags & MDP_SECURE_DISPLAY_OVERLAY_SESSION)) {
-		data->srcp_dma_buf = dma_buf_get(img->memory_id);
-		if (IS_ERR(data->srcp_dma_buf)) {
-			pr_err("error on ion_import_fd\n");
-			ret = PTR_ERR(data->srcp_dma_buf);
-			data->srcp_dma_buf = NULL;
+	} else if (iclient) {
+		if (mdss_mdp_is_map_needed(mdata, data)) {
+			data->srcp_dma_buf = dma_buf_get(img->memory_id);
+			if (IS_ERR(data->srcp_dma_buf)) {
+				pr_err("error on ion_import_fd\n");
+				ret = PTR_ERR(data->srcp_dma_buf);
+				data->srcp_dma_buf = NULL;
+				return ret;
+			}
+			domain = mdss_smmu_get_domain_type(data->flags,
+							   rotator);
+
+			data->srcp_attachment =
+				mdss_smmu_dma_buf_attach(data->srcp_dma_buf,
+							 dev, domain);
+			if (IS_ERR(data->srcp_attachment)) {
+				ret = PTR_ERR(data->srcp_attachment);
+				goto err_put;
+			}
+
+			data->srcp_table =
+				dma_buf_map_attachment(data->srcp_attachment,
+				mdss_smmu_dma_data_direction(dir));
+			if (IS_ERR(data->srcp_table)) {
+				ret = PTR_ERR(data->srcp_table);
+				goto err_detach;
+			}
+
+			data->addr = 0;
+			data->len = 0;
+			data->mapped = false;
+			data->skip_detach = false;
+			/* return early, mapping will be done later */
+			ret = 0;
+			goto done;
+		} else {
+			struct ion_handle *ihandle = NULL;
+			struct sg_table *sg_ptr = NULL;
+
+			do {
+				ihandle = ion_import_dma_buf(iclient,
+							     img->memory_id);
+				if (IS_ERR_OR_NULL(ihandle)) {
+					ret = -EINVAL;
+					pr_err("ion import buffer failed\n");
+					break;
+				}
+
+				sg_ptr = ion_sg_table(iclient, ihandle);
+				if (sg_ptr == NULL) {
+					pr_err("ion sg table get failed\n");
+					ret = -EINVAL;
+					break;
+				}
+
+				if (sg_ptr->nents != 1) {
+					pr_err("ion buffer mapping failed\n");
+					ret = -EINVAL;
+					break;
+				}
+
+				if (((uint64_t)sg_dma_address(sg_ptr->sgl) >=
+					PHY_ADDR_4G - sg_ptr->sgl->length)) {
+					pr_err("ion buffer mapped size is invalid\n");
+					ret = -EINVAL;
+					break;
+				}
+
+				data->addr = sg_dma_address(sg_ptr->sgl);
+				data->len = sg_ptr->sgl->length;
+				data->mapped = true;
+				ret = 0;
+			} while (0);
+
+			if (!IS_ERR_OR_NULL(ihandle))
+				ion_free(iclient, ihandle);
 			return ret;
 		}
-		domain = mdss_smmu_get_domain_type(data->flags, rotator);
-
-		data->srcp_attachment =
-			mdss_smmu_dma_buf_attach(data->srcp_dma_buf, dev,
-					domain);
-		if (IS_ERR(data->srcp_attachment)) {
-			ret = PTR_ERR(data->srcp_attachment);
-			goto err_put;
-		}
-
-		data->srcp_table =
-			dma_buf_map_attachment(data->srcp_attachment,
-			mdss_smmu_dma_data_direction(dir));
-		if (IS_ERR(data->srcp_table)) {
-			ret = PTR_ERR(data->srcp_table);
-			goto err_detach;
-		}
-
-		data->addr = 0;
-		data->len = 0;
-		data->mapped = false;
-		data->skip_detach = false;
-		/* return early, mapping will be done later */
-
-		return 0;
-	} else if (iclient &&
-			(data->flags & MDP_SECURE_DISPLAY_OVERLAY_SESSION)) {
-		struct ion_handle *ihandle = NULL;
-		struct sg_table *sg_ptr = NULL;
-
-		do {
-			ihandle = ion_import_dma_buf(iclient, img->memory_id);
-			if (IS_ERR_OR_NULL(ihandle)) {
-				ret = -EINVAL;
-				pr_err("ion import buffer failed\n");
-				break;
-			}
-
-			sg_ptr = ion_sg_table(iclient, ihandle);
-			if (sg_ptr == NULL) {
-				pr_err("ion sg table get failed\n");
-				ret = -EINVAL;
-				break;
-			}
-
-			if (sg_ptr->nents != 1) {
-				pr_err("ion buffer mapping failed\n");
-				ret = -EINVAL;
-				break;
-			}
-
-			if (((uint64_t)sg_dma_address(sg_ptr->sgl) >=
-					PHY_ADDR_4G - sg_ptr->sgl->length)) {
-				pr_err("ion buffer mapped size is invalid\n");
-				ret = -EINVAL;
-				break;
-			}
-
-			data->addr = sg_dma_address(sg_ptr->sgl);
-			data->len = sg_ptr->sgl->length;
-			data->mapped = true;
-			ret = 0;
-		} while (0);
-
-		if (!IS_ERR_OR_NULL(ihandle))
-			ion_free(iclient, ihandle);
-		return ret;
 	}
-
 	if (!*start) {
 		pr_err("start address is zero!\n");
 		mdss_mdp_put_img(data, rotator, dir);
@@ -1238,6 +1382,7 @@ err_detach:
 	dma_buf_detach(data->srcp_dma_buf, data->srcp_attachment);
 err_put:
 	dma_buf_put(data->srcp_dma_buf);
+done:
 	return ret;
 }
 
@@ -1246,13 +1391,14 @@ static int mdss_mdp_map_buffer(struct mdss_mdp_img_data *data, bool rotator,
 {
 	int ret = -EINVAL;
 	int domain;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	if (data->addr && data->len)
 		return 0;
 
 	if (!IS_ERR_OR_NULL(data->srcp_dma_buf)) {
 		if (mdss_res->mdss_util->iommu_attached() &&
-			!(data->flags & MDP_SECURE_DISPLAY_OVERLAY_SESSION)) {
+			(mdss_mdp_is_map_needed(mdata, data))) {
 			domain = mdss_smmu_get_domain_type(data->flags,
 					rotator);
 			data->dir = dir;

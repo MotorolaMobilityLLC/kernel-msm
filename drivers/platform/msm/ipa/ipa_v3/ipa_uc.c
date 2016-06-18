@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,7 +13,7 @@
 #include <linux/delay.h>
 
 #define IPA_RAM_UC_SMEM_SIZE 128
-#define IPA_HW_INTERFACE_VERSION     0x0111
+#define IPA_HW_INTERFACE_VERSION     0x2000
 #define IPA_PKT_FLUSH_TO_US 100
 #define IPA_UC_POLL_SLEEP_USEC 100
 #define IPA_UC_POLL_MAX_RETRY 10000
@@ -40,6 +40,7 @@
  * IPA_CPU_2_HW_CMD_CLK_UNGATE : CPU instructs HW to goto Clock Ungated state.
  * IPA_CPU_2_HW_CMD_MEMCPY : CPU instructs HW to do memcopy using QMB.
  * IPA_CPU_2_HW_CMD_RESET_PIPE : Command to reset a pipe - SW WA for a HW bug.
+ * IPA_CPU_2_HW_CMD_GSI_CH_EMPTY : Command to check for GSI channel emptiness.
  */
 enum ipa3_cpu_2_hw_commands {
 	IPA_CPU_2_HW_CMD_NO_OP                     =
@@ -62,61 +63,29 @@ enum ipa3_cpu_2_hw_commands {
 		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 8),
 	IPA_CPU_2_HW_CMD_REG_WRITE                 =
 		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 9),
+	IPA_CPU_2_HW_CMD_GSI_CH_EMPTY              =
+		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 10),
 };
 
 /**
  * enum ipa3_hw_2_cpu_responses -  Values that represent common HW responses
- * to CPU commands.
+ *  to CPU commands.
+ * @IPA_HW_2_CPU_RESPONSE_NO_OP : No operation response
  * @IPA_HW_2_CPU_RESPONSE_INIT_COMPLETED : HW shall send this command once
- * boot sequence is completed and HW is ready to serve commands from CPU
+ *  boot sequence is completed and HW is ready to serve commands from CPU
  * @IPA_HW_2_CPU_RESPONSE_CMD_COMPLETED: Response to CPU commands
+ * @IPA_HW_2_CPU_RESPONSE_DEBUG_GET_INFO : Response to
+ *  IPA_CPU_2_HW_CMD_DEBUG_GET_INFO command
  */
 enum ipa3_hw_2_cpu_responses {
+	IPA_HW_2_CPU_RESPONSE_NO_OP          =
+		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 0),
 	IPA_HW_2_CPU_RESPONSE_INIT_COMPLETED =
 		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 1),
 	IPA_HW_2_CPU_RESPONSE_CMD_COMPLETED  =
 		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 2),
-};
-
-/**
- * enum ipa3_hw_2_cpu_events - Values that represent HW event to be sent to CPU.
- * @IPA_HW_2_CPU_EVENT_ERROR : Event specify a system error is detected by the
- * device
- * @IPA_HW_2_CPU_EVENT_LOG_INFO : Event providing logging specific information
- */
-enum ipa3_hw_2_cpu_events {
-	IPA_HW_2_CPU_EVENT_ERROR     =
-		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 1),
-	IPA_HW_2_CPU_EVENT_LOG_INFO  =
-		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 2),
-};
-
-/**
- * enum ipa3_hw_errors - Common error types.
- * @IPA_HW_ERROR_NONE : No error persists
- * @IPA_HW_INVALID_DOORBELL_ERROR : Invalid data read from doorbell
- * @IPA_HW_DMA_ERROR : Unexpected DMA error
- * @IPA_HW_FATAL_SYSTEM_ERROR : HW has crashed and requires reset.
- * @IPA_HW_INVALID_OPCODE : Invalid opcode sent
- * @IPA_HW_ZIP_ENGINE_ERROR : ZIP engine error
- */
-enum ipa3_hw_errors {
-	IPA_HW_ERROR_NONE              =
-		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 0),
-	IPA_HW_INVALID_DOORBELL_ERROR  =
-		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 1),
-	IPA_HW_DMA_ERROR               =
-		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 2),
-	IPA_HW_FATAL_SYSTEM_ERROR      =
+	IPA_HW_2_CPU_RESPONSE_DEBUG_GET_INFO =
 		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 3),
-	IPA_HW_INVALID_OPCODE          =
-		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 4),
-	IPA_HW_ZIP_ENGINE_ERROR        =
-		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 5),
-	IPA_HW_CONS_DISABLE_CMD_GSI_STOP_FAILURE =
-		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 6),
-	IPA_HW_PROD_DISABLE_CMD_GSI_STOP_FAILURE =
-		FEATURE_ENUM_VAL(IPA_HW_FEATURE_COMMON, 7)
 };
 
 /**
@@ -181,20 +150,6 @@ union IpaHwCpuCmdCompletedResponseData_t {
 } __packed;
 
 /**
- * union IpaHwErrorEventData_t - HW->CPU Common Events
- * @errorType : Entered when a system error is detected by the HW. Type of
- * error is specified by IPA_HW_ERRORS
- * @reserved : Reserved
- */
-union IpaHwErrorEventData_t {
-	struct IpaHwErrorEventParams_t {
-		u32 errorType:8;
-		u32 reserved:24;
-	} __packed params;
-	u32 raw32b;
-} __packed;
-
-/**
  * union IpaHwUpdateFlagsCmdData_t - Structure holding the parameters for
  * IPA_CPU_2_HW_CMD_UPDATE_FLAGS command
  * @newFlags: SW flags defined the behavior of HW.
@@ -206,6 +161,23 @@ union IpaHwUpdateFlagsCmdData_t {
 	} params;
 	u32 raw32b;
 };
+
+/**
+ * union IpaHwChkChEmptyCmdData_t -  Structure holding the parameters for
+ *  IPA_CPU_2_HW_CMD_GSI_CH_EMPTY command. Parameters are sent as 32b
+ *  immediate parameters.
+ * @ee_n : EE owner of the channel
+ * @vir_ch_id : GSI virtual channel ID of the channel to checked of emptiness
+ * @reserved_02_04 : Reserved
+ */
+union IpaHwChkChEmptyCmdData_t {
+	struct IpaHwChkChEmptyCmdParams_t {
+		u8 ee_n;
+		u8 vir_ch_id;
+		u16 reserved_02_04;
+	} __packed params;
+	u32 raw32b;
+} __packed;
 
 /**
  * When resource group 10 limitation mitigation is enabled, uC send
@@ -230,7 +202,7 @@ do {									      \
 
 struct ipa3_uc_hdlrs ipa3_uc_hdlrs[IPA_HW_NUM_FEATURES] = { { 0 } };
 
-static inline const char *ipa_hw_error_str(enum ipa3_hw_errors err_type)
+const char *ipa_hw_error_str(enum ipa3_hw_errors err_type)
 {
 	const char *str;
 
@@ -241,14 +213,26 @@ static inline const char *ipa_hw_error_str(enum ipa3_hw_errors err_type)
 	case IPA_HW_INVALID_DOORBELL_ERROR:
 		str = "IPA_HW_INVALID_DOORBELL_ERROR";
 		break;
+	case IPA_HW_DMA_ERROR:
+		str = "IPA_HW_DMA_ERROR";
+		break;
 	case IPA_HW_FATAL_SYSTEM_ERROR:
 		str = "IPA_HW_FATAL_SYSTEM_ERROR";
 		break;
 	case IPA_HW_INVALID_OPCODE:
 		str = "IPA_HW_INVALID_OPCODE";
 		break;
-	case IPA_HW_ZIP_ENGINE_ERROR:
-		str = "IPA_HW_ZIP_ENGINE_ERROR";
+	case IPA_HW_INVALID_PARAMS:
+		str = "IPA_HW_INVALID_PARAMS";
+		break;
+	case IPA_HW_CONS_DISABLE_CMD_GSI_STOP_FAILURE:
+		str = "IPA_HW_CONS_DISABLE_CMD_GSI_STOP_FAILURE";
+		break;
+	case IPA_HW_PROD_DISABLE_CMD_GSI_STOP_FAILURE:
+		str = "IPA_HW_PROD_DISABLE_CMD_GSI_STOP_FAILURE";
+		break;
+	case IPA_HW_GSI_CH_NOT_EMPTY_FAILURE:
+		str = "IPA_HW_GSI_CH_NOT_EMPTY_FAILURE";
 		break;
 	default:
 		str = "INVALID ipa_hw_errors type";
@@ -267,7 +251,7 @@ static void ipa3_log_evt_hdlr(void)
 		if (ipa3_ctx->uc_ctx.uc_event_top_ofst +
 			sizeof(struct IpaHwEventLogInfoData_t) >=
 			ipa3_ctx->ctrl->ipa_reg_base_ofst +
-			IPA_SRAM_DIRECT_ACCESS_N_OFST_v3_0(0) +
+			ipahal_get_reg_n_ofst(IPA_SRAM_DIRECT_ACCESS_n, 0) +
 			ipa3_ctx->smem_sz) {
 				IPAERR("uc_top 0x%x outside SRAM\n",
 					ipa3_ctx->uc_ctx.uc_event_top_ofst);
@@ -379,10 +363,8 @@ static void ipa3_uc_event_handler(enum ipa_irq_type interrupt,
 			ipa_hw_error_str(evt.params.errorType));
 		ipa3_ctx->uc_ctx.uc_failed = true;
 		ipa3_ctx->uc_ctx.uc_error_type = evt.params.errorType;
-		if (evt.params.errorType == IPA_HW_ZIP_ENGINE_ERROR) {
-			IPAERR("IPA has encountered a ZIP engine error\n");
-			ipa3_ctx->uc_ctx.uc_zip_error = true;
-		}
+		ipa3_ctx->uc_ctx.uc_error_timestamp =
+			ipahal_read_reg(IPA_TAG_TIMER);
 		BUG();
 	} else if (ipa3_ctx->uc_ctx.uc_sram_mmio->eventOp ==
 		IPA_HW_2_CPU_EVENT_LOG_INFO) {
@@ -397,7 +379,7 @@ static void ipa3_uc_event_handler(enum ipa_irq_type interrupt,
 
 }
 
-static int ipa3_uc_panic_notifier(struct notifier_block *this,
+int ipa3_uc_panic_notifier(struct notifier_block *this,
 		unsigned long event, void *ptr)
 {
 	int result = 0;
@@ -420,11 +402,11 @@ static int ipa3_uc_panic_notifier(struct notifier_block *this,
 	wmb();
 
 	if (ipa3_ctx->apply_rg10_wa)
-		ipa_write_reg(ipa3_ctx->mmio,
-			IPA_UC_MAILBOX_m_n_OFFS_v3_0(IPA_CPU_2_HW_CMD_MBOX_m,
-			IPA_CPU_2_HW_CMD_MBOX_n), 0x1);
+		ipahal_write_reg_mn(IPA_UC_MAILBOX_m_n,
+			IPA_CPU_2_HW_CMD_MBOX_m,
+			IPA_CPU_2_HW_CMD_MBOX_n, 0x1);
 	else
-		ipa_write_reg(ipa3_ctx->mmio, IPA_IRQ_EE_UC_n_OFFS(0), 0x1);
+		ipahal_write_reg_n(IPA_IRQ_EE_UC_n, 0, 0x1);
 
 	/* give uc enough time to save state */
 	udelay(IPA_PKT_FLUSH_TO_US);
@@ -434,16 +416,6 @@ static int ipa3_uc_panic_notifier(struct notifier_block *this,
 
 fail:
 	return NOTIFY_DONE;
-}
-
-static struct notifier_block ipa3_uc_panic_blk = {
-	.notifier_call  = ipa3_uc_panic_notifier,
-};
-
-void ipa3_register_panic_hdlr(void)
-{
-	atomic_notifier_chain_register(&panic_notifier_list,
-			&ipa3_uc_panic_blk);
 }
 
 static void ipa3_uc_response_hdlr(enum ipa_irq_type interrupt,
@@ -529,7 +501,7 @@ static int ipa3_uc_send_cmd_64b_param(u32 cmd_lo, u32 cmd_hi, u32 opcode,
 	unsigned long flags;
 	int retries = 0;
 
-send_cmd:
+send_cmd_lock:
 	IPA3_UC_LOCK(flags);
 
 	if (ipa3_uc_state_check()) {
@@ -537,7 +509,7 @@ send_cmd:
 		IPA3_UC_UNLOCK(flags);
 		return -EBADF;
 	}
-
+send_cmd:
 	if (ipa3_ctx->apply_rg10_wa) {
 		if (!polling_mode)
 			IPADBG("Overriding mode to polling mode\n");
@@ -559,11 +531,11 @@ send_cmd:
 	wmb();
 
 	if (ipa3_ctx->apply_rg10_wa)
-		ipa_write_reg(ipa3_ctx->mmio,
-			IPA_UC_MAILBOX_m_n_OFFS_v3_0(IPA_CPU_2_HW_CMD_MBOX_m,
-			IPA_CPU_2_HW_CMD_MBOX_n), 0x1);
+		ipahal_write_reg_mn(IPA_UC_MAILBOX_m_n,
+			IPA_CPU_2_HW_CMD_MBOX_m,
+			IPA_CPU_2_HW_CMD_MBOX_n, 0x1);
 	else
-		ipa_write_reg(ipa3_ctx->mmio, IPA_IRQ_EE_UC_n_OFFS(0), 0x1);
+		ipahal_write_reg_n(IPA_IRQ_EE_UC_n, 0, 0x1);
 
 	if (polling_mode) {
 		for (index = 0; index < IPA_UC_POLL_MAX_RETRY; index++) {
@@ -626,6 +598,25 @@ send_cmd:
 			/* sleep for short period to flush IPA */
 			usleep_range(IPA_GSI_CHANNEL_STOP_SLEEP_MIN_USEC,
 				IPA_GSI_CHANNEL_STOP_SLEEP_MAX_USEC);
+			goto send_cmd_lock;
+		}
+
+		if (ipa3_ctx->uc_ctx.uc_status ==
+			IPA_HW_GSI_CH_NOT_EMPTY_FAILURE) {
+			retries++;
+			if (retries >= IPA_GSI_CHANNEL_EMPTY_MAX_RETRY) {
+				IPAERR("Failed after %d tries\n", retries);
+				IPA3_UC_UNLOCK(flags);
+				return -EFAULT;
+			}
+			if (ipa3_ctx->apply_rg10_wa)
+				udelay(
+				IPA_GSI_CHANNEL_EMPTY_SLEEP_MAX_USEC / 2 +
+				IPA_GSI_CHANNEL_EMPTY_SLEEP_MIN_USEC / 2);
+			else
+				usleep_range(
+				IPA_GSI_CHANNEL_EMPTY_SLEEP_MIN_USEC,
+				IPA_GSI_CHANNEL_EMPTY_SLEEP_MAX_USEC);
 			goto send_cmd;
 		}
 
@@ -662,7 +653,7 @@ int ipa3_uc_interface_init(void)
 
 	phys_addr = ipa3_ctx->ipa_wrapper_base +
 		ipa3_ctx->ctrl->ipa_reg_base_ofst +
-		IPA_SRAM_DIRECT_ACCESS_N_OFST_v3_0(0);
+		ipahal_get_reg_n_ofst(IPA_SRAM_DIRECT_ACCESS_n, 0);
 	ipa3_ctx->uc_ctx.uc_sram_mmio = ioremap(phys_addr,
 					       IPA_RAM_UC_SMEM_SIZE);
 	if (!ipa3_ctx->uc_ctx.uc_sram_mmio) {
@@ -847,6 +838,37 @@ int ipa3_uc_reset_pipe(enum ipa_client_type ipa_client)
 	return ret;
 }
 
+int ipa3_uc_is_gsi_channel_empty(enum ipa_client_type ipa_client)
+{
+	struct ipa_gsi_ep_config *gsi_ep_info;
+	union IpaHwChkChEmptyCmdData_t cmd;
+	int ret;
+
+	gsi_ep_info = ipa3_get_gsi_ep_info(ipa3_get_ep_mapping(ipa_client));
+	if (!gsi_ep_info) {
+		IPAERR("Invalid IPA ep index\n");
+		return 0;
+	}
+
+	if (ipa3_uc_state_check()) {
+		IPADBG("uC cannot be used to validate ch emptiness clnt=%d\n"
+			, ipa_client);
+		return 0;
+	}
+
+	cmd.params.ee_n = gsi_ep_info->ee;
+	cmd.params.vir_ch_id = gsi_ep_info->ipa_gsi_chan_num;
+
+	IPADBG("uC emptiness check for IPA GSI Channel %d\n",
+	       gsi_ep_info->ipa_gsi_chan_num);
+
+	ret = ipa3_uc_send_cmd(cmd.raw32b, IPA_CPU_2_HW_CMD_GSI_CH_EMPTY, 0,
+			      false, 10*HZ);
+
+	return ret;
+}
+
+
 /**
  * ipa3_uc_notify_clk_state() - notify to uC of clock enable / disable
  * @enabled: true if clock are enabled
@@ -901,20 +923,21 @@ int ipa3_uc_update_hw_flags(u32 flags)
  * to a register will be proxied by the uC due to H/W limitation.
  * This func should be called for RG10 registers only
  *
- * @Parameters: Like ipa_write_reg() parameters
+ * @Parameters: Like ipahal_write_reg_n() parameters
  *
  */
-void ipa3_uc_rg10_write_reg(void *base, u32 offset, u32 val)
+void ipa3_uc_rg10_write_reg(enum ipahal_reg_name reg, u32 n, u32 val)
 {
 	int ret;
 	u32 paddr;
 
 	if (!ipa3_ctx->apply_rg10_wa)
-		return ipa_write_reg(base, offset, val);
+		return ipahal_write_reg_n(reg, n, val);
+
 
 	/* calculate register physical address */
 	paddr = ipa3_ctx->ipa_wrapper_base + ipa3_ctx->ctrl->ipa_reg_base_ofst;
-	paddr += offset;
+	paddr += ipahal_get_reg_n_ofst(reg, n);
 
 	IPADBG("Sending uC cmd to reg write: addr=0x%x val=0x%x\n",
 		paddr, val);

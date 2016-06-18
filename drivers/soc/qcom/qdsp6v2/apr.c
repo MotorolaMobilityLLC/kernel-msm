@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -34,12 +34,14 @@
 #include <linux/qdsp6v2/apr.h>
 #include <linux/qdsp6v2/apr_tal.h>
 #include <linux/qdsp6v2/dsp_debug.h>
+#include <linux/ipc_logging.h>
 
 #define SCM_Q6_NMI_CMD 0x1
+#define APR_PKT_IPC_LOG_PAGE_CNT 2
 
 static struct apr_q6 q6;
 static struct apr_client client[APR_DEST_MAX][APR_CLIENT_MAX];
-
+static void *apr_pkt_ctx;
 static wait_queue_head_t dsp_wait;
 static wait_queue_head_t modem_wait;
 static bool is_modem_up;
@@ -50,6 +52,13 @@ struct apr_reset_work {
 	void *handle;
 	struct work_struct work;
 };
+
+#define APR_PKT_INFO(x...) \
+do { \
+	if (apr_pkt_ctx) \
+		ipc_log_string(apr_pkt_ctx, "<APR>: "x); \
+} while (0)
+
 
 struct apr_svc_table {
 	char name[64];
@@ -305,12 +314,43 @@ int apr_send_pkt(void *handle, uint32_t *buf)
 	hdr->dest_domain = svc->dest_domain;
 	hdr->dest_svc = svc->id;
 
-	w_len = apr_tal_write(clnt->handle, buf, hdr->pkt_size);
+	APR_PKT_INFO("Tx: dest_svc[%d], opcode[0x%X], size[%d]",
+			hdr->dest_svc, hdr->opcode, hdr->pkt_size);
+
+	w_len = apr_tal_write(clnt->handle, buf,
+			(struct apr_pkt_priv *)&svc->pkt_owner,
+			hdr->pkt_size);
 	if (w_len != hdr->pkt_size)
 		pr_err("Unable to write APR pkt successfully: %d\n", w_len);
 	spin_unlock_irqrestore(&svc->w_lock, flags);
 
 	return w_len;
+}
+
+int apr_pkt_config(void *handle, struct apr_pkt_cfg *cfg)
+{
+	struct apr_svc *svc = (struct apr_svc *)handle;
+	uint16_t dest_id;
+	uint16_t client_id;
+	struct apr_client *clnt;
+
+	if (!handle) {
+		pr_err("%s: Invalid handle\n", __func__);
+		return -EINVAL;
+	}
+
+	if (svc->need_reset) {
+		pr_err("%s: service need reset\n", __func__);
+		return -ENETRESET;
+	}
+
+	svc->pkt_owner = cfg->pkt_owner;
+	dest_id = svc->dest_id;
+	client_id = svc->client_id;
+	clnt = &client[dest_id][client_id];
+
+	return apr_tal_rx_intents_config(clnt->handle,
+		cfg->intents.num_of_intents, cfg->intents.size);
 }
 
 struct apr_svc *apr_register(char *dest, char *svc_name, apr_fn svc_fn,
@@ -399,6 +439,8 @@ struct apr_svc *apr_register(char *dest, char *svc_name, apr_fn svc_fn,
 	svc->dest_id = dest_id;
 	svc->client_id = client_id;
 	svc->dest_domain = domain_id;
+	svc->pkt_owner = APR_PKT_OWNER_DRIVER;
+
 	if (src_port != 0xFFFFFFFF) {
 		temp_port = ((src_port >> 8) * 8) + (src_port & 0xFF);
 		pr_debug("port = %d t_port = %d\n", src_port, temp_port);
@@ -454,10 +496,12 @@ void apr_cb_func(void *buf, int len, void *priv)
 	pr_debug("\n*****************\n");
 
 	if (!buf || len <= APR_HDR_SIZE) {
-		pr_err("APR: Improper apr pkt received:%p %d\n", buf, len);
+		pr_err("APR: Improper apr pkt received:%pK %d\n", buf, len);
 		return;
 	}
 	hdr = buf;
+	APR_PKT_INFO("Rx: dest_svc[%d], opcode[0x%X], size[%d]",
+		     hdr->dest_svc, hdr->opcode, hdr->pkt_size);
 
 	ver = hdr->hdr_field;
 	ver = (ver & 0x000F);
@@ -540,7 +584,7 @@ void apr_cb_func(void *buf, int len, void *priv)
 		return;
 	}
 	pr_debug("svc_idx = %d\n", i);
-	pr_debug("%x %x %x %p %p\n", c_svc->id, c_svc->dest_id,
+	pr_debug("%x %x %x %pK %pK\n", c_svc->id, c_svc->dest_id,
 		 c_svc->client_id, c_svc->fn, c_svc->priv);
 	data.payload_size = hdr->pkt_size - hdr_size;
 	data.opcode = hdr->opcode;
@@ -604,7 +648,7 @@ static void apr_reset_deregister(struct work_struct *work)
 			container_of(work, struct apr_reset_work, work);
 
 	handle = apr_reset->handle;
-	pr_debug("%s:handle[%p]\n", __func__, handle);
+	pr_debug("%s:handle[%pK]\n", __func__, handle);
 	apr_deregister(handle);
 	kfree(apr_reset);
 }
@@ -637,7 +681,7 @@ int apr_deregister(void *handle)
 		client[dest_id][client_id].svc_cnt--;
 		if (!client[dest_id][client_id].svc_cnt) {
 			svc->need_reset = 0x0;
-			pr_debug("%s: service is reset %p\n", __func__, svc);
+			pr_debug("%s: service is reset %pK\n", __func__, svc);
 		}
 	}
 
@@ -665,7 +709,7 @@ void apr_reset(void *handle)
 
 	if (!handle)
 		return;
-	pr_debug("%s: handle[%p]\n", __func__, handle);
+	pr_debug("%s: handle[%pK]\n", __func__, handle);
 
 	if (apr_reset_workqueue == NULL) {
 		pr_err("%s: apr_reset_workqueue is NULL\n", __func__);
@@ -881,6 +925,11 @@ static int __init apr_init(void)
 	if (!apr_reset_workqueue)
 		return -ENOMEM;
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_nb);
+
+	apr_pkt_ctx = ipc_log_context_create(APR_PKT_IPC_LOG_PAGE_CNT,
+						"apr", 0);
+	if (!apr_pkt_ctx)
+		pr_err("%s: Unable to create ipc log context\n", __func__);
 
 	return 0;
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,13 +21,6 @@
 #include <soc/qcom/scm.h>
 
 #define MODULE_NAME "gladiator_error_reporting"
-
-/* SCM call service and command ID */
-#define SCM_TZ_SVC_INFO			0x6
-#define TZ_INFO_GET_SECURE_STATE	0x4
-
-/* Secure State Check */
-#define SEC_STATE_VALID(a) (a & (BIT(0) | BIT(2) | BIT(6)))
 
 /* Register Offsets */
 #define GLADIATOR_ID_COREID	0x0
@@ -600,27 +593,6 @@ bail:
 	return ret;
 }
 
-static int scm_is_gladiator_erp_available(void)
-{
-	int ret;
-	struct scm_desc desc = {0};
-
-	desc.args[0] = 0;
-	desc.arginfo = 0;
-	ret = scm_call2(SCM_SIP_FNID(SCM_TZ_SVC_INFO,
-				TZ_INFO_GET_SECURE_STATE),
-				&desc);
-	if (ret) {
-		pr_err("gladiator_error_reporting: SCM call failed\n");
-		return -ENODEV;
-	}
-
-	if (SEC_STATE_VALID(desc.ret[0]))
-		return 0;
-	else
-		return -ENODEV;
-}
-
 static struct platform_driver gladiator_erp_driver = {
 	.probe = gladiator_erp_probe,
 	.driver = {
@@ -634,9 +606,9 @@ static int init_gladiator_erp(void)
 {
 	int ret;
 
-	ret = scm_is_gladiator_erp_available();
-	if (ret) {
-		pr_info("Gladiator Error Reporting not available\n");
+	ret = scm_is_secure_device();
+	if (!ret) {
+		pr_info("Gladiator Error Reporting not available %d\n", ret);
 		return -ENODEV;
 	}
 

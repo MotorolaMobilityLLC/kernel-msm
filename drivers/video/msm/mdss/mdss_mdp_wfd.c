@@ -171,7 +171,7 @@ int mdss_mdp_wfd_setup(struct mdss_mdp_wfd *wfd,
 	ctl->roi =  (struct mdss_rect) {0, 0, width, height};
 	ctl->is_secure = (layer->flags & MDP_LAYER_SECURE_SESSION);
 
-	if (wb->caps & MDSS_MDP_WB_INTF) {
+	if (ctl->mdata->wfd_mode == MDSS_MDP_WFD_INTERFACE) {
 		ctl->mixer_left = mdss_mdp_mixer_alloc(ctl,
 			MDSS_MDP_MIXER_TYPE_INTF, (width > max_mixer_width), 0);
 		if (width > max_mixer_width) {
@@ -185,9 +185,11 @@ int mdss_mdp_wfd_setup(struct mdss_mdp_wfd *wfd,
 	} else if (width > max_mixer_width) {
 		pr_err("width > max_mixer_width supported only in MDSS_MDP_WB_INTF\n");
 		goto wfd_setup_error;
+	} else if (ctl->mdata->wfd_mode == MDSS_MDP_WFD_DEDICATED) {
+		ctl->mixer_left = mdss_mdp_mixer_alloc(ctl,
+				MDSS_MDP_MIXER_TYPE_WRITEBACK, false, 0);
 	} else {
-		/* WB0 or WB1 in line mode */
-		ctl->mixer_left = mdss_mdp_mixer_assign(wb->num, true);
+		ctl->mixer_left = mdss_mdp_mixer_assign(wb->num, true, false);
 	}
 
 	if (!ctl->mixer_left ||
@@ -342,6 +344,12 @@ static int mdss_mdp_wfd_validate_out_configuration(struct mdss_mdp_wfd *wfd,
 		fmt = mdss_mdp_get_format_params(layer->buffer.format);
 		if (fmt && !(fmt->flag & VALID_MDP_WB_INTF_FORMAT)) {
 			pr_err("wb=%d does not support dst fmt:%d\n", wb_idx,
+				layer->buffer.format);
+			return -EINVAL;
+		}
+
+		if (!ctl->mdata->has_wb_ubwc && mdss_mdp_is_ubwc_format(fmt)) {
+			pr_err("wb=%d does not support UBWC fmt:%d\n", wb_idx,
 				layer->buffer.format);
 			return -EINVAL;
 		}

@@ -18,6 +18,7 @@
 #else
 
 #include <linux/device.h>
+#include <linux/sched.h>
 
 /* Peripheral id registers (0xFD0-0xFEC) */
 #define CORESIGHT_PERIPHIDR4	0xfd0
@@ -42,6 +43,13 @@
 #define CORESIGHT_UNLOCK	0xc5acce55
 
 extern struct bus_type coresight_bustype;
+
+enum coresight_clk_rate {
+	CORESIGHT_CLK_RATE_OFF,
+	CORESIGHT_CLK_RATE_TRACE = 1000,
+	CORESIGHT_CLK_RATE_HSTRACE = 2000,
+	CORESIGHT_CLK_RATE_FIXED = 3000,
+};
 
 enum coresight_dev_type {
 	CORESIGHT_DEV_TYPE_NONE,
@@ -97,6 +105,7 @@ struct coresight_dev_subtype {
 		connected  to.
  * @nr_outport:	number of output ports for this component.
  * @clk:	The clock this component is associated to.
+ * @default_sink: Flag to set default sink
  */
 struct coresight_platform_data {
 	int cpu;
@@ -107,6 +116,7 @@ struct coresight_platform_data {
 	int *child_ports;
 	int nr_outport;
 	struct clk *clk;
+	bool default_sink;
 };
 
 /**
@@ -210,7 +220,7 @@ struct coresight_ops_link {
  * Operations available for sources.
  * @trace_id:	returns the value of the component's trace ID as known
 		to the HW.
- * @enable:	enables tracing from a source.
+ * @enable:	enables tracing for a source.
  * @disable:	disables tracing for a source.
  */
 struct coresight_ops_source {
@@ -250,6 +260,26 @@ extern struct coresight_platform_data *of_get_coresight_platform_data(
 #else
 static inline struct coresight_platform_data *of_get_coresight_platform_data(
 	struct device *dev, struct device_node *node) { return NULL; }
+#endif
+
+#ifdef CONFIG_PID_NS
+static inline unsigned long
+coresight_vpid_to_pid(unsigned long vpid)
+{
+	struct task_struct *task = NULL;
+	unsigned long pid = 0;
+
+	rcu_read_lock();
+	task = find_task_by_vpid(vpid);
+	if (task)
+		pid = task_pid_nr(task);
+	rcu_read_unlock();
+
+	return pid;
+}
+#else
+static inline unsigned long
+coresight_vpid_to_pid(unsigned long vpid) { return vpid; }
 #endif
 
 #endif

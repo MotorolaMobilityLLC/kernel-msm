@@ -86,18 +86,6 @@ conditions.
                   Thulium v1.  You *must* also set qcom,tz-device-id for
                   this to work.
 
-- qcom,no-mmu-enable : When attaching to this SMMU, program everything as
-                  usual (stream matching table, etc) but leave the SCTLR.M
-                  bit disabled, so that the SMMU doesn't actually perform
-                  translations.  This is needed in cases where the stream
-                  matching table needs to be set up without turning on SMMU
-                  translations (for example, when nested translations are
-                  used with a hypervisor controlling stage-2).  This mode of
-                  operation is described in the ARM SMMU spec as "stage 1
-                  and stage 2 contexts are valid, but the SMMU is not
-                  enabled for stage 1 translation" (Section 2.1: "Overview
-                  of SMMU operation").
-
 - qcom,no-smr-check : Usually when an SMMU probes we do a sanity check on
                   the SMR registers to make sure they can fully support all
                   of the mask bits.  This check can cause problems for use
@@ -117,6 +105,15 @@ conditions.
 		  acknowledgment for halt request. So add an option to register
 		  a call back notifier on regulators in whcih SMMU can be halted
 		  or resumed when regulator is powered down/up.
+
+- qcom,enable-static-cb : Enables option to use pre-defined static context bank
+		  allocation programmed by TZ. Global register including SMR and
+		  S2CR registers are configured by TZ before kernel comes up and
+		  this programming is not altered throughout the life of system.
+		  We would be reading through these registers at run time to
+		  identify CB allocated for a particular sid. SID masking isn't
+		  supported as we are directly comparing client SID with ID bits
+		  of SMR registers.
 
 - clocks        : List of clocks to be used during SMMU register access. See
                   Documentation/devicetree/bindings/clock/clock-bindings.txt

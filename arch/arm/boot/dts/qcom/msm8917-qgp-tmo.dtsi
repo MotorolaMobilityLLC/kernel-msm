@@ -1,0 +1,139 @@
+/*
+ * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm-pmi8937.dtsi"
+#include "msm8917-qrd.dtsi"
+#include "msm8917-camera-sensor-tmo.dtsi"
+#include "msm8937-mdss-panels.dtsi"
+
+&flash_led {
+	/delete-node/ qcom,flash_1;
+	/delete-node/ qcom,torch_1;
+};
+
+&soc {
+
+	i2c@78b7000 {
+		status = "ok";
+		goodix@5d{
+			compatible = "goodix,gt9xx";
+			reg = <0x5d>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <65 0x02>;
+			avdd-supply = <&pm8917_l17>;
+			vdd-supply = <&pm8917_l17>;
+			vcc_i2c-supply = <&pm8917_l6>;
+			reset-gpios = <&tlmm 64 0x00>;
+			interrupt-gpios = <&tlmm 65 0x2008>;
+			goodix,panel-coords = <0 0 720 1200>;
+			goodix,display-coords = <0 0 720 1080>;
+			goodix,button-map= <139 172 158>;
+			goodix,product-id = "5668";
+			goodix,fw_name = "gtp_fw.bin";
+			goodix,have-touch-key;
+			goodix,driver-send-cfg;
+		};
+
+		synaptics@22{
+			compatible = "synaptics,dsx-i2c";
+			reg = <0x22>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <65 0x2008>;
+			vdd_ana-supply = <&pm8917_l17>;
+			vcc_i2c-supply = <&pm8917_l6>;
+			  /* pins used by touchscreen */
+			pinctrl-names = "pmx_ts_active","pmx_ts_suspend",
+					"pmx_ts_release";
+			pinctrl-0 = <&ts_int_active &ts_reset_active>;
+			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+			pinctrl-2 = <&ts_release>;
+			synaptics,pwr-reg-name = "vdd_ana";
+			synaptics,bus-reg-name = "vcc_i2c";
+			synaptics,irq-gpio = <&tlmm 65 0x2008>;
+			synaptics,irq-on-state = <0>;
+			synaptics,irq-flags = <0x2008>;
+			synaptics,reset-delay-ms = <200>;
+			synaptics,max-y-for-2d = <1919>;
+			synaptics,cap-button-codes = <139 158 172>;
+			synaptics,vir-button-codes = <139 180 2000 320 160
+						      158 540 2000 320 160
+						      172 900 2000 320 160>;
+		};
+	};
+
+	gpio_keys {
+		vol_down {
+			label = "volume_down";
+			gpios = <&tlmm 128 0x1>;
+			linux,input-type = <1>;
+			linux,code = <114>;
+			debounce-interval = <15>;
+		};
+	};
+
+	led_flash0: qcom,camera-flash {
+	};
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_lead_fl10802_fwvga_video>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
+
+	qcom,platform-reset-gpio = <&tlmm 60 0>;
+};
+
+&dsi_lead_fl10802_fwvga_video {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&int_codec {
+	qcom,model = "msm8917-tmo-snd-card";
+};
+
+/ {
+	qrd_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		#include "batterydata-msm8917-qgp-tmo-4v4-2900mah.dtsi"
+	};
+};
+
+&pmi8937_charger {
+	qcom,battery-data = <&qrd_batterydata>;
+	qcom,float-voltage-mv = <4400>;
+	qcom,float-voltage-comp = <12>;
+	qcom,fastchg-current-ma = <2820>;
+	qcom,fastchg-current-comp = <1200>;
+	qcom,chg-led-sw-controls;
+	qcom,chg-led-support;
+	status = "okay";
+};
+
+&pmi8937_fg {
+	qcom,battery-data = <&qrd_batterydata>;
+	qcom,cold-bat-decidegc = <0>;
+	qcom,cool-bat-decidegc = <100>;
+	qcom,hot-bat-decidegc = <450>;
+	qcom,warm-bat-decidegc = <600>;
+	qcom,bad-battery-detection-enable;
+	qcom,hold-soc-while-full;
+};

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,6 +21,11 @@
 #include "../codecs/wcd9335.h"
 
 #define DEV_NAME_STR_LEN            32
+enum TASHA_LITE_DEVICE {
+	MSM8952_TASHA_LITE = 0,
+	MSM8953_TASHA_LITE,
+	NUM_OF_TASHA_LITE_DEVICE,
+};
 
 static struct snd_soc_card snd_soc_card_msm[MAX_CODECS];
 static struct snd_soc_card snd_soc_card_msm_card;
@@ -1214,7 +1219,7 @@ static struct snd_soc_dai_link msm8952_common_be_dai[] = {
 		.codec_name     = "msm-stub-codec.1",
 		.codec_dai_name = "msm-stub-rx",
 		.no_pcm = 1,
-		.dpcm_capture = 1,
+		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_VOICE_PLAYBACK_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ignore_suspend = 1,
@@ -1228,9 +1233,24 @@ static struct snd_soc_dai_link msm8952_common_be_dai[] = {
 		.codec_name     = "msm-stub-codec.1",
 		.codec_dai_name = "msm-stub-rx",
 		.no_pcm = 1,
-		.dpcm_capture = 1,
+		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_VOICE2_PLAYBACK_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ignore_suspend = 1,
+	},
+
+	{
+		.name = LPASS_BE_QUIN_MI2S_TX,
+		.stream_name = "Quinary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.5",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.be_id = MSM_BACKEND_DAI_QUINARY_MI2S_TX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8952_quin_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
 };
@@ -1459,9 +1479,12 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 {
 	struct snd_soc_card *card = &snd_soc_card_msm_card;
 	struct snd_soc_dai_link *msm8952_dai_links = NULL;
-	int num_links, ret, len1, len2, len3, len4;
+	int num_links, ret, len1, len2, len3, len4 = 0;
 	enum codec_variant codec_ver = 0;
-	const char *tasha_lite = "msm8952-tashalite-snd-card";
+	const char *tasha_lite[NUM_OF_TASHA_LITE_DEVICE] = {
+		"msm8952-tashalite-snd-card",
+		"msm8953-tashalite-snd-card"
+	};
 
 	card->dev = dev;
 	ret = snd_soc_of_parse_card_name(card, "qcom,model");
@@ -1489,8 +1512,12 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		msm8952_dai_links = msm8952_tomtom_dai_links;
 	} else if (strnstr(card->name, "tasha", strlen(card->name))) {
 		codec_ver = tasha_codec_ver();
-		if (codec_ver == WCD9326)
-			card->name = tasha_lite;
+		if (codec_ver == WCD9326) {
+			if (!strcmp(card->name, "msm8952-tasha-snd-card"))
+				card->name = tasha_lite[MSM8952_TASHA_LITE];
+			else if (!strcmp(card->name, "msm8953-tasha-snd-card"))
+				card->name = tasha_lite[MSM8953_TASHA_LITE];
+		}
 
 		len1 = ARRAY_SIZE(msm8952_common_fe_dai);
 		len2 = len1 + ARRAY_SIZE(msm8952_tasha_fe_dai);

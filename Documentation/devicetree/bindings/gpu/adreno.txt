@@ -16,7 +16,9 @@ Required properties:
 - interrupts:		Interrupt mapping for GPU IRQ.
 - interrupt-names:	String property to describe the name of the interrupt.
 - qcom,id:		An integer used as an identification number for the device.
-
+- qcom,gpu-bimc-interface-clk-freq:
+			GPU-BIMC interface clock needs to be set to this value for
+			targets where B/W requirements does not meet GPU Turbo use cases.
 - clocks:		List of phandle and clock specifier pairs, one pair
 			for each clock input to the device.
 - clock-names:		List of clock input name strings sorted in the same
@@ -91,6 +93,9 @@ Optional Properties:
 			   This is used to override faulty hardware readings.
 - qcom,strtstp-sleepwake:  Boolean. Enables use of GPU SLUMBER instead of SLEEP for power savings
 - qcom,gx-retention:  	   Boolean. Enables use of GX rail RETENTION voltage
+- qcom,disable-busy-time-burst:
+				Boolean. Disables the busy time burst to avoid switching
+				of power level for large frames based on the busy time limit.
 
 - qcom,pm-qos-active-latency:
 				Right after GPU wakes up from sleep, driver votes for
@@ -102,6 +107,9 @@ Optional Properties:
 - qcom,pm-qos-wakeup-latency:
 				Similar to the above. Driver votes against deep low
 				power modes right before GPU wakes up from sleep.
+- qcom,l2pc-cpu-mask-latency:
+				The CPU mask latency in microseconds to avoid L2PC
+				on masked CPUs.
 - qcom,force-32bit:
 				Force the GPU to use 32 bit data sizes even if
 				it is capable of doing 64 bit.
@@ -112,6 +120,24 @@ Optional Properties:
 				mask   - mask for the relevant bits in the efuse register.
 				shift  - number of bits to right shift to get the speed bin
 				value.
+- qcom,highest-bank-bit:
+				Specify the bit of the highest DDR bank. This
+				is programmed into protected registers and also
+				passed to the user as a property.
+
+- qcom,l2pc-cpu-mask:
+				Disables L2PC on masked CPUs when any of Graphics
+				rendering thread is running on masked CPUs.
+				Bit 0 is for CPU-0, bit 1 is for CPU-1...
+
+- qcom,enable-ca-jump:
+                                Boolean. Enables use of context aware DCVS
+- qcom,ca-busy-penalty:
+                                This property represents the time in microseconds required to
+                                initiate context aware power level jump.
+- qcom,ca-target-pwrlevel:
+                                This value indicates which qcom,gpu-pwrlevel to jump on in case
+                                of context aware power level jump.
 
 GPU Quirks:
 - qcom,gpu-quirk-two-pass-use-wfi:
@@ -119,7 +145,9 @@ GPU Quirks:
 				A5XX_PC_DBG_ECO_CNTL (5XX only)
 - qcom,gpu-quirk-critical-packets:
 				Submit a set of critical PM4 packets when the GPU wakes up
-
+- qcom,gpu-quirk-fault-detect-mask:
+				Mask out RB1-3 activity signals from HW hang
+				detection logic
 
 The following properties are optional as collecting data via coresight might
 not be supported for every chipset. The documentation for coresight
@@ -187,6 +215,15 @@ Example of A330 GPU in MSM8916:
 		coresight-outports = <0>;
 		coresight-child-list = <&funnel_in0>;
 		coresight-child-ports = <5>;
+
+		/* Enable context aware freq. scaling */
+		qcom,enable-ca-jump;
+
+		/* Context aware jump busy penalty in us */
+		qcom,ca-busy-penalty = <12000>;
+
+		/* Context aware jump target power level */
+		qcom,ca-target-pwrlevel = <1>;
 
 		/* Power levels */
 		qcom,gpu-pwrlevels-bins {

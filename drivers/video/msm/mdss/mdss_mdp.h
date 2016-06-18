@@ -48,6 +48,7 @@
 
 #define VALID_ROT_WB_FORMAT BIT(0)
 #define VALID_MDP_WB_INTF_FORMAT BIT(1)
+#define VALID_MDP_CURSOR_FORMAT BIT(2)
 
 #define C3_ALPHA	3	/* alpha */
 #define C2_R_Cr		2	/* R/Cr */
@@ -89,6 +90,8 @@
 #define HW_CURSOR_STAGE(mdata) \
 	(((mdata)->max_target_zorder + MDSS_MDP_STAGE_0) - 1)
 
+#define BITS_TO_BYTES(x) DIV_ROUND_UP(x, BITS_PER_BYTE)
+
 enum mdss_mdp_perf_state_type {
 	PERF_SW_COMMIT_STATE = 0,
 	PERF_HW_MDP_STATE,
@@ -112,12 +115,70 @@ enum mdss_mdp_mixer_mux {
 };
 
 enum mdss_mdp_pipe_type {
-	MDSS_MDP_PIPE_TYPE_UNUSED,
+	MDSS_MDP_PIPE_TYPE_INVALID,
 	MDSS_MDP_PIPE_TYPE_VIG,
 	MDSS_MDP_PIPE_TYPE_RGB,
 	MDSS_MDP_PIPE_TYPE_DMA,
 	MDSS_MDP_PIPE_TYPE_CURSOR,
 };
+
+static inline enum mdss_mdp_sspp_index get_pipe_num_from_ndx(u32 ndx)
+{
+	u32 id;
+
+	if (unlikely(!ndx))
+		return MDSS_MDP_MAX_SSPP;
+
+	id = fls(ndx) - 1;
+
+	if (unlikely(ndx ^ BIT(id)))
+		return MDSS_MDP_MAX_SSPP;
+
+	return id;
+}
+
+static inline enum mdss_mdp_pipe_type
+get_pipe_type_from_num(enum mdss_mdp_sspp_index pnum)
+{
+	enum mdss_mdp_pipe_type ptype;
+
+	switch (pnum) {
+	case MDSS_MDP_SSPP_VIG0:
+	case MDSS_MDP_SSPP_VIG1:
+	case MDSS_MDP_SSPP_VIG2:
+	case MDSS_MDP_SSPP_VIG3:
+		ptype = MDSS_MDP_PIPE_TYPE_VIG;
+		break;
+	case MDSS_MDP_SSPP_RGB0:
+	case MDSS_MDP_SSPP_RGB1:
+	case MDSS_MDP_SSPP_RGB2:
+	case MDSS_MDP_SSPP_RGB3:
+		ptype = MDSS_MDP_PIPE_TYPE_RGB;
+		break;
+	case MDSS_MDP_SSPP_DMA0:
+	case MDSS_MDP_SSPP_DMA1:
+		ptype = MDSS_MDP_PIPE_TYPE_DMA;
+		break;
+	case MDSS_MDP_SSPP_CURSOR0:
+	case MDSS_MDP_SSPP_CURSOR1:
+		ptype = MDSS_MDP_PIPE_TYPE_CURSOR;
+		break;
+	default:
+		ptype = MDSS_MDP_PIPE_TYPE_INVALID;
+		break;
+	}
+
+	return ptype;
+}
+
+static inline enum mdss_mdp_pipe_type get_pipe_type_from_ndx(u32 ndx)
+{
+	enum mdss_mdp_sspp_index pnum;
+
+	pnum = get_pipe_num_from_ndx(ndx);
+
+	return get_pipe_type_from_num(pnum);
+}
 
 enum mdss_mdp_block_type {
 	MDSS_MDP_BLOCK_UNUSED,
@@ -126,6 +187,7 @@ enum mdss_mdp_block_type {
 	MDSS_MDP_BLOCK_DSPP,
 	MDSS_MDP_BLOCK_WB,
 	MDSS_MDP_BLOCK_CDM,
+	MDSS_MDP_BLOCK_SSPP_10,
 	MDSS_MDP_BLOCK_MAX
 };
 
@@ -249,6 +311,8 @@ struct mdss_mdp_writeback {
 	char __iomem *base;
 	u32 caps;
 	struct kref kref;
+	u8 supported_input_formats[BITS_TO_BYTES(MDP_IMGTYPE_LIMIT1)];
+	u8 supported_output_formats[BITS_TO_BYTES(MDP_IMGTYPE_LIMIT1)];
 };
 
 struct mdss_mdp_ctl_intfs_ops {
@@ -442,6 +506,7 @@ struct mdss_mdp_format_params {
 	u8 fetch_mode;
 	u8 bits[MAX_PLANES];
 	u8 element[MAX_PLANES];
+	u8 unpack_dx_format;	/*1 for 10 bit format otherwise 0 */
 };
 
 struct mdss_mdp_format_ubwc_tile_info {
@@ -649,13 +714,14 @@ struct mdss_mdp_pipe {
 
 	struct mdp_overlay_pp_params pp_cfg;
 	struct mdss_pipe_pp_res pp_res;
-	struct mdp_scale_data scale;
+	struct mdp_scale_data_v2 scaler;
 	u8 chroma_sample_h;
 	u8 chroma_sample_v;
 
 	wait_queue_head_t free_waitq;
 	u32 frame_rate;
 	u8 csc_coeff_set;
+	u8 supported_formats[BITS_TO_BYTES(MDP_IMGTYPE_LIMIT1)];
 };
 
 struct mdss_mdp_writeback_arg {
@@ -1116,6 +1182,12 @@ static inline bool mdss_mdp_is_ubwc_supported(struct mdss_data_type *mdata)
 	return mdata->has_ubwc;
 }
 
+static inline bool mdss_mdp_is_wb_rotator_supported(
+		struct mdss_data_type *mdata)
+{
+	return mdata && !mdata->has_separate_rotator;
+}
+
 static inline int mdss_mdp_is_cdm_supported(struct mdss_data_type *mdata,
 					    u32 intf_type, u32 mixer_type)
 {
@@ -1128,7 +1200,8 @@ static inline int mdss_mdp_is_cdm_supported(struct mdss_data_type *mdata,
 	 */
 	return support && ((intf_type == MDSS_INTF_HDMI) ||
 			   ((intf_type == MDSS_MDP_NO_INTF) &&
-			    (mixer_type == MDSS_MDP_MIXER_TYPE_INTF)));
+			    ((mixer_type == MDSS_MDP_MIXER_TYPE_INTF) ||
+			     (mixer_type == MDSS_MDP_MIXER_TYPE_WRITEBACK))));
 }
 
 static inline u32 mdss_mdp_get_cursor_frame_size(struct mdss_data_type *mdata)
@@ -1227,6 +1300,20 @@ static inline bool mdss_mdp_is_lineptr_supported(struct mdss_mdp_ctl *ctl)
 
 	return (ctl->is_video_mode || ((pinfo->type == MIPI_CMD_PANEL)
 			&& (pinfo->te.tear_check_en)) ? true : false);
+}
+
+static inline bool mdss_mdp_is_map_needed(struct mdss_data_type *mdata,
+						struct mdss_mdp_img_data *data)
+{
+	u32 is_secure_ui = data->flags & MDP_SECURE_DISPLAY_OVERLAY_SESSION;
+
+     /*
+      * For ULT Targets we need SMMU Map, to issue map call for secure Display.
+      */
+	if (is_secure_ui && !mdss_has_quirk(mdata, MDSS_QUIRK_NEED_SECURE_MAP))
+		return false;
+
+	return true;
 }
 
 irqreturn_t mdss_mdp_isr(int irq, void *ptr);
@@ -1539,6 +1626,7 @@ int mdss_mdp_wb_get_format(struct msm_fb_data_type *mfd,
 					struct mdp_mixer_cfg *mixer_cfg);
 
 void mdss_mdp_pipe_calc_pixel_extn(struct mdss_mdp_pipe *pipe);
+void mdss_mdp_pipe_calc_qseed3_cfg(struct mdss_mdp_pipe *pipe);
 int mdss_mdp_wb_set_secure(struct msm_fb_data_type *mfd, int enable);
 int mdss_mdp_wb_get_secure(struct msm_fb_data_type *mfd, uint8_t *enable);
 void mdss_mdp_ctl_restore(bool locked);
@@ -1556,7 +1644,7 @@ struct mdss_mdp_ctl *mdss_mdp_ctl_alloc(struct mdss_data_type *mdata,
 					       u32 off);
 int mdss_mdp_ctl_free(struct mdss_mdp_ctl *ctl);
 
-struct mdss_mdp_mixer *mdss_mdp_mixer_assign(u32 id, bool wb);
+struct mdss_mdp_mixer *mdss_mdp_mixer_assign(u32 id, bool wb, bool rot);
 struct mdss_mdp_mixer *mdss_mdp_mixer_alloc(
 		struct mdss_mdp_ctl *ctl, u32 type, int mux, int rotator);
 int mdss_mdp_mixer_free(struct mdss_mdp_mixer *mixer);
@@ -1572,6 +1660,8 @@ void mdss_mdp_ctl_dsc_setup(struct mdss_mdp_ctl *ctl,
 void mdss_mdp_video_isr(void *ptr, u32 count);
 void mdss_mdp_enable_hw_irq(struct mdss_data_type *mdata);
 void mdss_mdp_disable_hw_irq(struct mdss_data_type *mdata);
+
+void mdss_mdp_set_supported_formats(struct mdss_data_type *mdata);
 
 #ifdef CONFIG_FB_MSM_MDP_NONE
 struct mdss_data_type *mdss_mdp_get_mdata(void)

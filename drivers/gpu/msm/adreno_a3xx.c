@@ -27,6 +27,7 @@
 #include "adreno_trace.h"
 #include "adreno_pm4types.h"
 #include "adreno_perfcounter.h"
+#include "adreno_snapshot.h"
 
 /*
  * Define registers for a3xx that contain addresses used by the
@@ -151,7 +152,7 @@ static const unsigned int _a3xx_pwron_fixup_fs_instructions[] = {
 };
 
 /**
- * adreno_a3xx_pwron_fixup_init() - Initalize a special command buffer to run a
+ * _a3xx_pwron_fixup() - Initialize a special command buffer to run a
  * post-power collapse shader workaround
  * @adreno_dev: Pointer to a adreno_device struct
  *
@@ -161,7 +162,7 @@ static const unsigned int _a3xx_pwron_fixup_fs_instructions[] = {
  *
  * Returns: 0 on success or negative on error
  */
-int adreno_a3xx_pwron_fixup_init(struct adreno_device *adreno_dev)
+static int _a3xx_pwron_fixup(struct adreno_device *adreno_dev)
 {
 	unsigned int *cmds;
 	int count = ARRAY_SIZE(_a3xx_pwron_fixup_fs_instructions);
@@ -596,29 +597,16 @@ int adreno_a3xx_pwron_fixup_init(struct adreno_device *adreno_dev)
 static void a3xx_platform_setup(struct adreno_device *adreno_dev)
 {
 	struct adreno_gpudev *gpudev;
-	const struct adreno_reg_offsets *reg_offsets;
 
-	if (adreno_is_a306(adreno_dev) || adreno_is_a306a(adreno_dev)) {
+	if (adreno_is_a306(adreno_dev) || adreno_is_a306a(adreno_dev)
+			|| adreno_is_a304(adreno_dev)) {
 		gpudev = ADRENO_GPU_DEVICE(adreno_dev);
-		reg_offsets = gpudev->reg_offsets;
-		reg_offsets->offsets[ADRENO_REG_VBIF_XIN_HALT_CTRL0] =
-			A3XX_VBIF2_XIN_HALT_CTRL0;
-		reg_offsets->offsets[ADRENO_REG_VBIF_XIN_HALT_CTRL1] =
-			A3XX_VBIF2_XIN_HALT_CTRL1;
 		gpudev->vbif_xin_halt_ctrl0_mask =
-				A3XX_VBIF2_XIN_HALT_CTRL0_MASK;
+				A30X_VBIF_XIN_HALT_CTRL0_MASK;
 	}
 }
 
-/*
- * a3xx_rb_init() - Initialize ringbuffer
- * @adreno_dev: Pointer to adreno device
- * @rb: Pointer to the ringbuffer of device
- *
- * Submit commands for ME initialization, common function shared between
- * a3xx devices
- */
-static int a3xx_rb_init(struct adreno_device *adreno_dev,
+static int a3xx_send_me_init(struct adreno_device *adreno_dev,
 			 struct adreno_ringbuffer *rb)
 {
 	unsigned int *cmds;
@@ -664,6 +652,58 @@ static int a3xx_rb_init(struct adreno_device *adreno_dev,
 	return ret;
 }
 
+static int a3xx_rb_start(struct adreno_device *adreno_dev,
+			 unsigned int start_type)
+{
+	struct adreno_ringbuffer *rb = ADRENO_CURRENT_RINGBUFFER(adreno_dev);
+	int ret;
+
+	/*
+	 * The size of the ringbuffer in the hardware is the log2
+	 * representation of the size in quadwords (sizedwords / 2).
+	 * Also disable the host RPTR shadow register as it might be unreliable
+	 * in certain circumstances.
+	 */
+
+	adreno_writereg(adreno_dev, ADRENO_REG_CP_RB_CNTL,
+		(ilog2(KGSL_RB_DWORDS >> 1) & 0x3F) |
+		(1 << 27));
+
+	adreno_writereg(adreno_dev, ADRENO_REG_CP_RB_BASE,
+			rb->buffer_desc.gpuaddr);
+
+	ret = a3xx_microcode_load(adreno_dev, start_type);
+	if (ret == 0) {
+		/* clear ME_HALT to start micro engine */
+		adreno_writereg(adreno_dev, ADRENO_REG_CP_ME_CNTL, 0);
+
+		ret = a3xx_send_me_init(adreno_dev, rb);
+	}
+
+	return ret;
+}
+
+/*
+ * a3xx_init() - Initialize gpu specific data
+ * @adreno_dev: Pointer to adreno device
+ */
+static void a3xx_init(struct adreno_device *adreno_dev)
+{
+	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
+
+	_a3xx_pwron_fixup(adreno_dev);
+
+	/* Adjust snapshot section sizes according to core */
+	if ((adreno_is_a330(adreno_dev) || adreno_is_a305b(adreno_dev))) {
+		gpudev->snapshot_data->sect_sizes->cp_pfp =
+					A320_SNAPSHOT_CP_STATE_SECTION_SIZE;
+		gpudev->snapshot_data->sect_sizes->roq =
+					A320_SNAPSHOT_ROQ_SECTION_SIZE;
+		gpudev->snapshot_data->sect_sizes->cp_merciu =
+					A320_SNAPSHOT_CP_MERCIU_SECTION_SIZE;
+	}
+}
+
 /*
  * a3xx_err_callback() - Call back for a3xx error interrupts
  * @adreno_dev: Pointer to device
@@ -682,7 +722,7 @@ static void a3xx_err_callback(struct adreno_device *adreno_dev, int bit)
 		 * Return the word address of the erroring register so that it
 		 * matches the register specification
 		 */
-		KGSL_DRV_CRIT(device,
+		KGSL_DRV_CRIT_RATELIMIT(device,
 			"RBBM | AHB bus error | %s | addr=%x | ports=%x:%x\n",
 			reg & (1 << 28) ? "WRITE" : "READ",
 			(reg & 0xFFFFF) >> 2, (reg >> 20) & 0x3,
@@ -690,8 +730,7 @@ static void a3xx_err_callback(struct adreno_device *adreno_dev, int bit)
 
 		/* Clear the error */
 		kgsl_regwrite(device, A3XX_RBBM_AHB_CMD, (1 << 3));
-
-		return;
+		break;
 	}
 	case A3XX_INT_RBBM_ATB_BUS_OVERFLOW:
 		KGSL_DRV_CRIT_RATELIMIT(device, "RBBM: ATB bus oveflow\n");
@@ -715,11 +754,11 @@ static void a3xx_err_callback(struct adreno_device *adreno_dev, int bit)
 		break;
 	case A3XX_INT_CP_REG_PROTECT_FAULT:
 		kgsl_regread(device, A3XX_CP_PROTECT_STATUS, &reg);
-		KGSL_DRV_CRIT(device,
+		KGSL_DRV_CRIT_RATELIMIT(device,
 			"CP | Protected mode error| %s | addr=%x\n",
 			reg & (1 << 24) ? "WRITE" : "READ",
 			(reg & 0xFFFFF) >> 2);
-		return;
+		break;
 	case A3XX_INT_CP_AHB_ERROR_HALT:
 		KGSL_DRV_CRIT_RATELIMIT(device,
 			"ringbuffer AHB error interrupt\n");
@@ -842,8 +881,8 @@ static const struct adreno_vbif_data a306_vbif[] = {
 
 static const struct adreno_vbif_data a306a_vbif[] = {
 	{ A3XX_VBIF_ROUND_ROBIN_QOS_ARB, 0x0003 },
-	{ A3XX_VBIF_OUT_RD_LIM_CONF0, 0x0000000A },
-	{ A3XX_VBIF_OUT_WR_LIM_CONF0, 0x0000000A },
+	{ A3XX_VBIF_OUT_RD_LIM_CONF0, 0x00000010 },
+	{ A3XX_VBIF_OUT_WR_LIM_CONF0, 0x00000010 },
 	{0, 0},
 };
 
@@ -1325,6 +1364,15 @@ static void a3xx_start(struct adreno_device *adreno_dev)
 	kgsl_regwrite(device, A3XX_RBBM_PERFCTR_CTL, 0x01);
 
 	kgsl_regwrite(device, A3XX_CP_DEBUG, A3XX_CP_DEBUG_DEFAULT);
+
+	/* CP ROQ queue sizes (bytes) - RB:16, ST:16, IB1:32, IB2:64 */
+	if (adreno_is_a305b(adreno_dev) ||
+			adreno_is_a310(adreno_dev) ||
+			adreno_is_a330(adreno_dev))
+		kgsl_regwrite(device, A3XX_CP_QUEUE_THRESHOLDS, 0x003E2008);
+	else
+		kgsl_regwrite(device, A3XX_CP_QUEUE_THRESHOLDS, 0x000E0602);
+
 }
 
 static struct adreno_coresight_register a3xx_coresight_registers[] = {
@@ -1814,9 +1862,9 @@ struct adreno_gpudev adreno_a3xx_gpudev = {
 	.num_prio_levels = 1,
 	.vbif_xin_halt_ctrl0_mask = A3XX_VBIF_XIN_HALT_CTRL0_MASK,
 	.platform_setup = a3xx_platform_setup,
-	.rb_init = a3xx_rb_init,
+	.rb_start = a3xx_rb_start,
+	.init = a3xx_init,
 	.microcode_read = a3xx_microcode_read,
-	.microcode_load = a3xx_microcode_load,
 	.perfcounter_init = a3xx_perfcounter_init,
 	.perfcounter_close = a3xx_perfcounter_close,
 	.start = a3xx_start,

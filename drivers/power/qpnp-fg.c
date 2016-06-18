@@ -108,6 +108,7 @@ enum pmic_subtype {
 	PMI8950		= 17,
 	PMI8996		= 19,
 	PMI8937		= 55,
+	PMI8940		= 64,
 };
 
 enum wa_flags {
@@ -2610,6 +2611,10 @@ wait:
 		goto wait;
 	} else if (ret <= 0) {
 		pr_err("transaction timed out ret=%d\n", ret);
+		if (fg_is_batt_id_valid(chip))
+			resched_ms = fg_sram_update_period_ms;
+		else
+			resched_ms = SRAM_PERIOD_NO_ID_UPDATE_MS;
 		goto out;
 	}
 	rc = update_sram_data(chip, &resched_ms);
@@ -3449,11 +3454,8 @@ static void fg_cap_learning_work(struct work_struct *work)
 		goto fail;
 	}
 
-	if (chip->wa_flag & USE_CC_SOC_REG) {
-		mutex_unlock(&chip->learning_data.learning_lock);
-		fg_relax(&chip->capacity_learning_wakeup_source);
-		return;
-	}
+	if (chip->wa_flag & USE_CC_SOC_REG)
+		goto fail;
 
 	fg_mem_lock(chip);
 
@@ -3484,6 +3486,8 @@ static void fg_cap_learning_work(struct work_struct *work)
 		pr_info("total_cc_uah = %lld\n", chip->learning_data.cc_uah);
 
 fail:
+	if (chip->wa_flag & USE_CC_SOC_REG)
+		fg_relax(&chip->capacity_learning_wakeup_source);
 	mutex_unlock(&chip->learning_data.learning_lock);
 	return;
 
@@ -7386,20 +7390,6 @@ static int fg_common_hw_init(struct fg_chip *chip)
 		if (fg_debug_mask & FG_STATUS)
 			pr_info("imptr_pulse_slow is %sabled\n",
 				chip->imptr_pulse_slow_en ? "en" : "dis");
-
-		rc = fg_mem_read(chip, &val, RSLOW_CFG_REG, 1, RSLOW_CFG_OFFSET,
-				0);
-		if (rc) {
-			pr_err("unable to read rslow cfg: %d\n", rc);
-			return rc;
-		}
-
-		if (val & RSLOW_CFG_ON_VAL)
-			chip->rslow_comp.active = true;
-
-		if (fg_debug_mask & FG_STATUS)
-			pr_info("rslow_comp active is %sabled\n",
-				chip->rslow_comp.active ? "en" : "dis");
 	}
 
 	rc = fg_mem_read(chip, &val, RSLOW_CFG_REG, 1, RSLOW_CFG_OFFSET,
@@ -7415,11 +7405,10 @@ static int fg_common_hw_init(struct fg_chip *chip)
 	if (fg_debug_mask & FG_STATUS)
 		pr_info("rslow_comp active is %sabled\n",
 			chip->rslow_comp.active ? "en" : "dis");
-
 	/*
-	 * Clear bits 0-2 in 0x4B3 and set them again to make empty_soc irq
-	 * trigger again.
-	 */
+	* Clear bits 0-2 in 0x4B3 and set them again to make empty_soc irq
+	* trigger again.
+	*/
 	rc = fg_mem_masked_write(chip, FG_ALG_SYSCTL_1, EMPTY_SOC_IRQ_MASK,
 			0, ALERT_CFG_OFFSET);
 	if (rc) {
@@ -7567,6 +7556,7 @@ static int fg_hw_init(struct fg_chip *chip)
 		break;
 	case PMI8950:
 	case PMI8937:
+	case PMI8940:
 		rc = fg_8950_hw_init(chip);
 		/* Setup workaround flag based on PMIC type */
 		chip->wa_flag |= BCL_HI_POWER_FOR_CHGLED_WA;
@@ -7904,6 +7894,7 @@ static int fg_detect_pmic_type(struct fg_chip *chip)
 	case PMI8950:
 	case PMI8937:
 	case PMI8996:
+	case PMI8940:
 		chip->pmic_subtype = pmic_rev_id->pmic_subtype;
 		chip->pmic_revision[REVID_RESERVED]	= pmic_rev_id->rev1;
 		chip->pmic_revision[REVID_VARIANT]	= pmic_rev_id->rev2;

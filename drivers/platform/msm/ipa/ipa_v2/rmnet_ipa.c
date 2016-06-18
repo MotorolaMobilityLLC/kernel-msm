@@ -630,7 +630,8 @@ static int wwan_add_ul_flt_rule_to_ipa(void)
 	param->global = false;
 	param->num_rules = (uint8_t)1;
 
-	for (i = 0; i < num_q6_rule; i++) {
+	mutex_lock(&ipa_qmi_lock);
+	for (i = 0; i < num_q6_rule && (ipa_qmi_ctx != NULL); i++) {
 		param->ip = ipa_qmi_ctx->q6_ul_filter_rule[i].ip;
 		memset(&flt_rule_entry, 0, sizeof(struct ipa_flt_rule_add));
 		flt_rule_entry.at_rear = true;
@@ -658,12 +659,14 @@ static int wwan_add_ul_flt_rule_to_ipa(void)
 				param->rules[0].flt_rule_hdl;
 		}
 	}
+	mutex_unlock(&ipa_qmi_lock);
 
 	/* send ipa_fltr_installed_notif_req_msg_v01 to Q6*/
 	req->source_pipe_index =
 		ipa2_get_ep_mapping(IPA_CLIENT_APPS_LAN_WAN_PROD);
 	req->install_status = QMI_RESULT_SUCCESS_V01;
 	req->filter_index_list_len = num_q6_rule;
+	mutex_lock(&ipa_qmi_lock);
 	for (i = 0; i < num_q6_rule; i++) {
 		if (ipa_qmi_ctx->q6_ul_filter_rule[i].ip == IPA_IP_v4) {
 			req->filter_index_list[i].filter_index = num_v4_rule;
@@ -675,6 +678,7 @@ static int wwan_add_ul_flt_rule_to_ipa(void)
 		req->filter_index_list[i].filter_handle =
 			ipa_qmi_ctx->q6_ul_filter_rule[i].filter_hdl;
 	}
+	mutex_unlock(&ipa_qmi_lock);
 	if (qmi_filter_notify_send(req)) {
 		IPAWANDBG("add filter rule index on A7-RX failed\n");
 		retval = -EFAULT;
@@ -875,7 +879,8 @@ int wwan_update_mux_channel_prop(void)
 	int ret = 0, i;
 	/* install UL filter rules */
 	if (egress_set) {
-		if (ipa_qmi_ctx->modem_cfg_emb_pipe_flt == false) {
+		if (ipa_qmi_ctx &&
+			ipa_qmi_ctx->modem_cfg_emb_pipe_flt == false) {
 			IPAWANDBG("setup UL filter rules\n");
 			if (a7_ul_flt_set) {
 				IPAWANDBG("del previous UL filter rules\n");
@@ -1440,7 +1445,8 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 					RMNET_IOCTL_EGRESS_FORMAT_CHECKSUM) {
 				apps_to_ipa_ep_cfg.ipa_ep_cfg.hdr.hdr_len = 8;
 				apps_to_ipa_ep_cfg.ipa_ep_cfg.cfg.
-					cs_offload_en = 1;
+					cs_offload_en =
+					IPA_ENABLE_CS_OFFLOAD_UL;
 				apps_to_ipa_ep_cfg.ipa_ep_cfg.cfg.
 					cs_metadata_hdr_offset = 1;
 			} else {
@@ -1476,7 +1482,8 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
 			if (num_q6_rule != 0) {
 				/* already got Q6 UL filter rules*/
-				if (ipa_qmi_ctx->modem_cfg_emb_pipe_flt
+				if (ipa_qmi_ctx &&
+					ipa_qmi_ctx->modem_cfg_emb_pipe_flt
 					== false)
 					rc = wwan_add_ul_flt_rule_to_ipa();
 				else
@@ -1498,7 +1505,8 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 			if ((extend_ioctl_data.u.data) &
 					RMNET_IOCTL_INGRESS_FORMAT_CHECKSUM)
 				ipa_to_apps_ep_cfg.ipa_ep_cfg.cfg.
-					cs_offload_en = 2;
+					cs_offload_en =
+					IPA_ENABLE_CS_OFFLOAD_DL;
 
 			if ((extend_ioctl_data.u.data) &
 					RMNET_IOCTL_INGRESS_FORMAT_AGG_DATA) {
@@ -2529,15 +2537,15 @@ int rmnet_ipa_query_tethering_stats(struct wan_ioctl_query_tether_stats *data,
 	req = kzalloc(sizeof(struct ipa_get_data_stats_req_msg_v01),
 			GFP_KERNEL);
 	if (!req) {
-		IPAWANERR("Can't allocate memory for stats message\n");
-		return rc;
+		IPAWANERR("failed to allocate memory for stats message\n");
+		return -ENOMEM;
 	}
 	resp = kzalloc(sizeof(struct ipa_get_data_stats_resp_msg_v01),
 			GFP_KERNEL);
 	if (!resp) {
-		IPAWANERR("Can't allocate memory for stats message\n");
+		IPAWANERR("failed to allocate memory for stats message\n");
 		kfree(req);
-		return rc;
+		return -ENOMEM;
 	}
 	memset(req, 0, sizeof(struct ipa_get_data_stats_req_msg_v01));
 	memset(resp, 0, sizeof(struct ipa_get_data_stats_resp_msg_v01));
@@ -2757,6 +2765,9 @@ static int __init ipa_wwan_init(void)
 
 	mutex_init(&ipa_to_apps_pipe_handle_guard);
 	ipa_to_apps_hdl = -1;
+
+	ipa_qmi_init();
+
 	/* Register for Modem SSR */
 	subsys_notify_handle = subsys_notif_register_notifier(SUBSYS_MODEM,
 						&ssr_notifier);
@@ -2769,6 +2780,7 @@ static int __init ipa_wwan_init(void)
 static void __exit ipa_wwan_cleanup(void)
 {
 	int ret;
+	ipa_qmi_cleanup();
 	mutex_destroy(&ipa_to_apps_pipe_handle_guard);
 	ret = subsys_notif_unregister_notifier(subsys_notify_handle,
 					&ssr_notifier);

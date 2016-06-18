@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -219,13 +219,37 @@ static ssize_t mdss_dba_utils_sysfs_wta_hpd(struct device *dev,
 	return count;
 }
 
+static ssize_t mdss_dba_utils_sysfs_rda_hpd(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t ret;
+	struct mdss_dba_utils_data *udata = NULL;
+
+	if (!dev) {
+		pr_debug("invalid device\n");
+		return -EINVAL;
+	}
+
+	udata = mdss_dba_utils_get_data(dev);
+
+	if (!udata) {
+		pr_debug("invalid input\n");
+		return -EINVAL;
+	}
+
+	ret = snprintf(buf, PAGE_SIZE, "%d\n", udata->hpd_state);
+	pr_debug("'%d'\n", udata->hpd_state);
+
+	return ret;
+}
+
 static DEVICE_ATTR(connected, S_IRUGO,
 		mdss_dba_utils_sysfs_rda_connected, NULL);
 
 static DEVICE_ATTR(video_mode, S_IRUGO,
 		mdss_dba_utils_sysfs_rda_video_mode, NULL);
 
-static DEVICE_ATTR(hpd, S_IRUGO | S_IWUSR, NULL,
+static DEVICE_ATTR(hpd, S_IRUGO | S_IWUSR, mdss_dba_utils_sysfs_rda_hpd,
 		mdss_dba_utils_sysfs_wta_hpd);
 
 static struct attribute *mdss_dba_utils_fs_attrs[] = {
@@ -276,6 +300,7 @@ static void mdss_dba_utils_dba_cb(void *data, enum msm_dba_callback_event event)
 	bool operands_present = false;
 	u32 no_of_operands, size, i;
 	u32 operands_offset = MAX_CEC_FRAME_SIZE - MAX_OPERAND_SIZE;
+	struct msm_hdmi_audio_edid_blk blk;
 
 	if (!udata) {
 		pr_err("Invalid data\n");
@@ -295,10 +320,16 @@ static void mdss_dba_utils_dba_cb(void *data, enum msm_dba_callback_event event)
 			ret = udata->ops.get_raw_edid(udata->dba_data,
 				udata->edid_buf_size, udata->edid_buf, 0);
 
-			if (!ret)
+			if (!ret) {
 				hdmi_edid_parser(udata->edid_data);
-			else
+				hdmi_edid_get_audio_blk(udata->edid_data, &blk);
+				if (udata->ops.set_audio_block)
+					udata->ops.set_audio_block(
+							udata->dba_data,
+							sizeof(blk), &blk);
+			} else {
 				pr_err("failed to get edid%d\n", ret);
+			}
 		}
 
 		if (pluggable) {
@@ -652,13 +683,6 @@ void *mdss_dba_utils_init(struct mdss_dba_utils_init_data *uid)
 	udata->kobj = uid->kobj;
 	udata->pinfo = uid->pinfo;
 
-	/* register display and audio switch devices */
-	ret = mdss_dba_utils_init_switch_dev(udata, uid->fb_node);
-	if (ret) {
-		pr_err("switch dev registration failed\n");
-		goto error;
-	}
-
 	/* Initialize EDID feature */
 	edid_init_data.kobj = uid->kobj;
 	edid_init_data.ds_data.ds_registered = true;
@@ -714,10 +738,18 @@ void *mdss_dba_utils_init(struct mdss_dba_utils_init_data *uid)
 		 * this explicit calls to bridge chip driver.
 		 */
 		if (!uid->pinfo->is_pluggable) {
-			if (udata->ops.power_on)
+			if (udata->ops.power_on && !(uid->cont_splash_enabled))
 				udata->ops.power_on(udata->dba_data, true, 0);
 			if (udata->ops.check_hpd)
 				udata->ops.check_hpd(udata->dba_data, 0);
+		} else {
+			/* register display and audio switch devices */
+			ret = mdss_dba_utils_init_switch_dev(udata,
+				uid->fb_node);
+			if (ret) {
+				pr_err("switch dev registration failed\n");
+				goto error;
+			}
 		}
 	}
 

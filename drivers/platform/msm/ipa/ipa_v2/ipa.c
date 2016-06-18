@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1609,6 +1609,7 @@ int ipa_q6_monitor_holb_mitigation(bool enable)
 	int ep_idx;
 	int client_idx;
 
+	IPA2_ACTIVE_CLIENTS_INC_SIMPLE();
 	for (client_idx = 0; client_idx < IPA_CLIENT_MAX; client_idx++) {
 		if (IPA_CLIENT_IS_Q6_NON_ZIP_CONS(client_idx)) {
 			ep_idx = ipa2_get_ep_mapping(client_idx);
@@ -1620,6 +1621,7 @@ int ipa_q6_monitor_holb_mitigation(bool enable)
 			ipa_uc_monitor_holb(client_idx, enable);
 		}
 	}
+	IPA2_ACTIVE_CLIENTS_DEC_SIMPLE();
 
 	return 0;
 }
@@ -1895,6 +1897,9 @@ static int ipa_q6_set_ex_path_dis_agg(void)
 
 	/* Disable AGGR on IPA->Q6 pipes */
 	for (client_idx = 0; client_idx < IPA_CLIENT_MAX; client_idx++) {
+		ep_idx = ipa2_get_ep_mapping(client_idx);
+		if (ep_idx == -1)
+			continue;
 		if (IPA_CLIENT_IS_Q6_NON_ZIP_CONS(client_idx) ||
 			IPA_CLIENT_IS_Q6_ZIP_CONS(client_idx)) {
 			reg_write = kzalloc(sizeof(*reg_write), GFP_KERNEL);
@@ -1904,8 +1909,7 @@ static int ipa_q6_set_ex_path_dis_agg(void)
 				BUG();
 			}
 
-			ipa_q6_disable_agg_reg(reg_write,
-					       ipa2_get_ep_mapping(client_idx));
+			ipa_q6_disable_agg_reg(reg_write, ep_idx);
 
 			desc[num_descs].opcode = IPA_REGISTER_WRITE;
 			desc[num_descs].pyld = reg_write;
@@ -3542,6 +3546,7 @@ static int apps_cons_request_resource(void)
 
 static void ipa_sps_release_resource(struct work_struct *work)
 {
+	mutex_lock(&ipa_ctx->sps_pm.sps_pm_lock);
 	/* check whether still need to decrease client usage */
 	if (atomic_read(&ipa_ctx->sps_pm.dec_clients)) {
 		if (atomic_read(&ipa_ctx->sps_pm.eot_activity)) {
@@ -3553,6 +3558,7 @@ static void ipa_sps_release_resource(struct work_struct *work)
 		}
 	}
 	atomic_set(&ipa_ctx->sps_pm.eot_activity, 0);
+	mutex_unlock(&ipa_ctx->sps_pm.sps_pm_lock);
 }
 
 int ipa_create_apps_resource(void)
@@ -3798,21 +3804,21 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 	}
 
 	/* init the lookaside cache */
-	ipa_ctx->flt_rule_cache = kmem_cache_create("IPA FLT",
+	ipa_ctx->flt_rule_cache = kmem_cache_create("IPA_FLT",
 			sizeof(struct ipa_flt_entry), 0, 0, NULL);
 	if (!ipa_ctx->flt_rule_cache) {
 		IPAERR(":ipa flt cache create failed\n");
 		result = -ENOMEM;
 		goto fail_flt_rule_cache;
 	}
-	ipa_ctx->rt_rule_cache = kmem_cache_create("IPA RT",
+	ipa_ctx->rt_rule_cache = kmem_cache_create("IPA_RT",
 			sizeof(struct ipa_rt_entry), 0, 0, NULL);
 	if (!ipa_ctx->rt_rule_cache) {
 		IPAERR(":ipa rt cache create failed\n");
 		result = -ENOMEM;
 		goto fail_rt_rule_cache;
 	}
-	ipa_ctx->hdr_cache = kmem_cache_create("IPA HDR",
+	ipa_ctx->hdr_cache = kmem_cache_create("IPA_HDR",
 			sizeof(struct ipa_hdr_entry), 0, 0, NULL);
 	if (!ipa_ctx->hdr_cache) {
 		IPAERR(":ipa hdr cache create failed\n");
@@ -3820,14 +3826,14 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 		goto fail_hdr_cache;
 	}
 	ipa_ctx->hdr_offset_cache =
-	   kmem_cache_create("IPA HDR OFFSET",
+	   kmem_cache_create("IPA_HDR_OFFSET",
 			   sizeof(struct ipa_hdr_offset_entry), 0, 0, NULL);
 	if (!ipa_ctx->hdr_offset_cache) {
 		IPAERR(":ipa hdr off cache create failed\n");
 		result = -ENOMEM;
 		goto fail_hdr_offset_cache;
 	}
-	ipa_ctx->hdr_proc_ctx_cache = kmem_cache_create("IPA HDR PROC CTX",
+	ipa_ctx->hdr_proc_ctx_cache = kmem_cache_create("IPA_HDR_PROC_CTX",
 		sizeof(struct ipa_hdr_proc_ctx_entry), 0, 0, NULL);
 	if (!ipa_ctx->hdr_proc_ctx_cache) {
 		IPAERR(":ipa hdr proc ctx cache create failed\n");
@@ -3835,14 +3841,14 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 		goto fail_hdr_proc_ctx_cache;
 	}
 	ipa_ctx->hdr_proc_ctx_offset_cache =
-		kmem_cache_create("IPA HDR PROC CTX OFFSET",
+		kmem_cache_create("IPA_HDR_PROC_CTX_OFFSET",
 		sizeof(struct ipa_hdr_proc_ctx_offset_entry), 0, 0, NULL);
 	if (!ipa_ctx->hdr_proc_ctx_offset_cache) {
 		IPAERR(":ipa hdr proc ctx off cache create failed\n");
 		result = -ENOMEM;
 		goto fail_hdr_proc_ctx_offset_cache;
 	}
-	ipa_ctx->rt_tbl_cache = kmem_cache_create("IPA RT TBL",
+	ipa_ctx->rt_tbl_cache = kmem_cache_create("IPA_RT_TBL",
 			sizeof(struct ipa_rt_tbl), 0, 0, NULL);
 	if (!ipa_ctx->rt_tbl_cache) {
 		IPAERR(":ipa rt tbl cache create failed\n");
@@ -3850,7 +3856,7 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 		goto fail_rt_tbl_cache;
 	}
 	ipa_ctx->tx_pkt_wrapper_cache =
-	   kmem_cache_create("IPA TX PKT WRAPPER",
+	   kmem_cache_create("IPA_TX_PKT_WRAPPER",
 			   sizeof(struct ipa_tx_pkt_wrapper), 0, 0, NULL);
 	if (!ipa_ctx->tx_pkt_wrapper_cache) {
 		IPAERR(":ipa tx pkt wrapper cache create failed\n");
@@ -3858,7 +3864,7 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 		goto fail_tx_pkt_wrapper_cache;
 	}
 	ipa_ctx->rx_pkt_wrapper_cache =
-	   kmem_cache_create("IPA RX PKT WRAPPER",
+	   kmem_cache_create("IPA_RX_PKT_WRAPPER",
 			   sizeof(struct ipa_rx_pkt_wrapper), 0, 0, NULL);
 	if (!ipa_ctx->rx_pkt_wrapper_cache) {
 		IPAERR(":ipa rx pkt wrapper cache create failed\n");
@@ -4010,6 +4016,9 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 	/* Create a wakeup source. */
 	wakeup_source_init(&ipa_ctx->w_lock, "IPA_WS");
 	spin_lock_init(&ipa_ctx->wakelock_ref_cnt.spinlock);
+
+	/* Initialize the SPS PM lock. */
+	mutex_init(&ipa_ctx->sps_pm.sps_pm_lock);
 
 	/* Initialize IPA RM (resource manager) */
 	result = ipa_rm_initialize();

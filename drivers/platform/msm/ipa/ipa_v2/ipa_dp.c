@@ -815,6 +815,11 @@ static void ipa_rx_switch_to_intr_mode(struct ipa_sys_context *sys)
 {
 	int ret;
 
+	if (!sys->ep || !sys->ep->valid) {
+		IPAERR("EP Not Valid, no need to cleanup.\n");
+		return;
+	}
+
 	ret = sps_get_config(sys->ep->ep_hdl, &sys->ep->connect);
 	if (ret) {
 		IPAERR("sps_get_config() failed %d\n", ret);
@@ -1329,14 +1334,6 @@ int ipa2_setup_sys_pipe(struct ipa_sys_connect_params *sys_in, u32 *clnt_hdl)
 
 	*clnt_hdl = ipa_ep_idx;
 
-	if (IPA_CLIENT_IS_CONS(sys_in->client))
-		ipa_replenish_rx_cache(ep->sys);
-
-	if (IPA_CLIENT_IS_WLAN_CONS(sys_in->client)) {
-		ipa_alloc_wlan_rx_common_cache(IPA_WLAN_COMM_RX_POOL_LOW);
-		atomic_inc(&ipa_ctx->wc_memb.active_clnt_cnt);
-	}
-
 	if (nr_cpu_ids > 1 &&
 		(sys_in->client == IPA_CLIENT_APPS_LAN_CONS ||
 		 sys_in->client == IPA_CLIENT_APPS_WAN_CONS)) {
@@ -1352,6 +1349,14 @@ int ipa2_setup_sys_pipe(struct ipa_sys_connect_params *sys_in, u32 *clnt_hdl)
 			atomic_set(&ep->sys->repl.tail_idx, 0);
 			ipa_wq_repl_rx(&ep->sys->repl_work);
 		}
+	}
+
+	if (IPA_CLIENT_IS_CONS(sys_in->client))
+		ipa_replenish_rx_cache(ep->sys);
+
+	if (IPA_CLIENT_IS_WLAN_CONS(sys_in->client)) {
+		ipa_alloc_wlan_rx_common_cache(IPA_WLAN_COMM_RX_POOL_LOW);
+		atomic_inc(&ipa_ctx->wc_memb.active_clnt_cnt);
 	}
 
 	ipa_ctx->skip_ep_cfg_shadow[ipa_ep_idx] = ep->skip_ep_cfg;
@@ -1432,6 +1437,11 @@ int ipa2_teardown_sys_pipe(u32 clnt_hdl)
 			else
 				break;
 		} while (1);
+	}
+
+	if (IPA_CLIENT_IS_CONS(ep->client)) {
+		cancel_delayed_work_sync(&ep->sys->replenish_rx_work);
+		cancel_delayed_work_sync(&ep->sys->switch_to_intr_work);
 	}
 
 	flush_workqueue(ep->sys->wq);
@@ -1577,14 +1587,14 @@ int ipa2_tx_dp(enum ipa_client_type dst, struct sk_buff *skb,
 		if (-1 == src_ep_idx) {
 			IPAERR("Client %u is not mapped\n",
 				IPA_CLIENT_APPS_LAN_WAN_PROD);
-			return -EFAULT;
+			goto fail_gen;
 		}
 		dst_ep_idx = ipa2_get_ep_mapping(dst);
 	} else {
 		src_ep_idx = ipa2_get_ep_mapping(dst);
 		if (-1 == src_ep_idx) {
 			IPAERR("Client %u is not mapped\n", dst);
-			return -EFAULT;
+			goto fail_gen;
 		}
 		if (meta && meta->pkt_init_dst_ep_valid)
 			dst_ep_idx = meta->pkt_init_dst_ep;
@@ -2935,6 +2945,8 @@ static int ipa_assign_policy(struct ipa_sys_connect_params *in,
 						ipa_ctx->wan_rx_ring_size;
 					sys->ep->wakelock_client =
 					IPA_WAKELOCK_REF_CLIENT_WAN_RX;
+					in->ipa_ep_cfg.aggr.aggr_sw_eof_active
+						= true;
 					if (ipa_ctx->
 					ipa_client_apps_wan_cons_agg_gro) {
 						IPAERR("get close-by %u\n",

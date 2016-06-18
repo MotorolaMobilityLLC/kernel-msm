@@ -1210,10 +1210,12 @@ struct ipa_uc_wdi_ctx {
  * @dec_clients: true if need to decrease active clients count
  * @eot_activity: represent EOT interrupt activity to determine to reset
  *  the inactivity timer
+ * @sps_pm_lock: Lock to protect the sps_pm functionality.
  */
 struct ipa_sps_pm {
 	atomic_t dec_clients;
 	atomic_t eot_activity;
+	struct mutex sps_pm_lock;
 };
 
 /**
@@ -1836,20 +1838,6 @@ void ipa2_set_client(int index, enum ipacm_client_enum client, bool uplink);
 enum ipacm_client_enum ipa2_get_client(int pipe_idx);
 
 bool ipa2_get_client_uplink(int pipe_idx);
-
-/*
- * ODU bridge
- */
-
-int ipa2_odu_bridge_init(struct odu_bridge_params *params);
-
-int ipa2_odu_bridge_connect(void);
-
-int ipa2_odu_bridge_disconnect(void);
-
-int ipa2_odu_bridge_tx_dp(struct sk_buff *skb, struct ipa_tx_meta *metadata);
-
-int ipa2_odu_bridge_cleanup(void);
 
 /*
  * IPADMA
