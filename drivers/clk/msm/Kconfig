@@ -4,6 +4,13 @@ config MAX_CPU_FREQ_KHZ
 	---help---
 	  Limit max cpu freq value in KHz.
 
+config GPU_SPEED_BIN_OVERRIDE
+	int "Override GPU speed bin"
+	default "0"
+	---help---
+	  For MSM8996 lite, override GPU speed bin with this value.
+	  The override value should be provided in the device tree.
+
 config MSM_CLK_CONTROLLER_V2
 	bool "QTI clock driver"
 	---help---
