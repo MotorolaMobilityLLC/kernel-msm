@@ -181,6 +181,10 @@
 	apba_cdsi-supply = <&pm8953_l23>;
 };
 
+&mdss_dsi1_pll {
+	qcom,dsi-pll-ssc-mode = "center-spread";
+};
+
 &mot_dba_panel {
 	qcom,mdss-dsi-panel-name = "mipi_mot_dba_panel";
 	qcom,bridge-name = "mot_dba";
