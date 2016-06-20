@@ -490,16 +490,9 @@
 
 &pmi8950_charger {
 	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&factory_default>;
-	gpios = <&pmi8950_gpios 2 0x0>, /* GPIOF_OUT_INIT_LOW */
-		<&pm8953_gpios 5 0x1>, /* GPIOF_IN */
-		<&tlmm 110 0x0>; /* GPIOF_OUT_INIT_LOW */
-	gpio-names = "eb_vbus_en",
-		     "factory_warn",
-		     "togl_rst";
 	/delete-property/ qcom,iterm-ma;
 	qcom,iterm-disabled;
+	qcom,usbid-disabled;
 	/delete-property/ qcom,autoadjust-vfloat;
 	qcom,fastchg-current-ma = <3000>;
 	qcom,float-voltage-mv = <4400>;
@@ -507,28 +500,22 @@
 	qcom,chg-inhibit-fg;
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
-	qcom,eb-batt-psy-name = "gb_battery";
-	qcom,eb-pwr-psy-name = "gb_ptp";
 	qcom,charge-unknown-battery;
-	qcom,chg-thermal-mitigation = <3000 0>,
-				      <2500 0>,
-				      <2000 0>,
-				      <1500 0>,
-				      <1000 0>,
-				      <500 0>;
-	qcom,dc-thermal-mitigation = <900>,
-				     <600>,
-				     <300>;
-	qcom,thermal-mitigation = <3000 0>,
-				  <2500 0>,
-				  <2000 0>,
-				  <1500 0>,
-				  <1000 0>,
-				  <500 0>,
-				  <300 0>;
-	qcom,step-chg-steps = <4200 3000 2400>,
-				<4400 2400 2000>;
-	qcom,stepchg-iterm-ma = <170>;
+	qcom,chg-thermal-mitigation = <2500>, <2000>, <1600>, <1200>, <1000>, <700>,
+				      <500>, <300>;
+	qcom,dc-thermal-mitigation = <950>, <700>, <600>, <500>, <400>, <300>;
+	qcom,parallel-charge-current-map = <2500 2500 0>,
+					   <2000 2000 0>,
+					   <1600 1600 0>,
+					   <1200 1200 0>,
+					   <1000 1000 0>,
+					   <700 700 0>,
+					   <500 500 0>,
+					   <300 300 0>;
+	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-current-ma = <3000>;
+	qcom,stepchg-taper-ma = <2000>;
+	qcom,stepchg-iterm-ma = <146>;
 	qcom,hot-temp-c = <60>;
 	qcom,cold-temp-c = <(-20)>;
 	qcom,warm-temp-c = <45>;
@@ -541,14 +528,8 @@
 	qcom,bmd-pin-src = "bpd_none";
 	qcom,usbid-disabled;
 	qcom,force-aicl-rerun;
-	mmi,fake-factory-type;
-	qcom,auto-voltage-comp-mv = <75>;
-	qcom,usbin-vadc = <&pmi8950_vadc>;
-
-	smbcharger_external_otg: qcom,smbcharger-external-otg {
-		status = "okay";
-		regulator-name = "smbcharger_external_otg";
-	};
+	qcom,auto-voltage-comp-mv = <150>;
+	qcom,enable-hvdcp-9v;
 };
 
 /{
@@ -566,13 +547,14 @@
 	qcom,cool-bat-decidegc = <0>;
 	qcom,hot-bat-decidegc = <600>;
 	qcom,cold-bat-decidegc = <(-200)>;
+	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
 	qcom,thermal-coefficients =  /bits/ 16 <0x6986 0x5D4B 0x6235>;
 	qcom,resume-soc = <99>;
 	qcom,bcl-lm-threshold-ma = <126>;
 	qcom,bcl-mh-threshold-ma = <400>;
 	qcom,fg-iterm-ma = <150>;
-	qcom,irq-volt-empty-mv = <2750>;
-	qcom,fg-cutoff-voltage-mv = <3000>;
+	qcom,irq-volt-empty-mv = <3000>;
+	qcom,fg-cutoff-voltage-mv = <3200>;
 	qcom,fg-vbat-estimate-diff-mv = <1000>;
 	qcom,fg-delta-soc = <1>;
 	qcom,fg-max-soc = <100>;
