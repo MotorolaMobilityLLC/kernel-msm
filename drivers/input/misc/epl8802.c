@@ -75,6 +75,7 @@
 
 #define ATTR_RANGE_PATH 1
 
+#define ALSPS_DEBUG 0
 /******************************************************************************
  * ALS / PS define
  *****************************************************************************/
@@ -146,10 +147,16 @@ static const char ElanPsensorName[] = "proximity_sensor";
 static const char ElanALsensorName[] = "light_sensor";
 #endif
 
-#define LOG_TAG                      "[EPL8802] "
-#define LOG_FUN(f)			printk(KERN_INFO LOG_TAG"%s\n", __FUNCTION__)
-#define LOG_INFO(fmt, args...)		printk(KERN_INFO LOG_TAG fmt, ##args)
-#define LOG_ERR(fmt, args...)		printk(KERN_ERR  LOG_TAG"%s %d : "fmt, __FUNCTION__, __LINE__, ##args)
+#define LOG_TAG "alsps_epl8802"
+#if ALSPS_DEBUG
+#define LOG_FUN(f)               	 printk(KERN_INFO LOG_TAG"%s\n", __FUNCTION__)
+#define LOG_INFO(fmt, args...)    	 printk(KERN_INFO LOG_TAG fmt, ##args)
+#else
+#define LOG_FUN(f)
+#define LOG_INFO(fmt, args...)
+#endif
+#define LOG_DBG(fmt, args...)	printk(KERN_INFO LOG_TAG fmt, ##args)
+#define LOG_ERR(fmt, args...)	printk(KERN_ERR  LOG_TAG"%s %d : "fmt, __FUNCTION__, __LINE__, ##args)
 
 typedef enum {
 	CMC_BIT_RAW		= 0x0,
@@ -485,7 +492,7 @@ static int set_psensor_intr_threshold(uint16_t low_thd, uint16_t high_thd)
 	mutex_lock(&sensor_mutex);
 	epl_sensor_I2C_Write_Block(client, 0x0c, buf, 4);
 	mutex_unlock(&sensor_mutex);
-	LOG_INFO("%s: low_thd = %d, high_thd = %d \n",
+	LOG_DBG("%s: low_thd = %d, high_thd = %d \n",
 			__func__, low_thd, high_thd);
 	return 0;
 }
@@ -535,7 +542,7 @@ static void epl_sensor_report_ps_status(void)
 	ktime_t	timestamp;
 	int distance;
 	timestamp = ktime_get();
-	LOG_INFO("------------------- epl_sensor.ps.data.data=%d, value=%d\n\n",
+	LOG_DBG("------------------- epl_sensor.ps.data.data=%d, value=%d\n\n",
 			epl_sensor.ps.data.data, ps_status_moto);
 	distance = ps_status_moto;
 	if (enable_stowed_flag) {
@@ -1174,14 +1181,14 @@ void epl_sensor_enable_ps(int enable)
 			epl_sensor.ps.ir_drive = EPL_IR_DRIVE_50;
 		} else if (enable_stowed_flag == false &&
 			enable_ps_flag == true) {
-			LOG_INFO("[%s]: PS enable! \r\n", __func__);
+			LOG_DBG("[%s]: PS enable! \r\n", __func__);
 			epl_sensor.ps.integration_time =
 				(epld->dt_ps_intt << 2);
 			epl_sensor.ps.gain = epld->dt_ps_gain;
 			epl_sensor.ps.ir_drive = epld->dt_ps_ir_drive;
 			low_cross_talk = epld->dt_ps_max_ct;
 		}
-		LOG_INFO("[%s]: INTT=%d, Gain=%d, ir_drive=%d \r\n",
+		LOG_DBG("[%s]: INTT=%d, Gain=%d, ir_drive=%d \r\n",
 			__func__, epl_sensor.ps.integration_time >> 2,
 			epl_sensor.ps.gain, epl_sensor.ps.ir_drive);
 		mutex_lock(&sensor_mutex);
@@ -1240,7 +1247,7 @@ void epl_sensor_enable_als(int enable)
 	struct epl_sensor_priv *epld = epl_sensor_obj;
 	/* int err = 0; */
 
-	LOG_INFO("[%s]: enable=%d\r\n", __func__, enable);
+	LOG_DBG("[%s]: enable=%d\r\n", __func__, enable);
 
 	if (epld->enable_lflag != enable) {
 #if ALS_DYN_INTT
@@ -3329,7 +3336,7 @@ static int epl_sensor_suspend(struct i2c_client *client, pm_message_t mesg)
 
 #if !defined(CONFIG_HAS_EARLYSUSPEND)
 	epld->als_suspend = 1;
-	LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
 
 	if (epld->enable_pflag == 0) {
 		if (epld->enable_lflag == 1 && epl_sensor.als.polling_mode == 0) {
@@ -3362,7 +3369,7 @@ static void epl_sensor_early_suspend(struct early_suspend *h)
 
 	epld->als_suspend = 1;
 
-	LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
 
 	if (epld->enable_pflag == 0) {
 		if (epld->enable_lflag == 1 && epl_sensor.als.polling_mode == 0) {
@@ -3395,7 +3402,7 @@ static int epl_sensor_resume(struct i2c_client *client)
 	epld->als_suspend = 0;
 	epld->ps_suspend = 0;
 
-	LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
 
 	if (epld->enable_pflag == 0) {
 		LOG_INFO("[%s]: ps is disabled \r\n", __func__);
@@ -3425,7 +3432,7 @@ static void epl_sensor_late_resume(struct early_suspend *h)
 	epld->als_suspend = 0;
 	epld->ps_suspend = 0;
 
-	LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
 
 	if (epld->enable_pflag == 0) {
 		LOG_INFO("[%s]: ps is disabled \r\n", __func__);
