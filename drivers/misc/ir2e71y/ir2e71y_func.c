@@ -3160,8 +3160,8 @@ static int ir2e71y_bdic_PD_psals_write_threshold(struct ir2e71y_prox_params *pro
 static int ir2e71y_bdic_PD_REG_ADO_get_opt(unsigned short *ado, unsigned short *clear, unsigned short *ir)
 {
     int ret, shift_tmp;
-    unsigned long ado0, ado1;
-    unsigned long als0, als1;
+    uint64_t ado0, ado1;
+    uint64_t als0, als1;
     unsigned short alpha, beta, gmm;
     unsigned char rval[(SENSOR_REG_D1_MSB + 1) - SENSOR_REG_D0_LSB];
     signed char range0, res;
@@ -3206,7 +3206,7 @@ static int ir2e71y_bdic_PD_REG_ADO_get_opt(unsigned short *ado, unsigned short *
     }
     als0 = (rval[1] << 8 | rval[0]);
     als1 = (rval[3] << 8 | rval[2]);
-    IR2E71Y_DEBUG("als1*16=%ld, als0*15=%ld", als1 * IR2E71Y_BDIC_RATIO_OF_ALS0, als0 * IR2E71Y_BDIC_RATIO_OF_ALS1);
+    IR2E71Y_DEBUG("als1*16=%lld, als0*15=%lld", als1 * IR2E71Y_BDIC_RATIO_OF_ALS0, als0 * IR2E71Y_BDIC_RATIO_OF_ALS1);
 
     if ((als1 * IR2E71Y_BDIC_RATIO_OF_ALS0) > (als0 * IR2E71Y_BDIC_RATIO_OF_ALS1)) {
         alpha = s_state_str.photo_sensor_adj.als_adjust[1].als_adj0;
@@ -3217,7 +3217,7 @@ static int ir2e71y_bdic_PD_REG_ADO_get_opt(unsigned short *ado, unsigned short *
         } else {
             ado0 = (((als0 * alpha) - (als1 * beta)) >> (32 - gmm)) >> 15;
         }
-        IR2E71Y_DEBUG("ROUTE-1 als0=%04lX, als1=%04lX, alpha=%04X, beta=%04X, gmm=%02x, ado0=%08lx", als0, als1, alpha, beta, gmm, ado0);
+        IR2E71Y_DEBUG("ROUTE-1 als0=%04llX, als1=%04llX, alpha=%04X, beta=%04X, gmm=%02x, ado0=%08llx", als0, als1, alpha, beta, gmm, ado0);
     } else {
         alpha = s_state_str.photo_sensor_adj.als_adjust[0].als_adj0;
         beta  = s_state_str.photo_sensor_adj.als_adjust[0].als_adj1;
@@ -3227,7 +3227,7 @@ static int ir2e71y_bdic_PD_REG_ADO_get_opt(unsigned short *ado, unsigned short *
         } else {
             ado0 = (((als0 * alpha) - (als1 * beta)) >> (32 - gmm)) >> 15;
         }
-        IR2E71Y_DEBUG("ROUTE-2 als0=%04lX, als1=%04lX, alpha=%04X, beta=%04X, gmm=%02x, ado0=%08lx", als0, als1, alpha, beta, gmm, ado0);
+        IR2E71Y_DEBUG("ROUTE-2 als0=%04llX, als1=%04llX, alpha=%04X, beta=%04X, gmm=%02x, ado0=%08llx", als0, als1, alpha, beta, gmm, ado0);
     }
 
     if (res < 3) {
