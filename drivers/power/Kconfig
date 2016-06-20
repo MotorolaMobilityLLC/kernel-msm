@@ -544,6 +544,16 @@ config QPNP_SMBCHARGER_MMI
 	  The driver also offers relevant information to userspace via the
 	  power supply framework.
 
+config QPNP_SMBCHARGER_MMI_LITE
+	tristate "QPNP SMB Charger driver for MMI LITE"
+	depends on SPMI || MSM_SPMI
+	depends on OF_SPMI
+	help
+	  Say Y here to enable the dual path switch mode battery charger which
+	  supports USB detection and battery charging up to 3A.
+	  The driver also offers relevant information to userspace via the
+	  power supply framework.
+
 config FUELGAUGE_STC3117
 	tristate "STC3117 fuel gauge driver"
 	default n
