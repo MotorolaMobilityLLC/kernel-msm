@@ -796,9 +796,7 @@ static inline bool live_in_glue_dir(struct kobject *kobj,
 
 static inline struct kobject *get_glue_dir(struct device *dev)
 {
-	if (live_in_glue_dir(&dev->kobj, dev))
-		return dev->kobj.parent;
-	return NULL;
+	return dev->kobj.parent;
 }
 /*
 * make sure cleaning up dir as the last step, we need to make
