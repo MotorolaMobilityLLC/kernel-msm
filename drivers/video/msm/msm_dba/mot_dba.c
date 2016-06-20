@@ -241,7 +241,8 @@ exit:
 	return ret;
 }
 
-int mot_dba_get_dsi_config(void *client, struct msm_dba_dsi_cfg *dsi_config)
+static int mot_dba_get_dsi_config(void *client,
+				struct msm_dba_dsi_cfg *dsi_config)
 {
 	struct mot_dba *pdata = get_platform_data(client);
 	struct msm_dba_ops *client_ops;
@@ -259,6 +260,34 @@ int mot_dba_get_dsi_config(void *client, struct msm_dba_dsi_cfg *dsi_config)
 	client_ops = &mot_dba_dev->dev->client_ops;
 	if (client_ops && client_ops->get_dsi_config)
 		ret = client_ops->get_dsi_config(mot_dba_dev->dev, dsi_config);
+	else
+		ret = -ENODEV;
+
+	mutex_unlock(&pdata->ops_mutex);
+exit:
+	mutex_unlock(&list_lock);
+
+	return ret;
+}
+
+static u32 mot_dba_get_default_resolution(void *client)
+{
+	struct mot_dba *pdata = get_platform_data(client);
+	struct msm_dba_ops *client_ops;
+	int ret = 0;
+
+	pr_debug("%s+\n", __func__);
+	mutex_lock(&list_lock);
+	if (!pdata || !mot_dba_dev) {
+		pr_err("%s: invalid data\n", __func__);
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	mutex_lock(&pdata->ops_mutex);
+	client_ops = &mot_dba_dev->dev->client_ops;
+	if (client_ops && client_ops->get_default_resolution)
+		ret = client_ops->get_default_resolution(mot_dba_dev->dev);
 	else
 		ret = -ENODEV;
 
@@ -471,6 +500,7 @@ static int mot_dba_probe(struct platform_device *pdev)
 	client_ops->get_raw_edid    = mot_dba_get_raw_edid;
 	client_ops->check_hpd       = mot_dba_check_hpd;
 	client_ops->get_dsi_config  = mot_dba_get_dsi_config;
+	client_ops->get_default_resolution = mot_dba_get_default_resolution;
 
 	strlcpy(pdata->dev_info.chip_name, DRVNAME,
 				sizeof(pdata->dev_info.chip_name));
