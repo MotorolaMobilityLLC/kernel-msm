@@ -77,6 +77,7 @@ obj-$(CONFIG_QPNP_LINEAR_CHARGER)	+= qpnp-linear-charger.o
 obj-$(CONFIG_QPNP_SMBCHARGER)	+= qpnp-smbcharger.o pmic-voter.o
 obj-$(CONFIG_QPNP_SMB2)		+= battery.o qpnp-smb2.o pmic-voter.o smb-lib.o storm-watch.o
 obj-$(CONFIG_QPNP_SMBCHARGER_MMI)	+= qpnp-smbcharger-mmi.o pmic-voter.o
+obj-$(CONFIG_QPNP_SMBCHARGER_MMI_LITE)	+= qpnp-smbcharger-mmi-lite.o pmic-voter.o
 
 obj-$(CONFIG_QPNP_TYPEC)	+= qpnp-typec.o
 obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
