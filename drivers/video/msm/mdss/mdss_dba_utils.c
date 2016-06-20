@@ -314,6 +314,8 @@ static void mdss_dba_utils_dba_cb(void *data, enum msm_dba_callback_event event)
 	if (udata->pinfo)
 		pluggable = udata->pinfo->is_pluggable;
 
+	memset(&blk, 0, sizeof(blk));
+
 	switch (event) {
 	case MSM_DBA_CB_HPD_CONNECT:
 		if (udata->hpd_state)
@@ -329,6 +331,8 @@ static void mdss_dba_utils_dba_cb(void *data, enum msm_dba_callback_event event)
 					udata->ops.set_audio_block(
 							udata->dba_data,
 							sizeof(blk), &blk);
+				if (blk.audio_data_blk_size && pluggable)
+					mdss_dba_utils_send_audio_notification(udata, 1);
 			} else {
 				pr_err("failed to get edid%d\n", ret);
 			}
@@ -338,7 +342,6 @@ static void mdss_dba_utils_dba_cb(void *data, enum msm_dba_callback_event event)
 
 		if (pluggable) {
 			mdss_dba_utils_send_display_notification(udata, 1);
-			mdss_dba_utils_send_audio_notification(udata, 1);
 		} else {
 			mdss_dba_utils_video_on(udata, udata->pinfo);
 		}
@@ -349,7 +352,9 @@ static void mdss_dba_utils_dba_cb(void *data, enum msm_dba_callback_event event)
 		if (!udata->hpd_state)
 			break;
 		if (pluggable) {
-			mdss_dba_utils_send_audio_notification(udata, 0);
+			hdmi_edid_get_audio_blk(udata->edid_data, &blk);
+			if (blk.audio_data_blk_size)
+				mdss_dba_utils_send_audio_notification(udata, 0);
 			mdss_dba_utils_send_display_notification(udata, 0);
 		} else {
 			mdss_dba_utils_video_off(udata);
