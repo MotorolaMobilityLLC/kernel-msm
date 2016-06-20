@@ -175,7 +175,7 @@ static int dsi_mod_display_conf_to_edid(struct dsi_mod_display *pdata)
 				.v_sync_lsb = dsi_config->vertical_pulse_width & 0x0f,
 				.v_sync_offset_lsb = dsi_config->vertical_front_porch & 0x0f,
 				.v_sync_msb = (dsi_config->vertical_pulse_width >> 4) & 0x03,
-				.v_sync_offset_msb = (dsi_config->vertical_front_porch >> 8) & 0x03,
+				.v_sync_offset_msb = (dsi_config->vertical_front_porch >> 4) & 0x03,
 				.h_sync_msb = (dsi_config->horizontal_pulse_width >> 8) & 0x03,
 				.h_sync_offset_msb = (dsi_config->horizontal_front_porch >> 8) & 0x03,
 				.h_size_lsb = (u8)dsi_config->physical_width_dim,
