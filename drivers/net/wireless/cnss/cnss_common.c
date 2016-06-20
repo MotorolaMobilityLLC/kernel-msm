@@ -68,6 +68,12 @@ static struct cnss_dfs_nol_info {
 	u16 dfs_nol_info_len;
 } dfs_nol_info;
 
+static char *regulatory_file = "bdwlan30.bin";
+module_param(regulatory_file, charp, S_IRUSR | S_IWUSR);
+MODULE_PARM_DESC(regulatory_file,
+		"Regulatory file to be picked up based on carrier");
+
+
 int cnss_set_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 ch_count)
 {
 	mutex_lock(&unsafe_channel_list_lock);
@@ -462,6 +468,7 @@ int cnss_get_fw_files_for_target(struct cnss_fw_files *pfw_files,
 	if (!pfw_files)
 		return -ENODEV;
 
+	pr_debug("regulatory_file name passed is %s\n", regulatory_file);
 	switch (target_version) {
 	case AR6320_REV1_VERSION:
 	case AR6320_REV1_1_VERSION:
@@ -475,6 +482,8 @@ int cnss_get_fw_files_for_target(struct cnss_fw_files *pfw_files,
 		break;
 	case AR6320_REV3_VERSION:
 	case AR6320_REV3_2_VERSION:
+		memset(FW_FILES_QCA6174_FW_3_0.board_data, 0, CNSS_MAX_FILE_NAME);
+		strlcpy(FW_FILES_QCA6174_FW_3_0.board_data, regulatory_file, CNSS_MAX_FILE_NAME);
 		memcpy(pfw_files, &FW_FILES_QCA6174_FW_3_0, sizeof(*pfw_files));
 		break;
 	default:
