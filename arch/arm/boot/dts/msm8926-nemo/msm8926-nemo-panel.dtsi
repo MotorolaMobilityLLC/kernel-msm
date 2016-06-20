@@ -144,7 +144,7 @@
 		qcom,mdss-dsi-te-pin-select = <1>;
 		qcom,mdss-dsi-te-v-sync-rd-ptr-irq-line = <0x2c>;
 		qcom,mdss-dsi-te-dcs-command = <1>;
-		qcom,mdss-dsi-te-check-enable;
+		/* qcom,mdss-dsi-te-check-enable; */
 		qcom,mdss-dsi-te-using-te-pin;
 		qcom,mdss-dsi-panel-timings = [76 18 10 00 3C 40 14 1C 12 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x04>;
@@ -155,6 +155,8 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs_l";
 		qcom,mdss-dsi-reset-sequence = <1 50>;
+		/* clk = totlaH * totalV * bpp * 66fps */
+		qcom,mdss-dsi-panel-clockrate = <439922736>;
 		qcom,mdss-brightness-default-level = <208>;
 		qcom,cont-splash-enabled;
 		qcom,ulps-enabled;
