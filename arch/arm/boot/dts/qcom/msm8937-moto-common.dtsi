@@ -20,6 +20,7 @@
 	aliases {
 		i2c3 = &i2c_3;
 		/delete-property/ spi3;
+		spi4 = &spi_4;
 	};
 
 	utags {
@@ -34,6 +35,120 @@
 		mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
 	};
 
+};
+
+&tlmm {
+	stml0xx_inputs_default: stml0xx-inputs {
+		mux {
+			pins = "gpio42", "gpio45", "gpio126", "gpio124";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio42", "gpio45", "gpio126", "gpio124";
+			bias-pull-down;	/* pull down */
+			drive-strength = <2>;
+		};
+	};
+
+	stml0xx_wakeup_default: stml0xx-wakeup {
+		mux {
+			pins = "gpio41";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio41";
+			bias-disable;	 /* no pull */
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	stml0xx_reset_default: stml0xx-reset {
+		mux {
+			pins = "gpio43";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio43";
+			bias-disable;	 /* no pull */
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	stml0xx_flash_en_default: stml0xx-flash-en {
+		mux {
+			pins = "gpio44";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio44";
+			bias-disable;	 /* no pull */
+			drive-strength = <2>;
+			output-low;
+		};
+	};
+	spi4_default: spi4_default {
+		/* active state */
+		mux {
+			/* MOSI, MISO, CLK */
+			pins = "gpio12", "gpio13", "gpio15";
+			function = "blsp_spi4";
+		};
+
+		config {
+			pins = "gpio12", "gpio13", "gpio15";
+			drive-strength = <12>; /* 12 MA */
+			bias-disable = <0>; /* No PULL */
+		};
+	};
+
+	spi4_sleep: spi4_sleep {
+		/* suspended state */
+		mux {
+			/* MOSI, MISO, CLK */
+			pins = "gpio12", "gpio13", "gpio15";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio12", "gpio13", "gpio15";
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-down; /* PULL Down */
+		};
+	};
+
+	spi4_cs0_active: spi4_cs0_active {
+		/* CS */
+		mux {
+			pins = "gpio14";
+			function = "blsp_spi4";
+		};
+
+		config {
+			pins = "gpio14";
+			drive-strength = <2>;
+			bias-disable = <0>;
+		};
+	};
+
+	spi4_cs0_sleep: spi4_cs0_sleep {
+		/* CS */
+		mux {
+			pins = "gpio14";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio14";
+			drive-strength = <2>;
+			bias-disable = <0>;
+		};
+	};
 };
 
 &soc{
@@ -105,6 +220,90 @@
 			qcom,sensor-name = "battery";
 			qcom,alias-name  = "batt_therm";
 			qcom,scaling-factor = <1000>;
+		};
+	};
+
+	spi_4: spi@78b8000 { /* BLSP1 QUP4 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x78b8000 0x600>,
+		      <0x7884000 0x1f000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		/* IRQ 239 for BLSP2 */
+		interrupts = <0 98 0>, <0 238 0>;
+		spi-max-frequency = <19200000>;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi4_default &spi4_cs0_active>;
+		pinctrl-1 = <&spi4_sleep &spi4_cs0_sleep>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup4_spi_apps_clk>;
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,use-pinctrl;
+		qcom,ver-reg-exists;
+		/* need to check pipe index setting*/
+		qcom,bam-consumer-pipe-index = <10>;
+		qcom,bam-producer-pipe-index = <11>;
+		/* master-id for BLSP2 is MSM_BUS_MASTER_BLSP_1 or 84 */
+		qcom,master-id = <86>;
+		status = "okay";
+		stml0xx: stml0xx@0 {
+			 compatible = "stm,stml0xx";
+			 status = "okay";
+			 reg = <0>;
+			 spi-max-frequency = <8000000>;
+			 gpios = <&tlmm 42 0>,       /* IRQ */
+				       <&tlmm 43 0>,      /* RESET */
+				       <&tlmm 44 0>,       /* BSLEN */
+				       <&tlmm 45 0>,      /* WakeIRQ */
+				       <&tlmm 124 0>,      /* SPI Ready for Receive */
+				       <&tlmm 126 0>,       /* SPI Data Ack */
+				       <&tlmm 41 0>;    /* Wake Up Sensor Hub */
+			 lux_table = <5 50 100 1500 3000 8000>;
+			 brightness_table = <9 14 18 46 67 93 140>;
+			 bslen_pin_active_value = <1>;
+			 ct406_detect_threshold = <0x0096>;
+			 ct406_undetect_threshold = <0x0073>;
+			 ct406_recalibrate_threshold = <0x0064>;
+			 ct406_pulse_count = <0x03>;
+			 ct406_prox_gain = <0x02>;
+			 ct406_als_lux1_c0_mult = <0x488>;
+			 ct406_als_lux1_c1_mult = <0x888>;
+			 ct406_als_lux1_div = <0x80>;
+			 ct406_als_lux2_c0_mult = <0x177>;
+			 ct406_als_lux2_c1_mult = <0x266>;
+			 ct406_als_lux2_div = <0x80>;
+			 dsp_iface_enable = <0>;
+			 headset_detect_enable = <0>;
+			 headset_hw_version = <2>;
+			 headset_insertion_debounce = <0x01F4>;
+			 headset_removal_debounce = <0x0080>;
+			 headset_button_down_debounce = <0x0032>;
+			 headset_button_up_debounce = <0x0032>;
+			 headset_button_0-1_threshold = <0x009D>;
+			 headset_button_1-2_threshold = <0x0145>;
+			 headset_button_2-3_threshold = <0x0201>;
+			 headset_button_3-upper_threshold = <0x03B0>;
+			 headset_button_1_keycode = <0xE2>;  /* KEY_MEDIA	*/
+			 headset_button_2_keycode = <0x246>; /* KEY_VOICECOMMAND */
+			 headset_button_3_keycode = <0x73>;  /* KEY_VOLUMEUP     */
+			 headset_button_4_keycode = <0x72>;  /* KEY_VOLUMEDOWN   */
+			 cover_detect_polarity = <1>;
+			 reset_hw_type = <1>;
+			 accel_orientation_1 = <7>; /* Accel Orientation value */
+			 accel_orientation_2 = <1>; /* Not used */
+			 accel_swap = <0>;          /* Not used */
+			 sensor1-supply = <&pm8937_l10>;
+			 sensor2-supply = <&pm8937_l5>;
+
+			 pinctrl-names = "default";
+			 pinctrl-0 = <&stml0xx_inputs_default
+				 &stml0xx_wakeup_default
+				 &stml0xx_reset_default
+				 &stml0xx_flash_en_default>;
 		};
 	};
 };
