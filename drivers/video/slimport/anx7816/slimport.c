@@ -18,6 +18,8 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/clk.h>
 #include <linux/completion.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
 #ifdef QUICK_CHARGE_SUPPORT
 #include "quick_charge.h"
 #endif
@@ -114,6 +116,7 @@ struct anx7816_data {
 	struct wake_lock slimport_lock;
 	atomic_t slimport_connected;
 	struct completion connect_wait;
+	struct dentry *debugfs;
 };
 
 static int anx7816_pinctrl_rst_set_state(bool active)
@@ -926,6 +929,134 @@ error:
 		device_remove_file(dev, &slimport_device_attrs[i]);
 	pr_err("%s %s: Unable to create interface", LOG_TAG, __func__);
 	return -EINVAL;
+}
+
+static int remove_sysfs_interfaces(struct device *dev)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(slimport_device_attrs); i++)
+		device_remove_file(dev, &slimport_device_attrs[i]);
+	return 0;
+}
+
+struct slave_info {
+	const char *name;
+	uint8_t addr;
+};
+
+static struct slave_info anx7816_reg_dump_slave_info[] = {
+	{.name = "TX_P0", .addr = TX_P0},
+	{.name = "TX_P1", .addr = TX_P1},
+	{.name = "TX_P2", .addr = TX_P2},
+	{.name = "RX_P0", .addr = RX_P0},
+	{.name = "RX_P1", .addr = RX_P1},
+};
+
+static void *anx7816_reg_dump_seq_start(struct seq_file *s, loff_t *pos)
+{
+	if (*pos >= ARRAY_SIZE(anx7816_reg_dump_slave_info))
+		return NULL;
+	return anx7816_reg_dump_slave_info + *pos;
+}
+
+static void *anx7816_reg_dump_seq_next(struct seq_file *s, void *v,
+				       loff_t *pos)
+{
+	if (++*pos >= ARRAY_SIZE(anx7816_reg_dump_slave_info))
+		return NULL;
+	return anx7816_reg_dump_slave_info + *pos;
+}
+
+static int anx7816_reg_dump_seq_show(struct seq_file *s, void *v)
+{
+	int i, j;
+	uint8_t offset = 0;
+	int rc = 0;
+	struct slave_info *slave_info = v;
+	struct anx7816_data *anx7816 = s->private;
+	struct anx7816_platform_data *pdata = anx7816->pdata;
+
+	mutex_lock(&pdata->sp_tx_power_lock);
+
+	seq_printf(s, "%s (0x%02X)", slave_info->name, slave_info->addr);
+
+	if (pdata->sp_tx_power_state) {
+		seq_puts(s, "\n   ");
+		for (i = 0; i < 16; i++)
+			seq_printf(s, "  %X", i);
+		for (i = 0; i < 16; i++) {
+			seq_printf(s, "\n%02X:", offset);
+			for (j = 0; j < 16; j++, offset++) {
+				uint8_t reg;
+
+				if (!rc)
+					rc = sp_read_reg(slave_info->addr,
+						offset, &reg);
+				if (!rc)
+					seq_printf(s, " %02x", reg);
+				else
+					seq_puts(s, " --");
+			}
+		}
+	} else {
+		seq_puts(s, "\nnot powered, skipping register reads");
+	}
+
+	seq_puts(s, "\n\n");
+
+	mutex_unlock(&pdata->sp_tx_power_lock);
+
+	return 0;
+}
+
+static void anx7816_reg_dump_seq_stop(struct seq_file *s, void *v)
+{
+}
+
+static const struct seq_operations anx7816_reg_dump_seq_ops = {
+	.start = anx7816_reg_dump_seq_start,
+	.next  = anx7816_reg_dump_seq_next,
+	.show  = anx7816_reg_dump_seq_show,
+	.stop  = anx7816_reg_dump_seq_stop,
+};
+
+static int anx7816_reg_dump_open(struct inode *inode, struct file *file)
+{
+	int rc = seq_open(file, &anx7816_reg_dump_seq_ops);
+
+	if (!rc) {
+		struct seq_file *seq = file->private_data;
+
+		seq->private = inode->i_private;
+	}
+	return rc;
+}
+
+static const struct file_operations anx7816_reg_dump_fops = {
+	.open    = anx7816_reg_dump_open,
+	.read    = seq_read,
+	.llseek  = seq_lseek,
+	.release = seq_release,
+};
+
+static int create_debugfs_interfaces(struct anx7816_data *anx7816)
+{
+	int rc = 0;
+	struct dentry *dentry = debugfs_create_file("anx7816_reg_dump",
+		S_IRUGO, NULL, anx7816, &anx7816_reg_dump_fops);
+
+	if (IS_ERR(dentry))
+		rc = PTR_ERR(dentry);
+	else
+		anx7816->debugfs = dentry;
+	return rc;
+}
+
+static void remove_debugfs_interfaces(struct anx7816_data *anx7816)
+{
+	debugfs_remove(anx7816->debugfs);
+	anx7816->debugfs = NULL;
 }
 
 int sp_read_reg_byte(uint8_t slave_addr, uint8_t offset)
@@ -1784,6 +1915,12 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		goto err3;
 	}
 
+	ret = create_debugfs_interfaces(anx7816);
+	if (ret < 0) {
+		pr_err("%s : debugfs register failed", __func__);
+		goto err4;
+	}
+
 	/*QC2.0*/
 #ifdef QUICK_CHARGE_SUPPORT
 	BLOCKING_INIT_NOTIFIER_HEAD(get_notifier_list_head());
@@ -1817,6 +1954,8 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	pr_debug("%s %s end\n", LOG_TAG, __func__);
 	goto exit;
 
+err4:
+	remove_sysfs_interfaces(&client->dev);
 err3:
 #ifndef MML_DYNAMIC_IRQ_SUPPORT
 	free_irq(client->irq, anx7816);
@@ -1835,10 +1974,8 @@ exit:
 static int anx7816_i2c_remove(struct i2c_client *client)
 {
 	struct anx7816_data *anx7816 = i2c_get_clientdata(client);
-	int i = 0;
-
-	for (i = 0; i < ARRAY_SIZE(slimport_device_attrs); i++)
-		device_remove_file(&client->dev, &slimport_device_attrs[i]);
+	remove_debugfs_interfaces(anx7816);
+	remove_sysfs_interfaces(&client->dev);
 	pr_debug("anx7816_i2c_remove\n");
 	sp_tx_clean_state_machine();
 	destroy_workqueue(anx7816->workqueue);
