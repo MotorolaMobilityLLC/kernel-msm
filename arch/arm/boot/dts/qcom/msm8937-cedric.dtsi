@@ -34,3 +34,15 @@
 	};
 };
 
+&pm8937_gpios {
+	gpio@c100 {
+		status = "ok";
+		qcom,mode = <1>;
+		qcom,out-type = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <1>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <1>;
+		qcom,out-strength = <2>;
+	};
+};
