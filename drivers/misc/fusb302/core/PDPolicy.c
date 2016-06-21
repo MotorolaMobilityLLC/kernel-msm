@@ -2001,9 +2001,11 @@ void PolicySinkEvaluateCaps(void)
 	}
 	if (MaxPower > SinkRequestMaxPower)
 		SinkRequestMaxPower = MaxPower;
-	gChargerMaxCurrent = MaxPower/SelVoltage;
-	gRequestOpVoltage = SelVoltage;
-	SinkRequestOpPower = gRequestOpCurrent * SelVoltage;
+	if (SelVoltage > 0) {
+		gChargerMaxCurrent = MaxPower/SelVoltage;
+		gRequestOpVoltage = SelVoltage;
+		SinkRequestOpPower = gRequestOpCurrent * SelVoltage;
+	}
 	if ((reqPos > 0) && (SelVoltage > 0)) {
 		PartnerCaps.object = CapsReceived[0].object;
 		SinkRequest.FVRDO.ObjectPosition = reqPos & 0x07;	// Set the object position selected
