@@ -806,9 +806,11 @@ int mdss_dba_utils_reconfigure_dsi(void *data, struct mdss_panel_info *pinfo)
 	pt.timing.border_bottom = dsi_config.vertical_bottom_border;
 	pt.timing.frame_rate = dsi_config.framerate;
 	pt.timing.clk_rate = dsi_config.clockrate * dsi_config.num_lanes;
-	do_div(pt.timing.clk_rate,  dsi_config.bpp);
 	pt.t_clk_pre = dsi_config.t_clk_pre;
 	pt.t_clk_post = dsi_config.t_clk_post;
+
+	pinfo->mipi.dsi_pclk_rate = pt.timing.clk_rate;
+	do_div(pinfo->mipi.dsi_pclk_rate, dsi_config.bpp);
 
 	ret = mdss_dsi_panel_timing_switch(ctrl, &pt.timing);
 	if (ret)
