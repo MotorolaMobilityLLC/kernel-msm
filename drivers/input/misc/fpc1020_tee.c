@@ -511,7 +511,7 @@ static int fpc1020_suspend(struct spi_device *spi, pm_message_t mesg)
 
 	fpc1020->clocks_suspended = fpc1020->clocks_enabled;
 	dev_info(fpc1020->dev, "fpc1020_suspend\n");
-	if (fpc1020->clocks_enabled)
+	if (fpc1020->clocks_suspended)
 		__set_clks(fpc1020, false);
 	return 0;
 }
