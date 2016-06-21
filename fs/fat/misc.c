@@ -10,6 +10,7 @@
 #include <linux/fs.h>
 #include <linux/buffer_head.h>
 #include <linux/time.h>
+#include <linux/genhd.h>
 #include "fat.h"
 
 /*
@@ -38,6 +39,7 @@ void __fat_fs_error(struct super_block *sb, int report, const char *fmt, ...)
 		panic("FAT-fs (%s): fs panic from previous error\n", sb->s_id);
 	else if (opts->errors == FAT_ERRORS_RO && !(sb->s_flags & MS_RDONLY)) {
 		sb->s_flags |= MS_RDONLY;
+		kobject_uevent(&disk_to_dev(sb->s_bdev->bd_disk)->kobj, KOBJ_CHANGE);
 		fat_msg(sb, KERN_ERR, "Filesystem has been set read-only");
 	}
 }
