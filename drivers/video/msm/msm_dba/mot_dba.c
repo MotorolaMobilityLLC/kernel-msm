@@ -370,12 +370,14 @@ int mot_dba_device_enable(int mod_display_type)
 		pr_err("%s: Unable to find DBA driver type = %d\n", __func__,
 				mod_display_type);
 		ret = -EINVAL;
-	} else if (mod_display_type == MOD_DISPLAY_TYPE_DP)
-		gpio_set_value(g_pdata->gpio_sel_dsi,
+	} else if (gpio_is_valid(g_pdata->gpio_sel_dsi)) {
+		if (mod_display_type == MOD_DISPLAY_TYPE_DP)
+			gpio_set_value(g_pdata->gpio_sel_dsi,
 				(g_pdata->gpio_sel_dsi_val ? 0 : 1));
-	else
-		gpio_set_value(g_pdata->gpio_sel_dsi,
+		else
+			gpio_set_value(g_pdata->gpio_sel_dsi,
 					g_pdata->gpio_sel_dsi_val);
+	}
 exit:
 	mutex_unlock(&list_lock);
 	return ret;
