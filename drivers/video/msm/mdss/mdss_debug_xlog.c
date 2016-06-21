@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -208,7 +208,7 @@ u32 get_dump_range(struct dump_offset *range_node, size_t max_offset)
 }
 
 static void mdss_dump_debug_bus(u32 bus_dump_flag,
-	u32 **dump_mem)
+	u32 **dump_mem, bool atomic_context)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	bool in_log, in_mem;
@@ -218,6 +218,7 @@ static void mdss_dump_debug_bus(u32 bus_dump_flag,
 	phys_addr_t phys = 0;
 	int list_size = mdata->dbg_bus_size;
 	int i;
+	gfp_t gfp_flags;
 
 	if (!(mdata->dbg_bus && list_size))
 		return;
@@ -228,11 +229,12 @@ static void mdss_dump_debug_bus(u32 bus_dump_flag,
 	in_log = (bus_dump_flag & MDSS_DBG_DUMP_IN_LOG);
 	in_mem = (bus_dump_flag & MDSS_DBG_DUMP_IN_MEM);
 
+	gfp_flags = atomic_context ? GFP_ATOMIC : GFP_KERNEL;
 	if (in_mem) {
 		if (!(*dump_mem))
-			*dump_mem = dma_alloc_coherent(&mdata->pdev->dev,
-				list_size, &phys, GFP_KERNEL);
-
+			*dump_mem = dma_alloc_coherent(
+					&mdata->pdev->dev,
+					list_size, &phys, gfp_flags);
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
 			pr_info("bus dump_addr:%p size:%d\n",
@@ -244,8 +246,8 @@ static void mdss_dump_debug_bus(u32 bus_dump_flag,
 	}
 
 	pr_info("======== Debug bus DUMP =========\n");
-
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+	if (!atomic_context)
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 	for (i = 0; i < mdata->dbg_bus_size; i++) {
 		head = mdata->dbg_bus + i;
 		writel_relaxed(TEST_MASK(head->block_id, head->test_id),
@@ -267,20 +269,23 @@ static void mdss_dump_debug_bus(u32 bus_dump_flag,
 		}
 
 	}
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+
+	if (!atomic_context)
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 
 	pr_info("========End Debug bus=========\n");
 
 }
 
 static void mdss_dump_reg(u32 reg_dump_flag,
-	char *addr, int len, u32 **dump_mem)
+	char *addr, int len, u32 **dump_mem, bool atomic_context)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	bool in_log, in_mem;
 	u32 *dump_addr = NULL;
 	phys_addr_t phys = 0;
 	int i;
+	gfp_t gfp_flags;
 
 	in_log = (reg_dump_flag & MDSS_DBG_DUMP_IN_LOG);
 	in_mem = (reg_dump_flag & MDSS_DBG_DUMP_IN_MEM);
@@ -292,11 +297,12 @@ static void mdss_dump_reg(u32 reg_dump_flag,
 		len += 16;
 	len /= 16;
 
+	gfp_flags = atomic_context ? GFP_ATOMIC : GFP_KERNEL;
 	if (in_mem) {
 		if (!(*dump_mem))
-			*dump_mem = dma_alloc_coherent(&mdata->pdev->dev,
-				len * 16, &phys, GFP_KERNEL);
-
+			*dump_mem = dma_alloc_coherent(
+					&mdata->pdev->dev,
+					len * 16, &phys, gfp_flags);
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
 			pr_info("start_addr:%p end_addr:%p reg_addr=%p\n",
@@ -308,7 +314,8 @@ static void mdss_dump_reg(u32 reg_dump_flag,
 		}
 	}
 
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+	if (!atomic_context)
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 	for (i = 0; i < len; i++) {
 		u32 x0, x4, x8, xc;
 
@@ -330,11 +337,13 @@ static void mdss_dump_reg(u32 reg_dump_flag,
 
 		addr += 16;
 	}
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+
+	if (!atomic_context)
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 }
 
 static void mdss_dump_reg_by_ranges(struct mdss_debug_base *dbg,
-	u32 reg_dump_flag)
+	u32 reg_dump_flag, bool atomic_context)
 {
 	char *addr;
 	int len;
@@ -359,7 +368,7 @@ static void mdss_dump_reg_by_ranges(struct mdss_debug_base *dbg,
 				addr, xlog_node->offset.start,
 				xlog_node->offset.end);
 			mdss_dump_reg(reg_dump_flag, addr, len,
-				&xlog_node->reg_dump);
+					&xlog_node->reg_dump, atomic_context);
 		}
 	} else {
 		/* If there is no list to dump ranges, dump all registers */
@@ -367,7 +376,8 @@ static void mdss_dump_reg_by_ranges(struct mdss_debug_base *dbg,
 		pr_info("base:0x%p len:0x%zu\n", dbg->base, dbg->max_offset);
 		addr = dbg->base;
 		len = dbg->max_offset;
-		mdss_dump_reg(reg_dump_flag, addr, len, &dbg->reg_dump);
+		mdss_dump_reg(reg_dump_flag, addr, len, &dbg->reg_dump,
+				atomic_context);
 	}
 }
 
@@ -384,7 +394,7 @@ static void mdss_dump_reg_by_blk(const char *blk_name)
 		if (blk_base->name &&
 			!strcmp(blk_base->name, blk_name)) {
 			mdss_dump_reg_by_ranges(blk_base,
-				mdss_dbg_xlog.enable_reg_dump);
+				mdss_dbg_xlog.enable_reg_dump, false);
 			break;
 		}
 	}
@@ -433,14 +443,15 @@ struct mdss_debug_base *get_dump_blk_addr(const char *blk_name)
 }
 
 static void mdss_xlog_dump_array(struct mdss_debug_base *blk_arr[],
-	u32 len, bool dead, const char *name, bool dump_dbgbus)
+	u32 len, bool dead, const char *name,
+	bool dump_dbgbus, bool atomic_context)
 {
 	int i;
 
 	for (i = 0; i < len; i++) {
 		if (blk_arr[i] != NULL)
 			mdss_dump_reg_by_ranges(blk_arr[i],
-				mdss_dbg_xlog.enable_reg_dump);
+				mdss_dbg_xlog.enable_reg_dump, atomic_context);
 	}
 
 	if (mdss_xlog_is_enabled(MDSS_XLOG_DEFAULT))
@@ -448,7 +459,7 @@ static void mdss_xlog_dump_array(struct mdss_debug_base *blk_arr[],
 
 	if (dump_dbgbus)
 		mdss_dump_debug_bus(mdss_dbg_xlog.enable_dbgbus_dump,
-			&mdss_dbg_xlog.dbgbus_dump);
+				&mdss_dbg_xlog.dbgbus_dump, atomic_context);
 
 	if (dead && mdss_dbg_xlog.panic_on_err)
 		panic(name);
@@ -460,7 +471,7 @@ static void xlog_debug_work(struct work_struct *work)
 	mdss_xlog_dump_array(mdss_dbg_xlog.blk_arr,
 		ARRAY_SIZE(mdss_dbg_xlog.blk_arr),
 		mdss_dbg_xlog.work_panic, "xlog_workitem",
-		mdss_dbg_xlog.work_dbgbus);
+		mdss_dbg_xlog.work_dbgbus, false);
 }
 
 void mdss_xlog_tout_handler_default(bool enforce_dump, bool queue,
@@ -469,6 +480,7 @@ void mdss_xlog_tout_handler_default(bool enforce_dump, bool queue,
 	int i, index = 0;
 	bool dead = false;
 	bool dump_dbgbus = false;
+	bool atomic_context = false;
 	va_list args;
 	char *blk_name = NULL;
 	struct mdss_debug_base *blk_base = NULL;
@@ -503,6 +515,9 @@ void mdss_xlog_tout_handler_default(bool enforce_dump, bool queue,
 
 		if (!strcmp(blk_name, "panic"))
 			dead = true;
+
+		if (!strcmp(blk_name, "atomic_context"))
+			atomic_context = true;
 	}
 	va_end(args);
 
@@ -512,7 +527,8 @@ void mdss_xlog_tout_handler_default(bool enforce_dump, bool queue,
 		mdss_dbg_xlog.work_dbgbus = dump_dbgbus;
 		schedule_work(&mdss_dbg_xlog.xlog_dump_work);
 	} else {
-		mdss_xlog_dump_array(blk_arr, blk_len, dead, name, dump_dbgbus);
+		mdss_xlog_dump_array(blk_arr, blk_len, dead, name,
+					dump_dbgbus, atomic_context);
 	}
 }
 
