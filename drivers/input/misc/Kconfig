@@ -789,6 +789,14 @@ config SENSORS_FPC_1020
 	 Say Y here if you wish to include support for finger print sensor.
 	 If unsure, say N.
 
+config INPUT_SX9310
+	tristate "SX9310_SAR_sensor"
+	depends on I2C
+	default n
+	help
+	  Say Y to enable the SAR detection application, if N here not to use the
+	  this SAR sensor.
+
 source "drivers/input/misc/ots_pat9125/Kconfig"
 
 endif
