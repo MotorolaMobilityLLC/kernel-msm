@@ -242,7 +242,7 @@ static const struct file_operations fmax_rates_fops = {
 	.open		= fmax_rates_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= single_release,
 };
 
 static int orphan_list_show(struct seq_file *m, void *unused)
@@ -264,7 +264,7 @@ static const struct file_operations orphan_list_fops = {
 	.open		= orphan_list_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= single_release,
 };
 
 #define clock_debug_output(m, c, fmt, ...)		\
@@ -342,7 +342,7 @@ static const struct file_operations enabled_clocks_fops = {
 	.open		= enabled_clocks_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= single_release,
 };
 
 static int trace_clocks_show(struct seq_file *m, void *unused)
@@ -373,7 +373,7 @@ static const struct file_operations trace_clocks_fops = {
 	.open		= trace_clocks_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= single_release,
 };
 
 static int list_rates_show(struct seq_file *m, void *unused)
@@ -412,7 +412,7 @@ static const struct file_operations list_rates_fops = {
 	.open		= list_rates_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= single_release,
 };
 
 static ssize_t clock_parent_read(struct file *filp, char __user *ubuf,
@@ -518,7 +518,7 @@ static const struct file_operations clock_print_hw_fops = {
 	.open		= print_hw_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= single_release,
 };
 
 
@@ -663,7 +663,7 @@ static const struct file_operations clock_rate_stats_fops = {
 	.read		= seq_read,
 	.write		= rate_stats_write,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= single_release,
 };
 
 
