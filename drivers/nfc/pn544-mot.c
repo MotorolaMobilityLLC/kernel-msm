@@ -30,6 +30,9 @@
 #include <linux/nfc/pn544-mot.h>
 #include <linux/regulator/consumer.h>
 #include <linux/reboot.h>
+#include <linux/clk.h>
+
+static struct clk *clk_rf;
 
 /*
  * Virtual device /sys/devices/virtual/misc/pn544/pn544_control_dev
@@ -130,7 +133,11 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 			__func__, ret);
 		goto free_buf;
 	}
-
+	if (ret > count) {
+		pr_err("%s: received too many bytes from i2c (%d)\n",
+			__func__, ret);
+		goto free_buf;
+	}
 	if (copy_to_user(buf, data, count)) {
 		pr_err("%s : failed to copy to user space\n", __func__);
 		ret = -EFAULT;
@@ -417,6 +424,34 @@ pn544_of_init(struct i2c_client *client)
 }
 #endif
 
+static void  pn544_clk_enable(struct device *dev)
+{
+	int ret = -1;
+
+	pr_debug("nfc: dev-name=%s\n", dev_name(dev));
+	clk_rf = clk_get(dev, "ref_clk");
+	if (IS_ERR(clk_rf)) {
+		pr_err("nfc: failed to get nfc_clk\n");
+		return;
+	}
+	pr_info("nfc: succeed in obtaining nfc_clk from msm pmic\n");
+
+	ret = clk_prepare(clk_rf);
+	if (ret)
+		pr_err("nfc: failed to call clk_prepare, ret = %d\n", ret);
+}
+
+static void pn544_clk_disable(void)
+{
+	if (IS_ERR(clk_rf)) {
+		pr_err("nfc: disable clock skiped\n");
+		return;
+	}
+
+	clk_unprepare(clk_rf);
+	clk_put(clk_rf);
+	clk_rf = NULL;
+}
 static int pn544_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
@@ -441,6 +476,8 @@ static int pn544_probe(struct i2c_client *client,
 			__func__);
 		goto err_exit;
 	}
+
+	pn544_clk_enable(&client->dev);
 
 	pn544_dev = kzalloc(sizeof(*pn544_dev), GFP_KERNEL);
 	if (pn544_dev == NULL) {
@@ -548,6 +585,7 @@ err_en_regulator_swp:
 err_gpio_init:
 	kfree(pn544_dev);
 err_exit:
+	pn544_clk_disable();
 	return ret;
 }
 
@@ -569,6 +607,7 @@ static int pn544_remove(struct i2c_client *client)
 		regulator_disable(pn544_dev->vdd);
 		regulator_put(pn544_dev->vdd);
 	}
+	pn544_clk_disable();
 	kfree(pn544_dev);
 
 	return 0;
