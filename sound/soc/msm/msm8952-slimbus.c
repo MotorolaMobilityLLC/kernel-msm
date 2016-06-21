@@ -138,6 +138,17 @@ static bool codec_reg_done;
 
 static int mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
+static int msm_quat_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+static int msm_quat_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+static int msm_quat_mi2s_ch = 2;
+static int msm_quat_clk_freq_in_hz[5][2] = {
+	{Q6AFE_LPASS_IBIT_CLK_512_KHZ, Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ},
+	{Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ, Q6AFE_LPASS_IBIT_CLK_2_P048_MHZ},
+	{Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ, Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ},
+	{Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ, Q6AFE_LPASS_IBIT_CLK_6_P144_MHZ},
+	{Q6AFE_LPASS_IBIT_CLK_6_P144_MHZ, Q6AFE_LPASS_IBIT_CLK_12_P288_MHZ}
+};
+
 static int msm_proxy_rx_ch = 2;
 static void *adsp_state_notifier;
 
@@ -617,6 +628,155 @@ static int mi2s_rx_bit_format_put(struct snd_kcontrol *kcontrol,
 	}
 	return 0;
 }
+
+static int quat_mi2s_get_rate(void)
+{
+	int value;
+
+	switch (msm_quat_mi2s_sample_rate) {
+	case SAMPLING_RATE_16KHZ:
+		value = 0;
+		break;
+	case SAMPLING_RATE_32KHZ:
+		value = 1;
+		break;
+	case SAMPLING_RATE_48KHZ:
+		value = 2;
+		break;
+	case SAMPLING_RATE_96KHZ:
+		value = 3;
+		break;
+	case SAMPLING_RATE_192KHZ:
+		value = 4;
+		break;
+	default:
+		value = 2;
+		break;
+	}
+	return value;
+}
+
+static int msm_quat_mi2s_rate_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_quat_mi2s_sample_rate  = %d\n", __func__,
+		 msm_quat_mi2s_sample_rate);
+	ucontrol->value.integer.value[0] = quat_mi2s_get_rate();
+	return 0;
+}
+
+static int msm_quat_mi2s_rate_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm_quat_mi2s_sample_rate = SAMPLING_RATE_16KHZ;
+		break;
+	case 1:
+		msm_quat_mi2s_sample_rate = SAMPLING_RATE_32KHZ;
+		break;
+	case 2:
+		msm_quat_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+		break;
+	case 3:
+		msm_quat_mi2s_sample_rate = SAMPLING_RATE_96KHZ;
+		break;
+	case 4:
+		msm_quat_mi2s_sample_rate = SAMPLING_RATE_192KHZ;
+		break;
+	default:
+		msm_quat_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+		break;
+	}
+	pr_debug("%s: msm_quat_mi2s_sample_rate  = %d\n", __func__,
+		 msm_quat_mi2s_sample_rate);
+	return 0;
+}
+
+static int quat_mi2s_get_format(void)
+{
+	int value;
+
+	switch (msm_quat_mi2s_bit_format) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		value = 0;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		value = 1;
+		break;
+	default:
+		value = 0;
+		break;
+	}
+	return value;
+}
+
+static int msm_quat_mi2s_format_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_quat_mi2s_bit_format  = %d\n", __func__,
+		 msm_quat_mi2s_bit_format);
+	ucontrol->value.integer.value[0] = quat_mi2s_get_format();
+	return 0;
+}
+
+static int msm_quat_mi2s_format_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm_quat_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	case 1:
+		msm_quat_mi2s_bit_format = SNDRV_PCM_FORMAT_S24_LE;
+		break;
+	default:
+		msm_quat_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	}
+	pr_debug("%s: msm_quat_mi2s_bit_format  = %d\n", __func__,
+		 msm_quat_mi2s_bit_format);
+	return 0;
+}
+
+static int msm_quat_mi2s_ch_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm_quat_mi2s_ch = 1;
+		break;
+	case 1:
+		msm_quat_mi2s_ch = 2;
+		break;
+	default:
+		msm_quat_mi2s_ch = 2;
+		break;
+	}
+	pr_debug("%s: msm_quat_mi2s_ch = %d\n", __func__,
+		msm_quat_mi2s_ch);
+	return 0;
+}
+
+static int msm_quat_mi2s_ch_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_quat_mi2s_ch  = %d\n", __func__,
+		msm_quat_mi2s_ch);
+	switch (msm_quat_mi2s_ch) {
+	case 1:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	case 2:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	default:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	}
+	return 0;
+}
+
 
 static int msm_slim_1_tx_ch_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
@@ -1883,6 +2043,18 @@ static const struct soc_enum msm_snd_enum[] = {
 			    slim4_rx_bit_format_text),
 };
 
+static char const *msm_quat_mi2s_ch_text[] = {"One", "Two"};
+
+static const char *const msm_quat_mi2s_rate_text[] = {"KHZ_16", "KHZ_32",
+			"KHZ_48", "KHZ_96", "KHZ_192"};
+static const char *const msm_quat_mi2s_format_text[] = {"S16_LE", "S24_LE"};
+
+static const struct soc_enum msm8996_quat_mi2s_enum[] = {
+		SOC_ENUM_SINGLE_EXT(5, msm_quat_mi2s_rate_text),
+		SOC_ENUM_SINGLE_EXT(2, msm_quat_mi2s_format_text),
+		SOC_ENUM_SINGLE_EXT(2, msm_quat_mi2s_ch_text),
+};
+
 static const char *const btsco_rate_text[] = {"BTSCO_RATE_8KHZ",
 	"BTSCO_RATE_16KHZ"};
 static const struct soc_enum msm_btsco_enum[] = {
@@ -1978,6 +2150,13 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("SEC_TDM_TX_0 SampleRate", msm_snd_enum[15],
 			msm_sec_tdm_tx_0_sample_rate_get,
 			msm_sec_tdm_tx_0_sample_rate_put),
+	SOC_ENUM_EXT("QUAT_MI2S SampleRate", msm8996_quat_mi2s_enum[0],
+			msm_quat_mi2s_rate_get, msm_quat_mi2s_rate_put),
+	SOC_ENUM_EXT("QUAT_MI2S Format", msm8996_quat_mi2s_enum[1],
+			msm_quat_mi2s_format_get, msm_quat_mi2s_format_put),
+	SOC_ENUM_EXT("QUAT_MI2S Channels", msm8996_quat_mi2s_enum[2],
+			msm_quat_mi2s_ch_get, msm_quat_mi2s_ch_put),
+
 };
 
 int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
@@ -1993,6 +2172,22 @@ int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	rate->min = rate->max = 48000;
 	channels->min = channels->max = 2;
 
+	return 0;
+}
+
+int msm_quat_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+				struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_RATE);
+	struct snd_interval *channels = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_CHANNELS);
+
+	pr_debug("%s: channel:%d\n", __func__, msm_quat_mi2s_ch);
+	rate->min = rate->max = msm_quat_mi2s_sample_rate;
+	channels->min = channels->max = msm_quat_mi2s_ch;
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+				msm_quat_mi2s_bit_format);
 	return 0;
 }
 
@@ -2297,6 +2492,14 @@ int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT, mi2s_rx_bit_format);
+	return 0;
+}
+
+int msm_quat_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params)
+{
+	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+		 substream->name, substream->stream);
 	return 0;
 }
 
@@ -2788,21 +2991,19 @@ static void msm_afe_clear_config(void)
 
 static int quat_mi2s_clk_ctl(struct snd_pcm_substream *substream, bool enable)
 {
-	int ret = 0;
+	int ret = 0, format, rate;
 
 	if (enable) {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			mi2s_rx_clk.enable = enable;
 			mi2s_rx_clk.clk_id =
 				Q6AFE_LPASS_CLK_ID_QUAD_MI2S_IBIT;
-			if ((mi2s_rx_bit_format == SNDRV_PCM_FORMAT_S24_LE) ||
-				(mi2s_rx_bit_format ==
-						SNDRV_PCM_FORMAT_S24_3LE))
-				mi2s_rx_clk.clk_freq_in_hz =
-					Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
-			else
-				mi2s_rx_clk.clk_freq_in_hz =
-					Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			rate = quat_mi2s_get_rate();
+			format = quat_mi2s_get_format();
+			mi2s_rx_clk.clk_freq_in_hz =
+					msm_quat_clk_freq_in_hz[rate][format];
+			pr_debug("%s: set quat clock freq: %d", __func__,
+				mi2s_rx_clk.clk_freq_in_hz);
 			ret = afe_set_lpass_clock_v2(
 					AFE_PORT_ID_QUATERNARY_MI2S_RX,
 					&mi2s_rx_clk);
@@ -2810,8 +3011,12 @@ static int quat_mi2s_clk_ctl(struct snd_pcm_substream *substream, bool enable)
 			mi2s_tx_clk.enable = enable;
 			mi2s_tx_clk.clk_id =
 				Q6AFE_LPASS_CLK_ID_QUAD_MI2S_IBIT;
+			rate = quat_mi2s_get_rate();
+			format = quat_mi2s_get_format();
 			mi2s_tx_clk.clk_freq_in_hz =
-					Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+					msm_quat_clk_freq_in_hz[rate][format];
+			pr_debug("%s: set quat clock freq: %d", __func__,
+				mi2s_tx_clk.clk_freq_in_hz);
 			ret = afe_set_lpass_clock_v2(
 					AFE_PORT_ID_QUATERNARY_MI2S_TX,
 					&mi2s_tx_clk);
