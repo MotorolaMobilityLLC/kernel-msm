@@ -405,6 +405,7 @@ static void ext4_handle_error(struct super_block *sb)
 		 */
 		smp_wmb();
 		sb->s_flags |= MS_RDONLY;
+		kobject_uevent(&disk_to_dev(sb->s_bdev->bd_disk)->kobj, KOBJ_CHANGE);
 	}
 	if (test_opt(sb, ERRORS_PANIC))
 		panic("EXT4-fs (device %s): panic forced after error\n",
@@ -593,6 +594,7 @@ void __ext4_abort(struct super_block *sb, const char *function,
 		 */
 		smp_wmb();
 		sb->s_flags |= MS_RDONLY;
+		kobject_uevent(&disk_to_dev(sb->s_bdev->bd_disk)->kobj, KOBJ_CHANGE);
 		if (EXT4_SB(sb)->s_journal)
 			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
 		save_error_info(sb, function, line);
