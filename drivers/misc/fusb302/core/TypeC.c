@@ -795,15 +795,6 @@ void StateMachineAttachWaitSink(void)
 			SetStateDelayUnattached();
 		}
 	}
-#ifdef FSC_HAVE_ACCMODE
-	else if (blnAccSupport
-		 && (CCTermCCDebounce >= CCTypeRdUSB)
-		 && (CCTermCCDebounce < CCTypeUndefined)
-		 && (VCONNTerm >= CCTypeRdUSB) && (VCONNTerm < CCTypeUndefined))	// If they are both Rd, it's a debug accessory
-	{
-		SetStateDebugAccessorySink();
-	}
-#endif /* FSC_HAVE_ACCMODE */
 	else if (isVBUSOverVoltage(VBUS_MDAC_4P62))	// If we have detected VBUS and we have detected an Rp for >tCCDebounce...
 	{
 		if ((CCTermCCDebounce > CCTypeOpen)
@@ -881,9 +872,8 @@ void StateMachineAttachedSource(void)
 	switch (TypeCSubState) {
 	case 0:
 
-		/*if (Registers.Status.I_COMP_CHNG == 1)*/ {
+		if (Registers.Status.I_COMP_CHNG == 1)
 			CCTermPrevious = DecodeCCTermination();
-		}
 
 		if ((CCTermPrevious == CCTypeOpen) && (!IsPRSwap))	// If the debounced CC pin is detected as open and we aren't in the middle of a PR_Swap
 		{
