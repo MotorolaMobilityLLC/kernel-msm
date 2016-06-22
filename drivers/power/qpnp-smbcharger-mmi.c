@@ -9470,6 +9470,9 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 	if (chip->forced_shutdown)
 		return;
 
+	if (!chip->usbc_online && (chip->wake_reasons & PM_CHARGER))
+		smbchg_relax(chip, PM_CHARGER);
+
 	/* If BC 1.2 Detection wasn't triggered , skip USB sync */
 	if (!chip->usb_insert_bc1_2)
 		goto sync_dc;
