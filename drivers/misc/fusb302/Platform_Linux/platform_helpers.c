@@ -5324,9 +5324,7 @@ void _fusb_WakeWorker(struct work_struct *work)
 	}
 	pm_stay_awake(&chip->client->dev);
 	if (fusb_InterruptPinLow()) {
-		do {
-			core_state_machine();
-		} while (platform_get_device_irq_state());
+		core_state_machine();
 	} else
 		core_state_machine_imp();
 	pm_relax(&chip->client->dev);
