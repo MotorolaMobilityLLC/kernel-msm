@@ -716,7 +716,9 @@ static ssize_t diag_dbgfs_write_debug(struct file *fp, const char __user *buf,
 	if (value < 0)
 		return -EINVAL;
 
+#ifdef DIAG_DEBUG
 	diag_debug_mask = (uint16_t)value;
+#endif /* DIAG_DEBUG */
 	return count;
 }
 
