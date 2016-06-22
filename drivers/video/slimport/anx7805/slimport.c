@@ -796,9 +796,6 @@ static int slimport_mod_display_handle_unavailable(void *data)
 		pr_err("%s: fail to disable DBA device MOD_DISPLAY_TYPE_DP\n",
 								__func__);
 
-	/* Just in case */
-	mod_display_set_display_state(MOD_DISPLAY_OFF);
-
 	pr_debug("%s-\n", __func__);
 
 	return ret;
