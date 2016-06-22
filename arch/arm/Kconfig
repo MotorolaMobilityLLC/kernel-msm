@@ -1432,6 +1432,15 @@ config SCHED_MC
 	  making when dealing with multi-core CPU chips at a cost of slightly
 	  increased overhead in some places. If unsure say N here.
 
+config MSM8953_ARM_SETTINGS
+	bool "Enable MSM8953 SOC settings"
+	depends on ARCH_MSM8953
+	help
+	  Enable generic MSM8953 related settings which are required for some of
+	  CPUSS sub-system functionality.
+
+	  If you are not sure what to do, select 'N' here.
+
 config SCHED_SMT
 	bool "SMT scheduler support"
 	depends on ARM_CPU_TOPOLOGY

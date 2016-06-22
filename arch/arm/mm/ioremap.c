@@ -264,6 +264,11 @@ void __iomem * __arm_ioremap_pfn_caller(unsigned long pfn,
 	unsigned long addr;
 	struct vm_struct *area;
 	phys_addr_t paddr = __pfn_to_phys(pfn);
+	pgprot_t prot;
+#ifdef CONFIG_MSM8953_ARM_SETTINGS
+	unsigned long msm8953_tlmm_start = 0x01000000;
+	unsigned long msm8953_tlmm_end =   0x01300000 - 1;
+#endif
 
 #ifndef CONFIG_ARM_LPAE
 	/*
@@ -320,8 +325,13 @@ void __iomem * __arm_ioremap_pfn_caller(unsigned long pfn,
 		err = remap_area_sections(addr, pfn, size, type);
 	} else
 #endif
-		err = ioremap_page_range(addr, addr + size, paddr,
-					 __pgprot(type->prot_pte));
+
+	prot = __pgprot(type->prot_pte);
+#ifdef CONFIG_MSM8953_ARM_SETTINGS
+	if (paddr >= msm8953_tlmm_start && paddr <= msm8953_tlmm_end)
+		prot = pgprot_stronglyordered(type->prot_pte);
+#endif
+	err = ioremap_page_range(addr, addr + size, paddr, prot);
 
 	if (err) {
  		vunmap((void *)addr);
