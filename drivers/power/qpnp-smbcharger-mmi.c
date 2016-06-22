@@ -3893,7 +3893,7 @@ static int smbchg_wls_get_property(struct power_supply *psy,
 				       enum power_supply_property prop,
 				       union power_supply_propval *val)
 {
-	int rc;
+	int rc, pa, ep;
 	union power_supply_propval ret = {0, };
 	struct smbchg_chip *chip = container_of(psy,
 						struct smbchg_chip, wls_psy);
@@ -3902,18 +3902,30 @@ static int smbchg_wls_get_property(struct power_supply *psy,
 
 	if (eb_pwr_psy) {
 		rc = eb_pwr_psy->get_property(eb_pwr_psy,
-					      POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+					POWER_SUPPLY_PROP_PTP_POWER_AVAILABLE,
 					      &ret);
 		if (rc)
-			ret.intval = 0;
+			pa = 0;
+		else
+			pa = ret.intval;
+
+		rc = eb_pwr_psy->get_property(eb_pwr_psy,
+					POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+					      &ret);
+		if (rc)
+			ep = 0;
+		else
+			ep = ret.intval;
+
 		power_supply_put(eb_pwr_psy);
 	}
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
-		if (ret.intval == POWER_SUPPLY_PTP_EXT_WIRELESS_PRESENT ||
-		    ret.intval == POWER_SUPPLY_PTP_EXT_WIRED_WIRELESS_PRESENT)
+		if ((pa == POWER_SUPPLY_PTP_POWER_AVAILABLE_EXTERNAL) &&
+		    (ep == POWER_SUPPLY_PTP_EXT_WIRELESS_PRESENT ||
+		     ep == POWER_SUPPLY_PTP_EXT_WIRED_WIRELESS_PRESENT))
 			val->intval = 1;
 		else
 			val->intval = 0;
@@ -4003,7 +4015,7 @@ static int smbchg_usbeb_get_property(struct power_supply *psy,
 				       enum power_supply_property prop,
 				       union power_supply_propval *val)
 {
-	int rc;
+	int rc, pa, ep;
 	union power_supply_propval ret = {0, };
 	struct smbchg_chip *chip = container_of(psy,
 						struct smbchg_chip, usbeb_psy);
@@ -4012,18 +4024,30 @@ static int smbchg_usbeb_get_property(struct power_supply *psy,
 
 	if (eb_pwr_psy) {
 		rc = eb_pwr_psy->get_property(eb_pwr_psy,
-					      POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+					POWER_SUPPLY_PROP_PTP_POWER_AVAILABLE,
 					      &ret);
 		if (rc)
-			ret.intval = 0;
+			pa = 0;
+		else
+			pa = ret.intval;
+
+		rc = eb_pwr_psy->get_property(eb_pwr_psy,
+					POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+					      &ret);
+		if (rc)
+			ep = 0;
+		else
+			ep = ret.intval;
+
 		power_supply_put(eb_pwr_psy);
 	}
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
-		if (ret.intval == POWER_SUPPLY_PTP_EXT_WIRED_PRESENT ||
-		    ret.intval == POWER_SUPPLY_PTP_EXT_WIRED_WIRELESS_PRESENT)
+		if ((pa == POWER_SUPPLY_PTP_POWER_AVAILABLE_EXTERNAL) &&
+		    (ep == POWER_SUPPLY_PTP_EXT_WIRED_PRESENT ||
+		     ep == POWER_SUPPLY_PTP_EXT_WIRED_WIRELESS_PRESENT))
 			val->intval = 1;
 		else
 			val->intval = 0;
@@ -4111,19 +4135,6 @@ static void smbchg_check_extbat_ability(struct smbchg_chip *chip, char *able)
 	}
 
 	rc = eb_pwr_psy->get_property(eb_pwr_psy,
-				      POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
-				      &ret);
-	if (rc) {
-		SMB_ERR(chip,
-			"Could not read Send Params rc = %d\n", rc);
-		*able |= EB_SND_NEVER;
-	} else if ((ret.intval == POWER_SUPPLY_PTP_INT_SND_NEVER) ||
-		   (ret.intval == POWER_SUPPLY_PTP_INT_SND_UNKNOWN))
-		*able |= EB_SND_NEVER;
-	else if (ret.intval == POWER_SUPPLY_PTP_INT_SND_LOW_BATT_SAVER)
-		*able |= EB_SND_LOW;
-
-	rc = eb_pwr_psy->get_property(eb_pwr_psy,
 				      POWER_SUPPLY_PROP_PTP_INTERNAL_RECEIVE,
 				      &ret);
 	if (rc) {
@@ -4155,6 +4166,20 @@ static void smbchg_check_extbat_ability(struct smbchg_chip *chip, char *able)
 	} else if ((ret.intval == POWER_SUPPLY_PTP_POWER_NOT_AVAILABLE) ||
 		   (ret.intval == POWER_SUPPLY_PTP_POWER_AVAILABILITY_UNKNOWN))
 		*able |= EB_SND_NEVER;
+	else if (ret.intval == POWER_SUPPLY_PTP_POWER_AVAILABLE_INTERNAL) {
+		rc = eb_pwr_psy->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
+					      &ret);
+		if (rc) {
+			SMB_ERR(chip,
+				"Could not read Send Params rc = %d\n", rc);
+			*able |= EB_SND_NEVER;
+		} else if ((ret.intval == POWER_SUPPLY_PTP_INT_SND_NEVER) ||
+			   (ret.intval == POWER_SUPPLY_PTP_INT_SND_UNKNOWN))
+			*able |= EB_SND_NEVER;
+		else if (ret.intval == POWER_SUPPLY_PTP_INT_SND_LOW_BATT_SAVER)
+			*able |= EB_SND_LOW;
+	}
 
 	power_supply_put(eb_pwr_psy);
 }
