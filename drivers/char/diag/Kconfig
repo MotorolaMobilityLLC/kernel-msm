@@ -41,3 +41,13 @@ config DIAGFWD_BRIDGE_CODE
 	help
 	 SMUX/HSIC Transport Layer for DIAG Router
 endmenu
+
+menu "Diag Debug"
+
+config DIAG_DEBUG
+	bool "Enable the diag ipc logging for debugging"
+	help
+	 Enable the diag ipc logging at /d/ipc_logging/diag for debugging, this option is enabled on
+	 userdebug build by default
+
+endmenu
