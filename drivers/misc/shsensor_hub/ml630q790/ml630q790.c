@@ -9022,7 +9022,7 @@ int32_t shub_probe(void)
     shub_qos_end();
     if(ret != SHUB_RC_OK) {
         DBG(DBG_LV_ERROR, "Failed shub_initialize. ret=%x\n", ret);
-        goto REGIST_ERR;
+        return -ENODEV;
     }
 
     DBG(DBG_LV_INFO, "Init Complete!!!\n");
