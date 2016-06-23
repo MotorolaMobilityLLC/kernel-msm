@@ -1145,8 +1145,23 @@ wl_show_host_event(wl_event_msg_t *event, void *event_data)
 }
 #endif /* SHOW_EVENTS */
 
+/* Check whether packet is a BRCM event pkt. If it is, record event data. */
 int
-wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
+wl_host_event_get_data(void *pktdata, uint pktlen, bcm_event_msg_u_t *evu)
+{
+	int ret;
+
+	ret = is_wlc_event_frame(pktdata, pktlen, 0, evu);
+	if (ret != BCME_OK) {
+		DHD_ERROR(("%s: Invalid event frame, err = %d\n",
+			__FUNCTION__, ret));
+	}
+
+	return ret;
+}
+
+int
+wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, size_t pktlen,
               wl_event_msg_t *event, void **data_ptr)
 {
 	/* check whether packet is a BRCM event pkt */
@@ -1155,23 +1170,31 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	uint32 type, status, datalen;
 	uint16 flags;
 	int evlen;
+	int ret;
+	uint16 usr_subtype;
+	bcm_event_msg_u_t evu;
 
-	if (bcmp(BRCM_OUI, &pvt_data->bcm_hdr.oui[0], DOT11_OUI_LEN)) {
-		DHD_ERROR(("%s: mismatched OUI, bailing\n", __FUNCTION__));
-		return (BCME_ERROR);
+	ret = wl_host_event_get_data(pktdata, pktlen, &evu);
+	if (ret != BCME_OK) {
+		return ret;
 	}
 
-	/* BRCM event pkt may be unaligned - use xxx_ua to load user_subtype. */
-	if (ntoh16_ua((void *)&pvt_data->bcm_hdr.usr_subtype) != BCMILCP_BCM_SUBTYPE_EVENT) {
-		DHD_ERROR(("%s: mismatched subtype, bailing\n", __FUNCTION__));
-		return (BCME_ERROR);
+	usr_subtype = ntoh16_ua((void *)&pvt_data->bcm_hdr.usr_subtype);
+	switch (usr_subtype) {
+	case BCMILCP_BCM_SUBTYPE_EVENT:
+		memcpy(event, &evu.event, sizeof(wl_event_msg_t));
+		*data_ptr = &pvt_data[1];
+		break;
+
+	case BCMILCP_BCM_SUBTYPE_DNGLEVENT:
+		return BCME_NOTFOUND;
+
+	default:
+		return BCME_NOTFOUND;
 	}
 
-	*data_ptr = &pvt_data[1];
+	/* start wl_event_msg process */
 	event_data = *data_ptr;
-
-	/* memcpy since BRCM event pkt may be unaligned. */
-	memcpy(event, &pvt_data->event, sizeof(wl_event_msg_t));
 
 	type = ntoh32_ua((void *)&event->event_type);
 	flags = ntoh16_ua((void *)&event->flags);
