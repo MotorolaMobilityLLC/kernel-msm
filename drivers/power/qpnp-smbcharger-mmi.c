@@ -37,6 +37,7 @@
 #include <linux/qpnp/power-on.h>
 #include <soc/qcom/watchdog.h>
 #include <linux/ipc_logging.h>
+#include <linux/alarmtimer.h>
 
 /* Mask/Bit helpers */
 #define _SMB_MASK(BITS, POS) \
@@ -415,6 +416,8 @@ struct smbchg_chip {
 	int				max_usbin_ma;
 	bool				usbeb_present;
 	bool				wls_present;
+	struct wakeup_source		smbchg_hb_wake_source;
+	struct alarm			smbchg_heartbeat_alarm;
 };
 
 static struct smbchg_chip *the_chip;
@@ -9973,6 +9976,7 @@ void update_bsw_step(struct smbchg_chip *chip, bool bsw_chrg_alarm,
 	chip->bsw_ramping = false;
 }
 
+#define SMBCHG_HEARTBEAT_INTERVAL_NS	70000000000
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
 #define HEARTBEAT_FG_WAIT_MS 1000
@@ -9988,6 +9992,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	struct smbchg_chip *chip = container_of(work,
 						struct smbchg_chip,
 						heartbeat_work.work);
+	int rc;
 	int batt_mv;
 	int batt_ma;
 	int batt_soc;
@@ -10017,6 +10022,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		return;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
+
+	alarm_try_to_cancel(&chip->smbchg_heartbeat_alarm);
+
 	if (smbchg_check_and_kick_aicl(chip) ||
 	    !smbchg_fg_ready(chip))
 		goto end_hb;
@@ -10535,6 +10543,12 @@ end_hb:
 	schedule_delayed_work(&chip->heartbeat_work,
 			      msecs_to_jiffies(hb_resch_time));
 
+	rc = alarm_start_relative(&chip->smbchg_heartbeat_alarm,
+				  ns_to_ktime(SMBCHG_HEARTBEAT_INTERVAL_NS));
+	if (rc)
+		SMB_ERR(chip, "Failed to start alarm: %d\n", rc);
+
+	__pm_relax(&chip->smbchg_hb_wake_source);
 	smbchg_relax(chip, PM_HEARTBEAT);
 }
 
@@ -10694,6 +10708,22 @@ static irqreturn_t warn_irq_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
+static enum alarmtimer_restart smbchg_heartbeat_alarm_cb(struct alarm *alarm,
+							 ktime_t now)
+{
+	struct smbchg_chip *chip = container_of(alarm, struct smbchg_chip,
+						smbchg_heartbeat_alarm);
+
+	SMB_INFO(chip, "SMB: HB alarm fired\n");
+
+	__pm_stay_awake(&chip->smbchg_hb_wake_source);
+	cancel_delayed_work(&chip->heartbeat_work);
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(0));
+
+	return ALARMTIMER_NORESTART;
+}
+
 static int smbchg_check_chg_version(struct smbchg_chip *chip)
 {
 	struct pmic_revid_data *pmic_rev_id;
@@ -10827,6 +10857,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 			 "Entering Factory Mode SMB Writes Disabled\n");
 
 	wakeup_source_init(&chip->smbchg_wake_source, "smbchg_wake");
+	wakeup_source_init(&chip->smbchg_hb_wake_source, "smbchg_hb_wake");
 	INIT_WORK(&chip->usb_set_online_work, smbchg_usb_update_online_work);
 	INIT_DELAYED_WORK(&chip->parallel_en_work,
 			smbchg_parallel_usb_en_work);
@@ -10839,6 +10870,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 	INIT_DELAYED_WORK(&chip->usb_removal_work,
 			  usb_removal_work);
 	INIT_DELAYED_WORK(&chip->warn_irq_work, warn_irq_w);
+	alarm_init(&chip->smbchg_heartbeat_alarm, ALARM_BOOTTIME,
+		   smbchg_heartbeat_alarm_cb);
 	chip->vadc_dev = vadc_dev;
 	chip->usb_vadc_dev = usb_vadc_dev;
 	chip->spmi = spmi;
@@ -11130,6 +11163,7 @@ free_regulator:
 	handle_dc_removal(chip);
 	mutex_unlock(&chip->dc_set_present_lock);
 	wakeup_source_trash(&chip->smbchg_wake_source);
+	wakeup_source_trash(&chip->smbchg_hb_wake_source);
 	return rc;
 }
 
@@ -11177,6 +11211,7 @@ static int smbchg_remove(struct spmi_device *spmi)
 	power_supply_unregister(&chip->wls_psy);
 	power_supply_unregister(&chip->usbeb_psy);
 	wakeup_source_trash(&chip->smbchg_wake_source);
+	wakeup_source_trash(&chip->smbchg_hb_wake_source);
 
 	return 0;
 }
