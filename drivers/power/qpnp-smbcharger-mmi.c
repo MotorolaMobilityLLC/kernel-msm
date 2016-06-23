@@ -6450,6 +6450,9 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	/* Trigger src detect only if in factory mode */
 	if (!chip->usbc_psy || chip->factory_mode)
 		src_detect_handler(0, chip);
+	else
+		power_supply_set_present(chip->usb_psy, 0);
+
 	smbchg_charging_en(chip, 0);
 #ifdef QCOM_BASE
 	mutex_lock(&chip->usb_set_present_lock);
