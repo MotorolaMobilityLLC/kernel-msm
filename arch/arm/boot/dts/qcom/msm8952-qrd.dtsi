@@ -26,9 +26,9 @@
 };
 
 &i2c_5 { /* BLSP2 QUP1 */
-	nq@2b {
+	nq@28 {
 		compatible = "qcom,nq-nci";
-		reg = <0x2b>;
+		reg = <0x28>;
 		qcom,nq-irq = <&msm_gpio 17 0x00>;
 		qcom,nq-ven = <&msm_gpio 16 0x00>;
 		qcom,nq-clkreq = <&pm8950_gpios 5 0x00>;
@@ -47,12 +47,10 @@
 
 &pm8950_gpios {
 	gpio@c400 {
-		qcom,mode = <1>;
-		qcom,output-type = <0>;
-		qcom,pull = <0>;
+		qcom,mode = <0>;
+		qcom,pull = <5>;
 		qcom,vin-sel = <2>;
-		qcom,out-strength = <3>;
-		qcom,src-sel = <0>;
+		qcom,src-sel = <2>;
 		qcom,master-en = <1>;
 		status = "okay";
 	};
