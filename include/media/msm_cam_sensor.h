@@ -459,6 +459,11 @@ enum msm_ois_cfg_type_t {
 	CFG_OIS_I2C_WRITE_SEQ_TABLE,
 };
 
+enum msm_ois_cfg_download_type_t {
+	CFG_OIS_DOWNLOAD,
+	CFG_OIS_DATA_CONFIG,
+};
+
 enum msm_ois_i2c_operation {
 	MSM_OIS_WRITE = 0,
 	MSM_OIS_POLL,
@@ -567,6 +572,24 @@ struct msm_ois_cfg_data {
 	} cfg;
 };
 
+struct msm_ois_opcode {
+	uint32_t prog;
+	uint32_t coeff;
+	uint32_t pheripheral;
+	uint32_t memory;
+};
+
+struct msm_ois_slave_info {
+	char ois_name[MAX_OIS_NAME_SIZE];
+	uint32_t i2c_addr;
+	struct msm_ois_opcode opcode;
+};
+
+struct msm_ois_cfg_download_data {
+	int cfgtype;
+	struct msm_ois_slave_info slave_info;
+};
+
 struct msm_actuator_set_position_t {
 	uint16_t number_of_steps;
 	uint32_t hw_params;
@@ -670,6 +693,9 @@ struct sensor_init_cfg_data {
 
 #define VIDIOC_MSM_FLASH_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 13, struct msm_flash_cfg_data_t)
+
+#define VIDIOC_MSM_OIS_CFG_DOWNLOAD \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct msm_ois_cfg_download_data)
 
 #ifdef CONFIG_COMPAT
 struct msm_camera_i2c_reg_setting32 {
