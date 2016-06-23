@@ -188,6 +188,7 @@
 &mot_dba_panel {
 	qcom,mdss-dsi-panel-name = "mipi_mot_dba_panel";
 	qcom,bridge-name = "mot_dba";
+	qcom,mdss-dsi-force-clock-lane-hs;
 
 	/* These power supplies are for DBA panel */
 	qcom,panel-supply-entries {
