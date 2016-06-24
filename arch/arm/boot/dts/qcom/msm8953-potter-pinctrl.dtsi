@@ -262,15 +262,6 @@
 		};
 	};
 
-	factory_default: factory_default {
-		config {
-			pins = "gpio66";
-			drive-strength = <2>;
-			bias-pull-down;
-			output-low;
-		};
-	};
-
 	/delete-node/ tlmm_gpio_key;
 	tlmm_gpio_key {
 		gpio_key: gpio_key {
