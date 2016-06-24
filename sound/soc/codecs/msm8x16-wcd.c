@@ -5630,6 +5630,7 @@ int msm8x16_wcd_suspend(struct snd_soc_codec *codec)
 				pr_err("%s: disable clk failed\n", __func__);
 				break;
 			}
+			atomic_set(&pdata->mclk_enabled, false);
 		}
 		mutex_unlock(&pdata->cdc_mclk_mutex);
 	}
