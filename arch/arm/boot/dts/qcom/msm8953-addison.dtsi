@@ -181,6 +181,11 @@
 	apba_cdsi-supply = <&pm8953_l23>;
 };
 
+&mdss_dsi1_pll {
+	/delete-property/ qcom,dsi-pll-ssc-en;
+	/delete-property/ qcom,dsi-pll-ssc-mode;
+};
+
 &mot_dba_panel {
 	qcom,mdss-dsi-panel-name = "mipi_mot_dba_panel";
 	qcom,bridge-name = "mot_dba";
