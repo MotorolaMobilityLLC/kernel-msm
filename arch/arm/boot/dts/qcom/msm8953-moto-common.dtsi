@@ -1090,6 +1090,9 @@
 	/delete-property/ qcom,iterm-ma;
 	qcom,iterm-disabled;
 	/delete-property/ qcom,autoadjust-vfloat;
+	/delete-property/ qcom,dc-psy-type;
+	qcom,dc-psy-ma = <900>;
+	qcom,dc-psy-eff-ma = <500>;
 	qcom,fastchg-current-ma = <3000>;
 	qcom,max-usbin-current-ma = <2600>;
 	qcom,float-voltage-mv = <4400>;
@@ -1106,7 +1109,9 @@
 				      <1500 0>,
 				      <1000 0>,
 				      <500 0>;
-	qcom,dc-thermal-mitigation = <900>,
+	qcom,dc-thermal-mitigation = <2000>,
+				     <1500>,
+				     <900>,
 				     <600>,
 				     <300>;
 	qcom,thermal-mitigation = <3000 0>,
@@ -1134,6 +1139,7 @@
 	mmi,fake-factory-type;
 	qcom,auto-voltage-comp-mv = <75>;
 	qcom,usbin-vadc = <&pmi8950_vadc>;
+	qcom,dcin-vadc = <&pmi8950_vadc>;
 
 	smbcharger_external_otg: qcom,smbcharger-external-otg {
 		status = "okay";
