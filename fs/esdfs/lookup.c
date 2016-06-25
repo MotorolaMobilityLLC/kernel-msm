@@ -247,6 +247,12 @@ static struct dentry *__esdfs_lookup(struct dentry *dentry,
 	this.name = name;
 	this.len = strlen(name);
 	this.hash = full_name_hash(this.name, this.len);
+
+	/* See if the low-level filesystem might want
+	 * to use its own hash */
+	if (lower_dir_dentry->d_flags & DCACHE_OP_HASH)
+		lower_dir_dentry->d_op->d_hash(lower_dir_dentry, &this);
+
 	lower_dentry = d_lookup(lower_dir_dentry, &this);
 	if (lower_dentry)
 		goto setup_lower;
