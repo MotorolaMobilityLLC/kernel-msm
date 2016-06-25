@@ -639,6 +639,10 @@ int esdfs_derive_mkdir_contents(struct dentry *dir_dentry)
 
 	esdfs_get_lower_path(dir_dentry, &lower_dir_path);
 
+	/* check if lower has its own hash */
+	if (lower_dir_path.dentry->d_flags & DCACHE_OP_HASH)
+		lower_dir_path.dentry->d_op->d_hash(lower_dir_path.dentry, &nomedia);
+
 	/* See if the lower file is there already. */
 	err = vfs_path_lookup(lower_dir_path.dentry, lower_dir_path.mnt,
 			      nomedia.name, 0, &lower_path);
