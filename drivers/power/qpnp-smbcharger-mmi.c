@@ -1738,6 +1738,28 @@ int smbchg_check_usbc_voltage(struct smbchg_chip *chip, int *volt_mv)
 	return 0;
 }
 
+int smbchg_check_dcin_voltage(struct smbchg_chip *chip, int *volt_mv)
+{
+	int rc = -EINVAL;
+	struct qpnp_vadc_result results;
+	int adc_volt_mv;
+
+	if (!chip->vadc_dev)
+		return rc;
+
+	rc = qpnp_vadc_read(chip->vadc_dev, DCIN, &results);
+	if (rc) {
+		SMB_ERR(chip, "Unable to read dcin rc=%d\n", rc);
+		return rc;
+	}
+
+	adc_volt_mv = (int)div_u64(results.physical, 1000);
+
+	*volt_mv = adc_volt_mv;
+
+	return 0;
+}
+
 #define USBC_5V_MODE 5000
 #define USBC_9V_MODE 9000
 int smbchg_set_usbc_voltage(struct smbchg_chip *chip, int volt_mv)
@@ -4261,6 +4283,9 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 	int rc, hvdcp_en = 0;
 	char ability = 0;
 	int usbc_volt_mv = 0;
+	int i = 0;
+	int dcin_mv = 0;
+	int dcin_high_cnt = 0;
 	union power_supply_propval ret = {0, };
 	struct power_supply *eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
@@ -4359,6 +4384,27 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
 					    &ret);
 		if (!rc) {
+			for (i = 0; i < 100; i++) {
+				rc = smbchg_check_dcin_voltage(chip, &dcin_mv);
+				SMB_DBG(chip, "DCIN mv = %d\n", dcin_mv);
+				if (rc == -EINVAL)
+					break;
+
+				if (dcin_mv > 4500)
+					dcin_high_cnt++;
+				else
+					dcin_high_cnt = 0;
+
+				if (dcin_high_cnt > 10) {
+					/* Total required delay is 200 msec
+					 * for power mux transition timing.
+					 */
+					msleep(100);
+					break;
+				}
+				msleep(10);
+			}
+
 			chip->ebchg_state = state;
 			smbchg_usb_en(chip, false, REASON_EB);
 			smbchg_dc_en(chip, true, REASON_EB);
