@@ -5234,6 +5234,7 @@ void fusb_InitChipData(void)
 	chip->InitDelayMS = INIT_DELAY_MS;	// Time to wait before device init
 	chip->numRetriesI2C = RETRIES_I2C;	// Number of times to retry I2C reads and writes
 	chip->use_i2c_blocks = false;	// Assume failure
+	atomic_set(&chip->isr_count, 0);
 }
 
 /*********************************************************************************************************************/
@@ -5279,8 +5280,8 @@ FSC_S32 fusb_EnableInterrupts(void)
 		 chip->gpio_IntN_irq);
 
 	/* Request threaded IRQ because we will likely sleep while handling the interrupt, trigger is active-low, don't handle concurrent interrupts */
-	ret = devm_request_irq(&chip->client->dev, chip->gpio_IntN_irq,
-			_fusb_isr_intn, IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+	ret = devm_request_threaded_irq(&chip->client->dev, chip->gpio_IntN_irq,
+			NULL, _fusb_isr_intn, IRQF_ONESHOT | IRQF_TRIGGER_LOW,
 			FUSB_DT_INTERRUPT_INTN, chip);
 	if (ret) {
 		dev_err(&chip->client->dev,
@@ -5310,7 +5311,8 @@ static irqreturn_t _fusb_isr_intn(FSC_S32 irq, void *dev_id)
 	}
 	disable_irq_nosync(chip->gpio_IntN_irq);
 	atomic_set(&chip->irq_disabled, 1);
-	platform_run_wake_thread();
+	atomic_inc(&chip->isr_count);
+	fusb_ScheduleWakeWork();
 	return IRQ_HANDLED;
 }
 
@@ -5362,8 +5364,55 @@ void fusb_InitializeWakeWorker(void)
 				__func__);
 	INIT_WORK(&chip->wake_worker, _fusb_WakeWorker);
 }
+void platform_reinitialize_fusb(void)
+{
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (chip == NULL) {
+		pr_warn(
+			"FUSB302 Error:chip  pointer is NULL!\n");
+		return;
+	}
+	disable_irq(chip->gpio_IntN_irq);
+	fusb_StopTimers();
+	core_initialize();
+	FUSB_LOG("FUSB  %s - Core is initialized!\n", __func__);
+	fusb_StartTimers();
+	core_enable_typec(TRUE);
+	FUSB_LOG("FUSB  %s - Type-C State Machine is enabled!\n", __func__);
+	enable_irq(chip->gpio_IntN_irq);
+	FUSB_LOG("FUSB  %s - Type-C irq is enabled!\n", __func__);
+}
 void platform_run_wake_thread(void)
 {
+	static long isr_count_prev;
+	static long isr_count_now;
+	static int  err_count;
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (chip == NULL) {
+		pr_warn(
+			"FUSB302 Error:chip  pointer is NULL!\n");
+		return;
+	}
+	isr_count_now = atomic_read(&chip->isr_count);
+	if (isr_count_now <= isr_count_prev) {
+		err_count++;
+		if (err_count > 4) {
+			/*Reinitialize fusb chip
+			* if kicking 5 time consequently
+			* without interrupts
+			*/
+			isr_count_now = 0;
+			isr_count_prev = 0;
+			err_count = 0;
+			atomic_set(&chip->isr_count, 0);
+			platform_reinitialize_fusb();
+			pr_warn("FUSB302 reinitialized!\n");
+		}
+	} else
+		err_count = 0;
+	isr_count_prev = isr_count_now;
 	fusb_ScheduleWakeWork();
 }
 #else
