@@ -148,6 +148,7 @@ struct dwc3_msm_req_complete {
 enum dwc3_id_state {
 	DWC3_ID_GROUND = 0,
 	DWC3_ID_FLOAT,
+	DWC3_ID_UNKNOWN,
 };
 
 /* Input bits to state machine (mdwc->inputs) */
@@ -262,6 +263,8 @@ struct dwc3_msm {
 	enum power_supply_usb_priority usb_priority;
 	bool			ss_compliance;
 	struct mutex		pm_lock;
+	enum power_supply_otg_status usb_otg_status;
+	bool			vbus_reg_enabled;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2530,7 +2533,7 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 		val->intval = mdwc->health_status;
 		break;
 	case POWER_SUPPLY_PROP_USB_OTG:
-		val->intval = !mdwc->id_state;
+		val->intval = mdwc->usb_otg_status;
 		break;
 	case POWER_SUPPLY_PROP_USB_PRIORITY:
 		val->intval = mdwc->usb_priority;
@@ -2541,6 +2544,34 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 	return 0;
 }
 
+static void dwc3_msm_determine_usb_otg(struct dwc3_msm *mdwc,
+				int newVal)
+{
+	bool curr_power, curr_data;
+	bool new_power, new_data;
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+
+
+	curr_power = mdwc->usb_otg_status & POWER_SUPPLY_USB_OTG_ENABLE_POWER;
+	new_power = newVal & POWER_SUPPLY_USB_OTG_ENABLE_POWER;
+
+	curr_data = mdwc->usb_otg_status & POWER_SUPPLY_USB_OTG_ENABLE_DATA;
+	new_data = newVal & POWER_SUPPLY_USB_OTG_ENABLE_DATA;
+
+	mdwc->usb_otg_status = newVal;
+	/* If only the power changed */
+	if (curr_power != new_power && curr_data == new_data) {
+		/* FIXME - Add power handler here */
+		return;
+	}
+
+	/* Let OTG know about ID detection */
+	mdwc->id_state = new_data ? DWC3_ID_GROUND : DWC3_ID_FLOAT;
+	if (dwc->is_drd)
+		queue_delayed_work(mdwc->dwc3_wq,
+				&mdwc->resume_work, 0);
+}
+
 static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  const union power_supply_propval *val)
@@ -2549,26 +2580,20 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 								usb_psy);
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 	int ret;
-	enum dwc3_id_state id;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_USB_OTG:
-		id = val->intval ? DWC3_ID_GROUND : DWC3_ID_FLOAT;
-		if (mdwc->id_state == id)
+		dbg_event(dwc->ctrl_num, 0xFF, "usbotg curr",
+				mdwc->usb_otg_status);
+		dbg_event(dwc->ctrl_num, 0xFF, "usbotg new", val->intval);
+
+		if (mdwc->usb_otg_status == val->intval ||
+			val->intval < POWER_SUPPLY_USB_OTG_DISABLE ||
+			val->intval > POWER_SUPPLY_USB_OTG_ENABLE ||
+			disable_host_mode)
 			break;
 
-		if (disable_host_mode && !id) {
-			dev_dbg(mdwc->dev, "%s: Ignoring ID change event :%d\n",
-						__func__, mdwc->id_state);
-			break;
-		}
-
-		/* Let OTG know about ID detection */
-		mdwc->id_state = id;
-		dbg_event(dwc->ctrl_num, 0xFF, "id_state", mdwc->id_state);
-		if (dwc->is_drd)
-			queue_delayed_work(mdwc->dwc3_wq,
-					&mdwc->resume_work, 0);
+		dwc3_msm_determine_usb_otg(mdwc, val->intval);
 		break;
 	/* PMIC notification for DP_DM state */
 	case POWER_SUPPLY_PROP_DP_DM:
@@ -2747,7 +2772,7 @@ static int dwc3_msm_get_property_usbhost(struct power_supply *psy,
 								usb_psy);
 	switch (psp) {
 	case POWER_SUPPLY_PROP_USB_OTG:
-		val->intval = !mdwc->id_state;
+		val->intval = mdwc->usb_otg_status;
 		break;
 	default:
 		return -EINVAL;
@@ -2762,19 +2787,21 @@ static int dwc3_msm_set_property_usbhost(struct power_supply *psy,
 	struct dwc3_msm *mdwc = container_of(psy, struct dwc3_msm,
 								usb_psy);
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
-	enum dwc3_id_state id;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_USB_OTG:
-		id = val->intval ? DWC3_ID_GROUND : DWC3_ID_FLOAT;
-		if (mdwc->id_state == id)
+		dbg_event(dwc->ctrl_num, 0xFF, "usbotg curr",
+						mdwc->usb_otg_status);
+		dbg_event(dwc->ctrl_num, 0xFF, "usbotg new", val->intval);
+		if (mdwc->usb_otg_status == val->intval ||
+			val->intval < POWER_SUPPLY_USB_OTG_DISABLE ||
+			val->intval > POWER_SUPPLY_USB_OTG_ENABLE_DATA)
 			break;
 
+		mdwc->id_state = val->intval ? DWC3_ID_GROUND : DWC3_ID_FLOAT;
+		mdwc->usb_otg_status = val->intval;
 		/* Let OTG know about ID detection */
-		mdwc->id_state = id;
-		dbg_event(dwc->ctrl_num, 0xFF, "id_state", mdwc->id_state);
-		queue_delayed_work(mdwc->dwc3_wq,
-				&mdwc->resume_work, 0);
+		queue_delayed_work(mdwc->dwc3_wq, &mdwc->resume_work, 0);
 		break;
 	default:
 		return -EINVAL;
@@ -2814,6 +2841,9 @@ static irqreturn_t dwc3_pmic_id_irq(int irq, void *data)
 		id = !!irq_read_line(irq);
 	if (mdwc->id_state != id) {
 		mdwc->id_state = id;
+		mdwc->usb_otg_status = (mdwc->id_state == DWC3_ID_GROUND) ?
+				POWER_SUPPLY_USB_OTG_ENABLE :
+				POWER_SUPPLY_USB_OTG_DISABLE;
 		schedule_work(&mdwc->resume_work.work);
 	}
 
@@ -3489,6 +3519,10 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 			mdwc->id_state = gpio_get_value(mdwc->usb_id_gpio);
 		else
 			mdwc->id_state = !!irq_read_line(mdwc->pmic_id_irq);
+
+		mdwc->usb_otg_status = (mdwc->id_state == DWC3_ID_GROUND) ?
+				POWER_SUPPLY_USB_OTG_ENABLE :
+				POWER_SUPPLY_USB_OTG_DISABLE;
 		if (mdwc->id_state == DWC3_ID_GROUND)
 			dwc3_ext_event_notify(mdwc);
 		local_irq_restore(flags);
@@ -3498,6 +3532,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	if (!dwc->is_drd && host_mode) {
 		dev_dbg(&pdev->dev, "DWC3 in host only mode\n");
 		mdwc->id_state = DWC3_ID_FLOAT;
+		mdwc->usb_otg_status = POWER_SUPPLY_USB_OTG_DISABLE;
 		dwc3_ext_event_notify(mdwc);
 	} else if (mdwc->pmic_id_irq <= 0 &&
 		of_property_read_bool(node, "psy,type-c")) {
@@ -3514,6 +3549,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 			if (rc >= 0  &&
 				prop.intval == POWER_SUPPLY_TYPE_USBC_SRC) {
 				mdwc->id_state = DWC3_ID_GROUND;
+				mdwc->usb_otg_status =
+					POWER_SUPPLY_USB_OTG_ENABLE;
 				dwc3_ext_event_notify(mdwc);
 			}
 			power_supply_put(usbc_psy);
@@ -3679,18 +3716,24 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		mdwc->hs_phy->flags |= PHY_HOST_MODE;
 		mdwc->ss_phy->flags |= PHY_HOST_MODE;
 		usb_phy_notify_connect(mdwc->hs_phy, USB_SPEED_HIGH);
-		if (mdwc->otg_fault_irq)
-			enable_irq(mdwc->otg_fault_irq);
-		if (!IS_ERR(mdwc->vbus_reg))
+		if (mdwc->usb_otg_status > POWER_SUPPLY_USB_OTG_ENABLE_DATA &&
+			!IS_ERR(mdwc->vbus_reg)) {
+			if (mdwc->otg_fault_irq)
+				enable_irq(mdwc->otg_fault_irq);
 			ret = regulator_enable(mdwc->vbus_reg);
-		if (ret) {
-			dev_err(mdwc->dev, "unable to enable vbus_reg\n");
-			mdwc->hs_phy->flags &= ~PHY_HOST_MODE;
-			mdwc->ss_phy->flags &= ~PHY_HOST_MODE;
-			pm_runtime_put_sync(mdwc->dev);
-			dbg_event(dwc->ctrl_num, 0xFF, "vregerr psync",
+			if (ret) {
+				dev_err(mdwc->dev, "unable to enable vbus_reg\n");
+				if (mdwc->otg_fault_irq)
+					disable_irq(mdwc->otg_fault_irq);
+				mdwc->hs_phy->flags &= ~PHY_HOST_MODE;
+				mdwc->ss_phy->flags &= ~PHY_HOST_MODE;
+				pm_runtime_put_sync(mdwc->dev);
+				dbg_event(dwc->ctrl_num, 0xFF, "vregerr psync",
 				atomic_read(&mdwc->dev->power.usage_count));
-			return ret;
+				return ret;
+			}
+			dbg_event(0xFF, 0xFF, "Host vbus on", 0);
+			mdwc->vbus_reg_enabled = true;
 		}
 
 		dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_HOST);
@@ -3740,15 +3783,19 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		dev_dbg(mdwc->dev, "%s: turn off host\n", __func__);
 
 		usb_unregister_atomic_notify(&mdwc->usbdev_nb);
-		/* Disable any fault handlers before turning off */
-		if (mdwc->otg_fault_irq)
-			disable_irq(mdwc->otg_fault_irq);
+		if (!IS_ERR(mdwc->vbus_reg) && mdwc->vbus_reg_enabled) {
+			/* Disable any fault handlers before turning off */
+			if (mdwc->otg_fault_irq)
+				disable_irq(mdwc->otg_fault_irq);
 
-		if (!IS_ERR(mdwc->vbus_reg))
-			ret = regulator_disable(mdwc->vbus_reg);
-		if (ret) {
-			dev_err(mdwc->dev, "unable to disable vbus_reg\n");
-			return ret;
+			if (!IS_ERR(mdwc->vbus_reg))
+				ret = regulator_disable(mdwc->vbus_reg);
+			if (ret) {
+				dev_err(mdwc->dev, "unable to disable vbus_reg\n");
+				return ret;
+			}
+			dbg_event(dwc->ctrl_num, 0xFF, "Host vbus off", 0);
+			mdwc->vbus_reg_enabled = false;
 		}
 
 		pm_runtime_get_sync(mdwc->dev);
