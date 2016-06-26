@@ -245,9 +245,11 @@ static int usb3813_host_enable(struct usb3813_info *info, bool enable)
 			return -ENODEV;
 
 		if (enable)
-			power_supply_set_usb_otg(usb_psy, 1);
+			power_supply_set_usb_otg(usb_psy,
+					POWER_SUPPLY_USB_OTG_ENABLE_DATA);
 		else
-			power_supply_set_usb_otg(usb_psy, 0);
+			power_supply_set_usb_otg(usb_psy,
+					POWER_SUPPLY_USB_OTG_DISABLE);
 
 		power_supply_put(usb_psy);
 	} else if (info->switch_controller) {
@@ -258,9 +260,11 @@ static int usb3813_host_enable(struct usb3813_info *info, bool enable)
 #ifdef CONFIG_FSUSB42_MUX
 			fsusb42_set_state(FSUSB_STATE_EXT);
 #endif
-			power_supply_set_usb_otg(usb_psy, 1);
+			power_supply_set_usb_otg(usb_psy,
+					POWER_SUPPLY_USB_OTG_ENABLE_DATA);
 		} else {
-			power_supply_set_usb_otg(usb_psy, 0);
+			power_supply_set_usb_otg(usb_psy,
+					POWER_SUPPLY_USB_OTG_DISABLE);
 #ifdef CONFIG_FSUSB42_MUX
 			if (is_typec_usb_present(info))
 				fsusb42_set_state(FSUSB_STATE_USB);
@@ -627,10 +631,10 @@ static int psy_notifier_call(struct notifier_block *nb,
 	bool usb_present;
 	bool work = 0;
 
-	if (val != PSY_EVENT_PROP_CHANGED)
+	if (val != PSY_EVENT_PROP_CHANGED || !psy)
 		return NOTIFY_OK;
 
-	if (ignore_typec || !psy || (psy != info->usb_psy))
+	if (ignore_typec || psy != info->usb_psy)
 		return NOTIFY_OK;
 
 	/* We don't care about usb events if a mod is not attached */
