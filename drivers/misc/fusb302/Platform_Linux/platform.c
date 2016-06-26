@@ -21,8 +21,6 @@ void platform_set_vbus_lvl_enable(VBUS_LVL level, FSC_BOOL blnEnable,
 		/*TODO!!!! Hack!!!!*/
 		FUSB_LOG("platform_set_vbus_lvl_enable %d level %d\n",
 					blnEnable, level);
-		/* Notify USB driver to switch to host mode */
-		/* Only equal or below Rd*/
 		break;
 	case VBUS_LVL_12V:
 		// Enable/Disable the 12V Source
@@ -30,11 +28,11 @@ void platform_set_vbus_lvl_enable(VBUS_LVL level, FSC_BOOL blnEnable,
 		break;
 	default:
 		// Otherwise, do nothing.
+
 		/*TODO!!!! Hack!!!!*/
 		FUSB_LOG(
 			"platform_set_vbus_lvl_enable default:%d level %d\n",
 			blnEnable, level);
-
 		break;
 	}
 	return;
@@ -286,7 +284,7 @@ void platform_set_data_role(FSC_BOOL PolicyIsDFP)
 {
 	
 	    // Optional: Control Data Direction
-} 
+}
 
 void platform_set_usb_host_enable(FSC_BOOL blnEnable)
 {
@@ -297,4 +295,14 @@ void platform_set_usb_host_enable(FSC_BOOL blnEnable)
 		power_supply_set_usb_otg(usb_psy,
 			(blnEnable == TRUE ? POWER_SUPPLY_USB_OTG_ENABLE :
 					POWER_SUPPLY_USB_OTG_DISABLE));
+}
+FSC_BOOL platform_has_big_switch(void)
+{
+	struct power_supply *bsw_psy = NULL;
+	FSC_BOOL ret = FALSE;
+
+	bsw_psy = power_supply_get_by_name("charger-switch");
+	if (bsw_psy)
+		ret = TRUE;
+	return ret;
 }
