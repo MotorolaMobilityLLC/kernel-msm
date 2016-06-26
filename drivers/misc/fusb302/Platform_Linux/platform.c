@@ -14,7 +14,6 @@
 void platform_set_vbus_lvl_enable(VBUS_LVL level, FSC_BOOL blnEnable,
 				  FSC_BOOL blnDisableOthers)
 {
-	struct power_supply *usb_psy = power_supply_get_by_name("usb");
 	// Additional VBUS levels can be added here as needed.
 	switch (level) {
 	case VBUS_LVL_5V:
@@ -24,9 +23,6 @@ void platform_set_vbus_lvl_enable(VBUS_LVL level, FSC_BOOL blnEnable,
 					blnEnable, level);
 		/* Notify USB driver to switch to host mode */
 		/* Only equal or below Rd*/
-		if (usb_psy)
-			power_supply_set_usb_otg(usb_psy,
-				(blnEnable == TRUE ? 1 : 0));
 		break;
 	case VBUS_LVL_12V:
 		// Enable/Disable the 12V Source
@@ -39,8 +35,6 @@ void platform_set_vbus_lvl_enable(VBUS_LVL level, FSC_BOOL blnEnable,
 			"platform_set_vbus_lvl_enable default:%d level %d\n",
 			blnEnable, level);
 
-		if (usb_psy)
-			power_supply_set_usb_otg(usb_psy, 0);
 		break;
 	}
 	return;
@@ -293,3 +287,14 @@ void platform_set_data_role(FSC_BOOL PolicyIsDFP)
 	
 	    // Optional: Control Data Direction
 } 
+
+void platform_set_usb_host_enable(FSC_BOOL blnEnable)
+{
+	struct power_supply *usb_psy = power_supply_get_by_name("usb");
+
+	FUSB_LOG("%s -  %d\n", __func__, blnEnable);
+	if (usb_psy)
+		power_supply_set_usb_otg(usb_psy,
+			(blnEnable == TRUE ? POWER_SUPPLY_USB_OTG_ENABLE :
+					POWER_SUPPLY_USB_OTG_DISABLE));
+}
