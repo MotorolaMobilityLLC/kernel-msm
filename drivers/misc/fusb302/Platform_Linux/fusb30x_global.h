@@ -74,6 +74,7 @@ struct fusb30x_chip		// Contains data required by this driver
 	struct dentry *debug_root;
 	u32 debug_address;
 	atomic_t irq_disabled;
+	atomic_t isr_count;
 };
 
 extern struct fusb30x_chip *g_chip;
