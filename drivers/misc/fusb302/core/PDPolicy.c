@@ -2280,7 +2280,9 @@ void PolicySinkReady(void)
 	}
 #endif // FSC_HAVE_VDM
 	else {
-		if (!PolicyIsDFP && isDRSwapAllowed) {
+		if (!PolicyIsDFP && isDRSwapAllowed
+			&& platform_has_big_switch()
+		) {
 			/*Send DRSwap to get VDM enabled */
 			PolicySubIndex = 0;
 			PDTxStatus = txIdle;
