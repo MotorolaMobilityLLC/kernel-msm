@@ -187,6 +187,13 @@ enum {
 	POWER_SUPPLY_PTP_POWER_SOURCE_WIRELESS,
 };
 
+enum power_supply_otg_status {
+	POWER_SUPPLY_USB_OTG_DISABLE,
+	POWER_SUPPLY_USB_OTG_ENABLE_DATA,
+	POWER_SUPPLY_USB_OTG_ENABLE_POWER,
+	POWER_SUPPLY_USB_OTG_ENABLE,
+};
+
 enum power_supply_property {
 	/* Properties of type `int' */
 	POWER_SUPPLY_PROP_STATUS = 0,

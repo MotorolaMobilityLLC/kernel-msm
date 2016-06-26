@@ -273,14 +273,16 @@ static void hd3ss460_notify_usb_psy(struct hd3ss460_info *info, bool enable)
 					POWER_SUPPLY_TYPE_USB);
 			power_supply_set_present(usb_psy, 1);
 		} else
-			power_supply_set_usb_otg(usb_psy, 1);
+			power_supply_set_usb_otg(usb_psy,
+					POWER_SUPPLY_USB_OTG_ENABLE_DATA);
 	} else {
 		if (ssusb_peripheral || info->usb_type == USB_EXT_REMOTE_HOST) {
 			power_supply_set_supply_type(usb_psy,
 					POWER_SUPPLY_TYPE_UNKNOWN);
 			power_supply_set_present(usb_psy, 0);
 		} else
-			power_supply_set_usb_otg(usb_psy, 0);
+			power_supply_set_usb_otg(usb_psy,
+					POWER_SUPPLY_USB_OTG_DISABLE);
 	}
 	power_supply_put(usb_psy);
 }
