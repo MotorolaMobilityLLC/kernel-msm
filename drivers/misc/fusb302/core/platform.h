@@ -208,5 +208,5 @@ typedef enum {
 	fsa_audio_override
 } FSASwitchState;
 void platform_toggleAudioSwitch(FSASwitchState state);
-
+FSC_BOOL platform_has_big_switch(void);
 #endif // _FSC_PLATFORM_H_
