@@ -473,7 +473,7 @@ static ssize_t ss_compliance_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(enable_ss_compliance, 0664,
+static DEVICE_ATTR(enable_ss_compliance, S_IWUSR,
 			NULL,
 			ss_compliance_store);
 
@@ -491,7 +491,7 @@ static ssize_t toggle_pattern_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(toggle_pattern, 0664,
+static DEVICE_ATTR(toggle_pattern, S_IWUSR,
 			NULL,
 			toggle_pattern_store);
 
