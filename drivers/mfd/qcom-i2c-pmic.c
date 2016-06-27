@@ -564,7 +564,6 @@ static int i2c_pmic_remove(struct i2c_client *client)
 {
 	struct i2c_pmic *chip = i2c_get_clientdata(client);
 
-	of_platform_depopulate(chip->dev);
 	irq_domain_remove(chip->domain);
 	i2c_set_clientdata(client, NULL);
 	return 0;
