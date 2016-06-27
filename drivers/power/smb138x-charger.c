@@ -84,6 +84,7 @@ struct smb_params {
 };
 
 struct smb_charger {
+	struct platform_device *pdev;
 	struct device		*dev;
 	struct regmap		*regmap;
 	struct smb_params	param;
@@ -963,11 +964,9 @@ static int smb138x_init_vbus_regulator(struct smb138x *chip)
 	chg->vbus_vreg->rdesc.owner = THIS_MODULE;
 	chg->vbus_vreg->rdesc.type = REGULATOR_VOLTAGE;
 	chg->vbus_vreg->rdesc.ops = &smb138x_vbus_reg_ops;
-	chg->vbus_vreg->rdesc.of_match = "qcom,smb138x-vbus";
 	chg->vbus_vreg->rdesc.name = "qcom,smb138x-vbus";
 
-	chg->vbus_vreg->rdev = devm_regulator_register(chg->dev,
-						&chg->vbus_vreg->rdesc, &cfg);
+	chg->vbus_vreg->rdev = regulator_register(&chg->vbus_vreg->rdesc, &cfg);
 	if (IS_ERR(chg->vbus_vreg->rdev)) {
 		rc = PTR_ERR(chg->vbus_vreg->rdev);
 		chg->vbus_vreg->rdev = NULL;
@@ -1102,7 +1101,7 @@ static int smb138x_request_interrupt(struct smb138x *chip,
 	int rc, irq, irq_index;
 	struct smb_irq_data *irq_data;
 
-	irq = of_irq_get_byname(node, irq_name);
+	irq = platform_get_irq_byname(chg->pdev, irq_name);
 	if (irq < 0) {
 		pr_err("Couldn't get irq %s byname\n", irq_name);
 		return irq;
@@ -1329,28 +1328,32 @@ static int smb138x_master_probe(struct smb138x *chip)
 	rc = smb138x_init_batt_psy(chip);
 	if (rc < 0) {
 		pr_err("Couldn't initialize batt psy rc=%d\n", rc);
-		return rc;
+		goto fail_init;
 	}
 
 	rc = smb138x_init_hw(chip);
 	if (rc < 0) {
 		pr_err("Couldn't initialize hardware rc=%d\n", rc);
-		return rc;
+		goto fail_init;
 	}
 
 	chip->nb.notifier_call = smb138x_notifier_call;
 	rc = power_supply_reg_notifier(&chip->nb);
 	if (rc < 0) {
 		pr_err("Couldn't register psy notifier rc=%d\n", rc);
-		return rc;
+		goto fail_init;
 	}
 
 	rc = smb138x_request_interrupts(chip);
 	if (rc < 0) {
 		pr_err("Couldn't request interrupts rc=%d\n", rc);
-		return rc;
+		goto fail_init;
 	}
 
+	return rc;
+
+fail_init:
+	regulator_unregister(chip->chg.vbus_vreg->rdev);
 	return rc;
 }
 
@@ -1383,6 +1386,7 @@ static int smb138x_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	chg = &chip->chg;
+	chg->pdev = pdev;
 	chg->dev = &pdev->dev;
 	chg->param = v1_params;
 	chg->debug_mask = &smb138x_debug_mask;
