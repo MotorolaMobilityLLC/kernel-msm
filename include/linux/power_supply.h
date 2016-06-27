@@ -226,6 +226,10 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_WIPOWER,		/* Wipower */
 };
 
+enum power_supply_notifier_events {
+	PSY_EVENT_PROP_CHANGED,
+};
+
 union power_supply_propval {
 	int intval;
 	const char *strval;
@@ -305,6 +309,9 @@ struct power_supply_info {
 };
 
 #if defined(CONFIG_POWER_SUPPLY)
+extern struct atomic_notifier_head power_supply_notifier;
+extern int power_supply_reg_notifier(struct notifier_block *nb);
+extern void power_supply_unreg_notifier(struct notifier_block *nb);
 extern struct power_supply *power_supply_get_by_name(const char *name);
 extern void power_supply_changed(struct power_supply *psy);
 extern int power_supply_am_i_supplied(struct power_supply *psy);
