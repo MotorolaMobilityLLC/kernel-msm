@@ -48,3 +48,17 @@
 &pm8x26_rtc {
 	qcom,qpnp-rtc-write = <1>;
 };
+
+&sdhc_2 {
+	status = "disabled";
+};
+
+&pm8226_l18 {
+	qcom,init-enable = <0>;
+	qcom,send-defaults;
+};
+
+&pm8226_l21 {
+	qcom,init-enable = <0>;
+	qcom,send-defaults;
+};
