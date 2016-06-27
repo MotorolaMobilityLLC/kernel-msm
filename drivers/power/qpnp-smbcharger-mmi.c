@@ -10780,9 +10780,11 @@ static int smbchg_probe(struct spmi_device *spmi)
 			if (rc != -EPROBE_DEFER)
 				dev_err(&spmi->dev, "Couldn't get vadc rc=%d\n",
 						rc);
+			vadc_dev = NULL;
 			return rc;
 		}
-	}
+	} else
+		vadc_dev = NULL;
 
 	if (of_find_property(spmi->dev.of_node, "qcom,usbin-vadc", NULL)) {
 		usb_vadc_dev = qpnp_get_vadc(&spmi->dev, "usbin");
@@ -10791,9 +10793,11 @@ static int smbchg_probe(struct spmi_device *spmi)
 			if (rc != -EPROBE_DEFER)
 				dev_err(&spmi->dev,
 					"Couldn't get usb vadc rc=%d\n", rc);
+			usb_vadc_dev = NULL;
 			return rc;
 		}
-	}
+	} else
+		usb_vadc_dev = NULL;
 
 	chip = devm_kzalloc(&spmi->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip) {
