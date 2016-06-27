@@ -4039,6 +4039,8 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 		/* Set LDO2 to 3V */
 		snd_soc_write(codec, ARIZONA_LDO2_CONTROL_1, 0x484);
 	}
+	snd_soc_dapm_force_enable_pin(dapm, "SYSCLK");
+	snd_soc_dapm_sync(dapm);
 
 	/* Disable the MCLK */
 	snd_soc_update_bits(codec, ARIZONA_SYSTEM_CLOCK_1,
