@@ -324,6 +324,7 @@ static void mdss_mdp_cmd_underflow_recovery(void *data)
 {
 	struct mdss_mdp_cmd_ctx *ctx = data;
 	unsigned long flags;
+	bool notify_frame_timeout = false;
 
 	if (!data) {
 		pr_err("%s: invalid ctx\n", __func__);
@@ -341,8 +342,12 @@ static void mdss_mdp_cmd_underflow_recovery(void *data)
 		mdss_mdp_irq_disable_nosync(MDSS_MDP_IRQ_PING_PONG_COMP,
 						ctx->pp_num);
 		complete_all(&ctx->pp_comp);
+		notify_frame_timeout = true;
 	}
 	spin_unlock_irqrestore(&ctx->koff_lock, flags);
+
+	if (notify_frame_timeout)
+		mdss_mdp_ctl_notify(ctx->ctl, MDP_NOTIFY_FRAME_TIMEOUT);
 }
 
 static void mdss_mdp_cmd_pingpong_done(void *arg)

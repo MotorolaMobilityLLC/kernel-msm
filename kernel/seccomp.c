@@ -219,7 +219,6 @@ static u32 seccomp_run_filters(int syscall)
 	 */
 	for (; f; f = f->prev) {
 		u32 cur_ret = sk_run_filter(NULL, f->insns);
-
 		if ((cur_ret & SECCOMP_RET_ACTION) < (ret & SECCOMP_RET_ACTION))
 			ret = cur_ret;
 	}
@@ -774,7 +773,7 @@ static long do_seccomp(unsigned int op, unsigned int flags,
 }
 
 SYSCALL_DEFINE3(seccomp, unsigned int, op, unsigned int, flags,
-		const char __user *, uargs)
+			 const char __user *, uargs)
 {
 	return do_seccomp(op, flags, uargs);
 }

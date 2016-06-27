@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -48,4 +48,18 @@
 
 &pm8x26_rtc {
 	qcom,qpnp-rtc-write = <1>;
+};
+
+&sdhc_2 {
+	status = "disabled";
+};
+
+&pm8226_l18 {
+	qcom,init-enable = <0>;
+	qcom,send-defaults;
+};
+
+&pm8226_l21 {
+	qcom,init-enable = <0>;
+	qcom,send-defaults;
 };

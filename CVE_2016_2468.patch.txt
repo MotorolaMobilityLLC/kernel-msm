@@ -1,0 +1,50 @@
+From 616b5bfab8f8c7c25a113bd1c5fe48215cddab1d Mon Sep 17 00:00:00 2001
+From: Rajesh Kemisetti <rajeshk@codeaurora.org>
+Date: Mon, 9 May 2016 22:12:20 +0530
+Subject: [PATCH] msm: kgsl: Add missing checks for alloc size and sglen
+
+In _kgsl_sharedmem_page_alloc(), check for boundary limits
+of requested alloc size before honoring and make sure sglen
+is greater than zero before marking it as end of sg list.
+
+Change-Id: I8b9e225e515a0f31593df6f4cad253236475d0ae
+Signed-off-by: Rajesh Kemisetti <rajeshk@codeaurora.org>
+---
+ drivers/gpu/msm/kgsl_sharedmem.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/msm/kgsl_sharedmem.c b/drivers/gpu/msm/kgsl_sharedmem.c
+index 24a1680..98f634d 100644
+--- a/drivers/gpu/msm/kgsl_sharedmem.c
++++ b/drivers/gpu/msm/kgsl_sharedmem.c
+@@ -1,4 +1,4 @@
+-/* Copyright (c) 2002,2007-2015, The Linux Foundation. All rights reserved.
++/* Copyright (c) 2002,2007-2016, The Linux Foundation. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License version 2 and
+@@ -609,6 +609,10 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
+ 	unsigned int align;
+ 	int step = ((VMALLOC_END - VMALLOC_START)/8) >> PAGE_SHIFT;
+ 
++	size = PAGE_ALIGN(size);
++	if (size == 0 || size > UINT_MAX)
++		return -EINVAL;
++
+ 	align = (memdesc->flags & KGSL_MEMALIGN_MASK) >> KGSL_MEMALIGN_SHIFT;
+ 
+ 	page_size = get_page_size(size, align);
+@@ -712,7 +716,9 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
+ 
+ 	memdesc->sglen = sglen;
+ 	memdesc->size = size;
+-	sg_mark_end(&memdesc->sg[sglen - 1]);
++
++	if (sglen > 0)
++		sg_mark_end(&memdesc->sg[sglen - 1]);
+ 
+ 	/*
+ 	 * All memory that goes to the user has to be zeroed out before it gets
+-- 
+1.8.2.1
+
