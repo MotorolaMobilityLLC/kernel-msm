@@ -38,7 +38,6 @@ const char *FUSB_DT_INTERRUPT_INTN = "fsc_interrupt_int_n";	// Name of the INT_N
 #define FUSB_DT_GPIO_DEBUG_SM_TOGGLE    "fairchild,dbg_sm"	// Name of the debug State Machine toggle GPIO pin in the Device Tree
 #endif // FSC_DEBUG
 
-static bool disable_ss_switch;
 bool debug_audio = false;
 #ifdef FSC_INTERRUPT_TRIGGERED
 /* Internal forward declarations */
@@ -109,43 +108,6 @@ static int fusb_toggleAudioSwitch(bool enable)
 	return 0;
 }
 
-static int fusb_enableSuperspeedUSB(int CC1, int CC2)
-{
-	struct fusb30x_chip *chip = fusb30x_GetChip();
-
-	if (!chip) {
-		pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
-				 __func__);
-		return -ENOMEM;
-	}
-	if (disable_ss_switch)
-		return 0;
-	SwitchState = CC2 ? 2 : 1;
-	power_supply_changed(&switch_psy);
-	FUSB_LOG("Enabling SS lines for CC%d\n", SwitchState);
-	return 0;
-}
-static int fusb_disableSuperspeedUSB(void)
-{
-	struct fusb30x_chip *chip = fusb30x_GetChip();
-
-	if (!chip) {
-		pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
-			   __func__);
-		return -ENOMEM;
-	}
-	SwitchState = 0;
-	power_supply_changed(&switch_psy);
-	return -ENODEV;
-}
-void platform_disableSuperspeedUSB(void)
-{
-	fusb_disableSuperspeedUSB();
-}
-void platform_enableSuperspeedUSB(int CC1, int CC2)
-{
-	fusb_enableSuperspeedUSB(CC1, CC2);
-}
 void platform_toggleAudioSwitch(FSASwitchState state)
 {
 	struct fusb30x_chip *chip = fusb30x_GetChip();
@@ -5061,9 +5023,9 @@ static ssize_t fusb302_CC_state(struct device *dev,
 {
 	char data[5] = "";
 
-	if (blnCCPinIsCC1)
+	if (fusb302_cc == CC1)
 		strlcpy(data, "CC1", sizeof(data));
-	else if (blnCCPinIsCC2)
+	else if (fusb302_cc == CC2)
 		strlcpy(data, "CC2", sizeof(data));
 	return snprintf(buf, PAGE_SIZE - 2, "%s\n", data);
 }
@@ -5076,7 +5038,7 @@ static ssize_t fusb302_enable_vconn(struct device *dev,
 {
 	bool enable = false;
 
-	if (!blnCCPinIsCC1 && !blnCCPinIsCC2) {
+	if (fusb302_cc == NONE) {
 		pr_err("Trying to enable VCONN when CC is indeterminate\n");
 		return -EINVAL;
 	}
@@ -5084,10 +5046,10 @@ static ssize_t fusb302_enable_vconn(struct device *dev,
 	if (!strnicmp(buf, "1", 1))
 		enable = true;
 
-	if (blnCCPinIsCC1 && !blnCCPinIsCC2) {
+	if (fusb302_cc == CC1) {
 		Registers.Switches.VCONN_CC1 = 0;
 		Registers.Switches.VCONN_CC2 = enable;
-	} else if (!blnCCPinIsCC1 && blnCCPinIsCC2) {
+	} else if (fusb302_cc == CC2) {
 		Registers.Switches.VCONN_CC1 = enable;
 		Registers.Switches.VCONN_CC2 = 0;
 	} else {
@@ -5096,7 +5058,7 @@ static ssize_t fusb302_enable_vconn(struct device *dev,
 	}
 
 	pr_err("Trying to %sable, VCONN on %s\n",
-	       enable ? "en" : "dis", blnCCPinIsCC1 ? "CC2" : "CC1");
+	       enable ? "en" : "dis", (fusb302_cc == CC2) ? "CC2" : "CC1");
 	/* Commit the Switch State */
 	DeviceWrite(regSwitches0, 2, &Registers.Switches.byte[0]);
 	return count;
@@ -5119,34 +5081,6 @@ static struct attribute *fusb302_sysfs_attrs[] = {
 static struct attribute_group fusb302_sysfs_attr_grp = {
 	.attrs = fusb302_sysfs_attrs,
 };
-
-static int set_disable_ss_switch(const char *val, const struct kernel_param *kp)
-{
-	int rv;
-	struct fusb30x_chip *chip = fusb30x_GetChip();
-
-	if (chip == NULL) {
-		pr_err("%s - Chip structure is null!\n", __func__);
-		return -ENODEV;
-	}
-	rv = param_set_bool(val, kp);
-	if (rv)
-		return rv;
-
-	if (disable_ss_switch && chip)
-		fusb_disableSuperspeedUSB();
-
-	return 0;
-}
-
-static struct kernel_param_ops disable_ss_param_ops = {
-	.set = set_disable_ss_switch,
-	.get = param_get_bool,
-};
-
-module_param_cb(disable_ss_switch, &disable_ss_param_ops,
-				&disable_ss_switch, S_IRUGO | S_IWUSR);
-MODULE_PARM_DESC(disable_ss_switch, "Disable Super Speed Switch");
 
 module_param(debug_audio, bool, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(debug_audio, "SSUSB enabled in audio accessory mode");
