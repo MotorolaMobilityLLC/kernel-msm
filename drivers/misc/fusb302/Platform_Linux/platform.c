@@ -239,8 +239,7 @@ fusb_Delay10us(delayCount);
 ******************************************************************************/ 
 void platform_notify_cc_orientation(CC_ORIENTATION orientation) 
 {
-	
-	    // Optional: Notify platform of CC orientation
+	fusb302_cc = orientation;
 } 
  
 
@@ -291,10 +290,15 @@ void platform_set_usb_host_enable(FSC_BOOL blnEnable)
 	struct power_supply *usb_psy = power_supply_get_by_name("usb");
 
 	FUSB_LOG("%s -  %d\n", __func__, blnEnable);
-	if (usb_psy)
+	if (usb_psy) {
+		/* Take ownership of the USB lines first */
+		power_supply_set_usb_owner(usb_psy,
+			(blnEnable == TRUE ? PSY_USB_OWNER_USBC :
+						PSY_USB_OWNER_NONE));
 		power_supply_set_usb_otg(usb_psy,
 			(blnEnable == TRUE ? POWER_SUPPLY_USB_OTG_ENABLE :
 					POWER_SUPPLY_USB_OTG_DISABLE));
+	}
 }
 FSC_BOOL platform_has_big_switch(void)
 {
