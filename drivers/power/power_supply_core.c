@@ -202,6 +202,58 @@ int power_supply_set_usb_otg(struct power_supply *psy, int otg)
 EXPORT_SYMBOL(power_supply_set_usb_otg);
 
 /**
+ * power_supply_set_usb_owner - set owner of the usb power supply
+ * @psy:	the usb power supply to control
+ * @owner:	value to set the owner to
+ */
+int power_supply_set_usb_owner(struct power_supply *psy,
+				enum power_supply_usb_owner owner)
+{
+	const union power_supply_propval ret = {owner, };
+
+	if (psy->set_property)
+		return psy->set_property(psy, POWER_SUPPLY_PROP_USB_OWNER,
+								&ret);
+	return -ENXIO;
+}
+EXPORT_SYMBOL(power_supply_set_usb_owner);
+
+/**
+ * power_supply_get_usb_owner - get owner of the usb power supply
+ * @psy:	the usb power supply to control
+ * @owner:	value to set the otg property to
+ */
+enum power_supply_usb_owner power_supply_get_usb_owner(struct power_supply *psy)
+{
+	union power_supply_propval ret = {0, };
+
+	if (!psy->get_property(psy, POWER_SUPPLY_PROP_USB_OWNER, &ret))
+		return ret.intval;
+
+	return PSY_USB_OWNER_NONE;
+}
+EXPORT_SYMBOL(power_supply_get_usb_owner);
+
+/**
+ * power_supply_set_chg_present - set chg_present of the usb power supply
+ * @psy:	the usb power supply to control
+ * @present:	value to set the chg_present to
+ */
+int power_supply_set_chg_present(struct power_supply *psy,
+				bool present)
+{
+	const union power_supply_propval ret = {present, };
+
+	if (psy->set_property)
+		return psy->set_property(psy, POWER_SUPPLY_PROP_CHG_PRESENT,
+								&ret);
+	return -ENXIO;
+}
+EXPORT_SYMBOL(power_supply_set_chg_present);
+
+
+
+/**
  * power_supply_set_supply_type - set type of the power supply
  * @psy:	the power supply to control
  * @supply_type:	sets type property of power supply

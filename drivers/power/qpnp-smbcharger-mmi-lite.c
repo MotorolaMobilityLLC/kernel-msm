@@ -292,6 +292,7 @@ struct smbchg_chip {
 	int				aicl_wait_retries;
 	bool				hvdcp_det_done;
 	int				afvc_mv;
+	enum power_supply_type          supply_type;
 };
 
 static struct smbchg_chip *the_chip;
@@ -4728,7 +4729,23 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 				chip->usb_present);
 		power_supply_set_supply_type(chip->usb_psy,
 				POWER_SUPPLY_TYPE_UNKNOWN);
-		power_supply_set_present(chip->usb_psy, chip->usb_present);
+
+		/* Notify charger or usb removal specifically. */
+		if ((chip->supply_type != POWER_SUPPLY_TYPE_USB) &&
+			(chip->supply_type != POWER_SUPPLY_TYPE_USB_CDP)) {
+			pr_smb(PR_MISC, "Set usb chg present to %d\n",
+					chip->usb_present);
+			power_supply_set_chg_present(chip->usb_psy,
+					chip->usb_present);
+		} else {
+			pr_smb(PR_MISC, "Set usb present to %d\n",
+					chip->usb_present);
+			power_supply_set_present(chip->usb_psy,
+					chip->usb_present);
+		}
+
+		chip->supply_type = 0;
+
 		pr_smb(PR_MISC, "setting usb psy dp=r dm=r\n");
 		power_supply_set_dp_dm(chip->usb_psy,
 				POWER_SUPPLY_DP_DM_DPR_DMR);
@@ -4762,7 +4779,6 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 #define HVDCP_NOTIFY_MS		2500
 static void handle_usb_insertion(struct smbchg_chip *chip)
 {
-	enum power_supply_type usb_supply_type;
 	int rc, type;
 	char *usb_type_name = "null";
 	u8 reg = 0;
@@ -4777,7 +4793,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		dev_err(chip->dev, "Couldn't read status 5 rc = %d\n", rc);
 	type = get_type(reg);
 	usb_type_name = get_usb_type_name(type);
-	usb_supply_type = get_usb_supply_type(type);
+	chip->supply_type = get_usb_supply_type(type);
 
 	if (chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy dp=f dm=f\n");
@@ -4786,7 +4802,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	}
 
 	/* Rerun APSD 1 sec later */
-	if ((usb_supply_type == POWER_SUPPLY_TYPE_USB) &&
+	if ((chip->supply_type == POWER_SUPPLY_TYPE_USB) &&
 	    !chip->apsd_rerun_cnt && !chip->factory_mode) {
 		dev_info(chip->dev, "HW Detected SDP!\n");
 		chip->apsd_rerun_cnt++;
@@ -4798,22 +4814,35 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 
 	chip->apsd_rerun_cnt = 0;
 
-	if (chip->factory_mode && (usb_supply_type == POWER_SUPPLY_TYPE_USB ||
-				usb_supply_type == POWER_SUPPLY_TYPE_USB_CDP)) {
+	if (chip->factory_mode && (chip->supply_type == POWER_SUPPLY_TYPE_USB ||
+				chip->supply_type == POWER_SUPPLY_TYPE_USB_CDP)) {
 		pr_err("SMB - Factory Kill Armed\n");
 		chip->factory_cable = true;
 	}
 
 	pr_smb(PR_STATUS, "inserted %s, usb psy type = %d stat_5 = 0x%02x\n",
-			usb_type_name, usb_supply_type, reg);
+			usb_type_name, chip->supply_type, reg);
 	smbchg_aicl_deglitch_wa_check(chip);
 	if (chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy type = %d\n",
-				usb_supply_type);
-		power_supply_set_supply_type(chip->usb_psy, usb_supply_type);
+				chip->supply_type);
+		power_supply_set_supply_type(chip->usb_psy, chip->supply_type);
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
-		power_supply_set_present(chip->usb_psy, chip->usb_present);
+		/* Notify charger or usb insertion specifically. */
+		if ((chip->supply_type != POWER_SUPPLY_TYPE_USB) &&
+			(chip->supply_type != POWER_SUPPLY_TYPE_USB_CDP)) {
+			pr_smb(PR_MISC, "Set usb chg present to %d\n",
+					chip->usb_present);
+			power_supply_set_chg_present(chip->usb_psy,
+					chip->usb_present);
+		} else {
+			pr_smb(PR_MISC, "Set usb present to %d\n",
+					chip->usb_present);
+			power_supply_set_present(chip->usb_psy,
+					chip->usb_present);
+		}
+
 		/* Notify the USB psy if OV condition is not present */
 		if (!chip->usb_ov_det) {
 			rc = power_supply_set_health_state(chip->usb_psy,

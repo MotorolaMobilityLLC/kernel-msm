@@ -36,9 +36,6 @@
 #include "TypeC.h"
 #include "fusb30X.h"
 #include "AlternateModes.h"
-#ifdef CONFIG_FSUSB42_MUX
-#include <linux/fsusb42.h>
-#endif
 #include "PDPolicy.h"
 
 #ifdef FSC_HAVE_VDM
@@ -288,6 +285,14 @@ int fusb_power_supply_get_property(struct power_supply *psy,
 		else
 			val->intval = gRequestOpVoltage*VOLTAGE_50MV;
 		break;
+	case POWER_SUPPLY_PROP_SWITCH_STATE:
+		if (blnCCPinIsCC1)
+			val->intval = 1;
+		else if (blnCCPinIsCC2)
+			val->intval = 2;
+		else
+			val->intval = 0;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -421,7 +426,6 @@ void InitializeTypeCVariables(void)
 	IsHardReset = FALSE;	// Initialize to no Hard Reset
 	TypeCSubState = 0;	// Initialize substate to 0
 	toggleCurrent = utccDefault;	// Initialise toggle current to default
-	SwitchState = 0;
 	gChargerAuthenticated = FALSE;
 	Registers.Switches.SPECREV = USBPDSPECREV;
 	DeviceWrite(regSwitches1, 1, &Registers.Switches.byte[1]);
@@ -1381,12 +1385,7 @@ void SetStateErrorRecovery(void)
 void SetStateDelayUnattached(void)
 {
 
-	platform_disableSuperspeedUSB();
 	platform_toggleAudioSwitch(fsa_lpm);
-#ifdef CONFIG_FSUSB42_MUX
-	if (fsusb42_get_state() != FSUSB_STATE_EXT)
-		fsusb42_set_state(FSUSB_OFF);
-#endif
 #ifndef FPGA_BOARD
 	SetStateUnattached();
 	return;
@@ -1560,12 +1559,7 @@ void SetStateAttachedSource(void)
 	USBPDEnable(TRUE, TRUE);	// Enable the USB PD state machine if applicable (no need to write to Device again), set as DFP
 	StateTimer = tIllegalCable;	// Start dangling illegal cable timeout
 
-	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	platform_toggleAudioSwitch(fsa_usb_mode);
-#ifdef CONFIG_FSUSB42_MUX
-	if (fsusb42_get_state() != FSUSB_STATE_EXT)
-		fsusb42_set_state(FSUSB_STATE_USB);
-#endif
 	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SRC;
 	power_supply_changed(&usbc_psy);
 }
@@ -1594,12 +1588,7 @@ void SetStateAttachedSink(void)
 
 	USBPDEnable(TRUE, FALSE);	// Enable the USB PD state machine (no need to write Device again since we are doing it here)
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
-	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	platform_toggleAudioSwitch(fsa_usb_mode);
-#ifdef CONFIG_FSUSB42_MUX
-	if (fsusb42_get_state() != FSUSB_STATE_EXT)
-		fsusb42_set_state(FSUSB_STATE_USB);
-#endif
 	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SINK;
 	power_supply_changed(&usbc_psy);
 }
@@ -1668,12 +1657,7 @@ void RoleSwapToAttachedSource(void)
 	PDDebounceTimer = tPDDebounce;	// Set the debounce timer to tPDDebounceMin for detecting a detach
 	CCDebounceTimer = tCCDebounce;	// Disable the 2nd level debouncing, not needed in this state                                      // Disable the toggle timer, not used in this state
 	PDFilterTimer = T_TIMER_DISABLE;	// Disable PD filter timer
-	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	platform_toggleAudioSwitch(fsa_usb_mode);
-#ifdef CONFIG_FSUSB42_MUX
-	if (fsusb42_get_state() != FSUSB_STATE_EXT)
-		fsusb42_set_state(FSUSB_STATE_USB);
-#endif
 	usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SRC;
 	power_supply_changed(&usbc_psy);
 	platform_set_usb_host_enable(TRUE);
@@ -1802,7 +1786,6 @@ void SetStateAudioAccessory(void)
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
 	if (Registers.Status.VBUSOK && debug_audio) {
 		FUSB_LOG("Audio Debug Accesory, Enable SS\n");
-		platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 		usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SINK;
 	} else
 		usbc_psy.type = POWER_SUPPLY_TYPE_USBC_AUDIO;
