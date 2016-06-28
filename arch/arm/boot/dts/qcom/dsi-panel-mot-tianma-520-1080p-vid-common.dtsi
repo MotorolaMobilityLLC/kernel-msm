@@ -96,7 +96,7 @@ qcom,panel-supply-entries {
 
 	qcom,panel-supply-entry@0 {
 		reg = <1>;
-		qcom,supply-name = "vddio";
+		qcom,supply-name = "vddio_disp";
 		qcom,supply-min-voltage = <1800000>;
 		qcom,supply-max-voltage = <1800000>;
 		qcom,supply-enable-load = <100000>;
@@ -105,7 +105,7 @@ qcom,panel-supply-entries {
 
 	qcom,panel-supply-entry@1 {
 		reg = <2>;
-		qcom,supply-name = "lab";
+		qcom,supply-name = "vsp_disp";
 		qcom,supply-min-voltage = <5500000>;
 		qcom,supply-max-voltage = <5500000>;
 		qcom,supply-enable-load = <100000>;
@@ -114,7 +114,7 @@ qcom,panel-supply-entries {
 
 	qcom,panel-supply-entry@2 {
 		reg = <3>;
-		qcom,supply-name = "ibb";
+		qcom,supply-name = "vsn_disp";
 		qcom,supply-min-voltage = <5500000>;
 		qcom,supply-max-voltage = <5500000>;
 		qcom,supply-enable-load = <100000>;
