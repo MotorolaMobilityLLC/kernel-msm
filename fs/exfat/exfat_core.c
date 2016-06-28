@@ -1747,12 +1747,14 @@ void fs_sync(struct super_block *sb, s32 do_sync)
 void fs_error(struct super_block *sb)
 {
 	struct exfat_mount_options *opts = &EXFAT_SB(sb)->options;
+	struct exfat_sb_info *sbi = EXFAT_SB(sb);
 
 	if (opts->errors == EXFAT_ERRORS_PANIC)
 		panic("[EXFAT] Filesystem panic from previous error\n");
 	else if ((opts->errors == EXFAT_ERRORS_RO) && !(sb->s_flags & MS_RDONLY)) {
 		sb->s_flags |= MS_RDONLY;
-		kobject_uevent(&disk_to_dev(sb->s_bdev->bd_disk)->kobj, KOBJ_CHANGE);
+		if (sbi && !sbi->disable_uevent)
+			schedule_work(&sbi->uevent_work);
 		printk(KERN_ERR "[EXFAT] Filesystem has been set read-only\n");
 	}
 }
