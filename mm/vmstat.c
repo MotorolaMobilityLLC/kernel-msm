@@ -903,6 +903,7 @@ const char * const vmstat_text[] = {
 	"vmacache_find_calls",
 	"vmacache_find_hits",
 #endif
+	"vmap_alloc_fail",
 #endif /* CONFIG_VM_EVENTS_COUNTERS */
 };
 #endif /* CONFIG_PROC_FS || CONFIG_SYSFS || CONFIG_NUMA */
