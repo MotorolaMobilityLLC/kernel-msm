@@ -44,6 +44,9 @@
 #include <linux/clk/msm-clk.h>
 #include <linux/msm-bus.h>
 #include <linux/irq.h>
+#ifdef CONFIG_FSUSB42_MUX
+#include <linux/fsusb42.h>
+#endif
 
 #include "power.h"
 #include "core.h"
@@ -262,6 +265,7 @@ struct dwc3_msm {
 	unsigned int		health_status;
 	unsigned int		tx_fifo_size;
 	bool			vbus_active;
+	bool			chg_vbus_active;
 	bool			suspend;
 	bool			disable_host_mode_pm;
 	enum dwc3_id_state	id_state;
@@ -296,11 +300,12 @@ struct dwc3_msm {
 	struct pm_qos_request   dwc3_pm_qos_request;
 	struct gpio		otg_fault_gpio;
 	int			otg_fault_irq;
-	enum power_supply_usb_priority usb_priority;
 	bool			ss_compliance;
 	struct mutex		pm_lock;
 	enum power_supply_otg_status usb_otg_status;
 	bool			vbus_reg_enabled;
+	u8			usbc_switch_state;
+	enum power_supply_usb_owner usb_owner;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2626,10 +2631,23 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 		val->intval = mdwc->typec_current_max;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
-		val->intval = mdwc->vbus_active;
+		/* Report only charger if chg_type is not USB/CDP.  */
+		if (mdwc->chg_type != DWC3_SDP_CHARGER &&
+			mdwc->chg_type != DWC3_CDP_CHARGER)
+			val->intval = mdwc->chg_vbus_active;
+		else
+			val->intval = mdwc->vbus_active;
+		break;
+	case POWER_SUPPLY_PROP_CHG_PRESENT:
+		val->intval = mdwc->chg_vbus_active;
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = mdwc->online && mdwc->vbus_active;
+		/* Report only charger if chg_type is not USB/CDP.  */
+		if (mdwc->chg_type != DWC3_SDP_CHARGER &&
+			mdwc->chg_type != DWC3_CDP_CHARGER)
+			val->intval = mdwc->chg_vbus_active;
+		else
+			val->intval = mdwc->online && mdwc->vbus_active;
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = psy->type;
@@ -2640,13 +2658,56 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_USB_OTG:
 		val->intval = mdwc->usb_otg_status;
 		break;
-	case POWER_SUPPLY_PROP_USB_PRIORITY:
-		val->intval = mdwc->usb_priority;
+	case POWER_SUPPLY_PROP_SWITCH_STATE:
+		val->intval = mdwc->usbc_switch_state;
+		break;
+	case POWER_SUPPLY_PROP_USB_OWNER:
+		val->intval = mdwc->usb_owner;
 		break;
 	default:
 		return -EINVAL;
 	}
 	return 0;
+}
+
+#define EXT_SWITCH_STATE 3
+static void dwc3_set_usbc_switches(struct dwc3_msm *mdwc, bool enable)
+{
+	struct power_supply *usbc_psy =
+			power_supply_get_by_name("usbc");
+	union power_supply_propval prop = {0,};
+	int rc;
+
+	if (!usbc_psy)
+		return;
+
+	if (enable) {
+		if (mdwc->usb_owner == PSY_USB_OWNER_USBC) {
+#ifdef CONFIG_FSUSB42_MUX
+			fsusb42_set_state(FSUSB_STATE_USB);
+#endif
+			rc = usbc_psy->get_property(usbc_psy,
+						POWER_SUPPLY_PROP_SWITCH_STATE,
+						&prop);
+
+			if (rc < 0)
+				goto put_usbc;
+			mdwc->usbc_switch_state = prop.intval;
+		} else if (mdwc->usb_owner  == PSY_USB_OWNER_EXT) {
+#ifdef CONFIG_FSUSB42_MUX
+			fsusb42_set_state(FSUSB_STATE_EXT);
+#endif
+			mdwc->usbc_switch_state = EXT_SWITCH_STATE;
+		}
+	} else {
+		mdwc->usbc_switch_state = 0;
+#ifdef CONFIG_FSUSB42_MUX
+		fsusb42_set_state(FSUSB_OFF);
+#endif
+	}
+	power_supply_changed(&mdwc->usb_psy);
+put_usbc:
+	power_supply_put(usbc_psy);
 }
 
 static void dwc3_msm_determine_usb_otg(struct dwc3_msm *mdwc,
@@ -2672,6 +2733,7 @@ static void dwc3_msm_determine_usb_otg(struct dwc3_msm *mdwc,
 
 	/* Let OTG know about ID detection */
 	mdwc->id_state = new_data ? DWC3_ID_GROUND : DWC3_ID_FLOAT;
+	dwc3_set_usbc_switches(mdwc, new_data ? true : false);
 	if (dwc->is_drd) {
 		pm_stay_awake(mdwc->dev);
 		queue_delayed_work(mdwc->dwc3_resume_wq,
@@ -2725,6 +2787,8 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		 */
 		if (mdwc->otg_state == OTG_STATE_UNDEFINED) {
 			mdwc->vbus_active = val->intval;
+			dwc3_set_usbc_switches(mdwc,
+					val->intval ? true : false);
 			queue_delayed_work(mdwc->dwc3_resume_wq,
 					&mdwc->resume_work, 0);
 			break;
@@ -2737,6 +2801,8 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		if (dwc->is_drd && !mdwc->in_restart) {
 			dbg_event(dwc->ctrl_num, 0xFF, "Q RW (vbus)", val->intval);
 			dbg_event(dwc->ctrl_num, 0xFF, "stayVbus", 0);
+			dwc3_set_usbc_switches(mdwc,
+					val->intval ? true : false);
 			/* Ignore !vbus on stop_host */
 			if (mdwc->vbus_active || test_bit(ID, &mdwc->inputs)) {
 				pm_stay_awake(mdwc->dev);
@@ -2744,6 +2810,14 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 					&mdwc->resume_work, 0);
 			}
 		}
+		break;
+	case POWER_SUPPLY_PROP_CHG_PRESENT:
+		dbg_event(dwc->ctrl_num, 0xFF, "chg present", val->intval);
+		mdwc->chg_vbus_active = val->intval;
+		if (mdwc->chg_type == DWC3_INVALID_CHARGER)
+			dwc3_msm_gadget_vbus_draw(mdwc, 0);
+		else
+			dwc3_msm_gadget_vbus_draw(mdwc, dcp_max_current);
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		mdwc->online = val->intval;
@@ -2806,12 +2880,32 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_HEALTH:
 		mdwc->health_status = val->intval;
 		break;
-	case POWER_SUPPLY_PROP_USB_PRIORITY:
-		if (val->intval >= PSY_USB_PRIORITY_NONE &&
-			val->intval <= PSY_USB_PRIORITY_USBC) {
-			dbg_event(dwc->ctrl_num, 0xFF, "USB PRIO", val->intval);
-			mdwc->usb_priority = val->intval;
+	case POWER_SUPPLY_PROP_USB_OWNER:
+		if (mdwc->usb_owner == val->intval ||
+			val->intval < PSY_USB_OWNER_NONE ||
+			val->intval > PSY_USB_OWNER_USBC)
+			break;
+		dbg_event(dwc->ctrl_num, 0xFF, "owner curr", mdwc->usb_owner);
+		dbg_event(dwc->ctrl_num, 0xFF, "owner new", val->intval);
+
+		/* Ignore requests from EXT if USBC has ownership */
+		if (mdwc->usb_owner == PSY_USB_OWNER_USBC &&
+				val->intval == PSY_USB_OWNER_EXT)
+			break;
+
+		if (mdwc->usb_owner == PSY_USB_OWNER_EXT &&
+				val->intval == PSY_USB_OWNER_USBC) {
+			/* Disconnect EXT if USB C has claimed ownership */
+			dbg_event(dwc->ctrl_num, 0xFF, "owner change", 0);
+			mdwc->vbus_active = 0;
+			mdwc->id_state = DWC3_ID_FLOAT;
+			/* Notify state machine and wait for transition */
+			dwc3_ext_event_notify(mdwc);
+			flush_delayed_work(&mdwc->sm_work);
+			/* Clear the otg status */
+			mdwc->usb_otg_status = 0;
 		}
+		mdwc->usb_owner = val->intval;
 		break;
 	default:
 		return -EINVAL;
@@ -2828,10 +2922,11 @@ dwc3_msm_property_is_writeable(struct power_supply *psy,
 	switch (psp) {
 	case POWER_SUPPLY_PROP_USB_OTG:
 	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_CHG_PRESENT:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_TYPE:
-	case POWER_SUPPLY_PROP_USB_PRIORITY:
+	case POWER_SUPPLY_PROP_USB_OWNER:
 		return 1;
 	default:
 		break;
@@ -2872,7 +2967,9 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_USB_OTG,
-	POWER_SUPPLY_PROP_USB_PRIORITY,
+	POWER_SUPPLY_PROP_SWITCH_STATE,
+	POWER_SUPPLY_PROP_USB_OWNER,
+	POWER_SUPPLY_PROP_CHG_PRESENT,
 };
 
 static int dwc3_msm_get_property_usbhost(struct power_supply *psy,
@@ -3855,9 +3952,11 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 				&prop);
 			if (rc >= 0  &&
 				prop.intval == POWER_SUPPLY_TYPE_USBC_SRC) {
+				mdwc->usb_owner = PSY_USB_OWNER_USBC;
 				mdwc->id_state = DWC3_ID_GROUND;
 				mdwc->usb_otg_status =
 					POWER_SUPPLY_USB_OTG_ENABLE;
+				dwc3_set_usbc_switches(mdwc, true);
 				dwc3_ext_event_notify(mdwc);
 			}
 			power_supply_put(usbc_psy);
