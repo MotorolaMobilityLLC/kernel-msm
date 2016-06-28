@@ -347,8 +347,9 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(mask_int),
 	POWER_SUPPLY_ATTR(system_temp_in_level),
 	POWER_SUPPLY_ATTR(num_system_temp_in_levels),
-	POWER_SUPPLY_ATTR(usb_priority),
 	POWER_SUPPLY_ATTR(usb_lpm),
+	POWER_SUPPLY_ATTR(usb_owner),
+	POWER_SUPPLY_ATTR(chg_present),
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */
