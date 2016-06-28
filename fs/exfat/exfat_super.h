@@ -91,6 +91,9 @@ struct exfat_sb_info {
 #ifdef CONFIG_EXFAT_KERNEL_DEBUG
 	long debug_flags;
 #endif /* CONFIG_EXFAT_KERNEL_DEBUG */
+	struct super_block *sb;
+	struct work_struct uevent_work;
+	int disable_uevent;
 };
 
 /*
