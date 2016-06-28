@@ -634,6 +634,7 @@ struct msm_dba_ops {
 	int (*get_dsi_config)(void *client,
 			       struct msm_dba_dsi_cfg *dsi_config);
 	u32 (*get_default_resolution)(void *client);
+	bool (*get_dsi_hs_clk_always_on)(void *client);
 };
 
 /**
