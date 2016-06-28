@@ -1431,6 +1431,14 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	mipi = &pdata->panel_info.mipi;
 
+	if (ctrl_pdata->ds_registered) {
+		mipi->force_clk_lane_hs =
+			mdss_dba_utils_get_dsi_hs_clk_always_on(
+							pinfo->dba_data);
+		pr_debug("%s: force_clk_lane_hs =%d\n",
+					__func__, mipi->force_clk_lane_hs);
+	}
+
 	if (mdss_dsi_is_panel_on_interactive(pdata)) {
 		/*
 		 * all interrupts are disabled at LK
