@@ -16,6 +16,7 @@
 #include <linux/ipc_logging.h>
 #include <linux/atomic.h>
 #include "FSCTypes.h"		// FUSB30x custom types
+#include "../core/platform.h"
 
 #ifdef FSC_DEBUG
 #define FSC_HOSTCOMM_BUFFER_SIZE    64	// Length of the hostcomm buffer
@@ -90,12 +91,12 @@ extern int fusb_power_supply_get_property(struct power_supply *psy,
 		union power_supply_propval *val);
 extern FSC_U8 GetTypeCSMControl(void);
 extern void GetDeviceTypeCStatus(FSC_U8 abytData[]);
-extern struct power_supply switch_psy;
 struct fusb30x_chip *fusb30x_GetChip(void);	// Getter for the global chip structure
 void fusb30x_SetChip(struct fusb30x_chip *newChip);	// Setter for the global chip structure
 extern void *fusb302_ipc_log;
 extern bool debug_audio;
 extern FSC_U16 gBcdDevice;
+extern CC_ORIENTATION fusb302_cc;
 #ifdef FSC_DEBUG
 #define FUSB_LOG(fmt, args...) do {                         \
 if (fusb302_ipc_log)   \

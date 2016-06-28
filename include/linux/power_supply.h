@@ -358,8 +358,9 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_MASK_INT,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_IN_LEVEL,
 	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_IN_LEVELS,
-	POWER_SUPPLY_PROP_USB_PRIORITY,
 	POWER_SUPPLY_PROP_USB_LPM,
+	POWER_SUPPLY_PROP_USB_OWNER,
+	POWER_SUPPLY_PROP_CHG_PRESENT,
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_PROP_CHARGE_COUNTER_EXT,
 	/* Properties of type `const char *' */
@@ -433,10 +434,10 @@ enum power_supply_notifier_events {
 	PSY_EVENT_PROP_REMOVED,
 };
 
-enum power_supply_usb_priority {
-	PSY_USB_PRIORITY_NONE,
-	PSY_USB_PRIORITY_EXT,
-	PSY_USB_PRIORITY_USBC,
+enum power_supply_usb_owner {
+	PSY_USB_OWNER_NONE,
+	PSY_USB_OWNER_EXT,
+	PSY_USB_OWNER_USBC,
 };
 
 union power_supply_propval {
@@ -580,8 +581,13 @@ extern int power_supply_set_voltage_limit(struct power_supply *psy, int limit);
 extern int power_supply_set_online(struct power_supply *psy, bool enable);
 extern int power_supply_set_health_state(struct power_supply *psy, int health);
 extern int power_supply_set_present(struct power_supply *psy, bool enable);
+extern int power_supply_set_chg_present(struct power_supply *psy, bool enable);
 extern int power_supply_set_scope(struct power_supply *psy, int scope);
 extern int power_supply_set_usb_otg(struct power_supply *psy, int otg);
+extern int power_supply_set_usb_owner(struct power_supply *psy,
+			enum power_supply_usb_owner owner);
+extern enum power_supply_usb_owner power_supply_get_usb_owner(
+			struct power_supply *psy);
 extern int power_supply_set_charge_type(struct power_supply *psy, int type);
 extern int power_supply_set_supply_type(struct power_supply *psy,
 					enum power_supply_type supply_type);
