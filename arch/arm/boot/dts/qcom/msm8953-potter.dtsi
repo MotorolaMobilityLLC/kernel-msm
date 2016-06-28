@@ -15,9 +15,8 @@
 #include "msm8953-potter-pinctrl.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include <moto-mem-reserve.h>
-#include "dsi-panel-mot-smd-549-1080p-cmd.dtsi"
-#include "dsi-panel-mot-mod-fwvga-video.dtsi"
 #include "msm8953-camera-sensor-mot-potter.dtsi"
+#include "dsi-panel-mot-tianma-520-1080p-vid.dtsi"
 
 / {
 	model = "potter";
@@ -639,22 +638,20 @@
 
 &mdss_dsi0 {
 	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
-	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	pinctrl-0 = <&mdss_dsi_active >;
+	pinctrl-1 = <&mdss_dsi_suspend>;
 
-	qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_cmd_v0>;
-	vci_disp-supply = <&vci_disp_vreg>;
-	vio_disp-supply = <&vio_disp_vreg>;
-	elvdd_disp-supply = <&lab_regulator>;
-	elvss_disp-supply = <&ibb_regulator>;
+	qcom,dsi-pref-prim-pan = <&mot_tianma_520_1080p_vid_v0>;
+
+	vddio_disp-supply = <&pm8953_l6>;
+	vsp_disp-supply = <&lab_regulator>;
+	vsn_disp-supply = <&ibb_regulator>;
+
 	qcom,platform-reset-gpio = <&tlmm 61 0>;
-	qcom,platform-te-gpio = <&tlmm 24 0>;
 };
 
 &mdss_dsi1 {
-	qcom,dsi-pref-prim-pan = <&mot_mod_fwvga_video>;
-	qcom,pluggable;
-	qcom,bridge-index = <0>;
+	status = "disabled";
 };
 
 /* display boost and inverting boost regulators */
@@ -704,17 +701,6 @@
 			compatible = "qcom,leds-atc";
 			linux,name = "charging";
 			qcom,ctrl-reg = <0x243>;
-		};
-	};
-
-	qcom,pmi8950@3 {
-		qcom,leds@d800 {
-			qcom,disp-type-amoled;
-			qcom,switch-freq-khz = <800>;
-			qcom,ilim-ma = <665>;
-			qcom,ovp-mv = <31000>;
-			qcom,enable-amoled-pulse-skipping;
-			qcom,avdd-trim-steps-from-center = <(-3)>;
 		};
 	};
 };
