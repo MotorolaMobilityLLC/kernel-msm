@@ -29,6 +29,7 @@
 #include <linux/atomic.h>
 #include <linux/compiler.h>
 #include <linux/llist.h>
+#include <linux/ratelimit.h>
 
 #include <asm/uaccess.h>
 #include <asm/tlbflush.h>
@@ -386,6 +387,16 @@ static void __insert_vmap_area(struct vmap_area *va)
 		list_add_rcu(&va->list, &vmap_area_list);
 }
 
+/*
+ * vmap alloc failure rate limiting: no mmore than 5 failures per 1s
+ */
+DEFINE_RATELIMIT_STATE(vmap_alloc_fail_ratelimit_state, 1 * HZ, 5);
+
+static inline int vmap_alloc_fail_ratelimit(void)
+{
+	return ___ratelimit(&vmap_alloc_fail_ratelimit_state, __func__);
+}
+
 static void purge_vmap_area_lazy(void);
 
 /*
@@ -402,6 +413,8 @@ static struct vmap_area *alloc_vmap_area(unsigned long size,
 	unsigned long addr;
 	int purged = 0;
 	struct vmap_area *first;
+	static struct vmalloc_info vmi;
+	int ratelimit;
 
 	BUG_ON(!size);
 	BUG_ON(size & ~PAGE_MASK);
@@ -513,10 +526,22 @@ overflow:
 		purged = 1;
 		goto retry;
 	}
-	if (printk_ratelimit())
+
+	count_vm_event(VMAP_ALLOC_FAIL);
+	ratelimit = vmap_alloc_fail_ratelimit();
+	if (ratelimit) {
+		get_vmalloc_info(&vmi);
 		printk(KERN_WARNING
-			"vmap allocation for size %lu failed: "
-			"use vmalloc=<size> to increase size.\n", size);
+			"vmap allocation for size %lu failed (0x%lx, 0x%lx): "
+			"use vmalloc=<size> to increase size.\n"
+			"current VmallocUsed: %8lu kB, VmallocChunk:   %8lu kB\n",
+			 size, vstart, vend, vmi.used >> 10,
+			 vmi.largest_chunk >> 10);
+	}
+#ifdef CONFIG_DEBUG_VMAP_ALLOC_FAIL
+	if (!ratelimit)
+		BUG();
+#endif
 	kfree(va);
 	return ERR_PTR(-EBUSY);
 }
