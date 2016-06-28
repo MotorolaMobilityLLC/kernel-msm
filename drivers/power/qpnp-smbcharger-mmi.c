@@ -418,6 +418,7 @@ struct smbchg_chip {
 	bool				wls_present;
 	struct wakeup_source		smbchg_hb_wake_source;
 	struct alarm			smbchg_heartbeat_alarm;
+	enum power_supply_type		supply_type;
 };
 
 static struct smbchg_chip *the_chip;
@@ -4885,7 +4886,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 
 	if (disabled && !chip->usbc_disabled) {
 		chip->usbc_disabled = true;
-		if (chip->usbc_online) {
+		if (chip->usbc_online || chip->factory_mode) {
 			chip->usbc_online = false;
 			chip->usb_insert_bc1_2 = false;
 			chip->usb_present = false;
@@ -5013,8 +5014,30 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 				chip->usb_present = 0;
 				power_supply_set_supply_type(chip->usb_psy,
 							     0);
-				power_supply_set_present(chip->usb_psy,
-							 chip->usb_present);
+				/* Relinquish ownership if USBC is the owner */
+				if (power_supply_get_usb_owner(chip->usb_psy) ==
+					PSY_USB_OWNER_USBC) {
+					SMB_DBG(chip, "Set USB owner to none\n");
+					power_supply_set_usb_owner(chip->usb_psy,
+								PSY_USB_OWNER_NONE);
+				}
+
+				/* Notify charger or usb removal specifically. */
+				if ((chip->supply_type != POWER_SUPPLY_TYPE_USB) &&
+					(chip->supply_type != POWER_SUPPLY_TYPE_USB_CDP)) {
+					SMB_DBG(chip, "Set usb chg present to %d\n",
+							chip->usb_present);
+					power_supply_set_chg_present(chip->usb_psy,
+								 chip->usb_present);
+				} else {
+					SMB_DBG(chip, "Set usb present to %d\n",
+							chip->usb_present);
+					power_supply_set_present(chip->usb_psy,
+								 chip->usb_present);
+				}
+
+				chip->supply_type = 0;
+
 			}
 			chip->previous_soc = soc;
 			smbchg_soc_changed(chip);
@@ -6057,7 +6080,28 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 				chip->usb_present);
 		power_supply_set_supply_type(chip->usb_psy,
 				POWER_SUPPLY_TYPE_UNKNOWN);
-		power_supply_set_present(chip->usb_psy, chip->usb_present);
+		/* Set ownership to none only if USBC is the owner */
+		if (power_supply_get_usb_owner(chip->usb_psy) == PSY_USB_OWNER_USBC) {
+			SMB_DBG(chip, "Set usb owner to none\n");
+			power_supply_set_usb_owner(chip->usb_psy, PSY_USB_OWNER_NONE);
+		}
+
+		/* Notify charger or usb removal specifically. */
+		if ((chip->supply_type != POWER_SUPPLY_TYPE_USB) &&
+			(chip->supply_type != POWER_SUPPLY_TYPE_USB_CDP)) {
+			SMB_DBG(chip, "Set usb chg present to %d\n",
+					chip->usb_present);
+			power_supply_set_chg_present(chip->usb_psy,
+						 chip->usb_present);
+		} else {
+			SMB_DBG(chip, "Set usb present to %d\n",
+					chip->usb_present);
+			power_supply_set_present(chip->usb_psy,
+						 chip->usb_present);
+		}
+
+		chip->supply_type = 0;
+
 		SMB_DBG(chip, "setting usb psy dp=r dm=r\n");
 		power_supply_set_dp_dm(chip->usb_psy,
 				POWER_SUPPLY_DP_DM_DPR_DMR);
@@ -6092,7 +6136,6 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 #define HVDCP_NOTIFY_MS		2500
 static void handle_usb_insertion(struct smbchg_chip *chip)
 {
-	enum power_supply_type usb_supply_type;
 	int rc, type;
 	char *usb_type_name = "null";
 	u8 reg = 0;
@@ -6114,7 +6157,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		SMB_ERR(chip, "Couldn't read status 5 rc = %d\n", rc);
 	type = get_type(reg, chip);
 	usb_type_name = get_usb_type_name(type, chip);
-	usb_supply_type = get_usb_supply_type(type);
+	chip->supply_type = get_usb_supply_type(type);
 
 	if (chip->usb_psy) {
 		SMB_DBG(chip, "setting usb psy dp=f dm=f\n");
@@ -6122,22 +6165,38 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 				POWER_SUPPLY_DP_DM_DPF_DMF);
 	}
 
-	if (chip->factory_mode && (usb_supply_type == POWER_SUPPLY_TYPE_USB ||
-				usb_supply_type == POWER_SUPPLY_TYPE_USB_CDP)) {
+	if (chip->factory_mode && (chip->supply_type == POWER_SUPPLY_TYPE_USB ||
+				chip->supply_type == POWER_SUPPLY_TYPE_USB_CDP)) {
 		SMB_ERR(chip, "Factory Kill Armed\n");
 		chip->factory_cable = true;
 	}
 
 	SMB_DBG(chip, "inserted %s, usb psy type = %d stat_5 = 0x%02x\n",
-			usb_type_name, usb_supply_type, reg);
+			usb_type_name, chip->supply_type, reg);
 	smbchg_aicl_deglitch_wa_check(chip);
 	if (chip->usb_psy) {
 		SMB_DBG(chip, "setting usb psy type = %d\n",
-				usb_supply_type);
-		power_supply_set_supply_type(chip->usb_psy, usb_supply_type);
-		SMB_DBG(chip, "setting usb psy present = %d\n",
-				chip->usb_present);
-		power_supply_set_present(chip->usb_psy, chip->usb_present);
+				chip->supply_type);
+		power_supply_set_supply_type(chip->usb_psy, chip->supply_type);
+
+		/*
+		 * If we are using the data lines, take ownership first. If not,
+		 * just notify the usb_psy we are charger.
+		 */
+		if (chip->supply_type == POWER_SUPPLY_TYPE_USB ||
+				chip->supply_type == POWER_SUPPLY_TYPE_USB_CDP) {
+			SMB_DBG(chip, "take ownership of the USB\n");
+			power_supply_set_usb_owner(chip->usb_psy,
+							PSY_USB_OWNER_USBC);
+			power_supply_set_present(chip->usb_psy,
+							chip->usb_present);
+		} else {
+			SMB_DBG(chip, "setting usb chg present = %d\n",
+							chip->usb_present);
+			power_supply_set_chg_present(chip->usb_psy,
+							chip->usb_present);
+		}
+
 		/* Notify the USB psy if OV condition is not present */
 		if (!chip->usb_ov_det) {
 			rc = power_supply_set_health_state(chip->usb_psy,

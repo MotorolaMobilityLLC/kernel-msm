@@ -86,7 +86,7 @@ void fsusb42_set_state(enum fsusb42_state state)
 	mutex_lock(&info->lock);
 
 	if (state == FSUSB_OFF) {
-		gpio_set_value(info->sel_gpio.gpio, 0);
+		gpio_set_value(info->sel_gpio.gpio, 1);
 		fsusb42_vdd_enable(info, false);
 	} else {
 		fsusb42_vdd_enable(info, true);
