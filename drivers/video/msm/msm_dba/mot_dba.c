@@ -298,6 +298,35 @@ exit:
 	return ret;
 }
 
+static bool mot_dba_get_dsi_hs_clk_always_on(void *client)
+{
+	struct mot_dba *pdata = get_platform_data(client);
+	struct msm_dba_ops *client_ops;
+	bool dsi_hs_clk_always_on = false;
+
+	pr_debug("%s\n", __func__);
+	mutex_lock(&list_lock);
+	if (!pdata || !mot_dba_dev) {
+		pr_err("%s: invalid data\n", __func__);
+		goto exit;
+	}
+
+	mutex_lock(&pdata->ops_mutex);
+	client_ops = &mot_dba_dev->dev->client_ops;
+	if (client_ops && client_ops->get_dsi_hs_clk_always_on)
+		dsi_hs_clk_always_on =
+			client_ops->get_dsi_hs_clk_always_on(mot_dba_dev->dev);
+
+	mutex_unlock(&pdata->ops_mutex);
+exit:
+	mutex_unlock(&list_lock);
+
+	pr_debug("%s: dsi_hs_clk_always_on = %d\n",
+					__func__, dsi_hs_clk_always_on);
+
+	return dsi_hs_clk_always_on;
+}
+
 static int mot_dba_panel_parse_dt(struct platform_device *pdev,
 					struct mot_dba *pdata)
 {
@@ -503,6 +532,7 @@ static int mot_dba_probe(struct platform_device *pdev)
 	client_ops->check_hpd       = mot_dba_check_hpd;
 	client_ops->get_dsi_config  = mot_dba_get_dsi_config;
 	client_ops->get_default_resolution = mot_dba_get_default_resolution;
+	client_ops->get_dsi_hs_clk_always_on = mot_dba_get_dsi_hs_clk_always_on;
 
 	strlcpy(pdata->dev_info.chip_name, DRVNAME,
 				sizeof(pdata->dev_info.chip_name));
