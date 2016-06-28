@@ -25,36 +25,18 @@
 #include <linux/mods/modbus_ext.h>
 #include <linux/mods/usb_ext_bridge.h>
 
-enum hd3ss460_device_list {
-	USBC = 0,
-	MODS,
-	MAX_DEV,
-};
-
 #define HD3_POL_INDEX 0
 #define HD3_AMSEL_INDEX 1
 #define HD3_EN_INDEX 2
 #define HD3_NUM_GPIOS 3
 
-static bool ssusb_peripheral;
-module_param(ssusb_peripheral, bool, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(ssusb_peripheral, "SSUSB goes to Peripheral mode on the mod connector");
-
-static bool ignore_ext;
-module_param(ignore_ext, bool, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(ignore_ext, "Ignores EXT notifications from the mod");
-
 struct hd3ss460_info {
 	int num_gpios;
 	struct gpio *list;
-	enum hd3ss460_device_list mux_dev;
-	struct power_supply *usbc;
-	struct power_supply *usbc_switch;
-	struct notifier_block switch_notifier;
+	struct power_supply *usb_psy;
+	struct notifier_block usb_notifier;
 	struct notifier_block modbus_notifier;
-	struct notifier_block usbext_notifier;
 	bool switch_is_fusb340;
-	struct delayed_work hd3ss460_switch_work;
 	struct delayed_work hd3ss460_work;
 	struct regulator *vdd;
 	int vdd_levels[2];
@@ -63,46 +45,7 @@ struct hd3ss460_info {
 	bool vdd_enabled;
 	int usbc_switch_state;
 	int ext_state;
-	enum usb_ext_remote_type usb_type;
 };
-
-static ssize_t switch_to_dev_store(struct device *dev,
-				struct device_attribute *attr,
-				const char *buf, size_t count)
-{
-	unsigned long r;
-	unsigned long mode;
-	struct hd3ss460_info *info = dev_get_drvdata(dev);
-
-	r = kstrtoul(buf, 0, &mode);
-	if (r) {
-		pr_err("Invalid value = %lu\n", mode);
-		return -EINVAL;
-	}
-
-	/* Handle the mode change if it is valid */
-	if (mode < MAX_DEV && !info->switch_is_fusb340) {
-		info->mux_dev = mode;
-		schedule_delayed_work(&info->hd3ss460_switch_work,
-					msecs_to_jiffies(0));
-	}
-
-	return count;
-}
-
-static ssize_t switch_to_dev_show(struct device *dev,
-					struct device_attribute *attr,
-					char *buf)
-{
-	struct hd3ss460_info *info = dev_get_drvdata(dev);
-
-	return scnprintf(buf, PAGE_SIZE, "%d\n", info->mux_dev);
-}
-
-static DEVICE_ATTR(switch_to_dev, 0664,
-		   switch_to_dev_show,
-		   switch_to_dev_store);
-
 
 static int hd3ss460_vdd_enable(struct hd3ss460_info *info, bool enable)
 {
@@ -184,32 +127,26 @@ static int modbus_notifier_call(struct notifier_block *nb,
 	else
 		info->ext_state &= ~(sl_status->proto);
 
-	/* If we have not switched the SSUSB lines, run the switch work */
-	if (info->mux_dev == USBC)
-		schedule_delayed_work(&info->hd3ss460_work,
-					msecs_to_jiffies(0));
+	schedule_delayed_work(&info->hd3ss460_work,
+				msecs_to_jiffies(0));
 
 	return NOTIFY_OK;
 }
 
-static int usbcswitch_notifier_call(struct notifier_block *nb,
+static int usb_notifier_call(struct notifier_block *nb,
 			unsigned long val,
 			void *v)
 {
 	struct hd3ss460_info *info = container_of(nb,
-				struct hd3ss460_info, switch_notifier);
+				struct hd3ss460_info, usb_notifier);
 	struct power_supply *psy = v;
 	int rc;
 	union power_supply_propval prop = {0,};
 
-	/* Ignore switch events when switch is not in USBC mode */
-	if (info->mux_dev != USBC)
-		return NOTIFY_OK;
-
 	if (val != PSY_EVENT_PROP_CHANGED)
 		return NOTIFY_OK;
 
-	if (!psy || (psy != info->usbc_switch))
+	if (!psy || (psy != info->usb_psy))
 		return NOTIFY_OK;
 
 	dev_dbg(info->dev, "usbc switch notifier call was called\n");
@@ -241,118 +178,29 @@ static void hd3ss460_w(struct work_struct *work)
 	case 0:
 		if (info->ext_state &&
 			!gpio_get_value(info->list[HD3_EN_INDEX].gpio)) {
+			/* MOD MPHY/I2S on */
 			hd3ss460_vdd_enable(info, true);
 			hd3ss460_switch_set_state(info, 0, 0, 1);
 		} else if (!info->ext_state) {
+			/* Crossbar off */
 			hd3ss460_switch_set_state(info, 0, 0, 0);
 			hd3ss460_vdd_enable(info, false);
 		}
 		break;
-	case 1:
+	case 1: /* Type-C CC1 */
 		hd3ss460_vdd_enable(info, true);
 		hd3ss460_switch_set_state(info, 0, 0, 1);
 		break;
-	case 2:
+	case 2: /* Type-C CC2 */
 		hd3ss460_vdd_enable(info, true);
 		hd3ss460_switch_set_state(info, 0, 1, 1);
 		break;
+	case 3: /* MODS SSUSB */
+		hd3ss460_vdd_enable(info, true);
+		hd3ss460_switch_set_state(info, 1, 0, 1);
 	default:
 		break;
 	}
-}
-
-static void hd3ss460_notify_usb_psy(struct hd3ss460_info *info, bool enable)
-{
-	struct power_supply *usb_psy = power_supply_get_by_name("usb");
-
-	if (!usb_psy)
-		return;
-
-	if (enable) {
-		if (ssusb_peripheral || info->usb_type == USB_EXT_REMOTE_HOST) {
-			power_supply_set_supply_type(usb_psy,
-					POWER_SUPPLY_TYPE_USB);
-			power_supply_set_present(usb_psy, 1);
-		} else
-			power_supply_set_usb_otg(usb_psy,
-					POWER_SUPPLY_USB_OTG_ENABLE_DATA);
-	} else {
-		if (ssusb_peripheral || info->usb_type == USB_EXT_REMOTE_HOST) {
-			power_supply_set_supply_type(usb_psy,
-					POWER_SUPPLY_TYPE_UNKNOWN);
-			power_supply_set_present(usb_psy, 0);
-		} else
-			power_supply_set_usb_otg(usb_psy,
-					POWER_SUPPLY_USB_OTG_DISABLE);
-	}
-	power_supply_put(usb_psy);
-}
-
-static void hd3ss460_send_uevent(struct hd3ss460_info *info)
-{
-	struct kobj_uevent_env *env;
-
-	env = kzalloc(sizeof(*env), GFP_KERNEL);
-	if (!env)
-		return;
-
-	if (info->mux_dev == MODS)
-		add_uevent_var(env, "EXT_USB_STATE=ATTACHED");
-	else
-		add_uevent_var(env, "EXT_USB_STATE=DETACHED");
-
-	add_uevent_var(env, "EXT_USB_PROTOCOL=USB3.0");
-
-	if (ssusb_peripheral || info->usb_type == USB_EXT_REMOTE_HOST)
-		add_uevent_var(env, "EXT_USB_MODE=HOST");
-	else
-		add_uevent_var(env, "EXT_USB_MODE=DEVICE");
-
-	if (info->mux_dev == USBC)
-		add_uevent_var(env, "MAIN_USB=ALLOWED");
-	else
-		add_uevent_var(env, "MAIN_USB=DISABLED");
-
-	kobject_uevent_env(&info->dev->kobj, KOBJ_CHANGE, env->envp);
-	kfree(env);
-}
-
-static void hd3ss460_switch_w(struct work_struct *work)
-{
-	struct hd3ss460_info *info =
-			container_of(work, struct hd3ss460_info,
-			hd3ss460_switch_work.work);
-	union power_supply_propval ret = {0,};
-
-	dev_dbg(info->dev, "Setting mux_dev to %d\n", info->mux_dev);
-	if (info->mux_dev == USBC) {
-		/* Notify the USB Controller */
-		hd3ss460_notify_usb_psy(info, false);
-		/* Disable the Crossbar switch */
-		hd3ss460_switch_set_state(info, 0, 0, 0);
-		hd3ss460_vdd_enable(info, false);
-		/* Enable the USB C psy */
-		info->usbc->set_property(info->usbc,
-				POWER_SUPPLY_PROP_DISABLE_USB,
-				&ret);
-		/* Query for initial reported state*/
-		usbcswitch_notifier_call(&info->switch_notifier,
-			PSY_EVENT_PROP_CHANGED,
-			info->usbc_switch);
-	} else if (info->mux_dev == MODS) {
-		ret.intval = 1;
-		/* Disable the USB C psy */
-		info->usbc->set_property(info->usbc,
-				POWER_SUPPLY_PROP_DISABLE_USB,
-				&ret);
-		hd3ss460_vdd_enable(info, true);
-		hd3ss460_switch_set_state(info, 1, 0, 1);
-		/* Notify the USB Controller */
-		hd3ss460_notify_usb_psy(info, true);
-	} else
-		dev_err(info->dev, "Invalid mode set\n");
-
-	hd3ss460_send_uevent(info);
 }
 
 static struct hd3ss460_info *hd3ss460_parse_of(struct platform_device *pdev)
@@ -439,61 +287,17 @@ static struct hd3ss460_info *hd3ss460_parse_of(struct platform_device *pdev)
 	return info;
 }
 
-static int usb_ext_notifier_call(struct notifier_block *nb,
-		unsigned long val,
-		void *v)
-{
-	struct hd3ss460_info *info = container_of(nb,
-				struct hd3ss460_info, usbext_notifier);
-	struct usb_ext_status *status = v;
-
-	if (ignore_ext)
-		return NOTIFY_DONE;
-
-	/* If Mod has detached, disconnect the hub */
-	if (status->proto != USB_EXT_PROTO_3_1 || !val) {
-		info->usb_type = USB_EXT_REMOTE_UNKNOWN;
-		if (info->mux_dev != USBC) {
-			dev_err(info->dev, "usb ext: switch SSUSB to USBC\n");
-			info->mux_dev = USBC;
-			hd3ss460_switch_w(&info->hd3ss460_switch_work.work);
-		}
-		return NOTIFY_DONE;
-	}
-
-	if (status->type == USB_EXT_REMOTE_DEVICE ||
-				status->type == USB_EXT_REMOTE_HOST)
-		info->usb_type = status->type;
-	else
-		info->usb_type = USB_EXT_REMOTE_DEVICE;
-
-	if (info->mux_dev != MODS) {
-		dev_err(info->dev, "usb ext: switch SSUSB to MODS, type = %d\n",
-						info->usb_type);
-		info->mux_dev = MODS;
-		hd3ss460_switch_w(&info->hd3ss460_switch_work.work);
-	}
-
-	return NOTIFY_OK;
-}
-
 static int hd3ss460_probe(struct platform_device *pdev)
 {
 	struct hd3ss460_info *info;
 	int ret, i;
-	struct power_supply *usbc_psy, *usbc_switch_psy;
+	struct power_supply *usb_psy;
 	struct modbus_ext_status sl_status;
 
-	usbc_psy = power_supply_get_by_name("usbc");
-	if (!usbc_psy) {
-		dev_err(&pdev->dev, "USBC supply not found, deferring probe\n");
-		return -EPROBE_DEFER;
-	}
-
-	usbc_switch_psy = power_supply_get_by_name("usbc_switch");
-	if (!usbc_switch_psy) {
+	usb_psy = power_supply_get_by_name("usb");
+	if (!usb_psy) {
 		dev_err(&pdev->dev,
-			"USBC Switch supply not found, deferring probe\n");
+			"USB supply not found, deferring probe\n");
 		return -EPROBE_DEFER;
 	}
 
@@ -527,9 +331,7 @@ static int hd3ss460_probe(struct platform_device *pdev)
 		}
 	}
 
-	info->mux_dev = USBC;
-	info->usbc = usbc_psy;
-	info->usbc_switch = usbc_switch_psy;
+	info->usb_psy = usb_psy;
 	info->modbus_notifier.notifier_call = modbus_notifier_call;
 	ret = modbus_ext_register_notifier(&info->modbus_notifier, NULL);
 	if (ret) {
@@ -537,28 +339,13 @@ static int hd3ss460_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
-	info->switch_notifier.notifier_call = usbcswitch_notifier_call;
-	ret = power_supply_reg_notifier(&info->switch_notifier);
+	info->usb_notifier.notifier_call = usb_notifier_call;
+	ret = power_supply_reg_notifier(&info->usb_notifier);
 	if (ret) {
-		dev_err(&pdev->dev, "couldn't register usbc_switch notifier\n");
+		dev_err(&pdev->dev, "couldn't register usb notifier\n");
 		goto fail_modbus_reg;
 	}
 
-	info->usbext_notifier.notifier_call = usb_ext_notifier_call;
-	ret = usb_ext_register_notifier(&info->usbext_notifier, NULL);
-	if (ret) {
-		dev_err(&pdev->dev, "couldn't register usb ext notifier\n");
-		goto fail_psy_reg;
-	}
-
-
-	ret = device_create_file(&pdev->dev,
-				 &dev_attr_switch_to_dev);
-	if (ret)
-		dev_err(&pdev->dev,
-			"couldn't create switch_to_dev\n");
-
-	INIT_DELAYED_WORK(&info->hd3ss460_switch_work, hd3ss460_switch_w);
 	INIT_DELAYED_WORK(&info->hd3ss460_work, hd3ss460_w);
 	info->usbc_switch_state = 0;
 
@@ -572,13 +359,11 @@ static int hd3ss460_probe(struct platform_device *pdev)
 					(MODBUS_PROTO_I2S | MODBUS_PROTO_MPHY);
 
 	/* Query for initial reported state*/
-	usbcswitch_notifier_call(&info->switch_notifier, PSY_EVENT_PROP_CHANGED,
-		info->usbc_switch);
+	usb_notifier_call(&info->usb_notifier, PSY_EVENT_PROP_CHANGED,
+		info->usb_psy);
 
 	return 0;
 
-fail_psy_reg:
-	power_supply_unreg_notifier(&info->switch_notifier);
 fail_modbus_reg:
 	modbus_ext_unregister_notifier(&info->modbus_notifier);
 fail:
@@ -590,17 +375,11 @@ static int hd3ss460_remove(struct platform_device *pdev)
 {
 	struct hd3ss460_info *info = platform_get_drvdata(pdev);
 
-	device_remove_file(&pdev->dev,
-			   &dev_attr_switch_to_dev);
-
 	if (info) {
-		usb_ext_unregister_notifier(&info->usbext_notifier);
 		modbus_ext_unregister_notifier(&info->modbus_notifier);
-		power_supply_unreg_notifier(&info->switch_notifier);
+		power_supply_unreg_notifier(&info->usb_notifier);
 		gpio_free_array(info->list, info->num_gpios);
-		cancel_delayed_work_sync(&info->hd3ss460_switch_work);
-		power_supply_put(info->usbc);
-		power_supply_put(info->usbc_switch);
+		power_supply_put(info->usb_psy);
 		hd3ss460_vdd_enable(info, false);
 		devm_regulator_put(info->vdd);
 		kfree(info);
