@@ -721,7 +721,7 @@
 			bslen_pin_active_value = <1>;
 			ct406_detect_threshold = <0x0096>;
 			ct406_undetect_threshold = <0x0050>;
-			ct406_recalibrate_threshold = <0x0064>;
+			ct406_recalibrate_threshold = <0x0096>;
 			ct406_pulse_count = <0x03>;
 			ct406_prox_gain = <0x02>;
 			ct406_als_lux1_c0_mult = <0x46E>;
