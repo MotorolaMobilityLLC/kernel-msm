@@ -86,8 +86,6 @@ extern FSC_U32 gRequestOpCurrent;
 extern FSC_U32 gChargerOpCurrent;
 extern FSC_U32 gRequestOpVoltage;
 extern struct power_supply usbc_psy;
-extern struct power_supply switch_psy;
-extern u16 SwitchState;
 /////////////////////////////////////////////////////////////////////////////
 //                            LOCAL PROTOTYPES
 /////////////////////////////////////////////////////////////////////////////
