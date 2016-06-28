@@ -72,6 +72,7 @@
 #include <linux/sched.h>
 #include <linux/fs_struct.h>
 #include <linux/namei.h>
+#include <linux/genhd.h>
 #include <asm/current.h>
 #include <asm/unaligned.h>
 
@@ -127,6 +128,14 @@ static time_t accum_days_in_year[] = {
 };
 
 static void _exfat_truncate(struct inode *inode, loff_t old_size);
+
+static void exfat_sbi_uevent_work(struct work_struct *work)
+{
+	struct exfat_sb_info *sbi = container_of(work, struct exfat_sb_info,
+						 uevent_work);
+
+	kobject_uevent(&disk_to_dev(sbi->sb->s_bdev->bd_disk)->kobj, KOBJ_CHANGE);
+}
 
 /* Convert a FAT time/date pair to a UNIX date (seconds since 1 1 70). */
 void exfat_time_fat2unix(struct exfat_sb_info *sbi, struct timespec *ts,
@@ -1924,6 +1933,10 @@ static void exfat_free_super(struct exfat_sb_info *sbi)
 static void exfat_put_super(struct super_block *sb)
 {
 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
+
+	sbi->disable_uevent = 1;
+	cancel_work_sync(&sbi->uevent_work);
+
 	if (__is_sb_dirty(sb))
 		exfat_write_super(sb);
 
@@ -2309,6 +2322,9 @@ static int exfat_fill_super(struct super_block *sb, void *data, int silent)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
 	mutex_init(&sbi->s_lock);
 #endif
+	sbi->sb = sb;
+	INIT_WORK(&sbi->uevent_work, exfat_sbi_uevent_work);
+
 	sb->s_fs_info = sbi;
 	sb->s_flags |= MS_NODIRATIME;
 	sb->s_magic = EXFAT_SUPER_MAGIC;
