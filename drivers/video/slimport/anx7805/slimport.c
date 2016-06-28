@@ -1117,6 +1117,11 @@ end:
 	return 0;
 }
 
+static bool anx7805_get_dsi_hs_clk_always_on(void *client)
+{
+	return true;
+}
+
 static int anx7805_register_dba(struct anx7805_data *pdata)
 {
 	struct msm_dba_ops *client_ops;
@@ -1138,6 +1143,8 @@ static int anx7805_register_dba(struct anx7805_data *pdata)
 	client_ops->get_edid_size   = NULL;
 	client_ops->get_raw_edid    = anx7805_get_raw_edid;
 	client_ops->check_hpd	    = NULL;
+	client_ops->get_dsi_hs_clk_always_on =
+		anx7805_get_dsi_hs_clk_always_on;
 
 	strlcpy(pdata->dev_info.chip_name, "anx7805",
 		sizeof(pdata->dev_info.chip_name));
