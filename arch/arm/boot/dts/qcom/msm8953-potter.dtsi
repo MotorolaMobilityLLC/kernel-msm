@@ -197,52 +197,6 @@
 	/* Placeholder for SPI defined later */
 	spi_1: spi@7575000 { };
 
-	spi_7: spi@7af7000 { /* BLSP2 QUP2 */
-		compatible = "qcom,spi-qup-v2";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "spi_physical", "spi_bam_physical";
-		reg = <0x7af7000 0x600>,
-		       <0x7ac4000 0x1f000>;
-		interrupt-names = "spi_irq", "spi_bam_irq";
-		/* IRQ 239 for BLSP2 */
-		interrupts = <0 301 0>, <0 239 0>;
-		spi-max-frequency = <50000000>;
-		pinctrl-names = "spi_default", "spi_sleep";
-		pinctrl-0 = <&spi_7_active>;
-		pinctrl-1 = <&spi_7_sleep>;
-		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
-			 <&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
-		clock-names = "iface_clk", "core_clk";
-		qcom,infinite-mode = <0>;
-		qcom,use-bam;
-		qcom,use-pinctrl;
-		qcom,ver-reg-exists;
-		/* need to check pipe index setting*/
-		qcom,bam-consumer-pipe-index = <8>;
-		qcom,bam-producer-pipe-index = <9>;
-		/* master-id for BLSP2 is MSM_BUS_MASTER_BLSP_2 or 84 */
-		qcom,master-id = <84>;
-		status = "/chosen", "mmi,dtv", "true";
-		fci_dtv: fc8300@0 {
-			status = "/chosen", "mmi,dtv", "true";
-			compatible = "fci,isdbt";
-			reg = <0>;
-			spi-max-frequency = <50000000>;
-			irq-gpio = <&tlmm 21 0>;
-			enable-gpio = <&tlmm 20 0>;
-			reset-gpio = <&tlmm 32 0>;
-			enable-active-high;
-			pinctrl-names = "default";
-			pinctrl-0 = <&dtv_output_default &dtv_input_default>;
-			clocks = <&clock_gcc clk_bb_clk2>;
-			clock-names = "dtv_refclk";
-			isdbt_vdd-supply = <&pm8953_l6>;
-			qcom,vdd-min-max-voltage = <1800000 1800000>;
-			bbm-xtal-freq = <37400>;
-		};
-	};
-
 	spi_8: spi@7af8000 { /* BLSP2 QUP3 */
 		compatible = "qcom,spi-qup-v2";
 		status = "ok";
