@@ -807,4 +807,7 @@ enum {
 /* boolean */
 #define CAM_EXT_CID_VIDEO_RECORD_HINT (CID_CAM_EXT_CLASS_BASE + 120)
 
+/* float[3] r/g/b gain used in raw to yuv conversion */
+#define CAM_EXT_CID_RAW_TO_YUV_GAIN (CID_CAM_EXT_CLASS_BASE + 121)
+
 #endif /* __CAMERA_EXT_CTRLS_H */
