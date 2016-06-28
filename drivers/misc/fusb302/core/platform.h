@@ -198,8 +198,6 @@ void platform_notify_unsupported_accessory(void);
 void platform_set_data_role(FSC_BOOL PolicyIsDFP);
 
 void platform_set_usb_host_enable(FSC_BOOL blnEnable);
-void platform_disableSuperspeedUSB(void);
-void platform_enableSuperspeedUSB(int CC1, int CC2);
 void platform_run_wake_thread(void);
 typedef enum {
 	fsa_lpm = 0,
