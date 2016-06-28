@@ -565,6 +565,12 @@ config DEBUG_VM_RB
 
 	  If unsure, say N.
 
+config DEBUG_VMAP_ALLOC_FAIL
+	bool "Debug vmap allocation failure"
+	default 0
+	help
+	   Trigger a panic when there is continuous vmap allocation failure.
+
 config DEBUG_VIRTUAL
 	bool "Debug VM translations"
 	depends on DEBUG_KERNEL && X86
