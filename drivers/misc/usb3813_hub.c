@@ -31,9 +31,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/mods/usb_ext_bridge.h>
 #include <linux/platform_data/slimport_device.h>
-#ifdef CONFIG_FSUSB42_MUX
-#include <linux/fsusb42.h>
-#endif
 
 #define USB_ATTACH 0xAA55
 #define CFG_ACCESS 0x9937
@@ -70,37 +67,22 @@ struct usb3813_info {
 	struct regulator *vdd_hsic;
 	bool hsic_enabled;
 	struct power_supply *usb_psy;
-	bool   mod_attached;
 	bool   mod_enabled;
-	enum usb_ext_path mod_path;
+	struct usb_ext_status ext_state;
 	struct delayed_work usb3813_enable_work;
-	bool   host_enabled;
+	bool   controller_enabled;
+	bool   factory_mode;
 };
 
 static int set_hsic_state(struct usb3813_info *info, bool enable);
+
+/* Returns the status of USB device/host connected via Type-C */
 static bool is_typec_usb_present(struct usb3813_info *info)
 {
-	union power_supply_propval prop = {0,};
-	int rc;
-
-	prop.intval = 0;
-	rc = info->usb_psy->get_property(info->usb_psy,
-			POWER_SUPPLY_PROP_PRESENT,
-			&prop);
-
-	if (rc < 0 || !prop.intval)
+	if (power_supply_get_usb_owner(info->usb_psy) == PSY_USB_OWNER_USBC)
+		return true;
+	else
 		return false;
-
-	prop.intval = 0;
-	rc = info->usb_psy->get_property(info->usb_psy,
-			POWER_SUPPLY_PROP_TYPE,
-			&prop);
-
-	if (rc < 0 || (prop.intval != POWER_SUPPLY_TYPE_USB &&
-		prop.intval != POWER_SUPPLY_TYPE_USB_CDP))
-		return false;
-
-	return true;
 }
 
 static int usb3813_write_command(struct usb3813_info *info, u16 command)
@@ -238,50 +220,112 @@ static void disable_usbc(struct usb3813_info *info, bool disable)
 	power_supply_put(usbc_psy);
 }
 
-static int usb3813_host_enable(struct usb3813_info *info, bool enable)
+static int usb3813_device_enable(struct usb3813_info *info, bool enable)
+{
+	struct power_supply *usb_psy = info->usb_psy;
+
+	dev_dbg(info->dev, "%s - enable = %d\n", __func__, enable);
+
+	if (enable) {
+		power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_EXT);
+		/* If EXT took ownership, switch to host mode */
+		if (power_supply_get_usb_owner(usb_psy) == PSY_USB_OWNER_EXT) {
+			power_supply_set_supply_type(usb_psy,
+					POWER_SUPPLY_TYPE_USB);
+			power_supply_set_present(usb_psy, 1);
+		} else
+			return -EBUSY;
+	} else if (power_supply_get_usb_owner(usb_psy) != PSY_USB_OWNER_USBC) {
+		power_supply_set_supply_type(usb_psy,
+				POWER_SUPPLY_TYPE_UNKNOWN);
+		power_supply_set_present(usb_psy, 0);
+		power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_NONE);
+	}
+
+	return 0;
+}
+
+static int usb3813_2_0_host_enable(struct usb3813_info *info, bool enable)
 {
 	struct power_supply *usb_psy;
 
-	if (info->enable_controller && !info->host_enabled) {
+	dev_dbg(info->dev, "%s - enable = %d\n", __func__, enable);
 
+	if (info->enable_controller && !info->controller_enabled && enable) {
+
+		/* Enable Dedicated Controller Only Once */
 		usb_psy = power_supply_get_by_name("usb_host");
 		if (!usb_psy)
 			return -ENODEV;
 
-		if (enable)
-			power_supply_set_usb_otg(usb_psy,
-					POWER_SUPPLY_USB_OTG_ENABLE_DATA);
-		else
-			power_supply_set_usb_otg(usb_psy,
-					POWER_SUPPLY_USB_OTG_DISABLE);
+		power_supply_set_usb_otg(usb_psy,
+				POWER_SUPPLY_USB_OTG_ENABLE_DATA);
 
 		power_supply_put(usb_psy);
-		info->host_enabled = enable;
+		info->controller_enabled = true;
 	} else if (info->switch_controller) {
 		usb_psy = info->usb_psy;
 
 		if (enable) {
-			disable_usbc(info, true);
-#ifdef CONFIG_FSUSB42_MUX
-			fsusb42_set_state(FSUSB_STATE_EXT);
-#endif
-			power_supply_set_usb_otg(usb_psy,
+			/* Set the owner to EXT */
+			power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_EXT);
+			/* If EXT took ownership, switch to host mode */
+			if (power_supply_get_usb_owner(usb_psy) ==
+						PSY_USB_OWNER_EXT)
+				power_supply_set_usb_otg(usb_psy,
 					POWER_SUPPLY_USB_OTG_ENABLE_DATA);
-		} else {
+			else
+				return -EBUSY;
+		} else if (power_supply_get_usb_owner(usb_psy) !=
+						PSY_USB_OWNER_USBC) {
+			/* Disable if USBC has not already taken over */
 			power_supply_set_usb_otg(usb_psy,
 					POWER_SUPPLY_USB_OTG_DISABLE);
-#ifdef CONFIG_FSUSB42_MUX
-			if (is_typec_usb_present(info))
-				fsusb42_set_state(FSUSB_STATE_USB);
-			else
-				fsusb42_set_state(FSUSB_OFF);
-#endif
-			disable_usbc(info, false);
+			power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_NONE);
 		}
-		info->host_enabled = enable;
+	}
+	return 0;
+}
+
+static int usb3813_3_1_host_enable(struct usb3813_info *info, bool enable)
+{
+	struct power_supply *usb_psy = info->usb_psy;
+
+	dev_dbg(info->dev, "%s - enable = %d\n", __func__, enable);
+
+	if (enable) {
+		/* Set the owner to EXT */
+		power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_EXT);
+		/* If EXT took ownership, switch to host mode */
+		if (power_supply_get_usb_owner(usb_psy) ==
+					PSY_USB_OWNER_EXT)
+			power_supply_set_usb_otg(usb_psy,
+				POWER_SUPPLY_USB_OTG_ENABLE_DATA);
+		else
+			return -EBUSY;
+	} else if (power_supply_get_usb_owner(usb_psy) !=
+					PSY_USB_OWNER_USBC) {
+		/* Disable if USBC has not already taken over */
+		power_supply_set_usb_otg(usb_psy,
+				POWER_SUPPLY_USB_OTG_DISABLE);
+		power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_NONE);
 	}
 
 	return 0;
+}
+
+static int usb3813_host_enable(struct usb3813_info *info, bool enable)
+{
+	dev_dbg(info->dev, "%s - enable = %d, proto = %d\n",
+			__func__, enable, info->ext_state.proto);
+
+	/* Enable the appropriate controller based on protocol */
+	if (info->ext_state.proto == USB_EXT_PROTO_2_0)
+		return usb3813_2_0_host_enable(info, enable);
+	else if (info->ext_state.proto == USB_EXT_PROTO_3_1)
+		return usb3813_3_1_host_enable(info, enable);
+	else
+		return -EINVAL;
 }
 
 static void usb3813_send_uevent(struct usb3813_info *info)
@@ -293,7 +337,7 @@ static void usb3813_send_uevent(struct usb3813_info *info)
 	if (!env)
 		return;
 
-	if (info->mod_attached)
+	if (info->ext_state.active)
 		add_uevent_var(env, "EXT_USB_STATE=ATTACHED");
 	else
 		add_uevent_var(env, "EXT_USB_STATE=DETACHED");
@@ -303,8 +347,16 @@ static void usb3813_send_uevent(struct usb3813_info *info)
 	else
 		add_uevent_var(env, "EXT_USB=DISABLED");
 
-	add_uevent_var(env, "EXT_USB_PROTOCOL=USB2.0");
-	add_uevent_var(env, "EXT_USB_MODE=DEVICE");
+	if (info->ext_state.proto == USB_EXT_PROTO_2_0)
+		add_uevent_var(env, "EXT_USB_PROTOCOL=USB2.0");
+	else if (info->ext_state.proto == USB_EXT_PROTO_3_1)
+		add_uevent_var(env, "EXT_USB_PROTOCOL=USB3.1");
+
+	if (info->ext_state.type == USB_EXT_REMOTE_DEVICE)
+		add_uevent_var(env, "EXT_USB_MODE=DEVICE");
+	else if (info->ext_state.type == USB_EXT_REMOTE_HOST)
+		add_uevent_var(env, "EXT_USB_MODE=HOST");
+
 	add_uevent_var(env, "MAIN_USB=ALLOWED");
 
 	if (usb_present)
@@ -326,6 +378,7 @@ static void usb3813_wait_for_controller_lpm(struct usb3813_info *info)
 	if (!info->enable_controller)
 		return;
 
+	dev_dbg(info->dev, "%s\n", __func__);
 	usb_psy = power_supply_get_by_name("usb_host");
 	if (!usb_psy)
 		return;
@@ -362,11 +415,12 @@ static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 
 	dev_info(info->dev, "%sabling the USB38138 hub\n",
 			enable ? "En" : "Dis");
+
 	info->hub_enabled = enable;
 
 	if (info->hub_enabled) {
-		usb3813_host_enable(info, true);
 		usb3813_wait_for_controller_lpm(info);
+
 		if (clk_prepare_enable(info->hub_clk)) {
 			dev_err(info->dev, "%s: failed to prepare clock\n",
 				__func__);
@@ -378,7 +432,6 @@ static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 	} else {
 		gpio_set_value(info->hub_reset_n.gpio, 0);
 		clk_disable_unprepare(info->hub_clk);
-		usb3813_host_enable(info, false);
 	}
 
 	return 0;
@@ -393,12 +446,14 @@ static ssize_t usb3813_enable_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%d\n", info->hub_enabled);
 }
 
+#define MAX_WAIT_COUNT 100
 static ssize_t usb3813_enable_store(struct device *dev,
 			struct device_attribute *attr,
 			const char *buf, size_t count)
 {
 	struct usb3813_info *info = dev_get_drvdata(dev);
 	unsigned long r, mode;
+	int wait_count = 0;
 
 	r = kstrtoul(buf, 0, &mode);
 	if (r) {
@@ -408,10 +463,36 @@ static ssize_t usb3813_enable_store(struct device *dev,
 
 	mode = !!mode;
 
-	if (usb3813_hub_attach(info, mode))
+	if (mode == info->hub_enabled)
+		return -EINVAL;
+
+	/* Disable Type C first when enabling*/
+	if (info->switch_controller && mode) {
+		disable_usbc(info, true);
+		/* Wait until ownership changes */
+		while (is_typec_usb_present(info) &&
+				wait_count++ < MAX_WAIT_COUNT)
+			msleep(20);
+
+		if (wait_count >= MAX_WAIT_COUNT)
+			dev_err(dev, "changing ownership timed out\n");
+	}
+
+	if (usb3813_2_0_host_enable(info, mode)) {
+		dev_err(dev, "Host %sable failed\n", mode ? "En" : "Dis");
 		return -EFAULT;
-	else
-		return count;
+	}
+
+	if (usb3813_hub_attach(info, mode)) {
+		dev_err(dev, "Hub %stach failed\n", mode ? "At" : "De");
+		return -EFAULT;
+	}
+
+	/* Enable Type C last when disabling*/
+	if (info->switch_controller && !mode)
+		disable_usbc(info, false);
+
+	return count;
 }
 
 static DEVICE_ATTR(enable, 0660, usb3813_enable_show, usb3813_enable_store);
@@ -459,6 +540,7 @@ static void usb3813_attach_w(struct work_struct *work)
 	if (!info->hub_enabled)
 		return;
 
+	dev_dbg(info->dev, "%s\n", __func__);
 	/* Reset the slimport since USB2 shares lines */
 	slimport_reset_standby();
 
@@ -647,21 +729,57 @@ static void usb3813_enable_w(struct work_struct *work)
 	struct usb3813_info *info =
 		container_of(work, struct usb3813_info,
 		usb3813_enable_work.work);
+	bool enable = info->mod_enabled;
 
 	mutex_lock(&info->enable_mutex);
 	dev_dbg(info->dev, "%s - mod_enabled  = %d, mod_attached = %d\n",
-		__func__, info->mod_enabled, info->mod_attached);
-	if (info->mod_enabled) {
-		if (info->mod_path == USB_EXT_PATH_BRIDGE)
-			set_hsic_state(info, true);
-		usb3813_hub_attach(info, true);
-	} else {
-		set_hsic_state(info, false);
-		usb3813_hub_attach(info, false);
-	}
+		__func__, enable, info->ext_state.active);
+
+	/* Enable host or device based on the type */
+	if (info->ext_state.type == USB_EXT_REMOTE_DEVICE)
+		usb3813_host_enable(info, enable);
+	else
+		usb3813_device_enable(info, enable);
+
+	/* Enable HSIC if path is Bridge */
+	if (info->ext_state.proto == USB_EXT_PROTO_2_0 &&
+			info->ext_state.path == USB_EXT_PATH_BRIDGE)
+		set_hsic_state(info, enable);
+
+	/* Enable the Hub if it is USB2.0 */
+	if (info->ext_state.proto == USB_EXT_PROTO_2_0)
+		usb3813_hub_attach(info, enable);
 
 	usb3813_send_uevent(info);
 	mutex_unlock(&info->enable_mutex);
+}
+
+static int usb3813_validate_ext_params(struct usb_ext_status *status)
+{
+	if (status->proto == USB_EXT_PROTO_2_0) {
+		/*
+		 * We support both Enterprise and Bridge as the path for
+		 * USB 2.0 Ext Class, but only if the remote is a USB
+		 * peripheral.
+		 */
+		if (status->path == USB_EXT_PATH_UNKNOWN)
+			return -EINVAL;
+		else if (status->type != USB_EXT_REMOTE_DEVICE)
+			return -EINVAL;
+	} else if (status->proto == USB_EXT_PROTO_3_1) {
+		/*
+		 * We support only Enterprise as the path for
+		 * USB 3.1 Ext Class, however both USB hosts and
+		 * peripherals are supported.
+		 */
+		if (status->path != USB_EXT_PATH_ENTERPRISE)
+			return -EINVAL;
+		else if (status->type == USB_EXT_REMOTE_UNKNOWN)
+			return -EINVAL;
+	} else
+		return -EINVAL;
+
+	return 0;
 }
 
 static int usb_ext_notifier_call(struct notifier_block *nb,
@@ -670,25 +788,26 @@ static int usb_ext_notifier_call(struct notifier_block *nb,
 {
 	struct usb3813_info *info = container_of(nb,
 				struct usb3813_info, usbext_notifier);
-	bool attached = false;
-
 	struct usb_ext_status *status = v;
 
 	dev_info(info->dev, "%s - val = %lu, proto = %d, type = %d, path = %d\n",
 			__func__, val,
 			status->proto, status->type, status->path);
 
-	if (val && status->proto == USB_EXT_PROTO_2_0
-		&& status->type == USB_EXT_REMOTE_DEVICE)
-		attached = true;
 
-	if (attached == info->mod_attached) {
+	if (val == info->ext_state.active) {
 		dev_dbg(info->dev, "Spurious EXT notification\n");
 		return NOTIFY_DONE;
 	}
 
-	info->mod_attached = attached;
-	info->mod_path = status->path;
+	if (val) {
+		if (usb3813_validate_ext_params(status)) {
+			dev_err(info->dev, "Invalid EXT parameters\n");
+			return NOTIFY_DONE;
+		}
+		memcpy(&info->ext_state, status, sizeof(struct usb_ext_status));
+	} else
+		info->ext_state.active = 0;
 
 	if (!ignore_typec && is_typec_usb_present(info)) {
 		dev_info(info->dev, "Type C USB present, Ignore EXT\n");
@@ -698,7 +817,7 @@ static int usb_ext_notifier_call(struct notifier_block *nb,
 	}
 
 	cancel_delayed_work_sync(&info->usb3813_enable_work);
-	info->mod_enabled = info->mod_attached;
+	info->mod_enabled = info->ext_state.active;
 	usb3813_enable_w(&info->usb3813_enable_work.work);
 
 	return NOTIFY_OK;
@@ -721,25 +840,26 @@ static int psy_notifier_call(struct notifier_block *nb,
 		return NOTIFY_OK;
 
 	/* We don't care about usb events if a mod is not attached */
-	if (!info->mod_attached) {
+	if (!info->ext_state.active) {
 		dev_dbg(info->dev, "No mod attached, Ignore\n");
 		return NOTIFY_OK;
 	}
 
 	usb_present = is_typec_usb_present(info);
 
-	dev_info(info->dev, "%s - usb_present = %d, hub_enabled = %d\n",
-		__func__, usb_present, info->hub_enabled);
+	dev_info(info->dev, "%s - usb = %d, hub = %d, mod = %d\n",
+		__func__, usb_present, info->hub_enabled, info->mod_enabled);
 
 	/*
 	 * Detach Mod USB if type C USB is present.
 	 * Otherwise if Mod is attached and type C USB is removed,
-	 * re-enable the Mod USB
+	 * re-enable the Mod USB if it is not already enabled.
 	 */
-	if (info->hub_enabled && usb_present) {
+	if (info->mod_enabled && usb_present) {
 		info->mod_enabled = false;
 		work = 1;
-	} else if (info->mod_attached && !usb_present) {
+	} else if (info->ext_state.active && !usb_present &&
+				!info->mod_enabled) {
 		info->mod_enabled = true;
 		work = 1;
 	}
@@ -748,6 +868,19 @@ static int psy_notifier_call(struct notifier_block *nb,
 		schedule_delayed_work(&info->usb3813_enable_work, 0);
 
 	return NOTIFY_OK;
+}
+
+static bool usb3813_factory_mode(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
 }
 
 static int usb3813_probe(struct i2c_client *client,
@@ -852,6 +985,7 @@ static int usb3813_probe(struct i2c_client *client,
 
 	info->enable_controller = of_property_read_bool(np, "enable-usbhost");
 	info->switch_controller = of_property_read_bool(np, "switch-usbhost");
+	info->factory_mode = usb3813_factory_mode();
 
 	info->vdd_hsic = devm_regulator_get(&client->dev, "vdd-hsic");
 	if (IS_ERR(info->vdd_hsic))
@@ -874,16 +1008,18 @@ static int usb3813_probe(struct i2c_client *client,
 		goto fail_usb_ext;
 	}
 
-	ret = device_create_file(&client->dev, &dev_attr_enable);
-	if (ret) {
-		dev_err(&client->dev, "Unable to create enable file\n");
-		goto fail_psy;
-	}
+	if (info->factory_mode) {
+		ret = device_create_file(&client->dev, &dev_attr_enable);
+		if (ret) {
+			dev_err(&client->dev, "Unable to create enable file\n");
+			goto fail_psy;
+		}
 
-	ret = device_create_file(&client->dev, &dev_attr_hsic_vdd);
-	if (ret) {
-		dev_err(&client->dev, "Unable to create hsic_vdd file\n");
-		goto fail_psy;
+		ret = device_create_file(&client->dev, &dev_attr_hsic_vdd);
+		if (ret) {
+			dev_err(&client->dev, "Unable to create hsic_vdd file\n");
+			goto fail_psy;
+		}
 	}
 
 	usb3813_debug_init(info);
@@ -921,8 +1057,10 @@ static int usb3813_remove(struct i2c_client *client)
 		clk_disable_unprepare(info->hub_clk);
 	clk_put(info->hub_clk);
 	devm_regulator_put(info->vdd_hsic);
-	device_remove_file(&client->dev, &dev_attr_enable);
-	device_remove_file(&client->dev, &dev_attr_hsic_vdd);
+	if (info->factory_mode) {
+		device_remove_file(&client->dev, &dev_attr_enable);
+		device_remove_file(&client->dev, &dev_attr_hsic_vdd);
+	}
 	debugfs_remove_recursive(info->debug_root);
 	power_supply_put(info->usb_psy);
 	kfree(info);
