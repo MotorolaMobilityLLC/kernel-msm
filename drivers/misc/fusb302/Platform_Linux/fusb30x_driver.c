@@ -26,11 +26,10 @@
 #include "../core/TypeC_Types.h"
 #include "../core/fusb30X.h"
 #include "fusb30x_driver.h"
-u16 SwitchState = 0;
-struct power_supply switch_psy;
 
 #define FUSB_LOG_PAGES 50
 void *fusb302_ipc_log = NULL;
+CC_ORIENTATION fusb302_cc = NONE;
 
 void fusb302_shutdown(struct i2c_client *i2c)
 {
@@ -48,6 +47,7 @@ void fusb302_shutdown(struct i2c_client *i2c)
 
 	disable_irq(chip->gpio_IntN_irq);
 }
+
 enum power_supply_property fusb_power_supply_props[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
@@ -60,29 +60,8 @@ enum power_supply_property fusb_power_supply_props[] = {
 	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
-};
-
-static enum power_supply_property switch_power_supply_props[] = {
-	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_SWITCH_STATE,
 };
-
-int switch_power_supply_get_property(struct power_supply *psy,
-			    enum power_supply_property psp,
-			    union power_supply_propval *val)
-{
-	switch (psp) {
-	case POWER_SUPPLY_PROP_TYPE:
-		val->intval = psy->type;
-		break;
-	case POWER_SUPPLY_PROP_SWITCH_STATE:
-		val->intval = SwitchState;
-		break;
-	default:
-		return -EINVAL;
-	}
-	return 0;
-}
 
 static enum dual_role_property fusb_drp_properties[] = {
 	DUAL_ROLE_PROP_MODE,
@@ -268,23 +247,13 @@ static int fusb30x_probe(struct i2c_client *client,
 		return ret;
 	}
 
-	switch_psy.name		= "usbc_switch";
-	switch_psy.type		= POWER_SUPPLY_TYPE_SWITCH;
-	switch_psy.get_property	= switch_power_supply_get_property;
-	switch_psy.properties	= switch_power_supply_props;
-	switch_psy.num_properties	= ARRAY_SIZE(switch_power_supply_props);
-	ret = power_supply_register(&client->dev, &switch_psy);
-	if (ret) {
-		dev_err(&client->dev, "failed to register switch_psy\n");
-		goto unregister_usbcpsy;
-	}
 	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
 		desc = devm_kzalloc(&client->dev,
 			sizeof(struct dual_role_phy_desc),
 			GFP_KERNEL);
 		if (!desc) {
 			dev_err(&client->dev, "unable to allocate dual role descriptor\n");
-			goto unregister_switchpsy;
+			goto unregister_usbcpsy;
 		}
 
 		desc->name = "otg_default";
@@ -323,7 +292,7 @@ static int fusb30x_probe(struct i2c_client *client,
 		dev_err(&client->dev,
 			"FUSB  %s - Error: Unable to initialize GPIO!\n",
 			__func__);
-		return ret;
+		goto unregister_usbcpsy;
 	}
 	FUSB_LOG("FUSB  %s - GPIO initialized!\n", __func__);
 
@@ -349,7 +318,7 @@ static int fusb30x_probe(struct i2c_client *client,
 		dev_err(&client->dev,
 			"FUSB  %s - Error: Unable to enable interrupts! Error code: %d\n",
 			__func__, ret);
-		return -EIO;
+		goto unregister_usbcpsy;
 	}
 #else
 	/* Init our workers, but don't start them yet */
@@ -360,12 +329,9 @@ static int fusb30x_probe(struct i2c_client *client,
 #endif // ifdef FSC_POLLING elif FSC_INTERRUPT_TRIGGERED
 
 	fusb302_debug_init();
-	power_supply_changed(&switch_psy);
 	dev_info(&client->dev,
 		 "FUSB  %s - FUSB30X Driver loaded successfully!\n", __func__);
 	return ret;
-unregister_switchpsy:
-	power_supply_unregister(&switch_psy);
 unregister_usbcpsy:
 	power_supply_unregister(&usbc_psy);
 	return ret;
@@ -388,7 +354,6 @@ static int fusb30x_remove(struct i2c_client *client)
 	fusb_StopTimers();
 	fusb_GPIO_Cleanup();
 	fusb302_debug_remove();
-	power_supply_unregister(&switch_psy);
 	power_supply_unregister(&usbc_psy);
 	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
 		devm_dual_role_instance_unregister(
