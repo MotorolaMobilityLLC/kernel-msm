@@ -821,6 +821,31 @@ exit:
 }
 
 /**
+ * mdss_dba_utils_get_dsi_hs_clk_always_on() - Allow clients to inform if client
+ *        wants to keep the DSI HS clock always-on.
+ * @data: DBA utils instance which was allocated during registration
+ *
+ * Return: returns true if DSI HS clock needs to be always-on.
+ */
+bool mdss_dba_utils_get_dsi_hs_clk_always_on(void *data)
+{
+	struct mdss_dba_utils_data *ud = data;
+	bool dsi_hs_clk_always_on = false;
+
+	if (!ud) {
+		pr_err("invalid input\n");
+		goto end;
+	}
+
+	pr_debug("%s\n", __func__);
+	if (ud->ops.get_dsi_hs_clk_always_on)
+		dsi_hs_clk_always_on =
+			ud->ops.get_dsi_hs_clk_always_on(ud->dba_data);
+end:
+	return dsi_hs_clk_always_on;
+}
+
+/**
  * mdss_dba_utils_init() - Allow clients to register with DBA utils
  * @uid: Initialization data for registration.
  *
