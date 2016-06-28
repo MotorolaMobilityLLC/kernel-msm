@@ -10018,6 +10018,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_dcin_curr_ma = chip->dc_target_current_ma;
 	bool prev_usbeb_pres = chip->usbeb_present;
 	int pwr_ext;
+	bool eb_sink_to_off = false;
 	bool extra_in_pwr = (chip->max_usbin_ma > 0) && (chip->cl_usbc >
 							 chip->max_usbin_ma);
 
@@ -10112,6 +10113,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 			break;
 		case EB_SINK:
+			smbchg_set_extbat_state(chip, EB_OFF);
+			eb_sink_to_off = true;
+			break;
 		case EB_OFF:
 			if (chip->wls_present || chip->usbeb_present) {
 				chip->eb_rechrg = false;
@@ -10540,7 +10544,7 @@ end_hb:
 	else
 		chip->update_eb_params = 0;
 
-	if (!chip->fg_ready)
+	if (!chip->fg_ready || eb_sink_to_off)
 		hb_resch_time = HEARTBEAT_FG_WAIT_MS;
 
 	schedule_delayed_work(&chip->heartbeat_work,
