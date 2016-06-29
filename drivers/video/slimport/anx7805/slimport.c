@@ -807,6 +807,39 @@ static void anx7805_work_func(struct work_struct *work)
 #endif
 }
 
+int slimport_reset_standby(void)
+{
+	int ret = 0;
+	struct anx7805_data *anx7805;
+
+	if (!the_chip) {
+		pr_err("%s: the_chip is not set\n", __func__);
+		return -ENODEV;
+	}
+
+	anx7805 = the_chip;
+
+	if (atomic_read(&anx7805->slimport_connected)) {
+		pr_err("%s: connected, not resetting!\n", __func__);
+		ret = -EBUSY;
+	} else if (gpio_get_value(anx7805->gpio_cbl_det)) {
+		pr_warn("%s: in cable detected state, resetting!\n", __func__);
+		sp_tx_hardware_poweron();
+		sp_tx_hardware_powerdown();
+
+		usleep_range(250000, 250001);
+
+		if (gpio_get_value(anx7805->gpio_cbl_det)) {
+			pr_err("%s: cable detected after reset!\n", __func__);
+			ret = -EAGAIN;
+		}
+	} else {
+		pr_debug("%s: already in standby, not resetting!\n", __func__);
+	}
+
+	return ret;
+}
+
 #ifdef MML_DYNAMIC_IRQ_SUPPORT
 static int anx7805_enable_irq(int enable)
 {
