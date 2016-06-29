@@ -22,6 +22,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <linux/wakelock.h>
 #include "video/msm_hdmi_modes.h"
 #include "msm_dba_internal.h"
 #include "../mdss/mdss_dsi.h"
@@ -44,6 +45,7 @@ struct dsi_mod_display {
 	struct completion apba_on_wait;
 	struct notifier_block panel_nb;
 	struct mutex ops_mutex;
+	struct wake_lock mod_disp_lock;
 
 	int dsi_connect;
 };
@@ -431,6 +433,7 @@ static int dsi_mod_display_handle_connect(void *data)
 
 	reinit_completion(&pdata->dsi_on_wait);
 	reinit_completion(&pdata->apba_on_wait);
+	wake_lock(&pdata->mod_disp_lock);
 
 	pdata->connecting = true;
 	dsi_mod_display_do_hotplug(pdata, 1);
@@ -455,6 +458,7 @@ static int dsi_mod_display_handle_connect(void *data)
 		pdata->edid_buf = NULL;
 		kfree(pdata->display_config);
 		pdata->display_config = NULL;
+		wake_unlock(&pdata->mod_disp_lock);
 	}
 
 exit:
@@ -473,6 +477,8 @@ static int dsi_mod_display_handle_disconnect(void *data)
 	pdata = (struct dsi_mod_display *)data;
 
 	dsi_mod_display_do_hotplug(pdata, 0);
+	wake_unlock(&pdata->mod_disp_lock);
+	wake_lock_timeout(&pdata->mod_disp_lock, 2 * HZ);
 
 	mod_display_set_display_state(MOD_DISPLAY_OFF);
 
@@ -539,6 +545,8 @@ static int dsi_mod_display_probe(struct platform_device *pdev)
 
 	mutex_init(&pdata->ops_mutex);
 	mutex_init(&pdata->dev_info.dev_mutex);
+	wake_lock_init(&pdata->mod_disp_lock, WAKE_LOCK_SUSPEND,
+			"mod_disp_wake_lock");
 
 	INIT_LIST_HEAD(&pdata->dev_info.client_list);
 
@@ -577,6 +585,10 @@ exit:
 
 static int dsi_mod_display_remove(struct platform_device *pdev)
 {
+	struct dsi_mod_display *pdata = platform_get_drvdata(pdev);
+
+	wake_lock_destroy(&pdata->mod_disp_lock);
+
 	return 0;
 }
 
