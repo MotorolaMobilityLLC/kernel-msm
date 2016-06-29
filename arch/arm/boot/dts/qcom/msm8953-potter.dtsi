@@ -310,6 +310,7 @@
 	    clocks = <&clock_gcc clk_bb_clk2>;
 	    clock-names = "ref_clk";
 	};
+};
 
 &spi_1 {
 	status = "ok";
