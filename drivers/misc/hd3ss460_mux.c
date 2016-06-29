@@ -239,10 +239,11 @@ static void hd3ss460_w(struct work_struct *work)
 			hd3ss460_work.work);
 	switch (info->usbc_switch_state) {
 	case 0:
-		if (info->ext_state) {
+		if (info->ext_state &&
+			!gpio_get_value(info->list[HD3_EN_INDEX].gpio)) {
 			hd3ss460_vdd_enable(info, true);
 			hd3ss460_switch_set_state(info, 0, 0, 1);
-		} else {
+		} else if (!info->ext_state) {
 			hd3ss460_switch_set_state(info, 0, 0, 0);
 			hd3ss460_vdd_enable(info, false);
 		}
