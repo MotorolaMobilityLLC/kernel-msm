@@ -30,6 +30,7 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 #include <linux/mods/usb_ext_bridge.h>
+#include <linux/platform_data/slimport_device.h>
 #ifdef CONFIG_FSUSB42_MUX
 #include <linux/fsusb42.h>
 #endif
@@ -380,6 +381,9 @@ static void usb3813_attach_w(struct work_struct *work)
 
 	if (!info->hub_enabled)
 		return;
+
+	/* Reset the slimport since USB2 shares lines */
+	slimport_reset_standby();
 
 	ret = usb3813_write_cfg_reg(info, HS_P2_BOOST, boost_val);
 	if (ret < 0)
