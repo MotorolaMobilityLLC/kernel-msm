@@ -16,5 +16,5 @@
 #define SLIMPORT_DEVICE
 unchar sp_get_rx_bw(void);
 int slimport_read_edid_block(int block, uint8_t *edid_buf);
-void anx7816_force_mydp_det(bool connected);
+int slimport_reset_standby(void);
 #endif /* SLIMPORT_DEVICE */
