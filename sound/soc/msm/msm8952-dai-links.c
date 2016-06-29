@@ -30,11 +30,13 @@ enum TASHA_LITE_DEVICE {
 static struct snd_soc_card snd_soc_card_msm[MAX_CODECS];
 static struct snd_soc_card snd_soc_card_msm_card;
 
+#ifdef CONFIG_SND_SOC_MARLEY
 static struct snd_soc_ops msm8952_quat_mi2s_be_ops = {
 	.startup = msm_quat_mi2s_snd_startup,
 	.hw_params = msm_quat_mi2s_snd_hw_params,
 	.shutdown = msm_quat_mi2s_snd_shutdown,
 };
+#endif
 
 static struct snd_soc_ops msm8952_quin_mi2s_be_ops = {
 	.startup = msm_quin_mi2s_snd_startup,
