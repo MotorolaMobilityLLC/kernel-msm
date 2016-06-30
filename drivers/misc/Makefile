@@ -65,4 +65,5 @@ obj-$(CONFIG_UID_CPUTIME) += uid_cputime.o
 obj-y				+= qcom/
 obj-$(CONFIG_QPNP_MISC) 	+= qpnp-misc.o
 obj-$(CONFIG_MEMORY_STATE_TIME) += memory_state_time.o
+obj-$(CONFIG_HAPTIC_DRV2624)	+= drv2624.o
 obj-$(CONFIG_MOT_UTAG) += utag/
