@@ -356,6 +356,13 @@
 		qcom,cdc-us-euro-gpios = <&msm_gpio 112 0x0>;
 		qcom,cdc-headset-en-gpios = <&msm_gpio 111 0x0>;
 	};
+
+	/delete-node/ qcom,msm-pcm-low-latency;
+	pcm1: qcom,msm-pcm-low-latency {
+		compatible = "qcom,msm-pcm-dsp";
+		qcom,msm-pcm-dsp-id = <1>;
+		qcom,msm-pcm-low-latency;
+	};
 };
 &pm8916_l6 {
 	regulator-boot-on;
