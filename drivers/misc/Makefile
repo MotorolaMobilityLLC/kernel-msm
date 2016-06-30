@@ -74,6 +74,7 @@ obj-$(CONFIG_APDS9930)		+= apds993x.o
 obj-$(CONFIG_UID_SYS_STATS) += uid_sys_stats.o
 obj-$(CONFIG_MEMORY_STATE_TIME) += memory_state_time.o
 obj-$(CONFIG_HAPTIC_DRV2605)	+= drv2605.o
+obj-$(CONFIG_HAPTIC_DRV2624)	+= drv2624.o
 obj-$(CONFIG_C55_CTRL) += c55_ctrl.o
 obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
 obj-$(CONFIG_DROPBOX) += dropbox.o
