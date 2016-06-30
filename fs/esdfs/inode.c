@@ -84,10 +84,10 @@ static int esdfs_unlink(struct inode *dir, struct dentry *dentry)
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
 	dget(lower_dentry);
-	lower_dir_dentry = lock_parent(lower_dentry);
 
 	esdfs_drop_shared_icache(dir->i_sb, lower_dentry->d_inode);
 
+	lower_dir_dentry = lock_parent(lower_dentry);
 	err = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
 
 	/*
