@@ -5123,33 +5123,6 @@ void SP_CTRL_EDID_Process(void)
 
 	bEDIDBreak = 0;
 
-	ret = mod_display_get_display_config(&display_config);
-	if (ret) {
-		pr_err("%s: Failed to get display config: %d\n", __func__, ret);
-		memset(bEDID_twoblock, 0, 256);
-		return;
-	} else if (display_config->config_type == MOD_CONFIG_EDID_1_3) {
-		if (display_config->config_size > 256) {
-			pr_err("%s: EDID too big: %d\n", __func__,
-					display_config->config_size);
-		} else if (display_config->config_size == 0) {
-			pr_debug("%s: Reading EDID over HDMI link...\n",
-							__func__);
-		} else {
-			memcpy(bEDID_twoblock, display_config->config_buf,
-						display_config->config_size);
-			/* read sink bandwidth */
-			SP_TX_AUX_DPCDRead_Bytes(0x00, 0x00, 01, 1, &c);
-			sp_rx_bw = c;
-			SP_TX_RST_AUX();
-
-			goto skip_me;
-		}
-	} else {
-		pr_err("%s: Unknown display config type (%d)... Abort\n",
-					__func__, display_config->config_type);
-	}
-
 	//read DPCD 00000-0000b
 	for(i = 0; i <= 0x0b; i ++) {
 		SP_TX_AUX_DPCDRead_Bytes(0x00,0x00,i,1,&c);
@@ -5175,11 +5148,33 @@ void SP_CTRL_EDID_Process(void)
 			}
 		}
 	}
+	sp_rx_bw = sp_tx_bw;
 
-        SP_TX_AUX_DPCDRead_Bytes(0x00,0x02,00,1,&c);//read  sink_count for link_cts 4.2.2.7
+	SP_TX_AUX_DPCDRead_Bytes(0x00,0x02,00,1,&c);//read  sink_count for link_cts 4.2.2.7
+
+	ret = mod_display_get_display_config(&display_config);
+	if (ret) {
+		pr_err("%s: Failed to get display config: %d\n", __func__, ret);
+		memset(bEDID_twoblock, 0, 256);
+		return;
+	} else if (display_config->config_type == MOD_CONFIG_EDID_1_3) {
+		if (display_config->config_size > 256) {
+			pr_err("%s: EDID too big: %d\n", __func__,
+					display_config->config_size);
+		} else if (display_config->config_size == 0) {
+			pr_debug("%s: Reading EDID over HDMI link...\n",
+							__func__);
+		} else {
+			memcpy(bEDID_twoblock, display_config->config_buf,
+						display_config->config_size);
+			goto skip_me;
+		}
+	} else {
+		pr_err("%s: Unknown display config type (%d)... Abort\n",
+					__func__, display_config->config_type);
+	}
 
 	SP_CTRL_EDID_Read();
-	SP_TX_RST_AUX();
 	if(bEDIDBreak)
 		pr_info("ERR:EDID corruption!\n");
 
@@ -5191,6 +5186,8 @@ void SP_CTRL_EDID_Process(void)
 		bEDID_twoblock[i + 128] = bEDID_extblock[i];
 
 skip_me:
+	SP_TX_RST_AUX();
+
 	if (display_config)
 		kfree(display_config);
 
