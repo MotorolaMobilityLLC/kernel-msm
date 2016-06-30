@@ -75,6 +75,7 @@ struct usb3813_info {
 	struct delayed_work usb3813_enable_work;
 };
 
+static int set_hsic_state(struct usb3813_info *info, bool enable);
 static bool is_typec_usb_present(struct usb3813_info *info)
 {
 	union power_supply_propval prop = {0,};
@@ -371,6 +372,39 @@ static ssize_t usb3813_enable_store(struct device *dev,
 }
 
 static DEVICE_ATTR(enable, 0660, usb3813_enable_show, usb3813_enable_store);
+
+static ssize_t usb3813_hsic_vdd_show(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct usb3813_info *info = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", info->hsic_enabled);
+}
+
+static ssize_t usb3813_hsic_vdd_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct usb3813_info *info = dev_get_drvdata(dev);
+	unsigned long r, mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		dev_err(dev, "Invalid value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	mode = !!mode;
+
+	if (set_hsic_state(info, mode))
+		return -EFAULT;
+	else
+		return count;
+}
+
+static DEVICE_ATTR(hsic_vdd, 0660,
+			usb3813_hsic_vdd_show, usb3813_hsic_vdd_store);
 
 static void usb3813_attach_w(struct work_struct *work)
 {
@@ -800,6 +834,12 @@ static int usb3813_probe(struct i2c_client *client,
 		goto fail_psy;
 	}
 
+	ret = device_create_file(&client->dev, &dev_attr_hsic_vdd);
+	if (ret) {
+		dev_err(&client->dev, "Unable to create hsic_vdd file\n");
+		goto fail_psy;
+	}
+
 	usb3813_debug_init(info);
 
 	dev_info(&client->dev, "Done probing usb3813\n");
@@ -836,6 +876,7 @@ static int usb3813_remove(struct i2c_client *client)
 	clk_put(info->hub_clk);
 	devm_regulator_put(info->vdd_hsic);
 	device_remove_file(&client->dev, &dev_attr_enable);
+	device_remove_file(&client->dev, &dev_attr_hsic_vdd);
 	debugfs_remove_recursive(info->debug_root);
 	power_supply_put(info->usb_psy);
 	kfree(info);
