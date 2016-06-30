@@ -767,8 +767,8 @@ void stml0xx_akm_init(struct stml0xx_data *ps_stml0xx)
 	int err = 0;
 
 	dev_info(&ps_stml0xx->spi->dev, "stml0xx_akm_init");
-	/* Default value */
-	ps_stml0xx->akm_layout = 8;
+
+	ps_stml0xx->akm_layout = ps_stml0xx->pdata->mag_layout;
 
 	init_waitqueue_head(&ps_stml0xx->akm_drdy_wq);
 	init_waitqueue_head(&ps_stml0xx->akm_open_wq);
