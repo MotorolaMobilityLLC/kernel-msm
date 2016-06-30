@@ -37,7 +37,7 @@
 #define LED_STROBE_EN_DEFAULT       0x22 /* both enabled */
 
 #define LED_MAX_TORCH_CURRENT      250
-#define LED_DEFAULT_TORCH_CURRENT  0x1A /* 75 mA each */
+#define LED_DEFAULT_TORCH_CURRENT  0x35 /* 150 mA each */
 #define LED_TORCH_EN_DEFAULT       0x8B /* both enabled */
 
 #define LED_MAX_TOTAL_STROBE_CURRENT  1500
