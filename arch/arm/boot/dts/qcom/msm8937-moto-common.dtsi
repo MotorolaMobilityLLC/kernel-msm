@@ -334,6 +334,7 @@
 			 accel_orientation_1 = <7>; /* Accel Orientation value */
 			 accel_orientation_2 = <1>; /* Not used */
 			 accel_swap = <0>;          /* Not used */
+			 mag_layout = <3>;          /* Mag Layout value */
 			 sensor1-supply = <&pm8937_l10>;
 			 sensor2-supply = <&pm8937_l5>;
 
