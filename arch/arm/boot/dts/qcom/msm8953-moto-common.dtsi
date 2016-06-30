@@ -581,7 +581,7 @@
 		compatible = "mmi,apba-ctrl";
 		reg = <0 0>;
 		clock-names = "apba_mclk";
-		clocks = <&clock_gcc clk_bb_clk2_a>;
+		clocks = <&clock_gcc clk_bb_clk2>;
 		pinctrl-names = "default", "spi_active";
 		pinctrl-0 = <&apba_default &spi1_cs1_sleep>;
 		pinctrl-1 = <&apba_default &spi1_cs1_active>;
