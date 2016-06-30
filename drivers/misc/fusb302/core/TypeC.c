@@ -173,7 +173,8 @@ int fusb_power_supply_set_property(struct power_supply *psy,
 				platform_delay_10us(
 					SLEEP_DELAY*300);
 				if (PolicyHasContract &&
-					!gChargerAuthenticated)
+					!gChargerAuthenticated &&
+					CapsReceived[1].object != 0)
 					core_send_sink_request_voltage();
 			}
 			return 0;
@@ -479,8 +480,7 @@ void StateMachineTypeCImp(void)
 	*Read the interrupta, interruptb, status0,
 	*status1 and interrupt registers
 	*/
-	if (platform_get_device_irq_state())
-		DeviceRead(regInterrupta, 5, &Registers.Status.byte[2]);
+	DeviceRead(regInterrupta, 5, &Registers.Status.byte[2]);
 	/*
 	*Only call the USB PD routines
 	*if we have enabled the block
