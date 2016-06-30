@@ -888,7 +888,7 @@
 		reg = <0 0>;
 		ranges = <0 0 0xffffffff>;
 		clock-names = "apba_mclk";
-		clocks = <&clock_gcc clk_bb_clk2_ao>;
+		clocks = <&clock_gcc clk_bb_clk2>;
 		pinctrl-names = "default", "spi_active";
 		pinctrl-0 = <&apba_default &spi_3_sleep>;
 		pinctrl-1 = <&apba_default &spi_3_active>;
