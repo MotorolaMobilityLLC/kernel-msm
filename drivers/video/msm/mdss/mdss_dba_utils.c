@@ -38,6 +38,9 @@ struct mdss_dba_utils_data {
 	struct switch_dev *sdev_audio;
 	struct kobject *kobj;
 	struct mdss_panel_info *pinfo;
+	struct mdss_panel_info pinfo_orig;
+	struct mdss_dsi_ctrl_pdata dsi_ctrl_orig;
+	struct mdss_panel_data panel_data_orig;
 	void *dba_data;
 	void *edid_data;
 	void *timing_data;
@@ -320,6 +323,57 @@ static bool mdss_dba_check_audio_support(struct mdss_dba_utils_data *udata)
 		return true;
 }
 
+static void mdss_dba_utils_backup_restore_dsi(struct mdss_dba_utils_data *udata)
+{
+	struct mdss_dsi_ctrl_pdata *dsi_ctrl;
+	struct mdss_panel_data *panel_data;
+	static int once = 1;
+
+	if (!udata || !udata->pinfo) {
+		pr_err("Invalid data\n");
+		return;
+	}
+
+	/*
+	 * Due to the fact that we have added generic DSI panel support
+	 * to DBA, we now can change all sorts of things within the DSI
+	 * control structures. One example is that we can configure DSI
+	 * as command mode and still use DBA.
+	 *
+	 * Because of this, it seems cleanest to completely backup the
+	 * state of the DSI driver before the first time we use it, then
+	 * restore it before each subsequent use. This ensures that each
+	 * time we begin the DBA, the state of the DSI driver is the
+	 * same, and we dont have to worry what other DBA sessions might
+	 * have done.
+	 *
+	 * It is best to do this when handling the DBA connect event,
+	 * because at this point we know DSI is stable and unused.
+	 */
+
+	panel_data = container_of(udata->pinfo, struct mdss_panel_data,
+		panel_info);
+	dsi_ctrl = container_of(panel_data, struct mdss_dsi_ctrl_pdata,
+		panel_data);
+
+	if (once) {
+		memcpy(&udata->pinfo_orig, udata->pinfo,
+			sizeof(struct mdss_panel_info));
+		memcpy(&udata->panel_data_orig, panel_data,
+			sizeof(struct mdss_panel_data));
+		memcpy(&udata->dsi_ctrl_orig, dsi_ctrl,
+			sizeof(struct mdss_dsi_ctrl_pdata));
+		once = 0;
+	} else {
+		memcpy(udata->pinfo, &udata->pinfo_orig,
+			sizeof(struct mdss_panel_info));
+		memcpy(panel_data, &udata->panel_data_orig,
+			sizeof(struct mdss_panel_data));
+		memcpy(dsi_ctrl, &udata->dsi_ctrl_orig,
+			sizeof(struct mdss_dsi_ctrl_pdata));
+	}
+}
+
 static void mdss_dba_utils_dba_cb(void *data, enum msm_dba_callback_event event)
 {
 	int ret = -EINVAL;
@@ -345,6 +399,9 @@ static void mdss_dba_utils_dba_cb(void *data, enum msm_dba_callback_event event)
 	case MSM_DBA_CB_HPD_CONNECT:
 		if (udata->hpd_state)
 			break;
+
+		mdss_dba_utils_backup_restore_dsi(udata);
+
 		if (udata->ops.get_raw_edid) {
 			ret = udata->ops.get_raw_edid(udata->dba_data,
 				udata->edid_buf_size, udata->edid_buf, 0);
