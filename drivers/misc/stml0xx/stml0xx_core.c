@@ -516,6 +516,10 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 	of_property_read_u32(np, "accel_swap",
 			     &pdata->accel_swap);
 
+	pdata->mag_layout = 8;
+	of_property_read_u32(np, "mag_layout",
+			     &pdata->mag_layout);
+
 	return pdata;
 }
 #else
