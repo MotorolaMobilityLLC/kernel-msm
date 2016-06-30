@@ -134,9 +134,9 @@
 #define HAPTIC_CMDID_AUDIOHAPTIC_DISABLE    0x07
 #define HAPTIC_CMDID_AUDIOHAPTIC_GETSTATUS  0x08
 
-#define HAPTIC_CMDID_REG_WRITE  	0x09
-#define HAPTIC_CMDID_REG_READ   	0x0a
-#define HAPTIC_CMDID_REG_SETBIT  	0x0b
+#define HAPTIC_CMDID_REG_WRITE		0x09
+#define HAPTIC_CMDID_REG_READ		0x0a
+#define HAPTIC_CMDID_REG_SETBIT		0x0b
 
 #define HAPTIC_CMDID_PATTERN_RTP      0x0c
 #define HAPTIC_CMDID_RTP_SEQUENCE	  0x0d
@@ -147,7 +147,7 @@
 
 #define HAPTIC_CMDID_STOP                   0xFF
 
-#define MAX_TIMEOUT 	10000 /* 10s */
+#define MAX_TIMEOUT	10000	/* 10s */
 #define	MAX_READ_BYTES	0xff
 #define	DRV2624_SEQUENCER_SIZE	8
 
@@ -160,7 +160,6 @@
 #define	GO		1
 #define STOP	0
 
-
 enum actuator_type {
 	ERM,
 	LRA
@@ -168,14 +167,14 @@ enum actuator_type {
 
 enum loop_type {
 	CLOSE_LOOP,
-	OPEN_LOOP	
+	OPEN_LOOP
 };
 
 struct actuator_data {
 	enum actuator_type meActuatorType;
-	unsigned char 	mnRatedVoltage;
-	unsigned char 	mnOverDriveClampVoltage;
-	unsigned char   mnLRAFreq;	
+	unsigned char mnRatedVoltage;
+	unsigned char mnOverDriveClampVoltage;
+	unsigned char mnLRAFreq;
 };
 
 enum wave_seq_loop {
@@ -219,15 +218,15 @@ struct drv2624_waveform_sequencer {
 };
 
 struct drv2624_platform_data {
-	int	mnGpioNRST;
-	int	mnGpioINT;
-	enum loop_type	meLoop; 
+	int mnGpioNRST;
+	int mnGpioINT;
+	enum loop_type meLoop;
 	struct actuator_data msActuator;
 };
 
 #define DRV2624_MAGIC	0x2624
 
-struct drv2624_fw_header{
+struct drv2624_fw_header {
 	unsigned int fw_magic;
 	unsigned int fw_size;
 	unsigned int fw_date;
@@ -241,19 +240,19 @@ struct drv2624_data {
 	struct device *dev;
 	struct regmap *mpRegmap;
 	unsigned char mnIntStatus;
-	struct drv2624_waveform_sequencer msWaveformSequencer;	
+	struct drv2624_waveform_sequencer msWaveformSequencer;
 	unsigned char mnFileCmd;
-	volatile int mnVibratorPlaying;
-	volatile char mnWorkMode;
+	int mnVibratorPlaying;
+	char mnWorkMode;
 	unsigned char mnCurrentReg;
-	
-    struct wake_lock wklock;
-    struct hrtimer timer;
-    struct mutex lock;
-    struct work_struct vibrator_work;
-	struct timed_output_dev to_dev;	
-	
-	struct drv2624_fw_header msFwHeader;	
+
+	struct wake_lock wklock;
+	struct hrtimer timer;
+	struct mutex lock;
+	struct work_struct vibrator_work;
+	struct timed_output_dev to_dev;
+
+	struct drv2624_fw_header msFwHeader;
 	unsigned char mnFwAddUpper;
 	unsigned char mnFwAddLower;
 };
@@ -289,14 +288,19 @@ struct drv2624_diag_result {
 
 #define	DRV2624_MAGIC_NUMBER	0x32363234	/* '2624' */
 
-#define	DRV2624_SET_SEQ_LOOP	 			_IOWR(DRV2624_MAGIC_NUMBER, 1, struct drv2624_seq_loop *)
-#define	DRV2624_SET_MAIN	 				_IOWR(DRV2624_MAGIC_NUMBER, 2, struct drv2624_wave_setting *)
-#define	DRV2624_SET_WAV_SEQ 				_IOWR(DRV2624_MAGIC_NUMBER, 3, struct drv2624_wave_seq *)
-#define	DRV2624_WAVSEQ_PLAY		 			_IOWR(DRV2624_MAGIC_NUMBER, 4, unsigned long)
-#define	DRV2624_STOP			 			_IOWR(DRV2624_MAGIC_NUMBER, 5, unsigned long)
-#define	DRV2624_RUN_DIAGNOSTIC			 	_IOWR(DRV2624_MAGIC_NUMBER, 6, unsigned long)
-#define	DRV2624_GET_DIAGRESULT			 	_IOWR(DRV2624_MAGIC_NUMBER, 7, struct drv2624_diag_result *)
-#define	DRV2624_RUN_AUTOCAL				 	_IOWR(DRV2624_MAGIC_NUMBER, 8, unsigned long)
-#define	DRV2624_GET_CALRESULT			 	_IOWR(DRV2624_MAGIC_NUMBER, 9, struct drv2624_autocal_result *)
+#define	DRV2624_SET_SEQ_LOOP	_IOWR(DRV2624_MAGIC_NUMBER, 1, \
+					struct drv2624_seq_loop *)
+#define	DRV2624_SET_MAIN	_IOWR(DRV2624_MAGIC_NUMBER, 2, \
+					struct drv2624_wave_setting *)
+#define	DRV2624_SET_WAV_SEQ	_IOWR(DRV2624_MAGIC_NUMBER, 3, \
+					struct drv2624_wave_seq *)
+#define	DRV2624_WAVSEQ_PLAY	_IOWR(DRV2624_MAGIC_NUMBER, 4, unsigned long)
+#define	DRV2624_STOP		_IOWR(DRV2624_MAGIC_NUMBER, 5, unsigned long)
+#define	DRV2624_RUN_DIAGNOSTIC	_IOWR(DRV2624_MAGIC_NUMBER, 6, unsigned long)
+#define	DRV2624_GET_DIAGRESULT	_IOWR(DRV2624_MAGIC_NUMBER, 7, \
+					struct drv2624_diag_result *)
+#define	DRV2624_RUN_AUTOCAL	_IOWR(DRV2624_MAGIC_NUMBER, 8, unsigned long)
+#define	DRV2624_GET_CALRESULT	_IOWR(DRV2624_MAGIC_NUMBER, 9, \
+					 struct drv2624_autocal_result *)
 
 #endif
