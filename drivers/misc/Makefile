@@ -69,6 +69,7 @@ obj-$(CONFIG_USB_EXT_TYPE_C_PERICOM)	+= type-c-pericom.o
 obj-$(CONFIG_USB_EXT_TYPE_C_TI)		+= type-c-ti.o
 obj-$(CONFIG_QPNP_MISC) 	+= qpnp-misc.o
 obj-$(CONFIG_HAPTIC_DRV2605)	+= drv2605.o
+obj-$(CONFIG_HAPTIC_DRV2624)	+= drv2624.o
 obj-$(CONFIG_C55_CTRL) += c55_ctrl.o
 obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
 obj-$(CONFIG_DROPBOX) += dropbox.o
