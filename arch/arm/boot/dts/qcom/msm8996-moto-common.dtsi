@@ -585,7 +585,6 @@
 		analogix,vdd_10-supply = <&pm8994_l3>;
 		analogix,i2c-pull-up = <1>;
 		qcom,hdmi-tx-map = <&mdss_hdmi_tx>;
-		mml,qos_latency = <10999>;
 
 		pinctrl-names = "anx_default", "anx_sleep";
 		pinctrl-0 = <&anx_rst_active &anx_mydp_det_active>;
