@@ -26,7 +26,9 @@
 #include <linux/qpnp/qpnp-revid.h>
 #include <linux/qpnp/qpnp-haptic.h>
 #include "../../staging/android/timed_output.h"
+#ifdef CONFIG_QPNP_MOT_CONTEXT_HAPTIC
 #include <linux/motosh_context.h>
+#endif
 #include <soc/qcom/bootinfo.h>
 
 #define FACTORY_MODE_STR "mot-factory"
@@ -811,7 +813,7 @@ static int qpnp_hap_vmax_config(struct qpnp_hap *hap)
 	return 0;
 }
 
-#ifdef CONFIG_SENSORS_MOTOSH
+#ifdef CONFIG_QPNP_MOT_CONTEXT_HAPTIC
 /* configuration api for lower max volatge used for table top*/
 static int qpnp_hap_vmax_low_config(struct qpnp_hap *hap)
 {
@@ -1755,7 +1757,7 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 				 hap->timeout_ms : value);
 		hap->state = 1;
 
-#ifdef CONFIG_SENSORS_MOTOSH
+#ifdef CONFIG_QPNP_MOT_CONTEXT_HAPTIC
 		if (hap->context_haptics)
 			qpnp_hap_context(hap, value);
 #endif
