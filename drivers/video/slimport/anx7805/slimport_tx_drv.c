@@ -1357,7 +1357,7 @@ BYTE  SP_TX_Config_Video_MIPI (void)
 		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x19, 0x3b);
 		//sp_write_reg(MIPI_RX_PORT1_ADDR, 0x19, 0x3a);
 
-		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x08, 0x08);
+		sp_write_reg(MIPI_RX_PORT1_ADDR, 0x08, 0x16);
 
 
 
