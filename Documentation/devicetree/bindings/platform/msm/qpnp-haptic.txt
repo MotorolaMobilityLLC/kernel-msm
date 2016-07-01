@@ -17,7 +17,8 @@ Required Properties:
 Optional Properties:
  - qcom,timeout-ms: timeout in ms.
  - qcom,vmax-mv : maximum output voltage in milli volts
- - qcom,context-haptics : boolean, enable MMI context driven haptics configuration
+ - qcom,context-haptics : boolean, enable MMI context driven haptics configuration,
+	depends on CONFIG_QPNP_MOT_CONTEXT_HAPTIC
  - qcom,vmax-low-mv : maximum output voltage in milli volts used with context drivern haptics
  - qcom,ilim-ma : maximum output current limit threshold in milli amps
  - qcom,int-pwm-freq-khz : frequency for internal pwm
