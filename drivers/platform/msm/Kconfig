@@ -279,6 +279,15 @@ config QPNP_HAPTIC
 	  on the Qualcomm Technologies' QPNP PMICs. It uses the android
 	  timed-output framework.
 
+config QPNP_MOT_CONTEXT_HAPTIC
+	bool "Motorola Context Haptic support for QPNP PMIC"
+	depends on QPNP_HAPTIC && SENSORS_MOTOSH
+	default n
+	help
+	  This option enables context haptic configuration
+	  on the Qualcomm Technologies' QPNP PMICs. It uses the sensor
+	  hub provided table top detection API to adjust haptic parameters.
+
 config GPIO_USB_DETECT
 	tristate "GPIO-based USB VBUS Detection"
 	depends on POWER_SUPPLY
