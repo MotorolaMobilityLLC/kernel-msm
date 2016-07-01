@@ -571,7 +571,7 @@
 		status = "ok";
 		reg = <0x72>;
 		clock-names = "dp_bridge_mclk";
-		clocks = <&clock_gcc clk_bb_clk2_ao>;
+		clocks = <&clock_gcc clk_bb_clk2>;
 		interrupt-parent = <&tlmm>;
 		/*cbl-det-gpio is interrupt pin */
 		interrupts = <14 (IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING)>;
