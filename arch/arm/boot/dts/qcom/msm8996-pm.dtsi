@@ -386,7 +386,6 @@
 			<0xff 268>, /* bam_irq[1] */
 			<0xff 270>, /* bam_irq[0] */
 			<0xff 271>, /* bam_irq[0] */
-			<0xff 276>, /* wlan_pci */
 			<0xff 283>, /* pcie20_0_int_pls_err */
 			<0xff 284>, /* pcie20_0_int_aer_legacy */
 			<0xff 286>, /* pcie20_0_int_pls_link_down */
@@ -397,6 +396,7 @@
 			<0xff 297>, /* ufs_intrq */
 			<0xff 298>, /* camss_cpp_mmu_cirpt */
 			<0xff 302>, /* qdss_etrbytecnt_irq */
+			<0xff 304>, /* wlan_pci */
 			<0xff 310>, /* pcie20_1_int_pls_err */
 			<0xff 311>, /* pcie20_1_int_aer_legacy */
 			<0xff 313>, /* pcie20_1_int_pls_link_down */
