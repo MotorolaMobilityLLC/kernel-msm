@@ -16,7 +16,6 @@
 #include "slimport_tx_reg.h"
 #include <linux/platform_data/slimport_device.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/pm_qos.h>
 #include <linux/clk.h>
 #include <linux/completion.h>
 #ifdef QUICK_CHARGE_SUPPORT
@@ -101,8 +100,6 @@ struct anx7816_platform_data {
 	struct pinctrl_state *hdmi_pinctrl_suspend;
 	struct platform_device *hdmi_pdev;
 	bool cbl_det_irq_enabled;
-	int qos_latency;
-	struct pm_qos_request slimport_pm_qos_request;
 	struct mutex sp_tx_power_lock;
 	bool sp_tx_power_state;
 };
@@ -1429,11 +1426,6 @@ static int anx7816_parse_dt(struct device *dev,
 	/* connects function nodes which are not provided with dts */
 	pdata->avdd_power = slimport7816_avdd_power;
 
-	if (of_property_read_u32(np, "mml,qos_latency", &pdata->qos_latency))
-		pdata->qos_latency = -1;
-	pr_debug("%s %s: qos_latency=%d\n", LOG_TAG, __func__,
-		pdata->qos_latency);
-
 	return 0;
 }
 #else
@@ -1561,10 +1553,6 @@ static int slimport_mod_display_handle_connect(void *data)
 
 	anx7816 = (struct anx7816_data *)data;
 
-	if (anx7816->pdata->qos_latency >= 0)
-		pm_qos_add_request(&anx7816->pdata->slimport_pm_qos_request,
-			PM_QOS_CPU_DMA_LATENCY, anx7816->pdata->qos_latency);
-
 	reinit_completion(&anx7816->connect_wait);
 
 #ifdef MML_DYNAMIC_IRQ_SUPPORT
@@ -1626,10 +1614,6 @@ static int slimport_mod_display_handle_disconnect(void *data)
 			LOG_TAG, __func__);
 		cable_disconnect(anx7816);
 	}
-
-	if (anx7816->pdata->qos_latency >= 0 &&
-	    pm_qos_request_active(&anx7816->pdata->slimport_pm_qos_request))
-		pm_qos_remove_request(&anx7816->pdata->slimport_pm_qos_request);
 
 	pr_debug("%s-\n", __func__);
 
