@@ -145,6 +145,15 @@
 			<&dma_blsp1 7 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
 
+		elan@49 {
+			compatible = "epl,epl8802";
+			reg = <0x49>;
+			epl,irq-gpio = <&tlmm 36 0x00>;
+			pinctrl-names = "epl8802_default", "epl8802_suspend";
+			pinctrl-0 = <&epl8802_active>;
+			pinctrl-1 = <&epl8802_suspend>;
+		};
+
 		/delete-node/ adv7533@39;
 	};
 
