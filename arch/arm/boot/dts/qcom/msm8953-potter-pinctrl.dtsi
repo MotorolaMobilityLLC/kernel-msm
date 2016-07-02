@@ -39,6 +39,33 @@
 				bias-disable;/* No PULL */
 			};
 		};
+
+		epl8802_active: epl8802_active{
+			/* active state */
+			mux {
+				pins = "gpio36";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio36";
+				drive-strength = <2>;
+				bias-disable; /* No PULL */
+			};
+		};
+
+		epl8802_suspend: epl8802_suspend{
+			mux {
+				pins = "gpio36";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio36";
+				drive-strength = <2>;
+				bias-disable; /* No PULL */
+			};
+		};
 	};
 
 	i2c_3 {
