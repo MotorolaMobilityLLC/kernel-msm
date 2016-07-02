@@ -1974,6 +1974,52 @@ static int cpr_adjust_init_voltages(struct cpr2_gfx_regulator *cpr_vreg)
 	return rc;
 }
 
+static int cpr_check_dynamic_floor_allowed(struct cpr2_gfx_regulator *cpr_vreg)
+{
+	struct device_node *of_node = cpr_vreg->dev->of_node;
+	char *allow_str = "qcom,allow-cpr-gfx-dynamic-floor";
+	int rc = 0, count;
+	int tuple_count, tuple_match;
+	u32 allow_status = 0;
+
+	if (!of_find_property(of_node, allow_str, &count)) {
+		/* CPR dynamic floor is not allowed for all fuse revisions. */
+		return allow_status;
+	}
+
+	count /= sizeof(u32);
+	if (cpr_vreg->cpr_fuse_map_count) {
+		if (cpr_vreg->cpr_fuse_map_match == FUSE_MAP_NO_MATCH)
+			/* No matching index to use CPR dynamic floor */
+			return 0;
+		tuple_count = cpr_vreg->cpr_fuse_map_count;
+		tuple_match = cpr_vreg->cpr_fuse_map_match;
+	} else {
+		tuple_count = 1;
+		tuple_match = 0;
+	}
+
+	if (count != tuple_count) {
+		cpr_err(cpr_vreg, "%s count=%d is invalid\n", allow_str,
+			count);
+		return -EINVAL;
+	}
+
+	rc = of_property_read_u32_index(of_node, allow_str, tuple_match,
+		&allow_status);
+	if (rc) {
+		cpr_err(cpr_vreg, "could not read %s index %u, rc=%d\n",
+			allow_str, tuple_match, rc);
+		return rc;
+	}
+
+	cpr_debug(cpr_vreg, "CPR dynamic floor is %s for fuse revision %d\n",
+			allow_status ? "allowed" : "not allowed",
+			cpr_vreg->cpr_fuse_revision);
+
+	return allow_status;
+}
+
 static int cpr_adjust_floor_voltages(struct cpr2_gfx_regulator *cpr_vreg,
 		u32 *fuse_sel, int step_size_uv)
 {
@@ -1982,18 +2028,25 @@ static int cpr_adjust_floor_voltages(struct cpr2_gfx_regulator *cpr_vreg,
 	u64 efuse_bits;
 	int floor_offset;
 
-	if (!of_find_property(of_node, "qcom,cpr-gfx-dynamic-floor-offset",
-		NULL)) {
-		/* No dynamic floor voltage limits */
+	rc = cpr_check_dynamic_floor_allowed(cpr_vreg);
+	if (rc < 0) {
+		cpr_err(cpr_vreg, "cpr_check_dynamic_floor_allowed failed: rc=%d\n",
+			rc);
+		return rc;
+	} else if (rc == 0) {
+		/*
+		 * CPR dynamic floor is not enabled for the current
+		 * fuse combo.
+		 */
 		return 0;
 	}
 
 	rc = of_property_read_u32(of_node, "qcom,cpr-gfx-dynamic-floor-offset",
 			&floor_offset);
 	if (rc) {
-		cpr_err(cpr_vreg, "could not read qcom,cpr-gfx-dynamic-floor-offset, rc=%d\n",
+		cpr_err(cpr_vreg, "qcom,cpr-gfx-dynamic-floor-offset missing or read failed, rc=%d\n",
 			rc);
-		return -EINVAL;
+		return rc;
 	}
 
 	for (i = CPR_CORNER_MIN; i <= cpr_vreg->num_corners; i++) {
