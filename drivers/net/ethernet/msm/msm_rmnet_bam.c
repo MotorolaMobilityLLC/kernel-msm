@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -358,21 +358,6 @@ static void bam_notify(void *dev, int event, unsigned long data)
 
 static int __rmnet_open(struct net_device *dev)
 {
-	int r;
-	struct rmnet_private *p = netdev_priv(dev);
-
-	DBG0("[%s] __rmnet_open()\n", dev->name);
-
-	if (p->device_up == DEVICE_UNINITIALIZED) {
-		r = msm_bam_dmux_open(p->ch_id, dev, bam_notify);
-		if (r < 0) {
-			DBG0("%s: ch=%d failed with rc %d\n",
-					__func__, p->ch_id, r);
-			return -ENODEV;
-		}
-	}
-
-	p->device_up = DEVICE_ACTIVE;
 	return 0;
 }
 
@@ -382,10 +367,7 @@ static int rmnet_open(struct net_device *dev)
 
 	DBG0("[%s] rmnet_open()\n", dev->name);
 
-	rc = __rmnet_open(dev);
-
-	if (rc == 0)
-		netif_start_queue(dev);
+	netif_start_queue(dev);
 
 	return rc;
 }
@@ -838,6 +820,20 @@ static int bam_rmnet_probe(struct platform_device *pdev)
 
 	rmnet_debug_init(dev);
 
+	DBG0("[%s] OPEN()\n", dev->name);
+
+	if (p->device_up == DEVICE_UNINITIALIZED) {
+		ret = msm_bam_dmux_open(p->ch_id, dev, bam_notify);
+		if (ret < 0) {
+			DBG0("%s: ch=%d failed with rc %d\n",
+			     __func__, p->ch_id, ret);
+			unregister_netdev(dev);
+			free_netdev(dev);
+			return -EPROBE_DEFER;
+		}
+	}
+
+	p->device_up = DEVICE_ACTIVE;
 	return 0;
 }
 
