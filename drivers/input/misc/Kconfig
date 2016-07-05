@@ -800,3 +800,8 @@ config INPUT_SX9310
 source "drivers/input/misc/ots_pat9125/Kconfig"
 
 endif
+
+config EPL8802
+	tristate "EPL8802 support"
+	help
+	proximity sensor driver.
