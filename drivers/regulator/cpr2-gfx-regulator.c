@@ -301,6 +301,9 @@ struct cpr2_gfx_regulator {
 	bool			ctrl_enable;
 
 	struct cpr2_gfx_aging_info	*aging_info;
+
+	/* closed-loop adjustements */
+	int			*fused_closed_loop_adjust;
 };
 
 #define CPR_DEBUG_MASK_IRQ	BIT(0)
@@ -2320,12 +2323,280 @@ static int cpr_get_clock_handles(struct cpr2_gfx_regulator *cpr_vreg)
 	return 0;
 }
 
+/**
+ * cpr2_gfx_quot_adjustment() - returns the quotient adjustment value resulting
+ *		from the specified voltage adjustment and RO scaling factor
+ * @ro_scale:		The CPR ring oscillator (RO) scaling factor with units
+ *			of QUOT/V
+ * @volt_adjust:	The amount to adjust the voltage by in units of
+ *			microvolts.  This value may be positive or negative.
+ */
+static int cpr2_gfx_quot_adjustment(int ro_scale, int volt_adjust)
+{
+	int quot_adjust;
+	int sign = 1;
+
+	if (ro_scale < 0) {
+		sign = -sign;
+		ro_scale = -ro_scale;
+	}
+
+	if (volt_adjust < 0) {
+		sign = -sign;
+		volt_adjust = -volt_adjust;
+	}
+
+	quot_adjust = div_u64(ro_scale * volt_adjust, 1000000);
+	quot_adjust *= sign;
+
+	return quot_adjust;
+}
+
+static int cpr_check_fused_closed_loop_adjustments_allowed(
+		struct cpr2_gfx_regulator *cpr_vreg)
+{
+	struct device_node *of_node = cpr_vreg->dev->of_node;
+	char *allow_str = "qcom,allow-cpr-fused-offset-closed-loop-adjustment";
+	int rc = 0, count;
+	int tuple_count, tuple_match;
+	u32 allow_status = 0;
+
+	if (!of_find_property(of_node, allow_str, &count)) {
+		/*
+		 * CPR fused closed-loop adjustments are not allowed for all
+		 * fuse revisions.
+		 */
+		return allow_status;
+	}
+
+	count /= sizeof(u32);
+	if (cpr_vreg->cpr_fuse_map_count) {
+		if (cpr_vreg->cpr_fuse_map_match == FUSE_MAP_NO_MATCH)
+			/*
+			 * No matching index to use CPR fused closed-loop
+			 * adjustments.
+			 */
+			return 0;
+		tuple_count = cpr_vreg->cpr_fuse_map_count;
+		tuple_match = cpr_vreg->cpr_fuse_map_match;
+	} else {
+		tuple_count = 1;
+		tuple_match = 0;
+	}
+
+	if (count != tuple_count) {
+		cpr_err(cpr_vreg, "%s count=%d is invalid\n", allow_str,
+			count);
+		return -EINVAL;
+	}
+
+	rc = of_property_read_u32_index(of_node, allow_str, tuple_match,
+		&allow_status);
+	if (rc) {
+		cpr_err(cpr_vreg, "could not read %s index %u, rc=%d\n",
+			allow_str, tuple_match, rc);
+		return rc;
+	}
+
+	cpr_debug(cpr_vreg, "CPR fused closed-loop adjustment is %s for fuse revision %d\n",
+			allow_status ? "allowed" : "not allowed",
+			cpr_vreg->cpr_fuse_revision);
+
+	return allow_status;
+}
+
+static void cpr2_gfx_print_target_quots(struct cpr2_gfx_regulator *cpr_vreg,
+		char *msg_str, int *adjust_table)
+{
+	char *buf;
+	size_t buflen;
+	int i, j, pos;
+
+	/*
+	 * Log per-virtual corner target quotients since they are useful for
+	 * baseline CPR logging.
+	 */
+	buflen = cpr_vreg->ro_count * (MAX_CHARS_PER_INT + 2) * sizeof(*buf);
+	buf = kzalloc(buflen, GFP_KERNEL);
+	if (buf == NULL) {
+		cpr_err(cpr_vreg, "Could not allocate memory for target quotient logging\n");
+		return;
+	}
+
+	cpr_info(cpr_vreg, "%s:\n", msg_str);
+	for (i = CPR_CORNER_MIN; i <= cpr_vreg->num_corners; i++) {
+		pos = 0;
+		for (j = 0; j < cpr_vreg->ro_count; j++) {
+			pos += scnprintf(buf + pos, buflen - pos, "%4d%s",
+				cpr_vreg->cpr_target_quot[i][j],
+				j < cpr_vreg->ro_count ? " " : "\0");
+		}
+
+		cpr_info(cpr_vreg, "Corner[%d]:  CL Adjust[%3d mv]: %s\n", i,
+			adjust_table ? (adjust_table[i] / 1000) : 0, buf);
+	}
+
+	kfree(buf);
+}
+
+/**
+ * cpr2_gfx_enforce_inc_quotient_monotonicity() - Ensure that target quotients
+ *		increase monotonically from lower to higher corners
+ * @vreg:		Pointer to the CPR2 gfx regulator
+ *
+ * Return: none
+ */
+static void cpr2_gfx_enforce_inc_quotient_monotonicity(
+		struct cpr2_gfx_regulator *cpr_vreg)
+{
+	int i, j;
+
+	for (j = 0; j < cpr_vreg->ro_count; j++) {
+		for (i = CPR_CORNER_MIN + 1; i <= cpr_vreg->num_corners; i++) {
+			if (cpr_vreg->cpr_target_quot[i][j]
+					< cpr_vreg->cpr_target_quot[i - 1][j]) {
+				cpr_debug(cpr_vreg, "corner %d RO%u target quot=%u < corner %d RO%u target quot=%u; overriding: corner %d RO%u target quot=%u\n",
+					i, j, cpr_vreg->cpr_target_quot[i][j],
+					i - 1, j,
+					cpr_vreg->cpr_target_quot[i - 1][j],
+					i, j,
+					cpr_vreg->cpr_target_quot[i - 1][j]);
+				cpr_vreg->cpr_target_quot[i][j] =
+					cpr_vreg->cpr_target_quot[i - 1][j];
+			}
+		}
+	}
+}
+
+static int cpr_adjust_target_quotients(struct cpr2_gfx_regulator *cpr_vreg)
+{
+	struct device_node *of_node = cpr_vreg->dev->of_node;
+	int i, j, len, size, sign, steps, voltage_adjust, rc;
+	u32 *fuse_sel, *tmp, *ro_scale;
+	char *prop_str;
+	u64 efuse_bits;
+	u32 step_size_uv;
+	int num_corners = cpr_vreg->num_corners;
+
+	rc = cpr_check_fused_closed_loop_adjustments_allowed(cpr_vreg);
+	if (rc < 0) {
+		cpr_err(cpr_vreg, "cpr_check_fused_closed_loop_adjustments_allowed failed: rc=%d\n",
+			rc);
+		return rc;
+	} else if (rc == 0) {
+		/*
+		 * CPR fused closed-loop adjustments are not enabled for the
+		 * current fuse combo.
+		 */
+		return 0;
+	}
+
+	prop_str = "qcom,cpr-ro-scaling-factor";
+	if (!of_find_property(of_node, prop_str, &len)) {
+		cpr_err(cpr_vreg, "%s is required for fused closed-loop adjustment",
+			prop_str);
+		return -EINVAL;
+	}
+
+	if (len != cpr_vreg->ro_count * sizeof(u32)) {
+		cpr_err(cpr_vreg, "%s property has invalid length = %d\n",
+			prop_str, len);
+		return -EINVAL;
+	}
+
+	ro_scale = kcalloc(cpr_vreg->ro_count, sizeof(*ro_scale), GFP_KERNEL);
+	if (!ro_scale)
+		return -ENOMEM;
+
+	rc = of_property_read_u32_array(of_node, "qcom,cpr-ro-scaling-factor",
+					ro_scale, cpr_vreg->ro_count);
+	if (rc) {
+		cpr_err(cpr_vreg, "qcom,cpr-ro-scaling-factor read failed, rc=%d\n",
+			rc);
+		goto _exit;
+	}
+
+	prop_str = "qcom,cpr-fused-offset-closed-loop-voltage-step";
+	rc = of_property_read_u32(of_node, prop_str, &step_size_uv);
+	if (rc < 0) {
+		cpr_err(cpr_vreg, "%s read failed, rc=%d\n", prop_str, rc);
+		goto _exit;
+	}
+
+	prop_str = "qcom,cpr-fused-offset-closed-loop-adjustment";
+	if (!of_find_property(of_node, prop_str, &len)) {
+		cpr_err(cpr_vreg, "%s property is not specified, but fused closed-loop adjustments are enabled\n",
+				prop_str);
+		rc = -EINVAL;
+		goto _exit;
+	}
+	size = len / sizeof(u32);
+	if (size != num_corners * 3) {
+		cpr_err(cpr_vreg, "%s should have %d tuples\n",
+				prop_str, num_corners);
+		rc = -EINVAL;
+		goto _exit;
+	}
+
+	fuse_sel = kcalloc(size, sizeof(u32), GFP_KERNEL);
+	cpr_vreg->fused_closed_loop_adjust = devm_kcalloc(cpr_vreg->dev,
+				cpr_vreg->num_corners + 1,
+				sizeof(*cpr_vreg->fused_closed_loop_adjust),
+				GFP_KERNEL);
+	if (!fuse_sel || !cpr_vreg->fused_closed_loop_adjust) {
+		rc = -ENOMEM;
+		goto _exit;
+	}
+
+	rc = of_property_read_u32_array(of_node, prop_str, fuse_sel,
+		size);
+	if (rc < 0) {
+		cpr_err(cpr_vreg, "%s read failed, rc=%d\n",
+			prop_str, rc);
+		goto _exit;
+	}
+
+
+	tmp = fuse_sel;
+	for (i = CPR_CORNER_MIN; i <= num_corners; i++, fuse_sel += 3) {
+		/* Skip unused corners; */
+		if ((int)fuse_sel[0] < 0)
+			continue;
+
+		efuse_bits = cpr_read_efuse_param(cpr_vreg, fuse_sel[0],
+				fuse_sel[1], fuse_sel[2]);
+		sign = (efuse_bits & (1 << (fuse_sel[2] - 1))) ? -1 : 1;
+		steps = efuse_bits & ((1 << (fuse_sel[2] - 1)) - 1);
+		voltage_adjust = steps * step_size_uv;
+		voltage_adjust = DIV_ROUND_UP(voltage_adjust,
+				cpr_vreg->step_volt) * cpr_vreg->step_volt;
+		voltage_adjust = sign * voltage_adjust;
+		cpr_vreg->fused_closed_loop_adjust[i]
+				= voltage_adjust;
+		cpr_debug(cpr_vreg, "Fuse closed-loop adjustment: corner %d: sign = %d, steps = %d, volt = %d uV\n",
+			i, sign, steps, voltage_adjust);
+
+		/* Update target quotients of all ROs of given corner */
+		for (j = 0; j < cpr_vreg->ro_count; j++) {
+			cpr_vreg->cpr_target_quot[i][j]
+				+= cpr2_gfx_quot_adjustment(ro_scale[j],
+						voltage_adjust);
+		}
+	}
+
+	cpr2_gfx_enforce_inc_quotient_monotonicity(cpr_vreg);
+
+_exit:
+	kfree(ro_scale);
+	kfree(tmp);
+	return rc;
+}
+
 static int cpr_init_target_quotients(struct cpr2_gfx_regulator *cpr_vreg)
 {
 	struct device_node *of_node = cpr_vreg->dev->of_node;
-	int rc, len, size, tuple_count, tuple_match, pos, i, j, k;
-	char *buf, *target_quot_str = "qcom,cpr-target-quotients";
-	size_t buflen;
+	int rc, len, size, tuple_count, tuple_match, i, j, k;
+	char *target_quot_str = "qcom,cpr-target-quotients";
 	u32 index;
 	int *temp;
 
@@ -2367,8 +2638,7 @@ static int cpr_init_target_quotients(struct cpr2_gfx_regulator *cpr_vreg)
 	if (rc) {
 		cpr_err(cpr_vreg, "failed to read %s, rc=%d\n",
 					target_quot_str, rc);
-		kfree(temp);
-		return rc;
+		goto _exit;
 	}
 
 	for (i = CPR_CORNER_MIN; i <= cpr_vreg->num_corners; i++) {
@@ -2379,29 +2649,19 @@ static int cpr_init_target_quotients(struct cpr2_gfx_regulator *cpr_vreg)
 			cpr_vreg->cpr_target_quot[i][j] = temp[k];
 		}
 	}
+
+	rc = cpr_adjust_target_quotients(cpr_vreg);
+	if (rc) {
+		cpr_err(cpr_vreg, "Adjust target quotients operation failed, rc=%d\n",
+			rc);
+		goto _exit;
+	}
+
+	cpr2_gfx_print_target_quots(cpr_vreg, "Adjusted Target quotients",
+			cpr_vreg->fused_closed_loop_adjust);
+
+_exit:
 	kfree(temp);
-	/*
-	 * Log per-virtual corner target quotients since they are useful for
-	 * baseline CPR logging.
-	 */
-	buflen = cpr_vreg->ro_count * (MAX_CHARS_PER_INT + 2) * sizeof(*buf);
-	buf = kzalloc(buflen, GFP_KERNEL);
-	if (buf == NULL) {
-		cpr_err(cpr_vreg, "Could not allocate memory for target quotient logging\n");
-		return 0;
-	}
-
-	for (i = CPR_CORNER_MIN; i <= cpr_vreg->num_corners; i++) {
-		pos = 0;
-		for (j = 0; j < cpr_vreg->ro_count; j++)
-			pos += scnprintf(buf + pos, buflen - pos, "%d%s",
-				cpr_vreg->cpr_target_quot[i][j],
-				j < cpr_vreg->ro_count ? " " : "\0");
-		cpr_info(cpr_vreg, "Corner[%d]: Target quotients: %s\n",
-				i, buf);
-	}
-	kfree(buf);
-
 	return rc;
 }
 

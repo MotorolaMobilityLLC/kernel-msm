@@ -447,7 +447,8 @@ This document describes the bindings that apply for GFX CPR controller.
 		    This value is used for calculating a voltage margin from RO measurements.
 
 - qcom,cpr-ro-scaling-factor
-	Usage:      required if qcom,cpr-aging-sensor-id specified
+	Usage:      required if qcom,cpr-aging-sensor-id or
+		    qcom,allow-cpr-fused-offset-closed-loop-adjustment specified
 	Value type: <prop-encoded-array>
 	Definition: Array of scaling factors with units of QUOT/V for each ring oscillator ordered
 		    from the lowest to the highest RO. These values are used to calculate
@@ -475,6 +476,47 @@ This document describes the bindings that apply for GFX CPR controller.
 		    [2] => number of bits in the fuse parameter
 		    The number of triplets should be equal to the number of values specified in
 		    the qcom,cpr-aging-sensor-id property.
+
+- qcom,cpr-fused-offset-closed-loop-adjustment
+	Usage:      required if qcom,allow-cpr-fused-offset-closed-loop-adjustment
+		    specified
+	Value type: <prop-encoded-array>
+	Definition: Array of triplets in which each triplet specifies a fuse
+		    location for fused closed-loop adjustments.
+		    The 3 elements are:
+		    [0] => fuse row number
+		    [1] => bit offset within the row
+		    [2] => number of bits in the fuse parameter
+		    The number of triplets should be equal to the value defined
+		    in qcom,cpr-corners property.
+
+		    A tuple of format <(-1) (-1) (-1)> specifies the fuse based
+		    adjustments are not defined for the corresponding voltage
+		    corner.
+
+- qcom,cpr-fused-offset-closed-loop-voltage-step
+	Usage:      required if qcom,allow-cpr-fused-offset-closed-loop-adjustment
+		    is specified.
+	Value type: <u32>
+	Definition: The voltage step size in microvolts of the CPR fused offset
+		    closed-loop voltage adjustment fuses described by the
+		    qcom,cpr-fused-offset-closed-loop-adjustment property.
+
+- qcom,allow-cpr-fused-offset-closed-loop-adjustment
+	Usage:      optional
+	Value type: <u32>
+	Definition: Integer values that specify whether the CPR fuse based
+		    closed-loop voltage adjustments are defined or not for a
+		    particular fuse version map. If qcom,cpr-fuse-version-map
+		    property is specified, then this property must contain
+		    the same number of elements as there are tuples in
+		    qcom,cpr-fuse-version-map. If qcom,cpr-fuse-version-map
+		    is not specified, then this property must contain a single
+		    value that is used unconditionally. An element value of 1
+		    means that the CPR fuse based closed-loop adjustments are
+		    used for parts with the corresponding fuse version index.
+		    An element value of 0 means that CPR fuse based closed-loop
+		    adjustments are not used for that fuse version index.
 
 =======
 Example
@@ -567,4 +609,20 @@ gfx_vreg_corner: regulator@98000 {
 	qcom,cpr-ro-scaling-factor = <2500 2200 2500 2200 1600 1800 1200 1400>;
 	qcom,cpr-aging-derate = <1000 1000 1000 1000 1000 1000 1250 1250>;
 	qcom,cpr-fuse-aging-init-quot-diff = <1000 0 8 0>;
+
+	qcom,cpr-fused-offset-closed-loop-voltage-step = <10000>;
+	qcom,cpr-fused-offset-closed-loop-adjustment =
+		<(-1) (-1) (-1)>,
+		<(-1) (-1) (-1)>,
+		<(-1) (-1) (-1)>,
+		<(-1) (-1) (-1)>,
+		<(-1) (-1) (-1)>,
+		< 74    3    4 >,
+		< 74    3    4 >,
+		< 65   40    4 >;
+	qcom,allow-cpr-fused-offset-closed-loop-adjustment =
+		<0>,
+		<0>,
+		<1>,
+		<1>;
 };
