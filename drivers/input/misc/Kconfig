@@ -857,3 +857,8 @@ config DOUBLE_TAP
 	 If you say yes here, you get support Bosch double tap sensor function
 
 endif
+
+config EPL8802
+	tristate "EPL8802 support"
+	help
+	proximity sensor driver.
