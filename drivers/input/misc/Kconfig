@@ -776,3 +776,8 @@ config INPUT_SX9310
 	  Say Y to enable the SAR detection application, if N here not to use the
 	  this SAR sensor.
 endif
+
+config EPL8802
+	tristate "EPL8802 support"
+	help
+	proximity sensor driver.
