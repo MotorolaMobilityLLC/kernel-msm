@@ -362,6 +362,27 @@
 			debounce-interval = <15>;
 		};
 	};
+
+	sound {
+		status = "okay";
+		qcom,model = "msm8952-snd-card";
+		qcom,msm-mbhc-hphl-swh = <1>;
+		qcom,msm-mbhc-gnd-swh = <0>;
+		qcom,msm-hs-micbias-type = "internal";
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS External", "Handset Mic",
+			"MIC BIAS Internal2", "Headset Mic",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
+			"AMIC2", "MIC BIAS Internal2",
+			"AMIC3", "MIC BIAS External";
+		/delete-property/ qcom,hdmi-dba-codec-rx;
+
+		asoc-codec = <&stub_codec>, <&pm8937_cajon_dig>;
+		asoc-codec-names = "msm-stub-codec.1", "cajon_codec";
+	};
 };
 
 &blsp1_uart2 {
