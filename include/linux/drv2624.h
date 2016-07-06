@@ -222,6 +222,7 @@ struct drv2624_platform_data {
 	int mnGpioINT;
 	enum loop_type meLoop;
 	struct actuator_data msActuator;
+	bool auto_cal;
 };
 
 #define DRV2624_MAGIC	0x2624
