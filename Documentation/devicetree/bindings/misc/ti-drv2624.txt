@@ -1,0 +1,27 @@
+* TI DRV2624
+
+DRV2624 Ultra Low Power Closed-Loop LRA/ERM Haptic Driver with Internal Memory
+
+Required properties:
+- compatible: the string of "ti,drv2624"
+- reg: the i2c slave address of the IC
+- ti,rated_voltage: 8 bit, rated voltage register setting
+- ti,overdrive_voltage: 8 bit, overdrive voltage register setting
+
+Optional:
+- ti,nrst-gpio: GPIO connected to DRV2624 NRST. If not in use NRST should be connected to Vdd
+- ti,intz-gpio: GPIO connected to DRV2624 TRIG/INTZ. If not in use INTZ should be connected to ground
+- ti,auto_cal: boolean, enable boot-up calibration. Disabled by default
+- ti,lra_drive: boolean, when selected configures LRA actuator type, otherwise actuator type is ERM
+- ti,open_loop: boolean, when selected configures open loop drive, otherwise closed loop drive
+
+Example:
+
+drv2624@5A {
+	compatible = "ti,drv2624";
+	reg = <0x5A>;
+	ti,rated_voltage = /bits/ 8 <0x6D>;
+	ti,overdrive_voltage = /bits/ 8 <0xF0>;
+	ti,lra_drive;
+	ti,auto_cal;
+};
