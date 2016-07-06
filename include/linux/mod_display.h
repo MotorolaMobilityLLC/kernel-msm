@@ -29,6 +29,7 @@ enum mod_display_config_type {
 	MOD_CONFIG_INVALID,
 	MOD_CONFIG_EDID_1_3,
 	MOD_CONFIG_DSI_CONF,
+	MOD_CONFIG_EDID_DOWNSTREAM,
 };
 
 struct mod_display_panel_config {
@@ -124,6 +125,10 @@ struct mod_display_dsi_config {
 	u16 vertical_top_border;
 	u16 vertical_bottom_border;
 	u16 reserved2;
+};
+
+struct mod_display_downstream_config {
+	u32 max_link_bandwidth_khz;
 };
 
 enum mod_display_state {
