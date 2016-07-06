@@ -1472,6 +1472,33 @@ void slimport_edid_process(void)
 				display_config->config_size);
 			goto skip_me;
 		}
+	} else if (display_config->config_type == MOD_CONFIG_EDID_DOWNSTREAM) {
+		if (display_config->config_size !=
+			sizeof(struct mod_display_downstream_config)) {
+			pr_err("%s: bad downstream config size: %d != %zu\n",
+			       __func__, display_config->config_size,
+			       sizeof(struct mod_display_downstream_config));
+		} else {
+			struct mod_display_downstream_config downstream_config;
+
+			memcpy(&downstream_config, display_config->config_buf,
+				sizeof(downstream_config));
+			if (downstream_config.max_link_bandwidth_khz) {
+				u32 link_bw_max_khz_orig =
+				       downstream_config.max_link_bandwidth_khz;
+				unchar link_bw_max =
+					sp_get_link_bandwidth_limit_from_khz(
+						link_bw_max_khz_orig);
+				u32 link_bw_max_khz = sp_get_link_bandwidth_khz(
+					link_bw_max);
+
+				pr_info("%s: limit rx bandwidth to %uKHz -> 0x%02x %uKHz\n",
+					__func__, link_bw_max_khz_orig,
+					link_bw_max, link_bw_max_khz);
+				rx_bandwidth = min(rx_bandwidth, link_bw_max);
+				sp_rx_bandwidth = rx_bandwidth;
+			}
+		}
 	} else {
 		pr_err("%s: Unknown display config type (%d)... Abort\n",
 			__func__, display_config->config_type);

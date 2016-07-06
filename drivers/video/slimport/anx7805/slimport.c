@@ -485,7 +485,7 @@ EXPORT_SYMBOL(hdcp_eanble_setting);
 
 #define MHZ_TO_KHZ(freq) ((freq) * 1000)
 
-static u32 sp_get_link_bandwidth_khz(SP_LINK_BW link_bandwidth)
+u32 sp_get_link_bandwidth_khz(SP_LINK_BW link_bandwidth)
 {
 	u32 link_bandwidth_khz;
 
@@ -505,6 +505,18 @@ static u32 sp_get_link_bandwidth_khz(SP_LINK_BW link_bandwidth)
 		break;
 	}
 	return link_bandwidth_khz;
+}
+
+SP_LINK_BW sp_get_link_bandwidth_limit_from_khz(u32 link_bandwidth_limit_khz)
+{
+	if (link_bandwidth_limit_khz >= MHZ_TO_KHZ(5400))
+		return BW_54G;
+	else if (link_bandwidth_limit_khz >= MHZ_TO_KHZ(2700))
+		return BW_27G;
+	else if (link_bandwidth_limit_khz >= MHZ_TO_KHZ(1620))
+		return BW_162G;
+	else
+		return BW_NULL;
 }
 
 u32 sp_get_rx_bw_khz(void)

@@ -1861,7 +1861,7 @@ bool is_slimport_dp(void)
 
 #define MHZ_TO_KHZ(freq) ((freq) * 1000)
 
-static u32 sp_get_link_bandwidth_khz(unchar link_bandwidth)
+u32 sp_get_link_bandwidth_khz(unchar link_bandwidth)
 {
 	u32 link_bandwidth_khz = 0;
 
@@ -1880,6 +1880,20 @@ static u32 sp_get_link_bandwidth_khz(unchar link_bandwidth)
 		break;
 	}
 	return link_bandwidth_khz;
+}
+
+unchar sp_get_link_bandwidth_limit_from_khz(u32 link_bandwidth_limit_khz)
+{
+	if (link_bandwidth_limit_khz >= MHZ_TO_KHZ(6750))
+		return LINK_6P75G;
+	else if (link_bandwidth_limit_khz >= MHZ_TO_KHZ(5400))
+		return LINK_5P4G;
+	else if (link_bandwidth_limit_khz >= MHZ_TO_KHZ(2700))
+		return LINK_2P7G;
+	else if (link_bandwidth_limit_khz >= MHZ_TO_KHZ(1620))
+		return LINK_1P62G;
+	else
+		return 0;
 }
 
 u32 sp_get_rx_bw_khz(void)
