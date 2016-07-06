@@ -14,7 +14,7 @@
 
 #ifndef SLIMPORT_DEVICE
 #define SLIMPORT_DEVICE
-unchar sp_get_rx_bw(void);
+u32 sp_get_rx_bw_khz(void);
 int slimport_read_edid_block(int block, uint8_t *edid_buf);
 int slimport_reset_standby(void);
 #endif /* SLIMPORT_DEVICE */
