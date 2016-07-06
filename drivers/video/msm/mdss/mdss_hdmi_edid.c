@@ -1534,44 +1534,85 @@ static void hdmi_edid_add_sink_3d_format(struct hdmi_edid_sink_data *sink_data,
 		string, added ? "added" : "NOT added");
 } /* hdmi_edid_add_sink_3d_format */
 
-#ifdef CONFIG_SLIMPORT_COMMON
-void limit_supported_video_format(u32 *video_format)
+static u32 hdmi_edid_filter_mode_format(u32 video_format,
+	struct msm_hdmi_mode_timing_info *timing, u32 rx_bandwidth_khz,
+	const char *color, u32 bits_per_pixel)
 {
-	switch (sp_get_rx_bw()) {
-	case 0x0a: /*Slimport Max Bandwidth is 2.7Gbps*/
-		if ((*video_format == HDMI_VFRMT_1920x1080p60_16_9) ||
-			(*video_format == HDMI_VFRMT_2880x480p60_4_3) ||
-			(*video_format == HDMI_VFRMT_2880x480p60_16_9) ||
-			(*video_format == HDMI_VFRMT_1280x720p120_16_9))
-			*video_format = HDMI_VFRMT_1280x720p60_16_9;
-		else if ((*video_format == HDMI_VFRMT_1920x1080p50_16_9) ||
-			(*video_format == HDMI_VFRMT_2880x576p50_4_3) ||
-			(*video_format == HDMI_VFRMT_2880x576p50_16_9) ||
-			(*video_format == HDMI_VFRMT_1280x720p100_16_9))
-			*video_format = HDMI_VFRMT_1280x720p50_16_9;
-		else if (*video_format == HDMI_VFRMT_1920x1080i100_16_9)
-			*video_format = HDMI_VFRMT_1920x1080i50_16_9;
-		else if (*video_format == HDMI_VFRMT_1920x1080i120_16_9)
-			*video_format = HDMI_VFRMT_1920x1080i60_16_9;
-		break;
-	case 0x06: /*Slimport Max Bandwidth is 1.62Gbps*/
-		if (*video_format != HDMI_VFRMT_640x480p60_4_3)
-			*video_format = HDMI_VFRMT_640x480p60_4_3;
-		break;
-	case 0x14: /*Slimport Max Bandwidth is 5.4Gbps*/
-		if ((*video_format == HDMI_VFRMT_1920x1200p60_16_10) ||
-			(*video_format == HDMI_VFRMT_2560x1600p60_16_9) ||
-			(*video_format == HDMI_VFRMT_3840x2160p30_16_9) ||
-			(*video_format == HDMI_VFRMT_3840x2160p25_16_9) ||
-			(*video_format == HDMI_VFRMT_3840x2160p24_16_9) ||
-			(*video_format == HDMI_EVFRMT_4096x2160p24_16_9))
-			*video_format = HDMI_VFRMT_1920x1080p60_16_9;
-		break;
-	default: /*Slimport Max Bandwidth is 6.75Gbps or higher*/
-		break;
+	const u32 link_bits_per_pixel = bits_per_pixel * 10 / 8;
+	const u32 max_pixel_freq = rx_bandwidth_khz / link_bits_per_pixel;
+	u32 is_supported = timing->pixel_freq <= max_pixel_freq;
+
+	DEV_DBG("%s: format: %d %s %s timing:%uKHz rx:%uKHz\n", __func__,
+		video_format, color, msm_hdmi_mode_2string(video_format),
+		timing->pixel_freq, max_pixel_freq);
+
+	if (!is_supported)
+		DEV_WARN("%s: format: %d %s %s pixel_freq %uKHz > rx %uKHz\n",
+			 __func__, video_format, color,
+			 msm_hdmi_mode_2string(video_format),
+			 timing->pixel_freq, max_pixel_freq);
+
+	return is_supported;
+}
+
+static u32 hdmi_edid_filter_mode(struct hdmi_edid_ctrl *edid_ctrl,
+	struct disp_mode_info *disp_mode,
+	u32 rx_bandwidth_khz)
+{
+	struct msm_hdmi_mode_timing_info timing = {0};
+	u32 ret = hdmi_get_supported_mode(&timing,
+					&edid_ctrl->init_data.ds_data,
+					disp_mode->video_format);
+
+	if (ret) {
+		DEV_ERR("%s: format: %d %s failed to get timing\n", __func__,
+			disp_mode->video_format,
+			msm_hdmi_mode_2string(disp_mode->video_format));
+		return 0;
+	}
+
+	if (disp_mode->rgb_support) {
+		disp_mode->rgb_support = hdmi_edid_filter_mode_format(
+			disp_mode->video_format, &timing, rx_bandwidth_khz,
+			"RGB", 24);
+	}
+
+	if (disp_mode->y420_support) {
+		disp_mode->y420_support = hdmi_edid_filter_mode_format(
+			disp_mode->video_format, &timing, rx_bandwidth_khz,
+			"Y420", 16);
+	}
+
+	return disp_mode->rgb_support || disp_mode->y420_support;
+}
+
+static void hdmi_edid_filter_modes(struct hdmi_edid_ctrl *edid_ctrl)
+{
+	int i;
+	struct hdmi_edid_sink_data *sink_data = &edid_ctrl->sink_data;
+	struct disp_mode_info *disp_mode_list = sink_data->disp_mode_list;
+	const u32 num_disp_modes = sink_data->num_of_elements;
+	u32 rx_bandwidth_khz = 0;
+
+#ifdef CONFIG_SLIMPORT_COMMON
+	rx_bandwidth_khz = sp_get_rx_bw_khz();
+#endif /* CONFIG_SLIMPORT_COMMON */
+
+	if (!rx_bandwidth_khz)
+		return;
+
+	sink_data->num_of_elements = 0;
+
+	for (i = 0; i < num_disp_modes; ++i) {
+		if (hdmi_edid_filter_mode(edid_ctrl, &disp_mode_list[i],
+					  rx_bandwidth_khz)) {
+			if (i != sink_data->num_of_elements)
+				disp_mode_list[sink_data->num_of_elements] =
+					disp_mode_list[i];
+			sink_data->num_of_elements++;
+		}
 	}
 }
-#endif
 
 
 static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
@@ -1584,10 +1625,6 @@ static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
 	u32 supported = hdmi_edid_is_mode_supported(edid_ctrl, &timing);
 	struct hdmi_edid_sink_data *sink_data = &edid_ctrl->sink_data;
 	struct disp_mode_info *disp_mode_list = sink_data->disp_mode_list;
-
-#ifdef CONFIG_SLIMPORT_COMMON
-	limit_supported_video_format(&video_format);
-#endif
 
 	if (video_format >= HDMI_VFRMT_MAX) {
 		DEV_ERR("%s: video format: %s is not supported\n", __func__,
@@ -2267,6 +2304,8 @@ bail:
 
 	if (edid_ctrl->keep_resv_timings)
 		hdmi_edid_add_resv_timings(edid_ctrl);
+
+	hdmi_edid_filter_modes(edid_ctrl);
 
 	return 0;
 
