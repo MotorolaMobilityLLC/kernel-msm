@@ -3250,8 +3250,8 @@ static int dwc3_usbid_enable_gpio_pull(struct dwc3_msm *dwc3, int enable)
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *gpio_state;
 
-	if (!dwc3 || !dwc3->usb_id_gpio)
-		return 0;
+	if (!dwc3 || !gpio_is_valid(dwc3->usb_id_gpio))
+		return -ENODEV;
 
 	pinctrl = devm_pinctrl_get(dwc3->dev);
 	if (IS_ERR_OR_NULL(pinctrl)) {
@@ -3271,8 +3271,81 @@ static int dwc3_usbid_enable_gpio_pull(struct dwc3_msm *dwc3, int enable)
 			return -EINVAL;
 		}
 	}
-	return 1;
+	return 0;
 }
+
+static int dwc3_usbid_enable_gpio(struct dwc3_msm *dwc3, int enable)
+{
+	int err;
+	int irq;
+
+	if (!dwc3 || !gpio_is_valid(dwc3->usb_id_gpio))
+		return -ENODEV;
+	/* usb_id_gpio to irq */
+	irq = gpio_to_irq(dwc3->usb_id_gpio);
+
+	if (enable) {
+		err = dwc3_usbid_enable_gpio_pull(dwc3, 1);
+		if (err)
+			return err;
+		msleep(100);
+		enable_irq(irq);
+	} else {
+		disable_irq(irq);
+		err = dwc3_usbid_enable_gpio_pull(dwc3, 0);
+	}
+	return err;
+}
+
+static ssize_t disable_id_pin_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct dwc3_msm *dwc3 = dev_get_drvdata(dev);
+	unsigned int val;
+	int err;
+
+	err = kstrtouint(buf, 10, &val);
+	if (err)
+		return err;
+
+	if (disable_host_mode == !!val)
+		return 0;
+
+	disable_host_mode = !!val;
+
+	if (disable_host_mode)
+		err = dwc3_usbid_enable_gpio(dwc3, 0);
+	else
+		err = dwc3_usbid_enable_gpio(dwc3, 1);
+
+	if (err)
+		pr_err("disable_id_pin:%d fail:%d\n", val, err);
+
+	return count;
+}
+
+static DEVICE_ATTR(disable_id_pin, S_IWUSR,
+			NULL,
+			disable_id_pin_store);
+
+static ssize_t host_id_state_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct dwc3_msm *dwc3 = dev_get_drvdata(dev);
+	enum dwc3_id_state id;
+
+	if (!dwc3 || !gpio_is_valid(dwc3->usb_id_gpio))
+		return -ENODEV;
+
+	id = gpio_get_value(dwc3->usb_id_gpio);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", id);
+}
+
+static DEVICE_ATTR(host_id_state, S_IRUGO,
+			host_id_state_show,
+			NULL);
 
 static int dwc3_msm_probe(struct platform_device *pdev)
 {
@@ -3438,6 +3511,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		}
 		/* usb_id_gpio to irq */
 		mdwc->pmic_id_irq = gpio_to_irq(mdwc->usb_id_gpio);
+		device_create_file(&pdev->dev, &dev_attr_disable_id_pin);
+		device_create_file(&pdev->dev, &dev_attr_host_id_state);
 	} else
 		mdwc->pmic_id_irq = platform_get_irq_byname(pdev,
 							"pmic_id_irq");
@@ -3898,8 +3973,12 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 	if (mdwc->qos_latency >= 0)
 		pm_qos_remove_request(&mdwc->dwc3_pm_qos_request);
 
-	if (gpio_is_valid(mdwc->usb_id_gpio))
+	if (gpio_is_valid(mdwc->usb_id_gpio)) {
 		gpio_free(mdwc->usb_id_gpio);
+		device_remove_file(&pdev->dev, &dev_attr_disable_id_pin);
+		device_remove_file(&pdev->dev, &dev_attr_host_id_state);
+	}
+
 	return 0;
 }
 
