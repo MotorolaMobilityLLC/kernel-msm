@@ -42,9 +42,9 @@
 #include <linux/firmware.h>
 #include <linux/miscdevice.h>
 #include <linux/interrupt.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/drv2624.h>
-
-/* #define	AUTOCALIBRATION_ENABLE */
 
 static struct drv2624_data *g_DRV2624data;
 
@@ -977,7 +977,6 @@ static irqreturn_t drv2624_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-#ifdef AUTOCALIBRATION_ENABLE
 static int dev_auto_calibrate(struct drv2624_data *ctrl)
 {
 	wake_lock(&ctrl->wklock);
@@ -987,7 +986,6 @@ static int dev_auto_calibrate(struct drv2624_data *ctrl)
 
 	return 0;
 }
-#endif
 
 static struct regmap_config drv2624_i2c_regmap = {
 	.reg_bits = 8,
@@ -995,17 +993,93 @@ static struct regmap_config drv2624_i2c_regmap = {
 	.cache_type = REGCACHE_NONE,
 };
 
+#ifdef CONFIG_OF
+static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
+{
+	struct drv2624_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	int rc;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return NULL;
+
+	pdata->mnGpioNRST = of_get_named_gpio(np, "ti,nrst-gpio", 0);
+	if (!gpio_is_valid(pdata->mnGpioNRST)) {
+		pdata->mnGpioNRST = 0;
+		dev_info(&client->dev, "%s: no RST gpio provided\n", __func__);
+	}
+
+	pdata->mnGpioINT = of_get_named_gpio(np, "ti,irqz-gpio", 0);
+	if (!gpio_is_valid(pdata->mnGpioINT)) {
+		pdata->mnGpioINT = 0;
+		dev_err(&client->dev, "%s: no IRQ gpio provided\n", __func__);
+	}
+
+	rc = of_property_read_u8(np, "ti,rated_voltage",
+		&pdata->msActuator.mnRatedVoltage);
+	if (!rc) {
+		dev_err(&client->dev, "%s: rated voltage read failed\n",
+			__func__);
+		return NULL;
+	}
+	rc = of_property_read_u8(np, "ti,overdrive_voltage",
+		&pdata->msActuator.mnOverDriveClampVoltage);
+	if (!rc) {
+		dev_err(&client->dev, "%s: overdrive voltage read failed\n",
+			__func__);
+		return NULL;
+	}
+
+	pdata->msActuator.meActuatorType = of_property_read_bool(np,
+		"ti,lra_drive");
+
+	pdata->meLoop = of_property_read_bool(np, "ti,open_loop");
+
+	if (pdata->msActuator.meActuatorType) {
+		rc = of_property_read_u8(np, "ti,lra_freq",
+			&pdata->msActuator.mnLRAFreq);
+		if (!rc) {
+			dev_err(&client->dev, "%s: lra frequency read failed\n",
+				__func__);
+			return NULL;
+		}
+	}
+
+	pdata->auto_cal = of_property_read_bool(np, "ti,auto_cal");
+	if (pdata->auto_cal)
+		dev_info(&client->dev, "%s: auto calibration enabled\n", __func__);
+
+	return pdata;
+}
+#else
+static inline struct drv2624_platform_data
+				*drv2624_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
 static int
 drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct drv2624_data *ctrl;
 
-	struct drv2624_platform_data *pDrv2624Platdata =
-	    client->dev.platform_data;
+	struct drv2624_platform_data *pdata;
 	int err = 0;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "%s:I2C check failed\n", __func__);
+		return -ENODEV;
+	}
+
+	if (client->dev.of_node)
+		pdata = drv2624_of_init(client);
+	else
+		pdata = client->dev.platform_data;
+
+	if (pdata == NULL) {
+		dev_err(&client->dev, "platform data is NULL, exiting\n");
 		return -ENODEV;
 	}
 
@@ -1017,8 +1091,7 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	ctrl->dev = &client->dev;
-	ctrl->mpRegmap =
-	    devm_regmap_init_i2c(client, &drv2624_i2c_regmap);
+	ctrl->mpRegmap = devm_regmap_init_i2c(client, &drv2624_i2c_regmap);
 	if (IS_ERR(ctrl->mpRegmap)) {
 		err = PTR_ERR(ctrl->mpRegmap);
 		dev_err(ctrl->dev,
@@ -1027,17 +1100,14 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return err;
 	}
 
-	memcpy(&ctrl->msPlatData, pDrv2624Platdata,
-	       sizeof(struct drv2624_platform_data));
+	memcpy(&ctrl->msPlatData, pdata, sizeof(struct drv2624_platform_data));
 	i2c_set_clientdata(client, ctrl);
 
 	if (ctrl->msPlatData.mnGpioNRST) {
-		err =
-		    gpio_request(ctrl->msPlatData.mnGpioNRST,
+		err = gpio_request(ctrl->msPlatData.mnGpioNRST,
 				 HAPTICS_DEVICE_NAME "NRST");
 		if (err < 0) {
-			dev_err(ctrl->dev,
-				"%s: GPIO %d request NRST error\n",
+			dev_err(ctrl->dev, "%s: GPIO %d request NRST error\n",
 				__func__, ctrl->msPlatData.mnGpioNRST);
 			return err;
 		}
@@ -1050,27 +1120,24 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	err = drv2624_reg_read(ctrl, DRV2624_REG_ID);
 	if (err < 0) {
-		dev_err(ctrl->dev, "%s, i2c bus fail (%d)\n",
-			__func__, err);
+		dev_err(ctrl->dev, "%s, i2c bus fail (%d)\n", __func__, err);
 		goto exit_gpio_request_failed;
 	} else {
-		dev_info(ctrl->dev, "%s, ID status (0x%x)\n",
-			 __func__, err);
+		dev_info(ctrl->dev, "%s, ID status (0x%x)\n", __func__, err);
 		ctrl->mnDeviceID = err;
 	}
 
 	if (ctrl->mnDeviceID != DRV2624_ID) {
-		dev_err(ctrl->dev,
-			"%s, device_id(%d) fail\n",
+		dev_err(ctrl->dev, "%s, device_id(%d) fail\n",
 			__func__, ctrl->mnDeviceID);
+		err = -ENODEV;
 		goto exit_gpio_request_failed;
 	}
 
 	dev_init_platform_data(ctrl);
 
 	if (ctrl->msPlatData.mnGpioINT) {
-		err =
-		    gpio_request(ctrl->msPlatData.mnGpioINT,
+		err = gpio_request(ctrl->msPlatData.mnGpioINT,
 				 HAPTICS_DEVICE_NAME "INT");
 		if (err < 0) {
 			dev_err(ctrl->dev,
@@ -1102,12 +1169,11 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 				      &(client->dev), GFP_KERNEL, ctrl,
 				      HapticsFirmwareLoad);
 
-#ifdef AUTOCALIBRATION_ENABLE
-	err = dev_auto_calibrate(ctrl);
-	if (err < 0)
-		dev_err(ctrl->dev,
-			"%s, ERROR, calibration fail\n", __func__);
-#endif
+	if (ctrl->msPlatData.auto_cal) {
+		err = dev_auto_calibrate(ctrl);
+		if (err < 0)
+			dev_err(ctrl->dev, "%s: ERROR calibration\n", __func__);
+	}
 
 	dev_info(ctrl->dev, "drv2624 probe succeeded\n");
 
