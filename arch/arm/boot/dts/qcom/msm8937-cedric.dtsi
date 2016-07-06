@@ -60,6 +60,21 @@
 	};
 };
 
+&i2c_2 {
+	sx9310@28 {
+		compatible = "semtech,sx9310";
+		reg = <0x28>;
+		pinctrl-name = "default";
+		pinctrl-0 = <&sx9310_int_default>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <31 0x2002>;
+		cap_vdd-supply = <&pm8937_l18>;
+		cap_svdd-supply = <&pm8937_l5>;
+		gpios = <&tlmm 31 0x2008>; /* IRQ */
+	};
+};
+
+
 &i2c_3 {
 	synaptics_dsx_i2c@20 {
 		touch_vdd-supply = <&vdda_touch_vreg>;
@@ -146,5 +161,17 @@
 		qcom,src-sel = <2>;
 		qcom,master-en = <1>;
 		qcom,out-strength = <2>;
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa18 {
+		status = "okay";
+		pm8937_l18: regulator-l18 {
+			regulator-min-microvolt = <2700000>;
+			regulator-max-microvolt = <2700000>;
+			qcom,init-voltage = <2700000>;
+			status = "okay";
+		};
 	};
 };
