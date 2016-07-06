@@ -1859,9 +1859,32 @@ bool is_slimport_dp(void)
 	return (sp_tx_cur_cable_type() == DWN_STRM_IS_DIGITAL) ? TRUE : FALSE;
 }
 
-unchar sp_get_rx_bw(void)
+#define MHZ_TO_KHZ(freq) ((freq) * 1000)
+
+static u32 sp_get_link_bandwidth_khz(unchar link_bandwidth)
 {
-	return sp_rx_cur_bw();
+	u32 link_bandwidth_khz = 0;
+
+	switch (link_bandwidth) {
+	case LINK_1P62G:
+		link_bandwidth_khz = MHZ_TO_KHZ(1620);
+		break;
+	case LINK_2P7G:
+		link_bandwidth_khz = MHZ_TO_KHZ(2700);
+		break;
+	case LINK_5P4G:
+		link_bandwidth_khz = MHZ_TO_KHZ(5400);
+		break;
+	case LINK_6P75G:
+		link_bandwidth_khz = MHZ_TO_KHZ(6750);
+		break;
+	}
+	return link_bandwidth_khz;
+}
+
+u32 sp_get_rx_bw_khz(void)
+{
+	return sp_get_link_bandwidth_khz(sp_rx_cur_bw());
 }
 
 static int anx7816_i2c_suspend(struct i2c_client *client, pm_message_t state)
