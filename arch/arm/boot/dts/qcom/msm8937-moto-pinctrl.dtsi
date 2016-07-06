@@ -99,6 +99,22 @@
 		};
 	};
 
+	sx9310 {
+		sx9310_int_default: default {
+			    mux {
+				    pins = "gpio31";
+				    function = "gpio";
+			    };
+
+			    config {
+				    pins = "gpio31";
+				    drive-strength = <2>;
+				    bias-pull-up;
+				    input-enable;
+			    };
+		    };
+	};
+
 	tlmm_gpio_key {
 		gpio_key_active: gpio_key_active {
 			mux {
