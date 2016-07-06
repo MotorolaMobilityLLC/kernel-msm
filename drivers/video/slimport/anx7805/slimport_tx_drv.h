@@ -575,7 +575,7 @@ _SP_TX_DRV_EX_C_ BYTE sp_tx_test_lt;
 _SP_TX_DRV_EX_C_ BYTE sp_tx_test_bw;
 _SP_TX_DRV_EX_C_ BYTE sp_tx_test_edid;
 #endif
-_SP_TX_DRV_EX_C_ unchar sp_rx_bw;  //sink banwidth
+_SP_TX_DRV_EX_C_ SP_LINK_BW sp_rx_bw;  //sink banwidth
 
 _SP_TX_DRV_EX_C_ struct AudiInfoframe SP_TX_AudioInfoFrmae;
 _SP_TX_DRV_EX_C_ struct Packet_AVI SP_TX_Packet_AVI;
