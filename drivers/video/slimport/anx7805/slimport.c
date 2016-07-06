@@ -483,11 +483,35 @@ int hdcp_eanble_setting(bool on)
 }
 EXPORT_SYMBOL(hdcp_eanble_setting);
 
-unchar sp_get_rx_bw(void)
+#define MHZ_TO_KHZ(freq) ((freq) * 1000)
+
+static u32 sp_get_link_bandwidth_khz(SP_LINK_BW link_bandwidth)
 {
-	return sp_rx_bw;
+	u32 link_bandwidth_khz;
+
+	switch (link_bandwidth) {
+	case BW_162G:
+		link_bandwidth_khz = MHZ_TO_KHZ(1620);
+		break;
+	case BW_27G:
+		link_bandwidth_khz = MHZ_TO_KHZ(2700);
+		break;
+	case BW_54G:
+		link_bandwidth_khz = MHZ_TO_KHZ(5400);
+		break;
+	case BW_NULL:
+	default:
+		link_bandwidth_khz = 0;
+		break;
+	}
+	return link_bandwidth_khz;
 }
-EXPORT_SYMBOL(sp_get_rx_bw);
+
+u32 sp_get_rx_bw_khz(void)
+{
+	return sp_get_link_bandwidth_khz(sp_rx_bw);
+}
+EXPORT_SYMBOL(sp_get_rx_bw_khz);
 
 static int anx7805_configure_audio(void *client,
 		struct msm_dba_audio_cfg *cfg, u32 flags)
