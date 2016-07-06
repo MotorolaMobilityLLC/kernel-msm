@@ -27,6 +27,37 @@
 		startup-delay-us = <300>;
 		enable-active-high;
 	};
+
+	sound {
+		/delete-property/ qcom,cdc-us-euro-gpios;
+		/delete-property/ qcom,msm-micbias1-ext-cap;
+
+		qcom,msm-gpios =
+			"pri_i2s";
+		qcom,pinctrl-names =
+			"all_off",
+			"pri_i2s_act";
+		pinctrl-names =
+			"all_off",
+			"pri_i2s_act";
+		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act>;
+		/delete-property/ pinctrl-2;
+		/delete-property/ pinctrl-3;
+		/delete-property/ pinctrl-4;
+		/delete-property/ pinctrl-5;
+		/delete-property/ pinctrl-6;
+		/delete-property/ pinctrl-7;
+	};
+
+	qcom,msm-dai-mi2s {
+		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
+			status = "disabled";
+		};
+		dai_mi2s5: qcom,msm-dai-q6-mi2s-quin {
+			status = "disabled";
+		};
+	};
 };
 
 &i2c_3 {
