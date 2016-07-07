@@ -23,7 +23,6 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/wakelock.h>
-#include <linux/pm_qos.h>
 #include "video/msm_hdmi_modes.h"
 #include "msm_dba_internal.h"
 #include "../mdss/mdss_dsi.h"
@@ -47,8 +46,6 @@ struct dsi_mod_display {
 	struct notifier_block panel_nb;
 	struct mutex ops_mutex;
 	struct wake_lock mod_disp_lock;
-	int qos_latency;
-	struct pm_qos_request mod_disp_pm_qos_request;
 
 	int dsi_connect;
 };
@@ -368,11 +365,6 @@ static int dsi_mod_display_parse_dt(struct platform_device *pdev,
 	} else
 		pdata->dsi_connect = temp_val;
 
-	if (of_property_read_u32(pdev->dev.of_node, "mml,qos_latency",
-							&pdata->qos_latency))
-		pdata->qos_latency = -1;
-	pr_debug("%s: qos_latency=%d\n", __func__, pdata->qos_latency);
-
 	return ret;
 }
 
@@ -443,10 +435,6 @@ static int dsi_mod_display_handle_connect(void *data)
 	reinit_completion(&pdata->apba_on_wait);
 	wake_lock(&pdata->mod_disp_lock);
 
-	if (pdata->qos_latency >= 0)
-		pm_qos_add_request(&pdata->mod_disp_pm_qos_request,
-			PM_QOS_CPU_DMA_LATENCY, pdata->qos_latency);
-
 	pdata->connecting = true;
 	dsi_mod_display_do_hotplug(pdata, 1);
 	if (wait_for_completion_timeout(&pdata->dsi_on_wait,
@@ -471,8 +459,6 @@ static int dsi_mod_display_handle_connect(void *data)
 		kfree(pdata->display_config);
 		pdata->display_config = NULL;
 		wake_unlock(&pdata->mod_disp_lock);
-		if (pdata->qos_latency >= 0)
-			pm_qos_remove_request(&pdata->mod_disp_pm_qos_request);
 	}
 
 exit:
@@ -500,9 +486,6 @@ static int dsi_mod_display_handle_disconnect(void *data)
 	pdata->edid_buf = NULL;
 	kfree(pdata->display_config);
 	pdata->display_config = NULL;
-
-	if (pdata->qos_latency >= 0)
-		pm_qos_remove_request(&pdata->mod_disp_pm_qos_request);
 
 	pr_debug("%s-\n", __func__);
 
