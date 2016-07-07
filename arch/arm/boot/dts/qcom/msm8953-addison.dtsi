@@ -106,7 +106,6 @@
 		compatible = "mmi,dsi_mod_display";
 
 		mod_display,dsi_connect = <1>;
-		mml,qos_latency = <10999>;
 	};
 
 	mot_dba_driver: mot_dba_driver {
