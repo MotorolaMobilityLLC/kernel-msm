@@ -12,7 +12,7 @@
  */
 
 #include "msm8909-pm8916-qrd.dtsi"
-
+#include "msm8909-camera-sensor-skuq.dtsi"
 / {
 	model = "Qualcomm Technologies, Inc. MSM8909-PM8916 QSIP SKUQ";
 	compatible = "qcom,msm8909-qrd", "qcom,msm8909", "qcom,qrd";
