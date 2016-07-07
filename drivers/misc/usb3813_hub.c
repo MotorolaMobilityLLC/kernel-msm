@@ -73,6 +73,7 @@ struct usb3813_info {
 	bool   mod_enabled;
 	enum usb_ext_path mod_path;
 	struct delayed_work usb3813_enable_work;
+	bool   host_enabled;
 };
 
 static int set_hsic_state(struct usb3813_info *info, bool enable);
@@ -240,7 +241,7 @@ static int usb3813_host_enable(struct usb3813_info *info, bool enable)
 {
 	struct power_supply *usb_psy;
 
-	if (info->enable_controller) {
+	if (info->enable_controller && !info->host_enabled) {
 
 		usb_psy = power_supply_get_by_name("usb_host");
 		if (!usb_psy)
@@ -254,6 +255,7 @@ static int usb3813_host_enable(struct usb3813_info *info, bool enable)
 					POWER_SUPPLY_USB_OTG_DISABLE);
 
 		power_supply_put(usb_psy);
+		info->host_enabled = enable;
 	} else if (info->switch_controller) {
 		usb_psy = info->usb_psy;
 
@@ -275,6 +277,7 @@ static int usb3813_host_enable(struct usb3813_info *info, bool enable)
 #endif
 			disable_usbc(info, false);
 		}
+		info->host_enabled = enable;
 	}
 
 	return 0;
