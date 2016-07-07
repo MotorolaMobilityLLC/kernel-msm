@@ -883,6 +883,7 @@ static int req_crypt_endio(struct dm_target *ti, struct request *clone,
 	bvec = NULL;
 	if (encryption_mode == DM_REQ_CRYPT_ENCRYPTION_MODE_TRANSPARENT) {
 		mempool_free(req_io, req_io_pool);
+		err = error;
 		goto submit_request;
 	}
 
