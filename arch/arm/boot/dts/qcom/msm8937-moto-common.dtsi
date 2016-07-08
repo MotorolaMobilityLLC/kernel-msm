@@ -156,6 +156,10 @@
 &soc{
 	/delete-node/ spi@78b7000;
 
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
+
 	i2c_3: i2c@78b7000 { /* BLSP1 QUP3 */
 		status = "okay";
 		compatible = "qcom,i2c-msm-v2";
