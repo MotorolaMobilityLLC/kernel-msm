@@ -23,6 +23,7 @@
 #include <linux/gpio.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
+#include <linux/regulator/consumer.h>
 #include <linux/input/sx9310.h> /* main struct, interrupt,init,pointers */
 
 #define IDLE 0
@@ -37,8 +38,6 @@ typedef struct sx9310 {
 	pbuttonInformation_t pbuttonInformation;
 	psx9310_platform_data_t hw; /* specific platform data settings */
 } sx9310_t, *psx9310_t;
-
-static int irq_gpio;
 
 static void ForcetoTouched(psx93XX_t this)
 {
@@ -248,7 +247,8 @@ static int initialize(psx93XX_t this)
 /*
  *    while(this->get_nirq_low && this->get_nirq_low()) { read_regStat(this); }
  */
-		dev_dbg(this->pdev, "Device is back from the reset, continuing. NIRQ = %d\n", this->get_nirq_low());
+		dev_dbg(this->pdev, "Device is back from the reset, continuing. NIRQ = %d\n",
+			this->get_nirq_low(this->board->irq_gpio));
 		hw_init(this);
 		msleep(100); /* make sure everything is running */
 		manual_offset_calibration(this);
@@ -260,7 +260,8 @@ static int initialize(psx93XX_t this)
 		/* make sure no interrupts are pending since enabling irq will only
 		 * work on next falling edge */
 		read_regStat(this);
-		dev_dbg(this->pdev, "Exiting initialize(). NIRQ = %d\n", this->get_nirq_low());
+		dev_dbg(this->pdev, "Exiting initialize(). NIRQ = %d\n",
+			this->get_nirq_low(this->board->irq_gpio));
 		return 0;
 	}
 	return -ENOMEM;
@@ -331,7 +332,7 @@ static void touchProcess(psx93XX_t this)
 	}
 }
 
-static int sx9310_get_nirq_state(void)
+static int sx9310_get_nirq_state(unsigned irq_gpio)
 {
 	if (irq_gpio) {
 		return !gpio_get_value(irq_gpio);
@@ -352,7 +353,7 @@ static void sx9310_platform_data_of_init(struct i2c_client *client,
 	struct device_node *np = client->dev.of_node;
 
 	client->irq = of_get_gpio(np, 0);
-	irq_gpio = client->irq;
+	pplatData->irq_gpio = client->irq;
 	pplatData->get_is_nirq_low = sx9310_get_nirq_state;
 	pplatData->init_platform_hw = NULL;
 	/*  pointer to an exit function. Here in case needed in the future */
@@ -412,7 +413,7 @@ static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *i
 		this->irq = gpio_to_irq(client->irq);
 		/* do we need to create an irq timer after interrupt ? */
 		this->useIrqTimer = 0;
-
+		this->board = pplatData;
 		/* Setup function to call on corresponding reg irq source bit */
 		if (MAX_NUM_STATUS_BITS >= 8) {
 			this->statusFunc[0] = 0; /* TXEN_STAT */
@@ -470,10 +471,62 @@ static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *i
 			if (input_register_device(input))
 				return -ENOMEM;
 		}
+
+		pplatData->cap_vdd = regulator_get(&client->dev, "cap_vdd");
+		if (IS_ERR(pplatData->cap_vdd)) {
+			if (PTR_ERR(pplatData->cap_vdd) == -EPROBE_DEFER) {
+				ret = PTR_ERR(pplatData->cap_vdd);
+				goto err_vdd_defer;
+			}
+			dev_warn(&client->dev,
+					"%s: Failed to get regulator\n",
+					__func__);
+		} else {
+			int error = regulator_enable(pplatData->cap_vdd);
+			if (error) {
+				regulator_put(pplatData->cap_vdd);
+				dev_err(&client->dev,
+					"%s: Error %d enabling cap_vdd regulator\n",
+					__func__, error);
+				return error;
+			}
+			pplatData->cap_vdd_en = true;
+			pr_debug("cap_vdd regulator is %s\n",
+				regulator_is_enabled(pplatData->cap_vdd) ?
+				"on" : "off");
+		}
+
+		pplatData->cap_svdd = regulator_get(&client->dev, "cap_svdd");
+		if (!IS_ERR(pplatData->cap_svdd)) {
+			ret = regulator_enable(pplatData->cap_svdd);
+			if (ret) {
+				regulator_put(pplatData->cap_svdd);
+				dev_err(&client->dev, "Failed to enable cap_svdd\n");
+				goto err_svdd_error;
+			}
+			pplatData->cap_svdd_en = true;
+			pr_debug("cap_svdd regulator is %s\n",
+				regulator_is_enabled(pplatData->cap_svdd) ?
+				"on" : "off");
+		} else {
+			ret = PTR_ERR(pplatData->cap_vdd);
+			if (ret == -EPROBE_DEFER)
+				goto err_svdd_error;
+		}
+
 		sx93XX_init(this);
 		return  0;
 	}
 	return -ENOMEM;
+
+err_svdd_error:
+	regulator_disable(pplatData->cap_vdd);
+	regulator_put(pplatData->cap_vdd);
+
+err_vdd_defer:
+	input_free_device(input);
+
+	return ret;
 }
 
  /**
@@ -491,6 +544,16 @@ static int sx9310_remove(struct i2c_client *client)
 	pDevice = this->pDevice;
 	if (this && pDevice) {
 		input_unregister_device(pDevice->pbuttonInformation->input);
+
+		if (this->board->cap_svdd_en) {
+			regulator_disable(this->board->cap_svdd);
+			regulator_put(this->board->cap_svdd);
+		}
+
+		if (this->board->cap_vdd_en) {
+			regulator_disable(this->board->cap_vdd);
+			regulator_put(this->board->cap_vdd);
+		}
 
 		sysfs_remove_group(&client->dev.kobj, &sx9310_attr_group);
 		pplatData = client->dev.platform_data;
@@ -608,7 +671,7 @@ static void sx93XX_worker_func(struct work_struct *work)
 			pr_err("sx93XX_worker_func, NULL sx93XX_t\n");
 			return;
 		}
-		if ((!this->get_nirq_low) || (!this->get_nirq_low())) {
+		if ((!this->get_nirq_low) || (!this->get_nirq_low(this->board->irq_gpio))) {
 			/* only run if nirq is high */
 			sx93XX_process_interrupt(this, 0);
 		}
@@ -623,7 +686,7 @@ static irqreturn_t sx93XX_interrupt_thread(int irq, void *data)
 
 	mutex_lock(&this->mutex);
 	dev_dbg(this->pdev, "sx93XX_irq\n");
-	if ((!this->get_nirq_low) || this->get_nirq_low())
+	if ((!this->get_nirq_low) || this->get_nirq_low(this->board->irq_gpio))
 		sx93XX_process_interrupt(this, 1);
 	else
 		dev_err(this->pdev, "sx93XX_irq - nirq read high\n");
@@ -657,7 +720,7 @@ static irqreturn_t sx93XX_irq(int irq, void *pvoid)
 	if (pvoid) {
 		this = (psx93XX_t)pvoid;
 		dev_dbg(this->pdev, "sx93XX_irq\n");
-		if ((!this->get_nirq_low) || this->get_nirq_low()) {
+		if ((!this->get_nirq_low) || this->get_nirq_low(this->board->irq_gpio)) {
 			dev_dbg(this->pdev, "sx93XX_irq - Schedule Work\n");
 			sx93XX_schedule_work(this, 0);
 		} else
@@ -682,7 +745,7 @@ static void sx93XX_worker_func(struct work_struct *work)
 			return;
 		}
 		if (unlikely(this->useIrqTimer)) {
-			if ((!this->get_nirq_low) || this->get_nirq_low())
+			if ((!this->get_nirq_low) || this->get_nirq_low(this->board->irq_gpio))
 				nirqLow = 1;
 		}
 		/* since we are not in an interrupt don't need to disable irq. */
@@ -729,33 +792,6 @@ void sx93XX_resume(psx93XX_t this)
 	}
 }
 
-#if 0 /* def CONFIG_HAS_WAKELOCK */
-/*TODO: Should actually call the device specific suspend/resume
- * As long as the kernel suspend/resume is setup, the device
- * specific ones will be called anyways
- */
-extern suspend_state_t get_suspend_state(void);
-void sx93XX_early_suspend(struct early_suspend *h)
-{
-	psx93XX_t this = 0;
-
-	dev_dbg(this->pdev, "inside sx93XX_early_suspend()\n");
-	this = container_of(h, sx93XX_t, early_suspend);
-	sx93XX_suspend(this);
-	dev_dbg(this->pdev, "exit sx93XX_early_suspend()\n");
-}
-
-void sx93XX_late_resume(struct early_suspend *h)
-{
-	psx93XX_t this = 0;
-
-	dev_dbg(this->pdev, "inside sx93XX_late_resume()\n");
-	this = container_of(h, sx93XX_t, early_suspend);
-	sx93XX_resume(this);
-	dev_dbg(this->pdev, "exit sx93XX_late_resume()\n");
-}
-#endif
-
 int sx93XX_init(psx93XX_t this)
 {
 	int err = 0;
@@ -795,15 +831,6 @@ int sx93XX_init(psx93XX_t this)
 #else
 		dev_info(this->pdev, "registered with irq (%d)\n", this->irq);
 #endif
-#if 0 /*def CONFIG_HAS_WAKELOCK */
-		this->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-		this->early_suspend.suspend = sx93XX_early_suspend;
-		this->early_suspend.resume = sx93XX_late_resume;
-		register_early_suspend(&this->early_suspend);
-		if (has_wake_lock(WAKE_LOCK_SUSPEND) == 0 &&
-		    get_suspend_state() == PM_SUSPEND_ON)
-			sx93XX_early_suspend(&this->early_suspend);
-#endif /* CONFIG_HAS_WAKELOCK */
 		/* call init function pointer (this should initialize all registers */
 		if (this->init)
 			return this->init(this);
@@ -816,10 +843,6 @@ int sx93XX_remove(psx93XX_t this)
 {
 	if (this) {
 		cancel_delayed_work_sync(&this->dworker); /* Cancel the Worker Func */
-		/*destroy_workqueue(this->workq); */
-#if 0 /* def CONFIG_HAS_WAKELOCK */
-		unregister_early_suspend(&this->early_suspend);
-#endif
 		free_irq(this->irq, this);
 		kfree(this);
 		return 0;
