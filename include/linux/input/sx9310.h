@@ -10,12 +10,6 @@
 #include <linux/slab.h>
 #include <linux/interrupt.h>
 
-#if 0 /* def CONFIG_HAS_WAKELOCK */
-#include <linux/wakelock.h>
-#include <linux/earlysuspend.h>
-#include <linux/suspend.h>
-#endif
-
 /*
  *  I2C Registers
  */
@@ -252,11 +246,14 @@ static struct _buttonInfo psmtcButtons[] = {
 struct sx9310_platform_data {
 	int i2c_reg_num;
 	struct smtc_reg_data *pi2c_reg;
-
+	struct regulator *cap_vdd;
+	struct regulator *cap_svdd;
+	bool cap_vdd_en;
+	bool cap_svdd_en;
+	unsigned irq_gpio;
 	pbuttonInformation_t pbuttonInformation;
 
-	int (*get_is_nirq_low)(void);
-
+	int (*get_is_nirq_low)(unsigned irq_gpio);
 	int (*init_platform_hw)(void);
 	void (*exit_platform_hw)(void);
 };
@@ -265,7 +262,22 @@ typedef struct sx9310_platform_data *psx9310_platform_data_t;
 
 /***************************************
 * define data struct/interrupt
-*
+* @pdev: pdev common device struction for linux
+* @dworker: work struct for worker function
+* @board: constant pointer to platform data
+* @mutex: mutex for interrupt process
+* @lock: Spin Lock used for nirq worker function
+* @bus: either i2c_client or spi_client
+* @pDevice: device specific struct pointer
+* @irq: irq number used
+* @irqTimeout: msecs only set if useIrqTimer is true
+* @irq_disabled: whether irq should be ignored
+* @irq_gpio: irq gpio number
+* @useIrqTimer: older models need irq timer for pen up cases
+* @init: (re)initialize device
+* @refreshStatus: read register status
+* @get_nirq_low: get whether nirq is low (platform data)
+* @statusFunc: array of functions to call for corresponding status bit
 ***************************************/
 #define USE_THREADED_IRQ
 
@@ -273,47 +285,31 @@ typedef struct sx9310_platform_data *psx9310_platform_data_t;
 
 typedef struct sx93XX sx93XX_t, *psx93XX_t;
 struct sx93XX {
-	void *bus; /* either i2c_client or spi_client */
-
-	struct device *pdev; /* common device struction for linux */
-
-	void *pDevice; /* device specific struct pointer */
-
+	struct device *pdev;
+	struct delayed_work dworker;
+	const struct sx9310_platform_data *board;
+#if defined(USE_THREADED_IRQ)
+	struct mutex mutex;
+#else
+	spinlock_t	lock;
+#endif
+	void *bus;
+	void *pDevice;
+	int irq;
+	int irqTimeout;
+	char irq_disabled;
+	/* whether irq should be ignored.. cases if enable/disable irq is not used
+	 * or does not work properly */
+	u8 useIrqTimer;
 	/* Function Pointers */
-	int (*init)(psx93XX_t this); /* (re)initialize device */
-
+	int (*init)(psx93XX_t this);
 	/* since we are trying to avoid knowing registers, create a pointer to a
 	 * common read register which would be to read what the interrupt source
 	 * is from
 	 */
-	int (*refreshStatus)(psx93XX_t this); /* read register status */
-
-	int (*get_nirq_low)(void); /* get whether nirq is low (platform data) */
-
-	/* array of functions to call for corresponding status bit */
+	int (*refreshStatus)(psx93XX_t this);
+	int (*get_nirq_low)(unsigned irq_gpio);
 	void (*statusFunc[MAX_NUM_STATUS_BITS])(psx93XX_t this);
-
-#if defined(USE_THREADED_IRQ)
-	struct mutex mutex;
-#else
-	spinlock_t	      lock; /* Spin Lock used for nirq worker function */
-#endif
-	int irq; /* irq number used */
-
-	/* whether irq should be ignored.. cases if enable/disable irq is not used
-	 * or does not work properly */
-	char irq_disabled;
-
-	u8 useIrqTimer; /* older models need irq timer for pen up cases */
-
-	int irqTimeout; /* msecs only set if useIrqTimer is true */
-
-	/* struct workqueue_struct	*ts_workq;  */  /* if want to use non default */
-	struct delayed_work dworker; /* work struct for worker function */
-
-#if 0 /* def CONFIG_HAS_WAKELOCK */
-	struct early_suspend early_suspend;  /* early suspend data  */
-#endif
 };
 
 void sx93XX_suspend(psx93XX_t this);
