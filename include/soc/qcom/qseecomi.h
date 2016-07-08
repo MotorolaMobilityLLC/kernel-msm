@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,6 +18,7 @@
 
 #define QSEECOM_KEY_ID_SIZE   32
 
+#define QSEOS_RESULT_FAIL_SEND_CMD_NO_THREAD  -19   /*0xFFFFFFED*/
 #define QSEOS_RESULT_FAIL_UNSUPPORTED_CE_PIPE -63
 #define QSEOS_RESULT_FAIL_KS_OP               -64
 #define QSEOS_RESULT_FAIL_KEY_ID_EXISTS       -65
@@ -59,6 +60,9 @@ enum qseecom_qceos_cmd_id {
 	QSEOS_TEE_OPEN_SESSION,
 	QSEOS_TEE_INVOKE_COMMAND,
 	QSEOS_TEE_CLOSE_SESSION,
+	QSEOS_CLIENT_SEND_DATA_COMMAND_WHITELIST = 0x1C,
+	QSEOS_TEE_OPEN_SESSION_WHITELIST = 0x1D,
+	QSEOS_TEE_INVOKE_COMMAND_WHITELIST = 0x1E,
 	QSEOS_FSM_LTE_INIT_DB = 0x100,
 	QSEOS_FSM_LTE_STORE_KENB = 0x101,
 	QSEOS_FSM_LTE_GEN_KEYS = 0x102,
@@ -141,6 +145,8 @@ __packed struct qseecom_client_send_data_ireq {
 	uint32_t req_len;
 	uint32_t rsp_ptr;/* First 4 bytes should be the return status */
 	uint32_t rsp_len;
+	uint32_t sglistinfo_ptr;
+	uint32_t sglistinfo_len;
 };
 
 __packed struct qseecom_reg_log_buf_ireq {
@@ -229,6 +235,8 @@ __packed struct qseecom_qteec_ireq {
 	uint32_t    req_len;
 	uint32_t    resp_ptr;
 	uint32_t    resp_len;
+	uint32_t    sglistinfo_ptr;
+	uint32_t    sglistinfo_len;
 };
 
 __packed struct qseecom_client_send_fsm_key_req {
