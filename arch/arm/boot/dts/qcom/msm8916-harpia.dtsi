@@ -247,7 +247,7 @@
 		ti,chg-current-ma = <2000>;
 		ti,chg-safety-timer = <3>;
 		regulator-name = "bq24296_otg_vreg";
-		ti,chg-thermal-mitigation = <2000>, <1300>, <800>;
+		ti,chg-thermal-mitigation = <2000>, <1300>, <800>, <500>;
 
 		gpios = <&pm8916_gpios 4 0x00>, /* GPIOF_OUT_INIT_LOW*/
 			<&msm_gpio 120 0x01>; 	/* GPIOF_DIR_IN */
