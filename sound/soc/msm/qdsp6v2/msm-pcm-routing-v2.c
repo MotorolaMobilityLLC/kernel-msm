@@ -66,6 +66,12 @@ static uint32_t voc_session_id = ALL_SESSION_VSID;
 static int msm_route_ext_ec_ref;
 static bool is_custom_stereo_on;
 static bool is_ds2_on;
+static int sidetone_enable;
+static int sidetone_rx_port;
+static const char *const sidetone_afe_rx_text[] = {
+	"SLIM_RX", "PRI_MI2S_RX", "SEC_MI2S_RX"
+};
+static const char *const sidetone_enable_text[] = {"Off", "On"};
 
 enum {
 	MADNONE,
@@ -1956,6 +1962,70 @@ static int msm_routing_put_port_mixer(struct snd_kcontrol *kcontrol,
 
 	return 1;
 }
+
+static const struct soc_enum afe_sidetone_enum[] = {
+	SOC_ENUM_SINGLE_EXT(3, sidetone_afe_rx_text),
+	SOC_ENUM_SINGLE_EXT(2, sidetone_enable_text),
+};
+
+static int msm_routing_afe_sidetone_afe_rx_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = sidetone_rx_port;
+	return 0;
+}
+static int msm_routing_afe_sidetone_afe_rx_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	sidetone_rx_port = ucontrol->value.integer.value[0];
+	return 0;
+}
+static int msm_routing_afe_sidetone_enable_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = sidetone_enable;
+	return 0;
+}
+static int msm_routing_afe_sidetone_enable_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	int afe_sidetone_rx_port_id = SLIMBUS_0_RX;
+	int afe_sidetone_tx_port_id = SLIMBUS_0_TX;
+
+	sidetone_enable = ucontrol->value.integer.value[0];
+	switch (sidetone_rx_port) {
+	case 0:
+		afe_sidetone_rx_port_id = SLIMBUS_0_RX;
+		afe_sidetone_tx_port_id = SLIMBUS_0_TX;
+		break;
+	case 1:
+		afe_sidetone_rx_port_id = AFE_PORT_ID_PRIMARY_MI2S_RX;
+		afe_sidetone_tx_port_id = SLIMBUS_0_TX;
+		break;
+	case 2:
+		afe_sidetone_rx_port_id = AFE_PORT_ID_SECONDARY_MI2S_RX;
+		afe_sidetone_tx_port_id = SLIMBUS_0_TX;
+		break;
+	default:
+		afe_sidetone_rx_port_id = SLIMBUS_0_RX;
+		afe_sidetone_tx_port_id = SLIMBUS_0_TX;
+		break;
+	}
+	afe_sidetone_enable(afe_sidetone_tx_port_id,
+			    afe_sidetone_rx_port_id,
+			    sidetone_enable);
+	return 0;
+}
+
+static const struct snd_kcontrol_new afe_sidetone_controls[] = {
+	SOC_ENUM_EXT("AFE Sidetone AFE_RX", afe_sidetone_enum[0],
+		     msm_routing_afe_sidetone_afe_rx_get,
+		     msm_routing_afe_sidetone_afe_rx_put),
+	SOC_ENUM_EXT("AFE Sidetone Enable", afe_sidetone_enum[1],
+		     msm_routing_afe_sidetone_enable_get,
+		     msm_routing_afe_sidetone_enable_put),
+
+};
 
 static int msm_routing_ec_ref_rx_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
@@ -9557,6 +9627,10 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 	snd_soc_add_platform_controls(platform,
 				stereo_to_custom_stereo_controls,
 			ARRAY_SIZE(stereo_to_custom_stereo_controls));
+
+	snd_soc_add_platform_controls(platform,
+				afe_sidetone_controls,
+			ARRAY_SIZE(afe_sidetone_controls));
 
 	msm_qti_pp_add_controls(platform);
 
