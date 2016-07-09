@@ -362,6 +362,7 @@ config SND_SOC_CS35L32
 
 config SND_SOC_CS35L34
 	tristate "Cirrus Logic CS35L34"
+	default n
 	depends on I2C
 
 config SND_SOC_CS42L51
