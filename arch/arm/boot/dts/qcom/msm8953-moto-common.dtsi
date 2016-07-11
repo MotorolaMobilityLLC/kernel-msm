@@ -170,7 +170,7 @@
 			gpio-labels = "gpio_hub_reset_n",
 				"gpio_hub_int_n";
 			clock-names = "hub_clk";
-			clocks = <&clock_gcc clk_bb_clk2_a>;
+			clocks = <&clock_gcc clk_bb_clk2>;
 			switch-usbhost;
 			vdd-hsic-supply = <&pm8953_l23>;
 		};
