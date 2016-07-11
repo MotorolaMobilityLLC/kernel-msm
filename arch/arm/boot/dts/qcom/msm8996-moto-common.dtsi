@@ -561,7 +561,7 @@
 		gpio-labels = "gpio_hub_reset_n",
 			"gpio_hub_int_n";
 		clock-names = "hub_clk";
-		clocks = <&clock_gcc clk_bb_clk2_ao>;
+		clocks = <&clock_gcc clk_bb_clk2>;
 		enable-usbhost;
 		vdd-hsic-supply = <&pm8994_l11>;
 	};
