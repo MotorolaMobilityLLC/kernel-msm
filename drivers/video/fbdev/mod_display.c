@@ -286,6 +286,12 @@ int mod_display_notification(enum mod_display_notification event)
 			break;
 		}
 
+		if (connected) {
+			pr_warn("%s: Already connected! Ignoring\n", __func__);
+			ret = -EBUSY;
+			break;
+		}
+
 		if (mod_display_impl->ops->handle_connect) {
 			if (!mod_display_impl->ops->handle_connect(
 				mod_display_impl->ops->data))
@@ -297,6 +303,12 @@ int mod_display_notification(enum mod_display_notification event)
 	case MOD_NOTIFY_DISCONNECT:
 		if (!mod_display_impl) {
 			pr_err("%s: No implementation ready!\n", __func__);
+			ret = -ENODEV;
+			break;
+		}
+
+		if (!connected) {
+			pr_warn("%s: Not connected! Ignoring\n", __func__);
 			ret = -ENODEV;
 			break;
 		}
