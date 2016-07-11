@@ -219,6 +219,11 @@ static int xhci_plat_probe(struct platform_device *pdev)
 			(pdata && pdata->usb3_lpm_capable))
 		xhci->quirks |= XHCI_LPM_SUPPORT;
 
+	if (pdata && pdata->limit_arbitrary_sg) {
+		xhci_dbg(xhci, "limit arbitrary sg\n");
+		hcd->self.no_sg_constraint = 0;
+	}
+
 	hcd_to_bus(xhci->shared_hcd)->skip_resume = true;
 	/*
 	 * Set the xHCI pointer before xhci_plat_setup() (aka hcd_driver.reset)
