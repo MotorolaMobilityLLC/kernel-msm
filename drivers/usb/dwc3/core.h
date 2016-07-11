@@ -980,6 +980,7 @@ struct dwc3 {
 
 	wait_queue_head_t	wait_linkstate;
 	u8			ctrl_num;
+	unsigned		xhci_limit_arbitrary_sg:1;
 };
 
 /* -------------------------------------------------------------------------- */

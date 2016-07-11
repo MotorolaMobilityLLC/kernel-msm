@@ -54,6 +54,9 @@ int dwc3_host_init(struct dwc3 *dwc)
 	pdata.usb3_lpm_capable = 1;
 #endif
 
+	if (dwc->xhci_limit_arbitrary_sg)
+		pdata.limit_arbitrary_sg = 1;
+
 	ret = platform_device_add_data(xhci, &pdata, sizeof(pdata));
 	if (ret) {
 		dev_err(dwc->dev, "couldn't add platform data to xHCI device\n");
