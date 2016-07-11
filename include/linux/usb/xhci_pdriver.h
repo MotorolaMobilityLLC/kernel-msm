@@ -26,6 +26,7 @@
 struct usb_xhci_pdata {
 	unsigned	usb3_lpm_capable:1;
 	unsigned	imod_interval;
+	unsigned	limit_arbitrary_sg:1;
 };
 
 #endif /* __USB_CORE_XHCI_PDRIVER_H */
