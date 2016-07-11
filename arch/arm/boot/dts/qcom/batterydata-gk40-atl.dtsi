@@ -1,0 +1,61 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,gk40-atl {
+	serialnum = "SNN5976A";
+	/* #2441117_Lenovo_GK40_ATL_2800mAh_averaged_MasterSlave_Jun13th2016*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <2800>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <3435>;
+	qcom,battery-type = "GK40-ATL-2800mah";
+	qcom,chg-rslow-comp-c1 = <3202975>;
+	qcom,chg-rslow-comp-c2 = <4376644>;
+	qcom,chg-rs-to-rslow = <1083131>;
+	qcom,chg-rslow-comp-thr = <0xA2>;
+	qcom,checksum = <0xF2C1>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+	qcom,fg-profile-data = [
+		 EE 83 54 7D
+		 7D 81 04 7C
+		 5C 83 23 67
+		 2E 83 D4 8D
+		 57 82 40 98
+		 E0 B5 75 C1
+		 58 14 00 88
+		 8C 7D 92 81
+		 09 7C 53 83
+		 69 6A 9E 78
+		 27 86 58 82
+		 63 99 9E BC
+		 58 C9 59 0E
+		 3C 0B F7 59
+		 14 70 D9 FD
+		 5C 3E F4 3C
+		 6E 33 00 00
+		 05 45 BB 2A
+		 AE 35 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 4E 70 F8 6A
+		 AE 71 4B 88
+		 42 6E 98 5B
+		 35 64 AB 78
+		 A8 6D 0A 60
+		 F4 6F 8F A2
+		 15 7F 63 B7
+		 64 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
