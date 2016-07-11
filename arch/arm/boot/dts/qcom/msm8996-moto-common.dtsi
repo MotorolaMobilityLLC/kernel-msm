@@ -1029,6 +1029,7 @@
 		dwc3@7600000 {
 			dr_mode = "host";
 			controller-number = /bits/ 8 <2>;
+			xhci,limit-arbitrary-sg;
 		};
 	};
 
