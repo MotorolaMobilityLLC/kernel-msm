@@ -223,3 +223,8 @@
 		};
 	};
 };
+
+&mot_batterydata {
+	df-serialnum = "SNN5976A";
+	#include "batterydata-gk40-atl.dtsi"
+};
