@@ -895,6 +895,9 @@ static int dwc3_probe(struct platform_device *pdev)
 		dwc->disable_clk_gating = of_property_read_bool(node,
 					"snps,disable-clk-gating");
 
+		dwc->xhci_limit_arbitrary_sg = of_property_read_bool(node,
+					"xhci,limit-arbitrary-sg");
+
 		dwc->num_normal_event_buffers = 1;
 		ret = of_property_read_u32(node,
 			"snps,num-normal-evt-buffs", &num_evt_buffs);
