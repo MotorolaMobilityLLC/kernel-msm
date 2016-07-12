@@ -88,6 +88,11 @@
 	};
 };
 
+&pm8937_l6 {
+        regulator-always-on;
+        regulator-boot-on;
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_tianma_497_1080p_vid_v0>;
 	vddio_disp-supply = <&pm8937_l6>;
