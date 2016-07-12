@@ -802,6 +802,11 @@ int msm_ion_heap_pages_zero(struct page **pages, int num_pages)
 			>> PAGE_SHIFT;
 	for (i = 0; i < num_pages; i += npages_to_vmap) {
 		npages_to_vmap = min(npages_to_vmap, num_pages - i);
+
+		if (!vmap_zero(&pages[i], npages_to_vmap, VM_IOREMAP,
+			PAGE_KERNEL, NULL))
+			continue;
+
 		for (j = 0; j < MAX_VMAP_RETRIES && npages_to_vmap;
 			++j) {
 			ptr = vmap(&pages[i], npages_to_vmap,
