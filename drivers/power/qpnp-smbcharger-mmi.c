@@ -10550,10 +10550,12 @@ end_hb:
 	schedule_delayed_work(&chip->heartbeat_work,
 			      msecs_to_jiffies(hb_resch_time));
 
-	rc = alarm_start_relative(&chip->smbchg_heartbeat_alarm,
-				  ns_to_ktime(SMBCHG_HEARTBEAT_INTERVAL_NS));
-	if (rc)
-		SMB_ERR(chip, "Failed to start alarm: %d\n", rc);
+	if (chip->ebchg_state == EB_SRC) {
+		rc = alarm_start_relative(&chip->smbchg_heartbeat_alarm,
+				ns_to_ktime(SMBCHG_HEARTBEAT_INTERVAL_NS));
+		if (rc)
+			SMB_ERR(chip, "Failed to start alarm: %d\n", rc);
+	}
 
 	__pm_relax(&chip->smbchg_hb_wake_source);
 	smbchg_relax(chip, PM_HEARTBEAT);
