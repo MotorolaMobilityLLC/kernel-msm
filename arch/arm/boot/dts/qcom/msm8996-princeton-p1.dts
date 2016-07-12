@@ -102,7 +102,8 @@
 		<&tlmm 1 1>,     /* gpio_muc_spi_miso, input */
 		<0>,            /* gpio_muc_bplus_iset, cs */
 		<0>,            /* gpio_muc_bplus_discharg, cs */
-		<0>;            /* gpio_muc_bplus_fault_n, unused */
+		<0>,            /* gpio_muc_bplus_fault_n, unused */
+		<&tlmm 3 1>;    /* gpio_muc_clk,      input */
 
 	mmi,muc-ctrl-en-seq =  <1 1 100>;
 	mmi,muc-ctrl-dis-seq = <1 0 505>;
