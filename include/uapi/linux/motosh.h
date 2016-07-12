@@ -72,7 +72,9 @@
 #define ID_GAME_RV (35)
 #define ID_SENSOR_SYNC (36)
 #define ID_ULTRASOUND_GESTURE (37)
-#define MAX_SENSOR_ID (37)
+#define ID_MOTION_DETECT (38)
+#define ID_STATIONARY_DETECT (39)
+#define MAX_SENSOR_ID (39)
 
 /* structure to hold rate and timeout for sensor batching */
 struct motosh_moto_sensor_batch_cfg {
@@ -302,14 +304,14 @@ struct motosh_moto_sensor_batch_cfg {
 #define M_CHOPCHOP		0x004000
 #define M_LOG_MSG		0x008000
 
-/*#define M_UNUSED      0x010000*/
-/*#define M_UNUSED      0x020000*/
-#define M_GLANCE        0x040000
-/*#define M_UNUSED      0x080000*/
-/*#define M_UNUSED      0x100000*/
-/*#define M_UNUSED      0x200000*/
-/*#define M_UNUSED      0x400000*/
-/*#define M_UNUSED      0x800000*/
+/*#define M_UNUSED              0x010000*/
+/*#define M_UNUSED              0x020000*/
+#define M_GLANCE                0x040000
+/*#define M_UNUSED              0x080000*/
+#define M_MOTION_DETECT         0x100000
+#define M_STATIONARY_DETECT     0x200000
+/*#define M_UNUSED              0x400000*/
+/*#define M_UNUSED              0x800000*/
 
 
 /* algo config mask */
@@ -398,7 +400,9 @@ enum MOTOSH_data_types {
 	DT_ACCEL_CAL,
 	DT_MOTO_MOD_CURRENT_DRAIN,
 	DT_GAME_RV,
-	DT_SENSOR_SYNC
+	DT_SENSOR_SYNC,
+	DT_MOTION_DETECT,
+	DT_STATIONARY_DETECT
 };
 
 enum {
