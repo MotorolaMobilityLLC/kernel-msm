@@ -394,7 +394,7 @@ void * __init __alloc_bootmem_low_nopanic(unsigned long size,
 					  unsigned long goal)
 {
 	return ___alloc_bootmem_nopanic(size, align, goal,
-					ARCH_LOW_ADDRESS_LIMIT);
+					0xffffffffUL);
 }
 
 /**
