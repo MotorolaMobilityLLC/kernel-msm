@@ -116,8 +116,7 @@ int msm_audio_ion_import(const char *name, struct ion_client **client,
 			ion_phys_addr_t *paddr, size_t *pa_len, void **vaddr)
 {
 	int rc = 0;
-	if (!name || !client || !handle || !ionflag || !bufsz || !paddr
-		|| !pa_len || !vaddr) {
+	if (!name || !client || !handle || !paddr || !vaddr || !pa_len) {
 		pr_err("%s: Invalid params\n", __func__);
 		rc = -EINVAL;
 		goto err;
