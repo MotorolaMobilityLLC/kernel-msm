@@ -10758,8 +10758,9 @@ static struct snd_soc_dai_driver tasha_dai[] = {
 		.id = AIF4_MAD_TX,
 		.capture = {
 			.stream_name = "AIF4 MAD TX",
-			.rates = SNDRV_PCM_RATE_16000,
-			.formats = TASHA_FORMATS_S16_S24_LE,
+			.rates = SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_48000 |
+				 SNDRV_PCM_RATE_192000 | SNDRV_PCM_RATE_384000,
+			.formats = TASHA_FORMATS_S16_S24_S32_LE,
 			.rate_min = 16000,
 			.rate_max = 384000,
 			.channels_min = 1,
