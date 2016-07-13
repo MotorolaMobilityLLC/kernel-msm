@@ -147,6 +147,8 @@ struct fpc1020_data {
 	int irq_num;
 	int clocks_enabled;
 	int clocks_suspended;
+
+	unsigned int irq_cnt;
 };
 
 static int vreg_setup(struct fpc1020_data *fpc1020, const char *name,
@@ -313,6 +315,15 @@ static ssize_t irq_get(struct device *device,
 }
 static DEVICE_ATTR(irq, S_IRUSR | S_IRGRP, irq_get, NULL);
 
+static ssize_t irq_cnt_get(struct device *device,
+		       struct device_attribute *attribute,
+		       char *buffer)
+{
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
+	return scnprintf(buffer, PAGE_SIZE, "%u\n", fpc1020->irq_cnt);
+}
+static DEVICE_ATTR(irq_cnt, S_IRUSR, irq_cnt_get, NULL);
+
 static ssize_t nav_set(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -347,6 +358,7 @@ static struct attribute *attributes[] = {
 	&dev_attr_dev_enable.attr,
 	&dev_attr_clk_enable.attr,
 	&dev_attr_irq.attr,
+	&dev_attr_irq_cnt.attr,
 	&dev_attr_nav.attr,
 	NULL
 };
@@ -361,6 +373,7 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 
 	wake_lock_timeout(&fpc1020->wlock, msecs_to_jiffies(1000));
 	dev_dbg(fpc1020->dev, "%s\n", __func__);
+	fpc1020->irq_cnt++;
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 	return IRQ_HANDLED;
 }
@@ -452,6 +465,7 @@ static int fpc1020_probe(struct spi_device *spi)
 
 	wake_lock_init(&fpc1020->wlock, WAKE_LOCK_SUSPEND, "fpc1020");
 
+	fpc1020->irq_cnt = 0;
 	fpc1020->clocks_enabled = 0;
 	fpc1020->clocks_suspended = 0;
 	irqf = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
