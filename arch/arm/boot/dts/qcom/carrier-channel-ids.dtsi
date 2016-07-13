@@ -1,5 +1,5 @@
 /* Copyright (c) 2013, The Linux Foundation. All rights reserved.
- * Copyright (c) 2014 Motorola Mobility LLC
+ * Copyright (c) 2016 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -101,7 +101,7 @@
 		"vfes",	        /* 84 */
 		"vfeu",	        /* 85 */
 		"3gb",	        /* 86 */
-		"undefined",	/* 87 */
+		"tescoie",	/* 87 */
 		"undefined",	/* 88 */
 		"undefined",	/* 89 */
 		"undefined",	/* 90 */
@@ -160,8 +160,8 @@
 		"rcica",	/* 143 */
 		"wndca",	/* 144 */
 		"dmc",		/* 145 */
-		"bby",      /* 146 */
-		"undefined",	/* 147 */
+		"bby",		/* 146 */
+		"amz",		/* 147 */
 		"undefined",	/* 148 */
 		"undefined",	/* 149 */
 		"undefined",	/* 150 */
