@@ -154,6 +154,18 @@
 			pinctrl-1 = <&epl8802_suspend>;
 		};
 
+		sx9310@28 {
+			compatible = "semtech,sx9310";
+			reg = <0x28>;
+			cap_svdd-supply = <&pm8953_l6>;
+			cap_vdd-supply = <&pm8953_l22>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <46 0x2008>;
+			gpios = <&tlmm 46 0x2008>; /* IRQ */
+			pinctrl-names = "default";
+			pinctrl-0 = <&sx9310_irq_default>;
+		};
+
 		/delete-node/ adv7533@39;
 	};
 
