@@ -343,6 +343,19 @@
 	};
 */
 
+	sx9310_irq_default: sx9310_irq_default {  //cap sense inturrupt
+		mux {
+			pins = "gpio46";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio46";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 	touch_reset_n {
 		/*label = "touch-reset";*/
 
