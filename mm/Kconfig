@@ -698,3 +698,11 @@ config PROCESS_RECLAIM
 	 (addr, addr + size-bytes) of the process.
 
 	 Any other vaule is ignored.
+
+config VMAP_ZERO
+	bool "support vmap_zero() function"
+	depends on HIGHMEM
+	default n
+	help
+	   "vmap_zero()" will help kernel modules to zero big memory block.
+	   It will reserve a big vmalloc area dedicated to zero pages.
