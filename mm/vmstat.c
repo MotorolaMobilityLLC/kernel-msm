@@ -904,6 +904,9 @@ const char * const vmstat_text[] = {
 	"vmacache_find_hits",
 #endif
 	"vmap_alloc_fail",
+#ifdef CONFIG_VMAP_ZERO
+	"vmap_zero_contend",
+#endif
 #endif /* CONFIG_VM_EVENTS_COUNTERS */
 };
 #endif /* CONFIG_PROC_FS || CONFIG_SYSFS || CONFIG_NUMA */
