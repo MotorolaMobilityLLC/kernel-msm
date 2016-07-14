@@ -366,6 +366,7 @@ static int AKECS_GetData(
 			atomic_set(&ps_stml0xx->akm_drdy, 0);
 	} else {
 		atomic_set(&ps_stml0xx->akm_drdy, 0);
+		mutex_unlock(&ps_stml0xx->akm_sensor_mutex);
 		return -ENODATA;
 	}
 	mutex_unlock(&ps_stml0xx->akm_sensor_mutex);
