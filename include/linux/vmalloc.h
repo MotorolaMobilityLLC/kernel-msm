@@ -6,6 +6,7 @@
 #include <linux/list.h>
 #include <asm/page.h>		/* pgprot_t */
 #include <linux/rbtree.h>
+#include <linux/errno.h>
 
 struct vm_area_struct;		/* vma defining user mapping in mm_types.h */
 
@@ -87,6 +88,16 @@ extern void vfree(const void *addr);
 extern void *vmap(struct page **pages, unsigned int count,
 			unsigned long flags, pgprot_t prot);
 extern void vunmap(const void *addr);
+#ifdef CONFIG_VMAP_ZERO
+extern int vmap_zero(struct page **pages, unsigned int count,
+	unsigned long flags, pgprot_t prot, void (*f)(void *start, void *end));
+#else
+static inline int vmap_zero(struct page **pages, unsigned int count,
+	unsigned long flags, pgprot_t prot, void (*f)(void *start, void *end))
+{
+	return -ENOMEM;
+}
+#endif
 
 extern int remap_vmalloc_range_partial(struct vm_area_struct *vma,
 				       unsigned long uaddr, void *kaddr,
