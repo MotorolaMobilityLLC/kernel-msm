@@ -29,8 +29,6 @@ typedef unsigned int uint;
 //typedef unsigned long ulong;
 //typedef unsigned int WORD;
 
-#define Display_NoHDCP
-#define Redo_HDCP
 /* #define Standard_DP */
 #define AUX_DBG
 
@@ -594,7 +592,6 @@ _SP_TX_DRV_EX_C_ BYTE bEDID_firstblock[128];
 _SP_TX_DRV_EX_C_ BYTE bEDID_fourblock[256];
 
 _SP_TX_DRV_EX_C_ bool audio_format_change;
-_SP_TX_DRV_EX_C_ bool hdcp_enable;
 
 #if(REDUCE_REPEAT_PRINT_INFO)
 #define LOOP_PRINT_MSG_MAX 16
