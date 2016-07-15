@@ -2407,6 +2407,16 @@ static void sp_tx_hw_hdcp_enable(void)
 
 }
 
+static int hdcp_encryption_check(void)
+{
+	unchar c;
+	sp_read_reg(TX_P0, TX_HDCP_CTRL0, &c);
+	if ((c & ENC_EN) && (c & HARD_AUTH_EN))
+		return 1;
+	else
+		return 0;
+}
+
 static bool sp_tx_get_ds_video_status(void)
 {
 	unchar c;
@@ -2552,11 +2562,11 @@ void slimport_hdcp_process(void)
 	case HDCP_NOT_SUPPORT:
 		pr_debug("%s %s : Sink is not capable HDCP\n",
 							LOG_TAG, __func__);
-		slimport_block_power_ctrl(SP_TX_PWR_HDCP, SP_POWER_DOWN);
-		sp_tx_video_mute(0);
-		/*sp_tx_aux_polling_enable(); */
-		goto_next_system_state();
+		sp_tx_video_mute(1); /* Block output without HDCP */
+		vbus_power_ctrl(0);
+		reg_hardware_reset();
 		HDCP_state = HDCP_CAPABLE_CHECK;
+		HDCP_fail_count = 0;
 		break;
 	}
 }
@@ -2914,17 +2924,20 @@ void slimport_state_process(void)
 		slimport_config_video_output();
 		SP_BREAK(STATE_VIDEO_OUTPUT, sp_tx_system_state);
 	case STATE_HDCP_AUTH:
-		if (!HDCP_REPEATER_MODE) {
-			slimport_hdcp_process();
-			sp_tx_set_colordepth();
-			SP_BREAK(STATE_HDCP_AUTH, sp_tx_system_state);
-		} else
-			goto_next_system_state();
+		slimport_hdcp_process();
+		sp_tx_set_colordepth();
+		SP_BREAK(STATE_HDCP_AUTH, sp_tx_system_state);
 	case STATE_AUDIO_OUTPUT:
 		slimport_config_audio_output();
 		SP_BREAK(STATE_AUDIO_OUTPUT, sp_tx_system_state);
 	case STATE_PLAY_BACK:
 		/*slimport_playback_process();*/
+		if (!hdcp_encryption_check()) {
+			pr_err("%s: HDCP Disabled! Re-init!\n", __func__);
+			sp_tx_video_mute(1);
+			sp_tx_clean_hdcp_status();
+			system_state_change_with_case(STATE_HDCP_AUTH);
+		}
 		SP_BREAK(STATE_PLAY_BACK, sp_tx_system_state);
 	default:
 		break;
