@@ -1554,6 +1554,17 @@ void hdcp_encryption_enable(BYTE enable)
 	sp_write_reg(SP_TX_PORT0_ADDR, SP_TX_HDCP_CONTROL_0_REG, c);
 }
 
+int hdcp_encryption_check(void)
+{
+	BYTE c;
+	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_HDCP_CONTROL_0_REG, &c);
+	if ((c & SP_TX_HDCP_CONTROL_0_HDCP_ENC_EN) &&
+	    (c & SP_TX_HDCP_CONTROL_0_HARD_AUTH_EN))
+		return 1;
+	else
+		return 0;
+}
+
 void SP_TX_HW_HDCP_Enable(void)
 {
 	BYTE c;
@@ -3892,7 +3903,6 @@ void SP_CTRL_Variable_Init(void)
 	CEC_resent_flag = 0;
 
 	audio_format_change = 0;
-	hdcp_enable = HDCP_EN;
 	MIPI_Format_Index_Set(0x0f);
 
 }
@@ -3979,7 +3989,6 @@ void change_system_state_clean(SP_TX_System_State cur_state)
 		mipi_video_timing_table[bMIPIFormatIndex].MIPI_pixel_frequency=0;
 		mipi_lane_count=0;
 		audio_format_change=0;
-		hdcp_enable = HDCP_EN;
 		SP_CTRL_AUDIO_FORMAT_Set(AUDIO_I2S,AUDIO_FS_48K,AUDIO_W_LEN_20_24MAX);
 		SP_CTRL_I2S_CONFIG_Set(I2S_CH_2, I2S_LAYOUT_0);
 	 }
@@ -5239,18 +5248,14 @@ void SP_CTRL_HDCP_Process(void)
 	BYTE c;
 	static BYTE ds_vid_stb_cntr = 0;
 	static BYTE hdcp_check_cnt;
-	#ifdef Redo_HDCP
 	static BYTE HDCP_fail_count = 0;
-	#endif
 	dump_count = 0;
 	//pr_info("HDCP Process state: %x \r\n", (unsigned int)hdcp_process_state);
 	switch(hdcp_process_state) {
 	case HDCP_PROCESS_INIT:
 		hdcp_process_state = HDCP_CAPABLE_CHECK;
 		hdcp_check_cnt = 0;
-                #ifdef Redo_HDCP
-                HDCP_fail_count = 0;
-                #endif
+		HDCP_fail_count = 0;
 		break;
 	case HDCP_CAPABLE_CHECK:
 		SP_TX_AUX_DPCDRead_Bytes(0x06, 0x80, 0x28,1,&c);
@@ -5313,7 +5318,6 @@ void SP_CTRL_HDCP_Process(void)
 		SP_TX_Show_Infomation();
 		break;
 	case HDCP_FAILE:
-		#ifdef Redo_HDCP
 		SP_CTRL_Clean_HDCP();
 		HDCP_fail_count++;
 		hdcp_process_state = HDCP_WAITTING_VID_STB;
@@ -5326,28 +5330,14 @@ void SP_CTRL_HDCP_Process(void)
 			pr_info("***************************hdcp_auth_failed more than 5 times*******************************\n");
 
 		}
-		#else
-		hdcp_encryption_enable(0);
-		SP_TX_Video_Mute(1);
-		pr_info("***************************hdcp_auth_failed*********************************\n");
-		//SP_CTRL_Set_System_State(SP_TX_PLAY_BACK);
-		SP_CTRL_Set_System_State(SP_TX_CONFIG_AUDIO);
-		SP_TX_Show_Infomation();
-		#endif
 		break;
 	default:
 	case HDCP_NOT_SUPPORT:
 		pr_info("Sink is not capable HDCP");
-		#ifdef Display_NoHDCP
-		SP_TX_Power_Enable(SP_TX_PWR_HDCP, SP_TX_POWER_DOWN);
-		SP_TX_Video_Mute(0);
-		//SP_CTRL_Set_System_State(SP_TX_PLAY_BACK);
-		SP_CTRL_Set_System_State(SP_TX_CONFIG_AUDIO);
-		#else
 		SP_TX_Video_Mute(1);//when Rx does not support HDCP, force to send blue screen
-		//SP_CTRL_Set_System_State(SP_TX_PLAY_BACK);
-		SP_CTRL_Set_System_State(SP_TX_CONFIG_AUDIO);
-		#endif
+		system_power_ctrl(0);
+		hdcp_process_state = HDCP_PROCESS_INIT;
+		HDCP_fail_count = 0;
 		break;
 	}
 }
@@ -5361,6 +5351,13 @@ static BYTE 19_reg=0x38;
 void SP_CTRL_PlayBack_Process(void)
 {
 	//BYTE c;
+
+	if (!hdcp_encryption_check()) {
+		pr_err("%s: HDCP Disabled! Re-init!\n", __func__);
+		SP_TX_Video_Mute(1);
+		SP_CTRL_Set_System_State(SP_TX_HDCP_AUTHENTICATION);
+		return;
+	}
 
 if (audio_format_change) {
 	SP_TX_Enable_Audio_Output(0);
@@ -5714,17 +5711,9 @@ void slimport_config_video_output(void)
 	SP_CTRL_Set_System_State(SP_TX_HDCP_AUTHENTICATION);
 }
 
-void slimport_hdcp_authentication(BYTE enable)
+void slimport_hdcp_authentication(void)
 {
-	if(enable) {
-		SP_CTRL_HDCP_Process();
-	} else {
-		SP_TX_Power_Enable(SP_TX_PWR_HDCP, SP_TX_POWER_DOWN);// Poer down HDCP link clock domain logic for B0 version-20110913-ANX.Fei
-		SP_TX_Show_Infomation();
-		SP_TX_Video_Mute(0);
-		//SP_CTRL_Set_System_State(SP_TX_PLAY_BACK);
-		SP_CTRL_Set_System_State(SP_TX_CONFIG_AUDIO);
-	}
+	SP_CTRL_HDCP_Process();
 }
 #ifndef Standard_DP
 bool Source_AUX_Read_ANXDPCD(long addr,BYTE cCount,unchar *pBuf)
@@ -5866,7 +5855,7 @@ void SP_CTRL_TimerProcess (void)
 		#ifndef Standard_DP
 		sp_tx_sink_colorspace();
 		#endif
-		slimport_hdcp_authentication((hdcp_enable == 0 ? 0 : 1));
+		slimport_hdcp_authentication();
 		break;
 	case SP_TX_PLAY_BACK:
 		SP_CTRL_PlayBack_Process();

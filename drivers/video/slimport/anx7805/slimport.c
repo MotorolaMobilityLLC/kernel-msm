@@ -91,13 +91,6 @@ struct i2c_client *anx7805_client;
 static int anx7805_enable_irq(int enable);
 #endif
 
-/*
-#ifdef HDCP_EN
-static bool hdcp_enable = 1;
-#else
-static bool hdcp_enable;
-#endif
-*/
 struct completion init_aux_ch_completion;
 //static uint32_t sp_tx_chg_current_ma = NORMAL_CHG_I_MA;
 
@@ -475,13 +468,6 @@ int update_audio_format_setting(unsigned char  bAudio_Fs, unsigned char bAudio_w
 	return 0;
 }
 EXPORT_SYMBOL(update_audio_format_setting);
-
-int hdcp_eanble_setting(bool on)
-{
-	hdcp_enable=on;
-	return 0;
-}
-EXPORT_SYMBOL(hdcp_eanble_setting);
 
 #define MHZ_TO_KHZ(freq) ((freq) * 1000)
 
