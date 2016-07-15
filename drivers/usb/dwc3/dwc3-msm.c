@@ -2490,7 +2490,7 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 		val->intval = mdwc->vbus_active;
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = mdwc->online;
+		val->intval = mdwc->online && mdwc->vbus_active;
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = psy->type;
