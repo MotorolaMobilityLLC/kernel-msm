@@ -365,10 +365,38 @@ exit:
 }
 
 /* MOT DBA Implementation */
+
+#include "qseecom_kernel.h"
+enum JslrResult {
+	Jslr_success = 0,
+	Jslr_failure,
+};
+
+enum tz_jslr_cmd_type {
+	TZ_JSLR_CMD_SET = 1,
+	TZ_JSLR_CMD_UNSET = 2,
+	TZ_JSLR_CMD_LAST = 0x7FFFFFFF
+};
+
+struct tz_jslr_req_s {
+	u32 cmd_id;
+	uint32_t which;
+} __packed;
+
+struct tz_jslr_rsp_s {
+	u32 cmd_id;
+	int32_t ret;
+} __packed;
+
 int mot_dba_device_enable(int mod_display_type)
 {
 	int ret = 0;
 	struct mot_dba_device *cur;
+	int gpio_val = 0;
+	size_t res, cmd_len, rsp_len;
+	struct qseecom_handle *qseecom_handle = NULL;
+	struct tz_jslr_req_s *cmd;
+	struct tz_jslr_rsp_s *rsp;
 
 	pr_debug("%s+\n", __func__);
 	if (!g_pdata) {
@@ -400,12 +428,47 @@ int mot_dba_device_enable(int mod_display_type)
 				mod_display_type);
 		ret = -EINVAL;
 	} else if (gpio_is_valid(g_pdata->gpio_sel_dsi)) {
-		if (mod_display_type == MOD_DISPLAY_TYPE_DP)
-			gpio_set_value(g_pdata->gpio_sel_dsi,
-				(g_pdata->gpio_sel_dsi_val ? 0 : 1));
-		else
-			gpio_set_value(g_pdata->gpio_sel_dsi,
-					g_pdata->gpio_sel_dsi_val);
+		res = qseecom_start_app(&qseecom_handle, "jslr", SZ_16K);
+		if (res < 0) {
+			pr_err("error loading jslr\n");
+		} else {
+			pr_info("jslr loaded\n");
+			cmd_len = sizeof(struct tz_jslr_req_s);
+			rsp_len = sizeof(struct tz_jslr_rsp_s);
+
+			cmd = (struct tz_jslr_req_s *)qseecom_handle->sbuf;
+
+			if (cmd_len & QSEECOM_ALIGN_MASK)
+				cmd_len = QSEECOM_ALIGN(cmd_len);
+
+			rsp = (struct tz_jslr_rsp_s *)qseecom_handle->sbuf +
+				cmd_len;
+
+			if (rsp_len & QSEECOM_ALIGN_MASK)
+				rsp_len = QSEECOM_ALIGN(rsp_len);
+
+			/* Populate command struct */
+			cmd->which = 0;
+			if (mod_display_type == MOD_DISPLAY_TYPE_DP)
+				gpio_val = (g_pdata->gpio_sel_dsi_val ? 0 : 1);
+			else
+				gpio_val = g_pdata->gpio_sel_dsi_val;
+			if (gpio_val)
+				cmd->cmd_id = TZ_JSLR_CMD_SET;
+			else
+				cmd->cmd_id = TZ_JSLR_CMD_UNSET;
+
+			/* Issue QSEECom command */
+			res = qseecom_send_command(qseecom_handle, (void *)cmd,
+				cmd_len, (void *)rsp, rsp_len);
+			if (res < 0) {
+				pr_err("error running jslr\n");
+				qseecom_shutdown_app(&qseecom_handle);
+			} else {
+				pr_info("response from jslr %d\n", rsp->ret);
+				qseecom_shutdown_app(&qseecom_handle);
+			}
+		}
 	}
 exit:
 	mutex_unlock(&list_lock);
