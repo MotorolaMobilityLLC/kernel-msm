@@ -201,7 +201,7 @@
 			 headset_button_4_keycode = <0x72>;  /* KEY_VOLUMEDOWN   */
 			 cover_detect_polarity = <1>;
 			 reset_hw_type = <1>;
-			 accel_orientation_1 = <4>; /* Accel Orientation value */
+			 accel_orientation_1 = <7>; /* Accel Orientation value */
 			 accel_orientation_2 = <1>; /* Not used */
 			 accel_swap = <0>;          /* Not used */
 			 sensor1-supply = <&pm8953_l6>;
