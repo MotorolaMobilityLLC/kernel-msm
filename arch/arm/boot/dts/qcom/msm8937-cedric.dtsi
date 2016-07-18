@@ -12,6 +12,7 @@
 
 #include "msm8937-moto-common.dtsi"
 #include "dsi-panel-mot-tianma-497-1080p-video.dtsi"
+#include "dsi-panel-mot-inx-497-1080p-video.dtsi"
 
  / {
 	model = "cedric";
