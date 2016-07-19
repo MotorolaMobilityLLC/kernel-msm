@@ -2916,43 +2916,6 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 	synaptics_dsx_set_state_safe(rmi4_data, state);
 }
 
-/*
- * This function is a backup way to clear all fingers. If there is any
- * finger NEED release by this function, this means there is a mismatch,
- * need to be exposed to kernel log.
- * So, synaptics_dsx_release_all must call input_mt_slot and
- * input_mt_report_slot_state directly and be excluded from up/down
- * statistics.
- */
-static void synaptics_dsx_release_all(struct synaptics_rmi4_data *rmi4_data)
-{
-	/* reset some TSB global vars like fingers_on_2d after resume
-	 * of reset touch IC
-	 */
-	if (rmi4_data->button_0d_enabled) {
-		tsb_buff_clean_flag = 1;
-		rmi4_data->fingers_on_2d = false;
-	}
-
-	if (rmi4_data->input_dev) {
-		/*
-		 * Enforce touch release event report to work-around
-		 * such event missing while touch IC is off.
-		*/
-#ifdef TYPE_B_PROTOCOL
-		int i;
-		for (i = 0; i < rmi4_data->num_of_fingers; i++) {
-			input_mt_slot(rmi4_data->input_dev, i);
-			input_mt_report_slot_state(rmi4_data->input_dev,
-					MT_TOOL_FINGER, false);
-		}
-#else
-		input_mt_sync(rmi4_data->input_dev);
-#endif
-		input_sync(rmi4_data->input_dev);
-	}
-}
-
 static struct touch_up_down display_ud[20];
 static struct touch_area_stats display_ud_stats = {
 	.ud = display_ud,
@@ -6219,6 +6182,35 @@ static void synaptics_rmi4_cleanup(struct synaptics_rmi4_data *rmi4_data)
 			kfree(fhandler->data);
 		list_del(&fhandler->link);
 		kfree(fhandler);
+	}
+}
+
+static void synaptics_dsx_release_all(struct synaptics_rmi4_data *rmi4_data)
+{
+	/* reset some TSB global vars like fingers_on_2d after resume
+	 * of reset touch IC
+	 */
+	if (rmi4_data->button_0d_enabled) {
+		tsb_buff_clean_flag = 1;
+		rmi4_data->fingers_on_2d = false;
+	}
+
+	if (rmi4_data->input_dev) {
+		/*
+		 * Enforce touch release event report to work-around
+		 * such event missing while touch IC is off.
+		*/
+#ifdef TYPE_B_PROTOCOL
+		int i;
+		for (i = 0; i < rmi4_data->num_of_fingers; i++) {
+			input_mt_slot(rmi4_data->input_dev, i);
+			input_mt_report_slot_state(rmi4_data->input_dev,
+					MT_TOOL_FINGER, false);
+		}
+#else
+		input_mt_sync(rmi4_data->input_dev);
+#endif
+		input_sync(rmi4_data->input_dev);
 	}
 }
 
