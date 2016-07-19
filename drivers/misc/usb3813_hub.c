@@ -58,6 +58,7 @@ struct usb3813_info {
 	bool   hub_enabled;
 	struct delayed_work usb3813_attach_work;
 	struct mutex	i2c_mutex;
+	struct mutex	enable_mutex;
 	struct dentry *debug_root;
 	u16 debug_address;
 	bool debug_enabled;
@@ -315,6 +316,45 @@ static void usb3813_send_uevent(struct usb3813_info *info)
 	kfree(env);
 }
 
+#define MAX_LPM_WAIT_COUNT 100
+static void usb3813_wait_for_controller_lpm(struct usb3813_info *info)
+{
+	struct power_supply *usb_psy;
+	union power_supply_propval prop = {0,};
+	int rc, count = 0;
+
+	if (!info->enable_controller)
+		return;
+
+	usb_psy = power_supply_get_by_name("usb_host");
+	if (!usb_psy)
+		return;
+
+	prop.intval = 0;
+
+	while (!prop.intval && count < MAX_LPM_WAIT_COUNT &&
+						info->mod_enabled) {
+		rc = usb_psy->get_property(usb_psy,
+				POWER_SUPPLY_PROP_USB_LPM,
+				&prop);
+		if (rc < 0) {
+			dev_err(info->dev, "Unable to read lpm for usb_host\n");
+			break;
+		}
+
+		/* Exit wait if the host is in lpm */
+		if (prop.intval)
+			break;
+		msleep(20);
+		count++;
+	}
+
+	if (count >= MAX_LPM_WAIT_COUNT)
+		dev_err(info->dev, "Timed out waiting for usb_host lpm\n");
+
+	power_supply_put(usb_psy);
+}
+
 static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 {
 	if (enable == info->hub_enabled)
@@ -326,6 +366,7 @@ static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 
 	if (info->hub_enabled) {
 		usb3813_host_enable(info, true);
+		usb3813_wait_for_controller_lpm(info);
 		if (clk_prepare_enable(info->hub_clk)) {
 			dev_err(info->dev, "%s: failed to prepare clock\n",
 				__func__);
@@ -339,7 +380,6 @@ static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 		clk_disable_unprepare(info->hub_clk);
 		usb3813_host_enable(info, false);
 	}
-
 
 	return 0;
 }
@@ -608,6 +648,7 @@ static void usb3813_enable_w(struct work_struct *work)
 		container_of(work, struct usb3813_info,
 		usb3813_enable_work.work);
 
+	mutex_lock(&info->enable_mutex);
 	dev_dbg(info->dev, "%s - mod_enabled  = %d, mod_attached = %d\n",
 		__func__, info->mod_enabled, info->mod_attached);
 	if (info->mod_enabled) {
@@ -620,6 +661,7 @@ static void usb3813_enable_w(struct work_struct *work)
 	}
 
 	usb3813_send_uevent(info);
+	mutex_unlock(&info->enable_mutex);
 }
 
 static int usb_ext_notifier_call(struct notifier_block *nb,
@@ -737,6 +779,7 @@ static int usb3813_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, info);
 
 	mutex_init(&info->i2c_mutex);
+	mutex_init(&info->enable_mutex);
 	info->hub_enabled = 0;
 	info->usb_psy = usb_psy;
 
