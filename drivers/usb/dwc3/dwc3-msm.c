@@ -2877,9 +2877,22 @@ static int dwc3_msm_get_property_usbhost(struct power_supply *psy,
 {
 	struct dwc3_msm *mdwc = container_of(psy, struct dwc3_msm,
 								usb_psy);
+
 	switch (psp) {
 	case POWER_SUPPLY_PROP_USB_OTG:
 		val->intval = mdwc->usb_otg_status;
+		break;
+	case POWER_SUPPLY_PROP_USB_LPM:
+		if (mdwc->usb_otg_status) {
+			struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+
+			if (!dwc) {
+				WARN_ON(1);
+				val->intval = 0;
+			} else
+				val->intval = atomic_read(&dwc->in_lpm);
+		} else
+			val->intval = 0;
 		break;
 	default:
 		return -EINVAL;
@@ -2934,6 +2947,7 @@ dwc3_msm_property_is_writeable_usbhost(struct power_supply *psy,
 
 static enum power_supply_property dwc3_msm_props_usbhost[] = {
 	POWER_SUPPLY_PROP_USB_OTG,
+	POWER_SUPPLY_PROP_USB_LPM,
 };
 
 static irqreturn_t dwc3_pmic_id_irq(int irq, void *data)
