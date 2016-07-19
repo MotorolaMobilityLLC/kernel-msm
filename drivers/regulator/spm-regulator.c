@@ -101,6 +101,12 @@ static const struct voltage_range ult_hf_range1 = {750000, 750000, 1525000,
 #define QPNP_FTS2_STEP_MARGIN_NUM	4
 #define QPNP_FTS2_STEP_MARGIN_DEN	5
 
+/*
+ * Settling delay for FTS2.5
+ * Warm-up=20uS, 0-10% & 90-100% non-linear V-ramp delay = 50uS
+ */
+#define FTS2P5_SETTLING_DELAY_US	70
+
 /* VSET value to decide the range of ULT SMPS */
 #define ULT_SMPS_RANGE_SPLIT 0x60
 
@@ -141,6 +147,7 @@ static int _spm_regulator_set_voltage(struct regulator_dev *rdev)
 	struct spm_vreg *vreg = rdev_get_drvdata(rdev);
 	bool spm_failed = false;
 	int rc = 0;
+	u32 slew_delay;
 	u8 reg;
 
 	if (vreg->vlevel == vreg->last_set_vlevel)
@@ -181,8 +188,16 @@ static int _spm_regulator_set_voltage(struct regulator_dev *rdev)
 
 	if (vreg->uV > vreg->last_set_uV) {
 		/* Wait for voltage stepping to complete. */
-		udelay(DIV_ROUND_UP(vreg->uV - vreg->last_set_uV,
-					vreg->step_rate));
+		slew_delay = DIV_ROUND_UP(vreg->uV - vreg->last_set_uV,
+					vreg->step_rate);
+		if (vreg->regulator_type == QPNP_TYPE_FTS2p5)
+			slew_delay += FTS2P5_SETTLING_DELAY_US;
+		udelay(slew_delay);
+	} else if (vreg->regulator_type == QPNP_TYPE_FTS2p5) {
+		/* add the ramp-down delay */
+		slew_delay = DIV_ROUND_UP(vreg->last_set_uV - vreg->uV,
+				vreg->step_rate) + FTS2P5_SETTLING_DELAY_US;
+		udelay(slew_delay);
 	}
 
 	if ((vreg->regulator_type == QPNP_TYPE_FTS2)
