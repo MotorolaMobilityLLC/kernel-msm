@@ -621,6 +621,7 @@ void StateMachineTypeC(void)
 	do {
 #endif
 		StateMachineTypeCImp();
+		platform_delay_10us(10);
 #ifdef FSC_INTERRUPT_TRIGGERED
 	} while (g_Idle == FALSE);
 #endif
