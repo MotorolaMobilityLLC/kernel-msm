@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, 2017, The Linux Foundation. All rights reserved.
 
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 and
@@ -48,7 +48,7 @@ struct msm_pcm_loopback {
 	int capture_start;
 	int session_id;
 	struct audio_client *audio_client;
-	int volume;
+	uint32_t volume;
 };
 
 static void stop_pcm(struct msm_pcm_loopback *pcm);
@@ -108,7 +108,8 @@ static void msm_pcm_loopback_event_handler(uint32_t opcode, uint32_t token,
 	}
 }
 
-static int pcm_loopback_set_volume(struct msm_pcm_loopback *prtd, int volume)
+static int pcm_loopback_set_volume(struct msm_pcm_loopback *prtd,
+					uint32_t volume)
 {
 	int rc = -EINVAL;
 
@@ -354,10 +355,49 @@ static int msm_pcm_volume_ctl_put(struct snd_kcontrol *kcontrol,
 	int rc = 0;
 	struct snd_pcm_volume *vol = kcontrol->private_data;
 	struct snd_pcm_substream *substream = vol->pcm->streams[0].substream;
-	struct msm_pcm_loopback *prtd = substream->runtime->private_data;
+	struct msm_pcm_loopback *prtd;
 	int volume = ucontrol->value.integer.value[0];
 
+	pr_debug("%s: volume : 0x%x\n", __func__, volume);
+	if ((!substream) || (!substream->runtime)) {
+		pr_err("%s substream or runtime not found\n", __func__);
+		rc = -ENODEV;
+		goto exit;
+	}
+	prtd = substream->runtime->private_data;
+	if (!prtd) {
+		rc = -ENODEV;
+		goto exit;
+	}
 	rc = pcm_loopback_set_volume(prtd, volume);
+
+exit:
+	return rc;
+}
+
+static int msm_pcm_volume_ctl_get(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	int rc = 0;
+	struct snd_pcm_volume *vol = snd_kcontrol_chip(kcontrol);
+	struct snd_pcm_substream *substream =
+		vol->pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
+	struct msm_pcm_loopback *prtd;
+
+	pr_debug("%s\n", __func__);
+	if ((!substream) || (!substream->runtime)) {
+		pr_err("%s substream or runtime not found\n", __func__);
+		rc = -ENODEV;
+		goto exit;
+	}
+	prtd = substream->runtime->private_data;
+	if (!prtd) {
+		rc = -ENODEV;
+		goto exit;
+	}
+	ucontrol->value.integer.value[0] = prtd->volume;
+
+exit:
 	return rc;
 }
 
@@ -377,6 +417,7 @@ static int msm_pcm_add_controls(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	kctl = volume_info->kctl;
 	kctl->put = msm_pcm_volume_ctl_put;
+	kctl->get = msm_pcm_volume_ctl_get;
 	kctl->tlv.p = loopback_rx_vol_gain;
 	return 0;
 }
