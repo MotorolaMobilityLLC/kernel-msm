@@ -7511,13 +7511,14 @@ static int synaptics_rmi4_suspend(struct device *dev)
 
 	rmi4_data->flash_enabled = false;
 	synaptics_dsx_sensor_state(rmi4_data, STATE_SUSPEND);
+
+	/* print UD statistics and send release events thereafter */
+	synaptics_dsx_ud_stat(rmi4_data, ud_stats, sizeof(ud_stats));
+	pr_info("%s\n", ud_stats);
 	synaptics_dsx_release_all(rmi4_data);
 
 	if (gStat.enabled)
 		statistics_stop_timekeeping();
-
-	synaptics_dsx_ud_stat(rmi4_data, ud_stats, sizeof(ud_stats));
-	pr_info("%s\n", ud_stats);
 
 	if (rmi4_data->purge_enabled) {
 		int value = 1; /* set flag */
