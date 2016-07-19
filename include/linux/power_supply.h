@@ -309,6 +309,7 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_IN_LEVEL,
 	POWER_SUPPLY_PROP_NUM_SYSTEM_TEMP_IN_LEVELS,
 	POWER_SUPPLY_PROP_USB_PRIORITY,
+	POWER_SUPPLY_PROP_USB_LPM,
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_PROP_CHARGE_COUNTER_EXT,
 	/* Properties of type `const char *' */
