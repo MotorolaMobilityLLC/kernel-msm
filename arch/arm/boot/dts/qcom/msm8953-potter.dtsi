@@ -357,6 +357,70 @@
 		status = "okay";
 		linux,contiguous-region = <&tzlog_bck_mem>;
 	};
+
+	sound {
+		status = "okay";
+		qcom,model = "msm8953-snd-card";
+		qcom,msm-mbhc-hphl-swh = <1>;
+		qcom,msm-mbhc-gnd-swh = <0>;
+		qcom,msm-hs-micbias-type = "external";
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS External", "Handset Mic",
+			"MIC BIAS External2", "Headset Mic",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
+			"AMIC2", "MIC BIAS Eternal2",
+			"AMIC3", "MIC BIAS External";
+		/delete-property/ qcom,cdc-us-euro-gpios;
+		/delete-property/ qcom,msm-micbias1-ext-cap;
+		/delete-property/ qcom,hdmi-dba-codec-rx;
+		/delete-property/ asoc-wsa-codec-names;
+		/delete-property/ asoc-wsa-codec-prefixes;
+
+		/delete-property/ msm-vdd-wsa-switch-supply;
+		/delete-property/ qcom,msm-vdd-wsa-switch-voltage;
+		/delete-property/ qcom,msm-vdd-wsa-switch-current;
+
+		qcom,msm-gpios =
+			"pri_i2s",
+			"comp_gpio";
+		qcom,pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"comp_gpio_act",
+			"comp_gpio_pri_i2s_act";
+		pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"comp_gpio_act",
+			"comp_gpio_pri_i2s_act";
+
+		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_comp_lines_sus
+			&cdc_pdm_lines_2_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_act &cdc_pdm_comp_lines_sus
+			&cdc_pdm_lines_2_act>;
+		pinctrl-2 = <&cdc_pdm_lines_sus &cdc_pdm_comp_lines_act
+			&cdc_pdm_lines_2_sus>;
+		pinctrl-3 = <&cdc_pdm_lines_act &cdc_pdm_comp_lines_act
+			&cdc_pdm_lines_2_act>;
+		/delete-property/ pinctrl-4;
+		/delete-property/ pinctrl-5;
+		/delete-property/ pinctrl-6;
+		/delete-property/ pinctrl-7;
+		/delete-property/ pinctrl-8;
+		/delete-property/ pinctrl-9;
+		/delete-property/ pinctrl-10;
+		/delete-property/ pinctrl-11;
+		/delete-property/ pinctrl-12;
+		/delete-property/ pinctrl-13;
+		/delete-property/ pinctrl-14;
+		/delete-property/ pinctrl-15;
+
+		asoc-codec = <&stub_codec>, <&pm8953_diangu_dig>;
+		asoc-codec-names = "msm-stub-codec.1", "cajon_codec";
+	};
 };
 
 &pm8953_gpios {
@@ -689,7 +753,7 @@
 };
 
 &slim_msm {
-	status = "ok";
+	status = "disabled";
 	/delete-node/ tasha_codec;
 	marley-codec {
 		compatible = "cirrus,marley-slim-audio";
@@ -823,34 +887,6 @@
 			compatible = "qcom,leds-atc";
 			linux,name = "charging";
 			qcom,ctrl-reg = <0x243>;
-		};
-	};
-};
-
-&tlmm {
-	cdc-pdm-lines {
-		cdc_pdm_lines_act: pdm_lines_on {
-			mux {
-				/delete-property/ pins;
-				pins = "gpio73";
-			};
-
-			config {
-				/delete-property/ pins;
-				pins = "gpio73";
-			};
-		};
-
-		cdc_pdm_lines_sus: pdm_lines_off {
-			mux {
-				/delete-property/ pins;
-				pins = "gpio73";
-			};
-
-			config {
-				/delete-property/ pins;
-				pins = "gpio73";
-			};
 		};
 	};
 };
