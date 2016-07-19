@@ -4329,9 +4329,19 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					(y <= rmi4_data->clipa->ybr_clip);
 
 				if (inside == rmi4_data->clipa->inversion) {
+					/* Touch might still be active, but we're */
+					/* sending release anyway to avoid touch  */
+					/* stuck at the last reported position.   */
+					/* Driver will suppress reporting to UI   */
+					/* touch events from within clipping area */
+					input_mt_slot(rmi4_data->input_dev, finger);
+					input_mt_report_slot_state(rmi4_data->input_dev,
+					MT_TOOL_FINGER, 0);
+
 					dev_dbg(&rmi4_data->i2c_client->dev,
-						"%d,%d belong clipping area\n",
-						x, y);
+						"finger id-%d (%d,%d) within clipping area\n",
+						finger, x, y);
+
 					continue;
 				}
 			}
