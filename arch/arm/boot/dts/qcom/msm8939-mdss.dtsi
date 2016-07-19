@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -34,9 +34,16 @@
 		qcom,mdss-ib-factor = <2 1>;		/* 2 times    */
 		qcom,mdss-ib-factor-cmd = <10 6>;	/* 1.6 times */
 		qcom,mdss-clk-factor = <105 100>;	/* 1.05 times */
-		qcom,max-bandwidth-low-kbps = <2000000>;
-		qcom,max-bandwidth-high-kbps = <2000000>;
-		qcom,max-bandwidth-per-pipe-kbps = <1500000>;
+		qcom,max-bandwidth-low-kbps = <2500000>;
+		qcom,max-bandwidth-high-kbps = <2500000>;
+		qcom,max-bandwidth-per-pipe-kbps = <1 2100000>,	/* Default */
+                                                   <2 1500000>;	/* Camera */
+
+		/* Bandwidth limit settings */
+		qcom,max-bw-settings =	<1 2500000>,	/* Default */
+					<2 2100000>,	/* Camera */
+					<4 1900000>,	/* HFlip */
+					<8 1900000>;	/* VFlip */
 
 		/* VBIF QoS remapper settings*/
 		qcom,mdss-vbif-qos-rt-setting = <2 2 2 2>;
