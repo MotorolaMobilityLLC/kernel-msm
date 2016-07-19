@@ -1520,6 +1520,10 @@
 	};
 };
 
+&mdss_hdmi_pll {
+	compatible = "qcom,mdss_hdmi_pll_8996_v3_1p8";
+};
+
 &mdss_hdmi_tx {
 	qcom,display-id = "secondary";
 	qcom,hdmi-tx-hpd = <&tlmm 34 0>;
