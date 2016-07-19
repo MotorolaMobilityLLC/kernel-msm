@@ -97,15 +97,6 @@
 		/delete-property/ pinctrl-6;
 		/delete-property/ pinctrl-7;
 	};
-
-	qcom,msm-dai-mi2s {
-		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
-			status = "disabled";
-		};
-		dai_mi2s5: qcom,msm-dai-q6-mi2s-quin {
-			status = "disabled";
-		};
-	};
 };
 
 &i2c_2 {
