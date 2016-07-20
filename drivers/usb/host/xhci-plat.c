@@ -224,6 +224,11 @@ static int xhci_plat_probe(struct platform_device *pdev)
 		hcd->self.no_sg_constraint = 0;
 	}
 
+	if (pdata && pdata->panic_on_wdog) {
+		xhci_dbg(xhci, "panic on watchdog\n");
+		xhci->quirks |= XHCI_PANIC_ON_WDOG;
+	}
+
 	hcd_to_bus(xhci->shared_hcd)->skip_resume = true;
 	/*
 	 * Set the xHCI pointer before xhci_plat_setup() (aka hcd_driver.reset)
