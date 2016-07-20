@@ -3791,6 +3791,7 @@ static ssize_t synaptics_rmi4_mod_store(struct device *dev,
 				clipping_is_active = true;
 			}
 			kfree(cm->clipa);
+			cm->clipa = NULL;
 		}
 
 		if (clear_only) {
