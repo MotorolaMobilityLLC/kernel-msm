@@ -886,6 +886,8 @@ void xhci_stop_endpoint_command_watchdog(unsigned long arg)
 	usb_hc_died(xhci_to_hcd(xhci)->primary_hcd);
 	xhci_dbg_trace(xhci, trace_xhci_dbg_cancel_urb,
 			"xHCI host controller is dead.");
+	if (xhci->quirks & XHCI_PANIC_ON_WDOG)
+		panic("panic triggered - HC died");
 }
 
 
