@@ -226,19 +226,19 @@ static struct smtc_reg_data sx9310_i2c_reg_setup[] = {
 
 static struct _buttonInfo psmtcButtons[] = {
 	{
-		.keycode = KEY_0,
+		.keycode = KEY_CAP_CS0,
 		.mask = SX9310_TCHCMPSTAT_TCHSTAT0_FLAG,
 	},
 	{
-		.keycode = KEY_1,
+		.keycode = KEY_CAP_CS1,
 		.mask = SX9310_TCHCMPSTAT_TCHSTAT1_FLAG,
 	},
 	{
-		.keycode = KEY_2,
+		.keycode = KEY_CAP_CS2,
 		.mask = SX9310_TCHCMPSTAT_TCHSTAT2_FLAG,
 	},
 	{
-		.keycode = KEY_3,
+		.keycode = KEY_CAP_COMB,
 		.mask = SX9310_TCHCMPSTAT_TCHCOMB_FLAG,
 	},
 };
