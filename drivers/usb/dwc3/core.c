@@ -897,6 +897,8 @@ static int dwc3_probe(struct platform_device *pdev)
 
 		dwc->xhci_limit_arbitrary_sg = of_property_read_bool(node,
 					"xhci,limit-arbitrary-sg");
+		dwc->xhci_panic_on_wdog = of_property_read_bool(node,
+					"xhci,panic-on-wdog");
 
 		dwc->num_normal_event_buffers = 1;
 		ret = of_property_read_u32(node,
