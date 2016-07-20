@@ -334,7 +334,8 @@ dtb-$(CONFIG_ARCH_MSM8953) += msm8953-potter-p0a.dtb \
 	msm8953-potter-p1a.dtb \
 	msm8953-potter-p1b.dtb
 
-dtb-$(CONFIG_ARCH_MSM8937) += msm8937-cedric-p1.dtb
+dtb-$(CONFIG_ARCH_MSM8937) += msm8937-cedric-p1.dtb \
+	msm8937-cedric-p2.dtb
 
 dtb-$(CONFIG_ARCH_MDM9607) += mdm9607-rumi.dtb \
 	mdm9607-cdp.dtb \
