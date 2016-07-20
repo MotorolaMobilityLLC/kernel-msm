@@ -987,6 +987,7 @@ struct dwc3 {
 	int			last_fifo_depth;
 	u8			ctrl_num;
 	unsigned		xhci_limit_arbitrary_sg:1;
+	unsigned		xhci_panic_on_wdog:1;
 };
 
 /* -------------------------------------------------------------------------- */
