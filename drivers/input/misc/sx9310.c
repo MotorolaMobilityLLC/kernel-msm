@@ -306,7 +306,7 @@ static void touchProcess(psx93XX_t this)
 			case IDLE: /* Button is not being touched! */
 				if (((i & pCurrentButton->mask) == pCurrentButton->mask)) {
 					/* User pressed button */
-					dev_info(this->pdev, "cap button %d touched\n", counter);
+					dev_dbg(this->pdev, "cap button %d touched\n", counter);
 					input_report_key(input, pCurrentButton->keycode, 1);
 					pCurrentButton->state = ACTIVE;
 				} else {
@@ -316,7 +316,7 @@ static void touchProcess(psx93XX_t this)
 			case ACTIVE: /* Button is being touched! */
 				if (((i & pCurrentButton->mask) != pCurrentButton->mask)) {
 					/* User released button */
-					dev_info(this->pdev, "cap button %d released\n", counter);
+					dev_dbg(this->pdev, "cap button %d released\n", counter);
 					input_report_key(input, pCurrentButton->keycode, 0);
 					pCurrentButton->state = IDLE;
 				} else {
