@@ -754,6 +754,12 @@ struct input_keymap_entry {
 #define KEY_KBDINPUTASSIST_ACCEPT		0x264
 #define KEY_KBDINPUTASSIST_CANCEL		0x265
 
+/* Cap sensor report key, including cs0, cs1, cs2 and comb */
+#define KEY_CAP_CS0		0x270
+#define KEY_CAP_CS1		0x271
+#define KEY_CAP_CS2		0x272
+#define KEY_CAP_COMB		0x272
+
 #define BTN_TRIGGER_HAPPY		0x2c0
 #define BTN_TRIGGER_HAPPY1		0x2c0
 #define BTN_TRIGGER_HAPPY2		0x2c1
