@@ -55,6 +55,10 @@ qcom,mdss-dsi-off-command = [
 	05 00 00 00 00 00 01 28		/* display_off */
 	05 01 00 00 78 00 01 10];	/* enter sleep mode */
 
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
+qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
+
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
