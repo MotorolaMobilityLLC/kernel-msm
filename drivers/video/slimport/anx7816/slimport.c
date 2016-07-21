@@ -31,9 +31,11 @@
 #include <linux/mod_display.h>
 #include <linux/mod_display_ops.h>
 
+#ifdef SP_REGISTER_SET_TEST
 /* Enable or Disable HDCP by default */
 /* hdcp_enable = 1: Enable,  0: Disable */
 static int hdcp_enable = 1;
+#endif
 
 /* HDCP switch for external block*/
 /* external_block_en = 1: enable, 0: disable*/
@@ -312,6 +314,7 @@ err:
 	return rc;
 }*/
 
+#ifdef SP_REGISTER_SET_TEST
 ssize_t slimport7816_rev_check_store(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count)
@@ -368,6 +371,7 @@ ssize_t sp_external_block_store(struct device *dev,
 	external_block_en = val;
 	return count;
 }
+#endif
 
 #ifdef MML_DYNAMIC_IRQ_SUPPORT
 /* sysfs interface : Dynamic IRQ Enable Manual Control */
@@ -405,6 +409,7 @@ ssize_t sp_irq_enable_store(struct device *dev,
 }
 #endif
 
+#ifdef SP_REGISTER_SET_TEST
 /*sysfs  interface : i2c_master_read_reg, i2c_master_write_reg
 anx7730 addr id:: DP_rx(0x50:0, 0x8c:1) HDMI_tx(0x72:5, 0x7a:6, 0x70:7)
 ex:read ) 05df   = read:0  id:5 reg:0xdf
@@ -615,8 +620,6 @@ static ssize_t anx_dpcd_store(struct device *dev,
 	return ret;
 }
 
-
-#ifdef SP_REGISTER_SET_TEST	/*//Slimport test*/
 /*sysfs read interface*/
 static ssize_t ctrl_reg0_show(struct device *dev,
 			struct device_attribute *attr, char *buf)
@@ -871,20 +874,24 @@ static ssize_t ctrl_reg18_store(struct device *dev,
 #endif
 /* for debugging */
 static struct device_attribute slimport_device_attrs[] = {
+#ifdef SP_REGISTER_SET_TEST     /*slimport test*/
 	__ATTR(rev_check, S_IRUGO | S_IWUSR, NULL,
 	       slimport7816_rev_check_store),
 	__ATTR(hdcp, S_IRUGO | S_IWUSR, sp_hdcp_feature_show,
 	       sp_hdcp_feature_store),
 	__ATTR(hdcp_switch, S_IRUGO | S_IWUSR, sp_external_block_show,
 	       sp_external_block_store),
+#endif
+
 #ifdef MML_DYNAMIC_IRQ_SUPPORT
 	__ATTR(irq_enable, S_IRUGO | S_IWUSR, sp_irq_enable_show,
 	       sp_irq_enable_store),
 #endif
+#ifdef SP_REGISTER_SET_TEST     /*slimport test*/
 	__ATTR(anx7730, S_IRUGO | S_IWUSR, NULL, anx7730_write_reg_store),
 	__ATTR(anx7816, S_IRUGO | S_IWUSR, NULL, anx7816_write_reg_store),
 	__ATTR(DPCD, S_IRUGO | S_IWUSR, NULL, anx_dpcd_store),
-#ifdef SP_REGISTER_SET_TEST	/*//slimport test*/
+
 	__ATTR(ctrl_reg0, S_IRUGO | S_IWUSR, ctrl_reg0_show, ctrl_reg0_store),
 	__ATTR(ctrl_reg10, S_IRUGO | S_IWUSR, ctrl_reg10_show,
 	       ctrl_reg10_store),
