@@ -2369,9 +2369,8 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 				"qcom,mdss-dsi-panel-on-check-value",
 				&pinfo->disp_on_check_val);
 	if (rc) {
-		if (ctrl->status_cmds_rlen == 1 &&
-			ctrl->status_value &&
-			ctrl->status_value[0] != 0)
+		if (ctrl->status_cmds.cmd_cnt == 1 && ctrl->status_value &&
+				ctrl->status_value[0] != 0)
 			pinfo->disp_on_check_val = ctrl->status_value[0];
 		else
 			pinfo->disp_on_check_val = 0x9c;
