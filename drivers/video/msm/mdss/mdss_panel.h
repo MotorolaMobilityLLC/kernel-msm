@@ -80,9 +80,17 @@ enum acl_state {
 	ACL_STATE_NUM
 };
 
+enum cabc_mode {
+	CABC_UI_MODE = 0,
+	CABC_MV_MODE,
+	CABC_DIS_MODE,
+	CABC_MODE_NUM
+};
+
 enum panel_param_id {
 	PARAM_HBM_ID = 0,
 	PARAM_ACL_ID,
+	PARAM_CABC_ID,
 	PARAM_ID_NUM
 };
 
