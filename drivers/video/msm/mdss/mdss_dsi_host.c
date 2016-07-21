@@ -1184,7 +1184,7 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	 * by the panel. Success value is greater than zero and failure
 	 * case returns zero.
 	 */
-	if (ret == ctrl_pdata->status_cmds_rlen) {
+	if (ret > 0) {
 		if (!mdss_dsi_sync_wait_enable(ctrl_pdata) ||
 			mdss_dsi_sync_wait_trigger(ctrl_pdata)) {
 			ret = ctrl_pdata->check_read_status(ctrl_pdata);
@@ -1193,9 +1193,7 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		else if (sctrl_pdata)
 			ret = ctrl_pdata->check_read_status(sctrl_pdata);
 	} else {
-		pr_err("%s: Read status register returned error, ret = %d\n",
-			__func__, ret);
-		ret = 0;
+		pr_err("%s: Read status register returned error\n", __func__);
 	}
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, ctrl_pdata->dsi_clk_handle,
