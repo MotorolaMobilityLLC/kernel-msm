@@ -49,10 +49,11 @@
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,actuator-src = <&actuator0>;
 		cam_vio-supply = <&pm8953_l10>;
-		qcom,cam-vreg-name = "cam_vio";
-		qcom,cam-vreg-min-voltage = <1800000>;
-		qcom,cam-vreg-max-voltage = <1800000>;
-		qcom,cam-vreg-op-mode = <1800000>;
+		cam_vaf-supply = <&pm8953_l17>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vaf";
+		qcom,cam-vreg-min-voltage = <1800000 2850000>;
+		qcom,cam-vreg-max-voltage = <1800000 2850000>;
+		qcom,cam-vreg-op-mode = <1800000 1000000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_default
