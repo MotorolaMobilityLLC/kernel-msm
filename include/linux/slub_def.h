@@ -157,6 +157,9 @@ static __always_inline void *kmalloc_large(size_t size, gfp_t flags)
 
 static __always_inline void *kmalloc(size_t size, gfp_t flags)
 {
+	if (IS_ENABLED(CONFIG_FORCE_KMALLOC_FROM_DMA_ZONE))
+		flags |= GFP_DMA;
+
 	if (__builtin_constant_p(size)) {
 		if (size > KMALLOC_MAX_CACHE_SIZE)
 			return kmalloc_large(size, flags);
@@ -194,6 +197,9 @@ kmem_cache_alloc_node_trace(struct kmem_cache *s,
 
 static __always_inline void *kmalloc_node(size_t size, gfp_t flags, int node)
 {
+	if (IS_ENABLED(CONFIG_FORCE_KMALLOC_FROM_DMA_ZONE))
+		flags |= GFP_DMA;
+
 	if (__builtin_constant_p(size) &&
 		size <= KMALLOC_MAX_CACHE_SIZE && !(flags & GFP_DMA)) {
 		int index = kmalloc_index(size);
