@@ -35,7 +35,6 @@ struct mot_dba {
 	struct msm_dba_device_info dev_info;
 	struct mutex ops_mutex;
 
-	int gpio_sel_dsi;
 	int gpio_sel_dsi_val;
 };
 
@@ -335,32 +334,12 @@ static int mot_dba_panel_parse_dt(struct platform_device *pdev,
 
 	pr_debug("%s+\n", __func__);
 
-	pdata->gpio_sel_dsi = of_get_named_gpio(pdev->dev.of_node,
-					"mot_dba,sel-dsi-gpio", 0);
-	if (!gpio_is_valid(pdata->gpio_sel_dsi)) {
-		pr_err("%s: can not find gpio_sel_dsi\n", __func__);
-		goto exit;
-	}
-
-	ret = of_property_read_u32(pdev->dev.of_node, "mot_dba,sel-dsi-val",
-								&temp_val);
-	if (ret) {
-		pr_err("%s: failed to find mot_dba,sel-dsi-val. ret =%d\n",
-						__func__, ret);
-		goto exit;
-	} else
+	if (of_property_read_u32(pdev->dev.of_node, "mot_dba,sel-dsi-val",
+				 &temp_val))
+		pr_info("%s: failed to find mot_dba,sel-dsi-val\n", __func__);
+	else
 		pdata->gpio_sel_dsi_val = temp_val;
 
-	ret = gpio_request_one(pdata->gpio_sel_dsi, GPIOF_OUT_INIT_LOW,
-							"mot_dba_sel_dsi");
-	if (ret) {
-		pr_err("%s: failed to gpio_sel_dsi. ret = %d\n", __func__, ret);
-		goto exit;
-	}
-
-	gpio_export(pdata->gpio_sel_dsi, false);
-	gpio_direction_output(pdata->gpio_sel_dsi, 0);
-exit:
 	return ret;
 }
 
@@ -427,7 +406,7 @@ int mot_dba_device_enable(int mod_display_type)
 		pr_err("%s: Unable to find DBA driver type = %d\n", __func__,
 				mod_display_type);
 		ret = -EINVAL;
-	} else if (gpio_is_valid(g_pdata->gpio_sel_dsi)) {
+	} else if (g_pdata->gpio_sel_dsi_val >= 0) {
 		res = qseecom_start_app(&qseecom_handle, "jslr", SZ_16K);
 		if (res < 0) {
 			pr_err("error loading jslr\n");
@@ -469,7 +448,10 @@ int mot_dba_device_enable(int mod_display_type)
 				qseecom_shutdown_app(&qseecom_handle);
 			}
 		}
+	} else {
+		pr_info("%s: gpio_sel_dsi_val not set\n", __func__);
 	}
+
 exit:
 	mutex_unlock(&list_lock);
 	return ret;
@@ -602,6 +584,7 @@ static int mot_dba_probe(struct platform_device *pdev)
 
 	pdata->dev_info.instance_id = 0;
 
+	pdata->gpio_sel_dsi_val = -1;
 	ret = mot_dba_panel_parse_dt(pdev, pdata);
 	if (ret) {
 		pr_err("%s: failed to parse dt. ret = %d\n", __func__, ret);
