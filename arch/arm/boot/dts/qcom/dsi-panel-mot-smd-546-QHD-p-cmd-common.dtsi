@@ -92,10 +92,14 @@ qcom,mdss-dsi-off-command = [
 
 qcom,mdss-dsi-hbm-on-command = [
 	15 01 00 00 00 00 02 53 e0];
+qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-hbm-off-command = [
 	15 01 00 00 00 00 02 53 20];
+qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-acl-on-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-acl-on-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-acl-off-command = [15 01 00 00 00 00 02 55 00];
+qcom,mdss-dsi-acl-off-command-state = "dsi_hs_mode";
 
 qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
