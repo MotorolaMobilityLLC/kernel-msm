@@ -80,7 +80,7 @@
 	sound {
 		/delete-property/ qcom,cdc-us-euro-gpios;
 		/delete-property/ qcom,msm-micbias1-ext-cap;
-
+		/delete-property/ qcom,msm-micbias2-ext-cap;
 		qcom,msm-gpios =
 			"pri_i2s";
 		qcom,pinctrl-names =
