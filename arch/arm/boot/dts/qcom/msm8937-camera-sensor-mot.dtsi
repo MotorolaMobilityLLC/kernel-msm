@@ -70,25 +70,27 @@
 		compatible = "qcom,eeprom";
 		reg = <0x01>;
 		cam_vdig-supply = <&pm8937_l23>;
-		cam_vana-supply = <&pm8937_l22>;
 		cam_vio-supply = <&pm8937_l6>;
-		qcom,cam-vreg-name = "cam_vdig", "cam_vana", "cam_vio";
-		qcom,cam-vreg-min-voltage = <1200000 2800000 1800000>;
-		qcom,cam-vreg-max-voltage = <1200000 2800000 1800000>;
-		qcom,cam-vreg-op-mode = <100000 100000 100000>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
+		qcom,cam-vreg-min-voltage = <1200000 1800000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000>;
+		qcom,cam-vreg-op-mode = <100000 100000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk2_default
-			&cam_sensor_front1_default>;
+				&cam_sensor_front1_default>;
 		pinctrl-1 = <&cam_sensor_mclk2_sleep
-					&cam_sensor_front1_sleep>;
+				&cam_sensor_front1_sleep>;
 		gpios = <&tlmm 28 0>,
+			<&tlmm 27 0>,
 			<&tlmm 40 0>,
 			<&tlmm 39 0>;
-		qcom,gpio-reset = <1>;
-		qcom,gpio-vana = <2>;
-		qcom,gpio-req-tbl-num = <0 1 2>;
-		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-vio = <1>;
+		qcom,gpio-reset = <2>;
+		qcom,gpio-vana = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+			"CAM_VIO2",
 			"CAM_RESET2",
 			"CAM_VANA2";
 		qcom,cci-master = <0>;
