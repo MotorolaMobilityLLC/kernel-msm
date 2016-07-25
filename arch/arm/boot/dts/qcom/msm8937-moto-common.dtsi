@@ -380,7 +380,7 @@
 		status = "okay";
 		qcom,model = "msm8952-snd-card";
 		qcom,msm-mbhc-hphl-swh = <1>;
-		qcom,msm-mbhc-gnd-swh = <0>;
+		qcom,msm-mbhc-gnd-swh = <1>;
 		qcom,msm-hs-micbias-type = "internal";
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
