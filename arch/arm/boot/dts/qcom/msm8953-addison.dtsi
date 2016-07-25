@@ -112,9 +112,6 @@
 		compatible = "mmi,mot_dba";
 		status = "ok";
 
-		pinctrl-names = "default";
-		pinctrl-0 = <&mot_dba_sel_dsi_active>;
-		mot_dba,sel-dsi-gpio = <&tlmm 111 0x0>;
 		mot_dba,sel-dsi-val = <0>;
 	};
 	/delete-node/ eldo2;
