@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -411,7 +411,7 @@ static int diag_process_single_dci_pkt(unsigned char *buf, int len,
 	uint8_t cmd_code = 0;
 
 	if (!buf || len < 0) {
-		pr_err("diag: Invalid input in %s, buf: %p, len: %d\n",
+		pr_err("diag: Invalid input in %s, buf: %pK, len: %d\n",
 			__func__, buf, len);
 		return -EIO;
 	}
@@ -759,7 +759,7 @@ static int diag_dci_remove_req_entry(unsigned char *buf, int len,
 {
 	uint16_t rsp_count = 0, delayed_rsp_id = 0;
 	if (!buf || len <= 0 || !entry) {
-		pr_err("diag: In %s, invalid input buf: %p, len: %d, entry: %p\n",
+		pr_err("diag: In %s, invalid input buf: %pK, len: %d, entry: %pK\n",
 			__func__, buf, len, entry);
 		return -EIO;
 	}
@@ -813,7 +813,7 @@ static void dci_process_ctrl_status(unsigned char *buf, int len, int token)
 	int peripheral_mask, status;
 
 	if (!buf || (len < sizeof(struct diag_ctrl_dci_status))) {
-		pr_err("diag: In %s, invalid buf %p or length: %d\n",
+		pr_err("diag: In %s, invalid buf %pK or length: %d\n",
 		       __func__, buf, len);
 		return;
 	}
@@ -1321,6 +1321,7 @@ void diag_dci_channel_open_work(struct work_struct *work)
 	 * which log entries in the cumulative logs that need
 	 * to be updated on the peripheral.
 	 */
+	mutex_lock(&driver->dci_mutex);
 	list_for_each_safe(start, temp, &driver->dci_client_list) {
 		entry = list_entry(start, struct diag_dci_client_tbl, track);
 		if (entry->client_info.token != DCI_LOCAL_PROC)
@@ -1332,6 +1333,7 @@ void diag_dci_channel_open_work(struct work_struct *work)
 			client_log_mask_ptr += 514;
 		}
 	}
+	mutex_unlock(&driver->dci_mutex);
 
 	mutex_lock(&dci_log_mask_mutex);
 	/* Update the appropriate dirty bits in the cumulative mask */
@@ -1935,7 +1937,7 @@ int diag_process_dci_transaction(unsigned char *buf, int len)
 			mutex_unlock(&driver->dci_mutex);
 			return -ENOMEM;
 		}
-		pr_debug("diag: head of dci log mask %p\n", head_log_mask_ptr);
+		pr_debug("diag: head of dci log mask %pK\n", head_log_mask_ptr);
 		count = 0; /* iterator for extracting log codes */
 
 		while (count < num_codes) {
@@ -1965,7 +1967,7 @@ int diag_process_dci_transaction(unsigned char *buf, int len)
 			while (log_mask_ptr && (offset < DCI_LOG_MASK_SIZE)) {
 				if (*log_mask_ptr == equip_id) {
 					found = 1;
-					pr_debug("diag: find equip id = %x at %p\n",
+					pr_debug("diag: find equip id = %x at %pK\n",
 						 equip_id, log_mask_ptr);
 					break;
 				} else {
@@ -2049,7 +2051,7 @@ int diag_process_dci_transaction(unsigned char *buf, int len)
 			mutex_unlock(&driver->dci_mutex);
 			return -ENOMEM;
 		}
-		pr_debug("diag: head of dci event mask %p\n", event_mask_ptr);
+		pr_debug("diag: head of dci event mask %pK\n", event_mask_ptr);
 		count = 0; /* iterator for extracting log codes */
 		while (count < num_codes) {
 			if (read_len >= USER_SPACE_DATA) {
@@ -2813,13 +2815,12 @@ int diag_dci_deinit_client(struct diag_dci_client_tbl *entry)
 		return DIAG_DCI_NOT_SUPPORTED;
 
 	token = entry->client_info.token;
-
-	mutex_lock(&driver->dci_mutex);
 	/*
 	 * Remove the entry from the list before freeing the buffers
 	 * to ensure that we don't have any invalid access.
 	 */
-	list_del(&entry->track);
+	if (!list_empty(&entry->track))
+		list_del(&entry->track);
 	driver->num_dci_client--;
 	/*
 	 * Clear the client's log and event masks, update the cumulative
@@ -2848,7 +2849,8 @@ int diag_dci_deinit_client(struct diag_dci_client_tbl *entry)
 		req_entry = list_entry(start, struct dci_pkt_req_entry_t,
 				       track);
 		if (req_entry->client_id == entry->client_info.client_id) {
-			list_del(&req_entry->track);
+			if (!list_empty(&req_entry->track))
+				list_del(&req_entry->track);
 			kfree(req_entry);
 		}
 	}
@@ -2857,7 +2859,8 @@ int diag_dci_deinit_client(struct diag_dci_client_tbl *entry)
 	mutex_lock(&entry->write_buf_mutex);
 	list_for_each_entry_safe(buf_entry, temp, &entry->list_write_buf,
 							buf_track) {
-		list_del(&buf_entry->buf_track);
+		if (!list_empty(&buf_entry->buf_track))
+			list_del(&buf_entry->buf_track);
 		if (buf_entry->buf_type == DCI_BUF_SECONDARY) {
 			mutex_lock(&buf_entry->data_mutex);
 			diagmem_free(driver, buf_entry->data, POOL_TYPE_DCI);
@@ -2920,8 +2923,6 @@ int diag_dci_deinit_client(struct diag_dci_client_tbl *entry)
 	}
 	queue_work(driver->diag_real_time_wq, &driver->diag_real_time_work);
 
-	mutex_unlock(&driver->dci_mutex);
-
 	return DIAG_DCI_NO_ERROR;
 }
 
@@ -2933,7 +2934,7 @@ int diag_dci_write_proc(uint8_t peripheral, int pkt_type, char *buf, int len)
 	if (!buf || peripheral >= NUM_PERIPHERALS || len < 0 ||
 	    !(driver->feature[PERIPHERAL_MODEM].rcvd_feature_mask)) {
 		DIAG_LOG(DIAG_DEBUG_DCI,
-			"buf: 0x%p, p: %d, len: %d, f_mask: %d\n",
+			"buf: 0x%pK, p: %d, len: %d, f_mask: %d\n",
 				buf, peripheral, len,
 				driver->feature[peripheral].rcvd_feature_mask);
 		return -EINVAL;
