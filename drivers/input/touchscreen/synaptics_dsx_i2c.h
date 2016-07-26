@@ -580,6 +580,10 @@ struct synaptics_rmi4_data {
 	struct mutex rmi4_exp_init_mutex;
 	int pm_qos_latency;
 	struct pm_qos_request pm_qos_irq;
+
+	bool touch_data_contiguous;
+	uint8_t *touch_data;
+	uint16_t touch_data_size;
 };
 
 struct time_keeping {
