@@ -70,6 +70,7 @@
 
 #define QPNP_FG_DEV_NAME "qcom,qpnp-fg"
 #define MEM_IF_TIMEOUT_MS	5000
+#define FG_CYCLE_MS		1500
 #define BUCKET_COUNT		8
 #define BUCKET_SOC_PCT		(256 / BUCKET_COUNT)
 
@@ -2784,11 +2785,8 @@ static void fg_cap_learning_work(struct work_struct *work)
 		goto fail;
 	}
 
-	if (chip->wa_flag & USE_CC_SOC_REG) {
-		mutex_unlock(&chip->learning_data.learning_lock);
-		fg_relax(&chip->capacity_learning_wakeup_source);
-		return;
-	}
+	if (chip->wa_flag & USE_CC_SOC_REG)
+		goto fail;
 
 	fg_mem_lock(chip);
 
@@ -2819,6 +2817,8 @@ static void fg_cap_learning_work(struct work_struct *work)
 		pr_info("total_cc_uah = %lld\n", chip->learning_data.cc_uah);
 
 fail:
+	if (chip->wa_flag & USE_CC_SOC_REG)
+		fg_relax(&chip->capacity_learning_wakeup_source);
 	mutex_unlock(&chip->learning_data.learning_lock);
 	return;
 
@@ -5660,19 +5660,23 @@ static int bcl_trim_workaround(struct fg_chip *chip)
 	return 0;
 }
 
-#define FG_ALG_SYSCTL_1	0x4B0
-#define SOC_CNFG	0x450
-#define SOC_DELTA_OFFSET	3
-#define DELTA_SOC_PERCENT	1
-#define I_TERM_QUAL_BIT		BIT(1)
-#define PATCH_NEG_CURRENT_BIT	BIT(3)
+#define FG_ALG_SYSCTL_1			0x4B0
 #define KI_COEFF_PRED_FULL_ADDR		0x408
-#define KI_COEFF_PRED_FULL_4_0_MSB	0x88
-#define KI_COEFF_PRED_FULL_4_0_LSB	0x00
 #define TEMP_FRAC_SHIFT_REG		0x4A4
 #define FG_ADC_CONFIG_REG		0x4B8
+#define KI_COEFF_PRED_FULL_4_0_MSB	0x88
+#define KI_COEFF_PRED_FULL_4_0_LSB	0x00
 #define FG_BCL_CONFIG_OFFSET		0x3
+#define ALERT_CFG_OFFSET		3
+#define I_TERM_QUAL_BIT			BIT(1)
+#define PATCH_NEG_CURRENT_BIT		BIT(3)
 #define BCL_FORCED_HPM_IN_CHARGE	BIT(2)
+#define IRQ_USE_VOLTAGE_HYST_BIT	BIT(0)
+#define EMPTY_FROM_VOLTAGE_BIT		BIT(1)
+#define EMPTY_FROM_SOC_BIT		BIT(2)
+#define EMPTY_SOC_IRQ_MASK		(IRQ_USE_VOLTAGE_HYST_BIT | \
+					EMPTY_FROM_SOC_BIT | \
+					EMPTY_FROM_VOLTAGE_BIT)
 static int fg_common_hw_init(struct fg_chip *chip)
 {
 	int rc;
@@ -5750,6 +5754,27 @@ static int fg_common_hw_init(struct fg_chip *chip)
 			pr_err("failed to write BATT_TEMP_OFFSET rc=%d\n", rc);
 			return rc;
 		}
+	}
+
+	/*
+	 * Clear bits 0-2 in 0x4B3 and set them again to make empty_soc irq
+	 * trigger again.
+	 */
+	rc = fg_mem_masked_write(chip, FG_ALG_SYSCTL_1, EMPTY_SOC_IRQ_MASK,
+			0, ALERT_CFG_OFFSET);
+	if (rc) {
+		pr_err("failed to write to 0x4B3 rc=%d\n", rc);
+		return rc;
+	}
+
+	/* Wait for a FG cycle before enabling empty soc irq configuration */
+	msleep(FG_CYCLE_MS);
+
+	rc = fg_mem_masked_write(chip, FG_ALG_SYSCTL_1, EMPTY_SOC_IRQ_MASK,
+			EMPTY_SOC_IRQ_MASK, ALERT_CFG_OFFSET);
+	if (rc) {
+		pr_err("failed to write to 0x4B3 rc=%d\n", rc);
+		return rc;
 	}
 
 	return 0;
