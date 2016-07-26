@@ -477,6 +477,8 @@ static struct synaptics_rmi4_packet_reg f01_ctrl_reg_array[] = {
 	RMI4_REG_STATIC(9, f01_c9, 1),
 };
 
+static uint8_t f01_d1_buf[MAX_INTR_REGISTERS];
+
 static struct {
 	struct {
 		unsigned short saturation_cap;
@@ -4218,13 +4220,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int p;
 	int w;
 	int id;
-	static unsigned char active_touch_max_idx;
 	struct timespec hw_time = ktime_to_timespec(ktime_get());
 	struct f12_d1_type *finger_data;
 	struct synaptics_rmi4_packet_reg *reg_data_1 =
 			&rmi4_data->f12_data_registers_ptr->regs[F12_D1_IDX];
-	struct synaptics_rmi4_packet_reg *reg_data_15 =
-			&rmi4_data->f12_data_registers_ptr->regs[F12_D15_IDX];
+	struct f12_d1_type *finger_data_buf;
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
 	unsigned char number_of_fingers_actually_touching = 0;
 #endif
@@ -4235,55 +4235,25 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	} else
 		synaptics_dsx_resumeinfo_purgeoff(rmi4_data);
 
-	fingers_to_process = fhandler->num_of_data_points;
-	data_addr = fhandler->full_addr.data_base;
+	fingers_to_process = rmi4_data->num_of_fingers;
 
-	if (reg_data_15->offset != -1) {
-		int temp;
+	if (rmi4_data->touch_data_contiguous)
+		finger_data_buf = (struct f12_d1_type *)(rmi4_data->touch_data +
+			rmi4_data->num_of_intr_regs);
+	else {
+		data_addr = fhandler->full_addr.data_base;
+		data_size = fingers_to_process *
+			fhandler->size_of_data_register_block;
 		retval = synaptics_rmi4_i2c_read(rmi4_data,
-				data_addr + reg_data_15->offset,
-				f12_d15_0.attn,
-				sizeof(f12_d15_0));
+				data_addr + reg_data_1->offset,
+				reg_data_1->data,
+				data_size);
+
 		if (retval < 0)
 			return 0;
-
-		/* Start checking from the highest bit */
-		temp = reg_data_15->size - 1; /* Highest byte */
-		finger = (fingers_to_process - 1) % 8; /* Highest bit */
-		do {
-			if (f12_d15_0.attn[temp] & (1 << finger))
-				break;
-
-			if (finger) {
-				finger--;
-			} else {
-				temp--; /* Move to the next lower byte */
-				finger = 7;
-			}
-
-			fingers_to_process--;
-		} while (fingers_to_process);
-
-		pr_debug("fingers to process %d\n", fingers_to_process);
+		finger_data_buf = (struct f12_d1_type *)reg_data_1->data;
 	}
 
-	fingers_to_process = max(fingers_to_process, active_touch_max_idx);
-
-	if (fingers_to_process == 0) {
-		/* count release event */
-		events_cnt++;
-		synaptics_dsx_release_all(rmi4_data);
-		return 0;
-	}
-
-	data_size = fingers_to_process * fhandler->size_of_data_register_block;
-
-	retval = synaptics_rmi4_i2c_read(rmi4_data,
-			data_addr + reg_data_1->offset,
-			reg_data_1->data,
-			data_size);
-	if (retval < 0)
-		return 0;
 	/* count valid event */
 	events_cnt++;
 	if (reporting_stopped)
@@ -4298,7 +4268,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	if (touchxp.touchx)
 		mutex_lock(&touchxp.virtual_touch_mutex);
 
-	finger_data = (struct f12_d1_type *)reg_data_1->data;
+	finger_data = finger_data_buf;
 	for (finger = 0; finger < fingers_to_process; finger++, finger_data++) {
 		finger_status = finger_data->type_and_stylus;
 		if (finger_status == 0)
@@ -4307,7 +4277,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	}
 #endif
 
-	finger_data = (struct f12_d1_type *)reg_data_1->data;
+	finger_data = finger_data_buf;
 	for (finger = 0; finger < fingers_to_process; finger++, finger_data++) {
 		finger_status = finger_data->type_and_stylus;
 		if (finger_status) {
@@ -4380,7 +4350,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			input_mt_sync(rmi4_data->input_dev);
 #endif
 			touch_count++;
-			active_touch_max_idx = finger + 1;
 #ifdef TYPE_B_PROTOCOL
 		} else {
 			input_mt_slot(rmi4_data->input_dev, finger);
@@ -4397,7 +4366,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
 		touchxp.finger_down = 0;
 #endif
-		active_touch_max_idx = 0;
 #ifndef TYPE_B_PROTOCOL
 		input_mt_sync(rmi4_data->input_dev);
 #endif
@@ -4950,7 +4918,6 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
 	unsigned char touch_count = 0;
-	unsigned char intr[MAX_INTR_REGISTERS];
 	unsigned int intr_status_mask;
 	struct synaptics_rmi4_fn *fhandler;
 	struct synaptics_rmi4_exp_fn *exp_fhandler;
@@ -4964,8 +4931,8 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 	 */
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			rmi4_data->f01_data_base_addr + 1,
-			intr,
-			rmi4_data->num_of_intr_regs);
+			rmi4_data->touch_data,
+			rmi4_data->touch_data_size);
 	if (retval < 0)
 		return retval;
 
@@ -4976,14 +4943,15 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 	list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
 		if (fhandler->num_of_data_sources) {
 			if (fhandler->intr_mask &
-					intr[fhandler->intr_reg_num]) {
+				rmi4_data->touch_data[fhandler->intr_reg_num]) {
 				synaptics_rmi4_report_touch(rmi4_data,
 						fhandler, &touch_count);
 			}
 		}
 	}
 
-	batohui(&intr_status_mask, intr, rmi4_data->num_of_intr_regs);
+	batohui(&intr_status_mask, rmi4_data->touch_data,
+		rmi4_data->num_of_intr_regs);
 	/*
 	 * Go through external handlers list only when interrupt
 	 * is not handled by currently active internal functions.
@@ -4996,7 +4964,8 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 				if (exp_fhandler->inserted &&
 					(exp_fhandler->func_attn != NULL))
 					exp_fhandler->func_attn(
-							rmi4_data, intr[0]);
+						rmi4_data,
+						rmi4_data->touch_data[0]);
 			}
 		}
 		mutex_unlock(&exp_fn_ctrl.list_mutex);
@@ -5843,6 +5812,18 @@ static void synaptics_rmi4_scan_f01_reg_info(
 	}
 }
 
+struct synaptics_rmi4_fn *get_fhandler(struct synaptics_rmi4_data *rmi4_data,
+	unsigned char fn_number)
+{
+	struct synaptics_rmi4_fn *fhandler;
+	struct synaptics_rmi4_device_info *rmi =
+		&(rmi4_data->rmi4_mod_info);
+	list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
+		if (fhandler->fn_number == fn_number)
+			return fhandler;
+	}
+	return NULL;
+}
  /**
  * synaptics_rmi4_query_device()
  *
@@ -5869,6 +5850,10 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	struct f34_properties f34_query;
 	struct f34_properties_v2 f34_query_v2;
 	struct synaptics_rmi4_f01_device_status status;
+	int finger_data_addr;
+	int intr_status_addr;
+	int touch_data_size;
+	struct synaptics_rmi4_fn *f12_handler;
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
@@ -6086,6 +6071,54 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	dev_dbg(&rmi4_data->i2c_client->dev,
 			"%s: Number of interrupt registers = %d\n",
 			__func__, rmi4_data->num_of_intr_regs);
+
+	f12_handler = get_fhandler(rmi4_data, SYNAPTICS_RMI4_F12);
+	if (!f12_handler) {
+		rmi4_data->touch_data_contiguous = 0;
+		goto skip_f12_single_i2c_setup;
+	}
+
+	finger_data_addr = f12_handler->full_addr.data_base +
+		rmi4_data->f12_data_registers_ptr->regs[F12_D1_IDX].offset;
+	intr_status_addr = rmi4_data->f01_data_base_addr + 1;
+
+	/* is touch data contiguous? */
+	if (finger_data_addr !=
+			intr_status_addr + rmi4_data->num_of_intr_regs) {
+		rmi4_data->touch_data_contiguous = 0;
+		goto skip_f12_single_i2c_setup;
+	}
+
+	touch_data_size = rmi4_data->num_of_intr_regs +
+	rmi4_data->num_of_fingers * f12_handler->size_of_data_register_block;
+
+	/* size of contiguous block changed or not allocated? */
+	if (touch_data_size != rmi4_data->touch_data_size ||
+			!rmi4_data->touch_data) {
+		if (rmi4_data->touch_data &&
+				rmi4_data->touch_data != f01_d1_buf)
+			kfree(rmi4_data->touch_data);
+
+		rmi4_data->touch_data_size = touch_data_size;
+		rmi4_data->touch_data = kzalloc(rmi4_data->touch_data_size,
+			GFP_KERNEL);
+		if (rmi4_data->touch_data)
+			rmi4_data->touch_data_contiguous = 1;
+		else {
+			/* fall back to non-contigous handling */
+			rmi4_data->touch_data_contiguous = 0;
+			dev_err(&rmi4_data->i2c_client->dev,
+					"%s: Failed to alloc mem for touch_data\n",
+					__func__);
+		}
+	}
+
+skip_f12_single_i2c_setup:
+	if (!rmi4_data->touch_data_contiguous) {
+		rmi4_data->touch_data_size = rmi4_data->num_of_intr_regs;
+		rmi4_data->touch_data = f01_d1_buf;
+		pr_notice("touch interrupt status and finger data not contiguous\n");
+	}
 
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			rmi4_data->f01_query_base_addr,
