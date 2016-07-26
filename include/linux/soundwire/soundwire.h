@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,6 +28,14 @@ extern struct bus_type soundwire_type;
  * configurations of all devices
  */
 #define SWR_MAX_MSTR_PORT_NUM	(SWR_MAX_DEV_NUM * SWR_MAX_DEV_PORT_NUM)
+
+/* Indicates soundwire devices group information */
+enum {
+	SWR_GROUP_NONE = 0,
+	SWR_GROUP_12 = 12,
+	SWR_GROUP_13 = 13,
+	SWR_BROADCAST = 15,
+};
 
 /*
  * struct swr_port_info - represent soundwire frame shape
@@ -112,6 +120,7 @@ struct swr_reg {
  * @last_tid: size of table port_txn (can't grow beyond 256 since
  * tid is 8 bits)
  * @num_port: number of active ports on soundwire master
+ * @gr_sid: slave id used by the group for write operations
  * @connect_port: callback for configuration of soundwire port(s)
  * @disconnect_port: callback for disable of soundwire port(s)
  * @read: callback for soundwire slave register read
@@ -131,6 +140,7 @@ struct swr_master {
 	u8 last_tid;
 	u8 num_port;
 	u8 num_dev;
+	u8 gr_sid;
 	int (*connect_port)(struct swr_master *mstr, struct swr_params *txn);
 	int (*disconnect_port)(struct swr_master *mstr, struct swr_params *txn);
 	int (*read)(struct swr_master *mstr, u8 dev_num, u16 reg_addr,
@@ -141,6 +151,8 @@ struct swr_master {
 			  const void *buf, size_t len);
 	int (*get_logical_dev_num)(struct swr_master *mstr, u64 dev_id,
 				u8 *dev_num);
+	void (*slvdev_datapath_control)(struct swr_master *mstr, bool enable);
+	bool (*remove_from_group)(struct swr_master *mstr);
 };
 
 static inline struct swr_master *to_swr_master(struct device *dev)
@@ -159,6 +171,7 @@ static inline struct swr_master *to_swr_master(struct device *dev)
  * @dev: driver model representation of the device
  * @addr: represents "ea-addr" which is unique-id of soundwire slave
  * device
+ * @group_id: group id supported by the slave device
  */
 struct swr_device {
 	char name[SOUNDWIRE_NAME_SIZE];
@@ -168,6 +181,7 @@ struct swr_device {
 	u8               dev_num;
 	struct device    dev;
 	unsigned long    addr;
+	u8 group_id;
 };
 
 static inline struct swr_device *to_swr_device(struct device *dev)
@@ -270,6 +284,8 @@ extern int swr_connect_port(struct swr_device *dev, u8 *port_id, u8 num_port,
 extern int swr_disconnect_port(struct swr_device *dev,
 				u8 *port_id, u8 num_port);
 
+extern int swr_set_device_group(struct swr_device *swr_dev, u8 id);
+
 extern int swr_driver_register(struct swr_driver *drv);
 
 extern void swr_driver_unregister(struct swr_driver *drv);
@@ -290,4 +306,7 @@ extern int swr_device_down(struct swr_device *swr_dev);
 
 extern int swr_reset_device(struct swr_device *swr_dev);
 
+extern int swr_slvdev_datapath_control(struct swr_device *swr_dev, u8 dev_num,
+				       bool enable);
+extern int swr_remove_from_group(struct swr_device *dev, u8 dev_num);
 #endif /* _LINUX_SOUNDWIRE_H */
