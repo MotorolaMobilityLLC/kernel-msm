@@ -7849,6 +7849,13 @@ static int fg_memif_data_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
+static int fg_memif_dump_open(struct inode *inode, struct file *file)
+{
+	dbgfs_data.addr = RAM_OFFSET;
+	dbgfs_data.cnt = SRAM_DUMP_LEN;
+	return fg_memif_data_open(inode, file);
+}
+
 static int fg_memif_dfs_close(struct inode *inode, struct file *file)
 {
 	struct fg_trans *trans = file->private_data;
@@ -8123,6 +8130,12 @@ static const struct file_operations fg_memif_dfs_reg_fops = {
 	.write		= fg_memif_dfs_reg_write,
 };
 
+static const struct file_operations fg_memif_dfs_dump_fops = {
+	.open		= fg_memif_dump_open,
+	.release	= fg_memif_dfs_close,
+	.read		= fg_memif_dfs_reg_read,
+};
+
 /**
  * fg_dfs_create_fs: create debugfs file system.
  * @return pointer to root directory or NULL if failed to create fs
@@ -8209,6 +8222,15 @@ int fg_dfs_create(struct fg_chip *chip)
 							&fg_memif_dfs_reg_fops);
 	if (!file) {
 		pr_err("error creating 'data' entry\n");
+		goto err_remove_fs;
+	}
+
+	file = debugfs_create_file("sram_dump",
+				   S_IFREG | S_IWUSR | S_IRUGO,
+				   root, chip,
+				   &fg_memif_dfs_dump_fops);
+	if (!file) {
+		pr_err("Couldn't create force dump file\n");
 		goto err_remove_fs;
 	}
 
