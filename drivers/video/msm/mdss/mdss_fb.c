@@ -1348,9 +1348,8 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 			if (mfd->mdp.ad_calc_bl)
 				(*mfd->mdp.ad_calc_bl)(mfd, temp, &temp,
 								&bl_notify);
-			if (bl_notify)
-				sysfs_notify(&mfd->fbi->dev->kobj, NULL,
-								"pp_bl_event");
+
+			sysfs_notify(&mfd->fbi->dev->kobj, NULL, "pp_bl_event");
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level_scaled = mfd->unset_bl_level;
 			mfd->allow_bl_update = true;
