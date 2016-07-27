@@ -1539,8 +1539,8 @@ static int exfat_writepages(struct address_space *mapping,
 {
 	if (exfat_readonly(mapping->host->i_sb))
 		return -EROFS;
-	/* get_block should be NULL to call ->writepage and catch end_io */
-	return mpage_writepages(mapping, wbc, NULL);
+
+	return mpage_writepages(mapping, wbc, exfat_get_block);
 }
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,34)
