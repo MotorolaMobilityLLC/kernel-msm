@@ -34,6 +34,8 @@
 #include <linux/mod_display_ops.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/completion.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
 
 #include "slimport_tx_drv.h"
 #include "slimport.h"
@@ -78,6 +80,7 @@ struct anx7805_data {
 	bool cbl_det_irq_enabled;
 	struct mutex sp_tx_power_lock;
 	bool sp_tx_power_state;
+	struct dentry *debugfs;
 
 	struct anx7805_pinctrl pinctrl_gpio;
 	atomic_t slimport_connected;
@@ -156,6 +159,123 @@ static int anx7805_pinctrl_init(struct device *dev, struct anx7805_data *pdata)
 						LOG_TAG, __func__);
 
 	return 0;
+}
+
+struct slave_info {
+	const char *name;
+	uint8_t addr;
+};
+
+static struct slave_info anx7805_reg_dump_slave_info[] = {
+	{.name = "TX_P0", .addr = SP_TX_PORT0_ADDR},
+	{.name = "TX_P1", .addr = SP_TX_PORT1_ADDR},
+	{.name = "TX_P2", .addr = SP_TX_PORT2_ADDR},
+	{.name = "RX_P1", .addr = MIPI_RX_PORT1_ADDR},
+};
+
+static void *anx7805_reg_dump_seq_start(struct seq_file *s, loff_t *pos)
+{
+	if (*pos >= ARRAY_SIZE(anx7805_reg_dump_slave_info))
+		return NULL;
+	return anx7805_reg_dump_slave_info + *pos;
+}
+
+static void *anx7805_reg_dump_seq_next(struct seq_file *s, void *v,
+					loff_t *pos)
+{
+	if (++*pos >= ARRAY_SIZE(anx7805_reg_dump_slave_info))
+		return NULL;
+	return anx7805_reg_dump_slave_info + *pos;
+}
+
+static int anx7805_reg_dump_seq_show(struct seq_file *s, void *v)
+{
+	int i, j;
+	uint8_t offset = 0;
+	int rc = 0;
+	struct slave_info *slave_info = v;
+	struct anx7805_data *anx7805 = s->private;
+
+	mutex_lock(&anx7805->sp_tx_power_lock);
+
+	seq_printf(s, "%s (0x%02X)", slave_info->name, slave_info->addr);
+
+	if (anx7805->sp_tx_power_state) {
+		seq_puts(s, "\n   ");
+		for (i = 0; i < 16; i++)
+			seq_printf(s, "  %X", i);
+		for (i = 0; i < 16; i++) {
+			seq_printf(s, "\n%02X:", offset);
+			for (j = 0; j < 16; j++, offset++) {
+				uint8_t reg;
+
+				if (!rc)
+					rc = sp_read_reg(slave_info->addr,
+						offset, &reg);
+				if (!rc)
+					seq_printf(s, " %02x", reg);
+				else
+					seq_puts(s, " --");
+			}
+		}
+	} else {
+		seq_puts(s, "\nnot powered, skipping register reads");
+	}
+
+	seq_puts(s, "\n\n");
+
+	mutex_unlock(&anx7805->sp_tx_power_lock);
+
+	return 0;
+}
+
+static void anx7805_reg_dump_seq_stop(struct seq_file *s, void *v)
+{
+}
+
+static const struct seq_operations anx7805_reg_dump_seq_ops = {
+	.start = anx7805_reg_dump_seq_start,
+	.next  = anx7805_reg_dump_seq_next,
+	.show  = anx7805_reg_dump_seq_show,
+	.stop  = anx7805_reg_dump_seq_stop,
+};
+
+static int anx7805_reg_dump_open(struct inode *inode, struct file *file)
+{
+	int rc = seq_open(file, &anx7805_reg_dump_seq_ops);
+
+	if (!rc) {
+		struct seq_file *seq = file->private_data;
+
+		seq->private = inode->i_private;
+	}
+	return rc;
+}
+
+static const struct file_operations anx7805_reg_dump_fops = {
+	.open    = anx7805_reg_dump_open,
+	.read    = seq_read,
+	.llseek  = seq_lseek,
+	.release = seq_release,
+};
+
+static int create_debugfs_interfaces(struct anx7805_data *anx7805)
+{
+	int rc = 0;
+	struct dentry *dentry = debugfs_create_file("anx7805_reg_dump",
+		S_IRUGO, NULL, anx7805, &anx7805_reg_dump_fops);
+
+	if (IS_ERR(dentry))
+		rc = PTR_ERR(dentry);
+	else
+		anx7805->debugfs = dentry;
+	return rc;
+}
+
+static void remove_debugfs_interfaces(struct anx7805_data *anx7805)
+{
+	debugfs_remove(anx7805->debugfs);
+	anx7805->debugfs = NULL;
 }
 
 void anx7805_notify_clients(struct msm_dba_device_info *dev,
@@ -1331,12 +1451,18 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 	}
 #endif
 
+	ret = create_debugfs_interfaces(anx7805);
+	if (ret < 0) {
+		pr_err("%s : debugfs register failed", __func__);
+		goto err7;
+	}
+
 	/* Register msm dba device */
 	ret = anx7805_register_dba(anx7805);
 	if (ret) {
 		pr_err("%s: Error registering with DBA %d\n",
 			__func__, ret);
-		goto err7;
+		goto err8;
 	}
 
 	slimport_mod_display_ops.data = (void *)anx7805;
@@ -1347,6 +1473,8 @@ static int anx7805_i2c_probe(struct i2c_client *client,
 
 	goto exit;
 
+err8:
+	remove_debugfs_interfaces(anx7805);
 err7:
 #ifndef MML_DYNAMIC_IRQ_SUPPORT
 	free_irq(client->irq, anx7805);
@@ -1378,6 +1506,7 @@ static int anx7805_i2c_remove(struct i2c_client *client)
 {
 	struct anx7805_data *anx7805 = i2c_get_clientdata(client);
 
+	remove_debugfs_interfaces(anx7805);
 	free_irq(client->irq, anx7805);
 	wake_lock_destroy(&anx7805->slimport_lock);
 	if (!anx7805->vdd_reg)
