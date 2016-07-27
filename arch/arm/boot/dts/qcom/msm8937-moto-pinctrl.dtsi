@@ -155,6 +155,17 @@
 				bias-pull-up;
 			};
 		};
+		usbid_off: usbid_off {
+			mux {
+				pins = "gpio97";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio97";
+				drive-strength = <8>;
+				bias-disable;
+			};
+		};
 	};
 
 	fps: fps {
