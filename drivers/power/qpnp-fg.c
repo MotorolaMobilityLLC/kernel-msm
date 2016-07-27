@@ -2621,6 +2621,10 @@ fail:
 	return rc;
 }
 
+#define SLOPE_LIMITER_COEFF_REG		0x430
+#define SLOPE_LIMITER_COEFF_OFFSET	3
+#define SLOPE_LIMITER_COEFF_LEN		2
+#define SLOPE_LIMITER_COEFF_DEFAULT	0xA1A0
 #define LSB_24B_NUMRTR		596046
 #define LSB_24B_DENMTR		1000000
 #define LSB_16B_NUMRTR		152587
@@ -2710,6 +2714,26 @@ static int update_sram_data(struct fg_chip *chip, int *resched_ms)
 		if (fg_debug_mask & FG_MEM_DEBUG_READS)
 			pr_info("%d %lld %d\n", i, temp, fg_data[i].value);
 	}
+
+	if (!chip->soc_slope_limiter_en) {
+		rc = fg_mem_read(chip, reg, SLOPE_LIMITER_COEFF_REG,
+				 SLOPE_LIMITER_COEFF_LEN,
+				 SLOPE_LIMITER_COEFF_OFFSET, 0);
+		if (rc)
+			pr_err("Failed to check Slope Limit\n");
+
+		temp = 0;
+		for (j = 0; j < SLOPE_LIMITER_COEFF_LEN; j++)
+			temp |= reg[j] << (8 * j);
+
+		if (temp != SLOPE_LIMITER_COEFF_DEFAULT) {
+			pr_err("Slope Limit Broken data=0x%X! Resetting FG\n",
+			       (int)temp);
+			fg_check_ima_error_handling(chip);
+			goto out;
+		}
+	}
+
 	fg_mem_release(chip);
 
 	/* Backup the registers whenever no error happens during update */
@@ -3170,8 +3194,6 @@ static int bcap_uah_2b(u8 *buffer)
 	return ((int)val) * 1000;
 }
 
-#define SLOPE_LIMITER_COEFF_REG		0x430
-#define SLOPE_LIMITER_COEFF_OFFSET	3
 #define SLOPE_LIMIT_TEMP_THRESHOLD	100
 #define SLOPE_LIMIT_LOW_TEMP_CHG	45
 #define SLOPE_LIMIT_HIGH_TEMP_CHG	2
