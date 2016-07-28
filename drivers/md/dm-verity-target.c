@@ -1016,7 +1016,17 @@ int verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
 	argc -= 10;
 
 	/* Optional parameters */
-	if (argc) {
+	if (argc == 1) {
+		if (sscanf(argv[0], "%d%c", &num, &dummy) != 1 ||
+			num < DM_VERITY_MODE_EIO ||
+			num > DM_VERITY_MODE_RESTART) {
+			ti->error = "Invalid mode";
+			r = -EINVAL;
+			goto bad;
+		}
+		v->mode = num;
+	}
+	else if (argc) {
 		as.argc = argc;
 		as.argv = argv;
 
