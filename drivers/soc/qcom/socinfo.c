@@ -643,13 +643,14 @@ static uint32_t socinfo_get_foundry_id(void)
 		: 0;
 }
 
-static uint32_t socinfo_get_serial_number(void)
+uint32_t socinfo_get_serial_number(void)
 {
 	return socinfo ?
 		(socinfo->v1.format >= 10 ?
 			socinfo->v10.serial_number : 0)
 		: 0;
 }
+EXPORT_SYMBOL(socinfo_get_serial_number);
 
 enum pmic_model socinfo_get_pmic_model(void)
 {
