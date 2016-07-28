@@ -75,6 +75,10 @@ static bool disable_host_mode;
 module_param(disable_host_mode, bool, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(disable_host_mode, "To stop HOST mode detection");
 
+static bool disable_host_mode_pm;
+module_param(disable_host_mode_pm, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(disable_host_mode_pm, "To disable lpm in host mode");
+
 static int override_phy_init;
 module_param(override_phy_init, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(override_phy_init, "Override HSPHY Init Seq");
@@ -4221,7 +4225,7 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		 * suspend with host mode suspend functionality. Hence disable
 		 * XHCI's runtime PM here if disable_host_mode_pm is set.
 		 */
-		if (mdwc->disable_host_mode_pm)
+		if (mdwc->disable_host_mode_pm || disable_host_mode_pm)
 			pm_runtime_disable(&dwc->xhci->dev);
 
 		mdwc->in_host_mode = true;
