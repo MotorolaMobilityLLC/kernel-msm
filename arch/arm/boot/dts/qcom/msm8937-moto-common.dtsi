@@ -624,6 +624,31 @@
 	};
 };
 
+&pmi8950_mpps {
+	mpp@a000 {
+		/* Host detect */
+		status = "ok";
+		qcom,mode = <4>; /* AIN input */
+		qcom,ain-route = <0>; /* AMUX 5 */
+		qcom,master-en = <1>;
+		qcom,src-sel = <0>; /* Function constant */
+	};
+};
+
+&pmi8950_vadc {
+	chan@10 {
+		label = "host_det";
+		reg = <0x10>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+		qcom,vadc-thermal-node;
+	};
+};
+
 &usb_otg {
 	qcom,usbid-gpio = <&tlmm 97 0>;
 	pinctrl-names = "default";
