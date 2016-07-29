@@ -658,7 +658,8 @@ static struct mdss_mdp_pipe *mdss_mdp_wait4pipe(struct msm_fb_data_type *mfd,
 					left_blend_pipe);
 	}
 
-	return NULL;
+	return mdss_mdp_pipe_alloc(mixer, pipe_type,
+			left_blend_pipe);
 }
 
 int mdss_mdp_overlay_pipe_setup(struct msm_fb_data_type *mfd,
