@@ -93,4 +93,5 @@ void msm_isp_flush_tasklet(struct vfe_device *vfe_dev);
 void msm_isp_save_framedrop_values(struct vfe_device *vfe_dev,
 	enum msm_vfe_input_src frame_src);
 void msm_isp_get_timestamp(struct msm_isp_timestamp *time_stamp);
+void msm_isp_start_error_recovery(struct vfe_device *vfe_dev);
 #endif /* __MSM_ISP_UTIL_H__ */
