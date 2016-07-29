@@ -1547,6 +1547,16 @@ void msm_isp_halt_send_error(struct vfe_device *vfe_dev, uint32_t event)
 		return;
 	}
 
+	if (ISP_EVENT_PING_PONG_MISMATCH == event &&
+		vfe_dev->axi_data.recovery_count < MAX_RECOVERY_THRESHOLD) {
+		pr_err("%s:pingpong mismatch from vfe%d, core%d,recovery_count %d\n",
+			__func__, vfe_dev->pdev->id, smp_processor_id(),
+			vfe_dev->axi_data.recovery_count);
+		vfe_dev->axi_data.recovery_count++;
+		msm_isp_start_error_recovery(vfe_dev);
+		return;
+	}
+
 	memset(&halt_cmd, 0, sizeof(struct msm_vfe_axi_halt_cmd));
 	memset(&error_event, 0, sizeof(struct msm_isp_event_data));
 	halt_cmd.stop_camif = 1;
