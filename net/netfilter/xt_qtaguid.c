@@ -1201,6 +1201,8 @@ static void iface_stat_update_from_skb(const struct sk_buff *skb,
 				 "par->(in/out)=%p %s\n",
 				 par->hooknum, el_dev, el_dev->name, other_dev,
 				 other_dev->name);
+			if ((par->family == NFPROTO_IPV6) && par->out)
+				el_dev = other_dev;
 		}
 	}
 
