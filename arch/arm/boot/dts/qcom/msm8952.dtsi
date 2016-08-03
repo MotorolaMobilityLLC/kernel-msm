@@ -2332,6 +2332,12 @@
 				"iface_clk", "bus_clk";
 		qcom,ce-opp-freq = <100000000>;
 	};
+
+	cpu-pmu {
+                compatible = "arm,armv8-pmuv3";
+                qcom,irq-is-percpu;
+                interrupts = <1 7 0xff00>;
+        };
 };
 
 &gdsc_venus {
