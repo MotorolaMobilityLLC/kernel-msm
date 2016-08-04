@@ -2693,12 +2693,12 @@ static void dwc3_set_usbc_switches(struct dwc3_msm *mdwc, bool enable)
 			if (rc < 0)
 				goto put_usbc;
 			mdwc->usbc_switch_state = prop.intval;
-		} else if (mdwc->usb_owner  == PSY_USB_OWNER_EXT) {
+		} else if (mdwc->usb_owner  == PSY_USB_OWNER_EXT_2) {
 #ifdef CONFIG_FSUSB42_MUX
 			fsusb42_set_state(FSUSB_STATE_EXT);
 #endif
+		} else if (mdwc->usb_owner  == PSY_USB_OWNER_EXT_3)
 			mdwc->usbc_switch_state = EXT_SWITCH_STATE;
-		}
 	} else {
 		mdwc->usbc_switch_state = 0;
 #ifdef CONFIG_FSUSB42_MUX
@@ -2890,10 +2890,12 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 
 		/* Ignore requests from EXT if USBC has ownership */
 		if (mdwc->usb_owner == PSY_USB_OWNER_USBC &&
-				val->intval == PSY_USB_OWNER_EXT)
+				(val->intval == PSY_USB_OWNER_EXT_2 ||
+				val->intval == PSY_USB_OWNER_EXT_3))
 			break;
 
-		if (mdwc->usb_owner == PSY_USB_OWNER_EXT &&
+		if ((mdwc->usb_owner == PSY_USB_OWNER_EXT_2 ||
+				mdwc->usb_owner == PSY_USB_OWNER_EXT_3) &&
 				val->intval == PSY_USB_OWNER_USBC) {
 			/* Disconnect EXT if USB C has claimed ownership */
 			dbg_event(dwc->ctrl_num, 0xFF, "owner change", 0);
