@@ -205,7 +205,7 @@ void core_send_sink_request(void)
 {
 	static int timeout_count;
 
-	atomic_set(&coreReqCtx.pending, 1);
+	atomic_set(&coreReqCurCtx.pending, 1);
 	core_wakeup_statemachine();
 	PolicySubIndex = 0;
 	PDTxStatus = txIdle;
@@ -214,7 +214,7 @@ void core_send_sink_request(void)
 	requestCurLimit(gRequestOpCurrent);
 	USBPDPolicyEngine();
 	ProtocolIdle();
-	if (!wait_for_completion_timeout(&coreReqCtx.complete,
+	if (!wait_for_completion_timeout(&coreReqCurCtx.complete,
 			msecs_to_jiffies(1000))) {
 		pr_err("core_send_sink_request timeout!\n");
 		timeout_count++;
@@ -225,7 +225,7 @@ void core_send_sink_request(void)
 		}
 	} else
 		timeout_count = 0;
-	atomic_set(&coreReqCtx.pending, 0);
+	atomic_set(&coreReqCurCtx.pending, 0);
 	/*Wait 100 ms for charger to do its job*/
 	platform_delay_10us(SLEEP_DELAY*100);
 }
