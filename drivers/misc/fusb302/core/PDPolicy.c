@@ -143,6 +143,7 @@ extern FSC_S32 AutoModeEntryObjPos;
 extern FSC_BOOL ProtocolCheckRxBeforeTx;
 extern FSC_U8 loopCounter;	// Used to count the number of Unattach<->AttachWait loops
 ReqContextType coreReqCtx;
+ReqContextType coreReqCurCtx;
 FSC_BOOL isDRSwapAllowed;
 /////////////////////////////////////////////////////////////////////////////
 //                  Timer Interrupt service routine
@@ -266,6 +267,8 @@ void InitializePDPolicyVariables(void)
 	gChargerMaxCurrent = 0;
 	init_completion(&coreReqCtx.complete);
 	atomic_set(&coreReqCtx.pending, 0);
+	init_completion(&coreReqCurCtx.complete);
+	atomic_set(&coreReqCurCtx.pending, 0);
 #ifdef FSC_DEBUG
 	InitializeStateLog(&PDStateLog);
 #endif // FSC_DEBUG
