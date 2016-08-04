@@ -3871,6 +3871,7 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 }
 
 #define VBUS_REG_CHECK_DELAY	(msecs_to_jiffies(1000))
+#define DWC3_EXT_3_DELAY	3000 /* Autosuspend delay for USB3 EXT path */
 
 /**
  * dwc3_otg_start_host -  helper function for starting/stoping the host controller driver.
@@ -3961,6 +3962,9 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 			return ret;
 		}
 
+		if (mdwc->usb_owner == PSY_USB_OWNER_EXT_3)
+			pm_runtime_set_autosuspend_delay(&dwc->xhci->dev,
+						DWC3_EXT_3_DELAY);
 		/*
 		 * In some cases it is observed that USB PHY is not going into
 		 * suspend with host mode suspend functionality. Hence disable
