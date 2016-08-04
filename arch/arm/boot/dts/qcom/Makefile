@@ -149,6 +149,8 @@ DTC_FLAGS := -p 1024
 endif
 endif
 
+# Do not include QC default DTBs if not needed
+ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
 dtb-$(CONFIG_ARCH_MSMHAMSTER) += msmhamster-rumi.dtb
 
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-sim.dtb \
@@ -229,6 +231,7 @@ dtb-$(CONFIG_ARCH_SDM660) += sdm660-sim.dtb \
 	sda636-pm660a-mtp.dtb \
 	sda636-pm660a-qrd-hdk.dtb \
 	sda636-pm660a-rcm.dtb
+endif # CONFIG_MMI_DEVICE_DTBS
 
 dtb-$(CONFIG_ARCH_SDM630) += sdm630-rumi.dtb \
 	sdm630-pm660a-rumi.dtb \
