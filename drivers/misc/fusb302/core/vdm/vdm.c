@@ -869,6 +869,8 @@ FSC_S32  processUVDM(SopType sop, FSC_U32 *arr_in, FSC_U32 length_in)
 					 __uvdmDo_in.UVDMDO.Current*10);
 			gChargerOpCurrent = __uvdmDo_in.UVDMDO.Current;
 		}
+		if (atomic_read(&coreReqCurCtx.pending) > 0)
+			complete(&coreReqCurCtx.complete);
 	}
 	return 0;
 }
