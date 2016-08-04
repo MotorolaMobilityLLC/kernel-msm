@@ -227,9 +227,10 @@ static int usb3813_device_enable(struct usb3813_info *info, bool enable)
 	dev_dbg(info->dev, "%s - enable = %d\n", __func__, enable);
 
 	if (enable) {
-		power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_EXT);
-		/* If EXT took ownership, switch to host mode */
-		if (power_supply_get_usb_owner(usb_psy) == PSY_USB_OWNER_EXT) {
+		/* Device mode is supported only over the USB3 i/f */
+		power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_EXT_3);
+		/* If EXT took ownership, switch to device mode */
+		if (power_supply_get_usb_owner(usb_psy) == PSY_USB_OWNER_EXT_3) {
 			power_supply_set_supply_type(usb_psy,
 					POWER_SUPPLY_TYPE_USB);
 			power_supply_set_present(usb_psy, 1);
@@ -267,11 +268,11 @@ static int usb3813_2_0_host_enable(struct usb3813_info *info, bool enable)
 		usb_psy = info->usb_psy;
 
 		if (enable) {
-			/* Set the owner to EXT */
-			power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_EXT);
+			/* Set the owner to EXT_2 since this is a USB2 host */
+			power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_EXT_2);
 			/* If EXT took ownership, switch to host mode */
 			if (power_supply_get_usb_owner(usb_psy) ==
-						PSY_USB_OWNER_EXT)
+						PSY_USB_OWNER_EXT_2)
 				power_supply_set_usb_otg(usb_psy,
 					POWER_SUPPLY_USB_OTG_ENABLE_DATA);
 			else
@@ -294,11 +295,11 @@ static int usb3813_3_1_host_enable(struct usb3813_info *info, bool enable)
 	dev_dbg(info->dev, "%s - enable = %d\n", __func__, enable);
 
 	if (enable) {
-		/* Set the owner to EXT */
-		power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_EXT);
+		/* Set the owner to USB3 */
+		power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_EXT_3);
 		/* If EXT took ownership, switch to host mode */
 		if (power_supply_get_usb_owner(usb_psy) ==
-					PSY_USB_OWNER_EXT)
+					PSY_USB_OWNER_EXT_3)
 			power_supply_set_usb_otg(usb_psy,
 				POWER_SUPPLY_USB_OTG_ENABLE_DATA);
 		else
