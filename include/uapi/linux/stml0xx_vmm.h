@@ -136,9 +136,9 @@ VMM_ENTRY(0x22, ZMOTION_DUR,						TRUE,
 VMM_ENTRY(0x23, UNUSED_23,						FALSE,
 		0,
 		0)
-VMM_ENTRY(0x24, BYPASS_MODE,						TRUE,
-		vmm_test_mode,
-		sizeof(vmm_test_mode))
+VMM_ENTRY(0x24, UNUSED_24,						FALSE,
+		0,
+		0)
 VMM_ENTRY(0x25, UNUSED_25,						FALSE,
 		0,
 		0)
