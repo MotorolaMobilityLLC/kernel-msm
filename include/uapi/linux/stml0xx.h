@@ -217,8 +217,8 @@
 #define M_UPDATE_GYRO_CAL       0x020000
 #define M_GLANCE                0x040000
 /*#define M_UNUSED              0x080000*/
-/*#define M_UNUSED              0x100000*/
-/*#define M_UNUSED              0x200000*/
+#define M_MOTION_DETECT         0x100000
+#define M_STATIONARY_DETECT     0x200000
 /*#define M_UNUSED              0x400000*/
 /*#define M_UNUSED              0x800000*/
 
@@ -321,7 +321,9 @@ enum STML0XX_data_types {
 	DT_STEP_COUNTER,
 	DT_STEP_DETECTOR,
 	DT_GLANCE,
-	DT_ACCEL_CAL
+	DT_ACCEL_CAL,
+	DT_MOTION_DETECT,
+	DT_STATIONARY_DETECT
 };
 
 enum {

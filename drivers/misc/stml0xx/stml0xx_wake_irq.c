@@ -433,6 +433,16 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		dev_dbg(&stml0xx_misc_data->spi->dev, "Glance Gesture=%d\n",
 				SH_TO_H16(buf + WAKE_IRQ_IDX_GLANCE));
 	}
+	if (irq_status & M_MOTION_DETECT) {
+		stml0xx_as_data_buffer_write(ps_stml0xx, DT_MOTION_DETECT,
+				NULL, 0, 0, stm_ws->ts_ns);
+		dev_dbg(&stml0xx_misc_data->spi->dev, "Motion Detect");
+	}
+	if (irq_status & M_STATIONARY_DETECT) {
+		stml0xx_as_data_buffer_write(ps_stml0xx, DT_STATIONARY_DETECT,
+				NULL, 0, 0, stm_ws->ts_ns);
+		dev_dbg(&stml0xx_misc_data->spi->dev, "Stationary Detect");
+	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
 
