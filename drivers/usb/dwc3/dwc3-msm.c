@@ -4102,6 +4102,7 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 }
 
 #define VBUS_REG_CHECK_DELAY	(msecs_to_jiffies(1000))
+#define DWC3_EXT_3_DELAY	3000 /* Autosuspend delay for USB3 EXT path */
 
 static void dwc3_pm_qos_update_latency(struct dwc3_msm *mdwc, s32 latency)
 {
@@ -4302,6 +4303,9 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 			return ret;
 		}
 
+		if (mdwc->usb_owner == PSY_USB_OWNER_EXT_3)
+			pm_runtime_set_autosuspend_delay(&dwc->xhci->dev,
+						DWC3_EXT_3_DELAY);
 		/*
 		 * If the Compliance Transition Capability(CTC) flag of
 		 * HCCPARAMS2 register is set and xhci_link_compliance sysfs
