@@ -124,3 +124,15 @@
 &slim_msm {
 	status = "disabled";
 };
+
+&dsi_panel_pwr_supply {
+	/delete-node/ qcom,panel-supply-entry@0;
+};
+
+&mdss_dsi0 {
+	/delete-property/ vdd-supply;
+};
+
+&mdss_dsi1 {
+	/delete-property/ vdd-supply;
+};
