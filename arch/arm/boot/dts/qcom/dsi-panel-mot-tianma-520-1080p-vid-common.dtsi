@@ -64,7 +64,7 @@ qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 /* todo: calculate dsi timming with qcom doc again */
-qcom,mdss-dsi-panel-timings-8996 =
+qcom,mdss-dsi-panel-timings-phy-v2 =
 	[23 1e 07 08 05 03 04 a0
 	 23 1e 07 08 05 03 04 a0
 	 23 1e 07 08 05 03 04 a0
