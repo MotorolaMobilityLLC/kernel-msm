@@ -52,7 +52,7 @@
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
-		qcom,mdss-dsi-panel-timings-8996 = [1E 1B 04 06 02 03 04 a0
+		qcom,mdss-dsi-panel-timings-phy-v2 = [1E 1B 04 06 02 03 04 a0
 						1E 1B 04 06 02 03 04 a0
 						1E 1B 04 06 02 03 04 a0
 						1E 1B 04 06 02 03 04 a0
