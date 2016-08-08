@@ -74,10 +74,6 @@
 	qcom,init-voltage = <3000000>;
 };
 
-&mdss_dsi {
-	hw-config = "single_dsi";
-};
-
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_p_cmd_v1>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
