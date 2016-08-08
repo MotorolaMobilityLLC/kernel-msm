@@ -98,7 +98,7 @@ qcom,mdss-dsi-tx-eot-append;
  * configured with transferring frame at 30fps
  */
 
-qcom,mdss-dsi-panel-timings-8996 = [
+qcom,mdss-dsi-panel-timings-phy-v2 = [
 	23 1e 07 09 05 03 04 a0
 	23 1e 07 09 05 03 04 a0
 	23 1e 07 09 05 03 04 a0

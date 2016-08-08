@@ -59,7 +59,7 @@ qcom,mdss-dsi-no-panel-read-support;
 qcom,dba-panel;
 qcom,bridge-name = "anx7805";
 
-qcom,mdss-dsi-panel-timings-8996 = [
+qcom,mdss-dsi-panel-timings-phy-v2 = [
 	1e 1a 04 05 02 03 04 a0
 	1e 1a 04 05 02 03 04 a0
 	1e 1a 04 05 02 03 04 a0
