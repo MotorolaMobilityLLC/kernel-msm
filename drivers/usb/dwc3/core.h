@@ -449,9 +449,6 @@ enum event_buf_type {
 	EVT_BUF_TYPE_GSI
 };
 
-#define DWC_CTRL_COUNT	10
-#define NUM_LOG_PAGES	12
-
 /**
  * struct dwc3_event_buffer - Software event buffer representation
  * @buf: _THE_ buffer
@@ -834,7 +831,6 @@ struct dwc3_scratchpad_array {
  * @bh_dbg_index: index for capturing bh_completion_time and bh_handled_evt_cnt
  * @wait_linkstate: waitqueue for waiting LINK to move into required state
  * @vbus_draw: current to be drawn from USB
- * @dwc_ipc_log_ctxt: dwc3 ipa log context
  * @last_fifo_depth: total TXFIFO depth of all enabled USB IN/INT endpoints
  */
 struct dwc3 {
@@ -988,7 +984,6 @@ struct dwc3 {
 	unsigned long		l1_remote_wakeup_cnt;
 
 	wait_queue_head_t	wait_linkstate;
-	void			*dwc_ipc_log_ctxt;
 	int			last_fifo_depth;
 };
 
