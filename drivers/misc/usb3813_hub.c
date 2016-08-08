@@ -70,7 +70,6 @@ struct usb3813_info {
 	bool   mod_enabled;
 	struct usb_ext_status ext_state;
 	struct delayed_work usb3813_enable_work;
-	bool   controller_enabled;
 	bool   factory_mode;
 };
 
@@ -252,18 +251,21 @@ static int usb3813_2_0_host_enable(struct usb3813_info *info, bool enable)
 
 	dev_dbg(info->dev, "%s - enable = %d\n", __func__, enable);
 
-	if (info->enable_controller && !info->controller_enabled && enable) {
+	if (info->enable_controller) {
 
 		/* Enable Dedicated Controller Only Once */
 		usb_psy = power_supply_get_by_name("usb_host");
 		if (!usb_psy)
 			return -ENODEV;
 
-		power_supply_set_usb_otg(usb_psy,
-				POWER_SUPPLY_USB_OTG_ENABLE_DATA);
+		if (enable)
+			power_supply_set_usb_otg(usb_psy,
+					POWER_SUPPLY_USB_OTG_ENABLE_DATA);
+		else
+			power_supply_set_usb_otg(usb_psy,
+					POWER_SUPPLY_USB_OTG_DISABLE);
 
 		power_supply_put(usb_psy);
-		info->controller_enabled = true;
 	} else if (info->switch_controller) {
 		usb_psy = info->usb_psy;
 
@@ -369,46 +371,6 @@ static void usb3813_send_uevent(struct usb3813_info *info)
 	kfree(env);
 }
 
-#define MAX_LPM_WAIT_COUNT 100
-static void usb3813_wait_for_controller_lpm(struct usb3813_info *info)
-{
-	struct power_supply *usb_psy;
-	union power_supply_propval prop = {0,};
-	int rc, count = 0;
-
-	if (!info->enable_controller)
-		return;
-
-	dev_dbg(info->dev, "%s\n", __func__);
-	usb_psy = power_supply_get_by_name("usb_host");
-	if (!usb_psy)
-		return;
-
-	prop.intval = 0;
-
-	while (!prop.intval && count < MAX_LPM_WAIT_COUNT &&
-						info->mod_enabled) {
-		rc = usb_psy->get_property(usb_psy,
-				POWER_SUPPLY_PROP_USB_LPM,
-				&prop);
-		if (rc < 0) {
-			dev_err(info->dev, "Unable to read lpm for usb_host\n");
-			break;
-		}
-
-		/* Exit wait if the host is in lpm */
-		if (prop.intval)
-			break;
-		msleep(20);
-		count++;
-	}
-
-	if (count >= MAX_LPM_WAIT_COUNT)
-		dev_err(info->dev, "Timed out waiting for usb_host lpm\n");
-
-	power_supply_put(usb_psy);
-}
-
 static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 {
 	if (enable == info->hub_enabled)
@@ -420,8 +382,6 @@ static int usb3813_hub_attach(struct usb3813_info *info, bool enable)
 	info->hub_enabled = enable;
 
 	if (info->hub_enabled) {
-		usb3813_wait_for_controller_lpm(info);
-
 		if (clk_prepare_enable(info->hub_clk)) {
 			dev_err(info->dev, "%s: failed to prepare clock\n",
 				__func__);
