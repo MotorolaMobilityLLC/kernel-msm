@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,6 +14,8 @@
 #include <soc/qcom/spm.h>
 
 #define NR_LPM_LEVELS 8
+#define MAXSAMPLES 5
+#define CLUST_SMPL_INVLD_TIME 40000
 
 extern bool use_psci;
 
@@ -27,6 +29,9 @@ struct power_params {
 	uint32_t ss_power;		/* Steady state power */
 	uint32_t energy_overhead;	/* Enter + exit over head */
 	uint32_t time_overhead_us;	/* Enter + exit overhead */
+	uint32_t residencies[NR_LPM_LEVELS];
+	uint32_t min_residency;
+	uint32_t max_residency;
 };
 
 struct lpm_cpu_level {
@@ -52,6 +57,9 @@ struct lpm_level_avail {
 	struct kobject *kobj;
 	struct kobj_attribute idle_enabled_attr;
 	struct kobj_attribute suspend_enabled_attr;
+	void *data;
+	int idx;
+	bool cpu_node;
 };
 
 struct lpm_cluster_level {
@@ -73,6 +81,19 @@ struct low_power_ops {
 	struct msm_spm_device *spm;
 	int (*set_mode)(struct low_power_ops *ops, int mode, bool notify_rpm);
 	enum msm_pm_l2_scm_flag tz_flag;
+};
+
+struct cluster_history {
+	uint32_t resi[MAXSAMPLES];
+	int mode[MAXSAMPLES];
+	int64_t stime[MAXSAMPLES];
+	uint32_t hptr;
+	bool hinvalid;
+	bool htmr_wkup;
+	uint64_t entry_time;
+	int entry_idx;
+	int nsamp;
+	int flag;
 };
 
 struct lpm_cluster {
@@ -99,6 +120,8 @@ struct lpm_cluster {
 	unsigned int psci_mode_shift;
 	unsigned int psci_mode_mask;
 	bool no_saw_devices;
+	struct cluster_history history;
+	struct hrtimer histtimer;
 };
 
 int set_l2_mode(struct low_power_ops *ops, int mode, bool notify_rpm);
@@ -115,7 +138,8 @@ bool lpm_cpu_mode_allow(unsigned int cpu,
 		unsigned int mode, bool from_idle);
 bool lpm_cluster_mode_allow(struct lpm_cluster *cluster,
 		unsigned int mode, bool from_idle);
-
+uint32_t *get_per_cpu_max_residency(int cpu);
+uint32_t *get_per_cpu_min_residency(int cpu);
 extern struct lpm_cluster *lpm_root_node;
 
 #ifdef CONFIG_SMP
