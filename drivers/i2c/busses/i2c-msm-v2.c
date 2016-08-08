@@ -2652,7 +2652,7 @@ static int i2c_msm_rsrcs_gpio_pinctrl_init(struct i2c_msm_ctrl *ctrl)
 {
 	ctrl->rsrcs.pinctrl = devm_pinctrl_get(ctrl->dev);
 	if (IS_ERR_OR_NULL(ctrl->rsrcs.pinctrl)) {
-		dev_err(ctrl->dev, "error devm_pinctrl_get() failed err:%ld\n",
+		dev_warn(ctrl->dev, "devm_pinctrl_get() failed err:%ld\n",
 				PTR_ERR(ctrl->rsrcs.pinctrl));
 		return PTR_ERR(ctrl->rsrcs.pinctrl);
 	}
@@ -2695,10 +2695,6 @@ static void i2c_msm_pm_pinctrl_state(struct i2c_msm_ctrl *ctrl,
 			dev_err(ctrl->dev,
 			"error pinctrl_select_state(%s) err:%d\n",
 			pins_state_name, ret);
-	} else {
-		dev_err(ctrl->dev,
-			"error pinctrl state-name:'%s' is not configured\n",
-			pins_state_name);
 	}
 }
 
@@ -2722,10 +2718,6 @@ static void i2c_msm_pinctrl_recovery(struct i2c_msm_ctrl *ctrl,
 			dev_err(ctrl->dev,
 			"error pinctrl_select_state(%s) err:%d\n",
 			pins_state_name, ret);
-	} else {
-		dev_err(ctrl->dev,
-			"error pinctrl state-name:'%s' is not configured\n",
-			pins_state_name);
 	}
 }
 /*
@@ -3020,11 +3012,7 @@ static int i2c_msm_probe(struct platform_device *pdev)
 	i2c_msm_pm_clk_disable(ctrl);
 	i2c_msm_pm_clk_unprepare(ctrl);
 	i2c_msm_clk_path_unvote(ctrl);
-
-	ret = i2c_msm_rsrcs_gpio_pinctrl_init(ctrl);
-	if (ret)
-		goto err_no_pinctrl;
-
+	i2c_msm_rsrcs_gpio_pinctrl_init(ctrl);
 	i2c_msm_pm_rt_init(ctrl->dev);
 
 	ret = i2c_msm_rsrcs_irq_init(pdev, ctrl);
@@ -3045,7 +3033,6 @@ reg_err:
 	i2c_msm_rsrcs_irq_teardown(ctrl);
 irq_err:
 	i2x_msm_blk_free_cache(ctrl);
-err_no_pinctrl:
 	i2c_msm_rsrcs_clk_teardown(ctrl);
 clk_err:
 	i2c_msm_rsrcs_mem_teardown(ctrl);
