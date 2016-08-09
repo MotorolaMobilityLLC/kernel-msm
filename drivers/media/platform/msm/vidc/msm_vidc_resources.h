@@ -153,6 +153,7 @@ struct msm_vidc_platform_resources {
 	bool early_fw_load;
 	bool thermal_mitigable;
 	const char *fw_name;
+	uint32_t pm_qos_latency_us;
 };
 
 static inline int is_iommu_present(struct msm_vidc_platform_resources *res)

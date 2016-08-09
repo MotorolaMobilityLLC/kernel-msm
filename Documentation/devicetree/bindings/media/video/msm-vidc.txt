@@ -131,6 +131,8 @@ Optional properties:
   clock settings if video hardware requests to do so.
 - qcom,regulator-scaling = A bool indicating whether driver need to control
   voltage settings.
+- qcom,pm-qos-latency-us = The latency used to vote for QOS power manager. This
+value is typically max(latencies of every cluster at all power levels) + 1
 
 Example:
 
