@@ -2989,6 +2989,7 @@ static int __ref update_offline_cores(int val)
 				pr_err_ratelimited(
 					"Unable to offline CPU%d. err:%d\n",
 					cpu, ret);
+				cpus_offlined &= ~BIT(cpu);
 				pend_hotplug_req = true;
 			} else {
 				pr_debug("Offlined CPU%d\n", cpu);
