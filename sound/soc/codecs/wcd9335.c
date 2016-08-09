@@ -142,6 +142,7 @@ module_param(tasha_cpe_debug_mode, int,
 	     S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(tasha_cpe_debug_mode, "tasha boot cpe in debug mode");
 
+#define DAPM_LDO_H_STANDALONE "LDO_H"
 #define TASHA_DIG_CORE_COLLAPSE_TIMER_MS  (5 * 1000)
 
 #define MAX_ON_DEMAND_SUPPLY_NAME_LENGTH    64
@@ -5481,6 +5482,55 @@ static int __tasha_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int tasha_codec_ldo_h_control(struct snd_soc_dapm_widget *w,
+				     int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct tasha_priv *tasha = snd_soc_codec_get_drvdata(codec);
+
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+		tasha->ldo_h_users++;
+
+		if (tasha->ldo_h_users == 1)
+			snd_soc_update_bits(codec, WCD9335_LDOH_MODE,
+					    0x80, 0x80);
+	}
+
+	if (SND_SOC_DAPM_EVENT_OFF(event)) {
+		tasha->ldo_h_users--;
+
+		if (tasha->ldo_h_users < 0)
+			tasha->ldo_h_users = 0;
+
+		if (tasha->ldo_h_users == 0)
+			snd_soc_update_bits(codec, WCD9335_LDOH_MODE,
+					    0x80, 0x00);
+	}
+
+	return 0;
+}
+
+static int tasha_codec_force_enable_ldo_h(struct snd_soc_dapm_widget *w,
+					  struct snd_kcontrol *kcontrol,
+					  int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct tasha_priv *tasha = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		wcd_resmgr_enable_master_bias(tasha->resmgr);
+		tasha_codec_ldo_h_control(w, event);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		tasha_codec_ldo_h_control(w, event);
+		wcd_resmgr_disable_master_bias(tasha->resmgr);
+		break;
+	}
+
+	return 0;
+}
+
 static int tasha_codec_force_enable_micbias(struct snd_soc_dapm_widget *w,
 					    struct snd_kcontrol *kcontrol,
 					    int event)
@@ -5511,6 +5561,27 @@ static int tasha_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
 	return __tasha_codec_enable_micbias(w, event);
+}
+
+static int tasha_codec_enable_standalone_ldo_h(struct snd_soc_codec *codec,
+					       bool enable)
+{
+	int rc;
+
+	if (enable)
+		rc = snd_soc_dapm_force_enable_pin(&codec->dapm,
+						   DAPM_LDO_H_STANDALONE);
+	else
+		rc = snd_soc_dapm_disable_pin(&codec->dapm,
+					      DAPM_LDO_H_STANDALONE);
+
+	if (!rc)
+		snd_soc_dapm_sync(&codec->dapm);
+	else
+		dev_err(codec->dev, "%s: ldo_h force %s pin failed\n",
+			__func__, (enable ? "enable" : "disable"));
+
+	return rc;
 }
 
 /*
@@ -7026,6 +7097,34 @@ static const struct soc_enum tasha_conn_mad_enum =
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tasha_conn_mad_text),
 			    tasha_conn_mad_text);
 
+static int tasha_enable_ldo_h_get(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	u8 val = 0;
+
+	if (codec)
+		val = snd_soc_read(codec, WCD9335_LDOH_MODE) & 0x80;
+
+	ucontrol->value.integer.value[0] = !!val;
+
+	return 0;
+}
+
+static int tasha_enable_ldo_h_put(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	int value = ucontrol->value.integer.value[0];
+	bool enable;
+
+	enable = !!value;
+	if (codec)
+		tasha_codec_enable_standalone_ldo_h(codec, enable);
+
+	return 0;
+}
+
 static int tasha_mad_input_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
@@ -7767,6 +7866,8 @@ static const struct snd_kcontrol_new tasha_snd_controls[] = {
 
 	SOC_ENUM_EXT("MAD Input", tasha_conn_mad_enum,
 		     tasha_mad_input_get, tasha_mad_input_put),
+	SOC_SINGLE_EXT("LDO_H Enable", SND_SOC_NOPM, 0, 1, 0,
+			tasha_enable_ldo_h_get, tasha_enable_ldo_h_put),
 
 	SOC_SINGLE_EXT("DMIC1_CLK_PIN_MODE", SND_SOC_NOPM, 17, 1, 0,
 		       tasha_pinctl_mode_get, tasha_pinctl_mode_put),
@@ -9860,6 +9961,9 @@ static const struct snd_soc_dapm_widget tasha_dapm_widgets[] = {
 	SND_SOC_DAPM_MICBIAS_E(DAPM_MICBIAS4_STANDALONE, SND_SOC_NOPM, 0, 0,
 			       tasha_codec_force_enable_micbias,
 			       SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY(DAPM_LDO_H_STANDALONE, SND_SOC_NOPM, 0, 0,
+			    tasha_codec_force_enable_ldo_h,
+			    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_MUX("ANC0 FB MUX", SND_SOC_NOPM, 0, 0, &anc0_fb_mux),
 	SND_SOC_DAPM_MUX("ANC1 FB MUX", SND_SOC_NOPM, 0, 0, &anc1_fb_mux),
