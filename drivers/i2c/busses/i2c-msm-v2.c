@@ -3045,6 +3045,7 @@ mem_err:
 static int i2c_msm_remove(struct platform_device *pdev)
 {
 	struct i2c_msm_ctrl *ctrl = platform_get_drvdata(pdev);
+	int ret;
 
 	/* Grab mutex to ensure ongoing transaction is over */
 	mutex_lock(&ctrl->xfer.mtx);
@@ -3058,6 +3059,34 @@ static int i2c_msm_remove(struct platform_device *pdev)
 	i2c_msm_dma_teardown(ctrl);
 	i2c_msm_dbgfs_teardown(ctrl);
 	i2c_msm_rsrcs_irq_teardown(ctrl);
+
+	/* vote for clock to allow reset of core */
+	i2c_msm_clk_path_vote(ctrl);
+
+	ret = i2c_msm_pm_clk_prepare(ctrl);
+	if (ret)
+		goto clk_err;
+
+	ret = i2c_msm_pm_clk_enable(ctrl);
+	if (ret) {
+		dev_err(ctrl->dev, "error in enabling clocks:%d\n", ret);
+		goto clk_err;
+	}
+
+	/*
+	 * Reset the core before teardown. This solves an issue where other
+	 * drivers could not use the hardware.
+	 */
+	ret = i2c_msm_qup_sw_reset(ctrl);
+	if (ret)
+		dev_err(ctrl->dev, "error error on qup software reset\n");
+
+	i2c_msm_pm_clk_disable(ctrl);
+	i2c_msm_pm_clk_unprepare(ctrl);
+
+clk_err:
+	i2c_msm_clk_path_unvote(ctrl);
+
 	i2c_msm_rsrcs_clk_teardown(ctrl);
 	i2c_msm_rsrcs_mem_teardown(ctrl);
 	i2x_msm_blk_free_cache(ctrl);
