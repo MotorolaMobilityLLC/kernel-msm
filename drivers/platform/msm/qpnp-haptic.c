@@ -322,6 +322,7 @@ struct qpnp_hap {
 	u8 lra_res_cal_period;
 	u8 sc_duration;
 	u8 ext_pwm_dtest_line;
+	int boot_up_vib;
 	bool state;
 	bool use_play_irq;
 	bool use_sc_irq;
@@ -2123,6 +2124,13 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 		return rc;
 	}
 
+	rc = of_property_read_u32(spmi->dev.of_node,
+			"mmi,vib-boot-up-vib-ms", &temp);
+	if (!rc)
+		hap->boot_up_vib = temp;
+	else
+		hap->boot_up_vib = 0;
+
 	hap->ilim_ma = QPNP_HAP_ILIM_MIN_MV;
 	rc = of_property_read_u32(spmi->dev.of_node,
 			"qcom,ilim-ma", &temp);
@@ -2305,6 +2313,9 @@ static int qpnp_haptic_probe(struct spmi_device *spmi)
 		}
 		hap->vcc_pon = vcc_pon;
 	}
+
+	if (hap->boot_up_vib)
+		qpnp_hap_td_enable(&hap->timed_dev, hap->boot_up_vib);
 
 	ghap = hap;
 
