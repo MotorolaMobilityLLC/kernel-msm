@@ -1878,6 +1878,7 @@
 		qcom,max-hw-load = <979200>; /* 3840 x 2176 @ 30 fps */
 		qcom,dcvs-min-load = <734400>; /* 1920 x 1088 @ 90fps */
 		qcom,dcvs-min-mbperframe = <32400>; /* 3840 x 2160 */
+                qcom,pm-qos-latency-us = <332>;
 
 		qcom,load-freq-tbl =
 			<979200 466000000 0x55555555>, /* TURBO, UHD30E   */
