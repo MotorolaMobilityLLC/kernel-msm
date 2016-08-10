@@ -1453,6 +1453,8 @@ void SetStateUnattached(void)
 	platform_toggleAudioSwitch(fsa_lpm);
 	gChargerAuthenticated = FALSE;
 	gRequestOpVoltage = 100; /*Reset to default 100*50mv*/
+	if (debug_audio)
+		platform_set_usb_device_enable(FALSE);
 }
 
 #ifdef FSC_HAVE_SNK
@@ -1786,6 +1788,12 @@ void SetStateAudioAccessory(void)
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
 	if (Registers.Status.VBUSOK && debug_audio) {
 		FUSB_LOG("Audio Debug Accesory, Enable SS\n");
+		/*In case of detection CC orientation failed*/
+		if ((!blnCCPinIsCC2) && (!blnCCPinIsCC1))
+			blnCCPinIsCC2 = TRUE;
+		platform_notify_cc_orientation(blnCCPinIsCC2);
+		if (0 != platform_set_usb_device_enable(TRUE))
+			FUSB_LOG("Failed to enable USB device!\n");
 		usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SINK;
 	} else
 		usbc_psy.type = POWER_SUPPLY_TYPE_USBC_AUDIO;
