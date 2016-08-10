@@ -67,7 +67,6 @@ int cnss_sdio_power_up(struct device *dev);
 int cnss_sdio_power_down(struct device *dev);
 int cnss_pcie_power_up(struct device *dev);
 int cnss_pcie_power_down(struct device *dev);
-const char *cnss_wlan_get_evicted_data_file(void);
 
 int cnss_pci_set_sleep_power_mode(enum cnss_sleep_power_mode mode);
 int cnss_sdio_set_sleep_power_mode(enum cnss_sleep_power_mode mode);
