@@ -257,6 +257,26 @@ struct msm_vfe_fetch_eng_start {
 	uint32_t frame_id;
 };
 
+enum msm_vfe_fetch_eng_pass {
+	OFFLINE_FIRST_PASS,
+	OFFLINE_SECOND_PASS,
+	OFFLINE_MAX_PASS,
+};
+
+struct msm_vfe_fetch_eng_multi_pass_start {
+	uint32_t session_id;
+	uint32_t stream_id;
+	uint32_t buf_idx;
+	uint8_t  offline_mode;
+	uint32_t fd;
+	uint32_t buf_addr;
+	uint32_t frame_id;
+	uint32_t output_buf_idx;
+	uint32_t input_buf_offset;
+	enum msm_vfe_fetch_eng_pass  offline_pass;
+	uint32_t output_stream_id;
+};
+
 struct msm_vfe_axi_plane_cfg {
 	uint32_t output_width; /*Include padding*/
 	uint32_t output_height;
@@ -323,6 +343,7 @@ enum msm_vfe_axi_stream_update_type {
 	UPDATE_STREAM_ADD_BUFQ,
 	UPDATE_STREAM_REMOVE_BUFQ,
 	UPDATE_STREAM_SW_FRAME_DROP,
+	UPDATE_STREAM_OFFLINE_AXI_CONFIG,
 };
 
 enum msm_vfe_iommu_type {
@@ -885,4 +906,11 @@ struct msm_isp_ahb_clk_cfg {
 #define VIDIOC_MSM_ISP_AHB_CLK_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE+25, struct msm_isp_ahb_clk_cfg)
 
+#define VIDIOC_MSM_ISP_FETCH_ENG_MULTI_PASS_START \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+26, \
+		struct msm_vfe_fetch_eng_multi_pass_start)
+
+#define VIDIOC_MSM_ISP_MAP_BUF_START_MULTI_PASS_FE \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+27, \
+		struct msm_vfe_fetch_eng_multi_pass_start)
 #endif /* __MSMB_ISP__ */
