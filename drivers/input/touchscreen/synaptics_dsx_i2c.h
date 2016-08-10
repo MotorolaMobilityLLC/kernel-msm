@@ -584,6 +584,12 @@ struct synaptics_rmi4_data {
 	bool touch_data_contiguous;
 	uint8_t *touch_data;
 	uint16_t touch_data_size;
+
+#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
+	/* TEST OPTIONS */
+	int test_irq_delay_ms;
+	int test_irq_data_contig;
+#endif
 };
 
 struct time_keeping {
