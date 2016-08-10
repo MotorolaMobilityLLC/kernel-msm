@@ -22,6 +22,7 @@
 };
 
 &sdhc_3 {
+	qcom,broken-pwr-cycle-host;
 	status = "ok";
 };
 
