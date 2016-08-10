@@ -20,6 +20,7 @@
 
 / {
 	aliases {
+		i2c1 = &i2c_1;
 		i2c2 = &i2c_2;
 		i2c3 = &i2c_3;
 		i2c4 = &i2c_4;
@@ -526,7 +527,8 @@
 			<&tlmm 1 1>,          /* gpio_muc_spi_miso, input */
 			<&tlmm 114 2>,        /* gpio_muc_bplus_iset, output-high */
 			<0>,                  /* gpio_muc_bplus_discharg, cs */
-			<&pmi8950_mpps 4 1>;  /* gpio_muc_bplus_fault_n, input */
+			<&pmi8950_mpps 4 1>,  /* gpio_muc_bplus_fault_n, input */
+			<&tlmm 3 1>;          /* gpio_muc_clk, input */
 
 		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
 					"gpio_muc_bplus_en",
@@ -538,7 +540,8 @@
 					"gpio_muc_spi_miso",
 					"gpio_muc_bplus_iset",
 					"gpio_muc_bplus_discharg",
-					"gpio_muc_bplus_fault_n";
+					"gpio_muc_bplus_fault_n",
+					"gpio_muc_clk";
 
 		/* Addison has shared muc/flash SPI. */
 		mmi,spi-shared-with-flash;
@@ -556,16 +559,22 @@
 		mmi,muc-ctrl-ff-seq-v2 = <1 1 100>, <5 1 20>,
 					<5 0 20>;
 
-		pinctrl-names = "disconnected", "spi_active", "spi_ack";
+		pinctrl-names = "disconnected", "spi_active", "spi_ack", "i2c_active";
 		pinctrl-0 = <&muc_attach &spi_1_sleep &muc_spi_ctrl &spi1_cs0_sleep &muc_bplus_ilim>;
 		pinctrl-1 = <&muc_attach &spi_1_active &muc_spi_ctrl &spi1_cs0_active &muc_bplus_ilim>;
 		pinctrl-2 = <&spi_1_mosi_ack &spi_1_miso_ack>;
+		pinctrl-3 = <&muc_attach &i2c_1_active &muc_spi_ctrl &muc_bplus_ilim>;
+
 		transports {
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges = <0 0 0xffffffff>;
+
 			/* Placeholder for SPI defined later */
 			spi_1: spi@7575000 { };
+
+			/* Placeholder for I2C defined later */
+			i2c_1: i2c@7575000 { };
 		};
 	};
 
@@ -878,6 +887,34 @@
 	};
 };
 
+/* for mods i2c */
+&i2c_1 {
+	compatible = "qcom,i2c-msm-v2", "moto,mod-i2c-transfer";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg-names = "qup_phys_addr";
+	reg = <0x7575000 0x1000>;
+	interrupt-names = "qup_irq";
+	interrupts = <0 95 0>;
+	dmas = <&dma_blsp1 12 32 0x20000020 0x20>,
+		<&dma_blsp1 13 32 0x20000020 0x20>;
+	dma-names = "tx", "rx";
+	qcom,master-id = <86>;
+	qcom,clk-freq-out = <400000>;
+	qcom,clk-freq-in  = <19200000>;
+	clock-names = "iface_clk", "core_clk";
+	clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+		 <&clock_gcc clk_gcc_blsp1_qup1_i2c_apps_clk>;
+
+	muc_i2c@42 {
+		compatible = "moto,muc_i2c";
+		reg = <0x42>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <72 0>;
+
+		mmi,intf-id = /bits/ 8 <3>;
+	};
+};
 
 &pmi8950_mpps {
 	mpp@a000 { /* MPP1 MOD_MPHY_I2S_EN */
