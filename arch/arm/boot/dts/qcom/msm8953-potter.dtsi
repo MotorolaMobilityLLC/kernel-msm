@@ -904,11 +904,11 @@
 	usb_id_int_active {
 		usb_id_active: default {
 			mux {
-				pins = "gpio66";
+				pins = "gpio59";
 				function = "gpio";
 			};
 			config {
-				pins = "gpio66";
+				pins = "gpio59";
 				drive-strength = <8>;
 				bias-pull-up;
 			};
@@ -917,11 +917,11 @@
 	usb_id_int_sleep {
 		usb_id_sleep: sleep {
 			mux {
-				pins = "gpio66";
+				pins = "gpio59";
 				function = "gpio";
 			};
 			config {
-				pins = "gpio66";
+				pins = "gpio59";
 				drive-strength = <8>;
 				bias-disable;
 			};
@@ -929,7 +929,7 @@
 	};
 };
 &usb3 {
-	qcom,usbid-gpio = <&tlmm 66 0>;
+	qcom,usbid-gpio = <&tlmm 59 0>;
 	pinctrl-names = "usbid_default","usbid_sleep";
 	pinctrl-0 = <&usb_id_active>;
 	pinctrl-1 = <&usb_id_sleep>;
