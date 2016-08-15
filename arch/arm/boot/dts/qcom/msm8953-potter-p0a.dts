@@ -19,3 +19,29 @@
 / {
 	qcom,board-id = <0x44 0x80a0>;
 };
+
+&tlmm {
+	usb_id_int_active {
+		usb_id_active: default {
+			mux {
+				pins = "gpio66";
+			};
+			config {
+				pins = "gpio66";
+			};
+		};
+	};
+	usb_id_int_sleep {
+		usb_id_sleep: sleep {
+			mux {
+				pins = "gpio66";
+			};
+			config {
+				pins = "gpio66";
+			};
+		};
+	};
+};
+&usb3 {
+	qcom,usbid-gpio = <&tlmm 66 0>;
+};
