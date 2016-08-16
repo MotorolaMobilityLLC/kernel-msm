@@ -3679,8 +3679,11 @@ static int otg_power_set_property_usb(struct power_supply *psy,
 		 * does not exist in power supply enum and it
 		 * gets overridden as DCP.
 		 */
-		if (motg->chg_state == USB_CHG_STATE_DETECTED)
+		if (motg->chg_state == USB_CHG_STATE_DETECTED) {
+			if (psy->type == POWER_SUPPLY_TYPE_UNKNOWN)
+				psy->type = POWER_SUPPLY_TYPE_USB;
 			break;
+		}
 
 		switch (psy->type) {
 		case POWER_SUPPLY_TYPE_USB:
@@ -3709,6 +3712,7 @@ static int otg_power_set_property_usb(struct power_supply *psy,
 			break;
 		default:
 			motg->chg_type = USB_INVALID_CHARGER;
+			psy->type = POWER_SUPPLY_TYPE_USB;
 			break;
 		}
 
