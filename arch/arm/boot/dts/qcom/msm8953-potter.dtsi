@@ -71,6 +71,11 @@
 };
 
 &soc{
+
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
+
 	gpio_keys {
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
