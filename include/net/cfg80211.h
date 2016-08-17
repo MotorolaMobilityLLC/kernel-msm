@@ -3,7 +3,7 @@
 /*
  * 802.11 device and configuration interface
  *
- * Copyright 2006-2010	Johannes Berg <johannes@sipsolutions.net>
+ * Copyright 2006-2010, 2016 Johannes Berg <johannes@sipsolutions.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -63,6 +63,7 @@ struct wiphy;
 
 #define TDLS_MGMT_VERSION2 1
 #define CFG80211_DEL_STA_V2 1
+#define CFG80211_BSSID_HINT_BACKPORT 1
 
 /*
  * wireless hardware capability structures
