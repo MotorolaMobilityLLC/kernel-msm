@@ -2187,7 +2187,7 @@ static int mpu6050_accel_set_enable(struct mpu6050_sensor *sensor, bool enable)
 static int mpu6050_accel_set_poll_delay(struct mpu6050_sensor *sensor,
 					unsigned long delay)
 {
-	int ret;
+	int ret = 0;
 
 	dev_dbg(&sensor->client->dev,
 		"mpu6050_accel_set_poll_delay delay_ms=%ld\n", delay);
