@@ -21,6 +21,8 @@
 #include <linux/slab.h>
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/sdio_ids.h>
+#include <linux/mmc/card.h>
+#include <linux/mmc/host.h>
 #include <linux/io.h>
 #include <soc/qcom/subsystem_restart.h>
 #include <soc/qcom/subsystem_notif.h>
@@ -314,15 +316,24 @@ static int cnss_sdio_shutdown(const struct subsys_desc *subsys, bool force_stop)
 {
 	struct cnss_sdio_info *cnss_info;
 	struct cnss_sdio_wlan_driver *wdrv;
+	int ret = 0;
 
 	if (!cnss_pdata)
 		return -ENODEV;
 
 	cnss_info = &cnss_pdata->cnss_sdio_info;
 	wdrv = cnss_info->wdrv;
-	if (wdrv && wdrv->shutdown)
+	if (wdrv && wdrv->shutdown) {
 		wdrv->shutdown(cnss_info->func);
-	return 0;
+		ret = mmc_power_save_host(cnss_info->func->card->host);
+	}
+
+	if (ret)
+		pr_err("%s: Failed to save mmc Power host\n", __func__);
+	else
+		pr_err("%s: Shutdown complete\n", __func__);
+
+	return ret;
 }
 
 static int cnss_sdio_powerup(const struct subsys_desc *subsys)
@@ -337,10 +348,17 @@ static int cnss_sdio_powerup(const struct subsys_desc *subsys)
 	cnss_info = &cnss_pdata->cnss_sdio_info;
 	wdrv = cnss_info->wdrv;
 	if (wdrv && wdrv->reinit) {
+		ret = mmc_power_restore_host(cnss_info->func->card->host);
+		if (ret) {
+			pr_err("%s: Failed to restore host\n", __func__);
+			goto done;
+		}
+
 		ret = wdrv->reinit(cnss_info->func, cnss_info->id);
 		if (ret)
 			pr_err("%s: wlan reinit error=%d\n", __func__, ret);
 	}
+done:
 	return ret;
 }
 
@@ -689,12 +707,18 @@ static void cnss_sdio_wlan_removed(struct sdio_func *func)
 	cnss_pdata->cnss_sdio_info.id = NULL;
 }
 
+static int __cnss_set_mmc_keep_power_flag(struct sdio_func *func)
+{
+	return sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
+}
+
 #if defined(CONFIG_PM)
 static int cnss_sdio_wlan_suspend(struct device *dev)
 {
 	struct cnss_sdio_wlan_driver *wdrv;
 	struct cnss_sdio_bus_bandwidth *bus_bandwidth;
 	int error = 0;
+	struct sdio_func *func = NULL;
 
 	if (!cnss_pdata)
 		return -ENODEV;
@@ -710,9 +734,13 @@ static int cnss_sdio_wlan_suspend(struct device *dev)
 		/* This can happen when no wlan driver loaded (no register to
 		 * platform driver).
 		 */
-		pr_debug("wlan driver not registered\n");
-		return 0;
+		func = cnss_pdata->cnss_sdio_info.func;
+		error = __cnss_set_mmc_keep_power_flag(func);
+		pr_debug("%s: wlan driver not registered error:%d\n",
+			 __func__, error);
+		return error;
 	}
+
 	if (wdrv->suspend) {
 		error = wdrv->suspend(dev);
 		if (error)
