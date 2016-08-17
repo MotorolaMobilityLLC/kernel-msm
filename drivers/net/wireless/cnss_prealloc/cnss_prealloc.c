@@ -15,6 +15,7 @@
 #include <linux/stacktrace.h>
 #include <linux/wcnss_wlan.h>
 #include <linux/spinlock.h>
+#include <linux/skbuff.h>
 
 static DEFINE_SPINLOCK(alloc_lock);
 
@@ -33,6 +34,14 @@ struct wcnss_prealloc {
 };
 
 /* pre-alloced mem for WLAN driver */
+static struct wcnss_prealloc wcnss_skb_allocs[] = {
+	{0, 64 * 1024, NULL},
+	{0, 64 * 1024, NULL},
+	{0, 128 * 1024, NULL},
+	{0, 128 * 1024, NULL},
+};
+
+/* pre-alloced mem for WLAN driver */
 static struct wcnss_prealloc wcnss_allocs[] = {
 	{0, 8  * 1024, NULL},
 	{0, 8  * 1024, NULL},
@@ -42,50 +51,50 @@ static struct wcnss_prealloc wcnss_allocs[] = {
 	{0, 8  * 1024, NULL},
 	{0, 8  * 1024, NULL},
 	{0, 8  * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
-	{0, 12 * 1024, NULL},
 	{0, 16 * 1024, NULL},
 	{0, 16 * 1024, NULL},
 	{0, 16 * 1024, NULL},
 	{0, 16 * 1024, NULL},
 	{0, 16 * 1024, NULL},
 	{0, 16 * 1024, NULL},
-	{0, 24 * 1024, NULL},
-	{0, 24 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 16 * 1024, NULL},
+	{0, 32 * 1024, NULL},
+	{0, 32 * 1024, NULL},
 	{0, 32 * 1024, NULL},
 	{0, 32 * 1024, NULL},
 	{0, 32 * 1024, NULL},
@@ -98,7 +107,7 @@ static struct wcnss_prealloc wcnss_allocs[] = {
 	{0, 64 * 1024, NULL},
 	{0, 64 * 1024, NULL},
 	{0, 64 * 1024, NULL},
-	{0, 76 * 1024, NULL},
+	{0, 128 * 1024, NULL},
 };
 
 int wcnss_prealloc_init(void)
@@ -112,6 +121,13 @@ int wcnss_prealloc_init(void)
 			return -ENOMEM;
 	}
 
+	for (i = 0; i < ARRAY_SIZE(wcnss_skb_allocs); i++) {
+		wcnss_skb_allocs[i].occupied = 0;
+		wcnss_skb_allocs[i].ptr =
+				dev_alloc_skb(wcnss_skb_allocs[i].size);
+		if (wcnss_skb_allocs[i].ptr == NULL)
+			return -ENOMEM;
+	}
 	return 0;
 }
 
@@ -122,6 +138,11 @@ void wcnss_prealloc_deinit(void)
 	for (i = 0; i < ARRAY_SIZE(wcnss_allocs); i++) {
 		kfree(wcnss_allocs[i].ptr);
 		wcnss_allocs[i].ptr = NULL;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(wcnss_skb_allocs); i++) {
+		dev_kfree_skb(wcnss_skb_allocs[i].ptr);
+		wcnss_skb_allocs[i].ptr = NULL;
 	}
 }
 
@@ -192,6 +213,52 @@ int wcnss_prealloc_put(void *ptr)
 	return 0;
 }
 EXPORT_SYMBOL(wcnss_prealloc_put);
+
+struct sk_buff *wcnss_skb_prealloc_get(unsigned int size)
+{
+	int i = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&alloc_lock, flags);
+	for (i = 0; i < ARRAY_SIZE(wcnss_skb_allocs); i++) {
+		if (wcnss_skb_allocs[i].occupied)
+			continue;
+
+		if (wcnss_skb_allocs[i].size > size) {
+			/* we found the slot */
+			wcnss_skb_allocs[i].occupied = 1;
+			spin_unlock_irqrestore(&alloc_lock, flags);
+			wcnss_prealloc_save_stack_trace(&wcnss_allocs[i]);
+			return wcnss_skb_allocs[i].ptr;
+		}
+	}
+	spin_unlock_irqrestore(&alloc_lock, flags);
+
+	pr_err("wcnss: %s: prealloc not available for size: %d\n",
+	       __func__, size);
+
+	return NULL;
+}
+EXPORT_SYMBOL(wcnss_skb_prealloc_get);
+
+int wcnss_skb_prealloc_put(struct sk_buff *skb)
+{
+	int i = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&alloc_lock, flags);
+	for (i = 0; i < ARRAY_SIZE(wcnss_skb_allocs); i++) {
+		if (wcnss_skb_allocs[i].ptr == skb) {
+			wcnss_skb_allocs[i].occupied = 0;
+			spin_unlock_irqrestore(&alloc_lock, flags);
+			return 1;
+		}
+	}
+	spin_unlock_irqrestore(&alloc_lock, flags);
+
+	return 0;
+}
+EXPORT_SYMBOL(wcnss_skb_prealloc_put);
 
 #ifdef CONFIG_SLUB_DEBUG
 void wcnss_prealloc_check_memory_leak(void)
