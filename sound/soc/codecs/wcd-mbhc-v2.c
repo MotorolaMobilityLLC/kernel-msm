@@ -705,13 +705,23 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				}
 				pr_debug("%s: Marking jack type as SND_JACK_LINEOUT\n",
 				__func__);
-			}
+			} else if (((mbhc->zl > mbhc->mbhc_cfg->selfstick_th &&
+				mbhc->zl < MAX_IMPED) &&
+				(mbhc->zr > mbhc->mbhc_cfg->selfstick_th &&
+				 mbhc->zr < MAX_IMPED) &&
+				(jack_type == SND_JACK_UNSUPPORTED))) {
+				jack_type = SND_JACK_HEADSET;
+				mbhc->current_plug = MBHC_PLUG_TYPE_HEADSET;
+				mbhc->mbhc_cfg->is_selfistick = true;
+				mbhc->jiffies_atreport = jiffies;
+				}
 		}
 
 		mbhc->hph_status |= jack_type;
 
-		pr_debug("%s: Reporting insertion %d(%x)\n", __func__,
-			 jack_type, mbhc->hph_status);
+		pr_debug("%s: Reporting insertion %d(%x),zl %d ohm,zr %d ohm\n",
+			__func__, jack_type, mbhc->hph_status,
+			mbhc->zl, mbhc->zr);
 		wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
 				    (mbhc->hph_status | SND_JACK_MECHANICAL),
 				    WCD_MBHC_JACK_MASK);
@@ -1094,6 +1104,8 @@ static void wcd_enable_mbhc_supply(struct wcd_mbhc *mbhc,
 							WCD_MBHC_EN_CS);
 		} else if (plug_type == MBHC_PLUG_TYPE_HEADPHONE) {
 			wcd_enable_curr_micbias(mbhc, WCD_MBHC_EN_CS);
+		} else if (mbhc->mbhc_cfg->is_selfistick) {
+			wcd_enable_curr_micbias(mbhc, WCD_MBHC_EN_MB);
 		} else {
 			wcd_enable_curr_micbias(mbhc, WCD_MBHC_EN_NONE);
 		}
@@ -1569,7 +1581,8 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 			/* make sure to turn off Rbias */
 			if (mbhc->mbhc_cb->micb_internal)
 				mbhc->mbhc_cb->micb_internal(codec, 1, false);
-
+			if (mbhc->mbhc_cfg->is_selfistick)
+				mbhc->mbhc_cfg->is_selfistick = false;
 			/* Pulldown micbias */
 			WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_PULLDOWN_CTRL, 1);
 			wcd_mbhc_hs_elec_irq(mbhc, WCD_MBHC_ELEC_HS_REM,
