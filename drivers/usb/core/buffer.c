@@ -152,7 +152,8 @@ void hcd_buffer_free(
 
 	for (i = 0; i < HCD_BUFFER_POOLS; i++) {
 		if (size <= pool_max[i]) {
-			dma_pool_free(hcd->pool[i], addr, dma);
+			if (NULL != hcd->pool[i])
+				dma_pool_free(hcd->pool[i], addr, dma);
 			return;
 		}
 	}
