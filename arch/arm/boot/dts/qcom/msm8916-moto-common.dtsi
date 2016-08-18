@@ -548,7 +548,7 @@
 		qcom,pin-func = <1>;
 		label = "spi4-active";
 		/* active state */
-		spi4_default: default {
+		spi4_default: spi4_default {
 			drive-strength = <12>; /* 12 MA */
 			bias-disable = <0>; /* No PULL */
 		};
@@ -561,7 +561,7 @@
 		qcom,pin-func = <0>;
 		label = "spi4-suspend";
 		/* suspended state */
-		spi4_sleep: sleep {
+		spi4_sleep: spi4_sleep {
 			drive-strength = <2>; /* 2 MA */
 			bias-disable = <0>; /* No PULL */
 		};
@@ -861,7 +861,7 @@
 		interrupt-names = "spi_irq", "spi_bam_irq";
 		interrupts = <0 98 0>, <0 238 0>;
 		spi-max-frequency = <19200000>;
-		pinctrl-names = "default", "sleep";
+		pinctrl-names = "spi_default", "spi_sleep";
 		pinctrl-0 = <&spi4_default &spi4_cs0_active>;
 		pinctrl-1 = <&spi4_sleep &spi4_cs0_sleep>;
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
@@ -887,7 +887,7 @@
 		interrupt-names = "spi_irq", "spi_bam_irq";
 		interrupts = <0 99 0>, <0 238 0>;
 		spi-max-frequency = <50000000>;
-		pinctrl-names = "default", "sleep";
+		pinctrl-names = "spi_default", "spi_sleep";
 		pinctrl-0 = <&spi5_default &spi5_cs0_active>;
 		pinctrl-1 = <&spi5_sleep &spi5_cs0_sleep>;
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
