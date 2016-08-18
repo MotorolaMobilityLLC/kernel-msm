@@ -38,6 +38,10 @@
 #include <linux/workqueue.h>
 
 #include <linux/motosh.h>
+#include <linux/motosh_vmm_defines.h>
+
+static void motosh_irq_vr_handler(struct kthread_work *work);
+static void motosh_irq_handler(struct kthread_work *work);
 
 irqreturn_t motosh_isr(int irq, void *dev)
 {
@@ -53,6 +57,111 @@ irqreturn_t motosh_isr(int irq, void *dev)
 }
 
 void motosh_irq_thread_func(struct kthread_work *work)
+{
+	if (motosh_misc_data->vr_mode)
+		motosh_irq_vr_handler(work);
+	else
+		motosh_irq_handler(work);
+}
+
+static void motosh_irq_vr_handler(struct kthread_work *work)
+{
+	static int64_t last_sensor_ts;
+	int i, err;
+	int num_samples;
+	unsigned char cmdbuff;
+	struct vr_data read_vr_data[VR_BUFFERED_SAMPLES];
+	struct motosh_data *ps_motosh = container_of(work,
+			struct motosh_data, irq_work);
+	unsigned short lowest_sensor_delay_ms = USHRT_MAX;
+
+	if (ps_motosh->is_suspended)
+		goto EXIT;
+
+	if (ps_motosh->mode <= BOOTMODE)
+		goto EXIT;
+
+	if (motosh_misc_data->in_reset_and_init)
+		goto EXIT;
+
+	/* If we detect that we have fallen behind try and read out the
+	 * extra samples that will have been buffered in the sensorhub */
+	if ((motosh_g_nonwake_sensor_state & M_ACCEL) &&
+			(motosh_g_acc_cfg.delay > 0))
+		lowest_sensor_delay_ms = motosh_g_acc_cfg.delay;
+	if ((motosh_g_nonwake_sensor_state & M_GYRO) &&
+			(motosh_g_gyro_delay > 0) &&
+			(motosh_g_gyro_delay < lowest_sensor_delay_ms))
+		lowest_sensor_delay_ms = motosh_g_gyro_delay;
+	if ((motosh_g_nonwake_sensor_state & M_ECOMPASS) &&
+			(motosh_g_mag_delay > 0) &&
+			motosh_g_mag_delay < lowest_sensor_delay_ms)
+		lowest_sensor_delay_ms = motosh_g_mag_delay;
+
+	num_samples = (motosh_timestamp_ns() - last_sensor_ts) /
+			MS_TO_NS(lowest_sensor_delay_ms);
+
+	if (num_samples < 1)
+		num_samples = 1;
+	if (num_samples > VR_BUFFERED_SAMPLES)
+		num_samples = VR_BUFFERED_SAMPLES;
+
+	/* Need to keep this handler limited to 1 I2C transaction to meet
+	 * VR speed requirements. */
+	cmdbuff = VR_DATA;
+	memset(read_vr_data, 0, sizeof(read_vr_data));
+	err = motosh_i2c_write_read(ps_motosh,
+			&cmdbuff, (void *)read_vr_data,
+			sizeof(cmdbuff),
+			sizeof(struct vr_data) * num_samples);
+
+	if (err < 0) {
+		dev_err(&ps_motosh->client->dev,
+			"Reading vr_data failed [err: %d]\n", err);
+		goto EXIT;
+	}
+
+	for (i = 0; i < num_samples; i++) {
+		if (read_vr_data[i].status & VR_READY) {
+			if (read_vr_data[i].status & VR_ACCEL) {
+				motosh_as_data_buffer_write(ps_motosh,
+					DT_ACCEL,
+					(uint8_t *)&read_vr_data[i].accel,
+					sizeof(read_vr_data[i].accel),
+					0,
+					(uint8_t *)&read_vr_data[i].timestamp);
+			}
+			if (read_vr_data[i].status & VR_GYRO) {
+				motosh_as_data_buffer_write(ps_motosh,
+					DT_GYRO,
+					(uint8_t *)&read_vr_data[i].gyro,
+					sizeof(read_vr_data[i].gyro),
+					0,
+					(uint8_t *)&read_vr_data[i].timestamp);
+			}
+			if (read_vr_data[i].status & VR_MAG) {
+				motosh_as_data_buffer_write(ps_motosh,
+					DT_MAG,
+					(uint8_t *)&read_vr_data[i].mag,
+					sizeof(read_vr_data[i].mag),
+					read_vr_data[i].mag.calibrated_status,
+					(uint8_t *)&read_vr_data[i].timestamp);
+			}
+			if (read_vr_data[i].status != 0) {
+				last_sensor_ts = motosh_time_recover(
+					(read_vr_data[i].timestamp[0] << 16) |
+					(read_vr_data[i].timestamp[1] <<  8) |
+					(read_vr_data[i].timestamp[2]),
+					motosh_timestamp_ns());
+			}
+		}
+	}
+
+EXIT:
+	return;
+}
+
+static void motosh_irq_handler(struct kthread_work *work)
 {
 	int err;
 	u8 irq_status = 0;
@@ -119,7 +228,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 
 		if (err >= 0) {
 			motosh_as_data_buffer_write(ps_motosh, DT_DISP_ROTATE,
-				readbuff, 1, 0, false);
+				readbuff, 1, 0, NULL);
 
 			/* temporarily print this log to help debug any
 			 * other display rotate issues */
@@ -140,7 +249,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 
 		if (err >= 0) {
 			motosh_as_data_buffer_write(ps_motosh, DT_ALS,
-				readbuff, 2, 0, false);
+				readbuff, 2, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev, "Sending ALS %d\n",
 				STM16_TO_HOST(readbuff, ALS_VALUE));
@@ -158,7 +267,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 
 		if (err >= 0) {
 			motosh_as_data_buffer_write(ps_motosh, DT_DISP_BRIGHT,
-				readbuff, 1, 0, false);
+				readbuff, 1, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending Display Brightness %d\n",
@@ -177,7 +286,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 					    1, 6);
 		if (err >= 0) {
 			motosh_as_data_buffer_write(ps_motosh, DT_STEP_COUNTER,
-						    &readbuff[2], 4, 0, false);
+						    &readbuff[2], 4, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending step count %X %X %X %X\n",
@@ -192,7 +301,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 			NULL,
 			0,
 			0,
-			false);
+			NULL);
 
 		dev_info(&ps_motosh->client->dev,
 			"Save accel cal");
@@ -205,7 +314,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 		if (err >= 0) {
 			motosh_as_data_buffer_write(ps_motosh,
 				DT_MOTO_MOD_CURRENT_DRAIN,
-				readbuff, 4, 0, false);
+				readbuff, 4, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev, "Sending Moto Mod Current Drain 0x%04X\n",
 				STM32_TO_HOST(readbuff, 0));
@@ -270,8 +379,8 @@ void motosh_irq_thread_func(struct kthread_work *work)
 			if (!resuming ||
 			    (ps_motosh->is_batching & ACCEL_BATCHING))
 				motosh_as_data_buffer_write(ps_motosh,
-							    DT_ACCEL,
-							    data, 6, 0, true);
+							DT_ACCEL,
+							data, 6, 0, &data[6]);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending acc(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -283,8 +392,8 @@ void motosh_irq_thread_func(struct kthread_work *work)
 		case LINEAR_ACCEL:
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh,
-							    DT_LIN_ACCEL,
-							    data, 6, 0, true);
+							DT_LIN_ACCEL,
+							data, 6, 0, &data[6]);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending lin_acc(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -296,15 +405,11 @@ void motosh_irq_thread_func(struct kthread_work *work)
 		case MAG_DATA:
 		{
 			unsigned char status;
-			u8 mag_orient_data[6 + MOTOSH_EVENT_TIMESTAMP_LEN];
 			status = *(data + COMPASS_STATUS);
 
-			memcpy(mag_orient_data, data, 6);
-			memcpy(mag_orient_data+6, data+13,
-				MOTOSH_EVENT_TIMESTAMP_LEN);
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh, DT_MAG,
-				mag_orient_data, 6, status, true);
+				data, 6, status, &data[13]);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending mag(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -312,12 +417,11 @@ void motosh_irq_thread_func(struct kthread_work *work)
 				STM16_TO_HOST(data, MAG_Y),
 				STM16_TO_HOST(data, MAG_Z));
 
-			memcpy(mag_orient_data, data+6, 6);
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh,
 							    DT_ORIENT,
-							    mag_orient_data, 6,
-							    status, true);
+							    &data[6], 6,
+							    status, &data[13]);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending orient(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -330,7 +434,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 		case GYRO_DATA:
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh, DT_GYRO,
-				data, 6, 0, true);
+				data, 6, 0, &data[6]);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending gyro(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -342,8 +446,8 @@ void motosh_irq_thread_func(struct kthread_work *work)
 		case UNCALIB_GYRO_DATA:
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh,
-							    DT_UNCALIB_GYRO,
-							    data, 12, 0, true);
+							DT_UNCALIB_GYRO,
+							data, 12, 0, &data[12]);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d\n",
@@ -358,8 +462,8 @@ void motosh_irq_thread_func(struct kthread_work *work)
 		case UNCALIB_MAG_DATA:
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh,
-							    DT_UNCALIB_MAG,
-							    data, 12, 0, true);
+							DT_UNCALIB_MAG,
+							data, 12, 0, &data[12]);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d\n",
@@ -378,7 +482,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 							    DT_QUAT_6AXIS,
 							    data,
 							    8,
-							    0, true
+							    0, &data[8]
 							    );
 
 			dev_dbg(
@@ -399,8 +503,8 @@ void motosh_irq_thread_func(struct kthread_work *work)
 							    ps_motosh,
 							    DT_QUAT_9AXIS,
 							    data,
-							    9, /*timestampidx*/
-							    status, true
+							    9,
+							    status, &data[9]
 							    );
 			/* Note above that the index of the timestamp in the
 			data buffer is passed instead of the size of the data
@@ -426,7 +530,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 							    DT_GAME_RV,
 							    data,
 							    8,
-							    0, true
+							    0, &data[8]
 							    );
 
 			dev_dbg(
@@ -443,7 +547,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 			/* Step detector always sends a 1 */
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh,
-					DT_STEP_DETECTOR, data, 1, 0, false);
+					DT_STEP_DETECTOR, data, 1, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending step detector, %d\n", data[0]);
@@ -454,7 +558,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 			/* Sensor Sync always sends a 1 */
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh,
-					DT_SENSOR_SYNC, data, 1, 0, true);
+					DT_SENSOR_SYNC, data, 1, 0, &data[1]);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending Camera sync, %d\n", data[0]);
@@ -467,7 +571,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh,
 							    DT_PRESSURE,
-							    data, 4, 0, false);
+							    data, 4, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev, "Sending pressure %d\n",
 				STM32_TO_HOST(data, PRESSURE_VALUE));
@@ -476,8 +580,8 @@ void motosh_irq_thread_func(struct kthread_work *work)
 		case GRAVITY:
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh,
-							    DT_GRAVITY,
-							    data, 6, 0, true);
+							DT_GRAVITY,
+							data, 6, 0, &data[6]);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending gravity(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -499,7 +603,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 							    DT_IR_RAW,
 							    data,
 							    MOTOSH_IR_SZ_RAW,
-							    0, false);
+							    0, NULL);
 			dev_dbg(&ps_motosh->client->dev, "Sending raw IR data\n");
 			queue_index += MOTOSH_IR_SZ_RAW;
 			break;
@@ -507,7 +611,7 @@ void motosh_irq_thread_func(struct kthread_work *work)
 			if (!resuming)
 				motosh_as_data_buffer_write(ps_motosh,
 							    DT_IR_OBJECT,
-							    data, 1, 0, false);
+							    data, 1, 0, NULL);
 			dev_dbg(&ps_motosh->client->dev, "Sending IR object state: 0x%x\n",
 				data[0]);
 			queue_index += 1;
@@ -538,7 +642,7 @@ EXIT:
 		uint32_t handle = ID_A;
 
 		motosh_as_data_buffer_write(ps_motosh, DT_FLUSH,
-					    (char *)&handle, 4, 0, false);
+					    (char *)&handle, 4, 0, NULL);
 		dev_dbg(&ps_motosh->client->dev,
 			 "flushed accel");
 	}
@@ -565,7 +669,7 @@ int motosh_process_ir_gesture(struct motosh_data *ps_motosh,
 			continue;
 		motosh_as_data_buffer_write(ps_motosh, DT_IR_GESTURE,
 					data + ofs,
-					MOTOSH_IR_SZ_GESTURE, 0, false);
+					MOTOSH_IR_SZ_GESTURE, 0, NULL);
 		dev_dbg(&ps_motosh->client->dev, "Send IR Gesture %d\n",
 			data[ofs + IR_GESTURE_ID]);
 	}

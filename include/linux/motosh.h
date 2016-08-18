@@ -307,6 +307,8 @@ enum vmm_ids {
 #define ANTCAP_CTRL1_SET_CALFLASH  7
 #endif
 
+#define MS_TO_NS(msec) ((msec) * 1000 * 1000)
+
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
 #define STMU16_TO_HOST(buf, x) ((uint16_t) be16_to_cpu(*((u16 *) (buf+(x)))))
@@ -519,6 +521,7 @@ struct motosh_data {
 	/* bitmask to track sensors being batched */
 	uint32_t is_batching;
 	bool pending_wake_work;
+	bool vr_mode;
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notif;
 #endif
@@ -563,7 +566,7 @@ int motosh_reset_and_init(enum reset_mode mode);
 
 int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	unsigned char type, unsigned char *data, int size,
-	unsigned char status, bool timestamped);
+	unsigned char status, unsigned char *timestamp);
 int motosh_as_data_buffer_read(struct motosh_data *ps_motosh,
 	struct motosh_android_sensor_data *buff);
 int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
