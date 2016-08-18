@@ -218,6 +218,8 @@ struct motosh_moto_sensor_batch_cfg {
 		_IOR(MOTOSH_IOCTL_BASE, 63, char[MOTOSH_ACCEL_CAL_SIZE])
 #define MOTOSH_IOCTL_SET_ACCEL_CAL \
 		_IOR(MOTOSH_IOCTL_BASE, 64, char[MOTOSH_ACCEL_CAL_SIZE])
+#define MOTOSH_IOCTL_SET_VR_MODE	\
+		_IOW(MOTOSH_IOCTL_BASE, 65, unsigned char)
 
 
 /* Used in HAL */
@@ -258,7 +260,6 @@ struct motosh_moto_sensor_batch_cfg {
 #define MOTOSH_ANTCAP_CFG_BUFF_SIZE  64
 
 /* Mask values */
-
 /* Non wakable sensors */
 #define M_ACCEL			0x000001
 #define M_GYRO			0x000002
@@ -340,6 +341,12 @@ struct motosh_moto_sensor_batch_cfg {
 #define MOTOSH_EVT_SZ_TRANSITION   7
 #define MOTOSH_EVT_SZ_ACCUM_STATE  2
 #define MOTOSH_EVT_SZ_ACCUM_MVMT   4
+
+/* VR defines */
+#define VR_ACCEL 0x01
+#define VR_GYRO  0x02
+#define VR_MAG   0x04
+#define VR_READY 0x80
 
 struct motosh_android_sensor_data {
 	int64_t timestamp;

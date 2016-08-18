@@ -716,7 +716,7 @@ static int motosh_takeback_locked(struct motosh_data *ps_motosh)
 			/* notify HAL so we can trigger a bug2go */
 			motosh_as_data_buffer_write(ps_motosh, DT_RESET,
 						&pending_reset_reason,
-						1, 0, false);
+						1, 0, NULL);
 			/* re-gain control the hard way */
 			motosh_reset_and_init(START_RESET);
 		}
