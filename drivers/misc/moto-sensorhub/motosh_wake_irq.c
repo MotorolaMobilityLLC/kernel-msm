@@ -295,14 +295,14 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			data += 3;
 			if (irq_status & M_FLATUP) {
 				motosh_as_data_buffer_write(ps_motosh,
-					DT_FLAT_UP, data, 1, 0, false);
+					DT_FLAT_UP, data, 1, 0, NULL);
 
 				dev_dbg(&ps_motosh->client->dev, "Sending Flat up %d\n",
 					data[0]);
 				queue_index += 1;
 			} else if (irq_status & M_FLATDOWN) {
 				motosh_as_data_buffer_write(ps_motosh,
-					DT_FLAT_DOWN, data, 1, 0, false);
+					DT_FLAT_DOWN, data, 1, 0, NULL);
 
 				dev_dbg(&ps_motosh->client->dev, "Sending Flat down %d\n",
 					data[0]);
@@ -320,7 +320,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 				data[0]);
 
 			motosh_as_data_buffer_write(ps_motosh, DT_DOCK,
-				data, 1, 0, false);
+				data, 1, 0, NULL);
 			state = data[DOCK_STATE];
 			if (ps_motosh->dsdev.dev != NULL)
 				switch_set_state(&ps_motosh->dsdev, state);
@@ -333,7 +333,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			break;
 		case PROXIMITY_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_PROX,
-				data, 1, 0, false);
+				data, 1, 0, NULL);
 
 			dev_info(&ps_motosh->client->dev,
 				"Sending Proximity %d als %d stowed %d raw_prox %d noise_floor %d recal_thresh %d low_thresh %d high_thresh %d\n",
@@ -382,7 +382,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			/* Just pass the first byte for stowed status
 				Rest is for logging */
 			motosh_as_data_buffer_write(ps_motosh, DT_STOWED,
-				data, 1, 0, false);
+				data, 1, 0, NULL);
 
 			dev_info(&ps_motosh->client->dev,
 				"Sending Stowed status %d als %d prox %d raw_prox %d noise_floor %d recal_thresh %d low_thresh %d high_thresh %d\n",
@@ -404,7 +404,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			break;
 		case CAMERA_GESTURE:
 			motosh_as_data_buffer_write(ps_motosh, DT_CAMERA_ACT,
-				data, 2, 0, false);
+				data, 2, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending Camera: %d\n", STM16_TO_HOST(data,
@@ -416,7 +416,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			break;
 		case NFC_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_NFC,
-					data, 1, 0, false);
+					data, 1, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending NFC value: %d\n", data[0]);
@@ -424,7 +424,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			break;
 		case SIM_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_SIM,
-					data, 2, 0, false);
+					data, 2, 0, NULL);
 
 			/* This is one shot sensor */
 			motosh_g_wake_sensor_state &= (~M_SIM);
@@ -435,7 +435,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			break;
 		case CHOPCHOP_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_CHOPCHOP,
-							data, 2, 0, false);
+							data, 2, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
 					STM16_TO_HOST(data,
@@ -444,7 +444,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			break;
 		case LIFT_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_LIFT,
-							data, 12, 0, false);
+							data, 12, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev, "Lift triggered. Dist=%d. ZRot=%d. GravDiff=%d.\n",
 					STM32_TO_HOST(data, LIFT_DISTANCE),
@@ -454,7 +454,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			break;
 		case GLANCE_REG:
 			motosh_as_data_buffer_write(ps_motosh, DT_GLANCE,
-							data, 2, 0, false);
+							data, 2, 0, NULL);
 
 			dev_dbg(&ps_motosh->client->dev, "Glance Gesture=%d\n",
 					STM16_TO_HOST(data, 0));
@@ -550,7 +550,7 @@ void motosh_irq_wake_thread_func(struct kthread_work *work)
 			dev_dbg(&ps_motosh->client->dev,
 				"Store gyro calibration\n");
 			motosh_as_data_buffer_write(ps_motosh, DT_GYRO_CAL,
-				NULL, 0, 0, false);
+				NULL, 0, 0, NULL);
 			break;
 #ifdef CONFIG_SENSORS_MOTOSH_HEADSET
 		case HEADSET_STATE:
@@ -757,7 +757,7 @@ PROCESS_RESET:
 	if (pending_reset) {
 		motosh_as_data_buffer_write(ps_motosh, DT_RESET,
 					    &pending_reset_reason,
-					    1, 0, false);
+					    1, 0, NULL);
 
 		motosh_reset_and_init(START_RESET);
 		dev_info(&ps_motosh->client->dev, "sensorhub requested a reset\n");
