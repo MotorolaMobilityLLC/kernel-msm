@@ -127,9 +127,9 @@ VMM_ENTRY(0x10, POSIX_TIME,						TRUE,
 			0)
 #endif /*IRGESTURE*/
 
-VMM_ENTRY(0x14, UNUSED_14,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x14, VR_DATA,						FALSE,
+		vmm_vr_data,
+		sizeof(vmm_vr_data))
 VMM_ENTRY(0x15, DERIVED_SENS_UPDATE_RATE,				TRUE,
 		vmm_derived_sens_update_rate,
 		sizeof(vmm_derived_sens_update_rate))
@@ -189,9 +189,9 @@ VMM_ENTRY(0x21, MOTION_HISTORY,						FALSE,
 VMM_ENTRY(0x22, ZMOTION_DUR,						TRUE,
 		&vmm_zmotion_dur0,
 		sizeof(vmm_zmotion_dur0))
-VMM_ENTRY(0x23, UNUSED_23,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x23, VR_MODE,						TRUE,
+		&vmm_vr_mode,
+		sizeof(vmm_vr_mode))
 VMM_ENTRY(0x24, BYPASS_MODE,						TRUE,
 		vmm_test_mode,
 		sizeof(vmm_test_mode))
