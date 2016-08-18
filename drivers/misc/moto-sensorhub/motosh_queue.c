@@ -63,7 +63,7 @@ static long long int as_queue_numadded;
  */
 int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	unsigned char type, unsigned char *data, int size,
-	unsigned char status, bool timestamped)
+	unsigned char status, unsigned char *timestamp)
 {
 	static bool full_reported;
 
@@ -156,15 +156,15 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	 * out-of-order events
 	 */
 	now = motosh_timestamp_ns();
-	if (timestamped) {
+	if (timestamp != NULL) {
 		bool streaming;
 
 		/* if a timestamp is included in the event buffer,
 		   it is the 3 bytes after the data */
 		buffer->timestamp =
-			motosh_time_recover((data[size] << 16) |
-					    (data[size+1] <<  8) |
-					    (data[size+2]),
+			motosh_time_recover((timestamp[0] << 16) |
+					    (timestamp[1] <<  8) |
+					    (timestamp[2]),
 					    now);
 		if (type == DT_ACCEL &&
 		   (ps_motosh->is_batching & ACCEL_BATCHING))
