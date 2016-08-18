@@ -103,6 +103,52 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			"MOTOSH_IOCTL_SET_FACTORY_MODE");
 		err = switch_motosh_mode(FACTORYMODE);
 		break;
+	case MOTOSH_IOCTL_SET_VR_MODE:
+		dev_dbg(&ps_motosh->client->dev,
+			"MOTOSH_IOCTL_SET_VR_MODE");
+
+		if (copy_from_user(&byte, argp, sizeof(byte))) {
+			dev_err(&ps_motosh->client->dev,
+				"Copy vr_mode returned error\n");
+			err = -EFAULT;
+			break;
+		}
+
+		if (ps_motosh->mode > BOOTMODE) {
+			cmdbuff[0] = VR_MODE;
+			cmdbuff[1] = (byte != 0);
+			err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
+			if (err >= 0) {
+				motosh_misc_data->vr_mode = (byte != 0);
+
+				if (motosh_misc_data->vr_mode) {
+					/* Raise the priority of our irq task
+					 * so that we can keep up with VR
+					 * sensor rates. */
+					struct sched_param param = {
+						.sched_priority =
+						MAX_RT_PRIO - 1 };
+
+					sched_setscheduler(
+						ps_motosh->irq_task,
+						SCHED_FIFO, &param);
+				} else {
+					struct sched_param param = { 0 };
+
+					sched_setscheduler(
+						ps_motosh->irq_task,
+						SCHED_NORMAL, &param);
+				}
+
+				dev_info(&motosh_misc_data->client->dev,
+					"setting vr mode: %d",
+					motosh_misc_data->vr_mode);
+			}
+		} else {
+			err = -EBUSY;
+		}
+
+		break;
 	case MOTOSH_IOCTL_TEST_BOOTMODE:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_TEST_BOOTMODE");
 		err = switch_motosh_mode(BOOTMODE);
@@ -853,7 +899,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		} else
 			motosh_as_data_buffer_write(ps_motosh, DT_FLUSH,
 						    (char *)&handle,
-						    4, 0, false);
+						    4, 0, NULL);
 		break;
 	case MOTOSH_IOCTL_GET_GYRO_CAL:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_GYRO_CAL");
