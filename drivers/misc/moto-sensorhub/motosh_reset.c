@@ -109,6 +109,7 @@ int motosh_reset_and_init(enum reset_mode mode)
 {
 	struct motosh_platform_data *pdata;
 	struct timespec current_time;
+	struct sched_param sched_normal = { 0 };
 	unsigned int i;
 	int err = 0, ret_err = 0;
 	unsigned char *rst_cmdbuff;
@@ -141,6 +142,11 @@ int motosh_reset_and_init(enum reset_mode mode)
 
 	/* Part is up and alive, switch to normal mode */
 	motosh_misc_data->mode = NORMALMODE;
+	motosh_misc_data->vr_mode = 0;
+	sched_setscheduler(
+		motosh_misc_data->irq_task, SCHED_NORMAL, &sched_normal);
+	dev_info(&motosh_misc_data->client->dev,
+		"reset vr mode: %d", motosh_misc_data->vr_mode);
 
 	motosh_time_sync();
 
