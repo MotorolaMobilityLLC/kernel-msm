@@ -43,4 +43,29 @@ extern volatile uint8_t
 extern volatile uint8_t
 	vmm_algo_evt_accum_mvmt[VMM_ALGO_EVT_ACCUM_MVMT_S];
 
+struct __packed vr_data {
+	struct __packed accel_data {
+		uint16_t x;
+		uint16_t y;
+		uint16_t z;
+	} accel;
+	struct __packed gyro_data {
+		uint16_t x;
+		uint16_t y;
+		uint16_t z;
+	} gyro;
+	struct __packed mag_data {
+		uint16_t x;
+		uint16_t y;
+		uint16_t z;
+		uint8_t calibrated_status;
+	} mag;
+	uint8_t timestamp[3];
+	uint8_t status;
+};
+
+#define VR_BUFFERED_SAMPLES 2
+extern volatile struct vr_data vmm_vr_data[VR_BUFFERED_SAMPLES];
+extern volatile uint8_t vmm_vr_mode;
+
 #endif /*_UAPI_MOTOSH_VMM_DEFINES_H*/
