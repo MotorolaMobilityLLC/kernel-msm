@@ -29,7 +29,7 @@
 	reserved-memory {
 		ramoops_mem: ramoops_mem_region {
 			no-map;
-			reg = <0x0 0xef000000 0x0 0x80000>;
+			reg = <0x0 0xae000000 0x0 0x80000>;
 			label = "ramoops_mem";
 		};
 	};
@@ -451,7 +451,7 @@
 		compatible = "ramoops";
 		status = "ok";
 
-		android,ramoops-buffer-start = <0xef000000>;
+		android,ramoops-buffer-start = <0xae000000>;
 		android,ramoops-buffer-size = <0x80000>;
 		android,ramoops-console-size = <0x40000>;
 		android,ramoops-record-size = <0x3F800>;
