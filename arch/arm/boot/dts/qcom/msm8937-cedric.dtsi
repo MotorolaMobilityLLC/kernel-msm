@@ -169,6 +169,11 @@
 	};
 };
 
+&usb_otg {
+	qcom,hsusb-otg-phy-init-seq =
+		<0x44 0x80 0x35 0x81 0x03 0x82 0x33 0x83 0xffffffff>;
+};
+
 &mot_batterydata {
 	df-serialnum = "SNN5976A";
 	#include "batterydata-gk40-atl.dtsi"
