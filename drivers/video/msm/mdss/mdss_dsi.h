@@ -734,6 +734,12 @@ static inline bool mdss_dsi_is_ctrl_clk_slave(struct mdss_dsi_ctrl_pdata *ctrl)
 		(ctrl->ndx == DSI_CTRL_CLK_SLAVE);
 }
 
+static inline bool mdss_dsi_is_ctrl_clk_master(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	return mdss_dsi_is_hw_config_split(ctrl->shared_data) &&
+		(ctrl->ndx == DSI_CTRL_CLK_MASTER);
+}
+
 static inline bool mdss_dsi_is_te_based_esd(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	return (ctrl->status_mode == ESD_TE) &&
