@@ -61,6 +61,12 @@
 #define STATS_COMP_IDX_AEC_BG    8
 #define VFE47_VBIF_CLK_OFFSET    0x4
 
+#ifdef CONFIG_MSM_CAMERA_AUTOMOTIVE
+#define UB_CFG_POLICY MSM_WM_UB_EQUAL_SLICING
+#else
+#define UB_CFG_POLICY MSM_WM_UB_CFG_DEFAULT
+#endif
+
 static uint32_t stats_base_addr[] = {
 	0x1D4, /* HDR_BE */
 	0x254, /* BG(AWB_BG) */
@@ -310,6 +316,11 @@ int msm_vfe47_init_hardware(struct vfe_device *vfe_dev)
 	vfe_dev->common_data->dual_vfe_res->vfe_base[vfe_dev->pdev->id] =
 		vfe_dev->vfe_base;
 
+	rc = msm_isp_update_bandwidth(ISP_VFE0 + vfe_dev->pdev->id,
+					MSM_ISP_MIN_AB, MSM_ISP_MIN_IB);
+	if (rc)
+		goto bw_enable_fail;
+
 	rc = msm_camera_enable_irq(vfe_dev->vfe_irq, 1);
 	if (rc < 0)
 		goto irq_enable_fail;
@@ -317,6 +328,8 @@ int msm_vfe47_init_hardware(struct vfe_device *vfe_dev)
 	return rc;
 
 irq_enable_fail:
+	msm_isp_update_bandwidth(ISP_VFE0 + vfe_dev->pdev->id, 0, 0);
+bw_enable_fail:
 	vfe_dev->common_data->dual_vfe_res->vfe_base[vfe_dev->pdev->id] = NULL;
 	vfe_dev->hw_info->vfe_ops.platform_ops.enable_clks(vfe_dev, 0);
 clk_enable_failed:
@@ -1712,7 +1725,7 @@ void msm_vfe47_cfg_axi_ub(struct vfe_device *vfe_dev)
 {
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
 
-	axi_data->wm_ub_cfg_policy = MSM_WM_UB_CFG_DEFAULT;
+	axi_data->wm_ub_cfg_policy = UB_CFG_POLICY;
 	if (axi_data->wm_ub_cfg_policy == MSM_WM_UB_EQUAL_SLICING)
 		msm_vfe47_cfg_axi_ub_equal_slicing(vfe_dev);
 	else
@@ -2286,21 +2299,13 @@ void msm_vfe47_deinit_bandwidth_mgr(
 int msm_vfe47_init_bandwidth_mgr(struct vfe_device *vfe_dev,
 	struct msm_isp_bandwidth_mgr *isp_bandwidth_mgr)
 {
-	int rc = 0;
-
 	isp_bandwidth_mgr->bus_client =
 		msm_bus_scale_register_client(&msm_isp_bus_client_pdata);
 	if (!isp_bandwidth_mgr->bus_client) {
 		pr_err("%s: client register failed\n", __func__);
 		return -EINVAL;
 	}
-	isp_bandwidth_mgr->bus_vector_active_idx = 1;
-	rc = msm_bus_scale_client_update_request(
-		isp_bandwidth_mgr->bus_client,
-		isp_bandwidth_mgr->bus_vector_active_idx);
-	if (rc)
-		msm_vfe47_deinit_bandwidth_mgr(isp_bandwidth_mgr);
-	return rc;
+	return 0;
 }
 
 int msm_vfe47_update_bandwidth(
@@ -2311,7 +2316,11 @@ int msm_vfe47_update_bandwidth(
 	uint64_t ib = 0;
 	struct msm_bus_paths *path;
 
-	ALT_VECTOR_IDX(isp_bandwidth_mgr->bus_vector_active_idx);
+	if (!isp_bandwidth_mgr->bus_vector_active_idx)
+		isp_bandwidth_mgr->bus_vector_active_idx = 1;
+	else
+		ALT_VECTOR_IDX(isp_bandwidth_mgr->bus_vector_active_idx);
+
 	path = &(msm_isp_bus_client_pdata.usecase[
 			isp_bandwidth_mgr->bus_vector_active_idx]);
 	path->vectors[0].ab = 0;
