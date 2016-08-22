@@ -59,3 +59,31 @@
 &ufs_ice {
 	status = "ok";
 };
+
+&i2c_5 {
+	/delete-node/ synaptics@20;
+};
+
+&i2c_8 {
+	status = "ok";
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <40 0>;
+		gpios = <&tlmm 40 0>, /* IRQ */
+			<&tlmm 39 0>; /* RESET */
+		touch_vdd-supply = <&pmcobalt_l28>;
+		synaptics,gpio-config;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_active &touch_int_suspend>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+		config_modifier-names = "aod";
+		config_modifier-aod {
+			aod-suspended {
+				/* Power->sleep; */
+				patch-data = "S";
+			};
+		};
+	};
+};
