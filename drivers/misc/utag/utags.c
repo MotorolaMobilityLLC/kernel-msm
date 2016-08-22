@@ -1238,7 +1238,7 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 	int i, error;
 	char *payload, utag[MAX_UTAG_NAME];
 	struct utag *tags = NULL;
-	struct inode *inode = file->f_dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct proc_node *proc = PDE_DATA(inode);
 	struct ctrl *ctrl = proc->ctrl;
 	size_t lco, length = count;
@@ -1351,7 +1351,7 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 {
 	char *pattern, expendable[MAX_UTAG_NAME];
 	struct utag *tags, *cur, *next;
-	struct inode *inode = file->f_dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct ctrl *ctrl = PDE_DATA(inode);
 
 	if ((MAX_UTAG_NAME < count) || (0 == count)) {
@@ -1499,7 +1499,7 @@ size_t len, alen;
 static ssize_t new_utag(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos)
 {
-	struct inode *inode = file->f_dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct ctrl *ctrl = PDE_DATA(inode);
 	struct utag *tags, *cur;
 	struct proc_dir_entry *parent = NULL;
@@ -1637,7 +1637,7 @@ static int reload_show(struct seq_file *file, void *v)
 static ssize_t reload_write(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos)
 {
-	struct inode *inode = file->f_dentry->d_inode;
+	struct inode *inode = file_inode(file);
 	struct ctrl *ctrl = PDE_DATA(inode);
 
 
