@@ -13,3 +13,36 @@
 
 #include "msmcobalt-pinctrl.dtsi"
 #include "msmcobalt-moto-pinctrl.dtsi"
+
+&uartblsp2dm1 {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart_console_active>;
+};
+
+&ufsphy1 {
+	vdda-phy-supply = <&pmcobalt_l1>;
+	vdda-pll-supply = <&pmcobalt_l2>;
+	vddp-ref-clk-supply = <&pmcobalt_l26>;
+	vdda-phy-max-microamp = <51400>;
+	vdda-pll-max-microamp = <14600>;
+	vddp-ref-clk-max-microamp = <100>;
+	vddp-ref-clk-always-on;
+	status = "ok";
+};
+
+&ufs1 {
+	vdd-hba-supply = <&gdsc_ufs>;
+	vdd-hba-fixed-regulator;
+	vcc-supply = <&pmcobalt_l20>;
+	vccq-supply = <&pmcobalt_l26>;
+	vccq2-supply = <&pmcobalt_s4>;
+	vcc-max-microamp = <750000>;
+	vccq-max-microamp = <560000>;
+	vccq2-max-microamp = <750000>;
+	status = "ok";
+};
+
+&ufs_ice {
+	status = "ok";
+};
