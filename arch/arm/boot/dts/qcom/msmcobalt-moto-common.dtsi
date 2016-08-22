@@ -21,6 +21,12 @@
 	};
 };
 
+&soc {
+	i2c7 {
+		status = "ok";
+	};
+};
+
 &uartblsp2dm1 {
 	status = "ok";
 	pinctrl-names = "default";
