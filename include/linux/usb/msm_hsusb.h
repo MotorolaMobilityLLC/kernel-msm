@@ -122,6 +122,7 @@ enum msm_usb_phy_type {
 
 #define IDEV_CHG_MAX	1500
 #define IUNIT		100
+#define IDEV_CHG_MIN	500
 #define IDEV_HVDCP_CHG_MAX	1800
 #define IDEV_CHG_TA	1100
 
@@ -411,6 +412,7 @@ struct msm_otg_platform_data {
  * @buf: Dynamic Debug Buffer.
  * @max_nominal_system_clk_rate: max freq at which system clock can run in
 		nominal mode.
+ * @falsesdp_retry_count: Counter for number of FALSE_SDP retries
  */
 struct msm_otg {
 	struct usb_phy phy;
@@ -559,6 +561,7 @@ struct msm_otg {
 	int pm_qos_latency;
 	struct pm_qos_request pm_qos_req_dma;
 	struct delayed_work perf_vote_work;
+	int falsesdp_retry_count;
 };
 
 struct ci13xxx_platform_data {
