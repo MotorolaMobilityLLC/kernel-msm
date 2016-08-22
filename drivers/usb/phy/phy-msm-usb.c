@@ -77,6 +77,8 @@
 #define PM_QOS_SAMPLE_SEC	2
 #define PM_QOS_THRESHOLD	400
 
+#define MAX_CHGR_RETRY_COUNT    3
+
 enum msm_otg_phy_reg_mode {
 	USB_PHY_REG_OFF,
 	USB_PHY_REG_ON,
@@ -2271,7 +2273,16 @@ static void msm_otg_chg_check_timer_func(unsigned long data)
 				otg->phy->state, 0);
 		set_bit(B_FALSE_SDP, &motg->inputs);
 		queue_work(motg->otg_wq, &motg->sm_work);
+		return;
 	}
+
+	if (motg->falsesdp_retry_count < MAX_CHGR_RETRY_COUNT)
+		motg->falsesdp_retry_count++;
+
+	if (motg->falsesdp_retry_count == MAX_CHGR_RETRY_COUNT)
+		msm_otg_notify_charger(motg, IDEV_CHG_MIN);
+	else
+		mod_timer(&motg->chg_check_timer, CHG_RECHECK_DELAY);
 }
 
 static bool msm_chg_check_secondary_det(struct msm_otg *motg)
@@ -2851,6 +2862,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 					msm_otg_start_peripheral(otg, 1);
 					otg->phy->state =
 						OTG_STATE_B_PERIPHERAL;
+					motg->falsesdp_retry_count = 0;
 					mod_timer(&motg->chg_check_timer,
 							CHG_RECHECK_DELAY);
 					break;
@@ -2883,6 +2895,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 			dcp = (motg->chg_type == USB_DCP_CHARGER);
 			motg->chg_state = USB_CHG_STATE_UNDEFINED;
 			motg->chg_type = USB_INVALID_CHARGER;
+			motg->falsesdp_retry_count = 0;
 			msm_otg_notify_charger(motg, 0);
 			if (dcp) {
 				if (motg->ext_chg_active == DEFAULT)
