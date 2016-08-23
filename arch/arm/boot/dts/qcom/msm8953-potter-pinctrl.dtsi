@@ -128,6 +128,61 @@
 		};
 	};
 
+	i2c_6 {
+		i2c_6_active: i2c_6_active {
+			mux {
+				pins = "gpio22", "gpio23";
+				function = "blsp_i2c6";
+			};
+
+			config {
+				pins = "gpio22", "gpio23";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		i2c_6_sleep: i2c_6_sleep {
+			mux {
+				pins = "gpio22", "gpio23";
+				function = "blsp_i2c6";
+			};
+
+			config {
+				pins = "gpio22", "gpio23";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		epl8802_2_active: epl8802_2_active{
+			/* active state */
+			mux {
+				pins = "gpio31";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio31";
+				drive-strength = <10>;
+				bias-pull-up; /* No PULL */
+			};
+		};
+
+		epl8802_2_suspend: epl8802_2_suspend{
+			mux {
+				pins = "gpio31";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio31";
+				drive-strength = <2>;
+				bias-pull-up; /* No PULL */
+			};
+		};
+	};
+
 	spi_7 {
 		spi_7_active: spi_7_active {
 			mux {
