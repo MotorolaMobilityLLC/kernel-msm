@@ -21,6 +21,7 @@
 #include <linux/of_platform.h>
 #include <linux/of_device.h>
 #include <linux/spmi.h>
+#include <linux/regmap.h>
 
 #define LED_CFG_MASK	0x06
 #define LED_CFG_SHIFT   1
@@ -34,31 +35,21 @@
  */
 struct atc_led_data {
 	struct led_classdev	cdev;
-	struct spmi_device	*spmi_dev;
+	struct platform_device	*pdev;
+	struct regmap		*regmap;
 	u32			addr;
 };
 
 static int
-spmi_masked_write(struct atc_led_data *led, u16 addr, u8 mask, u8 val)
+atc_led_masked_write(struct atc_led_data *led, u16 addr, u8 mask, u8 val)
 {
 	int rc;
-	u8 reg;
 
-	rc = spmi_ext_register_readl(led->spmi_dev->ctrl, led->spmi_dev->sid,
-		addr, &reg, 1);
-	if (rc) {
-		dev_err(&led->spmi_dev->dev,
-			"Unable to read from addr=%#x, rc(%d)\n", addr, rc);
-	}
-
-	reg &= ~mask;
-	reg |= val;
-
-	rc = spmi_ext_register_writel(led->spmi_dev->ctrl, led->spmi_dev->sid,
-		addr, &reg, 1);
+	rc = regmap_update_bits(led->regmap, addr, mask, val);
 	if (rc)
-		dev_err(&led->spmi_dev->dev,
-			"Unable to write to addr=%#x, rc(%d)\n", addr, rc);
+		dev_err(&led->pdev->dev,
+			"Unable to regmap_update_bits to addr=%x, rc(%d)\n",
+			addr, rc);
 	return rc;
 }
 
@@ -74,7 +65,7 @@ static void atc_led_set(struct led_classdev *led_cdev,
 		value = LED_ON;
 
 	val = value << LED_CFG_SHIFT;
-	spmi_masked_write(led, led->addr, LED_CFG_MASK, val);
+	atc_led_masked_write(led, led->addr, LED_CFG_MASK, val);
 	led->cdev.brightness = value;
 }
 
@@ -83,75 +74,70 @@ static enum led_brightness atc_led_get(struct led_classdev *led_cdev)
 	return led_cdev->brightness;
 }
 
-static int atc_leds_probe(struct spmi_device *spmi)
+static int atc_leds_probe(struct platform_device *pdev)
 {
 	struct atc_led_data *led;
-	struct resource *led_resource;
 	struct device_node *node;
-	u32 offset;
 	int rc;
-	u8 reg;
+	uint reg;
 
-	node = spmi->dev.of_node;
+	node = pdev->dev.of_node;
 	if (node == NULL)
 		return -ENODEV;
 
-	led = devm_kzalloc(&spmi->dev, sizeof(struct atc_led_data), GFP_KERNEL);
+	led = devm_kzalloc(&pdev->dev, sizeof(struct atc_led_data), GFP_KERNEL);
 	if (!led) {
-		dev_err(&spmi->dev, "Unable to allocate memory\n");
+		dev_err(&pdev->dev, "Unable to allocate memory\n");
 		return -ENOMEM;
 	}
 
-	led->spmi_dev = spmi;
+	led->pdev = pdev;
 
-	led_resource = spmi_get_resource(spmi, NULL, IORESOURCE_MEM, 0);
-	if (!led_resource) {
-		dev_err(&spmi->dev, "Unable to get LED base address\n");
-		return -ENXIO;
+	led->regmap = dev_get_regmap(pdev->dev.parent, NULL);
+	if (!led->regmap) {
+		dev_err(&pdev->dev, "Couldn't get parent's regmap\n");
+		return -EINVAL;
 	}
 
-	rc = of_property_read_u32(node, "qcom,ctrl-reg", &offset);
+	rc = of_property_read_u32(node, "qcom,ctrl-reg", &led->addr);
 	if (rc < 0) {
-		dev_err(&spmi->dev,
+		dev_err(&pdev->dev,
 			"Failure reading ctrl offset, rc = %d\n", rc);
 		return -ENODEV;
 	}
 
-	led->addr = led_resource->start + offset;
-
 	rc = of_property_read_string(node, "linux,name", &led->cdev.name);
 	if (rc < 0) {
-		dev_err(&spmi->dev,
+		dev_err(&pdev->dev,
 			"Failure reading led name, rc = %d\n", rc);
 		return -ENODEV;
 	}
 
-	rc = spmi_ext_register_readl(led->spmi_dev->ctrl, led->spmi_dev->sid,
-			led->addr, &reg, 1);
-	if (rc)
-		dev_err(&led->spmi_dev->dev,
-			"Unable to read from addr=%#x, rc(%d)\n",
-			led->addr, rc);
+	rc = regmap_read(led->regmap, led->addr, &reg);
+	if (rc) {
+		dev_err(&pdev->dev, "read reg failed(%d)\n", rc);
+		return rc;
+	}
 
 	led->cdev.brightness_set = atc_led_set;
 	led->cdev.brightness_get = atc_led_get;
 	led->cdev.brightness = (reg & LED_CFG_MASK) >> LED_CFG_SHIFT;
 	led->cdev.max_brightness = LED_ON;
 
-	rc = led_classdev_register(&spmi->dev, &led->cdev);
+	rc = led_classdev_register(&pdev->dev, &led->cdev);
 	if (rc) {
-		dev_err(&spmi->dev, "unable to ATC led rc=%d\n", rc);
+		dev_err(&pdev->dev, "unable to ATC led rc=%d\n", rc);
 		return -ENODEV;
 	}
 
-	dev_set_drvdata(&spmi->dev, led);
-	dev_info(&spmi->dev, "%s success\n", __func__);
+	dev_set_drvdata(&pdev->dev, led);
+	dev_info(&pdev->dev, "%s success\n", __func__);
 	return 0;
 }
 
-static int atc_leds_remove(struct spmi_device *spmi)
+static int atc_leds_remove(struct platform_device *pdev)
 {
-	struct atc_led_data *led  = dev_get_drvdata(&spmi->dev);
+	struct atc_led_data *led  = dev_get_drvdata(&pdev->dev);
 
 	if (NULL != led)
 		led_classdev_unregister(&led->cdev);
@@ -168,7 +154,7 @@ static struct of_device_id spmi_match_table[] = {
 #define spmi_match_table NULL
 #endif
 
-static struct spmi_driver atc_leds_driver = {
+static struct platform_driver atc_leds_driver = {
 	.driver		= {
 		.name	= "qcom,leds-atc",
 		.of_match_table = spmi_match_table,
@@ -179,13 +165,13 @@ static struct spmi_driver atc_leds_driver = {
 
 static int __init atc_led_init(void)
 {
-	return spmi_driver_register(&atc_leds_driver);
+	return platform_driver_register(&atc_leds_driver);
 }
 module_init(atc_led_init);
 
 static void __exit atc_led_exit(void)
 {
-	spmi_driver_unregister(&atc_leds_driver);
+	platform_driver_unregister(&atc_leds_driver);
 }
 module_exit(atc_led_exit);
 
