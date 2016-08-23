@@ -20,7 +20,7 @@
 #include <linux/ctype.h>
 #include <linux/cpu.h>
 
-#define MAX_PSTATES 20
+#define MAX_PSTATES 50
 #define NUM_OF_PENTRY 3 /* number of variables for ptable node */
 #define NUM_OF_EENTRY 2 /* number of variables for enable node */
 
