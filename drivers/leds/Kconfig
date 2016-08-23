@@ -347,7 +347,9 @@ config LEDS_PCA963X
 
 config LEDS_ATC
 	tristate "Support for PMIC ATC LED"
-	depends on LEDS_CLASS && MSM_SPMI && OF_SPMI
+	depends on LEDS_CLASS
+	depends on SPMI
+	select REGMAP_SPMI
 	help
 	  This driver supports the ATC led functionality of Qualcomm PNP PMIC.
 	  Creates standard LED interface for the auto trickle charge indication
