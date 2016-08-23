@@ -2853,14 +2853,19 @@ static void msm_otg_sm_work(struct work_struct *w)
 			case USB_CHG_STATE_DETECTED:
 				switch (motg->chg_type) {
 				case USB_DCP_CHARGER:
-					/* fall through */
-				case USB_PROPRIETARY_CHARGER:
 					if (ta_charger_detected)
 						msm_otg_notify_charger(motg,
 							IDEV_CHG_TA);
 					else
-						msm_otg_notify_charger(motg,
-							dcp_max_current);
+					       msm_otg_notify_charger(motg,
+							IDEV_CHG_DCP);
+					if (!motg->is_ext_chg_dcp)
+						otg->phy->state =
+							OTG_STATE_B_CHARGER;
+					break;
+				case USB_PROPRIETARY_CHARGER:
+					msm_otg_notify_charger(motg,
+						IDEV_CHG_PROP);
 					if (!motg->is_ext_chg_dcp)
 						otg->phy->state =
 							OTG_STATE_B_CHARGER;
@@ -3129,7 +3134,7 @@ static void msm_otg_set_vbus_state(int online)
 out:
 	if (motg->is_ext_chg_dcp) {
 		if (test_bit(B_SESS_VLD, &motg->inputs)) {
-			msm_otg_notify_charger(motg, IDEV_CHG_MAX);
+			msm_otg_notify_charger(motg, IDEV_CHG_DCP);
 		} else {
 			motg->is_ext_chg_dcp = false;
 			motg->chg_state = USB_CHG_STATE_UNDEFINED;
