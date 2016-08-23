@@ -1429,6 +1429,9 @@ static int get_cpu_freq_plan_len(int cpu)
 {
 	int table_len = 0;
 	struct device *cpu_dev = NULL;
+	int max_cpu_freq = CONFIG_MAX_CPU_FREQ_KHZ;
+	struct dev_pm_opp *opp = NULL;
+	unsigned long freq = 0;
 
 	cpu_dev = get_cpu_device(cpu);
 	if (!cpu_dev) {
@@ -1437,18 +1440,20 @@ static int get_cpu_freq_plan_len(int cpu)
 	}
 
 	rcu_read_lock();
-	table_len = dev_pm_opp_get_opp_count(cpu_dev);
-	if (table_len <= 0) {
-		pr_err("Error reading CPU%d freq table len. error:%d\n",
-			cpu, table_len);
-		table_len = 0;
-		goto unlock_and_exit;
-	}
+	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(cpu_dev, &freq))) {
+		freq++;
+		if (max_cpu_freq && (freq/1000) > max_cpu_freq) {
+			pr_debug("%s: 8996-lite Ignore freqs %ld  higher than %d\n",
+				__func__, freq, max_cpu_freq);
+			continue;
+		}
 
-unlock_and_exit:
+		table_len++;
+	}
 	rcu_read_unlock();
 
 exit:
+
 	return table_len;
 }
 
@@ -1459,6 +1464,7 @@ static int get_cpu_freq_plan(int cpu,
 	struct dev_pm_opp *opp = NULL;
 	unsigned long freq = 0;
 	struct device *cpu_dev = NULL;
+	int max_cpu_freq = CONFIG_MAX_CPU_FREQ_KHZ;
 
 	cpu_dev = get_cpu_device(cpu);
 	if (!cpu_dev) {
@@ -1468,10 +1474,14 @@ static int get_cpu_freq_plan(int cpu,
 
 	rcu_read_lock();
 	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(cpu_dev, &freq))) {
-		/* Convert from Hz to kHz */
+		if (max_cpu_freq && (freq/1000) > max_cpu_freq) {
+			pr_debug("%s: 8996-lite Ignore freqs %ld  higher than %d\n",
+				__func__, (freq/1000), max_cpu_freq);
+			freq++;
+			continue;
+		}
+
 		freq_table_ptr[table_len].frequency = freq / 1000;
-		pr_debug("cpu%d freq %d :%d\n", cpu, table_len,
-			freq_table_ptr[table_len].frequency);
 		freq++;
 		table_len++;
 	}
