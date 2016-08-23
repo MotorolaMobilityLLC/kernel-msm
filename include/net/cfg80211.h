@@ -3,7 +3,7 @@
 /*
  * 802.11 device and configuration interface
  *
- * Copyright 2006-2010, 2016 Johannes Berg <johannes@sipsolutions.net>
+ * Copyright 2006-2010	Johannes Berg <johannes@sipsolutions.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
