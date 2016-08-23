@@ -13,6 +13,7 @@
 
 #include "msmcobalt-pinctrl.dtsi"
 #include "msmcobalt-moto-pinctrl.dtsi"
+#include "msmcobalt-mdss.dtsi"
 
 &soc {
 	i2c7 {

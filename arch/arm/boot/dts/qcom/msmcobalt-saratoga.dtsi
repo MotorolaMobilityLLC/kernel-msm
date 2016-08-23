@@ -12,9 +12,74 @@
 
 #include "msmcobalt.dtsi"
 #include "msmcobalt-moto-common.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
 
 / {
 	model = "Saratoga";
 	compatible = "qcom,msmcobalt-saratoga", "qcom,msmcobalt-moto",
 			"qcom,msmcobalt";
+};
+
+&soc {
+	vdd3_disp_vreg: vdd3_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd3_disp";
+		gpio = <&pmcobalt_gpios 7 0>;
+		vin-supply = <&pmcobalt_s4>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
+	vbat_disp_vreg: vbat_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat_disp";
+		gpio = <&tlmm 69 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+};
+
+&pmcobalt_l19 {
+	/* Todo.. This need to configure to 3.2v */
+	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi {
+	hw-config = "dual_dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_g_cmd_v0>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-reset-gpio = <&tlmm 8 0>;
+	qcom,platform-te-gpio = <&tlmm 10 0>;
+
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vci_disp-supply = <&pmcobalt_l19>;
+	vdd3_disp-supply = <&vdd3_disp_vreg>;
+};
+
+&mdss_dsi1 {
+        status = "disabled";
+};
+
+&pmcobalt_gpios {
+	/* GPIO 7 for DISP_VIO_EN */
+	/* Todo.. need to check the mode for output */
+	gpio@c600 {
+		status = "okay";
+		qcom,mode = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <0>;
+		qcom,src-sel = <0>;
+		qcom,out-strength = <1>;
+	};
 };
