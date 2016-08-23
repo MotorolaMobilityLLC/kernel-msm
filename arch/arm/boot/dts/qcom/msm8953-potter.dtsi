@@ -267,8 +267,6 @@
 			enable-active-high;
 			pinctrl-names = "default";
 			pinctrl-0 = <&dtv_output_default &dtv_input_default>;
-			clocks = <&clock_gcc clk_bb_clk2>;
-			clock-names = "dtv_refclk";
 			isdbt_vdd-supply = <&pm8953_l6>;
 			qcom,vdd-min-max-voltage = <1800000 1800000>;
 			bbm-xtal-freq = <37400>;
@@ -407,20 +405,6 @@
 	};
 };
 
-&pm8953_gpios {
-	gpio@c100 { /* GPIO 2 */
-		status = "okay";
-		qcom,mode = <0>;	/* QPNP_PIN_MODE_DIG_OUT */
-		qcom,output-type = <0>;	/* CMOS logic */
-		qcom,invert = <0>;	/* Output low initially */
-		qcom,pull = <5>; 	/* QPNP_PIN_NO_PULL */
-		qcom,vin-sel = <2>; 	/* QPNP_PIN_VIN2 */
-		qcom,out-strength = <3>;/* High */
-		qcom,src-sel = <0>; 	/* QPNP_PIN_SEL_FUNC_CONSTANT */
-		qcom,master-en = <1>;	/* Enable this pin */
-	};
-};
-
 &i2c_5 { /* BLSP2 QUP1 (NFC) */
 	pnxxx: pnxxx@28 {
 	    compatible = "nxp,pn544";
@@ -439,7 +423,7 @@
 
 	    qcom,clk-gpio = <&pm8953_gpios 2 0x00>;
 	    qcom,clk-src = "BBCLK2";
-	    clocks = <&clock_gcc clk_bb_clk2>;
+	    clocks = <&clock_gcc clk_bb_clk2_pin>;
 	    clock-names = "ref_clk";
 	};
 };
@@ -584,18 +568,16 @@
 };
 
 &pm8953_gpios {
-	gpio@c100 {
+	gpio@c100 { /* GPIO 2 */
 		status = "okay";
-		qcom,mode = <1>; /* Digital output */
+		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>; /* CMOS logic */
-		qcom,pull = <5>; /* From QC */
-		qcom,invert = <0>; /* Output low initially */
-		qcom,vin-sel = <3>; /* VIN 3 */
-		qcom,src-sel = <0x6>; /* DTEST3 */
-		qcom,out-strength = <2>; /* Medium */
-		qcom,master-en = <1>; /* Enable GPIO */
-		reg = <0xc100 0x100>;
-		qcom,pin-num = <2>;
+		qcom,invert = <0>;      /* Output low initially */
+		qcom,pull = <5>;        /* QPNP_PIN_NO_PULL */
+		qcom,vin-sel = <2>;     /* QPNP_PIN_VIN2 */
+		qcom,out-strength = <3>;/* High */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;   /* Enable this pin */
 	};
 
 	gpio@c400 {
