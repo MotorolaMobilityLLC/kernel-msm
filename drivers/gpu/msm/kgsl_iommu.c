@@ -1695,8 +1695,8 @@ kgsl_iommu_unmap(struct kgsl_pagetable *pt,
 	} else
 		ret = iommu_unmap_range(iommu_pt->domain, gpuaddr, range);
 	if (ret) {
-		KGSL_CORE_ERR("iommu_unmap_range(%pK, %x, %d) failed "
-			"with err: %d\n", iommu_pt->domain, gpuaddr,
+		KGSL_CORE_ERR("iommu_unmap_range(%x, %d) failed "
+			"with err: %d\n", gpuaddr,
 			range, ret);
 		return ret;
 	}
@@ -1807,9 +1807,9 @@ kgsl_iommu_map(struct kgsl_pagetable *pt,
 				sg_temp ? sg_temp : memdesc->sg,
 				size, protflags);
 	if (ret) {
-		KGSL_CORE_ERR("iommu_map_range(%pK, %x, %pK, %zd, %x) err: %d\n",
-			iommu_pt->domain, iommu_virt_addr,
-			sg_temp ? sg_temp : memdesc->sg, size,
+		KGSL_CORE_ERR("iommu_map_range(%x, %zd, %x) err: %d\n",
+			iommu_virt_addr,
+			size,
 			protflags, ret);
 		kgsl_free(sg_temp);
 		return ret;
@@ -1820,8 +1820,8 @@ kgsl_iommu_map(struct kgsl_pagetable *pt,
 				page_to_phys(kgsl_guard_page), PAGE_SIZE,
 				protflags & ~IOMMU_WRITE);
 		if (ret) {
-			KGSL_CORE_ERR("iommu_map(%pK, %zx, guard, %x) err: %d\n",
-				iommu_pt->domain, iommu_virt_addr + size,
+			KGSL_CORE_ERR("iommu_map(%zx, guard, %x) err: %d\n",
+				iommu_virt_addr + size,
 				protflags & ~IOMMU_WRITE,
 				ret);
 			/* cleanup the partial mapping */

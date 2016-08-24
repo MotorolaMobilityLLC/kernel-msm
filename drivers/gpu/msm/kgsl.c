@@ -4675,7 +4675,7 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	disable_irq(device->pwrctrl.interrupt_num);
 
 	KGSL_DRV_INFO(device,
-		"dev_id %d regs phys 0x%08lx size 0x%08x\n",
+		"dev_id %d regs phys 0x%08lx size 0x%08x \n",
 		device->id, device->reg_phys, device->reg_len);
 
 	rwlock_init(&device->context_lock);
