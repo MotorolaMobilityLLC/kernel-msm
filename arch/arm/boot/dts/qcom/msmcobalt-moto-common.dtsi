@@ -42,6 +42,17 @@
 		pinctrl-0 = <&fsa8500_hs_det_default>;
 		fsa8500-lint-disabled;
 	};
+
+	drv2624: drv2624@5a {
+		compatible = "ti,drv2624";
+		reg = <0x5A>;
+		ti,rated_voltage = /bits/ 8 <0x6D>;
+		ti,overdrive_voltage = /bits/ 8 <0xF0>;
+		ti,lra_freq = /bits/ 8 <0xF0>;
+		ti,lra_drive;
+		ti,auto_cal;
+		ti,nrst-gpio = <&pmicobalt_gpios 9 0>;   /* EN_GPIO */
+	};
 };
 
 &i2c_8 {
@@ -66,6 +77,18 @@
 				patch-data = "S";
 			};
 		};
+	};
+};
+
+&pmicobalt_gpios {
+	gpio@c800 { /* PMI8998_GPIO9 VIB_RST_N */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
 	};
 };
 
