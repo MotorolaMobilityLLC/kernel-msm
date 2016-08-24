@@ -1358,7 +1358,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	if (!pwr->pcl) {
 		KGSL_PWR_ERR(device,
 				"msm_bus_scale_register_client failed: "
-				"id %d table %pK %pK", device->id,
+				"id %d table %pK %pk", device->id,
 				pdata->bus_scale_table,
 				ocmem_scale_table);
 		result = -EINVAL;
