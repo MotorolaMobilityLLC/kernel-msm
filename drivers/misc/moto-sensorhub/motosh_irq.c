@@ -26,6 +26,7 @@
 #include <linux/input-polldev.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/math64.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/poll.h>
@@ -73,7 +74,7 @@ static void motosh_irq_vr_handler(struct kthread_work *work)
 	struct vr_data read_vr_data[VR_BUFFERED_SAMPLES];
 	struct motosh_data *ps_motosh = container_of(work,
 			struct motosh_data, irq_work);
-	unsigned short lowest_sensor_delay_ms = USHRT_MAX;
+	int32_t lowest_sensor_delay_ms = INT_MAX;
 
 	if (ps_motosh->is_suspended)
 		goto EXIT;
@@ -98,8 +99,8 @@ static void motosh_irq_vr_handler(struct kthread_work *work)
 			motosh_g_mag_delay < lowest_sensor_delay_ms)
 		lowest_sensor_delay_ms = motosh_g_mag_delay;
 
-	num_samples = (motosh_timestamp_ns() - last_sensor_ts) /
-			MS_TO_NS(lowest_sensor_delay_ms);
+	num_samples = div_s64((motosh_timestamp_ns() - last_sensor_ts),
+			MS_TO_NS(lowest_sensor_delay_ms));
 
 	if (num_samples < 1)
 		num_samples = 1;
