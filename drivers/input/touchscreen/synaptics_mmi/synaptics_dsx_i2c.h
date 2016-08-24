@@ -554,6 +554,10 @@ struct synaptics_rmi4_data {
 
 	struct reporting_ctrl rctrl;
 	unsigned char tsb_buff_clean_flag;
+
+	bool touch_data_contiguous;
+	uint8_t *touch_data;
+	uint16_t touch_data_size;
 };
 
 struct time_keeping {
