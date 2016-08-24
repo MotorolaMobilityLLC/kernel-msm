@@ -71,8 +71,37 @@
 
 /* cpu to fix usb interrupt */
 static int cpu_to_affin;
+
+static bool disable_ss_switch;
 module_param(cpu_to_affin, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(cpu_to_affin, "affin usb irq to this cpu");
+static int set_disable_ss_switch(const char *val, const struct kernel_param *kp)
+{
+	int rv;
+	struct power_supply *usb_psy;
+
+	usb_psy = power_supply_get_by_name("usb");
+	if (!usb_psy) {
+		pr_err("USB supply not found !\n");
+		return -ENODEV;
+	}
+	rv = param_set_bool(val, kp);
+	if (rv)
+		return rv;
+
+	if (disable_ss_switch)
+		power_supply_changed(usb_psy);
+	return 0;
+}
+
+static struct kernel_param_ops disable_ss_param_ops = {
+	.set = set_disable_ss_switch,
+	.get = param_get_bool,
+};
+
+module_param_cb(disable_ss_switch, &disable_ss_param_ops,
+				&disable_ss_switch, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(disable_ss_switch, "Disable Super Speed Switch");
 
 static bool disable_host_mode;
 module_param(disable_host_mode, bool, S_IRUGO | S_IWUSR);
@@ -2659,7 +2688,10 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 		val->intval = mdwc->usb_otg_status;
 		break;
 	case POWER_SUPPLY_PROP_SWITCH_STATE:
-		val->intval = mdwc->usbc_switch_state;
+		if (disable_ss_switch)
+			val->intval = 0;
+		else
+			val->intval = mdwc->usbc_switch_state;
 		break;
 	case POWER_SUPPLY_PROP_USB_OWNER:
 		val->intval = mdwc->usb_owner;
