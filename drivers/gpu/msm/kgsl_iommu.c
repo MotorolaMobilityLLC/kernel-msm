@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -612,7 +612,7 @@ static void kgsl_detach_pagetable_iommu_domain(struct kgsl_mmu *mmu)
 			iommu_detach_device(iommu_pt->domain, ctx->dev);
 			ctx->attached = false;
 			KGSL_MEM_INFO(mmu->device,
-				"iommu %p detached from user dev of MMU: %p\n",
+				"iommu %pK detached from user dev of MMU: %pK\n",
 				iommu_pt->domain, mmu);
 		}
 	}
@@ -700,7 +700,7 @@ static int kgsl_attach_pagetable_iommu_domain(struct kgsl_mmu *mmu)
 		}
 		ctx->attached = true;
 		KGSL_MEM_INFO(mmu->device,
-				"iommu pt %p attached to dev %p, ctx_id %d\n",
+				"iommu pt %pK attached to dev %pK, ctx_id %d\n",
 				iommu_pt->domain, ctx->dev, ctx->ctx_id);
 		if (KGSL_IOMMU_CONTEXT_SECURE != i) {
 			ret = iommu_domain_get_attr(iommu_pt->domain,
@@ -1108,8 +1108,8 @@ kgsl_iommu_unmap(struct kgsl_pagetable *pt,
 		unmapped = iommu_unmap(iommu_pt->domain, gpuaddr, range);
 	if (unmapped != range) {
 		KGSL_CORE_ERR(
-			"iommu_unmap(%p, %llx, %lld) failed with unmapped size: %zd\n",
-			iommu_pt->domain, gpuaddr, range, unmapped);
+			"iommu_unmap(%llx, %lld) failed with unmapped size: %zd\n",
+			gpuaddr, range, unmapped);
 		return -EINVAL;
 	}
 
@@ -1237,8 +1237,8 @@ int _iommu_add_guard_page(struct kgsl_pagetable *pt,
 				protflags & ~IOMMU_WRITE);
 		if (ret) {
 			KGSL_CORE_ERR(
-			"iommu_map(%p, addr %016llX, flags %x) err: %d\n",
-			iommu_pt->domain, gpuaddr, protflags & ~IOMMU_WRITE,
+			"iommu_map(addr %016llX, flags %x) err: %d\n",
+			gpuaddr, protflags & ~IOMMU_WRITE,
 			ret);
 			return ret;
 		}
@@ -1306,9 +1306,8 @@ kgsl_iommu_map(struct kgsl_pagetable *pt,
 	}
 
 	if (mapped != size) {
-		KGSL_CORE_ERR("iommu_map_sg(%p, %016llX, %lld, %x) err: %zd\n",
-				iommu_pt->domain, addr, size,
-				flags, mapped);
+		KGSL_CORE_ERR("iommu_map_sg(%016llX, %lld, %x) err: %zd\n",
+				addr, size,	flags, mapped);
 		return -ENODEV;
 	}
 
