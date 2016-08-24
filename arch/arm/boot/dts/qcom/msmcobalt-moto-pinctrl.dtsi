@@ -11,6 +11,14 @@
  */
 
 &tlmm {
+	fsa8500_hs_det_default: fsa8500_hs_det_default {
+		config {
+			pins = "gpio63";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 	touch_int_mux {
 		touch_int_active: active {
 			mux {
