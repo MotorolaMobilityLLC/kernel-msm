@@ -15,15 +15,57 @@
 #include "msmcobalt-moto-pinctrl.dtsi"
 #include "msmcobalt-mdss.dtsi"
 
-&soc {
-	i2c7 {
-		status = "ok";
+
+&i2c_5 {
+		/delete-node/ synaptics@20;
+};
+
+&i2c_7 {
+	status = "ok";
+
+	fsa8500@23 {
+		compatible = "fairchild,fsa8500";
+		reg = <0x23>;
+		gpios = <&tlmm 63 0x0>;
+		fsa8500-init-regs = <0x0c 0x41>,
+				    <0x0f 0xf9>,
+				    <0x11 0x84>,
+				    <0x13 0xbf>,
+				    <0x14 0x69>;
+
+		fsa8500-keymap = <0x4000000 0xe2>, /* SND_JACK_BTN_0 - KEY_MEDIA */
+				 <0x0400000 0x246>, /* SND_JACK_BTN_4 - KEY_VOICECOMMAND */
+				 <0x0200000 0x73>, /* SND_JACK_BTN_5 - KEY_VOLUMEUP */
+				 <0x0100000 0x72>; /* SND_JACK_BTN_6 - KEY_VOLUMEDOWN */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&fsa8500_hs_det_default>;
+		fsa8500-lint-disabled;
 	};
 };
 
-&soc {
-	i2c7 {
-		status = "ok";
+&i2c_8 {
+	status = "ok";
+
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <40 0>;
+		gpios = <&tlmm 40 0>, /* IRQ */
+		<&tlmm 39 0>; /* RESET */
+		touch_vdd-supply = <&pmcobalt_l28>;
+		synaptics,gpio-config;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_active &touch_int_suspend>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+		config_modifier-names = "aod";
+		config_modifier-aod {
+			aod-suspended {
+				/* Power->sleep; */
+				patch-data = "S";
+			};
+		};
 	};
 };
 
@@ -58,32 +100,4 @@
 
 &ufs_ice {
 	status = "ok";
-};
-
-&i2c_5 {
-	/delete-node/ synaptics@20;
-};
-
-&i2c_8 {
-	status = "ok";
-	synaptics_dsx_i2c@20 {
-		compatible = "synaptics,synaptics_dsx_i2c";
-		reg = <0x20>;
-		interrupt-parent = <&tlmm>;
-		interrupts = <40 0>;
-		gpios = <&tlmm 40 0>, /* IRQ */
-			<&tlmm 39 0>; /* RESET */
-		touch_vdd-supply = <&pmcobalt_l28>;
-		synaptics,gpio-config;
-		pinctrl-names = "default", "active";
-		pinctrl-0 = <&touch_reset_active &touch_int_suspend>;
-		pinctrl-1 = <&touch_reset_active &touch_int_active>;
-		config_modifier-names = "aod";
-		config_modifier-aod {
-			aod-suspended {
-				/* Power->sleep; */
-				patch-data = "S";
-			};
-		};
-	};
 };
