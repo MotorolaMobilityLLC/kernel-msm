@@ -1497,7 +1497,7 @@ static void _kgsl_cmdbatch_timer(unsigned long data)
 		}
 		case KGSL_CMD_SYNCPOINT_TYPE_FENCE:
 			if (event->handle && event->handle->fence)
-				pr_err("  fence: [%p] %s\n",
+				pr_err("  fence: [%pK] %s\n",
 					event->handle->fence,
 					event->handle->fence->name);
 			else
@@ -4470,9 +4470,8 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	disable_irq(device->pwrctrl.interrupt_num);
 
 	KGSL_DRV_INFO(device,
-		"dev_id %d regs phys 0x%08lx size 0x%08x virt %p\n",
-		device->id, device->reg_phys, device->reg_len,
-		device->reg_virt);
+		"dev_id %d regs phys 0x%08lx size 0x%08x\n",
+		device->id, device->reg_phys, device->reg_len);
 
 	rwlock_init(&device->context_lock);
 
