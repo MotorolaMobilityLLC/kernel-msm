@@ -7,4 +7,5 @@ obj-y += broadcast/
 obj-$(CONFIG_DVB_MPQ) += dvb/
 obj-$(CONFIG_MSMB_CAMERA) += camera_v2/
 obj-$(CONFIG_MSM_AIS) += ais/
+obj-$(CONFIG_MSMB_CAMERA_2016) += camera_v2_2016/
 obj-y += sde/
