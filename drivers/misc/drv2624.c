@@ -1019,14 +1019,14 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 
 	rc = of_property_read_u8(np, "ti,rated_voltage",
 		&pdata->msActuator.mnRatedVoltage);
-	if (!rc) {
+	if (rc) {
 		dev_err(&client->dev, "%s: rated voltage read failed\n",
 			__func__);
 		return NULL;
 	}
 	rc = of_property_read_u8(np, "ti,overdrive_voltage",
 		&pdata->msActuator.mnOverDriveClampVoltage);
-	if (!rc) {
+	if (rc) {
 		dev_err(&client->dev, "%s: overdrive voltage read failed\n",
 			__func__);
 		return NULL;
@@ -1040,7 +1040,7 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 	if (pdata->msActuator.meActuatorType) {
 		rc = of_property_read_u8(np, "ti,lra_freq",
 			&pdata->msActuator.mnLRAFreq);
-		if (!rc) {
+		if (rc) {
 			dev_err(&client->dev, "%s: lra frequency read failed\n",
 				__func__);
 			return NULL;
