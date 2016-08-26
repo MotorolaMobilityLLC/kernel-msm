@@ -50,10 +50,6 @@
 #define INPUT_PHYS_NAME "synaptics_dsx_i2c/input0"
 #define TYPE_B_PROTOCOL
 
-#define IRQ_DISPATCH_LATENCY	5000
-
-static int latency_in_effect = IRQ_DISPATCH_LATENCY;
-
 #define RMI4_WAIT_READY 0
 #define RMI4_HW_RESET 1
 #define RMI4_SW_RESET 2
@@ -1709,6 +1705,12 @@ static struct synaptics_dsx_platform_data *
 		rmi4_data->purge_enabled = true;
 	}
 
+	retval = of_property_read_u32(np, "synaptics,pm-qos-latency",
+		&rmi4_data->pm_qos_latency);
+	if (!retval)
+		pr_notice("pm qos latency is %d\n",
+			rmi4_data->pm_qos_latency);
+
 	return pdata;
 }
 #else
@@ -2097,10 +2099,10 @@ static ssize_t synaptics_rmi4_drv_irq_show(struct device *dev,
 static ssize_t synaptics_rmi4_drv_irq_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
-static ssize_t synaptics_rmi4_pm_opt_show(struct device *dev,
+static ssize_t synaptics_rmi4_pm_qos_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
-static ssize_t synaptics_rmi4_pm_opt_store(struct device *dev,
+static ssize_t synaptics_rmi4_pm_qos_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
@@ -2317,9 +2319,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(tsi, S_IRUSR | S_IRGRP,
 			synaptics_rmi4_ud_show,
 			synaptics_rmi4_store_error),
-	__ATTR(pm_opt, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
-			synaptics_rmi4_pm_opt_show,
-			synaptics_rmi4_pm_opt_store),
+	__ATTR(pm_qos, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			synaptics_rmi4_pm_qos_show,
+			synaptics_rmi4_pm_qos_store),
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
 	__ATTR(test_irq_delay_ms, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
 			synaptics_rmi4_test_irq_delay_ms_show,
@@ -3441,16 +3443,21 @@ static ssize_t synaptics_rmi4_drv_irq_store(struct device *dev,
 	return count;
 }
 
-static ssize_t synaptics_rmi4_pm_opt_show(struct device *dev,
+static ssize_t synaptics_rmi4_pm_qos_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%d\n", latency_in_effect);
+	struct synaptics_rmi4_data *rmi4_data =
+					i2c_get_clientdata(to_i2c_client(dev));
+	return scnprintf(buf, PAGE_SIZE, "%d\n", rmi4_data->pm_qos_latency);
 }
 
-static ssize_t synaptics_rmi4_pm_opt_store(struct device *dev,
+static ssize_t synaptics_rmi4_pm_qos_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
+	struct synaptics_rmi4_data *rmi4_data =
+					i2c_get_clientdata(to_i2c_client(dev));
 	unsigned long value = 0;
+	uint32_t old;
 	int err = 0;
 
 	err = kstrtoul(buf, 10, &value);
@@ -3459,17 +3466,24 @@ static ssize_t synaptics_rmi4_pm_opt_store(struct device *dev,
 		return -EINVAL;
 	}
 
+	old = rmi4_data->pm_qos_latency;
+
 	switch (value) {
 	case 0:
-		latency_in_effect = PM_QOS_DEFAULT_VALUE;
-		break;
-	case 1:
-		latency_in_effect = IRQ_DISPATCH_LATENCY;
+		rmi4_data->pm_qos_latency = PM_QOS_DEFAULT_VALUE;
 		break;
 	default:
-		pr_err("Invalid value\n");
-		return -EINVAL;
+		rmi4_data->pm_qos_latency = value;
 	}
+
+	if (old != rmi4_data->pm_qos_latency &&
+			atomic_read(&rmi4_data->touch_stopped) == 0) {
+		pm_qos_update_request(&rmi4_data->pm_qos_irq,
+			rmi4_data->pm_qos_latency);
+		pr_debug("set pm qos latency to %d\n",
+			rmi4_data->pm_qos_latency);
+	}
+
 	return count;
 }
 
@@ -7057,6 +7071,8 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	/* assign pointer to client structure right away for further use */
 	rmi4_data->i2c_client = client;
 
+	rmi4_data->pm_qos_latency = PM_QOS_DEFAULT_VALUE;
+
 	if (client->dev.of_node)
 		platform_data = synaptics_dsx_of_init(client, rmi4_data);
 	else
@@ -7313,8 +7329,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->pm_qos_irq.type = PM_QOS_REQ_AFFINE_IRQ;
 	rmi4_data->pm_qos_irq.irq = rmi4_data->irq;
 	pm_qos_add_request(&rmi4_data->pm_qos_irq, PM_QOS_CPU_DMA_LATENCY,
-			latency_in_effect);
-
+			rmi4_data->pm_qos_latency);
 	return retval;
 
 err_sysfs:
@@ -7724,8 +7739,9 @@ static int synaptics_rmi4_resume(struct device *dev)
 	if (atomic_cmpxchg(&rmi4_data->touch_stopped, 1, 0) == 0)
 		return 0;
 
-	pm_qos_update_request(&rmi4_data->pm_qos_irq, latency_in_effect);
-	pr_debug("set pm_qos latency %d\n", latency_in_effect);
+	pm_qos_update_request(&rmi4_data->pm_qos_irq,
+		rmi4_data->pm_qos_latency);
+	pr_debug("set pm_qos latency %d\n", rmi4_data->pm_qos_latency);
 
 	synaptics_dsx_resumeinfo_start(rmi4_data);
 
