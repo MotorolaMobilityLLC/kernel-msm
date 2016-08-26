@@ -578,7 +578,7 @@ struct synaptics_rmi4_data {
 	struct notifier_block fps_notif;
 
 	struct mutex rmi4_exp_init_mutex;
-	int pm_qos_latency;
+	uint32_t pm_qos_latency;
 	struct pm_qos_request pm_qos_irq;
 
 	bool touch_data_contiguous;
