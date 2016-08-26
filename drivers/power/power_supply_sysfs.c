@@ -316,6 +316,10 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(power_required),
 	POWER_SUPPLY_ATTR(power_available),
 	POWER_SUPPLY_ATTR(power_source),
+	POWER_SUPPLY_ATTR(max_output_voltage),
+	POWER_SUPPLY_ATTR(output_voltage),
+	POWER_SUPPLY_ATTR(max_input_voltage),
+	POWER_SUPPLY_ATTR(input_voltage),
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */
