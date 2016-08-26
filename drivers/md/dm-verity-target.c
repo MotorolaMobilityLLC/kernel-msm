@@ -19,6 +19,7 @@
 
 #include <linux/module.h>
 #include <linux/reboot.h>
+#include <linux/vmalloc.h>
 
 #define DM_MSG_PREFIX			"verity"
 
@@ -32,6 +33,7 @@
 #define DM_VERITY_OPT_LOGGING		"ignore_corruption"
 #define DM_VERITY_OPT_RESTART		"restart_on_corruption"
 #define DM_VERITY_OPT_IGN_ZEROES	"ignore_zero_blocks"
+#define DM_VERITY_CACHE_CLEAR_SECS	43200 /* 12 hours in seconds */
 
 #define DM_VERITY_OPTS_MAX		(2 + DM_VERITY_OPTS_FEC)
 
@@ -61,6 +63,51 @@ struct dm_verity_prefetch_work {
 struct buffer_aux {
 	int hash_verified;
 };
+
+/*
+ * The recently verified block cache timer has expired. Clear the cache.
+ */
+static void cache_timeout_cb(unsigned long data)
+{
+	struct dm_verity *v = (struct dm_verity *)data;
+
+	bitmap_zero(v->verified_cache, v->data_blocks);
+	mod_timer(&v->cache_timeout, jiffies + DM_VERITY_CACHE_CLEAR_SECS * HZ);
+}
+
+/*
+ * Determine if an entire bio structure has been recently verified. Return 1
+ * if so, and 0 if not.
+ */
+static int recently_verified(struct dm_verity *v, sector_t block,
+			     unsigned n_blocks)
+{
+	unsigned b;
+
+	if (!v->verified_cache)
+		return 0;
+
+	for (b = 0; b < n_blocks; b++) {
+		if (!test_bit(block + b, v->verified_cache))
+			return 0;
+	}
+
+	return 1;
+}
+
+/*
+ * Add a block to the recently verified block cache to avoid verifying it
+ * multiple times within the cache expiration period.
+ */
+static void add_to_verified_cache(struct dm_verity_io *io, unsigned b)
+{
+	struct dm_verity *v = io->v;
+
+	if (!v->verified_cache)
+		return;
+
+	set_bit(io->block + b, v->verified_cache);
+}
 
 /*
  * Initialize struct buffer_aux for a freshly created buffer.
@@ -449,6 +496,8 @@ static int verity_verify_io(struct dm_verity_io *io)
 		else if (verity_handle_err(v, DM_VERITY_BLOCK_TYPE_DATA,
 					   io->block + b))
 			return -EIO;
+		else
+			add_to_verified_cache(io, b);
 	}
 
 	return 0;
@@ -562,6 +611,8 @@ int verity_map(struct dm_target *ti, struct bio *bio)
 {
 	struct dm_verity *v = ti->private;
 	struct dm_verity_io *io;
+	sector_t block;
+	unsigned n_blocks;
 
 	bio->bi_bdev = v->data_dev->bdev;
 	bio->bi_iter.bi_sector = verity_map_sector(v, bio->bi_iter.bi_sector);
@@ -581,12 +632,26 @@ int verity_map(struct dm_target *ti, struct bio *bio)
 	if (bio_data_dir(bio) == WRITE)
 		return -EIO;
 
+	/*
+	 * Determine if this bio request has been recently verified using an
+	 * all or nothing approach. If 0 is returned, not all of the blocks
+	 * were recently verified, so we'll verify all blocks. If 1 is returned
+	 * all blocks were recently verified and we'll skip routing the bio
+	 * request back to dm-verity for verification and skip the hash
+	 * prefetch.
+	 */
+	block = bio->bi_iter.bi_sector >>
+		(v->data_dev_block_bits - SECTOR_SHIFT);
+	n_blocks = bio->bi_iter.bi_size >> v->data_dev_block_bits;
+	if (recently_verified(v, block, n_blocks))
+		goto already_verified;
+
 	io = dm_per_bio_data(bio, ti->per_bio_data_size);
 	io->v = v;
 	io->orig_bi_end_io = bio->bi_end_io;
 	io->orig_bi_private = bio->bi_private;
-	io->block = bio->bi_iter.bi_sector >> (v->data_dev_block_bits - SECTOR_SHIFT);
-	io->n_blocks = bio->bi_iter.bi_size >> v->data_dev_block_bits;
+	io->block = block;
+	io->n_blocks = n_blocks;
 
 	bio->bi_end_io = verity_end_io;
 	bio->bi_private = io;
@@ -596,6 +661,7 @@ int verity_map(struct dm_target *ti, struct bio *bio)
 
 	verity_submit_prefetch(v, io);
 
+already_verified:
 	generic_make_request(bio);
 
 	return DM_MAPIO_SUBMITTED;
@@ -936,6 +1002,29 @@ int verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
 		ti->error = "Data device is too small";
 		r = -EINVAL;
 		goto bad;
+	}
+
+	/*
+	 * Allocate the smallest amount of memory possible for the recently
+	 * verified block cache. A bitmap is used with each data block
+	 * represented as a bit. Bits are set for recently verified blocks and
+	 * all bits are cleared after an expiration period.
+	 */
+	v->verified_cache = vmalloc(BITS_TO_LONGS(v->data_blocks) *
+				    sizeof(unsigned long));
+	if (v->verified_cache) {
+		bitmap_zero(v->verified_cache, v->data_blocks);
+		setup_timer(&v->cache_timeout, cache_timeout_cb,
+			    (unsigned long)v);
+		mod_timer(&v->cache_timeout,
+			  jiffies + DM_VERITY_CACHE_CLEAR_SECS * HZ);
+	} else {
+		/*
+		 * This feature will silently cease to exist if memory for
+		 * verified_cache isn't allocated by virtue of NULL pointer
+		 * checks.
+		 */
+		DMERR("Unable to allocate memory for verified_cache");
 	}
 
 	if (sscanf(argv[6], "%llu%c", &num_ll, &dummy) != 1 ||
