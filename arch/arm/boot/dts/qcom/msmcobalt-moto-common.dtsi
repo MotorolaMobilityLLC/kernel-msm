@@ -101,3 +101,11 @@
 &ufs_ice {
 	status = "ok";
 };
+
+&red_led {
+	linux,name = "charging";
+	/delete-property/ linux,default-trigger;
+};
+
+/delete-node/ &green_led;
+/delete-node/ &blue_led;
