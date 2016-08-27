@@ -37,3 +37,7 @@
 &pm8950_gpios {
 	status = "okay";
 };
+
+&blsp1_uart0 {
+	status = "ok";
+};
