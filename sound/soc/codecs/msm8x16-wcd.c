@@ -5809,6 +5809,7 @@ static int msm8x16_wcd_spmi_probe(struct spmi_device *spmi)
 	struct resource *wcd_resource;
 	int adsp_state;
 	static int spmi_dev_registered_cnt;
+	int adsp_ver = 0;
 
 	dev_dbg(&spmi->dev, "%s(%d):slave ID = 0x%x\n",
 		__func__, __LINE__,  spmi->sid);
@@ -5820,10 +5821,10 @@ static int msm8x16_wcd_spmi_probe(struct spmi_device *spmi)
 		return -EPROBE_DEFER;
 	}
 
-	ret = core_get_adsp_ver();
-	if (ret < 0) {
+	adsp_ver = core_get_adsp_ver();
+	if (adsp_ver < 0) {
 		dev_err(&spmi->dev, "%s: Get adsp version failed %d\n",
-			__func__, ret);
+			__func__, adsp_ver);
 		ret = -EPROBE_DEFER;
 		goto rtn;
 	}
