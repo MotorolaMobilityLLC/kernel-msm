@@ -1,0 +1,289 @@
+/* Copyright (c) 2016, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8953-moto-common.dtsi"
+#include "dsi-panel-mot-smd-549-1080p-cmd.dtsi"
+#include "dsi-panel-mot-mod-fwvga-video.dtsi"
+
+ / {
+	model = "albus";
+	compatible = "qcom,msm8953-albus", "qcom,msm8953-moto",
+			"qcom,msm8953";
+};
+
+&soc {
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
+		pinctrl-0 = <&gpio_key>;
+		pinctrl-1 = <&gpio_key>;
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&tlmm 85 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+
+	vci_disp_vreg: vci_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vci_disp";
+		gpio = <&tlmm 32 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	vio_disp_vreg: vio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vio_disp";
+		vin-supply = <&pm8953_l6>;
+		gpio = <&tlmm 33 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
+		analogix_anx7805@72 {
+			compatible = "analogix,anx7805";
+			status = "ok";
+			reg = <0x72>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <44 0>;  /*cbl-det-gpio is interrupt pin*/
+			analogix,reset-gpio = <&tlmm 139 0x00>;
+			analogix,irq-gpio = <&tlmm 73 0x00>;
+			analogix,p-dwn-gpio = <&tlmm 50 0x0>;
+			analogix,cbl-det-gpio = <&tlmm 44 0x0>;
+			analogix,i2c-pull-up = <1>;
+			vdd-1p0-supply = <&pm8953_l2>;
+			avdd-3p3-supply = <&pm8953_l6>;
+			avdd-1p8-supply = <&pm8953_l5>;
+			analogix,vdd10-name = "vdd-1p0";
+			analogix,avdd33-name = "avdd-3p3";
+			analogix,vdd18-name = "avdd-1p8";
+
+			pinctrl-names = "anx_default", "anx_sleep";
+			pinctrl-0 = <&anx_rst_active
+					&anx_chip_pd_active &anx_cbl_det_active
+					&anx_irq_active>;
+			pinctrl-1 = <&anx_rst_suspend
+					&anx_chip_pd_suspend &anx_cbl_det_active
+					&anx_irq_active>;
+		};
+	};
+
+	/delete-node/ hdmi_dba;
+	hdmi_dba: qcom,msm-hdmi-dba-codec-rx {
+		compatible = "qcom,msm-hdmi-dba-codec-rx";
+		qcom,dba-bridge-chip = "anx7805";
+	};
+
+	sound {
+		/delete-property/ asoc-codec;
+		/delete-property/ asoc-codec-names;
+
+		qcom,hdmi-dba-codec-rx;
+		asoc-codec = <&stub_codec>, <&hdmi_dba>;
+		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-dba-codec-rx";
+	};
+
+
+	dsi_mod_display_driver: dsi_mod_display_driver {
+		compatible = "mmi,dsi_mod_display";
+
+		mod_display,dsi_connect = <1>;
+	};
+
+	mot_dba_driver: mot_dba_driver {
+		compatible = "mmi,mot_dba";
+		status = "ok";
+
+		mot_dba,sel-dsi-val = <0>;
+	};
+	/delete-node/ eldo2;
+};
+
+&pm8953_l2 {
+	regulator-min-microvolt = <1000000>;
+	regulator-max-microvolt = <1000000>;
+	qcom,init-voltage = <1000000>;
+};
+
+&pmx_mdss {
+	mdss_dsi_active {
+		mux {
+			pins = "gpio61";
+		};
+
+		config {
+			pins = "gpio61";
+		};
+	};
+
+	mdss_dsi_suspend {
+		mux {
+			pins = "gpio61";
+		};
+
+		config {
+			pins = "gpio61";
+		};
+	};
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+
+	mot_dba_panel: qcom,mdss_dsi_mot_dba_panel{
+		#include "dsi-panel-mot-mod-fwvga-video-common.dtsi"
+	};
+};
+
+&mdss_dsi {
+	hw-config = "dual_dsi";
+};
+
+&mdss_dsi0 {
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+
+	qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_cmd_v0>;
+	vci_disp-supply = <&vci_disp_vreg>;
+	vio_disp-supply = <&vio_disp_vreg>;
+	elvdd_disp-supply = <&lab_regulator>;
+	elvss_disp-supply = <&ibb_regulator>;
+	qcom,platform-reset-gpio = <&tlmm 61 0>;
+	qcom,platform-te-gpio = <&tlmm 24 0>;
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&mot_dba_panel>;
+	qcom,pluggable;
+	qcom,bridge-index = <0>;
+	apba_cdsi-supply = <&pm8953_l23>;
+};
+
+&mdss_dsi1_pll {
+	/delete-property/ qcom,dsi-pll-ssc-en;
+	/delete-property/ qcom,dsi-pll-ssc-mode;
+};
+
+&mot_dba_panel {
+	qcom,mdss-dsi-panel-name = "mipi_mot_dba_panel";
+	qcom,bridge-name = "mot_dba";
+
+	/* These power supplies are for DBA panel */
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "apba_cdsi";
+			qcom,supply-min-voltage = <1200000>;
+			qcom,supply-max-voltage = <1300000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <1>;
+		};
+	};
+};
+
+
+/* display boost and inverting boost regulators */
+&labibb {
+	status = "ok";
+	qpnp,qpnp-labibb-mode = "amoled";
+	qpnp,swire-control;
+};
+
+&ibb_regulator {
+	qcom,qpnp-ibb-discharge-resistor = <32>;
+};
+
+&pmi8950_mpps {
+	mpp@a200 {
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,vin-sel = <0>;
+		qcom,src-sel = <5>;		/* DTEST2 */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		qcom,invert = <0>;
+		status = "okay";
+	};
+};
+
+&spmi_bus {
+	qcom,pm8950@0 {
+		/delete-node/ qcom,leds@a300;
+	};
+
+	qcom,pmi8950@2 {
+		/delete-node/ qcom,leds@a100;
+
+		qcom,leds@1000 {
+			status = "ok";
+			reg = <0x1000 0x100>;
+			compatible = "qcom,leds-atc";
+			linux,name = "charging";
+			qcom,ctrl-reg = <0x243>;
+		};
+	};
+
+	qcom,pmi8950@3 {
+		qcom,leds@d800 {
+			qcom,disp-type-amoled;
+			qcom,switch-freq-khz = <800>;
+			qcom,loop-ea-gm = <1>;
+			qcom,vref-psm-mv = <550>;
+			qcom,ovp-mv = <31000>;
+			qcom,enable-amoled-pulse-skipping;
+		};
+	};
+};
+
+&tlmm {
+	cdc-pdm-lines {
+		cdc_pdm_lines_act: pdm_lines_on {
+			mux {
+				/delete-property/ pins;
+				pins = "gpio73";
+			};
+
+			config {
+				/delete-property/ pins;
+				pins = "gpio73";
+			};
+		};
+
+		cdc_pdm_lines_sus: pdm_lines_off {
+			mux {
+				/delete-property/ pins;
+				pins = "gpio73";
+			};
+
+			config {
+				/delete-property/ pins;
+				pins = "gpio73";
+			};
+		};
+	};
+};
