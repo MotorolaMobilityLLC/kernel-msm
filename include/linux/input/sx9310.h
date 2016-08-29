@@ -85,6 +85,32 @@
 /* SoftReset */
 #define SX9310_SOFTRESET  0xDE
 
+/* useful channel number */
+#define USE_CHANNEL_NUM 3
+
+/* default settings */
+/* Channel enable: CS0:1,CS1:2,CS2:4,COMB:8
+ * Defines the Active scan period :
+ * 0000: Min (no idle time)
+ * 0001: 15ms
+ * 0010: 30 ms (Typ.)
+ * 0011: 45 ms
+ * 0100: 60 ms
+ * 0101: 90 ms
+ * 0110: 120 ms
+ * 0111: 200 ms
+ * 1000: 400 ms
+ * 1001: 600 ms
+ * 1010: 800 ms
+ * 1011: 1 s
+ * 1100: 2 s
+ * 1101: 3 s
+ * 1110: 4 s
+ * 1111: 5 s
+ */
+#define DUMMY_USE_CHANNEL	0x1
+#define DUMMY_SCAN_PERIOD	0x2
+
 /**************************************
 * define platform data
 *
@@ -251,6 +277,8 @@ struct sx9310_platform_data {
 	bool cap_vdd_en;
 	bool cap_svdd_en;
 	unsigned irq_gpio;
+	/* used for custom setting for channel and scan period */
+	u32 cust_prox_ctrl0;
 	pbuttonInformation_t pbuttonInformation;
 
 	int (*get_is_nirq_low)(unsigned irq_gpio);
@@ -269,11 +297,14 @@ typedef struct sx9310_platform_data *psx9310_platform_data_t;
 * @lock: Spin Lock used for nirq worker function
 * @bus: either i2c_client or spi_client
 * @pDevice: device specific struct pointer
+*@read_flag : used for dump specified register
 * @irq: irq number used
 * @irqTimeout: msecs only set if useIrqTimer is true
 * @irq_disabled: whether irq should be ignored
 * @irq_gpio: irq gpio number
 * @useIrqTimer: older models need irq timer for pen up cases
+* @read_reg: record reg address which want to read
+*@cust_prox_ctrl0 : used for custom setting for channel and scan period
 * @init: (re)initialize device
 * @refreshStatus: read register status
 * @get_nirq_low: get whether nirq is low (platform data)
@@ -295,12 +326,14 @@ struct sx93XX {
 #endif
 	void *bus;
 	void *pDevice;
+	int read_flag;
 	int irq;
 	int irqTimeout;
 	char irq_disabled;
 	/* whether irq should be ignored.. cases if enable/disable irq is not used
 	 * or does not work properly */
 	u8 useIrqTimer;
+	u8 read_reg;
 	/* Function Pointers */
 	int (*init)(psx93XX_t this);
 	/* since we are trying to avoid knowing registers, create a pointer to a
