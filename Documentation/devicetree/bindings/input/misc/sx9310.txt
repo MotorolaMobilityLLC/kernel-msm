@@ -1,0 +1,29 @@
+sx9310 cap touch sensor from semtech
+
+It is a i2c slave device
+two specific properties for driver init registers's value
+
+Required properties:
+ - cap,use_channel	:cap channel has selected,CS0=0x01,CS1=0x02,CS2=0x04,COMB=0x08
+ - cap,scan_period	:scan period
+ - reg_array_len	:num of registers need to be set
+ - reg_array_val	:registers's val, format is <reg addr, reg val ...>
+
+Example:
+
+	sx9310@28 {
+		compatible = "semtech,sx9310";
+		reg = <0x28>;
+		cap_svdd-supply = <&pm8953_l6>;
+		cap_vdd-supply = <&pm8953_l22>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <46 0x2008>;
+		gpios = <&tlmm 46 0x2008>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_irq_default>;
+		cap,use_channel = <0x04>;
+		cap,scan_period = <0x01>;
+		reg_array_len = <5>;
+		reg_array_val = <0x12 0x0B 0x13 0x05 0x15 0xC2
+				0x18 0x5E 0x10 0x51>;
+	};
