@@ -16,6 +16,5 @@
 #include "msmcobalt-saratoga.dtsi"
 
 / {
-/* 	qcom,board-id = <0x41 0x8100>; */
- 	qcom,board-id = <1 0>;
+	qcom,board-id = <0x41 0x8100>;
 };
