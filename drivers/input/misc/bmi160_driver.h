@@ -14,20 +14,10 @@
  * @brief
  * The head file of BMI160 device driver core code
 */
-#ifndef _BMI160_DRIVER_H
-#define _BMI160_DRIVER_H
-
-#ifdef __KERNEL__
 #include <linux/kernel.h>
 #include <linux/unistd.h>
 #include <linux/types.h>
 #include <linux/string.h>
-#else
-#include <unistd.h>
-#include <sys/types.h>
-#include <string.h>
-#endif
-
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -38,6 +28,9 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/sensors.h>
+#include <linux/regulator/consumer.h>
+#include <linux/regmap.h>
 
 #include <linux/time.h>
 #include <linux/ktime.h>
@@ -50,6 +43,12 @@
 
 /* sensor specific */
 #define SENSOR_NAME "bmi160"
+#define BMI160_ACCEL_INPUT_NAME         "bmi160-accel"
+#define BMI160_GYRO_INPUT_NAME          "bmi160-gyro"
+#define ABSMIN                      -512
+#define ABSMAX                      512
+#define GYRO_MIN_VALUE		-32768
+#define GYRO_MAX_VALUE		32767
 
 #define SENSOR_CHIP_ID_BMI (0xD0)
 #define SENSOR_CHIP_ID_BMI_C2 (0xD1)
@@ -183,6 +182,13 @@
 #define BMM050_DIG_XY2                     0x70
 #define BMM050_DIG_XY1                     0x71
 
+struct regulator_map {
+	struct regulator	*regulator;
+	int			min_uv;
+	int			max_uv;
+	char			*supply;
+};
+
 struct bmi160mag_compensate_t {
 	signed char dig_x1;
 	signed char dig_y1;
@@ -292,11 +298,18 @@ struct pedometer_data_t {
 
 struct bmi_client_data {
 	struct bmi160_t device;
+	struct i2c_client *i2c;
 	struct device *dev;
-	struct input_dev *input;
+	struct input_dev *input_accel;
+	struct input_dev *input_gyro;
+	struct sensors_classdev accel_cdev;
+	struct sensors_classdev gyro_cdev;
+	struct regulator *vdd;
+	struct regulator *vio;
 	struct delayed_work work;
+	struct delayed_work gyro_work;
 	struct work_struct irq_work;
-	
+
 	struct work_struct report_data_work;
 	int is_timer_running;
 	struct hrtimer timer;
@@ -318,6 +331,7 @@ struct bmi_client_data {
 	u8 selftest;
 
 	atomic_t wkqueue_en; /*TO DO acc gyro mag*/
+	atomic_t gyro_en;
 	atomic_t delay;
 	atomic_t selftest_result;
 
@@ -337,6 +351,7 @@ struct bmi_client_data {
 	struct mutex mutex_enable;
 	struct mutex mutex_ring_buf;
 	struct bosch_sensor_specific *bst_pd;
+	bool power_enabled;
 	int IRQ;
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend_handler;
@@ -383,8 +398,4 @@ int bmi_remove(struct device *dev);
 int bmi_suspend(struct device *dev);
 int bmi_resume(struct device *dev);
 
-
-
-#endif/*_BMI160_DRIVER_H*/
-/*@}*/
 
