@@ -3,7 +3,7 @@
  * brief SX9310 Driver
  *
  * Driver for the SX9310
- * Copyright (c) 2011 Semtech Corp
+ * Copyright (c) 2015-2016 Semtech Corp
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,6 +11,7 @@
  */
 #define DEBUG
 #define DRIVER_NAME "sx9310"
+#define USE_KERNEL_SUSPEND 1
 
 #define MAX_WRITE_ARRAY_SIZE 32
 #include <linux/module.h>
@@ -28,6 +29,11 @@
 
 #define IDLE 0
 #define ACTIVE 1
+
+static int last_val;
+static int mEnabled;
+static int programming_done;
+psx93XX_t sx9310_ptr;
 
  /**
  * struct sx9310
@@ -51,12 +57,12 @@ static void ForcetoTouched(psx93XX_t this)
 
 		pCurrentButton = pDevice->pbuttonInformation->buttons;
 		input = pDevice->pbuttonInformation->input;
-
-		input_report_key(input, pCurrentButton->keycode, 1);
 		pCurrentButton->state = ACTIVE;
-
-		input_sync(input);
-
+		last_val = 1;
+		if (mEnabled) {
+			input_report_abs(input, ABS_DISTANCE, 1);
+			input_sync(input);
+		}
 		dev_dbg(this->pdev, "Leaving ForcetoTouched()\n");
 	}
 }
@@ -196,6 +202,40 @@ static int read_regStat(psx93XX_t this)
 	return 0;
 }
 
+static void read_rawData(psx93XX_t this)
+{
+	u8 msb = 0, lsb = 0;
+	unsigned int ii;
+
+	if (this) {
+		for (ii = 0; ii < USE_CHANNEL_NUM; ii++) {
+			/* here to check the CSx */
+			write_register(this, SX9310_CPSRD, ii);
+			msleep(100);
+			read_register(this, SX9310_USEMSB, &msb);
+			read_register(this, SX9310_USELSB, &lsb);
+			dev_info(this->pdev,
+				"sx9310 cs%d raw data USEFUL msb = 0x%x, lsb = 0x%x\n",
+				ii, msb, lsb);
+			read_register(this, SX9310_AVGMSB, &msb);
+			read_register(this, SX9310_AVGLSB, &lsb);
+			dev_info(this->pdev,
+				"sx9310 cs%d raw data AVERAGE msb = 0x%x, lsb = 0x%x\n",
+				ii, msb, lsb);
+			read_register(this, SX9310_DIFFMSB, &msb);
+			read_register(this, SX9310_DIFFLSB, &lsb);
+			dev_info(this->pdev,
+				"sx9310 cs%d raw data DIFF msb = 0x%x, lsb = 0x%x\n",
+				ii, msb, lsb);
+			read_register(this, SX9310_OFFSETMSB, &msb);
+			read_register(this, SX9310_OFFSETLSB, &lsb);
+			dev_info(this->pdev,
+				"sx9310 cs%d raw data OFFSET msb = 0x%x, lsb = 0x%x\n",
+				ii, msb, lsb);
+		}
+	}
+}
+
  /**
  * brief  Initialize I2C config from platform data
  * param this Pointer to main parent struct
@@ -215,9 +255,13 @@ static void hw_init(psx93XX_t this)
 			/* Write all registers/values contained in i2c_reg */
 			dev_dbg(this->pdev, "Going to Write Reg: 0x%x Value: 0x%x\n",
 				pdata->pi2c_reg[i].reg, pdata->pi2c_reg[i].val);
-			write_register(this, pdata->pi2c_reg[i].reg, pdata->pi2c_reg[i].val);
+			write_register(this, pdata->pi2c_reg[i].reg,
+					pdata->pi2c_reg[i].val);
 			i++;
 		}
+
+		write_register(this, SX9310_CPS_CTRL0_REG,
+				this->board->cust_prox_ctrl0);
 	} else {
 		dev_err(this->pdev, "ERROR! platform data 0x%p\n", pDevice->hw);
 		/* Force to touched if error */
@@ -234,12 +278,17 @@ static void hw_init(psx93XX_t this)
  */
 static int initialize(psx93XX_t this)
 {
+	int ret;
+
 	if (this) {
 		/* prepare reset by disabling any irq handling */
 		this->irq_disabled = 1;
 		disable_irq(this->irq);
 		/* perform a reset */
-		write_register(this, SX9310_SOFTRESET_REG, SX9310_SOFTRESET);
+		ret = write_register(this, SX9310_SOFTRESET_REG,
+					SX9310_SOFTRESET);
+		if (ret < 0)
+			goto error_exit;
 		/* wait until the reset has finished by monitoring NIRQ */
 		dev_dbg(this->pdev, "Sent Software Reset. Waiting until device is back from reset to continue.\n");
 		/* just sleep for awhile instead of using a loop with reading irq status */
@@ -251,8 +300,9 @@ static int initialize(psx93XX_t this)
 			this->get_nirq_low(this->board->irq_gpio));
 		hw_init(this);
 		msleep(100); /* make sure everything is running */
-		manual_offset_calibration(this);
-
+		ret = manual_offset_calibration(this);
+		if (ret < 0)
+			goto error_exit;
 		/* re-enable interrupt handling */
 		enable_irq(this->irq);
 		this->irq_disabled = 0;
@@ -262,9 +312,14 @@ static int initialize(psx93XX_t this)
 		read_regStat(this);
 		dev_dbg(this->pdev, "Exiting initialize(). NIRQ = %d\n",
 			this->get_nirq_low(this->board->irq_gpio));
+		programming_done = ACTIVE;
 		return 0;
 	}
 	return -ENOMEM;
+
+error_exit:
+	programming_done = IDLE;
+	return ret;
 }
 
  /**
@@ -307,8 +362,11 @@ static void touchProcess(psx93XX_t this)
 				if (((i & pCurrentButton->mask) == pCurrentButton->mask)) {
 					/* User pressed button */
 					dev_dbg(this->pdev, "cap button %d touched\n", counter);
-					input_report_key(input, pCurrentButton->keycode, 1);
 					pCurrentButton->state = ACTIVE;
+					last_val = 1;
+					if (mEnabled)
+						input_report_abs(input, ABS_DISTANCE, 1);
+
 				} else {
 					dev_dbg(this->pdev, "Button %d already released.\n", counter);
 				}
@@ -317,7 +375,9 @@ static void touchProcess(psx93XX_t this)
 				if (((i & pCurrentButton->mask) != pCurrentButton->mask)) {
 					/* User released button */
 					dev_dbg(this->pdev, "cap button %d released\n", counter);
-					input_report_key(input, pCurrentButton->keycode, 0);
+					if (mEnabled)
+						input_report_abs(input, ABS_DISTANCE, 0);
+					last_val = 0;
 					pCurrentButton->state = IDLE;
 				} else {
 					dev_dbg(this->pdev, "Button %d still touched.\n", counter);
@@ -327,7 +387,8 @@ static void touchProcess(psx93XX_t this)
 				break;
 			};
 		}
-		input_sync(input);
+		if (mEnabled)
+			input_sync(input);
 		dev_dbg(this->pdev, "Leaving touchProcess()\n");
 	}
 }
@@ -347,13 +408,67 @@ static struct _totalButtonInformation smtcButtonInformation = {
 	.buttonSize = ARRAY_SIZE(psmtcButtons),
 };
 
+/**
+*fn static void sx9310_reg_setup_init(struct i2c_client *client)
+*brief read reg val form dts
+*      reg_array_len for regs needed change num
+*      data_array_val's format <reg val ...>
+*/
+static void sx9310_reg_setup_init(struct i2c_client *client)
+{
+	u32 data_array_len = 0;
+	u32 *data_array;
+	int ret, i, j;
+	struct device_node *np = client->dev.of_node;
+
+	ret = of_property_read_u32(np, "reg_array_len", &data_array_len);
+	if (ret < 0) {
+		dev_err(&client->dev, "data_array_len read error");
+		return;
+	}
+	data_array = kmalloc(data_array_len * 2 * sizeof(u32), GFP_KERNEL);
+	ret = of_property_read_u32_array(np, "reg_array_val",
+					data_array,
+					data_array_len*2);
+	if (ret < 0) {
+		dev_err(&client->dev, "data_array_val read error");
+		return;
+	}
+	for (i = 0; i < ARRAY_SIZE(sx9310_i2c_reg_setup); i++) {
+		for (j = 0; j < data_array_len*2; j += 2) {
+			if (data_array[j] == sx9310_i2c_reg_setup[i].reg)
+				sx9310_i2c_reg_setup[i].val = data_array[j+1];
+		}
+	}
+	kfree(data_array);
+	/*for test*/
+	/*for (i = 0; i < ARRAY_SIZE(sx9310_i2c_reg_setup); i++) {
+		dev_err(&client->dev, "%x:%x",
+			sx9310_i2c_reg_setup[i].reg,
+			sx9310_i2c_reg_setup[i].val);
+	}*/
+}
+
 static void sx9310_platform_data_of_init(struct i2c_client *client,
 				  psx9310_platform_data_t pplatData)
 {
 	struct device_node *np = client->dev.of_node;
+	u32 scan_period, sensor_en;
+	int ret;
 
 	client->irq = of_get_gpio(np, 0);
 	pplatData->irq_gpio = client->irq;
+
+	ret = of_property_read_u32(np, "cap,use_channel", &sensor_en);
+	if (ret)
+		sensor_en = DUMMY_USE_CHANNEL;
+
+	ret = of_property_read_u32(np, "cap,scan_period", &scan_period);
+	if (ret)
+		scan_period = DUMMY_SCAN_PERIOD;
+
+	pplatData->cust_prox_ctrl0 = (scan_period << 4) | sensor_en;
+
 	pplatData->get_is_nirq_low = sx9310_get_nirq_state;
 	pplatData->init_platform_hw = NULL;
 	/*  pointer to an exit function. Here in case needed in the future */
@@ -361,11 +476,226 @@ static void sx9310_platform_data_of_init(struct i2c_client *client,
 	 *.exit_platform_hw = sx9310_exit_ts,
 	 */
 	pplatData->exit_platform_hw = NULL;
+	sx9310_reg_setup_init(client);
 	pplatData->pi2c_reg = sx9310_i2c_reg_setup;
 	pplatData->i2c_reg_num = ARRAY_SIZE(sx9310_i2c_reg_setup);
 
 	pplatData->pbuttonInformation = &smtcButtonInformation;
 }
+
+static ssize_t capsense_reset_show(struct class *class,
+					struct class_attribute *attr,
+					char *buf)
+{
+	return snprintf(buf, 8, "%d\n", programming_done);
+}
+
+static ssize_t capsense_reset_store(struct class *class,
+					struct class_attribute *attr,
+					const char *buf, size_t count)
+{
+	psx93XX_t this = sx9310_ptr;
+
+	if (!count || (this == NULL))
+		return -EINVAL;
+
+	if (!strncmp(buf, "reset", 5) || !strncmp(buf, "1", 1))
+		initialize(this);
+
+	return count;
+}
+
+static CLASS_ATTR(reset, 0660, capsense_reset_show, capsense_reset_store);
+
+static ssize_t capsense_enable_show(struct class *class,
+					struct class_attribute *attr,
+					char *buf)
+{
+	return snprintf(buf, 8, "%d\n", programming_done);
+}
+
+static ssize_t capsense_enable_store(struct class *class,
+					struct class_attribute *attr,
+					const char *buf, size_t count)
+{
+	psx93XX_t this = sx9310_ptr;
+	psx9310_t pDevice = NULL;
+	struct input_dev *input = NULL;
+
+	pDevice = this->pDevice;
+	input = pDevice->pbuttonInformation->input;
+
+	if (!count || (this == NULL))
+		return -EINVAL;
+
+	if (!strncmp(buf, "1", 1)) {
+		dev_dbg(this->pdev, "enable cap sensor\n");
+		initialize(this);
+
+		input_report_abs(input, ABS_DISTANCE, last_val);
+		input_sync(input);
+		mEnabled = 1;
+	} else if (!strncmp(buf, "0", 1)) {
+		dev_dbg(this->pdev, "disable cap sensor\n");
+
+		input_report_abs(input, ABS_DISTANCE, -1);
+		input_sync(input);
+		mEnabled = 0;
+	} else {
+		dev_err(this->pdev, "unknown enable symbol\n");
+	}
+
+	return count;
+}
+
+static CLASS_ATTR(enable, 0660, capsense_enable_show, capsense_enable_store);
+
+static ssize_t reg_dump_show(struct class *class,
+					struct class_attribute *attr,
+					char *buf)
+{
+	u8 reg_value = 0;
+	psx93XX_t this = sx9310_ptr;
+	char *p = buf;
+
+	if (this->read_flag) {
+		this->read_flag = 0;
+		read_register(this, this->read_reg, &reg_value);
+		p += snprintf(p, PAGE_SIZE, "%02x\n", reg_value);
+		return (p-buf);
+	}
+
+	read_register(this, SX9310_IRQ_ENABLE_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "ENABLE(0x%02x)=0x%02x\n",
+			SX9310_IRQ_ENABLE_REG, reg_value);
+
+	read_register(this, SX9310_IRQFUNC_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "IRQFUNC(0x%02x)=0x%02x\n",
+			SX9310_IRQFUNC_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL0_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL0(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL0_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL1_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL1(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL1_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL2_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL2(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL2_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL3_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL3(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL3_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL4_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL4(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL4_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL5_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL5(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL5_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL6_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL6(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL6_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL7_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL7(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL7_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL8_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL8(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL8_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL9_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL9(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL9_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL10_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL10(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL10_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL11_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL11(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL11_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL12_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL12(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL12_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL13_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL13(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL13_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL14_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL14(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL14_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL15_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL15(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL15_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL16_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL16(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL16_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL17_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL17(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL17_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL18_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL18(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL18_REG, reg_value);
+
+	read_register(this, SX9310_CPS_CTRL19_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CTRL19(0x%02x)=0x%02x\n",
+			SX9310_CPS_CTRL19_REG, reg_value);
+
+	read_register(this, SX9310_SAR_CTRL0_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "SCTRL0(0x%02x)=0x%02x\n",
+			SX9310_SAR_CTRL0_REG, reg_value);
+
+	read_register(this, SX9310_SAR_CTRL1_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "SCTRL1(0x%02x)=0x%02x\n",
+			SX9310_SAR_CTRL1_REG, reg_value);
+
+	read_register(this, SX9310_SAR_CTRL2_REG, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "SCTRL2(0x%02x)=0x%02x\n",
+			SX9310_SAR_CTRL2_REG, reg_value);
+
+	reg_value = gpio_get_value(this->board->irq_gpio);
+	p += snprintf(p, PAGE_SIZE, "NIRQ=%d\n", reg_value);
+
+	return (p-buf);
+}
+
+static ssize_t reg_dump_store(struct class *class,
+				struct class_attribute *attr,
+				const char *buf, size_t count)
+{
+	psx93XX_t this = sx9310_ptr;
+	unsigned int val, reg, opt;
+
+	if (sscanf(buf, "%x,%x,%x", &reg, &val, &opt) == 3) {
+		this->read_reg = *((u8 *)&reg);
+		this->read_flag = 1;
+	} else if (sscanf(buf, "%x,%x", &reg, &val) == 2) {
+		dev_info(this->pdev, "%s,reg = 0x%02x, val = 0x%02x\n",
+			__func__, *(u8 *)&reg, *(u8 *)&val);
+		write_register(this, *((u8 *)&reg), *((u8 *)&val));
+	}
+
+	return count;
+}
+
+static CLASS_ATTR(reg, 0660, reg_dump_show, reg_dump_store);
+
+static struct class capsense_class = {
+	.name			= "capsense",
+	.owner			= THIS_MODULE,
+};
 
  /**
  * fn static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *id)
@@ -376,7 +706,6 @@ static void sx9310_platform_data_of_init(struct i2c_client *client,
  */
 static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	int i = 0;
 	psx93XX_t this = 0;
 	psx9310_t pDevice = 0;
 	psx9310_platform_data_t pplatData = 0;
@@ -419,7 +748,7 @@ static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *i
 			this->statusFunc[0] = 0; /* TXEN_STAT */
 			this->statusFunc[1] = 0; /* UNUSED */
 			this->statusFunc[2] = 0; /* UNUSED */
-			this->statusFunc[3] = 0; /* CONV_STAT */
+			this->statusFunc[3] = read_rawData; /* CONV_STAT */
 			this->statusFunc[4] = 0; /* COMP_STAT */
 			this->statusFunc[5] = touchProcess; /* RELEASE_STAT */
 			this->statusFunc[6] = touchProcess; /* TOUCH_STAT  */
@@ -436,7 +765,7 @@ static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *i
 		/* create memory for device specific struct */
 		this->pDevice = pDevice = kzalloc(sizeof(sx9310_t), GFP_KERNEL);
 		dev_dbg(&client->dev, "\t Initialized Device Specific Memory: 0x%p\n", pDevice);
-
+		sx9310_ptr = this;
 		if (pDevice) {
 			/* for accessing items in user data (e.g. calibrate) */
 			ret = sysfs_create_group(&client->dev.kobj, &sx9310_attr_group);
@@ -458,18 +787,42 @@ static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *i
 				return -ENOMEM;
 
 			/* Set all the keycodes */
-			__set_bit(EV_KEY, input->evbit);
-			for (i = 0; i < pDevice->pbuttonInformation->buttonSize; i++) {
-				__set_bit(pDevice->pbuttonInformation->buttons[i].keycode,
-					  input->keybit);
-				pDevice->pbuttonInformation->buttons[i].state = IDLE;
-			}
+			__set_bit(EV_ABS, input->evbit);
+			input_set_abs_params(input, ABS_DISTANCE, -1, 100, 0, 0);
 			/* save the input pointer and finish initialization */
 			pDevice->pbuttonInformation->input = input;
 			input->name = "SX9310 Cap Touch";
 			input->id.bustype = BUS_I2C;
 			if (input_register_device(input))
 				return -ENOMEM;
+		}
+
+		ret = class_register(&capsense_class);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"Create fsys class failed (%d)\n", ret);
+			return ret;
+		}
+
+		ret = class_create_file(&capsense_class, &class_attr_reset);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"Create reset file failed (%d)\n", ret);
+			return ret;
+		}
+
+		ret = class_create_file(&capsense_class, &class_attr_enable);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"Create enable file failed (%d)\n", ret);
+			return ret;
+		}
+
+		ret = class_create_file(&capsense_class, &class_attr_reg);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"Create reg file failed (%d)\n", ret);
+			return ret;
 		}
 
 		pplatData->cap_vdd = regulator_get(&client->dev, "cap_vdd");
@@ -513,17 +866,18 @@ static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *i
 			if (ret == -EPROBE_DEFER)
 				goto err_svdd_error;
 		}
-
 		sx93XX_init(this);
 		return  0;
 	}
 	return -ENOMEM;
 
 err_svdd_error:
+	pr_err("%s svdd defer.\n", __func__);
 	regulator_disable(pplatData->cap_vdd);
 	regulator_put(pplatData->cap_vdd);
 
 err_vdd_defer:
+	pr_err("%s input free device.\n", __func__);
 	input_free_device(input);
 
 	return ret;
@@ -566,7 +920,7 @@ static int sx9310_remove(struct i2c_client *client)
 #if defined(USE_KERNEL_SUSPEND)
 /*====================================================*/
 /***** Kernel Suspend *****/
-static int sx9310_suspend(struct i2c_client *client)
+static int sx9310_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	psx93XX_t this = i2c_get_clientdata(client);
 
