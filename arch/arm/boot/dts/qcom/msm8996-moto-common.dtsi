@@ -1200,6 +1200,7 @@
 	qcom,force-aicl-rerun;
 	qcom,auto-voltage-comp-mv = <75>;
 	qcom,usbin-vadc = <&pmi8994_vadc>;
+	qcom,dcin-vadc = <&pmi8994_vadc>;
 };
 
 &pmi8994_fg {
