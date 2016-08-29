@@ -996,6 +996,16 @@
 			qcom,sensor-type = "adc";
 			qcom,sensor-name = "xo_therm_buf";
 		};
+		sensor_information40: qcom,sensor-information-40 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "front_temp";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information41: qcom,sensor-information-41 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "back_temp";
+			qcom,scaling-factor = <1000>;
+		};
 	};
 
 	usb3: ssusb@6a00000{
