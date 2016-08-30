@@ -564,6 +564,7 @@ struct msm_otg {
 	struct pm_qos_request pm_qos_req_dma;
 	struct delayed_work perf_vote_work;
 	int falsesdp_retry_count;
+	unsigned int chg_dcp_icl;
 };
 
 struct ci13xxx_platform_data {
