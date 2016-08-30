@@ -457,7 +457,7 @@ static int msm_cpe_lab_buf_alloc(struct snd_pcm_substream *substream,
 		pcm_buf[count].mem = pcm_buf[0].mem + (count * bufsz);
 		pcm_buf[count].phys = pcm_buf[0].phys + (count * bufsz);
 		dev_dbg(rtd->dev,
-			"%s: pcm_buf[%d].mem %p pcm_buf[%d].phys %pa\n",
+			"%s: pcm_buf[%d].mem %pK pcm_buf[%d].phys %pK\n",
 			 __func__, count,
 			(void *)pcm_buf[count].mem,
 			count, &(pcm_buf[count].phys));
@@ -681,7 +681,7 @@ static int msm_cpe_lab_thread(void *data)
 				buf_count++;
 			}
 			dev_dbg(rtd->dev,
-				"%s: Cur buf = %p Next Buf = %p\n"
+				"%s: Cur buf = %pK Next Buf = %pK\n"
 				" buf count = 0x%x\n",
 				 __func__, cur_buf, next_buf, buf_count);
 		} else {
@@ -1519,7 +1519,7 @@ static int msm_cpe_lsm_lab_start(struct snd_pcm_substream *substream,
 	int rc;
 
 	if (!substream || !substream->private_data) {
-		pr_err("%s: invalid substream (%p)\n",
+		pr_err("%s: invalid substream (%pK)\n",
 			__func__, substream);
 		return -EINVAL;
 	}
@@ -1609,7 +1609,7 @@ static int msm_cpe_lsm_ioctl(struct snd_pcm_substream *substream,
 	struct wcd_cpe_lsm_ops *lsm_ops;
 
 	if (!substream || !substream->private_data) {
-		pr_err("%s: invalid substream (%p)\n",
+		pr_err("%s: invalid substream (%pK)\n",
 			__func__, substream);
 		return -EINVAL;
 	}
@@ -1782,7 +1782,7 @@ static int msm_cpe_lsm_ioctl_compat(struct snd_pcm_substream *substream,
 	struct wcd_cpe_lsm_ops *lsm_ops;
 
 	if (!substream || !substream->private_data) {
-		pr_err("%s: invalid substream (%p)\n",
+		pr_err("%s: invalid substream (%pK)\n",
 			__func__, substream);
 		return -EINVAL;
 	}
@@ -2268,7 +2268,7 @@ static int msm_cpe_lsm_copy(struct snd_pcm_substream *substream, int a,
 	if (lab_d->buf_idx >= (lsm_d->hw_params.period_count))
 		lab_d->buf_idx = 0;
 	pcm_buf = (lab_d->pcm_buf[lab_d->buf_idx].mem);
-	pr_debug("%s: Buf IDX = 0x%x pcm_buf %pa\n",
+	pr_debug("%s: Buf IDX = 0x%x pcm_buf %pK\n",
 			__func__,
 			lab_d->buf_idx,
 			&(lab_d->pcm_buf[lab_d->buf_idx]));
