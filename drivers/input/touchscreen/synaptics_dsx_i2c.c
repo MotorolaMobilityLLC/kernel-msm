@@ -7048,6 +7048,12 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
+#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
+	/* TEST OPTIONS */
+	rmi4_data->test_irq_delay_ms = 0;
+	rmi4_data->test_irq_data_contig = 1;
+#endif
+
 	/* assign pointer to client structure right away for further use */
 	rmi4_data->i2c_client = client;
 
@@ -7309,11 +7315,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	pm_qos_add_request(&rmi4_data->pm_qos_irq, PM_QOS_CPU_DMA_LATENCY,
 			latency_in_effect);
 
-#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
-	/* TEST OPTIONS */
-	rmi4_data->test_irq_delay_ms = 0;
-	rmi4_data->test_irq_data_contig = 1;
-#endif
 	return retval;
 
 err_sysfs:
