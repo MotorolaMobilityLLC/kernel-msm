@@ -2877,7 +2877,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 							IDEV_CHG_TA);
 					else
 					       msm_otg_notify_charger(motg,
-							IDEV_CHG_DCP);
+							motg->chg_dcp_icl);
 					if (!motg->is_ext_chg_dcp)
 						otg->phy->state =
 							OTG_STATE_B_CHARGER;
@@ -3153,7 +3153,7 @@ static void msm_otg_set_vbus_state(int online)
 out:
 	if (motg->is_ext_chg_dcp) {
 		if (test_bit(B_SESS_VLD, &motg->inputs)) {
-			msm_otg_notify_charger(motg, IDEV_CHG_DCP);
+			msm_otg_notify_charger(motg, motg->chg_dcp_icl);
 		} else {
 			motg->is_ext_chg_dcp = false;
 			motg->chg_state = USB_CHG_STATE_UNDEFINED;
@@ -4555,6 +4555,14 @@ static int msm_otg_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "core_clk svs freq not specified\n");
 	} else {
 		motg->core_clk_svs_rate = clk_round_rate(motg->core_clk, ret);
+	}
+
+	if (of_property_read_u32(pdev->dev.of_node,
+					"qcom,chg-dcp-icl", &ret)) {
+		dev_dbg(&pdev->dev, "DCP ICl not specified, use default IDEV_CHG_DCP\n");
+		motg->chg_dcp_icl = IDEV_CHG_DCP;
+	} else {
+		motg->chg_dcp_icl = ret;
 	}
 
 	motg->default_noc_mode = USB_NOC_NOM_VOTE;
