@@ -5443,16 +5443,6 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		if (rc < 0)
 			dev_err(chip->dev,
 				"Couldn't enable HVDCP rc=%d\n", rc);
-
-		if (is_usb_present(chip)) {
-			rc = smbchg_masked_write(chip,
-				chip->usb_chgpth_base + CMD_APSD,
-				APSD_RERUN_BIT, APSD_RERUN_BIT);
-			if (rc)
-				dev_err(chip->dev,
-					"Unable to re-run APSD rc=%d\n",
-					rc);
-		}
 	}
 	/*
 	 * set chg en by cmd register, set chg en by writing bit 1,
