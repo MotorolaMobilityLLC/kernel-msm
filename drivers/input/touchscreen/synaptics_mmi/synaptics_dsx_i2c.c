@@ -120,6 +120,8 @@ static int control_access_block_update_static(
 		struct synaptics_rmi4_data *rmi4_data);
 static int control_access_block_update_dynamic(
 		struct synaptics_rmi4_data *rmi4_data);
+static int synaptics_rmi4_query_device(
+		struct synaptics_rmi4_data *rmi4_data);
 
 /* F12 packet register description */
 static struct {
@@ -2087,6 +2089,20 @@ static ssize_t synaptics_rmi4_pm_qos_show(struct device *dev,
 static ssize_t synaptics_rmi4_pm_qos_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
+#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
+static ssize_t synaptics_rmi4_test_irq_delay_ms_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_test_irq_delay_ms_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t synaptics_rmi4_test_irq_data_contig_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_test_irq_data_contig_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+#endif
+
 static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
@@ -2284,6 +2300,14 @@ static struct device_attribute attrs[] = {
 	__ATTR(pm_qos, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
 			synaptics_rmi4_pm_qos_show,
 			synaptics_rmi4_pm_qos_store),
+#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
+	__ATTR(test_irq_delay_ms, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			synaptics_rmi4_test_irq_delay_ms_show,
+			synaptics_rmi4_test_irq_delay_ms_store),
+	__ATTR(test_irq_data_contig, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			synaptics_rmi4_test_irq_data_contig_show,
+			synaptics_rmi4_test_irq_data_contig_store),
+#endif
 };
 
 struct synaptics_exp_fn_ctrl {
@@ -3367,6 +3391,69 @@ static ssize_t synaptics_rmi4_pm_qos_store(struct device *dev,
 	return count;
 }
 
+#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
+static ssize_t synaptics_rmi4_test_irq_delay_ms_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data =
+					i2c_get_clientdata(to_i2c_client(dev));
+	return scnprintf(buf, PAGE_SIZE, "%d\n", rmi4_data->test_irq_delay_ms);
+}
+
+static ssize_t synaptics_rmi4_test_irq_delay_ms_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int value = 0;
+	int err;
+	struct synaptics_rmi4_data *rmi4_data =
+					i2c_get_clientdata(to_i2c_client(dev));
+
+	err = kstrtouint(buf, 10, &value);
+	if (err < 0) {
+		pr_err("Failed to convert value\n");
+		return -EINVAL;
+	}
+
+	rmi4_data->test_irq_delay_ms = value;
+	return count;
+}
+
+static ssize_t synaptics_rmi4_test_irq_data_contig_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data =
+					i2c_get_clientdata(to_i2c_client(dev));
+	return scnprintf(buf, PAGE_SIZE, "%d\n", rmi4_data->test_irq_data_contig);
+}
+
+static ssize_t synaptics_rmi4_test_irq_data_contig_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int value = 0;
+	int err;
+	struct synaptics_rmi4_data *rmi4_data =
+					i2c_get_clientdata(to_i2c_client(dev));
+
+	err = kstrtouint(buf, 10, &value);
+	if (err < 0 || !(value == 0 || value == 1)) {
+		pr_err("Failed to convert value\n");
+		return -EINVAL;
+	}
+
+	if (rmi4_data->test_irq_data_contig != value) {
+		rmi4_data->test_irq_data_contig = value;
+		synaptics_rmi4_irq_enable(rmi4_data, false);
+		/* requery for change to take effect */
+		if (synaptics_rmi4_query_device(rmi4_data) < 0) {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to query device\n",
+				__func__);
+		}
+		synaptics_rmi4_irq_enable(rmi4_data, true);
+	}
+	return count;
+}
+#endif
 static ssize_t synaptics_rmi4_0dbutton_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -4823,6 +4910,13 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 {
 	struct synaptics_rmi4_data *rmi4_data = data;
 
+#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
+	if (rmi4_data->test_irq_delay_ms) {
+		int i;
+		for (i = 0; i < rmi4_data->test_irq_delay_ms; ++i)
+			udelay(1000);
+	}
+#endif
 	synaptics_rmi4_sensor_report(rmi4_data);
 
 	return IRQ_HANDLED;
@@ -5938,6 +6032,16 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 		}
 	}
 
+#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
+	/* Test mode can only be enforced in userdebug build */
+	/* When test mode enforced, clear contiguous flag to */
+	/* do two I2C transactions to retrieve touch data  */
+	if (!rmi4_data->test_irq_data_contig) {
+		rmi4_data->touch_data_contiguous = 0;
+		pr_notice("Forcing non-contiguous data flag\n");
+	}
+#endif
+
 skip_f12_single_i2c_setup:
 	if (!rmi4_data->touch_data_contiguous) {
 		rmi4_data->touch_data_size = rmi4_data->num_of_intr_regs;
@@ -6779,6 +6883,11 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 
 	rmi4_data->pm_qos_latency = PM_QOS_DEFAULT_VALUE;
 
+#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
+	/* TEST OPTIONS */
+	rmi4_data->test_irq_delay_ms = 0;
+	rmi4_data->test_irq_data_contig = 1; /* enforce test mode */
+#endif
 	if (client->dev.of_node)
 		platform_data = synaptics_dsx_of_init(client, rmi4_data);
 	else
@@ -6962,7 +7071,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	mutex_lock(&exp_fn_ctrl_mutex);
 	exp_fn_ctrl.rmi4_data_ptr = rmi4_data;
 	mutex_unlock(&exp_fn_ctrl_mutex);
-
 
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	if (rmi4_data->folio_detection_enabled) {
