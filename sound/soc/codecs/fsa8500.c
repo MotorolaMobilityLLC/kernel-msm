@@ -60,6 +60,26 @@
 #define	FSA8500_LINT_DEBOUNCE	200
 #define	FSA8500_DETECT_DEBOUNCE	2000
 
+/**
+ * snd_soc_jack_new - Create a new jack
+ * @codec: ASoC CODEC
+ * @id:    an identifying string for this jack
+ * @type:  a bitmask of enum snd_jack_type values that can be detected by
+ *         this jack
+ * @jack:  structure to use for the jack
+ *
+ * Creates a new jack object.
+ *
+ * Returns zero if successful, or a negative error code on failure.
+ * On success jack will be initialised.
+ */
+static inline int snd_soc_jack_new(struct snd_soc_codec *codec, const char *id,
+       int type, struct snd_soc_jack *jack)
+{
+       return snd_soc_card_jack_new(codec->component.card, id, type, jack,
+               NULL, 0);
+}
+
 static struct snd_soc_jack hs_jack;
 static struct snd_soc_jack button_jack;
 
