@@ -2449,22 +2449,39 @@ static int fwu_scan_pdt(void)
 		}
 	}
 
-	rmi4_data->intr_mask[0] |= fwu->intr_mask;
+	return 0;
+}
 
-	addr = rmi4_data->f01_ctrl_base_addr + 1;
+int fwu_check_intr_en(struct synaptics_rmi4_data *rmi4_data,
+	unsigned char *drv_intr_en, size_t size)
+{
+	int i;
+	unsigned char intr_en[MAX_INTR_REGISTERS];
+	int retval = 0;
+	unsigned char addr = rmi4_data->f01_ctrl_base_addr + 1;
 
-	retval = synaptics_rmi4_reg_write(rmi4_data,
+	retval = synaptics_rmi4_reg_read(rmi4_data,
 			addr,
-			&(rmi4_data->intr_mask[0]),
-			sizeof(rmi4_data->intr_mask[0]));
+			intr_en,
+			size);
 	if (retval < 0) {
 		dev_err(LOGDEV,
-				"%s: Failed to set interrupt enable bit\n",
-				__func__);
+			"%s: Failed to read interrupt enable register\n",
+			__func__);
 		return retval;
 	}
+	/* ensure interrupt enable mask expected by driver is subset of */
+	/* touch IC interrupt enable register */
+	for (i = 0; i < size; ++i)
+		if (drv_intr_en[i] != (drv_intr_en[i] & intr_en[i])) {
+			retval = 1;
+			dev_err(LOGDEV,
+				"%s: Interrupt enable mismatch:"
+				" drv[%d] = 0x%02x, fw[%d] = 0x%02x\n",
+				__func__, i, drv_intr_en[i], i, intr_en[i]);
+		}
 
-	return 0;
+	return retval;
 }
 
 static int fwu_enter_flash_prog(void)
@@ -2499,6 +2516,8 @@ static int fwu_enter_flash_prog(void)
 	retval = fwu_scan_pdt();
 	if (retval < 0)
 		goto out;
+
+	fwu_check_intr_en(rmi4_data, &fwu->intr_mask, sizeof(fwu->intr_mask));
 
 	retval = fwu_read_f34_queries();
 	if (retval < 0)
@@ -3486,6 +3505,9 @@ exit:
 	retval = fwu_scan_pdt();
 	if (retval < 0)
 		dev_err(LOGDEV, "%s: Failed to scan PDT\n", __func__);
+
+	fwu_check_intr_en(rmi4_data, &rmi4_data->intr_mask[0],
+		rmi4_data->num_of_intr_regs);
 
 	retval = fwu_get_device_config_id();
 	if (retval < 0) {
