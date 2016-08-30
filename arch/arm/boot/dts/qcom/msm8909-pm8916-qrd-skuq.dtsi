@@ -83,7 +83,48 @@
 		asoc-codec = <&stub_codec>, <&pm8916_tombak_dig>;
 		asoc-codec-names = "msm-stub-codec.1", "tombak_codec";
 	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		STAtus = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_led_off>;
+
+		red {
+			gpios = <&msm_gpio 91 0>;
+			label = "red";
+			linux,default-trigger = "none";
+			default-state = "off";
+			retain-state-suspended;
+		};
+
+		green {
+			gpios = <&msm_gpio 92 0>;
+			label = "green";
+			linux,default-trigger = "none";
+			default-state = "off";
+			retain-state-suspended;
+		};
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
+		pinctrl-0 = <&gpio_key_active>;
+		pinctrl-1 = <&gpio_key_suspend>;
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&msm_gpio 90 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
 };
+
 &pm8916_mpps {
 	mpp@a300 { /* MPP 4 */
 		/* Backlight PWM */
