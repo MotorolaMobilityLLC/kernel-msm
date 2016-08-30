@@ -122,6 +122,8 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
+
+		/delete-node/ vol_down;
 	};
 };
 
