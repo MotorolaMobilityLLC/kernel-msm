@@ -43,25 +43,68 @@ extern volatile uint8_t
 extern volatile uint8_t
 	vmm_algo_evt_accum_mvmt[VMM_ALGO_EVT_ACCUM_MVMT_S];
 
+/* VR defines */
+#define MAX_VR_RATE_NS    2500000
+#define VR_ACCEL          0x0001
+#define VR_GYRO           0x0002
+#define VR_MAG            0x0004
+#define VR_ALS            0x0008
+#define VR_DISPLAY_ROTATE 0x0010
+#define VR_GRAVITY        0x0020
+#define VR_LINEAR_ACCEL   0x0040
+#define VR_ROTV_6AXIS     0x0080
+#define VR_ROTV_9AXIS     0x0100
+#define VR_ROTV_GAME      0x0200
+#define VR_READY          0x8000
+
+struct __packed vr_sensor {
+	int16_t x;
+	int16_t y;
+	int16_t z;
+};
+
+struct __packed vr_rotation_vector {
+	int16_t x;
+	int16_t y;
+	int16_t z;
+	int16_t cosine;
+};
+
+/* Designed so that the size of this structure is less
+ * than the QC HW Fifo size on msm8996.  Some of the
+ * data members are unioned to meet this size.  The
+ * unioned members will report at a slower rate. */
 struct __packed vr_data {
-	struct __packed accel_data {
-		uint16_t x;
-		uint16_t y;
-		uint16_t z;
-	} accel;
+
+	struct vr_sensor accel;
+
+	union linear_accel_gravity_data {
+		struct vr_sensor linear_accel;
+		struct vr_sensor gravity;
+	} la_g_union;
+
 	struct __packed gyro_data {
-		uint16_t x;
-		uint16_t y;
-		uint16_t z;
+		struct vr_sensor raw;
+		struct vr_sensor cal;
 	} gyro;
-	struct __packed mag_data {
-		uint16_t x;
-		uint16_t y;
-		uint16_t z;
-		uint8_t calibrated_status;
-	} mag;
+
+	struct vr_rotation_vector rv_9axis;
+	struct vr_rotation_vector rv_game;
+
+	union {
+		struct vr_rotation_vector rv_6axis;
+
+		struct __packed mag_data {
+			struct vr_sensor raw;
+			struct vr_sensor cal;
+			int8_t calibrated_status;
+		} mag;
+	} mag_game_rv_union;
+
+	uint16_t als;
+	uint8_t display_rotate;
 	uint8_t timestamp[3];
-	uint8_t status;
+	uint16_t status;
 };
 
 #define VR_BUFFERED_SAMPLES 2
