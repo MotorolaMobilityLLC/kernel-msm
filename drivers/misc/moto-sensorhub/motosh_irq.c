@@ -42,6 +42,8 @@
 #include <linux/motosh_vmm_defines.h>
 
 static void motosh_irq_vr_handler(struct kthread_work *work);
+static void motosh_process_vr_data(struct motosh_data *ps_motosh,
+	struct vr_data *vr_data);
 static void motosh_irq_handler(struct kthread_work *work);
 
 irqreturn_t motosh_isr(int irq, void *dev)
@@ -68,13 +70,13 @@ void motosh_irq_thread_func(struct kthread_work *work)
 static void motosh_irq_vr_handler(struct kthread_work *work)
 {
 	static int64_t last_sensor_ts;
-	int i, err;
+	int err;
 	int num_samples;
+	int sample_count;
 	unsigned char cmdbuff;
-	struct vr_data read_vr_data[VR_BUFFERED_SAMPLES];
+	struct vr_data read_vr_data;
 	struct motosh_data *ps_motosh = container_of(work,
 			struct motosh_data, irq_work);
-	int32_t lowest_sensor_delay_ms = INT_MAX;
 
 	if (ps_motosh->is_suspended)
 		goto EXIT;
@@ -85,81 +87,288 @@ static void motosh_irq_vr_handler(struct kthread_work *work)
 	if (motosh_misc_data->in_reset_and_init)
 		goto EXIT;
 
+	if (ps_motosh->resume_cleanup) {
+		ps_motosh->resume_cleanup = false;
+
+		/* If we are just coming back from suspend we will
+		   discard any non-batchable sensor data that may have
+		   entered the buffer prior to last reporting interval
+		   before the AP went to suspend */
+		motosh_time_sync();
+	}
+
 	/* If we detect that we have fallen behind try and read out the
 	 * extra samples that will have been buffered in the sensorhub */
-	if ((motosh_g_nonwake_sensor_state & M_ACCEL) &&
-			(motosh_g_acc_cfg.delay > 0))
-		lowest_sensor_delay_ms = motosh_g_acc_cfg.delay;
-	if ((motosh_g_nonwake_sensor_state & M_GYRO) &&
-			(motosh_g_gyro_delay > 0) &&
-			(motosh_g_gyro_delay < lowest_sensor_delay_ms))
-		lowest_sensor_delay_ms = motosh_g_gyro_delay;
-	if ((motosh_g_nonwake_sensor_state & M_ECOMPASS) &&
-			(motosh_g_mag_delay > 0) &&
-			motosh_g_mag_delay < lowest_sensor_delay_ms)
-		lowest_sensor_delay_ms = motosh_g_mag_delay;
-
 	num_samples = div_s64((motosh_timestamp_ns() - last_sensor_ts),
-			MS_TO_NS(lowest_sensor_delay_ms));
+			MAX_VR_RATE_NS);
 
 	if (num_samples < 1)
 		num_samples = 1;
 	if (num_samples > VR_BUFFERED_SAMPLES)
 		num_samples = VR_BUFFERED_SAMPLES;
 
-	/* Need to keep this handler limited to 1 I2C transaction to meet
-	 * VR speed requirements. */
-	cmdbuff = VR_DATA;
-	memset(read_vr_data, 0, sizeof(read_vr_data));
-	err = motosh_i2c_write_read(ps_motosh,
-			&cmdbuff, (void *)read_vr_data,
-			sizeof(cmdbuff),
-			sizeof(struct vr_data) * num_samples);
+	for (sample_count = 0; sample_count < num_samples; ++sample_count) {
+		cmdbuff = VR_DATA;
+		memset(&read_vr_data, 0, sizeof(read_vr_data));
+		err = motosh_i2c_write_read(ps_motosh,
+				&cmdbuff, (void *)&read_vr_data,
+				sizeof(cmdbuff),
+				sizeof(struct vr_data));
 
-	if (err < 0) {
-		dev_err(&ps_motosh->client->dev,
-			"Reading vr_data failed [err: %d]\n", err);
-		goto EXIT;
-	}
+		if (err < 0) {
+			dev_err(&ps_motosh->client->dev,
+				"Reading vr_data failed [err: %d]\n", err);
+			continue;
+		}
 
-	for (i = 0; i < num_samples; i++) {
-		if (read_vr_data[i].status & VR_READY) {
-			if (read_vr_data[i].status & VR_ACCEL) {
-				motosh_as_data_buffer_write(ps_motosh,
-					DT_ACCEL,
-					(uint8_t *)&read_vr_data[i].accel,
-					sizeof(read_vr_data[i].accel),
-					0,
-					(uint8_t *)&read_vr_data[i].timestamp);
-			}
-			if (read_vr_data[i].status & VR_GYRO) {
-				motosh_as_data_buffer_write(ps_motosh,
-					DT_GYRO,
-					(uint8_t *)&read_vr_data[i].gyro,
-					sizeof(read_vr_data[i].gyro),
-					0,
-					(uint8_t *)&read_vr_data[i].timestamp);
-			}
-			if (read_vr_data[i].status & VR_MAG) {
-				motosh_as_data_buffer_write(ps_motosh,
-					DT_MAG,
-					(uint8_t *)&read_vr_data[i].mag,
-					sizeof(read_vr_data[i].mag),
-					read_vr_data[i].mag.calibrated_status,
-					(uint8_t *)&read_vr_data[i].timestamp);
-			}
-			if (read_vr_data[i].status != 0) {
-				last_sensor_ts = motosh_time_recover(
-					(read_vr_data[i].timestamp[0] << 16) |
-					(read_vr_data[i].timestamp[1] <<  8) |
-					(read_vr_data[i].timestamp[2]),
-					motosh_timestamp_ns());
-			}
+		if ((read_vr_data.status & VR_READY) != VR_READY)
+			continue;
+
+		motosh_process_vr_data(ps_motosh, &read_vr_data);
+
+		if (read_vr_data.status != 0) {
+			last_sensor_ts = motosh_time_recover(
+				(read_vr_data.timestamp[0] << 16) |
+				(read_vr_data.timestamp[1] <<  8) |
+				(read_vr_data.timestamp[2]),
+				motosh_timestamp_ns());
 		}
 	}
 
 EXIT:
+	/* Latest queue purged from hub. Reply to each pending flush bit
+	   that is pending. Currently only accel is batched, others are
+	   directly handled at IOCTL
+	*/
+	if (ps_motosh->nwake_flush_req & FLUSH_ACCEL_REQ) {
+		uint32_t handle = ID_A;
+
+		motosh_as_data_buffer_write(ps_motosh, DT_FLUSH,
+					    (char *)&handle, 4, 0, NULL);
+		dev_dbg(&ps_motosh->client->dev,
+			 "flushed accel");
+	}
+	/* clear any flush requests pending */
+	ps_motosh->nwake_flush_req = 0;
+
+	/* last of batched accel processed */
+	if (motosh_g_acc_cfg.timeout == 0)
+		ps_motosh->is_batching &= (~ACCEL_BATCHING);
+
 	return;
+}
+
+static void motosh_process_vr_data(struct motosh_data *ps_motosh,
+	struct vr_data *vr_data)
+{
+	static uint8_t mag_calibrated_status;
+
+	if ((vr_data->status & VR_ACCEL) &&
+			(motosh_g_nonwake_sensor_state & M_ACCEL)) {
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_ACCEL,
+			(uint8_t *)&vr_data->accel,
+			sizeof(vr_data->accel),
+			0,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_GYRO) &&
+			(motosh_g_nonwake_sensor_state & M_GYRO)) {
+
+		struct vr_sensor calibrated_gyro;
+
+		calibrated_gyro.x =
+			vr_data->gyro.raw.x -
+			vr_data->gyro.cal.x;
+		calibrated_gyro.y =
+			vr_data->gyro.raw.y -
+			vr_data->gyro.cal.y;
+		calibrated_gyro.z =
+			vr_data->gyro.raw.z -
+			vr_data->gyro.cal.z;
+
+		calibrated_gyro.x =
+			STM16_TO_HOST(&calibrated_gyro.x, 0);
+		calibrated_gyro.y =
+			STM16_TO_HOST(&calibrated_gyro.y, 0);
+		calibrated_gyro.z =
+			STM16_TO_HOST(&calibrated_gyro.z, 0);
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_GYRO,
+			(uint8_t *)&calibrated_gyro,
+			sizeof(calibrated_gyro),
+			0,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_GYRO) &&
+			(motosh_g_nonwake_sensor_state & M_UNCALIB_GYRO)) {
+
+		vr_data->gyro.raw.x =
+			STM16_TO_HOST(&vr_data->gyro.raw.x, 0);
+		vr_data->gyro.raw.y =
+			STM16_TO_HOST(&vr_data->gyro.raw.y, 0);
+		vr_data->gyro.raw.z =
+			STM16_TO_HOST(&vr_data->gyro.raw.z, 0);
+
+		vr_data->gyro.cal.x =
+			STM16_TO_HOST(&vr_data->gyro.cal.x, 0);
+		vr_data->gyro.cal.y =
+			STM16_TO_HOST(&vr_data->gyro.cal.y, 0);
+		vr_data->gyro.cal.z =
+			STM16_TO_HOST(&vr_data->gyro.cal.z, 0);
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_UNCALIB_GYRO,
+			(uint8_t *)&vr_data->gyro,
+			sizeof(vr_data->gyro),
+			0,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_MAG) &&
+			(motosh_g_nonwake_sensor_state & M_ECOMPASS)) {
+
+		struct vr_sensor calibrated_mag;
+
+		calibrated_mag.x =
+			vr_data->mag_game_rv_union.mag.raw.x -
+			vr_data->mag_game_rv_union.mag.cal.x;
+		calibrated_mag.y =
+			vr_data->mag_game_rv_union.mag.raw.y -
+			vr_data->mag_game_rv_union.mag.cal.y;
+		calibrated_mag.z =
+			vr_data->mag_game_rv_union.mag.raw.z -
+			vr_data->mag_game_rv_union.mag.cal.z;
+
+		mag_calibrated_status = vr_data->
+			mag_game_rv_union.mag.calibrated_status;
+
+		calibrated_mag.x =
+			STM16_TO_HOST(&calibrated_mag.x, 0);
+		calibrated_mag.y =
+			STM16_TO_HOST(&calibrated_mag.y, 0);
+		calibrated_mag.z =
+			STM16_TO_HOST(&calibrated_mag.z, 0);
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_MAG,
+			(uint8_t *)&calibrated_mag,
+			sizeof(calibrated_mag),
+			mag_calibrated_status,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_MAG) &&
+			(motosh_g_nonwake_sensor_state & M_UNCALIB_MAG)) {
+
+		vr_data->mag_game_rv_union.mag.raw.x =
+			STM16_TO_HOST(&vr_data->mag_game_rv_union.
+			mag.raw.x, 0);
+		vr_data->mag_game_rv_union.mag.raw.y =
+			STM16_TO_HOST(&vr_data->mag_game_rv_union.
+			mag.raw.y, 0);
+		vr_data->mag_game_rv_union.mag.raw.z =
+			STM16_TO_HOST(&vr_data->mag_game_rv_union.
+			mag.raw.z, 0);
+
+		vr_data->mag_game_rv_union.mag.cal.x =
+			STM16_TO_HOST(&vr_data->mag_game_rv_union.
+			mag.cal.x, 0);
+		vr_data->mag_game_rv_union.mag.cal.y =
+			STM16_TO_HOST(&vr_data->mag_game_rv_union.
+			mag.cal.y, 0);
+		vr_data->mag_game_rv_union.mag.cal.z =
+			STM16_TO_HOST(&vr_data->mag_game_rv_union.
+			mag.cal.z, 0);
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_UNCALIB_MAG,
+			(uint8_t *)&vr_data->mag_game_rv_union.mag,
+			sizeof(vr_data->mag_game_rv_union.mag),
+			0,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_ALS) &&
+			(motosh_g_nonwake_sensor_state & M_ALS)) {
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_ALS,
+			(uint8_t *)&vr_data->als,
+			sizeof(vr_data->als),
+			0,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_DISPLAY_ROTATE) &&
+			(motosh_g_nonwake_sensor_state & M_DISP_ROTATE)) {
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_DISP_ROTATE,
+			(uint8_t *)&vr_data->display_rotate,
+			sizeof(vr_data->display_rotate),
+			0,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_GRAVITY) &&
+			(motosh_g_nonwake_sensor_state & M_GRAVITY)) {
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_GRAVITY,
+			(uint8_t *)&vr_data->la_g_union.gravity,
+			sizeof(vr_data->la_g_union.gravity),
+			0,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_LINEAR_ACCEL) &&
+			(motosh_g_nonwake_sensor_state & M_LIN_ACCEL)) {
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_LIN_ACCEL,
+			(uint8_t *)&vr_data->la_g_union.linear_accel,
+			sizeof(vr_data->la_g_union.linear_accel),
+			0,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_ROTV_9AXIS) &&
+			(motosh_g_nonwake_sensor_state & M_QUAT_9AXIS)) {
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_QUAT_9AXIS,
+			(uint8_t *)&vr_data->rv_9axis,
+			sizeof(vr_data->rv_9axis),
+			mag_calibrated_status,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_ROTV_GAME) &&
+			(motosh_g_nonwake_sensor_state & M_GAME_RV)) {
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_GAME_RV,
+			(uint8_t *)&vr_data->rv_game,
+			sizeof(vr_data->rv_game),
+			0,
+			(uint8_t *)&vr_data->timestamp);
+	}
+
+	if ((vr_data->status & VR_ROTV_6AXIS) &&
+			(motosh_g_nonwake_sensor_state & M_QUAT_6AXIS)) {
+
+		motosh_as_data_buffer_write(ps_motosh,
+			DT_QUAT_6AXIS,
+			(uint8_t *)&vr_data->mag_game_rv_union.rv_6axis,
+			sizeof(vr_data->mag_game_rv_union.rv_6axis),
+			0,
+			(uint8_t *)&vr_data->timestamp);
+	}
 }
 
 static void motosh_irq_handler(struct kthread_work *work)
@@ -507,10 +716,6 @@ static void motosh_irq_handler(struct kthread_work *work)
 							    9,
 							    status, &data[9]
 							    );
-			/* Note above that the index of the timestamp in the
-			data buffer is passed instead of the size of the data
-			to work around a bad  motosh_as_data_buffer_write
-			assumption */
 
 			dev_dbg(
 				&ps_motosh->client->dev,
