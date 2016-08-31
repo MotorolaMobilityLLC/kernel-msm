@@ -606,7 +606,7 @@ static int lm75_read_value(struct i2c_client *client, u8 reg)
 {
 	struct lm75_data *data = i2c_get_clientdata(client);
 
-	if ((reg == LM75_REG_CONF) && (!data->sensor == tmp108))
+	if (reg == LM75_REG_CONF && data->sensor != tmp108)
 		return i2c_smbus_read_byte_data(client, reg);
 	else
 		return i2c_smbus_read_word_swapped(client, reg);
@@ -616,7 +616,7 @@ static int lm75_write_value(struct i2c_client *client, u8 reg, u16 value)
 {
 	struct lm75_data *data = i2c_get_clientdata(client);
 
-	if ((reg == LM75_REG_CONF) && (!data->sensor == tmp108))
+	if (reg == LM75_REG_CONF && data->sensor != tmp108)
 		return i2c_smbus_write_byte_data(client, reg, value);
 	else
 		return i2c_smbus_write_word_swapped(client, reg, value);
