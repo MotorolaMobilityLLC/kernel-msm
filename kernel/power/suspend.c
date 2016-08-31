@@ -35,6 +35,9 @@
 #ifdef CONFIG_MSM_RPM_STATS_LOG
 #include "../../drivers/soc/qcom/rpm_stats.h"
 #endif
+#ifdef CONFIG_SUSPEND_DEBUG
+#include "user_sysfs_private.h"
+#endif
 
 const char *pm_labels[] = { "mem", "standby", "freeze", NULL };
 const char *pm_states[PM_SUSPEND_MAX];
@@ -383,6 +386,12 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 		trace_suspend_resume(TPS("machine_suspend"), state, false);
 		goto Platform_wake;
 	}
+
+#ifdef CONFIG_SUSPEND_DEBUG
+	vreg_before_sleep_save_configs();
+	tlmm_before_sleep_set_configs();
+	tlmm_before_sleep_save_configs();
+#endif
 
 	error = disable_nonboot_cpus();
 	if (error || suspend_test(TEST_CPUS)) {
