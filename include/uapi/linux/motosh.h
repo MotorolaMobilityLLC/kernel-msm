@@ -342,12 +342,6 @@ struct motosh_moto_sensor_batch_cfg {
 #define MOTOSH_EVT_SZ_ACCUM_STATE  2
 #define MOTOSH_EVT_SZ_ACCUM_MVMT   4
 
-/* VR defines */
-#define VR_ACCEL 0x01
-#define VR_GYRO  0x02
-#define VR_MAG   0x04
-#define VR_READY 0x80
-
 struct motosh_android_sensor_data {
 	int64_t timestamp;
 	unsigned char type;
