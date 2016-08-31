@@ -3449,9 +3449,8 @@ err_register_input_device_interrupt:
 	input_unregister_device(data->input);
 err_register_input_device:
 	input_free_device(dev);
-deinit_power_exit:
-	flush_workqueue(data->data_wq);
 	destroy_workqueue(data->data_wq);
+deinit_power_exit:
 	bma25x_power_deinit(data);
 free_i2c_clientdata_exit:
 	i2c_set_clientdata(client, NULL);
