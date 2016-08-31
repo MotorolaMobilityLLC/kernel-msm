@@ -153,6 +153,11 @@
 			gpios = <&tlmm 46 0x2008>; /* IRQ */
 			pinctrl-names = "default";
 			pinctrl-0 = <&sx9310_irq_default>;
+			cap,use_channel = <0x01>;
+			cap,scan_period = <0x05>;
+			reg_array_len = <5>;
+			reg_array_val = <0x12 0x0B 0x13 0x05 0x15 0xC2
+					0x18 0x5E 0x10 0x51>;
 		};
 
 		/delete-node/ adv7533@39;
