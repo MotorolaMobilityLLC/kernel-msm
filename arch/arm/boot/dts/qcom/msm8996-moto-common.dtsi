@@ -646,10 +646,13 @@
 		/delete-node/ tasha_codec;
 	};
 
+	wlan_en_vreg: wlan_en_vreg {
+		gpio = <&tlmm 121 0>;
+	};
+
 	qcom,cnss {
 		/delete-property/ wlan-bootstrap-gpio; /* Pulled high with S4 */
 		qcom,wlan-rc-num = <1>;
-		wlan-en-gpio = <&tlmm 121 0>;
 	};
 
 	vreg_5p0: vreg_5v {
