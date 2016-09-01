@@ -396,7 +396,7 @@ void InitializeTypeCVariables(void)
 
 #ifdef FSC_HAVE_DRP
 	blnSrcPreferred = FALSE;	// Clear the source preferred flag by default
-	blnSnkPreferred = FALSE;	// Clear the sink preferred flag by default
+	blnSnkPreferred = TRUE;
 #endif // FSC_HAVE_DRP
 
 	g_Idle = FALSE;
