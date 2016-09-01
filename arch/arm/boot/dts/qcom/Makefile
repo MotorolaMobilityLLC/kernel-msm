@@ -332,7 +332,8 @@ dtb-$(CONFIG_ARCH_MSM8953) += msm8953-addison-p1.dtb \
 
 dtb-$(CONFIG_ARCH_MSM8953) += msm8953-potter-p0a.dtb \
 	msm8953-potter-p1a.dtb \
-	msm8953-potter-p1b.dtb
+	msm8953-potter-p1b.dtb \
+	msm8953-potter-p2a.dtb        
 
 dtb-$(CONFIG_ARCH_MSM8953) += msm8953-albus-p0.dtb
 
