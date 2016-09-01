@@ -41,6 +41,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&fsa8500_hs_det_default>;
 		fsa8500-lint-disabled;
+		hs_det_vdd-supply = <&pmcobalt_l22>;
 	};
 
 	drv2624: drv2624@5a {
