@@ -11,7 +11,7 @@
  */
 
 #include "msm8953-moto-common.dtsi"
-#include "dsi-panel-mot-smd-549-1080p-cmd.dtsi"
+#include "dsi-panel-mot-smd-549-1080p-alb-cmd.dtsi"
 #include "dsi-panel-mot-mod-fwvga-video.dtsi"
 
  / {
@@ -162,7 +162,7 @@
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 
-	qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_cmd_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_alb_cmd_v0>;
 	vci_disp-supply = <&vci_disp_vreg>;
 	vio_disp-supply = <&vio_disp_vreg>;
 	elvdd_disp-supply = <&lab_regulator>;
