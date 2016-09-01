@@ -553,6 +553,7 @@ static void wcd_mbhc_hs_elec_irq(struct wcd_mbhc *mbhc, int irq_type,
 static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				enum snd_jack_types jack_type)
 {
+	u16 elect_result;
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
 	pr_debug("%s: enter insertion %d hph_status %x\n",
@@ -675,6 +676,9 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		} else if (jack_type == SND_JACK_ANC_HEADPHONE)
 			mbhc->current_plug = MBHC_PLUG_TYPE_ANC_HEADPHONE;
 
+		WCD_MBHC_REG_READ(WCD_MBHC_ELECT_RESULT, elect_result);
+		pr_debug("%s: elect_result: %d\n", __func__, elect_result);
+
 		if (mbhc->impedance_detect &&
 			mbhc->mbhc_cb->compute_impedance &&
 			(mbhc->mbhc_cfg->linein_th != 0)) {
@@ -711,6 +715,12 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		}
 
 		mbhc->hph_status |= jack_type;
+
+
+		if ((jack_type == SND_JACK_LINEOUT) && elect_result) {
+			mbhc->hph_status = 0;
+			pr_debug("%s: DTV dongle detected\n", __func__);
+		}
 
 		pr_debug("%s: Reporting insertion %d(%x),zl %d ohm,zr %d ohm\n",
 			__func__, jack_type, mbhc->hph_status,
