@@ -22,6 +22,19 @@
 			<300 0>;
 };
 
+&tlmm_pinmux {
+	bmi160_int1_pin {
+		qcom,pins = <&gp 96>;
+		qcom,num-grp-pins = <1>;
+		label = "bmi160_int1_pin";
+		bmi160_int1_default: int1_default {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
+};
+
 &pm8916_chg {
 	status = "ok";
 };
@@ -124,6 +137,49 @@
 		};
 
 		/delete-node/ vol_down;
+	};
+
+	i2c@78b5000 {
+		bosch@68 { /* Accelerometer and gyroscope sensor */
+			compatible = "bosch,bmi160";
+			reg = <0x68>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&bmi160_int1_default>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <96 0x2002>;
+			vdd-supply = <&pm8916_l17>;
+			vio-supply = <&pm8916_l6>;
+			bosch,place = <5>;
+			bosch,gpio-int1 = <&msm_gpio 96 0x2002>;
+		};
+
+		memsic@30 { /* Magnetic field sensor */
+			compatible = "memsic,mmc3x30";
+			reg = <0x30>;
+			vdd-supply = <&pm8916_l17>;
+			vio-supply = <&pm8916_l6>;
+			memsic,dir = "obverse-x-axis-forward";
+			memsic,auto-report;
+		};
+
+		stk@48 {
+			compatible = "stk,stk3x1x";
+			reg = <0x48>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <80 0x2>;
+			vdd-supply = <&pm8916_l17>;
+			vio-supply = <&pm8916_l6>;
+			stk,irq-gpio = <&msm_gpio 80 0x02>;
+			stk,transmittance = <340>;
+			stk,state-reg = <0x00>;
+			stk,psctrl-reg = <0x71>;
+			stk,alsctrl-reg = <0x38>;
+			stk,ledctrl-reg = <0xFF>;
+			stk,wait-reg = <0x07>;
+			stk,ps-thdh = <150>;
+			stk,ps-thdl = <100>;
+			stk,use-fir;
+		};
 	};
 };
 
