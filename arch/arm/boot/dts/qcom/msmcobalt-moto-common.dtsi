@@ -54,6 +54,22 @@
 		ti,auto_cal;
 		ti,nrst-gpio = <&pmicobalt_gpios 9 0>;   /* EN_GPIO */
 	};
+
+	usb3813@2D {
+		status = "disabled";
+                compatible = "microchip,usb3813";
+                reg = <0x2D>;
+                gpios = <&pmicobalt_gpios 5 0x0>,   /* HUB_RESET_EN */
+                        <&pmicobalt_gpios 1 0x1>;    /* HUB_INT_EN */
+                gpio-labels = "gpio_hub_reset_n",
+                        "gpio_hub_int_n";
+                clock-names = "hub_clk";
+		/* msm-clocks-cobalt.h PM8998 LN_BB_CLK2 -> LNBB_CLK2 */
+                clocks = <&clock_gcc clk_ln_bb_clk2>;
+                enable-usbhost;
+                vdd-hsic-supply = <&pmicobalt_bob>;
+        };
+
 };
 
 &i2c_8 {
@@ -82,6 +98,26 @@
 };
 
 &pmicobalt_gpios {
+	gpio@c000 { /* PMI8998_GPIO1 HUB_INT_EN */
+		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@c400 { /* PMI8998_GPIO5 HUB_RESET_EN */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
 	gpio@c800 { /* PMI8998_GPIO9 VIB_RST_N */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
