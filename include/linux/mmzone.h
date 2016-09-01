@@ -99,6 +99,7 @@ static inline int get_pageblock_migratetype(struct page *page)
 struct free_area {
 	struct list_head	free_list[MIGRATE_TYPES];
 	unsigned long		nr_free;
+	unsigned long		nr_free_cma;
 };
 
 struct pglist_data;
