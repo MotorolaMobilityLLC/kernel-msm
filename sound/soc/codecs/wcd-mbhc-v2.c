@@ -556,6 +556,7 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 	struct snd_soc_codec *codec = mbhc->codec;
 	bool is_pa_on = false;
 
+	u16 elect_result;
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
 	pr_debug("%s: enter insertion %d hph_status %x\n",
@@ -681,6 +682,9 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		if (mbhc->mbhc_cb->hph_pa_on_status)
 			is_pa_on = mbhc->mbhc_cb->hph_pa_on_status(codec);
 
+		WCD_MBHC_REG_READ(WCD_MBHC_ELECT_RESULT, elect_result);
+		pr_debug("%s: elect_result: %d\n", __func__, elect_result);
+
 		if (mbhc->impedance_detect &&
 			mbhc->mbhc_cb->compute_impedance &&
 			(mbhc->mbhc_cfg->linein_th != 0) &&
@@ -718,6 +722,12 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		}
 
 		mbhc->hph_status |= jack_type;
+
+
+		if ((jack_type == SND_JACK_LINEOUT) && elect_result) {
+			mbhc->hph_status = 0;
+			pr_debug("%s: DTV dongle detected\n", __func__);
+		}
 
 		pr_debug("%s: Reporting insertion %d(%x),zl %d ohm,zr %d ohm\n",
 			__func__, jack_type, mbhc->hph_status,
