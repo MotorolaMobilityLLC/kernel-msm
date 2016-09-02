@@ -71,3 +71,5 @@ usb_f_rmnet_bam-y		:= f_rmnet.o u_ctrl_qti.o u_bam_dmux.o u_data_ipa.o
 obj-$(CONFIG_USB_F_RMNET_BAM)	+= usb_f_rmnet_bam.o
 usb_f_ipc-y			:= f_ipc.o
 obj-$(CONFIG_USB_F_IPC)		+= usb_f_ipc.o
+usb_f_usbnet-y			:= f_usbnet.o
+obj-$(CONFIG_USB_ANDROID_USBNET) += usb_f_usbnet.o
