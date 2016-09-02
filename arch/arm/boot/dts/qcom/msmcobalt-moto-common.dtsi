@@ -46,6 +46,44 @@
 		/* hs_det_vdd-supply = <&pmcobalt_l22>; */
 	};
 
+	stmvl53l0@29 {
+		/* Enable once the matching driver is ported completely */
+		status = "disabled";
+		compatible = "st,stmvl53l0_i2c";
+		reg = <0x29>;
+		/* L22 is always on for now */
+		/* vdd-supply = <&pmcobalt_l22>; */
+		gpios = <&pmcobalt_gpios 15 0>, <&tlmm 79 0>;
+		qcom,gpio-reset = <0>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <0 1>;
+		qcom,gpio-req-tbl-label ="TOF_XSHUTDOWN","TOF_INT";
+		pinctrl-names = "laser_default", "laser_suspend";
+		pinctrl-0 = <&laser_active >;
+		pinctrl-1 = <&laser_suspend >;
+		st,sensorthreshold = <60 65>;
+		st,xtalkval = <19>;
+	};
+
+	cs35l34@41 {
+		compatible = "cirrus,cs35l34";
+		reg = <0x41>;
+
+		cirrus,gain-zc = <1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cs35l34_reset_default>;
+	};
+
+	tmp108@48 {
+		compatible = "ti,tmp108";
+		reg = <0x48>;
+		interrupt-parent = <&tlmm>;
+		gpios = <&tlmm 80 0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&tmp108_irq_default>;
+	};
+
 	drv2624: drv2624@5a {
 		compatible = "ti,drv2624";
 		reg = <0x5A>;
@@ -58,6 +96,8 @@
 	};
 
 	usb3813@2D {
+		/* Enable once the matching driver is ported */
+		/* only few base commits are present */
 		status = "disabled";
                 compatible = "microchip,usb3813";
                 reg = <0x2D>;
@@ -97,6 +137,44 @@
 			};
 		};
 	};
+};
+
+&pmcobalt_gpios {
+
+	gpio@c100 { /* PM8998_GPIO2 MOD_MPHY_SEL0 */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,invert = <0>;	 /* Invert */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@c600 { /* PM8998_GPIO7 DISP_V2_EN */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,pull = <0>;	 /* QPNP_PIN_GPIO_PULL_UP_30 */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@ce00 { /* PM8998_GPIO15 FOCUS_XSHUT */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,invert = <0>;	 /* Invert */
+		qcom,master-en = <1>;
+		/* Enabling on boot causes WD or freeze */
+		status = "disabled";
+	};
+
 };
 
 &pmicobalt_gpios {
