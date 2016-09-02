@@ -125,6 +125,15 @@ config IRQ_MIPS_CPU
 	select GENERIC_IRQ_CHIP
 	select IRQ_DOMAIN
 
+config MADERA_IRQ
+	tristate
+	select REGMAP
+	select REGMAP_IRQ
+
+config MADERA_IRQ_CS47L35
+	bool
+	default y if MFD_CS47L35=y
+
 config CLPS711X_IRQCHIP
 	bool
 	depends on ARCH_CLPS711X
