@@ -100,7 +100,8 @@
 };
 
 &pmicobalt_gpios {
-	gpio@c000 { /* PMI8998_GPIO1 HUB_INT_EN */
+
+	gpio@c000 { /* PMI8998_GPIO1 HSIC_INT_N */
 		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
@@ -110,7 +111,57 @@
 		status = "okay";
 	};
 
-	gpio@c400 { /* PMI8998_GPIO5 HUB_RESET_EN */
+	gpio@c100 { /* PMI8998_GPIO2 USB_OTG_FAULT_N */
+		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@c200 { /* PMI8998_GPIO3 USB_OTG_EN */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@c400 { /* PMI8998_GPIO5 HSIC_RESET_N */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@c500 { /* PMI8998_GPIO6 QNOVO_EXT_FET_CTL */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@c600 { /* PMI8998_GPIO7 FAN54100_INT_N */
+		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@c700 { /* PMI8998_GPIO8 TX_GTR_THRES */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
@@ -122,6 +173,36 @@
 
 	gpio@c800 { /* PMI8998_GPIO9 VIB_RST_N */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@c900 { /* PMI8998_GPIO10 MOD_BP_OC_FAULT_N */
+		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@ca00 { /* PMI8998_GPIO11 MOD_BPLUS_LIM */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	gpio@cd00 { /* PMI8998_GPIO14 CC_ALERT */
+		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
