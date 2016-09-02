@@ -2431,6 +2431,8 @@ static int kgsl_setup_dma_buf(struct kgsl_device *device,
 		goto out;
 	}
 
+	attach->priv = entry;
+
 	meta->dmabuf = dmabuf;
 	meta->attach = attach;
 
@@ -2481,6 +2483,44 @@ out:
 	}
 
 	return ret;
+}
+#endif
+
+#ifdef CONFIG_DMA_SHARED_BUFFER
+void kgsl_get_egl_counts(struct kgsl_mem_entry *entry,
+		int *egl_surface_count, int *egl_image_count)
+{
+	struct kgsl_dma_buf_meta *meta = entry->priv_data;
+	struct dma_buf *dmabuf = meta->dmabuf;
+	struct device *dev = meta->attach->dev;
+	struct dma_buf_attachment *attach;
+
+	mutex_lock(&dmabuf->lock);
+	list_for_each_entry(attach, &dmabuf->attachments, node) {
+		struct kgsl_mem_entry *entry_scan;
+
+		if (attach->dev != dev)
+			continue;
+
+		entry_scan = attach->priv;
+		if (!entry_scan)
+			continue;
+
+		switch (kgsl_memdesc_get_memtype(&entry_scan->memdesc)) {
+		case KGSL_MEMTYPE_EGL_SURFACE:
+			(*egl_surface_count)++;
+			break;
+		case KGSL_MEMTYPE_EGL_IMAGE:
+			(*egl_image_count)++;
+			break;
+		}
+	}
+	mutex_unlock(&dmabuf->lock);
+}
+#else
+void kgsl_get_egl_counts(struct kgsl_mem_entry *entry,
+		int *egl_surface_count, int *egl_image_count)
+{
 }
 #endif
 
