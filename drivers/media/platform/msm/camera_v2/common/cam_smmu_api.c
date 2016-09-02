@@ -789,8 +789,9 @@ static int cam_smmu_map_buffer_and_add_to_list(int idx, int ion_fd,
 #if 1
 	rc = dma_map_sg(iommu_cb_set.cb_info[idx].dev, table->sgl,
 			table->nents, dma_dir);
-	if (!rc) {
+	if (rc != table->nents) {
 		pr_err("Error: msm_dma_map_sg_lazy failed\n");
+		rc = -ENOMEM;
 		goto err_unmap_sg;
 	}
 #endif
