@@ -70,16 +70,3 @@
 &mdss_dsi1 {
         status = "disabled";
 };
-
-&pmcobalt_gpios {
-	/* GPIO 7 for DISP_VIO_EN */
-	/* Todo.. need to check the mode for output */
-	gpio@c600 {
-		status = "okay";
-		qcom,mode = <0>;
-		qcom,pull = <0>;
-		qcom,vin-sel = <0>;
-		qcom,src-sel = <0>;
-		qcom,out-strength = <1>;
-	};
-};
