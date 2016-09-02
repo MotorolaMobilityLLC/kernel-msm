@@ -3336,7 +3336,8 @@ static int epl_sensor_suspend(struct i2c_client *client, pm_message_t mesg)
 
 #if !defined(CONFIG_HAS_EARLYSUSPEND)
 	epld->als_suspend = 1;
-	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n",
+		__func__, epld->enable_pflag, epld->enable_lflag);
 
 	if (epld->enable_pflag == 0) {
 		if (epld->enable_lflag == 1 && epl_sensor.als.polling_mode == 0) {
@@ -3369,7 +3370,8 @@ static void epl_sensor_early_suspend(struct early_suspend *h)
 
 	epld->als_suspend = 1;
 
-	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n",
+		__func__, epld->enable_pflag, epld->enable_lflag);
 
 	if (epld->enable_pflag == 0) {
 		if (epld->enable_lflag == 1 && epl_sensor.als.polling_mode == 0) {
@@ -3402,7 +3404,8 @@ static int epl_sensor_resume(struct i2c_client *client)
 	epld->als_suspend = 0;
 	epld->ps_suspend = 0;
 
-	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__,
+		epld->enable_pflag, epld->enable_lflag);
 
 	if (epld->enable_pflag == 0) {
 		LOG_INFO("[%s]: ps is disabled \r\n", __func__);
@@ -3432,7 +3435,8 @@ static void epl_sensor_late_resume(struct early_suspend *h)
 	epld->als_suspend = 0;
 	epld->ps_suspend = 0;
 
-	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
+	LOG_INFO("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__,
+		epld->enable_pflag, epld->enable_lflag);
 
 	if (epld->enable_pflag == 0) {
 		LOG_INFO("[%s]: ps is disabled \r\n", __func__);
