@@ -11,6 +11,52 @@
  */
 
 &tlmm {
+
+        tmp108_irq {
+                tmp108_irq_default: default {
+                        config {
+                                pins = "gpio80";
+                                drive-strength = <2>;
+                                bias-pull-up;
+                        };
+                };
+        };
+
+        cs35l34_reset_default: cs35l34_reset_default {
+                config {
+                        pins = "gpio97";
+                        output-high;
+                        bias-pull-up;
+                        drive-strength = <2>;
+                };
+        };
+
+	laser_active: laser_active {
+		mux {
+			pins = "gpio79";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio79";
+			drive-strength = <2>;
+			bias-disable; /* No PULL */
+		};
+	};
+
+	laser_suspend: laser_suspend {
+		mux {
+			pins = "gpio79";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio79";
+			drive-strength = <2>;
+			bias-disable; /* No PULL */
+		};
+	};
+
 	fsa8500_hs_det_default: fsa8500_hs_det_default {
 		config {
 			pins = "gpio63";
