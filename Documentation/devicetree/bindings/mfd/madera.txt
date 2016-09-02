@@ -1,0 +1,91 @@
+Cirrus Logic Madera class audio codecs multi-function device
+
+These devices are audio SoCs with extensive digital capabilities and a range
+of analogue I/O.
+
+See also the child driver bindings in:
+bindings/extcon/extcon-madera.txt
+bindings/gpio/gpio-madera.txt
+bindings/interrupt-controller/cirrus,madera.txt
+bindings/regulator/madera-ldo1.txt
+bindings/regulator/madera-micsupp.txt
+bindings/sound/madera.txt
+bindings/switch/madera.txt
+
+Required properties:
+
+  - compatible : One of the following chip-specific strings:
+        "cirrus,cs47l35"
+        "cirrus,cs47l85"
+        "cirrus,cs47l90"
+        "cirrus,cs47l91"
+        "cirrus,wm1840"
+
+  - reg : I2C slave address when connected using I2C, chip select number when
+    using SPI.
+
+  - DCVDD-supply : Power supply for the device as defined in
+    bindings/regulator/regulator.txt
+    Mandatory on CS47L35, CS47L90, CS47L91
+    Optional on CS47L85, WM1840
+
+  - AVDD-supply, DBVDD1-supply, DBVDD2-supply, CPVDD1-supply, CPVDD2-supply :
+    Power supplies for the device
+
+  - DBVDD3-supply, DBVDD4-supply : Power supplies for the device
+    (CS47L85, CS47L90, CS47L91, WM1840)
+
+  - SPKVDDL-supply, SPKVDDR-supply : Power supplies for the device
+    (CS47L85, WM1840)
+
+  - SPKVDD-supply : Power supplies for the device
+    (CS47L35)
+
+Optional properties:
+
+  , MICVDD-supply : Power supply, only need to be specified if
+    powered externally
+
+  - reset-gpios : One entry specifying the GPIO controlling /RESET.
+    As defined in bindings/gpio.txt.
+
+  - cirrus,clk32k-src : set input source for codec 32kHz clock.
+      0 = default, 1 = MCLK1, 2 = MCLK2, 3 = None
+
+  - cirrus,gpio-defaults : A list of values for the GPn_CONFIGx registers.
+    There are two entries for each GPIO, corresponding to the GPn_CONFIG1 and
+    GPn_CONFIG2 registers for that GPIO. Defines for the appropriate values can
+    be found in <dt-bindings/mfd/madera.h>. If absent, no configuration of these
+    registers is performed. If any entry has a value >0xFFFF the chip default
+    will be used.
+
+  - cirrus,micbias1 : Configuration for the micbias regulator, there are 8 cells
+    <vout cap disA disB disC disD soft bypass>
+    where
+      vout is the output voltage in millivolts
+      cap is non-zero value if an external capacitor is fitted
+      disA,B,C,D non-zero if that output should be actively discharged
+      soft non-zero to enable soft-start
+      bypass non-zero to enable bypass
+  - cirrus,micbias2 : See cirrus,micbias1
+  - cirrus,micbias3 : See cirrus,micbias1
+  - cirrus,micbias4 : See cirrus,micbias1
+
+Example:
+
+codec: cs47l85@0 {
+	compatible = "cirrus,cs47l85";
+	reg = <0>;
+
+	reset-gpios = <&gpio 0>;
+
+	cirrus,gpio-defaults = <
+		Madera_GP_FN_TXLRCLK
+		Madera_GP_DEFAULT
+		Madera_GP_DEFAULT
+		Madera_GP_DEFAULT
+		Madera_GP_DEFAULT
+	>;
+
+	cirrus,micbias2 = <2600 0 1 0 0 0 1 0>;
+};
