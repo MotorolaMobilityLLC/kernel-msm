@@ -397,6 +397,12 @@ config USB_CONFIGFS_F_LB_SS
 	  test software, like the "usbtest" driver, to put your hardware
 	  and its driver through a basic set of functional tests.
 
+config USB_ANDROID_USBNET
+	bool "Motorola USBNET driver"
+	depends on USB_CONFIGFS
+	help
+	  Motorola USB LAN driver for factory.
+
 config USB_CONFIGFS_F_FS
 	bool "Function filesystem (FunctionFS)"
 	depends on USB_CONFIGFS
