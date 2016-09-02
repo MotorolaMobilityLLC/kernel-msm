@@ -67,7 +67,7 @@ static int esdfs_unlink(struct inode *dir, struct dentry *dentry)
 {
 	int err;
 	struct dentry *lower_dentry;
-	struct inode *lower_dir_inode = esdfs_lower_inode(dir);
+	struct inode *lower_dir_inode;
 	struct dentry *lower_dir_dentry;
 	struct path lower_path;
 	const struct cred *creds;
@@ -88,6 +88,18 @@ static int esdfs_unlink(struct inode *dir, struct dentry *dentry)
 	esdfs_drop_shared_icache(dir->i_sb, lower_dentry->d_inode);
 
 	lower_dir_dentry = lock_parent(lower_dentry);
+
+	/* d_parent might be changed in vfs_rename */
+	if (lower_dir_dentry != lower_dentry->d_parent) {
+		err = -ENOENT;
+		goto out;
+	}
+
+	/* lower_dir_inode might be changed as well
+	 * get the new inode with new lower dir dentry
+	 */
+	lower_dir_inode = lower_dir_dentry->d_inode;
+
 	err = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
 
 	/*
@@ -218,6 +230,13 @@ static int esdfs_rmdir(struct inode *dir, struct dentry *dentry)
 	esdfs_drop_shared_icache(dir->i_sb, lower_dentry->d_inode);
 
 	lower_dir_dentry = lock_parent(lower_dentry);
+
+	/* d_parent might be changed in vfs_rename */
+	if (lower_dir_dentry != lower_dentry->d_parent) {
+		err = -ENOENT;
+		goto out;
+	}
+
 	err = vfs_rmdir(lower_dir_dentry->d_inode, lower_dentry);
 	if (err)
 		goto out;
