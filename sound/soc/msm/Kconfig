@@ -235,6 +235,12 @@ config SND_SOC_MSM8998
 	select SND_SOC_WCD9335
 	select SND_SOC_WCD934X
 	select SND_SOC_WSA881X
+	select MFD_MADERA
+	select MFD_MADERA_SPI
+	select MFD_CS47L35
+	select SND_SOC_MADERA
+	select SND_SOC_WM_ADSP
+	select SND_SOC_CS47L35
 	select SND_SOC_MSM_HDMI_CODEC_RX
 	select DTS_SRS_TM
 	select QTI_PP
