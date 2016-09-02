@@ -906,6 +906,7 @@ int madera_dev_init(struct madera *madera)
 	pm_runtime_enable(madera->dev);
 	pm_runtime_set_autosuspend_delay(madera->dev, 100);
 	pm_runtime_use_autosuspend(madera->dev);
+	pm_runtime_get(madera->dev);
 
 	ret = mfd_add_devices(madera->dev, -1, mfd_devs, n_devs, NULL, 0, NULL);
 	if (ret) {
