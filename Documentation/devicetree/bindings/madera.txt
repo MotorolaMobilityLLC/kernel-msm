@@ -1,0 +1,49 @@
+Cirrus Logic Madera class audio codecs
+
+See also the core bindings for the parent MFD driver:
+See Documentation/devicetree/bindinge/mfd/madera.txt
+
+Optional properties:
+  - cirrus,dmic-ref : DMIC reference for each input, one cell per input
+    <IN1 IN2 IN3 ...>
+    A value of 0 indicates MICVDD and is the default, other
+    values depend on the codec - see the datasheet for the INn_DMIC_SUP field
+
+  - cirrus,dmic-clksrc : DMIC clock source for each input (CS47L90, CS47L91).
+    One cell per input. A value of 0 will source DMIC from the internally
+    generated clock within the ADC subsystem and a value of 1 will source DMIC
+    and External digital speakers with same clock
+
+  - cirrus,inmode : A list of input mode settings for each input. A maximum
+    of 16 cells, with four cells per input in the order INnAL, INnAR INnBL INnBR.
+    For non-muxed inputs the first two cells for that input set the mode for
+    the left and right channel and the second two cells must be 0.
+    For muxed inputs (cs47l35 IN1, cs47l85 IN1 and IN2) the first two cells for
+    that input set the mode of the left and right A inputs and the second two
+    cells set the mode of the left and right B inputs.
+    Valid mode values are one of the MADERA_INMODE_xxx (see
+    include/dt-bindings/sound/madera.h). If the array is shorter than the number
+    of inputs the unspecified inputs default to MADERA_INMODE_DIFF.
+
+  - cirrus,out-mono : Mono bit for each output, must contain six cells if
+    specified. A non-zero value indicates the corresponding output is mono.
+
+  - cirrus,max-channels-clocked : The maximum number of channels to be clocked
+    on each AIF, useful for I2S systems with multiple data lines being mastered.
+    One cell for each AIF, use a value of zero for AIFs that should be handled
+    normally.
+
+Example:
+
+codec: cs47l35@0 {
+	compatible = "cirrus,cs47l35";
+
+	cirrus,dmic-ref = <0 0 1 0>;
+	cirrus,dmic-clksrc = <0 0 0 0>;
+	cirrus,inmode = <
+		2 2 1 1 /* IN1A digital, IN1B single-ended */
+		0 0 0 0	/* IN2 differential */
+	>;
+	cirrus,out-mono = <0 0 0 0 0 0>;
+	cirrus,max-channels-clocked = <2 0 0>;
+};

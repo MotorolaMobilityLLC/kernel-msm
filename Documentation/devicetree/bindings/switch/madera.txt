@@ -1,0 +1,136 @@
+Cirrus Logic Madera class audio codecs switch driver
+
+The switch configuration settings are a child node of type "cirrus,accdet"
+within the parent MFD driver devicetree binding.
+See Documentation/devicetree/bindings/mfd/madera.txt
+
+This node contains one or more child nodes to describe the accessory detect
+configuration.
+
+Mandatory properties:
+  - #address-cells : must be 1
+  - #size-cells : must be 0
+
+
+Child node mandatory properties:
+  - reg : output number this configuration applies to, 1=OUT1, 2=OUT2, ...
+
+Child node optional properties:
+  - cirrus,micd-pol-gpios : GPIO specifier for the GPIO controlling the headset
+    polarity if one exists
+
+  - cirrus,micd-detect-debounce-ms : Additional software microphone detection
+    debounce specified in milliseconds
+
+  - cirrus,micd-manual-debounce : Additional software button detection
+    debounce specified as a number
+
+  - cirrus,micd-bias-start-time : Time allowed for MICBIAS to startup prior to
+    performing microphone detection, specified as per the MICD_BIAS_STARTTIME
+    bits in the register MIC_DETECT_1
+
+  - cirrus,micd-rate : Delay between successive microphone detection
+    measurements, specified as per the MICD_RATE bits in the register
+    MIC_DETECT_1
+
+  - cirrus,micd-dbtime : Microphone detection hardware debounce level, specified
+    as per the MICD_DBTIME bits in the register MIC_DETECT_1
+
+  - cirrus,micd-timeout-ms : Timeout for microphone detection, specified in
+    milliseconds
+
+  - cirrus,micd-force-micbias : Force MICBIAS continuously on during microphone
+    detection and button detection
+
+  - cirrus,micd-software-compare : Use a software comparison to determine mic
+    presence
+
+  - cirrus,jd-use-jd2 : Use JD2 input with JD1 for dual jack detection.
+
+  - cirrus,gpsw : Settings for the general purpose switches, set as per the
+    SWn_MODE bits in the GP Switch 1 register.
+    First cell is the value for the SW1_MODE
+    Second cell is the value for the SW2_MODE (cs47l90, cs47l91)
+
+  - cirrus,fixed-hpdet-imp : Do not perform any headphone detection, just use
+    the fixed value specified here as the headphone impedance. Value is in
+    hundredths-of-an-ohm (ohms * 100)
+
+  - cirrus,hpdet-ext-res : Impedance of external series resistor on hpdet.
+    Value is in hundredths-of-an-ohm (ohms * 100)
+
+  - cirrus,hpdet-short-circuit-imp : Specifies the maximum impedance in ohms
+    that will be considered as a short circuit
+
+  - cirrus,hpdet-channel : When this property is set then right channel is used
+    for headphone impedance measurement else the left headphone channel is
+    used
+
+  - cirrus,micd-clamp-mode : Specifies the logic of the micdetect clamp block
+
+  - cirrus,hpd-pins : 4 cells specifying the clamp and sense pins to use.
+	<clamp_left sense_left clamp_right sense_right>
+    where clamp_x is the clamp pin for channel x and sense_x is the impedance
+    sense pin for channel x, as per the HPD_OUT_SEL field of HEADPHONE_DETECT_0
+    register. A value >0xFFFF means use the default.
+    (cs47l90, cs47l91)
+
+  - cirrus,micd-ranges : Microphone detection level and key configuration, this
+    field can be of variable length but should always be a multiple of 2 cells
+    long, each two cell group represents one button configuration
+    The first cell is the maximum impedance for this button in ohms
+    The second cell the key that should be reported to the input layer
+
+  - cirrus,micd-configs : Headset polarity configurations, variable length but
+    must be a multiple of 5 cells, each two cell group represents one
+    polarity configuration
+    first cell is the value of
+       ACCDET_SRC register field (CS47L35, CS47L85, WM1840),
+       MICD_SENSE_SEL register field (all other codecs)
+    second cell is the accessory detection ground as per the MICD_GND_SEL
+      register field
+    the third cell is the MICBIAS to be used as per the MICD_BIAS_SRC register
+      field
+    fourth cell is the value of the micd-pol-gpio pin, a non-zero value
+      indicates this should be on
+    fifth cell is
+      set to zero (cs47l35, cs47l85, wm1840)
+      value of HPn_GND_SEL register field (all other codecs)
+
+Example:
+
+codec: cs47l85@0 {
+	compatible = "cirrus,cs47l85";
+
+	cirrus,accdet {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		acc@1 {
+			reg = <1>;
+
+			cirrus,micd-pol-gpios = <&gpio 0>
+			cirrus,micd-detect-debounce-ms = <10>;
+			cirrus,micd-bias-start-time = <0x1>;
+			cirrus,micd-rate = <0x1>;
+			cirrus,micd-dbtime = <0x1>;
+			cirrus,micd-timeout-ms = <10>;
+			cirrus,micd-force-micbias;
+			cirrus,micd-ranges = <
+				11 0x100
+				28 0x101
+				54 0x102
+				100 0x103
+				186 0x104
+				430 0x105
+			>;
+			cirrus,micd-configs = <
+				0x1 0 1 0 2
+				0x0 0 2 1 2
+			>;
+			cirrus,fixed-hpdet-imp = <8>;
+			cirrus,micd-clamp-mode = <0xb>;
+			cirrus,gpsw = <0x3>;
+		};
+	};
+};
