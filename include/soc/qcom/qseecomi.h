@@ -63,6 +63,7 @@ enum qseecom_qceos_cmd_id {
 	QSEOS_CLIENT_SEND_DATA_COMMAND_WHITELIST = 0x1C,
 	QSEOS_TEE_OPEN_SESSION_WHITELIST = 0x1D,
 	QSEOS_TEE_INVOKE_COMMAND_WHITELIST = 0x1E,
+	QSEOS_LISTENER_DATA_RSP_COMMAND_WHITELIST = 0x1F,
 	QSEOS_FSM_LTE_INIT_DB = 0x100,
 	QSEOS_FSM_LTE_STORE_KENB = 0x101,
 	QSEOS_FSM_LTE_GEN_KEYS = 0x102,
@@ -160,6 +161,8 @@ __packed struct qseecom_client_listener_data_irsp {
 	uint32_t qsee_cmd_id;
 	uint32_t listener_id;
 	uint32_t status;
+	uint32_t sglistinfo_ptr;
+	uint32_t sglistinfo_len;
 };
 
 /*
