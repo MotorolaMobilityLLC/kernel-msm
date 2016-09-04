@@ -324,15 +324,19 @@ dtb-$(CONFIG_ARCH_SDM450) += sdm450-rcm.dtb \
 	sdm450-pmi8937-mtp.dtb \
 	sdm450-iot-mtp.dtb
 
+ifeq ($(CONFIG_ADDISON_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8953) += msm8953-addison-p1.dtb \
 	msm8953-addison-p2a.dtb \
 	msm8953-addison-p3.dtb \
 	msm8953-addison-p4.dtb \
 	msm8953-addison-p7.dtb
+endif
 
+ifeq ($(CONFIG_POTTER_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8953) += msm8953-potter-p0a.dtb \
 	msm8953-potter-p1a.dtb \
 	msm8953-potter-p1b.dtb
+endif
 
 dtb-$(CONFIG_ARCH_MSM8953) += msm8953-albus-p0.dtb
 
