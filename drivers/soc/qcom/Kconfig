@@ -777,6 +777,22 @@ config MMI_DEVICE_DTBS
 	  Only include Motorola device specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config POTTER_DTB
+	depends on ARCH_MSM
+	default n
+	bool "Potter DTBs"
+	help
+	  Only include Potter specific DTBs to limit the number that
+	  get built during kernel compilation.
+
+config ADDISON_DTB
+	depends on ARCH_MSM
+	default n
+	bool "Addison DTBs"
+	help
+	  Only include Addison specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config MSM_SECURE_BUFFER
 	bool "Helper functions for securing buffers through TZ"
 	help
