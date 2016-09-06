@@ -19,7 +19,7 @@
 		interrupts = <0 166 0>;
 		interrupt-names = "byte-cntr-irq";
 
-		qcom,memory-size = <0x500000>;
+		qcom,memory-size = <0x2000000>;
 		qcom,sg-enable;
 		coresight-default-sink;
 		qcom,force-reg-dump;
