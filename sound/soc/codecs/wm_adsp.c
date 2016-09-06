@@ -619,12 +619,16 @@ static char const *wm_adsp_audio_mode_text[] = {
 	"NORMAL",
 	"VOICE",
 	"RING",
+	"SONIFICATION",
 	"CALIBRATION",
 };
 static const struct soc_enum wm_adsp_audio_mode_enum[] = {
-	SOC_ENUM_SINGLE_EXT(4, wm_adsp_audio_mode_text),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(wm_adsp_audio_mode_text),
+	wm_adsp_audio_mode_text),
 };
 static int audio_mode;
+static struct wm_adsp *sp_core_dsp;
+static int wm_adsp_load_coeff(struct wm_adsp *dsp);
 static int wm_adsp_audio_mode_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
@@ -635,12 +639,24 @@ static int wm_adsp_audio_mode_get(struct snd_kcontrol *kcontrol,
 static int wm_adsp_audio_mode_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
+	int ret;
 	int i = ucontrol->value.integer.value[0];
 
 	if (i < 0 || i >= ARRAY_SIZE(wm_adsp_audio_mode_text))
 		return -ERANGE;
 
-	audio_mode = i;
+	if (audio_mode != i) {
+		audio_mode = i;
+		if (sp_core_dsp != NULL) {
+			ret = wm_adsp_load_coeff(sp_core_dsp);
+			if (ret != 0) {
+				adsp_err(sp_core_dsp,
+					"can't reload audio_mode %d coeff\n",
+					audio_mode);
+				return ret;
+			}
+		}
+	}
 	return 0;
 }
 
@@ -1965,6 +1981,10 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 				 dsp->part, dsp->num, coeff);
 			break;
 		case 3:
+			snprintf(file, PAGE_SIZE, "%s-dsp%d-%s-sonification.bin",
+				 dsp->part, dsp->num, coeff);
+			break;
+		case 4:
 			snprintf(file, PAGE_SIZE, "%s-dsp%d-%s-calibration.bin",
 				 dsp->part, dsp->num, coeff);
 			break;
@@ -1974,6 +1994,7 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 			ret = -EINVAL;
 			goto out_fw;
 		}
+		sp_core_dsp = dsp;
 		adsp_info(dsp, "coefficient table : %s\n", file);
 	} else
 		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.bin", dsp->part,
@@ -2279,6 +2300,7 @@ int wm_adsp1_event(struct snd_soc_dapm_widget *w,
 			list_del(&alg_region->list);
 			kfree(alg_region);
 		}
+		sp_core_dsp = NULL;
 		break;
 
 	default:
