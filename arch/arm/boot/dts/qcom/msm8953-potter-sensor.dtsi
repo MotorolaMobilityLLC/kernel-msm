@@ -179,11 +179,11 @@
 			 ct406_pulse_count = <0x02>;
 			 ct406_prox_gain = <0x11>;
 			 ct406_als_lux1_c0_mult = <0x0002>;
-			 ct406_als_lux1_c1_mult = <0x01F4>;
-			 ct406_als_lux1_div = <0x0805>;
-			 ct406_als_lux2_c0_mult = <0x0535>;
-			 ct406_als_lux2_c1_mult = <0x0535>;
-			 ct406_als_lux2_div = <0x00DE>;
+			 ct406_als_lux1_c1_mult = <0x0226>;
+			 ct406_als_lux1_div = <0x0804>;
+			 ct406_als_lux2_c0_mult = <0x0569>;
+			 ct406_als_lux2_c1_mult = <0x0569>;
+			 ct406_als_lux2_div = <0x0061a>;
 			 dsp_iface_enable = <0>;
 			 headset_detect_enable = <0>;
 			 headset_hw_version = <2>;
