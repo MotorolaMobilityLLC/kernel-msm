@@ -1933,7 +1933,7 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 			msm_camera_io_r(vfe_dev->common_data->dual_vfe_res->vfe_base[
 			!vfe_dev->pdev->id] + 0x268);
 			msm_isp_get_timestamp(&dump_data.arr[dump_data.first].
-			other_vfe.ts);
+			other_vfe.ts, vfe_dev);
 
 			dump_data.first =
 				(dump_data.first+1)%MAX_ISP_PING_PONG_DUMP_SIZE;
