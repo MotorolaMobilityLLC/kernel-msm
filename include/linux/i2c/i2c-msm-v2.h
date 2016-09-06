@@ -19,6 +19,7 @@
 
 #include <linux/bitops.h>
 #include <linux/dmaengine.h>
+#include <linux/dma-direction.h>
 
 enum msm_i2_debug_level {
 	MSM_ERR,	/* Error messages only. Always on */
@@ -619,6 +620,9 @@ enum i2c_msm_prof_evnt_type {
 	I2C_MSM_COMPLT_FL,
 	I2C_MSM_PROF_RESET,
 };
+
+int i2c_msm_set_mstr_clk_ctl(struct i2c_msm_ctrl *ctrl, int fs_div,
+			int ht_div, int noise_rjct_scl, int noise_rjct_sda);
 
 #ifdef CONFIG_I2C_MSM_PROF_DBG
 void i2c_msm_dbgfs_init(struct i2c_msm_ctrl *ctrl);
