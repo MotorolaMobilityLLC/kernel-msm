@@ -425,7 +425,7 @@ static struct i2c_msm_clk_div_fld i2c_msm_clk_div_map[] = {
  * Format the value to be configured into the clock divider register. This
  * register is configured every time core is moved from reset to run state.
  */
-static int i2c_msm_set_mstr_clk_ctl(struct i2c_msm_ctrl *ctrl, int fs_div,
+int i2c_msm_set_mstr_clk_ctl(struct i2c_msm_ctrl *ctrl, int fs_div,
 			int ht_div, int noise_rjct_scl, int noise_rjct_sda)
 {
 	int ret = 0;
