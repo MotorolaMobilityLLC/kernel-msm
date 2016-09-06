@@ -22,6 +22,7 @@
 #include <linux/fs.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
+#include <linux/i2c/i2c-msm-v2.h>
 #include <linux/input.h>
 #include <linux/input-polldev.h>
 #include <linux/interrupt.h>
@@ -62,6 +63,9 @@
 #define FLASHEN_I2C_DELAY 5
 #define FLASHEN_I2C_INC   25
 
+#define STANDARD_I2C_RATE KHz(400)
+#define FASTMODE_I2C_RATE KHz(1000)
+
 enum stm_command {
 	GET_VERSION = 0x01,
 	GET_ID = 0x02,
@@ -78,6 +82,14 @@ enum stm_command {
 static unsigned char motosh_bootloader_ver;
 unsigned char motosh_flash_cmdbuff[MOTOSH_MAX_PACKET_LENGTH];
 unsigned char motosh_flash_readbuff[MOTOSH_MAXDATA_LENGTH];
+
+static int motosh_set_i2c_rate(uint32_t rate)
+{
+	struct i2c_msm_ctrl *ctrl =
+		i2c_get_adapdata(motosh_misc_data->client->adapter);
+	ctrl->rsrcs.clk_freq_out = rate;
+	return i2c_msm_set_mstr_clk_ctl(ctrl, 0, 0, 0, 0);
+}
 
 static int motosh_boot_i2c_write(struct motosh_data *ps_motosh,
 	u8 *buf, int len)
@@ -397,6 +409,9 @@ int switch_motosh_mode(enum stm_mode mode)
 
 	/* bootloader mode */
 	if (mode == BOOTMODE) {
+
+		motosh_set_i2c_rate(STANDARD_I2C_RATE);
+
 		/* revert back to non-booted. This prevents TCMD from
 		   trying to access over I2C or ioctl during desk testing
 		   when a flash upgrade is being peformed. */
@@ -482,6 +497,8 @@ RETRY_ID:
 			       !(bslen_pin_active_value));
 		dev_dbg(&motosh_misc_data->client->dev,
 			"Switching to normal mode\n");
+
+		motosh_set_i2c_rate(FASTMODE_I2C_RATE);
 
 		/* init only if not in the factory
 		   - motosh_irq_disable indicates factory test ongoing */
