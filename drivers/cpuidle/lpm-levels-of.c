@@ -84,7 +84,7 @@ static void set_optimum_cpu_residency(struct lpm_cpu *cpu, int cpu_id,
 
 		mode_avail = probe_time ||
 					lpm_cpu_mode_allow(cpu_id, i, true);
-		if(!mode_avail) {
+		if (!mode_avail) {
 			maximum_residency[i] = 0;
 			minimum_residency[i] = 0;
 			continue;
@@ -102,8 +102,8 @@ static void set_optimum_cpu_residency(struct lpm_cpu *cpu, int cpu_id,
 		}
 
 		minimum_residency[i] = pwr->time_overhead_us;
-		for(j = i-1; j >= 0; j--) {
-			if(probe_time || lpm_cpu_mode_allow(cpu_id, j, true)) {
+		for (j = i-1; j >= 0; j--) {
+			if (probe_time || lpm_cpu_mode_allow(cpu_id, j, true)) {
 				minimum_residency[i] = maximum_residency[j] + 1;
 				break;
 			}
@@ -122,7 +122,7 @@ static void set_optimum_cluster_residency(struct lpm_cluster *cluster,
 
 		mode_avail = probe_time ||
 				lpm_cluster_mode_allow(cluster, i, true);
-		if(!mode_avail) {
+		if (!mode_avail) {
 			pwr->max_residency = 0;
 			pwr->min_residency = 0;
 			continue;
@@ -140,9 +140,11 @@ static void set_optimum_cluster_residency(struct lpm_cluster *cluster,
 		}
 
 		pwr->min_residency = pwr->time_overhead_us;
-		for(j = i-1;  j >= 0; j--) {
-			if(probe_time || lpm_cluster_mode_allow(cluster, j, true)) {
-				pwr->min_residency = cluster->levels[j].pwr.max_residency + 1;
+		for (j = i-1;  j >= 0; j--) {
+			if (probe_time ||
+				 lpm_cluster_mode_allow(cluster, j, true)) {
+				pwr->min_residency =
+				 cluster->levels[j].pwr.max_residency + 1;
 				break;
 			}
 		}
@@ -183,6 +185,8 @@ ssize_t lpm_enable_store(struct kobject *kobj, struct kobj_attribute *attr,
 	struct lpm_level_avail *avail;
 
 	avail = get_avail_ptr(kobj, attr);
+	if (WARN_ON(!avail))
+		return -EINVAL;
 	kp.arg = get_enabled_ptr(attr, avail);
 	ret = param_set_bool(buf, &kp);
 
