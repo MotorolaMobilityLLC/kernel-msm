@@ -202,3 +202,8 @@
 	df-serialnum = "SNN5976A";
 	#include "batterydata-gk40-atl.dtsi"
 };
+
+&pmi_haptic {
+	qcom,vmax-mv = <2400>;
+};
+
