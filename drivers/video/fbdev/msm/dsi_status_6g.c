@@ -129,7 +129,8 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 	 * command and data arbitration is possible in h/w
 	 */
 
-	if ((mipi->mode == DSI_CMD_MODE) && !ctrl_pdata->burst_mode_enabled)
+	if ((mipi->mode == DSI_CMD_MODE) && !ctrl_pdata->burst_mode_enabled &&
+		ctrl_pdata->status_mode == ESD_BTA)
 		mutex_lock(&mdp5_data->ov_lock);
 	mutex_lock(&ctl->offlock);
 
@@ -137,7 +138,8 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 			pstatus_data->mfd->shutdown_pending) {
 		mutex_unlock(&ctl->offlock);
 		if ((mipi->mode == DSI_CMD_MODE) &&
-		    !ctrl_pdata->burst_mode_enabled)
+		    !ctrl_pdata->burst_mode_enabled &&
+			ctrl_pdata->status_mode == ESD_BTA)
 			mutex_unlock(&mdp5_data->ov_lock);
 		pr_err("%s: DSI turning off, avoiding panel status check\n",
 							__func__);
@@ -154,18 +156,21 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 	 * display reset not to be proper. Hence, wait for DMA_P done
 	 * for command mode panels before triggering BTA.
 	 */
-	if (ctl->ops.wait_pingpong && !ctrl_pdata->burst_mode_enabled)
-		ctl->ops.wait_pingpong(ctl, NULL);
+	if (ctrl_pdata->status_mode == ESD_BTA) {
+		if (ctl->ops.wait_pingpong && !ctrl_pdata->burst_mode_enabled)
+			ctl->ops.wait_pingpong(ctl, NULL);
 
-	pr_debug("%s: DSI ctrl wait for ping pong done\n", __func__);
-	MDSS_XLOG(mipi->mode);
+		pr_debug("%s: DSI ctrl wait for ping pong done\n", __func__);
+		MDSS_XLOG(mipi->mode);
+	}
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 	ret = ctrl_pdata->check_status(ctrl_pdata);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 
 	mutex_unlock(&ctl->offlock);
-	if ((mipi->mode == DSI_CMD_MODE) && !ctrl_pdata->burst_mode_enabled)
+	if ((mipi->mode == DSI_CMD_MODE) && !ctrl_pdata->burst_mode_enabled &&
+		ctrl_pdata->status_mode == ESD_BTA)
 		mutex_unlock(&mdp5_data->ov_lock);
 
 	if ((pstatus_data->mfd->panel_power_state == MDSS_PANEL_POWER_ON)) {
