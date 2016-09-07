@@ -128,6 +128,8 @@ Optional properties
 - qcom,disable-freq-mitigation: If this property is defined, the feature core
 			frequency control will be disabled. All other properties
 			corresponding to this feature will be ignored.
+- qcom,therm-hw-version-enable: If this property is defined, it enables target
+			hardware version sysfs based on efuse register value.
 
 Optional child nodes
 - qcom,pmic-opt-curr-temp: Threshold temperature for requesting optimum current (request
@@ -303,6 +305,7 @@ Example:
 		** In the above case, the cluster with ID 0 & 1 has 2 cores
 		** and their phandles are mentioned.
 		*/
+		qcom,therm-hw-version-enable;
 
 		qcom,vdd-dig-rstr{
 			qcom,vdd-rstr-reg = "vdd-dig";
