@@ -3986,6 +3986,59 @@ static void mdss_mdp_force_border_color(struct mdss_mdp_ctl *ctl)
 		ctl->mixer_right->params_changed++;
 }
 
+int mdss_mdp_display_commit_pp_post_vsync(struct mdss_mdp_ctl *ctl, void *arg,
+	struct mdss_mdp_commit_cb *commit_cb)
+{
+	u32 ctl_flush_bits = 0, sctl_flush_bits = 0;
+	struct mdss_mdp_ctl *sctl = NULL;
+
+	pr_debug("Video mode: enter %s\n", __func__);
+	if (!ctl) {
+		pr_err("display function not set\n");
+		return -ENODEV;
+	}
+	mutex_lock(&ctl->lock);
+
+	if (!mdss_mdp_ctl_is_power_on(ctl)) {
+		mutex_unlock(&ctl->lock);
+		return 0;
+	}
+	sctl = mdss_mdp_get_split_ctl(ctl);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+
+	mutex_lock(&ctl->flush_lock);
+	ATRACE_BEGIN("postproc_programming");
+	if (ctl->is_video_mode && ctl->mfd && ctl->mfd->dcm_state != DTM_ENTER)
+		/* postprocessing setup, including dspp */
+		mdss_mdp_pp_setup_locked(ctl);
+
+	if (sctl) {
+		if (ctl->split_flush_en) {
+			ctl->flush_bits |= sctl->flush_bits;
+			sctl->flush_bits = 0;
+			sctl_flush_bits = 0;
+		} else {
+			sctl_flush_bits = sctl->flush_bits;
+		}
+	}
+	ctl_flush_bits = ctl->flush_bits;
+
+	ATRACE_END("postproc_programming");
+
+	mutex_unlock(&ctl->flush_lock);
+	mdss_mdp_ctl_write(ctl, MDSS_MDP_REG_CTL_FLUSH, ctl_flush_bits);
+	if (sctl && sctl_flush_bits) {
+		mdss_mdp_ctl_write(sctl, MDSS_MDP_REG_CTL_FLUSH,
+			sctl_flush_bits);
+		sctl->flush_bits = 0;
+	}
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+
+	mutex_unlock(&ctl->lock);
+	pr_debug("exit %s\n", __func__);
+	return 0;
+}
+
 int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 	struct mdss_mdp_commit_cb *commit_cb)
 {
@@ -4082,11 +4135,6 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 		mdss_mdp_ctl_split_display_enable(split_enable, ctl, sctl);
 	}
 
-	ATRACE_BEGIN("postproc_programming");
-	if (ctl->mfd && ctl->mfd->dcm_state != DTM_ENTER)
-		/* postprocessing setup, including dspp */
-		mdss_mdp_pp_setup_locked(ctl);
-
 	if (sctl) {
 		if (ctl->split_flush_en) {
 			ctl->flush_bits |= sctl->flush_bits;
@@ -4098,7 +4146,6 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 	}
 	ctl_flush_bits = ctl->flush_bits;
 
-	ATRACE_END("postproc_programming");
 
 	mutex_unlock(&ctl->flush_lock);
 
@@ -4128,6 +4175,32 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 
 	if (ctl->ops.wait_pingpong && !mdata->serialize_wait4pp)
 		mdss_mdp_display_wait4pingpong(ctl, false);
+
+	/* Moved PP programming to post ping pong
+	 * for command mode panel devices
+	 */
+	if (!ctl->is_video_mode && ctl->mfd &&
+			ctl->mfd->dcm_state != DTM_ENTER) {
+		/* postprocessing setup, including dspp */
+		pr_debug("Command mode: pp programming after ping pong\n");
+
+		ATRACE_BEGIN("postproc_programming");
+
+		mutex_lock(&ctl->flush_lock);
+		mdss_mdp_pp_setup_locked(ctl);
+		if (sctl) {
+			if (ctl->split_flush_en) {
+				ctl->flush_bits |= sctl->flush_bits;
+				sctl->flush_bits = 0;
+				sctl_flush_bits = 0;
+			} else {
+				sctl_flush_bits = sctl->flush_bits;
+			}
+		}
+		ctl_flush_bits = ctl->flush_bits;
+		mutex_unlock(&ctl->flush_lock);
+		ATRACE_END("postproc_programming");
+	}
 
 	/*
 	 * if serialize_wait4pp is false then roi_bkup used in wait4pingpong
