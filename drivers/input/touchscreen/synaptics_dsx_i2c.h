@@ -582,7 +582,7 @@ struct synaptics_rmi4_data {
 
 	struct mutex rmi4_exp_init_mutex;
 	unsigned long event_blank;
-	int pm_qos_latency;
+	uint32_t pm_qos_latency;
 	struct pm_qos_request pm_qos_irq;
 
 	bool touch_data_contiguous;
