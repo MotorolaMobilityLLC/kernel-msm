@@ -932,6 +932,8 @@ struct mdss_panel_info {
 
 	/* esc clk recommended for the panel */
 	u32 esc_clk_rate_hz;
+
+	u32 disp_on_check_val;
 };
 
 struct mdss_panel_timing {
