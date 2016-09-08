@@ -2446,7 +2446,7 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
 	struct inode *inode = victim->d_inode;
 	int error;
 
-	if (d_is_negative(victim))
+	if (d_is_negative(victim) || d_unhashed(victim))
 		return -ENOENT;
 	BUG_ON(!inode);
 
