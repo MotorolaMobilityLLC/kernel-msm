@@ -309,6 +309,23 @@
 			bias-disable;
 		};
 	};
+
+	marley_irq_default: marley_irq_default {
+		config {
+			pins = "gpio54";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	marley_reset_default: marley_reset_default {
+		config {
+			pins = "gpio64";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
 };
 
 &pmx_mdss{
