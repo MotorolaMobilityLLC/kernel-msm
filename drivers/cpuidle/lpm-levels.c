@@ -1,4 +1,6 @@
 /* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2006-2007 Adam Belay <abelay@novell.com>
+ * Copyright (C) 2009 Intel Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -497,14 +499,14 @@ static inline void invalidate_predict_history(struct cpuidle_device *dev)
 static void clear_predict_history(void)
 {
 	struct lpm_history *history;
-	int i, j;
-	int ncpus = num_present_cpus();
+	int i;
+	unsigned int cpu;
 
 	if (!lpm_prediction)
 		return;
 
-	for (j = 0; j < ncpus; j++) {
-		history = &per_cpu(hist, j);
+	for_each_possible_cpu(cpu) {
+		history = &per_cpu(hist, cpu);
 		for (i = 0; i < MAXSAMPLES; i++) {
 			history->resi[i]  = 0;
 			history->mode[i] = -1;
@@ -527,7 +529,7 @@ static int cpu_power_select(struct cpuidle_device *dev,
 		(uint32_t)(ktime_to_us(tick_nohz_get_sleep_length()));
 	uint32_t modified_time_us = 0;
 	uint32_t next_event_us = 0;
-	int i, idx_restrict = cpu->nlevels + 1;
+	int i, idx_restrict;
 	uint32_t lvl_latency_us = 0;
 	uint64_t predicted = 0;
 	uint32_t htime = 0, idx_restrict_time = 0;
@@ -540,6 +542,8 @@ static int cpu_power_select(struct cpuidle_device *dev,
 
 	if (sleep_disabled)
 		return 0;
+
+	idx_restrict = cpu->nlevels + 1;
 
 	next_event_us = (uint32_t)(ktime_to_us(get_next_event_time(dev->cpu)));
 
@@ -915,9 +919,8 @@ static int cluster_select(struct lpm_cluster *cluster, bool from_idle,
 		 * min_residency is time overhead for current level
 		 */
 		if (predicted ? (pred_us >= pwr_params->min_residency)
-			: (sleep_us >= pwr_params->min_residency)) {
+			: (sleep_us >= pwr_params->min_residency))
 			best_level = i;
-		}
 	}
 
 	if ((best_level == (cluster->nlevels - 1)) && (pred_mode == 2))
