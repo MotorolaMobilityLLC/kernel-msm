@@ -792,6 +792,21 @@ config ADDISON_DTB
 	help
 	  Only include Addison specific DTBs to limit the number that
 	  get built during kernel compilation.
+config ALBUS_DTB
+	depends on ARCH_MSM
+	default n
+	bool "Albus DTBs"
+	help
+	  Only include Albus specific DTBs to limit the number that
+	  get built during kernel compilation.
+
+config CEDRIC_DTB
+	depends on ARCH_MSM
+	default n
+	bool "Cedric DTBs"
+	help
+	  Only include Cedric specific DTBs to limit the number that
+	  get built during kernel compilation.
 
 config MSM_SECURE_BUFFER
 	bool "Helper functions for securing buffers through TZ"
