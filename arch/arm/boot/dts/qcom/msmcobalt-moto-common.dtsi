@@ -137,6 +137,10 @@
 	};
 };
 
+&pcie0 {
+	status = "disabled";
+};
+
 &pmcobalt_gpios {
 	gpio@c100 { /* PM8998_GPIO2 MOD_MPHY_SEL0 */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
