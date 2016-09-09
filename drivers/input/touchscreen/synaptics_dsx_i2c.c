@@ -4135,6 +4135,30 @@ static int synaptics_rmi4_set_page(struct synaptics_rmi4_data *rmi4_data,
 	return (retval == PAGE_SELECT_LEN) ? retval : -EIO;
 }
 
+int alloc_buffer(struct temp_buffer *tb, size_t count)
+{
+	if (tb->buf_size != 0) {
+		kfree(tb->buf);
+		tb->buf = NULL;
+		tb->buf_size = 0;
+	}
+
+	if (count > MAX_READ_WRITE_SIZE) {
+		pr_err("%s: Max buffer size exceeded\n", __func__);
+		return 1;
+	}
+
+	if (count < MIN_READ_WRITE_BUF_SIZE)
+		count = MIN_READ_WRITE_BUF_SIZE;
+
+	tb->buf = kzalloc(count, GFP_KERNEL);
+	if (!tb->buf)
+		return 1;
+
+	tb->buf_size = count;
+	return 0;
+}
+
  /**
  * synaptics_rmi4_i2c_read()
  *
@@ -4213,15 +4237,8 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 {
 	int retval;
 	unsigned char retry;
-	unsigned char buf[length + 1];
-	struct i2c_msg msg[] = {
-		{
-			.addr = rmi4_data->i2c_client->addr,
-			.flags = 0,
-			.len = length + 1,
-			.buf = buf,
-		}
-	};
+	struct temp_buffer *tb = &rmi4_data->write_buf;
+	struct i2c_msg msg[1];
 
 	mutex_lock(&(rmi4_data->rmi4_io_ctrl_mutex));
 
@@ -4229,8 +4246,18 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 	if (retval != PAGE_SELECT_LEN)
 		goto exit;
 
-	buf[0] = addr & MASK_8BIT;
-	memcpy(&buf[1], &data[0], length);
+	if (tb->buf_size < (length+1) && alloc_buffer(tb, length+1) != 0) {
+		retval = -ENOMEM;
+		goto exit;
+	}
+
+	msg[0].addr = rmi4_data->i2c_client->addr;
+	msg[0].flags = 0;
+	msg[0].len = length + 1;
+	msg[0].buf = tb->buf;
+
+	*(tb->buf) = addr & MASK_8BIT;
+	memcpy(tb->buf+1, &data[0], length);
 
 	for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++) {
 		if (i2c_transfer(rmi4_data->i2c_client->adapter, msg, 1) == 1) {
