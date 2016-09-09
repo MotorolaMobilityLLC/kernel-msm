@@ -244,6 +244,7 @@ config SND_SOC_MSM8998
 	select SND_HWDEP
         select DTS_EAGLE
 	select SND_SOC_FSA8500
+	select SND_SOC_CS35L35
 	help
 	 To add support for SoC audio on MSM8998.
 	 This will enable sound soc drivers which
