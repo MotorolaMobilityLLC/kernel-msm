@@ -204,6 +204,16 @@
 		clocks = <&clock_gcc clk_ln_bb_clk3_pin>;
 		clock-names = "ref_clk";
 	};
+
+	cs35l35@41 {
+		compatible = "cirrus,cs35l35";
+		reg = <0x41>;
+		reset-gpios = <&tlmm 97 0>;
+		irq-gpios = <&tlmm 127 0>;
+		interrupt-parent = <&tlmm>;
+		VA-supply = <&dummy_vreg>;
+		VP-supply = <&dummy_vreg>;
+	};
 };
 
 &i2c_8 {
