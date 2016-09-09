@@ -457,6 +457,14 @@ struct synaptics_rmi4_func_packet_regs {
 	struct synaptics_rmi4_packet_reg *regs;
 };
 
+#define MAX_READ_WRITE_SIZE 8096
+#define MIN_READ_WRITE_BUF_SIZE 256
+
+struct temp_buffer {
+	unsigned char *buf;
+	unsigned short buf_size;
+};
+
 /*
  * struct synaptics_rmi4_data - rmi4 device instance data
  * @i2c_client: pointer to associated i2c client
@@ -585,6 +593,8 @@ struct synaptics_rmi4_data {
 	uint8_t *touch_data;
 	uint16_t touch_data_size;
 
+	struct temp_buffer write_buf;
+
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
 	/* TEST OPTIONS */
 	int test_irq_delay_ms;
@@ -655,6 +665,8 @@ int synaptics_rmi4_read_packet_reg(
 int synaptics_rmi4_read_packet_regs(
 	struct synaptics_rmi4_data *rmi4_data,
 	struct synaptics_rmi4_func_packet_regs *regs);
+
+int alloc_buffer(struct temp_buffer *tb, size_t count);
 
 static inline int secure_memcpy(unsigned char *dest, unsigned int dest_size,
 		const unsigned char *src, unsigned int src_size,
