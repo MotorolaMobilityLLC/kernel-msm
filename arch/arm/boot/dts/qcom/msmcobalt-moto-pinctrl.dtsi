@@ -344,6 +344,22 @@
 		};
 	};
 
+	cs35l35_reset_default: cs35l35_reset_default {
+		config {
+			pins = "gpio97";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+	cs35l35_irq_default: cs35l35_irq_default {
+		config {
+			pins = "gpio127";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 	marley_reset_default: marley_reset_default {
 		config {
 			pins = "gpio64";
