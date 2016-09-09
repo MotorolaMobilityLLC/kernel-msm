@@ -598,6 +598,14 @@ config HAPTIC_DRV2624
 	  If you say yes here you get support for the TI DRV2624
 	  haptic driver.
 
+config HAPTIC_DRV2625
+	tristate "TI DRV2625 haptic driver"
+	depends on I2C && SYSFS
+	help
+	  Ultra Low Power Closed-Loop LRA/ERM Haptic Driver with Internal Memory
+	  If you say yes here you get support for the TI DRV2625
+	  haptic driver.
+
 config ALSA_TO_H2W
 	tristate "ALSA to H2W wired headset detection converter"
 	help
