@@ -170,8 +170,29 @@
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,invert = <0>;	 /* Invert */
 		qcom,master-en = <1>;
-		/* Enabling on boot causes WD or freeze */
-		status = "disabled";
+		status = "ok";
+	};
+
+	gpio@d100 { /* PM8998_GPIO18 NFC_POWER_ON */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,invert = <0>;	 /* Invert */
+		qcom,master-en = <1>;
+		status = "ok";
+	};
+
+	gpio@d400 { /* PM8998_GPIO21 NFC_CLK_REQ */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 for this pin this is the low voltage */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,invert = <0>;	 /* Invert */
+		qcom,master-en = <1>;
+		status = "ok";
 	};
 
 };
