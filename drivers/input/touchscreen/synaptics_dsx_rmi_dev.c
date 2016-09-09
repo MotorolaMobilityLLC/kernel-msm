@@ -74,6 +74,7 @@ struct rmidev_data {
 	struct class *device_class;
 	struct mutex file_mutex;
 	struct rmidev_handle *rmi_dev;
+	struct temp_buffer data_buf;
 };
 
 static struct bin_attribute attr_data = {
@@ -326,8 +327,8 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 		size_t count, loff_t *f_pos)
 {
 	ssize_t retval;
-	unsigned char tmpbuf[count + 1];
 	struct rmidev_data *dev_data = filp->private_data;
+	struct temp_buffer *tb;
 
 	if (IS_ERR(dev_data)) {
 		pr_err("%s: Pointer of char device data is invalid", __func__);
@@ -340,23 +341,28 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 	if (count > (REG_ADDR_LIMIT - *f_pos))
 		count = REG_ADDR_LIMIT - *f_pos;
 
+	tb = &dev_data->data_buf;
 	mutex_lock(&(dev_data->file_mutex));
+
+	if (tb->buf_size < count && alloc_buffer(tb, count) != 0) {
+		retval = -ENOMEM;
+		goto clean_up;
+	}
 
 	retval = rmidev->fn_ptr->read(rmidev->rmi4_data,
 			*f_pos,
-			tmpbuf,
+			tb->buf,
 			count);
 	if (retval < 0)
 		goto clean_up;
 
-	if (copy_to_user(buf, tmpbuf, count))
+	if (copy_to_user(buf, tb->buf, count))
 		retval = -EFAULT;
 	else
 		*f_pos += retval;
 
 clean_up:
 	mutex_unlock(&(dev_data->file_mutex));
-
 	return retval;
 }
 
@@ -372,8 +378,8 @@ static ssize_t rmidev_write(struct file *filp, const char __user *buf,
 		size_t count, loff_t *f_pos)
 {
 	ssize_t retval;
-	unsigned char tmpbuf[count + 1];
 	struct rmidev_data *dev_data = filp->private_data;
+	struct temp_buffer *tb;
 
 	if (IS_ERR(dev_data)) {
 		pr_err("%s: Pointer of char device data is invalid", __func__);
@@ -386,20 +392,28 @@ static ssize_t rmidev_write(struct file *filp, const char __user *buf,
 	if (count > (REG_ADDR_LIMIT - *f_pos))
 		count = REG_ADDR_LIMIT - *f_pos;
 
-	if (copy_from_user(tmpbuf, buf, count))
-		return -EFAULT;
-
+	tb = &dev_data->data_buf;
 	mutex_lock(&(dev_data->file_mutex));
+
+	if (tb->buf_size < count && alloc_buffer(tb, count) != 0) {
+		retval = -ENOMEM;
+		goto clean_up;
+	}
+
+	if (copy_from_user(tb->buf, buf, count)) {
+		retval = -EFAULT;
+		goto clean_up;
+	}
 
 	retval = rmidev->fn_ptr->write(rmidev->rmi4_data,
 			*f_pos,
-			tmpbuf,
+			tb->buf,
 			count);
 	if (retval >= 0)
 		*f_pos += retval;
 
+clean_up:
 	mutex_unlock(&(dev_data->file_mutex));
-
 	return retval;
 }
 
