@@ -382,3 +382,77 @@
 &pmcobalt_l22 {
 	regulator-always-on;
 };
+
+&soc {
+	muc: muc {
+		compatible = "mmi,muc";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0 0 0xffffffff>;
+
+		gpios = <&tlmm 36 1>,            /* gpio_muc_det_n, input */
+			<&tlmm 35 0>,            /* gpio_muc_bplus_en, output-low */
+			<&tlmm 26 1>,            /* gpio_muc_int_n, input */
+			<&tlmm 28 2>,            /* gpio_muc_wake_n, output-high */
+			<&tlmm 95 1>,            /* gpio_muc_rdy_n, input */
+			<&tlmm 143 0>,           /* gpio_muc_ff, output-low */
+			<&tlmm 0 0>,             /* gpio_muc_spi_mosi, output-low */
+			<&tlmm 1 1>,             /* gpio_muc_spi_miso, input */
+			<&pmicobalt_gpios 11 0>, /* gpio_muc_bplus_iset, cs */
+			<0>,                     /* gpio_muc_bplus_discharg, cs */
+			<&pmicobalt_gpios 10 1>, /* gpio_muc_bplus_fault_n, input */
+			<&tlmm 3 1>;             /* gpio_muc_clk, input */
+
+		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
+				"gpio_muc_bplus_en",
+				"gpio_muc_int_n",
+				"gpio_muc_wake_n",
+				"gpio_muc_rdy_n",
+				"gpio_muc_ff",
+				"gpio_muc_spi_mosi",
+				"gpio_muc_spi_miso",
+				"gpio_muc_bplus_iset",
+				"gpio_muc_bplus_discharg",
+				"gpio_muc_bplus_fault_n",
+				"gpio_muc_clk";
+
+		mmi,muc-ctrl-det-hysteresis = <200>;
+		mmi,muc-ctrl-rm-hysteresis = <5>;
+		mmi,muc-ctrl-en-seq =  <1 1 100>;
+		mmi,muc-ctrl-dis-seq = <1 0 0>;
+
+		/* v1 FF first, BPLUS second on enable */
+		mmi,muc-ctrl-ff-seq-v1 = <5 1 20>, <1 0 100>,
+					<1 1 100>, <5 0 20>;
+
+		/* v2 BPLUS first, FF second on enable */
+		mmi,muc-ctrl-ff-seq-v2 = <1 1 100>, <5 1 20>,
+					<5 0 20>;
+
+		pinctrl-names = "disconnected", "spi_active", "spi_ack", "i2c_active";
+		pinctrl-0 = <&muc_attach &muc_det &spi_1_sleep &muc_spi_ctrl>;
+		pinctrl-1 = <&muc_attach &muc_det &spi_1_active &muc_spi_ctrl>;
+		pinctrl-2 = <&spi_1_mosi_ack &spi_1_miso_ack>;
+		pinctrl-3 = <&muc_attach &muc_det &i2c_1_active &muc_spi_ctrl>;
+
+		transports {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0 0xffffffff>;
+
+			/* Dummy Place Holder for SPI */
+			mods_spi: spi@c175000 { };
+
+			/* Dummy Place Holder for I2C */
+			mods_i2c: i2c@c175000 { };
+		};
+	};
+
+	muc_svc: muc_svc@0 {
+		compatible = "mmi,muc_svc";
+
+		mmi,use-authentication;
+		mmi,endo-mask = <0x4755>;
+		mmi,default-root-ver = /bits/ 8 <2>;
+	};
+};
