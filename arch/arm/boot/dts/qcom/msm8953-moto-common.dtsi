@@ -14,7 +14,6 @@
 #include "msm8953-pinctrl.dtsi"
 #include "msm8953-moto-pinctrl.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
-#include "msm8953-camera-sensor-mot.dtsi"
 #include "carrier-channel-ids.dtsi"
 #include <moto-mem-reserve.h>
 
