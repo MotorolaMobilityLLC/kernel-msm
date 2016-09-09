@@ -13,6 +13,7 @@
 #include "msm8953-moto-common.dtsi"
 #include "dsi-panel-mot-smd-549-1080p-cmd.dtsi"
 #include "dsi-panel-mot-mod-fwvga-video.dtsi"
+#include "msm8953-camera-sensor-mot.dtsi"
 
  / {
 	model = "addison";
