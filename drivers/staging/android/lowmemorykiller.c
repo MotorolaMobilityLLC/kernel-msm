@@ -48,8 +48,6 @@
 #include <linux/vmpressure.h>
 #include <linux/zcache.h>
 
-#include <trace/events/memkill.h>
-
 #define CREATE_TRACE_POINTS
 #include <trace/events/almk.h>
 
@@ -106,6 +104,8 @@ static unsigned long lowmem_count(struct shrinker *s,
 
 static atomic_t shift_adj = ATOMIC_INIT(0);
 static short adj_max_shift = 353;
+module_param_named(adj_max_shift, adj_max_shift, short,
+	S_IRUGO | S_IWUSR);
 
 /* User knob to enable/disable adaptive lmk feature */
 static int enable_adaptive_lmk;
@@ -262,70 +262,50 @@ int can_use_cma_pages(gfp_t gfp_mask)
 	return can_use;
 }
 
-struct zone_avail {
-	unsigned long free;
-	unsigned long file;
-};
-
 void tune_lmk_zone_param(struct zonelist *zonelist, int classzone_idx,
 					int *other_free, int *other_file,
-					int use_cma_pages,
-					struct zone_avail zall[][MAX_NR_ZONES])
-
+					int use_cma_pages)
 {
 	struct zone *zone;
 	struct zoneref *zoneref;
 	int zone_idx;
 
 	for_each_zone_zonelist(zone, zoneref, zonelist, MAX_NR_ZONES) {
-		struct zone_avail *za;
-		int node_idx = zone_to_nid(zone);
-
 		zone_idx = zonelist_zone_idx(zoneref);
-		za = &zall[node_idx][zone_idx];
-		za->free = zone_page_state(zone, NR_FREE_PAGES);
-		za->file = zone_page_state(zone, NR_FILE_PAGES)
-					- zone_page_state(zone, NR_SHMEM)
-					- zone_page_state(zone, NR_SWAPCACHE);
-
 		if (zone_idx == ZONE_MOVABLE) {
-			if (!use_cma_pages && other_free) {
-				unsigned long free_cma = zone_page_state(zone,
-						NR_FREE_CMA_PAGES);
-				za->free -= free_cma;
-				*other_free -= free_cma;
-			}
+			if (!use_cma_pages && other_free)
+				*other_free -=
+				    zone_page_state(zone, NR_FREE_CMA_PAGES);
 			continue;
 		}
 
 		if (zone_idx > classzone_idx) {
 			if (other_free != NULL)
-				*other_free -= za->free;
+				*other_free -= zone_page_state(zone,
+							       NR_FREE_PAGES);
 			if (other_file != NULL)
-				*other_file -= za->file;
-			za->free = za->file = 0;
+				*other_file -= zone_page_state(zone,
+							       NR_FILE_PAGES)
+					- zone_page_state(zone, NR_SHMEM)
+					- zone_page_state(zone, NR_SWAPCACHE);
 		} else if (zone_idx < classzone_idx) {
 			if (zone_watermark_ok(zone, 0, 0, classzone_idx, 0) &&
 			    other_free) {
-				unsigned long lowmem_reserve =
-					zone->lowmem_reserve[classzone_idx];
 				if (!use_cma_pages) {
-					unsigned long free_cma =
-						zone_page_state(zone,
-							NR_FREE_CMA_PAGES);
-					 unsigned long delta =
-						min(lowmem_reserve + free_cma,
-							za->free);
-					*other_free -= delta;
-					za->free -= delta;
+					*other_free -= min(
+					  zone->lowmem_reserve[classzone_idx] +
+					  zone_page_state(
+					    zone, NR_FREE_CMA_PAGES),
+					  zone_page_state(
+					    zone, NR_FREE_PAGES));
 				} else {
-					*other_free -= lowmem_reserve;
-					za->free -= lowmem_reserve;
+					*other_free -=
+					  zone->lowmem_reserve[classzone_idx];
 				}
 			} else {
 				if (other_free)
-					*other_free -= za->free;
-				 za->free = 0;
+					*other_free -=
+					  zone_page_state(zone, NR_FREE_PAGES);
 			}
 		}
 	}
@@ -360,8 +340,7 @@ void adjust_gfp_mask(gfp_t *unused)
 }
 #endif
 
-void tune_lmk_param(int *other_free, int *other_file, struct shrink_control *sc,
-				struct zone_avail zall[][MAX_NR_ZONES])
+void tune_lmk_param(int *other_free, int *other_file, struct shrink_control *sc)
 {
 	gfp_t gfp_mask;
 	struct zone *preferred_zone;
@@ -369,7 +348,6 @@ void tune_lmk_param(int *other_free, int *other_file, struct shrink_control *sc,
 	enum zone_type high_zoneidx, classzone_idx;
 	unsigned long balance_gap;
 	int use_cma_pages;
-	struct zone_avail *za;
 
 	gfp_mask = sc->gfp_mask;
 	adjust_gfp_mask(&gfp_mask);
@@ -379,7 +357,6 @@ void tune_lmk_param(int *other_free, int *other_file, struct shrink_control *sc,
 	first_zones_zonelist(zonelist, high_zoneidx, NULL, &preferred_zone);
 	classzone_idx = zone_idx(preferred_zone);
 	use_cma_pages = can_use_cma_pages(gfp_mask);
-	za = &zall[zone_to_nid(preferred_zone)][classzone_idx];
 
 	balance_gap = min(low_wmark_pages(preferred_zone),
 			  (preferred_zone->present_pages +
@@ -391,53 +368,43 @@ void tune_lmk_param(int *other_free, int *other_file, struct shrink_control *sc,
 			  balance_gap, 0, 0))) {
 		if (lmk_fast_run)
 			tune_lmk_zone_param(zonelist, classzone_idx, other_free,
-				       other_file, use_cma_pages, zall);
+				       other_file, use_cma_pages);
 		else
 			tune_lmk_zone_param(zonelist, classzone_idx, other_free,
-				       NULL, use_cma_pages, zall);
+				       NULL, use_cma_pages);
 
 		if (zone_watermark_ok(preferred_zone, 0, 0, _ZONE, 0)) {
-			unsigned long lowmem_reserve =
-				preferred_zone->lowmem_reserve[_ZONE];
 			if (!use_cma_pages) {
-				unsigned long free_cma = zone_page_state(
-					preferred_zone, NR_FREE_CMA_PAGES);
-				unsigned long delta = min(lowmem_reserve +
-					free_cma, za->free);
-				*other_free -= delta;
-				za->free -= delta;
+				*other_free -= min(
+				  preferred_zone->lowmem_reserve[_ZONE]
+				  + zone_page_state(
+				    preferred_zone, NR_FREE_CMA_PAGES),
+				  zone_page_state(
+				    preferred_zone, NR_FREE_PAGES));
 			} else {
-				*other_free -= lowmem_reserve;
-				za->free -= lowmem_reserve;
+				*other_free -=
+				  preferred_zone->lowmem_reserve[_ZONE];
 			}
 		} else {
-			*other_free -= za->free;
-			za->free = 0;
+			*other_free -= zone_page_state(preferred_zone,
+						      NR_FREE_PAGES);
 		}
 
 		lowmem_print(4, "lowmem_shrink of kswapd tunning for highmem "
 			     "ofree %d, %d\n", *other_free, *other_file);
 	} else {
 		tune_lmk_zone_param(zonelist, classzone_idx, other_free,
-			       other_file, use_cma_pages, zall);
+			       other_file, use_cma_pages);
 
 		if (!use_cma_pages) {
-			unsigned long free_cma = zone_page_state(preferred_zone,
-						NR_FREE_CMA_PAGES);
-			*other_free -= free_cma;
-			za->free -= free_cma;
+			*other_free -=
+			  zone_page_state(preferred_zone, NR_FREE_CMA_PAGES);
 		}
 
 		lowmem_print(4, "lowmem_shrink tunning for others ofree %d, "
 			     "%d\n", *other_free, *other_file);
 	}
 }
-
-#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
-static struct task_struct *pick_next_from_adj_tree(struct task_struct *task);
-static struct task_struct *pick_first_task(void);
-static struct task_struct *pick_last_task(void);
-#endif
 
 static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 {
@@ -454,16 +421,6 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	int array_size = ARRAY_SIZE(lowmem_adj);
 	int other_free;
 	int other_file;
-	struct zone_avail zall[MAX_NUMNODES][MAX_NR_ZONES];
-
-	rcu_read_lock();
-	tsk = current->group_leader;
-	if ((tsk->flags & PF_EXITING) && test_task_flag(tsk, TIF_MEMDIE)) {
-		set_tsk_thread_flag(current, TIF_MEMDIE);
-		rcu_read_unlock();
-		return 0;
-	}
-	rcu_read_unlock();
 
 	if (!mutex_trylock(&scan_mutex))
 		return 0;
@@ -479,8 +436,7 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	else
 		other_file = 0;
 
-	memset(zall, 0, sizeof(zall));
-	tune_lmk_param(&other_free, &other_file, sc, zall);
+	tune_lmk_param(&other_free, &other_file, sc);
 
 	if (lowmem_adj_size < array_size)
 		array_size = lowmem_adj_size;
@@ -511,13 +467,7 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	selected_oom_score_adj = min_score_adj;
 
 	rcu_read_lock();
-#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
-	for (tsk = pick_first_task();
-		tsk != pick_last_task() && tsk != NULL;
-		tsk = pick_next_from_adj_tree(tsk)) {
-#else
 	for_each_process(tsk) {
-#endif
 		struct task_struct *p;
 		short oom_score_adj;
 
@@ -543,17 +493,6 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		oom_score_adj = p->signal->oom_score_adj;
 		if (oom_score_adj < min_score_adj) {
 			task_unlock(p);
-#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
-			break;
-#else
-			continue;
-#endif
-		}
-		if (fatal_signal_pending(p) ||
-				((p->flags & PF_EXITING) &&
-					test_tsk_thread_flag(p, TIF_MEMDIE))) {
-			lowmem_print(2, "skip slow dying process %d\n", p->pid);
-			task_unlock(p);
 			continue;
 		}
 		tasksize = get_mm_rss(p->mm);
@@ -562,11 +501,7 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 			continue;
 		if (selected) {
 			if (oom_score_adj < selected_oom_score_adj)
-#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
-				break;
-#else
 				continue;
-#endif
 			if (oom_score_adj == selected_oom_score_adj &&
 			    tasksize <= selected_tasksize)
 				continue;
@@ -581,9 +516,6 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		long cache_size = other_file * (long)(PAGE_SIZE / 1024);
 		long cache_limit = minfree * (long)(PAGE_SIZE / 1024);
 		long free = other_free * (long)(PAGE_SIZE / 1024);
-		int i, j;
-		char zinfo[ZINFO_LENGTH];
-		char *p = zinfo;
 		trace_lowmemory_kill(selected, cache_size, cache_limit, free);
 
 		if (test_task_flag(selected, TIF_MEMDIE) &&
@@ -630,23 +562,6 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 
 		lowmem_deathpending_timeout = jiffies + HZ;
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
-
-		/* For easy parsing, show all zones info even its free & file
-		 * are zero. It will show as the following examples:
-		 *   0:0:756:1127 0:1:0:0 0:2:0:0
-		 *   0:0:767:322 0:1:152:2364 0:2:0:0
-		 */
-		for (i = 0; i < MAX_NUMNODES; i++)
-			for (j = 0; j < MAX_NR_ZONES; j++)
-				p += snprintf(p, ZINFO_DIGITS,
-					"%d:%d:%lu:%lu ", i, j,
-					zall[i][j].free,
-					zall[i][j].file);
-
-		trace_lmk_kill(selected->pid, selected->comm,
-				selected_oom_score_adj, selected_tasksize,
-				min_score_adj, sc->gfp_mask, zinfo);
-
 		send_sig(SIGKILL, selected, 0);
 		rem += selected_tasksize;
 		rcu_read_unlock();
@@ -664,100 +579,6 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	mutex_unlock(&scan_mutex);
 	return rem;
 }
-
-#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
-DEFINE_SPINLOCK(lmk_lock);
-struct rb_root tasks_scoreadj = RB_ROOT;
-/*
- * Makesure to invoke the function with holding sighand->siglock
- */
-void add_2_adj_tree(struct task_struct *task)
-{
-	struct rb_node **link;
-	struct rb_node *parent = NULL;
-	struct signal_struct *sig_entry;
-	s64 key = task->signal->oom_score_adj;
-
-	/*
-	 * Find the right place in the rbtree:
-	 */
-	spin_lock(&lmk_lock);
-	link =  &tasks_scoreadj.rb_node;
-	while (*link) {
-		parent = *link;
-		sig_entry = rb_entry(parent, struct signal_struct, adj_node);
-
-		if (key < sig_entry->oom_score_adj)
-			link = &parent->rb_right;
-		else
-			link = &parent->rb_left;
-	}
-
-	rb_link_node(&task->signal->adj_node, parent, link);
-	rb_insert_color(&task->signal->adj_node, &tasks_scoreadj);
-	spin_unlock(&lmk_lock);
-}
-
-/*
- * Makesure to invoke the function with holding sighand->siglock
- */
-void delete_from_adj_tree(struct task_struct *task)
-{
-	spin_lock(&lmk_lock);
-	if (!RB_EMPTY_NODE(&task->signal->adj_node)) {
-		rb_erase(&task->signal->adj_node, &tasks_scoreadj);
-		RB_CLEAR_NODE(&task->signal->adj_node);
-	}
-	spin_unlock(&lmk_lock);
-}
-
-static struct task_struct *pick_next_from_adj_tree(struct task_struct *task)
-{
-	struct rb_node *next;
-	struct signal_struct *next_tsk_sig;
-
-	spin_lock(&lmk_lock);
-	next = rb_next(&task->signal->adj_node);
-	spin_unlock(&lmk_lock);
-
-	if (!next)
-		return NULL;
-
-	next_tsk_sig = rb_entry(next, struct signal_struct, adj_node);
-	return next_tsk_sig->curr_target->group_leader;
-}
-
-static struct task_struct *pick_first_task(void)
-{
-	struct rb_node *left;
-	struct signal_struct *first_tsk_sig;
-
-	spin_lock(&lmk_lock);
-	left = rb_first(&tasks_scoreadj);
-	spin_unlock(&lmk_lock);
-
-	if (!left)
-		return NULL;
-
-	first_tsk_sig = rb_entry(left, struct signal_struct, adj_node);
-	return first_tsk_sig->curr_target->group_leader;
-}
-static struct task_struct *pick_last_task(void)
-{
-	struct rb_node *right;
-	struct signal_struct *last_tsk_sig;
-
-	spin_lock(&lmk_lock);
-	right = rb_last(&tasks_scoreadj);
-	spin_unlock(&lmk_lock);
-
-	if (!right)
-		return NULL;
-
-	last_tsk_sig = rb_entry(right, struct signal_struct, adj_node);
-	return last_tsk_sig->curr_target->group_leader;
-}
-#endif
 
 static struct shrinker lowmem_shrinker = {
 	.scan_objects = lowmem_scan,
