@@ -599,24 +599,71 @@ EXPORT_SYMBOL(of_machine_is_compatible);
  *
  *  @device: Node to check for availability, with locks already held
  *
- *  Returns true if the status property is absent or set to "okay" or "ok",
+ *  Returns true if the status property
+ *  -- is absent or set to "okay" or "ok",
+ *  -- refers to another property using string list as following
+ *     status = <path>, <okay property>, [<contains>,] <value1>[, <value2>...];
+ *     and at least one <value> in the list of values matches
+ *     value of /<path>/<okay property>.
+ *     Partial matches accepted when "contains" provided.
  *  false otherwise
  */
 static bool __of_device_is_available(const struct device_node *device)
 {
-	const char *status;
-	int statlen;
+	struct property *pp;
+	struct device_node *np;
+	const char *val, *status;
+	const char *okay_prop_name, *okay_val;
+	bool found;
+	int len, operation;
 
 	if (!device)
 		return false;
 
-	status = __of_get_property(device, "status", &statlen);
-	if (status == NULL)
+	pp = __of_find_property(device, "status", &len);
+	if (pp == NULL)
 		return true;
 
-	if (statlen > 0) {
-		if (!strcmp(status, "okay") || !strcmp(status, "ok"))
+	status = pp->value;
+
+	if (len > 0) {
+		if (!strncmp(status, "ok", 2))
 			return true;
+
+		if (!strncmp(status, "disable", 7))
+			return false;
+
+		np = __of_find_node_by_full_path(of_root, status);
+		if (!np)
+			return false;
+
+		okay_prop_name = of_prop_next_string(pp, status);
+		if (!okay_prop_name)
+			return false;
+
+		okay_val = __of_get_property(np, okay_prop_name, &len);
+		if (okay_val == NULL || len <= 0)
+			return false;
+
+		val = okay_prop_name;
+		operation = 0;
+		found = false;
+		while ((val = of_prop_next_string(pp, val))) {
+			if (!operation) {
+				operation++;
+				if (!strcmp(val, "contains")) {
+					operation++;
+					continue;
+				}
+			}
+			if (operation == 1) {
+				if (!strcmp(val, okay_val))
+						found = true;
+			} else if (strstr(okay_val, val))
+						found = true;
+			if (found)
+				return true;
+		}
 	}
 
 	return false;
