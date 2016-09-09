@@ -771,7 +771,7 @@ struct device_node *of_get_child_by_name(const struct device_node *node,
 }
 EXPORT_SYMBOL(of_get_child_by_name);
 
-static struct device_node *__of_find_node_by_path(struct device_node *parent,
+static struct device_node *__of_find_child_node_by_path(struct device_node *parent,
 						const char *path)
 {
 	struct device_node *child;
@@ -798,7 +798,7 @@ struct device_node *__of_find_node_by_full_path(struct device_node *node,
 		struct device_node *tmp = node;
 
 		path++; /* Increment past '/' delimiter */
-		node = __of_find_node_by_path(node, path);
+		node = __of_find_child_node_by_path(node, path);
 		of_node_put(tmp);
 		path = strchrnul(path, '/');
 		if (separator && separator < path)
@@ -807,29 +807,10 @@ struct device_node *__of_find_node_by_full_path(struct device_node *node,
 	return node;
 }
 
-/**
- *	of_find_node_opts_by_path - Find a node matching a full OF path
- *	@path: Either the full path to match, or if the path does not
- *	       start with '/', the name of a property of the /aliases
- *	       node (an alias).  In the case of an alias, the node
- *	       matching the alias' value will be returned.
- *	@opts: Address of a pointer into which to store the start of
- *	       an options string appended to the end of the path with
- *	       a ':' separator.
- *
- *	Valid paths:
- *		/foo/bar	Full path
- *		foo		Valid alias
- *		foo/bar		Valid alias + relative path
- *
- *	Returns a node pointer with refcount incremented, use
- *	of_node_put() on it when done.
- */
-struct device_node *of_find_node_opts_by_path(const char *path, const char **opts)
+static struct device_node *__of_find_node_by_path(const char *path, const char **opts)
 {
 	struct device_node *np = NULL;
 	struct property *pp;
-	unsigned long flags;
 	const char *separator = strchr(path, ':');
 
 	if (opts)
@@ -853,7 +834,7 @@ struct device_node *of_find_node_opts_by_path(const char *path, const char **opt
 
 		for_each_property_of_node(of_aliases, pp) {
 			if (strlen(pp->name) == len && !strncmp(pp->name, path, len)) {
-				np = of_find_node_by_path(pp->value);
+				np = __of_find_node_by_path(pp->value, NULL);
 				break;
 			}
 		}
@@ -863,10 +844,40 @@ struct device_node *of_find_node_opts_by_path(const char *path, const char **opt
 	}
 
 	/* Step down the tree matching path components */
-	raw_spin_lock_irqsave(&devtree_lock, flags);
 	if (!np)
 		np = of_node_get(of_root);
 	np = __of_find_node_by_full_path(np, path);
+	return np;
+}
+
+/**
+ *	of_find_node_opts_by_path - Find a node matching a full OF path
+ *	@path: Either the full path to match, or if the path does not
+ *	       start with '/', the name of a property of the /aliases
+ *	       node (an alias).  In the case of an alias, the node
+ *	       matching the alias' value will be returned.
+ *	@opts: Address of a pointer into which to store the start of
+ *	       an options string appended to the end of the path with
+ *	       a ':' separator.
+ *
+ *	Valid paths:
+ *		/foo/bar	Full path
+ *		foo		Valid alias
+ *		foo/bar		Valid alias + relative path
+ *
+ *	Returns a node pointer with refcount incremented, use
+ *	of_node_put() on it when done.
+ */
+struct device_node *of_find_node_opts_by_path(const char *path, const char **opts)
+{
+	struct device_node *np;
+	unsigned long flags;
+
+	if (strcmp(path, "/") == 0)
+		return of_node_get(of_root);
+
+	raw_spin_lock_irqsave(&devtree_lock, flags);
+	np = __of_find_node_by_path(path, opts);
 	raw_spin_unlock_irqrestore(&devtree_lock, flags);
 	return np;
 }
