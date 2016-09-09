@@ -161,6 +161,79 @@
 			};
 		};
 	};
+
+	/* MODS Related */
+	spi_1 {
+		spi_1_active {
+			config {
+				drive-strength = <16>;
+			};
+		};
+
+		spi_1_sleep {
+			mux {
+				function = "gpio";
+			};
+
+			config {
+				drive-strength = <2>;
+				bias-pull-down;
+				input-enable;
+			};
+		};
+
+		spi_1_mosi_ack: spi_1_mosi_ack {
+			mux {
+				pins = "gpio0";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio0";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+
+		spi_1_miso_ack: spi_1_miso_ack {
+			mux {
+				pins = "gpio1";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio1";
+				drive-strength = <2>;
+				bias-disable;
+				input-enable;
+			};
+		};
+	};
+
+	/* INT_N, BPLUS_EN, FORCE_FLASH */
+	muc_attach: muc_attach@0 {
+		config {
+			pins = "gpio26", "gpio35", "gpio143";
+			bias-disable;
+		};
+	};
+
+	muc_det: muc_det@0 {
+		config {
+			pins = "gpio36";
+			bias-disable;
+			drive-strength = <16>;
+		};
+	};
+
+	/* WAKE_N, RDY_N */
+	muc_spi_ctrl: muc_spi_ctrl@0 {
+		config {
+			pins = "gpio28", "gpio95";
+			bias-disable;
+		};
+	};
 };
 
 &pmx_mdss{
