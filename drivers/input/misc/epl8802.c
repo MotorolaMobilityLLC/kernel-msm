@@ -74,8 +74,8 @@
 #define ALS_LOW_THRESHOLD		1000
 #define ALS_HIGH_THRESHOLD		3000
 
-#define PS_LOW_THRESHOLD		2073 /*PS low threshold*/
-#define PS_HIGH_THRESHOLD		7525 /*PS high threshold*/
+#define PS_LOW_THRESHOLD		11599/*PS low threshold*/
+#define PS_HIGH_THRESHOLD		11999/*PS high threshold*/
 
 #define LUX_PER_COUNT			400 /*ALS lux per count, 400/1000=0.4*/
 #define ALS_LEVEL    16
@@ -180,6 +180,7 @@ struct epl_sensor_priv {
 	bool ps_dyn_flag;
 	u32 dynk_thd_low;
 	u32 dynk_thd_high;
+	u32 dynk_thd_recal;
 	struct wake_lock ps_lock;
 };
 
@@ -202,10 +203,10 @@ static int epl_sensor_als_dyn_report(struct epl_sensor_priv *epld,
  *  PS DYN K ONE
  ******************************************************************************/
 #if PS_DYN_K_ONE
-#define PS_MAX_CT	7600
-#define PS_MAX_IR	50000
-#define PS_DYN_H_OFFSET 6943
-#define PS_DYN_L_OFFSET 2024
+#define PS_MAX_CT       12000
+#define PS_MAX_IR       50000
+#define PS_DYN_H_OFFSET 2000
+#define PS_DYN_L_OFFSET 1600
 #endif
 
 /******************************************************************************
@@ -431,13 +432,34 @@ static void epl_sensor_report_ps_status(struct epl_sensor_priv *epld)
 	LOG_DBG("epl_sensor.ps.data.data=%d, value=%d\n",
 		epld->epl_sensor.ps.data.data,
 		epld->epl_sensor.ps.compare_low >> 3);
-
-	if (epld->epl_sensor.ps.compare_low >> 3 == 0)
-		distance = 1;
-	else if (epld->epl_sensor.ps.compare_low >> 3 == 1)
+#if PS_DYN_K_ONE
+	if (epld->epl_sensor.ps.data.data < epld->dynk_thd_recal) {
+		LOG_DBG("recalibration triggered, recal_threshold now:%d\n",
+			epld->dynk_thd_recal);
+		epl_sensor_fast_update(epld->client);
+		epl_sensor_update_mode(epld->client);
+		epld->ps_dyn_flag = true;
+		epl_sensor_do_ps_auto_k_one(epld);
+		return;
+	}
+#endif
+	if (epld->epl_sensor.ps.compare_low >> 3 == 1) {
+#if PS_DYN_K_ONE
+		set_psensor_intr_threshold(epld,
+			epld->dynk_thd_recal,
+			epld->dynk_thd_high);
+#endif
 		distance = 10;
-	else
+	} else if (epld->epl_sensor.ps.compare_low >> 3 == 0) {
+#if PS_DYN_K_ONE
+		set_psensor_intr_threshold(epld,
+				epld->dynk_thd_low,
+				epld->dynk_thd_high);
+#endif
+		distance = 1;
+	} else {
 		distance = -1;
+	}
 
 	input_report_abs(epld->ps_input_dev, ABS_DISTANCE, distance);
 	input_event(epld->ps_input_dev, EV_SYN, SYN_TIME_SEC,
@@ -962,7 +984,6 @@ int epl_sensor_read_ps(struct i2c_client *client)
 
 void epl_sensor_enable_ps(struct epl_sensor_priv *epld, int enable)
 {
-
 	LOG_DBG("[%s]: ps enable=%d \r\n", __func__, enable);
 
 	if (epld->enable_pflag != enable) {
@@ -1093,6 +1114,7 @@ static int epl_sensor_als_dyn_report(struct epl_sensor_priv *epld,
 }
 #endif
 
+
 #if PS_DYN_K_ONE
 static void epl_sensor_do_ps_auto_k_one(struct epl_sensor_priv *epld)
 {
@@ -1100,18 +1122,19 @@ static void epl_sensor_do_ps_auto_k_one(struct epl_sensor_priv *epld)
 	int ps_time = ps_sensing_time(epld->epl_sensor.ps.integration_time,
 		epld->epl_sensor.ps.adc, epld->epl_sensor.ps.cycle);
 #endif
-
 	if (epld->ps_dyn_flag == true) {
 #if !PS_FIRST_REPORT
 		msleep(ps_time);
 		LOG_INFO("[%s]: msleep(%d)\r\n", __func__, ps_time);
 		epl_sensor_read_ps(epld->client);
 #endif
-		if (epld->epl_sensor.ps.data.data < PS_MAX_CT
+		if (epld->epl_sensor.ps.data.data < PS_MAX_CT - PS_DYN_H_OFFSET
 			&& (epld->epl_sensor.ps.saturation == 0)
 			&& (epld->epl_sensor.ps.data.ir_data < PS_MAX_IR)) {
-			LOG_INFO("[%s]: epl_sensor.ps.data.data=%d \r\n",
+			LOG_DBG("[%s]: epl_sensor.ps.data.data=%d \r\n",
 				__func__, epld->epl_sensor.ps.data.data);
+			epld->dynk_thd_recal =
+				epld->epl_sensor.ps.data.data - 500;
 			epld->dynk_thd_low = epld->epl_sensor.ps.data.data
 					+ PS_DYN_L_OFFSET;
 			epld->dynk_thd_high = epld->epl_sensor.ps.data.data
@@ -1120,13 +1143,15 @@ static void epl_sensor_do_ps_auto_k_one(struct epl_sensor_priv *epld)
 					epld->dynk_thd_low,
 					epld->dynk_thd_high);
 		} else {
-			LOG_INFO("[%s]:threshold err;ps.data.data=%d\r\n",
+			LOG_DBG("[%s]:threshold err;ps.data.data=%d\r\n",
 				__func__, epld->epl_sensor.ps.data.data);
 			epld->epl_sensor.ps.high_threshold = PS_HIGH_THRESHOLD;
 			epld->epl_sensor.ps.low_threshold = PS_LOW_THRESHOLD;
 			set_psensor_intr_threshold(epld,
 				epld->epl_sensor.ps.low_threshold,
 				epld->epl_sensor.ps.high_threshold);
+			epld->dynk_thd_recal =
+				PS_MAX_CT - 1 - PS_DYN_H_OFFSET - 500;
 			epld->dynk_thd_low = epld->epl_sensor.ps.low_threshold;
 			epld->dynk_thd_high =
 				epld->epl_sensor.ps.high_threshold;
