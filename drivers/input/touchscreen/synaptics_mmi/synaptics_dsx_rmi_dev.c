@@ -34,8 +34,6 @@
 #define DEVICE_CLASS_NAME "rmidev"
 #define DEV_NUMBER 1
 #define REG_ADDR_LIMIT 0xFFFF
-#define MAX_READ_WRITE_SIZE 8096
-#define MIN_READ_WRITE_BUF_SIZE 256
 
 static ssize_t rmidev_sysfs_data_show(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
@@ -77,8 +75,7 @@ struct rmidev_data {
 	struct class *device_class;
 	struct mutex file_mutex;
 	struct rmidev_handle *rmi_dev;
-	unsigned char *tmpbuf;
-	size_t tmpbuf_size;
+	struct temp_buffer data_buf;
 };
 
 static struct bin_attribute attr_data = {
@@ -319,32 +316,6 @@ clean_up:
 	return newpos;
 }
 
-static int alloc_tmpbuf(struct file *filp, size_t count)
-{
-	struct rmidev_data *dev_data = filp->private_data;
-
-	if (dev_data->tmpbuf_size != 0)	{
-		kfree(dev_data->tmpbuf);
-		dev_data->tmpbuf = NULL;
-		dev_data->tmpbuf_size = 0;
-	}
-
-	if (count > MAX_READ_WRITE_SIZE) {
-		pr_err("%s: Max buffer size exceeded\n", __func__);
-		return 1;
-	}
-
-	if (count < MIN_READ_WRITE_BUF_SIZE)
-		count = MIN_READ_WRITE_BUF_SIZE;
-
-	dev_data->tmpbuf = kzalloc(count, GFP_KERNEL);
-	if (!dev_data->tmpbuf)
-		return 1;
-
-	dev_data->tmpbuf_size = count;
-	return 0;
-}
-
 /*
  * rmidev_read: - use to read data from rmi device
  *
@@ -358,6 +329,7 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 {
 	ssize_t retval;
 	struct rmidev_data *dev_data = filp->private_data;
+	struct temp_buffer *tb;
 
 	if (IS_ERR(dev_data)) {
 		pr_err("%s: Pointer of char device data is invalid", __func__);
@@ -370,19 +342,22 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 	if (count > (REG_ADDR_LIMIT - *f_pos))
 		count = REG_ADDR_LIMIT - *f_pos;
 
+	tb = &dev_data->data_buf;
 	mutex_lock(&(dev_data->file_mutex));
 
-	if (dev_data->tmpbuf_size < count && alloc_tmpbuf(filp, count) != 0)
-		return -ENOMEM;
+	if (tb->buf_size < count && alloc_buffer(tb, count) != 0) {
+		retval = -ENOMEM;
+		goto clean_up;
+        }
 
 	retval = rmidev->fn_ptr->read(rmidev->rmi4_data,
 			*f_pos,
-			dev_data->tmpbuf,
+			tb->buf,
 			count);
 	if (retval < 0)
 		goto clean_up;
 
-	if (copy_to_user(buf, dev_data->tmpbuf, count))
+	if (copy_to_user(buf, tb->buf, count))
 		retval = -EFAULT;
 	else
 		*f_pos += retval;
@@ -406,6 +381,7 @@ static ssize_t rmidev_write(struct file *filp, const char __user *buf,
 {
 	ssize_t retval;
 	struct rmidev_data *dev_data = filp->private_data;
+	struct temp_buffer *tb;
 
 	if (IS_ERR(dev_data)) {
 		pr_err("%s: Pointer of char device data is invalid", __func__);
@@ -418,25 +394,27 @@ static ssize_t rmidev_write(struct file *filp, const char __user *buf,
 	if (count > (REG_ADDR_LIMIT - *f_pos))
 		count = REG_ADDR_LIMIT - *f_pos;
 
+	tb = &dev_data->data_buf;
 	mutex_lock(&(dev_data->file_mutex));
 
-	if (dev_data->tmpbuf_size < count && alloc_tmpbuf(filp, count) != 0) {
+	if (tb->buf_size < count && alloc_buffer(tb, count) != 0) {
 		retval = -ENOMEM;
 		goto clean_up;
 	}
 
-	if (copy_from_user(dev_data->tmpbuf, buf, count)) {
+	if (copy_from_user(tb->buf, buf, count)) {
 		retval = -EFAULT;
 		goto clean_up;
 	}
 
 	retval = rmidev->fn_ptr->write(rmidev->rmi4_data,
 			*f_pos,
-			dev_data->tmpbuf,
+			tb->buf,
 			count);
 	if (retval >= 0)
 		*f_pos += retval;
 
+clean_up:
 	mutex_unlock(&(dev_data->file_mutex));
 
 	return retval;
