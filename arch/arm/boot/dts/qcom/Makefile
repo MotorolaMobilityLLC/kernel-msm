@@ -344,7 +344,8 @@ endif
 
 ifeq ($(CONFIG_CEDRIC_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8937) += msm8937-cedric-p1.dtb \
-	msm8937-cedric-p2.dtb
+	msm8937-cedric-p2.dtb \
+	msm8937-cedric-p3.dtb
 endif
 
 dtb-$(CONFIG_ARCH_MDM9607) += mdm9607-rumi.dtb \
