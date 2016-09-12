@@ -14,6 +14,7 @@
 #include "dsi-panel-mot-smd-549-1080p-alb-cmd.dtsi"
 #include "dsi-panel-mot-mod-fwvga-video.dtsi"
 #include "msm8953-camera-sensor-mot-albus.dtsi"
+#include "msm8953-albus-pinctrl.dtsi"
 
  / {
 	model = "albus";
@@ -59,6 +60,8 @@
 	};
 
 	i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
+		/delete-node/ stmvl53l0@29;
+
 		analogix_anx7805@72 {
 			compatible = "analogix,anx7805";
 			status = "ok";
@@ -87,6 +90,15 @@
 		};
 
 		/delete-node/ pnxxx@28;
+	};
+
+	i2c_4: i2c@78b8000 {
+		status = "disabled";
+		/delete-node/ motosh@43;
+	};
+
+	spi_6: spi@7af6000 { /* BLSP2 QUP2 */
+		status = "disabled";
 	};
 
 	/delete-node/ hdmi_dba;
@@ -161,6 +173,10 @@
 			pins = "gpio61";
 		};
 	};
+};
+
+&marley {
+	status = "disabled";
 };
 
 &mdss_mdp {
@@ -294,41 +310,6 @@
 	};
 };
 
-&tlmm {
-	cdc-pdm-lines {
-		cdc_pdm_lines_act: pdm_lines_on {
-			mux {
-				/delete-property/ pins;
-				pins = "gpio73";
-			};
-
-			config {
-				/delete-property/ pins;
-				pins = "gpio73";
-			};
-		};
-
-		cdc_pdm_lines_sus: pdm_lines_off {
-			mux {
-				/delete-property/ pins;
-				pins = "gpio73";
-			};
-
-			config {
-				/delete-property/ pins;
-				pins = "gpio73";
-			};
-		};
-	};
-
-	apba_default@0 {
-		mphy_i2s_sel {
-			pins = "gpio27";
-			drive-strength = <2>;
-		};
-	};
-};
-
 &muc {
 	gpios = <&tlmm 60 1>,         /* gpio_muc_det_n, input */
 		<&pmi8950_gpios 1 0>, /* gpio_muc_bplus_en, output-low */
@@ -349,4 +330,3 @@
 	regulator-max-microvolt = <2850000>;
 	qcom,init-voltage = <2850000>;
 };
-
