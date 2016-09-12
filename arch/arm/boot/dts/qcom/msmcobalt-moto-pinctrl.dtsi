@@ -234,6 +234,55 @@
 			bias-disable;
 		};
 	};
+
+	spi_6 {
+		spi_6_active {
+			config {
+				drive-strength = <16>;
+				bias-pull-up;
+			};
+		};
+
+		spi_6_sleep {
+			config {
+				function = "gpio";
+				drive-strength = <6>;
+				bias-disable;
+			};
+		};
+	};
+
+	apba_default: apba_default@0 {
+		apba_bootret {
+			pins = "gpio27";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		apba_reset_n {
+			pins = "gpio21";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		mod_mphy_i2s_sel {
+			pins = "gpio38";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		apba_wake {
+			pins = "gpio25";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		apba_int_n {
+			pins = "gpio37";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
 };
 
 &pmx_mdss{
