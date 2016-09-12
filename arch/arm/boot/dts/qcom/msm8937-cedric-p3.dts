@@ -17,3 +17,9 @@
 / {
 	qcom,board-id = <0x41 0x8300>;
 };
+
+&i2c_2 {
+	sx9310@28 {
+		cap_vdd-supply = <&pm8937_l10>;
+	};
+};
