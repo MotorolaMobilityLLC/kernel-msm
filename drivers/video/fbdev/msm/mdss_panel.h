@@ -887,6 +887,9 @@ struct mdss_panel_info {
 	void *hdcp_1x_data;
 
 	char panel_name[MDSS_MAX_PANEL_LEN];
+	char panel_family_name[MDSS_MAX_PANEL_LEN];
+	u32 panel_ver;
+	char panel_supplier[8];
 	struct mdss_mdp_pp_tear_check te;
 	struct mdss_mdp_pp_tear_check te_cached;
 
