@@ -272,6 +272,7 @@ struct mdss_intf_ulp_clamp {
  *			avr mode passed as argument
  *			0 - disable AVR support
  *			1 - enable AVR support
+ * @MDSS_EVENT_ENABLE_TE: Change TE state, used for factory testing only
  */
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
@@ -309,6 +310,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_AVR_MODE,
 	MDSS_EVENT_REGISTER_CLAMP_HANDLER,
 	MDSS_EVENT_MAX,
+	MDSS_EVENT_ENABLE_TE,
 };
 
 /**
