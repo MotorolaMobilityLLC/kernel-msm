@@ -389,6 +389,7 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 
 clean_up:
 	mutex_unlock(&(dev_data->file_mutex));
+
 	return retval;
 }
 
@@ -436,8 +437,8 @@ static ssize_t rmidev_write(struct file *filp, const char __user *buf,
 	if (retval >= 0)
 		*f_pos += retval;
 
-clean_up:
 	mutex_unlock(&(dev_data->file_mutex));
+
 	return retval;
 }
 
