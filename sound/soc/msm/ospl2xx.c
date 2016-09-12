@@ -31,9 +31,11 @@ static char const *ospl2xx_ext_config_tables[] = {
 	"opalum.rx.ext.config.0",
 	"opalum.rx.ext.config.1",
 	"opalum.rx.ext.config.2",
+	"opalum.rx.ext.config.3",
 	"opalum.tx.ext.config.0",
 	"opalum.tx.ext.config.1",
 	"opalum.tx.ext.config.2",
+	"opalum.tx.ext.config.3",
 };
 
 static int ext_config_loaded;
@@ -456,7 +458,7 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 	return result;
 }
 
-#define NUM_RX_CONFIGS 3
+#define NUM_RX_CONFIGS 4
 static int ext_rxconfig;
 static int ext_txconfig = NUM_RX_CONFIGS;
 static int int_rxconfig;
@@ -738,6 +740,7 @@ static char const *ospl2xx_rx_ext_config_text[] = {
 	"opalum.rx.ext.config.0",
 	"opalum.rx.ext.config.1",
 	"opalum.rx.ext.config.2",
+	"opalum.rx.ext.config.3",
 };
 static const struct soc_enum ospl2xx_rx_ext_config_enum[] = {
 	SOC_ENUM_SINGLE_EXT(NUM_RX_CONFIGS,
@@ -788,6 +791,7 @@ static char const *ospl2xx_audio_mode_text[] = {
 	"NORMAL",
 	"VOICE",
 	"RING",
+	"SONIFICATION",
 };
 static const struct soc_enum ospl2xx_audio_mode_enum[] = {
 	SOC_ENUM_SINGLE_EXT(NUM_RX_CONFIGS,
@@ -973,7 +977,7 @@ static int ospl2xx_tx_get_temp_cal(struct snd_kcontrol *kcontrol,
 }
 
 /* PARAM_ID_OPALUM_TX_SET_USE_CASE */
-#define NUM_TX_CONFIGS 3
+#define NUM_TX_CONFIGS 4
 static int ospl2xx_tx_int_config_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
@@ -1042,6 +1046,7 @@ static char const *ospl2xx_tx_ext_config_text[] = {
 	"opalum.tx.ext.config.0",
 	"opalum.tx.ext.config.1",
 	"opalum.tx.ext.config.2",
+	"opalum.tx.ext.config.3",
 };
 static const struct soc_enum ospl2xx_tx_ext_config_enum[] = {
 	SOC_ENUM_SINGLE_EXT(NUM_TX_CONFIGS,
