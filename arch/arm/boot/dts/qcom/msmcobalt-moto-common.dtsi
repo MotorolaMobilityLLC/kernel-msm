@@ -164,6 +164,17 @@
 		status = "okay";
 	};
 
+	gpio@c800 { /* PM8998_GPIO9 APBA_1P1_EN */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,pull = <5>;         /* QPNP_PIN_PULL_NO */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
 	gpio@cc00 { /* PM8998_GPIO13 DIV_CLK1 */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
@@ -454,5 +465,56 @@
 		mmi,use-authentication;
 		mmi,endo-mask = <0x4755>;
 		mmi,default-root-ver = /bits/ 8 <2>;
+	};
+
+	apba_ctrl {
+		compatible = "mmi,apba-ctrl";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0 0>;
+		ranges = <0 0 0xffffffff>;
+
+		clock-names = "apba_mclk";
+		clocks = <&clock_gcc clk_ln_bb_clk2>;
+
+		pinctrl-names = "default", "spi_active";
+		pinctrl-0 = <&apba_default &spi_6_sleep>;
+		pinctrl-1 = <&apba_default &spi_6_active>;
+
+		gpios = <&pmcobalt_gpios 9 0>,  /* APBA_1P1_EN, output-low */
+			<&tlmm 27 0>,           /* APBA_BOOTRET, output-low */
+			<&tlmm 38 2>,           /* MOD_MPHY_I2S_SEL, output-high */
+			<&tlmm 21 0>,           /* APBA_RESET_N, output-low */
+			<&tlmm 37 1>,           /* APBA_INT_N, in */
+			<&tlmm 25 0>;           /* APBA_WAKE, output-low */
+
+		mmi,gpio-labels = "gpio_apba_1p1_en",
+				"gpio_apba_bootret",
+				"gpio_mphy_i2s_sel",
+				"gpio_apba_rst_n",
+				"gpio_apba_int_n",
+				"gpio_apba_wake";
+
+		mmi,int-index = <4>;
+		mmi,enable-preclk-seq = <3 0 0>, <5 1 0>, <0 1 0>, <1 0 0>, <2 0 1>;
+		mmi,enable-postclk-seq = <3 1 0>;
+		mmi,disable-seq = <1 0 0>, <2 1 0>, <3 0 1>, <5 0 0>, <0 0 0>;
+		mmi,wake-assert-seq = <5 0 0>;
+		mmi,wake-deassert-seq = <5 1 0>;
+		mmi,flash-start-seq = <0 1 11>;
+		mmi,flash-end-seq = <0 0 0>;
+		mmi,apba-unipro-mid = <0x00000126>;
+		mmi,apba-unipro-pid = <0x00001001>;
+		mmi,apba-ara-vid = <0xfed70128>;
+		mmi,apba-ara-pid = <0xfffe0001>;
+
+		transports {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0 0xffffffff>;
+
+			/* Dummy Place Holder for SPI */
+			apba_spi: spi@c17a000 { };
+		};
 	};
 };
