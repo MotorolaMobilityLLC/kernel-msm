@@ -116,6 +116,16 @@
 		mot_dba,sel-dsi-val = <0>;
 	};
 	/delete-node/ eldo2;
+
+	apba_ctrl {
+		gpios = <&tlmm 39 0>,      /* APBA_1P1_EN, output-low */
+			<&tlmm 140 0>,     /* APBA_BOOTRET, output-low */
+			<&tlmm 27 2>,      /* MOD_MPHY_I2S_SEL, output-high */
+			<&tlmm 132 0>,     /* APBA_RESET_N, output-low */
+			<&tlmm 62 1>,      /* APBA_INT_N, in */
+			<&tlmm 141 0>,     /* APBA_WAKE, output-low */
+			<&tlmm 41 0>;      /* APBA_SFLASH_EN, output-low */
+	};
 };
 
 &pm8953_l2 {
@@ -301,6 +311,13 @@
 				/delete-property/ pins;
 				pins = "gpio73";
 			};
+		};
+	};
+
+	apba_default@0 {
+		mphy_i2s_sel {
+			pins = "gpio27";
+			drive-strength = <2>;
 		};
 	};
 };
