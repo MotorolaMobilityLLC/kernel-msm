@@ -221,7 +221,23 @@
 };
 
 &pmi8950_mpps {
-	mpp@a200 {
+	mpp@a000 { /* MPP 1 - MOD_BP_OC_FAULT_N */
+		qcom,mode = <0>;	/* Input */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <0>;	/* Output low */
+		status = "okay";
+	};
+	mpp@a100 { /* MPP 2 - MOD_F_FLASH */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <0>;	/* Output low */
+		status = "okay";
+	};
+	mpp@a200 { /* MPP 3 - DISP_AVDD_SHUTDOWN */
 		qcom,mode = <1>;		/* Digital output */
 		qcom,output-type = <0>;		/* CMOS logic */
 		qcom,vin-sel = <0>;
@@ -287,4 +303,19 @@
 			};
 		};
 	};
+};
+
+&muc {
+	gpios = <&tlmm 60 1>,         /* gpio_muc_det_n, input */
+		<&pmi8950_gpios 1 0>, /* gpio_muc_bplus_en, output-low */
+		<&tlmm 72 1>,         /* gpio_muc_int_n, input */
+		<&tlmm 38 2>,         /* gpio_muc_wake_n, output-high */
+		<&tlmm 59 1>,         /* gpio_muc_rdy_n, input */
+		<&pmi8950_mpps 2 0>,  /* gpio_muc_ff, output-low */
+		<&tlmm 0 0>,          /* gpio_muc_spi_mosi, output-low */
+		<&tlmm 1 1>,          /* gpio_muc_spi_miso, input */
+		<&tlmm 114 2>,        /* gpio_muc_bplus_iset, output-high */
+		<0>,                  /* gpio_muc_bplus_discharg, cs */
+		<&pmi8950_mpps 1 1>,  /* gpio_muc_bplus_fault_n, input */
+		<&tlmm 3 1>;          /* gpio_muc_clk, input */
 };
