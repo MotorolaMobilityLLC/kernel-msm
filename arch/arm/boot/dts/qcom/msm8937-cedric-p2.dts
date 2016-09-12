@@ -17,3 +17,14 @@
 / {
 	qcom,board-id = <0x41 0x8200>;
 };
+
+&i2c_2 {
+	sx9310@28 {
+		cap_vdd-supply = <&pm8937_l10>;
+	};
+};
+
+&pm8937_l22 {
+	regulator-always-on;
+	regulator-boot-on;
+};
