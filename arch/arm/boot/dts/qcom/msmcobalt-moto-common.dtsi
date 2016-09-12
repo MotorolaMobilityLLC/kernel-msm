@@ -140,7 +140,6 @@
 };
 
 &pmcobalt_gpios {
-
 	gpio@c100 { /* PM8998_GPIO2 MOD_MPHY_SEL0 */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
@@ -179,10 +178,13 @@
 
 &pmicobalt_gpios {
 
+	/* ATTENTION!!! PLEASE USE 1.8 V as vin-sel unless high voltage is required */
+	/* PMI8998 GPIOs 1, 3, 4, 6, 7, 8, 11 and 13 have VIN0 3.6 V and VIN1 1.8 V */
+
 	gpio@c000 { /* PMI8998_GPIO1 HSIC_INT_N */
 		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
-		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,master-en = <1>;
@@ -202,12 +204,13 @@
 	gpio@c200 { /* PMI8998_GPIO3 USB_OTG_EN */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
-		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,master-en = <1>;
 		status = "okay";
 	};
+
 
 	gpio@c400 { /* PMI8998_GPIO5 HSIC_RESET_N */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
@@ -222,7 +225,7 @@
 	gpio@c500 { /* PMI8998_GPIO6 QNOVO_EXT_FET_CTL */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
-		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,master-en = <1>;
@@ -232,7 +235,7 @@
 	gpio@c600 { /* PMI8998_GPIO7 FAN54100_INT_N */
 		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
-		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,master-en = <1>;
@@ -242,7 +245,7 @@
 	gpio@c700 { /* PMI8998_GPIO8 TX_GTR_THRES */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
-		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,master-en = <1>;
@@ -272,7 +275,7 @@
 	gpio@ca00 { /* PMI8998_GPIO11 MOD_BPLUS_LIM */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
-		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,master-en = <1>;
