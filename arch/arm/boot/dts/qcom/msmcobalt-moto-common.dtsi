@@ -518,3 +518,56 @@
 		};
 	};
 };
+
+/* Direct Copy of SPI1 from msmcobalt-blsp.dtsi */
+&mods_spi {
+	compatible = "qcom,spi-qup-v2";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg-names = "spi_physical", "spi_bam_physical";
+	reg = <0xC175000 0x600>,
+		<0xC144000 0x25000>;
+	interrupt-names = "spi_irq", "spi_bam_irq";
+	interrupts = <0 95 0>, <0 238 0>;
+	spi-max-frequency = <50000000>;
+	qcom,use-bam;
+	qcom,ver-reg-exists;
+	qcom,bam-consumer-pipe-index = <6>;
+	qcom,bam-producer-pipe-index = <7>;
+	qcom,master-id = <86>;
+	qcom,use-pinctrl;
+	pinctrl-names = "spi_default", "spi_sleep";
+	pinctrl-0 = <&spi_1_active>;
+	pinctrl-1 = <&spi_1_sleep>;
+	clock-names = "iface_clk", "core_clk";
+	clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+		<&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
+	status = "disabled";
+};
+
+/* Overrides of the default SPI configuration for MUC usage */
+&mods_spi {
+	compatible = "qcom,spi-qup-v2", "moto,mod-spi-transfer";
+	status = "okay";
+
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+	/delete-property/ pinctrl-names;
+	/delete-property/ qcom,use-pinctrl;
+
+	spi-max-frequency = <50000000>;
+
+	qcom,rt-priority;
+	qcom,active-only;
+
+	muc_spi: muc_spi@0 {
+		compatible = "moto,muc_spi";
+		reg = <0>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <26 0>;
+		spi-max-frequency = <4800000>;
+
+		mmi,intf-id = /bits/ 8 <3>;
+	};
+};
