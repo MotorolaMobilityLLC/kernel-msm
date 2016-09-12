@@ -126,6 +126,11 @@
 			<&tlmm 141 0>,     /* APBA_WAKE, output-low */
 			<&tlmm 41 0>;      /* APBA_SFLASH_EN, output-low */
 	};
+
+	hd3ss460 {
+		vdd-hd3ss460-supply = <&pm8953_l22>;
+		vdd-voltage-level = <2850000 2850000>;
+	};
 };
 
 &pm8953_l2 {
@@ -336,3 +341,10 @@
 		<&pmi8950_mpps 1 1>,  /* gpio_muc_bplus_fault_n, input */
 		<&tlmm 3 1>;          /* gpio_muc_clk, input */
 };
+
+&pm8953_l22 {
+	regulator-min-microvolt = <2850000>;
+	regulator-max-microvolt = <2850000>;
+	qcom,init-voltage = <2850000>;
+};
+
