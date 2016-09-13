@@ -17,15 +17,11 @@
 #define SYNAPTICS_DROPBOX_MSG_I2C "Touch I2C communication error detected"
 #define SYNAPTICS_DROPBOX_MSG_RESET_TIMEOUT "Touch reset time out detected"
 
-static DEFINE_RATELIMIT_STATE(synaptics_dropbox_global_rl, 3600 * HZ, 1);
-
 #if defined(CONFIG_DROPBOX)
 void synaptics_dropbox_report_event(char *msg, int count);
-void synaptics_dropbox_report_event_ratelimit(char *msg, int count,
-					struct ratelimit_state *rs);
+void synaptics_dropbox_report_event_ratelimit(char *msg, int count);
 #else
 static inline void synaptics_dropbox_report_event(char *msg, int count) {}
-static inline void synaptics_dropbox_report_event_ratelimit(char *msg, int count,
-					struct ratelimit_state *rs) {}
+static inline void synaptics_dropbox_report_event_ratelimit(char *msg, int count) {}
 #endif
 #endif /* SYNAPTICS_DROPBOX_H */
