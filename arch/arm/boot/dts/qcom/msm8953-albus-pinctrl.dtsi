@@ -11,6 +11,7 @@
  */
 
 &tlmm{
+	/delete-node/ cs35l34_reset_default;
 	/delete-node/ pmx_motosh_out;
 	/delete-node/ pmx_motosh_in;
 	/delete-node/ laser_active;
@@ -100,6 +101,13 @@
 		};
 	};
 
+	apba_default@0 {
+		mphy_i2s_sel {
+			pins = "gpio27";
+			drive-strength = <2>;
+		};
+	};
+
 	cdc-pdm-lines {
 		cdc_pdm_lines_act: pdm_lines_on {
 			mux {
@@ -126,9 +134,19 @@
 		};
 	};
 
-	apba_default@0 {
-		mphy_i2s_sel {
-			pins = "gpio27";
+	cs35l35_irq_default: cs35l35_irq_default {
+		config {
+			pins = "gpio63";
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
+	cs35l35_reset_default: cs35l35_reset_default {
+		config {
+			pins = "gpio94";
+			output-high;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 	};
@@ -179,6 +197,72 @@
 				pins = "gpio139";
 				drive-strength = <2>;
 				bias-pull-up; /* pull-up */
+			};
+		};
+	};
+
+	sec-tlmm-lines {
+		sec_tlmm_lines_act: sec_tlmm_lines_act {
+			status = "disabled";
+		};
+
+		sec_tlmm_lines_sus: sec_tlmm_lines_sus {
+			status = "disabled";
+		};
+	};
+
+	spi_7 {
+		spi_7_active: spi_7_active {
+			mux {
+				/* MOSI, MISO, CLK */
+				pins = "gpio137", "gpio138", "gpio135";
+				function = "blsp_spi7";
+			};
+
+			config {
+				pins = "gpio137", "gpio138", "gpio135";
+				drive-strength = <12>; /* 12 MA */
+				bias-disable = <0>; /* No PULL */
+			};
+		};
+
+		spi_7_sleep: spi_7_sleep {
+			mux {
+				/* MOSI, MISO, CLK */
+				pins = "gpio137", "gpio138", "gpio135";
+				function = "blsp_spi7";
+			};
+
+			config {
+				pins = "gpio137", "gpio138", "gpio135";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-down; /* PULL Down */
+			};
+		};
+
+		spi7_cs0_active: cs0_active {
+			mux {
+				pins = "gpio136";
+				function = "blsp_spi7";
+			};
+
+			config {
+				pins = "gpio136";
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+
+		spi7_cs0_sleep: cs0_sleep {
+			mux {
+				pins = "gpio136";
+				function = "blsp_spi7";
+			};
+
+			config {
+				pins = "gpio136";
+				drive-strength = <2>;
+				bias-disable = <0>;
 			};
 		};
 	};
