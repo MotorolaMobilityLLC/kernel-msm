@@ -20,6 +20,9 @@
 	model = "albus";
 	compatible = "qcom,msm8953-albus", "qcom,msm8953-moto",
 			"qcom,msm8953";
+	aliases {
+		spi7 = &spi_7;
+	};
 };
 
 &soc {
@@ -61,6 +64,7 @@
 
 	i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
 		/delete-node/ stmvl53l0@29;
+		/delete-node/ cs35l34@40;
 
 		analogix_anx7805@72 {
 			compatible = "analogix,anx7805";
@@ -110,6 +114,18 @@
 			pinctrl-0 = <&haptic_reset_n>;
 		};
 
+		cs35l35@40 {
+			compatible = "cirrus,cs35l35";
+			reg = <0x40>;
+			reset-gpios = <&tlmm 94 0>;
+			irq-gpios = <&tlmm 63 0>;
+			interrupt-parent = <&tlmm>;
+
+			VA-supply = <&dummy_vreg>;
+			VP-supply = <&dummy_vreg>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&cs35l35_irq_default &cs35l35_reset_default>;
+		};
 	};
 
 	i2c_4: i2c@78b8000 {
@@ -119,6 +135,118 @@
 
 	spi_6: spi@7af6000 { /* BLSP2 QUP2 */
 		status = "disabled";
+		/delete-node/ marley@0;
+	};
+
+	spi_7: spi@7af7000 { /* BLSP2 QUP3 */
+		status = "ok";
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x07af7000 0x600>,
+		<0x07ac4000 0x1f000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 301 0>, <0 239 0>;
+		spi-max-frequency = <19200000>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <8>;
+		qcom,bam-producer-pipe-index = <9>;
+		qcom,master-id = <84>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_7_active &spi7_cs0_active>;
+		pinctrl-1 = <&spi_7_sleep &spi7_cs0_sleep>;
+
+		clock-names = "iface_clk", "core_clk";
+
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
+
+		marley: marley@0 {
+			compatible = "cirrus,cs47l35";
+			spi-max-frequency = <26000000>;
+			reg = <0x0>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <46 0>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			wlf,reset = <&tlmm 68 0>;
+			wlf,out-mono = <1 0 0 0 0 0>;
+			wlf,micbias1 = <1800 1 1 1 1 0>;
+			wlf,micbias2 = <1800 1 1 1 1 0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&marley_irq_default &marley_reset_default>;
+
+			AVDD-supply = <&pm8953_l6>;
+			DBVDD1-supply = <&pm8953_l6>;
+			DBVDD2-supply = <&pm8953_l6>;
+			CPVDD-supply = <&pm8953_l6>;
+			CPVDD1-supply = <&pm8953_l6>;
+			CPVDD2-supply = <&pm8953_l6>;
+			DCVDD-supply = <&pm8953_l6>;
+			SPKVDD-supply = <&dummy_vreg>;
+
+			gpio-controller;
+			#gpio-cells = <2>;
+
+			wlf,gpio-defaults = <
+				0x00002000 0x0000f000 /* AIF3TXDAT / GPIO1  */
+				0x00002000 0x0000f000 /* AIF3BCLK  / GPIO2  */
+				0x00000040 0x00000000 /* AIF3RXDAT / GPIO3  */
+				0x00002000 0x0000f000 /* AIF3LRCLK / GPIO4  */
+				0xffffffff 0xffffffff /* GPIO5 */
+				0xffffffff 0xffffffff /* GPIO6 */
+				0x00002000 0x0000f000 /* MIF1SDA   / GPIO7  */
+				0x00002000 0x0000f000 /* AIF1RXDAT / GPIO8  */
+				0x00002000 0x0000f000 /* AIF1BCLK  / GPIO9  */
+				0x00002000 0x0000f000 /* AIF1TXDAT / GPIO10 */
+				0x00002000 0x0000f000 /* AIF1LRCLK / GPIO11 */
+				0x00002000 0x0000f000 /* AIF2TXDAT / GPIO12 */
+				0x00002000 0x0000f000 /* AIF2BCLK  / GPIO13 */
+				0x00002000 0x0000f000 /* AIF2RXDAT / GPIO14 */
+				0x00002000 0x0000f000 /* AIF2LRCLK / GPIO15 */
+				0x00002000 0x0000f000 /* MIF1SCLK  / GPIO16 */
+			>;
+
+			adsps {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				adsp@0ffe00 {
+					reg = <0x0ffe00>;
+					firmware {
+						ultrasound {
+							wlf,wmfw-file = "ultrasound";
+							wlf,bin-file = "ultrasound";
+							wlf,compr-caps = <1 1 4 1 96000>;
+						};
+					};
+				};
+				adsp@17fe00 {
+					reg = <0x17fe00>;
+					firmware {
+						frontend {
+							wlf,wmfw-file = "aov-frontend";
+							wlf,bin-file = "aov-vrgain";
+							wlf,compr-caps = <1 1 4 1 16000>;
+						};
+					};
+				};
+				adsp@1ffe00 {
+					reg = <0x1ffe00>;
+					firmware {
+						aov {
+							wlf,wmfw-file = "aov-control";
+							wlf,bin-file = "aov-model";
+							wlf,compr-caps = <1 1 4 1 16000>;
+						};
+					};
+				};
+			};
+		};
 	};
 
 	spi_8: spi@7af8000 { /* BLSP2 QUP3 */
@@ -138,14 +266,58 @@
 	};
 
 	sound {
-		/delete-property/ asoc-codec;
-		/delete-property/ asoc-codec-names;
+		status = "ok";
+		compatible = "qcom,msm8952-audio-slim-codec";
+		qcom,model = "msm8952-marley-card";
+
+		/* qcom,marley-mclk-clk-freq = <9600000>; */
+		asoc-platform = <&pcm0>, <&pcm1>,
+			<&pcm2>, <&voip>,
+			<&voice>, <&loopback>,
+			<&compress>, <&hostless>,
+			<&afe>, <&lsm>,
+			<&routing>, <&cpe>,
+			<&lpa>, <&marley>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+			"msm-pcm-dsp.2", "msm-voip-dsp",
+			"msm-pcm-voice", "msm-pcm-loopback",
+			"msm-compress-dsp", "msm-pcm-hostless",
+			"msm-pcm-afe", "msm-lsm-client",
+			"msm-pcm-routing", "msm-cpe-lsm",
+			"msm-pcm-lpa", "marley-codec";
+
+		asoc-cpu = <&dai_pri_auxpcm>,
+			<&dai_mi2s5>,
+			<&sb_0_rx>, <&sb_0_tx>,
+			<&sb_1_rx>, <&sb_1_tx>,
+			<&sb_2_rx>, <&sb_2_tx>,
+			<&sb_3_rx>, <&sb_3_tx>,
+			<&sb_4_rx>, <&sb_4_tx>,
+			<&sb_5_tx>, <&afe_pcm_rx>,
+			<&afe_pcm_tx>, <&afe_proxy_rx>,
+			<&afe_proxy_tx>, <&incall_record_rx>,
+			<&incall_record_tx>, <&incall_music_rx>,
+			<&incall_music_2_rx>, <&sb_5_rx>,
+			<&bt_sco_rx>, <&bt_sco_tx>;
+		asoc-cpu-names = "msm-dai-q6-auxpcm.1",
+			"msm-dai-q6-mi2s.5",
+			"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
+			"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+			"msm-dai-q6-dev.16388", "msm-dai-q6-dev.16389",
+			"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+			"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+			"msm-dai-q6-dev.16395", "msm-dai-q6-dev.224",
+			"msm-dai-q6-dev.225",   "msm-dai-q6-dev.241",
+			"msm-dai-q6-dev.240",   "msm-dai-q6-dev.32771",
+			"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
+			"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394",
+			"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289";
 
 		qcom,hdmi-dba-codec-rx;
+		qcom,albus-audio;
 		asoc-codec = <&stub_codec>, <&hdmi_dba>;
 		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-dba-codec-rx";
 	};
-
 
 	dsi_mod_display_driver: dsi_mod_display_driver {
 		compatible = "mmi,dsi_mod_display";
@@ -206,10 +378,6 @@
 			pins = "gpio61";
 		};
 	};
-};
-
-&marley {
-	status = "disabled";
 };
 
 &mdss_mdp {
