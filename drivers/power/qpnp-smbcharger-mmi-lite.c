@@ -2020,11 +2020,8 @@ static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 		power_supply_set_present(parallel_psy, false);
 	}
 
-	current_max_ma = chip->stepchg_current_ma;
-	current_max_ma =
-		min(current_max_ma, chip->allowed_fastchg_current_ma);
-	current_max_ma =
-		min(current_max_ma,  chip->target_fastchg_current_ma);
+	current_max_ma = min(chip->allowed_fastchg_current_ma,
+			     chip->target_fastchg_current_ma);
 
 	smbchg_set_fastchg_current(chip, current_max_ma);
 	chip->usb_tl_current_ma =
@@ -7728,8 +7725,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		    (chip->allowed_fastchg_current_ma >=
 		     chip->stepchg_current_ma))
 			if (chip->stepchg_state_holdoff >= 2) {
-				chip->stepchg_state = STEP_ONE;
-				chip->stepchg_state_holdoff = 0;
+					chip->stepchg_state = STEP_ONE;
+					chip->stepchg_state_holdoff = 0;
 			} else
 				chip->stepchg_state_holdoff++;
 		else
@@ -7795,7 +7792,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		break;
 	case STEP_MAX:
 		chip->vfloat_mv =
-			chip->stepchg_max_voltage_mv;
+			chip->stepchg_voltage_mv;
 		chip->vfloat_parallel_mv =
 			chip->stepchg_voltage_mv + STEPCHG_MAX_FV_COMP;
 		set_max_allowed_current_ma(chip, chip->stepchg_max_current_ma);
