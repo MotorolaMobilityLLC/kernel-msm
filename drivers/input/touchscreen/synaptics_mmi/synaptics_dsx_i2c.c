@@ -4111,8 +4111,7 @@ static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 				"%s: I2C retry %d\n",
 				__func__, retry + 1);
 		synaptics_dropbox_report_event_ratelimit(
-				SYNAPTICS_DROPBOX_MSG_I2C, 1,
-				&synaptics_dropbox_global_rl);
+				SYNAPTICS_DROPBOX_MSG_I2C, 1);
 		msleep(20);
 	}
 exit:
@@ -4172,8 +4171,7 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 				"%s: I2C retry %d\n",
 				__func__, retry + 1);
 		synaptics_dropbox_report_event_ratelimit(
-				SYNAPTICS_DROPBOX_MSG_I2C, 1,
-				&synaptics_dropbox_global_rl);
+				SYNAPTICS_DROPBOX_MSG_I2C, 1);
 		msleep(20);
 	}
 exit:
