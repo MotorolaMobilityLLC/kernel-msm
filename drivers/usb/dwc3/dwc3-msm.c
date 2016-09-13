@@ -1830,6 +1830,7 @@ static void dwc3_msm_qscratch_reg_init(struct dwc3_msm *mdwc)
 
 }
 
+#define MAX_ERR_CNT 5
 static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned event,
 							unsigned value)
 {
@@ -1841,6 +1842,10 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned event,
 
 	switch (event) {
 	case DWC3_CONTROLLER_ERROR_EVENT:
+		/* Avoid a flood of Error events */
+		if (dwc->err_cnt++ >= MAX_ERR_CNT)
+			break;
+
 		dev_info(mdwc->dev,
 			"DWC3_CONTROLLER_ERROR_EVENT received, irq cnt %lu\n",
 			dwc->irq_cnt);
@@ -3938,6 +3943,9 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		}
 	}
 
+	/* Reset Controller Error Count */
+	dwc->err_cnt = 0;
+
 	if (on) {
 		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
 
@@ -4076,6 +4084,9 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 {
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+
+	/* Reset Controller Error Count */
+	dwc->err_cnt = 0;
 
 	pm_runtime_get_sync(mdwc->dev);
 	dbg_event(dwc->ctrl_num, 0xFF, "StrtGdgt gsync",
