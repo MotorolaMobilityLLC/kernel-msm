@@ -13,6 +13,68 @@
 &tlmm{
 	/delete-node/ pmx_motosh_out;
 	/delete-node/ pmx_motosh_in;
+	/delete-node/ laser_active;
+	/delete-node/ laser_suspend;
+
+	fps: fps {
+		rst_active: rst_active {
+			/* RESET */
+			mux {
+				pins = "gpio8";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio8";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+
+		rst_suspend: rst_suspend{
+			/* RESET */
+			mux {
+				pins = "gpio8";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio8";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+
+		int_active: int_active {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio86";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio86";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+		int_suspend: int_suspend{
+			/* INTERRUPT */
+			mux {
+				pins = "gpio86";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio86";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+	};
 
 	cdc-pdm-lines {
 		cdc_pdm_lines_act: pdm_lines_on {
