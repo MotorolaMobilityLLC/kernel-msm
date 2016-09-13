@@ -497,6 +497,7 @@
 		compatible = "qcom,slim-ngd";
 		reg = <0x171c0000 0x2C000>,
 			<0x17184000 0x32000>;
+		status = "disabled";
 		reg-names = "slimbus_physical", "slimbus_bam_physical";
 		interrupts = <0 163 0>, <0 164 0>;
 		interrupt-names = "slimbus_irq", "slimbus_bam_irq";
@@ -505,8 +506,8 @@
 	};
 
 	slim_qca: slim@17240000 {
-		status = "ok";
 		cell-index = <3>;
+		status = "disabled";
 		compatible = "qcom,slim-ngd";
 		reg = <0x17240000 0x2C000>,
 			<0x17204000 0x26000>;
