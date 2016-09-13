@@ -4039,7 +4039,7 @@ static struct cftype files[] = {
 	{
 		.name = CGROUP_FILE_GENERIC_PREFIX "event_control",
 		.write_string = cgroup_write_event_control,
-		.mode = S_IWUGO,
+		.mode = S_IWUSR | S_IWGRP,
 	},
 	{
 		.name = "cgroup.clone_children",
