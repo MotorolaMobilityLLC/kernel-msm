@@ -201,6 +201,7 @@ config SND_SOC_MSM8X16
         select DTS_EAGLE
 	select SND_SOC_MARLEY if MFD_MARLEY
 	select SND_SOC_CS35L34
+	select SND_SOC_CS35L35
 	select SND_SOC_OPALUM if SND_SOC_MARLEY
 	help
 	 To add support for SoC audio on MSM8996.
