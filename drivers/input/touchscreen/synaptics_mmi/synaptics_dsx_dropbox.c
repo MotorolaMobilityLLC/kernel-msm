@@ -16,6 +16,8 @@
 
 #define DROPBOX_TOUCH_ISSUE "touch_issue"
 
+static DEFINE_RATELIMIT_STATE(synaptics_dropbox_global_rl, 3600 * HZ, 1);
+
 void synaptics_dropbox_report_event(char *msg, int count)
 {
 	char dropbox_entry[256];
@@ -28,9 +30,10 @@ void synaptics_dropbox_report_event(char *msg, int count)
 				dropbox_entry, strlen(dropbox_entry));
 }
 
-void synaptics_dropbox_report_event_ratelimit(char *msg, int count,
-					struct ratelimit_state *rs)
+void synaptics_dropbox_report_event_ratelimit(char *msg, int count)
 {
+	struct ratelimit_state *rs = &synaptics_dropbox_global_rl;
+
 	if (!__ratelimit(rs))
 		return;
 	synaptics_dropbox_report_event(msg, count);
