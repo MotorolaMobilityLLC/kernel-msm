@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,6 +18,7 @@
 
 #define QSEECOM_KEY_ID_SIZE   32
 
+#define QSEOS_RESULT_FAIL_SEND_CMD_NO_THREAD  -19   /*0xFFFFFFED*/
 #define QSEOS_RESULT_FAIL_UNSUPPORTED_CE_PIPE -63
 #define QSEOS_RESULT_FAIL_KS_OP               -64
 #define QSEOS_RESULT_FAIL_KEY_ID_EXISTS       -65
@@ -75,6 +76,9 @@ enum qseecom_qceos_cmd_id {
 	QSEOS_FSM_IKE_CMD_SIGN = 0x200,
 	QSEOS_FSM_IKE_CMD_PROV_KEY = 0x201,
 	QSEOS_FSM_IKE_CMD_ENCRYPT_PRIVATE_KEY = 0x202,
+	QSEOS_CLIENT_SEND_DATA_COMMAND_WHITELIST = 0x1C,
+	QSEOS_TEE_OPEN_SESSION_WHITELIST = 0x1D,
+	QSEOS_TEE_INVOKE_COMMAND_WHITELIST = 0x1E,
 	QSEOS_FSM_OEM_FUSE_WRITE_ROW = 0x301,
 	QSEOS_FSM_OEM_FUSE_READ_ROW = 0x302,
 	QSEOS_CMD_MAX     = 0xEFFFFFFF
@@ -176,6 +180,8 @@ __packed struct qseecom_client_send_data_ireq {
 	uint32_t req_len;
 	uint32_t rsp_ptr;/* First 4 bytes should be the return status */
 	uint32_t rsp_len;
+	uint32_t sglistinfo_ptr;
+	uint32_t sglistinfo_len;
 };
 
 __packed struct qseecom_client_send_data_64bit_ireq {
@@ -185,6 +191,8 @@ __packed struct qseecom_client_send_data_64bit_ireq {
 	uint32_t req_len;
 	uint64_t rsp_ptr;
 	uint32_t rsp_len;
+	uint64_t sglistinfo_ptr;
+	uint32_t sglistinfo_len;
 };
 
 __packed struct qseecom_reg_log_buf_ireq {
@@ -287,6 +295,8 @@ __packed struct qseecom_qteec_ireq {
 	uint32_t    req_len;
 	uint32_t    resp_ptr;
 	uint32_t    resp_len;
+	uint32_t    sglistinfo_ptr;
+	uint32_t    sglistinfo_len;
 };
 
 __packed struct qseecom_qteec_64bit_ireq {
@@ -296,6 +306,8 @@ __packed struct qseecom_qteec_64bit_ireq {
 	uint32_t    req_len;
 	uint64_t    resp_ptr;
 	uint32_t    resp_len;
+	uint64_t    sglistinfo_ptr;
+	uint32_t    sglistinfo_len;
 };
 
 __packed struct qseecom_client_send_fsm_key_req {
@@ -640,5 +652,38 @@ __packed struct qseecom_client_send_fsm_key_req {
 
 #define TZ_OS_CONTINUE_BLOCKED_REQUEST_ID_PARAM_ID \
 	TZ_SYSCALL_CREATE_PARAM_ID_1(TZ_SYSCALL_PARAM_TYPE_VAL)
+
+#define TZ_APP_QSAPP_SEND_DATA_WITH_WHITELIST_ID \
+	TZ_SYSCALL_CREATE_SMC_ID(TZ_OWNER_TZ_APPS, \
+	TZ_SVC_APP_ID_PLACEHOLDER, 0x06)
+
+#define TZ_APP_QSAPP_SEND_DATA_WITH_WHITELIST_ID_PARAM_ID \
+	TZ_SYSCALL_CREATE_PARAM_ID_7( \
+	TZ_SYSCALL_PARAM_TYPE_VAL, TZ_SYSCALL_PARAM_TYPE_BUF_RW, \
+	TZ_SYSCALL_PARAM_TYPE_VAL, TZ_SYSCALL_PARAM_TYPE_BUF_RW, \
+	TZ_SYSCALL_PARAM_TYPE_VAL, TZ_SYSCALL_PARAM_TYPE_BUF_RW, \
+	TZ_SYSCALL_PARAM_TYPE_VAL)
+
+#define TZ_APP_GPAPP_OPEN_SESSION_WITH_WHITELIST_ID			\
+	TZ_SYSCALL_CREATE_SMC_ID(TZ_OWNER_TZ_APPS,			\
+	TZ_SVC_APP_ID_PLACEHOLDER, 0x07)
+
+#define TZ_APP_GPAPP_OPEN_SESSION_WITH_WHITELIST_ID_PARAM_ID		\
+	TZ_SYSCALL_CREATE_PARAM_ID_7(					\
+	TZ_SYSCALL_PARAM_TYPE_VAL, TZ_SYSCALL_PARAM_TYPE_BUF_RW,	\
+	TZ_SYSCALL_PARAM_TYPE_VAL, TZ_SYSCALL_PARAM_TYPE_BUF_RW,	\
+	TZ_SYSCALL_PARAM_TYPE_VAL, TZ_SYSCALL_PARAM_TYPE_BUF_RW,	\
+	TZ_SYSCALL_PARAM_TYPE_VAL)
+
+#define TZ_APP_GPAPP_INVOKE_COMMAND_WITH_WHITELIST_ID			\
+	TZ_SYSCALL_CREATE_SMC_ID(TZ_OWNER_TZ_APPS,			\
+	TZ_SVC_APP_ID_PLACEHOLDER, 0x09)
+
+#define TZ_APP_GPAPP_INVOKE_COMMAND_WITH_WHITELIST_ID_PARAM_ID		\
+	TZ_SYSCALL_CREATE_PARAM_ID_7(					\
+	TZ_SYSCALL_PARAM_TYPE_VAL, TZ_SYSCALL_PARAM_TYPE_BUF_RW,	\
+	TZ_SYSCALL_PARAM_TYPE_VAL, TZ_SYSCALL_PARAM_TYPE_BUF_RW,	\
+	TZ_SYSCALL_PARAM_TYPE_VAL, TZ_SYSCALL_PARAM_TYPE_BUF_RW,	\
+	TZ_SYSCALL_PARAM_TYPE_VAL)
 
 #endif /* __QSEECOMI_H_ */
