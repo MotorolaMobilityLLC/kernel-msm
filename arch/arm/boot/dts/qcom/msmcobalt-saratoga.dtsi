@@ -61,6 +61,7 @@
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 	qcom,platform-reset-gpio = <&tlmm 8 0>;
 	qcom,platform-te-gpio = <&tlmm 10 0>;
+	qcom,display-id = "primary";
 
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vci_disp-supply = <&pmcobalt_l19>;
