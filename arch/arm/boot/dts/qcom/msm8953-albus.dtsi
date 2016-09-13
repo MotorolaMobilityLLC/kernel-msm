@@ -67,11 +67,11 @@
 			status = "ok";
 			reg = <0x72>;
 			interrupt-parent = <&tlmm>;
-			interrupts = <44 0>;  /*cbl-det-gpio is interrupt pin*/
-			analogix,reset-gpio = <&tlmm 139 0x00>;
+			interrupts = <9 0>;  /*cbl-det-gpio is interrupt pin*/
+			analogix,reset-gpio = <&tlmm 128 0x00>;
 			analogix,irq-gpio = <&tlmm 73 0x00>;
 			analogix,p-dwn-gpio = <&tlmm 50 0x0>;
-			analogix,cbl-det-gpio = <&tlmm 44 0x0>;
+			analogix,cbl-det-gpio = <&tlmm 9 0x0>;
 			analogix,i2c-pull-up = <1>;
 			vdd-1p0-supply = <&pm8953_l2>;
 			avdd-3p3-supply = <&pm8953_l6>;
