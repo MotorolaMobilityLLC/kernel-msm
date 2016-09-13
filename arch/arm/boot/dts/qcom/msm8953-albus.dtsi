@@ -101,6 +101,16 @@
 		status = "disabled";
 	};
 
+	spi_8: spi@7af8000 { /* BLSP2 QUP3 */
+		status = "ok";
+		fpc_fpc1020@0{
+			status = "ok";
+			interrupts = <86 0x0>;
+			fpc,gpio_irq = <&tlmm 86 0>;
+			fpc,gpio_rst = <&tlmm 8 0>;
+		};
+	};
+
 	/delete-node/ hdmi_dba;
 	hdmi_dba: qcom,msm-hdmi-dba-codec-rx {
 		compatible = "qcom,msm-hdmi-dba-codec-rx";
