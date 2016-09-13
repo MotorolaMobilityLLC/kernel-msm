@@ -85,6 +85,8 @@
 					&anx_chip_pd_suspend &anx_cbl_det_active
 					&anx_irq_active>;
 		};
+
+		/delete-node/ pnxxx@28;
 	};
 
 	/delete-node/ hdmi_dba;
