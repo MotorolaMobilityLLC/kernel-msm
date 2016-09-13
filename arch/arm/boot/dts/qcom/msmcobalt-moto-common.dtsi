@@ -571,3 +571,63 @@
 		mmi,intf-id = /bits/ 8 <3>;
 	};
 };
+
+/* Direct Copy of SPI6 from msmcobalt-blsp.dtsi */
+&apba_spi {
+	compatible = "qcom,spi-qup-v2";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg-names = "spi_physical", "spi_bam_physical";
+	reg = <0xC17A000 0x600>,
+	      <0xC144000 0x25000>;
+	interrupt-names = "spi_irq", "spi_bam_irq";
+	interrupts = <0 100 0>, <0 238 0>;
+	spi-max-frequency = <50000000>;
+	qcom,use-bam;
+	qcom,ver-reg-exists;
+	qcom,bam-consumer-pipe-index = <16>;
+	qcom,bam-producer-pipe-index = <17>;
+	qcom,master-id = <86>;
+	qcom,use-pinctrl;
+	pinctrl-names = "spi_default", "spi_sleep";
+	pinctrl-0 = <&spi_6_active>;
+	pinctrl-1 = <&spi_6_sleep>;
+	clock-names = "iface_clk", "core_clk";
+	clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+		 <&clock_gcc clk_gcc_blsp1_qup6_spi_apps_clk>;
+	status = "disabled";
+};
+
+/* Overrides of the default SPI configuration for APBA usage */
+&apba_spi {
+	compatible = "qcom,spi-qup-v2", "moto,apba-spi-transfer";
+	status = "okay";
+
+	spi-max-frequency = <4800000>;
+
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+	/delete-property/ pinctrl-names;
+	/delete-property/ qcom,use-pinctrl;
+
+	apba_flash: m25p80@0 {
+		compatible = "w25q40ew";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0>;
+		spi-max-frequency = <4800000>;
+
+		partition@0 {
+			label = "apba";
+			reg = <0x0 0x40000>;
+		};
+		partition@1 {
+			label = "es2_apbaboot";
+			reg = <0x0 0x4000>;
+		};
+		partition@2 {
+			label = "es2_apba";
+			reg = <0x4000 0x3C000>;
+		};
+	};
+};
