@@ -108,4 +108,29 @@
 			drive-strength = <2>;
 		};
 	};
+
+	anx_rst_active {
+		mux {
+			pins = "gpio128";
+		};
+		config {
+			pins = "gpio128";
+		};
+	};
+	anx_rst_suspend {
+		mux {
+			pins = "gpio128";
+		};
+		config {
+			pins = "gpio128";
+		};
+	};
+	anx_cbl_det_active {
+		mux {
+			pins = "gpio9";
+		};
+		config {
+			pins = "gpio9";
+		};
+	};
 };
