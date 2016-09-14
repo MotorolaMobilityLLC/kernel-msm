@@ -3624,6 +3624,7 @@ static int otg_power_get_property_usb(struct power_supply *psy,
 		val->intval = motg->typec_current_max;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_CHG_PRESENT:
 		val->intval = !!test_bit(B_SESS_VLD, &motg->inputs);
 		break;
 	case POWER_SUPPLY_PROP_DP_DM:
@@ -3674,6 +3675,7 @@ static int otg_power_set_property_usb(struct power_supply *psy,
 		break;
 	/* Process PMIC notification in PRESENT prop */
 	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_CHG_PRESENT:
 		msm_otg_set_vbus_state(val->intval);
 		break;
 	/* The ONLINE property reflects if usb has enumerated */
@@ -3800,6 +3802,7 @@ static int otg_power_property_is_writeable_usb(struct power_supply *psy,
 	switch (psp) {
 	case POWER_SUPPLY_PROP_HEALTH:
 	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_CHG_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
@@ -3832,6 +3835,7 @@ static enum power_supply_property otg_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_DP_DM,
 	POWER_SUPPLY_PROP_USB_OTG,
 	POWER_SUPPLY_PROP_REAL_TYPE,
+	POWER_SUPPLY_PROP_CHG_PRESENT,
 };
 
 const struct file_operations msm_otg_bus_fops = {
