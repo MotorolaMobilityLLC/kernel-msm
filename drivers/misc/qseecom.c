@@ -3089,11 +3089,13 @@ static int __qseecom_send_cmd(struct qseecom_dev_handle *data,
 		send_data_req.rsp_ptr = (uint32_t)(__qseecom_uvirt_to_kphys(
 					data, (uintptr_t)req->resp_buf));
 		send_data_req.rsp_len = req->resp_len;
-		send_data_req.sglistinfo_ptr =
+		if (qseecom.whitelist_support) {
+			send_data_req.sglistinfo_ptr =
 				(uint32_t)virt_to_phys(table);
-		send_data_req.sglistinfo_len = SGLISTINFO_TABLE_SIZE;
-		dmac_flush_range((void *)table,
+			send_data_req.sglistinfo_len = SGLISTINFO_TABLE_SIZE;
+			dmac_flush_range((void *)table,
 				(void *)table + SGLISTINFO_TABLE_SIZE);
+		}
 		cmd_buf = (void *)&send_data_req;
 		cmd_len = sizeof(struct qseecom_client_send_data_ireq);
 	} else {
@@ -3118,11 +3120,14 @@ static int __qseecom_send_cmd(struct qseecom_dev_handle *data,
 				send_data_req_64bit.rsp_len);
 			return -EFAULT;
 		}
-		send_data_req_64bit.sglistinfo_ptr =
+		if (qseecom.whitelist_support) {
+			send_data_req_64bit.sglistinfo_ptr =
 				(uint64_t)virt_to_phys(table);
-		send_data_req_64bit.sglistinfo_len = SGLISTINFO_TABLE_SIZE;
-		dmac_flush_range((void *)table,
+			send_data_req_64bit.sglistinfo_len =
+				SGLISTINFO_TABLE_SIZE;
+			dmac_flush_range((void *)table,
 				(void *)table + SGLISTINFO_TABLE_SIZE);
+		}
 		cmd_buf = (void *)&send_data_req_64bit;
 		cmd_len = sizeof(struct qseecom_client_send_data_64bit_ireq);
 	}
