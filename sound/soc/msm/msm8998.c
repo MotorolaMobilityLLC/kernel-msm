@@ -86,6 +86,11 @@
 
 #define MSM_HIFI_ON 1
 
+#define CS47L35_SLIM_RX_MAX	6
+#define CS47L35_SLIM_TX_MAX	6
+
+#define CS35L35_MCLK_RATE	12288000
+
 enum {
 	SLIM_RX_0 = 0,
 	SLIM_RX_1,
@@ -3921,7 +3926,6 @@ err_ch_map:
 	return ret;
 }
 
-#ifndef CONFIG_SND_SOC_MARLEY
 static int msm_snd_cpe_hw_params(struct snd_pcm_substream *substream,
 				 struct snd_pcm_hw_params *params)
 {
@@ -3966,7 +3970,6 @@ err_ch_map:
 err_stream_type:
 	return ret;
 }
-#endif
 
 static int msm_slimbus_2_hw_params(struct snd_pcm_substream *substream,
 					  struct snd_pcm_hw_params *params)
@@ -4798,11 +4801,9 @@ static struct snd_soc_ops msm_be_ops = {
 	.hw_params = msm_snd_hw_params,
 };
 
-#ifndef CONFIG_SND_SOC_MARLEY
 static struct snd_soc_ops msm_cpe_ops = {
 	.hw_params = msm_snd_cpe_hw_params,
 };
-#endif
 
 static struct snd_soc_ops msm_slimbus_2_be_ops = {
 	.hw_params = msm_slimbus_2_hw_params,
@@ -5430,7 +5431,6 @@ static struct snd_soc_dai_link msm_cs47l35_fe_dai_links[] = {
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm_slimbus_2_be_ops,
 	},
-#ifndef CONFIG_SND_SOC_MARLEY
 	/* CPE LSM direct dai-link */
 	{
 		.name = "CPE Listen service",
@@ -5442,11 +5442,10 @@ static struct snd_soc_dai_link msm_cs47l35_fe_dai_links[] = {
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
-		.codec_dai_name = "tasha_mad1",
-		.codec_name = "tasha_codec",
+		.codec_dai_name = "cs47l35-slim1",
+		.codec_name = "cs47l35-codec",
 		.ops = &msm_cpe_ops,
 	},
-#endif
 	{
 		.name = "SLIMBUS_6 Hostless Playback",
 		.stream_name = "SLIMBUS_6 Hostless",
@@ -5903,6 +5902,11 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 	int ret;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	unsigned int rx_ch[CS47L35_SLIM_RX_MAX] = {144, 145, 146, 147, 148,
+							149};
+	unsigned int tx_ch[CS47L35_SLIM_TX_MAX] = {128, 129, 130, 131, 132,
+							133};
 
 	ret = snd_soc_codec_set_pll(codec, MADERA_FLL1_REFCLK,
 			MADERA_FLL_SRC_NONE,
@@ -5933,6 +5937,14 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 			SND_SOC_CLOCK_IN);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set DSPCLK %d\n", ret);
+		return ret;
+	}
+
+	ret = snd_soc_codec_set_sysclk(codec, MADERA_CLK_OPCLK,
+			0, CS35L35_MCLK_RATE,
+			SND_SOC_CLOCK_OUT);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set OPCLK %d\n", ret);
 		return ret;
 	}
 
@@ -5988,6 +6000,14 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to add kcontrols %d\n", ret);
 		return ret;
 	}
+
+	ret = snd_soc_dai_set_channel_map(codec_dai, ARRAY_SIZE(tx_ch),
+		tx_ch, ARRAY_SIZE(rx_ch), rx_ch);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to setup slimbus ports %d\n", ret);
+		return ret;
+	}
+
 #ifdef CONFIG_SND_SOC_OPALUM
 	ret = ospl2xx_init(rtd);
 	if (ret != 0)
@@ -7549,11 +7569,13 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	if (!strcmp(match->data, "cs47l35-codec"))
+	if (!strcmp(match->data, "cs47l35-codec")) {
 		mclk_freq_prop_name = "qcom,cs47l35-mclk-clk-freq";
-	else
+	} else {
 		mclk_freq_prop_name = "qcom,tavil-mclk-clk-freq";
+	}
 
+#if 0
 	ret = of_property_read_u32(pdev->dev.of_node,
 			mclk_freq_prop_name, &pdata->mclk_freq);
 	if (ret) {
@@ -7570,6 +7592,9 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err;
 	}
+
+#endif
+	spdev = pdev;
 
 	ret = msm_populate_dai_link_component_of_node(card);
 	if (ret) {
