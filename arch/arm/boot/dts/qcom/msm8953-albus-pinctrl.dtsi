@@ -15,6 +15,22 @@
 	/delete-node/ pmx_motosh_in;
 	/delete-node/ laser_active;
 	/delete-node/ laser_suspend;
+	/delete-node/ factory_default;
+
+	haptic_reset_n: haptic_reset_n {
+		mux {
+			pins = "gpio110";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio110";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
 
 	nfc_irq_default: nfc_irq_default {
 		config {
