@@ -3755,6 +3755,8 @@ const struct snd_soc_dai_ops madera_simple_dai_ops = {
 	.startup = madera_startup,
 	.hw_params = madera_hw_params_rate,
 	.set_sysclk = madera_dai_set_sysclk,
+	.set_channel_map = madera_set_channel_map,
+	.get_channel_map = madera_get_channel_map,
 };
 EXPORT_SYMBOL_GPL(madera_simple_dai_ops);
 
