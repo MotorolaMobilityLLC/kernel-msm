@@ -4587,17 +4587,12 @@ static int msm8x16_wcd_codec_enable_rx_chain(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		dev_dbg(w->codec->dev,
-			"%s: PMU:Sleeping 20ms after disabling mute\n",
-			__func__);
+		dev_dbg(w->codec->dev, "%s: [PMU]\n", __func__);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		dev_dbg(w->codec->dev,
-			"%s: PMD:Sleeping 20ms after disabling mute\n",
-			__func__);
+		dev_dbg(w->codec->dev, "%s: [PMD]\n", __func__);
 		snd_soc_update_bits(codec, w->reg,
 			    1 << w->shift, 0x00);
-		msleep(20);
 		break;
 	}
 	return 0;
