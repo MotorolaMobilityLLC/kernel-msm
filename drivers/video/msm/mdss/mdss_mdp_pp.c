@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1487,7 +1487,7 @@ void mdss_mdp_pipe_pp_clear(struct mdss_mdp_pipe *pipe)
 	struct pp_hist_col_info *hist_info;
 
 	if (!pipe) {
-		pr_err("Invalid pipe context passed, %p\n",
+		pr_err("Invalid pipe context passed, %pK\n",
 			pipe);
 		return;
 	}
@@ -2142,7 +2142,7 @@ int mdss_mdp_pp_resume(struct mdss_mdp_ctl *ctl, u32 dspp_num)
 	struct msm_fb_data_type *bl_mfd;
 
 	if (!ctl || !ctl->mdata || !ctl->mfd) {
-		pr_err("invalid input: ctl = 0x%p, mdata = 0x%p, mfd = 0x%p\n",
+		pr_err("invalid input: ctl = 0x%pK, mdata = 0x%pK, mfd = 0x%pK\n",
 			ctl, (!ctl) ? NULL : ctl->mdata,
 			(!ctl) ? NULL : ctl->mfd);
 		return -EPERM;
@@ -2378,7 +2378,7 @@ static int pp_ad_calc_bl(struct msm_fb_data_type *mfd, int bl_in, int *bl_out,
 		pr_debug("AD not supported on device.\n");
 		return ret;
 	} else if (ret || !ad) {
-		pr_err("Failed to get ad info: ret = %d, ad = 0x%p.\n",
+		pr_err("Failed to get ad info: ret = %d, ad = 0x%pK.\n",
 			ret, ad);
 		return ret;
 	}
@@ -2394,7 +2394,7 @@ static int pp_ad_calc_bl(struct msm_fb_data_type *mfd, int bl_in, int *bl_out,
 	}
 
 	if (!ad->bl_mfd->panel_info) {
-		pr_err("Invalid ad panel info: ad->bl_mfd->panel_info = 0x%p\n",
+		pr_err("Invalid ad panel info: ad->bl_mfd->panel_info = 0x%pK\n",
 			ad->bl_mfd->panel_info);
 		mutex_unlock(&ad->lock);
 		return -EINVAL;
@@ -3864,7 +3864,7 @@ static int pp_hist_enable(struct pp_hist_col_info *hist_info,
 	spin_lock_irqsave(&hist_info->hist_lock, flag);
 	if (hist_info->col_en) {
 		spin_unlock_irqrestore(&hist_info->hist_lock, flag);
-		pr_info("%s Hist collection has already been enabled %p\n",
+		pr_info("%s Hist collection has already been enabled %pK\n",
 			__func__, hist_info->base);
 		goto exit;
 	}
@@ -3993,7 +3993,7 @@ static int pp_hist_disable(struct pp_hist_col_info *hist_info)
 	spin_lock_irqsave(&hist_info->hist_lock, flag);
 	if (hist_info->col_en == false) {
 		spin_unlock_irqrestore(&hist_info->hist_lock, flag);
-		pr_debug("Histogram already disabled (%p)\n", hist_info->base);
+		pr_debug("Histogram already disabled (%pK)\n", hist_info->base);
 		ret = -EINVAL;
 		goto exit;
 	}
@@ -4112,7 +4112,7 @@ int mdss_mdp_hist_intr_req(struct mdss_intr *intr, u32 bits, bool en)
 	unsigned long flag;
 	int ret = 0;
 	if (!intr) {
-		pr_err("NULL addr passed, %p\n", intr);
+		pr_err("NULL addr passed, %pK\n", intr);
 		return -EINVAL;
 	}
 
@@ -4845,7 +4845,7 @@ static int pp_ad_invalidate_input(struct msm_fb_data_type *mfd)
 
 	ret = mdss_mdp_get_ad(mfd, &ad);
 	if (ret || !ad) {
-		pr_err("Fail to get ad: ret = %d, ad = 0x%p\n", ret, ad);
+		pr_err("Fail to get ad: ret = %d, ad = 0x%pK\n", ret, ad);
 		return -EINVAL;
 	}
 	pr_debug("AD backlight level changed (%d), trigger update to AD\n",
