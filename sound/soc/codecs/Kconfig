@@ -503,6 +503,10 @@ config SND_SOC_MADERA
 	default y if SND_SOC_CS47L35=y
 	default m if SND_SOC_CS47L35=y
 
+config SND_SOC_MADERA_SLIMBUS
+	tristate
+	depends on SLIMBUS
+
 config SND_SOC_MAX98088
        tristate
 
