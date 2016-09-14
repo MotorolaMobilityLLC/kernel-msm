@@ -16,6 +16,14 @@
 	/delete-node/ laser_active;
 	/delete-node/ laser_suspend;
 
+	nfc_irq_default: nfc_irq_default {
+		config {
+			pins = "gpio130";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
 	fps: fps {
 		rst_active: rst_active {
 			/* RESET */
