@@ -19,3 +19,11 @@
 / {
 	qcom,board-id = <0x48 0x8000>;
 };
+
+&drv2624 {
+	status = "disabled";
+};
+
+&pmi_haptic{
+	status = "ok";
+};
