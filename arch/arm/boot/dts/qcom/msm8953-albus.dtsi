@@ -89,7 +89,13 @@
 					&anx_irq_active>;
 		};
 
-		/delete-node/ pnxxx@28;
+		pnxxx: pnxxx@28 {
+			status = "disabled";
+			interrupts = <130 0>;
+			gpios = <&tlmm 130 0>, /* IRQ */
+			<&tlmm 89 0>, /* VEN */
+			<&tlmm 87 0>; /* Firmware */
+		};
 	};
 
 	i2c_4: i2c@78b8000 {
