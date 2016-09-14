@@ -96,6 +96,20 @@
 			<&tlmm 89 0>, /* VEN */
 			<&tlmm 87 0>; /* Firmware */
 		};
+
+		drv2624: drv2624@5a {
+			compatible = "ti,drv2624";
+			reg = <0x5A>;
+			ti,rated_voltage = /bits/ 8 <0x6D>; /* 2V */
+			ti,overdrive_voltage = /bits/ 8 <0x6D>; /* 2V */
+			ti,lra_freq = /bits/ 8 <0xAF>; /* 175 Hz */
+			ti,lra_drive;
+			ti,auto_cal;
+			ti,nrst-gpio = <&tlmm 110 0>;   /* EN_GPIO */
+			pinctrl-names = "default";
+			pinctrl-0 = <&haptic_reset_n>;
+		};
+
 	};
 
 	i2c_4: i2c@78b8000 {
@@ -345,4 +359,19 @@
 	regulator-min-microvolt = <2850000>;
 	regulator-max-microvolt = <2850000>;
 	qcom,init-voltage = <2850000>;
+};
+
+&pmi_haptic{
+	status = "disabled";
+};
+
+&pmi8950_charger {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ gpios;
+	/delete-property/ gpio-names;
+	gpios = <&pmi8950_gpios 2 0x0>, /* GPIOF_OUT_INIT_LOW */
+		<&pm8953_gpios 5 0x1>; /* GPIOF_IN */
+	gpio-names = "eb_vbus_en",
+		     "factory_warn";
 };
