@@ -134,6 +134,12 @@ enum CMC_ALS_REPORT_TYPE {
 	CMC_BIT_INTR_LEVEL      = 0x4,
 };
 
+enum PS_STATE_TYPE {
+	PS_UNKNOWN		= -1,
+	PS_UNCOVERED		= 0,
+	PS_COVERED		= 1,
+};
+
 struct epl_raw_data {
 	u8 raw_bytes[PACKAGE_SIZE];
 	u16 renvo;
@@ -181,6 +187,7 @@ struct epl_sensor_priv {
 	u32 dynk_thd_low;
 	u32 dynk_thd_high;
 	u32 dynk_thd_recal;
+	int ps_pre_state;
 	struct wake_lock ps_lock;
 };
 
@@ -436,27 +443,49 @@ static void epl_sensor_report_ps_status(struct epl_sensor_priv *epld)
 	if (epld->epl_sensor.ps.data.data < epld->dynk_thd_recal) {
 		LOG_DBG("recalibration triggered, recal_threshold now:%d\n",
 			epld->dynk_thd_recal);
-		epl_sensor_fast_update(epld->client);
-		epl_sensor_update_mode(epld->client);
 		epld->ps_dyn_flag = true;
 		epl_sensor_do_ps_auto_k_one(epld);
+		mutex_lock(&sensor_mutex);
+		epl_sensor_I2C_Write(epld->client, 0x1b,
+				EPL_CMP_RESET | EPL_UN_LOCK);
+		epl_sensor_I2C_Write(epld->client, 0x1b,
+				EPL_CMP_RUN | EPL_UN_LOCK);
+		mutex_unlock(&sensor_mutex);
 		return;
 	}
 #endif
 	if (epld->epl_sensor.ps.compare_low >> 3 == 1) {
+		if (epld->ps_pre_state == PS_UNCOVERED)
+			return;
 #if PS_DYN_K_ONE
 		set_psensor_intr_threshold(epld,
 			epld->dynk_thd_recal,
 			epld->dynk_thd_high);
+		mutex_lock(&sensor_mutex);
+		epl_sensor_I2C_Write(epld->client, 0x1b,
+				EPL_CMP_RESET | EPL_UN_LOCK);
+		epl_sensor_I2C_Write(epld->client, 0x1b,
+				EPL_CMP_RUN | EPL_UN_LOCK);
+		mutex_unlock(&sensor_mutex);
 #endif
 		distance = 10;
+		epld->ps_pre_state = PS_UNCOVERED;
 	} else if (epld->epl_sensor.ps.compare_low >> 3 == 0) {
+		if (epld->ps_pre_state == PS_COVERED)
+			return;
 #if PS_DYN_K_ONE
 		set_psensor_intr_threshold(epld,
 				epld->dynk_thd_low,
 				epld->dynk_thd_high);
+		mutex_lock(&sensor_mutex);
+		epl_sensor_I2C_Write(epld->client, 0x1b,
+				EPL_CMP_RESET | EPL_UN_LOCK);
+		epl_sensor_I2C_Write(epld->client, 0x1b,
+				EPL_CMP_RUN | EPL_UN_LOCK);
+		mutex_unlock(&sensor_mutex);
 #endif
 		distance = 1;
+		epld->ps_pre_state = PS_COVERED;
 	} else {
 		distance = -1;
 	}
@@ -988,6 +1017,7 @@ void epl_sensor_enable_ps(struct epl_sensor_priv *epld, int enable)
 
 	if (epld->enable_pflag != enable) {
 		epld->enable_pflag = enable;
+		epld->ps_pre_state = PS_UNKNOWN;
 		if (enable) {
 			/*wake_lock(&ps_lock);*/
 #if PS_FIRST_REPORT
