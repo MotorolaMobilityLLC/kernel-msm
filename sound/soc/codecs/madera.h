@@ -18,6 +18,8 @@
 
 #include "wm_adsp.h"
 
+#include "madera-slimbus.h"
+
 #define MADERA_FLL1_REFCLK		1
 #define MADERA_FLL2_REFCLK		2
 #define MADERA_FLL3_REFCLK		3
@@ -102,6 +104,9 @@ struct madera_voice_trigger_info {
 struct madera_dai_priv {
 	int clk;
 	struct snd_pcm_hw_constraint_list constraint;
+
+	int sample_rate;
+	int bit_width;
 };
 
 struct madera_priv {
@@ -135,6 +140,15 @@ struct madera_priv {
 
 	int (*get_sources)(unsigned int reg, const unsigned int **cur_sources,
 			   int *lim);
+
+	u32 rx_port_handle[MADERA_SLIMBUS_MAX_CHANNELS];
+	u32 tx_port_handle[MADERA_SLIMBUS_MAX_CHANNELS];
+	u16 rx_channel_handle[MADERA_SLIMBUS_MAX_CHANNELS];
+	u16 tx_channel_handle[MADERA_SLIMBUS_MAX_CHANNELS];
+	u16 rx_chan_map_slot[MADERA_SLIMBUS_MAX_CHANNELS];
+	u16 tx_chan_map_slot[MADERA_SLIMBUS_MAX_CHANNELS];
+	int rx_chan_map_num;
+	int tx_chan_map_num;
 };
 
 struct madera_fll_cfg {
@@ -525,4 +539,6 @@ extern int madera_register_notifier(struct snd_soc_codec *codec,
 				    struct notifier_block *nb);
 extern int madera_unregister_notifier(struct snd_soc_codec *codec,
 				      struct notifier_block *nb);
+
+extern const struct snd_soc_dai_ops madera_slim_dai_ops;
 #endif
