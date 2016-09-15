@@ -138,7 +138,7 @@ drv2624_set_go_bit(struct drv2624_data *ctrl, unsigned char val)
 static void
 drv2624_change_mode(struct drv2624_data *ctrl, unsigned char work_mode)
 {
-	drv2624_set_bits(ctrl, DRV2624_REG_MODE, MODE_MASK, work_mode);
+	drv2624_set_bits(ctrl, DRV2624_REG_MODE, DRV2624_MODE_MASK, work_mode);
 }
 
 static int vibrator_get_time(struct timed_output_dev *dev)
@@ -230,7 +230,7 @@ static void vibrator_work_routine(struct work_struct *work)
 		if (status & PROCESS_DONE_MASK) {
 			mode =
 			    drv2624_reg_read(ctrl,
-					     DRV2624_REG_MODE) & MODE_MASK;
+					     DRV2624_REG_MODE) & DRV2624_MODE_MASK;
 			if (mode == MODE_CALIBRATION) {
 				if ((status & DIAG_MASK) != DIAG_SUCCESS) {
 					dev_err(ctrl->dev,
@@ -450,7 +450,7 @@ drv2624_get_diag_result(struct drv2624_data *ctrl, unsigned long arg)
 
 	memset(&diagResult, 0, sizeof(struct drv2624_diag_result));
 
-	mode = drv2624_reg_read(ctrl, DRV2624_REG_MODE) & MODE_MASK;
+	mode = drv2624_reg_read(ctrl, DRV2624_REG_MODE) & DRV2624_MODE_MASK;
 	if (mode != MODE_DIAGNOSTIC) {
 		diagResult.mnFinished = -EFAULT;
 		return ret;
@@ -488,7 +488,7 @@ drv2624_get_autocal_result(struct drv2624_data *ctrl, unsigned long arg)
 
 	memset(&autocalResult, 0, sizeof(struct drv2624_autocal_result));
 
-	mode = drv2624_reg_read(ctrl, DRV2624_REG_MODE) & MODE_MASK;
+	mode = drv2624_reg_read(ctrl, DRV2624_REG_MODE) & DRV2624_MODE_MASK;
 	if (mode != MODE_CALIBRATION) {
 		autocalResult.mnFinished = -EFAULT;
 		return ret;
