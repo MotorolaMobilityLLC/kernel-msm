@@ -4243,7 +4243,7 @@ cpu_dai:
 						 "asoc-cpu-names",
 						 dai_link[i].cpu_dai_name);
 			if (index < 0) {
-				pr_err("cpu-names %s not found index = %d\n", dai_link[i].cpu_dai_name, i);
+				pr_debug("cpu-names %s not found index = %d\n", dai_link[i].cpu_dai_name, i);
 				goto codec_dai;
 			}
 			phandle = of_parse_phandle(cdev->of_node, "asoc-cpu",
