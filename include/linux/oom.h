@@ -99,4 +99,5 @@ extern void dump_tasks(const struct mem_cgroup *memcg,
 extern int sysctl_oom_dump_tasks;
 extern int sysctl_oom_kill_allocating_task;
 extern int sysctl_panic_on_oom;
+extern int sysctl_oom_count;
 #endif /* _INCLUDE_LINUX_OOM_H */
