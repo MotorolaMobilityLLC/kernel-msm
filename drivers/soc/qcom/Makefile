@@ -67,6 +67,7 @@ obj-$(CONFIG_MSM_OCMEM) += ocmem_sched.o ocmem_api.o ocmem_rdm.o ocmem_core.o
 
 obj-$(CONFIG_MSM_PERFORMANCE) += msm_performance.o
 obj-$(CONFIG_MSM_CORE_CTL_HELPER) += core_ctl_helper.o
+obj-$(CONFIG_MSM_CORE_CTL) += core_ctl.o
 
 ifdef CONFIG_MSM_SUBSYSTEM_RESTART
        obj-y += subsystem_notif.o
