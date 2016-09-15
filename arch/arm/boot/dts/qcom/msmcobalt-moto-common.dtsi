@@ -15,6 +15,11 @@
 #include "msmcobalt-moto-pinctrl.dtsi"
 #include "msmcobalt-mdss.dtsi"
 
+/ {
+	aliases {
+		uart5 = &blsp2_uart2_hs;
+	};
+};
 
 &i2c_5 {
 		/delete-node/ synaptics@20;
@@ -350,7 +355,7 @@
 };
 
 &uartblsp2dm1 {
-	status = "ok";
+	status = "disabled"; /* Conflicts with APBA UART */
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart_console_active>;
 };
@@ -517,6 +522,17 @@
 			apba_spi: spi@c17a000 { };
 		};
 	};
+
+	mod_uart {
+		compatible = "mmi,mod-uart";
+		mmi,tty = "ttyHS5";
+		mmi,tty_speed = <115200>;
+		mmi,intf-id = /bits/ 8 <5>;
+
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&blsp2_uart5_sleep>;
+		pinctrl-1 = <&blsp2_uart5_active>;
+	};
 };
 
 /* Direct Copy of SPI1 from msmcobalt-blsp.dtsi */
@@ -630,4 +646,22 @@
 			reg = <0x4000 0x3C000>;
 		};
 	};
+};
+
+&blsp2_uart2_hs { /* APBA UART */
+	status = "okay";
+
+	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 0 114 0
+		    1 &intc 0 0 239 0
+		    2 &tlmm 59 0>;
+
+	/delete-property/ qcom,inject-rx-on-wakeup;
+	/delete-property/ qcom,rx-char-to-inject;
+
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+
+	qcom,shared;
 };
