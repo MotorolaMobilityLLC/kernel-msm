@@ -55,7 +55,7 @@
 #define	DRV2624_REG_DIAG_Z			0x03
 
 #define	DRV2624_REG_MODE			0x07
-#define	MODE_MASK				0x03
+#define	DRV2624_MODE_MASK				0x03
 #define	MODE_RTP					0x00
 #define	MODE_WAVEFORM_SEQUENCER		0x01
 #define	MODE_DIAGNOSTIC				0x02
