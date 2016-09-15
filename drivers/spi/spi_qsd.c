@@ -2581,22 +2581,23 @@ skip_dma_resources:
 	pm_runtime_enable(&pdev->dev);
 
 	dd->suspended = 1;
-	rc = spi_register_master(master);
-	if (rc)
-		goto err_probe_reg_master;
-
 	rc = sysfs_create_group(&(dd->dev->kobj), &dev_attr_grp);
 	if (rc) {
 		dev_err(&pdev->dev, "failed to create dev. attrs : %d\n", rc);
 		goto err_attrs;
 	}
+
+	rc = spi_register_master(master);
+	if (rc)
+		goto err_probe_reg_master;
+
 	spi_debugfs_init(dd);
 
 	return 0;
 
-err_attrs:
-	spi_unregister_master(master);
 err_probe_reg_master:
+	sysfs_remove_group(&pdev->dev.kobj, &dev_attr_grp);
+err_attrs:
 	pm_runtime_disable(&pdev->dev);
 err_probe_reqmem:
 err_probe_res:
@@ -2752,7 +2753,6 @@ static int msm_spi_remove(struct platform_device *pdev)
 	msm_spi_clk_path_teardown(dd);
 	platform_set_drvdata(pdev, 0);
 	spi_unregister_master(master);
-	spi_master_put(master);
 
 	return 0;
 }
