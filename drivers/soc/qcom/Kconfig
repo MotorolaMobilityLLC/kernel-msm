@@ -640,13 +640,21 @@ config MSM_TEST_PACMAN
 	  Low Speed Peripheral (BLSP) ownership transfer from one subsystem
 	  to another.
 
-config MSM_CORE_CTL_HELPER
-	tristate "Core control helper functions for dynamically hotplug CPUs"
+config MSM_CORE_CTL
+	tristate "Core control driver for dynamically hotplug CPUs"
 	help
-	  Provide helper functions for core control driver. Core control
-	  driver dynamically hotplugs CPUs from kernel based on current
-	  system load and state. It also supports limiting min and
-	  max online CPUs from userspace.
+	  Core control driver dynamically hotplugs CPUs from kernel based
+	  on current system load and number of tasks. It also supports
+	  limiting min and max online CPUs from userspace. It hooks into
+	  cpufreq notifiers for getting the load of CPUs and scheduler
+	  for getting the running average of the number of tasks in the
+	  system.
+
+config MSM_CORE_CTL_HELPER
+	bool "Core control helper functions for dynamically hotplug CPUs"
+	select MSM_CORE_CTL
+	help
+	  Provide helper functions for core control driver.
 
 config MSM_PERFORMANCE
 	tristate "Core control driver to support userspace hotplug requests"
