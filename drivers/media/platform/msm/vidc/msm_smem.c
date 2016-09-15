@@ -329,6 +329,11 @@ bool msm_smem_compare_buffers(void *clt, int fd, void *priv) {
 	struct smem_client *client = clt;
 	struct ion_handle *handle = NULL;
 	bool ret = false;
+
+	if (!clt || !priv) {
+		dprintk(VIDC_ERR, "Invalid params: %p, %p\n",clt, priv);
+		return false;
+	}
 	handle = ion_import_dma_buf(client->clnt, fd);
 	ret = handle == priv;
 	handle ? ion_free(client->clnt, handle) : 0;
