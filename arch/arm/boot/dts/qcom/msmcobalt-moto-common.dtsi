@@ -162,6 +162,17 @@
 		status = "okay";
 	};
 
+	gpio@cc00 { /* PM8998_GPIO13 DIV_CLK1 */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <2>;      /* QPNP_PIN_LV_MV_SEL_FUNC_1 */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,pull = <5>;	 /* QPNP_PIN_PULL_NO */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
 	gpio@ce00 { /* PM8998_GPIO15 FOCUS_XSHUT */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
@@ -193,6 +204,17 @@
 		qcom,invert = <0>;	 /* Invert */
 		qcom,master-en = <1>;
 		status = "ok";
+	};
+
+	gpio@cf00 { /* PM8998_GPIO16 SLEEP_CLK4 */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <2>;      /* QPNP_PIN_LV_MV_SEL_FUNC_1 */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,pull = <5>;	 /* QPNP_PIN_PULL_NO */
+		qcom,master-en = <1>;
+		status = "okay";
 	};
 
 };
