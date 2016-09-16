@@ -681,9 +681,10 @@ static char const *ospl2xx_rx_int_config_index[] = {
 	"opalum.rx.int.config.0",
 	"opalum.rx.int.config.1",
 	"opalum.rx.int.config.2",
+	"opalum.rx.int.config.3",
 };
 static const struct soc_enum ospl2xx_rx_int_config_enum[] = {
-	SOC_ENUM_SINGLE_EXT(3, ospl2xx_rx_int_config_index),
+	SOC_ENUM_SINGLE_EXT(NUM_RX_CONFIGS, ospl2xx_rx_int_config_index),
 };
 
 /* PARAM_ID_OPALUM_RX_RUN_CALIBRATION */
@@ -1011,9 +1012,10 @@ static char const *ospl2xx_tx_int_config_index[] = {
 	"opalum.tx.int.config.0",
 	"opalum.tx.int.config.1",
 	"opalum.tx.int.config.2",
+	"opalum.tx.int.config.3",
 };
 static const struct soc_enum ospl2xx_tx_int_config_enum[] = {
-	SOC_ENUM_SINGLE_EXT(3, ospl2xx_tx_int_config_index),
+	SOC_ENUM_SINGLE_EXT(NUM_TX_CONFIGS, ospl2xx_tx_int_config_index),
 };
 
 /* PARAM_ID_OPALUM_TX_SET_EXTERNAL_CONFIG */
