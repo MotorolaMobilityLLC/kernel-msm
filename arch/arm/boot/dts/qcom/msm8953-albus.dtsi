@@ -172,6 +172,9 @@
 	};
 
 	hd3ss460 {
+		gpios = <&pm8953_gpios 7 0>, /* USB_SS_MOD_EN, output-low */
+			<&tlmm 139 0>,       /* USB_SS_SW_SEL, output-low */
+			<&pm8953_gpios 8 0>; /* USB_SS_MOD_MPHY_AP_EN, output-low */
 		vdd-hd3ss460-supply = <&pm8953_l22>;
 		vdd-voltage-level = <2850000 2850000>;
 	};
