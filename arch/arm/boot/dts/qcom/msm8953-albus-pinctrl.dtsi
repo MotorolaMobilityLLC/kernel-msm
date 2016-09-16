@@ -157,4 +157,29 @@
 			pins = "gpio9";
 		};
 	};
+	hd3ss460_amsel {
+		hd3ss460_amsel_default: default {
+			mux {
+				pins = "gpio139";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio139";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+				output-low;
+			};
+		};
+		hd3ss460_amsel_active: active {
+			mux {
+				pins = "gpio139";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio139";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+			};
+		};
+	};
 };
