@@ -355,7 +355,7 @@
 };
 
 &uartblsp2dm1 {
-	status = "disabled"; /* Conflicts with APBA UART */
+	status = "ok";
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart_console_active>;
 };
@@ -649,7 +649,7 @@
 };
 
 &blsp2_uart2_hs { /* APBA UART */
-	status = "okay";
+	status = "disable"; /* Disabled while shared with console */
 
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 0 114 0
