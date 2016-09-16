@@ -1659,6 +1659,12 @@ static int dc_ilim_ma_table_8996[] = {
 	2200,
 	2300,
 	2400,
+	2500,
+	2600,
+	2700,
+	2800,
+	2900,
+	3000
 };
 
 static const int fcc_comp_table_8994[] = {
@@ -4770,7 +4776,14 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 	};
 
 	if (!is_usb_present(chip)) {
-		if (is_wls_present(chip) || is_usbeb_present(chip))
+		if (is_usbeb_present(chip)) {
+			 if (chip->cl_ebsrc >= TURBO_CHRG_THRSH)
+				 chip->charger_rate =
+					 POWER_SUPPLY_CHARGE_RATE_TURBO;
+			 else
+				 chip->charger_rate =
+					 POWER_SUPPLY_CHARGE_RATE_NORMAL;
+		} else if (is_wls_present(chip))
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
 		else
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
