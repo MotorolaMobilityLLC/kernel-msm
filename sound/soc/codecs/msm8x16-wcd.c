@@ -1443,6 +1443,9 @@ static void msm8x16_wcd_boost_on(struct snd_soc_codec *codec)
 			0x40, 0x40);
 		usleep_range(500, 510);
 	}
+
+	if (msm8x16_wcd->boost_pdm_clk)
+		snd_soc_write(codec, MSM8X16_WCD_A_ANALOG_BOOST_TEST_2, 0x4);
 }
 
 static void msm8x16_wcd_boost_off(struct snd_soc_codec *codec)
@@ -1683,6 +1686,12 @@ static void msm8x16_wcd_dt_parse_boost_info(struct snd_soc_codec *codec)
 		snd_soc_codec_get_drvdata(codec);
 	const char *prop_name = "qcom,cdc-boost-voltage";
 	int boost_voltage, ret;
+
+	msm8x16_wcd_priv->boost_pdm_clk =
+		of_property_read_bool(codec->dev->of_node,
+			"qcom,cdc-boost-pdm-clk");
+	dev_info(codec->dev, "Boost clk source: %s\n",
+		msm8x16_wcd_priv->boost_pdm_clk ? "pdm_clk" : "default");
 
 	ret = of_property_read_u32(codec->dev->of_node, prop_name,
 			&boost_voltage);
