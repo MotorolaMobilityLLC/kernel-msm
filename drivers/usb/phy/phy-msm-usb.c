@@ -72,6 +72,9 @@
 
 #define USB_SUSPEND_DELAY_TIME	(500 * HZ/1000) /* 500 msec */
 
+#define ID_GND_THRESH           300000  /* 300 mV */
+#define ID_VOLTS_DEFAULT        1000000  /* 1000 mV */
+
 #define USB_DEFAULT_SYSTEM_CLOCK 80000000	/* 80 MHz */
 
 #define PM_QOS_SAMPLE_SEC	2
@@ -3193,6 +3196,33 @@ static int msm_otg_enable_ext_id(struct msm_otg *motg, int enable)
 	return 0;
 }
 
+static int msm_otg_get_ext_id_voltage(struct msm_otg *motg)
+{
+	int rc = 0;
+	int volts = ID_VOLTS_DEFAULT;
+	struct qpnp_vadc_result results;
+
+	if (IS_ERR_OR_NULL(motg->vadc_dev)) {
+		motg->vadc_dev = qpnp_get_vadc(motg->phy.dev, "usbin");
+		if (IS_ERR(motg->vadc_dev)) {
+			pr_err("ext_id_voltage - qpnp_get_vadc failed\n");
+			return volts;
+		}
+	}
+
+	msm_otg_enable_ext_id(motg, 0);
+	rc = qpnp_vadc_read(motg->vadc_dev, P_MUX1_1_1, &results);
+
+	if (rc)
+		pr_err("ext_id_voltage - Unable to read channel rc=%d\n", rc);
+	else
+		volts = results.physical;
+
+	msm_otg_enable_ext_id(motg, 1);
+
+	return volts;
+}
+
 static int set_host_mode_disable(const char *val, const struct kernel_param *kp)
 {
 	int rv = param_set_bool(val, kp);
@@ -3236,8 +3266,18 @@ static void msm_id_status_w(struct work_struct *w)
 
 	if (motg->pdata->pmic_id_irq)
 		motg->id_state = msm_otg_read_pmic_id_state(motg);
-	else if (motg->ext_id_irq)
+	else if (motg->ext_id_irq) {
 		motg->id_state = gpio_get_value(motg->pdata->usb_id_gpio);
+		if (!motg->id_state) {
+			int voltage = msm_otg_get_ext_id_voltage(motg);
+
+			pr_err("ext id voltage = %d microV\n", voltage);
+			if (voltage > ID_GND_THRESH) {
+				pr_err("Spurious ID GND, Ignore\n");
+				motg->id_state = 1;
+			}
+		}
+	}
 	else if (motg->phy_irq)
 		motg->id_state = msm_otg_read_phy_id_state(motg);
 
