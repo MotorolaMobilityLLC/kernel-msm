@@ -304,6 +304,8 @@ struct msm8x16_wcd_priv {
 	/* compander used for each rx chain */
 	u32 comp_enabled[MSM8X16_WCD_RX_MAX];
 	bool spk_boost_set;
+	/* work around for potter speakr issue to use pdm clk */
+	bool boost_pdm_clk;
 	bool ear_pa_boost_set;
 	bool ext_spk_boost_set;
 	bool dec_active[NUM_DECIMATORS];
