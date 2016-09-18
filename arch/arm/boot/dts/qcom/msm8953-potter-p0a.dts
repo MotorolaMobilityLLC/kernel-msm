@@ -45,3 +45,8 @@
 &usb3 {
 	qcom,usbid-gpio = <&tlmm 66 0>;
 };
+
+&pm8953_diangu_dig {
+	qcom,cdc-boost-pdm-clk;
+};
+
