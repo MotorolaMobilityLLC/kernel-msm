@@ -836,6 +836,7 @@
 		qcom,vdd-restriction-temp-hysteresis = <10>;
 		vdd-dig-supply = <&pm8950_s2_floor_level>;
 		vdd-gfx-supply = <&gfx_vreg_corner>;
+		qcom,therm-hw-version-enable;
 
 		qcom,vdd-dig-rstr {
 			qcom,vdd-rstr-reg = "vdd-dig";
