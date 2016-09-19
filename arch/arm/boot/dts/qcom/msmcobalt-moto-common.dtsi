@@ -96,9 +96,7 @@
 	};
 
 	usb3813@2D {
-		/* Enable once the matching driver is ported */
-		/* only few base commits are present */
-		status = "disabled";
+		status = "ok";
                 compatible = "microchip,usb3813";
                 reg = <0x2D>;
                 gpios = <&pmicobalt_gpios 5 0x0>,   /* HUB_RESET_EN */
