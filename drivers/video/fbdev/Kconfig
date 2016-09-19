@@ -2341,7 +2341,7 @@ config FB_MSM
 	the display hardware and provide a way for users to display graphics
 	on connected display panels.
 
-config FB_SLIMPORT_COMMON
+config SLIMPORT_COMMON
 	tristate "Analogix Slimport transmitter ANX support"
 	---help---
 	  Slimport Transmitter is a video transmitter chip
