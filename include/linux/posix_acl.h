@@ -95,6 +95,9 @@ extern struct posix_acl *get_posix_acl(struct inode *, int);
 extern int set_posix_acl(struct inode *, int, struct posix_acl *);
 
 #ifdef CONFIG_FS_POSIX_ACL
+extern int posix_acl_update_mode(struct inode *, umode_t *,
+		struct posix_acl **);
+
 static inline struct posix_acl **acl_by_type(struct inode *inode, int type)
 {
 	switch (type) {
