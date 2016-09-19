@@ -2341,6 +2341,12 @@ config FB_MSM
 	the display hardware and provide a way for users to display graphics
 	on connected display panels.
 
+config FB_SLIMPORT_COMMON
+	tristate "Analogix Slimport transmitter ANX support"
+	---help---
+	  Slimport Transmitter is a video transmitter chip
+	  over micro-USB connector for smartphone device
+
 config FB_MX3
 	tristate "MX3 Framebuffer support"
 	depends on FB && MX3_IPU
@@ -2463,6 +2469,7 @@ source "drivers/video/fbdev/omap2/Kconfig"
 source "drivers/video/fbdev/exynos/Kconfig"
 source "drivers/video/fbdev/mmp/Kconfig"
 source "drivers/video/fbdev/msm/Kconfig"
+source "drivers/video/fbdev/slimport/Kconfig"
 
 config FB_SH_MOBILE_MERAM
 	tristate "SuperH Mobile MERAM read ahead support"
