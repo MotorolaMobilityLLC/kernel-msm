@@ -5851,7 +5851,7 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	/* configure OTG enable to cmd ctrl */
 	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_CFG,
 			OTG_EN_CTRL_MASK,
-			OTG_CMD_CTRL_RID_DIS);
+			OTG_CMD_CTRL_RID_EN);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't set OTG EN config rc = %d\n",
 			rc);
