@@ -140,6 +140,8 @@ static struct regulator *hsusb_vdd;
 static struct regulator *vbus_otg;
 static struct power_supply *psy;
 
+static int msm_otg_get_ext_id_voltage(struct msm_otg *motg);
+
 static bool ta_charger_detected;
 
 static int vdd_val[VDD_VAL_MAX];
@@ -2645,6 +2647,7 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 	struct msm_otg_platform_data *pdata = motg->pdata;
 	u32 otgsc = readl_relaxed(USB_OTGSC);
 	int ret;
+	int id_v;
 
 	switch (pdata->mode) {
 	case USB_OTG:
@@ -2678,8 +2681,16 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			} else if (motg->ext_id_irq) {
 				if (gpio_get_value(pdata->usb_id_gpio))
 					set_bit(ID, &motg->inputs);
-				else
-					clear_bit(ID, &motg->inputs);
+				else{
+					id_v = msm_otg_get_ext_id_voltage(motg);
+					pr_err("id voltage at init = %d muV\n",
+									id_v);
+					if (id_v > ID_GND_THRESH) {
+						pr_err("Spurious ID GND\n");
+						set_bit(ID, &motg->inputs);
+					} else
+						clear_bit(ID, &motg->inputs);
+				}
 			} else if (motg->phy_irq) {
 				if (msm_otg_read_phy_id_state(motg))
 					set_bit(ID, &motg->inputs);
