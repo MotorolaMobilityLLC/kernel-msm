@@ -13,15 +13,14 @@
  */
 
 #include "slimport_custom_declare.h"
-#include <linux/platform_data/slimport_device.h>
+#include <video/slimport_device.h>
 #ifdef QUICK_CHARGE_SUPPORT
 #include "quick_charge.h"
 #endif
 
-#define SLIMPORT_DRV_DEBUG
 
 #ifndef XTAL_CLK_DEF
-#define XTAL_CLK_DEF XTAL_27M
+#define XTAL_CLK_DEF XTAL_19D2M
 #endif
 
 #define XTAL_CLK_M10 pXTAL_data[XTAL_CLK_DEF].xtal_clk_m10
@@ -162,7 +161,7 @@ static void hdmi_rx_new_vsi_int(void);
 	sp_write_reg(TX_P0, TX_HDCP_CTRL0, 0x03); \
 	sp_write_reg_or(TX_P0, TX_HDCP_CTRL0, RE_AUTH); \
 	mdelay(2); \
-	pr_info("%s %s : sp_tx_clean_hdcp_status \n", LOG_TAG, __func__); \
+	pr_debug("%s %s : sp_tx_clean_hdcp_status\n", LOG_TAG, __func__); \
 	}while(0)
 #define reg_hardware_reset() do{ \
 	sp_write_reg_or(TX_P2, SP_TX_RST_CTRL_REG, HW_RST); \
@@ -191,7 +190,8 @@ unsigned char g_hdcp_cap_bak;
 
 #define sp_tx_set_sys_state(ss) \
 	do { \
-		pr_info("%s %s : set: clean_status: %x,\n ", LOG_TAG, __func__, (uint)g_need_clean_status); \
+		pr_debug("%s %s : set: clean_status: %x,\n ", \
+			LOG_TAG, __func__, (uint)g_need_clean_status); \
 		if((sp_tx_system_state >= STATE_LINK_TRAINING)&&(ss <STATE_LINK_TRAINING)) \
 			sp_write_reg_or(TX_P0, SP_TX_ANALOG_PD_REG, CH0_PD); \
 		sp_tx_system_state_bak = sp_tx_system_state; \
@@ -202,7 +202,8 @@ unsigned char g_hdcp_cap_bak;
 	
 #define goto_next_system_state() \
 	do { \
-		pr_info("%s %s : next: clean_status: %x,\n ", LOG_TAG, __func__, (uint)g_need_clean_status); \
+		pr_debug("%s %s : next: clean_status: %x,\n ", \
+			LOG_TAG, __func__, (uint)g_need_clean_status); \
 		sp_tx_system_state_bak = sp_tx_system_state; \
 		sp_tx_system_state++;\
 		print_sys_state(sp_tx_system_state); \
@@ -210,7 +211,8 @@ unsigned char g_hdcp_cap_bak;
 	
 #define redo_cur_system_state() \
 	do { \
-		pr_info("%s %s : redo: clean_status: %x,\n ", LOG_TAG, __func__, (uint)g_need_clean_status); \
+		pr_debug("%s %s : redo: clean_status: %x,\n ", \
+			LOG_TAG, __func__, (uint)g_need_clean_status); \
 		g_need_clean_status = 1; \
 		sp_tx_system_state_bak = sp_tx_system_state; \
 		print_sys_state(sp_tx_system_state); \
@@ -219,7 +221,8 @@ unsigned char g_hdcp_cap_bak;
 #define system_state_change_with_case(status) \
 	do{ \
 		if(sp_tx_system_state >= status) { \
-			pr_info("%s %s : change_case: clean_status: %xm,\n ", LOG_TAG, __func__, (uint)g_need_clean_status); \
+			pr_debug("%s %s : change_case: clean_status: %xm,\n ", \
+				LOG_TAG, __func__, (uint)g_need_clean_status); \
 			if((sp_tx_system_state >= STATE_LINK_TRAINING)&&(status <STATE_LINK_TRAINING)) \
 			sp_write_reg_or(TX_P0, SP_TX_ANALOG_PD_REG, CH0_PD); \
 			g_need_clean_status = 1; \
@@ -267,7 +270,8 @@ void wait_aux_op_finish(unchar * err_flag)
 	while (__i2c_read_byte(TX_P0, AUX_CTRL2) & AUX_OP_EN) {
 				mdelay(2);
 				if ((cnt--) == 0) {
-					pr_info("%s %s :aux operate failed!\n", LOG_TAG, __func__);
+					pr_err("%s %s :aux operate failed!\n",
+							LOG_TAG, __func__);
 					*err_flag = 1;
 					break;
 				}
@@ -759,7 +763,8 @@ static unchar sp_tx_get_cable_type(enum CABLE_TYPE_STATUS det_cable_type_state, 
 	downstream_charging_status = NO_CHARGING_CAPABLE;  // add for charging
 
 	aux_status = sp_tx_aux_dpcdread_bytes(0x00, 0x00, 0x05, 1, &ds_port_preset);
-	pr_info("%s %s : DPCD 0x005: %x \n", LOG_TAG, __func__, (int)ds_port_preset);
+	pr_debug("%s %s : DPCD 0x005: %x\n",
+			LOG_TAG, __func__, (int)ds_port_preset);
 	
 	switch(det_cable_type_state)
 	{
@@ -776,7 +781,8 @@ static unchar sp_tx_get_cable_type(enum CABLE_TYPE_STATUS det_cable_type_state, 
 			switch ((ds_port_preset  & (_BIT1 | _BIT2) ) >>1) {
 			case 0x00:
 				cur_cable_type = DWN_STRM_IS_DIGITAL;
-				pr_info("%s %s : Downstream is DP dongle.\n", LOG_TAG, __func__);
+				pr_debug("%s %s : Downstream is DP dongle.\n",
+							LOG_TAG, __func__);
 				break;
 			case 0x01:
 			case 0x03:
@@ -788,7 +794,8 @@ static unchar sp_tx_get_cable_type(enum CABLE_TYPE_STATUS det_cable_type_state, 
 					//eeprom_reload(); 
 					msleep(150);
 				}
-				pr_info("%s %s : Downstream is general DP2VGA converter.\n", LOG_TAG, __func__);					
+				pr_debug("%s %s : Downstream is general DP2VGA converter.\n",
+							LOG_TAG, __func__);
 
 				break;
 			case 0x02:
@@ -799,7 +806,8 @@ static unchar sp_tx_get_cable_type(enum CABLE_TYPE_STATUS det_cable_type_state, 
 				}
 				//sp_tx_send_message(MSG_OCM_EN);
 				cur_cable_type = DWN_STRM_IS_HDMI;
-				pr_info("%s %s : Downstream is HDMI dongle.\n", LOG_TAG, __func__);
+				pr_debug("%s %s : Downstream is HDMI dongle.\n",
+						LOG_TAG, __func__);
 				
 				break;
 			default:
@@ -1027,7 +1035,8 @@ static unchar parse_edid_to_get_bandwidth(void)
 	i = 0;
 	while (4 > i && 0 != edid_blocks[0x36+desc_offset]) {
 		temp = get_edid_detail(edid_blocks+0x36+desc_offset);
-		pr_info("%s %s : bandwidth via EDID : %x\n", LOG_TAG, __func__, (uint)temp);
+		pr_debug("%s %s : bandwidth via EDID : %x\n",
+					LOG_TAG, __func__, (uint)temp);
 		if(bandwidth < temp)
 			bandwidth = temp;
 		if(bandwidth > LINK_5P4G)  
@@ -1060,7 +1069,7 @@ unchar sp_tx_get_edid_block(void)
 	sp_tx_aux_wr(0x7e);
 	sp_tx_aux_rd(0x01);
 	sp_read_reg(TX_P0, BUF_DATA_0, &c);
-	pr_info("%s %s : EDID Block = %d\n", LOG_TAG, __func__, (int)(c + 1));
+	pr_debug("%s %s : EDID Block = %d\n", LOG_TAG, __func__, (int)(c + 1));
 
 	if (c > 3)
 		c = 1;
@@ -1637,9 +1646,9 @@ uint sp_tx_link_err_check(void)
 		errl = bytebuf[0];
 		errh = (errh & 0x7f) << 8;
 		errl = errh + errl;
+		pr_err("%s %s :  Err of Lane = %d\n", LOG_TAG, __func__, errl);
 	}
 
-	pr_err("%s %s :  Err of Lane = %d\n", LOG_TAG, __func__, errl);
 	return errl;
 }
 static void serdes_fifo_reset(void)
@@ -2997,7 +3006,8 @@ static void sp_tx_sink_irq_int_handler(void)
 							sp_tx_clean_state_machine();
 							sp_tx_set_sys_state(STATE_LINK_TRAINING);
 						}else{
-							pr_info("%s %s : Downstream HDMI is unpluged!\n", LOG_TAG, __func__);
+							pr_warn("%s %s : Downstream HDMI is unpluged!\n",
+							LOG_TAG, __func__);
 							vbus_power_ctrl(0);
 							reg_hardware_reset();
 							sp_tx_set_sys_state(STATE_SP_INITIALIZED);
@@ -3723,7 +3733,8 @@ void hdmi_rx_show_video_info(void)
     {
         v_res += v_res;
     }       
-    pr_info("%s %s : HDMI_RX Video Resolution = %d * %d ", LOG_TAG, __func__,h_res,v_res);
+	pr_debug("%s %s : HDMI_RX Video Resolution = %d * %d ",
+				LOG_TAG, __func__, h_res, v_res);
     sp_read_reg(RX_P0,HDMI_RX_VIDEO_STATUS_REG1, &c); 
     if(c & VIDEO_TYPE)
         pr_info("Interlace Video.\n");
@@ -3772,7 +3783,7 @@ void hdmi_rx_show_video_info(void)
     sp_read_reg(RX_P1,HDMI_RX_AVI_DATA00_REG, &c);  
     c &= 0x60;
     if(c == 0x20)        
-        pr_info("YCbCr4:2:2 .\n");
+	pr_info("YCbCr4:2:2 .\n");
     else if(c == 0x40)   
         pr_info("YCbCr4:4:4 .\n");
     else if(c == 0x00)   
@@ -3784,9 +3795,10 @@ void hdmi_rx_show_video_info(void)
 
     sp_read_reg(RX_P1,HDMI_RX_HDCP_STATUS_REG, &c); 
     if(c & AUTH_EN)
-        pr_info("%s %s : Authentication is attempted.\n", LOG_TAG, __func__);
+	pr_debug("%s %s : Authentication is attempted.\n", LOG_TAG, __func__);
     else
-        pr_info("%s %s : Authentication is not attempted.\n", LOG_TAG, __func__);
+	pr_debug("%s %s : Authentication is not attempted.\n",
+					LOG_TAG, __func__);
 
     for(cl=0;cl<20;cl++)
     {
@@ -3966,7 +3978,7 @@ void slimport_hdcp_repeater_reauth(void) /* A patch for HDCP repeater mode*/
 			//debug_puts("Upstream HDMI HDCP request!\n");
 			sp_read_reg(TX_P0,TX_HDCP_CTRL0, &hdcp_ctrl);
 			if ((hdcp_ctrl & HARD_AUTH_EN) == 0) {
-				pr_info("Repeater Mode: Enable HW HDCP\n");
+				pr_debug("Repeater Mode: Enable HW HDCP\n");
 				assisted_HDCP_repeater = HDCP_ERROR;
 				
 			} else {
