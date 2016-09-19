@@ -14,7 +14,9 @@
 #include "slimport.h"
 #include "slimport_tx_drv.h"
 #include "slimport_tx_reg.h"
-#include <linux/platform_data/slimport_device.h>
+#include <video/slimport_device.h>
+#include <linux/pinctrl/consumer.h>
+#include <linux/clk.h>
 #ifdef QUICK_CHARGE_SUPPORT
 #include "quick_charge.h"
 #endif
@@ -57,10 +59,18 @@ unchar val_SP_TX_LT_CTRL_REG18;
 #define TRUE 1
 #define FALSE 0
 
-/*static int slimport7816_avdd_power(unsigned int onoff);
-static int slimport7816_dvdd_power(unsigned int onoff);*/
+static int slimport7816_avdd_power(unsigned int onoff);
 
 struct i2c_client *anx7816_client;
+
+#define ANX_PINCTRL_STATE_DEFAULT "anx_default"
+#define ANX_PINCTRL_STATE_SLEEP  "anx_sleep"
+
+struct anx7816_pinctrl_res {
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *gpio_state_active;
+	struct pinctrl_state *gpio_state_suspend;
+};
 
 struct anx7816_platform_data {
 	int gpio_p_dwn;
@@ -69,11 +79,18 @@ struct anx7816_platform_data {
 	int gpio_v10_ctrl;
 	int gpio_v33_ctrl;
 	int external_ldo_control;
-	/*int (*avdd_power)(unsigned int onoff);
-	int (*dvdd_power)(unsigned int onoff);*/
-	struct regulator *avdd_10;
+	int (*avdd_power)(unsigned int onoff);
+	int (*dvdd_power)(unsigned int onoff);
+	struct regulator *avdd_33;
 	struct regulator *dvdd_10;
+	struct regulator *vdd_18;
 	spinlock_t lock;
+	struct clk *mclk;
+	struct anx7816_pinctrl_res pin_res;
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *hdmi_pinctrl_active;
+	struct pinctrl_state *hdmi_pinctrl_suspend;
+	struct platform_device *hdmi_pdev;
 };
 
 struct anx7816_data {
@@ -82,6 +99,7 @@ struct anx7816_data {
 	struct workqueue_struct *workqueue;
 	struct mutex lock;
 	struct wake_lock slimport_lock;
+	bool slimport_connected;
 };
 
 struct msm_hdmi_slimport_ops *hdmi_slimport_ops;
@@ -118,6 +136,58 @@ void slimport_set_hdmi_hpd(int on)
 }
 #endif
 
+static int anx7816_pinctrl_rst_set_state(bool active)
+{
+	struct anx7816_platform_data *pdata = g_pdata;
+	struct pinctrl_state *pin_state;
+	int rc = -EFAULT;
+
+	if (IS_ERR_OR_NULL(pdata->pin_res.pinctrl))
+		return PTR_ERR(pdata->pin_res.pinctrl);
+
+	pin_state = active ? pdata->pin_res.gpio_state_active
+				: pdata->pin_res.gpio_state_suspend;
+
+	if (!IS_ERR_OR_NULL(pin_state)) {
+		rc = pinctrl_select_state(pdata->pin_res.pinctrl, pin_state);
+		if (rc)
+			pr_err("%s %s: can not set %s pin\n", LOG_TAG, __func__,
+					active ? ANX_PINCTRL_STATE_DEFAULT
+					: ANX_PINCTRL_STATE_SLEEP);
+	} else
+		pr_err("%s %s: invalid '%s' pinstate\n", LOG_TAG, __func__,
+					active ? ANX_PINCTRL_STATE_DEFAULT
+					: ANX_PINCTRL_STATE_SLEEP);
+
+	return rc;
+}
+
+static int anx7816_pinctrl_init(struct device *dev,
+				struct anx7816_platform_data *pdata)
+{
+	pdata->pin_res.pinctrl = devm_pinctrl_get(dev);
+	if (IS_ERR_OR_NULL(pdata->pin_res.pinctrl)) {
+		pr_err("%s %s: failed to get pinctrl for reset\n",
+						LOG_TAG, __func__);
+		return PTR_ERR(pdata->pin_res.pinctrl);
+	}
+
+	pdata->pin_res.gpio_state_active
+			= pinctrl_lookup_state(pdata->pin_res.pinctrl,
+						ANX_PINCTRL_STATE_DEFAULT);
+	if (IS_ERR_OR_NULL(pdata->pin_res.gpio_state_active))
+		pr_warn("%s %s: can not get default pinstate\n",
+						LOG_TAG, __func__);
+
+	pdata->pin_res.gpio_state_suspend
+			= pinctrl_lookup_state(pdata->pin_res.pinctrl,
+						ANX_PINCTRL_STATE_SLEEP);
+	if (IS_ERR_OR_NULL(pdata->pin_res.gpio_state_suspend))
+		pr_warn("%s %s: can not get sleep pinstate\n",
+						LOG_TAG, __func__);
+
+	return 0;
+}
 
 #ifdef QUICK_CHARGE_SUPPORT
 extern struct blocking_notifier_head *get_notifier_list_head(void);
@@ -140,18 +210,17 @@ bool slimport_dongle_is_connected(void)
 	if (!pdata)
 		return false;
 
-	if (gpio_get_value(pdata->gpio_cbl_det) == DONGLE_CABLE_INSERT
-			/*gpio_get_value_cansleep(pdata->gpio_cbl_det)*/) {
-			pr_info("%s %s : Slimport Dongle is detected\n",
+	if (gpio_get_value(pdata->gpio_cbl_det) == DONGLE_CABLE_INSERT) {
+		/*gpio_get_value_cansleep(pdata->gpio_cbl_det)*/
+		pr_debug("%s %s : Slimport Dongle is detected\n",
 				LOG_TAG, __func__);
-			result = true;
-		}
+		result = true;
+	}
 
 	return result;
 }
 
-
-/*static int slimport7816_avdd_power(unsigned int onoff)
+static int slimport7816_avdd_power(unsigned int onoff)
 {
 #ifdef CONFIG_OF
 	struct anx7816_platform_data *pdata = g_pdata;
@@ -159,23 +228,50 @@ bool slimport_dongle_is_connected(void)
 	struct anx7816_platform_data *pdata = anx7816_client->dev.platform_data;
 #endif
 	int rc = 0;
-*/
-/* To do : regulator control after H/W change */
-/*	return rc;
+
 	if (onoff) {
-		pr_info("%s %s: avdd power on\n", LOG_TAG, __func__);
-		rc = regulator_enable(pdata->avdd_10);
+		pr_debug("%s %s: avdd power on\n", LOG_TAG, __func__);
+		rc = regulator_enable(pdata->avdd_33);
 		if (rc < 0) {
 			pr_err("%s %s: failed to enable avdd regulator rc=%d\n",
-			       LOG_TAG, __func__, rc);
+						LOG_TAG, __func__, rc);
+			goto err;
+		}
+
+		rc = regulator_enable(pdata->vdd_18);
+		if (rc < 0) {
+			pr_err("%s %s: failed to enable vdd_18 reg. rc=%d\n",
+						LOG_TAG, __func__, rc);
+			goto err_vdd_18;
 		}
 	} else {
-		pr_info("%s %s: avdd power off\n", LOG_TAG, __func__);
-		rc = regulator_disable(pdata->avdd_10);
+		int tmp = 0;
+
+		pr_debug("%s %s: avdd power off\n", LOG_TAG, __func__);
+
+		rc = regulator_disable(pdata->vdd_18);
+		if (rc < 0) {
+			pr_err("%s %s: failed to disable vdd_18 reg. rc=%d\n",
+						LOG_TAG, __func__, rc);
+			tmp = rc;
+		}
+
+		rc = regulator_disable(pdata->avdd_33);
+		if (rc < 0) {
+			pr_err("%s %s: failed to disable avdd reg. rc=%d\n",
+						LOG_TAG, __func__, rc);
+			tmp = rc;
+		}
+
+		rc = tmp;
 	}
 
 	return rc;
-}*/
+err_vdd_18:
+	regulator_disable(pdata->avdd_33);
+err:
+	return rc;
+}
 
 /*static int slimport7816_dvdd_power(unsigned int onoff)
 {
@@ -236,7 +332,7 @@ ssize_t sp_hdcp_feature_store(struct device *dev,
 	if (ret)
 		return ret;
 	hdcp_enable = val;
-	pr_info(" hdcp_enable = %d\n", hdcp_enable);
+	pr_debug(" hdcp_enable = %d\n", hdcp_enable);
 	return count;
 }
 
@@ -310,7 +406,7 @@ ssize_t anx7730_write_reg_store(struct device *dev,
 	switch (op) {
 	case 0x30:		/* "0" -> read */
 		i2c_master_read_reg(id, reg, &tmp);
-		pr_info("%s: anx7730 read(%d,0x%x)= 0x%x\n", LOG_TAG, id, reg,
+		pr_debug("%s: anx7730 read(%d,0x%x)= 0x%x\n", LOG_TAG, id, reg,
 			tmp);
 		break;
 
@@ -320,7 +416,7 @@ ssize_t anx7730_write_reg_store(struct device *dev,
 
 		i2c_master_write_reg(id, reg, val);
 		i2c_master_read_reg(id, reg, &tmp);
-		pr_info("%s: anx7730 write(%d,0x%x,0x%x)\n", LOG_TAG, id, reg,
+		pr_debug("%s: anx7730 write(%d,0x%x,0x%x)\n", LOG_TAG, id, reg,
 			tmp);
 		break;
 
@@ -404,7 +500,7 @@ static ssize_t anx7816_write_reg_store(struct device *dev,
 	switch (op) {
 	case 0x30:		/* "0" -> read */
 		sp_read_reg(id, reg, &tmp);
-		pr_info("%s: anx7816 read(0x%x,0x%x)= 0x%x\n", LOG_TAG, id,
+		pr_debug("%s: anx7816 read(0x%x,0x%x)= 0x%x\n", LOG_TAG, id,
 			reg, tmp);
 		break;
 
@@ -414,8 +510,8 @@ static ssize_t anx7816_write_reg_store(struct device *dev,
 
 		sp_write_reg(id, reg, val);
 		sp_read_reg(id, reg, &tmp);
-		pr_info("%s: anx7816 write(0x%x,0x%x,0x%x)\n", LOG_TAG, id, reg,
-			tmp);
+		pr_debug("%s: anx7816 write(0x%x,0x%x,0x%x)\n",
+						LOG_TAG, id, reg, tmp);
 		break;
 
 	default:
@@ -444,7 +540,7 @@ static ssize_t anx_dpcd_store(struct device *dev,
 	case 0x30:
 		/*read*/
 		sp_tx_aux_dpcdread_bytes(0, 5, reg, 1, &tmp);
-		pr_info("%s: anx7816 read(0x05,0x%x)= 0x%x\n", LOG_TAG,
+		pr_debug("%s: anx7816 read(0x05,0x%x)= 0x%x\n", LOG_TAG,
 			reg, tmp);
 		break;
 	case 0x31:
@@ -453,7 +549,7 @@ static ssize_t anx_dpcd_store(struct device *dev,
 		write_val = simple_strtoul(val, NULL, 16);
 		sp_tx_aux_dpcdwrite_bytes(0, 5, reg, 1, &write_val);
 		sp_tx_aux_dpcdread_bytes(0, 5, reg, 1, &tmp);
-		pr_info("%s: anx7816 write(0x05,0x%x,0x%x)= 0x%x\n", LOG_TAG,
+		pr_debug("%s: anx7816 write(0x05,0x%x,0x%x)= 0x%x\n", LOG_TAG,
 			reg, write_val,	tmp);
 		break;
 	}
@@ -792,49 +888,115 @@ int sp_write_reg(uint8_t slave_addr, uint8_t offset, uint8_t value)
 	return ret;
 }
 
+static int anx7816_clk_start(struct anx7816_platform_data *pdata);
+static void anx7816_clk_stop(struct anx7816_platform_data *pdata);
+
 void sp_tx_hardware_poweron(void)
 {
+	int rc = 0;
 #ifdef CONFIG_OF
 	struct anx7816_platform_data *pdata = g_pdata;
 #else
 	struct anx7816_platform_data *pdata = anx7816_client->dev.platform_data;
 #endif
 
-	gpio_set_value(pdata->gpio_reset, 0);
-	mdelay(1);
-	if (pdata->external_ldo_control) {
-		/* Enable 1.0V LDO */
-		gpio_set_value(pdata->gpio_v10_ctrl, 1);
-		mdelay(1);
+	pr_debug("%s %s: anx7816 power on\n", LOG_TAG, __func__);
+
+	rc = anx7816_pinctrl_rst_set_state(true);
+	if (rc < 0) {
+		pr_err("%s %s: fail to set_state for reset. ret=%d\n",
+						LOG_TAG, __func__, rc);
+		return;
 	}
-	gpio_set_value(pdata->gpio_p_dwn, 0);
-	mdelay(1);
-	gpio_set_value(pdata->gpio_reset, 1);
-	pr_info("%s %s: anx7816 power on\n", LOG_TAG, __func__);
+
+	if (gpio_is_valid(pdata->gpio_reset))
+		gpio_set_value(pdata->gpio_reset, 0);
+	usleep_range(1000, 1001);
+
+	if (gpio_is_valid(pdata->gpio_p_dwn))
+		gpio_set_value(pdata->gpio_p_dwn, 1);
+	usleep_range(2000, 2001);
+
+	rc = regulator_enable(pdata->dvdd_10);
+	if (rc < 0) {
+		pr_err("%s %s: failed to enable dvdd_10 regulator rc=%d\n",
+						LOG_TAG, __func__, rc);
+		goto err;
+	}
+	usleep_range(4500, 5000);
+
+	if (gpio_is_valid(pdata->gpio_p_dwn))
+		gpio_set_value(pdata->gpio_p_dwn, 0);
+	usleep_range(2000, 2001);
+
+	rc = anx7816_clk_start(pdata);
+	if (rc < 0) {
+		pr_err("%s %s: fail to start the dp_brdge_mclk. ret=%d\n",
+						LOG_TAG, __func__, rc);
+		goto err_vdd_10;
+	}
+	usleep_range(9000, 10000);
+
+/* pdata->check_slimport_connection = true; TODO.. where does this go? */
+
+	if (gpio_is_valid(pdata->gpio_reset))
+		gpio_set_value(pdata->gpio_reset, 1);
+
+	usleep_range(9000, 10000);
+
+	return;
+
+err_vdd_10:
+	rc = regulator_disable(pdata->dvdd_10);
+	if (rc < 0)
+		pr_err("%s %s: fail to disable dvdd_10 regulator. rc=%d\n",
+						LOG_TAG, __func__, rc);
+err:
+	if (gpio_is_valid(pdata->gpio_reset))
+		gpio_set_value(pdata->gpio_reset, 0);
+
+	if (gpio_is_valid(pdata->gpio_p_dwn))
+		gpio_set_value(pdata->gpio_p_dwn, 1);
+
+	anx7816_pinctrl_rst_set_state(false);
 }
 
 void sp_tx_hardware_powerdown(void)
 {
+	int rc = -EFAULT;
 #ifdef CONFIG_OF
 	struct anx7816_platform_data *pdata = g_pdata;
 #else
 	struct anx7816_platform_data *pdata = anx7816_client->dev.platform_data;
 #endif
+	pr_debug("%s %s: anx7816 power down\n", LOG_TAG, __func__);
+	if (gpio_is_valid(pdata->gpio_reset))
+		gpio_set_value(pdata->gpio_reset, 0);
 
-	gpio_set_value(pdata->gpio_reset, 0);
-	mdelay(1);
-	if (pdata->external_ldo_control) {
-		gpio_set_value(pdata->gpio_v10_ctrl, 0);
-		mdelay(1);
-	}
-	gpio_set_value(pdata->gpio_p_dwn, 1);
-	mdelay(1);
+	usleep_range(1000, 1001);
 
-	pr_info("%s %s: anx7816 power down\n", LOG_TAG, __func__);
+	anx7816_clk_stop(pdata);
+	usleep_range(2000, 2001);
+
+	/* pdata->check_slimport_connection = false;
+	 * TODO where does this go?
+	 */
+	if (gpio_is_valid(pdata->gpio_p_dwn))
+		gpio_set_value(pdata->gpio_p_dwn, 1);
+
+	regulator_disable(pdata->dvdd_10);
+	rc = anx7816_pinctrl_rst_set_state(false);
+	if (rc < 0)
+		pr_err("%s %s: fail to set_state for reset. ret=%d\n",
+						LOG_TAG, __func__, rc);
+	usleep_range(1000, 1001);
+
 }
 
 int slimport_read_edid_block(int block, uint8_t *edid_buf)
 {
+	pr_debug("%s is called\n", __func__);
+
 	if (block == 0) {
 		memcpy(edid_buf, edid_blocks, 128 * sizeof(char));
 	} else if (block == 1) {
@@ -850,79 +1012,67 @@ int slimport_read_edid_block(int block, uint8_t *edid_buf)
 
 static void anx7816_free_gpio(struct anx7816_data *anx7816)
 {
-	gpio_free(anx7816->pdata->gpio_cbl_det);
-	gpio_free(anx7816->pdata->gpio_reset);
-	gpio_free(anx7816->pdata->gpio_p_dwn);
-	if (anx7816->pdata->external_ldo_control) {
-		gpio_free(anx7816->pdata->gpio_v10_ctrl);
-		gpio_free(anx7816->pdata->gpio_v33_ctrl);
-	}
+/*      gpio_free(anx7816->pdata->gpio_int); */
+	if (gpio_is_valid(anx7816->pdata->gpio_reset))
+		gpio_free(anx7816->pdata->gpio_reset);
+	if (gpio_is_valid(anx7816->pdata->gpio_p_dwn))
+		gpio_free(anx7816->pdata->gpio_p_dwn);
+	if (gpio_is_valid(anx7816->pdata->gpio_cbl_det))
+		gpio_free(anx7816->pdata->gpio_cbl_det);
 }
 
 static int anx7816_init_gpio(struct anx7816_data *anx7816)
 {
 	int ret = 0;
 
-	pr_info("%s %s: anx7816 init gpio\n", LOG_TAG, __func__);
+	pr_debug("%s %s: anx7816 init gpio\n", LOG_TAG, __func__);
 	/*  gpio for chip power down  */
-	ret = gpio_request(anx7816->pdata->gpio_p_dwn, "anx7816_p_dwn_ctl");
-	if (ret) {
-		pr_err("%s : failed to request gpio %d\n", __func__,
-		       anx7816->pdata->gpio_p_dwn);
-		goto err0;
-	}
-	gpio_direction_output(anx7816->pdata->gpio_p_dwn, 1);
-	/*  gpio for chip reset  */
-	ret = gpio_request(anx7816->pdata->gpio_reset, "anx7816_reset_n");
-	if (ret) {
-		pr_err("%s : failed to request gpio %d\n", __func__,
-		       anx7816->pdata->gpio_reset);
-		goto err1;
-	}
-	gpio_direction_output(anx7816->pdata->gpio_reset, 0);
-	/*  gpio for slimport cable detect  */
-	ret = gpio_request(anx7816->pdata->gpio_cbl_det, "anx7816_cbl_det");
-	if (ret) {
-		pr_err("%s : failed to request gpio %d\n", __func__,
-		       anx7816->pdata->gpio_cbl_det);
-		goto err2;
-	}
-	gpio_direction_input(anx7816->pdata->gpio_cbl_det);
-	/*  gpios for power control */
-	if (anx7816->pdata->external_ldo_control) {
-		/* V10 power control */
-		ret = gpio_request(anx7816->pdata->gpio_v10_ctrl,
-				   "anx7816_v10_ctrl");
+	if (gpio_is_valid(anx7816->pdata->gpio_p_dwn)) {
+		ret = gpio_request(anx7816->pdata->gpio_p_dwn,
+						"anx7816_p_dwn_ctl");
 		if (ret) {
-			pr_err("%s : failed to request gpio %d\n",
-			       __func__, anx7816->pdata->gpio_v10_ctrl);
-			goto err3;
+			pr_err("%s : failed to request gpio %d\n", __func__,
+						anx7816->pdata->gpio_p_dwn);
+			goto out;
 		}
-		gpio_direction_output(anx7816->pdata->gpio_v10_ctrl, 0);
-		/* V33 power control */
-		ret = gpio_request(anx7816->pdata->gpio_v33_ctrl,
-				   "anx7816_v33_ctrl");
-		if (ret) {
-			pr_err("%s : failed to request gpio %d\n",
-			       __func__, anx7816->pdata->gpio_v33_ctrl);
-			goto err4;
-		}
-		gpio_direction_output(anx7816->pdata->gpio_v33_ctrl, 0);
+		gpio_direction_output(anx7816->pdata->gpio_p_dwn, 1);
+	} else
+		pr_err("%s : Invalid gpio_p_dwn\n", __func__);
 
-	}
+	if (gpio_is_valid(anx7816->pdata->gpio_reset)) {
+		/*  gpio for chip reset  */
+		ret = gpio_request(anx7816->pdata->gpio_reset,
+						"anx7816_reset_n");
+		if (ret) {
+			pr_err("%s : failed to request gpio %d\n", __func__,
+					       anx7816->pdata->gpio_reset);
+			goto err0;
+		}
+		gpio_direction_output(anx7816->pdata->gpio_reset, 0);
+	} else
+		pr_err("%s : Invalid gpio_reset\n", __func__);
+
+	/*  gpio for slimport cable detect  */
+	if (gpio_is_valid(anx7816->pdata->gpio_cbl_det)) {
+		ret = gpio_request(anx7816->pdata->gpio_cbl_det,
+						"anx7816_cbl_det");
+		if (ret) {
+			pr_err("%s : failed to request gpio %d\n", __func__,
+			       anx7816->pdata->gpio_cbl_det);
+			goto err1;
+		}
+		gpio_direction_input(anx7816->pdata->gpio_cbl_det);
+	} else
+		pr_err("%s : Invalid  gpio_cbl_det\n", __func__);
 
 	goto out;
 
-err4:
-	gpio_free(anx7816->pdata->gpio_v33_ctrl);
-err3:
-	gpio_free(anx7816->pdata->gpio_v10_ctrl);
-err2:
-	gpio_free(anx7816->pdata->gpio_cbl_det);
 err1:
-	gpio_free(anx7816->pdata->gpio_reset);
+	if (gpio_is_valid(anx7816->pdata->gpio_reset))
+		gpio_free(anx7816->pdata->gpio_reset);
 err0:
-	gpio_free(anx7816->pdata->gpio_p_dwn);
+	if (gpio_is_valid(anx7816->pdata->gpio_p_dwn))
+		gpio_free(anx7816->pdata->gpio_p_dwn);
 out:
 	return ret;
 }
@@ -989,20 +1139,30 @@ static irqreturn_t anx7816_cbl_det_isr(int irq, void *data)
 	struct anx7816_data *anx7816 = data;
 	int cable_connected = 0;
 	cable_connected = confirmed_cable_det(data);
-	pr_info("%s %s : detect cable insertion, cable_connected = %d\n",
+	pr_debug("%s %s : detect cable insertion, cable_connected = %d\n",
 					LOG_TAG, __func__, cable_connected);
+
 	if (cable_connected == DONGLE_CABLE_INSERT) {
+		if (anx7816->slimport_connected)
+			goto out;
+
 		wake_lock(&anx7816->slimport_lock);
 #ifdef QUICK_CHARGE_SUPPORT
 		reset_process();
 #endif
 		pr_info("%s %s : detect cable insertion\n", LOG_TAG, __func__);
 		queue_delayed_work(anx7816->workqueue, &anx7816->work, 0);
+		anx7816->slimport_connected = true;
 	} else {
+		if (!anx7816->slimport_connected)
+			goto out;
+
+		anx7816->slimport_connected = false;
 		pr_info("%s %s : detect cable removal\n", LOG_TAG, __func__);
 		cable_disconnect(anx7816);
 		/*msleep(1000);*/
 	}
+out:
 	return IRQ_HANDLED;
 }
 
@@ -1028,54 +1188,73 @@ static void anx7816_work_func(struct work_struct *work)
 }
 
 #ifdef CONFIG_OF
+int anx7816_clk_get(struct device *dev, struct anx7816_platform_data *pdata)
+{
+	int rc = 0;
+
+	pdata->mclk = devm_clk_get(dev, "dp_bridge_mclk");
+	if (IS_ERR(pdata->mclk)) {
+		pr_err("%s: failed to get dp_brdge_mclk. ret =%d\n",
+						__func__, rc);
+		return PTR_ERR(pdata->mclk);
+	}
+
+	return rc;
+}
+
+static int anx7816_clk_start(struct anx7816_platform_data *pdata)
+{
+	int rc = 0;
+
+	rc = clk_prepare_enable(pdata->mclk);
+	if (rc)
+		pr_err("%s:failed to start dp_brdge_mclk. ret=%d\n",
+						__func__, rc);
+	return rc;
+}
+
+static void anx7816_clk_stop(struct anx7816_platform_data *pdata)
+{
+	clk_disable_unprepare(pdata->mclk);
+}
+
 int anx7816_regulator_configure(struct device *dev,
 				struct anx7816_platform_data *pdata)
 {
 	int rc = 0;
-/* To do : regulator control after H/W change */
-	return rc;
 
-	pdata->avdd_10 = regulator_get(dev, "analogix,vdd_ana");
+	pr_debug("%s+\n", __func__);
 
-	if (IS_ERR(pdata->avdd_10)) {
-		rc = PTR_ERR(pdata->avdd_10);
-		pr_err("%s : Regulator get failed avdd_10 rc=%d\n",
-		       __func__, rc);
+	pdata->avdd_33 = regulator_get(dev, "analogix,vdd_33");
+	if (IS_ERR(pdata->avdd_33)) {
+		rc = PTR_ERR(pdata->avdd_33);
+		pr_err("%s : Regulator get failed avdd_33 rc=%d\n",
+							__func__, rc);
 		return rc;
 	}
 
-	if (regulator_count_voltages(pdata->avdd_10) > 0) {
-		rc = regulator_set_voltage(pdata->avdd_10, 1000000, 1000000);
-		if (rc) {
-			pr_err("%s : Regulator set_vtg failed rc=%d\n",
-			       __func__, rc);
-			goto error_set_vtg_avdd_10;
-		}
+	pdata->vdd_18 = regulator_get(dev, "analogix,vdd_18");
+	if (IS_ERR(pdata->vdd_18)) {
+		rc = PTR_ERR(pdata->vdd_18);
+		pr_err("%s : Regulator get failed vdd_18 rc=%d\n",
+							__func__, rc);
+		goto error_set_vtg_avdd_33;
 	}
 
-	pdata->dvdd_10 = regulator_get(dev, "analogix,vdd_dig");
+	pdata->dvdd_10 = regulator_get(dev, "analogix,vdd_10");
 	if (IS_ERR(pdata->dvdd_10)) {
 		rc = PTR_ERR(pdata->dvdd_10);
 		pr_err("%s : Regulator get failed dvdd_10 rc=%d\n",
-		       __func__, rc);
-		return rc;
-	}
-
-	if (regulator_count_voltages(pdata->dvdd_10) > 0) {
-		rc = regulator_set_voltage(pdata->dvdd_10, 1000000, 1000000);
-		if (rc) {
-			pr_err("%s : Regulator set_vtg failed rc=%d\n",
-			       __func__, rc);
-			goto error_set_vtg_dvdd_10;
-		}
+							__func__, rc);
+		goto error_set_vtg_vdd_18;
 	}
 
 	return 0;
 
-error_set_vtg_dvdd_10:
-	regulator_put(pdata->dvdd_10);
-error_set_vtg_avdd_10:
-	regulator_put(pdata->avdd_10);
+error_set_vtg_vdd_18:
+	regulator_put(pdata->vdd_18);
+error_set_vtg_avdd_33:
+	regulator_put(pdata->avdd_33);
 
 	return rc;
 }
@@ -1085,53 +1264,58 @@ static int anx7816_parse_dt(struct device *dev,
 {
 	int rc = 0;
 	struct device_node *np = dev->of_node;
+	struct platform_device *sp_pdev = NULL;
+	struct device_node *sp_tx_node = NULL;
 
 	pdata->gpio_p_dwn =
 	    of_get_named_gpio_flags(np, "analogix,p-dwn-gpio", 0, NULL);
+	if (!gpio_is_valid(pdata->gpio_p_dwn))
+		pr_err("%s: Invalid p-dwn-gpio = %d\n",
+					__func__, pdata->gpio_p_dwn);
 
 	pdata->gpio_reset =
 	    of_get_named_gpio_flags(np, "analogix,reset-gpio", 0, NULL);
+	if (!gpio_is_valid(pdata->gpio_reset))
+		pr_err("%s: Invalid gpio_reset = %d\n",
+					__func__, pdata->gpio_reset);
 
 	pdata->gpio_cbl_det =
 	    of_get_named_gpio_flags(np, "analogix,cbl-det-gpio", 0, NULL);
 
-	pr_info(
+	pr_debug(
 	       "%s gpio p_dwn : %d, reset : %d,  gpio_cbl_det %d\n",
 	       LOG_TAG, pdata->gpio_p_dwn,
 	       pdata->gpio_reset, pdata->gpio_cbl_det);
-	/*
-	 * if "external-ldo-control" property is not exist, we
-	 * assume that it is used in board.
-	 * if don't use external ldo control,
-	 * please use "external-ldo-control=<0>" in dtsi
-	 */
-	rc = of_property_read_u32(np, "analogix,external-ldo-control",
-				  &pdata->external_ldo_control);
-	if (rc == -EINVAL)
-		pdata->external_ldo_control = 1;
 
-	if (pdata->external_ldo_control) {
-		pdata->gpio_v10_ctrl =
-		    of_get_named_gpio_flags(np, "analogix,v10-ctrl-gpio", 0,
-					    NULL);
-
-		pdata->gpio_v33_ctrl =
-		    of_get_named_gpio_flags(np, "analogix,v33-ctrl-gpio", 0,
-					    NULL);
-
-		pr_info("%s gpio_v10_ctrl %d avdd33-en-gpio %d\n",
-		       LOG_TAG, pdata->gpio_v10_ctrl, pdata->gpio_v33_ctrl);
+	/* parse phandle for hdmi tx */
+	sp_tx_node = of_parse_phandle(np, "qcom,hdmi-tx-map", 0);
+	if (!sp_tx_node) {
+		pr_err("%s %s: can't find hdmi phandle\n", LOG_TAG, __func__);
+		return -ENODEV;
 	}
 
-	/*if (anx7816_regulator_configure(dev, pdata) < 0) {
+	sp_pdev = of_find_device_by_node(sp_tx_node);
+	if (!sp_pdev) {
+		pr_err("%s %s: can't find the device by node\n",
+							LOG_TAG, __func__);
+		return -ENODEV;
+	}
+
+	pdata->hdmi_pdev = sp_pdev;
+
+	if (anx7816_regulator_configure(dev, pdata) < 0) {
 		pr_err("%s %s: parsing dt for anx7816 is failed.\n",
-		       LOG_TAG, __func__);
+						LOG_TAG, __func__);
 		return rc;
-	}*/
+	}
+
+	if (anx7816_clk_get(dev, pdata) < 0) {
+		pr_err("%s %s: failed to get clks\n", LOG_TAG, __func__);
+		return rc;
+	}
 
 	/* connects function nodes which are not provided with dts */
-	/*pdata->avdd_power = slimport7816_avdd_power;
-	pdata->dvdd_power = slimport7816_dvdd_power;*/
+	pdata->avdd_power = slimport7816_avdd_power;
 
 	return 0;
 }
@@ -1151,7 +1335,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	struct anx7816_platform_data *pdata;
 	int ret = 0;
 
-	pr_info("%s %s start\n", LOG_TAG, __func__);
+	pr_debug("%s %s start\n", LOG_TAG, __func__);
 
 #ifdef SP_REGISTER_SET_TEST
 	val_SP_TX_LT_CTRL_REG0 = 0x19;
@@ -1212,6 +1396,13 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		goto err0;
 	}
 
+	ret = anx7816_pinctrl_init(&client->dev, pdata);
+	if (ret) {
+		pr_err("%s : failed to call pinctrl_init. ret = %d\n",
+							__func__, ret);
+		goto err0;
+	}
+
 	ret = anx7816_init_gpio(anx7816);
 	if (ret) {
 		pr_err("%s: failed to initialize gpio\n", __func__);
@@ -1226,8 +1417,8 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		ret = -ENOMEM;
 		goto err1;
 	}
-	/*anx7816->pdata->avdd_power(1);
-	anx7816->pdata->dvdd_power(1);*/
+	anx7816->pdata->avdd_power(1);
+/*	anx7816->pdata->dvdd_power(1);*/
 
 	ret = anx7816_system_init();
 	if (ret) {
@@ -1298,7 +1489,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	}
 #endif
 
-	pr_info("%s %s end\n", LOG_TAG, __func__);
+	pr_debug("%s %s end\n", LOG_TAG, __func__);
 	goto exit;
 
 err3:
@@ -1320,7 +1511,7 @@ static int anx7816_i2c_remove(struct i2c_client *client)
 	int i = 0;
 	for (i = 0; i < ARRAY_SIZE(slimport_device_attrs); i++)
 		device_remove_file(&client->dev, &slimport_device_attrs[i]);
-	pr_info("anx7816_i2c_remove\n");
+	pr_debug("anx7816_i2c_remove\n");
 	sp_tx_clean_state_machine();
 	destroy_workqueue(anx7816->workqueue);
 	sp_tx_hardware_powerdown();
@@ -1357,16 +1548,6 @@ void sp_set_link_bw(unchar link_bw)
 	sp_tx_set_bw(link_bw);
 }
 
-static int anx7816_i2c_suspend(struct i2c_client *client, pm_message_t state)
-{
-	return 0;
-}
-
-static int anx7816_i2c_resume(struct i2c_client *client)
-{
-	return 0;
-}
-
 static const struct i2c_device_id anx7816_id[] = {
 	{"anx7816", 0},
 	{}
@@ -1391,8 +1572,6 @@ static struct i2c_driver anx7816_driver = {
 		   },
 	.probe = anx7816_i2c_probe,
 	.remove = anx7816_i2c_remove,
-	.suspend = anx7816_i2c_suspend,
-	.resume = anx7816_i2c_resume,
 	.id_table = anx7816_id,
 };
 
