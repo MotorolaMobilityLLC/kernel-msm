@@ -22,7 +22,7 @@
 #endif
 
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
-#include "../../msm/mdss/mdss_hdmi_slimport.h"
+#include "../../msm/mdss_hdmi_slimport.h"
 #endif
 
 #ifdef SP_REGISTER_SET_TEST
@@ -1573,14 +1573,9 @@ bool is_slimport_dp(void)
 	return (sp_tx_cur_cable_type() == DWN_STRM_IS_DIGITAL) ? TRUE : FALSE;
 }
 
-unchar sp_get_link_bw(void)
+unchar sp_get_rx_bw(void)
 {
-	return sp_tx_cur_bw();
-}
-
-void sp_set_link_bw(unchar link_bw)
-{
-	sp_tx_set_bw(link_bw);
+	return sp_rx_cur_bw();
 }
 
 static const struct i2c_device_id anx7816_id[] = {
