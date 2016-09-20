@@ -17,6 +17,7 @@
 #ifdef QUICK_CHARGE_SUPPORT
 #include "quick_charge.h"
 #endif
+#include "slimport_tx_drv.h"
 
 
 #ifndef XTAL_CLK_DEF
@@ -32,6 +33,7 @@ static bool sp_tx_test_edid;
 
 //static unsigned char ext_int_index;
 static unsigned char g_changed_bandwidth;
+static unsigned char sp_rx_bandwidth;
 static unsigned char g_hdmi_dvi_status;
 
 static unsigned char g_need_clean_status;
@@ -482,13 +484,9 @@ unchar sp_tx_cur_cable_type(void)
 {
 	return sp_tx_rx_type;
 }
-unchar sp_tx_cur_bw(void)
+unchar sp_rx_cur_bw(void)
 {
-	return g_changed_bandwidth;
-}
-void sp_tx_set_bw(unchar bw )
-{
-	g_changed_bandwidth = bw;
+	return sp_rx_bandwidth;
 }
 void sp_tx_variable_init(void)
 {
@@ -511,6 +509,7 @@ void sp_tx_variable_init(void)
 	sp_tx_vo_state = VO_WAIT_VIDEO_STABLE;
 	sp_tx_ao_state = AO_INIT;
 	g_changed_bandwidth = LINK_5P4G;
+	sp_rx_bandwidth = LINK_5P4G;
 	g_hdmi_dvi_status = HDMI_MODE;
 
 	sp_tx_test_lt = 0;
@@ -748,6 +747,7 @@ void slimport_waitting_cable_plug_process(void)
 		slimport_set_hdmi_hpd(0);
 #endif
 		hardware_power_ctl(0);
+	}
 }
 
 
@@ -1387,10 +1387,15 @@ void hdmi_rx_hdcp_cap(unsigned char hdcp_cap)
 #endif
 void slimport_edid_process(void)
 {
-	unchar temp_value, temp_value1;
+	unchar rx_bandwidth, tx_bandwidth;
 	unchar i;
 
-	pr_info("%s %s : edid_process\n", LOG_TAG, __func__);
+	pr_debug("%s %s : edid_process\n", LOG_TAG, __func__);
+
+	sp_tx_get_rx_bw(&rx_bandwidth);
+	pr_debug("%s %s : get rx bandwidth info = [%x]\n", LOG_TAG, __func__,
+		(uint)rx_bandwidth);
+	sp_rx_bandwidth = rx_bandwidth;
 
 	if(g_read_edid_flag == 1){
 		if(check_with_pre_edid(edid_blocks))
@@ -1430,13 +1435,11 @@ void slimport_edid_process(void)
 		hdmi_rx_set_termination(1);
 	}
 
-	sp_tx_get_rx_bw(&temp_value);
-	temp_value1 = parse_edid_to_get_bandwidth();
-	if(temp_value <= temp_value1)		
-		temp_value1 = temp_value;
-	pr_info("%s %s : set link bw in edid %x \n", LOG_TAG, __func__, (uint)temp_value1);
-	//sp_tx_set_link_bw(temp_value1);
-	g_changed_bandwidth = temp_value1;	
+	tx_bandwidth = parse_edid_to_get_bandwidth();
+
+	g_changed_bandwidth = min(rx_bandwidth, tx_bandwidth);
+	pr_debug("%s %s : set link bw in edid %x\n", LOG_TAG, __func__,
+						(uint)g_changed_bandwidth);
 	/*
 	sp_tx_send_message(
 		(g_hdmi_dvi_status == HDMI_MODE) ? MSG_INPUT_HDMI : MSG_INPUT_DVI);
