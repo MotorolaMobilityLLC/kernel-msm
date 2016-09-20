@@ -16,6 +16,7 @@
 #include "msm8937-moto-pinctrl.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "msm8937-camera-sensor-mot.dtsi"
+#include <moto-mem-reserve.h>
 
 / {
 	aliases {
@@ -32,6 +33,20 @@
 			no-map;
 			reg = <0x0 0xae000000 0x0 0x80000>;
 			label = "ramoops_mem";
+		};
+
+		tzlog_bck_mem: tzlog_bck_region {
+			no-map;
+			reg = <0x0 TZLOG_BCK_BASE_8937
+				0x0 TZLOG_BCK_SIZE>;
+			label = "tzlog_bck_mem";
+		};
+
+		wdog_cpuctx_mem: wdog_cpuctx_region {
+			no-map;
+			reg = <0x0 WDOG_CPUCTX_BASE_8937
+				0x0 WDOG_CPUCTX_SIZE_8937>;
+			label = "wdog_cpuctx_mem";
 		};
 	};
 
@@ -461,6 +476,16 @@
 		android,ramoops-dump-oops = <0x1>;
 
 		linux,contiguous-region = <&ramoops_mem>;
+	};
+
+	wdog: qcom,wdt@b017000 {
+		qcom,bark-time = <22000>;
+		linux,contiguous-region = <&wdog_cpuctx_mem>;
+	};
+
+	qcom_tzlog: tz-log@08600720 {
+		status = "okay";
+		linux,contiguous-region = <&tzlog_bck_mem>;
 	};
 };
 
