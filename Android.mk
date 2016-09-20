@@ -1,4 +1,5 @@
-# This Android.mk is experimental. Please use with caution.
+# This Android.mk is experimental. And possibly the worst
+# makefile on the planet.
 #
 # The purpose of this file is to allow users to run 'mm' to
 # rebuild the kernel from this tree. 'mm' is a faster command
@@ -9,33 +10,17 @@
 #
 # Make sure to use the '-j' option when running 'mm' to spawn
 # multiple jobs and speed up your build. For example:
-# mm -j8
 #
-# You can also run 'mm' with a target that you would normally
-# use when building the kernel. Just prefix "kernel-" in front.
+# cd $ANDROID_BUILD_TOP
+# mmm -j32 kernel
 #
-# For example:
-# mm kernel-mrproper is the equivalent of running make mrproper
-#
+
 ifneq ($(ONE_SHOT_MAKEFILE),)
+
 include build/target/board/Android.mk
 include kernel/AndroidKernel.mk
 
-ifeq ($(MAKECMDGOALS),all_modules)
-#
-# This is the default case when a user runs 'mm'
-#
 ALL_MODULES += bootimage
-else
-#
-# This is the case where a user runs 'mm' with a special option
-# For example "mm kernel-mrproper' or 'mm kernel-clean'
-#
-ANDROID_MAKE_GOALS=$(filter-out all_modules,$(MAKECMDGOALS))
-KERNEL_BUILD_TARGETS=$(subst kernel-,,$(ANDROID_MAKE_GOALS))
 
-$(ANDROID_MAKE_GOALS):
-	$(MAKE) -C kernel KBUILD_RELSRC=$(KERNEL_SOURCE_RELATIVE_PATH) O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi- $(KERNEL_BUILD_TARGETS)
-endif
 endif
 
