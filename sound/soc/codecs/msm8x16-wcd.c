@@ -641,6 +641,11 @@ static void msm8x16_wcd_mbhc_common_micb_ctrl(struct snd_soc_codec *codec,
 		mask = 0x04;
 		val = (enable ? 0x04 : 0x00);
 		break;
+	default:
+		reg = MSM8X16_WCD_A_ANALOG_MICB_1_VAL;
+		mask = 0xFF;
+		val = (enable ? 0xC0 : 0x00);
+		break;
 	};
 	snd_soc_update_bits(codec, reg, mask, val);
 }
@@ -5213,6 +5218,7 @@ static int msm8x16_wcd_device_up(struct snd_soc_codec *codec)
 {
 	struct msm8x16_wcd_priv *msm8x16_wcd_priv =
 		snd_soc_codec_get_drvdata(codec);
+        int ret = 0;
 	dev_dbg(codec->dev, "%s: device up!\n", __func__);
 
 	mutex_lock(&codec->mutex);
