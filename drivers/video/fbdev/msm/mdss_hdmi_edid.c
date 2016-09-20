@@ -17,6 +17,9 @@
 #include <linux/device.h>
 #include "mdss_fb.h"
 #include "mdss_hdmi_edid.h"
+#ifdef CONFIG_SLIMPORT_COMMON
+#include <video/slimport_device.h>
+#endif
 
 #define DBC_START_OFFSET 4
 #define EDID_DTD_LEN 18
@@ -1706,6 +1709,46 @@ static void hdmi_edid_add_sink_3d_format(struct hdmi_edid_sink_data *sink_data,
 		string, added ? "added" : "NOT added");
 } /* hdmi_edid_add_sink_3d_format */
 
+#ifdef CONFIG_SLIMPORT_COMMON
+void limit_supported_video_format(u32 *video_format)
+{
+	switch (sp_get_rx_bw()) {
+	case 0x0a: /*Slimport Max Bandwidth is 2.7Gbps*/
+		if ((*video_format == HDMI_VFRMT_1920x1080p60_16_9) ||
+			(*video_format == HDMI_VFRMT_2880x480p60_4_3) ||
+			(*video_format == HDMI_VFRMT_2880x480p60_16_9) ||
+			(*video_format == HDMI_VFRMT_1280x720p120_16_9))
+			*video_format = HDMI_VFRMT_1280x720p60_16_9;
+		else if ((*video_format == HDMI_VFRMT_1920x1080p50_16_9) ||
+			(*video_format == HDMI_VFRMT_2880x576p50_4_3) ||
+			(*video_format == HDMI_VFRMT_2880x576p50_16_9) ||
+			(*video_format == HDMI_VFRMT_1280x720p100_16_9))
+			*video_format = HDMI_VFRMT_1280x720p50_16_9;
+		else if (*video_format == HDMI_VFRMT_1920x1080i100_16_9)
+			*video_format = HDMI_VFRMT_1920x1080i50_16_9;
+		else if (*video_format == HDMI_VFRMT_1920x1080i120_16_9)
+			*video_format = HDMI_VFRMT_1920x1080i60_16_9;
+		break;
+	case 0x06: /*Slimport Max Bandwidth is 1.62Gbps*/
+		if (*video_format != HDMI_VFRMT_640x480p60_4_3)
+			*video_format = HDMI_VFRMT_640x480p60_4_3;
+		break;
+	case 0x14: /*Slimport Max Bandwidth is 5.4Gbps*/
+		if ((*video_format == HDMI_VFRMT_1920x1200p60_16_10) ||
+			(*video_format == HDMI_VFRMT_2560x1600p60_16_9) ||
+			(*video_format == HDMI_VFRMT_3840x2160p30_16_9) ||
+			(*video_format == HDMI_VFRMT_3840x2160p25_16_9) ||
+			(*video_format == HDMI_VFRMT_3840x2160p24_16_9) ||
+			(*video_format == HDMI_EVFRMT_4096x2160p24_16_9))
+			*video_format = HDMI_VFRMT_1920x1080p60_16_9;
+		break;
+	default: /*Slimport Max Bandwidth is 6.75Gbps or higher*/
+		break;
+	}
+}
+#endif
+
+
 static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
 	u32 video_format)
 {
@@ -1718,6 +1761,10 @@ static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
 	struct hdmi_edid_sink_data *sink_data = &edid_ctrl->sink_data;
 	struct disp_mode_info *disp_mode_list = sink_data->disp_mode_list;
 	u32 i = 0;
+
+#ifdef CONFIG_SLIMPORT_COMMON
+	limit_supported_video_format(&video_format);
+#endif
 
 	if (video_format >= HDMI_VFRMT_MAX) {
 		DEV_ERR("%s: video format: %s is not supported\n", __func__,
