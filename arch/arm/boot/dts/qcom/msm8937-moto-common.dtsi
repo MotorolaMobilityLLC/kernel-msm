@@ -22,6 +22,7 @@
 		i2c3 = &i2c_3;
 		spi6 = &spi_6;
 		/delete-property/ spi3;
+		/delete-property/ i2c5;
 		spi4 = &spi_4;
 		spi7 = &spi_7;
 	};
@@ -166,6 +167,7 @@
 &soc{
 	/delete-node/ spi@78b7000;
 	/delete-node/ sound-9335;
+	/delete-node/ i2c@7af5000;
 
 	alsa_to_h2w {
 		compatible = "mmi,alsa-to-h2w";
