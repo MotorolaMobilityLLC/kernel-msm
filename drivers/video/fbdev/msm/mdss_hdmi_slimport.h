@@ -1,5 +1,4 @@
-/*
- * Copyright(c) 2016, Motorola Mobility LLC. All rights reserved.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -12,8 +11,17 @@
  *
  */
 
-#ifndef SLIMPORT_DEVICE
-#define SLIMPORT_DEVICE
-int slimport_read_edid_block(int block, uint8_t *edid_buf);
-unchar sp_get_rx_bw(void);
-#endif /* SLIMPORT_DEVICE */
+#ifndef __MDSS_HDMI_SLIMPORT_H__
+#define __MDSS_HDMI_SLIMPORT_H__
+
+#include <linux/platform_device.h>
+
+struct msm_hdmi_slimport_ops {
+	int (*set_upstream_hpd)(struct platform_device *pdev, uint8_t on);
+
+};
+
+int msm_hdmi_register_slimport(struct platform_device *pdev,
+			  struct msm_hdmi_slimport_ops *ops, void *data);
+
+#endif /* __MDSS_HDMI_SLIMPORT_H__ */
