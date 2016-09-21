@@ -1346,7 +1346,6 @@ static int motosh_probe(struct i2c_client *client,
 	}
 	input_set_drvdata(ps_motosh->input_dev, ps_motosh);
 	input_set_capability(ps_motosh->input_dev, EV_KEY, KEY_POWER);
-	input_set_capability(ps_motosh->input_dev, EV_KEY, KEY_CAMERA);
 	input_set_capability(ps_motosh->input_dev, EV_SW, SW_LID);
 	ps_motosh->input_dev->name = "sensorprocessor";
 
