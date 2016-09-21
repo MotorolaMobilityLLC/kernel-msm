@@ -1,0 +1,50 @@
+
+qcom,hg40-swd {
+	serialnum = "SNN5984";
+	/* #2577912_Lenovo_HG40_3000mAh_averaged_MasterSlave_Sept12th2016*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <0>;
+	qcom,battery-type = "HG40-SWD-3000mah";
+	qcom,chg-rslow-comp-c1 = <3513581>;
+	qcom,chg-rslow-comp-c2 = <5300586>;
+	qcom,chg-rs-to-rslow = <1638370>;
+	qcom,chg-rslow-comp-thr = <0xAB>;
+	qcom,checksum = <0x985A>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+	qcom,fg-profile-data = [
+		 A2 83 6B 75
+		 2C 7B 88 74
+		 4A 83 09 69
+		 F7 73 F7 7F
+		 3E 82 94 98
+		 61 B6 1B C2
+		 6B 12 B3 83
+		 DE 75 61 7B
+		 92 74 39 83
+		 96 78 61 84
+		 44 7A 7E 82
+		 FE 92 97 B4
+		 10 C0 6A 14
+		 DB 0B 74 58
+		 14 70 B2 FD
+		 A1 3E FE 45
+		 52 43 00 00
+		 03 47 B0 39
+		 5E 34 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 0E 72 A8 70
+		 2F 70 D1 82
+		 31 6F 42 52
+		 49 68 80 7A
+		 53 6D 6F 55
+		 9C 75 7D B2
+		 17 DF 69 64
+		 67 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
