@@ -1116,7 +1116,8 @@ void cable_disconnect(void *data)
 
 /*JIRA: CLD-110,
 Software patch for cable det pin has glitch before stable "High"*/
-#define CABLE_DET_PIN_HAS_GLITCH
+ /*#define CABLE_DET_PIN_HAS_GLITCH*/
+#define DEBOUNCING_DELAY_US 50000
 static unsigned char confirmed_cable_det(void *data)
 {
 	struct anx7816_data *anx7816 = data;
@@ -1132,6 +1133,7 @@ static unsigned char confirmed_cable_det(void *data)
 
 	return (cable_det_count > 5) ? 0 : 1;
 	#else
+	usleep_range(DEBOUNCING_DELAY_US, DEBOUNCING_DELAY_US + 1);
 	return gpio_get_value(anx7816->pdata->gpio_cbl_det);
 	#endif
 }
