@@ -160,14 +160,14 @@ static void hdmi_rx_new_vsi_int(void);
 #define sp_tx_clean_hdcp_status() do{ \
 	sp_write_reg(TX_P0, TX_HDCP_CTRL0, 0x03); \
 	sp_write_reg_or(TX_P0, TX_HDCP_CTRL0, RE_AUTH); \
-	mdelay(2); \
+	usleep_range(2000, 2001); \
 	pr_debug("%s %s : sp_tx_clean_hdcp_status\n", LOG_TAG, __func__); \
 	}while(0)
 #define reg_hardware_reset() do{ \
 	sp_write_reg_or(TX_P2, SP_TX_RST_CTRL_REG, HW_RST); \
 	sp_tx_clean_state_machine(); \
 	sp_tx_set_sys_state(STATE_SP_INITIALIZED); \
-	mdelay(500); \
+	msleep(500); \
 	}while(0)
 #ifdef NEW_HDCP_CONTROL_LOGIC
 unsigned char g_hdcp_cap_bak;
@@ -268,7 +268,7 @@ void wait_aux_op_finish(unchar * err_flag)
 	*err_flag = 0;
 	cnt = 150;
 	while (__i2c_read_byte(TX_P0, AUX_CTRL2) & AUX_OP_EN) {
-				mdelay(2);
+		usleep_range(2000, 2001);
 				if ((cnt--) == 0) {
 					pr_err("%s %s :aux operate failed!\n",
 							LOG_TAG, __func__);
@@ -346,7 +346,7 @@ unchar sp_tx_aux_dpcdread_bytes(unchar addrh, unchar addrm,
 	sp_write_reg(TX_P0, AUX_CTRL, c);
 	write_dpcd_addr(addrh, addrm, addrl);	
 	sp_write_reg_or(TX_P0, AUX_CTRL2, AUX_OP_EN);
-	mdelay(2);
+	usleep_range(2000, 2001);
 
 	wait_aux_op_finish(&bOK);
 	if (bOK == AUX_ERR) {
@@ -724,7 +724,7 @@ unchar is_cable_detected(void)
 	return slimport_dongle_is_connected();
 	/*
 	if(cable_detected()) {
-		mdelay(50);
+		msleep(50);
 		return cable_detected();		
 	}
 	return 0;
@@ -773,7 +773,7 @@ static unchar sp_tx_get_cable_type(enum CABLE_TYPE_STATUS det_cable_type_state, 
 				sp_tx_aux_dpcdread_bytes(0x00, 0x00, 0, 0x0c, data_buf);
 				det_cable_type_state = GETTED_CABLE_TYPE;
 			} else {				
-				mdelay(50);
+				msleep(50);
 				pr_err("%s %s :  AUX access error\n", LOG_TAG, __func__);
 				break;
 			}
@@ -1154,7 +1154,7 @@ static void segments_edid_read(unchar segment, unchar offset)
 	sp_read_reg(TX_P0, AUX_CTRL2, &c);
 	while(c&AUX_OP_EN)
 	{
-		mdelay(1);
+		usleep_range(1000, 1001);
 		cnt ++;
 		if(cnt == 10)
 		{
@@ -1179,7 +1179,7 @@ static void segments_edid_read(unchar segment, unchar offset)
 		sp_read_reg(TX_P0, BUF_DATA_COUNT, &c);
 		while((c & 0x1f) == 0)
 		{
-			mdelay(2);
+			usleep_range(2000, 2001);
 			cnt ++;
 			sp_read_reg(TX_P0, BUF_DATA_COUNT, &c);
 			if(cnt == 10)
@@ -1413,7 +1413,7 @@ void slimport_edid_process(void)
 			break;
 		else{
 			pr_info("%s %s : waiting HDCP KEY loaddown \n", LOG_TAG, __func__);
-			mdelay(1);
+			usleep_range(1000, 1001);
 		}
 	}while(--i);	
 	sp_write_reg(RX_P0, HDMI_RX_INT_MASK1_REG, 0xe2);
@@ -1638,7 +1638,7 @@ uint sp_tx_link_err_check(void)
 	unchar bytebuf[2];
 
 	sp_tx_aux_dpcdread_bytes(0x00, 0x02, 0x10, 2, bytebuf);
-	mdelay(5);
+	usleep_range(5000, 5001);
 	sp_tx_aux_dpcdread_bytes(0x00, 0x02, 0x10, 2, bytebuf);
 	errh = bytebuf[1];
 
@@ -1654,7 +1654,7 @@ uint sp_tx_link_err_check(void)
 static void serdes_fifo_reset(void)
 {
 	sp_write_reg_or(TX_P2, RST_CTRL2, SERDES_FIFO_RST);
-	mdelay(20);
+	msleep(20);
     sp_write_reg_and(TX_P2, RST_CTRL2, (~SERDES_FIFO_RST));
 }
 void slimport_link_training(void)
@@ -2277,7 +2277,7 @@ void slimport_hdcp_process(void)
 					ds_vid_stb_cntr = 0;
 				} else {
 					ds_vid_stb_cntr++;
-					mdelay(10);
+					usleep_range(10000, 10001);
 				}
 				#ifdef SLIMPORT_DRV_DEBUG
 				pr_info("%s %s : downstream video not stable\n", LOG_TAG, __func__); //for debug
@@ -2298,7 +2298,7 @@ void slimport_hdcp_process(void)
 		//sp_tx_video_mute(0);
 		//sp_tx_aux_polling_disable();
 		//sp_tx_clean_hdcp_status();
-		mdelay(50); 
+		msleep(50);
 		//disable auto polling during hdcp.
 		sp_tx_hw_hdcp_enable();
 		HDCP_state = HDCP_WAITTING_FINISH;
@@ -2413,13 +2413,14 @@ static void info_ANX7730_AUIF_changed(void)
 {
 	unchar temp, count;
 	unchar pBuf[3] = {0x01,0xd1,0x02};
-	msleep(20); 
+
+	usleep_range(20000, 20001);
 	if(sp_tx_rx_type == DWN_STRM_IS_HDMI) {//assuming it is anx7730
 		sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x23, 1, &temp);
 		if(temp < 0x94){
 			count = 3;
 			do{
-				 mdelay(20);
+				usleep_range(20000, 200001);
 				if (sp_tx_aux_dpcdwrite_bytes(0x00, 0x05,0xf0,3,pBuf) == AUX_OK)
 					break;
 				if (!count) 
@@ -2630,7 +2631,7 @@ void slimport_cable_monitor(void)
 				//reg_hardware_reset();
 				sp_tx_clean_state_machine(); 
 				sp_tx_set_sys_state(STATE_SP_INITIALIZED);
-				mdelay(500);
+				msleep(500);
 			}
 		}
 	}
@@ -3440,7 +3441,7 @@ static void hdmi_rx_hdcp_error_int(void)
 		hdmi_rx_mute_audio(1);
 		hdmi_rx_mute_video(1);
 		hdmi_rx_set_hpd(0);
-		mdelay(10);
+		usleep_range(10000, 10001);
 		hdmi_rx_set_hpd(1);
 	}else
 		count++;
@@ -3806,7 +3807,7 @@ void hdmi_rx_show_video_info(void)
         if(c & DECRYPT_EN)
             break;
         else
-            mdelay(10);
+		usleep_range(10000, 10001);
     }
     if(cl < 20)
         pr_info("%s %s : Decryption is active.\n", LOG_TAG, __func__);
@@ -3850,7 +3851,7 @@ void clean_system_status(void)
 					hdmi_rx_set_hpd(0);
 					pr_info("%s %s : hdmi_rx_set_hpd 0 !\n", LOG_TAG, __func__);
 					hdmi_rx_set_termination(0);
-					mdelay(50);
+					msleep(50);
 			}
 		}
 		if(HDCP_state != HDCP_CAPABLE_CHECK)
@@ -4004,7 +4005,7 @@ void slimport_hdcp_repeater_reauth(void) /* A patch for HDCP repeater mode*/
 		
 		if(assisted_HDCP_repeater == HDCP_ERROR){
 			sp_tx_clean_hdcp_status();
-			mdelay(50);
+			msleep(50);
 			/*Clear HDCP AUTH interrupt*/
 			sp_write_reg_or(TX_P2, SP_COMMON_INT_STATUS1+1, HDCP_AUTH_DONE);
 			sp_tx_hw_hdcp_enable();
