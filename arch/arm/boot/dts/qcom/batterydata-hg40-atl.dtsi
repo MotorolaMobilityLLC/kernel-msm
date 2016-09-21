@@ -1,6 +1,6 @@
 
 qcom,hg40-atl {
-	serialnum = "SNN5976";
+	serialnum = "SNN5982";
 	/* #2513596_Lenovo_HG40_3000mAh_averaged_MasterSlave_Aug2nd2016*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <3000>;
