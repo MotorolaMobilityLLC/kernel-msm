@@ -718,8 +718,9 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <100>;
-		df-serialnum = "SNN5976";
+		df-serialnum = "SNN5982";
 		#include "batterydata-hg40-atl.dtsi"
+		#include "batterydata-hg40-swd.dtsi"
 	};
 };
 
