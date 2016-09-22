@@ -207,6 +207,6 @@
 };
 
 &pmi_haptic {
-	qcom,vmax-mv = <2400>;
+	qcom,vmax-mv = <2700>;
 };
 
