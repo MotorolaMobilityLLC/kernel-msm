@@ -978,3 +978,39 @@
 &mdss_dsi1 {
 	status = "disabled";
 };
+
+/{
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <100>;
+		df-serialnum = "SNN5972";
+
+		#include "batterydata-gv30-lg-pmi8998.dtsi"
+	};
+};
+
+&pmicobalt_fg {
+	qcom,battery-data = <&mot_batterydata>;
+	qcom,fg-cutoff-voltage = <3000>;
+	qcom,fg-empty-voltage = <2750>;
+	qcom,fg-chg-term-current = <170>;
+	qcom,fg-sys-term-current = <175>;
+	qcom,fg-delta-soc-thr = <1>;
+	qcom,fg-recharge-soc-thr = <1>;
+	qcom,fg-rsense-sel = <0>;
+	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
+};
+
+&pmicobalt_charger {
+	qcom,fcc-max-ua = <3000000>;
+	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <3000000>;
+	qcom,dc-icl-ua = <3000000>;
+	qcom,step-soc-thresholds = <50 100 100 100>;
+	qcom,step-current-deltas = <0 (-1400000) (-1400000)
+					(-1400000) (-1400000)>;
+	qcom,thermal-mitigation = <2500>,
+				   <1500>,
+				   <900>,
+				   <600>,
+				   <300>;
+};
