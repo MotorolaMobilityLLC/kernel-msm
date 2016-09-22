@@ -352,6 +352,15 @@
 	};
 };
 
+&slim_aud {
+	/delete-node/ tasha_codec;
+	/delete-node/ tavil_codec;
+
+	cs47l35-codec {
+		compatible = "madera-slim-audio";
+		element-addr = [00 7F 60 63 FA 01];
+};
+
 &pmcobalt_gpios {
 	gpio@c100 { /* PM8998_GPIO2 MOD_MPHY_SEL0 */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
@@ -655,23 +664,49 @@
 
 	/delete-node/ sound-9335;
 	/delete-node/ sound-tavil;
-	sound_sim {
-		compatible = "qcom,msmcobalt-asoc-snd-stub";
-		qcom,model = "msmcobalt-stub-snd-card";
+	sound {
+		status = "ok";
+		compatible = "qcom,msmcobalt-asoc-snd-cs47l35";
+		qcom,model = "msmcobalt-cs47l35-card";
+		qcom,ext-disp-audio-rx;
 
-		qcom,audio-routing =
-			"AIF4 VI", "MCLK",
-			"RX_BIAS", "MCLK";
-
-		qcom,tasha-mclk-clk-freq = <9600000>;
-		qcom,tavil-mclk-clk-freq = <9600000>;
-		asoc-platform = <&pcm0>, <&routing>;
-		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-routing";
-		asoc-cpu = <&sb_0_rx>, <&sb_0_tx>;
-		asoc-cpu-names = "msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385";
-		asoc-codec = <&stub_codec>;
-		asoc-codec-names = "msm-stub-codec.1";
-		qcom,wsa-max-devs = <0>;
+		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&cpe>, <&compr>,
+				<&pcm_noirq>, <&cs47l35>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+				"msm-pcm-dsp.2", "msm-voip-dsp",
+				"msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless",
+				"msm-pcm-afe", "msm-lsm-client",
+				"msm-pcm-routing", "msm-cpe-lsm",
+				"msm-compr-dsp", "msm-pcm-dsp-noirq",
+				"cs47l35-codec";
+		asoc-cpu = <&dai_hdmi>, <&dai_dp>,
+				<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+				<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
+				<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>,
+				<&afe_pcm_rx>, <&afe_pcm_tx>, <&afe_proxy_rx>,
+				<&afe_proxy_tx>, <&incall_record_rx>,
+				<&incall_record_tx>, <&incall_music_rx>,
+				<&incall_music_2_rx>, <&sb_5_rx>,
+				<&usb_audio_rx>, <&usb_audio_tx>, <&sb_6_rx>;
+		asoc-cpu-names = "msm-dai-q6-hdmi.8",  "msm-dai-q6-dp.24608",
+				"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
+				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+				"msm-dai-q6-dev.16388", "msm-dai-q6-dev.16389",
+				"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+				"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+				"msm-dai-q6-dev.16395", "msm-dai-q6-dev.224",
+				"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
+				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
+				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
+				"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394",
+				"msm-dai-q6-dev.28672", "msm-dai-q6-dev.28673",
+				"msm-dai-q6-dev.16396";
+		asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
+		asoc-codec-names = "msm-stub-codec.1",
+				"msm-ext-disp-audio-codec-rx";
 	};
 
 	vdd3_disp_vreg: vdd3_disp_vreg {
