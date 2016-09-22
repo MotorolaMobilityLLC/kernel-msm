@@ -1,0 +1,70 @@
+
+qcom,gv30-lg-pmi8998 {
+	serialnum = "SNN5972";
+	/* #2298022_Moto_GV30_2630mAh_averaged_MasterSlave_Aug25th2016*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <2630>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3900>;
+	qcom,battery-type = "GV30-LG-2630mah";
+	qcom,checksum = <0x99B5>;
+	qcom,gui-version = "PMI8998GUI - 2.0.0.17";
+	qcom,fg-profile-data = [
+		 99 1D D3 EC
+		 61 02 72 F5
+		 47 1D 97 DB
+		 F2 03 0F 0D
+		 71 18 46 22
+		 38 3D 4E 4A
+		 70 00 00 00
+		 17 00 00 00
+		 00 00 0C CD
+		 AC C5 44 CB
+		 22 00 08 00
+		 1C EB 56 E4
+		 67 FD 6D 00
+		 95 00 CB 0A
+		 ED 12 2D 53
+		 0D 06 09 20
+		 27 00 14 00
+		 8C 1F B7 05
+		 74 0A 43 06
+		 1B 1D 1F 01
+		 C6 01 C6 0C
+		 F4 19 69 1B
+		 C9 3D F9 43
+		 58 00 00 00
+		 16 00 00 00
+		 00 00 8F CD
+		 06 BB EE C5
+		 1B 00 00 00
+		 1C EB 56 E4
+		 E5 06 3A EA
+		 CB 00 13 0A
+		 C9 D3 A2 1A
+		 99 33 CC FF
+		 07 10 00 00
+		 79 0A 66 46
+		 1B 00 00 00
+		 82 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
