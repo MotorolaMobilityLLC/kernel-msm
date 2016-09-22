@@ -291,14 +291,6 @@
 		qcom,msm-cpe-lsm-id = <3>;
 	};
 
-	qcom,wcd-dsp-mgr {
-		compatible = "qcom,wcd-dsp-mgr";
-		qcom,wdsp-components = <&wcd934x_cdc 0>,
-				       <&wcd_spi_0 1>,
-				       <&glink_spi_xprt_wdsp 2>;
-		qcom,img-filename = "cpe_9340";
-	};
-
 	wcd_us_euro_gpio: msm_cdc_pinctrl@75 {
 		compatible = "qcom,msm-cdc-pinctrl";
 		pinctrl-names = "aud_active", "aud_sleep";
