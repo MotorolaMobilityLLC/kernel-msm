@@ -5218,7 +5218,9 @@ static int msm8x16_wcd_device_up(struct snd_soc_codec *codec)
 {
 	struct msm8x16_wcd_priv *msm8x16_wcd_priv =
 		snd_soc_codec_get_drvdata(codec);
-        int ret = 0;
+	#ifndef CONFIG_SND_SOC_FSA8500
+	int ret = 0;
+	#endif
 	dev_dbg(codec->dev, "%s: device up!\n", __func__);
 
 	mutex_lock(&codec->mutex);
