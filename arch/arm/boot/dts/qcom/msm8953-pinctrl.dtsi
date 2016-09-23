@@ -1157,7 +1157,7 @@
 			pri_tlmm_lines_sus: pri_tlmm_lines_sus {
 				mux {
 					pins = "gpio91", "gpio93", "gpio88";
-					function = "pri_mi2s";
+					function = "gpio";
 				};
 
 				config {
@@ -1215,7 +1215,7 @@
 			pri_tlmm_ws_sus: pri_tlmm_ws_sus {
 				mux {
 					pins = "gpio92";
-					function = "pri_mi2s_ws";
+					function = "gpio";
 				};
 
 				config {
