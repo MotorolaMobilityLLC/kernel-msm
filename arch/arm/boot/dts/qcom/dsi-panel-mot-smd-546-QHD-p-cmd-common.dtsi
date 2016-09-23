@@ -90,6 +90,37 @@ qcom,mdss-dsi-off-command = [
 	/* enter sleep mode */
 	05 01 00 00 78 00 01 10];
 
+qcom,mdss-dsi-lp-mode-on = [
+	39 00 00 00 00 00 03 F0 5A 5A
+	39 00 00 00 00 00 02 B0 09
+	39 00 00 00 00 00 03 CB 04 0D
+	39 00 00 00 00 00 02 B0 1A
+	39 00 00 00 00 00 02 CB 16
+	39 00 00 00 00 00 02 B0 30
+	39 00 00 00 00 00 02 CB D3
+	39 00 00 00 00 00 03 B1 20 05
+	39 00 00 00 00 00 02 B0 05
+	39 00 00 00 00 00 02 B1 00
+	39 00 00 00 00 00 02 F7 03
+	39 01 00 00 00 00 03 F0 A5 A5
+];
+qcom,mdss-dsi-lp-mode-on-state = "dsi_hs_mode";
+qcom,mdss-dsi-lp-mode-off = [
+	39 00 00 00 00 00 03 F0 5A 5A
+	39 00 00 00 00 00 02 B0 09
+	39 00 00 00 00 00 03 CB 0C 05
+	39 00 00 00 00 00 02 B0 1A
+	39 00 00 00 00 00 02 CB 0A
+	39 00 00 00 00 00 02 B0 30
+	39 00 00 00 00 00 02 CB 53
+	39 00 00 00 00 00 03 B1 10 03
+	39 00 00 00 00 00 02 B0 05
+	39 00 00 00 00 00 02 B1 80
+	39 00 00 00 00 00 02 F7 03
+	39 01 00 00 00 00 03 F0 A5 A5
+];
+qcom,mdss-dsi-lp-mode-off-state = "dsi_hs_mode";
+
 qcom,mdss-dsi-hbm-on-command = [
 	15 01 00 00 00 00 02 53 e0];
 qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
