@@ -2056,6 +2056,14 @@ int create_pkt_cmd_session_set_property(
 		pkt->rg_property_data[0] =
 			HFI_PROPERTY_PARAM_VENC_VIDEO_SIGNAL_INFO;
 		pkt->size += sizeof(u32) + sizeof(*signal_info);
+                break;
+        }
+	case HAL_PARAM_VENC_CONSTRAINED_INTRA_PRED:
+	{
+		create_pkt_enable(pkt->rg_property_data,
+			HFI_PROPERTY_PARAM_VENC_CONSTRAINED_INTRA_PRED,
+			((struct hal_enable *)pdata)->enable);
+		pkt->size += sizeof(u32) + sizeof(struct hfi_enable);
 		break;
 	}
 	/* FOLLOWING PROPERTIES ARE NOT IMPLEMENTED IN CORE YET */
