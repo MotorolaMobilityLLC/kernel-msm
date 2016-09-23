@@ -35,6 +35,7 @@
 #ifdef CONFIG_DIAG_OVER_TTY
 #include <linux/usb/tty_diag.h>
 #include <linux/of.h>
+#include <soc/qcom/bootinfo.h>
 
 static bool tty_mode;
 module_param(tty_mode, bool, S_IRUGO);
@@ -202,17 +203,11 @@ static inline struct diag_context *func_to_diag(struct usb_function *f)
 #ifdef CONFIG_DIAG_OVER_TTY
 static bool factory_cable_present(void)
 {
-	struct device_node *np;
-	bool fact_cable;
-
-	np = of_find_node_by_path("/chosen");
-	fact_cable = of_property_read_bool(np, "mmi,factory-cable");
-	of_node_put(np);
-
-	if (!np || !fact_cable)
+	if (!strncmp("mot-factory", bi_bootmode(), BOOTMODE_MAX_LEN) ||
+		(!strncmp("factory", bi_bootmode(), BOOTMODE_MAX_LEN)))
+		return true;
+	else
 		return false;
-
-	return true;
 }
 #endif
 
