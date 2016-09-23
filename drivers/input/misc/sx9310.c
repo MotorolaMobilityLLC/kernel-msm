@@ -1133,8 +1133,11 @@ static void sx93XX_worker_func(struct work_struct *work)
 
 void sx93XX_suspend(psx93XX_t this)
 {
-	if (this)
+	if (this) {
 		disable_irq(this->irq);
+		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
+		write_register(this, SX9310_IRQ_ENABLE_REG, 0x00);
+	}
 }
 void sx93XX_resume(psx93XX_t this)
 {
