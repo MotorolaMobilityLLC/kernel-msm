@@ -131,7 +131,7 @@ static __always_inline void *kmalloc(size_t size, gfp_t flags)
 
 		i = kmalloc_index(size);
 
-#ifdef CONFIG_ZONE_DMA
+#if defined(CONFIG_ZONE_DMA) && !defined(CONFIG_FORCE_KMALLOC_FROM_DMA_ZONE)
 		if (flags & GFP_DMA)
 			cachep = kmalloc_dma_caches[i];
 		else
@@ -180,7 +180,7 @@ static __always_inline void *kmalloc_node(size_t size, gfp_t flags, int node)
 
 		i = kmalloc_index(size);
 
-#ifdef CONFIG_ZONE_DMA
+#if defined(CONFIG_ZONE_DMA) && !defined(CONFIG_FORCE_KMALLOC_FROM_DMA_ZONE)
 		if (flags & GFP_DMA)
 			cachep = kmalloc_dma_caches[i];
 		else
