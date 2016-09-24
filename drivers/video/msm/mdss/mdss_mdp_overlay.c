@@ -2111,6 +2111,16 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 	if (IS_ERR_VALUE(ret))
 		goto commit_fail;
 
+	if (mdp5_data->ctl->is_video_mode) {
+		mutex_lock(&mdp5_data->ov_lock);
+		ret = mdss_mdp_display_commit_pp_post_vsync(mdp5_data->ctl,
+			NULL, NULL);
+		mutex_unlock(&mdp5_data->ov_lock);
+
+		if (IS_ERR_VALUE(ret))
+			goto commit_fail;
+	}
+
 	ret = mdss_mdp_ctl_update_fps(ctl);
 
 	mutex_lock(&mdp5_data->ov_lock);
