@@ -397,7 +397,7 @@
 			"MIC BIAS External2", "Headset Mic",
 			"MIC BIAS External", "Secondary Mic",
 			"AMIC1", "MIC BIAS External",
-			"AMIC2", "MIC BIAS Eternal2",
+			"AMIC2", "MIC BIAS External2",
 			"AMIC3", "MIC BIAS External";
 		/delete-property/ qcom,cdc-us-euro-gpios;
 		/delete-property/ qcom,msm-micbias1-ext-cap;
