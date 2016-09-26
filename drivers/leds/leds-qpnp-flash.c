@@ -74,7 +74,7 @@
 #define FLASH_TMR_SAFETY					0x00
 #define FLASH_SAFETY_TIMER_MASK					0x7F
 #define FLASH_MODULE_ENABLE_MASK				0xE0
-#define FLASH_STROBE_MASK					0xC0
+#define FLASH_STROBE_MASK					0xC7
 #define FLASH_CURRENT_RAMP_MASK					0xBF
 #define FLASH_VPH_PWR_DROOP_MASK				0xF3
 #define FLASH_LED_HDRM_SNS_ENABLE_MASK				0x81
@@ -102,6 +102,8 @@
 #define	FLASH_LED_FLASH_HW_VREG_OK				0x40
 #define	FLASH_LED_FLASH_SW_VREG_OK				0x80
 #define FLASH_LED_STROBE_TYPE_HW				0x04
+#define FLASH_LED_HW_STROBE_TRIG_EDGE				0x02
+#define FLASH_LED_HW_STROBE_ACT_HIGH				0x01
 #define	FLASH_DURATION_DIVIDER					10
 #define	FLASH_LED_HEADROOM_DIVIDER				100
 #define	FLASH_LED_HEADROOM_OFFSET				2
@@ -192,6 +194,10 @@ struct flash_node_data {
 	u8				num_regulators;
 	bool				regulators_on;
 	bool				flash_on;
+	bool				strobe_en;
+	bool				strobe_torch_en;
+	bool				strobe_trig_edge;
+	bool				strobe_act_high;
 };
 
 /*
@@ -1515,6 +1521,18 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			}
 		}
 
+		if (flash_node->strobe_torch_en) {
+			flash_node->trigger |= FLASH_LED_STROBE_TYPE_HW;
+			if (flash_node->strobe_trig_edge)
+				flash_node->trigger |= FLASH_LED_HW_STROBE_TRIG_EDGE;
+			if (flash_node->strobe_act_high)
+				flash_node->trigger |= FLASH_LED_HW_STROBE_ACT_HIGH;
+		} else {
+			flash_node->trigger &= ~(FLASH_LED_STROBE_TYPE_HW
+				| FLASH_LED_HW_STROBE_ACT_HIGH
+				| FLASH_LED_HW_STROBE_TRIG_EDGE);
+		}
+
 		rc = qpnp_led_masked_write(led->spmi_dev,
 			FLASH_LED_STROBE_CTRL(led->base),
 			(flash_node->id == FLASH_LED_SWITCH ? FLASH_STROBE_MASK
@@ -1745,6 +1763,18 @@ static void qpnp_flash_led_work(struct work_struct *work)
 					goto exit_flash_led_work;
 				}
 			}
+		}
+
+		if (flash_node->strobe_en) {
+			flash_node->trigger |= FLASH_LED_STROBE_TYPE_HW;
+			if (flash_node->strobe_trig_edge)
+				flash_node->trigger |= FLASH_LED_HW_STROBE_TRIG_EDGE;
+			if (flash_node->strobe_act_high)
+				flash_node->trigger |= FLASH_LED_HW_STROBE_ACT_HIGH;
+		} else {
+			flash_node->trigger &= ~(FLASH_LED_STROBE_TYPE_HW
+				| FLASH_LED_HW_STROBE_ACT_HIGH
+				| FLASH_LED_HW_STROBE_TRIG_EDGE);
 		}
 
 		rc = qpnp_led_masked_write(led->spmi_dev,
@@ -2207,6 +2237,15 @@ static int qpnp_flash_led_parse_each_led_dt(struct qpnp_flash_led *led,
 			return rc;
 		}
 	}
+
+	flash_node->strobe_en = of_property_read_bool(node,
+						"qcom,strobe-enabled");
+	flash_node->strobe_torch_en = of_property_read_bool(node,
+						"qcom,strobe-torch-enabled");
+	flash_node->strobe_trig_edge = of_property_read_bool(node,
+						"qcom,strobe-trig-edge");
+	flash_node->strobe_act_high = of_property_read_bool(node,
+						"qcom,strobe-act-high");
 
 	switch (led->peripheral_type) {
 	case FLASH_SUBTYPE_SINGLE:
