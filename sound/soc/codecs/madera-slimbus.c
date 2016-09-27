@@ -20,6 +20,9 @@ static int madera_slim_get_la(struct slim_device *slim, u8 *la)
 	int ret;
 	const unsigned long timeout = jiffies + msecs_to_jiffies(100);
 
+	if (slim == NULL)
+		return -EINVAL;
+
 	do {
 		ret = slim_get_logical_addr(slim, slim->e_addr, 6, la);
 		if (!ret)
@@ -31,7 +34,6 @@ static int madera_slim_get_la(struct slim_device *slim, u8 *la)
 
 
 	dev_info(&slim->dev, "LA %d\n", *la);
-
 	return 0;
 }
 
@@ -174,6 +176,12 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 	u8 laddr;
 	int i, ret;
 
+	if (stashed_slim_dev == NULL) {
+		dev_err(madera->dev, "%s No slim device available\n",
+			__func__);
+		return -EINVAL;
+	}
+
 	madera_slim_get_la(stashed_slim_dev, &laddr);
 
 	if (rx_num > MADERA_SLIMBUS_MAX_CHANNELS)
@@ -250,6 +258,7 @@ static const struct slim_device_id madera_slim_id[] = {
 static int madera_slim_audio_probe(struct slim_device *slim)
 {
 	stashed_slim_dev = slim;
+	dev_info(&slim->dev, "%s SLIM PROBE\n", __func__);
 
 	return 0;
 }
