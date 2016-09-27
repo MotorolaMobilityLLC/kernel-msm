@@ -760,6 +760,9 @@ static int smd_tty_write_room(struct tty_struct *tty)
 static int smd_tty_chars_in_buffer(struct tty_struct *tty)
 {
 	struct smd_tty_info *info = tty->driver_data;
+
+	if (!info)
+		return -EINVAL;
 	return smd_read_avail(info->ch);
 }
 
