@@ -838,4 +838,9 @@ enum {
 /* string */
 #define CAM_EXT_CID_CUSTOM_PARAMETER (CID_CAM_EXT_CLASS_BASE + 124)
 
+/***************** version 1.1 **************************/
+
+/* int[2] max jpeg size, max raw image size, optional for uvc fragment buffers */
+#define CAM_EXT_CID_UVC_FRAG_CFG  (CID_CAM_EXT_CLASS_BASE + 125)
+
 #endif /* __CAMERA_EXT_CTRLS_H */
