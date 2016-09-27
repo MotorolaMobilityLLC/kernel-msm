@@ -366,10 +366,11 @@ static void pll_28nm_ssc_param_calc(struct dsi_pll_vco_clk *vco,
 	vco_calc->ssc.triang_inc_7_0 = incr & 0xff;
 	vco_calc->ssc.triang_inc_9_8 = (incr >> 8) & 0x3;
 
-	if (dsi_pll_res->spread_mode == SSC_DOWN_SPREAD)
-		spread_freq = vco_calc->gen_vco_clk - ppm_freq;
-	else if (dsi_pll_res->spread_mode == SSC_CENTRE_SPREAD)
+	/* default spread mode is down spread */
+	if (dsi_pll_res->spread_mode == SSC_CENTRE_SPREAD)
 		spread_freq = vco_calc->gen_vco_clk - (ppm_freq / 2);
+	else
+		spread_freq = vco_calc->gen_vco_clk - ppm_freq;
 
 	div_rf = div_s64(spread_freq, 2 * vco->ref_clk_rate);
 	vco_calc->ssc.dc_offset = (div_rf - 1);
