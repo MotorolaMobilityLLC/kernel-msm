@@ -111,15 +111,6 @@
 		st,xtalkval = <19>;
 	};
 
-	cs35l34@41 {
-		compatible = "cirrus,cs35l34";
-		reg = <0x41>;
-
-		cirrus,gain-zc = <1>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&cs35l34_reset_default>;
-	};
-
 	tmp108@48 {
 		compatible = "ti,tmp108";
 		reg = <0x48>;
@@ -357,8 +348,9 @@
 	/delete-node/ tavil_codec;
 
 	cs47l35-codec {
-		compatible = "madera-slim-audio";
-		element-addr = [00 7F 60 63 FA 01];
+		compatible = "cirrus,madera-slim-audio";
+		elemental-addr = [00 00 60 63 FA 01];
+	};
 };
 
 &pmcobalt_gpios {
