@@ -189,6 +189,7 @@
 					   <400 400 0>;
 	qcom,stepchg-current-ma = <2000>;
 	qcom,stepchg-taper-ma = <1500>;
+	qcom,stepchg-iterm-ma = <125>;
 };
 
 &pmi8950_fg {
