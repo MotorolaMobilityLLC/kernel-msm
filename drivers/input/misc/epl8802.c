@@ -443,14 +443,16 @@ static void epl_sensor_report_ps_status(struct epl_sensor_priv *epld)
 	if (epld->epl_sensor.ps.data.data < epld->dynk_thd_recal) {
 		LOG_DBG("recalibration triggered, recal_threshold now:%d\n",
 			epld->dynk_thd_recal);
-		epld->ps_dyn_flag = true;
-		epl_sensor_do_ps_auto_k_one(epld);
-		mutex_lock(&sensor_mutex);
-		epl_sensor_I2C_Write(epld->client, 0x1b,
-				EPL_CMP_RESET | EPL_UN_LOCK);
-		epl_sensor_I2C_Write(epld->client, 0x1b,
-				EPL_CMP_RUN | EPL_UN_LOCK);
-		mutex_unlock(&sensor_mutex);
+		if (epld->ps_dyn_flag == false) {
+			epld->ps_dyn_flag = true;
+			epl_sensor_do_ps_auto_k_one(epld);
+			mutex_lock(&sensor_mutex);
+			epl_sensor_I2C_Write(epld->client, 0x1b,
+					EPL_CMP_RESET | EPL_UN_LOCK);
+			epl_sensor_I2C_Write(epld->client, 0x1b,
+					EPL_CMP_RUN | EPL_UN_LOCK);
+			mutex_unlock(&sensor_mutex);
+		}
 		return;
 	}
 #endif
@@ -458,15 +460,17 @@ static void epl_sensor_report_ps_status(struct epl_sensor_priv *epld)
 		if (epld->ps_pre_state == PS_UNCOVERED)
 			return;
 #if PS_DYN_K_ONE
-		set_psensor_intr_threshold(epld,
-			epld->dynk_thd_recal,
-			epld->dynk_thd_high);
-		mutex_lock(&sensor_mutex);
-		epl_sensor_I2C_Write(epld->client, 0x1b,
-				EPL_CMP_RESET | EPL_UN_LOCK);
-		epl_sensor_I2C_Write(epld->client, 0x1b,
-				EPL_CMP_RUN | EPL_UN_LOCK);
-		mutex_unlock(&sensor_mutex);
+		if (epld->ps_dyn_flag == false) {
+			set_psensor_intr_threshold(epld,
+				epld->dynk_thd_recal,
+				epld->dynk_thd_high);
+			mutex_lock(&sensor_mutex);
+			epl_sensor_I2C_Write(epld->client, 0x1b,
+					EPL_CMP_RESET | EPL_UN_LOCK);
+			epl_sensor_I2C_Write(epld->client, 0x1b,
+					EPL_CMP_RUN | EPL_UN_LOCK);
+			mutex_unlock(&sensor_mutex);
+		}
 #endif
 		distance = 10;
 		epld->ps_pre_state = PS_UNCOVERED;
@@ -474,15 +478,17 @@ static void epl_sensor_report_ps_status(struct epl_sensor_priv *epld)
 		if (epld->ps_pre_state == PS_COVERED)
 			return;
 #if PS_DYN_K_ONE
-		set_psensor_intr_threshold(epld,
-				epld->dynk_thd_low,
-				epld->dynk_thd_high);
-		mutex_lock(&sensor_mutex);
-		epl_sensor_I2C_Write(epld->client, 0x1b,
-				EPL_CMP_RESET | EPL_UN_LOCK);
-		epl_sensor_I2C_Write(epld->client, 0x1b,
-				EPL_CMP_RUN | EPL_UN_LOCK);
-		mutex_unlock(&sensor_mutex);
+		if (epld->ps_dyn_flag == false) {
+			set_psensor_intr_threshold(epld,
+					epld->dynk_thd_low,
+					epld->dynk_thd_high);
+			mutex_lock(&sensor_mutex);
+			epl_sensor_I2C_Write(epld->client, 0x1b,
+					EPL_CMP_RESET | EPL_UN_LOCK);
+			epl_sensor_I2C_Write(epld->client, 0x1b,
+					EPL_CMP_RUN | EPL_UN_LOCK);
+			mutex_unlock(&sensor_mutex);
+		}
 #endif
 		distance = 1;
 		epld->ps_pre_state = PS_COVERED;
