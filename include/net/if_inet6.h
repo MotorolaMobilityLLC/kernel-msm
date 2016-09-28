@@ -195,6 +195,9 @@ struct inet6_dev {
 	struct inet6_dev	*next;
 	struct ipv6_devconf	cnf;
 	struct ipv6_devstat	stats;
+
+	__s32			rs_interval;	/* in jiffies */
+
 	unsigned long		tstamp; /* ipv6InterfaceTable update timestamp */
 	struct rcu_head		rcu;
 };
