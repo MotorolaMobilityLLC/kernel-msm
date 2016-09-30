@@ -1883,6 +1883,12 @@ static int bq24296_hw_init(struct bq24296_chg *chip)
 		return ret;
 	}
 
+	ret = bq24296_set_hiz(chip, 0);
+	if (ret) {
+		pr_err("failed to Disable HZ\n");
+		return ret;
+	}
+
 	return 0;
 }
 
