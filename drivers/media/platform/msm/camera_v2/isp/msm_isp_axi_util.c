@@ -530,6 +530,7 @@ void msm_isp_update_framedrop_reg(struct vfe_device *vfe_dev,
 
 		if (stream_info->runtime_framedrop_update &&
 			vfe_dev->axi_data.src_info[frame_src].frame_id > 0) {
+		if(stream_info->runtime_init_frame_drop)
 			stream_info->runtime_init_frame_drop--;
 			if (stream_info->runtime_init_frame_drop == 0) {
 				stream_info->runtime_framedrop_update = 0;
@@ -548,12 +549,13 @@ void msm_isp_update_framedrop_reg(struct vfe_device *vfe_dev,
 				(stream_info->framedrop_period + 1) + 1;
 			msm_isp_cfg_framedrop_reg(vfe_dev, stream_info);
 		} else {
-			if (stream_info->runtime_burst_frame_count > 0)
-				stream_info->runtime_burst_frame_count--;
 
 			if ((stream_info->runtime_burst_frame_count <
 				BURST_SKIP_THRESHOLD) &&
 				(stream_info->runtime_burst_frame_count >= 0)) {
+				if ((stream_info->stream_type == BURST_STREAM) &&
+					(!stream_info->controllable_output) &&
+					(stream_info->runtime_burst_frame_count == 0))
 				msm_isp_cfg_framedrop_reg(vfe_dev,
 					stream_info);
 			}
@@ -1782,9 +1784,13 @@ static void msm_isp_process_done_buf(struct vfe_device *vfe_dev,
 				msm_isp_send_event(vfe_dev,
 				ISP_EVENT_BUF_DIVERT, &buf_event);
 		} else {
+		if (stream_info->stream_type == BURST_STREAM) {
 			ISP_DBG("%s: vfe_id %d send buf done buf-id %d bufq %x\n",
 				__func__, vfe_dev->pdev->id, buf->buf_idx,
 				buf->bufq_handle);
+			if (stream_info->runtime_burst_frame_count > 0)
+				stream_info->runtime_burst_frame_count--;
+			}
 			msm_isp_send_event(vfe_dev, ISP_EVENT_BUF_DONE,
 				&buf_event);
 			vfe_dev->buf_mgr->ops->buf_done(vfe_dev->buf_mgr,
