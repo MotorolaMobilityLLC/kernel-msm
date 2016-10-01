@@ -149,6 +149,7 @@ static int audio_ext_clk_prepare(struct clk *clk)
 			}
 			break;
 		case (Q6_SUBSYS_AVS2_7):
+		case (Q6_SUBSYS_AVS2_8):
 			digital_cdc_core_clk.enable = 1;
 			ret = afe_set_lpass_clock_v2(
 					AFE_PORT_ID_PRIMARY_MI2S_RX,
@@ -195,6 +196,7 @@ static void audio_ext_clk_unprepare(struct clk *clk)
 					__func__);
 			}
 		case (Q6_SUBSYS_AVS2_7):
+		case (Q6_SUBSYS_AVS2_8):
 			digital_cdc_core_clk.enable = 0;
 			ret = afe_set_lpass_clock_v2(
 					AFE_PORT_ID_PRIMARY_MI2S_RX,
