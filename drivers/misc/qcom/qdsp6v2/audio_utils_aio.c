@@ -1502,6 +1502,7 @@ static long audio_aio_ioctl(struct file *file, unsigned int cmd,
 		stats.sample_count = atomic_read(&audio->in_samples);
 		switch (q6core_get_avs_version()) {
 		case (Q6_SUBSYS_AVS2_7):
+		case (Q6_SUBSYS_AVS2_8):
 		{
 			rc = q6asm_get_session_time(audio->ac, &timestamp);
 			break;
@@ -1809,6 +1810,7 @@ static long audio_aio_compat_ioctl(struct file *file, unsigned int cmd,
 		stats.sample_count = atomic_read(&audio->in_samples);
 		switch (q6core_get_avs_version()) {
 		case (Q6_SUBSYS_AVS2_7):
+		case (Q6_SUBSYS_AVS2_8):
 		{
 			rc = q6asm_get_session_time(audio->ac, &timestamp);
 			break;

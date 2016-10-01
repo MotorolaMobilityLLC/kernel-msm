@@ -163,6 +163,10 @@ static int32_t aprv2_core_fn_q(struct apr_client_data *data, void *priv)
 			q6core_lcl.q6_core_avs_version = Q6_SUBSYS_AVS2_7;
 			pr_debug("%s: Received ADSP version as 2.7\n",
 							 __func__);
+		} else if (AVCS_CMDRSP_Q6_ID_2_8 == payload1[3]) {
+			q6core_lcl.q6_core_avs_version = Q6_SUBSYS_AVS2_8;
+			pr_info("%s: Received ADSP version as 2.8\n",
+							 __func__);
 		} else {
 			pr_err("%s: ADSP version is neither 2.6 nor 2.7\n",
 							 __func__);
