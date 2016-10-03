@@ -116,6 +116,30 @@
                 vdd-hsic-supply = <&pmicobalt_bob>;
         };
 
+	analogix_anx78e6@72 {
+		compatible = "analogix,anx7816";
+		status = "ok";
+		reg = <0x72>;
+		clock-names = "dp_bridge_mclk";
+		clocks = <&clock_gcc clk_ln_bb_clk2>;
+		interrupt-parent = <&tlmm>;
+		/* cbl-det-gpio is interrupt pin */
+		interrupts = <124 (IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING)>;
+		analogix,reset-gpio = <&tlmm 133 0x00>;
+/* TODO: Don't know if we need this in our configuration
+		analogix,irq-gpio = <&msm_gpio 53 0x00>; */
+		analogix,cbl-det-gpio = <&tlmm 124 0x00>;
+		analogix,p-dwn-gpio = <&tlmm 96 0x0>;   /* chip_pd */
+		analogix,vdd_33-supply = <&pmcobalt_l25>;
+		analogix,vdd_18-supply = <&pmcobalt_s4>;
+		analogix,vdd_10-supply = <&pmcobalt_l3>;
+		analogix,i2c-pull-up = <1>;
+		qcom,hdmi-tx-map = <&mdss_hdmi_tx>;
+
+		pinctrl-names = "anx_default", "anx_sleep";
+		pinctrl-0 = <&anx_rst_active>;
+		pinctrl-1 = <&anx_rst_suspend>;
+	};
 };
 
 &i2c_8 {
@@ -708,4 +732,10 @@
 	/delete-property/ pinctrl-1;
 
 	qcom,shared;
+};
+
+&pmcobalt_l25 {
+	regulator-min-microvolt = <3312000>;
+	regulator-max-microvolt = <3312000>;
+	qcom,init-voltage = <3312000>;
 };
