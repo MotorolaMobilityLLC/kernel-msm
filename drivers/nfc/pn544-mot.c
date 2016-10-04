@@ -33,6 +33,7 @@
 #include <linux/clk.h>
 
 static struct clk *clk_rf;
+#define WAKEUP_TIMEOUT  (1000)
 
 /*
  * Virtual device /sys/devices/virtual/misc/pn544/pn544_control_dev
@@ -62,9 +63,20 @@ static void pn544_disable_irq(struct pn544_dev *pn544_dev)
 
 	spin_lock_irqsave(&pn544_dev->irq_enabled_lock, flags);
 	if (pn544_dev->irq_enabled) {
-		irq_set_irq_wake(pn544_dev->client->irq, 0);
 		disable_irq_nosync(pn544_dev->client->irq);
 		pn544_dev->irq_enabled = false;
+	}
+	spin_unlock_irqrestore(&pn544_dev->irq_enabled_lock, flags);
+}
+
+static void pn544_enable_irq(struct pn544_dev *pn544_dev)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&pn544_dev->irq_enabled_lock, flags);
+	if (!pn544_dev->irq_enabled) {
+		pn544_dev->irq_enabled = true;
+		enable_irq(pn544_dev->client->irq);
 	}
 	spin_unlock_irqrestore(&pn544_dev->irq_enabled_lock, flags);
 }
@@ -72,6 +84,9 @@ static void pn544_disable_irq(struct pn544_dev *pn544_dev)
 static irqreturn_t pn544_dev_irq_handler(int irq, void *dev_id)
 {
 	struct pn544_dev *pn544_dev = dev_id;
+
+	if (device_may_wakeup(&pn544_dev->client->dev))
+		pm_wakeup_event(&pn544_dev->client->dev, WAKEUP_TIMEOUT);
 
 	pn544_disable_irq(pn544_dev);
 
@@ -105,7 +120,6 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 		}
 
 		pn544_dev->irq_enabled = true;
-		irq_set_irq_wake(pn544_dev->client->irq, 1);
 		enable_irq(pn544_dev->client->irq);
 		ret = wait_event_interruptible(pn544_dev->read_wq,
 				gpio_get_value(pn544_dev->irq_gpio));
@@ -220,6 +234,7 @@ static long pn544_dev_ioctl(struct pn544_dev *pn544_dev,
 			 */
 			pr_info("%s : power on with firmware update.\n",
 				__func__);
+			pn544_enable_irq(pn544_dev);
 			gpio_set_value(pn544_dev->ven_gpio, ven_logic_high);
 			usleep_range(10000, 11000);
 			gpio_set_value(pn544_dev->firmware_gpio, 1);
@@ -233,12 +248,14 @@ static long pn544_dev_ioctl(struct pn544_dev *pn544_dev,
 		} else if (arg == 1) {
 			/* power on */
 			pr_info("%s : normal power on\n", __func__);
+			pn544_enable_irq(pn544_dev);
 			gpio_set_value(pn544_dev->firmware_gpio, 0);
 			usleep_range(10000, 11000);
 			gpio_set_value(pn544_dev->ven_gpio, ven_logic_high);
 		} else if (arg == 0) {
 			/* power off */
 			pr_info("%s : power off\n", __func__);
+			pn544_disable_irq(pn544_dev);
 			gpio_set_value(pn544_dev->firmware_gpio, 0);
 			usleep_range(10000, 11000);
 			gpio_set_value(pn544_dev->ven_gpio, ven_logic_low);
@@ -555,14 +572,13 @@ static int pn544_probe(struct i2c_client *client,
 		dev_err(&client->dev, "request_irq failed\n");
 		goto err_request_irq_failed;
 	}
-	if (unlikely(irq_set_irq_wake(client->irq, 1)))
-		pr_err("%s : unable to make irq %d wakeup\n", __func__,
-					client->irq);
 	pn544_disable_irq(pn544_dev);
 
 	pn544_dev->reboot_notify.notifier_call = pn544_reboot_notify;
 	register_reboot_notifier(&pn544_dev->reboot_notify);
 
+	device_init_wakeup(&client->dev, true);
+	device_set_wakeup_capable(&client->dev, true);
 	i2c_set_clientdata(client, pn544_dev);
 
 	return 0;
@@ -613,9 +629,32 @@ static int pn544_remove(struct i2c_client *client)
 	return 0;
 }
 
+static int pn544_suspend(struct device *device)
+{
+	struct i2c_client *client = to_i2c_client(device);
+	struct pn544_dev *pn544_dev = i2c_get_clientdata(client);
+
+	if (device_may_wakeup(&client->dev) && pn544_dev->irq_enabled)
+		enable_irq_wake(client->irq);
+	return 0;
+}
+
+static int pn544_resume(struct device *device)
+{
+	struct i2c_client *client = to_i2c_client(device);
+
+	if (device_may_wakeup(&client->dev))
+		disable_irq_wake(client->irq);
+	return 0;
+}
+
 static const struct i2c_device_id pn544_id[] = {
 	{ "pn544", 0 },
 	{ }
+};
+
+static const struct dev_pm_ops pn544_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(pn544_suspend, pn544_resume)
 };
 
 #ifdef CONFIG_OF
@@ -634,6 +673,7 @@ static struct i2c_driver pn544_driver = {
 		.owner	= THIS_MODULE,
 		.name	= "pn544",
 		.of_match_table = of_match_ptr(pn544_match_tbl),
+		.pm     = &pn544_pm_ops,
 	},
 };
 
