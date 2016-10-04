@@ -113,12 +113,29 @@ Optional Properties:
 - qcom,gpu-speed-config:
 				This property enables support for dynamic GPU powerlevel
 				configuration based on the efuse register.
-			  <offset mask shift speed>
+				<offset shift mask speed>
 				offset - offset of the efuse register from the base.
 				shift  - number of bits to right shift to get the speed value.
 				mask   - mask for the relevant bits in the efuse register.
 				speed  - speed for loading specific GPU powerlevel.
 
+- qcom,gpu-fuse-numconfigs:	Number of PTE fuse configuration.
+- qcom,gpu-fuse-config:	This property enables support for dynamic GPU powerlevel
+				configuration based on the PTE fuse bin (OR) PTE speed bin registers.
+				First entry speed/fuse bit will fit into the MSB of speed plan value
+				later bit values will added towards LSB.
+				A series of 3 cell properties, format of which is:
+				<offset shift mask>
+				offset - offset of the fuse/speedbin register from the base.
+				shift  - number of bits to right shift to get the bin/fuse value.
+				mask   - mask for the relevant bits in the fuse register.
+
+- qcom,gpu-speed-numplans:	Number of Powerlevels configuration.
+- qcom,gpu-speed-plan:          This property enables to defines the various GPU powerlevel plans.
+				A series of 2 cell properties, format of which is:
+				<value plan>
+				value - Value of speed bin to choose the proper PowerLevel Plan.
+				plan  - Number for a spedd config Powerlevels.
 - qcom,popp-enable:
 				Boolean. Enables the POPP feature in the gpu kernel driver.
 
