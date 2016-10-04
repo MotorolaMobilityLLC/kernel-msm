@@ -38,6 +38,15 @@
 		qcom,cpr-speed-bin-max-corners =
 				<0 0 2 4 8>,
 				<2 0 2 4 8>;
+
+		qcom,cpr-fuse-version-map =
+		/* <Speed_bits PVS_version CPR_Rev - - -> */
+			<  2  (-1)   2  (-1) (-1) (-1)>,
+			<(-1) (-1) (-1) (-1) (-1) (-1)>;
+
+		qcom,cpr-quotient-adjustment =
+			<0 (-50) (-25)>, /* NOM - 20mv, TURBO - 10mv */
+			<0    0     0 >;
 	};
 
 	apc1_vreg_corner: regulator@b118000 {
@@ -46,8 +55,17 @@
 		/delete-property/ qcom,cpr-quotient-adjustment;
 
 		qcom,cpr-speed-bin-max-corners =
-				<0 0 2 4 8>,
+				<0 0 2 4 7>,
 				<2 0 2 4 9>;
+
+		qcom,cpr-fuse-version-map =
+		/* <Speed_bits PVS_version CPR_Rev - - -> */
+			<  2  (-1)   2  (-1) (-1) (-1)>,
+			<(-1) (-1) (-1) (-1) (-1) (-1)>;
+
+		qcom,cpr-quotient-adjustment =
+			<0 (-50) (-25)>, /* NOM - 20mv, TURBO - 10mv */
+			<0    0     0 >;
 	};
 
 	gfx_vreg_corner: regulator@98000 {
