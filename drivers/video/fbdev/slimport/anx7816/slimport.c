@@ -25,9 +25,11 @@
 #include "../../msm/mdss/mdss_hdmi_slimport.h"
 #endif
 
+#ifdef SP_REGISTER_SET_TEST
 /* Enable or Disable HDCP by default */
 /* hdcp_enable = 1: Enable,  0: Disable */
 static int hdcp_enable = 1;
+#endif
 
 /* HDCP switch for external block*/
 /* external_block_en = 1: enable, 0: disable*/
@@ -299,6 +301,7 @@ err:
 	return rc;
 }*/
 
+#ifdef SP_REGISTER_SET_TEST
 ssize_t slimport7816_rev_check_store(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count)
@@ -557,7 +560,6 @@ static ssize_t anx_dpcd_store(struct device *dev,
 }
 
 
-#ifdef SP_REGISTER_SET_TEST	/*//Slimport test*/
 /*sysfs read interface*/
 static ssize_t ctrl_reg0_show(struct device *dev,
 			struct device_attribute *attr, char *buf)
@@ -800,6 +802,7 @@ static ssize_t ctrl_reg18_store(struct device *dev,
 #endif
 /* for debugging */
 static struct device_attribute slimport_device_attrs[] = {
+#ifdef SP_REGISTER_SET_TEST
 	__ATTR(rev_check, S_IRUGO | S_IWUSR, NULL,
 	       slimport7816_rev_check_store),
 	__ATTR(hdcp, S_IRUGO | S_IWUSR, sp_hdcp_feature_show,
@@ -809,7 +812,6 @@ static struct device_attribute slimport_device_attrs[] = {
 	__ATTR(anx7730, S_IRUGO | S_IWUSR, NULL, anx7730_write_reg_store),
 	__ATTR(anx7816, S_IRUGO | S_IWUSR, NULL, anx7816_write_reg_store),
 	__ATTR(DPCD, S_IRUGO | S_IWUSR, NULL, anx_dpcd_store),
-#ifdef SP_REGISTER_SET_TEST	/*//slimport test*/
 	__ATTR(ctrl_reg0, S_IRUGO | S_IWUSR, ctrl_reg0_show, ctrl_reg0_store),
 	__ATTR(ctrl_reg10, S_IRUGO | S_IWUSR, ctrl_reg10_show,
 	       ctrl_reg10_store),
