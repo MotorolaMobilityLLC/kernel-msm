@@ -91,6 +91,8 @@
 #define MARLEY_SYSCLK_RATE (FLL_RATE_MARLEY / 3)
 #define MARLEY_DSPCLK_RATE (FLL_RATE_MARLEY / 2)
 #define CS35L34_MCLK_RATE 6144000
+#define CS35L35_MCLK_RATE 12288000
+#define CS35L35_SCLK_RATE 1536000
 #endif
 
 enum btsco_rates {
@@ -4093,10 +4095,52 @@ int marley_cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
 		1 << ARIZONA_OPCLK_ENA_SHIFT, 1 << ARIZONA_OPCLK_ENA_SHIFT);
 
 	usleep_range(1000, 1001);
-	snd_soc_update_bits(codec, CS35L34_PWRCTL1,
-		PDN_ALL, PDN_ALL);
+	snd_soc_update_bits(codec, CS35L34_PWRCTL1, PDN_ALL, PDN_ALL);
 	/* Wait 45ms for the interrupt pin to go low */
 	msleep(45);
+
+	return 0;
+}
+
+int marley_cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+	struct snd_soc_dai *aif2_dai = rtd->cpu_dai;
+	struct snd_soc_dai *cs35l35_dai = rtd->codec_dai;
+	struct snd_soc_codec *codec_marley = rtd->cpu_dai->codec;
+
+	ret = snd_soc_dai_set_sysclk(aif2_dai, ARIZONA_CLK_SYSCLK, 0, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
+		return ret;
+	}
+	ret = snd_soc_dai_set_sysclk(cs35l35_dai, 0, CS35L35_SCLK_RATE, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set SCLK %d\n", ret);
+		return ret;
+	}
+	ret = snd_soc_codec_set_sysclk(codec, 0, 0, CS35L35_MCLK_RATE, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set MCLK %d\n", ret);
+		return ret;
+	}
+	ret = snd_soc_codec_set_pll(codec, MARLEY_FLL1_REFCLK,
+			ARIZONA_FLL_SRC_NONE,
+			0, 0);
+	ret = snd_soc_codec_set_pll(codec_marley, MARLEY_FLL1,
+		ARIZONA_FLL_SRC_MCLK2,
+		32768, MARLEY_SYSCLK_RATE);
+	ret = snd_soc_codec_set_sysclk(codec_marley, ARIZONA_CLK_SYSCLK,
+		ARIZONA_CLK_SRC_FLL1, MARLEY_SYSCLK_RATE,
+		SND_SOC_CLOCK_IN);
+
+	ret = snd_soc_codec_set_sysclk(codec_marley, ARIZONA_CLK_OPCLK,
+		0, CS35L35_MCLK_RATE,
+		SND_SOC_CLOCK_OUT);
+	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
+	snd_soc_dapm_sync(dapm);
 
 	return 0;
 }
@@ -4288,9 +4332,8 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 	const char *ext_pa = "qcom,msm-ext-pa";
 	const char *ext_pa_str = NULL;
 	int num_strings = 0;
-	int ret, i;
 	struct resource *muxsel;
-
+	int i, ret = 0;
 	pdata = devm_kzalloc(&pdev->dev,
 			sizeof(struct msm8952_asoc_mach_data), GFP_KERNEL);
 	if (!pdata)
@@ -4413,6 +4456,7 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&pdata->hs_detect_dwork, hs_detect_work);
 	atomic_set(&pdata->clk_ref.quat_mi2s_clk_ref, 0);
 	atomic_set(&pdata->clk_ref.auxpcm_mi2s_clk_ref, 0);
+
 	card = populate_snd_card_dailinks(&pdev->dev);
 	if (!card) {
 		dev_err(&pdev->dev, "%s: Card uninitialized\n", __func__);
