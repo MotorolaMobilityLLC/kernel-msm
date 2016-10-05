@@ -2874,9 +2874,6 @@ int mdss_panel_get_intf_status(u32 disp_num, u32 intf_type)
 	if (!mdss_res || !mdss_res->pan_cfg.init_done)
 		return -EPROBE_DEFER;
 
-pr_err("..HACKED.. %s: force to disable cont_splash_enabled\n", __func__);
-return 0;
-
 	if (mdss_res->handoff_pending) {
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 		intf_status = readl_relaxed(mdata->mdp_base +
