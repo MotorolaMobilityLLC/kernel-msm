@@ -55,7 +55,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_nt35597_dsc_cmd>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_g_cmd_v0>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
