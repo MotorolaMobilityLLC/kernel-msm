@@ -113,28 +113,9 @@ qcom,mdss-dsi-panel-status-value = <0x9c>;
 
 /* DSC Host Configuration */
 qcom,compression-mode = "dsc";
-qcom,config-select = <&dsi_nt35597_dsc_cmd_config2>;
-dsi_nt35597_dsc_cmd_config0:config0 {
-	qcom,mdss-dsc-encoders = <1>;
-	qcom,mdss-dsc-slice-height = <16>;
-	qcom,mdss-dsc-slice-width = <1440>;
-	qcom,mdss-dsc-slice-per-pkt = <1>;
-	qcom,mdss-dsc-bit-per-component = <8>;
-	qcom,mdss-dsc-bit-per-pixel = <8>;
-	qcom,mdss-dsc-block-prediction-enable;
-};
+qcom,config-select = <&dsc_cfg_mot_smd_546_QHD_g_cmd>;
 
-dsi_nt35597_dsc_cmd_config1:config1 {
-	qcom,mdss-dsc-encoders = <1>;
-	qcom,mdss-dsc-slice-height = <16>;
-	qcom,mdss-dsc-slice-width = <1440>;
-	qcom,mdss-dsc-slice-per-pkt = <1>;
-	qcom,mdss-dsc-bit-per-component = <8>;
-	qcom,mdss-dsc-bit-per-pixel = <8>;
-	qcom,mdss-dsc-block-prediction-enable;
-};
-
-dsi_nt35597_dsc_cmd_config2:config2 {
+dsc_cfg_mot_smd_546_QHD_g_cmd:config0 {
 	qcom,mdss-dsc-encoders = <1>;
 	qcom,mdss-dsc-slice-height = <16>;
 	qcom,mdss-dsc-slice-width = <1440>;
