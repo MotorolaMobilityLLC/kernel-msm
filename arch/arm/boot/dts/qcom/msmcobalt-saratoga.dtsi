@@ -28,6 +28,7 @@
 		vin-supply = <&pmcobalt_s4>;
 		startup-delay-us = <300>;
 		enable-active-high;
+		regulator-boot-on;
 	};
 
 	vbat_disp_vreg: vbat_disp_vreg {
@@ -36,6 +37,7 @@
 		gpio = <&tlmm 69 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
+		regulator-boot-on;
 	};
 };
 
@@ -44,6 +46,7 @@
 	regulator-min-microvolt = <3100000>;
 	regulator-max-microvolt = <3100000>;
 	qcom,init-voltage = <3100000>;
+	regulator-boot-on;
 };
 
 &mdss_mdp {
