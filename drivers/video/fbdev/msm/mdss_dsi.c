@@ -3166,7 +3166,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 	int len, i = 0;
 	int ctrl_id = pdev->id - 1;
 	char panel_name[MDSS_MAX_PANEL_LEN] = "";
-	char ctrl_id_stream[3] =  "1:";
+	char ctrl_id_stream[3] =  "0:";
 	char *str1 = NULL, *str2 = NULL, *override_cfg = NULL;
 	char cfg_np_name[MDSS_MAX_PANEL_LEN] = "";
 	struct device_node *dsi_pan_node = NULL, *mdss_node = NULL;
@@ -3193,7 +3193,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 		}
 
 		if (ctrl_id == 1)
-			strlcpy(ctrl_id_stream, "0:", 3);
+			strlcpy(ctrl_id_stream, "1:", 3);
 
 		/* get controller number */
 		str1 = strnstr(panel_cfg, ctrl_id_stream, len);
