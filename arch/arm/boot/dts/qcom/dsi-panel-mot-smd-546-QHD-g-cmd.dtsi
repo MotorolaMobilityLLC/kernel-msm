@@ -11,7 +11,7 @@
  */
 
 &mdss_mdp {
-	dsi_nt35597_dsc_cmd: qcom,mdss_dsi_nt35597_dsc_wqxga_cmd {
+	mot_smd_546_QHD_g_cmd_v0: qcom,mdss_dsi_mot_smd_546_QHD_g_cmd_v0 {
 		#include "dsi-panel-mot-smd-546-QHD-g-cmd-common.dtsi"
 	};
 };
