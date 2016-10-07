@@ -558,6 +558,13 @@
 		pinctrl-0 = <&blsp2_uart5_sleep>;
 		pinctrl-1 = <&blsp2_uart5_active>;
 	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+					"back_temp";
+		status = "ok";
+	};
 };
 
 /* Direct Copy of I2C1 from msmcobalt-blsp.dtsi */
