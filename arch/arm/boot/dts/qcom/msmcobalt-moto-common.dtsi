@@ -723,6 +723,15 @@
 		pinctrl-1 = <&blsp2_uart5_active>;
 	};
 
+	modbus_switch {
+		compatible = "mmi,modbus_switch";
+
+		gpios = <&pmcobalt_gpios 2 2>,  /* MOD_MPHY_SEL0, output high */
+			<&tlmm 98 2>;           /* MOD_MPHY_SEL1, output high */
+		mmi,mod-switch-gpio-labels = "MOD_MPHY_SEL0",
+						"MOD_MPHY_SEL1";
+	};
+
 	sys_temp_support {
 		compatible = "mmi,sys-temp";
 		mmi,temperature-names = "front_temp",
