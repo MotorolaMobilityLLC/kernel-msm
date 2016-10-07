@@ -146,6 +146,7 @@ mitsubishi	Mitsubishi Electric Corporation
 mosaixtech	Mosaix Technologies, Inc.
 moxa	Moxa
 mpl	MPL AG
+mmi	Motorola Mobility LLC (formerly Motorola Mobility, Inc.)
 msi	Micro-Star International Co. Ltd.
 mstar	MStar Semiconductor, Inc.
 mti	Imagination Technologies Ltd. (formerly MIPS Technologies Inc.)
