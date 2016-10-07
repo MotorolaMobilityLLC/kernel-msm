@@ -565,6 +565,25 @@
 					"back_temp";
 		status = "ok";
 	};
+
+	qcom,sensor-information {
+		sensor_information30: qcom,sensor-information-30 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "bms";
+			qcom,alias-name  = "batt_therm";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information31: qcom,sensor-information-31 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "front_temp";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information32: qcom,sensor-information-32 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "back_temp";
+			qcom,scaling-factor = <1000>;
+		};
+	};
 };
 
 /* Direct Copy of I2C1 from msmcobalt-blsp.dtsi */
