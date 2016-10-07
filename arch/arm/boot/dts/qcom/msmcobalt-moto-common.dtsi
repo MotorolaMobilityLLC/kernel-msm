@@ -44,6 +44,18 @@
 		qca,bt-vdd-ldo-current-level = <0>; /* LPM/PFM */
 		qca,bt-vdd-pa-current-level = <0>; /* LPM/PFM */
 	};
+
+	utags {
+		compatible = "mmi,utags";
+		mmi,main-utags = "/dev/block/bootdevice/by-name/utags";
+		mmi,backup-utags = "/dev/block/bootdevice/by-name/utagsBackup";
+	};
+
+	hw {
+		compatible = "mmi,utags";
+		mmi,dir-name = "hw";
+		mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
+	};
 };
 
 &blsp1_uart3_hs {
