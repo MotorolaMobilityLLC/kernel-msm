@@ -32,7 +32,7 @@
 struct mmi_sys_temp_sensor {
 	struct thermal_zone_device *tz_dev;
 	const char *name;
-	unsigned long temp;
+	int temp;
 };
 
 struct mmi_sys_temp_dev {
@@ -129,7 +129,7 @@ static struct miscdevice mmi_sys_temp_misc = {
 };
 
 static int mmi_sys_temp_get(struct thermal_zone_device *thermal,
-			    unsigned long *temp)
+			    int *temp)
 {
 	struct mmi_sys_temp_sensor *sensor = thermal->devdata;
 
