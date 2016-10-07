@@ -18,6 +18,18 @@
 #include "sdm660-moto-audio.dtsi"
 
 / {
+	utags {
+		compatible = "mmi,utags";
+		mmi,main-utags = "/dev/block/bootdevice/by-name/utags";
+		mmi,backup-utags = "/dev/block/bootdevice/by-name/utagsBackup";
+	};
+
+	hw {
+		compatible = "mmi,utags";
+		mmi,dir-name = "hw";
+		mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
+	};
+
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
 		#include "fg-gen3-batterydata-hx40sunwoda-3000mah.dtsi"
