@@ -4707,18 +4707,6 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	int rc;
 
 	cancel_delayed_work(&chip->usb_insertion_work);
-	rc = smbchg_sec_masked_write(chip,
-				     chip->usb_chgpth_base + CHGPTH_CFG,
-				     HVDCP_EN_BIT, 0);
-	if (rc < 0)
-		dev_err(chip->dev,
-			"Couldn't disable HVDCP rc=%d\n", rc);
-
-	rc = smbchg_sec_masked_write(chip, chip->usb_chgpth_base + APSD_CFG,
-				     APSD_EN_BIT, 0);
-	if (rc < 0)
-		dev_err(chip->dev, "Couldn't disable APSD rc=%d\n",
-				rc);
 
 	chip->apsd_rerun_cnt = 0;
 	chip->hvdcp_det_done = false;
