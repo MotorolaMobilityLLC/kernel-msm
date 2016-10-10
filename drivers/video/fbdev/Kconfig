@@ -2347,6 +2347,12 @@ config SLIMPORT_COMMON
 	  Slimport Transmitter is a video transmitter chip
 	  over micro-USB connector for smartphone device
 
+config MOD_DISPLAY
+	tristate "Mod Display Support"
+	default n
+	---help---
+	  Say yes here if you wish to include the Mod Display support drivers.
+
 config FB_MX3
 	tristate "MX3 Framebuffer support"
 	depends on FB && MX3_IPU
