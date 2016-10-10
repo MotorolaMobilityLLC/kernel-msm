@@ -23,6 +23,9 @@
 #include "quick_charge.h"
 #endif
 
+#include <linux/mod_display.h>
+#include <linux/mod_display_ops.h>
+
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 #include "../../msm/mdss_hdmi_slimport.h"
 #endif
@@ -1490,6 +1493,71 @@ static int anx7816_parse_dt(struct device *dev,
 }
 #endif
 
+static int slimport_mod_display_handle_available(void *data)
+{
+	struct anx7816_data *anx7816;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7816 = (struct anx7816_data *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int slimport_mod_display_handle_unavailable(void *data)
+{
+	struct anx7816_data *anx7816;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7816 = (struct anx7816_data *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int slimport_mod_display_handle_connect(void *data)
+{
+	struct anx7816_data *anx7816;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7816 = (struct anx7816_data *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static int slimport_mod_display_handle_disconnect(void *data)
+{
+	struct anx7816_data *anx7816;
+
+	pr_debug("%s+\n", __func__);
+
+	anx7816 = (struct anx7816_data *)data;
+
+	pr_debug("%s-\n", __func__);
+
+	return 0;
+}
+
+static struct mod_display_ops slimport_mod_display_ops = {
+	.handle_available = slimport_mod_display_handle_available,
+	.handle_unavailable = slimport_mod_display_handle_unavailable,
+	.handle_connect = slimport_mod_display_handle_connect,
+	.handle_disconnect = slimport_mod_display_handle_disconnect,
+	.data = NULL,
+};
+
+static struct mod_display_impl_data slimport_mod_display_impl = {
+	.mod_display_type = MOD_DISPLAY_TYPE_DP,
+	.ops = &slimport_mod_display_ops,
+};
+
 static int anx7816_i2c_probe(struct i2c_client *client,
 			     const struct i2c_device_id *id)
 {
@@ -1660,6 +1728,8 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		}
 	}
 #endif
+	slimport_mod_display_ops.data = (void *)anx7816;
+	mod_display_register_impl(&slimport_mod_display_impl);
 
 	pr_debug("%s %s end\n", LOG_TAG, __func__);
 	goto exit;
