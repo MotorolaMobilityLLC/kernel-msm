@@ -35,6 +35,7 @@
 
 #include <sound/timer.h>
 #include <sound/tlv.h>
+#include <sound/q6core.h>
 
 #include <sound/apr_audio-v2.h>
 #include <sound/q6asm-v2.h>
@@ -99,6 +100,7 @@ struct msm_compr_pdata {
 	struct msm_compr_audio_effects *audio_effects[MSM_FRONTEND_DAI_MAX];
 	bool use_dsp_gapless_mode;
 	struct msm_compr_dec_params *dec_params[MSM_FRONTEND_DAI_MAX];
+	struct msm_compr_ch_map *ch_map[MSM_FRONTEND_DAI_MAX];
 };
 
 struct msm_compr_audio {
@@ -181,6 +183,11 @@ struct msm_compr_dec_params {
 	struct snd_dec_ddp ddp_params;
 };
 
+struct msm_compr_ch_map {
+	bool set_ch_map;
+	char channel_map[PCM_FORMAT_MAX_NUM_CHANNEL];
+};
+
 static int msm_compr_send_dec_params(struct snd_compr_stream *cstream,
 				     struct msm_compr_dec_params *dec_params,
 				     int stream_id);
@@ -189,8 +196,13 @@ static int msm_compr_set_volume(struct snd_compr_stream *cstream,
 				uint32_t volume_l, uint32_t volume_r)
 {
 	struct msm_compr_audio *prtd;
-	int rc = 0;
-	uint32_t avg_vol;
+	int i, rc = -1;
+	uint32_t avg_vol, gain_list[VOLUME_CONTROL_MAX_CHANNELS];
+	uint32_t num_channels;
+	struct snd_soc_pcm_runtime *rtd;
+	struct msm_compr_pdata *pdata;
+	bool use_default = true;
+	u8 *chmap = NULL;
 
 	pr_debug("%s: volume_l %d volume_r %d\n",
 		__func__, volume_l, volume_r);
@@ -198,18 +210,30 @@ static int msm_compr_set_volume(struct snd_compr_stream *cstream,
 		pr_err("%s: session not active\n", __func__);
 		return -EPERM;
 	}
+	rtd = cstream->private_data;
 	prtd = cstream->runtime->private_data;
 
 	if (!prtd || !prtd->audio_client) {
-		pr_err("%s: invalid session prtd or no audio client", __func__);
+		pr_err("%s: invalid session/rtd, prtd or no audio client",
+				__func__);
 		return rc;
 	}
+	pdata = snd_soc_platform_get_drvdata(rtd->platform);
 
 	if (prtd->compr_passthr != LEGACY_PCM) {
 		pr_debug("%s: No volume config for passthrough %d\n",
 			 __func__, prtd->compr_passthr);
 		return rc;
 	}
+
+	use_default = !(pdata->ch_map[rtd->dai_link->be_id]->set_ch_map);
+	chmap = pdata->ch_map[rtd->dai_link->be_id]->channel_map;
+	num_channels = prtd->num_channels;
+	pr_debug("%s: call q6asm_set_volume volume_l(%d)volume_r(%d)num of channels(%d)\n",
+		 __func__, volume_l, volume_r, prtd->num_channels);
+	pr_debug("%s: AVS version(%d): 0 for AVS2.6, 1 for AVS2.7\n",
+		  __func__, q6core_get_avs_version());
+
 	if (prtd->num_channels > 2) {
 		/*
 		 * Currently the left and right gains are averaged an applied
@@ -220,28 +244,64 @@ static int msm_compr_set_volume(struct snd_compr_stream *cstream,
 		 * channel gains.
 		 *
 		 */
-		pr_debug("%s: call q6asm_set_volume for multichannel\n",
-			 __func__);
-		avg_vol = (volume_l + volume_r) / 2;
-		rc = q6asm_set_volume(prtd->audio_client, avg_vol);
+		switch (q6core_get_avs_version()) {
+		case Q6_SUBSYS_AVS2_7:
+		case Q6_SUBSYS_AVS2_8:
+			avg_vol = (volume_l + volume_r) / 2;
+			for (i = 0; i < prtd->num_channels; i++)
+				gain_list[i] = avg_vol;
+			rc = q6asm_set_multich_gain(prtd->audio_client,
+				num_channels, gain_list, chmap, use_default);
+			break;
+		case Q6_SUBSYS_AVS2_6:
+			avg_vol = (volume_l + volume_r) / 2;
+			rc = q6asm_set_volume(prtd->audio_client, avg_vol);
+			break;
+		case Q6_SUBSYS_INVALID:
+		default:
+			pr_err("%s: UNKNOWN AVS IMAGE\n", __func__);
+			return rc;
+		}
 	} else {
-		pr_debug("%s: call q6asm_set_lrgain\n", __func__);
-		rc = q6asm_set_lrgain(prtd->audio_client, volume_l, volume_r);
-		if (rc < 0) {
-			pr_err("%s: Send LR gain command failed rc=%d\n",
-				__func__, rc);
-		} else {
-			pr_debug("%s: now calling msm_dts_eagle_set_volume\n",
-				 __func__);
-			rc = msm_dts_eagle_set_volume(prtd->audio_client,
-						      volume_l, volume_r);
-			if (rc < 0) {
-				pr_err("%s: Send Volume command failed (DTS_EAGLE) rc=%d\n",
-						__func__, rc);
+		switch (q6core_get_avs_version()) {
+		case Q6_SUBSYS_AVS2_7:
+		case Q6_SUBSYS_AVS2_8:
+			gain_list[0] = volume_l;
+			gain_list[1] = volume_r;
+			/* force sending FR/FL/FC volume for mono */
+			if (prtd->num_channels == 1) {
+				gain_list[2] = volume_l;
+				num_channels = 3;
+				use_default = true;
 			}
+			rc = q6asm_set_multich_gain(prtd->audio_client,
+				num_channels, gain_list, chmap, use_default);
+			break;
+		case Q6_SUBSYS_AVS2_6:
+			pr_debug("%s: call q6asm_set_lrgain\n", __func__);
+			rc = q6asm_set_lrgain(prtd->audio_client,
+						volume_l, volume_r);
+			if (rc < 0)
+				pr_err("%s: Send LR gain command failed rc=%d\n",
+					__func__, rc);
+			else {
+				pr_debug("%s: now calling msm_dts_eagle_set_volume\n",
+					 __func__);
+				rc = msm_dts_eagle_set_volume(
+							prtd->audio_client,
+							volume_l, volume_r);
+				if (rc < 0) {
+					pr_err("%s: Send Volume command failed (DTS_EAGLE) rc=%d\n",
+						__func__, rc);
+				}
+			}
+			break;
+		case Q6_SUBSYS_INVALID:
+		default:
+			pr_err("%s: UNKNOWN AVS IMAGE\n", __func__);
+			return rc;
 		}
 	}
-
 	if (rc < 0)
 		pr_err("%s: Send vol gain command failed rc=%d\n",
 		       __func__, rc);
@@ -613,6 +673,9 @@ static int msm_compr_send_media_format_block(struct snd_compr_stream *cstream,
 {
 	struct snd_compr_runtime *runtime = cstream->runtime;
 	struct msm_compr_audio *prtd = runtime->private_data;
+	struct snd_soc_pcm_runtime *rtd = cstream->private_data;
+	struct msm_compr_pdata *pdata =
+			snd_soc_platform_get_drvdata(rtd->platform);
 	struct asm_aac_cfg aac_cfg;
 	struct asm_wma_cfg wma_cfg;
 	struct asm_wmapro_cfg wma_pro_cfg;
@@ -624,6 +687,8 @@ static int msm_compr_send_media_format_block(struct snd_compr_stream *cstream,
 
 	int ret = 0;
 	uint16_t bit_width = 16;
+	bool use_default_chmap = true;
+	char *chmap = NULL;
 
 	pr_debug("%s: use_gapless_codec_options %d\n",
 			__func__, use_gapless_codec_options);
@@ -641,13 +706,21 @@ static int msm_compr_send_media_format_block(struct snd_compr_stream *cstream,
 	switch (prtd->codec) {
 	case FORMAT_LINEAR_PCM:
 		pr_debug("SND_AUDIOCODEC_PCM\n");
+		if (pdata->ch_map[rtd->dai_link->be_id]) {
+			use_default_chmap =
+			    !(pdata->ch_map[rtd->dai_link->be_id]->set_ch_map);
+			chmap =
+			    pdata->ch_map[rtd->dai_link->be_id]->channel_map;
+		}
 		if (prtd->codec_param.codec.format == SNDRV_PCM_FORMAT_S24_LE)
 			bit_width = 24;
 		ret = q6asm_media_format_block_pcm_format_support_v2(
 							prtd->audio_client,
 							prtd->sample_rate,
 							prtd->num_channels,
-							bit_width, stream_id);
+							bit_width, stream_id,
+							use_default_chmap,
+							chmap);
 		if (ret < 0)
 			pr_err("%s: CMD Format block failed\n", __func__);
 
@@ -1171,7 +1244,9 @@ static int msm_compr_free(struct snd_compr_stream *cstream)
 	q6asm_audio_client_free(ac);
 
 	kfree(pdata->audio_effects[soc_prtd->dai_link->be_id]);
+	pdata->audio_effects[soc_prtd->dai_link->be_id] = NULL;
 	kfree(pdata->dec_params[soc_prtd->dai_link->be_id]);
+	pdata->dec_params[soc_prtd->dai_link->be_id] = NULL;
 	kfree(prtd);
 
 	return 0;
@@ -1688,9 +1763,31 @@ static int msm_compr_trigger(struct snd_compr_stream *cstream, int cmd)
 			/*
 			 * Cache this time as last known time
 			 */
-			q6asm_get_session_time(prtd->audio_client,
-					       &prtd->marker_timestamp);
+			switch (q6core_get_avs_version()) {
+			case (Q6_SUBSYS_AVS2_7):
+			case (Q6_SUBSYS_AVS2_8):
+			{
+				q6asm_get_session_time(prtd->audio_client,
+						&prtd->marker_timestamp);
+				break;
+			}
+			case (Q6_SUBSYS_AVS2_6):
+			{
+				q6asm_get_session_time_legacy(
+						prtd->audio_client,
+						&prtd->marker_timestamp);
+				break;
+			}
+			case (Q6_SUBSYS_INVALID):
+			default:
+			{
+				pr_err("%s: UNKNOWN AVS IMAGE VERSION\n",
+							__func__);
+				break;
+			}
+			}
 			spin_lock_irqsave(&prtd->lock, flags);
+
 			/*
 			 * Don't reset these as these vars map to
 			 * total_bytes_transferred and total_bytes_available.
@@ -1847,7 +1944,28 @@ static int msm_compr_pointer(struct snd_compr_stream *cstream,
 			pr_debug("%s session time in gapless transition",
 				 __func__);
 
-		rc = q6asm_get_session_time(prtd->audio_client, &timestamp);
+		switch (q6core_get_avs_version()) {
+		case (Q6_SUBSYS_AVS2_7):
+		case (Q6_SUBSYS_AVS2_8):
+		{
+			rc = q6asm_get_session_time(prtd->audio_client,
+						    &timestamp);
+			break;
+		}
+		case (Q6_SUBSYS_AVS2_6):
+		{
+			rc = q6asm_get_session_time_legacy(
+					prtd->audio_client, &timestamp);
+			break;
+		}
+		case (Q6_SUBSYS_INVALID):
+		default:
+		{
+			pr_err("%s: UNKNOWN AVS IMAGE VERSION\n", __func__);
+			rc = -EINVAL;
+			break;
+		}
+		}
 		if (rc < 0) {
 			pr_err("%s: Get Session Time return value =%lld\n",
 				__func__, timestamp);
@@ -2455,6 +2573,64 @@ static int msm_compr_app_type_cfg_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int msm_compr_channel_map_put(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_platform *platform = snd_kcontrol_chip(kcontrol);
+	u64 fe_id = kcontrol->private_value;
+	struct msm_compr_pdata *pdata = (struct msm_compr_pdata *)
+			snd_soc_platform_get_drvdata(platform);
+	int rc = 0, i;
+
+	pr_debug("%s: fe_id- %llu\n", __func__, fe_id);
+
+	if (fe_id >= MSM_FRONTEND_DAI_MAX) {
+		pr_err("%s Received out of bounds fe_id %llu\n",
+			__func__, fe_id);
+		rc = -EINVAL;
+		goto end;
+	}
+
+	if (pdata->ch_map[fe_id]) {
+		pdata->ch_map[fe_id]->set_ch_map = true;
+		for (i = 0; i < PCM_FORMAT_MAX_NUM_CHANNEL; i++)
+			pdata->ch_map[fe_id]->channel_map[i] =
+				(char)(ucontrol->value.integer.value[i]);
+	} else {
+		pr_debug("%s: no memory for ch_map, default will be set\n",
+			__func__);
+	}
+end:
+	pr_debug("%s: ret %d\n", __func__, rc);
+	return rc;
+}
+
+static int msm_compr_channel_map_get(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_platform *platform = snd_kcontrol_chip(kcontrol);
+	u64 fe_id = kcontrol->private_value;
+	struct msm_compr_pdata *pdata = (struct msm_compr_pdata *)
+			snd_soc_platform_get_drvdata(platform);
+	int rc = 0, i;
+
+	pr_debug("%s: fe_id- %llu\n", __func__, fe_id);
+	if (fe_id >= MSM_FRONTEND_DAI_MAX) {
+		pr_err("%s: Received out of bounds fe_id %llu\n",
+			__func__, fe_id);
+		rc = -EINVAL;
+		goto end;
+	}
+	if (pdata->ch_map[fe_id]) {
+		for (i = 0; i < PCM_FORMAT_MAX_NUM_CHANNEL; i++)
+			ucontrol->value.integer.value[i] =
+				pdata->ch_map[fe_id]->channel_map[i];
+	}
+end:
+	pr_debug("%s: ret %d\n", __func__, rc);
+	return rc;
+}
+
 static int msm_compr_probe(struct snd_soc_platform *platform)
 {
 	struct msm_compr_pdata *pdata;
@@ -2476,6 +2652,7 @@ static int msm_compr_probe(struct snd_soc_platform *platform)
 		pdata->audio_effects[i] = NULL;
 		pdata->dec_params[i] = NULL;
 		pdata->cstream[i] = NULL;
+		pdata->ch_map[i] = NULL;
 	}
 
 	/*
@@ -2525,6 +2702,16 @@ static int msm_compr_app_type_cfg_info(struct snd_kcontrol *kcontrol,
 	uinfo->count = 5;
 	uinfo->value.integer.min = 0;
 	uinfo->value.integer.max = 0x7FFFFFFF;
+	return 0;
+}
+
+static int msm_compr_channel_map_info(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 8;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 0xFFFFFFFF;
 	return 0;
 }
 
@@ -2754,6 +2941,65 @@ static int msm_compr_add_app_type_cfg_control(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
+static int msm_compr_add_channel_map_control(struct snd_soc_pcm_runtime *rtd)
+{
+	const char *mixer_ctl_name = "Playback Channel Map";
+	const char *deviceNo       = "NN";
+	char *mixer_str = NULL;
+	struct msm_compr_pdata *pdata = NULL;
+	int ctl_len;
+	struct snd_kcontrol_new fe_channel_map_control[1] = {
+		{
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name = "?",
+		.access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
+		.info = msm_compr_channel_map_info,
+		.get = msm_compr_channel_map_get,
+		.put = msm_compr_channel_map_put,
+		.private_value = 0,
+		}
+	};
+
+	if (!rtd) {
+		pr_err("%s: NULL rtd\n", __func__);
+		return -EINVAL;
+	}
+
+	pr_debug("%s: added new compr FE with name %s, id %d, cpu dai %s, device no %d\n",
+		 __func__, rtd->dai_link->name, rtd->dai_link->be_id,
+		 rtd->dai_link->cpu_dai_name, rtd->pcm->device);
+
+	ctl_len = strlen(mixer_ctl_name) + strlen(deviceNo) + 1;
+	mixer_str = kzalloc(ctl_len, GFP_KERNEL);
+
+	if (!mixer_str) {
+		pr_err("%s: failed to allocate mixer ctrl str of len %d\n",
+			__func__, ctl_len);
+		return -ENOMEM;
+	}
+
+	snprintf(mixer_str, ctl_len, "%s%d", mixer_ctl_name, rtd->pcm->device);
+
+	fe_channel_map_control[0].name = mixer_str;
+	fe_channel_map_control[0].private_value = rtd->dai_link->be_id;
+	pr_debug("%s: Registering new mixer ctl %s\n", __func__, mixer_str);
+	snd_soc_add_platform_controls(rtd->platform,
+				fe_channel_map_control,
+				ARRAY_SIZE(fe_channel_map_control));
+
+	pdata = snd_soc_platform_get_drvdata(rtd->platform);
+	pdata->ch_map[rtd->dai_link->be_id] =
+		 kzalloc(sizeof(struct msm_compr_ch_map), GFP_KERNEL);
+	if (!pdata->ch_map[rtd->dai_link->be_id]) {
+		pr_err("%s: Could not allocate memory for channel map\n",
+			__func__);
+		kfree(mixer_str);
+		return -ENOMEM;
+	}
+	kfree(mixer_str);
+	return 0;
+}
+
 static int msm_compr_new(struct snd_soc_pcm_runtime *rtd)
 {
 	int rc;
@@ -2771,7 +3017,11 @@ static int msm_compr_new(struct snd_soc_pcm_runtime *rtd)
 			__func__);
 	rc = msm_compr_add_app_type_cfg_control(rtd);
 	if (rc)
-		pr_err("%s: Could not add Compr Dec runtime params Control\n",
+		pr_err("%s: Could not add Compr App Type Cfg Control\n",
+			__func__);
+	rc = msm_compr_add_channel_map_control(rtd);
+	if (rc)
+		pr_err("%s: Could not add Compr Channel Map Control\n",
 			__func__);
 	return 0;
 }
