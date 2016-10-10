@@ -2099,7 +2099,8 @@ void slimport_config_video_output(void)
 			}
 			else 
 			{
-				pr_info("%s %s :HDMI input video not stable!\n", LOG_TAG, __func__);
+				pr_warn("%s %s :HDMI input video not stable!\n",
+							 LOG_TAG, __func__);
 			}
 			SP_BREAK(VO_WAIT_VIDEO_STABLE, sp_tx_vo_state);
 	
@@ -2109,7 +2110,8 @@ void slimport_config_video_output(void)
 			sp_write_reg(TX_P0, SP_TX_SYS_CTRL2_REG, temp_value);
 			sp_read_reg(TX_P0, SP_TX_SYS_CTRL2_REG, &temp_value);
 			if(temp_value & CHA_STA) {
-				pr_info("%s %s : Stream clock not stable!\n", LOG_TAG, __func__);
+				pr_warn("%s %s : Stream clock not stable!\n",
+							LOG_TAG, __func__);
 			}else {
 				sp_read_reg(TX_P0, SP_TX_SYS_CTRL3_REG, &temp_value);
 				sp_write_reg(TX_P0, SP_TX_SYS_CTRL3_REG, temp_value);
