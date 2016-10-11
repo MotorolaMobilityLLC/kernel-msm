@@ -27,6 +27,8 @@
 #include <linux/mod_display.h>
 #include <linux/mod_display_ops.h>
 
+#define MML_DYNAMIC_IRQ_SUPPORT 1
+
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 #include "../../msm/mdss_hdmi_slimport.h"
 #endif
@@ -43,6 +45,7 @@ int external_block_en = 1;
 
 /* to access global platform data */
 static struct anx7816_platform_data *g_pdata;
+static struct anx7816_data *g_data;
 
 /* Use device tree structure data when defined "CONFIG_OF"  */
 /*#define CONFIG_OF
@@ -68,6 +71,7 @@ unchar val_SP_TX_LT_CTRL_REG18;
 #define FALSE 0
 
 static int slimport7816_avdd_power(unsigned int onoff);
+static int anx7816_enable_irq(int enable);
 
 struct i2c_client *anx7816_client;
 
@@ -99,6 +103,7 @@ struct anx7816_platform_data {
 	struct pinctrl_state *hdmi_pinctrl_active;
 	struct pinctrl_state *hdmi_pinctrl_suspend;
 	struct platform_device *hdmi_pdev;
+	bool cbl_det_irq_enabled;
 	struct mutex sp_tx_power_lock;
 	bool sp_tx_power_state;
 };
@@ -810,6 +815,44 @@ static ssize_t ctrl_reg18_store(struct device *dev,
 	return count;
 }
 #endif
+
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+/* sysfs interface : Dynamic IRQ Enable Manual Control */
+ssize_t sp_irq_enable_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct anx7816_data *anx7816;
+
+	if (!g_data) {
+		pr_err("%s: g_data is not set\n", __func__);
+		return -ENODEV;
+	} else
+		anx7816 = g_data;
+
+	return snprintf(buf, PAGE_SIZE, "%d\n",
+				anx7816->pdata->cbl_det_irq_enabled);
+}
+
+ssize_t sp_irq_enable_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	int ret;
+	long val;
+
+	ret = kstrtol(buf, 10, &val);
+	if (ret)
+		return ret;
+
+	if (val != !!val)
+		pr_err("%s: Invalid input: %s (%ld)\n", __func__, buf, val);
+	else
+		anx7816_enable_irq(val);
+
+	return count;
+}
+#endif
+
 /* for debugging */
 static struct device_attribute slimport_device_attrs[] = {
 #ifdef SP_REGISTER_SET_TEST
@@ -841,6 +884,11 @@ static struct device_attribute slimport_device_attrs[] = {
 	__ATTR(ctrl_reg18, S_IRUGO | S_IWUSR, ctrl_reg18_show,
 	       ctrl_reg18_store),
 #endif
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+	__ATTR(irq_enable, S_IRUGO | S_IWUSR, sp_irq_enable_show,
+		sp_irq_enable_store),
+#endif
+
 };
 
 static int create_sysfs_interfaces(struct device *dev)
@@ -1228,6 +1276,7 @@ static int anx7816_init_gpio(struct anx7816_data *anx7816)
 			goto err1;
 		}
 		gpio_direction_input(anx7816->pdata->gpio_cbl_det);
+		gpio_export(anx7816->pdata->gpio_cbl_det, false);
 	} else
 		pr_err("%s : Invalid  gpio_cbl_det\n", __func__);
 
@@ -1496,6 +1545,46 @@ static int anx7816_parse_dt(struct device *dev,
 }
 #endif
 
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+static int anx7816_enable_irq(int enable)
+{
+	struct anx7816_data *anx7816;
+	int ret = 0;
+
+	pr_debug("%s+ (enable: %d)\n", __func__, enable);
+
+	if (!anx7816_client)
+		return -ENODEV;
+
+	if (!g_data) {
+		pr_err("%s: g_data is not set\n", __func__);
+		return -ENODEV;
+	} else
+		anx7816 = g_data;
+
+	if (enable && !anx7816->pdata->cbl_det_irq_enabled) {
+		ret = request_threaded_irq(anx7816_client->irq, NULL,
+				anx7816_cbl_det_isr,
+				IRQF_TRIGGER_RISING
+				| IRQF_TRIGGER_FALLING
+				| IRQF_ONESHOT, "anx7816", anx7816);
+		if (ret < 0) {
+			pr_err("%s : failed to request irq\n", __func__);
+			goto exit;
+		}
+
+		anx7816->pdata->cbl_det_irq_enabled = true;
+	} else if (!enable && anx7816->pdata->cbl_det_irq_enabled) {
+		free_irq(anx7816_client->irq, anx7816);
+
+		anx7816->pdata->cbl_det_irq_enabled = false;
+	}
+
+exit:
+	return ret;
+}
+#endif
+
 static int slimport_mod_display_handle_available(void *data)
 {
 	struct anx7816_data *anx7816;
@@ -1540,6 +1629,10 @@ static int slimport_mod_display_handle_connect(void *data)
 
 	reinit_completion(&anx7816->connect_wait);
 
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+	anx7816_enable_irq(1);
+#endif
+
 	while (!wait_for_completion_timeout(&anx7816->connect_wait,
 				msecs_to_jiffies(1000)) && retries) {
 		pr_debug("%s: Slimport not connected... Retries left: %d\n",
@@ -1575,12 +1668,17 @@ static int slimport_mod_display_handle_disconnect(void *data)
 	reinit_completion(&anx7816->connect_wait);
 
 	while (atomic_read(&anx7816->slimport_connected) &&
-		!wait_for_completion_timeout(&anx7816->connect_wait,
-		msecs_to_jiffies(1000)) && retries) {
+			!wait_for_completion_timeout(&anx7816->connect_wait,
+			msecs_to_jiffies(1000)) && retries) {
 		pr_debug("%s: Slimport not disconnected... Retries left: %d\n",
 			__func__, retries);
 		retries--;
 	}
+
+
+#ifdef MML_DYNAMIC_IRQ_SUPPORT
+	anx7816_enable_irq(0);
+#endif
 
 	/* This should never happen, but just in case... */
 	if (atomic_add_unless(&anx7816->slimport_connected, -1, 0)) {
@@ -1666,6 +1764,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 
 	/* to access global platform data */
 	g_pdata = anx7816->pdata;
+	g_data = anx7816;
 
 	anx7816_client = client;
 
@@ -1710,6 +1809,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		goto err2;
 	}
 
+	anx7816->pdata->cbl_det_irq_enabled = false;
 	client->irq = gpio_to_irq(anx7816->pdata->gpio_cbl_det);
 	if (client->irq < 0) {
 		pr_err("%s : failed to get gpio irq\n", __func__);
@@ -1719,6 +1819,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	wake_lock_init(&anx7816->slimport_lock,
 		       WAKE_LOCK_SUSPEND, "slimport_wake_lock");
 
+#ifndef MML_DYNAMIC_IRQ_SUPPORT
 	ret = request_threaded_irq(client->irq, NULL, anx7816_cbl_det_isr,
 				   IRQF_TRIGGER_RISING
 				   | IRQF_TRIGGER_FALLING
@@ -1741,6 +1842,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 		pr_err("interrupt wake enable fail\n");
 		goto err3;
 	}
+#endif
 
 	ret = create_sysfs_interfaces(&client->dev);
 	if (ret < 0) {
@@ -1788,7 +1890,9 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 err4:
 	remove_sysfs_interfaces(&client->dev);
 err3:
+#ifndef MML_DYNAMIC_IRQ_SUPPORT
 	free_irq(client->irq, anx7816);
+#endif
 err2:
 	destroy_workqueue(anx7816->workqueue);
 err1:
