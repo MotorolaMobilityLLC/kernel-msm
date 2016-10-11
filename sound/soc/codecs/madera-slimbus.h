@@ -10,10 +10,10 @@
 
 int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		      struct snd_kcontrol *kcontrol,
-		      int event, int dai_id);
+		      int event);
 int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		      struct snd_kcontrol *kcontrol,
-		      int event, int dai_id);
+		      int event);
 int madera_set_channel_map(struct snd_soc_dai *dai,
 			   unsigned int tx_num, unsigned int *tx_slot,
 			   unsigned int rx_num, unsigned int *rx_slot);
