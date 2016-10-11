@@ -701,7 +701,7 @@
 					   <700 700 0>,
 					   <500 500 0>,
 					   <300 300 0>;
-	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-voltage-mv = <4100>;
 	qcom,stepchg-current-ma = <2000>;
 	qcom,stepchg-taper-ma = <1800>;
 	qcom,stepchg-iterm-ma = <146>;
