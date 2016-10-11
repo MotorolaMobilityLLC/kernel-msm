@@ -35,29 +35,27 @@ static int madera_slim_get_la(struct slim_device *slim, u8 *la)
 	return 0;
 }
 
-static void madera_slim_fixup_prop(struct madera_dai_priv *dai_priv,
-				   struct slim_ch *prop)
+static void madera_slim_fixup_prop(struct slim_ch *prop)
 {
 	prop->prot = SLIM_AUTO_ISO;
 	prop->baser = SLIM_RATE_4000HZ;
 	prop->dataf = SLIM_CH_DATAF_NOT_DEFINED;
 	prop->auxf = SLIM_CH_AUXF_NOT_APPLICABLE;
-	prop->ratem = dai_priv->sample_rate / 4000;
-	prop->sampleszbits = dai_priv->bit_width;
+	prop->ratem = 48000 / 4000;
+	prop->sampleszbits = 16;
 }
 
 int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		      struct snd_kcontrol *kcontrol,
-		      int event, int dai_id)
+		      int event)
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct madera_priv *priv = snd_soc_codec_get_drvdata(codec);
-	struct madera_dai_priv *dai_priv = &priv->dai[dai_id - 1];
 	struct madera *madera = priv->madera;
 	struct slim_ch prop;
 	int ret;
 
-	madera_slim_fixup_prop(dai_priv, &prop);
+	madera_slim_fixup_prop(&prop);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -109,16 +107,15 @@ EXPORT_SYMBOL_GPL(madera_slim_tx_ev);
 
 int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		      struct snd_kcontrol *kcontrol,
-		      int event, int dai_id)
+		      int event)
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct madera_priv *priv = snd_soc_codec_get_drvdata(codec);
-	struct madera_dai_priv *dai_priv = &priv->dai[dai_id - 1];
 	struct madera *madera = priv->madera;
 	struct slim_ch prop;
 	int ret;
 
-	madera_slim_fixup_prop(dai_priv, &prop);
+	madera_slim_fixup_prop(&prop);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
