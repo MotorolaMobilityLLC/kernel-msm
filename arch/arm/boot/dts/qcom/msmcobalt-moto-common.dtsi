@@ -21,6 +21,7 @@
 		i2c1 = &mods_i2c;
 		uart0 = &blsp1_uart3_hs;
 	};
+
 	bluetooth: bt_wcn3990 {
 		compatible = "qca,wcn3990";
 		qca,bt-vdd-io-supply = <&pmcobalt_s3>;
@@ -50,7 +51,7 @@
 };
 
 &i2c_5 {
-		/delete-node/ synaptics@20;
+	/delete-node/ synaptics@20;
 };
 
 &i2c_7 {
@@ -176,9 +177,9 @@
 		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x20>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <40 0>;
-		gpios = <&tlmm 40 0>, /* IRQ */
-		<&tlmm 39 0>; /* RESET */
+		interrupts = <115 0>;
+		gpios = <&tlmm 115 0>, /* IRQ */
+			<&tlmm 39 0>; /* RESET */
 		touch_vdd-supply = <&pmcobalt_l28>;
 		synaptics,gpio-config;
 		pinctrl-names = "default", "active";
@@ -192,6 +193,10 @@
 			};
 		};
 	};
+};
+
+&spi_9 { /* BLSP2 QUP3 */
+	status = "ok";
 };
 
 &pcie0 {
@@ -452,6 +457,32 @@
 };
 
 &soc {
+	vdd3_disp_vreg: vdd3_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd3_disp";
+		gpio = <&pmcobalt_gpios 7 0>;
+		vin-supply = <&pmcobalt_s4>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	vbat_disp_vreg: vbat_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat_disp";
+		gpio = <&tlmm 69 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
+	dummy_vreg: dummy_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "dummy_vreg";
+		regulator-always-on;
+	};
+
 	muc: muc {
 		compatible = "mmi,muc";
 		#address-cells = <1>;
@@ -787,6 +818,14 @@
 	qcom,shared;
 };
 
+&pmcobalt_l19 {
+	/* Todo.. This need to configure to 3.2v */
+	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+	regulator-boot-on;
+};
+
 &pmcobalt_l25 {
 	regulator-min-microvolt = <3312000>;
 	regulator-max-microvolt = <3312000>;
@@ -806,4 +845,30 @@
 			&mdss_hdmi_ddc_active &mdss_hdmi_cec_active>;
 	pinctrl-4 = <&mdss_hdmi_5v_suspend &mdss_hdmi_hpd_suspend
 			&mdss_hdmi_ddc_suspend &mdss_hdmi_cec_suspend>;
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi {
+	hw-config = "dual_dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_g_cmd_v0>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-reset-gpio = <&tlmm 8 0>;
+	qcom,platform-te-gpio = <&tlmm 10 0>;
+	qcom,display-id = "primary";
+
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vci_disp-supply = <&pmcobalt_l19>;
+	vdd3_disp-supply = <&vdd3_disp_vreg>;
+};
+
+&mdss_dsi1 {
+	status = "disabled";
 };
