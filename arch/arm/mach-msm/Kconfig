@@ -1059,6 +1059,22 @@ config MMI_DEVICE_DTBS
 	  Only include Motorola device specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config MMI_DTB_HARPIA
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility Device HARPIA DTB"
+	help
+	  Only include Motorola device HARPIA DTB to limit the number that
+	  get built during kernel compilation.
+
+config MMI_DTB_LUX
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility Device LUX DTB"
+	help
+	  Only include Motorola device LUX DTB to limit the number that
+	  get built during kernel compilation.
+
 config HAS_MACH_MEMUTILS
 	default n
 	bool "Motorola MSM memcpy enhancements"
