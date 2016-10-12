@@ -18,6 +18,9 @@
 #include "quick_charge.h"
 #endif
 #include "slimport_tx_drv.h"
+#include <linux/slab.h>
+#include <linux/mod_display.h>
+
 
 
 #ifndef XTAL_CLK_DEF
@@ -1389,6 +1392,8 @@ void slimport_edid_process(void)
 {
 	unchar rx_bandwidth, tx_bandwidth;
 	unchar i;
+	struct mod_display_panel_config *display_config = NULL;
+	int ret;
 
 	pr_debug("%s %s : edid_process\n", LOG_TAG, __func__);
 
@@ -1396,6 +1401,32 @@ void slimport_edid_process(void)
 	pr_debug("%s %s : get rx bandwidth info = [%x]\n", LOG_TAG, __func__,
 		(uint)rx_bandwidth);
 	sp_rx_bandwidth = rx_bandwidth;
+
+	ret = mod_display_get_display_config(&display_config);
+	if (ret) {
+		pr_err("%s: Failed to get display config: %d\n", __func__, ret);
+		memset(edid_blocks, 0, 256);
+		return;
+	} else if (display_config->config_type == MOD_CONFIG_EDID_1_3) {
+		if (display_config->config_size > 256) {
+			pr_err("%s: EDID too big: %d\n", __func__,
+				display_config->config_size);
+		} else if (display_config->config_size == 0) {
+			pr_debug("%s: Reading EDID over HDMI link...\n",
+				__func__);
+		} else {
+			memcpy(edid_blocks, display_config->config_buf,
+				display_config->config_size);
+			goto skip_me;
+		}
+	} else {
+		pr_err("%s: Unknown display config type (%d)... Abort\n",
+			__func__, display_config->config_type);
+		memset(edid_blocks, 0, 256);
+		return;
+	}
+
+
 
 	if(g_read_edid_flag == 1){
 		if(check_with_pre_edid(edid_blocks))
@@ -1410,6 +1441,9 @@ void slimport_edid_process(void)
 			pr_err("%s %s : ERR:EDID corruption!\n", LOG_TAG, __func__);
 	}
 
+skip_me:
+	if (display_config)
+		kfree(display_config);
 
 	/*Release the HPD after the OTP loaddown*/
 	i = 10;
