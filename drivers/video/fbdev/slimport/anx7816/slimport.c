@@ -1667,6 +1667,7 @@ static int slimport_mod_display_handle_connect(void *data)
 #ifdef MML_DYNAMIC_IRQ_SUPPORT
 	anx7816_enable_irq(1);
 #endif
+	mod_display_set_display_state(MOD_DISPLAY_ON);
 
 	while (!wait_for_completion_timeout(&anx7816->connect_wait,
 				msecs_to_jiffies(1000)) && retries) {
@@ -1701,6 +1702,8 @@ static int slimport_mod_display_handle_disconnect(void *data)
 	anx7816 = (struct anx7816_data *)data;
 
 	reinit_completion(&anx7816->connect_wait);
+
+	mod_display_set_display_state(MOD_DISPLAY_OFF);
 
 	while (atomic_read(&anx7816->slimport_connected) &&
 			!wait_for_completion_timeout(&anx7816->connect_wait,
