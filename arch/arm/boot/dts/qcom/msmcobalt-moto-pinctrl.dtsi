@@ -117,22 +117,22 @@
 	touch_int_mux {
 		touch_int_active: active {
 			mux {
-				pins = "gpio40";
+				pins = "gpio115";
 				function = "gpio";
 			};
 			config {
-				pins = "gpio40";
+				pins = "gpio115";
 				bias-pull-up;
 			};
 		};
 
 		touch_int_suspend: default {
 			mux {
-				pins = "gpio40";
+				pins = "gpio115";
 				function = "gpio";
 			};
 			config {
-				pins = "gpio40";
+				pins = "gpio115";
 				bias-disable;
 			};
 		};
