@@ -104,14 +104,17 @@
 		drv2624: drv2624@5a {
 			compatible = "ti,drv2624";
 			reg = <0x5A>;
-			ti,rated_voltage = /bits/ 8 <0x6D>; /* 2V */
-			ti,overdrive_voltage = /bits/ 8 <0x6D>; /* 2V */
-			ti,lra_freq = /bits/ 8 <0xAF>; /* 175 Hz */
-			ti,lra_drive;
-			ti,auto_cal;
-			ti,nrst-gpio = <&tlmm 110 0>;   /* EN_GPIO */
-			pinctrl-names = "default";
-			pinctrl-0 = <&haptic_reset_n>;
+			ti,rated-voltage = <0x53>;
+			ti,overdrive_voltage = <0x9b>;
+			ti,odclamp-voltage = <0xF0>;
+			ti,lra-frequency = <175>;            /* 175 Hz /bits/ 8 */
+			ti,actuator = <1>;           	      /* 0-ERM, 1-LRA */
+			ti,smart-loop = <0>;         	     /* 0-closeloop, 1-openloop */
+			ti,reset-gpio = <&tlmm 110 0>;
+			ti,pwr-gpio = <&tlmm 69 0>;
+			pinctrl-names = "haptic_default", "haptic_sleep";
+			pinctrl-0 = <&haptic_reset_active &haptic_pwr_active>;
+			pinctrl-1 = <&haptic_reset_sleep &haptic_pwr_sleep>;
 		};
 
 		cs35l35@40 {
