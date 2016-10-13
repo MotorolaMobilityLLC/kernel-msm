@@ -15,6 +15,7 @@
 #include "msmcobalt-moto-pinctrl.dtsi"
 #include "msmcobalt-mdss.dtsi"
 #include "msmcobalt-moto-fps.dtsi"
+#include "msm8998-camera-sensor-mot.dtsi"
 
 / {
 	aliases {
