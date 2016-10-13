@@ -18,7 +18,7 @@
 	/delete-node/ laser_suspend;
 	/delete-node/ factory_default;
 
-	haptic_reset_n: haptic_reset_n {
+	haptic_reset_active: haptic_reset_active{
 		mux {
 			pins = "gpio110";
 			function = "gpio";
@@ -29,6 +29,48 @@
 			drive-strength = <2>;
 			bias-pull-down;
 			output-low;
+		};
+	};
+
+	haptic_reset_sleep: haptic_reset_sleep {
+		mux {
+			pins = "gpio110";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio110";
+			drive-strength = <2>;
+			//bias-pull-down;
+			//output-low;
+		};
+	};
+
+	haptic_pwr_active: haptic_pwr_active {
+		mux {
+			pins = "gpio69";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio69";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	haptic_pwr_sleep: haptic_pwr_sleep {
+		mux {
+			pins = "gpio69";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio69";
+			drive-strength = <2>;
+			//bias-pull-down;
+			//output-low;
 		};
 	};
 
