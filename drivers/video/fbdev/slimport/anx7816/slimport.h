@@ -44,5 +44,7 @@ int sp_read_reg(uint8_t slave_addr, uint8_t offset, uint8_t *buf);
 int sp_write_reg(uint8_t slave_addr, uint8_t offset, uint8_t value);
 void sp_tx_hardware_poweron(void);
 void sp_tx_hardware_powerdown(void);
+u32 sp_get_link_bandwidth_khz(unchar link_bandwidth);
+unchar sp_get_link_bandwidth_limit_from_khz(u32 link_bandwidth_limit_khz);
 
 #endif
