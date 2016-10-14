@@ -203,6 +203,10 @@
 	status = "disabled";
 };
 
+&usb3{
+	mmi,ext-typec-switch;
+};
+
 &pmcobalt_vadc {
 	chan@83 {
 		label = "vph_pwr";
