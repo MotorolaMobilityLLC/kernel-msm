@@ -2055,15 +2055,6 @@ static int _mmc_suspend(struct mmc_host *host, bool is_suspend)
 	 */
 	mmc_disable_clk_scaling(host);
 
-	if (mmc_card_doing_auto_bkops(host->card)) {
-		err = mmc_set_auto_bkops(host->card, false);
-		if (err) {
-			pr_err("%s: %s: failed to stop auto-bkops: %d\n",
-			       mmc_hostname(host), __func__, err);
-			goto out;
-		}
-	}
-
 	err = mmc_flush_cache(host->card);
 	if (err)
 		goto out;
