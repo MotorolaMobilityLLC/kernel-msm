@@ -234,6 +234,7 @@ struct dwc3_msm {
 	struct delayed_work perf_vote_work;
 	struct delayed_work sdp_check;
 	struct mutex suspend_resume_mutex;
+	bool			ext_typec_switch;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2241,9 +2242,11 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	if (dwc->maximum_speed == USB_SPEED_SUPER &&
 			mdwc->lpm_flags & MDWC3_SS_PHY_SUSPEND) {
 		mdwc->ss_phy->flags &= ~(PHY_LANE_A | PHY_LANE_B);
-		if (mdwc->typec_orientation == ORIENTATION_CC1)
+		if (mdwc->ext_typec_switch)
 			mdwc->ss_phy->flags |= PHY_LANE_A;
-		if (mdwc->typec_orientation == ORIENTATION_CC2)
+		else if (mdwc->typec_orientation == ORIENTATION_CC1)
+			mdwc->ss_phy->flags |= PHY_LANE_A;
+		else if (mdwc->typec_orientation == ORIENTATION_CC2)
 			mdwc->ss_phy->flags |= PHY_LANE_B;
 		usb_phy_set_suspend(mdwc->ss_phy, 0);
 		mdwc->ss_phy->flags &= ~DEVICE_IN_SS_MODE;
@@ -2920,6 +2923,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	mdwc->charging_disabled = of_property_read_bool(node,
 				"qcom,charging-disabled");
+
+	mdwc->ext_typec_switch = of_property_read_bool(node,
+				"mmi,ext-typec-switch");
 
 	ret = of_property_read_u32(node, "qcom,lpm-to-suspend-delay-ms",
 				&mdwc->lpm_to_suspend_delay);
