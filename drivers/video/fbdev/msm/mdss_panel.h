@@ -939,6 +939,7 @@ struct mdss_panel_info {
 	u32 esc_clk_rate_hz;
 
 	u32 disp_on_check_val;
+	bool no_panel_read_support;
 };
 
 struct mdss_panel_timing {
