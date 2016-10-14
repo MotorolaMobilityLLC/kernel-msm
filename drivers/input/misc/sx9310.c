@@ -11,7 +11,6 @@
  */
 #define DEBUG
 #define DRIVER_NAME "sx9310"
-#define USE_KERNEL_SUSPEND 1
 
 #define MAX_WRITE_ARRAY_SIZE 32
 #include <linux/module.h>
