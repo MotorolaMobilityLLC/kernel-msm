@@ -65,6 +65,7 @@
 	i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
 		/delete-node/ stmvl53l0@29;
 		/delete-node/ cs35l34@40;
+		/delete-node/ pnxxx@28;
 
 		analogix_anx7805@72 {
 			compatible = "analogix,anx7805";
@@ -93,12 +94,18 @@
 					&anx_irq_active>;
 		};
 
-		pnxxx: pnxxx@28 {
-			status = "disabled";
-			interrupts = <130 0>;
-			gpios = <&tlmm 130 0>, /* IRQ */
-			<&tlmm 89 0>, /* VEN */
-			<&tlmm 87 0>; /* Firmware */
+		nq:nq@28 {		/* NFC PN553 */
+			compatible = "qcom,nq-nci";
+			reg = <0x28>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <17 0>;
+			interrupt-names = "nfc_irq";
+			qcom,nq-irq = <&tlmm 130 0x00>;
+			qcom,nq-ven = <&tlmm 89 0x00>;
+			qcom,nq-firm = <&tlmm 87 0x00>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&nfc_irq_default &nfc_ven_default &nfc_firm_default>;
 		};
 
 		drv2624: drv2624@5a {

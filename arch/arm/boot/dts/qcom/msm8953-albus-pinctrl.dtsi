@@ -83,6 +83,24 @@
 		};
 	};
 
+	nfc_ven_default: nfc_ven_default {
+		config {
+			pins = "gpio89";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	nfc_firm_default: nfc_firm_default {
+		config {
+			pins = "gpio87";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
 	fps: fps {
 		rst_active: rst_active {
 			/* RESET */
