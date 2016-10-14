@@ -956,6 +956,10 @@
 	qcom,init-voltage = <3312000>;
 };
 
+&mdss_hdmi_pll {
+	compatible = "qcom,mdss_hdmi_pll_cobalt_1p8";
+};
+
 &mdss_hdmi_tx {
 	pinctrl-names = "hdmi_hpd_active", "hdmi_ddc_active", "hdmi_cec_active",
 				"hdmi_active", "hdmi_sleep";
