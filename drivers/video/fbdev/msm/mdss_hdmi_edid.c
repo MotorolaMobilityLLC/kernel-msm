@@ -821,6 +821,34 @@ static ssize_t hdmi_edid_sysfs_rda_hdr_data(struct device *dev,
 }
 static DEVICE_ATTR(hdr_data, S_IRUGO, hdmi_edid_sysfs_rda_hdr_data, NULL);
 
+static int force_format;
+
+static ssize_t hdmi_edid_sysfs_wta_force_format(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	int rc;
+	ssize_t ret;
+	int format;
+
+	rc = kstrtoint(buf, 0, &format);
+	if (rc) {
+		pr_err("%s: failed to call kstrtoint. rc=%d\n", __func__, rc);
+		ret = (ssize_t)rc;
+	} else if ((format <= HDMI_VFRMT_UNKNOWN) ||
+					(format >= HDMI_VFRMT_MAX)) {
+		pr_err("%s: Invalid format = %d\n", __func__, format);
+		ret = -EINVAL;
+	} else {
+		force_format = format;
+		ret = count;
+	}
+
+	return ret;
+
+}
+static DEVICE_ATTR(force_format, S_IWUSR, NULL,
+			hdmi_edid_sysfs_wta_force_format);
+
 static struct attribute *hdmi_edid_fs_attrs[] = {
 	&dev_attr_edid_modes.attr,
 	&dev_attr_pa.attr,
@@ -835,6 +863,7 @@ static struct attribute *hdmi_edid_fs_attrs[] = {
 	&dev_attr_res_info_data.attr,
 	&dev_attr_add_res.attr,
 	&dev_attr_hdr_data.attr,
+	&dev_attr_force_format.attr,
 	NULL,
 };
 
@@ -1784,7 +1813,6 @@ static void hdmi_edid_filter_modes(struct hdmi_edid_ctrl *edid_ctrl)
 	}
 }
 
-
 static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
 	u32 video_format)
 {
@@ -1797,6 +1825,9 @@ static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
 	struct hdmi_edid_sink_data *sink_data = &edid_ctrl->sink_data;
 	struct disp_mode_info *disp_mode_list = sink_data->disp_mode_list;
 	u32 i = 0;
+
+	if (force_format)
+		video_format = force_format;
 
 	if (video_format >= HDMI_VFRMT_MAX) {
 		DEV_ERR("%s: video format: %s is not supported\n", __func__,
