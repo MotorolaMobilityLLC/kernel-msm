@@ -74,7 +74,13 @@ MODULE_PARM_DESC(cpu_to_affin, "affin usb irq to this cpu");
 #define USB3_HCSPARAMS1		(0x4)
 #define USB3_HCCPARAMS2		(0x1c)
 #define HCC_CTC(p)		((p) & (1 << 3))
+#define USB3_USBCMD             (0x20)
 #define USB3_PORTSC		(0x420)
+
+#define USBCMD_HCRST		BIT(1)
+#define PORTSC_PP		BIT(9)
+#define HSTPRTCMPL		BIT(30)
+
 
 /**
  *  USB QSCRATCH Hardware registers
@@ -236,6 +242,7 @@ struct dwc3_msm {
 	struct delayed_work sdp_check;
 	struct mutex suspend_resume_mutex;
 	bool			ext_typec_switch;
+	bool                    ss_compliance;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -386,6 +393,68 @@ static bool dwc3_msm_is_host_superspeed(struct dwc3_msm *mdwc)
 
 	return false;
 }
+
+static ssize_t ss_compliance_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	int i, num_ports;
+	u32 reg;
+
+	reg = dwc3_msm_read_reg(mdwc->base, USB3_HCSPARAMS1);
+	num_ports = HCS_MAX_PORTS(reg);
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	/* Handle the mode change if it is valid */
+	if (mode) {
+		dwc3_msm_write_reg_field(mdwc->base,
+				USB3_USBCMD, USBCMD_HCRST, USBCMD_HCRST);
+		for (i = 0; i < num_ports; i++) {
+			dwc3_msm_write_reg_field(mdwc->base,
+			USB3_PORTSC + i*0x10, PORTSC_PP, 0x0);
+		}
+		reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg|HSTPRTCMPL);
+	} else {
+		reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg&(~HSTPRTCMPL));
+		dwc3_msm_write_reg_field(mdwc->base,
+				USB3_USBCMD, USBCMD_HCRST, USBCMD_HCRST);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(enable_ss_compliance, 0664,
+			NULL,
+			ss_compliance_store);
+
+static ssize_t toggle_pattern_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	u32 reg;
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg&(~HSTPRTCMPL));
+	mdelay(2);
+	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg|HSTPRTCMPL);
+	return count;
+}
+
+static DEVICE_ATTR(toggle_pattern, 0664,
+			NULL,
+			toggle_pattern_store);
 
 static inline bool dwc3_msm_is_dev_superspeed(struct dwc3_msm *mdwc)
 {
@@ -2924,6 +2993,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	mdwc->charging_disabled = of_property_read_bool(node,
 				"qcom,charging-disabled");
+	mdwc->ss_compliance = of_property_read_bool(node,
+				"qcom,ssusb-compliance");
 
 	mdwc->ext_typec_switch = of_property_read_bool(node,
 				"mmi,ext-typec-switch");
@@ -3227,6 +3298,10 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		dwc3_ext_event_notify(mdwc);
 	}
 
+	if (mdwc->ss_compliance) {
+		device_create_file(&pdev->dev, &dev_attr_enable_ss_compliance);
+		device_create_file(&pdev->dev, &dev_attr_toggle_pattern);
+	}
 	return 0;
 
 put_dwc3:
@@ -3274,6 +3349,10 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 
 	if (mdwc->hs_phy)
 		mdwc->hs_phy->flags &= ~PHY_HOST_MODE;
+	if (mdwc->ss_compliance) {
+		device_remove_file(&pdev->dev, &dev_attr_enable_ss_compliance);
+		device_remove_file(&pdev->dev, &dev_attr_toggle_pattern);
+	}
 	of_platform_depopulate(&pdev->dev);
 
 	dbg_event(0xFF, "Remov put", 0);
