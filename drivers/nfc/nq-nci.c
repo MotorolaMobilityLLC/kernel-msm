@@ -756,8 +756,9 @@ static int nqx_clock_select(struct nqx_dev *nqx_dev)
 	int r = 0;
 	nqx_dev->s_clk = clk_get(&nqx_dev->client->dev, "ref_clk");
 
-	if (nqx_dev->s_clk == NULL)
-		goto err_clk;
+	/* if NULL we assume external crystal and dont fail */
+	if ((nqx_dev->s_clk == NULL) || IS_ERR(nqx_dev->s_clk))
+		return 0;
 
 	if (nqx_dev->clk_run == false)
 		r = clk_prepare_enable(nqx_dev->s_clk);
@@ -780,7 +781,7 @@ static int nqx_clock_deselect(struct nqx_dev *nqx_dev)
 {
 	int r = -1;
 
-	if (nqx_dev->s_clk != NULL) {
+	if ((nqx_dev->s_clk != NULL) && !IS_ERR(nqx_dev->s_clk)) {
 		if (nqx_dev->clk_run == true) {
 			clk_disable_unprepare(nqx_dev->s_clk);
 			nqx_dev->clk_run = false;
@@ -819,12 +820,19 @@ static int nfc_parse_dt(struct device *dev, struct nqx_platform_data *pdata)
 	}
 
 	r = of_property_read_string(np, "qcom,clk-src", &pdata->clk_src_name);
+	if (r) {
+		dev_warn(dev,
+			"clk-src <OPTIONAL> error getting from OF node\n");
+	}
 
 	pdata->clkreq_gpio = of_get_named_gpio(np, "qcom,nq-clkreq", 0);
+	if (!gpio_is_valid(pdata->clkreq_gpio)) {
+		dev_warn(dev,
+			"clkreq GPIO <OPTIONAL> error getting from OF node\n");
+		pdata->clkreq_gpio = -EINVAL;
+	}
 
-	if (r)
-		return -EINVAL;
-	return r;
+	return 0;
 }
 
 static inline int gpio_input_init(const struct device * const dev,
@@ -1011,9 +1019,9 @@ static int nqx_probe(struct i2c_client *client,
 			goto err_clkreq_gpio;
 		}
 	} else {
-		dev_err(&client->dev,
-			"%s: clkreq gpio not provided\n", __func__);
-		goto err_ese_gpio;
+		dev_warn(&client->dev,
+		"%s: clkreq gpio not provided. Ext xtal expected\n",
+		__func__);
 	}
 
 	nqx_dev->en_gpio = platform_data->en_gpio;
