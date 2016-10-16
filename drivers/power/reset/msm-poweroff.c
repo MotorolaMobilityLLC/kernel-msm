@@ -387,6 +387,9 @@ static void msm_restart_prepare(const char *cmd)
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
+	} else if (in_panic == 1) {
+		qpnp_pon_store_extra_reset_info(RESET_EXTRA_PANIC_REASON,
+			RESET_EXTRA_PANIC_REASON);
 	}
 
 	if (debug_sys_restart_mode == DEBUG_SYS_RESETART_WARM) {
