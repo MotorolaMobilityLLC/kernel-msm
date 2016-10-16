@@ -65,6 +65,8 @@ enum pon_restart_reason {
 	PON_RESTART_REASON_OEM_MAX		= 0x3f,
 };
 
+#define RESET_EXTRA_PANIC_REASON       BIT(3)
+
 #ifdef CONFIG_INPUT_QPNP_POWER_ON
 int qpnp_pon_system_pwr_off(enum pon_power_off_type type);
 int qpnp_pon_is_warm_reset(void);
