@@ -27,3 +27,9 @@
 &pmi_haptic{
 	status = "ok";
 };
+
+&soc {
+	sound {
+		qcom,model = "msm8952-marley-cardp1a";
+	};
+};
