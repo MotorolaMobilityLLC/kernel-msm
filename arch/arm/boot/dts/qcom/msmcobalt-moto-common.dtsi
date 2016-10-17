@@ -17,7 +17,7 @@
 
 / {
 	aliases {
-		uart5 = &blsp2_uart2_hs;
+		uart6 = &blsp2_uart3_hs;
 		i2c1 = &mods_i2c;
 		uart0 = &blsp1_uart3_hs;
 	};
@@ -786,15 +786,15 @@
 		};
 	};
 
-	mod_uart {
+	mod_uart: mod_uart {
 		compatible = "mmi,mod-uart";
-		mmi,tty = "ttyHS5";
+		mmi,tty = "ttyHS6";
 		mmi,tty_speed = <115200>;
 		mmi,intf-id = /bits/ 8 <5>;
 
 		pinctrl-names = "default", "active";
-		pinctrl-0 = <&blsp2_uart5_sleep>;
-		pinctrl-1 = <&blsp2_uart5_active>;
+		pinctrl-0 = <&blsp2_uart6_sleep>;
+		pinctrl-1 = <&blsp2_uart6_active>;
 	};
 
 	modbus_switch {
@@ -997,13 +997,12 @@
 	};
 };
 
-&blsp2_uart2_hs { /* APBA UART */
-	status = "disable"; /* Disabled while shared with console */
+&blsp2_uart3_hs { /* APBA UART */
+	status = "ok";
 
-	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 0 114 0
 		    1 &intc 0 0 239 0
-		    2 &tlmm 59 0>;
+		    2 &tlmm 82 0>;
 
 	/delete-property/ qcom,inject-rx-on-wakeup;
 	/delete-property/ qcom,rx-char-to-inject;
