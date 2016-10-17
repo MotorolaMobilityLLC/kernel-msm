@@ -163,14 +163,14 @@
 	};
 
 	/* MODS Related */
-	spi_1 {
-		spi_1_active {
+	spi_9 {
+		spi_9_active {
 			config {
 				drive-strength = <16>;
 			};
 		};
 
-		spi_1_sleep {
+		spi_9_sleep {
 			mux {
 				function = "gpio";
 			};
@@ -182,28 +182,28 @@
 			};
 		};
 
-		spi_1_mosi_ack: spi_1_mosi_ack {
+		spi_9_mosi_ack: spi_9_mosi_ack {
 			mux {
-				pins = "gpio0";
+				pins = "gpio49";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio0";
+				pins = "gpio49";
 				drive-strength = <2>;
 				bias-disable;
 				output-low;
 			};
 		};
 
-		spi_1_miso_ack: spi_1_miso_ack {
+		spi_9_miso_ack: spi_9_miso_ack {
 			mux {
-				pins = "gpio1";
+				pins = "gpio50";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio1";
+				pins = "gpio50";
 				drive-strength = <2>;
 				bias-disable;
 				input-enable;
