@@ -17,7 +17,7 @@
 
 
 / {
-	qcom,board-id = <0x48 0x81A0>;
+	qcom,board-id = <0x48 0x81A1>;
 };
 
 &soc {
