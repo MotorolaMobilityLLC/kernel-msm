@@ -310,6 +310,32 @@
 		};
 	};
 
+	blsp2_uart6_active: blsp2_uart6_active {
+		mux {
+			pins = "gpio81", "gpio82", "gpio83", "gpio84";
+			function = "blsp_uart9_b";
+		};
+
+		config {
+			pins = "gpio81", "gpio82", "gpio83", "gpio84";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	blsp2_uart6_sleep: blsp2_uart6_sleep {
+		mux {
+			pins = "gpio81", "gpio82", "gpio83", "gpio84";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio81", "gpio82", "gpio83", "gpio84";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
 	marley_irq_default: marley_irq_default {
 		config {
 			pins = "gpio54";
