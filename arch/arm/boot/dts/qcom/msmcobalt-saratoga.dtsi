@@ -134,3 +134,181 @@
 		pins = "gpio40";
 	};
 };
+
+/delete-node/ &mods_spi;
+/delete-node/ &mods_i2c;
+
+&muc {
+	gpios = <&tlmm 36 1>,            /* gpio_muc_det_n, input */
+		<&tlmm 35 0>,            /* gpio_muc_bplus_en, output-low */
+		<&tlmm 26 1>,            /* gpio_muc_int_n, input */
+		<&tlmm 28 2>,            /* gpio_muc_wake_n, output-high */
+		<&tlmm 95 1>,            /* gpio_muc_rdy_n, input */
+		<&tlmm 143 0>,           /* gpio_muc_ff, output-low */
+		<&tlmm 0 0>,             /* gpio_muc_spi_mosi, output-low */
+		<&tlmm 1 1>,             /* gpio_muc_spi_miso, input */
+		<&pmicobalt_gpios 11 0>, /* gpio_muc_bplus_iset, cs */
+		<0>,                     /* gpio_muc_bplus_discharg, cs */
+		<&pmicobalt_gpios 10 1>, /* gpio_muc_bplus_fault_n, input */
+		<&tlmm 3 1>;             /* gpio_muc_clk, input */
+
+	pinctrl-0 = <&muc_attach &muc_det &spi_1_sleep &muc_spi_ctrl>;
+	pinctrl-1 = <&muc_attach &muc_det &spi_1_active &muc_spi_ctrl>;
+	pinctrl-2 = <&spi_1_mosi_ack &spi_1_miso_ack>;
+	pinctrl-3 = <&muc_attach &muc_det &i2c_1_active &muc_spi_ctrl>;
+
+	transports {
+		/* Dummy Place Holder for SPI */
+		mods_spi: spi@c175000 { };
+
+		/* Dummy Place Holder for I2C */
+		mods_i2c: i2c@c175000 { };
+	};
+};
+
+/* Direct Copy of I2C1 from msmcobalt-blsp.dtsi */
+&mods_i2c {
+	compatible = "qcom,i2c-msm-v2";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg-names = "qup_phys_addr";
+	reg = <0xC175000 0x600>;
+	interrupt-names = "qup_irq";
+	interrupts = <0 95 0>;
+	dmas = <&dma_blsp1 6 64 0x20000020 0x20>,
+		<&dma_blsp1 7 32 0x20000020 0x20>;
+	dma-names = "tx", "rx";
+	qcom,master-id = <86>;
+	qcom,clk-freq-out = <400000>;
+	qcom,clk-freq-in  = <19200000>;
+	clock-names = "iface_clk", "core_clk";
+	clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+		 <&clock_gcc clk_gcc_blsp1_qup1_i2c_apps_clk>;
+	pinctrl-names = "i2c_active", "i2c_sleep";
+	pinctrl-0 = <&i2c_1_active>;
+	pinctrl-1 = <&i2c_1_sleep>;
+	status = "disabled";
+};
+
+/* Overrides of the default I2C configuration for MUC usage */
+&mods_i2c {
+	compatible = "qcom,i2c-msm-v2", "moto,mod-i2c-transfer";
+	status = "okay";
+
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+	/delete-property/ pinctrl-names;
+
+	muc_i2c@42 {
+		compatible = "moto,muc_i2c";
+		reg = <0x42>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <26 0>;
+
+		mmi,intf-id = /bits/ 8 <3>;
+	};
+};
+
+/* Direct Copy of SPI1 from msmcobalt-blsp.dtsi */
+&mods_spi {
+	compatible = "qcom,spi-qup-v2";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg-names = "spi_physical", "spi_bam_physical";
+	reg = <0xC175000 0x600>,
+		<0xC144000 0x25000>;
+	interrupt-names = "spi_irq", "spi_bam_irq";
+	interrupts = <0 95 0>, <0 238 0>;
+	spi-max-frequency = <50000000>;
+	qcom,use-bam;
+	qcom,ver-reg-exists;
+	qcom,bam-consumer-pipe-index = <6>;
+	qcom,bam-producer-pipe-index = <7>;
+	qcom,master-id = <86>;
+	qcom,use-pinctrl;
+	pinctrl-names = "spi_default", "spi_sleep";
+	pinctrl-0 = <&spi_1_active>;
+	pinctrl-1 = <&spi_1_sleep>;
+	clock-names = "iface_clk", "core_clk";
+	clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+		<&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
+	status = "disabled";
+};
+
+/* Overrides of the default SPI configuration for MUC usage */
+&mods_spi {
+	compatible = "qcom,spi-qup-v2", "moto,mod-spi-transfer";
+	status = "okay";
+
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+	/delete-property/ pinctrl-names;
+	/delete-property/ qcom,use-pinctrl;
+
+	spi-max-frequency = <50000000>;
+
+	qcom,rt-priority;
+	qcom,active-only;
+
+	muc_spi: muc_spi@0 {
+		compatible = "moto,muc_spi";
+		reg = <0>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <26 0>;
+		spi-max-frequency = <4800000>;
+
+		mmi,intf-id = /bits/ 8 <3>;
+	};
+};
+
+/* MODS Related */
+&tlmm {
+	spi_1 {
+		spi_1_active {
+			config {
+				drive-strength = <16>;
+			};
+		};
+
+		spi_1_sleep {
+			mux {
+				function = "gpio";
+			};
+
+			config {
+				drive-strength = <2>;
+				bias-pull-down;
+				input-enable;
+			};
+		};
+
+		spi_1_mosi_ack: spi_1_mosi_ack {
+			mux {
+				pins = "gpio0";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio0";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+
+		spi_1_miso_ack: spi_1_miso_ack {
+			mux {
+				pins = "gpio1";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio1";
+				drive-strength = <2>;
+				bias-disable;
+				input-enable;
+			};
+		};
+	};
+};
