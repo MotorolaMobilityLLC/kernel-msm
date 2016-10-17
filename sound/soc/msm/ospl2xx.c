@@ -42,19 +42,6 @@ static int ext_config_loaded;
 static const struct firmware
 		*ospl2xx_config[ARRAY_SIZE(ospl2xx_ext_config_tables)];
 
-static void ospl2xx_config_print(int i, char const *firmware, int size)
-{
-	u8 config[size+1];
-
-	if (size > 0 && firmware != NULL) {
-		memcpy(config, firmware, size);
-		config[size] = '\0';
-		pr_debug("index[%d] size[%d] config[%s]\n", i, size, config);
-	} else {
-		pr_debug("%s: can't find ospl external configs\n", __func__);
-	}
-}
-
 static DEFINE_MUTEX(lr_lock);
 static void ospl2xx_load_config(struct work_struct *work)
 {
@@ -80,8 +67,6 @@ static void ospl2xx_load_config(struct work_struct *work)
 		} else {
 			pr_debug("loading external configuration %s\n",
 				ospl2xx_ext_config_tables[i]);
-			ospl2xx_config_print(i, ospl2xx_config[i]->data,
-						ospl2xx_config[i]->size);
 			ext_config_loaded = 1;
 		}
 	}
