@@ -888,10 +888,6 @@
 	interrupts = <0 103 0>, <0 239 0>;
 	spi-max-frequency = <50000000>;
 	qcom,use-bam;
-
-	/* MMI_STOPSHIP IF qcom,use-bam is deleted */
-	/delete-property/ qcom,use-bam;
-
 	qcom,ver-reg-exists;
 	qcom,bam-consumer-pipe-index = <10>;
 	qcom,bam-producer-pipe-index = <11>;
@@ -945,10 +941,6 @@
 	interrupts = <0 100 0>, <0 238 0>;
 	spi-max-frequency = <50000000>;
 	qcom,use-bam;
-
-	/* MMI_STOPSHIP IF qcom,use-bam is deleted */
-	/delete-property/ qcom,use-bam;
-
 	qcom,ver-reg-exists;
 	qcom,bam-consumer-pipe-index = <16>;
 	qcom,bam-producer-pipe-index = <17>;
