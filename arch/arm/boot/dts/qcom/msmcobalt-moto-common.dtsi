@@ -858,6 +858,10 @@
 			qcom,scaling-factor = <1000>;
 		};
 	};
+
+	wdog: qcom,wdt@17817000 {
+		qcom,bark-time = <22000>;
+	};
 };
 
 /* Direct Copy of I2C9 from msmcobalt-blsp.dtsi */
