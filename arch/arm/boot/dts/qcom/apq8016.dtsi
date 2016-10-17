@@ -27,7 +27,7 @@
 		};
 
 		peripheral_mem: pheripheral_region@0 {
-			reg = <0x0 0x89300000 0x0 0x0600000>;
+			reg = <0x0 0x89300000 0x0 0x0700000>;
 		};
 	};
 };
