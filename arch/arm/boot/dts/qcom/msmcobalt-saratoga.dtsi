@@ -24,6 +24,8 @@
 };
 
 &spi_9 { /* BLSP2 QUP3 */
+	status = "okay";
+
 	cs47l35: cs47l35@0 {
 		compatible = "cirrus,cs47l35";
 		spi-max-frequency = <26000000>;

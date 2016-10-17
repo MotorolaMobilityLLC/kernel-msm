@@ -231,10 +231,6 @@
 	};
 };
 
-&spi_9 { /* BLSP2 QUP3 */
-	status = "ok";
-};
-
 &pcie0 {
 	status = "disabled";
 };
