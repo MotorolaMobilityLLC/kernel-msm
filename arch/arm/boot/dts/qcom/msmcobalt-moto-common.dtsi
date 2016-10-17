@@ -675,12 +675,12 @@
 			<&tlmm 28 2>,            /* gpio_muc_wake_n, output-high */
 			<&tlmm 95 1>,            /* gpio_muc_rdy_n, input */
 			<&tlmm 143 0>,           /* gpio_muc_ff, output-low */
-			<&tlmm 0 0>,             /* gpio_muc_spi_mosi, output-low */
-			<&tlmm 1 1>,             /* gpio_muc_spi_miso, input */
+			<&tlmm 49 0>,            /* gpio_muc_spi_mosi, output-low */
+			<&tlmm 50 1>,            /* gpio_muc_spi_miso, input */
 			<&pmicobalt_gpios 11 0>, /* gpio_muc_bplus_iset, cs */
 			<0>,                     /* gpio_muc_bplus_discharg, cs */
 			<&pmicobalt_gpios 10 1>, /* gpio_muc_bplus_fault_n, input */
-			<&tlmm 3 1>;             /* gpio_muc_clk, input */
+			<&tlmm 52 1>;            /* gpio_muc_clk, input */
 
 		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
 				"gpio_muc_bplus_en",
@@ -709,10 +709,10 @@
 					<5 0 20>;
 
 		pinctrl-names = "disconnected", "spi_active", "spi_ack", "i2c_active";
-		pinctrl-0 = <&muc_attach &muc_det &spi_1_sleep &muc_spi_ctrl>;
-		pinctrl-1 = <&muc_attach &muc_det &spi_1_active &muc_spi_ctrl>;
-		pinctrl-2 = <&spi_1_mosi_ack &spi_1_miso_ack>;
-		pinctrl-3 = <&muc_attach &muc_det &i2c_1_active &muc_spi_ctrl>;
+		pinctrl-0 = <&muc_attach &muc_det &spi_9_sleep &muc_spi_ctrl>;
+		pinctrl-1 = <&muc_attach &muc_det &spi_9_active &muc_spi_ctrl>;
+		pinctrl-2 = <&spi_9_mosi_ack &spi_9_miso_ack>;
+		pinctrl-3 = <&muc_attach &muc_det &i2c_9_active &muc_spi_ctrl>;
 
 		transports {
 			#address-cells = <1>;
@@ -720,10 +720,10 @@
 			ranges = <0 0 0xffffffff>;
 
 			/* Dummy Place Holder for SPI */
-			mods_spi: spi@c175000 { };
+			mods_spi: spi@c1b7000 { };
 
 			/* Dummy Place Holder for I2C */
-			mods_i2c: i2c@c175000 { };
+			mods_i2c: i2c@c1b7000 { };
 		};
 	};
 
@@ -833,27 +833,27 @@
 	};
 };
 
-/* Direct Copy of I2C1 from msmcobalt-blsp.dtsi */
+/* Direct Copy of I2C9 from msmcobalt-blsp.dtsi */
 &mods_i2c {
 	compatible = "qcom,i2c-msm-v2";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	reg-names = "qup_phys_addr";
-	reg = <0xC175000 0x600>;
+	reg = <0xC1B7000 0x600>;
 	interrupt-names = "qup_irq";
-	interrupts = <0 95 0>;
-	dmas = <&dma_blsp1 6 64 0x20000020 0x20>,
-		<&dma_blsp1 7 32 0x20000020 0x20>;
+	interrupts = <0 103 0>;
+	dmas = <&dma_blsp2 10 64 0x20000020 0x20>,
+		<&dma_blsp2 11 32 0x20000020 0x20>;
 	dma-names = "tx", "rx";
-	qcom,master-id = <86>;
+	qcom,master-id = <84>;
 	qcom,clk-freq-out = <400000>;
 	qcom,clk-freq-in  = <19200000>;
 	clock-names = "iface_clk", "core_clk";
-	clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
-		 <&clock_gcc clk_gcc_blsp1_qup1_i2c_apps_clk>;
+	clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+		 <&clock_gcc clk_gcc_blsp2_qup3_i2c_apps_clk>;
 	pinctrl-names = "i2c_active", "i2c_sleep";
-	pinctrl-0 = <&i2c_1_active>;
-	pinctrl-1 = <&i2c_1_sleep>;
+	pinctrl-0 = <&i2c_9_active>;
+	pinctrl-1 = <&i2c_9_sleep>;
 	status = "disabled";
 };
 
@@ -876,16 +876,16 @@
 	};
 };
 
-/* Direct Copy of SPI1 from msmcobalt-blsp.dtsi */
+/* Direct Copy of SPI9 from msmcobalt-blsp.dtsi */
 &mods_spi {
 	compatible = "qcom,spi-qup-v2";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	reg-names = "spi_physical", "spi_bam_physical";
-	reg = <0xC175000 0x600>,
-		<0xC144000 0x25000>;
+	reg = <0xC1B7000 0x600>,
+	      <0xC184000 0x25000>;
 	interrupt-names = "spi_irq", "spi_bam_irq";
-	interrupts = <0 95 0>, <0 238 0>;
+	interrupts = <0 103 0>, <0 239 0>;
 	spi-max-frequency = <50000000>;
 	qcom,use-bam;
 
@@ -893,16 +893,16 @@
 	/delete-property/ qcom,use-bam;
 
 	qcom,ver-reg-exists;
-	qcom,bam-consumer-pipe-index = <6>;
-	qcom,bam-producer-pipe-index = <7>;
-	qcom,master-id = <86>;
+	qcom,bam-consumer-pipe-index = <10>;
+	qcom,bam-producer-pipe-index = <11>;
+	qcom,master-id = <84>;
 	qcom,use-pinctrl;
 	pinctrl-names = "spi_default", "spi_sleep";
-	pinctrl-0 = <&spi_1_active>;
-	pinctrl-1 = <&spi_1_sleep>;
+	pinctrl-0 = <&spi_9_active>;
+	pinctrl-1 = <&spi_9_sleep>;
 	clock-names = "iface_clk", "core_clk";
-	clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
-		<&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
+	clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+		 <&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
 	status = "disabled";
 };
 
