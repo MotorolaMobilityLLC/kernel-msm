@@ -19,6 +19,7 @@
 	compatible = "qcom,msmcobalt-saratoga", "qcom,msmcobalt-moto",
 			"qcom,msmcobalt";
 	aliases {
+		uart5 = &blsp2_uart2_hs;
 		spi9 = &spi_9;
 	};
 };
@@ -260,6 +261,35 @@
 
 		mmi,intf-id = /bits/ 8 <3>;
 	};
+};
+
+/* APBA UART on future products */
+&blsp2_uart3_hs {
+	status = "disable";
+};
+
+&blsp2_uart2_hs { /* APBA UART */
+	status = "disable"; /* Disabled while shared with console */
+
+	interrupt-map = <0 &intc 0 0 114 0
+		    1 &intc 0 0 239 0
+		    2 &tlmm 59 0>;
+
+	/delete-property/ qcom,inject-rx-on-wakeup;
+	/delete-property/ qcom,rx-char-to-inject;
+
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+
+	qcom,shared;
+};
+
+&mod_uart {
+	mmi,tty = "ttyHS5";
+
+	pinctrl-0 = <&blsp2_uart5_sleep>;
+	pinctrl-1 = <&blsp2_uart5_active>;
 };
 
 /* MODS Related */
