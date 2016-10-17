@@ -2105,7 +2105,7 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		msm8952_dai_links = msm8952_tasha_dai_links;
 	}
 #ifdef CONFIG_SND_SOC_MARLEY
-	else if (!strcmp(card->name, "msm8952-marley-card")) {
+	else if (!strncmp(card->name, "msm8952-marley-card", 19)) {
 		int len_2a, len_2b, is_amp_tommy = 0;
 
 		if (of_property_read_bool(dev->of_node, "qcom,albus-audio"))
