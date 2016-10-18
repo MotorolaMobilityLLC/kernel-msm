@@ -1661,13 +1661,7 @@ static int dc_ilim_ma_table_8996[] = {
 	2100,
 	2200,
 	2300,
-	2400,
-	2500,
-	2600,
-	2700,
-	2800,
-	2900,
-	3000
+	2400
 };
 
 static const int fcc_comp_table_8994[] = {
@@ -1846,6 +1840,9 @@ static int calc_dc_thermal_limited_current(struct smbchg_chip *chip,
 					   int current_ma)
 {
 	int therm_ma;
+
+	if (chip->usbeb_present)
+		return current_ma;
 
 	if (chip->dc_therm_lvl_sel > 0
 			&& chip->dc_therm_lvl_sel < chip->dc_thermal_levels) {
@@ -5591,7 +5588,7 @@ static void set_target_bsw_current_ma(struct smbchg_chip *chip,
 static void set_max_allowed_current_ma(struct smbchg_chip *chip,
 				       int current_ma)
 {
-	if (!chip->usb_present) {
+	if (!chip->usb_present && !chip->usbeb_present) {
 		SMB_DBG(chip, "NO allowed current, No USB\n");
 		chip->target_fastchg_current_ma = current_ma;
 		return;
