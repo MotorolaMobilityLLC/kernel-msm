@@ -37,3 +37,5 @@ generic-y += termbits.h
 generic-y += termios.h
 generic-y += timex.h
 generic-y += trace_clock.h
+
+generated-y += mach-types.h
