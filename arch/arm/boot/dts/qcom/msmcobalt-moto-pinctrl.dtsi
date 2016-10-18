@@ -352,6 +352,14 @@
 			output-low;
 		};
 	};
+
+	usb_aud_sw_sel: usb_aud_sw_sel {
+		config {
+			pins = "gpio116";
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
 };
 
 &pmx_mdss{
