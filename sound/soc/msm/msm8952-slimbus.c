@@ -3956,14 +3956,6 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
-	ret = snd_soc_codec_set_sysclk(codec, ARIZONA_CLK_OPCLK,
-		0, CS35L34_MCLK_RATE,
-		SND_SOC_CLOCK_OUT);
-	if (ret != 0) {
-		dev_err(codec->dev, "Failed to set OPCLK %d\n", ret);
-		return ret;
-	}
-
 	ret = snd_soc_dapm_new_controls(dapm, msm8952_marley_dapm_widgets,
 		ARRAY_SIZE(msm8952_marley_dapm_widgets));
 	if (ret != 0) {
