@@ -698,6 +698,7 @@ int akm09912_i2c_check_device(
 	struct stml0xx_data *ps_stml0xx)
 {
 	int err;
+	int getAsaRetrys;
 
 	ps_stml0xx->akm_sense_info[0] = AK09912_REG_WIA1;
 	err = akm_rxdata(ps_stml0xx->akm_sense_info, AKM_SENSOR_INFO_SIZE);
@@ -709,10 +710,29 @@ int akm09912_i2c_check_device(
 	if (err < 0)
 		return err;
 
+	/* Get ASAX Y Z,  retry 3 times */
 	ps_stml0xx->akm_sense_conf[0] = AK09912_FUSE_ASAX;
-	err = akm_rxdata(ps_stml0xx->akm_sense_conf, AKM_SENSOR_CONF_SIZE);
-	if (err < 0)
-		return err;
+	for (getAsaRetrys = 0; getAsaRetrys < 3; getAsaRetrys++) {
+		err = akm_rxdata(ps_stml0xx->akm_sense_conf,
+					AKM_SENSOR_CONF_SIZE);
+		if (err < 0)
+			return err;
+		if (ps_stml0xx->akm_sense_conf[0] != 0 &&
+			ps_stml0xx->akm_sense_conf[1] != 0 &&
+			ps_stml0xx->akm_sense_conf[2] != 0)
+			break;
+		dev_err(&stml0xx_misc_data->spi->dev,
+				"akm asa get zero, retry :%d", getAsaRetrys);
+		msleep(100);
+	}
+	if (ps_stml0xx->akm_sense_conf[0] == 0 ||
+		ps_stml0xx->akm_sense_conf[1] == 0 ||
+		ps_stml0xx->akm_sense_conf[2] == 0) {
+		dev_err(&stml0xx_misc_data->spi->dev, "akm asa set to 0x80");
+		ps_stml0xx->akm_sense_conf[0] = AKM_SENSOR_CONF_Defalut;
+		ps_stml0xx->akm_sense_conf[1] = AKM_SENSOR_CONF_Defalut;
+		ps_stml0xx->akm_sense_conf[2] = AKM_SENSOR_CONF_Defalut;
+	}
 
 	err = AKECS_SetMode(ps_stml0xx, AK09912_MODE_POWERDOWN);
 	if (err < 0)
