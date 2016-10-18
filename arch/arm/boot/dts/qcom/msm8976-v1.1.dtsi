@@ -56,7 +56,7 @@
 
 		qcom,cpr-speed-bin-max-corners =
 				<0 0 2 4 7>,
-				<2 0 2 4 9>;
+				<2 0 2 4 8>;
 
 		qcom,cpr-fuse-version-map =
 		/* <Speed_bits PVS_version CPR_Rev - - -> */
@@ -295,8 +295,7 @@
 			< 1612800000 5>,
 			< 1747200000 6>,
 			< 1804800000 7>,
-			< 1958400000 8>,
-			< 2016000000 9>;
+			< 1958400000 8>;
 		qcom,speed2-bin-v0-cci =
 			<          0 0>,
 			<  307200000 1>,
