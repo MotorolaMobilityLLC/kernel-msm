@@ -1539,7 +1539,7 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level = bkl_lvl;
 			mfd->bl_level_scaled = temp;
-			mfd->bl_updated = 1;
+			mfd->allow_bl_update = true;
 			bl_notify_needed = true;
 		}
 		if (bl_notify_needed)
@@ -1675,7 +1675,7 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 		/* Stop Display thread */
 		if (mfd->disp_thread)
 			mdss_fb_stop_disp_thread(mfd);
-		if (mfd->bl_updated)
+		if (mfd->allow_bl_update)
 			bl_level_old = mfd->bl_level;
 		else
 			bl_level_old = mfd->unset_bl_level;
