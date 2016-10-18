@@ -3271,8 +3271,6 @@ static int epl_sensor_suspend(struct i2c_client *client, pm_message_t mesg)
 #if !defined(CONFIG_HAS_EARLYSUSPEND)
     epld->als_suspend=1;
 
-	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
-
     if(epld->enable_pflag == 0)
     {
         if(epld->enable_lflag == 1 && epl_sensor.als.polling_mode == 0)
@@ -3344,8 +3342,6 @@ static int epl_sensor_resume(struct i2c_client *client)
 #if !defined(CONFIG_HAS_EARLYSUSPEND)
     epld->als_suspend=0;
     epld->ps_suspend=0;
-
-	LOG_DBG("[%s]: enable_pflag=%d, enable_lflag=%d \r\n", __func__, epld->enable_pflag, epld->enable_lflag);
 
     if(epld->enable_pflag == 0)
     {
