@@ -191,6 +191,7 @@
 	qcom,stepchg-current-ma = <2000>;
 	qcom,stepchg-taper-ma = <1500>;
 	qcom,stepchg-iterm-ma = <125>;
+	/delete-property/ qcom,enable-hvdcp-9v;
 };
 
 &pmi8950_fg {
