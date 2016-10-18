@@ -53,6 +53,8 @@
 #define AKM_SENSOR_DATA_SIZE	9
 #define AKM_SENSOR_TIME_SIZE    8   /* Size in bytes */
 
+#define AKM_SENSOR_CONF_Defalut	0x80
+
 #define AKM_YPR_DATA_SIZE		19
 #define AKM_RWBUF_SIZE			16
 
