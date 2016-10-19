@@ -132,6 +132,12 @@ enum arizona_type {
 #define ARIZONA_NUM_IRQ                   90
 
 #define ARIZONA_HP_SHORT_IMPEDANCE        4
+
+/* Conversion between ohms and hundredths of an ohm. */
+#define HOHM_TO_OHM(X)	((X == INT_MAX || X == ARIZONA_HP_Z_OPEN) ? \
+			 X : (X + 50) / 100)
+#define OHM_TO_HOHM(X)	(X * 100)
+
 struct snd_soc_dapm_context;
 struct arizona_extcon_info;
 
@@ -162,7 +168,7 @@ struct arizona {
 	bool hpdet_clamp;
 	unsigned int hp_ena;
 
-	unsigned int hp_impedance;
+	unsigned int hp_impedance_x100;
 	struct arizona_extcon_info *extcon_info;
 
 	struct mutex clk_lock;
