@@ -2900,6 +2900,9 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 	if (pd->typec_mode == typec_mode)
 		return 0;
 
+	if (pd->typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)
+		pd_phy_audio_detect(false);
+
 	pd->typec_mode = typec_mode;
 
 	usbpd_dbg(&pd->dev, "typec mode:%d present:%d type:%d orientation:%d\n",
@@ -2964,6 +2967,7 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 		break;
 	case POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER:
 		usbpd_info(&pd->dev, "Type-C Analog Audio Adapter connected\n");
+		pd_phy_audio_detect(true);
 		break;
 	default:
 		usbpd_warn(&pd->dev, "Unsupported typec mode:%d\n",
