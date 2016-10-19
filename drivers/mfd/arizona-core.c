@@ -2297,7 +2297,7 @@ int arizona_dev_init(struct arizona *arizona)
 	 * Give us a sane default for the headphone impedance in case the
 	 * extcon driver is not used
 	 */
-	arizona->hp_impedance = 32;
+	arizona->hp_impedance_x100 = 3200;
 
 	switch (arizona->type) {
 	case WM5102:
