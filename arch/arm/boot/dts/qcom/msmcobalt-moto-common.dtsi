@@ -133,9 +133,13 @@
 	drv2624: drv2624@5a {
 		compatible = "ti,drv2624";
 		reg = <0x5A>;
-		ti,rated_voltage = /bits/ 8 <0x6D>;
-		ti,overdrive_voltage = /bits/ 8 <0xF0>;
-		ti,lra_freq = /bits/ 8 <0xF0>;
+		/* voltage = *_voltage x 22 mV */
+		/* 2V for now */
+		ti,rated_voltage = /bits/ 8 <0x5B>;
+		ti,overdrive_voltage = /bits/ 8 <0x5B>;
+		/* LRA period = lra_freq x 24.39 us */
+		/* 200 Hz for now */
+		ti,lra_freq = /bits/ 8 <0xCD>;
 		ti,lra_drive;
 		ti,auto_cal;
 		ti,nrst-gpio = <&pmicobalt_gpios 9 0>;   /* EN_GPIO */
