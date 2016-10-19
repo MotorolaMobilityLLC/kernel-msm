@@ -41,6 +41,10 @@
 #include "../codecs/wcd934x/wcd934x-mbhc.h"
 #include "../codecs/wsa881x.h"
 
+#ifdef CONFIG_SND_SOC_FSA8500
+#include "../codecs/fsa8500-core.h"
+#endif
+
 #define DRV_NAME "msm8998-asoc-snd"
 
 #define __CHIPSET__ "MSM8998 "
@@ -3822,6 +3826,12 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		pdata->codec_root = entry;
 		tasha_codec_info_create_codec_entry(pdata->codec_root, codec);
 	}
+#ifdef CONFIG_SND_SOC_FSA8500
+	/* Start FSA8500 headset detection */
+	ret = fsa8500_hs_detect(codec);
+	if (ret)
+		dev_err(codec->dev, "fsa8500 hs det load error %d", ret);
+#endif
 done:
 	codec_reg_done = true;
 	return 0;
@@ -6883,6 +6893,12 @@ static int msm_audrx_stub_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_new_controls(dapm, msm_dapm_widgets,
 				ARRAY_SIZE(msm_dapm_widgets));
+#ifdef CONFIG_SND_SOC_FSA8500
+	/* Start FSA8500 headset detection */
+	ret = fsa8500_hs_detect(codec);
+	if (ret)
+		dev_err(codec->dev, "fsa8500 hs det load error %d", ret);
+#endif
 
 	return 0;
 }
