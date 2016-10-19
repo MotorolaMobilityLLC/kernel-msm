@@ -491,7 +491,7 @@ static struct snd_soc_dai_link msm8952_marley_l35_dai_link[] = {
 		.name = "MARLEY-AMP",
 		.stream_name = "MARLEY-AMP Playback",
 		.cpu_name = "marley-codec",
-		.cpu_dai_name = "marley-aif2",
+		.cpu_dai_name = "marley-aif1",
 		.codec_name = "cs35l35.2-0040",
 		.codec_dai_name = "cs35l35-pcm",
 		.init = marley_cs35l35_dai_init,
@@ -2106,7 +2106,8 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	}
 #ifdef CONFIG_SND_SOC_MARLEY
 	else if (!strncmp(card->name, "msm8952-marley-card", 19)) {
-		int len_2a, len_2b, is_amp_tommy = 0;
+		int ret, len_2a, len_2b, is_amp_tommy = 0;
+		const char *l35_cpu_dai_name;
 
 		if (of_property_read_bool(dev->of_node, "qcom,albus-audio"))
 			is_amp_tommy = 1;
@@ -2133,6 +2134,11 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 			msm8952_marley_be_dai, sizeof(msm8952_marley_be_dai));
 		msm8952_dai_links = msm8952_marley_dai_links;
 		if (is_amp_tommy) {
+			ret = of_property_read_string(dev->of_node,
+				"qcom,l35_cpu_dai_name", &l35_cpu_dai_name);
+			if (ret == 0)
+				msm8952_marley_l35_dai_link[0].cpu_dai_name =
+					l35_cpu_dai_name;
 			memcpy(msm8952_marley_dai_links + len_2a,
 				msm8952_marley_l35_dai_link,
 				sizeof(msm8952_marley_l35_dai_link));
