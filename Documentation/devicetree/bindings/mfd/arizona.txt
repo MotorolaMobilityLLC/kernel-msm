@@ -8,7 +8,21 @@ Required properties:
   - compatible : One of the following chip-specific strings:
         "wlf,wm5102"
         "wlf,wm5110"
+        "wlf,wm8280"
+        "wlf,wm8281"
         "wlf,wm8997"
+        "wlf,wm8998"
+        "wlf,wm1814"
+        "wlf,wm8285"
+        "wlf,wm1840"
+        "wlf,wm1831"
+        "cirrus,cs47l15"
+        "cirrus,cs47l24"
+        "cirrus,cs47l85"
+        "cirrus,cs47l35"
+        "cirrus,cs47l90"
+        "cirrus,cs47l91"
+
   - reg : I2C slave address when connected using I2C, chip select number when
     using SPI.
 
@@ -27,20 +41,113 @@ Required properties:
     second cell is used to specify optional parameters (currently unused).
 
   - AVDD-supply, DBVDD1-supply, DBVDD2-supply, DBVDD3-supply (wm5102, wm5110),
-    CPVDD-supply, SPKVDDL-supply (wm5102, wm5110), SPKVDDR-supply (wm5102,
-    wm5110), SPKVDD-supply (wm8997) : Power supplies for the device, as covered
-    in Documentation/devicetree/bindings/regulator/regulator.txt
+    DBVDD4-supply (wm8285), CPVDD-supply, SPKVDDL-supply (wm5102, wm5110),
+    SPKVDDR-supply (wm5102, wm5110),
+    SPKVDD-supply (wm8997, cs47l15, cs47l24, cs47l35) :
+    Power supplies for the device, as covered in
+    Documentation/devicetree/bindings/regulator/regulator.txt
 
 Optional properties:
 
   - wlf,reset : GPIO specifier for the GPIO controlling /RESET
   - wlf,ldoena : GPIO specifier for the GPIO controlling LDOENA
+  - wlf,clk32k-src : set input source for codec 32kHz clock.
+      0 = default, 1 = MCLK1, 2 = MCLK2, 3 = None
 
-  - wlf,gpio-defaults : A list of GPIO configuration register values. If
-    absent, no configuration of these registers is performed. If any
-    entry has a value that is out of range for a 16 bit register then
-    the chip default will be used.  If present exactly five values must
-    be specified.
+  - wlf,micd-detect-debounce : Additional software microphone detection
+    debounce specified in milliseconds
+  - wlf,micd-manual-debounce : Additional software button detection
+    debounce specified as a number
+  - wlf,micd-pol-gpio : GPIO specifier for the GPIO controlling the headset
+    polarity if one exists
+  - wlf,micd-bias-start-time : Time allowed for MICBIAS to startup prior to
+    performing microphone detection, specified as per the MICD_BIAS_STARTTIME
+    bits in the register MIC_DETECT_1
+  - wlf,micd-rate : Delay between successive microphone detection measurements,
+    specified as per the MICD_RATE bits in the register MIC_DETECT_1
+  - wlf,micd-dbtime : Microphone detection hardware debounce level, specified
+    as per the MICD_DBTIME bits in the register MIC_DETECT_1
+  - wlf,micd-timeout : Timeout for microphone detection, specified in
+    milliseconds
+  - wlf,micd-force-micbias : Force MICBIAS continuously on during microphone
+    detection and button detection
+  - wlf,micd-force-micbias-initial : Force MICBIAS continuously on during
+    microphone detection
+  - wlf,micd-software-compare : Use a software comparison to determine mic
+    presence
+  - wlf,use-jd-gpio : Use GPIO input alongwith JD1 for dual jack detection. For
+    later arizona chips which have JD1 and JD2, setting this property will use
+    both JD1 and JD2 for dual jack detect and does not require an additional
+    GPIO
+  - wlf,usr-jd-gpio-nopull : Internal pull on GPIO is disabled when used for
+    jack detection.
+  - wlf,gpsw : Settings for the general purpose switch, set as per the
+    SW1_MODE bits in the GP Switch 1 register
+  - wlf,init-mic-delay : Adds a delay in milliseconds between jack detection
+    and beginning ramp of MICBIAS.
+  - wlf,fixed-hpdet-imp : Do not perform any headphone detection, just use
+    the fixed value specified here as the headphone impedance.
+  - wlf,hpdet-short-circuit-imp : Specifies the maximum impedance in ohms
+    that will be considered as a short circuit
+  - wlf,hpdet-channel : When this property is set then right channel is used
+    for headphone impedance measurement else the left headphone channel is
+    used
+  - wlf,micd-clamp-mode : Specifies the logic of the micdetect clamp block
+  - wlf,hpd-left-pins : (cs47l15, cs47l90, cs47l91) a 2 cell long field where
+    the first cell represents the pin that needs to be unclamped when measuring
+    headphone left channel impedance as per the HPD_OUT_SEL field of
+    HEADPHONE_DETECT_0 register and the second pin represents the impedance
+    sense pin as per the HPD_SENSE_SEL field of HEADPHONE_DETECT_0 register
+  - wlf,hpd-right-pins : See wlf,hpd-left-pins which is for left headphone
+    channel and this field is similar but for right headphone channel
+  - wlf,micd-ranges : Microphone detection level and key configuration, this
+    field can be of variable length but should always be a multiple of 2 cells
+    long, each two cell group represents one button configuration
+    The first cell is the maximum impedance for this button in ohms
+    The second cell the key that should be reported to the input layer
+  - wlf,micd-configs : Headset polarity configurations, the field can be of
+    variable length. But is should always be a multiple of
+      4 cells long for (cs47l15, cs47l90, cs47l91)
+      3 cells long for other Arizona chips
+    Each two cell group represents one polarity configration
+    For cs47l15, cs47l90, cs47l91 the first cell is the
+    accessory detection source as per the MICD_SENSE_SEL field of
+    MIC_DETECT_1_CONTROL_0 regiser and for other Arizona chips its the accessory
+    detection source as per the ACCDET_SRC bits in the ACCESSORY_DETECT_MODE_1 register
+    For cs47l15, cs47l90, cs47l91 the second cell is the accessory
+    detection ground as per the MICD_GND_SEL field of MIC_DETECT_1_CONTROL_0 regiser
+    and for other Arizona chips the second cell represents the MICBIAS to be used as
+    per the MICD_BIAS_SRC bits in the MIC_DETECT_1 register
+    For cs47l15, cs47l90, cs47l91 the third cell represents
+    the MICBIAS to be used as per the MICD_BIAS_SRC bits in the MIC_DETECT_1_CONTROL_1
+    register and for other Arizona chips the third cell represents the value of the
+    micd-pol-gpio pin, a non-zero value indicates this should be on
+    For cs47l15, cs47l90, cs47l91 the fourth cell represents
+    the value of the micd-pol-gpio pin, a non-zero value indicates this should be on
+    and for other Arizona chips there are only three cells and fourth cell should
+    not be specified
+  - wlf,micbias1 : Configuration for the micbias regulator, number of cells
+    here will depend on the arizona chip and will be 4 + n (number of
+    children micbiases). For Marley (cs47l35) n is 2, for cs47l15 n is 3,
+    for Moon (cs47l90, cs47l91) n is 4 and for other arizona chips n is 1.
+    The first cell is the output voltage in millivolts
+    The second cell a non-zero value indicates an external capacitor is fitted
+    Starting from third cell the next n cells with a non-zero value indicates
+    the micbias (or children micbiases if n > 1) should be actively discharged
+    In the (3 + n)'th cell a non-zero value indicates that the micbias should be
+    brought up slowly to reduce pops
+    In the (4 + n)'th cell a non-zero value indicates the micbias should be bypassed
+    and simply output MICVDD
+  - wlf,micbias2 : See wlf,micbias1
+  - wlf,micbias3 : See wlf,micbias1
+  - wlf,micbias4 : See wlf,micbias1
+
+  - wlf,hs-mic: Specify an input to mute during headset button presses and
+    jack removal: 1 - IN1L, 2 - IN1R, ..., n - IN[n]R
+
+  - wlf,dmic-ref : DMIC reference for each input, must contain four cells if
+    specified. 0 indicates MICVDD and is the default, 1,2,3 indicate the
+    respective MICBIAS.
 
   - wlf,inmode : A list of INn_MODE register values, where n is the number
     of input signals. Valid values are 0 (Differential), 1 (Single-ended) and
@@ -48,6 +155,36 @@ Optional properties:
     If present, values must be specified less than or equal to the number of
     input singals. If values less than the number of input signals, elements
     that has not been specifed are set to 0 by default.
+    For most codecs the entries map to <IN1, IN2, IN3, IN4>
+    wm8998: entries are for <IN1A, IN2A, IN1B, IN2B>
+    cs47l85, wm8285, cs47l90, cs47l91: entries are for <IN1L, IN1R, IN2L,
+    IN2R, IN3L, IN3R>
+    cs47l15, cs47l35: entries are for <IN1A, IN2, IN1B>
+
+  - wlf,out-mono : Mono bit for each output, must contain six cells if
+    specified. A non-zero value indicates the corresponding output is mono.
+
+  - wlf,use-jd-gpio : Use GPIO input for jack detection.
+  - wlf,use-jd-gpio-nopull : Internal pull on GPIO is disabled when used for
+    jack detection.
+
+  - wlf,dmic-clksrc : (cs47l15, cs47l90, cs47l91) DMIC clock source for each
+    input. A value of 0 will source DMIC from internally generated clock within
+    the ADC subsystem and a value of 1 will source DMIC and External digital
+    speakers with same clock
+
+  - wlf,gpio-defaults : A list of GPIO configuration register values. Defines
+    for the appropriate values can found in <dt-bindings/mfd/arizona.txt>. If
+    absent, no configuration of these registers is performed. If any entry has
+    a value that is out of range for a 16 bit register then the chip default
+    will be used.
+
+  - wlf,max-channels-clocked : The maximum number of channels to be clocked on
+    each AIF, useful for I2S systems with multiple data lines being mastered.
+    Specify one cell for each AIF, specify zero for AIFs that should be handled
+    normally.
+
+  - wlf,wm5102t-output-pwr : Output power setting (WM5102T only)
 
   - DCVDD-supply, MICVDD-supply : Power supplies, only need to be specified if
     they are being externally supplied. As covered in
@@ -72,11 +209,41 @@ codec: wm5102@1a {
 	gpio-controller;
 	#gpio-cells = <2>;
 
-	wlf,gpio-defaults = <
-		0x00000000 /* AIF1TXLRCLK */
-		0xffffffff
-		0xffffffff
-		0xffffffff
-		0xffffffff
+	wlf,micd-detect-debounce = <10>;
+	wlf,micd-bias-start-time = <0x1>;
+	wlf,micd-rate = <0x1>;
+	wlf,micd-dbtime = <0x1>;
+	wlf,micd-timeout = <10>;
+	wlf,micd-force-micbias;
+	wlf,micd-ranges = <
+		11 0x100
+		28 0x101
+		54 0x102
+		100 0x103
+		186 0x104
+		430 0x105
 	>;
+	wlf,micd-configs = <
+		0x1 1 0
+		0x0 2 1
+	>;
+	wlf,fixed-hpdet-imp = <8>;
+
+	wlf,micbias2 = <2600 0 1 1 0>;
+	wlf,init-mic-delay = <10>;
+	wlf,micd-clamp-mode = <0xb>;
+
+	wlf,dmic-ref = <0 0 1 0>;
+
+	wlf,gpsw = <0x3>;
+
+	wlf,gpio-defaults = <
+		ARIZONA_GP_FN_TXLRCLK
+		ARIZONA_GP_DEFAULT
+		ARIZONA_GP_DEFAULT
+		ARIZONA_GP_DEFAULT
+		ARIZONA_GP_DEFAULT
+	>;
+
+	wlf,max-channels-clocked = <2 0 0>;
 };
