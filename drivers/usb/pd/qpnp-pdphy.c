@@ -25,6 +25,8 @@
 #include <linux/seq_file.h>
 #include <linux/sched.h>
 #include <linux/wait.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include "usbpd.h"
 
 #define USB_PDPHY_MAX_DATA_OBJ_LEN	28
@@ -126,6 +128,10 @@ struct usb_pdphy {
 	unsigned int msg_tx_failed_cnt;
 	unsigned int msg_tx_discarded_cnt;
 	unsigned int msg_rx_discarded_cnt;
+
+	/* type C Audio Switches */
+	struct gpio sw_sel_gpio;
+	struct gpio aud_det_gpio;
 };
 
 static struct usb_pdphy *__pdphy;
@@ -575,6 +581,26 @@ void pd_phy_close(void)
 }
 EXPORT_SYMBOL(pd_phy_close);
 
+void pd_phy_audio_detect(bool enable)
+{
+	struct usb_pdphy *pdphy = __pdphy;
+
+	if (!gpio_is_valid(pdphy->aud_det_gpio.gpio) ||
+		!gpio_is_valid(pdphy->sw_sel_gpio.gpio))
+		return;
+
+	dev_dbg(pdphy->dev, "Audio Detection %sabled\n", enable ? "en" : "dis");
+
+	if (enable) {
+		gpio_set_value(pdphy->sw_sel_gpio.gpio, 1);
+		gpio_set_value(pdphy->aud_det_gpio.gpio, 0);
+	} else {
+		gpio_set_value(pdphy->aud_det_gpio.gpio, 1);
+		gpio_set_value(pdphy->sw_sel_gpio.gpio, 0);
+	}
+}
+EXPORT_SYMBOL(pd_phy_audio_detect);
+
 static irqreturn_t pdphy_msg_tx_irq(int irq, void *data)
 {
 	struct usb_pdphy *pdphy = data;
@@ -765,6 +791,7 @@ static int pdphy_probe(struct platform_device *pdev)
 	int ret;
 	unsigned int base;
 	struct usb_pdphy *pdphy;
+	enum of_gpio_flags flags;
 
 	pdphy = devm_kzalloc(&pdev->dev, sizeof(*pdphy), GFP_KERNEL);
 	if (!pdphy)
@@ -861,6 +888,65 @@ static int pdphy_probe(struct platform_device *pdev)
 
 	pdphy_create_debugfs_entries(pdphy);
 
+	pdphy->aud_det_gpio.gpio = of_get_gpio_flags(pdev->dev.of_node,
+						0, &flags);
+	pdphy->aud_det_gpio.flags = flags;
+	of_property_read_string_index(pdev->dev.of_node, "gpio-labels", 0,
+				&pdphy->aud_det_gpio.label);
+
+	ret = gpio_request_one(pdphy->aud_det_gpio.gpio,
+				pdphy->aud_det_gpio.flags,
+				pdphy->aud_det_gpio.label);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to request GPIO\n");
+		goto fail_gpio;
+	}
+
+	ret = gpio_export(pdphy->aud_det_gpio.gpio, 1);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to export GPIO %s: %d\n",
+				pdphy->aud_det_gpio.label,
+				pdphy->aud_det_gpio.gpio);
+
+	ret = gpio_export_link(&pdev->dev,
+				pdphy->aud_det_gpio.label,
+				pdphy->aud_det_gpio.gpio);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to link GPIO %s: %d\n",
+				pdphy->aud_det_gpio.label,
+				pdphy->aud_det_gpio.gpio);
+
+	pdphy->sw_sel_gpio.gpio = of_get_gpio_flags(pdev->dev.of_node,
+						1, &flags);
+	pdphy->sw_sel_gpio.flags = flags;
+	of_property_read_string_index(pdev->dev.of_node, "gpio-labels", 1,
+				&pdphy->sw_sel_gpio.label);
+
+	ret = gpio_request_one(pdphy->sw_sel_gpio.gpio,
+				pdphy->sw_sel_gpio.flags,
+				pdphy->sw_sel_gpio.label);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to request GPIO\n");
+		goto fail_gpio;
+	}
+
+	ret = gpio_export(pdphy->sw_sel_gpio.gpio, 1);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to export GPIO %s: %d\n",
+				pdphy->sw_sel_gpio.label,
+				pdphy->sw_sel_gpio.gpio);
+
+	ret = gpio_export_link(&pdev->dev,
+				pdphy->sw_sel_gpio.label,
+				pdphy->sw_sel_gpio.gpio);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to link GPIO %s: %d\n",
+				pdphy->sw_sel_gpio.label,
+				pdphy->sw_sel_gpio.gpio);
+
+	/* Disable audio detection initially */
+	pd_phy_audio_detect(false);
+fail_gpio:
 	return 0;
 }
 
@@ -868,6 +954,8 @@ static int pdphy_remove(struct platform_device *pdev)
 {
 	struct usb_pdphy *pdphy = platform_get_drvdata(pdev);
 
+	gpio_free(pdphy->aud_det_gpio.gpio);
+	gpio_free(pdphy->sw_sel_gpio.gpio);
 	debugfs_remove_recursive(pdphy->debug_root);
 	usbpd_destroy(pdphy->usbpd);
 
