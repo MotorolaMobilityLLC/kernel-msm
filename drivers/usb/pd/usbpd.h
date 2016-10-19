@@ -77,6 +77,7 @@ int pd_phy_write(u16 hdr, const u8 *data, size_t data_len,
 		enum pd_sop_type sop);
 int pd_phy_update_roles(enum data_role dr, enum power_role pr);
 void pd_phy_close(void);
+void pd_phy_audio_detect(bool enable);
 #else
 static inline int pd_phy_open(struct pd_phy_params *params)
 {
@@ -100,6 +101,10 @@ static inline int pd_phy_update_roles(enum data_role dr, enum power_role pr)
 }
 
 static inline void pd_phy_close(void)
+{
+}
+
+static inline void pd_phy_audio_detect(bool enable)
 {
 }
 #endif
