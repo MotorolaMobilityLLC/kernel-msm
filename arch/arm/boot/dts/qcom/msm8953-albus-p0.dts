@@ -31,5 +31,6 @@
 &soc {
 	sound {
 		qcom,model = "msm8952-marley-cardp1a";
+		qcom,l35_cpu_dai_name = "marley-aif2";
 	};
 };
