@@ -12,4 +12,10 @@ config SWITCH_GPIO
 	help
 	  Say Y here to enable GPIO based switch support.
 
+config SWITCH_ARIZONA
+	tristate "Cirrus Arizona Switch support"
+	depends on MFD_ARIZONA && INPUT && SND_SOC
+	help
+	  Say Y here to enable Cirrus audio accessory detection support.
+
 endif # SWITCH
