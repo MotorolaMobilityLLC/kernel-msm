@@ -200,6 +200,7 @@ config SND_SOC_MSM8X16
 	select SND_HWDEP
         select DTS_EAGLE
 	select SND_SOC_MARLEY if MFD_MARLEY
+	select SWITCH_ARIZONA
 	select SND_SOC_CS35L34
 	select SND_SOC_CS35L35
 	select SND_SOC_OPALUM if SND_SOC_MARLEY
