@@ -199,6 +199,8 @@ extern void mmc_blk_init_bkops_statistics(struct mmc_card *card);
 extern void mmc_rpm_hold(struct mmc_host *host, struct device *dev);
 extern void mmc_rpm_release(struct mmc_host *host, struct device *dev);
 
+extern void mmc_blk_init_bkops_statistics(struct mmc_card *card);
+
 /**
  *	mmc_claim_host - exclusively claim a host
  *	@host: mmc host to claim
