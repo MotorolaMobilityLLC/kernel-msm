@@ -1,5 +1,5 @@
 /* Copyright (c) 2013, The Linux Foundation. All rights reserved.
- * Copyright (c) 2014 Motorola Mobility LLC
+ * Copyright (c) 2016 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -211,9 +211,9 @@
 		"telstra",	/* 194 */
 		"vfau",	/* 195 */
 		"amzin",	/* 196 */
-		"undefined",	/* 197 */
-		"undefined",	/* 198 */
-		"undefined",	/* 199 */
+		"jioin",	/* 197 */
+		"airin",	/* 198 */
+		"retid",	/* 199 */
 		"undefined",	/* 200 */
 		"undefined",	/* 201 */
 		"undefined",	/* 202 */
