@@ -33,7 +33,8 @@ static long audio_ioctl_shared(struct file *file, unsigned int cmd,
 	case AUDIO_START: {
 		struct asm_alac_cfg alac_cfg;
 		struct msm_audio_alac_config *alac_config;
-		pr_debug("%s[%p]: AUDIO_START session_id[%d]\n", __func__,
+
+		pr_debug("%s[%pK]: AUDIO_START session_id[%d]\n", __func__,
 						audio, audio->ac->session);
 		if (audio->feedback == NON_TUNNEL_MODE) {
 			/* Configure PCM output block */
