@@ -173,6 +173,8 @@ struct qusb_phy {
 	spinlock_t		pulse_lock;
 	bool			put_into_high_z_state;
 	bool			scm_lvl_shifter_update;
+	struct mutex regulator_lock;
+
 };
 
 static void qusb_phy_update_tcsr_level_shifter(struct qusb_phy *qphy, u32 val)
@@ -326,11 +328,14 @@ static int qusb_phy_enable_power(struct qusb_phy *qphy, bool on)
 {
 	int ret = 0;
 
+	mutex_lock(&qphy->regulator_lock);
+
 	dev_dbg(qphy->phy.dev, "%s turn %s regulators. power_enabled:%d\n",
 			__func__, on ? "on" : "off", qphy->power_enabled);
 
 	if (qphy->power_enabled == on) {
 		dev_dbg(qphy->phy.dev, "PHYs' regulators are already ON.\n");
+		mutex_unlock(&qphy->regulator_lock);
 		return 0;
 	}
 
@@ -384,6 +389,7 @@ static int qusb_phy_enable_power(struct qusb_phy *qphy, bool on)
 	qphy->power_enabled = true;
 
 	pr_debug("%s(): QUSB PHY's regulators are turned ON.\n", __func__);
+	mutex_unlock(&qphy->regulator_lock);
 	return ret;
 
 disable_vdda33:
@@ -423,6 +429,7 @@ disable_vdd:
 err_vdd:
 	qphy->power_enabled = false;
 	dev_dbg(qphy->phy.dev, "QUSB PHY's regulators are turned OFF.\n");
+	mutex_unlock(&qphy->regulator_lock);
 	return ret;
 }
 
@@ -1153,6 +1160,7 @@ static int qusb_phy_probe(struct platform_device *pdev)
 
 	qphy->phy.dev = dev;
 	spin_lock_init(&qphy->pulse_lock);
+	mutex_init(&qphy->regulator_lock);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 							"qusb_phy_base");
