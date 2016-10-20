@@ -33,4 +33,11 @@
 		qcom,model = "msm8952-marley-cardp1a";
 		qcom,l35_cpu_dai_name = "marley-aif2";
 	};
+
+	spi@7af7000 {
+		marley@0 {
+			wlf,micd-configs = <0 3 0
+					    0x2000 2 1>;
+		};
+	};
 };
