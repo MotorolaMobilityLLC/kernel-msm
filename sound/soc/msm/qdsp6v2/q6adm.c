@@ -2135,8 +2135,8 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 			__func__, open.endpoint_id_1, open.sample_rate,
 			open.topology_id);
 
-		if (open.topology_id == VPM_TX_LEC_STEREO_REF ||
-			open.topology_id == VPM_TX_LEC_MONO_REF) {
+		if ((this_adm.ec_ref_cfg.channel != 0) && (path != 1) &&
+			(open.endpoint_id_2 != 0xFFFF)) {
 			int ref_end_channel_mode = this_adm.ec_ref_cfg.channel;
 			use_open_v6 = true;
 			/* overwrite open opcode and pkt size here to use
