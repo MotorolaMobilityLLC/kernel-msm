@@ -330,6 +330,9 @@
 		qcom,noise-rjct-sda = <0>;
 		qcom,bam-pipe-idx-cons = <8>;
 		qcom,bam-pipe-idx-prod = <9>;
+		dmas = <&dma_blsp1 8 64 0x20000020 0x20>,
+			<&dma_blsp1 9 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
 		qcom,master-id = <86>;
 	};
 	sound {
