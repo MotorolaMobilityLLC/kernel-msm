@@ -282,6 +282,10 @@
 		};
 	};
 
+	qcom,msm-thermal {
+		qcom,config-info = "albus";
+	};
+
 	/delete-node/ hdmi_dba;
 	hdmi_dba: qcom,msm-hdmi-dba-codec-rx {
 		compatible = "qcom,msm-hdmi-dba-codec-rx";
