@@ -3673,8 +3673,6 @@ static struct snd_soc_dapm_route marley_audio_routes[] = {
 	{"Slim2 Playback", NULL, "MCLK"},
 	{"Slim2 Capture", NULL, "MCLK"},
 
-	/* MICBIAS ? */
-
 	{"AIF1 Playback", NULL, "AMP Capture"},
 	{"AMP Playback", NULL, "OPCLK"},
 	{"AMP Capture", NULL, "OPCLK"},
@@ -3683,10 +3681,29 @@ static struct snd_soc_dapm_route marley_audio_routes[] = {
 	{"Slim1 Capture", NULL, "MCLK"},
 	{"Slim2 Capture", NULL, "MCLK"},
 
-	{"IN1AL", NULL, "MICBIAS1A"},
-	{"IN1AR", NULL, "MICBIAS1B"},
-	{"IN2L", NULL, "MICBIAS2B"},
+};
+
+static struct snd_soc_dapm_route marley_mic_routes[] = {
+	{"IN1AL", NULL, "MICBIAS1A"}, /* Mic 1 */
+	{"IN1AR", NULL, "MICBIAS1B"}, /* Mic 3 */
+	{"IN2L", NULL, "MICBIAS2B"},  /* Mic 2 */
 	{"IN1BR", NULL, "MICBIAS2A"}, /* Headset mic */
+};
+
+static struct snd_soc_dapm_route marley_albus_p1a_mic_routes[] = {
+	/* Rev 05 */
+	{"IN1AL", NULL, "MICBIAS1A"}, /* Mic 1 */
+	{"IN2R", NULL, "MICBIAS1B"},  /* Mic 3 */
+	{"IN2L", NULL, "MICBIAS2B"},  /* Mic 2 */
+	{"IN1BR", NULL, "MICBIAS2A"}, /* Headset mic */
+};
+
+static struct snd_soc_dapm_route marley_albus_mic_routes[] = {
+	/* Rev 06 */
+	{"IN1AL", NULL, "MICBIAS2A"}, /* Mic 1 */
+	{"IN2R", NULL, "MICBIAS2B"},  /* Mic 3 */
+	{"IN2L", NULL, "MICBIAS2A"},  /* Mic 2 */
+	{"IN1BR", NULL, "MICBIAS1B"}, /* Headset mic */
 };
 #endif
 
@@ -3964,9 +3981,29 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	}
 
 	ret = snd_soc_dapm_add_routes(dapm, marley_audio_routes,
-		ARRAY_SIZE(marley_audio_routes));
+				      ARRAY_SIZE(marley_audio_routes));
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to add audio routes %d\n", ret);
+		return ret;
+	}
+
+	if (of_property_read_bool(card->dev->of_node, "qcom,albus-audio")) {
+		if (!strncmp(card->name, "msm8952-marley-cardp1a", 22)) {
+			ret = snd_soc_dapm_add_routes(dapm,
+				marley_albus_p1a_mic_routes,
+				ARRAY_SIZE(marley_albus_p1a_mic_routes));
+		} else {
+			ret = snd_soc_dapm_add_routes(dapm,
+				marley_albus_mic_routes,
+				ARRAY_SIZE(marley_albus_mic_routes));
+		}
+	} else {
+		ret = snd_soc_dapm_add_routes(dapm,
+			marley_mic_routes,
+			ARRAY_SIZE(marley_mic_routes));
+	}
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to add mic routes %d\n", ret);
 		return ret;
 	}
 
