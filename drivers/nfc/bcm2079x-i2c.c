@@ -66,11 +66,6 @@ struct bcm2079x_dev {
 
 static struct clk *clk_rf;
 
-static void bcm2079x_init_stat(struct bcm2079x_dev *bcm2079x_dev)
-{
-	bcm2079x_dev->count_irq = 0;
-}
-
 static void bcm2079x_disable_irq(struct bcm2079x_dev *bcm2079x_dev)
 {
 	unsigned long flags;
@@ -88,6 +83,7 @@ static void bcm2079x_enable_irq(struct bcm2079x_dev *bcm2079x_dev)
 	spin_lock_irqsave(&bcm2079x_dev->irq_enabled_lock, flags);
 	if (!bcm2079x_dev->irq_enabled) {
 		bcm2079x_dev->irq_enabled = true;
+		bcm2079x_dev->count_irq = 0;
 		enable_irq(bcm2079x_dev->client->irq);
 	}
 	spin_unlock_irqrestore(&bcm2079x_dev->irq_enabled_lock, flags);
@@ -184,7 +180,7 @@ static ssize_t bcm2079x_dev_read(struct file *filp, char __user *buf,
 {
 	struct bcm2079x_dev *bcm2079x_dev = filp->private_data;
 	unsigned char tmp[MAX_BUFFER_SIZE];
-	int total, len, ret;
+	int total, len;
 
 	total = 0;
 	len = 0;
@@ -196,39 +192,7 @@ static ssize_t bcm2079x_dev_read(struct file *filp, char __user *buf,
 
 	/** Read the first 4 bytes to include the length of the NCI or HCI packet.
 	**/
-	ret = i2c_master_recv(bcm2079x_dev->client, tmp, 4);
-	if (ret == 4) {
-		total = ret;
-		/** First byte is the packet type
-		**/
-		switch (tmp[0]) {
-		case PACKET_TYPE_NCI:
-			len = tmp[PACKET_HEADER_SIZE_NCI-1];
-			break;
-
-		case PACKET_TYPE_HCIEV:
-			len = tmp[PACKET_HEADER_SIZE_HCI-1];
-			if (len == 0)
-				total--;/*Since payload is 0, decrement total size (from 4 to 3) */
-			else
-				len--;/*First byte of payload is in tmp[3] already */
-			break;
-
-		default:
-			len = 0;/*Unknown packet byte */
-			break;
-		} /* switch*/
-
-		/** make sure full packet fits in the buffer
-		**/
-		if (len > 0 && (len + total) <= count) {
-			/** read the remainder of the packet.
-			**/
-			ret = i2c_master_recv(bcm2079x_dev->client, tmp+total, len);
-			if (ret == len)
-				total += len;
-		} /* if */
-	} /* if */
+	total = i2c_master_recv(bcm2079x_dev->client, tmp, count);
 
 	mutex_unlock(&bcm2079x_dev->read_mutex);
 
@@ -281,7 +245,6 @@ static int bcm2079x_dev_open(struct inode *inode, struct file *filp)
 							   struct bcm2079x_dev,
 							   bcm2079x_device);
 	filp->private_data = bcm2079x_dev;
-	bcm2079x_init_stat(bcm2079x_dev);
 	bcm2079x_enable_irq(bcm2079x_dev);
 	dev_info(&bcm2079x_dev->client->dev,
 		 "%d,%d\n", imajor(inode), iminor(inode));
@@ -299,6 +262,10 @@ static long bcm2079x_dev_unlocked_ioctl(struct file *filp,
 		break;
 	case BCMNFC_READ_MULTI_PACKETS:
 		break;
+	case BCMNFC_READ_MODE:
+		dev_info(&bcm2079x_dev->client->dev,
+			"get read mode[0x%x]\n", cmd);
+		return READ_RAW_PACKET;
 	case BCMNFC_CHANGE_ADDR:
 		dev_info(&bcm2079x_dev->client->dev,
 			 "%s, BCMNFC_CHANGE_ADDR (%x, %lx):\n", __func__, cmd,
