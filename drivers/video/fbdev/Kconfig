@@ -2341,6 +2341,12 @@ config FB_MSM
 	  a way for users to display graphics
 	  on connected display panels.
 
+config PANEL_NOTIFICATIONS
+	bool 'Panel notifications'
+	default n
+	---help---
+	  Panel notifications framework
+
 config FB_MX3
 	tristate "MX3 Framebuffer support"
 	depends on FB && MX3_IPU
