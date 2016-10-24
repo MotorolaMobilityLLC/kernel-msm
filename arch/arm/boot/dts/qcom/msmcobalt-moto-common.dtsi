@@ -1160,6 +1160,10 @@
 	};
 };
 
+&mdss_dp_ctrl {
+	status = "disabled";
+};
+
 &mdss_dsi {
 	hw-config = "dual_dsi";
 
