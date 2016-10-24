@@ -344,7 +344,7 @@
 	};
 
 	qcom,msm-thermal {
-		qcom,config-info = "addison";
+		qcom,config-info = "potter";
 	};
 
 	qcom,sensor-information {
@@ -709,8 +709,8 @@
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
 	qcom,charge-unknown-battery;
-	qcom,chg-thermal-mitigation = <2500>, <2000>, <1600>, <1200>, <1000>, <700>,
-				      <500>, <300>;
+	qcom,chg-thermal-mitigation = <3000>, <2500>, <2000>, <1600>,
+		<1000>, <500>, <300>;
 	qcom,dc-thermal-mitigation = <950>, <700>, <600>, <500>, <400>, <300>;
 	qcom,parallel-charge-current-map = <2500 2500 0>,
 					   <2000 2000 0>,
