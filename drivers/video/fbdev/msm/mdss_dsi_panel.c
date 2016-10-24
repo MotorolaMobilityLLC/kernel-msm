@@ -3155,6 +3155,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		}
 		strlcpy(ctrl_pdata->bridge_name, bridge_chip_name,
 			MSM_DBA_CHIP_NAME_MAX_LEN);
+		pr_debug("%s: bridge_name =%s\n", __func__,
+					ctrl_pdata->bridge_name);
 	}
 
 	rc = of_property_read_u32(np,
