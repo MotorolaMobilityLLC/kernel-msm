@@ -135,6 +135,8 @@ obj-y                             += msm/
 else
 obj-$(CONFIG_MSM_DBA)             += msm/msm_dba/
 endif
+obj-$(CONFIG_PANEL_NOTIFICATIONS) += panel_notifier.o
+
 # Platform or fallback drivers go here
 obj-$(CONFIG_FB_UVESA)            += uvesafb.o
 obj-$(CONFIG_FB_VESA)             += vesafb.o
