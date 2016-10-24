@@ -2354,6 +2354,12 @@ config MOD_DISPLAY
 	---help---
 	  Say yes here if you wish to include the Mod Display support drivers.
 
+config PANEL_NOTIFICATIONS
+	bool 'Panel notifications'
+	default n
+	---help---
+	  Panel notifications framework
+
 config FB_MX3
 	tristate "MX3 Framebuffer support"
 	depends on FB && MX3_IPU
