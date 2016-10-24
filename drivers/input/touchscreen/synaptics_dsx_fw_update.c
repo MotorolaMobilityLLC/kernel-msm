@@ -169,6 +169,7 @@ enum bl_version {
 	BL_V5 = 5,
 	BL_V6 = 6,
 	BL_V7 = 7,
+	BL_V8 = 8,
 };
 
 enum flash_area {
@@ -189,6 +190,20 @@ enum config_area {
 	BL_CONFIG_AREA,
 	DP_CONFIG_AREA,
 	FLASH_CONFIG_AREA,
+};
+
+enum v7_status {
+	SUCCESS = 0x00,
+	DEVICE_NOT_IN_BOOTLOADER_MODE,
+	INVALID_PARTITION,
+	INVALID_COMMAND,
+	INVALID_BLOCK_OFFSET,
+	INVALID_TRANSFER,
+	NOT_ERASED,
+	FLASH_PROGRAMMING_KEY_INCORRECT,
+	BAD_PARTITION_TABLE,
+	CHECKSUM_FAILED,
+	FLASH_HARDWARE_FAILURE = 0x1f,
 };
 
 enum v7_partition_id {
@@ -1040,7 +1055,7 @@ static int fwu_parse_image_info(void)
 		return -EINVAL;
 	}
 
-	if (fwu->bl_version == BL_V7) {
+	if (fwu->bl_version >= BL_V7) {
 		if (!fwu->img.contains_flash_config) {
 			dev_err(LOGDEV,
 					"%s: No flash config found in firmware image\n",
@@ -1083,13 +1098,18 @@ static int fwu_read_flash_status(void)
 		fwu->flash_status = (status >> 4) & MASK_3BIT;
 	else if (fwu->bl_version == BL_V6)
 		fwu->flash_status = status & MASK_3BIT;
-	else if (fwu->bl_version == BL_V7)
+	else
 		fwu->flash_status = status & MASK_5BIT;
 
 	if (fwu->flash_status != 0x00) {
 		dev_err(LOGDEV,
 				"%s: Flash status = %d, command = 0x%02x\n",
 				__func__, fwu->flash_status, fwu->command);
+	}
+
+	if (fwu->bl_version >= BL_V7) {
+		if (fwu->flash_status == BAD_PARTITION_TABLE)
+			fwu->flash_status = 0x00;
 	}
 
 	retval = synaptics_rmi4_reg_read(rmi4_data,
@@ -1107,7 +1127,7 @@ static int fwu_read_flash_status(void)
 		fwu->command = command & MASK_4BIT;
 	else if (fwu->bl_version == BL_V6)
 		fwu->command = command & MASK_6BIT;
-	else if (fwu->bl_version == BL_V7)
+	else
 		fwu->command = command;
 
 	return 0;
@@ -1439,7 +1459,7 @@ static int fwu_write_f34_command(unsigned char cmd)
 {
 	int retval;
 
-	if (fwu->bl_version == BL_V7)
+	if (fwu->bl_version >= BL_V7)
 		retval = fwu_write_f34_v7_command(cmd);
 	else
 		retval = fwu_write_f34_v5v6_command(cmd);
@@ -1522,7 +1542,7 @@ static int fwu_write_f34_partition_id(unsigned char cmd)
 {
 	int retval;
 
-	if (fwu->bl_version == BL_V7)
+	if (fwu->bl_version >= BL_V7)
 		retval = fwu_write_f34_v7_partition_id(cmd);
 	else
 		retval = 0;
@@ -1641,6 +1661,9 @@ static int fwu_read_f34_v7_queries(void)
 
 	fwu->bootloader_id[0] = query_1_7.bl_minor_revision;
 	fwu->bootloader_id[1] = query_1_7.bl_major_revision;
+
+	if (fwu->bootloader_id[1] == BL_V8)
+		fwu->bl_version = BL_V8;
 
 	fwu->block_size = query_1_7.block_size_15_8 << 8 |
 			query_1_7.block_size_7_0;
@@ -2036,7 +2059,7 @@ static int fwu_write_f34_blocks(unsigned char *block_ptr,
 {
 	int retval;
 
-	if (fwu->bl_version == BL_V7)
+	if (fwu->bl_version >= BL_V7)
 		retval = fwu_write_f34_v7_blocks(block_ptr, block_cnt, cmd);
 	else
 		retval = fwu_write_f34_v5v6_blocks(block_ptr, block_cnt, cmd);
@@ -2196,7 +2219,7 @@ static int fwu_read_f34_blocks(unsigned short block_cnt, unsigned char cmd)
 {
 	int retval;
 
-	if (fwu->bl_version == BL_V7)
+	if (fwu->bl_version >= BL_V7)
 		retval = fwu_read_f34_v7_blocks(block_cnt, cmd);
 	else
 		retval = fwu_read_f34_v5v6_blocks(block_cnt, cmd);
@@ -2232,7 +2255,7 @@ static int fwu_get_device_config_id(void)
 	unsigned char config_id_size;
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
-	if (fwu->bl_version == BL_V7)
+	if (fwu->bl_version >= BL_V7)
 		config_id_size = V7_CONFIG_ID_SIZE;
 	else
 		config_id_size = V5V6_CONFIG_ID_SIZE;
@@ -2301,7 +2324,7 @@ static enum flash_area fwu_go_nogo(void)
 		goto exit;
 	}
 
-	if (fwu->bl_version == BL_V7)
+	if (fwu->bl_version >= BL_V7)
 		config_id_size = V7_CONFIG_ID_SIZE;
 	else
 		config_id_size = V5V6_CONFIG_ID_SIZE;
@@ -2737,12 +2760,18 @@ static int fwu_erase_all(void)
 				__func__);
 
 		retval = fwu_wait_for_idle(ERASE_WAIT_MS);
-		if (retval < 0)
-			return retval;
+		if (!(fwu->bl_version == BL_V8 &&
+				fwu->flash_status == BAD_PARTITION_TABLE)) {
+			if (retval < 0)
+				return retval;
+		}
 
 		dev_dbg(LOGDEV,
 				"%s: Idle status detected\n",
 				__func__);
+
+		if (fwu->bl_version == BL_V8)
+			return 0;
 	}
 
 	if (fwu->flash_properties.has_disp_config) {
@@ -2853,7 +2882,32 @@ static int fwu_write_lockdown(void)
 			lockdown_block_count, CMD_WRITE_LOCKDOWN);
 }
 
-static int fwu_write_partition_table(void)
+static int fwu_write_partition_table_v8(void)
+{
+	int retval;
+
+	fwu->config_area = FLASH_CONFIG_AREA;
+	fwu->config_data = fwu->img.fl_config.data;
+	fwu->config_size = fwu->img.fl_config.size;
+	fwu->config_block_count = fwu->config_size / fwu->block_size;
+
+	if (fwu->config_block_count != fwu->blkcount.fl_config) {
+		dev_err(LOGDEV,
+				"%s: Flash configuration size mismatch\n",
+				__func__);
+		return -EINVAL;
+	}
+
+	retval = fwu_write_configuration();
+	if (retval < 0)
+		return retval;
+
+	fwu_reset_device();
+
+	return 0;
+}
+
+static int fwu_write_partition_table_v7(void)
 {
 	int retval;
 	unsigned short block_count;
@@ -2915,7 +2969,7 @@ static int fwu_do_reflash(void)
 			if (retval < 0)
 				return retval;
 		}
-	} else {
+	} else if (fwu->bl_version == BL_V7) {
 		retval = fwu_check_bl_configuration_size();
 		if (retval < 0)
 			return retval;
@@ -2925,8 +2979,14 @@ static int fwu_do_reflash(void)
 	if (retval < 0)
 		return retval;
 
-	if (fwu->new_partition_table) {
-		retval = fwu_write_partition_table();
+	if (fwu->bl_version == BL_V7 && fwu->new_partition_table) {
+		retval = fwu_write_partition_table_v7();
+		if (retval < 0)
+			return retval;
+		pr_notice("%s: Partition table programmed\n", __func__);
+	} else if (fwu->bl_version == BL_V8) {
+		fwu_reset_device();
+		retval = fwu_write_partition_table_v8();
 		if (retval < 0)
 			return retval;
 		pr_notice("%s: Partition table programmed\n", __func__);
@@ -3505,6 +3565,12 @@ exit:
 	retval = fwu_scan_pdt();
 	if (retval < 0)
 		dev_err(LOGDEV, "%s: Failed to scan PDT\n", __func__);
+
+	if (!fwu->in_ub_mode) {
+		retval = fwu_read_f34_queries();
+		if (retval < 0)
+			dev_err(LOGDEV, "%s: Failed to query F34\n", __func__);
+	}
 
 	fwu_check_intr_en(rmi4_data, &rmi4_data->intr_mask[0],
 		rmi4_data->num_of_intr_regs);
