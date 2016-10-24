@@ -364,6 +364,8 @@ static void mdss_dba_utils_dba_cb(void *data, enum msm_dba_callback_event event)
 			}
 		}
 
+		udata->hpd_state = true;
+
 		if (pluggable) {
 			mdss_dba_utils_notify_display(udata, 1);
 			if (udata->support_audio)
@@ -372,7 +374,6 @@ static void mdss_dba_utils_dba_cb(void *data, enum msm_dba_callback_event event)
 			mdss_dba_utils_video_on(udata, udata->pinfo);
 		}
 
-		udata->hpd_state = true;
 		break;
 
 	case MSM_DBA_CB_HPD_DISCONNECT:
