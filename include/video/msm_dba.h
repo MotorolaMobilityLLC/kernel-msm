@@ -378,6 +378,60 @@ struct mdss_dba_timing_info {
 };
 
 /**
+ * struct msm_dba_dsi_cfg - dsi configuration data
+ * TODO
+ */
+struct msm_dba_dsi_cfg {
+	u16 manufacturer_id;
+	u8 mode;
+	u8 num_lanes;
+
+	u16 width;
+	u16 height;
+
+	u16 physical_width_dim;
+	u16 physical_length_dim;
+
+	u8 framerate;
+	u8 bpp;
+	u16 reserved0;
+
+	u64 clockrate;
+
+	u16 t_clk_pre;
+	u16 t_clk_post;
+
+	u8 continuous_clock;
+	u8 eot_mode;
+	u8 vsync_mode;
+	/*1 :non_burst_sync_pulse 2: non_burst_sync_event 3: burst_mode */
+	u8 traffic_mode;
+
+	u8 virtual_channel_id; /* 0: default */
+	/*
+	 * 1: rgb_swap_rgb 2: rgb_swap_rbg 3: rgb_swap_brg 4: rgb_swap_grb
+	 * 5: rgb_swap_gbr
+	 */
+	u8 color_order;
+	u8 pixel_packing;
+	u8 reserved1;
+
+	u16 horizontal_front_porch;
+	u16 horizontal_pulse_width;
+	u16 horizontal_sync_skew;
+	u16 horizontal_back_porch;
+	u16 horizontal_left_border;
+	u16 horizontal_right_border;
+
+	u16 vertical_front_porch;
+	u16 vertical_pulse_width;
+	u16 vertical_back_porch;
+	u16 vertical_top_border;
+	u16 vertical_bottom_border;
+	u16 reserved2;
+};
+
+/**
  * struct msm_dba_ops- operation supported by bridge chip
  * @get_caps: returns the bridge chip capabilities
  *	      DEFER and ASYNC flags are not supported.
@@ -578,6 +632,10 @@ struct msm_dba_ops {
 	int (*check_hpd)(void *client, u32 flags);
 	void (*set_audio_block)(void *client, u32 size, void *buf);
 	void (*get_audio_block)(void *client, u32 size, void *buf);
+	int (*get_dsi_config)(void *client,
+			       struct msm_dba_dsi_cfg *dsi_config);
+	u32 (*get_default_resolution)(void *client);
+	bool (*get_dsi_hs_clk_always_on)(void *client);
 	void* (*get_supp_timing_info)(void);
 };
 
