@@ -15,7 +15,6 @@
 #include "msm8937-pinctrl.dtsi"
 #include "msm8937-moto-pinctrl.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
-#include "msm8937-camera-sensor-mot.dtsi"
 #include <moto-mem-reserve.h>
 
 / {
