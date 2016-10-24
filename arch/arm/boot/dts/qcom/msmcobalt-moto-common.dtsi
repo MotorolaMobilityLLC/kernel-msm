@@ -821,6 +821,18 @@
 		mmi,default-root-ver = /bits/ 8 <2>;
 	};
 
+	dsi_mod_display_driver: dsi_mod_display_driver {
+		compatible = "mmi,dsi_mod_display";
+
+		mod_display,dsi_connect = <1>;
+	};
+
+	mot_dba_driver: mot_dba_driver {
+		compatible = "mmi,mot_dba";
+
+		qcom,msm_ext_disp = <&msm_ext_disp>;
+	};
+
 	apba_ctrl {
 		compatible = "mmi,apba-ctrl";
 		#address-cells = <1>;
@@ -1137,10 +1149,22 @@
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
+
+	mot_dba_panel: qcom,mdss_dsi_mot_dba_panel{
+		#include "dsi-panel-mot-mod-fwvga-video-common.dtsi"
+	};
+
+	mdss_fb4: qcom,mdss_fb_secondary {
+		cell-index = <4>;
+		compatible = "qcom,mdss-fb";
+	};
 };
 
 &mdss_dsi {
 	hw-config = "dual_dsi";
+
+	qcom,mdss-fb-map-prim = <&mdss_fb0>;
+	qcom,mdss-fb-map-sec = <&mdss_fb4>;
 };
 
 &mdss_dsi0 {
@@ -1155,11 +1179,47 @@
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vci_disp-supply = <&pmcobalt_l19>;
 	vdd3_disp-supply = <&vdd3_disp_vreg>;
+
+	/delete-property/  qcom,mdss-fb-map;
 };
 
 &mdss_dsi1 {
-	status = "disabled";
+	qcom,dsi-pref-prim-pan = <&mot_dba_panel>;
+	apba_cdsi-supply = <&pmcobalt_l26>;
+	qcom,pluggable;
+	qcom,bridge-index = <0>;
+
+	/delete-property/  qcom,mdss-fb-map;
 };
+
+&mot_dba_panel {
+	qcom,mdss-dsi-panel-name = "mipi_mot_dba_panel";
+	qcom,bridge-name = "mot_dba";
+	qcom,mdss-dsi-lane-0-state;
+	qcom,mdss-dsi-lane-1-state;
+	qcom,mdss-dsi-lane-2-state;
+	qcom,mdss-dsi-lane-3-state;
+
+	/* These power supplies are for DBA panel */
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "apba_cdsi";
+			qcom,supply-min-voltage = <1100000>;
+			qcom,supply-max-voltage = <1300000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <1>;
+		};
+	};
+};
+
 
 /{
 	mot_batterydata: qcom,battery-data {
