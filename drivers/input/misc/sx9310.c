@@ -506,12 +506,20 @@ static ssize_t capsense_reset_store(struct class *class,
 					const char *buf, size_t count)
 {
 	psx93XX_t this = sx9310_ptr;
+	psx9310_t pDevice = NULL;
+	struct input_dev *input = NULL;
+
+	pDevice = this->pDevice;
+	input = pDevice->pbuttonInformation->input;
 
 	if (!count || (this == NULL))
 		return -EINVAL;
 
 	if (!strncmp(buf, "reset", 5) || !strncmp(buf, "1", 1))
-		initialize(this);
+		write_register(this, SX9310_IRQSTAT_REG, 0xFF);
+
+	input_report_abs(input, ABS_DISTANCE, 0);
+	input_sync(input);
 
 	return count;
 }
