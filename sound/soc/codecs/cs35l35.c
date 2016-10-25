@@ -371,15 +371,15 @@ static int cs35l35_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 	return 0;
 }
 
-struct cs35l35_mclk_config {
-	int mclk;
+struct cs35l35_sysclk_config {
+	int sysclk;
 	int srate;
 	u8 clk_cfg;
 };
 
-static struct cs35l35_mclk_config cs35l35_clk_ctl[] = {
+static struct cs35l35_sysclk_config cs35l35_clk_ctl[] = {
 
-	/* MCLK, Sample Rate, Serial Port Cfg */
+	/* SYSCLK, Sample Rate, Serial Port Cfg */
 	{5644800, 44100, 0x00},
 	{5644800, 88200, 0x40},
 	{6144000, 48000, 0x10},
@@ -422,12 +422,12 @@ static struct cs35l35_mclk_config cs35l35_clk_ctl[] = {
 	{26000000, 192000, 0x9F},
 };
 
-static int cs35l35_get_clk_config(int mclk, int srate)
+static int cs35l35_get_clk_config(int sysclk, int srate)
 {
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(cs35l35_clk_ctl); i++) {
-		if (cs35l35_clk_ctl[i].mclk == mclk &&
+		if (cs35l35_clk_ctl[i].sysclk == sysclk &&
 			cs35l35_clk_ctl[i].srate == srate)
 			return cs35l35_clk_ctl[i].clk_cfg;
 	}
