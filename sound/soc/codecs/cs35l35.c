@@ -227,7 +227,14 @@ static int cs35l35_main_amp_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		usleep_range(5000, 5100);
-
+		/* If PDM mode we must use VP
+		 * for Voltage control
+		 */
+		if (cs35l35->pdm_mode)
+			regmap_update_bits(cs35l35->regmap,
+					CS35L35_BST_CVTR_V_CTL,
+					CS35L35_BST_CTL_MASK,
+					0 << CS35L35_BST_CTL_SHIFT);
 		for (i = 0; i < 2; i++)
 			regmap_bulk_read(cs35l35->regmap, CS35L35_INT_STATUS_1,
 					&reg, ARRAY_SIZE(reg));
@@ -249,6 +256,16 @@ static int cs35l35_main_amp_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		usleep_range(5000, 5100);
+		/* If PDM mode we should switch back to pdata value
+		 * for Voltage control when we go down
+		 */
+		if (cs35l35->pdm_mode)
+			regmap_update_bits(cs35l35->regmap,
+					CS35L35_BST_CVTR_V_CTL,
+					CS35L35_BST_CTL_MASK,
+					cs35l35->pdata.bst_vctl
+					<< CS35L35_BST_CTL_SHIFT);
+
 		break;
 	default:
 		pr_err("Invalid event = 0x%x\n", event);
