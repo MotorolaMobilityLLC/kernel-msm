@@ -227,6 +227,7 @@ static int cs35l35_main_amp_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		usleep_range(5000, 5100);
+
 		for (i = 0; i < 2; i++)
 			regmap_bulk_read(cs35l35->regmap, CS35L35_INT_STATUS_1,
 					&reg, ARRAY_SIZE(reg));
@@ -427,15 +428,16 @@ static int cs35l35_pcm_hw_params(struct snd_pcm_substream *substream,
 	u8 sp_sclks;
 	int audin_format;
 
-	int clk_ctl = cs35l35_get_clk_config(cs35l35->mclk, srate);
+	int clk_ctl = cs35l35_get_clk_config(cs35l35->sysclk, srate);
 
-	if (clk_ctl < 0)
-		return clk_ctl;
+	if (clk_ctl < 0) {
+		dev_err(codec->dev, "Invalid CLK:Rate %d:%d\n",
+			cs35l35->sysclk, srate);
+		return -EINVAL;
+	}
 
 	ret = regmap_update_bits(cs35l35->regmap, CS35L35_CLK_CTL2,
 				  CS35L35_CLK_CTL2_MASK, clk_ctl);
-	if (ret != 0)
-		dev_err(codec->dev, "Failed to set clock state %d\n", ret);
 
 /*
  * You can pull more Monitor data from the SDOUT pin than going to SDIN
@@ -624,6 +626,22 @@ static int cs35l35_codec_set_sysclk(struct snd_soc_codec *codec,
 				int dir)
 {
 	struct cs35l35_private *cs35l35 = snd_soc_codec_get_drvdata(codec);
+	int clksrc;
+
+	switch (clk_id) {
+	case 0:
+		clksrc = CS35L35_CLK_SOURCE_MCLK;
+		break;
+	case 1:
+		clksrc = CS35L35_CLK_SOURCE_SCLK;
+		break;
+	case 2:
+		clksrc = CS35L35_CLK_SOURCE_PDM;
+		break;
+	default:
+		dev_err(codec->dev, "Invalid CLK Source\n");
+		return -EINVAL;
+	};
 
 	switch (freq) {
 	case 5644800:
@@ -636,13 +654,16 @@ static int cs35l35_codec_set_sysclk(struct snd_soc_codec *codec,
 	case 24000000:
 	case 24576000:
 	case 26000000:
-		cs35l35->mclk = freq;
-		break;
+		cs35l35->sysclk = freq;
 	default:
-		dev_err(codec->dev, "Unsupported mclk rate %d\n",
-					cs35l35->mclk);
+		dev_err(codec->dev, "Invalid CLK Frequency\n");
 		return -EINVAL;
 	}
+
+	regmap_update_bits(cs35l35->regmap, CS35L35_CLK_CTL1,
+				CS35L35_CLK_SOURCE_MASK,
+				clksrc << CS35L35_CLK_SOURCE_SHIFT);
+
 	return 0;
 }
 
