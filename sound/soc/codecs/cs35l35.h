@@ -156,6 +156,11 @@
 #define CS35L35_CLK_CTL2_MASK		0xFF
 #define CS35L35_PDM_MODE_MASK		0x40
 #define CS35L35_PDM_MODE_SHIFT		6
+#define CS35L35_CLK_SOURCE_MASK		0x03
+#define CS35L35_CLK_SOURCE_SHIFT	0
+#define CS35L35_CLK_SOURCE_MCLK		0
+#define CS35L35_CLK_SOURCE_SCLK		1
+#define CS35L35_CLK_SOURCE_PDM		2
 
 #define CS35L35_SP_SCLKS_MASK		0x0F
 #define CS35L35_SP_SCLKS_SHIFT		0x00
@@ -176,6 +181,7 @@
 #define CS35L35_MCLK_DIS_SHIFT		2
 
 #define CS35L35_BST_CTL_MASK		0x7F
+#define CS35L35_BST_CTL_SHIFT		0
 #define CS35L35_AMP_MUTE_MASK		0x20
 #define CS35L35_AMP_MUTE_SHIFT		5
 #define CS35L35_AMP_GAIN_ZC_MASK	0x10
@@ -258,7 +264,7 @@ struct  cs35l35_private {
 	struct regulator_bulk_data supplies[2];
 	int num_supplies;
 	void *control_data;
-	int mclk;
+	int sysclk;
 	int sclk;
 	int mclk_pll;
 	int mclk_div;
