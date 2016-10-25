@@ -41,3 +41,11 @@
 		};
 	};
 };
+
+&spmi_bus {
+	qcom,pmi8950@3 {
+		qcom,leds@d300 {
+			/delete-property/ qcom,self-check-enabled;
+		};
+	};
+};
