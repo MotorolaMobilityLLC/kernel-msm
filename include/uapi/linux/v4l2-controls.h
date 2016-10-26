@@ -1,7 +1,7 @@
 /*
  *  Video for Linux Two controls header file
  *
- *  Copyright (C) 1999-2012 the contributors
+ *  Copyright (C) 1999-2017 the contributors
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1069,6 +1069,15 @@ enum v4l2_cid_mpeg_vidc_video_full_range {
 enum v4l2_cid_mpeg_vidc_video_vpe_csc_type_enable {
 	V4L2_CID_MPEG_VIDC_VIDEO_VPE_CSC_DISABLE  = 0,
 	V4L2_CID_MPEG_VIDC_VIDEO_VPE_CSC_ENABLE   = 1
+};
+
+#define V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_SIZE_TYPE \
+		(V4L2_CID_MPEG_MSM_VIDC_BASE + 100)
+enum v4l2_mpeg_vidc_video_venc_iframesize_type {
+	V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_SIZE_DEFAULT,
+	V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_SIZE_MEDIUM,
+	V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_SIZE_HUGE,
+	V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_SIZE_UNLIMITED,
 };
 
 /*  Camera class control IDs */

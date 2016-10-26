@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2056,6 +2056,33 @@ int create_pkt_cmd_session_set_property(
 		pkt->rg_property_data[0] =
 			HFI_PROPERTY_PARAM_VENC_VIDEO_SIGNAL_INFO;
 		pkt->size += sizeof(u32) + sizeof(*signal_info);
+		break;
+	}
+	case HAL_PARAM_VENC_IFRAMESIZE_TYPE:
+	{
+		enum hal_iframesize_type hal =
+			*(enum hal_iframesize_type *)pdata;
+		struct hfi_iframe_size *hfi = (struct hfi_iframe_size *)
+			&pkt->rg_property_data[1];
+
+		switch (hal) {
+		case HAL_IFRAMESIZE_TYPE_DEFAULT:
+			hfi->type = HFI_IFRAME_SIZE_DEFAULT;
+			break;
+		case HAL_IFRAMESIZE_TYPE_MEDIUM:
+			hfi->type = HFI_IFRAME_SIZE_MEDIUM;
+			break;
+		case HAL_IFRAMESIZE_TYPE_HUGE:
+			hfi->type = HFI_IFRAME_SIZE_HIGH;
+			break;
+		case HAL_IFRAMESIZE_TYPE_UNLIMITED:
+			hfi->type = HFI_IFRAME_SIZE_UNLIMITED;
+			break;
+		default:
+			return -ENOTSUPP;
+		}
+		pkt->rg_property_data[0] = HFI_PROPERTY_PARAM_VENC_IFRAMESIZE;
+		pkt->size += sizeof(u32) + sizeof(struct hfi_iframe_size);
 		break;
 	}
 	/* FOLLOWING PROPERTIES ARE NOT IMPLEMENTED IN CORE YET */
