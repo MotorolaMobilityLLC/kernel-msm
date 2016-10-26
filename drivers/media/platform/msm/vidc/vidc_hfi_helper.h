@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -367,6 +367,8 @@ struct hfi_buffer_info {
 	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x02F)
 #define  HFI_PROPERTY_PARAM_VENC_BITRATE_TYPE		\
 	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x031)
+#define  HFI_PROPERTY_PARAM_VENC_IFRAMESIZE			\
+	(HFI_PROPERTY_PARAM_VENC_COMMON_START + 0x034)
 
 #define HFI_PROPERTY_CONFIG_VENC_COMMON_START				\
 	(HFI_DOMAIN_BASE_VENC + HFI_ARCH_COMMON_OFFSET + 0x6000)
@@ -815,6 +817,15 @@ struct hfi_aspect_ratio {
 	u32 aspect_width;
 	u32 aspect_height;
 };
+
+#define HFI_IFRAME_SIZE_DEFAULT			(HFI_COMMON_BASE + 0x1)
+#define HFI_IFRAME_SIZE_MEDIUM			(HFI_COMMON_BASE + 0x2)
+#define HFI_IFRAME_SIZE_HIGH			(HFI_COMMON_BASE + 0x3)
+#define HFI_IFRAME_SIZE_UNLIMITED		(HFI_COMMON_BASE + 0x4)
+struct hfi_iframe_size {
+	u32 type;
+};
+
 #define HFI_MVC_BUFFER_LAYOUT_TOP_BOTTOM  (0)
 #define HFI_MVC_BUFFER_LAYOUT_SIDEBYSIDE  (1)
 #define HFI_MVC_BUFFER_LAYOUT_SEQ         (2)
