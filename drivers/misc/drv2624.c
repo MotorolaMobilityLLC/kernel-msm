@@ -990,6 +990,7 @@ static int dev_auto_calibrate(struct drv2624_data *ctrl)
 static struct regmap_config drv2624_i2c_regmap = {
 	.reg_bits = 8,
 	.val_bits = 8,
+	.max_register = DRV2624_REG_DIAG_K,
 	.cache_type = REGCACHE_NONE,
 };
 
