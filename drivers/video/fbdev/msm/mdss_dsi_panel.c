@@ -24,6 +24,7 @@
 #include <linux/string.h>
 #include <linux/uaccess.h>
 #include <linux/msm_mdp.h>
+#include <linux/panel_notifier.h>
 
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
@@ -1055,6 +1056,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		goto end;
 	}
 
+	panel_notify(PANEL_EVENT_PRE_DISPLAY_ON, pinfo);
+
 	on_cmds = &ctrl->on_cmds;
 
 	if ((pinfo->mipi.dms_mode == DYNAMIC_MODE_SWITCH_IMMEDIATE) &&
@@ -1097,6 +1100,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		} else
 			panel_recovery_retry = 0;
 	}
+
+	panel_notify(PANEL_EVENT_DISPLAY_ON, pinfo);
+
 end:
 	if (dropbox_issue != NULL) {
 		dropbox_count++;
@@ -1148,6 +1154,8 @@ static int mdss_dsi_post_panel_on(struct mdss_panel_data *pdata)
 		mdss_dba_utils_hdcp_enable(pinfo->dba_data, true);
 	}
 
+	panel_notify(PANEL_EVENT_DISPLAY_OFF, pinfo);
+
 end:
 	pr_info("%s[%d]-.\n", __func__, ctrl->ndx);
 	pr_debug("%s:-\n", __func__);
@@ -1174,6 +1182,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			goto end;
 	}
+
+	panel_notify(PANEL_EVENT_PRE_DISPLAY_OFF, pinfo);
 
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds, CMD_REQ_COMMIT);
