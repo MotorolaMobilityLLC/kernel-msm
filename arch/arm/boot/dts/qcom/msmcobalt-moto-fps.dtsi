@@ -1,0 +1,53 @@
+/* Copyright (c) 2016, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&tlmm {
+	fps: fps {
+		int_active: int_active {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio91";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio91";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+		int_suspend: int_suspend{
+			/* INTERRUPT */
+			mux {
+				pins = "gpio91";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio91";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+	};
+};
+
+&soc {
+	fpc_fpc1020{
+		compatible = "fpc,fpc1020";
+			status = "ok";
+			irq = <&tlmm 91 0>;
+			fpc,txout_boost_enable;
+	};
+};
