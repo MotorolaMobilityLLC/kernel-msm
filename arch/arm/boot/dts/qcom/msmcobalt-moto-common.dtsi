@@ -14,6 +14,7 @@
 #include "msmcobalt-pinctrl.dtsi"
 #include "msmcobalt-moto-pinctrl.dtsi"
 #include "msmcobalt-mdss.dtsi"
+#include "msmcobalt-moto-fps.dtsi"
 
 / {
 	aliases {
