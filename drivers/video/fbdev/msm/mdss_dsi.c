@@ -2904,7 +2904,8 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	switch (event) {
 	case MDSS_EVENT_CHECK_PARAMS:
 		pr_debug("%s:Entered Case MDSS_EVENT_CHECK_PARAMS\n", __func__);
-		if (mdss_dsi_check_params(ctrl_pdata, arg)) {
+		if (pinfo->is_dba_panel ||
+		    mdss_dsi_check_params(ctrl_pdata, arg)) {
 			ctrl_pdata->update_phy_timing = true;
 			/*
 			 * Call to MDSS_EVENT_CHECK_PARAMS expects
@@ -2912,6 +2913,11 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			 * in panel timing parameters.
 			 */
 			rc = 1;
+
+			if (ctrl_pdata->ds_registered)
+				mdss_dba_utils_reconfigure_dsi(pinfo->dba_data,
+					pinfo);
+
 		}
 		ctrl_pdata->refresh_clk_rate = true;
 		break;
