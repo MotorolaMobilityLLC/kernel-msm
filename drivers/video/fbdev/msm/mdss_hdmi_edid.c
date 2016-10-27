@@ -2794,11 +2794,16 @@ void hdmi_edid_set_video_resolution(void *input, u32 resolution, bool reset)
 	edid_ctrl->video_resolution = resolution;
 
 	if (reset) {
-		edid_ctrl->default_vic = resolution;
-		edid_ctrl->sink_data.num_of_elements = 1;
-		edid_ctrl->sink_data.disp_mode_list[0].video_format =
-			resolution;
-		edid_ctrl->sink_data.disp_mode_list[0].rgb_support = true;
+		if (resolution == HDMI_VFRMT_UNKNOWN)
+			edid_ctrl->sink_data.num_of_elements = 0;
+		else {
+			edid_ctrl->default_vic = resolution;
+			edid_ctrl->sink_data.num_of_elements = 1;
+			edid_ctrl->sink_data.disp_mode_list[0].video_format =
+				resolution;
+			edid_ctrl->sink_data.disp_mode_list[0].rgb_support =
+				true;
+		}
 	}
 } /* hdmi_edid_set_video_resolution */
 
