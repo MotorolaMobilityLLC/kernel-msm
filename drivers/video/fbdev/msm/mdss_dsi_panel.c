@@ -2637,7 +2637,7 @@ int mdss_dsi_panel_timing_switch(struct mdss_dsi_ctrl_pdata *ctrl,
 	if (!timing)
 		return -EINVAL;
 
-	if (timing == ctrl->panel_data.current_timing) {
+	if (!pinfo->is_dba_panel && timing == ctrl->panel_data.current_timing) {
 		pr_warn("%s: panel timing \"%s\" already set\n", __func__,
 				timing->name);
 		return 0; /* nothing to do */
@@ -2662,7 +2662,7 @@ int mdss_dsi_panel_timing_switch(struct mdss_dsi_ctrl_pdata *ctrl,
 	ctrl->post_panel_on_cmds = pt->post_panel_on_cmds;
 
 	ctrl->panel_data.current_timing = timing;
-	if (!timing->clk_rate)
+	if (!timing->clk_rate || pinfo->is_dba_panel)
 		ctrl->refresh_clk_rate = true;
 	mdss_dsi_clk_refresh(&ctrl->panel_data, ctrl->update_phy_timing);
 
