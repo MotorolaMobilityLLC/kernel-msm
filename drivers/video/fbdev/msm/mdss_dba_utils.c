@@ -20,6 +20,7 @@
 #include "mdss_hdmi_edid.h"
 #include "mdss_cec_core.h"
 #include "mdss_fb.h"
+#include "mdss_dsi.h"
 
 /* standard cec buf size + 1 byte specific to driver */
 #define CEC_BUF_SIZE    (MAX_CEC_FRAME_SIZE + 1)
@@ -647,6 +648,109 @@ void mdss_dba_utils_hdcp_enable(void *data, bool enable)
 
 	if (ud->ops.hdcp_enable)
 		ud->ops.hdcp_enable(ud->dba_data, enable, enable, 0);
+}
+
+/**
+ * mdss_dba_utils_reconfigure_dsi() - Allow clients to perform DSI
+ *    reconfiguration at a much lower level than HDMI requires.
+ * @data: DBA utils instance which was allocated during registration
+ * @pinfo: detailed panel information like x, y, porch values etc
+ *
+ * This API is used to reconfigure the DSI data structures in preperation
+ * for unblanking a new panel.
+ *
+ * Return: returns the result of the dsi panel timing switch operation.
+ */
+int mdss_dba_utils_reconfigure_dsi(void *data, struct mdss_panel_info *pinfo)
+{
+	struct mdss_dba_utils_data *ud = data;
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	struct mdss_panel_data *panel_data;
+	struct msm_dba_dsi_cfg dsi_config;
+	struct dsi_panel_timing pt;
+	int ret = 0;
+
+	if (!ud || !pinfo) {
+		pr_err("invalid input\n");
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	pr_debug("%s+\n", __func__);
+
+	panel_data = container_of(pinfo, struct mdss_panel_data, panel_info);
+
+	ctrl = container_of(panel_data, struct mdss_dsi_ctrl_pdata, panel_data);
+
+	if (ud->ops.get_dsi_config) {
+		ret = ud->ops.get_dsi_config(ud->dba_data, &dsi_config);
+		if (ret) {
+			pr_err("%s: get_dsi_config not supported\n", __func__);
+			goto exit;
+		}
+	} else {
+		pr_err("%s: get_dsi_config not implemented\n", __func__);
+		ret = -ENODEV;
+		goto exit;
+	}
+
+	pinfo->physical_width = dsi_config.physical_width_dim;
+	pinfo->physical_height = dsi_config.physical_length_dim;
+	pinfo->bpp = dsi_config.bpp;
+	pinfo->mipi.mode = dsi_config.mode;
+	pinfo->type = pinfo->mipi.mode == DSI_VIDEO_MODE ? MIPI_VIDEO_PANEL :
+		MIPI_CMD_PANEL;
+	pinfo->mipi.pixel_packing = dsi_config.pixel_packing;
+	if (mdss_panel_get_dst_fmt(pinfo->bpp, pinfo->mipi.mode,
+	    pinfo->mipi.pixel_packing, &(pinfo->mipi.dst_format))) {
+		pr_debug("%s: problem determining dst format. Set Default\n",
+			__func__);
+		pinfo->mipi.dst_format = DSI_VIDEO_DST_FORMAT_RGB888;
+	}
+	/* TODO: pinfo->lcdc.underflow_clr */
+	/* TODO: pinfo->lcdc.border_clr */
+	/* TODO: pinfo->panel_orientation */
+	/* TODO: pinfo->mipi.interleave_mode */
+	/* TODO: pinfo->mipi.vsync_enable */
+	pinfo->mipi.traffic_mode = dsi_config.traffic_mode;
+	pinfo->mipi.vc = dsi_config.virtual_channel_id;
+	pinfo->mipi.rgb_swap = dsi_config.color_order;
+	/* TODO: pinfo->mipi.rx_eot_ignore */
+	pinfo->mipi.tx_eot_append = dsi_config.eot_mode;
+
+	pinfo->mipi.data_lane0 = dsi_config.num_lanes > 0;
+	pinfo->mipi.data_lane1 = dsi_config.num_lanes > 1;
+	pinfo->mipi.data_lane2 = dsi_config.num_lanes > 2;
+	pinfo->mipi.data_lane3 = dsi_config.num_lanes > 3;
+
+	memset(&pt, 0, sizeof(pt));
+	pt.timing.xres = dsi_config.width;
+	pt.timing.yres = dsi_config.height;
+	pt.timing.h_front_porch = dsi_config.horizontal_front_porch;
+	pt.timing.h_back_porch = dsi_config.horizontal_back_porch;
+	pt.timing.h_pulse_width = dsi_config.horizontal_pulse_width;
+	pt.timing.hsync_skew = dsi_config.horizontal_sync_skew;
+	pt.timing.v_back_porch = dsi_config.vertical_back_porch;
+	pt.timing.v_front_porch = dsi_config.vertical_front_porch;
+	pt.timing.v_pulse_width = dsi_config.vertical_pulse_width;
+	pt.timing.border_left = dsi_config.horizontal_left_border;
+	pt.timing.border_right = dsi_config.horizontal_right_border;
+	pt.timing.border_top = dsi_config.vertical_top_border;
+	pt.timing.border_bottom = dsi_config.vertical_bottom_border;
+	pt.timing.frame_rate = dsi_config.framerate;
+	pt.timing.clk_rate = dsi_config.clockrate * dsi_config.num_lanes;
+	pt.t_clk_pre = dsi_config.t_clk_pre;
+	pt.t_clk_post = dsi_config.t_clk_post;
+
+	pinfo->mipi.dsi_pclk_rate = pt.timing.clk_rate;
+	do_div(pinfo->mipi.dsi_pclk_rate, dsi_config.bpp);
+
+	ret = mdss_dsi_panel_timing_switch(ctrl, &pt.timing);
+	if (ret)
+		pr_err("%s: failed to switch panel timing\n", __func__);
+
+exit:
+	return ret;
 }
 
 /**
