@@ -35,7 +35,7 @@
 #define HAPTICS_DEVICE_NAME "drv2624"
 
 #define	DRV2624_REG_ID				0x00
-#define	DRV2624_ID					0x03
+#define	DRV2624_ID					0x02
 
 #define	DRV2624_REG_STATUS			0x01
 #define	DIAG_MASK					0x80
@@ -51,12 +51,11 @@
 #define	DRV2624_REG_INT_ENABLE		0x02
 #define	INT_MASK_ALL				0x1f
 #define	INT_ENABLE_ALL				0x00
-#define	INT_ENABLE_CRITICAL			0x08
 
 #define	DRV2624_REG_DIAG_Z			0x03
 
 #define	DRV2624_REG_MODE			0x07
-#define	WORKMODE_MASK				0x03
+#define	DRV2624_MODE_MASK				0x03
 #define	MODE_RTP					0x00
 #define	MODE_WAVEFORM_SEQUENCER		0x01
 #define	MODE_DIAGNOSTIC				0x02
@@ -76,10 +75,10 @@
 #define	DRV2624_REG_GO				0x0c
 
 #define	DRV2624_REG_CONTROL2		0x0d
-#define	LIB_LRA						0x00
-#define	LIB_ERM						0x01
-#define	LIB_MASK					0x80
-#define	LIB_SHIFT					0x07
+#define	LIB_LRA						0x02
+#define	LIB_ERM						0x03
+#define	LIB_MASK					0xc0
+#define	LIB_SHIFT					0x06
 #define	SCALE_MASK					0x03
 #define	INTERVAL_MASK				0x20
 #define	INTERVAL_SHIFT				0x05
@@ -117,6 +116,10 @@
 
 #define	DRV2624_REG_DIAG_K			0x30
 
+#define	DRV2624_REG_RAM_ADDR_UPPER		0xfd
+#define	DRV2624_REG_RAM_ADDR_LOWER		0xfe
+#define	DRV2624_REG_RAM_DATA			0xff
+
 #define GO_BIT_POLL_INTERVAL    15
 #define STANDBY_WAKE_DELAY      1
 #define WAKE_STANDBY_DELAY      3
@@ -131,22 +134,20 @@
 #define HAPTIC_CMDID_AUDIOHAPTIC_DISABLE    0x07
 #define HAPTIC_CMDID_AUDIOHAPTIC_GETSTATUS  0x08
 
-#define HAPTIC_CMDID_REG_WRITE  	0x09
-#define HAPTIC_CMDID_REG_READ   	0x0a
-#define HAPTIC_CMDID_REG_SETBIT  	0x0b
+#define HAPTIC_CMDID_REG_WRITE		0x09
+#define HAPTIC_CMDID_REG_READ		0x0a
+#define HAPTIC_CMDID_REG_SETBIT		0x0b
 
 #define HAPTIC_CMDID_PATTERN_RTP      0x0c
 #define HAPTIC_CMDID_RTP_SEQUENCE	  0x0d
 #define HAPTIC_CMDID_GET_EFFECT_COUNT		0x10
 #define HAPTIC_CMDID_UPDATE_FIRMWARE		0x11
 #define HAPTIC_CMDID_READ_FIRMWARE			0x12
-#define HAPTIC_CMDID_RUN_CALIBRATION        0x13
-#define	HAPTIC_CMDID_CONFIG_WAVEFORM	 	0x14
-#define	HAPTIC_CMDID_SET_SEQUENCER 			0x15
+#define	HAPTIC_CMDID_AUTO_CAL				0x13
 
 #define HAPTIC_CMDID_STOP                   0xFF
 
-#define MAX_TIMEOUT 	10000 /* 10s */
+#define MAX_TIMEOUT	10000	/* 10s */
 #define	MAX_READ_BYTES	0xff
 #define	DRV2624_SEQUENCER_SIZE	8
 
@@ -159,7 +160,6 @@
 #define	GO		1
 #define STOP	0
 
-
 enum actuator_type {
 	ERM,
 	LRA
@@ -171,7 +171,7 @@ enum loop_type {
 };
 
 struct actuator_data {
-	unsigned char mnActuatorType;
+	enum actuator_type meActuatorType;
 	unsigned char mnRatedVoltage;
 	unsigned char mnOverDriveClampVoltage;
 	unsigned char mnLRAFreq;
@@ -208,18 +208,68 @@ enum wave_main_interval {
 };
 
 struct drv2624_waveform {
-	unsigned char mnEffect;
-	unsigned char mnLoop;
+	enum wave_seq_loop meLoop;
+	unsigned char mnIndex;
 };
 
 struct drv2624_waveform_sequencer {
+	enum wave_main_loop meLoop;
 	struct drv2624_waveform msWaveform[DRV2624_SEQUENCER_SIZE];
 };
 
+struct drv2624_platform_data {
+	int mnGpioNRST;
+	int mnGpioINT;
+	enum loop_type meLoop;
+	struct actuator_data msActuator;
+	bool auto_cal;
+};
+
+#define DRV2624_MAGIC	0x2624
+
+struct drv2624_fw_header {
+	unsigned int fw_magic;
+	unsigned int fw_size;
+	unsigned int fw_date;
+	unsigned int fw_chksum;
+	unsigned int fw_effCount;
+};
+
+struct drv2624_data {
+	struct drv2624_platform_data msPlatData;
+	unsigned char mnDeviceID;
+	struct device *dev;
+	struct regmap *mpRegmap;
+	unsigned char mnIntStatus;
+	struct drv2624_waveform_sequencer msWaveformSequencer;
+	unsigned char mnFileCmd;
+	int mnVibratorPlaying;
+	char mnWorkMode;
+	unsigned char mnCurrentReg;
+
+	struct wake_lock wklock;
+	struct hrtimer timer;
+	struct mutex lock;
+	struct work_struct vibrator_work;
+	struct timed_output_dev to_dev;
+
+	struct drv2624_fw_header msFwHeader;
+	unsigned char mnFwAddUpper;
+	unsigned char mnFwAddLower;
+};
+
+struct drv2624_seq_loop {
+	enum wave_seq_loop mpLoop[DRV2624_SEQUENCER_SIZE];
+};
+
+struct drv2624_wave_seq {
+	unsigned char mpWaveIndex[DRV2624_SEQUENCER_SIZE];
+};
+
 struct drv2624_wave_setting {
-	unsigned char mnLoop;
-	unsigned char mnInterval;
-	unsigned char mnScale;
+	enum wave_main_loop meLoop;
+	enum wave_main_scale meScale;
+	enum wave_main_interval meInterval;
 };
 
 struct drv2624_autocal_result {
@@ -237,46 +287,21 @@ struct drv2624_diag_result {
 	unsigned char mnDiagK;
 };
 
-struct drv2624_platform_data {
-	int	mnGpioNRST;
-	int	mnGpioINT;
-	unsigned char mnLoop;
-	struct actuator_data msActuator;
-};
+#define	DRV2624_MAGIC_NUMBER	0x32363234	/* '2624' */
 
-struct drv2624_data {
-	struct drv2624_platform_data msPlatData;
-	unsigned char mnDeviceID;
-	struct device *dev;
-	struct regmap *mpRegmap;
-	unsigned int mnIRQ;
-	unsigned char mnIntStatus;
-	struct drv2624_wave_setting msWaveformSetting;
-	struct drv2624_waveform_sequencer msWaveformSequencer;
-	unsigned char mnFileCmd;
-	volatile int mnVibratorPlaying;
-	volatile char mnWorkMode;
-	unsigned char mnCurrentReg;
-	struct wake_lock wklock;
-	struct hrtimer timer;
-	struct mutex lock;
-	struct work_struct vibrator_work;
-	struct timed_output_dev to_dev;
-
-	struct drv2624_autocal_result mAutoCalResult;
-	struct drv2624_diag_result mDiagResult;
-};
-
-#define	DRV2624_MAGIC_NUMBER	0x32363235	/* '2624' */
-
-
-
-#define	DRV2624_WAVSEQ_PLAY		 			_IOWR(DRV2624_MAGIC_NUMBER, 4, unsigned long)
-#define	DRV2624_STOP			 			_IOWR(DRV2624_MAGIC_NUMBER, 5, unsigned long)
-#define	DRV2624_RUN_DIAGNOSTIC			 	_IOWR(DRV2624_MAGIC_NUMBER, 6, unsigned long)
-#define	DRV2624_GET_DIAGRESULT			 	_IOWR(DRV2624_MAGIC_NUMBER, 7, struct drv2624_diag_result *)
-#define	DRV2624_RUN_AUTOCAL				 	_IOWR(DRV2624_MAGIC_NUMBER, 8, unsigned long)
-#define	DRV2624_GET_CALRESULT			 	_IOWR(DRV2624_MAGIC_NUMBER, 9, struct drv2624_autocal_result *)
-
+#define	DRV2624_SET_SEQ_LOOP	_IOWR(DRV2624_MAGIC_NUMBER, 1, \
+					struct drv2624_seq_loop *)
+#define	DRV2624_SET_MAIN	_IOWR(DRV2624_MAGIC_NUMBER, 2, \
+					struct drv2624_wave_setting *)
+#define	DRV2624_SET_WAV_SEQ	_IOWR(DRV2624_MAGIC_NUMBER, 3, \
+					struct drv2624_wave_seq *)
+#define	DRV2624_WAVSEQ_PLAY	_IOWR(DRV2624_MAGIC_NUMBER, 4, unsigned long)
+#define	DRV2624_STOP		_IOWR(DRV2624_MAGIC_NUMBER, 5, unsigned long)
+#define	DRV2624_RUN_DIAGNOSTIC	_IOWR(DRV2624_MAGIC_NUMBER, 6, unsigned long)
+#define	DRV2624_GET_DIAGRESULT	_IOWR(DRV2624_MAGIC_NUMBER, 7, \
+					struct drv2624_diag_result *)
+#define	DRV2624_RUN_AUTOCAL	_IOWR(DRV2624_MAGIC_NUMBER, 8, unsigned long)
+#define	DRV2624_GET_CALRESULT	_IOWR(DRV2624_MAGIC_NUMBER, 9, \
+					 struct drv2624_autocal_result *)
 
 #endif
