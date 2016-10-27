@@ -734,10 +734,15 @@ void *mdss_dba_utils_init(struct mdss_dba_utils_init_data *uid)
 
 	/* update edid data to retrieve it back in edid parser */
 	if (uid->pinfo) {
+		u32 default_resolution = DEFAULT_VIDEO_RESOLUTION;
 		uid->pinfo->edid_data = udata->edid_data;
+
+		if (udata->ops.get_default_resolution)
+			default_resolution = udata->ops.get_default_resolution(
+				udata->dba_data);
 		/* Initialize to default resolution */
 		hdmi_edid_set_video_resolution(uid->pinfo->edid_data,
-					DEFAULT_VIDEO_RESOLUTION, true);
+					default_resolution, true);
 	}
 
 	/* get edid buffer from edid parser */
