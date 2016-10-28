@@ -440,8 +440,6 @@ static int cs35l35_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		switch (params_width(params)) {
 		case 8:
-			audin_format = CS35L35_SDIN_DEPTH_8;
-			break;
 		case 16:
 			audin_format = CS35L35_SDIN_DEPTH_16;
 			break;
