@@ -4037,6 +4037,15 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 				__func__, ret);
 			goto err_ch_map;
 		}
+#ifdef CONFIG_SND_SOC_CS47L35
+		ret = snd_soc_dai_set_channel_map(codec_dai, 0, 0,
+						  rx_ch_count, msm_slim_rx_ch);
+		if (ret < 0) {
+			pr_err("%s: failed to set codec chan map, err:%d\n",
+				__func__, ret);
+			goto err_ch_map;
+		}
+#endif
 	} else {
 
 		pr_debug("%s: %s_tx_dai_id_%d_ch=%d\n", __func__,
@@ -4080,6 +4089,14 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 		if (ret < 0)
 			pr_err("%s: failed to set cpu chan map, err:%d\n",
 				__func__, ret);
+#ifdef CONFIG_SND_SOC_CS47L35
+		ret = snd_soc_dai_set_channel_map(codec_dai,
+				user_set_tx_ch,
+				msm_slim_tx_ch, 0, 0);
+		if (ret < 0)
+			pr_err("%s: failed to set codec chan map, err:%d\n",
+				__func__, ret);
+#endif
 	}
 
 err_ch_map:
@@ -6206,7 +6223,6 @@ static struct snd_soc_dai_link msm_cs47l35_cs35l35_dai_links[] = {
 		.stream_name = "MARLEY-AMP Playback",
 		.cpu_name = "cs47l35-codec",
 		.cpu_dai_name = "cs47l35-aif1",
-		.platform_name = "msm-pcm-routing",
 		.codec_name = "cs35l35.7-0041",
 		.codec_dai_name = "cs35l35-pcm",
 		.init = cs35l35_dai_init,
