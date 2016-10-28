@@ -1011,6 +1011,12 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 		dev_info(&client->dev, "%s: no RST gpio provided\n", __func__);
 	}
 
+	pdata->mnGpioNPWR = of_get_named_gpio(np, "ti,npwr-gpio", 0);
+	if (!gpio_is_valid(pdata->mnGpioNPWR)) {
+		pdata->mnGpioNPWR = 0;
+		dev_info(&client->dev, "%s: no npwr gpio provided\n", __func__);
+	}
+
 	pdata->mnGpioINT = of_get_named_gpio(np, "ti,irqz-gpio", 0);
 	if (!gpio_is_valid(pdata->mnGpioINT)) {
 		pdata->mnGpioINT = 0;
@@ -1103,6 +1109,19 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	memcpy(&ctrl->msPlatData, pdata, sizeof(struct drv2624_platform_data));
 	i2c_set_clientdata(client, ctrl);
+
+	if (ctrl->msPlatData.mnGpioNPWR) {
+		err = gpio_request(ctrl->msPlatData.mnGpioNPWR,
+				 HAPTICS_DEVICE_NAME "NPWR");
+		if (err < 0) {
+			dev_err(ctrl->dev, "%s: GPIO %d request PWR error\n",
+				__func__, ctrl->msPlatData.mnGpioNPWR);
+			return err;
+		}
+
+		gpio_direction_output(ctrl->msPlatData.mnGpioNPWR, 1);
+		udelay(100);
+	}
 
 	if (ctrl->msPlatData.mnGpioNRST) {
 		err = gpio_request(ctrl->msPlatData.mnGpioNRST,
