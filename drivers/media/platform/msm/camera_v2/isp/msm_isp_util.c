@@ -550,7 +550,7 @@ static int msm_isp_set_dual_HW_master_slave_mode(
 	unsigned long flags;
 
 	if (!vfe_dev || !arg) {
-		pr_err("%s: Error! Invalid input vfe_dev %p arg %p\n",
+		pr_err("%s: Error! Invalid input vfe_dev %pK arg %pK\n",
 			__func__, vfe_dev, arg);
 		return -EINVAL;
 	}
@@ -641,7 +641,7 @@ static int msm_isp_proc_cmd_list_unlocked(struct vfe_device *vfe_dev, void *arg)
 	struct msm_vfe_cfg_cmd_list cmd, cmd_next;
 
 	if (!vfe_dev || !arg) {
-		pr_err("%s:%d failed: vfe_dev %p arg %p", __func__, __LINE__,
+		pr_err("%s:%d failed: vfe_dev %pK arg %pK", __func__, __LINE__,
 			vfe_dev, arg);
 		return -EINVAL;
 	}
@@ -711,7 +711,7 @@ static int msm_isp_proc_cmd_list_compat(struct vfe_device *vfe_dev, void *arg)
 	struct msm_vfe_cfg_cmd2 current_cmd;
 
 	if (!vfe_dev || !arg) {
-		pr_err("%s:%d failed: vfe_dev %p arg %p", __func__, __LINE__,
+		pr_err("%s:%d failed: vfe_dev %pK arg %pK", __func__, __LINE__,
 			vfe_dev, arg);
 		return -EINVAL;
 	}
@@ -767,10 +767,10 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 	struct vfe_device *vfe_dev = v4l2_get_subdevdata(sd);
 
 	if (!vfe_dev || !vfe_dev->vfe_base) {
-		pr_err("%s:%d failed: invalid params %p\n",
+		pr_err("%s:%d failed: invalid params %pK\n",
 			__func__, __LINE__, vfe_dev);
 		if (vfe_dev)
-			pr_err("%s:%d failed %p\n", __func__,
+			pr_err("%s:%d failed %pK\n", __func__,
 				__LINE__, vfe_dev->vfe_base);
 		return -EINVAL;
 	}
@@ -971,10 +971,10 @@ static long msm_isp_ioctl_compat(struct v4l2_subdev *sd,
 	long rc = 0;
 
 	if (!vfe_dev || !vfe_dev->vfe_base) {
-		pr_err("%s:%d failed: invalid params %p\n",
+		pr_err("%s:%d failed: invalid params %pK\n",
 			__func__, __LINE__, vfe_dev);
 		if (vfe_dev)
-			pr_err("%s:%d failed %p\n", __func__,
+			pr_err("%s:%d failed %pK\n", __func__,
 				__LINE__, vfe_dev->vfe_base);
 		return -EINVAL;
 	}
@@ -1020,13 +1020,13 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 	uint32_t *cfg_data, uint32_t cmd_len)
 {
 	if (!vfe_dev || !reg_cfg_cmd) {
-		pr_err("%s:%d failed: vfe_dev %p reg_cfg_cmd %p\n", __func__,
+		pr_err("%s:%d failed: vfe_dev %pK reg_cfg_cmd %pK\n", __func__,
 			__LINE__, vfe_dev, reg_cfg_cmd);
 		return -EINVAL;
 	}
 	if ((reg_cfg_cmd->cmd_type != VFE_CFG_MASK) &&
 		(!cfg_data || !cmd_len)) {
-		pr_err("%s:%d failed: cmd type %d cfg_data %p cmd_len %d\n",
+		pr_err("%s:%d failed: cmd type %d cfg_data %pK cmd_len %d\n",
 			__func__, __LINE__, reg_cfg_cmd->cmd_type, cfg_data,
 			cmd_len);
 		return -EINVAL;
@@ -1701,7 +1701,7 @@ static int msm_isp_process_iommu_page_fault(struct vfe_device *vfe_dev)
 {
 	int rc = vfe_dev->buf_mgr->pagefault_debug_disable;
 
-	pr_err("%s:%d] VFE%d Handle Page fault! vfe_dev %p\n", __func__,
+	pr_err("%s:%d] VFE%d Handle Page fault! vfe_dev %pK\n", __func__,
 		__LINE__,  vfe_dev->pdev->id, vfe_dev);
 
 	msm_isp_halt_send_error(vfe_dev, ISP_EVENT_IOMMU_P_FAULT);
@@ -1964,7 +1964,7 @@ void msm_isp_do_tasklet(unsigned long data)
 	uint32_t irq_status0, irq_status1, pingpong_status;
 
 	if (vfe_dev->vfe_base == NULL || vfe_dev->vfe_open_cnt == 0) {
-		ISP_DBG("%s: VFE%d open cnt = %d, device closed(base = %p)\n",
+		ISP_DBG("%s: VFE%d open cnt = %d, device closed(base = %pK)\n",
 			__func__, vfe_dev->pdev->id, vfe_dev->vfe_open_cnt,
 			vfe_dev->vfe_base);
 		return;
@@ -2053,7 +2053,7 @@ static void msm_vfe_iommu_fault_handler(struct iommu_domain *domain,
 		vfe_dev->page_fault_addr = iova;
 		if (!vfe_dev->buf_mgr || !vfe_dev->buf_mgr->ops ||
 			!vfe_dev->axi_data.num_active_stream) {
-			pr_err("%s:%d buf_mgr %p active strms %d\n", __func__,
+			pr_err("%s:%d buf_mgr %pK active strms %d\n", __func__,
 				__LINE__, vfe_dev->buf_mgr,
 				vfe_dev->axi_data.num_active_stream);
 			goto end;
@@ -2070,7 +2070,7 @@ static void msm_vfe_iommu_fault_handler(struct iommu_domain *domain,
 		}
 		mutex_unlock(&vfe_dev->core_mutex);
 	} else {
-		ISP_DBG("%s:%d] no token received: %p\n",
+		ISP_DBG("%s:%d] no token received: %pK\n",
 			__func__, __LINE__, token);
 		goto end;
 	}
