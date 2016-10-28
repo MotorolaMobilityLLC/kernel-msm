@@ -380,10 +380,12 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	}
 	if (irq_status & M_CHOPCHOP) {
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_CHOPCHOP,
-						NULL,
-						0, 0, stm_ws->ts_ns);
+						&buf[WAKE_IRQ_IDX_CHOPCHOP],
+						2, 0, stm_ws->ts_ns);
 
-		dev_dbg(&stml0xx_misc_data->spi->dev, "Sending Chopchop");
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Sending Chopchop: %d",
+			SH_TO_H16(buf + WAKE_IRQ_IDX_CHOPCHOP));
 	}
 	if (irq_status & M_SIM) {
 		stml0xx_as_data_buffer_write(

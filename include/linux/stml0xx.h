@@ -141,6 +141,7 @@ enum vmm_ids {
 #define WAKE_IRQ_IDX_PROX_RECAL           (WAKE_IRQ_IDX_PROX_NOISE + 2)
 #define WAKE_IRQ_IDX_PROX_LTHRESH         (WAKE_IRQ_IDX_PROX_RECAL + 2)
 #define WAKE_IRQ_IDX_PROX_HTHRESH         (WAKE_IRQ_IDX_PROX_LTHRESH + 2)
+#define WAKE_IRQ_IDX_CHOPCHOP         (WAKE_IRQ_IDX_PROX_HTHRESH + 2)
 
 /* Non-wake IRQ work function flags */
 #define IRQ_WORK_FLAG_NONE                   0x00
