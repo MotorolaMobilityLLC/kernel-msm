@@ -219,6 +219,7 @@ struct drv2624_waveform_sequencer {
 
 struct drv2624_platform_data {
 	int mnGpioNRST;
+	int mnGpioNPWR;
 	int mnGpioINT;
 	enum loop_type meLoop;
 	struct actuator_data msActuator;
