@@ -1142,17 +1142,11 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	if (err < 0) {
 		dev_err(ctrl->dev, "%s, i2c bus fail (%d)\n", __func__, err);
 		goto exit_gpio_request_failed;
-	} else {
-		dev_info(ctrl->dev, "%s, ID status (0x%x)\n", __func__, err);
-		ctrl->mnDeviceID = err;
 	}
 
-	if (ctrl->mnDeviceID != DRV2624_ID) {
-		dev_err(ctrl->dev, "%s, device_id(%d) fail\n",
-			__func__, ctrl->mnDeviceID);
-		err = -ENODEV;
-		goto exit_gpio_request_failed;
-	}
+	ctrl->mnDeviceID = err;
+	dev_info(ctrl->dev, "%s, %s: revision %#1x\n",
+		__func__, (err & 0xF0 ? "DRV2625":"DRV2624"),  (err & 0x0F));
 
 	dev_init_platform_data(ctrl);
 
