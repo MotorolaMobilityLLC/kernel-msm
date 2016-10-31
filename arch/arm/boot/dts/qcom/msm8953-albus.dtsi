@@ -290,10 +290,6 @@
 	};
 
 	/delete-node/ hdmi_dba;
-	hdmi_dba: qcom,msm-hdmi-dba-codec-rx {
-		compatible = "qcom,msm-hdmi-dba-codec-rx";
-		qcom,dba-bridge-chip = "anx7805";
-	};
 
 	sound {
 		status = "ok";
@@ -343,10 +339,20 @@
 			"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394",
 			"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289";
 
-		qcom,hdmi-dba-codec-rx;
 		qcom,albus-audio;
-		asoc-codec = <&stub_codec>, <&hdmi_dba>;
-		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-dba-codec-rx";
+		/delete-property/ qcom,hdmi-dba-codec-rx;
+		asoc-codec = <&stub_codec>;
+		asoc-codec-names = "msm-stub-codec.1";
+	};
+
+	qcom,msm-dai-mi2s {
+		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
+			status = "disabled";
+		};
+		dai_mi2s5: qcom,msm-dai-q6-mi2s-quin {
+			qcom,msm-mi2s-rx-lines = <1>;
+			qcom,msm-mi2s-tx-lines = <1>;
+		};
 	};
 
 	dsi_mod_display_driver: dsi_mod_display_driver {
