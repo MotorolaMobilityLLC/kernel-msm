@@ -74,6 +74,8 @@ int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params);
 int msm_quat_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params);
+int msm_quin_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params);
 int msm_snd_cpe_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params);
 int msm_tdm_snd_hw_params(struct snd_pcm_substream *substream,
