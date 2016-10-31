@@ -515,12 +515,13 @@
 		status = "okay";
 	};
 
-	gpio@c500 { /* PMI8998_GPIO6 QNOVO_EXT_FET_CTL */
+	gpio@c500 { /* PMI8998_GPIO6 RF_BOOST_BYP_EN TPS61280A */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,invert = <1>;	 /* Invert */
 		qcom,master-en = <1>;
 		status = "okay";
 	};
