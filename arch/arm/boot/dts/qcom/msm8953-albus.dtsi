@@ -408,6 +408,34 @@
 			pins = "gpio61";
 		};
 	};
+
+	mipi_err_pin_active: mipi_err_pin_active {
+		mux {
+			pins = "gpio115";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio115";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-up; /* pull up */
+			input-enable;
+		};
+	};
+
+	mipi_err_pin_suspend: mipi_err_pin_suspend {
+		mux {
+			pins = "gpio115";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio115";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-up; /* pull up */
+			input-enable;
+		};
+	};
 };
 
 &mdss_mdp {
@@ -424,8 +452,8 @@
 
 &mdss_dsi0 {
 	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
-	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active &mipi_err_pin_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend &mipi_err_pin_suspend>;
 
 	qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_alb_cmd_v0>;
 	vci_disp-supply = <&vci_disp_vreg>;
