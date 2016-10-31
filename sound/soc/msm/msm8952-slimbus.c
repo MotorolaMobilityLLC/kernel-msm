@@ -143,6 +143,7 @@ static int mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm_quat_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm_quat_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
 static int msm_quat_mi2s_ch = 2;
+/* Reuse this table for quinary mi2s */
 static int msm_quat_clk_freq_in_hz[5][2] = {
 	{Q6AFE_LPASS_IBIT_CLK_512_KHZ, Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ},
 	{Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ, Q6AFE_LPASS_IBIT_CLK_2_P048_MHZ},
@@ -150,6 +151,10 @@ static int msm_quat_clk_freq_in_hz[5][2] = {
 	{Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ, Q6AFE_LPASS_IBIT_CLK_6_P144_MHZ},
 	{Q6AFE_LPASS_IBIT_CLK_6_P144_MHZ, Q6AFE_LPASS_IBIT_CLK_12_P288_MHZ}
 };
+
+static int msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+static int msm_quin_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+static int msm_quin_mi2s_ch = 2;
 
 static int msm_proxy_rx_ch = 2;
 static void *adsp_state_notifier;
@@ -766,6 +771,154 @@ static int msm_quat_mi2s_ch_get(struct snd_kcontrol *kcontrol,
 	pr_debug("%s: msm_quat_mi2s_ch  = %d\n", __func__,
 		msm_quat_mi2s_ch);
 	switch (msm_quat_mi2s_ch) {
+	case 1:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	case 2:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	default:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	}
+	return 0;
+}
+
+static int quin_mi2s_get_rate(void)
+{
+	int value;
+
+	switch (msm_quin_mi2s_sample_rate) {
+	case SAMPLING_RATE_16KHZ:
+		value = 0;
+		break;
+	case SAMPLING_RATE_32KHZ:
+		value = 1;
+		break;
+	case SAMPLING_RATE_48KHZ:
+		value = 2;
+		break;
+	case SAMPLING_RATE_96KHZ:
+		value = 3;
+		break;
+	case SAMPLING_RATE_192KHZ:
+		value = 4;
+		break;
+	default:
+		value = 2;
+		break;
+	}
+	return value;
+}
+
+static int msm_quin_mi2s_rate_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_quin_mi2s_sample_rate  = %d\n", __func__,
+		 msm_quin_mi2s_sample_rate);
+	ucontrol->value.integer.value[0] = quin_mi2s_get_rate();
+	return 0;
+}
+
+static int msm_quin_mi2s_rate_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm_quin_mi2s_sample_rate = SAMPLING_RATE_16KHZ;
+		break;
+	case 1:
+		msm_quin_mi2s_sample_rate = SAMPLING_RATE_32KHZ;
+		break;
+	case 2:
+		msm_quin_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+		break;
+	case 3:
+		msm_quin_mi2s_sample_rate = SAMPLING_RATE_96KHZ;
+		break;
+	case 4:
+		msm_quin_mi2s_sample_rate = SAMPLING_RATE_192KHZ;
+		break;
+	default:
+		msm_quin_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+		break;
+	}
+	pr_debug("%s: msm_quin_mi2s_sample_rate  = %d\n", __func__,
+		 msm_quin_mi2s_sample_rate);
+	return 0;
+}
+
+static int quin_mi2s_get_format(void)
+{
+	int value;
+
+	switch (msm_quin_mi2s_bit_format) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		value = 0;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		value = 1;
+		break;
+	default:
+		value = 0;
+		break;
+	}
+	return value;
+}
+
+static int msm_quin_mi2s_format_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_quin_mi2s_bit_format  = %d\n", __func__,
+		 msm_quin_mi2s_bit_format);
+	ucontrol->value.integer.value[0] = quin_mi2s_get_format();
+	return 0;
+}
+
+static int msm_quin_mi2s_format_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	case 1:
+		msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S24_LE;
+		break;
+	default:
+		msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	}
+	pr_debug("%s: msm_quin_mi2s_bit_format  = %d\n", __func__,
+		 msm_quin_mi2s_bit_format);
+	return 0;
+}
+
+static int msm_quin_mi2s_ch_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm_quin_mi2s_ch = 1;
+		break;
+	case 1:
+		msm_quin_mi2s_ch = 2;
+		break;
+	default:
+		msm_quin_mi2s_ch = 2;
+		break;
+	}
+	pr_debug("%s: msm_quin_mi2s_ch = %d\n", __func__,
+		msm_quin_mi2s_ch);
+	return 0;
+}
+
+static int msm_quin_mi2s_ch_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_quin_mi2s_ch  = %d\n", __func__,
+		msm_quin_mi2s_ch);
+	switch (msm_quin_mi2s_ch) {
 	case 1:
 		ucontrol->value.integer.value[0] = 0;
 		break;
@@ -2057,6 +2210,18 @@ static const struct soc_enum msm8996_quat_mi2s_enum[] = {
 		SOC_ENUM_SINGLE_EXT(2, msm_quat_mi2s_ch_text),
 };
 
+static char const *msm_quin_mi2s_ch_text[] = {"One", "Two"};
+
+static const char *const msm_quin_mi2s_rate_text[] = {"KHZ_16", "KHZ_32",
+			"KHZ_48", "KHZ_96", "KHZ_192"};
+static const char *const msm_quin_mi2s_format_text[] = {"S16_LE", "S24_LE"};
+
+static const struct soc_enum msm8996_quin_mi2s_enum[] = {
+		SOC_ENUM_SINGLE_EXT(5, msm_quin_mi2s_rate_text),
+		SOC_ENUM_SINGLE_EXT(2, msm_quin_mi2s_format_text),
+		SOC_ENUM_SINGLE_EXT(2, msm_quin_mi2s_ch_text),
+};
+
 static const char *const btsco_rate_text[] = {"BTSCO_RATE_8KHZ",
 	"BTSCO_RATE_16KHZ"};
 static const struct soc_enum msm_btsco_enum[] = {
@@ -2152,13 +2317,24 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("SEC_TDM_TX_0 SampleRate", msm_snd_enum[15],
 			msm_sec_tdm_tx_0_sample_rate_get,
 			msm_sec_tdm_tx_0_sample_rate_put),
+};
+
+static const struct snd_kcontrol_new msm_quat_mi2s_snd_controls[] = {
 	SOC_ENUM_EXT("QUAT_MI2S SampleRate", msm8996_quat_mi2s_enum[0],
 			msm_quat_mi2s_rate_get, msm_quat_mi2s_rate_put),
 	SOC_ENUM_EXT("QUAT_MI2S Format", msm8996_quat_mi2s_enum[1],
 			msm_quat_mi2s_format_get, msm_quat_mi2s_format_put),
 	SOC_ENUM_EXT("QUAT_MI2S Channels", msm8996_quat_mi2s_enum[2],
 			msm_quat_mi2s_ch_get, msm_quat_mi2s_ch_put),
+};
 
+static const struct snd_kcontrol_new msm_quin_mi2s_snd_controls[] = {
+	SOC_ENUM_EXT("QUIN_MI2S SampleRate", msm8996_quin_mi2s_enum[0],
+			msm_quin_mi2s_rate_get, msm_quin_mi2s_rate_put),
+	SOC_ENUM_EXT("QUIN_MI2S Format", msm8996_quin_mi2s_enum[1],
+			msm_quin_mi2s_format_get, msm_quin_mi2s_format_put),
+	SOC_ENUM_EXT("QUIN_MI2S Channels", msm8996_quin_mi2s_enum[2],
+			msm_quin_mi2s_ch_get, msm_quin_mi2s_ch_put),
 };
 
 int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
@@ -2198,14 +2374,14 @@ int msm_quin_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 {
 	struct snd_interval *rate = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_RATE);
-
 	struct snd_interval *channels = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
-	rate->min = rate->max = 48000;
-	channels->min = channels->max = 2;
-
+	pr_debug("%s: channel:%d\n", __func__, msm_quin_mi2s_ch);
+	rate->min = rate->max = msm_quin_mi2s_sample_rate;
+	channels->min = channels->max = msm_quin_mi2s_ch;
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+				msm_quin_mi2s_bit_format);
 	return 0;
 }
 
@@ -2498,6 +2674,14 @@ int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 }
 
 int msm_quat_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params)
+{
+	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+		 substream->name, substream->stream);
+	return 0;
+}
+
+int msm_quin_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params)
 {
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
@@ -3277,12 +3461,20 @@ int msm_quin_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *card = rtd->card;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct modbus_ext_status modbus_status;
 	struct msm8952_asoc_mach_data *pdata =
 			snd_soc_card_get_drvdata(card);
 	int ret = 0, val = 0;
 
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
-				substream->name, substream->stream);
+		 substream->name, substream->stream);
+
+	modbus_status.proto = MODBUS_PROTO_I2S;
+	modbus_status.active = true;
+
+	atomic_inc(&mods_mi2s_active);
+	modbus_ext_set_state(&modbus_status);
+
 	if (pdata->vaddr_gpio_mux_quin_ctl) {
 		val = ioread32(pdata->vaddr_gpio_mux_quin_ctl);
 		val = val | 0x00000001;
@@ -3322,10 +3514,21 @@ void msm_quin_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 	int ret;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *card = rtd->card;
+	struct modbus_ext_status modbus_status;
 	struct msm8952_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
-				substream->name, substream->stream);
+		 substream->name, substream->stream);
+
+	if (!atomic_dec_and_test(&mods_mi2s_active)) {
+		pr_debug("%s: port users not zero don't shut down yet\n",
+				__func__);
+		return;
+	}
+	modbus_status.proto = MODBUS_PROTO_I2S;
+	modbus_status.active = false;
+	modbus_ext_set_state(&modbus_status);
+
 	ret = quin_mi2s_sclk_ctl(substream, false);
 	if (ret < 0)
 		pr_err("%s:clock disable failed\n", __func__);
@@ -3756,6 +3959,14 @@ int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		return err;
 	}
 
+	err = snd_soc_add_codec_controls(codec, msm_quat_mi2s_snd_controls,
+				 ARRAY_SIZE(msm_quat_mi2s_snd_controls));
+	if (err < 0) {
+		pr_err("%s: add mi2s controls failed, err%d\n",
+			__func__, err);
+		return err;
+	}
+
 	if (!strcmp(dev_name(codec_dai->dev), "tomtom_codec")) {
 		pdata->msm8952_codec_fn.get_afe_config_fn =
 			tomtom_get_afe_config;
@@ -3936,6 +4147,7 @@ out:
 int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret;
+	bool albus_audio = false;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_card *card = codec->component.card;
@@ -3987,7 +4199,9 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
-	if (of_property_read_bool(card->dev->of_node, "qcom,albus-audio")) {
+	albus_audio = of_property_read_bool(card->dev->of_node,
+					    "qcom,albus-audio");
+	if (albus_audio) {
 		if (!strncmp(card->name, "msm8952-marley-cardp1a", 22)) {
 			ret = snd_soc_dapm_add_routes(dapm,
 				marley_albus_p1a_mic_routes,
@@ -4044,6 +4258,21 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 		ARRAY_SIZE(msm_snd_controls));
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to add kcontrols %d\n", ret);
+		return ret;
+	}
+
+	if (albus_audio) {
+		ret = snd_soc_add_codec_controls(codec,
+			msm_quin_mi2s_snd_controls,
+			ARRAY_SIZE(msm_quin_mi2s_snd_controls));
+	} else {
+		ret = snd_soc_add_codec_controls(codec,
+			msm_quat_mi2s_snd_controls,
+			ARRAY_SIZE(msm_quat_mi2s_snd_controls));
+	}
+	if (ret < 0) {
+		pr_err("%s: add mi2s controls failed, err%d\n",
+			__func__, ret);
 		return ret;
 	}
 
