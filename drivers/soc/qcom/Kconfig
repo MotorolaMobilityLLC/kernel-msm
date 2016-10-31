@@ -808,6 +808,14 @@ config CEDRIC_DTB
 	  Only include Cedric specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config MONTANA_DTB
+	depends on ARCH_MSM
+	default n
+	bool "Montana DTBs"
+	help
+	  Only include Montana specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config MSM_SECURE_BUFFER
 	bool "Helper functions for securing buffers through TZ"
 	help
