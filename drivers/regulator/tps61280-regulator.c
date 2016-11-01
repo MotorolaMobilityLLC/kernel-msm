@@ -882,8 +882,18 @@ static int tps61280_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, tps61280);
 	mutex_init(&tps61280->mutex);
 
+	tps61280->rdesc.name  = "tps61280-dcdc";
+	tps61280->rdesc.ops   = &tps61280_ops;
+	tps61280->rdesc.type  = REGULATOR_VOLTAGE;
+	tps61280->rdesc.owner = THIS_MODULE;
+	tps61280->rdesc.linear_min_sel = 0;
+	tps61280->rdesc.min_uV = TPS61280_VOUT_VMIN;
+	tps61280->rdesc.uV_step = TPS61280_VOUT_VSTEP;
+	tps61280->rdesc.n_voltages = 0x20;
+
 	tps61280->rinit_data = of_get_regulator_init_data(tps61280->dev,
-					tps61280->dev->of_node);
+					tps61280->dev->of_node,
+					&tps61280->rdesc);
 	if (!tps61280->rinit_data) {
 		dev_err(&client->dev, "No Regulator init data\n");
 		return -EINVAL;
@@ -913,14 +923,6 @@ static int tps61280_probe(struct i2c_client *client,
 		return ret;
 	}
 
-	tps61280->rdesc.name  = "tps61280-dcdc";
-	tps61280->rdesc.ops   = &tps61280_ops;
-	tps61280->rdesc.type  = REGULATOR_VOLTAGE;
-	tps61280->rdesc.owner = THIS_MODULE;
-	tps61280->rdesc.linear_min_sel = 0;
-	tps61280->rdesc.min_uV = TPS61280_VOUT_VMIN;
-	tps61280->rdesc.uV_step = TPS61280_VOUT_VSTEP;
-	tps61280->rdesc.n_voltages = 0x20;
 
 	rconfig.dev = tps61280->dev;
 	rconfig.of_node =  tps61280->dev->of_node;
