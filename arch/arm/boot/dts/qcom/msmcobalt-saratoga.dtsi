@@ -32,13 +32,12 @@
 		spi-max-frequency = <26000000>;
 		reg = <0x0>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <46 0>;
+		interrupts = <54 0>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
-		wlf,reset = <&tlmm 68 0>;
-		wlf,out-mono = <1 0 0 0 0 0>;
-		wlf,micbias1 = <1800 1 1 1 1 0>;
-		wlf,micbias2 = <1800 1 1 1 1 0>;
+		reset-gpios = <&tlmm 68 0>;
+		cirrus,micbias1 = <1800 1 1 1 1 0>;
+		cirrus,micbias2 = <1800 1 1 1 1 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&marley_irq_default &marley_reset_default>;
 
@@ -54,7 +53,7 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 
-		wlf,gpio-defaults = <
+		cirrus,gpio-defaults = <
 			0x00002000 0x0000f000 /* AIF3TXDAT / GPIO1  */
 			0x00002000 0x0000f000 /* AIF3BCLK  / GPIO2  */
 			0x00000040 0x00000000 /* AIF3RXDAT / GPIO3  */
