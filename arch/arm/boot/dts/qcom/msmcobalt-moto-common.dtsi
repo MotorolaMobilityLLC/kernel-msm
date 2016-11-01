@@ -901,6 +901,10 @@
 	wdog: qcom,wdt@17817000 {
 		qcom,bark-time = <22000>;
 	};
+
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
 };
 
 /* Direct Copy of I2C9 from msmcobalt-blsp.dtsi */
