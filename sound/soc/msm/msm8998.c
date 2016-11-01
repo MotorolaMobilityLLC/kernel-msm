@@ -6178,6 +6178,12 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret != 0)
 		pr_err("%s Cannot set Opalum controls %d\n", __func__, ret);
 #endif
+#ifdef CONFIG_SND_SOC_FSA8500
+	/* Start FSA8500 headset detection */
+	ret = fsa8500_hs_detect(codec);
+	if (ret)
+		dev_err(codec->dev, "fsa8500 hs det load error %d", ret);
+#endif
 	return 0;
 }
 
