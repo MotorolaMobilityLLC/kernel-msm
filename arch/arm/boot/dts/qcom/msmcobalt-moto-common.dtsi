@@ -272,6 +272,39 @@
 		qcom,fast-avg-setup = <0>;
 	};
 
+	chan@4e {
+		label = "ufs_therm";
+		reg = <0x4e>;
+		qcom,decimation = <2>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@4f {
+		label = "pa_therm0";
+		reg = <0x4f>;
+		qcom,decimation = <2>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@50 {
+		label = "pa_therm1";
+		reg = <0x50>;
+		qcom,decimation = <2>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
 	chan@51 {
 		label = "quiet_therm";
 		reg = <0x51>;
@@ -306,6 +339,39 @@
 		qcom,thermal-node;
 	};
 
+	chan@4e {
+		label = "ufs_therm";
+		reg = <0x4e>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,btm-channel-number = <0x70>;
+		qcom,thermal-node;
+	};
+
+	chan@4f {
+		label = "pa_therm0";
+		reg = <0x4f>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,btm-channel-number = <0x78>;
+		qcom,thermal-node;
+	};
+
+	chan@50 {
+		label = "pa_therm1";
+		reg = <0x50>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,btm-channel-number = <0x80>;
+		qcom,thermal-node;
+	};
+
 	chan@51 {
 		label = "quiet_therm";
 		reg = <0x51>;
@@ -313,7 +379,7 @@
 		qcom,calibration-type = "ratiometric";
 		qcom,scale-function = <2>;
 		qcom,hw-settle-time = <2>;
-		qcom,btm-channel-number = <0x70>;
+		qcom,btm-channel-number = <0x88>;
 		qcom,thermal-node;
 	};
 
@@ -324,7 +390,7 @@
 		qcom,calibration-type = "ratiometric";
 		qcom,scale-function = <4>;
 		qcom,hw-settle-time = <2>;
-		qcom,btm-channel-number = <0x78>;
+		qcom,btm-channel-number = <0x90>;
 		qcom,thermal-node;
 	};
 };
@@ -915,6 +981,12 @@
 	};
 
 	qcom,sensor-information {
+		/delete-property/ sensor_information24;
+		sensor_information24: qcom,sensor-information-24 {
+			qcom,sensor-type =  "adc";
+			qcom,sensor-name = "ufs_therm";
+		};
+
 		sensor_information30: qcom,sensor-information-30 {
 			qcom,sensor-type = "adc";
 			qcom,sensor-name = "bms";
