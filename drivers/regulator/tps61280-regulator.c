@@ -470,7 +470,7 @@ static struct regulator_ops tps61280_ops = {
 	.set_sleep_voltage_sel	= tps61280_dcdc_set_sleep_voltage_sel,
 };
 
-static int tps61280_thermal_read_temp(void *data, long *temp)
+static int tps61280_thermal_read_temp(void *data, int *temp)
 {
 	struct tps61280_chip *tps = data;
 	u32 val;
@@ -847,6 +847,10 @@ static int tps61280_parse_dt_data(struct i2c_client *client,
 	return 0;
 }
 
+static struct thermal_zone_of_device_ops tps61280_thermal_ops = {
+	.get_temp = tps61280_thermal_read_temp,
+};
+
 static int tps61280_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -953,7 +957,7 @@ static int tps61280_probe(struct i2c_client *client,
 	device_wakeup_enable(&client->dev);
 
 	tps61280->tz_device = thermal_zone_of_sensor_register(tps61280->dev, 0,
-				tps61280, tps61280_thermal_read_temp, NULL);
+				tps61280, &tps61280_thermal_ops);
 	if (IS_ERR(tps61280->tz_device)) {
 		ret = PTR_ERR(tps61280->tz_device);
 		dev_err(&client->dev, "TZ device register failed: %d\n", ret);
