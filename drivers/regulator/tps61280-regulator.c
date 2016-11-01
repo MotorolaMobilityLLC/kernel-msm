@@ -219,28 +219,6 @@ static int tps61280_dcdc_set_voltage_sel(struct regulator_dev *rdev,
 	return 0;
 }
 
-static int tps61280_dcdc_set_sleep_voltage_sel(struct regulator_dev *rdev,
-		unsigned sel)
-{
-	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
-	int ret;
-
-	if (!tps->pdata.vsel_controlled_sleep ||
-		gpio_is_valid(tps->pdata.vsel_gpio)) {
-		dev_err(tps->dev, "Regulator has invalid configuration\n");
-		return -EINVAL;
-	}
-
-	ret = regmap_update_bits(tps->rmap, tps->sleep_vout_reg,
-			TPS61280_VOUT_MASK, sel);
-	if (ret < 0) {
-		dev_err(tps->dev, "register %d update failed: %d\n",
-			 tps->sleep_vout_reg, ret);
-		return ret;
-	}
-	return 0;
-}
-
 static int tps61280_set_mode(struct regulator_dev *rdev, unsigned int mode)
 {
 	struct tps61280_chip *tps = rdev_get_drvdata(rdev);
@@ -467,7 +445,6 @@ static struct regulator_ops tps61280_ops = {
 	.enable			= tps61280_regulator_enable,
 	.disable		= tps61280_regulator_disable,
 	.is_enabled		= tps61280_regulator_is_enabled,
-	.set_sleep_voltage_sel	= tps61280_dcdc_set_sleep_voltage_sel,
 };
 
 static int tps61280_thermal_read_temp(void *data, int *temp)
