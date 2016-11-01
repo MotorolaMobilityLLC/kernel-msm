@@ -608,3 +608,16 @@
 				<4400 2000 1600>;
 	qcom,auto-voltage-comp-mv = <150>;
 };
+
+/{
+	mot_albusbatterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <100>;
+		df-serialnum = "SNN5966";
+		#include "batterydata-ga40-sony.dtsi"
+	};
+};
+
+&pmi8950_fg {
+	/delete-property/ qcom,battery-data;
+	qcom,battery-data = <&mot_albusbatterydata>;
+};
