@@ -941,18 +941,23 @@ void msm_iommu_flush_pagetable(struct msm_iommu_pt *pt, unsigned long va,
 static phys_addr_t get_phys_from_va(unsigned long va, u64 *table, int level)
 {
 	u64 type;
-	u64 mask;		/* For single mapping */
-	u64 section_mask;	/* For section mapping */
+	u64 mask = 0;			/* For single mapping */
+	u64 section_mask = 0;		/* For section mapping */
 	u64 *pte;
 
 	if (level <= NUM_PT_LEVEL) {
 		switch (level) {
 		case 1:
 			pte = table + FL_OFFSET(va);
+			mask = ((IOMMU_MAX_VA_SZ - 1) &
+				~((SZ_1G * 512ULL) - 1));
+			section_mask = mask;
 			break;
 		case 2:
 			pte = table + SL_OFFSET(va);
 			mask = FLSL_1G_BLOCK_MASK;
+			section_mask = ((IOMMU_MAX_VA_SZ - 1) &
+					~((SZ_1G * 16ULL) - 1));
 			break;
 		case 3:
 			pte = table + TL_OFFSET(va);
