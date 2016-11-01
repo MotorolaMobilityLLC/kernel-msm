@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "msmcobalt.dtsi"
+#include "msmcobalt-v2.dtsi"
 #include "msmcobalt-moto-common.dtsi"
 #include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
 
