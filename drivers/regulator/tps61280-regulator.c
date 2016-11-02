@@ -971,7 +971,7 @@ static int tps61280_resume(struct device *dev)
 static SIMPLE_DEV_PM_OPS(tps61280_pm_ops, tps61280_suspend, tps61280_resume);
 
 static const struct of_device_id tps61280_dt_match[] = {
-	{ .compatible = "tps61280" },
+	{ .compatible = "ti,tps61280" },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, tps61280_dt_match);
