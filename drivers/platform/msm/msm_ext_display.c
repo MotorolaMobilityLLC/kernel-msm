@@ -60,6 +60,22 @@ static int msm_ext_disp_switch_dev_register(struct msm_ext_disp *ext_disp)
 		goto end;
 	}
 
+	/*
+	 * MMI_STOPSHIP
+	 * Currently, QCOM supports both HDMI and DP therefore they
+	 * implemented ext_disp which is a wrapper layer for HDMI and DP
+	 * to handle for switch_dev_register().
+	 * Since MOT is using the MOT_DBA and HDMI at the same time, therefore
+	 * we need to adopt this new ext_disp framework so only ext_disp will
+	 * register for switch_dev_register, because the same switch dev name
+	 * can not be registered twice.
+	 * This hack puts inplace to allow only MOT_DBA to register for switch
+	 * dev, until we can make the same ext_disp implement as QCOM did for
+	 * HDMI and DP. I have opened case#02670202 but seems like we have do
+	 * it by ourselves.
+	 */
+	return 0;
+
 	memset(&ext_disp->hdmi_sdev, 0x0, sizeof(ext_disp->hdmi_sdev));
 	ext_disp->hdmi_sdev.name = "hdmi";
 	ret = switch_dev_register(&ext_disp->hdmi_sdev);
