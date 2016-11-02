@@ -12,6 +12,22 @@
  */
 
 &cci {
+	/* IMX386 RGB Actuator */
+	actuator0: qcom,actuator@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+	};
+
+	/* IMX386 MONO Actuator */
+	actuator1: qcom,actuator@1 {
+		cell-index = <1>;
+		reg = <0x1>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <1>;
+	};
+
 	/* IMX386 RGB & IMX258*/
 	qcom,camera@0 {
 		cell-index = <0>;
@@ -20,6 +36,7 @@
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <2>;
 		qcom,mount-angle = <270>;
+		qcom,actuator-src = <&actuator0>;
 		cam_vio-supply = <&pmcobalt_lvs1>;
 		cam_vana-supply = <&pmicobalt_bob>;
 		cam_vdig-supply = <&pmcobalt_s3>;
@@ -68,6 +85,7 @@
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <270>;
+		qcom,actuator-src = <&actuator1>;
 		cam_vio-supply = <&pmcobalt_lvs1>;
 		cam_vana-supply = <&pmicobalt_bob>;
 		cam_vdig-supply = <&pmcobalt_s3>;
