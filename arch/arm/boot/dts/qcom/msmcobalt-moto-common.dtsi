@@ -400,6 +400,17 @@
 		status = "okay";
 	};
 
+	gpio@c900 { /* PM8998_GPIO10 SPK_5V_BOOST_EN */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,pull = <5>;         /* QPNP_PIN_PULL_NO */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
 	gpio@cc00 { /* PM8998_GPIO13 DIV_CLK1 */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
@@ -641,6 +652,12 @@
 };
 
 &soc {
+	vreg_5p0: vreg_5v {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_5p0";
+		gpio = <&pmcobalt_gpios 10 0>;
+		enable-active-high;
+	};
 
 	gpio_keys {
 		compatible = "gpio-keys";
