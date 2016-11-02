@@ -123,11 +123,11 @@ static int mdss_dsi_phy_initialize_defaults(struct dsi_phy_t_clk_param *t_clk,
 		t_param->hs_rqst.mipi_min = HS_RQST_SPEC_MIN;
 		t_param->hs_rqst_clk.mipi_min = HS_RQST_SPEC_MIN;
 
-		t_clk->clk_prep_buf = 0;
+		t_clk->clk_prep_buf = 1;
 		t_clk->clk_zero_buf = 0;
 		t_clk->clk_trail_buf = 0;
 		t_clk->hs_prep_buf = 0;
-		t_clk->hs_zero_buf = 0;
+		t_clk->hs_zero_buf = 2;
 		t_clk->hs_trail_buf = 0;
 		t_clk->hs_rqst_buf = 0;
 		t_clk->hs_exit_buf = 0;
