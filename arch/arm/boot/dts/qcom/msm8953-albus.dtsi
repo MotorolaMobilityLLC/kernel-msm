@@ -606,4 +606,5 @@
 	qcom,max-usbin-current-ma = <3000>;
 	qcom,step-chg-steps = <4200 3000 2000>,
 				<4400 2000 1600>;
+	qcom,auto-voltage-comp-mv = <150>;
 };
