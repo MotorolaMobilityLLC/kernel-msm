@@ -1031,6 +1031,13 @@ static void mdss_dsi_phy_update_timing_param_v3(struct mdss_panel_info *pinfo,
 	pd->timing[9] = 0x03;
 	pd->timing[10] = 0x04;
 	pd->timing[11] = 0x00;
+
+	pr_debug("%s: [%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x]\n",
+		__func__,
+	pd->timing[0], pd->timing[1], pd->timing[2], pd->timing[3],
+	pd->timing[4], pd->timing[5], pd->timing[6], pd->timing[7],
+	pd->timing[8], pd->timing[9], pd->timing[10],
+	pd->timing[11]);
 }
 
 int mdss_dsi_phy_calc_timing_param(struct mdss_panel_info *pinfo, u32 phy_rev,
