@@ -32,11 +32,6 @@
 
 #define CS47L35_NUM_ADSP 3
 
-struct cs47l35 {
-	struct madera_priv core;
-	struct madera_fll fll;
-};
-
 static const int cs47l35_fx_inputs[] = {
 	MADERA_MIXER_INPUTS_4_N(MADERA_EQ1MIX_INPUT_1_SOURCE, 2),
 	MADERA_MIXER_INPUTS_4_N(MADERA_EQ2MIX_INPUT_1_SOURCE, 2),
