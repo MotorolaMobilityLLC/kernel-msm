@@ -603,4 +603,7 @@
 		<&pm8953_gpios 5 0x1>; /* GPIOF_IN */
 	gpio-names = "eb_vbus_en",
 		     "factory_warn";
+	qcom,max-usbin-current-ma = <3000>;
+	qcom,step-chg-steps = <4200 3000 2000>,
+				<4400 2000 1600>;
 };
