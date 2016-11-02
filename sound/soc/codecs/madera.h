@@ -182,6 +182,11 @@ struct madera_enum {
 	int val;
 };
 
+struct cs47l35 {
+	struct madera_priv core;
+	struct madera_fll fll;
+};
+
 extern const unsigned int madera_ana_tlv[];
 extern const unsigned int madera_eq_tlv[];
 extern const unsigned int madera_digital_tlv[];
