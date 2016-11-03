@@ -20,12 +20,14 @@ struct usbpd;
 #if IS_ENABLED(CONFIG_USB_PD_POLICY)
 struct usbpd *usbpd_create(struct device *parent);
 void usbpd_destroy(struct usbpd *pd);
+void usbpd_handle_vbus_fault(struct usbpd *pd);
 #else
 static inline struct usbpd *usbpd_create(struct device *parent)
 {
 	return ERR_PTR(-ENODEV);
 }
 static inline void usbpd_destroy(struct usbpd *pd) { }
+static inline void usbpd_handle_vbus_fault(struct usbpd *pd) { }
 #endif
 
 enum data_role {
