@@ -362,7 +362,11 @@ void __init setup_arch(char **cmdline_p)
 	 * faults in case uaccess_enable() is inadvertently called by the init
 	 * thread.
 	 */
+#ifdef CONFIG_THREAD_INFO_IN_TASK
+	init_task.thread_info.ttbr0 = virt_to_phys(empty_zero_page);
+#else
 	init_thread_info.ttbr0 = virt_to_phys(empty_zero_page);
+#endif
 #endif
 
 #ifdef CONFIG_VT
