@@ -634,11 +634,6 @@ static struct snd_soc_dapm_route cs47l35_audio_paths[] = {
 	{"Slim2 Playback", NULL, "MCLK"},
 	{"Slim2 Capture", NULL, "MCLK"},
 
-	{"IN1AL", NULL, "MICBIAS1A"},
-	{"IN1AR", NULL, "MICBIAS1B"},
-	{"IN2L", NULL, "MICBIAS2B"},
-	{"IN1BR", NULL, "MICBIAS2A"}, /* Headset mic */
-
 	{"AIF1 Playback", NULL, "AMP Capture"},
 	{"AMP Playback", NULL, "OPCLK"},
 	{"AMP Capture", NULL, "OPCLK"},
@@ -7735,6 +7730,14 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 #endif
 	spdev = pdev;
 
+#ifdef CONFIG_SND_SOC_CS47L35
+	ret = snd_soc_of_parse_audio_routing(card, "cs47l35,micbias-routing");
+	if (ret) {
+		dev_err(&pdev->dev, "parse micbias-routing failed, err:%d\n",
+			ret);
+		goto err;
+	}
+#endif
 	ret = msm_populate_dai_link_component_of_node(card);
 	if (ret) {
 		ret = -EPROBE_DEFER;
