@@ -428,6 +428,7 @@ static void sd_update_bus_speed_mode(struct mmc_card *card)
 	 */
 	if (!mmc_host_uhs(card->host)) {
 		card->sd_bus_speed = 0;
+		pr_err("%s: not UHS\n", mmc_hostname(card->host));
 		return;
 	}
 
@@ -435,25 +436,30 @@ static void sd_update_bus_speed_mode(struct mmc_card *card)
 	    (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_SDR104) &&
 	    (card->host->f_max > UHS_SDR104_MIN_DTR)) {
 		card->sd_bus_speed = UHS_SDR104_BUS_SPEED;
+		pr_err("%s: selected SDR104\n", mmc_hostname(card->host));
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50)) && (card->sw_caps.sd3_bus_mode &
 		    SD_MODE_UHS_SDR50) &&
 		    (card->host->f_max > UHS_SDR50_MIN_DTR)) {
 		card->sd_bus_speed = UHS_SDR50_BUS_SPEED;
+		pr_err("%s: selected SDR50\n", mmc_hostname(card->host));
 	} else if ((card->host->caps & MMC_CAP_UHS_DDR50) &&
 		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_DDR50) &&
 		    (card->host->f_max > UHS_DDR50_MIN_DTR)) {
 		card->sd_bus_speed = UHS_DDR50_BUS_SPEED;
+		pr_err("%s: selected DDR50\n", mmc_hostname(card->host));
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR25)) &&
 		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_SDR25) &&
 		 (card->host->f_max > UHS_SDR25_MIN_DTR)) {
 		card->sd_bus_speed = UHS_SDR25_BUS_SPEED;
+		pr_err("%s: selected SDR25\n", mmc_hostname(card->host));
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR25 |
 		    MMC_CAP_UHS_SDR12)) && (card->sw_caps.sd3_bus_mode &
 		    SD_MODE_UHS_SDR12)) {
 		card->sd_bus_speed = UHS_SDR12_BUS_SPEED;
+		pr_err("%s: selected SDR12\n", mmc_hostname(card->host));
 	}
 }
 
@@ -1077,10 +1083,12 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 
 	/* Initialization sequence for UHS-I cards */
 	if (rocr & SD_ROCR_S18A) {
+		pr_err("%s: card is UHS\n", mmc_hostname(card->host));
 		err = mmc_sd_init_uhs_card(card);
 		if (err)
 			goto free_card;
 	} else {
+		pr_err("%s: card is legacy\n", mmc_hostname(card->host));
 		/*
 		 * Attempt to change to high-speed (if supported)
 		 */
