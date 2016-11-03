@@ -659,6 +659,14 @@
 		enable-active-high;
 	};
 
+	vdd_otg_vreg: vdd_otg_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_otg";
+		gpio = <&pmicobalt_gpios 3 0>;
+		vin-supply = <&vreg_5p0>;
+		enable-active-high;
+	};
+
 	gpio_keys {
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
@@ -1223,8 +1231,11 @@
 	pinctrl-0 = <&usb_aud_sw_sel>;
 
 	gpios = <&pmcobalt_gpios 20 0>,  /* USB_AUD_DET_N, output-high */
-		<&tlmm 116 0>;           /* USB_AUD_SW_SEL, output-low */
+		<&tlmm 116 0>,           /* USB_AUD_SW_SEL, output-low */
+		<&pmicobalt_gpios 2 1>;  /* USB_OTG_FAULT_N, input */
 
 	gpio-labels = "gpio_usb_aud_det_n",
-		"gpio_aud_sw_sel";
+		"gpio_aud_sw_sel",
+		"gpio_otg_fault_n";
+	vbus-supply = <&vdd_otg_vreg>;
 };
