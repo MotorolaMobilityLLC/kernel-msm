@@ -18,3 +18,13 @@
 / {
 	qcom,board-id = <0x42 0xA100>;
 };
+
+&soc {
+	sound {
+		cs47l35,micbias-routing =
+			"IN1AL", "MICBIAS1A",
+			"IN2L",  "MICBIAS1B",
+			"IN2R",  "MICBIAS1B",
+			"IN1BR", "MICBIAS2A";
+	};
+};
