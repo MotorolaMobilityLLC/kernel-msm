@@ -19,3 +19,8 @@
 / {
 	qcom,board-id = <0x41 0x8100>;
 };
+
+&sdhc_2 {
+	/* For reworked boards fly-wired to DISP_BL_RST_N */
+	cd-gpios = <&tlmm 94 0x1>;
+};
