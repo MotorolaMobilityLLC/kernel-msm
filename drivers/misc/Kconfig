@@ -648,6 +648,15 @@ config MODS_MODBUS_EXT
 	  If you are using the MODS kernel modules, you should select yes, if
 	  not no.
 
+config TPS61280
+        tristate "TI TPS61280 configuration"
+        depends on I2C
+        select REGMAP_I2C
+        help
+          This driver supports TPS61280 voltage regulator chip. This
+	  driver is meant for basic configuration only and does not provide
+	  any pm/regulator/thermal framework registration.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
