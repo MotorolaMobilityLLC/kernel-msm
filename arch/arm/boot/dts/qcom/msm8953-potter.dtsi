@@ -395,6 +395,8 @@
 		qcom,model = "msm8953-snd-card";
 		qcom,msm-mbhc-hphl-swh = <1>;
 		qcom,msm-mbhc-gnd-swh = <0>;
+		qcom,msm-micbias1-ext-cap;
+		qcom,msm-micbias2-ext-cap;
 		qcom,msm-hs-micbias-type = "external";
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
