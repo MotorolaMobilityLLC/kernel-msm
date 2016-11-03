@@ -616,7 +616,7 @@ static int ffs_function_init(struct android_usb_function *f,
 	opts->dev->ffs_closed_callback = functionfs_closed_callback;
 	opts->no_configfs = true;
 
-	return ffs_single_dev(opts->dev);
+	return ffs_name_dev(opts->dev, "adb");
 }
 
 static void ffs_function_cleanup(struct android_usb_function *f)
