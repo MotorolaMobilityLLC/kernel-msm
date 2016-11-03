@@ -35,6 +35,7 @@
 struct task_struct;
 struct exec_domain;
 
+#include <asm/stack_pointer.h>
 #include <asm/types.h>
 
 typedef unsigned long mm_segment_t;
@@ -81,11 +82,6 @@ struct thread_info {
 #define init_thread_info	(init_thread_union.thread_info)
 #endif
 
-
-/*
- * how to get the current stack pointer from C
- */
-register unsigned long current_stack_pointer asm ("sp");
 
 /*
  * how to get the thread information struct from C
