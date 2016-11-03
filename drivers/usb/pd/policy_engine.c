@@ -179,6 +179,7 @@ static void *usbpd_ipc_log;
 #define SRC_CAP_TIME		120
 #define SRC_TRANSITION_TIME	25
 #define SRC_RECOVER_TIME	750
+#define FAULT_RECOVER_TIME      10
 #define PS_HARD_RESET_TIME	25
 #define PS_SOURCE_ON		400
 #define PS_SOURCE_OFF		750
@@ -3425,6 +3426,28 @@ void usbpd_destroy(struct usbpd *pd)
 	kfree(pd);
 }
 EXPORT_SYMBOL(usbpd_destroy);
+
+/**
+ * usbpd_handle_vbus_fault - Toggles the vbus if enabled
+ * to recover from a fault condition.
+ * @pd: the pd instance.
+ */
+void usbpd_handle_vbus_fault(struct usbpd *pd)
+{
+	int ret;
+
+	if (!pd || !regulator_is_enabled(pd->vbus))
+		return;
+
+	usbpd_dbg(&pd->dev, "handle vbus fault");
+	regulator_disable(pd->vbus);
+	mdelay(FAULT_RECOVER_TIME);
+
+	ret = regulator_enable(pd->vbus);
+	if (ret)
+		usbpd_err(&pd->dev, "Unable to enable vbus\n");
+}
+EXPORT_SYMBOL(usbpd_handle_vbus_fault);
 
 static int __init usbpd_init(void)
 {
