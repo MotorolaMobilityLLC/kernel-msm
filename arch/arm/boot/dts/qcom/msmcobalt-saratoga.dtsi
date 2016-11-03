@@ -36,8 +36,8 @@
 		interrupt-controller;
 		#interrupt-cells = <2>;
 		reset-gpios = <&tlmm 68 0>;
-		cirrus,micbias1 = <1800 1 1 1 1 0>;
-		cirrus,micbias2 = <1800 1 1 1 1 0>;
+		cirrus,micbias1 = <1800 1 1 1 1 1 1 0>;
+		cirrus,micbias2 = <1800 1 1 1 1 1 1 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&marley_irq_default &marley_reset_default>;
 
