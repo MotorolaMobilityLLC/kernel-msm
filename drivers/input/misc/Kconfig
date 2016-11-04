@@ -838,3 +838,10 @@ config EPL8802
 	tristate "EPL8802 support"
 	help
 	proximity sensor driver.
+
+config EPL8802_ALSPS
+	tristate "EPL8802 support"
+	depends on I2C
+	default n
+	help
+	  proximity sensor driver for alsps usage.
