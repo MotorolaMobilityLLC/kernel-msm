@@ -1008,7 +1008,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	if (ctrl->ds_registered)
 		mdss_dba_utils_video_on(pinfo->dba_data, pinfo);
-	if (pinfo->no_panel_read_support == false) {
+	if (pinfo->no_panel_read_support == false &&
+		pinfo->no_panel_on_read_support == false) {
 		mdss_dsi_get_pwr_mode(pdata, &pwr_mode, false);
 		if (pinfo->disp_on_check_val != pwr_mode) {
 			pr_err("%s: Display failure: read = 0x%x, expected = 0x%x\n",
@@ -2301,6 +2302,9 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 
 	pinfo->no_panel_read_support = of_property_read_bool(np,
 					"qcom,mdss-dsi-no-panel-read-support");
+
+	pinfo->no_panel_on_read_support = of_property_read_bool(np,
+					"qcom,mdss-dsi-no-panel-on-read-support");
 
 	if (ctrl->disp_en_gpio <= 0) {
 		ctrl->disp_en_gpio = of_get_named_gpio(
