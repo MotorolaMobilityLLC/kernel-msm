@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -261,6 +261,7 @@ struct diag_ctrl_set_wq_val {
 } __packed;
 
 int diagfwd_cntl_init(void);
+void diagfwd_cntl_channel_init(void);
 void diagfwd_cntl_exit(void);
 void diag_cntl_channel_open(struct diagfwd_info *p_info);
 void diag_cntl_channel_close(struct diagfwd_info *p_info);

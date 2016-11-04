@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -45,5 +45,6 @@ void diag_smd_exit(void);
 int diag_smd_init(void);
 void diag_smd_early_exit(void);
 void diag_smd_invalidate(void *ctxt, struct diagfwd_info *fwd_ctxt);
+int diag_smd_check_state(void *ctxt);
 
 #endif
