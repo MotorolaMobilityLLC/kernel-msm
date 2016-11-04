@@ -60,7 +60,7 @@ static void madera_micsupp_check_cp(struct work_struct *work)
 
 		if ((reg & (MADERA_CPMIC_ENA | MADERA_CPMIC_BYPASS)) ==
 		    MADERA_CPMIC_ENA) {
-			snd_soc_dapm_force_enable_pin(dapm, "MICSUPP");
+			snd_soc_dapm_enable_pin(dapm, "MICSUPP");
 			madera->micvdd_regulated = true;
 		} else {
 			snd_soc_dapm_disable_pin(dapm, "MICSUPP");
