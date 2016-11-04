@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -417,7 +417,16 @@ static void diag_smd_queue_read(void *ctxt)
 		queue_work(smd_info->wq, &(smd_info->read_work));
 	}
 }
+int diag_smd_check_state(void *ctxt)
+{
+	struct diag_smd_info *info = NULL;
 
+	if (!ctxt)
+		return 0;
+
+	info = (struct diag_smd_info *)ctxt;
+	return (int)(atomic_read(&info->diag_state));
+}
 void diag_smd_invalidate(void *ctxt, struct diagfwd_info *fwd_ctxt)
 {
 	struct diag_smd_info *smd_info = NULL;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -91,4 +91,5 @@ int diag_socket_init_peripheral(uint8_t peripheral);
 void diag_socket_exit(void);
 void diag_socket_early_exit(void);
 void diag_socket_invalidate(void *ctxt, struct diagfwd_info *fwd_ctxt);
+int diag_socket_check_state(void *ctxt);
 #endif

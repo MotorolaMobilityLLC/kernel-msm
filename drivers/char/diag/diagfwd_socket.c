@@ -628,6 +628,8 @@ static void diag_socket_queue_read(void *ctxt)
 		return;
 
 	info = (struct diag_socket_info *)ctxt;
+	if (info->peripheral != PERIPHERAL_MODEM)
+		return;
 	if (info->hdl && info->wq)
 		queue_work(info->wq, &(info->read_work));
 }
@@ -641,6 +643,17 @@ void diag_socket_invalidate(void *ctxt, struct diagfwd_info *fwd_ctxt)
 
 	info = (struct diag_socket_info *)ctxt;
 	info->fwd_ctxt = fwd_ctxt;
+}
+
+int diag_socket_check_state(void *ctxt)
+{
+	struct diag_socket_info *info = NULL;
+
+	if (!ctxt)
+		return 0;
+
+	info = (struct diag_socket_info *)ctxt;
+	return (int)(atomic_read(&info->diag_state));
 }
 
 static void __diag_socket_init(struct diag_socket_info *info)
@@ -869,7 +882,9 @@ static int diag_socket_read(void *ctxt, unsigned char *buf, int buf_len)
 				      (info->data_ready > 0) || (!info->hdl) ||
 				      (atomic_read(&info->diag_state) == 0));
 	if (err) {
+		mutex_lock(&driver->diagfwd_channel_mutex);
 		diagfwd_channel_read_done(info->fwd_ctxt, buf, 0);
+		mutex_unlock(&driver->diagfwd_channel_mutex);
 		return -ERESTARTSYS;
 	}
 
@@ -881,7 +896,9 @@ static int diag_socket_read(void *ctxt, unsigned char *buf, int buf_len)
 		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 			 "%s closing read thread. diag state is closed\n",
 			 info->name);
-		diag_ws_release();
+		mutex_lock(&driver->diagfwd_channel_mutex);
+		diagfwd_channel_read_done(info->fwd_ctxt, buf, 0);
+		mutex_unlock(&driver->diagfwd_channel_mutex);
 		return 0;
 	}
 
@@ -948,8 +965,10 @@ static int diag_socket_read(void *ctxt, unsigned char *buf, int buf_len)
 	if (total_recd > 0) {
 		DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "%s read total bytes: %d\n",
 			 info->name, total_recd);
+		mutex_lock(&driver->diagfwd_channel_mutex);
 		err = diagfwd_channel_read_done(info->fwd_ctxt,
 						buf, total_recd);
+		mutex_unlock(&driver->diagfwd_channel_mutex);
 		if (err)
 			goto fail;
 	} else {
@@ -962,7 +981,9 @@ static int diag_socket_read(void *ctxt, unsigned char *buf, int buf_len)
 	return 0;
 
 fail:
+	mutex_lock(&driver->diagfwd_channel_mutex);
 	diagfwd_channel_read_done(info->fwd_ctxt, buf, 0);
+	mutex_unlock(&driver->diagfwd_channel_mutex);
 	return -EIO;
 }
 
