@@ -211,6 +211,8 @@ static int cs35l35_main_amp_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		regmap_update_bits(cs35l35->regmap, CS35L35_BST_CVTR_V_CTL,
+			CS35L35_BST_CTL_MASK, 0x37);
 		if (cs35l35->pdata.bst_pdn_fet_on)
 			regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
 				CS35L35_PDN_BST_MASK,
@@ -230,6 +232,8 @@ static int cs35l35_main_amp_event(struct snd_soc_dapm_widget *w,
 					&reg, ARRAY_SIZE(reg));
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
+		regmap_update_bits(cs35l35->regmap, CS35L35_BST_CVTR_V_CTL,
+			CS35L35_BST_CTL_MASK, 0x00);
 		regmap_update_bits(cs35l35->regmap, CS35L35_PROTECT_CTL,
 				CS35L35_AMP_MUTE_MASK,
 				1 << CS35L35_AMP_MUTE_SHIFT);
