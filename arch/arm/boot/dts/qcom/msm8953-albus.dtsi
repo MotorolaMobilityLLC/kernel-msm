@@ -380,6 +380,15 @@
 		vdd-hd3ss460-supply = <&pm8953_l22>;
 		vdd-voltage-level = <2850000 2850000>;
 	};
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <96>,
+			<97>,
+			<98>,
+			<99>,
+			<111>,
+			<126>;
+	};
 };
 
 &pm8953_l2 {
