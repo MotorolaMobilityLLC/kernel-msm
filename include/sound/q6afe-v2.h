@@ -458,4 +458,10 @@ int afe_request_dma_resources(uint8_t dma_type, uint8_t num_read_dma_channels,
 int afe_get_dma_idx(bool **ret_rddma_idx,
 				bool **ret_wrdma_idx);
 int afe_release_all_dma_resources(void);
+
+#ifdef CONFIG_SND_SOC_OPALUM
+int ospl2xx_afe_set_callback(int32_t (*ospl2xx_callback_func)
+				(struct apr_client_data *data));
+int ospl2xx_afe_apr_send_pkt(void *data, int index);
+#endif
 #endif /* __Q6AFE_V2_H__ */
