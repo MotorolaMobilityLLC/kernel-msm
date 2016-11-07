@@ -532,15 +532,19 @@ static int msm_hifi_control;
 
 static bool is_initial_boot;
 static bool codec_reg_done;
+#ifndef CONFIG_SND_SOC_CS47L35
 static struct snd_soc_aux_dev *msm_aux_dev;
 static struct snd_soc_codec_conf *msm_codec_conf;
+#endif
 static struct msm_asoc_wcd93xx_codec msm_codec_fn;
 
 static void *def_tasha_mbhc_cal(void);
 static void *def_tavil_mbhc_cal(void);
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec,
 					int enable, bool dapm);
+#ifndef CONFIG_SND_SOC_CS47L35
 static int msm_wsa881x_init(struct snd_soc_component *component);
+#endif
 
 /*
  * Need to report LINEIN
@@ -3502,6 +3506,7 @@ done:
 	return rc;
 }
 
+#ifndef CONFIG_SND_SOC_CS47L35
 static bool msm_swap_gnd_mic(struct snd_soc_codec *codec)
 {
 	struct snd_soc_card *card = codec->component.card;
@@ -3524,6 +3529,7 @@ static bool msm_swap_gnd_mic(struct snd_soc_codec *codec)
 	pr_debug("%s: swap select switch %d to %d\n", __func__, value, !value);
 	return true;
 }
+#endif
 
 static int msm_afe_set_config(struct snd_soc_codec *codec)
 {
@@ -6194,6 +6200,25 @@ static int cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
+static struct snd_soc_dai_link msm_cs47l35_cs35l35_dai_links[] = {
+	{ /* codec to amp link */
+		.name = "MARLEY-AMP",
+		.stream_name = "MARLEY-AMP Playback",
+		.cpu_name = "cs47l35-codec",
+		.cpu_dai_name = "cs47l35-aif1",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "cs35l35.7-0041",
+		.codec_dai_name = "cs35l35-pcm",
+		.init = cs35l35_dai_init,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.no_pcm = 1,
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+		.params = &cs35l35_params,
+	}
+};
+
 static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 	{
 		.name = LPASS_BE_SLIMBUS_0_RX,
@@ -6254,6 +6279,21 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ops = &msm_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_2_RX,
+		.stream_name = "Slimbus2 Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16388",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "cs47l35-codec",
+		.codec_dai_name = "cs47l35-slim1",
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_2_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm_be_ops,
+		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
 	},
 	{
@@ -6318,28 +6358,13 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
 	},
-	/* MAD BE */
-	{
-		.name = LPASS_BE_SLIMBUS_5_TX,
-		.stream_name = "Slimbus5 Capture",
-		.cpu_dai_name = "msm-dai-q6-dev.16395",
-		.platform_name = "msm-pcm-routing",
-		.codec_name = "cs47l35-codec",
-		.codec_dai_name = "cs47l35-slim1",
-		.no_pcm = 1,
-		.dpcm_capture = 1,
-		.be_id = MSM_BACKEND_DAI_SLIMBUS_5_TX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
-		.ops = &msm_be_ops,
-		.ignore_suspend = 1,
-	},
 	{
 		.name = LPASS_BE_SLIMBUS_6_RX,
 		.stream_name = "Slimbus6 Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16396",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "cs47l35-codec",
-		.codec_dai_name = "cs47l35-slim1",
+		.codec_dai_name = "cs47l35-slim2",
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_6_RX,
@@ -6365,22 +6390,6 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.dpcm_capture = 1,
 		.ignore_pmdown_time = 1,
 	},
-	{ /* codec to amp link */
-		.name = "MARLEY-AMP",
-		.stream_name = "MARLEY-AMP Playback",
-		.cpu_name = "cs47l35-codec",
-		.cpu_dai_name = "cs47l35-aif1",
-		.platform_name = "msm-pcm-routing",
-		.codec_name = "cs47l35-codec",
-		.codec_dai_name = "cs35l35-pcm",
-		.init = cs35l35_dai_init,
-		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-			SND_SOC_DAIFMT_CBS_CFS,
-		.no_pcm = 1,
-		.ignore_pmdown_time = 1,
-		.ignore_suspend = 1,
-		.params = &cs35l35_params,
-	}
 };
 
 static struct snd_soc_dai_link msm_tavil_be_dai_links[] = {
@@ -6907,6 +6916,7 @@ static struct snd_soc_dai_link msm_cs47l35_dai_links[
 			 ARRAY_SIZE(msm_cs47l35_fe_dai_links) +
 			 ARRAY_SIZE(msm_common_misc_fe_dai_links) +
 			 ARRAY_SIZE(msm_common_be_dai_links) +
+			 ARRAY_SIZE(msm_cs47l35_cs35l35_dai_links) +
 			 ARRAY_SIZE(msm_cs47l35_be_dai_links) +
 			 ARRAY_SIZE(msm_wcn_be_dai_links) +
 			 ARRAY_SIZE(ext_disp_be_dai_link) +
@@ -7098,6 +7108,7 @@ err:
 	return ret;
 }
 
+#ifndef CONFIG_SND_SOC_CS47L35
 static int msm_prepare_us_euro(struct snd_soc_card *card)
 {
 	struct msm_asoc_mach_data *pdata =
@@ -7117,6 +7128,8 @@ static int msm_prepare_us_euro(struct snd_soc_card *card)
 
 	return ret;
 }
+
+#endif
 
 static int msm_audrx_stub_init(struct snd_soc_pcm_runtime *rtd)
 {
@@ -7260,7 +7273,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 {
 	struct snd_soc_card *card = NULL;
 	struct snd_soc_dai_link *dailink;
-	int len_1, len_2, len_3, len_4;
+	int len_1, len_2, len_3, len_3a, len_4;
 	int total_links;
 	const struct of_device_id *match;
 
@@ -7276,7 +7289,8 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		len_1 = ARRAY_SIZE(msm_common_dai_links);
 		len_2 = len_1 + ARRAY_SIZE(msm_cs47l35_fe_dai_links);
 		len_3 = len_2 + ARRAY_SIZE(msm_common_misc_fe_dai_links);
-		len_4 = len_3 + ARRAY_SIZE(msm_common_be_dai_links);
+		len_3a = len_3 + ARRAY_SIZE(msm_cs47l35_cs35l35_dai_links);
+		len_4 = len_3a + ARRAY_SIZE(msm_common_be_dai_links);
 		total_links = len_4 + ARRAY_SIZE(msm_cs47l35_be_dai_links);
 		memcpy(msm_cs47l35_dai_links,
 		       msm_common_dai_links,
@@ -7290,6 +7304,9 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		memcpy(msm_tasha_dai_links + len_3,
 		       msm_common_be_dai_links,
 		       sizeof(msm_common_be_dai_links));
+		memcpy(msm_cs47l35_dai_links + len_3a,
+		       msm_cs47l35_cs35l35_dai_links,
+		       sizeof(msm_cs47l35_cs35l35_dai_links));
 		memcpy(msm_cs47l35_dai_links + len_4,
 		       msm_cs47l35_be_dai_links,
 		       sizeof(msm_cs47l35_be_dai_links));
@@ -7409,6 +7426,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	return card;
 }
 
+#ifndef CONFIG_SND_SOC_CS47L35
 static int msm_wsa881x_init(struct snd_soc_component *component)
 {
 	u8 spkleft_ports[WSA881X_MAX_SWR_PORTS] = {100, 101, 102, 106};
@@ -7648,6 +7666,7 @@ err_mem:
 err_dt:
 	return ret;
 }
+#endif
 
 static void i2s_auxpcm_init(struct platform_device *pdev)
 {
@@ -7715,7 +7734,9 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card;
 	struct msm_asoc_mach_data *pdata;
+#ifndef CONFIG_SND_SOC_CS47L35
 	const char *mbhc_audio_jack_type = NULL;
+#endif
 	char *mclk_freq_prop_name;
 	const struct of_device_id *match;
 	int ret;
@@ -7769,7 +7790,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		mclk_freq_prop_name = "qcom,tavil-mclk-clk-freq";
 	}
 
-#if 0
+#ifndef CONFIG_SND_SOC_CS47L35
 	ret = of_property_read_u32(pdev->dev.of_node,
 			mclk_freq_prop_name, &pdata->mclk_freq);
 	if (ret) {
@@ -7795,9 +7816,11 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		ret = -EPROBE_DEFER;
 		goto err;
 	}
+#ifndef CONFIG_SND_SOC_CS47L35
 	ret = msm_init_wsa_dev(pdev, card);
 	if (ret)
 		goto err;
+#endif
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret == -EPROBE_DEFER) {
@@ -7812,6 +7835,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "Sound card %s registered\n", card->name);
 	spdev = pdev;
 
+#ifndef CONFIG_SND_SOC_CS47L35
 	ret = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
 	if (ret) {
 		dev_dbg(&pdev->dev, "%s: failed to add child nodes, ret=%d\n",
@@ -7880,6 +7904,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "msm_prepare_us_euro failed (%d)\n",
 			ret);
 
+#endif
 	/* Parse pinctrl info from devicetree */
 	ret = msm_get_pinctrl(pdev);
 	if (!ret) {
@@ -7902,12 +7927,14 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 
 	return 0;
 err:
+#ifndef CONFIG_SND_SOC_CS47L35
 	if (pdata->us_euro_gpio > 0) {
 		dev_dbg(&pdev->dev, "%s free us_euro gpio %d\n",
 			__func__, pdata->us_euro_gpio);
 		gpio_free(pdata->us_euro_gpio);
 		pdata->us_euro_gpio = 0;
 	}
+#endif
 	msm_release_pinctrl(pdev);
 	devm_kfree(&pdev->dev, pdata);
 	return ret;
