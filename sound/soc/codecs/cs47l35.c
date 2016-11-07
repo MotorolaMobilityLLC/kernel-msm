@@ -1644,6 +1644,11 @@ static int cs47l35_codec_remove(struct snd_soc_codec *codec)
 
 	cs47l35->core.madera->dapm = NULL;
 
+#ifdef CONFIG_SND_SOC_OPALUM
+	if (cs47l35->ospl2xx_wq)
+		destroy_workqueue(cs47l35->ospl2xx_wq);
+#endif
+
 	return 0;
 }
 
