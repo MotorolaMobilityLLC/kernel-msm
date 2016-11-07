@@ -612,8 +612,8 @@
 /{
 	mot_albusbatterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <100>;
-		df-serialnum = "SNN5966";
-		#include "batterydata-ga40-sony.dtsi"
+		df-serialnum = "SNN5983A";
+		#include "batterydata-hz40-lg.dtsi"
 	};
 };
 
