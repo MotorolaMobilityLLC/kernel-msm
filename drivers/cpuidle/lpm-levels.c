@@ -1052,10 +1052,12 @@ static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 	if (need_resched())
 		goto exit;
 
-	level = &cluster->parent->levels[cluster->parent->last_level];
-	if ((lpm_level_debug_mask & MSM_LPM_LVL_DBG_IDLE_CLK) &&
-	    !strcmp(level->level_name, "system-cci-pc"))
-		clock_debug_print_enabled();
+	if ((cluster->parent != NULL) {
+	    level = &cluster->parent->levels[cluster->parent->last_level];
+		if ((lpm_level_debug_mask & MSM_LPM_LVL_DBG_IDLE_CLK) &&
+					!strcmp(level->level_name, "system-cci-pc"))
+		    clock_debug_print_enabled();
+	}
 
 	if (!use_psci) {
 		if (idx > 0)
