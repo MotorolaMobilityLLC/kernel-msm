@@ -2055,7 +2055,7 @@ static struct smb_irq_info smb2_irqs[] = {
 	},
 	[INPUT_CURRENT_LIMIT_IRQ] = {
 		.name		= "input-current-limiting",
-		.handler	= smblib_handle_debug,
+		.handler	= NULL,
 	},
 	[TEMPERATURE_CHANGE_IRQ] = {
 		.name		= "temperature-change",
