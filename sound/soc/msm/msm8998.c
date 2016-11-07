@@ -90,6 +90,12 @@
 #define CS47L35_SLIM_TX_MAX	6
 
 #define CS35L35_MCLK_RATE	12288000
+#define CS35L35_SCLK_RATE	1536000
+
+static unsigned int msm_slim_rx_ch[CS47L35_SLIM_RX_MAX] = {144, 145, 146, 147,
+						148, 149};
+static unsigned int msm_slim_tx_ch[CS47L35_SLIM_TX_MAX] = {128, 129, 130, 131,
+						132, 133};
 
 enum {
 	SLIM_RX_0 = 0,
@@ -632,6 +638,10 @@ static struct snd_soc_dapm_route cs47l35_audio_paths[] = {
 	{"IN1AR", NULL, "MICBIAS1B"},
 	{"IN2L", NULL, "MICBIAS2B"},
 	{"IN1BR", NULL, "MICBIAS2A"}, /* Headset mic */
+
+	{"AIF1 Playback", NULL, "AMP Capture"},
+	{"AMP Playback", NULL, "OPCLK"},
+	{"AMP Capture", NULL, "OPCLK"},
 };
 
 static int slim_get_sample_rate_val(int sample_rate)
@@ -2944,6 +2954,8 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec,
 		ret = tasha_cdc_mclk_enable(codec, enable, dapm);
 	else if (!strcmp(dev_name(codec->dev), "tavil_codec"))
 		ret = tavil_cdc_mclk_enable(codec, enable);
+	else if (!strcmp(dev_name(codec->dev), "cs47l35-codec"))
+		return 0;
 	else {
 		dev_err(codec->dev, "%s: unknown codec to enable ext clk\n",
 			__func__);
@@ -2986,17 +2998,40 @@ static int msm_mclk_tx_event(struct snd_soc_dapm_widget *w,
 static int msm_mclk_event(struct snd_soc_dapm_widget *w,
 				 struct snd_kcontrol *kcontrol, int event)
 {
+	int ret = 0;
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 
 	pr_debug("%s: event = %d\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		return msm_snd_enable_codec_ext_clk(codec, 1, true);
+		ret = msm_snd_enable_codec_ext_clk(codec, 1, true);
+		if (ret != 0) {
+			pr_err("%s: Ext Clk Error %d\n", __func__, ret);
+			return ret;
+		}
+		ret = snd_soc_codec_set_pll(codec, MADERA_FLL1_REFCLK,
+			MADERA_FLL_SRC_MCLK2,
+			32768, CS47L35_SYSCLK_RATE);
+		if (ret != 0)
+			dev_err(codec->dev, "Failed to set REFCLK %d\n", ret);
+
+		break;
 	case SND_SOC_DAPM_POST_PMD:
-		return msm_snd_enable_codec_ext_clk(codec, 0, true);
+		ret =  msm_snd_enable_codec_ext_clk(codec, 0, true);
+		if (ret != 0) {
+			pr_err("%s: Ext Clk Error %d\n", __func__, ret);
+			return ret;
+		}
+		ret = snd_soc_codec_set_pll(codec, MADERA_FLL1_REFCLK,
+			MADERA_FLL_SRC_MCLK2,
+			32768, CS47L35_SYSCLK_RATE);
+		if (ret != 0)
+			dev_err(codec->dev, "Failed to set REFCLK %d\n", ret);
+
+		break;
 	}
-	return 0;
+	return ret;
 }
 
 static int msm_hifi_ctrl_event(struct snd_soc_dapm_widget *w,
@@ -3950,12 +3985,15 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
 
 	int ret = 0;
+#ifndef CONFIG_SND_SOC_CS47L35
 	u32 rx_ch[SLIM_MAX_RX_PORTS], tx_ch[SLIM_MAX_TX_PORTS];
 	u32 rx_ch_cnt = 0, tx_ch_cnt = 0;
+#endif
 	u32 user_set_tx_ch = 0;
 	u32 rx_ch_count;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+#ifndef CONFIG_SND_SOC_CS47L35
 		ret = snd_soc_dai_get_channel_map(codec_dai,
 					&tx_ch_cnt, tx_ch, &rx_ch_cnt, rx_ch);
 		if (ret < 0) {
@@ -3963,6 +4001,7 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 				__func__, ret);
 			goto err_ch_map;
 		}
+#endif
 		if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_5_RX) {
 			pr_debug("%s: rx_5_ch=%d\n", __func__,
 				  slim_rx_cfg[5].channels);
@@ -3980,8 +4019,13 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 				  slim_rx_cfg[0].channels);
 			rx_ch_count = slim_rx_cfg[0].channels;
 		}
+#ifndef CONFIG_SND_SOC_CS47L35
 		ret = snd_soc_dai_set_channel_map(cpu_dai, 0, 0,
 						  rx_ch_count, rx_ch);
+#else
+		ret = snd_soc_dai_set_channel_map(cpu_dai, 0, 0,
+						  rx_ch_count, msm_slim_rx_ch);
+#endif
 		if (ret < 0) {
 			pr_err("%s: failed to set cpu chan map, err:%d\n",
 				__func__, ret);
@@ -3991,6 +4035,7 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 
 		pr_debug("%s: %s_tx_dai_id_%d_ch=%d\n", __func__,
 			 codec_dai->name, codec_dai->id, user_set_tx_ch);
+#ifndef CONFIG_SND_SOC_CS47L35
 		ret = snd_soc_dai_get_channel_map(codec_dai,
 					 &tx_ch_cnt, tx_ch, &rx_ch_cnt, rx_ch);
 		if (ret < 0) {
@@ -3998,6 +4043,7 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 				__func__, ret);
 			goto err_ch_map;
 		}
+#endif
 		/* For <codec>_tx1 case */
 		if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_0_TX)
 			user_set_tx_ch = slim_tx_cfg[0].channels;
@@ -4007,14 +4053,24 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 		else if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_4_TX)
 			user_set_tx_ch = msm_vi_feed_tx_ch;
 		else
+#ifndef CONFIG_SND_SOC_CS47L35
 			user_set_tx_ch = tx_ch_cnt;
+#else
+			user_set_tx_ch = 1;
+#endif
 
-		pr_debug("%s: msm_slim_0_tx_ch(%d) user_set_tx_ch(%d) tx_ch_cnt(%d), be_id (%d)\n",
+		pr_debug("%s: msm_slim_0_tx_ch(%d) user_set_tx_ch(%d) be_id (%d)\n",
 			 __func__,  slim_tx_cfg[0].channels, user_set_tx_ch,
-			 tx_ch_cnt, dai_link->be_id);
+			 dai_link->be_id);
 
+#ifndef CONFIG_SND_SOC_CS47L35
 		ret = snd_soc_dai_set_channel_map(cpu_dai,
 						  user_set_tx_ch, tx_ch, 0, 0);
+#else
+		ret = snd_soc_dai_set_channel_map(cpu_dai,
+						user_set_tx_ch,
+						msm_slim_tx_ch, 0, 0);
+#endif
 		if (ret < 0)
 			pr_err("%s: failed to set cpu chan map, err:%d\n",
 				__func__, ret);
@@ -6000,15 +6056,10 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 	int ret;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
-	struct snd_soc_dai *codec_dai = rtd->codec_dai;
-	unsigned int rx_ch[CS47L35_SLIM_RX_MAX] = {144, 145, 146, 147, 148,
-							149};
-	unsigned int tx_ch[CS47L35_SLIM_TX_MAX] = {128, 129, 130, 131, 132,
-							133};
 
 	ret = snd_soc_codec_set_pll(codec, MADERA_FLL1_REFCLK,
-			MADERA_FLL_SRC_NONE,
-			0, 0);
+			MADERA_FLL_SRC_MCLK2,
+			32768, CS47L35_SYSCLK_RATE);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set FLL1REFCLK %d\n", ret);
 		return ret;
@@ -6099,18 +6150,47 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
-	ret = snd_soc_dai_set_channel_map(codec_dai, ARRAY_SIZE(tx_ch),
-		tx_ch, ARRAY_SIZE(rx_ch), rx_ch);
-	if (ret != 0) {
-		dev_err(codec->dev, "Failed to setup slimbus ports %d\n", ret);
-		return ret;
-	}
-
 #ifdef CONFIG_SND_SOC_OPALUM
 	ret = ospl2xx_init(rtd);
 	if (ret != 0)
 		pr_err("%s Cannot set Opalum controls %d\n", __func__, ret);
 #endif
+	return 0;
+}
+
+static const struct snd_soc_pcm_stream cs35l35_params = {
+	.formats = SNDRV_PCM_FORMAT_S16_LE,
+	.rate_min = 48000,
+	.rate_max = 48000,
+	.channels_min = 1,
+	.channels_max = 2,
+};
+
+static int cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+	struct snd_soc_dai *aif1_dai = rtd->cpu_dai;
+	struct snd_soc_dai *cs35l35_dai = rtd->codec_dai;
+
+	ret = snd_soc_dai_set_sysclk(aif1_dai, MADERA_CLK_SYSCLK, 0, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
+		return ret;
+	}
+	ret = snd_soc_dai_set_sysclk(cs35l35_dai, 0, CS35L35_SCLK_RATE, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set SCLK %d\n", ret);
+		return ret;
+	}
+	ret = snd_soc_codec_set_sysclk(codec, 0, 0, CS35L35_MCLK_RATE, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set MCLK %d\n", ret);
+		return ret;
+	}
+	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
+	snd_soc_dapm_sync(dapm);
 	return 0;
 }
 
@@ -6285,6 +6365,22 @@ static struct snd_soc_dai_link msm_cs47l35_be_dai_links[] = {
 		.dpcm_capture = 1,
 		.ignore_pmdown_time = 1,
 	},
+	{ /* codec to amp link */
+		.name = "MARLEY-AMP",
+		.stream_name = "MARLEY-AMP Playback",
+		.cpu_name = "cs47l35-codec",
+		.cpu_dai_name = "cs47l35-aif1",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "cs47l35-codec",
+		.codec_dai_name = "cs35l35-pcm",
+		.init = cs35l35_dai_init,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.no_pcm = 1,
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+		.params = &cs35l35_params,
+	}
 };
 
 static struct snd_soc_dai_link msm_tavil_be_dai_links[] = {
@@ -6914,7 +7010,6 @@ struct snd_soc_card snd_soc_card_tavil_msm = {
 
 struct snd_soc_card snd_soc_card_cs47l35_msm = {
 	.name		= "msm8998-cs47l35-snd-card",
-	.late_probe	= msm_snd_card_late_probe,
 };
 
 static int msm_populate_dai_link_component_of_node(
@@ -7651,13 +7746,14 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 			ret);
 		goto err;
 	}
-
+#ifndef CONFIG_SND_SOC_CS47L35
 	ret = snd_soc_of_parse_audio_routing(card, "qcom,audio-routing");
 	if (ret) {
 		dev_err(&pdev->dev, "parse audio routing failed, err:%d\n",
 			ret);
 		goto err;
 	}
+#endif
 
 	match = of_match_node(msm8998_asoc_machine_of_match,
 			pdev->dev.of_node);
