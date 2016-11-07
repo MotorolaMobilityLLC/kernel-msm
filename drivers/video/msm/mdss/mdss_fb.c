@@ -3074,9 +3074,10 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct mdss_fb_file_info *file_info = NULL, *temp_file_info = NULL;
 	struct file *file = info->file;
-	int ret = 0;
+	int blank, ret = 0;
 	bool node_found = false;
 	struct task_struct *task = current->group_leader;
+	struct fb_event event;
 
 	if (!mfd->ref_cnt) {
 		pr_info("try to close unopened fb %d! from pid:%d name:%s\n",
@@ -3142,13 +3143,22 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 		 */
 		mdss_fb_set_backlight(mfd, 0);
 
+		blank = FB_BLANK_POWERDOWN;
+		event.info = info;
+		event.data = &blank;
+
+		fb_notifier_call_chain(FB_EARLY_EVENT_BLANK, &event);
+
 		ret = mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info,
 			mfd->op_enable);
 		if (ret) {
+			fb_notifier_call_chain(FB_R_EARLY_EVENT_BLANK, &event);
 			pr_err("can't turn off fb%d! rc=%d current process=%s pid=%d\n",
 			      mfd->index, ret, task->comm, current->tgid);
 			return ret;
-		}
+		} else
+			fb_notifier_call_chain(FB_EVENT_BLANK, &event);
+
 		if (mfd->fb_ion_handle)
 			mdss_fb_free_fb_ion_memory(mfd);
 
