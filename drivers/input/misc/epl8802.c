@@ -1037,6 +1037,9 @@ void epl_sensor_enable_ps(struct epl_sensor_priv *epld, int enable)
 #endif
 		} else {
 			/*wake_unlock(&ps_lock);*/
+			/*report a invalid value when disable sensor*/
+			input_report_abs(epld->ps_input_dev, ABS_DISTANCE, -1);
+			input_sync(epld->als_input_dev);
 		}
 		epl_sensor_fast_update(epld->client);
 		epl_sensor_update_mode(epld->client);
@@ -2837,7 +2840,7 @@ static int epl_sensor_setup_psensor(struct epl_sensor_priv *epld)
 	epld->ps_input_dev->name = ElanPsensorName[epld->id];
 
 	set_bit(EV_ABS, epld->ps_input_dev->evbit);
-	input_set_abs_params(epld->ps_input_dev, ABS_DISTANCE, 0, 10, 0, 0);
+	input_set_abs_params(epld->ps_input_dev, ABS_DISTANCE, -1, 10, 0, 0);
 	err = input_register_device(epld->ps_input_dev);
 	if (err < 0) {
 		LOG_ERR("could not register ps input device\n");
