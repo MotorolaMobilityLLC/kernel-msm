@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2335,8 +2335,13 @@ do { \
 /* Translation Table Base Control Register: CB_TTBCR */
 #define CB_TTBCR_T0SZ_SHIFT          0
 #define CB_TTBCR_T1SZ_SHIFT         16
+#if defined(CONFIG_IOMMU_LPAE) || defined(CONFIG_IOMMU_AARCH64)
+#define CB_TTBCR_EPD0_SHIFT          7
+#define CB_TTBCR_EPD1_SHIFT         23
+#else
 #define CB_TTBCR_EPD0_SHIFT          4
 #define CB_TTBCR_EPD1_SHIFT          5
+#endif
 #define CB_TTBCR_NSCFG0_SHIFT       14
 #define CB_TTBCR_NSCFG1_SHIFT       30
 #define CB_TTBCR_EAE_SHIFT          31
@@ -2350,7 +2355,7 @@ do { \
 
 /* Translation Table Base Register 0/1: CB_TTBR */
 #if defined(CONFIG_IOMMU_LPAE) || defined(CONFIG_IOMMU_AARCH64)
-#define CB_TTBR0_ADDR_SHIFT         5
+#define CB_TTBR0_ADDR_SHIFT         0
 #define CB_TTBR0_ASID_SHIFT         48
 #define CB_TTBR1_ASID_SHIFT         48
 #else
