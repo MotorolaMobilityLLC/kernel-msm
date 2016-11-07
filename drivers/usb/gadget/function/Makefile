@@ -66,3 +66,5 @@ usb_f_rmnet_bam-y		:= f_rmnet.o u_ctrl_qti.o
 obj-$(CONFIG_USB_F_RMNET_BAM)   += usb_f_rmnet_bam.o
 usb_f_ccid-y			:= f_ccid.o
 obj-$(CONFIG_USB_F_CCID)   	+= usb_f_ccid.o
+usb_f_usbnet-y			:= f_usbnet.o
+obj-$(CONFIG_USB_ANDROID_USBNET) += usb_f_usbnet.o
