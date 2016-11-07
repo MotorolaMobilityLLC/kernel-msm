@@ -1,0 +1,50 @@
+
+qcom,hz40-lg {
+	serialnum = "SNN5983A";
+	/* #2672048_Moto_Albus_3000mAh_averaged_MasterSlave_Nov3rd2016*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,batt-id-kohm = <243>;
+	qcom,battery-beta = <3900>;
+	qcom,battery-type = "HZ40-LG-3000mah";
+	qcom,chg-rslow-comp-c1 = <3629563>;
+	qcom,chg-rslow-comp-c2 = <5754602>;
+	qcom,chg-rs-to-rslow = <1220038>;
+	qcom,chg-rslow-comp-thr = <0xAF>;
+	qcom,checksum = <0xD85E>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+	qcom,fg-profile-data = [
+		 BD 83 32 77
+		 1C 80 59 75
+		 48 83 C1 69
+		 B4 73 84 84
+		 0D 82 6E 9A
+		 71 BD 5B CA
+		 65 0E F6 82
+		 7C 72 14 6C
+		 77 69 36 83
+		 50 79 12 86
+		 5E 81 5C 82
+		 F0 98 FB B7
+		 53 C8 77 14
+		 F7 0B E6 5A
+		 14 70 43 FC
+		 B6 34 6A 46
+		 56 42 00 00
+		 C2 46 D1 39
+		 8E 32 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 41 71 DB 6B
+		 63 76 7A 83
+		 05 7C E8 6B
+		 55 6C DF 73
+		 74 75 78 62
+		 A6 69 C1 AB
+		 27 72 69 29
+		 67 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
