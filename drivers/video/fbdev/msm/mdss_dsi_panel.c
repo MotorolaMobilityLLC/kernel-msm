@@ -1045,9 +1045,15 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	mdss_dsi_panel_apply_display_setting(pdata, pinfo->persist_mode);
 
 	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, false);
-	if (pinfo->disp_on_check_val != pwr_mode)
+	if (pinfo->disp_on_check_val != pwr_mode) {
 		pr_err("%s: Display failure: read = 0x%x, expected = 0x%x\n",
 				__func__, pwr_mode, pinfo->disp_on_check_val);
+
+		if (pdata->panel_info.panel_dead)
+			pr_err("%s: Panel recovery FAILED!!\n", __func__);
+
+		pdata->panel_info.panel_dead = true;
+	}
 
 end:
 	if (!ctrl->ndx)
