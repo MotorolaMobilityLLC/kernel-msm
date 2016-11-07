@@ -561,6 +561,7 @@ static void __reset_context(struct msm_iommu_drvdata *iommu_drvdata, int ctx)
 	SET_TTBCR(base, ctx, 0);
 	SET_TTBR0(base, ctx, 0);
 	SET_TTBR1(base, ctx, 0);
+	SET_TCR2(base, ctx, 0);
 	mb();
 }
 
@@ -646,6 +647,13 @@ static void msm_iommu_setup_ctx(void __iomem *base, unsigned int ctx)
 	} else {
 		BUG(); /*not supported*/
 	}
+
+	/*
+	 * Set EPD1 as 1, If a TLB miss occurs when SMMU_CBn_TTBR1 is used,
+	 * no translation table walk is performed and an L1 Section translation
+	 * fault is returned.
+	 */
+	SET_CB_TTBCR_EPD1(base, ctx, 1);
 
 	SET_CB_TCR2_PA(base, ctx, 1);  /* PASize 36 bit, 64 GB*/
 }
