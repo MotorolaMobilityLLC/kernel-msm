@@ -46,6 +46,9 @@
 #ifdef CONFIG_SND_SOC_FSA8500
 #include "../codecs/fsa8500-core.h"
 #endif
+#ifdef CONFIG_SND_SOC_OPALUM
+#include <sound/ospl2xx.h>
+#endif
 
 #define DRV_NAME "msm8998-asoc-snd"
 
