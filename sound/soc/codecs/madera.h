@@ -185,6 +185,10 @@ struct madera_enum {
 struct cs47l35 {
 	struct madera_priv core;
 	struct madera_fll fll;
+#ifdef CONFIG_SND_SOC_OPALUM
+	struct workqueue_struct *ospl2xx_wq;
+	struct work_struct ospl2xx_config;
+#endif
 };
 
 extern const unsigned int madera_ana_tlv[];
