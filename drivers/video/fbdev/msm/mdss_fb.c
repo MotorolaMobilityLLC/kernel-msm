@@ -1962,6 +1962,7 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 
 	if (mfd->mdp.on_fnc) {
 		struct mdss_panel_info *panel_info = mfd->panel_info;
+		int panel_dead = mfd->panel_info->panel_dead;
 		struct fb_var_screeninfo *var = &mfd->fbi->var;
 
 		ret = mfd->mdp.on_fnc(mfd);
@@ -1971,7 +1972,8 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 		}
 
 		mfd->panel_power_state = MDSS_PANEL_POWER_ON;
-		mfd->panel_info->panel_dead = false;
+		if (panel_dead)
+			mfd->panel_info->panel_dead = false;
 		mutex_lock(&mfd->update.lock);
 		mfd->update.type = NOTIFY_TYPE_UPDATE;
 		mfd->update.is_suspend = 0;
@@ -2127,6 +2129,7 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	ktime_t start, end;
 	s64 actual_time;
+	int panel_dead = mfd->panel_info->panel_dead;
 
 	start = ktime_get();
 	ret = mdss_fb_pan_idle(mfd);
@@ -2167,6 +2170,14 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 	MDSS_XLOG(blank_mode, actual_time);
 	pr_debug("blank_mode: %d and transition time: %lldms\n",
 					blank_mode, actual_time);
+
+	if (blank_mode == FB_BLANK_UNBLANK && !panel_dead &&
+		mfd->panel_info->panel_dead) {
+		pr_err("%s: Panel is dead, attempt recovery\n", __func__);
+		mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info, 1);
+		usleep_range(225 * 1000, 225 * 1000);
+		mdss_fb_blank_sub(FB_BLANK_UNBLANK, info, 1);
+	}
 
 end:
 	mutex_unlock(&mfd->mdss_sysfs_lock);
