@@ -2392,14 +2392,17 @@ static void wcnss_nvbin_dnld(void)
 	unsigned int nv_blob_size = 0;
 	const struct firmware *nv = NULL;
 	struct device *dev = &penv->pdev->dev;
+	const char *nv_file_name = (penv->wcnss_nv_name[0] != 0 ?
+					penv->wcnss_nv_name : NVBIN_FILE);
 
 	down_read(&wcnss_pm_sem);
 
-	ret = request_firmware(&nv, NVBIN_FILE, dev);
+	pr_info("wcnss: NV file name = %s\n", nv_file_name);
+	ret = request_firmware(&nv, nv_file_name, dev);
 
 	if (ret || !nv || !nv->data || !nv->size) {
 		pr_err("wcnss: %s: request_firmware failed for %s (ret = %d)\n",
-			__func__, NVBIN_FILE, ret);
+			__func__, nv_file_name, ret);
 		goto out;
 	}
 
