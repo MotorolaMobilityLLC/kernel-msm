@@ -1098,7 +1098,7 @@
 &blsp2_uart3_hs { /* APBA UART */
 	status = "ok";
 
-	interrupt-map = <0 &intc 0 0 114 0
+	interrupt-map = <0 &intc 0 0 115 0
 		    1 &intc 0 0 239 0
 		    2 &tlmm 82 0>;
 
