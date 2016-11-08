@@ -47,6 +47,25 @@ static void madera_slim_fixup_prop(struct slim_ch *prop)
 	prop->sampleszbits = 16;
 }
 
+#define TX_STREAM_1 128
+#define TX_STREAM_2 132
+#define TX_STREAM_3 131
+
+#define RX_STREAM_1 144
+#define RX_STREAM_2 146
+#define RX_STREAM_3 148
+
+static u32 rx_porth1[2], rx_porth2[2], rx_porth3[2];
+static u32 tx_porth1[3], tx_porth2[2], tx_porth3[1];
+static u16 rx_handles1[] = { RX_STREAM_1, RX_STREAM_1 + 1 };
+static u16 rx_handles2[] = { RX_STREAM_2, RX_STREAM_2 + 1 };
+static u16 rx_handles3[] = { RX_STREAM_3, RX_STREAM_3 + 1 };
+static u16 tx_handles1[] = { TX_STREAM_1, TX_STREAM_1 + 1, TX_STREAM_1 + 2};
+static u16 tx_handles2[] = { TX_STREAM_2, TX_STREAM_2 + 1 };
+static u16 tx_handles3[] = { TX_STREAM_3 };
+static u16 rx_group1, rx_group2, rx_group3;
+static u16 tx_group1, tx_group2, tx_group3;
+
 int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		      struct snd_kcontrol *kcontrol,
 		      int event)
@@ -55,7 +74,36 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 	struct madera_priv *priv = snd_soc_codec_get_drvdata(codec);
 	struct madera *madera = priv->madera;
 	struct slim_ch prop;
-	int ret;
+	int ret, i;
+	u32 *porth;
+	u16 *handles, *group;
+	int chcnt;
+
+	switch (w->shift) {
+	case MADERA_SLIMTX1_ENA_SHIFT:
+		dev_dbg(madera->dev, "TX1\n");
+		porth = tx_porth1;
+		handles = tx_handles1;
+		group = &tx_group1;
+		chcnt = ARRAY_SIZE(tx_porth1);
+		break;
+	case MADERA_SLIMTX5_ENA_SHIFT:
+		dev_dbg(madera->dev, "TX2\n");
+		porth = tx_porth2;
+		handles = tx_handles2;
+		group = &tx_group2;
+		chcnt = ARRAY_SIZE(tx_porth2);
+		break;
+	case MADERA_SLIMTX4_ENA_SHIFT:
+		dev_dbg(codec->dev, "TX3\n");
+		porth = tx_porth3;
+		handles = tx_handles3;
+		group = &tx_group3;
+		chcnt = ARRAY_SIZE(tx_porth3);
+		break;
+	default:
+		return 0;
+	}
 
 	madera_slim_fixup_prop(&prop);
 
@@ -64,24 +112,24 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMU:
 		dev_dbg(madera->dev, "Start slimbus TX\n");
 		ret = slim_define_ch(stashed_slim_dev, &prop,
-				     &priv->tx_channel_handle[w->shift],
-				     1, false, NULL);
+				     handles, chcnt, true, group);
 		if (ret != 0) {
 			dev_err(madera->dev, "slim_define_ch() failed: %d\n",
 				ret);
 			return ret;
 		}
 
-		ret = slim_connect_src(stashed_slim_dev,
-					priv->tx_port_handle[w->shift],
-					priv->tx_channel_handle[w->shift]);
-		if (ret != 0) {
-			dev_err(madera->dev, "src connect fail %d\n", ret);
-			return ret;
+		for (i = 0; i < chcnt; i++) {
+			ret = slim_connect_src(stashed_slim_dev,
+						porth[i], handles[i]);
+			if (ret != 0) {
+				dev_err(madera->dev, "src connect fail %d:%d\n",
+					i, ret);
+				return ret;
+			}
 		}
 
-		ret = slim_control_ch(stashed_slim_dev,
-					priv->tx_channel_handle[w->shift],
+		ret = slim_control_ch(stashed_slim_dev, *group,
 					SLIM_CH_ACTIVATE, true);
 		if (ret != 0) {
 			dev_err(madera->dev, "Failed to activate: %d\n", ret);
@@ -92,8 +140,7 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMD:
 	case SND_SOC_DAPM_PRE_PMD:
 		dev_dbg(madera->dev, "Stop slimbus Tx\n");
-		ret = slim_control_ch(stashed_slim_dev,
-					priv->tx_channel_handle[w->shift],
+		ret = slim_control_ch(stashed_slim_dev, *group,
 					SLIM_CH_REMOVE, true);
 		if (ret != 0)
 			dev_err(madera->dev, "Failed to remove tx: %d\n", ret);
@@ -115,7 +162,36 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	struct madera_priv *priv = snd_soc_codec_get_drvdata(codec);
 	struct madera *madera = priv->madera;
 	struct slim_ch prop;
-	int ret;
+	int ret, i;
+	u32 *porth;
+	u16 *handles, *group;
+	int chcnt;
+
+	switch (w->shift) {
+	case MADERA_SLIMRX1_ENA_SHIFT:
+		dev_dbg(madera->dev, "RX1\n");
+		porth = rx_porth1;
+		handles = rx_handles1;
+		group = &rx_group1;
+		chcnt = ARRAY_SIZE(rx_porth1);
+		break;
+	case MADERA_SLIMRX5_ENA_SHIFT:
+		dev_dbg(madera->dev, "RX2\n");
+		porth = rx_porth2;
+		handles = rx_handles2;
+		group = &rx_group2;
+		chcnt = ARRAY_SIZE(rx_porth2);
+		break;
+	case MADERA_SLIMRX3_ENA_SHIFT:
+		dev_dbg(codec->dev, "RX3\n");
+		porth = rx_porth3;
+		handles = rx_handles3;
+		group = &rx_group3;
+		chcnt = ARRAY_SIZE(rx_porth3);
+		break;
+	default:
+		return 0;
+	}
 
 	madera_slim_fixup_prop(&prop);
 
@@ -124,25 +200,22 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMU:
 		dev_dbg(madera->dev, "Start slimbus RX\n");
 		ret = slim_define_ch(stashed_slim_dev, &prop,
-				     &priv->rx_channel_handle[w->shift],
-				     1, false, NULL);
+				     handles, chcnt, true, group);
 		if (ret != 0) {
 			dev_err(madera->dev, "slim_define_ch() failed: %d\n",
 				ret);
 			return ret;
 		}
 
-		ret = slim_connect_sink(stashed_slim_dev,
-					&priv->rx_port_handle[w->shift],
-					1, priv->rx_channel_handle[w->shift]);
+		ret = slim_connect_sink(stashed_slim_dev, &porth[i], 1,
+					handles[i]);
 		if (ret != 0) {
 			dev_err(madera->dev, "sink connect fail %d\n", ret);
 			return ret;
 		}
 
-		ret = slim_control_ch(stashed_slim_dev,
-				      priv->rx_channel_handle[w->shift],
-				      SLIM_CH_ACTIVATE, true);
+		ret = slim_control_ch(stashed_slim_dev, *group,
+					SLIM_CH_ACTIVATE, true);
 		if (ret != 0) {
 			dev_err(madera->dev, "Failed to activate: %d\n", ret);
 			return ret;
@@ -151,9 +224,9 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 
 	case SND_SOC_DAPM_POST_PMD:
 	case SND_SOC_DAPM_PRE_PMD:
-		ret = slim_control_ch(stashed_slim_dev,
-				      priv->rx_channel_handle[w->shift],
-				      SLIM_CH_REMOVE, true);
+		dev_dbg(madera->dev, "Stop slimbus Rx\n");
+		ret = slim_control_ch(stashed_slim_dev, *group,
+					SLIM_CH_REMOVE, true);
 		if (ret != 0)
 			dev_err(madera->dev, "Failed to remove rx: %d\n", ret);
 
@@ -175,6 +248,10 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 
 	u8 laddr;
 	int i, ret;
+	u32 *tx_porth, *rx_porth;
+	u16 *tx_handles, *rx_handles;
+	int tx_chcnt, rx_chcnt, tx_idx_step, rx_idx_step;
+	int tx_stream_idx, rx_stream_idx;
 
 	if (stashed_slim_dev == NULL) {
 		dev_err(madera->dev, "%s No slim device available\n",
@@ -192,35 +269,68 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		tx_num = MADERA_SLIMBUS_MAX_CHANNELS;
 	priv->tx_chan_map_num = tx_num;
 
-	/* This actually allocates the channel or refcounts it if there... */
-	for (i = 0; i < rx_num; i++) {
-		slim_get_slaveport(laddr, i, &priv->rx_port_handle[i],
-				   SLIM_SINK);
+	switch (dai->id) {
+	case 4: /* cs47l35-slim1 */
+		tx_porth = tx_porth1;
+		tx_handles = tx_handles1;
+		tx_chcnt = ARRAY_SIZE(tx_porth1);
+		tx_idx_step = 8;
+		tx_stream_idx = TX_STREAM_1;
 
-		ret = slim_query_ch(stashed_slim_dev, rx_slot[i],
-				    &priv->rx_channel_handle[i]);
-		if (ret != 0) {
-			dev_err(madera->dev, "slim_alloc_ch() failed: %d\n",
-				ret);
-			return ret;
-		}
+		rx_porth = rx_porth1;
+		rx_handles = rx_handles1;
+		rx_chcnt = ARRAY_SIZE(rx_porth1);
+		rx_idx_step = 0;
+		rx_stream_idx = RX_STREAM_1;
+		break;
+	case 5: /* cs47l35-slim2 */
+		tx_porth = tx_porth2;
+		tx_handles = tx_handles2;
+		tx_chcnt = ARRAY_SIZE(tx_porth2);
+		tx_idx_step = 12;
+		tx_stream_idx = TX_STREAM_2;
 
-		priv->rx_chan_map_slot[i] = rx_slot[i];
+		rx_porth = rx_porth2;
+		rx_handles = rx_handles2;
+		rx_chcnt = ARRAY_SIZE(rx_porth2);
+		rx_idx_step = 4;
+		rx_stream_idx = RX_STREAM_2;
+		break;
+	default:
+		dev_err(madera->dev, "set_channel_map unknown dai->id %d\n",
+			dai->id);
+		return -EINVAL;
 	}
 
-	for (i = 0; i < tx_num; i++) {
-		slim_get_slaveport(laddr, i + MADERA_SLIMBUS_MAX_CHANNELS,
-				   &priv->tx_port_handle[i], SLIM_SRC);
+	/* This actually allocates the channel or refcounts it if there... */
+	for (i = 0; rx_num && i < rx_chcnt; i++) {
+		slim_get_slaveport(laddr, i + rx_idx_step, &rx_porth[i],
+				   SLIM_SINK);
 
-		ret = slim_query_ch(stashed_slim_dev, tx_slot[i],
-				    &priv->tx_channel_handle[i]);
+		ret = slim_query_ch(stashed_slim_dev, rx_stream_idx + i,
+				    &rx_handles[i]);
 		if (ret != 0) {
 			dev_err(madera->dev, "slim_alloc_ch() failed: %d\n",
 				ret);
 			return ret;
 		}
 
-		priv->tx_chan_map_slot[i] = tx_slot[i];
+		priv->rx_chan_map_slot[i] = rx_slot[i] = rx_stream_idx + i;
+	}
+
+	for (i = 0; tx_num && i < tx_chcnt; i++) {
+		slim_get_slaveport(laddr, i + tx_idx_step, &tx_porth[i],
+				   SLIM_SRC);
+
+		ret = slim_query_ch(stashed_slim_dev, tx_stream_idx + i,
+				    &tx_handles[i]);
+		if (ret != 0) {
+			dev_err(madera->dev, "slim_alloc_ch() failed: %d\n",
+				ret);
+			return ret;
+		}
+
+		priv->tx_chan_map_slot[i] = tx_slot[i] = tx_stream_idx + i;
 	}
 
 	return 0;
