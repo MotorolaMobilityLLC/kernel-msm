@@ -869,8 +869,8 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 		return POWER_SUPPLY_STATUS_UNKNOWN;
 	}
 
-	if ((reg & BAT_TCC_REACHED_BIT) && !chip->demo_mode &&
-	    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
+	if ((chip->stepchg_state != STEP_MAX) && (reg & BAT_TCC_REACHED_BIT) &&
+	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
 		return POWER_SUPPLY_STATUS_FULL;
 
 	if ((chip->stepchg_state == STEP_FULL) && !(batt_soc < 100) &&
