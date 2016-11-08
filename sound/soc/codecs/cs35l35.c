@@ -865,6 +865,15 @@ static int cs35l35_codec_probe(struct snd_soc_codec *codec)
 		}
 	}
 
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "SDIN");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "SDOUT");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "SPK");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "VP");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "VPST");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "ISENSE");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "VSENSE");
+	snd_soc_dapm_ignore_suspend(&codec->dapm, "Main AMP");
+
 	return ret;
 }
 
