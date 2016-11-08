@@ -648,6 +648,7 @@ static int cs35l35_codec_set_sysclk(struct snd_soc_codec *codec,
 
 static int cs35l35_codec_probe(struct snd_soc_codec *codec)
 {
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 	struct cs35l35_private *cs35l35 = snd_soc_codec_get_drvdata(codec);
 	struct classh_cfg *classh = &cs35l35->pdata.classh_algo;
 	struct monitor_cfg *monitor_config = &cs35l35->pdata.mon_cfg;
@@ -867,6 +868,23 @@ static int cs35l35_codec_probe(struct snd_soc_codec *codec)
 					CS35L35_MON_FRM_SHIFT);
 		}
 	}
+
+	//snd_soc_dapm_ignore_suspend(&codec->dapm, "SDIN");
+	//snd_soc_dapm_ignore_suspend(&codec->dapm, "SDOUT");
+	//snd_soc_dapm_ignore_suspend(&codec->dapm, "SPK");
+	//snd_soc_dapm_ignore_suspend(&codec->dapm, "VP");
+	//snd_soc_dapm_ignore_suspend(&codec->dapm, "VPST");
+	//snd_soc_dapm_ignore_suspend(&codec->dapm, "ISENSE");
+	//snd_soc_dapm_ignore_suspend(&codec->dapm, "VSENSE");
+	//snd_soc_dapm_ignore_suspend(&codec->dapm, "Main AMP");
+	snd_soc_dapm_ignore_suspend(dapm, "SDIN");
+	snd_soc_dapm_ignore_suspend(dapm, "SDOUT");
+	snd_soc_dapm_ignore_suspend(dapm, "SPK");
+	snd_soc_dapm_ignore_suspend(dapm, "VP");
+	snd_soc_dapm_ignore_suspend(dapm, "VPST");
+	snd_soc_dapm_ignore_suspend(dapm, "ISENSE");
+	snd_soc_dapm_ignore_suspend(dapm, "VSENSE");
+	snd_soc_dapm_ignore_suspend(dapm, "Main AMP");
 
 	return ret;
 }
