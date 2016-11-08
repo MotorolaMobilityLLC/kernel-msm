@@ -132,7 +132,43 @@ drv2624_set_bits(struct drv2624_data *ctrl,
 static int
 drv2624_set_go_bit(struct drv2624_data *ctrl, unsigned char val)
 {
-	return drv2624_reg_write(ctrl, DRV2624_REG_GO, (val & 0x01));
+	int ret = 0;
+	int value = 0;
+	int retry = 10; /* to finish auto-brake*/
+
+	val &= 0x01;
+	ret = drv2624_reg_write(ctrl, DRV2624_REG_GO, val);
+	if (ret >= 0) {
+		if (val == 1) {
+			mdelay(1);
+			value = drv2624_reg_read(ctrl, DRV2624_REG_GO);
+			if (value < 0) {
+				ret = value;
+			} else if (value != 1) {
+				ret = -1;
+				dev_warn(ctrl->dev,
+					 "%s, GO fail, stop action\n", __func__);
+			}
+		} else {
+			while (retry > 0) {
+				value = drv2624_reg_read(ctrl, DRV2624_REG_GO);
+				if (value < 0) {
+					ret = value;
+					break;
+				}
+				if (value == 0)
+					break;
+				mdelay(10);
+				retry--;
+			}
+			if (retry == 0) {
+				dev_err(ctrl->dev,
+					"%s, ERROR: clear GO fail\n", __func__);
+			}
+		}
+	}
+
+	return ret;
 }
 
 static void
