@@ -11,7 +11,7 @@
  */
 
 #include "msm8920-moto-common.dtsi"
-#include "msm8917-camera-sensor-mot-perry.dtsi"
+#include "msm8917-camera-sensor-mot-owens.dtsi"
 #include "dsi-panel-mot-boe-499-720p-video.dtsi"
 
  / {
