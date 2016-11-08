@@ -19,3 +19,11 @@
 / {
 	qcom,board-id = <0x49 0x81B0>;
 };
+
+&spmi_bus {
+	qcom,pmi8950@3 {
+		qcom,leds@d300 {
+			/delete-property/ qcom,self-check-enabled;
+		};
+	};
+};
