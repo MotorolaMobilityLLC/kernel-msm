@@ -998,6 +998,14 @@ static void dev_init_platform_data(struct drv2624_data *ctrl)
 			 "%s, LRA = %d, DriveTime=0x%x\n",
 			 __func__, actuator.mnLRAFreq, DriveTime);
 	}
+	if (ctrl->msPlatData.auto_cal) {
+		drv2624_reg_write(ctrl,
+				  DRV2624_REG_AUTO_CAL_TIME,
+				  ctrl->msPlatData.auto_cal_time);
+		dev_info(ctrl->dev,
+			"%s,auto calibration time = %d\n",
+			  __func__, ctrl->msPlatData.auto_cal_time);
+	}
 }
 
 static irqreturn_t drv2624_irq_handler(int irq, void *dev_id)
@@ -1090,9 +1098,16 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 	}
 
 	pdata->auto_cal = of_property_read_bool(np, "ti,auto_cal");
-	if (pdata->auto_cal)
+	if (pdata->auto_cal) {
 		dev_info(&client->dev, "%s: auto calibration enabled\n", __func__);
-
+		rc = of_property_read_u8(np, "ti,auto_cal_time",
+					 &pdata->auto_cal_time);
+		if (rc) {
+			dev_err(&client->dev, "%s: lra auto_cal_time read failed\n",
+				__func__);
+			pdata->auto_cal_time = 2;
+		}
+	}
 	return pdata;
 }
 #else
