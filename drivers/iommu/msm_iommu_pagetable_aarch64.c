@@ -117,6 +117,8 @@ s32 msm_iommu_pagetable_alloc(struct msm_iommu_pt *pt)
 	if (!pt->fl_table)
 		return -ENOMEM;
 
+	dmac_flush_range(pt->fl_table, pt->fl_table + NUM_PTE);
+
 	return 0;
 }
 
@@ -228,9 +230,12 @@ static u64 *make_next_level_table(s32 redirect, u64 *pte)
 		goto fail;
 	}
 
+	dmac_flush_range(next_level_table, next_level_table + NUM_PTE);
+
 	/* Leave APTable bits 0 to let next level decide access permissions */
 	*pte = (((phys_addr_t)__pa(next_level_table)) &
 			FLSL_BASE_MASK) | FLSL_TYPE_TABLE;
+
 fail:
 	return next_level_table;
 }
