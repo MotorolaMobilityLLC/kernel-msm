@@ -110,6 +110,8 @@
 #define	MINFREQ_SEL_MASK			0x80
 #define	MINFREQ_SEL_SHIFT			0x07
 
+#define	DRV2624_REG_AUTO_CAL_TIME		0x2A
+
 #define	DRV2624_REG_OL_PERIOD_H		0x2e
 
 #define	DRV2624_REG_OL_PERIOD_L		0x2f
@@ -224,6 +226,7 @@ struct drv2624_platform_data {
 	enum loop_type meLoop;
 	struct actuator_data msActuator;
 	bool auto_cal;
+	u8 auto_cal_time;
 };
 
 #define DRV2624_MAGIC	0x2624
