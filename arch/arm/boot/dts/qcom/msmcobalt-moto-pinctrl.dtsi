@@ -310,6 +310,19 @@
 		};
 	};
 
+	uart_console_inactive: uart_console_inactive {
+		mux {
+			pins = "gpio4", "gpio5";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio4", "gpio5";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
 	blsp2_uart6_active: blsp2_uart6_active {
 		mux {
 			pins = "gpio81", "gpio82", "gpio83", "gpio84";
