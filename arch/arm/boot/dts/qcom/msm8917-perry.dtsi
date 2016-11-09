@@ -12,6 +12,7 @@
 
 #include "msm8917-moto-common.dtsi"
 
+#include "dsi-panel-mot-tianma-499-720p-video.dtsi"
 
  / {
 	model = "perry";
@@ -107,6 +108,18 @@
 	regulator-boot-on;
 };
 
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_tianma_499_720p_vid_v1>;
+	vddio_disp-supply = <&pm8917_l6>;
+	vsp_disp-supply = <&lab_regulator>;
+	vsn_disp-supply = <&ibb_regulator>;
+
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
+
+	qcom,platform-reset-gpio = <&tlmm 60 0>;
+};
 
 /* display boost and inverting boost regulators */
 &labibb {
