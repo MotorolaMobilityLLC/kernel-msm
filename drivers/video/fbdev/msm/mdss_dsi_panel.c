@@ -1345,6 +1345,11 @@ static int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		dchdr = (struct dsi_ctrl_hdr *)bp;
 		len -= sizeof(*dchdr);
 		bp += sizeof(*dchdr);
+		if ((dchdr->wait != 0 || i == (cnt - 1)) && dchdr->last == 0) {
+			pr_warn("%s: correct \"last\" flag of DSI cmd 0x%02X of %s\n",
+				__func__, *bp, cmd_key);
+			dchdr->last = 1;
+		}
 		pcmds->cmds[i].dchdr = *dchdr;
 		pcmds->cmds[i].payload = bp;
 		bp += dchdr->dlen;
