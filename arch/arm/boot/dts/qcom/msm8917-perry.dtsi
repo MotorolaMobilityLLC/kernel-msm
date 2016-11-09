@@ -11,6 +11,7 @@
  */
 
 #include "msm8917-moto-common.dtsi"
+#include "msm8917-camera-sensor-mot-perry.dtsi"
 
 #include "dsi-panel-mot-tianma-499-720p-video.dtsi"
 
