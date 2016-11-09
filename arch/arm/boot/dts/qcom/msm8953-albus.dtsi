@@ -196,8 +196,7 @@
 			wlf,micbias1 = <1800 1 1 1 1 0>;
 			wlf,micbias2 = <1800 1 1 1 1 0>;
 
-			wlf,micd-configs = <0 1 0
-					    0x2000 2 1>;
+			wlf,micd-configs = <0 2 0>;
 			wlf,micd-bias-start-time = <8>;
 			wlf,gpsw = <1>;
 			wlf,micd-rate = <6>;
