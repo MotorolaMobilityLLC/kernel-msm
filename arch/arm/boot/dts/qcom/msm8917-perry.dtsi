@@ -54,6 +54,23 @@
 	};
 };
 
+&i2c_4 { /* BLSP1 QUP4 */
+	bosch@18 { /* Accelerometer sensor */
+		compatible = "bosch,bma253";
+		reg = <0x18>;
+		pinctrl-names = "default","sleep";
+		pinctrl-0 = <&bma25x_int1_default &bma25x_int2_default>;
+		pinctrl-1 = <&bma25x_int1_sleep &bma25x_int2_sleep>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <41 0x2001>;
+		vdd-supply = <&pm8917_l10>;
+		vio-supply = <&pm8917_l6>;
+		bosch,init-interval = <200>;
+		bosch,place = <0>;
+		bosch,gpio-int1 = <&tlmm 41 0x2001>;
+		bosch,gpio-int2 = <&tlmm 42 0x2001>;
+	};
+};
 &i2c_2 {
 	sx9310@28 {
 		compatible = "semtech,sx9310";
