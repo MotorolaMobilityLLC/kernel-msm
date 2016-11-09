@@ -269,6 +269,8 @@ static void hw_init(psx93XX_t this)
 
 		write_register(this, SX9310_CPS_CTRL0_REG,
 				this->board->cust_prox_ctrl0);
+		write_register(this, SX9310_CPSRD,
+				this->board->cust_raw_data_channel);
 	} else {
 		LOG_DBG("ERROR! platform data 0x%p\n", pDevice->hw);
 		/* Force to touched if error */
@@ -464,7 +466,7 @@ static void sx9310_platform_data_of_init(struct i2c_client *client,
 				  psx9310_platform_data_t pplatData)
 {
 	struct device_node *np = client->dev.of_node;
-	u32 scan_period, sensor_en;
+	u32 scan_period, sensor_en, raw_data_channel;
 	int ret;
 
 	client->irq = of_get_gpio(np, 0);
@@ -478,7 +480,12 @@ static void sx9310_platform_data_of_init(struct i2c_client *client,
 	if (ret)
 		scan_period = DUMMY_SCAN_PERIOD;
 
+	ret = of_property_read_u32(np, "cap,raw_data_channel", &raw_data_channel);
+	if (ret)
+		raw_data_channel = DUMMY_RAW_DATA_CHANNEL;
+
 	pplatData->cust_prox_ctrl0 = (scan_period << 4) | sensor_en;
+	pplatData->cust_raw_data_channel = raw_data_channel;
 
 	pplatData->get_is_nirq_low = sx9310_get_nirq_state;
 	pplatData->init_platform_hw = NULL;
@@ -530,7 +537,7 @@ static ssize_t capsense_enable_show(struct class *class,
 					struct class_attribute *attr,
 					char *buf)
 {
-	return snprintf(buf, 8, "%d\n", programming_done);
+	return snprintf(buf, 8, "%d\n", mEnabled);
 }
 
 static ssize_t capsense_enable_store(struct class *class,
@@ -551,11 +558,14 @@ static ssize_t capsense_enable_store(struct class *class,
 		LOG_DBG("enable cap sensor\n");
 		initialize(this);
 
-		input_report_abs(input, ABS_DISTANCE, last_val);
+		input_report_abs(input, ABS_DISTANCE, 0);
 		input_sync(input);
 		mEnabled = 1;
 	} else if (!strncmp(buf, "0", 1)) {
 		LOG_DBG("disable cap sensor\n");
+
+		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
+		write_register(this, SX9310_IRQ_ENABLE_REG, 0x00);
 
 		input_report_abs(input, ABS_DISTANCE, -1);
 		input_sync(input);
@@ -683,6 +693,10 @@ static ssize_t reg_dump_show(struct class *class,
 	read_register(this, SX9310_SAR_CTRL2_REG, &reg_value);
 	p += snprintf(p, PAGE_SIZE, "SCTRL2(0x%02x)=0x%02x\n",
 			SX9310_SAR_CTRL2_REG, reg_value);
+
+	read_register(this, SX9310_CPSRD, &reg_value);
+	p += snprintf(p, PAGE_SIZE, "CPSD(0x%02x)=0x%02x\n",
+			SX9310_CPSRD, reg_value);
 
 	reg_value = gpio_get_value(this->board->irq_gpio);
 	p += snprintf(p, PAGE_SIZE, "NIRQ=%d\n", reg_value);
@@ -881,6 +895,11 @@ static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *i
 				goto err_svdd_error;
 		}
 		sx93XX_init(this);
+
+		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
+		write_register(this, SX9310_IRQ_ENABLE_REG, 0x00);
+		mEnabled = 0;
+
 		return  0;
 	}
 	return -ENOMEM;
