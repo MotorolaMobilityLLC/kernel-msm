@@ -12,6 +12,7 @@
 
 #include "msm8937-moto-common.dtsi"
 #include "dsi-panel-mot-tianma-521-1080p-video.dtsi"
+#include "msm8937-camera-sensor-mot-montana.dtsi"
 
  / {
 	model = "montana";
