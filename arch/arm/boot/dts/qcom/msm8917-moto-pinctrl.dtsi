@@ -345,4 +345,56 @@
 		};
 	};
 
+	bma25x_int1 {
+		bma25x_int1_default: default {
+			mux {
+				pins = "gpio41";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio41";
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+
+		bma25x_int1_sleep: sleep {
+			mux {
+				pins = "gpio41";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio41";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+
+	bma25x_int2 {
+		bma25x_int2_default: default {
+			mux {
+				pins = "gpio42";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio42";
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+
+		bma25x_int2_sleep: sleep {
+			mux {
+				pins = "gpio42";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio42";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+
 };
