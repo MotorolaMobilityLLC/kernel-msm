@@ -90,6 +90,39 @@ struct stml0xx_algo_request_t stml0xx_g_algo_request[STML0XX_NUM_ALGOS];
 unsigned char *stml0xx_boot_cmdbuff;
 unsigned char *stml0xx_boot_readbuff;
 
+/* creat stml0xx debug node */
+unsigned char dump_buf[SPI_MSG_SIZE];
+struct kobject *stml0xx_kobj_dev;
+static ssize_t stml0xx_debug_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	ssize_t len = 0;
+	int i;
+	/*printk("dump_buf:%s\n", dump_buf);*/
+	if (strcmp(dump_buf, "ok!") == 0) {
+		len = snprintf(buf, PAGE_SIZE, "stml0xx no fail");
+		return len;
+	}
+	for (i = 0; i < SPI_MSG_SIZE; i++)
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"0x%02X ", dump_buf[i]);
+
+	return len;
+}
+
+static DEVICE_ATTR(stml0xx_debug, S_IRUSR | S_IRUGO, stml0xx_debug_show, NULL);
+
+static struct attribute *stml0xx_debug_attr_list[] = {
+	&dev_attr_stml0xx_debug.attr,
+	NULL,
+};
+
+static struct attribute_group stml0xx_attr_group = {
+	.attrs = stml0xx_debug_attr_list,
+};
+/* creat stml0xx debug node end */
+
 /* per algo config, request, and event registers */
 const struct stml0xx_algo_info_t stml0xx_algo_info[STML0XX_NUM_ALGOS] = {
 	{M_ALGO_MODALITY, 0, ALGO_REQ_MODALITY,
@@ -1025,6 +1058,13 @@ static int stml0xx_probe(struct spi_device *spi)
 	mutex_unlock(&ps_stml0xx->lock);
 
 	dev_dbg(&spi->dev, "probed finished");
+
+	/* creat stml0xx debug node */
+	memcpy(dump_buf, "ok!", strlen("ok!"));
+	stml0xx_kobj_dev = kobject_create_and_add("stml0xx", kernel_kobj);
+	err = sysfs_create_group(stml0xx_kobj_dev, &stml0xx_attr_group);
+	if (err != 0)
+		pr_err("creat stml0xx koj err!\n");
 
 	return 0;
 err9:
