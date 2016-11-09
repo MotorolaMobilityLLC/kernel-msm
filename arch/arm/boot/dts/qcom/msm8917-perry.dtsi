@@ -70,6 +70,31 @@
 		bosch,gpio-int1 = <&tlmm 41 0x2001>;
 		bosch,gpio-int2 = <&tlmm 42 0x2001>;
 	};
+
+	elan@49 {
+		compatible = "epl,epl8802_alsps";
+		reg = <0x49>;
+		epl,irq-gpio = <&tlmm 43 0x00>;
+		pinctrl-names = "epl8802_default", "epl8802_suspend";
+		pinctrl-0 = <&epl8802_active>;
+		pinctrl-1 = <&epl8802_suspend>;
+		vdd-supply = <&pm8917_l10>;
+		vio-supply = <&pm8917_l6>;
+		epl,wait_time = <0x09>;
+		epl,dt_st_gain = <5>;
+		epl,als_c_gain = <480>;
+		epl,ps_eg_sign = <1>;
+		epl,ps_intt = <1>;
+		epl,ps_gain = <0x01>;
+		epl,ps_cycle = <0x04>;
+		epl,ps_ir_drive = <0x01>;
+		epl,ps_low_threshold = <1800>;
+		epl,ps_high_threshold = <2300>;
+		epl,ps_max_ct = <2300>;
+		epl,ps_dyn_l_offset = <280>;
+		epl,ps_dyn_h_offset = <372>;
+		epl,ps_rs = <0>;
+	};
 };
 &i2c_2 {
 	sx9310@28 {
