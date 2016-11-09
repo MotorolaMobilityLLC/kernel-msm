@@ -95,6 +95,20 @@
 		epl,ps_dyn_h_offset = <372>;
 		epl,ps_rs = <0>;
 	};
+
+	akm@0c {
+		compatible = "ak,ak09911";
+		reg = <0x0c>;
+		pinctrl-names = "default","sleep";
+		pinctrl-0 = <&akm_default>;
+		pinctrl-1 = <&akm_sleep>;
+		vdd-supply = <&pm8917_l10>;
+		vio-supply = <&pm8917_l6>;
+		akm,layout = <0x3>;
+		akm,gpio_rstn = <&tlmm 44 0x0>;
+		akm,auto-report;
+		akm,use-hrtimer;
+	};
 };
 &i2c_2 {
 	sx9310@28 {
