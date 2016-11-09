@@ -68,6 +68,7 @@ irqreturn_t stml0xx_isr(int irq, void *dev)
 	return IRQ_HANDLED;
 }
 
+extern unsigned char dump_buf[SPI_MSG_SIZE];
 /**
  * stml0xx_process_stream_sensor_queue() - Process sensor data from the
  *		streaming sensor data queue
@@ -124,6 +125,7 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 
 	dev_dbg(&stml0xx_misc_data->spi->dev, "Samples in Queue: %d",
 			num_samples);
+
 #if ENABLE_VERBOSE_LOGGING
 
 	for (i = 0; i < STREAM_SENSOR_QUEUE_DEPTH *
@@ -268,11 +270,20 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 			break;
 		default:
 			dev_err(&stml0xx_misc_data->spi->dev,
-				"Unknown sensor type [%d]", sensor_type);
+				"Unknown sensor type [%d], remove_idx:%d, insert_idx:%d",
+				sensor_type, remove_idx, insert_idx);
 			break;
 		}
 
 		remove_idx = (remove_idx + 1) % STREAM_SENSOR_QUEUE_DEPTH;
+		/* if sample num > QUEUE_DEPTH
+		dump queue to /sys/kernel/stml0xx/stml0xx_debug */
+		if (i >= STREAM_SENSOR_QUEUE_DEPTH - 1) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"idx out of order, dump to /sys/kernel/stml0xx/stml0xx_debug");
+			memcpy(dump_buf, buf, SPI_MSG_SIZE);
+			break;
+		}
 	}
 }
 
