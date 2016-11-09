@@ -422,4 +422,30 @@
 			};
 		};
 	};
+
+	akm_int {
+		akm_default: default {
+			mux {
+				pins = "gpio44";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio44";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		akm_sleep: sleep {
+			mux {
+				pins = "gpio44";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio44";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+	};
 };
