@@ -1,0 +1,126 @@
+
+compatible = "qcom,mdss-dsi-panel";
+qcom,mdss-dsi-panel-name = "mipi_mot_video_tianma_720p_499";
+qcom,mdss-dsi-panel-supplier = "tianma";
+qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+qcom,mdss-dsi-panel-type = "dsi_video_mode";
+qcom,mdss-dsi-panel-destination = "display_1";
+qcom,mdss-dsi-panel-framerate = <60>;
+qcom,mdss-dsi-virtual-channel-id = <0>;
+qcom,mdss-dsi-stream = <0>;
+qcom,mdss-dsi-panel-width = <720>;
+qcom,mdss-dsi-panel-height = <1280>;
+qcom,mdss-pan-physical-width-dimension = <62>;
+qcom,mdss-pan-physical-height-dimension = <110>;
+
+qcom,mdss-dsi-panel-clockrate = <418798080>;
+qcom,mdss-dsi-h-front-porch = <52>;
+qcom,mdss-dsi-h-back-porch = <84>;
+qcom,mdss-dsi-h-pulse-width = <20>;
+qcom,mdss-dsi-h-sync-skew = <0>;
+qcom,mdss-dsi-v-back-porch = <20>;
+qcom,mdss-dsi-v-front-porch = <20>;
+qcom,mdss-dsi-v-pulse-width = <8>;
+qcom,mdss-dsi-h-left-border = <0>;
+qcom,mdss-dsi-h-right-border = <0>;
+qcom,mdss-dsi-v-top-border = <0>;
+qcom,mdss-dsi-v-bottom-border = <0>;
+qcom,mdss-dsi-bpp = <24>;
+qcom,mdss-dsi-underflow-color = <0xff>;
+qcom,mdss-dsi-border-color = <0>;
+
+qcom,mdss-dsi-reset-sequence = <1 1>, <0 10>, <1 20>;
+qcom,mdss-dsi-dis-reset-sequence = <1 10>, <0 0>;
+
+qcom,mdss-dsi-on-command = [
+	39 00 00 00 00 00 04 FF 98 81 00
+	39 00 00 00 00 00 03 51 00 00
+	15 00 00 00 00 00 02 53 2C
+	15 00 00 00 00 00 02 55 01
+	15 00 00 00 00 00 02 68 06
+	05 01 00 00 78 00 01 11
+	05 01 00 00 14 00 01 29];		/* Display on */
+
+qcom,mdss-dsi-off-command = [
+	05 01 00 00 14 00 01 28
+	05 01 00 00 78 00 01 10];
+
+qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
+
+qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-type = "lcd-dcs-only";
+qcom,mdss-dsi-bl-hbm-on-max = <4095>;
+qcom,mdss-dsi-bl-hbm-off-max = <3316>;
+
+qcom,mdss-dsi-h-sync-pulse = <1>;
+qcom,mdss-dsi-traffic-mode = "burst_mode";
+qcom,mdss-dsi-bllp-eof-power-mode;
+qcom,mdss-dsi-bllp-power-mode;
+qcom,mdss-dsi-lp11-init;
+qcom,mdss-dsi-tx-eot-append;
+qcom,mdss-dsi-dma-trigger = "trigger_sw";
+qcom,mdss-dsi-mdp-trigger = "none";
+qcom,mdss-dsi-lane-0-state;
+qcom,mdss-dsi-lane-1-state;
+qcom,mdss-dsi-lane-2-state;
+qcom,mdss-dsi-lane-3-state;
+
+qcom,mdss-dsi-panel-timings = [7B 1A 10 00 3E 40 16 1E 15 03 04 00];
+qcom,mdss-dsi-t-clk-post = <0x04>;
+qcom,mdss-dsi-t-clk-pre = <0x26>;
+
+qcom,mdss-dsi-bl-min-level = <16>;
+qcom,mdss-dsi-bl-max-level = <4095>;
+qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+qcom,bklt-dcs-12bits-enabled;
+
+qcom,cont-splash-enabled;
+qcom,esd-check-enabled;
+qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-panel-status-value = <0x9C>;
+
+qcom,panel-supply-entries {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	qcom,panel-supply-entry@0 {
+		qcom,supply-name = "vddio_disp";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <0>;
+	};
+	qcom,panel-supply-entry@1 {
+		qcom,supply-name = "vsp_disp";
+		qcom,supply-min-voltage = <5000000>;
+		qcom,supply-max-voltage = <5000000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <2>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <2>;
+	};
+	qcom,panel-supply-entry@2 {
+		qcom,supply-name = "vsn_disp";
+		qcom,supply-min-voltage = <5000000>;
+		qcom,supply-max-voltage = <5000000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <10>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <2>;
+	};
+};
