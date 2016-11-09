@@ -110,6 +110,7 @@
  */
 #define DUMMY_USE_CHANNEL	0x1
 #define DUMMY_SCAN_PERIOD	0x2
+#define DUMMY_RAW_DATA_CHANNEL	0x00
 
 /**************************************
 * define platform data
@@ -279,6 +280,7 @@ struct sx9310_platform_data {
 	unsigned irq_gpio;
 	/* used for custom setting for channel and scan period */
 	u32 cust_prox_ctrl0;
+	u32 cust_raw_data_channel;
 	pbuttonInformation_t pbuttonInformation;
 
 	int (*get_is_nirq_low)(unsigned irq_gpio);
