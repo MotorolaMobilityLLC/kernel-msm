@@ -28,8 +28,7 @@
 
 	spi@7af7000 {
 		marley@0 {
-			wlf,micd-configs = <0 3 0
-					    0x2000 2 1>;
+			wlf,micd-configs = <0 3 0>;
 		};
 	};
 };
