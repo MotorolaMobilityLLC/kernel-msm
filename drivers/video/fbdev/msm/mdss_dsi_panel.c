@@ -1024,6 +1024,21 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
+void mdss_dsi_panel_forced_tx_mode_set(struct mdss_panel_info *pinfo,
+					bool enable)
+{
+	if (!pinfo->forced_tx_mode_ftr_enabled)
+		return;
+
+	pinfo->forced_tx_mode_state = (enable ?
+				pinfo->forced_tx_mode_ftr_enabled : 0);
+}
+
+u32 mdss_dsi_panel_forced_tx_mode_get(struct mdss_panel_info *pinfo)
+{
+	return pinfo->forced_tx_mode_state;
+}
+
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -1104,6 +1119,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	panel_notify(PANEL_EVENT_DISPLAY_ON, pinfo);
 
 end:
+	if (pinfo->forced_tx_mode_ftr_enabled)
+		mdss_dsi_panel_forced_tx_mode_set(pinfo, true);
+
 	if (dropbox_issue != NULL) {
 		dropbox_count++;
 		mdss_dropbox_report_event(dropbox_issue, dropbox_count);
@@ -1184,6 +1202,9 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	}
 
 	panel_notify(PANEL_EVENT_PRE_DISPLAY_OFF, pinfo);
+
+	if (pinfo->forced_tx_mode_ftr_enabled)
+		mdss_dsi_panel_forced_tx_mode_set(pinfo, false);
 
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds, CMD_REQ_COMMIT);
@@ -1377,6 +1398,21 @@ exit_free:
 	return -ENOMEM;
 }
 
+void mdss_dsi_panel_parse_forced_tx_mode(struct device_node *np,
+					struct mdss_panel_info *pinfo)
+{
+	const char *data;
+
+	pinfo->forced_tx_mode_ftr_enabled = 0;
+	pinfo->forced_tx_mode_state = 0;
+	data = of_get_property(np, "qcom,mdss-dsi-force-tx-mode", NULL);
+	if (data) {
+		if (!strcmp(data, "dsi_hs_mode"))
+			pinfo->forced_tx_mode_ftr_enabled = CMD_REQ_HS_MODE;
+		else
+			pinfo->forced_tx_mode_ftr_enabled = CMD_REQ_LP_MODE;
+	}
+}
 
 int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 				char *dst_format)
@@ -2422,6 +2458,8 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 				sizeof(pinfo->panel_supplier)) {
 		pr_err("%s: Panel supplier name too large\n", __func__);
 	}
+
+	mdss_dsi_panel_parse_forced_tx_mode(np, pinfo);
 
 	return 0;
 }
