@@ -397,4 +397,29 @@
 		};
 	};
 
+	epl8802_int {
+		epl8802_active: active {
+			mux {
+				pins = "gpio43";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio43";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		epl8802_suspend: suspend {
+			mux {
+				pins = "gpio43";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio43";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+	};
 };
