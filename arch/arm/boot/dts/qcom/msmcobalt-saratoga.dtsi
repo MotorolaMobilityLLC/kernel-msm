@@ -109,6 +109,31 @@
 	};
 };
 
+&i2c_7 {
+	fsa8500@23 {
+		compatible = "fairchild,fsa8500";
+		reg = <0x23>;
+		gpios = <&tlmm 63 0x0>;
+		fsa8500-init-regs = <0x0c 0x41>,
+				    <0x0f 0xf9>,
+				    <0x11 0x84>,
+				    <0x13 0xbf>,
+				    <0x14 0x69>;
+
+		fsa8500-keymap = <0x4000000 0xe2>, /* SND_JACK_BTN_0 - KEY_MEDIA */
+				 <0x0400000 0x246>, /* SND_JACK_BTN_4 - KEY_VOICECOMMAND */
+				 <0x0200000 0x73>, /* SND_JACK_BTN_5 - KEY_VOLUMEUP */
+				 <0x0100000 0x72>; /* SND_JACK_BTN_6 - KEY_VOLUMEDOWN */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&fsa8500_hs_det_default>;
+		fsa8500-lint-disabled;
+		/* If FSA controls L22 it breaks all devices on the same bus
+		that try to start earlier. L22 will be turned on in BL eventually */
+		/* hs_det_vdd-supply = <&pmcobalt_l22>; */
+	};
+};
+
 &i2c_8 {
 	synaptics_dsx_i2c@20 {
 		interrupts = <40 0>;
