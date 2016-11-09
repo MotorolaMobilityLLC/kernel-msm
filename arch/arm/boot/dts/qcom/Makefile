@@ -357,7 +357,8 @@ ifeq ($(CONFIG_CEDRIC_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8937) += msm8937-cedric-p1.dtb \
 	msm8937-cedric-p2.dtb \
 	msm8937-cedric-p3.dtb \
-	msm8937-cedric-p4.dtb
+	msm8937-cedric-p4.dtb \
+	msm8937-cedric-p5.dtb
 endif
 
 ifeq ($(CONFIG_MONTANA_DTB),y)
