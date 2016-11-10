@@ -4003,6 +4003,7 @@ err_ch_map:
 	return ret;
 }
 
+#ifndef CONFIG_SND_SOC_CS47L35
 static int msm_snd_cpe_hw_params(struct snd_pcm_substream *substream,
 				 struct snd_pcm_hw_params *params)
 {
@@ -4047,6 +4048,7 @@ err_ch_map:
 err_stream_type:
 	return ret;
 }
+#endif
 
 static int msm_slimbus_2_hw_params(struct snd_pcm_substream *substream,
 					  struct snd_pcm_hw_params *params)
@@ -4878,9 +4880,11 @@ static struct snd_soc_ops msm_be_ops = {
 	.hw_params = msm_snd_hw_params,
 };
 
+#ifndef CONFIG_SND_SOC_CS47L35
 static struct snd_soc_ops msm_cpe_ops = {
 	.hw_params = msm_snd_cpe_hw_params,
 };
+#endif
 
 static struct snd_soc_ops msm_slimbus_2_be_ops = {
 	.hw_params = msm_slimbus_2_hw_params,
@@ -5507,21 +5511,6 @@ static struct snd_soc_dai_link msm_cs47l35_fe_dai_links[] = {
 		.ignore_suspend = 1,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm_slimbus_2_be_ops,
-	},
-	/* CPE LSM direct dai-link */
-	{
-		.name = "CPE Listen service",
-		.stream_name = "CPE Listen Audio Service",
-		.cpu_dai_name = "msm-dai-slim",
-		.platform_name = "msm-cpe-lsm",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		.codec_dai_name = "cs47l35-slim1",
-		.codec_name = "cs47l35-codec",
-		.ops = &msm_cpe_ops,
 	},
 	{
 		.name = "SLIMBUS_6 Hostless Playback",
