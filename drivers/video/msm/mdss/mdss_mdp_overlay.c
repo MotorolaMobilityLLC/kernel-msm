@@ -2729,26 +2729,33 @@ int mdss_mdp_overlay_vsync_ctrl(struct msm_fb_data_type *mfd, int en)
 
 	if (!ctl)
 		return -ENODEV;
-	if (!ctl->ops.add_vsync_handler || !ctl->ops.remove_vsync_handler)
-		return -EOPNOTSUPP;
+
+	mutex_lock(&mdp5_data->ov_lock);
+	mutex_lock(&ctl->offlock);
+	if (!ctl->ops.add_vsync_handler || !ctl->ops.remove_vsync_handler) {
+		rc = -EOPNOTSUPP;
+		goto exit;
+	}
 	if (!ctl->panel_data->panel_info.cont_splash_enabled
 			&& !mdss_mdp_ctl_is_power_on(ctl)) {
 		pr_debug("fb%d vsync pending first update en=%d\n",
 				mfd->index, en);
-		return -EPERM;
+		rc = -EPERM;
+		goto exit;
 	}
 
 	pr_debug("fb%d vsync en=%d\n", mfd->index, en);
 
-	mutex_lock(&mdp5_data->ov_lock);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 	if (en)
 		rc = ctl->ops.add_vsync_handler(ctl, &ctl->vsync_handler);
 	else
 		rc = ctl->ops.remove_vsync_handler(ctl, &ctl->vsync_handler);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
-	mutex_unlock(&mdp5_data->ov_lock);
 
+exit:
+	mutex_unlock(&ctl->offlock);
+	mutex_unlock(&mdp5_data->ov_lock);
 	return rc;
 }
 
