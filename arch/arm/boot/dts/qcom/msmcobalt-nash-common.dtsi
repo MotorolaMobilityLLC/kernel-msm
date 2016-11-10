@@ -1,0 +1,115 @@
+/* Copyright (c) 2016, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msmcobalt-moto-common.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
+
+/ {
+	model = "Nash";
+	compatible = "qcom,msmcobalt-nash", "qcom,msmcobalt-moto",
+			"qcom,msmcobalt";
+};
+
+&i2c_7 {
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		reg = <0x75>;
+		ti,config = <0x0C>;
+		ti,vout-floor = <0x0D>;
+		ti,vout-roof = <0x19>;
+		ti,ilim = <0x0F>;
+	};
+};
+
+&spi_10 { /* BLSP2 QUP4 */
+	status = "ok";
+	cs47l35: cs47l35@0 {
+		compatible = "cirrus,cs47l35";
+		spi-max-frequency = <26000000>;
+		reg = <0x0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <54 0>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		reset-gpios = <&tlmm 68 0>;
+		cirrus,micbias1 = <1800 1 1 1 1 1 1 0>;
+		cirrus,micbias2 = <1800 1 1 1 1 1 1 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&marley_irq_default &marley_reset_default>;
+
+		AVDD-supply = <&pmcobalt_l6>;
+		DBVDD1-supply = <&pmcobalt_l6>;
+		DBVDD2-supply = <&pmcobalt_l6>;
+		CPVDD-supply = <&pmcobalt_l6>;
+		CPVDD1-supply = <&pmcobalt_l6>;
+		CPVDD2-supply = <&pmcobalt_l6>;
+		DCVDD-supply = <&pmcobalt_l6>;
+		SPKVDD-supply = <&dummy_vreg>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		cirrus,gpio-defaults = <
+			0x00002000 0x0000f000 /* AIF3TXDAT / GPIO1  */
+			0x00002000 0x0000f000 /* AIF3BCLK  / GPIO2  */
+			0x00000040 0x00000000 /* AIF3RXDAT / GPIO3  */
+			0x00002000 0x0000f000 /* AIF3LRCLK / GPIO4  */
+			0xffffffff 0xffffffff /* GPIO5 */
+			0xffffffff 0xffffffff /* GPIO6 */
+			0x00002000 0x0000f000 /* MIF1SDA   / GPIO7  */
+			0x00002000 0x0000f000 /* AIF1RXDAT / GPIO8  */
+			0x00002000 0x0000f000 /* AIF1BCLK  / GPIO9  */
+			0x00002000 0x0000f000 /* AIF1TXDAT / GPIO10 */
+			0x00002000 0x0000f000 /* AIF1LRCLK / GPIO11 */
+			0x00002000 0x0000f000 /* AIF2TXDAT / GPIO12 */
+			0x00002000 0x0000f000 /* AIF2BCLK  / GPIO13 */
+			0x00002000 0x0000f000 /* AIF2RXDAT / GPIO14 */
+			0x00002000 0x0000f000 /* AIF2LRCLK / GPIO15 */
+			0x00002000 0x0000f000 /* MIF1SCLK  / GPIO16 */
+			>;
+
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			adsp@0ffe00 {
+				reg = <0x0ffe00>;
+				firmware {
+					ultrasound {
+						wlf,wmfw-file = "ultrasound";
+						wlf,bin-file = "ultrasound";
+						wlf,compr-caps = <1 1 4 1 96000>;
+					};
+				};
+			};
+			adsp@17fe00 {
+				reg = <0x17fe00>;
+				firmware {
+					frontend {
+						wlf,wmfw-file = "aov-frontend";
+						wlf,bin-file = "aov-vrgain";
+						wlf,compr-caps = <1 1 4 1 16000>;
+					};
+				};
+			};
+			adsp@1ffe00 {
+				reg = <0x1ffe00>;
+				firmware {
+					aov {
+						wlf,wmfw-file = "aov-control";
+						wlf,bin-file = "aov-model";
+						wlf,compr-caps = <1 1 4 1 16000>;
+					};
+				};
+			};
+		};
+	};
+};
