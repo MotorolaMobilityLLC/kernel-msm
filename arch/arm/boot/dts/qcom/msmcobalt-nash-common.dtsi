@@ -41,7 +41,9 @@
 		#interrupt-cells = <2>;
 		reset-gpios = <&tlmm 68 0>;
 		cirrus,micbias1 = <1800 1 1 1 1 1 1 0>;
-		cirrus,micbias2 = <1800 1 1 1 1 1 1 0>;
+		cirrus,micbias2 = <2600 1 1 1 1 1 1 0>;
+		cirrus,micbias3 = <2600 1 1 1 1 1 1 0>;
+		cirrus,micbias4 = <2600 1 1 1 1 1 1 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&marley_irq_default &marley_reset_default>;
 
@@ -71,8 +73,8 @@
 			0x00002000 0x0000f000 /* AIF1LRCLK / GPIO11 */
 			0x00002000 0x0000f000 /* AIF2TXDAT / GPIO12 */
 			0x00002000 0x0000f000 /* AIF2BCLK  / GPIO13 */
-			0x00002000 0x0000f000 /* AIF2RXDAT / GPIO14 */
-			0x00002000 0x0000f000 /* AIF2LRCLK / GPIO15 */
+			0xffffffff 0xffffffff /* AIF2RXDAT / GPIO14 */
+			0xffffffff 0xffffffff /* AIF2LRCLK / GPIO15 */
 			0x00002000 0x0000f000 /* MIF1SCLK  / GPIO16 */
 			>;
 
@@ -110,5 +112,28 @@
 				};
 			};
 		};
+		cirrus,accdet {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			acc@1 {
+				reg = <1>;
+
+				cirrus,micd-configs = <
+					0 0 3 0 0
+					1 0 3 1 0
+				>;
+				cirrus,micd-bias-start-time = <8>;
+				cirrus,micd-pol-gpios = <&cs47l35 14 0>;
+				cirrus,micd-rate = <6>;
+				cirrus,micd-detect-debounce-ms = <500>;
+			};
+		};
+	};
+};
+
+&soc {
+	alsa_to_h2w {
+	status = "disabled";
 	};
 };
