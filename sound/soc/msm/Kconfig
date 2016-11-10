@@ -247,6 +247,7 @@ config SND_SOC_MSM8998
 	select MFD_MADERA
 	select MFD_MADERA_SPI
 	select MFD_CS47L35
+	select SWITCH_MADERA
 	select SND_SOC_MADERA
 	select SND_SOC_MADERA_SLIMBUS
 	select SND_SOC_WM_ADSP
@@ -258,7 +259,7 @@ config SND_SOC_MSM8998
 	select MSM_ULTRASOUND
 	select DOLBY_LICENSE
 	select SND_HWDEP
-        select DTS_EAGLE
+	select DTS_EAGLE
 	select SND_SOC_FSA8500
 	select SND_SOC_CS35L35
 	select SND_SOC_OPALUM
