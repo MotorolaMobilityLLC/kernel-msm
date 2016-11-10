@@ -318,6 +318,7 @@ struct msm_fb_data_type {
 	u32 bl_level_usr;
 	struct mutex bl_lock;
 	struct mutex mdss_sysfs_lock;
+	struct mutex param_lock;
 	bool ipc_resume;
 
 	struct platform_device *pdev;
