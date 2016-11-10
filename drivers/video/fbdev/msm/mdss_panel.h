@@ -41,6 +41,24 @@ struct panel_id {
 #define SIM_SW_TE_PANEL	"sim-swte"
 #define SIM_HW_TE_PANEL	"sim-hwte"
 
+enum panel_param_id {
+	PARAM_ID_NUM = 0,
+};
+
+struct panel_param_val_map {
+	char *name;
+	char *prop;
+};
+
+struct panel_param {
+	const char *param_name;
+	const struct panel_param_val_map *val_map;
+	const u16 val_max;
+	const u16 default_value;
+	u16 value;
+	bool is_supported;
+};
+
 /* panel type list */
 #define NO_PANEL		0xffff	/* No Panel */
 #define MDDI_PANEL		1	/* MDDI */
@@ -940,6 +958,7 @@ struct mdss_panel_info {
 
 	u32 disp_on_check_val;
 	bool no_panel_read_support;
+	struct panel_param *param[PARAM_ID_NUM];
 	u32 forced_tx_mode_ftr_enabled;
 	u32 forced_tx_mode_state;
 };
@@ -982,6 +1001,7 @@ struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
 	int (*apply_display_setting)(struct mdss_panel_data *pdata, u32 mode);
+	int (*set_param)(struct mdss_panel_data *pdata, u16 id, u16 value);
 	unsigned char *mmss_cc_base;
 
 	/**
@@ -1421,4 +1441,15 @@ static inline struct mdss_panel_timing *mdss_panel_get_timing_by_name(
 		struct mdss_panel_data *pdata,
 		const char *name) { return NULL; };
 #endif
+
+static inline bool mdss_panel_param_is_supported(struct mdss_panel_info *p,
+	u16 id)
+{
+	if (id < PARAM_ID_NUM && p && p->param[id] &&
+		p->param[id]->is_supported)
+		return true;
+
+	return false;
+};
+
 #endif /* MDSS_PANEL_H */
