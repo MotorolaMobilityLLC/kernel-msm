@@ -10,12 +10,8 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Assuming there will be NO more Nash boards built with V1 MSM parts
- * beyond the small amount of early EVT1 boards, all future Nash dts
- * should directly include this file instead of msmcobalt-nash-common.dtsi,
- * though common dt changes could go to msmcobalt-nash-common.dtsi
- */
 
-#include "msmcobalt-v2.dtsi"
-#include "msmcobalt-nash-common.dtsi"
+/dts-v1/;
+
+#include "msmcobalt-nash.dtsi"
+#include "msmcobalt-nash-evt1-common.dtsi"
