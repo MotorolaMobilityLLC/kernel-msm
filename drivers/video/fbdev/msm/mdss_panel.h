@@ -809,6 +809,7 @@ struct mdss_panel_info {
 	bool no_panel_read_support;
 
 	struct panel_param *param[PARAM_ID_NUM];
+	bool hbm_restore;
 };
 
 struct mdss_panel_timing {
