@@ -570,10 +570,10 @@
 			ranges = <0 0 0xffffffff>;
 
 			/* Placeholder for SPI defined later */
-			spi_1: spi@7575000 { };
+			spi_1: spi@78b5000 { };
 
 			/* Placeholder for I2C defined later */
-			i2c_1: i2c@7575000 { };
+			i2c_1: i2c@78b5000 { };
 		};
 	};
 
@@ -902,11 +902,11 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	reg-names = "qup_phys_addr";
-	reg = <0x7575000 0x1000>;
+	reg = <0x78b5000 0x600>;
 	interrupt-names = "qup_irq";
 	interrupts = <0 95 0>;
-	dmas = <&dma_blsp1 12 32 0x20000020 0x20>,
-		<&dma_blsp1 13 32 0x20000020 0x20>;
+	dmas = <&dma_blsp1 4 64 0x20000020 0x20>,
+		<&dma_blsp1 5 32 0x20000020 0x20>;
 	dma-names = "tx", "rx";
 	qcom,master-id = <86>;
 	qcom,clk-freq-out = <400000>;
