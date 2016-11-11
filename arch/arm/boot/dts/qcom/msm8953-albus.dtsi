@@ -117,13 +117,14 @@
 			reg = <0x5A>;
 			/* voltage = *_voltage x 22 mV */
 			/* 2V for now */
-			ti,rated_voltage = /bits/ 8 <0x53>;
-			ti,overdrive_voltage = /bits/ 8 <0x53>;
+			ti,rated_voltage = /bits/ 8 <0x58>;
+			ti,overdrive_voltage = /bits/ 8 <0x8D>;
 			/* LRA period = lra_freq x 24.39 us */
-			/* 200 Hz for now */
+			/* 175 Hz for now */
 			ti,lra_freq = /bits/ 8 <0xAF>;
 			ti,lra_drive;
 			ti,auto_cal;
+			ti,auto_cal_time = /bits/ 8 <0x01>;
 			ti,nrst-gpio = <&tlmm 110 0>;
 			ti,npwr-gpio = <&tlmm 69 0>;
 			pinctrl-names = "haptic_default", "haptic_sleep";
