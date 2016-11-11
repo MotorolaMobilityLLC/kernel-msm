@@ -180,10 +180,10 @@
 			 ct406_prox_gain = <0x11>;
 			 ct406_als_lux1_c0_mult = <0x0002>;
 			 ct406_als_lux1_c1_mult = <0x0226>;
-			 ct406_als_lux1_div = <0x0804>;
-			 ct406_als_lux2_c0_mult = <0x0569>;
-			 ct406_als_lux2_c1_mult = <0x0569>;
-			 ct406_als_lux2_div = <0x0061a>;
+			 ct406_als_lux1_div = <0x07C5>;
+			 ct406_als_lux2_c0_mult = <0x037D>;
+			 ct406_als_lux2_c1_mult = <0x037D>;
+			 ct406_als_lux2_div = <0x00860>;
 			 dsp_iface_enable = <0>;
 			 headset_detect_enable = <0>;
 			 headset_hw_version = <2>;
