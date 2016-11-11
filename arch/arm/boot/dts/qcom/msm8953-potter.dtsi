@@ -408,7 +408,6 @@
 			"AMIC2", "MIC BIAS External2",
 			"AMIC3", "MIC BIAS External";
 		/delete-property/ qcom,cdc-us-euro-gpios;
-		/delete-property/ qcom,msm-micbias1-ext-cap;
 		/delete-property/ qcom,hdmi-dba-codec-rx;
 		/delete-property/ asoc-wsa-codec-names;
 		/delete-property/ asoc-wsa-codec-prefixes;
