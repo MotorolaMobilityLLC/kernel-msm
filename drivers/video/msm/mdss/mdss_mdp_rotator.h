@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, 2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -46,6 +46,7 @@ struct mdss_mdp_rotator_session {
 	struct mdss_mdp_data dst_buf;
 
 	bool use_sync_pt;
+	bool fence_release;
 	struct list_head head;
 	struct list_head list;
 	struct mdss_mdp_rotator_session *next;
