@@ -72,10 +72,10 @@
 &i2c_7 {
 	status = "ok";
 
-	stmvl53l0@29 {
+	stmvl53l1@29 {
 		/* Enable once the matching driver is ported completely */
-		status = "disabled";
-		compatible = "st,stmvl53l0_i2c";
+		status = "ok";
+		compatible = "st,stmvl53l1";
 		reg = <0x29>;
 		/* L22 is always on for now */
 		/* vdd-supply = <&pmcobalt_l22>; */
