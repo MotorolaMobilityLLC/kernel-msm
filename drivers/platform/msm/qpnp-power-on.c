@@ -30,6 +30,9 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/qpnp/power-on.h>
 #include <linux/time.h>
+#ifdef CONFIG_WAKE_GESTURES
+#include <linux/wake_gestures.h>
+#endif
 
 #define CREATE_MASK(NUM_BITS, POS) \
 	((unsigned char) (((1 << (NUM_BITS)) - 1) << (POS)))
@@ -1617,6 +1620,12 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 				"Can't register pon key: %d\n", rc);
 			goto free_input_dev;
 		}
+#ifdef CONFIG_WAKE_GESTURES
+		else {
+			wg_setdev(pon->pon_input);
+			printk(KERN_INFO "[sweep2wake]: set device %s\n", pon->pon_input->name);
+		}
+#endif
 	}
 
 	for (i = 0; i < pon->num_pon_config; i++) {
