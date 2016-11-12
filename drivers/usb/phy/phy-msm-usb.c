@@ -83,8 +83,6 @@ enum msm_otg_phy_reg_mode {
 	USB_PHY_REG_ON,
 	USB_PHY_REG_LPM_ON,
 	USB_PHY_REG_LPM_OFF,
-	USB_PHY_REG_3P3_ON,
-	USB_PHY_REG_3P3_OFF,
 };
 
 static char *override_phy_init;
@@ -261,17 +259,13 @@ static int msm_hsusb_ldo_enable(struct msm_otg *motg,
 			return ret;
 		}
 
-	/* fall through */
-	case USB_PHY_REG_3P3_ON:
 		ret = regulator_set_optimum_mode(hsusb_3p3,
 				USB_PHY_3P3_HPM_LOAD);
 		if (ret < 0) {
 			pr_err("%s: Unable to set HPM of the regulator "
 				"HSUSB_3p3\n", __func__);
-			if (mode == USB_PHY_REG_ON) {
-				regulator_set_optimum_mode(hsusb_1p8, 0);
-				regulator_disable(hsusb_1p8);
-			}
+			regulator_set_optimum_mode(hsusb_1p8, 0);
+			regulator_disable(hsusb_1p8);
 			return ret;
 		}
 
@@ -280,40 +274,36 @@ static int msm_hsusb_ldo_enable(struct msm_otg *motg,
 			dev_err(motg->phy.dev, "%s: unable to enable the hsusb 3p3\n",
 				__func__);
 			regulator_set_optimum_mode(hsusb_3p3, 0);
-			if (mode == USB_PHY_REG_ON) {
-				regulator_set_optimum_mode(hsusb_1p8, 0);
-				regulator_disable(hsusb_1p8);
-			}
+			regulator_set_optimum_mode(hsusb_1p8, 0);
+			regulator_disable(hsusb_1p8);
 			return ret;
 		}
 
 		break;
 
 	case USB_PHY_REG_OFF:
-		ret = regulator_disable(hsusb_1p8);
+		ret = regulator_disable(hsusb_3p3);
 		if (ret) {
-			dev_err(motg->phy.dev, "%s: unable to disable the hsusb 1p8\n",
+			dev_err(motg->phy.dev, "%s: unable to disable the hsusb 3p3\n",
 				__func__);
 			return ret;
 		}
 
-		ret = regulator_set_optimum_mode(hsusb_1p8, 0);
+		ret = regulator_set_optimum_mode(hsusb_3p3, 0);
 		if (ret < 0)
-			pr_err("%s: Unable to set LPM of the regulator "
-				"HSUSB_1p8\n", __func__);
+			pr_err("%s: Unable to set LPM of the regulatorHSUSB_3p3\n",
+				__func__);
 
-	/* fall through */
-	case USB_PHY_REG_3P3_OFF:
-		ret = regulator_disable(hsusb_3p3);
+		ret = regulator_disable(hsusb_1p8);
 		if (ret) {
-			dev_err(motg->phy.dev, "%s: unable to disable the hsusb 3p3\n",
+			dev_err(motg->phy.dev, "%s: unable to disable the hsusb 1p8\n",
 				 __func__);
 			return ret;
 		}
-		ret = regulator_set_optimum_mode(hsusb_3p3, 0);
+		ret = regulator_set_optimum_mode(hsusb_1p8, 0);
 		if (ret < 0)
-			pr_err("%s: Unable to set LPM of the regulator "
-				"HSUSB_3p3\n", __func__);
+			pr_err("%s: Unable to set LPM of the regulatorHSUSB_1p8\n",
+				__func__);
 
 		break;
 
@@ -1363,7 +1353,8 @@ lpm_start:
 		return -EBUSY;
 	}
 
-	if (motg->caps & ALLOW_VDD_MIN_WITH_RETENTION_DISABLED) {
+	if (motg->caps & ALLOW_VDD_MIN_WITH_RETENTION_DISABLED ||
+		(!host_bus_suspend && !device_bus_suspend)) {
 		/* put the controller in non-driving mode */
 		func_ctrl = ulpi_read(phy, ULPI_FUNC_CTRL);
 		func_ctrl &= ~ULPI_FUNC_CTRL_OPMODE_MASK;
@@ -1768,7 +1759,8 @@ static int msm_otg_resume(struct msm_otg *motg)
 	}
 
 skip_phy_resume:
-	if (motg->caps & ALLOW_VDD_MIN_WITH_RETENTION_DISABLED) {
+	if (motg->caps & ALLOW_VDD_MIN_WITH_RETENTION_DISABLED ||
+		(!motg->host_bus_suspend && !motg->device_bus_suspend)) {
 		/* put the controller in normal mode */
 		func_ctrl = ulpi_read(phy, ULPI_FUNC_CTRL);
 		func_ctrl &= ~ULPI_FUNC_CTRL_OPMODE_MASK;
@@ -3181,6 +3173,8 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 		break;
 	msm_otg_dbg_log_event(&motg->phy, "SM INIT", pdata->mode, motg->inputs);
 	}
+	motg->id_state = (test_bit(ID, &motg->inputs)) ? USB_ID_FLOAT :
+							USB_ID_GROUND;
 }
 
 static void msm_otg_wait_for_ext_chg_done(struct msm_otg *motg)
@@ -4235,18 +4229,17 @@ static void msm_id_status_w(struct work_struct *w)
 	struct msm_otg *motg = container_of(w, struct msm_otg,
 						id_status_work.work);
 	int work = 0;
-	int id_state = 0;
 
 	dev_dbg(motg->phy.dev, "ID status_w\n");
 
 	if (motg->pdata->pmic_id_irq)
-		id_state = msm_otg_read_pmic_id_state(motg);
+		motg->id_state = msm_otg_read_pmic_id_state(motg);
 	else if (motg->ext_id_irq)
-		id_state = gpio_get_value(motg->pdata->usb_id_gpio);
+		motg->id_state = gpio_get_value(motg->pdata->usb_id_gpio);
 	else if (motg->phy_irq)
-		id_state = msm_otg_read_phy_id_state(motg);
+		motg->id_state = msm_otg_read_phy_id_state(motg);
 
-	if (id_state) {
+	if (motg->id_state) {
 		if (gpio_is_valid(motg->pdata->switch_sel_gpio))
 			gpio_direction_input(motg->pdata->switch_sel_gpio);
 		if (!test_and_set_bit(ID, &motg->inputs)) {
@@ -4428,6 +4421,8 @@ static ssize_t msm_otg_mode_write(struct file *file, const char __user *ubuf,
 		goto out;
 	}
 
+	motg->id_state = (test_bit(ID, &motg->inputs)) ? USB_ID_FLOAT :
+							USB_ID_GROUND;
 	pm_runtime_resume(phy->dev);
 	queue_work(motg->otg_wq, &motg->sm_work);
 out:
@@ -4673,6 +4668,10 @@ static int otg_power_set_property_usb(struct power_supply *psy,
 
 	msm_otg_dbg_log_event(&motg->phy, "SET PWR PROPERTY", psp, psy->type);
 	switch (psp) {
+	case POWER_SUPPLY_PROP_USB_OTG:
+		motg->id_state = val->intval ? USB_ID_GROUND : USB_ID_FLOAT;
+		queue_delayed_work(motg->otg_wq, &motg->id_status_work, 0);
+		break;
 	/* PMIC notification for DP DM state */
 	case POWER_SUPPLY_PROP_DP_DM:
 		msm_otg_pmic_dp_dm(motg, val->intval);
@@ -5742,6 +5741,7 @@ static int msm_otg_probe(struct platform_device *pdev)
 
 	motg->dbg_idx = 0;
 	motg->dbg_lock = __RW_LOCK_UNLOCKED(lck);
+	motg->id_state = USB_ID_FLOAT;
 	ret = msm_otg_mhl_register_callback(motg, msm_otg_mhl_notify_online);
 	if (ret)
 		dev_dbg(&pdev->dev, "MHL can not be supported\n");
