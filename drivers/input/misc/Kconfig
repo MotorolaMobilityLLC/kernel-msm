@@ -884,6 +884,11 @@ config SENSORS_AKM09911
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called akm09911.
+
+config STMVL53L1
+	tristate "STMVL53L1 support"
+	help
+	  Say Y here if you wish to include support for laser sensor driver.
 endif
 
 config EPL8802
