@@ -2544,11 +2544,6 @@ static int dwc3_cleanup_done_reqs(struct dwc3 *dwc, struct dwc3_ep *dep,
 			trb = &dep->trb_pool[slot];
 			count += trb->size & DWC3_TRB_SIZE_MASK;
 
-			if (req->request.num_mapped_sgs)
-				trb_len = sg_dma_len(&req->request.sg[i]);
-			else
-				trb_len = req->request.length;
-
 			ret = __dwc3_cleanup_done_trbs(dwc, dep, req, trb,
 					event, status, chain);
 			if (ret)

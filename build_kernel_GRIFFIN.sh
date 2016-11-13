@@ -18,7 +18,7 @@ fi
 mv .git .git-halt
 
 cd $KERNELDIR/
-#make -j10 || exit 1
+make -j10 || exit 1
 
 mkdir -p $KERNELDIR/BUILT_GRIFFIN/modules
 mkdir -p $KERNELDIR/BUILT_GRIFFIN/modules/qca_cld

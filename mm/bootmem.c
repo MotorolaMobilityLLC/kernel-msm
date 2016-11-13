@@ -154,7 +154,7 @@ unsigned long __init init_bootmem(unsigned long start, unsigned long pages)
  * down, but we are still initializing the system.  Pages are given directly
  * to the page allocator, no bootmem metadata is updated because it is gone.
  */
-void free_bootmem_late(unsigned long physaddr, unsigned long size)
+void __init free_bootmem_late(unsigned long physaddr, unsigned long size)
 {
 	unsigned long cursor, end;
 
@@ -162,6 +162,7 @@ void free_bootmem_late(unsigned long physaddr, unsigned long size)
 
 	cursor = PFN_UP(physaddr);
 	end = PFN_DOWN(physaddr + size);
+
 
 	for (; cursor < end; cursor++) {
 		__free_pages_bootmem(pfn_to_page(cursor), cursor, 0);
