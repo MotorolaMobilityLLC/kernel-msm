@@ -69,7 +69,7 @@
  * @note the regulator information come from device tree
  * see stmvl53l1_module-i2c or stmvl53l1_module-i2c file
  */
-#define CFG_STMVL53L1_HAVE_REGULATOR
+/*#define CFG_STMVL53L1_HAVE_REGULATOR*/
 
 
 /**

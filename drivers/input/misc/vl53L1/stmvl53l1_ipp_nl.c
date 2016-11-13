@@ -292,7 +292,7 @@ static void stmvl53l1_nl_recv_msg(struct sk_buff *skb_in)
 		 * if not it is a badly format message or bad message
 		 */
 		if (pwork->payload !=  IPP_WORK_HDR_SIZE) {
-			ipp_err("invalid ping msg size %d!=%d ",
+			ipp_err("invalid ping msg size %d!=%lu ",
 					pwork->payload, IPP_WORK_HDR_SIZE);
 			_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLAOD, ipp_n_dev);
 			goto done_locked;
