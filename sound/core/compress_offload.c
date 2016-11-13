@@ -44,6 +44,13 @@
 #include <sound/compress_offload.h>
 #include <sound/compress_driver.h>
 
+/* struct snd_compr_codec_caps overflows the ioctl bit size for some
+ * architectures, so we need to disable the relevant ioctls.
+ */
+#if _IOC_SIZEBITS < 14
+#define COMPR_CODEC_CAPS_OVERFLOW
+#endif
+
 /* TODO:
  * - add substream support for multiple devices in case of
  *	SND_DYNAMIC_MINORS is not used
@@ -441,6 +448,7 @@ out:
 	return retval;
 }
 
+#ifndef COMPR_CODEC_CAPS_OVERFLOW
 static int
 snd_compr_get_codec_caps(struct snd_compr_stream *stream, unsigned long arg)
 {
@@ -464,6 +472,7 @@ out:
 	kfree(caps);
 	return retval;
 }
+#endif /* !COMPR_CODEC_CAPS_OVERFLOW */
 
 /* revisit this with snd_pcm_preallocate_xxx */
 static int snd_compr_allocate_buffer(struct snd_compr_stream *stream,
@@ -793,50 +802,11 @@ static int snd_compress_simple_ioctls(struct file *file,
 		retval = snd_compr_get_caps(stream, arg);
 		break;
 
+#ifndef COMPR_CODEC_CAPS_OVERFLOW
 	case _IOC_NR(SNDRV_COMPRESS_GET_CODEC_CAPS):
 		retval = snd_compr_get_codec_caps(stream, arg);
 		break;
-
-
-	case _IOC_NR(SNDRV_COMPRESS_TSTAMP):
-		retval = snd_compr_tstamp(stream, arg);
-		break;
-
-	case _IOC_NR(SNDRV_COMPRESS_AVAIL):
-		retval = snd_compr_ioctl_avail(stream, arg);
-		break;
-
-	/* drain and partial drain need special handling
-	 * we need to drop the locks here as the streams would get blocked on
-	 * the dsp to get drained. The locking would be handled in respective
-	 * function here
-	 */
-	case _IOC_NR(SNDRV_COMPRESS_DRAIN):
-		retval = snd_compr_drain(stream);
-		break;
-
-	case _IOC_NR(SNDRV_COMPRESS_PARTIAL_DRAIN):
-		retval = snd_compr_partial_drain(stream);
-		break;
-	}
-
-	return retval;
-}
-
-static long snd_compr_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
-{
-	struct snd_compr_file *data = f->private_data;
-	struct snd_compr_stream *stream;
-	int retval = -ENOTTY;
-
-	if (snd_BUG_ON(!data))
-		return -EFAULT;
-	stream = &data->stream;
-	if (snd_BUG_ON(!stream))
-		return -EFAULT;
-
-	mutex_lock(&stream->device->lock);
-	switch (_IOC_NR(cmd)) {
+#endif
 	case _IOC_NR(SNDRV_COMPRESS_SET_PARAMS):
 		retval = snd_compr_set_params(stream, arg);
 		break;

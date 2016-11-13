@@ -161,6 +161,10 @@ void mesh_sta_cleanup(struct sta_info *sta)
 		del_timer_sync(&sta->plink_timer);
 	}
 
+	/* make sure no readers can access nexthop sta from here on */
+	mesh_path_flush_by_nexthop(sta);
+	synchronize_net();
+
 	if (changed)
 		ieee80211_mbss_info_change_notify(sdata, changed);
 }
@@ -1297,17 +1301,6 @@ out:
 	sdata_unlock(sdata);
 }
 
-void ieee80211_mesh_notify_scan_completed(struct ieee80211_local *local)
-{
-	struct ieee80211_sub_if_data *sdata;
-
-	rcu_read_lock();
-	list_for_each_entry_rcu(sdata, &local->interfaces, list)
-		if (ieee80211_vif_is_mesh(&sdata->vif) &&
-		    ieee80211_sdata_running(sdata))
-			ieee80211_queue_work(&local->hw, &sdata->work);
-	rcu_read_unlock();
-}
 
 void ieee80211_mesh_init_sdata(struct ieee80211_sub_if_data *sdata)
 {

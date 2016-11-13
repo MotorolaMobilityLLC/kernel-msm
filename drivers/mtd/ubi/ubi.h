@@ -466,6 +466,8 @@ struct ubi_debug_info {
  * @fm_eba_sem: allows ubi_update_fastmap() to block EBA table changes
  * @fm_work: fastmap work queue
  * @fm_work_scheduled: non-zero if fastmap work was scheduled
+ * @fast_attach: non-zero if UBI was attached by fastmap
+ * @fm_work_scheduled: non-zero if fastmap work was scheduled
  *
  * @used: RB-tree of used physical eraseblocks
  * @erroneous: RB-tree of erroneous used physical eraseblocks
@@ -477,6 +479,7 @@ struct ubi_debug_info {
  * @pq_head: protection queue head
  * @wl_lock: protects the @used, @free, @pq, @pq_head, @lookuptbl, @move_from,
  *	     @move_to, @move_to_put @erase_pending, @wl_scheduled, @works,
+ *	     @erroneous, @erroneous_peb_count, and @fm_work_scheduled fields
  *	     @erroneous, @erroneous_peb_count, @fm_work_scheduled, @fm_pool,
  *	     and @fm_wl_pool fields
  * @move_mutex: serializes eraseblock moves
@@ -573,6 +576,8 @@ struct ubi_device {
 	void *fm_buf;
 	size_t fm_size;
 	struct work_struct fm_work;
+	int fm_work_scheduled;
+	int fast_attach;
 	int fm_work_scheduled;
 
 	/* Wear-leveling sub-system's stuff */

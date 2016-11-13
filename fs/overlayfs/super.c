@@ -545,6 +545,10 @@ retry:
 		struct kstat stat = {
 			.mode = S_IFDIR | 0,
 		};
+		struct iattr attr = {
+			.ia_valid = ATTR_MODE,
+			.ia_mode = stat.mode,
+		};
 
 		if (work->d_inode) {
 			err = -EEXIST;
@@ -558,6 +562,21 @@ retry:
 		}
 
 		err = ovl_create_real(dir, work, &stat, NULL, NULL, true);
+		if (err)
+			goto out_dput;
+
+		err = vfs_removexattr(work, XATTR_NAME_POSIX_ACL_DEFAULT);
+		if (err && err != -ENODATA && err != -EOPNOTSUPP)
+			goto out_dput;
+
+		err = vfs_removexattr(work, XATTR_NAME_POSIX_ACL_ACCESS);
+		if (err && err != -ENODATA && err != -EOPNOTSUPP)
+			goto out_dput;
+
+		/* Clear any inherited mode bits */
+		mutex_lock(&work->d_inode->i_mutex);
+		err = notify_change(work, &attr, NULL);
+		mutex_unlock(&work->d_inode->i_mutex);
 		if (err)
 			goto out_dput;
 	}
@@ -775,6 +794,9 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 	oe->lowerdentry = lowerpath.dentry;
 
 	root_dentry->d_fsdata = oe;
+
+	ovl_copyattr(ovl_dentry_real(root_dentry)->d_inode,
+		     root_dentry->d_inode);
 
 	sb->s_magic = OVERLAYFS_SUPER_MAGIC;
 	sb->s_op = &ovl_super_operations;
