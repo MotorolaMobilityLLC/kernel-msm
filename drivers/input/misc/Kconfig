@@ -850,4 +850,9 @@ config SENSORS_FPC_1020
 	help
 	  Say Y here if you wish to include support for finger print sensor.
 	  If unsure, say N.
+
+config STMVL53L1
+	tristate "STMVL53L1 support"
+	help
+	  Say Y here if you wish to include support for laser sensor driver.
 endif
