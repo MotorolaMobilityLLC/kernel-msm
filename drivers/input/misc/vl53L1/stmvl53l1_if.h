@@ -53,7 +53,7 @@
  * @li stmvl53l1_ranging2
  */
 
-#define VL53L1_MISC_DEV_NAME		"stmvl53l1_ranging"
+#define VL53L1_MISC_DEV_NAME		"laser"
 
 /**
  * @addtogroup vl53l1_ioctl
