@@ -202,6 +202,11 @@ static int parse_xsdn(struct device *dev, struct i2c_data *i2c_data)
 	/** add here code to parse tree for xsdn gpio
 	 * on st test mode it already come in data
 	 */
+	if (dev->of_node != NULL) {
+		if (of_gpio_count(dev->of_node) >= 2)
+			i2c_data->xsdn_gpio = of_get_gpio(dev->of_node, 0);
+	}
+
 	if (i2c_data->xsdn_gpio != -1) {
 		rc = gpio_request(i2c_data->xsdn_gpio, "vl53l1_xsdn");
 		if (rc != 0) {
@@ -269,6 +274,11 @@ static int parse_irq(struct device *dev, struct i2c_data *i2c_data)
 	 * set i2c_data->irq  = my_irq (-1 if invalid )
 	 * return 0;
 	 */
+
+	if (dev->of_node != NULL) {
+		if (of_gpio_count(dev->of_node) >= 2)
+			i2c_data->intr_gpio = of_get_gpio(dev->of_node, 1);
+	}
 
 	i2c_data->irq = -1; /* init to no irq hooked */
 	if (i2c_data->intr_gpio != -1) {
@@ -421,6 +431,10 @@ static int stmvl53l1_probe(struct i2c_client *client,
 	i2c_data->pwren_gpio = 55; /*panda es wired to 55 */
 	i2c_data->xsdn_gpio = 56; /* panda es wired to 56 */
 	i2c_data->intr_gpio = 59; /* panda es wired to 59 */
+#else
+	i2c_data->pwren_gpio = -1;
+	i2c_data->xsdn_gpio = -1;
+	i2c_data->intr_gpio = -1;
 #endif
 	/* setup regulator */
 	rc = stmvl53l1_parse_tree(&i2c_data->client->dev, i2c_data);
