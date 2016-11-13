@@ -14,7 +14,7 @@ ccflags-y	+= -Idrivers/input/misc/vl53L1/inc -Idrivers/input/misc/vl53L1/ipp
 ifeq ($(FEATURE_USE_CCI), true)
 ccflags-y	+= -DCAMERA_CCI
 else
-ccflags-y	+= -DSTM_TEST
+#ccflags-y	+= -DSTM_TEST
 endif
 
 #ccflags-y	+= -DSTMVL53L1_LOG_POLL_TIMING=1
