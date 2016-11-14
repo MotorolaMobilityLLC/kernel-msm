@@ -486,6 +486,10 @@
 		status = "okay";
 		linux,contiguous-region = <&tzlog_bck_mem>;
 	};
+
+	qcom,mdss_wb_panel {
+		status = "disabled";
+	};
 };
 
 &blsp1_uart2 {
