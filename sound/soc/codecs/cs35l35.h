@@ -252,6 +252,7 @@
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
 struct  cs35l35_private {
+	struct i2c_client *i2c_client;
 	struct snd_soc_codec *codec;
 	struct cs35l35_platform_data pdata;
 	struct regmap *regmap;
