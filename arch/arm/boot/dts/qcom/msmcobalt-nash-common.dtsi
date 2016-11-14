@@ -11,7 +11,6 @@
  */
 
 #include "msmcobalt-moto-common.dtsi"
-#include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
 
 / {
 	model = "Nash";
