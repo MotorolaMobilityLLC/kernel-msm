@@ -17,6 +17,9 @@
 #include "msmcobalt-moto-fps.dtsi"
 #include "msm8998-camera-sensor-mot.dtsi"
 #include "carrier-channel-ids.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-p-cmd.dtsi"
 
 / {
 	aliases {
@@ -1113,10 +1116,9 @@
 };
 
 &pmcobalt_l19 {
-	/* Todo.. This need to configure to 3.2v */
-	regulator-min-microvolt = <3100000>;
-	regulator-max-microvolt = <3100000>;
-	qcom,init-voltage = <3100000>;
+	regulator-min-microvolt = <3200000>;
+	regulator-max-microvolt = <3200000>;
+	qcom,init-voltage = <3200000>;
 	regulator-boot-on;
 };
 
@@ -1145,8 +1147,6 @@
 			&mdss_hdmi_ddc_suspend &mdss_hdmi_cec_suspend>;
 };
 
-#include "dsi-panel-mot-dummy-qhd-video.dtsi"
-
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 
@@ -1172,7 +1172,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_g_cmd_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_546_QHD_p_cmd_v0>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
