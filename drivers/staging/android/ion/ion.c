@@ -2061,7 +2061,7 @@ static int ion_debug_allbufs_show(struct seq_file *s, void *unused)
 		int refs_found = 0;
 		int clients_busy = 0;
 
-		seq_printf(s, "%16.s %16p %12.x %12.d %20.s    %s",
+		seq_printf(s, "%16.s %16pK %12.x %12.d %20.s    %s",
 			buf->heap->name, buf, (int)buf->size,
 			buf_refcount, buf->alloc_client_name, "");
 
