@@ -807,7 +807,7 @@ static int ion_debug_client_show(struct seq_file *s, void *unused)
 		struct ion_handle *handle = rb_entry(n, struct ion_handle,
 						     node);
 
-		seq_printf(s, "%16.16s: %16zx : %16d : %12p",
+		seq_printf(s, "%16.16s: %16zx : %16d : %12pK",
 				handle->buffer->heap->name,
 				handle->buffer->size,
 				atomic_read(&handle->ref.refcount),
@@ -1968,7 +1968,7 @@ static int ion_debug_allbufs_show(struct seq_file *s, void *unused)
 		int refs_found = 0;
 		int clients_busy = 0;
 
-		seq_printf(s, "%16.s %16p %12.x %12.d %20.s    %s",
+		seq_printf(s, "%16.s %16pK %12.x %12.d %20.s    %s",
 			buf->heap->name, buf, (int)buf->size,
 			buf_refcount, buf->alloc_client_name, "");
 
