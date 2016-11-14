@@ -789,6 +789,13 @@ config SENSORS_FPC_1020
 	 Say Y here if you wish to include support for finger print sensor.
 	 If unsure, say N.
 
+config INPUT_EGISTEC_320
+	tristate "Egistec ET320 fingerprint sensor"
+	default n
+	help
+	 Say Y here if you wish to include support for EGIS finger print sensor.
+	 If unsure, say N.
+
 config INPUT_SX9310
 	tristate "SX9310_SAR_sensor"
 	depends on I2C
