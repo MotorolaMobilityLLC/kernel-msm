@@ -918,7 +918,7 @@ static struct regmap_config cs35l35_regmap = {
 static irqreturn_t cs35l35_irq(int irq, void *data)
 {
 		struct cs35l35_private *cs35l35 = data;
-	struct snd_soc_codec *codec = cs35l35->codec;
+	struct i2c_client *i2c_client = cs35l35->i2c_client;
 	unsigned int sticky1, sticky2, sticky3, sticky4;
 	unsigned int mask1, mask2, mask3, mask4, current1;
 
@@ -946,11 +946,11 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 
 	/* handle the interrupts */
 	if (sticky1 & CS35L35_CAL_ERR) {
-		dev_err(codec->dev, "Calibration Error\n");
+		dev_err(&i2c_client->dev, "Calibration Error\n");
 
 		/* error is no longer asserted; safe to reset */
 		if (!(current1 & CS35L35_CAL_ERR)) {
-			dev_dbg(codec->dev, "Cal error release\n");
+			dev_dbg(&i2c_client->dev, "Cal error release\n");
 			regmap_update_bits(cs35l35->regmap,
 					CS35L35_PROT_RELEASE_CTL,
 					CS35L35_CAL_ERR_RLS, 0);
@@ -967,7 +967,7 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 	if (sticky1 & CS35L35_AMP_SHORT) {
 		/* error is no longer asserted; safe to reset */
 		if (!(current1 & CS35L35_AMP_SHORT)) {
-			dev_dbg(codec->dev,
+			dev_dbg(&i2c_client->dev,
 				"Amp short error release\n");
 			regmap_update_bits(cs35l35->regmap,
 					CS35L35_PROT_RELEASE_CTL,
@@ -983,11 +983,11 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 	}
 
 	if (sticky1 & CS35L35_OTW) {
-		dev_err(codec->dev, "Over temperature warning\n");
+		dev_err(&i2c_client->dev, "Over temperature warning\n");
 
 		/* error is no longer asserted; safe to reset */
 		if (!(current1 & CS35L35_OTW)) {
-			dev_dbg(codec->dev,
+			dev_dbg(&i2c_client->dev,
 				"Over temperature warning release\n");
 			regmap_update_bits(cs35l35->regmap,
 					CS35L35_PROT_RELEASE_CTL,
@@ -1003,11 +1003,11 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 	}
 
 	if (sticky1 & CS35L35_OTE) {
-		dev_crit(codec->dev, "Over temperature error\n");
+		dev_crit(&i2c_client->dev, "Over temperature error\n");
 
 		/* error is no longer asserted; safe to reset */
 		if (!(current1 & CS35L35_OTE)) {
-			dev_dbg(codec->dev,
+			dev_dbg(&i2c_client->dev,
 				"Over temperature error release\n");
 			regmap_update_bits(cs35l35->regmap,
 					CS35L35_PROT_RELEASE_CTL,
@@ -1023,7 +1023,7 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 	}
 
 	if (sticky3 & CS35L35_BST_HIGH) {
-		dev_crit(codec->dev, "VBST error: powering off!\n");
+		dev_crit(&i2c_client->dev, "VBST error: powering off!\n");
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
 			CS35L35_PDN_AMP, CS35L35_PDN_AMP);
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
@@ -1031,7 +1031,7 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 	}
 
 	if (sticky3 & CS35L35_LBST_SHORT) {
-		dev_crit(codec->dev, "LBST error: powering off!\n");
+		dev_crit(&i2c_client->dev, "LBST error: powering off!\n");
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
 			CS35L35_PDN_AMP, CS35L35_PDN_AMP);
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
@@ -1039,13 +1039,13 @@ static irqreturn_t cs35l35_irq(int irq, void *data)
 	}
 
 	if (sticky2 & CS35L35_VPBR_ERR)
-		dev_err(codec->dev, "Error: Reactive Brownout\n");
+		dev_err(&i2c_client->dev, "Error: Reactive Brownout\n");
 
 	if (sticky4 & CS35L35_VMON_OVFL)
-		dev_err(codec->dev, "Error: VMON overflow\n");
+		dev_err(&i2c_client->dev, "Error: VMON overflow\n");
 
 	if (sticky4 & CS35L35_IMON_OVFL)
-		dev_err(codec->dev, "Error: IMON overflow\n");
+		dev_err(&i2c_client->dev, "Error: IMON overflow\n");
 
 	return IRQ_HANDLED;
 }
@@ -1206,6 +1206,7 @@ static int cs35l35_i2c_probe(struct i2c_client *i2c_client,
 	}
 
 	i2c_set_clientdata(i2c_client, cs35l35);
+	cs35l35->i2c_client = i2c_client;
 	cs35l35->regmap = devm_regmap_init_i2c(i2c_client, &cs35l35_regmap);
 	if (IS_ERR(cs35l35->regmap)) {
 		ret = PTR_ERR(cs35l35->regmap);
