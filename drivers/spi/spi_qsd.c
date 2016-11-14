@@ -2089,6 +2089,19 @@ static int msm_spi_bam_init(struct msm_spi *dd)
 
 	rc = sps_phy2h(dd->bam.phys_addr, &bam_handle);
 	if (rc || !bam_handle) {
+
+		/* Only ioremap if we are registering a BAM device since
+		 * we will not iounmap it as we've dropped the calling
+		 * of sps_deregister_bam_device.
+		 */
+		dd->bam.base = ioremap(dd->bam.phys_addr, dd->bam.size);
+		if (!dd->bam.base) {
+			dev_warn(dd->dev,
+				"%s: Failed to ioremap(spi_bam_physical)",
+				__func__);
+			return -ENXIO;
+		}
+
 		bam_props.phys_addr = dd->bam.phys_addr;
 		bam_props.virt_addr = dd->bam.base;
 		bam_props.irq       = dd->bam.irq;
@@ -2100,6 +2113,7 @@ static int msm_spi_bam_init(struct msm_spi *dd)
 			dev_err(dd->dev,
 				"%s: Failed to register BAM device",
 				__func__);
+			iounmap(dd->bam.base);
 			return rc;
 		}
 	}
@@ -2288,7 +2302,6 @@ static int msm_spi_bam_get_resources(struct msm_spi *dd,
 	struct platform_device *pdev, struct spi_master *master)
 {
 	struct resource *resource;
-	size_t bam_mem_size;
 
 	resource = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 						"spi_bam_physical");
@@ -2300,15 +2313,7 @@ static int msm_spi_bam_get_resources(struct msm_spi *dd,
 	}
 
 	dd->bam.phys_addr = resource->start;
-	bam_mem_size = resource_size(resource);
-	dd->bam.base = devm_ioremap(&pdev->dev, dd->bam.phys_addr,
-					bam_mem_size);
-	if (!dd->bam.base) {
-		dev_warn(&pdev->dev,
-			"%s: Failed to ioremap(spi_bam_physical)",
-			__func__);
-		return -ENXIO;
-	}
+	dd->bam.size = resource_size(resource);
 
 	dd->bam.irq = platform_get_irq_byname(pdev, "spi_bam_irq");
 	if (dd->bam.irq < 0) {
