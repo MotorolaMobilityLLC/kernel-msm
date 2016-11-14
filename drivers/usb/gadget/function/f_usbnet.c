@@ -53,7 +53,7 @@
 #define MAX_BULK_TX_REQ_NUM	8
 #define MAX_BULK_RX_REQ_NUM	8
 #define MAX_INTR_RX_REQ_NUM	8
-#define STRING_INTERFACE        0
+#define INTERFACE_STRING_INDEX  0
 
 struct usbnet_context {
 	spinlock_t lock;  /* For RX/TX list */
@@ -99,7 +99,7 @@ static inline struct usbnet_opts *to_usbnet_opts(struct config_item *item)
 }
 /* static strings, in UTF-8 */
 static struct usb_string usbnet_string_defs[] = {
-	[STRING_INTERFACE].s = "Motorola Test Command",
+	[INTERFACE_STRING_INDEX].s = "Usbnet",
 	{  /* ZEROES END LIST */ },
 };
 
@@ -400,7 +400,6 @@ static int usb_ether_stop(struct net_device *dev)
 static struct net_device_stats *usb_ether_get_stats(struct net_device *dev)
 {
 	struct usbnet_context *context = netdev_priv(dev);
-	USBNETDBG(context, "%s\n", __func__);
 	return &context->stats;
 }
 
@@ -587,9 +586,19 @@ static int usbnet_bind(struct usb_configuration *c,
 		return id;
 
 	usbnet_intf_desc.bInterfaceNumber = id;
+
+	if (usbnet_string_defs[INTERFACE_STRING_INDEX].id == 0) {
+		rc = usb_string_id(c->cdev);
+		if (rc < 0) {
+			USBNETDBG(context, "string id returned %d\n", rc);
+			return rc;
+		}
+		usbnet_string_defs[INTERFACE_STRING_INDEX].id = rc;
+		usbnet_intf_desc.iInterface = rc;
+	}
+
 	context->gadget = cdev->gadget;
-	if (gadget_is_superspeed(c->cdev->gadget))
-		dev->function.ss_descriptors = ss_function;
+
 	/* Find all the endpoints we will use */
 	ep = usb_ep_autoconfig(cdev->gadget, &usbnet_fs_bulk_in_desc);
 	if (!ep) {
@@ -979,6 +988,7 @@ static struct usb_function *usbnet_alloc(struct usb_function_instance *fi)
 	dev->function.name = opts->name;
 	dev->function.fs_descriptors = fs_function;
 	dev->function.hs_descriptors = hs_function;
+	dev->function.ss_descriptors = ss_function;
 
 	dev->function.bind = usbnet_bind;
 	dev->function.unbind = usbnet_unbind;
