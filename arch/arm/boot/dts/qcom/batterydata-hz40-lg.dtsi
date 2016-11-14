@@ -1,6 +1,10 @@
 
 qcom,hz40-lg {
 	serialnum = "SNN5983A";
+	qcom,step-chg-steps = <4200 3000 2000>,
+				<4400 2000 1600>;
+	qcom,stepchg-iterm-ma = <146>;
+	qcom,auto-voltage-comp-mv = <150>;
 	/* #2672048_Moto_Albus_3000mAh_averaged_MasterSlave_Nov3rd2016*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <3000>;
