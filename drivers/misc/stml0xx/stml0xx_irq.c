@@ -278,7 +278,7 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 		remove_idx = (remove_idx + 1) % STREAM_SENSOR_QUEUE_DEPTH;
 		/* if sample num > QUEUE_DEPTH
 		dump queue to /sys/kernel/stml0xx/stml0xx_debug */
-		if (i >= STREAM_SENSOR_QUEUE_DEPTH - 1) {
+		if (i >= STREAM_SENSOR_QUEUE_DEPTH) {
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"idx out of order, dump to /sys/kernel/stml0xx/stml0xx_debug");
 			memcpy(dump_buf, buf, SPI_MSG_SIZE);
