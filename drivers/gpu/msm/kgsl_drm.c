@@ -1555,7 +1555,12 @@ int kgsl_gem_prime_fd_to_handle(struct drm_device *dev,
 		return -EINVAL;
 	}
 
-	ion_handle_get_size(kgsl_drm_ion_client, ion_handle, &size);
+	ret = ion_handle_get_size(kgsl_drm_ion_client, ion_handle, &size);
+	if (ret < 0) {
+		ion_free(kgsl_drm_ion_client, ion_handle);
+		DRM_ERROR("Failed to get Ion buffer size\n");
+		return -EINVAL;
+	}
 
 	if (size == 0) {
 		ion_free(kgsl_drm_ion_client, ion_handle);
@@ -1620,9 +1625,23 @@ int kgsl_gem_prime_fd_to_handle(struct drm_device *dev,
 		priv->memdesc.sglen++;
 	}
 
+	ret = kgsl_mmu_get_gpuaddr(priv->pagetable, &priv->memdesc);
+	if (ret) {
+		DRM_ERROR("kgsl_mmu_get_gpuaddr failed.  ret = %d\n", ret);
+		ion_free(kgsl_drm_ion_client,
+			priv->ion_handle);
+		priv->ion_handle = NULL;
+		kgsl_mmu_putpagetable(priv->pagetable);
+		drm_gem_object_release(obj);
+		kfree(priv);
+		kfree(obj);
+		return -ENOMEM;
+	}
+
 	ret = kgsl_mmu_map(priv->pagetable, &priv->memdesc);
 	if (ret) {
 		DRM_ERROR("kgsl_mmu_map failed.  ret = %d\n", ret);
+		kgsl_mmu_put_gpuaddr(priv->pagetable, &priv->memdesc);
 		ion_free(kgsl_drm_ion_client,
 			priv->ion_handle);
 		priv->ion_handle = NULL;
