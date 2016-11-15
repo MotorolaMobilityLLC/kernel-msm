@@ -80,7 +80,7 @@ qcom,mdss-dsi-bl-max-level = <255>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-qcom,mdss-dsi-reset-sequence = <1 11>;
+qcom,mdss-dsi-reset-sequence = <0 1>, <1 6>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
 
@@ -109,8 +109,8 @@ qcom,panel-supply-entries {
 		qcom,supply-enable-load = <300000>;
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <3>;
-		qcom,supply-pre-off-sleep = <11>; /* Give time for reset line */
+		qcom,supply-post-on-sleep = <0>;
+		qcom,supply-pre-off-sleep = <0>;
 	};
 	qcom,panel-supply-entry@1 {
 		reg = <1>;
@@ -120,7 +120,7 @@ qcom,panel-supply-entries {
 		qcom,supply-enable-load = <300000>;
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <1>;
+		qcom,supply-post-on-sleep = <10>;
 		qcom,supply-pre-off-sleep = <0>;
 		qcom,supply-post-off-sleep = <1>;
 	};
