@@ -304,6 +304,8 @@ Optional Properties:
 - qcom,max-pulse-allowed	The maximum number of pulses allowed in
 				HVDCP3 mode. It can be used to restrict VBUS
 				to a value.
+- qcom,enable-parameter-separate	A boolean property to be used for charging
+				parameter define in battery dtsi
 
 Example:
 	qcom,qpnp-smbcharger {
