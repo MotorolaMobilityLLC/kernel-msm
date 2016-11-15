@@ -49,7 +49,11 @@
 #define DMSE_INTERRUPT			BIT(1)
 #define DPSE_INTERRUPT			BIT(0)
 
+#define QUSB2PHY_PORT_IMP_CTRL1		0x21c
 #define QUSB2PHY_PORT_TUNE1		0x23c
+#define QUSB2PHY_PORT_TUNE2		0x240
+#define QUSB2PHY_PORT_TUNE3		0x244
+#define QUSB2PHY_PORT_TUNE4		0x248
 #define QUSB2PHY_TEST1			0x24C
 
 #define QUSB2PHY_1P2_VOL_MIN           1200000 /* uV */
@@ -70,9 +74,9 @@
 #define QUSB2PHY_PLL_ANALOG_CONTROLS_ONE	0x0
 #define QUSB2PHY_PLL_ANALOG_CONTROLS_TWO	0x4
 
-unsigned int phy_tune1;
-module_param(phy_tune1, uint, S_IRUGO | S_IWUSR);
-MODULE_PARM_DESC(phy_tune1, "QUSB PHY v2 TUNE1");
+static char *override_phy_init;
+module_param(override_phy_init, charp, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_phy_init, "QUSB PHY v2 TUNE Override");
 
 struct qusb_phy {
 	struct usb_phy		phy;
@@ -416,7 +420,7 @@ static void qusb_phy_write_seq(void __iomem *base, u32 *seq, int cnt,
 	int i;
 
 	pr_debug("Seq count:%d\n", cnt);
-	for (i = 0; i < cnt; i = i+2) {
+	for (i = 0; i+1 < cnt; i = i+2) {
 		pr_debug("write 0x%02x to 0x%02x\n", seq[i], seq[i+1]);
 		writel_relaxed(seq[i], base + seq[i+1]);
 		if (delay)
@@ -456,6 +460,31 @@ static void qusb_phy_host_init(struct usb_phy *phy)
 		dev_err(phy->dev, "QUSB PHY PLL LOCK fails:%x\n", reg);
 		WARN_ON(1);
 	}
+}
+
+#define MAX_OVERRIDE_CNT 10
+static void qusb_override_phy_init(struct qusb_phy *qphy)
+{
+	int aseq[MAX_OVERRIDE_CNT+1];
+	int *seq = NULL;
+
+	if (!override_phy_init)
+		return;
+
+	dev_dbg(qphy->phy.dev, "Override phy with %s\n", override_phy_init);
+	get_options(override_phy_init, ARRAY_SIZE(aseq), aseq);
+	seq = &aseq[1];
+	qusb_phy_write_seq(qphy->base, seq, min(aseq[0], MAX_OVERRIDE_CNT), 0);
+	dev_err(qphy->phy.dev, "IMP_CTRL1 = 0x%02x\n",
+		readb_relaxed(qphy->base + QUSB2PHY_PORT_IMP_CTRL1));
+	dev_err(qphy->phy.dev, "PORT_TUNE1 = 0x%02x\n",
+		readb_relaxed(qphy->base + QUSB2PHY_PORT_TUNE1));
+	dev_err(qphy->phy.dev, "PORT_TUNE2 = 0x%02x\n",
+		readb_relaxed(qphy->base + QUSB2PHY_PORT_TUNE2));
+	dev_err(qphy->phy.dev, "PORT_TUNE3 = 0x%02x\n",
+		readb_relaxed(qphy->base + QUSB2PHY_PORT_TUNE3));
+	dev_err(qphy->phy.dev, "PORT_TUNE4 = 0x%02x\n",
+		readb_relaxed(qphy->base + QUSB2PHY_PORT_TUNE4));
 }
 
 static int qusb_phy_init(struct usb_phy *phy)
@@ -528,13 +557,7 @@ static int qusb_phy_init(struct usb_phy *phy)
 				qphy->base + QUSB2PHY_PORT_TUNE1);
 	}
 
-	/* If phy_tune1 modparam set, override tune1 value */
-	if (phy_tune1) {
-		pr_debug("%s(): (modparam) TUNE1 val:0x%02x\n",
-						__func__, phy_tune1);
-		writel_relaxed(phy_tune1,
-				qphy->base + QUSB2PHY_PORT_TUNE1);
-	}
+	qusb_override_phy_init(qphy);
 
 	/* ensure above writes are completed before re-enabling PHY */
 	wmb();
