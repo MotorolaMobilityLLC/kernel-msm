@@ -173,8 +173,8 @@
 			 lux_table = <5 50 100 1500 3000 8000>;
 			 brightness_table = <9 14 18 46 67 93 140>;
 			 bslen_pin_active_value = <1>;
-			 ct406_detect_threshold = <0x0514>;
-			 ct406_undetect_threshold = <0x0410>;
+			 ct406_detect_threshold = <0x03F3>;
+			 ct406_undetect_threshold = <0x02BC>;
 			 ct406_recalibrate_threshold = <0x01C8>;
 			 ct406_pulse_count = <0x02>;
 			 ct406_prox_gain = <0x11>;
