@@ -201,8 +201,11 @@
 			wlf,micd-bias-start-time = <8>;
 			wlf,gpsw = <1>;
 			wlf,micd-rate = <6>;
-			wlf,micd-detect-debounce = <500>;
+			wlf,micd-detect-debounce = <600>;
 			wlf,inmode = <0 2 0>;
+			wlf,micd-ranges = <
+				100 226 430 115 1257 114
+			>;
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&marley_irq_default &marley_reset_default>;
