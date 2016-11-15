@@ -31,7 +31,7 @@ static int set_overlay(struct msm_fb_data_type *mfd,
 	int ret;
 	struct mdp_overlay overlay;
 
-	pr_debug("%s+: (buffer: %p)\n", __func__, buffer);
+	pr_debug("%s+: (buffer: %pK)\n", __func__, buffer);
 
 	if (!buffer) {
 		pr_err("%s: buffer is NULL\n", __func__);
@@ -69,7 +69,7 @@ static int set_overlay(struct msm_fb_data_type *mfd,
 	overlay_id = overlay.id;
 
 exit:
-	pr_debug("%s-: (buffer: %p) (ret: %d)\n", __func__, buffer,
+	pr_debug("%s-: (buffer: %pK) (ret: %d)\n", __func__, buffer,
 		ret);
 
 	return ret;
@@ -101,7 +101,7 @@ static int play_overlay(struct msm_fb_data_type *mfd,
 	int ret = -EINVAL;
 	struct msmfb_overlay_data ovdata;
 
-	pr_debug("%s+: (buffer: %p)\n", __func__, buffer);
+	pr_debug("%s+: (buffer: %pK)\n", __func__, buffer);
 
 	if (!buffer) {
 		pr_err("%s: buffer is NULL\n", __func__);
@@ -122,7 +122,7 @@ static int play_overlay(struct msm_fb_data_type *mfd,
 	ret = mdss_mdp_overlay_play(mfd, &ovdata);
 
 exit:
-	pr_debug("%s-: (buffer: %p) (ret: %d)\n", __func__, buffer,
+	pr_debug("%s-: (buffer: %pK) (ret: %d)\n", __func__, buffer,
 		ret);
 
 	return ret;
