@@ -310,6 +310,8 @@ Optional Properties:
 				the parallel slave supports AICL.
 - qcom,parallel-min-main-icl-ma	Minimum ICL allotted to main charger in parallel
 				configuration.
+- qcom,enable-parameter-separate	A boolean property to be used for charging
+				parameter define in battery dtsi
 
 Example:
 	qcom,qpnp-smbcharger {
