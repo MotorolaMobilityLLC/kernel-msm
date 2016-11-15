@@ -1794,7 +1794,8 @@ static int msm_vfe40_axi_restart(struct vfe_device *vfe_dev,
 	/* Start AXI */
 	msm_camera_io_w(0x0, vfe_dev->vfe_base + 0x2C0);
 
-	msm_vfe40_config_irq(vfe_dev, vfe_dev->recovery_irq0_mask,
+	if (vfe_dev->recovery_irq0_mask || vfe_dev->recovery_irq1_mask)
+		msm_vfe40_config_irq(vfe_dev, vfe_dev->recovery_irq0_mask,
 		vfe_dev->recovery_irq1_mask, MSM_ISP_IRQ_SET);
 
 	vfe_dev->hw_info->vfe_ops.core_ops.reg_update(vfe_dev, VFE_SRC_MAX);
