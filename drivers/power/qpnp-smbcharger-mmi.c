@@ -7790,19 +7790,111 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 			chip->togl_rst_gpio.label, chip->togl_rst_gpio.gpio);
 }
 
+static const char *smb_get_mmi_battid(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *battsn_buf;
+	int retval;
+
+	battsn_buf = NULL;
+
+	if (np)
+		retval = of_property_read_string(np, "mmi,battid",
+						 &battsn_buf);
+	else
+		return NULL;
+
+	if ((retval == -EINVAL) || !battsn_buf) {
+		pr_err("Battsn unused\n");
+		of_node_put(np);
+		return NULL;
+
+	} else
+		pr_err("Battsn = %s\n", battsn_buf);
+
+	of_node_put(np);
+
+	return battsn_buf;
+}
+
+static struct device_node *smb_get_serialnumber(struct smbchg_chip *chip,
+					       struct device_node *np)
+{
+	struct device_node *node, *df_node, *sn_node;
+	const char *sn_buf, *df_sn, *dev_sn;
+	int rc;
+
+	if (!np)
+		return NULL;
+
+	dev_sn = NULL;
+	df_sn = NULL;
+	sn_buf = NULL;
+	df_node = NULL;
+	sn_node = NULL;
+
+	dev_sn = smb_get_mmi_battid();
+
+	rc = of_property_read_string(np, "df-serialnum",
+				     &df_sn);
+	if (rc)
+		dev_warn(chip->dev, "No Default Serial Number defined");
+	else if (df_sn)
+		dev_warn(chip->dev, "Default Serial Number %s", df_sn);
+
+	for_each_child_of_node(np, node) {
+		rc = of_property_read_string(node, "serialnum",
+					     &sn_buf);
+		if (!rc && sn_buf) {
+			if (dev_sn)
+				if (strnstr(dev_sn, sn_buf, 32))
+					sn_node = node;
+			if (df_sn)
+				if (strnstr(df_sn, sn_buf, 32))
+					df_node = node;
+		}
+	}
+
+	if (sn_node) {
+		node = sn_node;
+		df_node = NULL;
+		dev_warn(chip->dev, "Battery Match Found using %s",
+			 sn_node->name);
+	} else if (df_node) {
+		node = df_node;
+		sn_node = NULL;
+		dev_warn(chip->dev, "Battery Match Found using default %s",
+			 df_node->name);
+	} else {
+		dev_warn(chip->dev, "No Battery Match Found!");
+		return NULL;
+	}
+
+	return node;
+}
+
 static int smb_parse_dt(struct smbchg_chip *chip)
 {
 	int rc = 0;
 	struct device_node *node = chip->dev->of_node;
+	struct device_node *batt_node = NULL, *profile_node = NULL;
 	const char *dc_psy_type, *bpd;
 	const u32 *dt_map;
 	int index;
 	bool primary_only = false;
+	bool enable_parameter_separate = false;
 
 	if (!node) {
 		SMB_ERR(chip, "device tree info. missing\n");
 		return -EINVAL;
 	}
+
+	enable_parameter_separate = of_property_read_bool(node,
+								"qcom,enable-parameter-separate");
+	if (enable_parameter_separate)
+		batt_node = of_find_node_by_name(node, "qcom,battery-data");
+	if (batt_node)
+		profile_node = smb_get_serialnumber(chip, batt_node);
 
 	/* read optional u32 properties */
 	OF_PROP_READ(chip, chip->iterm_ma, "iterm-ma", rc, 1);
@@ -7819,8 +7911,20 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 			rc, 1);
 	OF_PROP_READ(chip, chip->float_voltage_comp, "float-voltage-comp",
 			rc, 1);
-	OF_PROP_READ(chip, chip->afvc_mv, "auto-voltage-comp-mv",
-			rc, 1);
+	if (profile_node) {
+		rc = of_property_read_u32(profile_node,
+				"qcom,auto-voltage-comp-mv", &chip->afvc_mv);
+		if (rc) {
+			pr_err("Could not read afvc_mv from battery dtsi: %d\n",
+				rc);
+			OF_PROP_READ(chip, chip->afvc_mv,
+					"auto-voltage-comp-mv", rc, 1);
+		}
+	} else {
+		OF_PROP_READ(chip, chip->afvc_mv, "auto-voltage-comp-mv",
+		rc, 1);
+	}
+
 	if (chip->safety_time != -EINVAL &&
 		(chip->safety_time > chg_time[ARRAY_SIZE(chg_time) - 1])) {
 		SMB_ERR(chip, "Bad charging-timeout-mins %d\n",
@@ -7880,8 +7984,20 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	if (chip->hotspot_thrs_c == -EINVAL)
 		chip->hotspot_thrs_c = 50;
 
-	OF_PROP_READ(chip, chip->stepchg_iterm_ma,
-			"stepchg-iterm-ma", rc, 1);
+	if (profile_node) {
+		rc = of_property_read_u32(profile_node, "qcom,stepchg-iterm-ma",
+				&chip->stepchg_iterm_ma);
+		if (rc) {
+			pr_err("Could not read stepchg_iterm_ma from battery dtsi: %d\n",
+				rc);
+			OF_PROP_READ(chip, chip->stepchg_iterm_ma,
+				"stepchg-iterm-ma", rc, 1);
+		}
+	} else {
+		OF_PROP_READ(chip, chip->stepchg_iterm_ma,
+				"stepchg-iterm-ma", rc, 1);
+	}
+
 	if (chip->stepchg_iterm_ma != -EINVAL) {
 		chip->allowed_fastchg_current_ma =
 			chip->target_fastchg_current_ma;
@@ -8017,8 +8133,20 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	if (rc)
 		chip->eb_pwr_psy_name = "gb_ptp";
 
-	dt_map = of_get_property(node, "qcom,step-chg-steps",
-					&chip->stepchg_num_steps);
+	if (profile_node) {
+		dt_map = of_get_property(profile_node, "qcom,step-chg-steps",
+				&chip->stepchg_num_steps);
+		if ((!dt_map) || (chip->stepchg_num_steps <= 0)) {
+			SMB_ERR(chip,
+				"Could not read step-chg-steps from battery dtsi\n");
+			dt_map = of_get_property(node, "qcom,step-chg-steps",
+				&chip->stepchg_num_steps);
+		}
+	} else {
+		dt_map = of_get_property(node, "qcom,step-chg-steps",
+				&chip->stepchg_num_steps);
+	}
+
 	if ((!dt_map) || (chip->stepchg_num_steps <= 0))
 		SMB_ERR(chip, "No Charge steps defined\n");
 	else {
