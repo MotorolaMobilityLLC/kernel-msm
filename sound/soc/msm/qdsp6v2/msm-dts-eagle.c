@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2016 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014, 2016-2017 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -192,7 +192,8 @@ static __s32 volume_cmds_alloc1(__s32 size)
 	if (vol_cmds) {
 		vol_cmds_d = kzalloc(vol_cmd_cnt * sizeof(struct vol_cmds_d_),
 					GFP_KERNEL);
-	}
+	} else
+		vol_cmd_cnt = 0;
 	if (vol_cmds_d)
 		return 0;
 	volume_cmds_free();
