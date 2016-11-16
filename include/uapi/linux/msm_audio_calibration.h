@@ -71,8 +71,6 @@ enum {
 	AFE_FB_SPKR_PROT_CAL_TYPE,
 	AFE_HW_DELAY_CAL_TYPE,
 	AFE_SIDETONE_CAL_TYPE,
-	AFE_TOPOLOGY_CAL_TYPE,
-	AFE_CUST_TOPOLOGY_CAL_TYPE,
 
 	LSM_CUST_TOPOLOGY_CAL_TYPE,
 	LSM_TOPOLOGY_CAL_TYPE,
@@ -93,11 +91,6 @@ enum {
 	SRS_TRUMEDIA_CAL_TYPE,
 
 	CORE_CUSTOM_TOPOLOGIES_CAL_TYPE,
-	ADM_RTAC_AUDVOL_CAL_TYPE,
-
-	ULP_LSM_TOPOLOGY_ID_CAL_TYPE,
-	AFE_FB_SPKR_PROT_TH_VI_CAL_TYPE,
-	AFE_FB_SPKR_PROT_EX_VI_CAL_TYPE,
 	MAX_CAL_TYPES,
 };
 
@@ -229,14 +222,6 @@ struct audio_cal_info_afe {
 	int32_t		sample_rate;
 };
 
-struct audio_cal_info_afe_top {
-	int32_t		topology;
-	int32_t		acdb_id;
-	/* RX_DEVICE or TX_DEVICE */
-	int32_t		path;
-	int32_t		sample_rate;
-};
-
 struct audio_cal_info_asm_top {
 	int32_t		topology;
 	int32_t		app_type;
@@ -274,11 +259,8 @@ enum msm_spkr_prot_states {
 	MSM_SPKR_PROT_CALIBRATED,
 	MSM_SPKR_PROT_CALIBRATION_IN_PROGRESS,
 	MSM_SPKR_PROT_DISABLED,
-	MSM_SPKR_PROT_NOT_CALIBRATED,
-	MSM_SPKR_PROT_PRE_CALIBRATED,
-	MSM_SPKR_PROT_IN_FTM_MODE
+	MSM_SPKR_PROT_NOT_CALIBRATED
 };
-#define MSM_SPKR_PROT_IN_FTM_MODE MSM_SPKR_PROT_IN_FTM_MODE
 
 enum msm_spkr_count {
 	SP_V2_SPKR_1,
@@ -502,17 +484,6 @@ struct audio_cal_type_afe {
 struct audio_cal_afe {
 	struct audio_cal_header		hdr;
 	struct audio_cal_type_afe	cal_type;
-};
-
-struct audio_cal_type_afe_top {
-	struct audio_cal_type_header	cal_hdr;
-	struct audio_cal_data		cal_data;
-	struct audio_cal_info_afe_top	cal_info;
-};
-
-struct audio_cal_afe_top {
-	struct audio_cal_header		hdr;
-	struct audio_cal_type_afe_top	cal_type;
 };
 
 struct audio_cal_type_aanc {
