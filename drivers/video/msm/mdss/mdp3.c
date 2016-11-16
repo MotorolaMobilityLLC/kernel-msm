@@ -1046,7 +1046,12 @@ u64 mdp3_get_panic_lut_cfg(u32 panel_width)
 int mdp3_qos_remapper_setup(struct mdss_panel_data *panel)
 {
 	int rc = 0;
-	u64 panic_config = mdp3_get_panic_lut_cfg(panel->panel_info.xres);
+	u64 panic_config = 0;
+
+        if (!panel)
+                return -EINVAL;
+
+	panic_config = mdp3_get_panic_lut_cfg(panel->panel_info.xres);
 
 	rc = mdp3_clk_update(MDP3_CLK_AHB, 1);
 	rc |= mdp3_clk_update(MDP3_CLK_AXI, 1);
@@ -1055,9 +1060,6 @@ int mdp3_qos_remapper_setup(struct mdss_panel_data *panel)
 		pr_err("fail to turn on MDP core clks\n");
 		return rc;
 	}
-
-	if (!panel)
-		return -EINVAL;
 	/* Program MDP QOS Remapper */
 	MDP3_REG_WRITE(MDP3_DMA_P_QOS_REMAPPER, 0x1A9);
 	MDP3_REG_WRITE(MDP3_DMA_P_WATERMARK_0, 0x0);
