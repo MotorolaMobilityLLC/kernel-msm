@@ -134,11 +134,11 @@ int get_dt_threshold_data(struct device_node *of_node, int *lowv, int *highv)
 static int stmvl53l0_get_dt_data(struct device *dev, struct i2c_data *data)
 {
 	int rc = 0;
-	struct msm_camera_gpio_conf *gconf = NULL;
-	uint16_t *gpio_array = NULL;
-	uint16_t gpio_array_size = 0;
+	struct msm_camera_gpio_conf *gconf;
+	uint16_t *gpio_array;
+	uint16_t gpio_array_size;
 	int i;
-	struct msm_pinctrl_info *sensor_pctrl = NULL;
+	struct msm_pinctrl_info *sensor_pctrl;
 
 	vl53l0_dbgmsg("Enter\n");
 
@@ -160,17 +160,14 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct i2c_data *data)
 	if (dev->of_node) {
 		struct device_node *of_node = dev->of_node;
 
-		if (!of_node) {
-			vl53l0_errmsg("failed %d\n", __LINE__);
-			return -EINVAL;
-		}
-
 		gpio_array_size = of_gpio_count(of_node);
 		gconf = &data->gconf;
 
 		if (gpio_array_size) {
 			gpio_array = kcalloc(gpio_array_size, sizeof(uint16_t),
 				GFP_KERNEL);
+			if (!gpio_array)
+				return -ENOMEM;
 
 			for (i = 0; i < gpio_array_size; i++) {
 				gpio_array[i] = of_get_gpio(of_node, i);
@@ -182,6 +179,7 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct i2c_data *data)
 				gpio_array, gpio_array_size);
 			if (rc < 0) {
 				pr_err("%s failed %d\n", __func__, __LINE__);
+				kfree(gpio_array);
 				return rc;
 			}
 
@@ -189,8 +187,10 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct i2c_data *data)
 				gpio_array, gpio_array_size);
 			if (rc < 0) {
 				pr_err("%s failed %d\n", __func__, __LINE__);
+				kfree(gpio_array);
 				return rc;
 			}
+			kfree(gpio_array);
 		}
 		rc = get_dt_threshold_data(of_node,
 			&(data->lowv), &(data->highv));
