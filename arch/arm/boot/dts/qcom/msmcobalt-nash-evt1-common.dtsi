@@ -19,7 +19,8 @@
 	sound {
 		cs47l35,micbias-routing =
 			"IN1AL", "MICBIAS1A",
-			"IN2L",  "MICBIAS1B",
+			"IN2L",  "MICBIAS1A",
+			"IN2L",  "GPSW",
 			"IN2R",  "MICBIAS1B",
 			"IN1BR", "MICBIAS2A";
 	};
