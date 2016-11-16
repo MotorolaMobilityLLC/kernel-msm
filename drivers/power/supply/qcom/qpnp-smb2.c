@@ -1189,6 +1189,12 @@ static int smb2_config_step_charging(struct smb2 *chip)
 	int rc = 0;
 	int i;
 
+	if (chg->mmi.factory_mode) {
+		rc = smblib_masked_write(chg, CHGR_STEP_CHG_MODE_CFG_REG,
+					 STEP_CHARGING_ENABLE_BIT, 0);
+		return rc;
+	}
+
 	if (!chg->step_chg_enabled)
 		return rc;
 
