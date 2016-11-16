@@ -18,7 +18,9 @@
 	model = "montana";
 	compatible = "qcom,msm8937-montana", "qcom,msm8937-moto",
 			"qcom,msm8937";
-
+	aliases {
+		i2c5 = &i2c_5;
+	};
 };
 
 &soc {
@@ -28,6 +30,55 @@
 		gpio = <&tlmm 59 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
+	};
+
+	i2c_5: i2c@7af5000 { /* BLSP2 QUP1 */
+		status = "okay";
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x7af5000 0x600>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 299 0>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup1_i2c_apps_clk>;
+
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_5_active>;
+		pinctrl-1 = <&i2c_5_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,master-id = <84>;
+		dmas = <&dma_blsp2 4 64 0x20000020 0x20>,
+			<&dma_blsp2 5 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+	};
+};
+
+&i2c_5 { /* BLSP2 QUP1 (NFC) */
+	pnxxx: pnxxx@28 {
+	    compatible = "nxp,pn544";
+	    reg = <0x28>;
+	    interrupt-parent = <&tlmm>;
+	    interrupts = <9 0>;
+	    gpios = <&tlmm 9 0>, /* IRQ */
+	    <&tlmm 93 0>, /* VEN */
+	    <&tlmm 130 0>; /* Firmware */
+
+	    nxp,pnxxx-discharge-delay = <100>;
+	    nxp,pnxxx-ven-inv-polarity = <0>;
+
+	    pinctrl-names = "default";
+	    pinctrl-0=<&nfc_irq_default &nfc_pwr_default &nfc_firm_default>;
+
+	    qcom,clk-gpio = <&pm8937_gpios 5 0x00>;
+	    qcom,clk-src = "BBCLK2";
+	    clocks = <&clock_gcc clk_bb_clk2_pin>;
+	    clock-names = "ref_clk";
 	};
 };
 
@@ -104,6 +155,46 @@
 			compatible = "qcom,leds-atc";
 			linux,name = "charging";
 			qcom,ctrl-reg = <0x243>;
+		};
+	};
+};
+
+&tlmm{
+	pmx_nfc_irq {
+		pins = "gpio9";
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "nfc_irq";
+
+		nfc_irq_default: default {
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+
+	pmx_nfc_pwr {
+		pins = "gpio93";
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "nfc_pwr";
+
+		nfc_pwr_default: default {
+			bias-pull-down;
+			output-low;
+			drive-strength = <2>;
+		};
+	};
+
+	pmx_nfc_firm {
+		pins = "gpio130";
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "nfc_firm";
+
+		nfc_firm_default: default {
+			bias-pull-down;
+			output-low;
+			drive-strength = <2>;
 		};
 	};
 };
