@@ -1001,6 +1001,9 @@ static int smblib_dc_suspend_vote_callback(struct votable *votable, void *data,
 {
 	struct smb_charger *chg = data;
 
+	if (chg->mmi.factory_mode)
+		return 0;
+
 	/* resume input if suspend is invalid */
 	if (suspend < 0)
 		suspend = 0;
@@ -1014,6 +1017,9 @@ static int smblib_dc_icl_vote_callback(struct votable *votable, void *data,
 	struct smb_charger *chg = data;
 	int rc = 0;
 	bool suspend;
+
+	if (chg->mmi.factory_mode)
+		return 0;
 
 	if (icl_ua < 0) {
 		smblib_dbg(chg, PR_MISC, "No Voter hence suspending\n");
@@ -1071,6 +1077,9 @@ static int smblib_chg_disable_vote_callback(struct votable *votable, void *data,
 {
 	struct smb_charger *chg = data;
 	int rc;
+
+	if (chg->mmi.factory_mode)
+		return 0;
 
 	rc = smblib_masked_write(chg, CHARGING_ENABLE_CMD_REG,
 				 CHARGING_ENABLE_CMD_BIT,
@@ -5034,11 +5043,15 @@ int smblib_init(struct smb_charger *chg)
 		return -EINVAL;
 	}
 
+	mmi_init(chg);
+
 	return rc;
 }
 
 int smblib_deinit(struct smb_charger *chg)
 {
+	mmi_deinit(chg);
+
 	switch (chg->mode) {
 	case PARALLEL_MASTER:
 		cancel_work_sync(&chg->bms_update_work);
@@ -5068,4 +5081,469 @@ int smblib_deinit(struct smb_charger *chg)
 	smblib_iio_deinit(chg);
 
 	return 0;
+}
+
+struct smb_charger *the_chip;
+
+#define CHG_SHOW_MAX_SIZE 50
+static ssize_t force_demo_mode_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid demo  mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	the_chip->mmi.demo_mode = (mode) ? true : false;
+
+	return r ? r : count;
+}
+
+static ssize_t force_demo_mode_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int state;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	state = (the_chip->mmi.demo_mode) ? 1 : 0;
+
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_demo_mode, 0644,
+		force_demo_mode_show,
+		force_demo_mode_store);
+
+static ssize_t force_chg_usb_suspend_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid usb suspend mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+	r = smblib_set_usb_suspend(the_chip, (bool)mode);
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_usb_suspend_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+	ret = smblib_get_usb_suspend(the_chip, &state);
+	if (ret) {
+		pr_err("USBIN_SUSPEND_BIT failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_usb_suspend, 0664,
+		force_chg_usb_suspend_show,
+		force_chg_usb_suspend_store);
+
+static ssize_t force_chg_fail_clear_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid chg fail mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	/* do nothing for SMBCHG */
+	r = 0;
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_fail_clear_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	/* do nothing for SMBCHG */
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "0\n");
+}
+
+static DEVICE_ATTR(force_chg_fail_clear, 0664,
+		force_chg_fail_clear_show,
+		force_chg_fail_clear_store);
+
+static ssize_t force_chg_auto_enable_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid chrg enable value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = smblib_masked_write(the_chip, CHARGING_ENABLE_CMD_REG,
+				CHARGING_ENABLE_CMD_BIT,
+				mode ? 0 : CHARGING_ENABLE_CMD_BIT);
+	if (r < 0) {
+		pr_err("Factory Couldn't %s charging rc=%d\n",
+		       mode ? "disable" : "enable", (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_auto_enable_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = smblib_read(the_chip, CHARGING_ENABLE_CMD_REG, &value);
+	if (ret) {
+		pr_err("CHG_EN_BIT failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = (CHARGING_ENABLE_CMD_BIT & value) ? 0 : 1;
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_auto_enable, 0664,
+		force_chg_auto_enable_show,
+		force_chg_auto_enable_store);
+
+static ssize_t force_chg_ibatt_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long chg_current;
+
+	r = kstrtoul(buf, 0, &chg_current);
+	if (r) {
+		pr_err("Invalid ibatt value = %lu\n", chg_current);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	chg_current *= 1000; /* Convert to uA */
+	r = smblib_set_charge_param(the_chip, &the_chip->param.fcc, chg_current);
+	if (r < 0) {
+		pr_err("Factory Couldn't set master fcc = %d rc=%d\n",
+		       (int)chg_current, (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_ibatt_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = smblib_get_charge_param(the_chip, &the_chip->param.fcc, &state);
+	if (ret < 0) {
+		pr_err("Factory Couldn't get master fcc rc=%d\n", (int)ret);
+		return ret;
+	}
+
+	state /= 1000; /* Convert to mA */
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_ibatt, 0664,
+		force_chg_ibatt_show,
+		force_chg_ibatt_store);
+
+static ssize_t force_chg_iusb_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long usb_curr;
+
+	r = kstrtoul(buf, 0, &usb_curr);
+	if (r) {
+		pr_err("Invalid iusb value = %lu\n", usb_curr);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+	usb_curr *= 1000; /* Convert to uA */
+	r = smblib_set_charge_param(the_chip, &the_chip->param.usb_icl, usb_curr);
+	if (r < 0) {
+		pr_err("Factory Couldn't set usb icl = %d rc=%d\n",
+		       (int)usb_curr, (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_iusb_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int r;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		r = -ENODEV;
+		goto end;
+	}
+
+	r = smblib_get_charge_param(the_chip, &the_chip->param.usb_icl, &state);
+	if (r < 0) {
+		pr_err("Factory Couldn't get usb_icl rc=%d\n", (int)r);
+		return r;
+	}
+	state /= 1000; /* Convert to mA */
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_iusb, 0664,
+		force_chg_iusb_show,
+		force_chg_iusb_store);
+
+#define PRE_CHARGE_CONV_MV 25
+#define PRE_CHARGE_MAX 0x3F
+static ssize_t force_chg_itrick_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long chg_current;
+	u8 value;
+
+	r = kstrtoul(buf, 0, &chg_current);
+	if (r) {
+		pr_err("Invalid pre-charge value = %lu\n", chg_current);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	chg_current /= PRE_CHARGE_CONV_MV;
+
+	if (chg_current > PRE_CHARGE_MAX)
+		value = PRE_CHARGE_MAX;
+	else
+		value = (u8)chg_current;
+
+	r = smblib_masked_write(the_chip, PRE_CHARGE_CURRENT_CFG_REG,
+				PRE_CHARGE_CURRENT_SETTING_MASK,
+				value);
+	if (r < 0) {
+		pr_err("Factory Couldn't set ITRICK %d  mV rc=%d\n",
+		       (int)value, (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_itrick_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = smblib_read(the_chip, PRE_CHARGE_CURRENT_CFG_REG, &value);
+	if (ret) {
+		pr_err("Pre Chg ITrick failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	value &= PRE_CHARGE_CURRENT_SETTING_MASK;
+
+	state = value * PRE_CHARGE_CONV_MV;
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_itrick, 0664,
+		   force_chg_itrick_show,
+		   force_chg_itrick_store);
+
+
+static bool mmi_factory_check(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
+}
+
+void mmi_init(struct smb_charger *chg)
+{
+	int rc;
+
+	if (!chg)
+		return;
+	the_chip = chg;
+	chg->mmi.factory_mode = mmi_factory_check();
+
+	rc = device_create_file(chg->dev,
+				&dev_attr_force_demo_mode);
+	if (rc) {
+		pr_err("couldn't create force_demo_mode\n");
+	}
+
+	if (chg->mmi.factory_mode) {
+		the_chip = chg;
+		pr_err("Entering Factory Mode SMB!\n");
+
+		rc = device_create_file(chg->dev,
+					&dev_attr_force_chg_usb_suspend);
+		if (rc) {
+			pr_err("couldn't create force_chg_usb_suspend\n");
+		}
+
+		rc = device_create_file(chg->dev,
+					&dev_attr_force_chg_fail_clear);
+		if (rc) {
+			pr_err("couldn't create force_chg_fail_clear\n");
+		}
+
+		rc = device_create_file(chg->dev,
+					&dev_attr_force_chg_auto_enable);
+		if (rc) {
+			pr_err("couldn't create force_chg_auto_enable\n");
+		}
+
+		rc = device_create_file(chg->dev,
+				&dev_attr_force_chg_ibatt);
+		if (rc) {
+			pr_err("couldn't create force_chg_ibatt\n");
+		}
+
+		rc = device_create_file(chg->dev,
+					&dev_attr_force_chg_iusb);
+		if (rc) {
+			pr_err("couldn't create force_chg_iusb\n");
+		}
+
+		rc = device_create_file(chg->dev,
+					&dev_attr_force_chg_itrick);
+		if (rc) {
+			pr_err("couldn't create force_chg_itrick\n");
+		}
+	}
+}
+
+void mmi_deinit(struct smb_charger *chg)
+{
+	if (!chg)
+		return;
+
+	device_remove_file(chg->dev,
+			   &dev_attr_force_demo_mode);
+
+	if (chg->mmi.factory_mode) {
+		device_remove_file(chg->dev,
+				   &dev_attr_force_chg_usb_suspend);
+		device_remove_file(chg->dev,
+				   &dev_attr_force_chg_fail_clear);
+		device_remove_file(chg->dev,
+				   &dev_attr_force_chg_auto_enable);
+		device_remove_file(chg->dev,
+				   &dev_attr_force_chg_ibatt);
+		device_remove_file(chg->dev,
+				   &dev_attr_force_chg_iusb);
+		device_remove_file(chg->dev,
+				   &dev_attr_force_chg_itrick);
+	}
 }
