@@ -12,9 +12,11 @@
 
 #ifndef __SMB2_CHARGER_H
 #define __SMB2_CHARGER_H
+#include <linux/gpio.h>
 #include <linux/types.h>
 #include <linux/interrupt.h>
 #include <linux/irqreturn.h>
+#include <linux/reboot.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/consumer.h>
 #include <linux/extcon.h>
@@ -237,6 +239,12 @@ struct reg_info {
 struct mmi_params {
 	bool			factory_mode;
 	bool			demo_mode;
+	struct gpio		warn_gpio;
+	struct gpio		togl_rst_gpio;
+	struct gpio		ebchg_gpio;
+	struct delayed_work	warn_irq_work;
+	int			warn_irq;
+	struct notifier_block	smb_reboot;
 };
 
 struct smb_charger {
