@@ -143,6 +143,27 @@
 		dma-names = "tx", "rx";
 	};
 
+	et320: et320{
+		compatible = "egistec,et320";
+		status = "ok";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <128 0x0>;
+		egistec,gpio_irq    = <&tlmm 128 0x1>;
+		egistec,gpio_rst    = <&tlmm 127 0x2>;
+		egistec,gpio_ldo1p8_en = <&tlmm 132 0x0>;
+		egistec,gpio_ldo3p3_en = <&tlmm 133 0x0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&rst_active &int_active &ldo_en_active &ldo3_en_active>;
+		pinctrl-1 = <&rst_suspend &int_suspend &ldo_en_suspend &ldo3_en_suspend>;
+	};
+	fp_id: fp_id {
+		status = "ok";
+		compatible = "fp_id,fp_id";
+		interrupt-parent = <&tlmm>;
+		fp,gpio-id = <&tlmm 25 0x0>;
+	};
+
 	spi_6: spi@7af6000 { /* BLSP2 QUP2 */
 		compatible = "qcom,spi-qup-v2";
 		status = "ok";
