@@ -962,6 +962,11 @@ camera_power_down:
 free_camera_info:
 	kfree(camera_info);
 free_slave_info:
+	kfree(s_ctrl->sensordata->power_info.power_setting);
+	kfree(s_ctrl->sensordata->power_info.power_down_setting);
+	s_ctrl->sensordata->power_info.power_setting = NULL;
+	s_ctrl->sensordata->power_info.power_down_setting = NULL;
+
 	kfree(slave_info);
 	return rc;
 }
