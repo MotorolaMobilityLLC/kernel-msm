@@ -184,6 +184,9 @@
 		interrupt-parent = <&tlmm>;
 		VA-supply = <&dummy_vreg>;
 		VP-supply = <&dummy_vreg>;
+
+		pinctrl-name = "default";
+		pinctrl-0 = <&cs35l35_reset_default &cs35l35_irq_default>;
 	};
 };
 
