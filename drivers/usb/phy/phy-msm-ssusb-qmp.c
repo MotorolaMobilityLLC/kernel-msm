@@ -57,6 +57,21 @@ enum ldo_levels {
 /* port select mux: 1 - sw control. 0 - HW control*/
 #define SW_PORTSELECT_MX	BIT(1)
 
+#define USB3PHY_QSERDES_TXA_TX_DRV_LVL		0x21C
+#define USB3PHY_QSERDES_TXB_TX_DRV_LVL		0x61C
+#define USB3PHY_QSERDES_TXA_TX_EMP_POST1_LVL	0x20C
+#define USB3PHY_QSERDES_TXB_TX_EMP_POST1_LVL	0x60C
+#define USB3PHY_QSERDES_TXA_LANE_MODE_1		0x28C
+#define USB3PHY_QSERDES_TXB_LANE_MODE_1		0x68C
+#define USB3PHY_QSERDES_RXA_EQU_ADAPTOR_CNTRL4	0x4DC
+#define USB3PHY_QSERDES_RXB_EQU_ADAPTOR_CNTRL4	0x8DC
+
+
+/* override_phy_init is an array of 3-tuples - value, offset and delay */
+static char *override_phy_init;
+module_param(override_phy_init, charp, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_phy_init, "QMP PHY TUNE Override");
+
 enum qmp_phy_rev_reg {
 	USB3_PHY_PCS_STATUS,
 	USB3_PHY_AUTONOMOUS_MODE_CTRL,
@@ -283,6 +298,46 @@ static int configure_phy_regs(struct usb_phy *uphy,
 	return 0;
 }
 
+#define MAX_OVERRIDE_CNT 15
+static void qmp_override_phy_init(struct msm_ssphy_qmp *qphy)
+{
+	int aseq[MAX_OVERRIDE_CNT+1];
+	int *seq = NULL;
+	int i;
+
+	if (!override_phy_init)
+		return;
+
+	dev_dbg(qphy->phy.dev, "Override phy with %s\n", override_phy_init);
+	get_options(override_phy_init, ARRAY_SIZE(aseq), aseq);
+	seq = &aseq[1];
+
+	for (i = 0; i+2 < aseq[0]; i = i+3) {
+		dev_dbg(qphy->phy.dev, "write 0x%02x to 0x%02x\n",
+							seq[i], seq[i+1]);
+		writel_relaxed(seq[i], qphy->base + seq[i+1]);
+		if (seq[i+2])
+			usleep_range(seq[i+2], (seq[i+2] + 10));
+	}
+
+	dev_err(qphy->phy.dev, "TXA_TX_DRV_LVL = 0x%02x\n",
+		readb_relaxed(qphy->base + USB3PHY_QSERDES_TXA_TX_DRV_LVL));
+	dev_err(qphy->phy.dev, "TXB_TX_DRV_LVL = 0x%02x\n",
+		readb_relaxed(qphy->base + USB3PHY_QSERDES_TXB_TX_DRV_LVL));
+	dev_err(qphy->phy.dev, "TXA_TX_EMP_POST1_LVL = 0x%02x\n",
+		readb_relaxed(qphy->base + USB3PHY_QSERDES_TXA_TX_EMP_POST1_LVL));
+	dev_err(qphy->phy.dev, "TXB_TX_EMP_POST1_LVL = 0x%02x\n",
+		readb_relaxed(qphy->base + USB3PHY_QSERDES_TXB_TX_EMP_POST1_LVL));
+	dev_err(qphy->phy.dev, "TXA_LANE_MODE_1 = 0x%02x\n",
+		readb_relaxed(qphy->base + USB3PHY_QSERDES_TXA_LANE_MODE_1));
+	dev_err(qphy->phy.dev, "TXB_LANE_MODE_1 = 0x%02x\n",
+		readb_relaxed(qphy->base + USB3PHY_QSERDES_TXB_LANE_MODE_1));
+	dev_err(qphy->phy.dev, "RXA_EQU_ADAPTOR_CNTRL4 = 0x%02x\n",
+		readb_relaxed(qphy->base + USB3PHY_QSERDES_RXA_EQU_ADAPTOR_CNTRL4));
+	dev_err(qphy->phy.dev, "RXB_EQU_ADAPTOR_CNTRL4 = 0x%02x\n",
+		readb_relaxed(qphy->base + USB3PHY_QSERDES_RXB_EQU_ADAPTOR_CNTRL4));
+}
+
 /* SSPHY Initialization */
 static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 {
@@ -331,6 +386,8 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 		dev_err(uphy->dev, "Failed the main PHY configuration\n");
 		return ret;
 	}
+
+	qmp_override_phy_init(phy);
 
 	/* perform lane selection */
 	val = -EINVAL;
