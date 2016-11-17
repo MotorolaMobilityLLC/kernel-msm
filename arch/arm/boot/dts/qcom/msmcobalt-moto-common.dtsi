@@ -219,9 +219,6 @@
 &usb3{
 	mmi,ext-typec-switch;
 	qcom,ssusb-compliance;
-	dwc3@a800000 {
-		maximum-speed = "high-speed";
-	};
 };
 
 &pmcobalt_vadc {
