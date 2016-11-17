@@ -1399,9 +1399,9 @@ kgsl_drm_irq_handler(DRM_IRQ_ARGS)
 		if (isr & dev_priv->irq_mask[i]) {
 			DRM_DEBUG("%s:crtc[%d] \n", __func__,i);
 			drm_handle_vblank(dev, i);
-			smp_mb__before_atomic_inc();
+			smp_mb__before_atomic();
 			atomic_inc(&dev_priv->vblank_cnt[i]);
-			smp_mb__after_atomic_inc();
+			smp_mb__after_atomic();
 			break;
 		}
 		i++;
