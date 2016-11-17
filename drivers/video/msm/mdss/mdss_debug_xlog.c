@@ -709,9 +709,9 @@ void mdss_xlog_tout_handler_default(bool is_mmi, bool queue,
 static void regs_print_util(char *name, char *addr, int len, u32 *reg_dump, struct seq_file *s)
 { 
 	int i;
-	seq_printf(s, "%s start_addr:0x%p end_addr:0x%p reg_addr=0x%p\n", name, reg_dump, reg_dump + (u32)len * 16,addr);
+	seq_printf(s, "%s start_addr:0x%pK end_addr:0x%pK reg_addr=0x%pK\n", name, reg_dump, reg_dump + (u32)len * 16,addr);
 	for (i = 0; i < len; i++) {
-		seq_printf(s, "%p : %08x %08x %08x %08x\n", addr, reg_dump[i*4], reg_dump[i*4 + 1], reg_dump[i*4 + 2], reg_dump[i*4 + 3]);
+		seq_printf(s, "%pK : %08x %08x %08x %08x\n", addr, reg_dump[i*4], reg_dump[i*4 + 1], reg_dump[i*4 + 2], reg_dump[i*4 + 3]);
 		addr += 16;
 	}
 }
@@ -756,7 +756,7 @@ static void mdss_read_regs(struct mdss_debug_base *dbg,
 static void debug_bus_print_util(u32 *reg_dump, struct seq_file *s, int len)
 {
 	int i;
-	seq_printf(s,"%s: start_addr:0x%p end_addr:0x%p\n", __func__, reg_dump, (reg_dump + (len * 4 * 4)));
+	seq_printf(s,"%s: start_addr:0x%pK end_addr:0x%pK\n", __func__, reg_dump, (reg_dump + (len * 4 * 4)));
 	
 	for (i = 0; i < len; i++) {
 		seq_printf(s,"waddr=0x%x blk=%d tst=%d val=0x%x\n", reg_dump[i*4], reg_dump[i*4 + 1], reg_dump[i*4 + 2], reg_dump[i*4 + 3]);
@@ -787,7 +787,7 @@ static void vbif_debug_bus_print(u32 *reg_dump, struct seq_file *s, u32 bus_size
 
 	list_size *= 16;
 
-	seq_printf(s,"%s: start_addr:0x%p end_addr:0x%p\n", __func__, reg_dump, (reg_dump+list_size));
+	seq_printf(s,"%s: start_addr:0x%pK end_addr:0x%pK\n", __func__, reg_dump, (reg_dump+list_size));
 	for (i = 0; i < bus_size; i++) {
 		head = dbg_bus + i;
 		vbif_debug_bus_print_util(head, reg_dump, s);
