@@ -461,6 +461,17 @@
 		status = "okay";
 	};
 
+	gpio@ca00 { /* PM8998_GPIO11 - TGL_RST/FACT_EN */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <0>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,out-strength = <1>;/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,pull = <5>;	/* QPNP_PIN_PULL_NO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		status = "okay";
+	};
+
 	gpio@cc00 { /* PM8998_GPIO13 DIV_CLK1 */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
@@ -1319,6 +1330,13 @@
 };
 
 &pmicobalt_charger {
+	gpios = <&tlmm 72 0x0>, /* GPIOF_OUT_INIT_LOW */
+		<&tlmm 62 0x1>, /* GPIOF_IN */
+		<&pmcobalt_gpios 11 0>; /* TOGL_RST, output-low */
+	gpio-names = "eb_vbus_en",
+		     "factory_warn",
+		     "togl_rst";
+
 	qcom,fcc-max-ua = <3000000>;
 	qcom,fv-max-uv = <4400000>;
 	qcom,usb-icl-ua = <3000000>;
