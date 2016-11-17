@@ -71,15 +71,6 @@
                 };
         };
 
-        cs35l34_reset_default: cs35l34_reset_default {
-                config {
-                        pins = "gpio97";
-                        output-high;
-                        bias-pull-up;
-                        drive-strength = <2>;
-                };
-        };
-
 	laser_active: laser_active {
 		mux {
 			pins = "gpio79";
@@ -360,7 +351,7 @@
 	cs35l35_reset_default: cs35l35_reset_default {
 		config {
 			pins = "gpio97";
-			output-high;
+			output-low;
 			bias-pull-up;
 			drive-strength = <2>;
 		};
