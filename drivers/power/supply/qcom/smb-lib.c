@@ -14,12 +14,15 @@
 #include <linux/regmap.h>
 #include <linux/delay.h>
 #include <linux/iio/consumer.h>
+#include <linux/of_gpio.h>
 #include <linux/power_supply.h>
 #include <linux/regulator/driver.h>
 #include <linux/qpnp/qpnp-revid.h>
 #include <linux/input/qpnp-power-on.h>
+#include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/pmic-voter.h>
+#include <soc/qcom/watchdog.h>
 #include "smb-lib.h"
 #include "smb-reg.h"
 #include "battery.h"
@@ -4868,7 +4871,116 @@ int smblib_deinit(struct smb_charger *chg)
 	return 0;
 }
 
+/*********************
+ * MMI Functionality *
+ *********************/
+
 struct smb_charger *the_chip;
+
+static int factory_kill_disable;
+module_param(factory_kill_disable, int, 0644);
+static int smbchg_reboot(struct notifier_block *nb,
+			 unsigned long event, void *unused)
+{
+	struct smb_charger *chg = container_of(nb, struct smb_charger,
+						mmi.smb_reboot);
+	u8 stat;
+	bool vbus_rising;
+	pr_debug("SMB Reboot\n");
+	if (!chg) {
+		pr_warn("called before chip valid!\n");
+		return NOTIFY_DONE;
+	}
+
+	vbus_rising = (bool)(stat & USBIN_PLUGIN_RT_STS_BIT);
+	if (chg->mmi.factory_mode) {
+		switch (event) {
+		case SYS_POWER_OFF:
+			/* Disable Factory Kill */
+			factory_kill_disable = true;
+			/* Disable Charging */
+			smblib_masked_write(chg, CHARGING_ENABLE_CMD_REG,
+					    CHARGING_ENABLE_CMD_BIT,
+					    CHARGING_ENABLE_CMD_BIT);
+
+			/* Suspend USB and DC */
+			smblib_set_usb_suspend(chg, true);
+			smblib_set_dc_suspend(chg, true);
+
+			while (vbus_rising)
+				msleep(100);
+			pr_warn("VBUS UV wait 1 sec!\n");
+			/* Delay 1 sec to allow more VBUS decay */
+			msleep(1000);
+			break;
+		default:
+			break;
+		}
+	}
+
+	return NOTIFY_DONE;
+}
+
+static int usr_rst_sw_disable;
+module_param(usr_rst_sw_disable, int, 0644);
+static void warn_irq_w(struct work_struct *work)
+{
+	struct smb_charger *chg = container_of(work, struct smb_charger,
+						mmi.warn_irq_work.work);
+
+	int warn_line = gpio_get_value(chg->mmi.warn_gpio.gpio);
+	u8 stat;
+	bool vbus_rising;
+
+	if (!warn_line) {
+		pr_warn("HW User Reset! 2 sec to Reset\n");
+
+		/* trigger wdog if resin key pressed */
+		if (qpnp_pon_key_status & QPNP_PON_KEY_RESIN_BIT) {
+			pr_info("User triggered watchdog reset\n");
+			msm_trigger_wdog_bite();
+			return;
+		}
+
+		vbus_rising = (bool)(stat & USBIN_PLUGIN_RT_STS_BIT);
+		if (usr_rst_sw_disable <= 0) {
+			/* Configure hardware reset before halt
+			 * The new KUNGKOW circuit will not disconnect the
+			 * battery if usb/dc is connected. But because the
+			 * kernel is halted, a watchdog reset will be reported
+			 * instead of hardware reset. In this case, we need to
+			 * clear the KUNPOW reset bit to let BL detect it as a
+			 * hardware reset.
+			 * A pmic hard reset is necessary to report the powerup
+			 * reason to BL correctly.
+			*/
+			qpnp_pon_store_extra_reset_info(RESET_EXTRA_RESET_KUNPOW_REASON, 0);
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+			/*
+			 * pre-empt a battery pull by rebooting if a usb
+			 * charger is present. otherwise halt the kernel
+			 */
+			if (vbus_rising)
+				kernel_restart(NULL);
+			else
+				kernel_halt();
+		} else
+			pr_warn("SW HALT Disabled!\n");
+		return;
+	}
+}
+
+#define WARN_IRQ_DELAY  5 /* 5msec */
+static irqreturn_t warn_irq_handler(int irq, void *_chip)
+{
+	struct smb_charger *chg = _chip;
+
+	/*schedule delayed work for 5msec for line state to settle*/
+	schedule_delayed_work(&chg->mmi.warn_irq_work,
+				msecs_to_jiffies(WARN_IRQ_DELAY));
+
+	return IRQ_HANDLED;
+}
 
 #define CHG_SHOW_MAX_SIZE 50
 static ssize_t force_demo_mode_store(struct device *dev,
@@ -5252,6 +5364,105 @@ static bool mmi_factory_check(void)
 	return factory;
 }
 
+static void parse_mmi_dt_gpio(struct smb_charger *chg)
+{
+	struct device_node *node = chg->dev->of_node;
+	enum of_gpio_flags flags;
+	int rc;
+
+	if (!node) {
+		pr_err("gpio dtree info. missing\n");
+		return;
+	}
+
+	if (!of_gpio_count(node)) {
+		pr_err("No GPIOS defined.\n");
+		return;
+	}
+
+	chg->mmi.ebchg_gpio.gpio = of_get_gpio_flags(node, 0, &flags);
+	chg->mmi.ebchg_gpio.flags = flags;
+	of_property_read_string_index(node, "gpio-names", 0,
+				      &chg->mmi.ebchg_gpio.label);
+
+	rc = gpio_request_one(chg->mmi.ebchg_gpio.gpio,
+			      chg->mmi.ebchg_gpio.flags,
+			      chg->mmi.ebchg_gpio.label);
+	if (rc) {
+		pr_err("failed to request eb GPIO\n");
+		return;
+	}
+
+	rc = gpio_export(chg->mmi.ebchg_gpio.gpio, 1);
+	if (rc) {
+		pr_err("Failed to export eb GPIO %s: %d\n",
+		       chg->mmi.ebchg_gpio.label, chg->mmi.ebchg_gpio.gpio);
+		return;
+	}
+
+	rc = gpio_export_link(chg->dev, chg->mmi.ebchg_gpio.label,
+			      chg->mmi.ebchg_gpio.gpio);
+	if (rc)
+		pr_err("Failed to eb link GPIO %s: %d\n",
+		       chg->mmi.ebchg_gpio.label, chg->mmi.ebchg_gpio.gpio);
+
+	chg->mmi.warn_gpio.gpio = of_get_gpio_flags(node, 1, &flags);
+	chg->mmi.warn_gpio.flags = flags;
+	of_property_read_string_index(node, "gpio-names", 1,
+				      &chg->mmi.warn_gpio.label);
+
+	rc = gpio_request_one(chg->mmi.warn_gpio.gpio,
+			      chg->mmi.warn_gpio.flags,
+			      chg->mmi.warn_gpio.label);
+	if (rc) {
+		pr_err("failed to request warn GPIO\n");
+		return;
+	}
+
+	rc = gpio_export(chg->mmi.warn_gpio.gpio, 1);
+	if (rc) {
+		pr_err("Failed to warn export GPIO %s: %d\n",
+			chg->mmi.warn_gpio.label, chg->mmi.warn_gpio.gpio);
+		return;
+	}
+
+	rc = gpio_export_link(chg->dev, chg->mmi.warn_gpio.label,
+			      chg->mmi.warn_gpio.gpio);
+	if (rc)
+		pr_err("Failed to link warn GPIO %s: %d\n",
+			chg->mmi.warn_gpio.label, chg->mmi.warn_gpio.gpio);
+	else
+		chg->mmi.warn_irq = gpio_to_irq(chg->mmi.warn_gpio.gpio);
+
+	chg->mmi.togl_rst_gpio.gpio = of_get_gpio_flags(node, 2, &flags);
+	chg->mmi.togl_rst_gpio.flags = flags;
+	of_property_read_string_index(node, "gpio-names", 2,
+				      &chg->mmi.togl_rst_gpio.label);
+
+	rc = gpio_request_one(chg->mmi.togl_rst_gpio.gpio,
+			      chg->mmi.togl_rst_gpio.flags,
+			      chg->mmi.togl_rst_gpio.label);
+	if (rc) {
+		pr_err("failed to request GPIO %s: %d\n",
+		       chg->mmi.togl_rst_gpio.label, chg->mmi.togl_rst_gpio.gpio);
+		return;
+	}
+
+	rc = gpio_export(chg->mmi.togl_rst_gpio.gpio, 1);
+	if (rc) {
+		pr_err("Failed to export GPIO %s: %d\n",
+		       chg->mmi.togl_rst_gpio.label, chg->mmi.togl_rst_gpio.gpio);
+		return;
+	}
+
+	rc = gpio_export_link(chg->dev, chg->mmi.togl_rst_gpio.label,
+			      chg->mmi.togl_rst_gpio.gpio);
+
+	if (rc)
+		pr_err("Failed to link GPIO %s: %d\n",
+		       chg->mmi.togl_rst_gpio.label, chg->mmi.togl_rst_gpio.gpio);
+}
+
 void mmi_init(struct smb_charger *chg)
 {
 	int rc;
@@ -5260,6 +5471,28 @@ void mmi_init(struct smb_charger *chg)
 		return;
 	the_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
+
+	INIT_DELAYED_WORK(&chg->mmi.warn_irq_work, warn_irq_w);
+
+	parse_mmi_dt_gpio(chg);
+
+	if (chg->mmi.warn_irq) {
+		rc = request_irq(chg->mmi.warn_irq,
+				 warn_irq_handler,
+				 IRQF_TRIGGER_FALLING,
+				 "mmi_factory_warn", chg);
+		if (rc) {
+			pr_err("request irq failed for Warn\n");
+		}
+	} else
+		pr_err("IRQ for Warn doesn't exist\n");
+
+	chg->mmi.smb_reboot.notifier_call = smbchg_reboot;
+	chg->mmi.smb_reboot.next = NULL;
+	chg->mmi.smb_reboot.priority = 1;
+	rc = register_reboot_notifier(&chg->mmi.smb_reboot);
+	if (rc)
+		pr_err("SMB register for reboot failed\n");
 
 	rc = device_create_file(chg->dev,
 				&dev_attr_force_demo_mode);
