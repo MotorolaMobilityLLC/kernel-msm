@@ -100,6 +100,11 @@
 		qcom,hdmi-dba-codec-rx;
 		asoc-codec = <&stub_codec>, <&hdmi_dba>;
 		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-dba-codec-rx";
+		cs47l35,dapm-routing =
+			"IN1AL", "MICBIAS1A",
+			"IN1AR", "MICBIAS1B",
+			"IN2L", "MICBIAS2B",
+			"IN1BR", "MICBIAS2A";
 	};
 
 
