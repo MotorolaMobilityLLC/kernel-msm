@@ -75,6 +75,8 @@ struct dsi_phy_t_clk_param {
 	u32 hs_trail_buf;
 	u32 hs_rqst_buf;
 	u32 hs_exit_buf;
+	u32 clk_post_buf;
+	u32 clk_pre_buf;
 };
 
 static int  mdss_dsi_phy_common_validate_and_set(struct timing_entry *te,
@@ -126,11 +128,14 @@ static int mdss_dsi_phy_initialize_defaults(struct dsi_phy_t_clk_param *t_clk,
 		t_clk->clk_prep_buf = 0;
 		t_clk->clk_zero_buf = 0;
 		t_clk->clk_trail_buf = 0;
-		t_clk->hs_prep_buf = 0;
-		t_clk->hs_zero_buf = 0;
+		t_clk->hs_prep_buf = 1;
+		t_clk->hs_zero_buf = 2;
 		t_clk->hs_trail_buf = 0;
 		t_clk->hs_rqst_buf = 0;
 		t_clk->hs_exit_buf = 0;
+		t_clk->clk_post_buf = 0;
+		t_clk->clk_pre_buf = 1;
+
 	} else if (phy_rev == DSI_PHY_REV_20) {
 		t_param->hs_rqst.mipi_min = HS_RQST_SPEC_MIN;
 		t_param->hs_rqst_clk.mipi_min = HS_RQST_SPEC_MIN;
@@ -219,19 +224,134 @@ error:
 }
 
 /**
+ * calc_clk_post - calculates T_CLK_POST timing params for clk lane.
+ */
+static int calc_clk_post(struct dsi_phy_t_clk_param *clk_params,
+			    struct dsi_phy_timing *desc)
+{
+	int rc = 0;
+	struct timing_entry *t = &desc->clk_post;
+
+	if (!clk_params || !desc) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	t->mipi_min = 60 +
+			mult_frac(clk_params->tlpx_numer_ns, 52,
+					  clk_params->bitclk_mbps);
+
+	t->rec_min = (DIV_ROUND_UP(
+			((t->mipi_min * clk_params->bitclk_mbps) -
+				(43 * clk_params->tlpx_numer_ns)),
+			(8 * clk_params->tlpx_numer_ns)) - 1);
+
+	t->rec_max = 63;
+
+	t->rec = DIV_ROUND_UP(
+		(((t->rec_max - t->rec_min) * clk_params->clk_post_buf) +
+		(t->rec_min * 100)), 100);
+
+	rc = mdss_dsi_phy_common_validate_and_set(t, "clk_post");
+	if (rc)
+		goto error;
+
+	pr_debug("CLK_POST:mipi_min=%d, mipi_max=%d, rec_min=%d, rec_max=%d, reg_val=%d\n",
+		 t->mipi_min, t->mipi_max, t->rec_min, t->rec_max,
+		 t->program_value);
+
+error:
+	return rc;
+}
+
+/**
+ * calc_clk_post - calculates T_CLK_PRE timing params for clk lane.
+ */
+static int calc_clk_pre(struct dsi_phy_t_clk_param *clk_params,
+						struct dsi_phy_timing *desc,
+						s32 clk_prepare_frac,
+						s64 clk_prepare_intermediate,
+						s32 clk_zero_frac,
+						s64 clk_zero_intermediate,
+						s32 hs_rqst_frac,
+						s64 hs_rqst_intermediate)
+{
+	int rc = 0;
+	u64 const multiplier = BIT(20);
+	struct timing_entry *t = &desc->clk_pre;
+	s64 rec_min_multiple;
+
+	if (!clk_params || !desc) {
+		rc = -EINVAL;
+		goto error;
+	}
+
+	t->mipi_min = mult_frac(clk_params->tlpx_numer_ns, 8,
+						clk_params->bitclk_mbps);
+
+	rec_min_multiple = ((t->mipi_min * multiplier) +
+				(clk_prepare_frac + clk_prepare_intermediate) +
+				(clk_zero_frac + clk_zero_intermediate) +
+				(hs_rqst_frac + hs_rqst_intermediate));
+
+	t->rec_min = (DIV_ROUND_UP(((clk_params->bitclk_mbps) *
+			div_s64(rec_min_multiple, multiplier)),
+			(8 * clk_params->tlpx_numer_ns)) - 1);
+
+	t->rec_max = 63;
+
+	if (t->rec_min > 63) {
+		t->rec = DIV_ROUND_UP(((2 * t->rec_max) - t->rec_min) *
+			clk_params->clk_post_buf, 100) + t->rec_min;
+	} else {
+		t->rec = DIV_ROUND_UP((t->rec_max - t->rec_min) *
+			clk_params->clk_post_buf, 100) + t->rec_min;
+	}
+
+	rc = mdss_dsi_phy_common_validate_and_set(t, "clk_pre");
+	if (rc)
+		goto error;
+
+
+	/*
+	 * need to override the program_value here
+	 * for t_clk_pre as required by the excel
+	 * sheet
+	 */
+
+	if (t->rec_min > t->rec_max)
+		t->program_value = rounddown(t->rec / 2, 1);
+	else
+		t->program_value = t->rec;
+
+	pr_debug("CLK_PRE:mipi_min=%d, mipi_max=%d, rec_min=%d, rec_max=%d, reg_val=%d\n",
+		 t->mipi_min, t->mipi_max, t->rec_min, t->rec_max,
+		 t->program_value);
+
+error:
+	return rc;
+}
+
+/**
  * calc_clk_zero - calculates zero timing params for clk lane.
  */
 static int calc_clk_zero(struct dsi_phy_t_clk_param *clk_params,
 			 struct dsi_phy_timing *desc,
 			 s32 actual_frac,
-			 s64 actual_intermediate)
+			 s64 actual_intermediate,
+			 s32 *clk_zero_frac,
+			 s64 *clk_zero_intermediate)
 {
 	u64 const multiplier = BIT(20);
 	int rc = 0;
 	struct timing_entry *t = &desc->clk_zero;
 	s64 mipi_min, rec_temp1, rec_temp2, rec_temp3, rec_min;
+	u64 temp_multiple;
+	s32 frac = 0;
+	s64 intermediate;
+	s64 clk_zero_actual;
 
-	if (!clk_params || !desc || !actual_frac || !actual_intermediate) {
+	if (!clk_params || !desc || !clk_zero_frac || !clk_zero_intermediate) {
 		rc = -EINVAL;
 		goto error;
 	}
@@ -263,9 +383,21 @@ static int calc_clk_zero(struct dsi_phy_t_clk_param *clk_params,
 	if (rc)
 		goto error;
 
+	/*calculate theoretical value*/
+	temp_multiple = (t->program_value + 1) * 8 * clk_params->tlpx_numer_ns
+		* multiplier;
+	intermediate = div_s64(temp_multiple, clk_params->bitclk_mbps);
+	div_s64_rem(temp_multiple, clk_params->bitclk_mbps, &frac);
+	clk_zero_actual = div_s64((intermediate + frac), multiplier);
+
 	pr_debug("CLK_ZERO:mipi_min=%d, mipi_max=%d, rec_min=%d, rec_max=%d, reg_val=%d\n",
 		 t->mipi_min, t->mipi_max, t->rec_min, t->rec_max,
 		 t->program_value);
+	pr_debug(" program_value=%d, actual=%lld\n",
+		 t->program_value, clk_zero_actual);
+
+	*clk_zero_frac = frac;
+	*clk_zero_intermediate = intermediate;
 
 error:
 	return rc;
@@ -542,7 +674,7 @@ error:
  * calc_hs_rqst - calculates rqst timing params for data lanes in HS.
  */
 static int calc_hs_rqst(struct dsi_phy_t_clk_param *clk_params,
-			struct dsi_phy_timing *desc)
+						struct dsi_phy_timing *desc)
 {
 	int rc = 0;
 	struct timing_entry *t = &desc->hs_rqst;
@@ -608,10 +740,17 @@ error:
  * calc_hs_rqst_clk - calculates rqst timing params for clock lane..
  */
 static int calc_hs_rqst_clk(struct dsi_phy_t_clk_param *clk_params,
-			    struct dsi_phy_timing *desc)
+					struct dsi_phy_timing *desc,
+					s32 *hs_rqst_frac,
+					s64 *hs_rqst_intermediate)
 {
 	int rc = 0;
+	u64 const multiplier = BIT(20);
 	struct timing_entry *t = &desc->hs_rqst_clk;
+	u64 temp_multiple;
+	s32 frac = 0;
+	s64 intermediate;
+	s64 hs_rqst_actual;
 
 	if (!clk_params || !desc) {
 		rc = -EINVAL;
@@ -631,6 +770,21 @@ static int calc_hs_rqst_clk(struct dsi_phy_t_clk_param *clk_params,
 		 t->mipi_min, t->mipi_max, t->rec_min, t->rec_max,
 		 t->program_value);
 
+	/*calculate theoretical value*/
+	if (!t->program_value)
+		temp_multiple = (t->program_value + 1) * 8 *
+					clk_params->tlpx_numer_ns * multiplier;
+	else
+		temp_multiple = div_s64(((2 * t->program_value) + 1), 2) * 8 *
+					clk_params->tlpx_numer_ns * multiplier;
+
+	intermediate = div_s64(temp_multiple, clk_params->bitclk_mbps);
+	div_s64_rem(temp_multiple, clk_params->bitclk_mbps, &frac);
+	hs_rqst_actual = div_s64((intermediate + frac), multiplier);
+
+	*hs_rqst_frac = frac;
+	*hs_rqst_intermediate = intermediate;
+
 error:
 	return rc;
 }
@@ -640,8 +794,12 @@ static int mdss_dsi_phy_calc_param_phy_cmn(
 					struct dsi_phy_timing *desc)
 {
 	int rc = 0;
-	s32 actual_frac = 0;
-	s64 actual_intermediate = 0;
+	s32 clk_prepare_frac = 0;
+	s64 clk_prepare_intermediate = 0;
+	s32 clk_zero_frac = 0;
+	s64 clk_zero_intermediate = 0;
+	s32 hs_rqst_frac = 0;
+	s64 hs_rqst_intermediate = 0;
 	u64 temp_multiple;
 	s64 teot_clk_lane;
 
@@ -650,14 +808,16 @@ static int mdss_dsi_phy_calc_param_phy_cmn(
 		goto error;
 	}
 
-	rc = calc_clk_prepare(clk_params, desc, &actual_frac,
-			      &actual_intermediate);
+	rc = calc_clk_prepare(clk_params, desc, &clk_prepare_frac,
+			      &clk_prepare_intermediate);
 	if (rc) {
 		pr_err("clk_prepare calculations failed, rc=%d\n", rc);
 		goto error;
 	}
 
-	rc = calc_clk_zero(clk_params, desc, actual_frac, actual_intermediate);
+	rc = calc_clk_zero(clk_params, desc, clk_prepare_frac,
+			clk_prepare_intermediate, &clk_zero_frac,
+			&clk_zero_intermediate);
 	if (rc) {
 		pr_err("clk_zero calculations failed, rc=%d\n", rc);
 		goto error;
@@ -699,11 +859,28 @@ static int mdss_dsi_phy_calc_param_phy_cmn(
 		goto error;
 	}
 
-	rc = calc_hs_rqst_clk(clk_params, desc);
+	rc = calc_hs_rqst_clk(clk_params, desc,
+				  &hs_rqst_frac, &hs_rqst_intermediate);
 	if (rc) {
 		pr_err("hs_rqst_clk calculations failed, rc=%d\n", rc);
 		goto error;
 	}
+
+	rc = calc_clk_post(clk_params, desc);
+	if (rc) {
+		pr_err("t_clk_post calculations failed, rc=%d\n", rc);
+		goto error;
+	}
+
+	rc = calc_clk_pre(clk_params, desc, clk_prepare_frac,
+				clk_prepare_intermediate, clk_zero_frac,
+				clk_zero_intermediate, hs_rqst_frac,
+				hs_rqst_intermediate);
+	if (rc) {
+		pr_err("t_clk_post calculations failed, rc=%d\n", rc);
+		goto error;
+	}
+
 error:
 	return rc;
 }
@@ -1018,6 +1195,9 @@ static void mdss_dsi_phy_update_timing_param_v3(struct mdss_panel_info *pinfo,
 	struct mdss_dsi_phy_ctrl *pd;
 
 	pd = &(pinfo->mipi.dsi_phy_db);
+
+	pinfo->mipi.t_clk_post = t_param->clk_post.program_value;
+	pinfo->mipi.t_clk_pre = t_param->clk_pre.program_value;
 
 	pd->timing[0] = 0x00;
 	pd->timing[1] = t_param->clk_zero.program_value;
