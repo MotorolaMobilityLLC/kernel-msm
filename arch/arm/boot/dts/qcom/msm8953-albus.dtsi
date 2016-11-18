@@ -366,6 +366,11 @@
 		/delete-property/ qcom,hdmi-dba-codec-rx;
 		asoc-codec = <&stub_codec>;
 		asoc-codec-names = "msm-stub-codec.1";
+		cs47l35,dapm-routing =
+			"IN1AL", "MICBIAS2A",
+			"IN2R", "MICBIAS2B",
+			"IN2L", "MICBIAS2A",
+			"IN1BR", "MICBIAS1B";
 	};
 
 	qcom,msm-dai-mi2s {
