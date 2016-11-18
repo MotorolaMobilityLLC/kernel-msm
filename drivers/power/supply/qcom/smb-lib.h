@@ -245,6 +245,12 @@ struct mmi_params {
 	struct delayed_work	warn_irq_work;
 	int			warn_irq;
 	struct notifier_block	smb_reboot;
+	int			dc_system_temp_level;
+	int			dc_thermal_levels;
+	int			*dc_thermal_mitigation;
+	int			usb_system_temp_level;
+	int			usb_thermal_levels;
+	int			*usb_thermal_mitigation;
 };
 
 struct smb_charger {
@@ -548,6 +554,14 @@ void smblib_usb_typec_change(struct smb_charger *chg);
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
 
+int smblib_get_prop_dc_system_temp_level(struct smb_charger *chg,
+					 union power_supply_propval *val);
+int smblib_set_prop_dc_system_temp_level(struct smb_charger *chg,
+				const union power_supply_propval *val);
+int smblib_get_prop_usb_system_temp_level(struct smb_charger *chg,
+					  union power_supply_propval *val);
+int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
+				const union power_supply_propval *val);
 void mmi_init(struct smb_charger *chg);
 void mmi_deinit(struct smb_charger *chg);
 #endif /* __SMB2_CHARGER_H */
