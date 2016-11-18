@@ -400,6 +400,8 @@ struct mmc_host {
 #define MMC_CAP2_NONHOTPLUG	(1 << 25)	/*Don't support hotplug*/
 #define MMC_CAP2_CMD_QUEUE	(1 << 26)	/* support eMMC command queue */
 #define MMC_CAP2_BROKEN_PWR_CYCLE (1 << 27)	/* Host Broken power cycle */
+#define MMC_CAP2_SLEEP_AWAKE	(1 << 28)	/* Use Sleep/Awake (CMD5) */
+
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
 	int			clk_requests;	/* internal reference counter */
@@ -425,6 +427,7 @@ struct mmc_host {
 	spinlock_t		lock;		/* lock for claim and bus ops */
 
 	struct mmc_ios		ios;		/* current io bus settings */
+	struct mmc_ios		cached_ios;
 	u32			ocr;		/* the current OCR setting */
 
 	/* group bitfields together to minimize padding */
