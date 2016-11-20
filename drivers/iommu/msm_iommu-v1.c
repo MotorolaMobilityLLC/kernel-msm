@@ -421,8 +421,15 @@ static int __flush_iotlb_va(struct iommu_domain *domain, unsigned long va)
 		if (ret)
 			goto fail;
 
-		SET_TLBIVA(iommu_drvdata->cb_base, ctx_drvdata->num,
-				ctx_drvdata->asid | (va & CB_TLBIVA_VA));
+#ifdef CONFIG_IOMMU_AARCH64
+		va &= CB_TLBIVA_VA;
+		va >>= 12;
+		va |= (u64)ctx_drvdata->asid << CB_TLBIVA_ASID_SHIFT;
+#else
+		va &= CB_TLBIVA_VA;
+		va |= ctx_drvdata->asid << CB_TLBIVA_ASID_SHIFT;
+#endif
+		SET_TLBIVA(iommu_drvdata->cb_base, ctx_drvdata->num, va);
 		__sync_tlb(iommu_drvdata, ctx_drvdata->num, priv);
 		__disable_clocks(iommu_drvdata);
 	}

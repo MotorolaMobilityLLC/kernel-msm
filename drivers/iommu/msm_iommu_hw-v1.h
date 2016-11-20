@@ -207,12 +207,21 @@ do { \
 #define SET_FAR(b, c, v)         SET_CTX_REG(CB_FAR, (b), (c), (v))
 #define SET_FSYNR0(b, c, v)      SET_CTX_REG(CB_FSYNR0, (b), (c), (v))
 #define SET_FSYNR1(b, c, v)      SET_CTX_REG(CB_FSYNR1, (b), (c), (v))
+
+#ifdef CONFIG_IOMMU_AARCH64
+#define SET_TLBIVA(b, c, v)      SET_CTX_REG_Q(CB_TLBIVA, (b), (c), (v))
+#define SET_TLBIVAA(b, c, v)     SET_CTX_REG_Q(CB_TLBIVAA, (b), (c), (v))
+#define SET_TLBIVAL(b, c, v)     SET_CTX_REG_Q(CB_TLBIVAL, (b), (c), (v))
+#define SET_TLBIVAAL(b, c, v)    SET_CTX_REG_Q(CB_TLBIVAAL, (b), (c), (v))
+#else
 #define SET_TLBIVA(b, c, v)      SET_CTX_REG(CB_TLBIVA, (b), (c), (v))
 #define SET_TLBIVAA(b, c, v)     SET_CTX_REG(CB_TLBIVAA, (b), (c), (v))
-#define SET_TLBIASID(b, c, v)    SET_CTX_REG(CB_TLBIASID, (b), (c), (v))
-#define SET_TLBIALL(b, c, v)     SET_CTX_REG(CB_TLBIALL, (b), (c), (v))
 #define SET_TLBIVAL(b, c, v)     SET_CTX_REG(CB_TLBIVAL, (b), (c), (v))
 #define SET_TLBIVAAL(b, c, v)    SET_CTX_REG(CB_TLBIVAAL, (b), (c), (v))
+#endif
+
+#define SET_TLBIASID(b, c, v)    SET_CTX_REG(CB_TLBIASID, (b), (c), (v))
+#define SET_TLBIALL(b, c, v)     SET_CTX_REG(CB_TLBIALL, (b), (c), (v))
 #define SET_TLBSYNC(b, c, v)     SET_CTX_REG(CB_TLBSYNC, (b), (c), (v))
 #define SET_TLBSTATUS(b, c, v)   SET_CTX_REG(CB_TLBSTATUS, (b), (c), (v))
 #define SET_ATS1PR(b, c, v)      SET_CTX_REG(CB_ATS1PR, (b), (c), (v))
@@ -1901,6 +1910,22 @@ do { \
 /* Invalidate TLB by ASID: CB_TLBIASID */
 #define CB_TLBIASID_ASID_MASK      0xFF
 
+#ifdef CONFIG_IOMMU_AARCH64
+/* Invalidate TLB by VA: CB_TLBIVA */
+#define CB_TLBIVA_ASID_MASK        0xFFFF
+#define CB_TLBIVA_VA_MASK          0xFFFFFFFFFFF
+
+/* Invalidate TLB by VA, All ASID: CB_TLBIVAA */
+#define CB_TLBIVAA_VA_MASK         0xFFFFFFFFFFF
+
+/* Invalidate TLB by VA, All ASID, Last Level: CB_TLBIVAAL */
+#define CB_TLBIVAAL_VA_MASK        0xFFFFFFFFFFF
+
+/* Invalidate TLB by VA, Last Level: CB_TLBIVAL */
+#define CB_TLBIVAL_ASID_MASK       0xFFFF
+#define CB_TLBIVAL_VA_MASK         0xFFFFFFFFFFF
+
+#else
 /* Invalidate TLB by VA: CB_TLBIVA */
 #define CB_TLBIVA_ASID_MASK        0xFF
 #define CB_TLBIVA_VA_MASK          0xFFFFF
@@ -1914,6 +1939,7 @@ do { \
 /* Invalidate TLB by VA, Last Level: CB_TLBIVAL */
 #define CB_TLBIVAL_ASID_MASK       0xFF
 #define CB_TLBIVAL_VA_MASK         0xFFFFF
+#endif /* CONFIG_IOMMU_AARCH64 */
 
 /* TLB Status: CB_TLBSTATUS */
 #define CB_TLBSTATUS_SACTIVE_MASK  0x01
@@ -2310,6 +2336,22 @@ do { \
 /* Invalidate TLB by ASID: CB_TLBIASID */
 #define CB_TLBIASID_ASID_SHIFT      0
 
+#ifdef CONFIG_IOMMU_AARCH64
+/* Invalidate TLB by VA: CB_TLBIVA */
+#define CB_TLBIVA_ASID_SHIFT        48
+#define CB_TLBIVA_VA_SHIFT          0
+
+/* Invalidate TLB by VA, All ASID: CB_TLBIVAA */
+#define CB_TLBIVAA_VA_SHIFT         0
+
+/* Invalidate TLB by VA, All ASID, Last Level: CB_TLBIVAAL */
+#define CB_TLBIVAAL_VA_SHIFT        0
+
+/* Invalidate TLB by VA, Last Level: CB_TLBIVAL */
+#define CB_TLBIVAL_ASID_SHIFT       48
+#define CB_TLBIVAL_VA_SHIFT         0
+
+#else
 /* Invalidate TLB by VA: CB_TLBIVA */
 #define CB_TLBIVA_ASID_SHIFT        0
 #define CB_TLBIVA_VA_SHIFT          12
@@ -2323,6 +2365,7 @@ do { \
 /* Invalidate TLB by VA, Last Level: CB_TLBIVAL */
 #define CB_TLBIVAL_ASID_SHIFT       0
 #define CB_TLBIVAL_VA_SHIFT         12
+#endif /* CONFIG_IOMMU_AARCH64 */
 
 /* TLB Status: CB_TLBSTATUS */
 #define CB_TLBSTATUS_SACTIVE_SHIFT  0
