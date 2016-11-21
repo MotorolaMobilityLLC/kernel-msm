@@ -35,6 +35,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 		int cmd)
 {
 	int32_t rc, rc2;
+	uint16_t addr;
 	struct msm_camera_cci_client cci_info = {
 		.cci_subdev     = msm_cci_get_subdev(),
 		.cci_i2c_master = xfer->cci_bus,
@@ -94,8 +95,9 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 			rc = -ENOMEM;
 			goto release;
 		}
-		reg_conf_tbl[0].reg_addr = xfer->reg.addr;
+		addr = xfer->reg.addr;
 		for (i = 0; i < xfer->data.count; i++) {
+			reg_conf_tbl[i].reg_addr = addr++;
 			reg_conf_tbl[i].reg_data = xfer->data.buf[i];
 			reg_conf_tbl[i].delay = 0;
 		}
