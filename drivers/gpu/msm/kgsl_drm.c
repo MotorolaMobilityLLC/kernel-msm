@@ -1461,7 +1461,7 @@ kgsl_drm_irq_postinstall(struct drm_device *dev)
 	mask = readl_relaxed(dev_priv->regs +
 			dev_priv->mdp_reg[MDSS_MDP_REG_INTR_EN]);
 
-	DRM_DEBUG("%s:regs[0x%x]\n", __func__, (int)dev_priv->regs);
+	DRM_DEBUG("%s:regs[0x%lx]\n", __func__, (uintptr_t)dev_priv->regs);
 
 	mask |= dev_priv->vsync_irq;
 	writel_relaxed(dev_priv->vsync_irq,
@@ -1486,7 +1486,7 @@ kgsl_drm_irq_uninstall(struct drm_device *dev)
 	mdss_mdp_clk_ctrl(1, false);
 	mask = readl_relaxed(dev_priv->regs + dev_priv->mdp_reg[MDSS_MDP_REG_INTR_EN]);
 
-	DRM_DEBUG("%s:regs[0x%x]\n", __func__, (int)dev_priv->regs);
+	DRM_DEBUG("%s:regs[0x%lx]\n", __func__, (uintptr_t)dev_priv->regs);
 
 	mask &= ~dev_priv->vsync_irq;
 	writel_relaxed(mask,
@@ -1668,14 +1668,14 @@ static int kgsl_drm_gem_one_info(int id, void *ptr, void *data)
 	struct drm_kgsl_file_private *file_priv =
 				gem_info_data->filp->driver_priv;
 
-	seq_printf(gem_info_data->m, "%3d \t%3d \t%3d \t%2d \t\t%2d \t0x%08x"\
+	seq_printf(gem_info_data->m, "%3ld \t%3d \t%3d \t%2d \t\t%2d \t0x%08lx"\
 				" \t0x%x \t%2d \t\t%2d \t\t%2d\n",
-				(int)gem_info_data->filp->pid,
+				(uintptr_t)gem_info_data->filp->pid,
 				file_priv->tgid,
 				id,
 				atomic_read(&obj->refcount.refcount),
 				atomic_read(&obj->handle_count),
-				priv->memdesc.size,
+				(unsigned long)priv->memdesc.size,
 				priv->flags,
 				priv->bufcount,
 				obj->export_dma_buf ? 1 : 0,
@@ -1840,8 +1840,8 @@ static int kgsl_drm_load(struct drm_device *dev, unsigned long flags)
 
 	kgsl_drm_parse_dt(dev);
 
-	DRM_DEBUG("%s:irq[%d]start[0x%x]regs[0x%x]reg_size[0x%x]\n", __func__,
-		dev_priv->irq, (int)res->start, (int)dev_priv->regs,
+	DRM_DEBUG("%s:irq[%d]start[0x%x]regs[0x%lx]reg_size[0x%x]\n", __func__,
+		dev_priv->irq, (int)res->start, (uintptr_t)dev_priv->regs,
 		(int)dev_priv->reg_size);
 
 
