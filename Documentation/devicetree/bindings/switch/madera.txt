@@ -16,8 +16,9 @@ Child node mandatory properties:
   - reg : output number this configuration applies to, 1=OUT1, 2=OUT2, ...
 
 Child node optional properties:
-  - cirrus,micd-pol-gpios : GPIO specifier for the GPIO controlling the headset
-    polarity if one exists
+  - cirrus,micd-pol-gpios : GPIO specifier for the GPIOs controlling the headset
+    polarity if one exist. Up to 2 gpios can be configured.
+    If 2 gpios are configured their values will be set opposite to each other.
 
   - cirrus,micd-detect-debounce-ms : Additional software microphone detection
     debounce specified in milliseconds
