@@ -3945,12 +3945,22 @@ static int smbchg_external_otg_regulator_disable(struct regulator_dev *rdev)
 	 * value in order to allow normal USBs to be recognized as a valid
 	 * input.
 	 */
-	rc = smbchg_sec_masked_write(chip,
+	if (chip->enable_hvdcp_9v && (chip->wa_flags & SMBCHG_HVDCP_9V_EN_WA)) {
+		rc = smbchg_sec_masked_write(chip,
+					chip->usb_chgpth_base + CHGPTH_CFG,
+					HVDCP_EN_BIT, HVDCP_EN_BIT);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't enable HVDCP rc=%d\n", rc);
+			return rc;
+		}
+	} else {
+		rc = smbchg_sec_masked_write(chip,
 				chip->usb_chgpth_base + CHGPTH_CFG,
-				HVDCP_EN_BIT, HVDCP_EN_BIT);
-	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't enable HVDCP rc=%d\n", rc);
-		return rc;
+				HVDCP_EN_BIT, 0);
+		if (rc < 0) {
+			dev_err(chip->dev, "disable HVDCP err rc=%d\n", rc);
+			return rc;
+		}
 	}
 
 	rc = smbchg_sec_masked_write(chip,
@@ -5488,6 +5498,15 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		if (rc < 0)
 			dev_err(chip->dev,
 				"Couldn't enable HVDCP rc=%d\n", rc);
+	} else {
+			rc = smbchg_sec_masked_write(chip,
+				chip->usb_chgpth_base + CHGPTH_CFG,
+				HVDCP_EN_BIT, 0);
+			if (rc < 0) {
+				dev_err(chip->dev,
+					"disable HVDCP err rc=%d\n", rc);
+				return rc;
+			}
 	}
 	/*
 	 * set chg en by cmd register, set chg en by writing bit 1,
