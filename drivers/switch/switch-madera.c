@@ -832,9 +832,12 @@ static void madera_extcon_set_mode(struct madera_extcon_info *info, int mode)
 		info->micd_modes[mode].bias, info->micd_modes[mode].gpio,
 		info->micd_modes[mode].hp_gnd);
 
-	if (info->pdata->micd_pol_gpio > 0)
-		gpio_set_value_cansleep(info->pdata->micd_pol_gpio,
+	if (info->pdata->micd_pol_gpio[0] > 0)
+		gpio_set_value_cansleep(info->pdata->micd_pol_gpio[0],
 					info->micd_modes[mode].gpio);
+	if (info->pdata->micd_pol_gpio[1] > 0)
+		gpio_set_value_cansleep(info->pdata->micd_pol_gpio[1],
+					!info->micd_modes[mode].gpio);
 
 	switch (madera->type) {
 	case CS47L35:
@@ -2304,17 +2307,25 @@ static void madera_extcon_of_process(struct madera *madera,
 	madera_extcon_of_get_int(node, "cirrus,micd-manual-debounce",
 				 &pdata->micd_manual_debounce);
 
-	pdata->micd_pol_gpio = of_get_named_gpio(node,
+	pdata->micd_pol_gpio[0] = of_get_named_gpio(node,
 						 "cirrus,micd-pol-gpios", 0);
-	if (pdata->micd_pol_gpio < 0) {
-		if (pdata->micd_pol_gpio != -ENOENT)
+	if (pdata->micd_pol_gpio[0] < 0) {
+		if (pdata->micd_pol_gpio[0] != -ENOENT)
 			dev_warn(madera->dev,
 				 "Malformed cirrus,micd-pol-gpios ignored: %d\n",
-				pdata->micd_pol_gpio);
+				pdata->micd_pol_gpio[0]);
 
-		pdata->micd_pol_gpio = 0;
+		pdata->micd_pol_gpio[0] = 0;
 	}
+	pdata->micd_pol_gpio[1] = of_get_named_gpio(node,
+						 "cirrus,micd-pol-gpios", 1);
+	if (pdata->micd_pol_gpio[1] < 0) {
+		if (pdata->micd_pol_gpio[1] != -ENOENT)
+			dev_warn(madera->dev,
+				 "Second cirrus,micd-pol-gpios is not configured\n");
 
+		pdata->micd_pol_gpio[1] = 0;
+	}
 	madera_extcon_of_get_micd_ranges(madera, node, pdata);
 	madera_extcon_of_get_micd_configs(madera, node, pdata);
 
@@ -2425,7 +2436,8 @@ static void madera_extcon_dump_pdata(struct madera *madera)
 		MADERA_EXTCON_DUMP(hpdet_channel, "%d");
 		MADERA_EXTCON_DUMP(micd_detect_debounce_ms, "%d");
 		MADERA_EXTCON_DUMP(micd_manual_debounce, "%d");
-		MADERA_EXTCON_DUMP(micd_pol_gpio, "%d");
+		MADERA_EXTCON_DUMP(micd_pol_gpio[0], "%d");
+		MADERA_EXTCON_DUMP(micd_pol_gpio[1], "%d");
 		MADERA_EXTCON_DUMP(micd_bias_start_time, "%d");
 		MADERA_EXTCON_DUMP(micd_rate, "%d");
 		MADERA_EXTCON_DUMP(micd_dbtime, "%d");
@@ -2839,19 +2851,35 @@ static int madera_extcon_probe(struct platform_device *pdev)
 		break;
 	}
 
-	if (info->pdata->micd_pol_gpio > 0) {
+	if (info->pdata->micd_pol_gpio[0] > 0) {
 		if (info->micd_modes[0].gpio)
 			mode = GPIOF_OUT_INIT_HIGH;
 		else
 			mode = GPIOF_OUT_INIT_LOW;
 
 		ret = devm_gpio_request_one(&pdev->dev,
-					    info->pdata->micd_pol_gpio,
+					    info->pdata->micd_pol_gpio[0],
 					    mode,
 					    "MICD polarity");
 		if (ret) {
 			dev_err(madera->dev, "Failed to request GPIO%d: %d\n",
-				info->pdata->micd_pol_gpio, ret);
+				info->pdata->micd_pol_gpio[0], ret);
+			goto err_register;
+		}
+	}
+	if (info->pdata->micd_pol_gpio[1] > 0) {
+		if (info->micd_modes[0].gpio)
+			mode = GPIOF_OUT_INIT_LOW;
+		else
+			mode = GPIOF_OUT_INIT_HIGH;
+
+		ret = devm_gpio_request_one(&pdev->dev,
+					    info->pdata->micd_pol_gpio[1],
+					    mode,
+					    "MICD polarity");
+		if (ret) {
+			dev_err(madera->dev, "Failed to request GPIO%d: %d\n",
+				info->pdata->micd_pol_gpio[1], ret);
 			goto err_register;
 		}
 	}

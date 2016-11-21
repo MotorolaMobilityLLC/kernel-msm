@@ -96,8 +96,8 @@ struct madera_accdet_pdata {
 	/** Extra software debounces during button detection */
 	int micd_manual_debounce;
 
-	/** GPIO for mic detection polarity */
-	int micd_pol_gpio;
+	/** GPIOs for mic detection polarity */
+	int micd_pol_gpio[2];
 
 	/** Mic detect ramp rate */
 	int micd_bias_start_time;
