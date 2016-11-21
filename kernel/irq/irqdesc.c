@@ -152,6 +152,7 @@ static struct irq_desc *alloc_desc(int irq, int node, struct module *owner)
 
 	raw_spin_lock_init(&desc->lock);
 	lockdep_set_class(&desc->lock, &irq_desc_lock_class);
+	mutex_init(&desc->notify_lock);
 
 	desc_set_defaults(irq, desc, node, owner);
 
