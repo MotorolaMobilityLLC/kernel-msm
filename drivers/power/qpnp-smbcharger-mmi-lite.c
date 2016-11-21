@@ -371,6 +371,7 @@ module_param_named(
 );
 
 static int smbchg_force_apsd(struct smbchg_chip *chip);
+static int smbchg_force_apsd_factory(struct smbchg_chip *chip);
 
 #define pr_smb(reason, fmt, ...)				\
 	do {							\
@@ -536,6 +537,29 @@ static int smbchg_sec_masked_write(struct smbchg_chip *chip, u16 base, u8 mask,
 
 	if (chip->factory_mode)
 		return 0;
+
+	spin_lock_irqsave(&chip->sec_access_lock, flags);
+
+	rc = smbchg_masked_write_raw(chip, peripheral_base + SEC_ACCESS_OFFSET,
+				SEC_ACCESS_VALUE, SEC_ACCESS_VALUE);
+	if (rc) {
+		dev_err(chip->dev, "Unable to unlock sec_access: %d", rc);
+		goto out;
+	}
+
+	rc = smbchg_masked_write_raw(chip, base, mask, val);
+
+out:
+	spin_unlock_irqrestore(&chip->sec_access_lock, flags);
+	return rc;
+}
+
+static int smbchg_sec_masked_write_factory(struct smbchg_chip *chip, u16 base,
+						u8 mask, u8 val)
+{
+	unsigned long flags;
+	int rc;
+	u16 peripheral_base = base & (~PERIPHERAL_MASK);
 
 	spin_lock_irqsave(&chip->sec_access_lock, flags);
 
@@ -4680,6 +4704,36 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 
 #define APSD_CFG			0xF5
 #define APSD_EN_BIT			BIT(0)
+static void usb_insertion_work_factory(struct work_struct *work)
+{
+	struct smbchg_chip *chip =
+		container_of(work, struct smbchg_chip,
+			     usb_insertion_work.work);
+	int rc;
+	int hvdcp_en = 0;
+
+	if (chip->enable_hvdcp_9v)
+		hvdcp_en = HVDCP_EN_BIT;
+
+	rc = smbchg_sec_masked_write_factory(chip,
+				     chip->usb_chgpth_base + CHGPTH_CFG,
+				     HVDCP_EN_BIT, hvdcp_en);
+	if (rc < 0)
+		dev_err(chip->dev,
+			"Couldn't enable HVDCP rc=%d\n", rc);
+	rc = smbchg_sec_masked_write_factory(chip,
+				     chip->usb_chgpth_base + APSD_CFG,
+				     APSD_EN_BIT, APSD_EN_BIT);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't enable APSD rc=%d\n",
+			rc);
+	rc = smbchg_force_apsd_factory(chip);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't rerun apsd rc = %d\n", rc);
+
+	smbchg_relax(chip, PM_CHARGER);
+}
+
 static void usb_insertion_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip =
@@ -4687,6 +4741,11 @@ static void usb_insertion_work(struct work_struct *work)
 			     usb_insertion_work.work);
 	int rc;
 	int hvdcp_en = 0;
+
+	if (chip->factory_mode) {
+		usb_insertion_work_factory(work);
+		return;
+	}
 
 	if (chip->enable_hvdcp_9v)
 		hvdcp_en = HVDCP_EN_BIT;
@@ -4822,7 +4881,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 
 	/* Rerun APSD 1 sec later */
 	if ((chip->supply_type == POWER_SUPPLY_TYPE_USB) &&
-	    !chip->apsd_rerun_cnt && !chip->factory_mode) {
+	    !chip->apsd_rerun_cnt) {
 		dev_info(chip->dev, "HW Detected SDP!\n");
 		chip->apsd_rerun_cnt++;
 		chip->usb_present = 0;
@@ -5912,6 +5971,30 @@ static int smbchg_force_apsd(struct smbchg_chip *chip)
 
 	/* RESET to Default 5V to 9V */
 	rc = smbchg_sec_masked_write(chip,
+				     chip->usb_chgpth_base + USBIN_CHGR_CFG,
+				     USBIN_ALLOW_MASK, USBIN_ALLOW_5V_TO_9V);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't write usb allowance %d rc=%d\n",
+			USBIN_ALLOW_5V_TO_9V, rc);
+
+	return rc;
+}
+
+static int smbchg_force_apsd_factory(struct smbchg_chip *chip)
+{
+	int rc;
+
+	dev_info(chip->dev, "Start APSD Rerun! in factory mode\n");
+	rc = smbchg_sec_masked_write_factory(chip,
+				     chip->usb_chgpth_base + USBIN_CHGR_CFG,
+				     USBIN_ALLOW_MASK, USBIN_ALLOW_9V);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't write usb allowance %d rc=%d\n",
+			USBIN_ALLOW_9V, rc);
+	msleep(10);
+
+	/* RESET to Default 5V to 9V */
+	rc = smbchg_sec_masked_write_factory(chip,
 				     chip->usb_chgpth_base + USBIN_CHGR_CFG,
 				     USBIN_ALLOW_MASK, USBIN_ALLOW_5V_TO_9V);
 	if (rc < 0)
