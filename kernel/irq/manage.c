@@ -234,6 +234,7 @@ void irq_affinity_notify(struct work_struct *work)
 		cpumask_copy(cpumask, desc->irq_data.affinity);
 	raw_spin_unlock_irqrestore(&desc->lock, flags);
 
+	mutex_lock(&desc->notify_lock);
 	list_for_each_entry(notify, &desc->affinity_notify, list) {
 		/**
 		 * Check and get the kref only if the kref has not been
@@ -246,6 +247,7 @@ void irq_affinity_notify(struct work_struct *work)
 		notify->notify(notify, cpumask);
 		kref_put(&notify->kref, notify->release);
 	}
+	mutex_unlock(&desc->notify_lock);
 
 	free_cpumask_var(cpumask);
 }
@@ -279,9 +281,11 @@ irq_set_affinity_notifier(unsigned int irq, struct irq_affinity_notify *notify)
 	notify->irq = irq;
 	kref_init(&notify->kref);
 	INIT_LIST_HEAD(&notify->list);
+	mutex_lock(&desc->notify_lock);
 	raw_spin_lock_irqsave(&desc->lock, flags);
 	list_add(&notify->list, &desc->affinity_notify);
 	raw_spin_unlock_irqrestore(&desc->lock, flags);
+	mutex_unlock(&desc->notify_lock);
 
 	return 0;
 }
@@ -300,10 +304,12 @@ int irq_release_affinity_notifier(struct irq_affinity_notify *notify)
 		return -EINVAL;
 
 	desc = irq_to_desc(notify->irq);
+	mutex_lock(&desc->notify_lock);
 	raw_spin_lock_irqsave(&desc->lock, flags);
 	list_del(&notify->list);
 	raw_spin_unlock_irqrestore(&desc->lock, flags);
 	kref_put(&notify->kref, notify->release);
+	mutex_unlock(&desc->notify_lock);
 
 	return 0;
 }
