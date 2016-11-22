@@ -22,14 +22,14 @@ qcom,mdss-dsi-panel-height = <1920>;
 qcom,mdss-pan-physical-width-dimension = <65>;
 qcom,mdss-pan-physical-height-dimension = <115>;
 
-qcom,mdss-dsi-panel-clockrate = <870480000>;
-qcom,mdss-dsi-h-front-porch = <112>;
-qcom,mdss-dsi-h-back-porch = <40>;
-qcom,mdss-dsi-h-pulse-width = <8>;
+qcom,mdss-dsi-panel-clockrate = <937785600>;
+qcom,mdss-dsi-h-front-porch = <120>;
+qcom,mdss-dsi-h-back-porch = <120>;
+qcom,mdss-dsi-h-pulse-width = <20>;
 qcom,mdss-dsi-h-sync-skew = <0>;
 qcom,mdss-dsi-v-back-porch = <8>;
-qcom,mdss-dsi-v-front-porch = <16>;
-qcom,mdss-dsi-v-pulse-width = <6>;
+qcom,mdss-dsi-v-front-porch = <14>;
+qcom,mdss-dsi-v-pulse-width = <2>;
 qcom,mdss-dsi-h-left-border = <0>;
 qcom,mdss-dsi-h-right-border = <0>;
 qcom,mdss-dsi-v-top-border = <0>;
@@ -38,6 +38,11 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
+	29 00 00 00 00 00 02 B0 00
+	29 00 00 00 00 00 02 D6 01
+	29 00 00 00 00 00 09 C2 31 F7 80 0A 06 00 00 08
+	29 00 00 00 00 00 05 D3 1B 33 BB BB
+	29 01 00 00 00 00 02 B0 03
 	05 01 00 00 14 00 01 29
 	15 00 00 00 00 00 02 51 CC
 	15 00 00 00 00 00 02 53 2C
@@ -71,9 +76,9 @@ qcom,mdss-dsi-lane-0-state;
 qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
-qcom,mdss-dsi-panel-timings = [e7 36 24 00 66 6a 2a 3a 2d 03 04 00];
+qcom,mdss-dsi-panel-timings = [f2 3a 28 00 6c 70 2c 3e 2e 03 04 00];
 qcom,mdss-dsi-t-clk-post = <0x2>;
-qcom,mdss-dsi-t-clk-pre = <0x2b>;
+qcom,mdss-dsi-t-clk-pre = <0x2d>;
 qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
