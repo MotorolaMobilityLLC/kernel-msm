@@ -271,6 +271,16 @@ static int32_t msm_flash_i2c_init(
 	flash_ctrl->power_info.power_down_setting_size =
 		flash_ctrl->power_setting_array.size_down;
 
+	if ((flash_ctrl->power_info.power_setting_size > MAX_POWER_CONFIG) ||
+	(flash_ctrl->power_info.power_down_setting_size > MAX_POWER_CONFIG)) {
+		pr_err("%s:%d invalid power setting size=%d size_down=%d\n",
+			__func__, __LINE__,
+			flash_ctrl->power_info.power_setting_size,
+			flash_ctrl->power_info.power_down_setting_size);
+		rc = -EINVAL;
+		goto msm_flash_i2c_init_fail;
+	}
+
 	rc = msm_camera_fill_vreg_params(
 			flash_ctrl->power_info.cam_vreg,
 			flash_ctrl->power_info.num_vreg,
