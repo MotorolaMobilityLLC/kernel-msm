@@ -112,6 +112,7 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&tmp108_irq_default>;
+		label = "quiet_tmp108";
 	};
 
 	drv2624: drv2624@5a {
