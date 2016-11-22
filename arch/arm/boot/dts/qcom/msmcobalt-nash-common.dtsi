@@ -16,6 +16,10 @@
 	model = "Nash";
 	compatible = "qcom,msmcobalt-nash", "qcom,msmcobalt-moto",
 			"qcom,msmcobalt";
+
+	aliases {
+		/delete-property/ spi1;
+	};
 };
 
 &i2c_7 {
@@ -26,6 +30,17 @@
 		ti,vout-floor = <0x0D>;
 		ti,vout-roof = <0x19>;
 		ti,ilim = <0x0F>;
+	};
+
+	tmp108@49 {
+		compatible = "ti,tmp108";
+		reg = <0x49>;
+		interrupt-parent = <&tlmm>;
+		gpios = <&tlmm 1 0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&tmp108_2_irq_default>;
+		label = "msm_tmp108";
 	};
 };
 
@@ -135,5 +150,25 @@
 &soc {
 	alsa_to_h2w {
 	status = "disabled";
+	};
+};
+
+/delete-node/ &spi_1; /* delete spi_1: spi@c175000 node */
+
+&tlmm {
+	/delete-node/ spi_1;  /* delete spi_1 node in tlmm */
+
+	tmp108_2_irq {
+		tmp108_2_irq_default: default {
+			mux {
+				pins = "gpio1";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio1";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
 	};
 };
