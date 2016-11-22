@@ -1356,7 +1356,8 @@ static int msm8226_mi2s_ter_snd_startup(struct snd_pcm_substream *substream)
 	struct msm_auxpcm_ctrl *ter_mi2s_ctrl = NULL;
 	ter_mi2s_ctrl = pdata->tert_mi2s_ctrl;
 
-	pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+	pr_debug("%s: dai name %s %pK\n", __func__, cpu_dai->name,
+		 cpu_dai->dev);
 
 	if (atomic_inc_return(&ter_mi2s_rsc_ref) == 1) {
 		pr_debug("%s: acquire mi2s resources\n", __func__);
@@ -1470,7 +1471,8 @@ static int msm8226_mi2s_pri_snd_startup(struct snd_pcm_substream *substream)
 	struct msm_auxpcm_ctrl *auxpcm_ctrl = NULL;
 	auxpcm_ctrl = pdata->auxpcm_ctrl;
 
-	pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+	pr_debug("%s: dai name %s %pK\n", __func__, cpu_dai->name,
+		 cpu_dai->dev);
 
 	if (atomic_inc_return(&pri_mi2s_rsc_ref) == 1) {
 		pr_debug("%s: acquire mi2s resources\n", __func__);
