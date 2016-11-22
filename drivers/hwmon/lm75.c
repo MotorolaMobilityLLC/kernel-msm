@@ -86,6 +86,7 @@ static const u8 LM75_REG_TEMP[3] = {
 /* Each client has this additional data */
 struct lm75_data {
 	struct i2c_client	*client;
+	const char              *label;
 	enum lm75_type          sensor;
 	int                     irq_gpio;
 	struct device		*hwmon_dev;
@@ -210,6 +211,9 @@ static int lm75_of_init(struct lm75_data *data, struct i2c_client *client)
 	struct device_node *np;
 
 	np = client->dev.of_node;
+	if (of_property_read_string(np, "label", &data->label))
+		data->label = client->name;
+
 	data->irq_gpio = of_get_gpio(np, 0);
 	return ((data->irq_gpio < 0) ? data->irq_gpio : 0);
 }
@@ -240,7 +244,7 @@ static int lm75_init_irq_gpio(struct lm75_data *data, struct i2c_client *client)
 
 	ret = devm_gpio_request_one(&client->dev, data->irq_gpio,
 				    (GPIOF_IN | GPIOF_ACTIVE_LOW),
-				    client->name);
+				    data->label);
 	if (ret) {
 		dev_err(&client->dev, "GPIO request failed: %d\n", ret);
 		return ret;
@@ -260,7 +264,7 @@ static int lm75_init_irq_gpio(struct lm75_data *data, struct i2c_client *client)
 					(IRQF_TRIGGER_FALLING |
 					 IRQF_TRIGGER_RISING |
 					 IRQF_ONESHOT),
-					client->name, data);
+					data->label, data);
 	return ret;
 }
 
@@ -393,11 +397,6 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		lm75_write_value(client, LM75_REG_CONF, new);
 	dev_dbg(dev, "Config %02x\n", new);
 
-	data->hwmon_dev = hwmon_device_register_with_groups(dev, client->name,
-							    data, lm75_groups);
-	if (IS_ERR(data->hwmon_dev))
-		return PTR_ERR(data->hwmon_dev);
-
 	if (client->dev.of_node) {
 		status = lm75_of_init(data, client);
 		if (!status)
@@ -406,6 +405,11 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 			dev_err(&client->dev, "unable to config IRQ.\n");
 	}
 
+	data->hwmon_dev = hwmon_device_register_with_groups(dev, data->label,
+							    data, lm75_groups);
+	if (IS_ERR(data->hwmon_dev))
+		return PTR_ERR(data->hwmon_dev);
+
 	data->tz = thermal_zone_of_sensor_register(data->hwmon_dev, 0,
 						   data->hwmon_dev,
 						   &lm75_of_thermal_ops);
@@ -413,7 +417,7 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		data->tz = NULL;
 
 	dev_info(dev, "%s: sensor '%s'\n",
-		 dev_name(data->hwmon_dev), client->name);
+		 dev_name(data->hwmon_dev), data->label);
 
 	return 0;
 }
