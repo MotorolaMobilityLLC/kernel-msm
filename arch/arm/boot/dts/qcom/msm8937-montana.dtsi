@@ -58,6 +58,10 @@
 			<&dma_blsp2 5 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "montana";
+	};
 };
 
 &i2c_5 { /* BLSP2 QUP1 (NFC) */
