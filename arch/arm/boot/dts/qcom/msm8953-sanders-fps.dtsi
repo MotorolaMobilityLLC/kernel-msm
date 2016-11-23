@@ -1,0 +1,219 @@
+/* Copyright (c) 2016, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	aliases {
+		spi8 = &spi_8;
+	};
+};
+
+&tlmm {
+	fps: fps {
+		ldo_en_active: ldo_en_active {
+			/* LDO ENABLE */
+			mux {
+				pins = "gpio63";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio63";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+
+		ldo_en_suspend: ldo_en_suspend {
+			/* LDO ENABLE */
+			mux {
+				pins = "gpio63";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio63";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+
+		rst_active: rst_active {
+			/* RESET */
+			mux {
+				pins = "gpio140";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio140";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+
+		rst_suspend: rst_suspend{
+			/* RESET */
+			mux {
+				pins = "gpio140";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio140";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-up; /* pull up */
+				output-high;
+			};
+		};
+
+		int_active: int_active {
+			/* INTERRUPT */
+			mux {
+				pins = "gpio48";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio48";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+		int_suspend: int_suspend{
+			/* INTERRUPT */
+			mux {
+				pins = "gpio48";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio48";
+				drive-strength = <2>; /* 2 MA */
+				input-enable;
+			};
+		};
+
+		id_default: id_default {
+			/* ID */
+			mux {
+				pins = "gpio141";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio141";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;
+				input-enable;
+			};
+		};
+
+	};
+
+	spi_8 {
+		spi_8_active: spi_8_active {
+			mux {
+				/* MOSI, MISO, CLK */
+				pins = "gpio96", "gpio97", "gpio99";
+				function = "blsp_spi8";
+			};
+
+			config {
+				pins = "gpio96", "gpio97", "gpio99";
+				drive-strength = <12>; /* 12 MA */
+				bias-disable = <0>; /* No PULL */
+			};
+		};
+
+		spi_8_sleep: spi_8_sleep {
+			mux {
+				/* MOSI, MISO, CLK */
+				pins = "gpio96", "gpio97", "gpio99";
+				function = "blsp_spi8";
+			};
+
+			config {
+				pins = "gpio96", "gpio97", "gpio99";
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-down; /* PULL Down */
+			};
+		};
+
+		spi8_cs0_active: cs0_active {
+			mux {
+				pins = "gpio98";
+				function = "blsp_spi8";
+			};
+
+			config {
+				pins = "gpio98";
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+
+		spi8_cs0_sleep: cs0_sleep {
+			mux {
+				pins = "gpio98";
+				function = "blsp_spi8";
+			};
+
+			config {
+				pins = "gpio98";
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+	};
+};
+
+&soc {
+	spi_8: spi@7af8000 { /* BLSP2 QUP3 */
+		compatible = "qcom,spi-qup-v2";
+		status = "ok";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical";
+		reg = <0x07af8000 0x600>;
+		interrupt-names = "spi_irq";
+		interrupts = <0 302 0>;
+		spi-max-frequency = <19200000>;
+
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_8_active>;
+		pinctrl-1 = <&spi_8_sleep>;
+		qcom,infinite-mode = <0>;
+		qcom,master-id = <84>;
+		qcom,use-pinctrl;
+
+		fpc_fpc1020@0{
+			compatible = "fpc,fpc1020";
+			status = "ok";
+			reg = <0>;
+			interrupts = <48 0x0>;
+			spi-max-frequency = <4800000>;
+			fpc,gpio_irq = <&tlmm 48 0>;
+			fpc,gpio_rst = <&tlmm 140 0>;
+			pinctrl-names = "default", "suspend";
+			pinctrl-0 = <&rst_active &int_active &ldo_en_active &id_default>;
+			pinctrl-1 = <&rst_suspend &int_suspend &ldo_en_suspend &id_default>;
+			fpc,txout_boost_enable;
+			clock-names = "iface_clk", "core_clk";
+			clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup4_spi_apps_clk>;
+		};
+	};
+};
