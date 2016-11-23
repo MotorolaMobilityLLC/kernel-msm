@@ -785,6 +785,14 @@ config POTTER_DTB
 	  Only include Potter specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config SANDERS_DTB
+        depends on ARCH_MSM
+        default n
+        bool "Sanders DTBs"
+        help
+          Only include Sanders specific DTBs to limit the number that
+          get built during kernel compilation.
+
 config ADDISON_DTB
 	depends on ARCH_MSM
 	default n
