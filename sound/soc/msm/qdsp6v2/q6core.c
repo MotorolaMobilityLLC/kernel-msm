@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -181,7 +181,7 @@ void ocm_core_open(void)
 	if (q6core_lcl.core_handle_q == NULL)
 		q6core_lcl.core_handle_q = apr_register("ADSP", "CORE",
 					aprv2_core_fn_q, 0xFFFFFFFF, NULL);
-	pr_debug("%s: Open_q %p\n", __func__, q6core_lcl.core_handle_q);
+	pr_debug("%s: Open_q %pK\n", __func__, q6core_lcl.core_handle_q);
 	if (q6core_lcl.core_handle_q == NULL)
 		pr_err("%s: Unable to register CORE\n", __func__);
 }
@@ -341,7 +341,7 @@ int core_dts_eagle_set(int size, char *data)
 
 	pr_debug("DTS_EAGLE_CORE - %s\n", __func__);
 	if (size <= 0 || !data) {
-		pr_err("DTS_EAGLE_CORE - %s: invalid size %i or pointer %p.\n",
+		pr_err("DTS_EAGLE_CORE - %s: invalid size %i or pointer %pK.\n",
 			__func__, size, data);
 		return -EINVAL;
 	}
@@ -387,7 +387,7 @@ int core_dts_eagle_get(int id, int size, char *data)
 
 	pr_debug("DTS_EAGLE_CORE - %s\n", __func__);
 	if (size <= 0 || !data) {
-		pr_err("DTS_EAGLE_CORE - %s: invalid size %i or pointer %p.\n",
+		pr_err("DTS_EAGLE_CORE - %s: invalid size %i or pointer %pK.\n",
 			__func__, size, data);
 		return -EINVAL;
 	}
