@@ -567,6 +567,7 @@
 		2 &tlmm 67 0>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
 	cd-gpios = <&tlmm 67 0x1>;
+	qcom,cd-wakeup;
 
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000
 								200000000>;
