@@ -361,18 +361,23 @@ err_invalid_input:
 static inline void populate_buf_info(struct buffer_info *binfo,
 			struct v4l2_buffer *b, u32 i)
 {
-	binfo->type = b->type;
-	binfo->fd[i] = b->m.planes[i].reserved[0];
-	binfo->buff_off[i] = b->m.planes[i].reserved[1];
-	binfo->size[i] = b->m.planes[i].length;
-	binfo->uvaddr[i] = b->m.planes[i].m.userptr;
-	binfo->num_planes = b->length;
-	binfo->memory = b->memory;
-	binfo->v4l2_index = b->index;
-	binfo->timestamp.tv_sec = b->timestamp.tv_sec;
-	binfo->timestamp.tv_usec = b->timestamp.tv_usec;
-	dprintk(VIDC_DBG, "%s: fd[%d] = %d b->index = %d",
+        if (i < VIDEO_MAX_PLANES) {
+		binfo->type = b->type;
+		binfo->fd[i] = b->m.planes[i].reserved[0];
+		binfo->buff_off[i] = b->m.planes[i].reserved[1];
+		binfo->size[i] = b->m.planes[i].length;
+		binfo->uvaddr[i] = b->m.planes[i].m.userptr;
+		binfo->num_planes = b->length;
+		binfo->memory = b->memory;
+		binfo->v4l2_index = b->index;
+		binfo->timestamp.tv_sec = b->timestamp.tv_sec;
+		binfo->timestamp.tv_usec = b->timestamp.tv_usec;
+		dprintk(VIDC_DBG, "%s: fd[%d] = %d b->index = %d",
 			__func__, i, binfo->fd[0], b->index);
+        } else {
+		dprintk(VIDC_ERR,
+                        "Invalid plane number");
+        }
 }
 
 static inline void repopulate_v4l2_buffer(struct v4l2_buffer *b,
@@ -469,14 +474,16 @@ int map_and_register_buf(struct msm_vidc_inst *inst, struct v4l2_buffer *b)
 	int plane = 0;
 	int i = 0, rc = 0;
 	struct msm_smem *same_fd_handle = NULL;
-	bool check_same_fd_handle = !is_dynamic_output_buffer_mode(b, inst) &&
-		!( inst->session_type == MSM_VIDC_ENCODER &&
-			b->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+	bool check_same_fd_handle;
 
 	if (!b || !inst) {
 		dprintk(VIDC_ERR, "%s: invalid input\n", __func__);
 		return -EINVAL;
 	}
+
+	check_same_fd_handle = !is_dynamic_output_buffer_mode(b, inst) &&
+		!( inst->session_type == MSM_VIDC_ENCODER &&
+			b->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 
 	binfo = kzalloc(sizeof(*binfo), GFP_KERNEL);
 	if (!binfo) {
