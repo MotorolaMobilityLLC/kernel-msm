@@ -200,3 +200,30 @@
 	};
 };
 
+&pmi8950_charger {
+	qcom,fastchg-current-ma = <3000>;
+	qcom,chg-thermal-mitigation = <3000>, <2500>, <2000>, <1600>,
+		<1000>, <500>, <400>;
+	/delete-property/ qcom,dc-thermal-mitigation;
+	qcom,parallel-charge-current-map = <3000 3000 0>,
+					   <2500 2500 0>,
+					   <2000 2000 0>,
+					   <1600 1600 0>,
+					   <1000 1000 0>,
+					   <500 500 0>,
+					   <400 400 0>;
+	qcom,stepchg-voltage-mv = <4400>;
+	qcom,stepchg-current-ma = <3000>;
+	qcom,stepchg-taper-ma = <1800>;
+	qcom,stepchg-iterm-ma = <125>;
+};
+
+&pmi8950_fg {
+	qcom,ext-sense-type; /* External Sense Resistor */
+};
+
+&mot_batterydata {
+	df-serialnum = "SNN5976A";
+	#include "batterydata-gk40-atl.dtsi"
+};
+
