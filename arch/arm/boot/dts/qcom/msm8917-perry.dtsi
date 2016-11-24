@@ -253,7 +253,7 @@
 };
 
 &pmi8950_fg {
-	qcom,ext-sense-type; /* External Sense Resistor */
+	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
 	qcom,thermal-coefficients =  /bits/ 16 <0x2d87 0x9151 0x7d3c>;
 };
 
