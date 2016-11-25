@@ -509,11 +509,11 @@ static struct msm_soc_info cpu_of_id[] = {
 	[289] = {MSM_CPU_8952, "APQ8052"},
 
 	/* 8976 ID */
-	[278] = {MSM_CPU_8976, "MSM8976"},
-	[277] = {MSM_CPU_8976, "APQ8076"},
+	[278] = {MSM_CPU_8976, "MSM8976", "SG"},
+	[277] = {MSM_CPU_8976, "APQ8076", "SG"},
 	/* 8956 ID */
-	[266] = {MSM_CPU_8956, "MSM8956"},
-	[274] = {MSM_CPU_8956, "APQ8056"},
+	[266] = {MSM_CPU_8956, "MSM8956", "SG"},
+	[274] = {MSM_CPU_8956, "APQ8056", "SG"},
 
 	/* 8929 IDs */
 	[268] = {MSM_CPU_8929, "MSM8929"},
@@ -577,6 +577,13 @@ static char *msm_read_hardware_id(void)
 	if (ret > sizeof(msm_soc_str))
 		goto err_path;
 
+	/* Add suffix if need to be */
+	if ((socinfo->v2.raw_version == 2) && strlen(cpu_of_id[socinfo->v1.id].suffix)) {
+		ret = strlcat(msm_soc_str, cpu_of_id[socinfo->v1.id].suffix,
+			sizeof(msm_soc_str));
+		if (ret > sizeof(msm_soc_str))
+			goto err_path;
+	}
 	string_generated = true;
 	return msm_soc_str;
 err_path:
