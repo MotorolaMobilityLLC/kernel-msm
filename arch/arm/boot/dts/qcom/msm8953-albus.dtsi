@@ -204,7 +204,7 @@
 			wlf,micd-detect-debounce = <600>;
 			wlf,inmode = <0 2 0>;
 			wlf,micd-ranges = <
-				100 226 430 115 1257 114
+				100 226 295 115 1257 114
 			>;
 
 			pinctrl-names = "default";
