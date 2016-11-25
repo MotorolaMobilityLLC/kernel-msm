@@ -110,6 +110,13 @@ struct qseecom_qseos_version_req {
 };
 
 /*
+ * struct qseecom_qsee_version_req - get qsee version
+ * @qsee_version - version number
+ */
+struct qseecom_qsee_version_req {
+	unsigned int qsee_version;
+};
+/*
  * struct qseecom_qseos_app_load_query - verify if app is loaded in qsee
  * @app_name[MAX_APP_NAME_SIZE]-  name of the app.
  * @app_id - app id.
@@ -352,4 +359,6 @@ extern long qseecom_ioctl(struct file *file,
 #define QSEECOM_IOCTL_SEND_MODFD_RESP_64 \
 	_IOWR(QSEECOM_IOC_MAGIC, 36, struct qseecom_send_modfd_listener_resp)
 
+#define QSEECOM_IOCTL_GET_QSEE_VERSION_REQ \
+	_IOWR(QSEECOM_IOC_MAGIC, 37, struct qseecom_qsee_version_req)
 #endif /* _UAPI_QSEECOM_H_ */
