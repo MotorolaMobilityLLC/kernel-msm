@@ -14,8 +14,6 @@
 	/delete-node/ cs35l34_reset_default;
 	/delete-node/ pmx_motosh_out;
 	/delete-node/ pmx_motosh_in;
-	/delete-node/ laser_active;
-	/delete-node/ laser_suspend;
 	/delete-node/ factory_default;
 
 	haptic_reset_active: haptic_reset_active{
