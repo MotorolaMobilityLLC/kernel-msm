@@ -22,7 +22,7 @@
 	tps61280@75 {
 		compatible = "ti,tps61280";
 		reg = <0x75>;
-		ti,config = <0x0C>;
+		ti,config = <0x0D>;
 		ti,vout-floor = <0x0D>;
 		ti,vout-roof = <0x19>;
 		ti,ilim = <0x0F>;
