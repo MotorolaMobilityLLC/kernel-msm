@@ -90,12 +90,27 @@ operational simplification. For backward compatibility purpose, switch node can 
 			revision check.
 
 Optional properties inside child node:
+- qcom,alt-max-current	: maximum current allowed on this LED when configured for alternate
+                          function.  This is used when 2 LEDs are MUXed to a single LED
+                          controller.  The alternate function is usually the front LED. Valid
+			  values are integers from 0 to 1000 inclusive, indicating 0 to 1000 mA.
 - qcom,current		: default current intensity for LED. Accepted values should be
 			  integer from 0 t 1000 inclusive, indicating 0 to 1000 mA.
+- qcom,alt-current	: default current intensity for LED when configured for alternate
+			  function.  This is used when 2 LEDs are MUXed to a single LED
+			  controller.  The alternate function is usually the front LED.
+			  Accepted values should be integer from 0 t 1000 inclusive,
+			  indicating 0 to 1000 mA.
 - qcom,duration	: Duration for flash LED. When duration time expires, hardware will turn off
 		flash LED. Values should be from 10 ms to 1280 ms with 10 ms incremental
 		step. Not applicable to torch. It is required for LED:SWITCH node to handle
 		LED used as flash.
+- qcom,alt-duration	: Duration for flash LED when configured for alternate function.  This
+			  is used when 2 LEDs are MUXed to a single LED controller.  The
+			  alternate function is usually the front LED. When duration time
+			  expires, hardware will turn off flash LED. Values should be from 10
+			  ms to 1280 ms with 10 ms incremental step. Not applicable to torch.
+			  It is required for LED:SWITCH node to handle LED used as flash.
 - reg<n>	: reg<n> (<n> represents number. eg 0,1,2,..) property is to add support for
 		multiple power sources. It includes two properties regulator-name and max-voltage.
 		Required property inside regulator node:
