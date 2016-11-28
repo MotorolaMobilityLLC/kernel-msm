@@ -227,3 +227,6 @@
 	#include "batterydata-gk40-atl.dtsi"
 };
 
+&sdhc_2 {
+	cd-gpios = <&tlmm 67 0x0>;
+};
