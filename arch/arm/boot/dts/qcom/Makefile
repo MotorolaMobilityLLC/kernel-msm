@@ -153,6 +153,7 @@ else
 dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-saratoga-p1.dtb
 dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-nash-evt1-v2.dtb
 dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-nash-evt1-v1.dtb
+dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-nash-dvt1.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
