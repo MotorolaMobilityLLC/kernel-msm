@@ -57,7 +57,7 @@
 		qcom,mount-angle = <90>;
 		qcom,led-flash-src = <&led_flash0>;
 		//qcom,eeprom-src = <&eeprom0>;
-		//qcom,actuator-src = <&actuator0>;
+		qcom,actuator-src = <&actuator0>;
 		cam_vdig-supply = <&pm8953_l2>;
 		cam_vio-supply = <&pm8953_l6>;
 		cam_vaf-supply = <&pm8953_l17>;
@@ -101,7 +101,7 @@
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
 		//qcom,eeprom-src = <&eeprom1>;
-		//qcom,actuator-src = <&actuator1>;
+		qcom,actuator-src = <&actuator1>;
 		cam_vdig-supply = <&pm8953_l23>;
 		cam_vio-supply = <&pm8953_l6>;
 		cam_vaf-supply = <&pm8953_l22>;
@@ -396,6 +396,16 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			qcom,init-voltage = <1800000>;
+			status = "okay";
+		};
+	};
+
+	rpm-regulator-ldoa17 {
+		status = "okay";
+		pm8953_l17: regulator-l17 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			qcom,init-voltage = <2800000>;
 			status = "okay";
 		};
 	};
