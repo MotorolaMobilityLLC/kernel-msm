@@ -262,7 +262,7 @@ static int venus_hfi_acquire_regulator(struct regulator_info *rinfo)
 					rinfo->name);
 		}
 	}
-	WARN_ON(!regulator_is_enabled(rinfo->regulator));
+	WARN_ON(!regulator_is_enabled(rinfo->regulator) && (msm_vidc_debug & VIDC_INFO));
 	return rc;
 }
 
@@ -3954,7 +3954,7 @@ static int venus_hfi_disable_regulator(struct regulator_info *rinfo)
 disable_regulator_failed:
 
 	/* Bring attention to this issue */
-	WARN_ON(1);
+	WARN_ON(msm_vidc_debug & VIDC_INFO);
 	return rc;
 }
 
