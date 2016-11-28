@@ -620,12 +620,13 @@
 		status = "okay";
 	};
 
-	gpio@c600 { /* PMI8998_GPIO7 FAN54100_INT_N */
-		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
+	gpio@c600 { /* PMI8998_GPIO7 RF_BOOST_BYP_MODE TPS61280A */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
-		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
+		qcom,vin-sel = <0>;      /* QPNP_PIN_VIN0 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,invert = <1>;	 /* Invert */
 		qcom,master-en = <1>;
 		status = "okay";
 	};
