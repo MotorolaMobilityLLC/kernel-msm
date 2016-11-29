@@ -2391,10 +2391,6 @@ static int marley_codec_remove(struct snd_soc_codec *codec)
 
 	priv->core.arizona->dapm = NULL;
 
-#ifdef CONFIG_SND_SOC_OPALUM
-	if (priv->ospl2xx_wq)
-		destroy_workqueue(priv->ospl2xx_wq);
-#endif
 	return 0;
 }
 
