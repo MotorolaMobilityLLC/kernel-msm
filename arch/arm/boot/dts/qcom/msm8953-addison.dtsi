@@ -102,6 +102,14 @@
 		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-dba-codec-rx";
 	};
 
+	ospl {
+		compatible = "mmi,ospl2xx";
+		status = "ok";
+		mmi,ospl-tune-index = <0 1 2 3>;
+		mmi,ospl-afe-port-id = <16384 16387>;
+		mmi,ospl-left-feedback;
+	};
+
 
 	dsi_mod_display_driver: dsi_mod_display_driver {
 		compatible = "mmi,dsi_mod_display";
