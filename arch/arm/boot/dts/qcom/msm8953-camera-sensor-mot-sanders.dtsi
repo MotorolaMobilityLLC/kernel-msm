@@ -20,6 +20,21 @@
 		qcom,torch-source = <&pmi8950_torch0 &pmi8950_torch1>;
 		qcom,switch-source = <&pmi8950_switch>;
 	};
+	led_flash1: qcom,camera-led-flash {
+		cell-index = <2>;
+		compatible = "qcom,camera-led-flash";
+		qcom,flash-type = <1>;
+		qcom,flash-name = "led_flash1";
+		qcom,gpio-no-mux = <0>;
+		gpios = <&tlmm 13 0>,
+			<&tlmm 40 0>;
+		qcom,gpio-flash-en = <0>;
+		qcom,gpio-flash-now = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <0 0>;
+		qcom,gpio-req-tbl-label = "FLASH_EN",
+			"FLASH_NOW";
+	};
 };
 
 &cci {
@@ -144,6 +159,7 @@
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <2>;
 		qcom,mount-angle = <270>;
+		qcom,led-flash-src = <&led_flash1>;
 		cam_vdig-supply = <&pm8953_l23>;
 		cam_vio-supply = <&pm8953_l6>;
 		cam_vana-supply = <&pm8953_l22>;
