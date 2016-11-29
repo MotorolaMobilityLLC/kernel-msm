@@ -47,11 +47,6 @@ struct marley_priv {
 
 	struct mutex fw_lock;
 	struct wake_lock wakelock;
-
-#ifdef CONFIG_SND_SOC_OPALUM
-	struct workqueue_struct *ospl2xx_wq;
-	struct work_struct ospl2xx_config;
-#endif
 };
 
 #endif
