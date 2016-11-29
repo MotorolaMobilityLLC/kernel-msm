@@ -128,6 +128,91 @@
 		};
 	};
 
+	i2c_7 {
+		i2c_7_active: i2c_7_active {
+			/* active state */
+			mux {
+				pins = "gpio135", "gpio136";
+				function = "blsp_i2c7";
+			};
+
+			config {
+				pins = "gpio135", "gpio136";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		i2c_7_sleep: i2c_7_sleep {
+			/* suspended state */
+			mux {
+				pins = "gpio135", "gpio136";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio135", "gpio136";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+
+	cs35l35_reset_default: cs35l35_default{
+		mux {
+			pins = "gpio137";
+			function = "gpio";
+		};
+
+		config {
+			pin = "gpio137";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
+	cs35l35_irq_default: cs35l35_irq_default {
+		mux {
+			pins = "gpio132";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio132";
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
+	cs35l35_mclk {
+		cs35l35_mclk_on: cs35l35_mclk_on {
+			mux {
+				pins = "gpio25";
+				function = "sec_mi2s_mclk_a";
+			};
+
+			config {
+				pins = "gpio25";
+				drive-strength = <8>; /* 8 MA */
+				output-high;
+			};
+		};
+
+		cs35l35_mclk_off: cs35l35_mclk_off {
+			mux {
+				pins = "gpio25";
+				function = "sec_mi2s_mclk_a";
+			};
+
+			config {
+				pins = "gpio25";
+				drive-strength = <2>; /* 2 MA */
+				output-low;
+				bias-pull-down;
+			};
+		};
+	};
 
 	dtv_output_default: dtv-enable-ant {
 		mux {
@@ -265,26 +350,6 @@
 			};
 		};
 	};
-/*
-	cs35l34_reset_default: cs35l34_reset_default {  // vexter and potter use the same device?
-		config {
-			pins = "gpio94";
-			output-high;
-			bias-pull-up;
-			drive-strength = <2>;
-		};
-	};
-*/
-
-/*
-	marley_irq_default: marley_irq_default {  //SAR_SENSOR_INT_N
-		config {
-			pins = "gpio46";
-			drive-strength = <2>;
-			bias-pull-up;
-		};
-	};
-*/
 
 	sx9310_irq_default: sx9310_irq_default {  //cap sense inturrupt
 		mux {
