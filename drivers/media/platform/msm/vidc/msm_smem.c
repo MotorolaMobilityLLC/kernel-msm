@@ -332,7 +332,7 @@ bool msm_smem_compare_buffers(void *clt, int fd, void *priv) {
     bool ret = false;
     handle = ion_import_dma_buf(client->clnt, fd);
     ret = handle == priv;
-    handle ? ion_free(client->clnt, handle) : 0;
+    (!IS_ERR_OR_NULL(handle)) ? ion_free(client->clnt, handle) : 0;
     return ret;
 }
 
