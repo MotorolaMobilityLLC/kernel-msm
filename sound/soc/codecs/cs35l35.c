@@ -360,9 +360,11 @@ static int cs35l35_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 		break;
 	case SND_SOC_DAIFMT_I2S:
 		cs35l35->i2s_mode = true;
+		cs35l35->pdm_mode = false;
 		break;
 	case SND_SOC_DAIFMT_PDM:
 		cs35l35->pdm_mode = true;
+		cs35l35->i2s_mode = false;
 		break;
 	default:
 		return -EINVAL;
@@ -440,10 +442,12 @@ static int cs35l35_pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct cs35l35_private *cs35l35 = snd_soc_codec_get_drvdata(codec);
+	struct classh_cfg *classh = &cs35l35->pdata.classh_algo;
 	int srate = params_rate(params);
 	int ret;
 	u8 sp_sclks;
 	int audin_format;
+	int errata_chk;
 
 	int clk_ctl = cs35l35_get_clk_config(cs35l35->sysclk, srate);
 
@@ -453,8 +457,30 @@ static int cs35l35_pcm_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	ret = regmap_update_bits(cs35l35->regmap, CS35L35_CLK_CTL2,
-				  CS35L35_CLK_CTL2_MASK, clk_ctl);
+	regmap_update_bits(cs35l35->regmap, CS35L35_CLK_CTL2,
+			  CS35L35_CLK_CTL2_MASK, clk_ctl);
+
+	/* Rev A0 Errata
+	 *
+	 * When configured for the weak-drive detection path (CH_WKFET_DIS = 0)
+	 * the Class H algorithm does not enable weak-drive operation for
+	 * nonzero values of CH_WKFET_DELAY if SP_RATE = 01 or 10
+	 *
+	 */
+	errata_chk = clk_ctl & CS35L35_SP_RATE_MASK;
+
+	if (classh->classh_wk_fet_disable == 0x00 &&
+		(errata_chk == 0x01 || errata_chk == 0x03)) {
+		regmap_update_bits(cs35l35->regmap,
+					CS35L35_CLASS_H_FET_DRIVE_CTL,
+					CS35L35_CH_WKFET_DEL_MASK,
+					0 << CS35L35_CH_WKFET_DEL_SHIFT);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to set port config %d\n",
+				ret);
+			return ret;
+		}
+	}
 
 /*
  * You can pull more Monitor data from the SDOUT pin than going to SDIN
@@ -1216,6 +1242,21 @@ static int cs35l35_handle_of_data(struct i2c_client *i2c_client,
 	return 0;
 }
 
+/* Errata Rev A0 */
+static const struct reg_sequence cs35l35_errata_patch[] = {
+	{ 0x7F, 0x99 },
+	{ 0x00, 0x99 },
+	{ 0x52, 0x22 },
+	{ 0x04, 0x14 },
+	{ 0x6D, 0x44 },
+	{ 0x24, 0x10 },
+	{ 0x58, 0xC4 },
+	{ 0x00, 0x98 },
+	{ 0x18, 0x08 },
+	{ 0x00, 0x00 },
+	{ 0x7F, 0x00 },
+};
+
 static int cs35l35_i2c_probe(struct i2c_client *i2c_client,
 			      const struct i2c_device_id *id)
 {
@@ -1297,6 +1338,13 @@ static int cs35l35_i2c_probe(struct i2c_client *i2c_client,
 		gpiod_set_value_cansleep(cs35l35->reset_gpio, 1);
 
 	init_completion(&cs35l35->pdn_done);
+
+	ret = regmap_register_patch(cs35l35->regmap, cs35l35_errata_patch,
+		ARRAY_SIZE(cs35l35_errata_patch));
+	if (ret < 0) {
+		dev_err(&i2c_client->dev, "Failed to apply errata patch\n");
+		return ret;
+	}
 
 	cs35l35->irq_gpio = devm_gpiod_get_optional(&i2c_client->dev,
 		"irq", GPIOD_IN);
@@ -1408,7 +1456,6 @@ MODULE_DEVICE_TABLE(i2c, cs35l35_id);
 static struct i2c_driver cs35l35_i2c_driver = {
 	.driver = {
 		.name = "cs35l35",
-		.owner = THIS_MODULE,
 		.of_match_table = cs35l35_of_match,
 	},
 	.id_table = cs35l35_id,
