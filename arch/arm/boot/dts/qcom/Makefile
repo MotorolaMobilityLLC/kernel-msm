@@ -348,7 +348,8 @@ dtb-$(CONFIG_ARCH_MSM8953) += msm8953-albus-p2.dtb
 endif
 
 ifeq ($(CONFIG_SANDERS_DTB),y)
-dtb-$(CONFIG_ARCH_MSM8953) += msm8953-sanders-p1.dtb
+dtb-$(CONFIG_ARCH_MSM8953) += msm8953-sanders-p1.dtb \
+	msm8953-sanders-p2.dtb
 endif
 
 ifeq ($(CONFIG_PERRY_DTB),y)
