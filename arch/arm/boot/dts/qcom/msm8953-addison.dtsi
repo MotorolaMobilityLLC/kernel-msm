@@ -107,6 +107,14 @@
 			"IN1BR", "MICBIAS2A";
 	};
 
+	ospl {
+		compatible = "mmi,ospl2xx";
+		status = "ok";
+		mmi,ospl-tune-index = <0 1 2 3>;
+		mmi,ospl-afe-port-id = <16384 16387>;
+		mmi,ospl-left-feedback;
+	};
+
 
 	dsi_mod_display_driver: dsi_mod_display_driver {
 		compatible = "mmi,dsi_mod_display";
