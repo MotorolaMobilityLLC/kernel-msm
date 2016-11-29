@@ -20,32 +20,6 @@
 	qcom,board-id = <0x4B 0x8100>;
 };
 
-&tlmm {
-	usb_id_int_active {
-		usb_id_active: default {
-			mux {
-				pins = "gpio66";
-			};
-			config {
-				pins = "gpio66";
-			};
-		};
-	};
-	usb_id_int_sleep {
-		usb_id_sleep: sleep {
-			mux {
-				pins = "gpio66";
-			};
-			config {
-				pins = "gpio66";
-			};
-		};
-	};
-};
-&usb3 {
-	qcom,usbid-gpio = <&tlmm 66 0>;
-};
-
 &pm8953_diangu_dig {
 	qcom,cdc-boost-pdm-clk;
 };
