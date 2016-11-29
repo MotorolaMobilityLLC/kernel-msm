@@ -672,6 +672,7 @@ static int cs35l35_codec_set_sysclk(struct snd_soc_codec *codec,
 	case 24576000:
 	case 26000000:
 		cs35l35->sysclk = freq;
+		break;
 	default:
 		dev_err(codec->dev, "Invalid CLK Frequency\n");
 		return -EINVAL;
@@ -1092,36 +1093,34 @@ static int cs35l35_handle_of_data(struct i2c_client *i2c_client,
 	if (!np)
 		return 0;
 
-	if (of_property_read_bool(np, "boost-pdn-fet-on"))
-		pdata->bst_pdn_fet_on = true;
+	pdata->bst_pdn_fet_on = of_property_read_bool(np, "boost-pdn-fet-on");
 
-	if (of_property_read_u32(np, "boost-ctl", &val32) >= 0)
+	if (of_property_read_u32(np, "boost-ctl-millivolt", &val32) >= 0)
 		pdata->bst_vctl = val32;
 
 	if (of_property_read_u32(np, "sp-drv-strength", &val32) >= 0)
 		pdata->sp_drv_str = val32;
 
-	if (of_property_read_u32(np, "audio-channel", &val32) >= 0)
-		pdata->aud_channel = val32;
+	pdata->stereo = of_property_read_bool(np, "stereo-config");
 
-	if (of_property_read_bool(np, "stereo-config")) {
-		pdata->stereo = true;
+	if (pdata->stereo) {
+		if (of_property_read_u32(np, "audio-channel", &val32) >= 0)
+			pdata->aud_channel = val32;
 		if (of_property_read_u32(np, "advisory-channel",
 					&val32) >= 0)
 			pdata->adv_channel = val32;
-		if (of_property_read_bool(np, "shared-boost"))
-			pdata->shared_bst = true;
+		pdata->shared_bst = of_property_read_bool(np, "shared-boost");
 	}
 
-	if (of_property_read_bool(np, "amp-gain-zc"))
-		pdata->gain_zc = true;
+	pdata->gain_zc = of_property_read_bool(np, "amp-gain-zc");
 
 	classh = of_get_child_by_name(np, "classh-internal-algo");
 	classh_config->classh_algo_enable = classh ? true : false;
 
 	if (classh_config->classh_algo_enable) {
-		if (of_property_read_bool(np, "classh-bst-overide"))
-			classh_config->classh_bst_override = true;
+		classh_config->classh_bst_override =
+			of_property_read_bool(np, "classh-bst-overide");
+
 		if (of_property_read_u32(classh, "classh-bst-max-limit",
 					&val32) >= 0)
 			classh_config->classh_bst_max_limit = val32;
@@ -1412,26 +1411,7 @@ static struct i2c_driver cs35l35_i2c_driver = {
 	.remove = cs35l35_i2c_remove,
 };
 
-static int __init cs35l35_modinit(void)
-{
-	int ret;
-
-	ret = i2c_add_driver(&cs35l35_i2c_driver);
-	if (ret != 0) {
-		pr_err("Failed to register CS35L35 I2C driver: %d\n", ret);
-		return ret;
-	}
-	return 0;
-}
-
-module_init(cs35l35_modinit);
-
-static void __exit cs35l35_exit(void)
-{
-	i2c_del_driver(&cs35l35_i2c_driver);
-}
-
-module_exit(cs35l35_exit);
+module_i2c_driver(cs35l35_i2c_driver);
 
 MODULE_DESCRIPTION("ASoC CS35L35 driver");
 MODULE_AUTHOR("Brian Austin, Cirrus Logic Inc, <brian.austin@cirrus.com>");
