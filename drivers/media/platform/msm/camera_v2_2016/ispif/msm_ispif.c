@@ -1237,7 +1237,7 @@ static inline void msm_ispif_read_irq_status(struct ispif_irq_status *out,
 	msm_camera_io_w_mb(out[VFE0].ispifIrqStatus2,
 		ispif->base + ISPIF_VFE_m_IRQ_CLEAR_2(VFE0));
 
-	if (ispif->vfe_info.num_vfe > 1) {
+	if ((ispif->vfe_info.num_vfe > 1) || (ispif->vfe_info.num_vfe == 0)) {
 		out[VFE1].ispifIrqStatus0 = msm_camera_io_r(ispif->base +
 			ISPIF_VFE_m_IRQ_STATUS_0(VFE1));
 		msm_camera_io_w(out[VFE1].ispifIrqStatus0,
