@@ -10,7 +10,6 @@
  * GNU General Public License for more details.
  */
 
-#include "msmcobalt.dtsi"
 #include "msmcobalt-moto-common.dtsi"
 / {
 	model = "Saratoga";
