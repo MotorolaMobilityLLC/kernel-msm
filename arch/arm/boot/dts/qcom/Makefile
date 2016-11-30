@@ -108,6 +108,7 @@ endif # CONFIG_MMI_DEVICE_DTBS
 
 # Motorola Device Trees
 dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-saratoga-p1.dtb
+dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-saratoga-p1a.dtb
 dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-nash-evt1-v2.dtb
 dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-nash-evt1-v1.dtb
 dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-nash-dvt1.dtb
