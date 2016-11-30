@@ -61,7 +61,7 @@
 /**
  * Configure the Netlink-id use
  */
-#define STMVL531_CFG_NETLINK_USER 31
+#define STMVL531_CFG_NETLINK_USER 23
 
 #define STMVL53L1_MAX_CCI_XFER_SZ	256
 #define STMVL53L1_DRV_NAME	"stmvl53l1"
