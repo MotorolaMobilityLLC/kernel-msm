@@ -515,6 +515,18 @@
 		status = "ok";
 	};
 
+	gpio@d200 { /* PM8998_GPIO19 SDC_DET_N */
+		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,pull = <0>;	 /* QPNP_PIN_GPIO_PULL_UP_30 */
+		qcom,invert = <0>;	 /* Invert */
+		qcom,master-en = <1>;
+		status = "ok";
+	};
+
 	gpio@d300 { /* PM8998_GPIO20 USB_AUD_DET_N */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
@@ -699,6 +711,28 @@
 };
 
 &ufs_ice {
+	status = "ok";
+};
+
+&sdhc_2 {
+	vdd-supply = <&pmcobalt_l21>;
+	qcom,vdd-voltage-level = <2950000 2960000>;
+	qcom,vdd-current-level = <200 800000>;
+
+	vdd-io-supply = <&pmcobalt_l13>;
+	qcom,vdd-io-voltage-level = <1808000 2960000>;
+	qcom,vdd-io-current-level = <200 22000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on  &sdc2_cmd_on &sdc2_data_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off>;
+
+	qcom,clk-rates = <400000 20000000 25000000
+				50000000 100000000 200000000>;
+	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
+
+	cd-gpios = <&pmcobalt_gpios 19 0x1>;
+
 	status = "ok";
 };
 
