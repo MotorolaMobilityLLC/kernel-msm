@@ -14,6 +14,7 @@
 #include "dsi-panel-mot-tianma-521-1080p-video.dtsi"
 #include "dsi-panel-mot-inx-521-1080p-video.dtsi"
 #include "msm8937-camera-sensor-mot-montana.dtsi"
+#include "msm8937-montana-fps.dtsi"
 
  / {
 	model = "montana";
