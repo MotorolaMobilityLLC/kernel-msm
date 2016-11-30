@@ -14,6 +14,7 @@
 #include "dsi-panel-mot-tianma-497-1080p-video.dtsi"
 #include "dsi-panel-mot-inx-497-1080p-video.dtsi"
 #include "msm8937-camera-sensor-mot.dtsi"
+#include "msm8937-cedric-fps.dtsi"
 
  / {
 	model = "cedric";
