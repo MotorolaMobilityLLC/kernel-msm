@@ -374,3 +374,8 @@
 			"IN1BR", "MICBIAS2A";
 	};
 };
+
+/* SD card slot is not functional */
+&sdhc_2 {
+	status = "disabled";
+};
