@@ -151,6 +151,10 @@
 	alsa_to_h2w {
 	status = "disabled";
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "nash";
+	};
 };
 
 /delete-node/ &spi_1; /* delete spi_1: spi@c175000 node */
