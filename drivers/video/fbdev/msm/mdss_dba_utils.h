@@ -32,6 +32,7 @@
  */
 struct mdss_dba_utils_init_data {
 	struct kobject *kobj;
+	struct platform_device *pdev;
 	u32 instance_id;
 	u32 fb_node;
 	char *chip_name;
