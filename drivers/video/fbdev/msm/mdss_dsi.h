@@ -422,6 +422,7 @@ struct dsi_err_container {
 #define MSM_DBA_CHIP_NAME_MAX_LEN				20
 
 struct mdss_dsi_ctrl_pdata {
+	struct platform_device *pdev;
 	int ndx;	/* panel_num */
 	int (*on) (struct mdss_panel_data *pdata);
 	int (*post_panel_on)(struct mdss_panel_data *pdata);
