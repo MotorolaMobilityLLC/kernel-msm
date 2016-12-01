@@ -20,7 +20,3 @@
 	qcom,board-id = <0x4B 0x8200>;
 };
 
-&pm8953_diangu_dig {
-	qcom,cdc-boost-pdm-clk;
-};
-
