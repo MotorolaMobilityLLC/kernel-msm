@@ -12,8 +12,7 @@
 
 #include "msm8920-moto-common.dtsi"
 #include "msm8917-camera-sensor-mot-perry.dtsi"
-
-#include "dsi-panel-mot-tianma-499-720p-video.dtsi"
+#include "dsi-panel-mot-boe-499-720p-video.dtsi"
 
  / {
 	model = "owens";
@@ -195,7 +194,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tianma_499_720p_vid_v1>;
+	qcom,dsi-pref-prim-pan = <&mot_boe_499_720p_vid_v1>;
 	vddio_disp-supply = <&pm8917_l6>;
 	vsp_disp-supply = <&lab_regulator>;
 	vsn_disp-supply = <&ibb_regulator>;
