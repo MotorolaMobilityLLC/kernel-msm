@@ -105,6 +105,7 @@ static const char *msm_ext_disp_name(enum msm_ext_disp_type type)
 	switch (type) {
 	case EXT_DISPLAY_TYPE_HDMI:	return "EXT_DISPLAY_TYPE_HDMI";
 	case EXT_DISPLAY_TYPE_DP:	return "EXT_DISPLAY_TYPE_DP";
+	case EXT_DISPLAY_TYPE_DBA:	return "EXT_DISPLAY_TYPE_DBA";
 	default: return "???";
 	}
 }
