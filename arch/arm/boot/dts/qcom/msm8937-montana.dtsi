@@ -60,6 +60,11 @@
 		dma-names = "tx", "rx";
 	};
 
+        spi_4: spi@78b8000 { /* BLSP1 QUP4 */
+                status = "disabled";
+                /delete-node/ stml0xx@0;
+        };
+
 	qcom,msm-thermal {
 		qcom,config-info = "montana";
 	};
