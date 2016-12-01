@@ -231,6 +231,7 @@
 
 &pcie1 {
 	status = "ok";
+	/delete-property/ qcom,l1ss-supported;
 };
 
 &pcie2 {
