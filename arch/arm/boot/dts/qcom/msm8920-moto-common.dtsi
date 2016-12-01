@@ -95,26 +95,6 @@
 		dmas = <&dma_blsp1 8 64 0x20000020 0x20>,
 			<&dma_blsp1 9 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
-		synaptics_dsx_i2c@20 {
-			compatible = "synaptics,synaptics_dsx_i2c";
-			reg = <0x20>;
-			interrupt-parent = <&tlmm>;
-			interrupts = <65 0x0>;
-			gpios = <&tlmm 65 0x0>, /* IRQ */
-				<&tlmm 64 0>; /* RESET */
-			synaptics,gpio-config;
-			pinctrl-names = "default", "active";
-			pinctrl-0 = <&touch_reset_default &touch_int_default>;
-			pinctrl-1 = <&touch_reset_active &touch_int_active>;
-			config_modifier-names = "aod";
-			config_modifier-aod {
-				aod-suspended {
-					/* Power->sleep; */
-					patch-data = "S";
-				};
-			};
-		};
-
 	};
 
 	i2c_4: i2c@78b8000 { /* BLSP1 QUP4 */
