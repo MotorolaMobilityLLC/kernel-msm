@@ -69,6 +69,7 @@ struct msm_ext_disp_audio_setup_params {
 enum msm_ext_disp_type {
 	EXT_DISPLAY_TYPE_HDMI,
 	EXT_DISPLAY_TYPE_DP,
+	EXT_DISPLAY_TYPE_DBA,
 	EXT_DISPLAY_TYPE_MAX
 };
 
