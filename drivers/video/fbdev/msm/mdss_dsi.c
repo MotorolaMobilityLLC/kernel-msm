@@ -2540,6 +2540,7 @@ static void mdss_dsi_dba_work(struct work_struct *work)
 	utils_init_data.fb_node = ctrl_pdata->fb_node;
 	utils_init_data.kobj = ctrl_pdata->kobj;
 	utils_init_data.pinfo = pinfo;
+	utils_init_data.pdev = ctrl_pdata->pdev;
 	if (ctrl_pdata->mdss_util)
 		utils_init_data.cont_splash_enabled =
 			ctrl_pdata->mdss_util->panel_intf_status(
@@ -3383,6 +3384,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	}
 
 	ctrl_pdata->mdss_util = util;
+	ctrl_pdata->pdev = pdev;
 	atomic_set(&ctrl_pdata->te_irq_ready, 0);
 
 	ctrl_name = of_get_property(pdev->dev.of_node, "label", NULL);
