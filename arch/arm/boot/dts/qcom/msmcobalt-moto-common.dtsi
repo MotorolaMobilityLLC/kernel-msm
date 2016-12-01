@@ -955,8 +955,6 @@
 
 	mot_dba_driver: mot_dba_driver {
 		compatible = "mmi,mot_dba";
-
-		qcom,msm_ext_disp = <&msm_ext_disp>;
 	};
 
 	apba_ctrl {
@@ -1332,6 +1330,7 @@
 	apba_cdsi-supply = <&pmcobalt_l26>;
 	qcom,pluggable;
 	qcom,bridge-index = <0>;
+	qcom,msm_ext_disp = <&msm_ext_disp>;
 
 	/delete-property/  qcom,mdss-fb-map;
 };
