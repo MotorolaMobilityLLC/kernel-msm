@@ -93,76 +93,14 @@
 
 
 
+#ifndef _VL53L1_ZONE_PRESETS_H_
+#define _VL53L1_ZONE_PRESETS_H_
 
-#include <stdio.h>
+#include "vl53l1_ll_def.h"
 
-#include <string.h>
-
-#include <stdlib.h>
-
-
-
-
-
-
-
-#include "vl53l1_core.h"
-#include "vl53l1_register_settings.h"
-#include "vl53l1_hist_structs.h"
-#include "vl53l1_hist_char.h"
-
-#define LOG_FUNCTION_START(fmt, ...) \
-	_LOG_FUNCTION_START(VL53L1_TRACE_MODULE_HISTOGRAM, fmt, ##__VA_ARGS__)
-#define LOG_FUNCTION_END(status, ...) \
-	_LOG_FUNCTION_END(VL53L1_TRACE_MODULE_HISTOGRAM, status, ##__VA_ARGS__)
-#define LOG_FUNCTION_END_FMT(status, fmt, ...) \
-	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_HISTOGRAM, status, fmt, ##__VA_ARGS__)
-
-#define trace_print(level, ...) \
-	VL53L1_trace_print_module_function(VL53L1_TRACE_MODULE_HISTOGRAM, level, VL53L1_TRACE_FUNCTION_NONE, ##__VA_ARGS__)
-
-
-VL53L1_Error VL53L1_FCTN_00144(
-	VL53L1_DEV      Dev,
-	uint8_t         vcsel_delay__a0,
-	uint8_t         calib_1,
-	uint8_t         calib_2,
-	uint8_t         calib_3,
-	uint8_t         calib_2__a0,
-	uint8_t         spad_readout)
-{
-
-
-
-
-
-	VL53L1_Error status       = VL53L1_ERROR_NONE;
-	uint8_t      comms_buffer[VL53L1_MAX_I2C_XFER_SIZE];
-
-	LOG_FUNCTION_START("");
-
-
-
-
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00019(Dev);
-
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
-
-
-
-
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_WrByte(
-					Dev,
-					VL53L1_DEF_00170,
-					vcsel_delay__a0);
-
-
-
-
-	if (status == VL53L1_ERROR_NONE)
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 
@@ -170,110 +108,57 @@ VL53L1_Error VL53L1_FCTN_00144(
 
 
 
-		comms_buffer[0] = calib_1;
-		comms_buffer[1] = calib_2;
-		comms_buffer[2] = calib_3;
-
-		status = VL53L1_WriteMulti(
-					Dev,
-					VL53L1_DEF_00171,
-					comms_buffer,
-					3);
 
 
 
 
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_WrByte(
-					Dev,
-					VL53L1_DEF_00172,
-					calib_2__a0);
 
 
 
 
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_WrByte(
-					Dev,
-					VL53L1_DEF_00173,
-					spad_readout);
 
 
 
 
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
 
-	LOG_FUNCTION_END(status);
 
-	return status;
+
+
+
+VL53L1_Error VL53L1_FCTN_00082(
+	uint8_t x_off,
+	uint8_t x_inc,
+	uint8_t x_zones,
+	uint8_t y_off,
+	uint8_t y_inc,
+	uint8_t y_zones,
+	uint8_t VL53L1_PRM_00017,
+	uint8_t VL53L1_PRM_00018,
+	VL53L1_zone_config_t   *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_FCTN_00081(
+	VL53L1_general_config_t	*pgeneral,
+	VL53L1_zone_config_t    *pzone_cfg);
+
+
+#ifdef __cplusplus
 }
+#endif
 
-
-
-VL53L1_Error VL53L1_FCTN_00145(
-	VL53L1_DEV      Dev,
-	uint8_t         calib_delay)
-{
-
-
-
-
-
-	VL53L1_Error status       = VL53L1_ERROR_NONE;
-
-	LOG_FUNCTION_START("");
-
-	status =
-		VL53L1_FCTN_00144(
-			Dev,
-			0x01,
-
-			calib_delay,
-
-			0x04,
-
-			0x08,
-
-			0x14,
-
-			VL53L1_DEF_00174);
-
-	LOG_FUNCTION_END(status);
-
-	return status;
-}
-
-
-VL53L1_Error VL53L1_FCTN_00146(
-	VL53L1_DEV      Dev)
-{
-
-
-
-
-
-	VL53L1_Error status       = VL53L1_ERROR_NONE;
-
-	LOG_FUNCTION_START("");
-
-	status =
-		VL53L1_FCTN_00144(
-			Dev,
-			0x00,
-
-			0x00,
-
-			0x00,
-
-			0x00,
-
-			0x00,
-
-			VL53L1_DEF_00175);
-
-	LOG_FUNCTION_END(status);
-
-	return status;
-}
+#endif
 
