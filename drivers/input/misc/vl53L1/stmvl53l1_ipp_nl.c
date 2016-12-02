@@ -54,8 +54,9 @@
 #define IPP_STATE_COMPELTED	2
 #define IPP_STATE_CANCELED	4
 
-/** the netlink strcure use
- * @note is NULL until set */
+/** the single netlink strut use by all instance
+ * @note is NULL until set
+ */
 static struct sock *nl_sk;
 
 static DEFINE_MUTEX(ipp_mutex);
@@ -99,8 +100,8 @@ static int next_xfer_id;
  * @note will get ipp_mutex
  * @return the xfer_id to be used
  */
-static int get_next_xfer_id(void){
-
+static int get_next_xfer_id(void)
+{
 	mutex_lock(&ipp_mutex);
 	next_xfer_id++;
 	/*0 is reserved skip it*/
@@ -170,7 +171,7 @@ int ipp_in_process(struct ipp_work_t *pwork)
 	}
 	/* either not waiting any more or not the expected id drop it */
 	ipp_err("dev #%d ippp buzy %d xfer id %d  rcv id %d droping it",
-			data->id, data->ipp.buzy , data->ipp.waited_xfer_id ,
+			data->id, data->ipp.buzy, data->ipp.waited_xfer_id,
 			pwork->xfer_id);
 done_lock:
 	mutex_unlock(&data->ipp.mutex);
@@ -182,6 +183,7 @@ done_lock:
 int stmvl53l1_ipp_stop(struct stmvl53l1_data *data)
 {
 	int rc = data->ipp.buzy;
+
 	ipp_dbg("#%d to stop buzy %d", data->id, data->ipp.buzy);
 	if (data->ipp.buzy) {
 		/* set invalid wait id to discard canceled job when back */
@@ -198,13 +200,13 @@ int stmvl53l1_ipp_stop(struct stmvl53l1_data *data)
  * ipp and dev lock are held
  * release and re-grabbed here
  */
-int stmvl53l1_ipp_do(struct stmvl53l1_data *data ,
+int stmvl53l1_ipp_do(struct stmvl53l1_data *data,
 		struct ipp_work_t *pin, struct ipp_work_t *pout)
 {
 	int xfer_id;
 	int rc;
-	ipp_dbg("enter");
 
+	ipp_dbg("enter");
 	/* TODO shall we enforce that dev is "registered "
 	 * ie data->id <  ipp_n_dev is ?
 	 */
@@ -292,7 +294,7 @@ static void stmvl53l1_nl_recv_msg(struct sk_buff *skb_in)
 		 * if not it is a badly format message or bad message
 		 */
 		if (pwork->payload !=  IPP_WORK_HDR_SIZE) {
-			ipp_err("invalid ping msg size %d!=%u ",
+			ipp_err("invalid ping msg size %d!=%d ",
 					pwork->payload, IPP_WORK_HDR_SIZE);
 			_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLAOD, ipp_n_dev);
 			goto done_locked;
@@ -350,18 +352,22 @@ void stmvl53l1_ipp_cleanup(struct stmvl53l1_data *data)
 			ipp_dbg("not last ipp release kept locked");
 	}
 }
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,8,0)
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3, 8, 0)
 
 struct netlink_kernel_cfg cfg = {
-    .input = stmvl53l1_nl_recv_msg ,
+	.input = stmvl53l1_nl_recv_msg
 };
 #endif
+
 int stmvl53l1_ipp_init(void)
 {
 	mutex_init(&ipp_mutex);
 	mutex_lock(&ipp_mutex);
 	daemon_pid = 1; /* pid  1 is safe should not be use for user space */
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,8,0)
+
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 8, 0)
+
 	nl_sk = netlink_kernel_create(&init_net,
 			STMVL531_CFG_NETLINK_USER,
 			0,
@@ -369,10 +375,11 @@ int stmvl53l1_ipp_init(void)
 			NULL,
 			THIS_MODULE);
 #else
-    nl_sk = netlink_kernel_create(&init_net,
-            STMVL531_CFG_NETLINK_USER,
-            &cfg);
+	nl_sk = netlink_kernel_create(&init_net,
+			STMVL531_CFG_NETLINK_USER,
+			&cfg);
 #endif
+
 	return nl_sk == NULL;
 }
 

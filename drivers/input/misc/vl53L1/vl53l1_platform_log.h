@@ -47,6 +47,7 @@
 #ifndef _VL53L1_PLATFORM_LOG_H_
 #define _VL53L1_PLATFORM_LOG_H_
 
+#include <linux/string.h>
 #include <vl53l1_def.h>
 
 /* LOG Functions */
@@ -197,12 +198,12 @@ VL53L1_API void VL53L1_set_trace_functions(uint32_t function);
 VL53L1_API uint32_t VL53L1_clock(void);
 
 
-#define LOG_GET_TIME() (int)VL53L1_clock()
+#define LOG_GET_TIME() do {(int) VL53L1_clock()} while (0)
 
 #define _LOG_FUNCTION_START(module, fmt, ...) \
 	VL53L1_trace_print_module_function(module, _trace_level,\
 		VL53L1_TRACE_FUNCTION_ALL, "%6ld <START> %s "fmt"\n",\
-		LOG_GET_TIME(), __func__, ##__VA_ARGS__);
+		LOG_GET_TIME(), __func__, ##__VA_ARGS__)
 
 #define _LOG_FUNCTION_END(module, status, ...)\
 	VL53L1_trace_print_module_function(module, _trace_level, \
@@ -222,7 +223,8 @@ VL53L1_API uint32_t VL53L1_clock(void);
 	#define VL53L1_trace_print_module_function(...) (void)0
 #endif /* else */
 
-
+#define VL53L1_COPYSTRING(str, ...) strncpy(str, ##__VA_ARGS__, \
+	VL53L1_MAX_STRING_LENGTH-1)
 
 #ifdef __cplusplus
 }
