@@ -72,12 +72,11 @@
 		/delete-node/ pnxxx@28;
 
 		stmvl53l1@29 {
-			/* Enable once the hardware is completely ready */
-			status = "disabled";
+			status = "ok";
 			compatible = "st,stmvl53l1";
 			reg = <0x29>;
 			vdd-supply = <&pm8950_l22>;
-			gpios = <&tlmm 86 0>, <&tlmm 43 0>;
+			gpios = <&tlmm 66 0>, <&tlmm 129 0>;
 			qcom,gpio-reset = <0>;
 			qcom,gpio-req-tbl-num = <0 1>;
 			qcom,gpio-req-tbl-flags = <0 1>;
