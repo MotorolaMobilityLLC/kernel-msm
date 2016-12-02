@@ -65,17 +65,18 @@
  * @param tv pointer to start time_val
  * @return time elapsed in  micro seconde
  */
-static uint32_t tv_elapsed_us(struct timeval *tv){
+static uint32_t tv_elapsed_us(struct timeval *tv)
+{
 	struct timeval now;
 
 	do_gettimeofday(&now);
-	return (now.tv_sec - tv->tv_sec)*1000000 + (now.tv_usec- tv->tv_usec);
+	return (now.tv_sec - tv->tv_sec)*1000000 + (now.tv_usec - tv->tv_usec);
 }
 
-#	define	cci_access_var struct timeval cci_log_start_tv;
+#	define	cci_access_var struct timeval cci_log_start_tv
 #	define cci_access_start()\
 		do_gettimeofday(&cci_log_start_tv)
-#	define cci_access_over( fmt , ...) \
+#	define cci_access_over(fmt, ...) \
 		vl53l1_dbgmsg("cci_timing %d us" fmt "\n", \
 				tv_elapsed_us(&cci_log_start_tv), ##__VA_ARGS__)
 #else
@@ -91,7 +92,8 @@ static uint32_t tv_elapsed_us(struct timeval *tv){
 #endif
 
 
-void VL53L1_GetTickCount(void* p){
+void VL53L1_GetTickCount(void *p)
+{
 	(void)p;
 	BUG_ON(1);
 }
@@ -100,30 +102,34 @@ void VL53L1_GetTickCount(void* p){
  * @param tv pointer to start time_val
  * @return time elapsed in milli seconde
  */
-static uint32_t tv_elapsed_ms(struct timeval *tv){
+static uint32_t tv_elapsed_ms(struct timeval *tv)
+{
 	struct timeval now;
 
 	do_gettimeofday(&now);
-	return (now.tv_sec - tv->tv_sec)*1000 + (now.tv_usec- tv->tv_usec)/1000;
+	return (now.tv_sec - tv->tv_sec) * 1000 +
+		(now.tv_usec - tv->tv_usec) / 1000;
 }
 
-static int cci_write(struct stmvl53l1_data *dev, int index ,
+static int cci_write(struct stmvl53l1_data *dev, int index,
 		uint8_t *data, uint16_t len){
 	uint8_t buffer[STMVL53L1_MAX_CCI_XFER_SZ+2];
 	struct i2c_msg msg;
-	struct i2c_data *i2c_client_obj = (struct i2c_data *)dev->client_object;
-	struct i2c_client *client =(struct i2c_client*)i2c_client_obj->client;
+	struct i2c_data *i2c_client_obj =
+		(struct i2c_data *) dev->client_object;
+	struct i2c_client *client =
+		(struct i2c_client *) i2c_client_obj->client;
 	int rc;
-	cci_access_var;
 
-	if( len> STMVL53L1_MAX_CCI_XFER_SZ || len==0){
+	cci_access_var;
+	if (len > STMVL53L1_MAX_CCI_XFER_SZ || len == 0) {
 		vl53l1_errmsg("invalid len %d\n", len);
 		return -1;
 	}
 	cci_access_start();
 	/* build up little endian index in buffer */
-	buffer[0]= (index >> 8) & 0xFF;
-	buffer[1]= (index >> 0) & 0xFF;
+	buffer[0] = (index >> 8) & 0xFF;
+	buffer[1] = (index >> 0) & 0xFF;
 	/* copy write data to buffer after index  */
 	memcpy(buffer+2, data, len);
 	/* set i2c msg */
@@ -133,35 +139,38 @@ static int cci_write(struct stmvl53l1_data *dev, int index ,
 	msg.len = len+2;
 
 	rc = i2c_transfer(client->adapter, &msg, 1);
-	if ( rc != 1) {
+	if (rc != 1) {
 		vl53l1_errmsg("wr i2c_transfer err:%d, index 0x%x len %d\n",
 			 rc, index, len);
 	}
-	cci_access_over("rd status %d long %d " , rc!=1, len);
+	cci_access_over("rd status %d long %d ", rc != 1, len);
 	return rc != 1;
 }
 
-static int cci_read(struct stmvl53l1_data *dev, int index ,
-		uint8_t *data, uint16_t len){
+static int cci_read(struct stmvl53l1_data *dev, int index,
+		uint8_t *data, uint16_t len)
+{
 	uint8_t buffer[2];
 	struct i2c_msg msg[2];
-	struct i2c_data *i2c_client_obj = (struct i2c_data *)dev->client_object;
-	struct i2c_client *client = (struct i2c_client*)i2c_client_obj->client;
+	struct i2c_data *i2c_client_obj =
+		(struct i2c_data *) dev->client_object;
+	struct i2c_client *client =
+		(struct i2c_client *) i2c_client_obj->client;
 	int rc;
-	cci_access_var;
 
-	if( len> STMVL53L1_MAX_CCI_XFER_SZ || len==0){
+	cci_access_var;
+	if (len > STMVL53L1_MAX_CCI_XFER_SZ || len == 0) {
 		vl53l1_errmsg("invalid len %d\n", len);
 		return -1;
 	}
 	cci_access_start();
 
 	/* build up little endian index in buffer */
-	buffer[0]= (index >> 8) & 0xFF;
-	buffer[1]= (index >> 0) & 0xFF;
+	buffer[0] = (index >> 8) & 0xFF;
+	buffer[1] = (index >> 0) & 0xFF;
 
 	msg[0].addr = client->addr;
-	msg[0].flags = client->flags;// Write
+	msg[0].flags = client->flags;/* Write */
 	msg[0].buf = buffer;
 	msg[0].len = 2;
 	/* read part of the i2c transaction */
@@ -171,13 +180,13 @@ static int cci_read(struct stmvl53l1_data *dev, int index ,
 	msg[1].len = len;
 
 	rc = i2c_transfer(client->adapter, msg, 2);
-	if ( rc != 2) {
+	if (rc != 2) {
 		pr_err("%s: i2c_transfer :%d, @%x index 0x%x len %d\n",
 			__func__, rc, client->addr, index, len);
 
 	}
-	cci_access_over(" wr len %d status %d", rc!=2 , len);
-	return rc !=2 ;
+	cci_access_over(" wr len %d status %d", rc != 2, len);
+	return rc != 2;
 }
 
 
@@ -186,7 +195,9 @@ VL53L1_API VL53L1_Error VL53L1_WrByte(VL53L1_DEV pdev,
 		uint8_t       data)
 {
 	struct stmvl53l1_data *dev;
-	dev = (struct stmvl53l1_data *)container_of(pdev, struct stmvl53l1_data, stdev);
+
+	dev = (struct stmvl53l1_data *)container_of(pdev,
+		struct stmvl53l1_data, stdev);
 
 	return  cci_write(dev, index, &data, 1);
 
@@ -199,10 +210,12 @@ VL53L1_API VL53L1_Error VL53L1_RdByte(
 		uint8_t      *pdata)
 {
 	struct stmvl53l1_data *dev;
-	dev = (struct stmvl53l1_data *)container_of(pdev, struct stmvl53l1_data, stdev);
 
-	return  cci_read(dev, index, pdata, 1) ? VL53L1_ERROR_CONTROL_INTERFACE:
-			VL53L1_ERROR_NONE;
+	dev = (struct stmvl53l1_data *) container_of(pdev,
+		struct stmvl53l1_data, stdev);
+
+	return  cci_read(dev, index, pdata, 1) ?
+		VL53L1_ERROR_CONTROL_INTERFACE : VL53L1_ERROR_NONE;
 }
 
 VL53L1_Error VL53L1_WrWord(VL53L1_DEV pdev, uint16_t index, uint16_t data)
@@ -210,11 +223,12 @@ VL53L1_Error VL53L1_WrWord(VL53L1_DEV pdev, uint16_t index, uint16_t data)
 	VL53L1_Error status;
 	uint8_t buffer[2];
 
-	// Split 16-bit word into MS and L*  stmvl53l1 FlightSense sensor
+	/* Split 16-bit word into MS and L*  stmvl53l1 FlightSense sensor */
 
 	buffer[0] = (uint8_t) (data >> 8);
 	buffer[1] = (uint8_t) (data & 0x00FF);
-	i2c_debug(" @%x d= %x  => [ %x , %x ] ", index, data, buffer[0],buffer[1] );
+	i2c_debug(" @%x d= %x  => [ %x , %x ] ", index, data, buffer[0],
+		buffer[1]);
 	status = VL53L1_WriteMulti(pdev, index, buffer, 2);
 
 	return status;
@@ -239,7 +253,7 @@ VL53L1_Error VL53L1_WrDWord(VL53L1_DEV pdev, uint16_t index, uint32_t data)
 	VL53L1_Error status = VL53L1_ERROR_NONE;
 	uint8_t buffer[4];
 
-	// Split 32-bit word into MS ... LS bytes
+	/* Split 32-bit word into MS ... LS bytes */
 	buffer[0] = (uint8_t) (data >> 24);
 	buffer[1] = (uint8_t) ((data & 0x00FF0000) >> 16);
 	buffer[2] = (uint8_t) ((data & 0x0000FF00) >> 8);
@@ -267,31 +281,34 @@ VL53L1_Error VL53L1_WriteMulti(VL53L1_DEV pdev, uint16_t index,
 		uint8_t *pdata, uint32_t count)
 {
 	struct stmvl53l1_data *dev;
+
 	dev = (struct stmvl53l1_data *) container_of(pdev,
 			struct stmvl53l1_data, stdev);
 
-	return cci_write(dev, index, pdata, count)?
-			VL53L1_ERROR_CONTROL_INTERFACE:VL53L1_ERROR_NONE;
+	return cci_write(dev, index, pdata, count) ?
+			VL53L1_ERROR_CONTROL_INTERFACE : VL53L1_ERROR_NONE;
 }
 
 VL53L1_Error VL53L1_ReadMulti(VL53L1_DEV pdev, uint16_t index,
 		uint8_t *pdata, uint32_t count)
 {
 	struct stmvl53l1_data *dev;
+
 	dev = (struct stmvl53l1_data *) container_of(pdev,
 			struct stmvl53l1_data, stdev);
 
 	return cci_read(dev, index, pdata, count) ?
-			VL53L1_ERROR_CONTROL_INTERFACE :VL53L1_ERROR_NONE;
+			VL53L1_ERROR_CONTROL_INTERFACE : VL53L1_ERROR_NONE;
 }
 
 
 
-static int is_time_over(struct stmvl53l1_data *dev, struct timeval *tv, uint32_t msec)
+static int is_time_over(struct stmvl53l1_data *dev, struct timeval *tv,
+	uint32_t msec)
 {
-	// todo look at dev is timeout check is disable
+	/* todo look at dev is timeout check is disable */
 
-	return tv_elapsed_ms(tv)>= msec;
+	return tv_elapsed_ms(tv) >= msec;
 }
 
 
@@ -312,24 +329,21 @@ VL53L1_Error VL53L1_WaitValueMaskEx(
 				struct stmvl53l1_data, stdev);
 
 	do_gettimeofday(&start_tv);
-	do{
-		rc= cci_read(dev, index, &rd_val, 1);
-		if( rc ){
+	do {
+		rc = cci_read(dev, index, &rd_val, 1);
+		if (rc)
 			return VL53L1_ERROR_CONTROL_INTERFACE;
-		}
-		if( (rd_val & mask) == value ){
+		if ((rd_val & mask) == value) {
 			poll_timing_log(&start_tv);
 			return VL53L1_ERROR_NONE;
 		}
-		vl53l1_dbgmsg("poll @%x %x & %d != %x",index,
+		vl53l1_dbgmsg("poll @%x %x & %d != %x", index,
 				rd_val, mask, value);
-		time_over= is_time_over(dev,&start_tv,timeout_ms);
-		if( !time_over){
+		time_over = is_time_over(dev, &start_tv, timeout_ms);
+		if (!time_over)
 			msleep(poll_delay_ms);
-		}
-	}
-	while(!time_over);
-	vl53l1_errmsg("time over %d ms",timeout_ms);
+	} while (!time_over);
+	vl53l1_errmsg("time over %d ms", timeout_ms);
 	return VL53L1_ERROR_TIME_OUT;
 }
 
