@@ -32,20 +32,36 @@
 /**
  * @file ipp_linux.c kernel side implementation of vl53l1 protected processing
  *
- *  perform the serialization and deserialzition then call the
  *  @date  Sep 1, 2016
  *  @author : imaging
+ *
+ *  @ingroup ipp_dev
  */
 
 #include "stmvl53l1.h"
 
 #define IPP_ERR_CODE (VL53L1_ERROR_PLATFORM_SPECIFIC_START-1)
 
+
+/**
+ *
+ * Kernel entry point for ipp_hist_process_data IPP
+
+ *
+ * @param dev
+ * @param ppost_cfg
+ * @param pbins0
+ * @param pbins1
+ * @param pxtalk
+ * @param presults
+ * @return
+ */
 VL53L1_Error VL53L1_ipp_hist_process_data(
 	VL53L1_DEV dev,
 	VL53L1_hist_post_process_config_t *ppost_cfg,
-	VL53L1_histogram_bin_data_t       *pbins,
-	VL53L1_histogram_bin_data_t       *pxtalk,
+	VL53L1_histogram_bin_data_t       *pbins0,
+	VL53L1_histogram_bin_data_t       *pbins1,
+	VL53L1_xtalk_histogram_data_t     *pxtalk,
 	VL53L1_range_results_t            *presults)
 {
 	int rc;
@@ -78,15 +94,16 @@ VL53L1_Error VL53L1_ipp_hist_process_data(
 	pin = &data->ipp.work;
 	pout = &data->ipp.work_out;
 
-	IPP_SERIALIZE_START(pin->data, 3);
+	IPP_SERIALIZE_START(pin->data, 4);
 	IPP_SET_ARG_PTR(pin->data, 0, ppost_cfg);
-	IPP_SET_ARG_PTR(pin->data, 1, pbins);
-	IPP_SET_ARG_PTR(pin->data, 2, pxtalk);
+	IPP_SET_ARG_PTR(pin->data, 1, pbins0);
+	IPP_SET_ARG_PTR(pin->data, 2, pbins1);
+	IPP_SET_ARG_PTR(pin->data, 3, pxtalk);
 
 	pin->payload = IPP_SERIALIZE_PAYLAOD();
 	pin->process_no = stmvl53l1_ipp_cal_hist;
 	stmvl531_ipp_tim_start(data);
-	rc = stmvl53l1_ipp_do(data, pin , pout);
+	rc = stmvl53l1_ipp_do(data, pin, pout);
 	if (rc != 0) {
 		/* FIXME shall we retry here more specific status ? */
 		vl53l1_errmsg("stmvl53l1_ipp_do err %d\n", rc);
@@ -119,7 +136,7 @@ VL53L1_Error VL53L1_ipp_hist_process_data(
 	stmvl531_ipp_tim_stop(data);
 	stmvl531_ipp_stat(data, "ipp #%5x to=%3d fm=%3d in %5ld us",
 			pin->xfer_id, pin->payload,
-			pout->payload ,
+			pout->payload,
 			stmvl531_ipp_time(data));
 	rc = 0;
 done:
@@ -127,11 +144,19 @@ done:
 	return rc;
 }
 
-
+/**
+ * kernel entry point for IPP xtalk_calibration_process_data
+ *
+ * @param Dev
+ * @param pxtalk_ranges
+ * @param pxtalk_hist
+ * @param pxtalk_shape
+ * @param pxtalk_cal
+ * @return
+ */
 VL53L1_API VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 	VL53L1_DEV                          Dev,
 	VL53L1_xtalk_range_results_t       *pxtalk_ranges,
-	VL53L1_histogram_bin_data_t        *pxtalk_hist,
 	VL53L1_xtalk_histogram_data_t      *pxtalk_shape,
 	VL53L1_xtalk_calibration_results_t *pxtalk_cal)
 {
