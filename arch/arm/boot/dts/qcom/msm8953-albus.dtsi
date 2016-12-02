@@ -672,6 +672,7 @@
 				<4400 2000 1600>;
 	qcom,auto-voltage-comp-mv = <150>;
 	qcom,enable-parameter-separate;
+	qcom,prop-flash-active;
 };
 
 /{
