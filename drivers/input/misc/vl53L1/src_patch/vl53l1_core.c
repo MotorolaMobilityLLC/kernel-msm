@@ -101,7 +101,10 @@
 #include "vl53l1_hist_structs.h"
 #include "vl53l1_core.h"
 
-
+#if 1
+#include <asm/div64.h>
+#include <linux/math64.h>
+#endif
 
 
 
@@ -2019,17 +2022,30 @@ uint32_t VL53L1_FCTN_00138(
 
 
 
-
+#if 0
 	total_hist_counts = ((uint64_t)VL53L1_PRM_00072
 			* 1000 * 256) / (uint64_t)num_spads;
+#else
+	{
+		uint64_t n = ((uint64_t)VL53L1_PRM_00072 * 1000 * 256);
+		uint32_t base = (uint32_t)num_spads;
 
-
-
+		total_hist_counts = do_div(n, base);
+	}
+#endif
 
 	if (duration > 0) {
+#if 0
 		xtalk_per_spad = (((uint64_t)(total_hist_counts << 11))
 			+ ((uint64_t)duration / 2))
 			/ (uint64_t) duration;
+#else
+		uint64_t n = (((uint64_t)(total_hist_counts << 11))
+				+ ((uint64_t)duration / 2));
+		uint32_t base = (uint32_t)duration;
+
+		xtalk_per_spad = do_div(n, base);
+#endif
 	} else {
 		xtalk_per_spad =   (uint64_t)(total_hist_counts << 11);
 	}
@@ -2265,7 +2281,11 @@ void  VL53L1_FCTN_00100(
 
 		VL53L1_PRM_00199  = tmpo * (int64_t)pidata->VL53L1_PRM_00308;
 		VL53L1_PRM_00199 += (tmpi/2);
+#if 0
 		VL53L1_PRM_00199 /=  tmpi;
+#else
+		VL53L1_PRM_00199 = div64_s64(VL53L1_PRM_00199, tmpi);
+#endif
 
 		podata->VL53L1_PRM_00308 = (int32_t)VL53L1_PRM_00199;
 
