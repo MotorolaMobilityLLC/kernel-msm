@@ -25,6 +25,7 @@
 #include <linux/regmap.h>
 #include <linux/platform_device.h>
 
+#define TPS61280_REVISION	0x00
 #define TPS61280_CONFIG		0x01
 #define TPS61280_VOUTFLOORSET	0x02
 #define TPS61280_VOUTROOFSET	0x03
@@ -114,6 +115,12 @@ static int tps61280_config(struct tps61280_chip *tps61280)
 	struct device *dev = tps61280->dev;
 	struct tps61280_platform_data pdata = tps61280->pdata;
 
+	ret = regmap_update_bits(tps61280->rmap, TPS61280_CONFIG,
+		TPS61280_CONFIG_ENABLE_MASK, TPS61280_CONFIG_BYPASS_SHUTDOWN);
+	if (ret < 0) {
+		dev_err(dev, "CONFIG update failed %d\n", ret);
+		return ret;
+	}
 
 	ret = regmap_update_bits(tps61280->rmap, TPS61280_VOUTFLOORSET,
 				TPS61280_VOUT_MASK, pdata.vout_floor);
@@ -185,6 +192,7 @@ static int tps61280_probe(struct i2c_client *client,
 {
 	struct tps61280_chip *tps61280;
 	int ret;
+	unsigned readout;
 
 	if (!client->dev.of_node) {
 		dev_err(&client->dev, "Only Supporting DT\n");
@@ -213,6 +221,18 @@ static int tps61280_probe(struct i2c_client *client,
 	tps61280->dev = &client->dev;
 	i2c_set_clientdata(client, tps61280);
 
+	ret = regmap_read(tps61280->rmap, TPS61280_STATUS, &readout);
+	if (ret < 0)
+		dev_err(&client->dev, "STATUS read failed %d\n", ret);
+	else
+		dev_info(&client->dev, "power on status %#x\n", readout);
+
+	ret = regmap_read(tps61280->rmap, TPS61280_REVISION, &readout);
+	if (ret < 0)
+		dev_err(&client->dev, "Revision read failed %d\n", ret);
+	else
+		dev_info(&client->dev, "Revision %#x\n", readout);
+
 	ret = tps61280_config(tps61280);
 	if (ret < 0) {
 		dev_err(&client->dev, "Mode init failed: %d\n", ret);
@@ -220,6 +240,13 @@ static int tps61280_probe(struct i2c_client *client,
 	}
 
 	dev_info(&client->dev, "DC-Boost probe successful\n");
+
+	ret = regmap_read(tps61280->rmap, TPS61280_STATUS, &readout);
+	if (ret < 0)
+		dev_err(&client->dev, "STATUS read failed %d\n", ret);
+	else
+		dev_info(&client->dev, "current status %#x\n", readout);
+
 	return 0;
 }
 
