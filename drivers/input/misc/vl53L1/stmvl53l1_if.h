@@ -74,7 +74,7 @@ typedef VL53L1_RangingMeasurementData_t  stmvl531_range_data_t;
  * but the @ref stmvl53l1_register_flexi can be used instead
  */
 struct stmvl53l1_register {
-	uint32_t is_read; 	/*!< type of the access 1: read 0: write*/
+	uint32_t is_read;	/*!< type of the access 1: read 0: write*/
 	uint32_t index;		/*!< register index */
 	uint32_t cnt;		/*!< register size shall be 1 to n */
 	int32_t status;		/*!< operation status 0 ok else error */
@@ -84,11 +84,13 @@ struct stmvl53l1_register {
 		uint16_t w;	/*!< single data word (16 bits)*/
 		uint32_t dw;	/*!< single data dword (32 bits)*/
 		uint8_t bytes[256]; /*!< any size byte array
-		@note only effectively used array size is needed and will be
-		set/used another possible register definition is
-		@ref stmvl53l1_register_flexi  */
+		* @note only effectively used array size is needed and will be
+		* set/used another possible register definition is
+		* @ref stmvl53l1_register_flexi
+		*/
 	} data; /*!< data only *@warning device is big endian and
-	no endianess adaptation is performed by @ref VL53L1_IOCTL_REGISTER */
+	* no endianess adaptation is performed by @ref VL53L1_IOCTL_REGISTER
+	*/
 };
 
 /**
@@ -102,12 +104,14 @@ struct stmvl53l1_register_flexi {
 	int32_t status;		/*!< [out] operation status 0 ok else error */
 	uint8_t data[];		/*!< [in/out] flexible array size data */
 	/*!< data only *@warning device is big endian and
-	no endianess adaptation is performed by @ref VL53L1_IOCTL_REGISTER */
+	* no endianess adaptation is performed by @ref VL53L1_IOCTL_REGISTER
+	*/
 };
 
 
 /**
- * parameter name in @ref stmvl53l1_parameter when using  @ref VL53L1_IOCTL_PARAMETER
+ * parameter name in @ref stmvl53l1_parameter when using
+ * @ref VL53L1_IOCTL_PARAMETER
  */
 typedef enum {
 	OFFSET_PAR = 0,
@@ -125,9 +129,10 @@ typedef enum {
 	VL53L1_DEVICEMODE_PAR = 6,
 	/*!< DEVICEMODE_PAR set ranging mode  \n
 	 * valid mode value :
-	 * @li 1 @a VL53L1_PRESETMODE_STANDARD_RANGING standard ranging
-	 * @li 2 @a  VL53L1_PRESETMODE_MULTI_OBJECT multiple object one roi
-	 * @li 3 @a  VL53L1_PRESETMODE_MULTI_ZONES  multiple zone and object
+	 * @li 1 @a VL53L1_PRESETMODE_RANGING default ranging
+	 * @li 2 @a VL53L1_PRESETMODE_MULTIZONES_SCANNING multiple zone
+	 * @li 3 @a VL53L1_PRESETMODE_AUTONOMOUS autonomous mode
+	 * @li 4 @a VL53L1_PRESETMODE_LITE_RANGING low mips ranging mode
 	 *
 	 * @warning mode can only be set while not ranging
 	 */
@@ -143,14 +148,15 @@ typedef enum {
 	VL53L1_POLLDELAY_PAR = 10,
 	/*!< set the polling delay (msec)\n
 	 *
-	 * @note apply only when operates in polling mode  as no effect otherwise
+	 * @note apply only when operates in polling mode  as no effect
+	 * otherwise
 	 */
 	VL53L1_TIMINGBUDGET_PAR = 11,
 	/*!< VL53L1_TIMINGBUDGET_PAR
-	@ref stmvl53l1_parameter.value field is timing budget in micro second
-
-	@note the value cannot be set while ranging will set ebusy errno,
-	value set is absorbed at next range start @ref VL53L1_IOCTL_INIT
+	* @ref stmvl53l1_parameter.value field is timing budget in micro second
+	*
+	* @note the value cannot be set while ranging will set ebusy errno,
+	* value set is absorbed at next range start @ref VL53L1_IOCTL_INIT
 	*/
 
 
@@ -163,7 +169,8 @@ typedef enum {
 struct stmvl53l1_parameter {
 	uint32_t is_read;	/*!< [in] 1: Get 0: Set*/
 	stmv53l1_parameter_name_e name;	/*!< [in] parameter to set/get
-	see @ref stmv53l1_parameter_name_e */
+	* see @ref stmv53l1_parameter_name_e
+	*/
 
 	int32_t value;		/*!< [in/out] value to set /get */
 	int32_t value2;		/*!< [in/out] optional 2nd value */
@@ -181,14 +188,14 @@ struct stmvl53l1_roi_t {
 	int32_t		is_read;
 	/*!<  specify roi transfer direction \n
 	 * @li 0 to get roi
-	 * @li !0 to set roi */
+	 * @li !0 to set roi
+	*/
 	struct roi_cfg_t {
 		uint8_t NumberOfRoi;
 		/*!< Number of Rois to set/get defined\n
 		 *  0 is set can be used to return to device default roi usage
 		 *  @warning 0 in get will not return any data in UserRois!
 		*/
-		uint8_t FirstRoiToScan; /*!< not used as of now */
 		VL53L1_UserRoi_t    UserRois[1];
 		/*!< roi data array length  definition is 1 but
 		 * NumberOfRoi+ FirstRoiToScan in array are required
@@ -207,7 +214,7 @@ struct stmvl53l1_roi_t {
 struct stmvl53l1_roi_full_t {
 	int32_t		is_read;
 	VL53L1_RoiConfig_t roi_cfg;
-} ;
+};
 
 
 /*
@@ -224,7 +231,8 @@ struct stmvl53l1_roi_full_t {
  * @return :
  *	@li 0 on success
  *	@li -EBUSY if already started
- *	@li other any possible over "st bare driver error code" (shall be positive)
+ *	@li other any possible over "st bare driver error code"
+ *	    (shall be positive)
  *
  * example user land  :
  @code
