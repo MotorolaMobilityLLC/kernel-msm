@@ -1,61 +1,61 @@
 
-/* 
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved 
-* 
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license' 
-* or 'BSD 3-clause "New" or "Revised" License' , at your option. 
-* 
-******************************************************************************** 
-* 
-* 'STMicroelectronics Proprietary license' 
-* 
-******************************************************************************** 
-* 
+/*
+* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
+*
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license'
+* or 'BSD 3-clause "New" or "Revised" License' , at your option.
+*
+********************************************************************************
+*
+* 'STMicroelectronics Proprietary license'
+*
+********************************************************************************
+*
 * License terms: STMicroelectronics Proprietary in accordance with licensing terms at www.st.com/sla0044
 *
-* STMicroelectronics confidential 
-* Reproduction and Communication of this document is strictly prohibited unless 
+* STMicroelectronics confidential
+* Reproduction and Communication of this document is strictly prohibited unless
 * specifically authorized in writing by STMicroelectronics.
-*  
-* 
-******************************************************************************** 
-* 
-* Alternatively, VL53L1 Core may be distributed under the terms of 
-* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones 
-* mentioned above : 
-* 
-******************************************************************************** 
-* 
-* License terms: BSD 3-clause "New" or "Revised" License. 
-* 
-* Redistribution and use in source and binary forms, with or without 
-* modification, are permitted provided that the following conditions are met: 
-* 
-* 1. Redistributions of source code must retain the above copyright notice, this 
-* list of conditions and the following disclaimer. 
-* 
-* 2. Redistributions in binary form must reproduce the above copyright notice, 
-* this list of conditions and the following disclaimer in the documentation 
-* and/or other materials provided with the distribution. 
-* 
-* 3. Neither the name of the copyright holder nor the names of its contributors 
-* may be used to endorse or promote products derived from this software 
-* without specific prior written permission. 
-* 
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE 
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
-* 
-* 
-******************************************************************************** 
-* 
+*
+*
+********************************************************************************
+*
+* Alternatively, VL53L1 Core may be distributed under the terms of
+* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones
+* mentioned above :
+*
+********************************************************************************
+*
+* License terms: BSD 3-clause "New" or "Revised" License.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+* 1. Redistributions of source code must retain the above copyright notice, this
+* list of conditions and the following disclaimer.
+*
+* 2. Redistributions in binary form must reproduce the above copyright notice,
+* this list of conditions and the following disclaimer in the documentation
+* and/or other materials provided with the distribution.
+*
+* 3. Neither the name of the copyright holder nor the names of its contributors
+* may be used to endorse or promote products derived from this software
+* without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+*
+********************************************************************************
+*
 */
 
 
@@ -115,11 +115,11 @@
 
 
 
-VL53L1_Error VL53L1_FCTN_00112(
+VL53L1_Error VL53L1_FCTN_00143(
 	VL53L1_DEV     Dev,
 	uint8_t       *pready)
 {
-	
+
 
 
 
@@ -134,30 +134,30 @@ VL53L1_Error VL53L1_FCTN_00112(
 
 	LOG_FUNCTION_START("");
 
-	
+
 
 
 	status = VL53L1_ReadMulti(
 					Dev,
-					VL53L1_DEF_00148,
+					VL53L1_DEF_00169,
 					comms_buffer,
 					5);
 
 	if (status == VL53L1_ERROR_NONE) {
 
-		pdev->VL53L1_PRM_00046.VL53L1_PRM_00269 =
+		pdev->VL53L1_PRM_00047.VL53L1_PRM_00315 =
 				comms_buffer[0];
-		pdev->VL53L1_PRM_00046.VL53L1_PRM_00270 =
+		pdev->VL53L1_PRM_00047.VL53L1_PRM_00316 =
 				comms_buffer[1];
-		pdev->VL53L1_PRM_00046.VL53L1_PRM_00271 =
+		pdev->VL53L1_PRM_00047.VL53L1_PRM_00317 =
 				comms_buffer[2];
-		pdev->VL53L1_PRM_00046.VL53L1_PRM_00272 =
+		pdev->VL53L1_PRM_00047.VL53L1_PRM_00318 =
 				comms_buffer[3];
-		pdev->VL53L1_PRM_00046.VL53L1_PRM_00273 =
+		pdev->VL53L1_PRM_00047.VL53L1_PRM_00319 =
 				comms_buffer[4];
 
-		if (((pdev->VL53L1_PRM_00046.VL53L1_PRM_00269 & 0x1F) == 0x1F) &&
-			((pdev->VL53L1_PRM_00046.VL53L1_PRM_00270   & 0x1F) == 0x1F))
+		if (((pdev->VL53L1_PRM_00047.VL53L1_PRM_00315 & 0x1F) == 0x1F) &&
+			((pdev->VL53L1_PRM_00047.VL53L1_PRM_00316   & 0x1F) == 0x1F))
 			*pready = 0x01;
 		else
 			*pready = 0x00;
