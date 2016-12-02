@@ -44,14 +44,18 @@
 #include "vl53l1_types.h"
 
 
+/** @ingroup ipp_dev
+ * @{
+ */
+
 /**
- * @defgroup ipp_serialize St ipp serialization helper
+ * @defgroup ipp_serialize ST IPP serialization helper
  *
  * to use the dump help you lust define first a few extra "specific"
  *
  * @li IPP_PRINT(fmt,..) with typical printf/printk interface
  */
-
+ /** @{ */
 /**
  * generic data type to serialized scalar and offset for pointer
  *
@@ -59,17 +63,12 @@
  * where each input are arg value for scaler type
  * and an offset with respect to the ipp_arg base array where the data
  *
-
  * @note if all ipp argument can fit on 32 bit  then ipp_arg_t is best set as
  * a 32 bit base type '(i e uint32_t) to save space
  * on 64 bit cpu it can remain 64 bit type to get better alignment
  */
 typedef uint64_t ipp_arg_t;
 
-/**
- * @defgroup ipp_helper misc macro to work with ipp data serialization
- * @{
- */
 /**
  * set to the cpu structure alignment and packing constrain
  *
@@ -78,14 +77,14 @@ typedef uint64_t ipp_arg_t;
  *
  *
  * @note if target cpu is ok to access unaligned data or less constrain ie 64
- * bit dat align 32 are ok then it can be set to 4 to save space in data
+ * bit data align 32 are ok then it can be set to 4 to save space in data
  * packing and copy\n
  * We may be over constraining in many cases as a struct is only required to
  * be aligned on i'st biggest item size
  *
- * @warning it must be a 2 power of 2 (and operation instead of mudulo used in
+ * @warning it must be a 2 power of 2 (& operation instead of mudulo used in
  * align calculation)
- * @warning using 8 byte constrain require that the basic ipp_art_t is already
+ * @warning using 8 byte constrain require that the @a ipp_arg_t is already
  * aligned on that constrain
  */
 #define IPP_ALIGN_REQ   8
@@ -103,10 +102,17 @@ typedef uint64_t ipp_arg_t;
 /**
  * Put in function start to init the serialization coding
  *
- * it will define local var "ipp_offset" used to accumulate all args stored
- * passed by ptr  all input arg passed by pointer must be serialize
- * by @ref IPP_SET_ARG_PTR in order they are declare\n
- * scalar args can be serialized in any order @ref IPP_SET_ARG
+ * @param ipp_args buffer for data serialization
+ * @param n_args is the total number of argument scalar and ptr to serialized
+ *  dot not count out only arg that will be returned
+ *
+ * it define local var "ipp_offset" used to accumulate all input args that must
+ * be serialize. It reserve header room in the buffer to place for scalar args
+ * and offset for args ptr copy
+ *
+ * args pass by pointer must be serialized by @ref IPP_SET_ARG_PTR in order they
+ * are declare\n
+ * scalar args can be serialized in any order with @ref IPP_SET_ARG
  *
  * scalar args that can't be cast to basic @ref ipp_arg_t shall be serialized
  * Manually or using a macro similar to ptr that can be pass by copy
@@ -125,27 +131,25 @@ typedef uint64_t ipp_arg_t;
  *
  */
 #define IPP_SERIALIZE_START(ipp_args, n_args)\
-		ipp_offset = IPP_ALIGN_OFFSET((char *)(&ipp_args[n_args]) - \
-				(char *)ipp_args)
-
-/** use when all serialize done to get the full aligned payload
- *
- * to use after @ref IPP_SERIALIZE_VAR and @ref IPP_SERIALIZE_START  used first
- * use after all @ref IPP_OUT_ARG_PTR or @ref IPP_SET_ARG_PTR done only
- **/
-#define IPP_SERIALIZE_PAYLAOD() ipp_offset
+		do {ipp_offset = IPP_ALIGN_OFFSET((char *)(&ipp_args[n_args]) -\
+			(char *)ipp_args); } while (0)
 
 /**
- * Serialize  scalar argument n into ipp_args
- * @param ipp_args the args
+ * @brief Serialize scalar argument
+ *
+ * serialized arg number n into ipp_args\n
+ * can be used in any order
+ *
+ * @param ipp_args the args buffer
  * @param n 0 base arg number
  * @param v the scalar argument variable
  * @warning usable only for scalar type that can be copy on a ipp_arg_t
  */
-#define IPP_SET_ARG(ipp_args, n, v) memcpy(&ipp_args[n] , &v, sizeof(v))
+#define IPP_SET_ARG(ipp_args, n, v) memcpy(&ipp_args[n], &v, sizeof(v))
 
 /**
- * Serialize an argument passed by pointer
+ * @brief  Serialize an arg passed by pointer
+ *
  * @param  ipp_args the arg ptr array
  * @param  n the arg number to serialize
  * @param  pdata  argument it must be a type like struct x_t *  int [n] etc ...
@@ -159,20 +163,36 @@ typedef uint64_t ipp_arg_t;
 	} while (0)
 
 /**
- * de-serialize get and arg ptr
+ * serialize out get ptr for pdata
  *
  * @note it does not cpy data just set ptr and update the offset
  * @warning  to be use in order
  *
  * @param  ipp_args the arg ptr array
- * @param  n the arg number to serialize
+ * @param  n the arg number to serialize (unused)
  * @param  pdata init to ptr in ipp_args type is used for offset computation
+ * @warning to use sequential in order agr are serialized
  */
 #define IPP_OUT_ARG_PTR(ipp_args, n, pdata)\
 	do {\
 		pdata = (void *)(((char *)ipp_args) + ipp_offset);\
-		ipp_offset = IPP_ALIGN_OFFSET(ipp_offset + (int)sizeof(*pdata));\
+		ipp_offset = IPP_ALIGN_OFFSET(ipp_offset + \
+		(int)sizeof(*pdata));\
 	} while (0)
+
+
+/**
+ * @brief ipp get payload
+ *
+ * @return paylaod at time used \n
+ * when all done it's overall out payload
+ *
+ * require @ref IPP_SERIALIZE_VAR and @ref IPP_SERIALIZE_START used first\n
+ * best use after all @ref IPP_OUT_ARG_PTR or @ref IPP_SET_ARG_PTR done to get
+ * full payload
+ **/
+#define IPP_SERIALIZE_PAYLAOD() ipp_offset
+
 /**
  * de-serialize and argument that was passed by value
  * @param  ipp_args the args array
@@ -211,8 +231,8 @@ typedef uint64_t ipp_arg_t;
  * IPP_GET_ARG_PTR(args,2,parg2);
  * @endcode
  */
-#define IPP_GET_ARG_PTR(ipp_args, n, p)  p = (void *)((char *)ipp_args +\
-		ipp_args[n])
+#define IPP_GET_ARG_PTR(ipp_args, n, p) do {p = (void *)((char *)ipp_args +\
+		ipp_args[n]) ;} while (0)
 
 
 
@@ -232,19 +252,27 @@ typedef uint64_t ipp_arg_t;
 	} while (0)
 
 
-/** @}*/ /* group ipp helper */
-
+/**
+ * processing code type of proccesing
+ *
+ * used in @a ipp_work_t::process_no
+ */
 enum stmvl53l1_ipp_proccesing_e {
 	stmvl53l1_ipp_ping = 0,
-	/*!<  sent by driver to check client is alive//!< stmvl53l1_ipp_ping
-	 daemon sent it to identify and register himself to the driver */
+	/*!< stmvl53l1_ipp_ping
+	 * @li can be sent by driver to check client is alive
+	 * @li  daemon sent it to identify and register himself to the driver
+	 */
 	stmvl53l1_ipp_cal_hist = 1,
-	/*!< stmvl53l1_ipp_cal_hist */
+	/*!< stmvl53l1_ipp_cal_hist process cal hist*/
+
 	/** keep last*/
 	stmvl53l1_ipp_max /*!< stmvl53l1_ipp_max */
 };
 
-
+/**
+ * status use on @a ipp_work_t::status
+ */
 enum stmvl53l1_ipp_status_e {
 	stmvl53l1_ipp_status_ok = 0,	/*!< ok work done */
 	stmvl53l1_ipp_status_inv_id,	/*!< dev id  not supported or invalid */
@@ -257,32 +285,48 @@ enum stmvl53l1_ipp_status_e {
 	/*!< the lowest 8 bit is the error code form the processing */
 };
 
-
+/**
+ * Ipp work (job) struct
+ *
+ * containing header with sequenc control information plus serialized data
+ */
 struct ipp_work_t {
 	int8_t dev_id;		/*!< [in]/[out] device id */
+	/*!< Identify the work do be run see @a stmvl53l1_ipp_proccesing_e */
 	uint8_t process_no;
-	/*!< Identify the work do be run see stmvl53l1_ipp_proccesing_e */
+	/*!< [out] status from daemon */
+	int16_t status;
+	/*!< [in/out] unique xfer id */
+	uint32_t xfer_id;
+	/*!< [in/out] effective data length including header*/
+	uint32_t payload;
 
-	int16_t status;		/*!< [out] status from daemon */
-
-	uint32_t xfer_id;	/*!< unique xfer id */
-	uint32_t payload ;	/*!< effective data length including header */
-
+/** max IPP data payload (not including header)
+ *
+ * we substract size of of item above
+ * must be lesss than one netlink packet
+*/
 #define MAX_IPP_DATA	((1024-4*3)/8)
 	ipp_arg_t data[MAX_IPP_DATA];	/*!< [in][out] */
 };
 
 /**
  * size of header only message ( no payload)
- * require #include <stddef.h> in user land */
+ * require \#include <stddef.h> in user land
+*/
 #define IPP_WORK_HDR_SIZE	(offsetof(struct ipp_work_t, data[0]))
 /**
  * max payload per ipp transfer
  */
 #define IPP_WORK_MAX_PAYLAOD	sizeof(struct ipp_work_t)
 
-
-#define IPP_CPY_HEADER(dest , src) memcpy(dest, src, IPP_WORK_HDR_SIZE)
+/** copy ipp header from src to dest
+ *
+ * used to prepare return work using incoming work header
+ * @param dest  dest work ptr
+ * @param src   src work ptr
+ */
+#define IPP_CPY_HEADER(dest, src) memcpy(dest, src, IPP_WORK_HDR_SIZE)
 
 /**
  * dump in human readble way ipp struct
@@ -293,7 +337,7 @@ struct ipp_work_t {
  * @param max_data	max amount of data to be dump
  * @param max_dev	max number of dev (for check)
  */
-static inline void ipp_dump_work(struct ipp_work_t *pw, uint32_t max_data ,
+static inline void ipp_dump_work(struct ipp_work_t *pw, uint32_t max_data,
 		int max_dev)
 {
 	uint32_t data_cnt;
@@ -303,15 +347,15 @@ static inline void ipp_dump_work(struct ipp_work_t *pw, uint32_t max_data ,
 	(void)max_dev; /* avoid warning when not used */
 	(void)pbdata; /*avoid warning in case no print no use*/
 
-	IPP_PRINT("dev #%d (%s)\n", pw->dev_id , pw->dev_id < max_dev ?\
+	IPP_PRINT("dev #%d (%s)\n", pw->dev_id, pw->dev_id < max_dev ?
 			"ok" : "bad");
-	IPP_PRINT("process #%d (%s)\n", pw->process_no, \
+	IPP_PRINT("process #%d (%s)\n", pw->process_no,
 			pw->process_no < stmvl53l1_ipp_max ? "ok" : "bad");
 	IPP_PRINT("status %d\n",  pw->status);
-	IPP_PRINT("Xfer id 0x%08X payload  %d bytes (%s)\n", pw->xfer_id, \
+	IPP_PRINT("Xfer id 0x%08X payload  %d bytes (%s)\n", pw->xfer_id,
 			pw->payload,
 			pw->payload > IPP_WORK_MAX_PAYLAOD ? "invalid" : "ok");
-	data_cnt = pw->payload > IPP_WORK_MAX_PAYLAOD ? \
+	data_cnt = pw->payload > IPP_WORK_MAX_PAYLAOD ?
 			IPP_WORK_MAX_PAYLAOD : pw->payload;
 	data_cnt  = data_cnt > max_data ? max_data : data_cnt;
 	for (i = 0, pbdata = (uint8_t *)pw->data; i < data_cnt; i++) {
@@ -322,6 +366,7 @@ static inline void ipp_dump_work(struct ipp_work_t *pw, uint32_t max_data ,
 	IPP_PRINT("\n");
 }
 
+/** @} */ /* ingroup helper */
 
-
+/** @} */ /* ingroup ipp_dev */
 #endif /* _STMVL53L1_IPP_H_ */
