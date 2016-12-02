@@ -63,6 +63,8 @@
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
 
+#include <soc/qcom/camera2.h>
+
 #include "stmvl53l1-i2c.h"
 #include "stmvl53l1.h"
 
@@ -128,7 +130,7 @@ static struct i2c_client *stm_test_i2c_client;
 #	define modi2c_dbg(...)	(void)0
 #endif
 
-
+struct msm_pinctrl_info g_pinctrl_info;
 
 /**
  *  parse dev tree for pwren gpio and init it
@@ -280,6 +282,18 @@ static int parse_irq(struct device *dev, struct i2c_data *i2c_data)
 		if (of_gpio_count(dev->of_node) >= 2)
 			i2c_data->intr_gpio = of_get_gpio(dev->of_node, 1);
 	}
+
+	g_pinctrl_info.pinctrl = devm_pinctrl_get(dev);
+	if (IS_ERR_OR_NULL(g_pinctrl_info.pinctrl)) {
+		vl53l1_errmsg("Getting pinctrl handle failed\n");
+		goto err_irq;
+	}
+
+	g_pinctrl_info.gpio_state_active =
+		pinctrl_lookup_state(g_pinctrl_info.pinctrl, "laser_default");
+
+	g_pinctrl_info.gpio_state_suspend =
+		pinctrl_lookup_state(g_pinctrl_info.pinctrl, "laser_suspend");
 
 	i2c_data->irq = -1; /* init to no irq hooked */
 	if (i2c_data->intr_gpio != -1) {
@@ -570,6 +584,9 @@ int stmvl53l1_power_up_i2c(void *object, unsigned int *preset_flag)
 		powered = 1;
 	}
 #endif
+	pinctrl_select_state(g_pinctrl_info.pinctrl,
+			g_pinctrl_info.gpio_state_active);
+
 	/* Do power with gpio if not handle by regulator*/
 	if (data->pwren_gpio != -1) {
 		if (data->power_up == 0) {
@@ -635,6 +652,9 @@ int stmvl53l1_power_down_i2c(void *i2c_object)
 		} else
 			vl53l1_wanrmsg("already off\n");
 	}
+	pinctrl_select_state(g_pinctrl_info.pinctrl,
+			g_pinctrl_info.gpio_state_suspend);
+
 	goto done; /* avoid warning unused w/o CFG_STMVL53L1_HAVE_REGULATOR*/
 done:
 	vl53l1_dbgmsg("End\n");
