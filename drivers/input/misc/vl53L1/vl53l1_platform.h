@@ -44,7 +44,8 @@
 
 /**
  * time out for polling/Wait method  use in ST bare drivers
- * even not used require for code to compile*/
+ * even not used require for code to compile
+ */
 #define VL53L1_BOOT_COMPLETION_POLLING_TIMEOUT_MS     500
 #define VL53L1_RANGE_COMPLETION_POLLING_TIMEOUT_MS   1000
 #define VL53L1_TEST_COMPLETION_POLLING_TIMEOUT_MS   10000
@@ -58,15 +59,12 @@
 #define _LOG_FUNCTION_START(...) (void)0
 #define _LOG_FUNCTION_END(...) (void)0
 
-#include "linux/string.h"
-#define VL53L1_COPYSTRING(str, ...) strcpy(str, ##__VA_ARGS__)
-
 /**
  * ST bare driver data type access macro
  */
 #define PALDevDataGet(Dev, field) (Dev->field)
 
-#define PALDevDataSet(Dev, field, data) (Dev->field) = (data)
+#define PALDevDataSet(Dev, field, data) do {(Dev->field) = (data); } while (0)
 
 /**
  * ST bare LL driver data type access macro
