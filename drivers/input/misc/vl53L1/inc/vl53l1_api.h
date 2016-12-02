@@ -1,68 +1,66 @@
-/* 
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved 
-* 
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license' 
-* or 'BSD 3-clause "New" or "Revised" License' , at your option. 
-* 
-******************************************************************************** 
-* 
-* 'STMicroelectronics Proprietary license' 
-* 
-******************************************************************************** 
-* 
+/*
+* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
+*
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license'
+* or 'BSD 3-clause "New" or "Revised" License' , at your option.
+*
+********************************************************************************
+*
+* 'STMicroelectronics Proprietary license'
+*
+********************************************************************************
+*
 * License terms: STMicroelectronics Proprietary in accordance with licensing terms at www.st.com/sla0044
 *
-* STMicroelectronics confidential 
-* Reproduction and Communication of this document is strictly prohibited unless 
+* STMicroelectronics confidential
+* Reproduction and Communication of this document is strictly prohibited unless
 * specifically authorized in writing by STMicroelectronics.
-*  
-* 
-******************************************************************************** 
-* 
-* Alternatively, VL53L1 Core may be distributed under the terms of 
-* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones 
-* mentioned above : 
-* 
-******************************************************************************** 
-* 
-* License terms: BSD 3-clause "New" or "Revised" License. 
-* 
-* Redistribution and use in source and binary forms, with or without 
-* modification, are permitted provided that the following conditions are met: 
-* 
-* 1. Redistributions of source code must retain the above copyright notice, this 
-* list of conditions and the following disclaimer. 
-* 
-* 2. Redistributions in binary form must reproduce the above copyright notice, 
-* this list of conditions and the following disclaimer in the documentation 
-* and/or other materials provided with the distribution. 
-* 
-* 3. Neither the name of the copyright holder nor the names of its contributors 
-* may be used to endorse or promote products derived from this software 
-* without specific prior written permission. 
-* 
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE 
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
-* 
-* 
-******************************************************************************** 
-* 
+*
+*
+********************************************************************************
+*
+* Alternatively, VL53L1 Core may be distributed under the terms of
+* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones
+* mentioned above :
+*
+********************************************************************************
+*
+* License terms: BSD 3-clause "New" or "Revised" License.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+* 1. Redistributions of source code must retain the above copyright notice, this
+* list of conditions and the following disclaimer.
+*
+* 2. Redistributions in binary form must reproduce the above copyright notice,
+* this list of conditions and the following disclaimer in the documentation
+* and/or other materials provided with the distribution.
+*
+* 3. Neither the name of the copyright holder nor the names of its contributors
+* may be used to endorse or promote products derived from this software
+* without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+*
+********************************************************************************
+*
 */
 
 #ifndef _VL53L1_API_H_
 #define _VL53L1_API_H_
 
-#include "vl53l1_platform.h"
 #include "vl53l1_api_strings.h"
-#include "vl53l1_register_settings.h"
 #include "vl53l1_api_core.h"
 
 #ifdef __cplusplus
@@ -189,86 +187,6 @@ VL53L1_Error VL53L1_GetPalStateString(VL53L1_State PalStateCode,
 VL53L1_Error VL53L1_GetPalState(VL53L1_DEV Dev,
 	VL53L1_State *pPalState);
 
-/**
- * @brief Set the power mode for a given Device
- * The power mode can be Standby or Idle. Different level of both Standby and
- * Idle can exists.
- * This function should not be used when device is in Ranging state.
- *
- * @param   Dev                   Device Handle
- * @param   PowerMode             The value of the power mode to set.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetPowerMode(VL53L1_DEV Dev,
-	VL53L1_PowerModes PowerMode);
-
-/**
- * @brief Get the power mode for a given Device
- *
- * @param   Dev                   Device Handle
- * @param   pPowerMode            Pointer to the current value of the power
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetPowerMode(VL53L1_DEV Dev,
-	VL53L1_PowerModes *pPowerMode);
-
-/**
- * Set or over-hide part to part calibration offset
- * \sa VL53L1_DataInit()   VL53L1_GetOffsetCalibrationDataMicroMeter()
- *
- * @param   Dev                                Device Handle
- * @param   OffsetCalibrationDataMicroMeter    Offset (microns)
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetOffsetCalibrationDataMicroMeter(
-	VL53L1_DEV Dev, int32_t OffsetCalibrationDataMicroMeter);
-
-/**
- * @brief Get part to part calibration offset
- *
- * @par Function Description
- * Should only be used after a successful call to @a VL53L1_DataInit to backup
- * device NVM value
- *
- * @param   Dev                                Device Handle
- * @param   pOffsetCalibrationDataMicroMeter   Return part to part
- * calibration offset from device (microns)
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetOffsetCalibrationDataMicroMeter(
-	VL53L1_DEV Dev, int32_t *pOffsetCalibrationDataMicroMeter);
-
-
-/**
- * Set Group parameter Hold state
- *
- * @par Function Description
- * Set or remove device internal group parameter hold
- *
- * @note This function is not Implemented
- *
- * @param   Dev      Device Handle
- * @param   GroupParamHold   Group parameter Hold state to be set (on/off)
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetGroupParamHold(VL53L1_DEV Dev,
-	uint8_t GroupParamHold);
-
-/**
- * Get Group parameter Hold state
- *
- * @par Function Description
- * Get device internal group parameter hold
- *
- * @note This function is not Implemented
- *
- * @param   Dev      Device Handle
- * @param   *pGroupParamHold   Group parameter Hold state (on/off)
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetGroupParamHold(VL53L1_DEV Dev,
-	uint8_t *pGroupParamHold);
-
 
 
 /** @} VL53L1_general_group */
@@ -322,43 +240,6 @@ VL53L1_Error VL53L1_SetDeviceAddress(VL53L1_DEV Dev,
  */
 VL53L1_Error VL53L1_DataInit(VL53L1_DEV Dev);
 
-/**
- * @brief Set the tuning settings pointer
- *
- * This function is used to specify the Tuning settings buffer to be used
- * for a given device. The buffer contains all the necessary data to permit
- * the API to write tuning settings.
- * This function permit to force the usage of either external or internal
- * tuning settings.
- *
- * @note This function is not implemented
- *
- * @param   Dev                             Device Handle
- * @param   pTuningSettingBuffer            Pointer to tuning settings buffer.
- * @param   UseInternalTuningSettings       Use internal tuning settings value.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetTuningSettingBuffer(VL53L1_DEV Dev,
-	uint8_t *pTuningSettingBuffer, uint8_t UseInternalTuningSettings);
-
-/**
- * @brief Get the tuning settings pointer and the internal external switch
- * value.
- *
- * This function is used to get the Tuning settings buffer pointer and the
- * value.
- * of the switch to select either external or internal tuning settings.
- *
- * @note This function is not implemented
- *
- * @param   Dev                        Device Handle
- * @param   ppTuningSettingBuffer      Pointer to tuning settings buffer.
- * @param   pUseInternalTuningSettings Pointer to store Use internal tuning
- *                                     settings value.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetTuningSettingBuffer(VL53L1_DEV Dev,
-	uint8_t **ppTuningSettingBuffer, uint8_t *pUseInternalTuningSettings);
 
 /**
  * @brief Do basic device init (and eventually patch loading)
@@ -392,7 +273,8 @@ VL53L1_Error VL53L1_WaitDeviceBooted(VL53L1_DEV Dev);
  * VL53L1_STATE_POWERDOWN.
  *
  * @param   Dev                   Device Handle
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
+ * @return  VL53L1_ERROR_NONE     Success
+ * @return  "Other error code"    See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_ResetDevice(VL53L1_DEV Dev);
 
@@ -413,10 +295,10 @@ VL53L1_Error VL53L1_ResetDevice(VL53L1_DEV Dev);
  * @param   Dev                   Device Handle
  * @param   PresetMode            New Preset mode to apply
  *                                Valid values are:
- *                                VL53L1_PRESETMODE_STANDARD_RANGING
+ *                                VL53L1_PRESETMODE_LITE_RANGING
  *
  * @return  VL53L1_ERROR_NONE               Success
- * @return  VL53L1_ERROR_MODE_NOT_SUPPORTED This error occurs when DeviceMode is
+ * @return  VL53L1_ERROR_MODE_NOT_SUPPORTED This error occurs when PresetMode is
  *                                          not in the supported list
  */
 VL53L1_Error VL53L1_SetPresetMode(VL53L1_DEV Dev,
@@ -428,11 +310,13 @@ VL53L1_Error VL53L1_SetPresetMode(VL53L1_DEV Dev,
  * Get actual mode of the device(ranging, histogram ...)
  *
  * @note This function doesn't Access to the device
+ * @warning This function change the timing budget to 16 ms and the inter-
+ * measurement period to 1000 ms.
  *
  * @param   Dev                   Device Handle
  * @param   pPresetMode           Pointer to current apply mode value
  *                                Valid values are:
- *                                VL53L1_PRESETMODE_STANDARD_RANGING
+ *                                VL53L1_PRESETMODE_LITE_RANGING
  *
  * @return  VL53L1_ERROR_NONE                   Success
  * @return  VL53L1_ERROR_MODE_NOT_SUPPORTED     This error occurs when
@@ -441,105 +325,7 @@ VL53L1_Error VL53L1_SetPresetMode(VL53L1_DEV Dev,
 VL53L1_Error VL53L1_GetPresetMode(VL53L1_DEV Dev,
 		VL53L1_PresetModes *pPresetMode);
 
-/**
- * @brief  Set a new device mode
- * @par Function Description
- * Set device to a new mode (ranging, histogram ...)
- *
- * @note This function doesn't Access to the device
- *
- * @param   Dev                   Device Handle
- * @param   DeviceMode            New device mode to apply
- *
- * @return  VL53L1_ERROR_NONE               Success
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetDeviceMode(VL53L1_DEV Dev,
-		VL53L1_DeviceModes DeviceMode);
 
-/**
- * @brief  Get current new device mode
- * @par Function Description
- * Get actual mode of the device(ranging, histogram ...)
- *
- * @note This function doesn't Access to the device
- *
- * @param   Dev                   Device Handle
- * @param   pDeviceMode           Pointer to current apply mode value
- *
- * @return  VL53L1_ERROR_NONE                   Success
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetDeviceMode(VL53L1_DEV Dev,
-	VL53L1_DeviceModes *pDeviceMode);
-
-/**
- * @brief  Sets the resolution of range measurements.
- * @par Function Description
- * Set resolution of range measurements to either 0.25mm if
- * fraction enabled or 1mm if not enabled.
- *
- * @param   Dev               Device Handle
- * @param   Enable            Enable high resolution
- *
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetRangeFractionEnable(VL53L1_DEV Dev,
-	uint8_t Enable);
-
-/**
- * @brief  Gets the fraction enable parameter indicating the resolution of
- * range measurements.
- *
- * @par Function Description
- * Gets the fraction enable state, which translates to the resolution of
- * range measurements as follows :Enabled:=0.25mm resolution,
- * Not Enabled:=1mm resolution.
- *
- * @param   Dev               Device Handle
- * @param   pEnable           Output Parameter reporting the fraction enable state.
- *
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetRangeFractionEnable(VL53L1_DEV Dev,
-	uint8_t *pEnable);
-
-/**
- * @brief  Set a new Histogram mode
- * @par Function Description
- * Set device to a new Histogram mode
- *
- * @param   Dev                   Device Handle
- * @param   HistogramMode         New device mode to apply
- *                                Valid values are:
- *                                VL53L1_HISTOGRAMMODE_DISABLED
- *                                VL53L1_DEVICEMODE_SINGLE_HISTOGRAM
- *                                VL53L1_HISTOGRAMMODE_REFERENCE_ONLY
- *                                VL53L1_HISTOGRAMMODE_RETURN_ONLY
- *                                VL53L1_HISTOGRAMMODE_BOTH
- *
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetHistogramMode(VL53L1_DEV Dev,
-	VL53L1_HistogramModes HistogramMode);
-
-/**
- * @brief  Get current new device mode
- * @par Function Description
- * Get current Histogram mode of a Device
- *
- * @param   Dev                   Device Handle
- * @param   pHistogramMode        Pointer to current Histogram Mode value
- *                                Valid values are:
- *                                VL53L1_HISTOGRAMMODE_DISABLED
- *                                VL53L1_DEVICEMODE_SINGLE_HISTOGRAM
- *                                VL53L1_HISTOGRAMMODE_REFERENCE_ONLY
- *                                VL53L1_HISTOGRAMMODE_RETURN_ONLY
- *                                VL53L1_HISTOGRAMMODE_BOTH
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetHistogramMode(VL53L1_DEV Dev,
-	VL53L1_HistogramModes *pHistogramMode);
 
 /**
  * @brief Set Ranging Timing Budget in microseconds
@@ -554,6 +340,10 @@ VL53L1_Error VL53L1_GetHistogramMode(VL53L1_DEV Dev,
  * @return  VL53L1_ERROR_NONE            Success
  * @return  VL53L1_ERROR_INVALID_PARAMS  Error timing parameter not
  *                                       supported.
+ *                                       The maximum accepted value for the
+ *                                       computed timing budget is 10 seconds
+ *                                       the minimum value depends on the preset
+ *                                       mode selected.
  * @return  "Other error code"           See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_SetMeasurementTimingBudgetMicroSeconds(
@@ -585,7 +375,8 @@ VL53L1_Error VL53L1_GetMeasurementTimingBudgetMicroSeconds(
  *
  * @param   Dev                                  Device Handle
  * @param   InterMeasurementPeriodMilliSeconds   Inter-Measurement Period in ms.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
+ * @return  VL53L1_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_SetInterMeasurementPeriodMilliSeconds(
 	VL53L1_DEV Dev, uint32_t InterMeasurementPeriodMilliSeconds);
@@ -594,154 +385,15 @@ VL53L1_Error VL53L1_SetInterMeasurementPeriodMilliSeconds(
  * Get continuous mode Inter-Measurement period in milliseconds
  *
  * @par Function Description
- * When trying to set too short time return  INVALID_PARAMS minimal value
  *
  * @param   Dev                                  Device Handle
  * @param   pInterMeasurementPeriodMilliSeconds  Pointer to programmed
  *  Inter-Measurement Period in milliseconds.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
+ * @return  VL53L1_ERROR_NONE
  */
 VL53L1_Error VL53L1_GetInterMeasurementPeriodMilliSeconds(
 	VL53L1_DEV Dev, uint32_t *pInterMeasurementPeriodMilliSeconds);
 
-/**
- * @brief Enable/Disable Cross talk compensation feature
- *
- * @note This function is not Implemented.
- * Enable/Disable Cross Talk by set to zero the Cross Talk value
- * by using @a VL53L1_SetXTalkCompensationRateMegaCps().
- *
- * @param   Dev                       Device Handle
- * @param   XTalkCompensationEnable   Cross talk compensation
- *  to be set 0=disabled else = enabled
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED   Not implemented
- */
-VL53L1_Error VL53L1_SetXTalkCompensationEnable(VL53L1_DEV Dev,
-	uint8_t XTalkCompensationEnable);
-
-/**
- * @brief Get Cross talk compensation rate
- *
- * @note This function is not Implemented.
- * Enable/Disable Cross Talk by set to zero the Cross Talk value by
- * using @a VL53L1_SetXTalkCompensationRateMegaCps().
- *
- * @param   Dev                        Device Handle
- * @param   pXTalkCompensationEnable   Pointer to the Cross talk compensation
- *  state 0=disabled or 1 = enabled
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED   Not implemented
- */
-VL53L1_Error VL53L1_GetXTalkCompensationEnable(VL53L1_DEV Dev,
-	uint8_t *pXTalkCompensationEnable);
-
-/**
- * @brief Set Cross talk compensation rate
- *
- * @par Function Description
- * Set Cross talk compensation rate.
- *
- * @param   Dev                            Device Handle
- * @param   XTalkCompensationRateMegaCps   Compensation rate in
- *  Mega counts per second (16.16 fix point) see datasheet for details
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetXTalkCompensationRateMegaCps(VL53L1_DEV Dev,
-	FixPoint1616_t XTalkCompensationRateMegaCps);
-
-/**
- * @brief Get Cross talk compensation rate
- *
- * @par Function Description
- * Get Cross talk compensation rate.
- *
- * @param   Dev                            Device Handle
- * @param   pXTalkCompensationRateMegaCps  Pointer to Compensation rate
- in Mega counts per second (16.16 fix point) see datasheet for details
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetXTalkCompensationRateMegaCps(VL53L1_DEV Dev,
-	FixPoint1616_t *pXTalkCompensationRateMegaCps);
-
-/**
- * @brief Set Reference Calibration Parameters
- *
- * @par Function Description
- * Set Reference Calibration Parameters.
- *
- * @param   Dev                            Device Handle
- * @param   VhvSettings                    Parameter for VHV
- * @param   PhaseCal                       Parameter for PhaseCal
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetRefCalibration(VL53L1_DEV Dev,
-	uint8_t VhvSettings, uint8_t PhaseCal);
-
-/**
- * @brief Get Reference Calibration Parameters
- *
- * @par Function Description
- * Get Reference Calibration Parameters.
- *
- * @note This function Access to the device
- *
- * @param   Dev                            Device Handle
- * @param   pVhvSettings                   Pointer to VHV parameter
- * @param   pPhaseCal                      Pointer to PhaseCal Parameter
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetRefCalibration(VL53L1_DEV Dev,
-	uint8_t *pVhvSettings, uint8_t *pPhaseCal);
-
-
-
-/**
- * @brief  Enable (or disable) Wrap around Check
- *
- * @param   Dev                    Device Handle
- * @param   WrapAroundCheckEnable  Wrap around Check to be set
- *                                 0=disabled, other = enabled
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED   Not implemented
- */
-VL53L1_Error VL53L1_SetWrapAroundCheckEnable(VL53L1_DEV Dev,
-		uint8_t WrapAroundCheckEnable);
-
-/**
- * @brief  Get setup of Wrap around Check
- *
- * @par Function Description
- * This function get the wrapAround check enable parameters
- *
- * @param   Dev                     Device Handle
- * @param   pWrapAroundCheckEnable  Pointer to the Wrap around Check state
- *                                  0=disabled or 1 = enabled
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED   Not implemented
- */
-VL53L1_Error VL53L1_GetWrapAroundCheckEnable(VL53L1_DEV Dev,
-		uint8_t *pWrapAroundCheckEnable);
-
-/**
- * @brief   Set Dmax Calibration Parameters for a given device
- * When one of the parameter is zero, this function will get parameter
- * from NVM.
- *
- * @param   Dev                    Device Handle
- * @param   RangeMilliMeter        Calibration Distance
- * @param   SignalRateRtnMegaCps   Signal rate return read at CalDistance
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED   Not implemented
- */
-VL53L1_Error VL53L1_SetDmaxCalParameters(VL53L1_DEV Dev,
-		uint16_t RangeMilliMeter, FixPoint1616_t SignalRateRtnMegaCps);
-
-/**
- * @brief  Get Dmax Calibration Parameters for a given device
- *
- * @param   Dev                     Device Handle
- * @param   pRangeMilliMeter        Pointer to Calibration Distance
- * @param   pSignalRateRtnMegaCps   Pointer to Signal rate return
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED   Not implemented
- */
-VL53L1_Error VL53L1_GetDmaxCalParameters(VL53L1_DEV Dev,
-	uint16_t *pRangeMilliMeter, FixPoint1616_t *pSignalRateRtnMegaCps);
 
 /** @} VL53L1_parameters_group */
 
@@ -810,7 +462,8 @@ VL53L1_Error VL53L1_GetLimitCheckInfo(uint16_t LimitCheckId,
  * </ul></p>
  *
  *
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
+ * @return  VL53L1_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_GetLimitCheckStatus(VL53L1_DEV Dev,
 	uint16_t LimitCheckId, uint8_t *pLimitCheckStatus);
@@ -875,14 +528,15 @@ VL53L1_Error VL53L1_GetLimitCheckEnable(VL53L1_DEV Dev,
  * @note Note that the value written with that function will not be applied if
  * the limit is not enabled. In other words this function will not enable the
  * limit but change only the value. In case the limit is not enabled the value
- * is saved internally and applied with @VL53L1_SetLimitCheckEnable.
+ * is saved internally and applied with VL53L1_SetLimitCheckEnable.
  *
  * @param   Dev                           Device Handle
  * @param   LimitCheckId                  Limit Check ID
  *  (0<= LimitCheckId < VL53L1_GetNumberOfLimitCheck() ).
  * @param   LimitCheckValue               Limit check Value for a given
  * LimitCheckId
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
+ * @return  VL53L1_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_SetLimitCheckValue(VL53L1_DEV Dev,
 	uint16_t LimitCheckId, FixPoint1616_t LimitCheckValue);
@@ -898,14 +552,15 @@ VL53L1_Error VL53L1_SetLimitCheckValue(VL53L1_DEV Dev,
  * @note This function get the current value from device if zero then the value
  * returned is the one stored by the user, but in that case the check is store
  * as disabled. If the value from device is not zero, this is returned and set
- * into the memory at the same way that user call @VL53L1_SetLimitCheckValue()
+ * into the memory at the same way that user call VL53L1_SetLimitCheckValue()
  *
  * @param   Dev                           Device Handle
  * @param   LimitCheckId                  Limit Check ID
  *  (0<= LimitCheckId < VL53L1_GetNumberOfLimitCheck() ).
  * @param   pLimitCheckValue              Pointer to Limit
  *  check Value for a given LimitCheckId.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
+ * @return  VL53L1_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_GetLimitCheckValue(VL53L1_DEV Dev,
 	uint16_t LimitCheckId, FixPoint1616_t *pLimitCheckValue);
@@ -924,7 +579,8 @@ VL53L1_Error VL53L1_GetLimitCheckValue(VL53L1_DEV Dev,
  *  (0<= LimitCheckId < VL53L1_GetNumberOfLimitCheck() ).
  * @param   pLimitCheckCurrent            Pointer to current Value for a
  * given LimitCheckId.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
+ * @return  VL53L1_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_GetLimitCheckCurrent(VL53L1_DEV Dev,
 	uint16_t LimitCheckId, FixPoint1616_t *pLimitCheckCurrent);
@@ -967,8 +623,7 @@ VL53L1_Error VL53L1_GetMaxNumberOfROI(VL53L1_DEV Dev,
  *   ^			|     |
  *   |			*-----o BR(x,y)
  *   0------------------------- >15
- *   Minimal ROI size is 5x5
- *   For multizone each ROI will have the same max size, between 8x8 and 5x5
+ *   Minimal ROI size is 4x4
  *
  * @param   Dev                      Device Handle
  * @param   pRoiConfig               Pointer to the Structure containing all the
@@ -1082,39 +737,6 @@ VL53L1_Error VL53L1_GetSequenceStepEnable(VL53L1_DEV Dev,
 	VL53L1_SequenceStepId SequenceStepId, uint8_t *pSequenceStepEnabled);
 
 
-/**
- * @brief Sets the timeout of a requested sequence step.
- *
- * @par Function Description
- * This function sets the timeout of a requested sequence step.
- *
- * @note This function Accesses the device
- *
- * @param   Dev                          Device Handle
- * @param   SequenceStepId               Sequence step identifier.
- * @param   TimeOutMilliSecs             Demanded timeout
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetSequenceStepTimeout(VL53L1_DEV Dev,
-	VL53L1_SequenceStepId SequenceStepId, FixPoint1616_t TimeOutMilliSecs);
-
-/**
- * @brief Gets the timeout of a requested sequence step.
- *
- * @par Function Description
- * This function retrieves the timeout of a requested sequence step.
- *
- * @note This function Accesses the device
- *
- * @param   Dev                          Device Handle
- * @param   SequenceStepId               Sequence step identifier.
- * @param   pTimeOutMilliSecs            Timeout value.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetSequenceStepTimeout(VL53L1_DEV Dev,
-	VL53L1_SequenceStepId SequenceStepId,
-	FixPoint1616_t *pTimeOutMilliSecs);
-
 /** @} VL53L1_sequencestep_group */
 
 
@@ -1124,76 +746,6 @@ VL53L1_Error VL53L1_GetSequenceStepTimeout(VL53L1_DEV Dev,
  *  @{
  */
 
-/**
- * @brief Single shot measurement.
- *
- * @par Function Description
- * Perform simple measurement sequence (Start measure, Wait measure to end,
- * and returns when measurement is done).
- * Once function returns, user can get valid data by calling
- * VL53L1_GetRangingMeasurement or VL53L1_GetHistogramMeasurement
- * depending on defined measurement mode
- * User should Clear the interrupt in case this are enabled by using the
- * function VL53L1_ClearInterruptMask().
- *
- * @warning This function is a blocking function
- *
- * @note This function Access to the device
- *
- * @param   Dev                  Device Handle
- * @return  VL53L1_ERROR_NONE    Success
- * @return  "Other error code"   See ::VL53L1_Error
- */
-VL53L1_Error VL53L1_PerformSingleMeasurement(VL53L1_DEV Dev);
-
-/**
- * @brief Perform Reference Calibration
- *
- * @details Perform a reference calibration of the Device.
- * This function should be run from time to time before doing
- * a ranging measurement.
- * This function will launch a special ranging measurement, so
- * if interrupt are enable an interrupt will be done.
- * This function will clear the interrupt generated automatically.
- *
- * @warning This function is a blocking function
- *
- * @note This function Access to the device
- *
- * @param   Dev                  Device Handle
- * @param   pVhvSettings         Pointer to vhv settings parameter.
- * @param   pPhaseCal            Pointer to PhaseCal parameter.
- * @return  VL53L1_ERROR_NONE    Success
- * @return  "Other error code"   See ::VL53L1_Error
- */
-VL53L1_Error VL53L1_PerformRefCalibration(VL53L1_DEV Dev,
-	uint8_t *pVhvSettings, uint8_t *pPhaseCal);
-
-/**
- * @brief Perform XTalk Measurement
- *
- * @details Measures the current cross talk from glass in front
- * of the sensor.
- * This functions performs a histogram measurement and uses the results
- * to measure the crosstalk. For the function to be successful, there
- * must be no target in front of the sensor.
- *
- * @warning This function is a blocking function
- *
- * @note This function Access to the device
- *
- * @param   Dev                  Device Handle
- * @param   TimeoutMs            Histogram measurement duration.
- * @param   pXtalkPerSpad        Output parameter containing the crosstalk
- * measurement result, in MCPS/Spad. Format fixpoint 16:16.
- * @param   pAmbientTooHigh      Output parameter which indicate that
- * pXtalkPerSpad is not good if the Ambient is too high.
- * @return  VL53L1_ERROR_NONE    Success
- * @return  "Other error code"   See ::VL53L1_Error
- */
-VL53L1_Error VL53L1_PerformXTalkMeasurement(VL53L1_DEV Dev,
-	uint32_t TimeoutMs, FixPoint1616_t *pXtalkPerSpad,
-	uint8_t *pAmbientTooHigh);
 
 /**
  * @brief Perform XTalk Calibration
@@ -1204,70 +756,59 @@ VL53L1_Error VL53L1_PerformXTalkMeasurement(VL53L1_DEV Dev,
  * This function will clear the interrupt generated automatically.
  * This function will program a new value for the XTalk compensation
  * and it will enable the cross talk before exit.
- * This function will disable the VL53L1_CHECKENABLE_RANGE_IGNORE_THRESHOLD.
  *
  * @warning This function is a blocking function
  *
  * @note This function Access to the device
  *
- * @note This function change the device mode to
- * VL53L1_DEVICEMODE_SINGLE_RANGING
+ * @note This function change the preset mode so a new preset mode should
+ * be done after the call to this function
  *
  * @param   Dev                  Device Handle
- * @param   XTalkCalDistance     XTalkCalDistance value used for the XTalk
- * computation.
- * @param   pXTalkCompensationRateMegaCps  Pointer to new
- * XTalkCompensation value.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
+ * @param   CalibrationOption    Select the Calibration to be run
+ * @return  VL53L1_ERROR_NONE    Success
+ * @return  "Other error code"   See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_PerformXTalkCalibration(VL53L1_DEV Dev,
-	FixPoint1616_t XTalkCalDistance,
-	FixPoint1616_t *pXTalkCompensationRateMegaCps);
+		uint8_t CalibrationOption);
 
 /**
  * @brief Perform Offset Calibration
  *
  * @details Perform a Offset calibration of the Device.
  * This function will launch a ranging measurement, if interrupts are
- * enabled an interrupt will be done.
- * This function will clear the interrupt generated automatically.
+ * enabled interrupts will be done.
  * This function will program a new value for the Offset calibration value
- * This function will disable the VL53L1_CHECKENABLE_RANGE_IGNORE_THRESHOLD.
  *
  * @warning This function is a blocking function
  *
  * @note This function Access to the device
  *
- * @note This function does not change the device mode.
- *
  * @param   Dev                  Device Handle
  * @param   CalDistanceMilliMeter     Calibration distance value used for the
  * offset compensation.
- * @param   pOffsetMicroMeter  Pointer to new Offset value computed by the
- * function.
  *
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
+ * @return  VL53L1_ERROR_NONE
+ * @return  "Other error code"   See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_PerformOffsetCalibration(VL53L1_DEV Dev,
-	FixPoint1616_t CalDistanceMilliMeter, int32_t *pOffsetMicroMeter);
+	int32_t CalDistanceMilliMeter);
 
 /**
  * @brief Start device measurement
  *
- * @details Started measurement will depend on device parameters set through
- * @a VL53L1_SetParameters()
- * This is a non-blocking function.
+ * @details Started measurement will depend on preset parameters set through
+ * @a VL53L1_SetPreseMode()
  * This function will change the VL53L1_State from VL53L1_STATE_IDLE to
  * VL53L1_STATE_RUNNING.
  *
  * @note This function Access to the device
  *
-
  * @param   Dev                  Device Handle
  * @return  VL53L1_ERROR_NONE                  Success
  * @return  VL53L1_ERROR_MODE_NOT_SUPPORTED    This error occurs when
- * PresetMode programmed with @a VL53L1_SetPresetMode or
- * DeviceMode programmed with @a VL53L1_SetDeviceMode are not valid
+ * PresetMode programmed with @a VL53L1_SetPresetMode
+ *
  * @return  VL53L1_ERROR_TIME_OUT    Time out on start measurement
  * @return  "Other error code"   See ::VL53L1_Error
  */
@@ -1334,23 +875,6 @@ VL53L1_Error VL53L1_GetMeasurementDataReady(VL53L1_DEV Dev,
  */
 VL53L1_Error VL53L1_WaitMeasurementDataReady(VL53L1_DEV Dev);
 
-/**
- * @brief Retrieve the Reference Signal after a measurements
- *
- * @par Function Description
- * Get Reference Signal from last successful Ranging measurement
- * This function return a valid value after that you call the
- * @a VL53L1_GetRangingMeasurementData().
- *
- * @note This function Access to the device
- *
- * @param   Dev                      Device Handle
- * @param   pMeasurementRefSignal    Pointer to the Ref Signal to fill up.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetMeasurementRefSignal(VL53L1_DEV Dev,
-	FixPoint1616_t *pMeasurementRefSignal);
-
 
 /**
  * @brief Retrieve the measurements from device for a given setup
@@ -1367,7 +891,7 @@ VL53L1_Error VL53L1_GetMeasurementRefSignal(VL53L1_DEV Dev,
  * @param   pRangingMeasurementData  Pointer to the data structure to fill up.
  * @return  VL53L1_ERROR_NONE        Success
  * @return  VL53L1_ERROR_NOT_SUPPORTED    If used in other mode than:
- * VL53L1_PRESETMODE_STANDARD_RANGING
+ * VL53L1_PRESETMODE_LITE_RANGING
  * @return  "Other error code"       See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_GetRangingMeasurementData(VL53L1_DEV Dev,
@@ -1393,190 +917,9 @@ VL53L1_Error VL53L1_GetRangingMeasurementData(VL53L1_DEV Dev,
 VL53L1_Error Vl53L1_GetMultiRangingData(VL53L1_DEV Dev,
 		VL53L1_MultiRangingData_t *pMultiRangingData);
 
-/**
- * @brief Retrieve the measurements from device for a given setup
- *
- * @par Function Description
- * Get data from last successful Histogram measurement
- * @warning USER should take care about  @a VL53L1_GetNumberOfROI()
- * before get data.
- * PAL will fill a NumberOfROI times the corresponding data structure
- * used in the measurement function.
- *
- * @note This function is not Implemented
- *
- * @param   Dev                         Device Handle
- * @param   pHistogramMeasurementData   Pointer to the histogram data structure.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED   Not implemented
- */
-VL53L1_Error VL53L1_GetHistogramMeasurementData(VL53L1_DEV Dev,
-	VL53L1_HistogramMeasurementData_t *pHistogramMeasurementData);
-
-/**
- * @brief Performs a single ranging measurement and retrieve the ranging
- * measurement data
- *
- * @par Function Description
- * This function will change the device mode to VL53L1_DEVICEMODE_SINGLE_RANGING
- * with @a VL53L1_SetDeviceMode(),
- * It performs measurement with @a VL53L1_PerformSingleMeasurement()
- * It get data from last successful Ranging measurement with
- * @a VL53L1_GetRangingMeasurementData.
- * Finally it clear the interrupt with @a VL53L1_ClearInterruptMask().
- *
- * @param   Dev                       Device Handle
- * @param   pRangingMeasurementData   Pointer to the data structure to fill up.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_PerformSingleRangingMeasurement(VL53L1_DEV Dev,
-	VL53L1_RangingMeasurementData_t *pRangingMeasurementData);
-
-/**
- * @brief Performs a single histogram measurement and retrieve the histogram
- * measurement data
- *   Is equivalent to VL53L1_PerformSingleMeasurement +
- *   VL53L1_GetHistogramMeasurementData
- *
- * @par Function Description
- * Get data from last successful Ranging measurement.
- * This function will clear the interrupt in case of these are enabled.
- *
- * @note This function is not Implemented
- *
- * @param   Dev                        Device Handle
- * @param   pHistogramMeasurementData  Pointer to the data structure to fill up.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED   Not implemented
- */
-VL53L1_Error VL53L1_PerformSingleHistogramMeasurement(VL53L1_DEV Dev,
-	VL53L1_HistogramMeasurementData_t *pHistogramMeasurementData);
-
 
 /** @} VL53L1_measurement_group */
 
-/** @defgroup VL53L1_interrupt_group VL53L1 Interrupt Functions
- *  @brief    Functions used for interrupt managements
- *  @{
- */
-
-/**
- * @brief Set the configuration of GPIO pin for a given device
- *
- * @note This function Access to the device
- *
- * @param   Dev                   Device Handle
- * @param   Pin                   ID of the GPIO Pin
- * @param   Functionality         Select Pin functionality.
- *  Refer to ::VL53L1_GpioFunctionality
- * @param   DeviceMode            Device Mode associated to the Gpio.
- * @param   Polarity              Set interrupt polarity. Active high
- *   or active low see ::VL53L1_InterruptPolarity
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetGpioConfig(VL53L1_DEV Dev, uint8_t Pin,
-	VL53L1_DeviceModes DeviceMode, VL53L1_GpioFunctionality Functionality,
-	VL53L1_InterruptPolarity Polarity);
-
-/**
- * @brief Get current configuration for GPIO pin for a given device
- *
- * @note This function Access to the device
- *
- * @param   Dev                   Device Handle
- * @param   Pin                   ID of the GPIO Pin
- * @param   pDeviceMode           Pointer to Device Mode associated to the Gpio.
- * @param   pFunctionality        Pointer to Pin functionality.
- *  Refer to ::VL53L1_GpioFunctionality
- * @param   pPolarity             Pointer to interrupt polarity.
- *  Active high or active low see ::VL53L1_InterruptPolarity
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetGpioConfig(VL53L1_DEV Dev, uint8_t Pin,
-	VL53L1_DeviceModes *pDeviceMode,
-	VL53L1_GpioFunctionality *pFunctionality,
-	VL53L1_InterruptPolarity *pPolarity);
-
-/**
- * @brief Set low and high Interrupt thresholds for a given mode
- * (ranging, ALS, ...) for a given device
- *
- * @par Function Description
- * Set low and high Interrupt thresholds for a given mode (ranging, ALS, ...)
- * for a given device
- *
- * @note This function Access to the device
- *
- * @note DeviceMode is ignored for the current device
- *
- * @param   Dev              Device Handle
- * @param   DeviceMode       Device Mode for which change thresholds
- * @param   ThresholdLow     Low threshold (mm, lux ..., depending on the mode)
- * @param   ThresholdHigh    High threshold (mm, lux ..., depending on the mode)
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetInterruptThresholds(VL53L1_DEV Dev,
-	VL53L1_DeviceModes DeviceMode, FixPoint1616_t ThresholdLow,
-	FixPoint1616_t ThresholdHigh);
-
-/**
- * @brief  Get high and low Interrupt thresholds for a given mode
- *  (ranging, ALS, ...) for a given device
- *
- * @par Function Description
- * Get high and low Interrupt thresholds for a given mode (ranging, ALS, ...)
- * for a given device
- *
- * @param   Dev              Device Handle
- * @param   DeviceMode       Device Mode from which read thresholds
- * @param   pThresholdLow    Low threshold (mm, lux ..., depending on the mode)
- * @param   pThresholdHigh   High threshold (mm, lux ..., depending on the mode)
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetInterruptThresholds(VL53L1_DEV Dev,
-	VL53L1_DeviceModes DeviceMode, FixPoint1616_t *pThresholdLow,
-	FixPoint1616_t *pThresholdHigh);
-
-/**
- * @brief Clear given system interrupt condition
- *
- * @par Function Description
- * Clear given interrupt(s).
- *
- * @param   Dev                  Device Handle
- * @param   InterruptMask        Mask of interrupts to clear
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_ClearInterruptMask(VL53L1_DEV Dev,
-	uint32_t InterruptMask);
-
-/**
- * @brief Return device interrupt status
- *
- * @par Function Description
- * Returns currently raised interrupts by the device.
- * User shall be able to activate/deactivate interrupts through
- * @a VL53L1_SetGpioConfig()
- *
- * @param   Dev                    Device Handle
- * @param   pInterruptMaskStatus   Pointer to status variable to update
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetInterruptMaskStatus(VL53L1_DEV Dev,
-	uint32_t *pInterruptMaskStatus);
-
-/**
- * @brief Configure ranging interrupt reported to system
- *
- * @note This function is not Implemented
- *
- * @param   Dev                  Device Handle
- * @param   InterruptMask         Mask of interrupt to Enable/disable
- *  (0:interrupt disabled or 1: interrupt enabled)
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED   Not implemented
- */
-VL53L1_Error VL53L1_EnableInterruptMask(VL53L1_DEV Dev,
-	uint32_t InterruptMask);
-
-/** @} VL53L1_interrupt_group */
 
 /** @defgroup VL53L1_SPADfunctions_group VL53L1 SPAD Functions
  *  @brief    Functions used for SPAD managements
@@ -1603,38 +946,6 @@ VL53L1_Error VL53L1_EnableInterruptMask(VL53L1_DEV Dev,
  * @return  "Other error code"       See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_PerformRefSpadManagement(VL53L1_DEV Dev,
-	uint8_t *pRefSpadCount, uint8_t *pRefSpadLocation);
-
-/**
- * @brief Applies Reference SPAD configuration
- *
- * @par Function Description
- * This function applies a given number of reference spads, identified with
- * the reference spad location.
- * The requested spad count and type are stored within the device specific
- * parameters data for access by the host.
- *
- * @param   Dev                          Device Handle
- * @param   RefSpadCount                 Number of ref spads.
- * @param   RefSpadLocation              Defines location for the  spads.
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_SetReferenceSpads(VL53L1_DEV Dev,
-	uint8_t RefSpadCount, uint8_t RefSpadLocation);
-
-/**
- * @brief Retrieves SPAD configuration
- *
- * @par Function Description
- * This function retrieves the current number of applied reference spads
- * and also their type : Aperture or Non-Aperture.
- *
- * @param   Dev                          Device Handle
- * @param   pRefSpadCount                Number ref Spad Count
- * @param   pRefSpadLocation             Reports the spads locations
- * @return  VL53L1_ERROR_NOT_IMPLEMENTED
- */
-VL53L1_Error VL53L1_GetReferenceSpads(VL53L1_DEV Dev,
 	uint8_t *pRefSpadCount, uint8_t *pRefSpadLocation);
 
 /** @} VL53L1_SPADfunctions_group */
