@@ -93,116 +93,62 @@
 
 
 
+#include "vl53l1_ll_def.h"
+#include "vl53l1_platform_log.h"
+#include "vl53l1_zone_presets.h"
 
-#include <stdio.h>
-
-#include <string.h>
-
-#include <stdlib.h>
-
-
-
-
-
-
-
-#include "vl53l1_core.h"
-#include "vl53l1_register_settings.h"
-#include "vl53l1_hist_structs.h"
-#include "vl53l1_hist_char.h"
 
 #define LOG_FUNCTION_START(fmt, ...) \
-	_LOG_FUNCTION_START(VL53L1_TRACE_MODULE_HISTOGRAM, fmt, ##__VA_ARGS__)
+	_LOG_FUNCTION_START(VL53L1_TRACE_MODULE_CORE, fmt, ##__VA_ARGS__)
 #define LOG_FUNCTION_END(status, ...) \
-	_LOG_FUNCTION_END(VL53L1_TRACE_MODULE_HISTOGRAM, status, ##__VA_ARGS__)
+	_LOG_FUNCTION_END(VL53L1_TRACE_MODULE_CORE, status, ##__VA_ARGS__)
 #define LOG_FUNCTION_END_FMT(status, fmt, ...) \
-	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_HISTOGRAM, status, fmt, ##__VA_ARGS__)
-
-#define trace_print(level, ...) \
-	VL53L1_trace_print_module_function(VL53L1_TRACE_MODULE_HISTOGRAM, level, VL53L1_TRACE_FUNCTION_NONE, ##__VA_ARGS__)
+	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_CORE, status, fmt, ##__VA_ARGS__)
 
 
-VL53L1_Error VL53L1_FCTN_00144(
-	VL53L1_DEV      Dev,
-	uint8_t         vcsel_delay__a0,
-	uint8_t         calib_1,
-	uint8_t         calib_2,
-	uint8_t         calib_3,
-	uint8_t         calib_2__a0,
-	uint8_t         spad_readout)
+VL53L1_Error VL53L1_FCTN_00082(
+	uint8_t x_off,
+	uint8_t x_inc,
+	uint8_t x_zones,
+	uint8_t y_off,
+	uint8_t y_inc,
+	uint8_t y_zones,
+	uint8_t VL53L1_PRM_00017,
+	uint8_t VL53L1_PRM_00018,
+	VL53L1_zone_config_t   *pdata)
 {
 
 
 
 
 
-	VL53L1_Error status       = VL53L1_ERROR_NONE;
-	uint8_t      comms_buffer[VL53L1_MAX_I2C_XFER_SIZE];
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	uint8_t  x  = 0;
+	uint8_t  y  = 0;
+	uint16_t  i  = 0;
 
 	LOG_FUNCTION_START("");
 
+	pdata->VL53L1_PRM_00019 = VL53L1_MAX_USER_ZONES;
 
+	i = 0;
 
+	for (x = 0 ; x < x_zones ; x++) {
+		for (y = 0 ; y <  y_zones ; y++) {
 
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00019(Dev);
+			if (i < VL53L1_MAX_USER_ZONES) {
 
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+				pdata->VL53L1_PRM_00020 = (uint8_t)i;
+				pdata->VL53L1_PRM_00021[i].VL53L1_PRM_00018   = VL53L1_PRM_00018;
+				pdata->VL53L1_PRM_00021[i].VL53L1_PRM_00017    = VL53L1_PRM_00017;
+				pdata->VL53L1_PRM_00021[i].VL53L1_PRM_00015 = x_off + (x * x_inc);
+				pdata->VL53L1_PRM_00021[i].VL53L1_PRM_00016 = y_off + (y * y_inc);
+			}
 
-
-
-
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_WrByte(
-					Dev,
-					VL53L1_DEF_00170,
-					vcsel_delay__a0);
-
-
-
-
-	if (status == VL53L1_ERROR_NONE)
-
-
-
-
-
-
-
-		comms_buffer[0] = calib_1;
-		comms_buffer[1] = calib_2;
-		comms_buffer[2] = calib_3;
-
-		status = VL53L1_WriteMulti(
-					Dev,
-					VL53L1_DEF_00171,
-					comms_buffer,
-					3);
-
-
-
-
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_WrByte(
-					Dev,
-					VL53L1_DEF_00172,
-					calib_2__a0);
-
-
-
-
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_WrByte(
-					Dev,
-					VL53L1_DEF_00173,
-					spad_readout);
-
-
-
-
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+			i++;
+		}
+	}
 
 	LOG_FUNCTION_END(status);
 
@@ -210,70 +156,60 @@ VL53L1_Error VL53L1_FCTN_00144(
 }
 
 
-
-VL53L1_Error VL53L1_FCTN_00145(
-	VL53L1_DEV      Dev,
-	uint8_t         calib_delay)
+VL53L1_Error VL53L1_FCTN_00081(
+	VL53L1_general_config_t	*pgeneral,
+	VL53L1_zone_config_t    *pzone_cfg)
 {
 
 
 
 
 
-	VL53L1_Error status       = VL53L1_ERROR_NONE;
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
 
 	LOG_FUNCTION_START("");
 
-	status =
-		VL53L1_FCTN_00144(
-			Dev,
-			0x01,
 
-			calib_delay,
 
-			0x04,
 
-			0x08,
 
-			0x14,
 
-			VL53L1_DEF_00174);
+	pgeneral->VL53L1_PRM_00119 = 0x05;
+
+
+
+	pzone_cfg->VL53L1_PRM_00020                 = 0x04;
+
+	pzone_cfg->VL53L1_PRM_00021[0].VL53L1_PRM_00018         = 15;
+	pzone_cfg->VL53L1_PRM_00021[0].VL53L1_PRM_00017          = 7;
+	pzone_cfg->VL53L1_PRM_00021[0].VL53L1_PRM_00015       = 4;
+	pzone_cfg->VL53L1_PRM_00021[0].VL53L1_PRM_00016       = 8;
+
+	pzone_cfg->VL53L1_PRM_00021[1].VL53L1_PRM_00018         = 15;
+	pzone_cfg->VL53L1_PRM_00021[1].VL53L1_PRM_00017          = 7;
+	pzone_cfg->VL53L1_PRM_00021[1].VL53L1_PRM_00015       = 12;
+	pzone_cfg->VL53L1_PRM_00021[1].VL53L1_PRM_00016       = 8;
+
+	pzone_cfg->VL53L1_PRM_00021[2].VL53L1_PRM_00018         = 7;
+	pzone_cfg->VL53L1_PRM_00021[2].VL53L1_PRM_00017          = 15;
+	pzone_cfg->VL53L1_PRM_00021[2].VL53L1_PRM_00015       = 8;
+	pzone_cfg->VL53L1_PRM_00021[2].VL53L1_PRM_00016       = 4;
+
+	pzone_cfg->VL53L1_PRM_00021[3].VL53L1_PRM_00018         = 7;
+	pzone_cfg->VL53L1_PRM_00021[3].VL53L1_PRM_00017          = 15;
+	pzone_cfg->VL53L1_PRM_00021[3].VL53L1_PRM_00015       = 8;
+	pzone_cfg->VL53L1_PRM_00021[3].VL53L1_PRM_00016       = 12;
+
+
+
+
+	pzone_cfg->VL53L1_PRM_00021[4].VL53L1_PRM_00018         = 15;
+	pzone_cfg->VL53L1_PRM_00021[4].VL53L1_PRM_00017          = 15;
+	pzone_cfg->VL53L1_PRM_00021[4].VL53L1_PRM_00015       = 8;
+	pzone_cfg->VL53L1_PRM_00021[4].VL53L1_PRM_00016       = 8;
 
 	LOG_FUNCTION_END(status);
 
 	return status;
 }
-
-
-VL53L1_Error VL53L1_FCTN_00146(
-	VL53L1_DEV      Dev)
-{
-
-
-
-
-
-	VL53L1_Error status       = VL53L1_ERROR_NONE;
-
-	LOG_FUNCTION_START("");
-
-	status =
-		VL53L1_FCTN_00144(
-			Dev,
-			0x00,
-
-			0x00,
-
-			0x00,
-
-			0x00,
-
-			0x00,
-
-			VL53L1_DEF_00175);
-
-	LOG_FUNCTION_END(status);
-
-	return status;
-}
-
