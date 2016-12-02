@@ -42,32 +42,17 @@
 
 #include "vl53l1_platform.h"
 
-VL53L1_API VL53L1_Error VL53L1_ipp_hist_process_data(
+VL53L1_Error VL53L1_ipp_hist_process_data(
 	VL53L1_DEV                         Dev,
 	VL53L1_hist_post_process_config_t *ppost_cfg,
-	VL53L1_histogram_bin_data_t       *pbins,
-	VL53L1_histogram_bin_data_t       *pxtalk,
+	VL53L1_histogram_bin_data_t       *pbins0,
+	VL53L1_histogram_bin_data_t       *pbins1,
+	VL53L1_xtalk_histogram_data_t     *pxtalk,
 	VL53L1_range_results_t            *presults);
 
-
-/**
- * @brief  IPP Wrapper call for xtalk calibration post processing
- *
- * @param[in]      Dev
- * @param[in]      pxtalk_ranges
- *
- * @param[in]      pxtalk_hist
- * @param[out]     pxtalk_shape
- * @param[out]     pxtalk_cal
- *
- * @return   VL53L1_ERROR_NONE    Success
- * @return  "Other error code"    See ::VL53L1_Error
- */
-
-VL53L1_API VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
+VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 	VL53L1_DEV                          Dev,
 	VL53L1_xtalk_range_results_t       *pxtalk_ranges,
-	VL53L1_histogram_bin_data_t        *pxtalk_hist,
 	VL53L1_xtalk_histogram_data_t      *pxtalk_shape,
 	VL53L1_xtalk_calibration_results_t *pxtalk_cal);
 
