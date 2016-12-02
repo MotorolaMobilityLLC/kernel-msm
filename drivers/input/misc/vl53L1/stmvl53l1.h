@@ -75,19 +75,27 @@
 
 #define STMVL53L1_SLAVE_ADDR	(0x52>>1)
 
-#define DRIVER_VERSION		"1.0.0"
+#define DRIVER_VERSION		"5.0.0"
 
-/** enable debug
- * if don't want to have output from vl53l0_dbgmsg, comment out #DEBUG macro
+/**@defgroup  vl53l1_mod_dbg
+ *
+ * comment or not DEBUG in stmvl53l1.h to enable debug msg
+ *
+ * comment or not FORCE_CONSOLE_DEBUG in stmvl53l1.h  to force dbg msg
+ * as info log direct echo on main console (require debug)
  */
-//#define DEBUG	1
-/** when defined enable debug direct to main console and log */
-//#define FORCE_CONSOLE_DEBUG
 
-
-/**
- * set to 0 1 static config activate debug from work (data interrupt/polling)
+/** @ingroup vl53l1_mod_dbg
+ * @{
  */
+#if 0
+#define DEBUG	1
+#endif
+#if 0
+#define FORCE_CONSOLE_DEBUG
+#endif
+
+
 #ifdef DEBUG
 #	ifdef FORCE_CONSOLE_DEBUG
 #		define vl53l1_dbgmsg(str, ...)\
@@ -100,6 +108,9 @@
 #	define vl53l1_dbgmsg(...) (void)0
 #endif
 
+/**
+ * set to 0 1 static config activate debug from work (data interrupt/polling)
+ */
 #define WORK_DEBUG	0
 #if WORK_DEBUG
 #	define work_dbg(msg, ...)\
@@ -117,6 +128,7 @@
 #define vl53l1_wanrmsg(str, args...) \
 	pr_warning("%s: " str, __func__, ##args)
 
+
 #define VL53L0_VDD_MIN      2600000
 #define VL53L0_VDD_MAX      3000000
 
@@ -129,27 +141,34 @@
 #	define STMVL53L1_LOG_CCI_TIMING	0
 #endif
 
+/**@} */ /* ingroup mod_dbg*/
+
 #include <net/sock.h>
 #include <linux/netlink.h>
 #include <linux/wait.h>
 
 
-/** defgroup ipp_abort  abort and stop during ipp call
+/**
+ * @mainpage
+ * @section ipp_abort abort and stop during ipp call
  *
- *  device will not be locked and IPP can be aborted "while it fly" so we can
- *  accept and executed stop/abort and flush (android) accept other command
- *  in a say "no block"  or reasonable "no wait" time
+ *  device will not be locked "while ipp fly" between kernel and user so we can
+ *  accept and executed stop/abort and flush (android) other command
+ *  in a say "no block" or reasonable "no wait" time
  *
  *  That is to ensure if anything goes wrong in user space (slow, dies ) driver
  *  is  not maintain in a dead-locked for ever state.
  *
- *  If an ipp is aborted from a stop/abort their's a rare but possible scenarios
- *  where a races can occur causing possibly a deadlock or bad-handling.
+ *  In case range is stoped/aborted while ipp fly their's a rare but possible
+ *  scenarios where a races can occur causing possibly a deadlock,bad-handling
+ *  if restarting very quickly.\n
  *  This can be eliminated by putting some requirement constrains on
- *  back to back execution of stop re-start (wait previous flying ipp) .
+ *  back to back execution of stop re-start and dedicatin a  wait queue
+ *  (to wait previous flying ipp) .
  *
  *  In a  second step we' could make "start " blocking to eliminated this
  *  (extra wait queue)
+ *  @warning beware that is not handled rigth now !
  */
 
 /** if set to 1 enable ipp execution timing */
@@ -159,21 +178,25 @@ struct ipp_data_t {
 	struct ipp_work_t work_out;
 	int test_n;
 	int buzy;	/*!< buzy state 0 is idle
-	any other value do not try to use (state value defined in source) */
+	 * any other value do not try to use (state value defined in source)
+	*/
 	int waited_xfer_id;
 	/*!< when buzy is set that is the id we are expecting
 	 * note that value 0 is reserved and stand for "not waiting"
 	 * as such never id 0 will be in any round trip exchange
-	 * it's ok for daemon to use 0 in "ping" when it identify himself */
+	 * it's ok for daemon to use 0 in "ping" when it identify himself
+	*/
 	int status;	/** if that is not 0 do not look at out work data */
 	struct mutex mutex;
 	/*!< the mutex that shall be held when looking at this struct
 	 * but holding the main lock could be enough in opposite holding this
-	lock does not granted using the device data without work lock */
+	lock does not granted using the device data without work lock
+	*/
 	wait_queue_head_t waitq;
 	/*!< ipp caller are put in that queue wait while job is posted to user
 	 * @warning  ipp and dev mutex will be released before waiting
-	 * see @ref ipp_abort */
+	 * see @ref ipp_abort
+	*/
 #if IPP_LOG_TIMING
 	struct timeval start_tv, stop_tv;
 #endif
@@ -236,6 +259,10 @@ struct stmvl53l1_data {
 		/* non mode 1 for data agregation */
 	} meas;
 
+	/* workqueue use to fire flush event */
+	struct delayed_work flush_work;
+	uint32_t flushCount;
+
 	/* Device parameters */
 	/* Polling thread */
 	/* Wait Queue on which the poll thread blocks */
@@ -268,6 +295,8 @@ struct stmvl53l1_data {
  * @param pstop_tv
  */
 long stmvl53l1_tv_dif(struct timeval *pstart_tv, struct timeval *pstop_tv);
+
+
 /**
  * The device table list table is update as device get added
  * we do not support adding removing device mutiple time !
@@ -278,6 +307,7 @@ extern struct stmvl53l1_data *stmvl53l1_dev_table[];
 int stmvl53l1_setup(struct stmvl53l1_data *data);
 void stmvl53l1_cleanup(struct stmvl53l1_data *data);
 int stmvl53l1_intr_handler(struct stmvl53l1_data *data);
+
 
 /**
  * request ipp to abort or stop
@@ -295,7 +325,7 @@ int stmvl53l1_intr_handler(struct stmvl53l1_data *data);
  */
 int stmvl53l1_ipp_stop(struct stmvl53l1_data *data);
 
-int stmvl53l1_ipp_do(struct stmvl53l1_data *data , struct ipp_work_t *work_in,
+int stmvl53l1_ipp_do(struct stmvl53l1_data *data, struct ipp_work_t *work_in,
 		struct ipp_work_t *work_out);
 
 /**
@@ -326,12 +356,11 @@ void __exit stmvl53l1_ipp_exit(void);
 /**
  * enable and start ipp exhange
  * @param n_dev number of device to run on
+ * @param data  dev struct
  * @return 0 on success
  */
 int stmvl53l1_ipp_enable(int n_dev, struct stmvl53l1_data *data);
 
-/*FIXMEto be removed */
-int ipp_test(struct stmvl53l1_data *data);
 
 /*
  *  function pointer structs
