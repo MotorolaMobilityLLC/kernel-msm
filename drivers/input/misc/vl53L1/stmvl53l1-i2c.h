@@ -49,12 +49,14 @@ struct i2c_data {
 
 	/*!< xsdn reset (low active) gpio number to device
 	 *
-	 *  -1  mean none assume no "resetable" */
+	 *  -1  mean none assume no "resetable"
+	*/
 	int xsdn_gpio;
 
 	/*!< power enable gpio number
 	 *
-	 * if -1 no gpio if vana not avl pwr is not controllable */
+	 * if -1 no gpio if vana not avl pwr is not controllable
+	*/
 	int pwren_gpio;
 
 	/*!< intr gpio number to device
@@ -62,7 +64,8 @@ struct i2c_data {
 	 *  intr is active/low negative edge by default
 	 *
 	 *  -1  mean none assume use polling
-	 *  @warning if the dev tree and intr gpio is require please adapt code */
+	 *  @warning if the dev tree and intr gpio is require please adapt code
+	*/
 	int intr_gpio;
 	/*!< is set if above irq gpio got acquired */
 
@@ -71,15 +74,16 @@ struct i2c_data {
 		unsigned xsdn_owned:1; /*!< set if sxdn  gpio is owned*/
 		unsigned intr_owned:1; /*!< set if intr  gpio is owned*/
 		unsigned intr_started:1; /*!< set if irq is hanlde  */
-	}io_flag;
+	} io_flag;
 
 	/** the irq vectore assigned to gpio
-	 * -1 if no irq hanled*/
+	 * -1 if no irq hanled
+	*/
 	int irq;
 
 	struct msgtctrl_t {
 		unsigned unhandled_irq_vec:1;
-	}msg_flag;
+	} msg_flag;
 
 	/*!< TODOactual power state when gpio is used */
 	uint8_t power_up;
