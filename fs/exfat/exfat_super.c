@@ -816,7 +816,7 @@ out:
 	}
 #else
 	dentry = d_splice_alias(inode, dentry);
-	if (dentry)
+	if (dentry && !IS_ERR(dentry))
 		dentry->d_time = dentry->d_parent->d_inode->i_version;
 #endif
 	DPRINTK("exfat_lookup exited 2\n");
