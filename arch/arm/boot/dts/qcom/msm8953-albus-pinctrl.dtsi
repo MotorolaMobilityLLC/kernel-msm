@@ -324,4 +324,31 @@
 			};
 		};
 	};
+
+	i2c_2 {
+		laser_active: laser_active {
+			mux {
+				pins = "gpio129";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio129";
+				drive-strength = <2>;
+				bias-pull-up; /* PULL UP */
+			};
+		};
+		laser_suspend: laser_suspend{
+			mux {
+				pins = "gpio129";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio129";
+				drive-strength = <2>;
+				bias-disable; /* NO PULL */
+			};
+		};
+	};
 };
