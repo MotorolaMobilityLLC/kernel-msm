@@ -27,7 +27,7 @@
 * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-********************************************************************************/
+*******************************************************************************/
 /**
  * @file  vl53l1_types.h
  * @brief VL53L1 types definition
@@ -41,14 +41,16 @@
 #include <linux/types.h>
 /** use where fractional values are expected
  *
- * Given a floating point value f it's .16 bit point is (int)(f*(1<<16))*/
+ * Given a floating point value f it's .16 bit point is (int)(f*(1<<16))
+ */
 typedef uint32_t FixPoint1616_t;
 
 
-#define VL53L1_MAX_USER_ZONES                16
+#define VL53L1_MAX_USER_ZONES                169
 	/*!< Max number of user Zones */
 #define VL53L1_MAX_RANGE_RESULTS              4
 	/*!< Sets the maximum number of targets distances the histogram
-	 * post processing can generate */
+	 * post processing can generate
+	 */
 
 #endif /* VL53L1_TYPES_H_ */

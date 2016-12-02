@@ -1,30 +1,8 @@
 
 /*
+* This file is part of VL53L1 Platform
+*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license'
-* or 'BSD 3-clause "New" or "Revised" License' , at your option.
-*
-********************************************************************************
-*
-* 'STMicroelectronics Proprietary license'
-*
-********************************************************************************
-*
-* License terms: STMicroelectronics Proprietary in accordance with licensing terms at www.st.com/sla0044
-*
-* STMicroelectronics confidential
-* Reproduction and Communication of this document is strictly prohibited unless
-* specifically authorized in writing by STMicroelectronics.
-*
-*
-********************************************************************************
-*
-* Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones
-* mentioned above :
-*
-********************************************************************************
 *
 * License terms: BSD 3-clause "New" or "Revised" License.
 *
@@ -53,78 +31,34 @@
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *
-*
-********************************************************************************
-*
 */
 
+#ifndef _VL53L1_PLATFORM_USER_CONFIG_H_
+#define _VL53L1_PLATFORM_USER_CONFIG_H_
 
+#define    VL53L1_MAX_STRING_LENGTH         100
 
+#define    VL53L1_MAX_I2C_XFER_SIZE         256
 
+#define    VL53L1_BYTES_PER_WORD              2
+#define    VL53L1_BYTES_PER_DWORD             4
 
+#define VL53L1_BOOT_COMPLETION_POLLING_TIMEOUT_MS     500
+#define VL53L1_RANGE_COMPLETION_POLLING_TIMEOUT_MS   1000
+#define VL53L1_TEST_COMPLETION_POLLING_TIMEOUT_MS   10000
 
+#define VL53L1_POLLING_DELAY_MS                         1
 
+#define VL53L1_MAX_XTALK_RANGE_RESULTS        5
 
+#define VL53L1_MAX_OFFSET_RANGE_RESULTS       2
 
+#define VL53L1_MAX_USER_ZONES                 169
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#ifndef _VL53L1_FPGA_CORE_H_
-#define _VL53L1_FPGA_CORE_H_
-
-#include "vl53l1_platform.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-VL53L1_Error VL53L1_FCTN_00143(
-	VL53L1_DEV      Dev,
-	uint8_t        *pready);
-
-
+#define VL53L1_MAX_RANGE_RESULTS              4
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
