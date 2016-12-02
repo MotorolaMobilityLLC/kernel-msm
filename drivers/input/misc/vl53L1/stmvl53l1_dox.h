@@ -45,8 +45,8 @@
 /**
  * select i2c/cci and h/w control  module interface used in driver
  *
- * CAMERA_CCI defined select msm cci  interface MODULE
- * when nTo defined linux native i2c interface is used
+ * CAMERA_CCI defined select msm cci interface MODULE\n
+ * when not defined linux native i2c interface is used
  *
  * module interface see @a stmvl53l1_module_fn_t
  */
@@ -98,5 +98,24 @@
  *
  * this i2c + gpio interface module is use  when @ref CAMERA_CCI isn't set
  */
+
+/**@defgroup ipp_dev  IPP information
+ *
+ * @section ipp_dev_info IPP stand for Ip Protected Processing ST proprietary and patented that cannot
+ * be included as kernel GPL code.
+ *
+ * A couple IPP call form the STbare driver comes to the kernel driver
+ * that will pass this to user space daemon.
+ *
+ * this is done by serializing function arguments and passing them
+ * to and from the user space.
+ *
+ * Serialization is done ipp/ipp_linux.c mainly using macro from stmvl53l1_ipp.h
+ * (shared with user space).\n
+ * The data is then pass to ipp netlink layer in stmvl53l1_ipp_nl.c
+ * @note  mmap/file io and or ioctl could be used to implement a different
+ * ipp data channel.
+ */
+
 
 #error "This file must not be included in source used for doc purpose !!!"
