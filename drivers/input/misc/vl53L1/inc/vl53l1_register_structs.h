@@ -1,61 +1,61 @@
 
-/* 
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved 
-* 
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license' 
-* or 'BSD 3-clause "New" or "Revised" License' , at your option. 
-* 
-******************************************************************************** 
-* 
-* 'STMicroelectronics Proprietary license' 
-* 
-******************************************************************************** 
-* 
+/*
+* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
+*
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license'
+* or 'BSD 3-clause "New" or "Revised" License' , at your option.
+*
+********************************************************************************
+*
+* 'STMicroelectronics Proprietary license'
+*
+********************************************************************************
+*
 * License terms: STMicroelectronics Proprietary in accordance with licensing terms at www.st.com/sla0044
 *
-* STMicroelectronics confidential 
-* Reproduction and Communication of this document is strictly prohibited unless 
+* STMicroelectronics confidential
+* Reproduction and Communication of this document is strictly prohibited unless
 * specifically authorized in writing by STMicroelectronics.
-*  
-* 
-******************************************************************************** 
-* 
-* Alternatively, VL53L1 Core may be distributed under the terms of 
-* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones 
-* mentioned above : 
-* 
-******************************************************************************** 
-* 
-* License terms: BSD 3-clause "New" or "Revised" License. 
-* 
-* Redistribution and use in source and binary forms, with or without 
-* modification, are permitted provided that the following conditions are met: 
-* 
-* 1. Redistributions of source code must retain the above copyright notice, this 
-* list of conditions and the following disclaimer. 
-* 
-* 2. Redistributions in binary form must reproduce the above copyright notice, 
-* this list of conditions and the following disclaimer in the documentation 
-* and/or other materials provided with the distribution. 
-* 
-* 3. Neither the name of the copyright holder nor the names of its contributors 
-* may be used to endorse or promote products derived from this software 
-* without specific prior written permission. 
-* 
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE 
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
-* 
-* 
-******************************************************************************** 
-* 
+*
+*
+********************************************************************************
+*
+* Alternatively, VL53L1 Core may be distributed under the terms of
+* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones
+* mentioned above :
+*
+********************************************************************************
+*
+* License terms: BSD 3-clause "New" or "Revised" License.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+* 1. Redistributions of source code must retain the above copyright notice, this
+* list of conditions and the following disclaimer.
+*
+* 2. Redistributions in binary form must reproduce the above copyright notice,
+* this list of conditions and the following disclaimer in the documentation
+* and/or other materials provided with the distribution.
+*
+* 3. Neither the name of the copyright holder nor the names of its contributors
+* may be used to endorse or promote products derived from this software
+* without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+*
+********************************************************************************
+*
 */
 
 
@@ -101,49 +101,49 @@
 #include "vl53l1_types.h"
 #include "vl53l1_register_map.h"
 
-#define VL53L1_DEF_00068               VL53L1_DEF_00004
-#define VL53L1_DEF_00069             VL53L1_DEF_00032
-#define VL53L1_DEF_00071                    VL53L1_DEF_00155
-#define VL53L1_DEF_00073                   VL53L1_DEF_00156
-#define VL53L1_DEF_00075                    VL53L1_DEF_00157
-#define VL53L1_DEF_00077                   VL53L1_DEF_00158
-#define VL53L1_DEF_00078                   VL53L1_DEF_00138
-#define VL53L1_DEF_00087                   VL53L1_DEF_00159
-#define VL53L1_DEF_00091                     VL53L1_DEF_00160
-#define VL53L1_DEF_00088                    VL53L1_DEF_00097
-#define VL53L1_DEF_01412                    VL53L1_DEF_00162
-#define VL53L1_DEF_01413       VL53L1_DEF_00164
-#define VL53L1_DEF_01414         VL53L1_DEF_00166
-#define VL53L1_DEF_01415                      VL53L1_DEF_00168
-#define VL53L1_DEF_01416               VL53L1_DEF_00170
-#define VL53L1_DEF_01417                VL53L1_DEF_00172
-#define VL53L1_DEF_01418                VL53L1_DEF_00174
-#define VL53L1_DEF_01419                      VL53L1_DEF_00176
-#define VL53L1_DEF_01420                    VL53L1_DEF_00178
-#define VL53L1_DEF_01421            VL53L1_DEF_00180
-#define VL53L1_DEF_01422              VL53L1_DEF_00182
+#define VL53L1_DEF_00084               VL53L1_DEF_00001
+#define VL53L1_DEF_00085             VL53L1_DEF_00034
+#define VL53L1_DEF_00087                    VL53L1_DEF_00176
+#define VL53L1_DEF_00089                   VL53L1_DEF_00177
+#define VL53L1_DEF_00091                    VL53L1_DEF_00178
+#define VL53L1_DEF_00093                   VL53L1_DEF_00179
+#define VL53L1_DEF_00094                   VL53L1_DEF_00156
+#define VL53L1_DEF_00103                   VL53L1_DEF_00180
+#define VL53L1_DEF_00107                     VL53L1_DEF_00181
+#define VL53L1_DEF_00104                    VL53L1_DEF_00113
+#define VL53L1_DEF_01440                    VL53L1_DEF_00183
+#define VL53L1_DEF_01441       VL53L1_DEF_00185
+#define VL53L1_DEF_01442         VL53L1_DEF_00187
+#define VL53L1_DEF_01443                      VL53L1_DEF_00189
+#define VL53L1_DEF_01444               VL53L1_DEF_00191
+#define VL53L1_DEF_01445                VL53L1_DEF_00193
+#define VL53L1_DEF_01446                VL53L1_DEF_00195
+#define VL53L1_DEF_01447                      VL53L1_DEF_00197
+#define VL53L1_DEF_01448                    VL53L1_DEF_00199
+#define VL53L1_DEF_01449            VL53L1_DEF_00201
+#define VL53L1_DEF_01450              VL53L1_DEF_00203
 
-#define VL53L1_DEF_00080           11
-#define VL53L1_DEF_00081         23
-#define VL53L1_DEF_00082                32
-#define VL53L1_DEF_00083               22
-#define VL53L1_DEF_00084                23
-#define VL53L1_DEF_00085               18
-#define VL53L1_DEF_00079                5
-#define VL53L1_DEF_00093               44
-#define VL53L1_DEF_00092                 33
-#define VL53L1_DEF_00089                56
-#define VL53L1_DEF_00161                49
-#define VL53L1_DEF_00163   44
-#define VL53L1_DEF_00165     33
-#define VL53L1_DEF_00167                   2
-#define VL53L1_DEF_00169            5
-#define VL53L1_DEF_00171             6
-#define VL53L1_DEF_00173            16
-#define VL53L1_DEF_00175                   2
-#define VL53L1_DEF_00177                90
-#define VL53L1_DEF_00179        82
-#define VL53L1_DEF_00181          33
+#define VL53L1_DEF_00096           11
+#define VL53L1_DEF_00097         23
+#define VL53L1_DEF_00098                32
+#define VL53L1_DEF_00099               22
+#define VL53L1_DEF_00100                23
+#define VL53L1_DEF_00101               18
+#define VL53L1_DEF_00095                5
+#define VL53L1_DEF_00109               44
+#define VL53L1_DEF_00108                 33
+#define VL53L1_DEF_00105                56
+#define VL53L1_DEF_00182                49
+#define VL53L1_DEF_00184   44
+#define VL53L1_DEF_00186     33
+#define VL53L1_DEF_00188                   2
+#define VL53L1_DEF_00190            5
+#define VL53L1_DEF_00192             6
+#define VL53L1_DEF_00194            16
+#define VL53L1_DEF_00196                   2
+#define VL53L1_DEF_00198                90
+#define VL53L1_DEF_00200        82
+#define VL53L1_DEF_00202          33
 
 
 
@@ -157,7 +157,7 @@
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00274;
+	uint8_t   VL53L1_PRM_00320;
 
 
 
@@ -168,7 +168,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00275;
+	uint8_t   VL53L1_PRM_00321;
 
 
 
@@ -179,7 +179,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00276;
+	uint8_t   VL53L1_PRM_00322;
 
 
 
@@ -190,7 +190,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00277;
+	uint8_t   VL53L1_PRM_00323;
 
 
 
@@ -201,7 +201,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00278;
+	uint8_t   VL53L1_PRM_00324;
 
 
 
@@ -212,7 +212,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00012;
+	uint16_t  VL53L1_PRM_00011;
 
 
 
@@ -223,7 +223,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00279;
+	uint8_t   VL53L1_PRM_00325;
 
 
 
@@ -235,7 +235,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00280;
+	uint8_t   VL53L1_PRM_00326;
 
 
 
@@ -246,7 +246,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00281;
+	uint8_t   VL53L1_PRM_00327;
 
 
 
@@ -257,7 +257,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00282;
+	uint8_t   VL53L1_PRM_00328;
 
 
 
@@ -283,17 +283,6 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00052;
-
-
-
-
-
-
-
-
-
-
 	uint8_t   VL53L1_PRM_00053;
 
 
@@ -349,7 +338,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00283;
+	uint8_t   VL53L1_PRM_00058;
 
 
 
@@ -360,7 +349,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00050;
+	uint8_t   VL53L1_PRM_00329;
 
 
 
@@ -382,7 +371,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00072;
+	uint8_t   VL53L1_PRM_00052;
 
 
 
@@ -393,7 +382,7 @@ typedef struct {
 
 
 
-	int16_t   VL53L1_PRM_00070;
+	uint16_t  VL53L1_PRM_00080;
 
 
 
@@ -404,7 +393,7 @@ typedef struct {
 
 
 
-	int16_t   VL53L1_PRM_00071;
+	int16_t   VL53L1_PRM_00078;
 
 
 
@@ -415,7 +404,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00077;
+	int16_t   VL53L1_PRM_00079;
 
 
 
@@ -426,7 +415,7 @@ typedef struct {
 
 
 
-	int16_t   VL53L1_PRM_00284;
+	uint16_t  VL53L1_PRM_00102;
 
 
 
@@ -437,7 +426,7 @@ typedef struct {
 
 
 
-	int16_t   VL53L1_PRM_00285;
+	int16_t   VL53L1_PRM_00084;
 
 
 
@@ -448,7 +437,18 @@ typedef struct {
 
 
 
-	int16_t   VL53L1_PRM_00286;
+	int16_t   VL53L1_PRM_00082;
+
+
+
+
+
+
+
+
+
+
+	int16_t   VL53L1_PRM_00083;
 
 
 
@@ -473,572 +473,7 @@ typedef struct {
 
 
 typedef struct {
-	uint16_t  VL53L1_PRM_00163;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00164;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00165;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00166;
-
-
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00167;
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00168;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00169;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00170;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00171;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00172;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00173;
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00078;
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00174;
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00175;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00176;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00114;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00177;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00178;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00179;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00159;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00180;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00181;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00182;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00183;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00184;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00185;
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00186;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00187;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00188;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00189;
-
-
-
-
-
-
-
-
-
-
-
-} VL53L1_static_config_t;
-
-
-
-
-
-
-
-
-
-
-
-
-typedef struct {
-	uint8_t   VL53L1_PRM_00190;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00191;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00192;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00111;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00193;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00113;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00075;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00194;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00195;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00196;
-
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00197;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00198;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00199;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00200;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00201;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00202;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00203;
-
-
-
-
-
-
-
-
-
-
-} VL53L1_general_config_t;
-
-
-
-
-
-
-
-
-
-
-
-
-typedef struct {
-	uint8_t   VL53L1_PRM_00204;
+	uint16_t  VL53L1_PRM_00204;
 
 
 
@@ -1082,95 +517,11 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00117;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00118;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00076;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00120;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00121;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00122;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00014;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00013;
-
-
-
-
-
-
-
 
 
 
 	uint8_t   VL53L1_PRM_00208;
+
 
 
 
@@ -1192,17 +543,6 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00090;
-
-
-
-
-
-
-
-
-
-
 	uint8_t   VL53L1_PRM_00210;
 
 
@@ -1214,7 +554,270 @@ typedef struct {
 
 
 
-} VL53L1_timing_config_t;
+	uint8_t   VL53L1_PRM_00211;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00212;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00213;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00214;
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00103;
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00215;
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00216;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00217;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00143;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00218;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00219;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00220;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00200;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00221;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00222;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00223;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00224;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00225;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00226;
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00203;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00227;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00228;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00229;
+
+
+
+
+
+
+
+
+
+
+
+} VL53L1_static_config_t;
 
 
 
@@ -1228,6 +831,99 @@ typedef struct {
 
 
 typedef struct {
+	uint8_t   VL53L1_PRM_00230;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00119;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00231;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00140;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00232;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00142;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00100;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00233;
+
+
+
+
+
+
+
+
+
+
 	uint8_t   VL53L1_PRM_00234;
 
 
@@ -1239,8 +935,8 @@ typedef struct {
 
 
 
+	uint8_t   VL53L1_PRM_00235;
 
-	uint16_t  VL53L1_PRM_00235;
 
 
 
@@ -1262,7 +958,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00237;
+	uint16_t  VL53L1_PRM_00237;
 
 
 
@@ -1273,8 +969,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00238;
-
+	uint16_t  VL53L1_PRM_00238;
 
 
 
@@ -1329,8 +1024,21 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00243;
+} VL53L1_general_config_t;
 
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+	uint8_t   VL53L1_PRM_00243;
 
 
 
@@ -1352,48 +1060,7 @@ typedef struct {
 
 
 
-
 	uint8_t   VL53L1_PRM_00245;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00091;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00092;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00024;
-
-
-
-
-
-
-
 
 
 
@@ -1415,9 +1082,7 @@ typedef struct {
 
 
 
-
-} VL53L1_dynamic_config_t;
-
+	uint8_t   VL53L1_PRM_00146;
 
 
 
@@ -1428,9 +1093,73 @@ typedef struct {
 
 
 
+	uint8_t   VL53L1_PRM_00147;
 
-typedef struct {
-	uint8_t   VL53L1_PRM_00250;
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00101;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00148;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00149;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00150;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00013;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00012;
 
 
 
@@ -1463,6 +1192,17 @@ typedef struct {
 
 
 
+	uint32_t  VL53L1_PRM_00114;
+
+
+
+
+
+
+
+
+
+
 	uint8_t   VL53L1_PRM_00249;
 
 
@@ -1474,8 +1214,268 @@ typedef struct {
 
 
 
+} VL53L1_timing_config_t;
 
-	uint8_t   VL53L1_PRM_00097;
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+	uint8_t   VL53L1_PRM_00125;
+
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00273;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00274;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00275;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00276;
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00277;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00278;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00279;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00280;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00126;
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00281;
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00282;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00115;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00116;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00023;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00127;
+
+
+
+
+
+
+
+
+
+
+
+} VL53L1_dynamic_config_t;
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+	uint8_t   VL53L1_PRM_00286;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00283;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00284;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00285;
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00122;
 
 
 
@@ -1505,7 +1505,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00103;
+	uint8_t   VL53L1_PRM_00132;
 
 
 
@@ -1518,402 +1518,10 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00080;
+	uint8_t   VL53L1_PRM_00105;
 
 
 
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00081;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00027;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00128;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00129;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00132;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00133;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00134;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00135;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00258;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00259;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00260;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00131;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00142;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00143;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00144;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00145;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00146;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00147;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00261;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00262;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00263;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00264;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00287;
-
-
-
-
-
-
-
-
-
-
-
-} VL53L1_system_results_t;
-
-
-
-
-
-
-
-
-
-
-
-
-typedef struct {
-	uint32_t  VL53L1_PRM_00141;
-
-
-
-
-
-
-
-
-
-
-	uint32_t  VL53L1_PRM_00137;
-
-
-
-
-
-
-
-
-
-
-	int32_t   VL53L1_PRM_00138;
-
-
-
-
-
-
-
-
-
-
-	uint32_t  VL53L1_PRM_00139;
-
-
-
-
-
-
-
-
-
-
-	uint32_t  VL53L1_PRM_00151;
-
-
-
-
-
-
-
-
-
-
-	uint32_t  VL53L1_PRM_00148;
-
-
-
-
-
-
-
-
-
-
-	int32_t   VL53L1_PRM_00149;
-
-
-
-
-
-
-
-
-
-
-	uint32_t  VL53L1_PRM_00150;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00288;
-
-
-
-
-
-
-
-
-
-
-} VL53L1_core_results_t;
-
-
-
-
-
-
-
-
-
-
-
-
-typedef struct {
-	uint16_t  VL53L1_PRM_00105;
 
 
 
@@ -1935,7 +1543,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00047;
+	uint8_t   VL53L1_PRM_00026;
 
 
 
@@ -1946,7 +1554,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00048;
+	uint16_t  VL53L1_PRM_00162;
 
 
 
@@ -1957,7 +1565,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00289;
+	uint16_t  VL53L1_PRM_00297;
 
 
 
@@ -1968,7 +1576,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00290;
+	uint16_t  VL53L1_PRM_00166;
 
 
 
@@ -1979,7 +1587,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00291;
+	uint16_t  VL53L1_PRM_00167;
 
 
 
@@ -1990,7 +1598,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00089;
+	uint16_t  VL53L1_PRM_00169;
 
 
 
@@ -2001,7 +1609,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00292;
+	uint16_t  VL53L1_PRM_00170;
 
 
 
@@ -2012,8 +1620,8 @@ typedef struct {
 
 
 
+	uint16_t  VL53L1_PRM_00163;
 
-	uint8_t   VL53L1_PRM_00293;
 
 
 
@@ -2023,9 +1631,9 @@ typedef struct {
 
 
 
+	uint16_t  VL53L1_PRM_00298;
 
 
-	uint8_t   VL53L1_PRM_00294;
 
 
 
@@ -2034,39 +1642,40 @@ typedef struct {
 
 
 
+	uint16_t  VL53L1_PRM_00299;
 
 
 
 
-	uint8_t   VL53L1_PRM_00295;
 
 
 
 
 
 
+	uint16_t  VL53L1_PRM_00165;
 
 
 
 
 
 
-	uint8_t   VL53L1_PRM_00296;
 
 
 
 
+	uint16_t  VL53L1_PRM_00177;
 
 
 
 
 
 
-	uint8_t   VL53L1_PRM_00297;
 
 
 
 
+	uint16_t  VL53L1_PRM_00178;
 
 
 
@@ -2074,10 +1683,10 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00298;
 
 
 
+	uint16_t  VL53L1_PRM_00179;
 
 
 
@@ -2085,7 +1694,32 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00299;
+
+
+
+	uint16_t  VL53L1_PRM_00180;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00181;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00182;
 
 
 
@@ -2140,7 +1774,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00304;
+	uint8_t   VL53L1_PRM_00330;
 
 
 
@@ -2152,275 +1786,7 @@ typedef struct {
 
 
 
-
-	uint8_t   VL53L1_PRM_00305;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00306;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00307;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00308;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00309;
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00310;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00311;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00312;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00313;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00314;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00315;
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00269;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00270;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00271;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00272;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00273;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00316;
-
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00317;
-
-
-
-
-
-
-
-
-
-
-
-
-
-	uint32_t  VL53L1_PRM_00102;
-
-
-
-
-
-
-
-
-
-
-	uint32_t  VL53L1_PRM_00318;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00319;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00320;
-
-
-
-
-
-
-
-
-
-
-} VL53L1_debug_results_t;
+} VL53L1_system_results_t;
 
 
 
@@ -2434,7 +1800,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00321;
+	uint32_t  VL53L1_PRM_00176;
 
 
 
@@ -2445,7 +1811,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00005;
+	uint32_t  VL53L1_PRM_00172;
 
 
 
@@ -2456,7 +1822,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00004;
+	int32_t   VL53L1_PRM_00173;
 
 
 
@@ -2467,8 +1833,8 @@ typedef struct {
 
 
 
+	uint32_t  VL53L1_PRM_00174;
 
-	uint16_t  VL53L1_PRM_00322;
 
 
 
@@ -2478,8 +1844,8 @@ typedef struct {
 
 
 
+	uint32_t  VL53L1_PRM_00186;
 
-	uint8_t   VL53L1_PRM_00323;
 
 
 
@@ -2489,8 +1855,8 @@ typedef struct {
 
 
 
+	uint32_t  VL53L1_PRM_00183;
 
-	uint8_t   VL53L1_PRM_00324;
 
 
 
@@ -2500,8 +1866,8 @@ typedef struct {
 
 
 
+	int32_t   VL53L1_PRM_00184;
 
-	uint8_t   VL53L1_PRM_00325;
 
 
 
@@ -2511,52 +1877,7 @@ typedef struct {
 
 
 
-
-	uint8_t   VL53L1_PRM_00326;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00327;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00328;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00329;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00330;
+	uint32_t  VL53L1_PRM_00185;
 
 
 
@@ -2568,6 +1889,64 @@ typedef struct {
 
 
 	uint8_t   VL53L1_PRM_00331;
+
+
+
+
+
+
+
+
+
+
+} VL53L1_core_results_t;
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+	uint16_t  VL53L1_PRM_00134;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00135;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00048;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00049;
 
 
 
@@ -2611,7 +1990,19 @@ typedef struct {
 
 
 
+	uint16_t  VL53L1_PRM_00113;
+
+
+
+
+
+
+
+
+
+
 	uint8_t   VL53L1_PRM_00335;
+
 
 
 
@@ -2633,6 +2024,7 @@ typedef struct {
 
 
 
+
 	uint8_t   VL53L1_PRM_00337;
 
 
@@ -2644,7 +2036,11 @@ typedef struct {
 
 
 
+
+
 	uint8_t   VL53L1_PRM_00338;
+
+
 
 
 
@@ -2677,6 +2073,7 @@ typedef struct {
 
 
 
+
 	uint8_t   VL53L1_PRM_00341;
 
 
@@ -2699,7 +2096,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00343;
+	uint16_t  VL53L1_PRM_00343;
 
 
 
@@ -2710,7 +2107,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00344;
+	uint16_t  VL53L1_PRM_00344;
 
 
 
@@ -2721,7 +2118,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00345;
+	uint16_t  VL53L1_PRM_00345;
 
 
 
@@ -2744,6 +2141,8 @@ typedef struct {
 
 
 	uint8_t   VL53L1_PRM_00347;
+
+
 
 
 
@@ -2809,6 +2208,7 @@ typedef struct {
 
 
 
+
 	uint8_t   VL53L1_PRM_00353;
 
 
@@ -2853,6 +2253,13 @@ typedef struct {
 
 
 
+
+
+
+
+
+
+
 	uint8_t   VL53L1_PRM_00357;
 
 
@@ -2875,7 +2282,76 @@ typedef struct {
 
 
 
+
+	uint8_t   VL53L1_PRM_00315;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00316;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00317;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00318;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00319;
+
+
+
+
+
+
+
+
+
+
 	uint8_t   VL53L1_PRM_00359;
+
 
 
 
@@ -2897,7 +2373,21 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00361;
+
+
+
+	uint32_t  VL53L1_PRM_00131;
+
+
+
+
+
+
+
+
+
+
+	uint32_t  VL53L1_PRM_00361;
 
 
 
@@ -2930,40 +2420,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00364;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00093;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00094;
-
-
-
-
-
-
-
-
-
-
-} VL53L1_nvm_copy_data_t;
+} VL53L1_debug_results_t;
 
 
 
@@ -2977,9 +2434,41 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00365;
+	uint8_t   VL53L1_PRM_00364;
 
 
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00004;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00003;
+
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00365;
 
 
 
@@ -2991,9 +2480,6 @@ typedef struct {
 
 
 	uint8_t   VL53L1_PRM_00366;
-
-
-
 
 
 
@@ -3026,7 +2512,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00369;
+	uint8_t   VL53L1_PRM_00369;
 
 
 
@@ -3037,7 +2523,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00370;
+	uint8_t   VL53L1_PRM_00370;
 
 
 
@@ -3048,7 +2534,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00371;
+	uint8_t   VL53L1_PRM_00371;
 
 
 
@@ -3059,7 +2545,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00372;
+	uint8_t   VL53L1_PRM_00372;
 
 
 
@@ -3070,7 +2556,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00373;
+	uint8_t   VL53L1_PRM_00373;
 
 
 
@@ -3081,7 +2567,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00374;
+	uint8_t   VL53L1_PRM_00374;
 
 
 
@@ -3092,7 +2578,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00375;
+	uint8_t   VL53L1_PRM_00375;
 
 
 
@@ -3103,7 +2589,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00376;
+	uint8_t   VL53L1_PRM_00376;
 
 
 
@@ -3114,7 +2600,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00377;
+	uint8_t   VL53L1_PRM_00377;
 
 
 
@@ -3125,7 +2611,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00378;
+	uint8_t   VL53L1_PRM_00378;
 
 
 
@@ -3136,7 +2622,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00379;
+	uint8_t   VL53L1_PRM_00379;
 
 
 
@@ -3147,7 +2633,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00380;
+	uint8_t   VL53L1_PRM_00380;
 
 
 
@@ -3158,7 +2644,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00381;
+	uint8_t   VL53L1_PRM_00381;
 
 
 
@@ -3169,7 +2655,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00382;
+	uint8_t   VL53L1_PRM_00382;
 
 
 
@@ -3180,7 +2666,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00383;
+	uint8_t   VL53L1_PRM_00383;
 
 
 
@@ -3191,7 +2677,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00384;
+	uint8_t   VL53L1_PRM_00384;
 
 
 
@@ -3202,7 +2688,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00385;
+	uint8_t   VL53L1_PRM_00385;
 
 
 
@@ -3213,7 +2699,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00386;
+	uint8_t   VL53L1_PRM_00386;
 
 
 
@@ -3224,7 +2710,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00387;
+	uint8_t   VL53L1_PRM_00387;
 
 
 
@@ -3235,7 +2721,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00388;
+	uint8_t   VL53L1_PRM_00388;
 
 
 
@@ -3246,7 +2732,7 @@ typedef struct {
 
 
 
-} VL53L1_prev_shadow_system_results_t;
+	uint8_t   VL53L1_PRM_00389;
 
 
 
@@ -3257,10 +2743,9 @@ typedef struct {
 
 
 
+	uint8_t   VL53L1_PRM_00390;
 
 
-typedef struct {
-	uint32_t  VL53L1_PRM_00389;
 
 
 
@@ -3269,9 +2754,9 @@ typedef struct {
 
 
 
+	uint8_t   VL53L1_PRM_00391;
 
 
-	uint32_t  VL53L1_PRM_00390;
 
 
 
@@ -3280,9 +2765,9 @@ typedef struct {
 
 
 
+	uint8_t   VL53L1_PRM_00392;
 
 
-	int32_t   VL53L1_PRM_00391;
 
 
 
@@ -3291,9 +2776,9 @@ typedef struct {
 
 
 
+	uint8_t   VL53L1_PRM_00393;
 
 
-	uint32_t  VL53L1_PRM_00392;
 
 
 
@@ -3302,9 +2787,9 @@ typedef struct {
 
 
 
+	uint8_t   VL53L1_PRM_00394;
 
 
-	uint32_t  VL53L1_PRM_00393;
 
 
 
@@ -3313,9 +2798,9 @@ typedef struct {
 
 
 
+	uint8_t   VL53L1_PRM_00395;
 
 
-	uint32_t  VL53L1_PRM_00394;
 
 
 
@@ -3324,20 +2809,7 @@ typedef struct {
 
 
 
-
-
-	int32_t   VL53L1_PRM_00395;
-
-
-
-
-
-
-
-
-
-
-	uint32_t  VL53L1_PRM_00396;
+	uint8_t   VL53L1_PRM_00396;
 
 
 
@@ -3359,20 +2831,6 @@ typedef struct {
 
 
 
-} VL53L1_prev_shadow_core_results_t;
-
-
-
-
-
-
-
-
-
-
-
-
-typedef struct {
 	uint8_t   VL53L1_PRM_00398;
 
 
@@ -3395,7 +2853,7 @@ typedef struct {
 
 
 
-} VL53L1_patch_debug_t;
+	uint8_t   VL53L1_PRM_00400;
 
 
 
@@ -3406,21 +2864,7 @@ typedef struct {
 
 
 
-
-
-typedef struct {
-	uint16_t  VL53L1_PRM_00400;
-
-
-
-
-
-
-
-
-
-
-	uint16_t  VL53L1_PRM_00401;
+	uint8_t   VL53L1_PRM_00401;
 
 
 
@@ -3442,25 +2886,6 @@ typedef struct {
 
 
 
-
-
-
-
-
-} VL53L1_gph_general_config_t;
-
-
-
-
-
-
-
-
-
-
-
-
-typedef struct {
 	uint8_t   VL53L1_PRM_00403;
 
 
@@ -3472,8 +2897,7 @@ typedef struct {
 
 
 
-
-	uint16_t  VL53L1_PRM_00404;
+	uint8_t   VL53L1_PRM_00404;
 
 
 
@@ -3517,7 +2941,29 @@ typedef struct {
 
 
 
-} VL53L1_gph_static_config_t;
+	uint8_t   VL53L1_PRM_00117;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00118;
+
+
+
+
+
+
+
+
+
+
+} VL53L1_nvm_copy_data_t;
 
 
 
@@ -3542,7 +2988,12 @@ typedef struct {
 
 
 
+
+
 	uint8_t   VL53L1_PRM_00409;
+
+
+
 
 
 
@@ -3575,7 +3026,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00412;
+	uint16_t  VL53L1_PRM_00412;
 
 
 
@@ -3586,7 +3037,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00413;
+	uint16_t  VL53L1_PRM_00413;
 
 
 
@@ -3597,7 +3048,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00414;
+	uint16_t  VL53L1_PRM_00414;
 
 
 
@@ -3608,7 +3059,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00415;
+	uint16_t  VL53L1_PRM_00415;
 
 
 
@@ -3619,7 +3070,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00416;
+	uint16_t  VL53L1_PRM_00416;
 
 
 
@@ -3630,7 +3081,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00417;
+	uint16_t  VL53L1_PRM_00417;
 
 
 
@@ -3663,7 +3114,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00420;
+	uint16_t  VL53L1_PRM_00420;
 
 
 
@@ -3674,7 +3125,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00421;
+	uint16_t  VL53L1_PRM_00421;
 
 
 
@@ -3685,7 +3136,117 @@ typedef struct {
 
 
 
-} VL53L1_gph_timing_config_t;
+	uint16_t  VL53L1_PRM_00422;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00423;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00424;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00425;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00426;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00427;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00428;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00429;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00430;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00431;
+
+
+
+
+
+
+
+
+
+
+} VL53L1_prev_shadow_system_results_t;
 
 
 
@@ -3699,7 +3260,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00422;
+	uint32_t  VL53L1_PRM_00432;
 
 
 
@@ -3710,7 +3271,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00423;
+	uint32_t  VL53L1_PRM_00433;
 
 
 
@@ -3721,7 +3282,7 @@ typedef struct {
 
 
 
-} VL53L1_fw_internal_t;
+	int32_t   VL53L1_PRM_00434;
 
 
 
@@ -3732,10 +3293,9 @@ typedef struct {
 
 
 
+	uint32_t  VL53L1_PRM_00435;
 
 
-typedef struct {
-	uint8_t   VL53L1_PRM_00424;
 
 
 
@@ -3744,10 +3304,10 @@ typedef struct {
 
 
 
+	uint32_t  VL53L1_PRM_00436;
 
 
 
-	uint8_t   VL53L1_PRM_00425;
 
 
 
@@ -3755,10 +3315,10 @@ typedef struct {
 
 
 
+	uint32_t  VL53L1_PRM_00437;
 
 
 
-	uint8_t   VL53L1_PRM_00426;
 
 
 
@@ -3766,10 +3326,10 @@ typedef struct {
 
 
 
+	int32_t   VL53L1_PRM_00438;
 
 
 
-	uint8_t   VL53L1_PRM_00427;
 
 
 
@@ -3777,131 +3337,7 @@ typedef struct {
 
 
 
-
-
-
-	uint8_t   VL53L1_PRM_00428;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00429;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00430;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00431;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00432;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00433;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00434;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00435;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00436;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00437;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00438;
-
-
-
-
-
-
-
-
-
-
-	uint8_t   VL53L1_PRM_00439;
+	uint32_t  VL53L1_PRM_00439;
 
 
 
@@ -3923,6 +3359,20 @@ typedef struct {
 
 
 
+} VL53L1_prev_shadow_core_results_t;
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
 	uint8_t   VL53L1_PRM_00441;
 
 
@@ -3945,7 +3395,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00443;
+} VL53L1_patch_debug_t;
 
 
 
@@ -3956,7 +3406,21 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00444;
+
+
+typedef struct {
+	uint16_t  VL53L1_PRM_00443;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00444;
 
 
 
@@ -3978,6 +3442,25 @@ typedef struct {
 
 
 
+
+
+
+
+
+} VL53L1_gph_general_config_t;
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
 	uint8_t   VL53L1_PRM_00446;
 
 
@@ -3989,7 +3472,8 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00447;
+
+	uint16_t  VL53L1_PRM_00447;
 
 
 
@@ -4033,6 +3517,20 @@ typedef struct {
 
 
 
+} VL53L1_gph_static_config_t;
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
 	uint8_t   VL53L1_PRM_00451;
 
 
@@ -4143,7 +3641,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00461;
+	uint16_t  VL53L1_PRM_00461;
 
 
 
@@ -4154,7 +3652,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00462;
+	uint16_t  VL53L1_PRM_00462;
 
 
 
@@ -4187,6 +3685,20 @@ typedef struct {
 
 
 
+} VL53L1_gph_timing_config_t;
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
 	uint8_t   VL53L1_PRM_00465;
 
 
@@ -4209,7 +3721,22 @@ typedef struct {
 
 
 
+} VL53L1_fw_internal_t;
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
 	uint8_t   VL53L1_PRM_00467;
+
 
 
 
@@ -4231,7 +3758,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00469;
+	uint8_t   VL53L1_PRM_00469;
 
 
 
@@ -4242,7 +3769,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00470;
+	uint8_t   VL53L1_PRM_00470;
 
 
 
@@ -4253,7 +3780,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00471;
+	uint8_t   VL53L1_PRM_00471;
 
 
 
@@ -4264,7 +3791,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00472;
+	uint8_t   VL53L1_PRM_00472;
 
 
 
@@ -4286,7 +3813,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00474;
+	uint8_t   VL53L1_PRM_00474;
 
 
 
@@ -4297,7 +3824,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00475;
+	uint8_t   VL53L1_PRM_00475;
 
 
 
@@ -4308,7 +3835,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00476;
+	uint8_t   VL53L1_PRM_00476;
 
 
 
@@ -4319,7 +3846,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00477;
+	uint8_t   VL53L1_PRM_00477;
 
 
 
@@ -4330,7 +3857,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00478;
+	uint8_t   VL53L1_PRM_00478;
 
 
 
@@ -4341,7 +3868,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00479;
+	uint8_t   VL53L1_PRM_00479;
 
 
 
@@ -4352,7 +3879,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00480;
+	uint8_t   VL53L1_PRM_00480;
 
 
 
@@ -4363,7 +3890,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00481;
+	uint8_t   VL53L1_PRM_00481;
 
 
 
@@ -4374,7 +3901,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00482;
+	uint8_t   VL53L1_PRM_00482;
 
 
 
@@ -4385,7 +3912,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00483;
+	uint8_t   VL53L1_PRM_00483;
 
 
 
@@ -4396,20 +3923,6 @@ typedef struct {
 
 
 
-} VL53L1_patch_results_t;
-
-
-
-
-
-
-
-
-
-
-
-
-typedef struct {
 	uint8_t   VL53L1_PRM_00484;
 
 
@@ -4432,12 +3945,7 @@ typedef struct {
 
 
 
-
-
 	uint8_t   VL53L1_PRM_00486;
-
-
-
 
 
 
@@ -4470,7 +3978,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00489;
+	uint8_t   VL53L1_PRM_00489;
 
 
 
@@ -4481,7 +3989,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00490;
+	uint8_t   VL53L1_PRM_00490;
 
 
 
@@ -4492,7 +4000,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00491;
+	uint8_t   VL53L1_PRM_00491;
 
 
 
@@ -4503,7 +4011,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00492;
+	uint8_t   VL53L1_PRM_00492;
 
 
 
@@ -4514,7 +4022,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00493;
+	uint8_t   VL53L1_PRM_00493;
 
 
 
@@ -4525,7 +4033,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00494;
+	uint8_t   VL53L1_PRM_00494;
 
 
 
@@ -4536,7 +4044,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00495;
+	uint8_t   VL53L1_PRM_00495;
 
 
 
@@ -4547,7 +4055,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00496;
+	uint8_t   VL53L1_PRM_00496;
 
 
 
@@ -4558,7 +4066,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00497;
+	uint8_t   VL53L1_PRM_00497;
 
 
 
@@ -4569,7 +4077,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00498;
+	uint8_t   VL53L1_PRM_00498;
 
 
 
@@ -4580,7 +4088,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00499;
+	uint8_t   VL53L1_PRM_00499;
 
 
 
@@ -4591,7 +4099,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00500;
+	uint8_t   VL53L1_PRM_00500;
 
 
 
@@ -4602,7 +4110,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00501;
+	uint8_t   VL53L1_PRM_00501;
 
 
 
@@ -4613,7 +4121,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00502;
+	uint8_t   VL53L1_PRM_00502;
 
 
 
@@ -4624,7 +4132,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00503;
+	uint8_t   VL53L1_PRM_00503;
 
 
 
@@ -4635,7 +4143,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00504;
+	uint8_t   VL53L1_PRM_00504;
 
 
 
@@ -4646,7 +4154,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00505;
+	uint8_t   VL53L1_PRM_00505;
 
 
 
@@ -4657,7 +4165,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00506;
+	uint8_t   VL53L1_PRM_00506;
 
 
 
@@ -4668,7 +4176,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00507;
+	uint8_t   VL53L1_PRM_00507;
 
 
 
@@ -4701,7 +4209,6 @@ typedef struct {
 
 
 
-
 	uint8_t   VL53L1_PRM_00510;
 
 
@@ -4714,6 +4221,499 @@ typedef struct {
 
 
 	uint8_t   VL53L1_PRM_00511;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00512;
+
+
+
+
+
+
+
+
+
+
+	uint32_t  VL53L1_PRM_00513;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00514;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00515;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00516;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00517;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00518;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00519;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00520;
+
+
+
+
+
+
+
+
+
+
+	uint32_t  VL53L1_PRM_00521;
+
+
+
+
+
+
+
+
+
+
+	uint32_t  VL53L1_PRM_00522;
+
+
+
+
+
+
+
+
+
+
+	uint32_t  VL53L1_PRM_00523;
+
+
+
+
+
+
+
+
+
+
+	uint32_t  VL53L1_PRM_00524;
+
+
+
+
+
+
+
+
+
+
+	uint32_t  VL53L1_PRM_00525;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00526;
+
+
+
+
+
+
+
+
+
+
+} VL53L1_patch_results_t;
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+	uint8_t   VL53L1_PRM_00527;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00528;
+
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00529;
+
+
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00530;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00531;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00532;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00533;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00534;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00535;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00536;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00537;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00538;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00539;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00540;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00541;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00542;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00543;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00544;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00545;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00546;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00547;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00548;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00549;
+
+
+
+
+
+
+
+
+
+
+	uint16_t  VL53L1_PRM_00550;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00551;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00552;
+
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00553;
+
+
+
+
+
+
+
+
+
+
+	uint8_t   VL53L1_PRM_00554;
 
 
 
@@ -4738,7 +4738,7 @@ typedef struct {
 
 
 typedef struct {
-	uint32_t  VL53L1_PRM_00512;
+	uint32_t  VL53L1_PRM_00555;
 
 
 
@@ -4749,7 +4749,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00513;
+	uint32_t  VL53L1_PRM_00556;
 
 
 
@@ -4760,7 +4760,7 @@ typedef struct {
 
 
 
-	int32_t   VL53L1_PRM_00514;
+	int32_t   VL53L1_PRM_00557;
 
 
 
@@ -4771,7 +4771,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00515;
+	uint32_t  VL53L1_PRM_00558;
 
 
 
@@ -4782,7 +4782,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00516;
+	uint32_t  VL53L1_PRM_00559;
 
 
 
@@ -4793,7 +4793,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00517;
+	uint32_t  VL53L1_PRM_00560;
 
 
 
@@ -4804,7 +4804,7 @@ typedef struct {
 
 
 
-	int32_t   VL53L1_PRM_00518;
+	int32_t   VL53L1_PRM_00561;
 
 
 
@@ -4815,7 +4815,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00519;
+	uint32_t  VL53L1_PRM_00562;
 
 
 
@@ -4826,7 +4826,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00520;
+	uint8_t   VL53L1_PRM_00563;
 
 
 

@@ -1,60 +1,60 @@
-/* 
-* Copyright (c) 2016, STMicroelectronics - All Rights Reserved 
-* 
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license' 
-* or 'BSD 3-clause "New" or "Revised" License' , at your option. 
-* 
-******************************************************************************** 
-* 
-* 'STMicroelectronics Proprietary license' 
-* 
-******************************************************************************** 
-* 
+/*
+* Copyright (c) 2016, STMicroelectronics - All Rights Reserved
+*
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license'
+* or 'BSD 3-clause "New" or "Revised" License' , at your option.
+*
+********************************************************************************
+*
+* 'STMicroelectronics Proprietary license'
+*
+********************************************************************************
+*
 * License terms: STMicroelectronics Proprietary in accordance with licensing terms at www.st.com/sla0044
 *
-* STMicroelectronics confidential 
-* Reproduction and Communication of this document is strictly prohibited unless 
+* STMicroelectronics confidential
+* Reproduction and Communication of this document is strictly prohibited unless
 * specifically authorized in writing by STMicroelectronics.
-*  
-* 
-******************************************************************************** 
-* 
-* Alternatively, VL53L1 Core may be distributed under the terms of 
-* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones 
-* mentioned above : 
-* 
-******************************************************************************** 
-* 
-* License terms: BSD 3-clause "New" or "Revised" License. 
-* 
-* Redistribution and use in source and binary forms, with or without 
-* modification, are permitted provided that the following conditions are met: 
-* 
-* 1. Redistributions of source code must retain the above copyright notice, this 
-* list of conditions and the following disclaimer. 
-* 
-* 2. Redistributions in binary form must reproduce the above copyright notice, 
-* this list of conditions and the following disclaimer in the documentation 
-* and/or other materials provided with the distribution. 
-* 
-* 3. Neither the name of the copyright holder nor the names of its contributors 
-* may be used to endorse or promote products derived from this software 
-* without specific prior written permission. 
-* 
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE 
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
-* 
-* 
-******************************************************************************** 
-* 
+*
+*
+********************************************************************************
+*
+* Alternatively, VL53L1 Core may be distributed under the terms of
+* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones
+* mentioned above :
+*
+********************************************************************************
+*
+* License terms: BSD 3-clause "New" or "Revised" License.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+* 1. Redistributions of source code must retain the above copyright notice, this
+* list of conditions and the following disclaimer.
+*
+* 2. Redistributions in binary form must reproduce the above copyright notice,
+* this list of conditions and the following disclaimer in the documentation
+* and/or other materials provided with the distribution.
+*
+* 3. Neither the name of the copyright holder nor the names of its contributors
+* may be used to endorse or promote products derived from this software
+* without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+*
+********************************************************************************
+*
 */
 
 /**
@@ -68,7 +68,7 @@
 #ifndef _VL53L1_DEF_H_
 #define _VL53L1_DEF_H_
 
-#include "vl53l1_error_codes.h"
+#include "vl53l1_ll_def.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,17 +90,13 @@ extern "C" {
 #define VL53L1_SPECIFICATION_VER_REVISION 1440
 
 /** VL53L1 IMPLEMENTATION major version */
-#define VL53L1_IMPLEMENTATION_VER_MAJOR       2
+#define VL53L1_IMPLEMENTATION_VER_MAJOR       3
 /** VL53L1 IMPLEMENTATION minor version */
-#define VL53L1_IMPLEMENTATION_VER_MINOR       3
+#define VL53L1_IMPLEMENTATION_VER_MINOR       0
 /** VL53L1 IMPLEMENTATION sub version */
 #define VL53L1_IMPLEMENTATION_VER_SUB         0
 /** VL53L1 IMPLEMENTATION sub version */
-#define VL53L1_IMPLEMENTATION_VER_REVISION  753
-
-
-#include "vl53l1_types.h"
-#include "vl53l1_register_structs.h"
+#define VL53L1_IMPLEMENTATION_VER_REVISION  920
 
 
 /****************************************
@@ -116,8 +112,7 @@ typedef struct {
 	uint8_t      build;    /*!< build number */
 } VL53L1_Version_t;
 
-#include "vl53l1_ll_def.h"
-#include "vl53l1_ll_device.h"
+
 
 
 #define VL53L1_DEVINFO_STRLEN 32
@@ -130,9 +125,10 @@ typedef struct {
 	char Type[VL53L1_DEVINFO_STRLEN];
 		/*!< Type of the Device e.g VL53L1 */
 	char ProductId[VL53L1_DEVINFO_STRLEN];
-		/*!< Product Identifier String  */
+		/*!< Product Identifier String
+		 * @warning Not yet implemented */
 	uint8_t ProductType;
-		/*!< Product Type, VL53L1 = 1, VL53L1 = 2 */
+		/*!< Product Type, VL53L1 = 1, VL53L1 = 2*/
 	uint8_t ProductRevisionMajor;
 		/*!< Product revision major */
 	uint8_t ProductRevisionMinor;
@@ -147,29 +143,28 @@ typedef struct {
  */
 typedef uint8_t VL53L1_PresetModes;
 
-#define VL53L1_PRESETMODE_STANDARD_RANGING          ((VL53L1_PresetModes)  1)
-#define VL53L1_PRESETMODE_MULTI_OBJECT              ((VL53L1_PresetModes)  2)
-#define VL53L1_PRESETMODE_MULTI_ZONES               ((VL53L1_PresetModes)  3)
+#define VL53L1_PRESETMODE_RANGING                   ((VL53L1_PresetModes)  1)
+#define VL53L1_PRESETMODE_MULTIZONES_SCANNING       ((VL53L1_PresetModes)  2)
+#define VL53L1_PRESETMODE_AUTONOMOUS                ((VL53L1_PresetModes)  3)
+#define VL53L1_PRESETMODE_LITE_RANGING              ((VL53L1_PresetModes)  4)
 #define VL53L1_PRESETMODE_OLT                       ((VL53L1_PresetModes)  7)
 
 	/* ... Modes to be added depending on device */
 /** @} VL53L1_define_PresetModes_group */
 
 
-/** @defgroup VL53L1_define_DeviceModes_group Defines Device modes
- *  Defines all possible modes for the device
+
+/** @defgroup VL53L1_define_RoiStatus_group Defines Roi Status
+ *  Defines the read status mode
  *  @{
  */
-typedef uint8_t VL53L1_DeviceModes;
+typedef uint8_t VL53L1_RoiStatus;
 
-#define VL53L1_DEVICEMODE_SINGLE_RANGING           ((VL53L1_DeviceModes)  0)
-#define VL53L1_DEVICEMODE_CONTINUOUS_RANGING       ((VL53L1_DeviceModes)  1)
-#define VL53L1_DEVICEMODE_SINGLE_HISTOGRAM         ((VL53L1_DeviceModes)  2)
-#define VL53L1_DEVICEMODE_CONTINUOUS_TIMED_RANGING ((VL53L1_DeviceModes)  3)
-#define VL53L1_DEVICEMODE_SINGLE_ALS               ((VL53L1_DeviceModes) 10)
-#define VL53L1_DEVICEMODE_GPIO_DRIVE               ((VL53L1_DeviceModes) 20)
-#define VL53L1_DEVICEMODE_GPIO_OSC                 ((VL53L1_DeviceModes) 21)
-/** @} VL53L1_define_DeviceModes_group */
+#define VL53L1_ROISTATUS_NOT_VALID                 ((VL53L1_RoiStatus)  0)
+#define VL53L1_ROISTATUS_VALID_NOT_LAST            ((VL53L1_RoiStatus)  1)
+#define VL53L1_ROISTATUS_VALID_LAST                ((VL53L1_RoiStatus)  2)
+/** @} VL53L1_define_RoiStatus_group */
+
 
 /** @defgroup VL53L1_CheckEnable_group Check Enable list
  *  @brief Check Enable code
@@ -187,69 +182,13 @@ typedef uint8_t VL53L1_DeviceModes;
 /** @}  end of VL53L1_CheckEnable_group */
 
 
-/** @defgroup VL53L1_define_HistogramModes_group Defines Histogram modes
- *  Defines all possible Histogram modes for the device
- *  @{
- */
-typedef uint8_t VL53L1_HistogramModes;
-
-#define VL53L1_HISTOGRAMMODE_DISABLED        ((VL53L1_HistogramModes) 0)
-	/*!< Histogram Disabled */
-#define VL53L1_HISTOGRAMMODE_REFERENCE_ONLY  ((VL53L1_HistogramModes) 1)
-	/*!< Histogram Reference array only */
-#define VL53L1_HISTOGRAMMODE_RETURN_ONLY     ((VL53L1_HistogramModes) 2)
-	/*!< Histogram Return array only */
-#define VL53L1_HISTOGRAMMODE_BOTH            ((VL53L1_HistogramModes) 3)
-	/*!< Histogram both Reference and Return Arrays */
-	/* ... Modes to be added depending on device */
-/** @} VL53L1_define_HistogramModes_group */
-
-
-/** @defgroup VL53L1_define_PowerModes_group List of available Power Modes
- *  List of available Power Modes
- *  @{
- */
-
-typedef uint8_t VL53L1_PowerModes;
-
-#define VL53L1_POWERMODE_STANDBY_LEVEL1 ((VL53L1_PowerModes) 0)
-	/*!< Standby level 1 */
-#define VL53L1_POWERMODE_STANDBY_LEVEL2 ((VL53L1_PowerModes) 1)
-	/*!< Standby level 2 */
-#define VL53L1_POWERMODE_IDLE_LEVEL1    ((VL53L1_PowerModes) 2)
-	/*!< Idle level 1 */
-#define VL53L1_POWERMODE_IDLE_LEVEL2    ((VL53L1_PowerModes) 3)
-	/*!< Idle level 2 */
-
-/** @} VL53L1_define_PowerModes_group */
-
-
 /** @brief Defines all parameters for the device
  */
 typedef struct {
 	VL53L1_PresetModes PresetMode;
 	/*!< Defines the operating mode to be used for the next measure */
-	VL53L1_DeviceModes DeviceMode;
-	/*!< Defines type of measurement to be done for the next measure */
-	VL53L1_HistogramModes HistogramMode;
-	/*!< Defines type of histogram measurement to be done for the next
-	 *  measure */
-	VL53L1_PowerModes PowerMode; /* Store the power mode */
 	uint32_t MeasurementTimingBudgetMicroSeconds;
 	/*!< Defines the allowed total time for a single measurement */
-	uint32_t InterMeasurementPeriodMilliSeconds;
-	/*!< Defines time between two consecutive measurements (between two
-	 *  measurement starts). If set to 0 means back-to-back mode */
-	uint8_t XTalkCompensationEnable;
-	/*!< Tells if Crosstalk compensation shall be enable or not  */
-	uint16_t XTalkCompensationRangeMilliMeter;
-	/*!< CrossTalk compensation range in millimeter  */
-	FixPoint1616_t XTalkCompensationRateMegaCps;
-	/*!< CrossTalk compensation rate in Mega counts per seconds.
-	 *  Expressed in 16.16 fixed point format.  */
-	int32_t RangeOffsetMicroMeters;
-	/*!< Range offset adjustment (mm).  */
-
 	uint8_t LimitChecksEnable[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array store all the Limit Check enable for this device. */
 	uint8_t LimitChecksStatus[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
@@ -260,9 +199,6 @@ typedef struct {
 	FixPoint1616_t LimitChecksCurrent[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array store all the Limit Check current value from latest
 	 * ranging */
-
-	uint8_t WrapAroundCheckEnable;
-	/*!< Tells if Wrap Around Check shall be enable or not */
 } VL53L1_DeviceParameters_t;
 
 
@@ -293,22 +229,24 @@ typedef uint8_t VL53L1_State;
 /** @} VL53L1_define_State_group */
 
 
-
-
 /**
  * @struct VL53L1_SingleRangingData_t
  * @brief Single Range measurement data.
  */
 typedef struct {
-	uint32_t TimeStamp;               /*!< 32-bit time stamp. */
+	uint32_t TimeStamp;
+	/*!< 32-bit time stamp.
+	 * @warning Not yet implemented */
 
 	uint8_t StreamCount;            /*!< 8-bit Stream Count. */
 
 	uint8_t ConfidenceLevel;
-		/*!< indicate a confidance level in percentage from 0 to 100 */
+		/*!< indicate a confidance level in percentage from 0 to 100
+		 * @warning Not yet implemented  */
 
 	uint16_t DmaxMilliMeter;
-		/*!< range Dmax distance in millimeter. */
+		/*!< range Dmax distance in millimeter.
+		 * @warning Not yet implemented  */
 
 	uint16_t RangeMaxMilliMeter;
 		/*!< Tells what is the maximum detection distance of the device
@@ -341,7 +279,8 @@ typedef struct {
 
 	uint8_t RangeFractionalPart;
 		/*!< Fractional part of range distance. Final value is a
-		 *  RangeMilliMeter + RangeFractionalPart/256. */
+		 *  RangeMilliMeter + RangeFractionalPart/256.
+		 *  @warning Not yet implemented  */
 
 	uint8_t RangeStatus;
 		/*!< Range Status for the current measurement. This is device
@@ -357,63 +296,22 @@ typedef struct {
 
 typedef struct {
 
-	uint8_t MaxResults;
-		/*!< Max number of results requested for this ROI */
 	uint8_t RoiNumber;
 		/*!< Denotes on which ROI the range data is related to. */
 	uint8_t NumberOfObjectsFound;
 		/*!< Indicate the number of objects found in the current ROI.
 		* This is used to know how many ranging data should be get.
-		* Value 0 means this ranging data has not been updated yet or
-		* it doesn't contains valid data.
-		* Valid value are from 1 to VL53L1_MAX_NUMBER_OF_DATA_PER_ROI.
+		* NumberOfObjectsFound is in the range 0 to
+		* VL53L1_MAX_RANGE_RESULTS.
 		*/
-	uint16_t DmaxMilliMeter;
-		/*!< range Dmax distance in millimeter. */
-
+	VL53L1_RoiStatus RoiStatus;
+		/*!< Indicate if the data read is valid or not or if this is
+		 * the last valid data in the ROI.
+		*/
 	VL53L1_RangingMeasurementData_t RangeData[VL53L1_MAX_RANGE_RESULTS];
 		/*!< Range data each target distance */
 
-} VL53L1_ROIRangeResults_t;
-
-/**
- * @struct  VL53L1_range_results_t
- * @brief   Structure for storing the set of range results generated
- *          for all ROIs
- *
- */
-
-typedef struct {
-
-	uint8_t                MaxROIs;
-		/*!< Max number of ROI requested from user */
-	uint8_t                ActiveROIs;
-		/*!< Number of ROI active */
-	VL53L1_ROIRangeResults_t ROIRangeData[VL53L1_MAX_USER_ZONES];
-		/*!< All ROI data  */
-
 } VL53L1_MultiRangingData_t;
-
-
-
-#define VL53L1_HISTOGRAM_BUFFER_SIZE 24
-
-/**
- * @struct VL53L1_HistogramData_t
- * @brief Histogram measurement data.
- */
-typedef struct {
-	/* Histogram Measurement data */
-	uint32_t HistogramData[VL53L1_HISTOGRAM_BUFFER_SIZE];
-	/*!< Histogram data */
-	uint8_t HistogramType; /*!< Indicate the types of histogram data :
-	Return only, Reference only, both Return and Reference */
-	uint8_t FirstBin; /*!< First Bin value */
-	uint8_t BufferSize; /*!< Buffer Size - Set by the user.*/
-	uint8_t NumberOfBins;
-	/*!< Number of bins filled by the histogram measurement */
-
-} VL53L1_HistogramMeasurementData_t;
 
 
 /** @brief Defines User Zone(ROI) parameters
@@ -440,33 +338,13 @@ typedef struct {
 
 	uint8_t             NumberOfRoi;   /*!< Number of Rois defined*/
 
-	uint8_t             FirstRoiToScan;
-		/*!< First Roi to start the scan */
-
 	VL53L1_UserRoi_t    UserRois[VL53L1_MAX_USER_ZONES];
 		/*!< List of Rois */
 
 } VL53L1_RoiConfig_t;
 
 
-
-/** @defgroup VL53L1_define_InterruptPolarity_group Defines the Polarity
- * of the Interrupt
- *  Defines the Polarity of the Interrupt
- *  @{
- */
-typedef uint8_t VL53L1_InterruptPolarity;
-
-#define VL53L1_INTERRUPTPOLARITY_LOW       ((VL53L1_InterruptPolarity)  0)
-/*!< Set active low polarity best setup for falling edge. */
-#define VL53L1_INTERRUPTPOLARITY_HIGH      ((VL53L1_InterruptPolarity)  1)
-/*!< Set active high polarity best setup for rising edge. */
-
-/** @} VL53L1_define_InterruptPolarity_group */
-
-
-/** @defgroup VL53L1_define_SequenceStepId_group Defines the Polarity
- *	of the Interrupt
+/** @defgroup VL53L1_define_SequenceStepId_group Defines the SequenceStep
  *	Defines the the sequence steps performed during ranging..
  *	@{
  */
@@ -515,33 +393,14 @@ typedef uint8_t VL53L1_SequenceStepId;
 /** @} VL53L1_define_RangeStatus_group */
 
 
-
-/** @defgroup VL53L1_GpioFunctionality_group Gpio Functionality
- *  @brief Defines the different functionalities for the device GPIO(s)
- *  @{
- */
-typedef uint8_t VL53L1_GpioFunctionality;
-
-#define VL53L1_GPIOFUNCTIONALITY_OFF                     \
-	((VL53L1_GpioFunctionality)  0) /*!< NO Interrupt  */
-#define VL53L1_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW   \
-	((VL53L1_GpioFunctionality)  1) /*!< Level Low (value < thresh_low)  */
-#define VL53L1_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH   \
-	((VL53L1_GpioFunctionality)  2) /*!< Level High (value > thresh_high) */
-#define VL53L1_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_OUT    \
-	((VL53L1_GpioFunctionality)  3)
-	/*!< Out Of Window (value < thresh_low OR value > thresh_high)  */
-#define VL53L1_GPIOFUNCTIONALITY_NEW_MEASURE_READY        \
-	((VL53L1_GpioFunctionality)  4) /*!< New Sample Ready  */
-
-/** @} end of VL53L1_GpioFunctionality_group */
-
-
 /** @brief  Contains the Internal data of the Bare Driver
  */
 
 typedef struct {
 	VL53L1_LLDriverData_t   LLData;
+	/*!< Low Level Driver data structure */
+
+	VL53L1_LLDriverResults_t llresults;
 	/*!< Low Level Driver data structure */
 
 	VL53L1_State      PalState; /* Store the pal state */
@@ -552,6 +411,7 @@ typedef struct {
 
 
 #define VL53L1DevStructGetLLDriverHandle(Dev) (&PALDevDataGet(Dev, LLData))
+#define VL53L1DevStructGetLLResultsHandle(Dev) (&PALDevDataGet(Dev, llresults))
 
 /* MACRO Definitions */
 /** @defgroup VL53L1_define_GeneralMacro_group General Macro Defines
