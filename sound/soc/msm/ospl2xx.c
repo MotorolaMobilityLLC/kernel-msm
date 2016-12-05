@@ -11,17 +11,23 @@
  *
  */
 #include <linux/firmware.h>
+#include <linux/platform_device.h>
+#include <linux/module.h>
+#include <linux/of_platform.h>
 #include <sound/soc.h>
 #include <sound/core.h>
 #include <sound/q6afe-v2.h>
 #include <sound/ospl2xx.h>
-#ifdef CONFIG_SND_SOC_MADERA
-#include <linux/mfd/madera/core.h>
-#include "../codecs/madera.h"
-#endif
 
-#define AFE_RX_PORT_ID AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_RX
-#define AFE_TX_PORT_ID AFE_PORT_ID_SLIMBUS_MULTI_CHAN_1_TX
+/*
+ * QDSP internal tune index and port config reading
+ */
+#define MAX_TUNE_COUNT 4
+static uint32_t ospl_tune_index[MAX_TUNE_COUNT] = {0, 1, 2, 3};
+static uint32_t AFE_RX_PORT_ID = AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_RX;
+static uint32_t AFE_TX_PORT_ID = AFE_PORT_ID_SLIMBUS_MULTI_CHAN_1_TX;
+static bool feedback_on_left;
+static bool feedback_on_right;
 
 /*
  * external configuration string reading
@@ -41,24 +47,19 @@ static int ext_config_loaded;
 static const struct firmware
 		*ospl2xx_config[ARRAY_SIZE(ospl2xx_ext_config_tables)];
 
+static struct workqueue_struct *ospl2xx_wq;
+static struct work_struct ospl2xx_init_work;
+static struct platform_device *spdev;
+
 static DEFINE_MUTEX(lr_lock);
 static void ospl2xx_load_config(struct work_struct *work)
 {
 	int i, ret;
-	struct cs47l35 *cs47l35 =
-		container_of(work, struct cs47l35, ospl2xx_config);
-	struct madera_priv *priv = &cs47l35->core;
-	struct madera *madera = priv->madera;
-
-	if (madera == NULL) {
-		pr_debug("%s: can't load external configuration\n", __func__);
-		return;
-	}
 
 	mutex_lock(&lr_lock);
 	for (i = 0; i < ARRAY_SIZE(ospl2xx_ext_config_tables); i++) {
 		ret = request_firmware(&ospl2xx_config[i],
-			ospl2xx_ext_config_tables[i], madera->dev);
+			ospl2xx_ext_config_tables[i], &spdev->dev);
 		if (ret ||
 		    ospl2xx_config[i]->data == NULL ||
 		    ospl2xx_config[i]->size <= 0) {
@@ -517,22 +518,24 @@ error_return:
 
 static int ospl2xx_update_rx_int_config(void)
 {
-	pr_debug("%s: set configuration index = %d\n",
-		__func__, int_rxconfig);
+	pr_debug("%s: set configuration index = %d, qdsp index = %d\n",
+		__func__, int_rxconfig, ospl_tune_index[int_rxconfig]);
 
 	ospl2xx_afe_set_single_param(
-		PARAM_ID_OPALUM_RX_SET_USE_CASE, int_rxconfig);
+		PARAM_ID_OPALUM_RX_SET_USE_CASE,
+		ospl_tune_index[int_rxconfig]);
 
 	return 0;
 }
 
 static int ospl2xx_update_tx_int_config(void)
 {
-	pr_debug("%s: set configuration index = %d\n",
-		__func__, int_txconfig);
+	pr_debug("%s: set configuration index = %d, qdsp index = %d\n",
+		__func__, int_txconfig, ospl_tune_index[int_txconfig]);
 
 	ospl2xx_afe_set_single_param(
-		PARAM_ID_OPALUM_TX_SET_USE_CASE, int_txconfig);
+		PARAM_ID_OPALUM_TX_SET_USE_CASE,
+		ospl_tune_index[int_txconfig]);
 
 	return 0;
 }
@@ -639,7 +642,8 @@ static int ospl2xx_rx_int_config_get(struct snd_kcontrol *kcontrol,
 	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
 	ospl2xx_afe_get_param(PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET);
 
-	ucontrol->value.integer.value[0] = afe_cb_payload32_data[0];
+	ucontrol->value.integer.value[0] =
+			afe_cb_payload32_data[0] - ospl_tune_index[0];
 	mutex_unlock(&mr_lock);
 
 	return 0;
@@ -831,9 +835,17 @@ static int ospl2xx_rx_put_temp_cal(struct snd_kcontrol *kcontrol,
 	int32_t count       = ucontrol->value.integer.value[1];
 	int32_t temperature = ucontrol->value.integer.value[2];
 
-	mutex_lock(&mr_lock);
 	pr_debug("%s, acc[%d], cnt[%d], tmpr[%d]\n", __func__,
 			accumulated, count, temperature);
+	pr_debug("%s, left_feedback[%d], right_feedback[%d], tx[%d], rx[%d]\n",
+			__func__, feedback_on_left, feedback_on_right,
+			AFE_TX_PORT_ID, AFE_RX_PORT_ID);
+
+	mutex_lock(&mr_lock);
+	if (feedback_on_left || feedback_on_right)
+		afe_spk_prot_feed_back_cfg(AFE_TX_PORT_ID, AFE_RX_PORT_ID,
+					feedback_on_left,
+					feedback_on_right, 1);
 	ospl2xx_afe_set_tri_param(
 			PARAM_ID_OPALUM_RX_TEMP_CAL_DATA,
 			accumulated, count, temperature);
@@ -1045,16 +1057,14 @@ static int ospl2xx_reload_ext_put(struct snd_kcontrol *kcontrol,
 {
 	int i = 0;
 	int reload = ucontrol->value.integer.value[0];
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	struct cs47l35 *cs47l35 = snd_soc_codec_get_drvdata(codec);
 
 	if (reload && ext_config_loaded) {
 		pr_debug("re-loading configuration files\n");
 		for (i = 0; i < ARRAY_SIZE(ospl2xx_ext_config_tables); i++)
 			release_firmware(ospl2xx_config[i]);
 
-		INIT_WORK(&cs47l35->ospl2xx_config, ospl2xx_load_config);
-		queue_work(cs47l35->ospl2xx_wq, &cs47l35->ospl2xx_config);
+		INIT_WORK(&ospl2xx_init_work, ospl2xx_load_config);
+		queue_work(ospl2xx_wq, &ospl2xx_init_work);
 	}
 
 	return 0;
@@ -1132,20 +1142,113 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 int ospl2xx_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_codec *codec = rtd->codec;
-	struct cs47l35 *cs47l35 = snd_soc_codec_get_drvdata(codec);
 
 	snd_soc_add_codec_controls(codec, ospl2xx_params_controls,
 			ARRAY_SIZE(ospl2xx_params_controls));
 
-	cs47l35->ospl2xx_wq = create_singlethread_workqueue("ospl2xx");
-	if (cs47l35->ospl2xx_wq == NULL)
+	ospl2xx_wq = create_singlethread_workqueue("ospl2xx");
+	if (ospl2xx_wq == NULL)
 		return -ENOMEM;
 
-	INIT_WORK(&cs47l35->ospl2xx_config, ospl2xx_load_config);
-	queue_work(cs47l35->ospl2xx_wq, &cs47l35->ospl2xx_config);
+	INIT_WORK(&ospl2xx_init_work, ospl2xx_load_config);
+	queue_work(ospl2xx_wq, &ospl2xx_init_work);
 
 	return 0;
 }
+
+static int ospl2xx_probe(struct platform_device *pdev)
+{
+	int i, ret = 0;
+	int num_entries = 0;
+	uint32_t *val_array = NULL;
+
+	ret = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
+	if (ret)
+		goto err;
+
+	num_entries = of_property_count_u32_elems(pdev->dev.of_node,
+					"mmi,ospl-tune-index");
+	if (num_entries > 0) {
+		val_array = kcalloc(num_entries, sizeof(uint32_t), GFP_KERNEL);
+		if (!val_array) {
+			pr_err("%s malloc fail at ospl-tune-index, %d\n",
+				__func__, num_entries);
+			ret = -ENOMEM;
+			goto err;
+		}
+		ret = of_property_read_u32_array(pdev->dev.of_node,
+					"mmi,ospl-tune-index",
+					val_array, num_entries);
+		if (ret < 0) {
+			pr_err("%s failed to load ospl-tune-index\n", __func__);
+			kfree(val_array);
+			goto err;
+		}
+		for (i = 0 ; i < num_entries; i++)
+			ospl_tune_index[i] = val_array[i];
+		kfree(val_array);
+	}
+
+	ret = of_property_read_u32_index(pdev->dev.of_node,
+					"mmi,ospl-afe-port-id", 0,
+					&AFE_RX_PORT_ID);
+	if (ret) {
+		pr_err("%s couldn't read ospl afe rx port id\n", __func__);
+		goto err;
+	}
+
+	ret = of_property_read_u32_index(pdev->dev.of_node,
+					"mmi,ospl-afe-port-id", 1,
+					&AFE_TX_PORT_ID);
+	if (ret) {
+		pr_err("%s couldn't read ospl afe tx port id\n", __func__);
+		goto err;
+	}
+
+	feedback_on_left = of_property_read_bool(pdev->dev.of_node,
+					"mmi,ospl-left-feedback");
+	feedback_on_right = of_property_read_bool(pdev->dev.of_node,
+					"mmi,ospl-right-feedback");
+
+err:
+	spdev = pdev;
+	return ret;
+}
+
+static int ospl2xx_remove(struct platform_device *pdev)
+{
+	if (ospl2xx_wq)
+		destroy_workqueue(ospl2xx_wq);
+
+	return 0;
+}
+
+static const struct of_device_id ospl2xx_of_match[] = {
+	{ .compatible = "mmi,ospl2xx" },
+	{  },
+};
+MODULE_DEVICE_TABLE(of, ospl2xx_of_match);
+
+static struct platform_driver ospl2xx_driver = {
+	.probe		= ospl2xx_probe,
+	.remove		= ospl2xx_remove,
+	.driver         = {
+		.name   = "ospl2xx",
+		.of_match_table	= ospl2xx_of_match,
+	},
+};
+
+static int __init ospl2xx_drv_init(void)
+{
+	return platform_driver_register(&ospl2xx_driver);
+}
+module_init(ospl2xx_drv_init);
+
+static void __exit ospl2xx_drv_exit(void)
+{
+	platform_driver_unregister(&ospl2xx_driver);
+}
+module_exit(ospl2xx_drv_exit);
 
 MODULE_DESCRIPTION("ASoC OSPL interface driver");
 MODULE_AUTHOR("Yoon (Seungyoon) Lee, Motorola Mobility Inc, <yoon@motorola.com>");
