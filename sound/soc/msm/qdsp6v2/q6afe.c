@@ -1966,7 +1966,7 @@ static int afe_send_port_topology_id(u16 port_id)
 					       q6audio_get_port_index(port_id),
 					       param_info, (u8 *) &topology);
 	if (ret) {
-		pr_err("%s: AFE set topology id enable for port 0x%x failed %d\n",
+		pr_debug("%s: AFE set topology id enable for port 0x%x failed %d\n",
 			__func__, port_id, ret);
 		goto done;
 	}
