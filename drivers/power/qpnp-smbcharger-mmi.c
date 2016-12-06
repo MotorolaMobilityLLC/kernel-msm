@@ -11454,6 +11454,25 @@ static int smbchg_reboot(struct notifier_block *nb,
 		}
 	}
 
+	if (smbchg_check_usbc_voltage(chip, &usbc_volt_mv))
+		return NOTIFY_DONE;
+	if (usbc_volt_mv > (USBC_5V_MODE + USBIN_TOLER)) {
+		rc = smbchg_set_usbc_voltage(chip, USBC_5V_MODE);
+		if (rc < 0) {
+			SMB_ERR(chip, "Couldn't set 5V USBC Voltage rc=%d\n",
+				rc);
+			return NOTIFY_DONE;
+		}
+
+		for (i = 0; i < 10; i++) {
+			msleep(100);
+			if (smbchg_check_usbc_voltage(chip, &usbc_volt_mv))
+				return NOTIFY_DONE;
+			if (usbc_volt_mv <= (USBC_5V_MODE + USBIN_TOLER))
+				break;
+		}
+	}
+
 	return NOTIFY_DONE;
 }
 
