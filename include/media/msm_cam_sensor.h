@@ -248,6 +248,7 @@ struct msm_flash_cfg_data_t32 {
 	enum msm_flash_cfg_type_t cfg_type;
 	int32_t flash_current[MAX_LED_TRIGGERS];
 	int32_t flash_duration[MAX_LED_TRIGGERS];
+	enum flash_position position;
 	union {
 		compat_uptr_t flash_init_info;
 		compat_uptr_t settings;
