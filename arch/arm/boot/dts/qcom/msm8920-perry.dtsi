@@ -10,13 +10,12 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8917-moto-common.dtsi"
+#include "msm8920-moto-common.dtsi"
 #include "msm8917-perry-common.dtsi"
 
  / {
 	model = "perry";
-	compatible = "qcom,msm8917-perry", "qcom,msm8917-moto",
-			"qcom,msm8917";
+	compatible = "qcom,msm8920-perry", "qcom,msm8920-moto",
+			"qcom,msm8920";
 
 };
-
