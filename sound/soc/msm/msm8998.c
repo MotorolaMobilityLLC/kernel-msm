@@ -6907,12 +6907,12 @@ static struct snd_soc_dai_link msm_auxpcm_be_dai_links[] = {
 };
 
 static struct snd_soc_dai_link msm_cs47l35_dai_links[
-			 ARRAY_SIZE(msm_common_dai_links) +
 			 ARRAY_SIZE(msm_cs47l35_fe_dai_links) +
-			 ARRAY_SIZE(msm_common_misc_fe_dai_links) +
-			 ARRAY_SIZE(msm_common_be_dai_links) +
-			 ARRAY_SIZE(msm_cs47l35_cs35l35_dai_links) +
 			 ARRAY_SIZE(msm_cs47l35_be_dai_links) +
+			 ARRAY_SIZE(msm_cs47l35_cs35l35_dai_links) +
+			 ARRAY_SIZE(msm_common_misc_fe_dai_links) +
+			 ARRAY_SIZE(msm_common_dai_links) +
+			 ARRAY_SIZE(msm_common_be_dai_links) +
 			 ARRAY_SIZE(msm_wcn_be_dai_links) +
 			 ARRAY_SIZE(ext_disp_be_dai_link) +
 			 ARRAY_SIZE(msm_mi2s_be_dai_links) +
@@ -7281,30 +7281,30 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 
 	if (!strcmp(match->data, "cs47l35-codec")) {
 		card = &snd_soc_card_cs47l35_msm;
-		len_1 = ARRAY_SIZE(msm_common_dai_links);
-		len_2 = len_1 + ARRAY_SIZE(msm_cs47l35_fe_dai_links);
-		len_3 = len_2 + ARRAY_SIZE(msm_common_misc_fe_dai_links);
-		len_3a = len_3 + ARRAY_SIZE(msm_cs47l35_cs35l35_dai_links);
-		len_4 = len_3a + ARRAY_SIZE(msm_common_be_dai_links);
-		total_links = len_4 + ARRAY_SIZE(msm_cs47l35_be_dai_links);
+		len_1 = ARRAY_SIZE(msm_cs47l35_fe_dai_links);
+		len_2 = len_1 + ARRAY_SIZE(msm_cs47l35_be_dai_links);
+		len_3 = len_2 + ARRAY_SIZE(msm_cs47l35_cs35l35_dai_links);
+		len_3a = len_3 + ARRAY_SIZE(msm_common_dai_links);
+		len_4 = len_3a + ARRAY_SIZE(msm_common_misc_fe_dai_links);
+		total_links = len_4 + ARRAY_SIZE(msm_common_be_dai_links);
 		memcpy(msm_cs47l35_dai_links,
-		       msm_common_dai_links,
-		       sizeof(msm_common_dai_links));
-		memcpy(msm_cs47l35_dai_links + len_1,
 		       msm_cs47l35_fe_dai_links,
 		       sizeof(msm_cs47l35_fe_dai_links));
-		memcpy(msm_cs47l35_dai_links + len_2,
-		       msm_common_misc_fe_dai_links,
-		       sizeof(msm_common_misc_fe_dai_links));
-		memcpy(msm_tasha_dai_links + len_3,
-		       msm_common_be_dai_links,
-		       sizeof(msm_common_be_dai_links));
-		memcpy(msm_cs47l35_dai_links + len_3a,
-		       msm_cs47l35_cs35l35_dai_links,
-		       sizeof(msm_cs47l35_cs35l35_dai_links));
-		memcpy(msm_cs47l35_dai_links + len_4,
+		memcpy(msm_cs47l35_dai_links + len_1,
 		       msm_cs47l35_be_dai_links,
 		       sizeof(msm_cs47l35_be_dai_links));
+		memcpy(msm_cs47l35_dai_links + len_2,
+		       msm_cs47l35_cs35l35_dai_links,
+		       sizeof(msm_cs47l35_cs35l35_dai_links));
+		memcpy(msm_cs47l35_dai_links + len_3,
+		       msm_common_dai_links,
+		       sizeof(msm_common_dai_links));
+		memcpy(msm_cs47l35_dai_links + len_3a,
+		       msm_common_misc_fe_dai_links,
+		       sizeof(msm_common_misc_fe_dai_links));
+		memcpy(msm_cs47l35_dai_links + len_4,
+		       msm_common_be_dai_links,
+		       sizeof(msm_common_be_dai_links));
 
 		if (of_property_read_bool(dev->of_node, "qcom,wcn-btfm")) {
 			dev_dbg(dev, "%s(): WCN BTFM support present\n",
