@@ -10,13 +10,11 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8917-moto-common.dtsi"
-#include "msm8917-perry-common.dtsi"
+/dts-v1/;
 
- / {
-	model = "perry";
-	compatible = "qcom,msm8917-perry", "qcom,msm8917-moto",
-			"qcom,msm8917";
+#include "msm8920.dtsi"
+#include "msm8920-perry.dtsi"
 
+/ {
+	qcom,board-id = <0x4A 0x8100>;
 };
-
