@@ -7936,9 +7936,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			chip->stepchg_state = STEP_MAX;
 		chip->stepchg_state_holdoff = 0;
 	} else if ((chip->stepchg_state == STEP_MAX) &&
-		   (batt_ma < 0) && (chip->usb_present) &&
+		    (chip->usb_present) &&
 		   ((batt_mv + HYST_STEP_MV) >= chip->stepchg_voltage_mv)) {
-		batt_ma *= -1;
+			if (batt_ma < 0)
+				batt_ma *= -1;
 
 		index = smbchg_get_pchg_current_map_index(chip);
 		if (chip->pchg_current_map_data[index].primary ==
