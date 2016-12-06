@@ -237,6 +237,10 @@
 	#include "batterydata-gk40-atl.dtsi"
 };
 
+&usb_otg {
+	qcom,chg-dcp-icl = <1800>;
+};
+
 &rpm_bus {
 	rpm-regulator-ldoa22 {
 		status = "okay";
