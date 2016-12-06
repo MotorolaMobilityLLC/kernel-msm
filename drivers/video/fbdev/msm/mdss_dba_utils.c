@@ -461,8 +461,8 @@ static int mdss_dba_utils_send_cec_msg(void *data, struct cec_msg *msg)
 static int mdss_dba_get_vic_panel_info(struct mdss_dba_utils_data *udata,
 					struct mdss_panel_info *pinfo)
 {
-	struct msm_hdmi_mode_timing_info timing;
-	struct hdmi_util_ds_data ds_data;
+	struct msm_hdmi_mode_timing_info timing = {0};
+	struct hdmi_util_ds_data ds_data = {0};
 	u32 h_total, v_total, vic = 0;
 
 	if (!udata || !pinfo) {
