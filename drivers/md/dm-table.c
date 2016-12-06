@@ -304,6 +304,12 @@ static int device_area_is_invalid(struct dm_target *ti, struct dm_dev *dev,
 	if (!dev_size)
 		return 0;
 
+	DMWARN("%s: %s target: "
+		       "start=%llu, len=%llu, dev_size=%llu",
+		       dm_device_name(ti->table->md), bdevname(bdev, b),
+		       (unsigned long long)start,
+		       (unsigned long long)len,
+		       (unsigned long long)dev_size);
 	if ((start >= dev_size) || (start + len > dev_size)) {
 		DMWARN("%s: %s too small for target: "
 		       "start=%llu, len=%llu, dev_size=%llu",
