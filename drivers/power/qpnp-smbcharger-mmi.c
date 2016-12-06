@@ -11153,6 +11153,8 @@ static int smbchg_reboot(struct notifier_block *nb,
 {
 	struct smbchg_chip *chip =
 			container_of(nb, struct smbchg_chip, smb_reboot);
+	int rc, i;
+	int usbc_volt_mv;
 	char eb_able;
 	int soc_max = 99;
 
@@ -11208,6 +11210,25 @@ static int smbchg_reboot(struct notifier_block *nb,
 	} else if ((chip->ebchg_state == EB_OFF) && !chip->usb_present) {
 		SMB_WARN(chip, "Attempt to Turn EB ON!\n");
 		smbchg_set_extbat_state(chip, EB_SRC, false);
+	}
+
+	if (smbchg_check_usbc_voltage(chip, &usbc_volt_mv))
+		return NOTIFY_DONE;
+	if (usbc_volt_mv > (USBC_5V_MODE + USBIN_TOLER)) {
+		rc = smbchg_set_usbc_voltage(chip, USBC_5V_MODE);
+		if (rc < 0) {
+			SMB_ERR(chip, "Couldn't set 5V USBC Voltage rc=%d\n",
+				rc);
+			return NOTIFY_DONE;
+		}
+
+		for (i = 0; i < 10; i++) {
+			msleep(100);
+			if (smbchg_check_usbc_voltage(chip, &usbc_volt_mv))
+				return NOTIFY_DONE;
+			if (usbc_volt_mv <= (USBC_5V_MODE + USBIN_TOLER))
+				break;
+		}
 	}
 
 	return NOTIFY_DONE;
