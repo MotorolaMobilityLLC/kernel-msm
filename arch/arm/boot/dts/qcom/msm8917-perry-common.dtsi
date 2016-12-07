@@ -12,6 +12,7 @@
 
 #include "msm8917-camera-sensor-mot-perry.dtsi"
 #include "dsi-panel-mot-tianma-499-720p-video.dtsi"
+#include "dsi-panel-mot-ofilm-499-720p-video.dtsi"
 
 &soc {
 	vdda_touch_vreg: vdda_touch_vreg {
