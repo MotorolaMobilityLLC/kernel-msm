@@ -266,3 +266,9 @@
 &pmi_haptic {
 	qcom,vmax-mv = <2700>;
 };
+
+&sdhc_2 {
+	qcom,nonhotplug;
+	/delete-property/ cd-gpios;
+};
+
