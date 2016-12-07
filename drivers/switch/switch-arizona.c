@@ -236,7 +236,11 @@ enum headset_state {
 	BIT_NO_HEADSET = 0,
 	BIT_HEADSET = (1 << 0),
 	BIT_HEADSET_NO_MIC = (1 << 1),
+	BIT_LINEOUT = (1 << 5),
 };
+
+#define BIT_NO_MIC ((info->arizona->hp_impedance_x100 == ARIZONA_HPDET_MAX) ? \
+			BIT_LINEOUT : BIT_HEADSET_NO_MIC)
 
 static ssize_t arizona_extcon_show(struct device *dev,
 				   struct device_attribute *attr,
@@ -1912,7 +1916,7 @@ int arizona_hpdet_reading(struct arizona_extcon_info *info, int val)
 		arizona_extcon_report(info, BIT_HEADSET);
 		arizona_jds_set_state(info, &arizona_micd_button);
 	} else {
-		arizona_extcon_report(info, BIT_HEADSET_NO_MIC);
+		arizona_extcon_report(info, BIT_NO_MIC);
 		arizona_jds_set_state(info, NULL);
 	}
 
@@ -2251,7 +2255,7 @@ done:
 		if (info->mic)
 			arizona_extcon_report(info, BIT_HEADSET);
 		else
-			arizona_extcon_report(info, BIT_HEADSET_NO_MIC);
+			arizona_extcon_report(info, BIT_NO_MIC);
 	}
 
 	if (arizona->pdata.micd_cb)
@@ -2282,7 +2286,7 @@ void arizona_micd_mic_timeout(struct arizona_extcon_info *info)
 	else
 		ret = arizona_jds_set_state(info, &arizona_hpdet_left);
 	if (ret < 0)
-		arizona_extcon_report(info, BIT_HEADSET_NO_MIC);
+		arizona_extcon_report(info, BIT_NO_MIC);
 }
 EXPORT_SYMBOL_GPL(arizona_micd_mic_timeout);
 
@@ -2349,7 +2353,7 @@ static int arizona_hpdet_acc_id_reading(struct arizona_extcon_info *info,
 	} else {
 		dev_info(arizona->dev, "Detected headphone\n");
 
-		arizona_extcon_report(info, BIT_HEADSET_NO_MIC);
+		arizona_extcon_report(info, BIT_NO_MIC);
 
 		arizona_jds_set_state(info, NULL);
 	}
@@ -2412,7 +2416,7 @@ err:
 
 	pm_runtime_put_autosuspend(info->dev);
 	/* Just report headphone */
-	arizona_extcon_report(info, BIT_HEADSET_NO_MIC);
+	arizona_extcon_report(info, BIT_NO_MIC);
 
 	return ret;
 }
