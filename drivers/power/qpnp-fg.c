@@ -5033,7 +5033,8 @@ static void dump_sram(struct work_struct *work)
 static void update_esr_value(struct work_struct *work)
 {
 	union power_supply_propval prop = {0, };
-	u64 esr_value;
+	u64 esr_value = 0;
+	u64 esr_readback = 0;
 	int rc = 0;
 	struct fg_chip *chip = container_of(work,
 				struct fg_chip,
@@ -5045,30 +5046,41 @@ static void update_esr_value(struct work_struct *work)
 	chip->batt_psy->get_property(chip->batt_psy,
 			POWER_SUPPLY_PROP_CHARGE_TYPE, &prop);
 
-	if (!chip->esr_strict_filter) {
-		if ((prop.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER &&
-				chip->status == POWER_SUPPLY_STATUS_CHARGING) ||
-			(chip->status == POWER_SUPPLY_STATUS_FULL)) {
+	rc = fg_mem_read(chip, (u8 *)&esr_readback, MAXRSCHANGE_REG, 8,
+			ESR_VALUE_OFFSET, 0);
+	if (rc)
+		pr_err("read esr failed: rc = %d\n", rc);
+
+	if ((prop.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER &&
+			chip->status == POWER_SUPPLY_STATUS_CHARGING) ||
+		(chip->status == POWER_SUPPLY_STATUS_FULL)) {
+		if (esr_readback != ESR_STRICT_VALUE) {
 			esr_value = ESR_STRICT_VALUE;
 			rc = fg_mem_write(chip, (u8 *)&esr_value,
-					MAXRSCHANGE_REG, 8,
-					ESR_VALUE_OFFSET, 0);
+				MAXRSCHANGE_REG, 8, ESR_VALUE_OFFSET, 0);
 			if (rc)
-				pr_err("failed to write strict ESR value rc=%d\n",
-					rc);
-			else
+				pr_err("write strict ESR value rc=%d\n", rc);
+			else {
 				chip->esr_strict_filter = true;
+				pr_info("ESR: update esr from 0x%llx to 0x%llx\n",
+						esr_readback, esr_value);
+			}
 		}
 	} else if ((prop.intval != POWER_SUPPLY_CHARGE_TYPE_TAPER &&
-				chip->status == POWER_SUPPLY_STATUS_CHARGING) ||
-			(chip->status == POWER_SUPPLY_STATUS_DISCHARGING)) {
-		esr_value = ESR_DEFAULT_VALUE;
-		rc = fg_mem_write(chip, (u8 *)&esr_value, MAXRSCHANGE_REG, 8,
-				ESR_VALUE_OFFSET, 0);
-		if (rc)
-			pr_err("failed to write default ESR value rc=%d\n", rc);
-		else
-			chip->esr_strict_filter = false;
+			chip->status == POWER_SUPPLY_STATUS_CHARGING) ||
+		(chip->status == POWER_SUPPLY_STATUS_DISCHARGING)) {
+		if (esr_readback != ESR_DEFAULT_VALUE) {
+			esr_value = ESR_DEFAULT_VALUE;
+			rc = fg_mem_write(chip, (u8 *)&esr_value,
+				MAXRSCHANGE_REG, 8, ESR_VALUE_OFFSET, 0);
+			if (rc)
+				pr_err("write default ESR rc=%d\n", rc);
+			else {
+				chip->esr_strict_filter = false;
+				pr_info("ESR: update esr from 0x%llx to 0x%llx\n",
+						esr_readback, esr_value);
+			}
+		}
 	}
 }
 
