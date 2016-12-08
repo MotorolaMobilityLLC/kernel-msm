@@ -4574,7 +4574,6 @@ static int _register_device(struct kgsl_device *device)
 
 int kgsl_device_platform_probe(struct kgsl_device *device)
 {
-	int result;
 	int status = -EINVAL;
 	struct resource *res;
 
@@ -4676,11 +4675,6 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 
 	rwlock_init(&device->context_lock);
 
-	result = kgsl_drm_init(device->pdev);
-	if (result)
-		goto error_pwrctrl_close;
-
-
 	setup_timer(&device->idle_timer, kgsl_timer, (unsigned long) device);
 	status = kgsl_create_device_workqueue(device);
 	if (status)
@@ -4780,7 +4774,6 @@ EXPORT_SYMBOL(kgsl_device_platform_remove);
 static void kgsl_core_exit(void)
 {
 	kgsl_events_exit();
-	kgsl_drm_exit();
 	kgsl_cffdump_destroy();
 	kgsl_core_debugfs_close();
 
