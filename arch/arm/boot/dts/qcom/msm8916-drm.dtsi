@@ -1,0 +1,31 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	kgsl_drm: qcom,kgsl_drm@fd900000 {
+		compatible = "qcom,kgsl_drm";
+		reg = <0x1a00000 0x90000>;
+		reg-names = "mdp_phys";
+		interrupts = <0 72 0>;
+		interrupt-names = "kgsl_drm_irq";
+
+		qcom,mdss-vsync-irq = <0x2001000>;
+		qcom,mdss-mdp-reg-intr-en = <0x10>;
+		qcom,mdss-mdp-reg-intr-status = <0x14>;
+		qcom,mdss-mdp-reg-intr-clear = <0x18>;
+
+		qcom,mdss-vsync-primary-mask  = <0x200100>;
+		qcom,mdss-vsync-hdmi-mask = <0x0>;
+		qcom,mdss-vsync-wb-mask = <0x0>;
+		qcom,mdss-vsync-rotator-mask = <0x0>;
+	};
+};
