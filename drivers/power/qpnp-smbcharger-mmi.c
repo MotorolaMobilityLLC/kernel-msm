@@ -219,6 +219,7 @@ struct smbchg_chip {
 	bool				vbat_above_headroom;
 	bool				force_aicl_rerun;
 	bool				enable_hvdcp_9v;
+	bool				prop_flash_active;
 	u32				wa_flags;
 	u8				original_usbin_allowance;
 	struct parallel_usb_cfg		parallel;
@@ -263,6 +264,7 @@ struct smbchg_chip {
 	bool				safety_timer_en;
 	bool				aicl_complete;
 	bool				usb_ov_det;
+	bool				otg_pulse_skip_dis;
 
 	/* jeita and temperature */
 	bool				batt_hot;
@@ -1029,6 +1031,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 	POWER_SUPPLY_PROP_AGE,
 	POWER_SUPPLY_PROP_EXTERN_STATE,
+	POWER_SUPPLY_PROP_FLASH_ACTIVE,
 };
 
 static int get_eb_pwr_prop(struct smbchg_chip *chip,
@@ -3570,6 +3573,43 @@ static int smbchg_safety_timer_enable(struct smbchg_chip *chip, bool enable)
 	return 0;
 }
 
+enum skip_reason {
+	REASON_OTG_ENABLED	= BIT(0),
+	REASON_FLASH_ENABLED	= BIT(1)
+};
+
+#define OTG_TRIM6               0xF6
+#define TR_ENB_SKIP_BIT         BIT(2)
+
+static int smbchg_otg_pulse_skip_disable(struct smbchg_chip *chip,
+				enum skip_reason reason, bool disable)
+{
+	int rc;
+	bool disabled;
+
+	disabled = !!chip->otg_pulse_skip_dis;
+	SMB_DBG(chip, "%s pulse skip, reason %d\n",
+			disable ? "disabling" : "enabling", reason);
+	if (disable)
+		chip->otg_pulse_skip_dis |= reason;
+	else
+		chip->otg_pulse_skip_dis &= ~reason;
+	if (disabled == !!chip->otg_pulse_skip_dis)
+		return 0;
+	disabled = !!chip->otg_pulse_skip_dis;
+
+	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_TRIM6,
+			TR_ENB_SKIP_BIT, disabled ? TR_ENB_SKIP_BIT : 0);
+	if (rc < 0) {
+		SMB_ERR(chip,
+			"Couldn't %s otg pulse skip rc = %d\n",
+			disabled ? "disable" : "enable", rc);
+		return rc;
+	}
+	SMB_DBG(chip, "%s pulse skip\n", disabled ? "disabled" : "enabled");
+	return 0;
+}
+
 static int smbchg_battery_set_property(struct power_supply *psy,
 				       enum power_supply_property prop,
 				       const union power_supply_propval *val)
@@ -3623,6 +3663,11 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 		cancel_delayed_work(&chip->heartbeat_work);
 		schedule_delayed_work(&chip->heartbeat_work,
 					msecs_to_jiffies(0));
+		break;
+	case POWER_SUPPLY_PROP_FLASH_ACTIVE:
+		if (chip->prop_flash_active)
+			rc = smbchg_otg_pulse_skip_disable(chip,
+					REASON_FLASH_ENABLED, val->intval);
 		break;
 	default:
 		return -EINVAL;
@@ -3798,6 +3843,12 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_EXTERN_STATE:
 		val->intval = chip->ebchg_state;
+		break;
+	case POWER_SUPPLY_PROP_FLASH_ACTIVE:
+		if (chip->prop_flash_active)
+			val->intval = chip->otg_pulse_skip_dis;
+		else
+			val->intval = 0;
 		break;
 	default:
 		return -EINVAL;
@@ -5296,27 +5347,6 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 	power_supply_changed(&chip->batt_psy);
 }
 
-#define OTG_TRIM6               0xF6
-#define TR_ENB_SKIP_BIT         BIT(2)
-
-static int smbchg_otg_pulse_skip_disable(struct smbchg_chip *chip, bool disable)
-{
-	int rc;
-
-	SMB_DBG(chip, "%s pulse skip\n", disable ? "disabling" : "enabling");
-
-	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_TRIM6,
-			TR_ENB_SKIP_BIT, disable ? TR_ENB_SKIP_BIT : 0);
-	if (rc < 0) {
-		SMB_ERR(chip, "Couldn't %s otg pulse skip rc = %d\n",
-			disable ? "disable" : "enable", rc);
-		return rc;
-	}
-
-	return 0;
-}
-
-
 #define OTG_EN		BIT(0)
 static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 {
@@ -5326,7 +5356,7 @@ static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 	if (chip->usbc_disabled)
 		return 0;
 
-	smbchg_otg_pulse_skip_disable(chip, true);
+	smbchg_otg_pulse_skip_disable(chip, REASON_OTG_ENABLED, true);
 	msleep(20);
 	chip->otg_retries = 0;
 	rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
@@ -5351,7 +5381,7 @@ static int smbchg_otg_regulator_disable(struct regulator_dev *rdev)
 			OTG_EN, 0);
 	if (rc < 0)
 		SMB_ERR(chip, "Couldn't disable OTG mode rc=%d\n", rc);
-	smbchg_otg_pulse_skip_disable(chip, false);
+	smbchg_otg_pulse_skip_disable(chip, REASON_OTG_ENABLED, false);
 	SMB_DBG(chip, "Disabling OTG Boost\n");
 	return rc;
 }
@@ -8208,6 +8238,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,enable-hvdcp-9v");
 	chip->fake_factory_type = of_property_read_bool(node,
 					"mmi,fake-factory-type");
+	chip->prop_flash_active = of_property_read_bool(node,
+					"qcom,prop-flash-active");
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
 		"qcom,bmd-pin-src", &bpd);
