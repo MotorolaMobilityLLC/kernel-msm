@@ -37,14 +37,15 @@ static int madera_slim_get_la(struct slim_device *slim, u8 *la)
 	return 0;
 }
 
-static void madera_slim_fixup_prop(struct slim_ch *prop)
+static void madera_slim_fixup_prop(struct slim_ch *prop,
+				   u32 samplerate, u32 sampleszbits)
 {
 	prop->prot = SLIM_AUTO_ISO;
 	prop->baser = SLIM_RATE_4000HZ;
 	prop->dataf = SLIM_CH_DATAF_NOT_DEFINED;
 	prop->auxf = SLIM_CH_AUXF_NOT_APPLICABLE;
-	prop->ratem = 48000 / 4000;
-	prop->sampleszbits = 16;
+	prop->ratem = samplerate / 4000;
+	prop->sampleszbits = sampleszbits;
 }
 
 #define TX_STREAM_1 128
@@ -105,7 +106,7 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		return 0;
 	}
 
-	madera_slim_fixup_prop(&prop);
+	madera_slim_fixup_prop(&prop, 48000, 16);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -166,6 +167,7 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	u32 *porth;
 	u16 *handles, *group;
 	int chcnt;
+	u32 rx_sampleszbits = 16, rx_samplerate = 48000;
 
 	switch (w->shift) {
 	case MADERA_SLIMRX1_ENA_SHIFT:
@@ -174,6 +176,8 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		handles = rx_handles1;
 		group = &rx_group1;
 		chcnt = ARRAY_SIZE(rx_porth1);
+		rx_sampleszbits = priv->rx1_sampleszbits;
+		rx_samplerate = priv->rx1_samplerate;
 		break;
 	case MADERA_SLIMRX5_ENA_SHIFT:
 		dev_dbg(madera->dev, "RX2\n");
@@ -181,6 +185,8 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		handles = rx_handles2;
 		group = &rx_group2;
 		chcnt = ARRAY_SIZE(rx_porth2);
+		rx_sampleszbits = priv->rx2_sampleszbits;
+		rx_samplerate = priv->rx2_samplerate;
 		break;
 	case MADERA_SLIMRX3_ENA_SHIFT:
 		dev_dbg(codec->dev, "RX3\n");
@@ -193,12 +199,13 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		return 0;
 	}
 
-	madera_slim_fixup_prop(&prop);
+	madera_slim_fixup_prop(&prop, rx_samplerate, rx_sampleszbits);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 	case SND_SOC_DAPM_POST_PMU:
-		dev_dbg(madera->dev, "Start slimbus RX\n");
+		dev_dbg(madera->dev, "Start slimbus RX, rate=%d, bit=%d\n",
+			rx_samplerate, rx_sampleszbits);
 		ret = slim_define_ch(stashed_slim_dev, &prop,
 				     handles, chcnt, true, group);
 		if (ret != 0) {
