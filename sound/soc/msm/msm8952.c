@@ -2748,7 +2748,11 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.cpu_dai_name = "msm-dai-q6-mi2s.5",
 		.platform_name = "msm-pcm-hostless",
 		.codec_dai_name = "cs35l35-pcm",
+#ifdef CONFIG_SND_CS35L35_I2C2
+		.codec_name = "cs35l35.2-0040",
+#else
 		.codec_name = "cs35l35.7-0040",
+#endif
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm8952_quin_mi2s_be_ops,
@@ -2797,7 +2801,11 @@ static struct snd_soc_dai_link msm8952_quin_dai_link[] = {
 		.stream_name = "Quinary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.5",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_CS35L35_I2C2
+		.codec_name =  "cs35l35.2-0040",
+#else
 		.codec_name =  "cs35l35.7-0040",
+#endif
 		.codec_dai_name = "cs35l35-pcm",
 		.init = cs35l35_dai_init,
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
