@@ -288,4 +288,8 @@ config SND_SOC_MDM9640
 	 the machine drivers and the corresponding
 	 DAI-links.
 
+config SND_CS35L35_I2C2
+	bool "CS35L35 Use I2C2"
+	default n
+
 endmenu
