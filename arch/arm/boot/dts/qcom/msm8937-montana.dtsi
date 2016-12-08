@@ -34,6 +34,68 @@
 		enable-active-high;
 	};
 
+	dummy_vreg: dummy_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "dummy_vreg";
+		regulator-always-on;
+	};
+
+	ospl {
+		compatible = "mmi,ospl2xx";
+		status = "ok";
+		mmi,ospl-tune-index = <0 1 2 3>;
+		mmi,ospl-afe-port-id = <0x1016 0x1017>;
+		mmi,ospl-left-feedback;
+	};
+
+	sound {
+		qcom,msm-mbhc-hphl-swh = <1>;
+		qcom,msm-mbhc-gnd-swh = <0>;
+		qcom,msm-ext-pa = "quinary";
+		/delete-property/ qcom,cdc-us-euro-gpios;
+		/delete-property/ qcom,msm-micbias1-ext-cap;
+		/delete-property/ qcom,msm-micbias2-ext-cap;
+		qcom,msm-gpios =
+			"pri_i2s",
+			"quin_i2s",
+			"cs35l35_mclk";
+		qcom,pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"quin_act",
+			"quin_pri_i2s_act",
+			"cs35l35_mclk_act",
+			"cs35l35_mclk_pri_i2s_act",
+			"cs35l35_mclk_quin_act",
+			"cs35l35_mclk_quin_pri_i2s_act";
+		pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"quin_act",
+			"quin_pri_i2s_act",
+			"cs35l35_mclk_act",
+			"cs35l35_mclk_pri_i2s_act",
+			"cs35l35_mclk_quin_act",
+			"cs35l35_mclk_quin_pri_i2s_act";
+		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus &cs35l35_mclk_off>;
+		pinctrl-1 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus &cs35l35_mclk_off>;
+		pinctrl-2 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus
+			&pri_tlmm_lines_act &pri_tlmm_ws_act &cs35l35_mclk_off>;
+		pinctrl-3 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act
+			&pri_tlmm_lines_act &pri_tlmm_ws_act &cs35l35_mclk_off>;
+		pinctrl-4 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus &cs35l35_mclk_on>;
+		pinctrl-5 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act
+			&pri_tlmm_lines_sus &pri_tlmm_ws_sus &cs35l35_mclk_on>;
+		pinctrl-6 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus
+			&pri_tlmm_lines_act &pri_tlmm_ws_act &cs35l35_mclk_on>;
+		pinctrl-7 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act
+			&pri_tlmm_lines_act &pri_tlmm_ws_act &cs35l35_mclk_on>;
+	};
+
 	i2c_5: i2c@7af5000 { /* BLSP2 QUP1 */
 		status = "okay";
 		compatible = "qcom,i2c-msm-v2";
@@ -67,6 +129,25 @@
 
 	qcom,msm-thermal {
 		qcom,config-info = "montana";
+	};
+};
+
+&i2c_2 {
+	/delete-node/ adv7533@39;
+	/delete-node/ pericom-type-c@1d;
+
+	cs35l35@40 {
+		compatible = "cirrus,cs35l35";
+		reg = <0x40>;
+		reset-gpio = <&tlmm 38 0>;
+		irq-gpio = <&tlmm 45 1>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <45 8>;
+
+		VA-supply = <&dummy_vreg>;
+		VP-supply = <&dummy_vreg>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cs35l35_irq_default &cs35l35_reset_default>;
 	};
 };
 
@@ -206,6 +287,62 @@
 			bias-pull-down;
 			output-low;
 			drive-strength = <2>;
+		};
+	};
+
+	cs35l35_reset_default: cs35l35_default{
+		mux {
+			pins = "gpio38";
+			function = "gpio";
+		};
+
+		config {
+			pin = "gpio38";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
+	cs35l35_irq_default: cs35l35_irq_default {
+		mux {
+			pins = "gpio45";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio45";
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
+	cs35l35_mclk {
+		cs35l35_mclk_on: cs35l35_mclk_on {
+			mux {
+				pins = "gpio25";
+				function = "sec_mi2s_mclk_a";
+			};
+
+			config {
+				pins = "gpio25";
+				drive-strength = <8>;
+				output-high;
+			};
+		};
+
+		cs35l35_mclk_off: cs35l35_mclk_off {
+			mux {
+				pins = "gpio25";
+				function = "sec_mi2s_mclk_a";
+			};
+
+			config {
+				pins = "gpio25";
+				drive-strength = <2>;
+				output-low;
+				bias-pull-down;
+			};
 		};
 	};
 };
