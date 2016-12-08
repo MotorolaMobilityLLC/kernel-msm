@@ -729,13 +729,10 @@ static int usb3813_validate_ext_params(struct usb_ext_status *status)
 			return -EINVAL;
 	} else if (status->proto == USB_EXT_PROTO_3_1) {
 		/*
-		 * We support only Enterprise as the path for
-		 * USB 3.1 Ext Class, however both USB hosts and
+		 * For USB 3.1 Ext Class, both USB hosts and
 		 * peripherals are supported.
 		 */
-		if (status->path != USB_EXT_PATH_ENTERPRISE)
-			return -EINVAL;
-		else if (status->type == USB_EXT_REMOTE_UNKNOWN)
+		if (status->type == USB_EXT_REMOTE_UNKNOWN)
 			return -EINVAL;
 	} else
 		return -EINVAL;
