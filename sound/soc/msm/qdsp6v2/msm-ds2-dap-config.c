@@ -1709,13 +1709,24 @@ end:
 
 int msm_ds2_dap_set_security_control(u32 cmd, void *arg)
 {
+	int ret = 0;
 	struct dolby_param_license *dolby_license =
 				 ((struct dolby_param_license *)arg);
 	pr_err("%s: dmid %d license key %d\n", __func__,
 		dolby_license->dmid, dolby_license->license_key);
-	core_set_dolby_manufacturer_id(dolby_license->dmid);
-	core_set_license(dolby_license->license_key, DOLBY_DS1_LICENSE_ID);
-	return 0;
+
+	ret = core_set_dolby_manufacturer_id(dolby_license->dmid);
+	if (ret < 0) {
+		pr_err("%s: failed to set dolby manufacturer id",__func__);
+		return ret;
+	}
+
+	ret = core_set_license(dolby_license->license_key, DOLBY_DS1_LICENSE_ID);
+	if (ret < 0) {
+		pr_err("%s: failed to set dolby license",__func__);
+		return ret;
+	}
+	return ret;
 }
 
 int msm_ds2_dap_update_port_parameters(struct snd_hwdep *hw,  struct file *file,
