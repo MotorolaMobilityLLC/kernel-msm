@@ -1579,22 +1579,20 @@ static int akm09911_i2c_check_device(
 	if (err < 0)
 		return err;
 	/* Check read data */
-	if (akm->sense_info[0] == AK09911_WIA1_VALUE)
-	{
-		if(akm->sense_info[1] == AK09911_WIA2_VALUE)
-		{
+	if (akm->sense_info[0] == AK09911_WIA1_VALUE) {
+		if (akm->sense_info[1] == AK09911_WIA2_VALUE) {
 			dev_info(&client->dev, "AKM-Chip is AK09911");
-		}
-		else if(akm->sense_info[1] == AK09916_WIA2_VALUE)
-		{
+		} else if (akm->sense_info[1] == AK09916_WIA2_VALUE) {
 			dev_info(&client->dev, "AKM-Chip is AK09916");
-		}
-		else
-		{
-			dev_err(&client->dev,"The device is not AKM Compass.");
+		} else {
+			dev_err(&client->dev, "The device is not AKM Compass WIA2(0x%02x)", akm->sense_info[1]);
 			return -ENXIO;
 		}
+	} else {
+		dev_err(&client->dev, "The device is not AKM Compass WIA1(0x%02x)", akm->sense_info[0]);
+		return -ENXIO;
 	}
+
 	if(akm->sense_info[1] == AK09916_WIA2_VALUE)//ak9916 don't need read fuse, is value fixed 0x80
 	{
 		akm->sense_conf[0] = akm->sense_conf[1] = akm->sense_conf[2] = 0x80;
