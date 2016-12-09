@@ -220,6 +220,7 @@ struct msm_sensor_info_t {
 	uint32_t sensor_mount_angle;
 	int modes_supported;
 	enum camb_position_t position;
+	int is_rear_prox_interfering;
 };
 
 struct camera_vreg_t {
