@@ -199,3 +199,4 @@ xillybus	Xillybus Ltd.
 xlnx	Xilinx
 zyxel	ZyXEL Communications Corp.
 zarlink	Zarlink Semiconductor
+mx	MagnaChip Semiconductor Ltd.
