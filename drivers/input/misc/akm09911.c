@@ -1621,6 +1621,7 @@ static int akm_compass_power_set(struct akm_compass_data *data, bool on)
 	int rc = 0;
 
 	if (!on && data->power_enabled) {
+#ifdef AKM_REGULATOR_CONTROL_ENABLE
 		rc = regulator_disable(data->vdd);
 		if (rc) {
 			dev_err(&data->i2c->dev,
@@ -1634,9 +1635,11 @@ static int akm_compass_power_set(struct akm_compass_data *data, bool on)
 				"Regulator vio disable failed rc=%d\n", rc);
 			goto err_vio_disable;
 		}
+#endif
 		data->power_enabled = false;
 		return rc;
 	} else if (on && !data->power_enabled) {
+#ifdef AKM_REGULATOR_CONTROL_ENABLE
 		rc = regulator_enable(data->vdd);
 		if (rc) {
 			dev_err(&data->i2c->dev,
@@ -1650,6 +1653,7 @@ static int akm_compass_power_set(struct akm_compass_data *data, bool on)
 				"Regulator vio enable failed rc=%d\n", rc);
 			goto err_vio_enable;
 		}
+#endif
 		data->power_enabled = true;
 
 		/*
@@ -1665,6 +1669,7 @@ static int akm_compass_power_set(struct akm_compass_data *data, bool on)
 		return rc;
 	}
 
+#ifdef AKM_REGULATOR_CONTROL_ENABLE
 err_vio_enable:
 	regulator_disable(data->vio);
 err_vdd_enable:
@@ -1674,6 +1679,7 @@ err_vio_disable:
 	if (regulator_enable(data->vdd))
 		dev_warn(&data->i2c->dev, "Regulator vdd enable failed\n");
 err_vdd_disable:
+#endif
 	return rc;
 }
 
