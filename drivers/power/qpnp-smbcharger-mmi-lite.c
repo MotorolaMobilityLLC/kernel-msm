@@ -298,6 +298,9 @@ struct smbchg_chip {
 	int				weak_charger_valid_cnt;
 	ktime_t			weak_charger_valid_cnt_ktmr;
 	ktime_t			adapter_vbus_collapse_ktmr;
+	ktime_t			holdoff_delta_time;
+	ktime_t			holdoff_start_time;
+	bool			holdoff_triggered;
 };
 
 static struct smbchg_chip *the_chip;
@@ -7886,6 +7889,7 @@ static bool smbchg_check_and_kick_aicl(struct smbchg_chip *chip)
 #define DEMO_MODE_MAX_SOC 35
 #define DEMO_MODE_HYS_SOC 5
 #define HYST_STEP_MV 50
+#define NOT_CHARGING_DELAY_MS   120000
 static void smbchg_heartbeat_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work,
@@ -7899,6 +7903,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_ext_lvl;
 	int prev_step;
 	int index;
+	int charging_status = POWER_SUPPLY_STATUS_DISCHARGING;
+	ktime_t now_kt;
 
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
@@ -8052,6 +8058,31 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 end_hb:
 	power_supply_changed(&chip->batt_psy);
 
+	charging_status = get_prop_batt_status(chip);
+	if ((charging_status == POWER_SUPPLY_STATUS_NOT_CHARGING) &&
+		chip->usb_present) {
+		now_kt = ktime_get_boottime();
+		if (chip->holdoff_triggered == false) {
+			chip->holdoff_start_time = now_kt;
+			chip->holdoff_triggered = true;
+		} else {
+			chip->holdoff_delta_time =
+				ktime_sub(now_kt, chip->holdoff_start_time);
+			if (ktime_to_ms(chip->holdoff_delta_time) >
+				NOT_CHARGING_DELAY_MS) {
+				chip->holdoff_delta_time = ktime_set(0, 0);
+				dev_info(chip->dev,
+					"NOT_CHARGING keep long time!\n");
+				schedule_delayed_work(&chip->usb_insertion_work,
+						      msecs_to_jiffies(0));
+				chip->holdoff_triggered = false;
+			}
+		}
+	} else {
+		chip->holdoff_delta_time = ktime_set(0, 0);
+		chip->holdoff_triggered = false;
+	}
+
 	if (!chip->stepchg_state_holdoff && !chip->aicl_wait_retries)
 		schedule_delayed_work(&chip->heartbeat_work,
 				      msecs_to_jiffies(HEARTBEAT_DELAY_MS));
@@ -8185,6 +8216,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->usb_psy = usb_psy;
 	chip->demo_mode = false;
 	chip->hvdcp_det_done = false;
+	chip->holdoff_triggered = false;
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
 	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
 	chip->test_mode = qpnp_smbcharger_test_mode();
