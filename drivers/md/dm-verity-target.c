@@ -511,16 +511,14 @@ static int verity_verify_io(struct dm_verity_io *io)
 				  verity_io_want_digest(v, io), v->digest_size) == 0)) {
 			if (v->validated_blocks)
 				set_bit(cur_block, v->validated_blocks);
-			continue;
+			add_to_verified_cache(io, b);
 		}
 		else if (verity_fec_decode(v, io, DM_VERITY_BLOCK_TYPE_DATA,
 					   cur_block, NULL, &start) == 0)
-			continue;
+			add_to_verified_cache(io, b);
 		else if (verity_handle_err(v, DM_VERITY_BLOCK_TYPE_DATA,
 					   cur_block))
 			return -EIO;
-		else
-			add_to_verified_cache(io, b);
 	}
 
 	return 0;
