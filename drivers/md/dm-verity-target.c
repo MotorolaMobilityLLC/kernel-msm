@@ -489,15 +489,13 @@ static int verity_verify_io(struct dm_verity_io *io)
 
 		if (likely(memcmp(verity_io_real_digest(v, io),
 				  verity_io_want_digest(v, io), v->digest_size) == 0))
-			continue;
+			add_to_verified_cache(io, b);
 		else if (verity_fec_decode(v, io, DM_VERITY_BLOCK_TYPE_DATA,
 					   io->block + b, NULL, &start) == 0)
-			continue;
+			add_to_verified_cache(io, b);
 		else if (verity_handle_err(v, DM_VERITY_BLOCK_TYPE_DATA,
 					   io->block + b))
 			return -EIO;
-		else
-			add_to_verified_cache(io, b);
 	}
 
 	return 0;
