@@ -17,6 +17,7 @@
 #include "msm_camera_i2c_mux.h"
 #include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/regulator/consumer.h>
+#include "media/v4l2-device.h"
 
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
@@ -132,6 +133,15 @@ int msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 			__func__, __LINE__, power_info, sensor_i2c_client);
 		return -EINVAL;
 	}
+	if (s_ctrl && s_ctrl->msm_sd.sd.devnode &&
+		s_ctrl->sensordata->sensor_info &&
+		s_ctrl->sensordata->sensor_info->is_rear_prox_interfering) {
+		struct kobject *kobj = &s_ctrl->msm_sd.sd.devnode->dev.kobj;
+		char *envp[2] = {"RearImagerActive=0", 0};
+
+		if (kobject_uevent_env(kobj, KOBJ_CHANGE, envp) == 0)
+			sysfs_notify(kobj, NULL, NULL);
+	}
 	return msm_camera_power_down(power_info, sensor_device_type,
 		sensor_i2c_client);
 }
@@ -210,6 +220,15 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		}
 	}
 
+	if (rc == 0 && s_ctrl && s_ctrl->msm_sd.sd.devnode &&
+		s_ctrl->sensordata->sensor_info &&
+		s_ctrl->sensordata->sensor_info->is_rear_prox_interfering) {
+		struct kobject *kobj = &s_ctrl->msm_sd.sd.devnode->dev.kobj;
+		char *envp[2] = {"RearImagerActive=1", 0};
+
+		if (kobject_uevent_env(kobj, KOBJ_CHANGE, envp) == 0)
+			sysfs_notify(kobj, NULL, NULL);
+	}
 	return rc;
 }
 
