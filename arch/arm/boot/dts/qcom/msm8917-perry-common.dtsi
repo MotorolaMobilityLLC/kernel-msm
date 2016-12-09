@@ -101,6 +101,14 @@
 		akm,auto-report;
 		akm,use-hrtimer;
 	};
+
+	g3300@06 {
+		compatible = "mx,g3300";
+		reg = <0x06>;
+		mx,vdd_io-supply = <&pm8917_l6>;
+		mx,position = <0x1>;
+		mx,position_array = <0 1 2 1 1 0>;
+	};
 };
 &i2c_2 {
 	sx9310@28 {
