@@ -902,3 +902,14 @@ config EPL8802_ALSPS
 	default n
 	help
 	  proximity sensor driver for alsps usage.
+
+config INPUT_MXG3300
+	tristate "MXG3300 magnetic sensor support"
+	default y
+	depends on I2C
+	help
+	  Say Y here if you have Magnachip's MXG3300
+	  magnetic sensor hooked to an I2C bus.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called MXG3300.
