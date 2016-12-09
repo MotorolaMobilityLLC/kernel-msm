@@ -1164,6 +1164,13 @@ static int32_t msm_sensor_driver_get_dt_data(struct msm_sensor_ctrl_t *s_ctrl)
 	CDBG("%s qcom,mclk-23880000 = %d\n", __func__,
 		s_ctrl->set_mclk_23880000);
 
+	/* rear prox led(s) interference */
+	sensordata->sensor_info->is_rear_prox_interfering =
+		of_property_read_bool(of_node, "qcom,rear_prox_interfering");
+
+	CDBG("%s qcom,rear_prox_interfering = %d\n", __func__,
+		sensordata->sensor_info->is_rear_prox_interfering);
+
 	return rc;
 
 FREE_VREG_DATA:
