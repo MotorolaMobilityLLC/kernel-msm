@@ -1,0 +1,18 @@
+AKM mxg3300 3-axis electronic compass driver
+
+Required properties:
+
+ - compatible		: Should be "mx,g3300"
+ - reg			: i2c address of the device.
+ - mx,vdd_io-supply	: Digital IO power supply needed for IO and I2C.
+ - mx,position_array	: The layout of the magnitic sensor
+	<x y z signX signY singZ>
+
+ Example:
+	g3300@06 {
+		compatible = "mx,g3300";
+		reg = <0x06>;
+		mx,vdd_io-supply = <&pm8917_l6>;
+		mx,position = <0x1>;
+		mx,position_array = <0 1 2 1 1 0>;
+	};
