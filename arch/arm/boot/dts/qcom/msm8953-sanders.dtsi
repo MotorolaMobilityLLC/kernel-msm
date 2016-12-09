@@ -1033,6 +1033,10 @@
 	regulator-always-on;
 };
 
+&pm8953_l10 {
+        regulator-always-on;
+};
+
 &pm8953_l22 {
 	regulator-always-on;
 };
