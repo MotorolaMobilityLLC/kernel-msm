@@ -383,20 +383,17 @@ int snd_seq_pool_init(struct snd_seq_pool *pool)
 
 	if (snd_BUG_ON(!pool))
 		return -EINVAL;
+	if (pool->ptr)			/* should be atomic? */
+		return 0;
 
-	cellptr = vmalloc(sizeof(struct snd_seq_event_cell) * pool->size);
-	if (!cellptr)
+	pool->ptr = vmalloc(sizeof(struct snd_seq_event_cell) * pool->size);
+	if (pool->ptr == NULL) {
+		pr_debug("ALSA: seq: malloc for sequencer events failed\n");
 		return -ENOMEM;
+	}
 
 	/* add new cells to the free cell list */
 	spin_lock_irqsave(&pool->lock, flags);
-	if (pool->ptr) {
-		spin_unlock_irqrestore(&pool->lock, flags);
-		vfree(cellptr);
-		return 0;
-	}
-
-	pool->ptr = cellptr;
 	pool->free = NULL;
 
 	for (cell = 0; cell < pool->size; cell++) {
@@ -466,8 +463,10 @@ struct snd_seq_pool *snd_seq_pool_new(int poolsize)
 
 	/* create pool block */
 	pool = kzalloc(sizeof(*pool), GFP_KERNEL);
-	if (!pool)
+	if (pool == NULL) {
+		pr_debug("ALSA: seq: malloc failed for pool\n");
 		return NULL;
+	}
 	spin_lock_init(&pool->lock);
 	pool->ptr = NULL;
 	pool->free = NULL;

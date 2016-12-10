@@ -1,5 +1,5 @@
 #!/bin/sh
-export KERNELDIR=`readlink -f .`
+export KERNELDIR=`pwd`
 export CROSS_COMPILE="aarch64-linux-androidkernel-"
 export ARCH=arm64
 
@@ -41,11 +41,11 @@ make -j10 M=$WIFIDRIVER WLAN_ROOT=$WIFIDRIVER MODNAME=wlan BOARD_PLATFORM=msm899
 cp $WIFIDRIVER/wlan.ko $KERNELDIR/BUILT_GRIFFIN/modules/qca_cld/qca_cld_wlan.ko
 
 cd $GREYBUSDRIVER 
-make ARCH=arm64 module
+make -j10 -C $KERNELDIR M=$GREYBUSDRIVER
 find -name '*.ko' -exec cp -av {} $KERNELDIR/BUILT_GRIFFIN/modules/ \;
 
 cd $V4L2DRIVER
-make ARCH=arm64 module
+make -j10 -C $KERNELDIR M=$V4L2DRIVER
 find -name '*.ko' -exec cp -av {} $KERNELDIR/BUILT_GRIFFIN/modules/ \;
 
 cd $KERNELDIR

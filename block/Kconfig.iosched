@@ -80,6 +80,17 @@ config IOSCHED_BFQ
 	  applications. If compiled built-in (saying Y here), BFQ can
 	  be configured to support hierarchical scheduling.
 
+config IOSCHED_ROW
+    tristate "ROW I/O scheduler"
+    default y
+    ---help---
+        The ROW I/O scheduler gives priority to READ requests over the
+        WRITE requests when dispatching, without starving WRITE requests.
+        Requests are kept in priority queues. Dispatching is done in a RR
+        manner when the dispatch quantum for each queue is calculated
+        according to queue priority.
+        Most suitable for mobile devices.
+
 config CGROUP_BFQIO
 	bool "BFQ hierarchical scheduling support"
 	depends on CGROUPS && IOSCHED_BFQ=y
@@ -131,6 +142,7 @@ config DEFAULT_IOSCHED
 	default "noop" if DEFAULT_NOOP
 	default "fiops" if DEFAULT_FIOPS
 	default "sio" if DEFAULT_SIO
+    default "row" if DEFAULT_ROW
 
 endmenu
 

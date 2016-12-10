@@ -15,7 +15,7 @@
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM tracer_pkt
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH .
+#define TRACE_INCLUDE_PATH ../../drivers/soc/qcom
 #undef TRACE_INCLUDE_FILE
 #define TRACE_INCLUDE_FILE tracer_pkt_private
 

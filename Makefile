@@ -20,6 +20,9 @@ LC_COLLATE=C
 LC_NUMERIC=C
 export LC_COLLATE LC_NUMERIC
 
+ccflags-y += -D__CHECK_ENDIAN__
+CFLAGS_trace.o := -I$(src)
+
 # Avoid interference with shell env settings
 unexport GREP_OPTIONS
 

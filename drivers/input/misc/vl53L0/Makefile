@@ -5,6 +5,7 @@
 # Each configuration option enables a list of files.
 FEATURE_USE_CCI := true
 
+ccflags-y  += -Idrivers/input/misc/vl53L0
 ifeq ($(FEATURE_USE_CCI), true)
 ccflags-y	+= -Idrivers/input/misc/vl53L0/inc -DCAMERA_CCI
 else

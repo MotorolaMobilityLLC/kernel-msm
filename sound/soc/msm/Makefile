@@ -21,6 +21,7 @@ snd-soc-msm8994-objs := msm8994.o
 obj-$(CONFIG_SND_SOC_MSM8994) += snd-soc-msm8994.o
 
 # for MSM8996 sound card driver
+ccflags-y  += -Isound/soc/msm 
 snd-soc-msm8996-objs := msm8996.o apq8096-auto.o apq8096-i2c.o
 obj-$(CONFIG_SND_SOC_MSM8996) += snd-soc-msm8996.o
 
