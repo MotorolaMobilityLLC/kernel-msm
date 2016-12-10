@@ -15,6 +15,9 @@
  */
 static struct slim_device *stashed_slim_dev;
 
+static struct mutex slim_tx_lock;
+static struct mutex slim_rx_lock;
+
 static int madera_slim_get_la(struct slim_device *slim, u8 *la)
 {
 	int ret;
@@ -75,11 +78,12 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 	struct madera_priv *priv = snd_soc_codec_get_drvdata(codec);
 	struct madera *madera = priv->madera;
 	struct slim_ch prop;
-	int ret, i;
+	int ret = 0, i;
 	u32 *porth;
 	u16 *handles, *group;
 	int chcnt;
 
+	mutex_lock(&slim_tx_lock);
 	switch (w->shift) {
 	case MADERA_SLIMTX1_ENA_SHIFT:
 		dev_dbg(madera->dev, "TX1\n");
@@ -103,7 +107,7 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		chcnt = ARRAY_SIZE(tx_porth3);
 		break;
 	default:
-		return 0;
+		goto exit;
 	}
 
 	madera_slim_fixup_prop(&prop, 48000, 16);
@@ -117,7 +121,7 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		if (ret != 0) {
 			dev_err(madera->dev, "slim_define_ch() failed: %d\n",
 				ret);
-			return ret;
+			goto exit;
 		}
 
 		for (i = 0; i < chcnt; i++) {
@@ -126,7 +130,7 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 			if (ret != 0) {
 				dev_err(madera->dev, "src connect fail %d:%d\n",
 					i, ret);
-				return ret;
+				goto exit;
 			}
 		}
 
@@ -134,7 +138,7 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 					SLIM_CH_ACTIVATE, true);
 		if (ret != 0) {
 			dev_err(madera->dev, "Failed to activate: %d\n", ret);
-			return ret;
+			goto exit;
 		}
 		break;
 
@@ -151,7 +155,9 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		break;
 	}
 
-	return 0;
+exit:
+	mutex_unlock(&slim_tx_lock);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(madera_slim_tx_ev);
 
@@ -163,12 +169,13 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	struct madera_priv *priv = snd_soc_codec_get_drvdata(codec);
 	struct madera *madera = priv->madera;
 	struct slim_ch prop;
-	int ret, i;
+	int ret = 0, i;
 	u32 *porth;
 	u16 *handles, *group;
 	int chcnt;
 	u32 rx_sampleszbits = 16, rx_samplerate = 48000;
 
+	mutex_lock(&slim_rx_lock);
 	switch (w->shift) {
 	case MADERA_SLIMRX1_ENA_SHIFT:
 		dev_dbg(madera->dev, "RX1\n");
@@ -196,7 +203,7 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		chcnt = ARRAY_SIZE(rx_porth3);
 		break;
 	default:
-		return 0;
+		goto exit;
 	}
 
 	madera_slim_fixup_prop(&prop, rx_samplerate, rx_sampleszbits);
@@ -214,18 +221,21 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 			return ret;
 		}
 
-		ret = slim_connect_sink(stashed_slim_dev, &porth[i], 1,
-					handles[i]);
-		if (ret != 0) {
-			dev_err(madera->dev, "sink connect fail %d\n", ret);
-			return ret;
+		for (i = 0; i < chcnt; i++) {
+			ret = slim_connect_sink(stashed_slim_dev, &porth[i], 1,
+						handles[i]);
+			if (ret != 0) {
+				dev_err(madera->dev, "snk connect fail %d:%d\n",
+					i, ret);
+				goto exit;
+			}
 		}
 
 		ret = slim_control_ch(stashed_slim_dev, *group,
 					SLIM_CH_ACTIVATE, true);
 		if (ret != 0) {
 			dev_err(madera->dev, "Failed to activate: %d\n", ret);
-			return ret;
+			goto exit;
 		}
 		break;
 
@@ -242,7 +252,9 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		break;
 	}
 
-	return 0;
+exit:
+	mutex_unlock(&slim_rx_lock);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(madera_slim_rx_ev);
 
@@ -376,6 +388,8 @@ static int madera_slim_audio_probe(struct slim_device *slim)
 {
 	stashed_slim_dev = slim;
 	dev_info(&slim->dev, "%s SLIM PROBE\n", __func__);
+	mutex_init(&slim_tx_lock);
+	mutex_init(&slim_rx_lock);
 
 	return 0;
 }
