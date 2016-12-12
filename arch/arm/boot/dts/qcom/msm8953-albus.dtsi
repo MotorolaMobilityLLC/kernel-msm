@@ -673,6 +673,9 @@
 	qcom,auto-voltage-comp-mv = <150>;
 	qcom,enable-parameter-separate;
 	qcom,prop-flash-active;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <80>;
+	qcom,lower-limit-capacity = <60>;
 };
 
 /{
