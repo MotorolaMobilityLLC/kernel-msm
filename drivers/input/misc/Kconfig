@@ -905,7 +905,7 @@ config EPL8802_ALSPS
 
 config INPUT_MXG3300
 	tristate "MXG3300 magnetic sensor support"
-	default y
+	default n
 	depends on I2C
 	help
 	  Say Y here if you have Magnachip's MXG3300
