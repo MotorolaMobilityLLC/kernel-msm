@@ -217,7 +217,3 @@
 	qcom,vmax-mv = <2700>;
 };
 
-/* MMI_STOPSHIP */
-&apc_vreg_corner {
-	/delete-property/ qcom,cpr-enable;
-};
