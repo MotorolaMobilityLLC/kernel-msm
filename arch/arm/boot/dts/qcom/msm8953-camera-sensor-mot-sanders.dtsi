@@ -174,13 +174,16 @@
 				&cam_sensor_front_sleep>;
 		gpios = <&tlmm 28 0>,
 			<&tlmm 89 0>,
+			<&tlmm 35 0>,
 			<&tlmm 130 0>;
 		qcom,gpio-vio = <1>;
-		qcom,gpio-standby = <2>;
-		qcom,gpio-req-tbl-num = <0 1 2>;
-		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-vana =<2>;
+		qcom,gpio-standby = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
 			"CAM_VIO2",
+			"CAM_VANA2",
 			"CAM_STANDBY2";
 		qcom,sensor-position = <1>;
 		qcom,sensor-mode = <0>;
