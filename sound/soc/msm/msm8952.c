@@ -1787,6 +1787,9 @@ static int cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret != 0)
 		pr_err("%s Cannot set Opalum controls %d\n", __func__, ret);
 #endif
+	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
+	snd_soc_dapm_ignore_suspend(dapm, "AMP Capture");
+	snd_soc_dapm_sync(dapm);
 	return ret;
 }
 #endif
@@ -2757,6 +2760,7 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm8952_quin_mi2s_be_ops,
 		.ignore_suspend = 1,
+		.be_id = MSM_BACKEND_DAI_QUINARY_MI2S_TX,
 	},
 #else
 	{
