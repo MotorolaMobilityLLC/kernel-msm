@@ -176,6 +176,11 @@ static int cs35l35_sdin_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
 					CS35L35_PDN_ALL_MASK, 0);
 	break;
+	case SND_SOC_DAPM_PRE_PMD:
+		regmap_update_bits(cs35l35->regmap, CS35L35_PROTECT_CTL,
+				CS35L35_AMP_MUTE_MASK,
+				1 << CS35L35_AMP_MUTE_SHIFT);
+	break;
 	case SND_SOC_DAPM_POST_PMD:
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
 					  CS35L35_PDN_ALL_MASK, 1);
@@ -221,9 +226,6 @@ static int cs35l35_main_amp_event(struct snd_soc_dapm_widget *w,
 			regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
 				CS35L35_PDN_BST_MASK,
 				0 << CS35L35_PDN_BST_FETOFF_SHIFT);
-			regmap_update_bits(cs35l35->regmap, CS35L35_PROTECT_CTL,
-				CS35L35_AMP_MUTE_MASK,
-				0 << CS35L35_AMP_MUTE_SHIFT);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		usleep_range(5000, 5100);
@@ -238,13 +240,14 @@ static int cs35l35_main_amp_event(struct snd_soc_dapm_widget *w,
 		for (i = 0; i < 2; i++)
 			regmap_bulk_read(cs35l35->regmap, CS35L35_INT_STATUS_1,
 					&reg, ARRAY_SIZE(reg));
+
+		regmap_update_bits(cs35l35->regmap, CS35L35_PROTECT_CTL,
+			CS35L35_AMP_MUTE_MASK,
+			0 << CS35L35_AMP_MUTE_SHIFT);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		regmap_update_bits(cs35l35->regmap, CS35L35_BST_CVTR_V_CTL,
 			CS35L35_BST_CTL_MASK, 0x00);
-		regmap_update_bits(cs35l35->regmap, CS35L35_PROTECT_CTL,
-				CS35L35_AMP_MUTE_MASK,
-				1 << CS35L35_AMP_MUTE_SHIFT);
 		if (cs35l35->pdata.bst_pdn_fet_on)
 			regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
 				CS35L35_PDN_BST_MASK,
@@ -295,7 +298,7 @@ static const struct snd_kcontrol_new cs35l35_adv_controls[] = {
 static const struct snd_soc_dapm_widget cs35l35_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN_E("SDIN", NULL, 0, CS35L35_PWRCTL3, 1, 1,
 				cs35l35_sdin_event, SND_SOC_DAPM_PRE_PMU |
-				SND_SOC_DAPM_POST_PMD),
+				SND_SOC_DAPM_POST_PMD | SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_AIF_OUT("SDOUT", NULL, 0, CS35L35_PWRCTL3, 2, 1),
 
 	SND_SOC_DAPM_OUTPUT("SPK"),
@@ -444,7 +447,7 @@ static int cs35l35_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct cs35l35_private *cs35l35 = snd_soc_codec_get_drvdata(codec);
 	struct classh_cfg *classh = &cs35l35->pdata.classh_algo;
 	int srate = params_rate(params);
-	int ret;
+	int ret = 0;
 	u8 sp_sclks;
 	int audin_format;
 	int errata_chk;
