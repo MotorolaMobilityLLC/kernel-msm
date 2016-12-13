@@ -18,6 +18,7 @@
 #include "msm8953-camera-sensor-mot-potter.dtsi"
 #include "dsi-panel-mot-tianma-520-1080p-vid.dtsi"
 #include "dsi-panel-mot-boe-520-1080p-vid.dtsi"
+#include "carrier-channel-ids.dtsi"
 #include "msm8953-potter-sensor.dtsi"
 #include "msm8953-potter-fps.dtsi"
 
