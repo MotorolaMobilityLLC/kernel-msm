@@ -742,6 +742,7 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 	/* calculate len requreed for copying */
 	for (oix = 0; oix < inbufs + outbufs; ++oix) {
 		int i = ctx->overps[oix]->raix;
+		uintptr_t mstart, mend;
 		ssize_t len = lpra[i].buf.len;
 		if (!len)
 			continue;
@@ -749,7 +750,15 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 			continue;
 		if (ctx->overps[oix]->offset == 0)
 			copylen = ALIGN(copylen, BALIGN);
-		copylen += ctx->overps[oix]->mend - ctx->overps[oix]->mstart;
+		mstart = ctx->overps[oix]->mstart;
+		mend = ctx->overps[oix]->mend;
+		VERIFY(err, (mend - mstart) <= LONG_MAX);
+		if (err)
+			goto bail;
+		copylen += mend - mstart;
+		VERIFY(err, copylen >= 0);
+		if (err)
+			goto bail;
 	}
 	ctx->used = copylen;
 
@@ -808,7 +817,7 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 	for (oix = 0; oix < inbufs + outbufs; ++oix) {
 		int i = ctx->overps[oix]->raix;
 		struct fastrpc_mmap *map = ctx->maps[i];
-		int mlen = ctx->overps[oix]->mend - ctx->overps[oix]->mstart;
+		ssize_t mlen = ctx->overps[oix]->mend - ctx->overps[oix]->mstart;
 		uint64_t buf;
 		ssize_t len = lpra[i].buf.len;
 		if (!len)
