@@ -10,12 +10,12 @@
  * GNU General Public License for more details.
  */
 
-#include "msmcobalt-moto-common.dtsi"
+#include "msm8998-moto-common.dtsi"
 
 / {
 	model = "Nash";
-	compatible = "qcom,msmcobalt-nash", "qcom,msmcobalt-moto",
-			"qcom,msmcobalt";
+	compatible = "qcom,msm8998-nash", "qcom,msm8998-moto",
+			"qcom,msm8998";
 
 	aliases {
 		/delete-property/ spi1;
@@ -62,13 +62,13 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&marley_irq_default &marley_reset_default>;
 
-		AVDD-supply = <&pmcobalt_l6>;
-		DBVDD1-supply = <&pmcobalt_l6>;
-		DBVDD2-supply = <&pmcobalt_l6>;
-		CPVDD-supply = <&pmcobalt_l6>;
-		CPVDD1-supply = <&pmcobalt_l6>;
-		CPVDD2-supply = <&pmcobalt_l6>;
-		DCVDD-supply = <&pmcobalt_l6>;
+		AVDD-supply = <&pm8998_l6>;
+		DBVDD1-supply = <&pm8998_l6>;
+		DBVDD2-supply = <&pm8998_l6>;
+		CPVDD-supply = <&pm8998_l6>;
+		CPVDD1-supply = <&pm8998_l6>;
+		CPVDD2-supply = <&pm8998_l6>;
+		DCVDD-supply = <&pm8998_l6>;
 		SPKVDD-supply = <&dummy_vreg>;
 
 		gpio-controller;
