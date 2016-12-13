@@ -10,12 +10,10 @@
  * GNU General Public License for more details.
  */
 
-
 /dts-v1/;
 
-#include "msmcobalt-v2.1.dtsi"
-#include "msmcobalt-saratoga.dtsi"
+#include "msm8998-nash.dtsi"
 
 / {
-	qcom,board-id = <0x41 0x81a0>;
+	qcom,board-id = <0x42 0xB1A0>;
 };
