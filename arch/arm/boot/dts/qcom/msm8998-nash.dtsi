@@ -10,10 +10,12 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
+/*
+ * Assuming there will be NO more Nash boards built with V1 MSM parts
+ * beyond the small amount of early EVT1 boards, all future Nash dts
+ * should directly include this file instead of msm8998-nash-common.dtsi,
+ * though common dt changes could go to msm8998-nash-common.dtsi
+ */
 
-#include "msmcobalt-nash.dtsi"
-
-/ {
-	qcom,board-id = <0x42 0xB1A0>;
-};
+#include "msm8998-v2.dtsi"
+#include "msm8998-nash-common.dtsi"
