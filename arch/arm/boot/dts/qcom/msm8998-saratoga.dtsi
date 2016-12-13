@@ -10,11 +10,11 @@
  * GNU General Public License for more details.
  */
 
-#include "msmcobalt-moto-common.dtsi"
+#include "msm8998-moto-common.dtsi"
 / {
 	model = "Saratoga";
-	compatible = "qcom,msmcobalt-saratoga", "qcom,msmcobalt-moto",
-			"qcom,msmcobalt";
+	compatible = "qcom,msm8998-saratoga", "qcom,msm8998-moto",
+			"qcom,msm8998";
 	aliases {
 		uart5 = &blsp2_uart2_hs;
 		spi9 = &spi_9;
@@ -38,13 +38,13 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&marley_irq_default &marley_reset_default>;
 
-		AVDD-supply = <&pmcobalt_l6>;
-		DBVDD1-supply = <&pmcobalt_l6>;
-		DBVDD2-supply = <&pmcobalt_l6>;
-		CPVDD-supply = <&pmcobalt_l6>;
-		CPVDD1-supply = <&pmcobalt_l6>;
-		CPVDD2-supply = <&pmcobalt_l6>;
-		DCVDD-supply = <&pmcobalt_l6>;
+		AVDD-supply = <&pm8998_l6>;
+		DBVDD1-supply = <&pm8998_l6>;
+		DBVDD2-supply = <&pm8998_l6>;
+		CPVDD-supply = <&pm8998_l6>;
+		CPVDD1-supply = <&pm8998_l6>;
+		CPVDD2-supply = <&pm8998_l6>;
+		DCVDD-supply = <&pm8998_l6>;
 		SPKVDD-supply = <&dummy_vreg>;
 
 		gpio-controller;
@@ -127,7 +127,7 @@
 		fsa8500-lint-disabled;
 		/* If FSA controls L22 it breaks all devices on the same bus
 		that try to start earlier. L22 will be turned on in BL eventually */
-		/* hs_det_vdd-supply = <&pmcobalt_l22>; */
+		/* hs_det_vdd-supply = <&pm8998_l22>; */
 	};
 };
 
@@ -169,9 +169,9 @@
 		<&tlmm 143 0>,           /* gpio_muc_ff, output-low */
 		<&tlmm 0 0>,             /* gpio_muc_spi_mosi, output-low */
 		<&tlmm 1 1>,             /* gpio_muc_spi_miso, input */
-		<&pmicobalt_gpios 11 0>, /* gpio_muc_bplus_iset, cs */
+		<&pmi8998_gpios 11 0>, /* gpio_muc_bplus_iset, cs */
 		<0>,                     /* gpio_muc_bplus_discharg, cs */
-		<&pmicobalt_gpios 10 1>, /* gpio_muc_bplus_fault_n, input */
+		<&pmi8998_gpios 10 1>, /* gpio_muc_bplus_fault_n, input */
 		<&tlmm 3 1>;             /* gpio_muc_clk, input */
 
 	pinctrl-0 = <&muc_attach &muc_det &spi_1_sleep &muc_spi_ctrl>;
@@ -188,7 +188,7 @@
 	};
 };
 
-/* Direct Copy of I2C1 from msmcobalt-blsp.dtsi */
+/* Direct Copy of I2C1 from msm8998-blsp.dtsi */
 &mods_i2c {
 	compatible = "qcom,i2c-msm-v2";
 	#address-cells = <1>;
@@ -231,7 +231,7 @@
 	};
 };
 
-/* Direct Copy of SPI1 from msmcobalt-blsp.dtsi */
+/* Direct Copy of SPI1 from msm8998-blsp.dtsi */
 &mods_spi {
 	compatible = "qcom,spi-qup-v2";
 	#address-cells = <1>;
