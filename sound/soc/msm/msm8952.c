@@ -1769,6 +1769,7 @@ static int cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
 	int ret;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = codec_dai->codec;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
 
 	ret = snd_soc_codec_set_sysclk(codec, 0, 0,
 						Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
