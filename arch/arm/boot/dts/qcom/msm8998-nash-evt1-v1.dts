@@ -13,5 +13,6 @@
 
 /dts-v1/;
 
-#include "msmcobalt-nash.dtsi"
-#include "msmcobalt-nash-evt1-common.dtsi"
+#include "msm8998.dtsi"
+#include "msm8998-nash-common.dtsi"
+#include "msm8998-nash-evt1-common.dtsi"
