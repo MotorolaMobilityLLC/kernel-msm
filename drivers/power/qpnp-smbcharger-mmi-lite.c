@@ -4569,8 +4569,17 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 			power_supply_set_supply_type(chip->usb_psy,
 					POWER_SUPPLY_TYPE_USB_HVDCP);
 			smbchg_aicl_deglitch_wa_check(chip);
+			chip->supply_type = POWER_SUPPLY_TYPE_USB_HVDCP;
 		}
 	}
+
+	if (chip->supply_type == POWER_SUPPLY_TYPE_USB_DCP &&
+	    !chip->apsd_rerun_cnt) {
+		chip->apsd_rerun_cnt++;
+		smbchg_force_apsd(chip);
+	} else
+		chip->apsd_rerun_cnt = 0;
+
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	cancel_delayed_work(&chip->heartbeat_work);
 	schedule_delayed_work(&chip->heartbeat_work, msecs_to_jiffies(0));
@@ -4897,8 +4906,6 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 				      msecs_to_jiffies(1000));
 		return;
 	}
-
-	chip->apsd_rerun_cnt = 0;
 
 	if (chip->factory_mode && (chip->supply_type == POWER_SUPPLY_TYPE_USB ||
 				chip->supply_type == POWER_SUPPLY_TYPE_USB_CDP)) {
