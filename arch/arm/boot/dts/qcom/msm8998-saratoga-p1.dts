@@ -13,6 +13,9 @@
 
 /dts-v1/;
 
-#include "msmcobalt.dtsi"
-#include "msmcobalt-nash-common.dtsi"
-#include "msmcobalt-nash-evt1-common.dtsi"
+#include "msm8998.dtsi"
+#include "msm8998-saratoga.dtsi"
+
+/ {
+	qcom,board-id = <0x41 0x8100>;
+};
