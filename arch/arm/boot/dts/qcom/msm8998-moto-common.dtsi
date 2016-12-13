@@ -11,10 +11,10 @@
  */
 
 
-#include "msmcobalt-pinctrl.dtsi"
-#include "msmcobalt-moto-pinctrl.dtsi"
-#include "msmcobalt-mdss.dtsi"
-#include "msmcobalt-moto-fps.dtsi"
+#include "msm8998-pinctrl.dtsi"
+#include "msm8998-moto-pinctrl.dtsi"
+#include "msm8998-mdss.dtsi"
+#include "msm8998-moto-fps.dtsi"
 #include "msm8998-camera-sensor-mot.dtsi"
 #include "carrier-channel-ids.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
@@ -31,12 +31,12 @@
 
 	bluetooth: bt_wcn3990 {
 		compatible = "qca,wcn3990";
-		qca,bt-vdd-io-supply = <&pmcobalt_s3>;
-		qca,bt-vdd-xtal-supply = <&pmcobalt_s5>;
-		qca,bt-vdd-core-supply = <&pmcobalt_l7_pin_ctrl>;
-		qca,bt-vdd-pa-supply = <&pmcobalt_l17_pin_ctrl>;
-		qca,bt-vdd-ldo-supply = <&pmcobalt_l25_pin_ctrl>;
-		qca,bt-chip-pwd-supply = <&pmicobalt_bob_pin1>;
+		qca,bt-vdd-io-supply = <&pm8998_s3>;
+		qca,bt-vdd-xtal-supply = <&pm8998_s5>;
+		qca,bt-vdd-core-supply = <&pm8998_l7_pin_ctrl>;
+		qca,bt-vdd-pa-supply = <&pm8998_l17_pin_ctrl>;
+		qca,bt-vdd-ldo-supply = <&pm8998_l25_pin_ctrl>;
+		qca,bt-chip-pwd-supply = <&pmi8998_bob_pin1>;
 
 		qca,bt-vdd-io-voltage-level = <1352000 1352000>;
 		qca,bt-vdd-xtal-voltage-level = <2040000 2040000>;
@@ -91,8 +91,8 @@
 		compatible = "st,stmvl53l1";
 		reg = <0x29>;
 		/* L22 is always on for now */
-		/* vdd-supply = <&pmcobalt_l22>; */
-		gpios = <&pmcobalt_gpios 15 0>, <&tlmm 79 0>;
+		/* vdd-supply = <&pm8998_l22>; */
+		gpios = <&pm8998_gpios 15 0>, <&tlmm 79 0>;
 		qcom,gpio-reset = <0>;
 		qcom,gpio-req-tbl-num = <0 1>;
 		qcom,gpio-req-tbl-flags = <0 1>;
@@ -127,22 +127,22 @@
 		ti,lra_freq = /bits/ 8 <0xCD>;
 		ti,lra_drive;
 		ti,auto_cal;
-		ti,nrst-gpio = <&pmicobalt_gpios 9 0>;   /* EN_GPIO */
+		ti,nrst-gpio = <&pmi8998_gpios 9 0>;   /* EN_GPIO */
 	};
 
 	usb3813@2D {
 		status = "ok";
                 compatible = "microchip,usb3813";
                 reg = <0x2D>;
-                gpios = <&pmicobalt_gpios 5 0x0>,   /* HUB_RESET_EN */
-                        <&pmicobalt_gpios 1 0x1>;    /* HUB_INT_EN */
+                gpios = <&pmi8998_gpios 5 0x0>,   /* HUB_RESET_EN */
+                        <&pmi8998_gpios 1 0x1>;    /* HUB_INT_EN */
                 gpio-labels = "gpio_hub_reset_n",
                         "gpio_hub_int_n";
                 clock-names = "hub_clk";
-		/* msm-clocks-cobalt.h PM8998 LN_BB_CLK2 -> LNBB_CLK2 */
+		/* msm-clocks-8998.h PM8998 LN_BB_CLK2 -> LNBB_CLK2 */
                 clocks = <&clock_gcc clk_ln_bb_clk2>;
                 enable-usbhost;
-                vdd-hsic-supply = <&pmicobalt_bob>;
+                vdd-hsic-supply = <&pmi8998_bob>;
         };
 
 	analogix_anx78e6@72 {
@@ -159,9 +159,9 @@
 		analogix,irq-gpio = <&msm_gpio 53 0x00>; */
 		analogix,cbl-det-gpio = <&tlmm 124 0x00>;
 		analogix,p-dwn-gpio = <&tlmm 96 0x0>;   /* chip_pd */
-		analogix,vdd_33-supply = <&pmcobalt_l25>;
-		analogix,vdd_18-supply = <&pmcobalt_s4>;
-		analogix,vdd_10-supply = <&pmcobalt_l3>;
+		analogix,vdd_33-supply = <&pm8998_l25>;
+		analogix,vdd_18-supply = <&pm8998_s4>;
+		analogix,vdd_10-supply = <&pm8998_l3>;
 		analogix,i2c-pull-up = <1>;
 		qcom,hdmi-tx-map = <&mdss_hdmi_tx>;
 
@@ -185,7 +185,7 @@
 
 		/* Clock */
 		qcom,clk-src = "BBCLK3";
-		qcom,nq-clkreq = <&pmcobalt_gpios 21 0x00>;
+		qcom,nq-clkreq = <&pm8998_gpios 21 0x00>;
 		clocks = <&clock_gcc clk_ln_bb_clk3_pin>;
 		clock-names = "ref_clk";
 	};
@@ -214,7 +214,7 @@
 		interrupts = <115 0>;
 		gpios = <&tlmm 115 0>, /* IRQ */
 			<&tlmm 39 0>; /* RESET */
-		touch_vdd-supply = <&pmcobalt_l28>;
+		touch_vdd-supply = <&pm8998_l28>;
 		synaptics,gpio-config;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_active &touch_int_suspend>;
@@ -238,7 +238,7 @@
 	qcom,ssusb-compliance;
 };
 
-&pmcobalt_vadc {
+&pm8998_vadc {
 	chan@83 {
 		label = "vph_pwr";
 		reg = <0x83>;
@@ -328,7 +328,7 @@
 	};
 };
 
-&pmcobalt_adc_tm {
+&pm8998_adc_tm {
 	chan@83 {
 		label = "vph_pwr";
 		reg = <0x83>;
@@ -416,7 +416,7 @@
 	};
 };
 
-&pmcobalt_gpios {
+&pm8998_gpios {
 	gpio@c100 { /* PM8998_GPIO2 MOD_MPHY_SEL0 */
 		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
@@ -564,7 +564,7 @@
 
 };
 
-&pmicobalt_gpios {
+&pmi8998_gpios {
 
 	/* ATTENTION!!! PLEASE USE 1.8 V as vin-sel unless high voltage is required */
 	/* PMI8998 GPIOs 1, 3, 4, 6, 7, 8, 11 and 13 have VIN0 3.6 V and VIN1 1.8 V */
@@ -690,9 +690,9 @@
 };
 
 &ufsphy1 {
-	vdda-phy-supply = <&pmcobalt_l1>;
-	vdda-pll-supply = <&pmcobalt_l2>;
-	vddp-ref-clk-supply = <&pmcobalt_l26>;
+	vdda-phy-supply = <&pm8998_l1>;
+	vdda-pll-supply = <&pm8998_l2>;
+	vddp-ref-clk-supply = <&pm8998_l26>;
 	vdda-phy-max-microamp = <51400>;
 	vdda-pll-max-microamp = <14600>;
 	vddp-ref-clk-max-microamp = <100>;
@@ -703,9 +703,9 @@
 &ufs1 {
 	vdd-hba-supply = <&gdsc_ufs>;
 	vdd-hba-fixed-regulator;
-	vcc-supply = <&pmcobalt_l20>;
-	vccq-supply = <&pmcobalt_l26>;
-	vccq2-supply = <&pmcobalt_s4>;
+	vcc-supply = <&pm8998_l20>;
+	vccq-supply = <&pm8998_l26>;
+	vccq2-supply = <&pm8998_s4>;
 	vcc-max-microamp = <750000>;
 	vccq-max-microamp = <560000>;
 	vccq2-max-microamp = <750000>;
@@ -717,11 +717,11 @@
 };
 
 &sdhc_2 {
-	vdd-supply = <&pmcobalt_l21>;
+	vdd-supply = <&pm8998_l21>;
 	qcom,vdd-voltage-level = <2950000 2960000>;
 	qcom,vdd-current-level = <200 800000>;
 
-	vdd-io-supply = <&pmcobalt_l13>;
+	vdd-io-supply = <&pm8998_l13>;
 	qcom,vdd-io-voltage-level = <1808000 2960000>;
 	qcom,vdd-io-current-level = <200 22000>;
 
@@ -733,7 +733,7 @@
 				50000000 100000000 200000000>;
 	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
 
-	cd-gpios = <&pmcobalt_gpios 19 0x1>;
+	cd-gpios = <&pm8998_gpios 19 0x1>;
 
 	status = "ok";
 };
@@ -746,7 +746,7 @@
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
 
-&pmcobalt_l22 {
+&pm8998_l22 {
 	regulator-always-on;
 };
 
@@ -762,14 +762,14 @@
 	vreg_5p0: vreg_5v {
 		compatible = "regulator-fixed";
 		regulator-name = "vreg_5p0";
-		gpio = <&pmcobalt_gpios 10 0>;
+		gpio = <&pm8998_gpios 10 0>;
 		enable-active-high;
 	};
 
 	vdd_otg_vreg: vdd_otg_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "vdd_otg";
-		gpio = <&pmicobalt_gpios 3 0>;
+		gpio = <&pmi8998_gpios 3 0>;
 		vin-supply = <&vreg_5p0>;
 		enable-active-high;
 	};
@@ -781,7 +781,7 @@
 
 		vol_up {
 			label = "volume_up";
-			gpios = <&pmcobalt_gpios 6 0x1>;
+			gpios = <&pm8998_gpios 6 0x1>;
 			linux,input-type = <1>;
 			linux,code = <115>;
 			gpio-key,wakeup;
@@ -793,8 +793,8 @@
 	/delete-node/ sound-tavil;
 	sound {
 		status = "ok";
-		compatible = "qcom,msmcobalt-asoc-snd-cs47l35";
-		qcom,model = "msmcobalt-cs47l35-card";
+		compatible = "qcom,msm8998-asoc-snd-cs47l35";
+		qcom,model = "msm8998-cs47l35-card";
 		qcom,ext-disp-audio-rx;
 
 		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
@@ -852,8 +852,8 @@
 	vdd3_disp_vreg: vdd3_disp_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "vdd3_disp";
-		gpio = <&pmcobalt_gpios 7 0>;
-		vin-supply = <&pmcobalt_s4>;
+		gpio = <&pm8998_gpios 7 0>;
+		vin-supply = <&pm8998_s4>;
 		startup-delay-us = <300>;
 		enable-active-high;
 		regulator-boot-on;
@@ -889,9 +889,9 @@
 			<&tlmm 143 0>,           /* gpio_muc_ff, output-low */
 			<&tlmm 49 0>,            /* gpio_muc_spi_mosi, output-low */
 			<&tlmm 50 1>,            /* gpio_muc_spi_miso, input */
-			<&pmicobalt_gpios 11 0>, /* gpio_muc_bplus_iset, cs */
+			<&pmi8998_gpios 11 0>, /* gpio_muc_bplus_iset, cs */
 			<0>,                     /* gpio_muc_bplus_discharg, cs */
-			<&pmicobalt_gpios 10 1>, /* gpio_muc_bplus_fault_n, input */
+			<&pmi8998_gpios 10 1>, /* gpio_muc_bplus_fault_n, input */
 			<&tlmm 52 1>;            /* gpio_muc_clk, input */
 
 		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
@@ -971,7 +971,7 @@
 		pinctrl-0 = <&apba_default &spi_6_sleep>;
 		pinctrl-1 = <&apba_default &spi_6_active>;
 
-		gpios = <&pmcobalt_gpios 9 0>,  /* APBA_1P1_EN, output-low */
+		gpios = <&pm8998_gpios 9 0>,  /* APBA_1P1_EN, output-low */
 			<&tlmm 27 0>,           /* APBA_BOOTRET, output-low */
 			<&tlmm 38 2>,           /* MOD_MPHY_I2S_SEL, output-high */
 			<&tlmm 21 0>,           /* APBA_RESET_N, output-low */
@@ -1022,7 +1022,7 @@
 	modbus_switch {
 		compatible = "mmi,modbus_switch";
 
-		gpios = <&pmcobalt_gpios 2 2>,  /* MOD_MPHY_SEL0, output high */
+		gpios = <&pm8998_gpios 2 2>,  /* MOD_MPHY_SEL0, output high */
 			<&tlmm 98 2>;           /* MOD_MPHY_SEL1, output high */
 		mmi,mod-switch-gpio-labels = "MOD_MPHY_SEL0",
 						"MOD_MPHY_SEL1";
@@ -1080,7 +1080,7 @@
 	};
 };
 
-/* Direct Copy of I2C9 from msmcobalt-blsp.dtsi */
+/* Direct Copy of I2C9 from msm8998-blsp.dtsi */
 &mods_i2c {
 	compatible = "qcom,i2c-msm-v2";
 	#address-cells = <1>;
@@ -1123,7 +1123,7 @@
 	};
 };
 
-/* Direct Copy of SPI9 from msmcobalt-blsp.dtsi */
+/* Direct Copy of SPI9 from msm8998-blsp.dtsi */
 &mods_spi {
 	compatible = "qcom,spi-qup-v2";
 	#address-cells = <1>;
@@ -1176,7 +1176,7 @@
 	};
 };
 
-/* Direct Copy of SPI6 from msmcobalt-blsp.dtsi */
+/* Direct Copy of SPI6 from msm8998-blsp.dtsi */
 &apba_spi {
 	compatible = "qcom,spi-qup-v2";
 	#address-cells = <1>;
@@ -1253,21 +1253,21 @@
 	qcom,shared;
 };
 
-&pmcobalt_l19 {
+&pm8998_l19 {
 	regulator-min-microvolt = <3200000>;
 	regulator-max-microvolt = <3200000>;
 	qcom,init-voltage = <3200000>;
 	regulator-boot-on;
 };
 
-&pmcobalt_l25 {
+&pm8998_l25 {
 	regulator-min-microvolt = <3312000>;
 	regulator-max-microvolt = <3312000>;
 	qcom,init-voltage = <3312000>;
 };
 
 &mdss_hdmi_pll {
-	compatible = "qcom,mdss_hdmi_pll_cobalt_1p8";
+	compatible = "qcom,mdss_hdmi_pll_8998_1p8";
 };
 
 &mdss_hdmi_tx {
@@ -1319,7 +1319,7 @@
 	qcom,display-id = "primary";
 
 	vbat_disp-supply = <&vbat_disp_vreg>;
-	vci_disp-supply = <&pmcobalt_l19>;
+	vci_disp-supply = <&pm8998_l19>;
 	vdd3_disp-supply = <&vdd3_disp_vreg>;
 
 	/delete-property/  qcom,mdss-fb-map;
@@ -1327,7 +1327,7 @@
 
 &mdss_dsi1 {
 	qcom,dsi-pref-prim-pan = <&mot_dba_panel>;
-	apba_cdsi-supply = <&pmcobalt_l26>;
+	apba_cdsi-supply = <&pm8998_l26>;
 	qcom,pluggable;
 	qcom,bridge-index = <0>;
 	qcom,msm_ext_disp = <&msm_ext_disp>;
@@ -1373,7 +1373,7 @@
 	};
 };
 
-&pmicobalt_fg {
+&pmi8998_fg {
 	qcom,battery-data = <&mot_batterydata>;
 	qcom,fg-cutoff-voltage = <3000>;
 	qcom,fg-empty-voltage = <2750>;
@@ -1385,10 +1385,10 @@
 	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
 };
 
-&pmicobalt_charger {
+&pmi8998_charger {
 	gpios = <&tlmm 72 0x0>, /* GPIOF_OUT_INIT_LOW */
 		<&tlmm 62 0x1>, /* GPIOF_IN */
-		<&pmcobalt_gpios 11 0>; /* TOGL_RST, output-low */
+		<&pm8998_gpios 11 0>; /* TOGL_RST, output-low */
 	gpio-names = "eb_vbus_en",
 		     "factory_warn",
 		     "togl_rst";
@@ -1408,7 +1408,7 @@
 };
 
 &spmi_bus {
-	qcom,pmcobalt@0 {
+	qcom,pm8998@0 {
 		qcom,power-on@800 {
 			qcom,pon_1 {
 				qcom,support-reset = <0>;
@@ -1425,13 +1425,13 @@
 	};
 };
 
-&pmicobalt_pdphy {
+&pmi8998_pdphy {
 	pinctrl-names = "default";
 	pinctrl-0 = <&usb_aud_sw_sel>;
 
-	gpios = <&pmcobalt_gpios 20 0>,  /* USB_AUD_DET_N, output-high */
+	gpios = <&pm8998_gpios 20 0>,  /* USB_AUD_DET_N, output-high */
 		<&tlmm 116 0>,           /* USB_AUD_SW_SEL, output-low */
-		<&pmicobalt_gpios 2 1>;  /* USB_OTG_FAULT_N, input */
+		<&pmi8998_gpios 2 1>;  /* USB_OTG_FAULT_N, input */
 
 	gpio-labels = "gpio_usb_aud_det_n",
 		"gpio_aud_sw_sel",
