@@ -1522,6 +1522,11 @@ static int anx7805_i2c_remove(struct i2c_client *client)
 	return 0;
 }
 
+unchar sp_get_link_byte_per_pixel(u32 pclk_khz)
+{
+	return 3;
+};
+
 static const struct i2c_device_id anx7805_id[] = {
 	{ "anx7805", 0 },
 	{ }
