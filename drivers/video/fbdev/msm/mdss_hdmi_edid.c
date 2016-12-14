@@ -1737,9 +1737,18 @@ static u32 hdmi_edid_filter_mode_format(u32 video_format,
 	struct msm_hdmi_mode_timing_info *timing, u32 rx_bandwidth_khz,
 	const char *color, u32 bits_per_pixel)
 {
-	const u32 link_bits_per_pixel = bits_per_pixel * 10 / 8;
-	const u32 max_pixel_freq = rx_bandwidth_khz / link_bits_per_pixel;
-	u32 is_supported = timing->pixel_freq <= max_pixel_freq;
+	u32 link_bits_per_pixel;
+	u32 max_pixel_freq;
+	u32 is_supported = 0;
+
+	if (bits_per_pixel == 24)
+		link_bits_per_pixel =
+			sp_get_link_byte_per_pixel(timing->pixel_freq) * 10;
+	else
+		link_bits_per_pixel = bits_per_pixel * 10 / 8;
+
+	max_pixel_freq = rx_bandwidth_khz / link_bits_per_pixel;
+	is_supported = timing->pixel_freq <= max_pixel_freq;
 
 	DEV_DBG("%s: format: %d %s %s timing:%uKHz rx:%uKHz\n", __func__,
 		video_format, color, msm_hdmi_mode_2string(video_format),
