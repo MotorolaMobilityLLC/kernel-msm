@@ -2017,6 +2017,24 @@ u32 sp_get_rx_bw_khz(void)
 	return sp_get_link_bandwidth_khz(sp_rx_cur_bw());
 }
 
+/*
+ * - Currently, QCOM's HDMI will use the RGB or Y420 format. Slimport will
+ * also use the same QCOM's HDMI format to send to the downstream.
+ * When the downstream is 4K device, and if the input format (from QCOM's HDMI)
+ * is RGB, then it will enable the down scaling to YCbCr4:2:2 (2 byte-per-pixel)
+ * from RGB (3 byte-per-pixel) so it can handle 4K's bandwidth.
+ * - This API is using the same logic of sp_tx_bw_lc_sel() in slimport_tx_drv.c
+ */
+unchar sp_get_link_byte_per_pixel(u32 pclk_khz)
+{
+	unchar bpp = 3;
+
+	if (pclk_khz > 224000)
+		bpp = 2;
+
+	return bpp;
+}
+
 static const struct i2c_device_id anx7816_id[] = {
 	{"anx7816", 0},
 	{}
