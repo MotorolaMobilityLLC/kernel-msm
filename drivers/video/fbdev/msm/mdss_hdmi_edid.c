@@ -2640,7 +2640,16 @@ u8 hdmi_edid_get_deep_color(void *input)
 		return 0;
 	}
 
-	return edid_ctrl->deep_color;
+	/*
+	 * ANX7816 is NOT supporting deep color mode.
+	 * QCOM's HDMI SW will check "deep color info supported by sink's EDID"
+	 * If the sink supports the "deep color mode" then it will increase the
+	 * pclk by 25%, which means with 4K TV, it will increase the pclk from
+	 * 297Mhz to 317.25Mhz which causes the ANX7816 to fails because
+	 * ANX7816 still uses 297Mhz for pixel_clock
+	 */
+ /*	return edid_ctrl->deep_color; */
+	return 0;
 }
 
 /**
