@@ -844,9 +844,10 @@
 				"msm-ext-disp-audio-codec-rx";
 		cs47l35,micbias-routing =
 			"IN1AL", "MICBIAS2A",
-			"IN2L",  "MICBIAS1B",
+			"IN2L",  "MICBIAS2A",
+			"IN2L",  "GPSW",
 			"IN2R",  "MICBIAS2B",
-			"IN1BR", "MICBIAS2A";
+			"IN1BR", "MICBIAS1B";
 	};
 
 	vdd3_disp_vreg: vdd3_disp_vreg {
