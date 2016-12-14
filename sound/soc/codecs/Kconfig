@@ -225,6 +225,17 @@ config SND_SOC_WM_ADSP
 	default m if SND_SOC_WM5110=m
 	default m if SND_SOC_WM2200=m
 
+config SND_SOC_AOV_TRIGGER
+	tristate "AOV Trigger"
+	default n
+        help
+          Always-On-Audio trigger driver is needed to expose
+          audio DSP voice trigger events to user space. An app should
+          register to receive a trigger and rearm it each time after
+          reading a voice data from DSP.
+
+          If unsure select "N".
+
 config SND_SOC_AB8500_CODEC
 	tristate
 
