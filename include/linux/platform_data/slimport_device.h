@@ -17,4 +17,5 @@
 u32 sp_get_rx_bw_khz(void);
 int slimport_read_edid_block(int block, uint8_t *edid_buf);
 int slimport_reset_standby(void);
+unchar sp_get_link_byte_per_pixel(u32 pclk_khz);
 #endif /* SLIMPORT_DEVICE */
