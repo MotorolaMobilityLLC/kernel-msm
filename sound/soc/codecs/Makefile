@@ -158,6 +158,7 @@ snd-soc-wcd-dsp-mgr-objs := wcd-dsp-mgr.o
 snd-soc-wcd-spi-objs := wcd-spi.o
 snd-soc-wl1273-objs := wl1273.o
 snd-soc-wm-adsp-objs := wm_adsp.o
+snd-soc-aov-trigger-objs := aov_trigger.o
 snd-soc-wm0010-objs := wm0010.o
 snd-soc-wm1250-ev1-objs := wm1250-ev1.o
 snd-soc-wm2000-objs := wm2000.o
@@ -216,6 +217,7 @@ snd-soc-mods-codec-shim-objs := mods_codec_shim.o
 snd-soc-msm-stub-objs := msm_stub.o
 obj-$(CONFIG_SND_SOC_MSM_HDMI_CODEC_RX) := msm_hdmi_codec_rx.o
 
+obj-$(CONFIG_SND_SOC_AOV_TRIGGER) += snd-soc-aov-trigger.o
 # Amp
 snd-soc-max9877-objs := max9877.o
 snd-soc-tpa6130a2-objs := tpa6130a2.o
