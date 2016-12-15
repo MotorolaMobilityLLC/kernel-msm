@@ -326,7 +326,7 @@
 	};
 
 	i2c_2 {
-		laser_active: laser_active {
+		laser_active_irq: laser_active_irq {
 			mux {
 				pins = "gpio129";
 				function = "gpio";
@@ -338,7 +338,7 @@
 				bias-pull-up; /* PULL UP */
 			};
 		};
-		laser_suspend: laser_suspend{
+		laser_suspend_irq: laser_suspend_irq {
 			mux {
 				pins = "gpio129";
 				function = "gpio";
@@ -348,6 +348,32 @@
 				pins = "gpio129";
 				drive-strength = <2>;
 				bias-disable; /* NO PULL */
+			};
+		};
+		laser_active_xsdn: laser_active_xsdn {
+			mux {
+				pins = "gpio66";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio66";
+				drive-strength = <2>;
+				output-high;
+				bias-pull-up; /* PULL UP */
+			};
+		};
+		laser_suspend_xsdn: laser_suspend_xsdn {
+			mux {
+				pins = "gpio66";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio66";
+				drive-strength = <2>;
+				output-low;
+				bias-pull-down; /* PULL DOWN */
 			};
 		};
 	};
