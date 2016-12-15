@@ -222,7 +222,6 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 			      ns_to_ktime((u64) value * NSEC_PER_MSEC),
 			      HRTIMER_MODE_REL);
 	}
-
 	mutex_unlock(&ctrl->lock);
 }
 
@@ -975,6 +974,10 @@ static void dev_init_platform_data(struct drv2624_data *ctrl)
 		dev_err(ctrl->dev,
 			"%s, ERROR OverDriveVol ZERO\n", __func__);
 	}
+	/*update sample_time*/
+	drv2624_reg_write(ctrl,
+			  DRV2624_REG_SAMPLE_TIME,
+			  actuator.mnSampleTime & SAMPLE_TIME_MASK);
 
 	if (actuator.meActuatorType == LRA) {
 		unsigned char DriveTime =
@@ -1078,6 +1081,14 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 		&pdata->msActuator.mnOverDriveClampVoltage);
 	if (rc) {
 		dev_err(&client->dev, "%s: overdrive voltage read failed\n",
+			__func__);
+		return NULL;
+	}
+
+	rc = of_property_read_u8(np, "ti,sample_time",
+		&pdata->msActuator.mnSampleTime);
+	if (rc) {
+		dev_err(&client->dev, "%s: sample time read failed\n",
 			__func__);
 		return NULL;
 	}
