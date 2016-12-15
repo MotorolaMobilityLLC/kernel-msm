@@ -1309,6 +1309,21 @@ static int calc_dc_thermal_limited_current(struct smbchg_chip *chip,
 #define EN_BAT_CHG_BIT		BIT(1)
 static int smbchg_charging_en(struct smbchg_chip *chip, bool en)
 {
+	if (en == true) {
+		if ((!chip->ext_high_temp) &&
+		(chip->temp_state != POWER_SUPPLY_HEALTH_COLD) &&
+		(chip->temp_state != POWER_SUPPLY_HEALTH_OVERHEAT) &&
+		(chip->stepchg_state != STEP_FULL))
+			smbchg_masked_write(chip, chip->bat_if_base +
+			CMD_CHG_REG, EN_BAT_CHG_BIT, en ? 0 : EN_BAT_CHG_BIT);
+		else {
+			dev_err(chip->dev,
+				"Enable conflict! ext_high_temp: %d,temp_state: %d,step_chg_state %d\n",
+				chip->ext_high_temp, chip->temp_state,
+				chip->stepchg_state);
+			return -EINVAL;
+		}
+	}
 	/* The en bit is configured active low */
 	return smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
 			EN_BAT_CHG_BIT, en ? 0 : EN_BAT_CHG_BIT);
