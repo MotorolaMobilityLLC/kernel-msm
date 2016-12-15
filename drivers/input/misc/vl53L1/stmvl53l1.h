@@ -71,7 +71,7 @@
  * to enable/disable sensor power
  * see module-i2c or module-cci file
  */
-/* define CFG_STMVL53L1_HAVE_REGULATOR */
+#define CFG_STMVL53L1_HAVE_REGULATOR
 
 #define STMVL53L1_SLAVE_ADDR	(0x52>>1)
 
