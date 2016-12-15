@@ -405,7 +405,8 @@ void esdfs_set_derived_perms(struct inode *inode)
 		if (ESDFS_RESTRICT_PERMS(sbi)) {
 			i_gid_write(inode, AID_SDCARD_R);
 			inode->i_mode |= sbi->upper_perms.dmask;
-		} else if (test_opt(sbi, DERIVE_PUBLIC)) {
+		} else if (test_opt(sbi, DERIVE_PUBLIC) &&
+			   test_opt(ESDFS_SB(inode->i_sb), DERIVE_CONFINE)) {
 			inode->i_mode &= S_IFMT;
 			inode->i_mode |= 0771;
 		}
