@@ -106,6 +106,10 @@
 
 #define	DRV2624_REG_DRIVE_TIME		0x27
 #define	DRIVE_TIME_MASK				0x1f
+
+#define	DRV2624_REG_SAMPLE_TIME		0x29
+#define	SAMPLE_TIME_MASK				0x0c
+
 #define	MINFREQ_SEL_45HZ			0x01
 #define	MINFREQ_SEL_MASK			0x80
 #define	MINFREQ_SEL_SHIFT			0x07
@@ -177,6 +181,8 @@ struct actuator_data {
 	unsigned char mnRatedVoltage;
 	unsigned char mnOverDriveClampVoltage;
 	unsigned char mnLRAFreq;
+	unsigned char mnSampleTime;
+
 };
 
 enum wave_seq_loop {
