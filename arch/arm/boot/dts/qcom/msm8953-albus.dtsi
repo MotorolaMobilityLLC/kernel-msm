@@ -213,7 +213,7 @@
 			#interrupt-cells = <2>;
 			wlf,reset = <&tlmm 68 0>;
 			wlf,out-mono = <1 0 0 0 0 0>;
-			wlf,micbias1 = <1800 1 1 1 1 0>;
+			wlf,micbias1 = <2600 1 1 1 1 0>;
 			wlf,micbias2 = <1800 1 1 1 1 0>;
 
 			wlf,micd-configs = <0 2 0>;
