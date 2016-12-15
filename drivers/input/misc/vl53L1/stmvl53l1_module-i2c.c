@@ -63,8 +63,6 @@
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
 
-#include <soc/qcom/camera2.h>
-
 #include "stmvl53l1-i2c.h"
 #include "stmvl53l1.h"
 
@@ -130,7 +128,14 @@ static struct i2c_client *stm_test_i2c_client;
 #	define modi2c_dbg(...)	(void)0
 #endif
 
-struct msm_pinctrl_info g_pinctrl_info;
+#define VL53L1_VDD_MIN 2850000
+#define VL53L1_VDD_MAX 2850000
+
+struct vl53l1_pinctrl_info {
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *gpio_state_active;
+	struct pinctrl_state *gpio_state_suspend;
+} g_pinctrl_info;
 
 /**
  *  parse dev tree for pwren gpio and init it
@@ -283,18 +288,6 @@ static int parse_irq(struct device *dev, struct i2c_data *i2c_data)
 			i2c_data->intr_gpio = of_get_gpio(dev->of_node, 1);
 	}
 
-	g_pinctrl_info.pinctrl = devm_pinctrl_get(dev);
-	if (IS_ERR_OR_NULL(g_pinctrl_info.pinctrl)) {
-		vl53l1_errmsg("Getting pinctrl handle failed\n");
-		goto err_irq;
-	}
-
-	g_pinctrl_info.gpio_state_active =
-		pinctrl_lookup_state(g_pinctrl_info.pinctrl, "laser_default");
-
-	g_pinctrl_info.gpio_state_suspend =
-		pinctrl_lookup_state(g_pinctrl_info.pinctrl, "laser_suspend");
-
 	i2c_data->irq = -1; /* init to no irq hooked */
 	if (i2c_data->intr_gpio != -1) {
 		rc = gpio_request(i2c_data->intr_gpio, "vl53l1_intr");
@@ -376,7 +369,7 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 	vl53l1_dbgmsg("Enter\n");
 #ifdef CFG_STMVL53L1_HAVE_REGULATOR
 	if (dev->of_node) {
-		i2c_data->vana = regulator_get(dev, "vdd");
+		i2c_data->vana = regulator_get(dev, "vdd-vl53l1");
 		if (IS_ERR(i2c_data->vana)) {
 			vl53l1_errmsg("vdd supply is not provided\n");
 			/* we may have alternate do not return error */
@@ -389,6 +382,19 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 		/* FIXME if regulator and dev tree is mandatory do error here */
 	}
 #endif
+
+	g_pinctrl_info.pinctrl = devm_pinctrl_get(dev);
+	if (!IS_ERR_OR_NULL(g_pinctrl_info.pinctrl)) {
+		g_pinctrl_info.gpio_state_active =
+			pinctrl_lookup_state(g_pinctrl_info.pinctrl,
+					"laser_default");
+
+		g_pinctrl_info.gpio_state_suspend =
+			pinctrl_lookup_state(g_pinctrl_info.pinctrl,
+					"laser_suspend");
+	} else
+		vl53l1_errmsg("Getting pinctrl handle failed\n");
+
 	rc = parse_pwr_en(dev, i2c_data);
 	if (rc)
 		goto err_reg;
@@ -485,6 +491,9 @@ static int stmvl53l1_probe(struct i2c_client *client,
 	vl53l1_dbgmsg("End\n");
 	if (rc)
 		;/* TODO free mmem */
+
+	stmvl53l1_power_down_i2c(i2c_data);
+
 	return rc;
 
 done_freemem:
@@ -567,7 +576,7 @@ int stmvl53l1_power_up_i2c(void *object, unsigned int *preset_flag)
 
 	vl53l1_dbgmsg("Enter\n");
 #ifdef CFG_STMVL53L1_HAVE_REGULATOR
-	if (data->vana) {
+	if (!IS_ERR(data->vana)) {
 		ret = regulator_set_voltage(data->vana,	VL53L1_VDD_MIN,
 				VL53L1_VDD_MAX);
 		if (ret < 0) {
@@ -582,11 +591,9 @@ int stmvl53l1_power_up_i2c(void *object, unsigned int *preset_flag)
 			return ret;
 		}
 		powered = 1;
+		msleep(20);
 	}
 #endif
-	pinctrl_select_state(g_pinctrl_info.pinctrl,
-			g_pinctrl_info.gpio_state_active);
-
 	/* Do power with gpio if not handle by regulator*/
 	if (data->pwren_gpio != -1) {
 		if (data->power_up == 0) {
@@ -609,8 +616,13 @@ power_done:
 	/* if we have reset i/o release reset if set*/
 	if (data->xsdn_gpio != -1) {
 		vl53l1_dbgmsg("un reset");
+#ifdef STM_TEST
 		gpio_set_value(data->xsdn_gpio, 1);
-		msleep(50); /* FIXME  fpga is very slow too boot */
+#else
+		pinctrl_select_state(g_pinctrl_info.pinctrl,
+			g_pinctrl_info.gpio_state_active);
+#endif
+		msleep(20); /* FIXME  fpga is very slow too boot */
 		*preset_flag = 1;
 	}
 	vl53l1_dbgmsg("End\n");
@@ -632,17 +644,24 @@ int stmvl53l1_power_down_i2c(void *i2c_object)
 	vl53l1_dbgmsg("Enter\n");
 	if (data->xsdn_gpio != -1) {
 		vl53l1_dbgmsg("xsdn low\n");
+#ifdef STM_TEST
 		gpio_set_value(data->xsdn_gpio, 0);
+#else
+		pinctrl_select_state(g_pinctrl_info.pinctrl,
+			g_pinctrl_info.gpio_state_suspend);
+#endif
 	}
 
 #ifdef CFG_STMVL53L1_HAVE_REGULATOR
-	ret = regulator_disable(data->vana);
-	if (ret < 0)
-		vl53l1_errmsg("reg disable(%p) failed.rc=%d\n",
-			data->vana, ret);
+	if(!IS_ERR(data->vana)) {
+		ret = regulator_disable(data->vana);
+		if (ret < 0)
+			vl53l1_errmsg("reg disable(%p) failed.rc=%d\n",
+				data->vana, ret);
 
-	data->power_up = 0;
-	goto done;
+		data->power_up = 0;
+		goto done;
+	}
 #endif
 	if (data->pwren_gpio != -1) {
 		if (data->power_up) {
@@ -652,8 +671,6 @@ int stmvl53l1_power_down_i2c(void *i2c_object)
 		} else
 			vl53l1_wanrmsg("already off\n");
 	}
-	pinctrl_select_state(g_pinctrl_info.pinctrl,
-			g_pinctrl_info.gpio_state_suspend);
 
 	goto done; /* avoid warning unused w/o CFG_STMVL53L1_HAVE_REGULATOR*/
 done:
