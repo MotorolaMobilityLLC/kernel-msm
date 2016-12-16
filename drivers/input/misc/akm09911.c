@@ -1593,9 +1593,10 @@ static int akm09911_i2c_check_device(
 		return -ENXIO;
 	}
 
-	if(akm->sense_info[1] == AK09916_WIA2_VALUE)//ak9916 don't need read fuse, is value fixed 0x80
+	/* ak9916 don't need read fuse, is value fixed 0x00 */
+	if (akm->sense_info[1] == AK09916_WIA2_VALUE)
 	{
-		akm->sense_conf[0] = akm->sense_conf[1] = akm->sense_conf[2] = 0x80;
+		akm->sense_conf[0] = akm->sense_conf[1] = akm->sense_conf[2] = 0x00;
 	}
 	else
 	{
