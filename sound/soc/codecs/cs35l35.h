@@ -264,7 +264,6 @@ struct  cs35l35_private {
 	struct regmap *regmap;
 	struct regulator_bulk_data supplies[2];
 	int num_supplies;
-	void *control_data;
 	int sysclk;
 	int sclk;
 	int mclk_pll;
@@ -274,6 +273,7 @@ struct  cs35l35_private {
 	bool pdm_mode;
 	bool i2s_mode;
 	bool slave_mode;
+	bool pdm_mclk_switch;
 	/* GPIO for /RST */
 	struct gpio_desc *reset_gpio;
 	/* GPIO for INT */
