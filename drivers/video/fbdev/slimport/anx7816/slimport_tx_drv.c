@@ -1406,8 +1406,7 @@ void slimport_edid_process(void)
 	if (ret) {
 		pr_err("%s: Failed to get display config: %d\n", __func__, ret);
 		memset(edid_blocks, 0, 256);
-		/* MMI_STOPSHIP
-		return; */
+		return;
 	} else if (display_config->config_type == MOD_CONFIG_EDID_1_3) {
 		if (display_config->config_size > 256) {
 			pr_err("%s: EDID too big: %d\n", __func__,
