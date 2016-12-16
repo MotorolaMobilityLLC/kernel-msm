@@ -153,6 +153,9 @@ struct arizona_pdata {
 	/** Internal pull on GPIO5 is disabled when used for jack detection */
 	bool jd_gpio5_nopull;
 
+	/** JD2 IRQ is used for jack detection */
+	bool jd2_irq;
+
 	/** set to true if jackdet contact opens on insert */
 	bool jd_invert;
 
