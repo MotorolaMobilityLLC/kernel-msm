@@ -163,47 +163,18 @@ static int cs35l35_sdin_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct cs35l35_private *cs35l35 = snd_soc_codec_get_drvdata(codec);
-	int ret = 0;
 
 	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		regmap_update_bits(cs35l35->regmap, CS35L35_CLK_CTL1,
-					CS35L35_MCLK_DIS_MASK,
-					0 << CS35L35_MCLK_DIS_SHIFT);
-		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
-					CS35L35_DISCHG_FILT_MASK,
-					0 << CS35L35_DISCHG_FILT_SHIFT);
-		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
-					CS35L35_PDN_ALL_MASK, 0);
-	break;
 	case SND_SOC_DAPM_PRE_PMD:
 		regmap_update_bits(cs35l35->regmap, CS35L35_PROTECT_CTL,
 				CS35L35_AMP_MUTE_MASK,
 				1 << CS35L35_AMP_MUTE_SHIFT);
 	break;
-	case SND_SOC_DAPM_POST_PMD:
-		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
-					  CS35L35_PDN_ALL_MASK, 1);
-		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
-					CS35L35_DISCHG_FILT_MASK,
-					1 << CS35L35_DISCHG_FILT_SHIFT);
-
-		ret = wait_for_completion_timeout(&cs35l35->pdn_done,
-							msecs_to_jiffies(100));
-		if (ret == 0) {
-			pr_err("TIMEOUT PDN_DONE did not complete in 100ms\n");
-			ret = -ETIMEDOUT;
-		}
-
-		regmap_update_bits(cs35l35->regmap, CS35L35_CLK_CTL1,
-					CS35L35_MCLK_DIS_MASK,
-					1 << CS35L35_MCLK_DIS_SHIFT);
-	break;
 	default:
 		pr_err("Invalid event = 0x%x\n", event);
-		ret = -EINVAL;
+		return -EINVAL;
 	}
-	return ret;
+	return 0;
 }
 
 static int cs35l35_main_amp_event(struct snd_soc_dapm_widget *w,
@@ -295,11 +266,106 @@ static const struct snd_kcontrol_new cs35l35_adv_controls[] = {
 			amp_gain_tlv),
 };
 
+static int cs35l35_reset_and_sync(struct cs35l35_private *priv, bool pdm)
+{
+	int ret;
+
+	if (!priv->reset_gpio)
+		return 0;
+
+	regcache_cache_only(priv->regmap, true);
+	regcache_mark_dirty(priv->regmap);
+	gpiod_set_value_cansleep(priv->reset_gpio, 0);
+	usleep_range(1000, 1100);
+
+	/* Write to dirty cache when switching to pdm clock */
+	if (pdm) {
+		ret = regmap_update_bits(priv->regmap,
+			CS35L35_CLK_CTL1,
+			CS35L35_CLK_SOURCE_MASK,
+			CS35L35_CLK_SOURCE_PDM);
+		if (ret != 0)
+			pr_err("%s regmap write failed %d\n",
+				__func__, ret);
+	}
+	regcache_cache_only(priv->regmap, false);
+	gpiod_set_value_cansleep(priv->reset_gpio, 1);
+	usleep_range(3000, 3100);
+	regcache_sync(priv->regmap);
+	return ret;
+}
+
+static int cs35l35_mclk_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct cs35l35_private *cs35l35 = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
+					CS35L35_DISCHG_FILT_MASK, 0);
+		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
+					CS35L35_PDN_ALL_MASK, 0);
+		break;
+	case SND_SOC_DAPM_PRE_PMU:
+		if (cs35l35->pdm_mclk_switch) {
+			cs35l35->pdm_mclk_switch = false;
+			return cs35l35_reset_and_sync(cs35l35, false);
+		}
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
+					  CS35L35_PDN_ALL_MASK, 1);
+		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
+					CS35L35_DISCHG_FILT_MASK,
+					1 << CS35L35_DISCHG_FILT_SHIFT);
+		ret = wait_for_completion_timeout(&cs35l35->pdn_done,
+							msecs_to_jiffies(100));
+		if (ret == 0) {
+			pr_err("TIMEOUT PDN_DONE did not complete in 100ms\n");
+			ret = -ETIMEDOUT;
+		}
+		break;
+	default:
+		pr_err("%s Invalid Event %d\n", __func__, event);
+		return -EINVAL;
+	}
+	return ret;
+}
+
+static int cs35l35_pdm_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct cs35l35_private *priv = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		if (!priv->pdm_mclk_switch) {
+			priv->pdm_mclk_switch = true;
+			return cs35l35_reset_and_sync(priv, true);
+		}
+		return 0;
+	default:
+		pr_err("%s Invalid Event %d\n", __func__, event);
+		return -EINVAL;
+	}
+}
+
 static const struct snd_soc_dapm_widget cs35l35_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN_E("SDIN", NULL, 0, CS35L35_PWRCTL3, 1, 1,
-				cs35l35_sdin_event, SND_SOC_DAPM_PRE_PMU |
-				SND_SOC_DAPM_POST_PMD | SND_SOC_DAPM_PRE_PMD),
+				cs35l35_sdin_event, SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_AIF_OUT("SDOUT", NULL, 0, CS35L35_PWRCTL3, 2, 1),
+
+	SND_SOC_DAPM_SUPPLY("EXTCLK", CS35L35_CLK_CTL1, 2, 1,
+		cs35l35_mclk_event, SND_SOC_DAPM_PRE_PMU |
+			SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+
+
+	SND_SOC_DAPM_SUPPLY("PDMCLK", SND_SOC_NOPM, 0, 0,
+		cs35l35_pdm_event, SND_SOC_DAPM_PRE_PMU),
 
 	SND_SOC_DAPM_OUTPUT("SPK"),
 
@@ -335,6 +401,9 @@ static const struct snd_soc_dapm_route cs35l35_audio_map[] = {
 	{"CLASS H", NULL, "SDIN"},
 	{"Main AMP", NULL, "CLASS H"},
 	{"SPK", NULL, "Main AMP"},
+
+	{"AMP Playback", NULL, "EXTCLK"},
+	{"PDM Playback", NULL, "PDMCLK"},
 };
 
 static int cs35l35_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
