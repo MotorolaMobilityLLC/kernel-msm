@@ -134,6 +134,7 @@ config FB_MSM_MDSS_XLOG_DEBUG
 	driver during fatal errors and enable some display-driver logging
 	into an internal buffer (this avoids logging overhead).
 
+
 config FB_MSM_MDSS_FRC_DEBUG
 	depends on DEBUG_FS && FB_MSM_MDSS
 	bool "Enable Video FRC debugging"
@@ -143,5 +144,12 @@ config FB_MSM_MDSS_FRC_DEBUG
 	frame rate control (FRC) debugging features to: Collect video frame
 	statistics and check whether its output pattern matches expected
 	cadence.
+
+config FB_MSM_MDSS_XLOG_MMI
+	depends on FB_MSM_MDSS_XLOG_DEBUG
+	bool "Enable Motorola's MDSS XLOG behavior"
+	---help---
+	Overrides QCOM's default XLOG behavior with Motorola's preferred
+	behavior.
 
 endif
