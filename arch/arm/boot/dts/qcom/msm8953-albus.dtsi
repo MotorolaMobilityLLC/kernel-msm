@@ -156,6 +156,7 @@
 			reg = <0x40>;
 			reset-gpios = <&tlmm 94 0>;
 			irq-gpios = <&tlmm 63 0>;
+			amp-gain-zc;
 			interrupt-parent = <&tlmm>;
 
 			VA-supply = <&dummy_vreg>;
