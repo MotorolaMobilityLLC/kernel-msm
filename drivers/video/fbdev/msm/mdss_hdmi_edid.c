@@ -1746,11 +1746,13 @@ static u32 hdmi_edid_filter_mode_format(u32 video_format,
 	u32 max_pixel_freq;
 	u32 is_supported = 0;
 
+	link_bits_per_pixel = bits_per_pixel * 10 / 8;
+
+#ifdef CONFIG_SLIMPORT_COMMON
 	if (bits_per_pixel == 24)
 		link_bits_per_pixel =
 			sp_get_link_byte_per_pixel(timing->pixel_freq) * 10;
-	else
-		link_bits_per_pixel = bits_per_pixel * 10 / 8;
+#endif
 
 	max_pixel_freq = rx_bandwidth_khz / link_bits_per_pixel;
 	is_supported = timing->pixel_freq <= max_pixel_freq;
