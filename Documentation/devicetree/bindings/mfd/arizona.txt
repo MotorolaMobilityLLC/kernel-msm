@@ -79,6 +79,10 @@ Optional properties:
     later arizona chips which have JD1 and JD2, setting this property will use
     both JD1 and JD2 for dual jack detect and does not require an additional
     GPIO
+  - wlf,use-jd2-irq : Use JD1 and JD2 input for dual jack detection on
+    later arizona chips which have JD1 and JD2. Setting this property will force
+    the driver to use both JD1 and JD2 IRQ for dual jack detect instead of CLAMP
+    IRQ used for dual jack detection with wlf,use-jd-gpio property.
   - wlf,usr-jd-gpio-nopull : Internal pull on GPIO is disabled when used for
     jack detection.
   - wlf,gpsw : Settings for the general purpose switch, set as per the
