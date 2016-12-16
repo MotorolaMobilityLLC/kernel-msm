@@ -852,7 +852,6 @@
 
 &mdss_fb0 {
 	qcom,boot-indication-enabled;
-	qcom,mdss-fb-format = "rgb888";
 };
 
 &spmi_bus {
