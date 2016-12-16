@@ -680,6 +680,7 @@ static void mdss_xlog_dump_array(struct mdss_debug_base *blk_arr[],
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 		panic(name);
 	}
+	pr_info("%s: xlog dump created\n", __func__);
 	mutex_unlock(&mdss_dbg_xlog.xlog_lock);
 }
 
@@ -694,7 +695,8 @@ static void xlog_debug_work(struct work_struct *work)
 		mdss_dbg_xlog.work_dsi_dbgbus);
 }
 
-void mdss_xlog_tout_handler_default(bool queue, const char *name, ...)
+void mdss_xlog_tout_handler_default(bool is_mmi, bool queue,
+				const char *name, ...)
 {
 	int i, index = 0;
 	bool dead = false;
@@ -707,6 +709,9 @@ void mdss_xlog_tout_handler_default(bool queue, const char *name, ...)
 	u32 blk_len;
 
 	if (!mdss_xlog_is_enabled(MDSS_XLOG_DEFAULT))
+		return;
+
+	if (!is_mmi)
 		return;
 
 	if (queue && work_pending(&mdss_dbg_xlog.xlog_dump_work))
