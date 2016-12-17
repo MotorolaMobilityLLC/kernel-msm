@@ -1003,7 +1003,8 @@ void mdss_mdp_debug_mid(u32 mid)
 			 */
 			mdss_dump_reg((const char *)xlog_node->range_name,
 				MDSS_DBG_DUMP_IN_LOG, addr, len,
-				&xlog_node->reg_dump, true);
+				&xlog_node->reg_dump, &xlog_node->regs_phys,
+				true);
 		}
 	}
 }
