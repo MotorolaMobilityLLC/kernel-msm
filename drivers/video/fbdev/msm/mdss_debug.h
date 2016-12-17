@@ -104,6 +104,7 @@ struct mdss_debug_base {
 	size_t max_offset;
 	char *buf;
 	size_t buf_len;
+	phys_addr_t regs_phys;
 	u32 *reg_dump; /* address for the mem dump if no ranges used */
 };
 
@@ -123,6 +124,7 @@ struct dump_offset {
 struct range_dump_node {
 	struct list_head head; /* head of this node */
 	u32 *reg_dump; /* address for the mem dump */
+	phys_addr_t regs_phys;
 	char range_name[40]; /* name of this range */
 	struct dump_offset offset; /* range to dump */
 	uint32_t xin_id; /* client xin id */
@@ -168,7 +170,7 @@ void mdss_xlog(const char *name, int line, int flag, ...);
 void mdss_xlog_tout_handler_default(bool queue, const char *name, ...);
 u32 get_dump_range(struct dump_offset *range_node, size_t max_offset);
 void mdss_dump_reg(const char *dump_name, u32 reg_dump_flag, char *addr,
-	int len, u32 **dump_mem, bool from_isr);
+	int len, u32 **dump_mem, phys_addr_t *regs_phys, bool from_isr);
 void mdss_mdp_debug_mid(u32 mid);
 void mdss_dump_dsi_debug_bus(u32 bus_dump_flag, u32 **dump_mem);
 #else
@@ -216,7 +218,7 @@ static inline void mdss_xlog_tout_handler_default(bool queue,
 u32 get_dump_range(struct dump_offset *range_node, size_t max_offset)
 	{ return 0; }
 void mdss_dump_reg(const char *dump_name, u32 reg_dump_flag, char *addr,
-	int len, u32 **dump_mem, bool from_isr) { }
+	int len, u32 **dump_mem, phys_addr_t *regs_phys, bool from_isr) { }
 void mdss_mdp_debug_mid(u32 mid) { }
 #endif
 
