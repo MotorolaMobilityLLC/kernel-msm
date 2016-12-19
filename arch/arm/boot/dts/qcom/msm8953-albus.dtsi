@@ -224,6 +224,7 @@
 					    0x2000 2 1>;
 			wlf,micd-bias-start-time = <8>;
 			wlf,gpsw = <1>;
+			wlf,use-jd2-irq;
 			wlf,report-to-input;
 			wlf,micd-rate = <6>;
 			wlf,micd-detect-debounce = <600>;
