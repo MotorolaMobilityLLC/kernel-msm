@@ -34,6 +34,7 @@
 #include "mdss_debug.h"
 #include "mdss_fb.h"
 #include "mdss_dropbox.h"
+#include "mdss_debug.h"
 
 #define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
 #define MDSS_PANEL_UNKNOWN_NAME "unknown"
@@ -1108,6 +1109,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 end:
 	if (dropbox_issue != NULL) {
 		dropbox_count++;
+		MDSS_XLOG_TOUT_HANDLER_MMI("mdp", "dsi0_ctrl", "dsi0_phy",
+			"dsi1_ctrl", "dsi1_phy");
 		mdss_dropbox_report_event(dropbox_issue, dropbox_count);
 	} else
 		dropbox_count = 0;
