@@ -44,7 +44,22 @@ static int32_t msm_flash_init_gpio_pin_tbl(struct device_node *of_node,
 		rc = -ENOMEM;
 		return rc;
 	}
-
+	rc = of_property_read_u32(of_node, "qcom,gpio-flash-now", &val);
+	if (rc < 0) {
+		pr_err("%s:%d read qcom,gpio-flash-now failed rc %d\n",
+			__func__, __LINE__, rc);
+	} else if (val > gpio_array_size) {
+		pr_err("%s:%d qcom,gpio-flash-now invalid %d\n",
+			__func__, __LINE__, val);
+		goto ERROR;
+	} else if (rc == 0) {
+	/*index 1 is for qcom,gpio-flash-now */
+	gconf->gpio_num_info->gpio_num[1] =
+		gpio_array[val];
+	gconf->gpio_num_info->valid[1] = 1;
+	CDBG("%s qcom,gpio-flash-now %d\n", __func__,
+		gconf->gpio_num_info->gpio_num[1]);
+	}
 	rc = of_property_read_u32(of_node, "qcom,gpio-flash-en", &val);
 	if (rc < 0) {
 		pr_err("%s:%d read qcom,gpio-flash-en failed rc %d\n",
@@ -54,31 +69,14 @@ static int32_t msm_flash_init_gpio_pin_tbl(struct device_node *of_node,
 		pr_err("%s:%d qcom,gpio-flash-en invalid %d\n",
 			__func__, __LINE__, val);
 		goto ERROR;
-	}
+	}  else if (rc == 0) {
 	/*index 0 is for qcom,gpio-flash-en */
 	gconf->gpio_num_info->gpio_num[0] =
 		gpio_array[val];
 	gconf->gpio_num_info->valid[0] = 1;
 	CDBG("%s qcom,gpio-flash-en %d\n", __func__,
 		gconf->gpio_num_info->gpio_num[0]);
-
-	rc = of_property_read_u32(of_node, "qcom,gpio-flash-now", &val);
-	if (rc < 0) {
-		pr_err("%s:%d read qcom,gpio-flash-now failed rc %d\n",
-			__func__, __LINE__, rc);
-		goto ERROR;
-	} else if (val > gpio_array_size) {
-		pr_err("%s:%d qcom,gpio-flash-now invalid %d\n",
-			__func__, __LINE__, val);
-		goto ERROR;
 	}
-	/*index 1 is for qcom,gpio-flash-now */
-	gconf->gpio_num_info->gpio_num[1] =
-		gpio_array[val];
-	gconf->gpio_num_info->valid[1] = 1;
-	CDBG("%s qcom,gpio-flash-now %d\n", __func__,
-		gconf->gpio_num_info->gpio_num[1]);
-
 	return rc;
 
 ERROR:
