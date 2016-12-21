@@ -38,6 +38,8 @@
 /* Get the array index of the parameter set currently in use.
    Will return -1 when an external string is used */
 #define PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET           0x00A1AF11
+/* Set volume control attenuation */
+#define PARAM_ID_OPALUM_RX_VOLUME_CONTROL              0x00A1AF12
 
 /* TX module parameter IDs */
 /* Get Module status */
