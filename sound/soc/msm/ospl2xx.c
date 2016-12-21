@@ -408,6 +408,7 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 	case PARAM_ID_OPALUM_RX_EXC_MODEL:
 	case PARAM_ID_OPLAUM_RX_TEMPERATURE:
 	case PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET:
+	case PARAM_ID_OPALUM_RX_VOLUME_CONTROL:
 	case PARAM_ID_OPALUM_TX_ENABLE:
 	case PARAM_ID_OPALUM_TX_CURRENT_PARAM_SET:
 		config->param.payload_size +=
@@ -563,6 +564,7 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 			case PARAM_ID_OPALUM_RX_EXC_MODEL:
 			case PARAM_ID_OPLAUM_RX_TEMPERATURE:
 			case PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET:
+			case PARAM_ID_OPALUM_RX_VOLUME_CONTROL:
 			case PARAM_ID_OPALUM_TX_ENABLE:
 			case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
 			case PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE:
@@ -824,6 +826,33 @@ static int ospl2xx_rx_put_temperature(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
 	/* not implemented yet */
+	return 0;
+}
+
+/* PARAM_ID_OPALUM_RX_VOLUME_CONTROL */
+static int ospl2xx_rx_get_volume(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	mutex_lock(&mr_lock);
+	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
+	ospl2xx_afe_get_param(PARAM_ID_OPALUM_RX_VOLUME_CONTROL);
+
+	ucontrol->value.integer.value[0] = afe_cb_payload32_data[0];
+	mutex_unlock(&mr_lock);
+
+	return 0;
+}
+static int ospl2xx_rx_put_volume(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int32_t attenuation = ucontrol->value.integer.value[0];
+
+	pr_debug("%s, attenuation @ Q27[%d]\n", __func__, attenuation);
+
+	ospl2xx_afe_set_single_param(
+		PARAM_ID_OPALUM_RX_VOLUME_CONTROL,
+		attenuation);
+
 	return 0;
 }
 
@@ -1102,6 +1131,9 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 	/* PUT */ SOC_SINGLE_MULTI_EXT("OSPL Rx temp_cal",
 		SND_SOC_NOPM, 0, 0xFFFF, 0, 3,
 		NULL, ospl2xx_rx_put_temp_cal),
+	/* GET,PUT */ SOC_SINGLE_EXT("OSPL Rx Volume",
+		SND_SOC_NOPM, 0, 0x7FFFFFFF, 0,
+		ospl2xx_rx_get_volume, ospl2xx_rx_put_volume),
 
 	/* GET,PUT */ SOC_ENUM_EXT("OSPL Tx",
 		ospl2xx_tx_enable_enum[0],
