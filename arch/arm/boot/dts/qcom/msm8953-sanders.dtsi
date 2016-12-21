@@ -900,6 +900,7 @@
 
 	qcom,dsi-pref-prim-pan = <&mot_tianma_550_1080p_vid_v0>;
 
+	/delete-property/ vdd-supply;
 	vddio_disp-supply = <&pm8953_l6>;
 	vsp_disp-supply = <&lab_regulator>;
 	vsn_disp-supply = <&ibb_regulator>;
