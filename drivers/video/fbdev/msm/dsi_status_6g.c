@@ -132,11 +132,11 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 	if ((mipi->mode == DSI_CMD_MODE) && !ctrl_pdata->burst_mode_enabled &&
 		ctrl_pdata->status_mode == ESD_BTA)
 		mutex_lock(&mdp5_data->ov_lock);
-	mutex_lock(&ctl->offlock);
+	mutex_lock(&ctl->mfd->param_lock);
 
 	if (mdss_panel_is_power_off(pstatus_data->mfd->panel_power_state) ||
 			pstatus_data->mfd->shutdown_pending) {
-		mutex_unlock(&ctl->offlock);
+		mutex_unlock(&ctl->mfd->param_lock);
 		if ((mipi->mode == DSI_CMD_MODE) &&
 		    !ctrl_pdata->burst_mode_enabled &&
 			ctrl_pdata->status_mode == ESD_BTA)
@@ -168,7 +168,7 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 	ret = ctrl_pdata->check_status(ctrl_pdata);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 
-	mutex_unlock(&ctl->offlock);
+	mutex_unlock(&ctl->mfd->param_lock);
 	if ((mipi->mode == DSI_CMD_MODE) && !ctrl_pdata->burst_mode_enabled &&
 		ctrl_pdata->status_mode == ESD_BTA)
 		mutex_unlock(&mdp5_data->ov_lock);
