@@ -835,6 +835,14 @@ config EPL8802_ALSPS
 	help
 	  proximity sensor driver for alsps usage.
 
+config LTR559
+	tristate "LTR559 sensor support"
+	depends on I2C
+	default n
+	help
+	  proximity sensor driver for LTR559
+
+
 config INPUT_MXG3300
 	tristate "MXG3300 magnetic sensor support"
 	default n
