@@ -1142,7 +1142,6 @@ static int __maybe_unused mdss_fb_set_param(struct device *dev,
 	}
 
 	mutex_lock(&mfd->param_lock);
-	mutex_lock(&ctl->offlock);
 
 	if (param->value == value)
 		goto unlock;
@@ -1159,7 +1158,6 @@ static int __maybe_unused mdss_fb_set_param(struct device *dev,
 	param->value = value;
 
 unlock:
-	mutex_unlock(&ctl->offlock);
 	mutex_unlock(&mfd->param_lock);
 
 	return ret;
