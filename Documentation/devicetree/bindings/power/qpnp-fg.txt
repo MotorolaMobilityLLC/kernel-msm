@@ -170,6 +170,11 @@ Parent node optional properties:
 					gauge driver to detect the damaged battery
 					when the safety-timer expires by using the
 					coulomb count.
+- qcom,fg-use-vbat-low-empty-soc:	A boolean property to specify whether
+					vbatt-low interrupt is used to handle
+					empty battery condition. If this is
+					not specified, empty battery condition
+					is detected by empty-soc interrupt.
 
 qcom,fg-soc node required properties:
 - reg : offset and length of the PMIC peripheral register map.
