@@ -12,6 +12,18 @@
 
 #include "esdfs.h"
 
+#ifndef LOOKUP_NOCASE
+#define LOOKUP_NOCASE	0
+#endif
+
+struct esdfs_ci_getdents_callback {
+	struct dir_context ctx;
+	const char *name;
+	char match_name[NAME_MAX+1];
+	int found; /*-1: not found, 0: found*/
+	int count;
+};
+
 /* The dentry cache is just so we have properly sized dentries */
 static struct kmem_cache *esdfs_dentry_cachep;
 
@@ -193,6 +205,54 @@ out:
 	return err;
 }
 
+static int esdfs_ci_filldir(void *dirent, const char *name, int namelen,
+		loff_t offset, u64 ino, unsigned int d_type)
+{
+	struct esdfs_ci_getdents_callback *buf;
+
+	buf = container_of(dirent, struct esdfs_ci_getdents_callback, ctx);
+
+	buf->count++;
+	if (!strncasecmp(name, buf->name, namelen) &&
+	    (strlen(buf->name) == namelen)) {
+		strlcpy(buf->match_name, name, namelen+1);
+		buf->found = 0;
+	}
+	return 0;
+}
+
+static int esdfs_ci_lookup(struct path *parent, const char *name,
+			struct path *path)
+{
+	int err = 0;
+	struct file *file;
+	const struct cred *cred = current_cred();
+	struct esdfs_ci_getdents_callback buf = {
+		.ctx.actor = esdfs_ci_filldir,
+		.ctx.pos = 0,
+		.name = name,
+		.found = -1
+	};
+
+	file = dentry_open(parent, O_RDONLY | O_DIRECTORY, cred);
+	if (IS_ERR(file))
+		return -ENOENT;
+
+	do {
+		buf.count = 0;
+		err = iterate_dir(file, &buf.ctx);
+		if (!buf.found)
+			break;
+	} while ((err >= 0) && buf.count);
+	fput(file);
+
+	if (!buf.found)
+		return vfs_path_lookup(parent->dentry, parent->mnt,
+					buf.match_name, 0, path);
+	else
+		return -ENOENT;
+}
+
 /*
  * Main driver function for esdfs's lookup.
  *
@@ -226,6 +286,11 @@ static struct dentry *__esdfs_lookup(struct dentry *dentry,
 	/* Use vfs_path_lookup to check if the dentry exists or not */
 	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name,
 			      LOOKUP_NOCASE, &lower_path);
+
+	if (LOOKUP_NOCASE && (err == -ENOENT) &&
+	    !(flags & (LOOKUP_CREATE|LOOKUP_RENAME_TARGET))) {
+		err = esdfs_ci_lookup(lower_parent_path, name, &lower_path);
+	}
 
 	/* no error: handle positive dentries */
 	if (!err) {
