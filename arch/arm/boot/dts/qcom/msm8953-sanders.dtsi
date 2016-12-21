@@ -781,9 +781,8 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <100>;
-		df-serialnum = "SNN5982";
-		#include "batterydata-hg40-atl.dtsi"
-		#include "batterydata-hg40-swd.dtsi"
+		df-serialnum = "SB18C15119";
+		#include "batterydata-hg30-atl.dtsi"
 	};
 };
 
@@ -793,7 +792,7 @@
 	qcom,cool-bat-decidegc = <0>;
 	qcom,hot-bat-decidegc = <600>;
 	qcom,cold-bat-decidegc = <(-200)>;
-	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
+	qcom,ext-sense-type; /* External Sense Resistor */
 	qcom,thermal-coefficients =  /bits/ 16 <0x6986 0x5D4B 0x6235>;
 	qcom,resume-soc = <99>;
 	qcom,bcl-lm-threshold-ma = <126>;
@@ -1029,6 +1028,3 @@
         regulator-always-on;
 };
 
-&pm8953_l22 {
-	regulator-always-on;
-};
