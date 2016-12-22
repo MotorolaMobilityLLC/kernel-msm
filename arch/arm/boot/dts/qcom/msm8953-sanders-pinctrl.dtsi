@@ -417,6 +417,30 @@
 		};
 	};
 
+	ltr559_int_pin {
+		ltr559_default: ltr559_default {
+			mux {
+				pins = "gpio86";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio86";
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+		ltr559_sleep: ltr559_sleep {
+			mux {
+				pins = "gpio86";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio86";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
 };
 
 /delete-node/ &hsuart_active;
