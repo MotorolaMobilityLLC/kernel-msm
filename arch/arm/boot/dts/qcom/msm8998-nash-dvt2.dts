@@ -17,3 +17,12 @@
 / {
 	qcom,board-id = <0x42 0xB2A0>;
 };
+
+&cci {
+	/* OV5695 */
+	qcom,camera@2 {
+		cam_vdig-supply = <&pm8998_l14>;
+		qcom,cam-vreg-min-voltage = <0 1256000>;
+		qcom,cam-vreg-max-voltage = <0 1256000>;
+	};
+};
