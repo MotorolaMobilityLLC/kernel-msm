@@ -285,6 +285,22 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&cs35l35_irq_default &cs35l35_reset_default>;
 		};
+
+		liteon@23 {
+			compatible = "liteon,ltr559";
+			reg = <0x23>;
+			pinctrl-names = "default","sleep";
+			pinctrl-0 = <&ltr559_default>;
+			pinctrl-1 = <&ltr559_sleep>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <86 0x2>;
+			vdd-supply = <&pm8953_l10>;
+			vio-supply = <&pm8953_l6>;
+			ltr,irq-gpio = <&tlmm 86 0x2>;
+			ltr,ps-threshold = <800>;
+			ltr,ps-hysteresis-threshold = <300>;
+			ltr,als-polling-time = <200>;
+		};
 	};
 
 	vci_fci_vreg: vci_fci_vreg {
