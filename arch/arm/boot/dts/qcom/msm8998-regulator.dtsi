@@ -306,8 +306,8 @@
 	rpm-regulator-ldoa14 {
 		status = "okay";
 		pm8998_l14: regulator-l14 {
-			regulator-min-microvolt = <1880000>;
-			regulator-max-microvolt = <1880000>;
+			regulator-min-microvolt = <1256000>;
+			regulator-max-microvolt = <1256000>;
 			proxy-supply = <&pm8998_l14>;
 			qcom,proxy-consumer-enable;
 			qcom,proxy-consumer-current = <32000>;
