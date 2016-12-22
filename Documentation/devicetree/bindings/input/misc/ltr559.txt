@@ -1,0 +1,46 @@
+LTR-559 optical sensor
+
+LTR559 is an ambient light and proximity sensor. It connects to host SoC via
+I2C bus.
+
+Abbreviation:
+ALS: ambient light sensor
+PS: proximity sensor
+ALPS: ambient light and proximity sensor
+
+Required properties:
+ - compatible		: Should be "liteon,ltr559".
+ - reg			: i2c slave address of this device.
+ - vdd-supply		: Analog power supply needed to power up this device.
+ - vio-supply		: Digital IO power supply needed for IO and i2c.
+ - interrupt-parent	: The interrupt controller this device is connected to.
+ - interrupts		: L/P sample interrupt to indicate new data ready.
+ - pinctrl-names	: pinctrl configuration names of this device. Should be
+	"default" and "sleep".
+ - pinctrl-0		: Should specify pin control groups used for this sensor.
+ - pinctrl-1		: Should specify pin control groups used for this sensor.
+ - liteon,irq-gpio	: GPIO pin for interrupt of this device.
+ - liteon,ps-threshold	: Proximity sensor threshold.
+ - liteon,ps-hysteresis-threshold	: Proximity sensor hysteresis threshold.
+ - liteon,als-polling-time	: Ambient Light sensor polling time.
+
+ Example:
+
+ i2c@78b5000 { /* BLSP1 QUP1 */
+	 liteon@23 {
+		 compatible = "liteon,ltr559";
+		 reg = <0x23>;
+		 pinctrl-names = "default","sleep";
+		 pinctrl-0 = <&ltr559_default>;
+		 pinctrl-1 = <&ltr559_sleep>;
+		 interrupt-parent = <&tlmm>;
+		 interrupts = <46 0x2>;
+		 vdd-supply = <&pm8937_l10>;
+		 vio-supply = <&pm8937_l6>;
+		 ltr,irq-gpio = <&tlmm 46 0x2>;
+		 ltr,ps-threshold = <800>;
+		 ltr,ps-hysteresis-threshold = <300>;
+		 ltr,als-polling-time = <200>;
+	 };
+
+ }
