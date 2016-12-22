@@ -349,7 +349,8 @@ endif
 
 ifeq ($(CONFIG_SANDERS_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8953) += msm8953-sanders-p1.dtb \
-	msm8953-sanders-p2.dtb
+	msm8953-sanders-p2.dtb \
+	msm8953-sanders-p3.dtb
 endif
 
 ifeq ($(CONFIG_PERRY_DTB),y)
