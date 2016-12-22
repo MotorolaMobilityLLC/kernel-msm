@@ -135,11 +135,12 @@
 				reg = <1>;
 
 				cirrus,micd-configs = <
-					0 0 3 0 0
-					1 0 3 1 0
+					0 0 1 1 0
+					1 0 2 0 0
 				>;
 				cirrus,micd-bias-start-time = <8>;
-				cirrus,micd-pol-gpios = <&cs47l35 14 0>;
+				cirrus,micd-pol-gpios = <&cs47l35 13 0>,
+							<&cs47l35 14 0>;
 				cirrus,micd-rate = <6>;
 				cirrus,micd-detect-debounce-ms = <500>;
 			};
