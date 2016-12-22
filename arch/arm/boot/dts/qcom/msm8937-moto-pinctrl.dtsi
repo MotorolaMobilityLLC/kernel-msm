@@ -115,6 +115,31 @@
 		    };
 	};
 
+	ltr559_int_pin {
+		ltr559_default: ltr559_default {
+			mux {
+				pins = "gpio46";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio46";
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+		ltr559_sleep: ltr559_sleep {
+		      mux {
+			      pins = "gpio46";
+			      function = "gpio";
+		      };
+		      config {
+			      pins = "gpio46";
+			      drive-strength = <2>;
+			      bias-pull-up;
+		      };
+	      };
+	};
+
 	tlmm_gpio_key {
 		gpio_key_active: gpio_key_active {
 			mux {
