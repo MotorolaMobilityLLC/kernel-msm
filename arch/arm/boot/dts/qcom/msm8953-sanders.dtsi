@@ -549,8 +549,10 @@
 
 	qcom,tz_gpio {
 		compatible = "qcom,tz_gpio";
-		tlmm-tz = <111>,
-			<126>;
+               tlmm-tz = <96>,
+                       <97>,
+                       <98>,
+                       <99>;
 	};
 };
 
