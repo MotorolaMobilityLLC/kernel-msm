@@ -351,6 +351,7 @@
 			isdbt_vdd-supply = <&vci_fci_vreg>;
 			qcom,vdd-min-max-voltage = <1800000 1800000>;
 			bbm-xtal-freq = <26000>;
+			lna_control_support;
 		};
 	};
 
