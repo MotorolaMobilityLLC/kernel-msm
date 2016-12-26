@@ -44,7 +44,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/spi/spi.h>
 #include <soc/qcom/scm.h>
-
+#include <linux/wakelock.h>
 
 #include "et320.h"
 #include "navi_input.h"
@@ -54,7 +54,7 @@
 #define	LEVEL_TRIGGER_LOW       0x2
 #define	LEVEL_TRIGGER_HIGH      0x3
 #define EGIS_NAVI_INPUT 1  /* 1:open ; 0:close */
-
+struct wake_lock et320_wake_lock;
 
 /*
  * FPS interrupt table
@@ -155,7 +155,7 @@ void FPS_notify(unsigned long stype, int state)
 	}
 
 	pr_debug("%s: FPS current state %d -> (0x%x)\n", __func__,
-	       mdata->state, state);
+		mdata->state, state);
 
 	if (mdata->enabled && mdata->state != state) {
 		mdata->state = state;
@@ -221,6 +221,7 @@ static irqreturn_t fp_eint_func(int irq, void *dev_id)
 		mod_timer(&fps_ints.timer, jiffies + msecs_to_jiffies(fps_ints.detect_period));
 	fps_ints.int_count++;
 	/* printk_ratelimited(KERN_WARNING "-----------   zq fp fp_eint_func  ,fps_ints.int_count=%d",fps_ints.int_count);*/
+	wake_lock_timeout(&et320_wake_lock, msecs_to_jiffies(1000));
 	return IRQ_HANDLED;
 }
 
@@ -729,12 +730,13 @@ static struct platform_driver etspi_driver = {
 
 static int etspi_remove(struct platform_device *pdev)
 {
-    DEBUG_PRINT("%s(#%d)\n", __func__, __LINE__);
+	DEBUG_PRINT("%s(#%d)\n", __func__, __LINE__);
 	free_irq(gpio_irq, NULL);
 	del_timer_sync(&fps_ints.timer);
+	wake_lock_destroy(&et320_wake_lock);
 	request_irq_done = 0;
 	/* t_mode = 255; */
-    return 0;
+	return 0;
 }
 
 static int etspi_probe(struct platform_device *pdev)
@@ -854,13 +856,13 @@ static int etspi_probe(struct platform_device *pdev)
 	/* the timer is for ET310 */
 	setup_timer(&fps_ints.timer, interrupt_timer_routine, (unsigned long)&fps_ints);
 	add_timer(&fps_ints.timer);
-
+	wake_lock_init(&et320_wake_lock, WAKE_LOCK_SUSPEND, "et320_wake_lock");
 	DEBUG_PRINT("  add_timer ---- \n");
 	DEBUG_PRINT("%s : initialize success %d\n",
 		__func__, status);
 /* To be compatible with FPC driver*/
 #ifndef CONFIG_SENSORS_FPC_1020
-    fpsData = FPS_init();
+	fpsData = FPS_init();
 #endif
 	request_irq_done = 0;
 	return status;
