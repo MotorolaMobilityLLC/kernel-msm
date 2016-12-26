@@ -83,8 +83,8 @@
 		epl,ps_low_threshold = <1800>;
 		epl,ps_high_threshold = <2300>;
 		epl,ps_max_ct = <2300>;
-		epl,ps_dyn_l_offset = <280>;
-		epl,ps_dyn_h_offset = <372>;
+		epl,ps_dyn_l_offset = <260>;
+		epl,ps_dyn_h_offset = <360>;
 		epl,ps_rs = <0>;
 	};
 
