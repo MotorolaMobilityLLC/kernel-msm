@@ -164,7 +164,7 @@ enum {
  *   KEY_RELEASE : Release key button
  *   KEY_PRESS_RELEASE : Combined action of press-then-release
  */
-#define LONGTOUCH_INTERVAL			333
+#define LONGTOUCH_INTERVAL			450
 #define DOUBLECLICK_INTERVAL		500
 #define	KEYEVENT_CLICK				KEY_FPS_TAP /* 0x232 */
 #define	KEYEVENT_CLICK_ACTION		KEY_PRESS_RELEASE
