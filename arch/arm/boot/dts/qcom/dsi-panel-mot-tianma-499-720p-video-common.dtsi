@@ -34,7 +34,7 @@ qcom,mdss-dsi-dis-reset-sequence = <1 10>, <0 0>;
 
 qcom,mdss-dsi-on-command = [
 	39 00 00 00 00 00 04 FF 98 81 00
-	39 00 00 00 00 00 03 51 00 00
+	39 00 00 00 00 00 03 51 0C F4
 	15 00 00 00 00 00 02 53 2C
 	15 00 00 00 00 00 02 55 01
 	15 00 00 00 00 00 02 68 06
@@ -54,9 +54,11 @@ qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
 qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
 qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-hbm-type = "lcd-dcs-only";
-qcom,mdss-dsi-bl-hbm-on-max = <4095>;
-qcom,mdss-dsi-bl-hbm-off-max = <3316>;
+qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 0F FF];
+qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 0C F4];
+qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
 
 qcom,mdss-dsi-h-sync-pulse = <1>;
 qcom,mdss-dsi-traffic-mode = "burst_mode";
@@ -75,10 +77,9 @@ qcom,mdss-dsi-panel-timings = [7B 1A 10 00 3E 40 16 1E 15 03 04 00];
 qcom,mdss-dsi-t-clk-post = <0x04>;
 qcom,mdss-dsi-t-clk-pre = <0x26>;
 
-qcom,mdss-dsi-bl-min-level = <16>;
+qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <4095>;
-qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-qcom,bklt-dcs-12bits-enabled;
+qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
 qcom,cont-splash-enabled;
 qcom,esd-check-enabled;
