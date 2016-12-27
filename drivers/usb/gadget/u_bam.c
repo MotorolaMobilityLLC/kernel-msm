@@ -1323,7 +1323,6 @@ static void gbam2bam_connect_work(struct work_struct *w)
 				__func__, ret);
 			return;
 		}
-		gadget->bam2bam_func_enabled = true;
 
 		ret = usb_bam_connect(d->dst_connection_idx, &d->dst_pipe_idx);
 		if (ret) {
@@ -1390,7 +1389,6 @@ static void gbam2bam_connect_work(struct work_struct *w)
 				__func__, ret);
 			return;
 		}
-		gadget->bam2bam_func_enabled = true;
 
 		if (gadget_is_dwc3(gadget)) {
 			if (!port) {
@@ -2292,6 +2290,12 @@ int gbam_connect(struct grmnet *gr, u8 port_num,
 exit:
 	spin_unlock_irqrestore(&port->port_lock, flags);
 	return ret;
+}
+
+void gbam_data_flush_workqueue(void)
+{
+	pr_debug("%s(): Flushing workqueue\n", __func__);
+	flush_workqueue(gbam_wq);
 }
 
 int gbam_setup(unsigned int no_bam_port)
