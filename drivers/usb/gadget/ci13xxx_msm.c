@@ -500,6 +500,12 @@ void ci13xxx_msm_shutdown(struct platform_device *pdev)
 	ci13xxx_pullup(&_udc->gadget, 0);
 }
 
+void msm_hw_soft_reset(void)
+{
+	struct ci13xxx *udc = _udc;
+
+	hw_device_reset(udc);
+}
 void msm_hw_bam_disable(bool bam_disable)
 {
 	u32 val;

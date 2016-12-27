@@ -359,7 +359,6 @@ static void ipa_data_connect_work(struct work_struct *w)
 			pr_err("usb_bam_connect_ipa out failed err:%d\n", ret);
 			goto free_rx_tx_req;
 		}
-		gadget->bam2bam_func_enabled = true;
 
 		gport->ipa_consumer_ep = port->ipa_params.ipa_cons_ep_idx;
 
@@ -402,7 +401,6 @@ static void ipa_data_connect_work(struct work_struct *w)
 			pr_err("usb_bam_connect_ipa IN failed err:%d\n", ret);
 			goto unconfig_msm_ep_out;
 		}
-		gadget->bam2bam_func_enabled = true;
 
 		gport->ipa_producer_ep = port->ipa_params.ipa_prod_ep_idx;
 		if (gadget_is_dwc3(gadget)) {
@@ -810,6 +808,12 @@ void ipa_data_port_select(int portno, enum gadget_type gtype)
 	port->ipa_params.dst_client = IPA_CLIENT_USB_CONS;
 	port->gtype = gtype;
 };
+
+void ipa_data_flush_workqueue(void)
+{
+	pr_debug("%s(): Flushing workqueue\n", __func__);
+	flush_workqueue(ipa_data_wq);
+}
 
 /**
  * ipa_data_setup() - setup BAM2BAM IPA port
