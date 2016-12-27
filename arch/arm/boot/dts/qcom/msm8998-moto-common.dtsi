@@ -29,6 +29,10 @@
 		uart0 = &blsp1_uart3_hs;
 	};
 
+	chosen {
+		dummi = "disabled";
+	};
+
 	bluetooth: bt_wcn3990 {
 		compatible = "qca,wcn3990";
 		qca,bt-vdd-io-supply = <&pm8998_s3>;
@@ -684,9 +688,15 @@
 };
 
 &uartblsp2dm1 {
-	status = "ok";
+	status = "/chosen", "dummi", "disabled";
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart_console_active>;
+};
+
+&uartblsp2dm2 {
+	status = "/chosen", "dummi", "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&blsp2_uart3_active>;
 };
 
 &ufsphy1 {
@@ -1238,7 +1248,7 @@
 };
 
 &blsp2_uart3_hs { /* APBA UART */
-	status = "ok";
+	status = "/chosen", "dummi", "disabled";
 
 	interrupt-map = <0 &intc 0 0 115 0
 		    1 &intc 0 0 239 0
