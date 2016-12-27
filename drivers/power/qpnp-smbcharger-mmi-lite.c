@@ -4956,12 +4956,6 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	usb_type_name = get_usb_type_name(type);
 	chip->supply_type = get_usb_supply_type(type);
 
-	if (chip->usb_psy) {
-		pr_smb(PR_MISC, "setting usb psy dp=f dm=f\n");
-		power_supply_set_dp_dm(chip->usb_psy,
-				POWER_SUPPLY_DP_DM_DPF_DMF);
-	}
-
 	/* Rerun APSD 1 sec later */
 	if ((chip->supply_type == POWER_SUPPLY_TYPE_USB) &&
 	    !chip->apsd_rerun_cnt) {
@@ -5214,9 +5208,9 @@ static int weak_charger_check(void *_chip)
  */
 static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 {
-#ifdef QCOM_BASE
 	int rc;
 	u8 reg;
+#ifdef QCOM_BASE
 	union power_supply_propval prop = {0, };
 #endif
 	struct smbchg_chip *chip = _chip;
@@ -5229,12 +5223,19 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 
 	weak_charger_check(_chip);
 
-#ifdef QCOM_BASE
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't read usb rt status rc = %d\n", rc);
 		goto out;
 	}
+
+	if (!(reg & USBIN_UV_BIT) && !(reg & USBIN_SRC_DET_BIT) &&
+	    chip->usb_psy) {
+		pr_smb(PR_MISC, "setting usb psy dp=f dm=f\n");
+		power_supply_set_dp_dm(chip->usb_psy,
+				POWER_SUPPLY_DP_DM_DPF_DMF);
+	}
+#ifdef QCOM_BASE
 	reg &= USBIN_UV_BIT;
 
 	if (reg && chip->usb_psy && !chip->usb_psy->get_property(chip->usb_psy,
@@ -5252,8 +5253,8 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 		}
 	}
 	smbchg_wipower_check(chip);
-out:
 #endif
+out:
 	return IRQ_HANDLED;
 }
 
@@ -5274,8 +5275,6 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 	bool usb_present;
 
 	pr_smb(PR_INTERRUPT, "triggered\n");
-	pr_smb(PR_STATUS, "chip->usb_present = %d usb_present = %d\n",
-			chip->usb_present, usb_present);
 
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
@@ -5516,6 +5515,32 @@ static irqreturn_t usbid_change_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
+#define WAIT_APSD_CNT_MAX 30
+static int wait_for_apsd_complete(struct smbchg_chip *chip)
+{
+	int rc;
+	int count = 0;
+	u8 reg;
+
+	while (count < WAIT_APSD_CNT_MAX) {
+		rc = smbchg_read(chip, &reg,
+			chip->usb_chgpth_base + RT_STS, 1);
+		if (rc < 0) {
+			dev_err(chip->dev, "read usb RTS rc = %d\n", rc);
+			break;
+		}
+		pr_smb(PR_MISC, "read%d RT_STS = 0x%x\n", count, reg);
+
+		if ((reg & USBIN_UV_BIT) || (reg & USBIN_SRC_DET_BIT))
+			break;
+
+		count++;
+		msleep(100);
+	}
+
+	return 0;
+}
+
 static int determine_initial_status(struct smbchg_chip *chip)
 {
 	/*
@@ -5532,6 +5557,7 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	batt_cold_handler(0, chip);
 	chg_term_handler(0, chip);
 	usbid_change_handler(0, chip);
+	wait_for_apsd_complete(chip);
 	src_detect_handler(0, chip);
 	smbchg_charging_en(chip, 0);
 #ifdef QCOM_BASE
@@ -6148,6 +6174,20 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 				rc);
 			return rc;
 		}
+	}
+
+	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read usb rts rc = %d\n", rc);
+		return rc;
+	}
+	pr_smb(PR_MISC, "read RT_STS = 0x%x\n", reg);
+
+	if (!(reg & USBIN_UV_BIT) && !(reg & USBIN_SRC_DET_BIT) &&
+	    chip->usb_psy) {
+		pr_smb(PR_MISC, "setting usb psy dp=f dm=f\n");
+		power_supply_set_dp_dm(chip->usb_psy,
+				POWER_SUPPLY_DP_DM_DPF_DMF);
 	}
 
 	if (chip->force_aicl_rerun)
@@ -8273,25 +8313,29 @@ static int smbchg_reboot(struct notifier_block *nb,
 		return NOTIFY_DONE;
 	}
 
-	if (chip->factory_mode) {
-		switch (event) {
-		case SYS_POWER_OFF:
-			/* Disable Charging */
-			smbchg_charging_en(chip, 0);
+	switch (event) {
+	case SYS_POWER_OFF:
+		/* Disable Charging */
+		smbchg_charging_en(chip, 0);
 
-			/* Suspend USB and DC */
-			smbchg_usb_suspend(chip, true);
-			smbchg_dc_suspend(chip, true);
+		/* Suspend USB and DC */
+		smbchg_usb_suspend(chip, true);
+		smbchg_dc_suspend(chip, true);
 
-			while (is_usb_present(chip))
-				msleep(100);
-			dev_warn(chip->dev, "VBUS UV wait 1 sec!\n");
-			/* Delay 1 sec to allow more VBUS decay */
-			msleep(1000);
+		power_supply_set_present(chip->usb_psy, 0);
+		power_supply_set_chg_present(chip->usb_psy, 0);
+		power_supply_set_online(chip->usb_psy, 0);
+		if (!chip->factory_mode)
 			break;
-		default:
-			break;
-		}
+
+		while (is_usb_present(chip))
+			msleep(100);
+		dev_warn(chip->dev, "VBUS UV wait 1 sec!\n");
+		/* Delay 1 sec to allow more VBUS decay */
+		msleep(1000);
+		break;
+	default:
+		break;
 	}
 	return NOTIFY_DONE;
 }
