@@ -164,8 +164,27 @@
 			qcom,alias-name  = "batt_therm";
 			qcom,scaling-factor = <1000>;
 		};
+
+		sensor_information18: qcom,sensor-information-18 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "front_temp";
+			qcom,scaling-factor = <1000>;
+		};
+
+		sensor_information19: qcom,sensor-information-19 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "back_temp";
+			qcom,scaling-factor = <1000>;
+		};
+
 	};
 
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+					"back_temp";
+		status = "ok";
+	};
 
 	gpio_keys {
 		compatible = "gpio-keys";
