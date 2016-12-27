@@ -86,6 +86,8 @@
 		epl,ps_dyn_l_offset = <260>;
 		epl,ps_dyn_h_offset = <360>;
 		epl,ps_rs = <0>;
+		epl,als_lsrc_adjust = <1>;
+		epl,als_lsrc_offset = <147>;
 	};
 
 	akm@0c {
