@@ -74,6 +74,7 @@
 #define ALS_DYN_INTT_REPORT    1
 
 #define ATTR_RANGE_PATH 1
+#define ALS_LSRC        1
 
 #define ALSPS_DEBUG 0
 /******************************************************************************
@@ -226,6 +227,10 @@ struct epl_sensor_priv {
 	u16 dt_ps_dyn_l_offset;
 	u16 dt_ps_dyn_h_offset;
 	u8 dt_ps_rs;
+#ifdef ALS_LSRC
+	u8 dt_als_lsrc_adjust;
+	u16 dt_als_lsrc_offset;
+#endif
 };
 #if ATTR_RANGE_PATH
 static struct kobject *kernel_kobj_dev;
@@ -876,6 +881,27 @@ static int epl_run_ps_calibration(struct epl_sensor_priv *epl_data)
 	return ch1;
 }
 /*----------------------------------------------------------------------------*/
+#if ALS_LSRC
+int lsrc_raw_convert_to_adc(u32 ch0, u32 ch1)
+{
+	u32 als_offset = 0;
+	u16 nor_raw = 0;
+
+	if (ch1 > 0) {
+		als_offset = (ch0 * ch0) / (ch0+ch1) * epl_sensor_obj->dt_als_lsrc_offset / 1000;
+		LOG_INFO("[%s]: als_offset=%u \r\n", __func__, als_offset);
+		if (als_offset < (2*ch1/3))
+			nor_raw = ch1 - als_offset;
+		else
+			nor_raw = ch1/3;
+	} else
+		nor_raw = ch1;
+
+	LOG_INFO("[%s]: ch0=%d, ch1=%d, nor_raw=%d \r\n", __func__, ch0, ch1, nor_raw);
+
+	return nor_raw;
+}
+#endif
 
 #if ALS_DYN_INTT
 long raw_convert_to_lux(u16 raw_data)
@@ -883,13 +909,18 @@ long raw_convert_to_lux(u16 raw_data)
 	long lux = 0;
 	long dyn_intt_raw = 0;
 	int gain_value = 0;
-
+#if ALS_LSRC
+	u16 als_lsrc_raw = 0, als_dyn_intt_ch0 = 0;
+#endif
 	if (epl_sensor.als.gain == EPL_GAIN_MID) {
 		gain_value = 8;
 	} else if (epl_sensor.als.gain == EPL_GAIN_LOW) {
 		gain_value = 1;
 	}
 	dyn_intt_raw = (raw_data * 10) / (10 * gain_value * als_dynamic_intt_value[dynamic_intt_idx] / als_dynamic_intt_value[1]);
+#if ALS_LSRC
+	als_dyn_intt_ch0 = (epl_sensor.als.data.channels[0] * 10) / (10 * gain_value * als_dynamic_intt_value[dynamic_intt_idx] / als_dynamic_intt_value[1]);
+#endif
 
 	/*LOG_INFO("[%s]: dyn_intt_raw=%ld \r\n", __func__, dyn_intt_raw);*/
 
@@ -897,9 +928,14 @@ long raw_convert_to_lux(u16 raw_data)
 		epl_sensor.als.dyn_intt_raw = 0xffff;
 	else
 		epl_sensor.als.dyn_intt_raw = dyn_intt_raw;
-
-	lux = c_gain * epl_sensor.als.dyn_intt_raw;
-
+#if ALS_LSRC
+	if (epl_sensor_obj->dt_als_lsrc_adjust) {
+		als_lsrc_raw = lsrc_raw_convert_to_adc(als_dyn_intt_ch0, dyn_intt_raw);
+		lux = c_gain * als_lsrc_raw;
+		LOG_INFO("[%s]:raw_data=%d, als_lsrc_raw=%d, lux=%ld\r\n", __func__, raw_data, als_lsrc_raw, lux);
+	} else
+		lux = c_gain * epl_sensor.als.dyn_intt_raw;
+#endif
 	if (lux >= (dynamic_intt_max_lux*dynamic_intt_min_unit)) {
 		LOG_INFO("[%s]:raw_convert_to_lux: change max lux\r\n", __func__);
 		lux = dynamic_intt_max_lux * dynamic_intt_min_unit;
@@ -3661,6 +3697,22 @@ static int epl_sensor_parse_dt(struct device *dev, struct epl_sensor_priv *epld)
 	if (prop)
 		of_property_read_u32(dt, "epl,ps_dyn_h_offset", &temp);
 	epld->dt_ps_dyn_h_offset = (u16)temp;
+
+#if ALS_LSRC
+	temp = 0;
+	prop = of_find_property(dt, "epl,als_lsrc_adjust", NULL);
+	if (prop)
+		of_property_read_u32(dt, "epl,als_lsrc_adjust", &temp);
+	epld->dt_als_lsrc_adjust = (u8)temp;
+
+	if (epld->dt_als_lsrc_adjust) {
+		temp = 0;
+		prop = of_find_property(dt, "epl,als_lsrc_offset", NULL);
+		if (prop)
+			of_property_read_u32(dt, "epl,als_lsrc_offset", &temp);
+		epld->dt_als_lsrc_offset = (u16)temp;
+	}
+#endif
 
 	return 0;
 }
