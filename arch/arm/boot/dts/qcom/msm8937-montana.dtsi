@@ -177,7 +177,13 @@
 &i2c_3 {
 	synaptics_dsx_i2c@20 {
 		touch_vdd-supply = <&vdda_touch_vreg>;
+		pinctrl-0 = <&touch_reset_active &touch_int_default>;
 	};
+};
+
+&pm8937_l10 {
+	regulator-always-on;
+	regulator-boot-on;
 };
 
 &pmx_mdss {
