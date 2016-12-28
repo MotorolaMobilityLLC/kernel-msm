@@ -115,6 +115,7 @@
 		mx,vdd_io-supply = <&pm8917_l6>;
 		mx,position = <0x1>;
 		mx,position_array = <0 1 2 1 1 0>;
+		mx,use-hrtimer;
 	};
 };
 &i2c_2 {
