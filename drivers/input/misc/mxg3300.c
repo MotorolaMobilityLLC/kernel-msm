@@ -100,6 +100,7 @@ static struct mxg_sensor_data *mxdata;
 
 static int mxg_i2c_write_byte(struct device *dev, u8 reg, u8 val);
 static int mxg_i2c_read_block(struct device *dev, u8 reg_addr, u8 *data, int len);
+static int mxg_do_self_test(struct mxg_sensor_data *mx_data);
 
 static int mxg_i2c_write_byte(struct device *dev, u8 reg, u8 val)
 {
@@ -125,6 +126,22 @@ static int mxg_i2c_read_block(struct device *dev, u8 reg_addr, u8 *data, int len
 
 i2c_read_block_error:
 	return ret < 0 ? ret : 0;
+}
+
+static inline uint8_t mxg_select_frequency(int64_t delay_ns)
+{
+	if (delay_ns >= 100000000LL)
+		return MXG_MODE_CONT_10HZ;
+	else if (delay_ns >= 50000000LL)
+		return MXG_MODE_CONT_20HZ;
+	else if (delay_ns >= 20000000LL)
+		return MXG_MODE_CONT_50HZ;
+	else if (delay_ns >= 10000000LL)
+		return MXG_MODE_CONT_100HZ;
+	else if (delay_ns >= 0LL)
+		return MXG_MODE_CONT_200HZ;
+	else
+		return MXG_MODE_POWER_DOWN;
 }
 
 static int mxg_operation_mode(struct device *dev, u8 mode)
@@ -258,81 +275,6 @@ static int mxg_power_unregister(struct mxg_sensor_data *mx_data) {return 0; }
 static int mxg_power_control(struct mxg_sensor_data *mx_data, bool on) {return 0; }
 #endif
 
-int mxg_read_axis_data(struct mxg_sensor_data *mx_data, const ktime_t timestamp)
-{
-	int i, ret;
-	short raw_temp[3] = {0,};
-	u8 *st1, *st2, *data;
-	u8 buf[MXG_MEASUREMENT_DATA_SIZE] = {0,};
-
-	st1 = &buf[MXG_MEASUREMENT_ST1_POS];
-	st2 = &buf[MXG_MEASUREMENT_ST2_POS];
-	data = &buf[MXG_MEASUREMENT_RAW_POS];
-
-	ret = mxg_operation_mode(mx_data->dev, MXG_MODE_SNG_MEASURE);
-	if (ret)
-		return ret;
-
-	mdelay(MXG_DELAY_FOR_READY);
-
-	ret = mxg_i2c_read_block(mx_data->dev,
-			MXG_REG_ST1,
-			buf,
-			MXG_MEASUREMENT_DATA_SIZE);
-	if (ret)
-		return ret;
-
-	if (DATA_READY_CHECK(*st1)) {
-		for (i = 0; i < 3; i++) {
-			int axis = mx_data->plat_data->position_array[i];
-			int sign = ((mx_data->plat_data->position_array[i+3] > 0) ? -1:1);
-			raw_temp[i] = (short)((data[(i*2)+1])|(data[(i*2)] << 8));
-			mx_data->raw_data[axis] =
-				(int)RAW_TO_GAUSS(raw_temp[i], mx_data->mcoef[i], sign);
-		}
-	} else {
-		dev_warn(mx_data->dev, "data is not read yet.\n");
-	}
-
-	if (DATA_OVERFLOW_CHECK(*st2))
-		dev_warn(mx_data->dev, "data is overflow.\n");
-
-	dev_err(mx_data->dev, "mag data[0] : %d mag data[1] : %d mag data[2] : %d",
-			mx_data->raw_data[0], mx_data->raw_data[1], mx_data->raw_data[2]);
-
-	/* report time event */
-	dev_info(mx_data->dev, "TIME EVENT SEC report.\n");
-	input_event(mx_data->input_dev, EV_SYN, SYN_TIME_SEC,
-			ktime_to_timespec(timestamp).tv_sec);
-	input_event(mx_data->input_dev, EV_SYN, SYN_TIME_NSEC,
-			ktime_to_timespec(timestamp).tv_nsec);
-	/* report input event */
-	input_report_abs(mx_data->input_dev, EVENT_RAW_X, mx_data->raw_data[0]);
-	input_report_abs(mx_data->input_dev, EVENT_RAW_Y, mx_data->raw_data[1]);
-	input_report_abs(mx_data->input_dev, EVENT_RAW_Z, mx_data->raw_data[2]);
-	input_sync(mx_data->input_dev);
-
-	return ret;
-}
-
-static void mxg_work_func(struct work_struct *work)
-{
-	ktime_t timestamp = ktime_get();
-	struct mxg_sensor_data *mx_data = container_of(work,
-			struct mxg_sensor_data,
-			work.work);
-
-	if (mxg_read_axis_data(mx_data, timestamp)) {
-		dev_warn(mx_data->dev, "failed to report input event.\n");
-		goto reschedule_delayed_work;
-	} else {
-		/* nothing to do here.*/
-	}
-
-reschedule_delayed_work:
-	schedule_delayed_work(&mx_data->work, msecs_to_jiffies(mx_data->odr));
-}
-
 static void mxg_self_test_work_func(struct work_struct *work)
 {
 	int i, ret;
@@ -371,6 +313,8 @@ drdy_work_func_end:
 static int mxg_sensor_enable_disable(struct mxg_sensor_data *mx_data, int en)
 {
 	int ret, msec;
+	int64_t delay_ns;
+
 	if ((en != 0) && (en != 1)) {
 		dev_err(mx_data->dev, "invalid value.\n");
 		return -EINVAL;
@@ -388,10 +332,33 @@ static int mxg_sensor_enable_disable(struct mxg_sensor_data *mx_data, int en)
 		}
 		mutex_lock(&mx_data->lock);
 		msec = mx_data->odr;
+		delay_ns = msec * 1000000;
 		mutex_unlock(&mx_data->lock);
-		schedule_delayed_work(&mx_data->work, msecs_to_jiffies(msec));
+		if (mx_data->use_hrtimer) {
+			hrtimer_cancel(&mx_data->poll_timer);
+			cancel_work_sync(&mx_data->dwork.work);
+			hrtimer_start(&mx_data->poll_timer,
+				ns_to_ktime(delay_ns),
+				HRTIMER_MODE_REL);
+		} else {
+			cancel_delayed_work_sync(&mx_data->dwork);
+			queue_delayed_work(mx_data->work_queue, &mx_data->dwork,
+				(unsigned long)nsecs_to_jiffies64(delay_ns));
+		}
 	} else {
-		cancel_delayed_work_sync(&mx_data->work);
+		if (mx_data->use_hrtimer) {
+			hrtimer_cancel(&mx_data->poll_timer);
+			cancel_work_sync(&mx_data->dwork.work);
+		} else {
+			cancel_delayed_work_sync(&mx_data->dwork);
+		}
+
+		ret = mxg_operation_mode(mx_data->dev, MXG_MODE_POWER_DOWN);
+		if (ret) {
+			dev_err(mx_data->dev, "failed on mxg_operation_mode.\n");
+			return ret;
+		}
+
 		if (mx_data->power_on) {
 			ret = mxg_power_control(mx_data, false);
 			if (ret) {
@@ -404,15 +371,39 @@ static int mxg_sensor_enable_disable(struct mxg_sensor_data *mx_data, int en)
 	return 0;
 }
 
-static void mxg_sensor_delay(struct mxg_sensor_data *mx_data, unsigned int msec)
+static int mxg_sensor_delay(struct mxg_sensor_data *mx_data, unsigned int msec)
 {
+	int ret = 0;
+	int64_t delay_ns;
+	uint8_t mode;
+
 	mutex_lock(&mx_data->lock);
+
 	if (msec < MXG_DELAY_MIN)
 		msec = MXG_DELAY_MIN;
 	if (msec > MXG_DELAY_MAX)
 		msec = MXG_DELAY_MAX;
 	mx_data->odr = msec;
+
+	ret = mxg_operation_mode(mx_data->dev, MXG_MODE_POWER_DOWN);
+	if (ret) {
+		dev_err(mx_data->dev, "failed to set power down mode.\n");
+		mutex_unlock(&mx_data->lock);
+		return ret;
+	}
+
+	delay_ns = msec * 1000000;
+	mode = mxg_select_frequency(delay_ns);
+	ret = mxg_operation_mode(mx_data->dev, mode);
+	if (ret) {
+		dev_err(mx_data->dev, "failed to set continuous mode(0x%02x).\n", mode);
+		mutex_unlock(&mx_data->lock);
+		return ret;
+	}
+
 	mutex_unlock(&mx_data->lock);
+
+	return ret;
 }
 
 static int mxg_sensors_cdev_enable(struct sensors_classdev *sensors_cdev,
@@ -427,12 +418,22 @@ static int mxg_sensors_cdev_enable(struct sensors_classdev *sensors_cdev,
 static int mxg_sensors_cdev_poll_delay(struct sensors_classdev *sensors_cdev,
 		unsigned int delay_ms)
 {
+	int ret;
 	struct mxg_sensor_data *mx_data = container_of(sensors_cdev,
 			struct mxg_sensor_data, sensor_cdev);
 
-	mxg_sensor_delay(mx_data, delay_ms);
+	ret = mxg_sensor_delay(mx_data, delay_ms);
 
 	return 0;
+}
+
+static int mxg_self_test(struct sensors_classdev *sensors_cdev)
+{
+    int ret = 0;
+
+	if (mxdata)
+	    ret = mxg_do_self_test(mxdata);
+    return ret;
 }
 
 static int mxg_sensors_flush_set(struct sensors_classdev *sensors_cdev)
@@ -452,6 +453,113 @@ static int mxg_sensors_flush_set(struct sensors_classdev *sensors_cdev)
 	return 0;
 }
 
+static int mxg_read_mag_data(struct mxg_sensor_data *mx_data)
+{
+	int i, ret;
+	int axis, sign;
+	short raw_temp[3] = {0,};
+	u8 *st1, *st2, *data;
+	uint8_t mode;
+	u8 buf[MXG_MEASUREMENT_DATA_SIZE] = {0,};
+
+	st1 = &buf[MXG_MEASUREMENT_ST1_POS];
+	st2 = &buf[MXG_MEASUREMENT_ST2_POS];
+	data = &buf[MXG_MEASUREMENT_RAW_POS];
+
+	ret = mxg_i2c_read_block(mx_data->dev,
+		MXG_REG_ST1,
+		buf,
+		MXG_MEASUREMENT_DATA_SIZE);
+	if (ret)
+		return ret;
+
+	if (DATA_READY_CHECK(*st1)) {
+		for (i = 0; i < 3; i++) {
+			axis = mx_data->plat_data->position_array[i];
+			sign = ((mx_data->plat_data->position_array[i+3] > 0) ? -1:1);
+			raw_temp[i] = (short)((data[(i*2)+1])|(data[(i*2)] << 8));
+			mx_data->raw_data[axis] =
+				(int)RAW_TO_GAUSS(raw_temp[i], mx_data->mcoef[i], sign);
+		}
+	} else
+		dev_dbg(mx_data->dev, "data is not read yet.\n");
+
+	if (DATA_OVERFLOW_CHECK(*st2)) {
+		dev_warn(mx_data->dev, "data is overflow.\n");
+		mxg_operation_mode(mx_data->dev, MXG_SOFT_RESET);
+		mode = mxg_select_frequency(mx_data->odr * 1000000);
+		mxg_operation_mode(mx_data->dev, mode);
+		return -EIO;
+	}
+
+	dev_dbg(mx_data->dev, "mag data[0] : %d mag data[1] : %d mag data[2] : %d",
+	mx_data->raw_data[0], mx_data->raw_data[1], mx_data->raw_data[2]);
+
+	return ret;
+}
+
+static int mx_report_data(void)
+{
+	int ret;
+
+	ret = mxg_read_mag_data(mxdata);
+	if (ret) {
+		dev_err(mxdata->dev, "Get data failed.\n");
+		return -EIO;
+	}
+
+	input_report_abs(mxdata->input_dev, EVENT_RAW_X, mxdata->raw_data[0]);
+	input_report_abs(mxdata->input_dev, EVENT_RAW_Y, mxdata->raw_data[1]);
+	input_report_abs(mxdata->input_dev, EVENT_RAW_Z, mxdata->raw_data[2]);
+	input_event(mxdata->input_dev, EV_SYN, SYN_TIME_SEC, mxdata->ts.tv_sec);
+	input_event(mxdata->input_dev, EV_SYN, SYN_TIME_NSEC, mxdata->ts.tv_nsec);
+
+	/* avoid repeat by input subsystem framework */
+	if ((mxdata->raw_data[0] == mxdata->lastData[0]) && (mxdata->raw_data[1] == mxdata->lastData[1]) &&
+		(mxdata->raw_data[2] == mxdata->lastData[2])) {
+		input_report_abs(mxdata->input_dev, ABS_MISC, mxdata->rep_cnt++);
+	}
+
+	mxdata->lastData[0] = mxdata->raw_data[0];
+	mxdata->lastData[1] = mxdata->raw_data[1];
+	mxdata->lastData[2] = mxdata->raw_data[2];
+
+	input_sync(mxdata->input_dev);
+
+	return 0;
+}
+
+static void mx_dev_poll(struct work_struct *work)
+{
+	int ret, msec;
+	int64_t delay_ns;
+
+	if (mxdata == NULL) {
+		return;
+	}
+
+	ret = mx_report_data();
+	if (ret < 0)
+		dev_err(mxdata->dev, "Failed to report data\n");
+
+	if (!mxdata->use_hrtimer) {
+		msec = mxdata->odr;
+		delay_ns = msec * 1000000;
+
+		queue_delayed_work(mxdata->work_queue, &mxdata->dwork,
+			(unsigned long)nsecs_to_jiffies64(delay_ns));
+	}
+}
+
+static enum hrtimer_restart mx_timer_func(struct hrtimer *timer)
+{
+	if (mxdata != NULL) {
+		queue_work(mxdata->work_queue, &mxdata->dwork.work);
+		hrtimer_forward_now(&mxdata->poll_timer,
+			ns_to_ktime(mxdata->odr * 1000000));/* odr:ms, odr*1000000-->ns */
+	}
+	return HRTIMER_RESTART;
+}
 static int mxg_sensors_cdev_class_init(struct mxg_sensor_data *mx_data)
 {
 	int ret;
@@ -459,6 +567,7 @@ static int mxg_sensors_cdev_class_init(struct mxg_sensor_data *mx_data)
 	mx_data->sensor_cdev = mxg_sensors_cdev;
 	mx_data->sensor_cdev.sensors_enable = mxg_sensors_cdev_enable;
 	mx_data->sensor_cdev.sensors_poll_delay = mxg_sensors_cdev_poll_delay;
+	mx_data->sensor_cdev.sensors_self_test = mxg_self_test;
 	mx_data->sensor_cdev.sensors_flush = mxg_sensors_flush_set;
 
 	ret = sensors_classdev_register(mx_data->dev, &mx_data->sensor_cdev);
@@ -534,26 +643,33 @@ static ssize_t mxg_sensor_mcoef_show(struct device *dev,
 }
 
 
-static ssize_t mxg_sensor_self_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
+static int mxg_do_self_test(struct mxg_sensor_data *mx_data)
 {
-	int ret, i;
+	int ret, i, result = 0;
+	uint8_t mode;
 	short magn_self[3];
 
-	struct mxg_sensor_data *mx_data = dev_get_drvdata(dev);
-
 	if (atomic_read(&mx_data->en)) {
-		cancel_delayed_work_sync(&mx_data->work);
+		if (mx_data->use_hrtimer) {
+			hrtimer_cancel(&mx_data->poll_timer);
+			cancel_work_sync(&mx_data->dwork.work);
+		} else {
+			cancel_delayed_work_sync(&mx_data->dwork);
+		}
 		udelay(MXG_DELAY_FOR_READY);
 	}
 
 	ret = mxg_operation_mode(mx_data->dev, MXG_MODE_POWER_DOWN);
-	if (ret)
+	if (ret) {
+		result = 1;
 		return ret;
+	}
 
 	ret = mxg_operation_mode(mx_data->dev, MXG_MODE_SELF_TEST);
-	if (ret)
+	if (ret) {
+		result = 2;
 		return ret;
+	}
 
 	mdelay(MXG_DELAY_FOR_READY);
 	schedule_delayed_work(&mx_data->selftest_work, msecs_to_jiffies(100));
@@ -563,37 +679,56 @@ static ssize_t mxg_sensor_self_show(struct device *dev,
 			msecs_to_jiffies(10000));
 	if (ret < 0) {
 		dev_info(mx_data->dev, "Wait drdy event failed. (%d)\n", ret);
-		ret = 0;
+		result = 3;
 		goto notify_result;
-	} else {
-		if (!atomic_read(&mx_data->selftest_done)) {
-			dev_info(mx_data->dev, "Drdy is not working...\n");
-			ret = 0;
-			goto notify_result;
-		}
-		ret = 1;
+	} else if (!atomic_read(&mx_data->selftest_done)) {
+		dev_info(mx_data->dev, "Drdy is not working...\n");
+		result = 4;
+		goto notify_result;
 	}
 
 	for (i = 0; i < 3; i++) {
-		magn_self[i] = RAW_TO_GAUSS(mx_data->self[i], mx_data->mcoef[i], 1);
-		/* magn_self[i] = ((mx_data->self[i]) * (mx_data->mcoef[i])) / 6000; */
+		magn_self[i] = mx_data->self[i];
 		dev_info(mx_data->dev, "self-test data [%d] : %d\n", i, magn_self[i]);
 	}
 
 	if (((magn_self[0] > MXG_COEF_X_MAX) || (magn_self[0] < MXG_COEF_X_MIN)) ||
 			((magn_self[1] > MXG_COEF_Y_MAX) || (magn_self[1] < MXG_COEF_Y_MIN)) ||
 			((magn_self[2] > MXG_COEF_Z_MAX) || (magn_self[2] < MXG_COEF_Z_MIN))) {
-		ret = 0;
+		dev_info(mx_data->dev, "self-test data out of range\n");
+		result = 5;
 		goto notify_result;
 	}
 
 notify_result:
 	atomic_set(&mx_data->selftest_done, 0);
 	if (atomic_read(&mx_data->en)) {
-		schedule_delayed_work(&mx_data->work, msecs_to_jiffies(mx_data->odr));
+		mode = mxg_select_frequency(mx_data->odr * 1000000);
+		mxg_operation_mode(mx_data->dev, MXG_MODE_POWER_DOWN);
+		mxg_operation_mode(mx_data->dev, mode);
+		if ((mx_data->use_hrtimer)) {
+			hrtimer_start(&mx_data->poll_timer,
+				ns_to_ktime(mx_data->odr * 1000000),
+				HRTIMER_MODE_REL);
+		} else {
+			queue_delayed_work(mx_data->work_queue, &mx_data->dwork,
+				(unsigned long)nsecs_to_jiffies64(mx_data->odr * 1000000));
+		}
 	}
 
-	return snprintf(buf, 128, "%d\n", ret);
+    return result;
+}
+
+static ssize_t mxg_sensor_self_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int ret;
+	struct mxg_sensor_data *mxdata = dev_get_drvdata(dev);
+
+	ret = mxg_do_self_test(mxdata);
+
+	return snprintf(buf, PAGE_SIZE, "%s(%d):%d,%d,%d\n",
+		ret?"failed":"success", ret, mxdata->self[0],
+		mxdata->self[1], mxdata->self[2]);
 }
 
 static int mxg_file_open(struct inode *inode, struct file *filp)
@@ -774,7 +909,6 @@ static void mxg_init_device(struct mxg_sensor_data *sensor)
 
 	init_waitqueue_head(&sensor->selftest_wq);
 
-	INIT_DELAYED_WORK(&sensor->work, mxg_work_func);
 	INIT_DELAYED_WORK(&sensor->selftest_work, mxg_self_test_work_func);
 
 	/* Global Static Variable Setting */
@@ -846,6 +980,9 @@ static int mxg_parse_dt(struct device *dev, struct mxg_platform_data *pdata)
 			pdata->position_array[0], pdata->position_array[1],
 			pdata->position_array[2], pdata->position_array[3],
 			pdata->position_array[4], pdata->position_array[5]);
+
+	/* reserved: if need, you could using "mx,use-hrtimer" */
+	pdata->use_hrtimer = of_property_read_bool(dev->of_node, "mx,use-hrtimer");
 
 	return 0;
 }
@@ -941,6 +1078,7 @@ int mxg_i2c_drv_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto err_free_devmem;
 	}
 
+	mx_data->use_hrtimer = mx_data->plat_data->use_hrtimer;
 	/* Initialize MX sensor data */
 	mxg_init_device(mx_data);
 
@@ -984,6 +1122,19 @@ int mxg_i2c_drv_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto err_remove_sysfs_group;
 	}
 
+	if (mx_data->use_hrtimer) {
+		dev_info(&client->dev, "mxg3300 probe -- use_hrtimer.\n");
+		hrtimer_init(&mx_data->poll_timer, CLOCK_MONOTONIC,
+			HRTIMER_MODE_REL);
+		mx_data->poll_timer.function = mx_timer_func;
+		mx_data->work_queue = alloc_workqueue("mx_poll_work",
+			WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_HIGHPRI, 1);
+		INIT_WORK(&mx_data->dwork.work, mx_dev_poll);
+	} else {
+		mx_data->work_queue = alloc_workqueue("mx_poll_work", 0, 0);
+		INIT_DELAYED_WORK(&mx_data->dwork, mx_dev_poll);
+	}
+
 	/* Initialize Sensor class device */
 	ret = mxg_sensors_cdev_class_init(mx_data);
 	if (ret < 0)
@@ -1016,6 +1167,14 @@ static int mxg_i2c_drv_remove(struct i2c_client *client)
 {
 	struct mxg_sensor_data *mx_data = i2c_get_clientdata(client);
 
+	if (mx_data->use_hrtimer) {
+		hrtimer_cancel(&mx_data->poll_timer);
+		cancel_work_sync(&mx_data->dwork.work);
+	} else {
+		cancel_delayed_work_sync(&mx_data->dwork);
+	}
+	destroy_workqueue(mx_data->work_queue);
+
 	sensors_classdev_unregister(&mx_data->sensor_cdev);
 	misc_deregister(&mxg_misc_dev);
 	sysfs_remove_group(&client->dev.kobj, &mxg_attribute_group);
@@ -1025,6 +1184,7 @@ static int mxg_i2c_drv_remove(struct i2c_client *client)
 	mxg_power_unregister(mx_data);
 
 	devm_kfree(&client->dev, mx_data);
+	mxdata = NULL;
 
 	return 0;
 }
@@ -1035,7 +1195,12 @@ static int mxg_i2c_drv_suspend(struct device *dev)
 	struct mxg_sensor_data *mx_data = dev_get_drvdata(dev);
 
 	if (atomic_read(&mx_data->en)) {
-		cancel_delayed_work_sync(&mx_data->work);
+		if (mx_data->use_hrtimer) {
+			hrtimer_cancel(&mx_data->poll_timer);
+			cancel_work_sync(&mx_data->dwork.work);
+		} else {
+			cancel_delayed_work_sync(&mx_data->dwork);
+		}
 		mxg_operation_mode(mx_data->dev, MXG_MODE_POWER_DOWN);
 	}
 
@@ -1049,13 +1214,30 @@ static int mxg_i2c_drv_suspend(struct device *dev)
 static int mxg_i2c_drv_resume(struct device *dev)
 {
 	struct mxg_sensor_data *mx_data = dev_get_drvdata(dev);
+	int ret, msec;
+	uint8_t mode;
+	int64_t delay_ns;
 
 	if (mx_data->power_on) {
 		mxg_power_control(mx_data, true);
 	}
 	if (atomic_read(&mx_data->en)) {
-		schedule_delayed_work(&mx_data->work, msecs_to_jiffies(mx_data->odr));
-		mxg_operation_mode(mx_data->dev, MXG_MODE_POWER_DOWN);
+		mode = mxg_select_frequency(mx_data->odr * 1000000);
+		ret = mxg_operation_mode(mx_data->dev, mode);
+		if (ret) {
+			dev_err(mx_data->dev, "failed on mxg_operation_mode.\n");
+			return ret;
+		}
+
+		msec = mx_data->odr;
+		delay_ns = msec * 1000000;
+
+		if ((mx_data->use_hrtimer)) {
+			hrtimer_start(&mx_data->poll_timer, ns_to_ktime(delay_ns), HRTIMER_MODE_REL);
+		} else {
+			queue_delayed_work(mx_data->work_queue, &mx_data->dwork,
+				(unsigned long)nsecs_to_jiffies64(delay_ns));
+		}
 	}
 
 	dev_info(mx_data->dev, "mxg_i2c_drv_resume\n");
