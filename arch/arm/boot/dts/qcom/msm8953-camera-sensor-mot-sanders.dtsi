@@ -62,6 +62,45 @@
 		qcom,cam-vreg-op-mode = <80000>;
 	};
 
+	/* L4H8F20 EEPROM*/
+	eeprom2: qcom,eeprom@2 {
+		cell-index = <2>;
+		compatible = "qcom,eeprom";
+		qcom,cci-master = <1>;
+		qcom,slave-addr = <0x20>;
+		reg = <0x2>;
+		cam_vdig-supply = <&pm8953_l23>;
+		cam_vio-supply = <&pm8953_l6>;
+		cam_vana-supply = <&pm8953_l22>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000>;
+		qcom,cam-vreg-op-mode = <105000 80000 100000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_default
+				&cam_sensor_front_default>;
+		pinctrl-1 = <&cam_sensor_mclk2_sleep
+				&cam_sensor_front_sleep>;
+		gpios = <&tlmm 28 0>,
+			<&tlmm 89 0>,
+			<&tlmm 35 0>,
+			<&tlmm 130 0>;
+		qcom,gpio-vio = <1>;
+		qcom,gpio-vana =<2>;
+		qcom,gpio-standby = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+			"CAM_VIO2",
+			"CAM_VANA2",
+			"CAM_STANDBY2";
+		status = "ok";
+		clocks = <&clock_gcc clk_mclk2_clk_src>,
+				<&clock_gcc clk_gcc_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
 	/* IMX258 BEAR */
 	qcom,camera@0 {
 		cell-index = <0>;
@@ -151,7 +190,7 @@
 		qcom,clock-rates = <24000000 0>;
 	};
 
-	/* IMX219 */
+	/* S5K4H8 */
 	qcom,camera@2 {
 		cell-index = <2>;
 		compatible = "qcom,camera";
@@ -159,6 +198,7 @@
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <2>;
 		qcom,mount-angle = <270>;
+		qcom,eeprom-src = <&eeprom2>;
 		qcom,led-flash-src = <&led_flash1>;
 		cam_vdig-supply = <&pm8953_l23>;
 		cam_vio-supply = <&pm8953_l6>;
