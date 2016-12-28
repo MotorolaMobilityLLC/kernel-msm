@@ -3,6 +3,8 @@
 
 #include <linux/ioctl.h>
 #include <linux/mutex.h>
+/* add by James for using hrtimer */
+#include <linux/hrtimer.h>
 
 #define MXG_DEV_NAME            "mxg3300"
 #define MXG_INPUT_DEV_NAME      "mxg3300_compass"
@@ -18,7 +20,7 @@
 #define MXG_MODE_CONT_50HZ      0xC6
 #define MXG_MODE_CONT_100HZ     0xC8
 #define MXG_MODE_CONT_200HZ     0xCC
-#define MXG_MODE_SELF_TEST      0x10
+#define MXG_MODE_SELF_TEST      0x90 /* Selftest with 16bit data enable */
 #define MXG_MODE_FUSE_ACCESS    0x1F
 #define MXG_MODE_POWER_DOWN     0xC0
 #define MXG_SOFT_RESET          0x01
@@ -68,6 +70,7 @@ struct mxg_platform_data {
 	 * "1" value is Negative
 	 */
 	u32 position_array[6];
+	int	use_hrtimer; /* reserved: add by James for using hrtimer. */
 };
 
 struct mxg_sensor_data {
@@ -79,7 +82,7 @@ struct mxg_sensor_data {
 	struct sensors_classdev sensor_cdev;
 
 	struct workqueue_struct *work_queue;
-	struct delayed_work work;
+	struct delayed_work dwork;
 	struct delayed_work selftest_work;
 	wait_queue_head_t selftest_wq;
 	atomic_t selftest_done;
@@ -88,15 +91,24 @@ struct mxg_sensor_data {
 	struct regulator *vdd_io;
 	bool power_on;
 
+	/* start by James for using hrtimer. */
+	struct timespec ts;
+	struct  hrtimer poll_timer;
+	int use_hrtimer;
+	/* end by James for using hrtimer. */
+
 	struct mutex lock;
 	atomic_t en;
 	u8 mode; /* Mode 0x1 : Single, 0x10 : Self-test */
 	u32 odr;
 	u8 mcoef[3];    /* axis sensitivity adjustment */
-	s8 self[3];
+	s16 self[3];
 	u8 info[3];
 	s32 raw_data[3];
+	s32 lastData[3];
 
+	/* dummy value to avoid sensor event get eaten */
+	int	rep_cnt;
 	u32 flush_count;
 };
 
