@@ -17,6 +17,12 @@ else
 #ccflags-y	+= -DSTM_TEST
 endif
 
+# define this environment variable if you want to compile driver for an old
+# kernel
+ifdef OLD_NETLINK_API
+ccflags-y	+= -DOLD_NETLINK_API
+endif
+
 #ccflags-y	+= -DSTMVL53L1_LOG_POLL_TIMING=1
 #ccflags-y	+= -DSTMVL53L1_LOG_CCI_TIMING=1
 
@@ -30,7 +36,7 @@ stmvl53l1-objs		:= stmvl53l1_module.o stmvl53l1_module-i2c.o stmvl53l1_i2c.o stm
 stmvl53l1-objs		+= src/vl53l1_api.o src/vl53l1_api_core.o
 stmvl53l1-objs		+= src/vl53l1_api_strings.o src/vl53l1_error_strings.o  src_patch/vl53l1_core.o src/vl53l1_register_funcs.o
 stmvl53l1-objs		+= src/vl53l1_api_preset_modes.o  src/vl53l1_api_calibration.o src/vl53l1_fpga_core.o src/vl53l1_silicon_core.o
-stmvl53l1-objs		+= src/vl53l1_zone_presets.o
+stmvl53l1-objs		+= src/vl53l1_zone_presets.o src/vl53l1_nvm.o
 #localy patched file from src
 #stmvl53l1-objs		+= local/vl53l1_wait.o
 stmvl53l1-objs		+= src/vl53l1_wait.o
