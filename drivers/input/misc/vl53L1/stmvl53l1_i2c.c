@@ -347,3 +347,28 @@ VL53L1_Error VL53L1_WaitValueMaskEx(
 	return VL53L1_ERROR_TIME_OUT;
 }
 
+VL53L1_Error VL53L1_WaitUs(VL53L1_DEV pdev, int32_t wait_us)
+{
+	struct stmvl53l1_data *data;
+
+	data = (struct stmvl53l1_data *) container_of(pdev,
+		struct stmvl53l1_data, stdev);
+
+	if (!data->is_delay_allowed)
+		return VL53L1_ERROR_PLATFORM_SPECIFIC_START;
+
+	/* follow Documentation/timers/timers-howto.txt recommendations */
+	if (wait_us < 10)
+		udelay(wait_us);
+	else if (wait_us < 20000)
+		usleep_range(wait_us, wait_us + 1);
+	else
+		msleep(wait_us / 1000);
+
+	return VL53L1_ERROR_NONE;
+}
+
+VL53L1_Error VL53L1_WaitMs(VL53L1_DEV pdev, int32_t wait_ms)
+{
+	return VL53L1_WaitUs(pdev, wait_ms * 1000);
+}
