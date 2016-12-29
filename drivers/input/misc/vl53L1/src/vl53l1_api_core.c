@@ -103,6 +103,9 @@
 #include "vl53l1_register_funcs.h"
 #include "vl53l1_hist_map.h"
 #include "vl53l1_hist_structs.h"
+#include "vl53l1_nvm_map.h"
+#include "vl53l1_nvm_structs.h"
+#include "vl53l1_nvm.h"
 #include "vl53l1_core.h"
 #include "vl53l1_wait.h"
 #include "vl53l1_zone_presets.h"
@@ -126,7 +129,7 @@
 			level, VL53L1_TRACE_FUNCTION_NONE, ##__VA_ARGS__)
 
 
-VL53L1_Error VL53L1_FCTN_00032(
+VL53L1_Error VL53L1_get_version(
 	VL53L1_DEV           Dev,
 	VL53L1_ll_version_t *pdata)
 {
@@ -138,15 +141,15 @@ VL53L1_Error VL53L1_FCTN_00032(
 
 	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
 
-	VL53L1_FCTN_00033(Dev);
+	VL53L1_init_version(Dev);
 
-	memcpy(pdata, &(pdev->VL53L1_PRM_00107), sizeof(VL53L1_ll_version_t));
+	memcpy(pdata, &(pdev->version), sizeof(VL53L1_ll_version_t));
 
 	return VL53L1_ERROR_NONE;
 }
 
 
-VL53L1_Error VL53L1_FCTN_00034(
+VL53L1_Error VL53L1_is_fpga_system(
 	VL53L1_DEV    Dev,
 	uint8_t      *pfpga_system)
 {
@@ -163,7 +166,7 @@ VL53L1_Error VL53L1_FCTN_00034(
 
 	status = VL53L1_RdByte(
 			Dev,
-			VL53L1_DEF_00049,
+			VL53L1_NVM_BIST__COMPLETE,
 			pfpga_system);
 
 	LOG_FUNCTION_END(status);
@@ -172,7 +175,7 @@ VL53L1_Error VL53L1_FCTN_00034(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00035(
+VL53L1_Error VL53L1_get_device_firmware_version(
 	VL53L1_DEV        Dev,
 	uint16_t         *pfw_version)
 {
@@ -186,16 +189,16 @@ VL53L1_Error VL53L1_FCTN_00035(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_RdWord(
 				Dev,
-				VL53L1_DEF_00050,
+				VL53L1_MCU_GENERAL_PURPOSE__GP_0,
 				pfw_version);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -203,7 +206,7 @@ VL53L1_Error VL53L1_FCTN_00035(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00001(
+VL53L1_Error VL53L1_data_init(
 	VL53L1_DEV        Dev,
 	uint8_t           read_p2p_data)
 {
@@ -220,33 +223,34 @@ VL53L1_Error VL53L1_FCTN_00001(
 
 	LOG_FUNCTION_START("");
 
-	VL53L1_FCTN_00038(
+	VL53L1_init_ll_driver_state(
 			Dev,
-			VL53L1_DEF_00051);
+			VL53L1_DEVICESTATE_UNKNOWN);
 
-	pres->VL53L1_PRM_00059.VL53L1_PRM_00063    = VL53L1_MAX_RANGE_RESULTS;
-	pres->VL53L1_PRM_00059.VL53L1_PRM_00037 = 0;
-	pres->VL53L1_PRM_00075.VL53L1_PRM_00019       = VL53L1_MAX_USER_ZONES;
-	pres->VL53L1_PRM_00075.VL53L1_PRM_00020    = 0;
-	pres->VL53L1_PRM_00074.VL53L1_PRM_00019         = VL53L1_MAX_USER_ZONES;
-	pres->VL53L1_PRM_00074.VL53L1_PRM_00020      = 0;
+	pres->range_results.max_results    = VL53L1_MAX_RANGE_RESULTS;
+	pres->range_results.active_results = 0;
+	pres->zone_results.max_zones       = VL53L1_MAX_USER_ZONES;
+	pres->zone_results.active_zones    = 0;
+	pres->zone_hists.max_zones         = VL53L1_MAX_USER_ZONES;
+	pres->zone_hists.active_zones      = 0;
 
-	pdev->VL53L1_PRM_00108       = VL53L1_DEF_00052;
-	pdev->VL53L1_PRM_00086       = VL53L1_DEF_00003;
-	pdev->VL53L1_PRM_00109       = VL53L1_DEF_00053;
-	pdev->VL53L1_PRM_00005  = VL53L1_DEF_00054;
-	pdev->VL53L1_PRM_00006        =  2000;
-	pdev->VL53L1_PRM_00007     = 13000;
-	pdev->VL53L1_PRM_00008 =   100;
-	pdev->VL53L1_PRM_00110                  =  0x00;
+	pdev->wait_method       = VL53L1_WAIT_METHOD_BLOCKING;
+	pdev->preset_mode       = VL53L1_DEVICEPRESETMODE_STANDARD_RANGING;
+	pdev->zone_preset       = VL53L1_DEVICEZONEPRESET_NONE;
+	pdev->measurement_mode  = VL53L1_DEVICEMEASUREMENTMODE_STOP;
+	pdev->mm_config_timeout_us        =  2000;
+	pdev->range_config_timeout_us     = 13000;
+	pdev->inter_measurement_period_ms =   100;
+	pdev->debug_mode                  =  0x00;
 
-	pdev->VL53L1_PRM_00085.VL53L1_PRM_00063    = VL53L1_MAX_OFFSET_RANGE_RESULTS;
-	pdev->VL53L1_PRM_00085.VL53L1_PRM_00037 = 0;
-
-
+	pdev->offset_results.max_results    = VL53L1_MAX_OFFSET_RANGE_RESULTS;
+	pdev->offset_results.active_results = 0;
 
 
-	VL53L1_FCTN_00033(Dev);
+
+
+
+	VL53L1_init_version(Dev);
 
 
 
@@ -258,15 +262,27 @@ VL53L1_Error VL53L1_FCTN_00001(
 
 
 	if (read_p2p_data > 0 && status == VL53L1_ERROR_NONE)
-			status = VL53L1_FCTN_00039(Dev);
+			status = VL53L1_read_p2p_data(Dev);
 
 
 
-	VL53L1_FCTN_00040(&(pdev->VL53L1_PRM_00040));
+	VL53L1_init_refspadchar_config_struct(&(pdev->refspadchar));
 
 
 
-	VL53L1_FCTN_00041(&(pdev->VL53L1_PRM_00097));
+
+
+	VL53L1_init_xtalk_config_struct(
+			&(pdev->customer),
+			&(pdev->xtalk_cfg));
+
+
+
+	VL53L1_init_hist_post_process_config_struct(&(pdev->histpostprocess));
+
+
+
+	VL53L1_init_hist_gen3_dmax_config_struct(&(pdev->dmax_cfg));
 
 
 
@@ -275,31 +291,31 @@ VL53L1_Error VL53L1_FCTN_00001(
 
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00004(
+		status = VL53L1_set_preset_mode(
 						Dev,
-						pdev->VL53L1_PRM_00086,
-						pdev->VL53L1_PRM_00006,
-						pdev->VL53L1_PRM_00007,
-						pdev->VL53L1_PRM_00008);
+						pdev->preset_mode,
+						pdev->mm_config_timeout_us,
+						pdev->range_config_timeout_us,
+						pdev->inter_measurement_period_ms);
 
 
 
-	VL53L1_FCTN_00022(
+	VL53L1_init_histogram_bin_data_struct(
 			0,
-			VL53L1_DEF_00035,
-			&(pdev->VL53L1_PRM_00073));
+			VL53L1_HISTOGRAM_BUFFER_SIZE,
+			&(pdev->hist_data));
 
-	VL53L1_FCTN_00022(
+	VL53L1_init_histogram_bin_data_struct(
 			0,
-			VL53L1_DEF_00035,
-			&(pdev->VL53L1_PRM_00111));
+			VL53L1_HISTOGRAM_BUFFER_SIZE,
+			&(pdev->hist_xtalk));
 
 
 
-	VL53L1_FCTN_00042(
+	VL53L1_init_xtalk_bin_data_struct(
 			0,
-			VL53L1_DEF_00035,
-			&(pdev->VL53L1_PRM_00076));
+			VL53L1_HISTOGRAM_BUFFER_SIZE,
+			&(pdev->xtalk_shape));
 
 	LOG_FUNCTION_END(status);
 
@@ -307,7 +323,7 @@ VL53L1_Error VL53L1_FCTN_00001(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00039(
+VL53L1_Error VL53L1_read_p2p_data(
 	VL53L1_DEV        Dev)
 {
 
@@ -323,46 +339,79 @@ VL53L1_Error VL53L1_FCTN_00039(
 	VL53L1_Error status       = VL53L1_ERROR_NONE;
 	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
 
+	VL53L1_decoded_nvm_fmt_range_data_t fmt_range_result_data;
+
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00034(
+		status = VL53L1_is_fpga_system(
 						Dev,
-						&(pdev->VL53L1_PRM_00112));
+						&(pdev->fpga_system));
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00043(
+		status = VL53L1_get_static_nvm_managed(
 						Dev,
-						&(pdev->VL53L1_PRM_00010));
+						&(pdev->stat_nvm));
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00044(
+		status = VL53L1_get_customer_nvm_managed(
 						Dev,
-						&(pdev->VL53L1_PRM_00050));
+						&(pdev->customer));
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00045(
+		status = VL53L1_get_nvm_copy_data(
 						Dev,
-						&(pdev->VL53L1_PRM_00002));
+						&(pdev->nvm_copy_data));
 
 
 
 
 	if (status == VL53L1_ERROR_NONE) {
 
-		pdev->VL53L1_PRM_00097.VL53L1_PRM_00080 =
-				pdev->VL53L1_PRM_00050.VL53L1_PRM_00080;
-		pdev->VL53L1_PRM_00097.VL53L1_PRM_00078 =
-				pdev->VL53L1_PRM_00050.VL53L1_PRM_00078;
-		pdev->VL53L1_PRM_00097.VL53L1_PRM_00079 =
-				pdev->VL53L1_PRM_00050.VL53L1_PRM_00079;
+		pdev->histpostprocess.algo__crosstalk_compensation_plane_offset_kcps =
+				pdev->customer.algo__crosstalk_compensation_plane_offset_kcps;
+		pdev->histpostprocess.algo__crosstalk_compensation_x_plane_gradient_kcps =
+				pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
+		pdev->histpostprocess.algo__crosstalk_compensation_y_plane_gradient_kcps =
+				pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
 
-		pdev->VL53L1_PRM_00097.VL53L1_PRM_00084 =
-				pdev->VL53L1_PRM_00050.VL53L1_PRM_00084;
-		pdev->VL53L1_PRM_00097.VL53L1_PRM_00082 =
-				pdev->VL53L1_PRM_00050.VL53L1_PRM_00082;
-		pdev->VL53L1_PRM_00097.VL53L1_PRM_00083 =
-				pdev->VL53L1_PRM_00050.VL53L1_PRM_00083;
+		pdev->histpostprocess.algo__part_to_part_range_offset_mm =
+				pdev->customer.algo__part_to_part_range_offset_mm;
+		pdev->histpostprocess.mm_config__inner_offset_mm =
+				pdev->customer.mm_config__inner_offset_mm;
+		pdev->histpostprocess.mm_config__outer_offset_mm =
+				pdev->customer.mm_config__outer_offset_mm;
+	}
+
+
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+
+		status =
+			VL53L1_read_nvm_fmt_range_results_data(
+				Dev,
+				VL53L1_NVM__FMT__RANGE_RESULTS__140MM_DARK,
+				&fmt_range_result_data);
+
+		if (status == VL53L1_ERROR_NONE) {
+			pdev->dmax_cal.ref__actual_effective_spads =
+					fmt_range_result_data.result__actual_effective_rtn_spads;
+			pdev->dmax_cal.ref__peak_signal_count_rate_mcps =
+					fmt_range_result_data.result__peak_signal_count_rate_rtn_mcps;
+			pdev->dmax_cal.ref__distance_mm =
+					fmt_range_result_data.measured_distance_mm;
+
+
+
+			pdev->dmax_cal.ref_reflectance         = 0x000F;
+
+
+
+			pdev->dmax_cal.coverglass_transmission = 0x0100;
+		}
 	}
 
 
@@ -374,22 +423,22 @@ VL53L1_Error VL53L1_FCTN_00039(
 		status =
 			VL53L1_RdWord(
 				Dev,
-				VL53L1_DEF_00055,
-				&(pdev->VL53L1_PRM_00047.VL53L1_PRM_00113));
+				VL53L1_RESULT__OSC_CALIBRATE_VAL,
+				&(pdev->dbg_results.result__osc_calibrate_val));
 
 
 
 
 
 
-	if (pdev->VL53L1_PRM_00010.VL53L1_PRM_00011 < 0x1000) {
+	if (pdev->stat_nvm.osc_measured__fast_osc__frequency < 0x1000) {
 		trace_print(
 			VL53L1_TRACE_LEVEL_WARNING,
 			"\nInvalid %s value (0x%04X) - forcing to 0x%04X\n\n",
-			"pdev->VL53L1_PRM_00010.VL53L1_PRM_00011",
-			pdev->VL53L1_PRM_00010.VL53L1_PRM_00011,
+			"pdev->stat_nvm.osc_measured__fast_osc__frequency",
+			pdev->stat_nvm.osc_measured__fast_osc__frequency,
 			0xBCCC);
-		pdev->VL53L1_PRM_00010.VL53L1_PRM_00011 = 0xBCCC;
+		pdev->stat_nvm.osc_measured__fast_osc__frequency = 0xBCCC;
 	}
 
 	LOG_FUNCTION_END(status);
@@ -398,7 +447,7 @@ VL53L1_Error VL53L1_FCTN_00039(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00003(
+VL53L1_Error VL53L1_software_reset(
 	VL53L1_DEV    Dev)
 {
 
@@ -416,7 +465,7 @@ VL53L1_Error VL53L1_FCTN_00003(
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WrByte(
 						Dev,
-						VL53L1_DEF_00056,
+						VL53L1_SOFT_RESET,
 						0x00);
 
 
@@ -425,20 +474,20 @@ VL53L1_Error VL53L1_FCTN_00003(
 		status =
 			VL53L1_WaitUs(
 				Dev,
-				VL53L1_DEF_00057);
+				VL53L1_SOFTWARE_RESET_DURATION_US);
 
 
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WrByte(
 						Dev,
-						VL53L1_DEF_00056,
+						VL53L1_SOFT_RESET,
 						0x01);
 
 
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00046(Dev);
+		status = VL53L1_wait_for_boot_completion(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -446,9 +495,10 @@ VL53L1_Error VL53L1_FCTN_00003(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00047(
+VL53L1_Error VL53L1_set_part_to_part_data(
 	VL53L1_DEV                      Dev,
 	VL53L1_customer_nvm_managed_t  *pcustomer,
+	VL53L1_dmax_calibration_data_t *pdmax_cal,
 	VL53L1_xtalk_histogram_data_t  *pxtalkhisto)
 {
 
@@ -464,14 +514,21 @@ VL53L1_Error VL53L1_FCTN_00047(
 
 
 	memcpy(
-		&(pdev->VL53L1_PRM_00050),
+		&(pdev->customer),
 		pcustomer,
 		sizeof(VL53L1_customer_nvm_managed_t));
 
 
 
 	memcpy(
-		&(pdev->VL53L1_PRM_00076),
+		&(pdev->dmax_cal),
+		pdmax_cal,
+		sizeof(VL53L1_dmax_calibration_data_t));
+
+
+
+	memcpy(
+		&(pdev->xtalk_shape),
 		pxtalkhisto,
 		sizeof(VL53L1_xtalk_histogram_data_t));
 
@@ -480,19 +537,19 @@ VL53L1_Error VL53L1_FCTN_00047(
 
 
 
-	pdev->VL53L1_PRM_00097.VL53L1_PRM_00080 =
-			pdev->VL53L1_PRM_00050.VL53L1_PRM_00080;
-	pdev->VL53L1_PRM_00097.VL53L1_PRM_00078 =
-			pdev->VL53L1_PRM_00050.VL53L1_PRM_00078;
-	pdev->VL53L1_PRM_00097.VL53L1_PRM_00079 =
-			pdev->VL53L1_PRM_00050.VL53L1_PRM_00079;
+	pdev->histpostprocess.algo__crosstalk_compensation_plane_offset_kcps =
+			pdev->customer.algo__crosstalk_compensation_plane_offset_kcps;
+	pdev->histpostprocess.algo__crosstalk_compensation_x_plane_gradient_kcps =
+			pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
+	pdev->histpostprocess.algo__crosstalk_compensation_y_plane_gradient_kcps =
+			pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
 
-	pdev->VL53L1_PRM_00097.VL53L1_PRM_00084 =
-			pdev->VL53L1_PRM_00050.VL53L1_PRM_00084;
-	pdev->VL53L1_PRM_00097.VL53L1_PRM_00082 =
-			pdev->VL53L1_PRM_00050.VL53L1_PRM_00082;
-	pdev->VL53L1_PRM_00097.VL53L1_PRM_00083 =
-			pdev->VL53L1_PRM_00050.VL53L1_PRM_00083;
+	pdev->histpostprocess.algo__part_to_part_range_offset_mm =
+			pdev->customer.algo__part_to_part_range_offset_mm;
+	pdev->histpostprocess.mm_config__inner_offset_mm =
+			pdev->customer.mm_config__inner_offset_mm;
+	pdev->histpostprocess.mm_config__outer_offset_mm =
+			pdev->customer.mm_config__outer_offset_mm;
 
 	LOG_FUNCTION_END(status);
 
@@ -500,9 +557,10 @@ VL53L1_Error VL53L1_FCTN_00047(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00048(
+VL53L1_Error VL53L1_get_part_to_part_data(
 	VL53L1_DEV                      Dev,
 	VL53L1_customer_nvm_managed_t  *pcustomer,
+	VL53L1_dmax_calibration_data_t *pdmax_cal,
 	VL53L1_xtalk_histogram_data_t  *pxtalkhisto)
 {
 
@@ -519,14 +577,21 @@ VL53L1_Error VL53L1_FCTN_00048(
 
 	memcpy(
 		pcustomer,
-		&(pdev->VL53L1_PRM_00050),
+		&(pdev->customer),
 		sizeof(VL53L1_customer_nvm_managed_t));
 
 
 
 	memcpy(
+		pdmax_cal,
+		&(pdev->dmax_cal),
+		sizeof(VL53L1_dmax_calibration_data_t));
+
+
+
+	memcpy(
 		pxtalkhisto,
-		&(pdev->VL53L1_PRM_00076),
+		&(pdev->xtalk_shape),
 		sizeof(VL53L1_xtalk_histogram_data_t));
 
 	LOG_FUNCTION_END(status);
@@ -535,9 +600,9 @@ VL53L1_Error VL53L1_FCTN_00048(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00006(
+VL53L1_Error VL53L1_set_inter_measurement_period_ms(
 	VL53L1_DEV              Dev,
-	uint32_t                VL53L1_PRM_00008)
+	uint32_t                inter_measurement_period_ms)
 {
 
 
@@ -549,14 +614,14 @@ VL53L1_Error VL53L1_FCTN_00006(
 
 	LOG_FUNCTION_START("");
 
-	if (pdev->VL53L1_PRM_00047.VL53L1_PRM_00113 == 0)
+	if (pdev->dbg_results.result__osc_calibrate_val == 0)
 		status = VL53L1_ERROR_DIVISION_BY_ZERO;
 
 	if (status == VL53L1_ERROR_NONE) {
-		pdev->VL53L1_PRM_00008 = VL53L1_PRM_00008;
-		pdev->VL53L1_PRM_00009.VL53L1_PRM_00114 = \
-			VL53L1_PRM_00008 *
-			(uint32_t)pdev->VL53L1_PRM_00047.VL53L1_PRM_00113;
+		pdev->inter_measurement_period_ms = inter_measurement_period_ms;
+		pdev->tim_cfg.system__intermeasurement_period = \
+			inter_measurement_period_ms *
+			(uint32_t)pdev->dbg_results.result__osc_calibrate_val;
 	}
 
 	LOG_FUNCTION_END(status);
@@ -565,7 +630,7 @@ VL53L1_Error VL53L1_FCTN_00006(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00007(
+VL53L1_Error VL53L1_get_inter_measurement_period_ms(
 	VL53L1_DEV              Dev,
 	uint32_t               *pinter_measurement_period_ms)
 {
@@ -579,13 +644,13 @@ VL53L1_Error VL53L1_FCTN_00007(
 
 	LOG_FUNCTION_START("");
 
-	if (pdev->VL53L1_PRM_00047.VL53L1_PRM_00113 == 0)
+	if (pdev->dbg_results.result__osc_calibrate_val == 0)
 		status = VL53L1_ERROR_DIVISION_BY_ZERO;
 
 	if (status == VL53L1_ERROR_NONE)
 		*pinter_measurement_period_ms = \
-			pdev->VL53L1_PRM_00009.VL53L1_PRM_00114 /
-			(uint32_t)pdev->VL53L1_PRM_00047.VL53L1_PRM_00113;
+			pdev->tim_cfg.system__intermeasurement_period /
+			(uint32_t)pdev->dbg_results.result__osc_calibrate_val;
 
 	LOG_FUNCTION_END(status);
 
@@ -593,7 +658,201 @@ VL53L1_Error VL53L1_FCTN_00007(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00049(
+VL53L1_Error VL53L1_set_timeouts_us(
+	VL53L1_DEV          Dev,
+    uint32_t            mm_config_timeout_us,
+	uint32_t            range_config_timeout_us)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+	VL53L1_LLDriverData_t *pdev =
+			VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	if (pdev->stat_nvm.osc_measured__fast_osc__frequency == 0)
+		status = VL53L1_ERROR_DIVISION_BY_ZERO;
+
+	if (status == VL53L1_ERROR_NONE) {
+
+		pdev->mm_config_timeout_us    = mm_config_timeout_us;
+		pdev->range_config_timeout_us = range_config_timeout_us;
+
+		status =
+			VL53L1_calc_timeout_register_values(
+				mm_config_timeout_us,
+				range_config_timeout_us,
+				pdev->stat_nvm.osc_measured__fast_osc__frequency,
+				&(pdev->tim_cfg));
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_get_timeouts_us(
+	VL53L1_DEV           Dev,
+	uint32_t            *pmm_config_timeout_us,
+	uint32_t			*prange_config_timeout_us)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+	VL53L1_LLDriverData_t *pdev =
+			VL53L1DevStructGetLLDriverHandle(Dev);
+
+	uint32_t  macro_period_us = 0;
+	uint16_t  timeout_encoded = 0;
+
+	LOG_FUNCTION_START("");
+
+	if (pdev->stat_nvm.osc_measured__fast_osc__frequency == 0)
+		status = VL53L1_ERROR_DIVISION_BY_ZERO;
+
+	if (status == VL53L1_ERROR_NONE) {
+
+
+
+		macro_period_us =
+			VL53L1_calc_macro_period_us(
+				pdev->stat_nvm.osc_measured__fast_osc__frequency,
+				pdev->tim_cfg.range_config__vcsel_period_a);
+
+
+
+
+		timeout_encoded =
+			(uint16_t)pdev->tim_cfg.mm_config__timeout_macrop_a_hi;
+		timeout_encoded = (timeout_encoded << 8) +
+			(uint16_t)pdev->tim_cfg.mm_config__timeout_macrop_a_lo;
+
+		*pmm_config_timeout_us =
+			VL53L1_calc_decoded_timeout_us(
+				timeout_encoded,
+				macro_period_us);
+
+
+
+
+		timeout_encoded =
+			(uint16_t)pdev->tim_cfg.range_config__timeout_macrop_a_hi;
+		timeout_encoded = (timeout_encoded << 8) +
+			(uint16_t)pdev->tim_cfg.range_config__timeout_macrop_a_lo;
+
+		*prange_config_timeout_us =
+			VL53L1_calc_decoded_timeout_us(
+				timeout_encoded,
+				macro_period_us);
+
+		pdev->mm_config_timeout_us    = *pmm_config_timeout_us;
+		pdev->range_config_timeout_us = *prange_config_timeout_us;
+
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_set_calibration_repeat_period(
+    VL53L1_DEV          Dev,
+    uint16_t            cal_config__repeat_period)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+	VL53L1_LLDriverData_t *pdev =
+		VL53L1DevStructGetLLDriverHandle(Dev);
+
+	pdev->gen_cfg.cal_config__repeat_rate = cal_config__repeat_period;
+
+	return status;
+
+}
+
+
+VL53L1_Error VL53L1_get_calibration_repeat_period(
+    VL53L1_DEV          Dev,
+    uint16_t           *pcal_config__repeat_period)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+	VL53L1_LLDriverData_t *pdev =
+		VL53L1DevStructGetLLDriverHandle(Dev);
+
+	*pcal_config__repeat_period = pdev->gen_cfg.cal_config__repeat_rate;
+
+	return status;
+
+}
+
+
+VL53L1_Error VL53L1_set_interrupt_polarity(
+    VL53L1_DEV                      Dev,
+    VL53L1_DeviceInterruptPolarity  interrupt_polarity)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+	VL53L1_LLDriverData_t *pdev =
+		VL53L1DevStructGetLLDriverHandle(Dev);
+
+	pdev->stat_cfg.gpio_hv_mux__ctrl = \
+			(pdev->stat_cfg.gpio_hv_mux__ctrl & \
+			 VL53L1_DEVICEINTERRUPTPOLARITY_CLEAR_MASK) | \
+			(interrupt_polarity & \
+			 VL53L1_DEVICEINTERRUPTPOLARITY_BIT_MASK);
+
+	return status;
+
+}
+
+
+VL53L1_Error VL53L1_get_interrupt_polarity(
+    VL53L1_DEV                       Dev,
+    VL53L1_DeviceInterruptPolarity  *pinterrupt_polarity)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+	VL53L1_LLDriverData_t *pdev =
+		VL53L1DevStructGetLLDriverHandle(Dev);
+
+	*pinterrupt_polarity = \
+		pdev->stat_cfg.gpio_hv_mux__ctrl & \
+		VL53L1_DEVICEINTERRUPTPOLARITY_BIT_MASK ;
+
+	return status;
+
+}
+
+
+VL53L1_Error VL53L1_set_user_zone(
 	VL53L1_DEV              Dev,
 	VL53L1_user_zone_t     *puser_zone)
 {
@@ -612,9 +871,9 @@ VL53L1_Error VL53L1_FCTN_00049(
 
 
 
-	VL53L1_FCTN_00050(
-			puser_zone->VL53L1_PRM_00016,
-			puser_zone->VL53L1_PRM_00015,
+	VL53L1_encode_row_col(
+			puser_zone->y_centre,
+			puser_zone->x_centre,
 			&spad_no);
 
 
@@ -626,13 +885,13 @@ VL53L1_Error VL53L1_FCTN_00049(
 
 
 
-	xy_size = (puser_zone->VL53L1_PRM_00018 << 4) + puser_zone->VL53L1_PRM_00017;
+	xy_size = (puser_zone->height << 4) + puser_zone->width;
 
 
 
 
-	pdev->VL53L1_PRM_00022.VL53L1_PRM_00115              = spad_no;
-	pdev->VL53L1_PRM_00022.VL53L1_PRM_00116 = xy_size;
+	pdev->dyn_cfg.roi_config__user_roi_centre_spad              = spad_no;
+	pdev->dyn_cfg.roi_config__user_roi_requested_global_xy_size = xy_size;
 
 
 
@@ -643,7 +902,7 @@ VL53L1_Error VL53L1_FCTN_00049(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00051(
+VL53L1_Error VL53L1_get_user_zone(
 	VL53L1_DEV              Dev,
 	VL53L1_user_zone_t     *puser_zone)
 {
@@ -663,13 +922,13 @@ VL53L1_Error VL53L1_FCTN_00051(
 
 
 
-	VL53L1_FCTN_00052(
-			pdev->VL53L1_PRM_00022.VL53L1_PRM_00115,
+	VL53L1_decode_row_col(
+			pdev->dyn_cfg.roi_config__user_roi_centre_spad,
 			&y,
 			&x);
 
-	puser_zone->VL53L1_PRM_00015 = x;
-	puser_zone->VL53L1_PRM_00016 = y;
+	puser_zone->x_centre = x;
+	puser_zone->y_centre = y;
 
 
 
@@ -680,10 +939,10 @@ VL53L1_Error VL53L1_FCTN_00051(
 
 
 
-	xy_size = pdev->VL53L1_PRM_00022.VL53L1_PRM_00116;
+	xy_size = pdev->dyn_cfg.roi_config__user_roi_requested_global_xy_size;
 
-	puser_zone->VL53L1_PRM_00018 = xy_size >> 4;
-	puser_zone->VL53L1_PRM_00017  = xy_size & 0x0F;
+	puser_zone->height = xy_size >> 4;
+	puser_zone->width  = xy_size & 0x0F;
 
 	LOG_FUNCTION_END(status);
 
@@ -692,7 +951,7 @@ VL53L1_Error VL53L1_FCTN_00051(
 
 
 
-VL53L1_Error VL53L1_FCTN_00053(
+VL53L1_Error VL53L1_get_mode_mitigation_roi(
 	VL53L1_DEV              Dev,
 	VL53L1_user_zone_t     *pmm_roi)
 {
@@ -712,13 +971,13 @@ VL53L1_Error VL53L1_FCTN_00053(
 
 
 
-	VL53L1_FCTN_00052(
-			pdev->VL53L1_PRM_00002.VL53L1_PRM_00117,
+	VL53L1_decode_row_col(
+			pdev->nvm_copy_data.roi_config__mode_roi_centre_spad,
 			&y,
 			&x);
 
-	pmm_roi->VL53L1_PRM_00015 = x;
-	pmm_roi->VL53L1_PRM_00016 = y;
+	pmm_roi->x_centre = x;
+	pmm_roi->y_centre = y;
 
 
 
@@ -729,10 +988,10 @@ VL53L1_Error VL53L1_FCTN_00053(
 
 
 
-	xy_size = pdev->VL53L1_PRM_00002.VL53L1_PRM_00118;
+	xy_size = pdev->nvm_copy_data.roi_config__mode_roi_xy_size;
 
-	pmm_roi->VL53L1_PRM_00018 = xy_size >> 4;
-	pmm_roi->VL53L1_PRM_00017  = xy_size & 0x0F;
+	pmm_roi->height = xy_size >> 4;
+	pmm_roi->width  = xy_size & 0x0F;
 
 	LOG_FUNCTION_END(status);
 
@@ -740,10 +999,12 @@ VL53L1_Error VL53L1_FCTN_00053(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00008(
+
+VL53L1_Error VL53L1_set_zone_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
+
 
 
 
@@ -756,7 +1017,15 @@ VL53L1_Error VL53L1_FCTN_00008(
 
 
 
-	memcpy(&(pdev->VL53L1_PRM_00014), pzone_cfg, sizeof(VL53L1_zone_config_t));
+	memcpy(&pdev->zone_cfg.user_zones, &pzone_cfg->user_zones,
+			sizeof(pdev->zone_cfg.user_zones));
+
+
+
+	pdev->zone_cfg.max_zones    = pzone_cfg->max_zones;
+	pdev->zone_cfg.active_zones = pzone_cfg->active_zones;
+
+    status = VL53L1_init_zone_config_histogram_bins(&pdev->zone_cfg);
 
 
 
@@ -767,18 +1036,21 @@ VL53L1_Error VL53L1_FCTN_00008(
 
 
 
-	if(pzone_cfg->VL53L1_PRM_00020 < VL53L1_MAX_USER_ZONES)
-	    pdev->VL53L1_PRM_00099.VL53L1_PRM_00119 = pzone_cfg->VL53L1_PRM_00020 + 1;
+	if (pzone_cfg->active_zones == 0)
+		pdev->gen_cfg.global_config__stream_divider = 0;
+	else if (pzone_cfg->active_zones < VL53L1_MAX_USER_ZONES)
+	    pdev->gen_cfg.global_config__stream_divider = pzone_cfg->active_zones + 1;
 	else
-		pdev->VL53L1_PRM_00099.VL53L1_PRM_00119 = VL53L1_MAX_USER_ZONES + 1;
+		pdev->gen_cfg.global_config__stream_divider = VL53L1_MAX_USER_ZONES + 1;
 
 	LOG_FUNCTION_END(status);
 
 	return status;
+
 }
 
 
-VL53L1_Error VL53L1_FCTN_00009(
+VL53L1_Error VL53L1_get_zone_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_zone_config_t      *pzone_cfg)
 {
@@ -794,7 +1066,7 @@ VL53L1_Error VL53L1_FCTN_00009(
 
 
 
-	memcpy(pzone_cfg, &(pdev->VL53L1_PRM_00014), sizeof(VL53L1_zone_config_t));
+	memcpy(pzone_cfg, &(pdev->zone_cfg), sizeof(VL53L1_zone_config_t));
 
 	LOG_FUNCTION_END(status);
 
@@ -802,12 +1074,12 @@ VL53L1_Error VL53L1_FCTN_00009(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00004(
+VL53L1_Error VL53L1_set_preset_mode(
 	VL53L1_DEV                 Dev,
 	VL53L1_DevicePresetModes   device_preset_mode,
-	uint32_t                   VL53L1_PRM_00006,
-	uint32_t                   VL53L1_PRM_00007,
-	uint32_t                   VL53L1_PRM_00008)
+	uint32_t                   mm_config_timeout_us,
+	uint32_t                   range_config_timeout_us,
+	uint32_t                   inter_measurement_period_ms)
 {
 
 
@@ -821,37 +1093,37 @@ VL53L1_Error VL53L1_FCTN_00004(
 	VL53L1_LLDriverResults_t *pres =
 			VL53L1DevStructGetLLResultsHandle(Dev);
 
-	VL53L1_static_config_t        *pstatic       = &(pdev->VL53L1_PRM_00104);
-	VL53L1_histogram_config_t     *phistogram    = &(pdev->VL53L1_PRM_00120);
-	VL53L1_general_config_t       *pgeneral      = &(pdev->VL53L1_PRM_00099);
-	VL53L1_timing_config_t        *ptiming       = &(pdev->VL53L1_PRM_00009);
-	VL53L1_dynamic_config_t       *pdynamic      = &(pdev->VL53L1_PRM_00022);
-	VL53L1_system_control_t       *psystem       = &(pdev->VL53L1_PRM_00121);
-	VL53L1_zone_config_t          *pzone_cfg     = &(pdev->VL53L1_PRM_00014);
+	VL53L1_static_config_t        *pstatic       = &(pdev->stat_cfg);
+	VL53L1_histogram_config_t     *phistogram    = &(pdev->hist_cfg);
+	VL53L1_general_config_t       *pgeneral      = &(pdev->gen_cfg);
+	VL53L1_timing_config_t        *ptiming       = &(pdev->tim_cfg);
+	VL53L1_dynamic_config_t       *pdynamic      = &(pdev->dyn_cfg);
+	VL53L1_system_control_t       *psystem       = &(pdev->sys_ctrl);
+	VL53L1_zone_config_t          *pzone_cfg     = &(pdev->zone_cfg);
 
 	LOG_FUNCTION_START("");
 
 
 
-	pdev->VL53L1_PRM_00086                 = device_preset_mode;
-	pdev->VL53L1_PRM_00006        = VL53L1_PRM_00006;
-	pdev->VL53L1_PRM_00007     = VL53L1_PRM_00007;
-	pdev->VL53L1_PRM_00008 = VL53L1_PRM_00008;
+	pdev->preset_mode                 = device_preset_mode;
+	pdev->mm_config_timeout_us        = mm_config_timeout_us;
+	pdev->range_config_timeout_us     = range_config_timeout_us;
+	pdev->inter_measurement_period_ms = inter_measurement_period_ms;
 
 
 
 
-	VL53L1_FCTN_00038(
+	VL53L1_init_ll_driver_state(
 			Dev,
-			VL53L1_DEF_00058);
+			VL53L1_DEVICESTATE_SW_STANDBY);
 
 
 
 
 	switch (device_preset_mode) {
 
-	case VL53L1_DEF_00003:
-		status = VL53L1_FCTN_00054(
+	case VL53L1_DEVICEPRESETMODE_STANDARD_RANGING:
+		status = VL53L1_preset_mode_standard_ranging(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -861,8 +1133,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00059:
-		status = VL53L1_FCTN_00055(
+	case VL53L1_DEVICEPRESETMODE_STANDARD_RANGING_SHORT_RANGE:
+		status = VL53L1_preset_mode_standard_ranging_short_range(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -872,8 +1144,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00060:
-		status = VL53L1_FCTN_00056(
+	case VL53L1_DEVICEPRESETMODE_STANDARD_RANGING_LONG_RANGE:
+		status = VL53L1_preset_mode_standard_ranging_long_range(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -883,8 +1155,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00039:
-		status = VL53L1_FCTN_00057(
+	case VL53L1_DEVICEPRESETMODE_STANDARD_RANGING_MM1_CAL:
+		status = VL53L1_preset_mode_standard_ranging_mm1_cal(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -894,8 +1166,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00040:
-		status = VL53L1_FCTN_00058(
+	case VL53L1_DEVICEPRESETMODE_STANDARD_RANGING_MM2_CAL:
+		status = VL53L1_preset_mode_standard_ranging_mm2_cal(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -905,8 +1177,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00006:
-		status = VL53L1_FCTN_00059(
+	case VL53L1_DEVICEPRESETMODE_TIMED_RANGING:
+		status = VL53L1_preset_mode_timed_ranging(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -916,8 +1188,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00004:
-		status = VL53L1_FCTN_00060(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING:
+		status = VL53L1_preset_mode_histogram_ranging(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -927,8 +1199,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00061:
-		status = VL53L1_FCTN_00061(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_WITH_MM1:
+		status = VL53L1_preset_mode_histogram_ranging_with_mm1(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -938,8 +1210,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00062:
-		status = VL53L1_FCTN_00062(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_WITH_MM2:
+		status = VL53L1_preset_mode_histogram_ranging_with_mm2(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -949,8 +1221,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00005:
-		status = VL53L1_FCTN_00063(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_MULTIZONE:
+		status = VL53L1_preset_mode_histogram_multizone(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -960,8 +1232,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00063:
-		status = VL53L1_FCTN_00064(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_REF_ARRAY:
+		status = VL53L1_preset_mode_histogram_ranging_ref(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -971,8 +1243,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00064:
-		status = VL53L1_FCTN_00065(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_SHORT_TIMING:
+		status = VL53L1_preset_mode_histogram_ranging_short_timing(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -982,8 +1254,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00065:
-		status = VL53L1_FCTN_00066(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE:
+		status = VL53L1_preset_mode_histogram_long_range(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -993,8 +1265,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00066:
-		status = VL53L1_FCTN_00067(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE_MM1:
+		status = VL53L1_preset_mode_histogram_long_range_mm1(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1004,8 +1276,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00067:
-		status = VL53L1_FCTN_00068(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE_MM2:
+		status = VL53L1_preset_mode_histogram_long_range_mm2(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1015,8 +1287,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00068:
-		status = VL53L1_FCTN_00069(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE:
+		status = VL53L1_preset_mode_histogram_medium_range(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1026,8 +1298,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00069:
-		status = VL53L1_FCTN_00070(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE_MM1:
+		status = VL53L1_preset_mode_histogram_medium_range_mm1(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1037,8 +1309,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00070:
-		status = VL53L1_FCTN_00071(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE_MM2:
+		status = VL53L1_preset_mode_histogram_medium_range_mm2(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1048,8 +1320,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00071:
-		status = VL53L1_FCTN_00072(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE:
+		status = VL53L1_preset_mode_histogram_short_range(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1059,8 +1331,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00072:
-		status = VL53L1_FCTN_00073(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE_MM1:
+		status = VL53L1_preset_mode_histogram_short_range_mm1(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1070,8 +1342,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00073:
-		status = VL53L1_FCTN_00074(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE_MM2:
+		status = VL53L1_preset_mode_histogram_short_range_mm2(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1081,8 +1353,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00074:
-		status = VL53L1_FCTN_00075(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_CHARACTERISATION:
+		status = VL53L1_preset_mode_histogram_characterisation(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1092,8 +1364,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00036:
-		status = VL53L1_FCTN_00076(
+	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_XTALK_PLANAR:
+		status = VL53L1_preset_mode_histogram_xtalk_planar(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1103,8 +1375,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00007:
-		status = VL53L1_FCTN_00077(
+	case VL53L1_DEVICEPRESETMODE_OLT:
+		status = VL53L1_preset_mode_olt(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1114,8 +1386,8 @@ VL53L1_Error VL53L1_FCTN_00004(
 					pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00075:
-		status = VL53L1_FCTN_00078(
+	case VL53L1_DEVICEPRESETMODE_SINGLESHOT_RANGING:
+		status = VL53L1_preset_mode_singleshot_ranging(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1139,24 +1411,23 @@ VL53L1_Error VL53L1_FCTN_00004(
 
 	if (status == VL53L1_ERROR_NONE)
 		status =
-			VL53L1_FCTN_00005(
-				VL53L1_PRM_00006,
-				VL53L1_PRM_00007,
-				pdev->VL53L1_PRM_00010.VL53L1_PRM_00011,
-				ptiming);
+			VL53L1_set_timeouts_us(
+				Dev,
+				mm_config_timeout_us,
+				range_config_timeout_us);
 
 	if (status == VL53L1_ERROR_NONE)
 		status =
-			VL53L1_FCTN_00006(
+			VL53L1_set_inter_measurement_period_ms(
 				Dev,
-				VL53L1_PRM_00008);
+				inter_measurement_period_ms);
 
 
 
 
-	VL53L1_FCTN_00079(
-			pdev->VL53L1_PRM_00014.VL53L1_PRM_00020+1,
-			&(pres->VL53L1_PRM_00075));
+	V53L1_init_zone_results_structure(
+			pdev->zone_cfg.active_zones+1,
+			&(pres->zone_results));
 
 	LOG_FUNCTION_END(status);
 
@@ -1164,9 +1435,9 @@ VL53L1_Error VL53L1_FCTN_00004(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00080(
+VL53L1_Error VL53L1_set_zone_preset(
 	VL53L1_DEV                 Dev,
-	VL53L1_DeviceZonePreset    VL53L1_PRM_00109)
+	VL53L1_DeviceZonePreset    zone_preset)
 {
 
 
@@ -1178,44 +1449,66 @@ VL53L1_Error VL53L1_FCTN_00080(
 	VL53L1_Error status = VL53L1_ERROR_NONE;
 	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
 
-	VL53L1_general_config_t       *pgeneral      = &(pdev->VL53L1_PRM_00099);
-	VL53L1_zone_config_t          *pzone_cfg     = &(pdev->VL53L1_PRM_00014);
+	VL53L1_general_config_t       *pgeneral      = &(pdev->gen_cfg);
+	VL53L1_zone_config_t          *pzone_cfg     = &(pdev->zone_cfg);
 
 	LOG_FUNCTION_START("");
 
 
 
-	pdev->VL53L1_PRM_00109        = VL53L1_PRM_00109;
+	pdev->zone_preset        = zone_preset;
 
 
 
 
-	switch (VL53L1_PRM_00109) {
+	switch (zone_preset) {
 
-	case VL53L1_DEF_00076:
+	case VL53L1_DEVICEZONEPRESET_XTALK_PLANAR:
 		status =
-			VL53L1_FCTN_00081(
+			VL53L1_zone_preset_xtalk_planar(
 				pgeneral,
 				pzone_cfg);
 	break;
 
-	case VL53L1_DEF_00077:
+	case VL53L1_DEVICEZONEPRESET_1X1_SIZE_16X16:
 		status =
-			VL53L1_FCTN_00082(
-				1, 8, 1,
+			VL53L1_init_zone_config_structure(
+				8, 1, 1,
 
-				1, 8, 1,
+				8, 1, 1,
 
 				15, 15,
 
 				pzone_cfg);
-		pgeneral->VL53L1_PRM_00119 =
-			pzone_cfg->VL53L1_PRM_00020 + 1;
 	break;
 
-	case VL53L1_DEF_00078:
+	case VL53L1_DEVICEZONEPRESET_1X2_SIZE_16X8:
 		status =
-			VL53L1_FCTN_00082(
+			VL53L1_init_zone_config_structure(
+			   8, 1, 1,
+
+			   4, 8, 2,
+
+			  15, 7,
+
+			  pzone_cfg);
+	break;
+
+	case VL53L1_DEVICEZONEPRESET_2X1_SIZE_8X16:
+		status =
+			VL53L1_init_zone_config_structure(
+			  4, 8, 2,
+
+			  8, 1, 1,
+
+			  7,15,
+
+			  pzone_cfg);
+	break;
+
+	case VL53L1_DEVICEZONEPRESET_2X2_SIZE_8X8:
+		status =
+			VL53L1_init_zone_config_structure(
 			  4, 8, 2,
 
 			  4, 8, 2,
@@ -1223,13 +1516,11 @@ VL53L1_Error VL53L1_FCTN_00080(
 			  7, 7,
 
 			  pzone_cfg);
-		pgeneral->VL53L1_PRM_00119 =
-			pzone_cfg->VL53L1_PRM_00020 + 1;
 	break;
 
-	case VL53L1_DEF_00079:
+	case VL53L1_DEVICEZONEPRESET_3X3_SIZE_5X5:
 		status =
-			VL53L1_FCTN_00082(
+			VL53L1_init_zone_config_structure(
 				2, 5, 3,
 
 				2, 5, 3,
@@ -1237,13 +1528,11 @@ VL53L1_Error VL53L1_FCTN_00080(
 				4, 4,
 
 				pzone_cfg);
-		pgeneral->VL53L1_PRM_00119 =
-			pzone_cfg->VL53L1_PRM_00020 + 1;
 	break;
 
-	case VL53L1_DEF_00080:
+	case VL53L1_DEVICEZONEPRESET_4X4_SIZE_4X4:
 		status =
-			VL53L1_FCTN_00082(
+			VL53L1_init_zone_config_structure(
 				2, 4, 4,
 
 				2, 4, 4,
@@ -1251,13 +1540,11 @@ VL53L1_Error VL53L1_FCTN_00080(
 				3, 3,
 
 				pzone_cfg);
-		pgeneral->VL53L1_PRM_00119 =
-			pzone_cfg->VL53L1_PRM_00020 + 1;
 	break;
 
-	case VL53L1_DEF_00081:
+	case VL53L1_DEVICEZONEPRESET_11X11_SIZE_5X5:
 		status =
-			VL53L1_FCTN_00082(
+			VL53L1_init_zone_config_structure(
 				3, 1, 11,
 
 				3, 1, 11,
@@ -1265,13 +1552,11 @@ VL53L1_Error VL53L1_FCTN_00080(
 				4, 4,
 
 				pzone_cfg);
-		pgeneral->VL53L1_PRM_00119 =
-			pzone_cfg->VL53L1_PRM_00020 + 1;
 	break;
 
-	case VL53L1_DEF_00082:
+	case VL53L1_DEVICEZONEPRESET_13X13_SIZE_4X4:
 		status =
-			VL53L1_FCTN_00082(
+			VL53L1_init_zone_config_structure(
 				2, 1, 13,
 
 				2, 1, 13,
@@ -1279,11 +1564,26 @@ VL53L1_Error VL53L1_FCTN_00080(
 				3, 3,
 
 				pzone_cfg);
-		pgeneral->VL53L1_PRM_00119 =
-			pzone_cfg->VL53L1_PRM_00020 + 1;
+
 	break;
 
 	}
+
+
+
+
+
+
+
+
+
+
+	if (pzone_cfg->active_zones == 0)
+		pdev->gen_cfg.global_config__stream_divider = 0;
+	else if (pzone_cfg->active_zones < VL53L1_MAX_USER_ZONES)
+	    pdev->gen_cfg.global_config__stream_divider = pzone_cfg->active_zones + 1;
+	else
+		pdev->gen_cfg.global_config__stream_divider = VL53L1_MAX_USER_ZONES + 1;
 
 	LOG_FUNCTION_END(status);
 
@@ -1291,9 +1591,108 @@ VL53L1_Error VL53L1_FCTN_00080(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00012(
+VL53L1_Error  VL53L1_enable_xtalk_compensation(
+	VL53L1_DEV                 Dev)
+{
+
+
+
+
+
+
+
+
+	VL53L1_Error status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+
+
+	pdev->customer.algo__crosstalk_compensation_plane_offset_kcps =
+			pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps;
+
+	pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps =
+				pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps;
+
+	pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps =
+				pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps;
+
+
+
+
+
+	pdev->histpostprocess.algo__crosstalk_compensation_enable = 0x01;
+
+
+
+
+	if (status == VL53L1_ERROR_NONE)
+		status =
+			VL53L1_set_customer_nvm_managed(
+				Dev,
+				&(pdev->customer));
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error  VL53L1_disable_xtalk_compensation(
+	VL53L1_DEV                 Dev)
+{
+
+
+
+
+
+
+
+
+	VL53L1_Error status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+
+
+	pdev->customer.algo__crosstalk_compensation_plane_offset_kcps     =
+			0x00;
+
+	pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps =
+			0x00;
+
+	pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps =
+			0x00;
+
+
+
+
+
+	pdev->histpostprocess.algo__crosstalk_compensation_enable = 0x00;
+
+
+
+
+	if (status == VL53L1_ERROR_NONE)
+		status =
+			VL53L1_set_customer_nvm_managed(
+				Dev,
+				&(pdev->customer));
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+
+VL53L1_Error VL53L1_init_and_start_range(
 	VL53L1_DEV                     Dev,
-	uint8_t                        VL53L1_PRM_00005,
+	uint8_t                        measurement_mode,
 	VL53L1_DeviceConfigLevel       device_config_level)
 {
 
@@ -1311,18 +1710,20 @@ VL53L1_Error VL53L1_FCTN_00012(
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
 	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+	VL53L1_LLDriverResults_t  *pres =
+			VL53L1DevStructGetLLResultsHandle(Dev);
 
 	uint8_t buffer[VL53L1_MAX_I2C_XFER_SIZE];
 
-	VL53L1_static_nvm_managed_t   *pstatic_nvm   = &(pdev->VL53L1_PRM_00010);
-	VL53L1_customer_nvm_managed_t *pcustomer_nvm = &(pdev->VL53L1_PRM_00050);
-	VL53L1_static_config_t        *pstatic       = &(pdev->VL53L1_PRM_00104);
-	VL53L1_general_config_t       *pgeneral      = &(pdev->VL53L1_PRM_00099);
-	VL53L1_timing_config_t        *ptiming       = &(pdev->VL53L1_PRM_00009);
-	VL53L1_dynamic_config_t       *pdynamic      = &(pdev->VL53L1_PRM_00022);
-	VL53L1_system_control_t       *psystem       = &(pdev->VL53L1_PRM_00121);
+	VL53L1_static_nvm_managed_t   *pstatic_nvm   = &(pdev->stat_nvm);
+	VL53L1_customer_nvm_managed_t *pcustomer_nvm = &(pdev->customer);
+	VL53L1_static_config_t        *pstatic       = &(pdev->stat_cfg);
+	VL53L1_general_config_t       *pgeneral      = &(pdev->gen_cfg);
+	VL53L1_timing_config_t        *ptiming       = &(pdev->tim_cfg);
+	VL53L1_dynamic_config_t       *pdynamic      = &(pdev->dyn_cfg);
+	VL53L1_system_control_t       *psystem       = &(pdev->sys_ctrl);
 
-	VL53L1_ll_driver_state_t  *pstate   = &(pdev->VL53L1_PRM_00069);
+	VL53L1_ll_driver_state_t  *pstate   = &(pdev->ll_state);
 
 	uint8_t  *pbuffer                   = &buffer[0];
 	uint16_t i                          = 0;
@@ -1334,14 +1735,14 @@ VL53L1_Error VL53L1_FCTN_00012(
 
 
 
-	pdev->VL53L1_PRM_00005 = VL53L1_PRM_00005;
+	pdev->measurement_mode = measurement_mode;
 
 
 
 
-	psystem->VL53L1_PRM_00122 =
-		(psystem->VL53L1_PRM_00122 & VL53L1_DEF_00083) |
-		VL53L1_PRM_00005;
+	psystem->system__mode_start =
+		(psystem->system__mode_start & VL53L1_DEVICEMEASUREMENTMODE_STOP_MASK) |
+		measurement_mode;
 
 
 
@@ -1349,9 +1750,21 @@ VL53L1_Error VL53L1_FCTN_00012(
 
 
 	status =
-		VL53L1_FCTN_00049(
+		VL53L1_set_user_zone(
 			Dev,
-			&(pdev->VL53L1_PRM_00014.VL53L1_PRM_00021[pdev->VL53L1_PRM_00069.VL53L1_PRM_00123]));
+			&(pdev->zone_cfg.user_zones[pdev->ll_state.cfg_zone_id]));
+
+
+
+
+
+  if(pdev->zone_cfg.active_zones > 0){
+	  status =
+	  	VL53L1_set_zone_dss_config(
+	  		Dev,
+	  		&(pres->zone_dyn_cfgs.VL53L1_PRM_00004[pdev->ll_state.cfg_zone_id]));
+  }
+
 
 
 
@@ -1359,7 +1772,7 @@ VL53L1_Error VL53L1_FCTN_00012(
 
 
   if(status == VL53L1_ERROR_NONE)
-    status = VL53L1_FCTN_00083(Dev);
+    status = VL53L1_save_cfg_data(Dev);
 
 
 
@@ -1368,26 +1781,26 @@ VL53L1_Error VL53L1_FCTN_00012(
 
 
 	switch (device_config_level) {
-	case VL53L1_DEF_00008:
-		i2c_index = VL53L1_DEF_00084;
+	case VL53L1_DEVICECONFIGLEVEL_FULL:
+		i2c_index = VL53L1_STATIC_NVM_MANAGED_I2C_INDEX;
 	break;
-	case VL53L1_DEF_00037:
-		i2c_index = VL53L1_DEF_00085;
+	case VL53L1_DEVICECONFIGLEVEL_CUSTOMER_ONWARDS:
+		i2c_index = VL53L1_CUSTOMER_NVM_MANAGED_I2C_INDEX;
 	break;
-	case VL53L1_DEF_00086:
-		i2c_index = VL53L1_DEF_00087;
+	case VL53L1_DEVICECONFIGLEVEL_STATIC_ONWARDS:
+		i2c_index = VL53L1_STATIC_CONFIG_I2C_INDEX;
 	break;
-	case VL53L1_DEF_00088:
-		i2c_index = VL53L1_DEF_00089;
+	case VL53L1_DEVICECONFIGLEVEL_GENERAL_ONWARDS:
+		i2c_index = VL53L1_GENERAL_CONFIG_I2C_INDEX;
 	break;
-	case VL53L1_DEF_00090:
-		i2c_index = VL53L1_DEF_00091;
+	case VL53L1_DEVICECONFIGLEVEL_TIMING_ONWARDS:
+		i2c_index = VL53L1_TIMING_CONFIG_I2C_INDEX;
 	break;
-	case VL53L1_DEF_00092:
-		i2c_index = VL53L1_DEF_00093;
+	case VL53L1_DEVICECONFIGLEVEL_DYNAMIC_ONWARDS:
+		i2c_index = VL53L1_DYNAMIC_CONFIG_I2C_INDEX;
 	break;
 	default:
-		i2c_index = VL53L1_DEF_00094;
+		i2c_index = VL53L1_SYSTEM_CONTROL_I2C_INDEX;
 	break;
 	}
 
@@ -1395,8 +1808,8 @@ VL53L1_Error VL53L1_FCTN_00012(
 
 
 	i2c_buffer_size_bytes = \
-			(VL53L1_DEF_00094 +
-			 VL53L1_DEF_00095) -
+			(VL53L1_SYSTEM_CONTROL_I2C_INDEX +
+			 VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES) -
 			 i2c_index;
 
 
@@ -1409,102 +1822,102 @@ VL53L1_Error VL53L1_FCTN_00012(
 
 
 
-	if (device_config_level >= VL53L1_DEF_00008 &&
+	if (device_config_level >= VL53L1_DEVICECONFIGLEVEL_FULL &&
 		status == VL53L1_ERROR_NONE) {
 
 		i2c_buffer_offset_bytes = \
-			VL53L1_DEF_00084 - i2c_index;
+			VL53L1_STATIC_NVM_MANAGED_I2C_INDEX - i2c_index;
 
 		status =
-			VL53L1_FCTN_00084(
+			VL53L1_i2c_encode_static_nvm_managed(
 				pstatic_nvm,
-				VL53L1_DEF_00096,
+				VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES,
 				&buffer[i2c_buffer_offset_bytes]);
 	}
 
-	if (device_config_level >= VL53L1_DEF_00037 &&
+	if (device_config_level >= VL53L1_DEVICECONFIGLEVEL_CUSTOMER_ONWARDS &&
 		status == VL53L1_ERROR_NONE) {
 
 		i2c_buffer_offset_bytes = \
-			VL53L1_DEF_00085 - i2c_index;
+			VL53L1_CUSTOMER_NVM_MANAGED_I2C_INDEX - i2c_index;
 
 		status =
-			VL53L1_FCTN_00085(
+			VL53L1_i2c_encode_customer_nvm_managed(
 				pcustomer_nvm,
-				VL53L1_DEF_00097,
+				VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES,
 				&buffer[i2c_buffer_offset_bytes]);
 	}
 
-	if (device_config_level >= VL53L1_DEF_00086 &&
+	if (device_config_level >= VL53L1_DEVICECONFIGLEVEL_STATIC_ONWARDS &&
 		status == VL53L1_ERROR_NONE) {
 
 		i2c_buffer_offset_bytes = \
-			VL53L1_DEF_00087 - i2c_index;
+			VL53L1_STATIC_CONFIG_I2C_INDEX - i2c_index;
 
 		status =
-			VL53L1_FCTN_00086(
+			VL53L1_i2c_encode_static_config(
 				pstatic,
-				VL53L1_DEF_00098,
+				VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES,
 				&buffer[i2c_buffer_offset_bytes]);
 	}
 
-	if (device_config_level >= VL53L1_DEF_00088 &&
+	if (device_config_level >= VL53L1_DEVICECONFIGLEVEL_GENERAL_ONWARDS &&
 		status == VL53L1_ERROR_NONE) {
 
 		i2c_buffer_offset_bytes =
-				VL53L1_DEF_00089 - i2c_index;
+				VL53L1_GENERAL_CONFIG_I2C_INDEX - i2c_index;
 
 		status =
-			VL53L1_FCTN_00087(
+			VL53L1_i2c_encode_general_config(
 				pgeneral,
-				VL53L1_DEF_00099,
+				VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES,
 				&buffer[i2c_buffer_offset_bytes]);
 	}
 
-	if (device_config_level >= VL53L1_DEF_00090 &&
+	if (device_config_level >= VL53L1_DEVICECONFIGLEVEL_TIMING_ONWARDS &&
 		status == VL53L1_ERROR_NONE) {
 
 		i2c_buffer_offset_bytes = \
-				VL53L1_DEF_00091 - i2c_index;
+				VL53L1_TIMING_CONFIG_I2C_INDEX - i2c_index;
 
 		status =
-			VL53L1_FCTN_00088(
+			VL53L1_i2c_encode_timing_config(
 				ptiming,
-				VL53L1_DEF_00100,
+				VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES,
 				&buffer[i2c_buffer_offset_bytes]);
 	}
 
-	if (device_config_level >= VL53L1_DEF_00092 &&
+	if (device_config_level >= VL53L1_DEVICECONFIGLEVEL_DYNAMIC_ONWARDS &&
 		status == VL53L1_ERROR_NONE) {
 
 		i2c_buffer_offset_bytes = \
-				VL53L1_DEF_00093 - i2c_index;
+				VL53L1_DYNAMIC_CONFIG_I2C_INDEX - i2c_index;
 
 
 
-	  if ((psystem->VL53L1_PRM_00122 &
-	  	VL53L1_DEF_00002) ==
-	  	VL53L1_DEF_00002) {
-        pdynamic->VL53L1_PRM_00125 = pstate->VL53L1_PRM_00124 | 0x01;
-        pdynamic->VL53L1_PRM_00126 = pstate->VL53L1_PRM_00124 | 0x01;
-        pdynamic->VL53L1_PRM_00127   = pstate->VL53L1_PRM_00124;
+	  if ((psystem->system__mode_start &
+	  	VL53L1_DEVICEMEASUREMENTMODE_BACKTOBACK) ==
+	  	VL53L1_DEVICEMEASUREMENTMODE_BACKTOBACK) {
+        pdynamic->system__grouped_parameter_hold_0 = pstate->cfg_gph_id | 0x01;
+        pdynamic->system__grouped_parameter_hold_1 = pstate->cfg_gph_id | 0x01;
+        pdynamic->system__grouped_parameter_hold   = pstate->cfg_gph_id;
     }
 		status =
-			VL53L1_FCTN_00089(
+			VL53L1_i2c_encode_dynamic_config(
 				pdynamic,
-				VL53L1_DEF_00101,
+				VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES,
 				&buffer[i2c_buffer_offset_bytes]);
 	}
 
 	if (status == VL53L1_ERROR_NONE) {
 
 		i2c_buffer_offset_bytes = \
-				VL53L1_DEF_00094 - i2c_index;
+				VL53L1_SYSTEM_CONTROL_I2C_INDEX - i2c_index;
 
 		status =
-			VL53L1_FCTN_00090(
+			VL53L1_i2c_encode_system_control(
 				psystem,
-				VL53L1_DEF_00095,
+				VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES,
 				&buffer[i2c_buffer_offset_bytes]);
 	}
 
@@ -1523,10 +1936,10 @@ VL53L1_Error VL53L1_FCTN_00012(
 
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00091(Dev);
+		status = VL53L1_update_ll_driver_rd_state(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00092(Dev);
+		status = VL53L1_update_ll_driver_cfg_state(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -1534,7 +1947,7 @@ VL53L1_Error VL53L1_FCTN_00012(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00013(
+VL53L1_Error VL53L1_stop_range(
 	VL53L1_DEV     Dev)
 {
 
@@ -1553,35 +1966,35 @@ VL53L1_Error VL53L1_FCTN_00013(
 
 
 
-	pdev->VL53L1_PRM_00121.VL53L1_PRM_00122 =
-			(pdev->VL53L1_PRM_00121.VL53L1_PRM_00122 & VL53L1_DEF_00083) |
-			 VL53L1_DEF_00102;
+	pdev->sys_ctrl.system__mode_start =
+			(pdev->sys_ctrl.system__mode_start & VL53L1_DEVICEMEASUREMENTMODE_STOP_MASK) |
+			 VL53L1_DEVICEMEASUREMENTMODE_ABORT;
 
-	status = VL53L1_FCTN_00093(
+	status = VL53L1_set_system_control(
 				Dev,
-				&pdev->VL53L1_PRM_00121);
+				&pdev->sys_ctrl);
 
 
 
-	pdev->VL53L1_PRM_00121.VL53L1_PRM_00122 =
-			(pdev->VL53L1_PRM_00121.VL53L1_PRM_00122 & VL53L1_DEF_00083);
+	pdev->sys_ctrl.system__mode_start =
+			(pdev->sys_ctrl.system__mode_start & VL53L1_DEVICEMEASUREMENTMODE_STOP_MASK);
 
 
 
-	VL53L1_FCTN_00038(
+	VL53L1_init_ll_driver_state(
 			Dev,
-			VL53L1_DEF_00058);
+			VL53L1_DEVICESTATE_SW_STANDBY);
 
 
 
-	VL53L1_FCTN_00079(
-			pdev->VL53L1_PRM_00014.VL53L1_PRM_00020+1,
-			&(pres->VL53L1_PRM_00075));
+	V53L1_init_zone_results_structure(
+			pdev->zone_cfg.active_zones+1,
+			&(pres->zone_results));
 
 	return status;
 }
 
-VL53L1_Error VL53L1_FCTN_00094(
+VL53L1_Error VL53L1_get_measurement_results(
 	VL53L1_DEV                     Dev,
 	VL53L1_DeviceResultsLevel      device_results_level)
 {
@@ -1596,11 +2009,11 @@ VL53L1_Error VL53L1_FCTN_00094(
 
 	uint8_t buffer[VL53L1_MAX_I2C_XFER_SIZE];
 
-	VL53L1_system_results_t   *psystem_results = &(pdev->VL53L1_PRM_00027);
-	VL53L1_core_results_t     *pcore_results   = &(pdev->VL53L1_PRM_00128);
-	VL53L1_debug_results_t    *pdebug_results  = &(pdev->VL53L1_PRM_00047);
+	VL53L1_system_results_t   *psystem_results = &(pdev->sys_results);
+	VL53L1_core_results_t     *pcore_results   = &(pdev->core_results);
+	VL53L1_debug_results_t    *pdebug_results  = &(pdev->dbg_results);
 
-	uint16_t i2c_index               = VL53L1_DEF_00103;
+	uint16_t i2c_index               = VL53L1_SYSTEM_RESULTS_I2C_INDEX;
 	uint16_t i2c_buffer_offset_bytes = 0;
 	uint16_t i2c_buffer_size_bytes   = 0;
 
@@ -1610,21 +2023,21 @@ VL53L1_Error VL53L1_FCTN_00094(
 
 
 	switch (device_results_level) {
-	case VL53L1_DEF_00028:
+	case VL53L1_DEVICERESULTSLEVEL_FULL:
 		i2c_buffer_size_bytes =
-				(VL53L1_DEF_00104 +
-				VL53L1_DEF_00105) -
+				(VL53L1_DEBUG_RESULTS_I2C_INDEX +
+				VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES) -
 				i2c_index;
 	break;
-	case VL53L1_DEF_00106:
+	case VL53L1_DEVICERESULTSLEVEL_UPTO_CORE:
 		i2c_buffer_size_bytes =
-				(VL53L1_DEF_00107 +
-				VL53L1_DEF_00108) -
+				(VL53L1_CORE_RESULTS_I2C_INDEX +
+				VL53L1_CORE_RESULTS_I2C_SIZE_BYTES) -
 				i2c_index;
 	break;
 	default:
 		i2c_buffer_size_bytes =
-				VL53L1_DEF_00109;
+				VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES;
 	break;
 	}
 
@@ -1642,28 +2055,28 @@ VL53L1_Error VL53L1_FCTN_00094(
 
 
 
-	if (device_results_level >= VL53L1_DEF_00028 &&
+	if (device_results_level >= VL53L1_DEVICERESULTSLEVEL_FULL &&
 		status == VL53L1_ERROR_NONE) {
 
 		i2c_buffer_offset_bytes =
-				VL53L1_DEF_00104 - i2c_index;
+				VL53L1_DEBUG_RESULTS_I2C_INDEX - i2c_index;
 
 		status =
-			VL53L1_FCTN_00095(
-				VL53L1_DEF_00105,
+			VL53L1_i2c_decode_debug_results(
+				VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES,
 				&buffer[i2c_buffer_offset_bytes],
 				pdebug_results);
 	}
 
-	if (device_results_level >= VL53L1_DEF_00106 &&
+	if (device_results_level >= VL53L1_DEVICERESULTSLEVEL_UPTO_CORE &&
 		status == VL53L1_ERROR_NONE) {
 
 		i2c_buffer_offset_bytes =
-				VL53L1_DEF_00107 - i2c_index;
+				VL53L1_CORE_RESULTS_I2C_INDEX - i2c_index;
 
 		status =
-			VL53L1_FCTN_00096(
-				VL53L1_DEF_00108,
+			VL53L1_i2c_decode_core_results(
+				VL53L1_CORE_RESULTS_I2C_SIZE_BYTES,
 				&buffer[i2c_buffer_offset_bytes],
 				pcore_results);
 	}
@@ -1672,8 +2085,8 @@ VL53L1_Error VL53L1_FCTN_00094(
 
 		i2c_buffer_offset_bytes = 0;
 		status =
-			VL53L1_FCTN_00097(
-				VL53L1_DEF_00109,
+			VL53L1_i2c_decode_system_results(
+				VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES,
 				&buffer[i2c_buffer_offset_bytes],
 				psystem_results);
 	}
@@ -1684,7 +2097,7 @@ VL53L1_Error VL53L1_FCTN_00094(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00017(
+VL53L1_Error VL53L1_get_device_results(
 	VL53L1_DEV                    Dev,
 	VL53L1_DeviceResultsLevel     device_results_level,
 	VL53L1_range_results_t       *prange_results)
@@ -1705,19 +2118,17 @@ VL53L1_Error VL53L1_FCTN_00017(
 			VL53L1DevStructGetLLDriverHandle(Dev);
 	VL53L1_LLDriverResults_t *pres =
 			VL53L1DevStructGetLLResultsHandle(Dev);
-	VL53L1_range_results_t *presults = &(pres->VL53L1_PRM_00059);
-	VL53L1_ll_driver_state_t *pstate   = &(pdev->VL53L1_PRM_00069);
-
-	uint8_t   i = 0;
+	VL53L1_range_results_t *presults = &(pres->range_results);
+	VL53L1_ll_driver_state_t *pstate   = &(pdev->ll_state);
 
 	LOG_FUNCTION_START("");
 
 
 
 
-	if ((pdev->VL53L1_PRM_00121.VL53L1_PRM_00122 &
-		 VL53L1_DEF_00110)
-		 == VL53L1_DEF_00110) {
+	if ((pdev->sys_ctrl.system__mode_start &
+		 VL53L1_DEVICESCHEDULERMODE_HISTOGRAM)
+		 == VL53L1_DEVICESCHEDULERMODE_HISTOGRAM) {
 
 
 
@@ -1725,9 +2136,9 @@ VL53L1_Error VL53L1_FCTN_00017(
 
 
 		if (status == VL53L1_ERROR_NONE)
-			status = VL53L1_FCTN_00099(
+			status = VL53L1_get_histogram_bin_data(
 							Dev,
-							&(pdev->VL53L1_PRM_00073));
+							&(pdev->hist_data));
 
 
 
@@ -1735,10 +2146,10 @@ VL53L1_Error VL53L1_FCTN_00017(
 
 
 		if (status == VL53L1_ERROR_NONE &&
-			pdev->VL53L1_PRM_00073.VL53L1_PRM_00129 == 0)
-			VL53L1_FCTN_00100(
-					 &(pres->VL53L1_PRM_00074.VL53L1_PRM_00035[pdev->VL53L1_PRM_00069.VL53L1_PRM_00070]),
-					 &(pdev->VL53L1_PRM_00073));
+			pdev->hist_data.number_of_ambient_bins == 0)
+			status =  VL53L1_hist_copy_and_scale_ambient_info(
+					 &(pres->zone_hists.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]),
+					 &(pdev->hist_data));
 
 
 
@@ -1748,19 +2159,39 @@ VL53L1_Error VL53L1_FCTN_00017(
 
 		if (status == VL53L1_ERROR_NONE) {
 
-			pdev->VL53L1_PRM_00097.VL53L1_PRM_00080 =
-					pdev->VL53L1_PRM_00050.VL53L1_PRM_00080;
-			pdev->VL53L1_PRM_00097.VL53L1_PRM_00078 =
-					pdev->VL53L1_PRM_00050.VL53L1_PRM_00078;
-			pdev->VL53L1_PRM_00097.VL53L1_PRM_00079 =
-					pdev->VL53L1_PRM_00050.VL53L1_PRM_00079;
+			pdev->histpostprocess.algo__crosstalk_compensation_plane_offset_kcps =
+					pdev->customer.algo__crosstalk_compensation_plane_offset_kcps;
+			pdev->histpostprocess.algo__crosstalk_compensation_x_plane_gradient_kcps =
+					pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
+			pdev->histpostprocess.algo__crosstalk_compensation_y_plane_gradient_kcps =
+					pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
 
-			pdev->VL53L1_PRM_00097.VL53L1_PRM_00084 =
-					pdev->VL53L1_PRM_00050.VL53L1_PRM_00084;
-			pdev->VL53L1_PRM_00097.VL53L1_PRM_00082 =
-					pdev->VL53L1_PRM_00050.VL53L1_PRM_00082;
-			pdev->VL53L1_PRM_00097.VL53L1_PRM_00083 =
-					pdev->VL53L1_PRM_00050.VL53L1_PRM_00083;
+			pdev->histpostprocess.algo__part_to_part_range_offset_mm =
+					pdev->customer.algo__part_to_part_range_offset_mm;
+			pdev->histpostprocess.mm_config__inner_offset_mm =
+					pdev->customer.mm_config__inner_offset_mm;
+			pdev->histpostprocess.mm_config__outer_offset_mm =
+					pdev->customer.mm_config__outer_offset_mm;
+
+			pdev->dmax_cfg.ambient_thresh_sigma =
+					pdev->histpostprocess.ambient_thresh_sigma1;
+			pdev->dmax_cfg.dss_config__target_total_rate_mcps =
+					pdev->stat_cfg.dss_config__target_total_rate_mcps;
+			pdev->dmax_cfg.dss_config__aperture_attenuation =
+					pdev->gen_cfg.dss_config__aperture_attenuation;
+
+
+
+
+			VL53L1_hist_combine_mm1_mm2_offsets(
+					pdev->customer.mm_config__inner_offset_mm,
+					0x0080,
+
+					pdev->customer.mm_config__outer_offset_mm,
+					0x0180,
+
+					&(pdev->histpostprocess.range_offset_mm));
+
 		}
 
 
@@ -1772,10 +2203,12 @@ VL53L1_Error VL53L1_FCTN_00017(
 			status =
 				VL53L1_ipp_hist_process_data(
 					Dev,
-					&(pdev->VL53L1_PRM_00097),
-					&(pdev->VL53L1_PRM_00073),
-					&(pres->VL53L1_PRM_00074.VL53L1_PRM_00035[pdev->VL53L1_PRM_00069.VL53L1_PRM_00070]),
-					&(pdev->VL53L1_PRM_00076),
+					&(pdev->dmax_cal),
+					&(pdev->dmax_cfg),
+					&(pdev->histpostprocess),
+					&(pdev->hist_data),
+					&(pres->zone_hists.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]),
+					&(pdev->xtalk_shape),
 					presults);
 
 
@@ -1783,9 +2216,19 @@ VL53L1_Error VL53L1_FCTN_00017(
 
 		if (status == VL53L1_ERROR_NONE)
 			status =
-				VL53L1_FCTN_00101(
+				VL53L1_hist_wrap_dmax(
+					&(pres->zone_hists.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]),
+					&(pdev->hist_data),
+					&(presults->wrap_dmax_mm));
+
+
+
+
+		if (status == VL53L1_ERROR_NONE)
+			status =
+				VL53L1_hist_phase_consistency_check(
 					Dev,
-					&(pres->VL53L1_PRM_00075.VL53L1_PRM_00035[pdev->VL53L1_PRM_00069.VL53L1_PRM_00070]),
+					&(pres->zone_results.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]),
 					presults);
 
 
@@ -1795,14 +2238,14 @@ VL53L1_Error VL53L1_FCTN_00017(
 
 		if (status == VL53L1_ERROR_NONE) {
 
-			pres->VL53L1_PRM_00074.VL53L1_PRM_00019    = VL53L1_MAX_USER_ZONES;
-			pres->VL53L1_PRM_00074.VL53L1_PRM_00020 = pdev->VL53L1_PRM_00014.VL53L1_PRM_00020+1;
-			pdev->VL53L1_PRM_00073.VL53L1_PRM_00036       = pdev->VL53L1_PRM_00069.VL53L1_PRM_00070;
+			pres->zone_hists.max_zones    = VL53L1_MAX_USER_ZONES;
+			pres->zone_hists.active_zones = pdev->zone_cfg.active_zones+1;
+			pdev->hist_data.zone_id       = pdev->ll_state.rd_zone_id;
 
-			if (pdev->VL53L1_PRM_00069.VL53L1_PRM_00070 < pres->VL53L1_PRM_00075.VL53L1_PRM_00019)
+			if (pdev->ll_state.rd_zone_id < pres->zone_results.max_zones)
 				memcpy(
-					&(pres->VL53L1_PRM_00074.VL53L1_PRM_00035[pdev->VL53L1_PRM_00069.VL53L1_PRM_00070]),
-					&(pdev->VL53L1_PRM_00073),
+					&(pres->zone_hists.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]),
+					&(pdev->hist_data),
 					sizeof(VL53L1_histogram_bin_data_t));
 		}
 
@@ -1813,11 +2256,11 @@ VL53L1_Error VL53L1_FCTN_00017(
 
 
 		if (status == VL53L1_ERROR_NONE)
-			VL53L1_FCTN_00102(
-					&(pdev->VL53L1_PRM_00073),
+			VL53L1_hist_copy_results_to_sys_and_core(
+					&(pdev->hist_data),
 					presults,
-				    &(pdev->VL53L1_PRM_00027),
-				    &(pdev->VL53L1_PRM_00128));
+				    &(pdev->sys_results),
+				    &(pdev->core_results));
 
 
 
@@ -1827,42 +2270,41 @@ VL53L1_Error VL53L1_FCTN_00017(
 
 
     if(status == VL53L1_ERROR_NONE)
-      if(pstate->VL53L1_PRM_00038 != VL53L1_DEF_00038)
-        status = VL53L1_FCTN_00103(Dev, presults);
+      if(pstate->rd_device_state != VL53L1_DEVICESTATE_RANGING_WAIT_GPH_SYNC)
+        status = VL53L1_dynamic_zone_update(Dev, presults);
 
 
 	} else {
 
 		if (status == VL53L1_ERROR_NONE)
-			status = VL53L1_FCTN_00094(
+			status = VL53L1_get_measurement_results(
 							Dev,
 							device_results_level);
 
 		if (status == VL53L1_ERROR_NONE)
-			VL53L1_FCTN_00098(
-					&(pdev->VL53L1_PRM_00027),
-					&(pdev->VL53L1_PRM_00128),
+			VL53L1_copy_sys_and_core_results_to_range_results(
+					&(pdev->sys_results),
+					&(pdev->core_results),
 					presults);
 	}
 
 
 
-	presults->VL53L1_PRM_00130 = pdev->VL53L1_PRM_00069.VL53L1_PRM_00130;
-	presults->VL53L1_PRM_00038  = pdev->VL53L1_PRM_00069.VL53L1_PRM_00038;
+	presults->cfg_device_state = pdev->ll_state.cfg_device_state;
+	presults->rd_device_state  = pdev->ll_state.rd_device_state;
+	presults->zone_id          = pdev->ll_state.rd_zone_id;
 
 	if (status == VL53L1_ERROR_NONE) {
 
 
 
-		pres->VL53L1_PRM_00075.VL53L1_PRM_00019    = VL53L1_MAX_USER_ZONES;
-		pres->VL53L1_PRM_00075.VL53L1_PRM_00020 = pdev->VL53L1_PRM_00014.VL53L1_PRM_00020+1;
+		pres->zone_results.max_zones    = VL53L1_MAX_USER_ZONES;
+		pres->zone_results.active_zones = pdev->zone_cfg.active_zones+1;
 
-		for (i = 0 ; i < presults->VL53L1_PRM_00037 ; i++)
-			presults->VL53L1_PRM_00035[i].VL53L1_PRM_00036 = pdev->VL53L1_PRM_00069.VL53L1_PRM_00070;
 
-		if (pdev->VL53L1_PRM_00069.VL53L1_PRM_00070 < pres->VL53L1_PRM_00075.VL53L1_PRM_00019)
+		if (pdev->ll_state.rd_zone_id < pres->zone_results.max_zones)
 			memcpy(
-				&(pres->VL53L1_PRM_00075.VL53L1_PRM_00035[pdev->VL53L1_PRM_00069.VL53L1_PRM_00070]),
+				&(pres->zone_results.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]),
 				presults,
 				sizeof(VL53L1_range_results_t));
 	}
@@ -1882,7 +2324,7 @@ VL53L1_Error VL53L1_FCTN_00017(
 
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00104(Dev);
+		status = VL53L1_check_ll_driver_rd_state(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -1890,9 +2332,9 @@ VL53L1_Error VL53L1_FCTN_00017(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00014(
+VL53L1_Error VL53L1_clear_interrupt_and_enable_next_range(
 	VL53L1_DEV        Dev,
-	uint8_t           VL53L1_PRM_00005)
+	uint8_t           measurement_mode)
 {
 
 
@@ -1920,10 +2362,10 @@ VL53L1_Error VL53L1_FCTN_00014(
 
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00012(
+		status = VL53L1_init_and_start_range(
 					Dev,
-					VL53L1_PRM_00005,
-					VL53L1_DEF_00088);
+					measurement_mode,
+					VL53L1_DEVICECONFIGLEVEL_GENERAL_ONWARDS);
 
 	LOG_FUNCTION_END(status);
 
@@ -1931,7 +2373,7 @@ VL53L1_Error VL53L1_FCTN_00014(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00099(
+VL53L1_Error VL53L1_get_histogram_bin_data(
 		VL53L1_DEV                   Dev,
 		VL53L1_histogram_bin_data_t *pdata)
 {
@@ -1948,10 +2390,10 @@ VL53L1_Error VL53L1_FCTN_00099(
 
 	VL53L1_zone_private_dyn_cfg_t *pzone_dyn_cfg;
 
-	VL53L1_static_nvm_managed_t   *pstat_nvm = &(pdev->VL53L1_PRM_00010);
-	VL53L1_static_config_t        *pstat_cfg = &(pdev->VL53L1_PRM_00104);
-	VL53L1_general_config_t       *pgen_cfg  = &(pdev->VL53L1_PRM_00099);
-	VL53L1_timing_config_t        *ptim_cfg  = &(pdev->VL53L1_PRM_00009);
+	VL53L1_static_nvm_managed_t   *pstat_nvm = &(pdev->stat_nvm);
+	VL53L1_static_config_t        *pstat_cfg = &(pdev->stat_cfg);
+	VL53L1_general_config_t       *pgen_cfg  = &(pdev->gen_cfg);
+	VL53L1_timing_config_t        *ptim_cfg  = &(pdev->tim_cfg);
 
 	uint8_t    buffer[VL53L1_MAX_I2C_XFER_SIZE];
 	uint8_t   *pbuffer = &buffer[0];
@@ -1960,7 +2402,7 @@ VL53L1_Error VL53L1_FCTN_00099(
 	uint16_t   i2c_buffer_offset_bytes  = 0;
 	uint16_t   encoded_timeout          = 0;
 
-	uint32_t   VL53L1_PRM_00131            = 0;
+	uint32_t   pll_period_us            = 0;
 	uint32_t   periods_elapsed_tmp      = 0;
 
 	uint8_t    i                        = 0;
@@ -1975,21 +2417,21 @@ VL53L1_Error VL53L1_FCTN_00099(
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 					Dev,
-					VL53L1_DEF_00111,
+					VL53L1_HISTOGRAM_BIN_DATA_I2C_INDEX,
 					pbuffer,
-					VL53L1_DEF_00112);
+					VL53L1_HISTOGRAM_BIN_DATA_I2C_SIZE_BYTES);
 
 
 
 
 
 
-	pdata->VL53L1_PRM_00132               = *(pbuffer +   0);
-	pdata->VL53L1_PRM_00105                   = *(pbuffer +   1);
-	pdata->VL53L1_PRM_00106                  = *(pbuffer +   2);
-	pdata->VL53L1_PRM_00026                   = *(pbuffer +   3);
-	pdata->VL53L1_PRM_00133 =
-		VL53L1_FCTN_00105(2, pbuffer +   4);
+	pdata->result__interrupt_status               = *(pbuffer +   0);
+	pdata->result__range_status                   = *(pbuffer +   1);
+	pdata->result__report_status                  = *(pbuffer +   2);
+	pdata->result__stream_count                   = *(pbuffer +   3);
+	pdata->result__dss_actual_effective_spads =
+		VL53L1_i2c_decode_uint16_t(2, pbuffer +   4);
 
 
 
@@ -1997,27 +2439,27 @@ VL53L1_Error VL53L1_FCTN_00099(
 
 
 	i2c_buffer_offset_bytes = \
-			VL53L1_DEF_00113 - \
-			VL53L1_DEF_00111;
+			VL53L1_PHASECAL_RESULT__REFERENCE_PHASE - \
+			VL53L1_HISTOGRAM_BIN_DATA_I2C_INDEX;
 
 	pbuffer = &buffer[i2c_buffer_offset_bytes];
 
-	pdata->VL53L1_PRM_00134 =
-			VL53L1_FCTN_00105(2, pbuffer);
+	pdata->phasecal_result__reference_phase =
+			VL53L1_i2c_decode_uint16_t(2, pbuffer);
 
 	i2c_buffer_offset_bytes = \
-			VL53L1_DEF_00114 - \
-			VL53L1_DEF_00111;
+			VL53L1_PHASECAL_RESULT__VCSEL_START - \
+			VL53L1_HISTOGRAM_BIN_DATA_I2C_INDEX;
 
-	pdata->VL53L1_PRM_00135 = buffer[i2c_buffer_offset_bytes];
-
-
+	pdata->phasecal_result__vcsel_start = buffer[i2c_buffer_offset_bytes];
 
 
-	pdev->VL53L1_PRM_00047.VL53L1_PRM_00134 =
-			pdata->VL53L1_PRM_00134;
-	pdev->VL53L1_PRM_00047.VL53L1_PRM_00135 =
-			pdata->VL53L1_PRM_00135;
+
+
+	pdev->dbg_results.phasecal_result__reference_phase =
+			pdata->phasecal_result__reference_phase;
+	pdev->dbg_results.phasecal_result__vcsel_start =
+			pdata->phasecal_result__vcsel_start;
 
 
 
@@ -2026,20 +2468,20 @@ VL53L1_Error VL53L1_FCTN_00099(
 
 
 	i2c_buffer_offset_bytes = \
-			VL53L1_DEF_00115 - \
-			VL53L1_DEF_00111;
+			VL53L1_RESULT__HISTOGRAM_BIN_23_0_MSB - \
+			VL53L1_HISTOGRAM_BIN_DATA_I2C_INDEX;
 
 	bin_23_0 = buffer[i2c_buffer_offset_bytes] << 2;
 
 	i2c_buffer_offset_bytes = \
-			VL53L1_DEF_00116 - \
-			VL53L1_DEF_00111;
+			VL53L1_RESULT__HISTOGRAM_BIN_23_0_LSB - \
+			VL53L1_HISTOGRAM_BIN_DATA_I2C_INDEX;
 
 	bin_23_0 += buffer[i2c_buffer_offset_bytes];
 
 	i2c_buffer_offset_bytes = \
-			VL53L1_DEF_00117 - \
-			VL53L1_DEF_00111;
+			VL53L1_RESULT__HISTOGRAM_BIN_23_0 - \
+			VL53L1_HISTOGRAM_BIN_DATA_I2C_INDEX;
 
 	buffer[i2c_buffer_offset_bytes] = bin_23_0;
 
@@ -2050,75 +2492,75 @@ VL53L1_Error VL53L1_FCTN_00099(
 
 
 	i2c_buffer_offset_bytes = \
-			VL53L1_DEF_00118 - \
-			VL53L1_DEF_00111;
+			VL53L1_RESULT__HISTOGRAM_BIN_0_2 - \
+			VL53L1_HISTOGRAM_BIN_DATA_I2C_INDEX;
 
 	pbuffer = &buffer[i2c_buffer_offset_bytes];
-	for (bin = 0 ; bin < VL53L1_DEF_00035 ; bin++) {
-		pdata->VL53L1_PRM_00136[bin] =
-				(int32_t)VL53L1_FCTN_00106(3, pbuffer);
+	for (bin = 0 ; bin < VL53L1_HISTOGRAM_BUFFER_SIZE ; bin++) {
+		pdata->bin_data[bin] =
+				(int32_t)VL53L1_i2c_decode_uint32_t(3, pbuffer);
 		pbuffer += 3;
 	}
 
 
 
-	pdata->VL53L1_PRM_00036                 = pdev->VL53L1_PRM_00069.VL53L1_PRM_00070;
-	pdata->VL53L1_PRM_00137               = 0;
-	pdata->VL53L1_PRM_00138             = VL53L1_DEF_00035;
-	pdata->VL53L1_PRM_00139          = VL53L1_DEF_00035;
+	pdata->zone_id                 = pdev->ll_state.rd_zone_id;
+	pdata->VL53L1_PRM_00011               = 0;
+	pdata->VL53L1_PRM_00012             = VL53L1_HISTOGRAM_BUFFER_SIZE;
+	pdata->VL53L1_PRM_00013          = VL53L1_HISTOGRAM_BUFFER_SIZE;
 
-	pdata->VL53L1_PRM_00140 = pgen_cfg->VL53L1_PRM_00140;
-
-
-
-
-	pdata->VL53L1_PRM_00141 =
-		((uint16_t)pgen_cfg->VL53L1_PRM_00142) << 4;
-	pdata->VL53L1_PRM_00141 +=
-		(uint16_t)pstat_cfg->VL53L1_PRM_00143;
-
-
-
-	pdata->VL53L1_PRM_00144 =
-		pstat_nvm->VL53L1_PRM_00011;
+	pdata->cal_config__vcsel_start = pgen_cfg->cal_config__vcsel_start;
 
 
 
 
-	VL53L1_FCTN_00107(Dev, pdata);
+	pdata->vcsel_width =
+		((uint16_t)pgen_cfg->global_config__vcsel_width) << 4;
+	pdata->vcsel_width +=
+		(uint16_t)pstat_cfg->ana_config__vcsel_pulse_width_offset;
+
+
+
+	pdata->VL53L1_PRM_00014 =
+		pstat_nvm->osc_measured__fast_osc__frequency;
+
+
+
+
+	VL53L1_hist_get_bin_sequence_config(Dev, pdata);
 
 
 
 
 
 
-	if (pdev->VL53L1_PRM_00069.VL53L1_PRM_00145 == 0) {
+	if (pdev->ll_state.rd_timing_status == 0) {
 
 		encoded_timeout = \
-			(ptim_cfg->VL53L1_PRM_00146 << 8) \
-			+ ptim_cfg->VL53L1_PRM_00147;
-		pdata->VL53L1_PRM_00041 =  ptim_cfg->VL53L1_PRM_00101;
+			(ptim_cfg->range_config__timeout_macrop_a_hi << 8) \
+			+ ptim_cfg->range_config__timeout_macrop_a_lo;
+		pdata->VL53L1_PRM_00006 =  ptim_cfg->range_config__vcsel_period_a;
 	} else {
 
 		encoded_timeout = \
-			(ptim_cfg->VL53L1_PRM_00148 << 8) \
-			 + ptim_cfg->VL53L1_PRM_00149;
-		pdata->VL53L1_PRM_00041 = ptim_cfg->VL53L1_PRM_00150;
+			(ptim_cfg->range_config__timeout_macrop_b_hi << 8) \
+			 + ptim_cfg->range_config__timeout_macrop_b_lo;
+		pdata->VL53L1_PRM_00006 = ptim_cfg->range_config__vcsel_period_b;
 	}
 
 
 
 
-	pdata->VL53L1_PRM_00129  = 0;
+	pdata->number_of_ambient_bins  = 0;
 
 	for (i = 0; i < 6; i++){
-		if (pdata->VL53L1_PRM_00151[i] == 0x7)
-			pdata->VL53L1_PRM_00129  =
-					pdata->VL53L1_PRM_00129 + 0x4;
+		if (pdata->bin_seq[i] == 0x7)
+			pdata->number_of_ambient_bins  =
+					pdata->number_of_ambient_bins + 0x4;
 	}
 
-	pdata->VL53L1_PRM_00152 =
-		VL53L1_FCTN_00108(encoded_timeout);
+	pdata->total_periods_elapsed =
+		VL53L1_decode_timeout(encoded_timeout);
 
 
 
@@ -2126,55 +2568,55 @@ VL53L1_Error VL53L1_FCTN_00099(
 
 
 
-	VL53L1_PRM_00131 =
-		VL53L1_FCTN_00109(pdata->VL53L1_PRM_00144);
+	pll_period_us =
+		VL53L1_calc_pll_period_us(pdata->VL53L1_PRM_00014);
 
 
 
 
-	periods_elapsed_tmp = pdata->VL53L1_PRM_00152 + 1;
+	periods_elapsed_tmp = pdata->total_periods_elapsed + 1;
 
 
 
 
 
 
-	pdata->VL53L1_PRM_00153 =
-		VL53L1_FCTN_00110(
-			VL53L1_PRM_00131,
-			(uint32_t)pdata->VL53L1_PRM_00141,
-			VL53L1_DEF_00119,
+	pdata->peak_duration_us =
+		VL53L1_duration_maths(
+			pll_period_us,
+			(uint32_t)pdata->vcsel_width,
+			VL53L1_RANGING_WINDOW_VCSEL_PERIODS,
 			periods_elapsed_tmp);
 
-	pdata->VL53L1_PRM_00154     = 0;
+	pdata->woi_duration_us     = 0;
 
 
 
 
-	VL53L1_FCTN_00111(pdata);
+	VL53L1_hist_calc_zero_distance_phase(pdata);
 
 
 
 
 
 
-	VL53L1_FCTN_00112(pdata);
+	VL53L1_hist_estimate_ambient_from_ambient_bins(pdata);
 
 
 
 
-	pdata->VL53L1_PRM_00130 = pdev->VL53L1_PRM_00069.VL53L1_PRM_00130;
-	pdata->VL53L1_PRM_00038  = pdev->VL53L1_PRM_00069.VL53L1_PRM_00038;
+	pdata->cfg_device_state = pdev->ll_state.cfg_device_state;
+	pdata->rd_device_state  = pdev->ll_state.rd_device_state;
 
 
 
 
-	pzone_dyn_cfg = &(pres->VL53L1_PRM_00155.VL53L1_PRM_00035[pdata->VL53L1_PRM_00036]);
+	pzone_dyn_cfg = &(pres->zone_dyn_cfgs.VL53L1_PRM_00004[pdata->zone_id]);
 
-	pdata->VL53L1_PRM_00115 =
-			pzone_dyn_cfg->VL53L1_PRM_00115;
-	pdata->VL53L1_PRM_00116 =
-			pzone_dyn_cfg->VL53L1_PRM_00116;
+	pdata->roi_config__user_roi_centre_spad =
+			pzone_dyn_cfg->roi_config__user_roi_centre_spad;
+	pdata->roi_config__user_roi_requested_global_xy_size =
+			pzone_dyn_cfg->roi_config__user_roi_requested_global_xy_size;
 
 	LOG_FUNCTION_END(status);
 
@@ -2182,7 +2624,7 @@ VL53L1_Error VL53L1_FCTN_00099(
 }
 
 
-void VL53L1_FCTN_00098(
+void VL53L1_copy_sys_and_core_results_to_range_results(
 	VL53L1_system_results_t          *psys,
 	VL53L1_core_results_t            *pcore,
 	VL53L1_range_results_t           *presults)
@@ -2196,83 +2638,93 @@ void VL53L1_FCTN_00098(
 
 
 
-	presults->VL53L1_PRM_00063    = VL53L1_MAX_RANGE_RESULTS;
-	presults->VL53L1_PRM_00037 = 1;
+	presults->zone_id         = 0;
+	presults->stream_count    = psys->result__stream_count;
+	presults->ambient_dmax_mm = 0;
+	presults->wrap_dmax_mm    = 0;
+	presults->max_results     = VL53L1_MAX_RANGE_RESULTS;
+	presults->active_results  = 1;
 
-	pdata = &(presults->VL53L1_PRM_00035[0]);
+	pdata = &(presults->VL53L1_PRM_00004[0]);
 
 	for (i = 0 ; i < 2 ; i++) {
 
-		pdata->VL53L1_PRM_00036      = 0;
-		pdata->VL53L1_PRM_00156     = i;
-		pdata->VL53L1_PRM_00024   = 0;
-		pdata->VL53L1_PRM_00095 = psys->VL53L1_PRM_00026;
-		pdata->VL53L1_PRM_00025 =
-			psys->VL53L1_PRM_00105 & VL53L1_DEF_00120;
+		pdata->range_id     = i;
+		pdata->time_stamp   = 0;
+		pdata->range_status =
+			psys->result__range_status & VL53L1_RANGE_STATUS__RANGE_STATUS_MASK;
 
-		pdata->VL53L1_PRM_00157 = 0;
-		pdata->VL53L1_PRM_00137    = 0;
-		pdata->VL53L1_PRM_00158   = 0;
-		pdata->VL53L1_PRM_00159     = 0;
-		pdata->VL53L1_PRM_00160   = 0;
-		pdata->VL53L1_PRM_00161    = 0;
+		pdata->VL53L1_PRM_00015 = 0;
+		pdata->VL53L1_PRM_00011    = 0;
+		pdata->VL53L1_PRM_00016   = 0;
+		pdata->VL53L1_PRM_00017     = 0;
+		pdata->VL53L1_PRM_00018   = 0;
+		pdata->VL53L1_PRM_00019    = 0;
 
 		switch (i) {
 
 		case 0:
 
-			pdata->VL53L1_PRM_00032 =
-				psys->VL53L1_PRM_00162;
-			pdata->VL53L1_PRM_00030 =
-				psys->VL53L1_PRM_00163;
-			pdata->VL53L1_PRM_00164 =
-				psys->VL53L1_PRM_00165;
-			pdata->VL53L1_PRM_00031 =
-				psys->VL53L1_PRM_00166;
+			if (psys->result__report_status == VL53L1_DEVICEREPORTSTATUS_MM1)
+				pdata->VL53L1_PRM_00002 =
+					psys->result__mm_inner_actual_effective_spads_sd0;
+			else if (psys->result__report_status == VL53L1_DEVICEREPORTSTATUS_MM2)
+				pdata->VL53L1_PRM_00002 =
+						psys->result__mm_outer_actual_effective_spads_sd0;
+			else
+				pdata->VL53L1_PRM_00002 =
+					psys->result__dss_actual_effective_spads_sd0;
 
-			pdata->VL53L1_PRM_00033 =
-				psys->VL53L1_PRM_00167;
-			pdata->VL53L1_PRM_00168 =
-				psys->VL53L1_PRM_00169;
-			pdata->VL53L1_PRM_00034 =
-				(int16_t)psys->VL53L1_PRM_00170;
+			pdata->peak_signal_count_rate_mcps =
+				psys->result__peak_signal_count_rate_crosstalk_corrected_mcps_sd0;
+			pdata->avg_signal_count_rate_mcps =
+				psys->result__avg_signal_count_rate_mcps_sd0;
+			pdata->ambient_count_rate_mcps =
+				psys->result__ambient_count_rate_mcps_sd0;
 
-			pdata->VL53L1_PRM_00171 =
-				pcore->VL53L1_PRM_00172;
-			pdata->VL53L1_PRM_00072 =
-				pcore->VL53L1_PRM_00173;
-			pdata->VL53L1_PRM_00152 =
-				pcore->VL53L1_PRM_00174;
-			pdata->VL53L1_PRM_00175 =
-				pcore->VL53L1_PRM_00176;
+			pdata->VL53L1_PRM_00003 =
+				psys->result__sigma_sd0;
+			pdata->VL53L1_PRM_00020 =
+				psys->result__phase_sd0;
+			pdata->median_range_mm =
+				(int16_t)psys->result__final_crosstalk_corrected_range_mm_sd0;
+
+			pdata->VL53L1_PRM_00021 =
+				pcore->result_core__ranging_total_events_sd0;
+			pdata->VL53L1_PRM_00008 =
+				pcore->result_core__signal_total_events_sd0;
+			pdata->total_periods_elapsed =
+				pcore->result_core__total_periods_elapsed_sd0;
+			pdata->VL53L1_PRM_00022 =
+				pcore->result_core__ambient_window_events_sd0;
 
 		break;
 		case 1:
 
-			pdata->VL53L1_PRM_00032 =
-				psys->VL53L1_PRM_00177;
-			pdata->VL53L1_PRM_00030 =
-				psys->VL53L1_PRM_00178;
-			pdata->VL53L1_PRM_00164 =
+			pdata->VL53L1_PRM_00002 =
+				psys->result__dss_actual_effective_spads_sd1;
+			pdata->peak_signal_count_rate_mcps =
+				psys->result__peak_signal_count_rate_mcps_sd1;
+			pdata->avg_signal_count_rate_mcps =
 				0xFFFF;
-			pdata->VL53L1_PRM_00031 =
-				psys->VL53L1_PRM_00179;
+			pdata->ambient_count_rate_mcps =
+				psys->result__ambient_count_rate_mcps_sd1;
 
-			pdata->VL53L1_PRM_00033 =
-				psys->VL53L1_PRM_00180;
-			pdata->VL53L1_PRM_00168 =
-				psys->VL53L1_PRM_00181;
-			pdata->VL53L1_PRM_00034  =
-				(int16_t)psys->VL53L1_PRM_00182;
+			pdata->VL53L1_PRM_00003 =
+				psys->result__sigma_sd1;
+			pdata->VL53L1_PRM_00020 =
+				psys->result__phase_sd1;
+			pdata->median_range_mm  =
+				(int16_t)psys->result__final_crosstalk_corrected_range_mm_sd1;
 
-			pdata->VL53L1_PRM_00171 =
-				pcore->VL53L1_PRM_00183;
-			pdata->VL53L1_PRM_00072 =
-				pcore->VL53L1_PRM_00184;
-			pdata->VL53L1_PRM_00152  =
-				pcore->VL53L1_PRM_00185;
-			pdata->VL53L1_PRM_00175 =
-				pcore->VL53L1_PRM_00186;
+			pdata->VL53L1_PRM_00021 =
+				pcore->result_core__ranging_total_events_sd1;
+			pdata->VL53L1_PRM_00008 =
+				pcore->result_core__signal_total_events_sd1;
+			pdata->total_periods_elapsed  =
+				pcore->result_core__total_periods_elapsed_sd1;
+			pdata->VL53L1_PRM_00022 =
+				pcore->result_core__ambient_window_events_sd1;
 
 		break;
 
@@ -2282,13 +2734,42 @@ void VL53L1_FCTN_00098(
 
 
 
-		pdata->VL53L1_PRM_00187    = pdata->VL53L1_PRM_00168;
-		pdata->VL53L1_PRM_00188    = pdata->VL53L1_PRM_00168;
-		pdata->VL53L1_PRM_00029 = pdata->VL53L1_PRM_00034;
-		pdata->VL53L1_PRM_00028 = pdata->VL53L1_PRM_00034;
+		pdata->VL53L1_PRM_00023    = pdata->VL53L1_PRM_00020;
+		pdata->VL53L1_PRM_00024    = pdata->VL53L1_PRM_00020;
+		pdata->min_range_mm = pdata->median_range_mm;
+		pdata->max_range_mm = pdata->median_range_mm;
 
 		pdata++;
 	}
 
 	LOG_FUNCTION_END(0);
+}
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_zone_dss_config(
+	  VL53L1_DEV                      Dev,
+	  VL53L1_zone_private_dyn_cfg_t  *pzone_dyn_cfg)
+{
+	  VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	  VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	  LOG_FUNCTION_START("");
+
+    if(pzone_dyn_cfg->dss_requested_effective_spad_count == 0) {
+	  	  pdev->gen_cfg.dss_config__roi_mode_control =
+	  	      VL53L1_DSS_CONTROL__MODE_TARGET_RATE;
+    } else  {
+	  	  pdev->gen_cfg.dss_config__roi_mode_control =
+	  	      VL53L1_DSS_CONTROL__MODE_EFFSPADS;
+		    pdev->gen_cfg.dss_config__manual_effective_spads_select =
+		        pzone_dyn_cfg->dss_requested_effective_spad_count;
+    }
+
+	  LOG_FUNCTION_END(status);
+    return status;
 }
