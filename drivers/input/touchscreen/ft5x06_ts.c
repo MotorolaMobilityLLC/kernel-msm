@@ -1446,25 +1446,31 @@ static int fb_notifier_callback(struct notifier_block *self,
 	struct ft5x06_ts_data *ft5x06_data =
 		container_of(self, struct ft5x06_ts_data, fb_notif);
 
-	if (evdata && evdata->data && ft5x06_data && ft5x06_data->client) {
+	if ((event == FB_EARLY_EVENT_BLANK || event == FB_EVENT_BLANK) &&
+		evdata && evdata->data && ft5x06_data && ft5x06_data->client) {
 		blank = evdata->data;
+		pr_debug("fb notification: event = %lu blank = %d\n", event,
+			*blank);
 		if (ft5x06_data->pdata->resume_in_workqueue) {
-			if (event == FB_EARLY_EVENT_BLANK &&
-						 *blank == FB_BLANK_UNBLANK)
-				schedule_work(&ft5x06_data->fb_notify_work);
-			else if (event == FB_EVENT_BLANK &&
-						 *blank == FB_BLANK_POWERDOWN) {
+			if (event == FB_EARLY_EVENT_BLANK) {
+				if (*blank != FB_BLANK_POWERDOWN)
+					return 0;
 				flush_work(&ft5x06_data->fb_notify_work);
 				ft5x06_ts_suspend(&ft5x06_data->client->dev);
+			} else if (*blank == FB_BLANK_UNBLANK ||
+				(*blank == FB_BLANK_NORMAL &&
+				ft5x06_data->suspended)) {
+				schedule_work(&ft5x06_data->fb_notify_work);
 			}
 		} else {
-			if (event == FB_EVENT_BLANK) {
-				if (*blank == FB_BLANK_UNBLANK)
-					ft5x06_ts_resume(
-						&ft5x06_data->client->dev);
-				else if (*blank == FB_BLANK_POWERDOWN)
-					ft5x06_ts_suspend(
-						&ft5x06_data->client->dev);
+			if (event == FB_EARLY_EVENT_BLANK) {
+				if (*blank != FB_BLANK_POWERDOWN)
+					return 0;
+				ft5x06_ts_suspend(&ft5x06_data->client->dev);
+			} else if (*blank == FB_BLANK_UNBLANK ||
+				(*blank == FB_BLANK_NORMAL &&
+				ft5x06_data->suspended)) {
+				ft5x06_ts_resume(&ft5x06_data->client->dev);
 			}
 		}
 	}
