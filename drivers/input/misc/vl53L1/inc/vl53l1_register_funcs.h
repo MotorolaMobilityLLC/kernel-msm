@@ -117,7 +117,7 @@ extern "C"
 
 
 
-VL53L1_Error VL53L1_FCTN_00084(
+VL53L1_Error VL53L1_i2c_encode_static_nvm_managed(
 	VL53L1_static_nvm_managed_t  *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -137,7 +137,7 @@ VL53L1_Error VL53L1_FCTN_00084(
 
 
 
-VL53L1_Error VL53L1_FCTN_00147(
+VL53L1_Error VL53L1_i2c_decode_static_nvm_managed(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_static_nvm_managed_t  *pdata);
@@ -157,7 +157,7 @@ VL53L1_Error VL53L1_FCTN_00147(
 
 
 
-VL53L1_Error VL53L1_FCTN_00148(
+VL53L1_Error VL53L1_set_static_nvm_managed(
 	VL53L1_DEV                 Dev,
 	VL53L1_static_nvm_managed_t  *pdata);
 
@@ -176,7 +176,7 @@ VL53L1_Error VL53L1_FCTN_00148(
 
 
 
-VL53L1_Error VL53L1_FCTN_00043(
+VL53L1_Error VL53L1_get_static_nvm_managed(
 	VL53L1_DEV                 Dev,
 	VL53L1_static_nvm_managed_t  *pdata);
 
@@ -192,7 +192,7 @@ VL53L1_Error VL53L1_FCTN_00043(
 
 
 
-VL53L1_Error VL53L1_FCTN_00085(
+VL53L1_Error VL53L1_i2c_encode_customer_nvm_managed(
 	VL53L1_customer_nvm_managed_t  *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -212,7 +212,7 @@ VL53L1_Error VL53L1_FCTN_00085(
 
 
 
-VL53L1_Error VL53L1_FCTN_00149(
+VL53L1_Error VL53L1_i2c_decode_customer_nvm_managed(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_customer_nvm_managed_t  *pdata);
@@ -232,7 +232,7 @@ VL53L1_Error VL53L1_FCTN_00149(
 
 
 
-VL53L1_Error VL53L1_FCTN_00027(
+VL53L1_Error VL53L1_set_customer_nvm_managed(
 	VL53L1_DEV                 Dev,
 	VL53L1_customer_nvm_managed_t  *pdata);
 
@@ -251,7 +251,7 @@ VL53L1_Error VL53L1_FCTN_00027(
 
 
 
-VL53L1_Error VL53L1_FCTN_00044(
+VL53L1_Error VL53L1_get_customer_nvm_managed(
 	VL53L1_DEV                 Dev,
 	VL53L1_customer_nvm_managed_t  *pdata);
 
@@ -267,7 +267,7 @@ VL53L1_Error VL53L1_FCTN_00044(
 
 
 
-VL53L1_Error VL53L1_FCTN_00086(
+VL53L1_Error VL53L1_i2c_encode_static_config(
 	VL53L1_static_config_t    *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -287,7 +287,7 @@ VL53L1_Error VL53L1_FCTN_00086(
 
 
 
-VL53L1_Error VL53L1_FCTN_00150(
+VL53L1_Error VL53L1_i2c_decode_static_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_static_config_t    *pdata);
@@ -307,7 +307,7 @@ VL53L1_Error VL53L1_FCTN_00150(
 
 
 
-VL53L1_Error VL53L1_FCTN_00151(
+VL53L1_Error VL53L1_set_static_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_static_config_t    *pdata);
 
@@ -326,7 +326,7 @@ VL53L1_Error VL53L1_FCTN_00151(
 
 
 
-VL53L1_Error VL53L1_FCTN_00152(
+VL53L1_Error VL53L1_get_static_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_static_config_t    *pdata);
 
@@ -342,7 +342,7 @@ VL53L1_Error VL53L1_FCTN_00152(
 
 
 
-VL53L1_Error VL53L1_FCTN_00087(
+VL53L1_Error VL53L1_i2c_encode_general_config(
 	VL53L1_general_config_t   *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -362,7 +362,7 @@ VL53L1_Error VL53L1_FCTN_00087(
 
 
 
-VL53L1_Error VL53L1_FCTN_00153(
+VL53L1_Error VL53L1_i2c_decode_general_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_general_config_t   *pdata);
@@ -382,7 +382,7 @@ VL53L1_Error VL53L1_FCTN_00153(
 
 
 
-VL53L1_Error VL53L1_FCTN_00154(
+VL53L1_Error VL53L1_set_general_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_general_config_t   *pdata);
 
@@ -401,7 +401,7 @@ VL53L1_Error VL53L1_FCTN_00154(
 
 
 
-VL53L1_Error VL53L1_FCTN_00155(
+VL53L1_Error VL53L1_get_general_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_general_config_t   *pdata);
 
@@ -417,7 +417,7 @@ VL53L1_Error VL53L1_FCTN_00155(
 
 
 
-VL53L1_Error VL53L1_FCTN_00088(
+VL53L1_Error VL53L1_i2c_encode_timing_config(
 	VL53L1_timing_config_t    *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -437,7 +437,7 @@ VL53L1_Error VL53L1_FCTN_00088(
 
 
 
-VL53L1_Error VL53L1_FCTN_00156(
+VL53L1_Error VL53L1_i2c_decode_timing_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_timing_config_t    *pdata);
@@ -457,7 +457,7 @@ VL53L1_Error VL53L1_FCTN_00156(
 
 
 
-VL53L1_Error VL53L1_FCTN_00157(
+VL53L1_Error VL53L1_set_timing_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_timing_config_t    *pdata);
 
@@ -476,7 +476,7 @@ VL53L1_Error VL53L1_FCTN_00157(
 
 
 
-VL53L1_Error VL53L1_FCTN_00158(
+VL53L1_Error VL53L1_get_timing_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_timing_config_t    *pdata);
 
@@ -492,7 +492,7 @@ VL53L1_Error VL53L1_FCTN_00158(
 
 
 
-VL53L1_Error VL53L1_FCTN_00089(
+VL53L1_Error VL53L1_i2c_encode_dynamic_config(
 	VL53L1_dynamic_config_t   *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -512,7 +512,7 @@ VL53L1_Error VL53L1_FCTN_00089(
 
 
 
-VL53L1_Error VL53L1_FCTN_00159(
+VL53L1_Error VL53L1_i2c_decode_dynamic_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_dynamic_config_t   *pdata);
@@ -532,7 +532,7 @@ VL53L1_Error VL53L1_FCTN_00159(
 
 
 
-VL53L1_Error VL53L1_FCTN_00160(
+VL53L1_Error VL53L1_set_dynamic_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_dynamic_config_t   *pdata);
 
@@ -551,7 +551,7 @@ VL53L1_Error VL53L1_FCTN_00160(
 
 
 
-VL53L1_Error VL53L1_FCTN_00161(
+VL53L1_Error VL53L1_get_dynamic_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_dynamic_config_t   *pdata);
 
@@ -567,7 +567,7 @@ VL53L1_Error VL53L1_FCTN_00161(
 
 
 
-VL53L1_Error VL53L1_FCTN_00090(
+VL53L1_Error VL53L1_i2c_encode_system_control(
 	VL53L1_system_control_t   *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -587,7 +587,7 @@ VL53L1_Error VL53L1_FCTN_00090(
 
 
 
-VL53L1_Error VL53L1_FCTN_00162(
+VL53L1_Error VL53L1_i2c_decode_system_control(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_system_control_t   *pdata);
@@ -607,7 +607,7 @@ VL53L1_Error VL53L1_FCTN_00162(
 
 
 
-VL53L1_Error VL53L1_FCTN_00093(
+VL53L1_Error VL53L1_set_system_control(
 	VL53L1_DEV                 Dev,
 	VL53L1_system_control_t   *pdata);
 
@@ -626,7 +626,7 @@ VL53L1_Error VL53L1_FCTN_00093(
 
 
 
-VL53L1_Error VL53L1_FCTN_00163(
+VL53L1_Error VL53L1_get_system_control(
 	VL53L1_DEV                 Dev,
 	VL53L1_system_control_t   *pdata);
 
@@ -642,7 +642,7 @@ VL53L1_Error VL53L1_FCTN_00163(
 
 
 
-VL53L1_Error VL53L1_FCTN_00164(
+VL53L1_Error VL53L1_i2c_encode_system_results(
 	VL53L1_system_results_t   *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -662,7 +662,7 @@ VL53L1_Error VL53L1_FCTN_00164(
 
 
 
-VL53L1_Error VL53L1_FCTN_00097(
+VL53L1_Error VL53L1_i2c_decode_system_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_system_results_t   *pdata);
@@ -682,7 +682,7 @@ VL53L1_Error VL53L1_FCTN_00097(
 
 
 
-VL53L1_Error VL53L1_FCTN_00165(
+VL53L1_Error VL53L1_set_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_system_results_t   *pdata);
 
@@ -701,7 +701,7 @@ VL53L1_Error VL53L1_FCTN_00165(
 
 
 
-VL53L1_Error VL53L1_FCTN_00166(
+VL53L1_Error VL53L1_get_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_system_results_t   *pdata);
 
@@ -717,7 +717,7 @@ VL53L1_Error VL53L1_FCTN_00166(
 
 
 
-VL53L1_Error VL53L1_FCTN_00167(
+VL53L1_Error VL53L1_i2c_encode_core_results(
 	VL53L1_core_results_t     *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -737,7 +737,7 @@ VL53L1_Error VL53L1_FCTN_00167(
 
 
 
-VL53L1_Error VL53L1_FCTN_00096(
+VL53L1_Error VL53L1_i2c_decode_core_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_core_results_t     *pdata);
@@ -757,7 +757,7 @@ VL53L1_Error VL53L1_FCTN_00096(
 
 
 
-VL53L1_Error VL53L1_FCTN_00168(
+VL53L1_Error VL53L1_set_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_core_results_t     *pdata);
 
@@ -776,7 +776,7 @@ VL53L1_Error VL53L1_FCTN_00168(
 
 
 
-VL53L1_Error VL53L1_FCTN_00169(
+VL53L1_Error VL53L1_get_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_core_results_t     *pdata);
 
@@ -792,7 +792,7 @@ VL53L1_Error VL53L1_FCTN_00169(
 
 
 
-VL53L1_Error VL53L1_FCTN_00170(
+VL53L1_Error VL53L1_i2c_encode_debug_results(
 	VL53L1_debug_results_t    *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -812,7 +812,7 @@ VL53L1_Error VL53L1_FCTN_00170(
 
 
 
-VL53L1_Error VL53L1_FCTN_00095(
+VL53L1_Error VL53L1_i2c_decode_debug_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_debug_results_t    *pdata);
@@ -832,7 +832,7 @@ VL53L1_Error VL53L1_FCTN_00095(
 
 
 
-VL53L1_Error VL53L1_FCTN_00171(
+VL53L1_Error VL53L1_set_debug_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_debug_results_t    *pdata);
 
@@ -851,7 +851,7 @@ VL53L1_Error VL53L1_FCTN_00171(
 
 
 
-VL53L1_Error VL53L1_FCTN_00172(
+VL53L1_Error VL53L1_get_debug_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_debug_results_t    *pdata);
 
@@ -867,7 +867,7 @@ VL53L1_Error VL53L1_FCTN_00172(
 
 
 
-VL53L1_Error VL53L1_FCTN_00173(
+VL53L1_Error VL53L1_i2c_encode_nvm_copy_data(
 	VL53L1_nvm_copy_data_t    *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -887,7 +887,7 @@ VL53L1_Error VL53L1_FCTN_00173(
 
 
 
-VL53L1_Error VL53L1_FCTN_00174(
+VL53L1_Error VL53L1_i2c_decode_nvm_copy_data(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_nvm_copy_data_t    *pdata);
@@ -907,7 +907,7 @@ VL53L1_Error VL53L1_FCTN_00174(
 
 
 
-VL53L1_Error VL53L1_FCTN_00175(
+VL53L1_Error VL53L1_set_nvm_copy_data(
 	VL53L1_DEV                 Dev,
 	VL53L1_nvm_copy_data_t    *pdata);
 
@@ -926,7 +926,7 @@ VL53L1_Error VL53L1_FCTN_00175(
 
 
 
-VL53L1_Error VL53L1_FCTN_00045(
+VL53L1_Error VL53L1_get_nvm_copy_data(
 	VL53L1_DEV                 Dev,
 	VL53L1_nvm_copy_data_t    *pdata);
 
@@ -942,7 +942,7 @@ VL53L1_Error VL53L1_FCTN_00045(
 
 
 
-VL53L1_Error VL53L1_FCTN_00176(
+VL53L1_Error VL53L1_i2c_encode_prev_shadow_system_results(
 	VL53L1_prev_shadow_system_results_t  *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -962,7 +962,7 @@ VL53L1_Error VL53L1_FCTN_00176(
 
 
 
-VL53L1_Error VL53L1_FCTN_00177(
+VL53L1_Error VL53L1_i2c_decode_prev_shadow_system_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_prev_shadow_system_results_t  *pdata);
@@ -982,7 +982,7 @@ VL53L1_Error VL53L1_FCTN_00177(
 
 
 
-VL53L1_Error VL53L1_FCTN_00178(
+VL53L1_Error VL53L1_set_prev_shadow_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_prev_shadow_system_results_t  *pdata);
 
@@ -1001,7 +1001,7 @@ VL53L1_Error VL53L1_FCTN_00178(
 
 
 
-VL53L1_Error VL53L1_FCTN_00179(
+VL53L1_Error VL53L1_get_prev_shadow_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_prev_shadow_system_results_t  *pdata);
 
@@ -1017,7 +1017,7 @@ VL53L1_Error VL53L1_FCTN_00179(
 
 
 
-VL53L1_Error VL53L1_FCTN_00180(
+VL53L1_Error VL53L1_i2c_encode_prev_shadow_core_results(
 	VL53L1_prev_shadow_core_results_t  *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -1037,7 +1037,7 @@ VL53L1_Error VL53L1_FCTN_00180(
 
 
 
-VL53L1_Error VL53L1_FCTN_00181(
+VL53L1_Error VL53L1_i2c_decode_prev_shadow_core_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_prev_shadow_core_results_t  *pdata);
@@ -1057,7 +1057,7 @@ VL53L1_Error VL53L1_FCTN_00181(
 
 
 
-VL53L1_Error VL53L1_FCTN_00182(
+VL53L1_Error VL53L1_set_prev_shadow_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_prev_shadow_core_results_t  *pdata);
 
@@ -1076,7 +1076,7 @@ VL53L1_Error VL53L1_FCTN_00182(
 
 
 
-VL53L1_Error VL53L1_FCTN_00183(
+VL53L1_Error VL53L1_get_prev_shadow_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_prev_shadow_core_results_t  *pdata);
 
@@ -1092,7 +1092,7 @@ VL53L1_Error VL53L1_FCTN_00183(
 
 
 
-VL53L1_Error VL53L1_FCTN_00184(
+VL53L1_Error VL53L1_i2c_encode_patch_debug(
 	VL53L1_patch_debug_t      *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -1112,7 +1112,7 @@ VL53L1_Error VL53L1_FCTN_00184(
 
 
 
-VL53L1_Error VL53L1_FCTN_00185(
+VL53L1_Error VL53L1_i2c_decode_patch_debug(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_patch_debug_t      *pdata);
@@ -1132,7 +1132,7 @@ VL53L1_Error VL53L1_FCTN_00185(
 
 
 
-VL53L1_Error VL53L1_FCTN_00186(
+VL53L1_Error VL53L1_set_patch_debug(
 	VL53L1_DEV                 Dev,
 	VL53L1_patch_debug_t      *pdata);
 
@@ -1151,7 +1151,7 @@ VL53L1_Error VL53L1_FCTN_00186(
 
 
 
-VL53L1_Error VL53L1_FCTN_00187(
+VL53L1_Error VL53L1_get_patch_debug(
 	VL53L1_DEV                 Dev,
 	VL53L1_patch_debug_t      *pdata);
 
@@ -1167,7 +1167,7 @@ VL53L1_Error VL53L1_FCTN_00187(
 
 
 
-VL53L1_Error VL53L1_FCTN_00188(
+VL53L1_Error VL53L1_i2c_encode_gph_general_config(
 	VL53L1_gph_general_config_t  *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -1187,7 +1187,7 @@ VL53L1_Error VL53L1_FCTN_00188(
 
 
 
-VL53L1_Error VL53L1_FCTN_00189(
+VL53L1_Error VL53L1_i2c_decode_gph_general_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_gph_general_config_t  *pdata);
@@ -1207,7 +1207,7 @@ VL53L1_Error VL53L1_FCTN_00189(
 
 
 
-VL53L1_Error VL53L1_FCTN_00190(
+VL53L1_Error VL53L1_set_gph_general_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_general_config_t  *pdata);
 
@@ -1226,7 +1226,7 @@ VL53L1_Error VL53L1_FCTN_00190(
 
 
 
-VL53L1_Error VL53L1_FCTN_00191(
+VL53L1_Error VL53L1_get_gph_general_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_general_config_t  *pdata);
 
@@ -1242,7 +1242,7 @@ VL53L1_Error VL53L1_FCTN_00191(
 
 
 
-VL53L1_Error VL53L1_FCTN_00192(
+VL53L1_Error VL53L1_i2c_encode_gph_static_config(
 	VL53L1_gph_static_config_t  *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -1262,7 +1262,7 @@ VL53L1_Error VL53L1_FCTN_00192(
 
 
 
-VL53L1_Error VL53L1_FCTN_00193(
+VL53L1_Error VL53L1_i2c_decode_gph_static_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_gph_static_config_t  *pdata);
@@ -1282,7 +1282,7 @@ VL53L1_Error VL53L1_FCTN_00193(
 
 
 
-VL53L1_Error VL53L1_FCTN_00194(
+VL53L1_Error VL53L1_set_gph_static_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_static_config_t  *pdata);
 
@@ -1301,7 +1301,7 @@ VL53L1_Error VL53L1_FCTN_00194(
 
 
 
-VL53L1_Error VL53L1_FCTN_00195(
+VL53L1_Error VL53L1_get_gph_static_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_static_config_t  *pdata);
 
@@ -1317,7 +1317,7 @@ VL53L1_Error VL53L1_FCTN_00195(
 
 
 
-VL53L1_Error VL53L1_FCTN_00196(
+VL53L1_Error VL53L1_i2c_encode_gph_timing_config(
 	VL53L1_gph_timing_config_t  *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -1337,7 +1337,7 @@ VL53L1_Error VL53L1_FCTN_00196(
 
 
 
-VL53L1_Error VL53L1_FCTN_00197(
+VL53L1_Error VL53L1_i2c_decode_gph_timing_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_gph_timing_config_t  *pdata);
@@ -1357,7 +1357,7 @@ VL53L1_Error VL53L1_FCTN_00197(
 
 
 
-VL53L1_Error VL53L1_FCTN_00198(
+VL53L1_Error VL53L1_set_gph_timing_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_timing_config_t  *pdata);
 
@@ -1376,7 +1376,7 @@ VL53L1_Error VL53L1_FCTN_00198(
 
 
 
-VL53L1_Error VL53L1_FCTN_00199(
+VL53L1_Error VL53L1_get_gph_timing_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_timing_config_t  *pdata);
 
@@ -1392,7 +1392,7 @@ VL53L1_Error VL53L1_FCTN_00199(
 
 
 
-VL53L1_Error VL53L1_FCTN_00200(
+VL53L1_Error VL53L1_i2c_encode_fw_internal(
 	VL53L1_fw_internal_t      *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -1412,7 +1412,7 @@ VL53L1_Error VL53L1_FCTN_00200(
 
 
 
-VL53L1_Error VL53L1_FCTN_00201(
+VL53L1_Error VL53L1_i2c_decode_fw_internal(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_fw_internal_t      *pdata);
@@ -1432,7 +1432,7 @@ VL53L1_Error VL53L1_FCTN_00201(
 
 
 
-VL53L1_Error VL53L1_FCTN_00202(
+VL53L1_Error VL53L1_set_fw_internal(
 	VL53L1_DEV                 Dev,
 	VL53L1_fw_internal_t      *pdata);
 
@@ -1451,7 +1451,7 @@ VL53L1_Error VL53L1_FCTN_00202(
 
 
 
-VL53L1_Error VL53L1_FCTN_00203(
+VL53L1_Error VL53L1_get_fw_internal(
 	VL53L1_DEV                 Dev,
 	VL53L1_fw_internal_t      *pdata);
 
@@ -1467,7 +1467,7 @@ VL53L1_Error VL53L1_FCTN_00203(
 
 
 
-VL53L1_Error VL53L1_FCTN_00204(
+VL53L1_Error VL53L1_i2c_encode_patch_results(
 	VL53L1_patch_results_t    *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -1487,7 +1487,7 @@ VL53L1_Error VL53L1_FCTN_00204(
 
 
 
-VL53L1_Error VL53L1_FCTN_00205(
+VL53L1_Error VL53L1_i2c_decode_patch_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_patch_results_t    *pdata);
@@ -1507,7 +1507,7 @@ VL53L1_Error VL53L1_FCTN_00205(
 
 
 
-VL53L1_Error VL53L1_FCTN_00206(
+VL53L1_Error VL53L1_set_patch_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_patch_results_t    *pdata);
 
@@ -1526,7 +1526,7 @@ VL53L1_Error VL53L1_FCTN_00206(
 
 
 
-VL53L1_Error VL53L1_FCTN_00207(
+VL53L1_Error VL53L1_get_patch_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_patch_results_t    *pdata);
 
@@ -1542,7 +1542,7 @@ VL53L1_Error VL53L1_FCTN_00207(
 
 
 
-VL53L1_Error VL53L1_FCTN_00208(
+VL53L1_Error VL53L1_i2c_encode_shadow_system_results(
 	VL53L1_shadow_system_results_t  *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -1562,7 +1562,7 @@ VL53L1_Error VL53L1_FCTN_00208(
 
 
 
-VL53L1_Error VL53L1_FCTN_00209(
+VL53L1_Error VL53L1_i2c_decode_shadow_system_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_shadow_system_results_t  *pdata);
@@ -1582,7 +1582,7 @@ VL53L1_Error VL53L1_FCTN_00209(
 
 
 
-VL53L1_Error VL53L1_FCTN_00210(
+VL53L1_Error VL53L1_set_shadow_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_shadow_system_results_t  *pdata);
 
@@ -1601,7 +1601,7 @@ VL53L1_Error VL53L1_FCTN_00210(
 
 
 
-VL53L1_Error VL53L1_FCTN_00211(
+VL53L1_Error VL53L1_get_shadow_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_shadow_system_results_t  *pdata);
 
@@ -1617,7 +1617,7 @@ VL53L1_Error VL53L1_FCTN_00211(
 
 
 
-VL53L1_Error VL53L1_FCTN_00212(
+VL53L1_Error VL53L1_i2c_encode_shadow_core_results(
 	VL53L1_shadow_core_results_t  *pdata,
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer);
@@ -1637,7 +1637,7 @@ VL53L1_Error VL53L1_FCTN_00212(
 
 
 
-VL53L1_Error VL53L1_FCTN_00213(
+VL53L1_Error VL53L1_i2c_decode_shadow_core_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_shadow_core_results_t  *pdata);
@@ -1657,7 +1657,7 @@ VL53L1_Error VL53L1_FCTN_00213(
 
 
 
-VL53L1_Error VL53L1_FCTN_00214(
+VL53L1_Error VL53L1_set_shadow_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_shadow_core_results_t  *pdata);
 
@@ -1676,7 +1676,7 @@ VL53L1_Error VL53L1_FCTN_00214(
 
 
 
-VL53L1_Error VL53L1_FCTN_00215(
+VL53L1_Error VL53L1_get_shadow_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_shadow_core_results_t  *pdata);
 

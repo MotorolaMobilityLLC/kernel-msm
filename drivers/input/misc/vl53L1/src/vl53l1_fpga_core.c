@@ -115,7 +115,7 @@
 
 
 
-VL53L1_Error VL53L1_FCTN_00143(
+VL53L1_Error VL53L1_is_firmware_ready_fpga(
 	VL53L1_DEV     Dev,
 	uint8_t       *pready)
 {
@@ -139,25 +139,25 @@ VL53L1_Error VL53L1_FCTN_00143(
 
 	status = VL53L1_ReadMulti(
 					Dev,
-					VL53L1_DEF_00169,
+					VL53L1_INTERRUPT_MANAGER__ENABLES,
 					comms_buffer,
 					5);
 
 	if (status == VL53L1_ERROR_NONE) {
 
-		pdev->VL53L1_PRM_00047.VL53L1_PRM_00315 =
+		pdev->dbg_results.interrupt_manager__enables =
 				comms_buffer[0];
-		pdev->VL53L1_PRM_00047.VL53L1_PRM_00316 =
+		pdev->dbg_results.interrupt_manager__clear =
 				comms_buffer[1];
-		pdev->VL53L1_PRM_00047.VL53L1_PRM_00317 =
+		pdev->dbg_results.interrupt_manager__status =
 				comms_buffer[2];
-		pdev->VL53L1_PRM_00047.VL53L1_PRM_00318 =
+		pdev->dbg_results.mcu_to_host_bank__wr_access_en =
 				comms_buffer[3];
-		pdev->VL53L1_PRM_00047.VL53L1_PRM_00319 =
+		pdev->dbg_results.power_management__go1_reset_status =
 				comms_buffer[4];
 
-		if (((pdev->VL53L1_PRM_00047.VL53L1_PRM_00315 & 0x1F) == 0x1F) &&
-			((pdev->VL53L1_PRM_00047.VL53L1_PRM_00316   & 0x1F) == 0x1F))
+		if (((pdev->dbg_results.interrupt_manager__enables & 0x1F) == 0x1F) &&
+			((pdev->dbg_results.interrupt_manager__clear   & 0x1F) == 0x1F))
 			*pready = 0x01;
 		else
 			*pready = 0x00;
