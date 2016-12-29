@@ -186,8 +186,12 @@ typedef int8_t VL53L1_Error;
 #define VL53L1_ERROR_ZONE_GPH_ID_CHECK_FAIL           ((VL53L1_Error) - 21)
 
 
+#define VL53L1_ERROR_XTALK_EXTRACTION_FAIL            ((VL53L1_Error) - 22)
 
-#define VL53L1_ERROR_NOT_IMPLEMENTED                   ((VL53L1_Error) - 22)
+
+
+
+#define VL53L1_ERROR_NOT_IMPLEMENTED                   ((VL53L1_Error) - 23)
 
 
 
