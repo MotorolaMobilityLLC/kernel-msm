@@ -144,7 +144,7 @@ extern "C" {
 
 
 
-VL53L1_Error VL53L1_FCTN_00018(
+VL53L1_Error VL53L1_run_ref_spad_char(
 	VL53L1_DEV     Dev);
 
 
@@ -179,14 +179,14 @@ VL53L1_Error VL53L1_FCTN_00018(
 
 
 
-VL53L1_Error VL53L1_FCTN_00020(
+VL53L1_Error VL53L1_set_ref_spad_char_config(
 	VL53L1_DEV    Dev,
 	uint8_t       vcsel_period_a,
 	uint32_t      phasecal_timeout_us,
 	uint16_t      total_rate_target_mcps,
 	uint16_t      max_count_rate_rtn_limit_mcps,
 	uint16_t      min_count_rate_rtn_limit_mcps,
-	uint16_t      VL53L1_PRM_00098);
+	uint16_t      fast_osc_frequency);
 
 
 
@@ -205,9 +205,9 @@ VL53L1_Error VL53L1_FCTN_00020(
 
 
 
-VL53L1_Error VL53L1_FCTN_00021(
+VL53L1_Error VL53L1_run_device_test(
 	VL53L1_DEV                 Dev,
-	uint8_t                    VL53L1_PRM_00046);
+	uint8_t                    device_test_mode);
 
 
 
@@ -232,11 +232,13 @@ VL53L1_Error VL53L1_FCTN_00021(
 
 
 
-VL53L1_Error   VL53L1_FCTN_00010(
+
+VL53L1_Error   VL53L1_run_xtalk_extraction(
 	VL53L1_DEV	                        Dev,
-	uint32_t                            VL53L1_PRM_00006,
-	uint32_t                            VL53L1_PRM_00007,
-	uint8_t                             num_of_samples);
+	uint32_t                            mm_config_timeout_us,
+	uint32_t                            range_config_timeout_us,
+	uint8_t                             num_of_samples,
+	uint16_t                            xtalk_filter_thresh_mm);
 
 
 
@@ -270,11 +272,11 @@ VL53L1_Error   VL53L1_FCTN_00010(
 
 
 
-VL53L1_Error   VL53L1_FCTN_00011(
+VL53L1_Error   VL53L1_run_offset_calibration(
 	VL53L1_DEV	      Dev,
-	uint32_t          VL53L1_PRM_00007,
+	uint32_t          range_config_timeout_us,
 	uint8_t           num_of_samples,
-	int32_t           VL53L1_PRM_00081);
+	int32_t           target_distance_mm);
 
 
 #ifdef __cplusplus
