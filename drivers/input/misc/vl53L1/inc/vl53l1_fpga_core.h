@@ -116,7 +116,7 @@ extern "C" {
 
 
 
-VL53L1_Error VL53L1_FCTN_00143(
+VL53L1_Error VL53L1_is_firmware_ready_fpga(
 	VL53L1_DEV      Dev,
 	uint8_t        *pready);
 
