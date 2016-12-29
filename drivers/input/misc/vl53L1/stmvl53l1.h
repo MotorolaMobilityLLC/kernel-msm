@@ -71,45 +71,42 @@
  * to enable/disable sensor power
  * see module-i2c or module-cci file
  */
-#define CFG_STMVL53L1_HAVE_REGULATOR
+/* define CFG_STMVL53L1_HAVE_REGULATOR */
 
 #define STMVL53L1_SLAVE_ADDR	(0x52>>1)
 
-#define DRIVER_VERSION		"5.0.0"
-
-/**@defgroup  vl53l1_mod_dbg
- *
- * comment or not DEBUG in stmvl53l1.h to enable debug msg
- *
- * comment or not FORCE_CONSOLE_DEBUG in stmvl53l1.h  to force dbg msg
- * as info log direct echo on main console (require debug)
- */
+#define DRIVER_VERSION		"6.1.0"
 
 /** @ingroup vl53l1_mod_dbg
  * @{
  */
-#if 0
+#if 1
 #define DEBUG	1
 #endif
 #if 0
 #define FORCE_CONSOLE_DEBUG
 #endif
 
+extern int stmvl53l1_enable_debug;
 
 #ifdef DEBUG
 #	ifdef FORCE_CONSOLE_DEBUG
-#		define vl53l1_dbgmsg(str, ...)\
-	printk(KERN_INFO "%s: " str, __func__, ##__VA_ARGS__)
+#define vl53l1_dbgmsg(str, ...) do { \
+	if (stmvl53l1_enable_debug) \
+		pr_info("%s: " str, __func__, ##__VA_ARGS__); \
+	} while (0)
 #	else
-#		define vl53l1_dbgmsg(str, ...)\
-	printk(KERN_DEBUG "%s: " str, __func__, ##__VA_ARGS__)
+#define vl53l1_dbgmsg(str, ...) do { \
+	if (stmvl53l1_enable_debug) \
+		pr_debug("%s: " str, __func__, ##__VA_ARGS__); \
+	} while (0)
 #	endif
 #else
 #	define vl53l1_dbgmsg(...) (void)0
 #endif
 
 /**
- * set to 0 1 static config activate debug from work (data interrupt/polling)
+ * set to 0 1 activate or not debug from work (data interrupt/polling)
  */
 #define WORK_DEBUG	0
 #if WORK_DEBUG
@@ -126,7 +123,7 @@
 	pr_err("%s: " str, __func__, ##args)
 
 #define vl53l1_wanrmsg(str, args...) \
-	pr_warning("%s: " str, __func__, ##args)
+	pr_warn("%s: " str, __func__, ##args)
 
 
 #define VL53L0_VDD_MIN      2600000
@@ -147,32 +144,11 @@
 #include <linux/netlink.h>
 #include <linux/wait.h>
 
-
-/**
- * @mainpage
- * @section ipp_abort abort and stop during ipp call
- *
- *  device will not be locked "while ipp fly" between kernel and user so we can
- *  accept and executed stop/abort and flush (android) other command
- *  in a say "no block" or reasonable "no wait" time
- *
- *  That is to ensure if anything goes wrong in user space (slow, dies ) driver
- *  is  not maintain in a dead-locked for ever state.
- *
- *  In case range is stoped/aborted while ipp fly their's a rare but possible
- *  scenarios where a races can occur causing possibly a deadlock,bad-handling
- *  if restarting very quickly.\n
- *  This can be eliminated by putting some requirement constrains on
- *  back to back execution of stop re-start and dedicatin a  wait queue
- *  (to wait previous flying ipp) .
- *
- *  In a  second step we' could make "start " blocking to eliminated this
- *  (extra wait queue)
- *  @warning beware that is not handled rigth now !
+/** if set to 1 enable ipp execution timing (if debug enabled)
+ * @ingroup vl53l1_mod_dbg
  */
-
-/** if set to 1 enable ipp execution timing */
 #define IPP_LOG_TIMING	1
+
 struct ipp_data_t {
 	struct ipp_work_t work;
 	struct ipp_work_t work_out;
@@ -202,6 +178,11 @@ struct ipp_data_t {
 #endif
 };
 
+struct stmvl53l1_waiters {
+	struct list_head list;
+	pid_t pid;
+};
+
 /*
  *  driver data structs
  */
@@ -223,8 +204,8 @@ struct stmvl53l1_data {
 
 	/* misc device */
 	struct miscdevice miscdev;
-	int reset;
-	/*!< set when device got reset or re-powered and require more setup */
+	/* first irq has no valid data, so avoid to update data on first one */
+	int is_first_irq;
 
 	/* control data */
 	int poll_mode;	/*!< use poll even if interrupt line present*/
@@ -237,6 +218,8 @@ struct stmvl53l1_data {
 
 	int preset_mode;	/*!< preset working mode of the device */
 	uint32_t timing_budget;	/*!< Timing Budget */
+	int distance_mode;	/*!< distance mode of the device */
+	int crosstalk_enable;	/*!< is crosstalk compensation is enable */
 
 	/* PS parameters */
 
@@ -267,6 +250,15 @@ struct stmvl53l1_data {
 	/* Polling thread */
 	/* Wait Queue on which the poll thread blocks */
 
+	/* Manage blocking ioctls */
+	struct list_head simple_data_reader_list;
+	struct list_head mz_data_reader_list;
+	wait_queue_head_t waiter_for_data;
+	bool is_data_valid;
+
+	/* control when using delay is acceptable */
+	bool is_delay_allowed;
+
 	/* Recent interrupt status */
 	/* roi */
 	VL53L1_RoiConfig_t roi_cfg;
@@ -280,10 +272,11 @@ struct stmvl53l1_data {
 #	define stmvl531_ipp_time(data)\
 		stmvl53l1_tv_dif(&data->ipp.start_tv, &data->ipp.stop_tv)
 #	define stmvl531_ipp_stat(data, fmt, ...)\
-		printk(KERN_DEBUG "IPPSTAT " fmt "\n", ##__VA_ARGS__)
+		pr_debug("IPPSTAT " fmt "\n", ##__VA_ARGS__)
 #else
 #	define stmvl531_ipp_tim_stop(data) (void)0
 #	define stmvl531_ipp_tim_start(data) (void)0
+#	define stmvl531_ipp_stat(...) (void)0
 #endif
 };
 
