@@ -122,7 +122,7 @@
 	VL53L1_trace_print_module_function(VL53L1_TRACE_MODULE_HISTOGRAM, level, VL53L1_TRACE_FUNCTION_NONE, ##__VA_ARGS__)
 
 
-VL53L1_Error VL53L1_FCTN_00144(
+VL53L1_Error VL53L1_set_calib_config(
 	VL53L1_DEV      Dev,
 	uint8_t         vcsel_delay__a0,
 	uint8_t         calib_1,
@@ -145,10 +145,10 @@ VL53L1_Error VL53L1_FCTN_00144(
 
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00019(Dev);
+		status = VL53L1_enable_powerforce(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 
 
@@ -156,13 +156,13 @@ VL53L1_Error VL53L1_FCTN_00144(
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WrByte(
 					Dev,
-					VL53L1_DEF_00170,
+					VL53L1_RANGING_CORE__VCSEL_DELAY__A0,
 					vcsel_delay__a0);
 
 
 
 
-	if (status == VL53L1_ERROR_NONE)
+	if (status == VL53L1_ERROR_NONE) {
 
 
 
@@ -176,9 +176,10 @@ VL53L1_Error VL53L1_FCTN_00144(
 
 		status = VL53L1_WriteMulti(
 					Dev,
-					VL53L1_DEF_00171,
+					VL53L1_RANGING_CORE__CALIB_1,
 					comms_buffer,
 					3);
+	}
 
 
 
@@ -186,7 +187,7 @@ VL53L1_Error VL53L1_FCTN_00144(
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WrByte(
 					Dev,
-					VL53L1_DEF_00172,
+					VL53L1_RANGING_CORE__CALIB_2__A0,
 					calib_2__a0);
 
 
@@ -195,14 +196,14 @@ VL53L1_Error VL53L1_FCTN_00144(
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WrByte(
 					Dev,
-					VL53L1_DEF_00173,
+					VL53L1_RANGING_CORE__SPAD_READOUT,
 					spad_readout);
 
 
 
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -211,7 +212,7 @@ VL53L1_Error VL53L1_FCTN_00144(
 
 
 
-VL53L1_Error VL53L1_FCTN_00145(
+VL53L1_Error VL53L1_set_hist_calib_pulse_delay(
 	VL53L1_DEV      Dev,
 	uint8_t         calib_delay)
 {
@@ -225,7 +226,7 @@ VL53L1_Error VL53L1_FCTN_00145(
 	LOG_FUNCTION_START("");
 
 	status =
-		VL53L1_FCTN_00144(
+		VL53L1_set_calib_config(
 			Dev,
 			0x01,
 
@@ -237,7 +238,7 @@ VL53L1_Error VL53L1_FCTN_00145(
 
 			0x14,
 
-			VL53L1_DEF_00174);
+			VL53L1_RANGING_CORE__SPAD_READOUT__CALIB_PULSES);
 
 	LOG_FUNCTION_END(status);
 
@@ -245,7 +246,7 @@ VL53L1_Error VL53L1_FCTN_00145(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00146(
+VL53L1_Error VL53L1_disable_calib_pulse_delay(
 	VL53L1_DEV      Dev)
 {
 
@@ -258,7 +259,7 @@ VL53L1_Error VL53L1_FCTN_00146(
 	LOG_FUNCTION_START("");
 
 	status =
-		VL53L1_FCTN_00144(
+		VL53L1_set_calib_config(
 			Dev,
 			0x00,
 
@@ -270,7 +271,7 @@ VL53L1_Error VL53L1_FCTN_00146(
 
 			0x00,
 
-			VL53L1_DEF_00175);
+			VL53L1_RANGING_CORE__SPAD_READOUT__STANDARD);
 
 	LOG_FUNCTION_END(status);
 
