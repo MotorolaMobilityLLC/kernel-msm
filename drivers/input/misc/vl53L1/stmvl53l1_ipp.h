@@ -98,7 +98,7 @@ typedef uint64_t ipp_arg_t;
 /**
  * declare variable needed for ipp serialization
  */
-#define IPP_SERIALIZE_VAR	int ipp_offset;
+#define IPP_SERIALIZE_VAR	int ipp_offset
 /**
  * Put in function start to init the serialization coding
  *
@@ -131,8 +131,8 @@ typedef uint64_t ipp_arg_t;
  *
  */
 #define IPP_SERIALIZE_START(ipp_args, n_args)\
-		do {ipp_offset = IPP_ALIGN_OFFSET((char *)(&ipp_args[n_args]) -\
-			(char *)ipp_args); } while (0)
+	(ipp_offset = IPP_ALIGN_OFFSET((char *)(&ipp_args[n_args]) - \
+	(char *)ipp_args))
 
 /**
  * @brief Serialize scalar argument
@@ -231,8 +231,8 @@ typedef uint64_t ipp_arg_t;
  * IPP_GET_ARG_PTR(args,2,parg2);
  * @endcode
  */
-#define IPP_GET_ARG_PTR(ipp_args, n, p) do {p = (void *)((char *)ipp_args +\
-		ipp_args[n]) ;} while (0)
+#define IPP_GET_ARG_PTR(ipp_args, n, p) (p = (void *)((char *)ipp_args + \
+	ipp_args[n]))
 
 
 
@@ -265,6 +265,10 @@ enum stmvl53l1_ipp_proccesing_e {
 	 */
 	stmvl53l1_ipp_cal_hist = 1,
 	/*!< stmvl53l1_ipp_cal_hist process cal hist*/
+
+	stmvl53l1_ipp_xtalk_calibration = 2,
+	/*!< stmvl53l1_ipp_xtalk_calibration process crosstalk calibration data
+	 */
 
 	/** keep last*/
 	stmvl53l1_ipp_max /*!< stmvl53l1_ipp_max */
@@ -318,7 +322,7 @@ struct ipp_work_t {
 /**
  * max payload per ipp transfer
  */
-#define IPP_WORK_MAX_PAYLAOD	sizeof(struct ipp_work_t)
+#define IPP_WORK_MAX_PAYLOAD	sizeof(struct ipp_work_t)
 
 /** copy ipp header from src to dest
  *
@@ -354,9 +358,9 @@ static inline void ipp_dump_work(struct ipp_work_t *pw, uint32_t max_data,
 	IPP_PRINT("status %d\n",  pw->status);
 	IPP_PRINT("Xfer id 0x%08X payload  %d bytes (%s)\n", pw->xfer_id,
 			pw->payload,
-			pw->payload > IPP_WORK_MAX_PAYLAOD ? "invalid" : "ok");
-	data_cnt = pw->payload > IPP_WORK_MAX_PAYLAOD ?
-			IPP_WORK_MAX_PAYLAOD : pw->payload;
+			pw->payload > IPP_WORK_MAX_PAYLOAD ? "invalid" : "ok");
+	data_cnt = pw->payload > IPP_WORK_MAX_PAYLOAD ?
+			IPP_WORK_MAX_PAYLOAD : pw->payload;
 	data_cnt  = data_cnt > max_data ? max_data : data_cnt;
 	for (i = 0, pbdata = (uint8_t *)pw->data; i < data_cnt; i++) {
 		if (i%16 == 0)
