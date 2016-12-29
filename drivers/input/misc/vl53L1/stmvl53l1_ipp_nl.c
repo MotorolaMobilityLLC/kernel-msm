@@ -51,8 +51,10 @@
 #endif
 
 #define IPP_STATE_PENDING	1
-#define IPP_STATE_COMPELTED	2
+#define IPP_STATE_COMPLETED	2
 #define IPP_STATE_CANCELED	4
+
+#define IPP_TIMEOUT_MS		100
 
 /** the single netlink strut use by all instance
  * @note is NULL until set
@@ -89,7 +91,7 @@ static int next_xfer_id;
 		__func__, __LINE__, ##__VA_ARGS__)
 
 #if 0
-#	define ipp_dbg(fmt, ...) printk(KERN_INFO "IPP %s %d " fmt "\n",\
+#	define ipp_dbg(fmt, ...) pr_info("IPP %s %d " fmt "\n",\
 		__func__, __LINE__, ##__VA_ARGS__)
 #else
 #	define ipp_dbg(...) (void)0
@@ -150,7 +152,7 @@ int ipp_in_process(struct ipp_work_t *pwork)
 	struct stmvl53l1_data *data;
 
 	ipp_dbg("enter");
-	_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLAOD, ipp_n_dev);
+	_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD, ipp_n_dev);
 
 	/* work id check already done */
 	data = stmvl53l1_dev_table[pwork->dev_id];
@@ -162,7 +164,7 @@ int ipp_in_process(struct ipp_work_t *pwork)
 		if (data->ipp.waited_xfer_id == pwork->xfer_id) {
 			/* ok that is what we are expecting back */
 			memcpy(&data->ipp.work_out, pwork, pwork->payload);
-			data->ipp.buzy |= IPP_STATE_COMPELTED;
+			data->ipp.buzy |= IPP_STATE_COMPLETED;
 			ipp_dbg("to wake ipp waiter as buzy state %d",
 					data->ipp.buzy);
 			wake_up(&data->ipp.waitq);
@@ -188,7 +190,7 @@ int stmvl53l1_ipp_stop(struct stmvl53l1_data *data)
 	if (data->ipp.buzy) {
 		/* set invalid wait id to discard canceled job when back */
 		data->ipp.waited_xfer_id = 0;
-		data->ipp.buzy |= IPP_STATE_CANCELED|IPP_STATE_COMPELTED;
+		data->ipp.buzy |= IPP_STATE_CANCELED|IPP_STATE_COMPLETED;
 		ipp_dbg("#%dto wake up worker", data->id);
 		/* wake up worker or abort the thread */
 		wake_up(&data->ipp.waitq);
@@ -205,6 +207,7 @@ int stmvl53l1_ipp_do(struct stmvl53l1_data *data,
 {
 	int xfer_id;
 	int rc;
+	bool has_timeout;
 
 	ipp_dbg("enter");
 	/* TODO shall we enforce that dev is "registered "
@@ -233,17 +236,20 @@ int stmvl53l1_ipp_do(struct stmvl53l1_data *data,
 
 		/* put task to wait for completion */
 		ipp_dbg("to wait");
-		wait_event(data->ipp.waitq,
-				(data->ipp.buzy != IPP_STATE_PENDING));
+		has_timeout = !wait_event_timeout(data->ipp.waitq,
+			(data->ipp.buzy != IPP_STATE_PENDING),
+			msecs_to_jiffies(IPP_TIMEOUT_MS));
 
 		/* relock the main lock */
 		mutex_lock(&data->work_mutex);
 		mutex_lock(&data->ipp.mutex);
-		rc = data->ipp.buzy & IPP_STATE_CANCELED ? -1 : 0;
+
+		rc = (data->ipp.buzy & IPP_STATE_CANCELED) || has_timeout ?
+			-1 : 0;
 		if (rc) {
 			/* TODO shall we kill status in return work ? */
 			/* data->ipp.status = -1; */
-			ipp_dbg("waking up with from canceled ipp");
+			ipp_dbg("waking up with from canceled/timeout ipp");
 		} else {
 			/* return status from the ipp itself */
 			ipp_dbg("ip back with status %d", data->ipp.status);
@@ -274,10 +280,10 @@ static void stmvl53l1_nl_recv_msg(struct sk_buff *skb_in)
 
 	pwork = nlmsg_data(nlh);
 	if (pwork->payload < IPP_WORK_HDR_SIZE ||
-			pwork->payload > IPP_WORK_MAX_PAYLAOD){
+			pwork->payload > IPP_WORK_MAX_PAYLOAD){
 		/* invalid header size */
 		ipp_err("invalid msg header size %d", pwork->payload);
-		_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLAOD, ipp_n_dev);
+		_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD, ipp_n_dev);
 		return;
 	}
 
@@ -285,7 +291,7 @@ static void stmvl53l1_nl_recv_msg(struct sk_buff *skb_in)
 
 	if (pwork->dev_id >= ipp_n_dev) {
 		ipp_err("invalid dev id on msg %d", pwork->dev_id);
-		_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLAOD, ipp_n_dev);
+		_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD, ipp_n_dev);
 		goto done_locked;
 	}
 
@@ -294,9 +300,9 @@ static void stmvl53l1_nl_recv_msg(struct sk_buff *skb_in)
 		 * if not it is a badly format message or bad message
 		 */
 		if (pwork->payload !=  IPP_WORK_HDR_SIZE) {
-			ipp_err("invalid ping msg size %d!=%lu ",
-					pwork->payload, IPP_WORK_HDR_SIZE);
-			_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLAOD, ipp_n_dev);
+			ipp_err("invalid ping msg size %d!=%d ",
+					pwork->payload, (int)IPP_WORK_HDR_SIZE);
+			_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD, ipp_n_dev);
 			goto done_locked;
 		}
 		/* if pid was not set or change resent all ongoing ipp */
@@ -353,8 +359,7 @@ void stmvl53l1_ipp_cleanup(struct stmvl53l1_data *data)
 	}
 }
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3, 8, 0)
-
+#if !defined(OLD_NETLINK_API)
 struct netlink_kernel_cfg cfg = {
 	.input = stmvl53l1_nl_recv_msg
 };
@@ -366,8 +371,7 @@ int stmvl53l1_ipp_init(void)
 	mutex_lock(&ipp_mutex);
 	daemon_pid = 1; /* pid  1 is safe should not be use for user space */
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 8, 0)
-
+#if defined(OLD_NETLINK_API)
 	nl_sk = netlink_kernel_create(&init_net,
 			STMVL531_CFG_NETLINK_USER,
 			0,
@@ -380,7 +384,7 @@ int stmvl53l1_ipp_init(void)
 			&cfg);
 #endif
 
-	return nl_sk == NULL;
+	return nl_sk ? 0 : -1;
 }
 
 

@@ -113,7 +113,7 @@ extern "C" {
 
 
 
-VL53L1_Error VL53L1_FCTN_00032(
+VL53L1_Error VL53L1_get_version(
 	VL53L1_DEV            Dev,
 	VL53L1_ll_version_t  *pversion);
 
@@ -132,7 +132,7 @@ VL53L1_Error VL53L1_FCTN_00032(
 
 
 
-VL53L1_Error VL53L1_FCTN_00034(
+VL53L1_Error VL53L1_is_fpga_system(
 	VL53L1_DEV        Dev,
 	uint8_t          *pfpga_system);
 
@@ -147,7 +147,7 @@ VL53L1_Error VL53L1_FCTN_00034(
 
 
 
-VL53L1_Error VL53L1_FCTN_00035(
+VL53L1_Error VL53L1_get_device_firmware_version(
 	VL53L1_DEV         Dev,
 	uint16_t          *pfw_version);
 
@@ -166,7 +166,7 @@ VL53L1_Error VL53L1_FCTN_00035(
 
 
 
-VL53L1_Error VL53L1_FCTN_00001(
+VL53L1_Error VL53L1_data_init(
 	VL53L1_DEV         Dev,
 	uint8_t            read_p2p_data);
 
@@ -186,7 +186,7 @@ VL53L1_Error VL53L1_FCTN_00001(
 
 
 
-VL53L1_Error VL53L1_FCTN_00039(
+VL53L1_Error VL53L1_read_p2p_data(
 	VL53L1_DEV      Dev);
 
 
@@ -201,7 +201,7 @@ VL53L1_Error VL53L1_FCTN_00039(
 
 
 
-VL53L1_Error VL53L1_FCTN_00003(
+VL53L1_Error VL53L1_software_reset(
 	VL53L1_DEV      Dev);
 
 
@@ -222,9 +222,15 @@ VL53L1_Error VL53L1_FCTN_00003(
 
 
 
-VL53L1_Error VL53L1_FCTN_00047(
+
+
+
+
+
+VL53L1_Error VL53L1_set_part_to_part_data(
     VL53L1_DEV                      Dev,
 	VL53L1_customer_nvm_managed_t  *pcustomer,
+	VL53L1_dmax_calibration_data_t *pdmax_cal,
 	VL53L1_xtalk_histogram_data_t  *pxtalkhisto);
 
 
@@ -242,9 +248,15 @@ VL53L1_Error VL53L1_FCTN_00047(
 
 
 
-VL53L1_Error VL53L1_FCTN_00048(
+
+
+
+
+
+VL53L1_Error VL53L1_get_part_to_part_data(
     VL53L1_DEV                      Dev,
 	VL53L1_customer_nvm_managed_t  *pcustomer,
+	VL53L1_dmax_calibration_data_t *pdmax_cal,
 	VL53L1_xtalk_histogram_data_t  *pxtalkhisto);
 
 
@@ -261,9 +273,9 @@ VL53L1_Error VL53L1_FCTN_00048(
 
 
 
-VL53L1_Error VL53L1_FCTN_00006(
+VL53L1_Error VL53L1_set_inter_measurement_period_ms(
     VL53L1_DEV          Dev,
-    uint32_t            VL53L1_PRM_00008);
+    uint32_t            inter_measurement_period_ms);
 
 
 
@@ -279,7 +291,7 @@ VL53L1_Error VL53L1_FCTN_00006(
 
 
 
-VL53L1_Error VL53L1_FCTN_00007(
+VL53L1_Error VL53L1_get_inter_measurement_period_ms(
     VL53L1_DEV          Dev,
     uint32_t           *pinter_measurement_period_ms);
 
@@ -295,7 +307,122 @@ VL53L1_Error VL53L1_FCTN_00007(
 
 
 
-VL53L1_Error VL53L1_FCTN_00049(
+
+
+
+
+VL53L1_Error VL53L1_set_timeouts_us(
+    VL53L1_DEV          Dev,
+    uint32_t            mm_config_timeout_us,
+	uint32_t            range_config_timeout_us);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_timeouts_us(
+    VL53L1_DEV          Dev,
+    uint32_t           *pmm_config_timeout_us,
+	uint32_t           *prange_config_timeout_us);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_calibration_repeat_period(
+    VL53L1_DEV          Dev,
+    uint16_t            cal_config__repeat_period);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_calibration_repeat_period(
+    VL53L1_DEV          Dev,
+    uint16_t           *pcal_config__repeat_period);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_interrupt_polarity(
+    VL53L1_DEV                       Dev,
+    VL53L1_DeviceInterruptPolarity  interrupt_polarity);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_interrupt_polarity(
+    VL53L1_DEV                      Dev,
+    VL53L1_DeviceInterruptPolarity  *pinterrupt_polarity);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_user_zone(
     VL53L1_DEV          Dev,
     VL53L1_user_zone_t *puser_zone);
 
@@ -311,7 +438,7 @@ VL53L1_Error VL53L1_FCTN_00049(
 
 
 
-VL53L1_Error VL53L1_FCTN_00051(
+VL53L1_Error VL53L1_get_user_zone(
     VL53L1_DEV          Dev,
     VL53L1_user_zone_t *puser_zone);
 
@@ -327,7 +454,7 @@ VL53L1_Error VL53L1_FCTN_00051(
 
 
 
-VL53L1_Error VL53L1_FCTN_00053(
+VL53L1_Error VL53L1_get_mode_mitigation_roi(
     VL53L1_DEV          Dev,
     VL53L1_user_zone_t *pmm_roi);
 
@@ -348,7 +475,7 @@ VL53L1_Error VL53L1_FCTN_00053(
 
 
 
-VL53L1_Error VL53L1_FCTN_00008(
+VL53L1_Error VL53L1_set_zone_config(
     VL53L1_DEV             Dev,
     VL53L1_zone_config_t  *pzone_cfg);
 
@@ -366,7 +493,7 @@ VL53L1_Error VL53L1_FCTN_00008(
 
 
 
-VL53L1_Error VL53L1_FCTN_00009(
+VL53L1_Error VL53L1_get_zone_config(
     VL53L1_DEV             Dev,
 	VL53L1_zone_config_t  *pzone_cfg);
 
@@ -400,12 +527,12 @@ VL53L1_Error VL53L1_FCTN_00009(
 
 
 
-VL53L1_Error VL53L1_FCTN_00004(
+VL53L1_Error VL53L1_set_preset_mode(
     VL53L1_DEV                 Dev,
 	VL53L1_DevicePresetModes   device_preset_mode,
-	uint32_t                   VL53L1_PRM_00006,
-	uint32_t                   VL53L1_PRM_00007,
-	uint32_t                   VL53L1_PRM_00008);
+	uint32_t                   mm_config_timeout_us,
+	uint32_t                   range_config_timeout_us,
+	uint32_t                   inter_measurement_period_ms);
 
 
 
@@ -419,9 +546,41 @@ VL53L1_Error VL53L1_FCTN_00004(
 
 
 
-VL53L1_Error VL53L1_FCTN_00080(
+VL53L1_Error VL53L1_set_zone_preset(
     VL53L1_DEV               Dev,
-	VL53L1_DeviceZonePreset  VL53L1_PRM_00109);
+	VL53L1_DeviceZonePreset  zone_preset);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_enable_xtalk_compensation(
+	VL53L1_DEV                 Dev);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_disable_xtalk_compensation(
+	VL53L1_DEV                 Dev);
 
 
 
@@ -467,10 +626,9 @@ VL53L1_Error VL53L1_FCTN_00080(
 
 
 
-
-VL53L1_Error VL53L1_FCTN_00012(
+VL53L1_Error VL53L1_init_and_start_range(
 	VL53L1_DEV                      Dev,
-	uint8_t                         VL53L1_PRM_00005,
+	uint8_t                         measurement_mode,
 	VL53L1_DeviceConfigLevel        device_config_level);
 
 
@@ -485,7 +643,7 @@ VL53L1_Error VL53L1_FCTN_00012(
 
 
 
-VL53L1_Error VL53L1_FCTN_00013(
+VL53L1_Error VL53L1_stop_range(
 	VL53L1_DEV  Dev);
 
 
@@ -515,7 +673,7 @@ VL53L1_Error VL53L1_FCTN_00013(
 
 
 
-VL53L1_Error VL53L1_FCTN_00094(
+VL53L1_Error VL53L1_get_measurement_results(
 	VL53L1_DEV                  Dev,
 	VL53L1_DeviceResultsLevel   device_result_level);
 
@@ -546,7 +704,7 @@ VL53L1_Error VL53L1_FCTN_00094(
 
 
 
-VL53L1_Error VL53L1_FCTN_00017(
+VL53L1_Error VL53L1_get_device_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_DeviceResultsLevel  device_result_level,
 	VL53L1_range_results_t    *prange_results);
@@ -578,9 +736,9 @@ VL53L1_Error VL53L1_FCTN_00017(
 
 
 
-VL53L1_Error VL53L1_FCTN_00014(
+VL53L1_Error VL53L1_clear_interrupt_and_enable_next_range(
 	VL53L1_DEV       Dev,
-	uint8_t          VL53L1_PRM_00005);
+	uint8_t          measurement_mode);
 
 
 
@@ -591,7 +749,7 @@ VL53L1_Error VL53L1_FCTN_00014(
 
 
 
-VL53L1_Error VL53L1_FCTN_00099(
+VL53L1_Error VL53L1_get_histogram_bin_data(
 	VL53L1_DEV                   Dev,
 	VL53L1_histogram_bin_data_t *phist_data);
 
@@ -605,11 +763,22 @@ VL53L1_Error VL53L1_FCTN_00099(
 
 
 
-void VL53L1_FCTN_00098(
+void VL53L1_copy_sys_and_core_results_to_range_results(
 	VL53L1_system_results_t          *psys,
 	VL53L1_core_results_t            *pcore,
 	VL53L1_range_results_t           *presults);
 
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_zone_dss_config(
+	  VL53L1_DEV                      Dev,
+	  VL53L1_zone_private_dyn_cfg_t  *pzone_dyn_cfg);
 
 #ifdef __cplusplus
 }
