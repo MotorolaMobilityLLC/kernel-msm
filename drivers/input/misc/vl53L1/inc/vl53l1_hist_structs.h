@@ -98,16 +98,17 @@
 #define _VL53L1_HIST_STRUCTS_H_
 
 #include "vl53l1_ll_device.h"
+#include "vl53l1_dmax_structs.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#define  VL53L1_DEF_00153  6
-#define  VL53L1_DEF_00163   15
-#define  VL53L1_DEF_00035   24
-#define  VL53L1_DEF_00225        12
+#define  VL53L1_MAX_BIN_SEQUENCE_LENGTH  6
+#define  VL53L1_MAX_BIN_SEQUENCE_CODE   15
+#define  VL53L1_HISTOGRAM_BUFFER_SIZE   24
+#define  VL53L1_XTALK_HISTO_BINS        12
 
 
 
@@ -118,40 +119,40 @@ extern "C"
 
 typedef struct {
 
-	uint8_t                          VL53L1_PRM_00272;
+	uint8_t                          histogram_config__spad_array_selection;
 
-	uint8_t                          VL53L1_PRM_00250;
-	uint8_t                          VL53L1_PRM_00251;
-	uint8_t                          VL53L1_PRM_00252;
+	uint8_t                          histogram_config__low_amb_even_bin_0_1;
+	uint8_t                          histogram_config__low_amb_even_bin_2_3;
+	uint8_t                          histogram_config__low_amb_even_bin_4_5;
 
-	uint8_t                          VL53L1_PRM_00253;
-	uint8_t                          VL53L1_PRM_00254;
-	uint8_t                          VL53L1_PRM_00255;
+	uint8_t                          histogram_config__low_amb_odd_bin_0_1;
+	uint8_t                          histogram_config__low_amb_odd_bin_2_3;
+	uint8_t                          histogram_config__low_amb_odd_bin_4_5;
 
-	uint8_t                          VL53L1_PRM_00256;
-	uint8_t                          VL53L1_PRM_00257;
-	uint8_t                          VL53L1_PRM_00258;
+	uint8_t                          histogram_config__mid_amb_even_bin_0_1;
+	uint8_t                          histogram_config__mid_amb_even_bin_2_3;
+	uint8_t                          histogram_config__mid_amb_even_bin_4_5;
 
-	uint8_t                          VL53L1_PRM_00259;
-	uint8_t                          VL53L1_PRM_00260;
-	uint8_t                          VL53L1_PRM_00261;
-	uint8_t                          VL53L1_PRM_00262;
+	uint8_t                          histogram_config__mid_amb_odd_bin_0_1;
+	uint8_t                          histogram_config__mid_amb_odd_bin_2;
+	uint8_t                          histogram_config__mid_amb_odd_bin_3_4;
+	uint8_t                          histogram_config__mid_amb_odd_bin_5;
 
-	uint8_t                          VL53L1_PRM_00263;
+	uint8_t                          histogram_config__user_bin_offset;
 
-	uint8_t                          VL53L1_PRM_00264;
-	uint8_t                          VL53L1_PRM_00265;
-	uint8_t                          VL53L1_PRM_00266;
+	uint8_t                          histogram_config__high_amb_even_bin_0_1;
+	uint8_t                          histogram_config__high_amb_even_bin_2_3;
+	uint8_t                          histogram_config__high_amb_even_bin_4_5;
 
-	uint8_t                          VL53L1_PRM_00267;
-	uint8_t                          VL53L1_PRM_00268;
-	uint8_t                          VL53L1_PRM_00269;
+	uint8_t                          histogram_config__high_amb_odd_bin_0_1;
+	uint8_t                          histogram_config__high_amb_odd_bin_2_3;
+	uint8_t                          histogram_config__high_amb_odd_bin_4_5;
 
-	uint16_t                         VL53L1_PRM_00270;
+	uint16_t                         histogram_config__amb_thresh_low;
 
 
 
-	uint16_t                         VL53L1_PRM_00271;
+	uint16_t                         histogram_config__amb_thresh_high;
 
 
 
@@ -168,70 +169,73 @@ typedef struct {
 
 typedef struct {
 
-	VL53L1_HistAlgoSelect  VL53L1_PRM_00189;
+	VL53L1_HistAlgoSelect  hist_algo_select;
 
 
-	uint8_t   VL53L1_PRM_00191;
-
-
-
-	uint8_t   VL53L1_PRM_00192;
+	uint8_t   filter_woi0;
 
 
 
-
-	VL53L1_HistAmbEstMethod VL53L1_PRM_00193;
-
-
-	uint8_t   VL53L1_PRM_00194;
-
-
-
-	uint8_t   VL53L1_PRM_00195;
-
-
-	int32_t   VL53L1_PRM_00196;
-
-
-	uint16_t  VL53L1_PRM_00197;
-
-
-
-	int32_t   VL53L1_PRM_00198;
-
-
-	uint8_t	  VL53L1_PRM_00200;
-
-
-	uint16_t  VL53L1_PRM_00201;
-
-
-	int16_t   VL53L1_PRM_00202;
-
-
-
-	uint8_t   VL53L1_PRM_00203;
+	uint8_t   filter_woi1;
 
 
 
 
-	uint16_t  VL53L1_PRM_00080;
+	VL53L1_HistAmbEstMethod hist_amb_est_method;
 
 
-	int16_t   VL53L1_PRM_00078;
-
-
-	int16_t   VL53L1_PRM_00079;
+	uint8_t   ambient_thresh_sigma0;
 
 
 
-	int16_t   VL53L1_PRM_00084;
+	uint8_t   ambient_thresh_sigma1;
 
 
-	int16_t   VL53L1_PRM_00082;
+	int32_t   min_ambient_thresh_events;
 
 
-	int16_t   VL53L1_PRM_00083;
+	uint16_t  noise_threshold;
+
+
+
+	int32_t   signal_total_events_limit;
+
+
+	uint8_t	  sigma_estimator__sigma_ref_mm;
+
+
+	uint16_t  sigma_thresh;
+
+
+	int16_t   range_offset_mm;
+
+
+
+	uint8_t   algo__consistency_check__tolerance;
+
+
+
+
+	uint8_t   algo__crosstalk_compensation_enable;
+
+
+	uint16_t  algo__crosstalk_compensation_plane_offset_kcps;
+
+
+	int16_t   algo__crosstalk_compensation_x_plane_gradient_kcps;
+
+
+	int16_t   algo__crosstalk_compensation_y_plane_gradient_kcps;
+
+
+
+	int16_t   algo__part_to_part_range_offset_mm;
+
+
+	int16_t   mm_config__inner_offset_mm;
+
+
+	int16_t   mm_config__outer_offset_mm;
 
 
 
@@ -247,115 +251,115 @@ typedef struct {
 
 
 
-	VL53L1_DeviceState     VL53L1_PRM_00130;
+	VL53L1_DeviceState     cfg_device_state;
 
 
-	VL53L1_DeviceState     VL53L1_PRM_00038;
+	VL53L1_DeviceState     rd_device_state;
 
 
 
-	uint8_t  VL53L1_PRM_00036;
+	uint8_t  zone_id;
 
 
-	uint32_t VL53L1_PRM_00024;
+	uint32_t time_stamp;
 
 
 
-	uint8_t  VL53L1_PRM_00137;
+	uint8_t  VL53L1_PRM_00011;
 
 
-	uint8_t  VL53L1_PRM_00138;
+	uint8_t  VL53L1_PRM_00012;
 
 
-	uint8_t  VL53L1_PRM_00139;
+	uint8_t  VL53L1_PRM_00013;
 
 
 
-	uint8_t  VL53L1_PRM_00129;
+	uint8_t  number_of_ambient_bins;
 
 
 
-	uint8_t  VL53L1_PRM_00151[VL53L1_DEF_00153];
+	uint8_t  bin_seq[VL53L1_MAX_BIN_SEQUENCE_LENGTH];
 
 
-	uint8_t  VL53L1_PRM_00310[VL53L1_DEF_00153];
+	uint8_t  bin_rep[VL53L1_MAX_BIN_SEQUENCE_LENGTH];
 
 
 
 
-	int32_t  VL53L1_PRM_00136[VL53L1_DEF_00035];
+	int32_t  bin_data[VL53L1_HISTOGRAM_BUFFER_SIZE];
 
 
 
-	uint8_t  VL53L1_PRM_00132;
+	uint8_t  result__interrupt_status;
 
 
-	uint8_t  VL53L1_PRM_00105;
+	uint8_t  result__range_status;
 
 
-	uint8_t  VL53L1_PRM_00106;
+	uint8_t  result__report_status;
 
 
-	uint8_t  VL53L1_PRM_00026;
+	uint8_t  result__stream_count;
 
 
-	uint16_t VL53L1_PRM_00133;
+	uint16_t result__dss_actual_effective_spads;
 
 
 
-	uint16_t VL53L1_PRM_00134;
+	uint16_t phasecal_result__reference_phase;
 
 
-	uint8_t  VL53L1_PRM_00135;
+	uint8_t  phasecal_result__vcsel_start;
 
 
-	uint8_t  VL53L1_PRM_00140;
+	uint8_t  cal_config__vcsel_start;
 
 
-	uint16_t VL53L1_PRM_00141;
+	uint16_t vcsel_width;
 
 
-	uint8_t  VL53L1_PRM_00041;
+	uint8_t  VL53L1_PRM_00006;
 
 
-	uint16_t VL53L1_PRM_00144;
+	uint16_t VL53L1_PRM_00014;
 
 
-	uint32_t  VL53L1_PRM_00152;
+	uint32_t  total_periods_elapsed;
 
 
 
-	uint32_t VL53L1_PRM_00153;
+	uint32_t peak_duration_us;
 
 
-	uint32_t VL53L1_PRM_00154;
+	uint32_t woi_duration_us;
 
 
 
-	int32_t  VL53L1_PRM_00304;
+	int32_t  min_bin_value;
 
 
-	int32_t  VL53L1_PRM_00305;
+	int32_t  max_bin_value;
 
 
 
-	uint16_t VL53L1_PRM_00306;
+	uint16_t zero_distance_phase;
 
 
-	uint8_t  VL53L1_PRM_00307;
+	uint8_t  number_of_ambient_samples;
 
 
-	int32_t  VL53L1_PRM_00308;
+	int32_t  ambient_events_sum;
 
 
-	int32_t  VL53L1_PRM_00309;
+	int32_t  VL53L1_PRM_00027;
 
 
 
-	uint8_t  VL53L1_PRM_00115;
+	uint8_t  roi_config__user_roi_centre_spad;
 
 
-	uint8_t  VL53L1_PRM_00116;
+	uint8_t  roi_config__user_roi_requested_global_xy_size;
 
 
 
@@ -372,43 +376,43 @@ typedef struct {
 
 
 
-	uint8_t  VL53L1_PRM_00036;
+	uint8_t  zone_id;
 
 
-	uint32_t VL53L1_PRM_00024;
-
-
-
-	uint8_t  VL53L1_PRM_00137;
-
-
-	uint8_t  VL53L1_PRM_00138;
-
-
-	uint8_t  VL53L1_PRM_00139;
-
-
-	uint32_t VL53L1_PRM_00136[VL53L1_DEF_00225];
+	uint32_t time_stamp;
 
 
 
-
-	uint16_t VL53L1_PRM_00134;
-
-
-	uint8_t  VL53L1_PRM_00135;
+	uint8_t  VL53L1_PRM_00011;
 
 
-	uint8_t  VL53L1_PRM_00140;
+	uint8_t  VL53L1_PRM_00012;
 
 
-	uint16_t VL53L1_PRM_00141;
+	uint8_t  VL53L1_PRM_00013;
 
 
-	uint16_t VL53L1_PRM_00144;
+	uint32_t bin_data[VL53L1_XTALK_HISTO_BINS];
 
 
-	uint16_t VL53L1_PRM_00306;
+
+
+	uint16_t phasecal_result__reference_phase;
+
+
+	uint8_t  phasecal_result__vcsel_start;
+
+
+	uint8_t  cal_config__vcsel_start;
+
+
+	uint16_t vcsel_width;
+
+
+	uint16_t VL53L1_PRM_00014;
+
+
+	uint16_t zero_distance_phase;
 
 
 
