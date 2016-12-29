@@ -64,7 +64,7 @@
  */
 #define PALDevDataGet(Dev, field) (Dev->field)
 
-#define PALDevDataSet(Dev, field, data) do {(Dev->field) = (data); } while (0)
+#define PALDevDataSet(Dev, field, data) ((Dev->field) = (data))
 
 /**
  * ST bare LL driver data type access macro
@@ -80,11 +80,8 @@
  */
 
 #ifndef bool_t
-typedef unsigned char bool_t;
+#define bool_t unsigned char
 #endif
-
-
-
 
 /**
  * VL53L1_DEV ST ll/bare driver absract type
@@ -93,8 +90,7 @@ typedef unsigned char bool_t;
  * on any call back from st layer we'll find out or struct ptr using
  *  container_of(pdev,struct stmvl53l1_data, stdev);
  */
-typedef VL53L1_DevData_t *VL53L1_DEV;
-
+#define VL53L1_DEV VL53L1_DevData_t *
 
 /**
  * @brief Writes the supplied byte buffer to the device
@@ -271,10 +267,31 @@ VL53L1_API VL53L1_Error VL53L1_WaitValueMaskEx(
 		uint8_t    mask,
 		uint32_t   poll_delay_ms);
 
-/* we do not support waiting us make an error */
-#define VL53L1_WaitUs(...) -1
-/* we do not support waiting ms make an error */
-#define VL53L1_WaitMs(...) -1
+/**
+ * @brief  Implements a programmable wait in us
+ *
+ * @param[in]   pdev      : pointer to device structure (device handle)
+ * @param[in]   wait_us   : integer wait in micro seconds
+ *
+ * @return  VL53L1_ERROR_NONE     Success
+ * @return  VL53L1_ERROR_PLATFORM_SPECIFIC_START if context disallow wait
+ * @return  "Other error code"    See ::VL53L1_Error
+ */
+
+VL53L1_API VL53L1_Error VL53L1_WaitUs(VL53L1_DEV pdev, int32_t wait_us);
+
+/**
+ * @brief  Implements a programmable wait in ms
+ *
+ * @param[in]   pdev      : pointer to device structure (device handle)
+ * @param[in]   wait_ms   : integer wait in milliseconds
+ *
+ * @return  VL53L1_ERROR_NONE     Success
+ * @return  VL53L1_ERROR_PLATFORM_SPECIFIC_START if context disallow wait
+ * @return  "Other error code"    See ::VL53L1_Error
+ */
+
+VL53L1_API VL53L1_Error VL53L1_WaitMs(VL53L1_DEV pdev, int32_t wait_ms);
 
 /**
  * we do not support Get tick count
