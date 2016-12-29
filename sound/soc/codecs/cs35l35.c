@@ -532,8 +532,11 @@ static const struct snd_pcm_hw_constraint_list cs35l35_constraints = {
 static int cs35l35_pcm_startup(struct snd_pcm_substream *substream,
 			       struct snd_soc_dai *dai)
 {
-	snd_pcm_hw_constraint_list(substream->runtime, 0,
-				SNDRV_PCM_HW_PARAM_RATE, &cs35l35_constraints);
+	/* the runtime pointer is NULL on compress playback, this cause kernel panic
+	 */
+	if (substream->runtime)
+		snd_pcm_hw_constraint_list(substream->runtime, 0,
+					SNDRV_PCM_HW_PARAM_RATE, &cs35l35_constraints);
 	return 0;
 }
 
