@@ -94,6 +94,7 @@
 
 
 #include "vl53l1_ll_def.h"
+#include "vl53l1_ll_device.h"
 #include "vl53l1_platform_log.h"
 #include "vl53l1_zone_presets.h"
 
@@ -106,15 +107,15 @@
 	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_CORE, status, fmt, ##__VA_ARGS__)
 
 
-VL53L1_Error VL53L1_FCTN_00082(
+VL53L1_Error VL53L1_init_zone_config_structure(
 	uint8_t x_off,
 	uint8_t x_inc,
 	uint8_t x_zones,
 	uint8_t y_off,
 	uint8_t y_inc,
 	uint8_t y_zones,
-	uint8_t VL53L1_PRM_00017,
-	uint8_t VL53L1_PRM_00018,
+	uint8_t width,
+	uint8_t height,
 	VL53L1_zone_config_t   *pdata)
 {
 
@@ -130,7 +131,7 @@ VL53L1_Error VL53L1_FCTN_00082(
 
 	LOG_FUNCTION_START("");
 
-	pdata->VL53L1_PRM_00019 = VL53L1_MAX_USER_ZONES;
+	pdata->max_zones = VL53L1_MAX_USER_ZONES;
 
 	i = 0;
 
@@ -139,16 +140,19 @@ VL53L1_Error VL53L1_FCTN_00082(
 
 			if (i < VL53L1_MAX_USER_ZONES) {
 
-				pdata->VL53L1_PRM_00020 = (uint8_t)i;
-				pdata->VL53L1_PRM_00021[i].VL53L1_PRM_00018   = VL53L1_PRM_00018;
-				pdata->VL53L1_PRM_00021[i].VL53L1_PRM_00017    = VL53L1_PRM_00017;
-				pdata->VL53L1_PRM_00021[i].VL53L1_PRM_00015 = x_off + (x * x_inc);
-				pdata->VL53L1_PRM_00021[i].VL53L1_PRM_00016 = y_off + (y * y_inc);
+				pdata->active_zones = (uint8_t)i;
+				pdata->user_zones[i].height   = height;
+				pdata->user_zones[i].width    = width;
+				pdata->user_zones[i].x_centre = x_off + (x * x_inc);
+				pdata->user_zones[i].y_centre = y_off + (y * y_inc);
 			}
 
 			i++;
 		}
 	}
+
+  if(status == VL53L1_ERROR_NONE)
+    status = VL53L1_init_zone_config_histogram_bins(pdata);
 
 	LOG_FUNCTION_END(status);
 
@@ -156,7 +160,7 @@ VL53L1_Error VL53L1_FCTN_00082(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00081(
+VL53L1_Error VL53L1_zone_preset_xtalk_planar(
 	VL53L1_general_config_t	*pgeneral,
 	VL53L1_zone_config_t    *pzone_cfg)
 {
@@ -175,39 +179,65 @@ VL53L1_Error VL53L1_FCTN_00081(
 
 
 
-	pgeneral->VL53L1_PRM_00119 = 0x05;
+	pgeneral->global_config__stream_divider = 0x05;
 
 
 
-	pzone_cfg->VL53L1_PRM_00020                 = 0x04;
+	pzone_cfg->active_zones                 = 0x04;
 
-	pzone_cfg->VL53L1_PRM_00021[0].VL53L1_PRM_00018         = 15;
-	pzone_cfg->VL53L1_PRM_00021[0].VL53L1_PRM_00017          = 7;
-	pzone_cfg->VL53L1_PRM_00021[0].VL53L1_PRM_00015       = 4;
-	pzone_cfg->VL53L1_PRM_00021[0].VL53L1_PRM_00016       = 8;
+	pzone_cfg->user_zones[0].height         = 15;
+	pzone_cfg->user_zones[0].width          = 7;
+	pzone_cfg->user_zones[0].x_centre       = 4;
+	pzone_cfg->user_zones[0].y_centre       = 8;
 
-	pzone_cfg->VL53L1_PRM_00021[1].VL53L1_PRM_00018         = 15;
-	pzone_cfg->VL53L1_PRM_00021[1].VL53L1_PRM_00017          = 7;
-	pzone_cfg->VL53L1_PRM_00021[1].VL53L1_PRM_00015       = 12;
-	pzone_cfg->VL53L1_PRM_00021[1].VL53L1_PRM_00016       = 8;
+	pzone_cfg->user_zones[1].height         = 15;
+	pzone_cfg->user_zones[1].width          = 7;
+	pzone_cfg->user_zones[1].x_centre       = 12;
+	pzone_cfg->user_zones[1].y_centre       = 8;
 
-	pzone_cfg->VL53L1_PRM_00021[2].VL53L1_PRM_00018         = 7;
-	pzone_cfg->VL53L1_PRM_00021[2].VL53L1_PRM_00017          = 15;
-	pzone_cfg->VL53L1_PRM_00021[2].VL53L1_PRM_00015       = 8;
-	pzone_cfg->VL53L1_PRM_00021[2].VL53L1_PRM_00016       = 4;
+	pzone_cfg->user_zones[2].height         = 7;
+	pzone_cfg->user_zones[2].width          = 15;
+	pzone_cfg->user_zones[2].x_centre       = 8;
+	pzone_cfg->user_zones[2].y_centre       = 4;
 
-	pzone_cfg->VL53L1_PRM_00021[3].VL53L1_PRM_00018         = 7;
-	pzone_cfg->VL53L1_PRM_00021[3].VL53L1_PRM_00017          = 15;
-	pzone_cfg->VL53L1_PRM_00021[3].VL53L1_PRM_00015       = 8;
-	pzone_cfg->VL53L1_PRM_00021[3].VL53L1_PRM_00016       = 12;
-
-
+	pzone_cfg->user_zones[3].height         = 7;
+	pzone_cfg->user_zones[3].width          = 15;
+	pzone_cfg->user_zones[3].x_centre       = 8;
+	pzone_cfg->user_zones[3].y_centre       = 12;
 
 
-	pzone_cfg->VL53L1_PRM_00021[4].VL53L1_PRM_00018         = 15;
-	pzone_cfg->VL53L1_PRM_00021[4].VL53L1_PRM_00017          = 15;
-	pzone_cfg->VL53L1_PRM_00021[4].VL53L1_PRM_00015       = 8;
-	pzone_cfg->VL53L1_PRM_00021[4].VL53L1_PRM_00016       = 8;
+
+
+	pzone_cfg->user_zones[4].height         = 15;
+	pzone_cfg->user_zones[4].width          = 15;
+	pzone_cfg->user_zones[4].x_centre       = 8;
+	pzone_cfg->user_zones[4].y_centre       = 8;
+
+  if(status == VL53L1_ERROR_NONE)
+    status = VL53L1_init_zone_config_histogram_bins(pzone_cfg);
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_init_zone_config_histogram_bins(
+	VL53L1_zone_config_t   *pdata)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+  uint8_t i;
+
+	LOG_FUNCTION_START("");
+
+  for(i = 0; i < pdata->max_zones; i++)
+    pdata->bin_config[i] = VL53L1_ZONECONFIG_BINCONFIG__LOWAMB;
 
 	LOG_FUNCTION_END(status);
 
