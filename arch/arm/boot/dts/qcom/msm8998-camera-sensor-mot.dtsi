@@ -166,6 +166,7 @@
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <270>;
 		qcom,actuator-src = <&actuator1>;
+		qcom,eeprom-src = <&eeprom0>;
 		cam_vio-supply = <&pm8998_lvs1>;
 		cam_vdig-supply = <&pm8998_s5>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
