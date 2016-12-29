@@ -36,10 +36,60 @@
  */
 
 /**
- * @defgroup vl53l1_config  Static configuration
- * @{
+ * @mainpage
+ * @section ctrl_data_paths	Control and data path
+ * Dual @ref vl53l1_ioctl  and @ref sysfs_attrib control and data path co-exist
+ * in the driver.
+ * @subsection ctrl_paths Control path
+ * Control over Sysfs or ioctl are assumed mutual exclusive. Control from ioctl
+ * execute with no consideration of sysfs path and so on.
+ * Why only one control path shall be use at a time.
  *
- * see also @a vl53l1_mod_dbg
+ * FIXME (if true) Their's very few extra sysfs attribute (TODO  ref) that do
+ * not have ioctl equivalent (use case, debug etc ...).
+ *
+ * @subsection data_paths Data paths
+ * The two data path can be used safely in a concurrent way.
+ *
+ *
+ * Input subsystem is fully buffered and support most linux i/o file operation
+ * (poll,select ...).\n
+ * Multiple events TODO REF are fetch in non atomic way to collect a full range
+ * data.
+ * The EV_SYN bound events group of one range data. \n
+ * Specific care and re-synch is needed to ensure proper data accumulation in
+ * case of buffer overrun (SYN_DROPPED event)
+ *
+ * Like @ref sysfs_attrib the /dev/input/eventx is the device to read input
+ * from and retrieved data.
+ *
+ * flush TODO ref command over sysfs is usable to control fifo draining.
+ *
+ * ioctl path is not buffered and can retrieve range data structure in single
+ * call atomic way. It support blocking or non blocking data access.
+ *
+ * @sa sysfs_attrib vl53l1_ioctl
+ *
+ * @section known_issues known issues
+ * @subsection ipp_abort Abort,stop during ipp call
+ *  Device is  not locked "while ipp fly" between kernel and user daemon,
+ *  so we accept and executed stop/abort and flush (android), and any other
+ *  command in a say "no block" or reasonable "no wait" time while ranging.
+ *
+ *  This ensure if anything goes wrong in user daemon (slow, dies) driver
+ *  is not maintained in a "dead locked" state for ever\n
+ *  Even module unload would not be possible.
+ *
+ *  In case range is stopped/aborted while an ipp fly their's a rare but
+ *  possible scenarios where a races with a new start and ranging can occur
+ *  causing possibly a deadlock,bad-handling\n
+ *
+ *  @note This can be eliminated by putting some requirement constrains on
+ *  back to back execution of stop re-start or implementing a wait queue for
+ *  start to wait until flying ipp.
+ *  Such "start" (blocking) would eliminated this bad situation.
+ *
+ *  @warning beware that is not handled rigth now !
  */
 
 /**
@@ -69,29 +119,32 @@
  * @note the regulator information come from device tree
  * see stmvl53l1_module-i2c or stmvl53l1_module-i2c file
  */
-/*#define CFG_STMVL53L1_HAVE_REGULATOR*/
+#define CFG_STMVL53L1_HAVE_REGULATOR
 
 
 /**
  * @defgroup vl53l1_mod_dbg  debugging
  *
- * empty group
  */
-/** @} */
 
 /**
  * @defgroup vl53l1_ioctl  IOCTL interface commands
  *
- * Ioctl commands for vl53L1
+ * @brief Ioctl commands for vl53L1
+ *
+ * ioctl are done across misc device @ref VL53L1_MISC_DEV_NAME
  */
 
 
 /**
  *@defgroup sysfs_attrib sysfs attribute
-
- * stmvl53l1 can be controle wia a set of exposed sysf attribute
- * under sys/class/inputx/attribe_name where x is the input device
- * associated with the vl53l1 (dynamic)
+ *
+ * stmvl53l1 can be controled via a set of exposed as sysf attribute
+ * under /sys/class/inputx/attribe_name where x is the input device number
+ * associated with the vl53l1 device .
+ * X is a dynamic number that depend on input device present in the system
+ * it can changes, depending  order of driver loaded, hot plug device
+ * like usb mice and keyboard.
  */
 
 /**@defgroup drv_port vl53l1 interface module porting and customization
@@ -101,20 +154,23 @@
 
 /**@defgroup ipp_dev  IPP information
  *
- * @section ipp_dev_info IPP stand for Ip Protected Processing ST proprietary and patented that cannot
- * be included as kernel GPL code.
+ * @section ipp_dev_info IPP
+ * IPP stand for Ip Protected Processing ST proprietary and patented code that
+ * cannot be included in kernel or GPL work.
  *
- * A couple IPP call form the STbare driver comes to the kernel driver
- * that will pass this to user space daemon.
+ * IPP calls from the ST bare driver are platform specific and wrapped for this
+ * Linux kernel driver in vl53l1_platform_ipp.h.\n
+ * The kernel pass this call to a user space daemon that is implementing the
+ * final IPP processing .
  *
- * this is done by serializing function arguments and passing them
- * to and from the user space.
+ * Kernel does the data serialization and pass them  to/from  user space.
  *
- * Serialization is done ipp/ipp_linux.c mainly using macro from stmvl53l1_ipp.h
- * (shared with user space).\n
+ * Serialization is done in ipp/ipp_linux.c mainly using macro from
+ * stmvl53l1_ipp.h (shared with user space).\n
  * The data is then pass to ipp netlink layer in stmvl53l1_ipp_nl.c
+ *
  * @note  mmap/file io and or ioctl could be used to implement a different
- * ipp data channel.
+ * data channel than netlink.
  */
 
 
