@@ -94,13 +94,18 @@
 
 
 
-#ifndef VL53L1_ERROR_STRINGS_H_
-#define VL53L1_ERROR_STRINGS_H_
 
-#include "vl53l1_error_codes.h"
+
+
+
+
+#ifndef _VL53L1_DMAX_STRUCTS_H_
+#define _VL53L1_DMAX_STRUCTS_H_
+
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 
@@ -111,84 +116,72 @@ extern "C" {
 
 
 
+typedef struct {
 
 
 
 
-VL53L1_Error VL53L1_get_pal_error_string(
-	VL53L1_Error   PalErrorCode,
-	char         *pPalErrorString);
+	uint16_t  ref__actual_effective_spads;
 
 
-#ifndef VL53L1_USE_EMPTY_STRING
+	uint16_t  ref__peak_signal_count_rate_mcps;
+
+
+	uint16_t  ref__distance_mm;
+
+
+	uint16_t   ref_reflectance;
 
 
 
-	#define  VL53L1_STRING_ERROR_NONE \
-			"No Error"
-	#define  VL53L1_STRING_ERROR_CALIBRATION_WARNING \
-			"Calibration Warning Error"
-	#define  VL53L1_STRING_ERROR_MIN_CLIPPED \
-			"Min clipped error"
-	#define  VL53L1_STRING_ERROR_UNDEFINED \
-			"Undefined error"
-	#define  VL53L1_STRING_ERROR_INVALID_PARAMS \
-			"Invalid parameters error"
-	#define  VL53L1_STRING_ERROR_NOT_SUPPORTED \
-			"Not supported error"
-	#define  VL53L1_STRING_ERROR_RANGE_ERROR \
-			"Range error"
-	#define  VL53L1_STRING_ERROR_TIME_OUT \
-			"Time out error"
-	#define  VL53L1_STRING_ERROR_MODE_NOT_SUPPORTED \
-			"Mode not supported error"
-	#define  VL53L1_STRING_ERROR_BUFFER_TOO_SMALL \
-			"Buffer too small"
-	#define  VL53L1_STRING_ERROR_COMMS_BUFFER_TOO_SMALL \
-			"Comms Buffer too small"
-	#define  VL53L1_STRING_ERROR_GPIO_NOT_EXISTING \
-			"GPIO not existing"
-	#define  VL53L1_STRING_ERROR_GPIO_FUNCTIONALITY_NOT_SUPPORTED \
-			"GPIO funct not supported"
-	#define  VL53L1_STRING_ERROR_CONTROL_INTERFACE \
-			"Control Interface Error"
-	#define  VL53L1_STRING_ERROR_INVALID_COMMAND \
-			"Invalid Command Error"
-	#define  VL53L1_STRING_ERROR_DIVISION_BY_ZERO \
-			"Division by zero Error"
-	#define  VL53L1_STRING_ERROR_REF_SPAD_INIT \
-			"Reference Spad Init Error"
-	#define  VL53L1_STRING_ERROR_GPH_SYNC_CHECK_FAIL \
-			"GPH Sync Check Fail - API out of sync"
-	#define  VL53L1_STRING_ERROR_STREAM_COUNT_CHECK_FAIL \
-			"Stream Count Check Fail - API out of sync"
-	#define  VL53L1_STRING_ERROR_GPH_ID_CHECK_FAIL \
-			"GPH ID Check Fail - API out of sync"
-	#define  VL53L1_STRING_ERROR_ZONE_STREAM_COUNT_CHECK_FAIL \
-			"Zone Stream Count Check Fail - API out of sync"
-	#define  VL53L1_STRING_ERROR_ZONE_GPH_ID_CHECK_FAIL \
-			"Zone GPH ID Check Fail - API out of sync"
-	#define  VL53L1_STRING_ERROR_XTALK_EXTRACTION_FAIL \
-			"Xtalk Extraction Failed"
 
-	#define  VL53L1_STRING_ERROR_DEVICE_FIRMWARE_TOO_OLD \
-			"Device Firmware too old"
-	#define  VL53L1_STRING_ERROR_DEVICE_FIRMWARE_TOO_NEW \
-			"Device Firmware too new"
-	#define  VL53L1_STRING_ERROR_UNIT_TEST_FAIL \
-	        "Unit Test Fail"
-	#define  VL53L1_STRING_ERROR_FILE_READ_FAIL \
-        	"File Read Fail"
-	#define  VL53L1_STRING_ERROR_FILE_WRITE_FAIL \
-        	"File Write Fail"
 
-	#define  VL53L1_STRING_ERROR_NOT_IMPLEMENTED \
-			"Not implemented error"
-	#define  VL53L1_STRING_UNKNOW_ERROR_CODE \
-			"Unknown Error Code"
 
-#endif
+	uint16_t   coverglass_transmission;
 
+
+
+} VL53L1_dmax_calibration_data_t ;
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+
+
+
+	uint8_t   signal_thresh_sigma;
+
+
+	uint8_t   ambient_thresh_sigma;
+
+
+
+	uint16_t  target_reflectance_for_dmax_calc;
+
+
+	uint8_t   estimated_spad_yield;
+
+
+
+
+
+
+	uint16_t  dss_config__target_total_rate_mcps;
+
+
+	uint8_t   dss_config__aperture_attenuation;
+
+
+
+} VL53L1_hist_gen3_dmax_config_t;
 
 
 #ifdef __cplusplus
@@ -196,4 +189,3 @@ VL53L1_Error VL53L1_get_pal_error_string(
 #endif
 
 #endif
-

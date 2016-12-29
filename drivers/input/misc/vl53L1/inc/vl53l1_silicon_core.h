@@ -116,7 +116,7 @@ extern "C" {
 
 
 
-VL53L1_Error VL53L1_FCTN_00216(
+VL53L1_Error VL53L1_is_firmware_ready_silicon(
 	VL53L1_DEV      Dev,
 	uint8_t        *pready);
 

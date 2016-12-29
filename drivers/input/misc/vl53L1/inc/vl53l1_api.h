@@ -292,10 +292,17 @@ VL53L1_Error VL53L1_ResetDevice(VL53L1_DEV Dev);
  *
  * @note This function doesn't Access to the device
  *
+ * @warning This function change the timing budget to 16 ms and the inter-
+ * measurement period to 1000 ms. Also the VL53L1_DISTANCEMODE_LONG is used.
+ *
  * @param   Dev                   Device Handle
  * @param   PresetMode            New Preset mode to apply
  *                                Valid values are:
+ *                                VL53L1_PRESETMODE_MULTIZONES_SCANNING
+ *                                VL53L1_PRESETMODE_RANGING
+ *                                VL53L1_PRESETMODE_AUTONOMOUS
  *                                VL53L1_PRESETMODE_LITE_RANGING
+ *                                VL53L1_PRESETMODE_OLT
  *
  * @return  VL53L1_ERROR_NONE               Success
  * @return  VL53L1_ERROR_MODE_NOT_SUPPORTED This error occurs when PresetMode is
@@ -310,13 +317,9 @@ VL53L1_Error VL53L1_SetPresetMode(VL53L1_DEV Dev,
  * Get actual mode of the device(ranging, histogram ...)
  *
  * @note This function doesn't Access to the device
- * @warning This function change the timing budget to 16 ms and the inter-
- * measurement period to 1000 ms.
  *
  * @param   Dev                   Device Handle
  * @param   pPresetMode           Pointer to current apply mode value
- *                                Valid values are:
- *                                VL53L1_PRESETMODE_LITE_RANGING
  *
  * @return  VL53L1_ERROR_NONE                   Success
  * @return  VL53L1_ERROR_MODE_NOT_SUPPORTED     This error occurs when
@@ -325,6 +328,43 @@ VL53L1_Error VL53L1_SetPresetMode(VL53L1_DEV Dev,
 VL53L1_Error VL53L1_GetPresetMode(VL53L1_DEV Dev,
 		VL53L1_PresetModes *pPresetMode);
 
+
+/**
+ * @brief  Set the distance mode
+ * @par Function Description
+ * Set the distance mode to be used for the next ranging.
+ *
+ * @note This function doesn't Access to the device
+ *
+ * @warning This function should be called after @a VL53L1_SetPresetMode().
+
+ * @param   Dev                   Device Handle
+ * @param   DistanceMode          Distance mode to apply
+ *                                Valid values are:
+ *                                VL53L1_DISTANCEMODE_SHORT
+ *                                VL53L1_DISTANCEMODE_MEDIUM
+ *                                VL53L1_DISTANCEMODE_LONG
+ *
+ * @return  VL53L1_ERROR_NONE               Success
+ * @return  VL53L1_ERROR_MODE_NOT_SUPPORTED This error occurs when DistanceMode
+ *                                          is not in the supported list
+ * @return  "Other error code"              See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_SetDistanceMode(VL53L1_DEV Dev,
+		VL53L1_DistanceModes DistanceMode);
+
+/**
+ * @brief  Get the distance mode
+ * @par Function Description
+ * Get the distance mode used for the next ranging.
+ *
+ * @param   Dev                   Device Handle
+ * @param   *pDistanceMode        Pointer to Distance mode
+ * @return  VL53L1_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_GetDistanceMode(VL53L1_DEV Dev,
+		VL53L1_DistanceModes *pDistanceMode);
 
 
 /**
@@ -746,54 +786,6 @@ VL53L1_Error VL53L1_GetSequenceStepEnable(VL53L1_DEV Dev,
  *  @{
  */
 
-
-/**
- * @brief Perform XTalk Calibration
- *
- * @details Perform a XTalk calibration of the Device.
- * This function will launch a ranging measurement, if interrupts
- * are enabled an interrupt will be done.
- * This function will clear the interrupt generated automatically.
- * This function will program a new value for the XTalk compensation
- * and it will enable the cross talk before exit.
- *
- * @warning This function is a blocking function
- *
- * @note This function Access to the device
- *
- * @note This function change the preset mode so a new preset mode should
- * be done after the call to this function
- *
- * @param   Dev                  Device Handle
- * @param   CalibrationOption    Select the Calibration to be run
- * @return  VL53L1_ERROR_NONE    Success
- * @return  "Other error code"   See ::VL53L1_Error
- */
-VL53L1_Error VL53L1_PerformXTalkCalibration(VL53L1_DEV Dev,
-		uint8_t CalibrationOption);
-
-/**
- * @brief Perform Offset Calibration
- *
- * @details Perform a Offset calibration of the Device.
- * This function will launch a ranging measurement, if interrupts are
- * enabled interrupts will be done.
- * This function will program a new value for the Offset calibration value
- *
- * @warning This function is a blocking function
- *
- * @note This function Access to the device
- *
- * @param   Dev                  Device Handle
- * @param   CalDistanceMilliMeter     Calibration distance value used for the
- * offset compensation.
- *
- * @return  VL53L1_ERROR_NONE
- * @return  "Other error code"   See ::VL53L1_Error
- */
-VL53L1_Error VL53L1_PerformOffsetCalibration(VL53L1_DEV Dev,
-	int32_t CalDistanceMilliMeter);
-
 /**
  * @brief Start device measurement
  *
@@ -883,9 +875,14 @@ VL53L1_Error VL53L1_WaitMeasurementDataReady(VL53L1_DEV Dev);
  * Get data from last successful Ranging measurement
  * @warning this function will return only the first ROI data and only the
  * first object. For multi objects or multi ROI use:
- * @Vl53L1_GetMultiRangingData.
+ * @a Vl53L1_GetMultiRangingData.
  *
  * @note This function Access to the device
+ *
+ * @note The first valid value returned by this function will have a range
+ * status equal to VL53L1_RANGESTATUS_RANGE_VALID_NO_WRAP_CHECK which means that
+ * the data is valid but no wrap around check have been done. User should take
+ * care about that.
  *
  * @param   Dev                      Device Handle
  * @param   pRangingMeasurementData  Pointer to the data structure to fill up.
@@ -909,20 +906,23 @@ VL53L1_Error VL53L1_GetRangingMeasurementData(VL53L1_DEV Dev,
  *
  * @note This function Access to the device
  *
+ * @note The first valid value returned by this function will have a range
+ * status equal to VL53L1_RANGESTATUS_RANGE_VALID_NO_WRAP_CHECK which means that
+ * the data is valid but no wrap around check have been done. User should take
+ * care about that.
+ *
  * @param   Dev                      Device Handle
  * @param   pMultiRangingData        Pointer to the data structure to fill up.
  * @return  VL53L1_ERROR_NONE        Success
  * @return  "Other error code"       See ::VL53L1_Error
  */
-VL53L1_Error Vl53L1_GetMultiRangingData(VL53L1_DEV Dev,
+VL53L1_Error VL53L1_GetMultiRangingData(VL53L1_DEV Dev,
 		VL53L1_MultiRangingData_t *pMultiRangingData);
-
 
 /** @} VL53L1_measurement_group */
 
-
-/** @defgroup VL53L1_SPADfunctions_group VL53L1 SPAD Functions
- *  @brief    Functions used for SPAD managements
+/** @defgroup VL53L1_Calibration_group VL53L1 Calibration Functions
+ *  @brief    Functions used for Calibration
  *  @{
  */
 
@@ -937,18 +937,113 @@ VL53L1_Error Vl53L1_GetMultiRangingData(VL53L1_DEV Dev,
  *
  * @note This function Access to the device
  *
- * @note pRefSpadCount and pRefSpadLocationfunction return 0
- *
  * @param   Dev                          Device Handle
- * @param   pRefSpadCount                Reports ref Spad Count
- * @param   pRefSpadLocation             Reports ref spads Location.
  * @return  VL53L1_ERROR_NONE        Success
  * @return  "Other error code"       See ::VL53L1_Error
  */
-VL53L1_Error VL53L1_PerformRefSpadManagement(VL53L1_DEV Dev,
-	uint8_t *pRefSpadCount, uint8_t *pRefSpadLocation);
+VL53L1_Error VL53L1_PerformRefSpadManagement(VL53L1_DEV Dev);
 
-/** @} VL53L1_SPADfunctions_group */
+/**
+* @brief Enable/Disable Cross talk compensation feature
+*
+* Enable/Disable Cross Talk correction.
+*
+* @param   Dev                       Device Handle
+* @param   XTalkCompensationEnable   Cross talk compensation
+*  to be set 0 = disabled; other values than zero = enabled.
+ * @return  VL53L1_ERROR_NONE        Success
+ * @return  "Other error code"       See ::VL53L1_Error
+*/
+VL53L1_Error VL53L1_SetXTalkCompensationEnable(VL53L1_DEV Dev,
+uint8_t XTalkCompensationEnable);
+
+
+/**
+ * @brief Perform XTalk Calibration
+ *
+ * @details Perform a XTalk calibration of the Device.
+ * This function will launch a ranging measurement, if interrupts
+ * are enabled an interrupt will be done.
+ * This function will clear the interrupt generated automatically.
+ * This function will program a new value for the XTalk compensation
+ * and it will enable the cross talk before exit.
+ *
+ * @warning This function is a blocking function
+ *
+ * @note This function Access to the device
+ *
+ * @note This function change the preset mode so a new preset mode should
+ * be done after the call to this function
+ *
+ * @param   Dev                  Device Handle
+ * @param   CalibrationOption    Select the Calibration to be run
+ * @return  VL53L1_ERROR_NONE    Success
+ * @return  "Other error code"   See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_PerformXTalkCalibration(VL53L1_DEV Dev,
+		uint8_t CalibrationOption);
+
+/**
+ * @brief Perform Offset Calibration
+ *
+ * @details Perform a Offset calibration of the Device.
+ * This function will launch a ranging measurement, if interrupts are
+ * enabled interrupts will be done.
+ * This function will program a new value for the Offset calibration value
+ *
+ * @warning This function is a blocking function
+ *
+ * @note This function Access to the device
+ *
+ * @param   Dev                  Device Handle
+ * @param   CalDistanceMilliMeter     Calibration distance value used for the
+ * offset compensation.
+ *
+ * @return  VL53L1_ERROR_NONE
+ * @return  "Other error code"   See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_PerformOffsetCalibration(VL53L1_DEV Dev,
+	int32_t CalDistanceMilliMeter);
+
+/**
+ * @brief Sets the Calibration Data.
+ *
+ * @par Function Description
+ * This function set all the Calibration Data issued from the functions
+ * @a VL53L1_PerformRefSpadManagement(), @a VL53L1_PerformXTalkCalibration,
+ * @a VL53L1_PerformOffsetCalibration()
+ *
+ * @note This function doesn't Accesses the device
+ *
+ * @param   Dev                          Device Handle
+ * @param   *pCalibrationData            Pointer to Calibration data to be set.
+ * @return  VL53L1_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_SetCalibrationData(VL53L1_DEV Dev,
+		VL53L1_CalibrationData_t *pCalibrationData);
+
+/**
+ * @brief Gets the Calibration Data.
+ *
+ * @par Function Description
+ * This function get all the Calibration Data issued from the functions
+ * @a VL53L1_PerformRefSpadManagement(), @a VL53L1_PerformXTalkCalibration,
+ * @a VL53L1_PerformOffsetCalibration()
+ *
+ * @note This function doesn't Accesses the device
+ *
+ * @param   Dev                          Device Handle
+ * @param   *pCalibrationData            pointer where to store Calibration
+ *  data.
+ * @return  VL53L1_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_GetCalibrationData(VL53L1_DEV Dev,
+		VL53L1_CalibrationData_t  *pCalibrationData);
+
+
+/** @} VL53L1_Calibration_group */
 
 
 /** @} VL53L1_cut11_group */

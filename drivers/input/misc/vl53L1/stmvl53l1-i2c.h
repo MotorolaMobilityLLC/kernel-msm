@@ -45,19 +45,19 @@ struct i2c_data {
 	struct stmvl53l1_data *vl53l1_data;
 
 	/*!< if null no regulator use for power ctrl */
-	struct regulator *vana;
+	struct regulator *vdd;
 
 	/*!< xsdn reset (low active) gpio number to device
 	 *
 	 *  -1  mean none assume no "resetable"
 	*/
-	int xsdn_gpio;
+	int pwren_gpio;
 
 	/*!< power enable gpio number
 	 *
 	 * if -1 no gpio if vana not avl pwr is not controllable
 	*/
-	int pwren_gpio;
+	int xsdn_gpio;
 
 	/*!< intr gpio number to device
 	 *
@@ -84,17 +84,14 @@ struct i2c_data {
 	struct msgtctrl_t {
 		unsigned unhandled_irq_vec:1;
 	} msg_flag;
-
-	/*!< TODOactual power state when gpio is used */
-	uint8_t power_up;
-
-
 };
 
 int stmvl53l1_init_i2c(void);
 void __exit stmvl53l1_exit_i2c(void *);
-int stmvl53l1_power_up_i2c(void *, unsigned int *);
+int stmvl53l1_power_up_i2c(void *);
 int stmvl53l1_power_down_i2c(void *);
+int stmvl53l1_reset_release_i2c(void *);
+int stmvl53l1_reset_hold_i2c(void *);
 void stmvl53l1_clean_up_i2c(void);
 int stmvl53l1_start_intr(void *object, int *poll_mode);
 
