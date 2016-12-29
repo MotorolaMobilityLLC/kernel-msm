@@ -121,7 +121,7 @@ extern "C"
 
 
 
-VL53L1_Error VL53L1_FCTN_00144(
+VL53L1_Error VL53L1_set_calib_config(
 	VL53L1_DEV      Dev,
 	uint8_t         vcsel_delay__a0,
 	uint8_t         calib_1,
@@ -145,7 +145,7 @@ VL53L1_Error VL53L1_FCTN_00144(
 
 
 
-VL53L1_Error VL53L1_FCTN_00145(
+VL53L1_Error VL53L1_set_hist_calib_pulse_delay(
 	VL53L1_DEV      Dev,
 	uint8_t         calib_delay);
 
@@ -160,7 +160,7 @@ VL53L1_Error VL53L1_FCTN_00145(
 
 
 
-VL53L1_Error VL53L1_FCTN_00146(
+VL53L1_Error VL53L1_disable_calib_pulse_delay(
 	VL53L1_DEV      Dev);
 
 
