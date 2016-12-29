@@ -36,6 +36,10 @@
 #ifndef _VL53L1_PLATFORM_USER_CONFIG_H_
 #define _VL53L1_PLATFORM_USER_CONFIG_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define    VL53L1_MAX_STRING_LENGTH         100
 
 #define    VL53L1_MAX_I2C_XFER_SIZE         256
@@ -51,11 +55,13 @@
 
 #define VL53L1_MAX_XTALK_RANGE_RESULTS        5
 
-#define VL53L1_MAX_OFFSET_RANGE_RESULTS       2
+#define VL53L1_MAX_OFFSET_RANGE_RESULTS       3
 
 #define VL53L1_MAX_USER_ZONES                 169
 
 #define VL53L1_MAX_RANGE_RESULTS              4
+
+#define VL53L1_NVM_MAX_FMT_RANGE_DATA         4
 
 #ifdef __cplusplus
 }
