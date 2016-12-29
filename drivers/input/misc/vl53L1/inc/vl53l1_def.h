@@ -92,11 +92,11 @@ extern "C" {
 /** VL53L1 IMPLEMENTATION major version */
 #define VL53L1_IMPLEMENTATION_VER_MAJOR       3
 /** VL53L1 IMPLEMENTATION minor version */
-#define VL53L1_IMPLEMENTATION_VER_MINOR       0
+#define VL53L1_IMPLEMENTATION_VER_MINOR       2
 /** VL53L1 IMPLEMENTATION sub version */
 #define VL53L1_IMPLEMENTATION_VER_SUB         0
 /** VL53L1 IMPLEMENTATION sub version */
-#define VL53L1_IMPLEMENTATION_VER_REVISION  920
+#define VL53L1_IMPLEMENTATION_VER_REVISION  1019
 
 
 /****************************************
@@ -153,6 +153,22 @@ typedef uint8_t VL53L1_PresetModes;
 /** @} VL53L1_define_PresetModes_group */
 
 
+/** @defgroup VL53L1_define_DistanceModes_group Defines Device modes
+ *  Defines all possible Distance modes for the device
+ *  @{
+ */
+typedef uint8_t VL53L1_DistanceModes;
+
+#define VL53L1_DISTANCEMODE_SHORT             ((VL53L1_DistanceModes)  1)
+#define VL53L1_DISTANCEMODE_MEDIUM            ((VL53L1_DistanceModes)  2)
+#define VL53L1_DISTANCEMODE_LONG              ((VL53L1_DistanceModes)  3)
+#define VL53L1_DISTANCEMODE_AUTO_LITE         ((VL53L1_DistanceModes)  4)
+#define VL53L1_DISTANCEMODE_AUTO              ((VL53L1_DistanceModes)  5)
+
+	/* ... Modes to be added depending on device */
+/** @} VL53L1_define_DistanceModes_group */
+
+
 
 /** @defgroup VL53L1_define_RoiStatus_group Defines Roi Status
  *  Defines the read status mode
@@ -182,10 +198,50 @@ typedef uint8_t VL53L1_RoiStatus;
 /** @}  end of VL53L1_CheckEnable_group */
 
 
+/** @defgroup VL53L1_define_InterruptPolarity_group Defines the Polarity
+ * of the Interrupt
+ *  Defines the Polarity of the Interrupt
+ *  @{
+ */
+typedef uint8_t VL53L1_InterruptPolarity;
+
+#define VL53L1_INTERRUPTPOLARITY_LOW       ((VL53L1_InterruptPolarity)  0)
+/*!< Set active low polarity best setup for falling edge. */
+#define VL53L1_INTERRUPTPOLARITY_HIGH      ((VL53L1_InterruptPolarity)  1)
+/*!< Set active high polarity best setup for rising edge. */
+
+/** @} VL53L1_define_InterruptPolarity_group */
+
+/** @defgroup VL53L1_GpioFunctionality_group Gpio Functionality
+ *  @brief Defines the different functionalities for the device GPIO(s)
+ *  @{
+ *  @warning Not yet implemented
+ */
+typedef uint8_t VL53L1_GpioFunctionality;
+
+#define VL53L1_GPIOFUNCTIONALITY_OFF                     \
+	((VL53L1_GpioFunctionality)  0) /*!< NO Interrupt  */
+#define VL53L1_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW   \
+	((VL53L1_GpioFunctionality)  1) /*!< Level Low (value < thresh_low)  */
+#define VL53L1_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH   \
+	((VL53L1_GpioFunctionality)  2) /*!< Level High (value > thresh_high) */
+#define VL53L1_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_OUT    \
+	((VL53L1_GpioFunctionality)  3)
+	/*!< Out Of Window (value < thresh_low OR value > thresh_high)  */
+#define VL53L1_GPIOFUNCTIONALITY_NEW_MEASURE_READY        \
+	((VL53L1_GpioFunctionality)  4) /*!< New Sample Ready  */
+
+/** @} end of VL53L1_GpioFunctionality_group */
+
+
 /** @brief Defines all parameters for the device
  */
 typedef struct {
 	VL53L1_PresetModes PresetMode;
+	/*!< Defines the operating mode to be used for the next measure */
+	VL53L1_DistanceModes DistanceMode;
+	/*!< Defines the operating mode to be used for the next measure */
+	VL53L1_DistanceModes InternalDistanceMode;
 	/*!< Defines the operating mode to be used for the next measure */
 	uint32_t MeasurementTimingBudgetMicroSeconds;
 	/*!< Defines the allowed total time for a single measurement */
@@ -293,7 +349,6 @@ typedef struct {
  * @brief   Structure for storing the set of range results for a single ROI
  *
  */
-
 typedef struct {
 
 	uint8_t RoiNumber;
@@ -317,7 +372,6 @@ typedef struct {
 /** @brief Defines User Zone(ROI) parameters
  *
  */
-
 typedef struct {
 
 	uint8_t   TopLeftX;   /*!< Top Left x coordinate:  0-15 range */
@@ -333,7 +387,6 @@ typedef struct {
  *  Support up a max of 16 zones, Each Zone has the same size
  *
  */
-
 typedef struct {
 
 	uint8_t             NumberOfRoi;   /*!< Number of Rois defined*/
@@ -342,6 +395,22 @@ typedef struct {
 		/*!< List of Rois */
 
 } VL53L1_RoiConfig_t;
+
+
+
+/**
+ * @struct  VL53L1_CalibrationData_t
+ * @brief   Structure for storing the Calibration Data
+ *
+ */
+typedef struct {
+
+	VL53L1_customer_nvm_managed_t  Customer;
+	VL53L1_dmax_calibration_data_t DmaxCal;
+	VL53L1_xtalk_histogram_data_t  XtalkHisto;
+
+} VL53L1_CalibrationData_t;
+
 
 
 /** @defgroup VL53L1_define_SequenceStepId_group Defines the SequenceStep
@@ -387,6 +456,8 @@ typedef uint8_t VL53L1_SequenceStepId;
 /*!<Phase fail. */
 #define	 VL53L1_RANGESTATUS_HARDWARE_FAIL	5
 /*!<Hardware fail. */
+#define	 VL53L1_RANGESTATUS_RANGE_VALID_NO_WRAP_CHECK 6
+/*!<The Range is valid but the wraparound check has not been done. */
 #define	 VL53L1_RANGESTATUS_NONE		255
 /*!<No Update. */
 

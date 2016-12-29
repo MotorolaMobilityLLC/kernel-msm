@@ -94,15 +94,24 @@
 
 
 
-#ifndef VL53L1_ERROR_STRINGS_H_
-#define VL53L1_ERROR_STRINGS_H_
 
-#include "vl53l1_error_codes.h"
+
+
+
+
+#ifndef _VL53L1_NVM_H_
+#define _VL53L1_NVM_H_
+
+#include "vl53l1_ll_def.h"
+#include "vl53l1_platform.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
+#define VL53L1_NVM_POWER_UP_DELAY_US             50
+#define VL53L1_NVM_READ_TRIGGER_DELAY_US          5
 
 
 
@@ -115,80 +124,220 @@ extern "C" {
 
 
 
-VL53L1_Error VL53L1_get_pal_error_string(
-	VL53L1_Error   PalErrorCode,
-	char         *pPalErrorString);
-
-
-#ifndef VL53L1_USE_EMPTY_STRING
 
 
 
-	#define  VL53L1_STRING_ERROR_NONE \
-			"No Error"
-	#define  VL53L1_STRING_ERROR_CALIBRATION_WARNING \
-			"Calibration Warning Error"
-	#define  VL53L1_STRING_ERROR_MIN_CLIPPED \
-			"Min clipped error"
-	#define  VL53L1_STRING_ERROR_UNDEFINED \
-			"Undefined error"
-	#define  VL53L1_STRING_ERROR_INVALID_PARAMS \
-			"Invalid parameters error"
-	#define  VL53L1_STRING_ERROR_NOT_SUPPORTED \
-			"Not supported error"
-	#define  VL53L1_STRING_ERROR_RANGE_ERROR \
-			"Range error"
-	#define  VL53L1_STRING_ERROR_TIME_OUT \
-			"Time out error"
-	#define  VL53L1_STRING_ERROR_MODE_NOT_SUPPORTED \
-			"Mode not supported error"
-	#define  VL53L1_STRING_ERROR_BUFFER_TOO_SMALL \
-			"Buffer too small"
-	#define  VL53L1_STRING_ERROR_COMMS_BUFFER_TOO_SMALL \
-			"Comms Buffer too small"
-	#define  VL53L1_STRING_ERROR_GPIO_NOT_EXISTING \
-			"GPIO not existing"
-	#define  VL53L1_STRING_ERROR_GPIO_FUNCTIONALITY_NOT_SUPPORTED \
-			"GPIO funct not supported"
-	#define  VL53L1_STRING_ERROR_CONTROL_INTERFACE \
-			"Control Interface Error"
-	#define  VL53L1_STRING_ERROR_INVALID_COMMAND \
-			"Invalid Command Error"
-	#define  VL53L1_STRING_ERROR_DIVISION_BY_ZERO \
-			"Division by zero Error"
-	#define  VL53L1_STRING_ERROR_REF_SPAD_INIT \
-			"Reference Spad Init Error"
-	#define  VL53L1_STRING_ERROR_GPH_SYNC_CHECK_FAIL \
-			"GPH Sync Check Fail - API out of sync"
-	#define  VL53L1_STRING_ERROR_STREAM_COUNT_CHECK_FAIL \
-			"Stream Count Check Fail - API out of sync"
-	#define  VL53L1_STRING_ERROR_GPH_ID_CHECK_FAIL \
-			"GPH ID Check Fail - API out of sync"
-	#define  VL53L1_STRING_ERROR_ZONE_STREAM_COUNT_CHECK_FAIL \
-			"Zone Stream Count Check Fail - API out of sync"
-	#define  VL53L1_STRING_ERROR_ZONE_GPH_ID_CHECK_FAIL \
-			"Zone GPH ID Check Fail - API out of sync"
-	#define  VL53L1_STRING_ERROR_XTALK_EXTRACTION_FAIL \
-			"Xtalk Extraction Failed"
 
-	#define  VL53L1_STRING_ERROR_DEVICE_FIRMWARE_TOO_OLD \
-			"Device Firmware too old"
-	#define  VL53L1_STRING_ERROR_DEVICE_FIRMWARE_TOO_NEW \
-			"Device Firmware too new"
-	#define  VL53L1_STRING_ERROR_UNIT_TEST_FAIL \
-	        "Unit Test Fail"
-	#define  VL53L1_STRING_ERROR_FILE_READ_FAIL \
-        	"File Read Fail"
-	#define  VL53L1_STRING_ERROR_FILE_WRITE_FAIL \
-        	"File Write Fail"
 
-	#define  VL53L1_STRING_ERROR_NOT_IMPLEMENTED \
-			"Not implemented error"
-	#define  VL53L1_STRING_UNKNOW_ERROR_CODE \
-			"Unknown Error Code"
+VL53L1_Error VL53L1_nvm_enable(
+	VL53L1_DEV     Dev,
+	uint16_t       nvm_ctrl_pulse_width,
+	int32_t        nvm_power_up_delay_us);
 
-#endif
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_nvm_read(
+	VL53L1_DEV     Dev,
+	uint8_t        start_address,
+	uint8_t        count,
+	uint8_t       *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_nvm_disable(
+	VL53L1_DEV     Dev);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_nvm_format_decode(
+	uint16_t                   buf_size,
+	uint8_t                   *pbuffer,
+	VL53L1_decoded_nvm_data_t *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_nvm_decode_fmt_range_results_data(
+	uint16_t                             buf_size,
+	uint8_t                             *pbuffer,
+	VL53L1_decoded_nvm_fmt_range_data_t *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_nvm_decode_fmt_info(
+	uint16_t                       buf_size,
+	uint8_t                       *pbuffer,
+	VL53L1_decoded_nvm_fmt_info_t *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_nvm_decode_ews_info(
+	uint16_t                       buf_size,
+	uint8_t                       *pbuffer,
+	VL53L1_decoded_nvm_ews_info_t *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_nvm_format_encode(
+	VL53L1_decoded_nvm_data_t *pnvm_info,
+	uint8_t                   *pnvm_data);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_read_nvm_raw_data(
+	VL53L1_DEV     Dev,
+	uint8_t        start_address,
+	uint8_t        count,
+	uint8_t       *pnvm_raw_data);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_read_nvm(
+	VL53L1_DEV                 Dev,
+    uint8_t                    nvm_format,
+    VL53L1_decoded_nvm_data_t *pnvm_info);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_read_nvm_fmt_range_results_data(
+	VL53L1_DEV                           Dev,
+    uint16_t                             range_results_select,
+    VL53L1_decoded_nvm_fmt_range_data_t *prange_data);
 
 
 #ifdef __cplusplus
@@ -196,4 +345,3 @@ VL53L1_Error VL53L1_get_pal_error_string(
 #endif
 
 #endif
-
