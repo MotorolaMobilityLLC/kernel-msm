@@ -101,49 +101,49 @@
 #include "vl53l1_types.h"
 #include "vl53l1_register_map.h"
 
-#define VL53L1_DEF_00084               VL53L1_DEF_00001
-#define VL53L1_DEF_00085             VL53L1_DEF_00034
-#define VL53L1_DEF_00087                    VL53L1_DEF_00176
-#define VL53L1_DEF_00089                   VL53L1_DEF_00177
-#define VL53L1_DEF_00091                    VL53L1_DEF_00178
-#define VL53L1_DEF_00093                   VL53L1_DEF_00179
-#define VL53L1_DEF_00094                   VL53L1_DEF_00156
-#define VL53L1_DEF_00103                   VL53L1_DEF_00180
-#define VL53L1_DEF_00107                     VL53L1_DEF_00181
-#define VL53L1_DEF_00104                    VL53L1_DEF_00113
-#define VL53L1_DEF_01440                    VL53L1_DEF_00183
-#define VL53L1_DEF_01441       VL53L1_DEF_00185
-#define VL53L1_DEF_01442         VL53L1_DEF_00187
-#define VL53L1_DEF_01443                      VL53L1_DEF_00189
-#define VL53L1_DEF_01444               VL53L1_DEF_00191
-#define VL53L1_DEF_01445                VL53L1_DEF_00193
-#define VL53L1_DEF_01446                VL53L1_DEF_00195
-#define VL53L1_DEF_01447                      VL53L1_DEF_00197
-#define VL53L1_DEF_01448                    VL53L1_DEF_00199
-#define VL53L1_DEF_01449            VL53L1_DEF_00201
-#define VL53L1_DEF_01450              VL53L1_DEF_00203
+#define VL53L1_STATIC_NVM_MANAGED_I2C_INDEX               VL53L1_I2C_SLAVE__DEVICE_ADDRESS
+#define VL53L1_CUSTOMER_NVM_MANAGED_I2C_INDEX             VL53L1_GLOBAL_CONFIG__SPAD_ENABLES_REF_0
+#define VL53L1_STATIC_CONFIG_I2C_INDEX                    VL53L1_DSS_CONFIG__TARGET_TOTAL_RATE_MCPS
+#define VL53L1_GENERAL_CONFIG_I2C_INDEX                   VL53L1_GPH_CONFIG__STREAM_COUNT_UPDATE_VALUE
+#define VL53L1_TIMING_CONFIG_I2C_INDEX                    VL53L1_MM_CONFIG__TIMEOUT_MACROP_A_HI
+#define VL53L1_DYNAMIC_CONFIG_I2C_INDEX                   VL53L1_SYSTEM__GROUPED_PARAMETER_HOLD_0
+#define VL53L1_SYSTEM_CONTROL_I2C_INDEX                   VL53L1_POWER_MANAGEMENT__GO1_POWER_FORCE
+#define VL53L1_SYSTEM_RESULTS_I2C_INDEX                   VL53L1_RESULT__INTERRUPT_STATUS
+#define VL53L1_CORE_RESULTS_I2C_INDEX                     VL53L1_RESULT_CORE__AMBIENT_WINDOW_EVENTS_SD0
+#define VL53L1_DEBUG_RESULTS_I2C_INDEX                    VL53L1_PHASECAL_RESULT__REFERENCE_PHASE
+#define VL53L1_NVM_COPY_DATA_I2C_INDEX                    VL53L1_IDENTIFICATION__MODEL_ID
+#define VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_INDEX       VL53L1_PREV_SHADOW_RESULT__INTERRUPT_STATUS
+#define VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_INDEX         VL53L1_PREV_SHADOW_RESULT_CORE__AMBIENT_WINDOW_EVENTS_SD0
+#define VL53L1_PATCH_DEBUG_I2C_INDEX                      VL53L1_RESULT__DEBUG_STATUS
+#define VL53L1_GPH_GENERAL_CONFIG_I2C_INDEX               VL53L1_GPH__SYSTEM__THRESH_RATE_HIGH
+#define VL53L1_GPH_STATIC_CONFIG_I2C_INDEX                VL53L1_GPH__DSS_CONFIG__ROI_MODE_CONTROL
+#define VL53L1_GPH_TIMING_CONFIG_I2C_INDEX                VL53L1_GPH__MM_CONFIG__TIMEOUT_MACROP_A_HI
+#define VL53L1_FW_INTERNAL_I2C_INDEX                      VL53L1_FIRMWARE__INTERNAL_STREAM_COUNT_DIV
+#define VL53L1_PATCH_RESULTS_I2C_INDEX                    VL53L1_DSS_CALC__ROI_CTRL
+#define VL53L1_SHADOW_SYSTEM_RESULTS_I2C_INDEX            VL53L1_SHADOW_PHASECAL_RESULT__VCSEL_START
+#define VL53L1_SHADOW_CORE_RESULTS_I2C_INDEX              VL53L1_SHADOW_RESULT_CORE__AMBIENT_WINDOW_EVENTS_SD0
 
-#define VL53L1_DEF_00096           11
-#define VL53L1_DEF_00097         23
-#define VL53L1_DEF_00098                32
-#define VL53L1_DEF_00099               22
-#define VL53L1_DEF_00100                23
-#define VL53L1_DEF_00101               18
-#define VL53L1_DEF_00095                5
-#define VL53L1_DEF_00109               44
-#define VL53L1_DEF_00108                 33
-#define VL53L1_DEF_00105                56
-#define VL53L1_DEF_00182                49
-#define VL53L1_DEF_00184   44
-#define VL53L1_DEF_00186     33
-#define VL53L1_DEF_00188                   2
-#define VL53L1_DEF_00190            5
-#define VL53L1_DEF_00192             6
-#define VL53L1_DEF_00194            16
-#define VL53L1_DEF_00196                   2
-#define VL53L1_DEF_00198                90
-#define VL53L1_DEF_00200        82
-#define VL53L1_DEF_00202          33
+#define VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES           11
+#define VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES         23
+#define VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES                32
+#define VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES               22
+#define VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES                23
+#define VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES               18
+#define VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES                5
+#define VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES               44
+#define VL53L1_CORE_RESULTS_I2C_SIZE_BYTES                 33
+#define VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES                56
+#define VL53L1_NVM_COPY_DATA_I2C_SIZE_BYTES                49
+#define VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES   44
+#define VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES     33
+#define VL53L1_PATCH_DEBUG_I2C_SIZE_BYTES                   2
+#define VL53L1_GPH_GENERAL_CONFIG_I2C_SIZE_BYTES            5
+#define VL53L1_GPH_STATIC_CONFIG_I2C_SIZE_BYTES             6
+#define VL53L1_GPH_TIMING_CONFIG_I2C_SIZE_BYTES            16
+#define VL53L1_FW_INTERNAL_I2C_SIZE_BYTES                   2
+#define VL53L1_PATCH_RESULTS_I2C_SIZE_BYTES                90
+#define VL53L1_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES        82
+#define VL53L1_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES          33
 
 
 
@@ -157,7 +157,7 @@
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00320;
+	uint8_t   i2c_slave__device_address;
 
 
 
@@ -168,7 +168,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00321;
+	uint8_t   ana_config__vhv_ref_sel_vddpix;
 
 
 
@@ -179,7 +179,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00322;
+	uint8_t   ana_config__vhv_ref_sel_vquench;
 
 
 
@@ -190,7 +190,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00323;
+	uint8_t   ana_config__reg_avdd1v2_sel;
 
 
 
@@ -201,7 +201,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00324;
+	uint8_t   ana_config__fast_osc__trim;
 
 
 
@@ -212,7 +212,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00011;
+	uint16_t  osc_measured__fast_osc__frequency;
 
 
 
@@ -223,7 +223,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00325;
+	uint8_t   vhv_config__timeout_macrop_loop_bound;
 
 
 
@@ -235,7 +235,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00326;
+	uint8_t   vhv_config__count_thresh;
 
 
 
@@ -246,7 +246,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00327;
+	uint8_t   vhv_config__offset;
 
 
 
@@ -257,7 +257,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00328;
+	uint8_t   vhv_config__init;
 
 
 
@@ -283,7 +283,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00053;
+	uint8_t   global_config__spad_enables_ref_0;
 
 
 
@@ -294,7 +294,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00054;
+	uint8_t   global_config__spad_enables_ref_1;
 
 
 
@@ -305,7 +305,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00055;
+	uint8_t   global_config__spad_enables_ref_2;
 
 
 
@@ -316,7 +316,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00056;
+	uint8_t   global_config__spad_enables_ref_3;
 
 
 
@@ -327,7 +327,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00057;
+	uint8_t   global_config__spad_enables_ref_4;
 
 
 
@@ -338,7 +338,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00058;
+	uint8_t   global_config__spad_enables_ref_5;
 
 
 
@@ -349,7 +349,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00329;
+	uint8_t   global_config__ref_en_start_select;
 
 
 
@@ -360,7 +360,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00051;
+	uint8_t   ref_spad_man__num_requested_ref_spads;
 
 
 
@@ -371,7 +371,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00052;
+	uint8_t   ref_spad_man__ref_location;
 
 
 
@@ -382,7 +382,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00080;
+	uint16_t  algo__crosstalk_compensation_plane_offset_kcps;
 
 
 
@@ -393,7 +393,7 @@ typedef struct {
 
 
 
-	int16_t   VL53L1_PRM_00078;
+	int16_t   algo__crosstalk_compensation_x_plane_gradient_kcps;
 
 
 
@@ -404,7 +404,7 @@ typedef struct {
 
 
 
-	int16_t   VL53L1_PRM_00079;
+	int16_t   algo__crosstalk_compensation_y_plane_gradient_kcps;
 
 
 
@@ -415,7 +415,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00102;
+	uint16_t  ref_spad_char__total_rate_target_mcps;
 
 
 
@@ -426,7 +426,7 @@ typedef struct {
 
 
 
-	int16_t   VL53L1_PRM_00084;
+	int16_t   algo__part_to_part_range_offset_mm;
 
 
 
@@ -437,7 +437,7 @@ typedef struct {
 
 
 
-	int16_t   VL53L1_PRM_00082;
+	int16_t   mm_config__inner_offset_mm;
 
 
 
@@ -448,7 +448,7 @@ typedef struct {
 
 
 
-	int16_t   VL53L1_PRM_00083;
+	int16_t   mm_config__outer_offset_mm;
 
 
 
@@ -473,7 +473,7 @@ typedef struct {
 
 
 typedef struct {
-	uint16_t  VL53L1_PRM_00204;
+	uint16_t  dss_config__target_total_rate_mcps;
 
 
 
@@ -484,7 +484,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00205;
+	uint8_t   debug__ctrl;
 
 
 
@@ -495,7 +495,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00206;
+	uint8_t   test_mode__ctrl;
 
 
 
@@ -506,7 +506,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00207;
+	uint8_t   clk_gating__ctrl;
 
 
 
@@ -520,7 +520,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00208;
+	uint8_t   nvm_bist__ctrl;
 
 
 
@@ -532,7 +532,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00209;
+	uint8_t   nvm_bist__num_nvm_words;
 
 
 
@@ -543,7 +543,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00210;
+	uint8_t   nvm_bist__start_address;
 
 
 
@@ -554,7 +554,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00211;
+	uint8_t   host_if__status;
 
 
 
@@ -565,7 +565,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00212;
+	uint8_t   pad_i2c_hv__config;
 
 
 
@@ -581,7 +581,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00213;
+	uint8_t   pad_i2c_hv__extsup_config;
 
 
 
@@ -592,7 +592,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00214;
+	uint8_t   gpio_hv_pad__ctrl;
 
 
 
@@ -604,7 +604,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00103;
+	uint8_t   gpio_hv_mux__ctrl;
 
 
 
@@ -616,7 +616,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00215;
+	uint8_t   gpio__tio_hv_status;
 
 
 
@@ -628,7 +628,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00216;
+	uint8_t   gpio__fio_hv_status;
 
 
 
@@ -639,7 +639,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00217;
+	uint8_t   ana_config__spad_sel_pswidth;
 
 
 
@@ -650,7 +650,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00143;
+	uint8_t   ana_config__vcsel_pulse_width_offset;
 
 
 
@@ -661,7 +661,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00218;
+	uint8_t   ana_config__fast_osc__config_ctrl;
 
 
 
@@ -672,7 +672,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00219;
+	uint8_t   sigma_estimator__effective_pulse_width_ns;
 
 
 
@@ -683,7 +683,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00220;
+	uint8_t   sigma_estimator__effective_ambient_width_ns;
 
 
 
@@ -694,7 +694,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00200;
+	uint8_t   sigma_estimator__sigma_ref_mm;
 
 
 
@@ -705,7 +705,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00221;
+	uint8_t   algo__crosstalk_compensation_valid_height_mm;
 
 
 
@@ -716,7 +716,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00222;
+	uint8_t   spare_host_config__static_config_spare_0;
 
 
 
@@ -727,7 +727,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00223;
+	uint8_t   spare_host_config__static_config_spare_1;
 
 
 
@@ -738,7 +738,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00224;
+	uint16_t  algo__range_ignore_threshold_mcps;
 
 
 
@@ -749,7 +749,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00225;
+	uint8_t   algo__range_ignore_valid_height_mm;
 
 
 
@@ -760,7 +760,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00226;
+	uint8_t   algo__range_min_clip;
 
 
 
@@ -772,7 +772,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00203;
+	uint8_t   algo__consistency_check__tolerance;
 
 
 
@@ -783,7 +783,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00227;
+	uint8_t   spare_host_config__static_config_spare_2;
 
 
 
@@ -794,7 +794,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00228;
+	uint8_t   sd_config__reset_stages_msb;
 
 
 
@@ -805,7 +805,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00229;
+	uint8_t   sd_config__reset_stages_lsb;
 
 
 
@@ -831,7 +831,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00230;
+	uint8_t   gph_config__stream_count_update_value;
 
 
 
@@ -842,7 +842,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00119;
+	uint8_t   global_config__stream_divider;
 
 
 
@@ -853,7 +853,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00231;
+	uint8_t   system__interrupt_config_gpio;
 
 
 
@@ -869,7 +869,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00140;
+	uint8_t   cal_config__vcsel_start;
 
 
 
@@ -880,7 +880,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00232;
+	uint16_t  cal_config__repeat_rate;
 
 
 
@@ -891,7 +891,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00142;
+	uint8_t   global_config__vcsel_width;
 
 
 
@@ -902,7 +902,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00100;
+	uint8_t   phasecal_config__timeout_macrop;
 
 
 
@@ -913,7 +913,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00233;
+	uint8_t   phasecal_config__target;
 
 
 
@@ -924,7 +924,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00234;
+	uint8_t   phasecal_config__override;
 
 
 
@@ -935,7 +935,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00235;
+	uint8_t   dss_config__roi_mode_control;
 
 
 
@@ -947,7 +947,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00236;
+	uint16_t  system__thresh_rate_high;
 
 
 
@@ -958,7 +958,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00237;
+	uint16_t  system__thresh_rate_low;
 
 
 
@@ -969,7 +969,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00238;
+	uint16_t  dss_config__manual_effective_spads_select;
 
 
 
@@ -980,7 +980,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00239;
+	uint8_t   dss_config__manual_block_select;
 
 
 
@@ -991,7 +991,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00240;
+	uint8_t   dss_config__aperture_attenuation;
 
 
 
@@ -1002,7 +1002,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00241;
+	uint8_t   dss_config__max_spads_limit;
 
 
 
@@ -1013,7 +1013,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00242;
+	uint8_t   dss_config__min_spads_limit;
 
 
 
@@ -1038,7 +1038,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00243;
+	uint8_t   mm_config__timeout_macrop_a_hi;
 
 
 
@@ -1049,7 +1049,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00244;
+	uint8_t   mm_config__timeout_macrop_a_lo;
 
 
 
@@ -1060,7 +1060,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00245;
+	uint8_t   mm_config__timeout_macrop_b_hi;
 
 
 
@@ -1071,7 +1071,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00246;
+	uint8_t   mm_config__timeout_macrop_b_lo;
 
 
 
@@ -1082,7 +1082,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00146;
+	uint8_t   range_config__timeout_macrop_a_hi;
 
 
 
@@ -1093,7 +1093,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00147;
+	uint8_t   range_config__timeout_macrop_a_lo;
 
 
 
@@ -1104,7 +1104,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00101;
+	uint8_t   range_config__vcsel_period_a;
 
 
 
@@ -1115,7 +1115,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00148;
+	uint8_t   range_config__timeout_macrop_b_hi;
 
 
 
@@ -1126,7 +1126,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00149;
+	uint8_t   range_config__timeout_macrop_b_lo;
 
 
 
@@ -1137,7 +1137,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00150;
+	uint8_t   range_config__vcsel_period_b;
 
 
 
@@ -1148,7 +1148,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00013;
+	uint16_t  range_config__sigma_thresh;
 
 
 
@@ -1159,7 +1159,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00012;
+	uint16_t  range_config__min_count_rate_rtn_limit_mcps;
 
 
 
@@ -1170,7 +1170,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00247;
+	uint8_t   range_config__valid_phase_low;
 
 
 
@@ -1181,7 +1181,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00248;
+	uint8_t   range_config__valid_phase_high;
 
 
 
@@ -1192,7 +1192,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00114;
+	uint32_t  system__intermeasurement_period;
 
 
 
@@ -1203,7 +1203,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00249;
+	uint8_t   system__fractional_enable;
 
 
 
@@ -1228,7 +1228,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00125;
+	uint8_t   system__grouped_parameter_hold_0;
 
 
 
@@ -1240,7 +1240,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00273;
+	uint16_t  system__thresh_high;
 
 
 
@@ -1251,7 +1251,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00274;
+	uint16_t  system__thresh_low;
 
 
 
@@ -1262,7 +1262,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00275;
+	uint8_t   system__enable_xtalk_per_quadrant;
 
 
 
@@ -1273,7 +1273,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00276;
+	uint8_t   system__seed_config;
 
 
 
@@ -1285,7 +1285,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00277;
+	uint8_t   sd_config__woi_sd0;
 
 
 
@@ -1296,7 +1296,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00278;
+	uint8_t   sd_config__woi_sd1;
 
 
 
@@ -1307,7 +1307,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00279;
+	uint8_t   sd_config__initial_phase_sd0;
 
 
 
@@ -1318,7 +1318,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00280;
+	uint8_t   sd_config__initial_phase_sd1;
 
 
 
@@ -1329,7 +1329,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00126;
+	uint8_t   system__grouped_parameter_hold_1;
 
 
 
@@ -1341,7 +1341,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00281;
+	uint8_t   sd_config__first_order_select;
 
 
 
@@ -1353,7 +1353,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00282;
+	uint8_t   sd_config__quantifier;
 
 
 
@@ -1364,7 +1364,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00115;
+	uint8_t   roi_config__user_roi_centre_spad;
 
 
 
@@ -1375,7 +1375,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00116;
+	uint8_t   roi_config__user_roi_requested_global_xy_size;
 
 
 
@@ -1386,7 +1386,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00023;
+	uint8_t   system__sequence_config;
 
 
 
@@ -1404,7 +1404,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00127;
+	uint8_t   system__grouped_parameter_hold;
 
 
 
@@ -1430,7 +1430,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00286;
+	uint8_t   power_management__go1_power_force;
 
 
 
@@ -1441,7 +1441,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00283;
+	uint8_t   system__stream_count_ctrl;
 
 
 
@@ -1452,7 +1452,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00284;
+	uint8_t   firmware__enable;
 
 
 
@@ -1463,7 +1463,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00285;
+	uint8_t   system__interrupt_clear;
 
 
 
@@ -1475,7 +1475,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00122;
+	uint8_t   system__mode_start;
 
 
 
@@ -1505,7 +1505,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00132;
+	uint8_t   result__interrupt_status;
 
 
 
@@ -1518,7 +1518,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00105;
+	uint8_t   result__range_status;
 
 
 
@@ -1532,7 +1532,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00106;
+	uint8_t   result__report_status;
 
 
 
@@ -1543,7 +1543,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00026;
+	uint8_t   result__stream_count;
 
 
 
@@ -1554,7 +1554,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00162;
+	uint16_t  result__dss_actual_effective_spads_sd0;
 
 
 
@@ -1565,7 +1565,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00297;
+	uint16_t  result__peak_signal_count_rate_mcps_sd0;
 
 
 
@@ -1576,7 +1576,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00166;
+	uint16_t  result__ambient_count_rate_mcps_sd0;
 
 
 
@@ -1587,7 +1587,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00167;
+	uint16_t  result__sigma_sd0;
 
 
 
@@ -1598,7 +1598,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00169;
+	uint16_t  result__phase_sd0;
 
 
 
@@ -1609,7 +1609,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00170;
+	uint16_t  result__final_crosstalk_corrected_range_mm_sd0;
 
 
 
@@ -1620,7 +1620,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00163;
+	uint16_t  result__peak_signal_count_rate_crosstalk_corrected_mcps_sd0;
 
 
 
@@ -1631,7 +1631,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00298;
+	uint16_t  result__mm_inner_actual_effective_spads_sd0;
 
 
 
@@ -1642,7 +1642,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00299;
+	uint16_t  result__mm_outer_actual_effective_spads_sd0;
 
 
 
@@ -1653,7 +1653,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00165;
+	uint16_t  result__avg_signal_count_rate_mcps_sd0;
 
 
 
@@ -1664,7 +1664,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00177;
+	uint16_t  result__dss_actual_effective_spads_sd1;
 
 
 
@@ -1675,7 +1675,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00178;
+	uint16_t  result__peak_signal_count_rate_mcps_sd1;
 
 
 
@@ -1686,7 +1686,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00179;
+	uint16_t  result__ambient_count_rate_mcps_sd1;
 
 
 
@@ -1697,7 +1697,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00180;
+	uint16_t  result__sigma_sd1;
 
 
 
@@ -1708,7 +1708,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00181;
+	uint16_t  result__phase_sd1;
 
 
 
@@ -1719,7 +1719,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00182;
+	uint16_t  result__final_crosstalk_corrected_range_mm_sd1;
 
 
 
@@ -1730,7 +1730,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00300;
+	uint16_t  result__spare_0_sd1;
 
 
 
@@ -1741,7 +1741,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00301;
+	uint16_t  result__spare_1_sd1;
 
 
 
@@ -1752,7 +1752,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00302;
+	uint16_t  result__spare_2_sd1;
 
 
 
@@ -1763,7 +1763,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00303;
+	uint8_t   result__spare_3_sd1;
 
 
 
@@ -1774,7 +1774,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00330;
+	uint8_t   result__thresh_info;
 
 
 
@@ -1800,7 +1800,7 @@ typedef struct {
 
 
 typedef struct {
-	uint32_t  VL53L1_PRM_00176;
+	uint32_t  result_core__ambient_window_events_sd0;
 
 
 
@@ -1811,7 +1811,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00172;
+	uint32_t  result_core__ranging_total_events_sd0;
 
 
 
@@ -1822,7 +1822,7 @@ typedef struct {
 
 
 
-	int32_t   VL53L1_PRM_00173;
+	int32_t   result_core__signal_total_events_sd0;
 
 
 
@@ -1833,7 +1833,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00174;
+	uint32_t  result_core__total_periods_elapsed_sd0;
 
 
 
@@ -1844,7 +1844,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00186;
+	uint32_t  result_core__ambient_window_events_sd1;
 
 
 
@@ -1855,7 +1855,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00183;
+	uint32_t  result_core__ranging_total_events_sd1;
 
 
 
@@ -1866,7 +1866,7 @@ typedef struct {
 
 
 
-	int32_t   VL53L1_PRM_00184;
+	int32_t   result_core__signal_total_events_sd1;
 
 
 
@@ -1877,7 +1877,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00185;
+	uint32_t  result_core__total_periods_elapsed_sd1;
 
 
 
@@ -1888,7 +1888,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00331;
+	uint8_t   result_core__spare_0;
 
 
 
@@ -1913,7 +1913,7 @@ typedef struct {
 
 
 typedef struct {
-	uint16_t  VL53L1_PRM_00134;
+	uint16_t  phasecal_result__reference_phase;
 
 
 
@@ -1924,7 +1924,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00135;
+	uint8_t   phasecal_result__vcsel_start;
 
 
 
@@ -1935,7 +1935,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00048;
+	uint8_t   ref_spad_char_result__num_actual_ref_spads;
 
 
 
@@ -1946,7 +1946,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00049;
+	uint8_t   ref_spad_char_result__ref_location;
 
 
 
@@ -1957,7 +1957,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00332;
+	uint8_t   vhv_result__coldboot_status;
 
 
 
@@ -1968,7 +1968,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00333;
+	uint8_t   vhv_result__search_result;
 
 
 
@@ -1979,7 +1979,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00334;
+	uint8_t   vhv_result__latest_setting;
 
 
 
@@ -1990,7 +1990,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00113;
+	uint16_t  result__osc_calibrate_val;
 
 
 
@@ -2001,7 +2001,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00335;
+	uint8_t   ana_config__powerdown_go1;
 
 
 
@@ -2013,7 +2013,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00336;
+	uint8_t   ana_config__ref_bg_ctrl;
 
 
 
@@ -2025,7 +2025,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00337;
+	uint8_t   ana_config__regdvdd1v2_ctrl;
 
 
 
@@ -2038,7 +2038,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00338;
+	uint8_t   ana_config__osc_slow_ctrl;
 
 
 
@@ -2051,7 +2051,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00339;
+	uint8_t   test_mode__status;
 
 
 
@@ -2062,7 +2062,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00340;
+	uint8_t   firmware__system_status;
 
 
 
@@ -2074,7 +2074,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00341;
+	uint8_t   firmware__mode_status;
 
 
 
@@ -2085,7 +2085,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00342;
+	uint8_t   firmware__secondary_mode_status;
 
 
 
@@ -2096,7 +2096,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00343;
+	uint16_t  firmware__cal_repeat_rate_counter;
 
 
 
@@ -2107,7 +2107,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00344;
+	uint16_t  gph__system__thresh_high;
 
 
 
@@ -2118,7 +2118,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00345;
+	uint16_t  gph__system__thresh_low;
 
 
 
@@ -2129,7 +2129,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00346;
+	uint8_t   gph__system__enable_xtalk_per_quadrant;
 
 
 
@@ -2140,7 +2140,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00347;
+	uint8_t   gph__spare_0;
 
 
 
@@ -2153,7 +2153,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00348;
+	uint8_t   gph__sd_config__woi_sd0;
 
 
 
@@ -2164,7 +2164,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00349;
+	uint8_t   gph__sd_config__woi_sd1;
 
 
 
@@ -2175,7 +2175,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00350;
+	uint8_t   gph__sd_config__initial_phase_sd0;
 
 
 
@@ -2186,7 +2186,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00351;
+	uint8_t   gph__sd_config__initial_phase_sd1;
 
 
 
@@ -2197,7 +2197,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00352;
+	uint8_t   gph__sd_config__first_order_select;
 
 
 
@@ -2209,7 +2209,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00353;
+	uint8_t   gph__sd_config__quantifier;
 
 
 
@@ -2220,7 +2220,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00354;
+	uint8_t   gph__roi_config__user_roi_centre_spad;
 
 
 
@@ -2231,7 +2231,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00355;
+	uint8_t   gph__roi_config__user_roi_requested_global_xy_size;
 
 
 
@@ -2242,7 +2242,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00356;
+	uint8_t   gph__system__sequence_config;
 
 
 
@@ -2260,7 +2260,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00357;
+	uint8_t   gph__gph_id;
 
 
 
@@ -2271,7 +2271,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00358;
+	uint8_t   system__interrupt_set;
 
 
 
@@ -2283,7 +2283,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00315;
+	uint8_t   interrupt_manager__enables;
 
 
 
@@ -2298,7 +2298,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00316;
+	uint8_t   interrupt_manager__clear;
 
 
 
@@ -2313,7 +2313,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00317;
+	uint8_t   interrupt_manager__status;
 
 
 
@@ -2328,7 +2328,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00318;
+	uint8_t   mcu_to_host_bank__wr_access_en;
 
 
 
@@ -2339,7 +2339,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00319;
+	uint8_t   power_management__go1_reset_status;
 
 
 
@@ -2350,7 +2350,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00359;
+	uint8_t   pad_startup_mode__value_ro;
 
 
 
@@ -2362,7 +2362,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00360;
+	uint8_t   pad_startup_mode__value_ctrl;
 
 
 
@@ -2376,7 +2376,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00131;
+	uint32_t  pll_period_us;
 
 
 
@@ -2387,7 +2387,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00361;
+	uint32_t  interrupt_scheduler__data_out;
 
 
 
@@ -2398,7 +2398,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00362;
+	uint8_t   nvm_bist__complete;
 
 
 
@@ -2409,7 +2409,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00363;
+	uint8_t   nvm_bist__status;
 
 
 
@@ -2434,7 +2434,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00364;
+	uint8_t   identification__model_id;
 
 
 
@@ -2445,7 +2445,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00004;
+	uint8_t   identification__module_type;
 
 
 
@@ -2456,7 +2456,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00003;
+	uint8_t   identification__revision_id;
 
 
 
@@ -2468,7 +2468,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00365;
+	uint16_t  identification__module_id;
 
 
 
@@ -2479,7 +2479,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00366;
+	uint8_t   ana_config__fast_osc__trim_max;
 
 
 
@@ -2490,7 +2490,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00367;
+	uint8_t   ana_config__fast_osc__freq_set;
 
 
 
@@ -2501,7 +2501,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00368;
+	uint8_t   ana_config__vcsel_trim;
 
 
 
@@ -2512,7 +2512,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00369;
+	uint8_t   ana_config__vcsel_selion;
 
 
 
@@ -2523,7 +2523,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00370;
+	uint8_t   ana_config__vcsel_selion_max;
 
 
 
@@ -2534,7 +2534,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00371;
+	uint8_t   protected_laser_safety__lock_bit;
 
 
 
@@ -2545,7 +2545,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00372;
+	uint8_t   laser_safety__key;
 
 
 
@@ -2556,7 +2556,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00373;
+	uint8_t   laser_safety__key_ro;
 
 
 
@@ -2567,7 +2567,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00374;
+	uint8_t   laser_safety__clip;
 
 
 
@@ -2578,7 +2578,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00375;
+	uint8_t   laser_safety__mult;
 
 
 
@@ -2589,7 +2589,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00376;
+	uint8_t   global_config__spad_enables_rtn_0;
 
 
 
@@ -2600,7 +2600,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00377;
+	uint8_t   global_config__spad_enables_rtn_1;
 
 
 
@@ -2611,7 +2611,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00378;
+	uint8_t   global_config__spad_enables_rtn_2;
 
 
 
@@ -2622,7 +2622,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00379;
+	uint8_t   global_config__spad_enables_rtn_3;
 
 
 
@@ -2633,7 +2633,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00380;
+	uint8_t   global_config__spad_enables_rtn_4;
 
 
 
@@ -2644,7 +2644,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00381;
+	uint8_t   global_config__spad_enables_rtn_5;
 
 
 
@@ -2655,7 +2655,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00382;
+	uint8_t   global_config__spad_enables_rtn_6;
 
 
 
@@ -2666,7 +2666,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00383;
+	uint8_t   global_config__spad_enables_rtn_7;
 
 
 
@@ -2677,7 +2677,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00384;
+	uint8_t   global_config__spad_enables_rtn_8;
 
 
 
@@ -2688,7 +2688,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00385;
+	uint8_t   global_config__spad_enables_rtn_9;
 
 
 
@@ -2699,7 +2699,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00386;
+	uint8_t   global_config__spad_enables_rtn_10;
 
 
 
@@ -2710,7 +2710,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00387;
+	uint8_t   global_config__spad_enables_rtn_11;
 
 
 
@@ -2721,7 +2721,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00388;
+	uint8_t   global_config__spad_enables_rtn_12;
 
 
 
@@ -2732,7 +2732,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00389;
+	uint8_t   global_config__spad_enables_rtn_13;
 
 
 
@@ -2743,7 +2743,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00390;
+	uint8_t   global_config__spad_enables_rtn_14;
 
 
 
@@ -2754,7 +2754,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00391;
+	uint8_t   global_config__spad_enables_rtn_15;
 
 
 
@@ -2765,7 +2765,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00392;
+	uint8_t   global_config__spad_enables_rtn_16;
 
 
 
@@ -2776,7 +2776,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00393;
+	uint8_t   global_config__spad_enables_rtn_17;
 
 
 
@@ -2787,7 +2787,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00394;
+	uint8_t   global_config__spad_enables_rtn_18;
 
 
 
@@ -2798,7 +2798,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00395;
+	uint8_t   global_config__spad_enables_rtn_19;
 
 
 
@@ -2809,7 +2809,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00396;
+	uint8_t   global_config__spad_enables_rtn_20;
 
 
 
@@ -2820,7 +2820,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00397;
+	uint8_t   global_config__spad_enables_rtn_21;
 
 
 
@@ -2831,7 +2831,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00398;
+	uint8_t   global_config__spad_enables_rtn_22;
 
 
 
@@ -2842,7 +2842,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00399;
+	uint8_t   global_config__spad_enables_rtn_23;
 
 
 
@@ -2853,7 +2853,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00400;
+	uint8_t   global_config__spad_enables_rtn_24;
 
 
 
@@ -2864,7 +2864,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00401;
+	uint8_t   global_config__spad_enables_rtn_25;
 
 
 
@@ -2875,7 +2875,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00402;
+	uint8_t   global_config__spad_enables_rtn_26;
 
 
 
@@ -2886,7 +2886,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00403;
+	uint8_t   global_config__spad_enables_rtn_27;
 
 
 
@@ -2897,7 +2897,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00404;
+	uint8_t   global_config__spad_enables_rtn_28;
 
 
 
@@ -2908,7 +2908,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00405;
+	uint8_t   global_config__spad_enables_rtn_29;
 
 
 
@@ -2919,7 +2919,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00406;
+	uint8_t   global_config__spad_enables_rtn_30;
 
 
 
@@ -2930,7 +2930,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00407;
+	uint8_t   global_config__spad_enables_rtn_31;
 
 
 
@@ -2941,7 +2941,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00117;
+	uint8_t   roi_config__mode_roi_centre_spad;
 
 
 
@@ -2952,7 +2952,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00118;
+	uint8_t   roi_config__mode_roi_xy_size;
 
 
 
@@ -2977,7 +2977,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00408;
+	uint8_t   prev_shadow_result__interrupt_status;
 
 
 
@@ -2990,7 +2990,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00409;
+	uint8_t   prev_shadow_result__range_status;
 
 
 
@@ -3004,7 +3004,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00410;
+	uint8_t   prev_shadow_result__report_status;
 
 
 
@@ -3015,7 +3015,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00411;
+	uint8_t   prev_shadow_result__stream_count;
 
 
 
@@ -3026,7 +3026,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00412;
+	uint16_t  prev_shadow_result__dss_actual_effective_spads_sd0;
 
 
 
@@ -3037,7 +3037,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00413;
+	uint16_t  prev_shadow_result__peak_signal_count_rate_mcps_sd0;
 
 
 
@@ -3048,7 +3048,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00414;
+	uint16_t  prev_shadow_result__ambient_count_rate_mcps_sd0;
 
 
 
@@ -3059,7 +3059,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00415;
+	uint16_t  prev_shadow_result__sigma_sd0;
 
 
 
@@ -3070,7 +3070,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00416;
+	uint16_t  prev_shadow_result__phase_sd0;
 
 
 
@@ -3081,7 +3081,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00417;
+	uint16_t  prev_shadow_result__final_crosstalk_corrected_range_mm_sd0;
 
 
 
@@ -3092,7 +3092,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00418;
+	uint16_t  prev_shadow_result__peak_signal_count_rate_crosstalk_corrected_mcps_sd0;
 
 
 
@@ -3103,7 +3103,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00419;
+	uint16_t  prev_shadow_result__mm_inner_actual_effective_spads_sd0;
 
 
 
@@ -3114,7 +3114,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00420;
+	uint16_t  prev_shadow_result__mm_outer_actual_effective_spads_sd0;
 
 
 
@@ -3125,7 +3125,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00421;
+	uint16_t  prev_shadow_result__avg_signal_count_rate_mcps_sd0;
 
 
 
@@ -3136,7 +3136,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00422;
+	uint16_t  prev_shadow_result__dss_actual_effective_spads_sd1;
 
 
 
@@ -3147,7 +3147,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00423;
+	uint16_t  prev_shadow_result__peak_signal_count_rate_mcps_sd1;
 
 
 
@@ -3158,7 +3158,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00424;
+	uint16_t  prev_shadow_result__ambient_count_rate_mcps_sd1;
 
 
 
@@ -3169,7 +3169,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00425;
+	uint16_t  prev_shadow_result__sigma_sd1;
 
 
 
@@ -3180,7 +3180,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00426;
+	uint16_t  prev_shadow_result__phase_sd1;
 
 
 
@@ -3191,7 +3191,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00427;
+	uint16_t  prev_shadow_result__final_crosstalk_corrected_range_mm_sd1;
 
 
 
@@ -3202,7 +3202,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00428;
+	uint16_t  prev_shadow_result__spare_0_sd1;
 
 
 
@@ -3213,7 +3213,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00429;
+	uint16_t  prev_shadow_result__spare_1_sd1;
 
 
 
@@ -3224,7 +3224,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00430;
+	uint16_t  prev_shadow_result__spare_2_sd1;
 
 
 
@@ -3235,7 +3235,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00431;
+	uint16_t  prev_shadow_result__spare_3_sd1;
 
 
 
@@ -3260,7 +3260,7 @@ typedef struct {
 
 
 typedef struct {
-	uint32_t  VL53L1_PRM_00432;
+	uint32_t  prev_shadow_result_core__ambient_window_events_sd0;
 
 
 
@@ -3271,7 +3271,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00433;
+	uint32_t  prev_shadow_result_core__ranging_total_events_sd0;
 
 
 
@@ -3282,7 +3282,7 @@ typedef struct {
 
 
 
-	int32_t   VL53L1_PRM_00434;
+	int32_t   prev_shadow_result_core__signal_total_events_sd0;
 
 
 
@@ -3293,7 +3293,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00435;
+	uint32_t  prev_shadow_result_core__total_periods_elapsed_sd0;
 
 
 
@@ -3304,7 +3304,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00436;
+	uint32_t  prev_shadow_result_core__ambient_window_events_sd1;
 
 
 
@@ -3315,7 +3315,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00437;
+	uint32_t  prev_shadow_result_core__ranging_total_events_sd1;
 
 
 
@@ -3326,7 +3326,7 @@ typedef struct {
 
 
 
-	int32_t   VL53L1_PRM_00438;
+	int32_t   prev_shadow_result_core__signal_total_events_sd1;
 
 
 
@@ -3337,7 +3337,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00439;
+	uint32_t  prev_shadow_result_core__total_periods_elapsed_sd1;
 
 
 
@@ -3348,7 +3348,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00440;
+	uint8_t   prev_shadow_result_core__spare_0;
 
 
 
@@ -3373,7 +3373,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00441;
+	uint8_t   result__debug_status;
 
 
 
@@ -3384,7 +3384,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00442;
+	uint8_t   result__debug_stage;
 
 
 
@@ -3409,7 +3409,7 @@ typedef struct {
 
 
 typedef struct {
-	uint16_t  VL53L1_PRM_00443;
+	uint16_t  gph__system__thresh_rate_high;
 
 
 
@@ -3420,7 +3420,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00444;
+	uint16_t  gph__system__thresh_rate_low;
 
 
 
@@ -3431,7 +3431,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00445;
+	uint8_t   gph__system__interrupt_config_gpio;
 
 
 
@@ -3461,7 +3461,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00446;
+	uint8_t   gph__dss_config__roi_mode_control;
 
 
 
@@ -3473,7 +3473,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00447;
+	uint16_t  gph__dss_config__manual_effective_spads_select;
 
 
 
@@ -3484,7 +3484,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00448;
+	uint8_t   gph__dss_config__manual_block_select;
 
 
 
@@ -3495,7 +3495,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00449;
+	uint8_t   gph__dss_config__max_spads_limit;
 
 
 
@@ -3506,7 +3506,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00450;
+	uint8_t   gph__dss_config__min_spads_limit;
 
 
 
@@ -3531,7 +3531,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00451;
+	uint8_t   gph__mm_config__timeout_macrop_a_hi;
 
 
 
@@ -3542,7 +3542,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00452;
+	uint8_t   gph__mm_config__timeout_macrop_a_lo;
 
 
 
@@ -3553,7 +3553,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00453;
+	uint8_t   gph__mm_config__timeout_macrop_b_hi;
 
 
 
@@ -3564,7 +3564,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00454;
+	uint8_t   gph__mm_config__timeout_macrop_b_lo;
 
 
 
@@ -3575,7 +3575,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00455;
+	uint8_t   gph__range_config__timeout_macrop_a_hi;
 
 
 
@@ -3586,7 +3586,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00456;
+	uint8_t   gph__range_config__timeout_macrop_a_lo;
 
 
 
@@ -3597,7 +3597,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00457;
+	uint8_t   gph__range_config__vcsel_period_a;
 
 
 
@@ -3608,7 +3608,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00458;
+	uint8_t   gph__range_config__vcsel_period_b;
 
 
 
@@ -3619,7 +3619,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00459;
+	uint8_t   gph__range_config__timeout_macrop_b_hi;
 
 
 
@@ -3630,7 +3630,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00460;
+	uint8_t   gph__range_config__timeout_macrop_b_lo;
 
 
 
@@ -3641,7 +3641,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00461;
+	uint16_t  gph__range_config__sigma_thresh;
 
 
 
@@ -3652,7 +3652,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00462;
+	uint16_t  gph__range_config__min_count_rate_rtn_limit_mcps;
 
 
 
@@ -3663,7 +3663,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00463;
+	uint8_t   gph__range_config__valid_phase_low;
 
 
 
@@ -3674,7 +3674,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00464;
+	uint8_t   gph__range_config__valid_phase_high;
 
 
 
@@ -3699,7 +3699,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00465;
+	uint8_t   firmware__internal_stream_count_div;
 
 
 
@@ -3710,7 +3710,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00466;
+	uint8_t   firmware__internal_stream_counter_val;
 
 
 
@@ -3735,7 +3735,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00467;
+	uint8_t   dss_calc__roi_ctrl;
 
 
 
@@ -3747,7 +3747,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00468;
+	uint8_t   dss_calc__spare_1;
 
 
 
@@ -3758,7 +3758,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00469;
+	uint8_t   dss_calc__spare_2;
 
 
 
@@ -3769,7 +3769,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00470;
+	uint8_t   dss_calc__spare_3;
 
 
 
@@ -3780,7 +3780,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00471;
+	uint8_t   dss_calc__spare_4;
 
 
 
@@ -3791,7 +3791,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00472;
+	uint8_t   dss_calc__spare_5;
 
 
 
@@ -3802,7 +3802,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00473;
+	uint8_t   dss_calc__spare_6;
 
 
 
@@ -3813,7 +3813,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00474;
+	uint8_t   dss_calc__spare_7;
 
 
 
@@ -3824,7 +3824,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00475;
+	uint8_t   dss_calc__user_roi_spad_en_0;
 
 
 
@@ -3835,7 +3835,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00476;
+	uint8_t   dss_calc__user_roi_spad_en_1;
 
 
 
@@ -3846,7 +3846,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00477;
+	uint8_t   dss_calc__user_roi_spad_en_2;
 
 
 
@@ -3857,7 +3857,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00478;
+	uint8_t   dss_calc__user_roi_spad_en_3;
 
 
 
@@ -3868,7 +3868,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00479;
+	uint8_t   dss_calc__user_roi_spad_en_4;
 
 
 
@@ -3879,7 +3879,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00480;
+	uint8_t   dss_calc__user_roi_spad_en_5;
 
 
 
@@ -3890,7 +3890,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00481;
+	uint8_t   dss_calc__user_roi_spad_en_6;
 
 
 
@@ -3901,7 +3901,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00482;
+	uint8_t   dss_calc__user_roi_spad_en_7;
 
 
 
@@ -3912,7 +3912,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00483;
+	uint8_t   dss_calc__user_roi_spad_en_8;
 
 
 
@@ -3923,7 +3923,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00484;
+	uint8_t   dss_calc__user_roi_spad_en_9;
 
 
 
@@ -3934,7 +3934,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00485;
+	uint8_t   dss_calc__user_roi_spad_en_10;
 
 
 
@@ -3945,7 +3945,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00486;
+	uint8_t   dss_calc__user_roi_spad_en_11;
 
 
 
@@ -3956,7 +3956,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00487;
+	uint8_t   dss_calc__user_roi_spad_en_12;
 
 
 
@@ -3967,7 +3967,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00488;
+	uint8_t   dss_calc__user_roi_spad_en_13;
 
 
 
@@ -3978,7 +3978,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00489;
+	uint8_t   dss_calc__user_roi_spad_en_14;
 
 
 
@@ -3989,7 +3989,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00490;
+	uint8_t   dss_calc__user_roi_spad_en_15;
 
 
 
@@ -4000,7 +4000,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00491;
+	uint8_t   dss_calc__user_roi_spad_en_16;
 
 
 
@@ -4011,7 +4011,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00492;
+	uint8_t   dss_calc__user_roi_spad_en_17;
 
 
 
@@ -4022,7 +4022,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00493;
+	uint8_t   dss_calc__user_roi_spad_en_18;
 
 
 
@@ -4033,7 +4033,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00494;
+	uint8_t   dss_calc__user_roi_spad_en_19;
 
 
 
@@ -4044,7 +4044,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00495;
+	uint8_t   dss_calc__user_roi_spad_en_20;
 
 
 
@@ -4055,7 +4055,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00496;
+	uint8_t   dss_calc__user_roi_spad_en_21;
 
 
 
@@ -4066,7 +4066,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00497;
+	uint8_t   dss_calc__user_roi_spad_en_22;
 
 
 
@@ -4077,7 +4077,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00498;
+	uint8_t   dss_calc__user_roi_spad_en_23;
 
 
 
@@ -4088,7 +4088,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00499;
+	uint8_t   dss_calc__user_roi_spad_en_24;
 
 
 
@@ -4099,7 +4099,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00500;
+	uint8_t   dss_calc__user_roi_spad_en_25;
 
 
 
@@ -4110,7 +4110,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00501;
+	uint8_t   dss_calc__user_roi_spad_en_26;
 
 
 
@@ -4121,7 +4121,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00502;
+	uint8_t   dss_calc__user_roi_spad_en_27;
 
 
 
@@ -4132,7 +4132,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00503;
+	uint8_t   dss_calc__user_roi_spad_en_28;
 
 
 
@@ -4143,7 +4143,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00504;
+	uint8_t   dss_calc__user_roi_spad_en_29;
 
 
 
@@ -4154,7 +4154,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00505;
+	uint8_t   dss_calc__user_roi_spad_en_30;
 
 
 
@@ -4165,7 +4165,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00506;
+	uint8_t   dss_calc__user_roi_spad_en_31;
 
 
 
@@ -4176,7 +4176,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00507;
+	uint8_t   dss_calc__user_roi_0;
 
 
 
@@ -4187,7 +4187,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00508;
+	uint8_t   dss_calc__user_roi_1;
 
 
 
@@ -4198,7 +4198,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00509;
+	uint8_t   dss_calc__mode_roi_0;
 
 
 
@@ -4209,7 +4209,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00510;
+	uint8_t   dss_calc__mode_roi_1;
 
 
 
@@ -4220,7 +4220,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00511;
+	uint8_t   sigma_estimator_calc__spare_0;
 
 
 
@@ -4231,7 +4231,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00512;
+	uint16_t  vhv_result__peak_signal_rate_mcps;
 
 
 
@@ -4242,7 +4242,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00513;
+	uint32_t  vhv_result__signal_total_events_ref;
 
 
 
@@ -4253,7 +4253,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00514;
+	uint16_t  phasecal_result__phase_output_ref;
 
 
 
@@ -4264,7 +4264,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00515;
+	uint16_t  dss_result__total_rate_per_spad;
 
 
 
@@ -4275,7 +4275,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00516;
+	uint8_t   dss_result__enabled_blocks;
 
 
 
@@ -4286,7 +4286,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00517;
+	uint16_t  dss_result__num_requested_spads;
 
 
 
@@ -4297,7 +4297,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00518;
+	uint16_t  mm_result__inner_intersection_rate;
 
 
 
@@ -4308,7 +4308,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00519;
+	uint16_t  mm_result__outer_complement_rate;
 
 
 
@@ -4319,7 +4319,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00520;
+	uint16_t  mm_result__total_offset;
 
 
 
@@ -4330,7 +4330,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00521;
+	uint32_t  xtalk_calc__xtalk_for_enabled_spads;
 
 
 
@@ -4341,7 +4341,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00522;
+	uint32_t  xtalk_result__avg_xtalk_user_roi_kcps;
 
 
 
@@ -4352,7 +4352,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00523;
+	uint32_t  xtalk_result__avg_xtalk_mm_inner_roi_kcps;
 
 
 
@@ -4363,7 +4363,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00524;
+	uint32_t  xtalk_result__avg_xtalk_mm_outer_roi_kcps;
 
 
 
@@ -4374,7 +4374,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00525;
+	uint32_t  range_result__accum_phase;
 
 
 
@@ -4385,7 +4385,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00526;
+	uint16_t  range_result__offset_corrected_range;
 
 
 
@@ -4410,7 +4410,7 @@ typedef struct {
 
 
 typedef struct {
-	uint8_t   VL53L1_PRM_00527;
+	uint8_t   shadow_phasecal_result__vcsel_start;
 
 
 
@@ -4421,7 +4421,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00528;
+	uint8_t   shadow_result__interrupt_status;
 
 
 
@@ -4434,7 +4434,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00529;
+	uint8_t   shadow_result__range_status;
 
 
 
@@ -4448,7 +4448,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00530;
+	uint8_t   shadow_result__report_status;
 
 
 
@@ -4459,7 +4459,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00531;
+	uint8_t   shadow_result__stream_count;
 
 
 
@@ -4470,7 +4470,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00532;
+	uint16_t  shadow_result__dss_actual_effective_spads_sd0;
 
 
 
@@ -4481,7 +4481,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00533;
+	uint16_t  shadow_result__peak_signal_count_rate_mcps_sd0;
 
 
 
@@ -4492,7 +4492,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00534;
+	uint16_t  shadow_result__ambient_count_rate_mcps_sd0;
 
 
 
@@ -4503,7 +4503,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00535;
+	uint16_t  shadow_result__sigma_sd0;
 
 
 
@@ -4514,7 +4514,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00536;
+	uint16_t  shadow_result__phase_sd0;
 
 
 
@@ -4525,7 +4525,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00537;
+	uint16_t  shadow_result__final_crosstalk_corrected_range_mm_sd0;
 
 
 
@@ -4536,7 +4536,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00538;
+	uint16_t  shadow_result__peak_signal_count_rate_crosstalk_corrected_mcps_sd0;
 
 
 
@@ -4547,7 +4547,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00539;
+	uint16_t  shadow_result__mm_inner_actual_effective_spads_sd0;
 
 
 
@@ -4558,7 +4558,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00540;
+	uint16_t  shadow_result__mm_outer_actual_effective_spads_sd0;
 
 
 
@@ -4569,7 +4569,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00541;
+	uint16_t  shadow_result__avg_signal_count_rate_mcps_sd0;
 
 
 
@@ -4580,7 +4580,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00542;
+	uint16_t  shadow_result__dss_actual_effective_spads_sd1;
 
 
 
@@ -4591,7 +4591,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00543;
+	uint16_t  shadow_result__peak_signal_count_rate_mcps_sd1;
 
 
 
@@ -4602,7 +4602,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00544;
+	uint16_t  shadow_result__ambient_count_rate_mcps_sd1;
 
 
 
@@ -4613,7 +4613,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00545;
+	uint16_t  shadow_result__sigma_sd1;
 
 
 
@@ -4624,7 +4624,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00546;
+	uint16_t  shadow_result__phase_sd1;
 
 
 
@@ -4635,7 +4635,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00547;
+	uint16_t  shadow_result__final_crosstalk_corrected_range_mm_sd1;
 
 
 
@@ -4646,7 +4646,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00548;
+	uint16_t  shadow_result__spare_0_sd1;
 
 
 
@@ -4657,7 +4657,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00549;
+	uint16_t  shadow_result__spare_1_sd1;
 
 
 
@@ -4668,7 +4668,7 @@ typedef struct {
 
 
 
-	uint16_t  VL53L1_PRM_00550;
+	uint16_t  shadow_result__spare_2_sd1;
 
 
 
@@ -4679,7 +4679,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00551;
+	uint8_t   shadow_result__spare_3_sd1;
 
 
 
@@ -4690,7 +4690,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00552;
+	uint8_t   shadow_result__thresh_info;
 
 
 
@@ -4702,7 +4702,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00553;
+	uint8_t   shadow_phasecal_result__reference_phase_hi;
 
 
 
@@ -4713,7 +4713,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00554;
+	uint8_t   shadow_phasecal_result__reference_phase_lo;
 
 
 
@@ -4738,7 +4738,7 @@ typedef struct {
 
 
 typedef struct {
-	uint32_t  VL53L1_PRM_00555;
+	uint32_t  shadow_result_core__ambient_window_events_sd0;
 
 
 
@@ -4749,7 +4749,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00556;
+	uint32_t  shadow_result_core__ranging_total_events_sd0;
 
 
 
@@ -4760,7 +4760,7 @@ typedef struct {
 
 
 
-	int32_t   VL53L1_PRM_00557;
+	int32_t   shadow_result_core__signal_total_events_sd0;
 
 
 
@@ -4771,7 +4771,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00558;
+	uint32_t  shadow_result_core__total_periods_elapsed_sd0;
 
 
 
@@ -4782,7 +4782,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00559;
+	uint32_t  shadow_result_core__ambient_window_events_sd1;
 
 
 
@@ -4793,7 +4793,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00560;
+	uint32_t  shadow_result_core__ranging_total_events_sd1;
 
 
 
@@ -4804,7 +4804,7 @@ typedef struct {
 
 
 
-	int32_t   VL53L1_PRM_00561;
+	int32_t   shadow_result_core__signal_total_events_sd1;
 
 
 
@@ -4815,7 +4815,7 @@ typedef struct {
 
 
 
-	uint32_t  VL53L1_PRM_00562;
+	uint32_t  shadow_result_core__total_periods_elapsed_sd1;
 
 
 
@@ -4826,7 +4826,7 @@ typedef struct {
 
 
 
-	uint8_t   VL53L1_PRM_00563;
+	uint8_t   shadow_result_core__spare_0;
 
 
 
