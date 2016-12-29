@@ -38,7 +38,7 @@ PROJECT_NAME = VL53L1 linux driver
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
 
-PROJECT_NUMBER = 5.0.0
+PROJECT_NUMBER = 6.1.0
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer a
@@ -624,14 +624,14 @@ MAX_INITIALIZER_LINES = 30
 # will mention the files that were used to generate the documentation.
 # The default value is: YES.
 
-SHOW_USED_FILES = YES
+SHOW_USED_FILES = NO
 
 # Set the SHOW_FILES tag to NO to disable the generation of the Files page. This
 # will remove the Files entry from the Quick Index and from the Folder Tree View
 # (if specified).
 # The default value is: YES.
 
-SHOW_FILES = YES
+SHOW_FILES = NO
 
 # Set the SHOW_NAMESPACES tag to NO to disable the generation of the Namespaces
 # page. This will remove the Namespaces entry from the Quick Index and from the
@@ -743,7 +743,7 @@ WARN_LOGFILE =
 # spaces.
 # Note: If this tag is empty the current directory is searched.
 
-INPUT = stmvl53l1_dox.h stmvl53l1.h stmvl53l1_if.h stmvl53l1_module.c stmvl53l1_module-i2c.c stmvl53l1_ipp.h 
+INPUT = stmvl53l1_dox.h stmvl53l1.h stmvl53l1_if.h stmvl53l1_module.c stmvl53l1_module-i2c.c stmvl53l1_ipp.h
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
