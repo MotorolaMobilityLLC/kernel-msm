@@ -99,8 +99,8 @@
 
 #include "vl53l1_types.h"
 
-#define   VL53L1_DEF_00231                      0x01
-#define   VL53L1_DEF_00232                      0x00
+#define   VL53L1_I2C                      0x01
+#define   VL53L1_SPI                      0x00
 
 
 
@@ -116,8 +116,8 @@
 
 typedef uint8_t VL53L1_WaitMethod;
 
-#define VL53L1_DEF_00052               ((VL53L1_WaitMethod)  0)
-#define VL53L1_DEF_00233           ((VL53L1_WaitMethod)  1)
+#define VL53L1_WAIT_METHOD_BLOCKING               ((VL53L1_WaitMethod)  0)
+#define VL53L1_WAIT_METHOD_NON_BLOCKING           ((VL53L1_WaitMethod)  1)
 
 
 
@@ -130,18 +130,18 @@ typedef uint8_t VL53L1_WaitMethod;
 
 typedef uint8_t VL53L1_DeviceState;
 
-#define VL53L1_DEF_00234              ((VL53L1_DeviceState)  0)
-#define VL53L1_DEF_00235             ((VL53L1_DeviceState)  1)
-#define VL53L1_DEF_00205            ((VL53L1_DeviceState)  2)
-#define VL53L1_DEF_00058             ((VL53L1_DeviceState)  3)
-#define VL53L1_DEF_00150       ((VL53L1_DeviceState)  4)
-#define VL53L1_DEF_00151     ((VL53L1_DeviceState)  5)
-#define VL53L1_DEF_00038  ((VL53L1_DeviceState)  6)
-#define VL53L1_DEF_00029    ((VL53L1_DeviceState)  7)
-#define VL53L1_DEF_00030    ((VL53L1_DeviceState)  8)
+#define VL53L1_DEVICESTATE_POWERDOWN              ((VL53L1_DeviceState)  0)
+#define VL53L1_DEVICESTATE_HW_STANDBY             ((VL53L1_DeviceState)  1)
+#define VL53L1_DEVICESTATE_FW_COLDBOOT            ((VL53L1_DeviceState)  2)
+#define VL53L1_DEVICESTATE_SW_STANDBY             ((VL53L1_DeviceState)  3)
+#define VL53L1_DEVICESTATE_RANGING_DSS_AUTO       ((VL53L1_DeviceState)  4)
+#define VL53L1_DEVICESTATE_RANGING_DSS_MANUAL     ((VL53L1_DeviceState)  5)
+#define VL53L1_DEVICESTATE_RANGING_WAIT_GPH_SYNC  ((VL53L1_DeviceState)  6)
+#define VL53L1_DEVICESTATE_RANGING_GATHER_DATA    ((VL53L1_DeviceState)  7)
+#define VL53L1_DEVICESTATE_RANGING_OUTPUT_DATA    ((VL53L1_DeviceState)  8)
 
-#define VL53L1_DEF_00051               ((VL53L1_DeviceState) 98)
-#define VL53L1_DEF_00236                 ((VL53L1_DeviceState) 99)
+#define VL53L1_DEVICESTATE_UNKNOWN               ((VL53L1_DeviceState) 98)
+#define VL53L1_DEVICESTATE_ERROR                 ((VL53L1_DeviceState) 99)
 
 
 
@@ -155,14 +155,16 @@ typedef uint8_t VL53L1_DeviceState;
 
 typedef uint8_t VL53L1_DeviceZonePreset;
 
-#define VL53L1_DEF_00053            ((VL53L1_DeviceZonePreset)  0)
-#define VL53L1_DEF_00076    ((VL53L1_DeviceZonePreset)  1)
-#define VL53L1_DEF_00077  ((VL53L1_DeviceZonePreset)  2)
-#define VL53L1_DEF_00078    ((VL53L1_DeviceZonePreset)  3)
-#define VL53L1_DEF_00079    ((VL53L1_DeviceZonePreset)  4)
-#define VL53L1_DEF_00080    ((VL53L1_DeviceZonePreset)  5)
-#define VL53L1_DEF_00081  ((VL53L1_DeviceZonePreset)  6)
-#define VL53L1_DEF_00082  ((VL53L1_DeviceZonePreset)  7)
+#define VL53L1_DEVICEZONEPRESET_NONE            ((VL53L1_DeviceZonePreset)  0)
+#define VL53L1_DEVICEZONEPRESET_XTALK_PLANAR    ((VL53L1_DeviceZonePreset)  1)
+#define VL53L1_DEVICEZONEPRESET_1X1_SIZE_16X16  ((VL53L1_DeviceZonePreset)  2)
+#define VL53L1_DEVICEZONEPRESET_1X2_SIZE_16X8   ((VL53L1_DeviceZonePreset)  3)
+#define VL53L1_DEVICEZONEPRESET_2X1_SIZE_8X16   ((VL53L1_DeviceZonePreset)  4)
+#define VL53L1_DEVICEZONEPRESET_2X2_SIZE_8X8    ((VL53L1_DeviceZonePreset)  5)
+#define VL53L1_DEVICEZONEPRESET_3X3_SIZE_5X5    ((VL53L1_DeviceZonePreset)  6)
+#define VL53L1_DEVICEZONEPRESET_4X4_SIZE_4X4    ((VL53L1_DeviceZonePreset)  7)
+#define VL53L1_DEVICEZONEPRESET_11X11_SIZE_5X5  ((VL53L1_DeviceZonePreset)  8)
+#define VL53L1_DEVICEZONEPRESET_13X13_SIZE_4X4  ((VL53L1_DeviceZonePreset)  9)
 
 
 
@@ -176,36 +178,36 @@ typedef uint8_t VL53L1_DeviceZonePreset;
 
 typedef uint8_t VL53L1_DevicePresetModes;
 
-#define VL53L1_DEF_00237                             ((VL53L1_DevicePresetModes)  0)
-#define VL53L1_DEF_00003                 ((VL53L1_DevicePresetModes)  1)
-#define VL53L1_DEF_00059     ((VL53L1_DevicePresetModes)  2)
-#define VL53L1_DEF_00060      ((VL53L1_DevicePresetModes)  3)
-#define VL53L1_DEF_00039         ((VL53L1_DevicePresetModes)  4)
-#define VL53L1_DEF_00040         ((VL53L1_DevicePresetModes)  5)
-#define VL53L1_DEF_00006                    ((VL53L1_DevicePresetModes)  6)
-#define VL53L1_DEF_00238                  ((VL53L1_DevicePresetModes)  7)
-#define VL53L1_DEF_00239                 ((VL53L1_DevicePresetModes)  8)
-#define VL53L1_DEF_00004                ((VL53L1_DevicePresetModes)  9)
-#define VL53L1_DEF_00064   ((VL53L1_DevicePresetModes) 10)
-#define VL53L1_DEF_00074       ((VL53L1_DevicePresetModes) 11)
-#define VL53L1_DEF_00036           ((VL53L1_DevicePresetModes) 12)
-#define VL53L1_DEF_00007                              ((VL53L1_DevicePresetModes) 13)
-#define VL53L1_DEF_00075               ((VL53L1_DevicePresetModes) 14)
-#define VL53L1_DEF_00063              ((VL53L1_DevicePresetModes) 15)
-#define VL53L1_DEF_00061       ((VL53L1_DevicePresetModes) 16)
-#define VL53L1_DEF_00062       ((VL53L1_DevicePresetModes) 17)
-#define VL53L1_DEF_00240        ((VL53L1_DevicePresetModes) 18)
-#define VL53L1_DEF_00241        ((VL53L1_DevicePresetModes) 19)
-#define VL53L1_DEF_00005              ((VL53L1_DevicePresetModes) 20)
-#define VL53L1_DEF_00065        ((VL53L1_DevicePresetModes) 21)
-#define VL53L1_DEF_00066    ((VL53L1_DevicePresetModes) 22)
-#define VL53L1_DEF_00067    ((VL53L1_DevicePresetModes) 23)
-#define VL53L1_DEF_00068        ((VL53L1_DevicePresetModes) 24)
-#define VL53L1_DEF_00069    ((VL53L1_DevicePresetModes) 25)
-#define VL53L1_DEF_00070    ((VL53L1_DevicePresetModes) 26)
-#define VL53L1_DEF_00071       ((VL53L1_DevicePresetModes) 27)
-#define VL53L1_DEF_00072   ((VL53L1_DevicePresetModes) 28)
-#define VL53L1_DEF_00073   ((VL53L1_DevicePresetModes) 29)
+#define VL53L1_DEVICEPRESETMODE_NONE                             ((VL53L1_DevicePresetModes)  0)
+#define VL53L1_DEVICEPRESETMODE_STANDARD_RANGING                 ((VL53L1_DevicePresetModes)  1)
+#define VL53L1_DEVICEPRESETMODE_STANDARD_RANGING_SHORT_RANGE     ((VL53L1_DevicePresetModes)  2)
+#define VL53L1_DEVICEPRESETMODE_STANDARD_RANGING_LONG_RANGE      ((VL53L1_DevicePresetModes)  3)
+#define VL53L1_DEVICEPRESETMODE_STANDARD_RANGING_MM1_CAL         ((VL53L1_DevicePresetModes)  4)
+#define VL53L1_DEVICEPRESETMODE_STANDARD_RANGING_MM2_CAL         ((VL53L1_DevicePresetModes)  5)
+#define VL53L1_DEVICEPRESETMODE_TIMED_RANGING                    ((VL53L1_DevicePresetModes)  6)
+#define VL53L1_DEVICEPRESETMODE_NEAR_FARRANGING                  ((VL53L1_DevicePresetModes)  7)
+#define VL53L1_DEVICEPRESETMODE_QUADRANT_RANGING                 ((VL53L1_DevicePresetModes)  8)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING                ((VL53L1_DevicePresetModes)  9)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_SHORT_TIMING   ((VL53L1_DevicePresetModes) 10)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_CHARACTERISATION       ((VL53L1_DevicePresetModes) 11)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_XTALK_PLANAR           ((VL53L1_DevicePresetModes) 12)
+#define VL53L1_DEVICEPRESETMODE_OLT                              ((VL53L1_DevicePresetModes) 13)
+#define VL53L1_DEVICEPRESETMODE_SINGLESHOT_RANGING               ((VL53L1_DevicePresetModes) 14)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_REF_ARRAY              ((VL53L1_DevicePresetModes) 15)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_WITH_MM1       ((VL53L1_DevicePresetModes) 16)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_WITH_MM2       ((VL53L1_DevicePresetModes) 17)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_MM1_CAL        ((VL53L1_DevicePresetModes) 18)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_MM2_CAL        ((VL53L1_DevicePresetModes) 19)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MULTIZONE              ((VL53L1_DevicePresetModes) 20)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE             ((VL53L1_DevicePresetModes) 21)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE_MM1         ((VL53L1_DevicePresetModes) 22)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE_MM2         ((VL53L1_DevicePresetModes) 23)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE           ((VL53L1_DevicePresetModes) 24)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE_MM1       ((VL53L1_DevicePresetModes) 25)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE_MM2       ((VL53L1_DevicePresetModes) 26)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE            ((VL53L1_DevicePresetModes) 27)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE_MM1        ((VL53L1_DevicePresetModes) 28)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE_MM2        ((VL53L1_DevicePresetModes) 29)
 
 
 
@@ -219,11 +221,48 @@ typedef uint8_t VL53L1_DevicePresetModes;
 
 typedef uint8_t VL53L1_DeviceMeasurementModes;
 
-#define VL53L1_DEF_00054                        ((VL53L1_DeviceMeasurementModes)  0x00)
-#define VL53L1_DEF_00139                  ((VL53L1_DeviceMeasurementModes)  0x10)
-#define VL53L1_DEF_00002                  ((VL53L1_DeviceMeasurementModes)  0x20)
-#define VL53L1_DEF_00138                       ((VL53L1_DeviceMeasurementModes)  0x40)
-#define VL53L1_DEF_00102                       ((VL53L1_DeviceMeasurementModes)  0x80)
+#define VL53L1_DEVICEMEASUREMENTMODE_STOP                        ((VL53L1_DeviceMeasurementModes)  0x00)
+#define VL53L1_DEVICEMEASUREMENTMODE_SINGLESHOT                  ((VL53L1_DeviceMeasurementModes)  0x10)
+#define VL53L1_DEVICEMEASUREMENTMODE_BACKTOBACK                  ((VL53L1_DeviceMeasurementModes)  0x20)
+#define VL53L1_DEVICEMEASUREMENTMODE_TIMED                       ((VL53L1_DeviceMeasurementModes)  0x40)
+#define VL53L1_DEVICEMEASUREMENTMODE_ABORT                       ((VL53L1_DeviceMeasurementModes)  0x80)
+
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_DeviceInterruptPolarity;
+
+#define VL53L1_DEVICEINTERRUPTPOLARITY_ACTIVE_HIGH              ((VL53L1_DeviceInterruptPolarity)  0x00)
+#define VL53L1_DEVICEINTERRUPTPOLARITY_ACTIVE_LOW               ((VL53L1_DeviceInterruptPolarity)  0x10)
+#define VL53L1_DEVICEINTERRUPTPOLARITY_BIT_MASK                 ((VL53L1_DeviceInterruptPolarity)  0x10)
+#define VL53L1_DEVICEINTERRUPTPOLARITY_CLEAR_MASK               ((VL53L1_DeviceInterruptPolarity)  0xEF)
+
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_DeviceGpioMode;
+
+#define VL53L1_DEVICEGPIOMODE_OUTPUT_CONSTANT_ZERO                    ((VL53L1_DeviceGpioMode)  0x00)
+#define VL53L1_DEVICEGPIOMODE_OUTPUT_RANGE_AND_ERROR_INTERRUPTS       ((VL53L1_DeviceGpioMode)  0x01)
+#define VL53L1_DEVICEGPIOMODE_OUTPUT_TIMIER_INTERRUPTS                ((VL53L1_DeviceGpioMode)  0x02)
+#define VL53L1_DEVICEGPIOMODE_OUTPUT_RANGE_MODE_INTERRUPT_STATUS      ((VL53L1_DeviceGpioMode)  0x03)
+#define VL53L1_DEVICEGPIOMODE_OUTPUT_SLOW_OSCILLATOR_CLOCK            ((VL53L1_DeviceGpioMode)  0x04)
+#define VL53L1_DEVICEGPIOMODE_BIT_MASK                                ((VL53L1_DeviceGpioMode)  0x0F)
+#define VL53L1_DEVICEGPIOMODE_CLEAR_MASK                              ((VL53L1_DeviceGpioMode)  0xF0)
 
 
 
@@ -241,27 +280,28 @@ typedef uint8_t VL53L1_DeviceMeasurementModes;
 
 typedef uint8_t VL53L1_DeviceError;
 
-#define VL53L1_DEF_00009                    ((VL53L1_DeviceError) 0)
+#define VL53L1_DEVICEERROR_NOUPDATE                    ((VL53L1_DeviceError) 0)
 
 
-#define VL53L1_DEF_00019  ((VL53L1_DeviceError) 1)
-#define VL53L1_DEF_00020    ((VL53L1_DeviceError) 2)
-#define VL53L1_DEF_00021             ((VL53L1_DeviceError) 3)
-#define VL53L1_DEF_00026                ((VL53L1_DeviceError) 4)
-#define VL53L1_DEF_00022             ((VL53L1_DeviceError) 5)
-#define VL53L1_DEF_00027         ((VL53L1_DeviceError) 6)
-#define VL53L1_DEF_00023            ((VL53L1_DeviceError) 7)
-#define VL53L1_DEF_00024                     ((VL53L1_DeviceError) 8)
-#define VL53L1_DEF_00018               ((VL53L1_DeviceError) 9)
-#define VL53L1_DEF_00010               ((VL53L1_DeviceError) 10)
-#define VL53L1_DEF_00011                ((VL53L1_DeviceError) 11)
-#define VL53L1_DEF_00012        ((VL53L1_DeviceError) 12)
-#define VL53L1_DEF_00025                 ((VL53L1_DeviceError) 13)
-#define VL53L1_DEF_00013   ((VL53L1_DeviceError) 14)
-#define VL53L1_DEF_00014   ((VL53L1_DeviceError) 15)
-#define VL53L1_DEF_00015   ((VL53L1_DeviceError) 16)
-#define VL53L1_DEF_00016                ((VL53L1_DeviceError) 17)
-#define VL53L1_DEF_00017        ((VL53L1_DeviceError) 18)
+#define VL53L1_DEVICEERROR_VCSELCONTINUITYTESTFAILURE  ((VL53L1_DeviceError) 1)
+#define VL53L1_DEVICEERROR_VCSELWATCHDOGTESTFAILURE    ((VL53L1_DeviceError) 2)
+#define VL53L1_DEVICEERROR_NOVHVVALUEFOUND             ((VL53L1_DeviceError) 3)
+#define VL53L1_DEVICEERROR_MSRCNOTARGET                ((VL53L1_DeviceError) 4)
+#define VL53L1_DEVICEERROR_RANGEPHASECHECK             ((VL53L1_DeviceError) 5)
+#define VL53L1_DEVICEERROR_SIGMATHRESHOLDCHECK         ((VL53L1_DeviceError) 6)
+#define VL53L1_DEVICEERROR_PHASECONSISTENCY            ((VL53L1_DeviceError) 7)
+#define VL53L1_DEVICEERROR_MINCLIP                     ((VL53L1_DeviceError) 8)
+#define VL53L1_DEVICEERROR_RANGECOMPLETE               ((VL53L1_DeviceError) 9)
+#define VL53L1_DEVICEERROR_ALGOUNDERFLOW               ((VL53L1_DeviceError) 10)
+#define VL53L1_DEVICEERROR_ALGOOVERFLOW                ((VL53L1_DeviceError) 11)
+#define VL53L1_DEVICEERROR_RANGEIGNORETHRESHOLD        ((VL53L1_DeviceError) 12)
+#define VL53L1_DEVICEERROR_USERROICLIP                 ((VL53L1_DeviceError) 13)
+#define VL53L1_DEVICEERROR_REFSPADCHARNOTENOUGHDPADS   ((VL53L1_DeviceError) 14)
+#define VL53L1_DEVICEERROR_REFSPADCHARMORETHANTARGET   ((VL53L1_DeviceError) 15)
+#define VL53L1_DEVICEERROR_REFSPADCHARLESSTHANTARGET   ((VL53L1_DeviceError) 16)
+#define VL53L1_DEVICEERROR_MULTCLIPFAIL                ((VL53L1_DeviceError) 17)
+#define VL53L1_DEVICEERROR_GPHSTREAMCOUNT0READY        ((VL53L1_DeviceError) 18)
+#define VL53L1_DEVICEERROR_RANGECOMPLETE_NO_WRAP_CHECK ((VL53L1_DeviceError) 19)
 
 
 
@@ -275,19 +315,39 @@ typedef uint8_t VL53L1_DeviceError;
 
 typedef uint8_t VL53L1_DeviceReportStatus;
 
-#define VL53L1_DEF_00242                    ((VL53L1_DeviceReportStatus) 0)
+#define VL53L1_DEVICEREPORTSTATUS_NOUPDATE                    ((VL53L1_DeviceReportStatus) 0)
 
 
-#define VL53L1_DEF_00243                   ((VL53L1_DeviceReportStatus)  1)
-#define VL53L1_DEF_00244                         ((VL53L1_DeviceReportStatus)  2)
-#define VL53L1_DEF_00245                    ((VL53L1_DeviceReportStatus)  3)
-#define VL53L1_DEF_00246             ((VL53L1_DeviceReportStatus)  4)
-#define VL53L1_DEF_00247                        ((VL53L1_DeviceReportStatus)  5)
-#define VL53L1_DEF_00248                        ((VL53L1_DeviceReportStatus)  6)
-#define VL53L1_DEF_00249                         ((VL53L1_DeviceReportStatus)  7)
-#define VL53L1_DEF_00250                         ((VL53L1_DeviceReportStatus)  8)
-#define VL53L1_DEF_00251                       ((VL53L1_DeviceReportStatus)  9)
-#define VL53L1_DEF_00252                   ((VL53L1_DeviceReportStatus) 10)
+#define VL53L1_DEVICEREPORTSTATUS_ROI_SETUP                   ((VL53L1_DeviceReportStatus)  1)
+#define VL53L1_DEVICEREPORTSTATUS_VHV                         ((VL53L1_DeviceReportStatus)  2)
+#define VL53L1_DEVICEREPORTSTATUS_PHASECAL                    ((VL53L1_DeviceReportStatus)  3)
+#define VL53L1_DEVICEREPORTSTATUS_REFERENCE_PHASE             ((VL53L1_DeviceReportStatus)  4)
+#define VL53L1_DEVICEREPORTSTATUS_DSS1                        ((VL53L1_DeviceReportStatus)  5)
+#define VL53L1_DEVICEREPORTSTATUS_DSS2                        ((VL53L1_DeviceReportStatus)  6)
+#define VL53L1_DEVICEREPORTSTATUS_MM1                         ((VL53L1_DeviceReportStatus)  7)
+#define VL53L1_DEVICEREPORTSTATUS_MM2                         ((VL53L1_DeviceReportStatus)  8)
+#define VL53L1_DEVICEREPORTSTATUS_RANGE                       ((VL53L1_DeviceReportStatus)  9)
+#define VL53L1_DEVICEREPORTSTATUS_HISTOGRAM                   ((VL53L1_DeviceReportStatus) 10)
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_DeviceDssMode;
+
+#define VL53L1_DEVICEDSSMODE__DISABLED \
+	((VL53L1_DeviceDssMode) 0)
+#define VL53L1_DEVICEDSSMODE__TARGET_RATE \
+	((VL53L1_DeviceDssMode) 1)
+#define VL53L1_DEVICEDSSMODE__REQUESTED_EFFFECTIVE_SPADS \
+	((VL53L1_DeviceDssMode) 2)
+#define VL53L1_DEVICEDSSMODE__BLOCK_SELECT \
+	((VL53L1_DeviceDssMode) 3)
 
 
 
@@ -302,11 +362,11 @@ typedef uint8_t VL53L1_DeviceReportStatus;
 
 typedef uint8_t VL53L1_HistAlgoSelect;
 
-#define VL53L1_DEF_00253 \
+#define VL53L1_HIST_ALGO_SELECT__PW_HIST_GEN1 \
 	((VL53L1_HistAlgoSelect) 1)
-#define VL53L1_DEF_00254 \
+#define VL53L1_HIST_ALGO_SELECT__PW_HIST_GEN2 \
 	((VL53L1_HistAlgoSelect) 2)
-#define VL53L1_DEF_00122 \
+#define VL53L1_HIST_ALGO_SELECT__PW_HIST_GEN3 \
 	((VL53L1_HistAlgoSelect) 3)
 
 
@@ -321,9 +381,9 @@ typedef uint8_t VL53L1_HistAlgoSelect;
 
 typedef uint8_t VL53L1_HistAmbEstMethod;
 
-#define VL53L1_DEF_00123 \
+#define VL53L1_HIST_AMB_EST_METHOD__AMBIENT_BINS \
 	((VL53L1_HistAmbEstMethod) 1)
-#define VL53L1_DEF_00255  \
+#define VL53L1_HIST_AMB_EST_METHOD__THRESHOLDED_BINS  \
 	((VL53L1_HistAmbEstMethod) 2)
 
 
@@ -336,37 +396,53 @@ typedef uint8_t VL53L1_HistAmbEstMethod;
 
 
 
+
+typedef uint8_t VL53L1_HistXtalkCompEnable;
+
+#define VL53L1_HIST_XTALK_COMP__DIS \
+	((VL53L1_HistXtalkCompEnable) 0)
+#define VL53L1_HIST_XTALK_COMP__EN \
+	((VL53L1_HistXtalkCompEnable) 1)
+
+
+
+
+
+
+
+
+
 typedef uint8_t VL53L1_DeviceConfigLevel;
 
-#define VL53L1_DEF_00211  \
+#define VL53L1_DEVICECONFIGLEVEL_SYSTEM_CONTROL  \
 	((VL53L1_DeviceConfigLevel)  0)
 
 
-#define VL53L1_DEF_00092 \
+#define VL53L1_DEVICECONFIGLEVEL_DYNAMIC_ONWARDS \
 	((VL53L1_DeviceConfigLevel)  1)
 
 
-#define VL53L1_DEF_00090 \
+#define VL53L1_DEVICECONFIGLEVEL_TIMING_ONWARDS \
 	((VL53L1_DeviceConfigLevel)  2)
 
 
 
-#define VL53L1_DEF_00088 \
+#define VL53L1_DEVICECONFIGLEVEL_GENERAL_ONWARDS \
 	((VL53L1_DeviceConfigLevel)  3)
 
 
 
-#define VL53L1_DEF_00086  \
+#define VL53L1_DEVICECONFIGLEVEL_STATIC_ONWARDS  \
 	((VL53L1_DeviceConfigLevel)  4)
 
 
 
-#define VL53L1_DEF_00037  \
+#define VL53L1_DEVICECONFIGLEVEL_CUSTOMER_ONWARDS  \
 	((VL53L1_DeviceConfigLevel)  5)
 
 
 
-#define VL53L1_DEF_00008  \
+#define VL53L1_DEVICECONFIGLEVEL_FULL  \
 	((VL53L1_DeviceConfigLevel)  6)
 
 
@@ -384,15 +460,15 @@ typedef uint8_t VL53L1_DeviceConfigLevel;
 
 typedef uint8_t VL53L1_DeviceResultsLevel;
 
-#define VL53L1_DEF_00212  \
+#define VL53L1_DEVICERESULTSLEVEL_SYSTEM_RESULTS  \
 	((VL53L1_DeviceResultsLevel)  0)
 
 
-#define VL53L1_DEF_00106  \
+#define VL53L1_DEVICERESULTSLEVEL_UPTO_CORE  \
 	((VL53L1_DeviceResultsLevel)  1)
 
 
-#define VL53L1_DEF_00028  \
+#define VL53L1_DEVICERESULTSLEVEL_FULL  \
 	((VL53L1_DeviceResultsLevel)  2)
 
 
@@ -409,36 +485,36 @@ typedef uint8_t VL53L1_DeviceResultsLevel;
 
 
 
-#define VL53L1_DEF_00256                         0x00
+#define VL53L1_DEVICETESTMODE_NONE                         0x00
 
 
-#define VL53L1_DEF_00257                     0x01
+#define VL53L1_DEVICETESTMODE_NVM_ZERO                     0x01
 
 
-#define VL53L1_DEF_00258                     0x02
+#define VL53L1_DEVICETESTMODE_NVM_COPY                     0x02
 
 
-#define VL53L1_DEF_00259                        0x03
+#define VL53L1_DEVICETESTMODE_PATCH                        0x03
 
 
-#define VL53L1_DEF_00260                          0x04
+#define VL53L1_DEVICETESTMODE_DCR                          0x04
 
 
-#define VL53L1_DEF_00261                0x05
+#define VL53L1_DEVICETESTMODE_LCR_VCSEL_OFF                0x05
 
 
 
-#define VL53L1_DEF_00262                 0x06
+#define VL53L1_DEVICETESTMODE_LCR_VCSEL_ON                 0x06
 
 
 
-#define VL53L1_DEF_00263           0x07
+#define VL53L1_DEVICETESTMODE_SPOT_CENTRE_LOCATE           0x07
 
 
-#define VL53L1_DEF_00121   0x08
+#define VL53L1_DEVICETESTMODE_REF_SPAD_CHAR_WITH_PRE_VHV   0x08
 
 
-#define VL53L1_DEF_00264           0x09
+#define VL53L1_DEVICETESTMODE_REF_SPAD_CHAR_ONLY           0x09
 
 
 
@@ -452,16 +528,16 @@ typedef uint8_t VL53L1_DeviceResultsLevel;
 
 
 
-#define VL53L1_DEF_00265                   0x01
+#define VL53L1_RETURN_ARRAY_ONLY                   0x01
 
 
-#define VL53L1_DEF_00266                0x10
+#define VL53L1_REFERENCE_ARRAY_ONLY                0x10
 
 
-#define VL53L1_DEF_00267    0x11
+#define VL53L1_BOTH_RETURN_AND_REFERENCE_ARRAYS    0x11
 
 
-#define VL53L1_DEF_00268 0x00
+#define VL53L1_NEITHER_RETURN_AND_REFERENCE_ARRAYS 0x00
 
 
 
@@ -474,13 +550,13 @@ typedef uint8_t VL53L1_DeviceResultsLevel;
 
 
 
-#define VL53L1_DEF_00208               0x00
+#define VL53L1_DEVICEINTERRUPTLEVEL_ACTIVE_HIGH               0x00
 
 
-#define VL53L1_DEF_00269                0x10
+#define VL53L1_DEVICEINTERRUPTLEVEL_ACTIVE_LOW                0x10
 
 
-#define VL53L1_DEF_00207               0x10
+#define VL53L1_DEVICEINTERRUPTLEVEL_ACTIVE_MASK               0x10
 
 
 
@@ -493,67 +569,90 @@ typedef uint8_t VL53L1_DeviceResultsLevel;
 
 
 
-#define VL53L1_DEF_00270                     1000
+#define VL53L1_POLLING_DELAY_US                     1000
 
 
-#define VL53L1_DEF_00057            100
+#define VL53L1_SOFTWARE_RESET_DURATION_US            100
 
 
-#define VL53L1_DEF_00209               16000
+#define VL53L1_FIRMWARE_BOOT_TIME_US               16000
 
 
 
-#define VL53L1_DEF_00271                       16
+#define VL53L1_ENABLE_POWERFORCE_SETTLING_TIME_US    250
 
 
-#define VL53L1_DEF_00272                      16
 
 
-#define VL53L1_DEF_00273                     512
+#define VL53L1_SPAD_ARRAY_WIDTH                       16
 
 
-#define VL53L1_DEF_00274                    256
+#define VL53L1_SPAD_ARRAY_HEIGHT                      16
 
 
-#define VL53L1_DEF_00275                   32
+#define VL53L1_NVM_SIZE_IN_BYTES                     512
 
 
-#define VL53L1_DEF_00276                    6
+#define VL53L1_NO_OF_SPAD_ENABLES                    256
 
 
-#define VL53L1_DEF_00277          256
+#define VL53L1_RTN_SPAD_BUFFER_SIZE                   32
 
 
-#define VL53L1_DEF_00119         2048
+#define VL53L1_REF_SPAD_BUFFER_SIZE                    6
 
 
-#define VL53L1_DEF_00159 \
-	(VL53L1_DEF_00277 + VL53L1_DEF_00119)
+#define VL53L1_AMBIENT_WINDOW_VCSEL_PERIODS          256
 
 
-#define VL53L1_DEF_00278                    0xFFFF
+#define VL53L1_RANGING_WINDOW_VCSEL_PERIODS         2048
 
 
+#define VL53L1_MACRO_PERIOD_VCSEL_PERIODS \
+	(VL53L1_AMBIENT_WINDOW_VCSEL_PERIODS + VL53L1_RANGING_WINDOW_VCSEL_PERIODS)
 
-#define VL53L1_DEF_00161                 ((0x01 << 29) - 1)
 
+#define VL53L1_MAX_ALLOWED_PHASE                    0xFFFF
 
-#define VL53L1_DEF_00162            (0x01 << 24)
 
 
-#define VL53L1_DEF_00279              ((0x01 << 24) - 1)
+#define VL53L1_SPAD_TOTAL_COUNT_MAX                 ((0x01 << 29) - 1)
 
 
-#define VL53L1_DEF_00280                299704
+#define VL53L1_SPAD_TOTAL_COUNT_RES_THRES            (0x01 << 24)
 
 
-#define VL53L1_DEF_00160          (299704 >> 3)
+#define VL53L1_COUNT_RATE_INTERNAL_MAX              ((0x01 << 24) - 1)
 
 
+#define VL53L1_SPEED_OF_LIGHT_IN_AIR                299704
 
 
+#define VL53L1_SPEED_OF_LIGHT_IN_AIR_DIV_8          (299704 >> 3)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_ZoneConfig_BinConfig_select;
+
+#define VL53L1_ZONECONFIG_BINCONFIG__LOWAMB \
+	((VL53L1_ZoneConfig_BinConfig_select) 1)
+#define VL53L1_ZONECONFIG_BINCONFIG__MIDAMB \
+	((VL53L1_ZoneConfig_BinConfig_select) 2)
+#define VL53L1_ZONECONFIG_BINCONFIG__HIGHAMB \
+	((VL53L1_ZoneConfig_BinConfig_select) 3)
 
 
 

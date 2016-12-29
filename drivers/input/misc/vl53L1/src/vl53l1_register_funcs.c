@@ -114,7 +114,7 @@
 	VL53L1_trace_print_module_function(VL53L1_TRACE_MODULE_REGISTERS, level, VL53L1_TRACE_FUNCTION_NONE, ##__VA_ARGS__)
 
 
-VL53L1_Error VL53L1_FCTN_00084(
+VL53L1_Error VL53L1_i2c_encode_static_nvm_managed(
 	VL53L1_static_nvm_managed_t *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -129,31 +129,31 @@ VL53L1_Error VL53L1_FCTN_00084(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00096 > buf_size)
+	if (VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00320 & 0x7F;
+		pdata->i2c_slave__device_address & 0x7F;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00321 & 0xF;
+		pdata->ana_config__vhv_ref_sel_vddpix & 0xF;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00322 & 0x7F;
+		pdata->ana_config__vhv_ref_sel_vquench & 0x7F;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00323 & 0x3;
+		pdata->ana_config__reg_avdd1v2_sel & 0x3;
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00324 & 0x7F;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00011,
+		pdata->ana_config__fast_osc__trim & 0x7F;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->osc_measured__fast_osc__frequency,
 		2,
 		pbuffer +   5);
 	*(pbuffer +   7) =
-		pdata->VL53L1_PRM_00325;
+		pdata->vhv_config__timeout_macrop_loop_bound;
 	*(pbuffer +   8) =
-		pdata->VL53L1_PRM_00326;
+		pdata->vhv_config__count_thresh;
 	*(pbuffer +   9) =
-		pdata->VL53L1_PRM_00327 & 0x3F;
+		pdata->vhv_config__offset & 0x3F;
 	*(pbuffer +  10) =
-		pdata->VL53L1_PRM_00328;
+		pdata->vhv_config__init;
 	LOG_FUNCTION_END(status);
 
 
@@ -161,7 +161,7 @@ VL53L1_Error VL53L1_FCTN_00084(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00147(
+VL53L1_Error VL53L1_i2c_decode_static_nvm_managed(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_static_nvm_managed_t  *pdata)
@@ -176,28 +176,28 @@ VL53L1_Error VL53L1_FCTN_00147(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00096 > buf_size)
+	if (VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00320 =
+	pdata->i2c_slave__device_address =
 		(*(pbuffer +   0)) & 0x7F;
-	pdata->VL53L1_PRM_00321 =
+	pdata->ana_config__vhv_ref_sel_vddpix =
 		(*(pbuffer +   1)) & 0xF;
-	pdata->VL53L1_PRM_00322 =
+	pdata->ana_config__vhv_ref_sel_vquench =
 		(*(pbuffer +   2)) & 0x7F;
-	pdata->VL53L1_PRM_00323 =
+	pdata->ana_config__reg_avdd1v2_sel =
 		(*(pbuffer +   3)) & 0x3;
-	pdata->VL53L1_PRM_00324 =
+	pdata->ana_config__fast_osc__trim =
 		(*(pbuffer +   4)) & 0x7F;
-	pdata->VL53L1_PRM_00011 =
-		(VL53L1_FCTN_00105(2, pbuffer +   5));
-	pdata->VL53L1_PRM_00325 =
+	pdata->osc_measured__fast_osc__frequency =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   5));
+	pdata->vhv_config__timeout_macrop_loop_bound =
 		(*(pbuffer +   7));
-	pdata->VL53L1_PRM_00326 =
+	pdata->vhv_config__count_thresh =
 		(*(pbuffer +   8));
-	pdata->VL53L1_PRM_00327 =
+	pdata->vhv_config__offset =
 		(*(pbuffer +   9)) & 0x3F;
-	pdata->VL53L1_PRM_00328 =
+	pdata->vhv_config__init =
 		(*(pbuffer +  10));
 
 	LOG_FUNCTION_END(status);
@@ -206,7 +206,7 @@ VL53L1_Error VL53L1_FCTN_00147(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00148(
+VL53L1_Error VL53L1_set_static_nvm_managed(
 	VL53L1_DEV                 Dev,
 	VL53L1_static_nvm_managed_t  *pdata)
 {
@@ -217,22 +217,22 @@ VL53L1_Error VL53L1_FCTN_00148(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00096];
+	uint8_t comms_buffer[VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00084(
+		status = VL53L1_i2c_encode_static_nvm_managed(
 			pdata,
-			VL53L1_DEF_00096,
+			VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00001,
+			VL53L1_I2C_SLAVE__DEVICE_ADDRESS,
 			comms_buffer,
-			VL53L1_DEF_00096);
+			VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES);
 
 	LOG_FUNCTION_END(status);
 
@@ -240,7 +240,7 @@ VL53L1_Error VL53L1_FCTN_00148(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00043(
+VL53L1_Error VL53L1_get_static_nvm_managed(
 	VL53L1_DEV                 Dev,
 	VL53L1_static_nvm_managed_t  *pdata)
 {
@@ -251,20 +251,20 @@ VL53L1_Error VL53L1_FCTN_00043(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00096];
+	uint8_t comms_buffer[VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00001,
+			VL53L1_I2C_SLAVE__DEVICE_ADDRESS,
 			comms_buffer,
-			VL53L1_DEF_00096);
+			VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00147(
-			VL53L1_DEF_00096,
+		status = VL53L1_i2c_decode_static_nvm_managed(
+			VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -274,7 +274,7 @@ VL53L1_Error VL53L1_FCTN_00043(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00085(
+VL53L1_Error VL53L1_i2c_encode_customer_nvm_managed(
 	VL53L1_customer_nvm_managed_t *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -289,53 +289,53 @@ VL53L1_Error VL53L1_FCTN_00085(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00097 > buf_size)
+	if (VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00053;
+		pdata->global_config__spad_enables_ref_0;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00054;
+		pdata->global_config__spad_enables_ref_1;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00055;
+		pdata->global_config__spad_enables_ref_2;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00056;
+		pdata->global_config__spad_enables_ref_3;
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00057;
+		pdata->global_config__spad_enables_ref_4;
 	*(pbuffer +   5) =
-		pdata->VL53L1_PRM_00058 & 0xF;
+		pdata->global_config__spad_enables_ref_5 & 0xF;
 	*(pbuffer +   6) =
-		pdata->VL53L1_PRM_00329;
+		pdata->global_config__ref_en_start_select;
 	*(pbuffer +   7) =
-		pdata->VL53L1_PRM_00051 & 0x3F;
+		pdata->ref_spad_man__num_requested_ref_spads & 0x3F;
 	*(pbuffer +   8) =
-		pdata->VL53L1_PRM_00052 & 0x3;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00080,
+		pdata->ref_spad_man__ref_location & 0x3;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->algo__crosstalk_compensation_plane_offset_kcps,
 		2,
 		pbuffer +   9);
-	VL53L1_FCTN_00118(
-		pdata->VL53L1_PRM_00078,
+	VL53L1_i2c_encode_int16_t(
+		pdata->algo__crosstalk_compensation_x_plane_gradient_kcps,
 		2,
 		pbuffer +  11);
-	VL53L1_FCTN_00118(
-		pdata->VL53L1_PRM_00079,
+	VL53L1_i2c_encode_int16_t(
+		pdata->algo__crosstalk_compensation_y_plane_gradient_kcps,
 		2,
 		pbuffer +  13);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00102,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->ref_spad_char__total_rate_target_mcps,
 		2,
 		pbuffer +  15);
-	VL53L1_FCTN_00118(
-		pdata->VL53L1_PRM_00084 & 0x1FFF,
+	VL53L1_i2c_encode_int16_t(
+		pdata->algo__part_to_part_range_offset_mm & 0x1FFF,
 		2,
 		pbuffer +  17);
-	VL53L1_FCTN_00118(
-		pdata->VL53L1_PRM_00082,
+	VL53L1_i2c_encode_int16_t(
+		pdata->mm_config__inner_offset_mm,
 		2,
 		pbuffer +  19);
-	VL53L1_FCTN_00118(
-		pdata->VL53L1_PRM_00083,
+	VL53L1_i2c_encode_int16_t(
+		pdata->mm_config__outer_offset_mm,
 		2,
 		pbuffer +  21);
 	LOG_FUNCTION_END(status);
@@ -345,7 +345,7 @@ VL53L1_Error VL53L1_FCTN_00085(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00149(
+VL53L1_Error VL53L1_i2c_decode_customer_nvm_managed(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_customer_nvm_managed_t  *pdata)
@@ -360,41 +360,41 @@ VL53L1_Error VL53L1_FCTN_00149(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00097 > buf_size)
+	if (VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00053 =
+	pdata->global_config__spad_enables_ref_0 =
 		(*(pbuffer +   0));
-	pdata->VL53L1_PRM_00054 =
+	pdata->global_config__spad_enables_ref_1 =
 		(*(pbuffer +   1));
-	pdata->VL53L1_PRM_00055 =
+	pdata->global_config__spad_enables_ref_2 =
 		(*(pbuffer +   2));
-	pdata->VL53L1_PRM_00056 =
+	pdata->global_config__spad_enables_ref_3 =
 		(*(pbuffer +   3));
-	pdata->VL53L1_PRM_00057 =
+	pdata->global_config__spad_enables_ref_4 =
 		(*(pbuffer +   4));
-	pdata->VL53L1_PRM_00058 =
+	pdata->global_config__spad_enables_ref_5 =
 		(*(pbuffer +   5)) & 0xF;
-	pdata->VL53L1_PRM_00329 =
+	pdata->global_config__ref_en_start_select =
 		(*(pbuffer +   6));
-	pdata->VL53L1_PRM_00051 =
+	pdata->ref_spad_man__num_requested_ref_spads =
 		(*(pbuffer +   7)) & 0x3F;
-	pdata->VL53L1_PRM_00052 =
+	pdata->ref_spad_man__ref_location =
 		(*(pbuffer +   8)) & 0x3;
-	pdata->VL53L1_PRM_00080 =
-		(VL53L1_FCTN_00105(2, pbuffer +   9));
-	pdata->VL53L1_PRM_00078 =
-		(VL53L1_FCTN_00119(2, pbuffer +  11));
-	pdata->VL53L1_PRM_00079 =
-		(VL53L1_FCTN_00119(2, pbuffer +  13));
-	pdata->VL53L1_PRM_00102 =
-		(VL53L1_FCTN_00105(2, pbuffer +  15));
-	pdata->VL53L1_PRM_00084 =
-		(VL53L1_FCTN_00119(2, pbuffer +  17)) & 0x1FFF;
-	pdata->VL53L1_PRM_00082 =
-		(VL53L1_FCTN_00119(2, pbuffer +  19));
-	pdata->VL53L1_PRM_00083 =
-		(VL53L1_FCTN_00119(2, pbuffer +  21));
+	pdata->algo__crosstalk_compensation_plane_offset_kcps =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   9));
+	pdata->algo__crosstalk_compensation_x_plane_gradient_kcps =
+		(VL53L1_i2c_decode_int16_t(2, pbuffer +  11));
+	pdata->algo__crosstalk_compensation_y_plane_gradient_kcps =
+		(VL53L1_i2c_decode_int16_t(2, pbuffer +  13));
+	pdata->ref_spad_char__total_rate_target_mcps =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  15));
+	pdata->algo__part_to_part_range_offset_mm =
+		(VL53L1_i2c_decode_int16_t(2, pbuffer +  17)) & 0x1FFF;
+	pdata->mm_config__inner_offset_mm =
+		(VL53L1_i2c_decode_int16_t(2, pbuffer +  19));
+	pdata->mm_config__outer_offset_mm =
+		(VL53L1_i2c_decode_int16_t(2, pbuffer +  21));
 
 	LOG_FUNCTION_END(status);
 
@@ -402,7 +402,7 @@ VL53L1_Error VL53L1_FCTN_00149(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00027(
+VL53L1_Error VL53L1_set_customer_nvm_managed(
 	VL53L1_DEV                 Dev,
 	VL53L1_customer_nvm_managed_t  *pdata)
 {
@@ -413,22 +413,22 @@ VL53L1_Error VL53L1_FCTN_00027(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00097];
+	uint8_t comms_buffer[VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00085(
+		status = VL53L1_i2c_encode_customer_nvm_managed(
 			pdata,
-			VL53L1_DEF_00097,
+			VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00034,
+			VL53L1_GLOBAL_CONFIG__SPAD_ENABLES_REF_0,
 			comms_buffer,
-			VL53L1_DEF_00097);
+			VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES);
 
 	LOG_FUNCTION_END(status);
 
@@ -436,7 +436,7 @@ VL53L1_Error VL53L1_FCTN_00027(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00044(
+VL53L1_Error VL53L1_get_customer_nvm_managed(
 	VL53L1_DEV                 Dev,
 	VL53L1_customer_nvm_managed_t  *pdata)
 {
@@ -447,20 +447,20 @@ VL53L1_Error VL53L1_FCTN_00044(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00097];
+	uint8_t comms_buffer[VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00034,
+			VL53L1_GLOBAL_CONFIG__SPAD_ENABLES_REF_0,
 			comms_buffer,
-			VL53L1_DEF_00097);
+			VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00149(
-			VL53L1_DEF_00097,
+		status = VL53L1_i2c_decode_customer_nvm_managed(
+			VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -470,7 +470,7 @@ VL53L1_Error VL53L1_FCTN_00044(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00086(
+VL53L1_Error VL53L1_i2c_encode_static_config(
 	VL53L1_static_config_t   *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -485,73 +485,73 @@ VL53L1_Error VL53L1_FCTN_00086(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00098 > buf_size)
+	if (VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00204,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->dss_config__target_total_rate_mcps,
 		2,
 		pbuffer +   0);
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00205 & 0x1;
+		pdata->debug__ctrl & 0x1;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00206 & 0xF;
+		pdata->test_mode__ctrl & 0xF;
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00207 & 0xF;
+		pdata->clk_gating__ctrl & 0xF;
 	*(pbuffer +   5) =
-		pdata->VL53L1_PRM_00208 & 0x1F;
+		pdata->nvm_bist__ctrl & 0x1F;
 	*(pbuffer +   6) =
-		pdata->VL53L1_PRM_00209 & 0x7F;
+		pdata->nvm_bist__num_nvm_words & 0x7F;
 	*(pbuffer +   7) =
-		pdata->VL53L1_PRM_00210 & 0x7F;
+		pdata->nvm_bist__start_address & 0x7F;
 	*(pbuffer +   8) =
-		pdata->VL53L1_PRM_00211 & 0x1;
+		pdata->host_if__status & 0x1;
 	*(pbuffer +   9) =
-		pdata->VL53L1_PRM_00212;
+		pdata->pad_i2c_hv__config;
 	*(pbuffer +  10) =
-		pdata->VL53L1_PRM_00213 & 0x1;
+		pdata->pad_i2c_hv__extsup_config & 0x1;
 	*(pbuffer +  11) =
-		pdata->VL53L1_PRM_00214 & 0x3;
+		pdata->gpio_hv_pad__ctrl & 0x3;
 	*(pbuffer +  12) =
-		pdata->VL53L1_PRM_00103 & 0x1F;
+		pdata->gpio_hv_mux__ctrl & 0x1F;
 	*(pbuffer +  13) =
-		pdata->VL53L1_PRM_00215 & 0x3;
+		pdata->gpio__tio_hv_status & 0x3;
 	*(pbuffer +  14) =
-		pdata->VL53L1_PRM_00216 & 0x3;
+		pdata->gpio__fio_hv_status & 0x3;
 	*(pbuffer +  15) =
-		pdata->VL53L1_PRM_00217 & 0x7;
+		pdata->ana_config__spad_sel_pswidth & 0x7;
 	*(pbuffer +  16) =
-		pdata->VL53L1_PRM_00143 & 0x1F;
+		pdata->ana_config__vcsel_pulse_width_offset & 0x1F;
 	*(pbuffer +  17) =
-		pdata->VL53L1_PRM_00218 & 0x1;
+		pdata->ana_config__fast_osc__config_ctrl & 0x1;
 	*(pbuffer +  18) =
-		pdata->VL53L1_PRM_00219;
+		pdata->sigma_estimator__effective_pulse_width_ns;
 	*(pbuffer +  19) =
-		pdata->VL53L1_PRM_00220;
+		pdata->sigma_estimator__effective_ambient_width_ns;
 	*(pbuffer +  20) =
-		pdata->VL53L1_PRM_00200;
+		pdata->sigma_estimator__sigma_ref_mm;
 	*(pbuffer +  21) =
-		pdata->VL53L1_PRM_00221;
+		pdata->algo__crosstalk_compensation_valid_height_mm;
 	*(pbuffer +  22) =
-		pdata->VL53L1_PRM_00222;
+		pdata->spare_host_config__static_config_spare_0;
 	*(pbuffer +  23) =
-		pdata->VL53L1_PRM_00223;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00224,
+		pdata->spare_host_config__static_config_spare_1;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->algo__range_ignore_threshold_mcps,
 		2,
 		pbuffer +  24);
 	*(pbuffer +  26) =
-		pdata->VL53L1_PRM_00225;
+		pdata->algo__range_ignore_valid_height_mm;
 	*(pbuffer +  27) =
-		pdata->VL53L1_PRM_00226;
+		pdata->algo__range_min_clip;
 	*(pbuffer +  28) =
-		pdata->VL53L1_PRM_00203 & 0xF;
+		pdata->algo__consistency_check__tolerance & 0xF;
 	*(pbuffer +  29) =
-		pdata->VL53L1_PRM_00227;
+		pdata->spare_host_config__static_config_spare_2;
 	*(pbuffer +  30) =
-		pdata->VL53L1_PRM_00228 & 0xF;
+		pdata->sd_config__reset_stages_msb & 0xF;
 	*(pbuffer +  31) =
-		pdata->VL53L1_PRM_00229;
+		pdata->sd_config__reset_stages_lsb;
 	LOG_FUNCTION_END(status);
 
 
@@ -559,7 +559,7 @@ VL53L1_Error VL53L1_FCTN_00086(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00150(
+VL53L1_Error VL53L1_i2c_decode_static_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_static_config_t    *pdata)
@@ -574,68 +574,68 @@ VL53L1_Error VL53L1_FCTN_00150(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00098 > buf_size)
+	if (VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00204 =
-		(VL53L1_FCTN_00105(2, pbuffer +   0));
-	pdata->VL53L1_PRM_00205 =
+	pdata->dss_config__target_total_rate_mcps =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   0));
+	pdata->debug__ctrl =
 		(*(pbuffer +   2)) & 0x1;
-	pdata->VL53L1_PRM_00206 =
+	pdata->test_mode__ctrl =
 		(*(pbuffer +   3)) & 0xF;
-	pdata->VL53L1_PRM_00207 =
+	pdata->clk_gating__ctrl =
 		(*(pbuffer +   4)) & 0xF;
-	pdata->VL53L1_PRM_00208 =
+	pdata->nvm_bist__ctrl =
 		(*(pbuffer +   5)) & 0x1F;
-	pdata->VL53L1_PRM_00209 =
+	pdata->nvm_bist__num_nvm_words =
 		(*(pbuffer +   6)) & 0x7F;
-	pdata->VL53L1_PRM_00210 =
+	pdata->nvm_bist__start_address =
 		(*(pbuffer +   7)) & 0x7F;
-	pdata->VL53L1_PRM_00211 =
+	pdata->host_if__status =
 		(*(pbuffer +   8)) & 0x1;
-	pdata->VL53L1_PRM_00212 =
+	pdata->pad_i2c_hv__config =
 		(*(pbuffer +   9));
-	pdata->VL53L1_PRM_00213 =
+	pdata->pad_i2c_hv__extsup_config =
 		(*(pbuffer +  10)) & 0x1;
-	pdata->VL53L1_PRM_00214 =
+	pdata->gpio_hv_pad__ctrl =
 		(*(pbuffer +  11)) & 0x3;
-	pdata->VL53L1_PRM_00103 =
+	pdata->gpio_hv_mux__ctrl =
 		(*(pbuffer +  12)) & 0x1F;
-	pdata->VL53L1_PRM_00215 =
+	pdata->gpio__tio_hv_status =
 		(*(pbuffer +  13)) & 0x3;
-	pdata->VL53L1_PRM_00216 =
+	pdata->gpio__fio_hv_status =
 		(*(pbuffer +  14)) & 0x3;
-	pdata->VL53L1_PRM_00217 =
+	pdata->ana_config__spad_sel_pswidth =
 		(*(pbuffer +  15)) & 0x7;
-	pdata->VL53L1_PRM_00143 =
+	pdata->ana_config__vcsel_pulse_width_offset =
 		(*(pbuffer +  16)) & 0x1F;
-	pdata->VL53L1_PRM_00218 =
+	pdata->ana_config__fast_osc__config_ctrl =
 		(*(pbuffer +  17)) & 0x1;
-	pdata->VL53L1_PRM_00219 =
+	pdata->sigma_estimator__effective_pulse_width_ns =
 		(*(pbuffer +  18));
-	pdata->VL53L1_PRM_00220 =
+	pdata->sigma_estimator__effective_ambient_width_ns =
 		(*(pbuffer +  19));
-	pdata->VL53L1_PRM_00200 =
+	pdata->sigma_estimator__sigma_ref_mm =
 		(*(pbuffer +  20));
-	pdata->VL53L1_PRM_00221 =
+	pdata->algo__crosstalk_compensation_valid_height_mm =
 		(*(pbuffer +  21));
-	pdata->VL53L1_PRM_00222 =
+	pdata->spare_host_config__static_config_spare_0 =
 		(*(pbuffer +  22));
-	pdata->VL53L1_PRM_00223 =
+	pdata->spare_host_config__static_config_spare_1 =
 		(*(pbuffer +  23));
-	pdata->VL53L1_PRM_00224 =
-		(VL53L1_FCTN_00105(2, pbuffer +  24));
-	pdata->VL53L1_PRM_00225 =
+	pdata->algo__range_ignore_threshold_mcps =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  24));
+	pdata->algo__range_ignore_valid_height_mm =
 		(*(pbuffer +  26));
-	pdata->VL53L1_PRM_00226 =
+	pdata->algo__range_min_clip =
 		(*(pbuffer +  27));
-	pdata->VL53L1_PRM_00203 =
+	pdata->algo__consistency_check__tolerance =
 		(*(pbuffer +  28)) & 0xF;
-	pdata->VL53L1_PRM_00227 =
+	pdata->spare_host_config__static_config_spare_2 =
 		(*(pbuffer +  29));
-	pdata->VL53L1_PRM_00228 =
+	pdata->sd_config__reset_stages_msb =
 		(*(pbuffer +  30)) & 0xF;
-	pdata->VL53L1_PRM_00229 =
+	pdata->sd_config__reset_stages_lsb =
 		(*(pbuffer +  31));
 
 	LOG_FUNCTION_END(status);
@@ -644,7 +644,7 @@ VL53L1_Error VL53L1_FCTN_00150(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00151(
+VL53L1_Error VL53L1_set_static_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_static_config_t    *pdata)
 {
@@ -655,22 +655,22 @@ VL53L1_Error VL53L1_FCTN_00151(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00098];
+	uint8_t comms_buffer[VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00086(
+		status = VL53L1_i2c_encode_static_config(
 			pdata,
-			VL53L1_DEF_00098,
+			VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00176,
+			VL53L1_DSS_CONFIG__TARGET_TOTAL_RATE_MCPS,
 			comms_buffer,
-			VL53L1_DEF_00098);
+			VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES);
 
 	LOG_FUNCTION_END(status);
 
@@ -678,7 +678,7 @@ VL53L1_Error VL53L1_FCTN_00151(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00152(
+VL53L1_Error VL53L1_get_static_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_static_config_t    *pdata)
 {
@@ -689,20 +689,20 @@ VL53L1_Error VL53L1_FCTN_00152(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00098];
+	uint8_t comms_buffer[VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00176,
+			VL53L1_DSS_CONFIG__TARGET_TOTAL_RATE_MCPS,
 			comms_buffer,
-			VL53L1_DEF_00098);
+			VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00150(
-			VL53L1_DEF_00098,
+		status = VL53L1_i2c_decode_static_config(
+			VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -712,7 +712,7 @@ VL53L1_Error VL53L1_FCTN_00152(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00087(
+VL53L1_Error VL53L1_i2c_encode_general_config(
 	VL53L1_general_config_t  *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -727,51 +727,51 @@ VL53L1_Error VL53L1_FCTN_00087(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00099 > buf_size)
+	if (VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00230;
+		pdata->gph_config__stream_count_update_value;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00119;
+		pdata->global_config__stream_divider;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00231;
+		pdata->system__interrupt_config_gpio;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00140 & 0x7F;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00232 & 0xFFF,
+		pdata->cal_config__vcsel_start & 0x7F;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->cal_config__repeat_rate & 0xFFF,
 		2,
 		pbuffer +   4);
 	*(pbuffer +   6) =
-		pdata->VL53L1_PRM_00142 & 0x7F;
+		pdata->global_config__vcsel_width & 0x7F;
 	*(pbuffer +   7) =
-		pdata->VL53L1_PRM_00100;
+		pdata->phasecal_config__timeout_macrop;
 	*(pbuffer +   8) =
-		pdata->VL53L1_PRM_00233;
+		pdata->phasecal_config__target;
 	*(pbuffer +   9) =
-		pdata->VL53L1_PRM_00234 & 0x1;
+		pdata->phasecal_config__override & 0x1;
 	*(pbuffer +  11) =
-		pdata->VL53L1_PRM_00235 & 0x7;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00236,
+		pdata->dss_config__roi_mode_control & 0x7;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->system__thresh_rate_high,
 		2,
 		pbuffer +  12);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00237,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->system__thresh_rate_low,
 		2,
 		pbuffer +  14);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00238,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->dss_config__manual_effective_spads_select,
 		2,
 		pbuffer +  16);
 	*(pbuffer +  18) =
-		pdata->VL53L1_PRM_00239;
+		pdata->dss_config__manual_block_select;
 	*(pbuffer +  19) =
-		pdata->VL53L1_PRM_00240;
+		pdata->dss_config__aperture_attenuation;
 	*(pbuffer +  20) =
-		pdata->VL53L1_PRM_00241;
+		pdata->dss_config__max_spads_limit;
 	*(pbuffer +  21) =
-		pdata->VL53L1_PRM_00242;
+		pdata->dss_config__min_spads_limit;
 	LOG_FUNCTION_END(status);
 
 
@@ -779,7 +779,7 @@ VL53L1_Error VL53L1_FCTN_00087(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00153(
+VL53L1_Error VL53L1_i2c_decode_general_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_general_config_t   *pdata)
@@ -794,42 +794,42 @@ VL53L1_Error VL53L1_FCTN_00153(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00099 > buf_size)
+	if (VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00230 =
+	pdata->gph_config__stream_count_update_value =
 		(*(pbuffer +   0));
-	pdata->VL53L1_PRM_00119 =
+	pdata->global_config__stream_divider =
 		(*(pbuffer +   1));
-	pdata->VL53L1_PRM_00231 =
+	pdata->system__interrupt_config_gpio =
 		(*(pbuffer +   2));
-	pdata->VL53L1_PRM_00140 =
+	pdata->cal_config__vcsel_start =
 		(*(pbuffer +   3)) & 0x7F;
-	pdata->VL53L1_PRM_00232 =
-		(VL53L1_FCTN_00105(2, pbuffer +   4)) & 0xFFF;
-	pdata->VL53L1_PRM_00142 =
+	pdata->cal_config__repeat_rate =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   4)) & 0xFFF;
+	pdata->global_config__vcsel_width =
 		(*(pbuffer +   6)) & 0x7F;
-	pdata->VL53L1_PRM_00100 =
+	pdata->phasecal_config__timeout_macrop =
 		(*(pbuffer +   7));
-	pdata->VL53L1_PRM_00233 =
+	pdata->phasecal_config__target =
 		(*(pbuffer +   8));
-	pdata->VL53L1_PRM_00234 =
+	pdata->phasecal_config__override =
 		(*(pbuffer +   9)) & 0x1;
-	pdata->VL53L1_PRM_00235 =
+	pdata->dss_config__roi_mode_control =
 		(*(pbuffer +  11)) & 0x7;
-	pdata->VL53L1_PRM_00236 =
-		(VL53L1_FCTN_00105(2, pbuffer +  12));
-	pdata->VL53L1_PRM_00237 =
-		(VL53L1_FCTN_00105(2, pbuffer +  14));
-	pdata->VL53L1_PRM_00238 =
-		(VL53L1_FCTN_00105(2, pbuffer +  16));
-	pdata->VL53L1_PRM_00239 =
+	pdata->system__thresh_rate_high =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  12));
+	pdata->system__thresh_rate_low =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  14));
+	pdata->dss_config__manual_effective_spads_select =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  16));
+	pdata->dss_config__manual_block_select =
 		(*(pbuffer +  18));
-	pdata->VL53L1_PRM_00240 =
+	pdata->dss_config__aperture_attenuation =
 		(*(pbuffer +  19));
-	pdata->VL53L1_PRM_00241 =
+	pdata->dss_config__max_spads_limit =
 		(*(pbuffer +  20));
-	pdata->VL53L1_PRM_00242 =
+	pdata->dss_config__min_spads_limit =
 		(*(pbuffer +  21));
 
 	LOG_FUNCTION_END(status);
@@ -838,7 +838,7 @@ VL53L1_Error VL53L1_FCTN_00153(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00154(
+VL53L1_Error VL53L1_set_general_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_general_config_t   *pdata)
 {
@@ -849,22 +849,22 @@ VL53L1_Error VL53L1_FCTN_00154(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00099];
+	uint8_t comms_buffer[VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00087(
+		status = VL53L1_i2c_encode_general_config(
 			pdata,
-			VL53L1_DEF_00099,
+			VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00177,
+			VL53L1_GPH_CONFIG__STREAM_COUNT_UPDATE_VALUE,
 			comms_buffer,
-			VL53L1_DEF_00099);
+			VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES);
 
 	LOG_FUNCTION_END(status);
 
@@ -872,7 +872,7 @@ VL53L1_Error VL53L1_FCTN_00154(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00155(
+VL53L1_Error VL53L1_get_general_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_general_config_t   *pdata)
 {
@@ -883,20 +883,20 @@ VL53L1_Error VL53L1_FCTN_00155(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00099];
+	uint8_t comms_buffer[VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00177,
+			VL53L1_GPH_CONFIG__STREAM_COUNT_UPDATE_VALUE,
 			comms_buffer,
-			VL53L1_DEF_00099);
+			VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00153(
-			VL53L1_DEF_00099,
+		status = VL53L1_i2c_decode_general_config(
+			VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -906,7 +906,7 @@ VL53L1_Error VL53L1_FCTN_00155(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00088(
+VL53L1_Error VL53L1_i2c_encode_timing_config(
 	VL53L1_timing_config_t   *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -921,47 +921,47 @@ VL53L1_Error VL53L1_FCTN_00088(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00100 > buf_size)
+	if (VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00243 & 0xF;
+		pdata->mm_config__timeout_macrop_a_hi & 0xF;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00244;
+		pdata->mm_config__timeout_macrop_a_lo;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00245 & 0xF;
+		pdata->mm_config__timeout_macrop_b_hi & 0xF;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00246;
+		pdata->mm_config__timeout_macrop_b_lo;
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00146 & 0xF;
+		pdata->range_config__timeout_macrop_a_hi & 0xF;
 	*(pbuffer +   5) =
-		pdata->VL53L1_PRM_00147;
+		pdata->range_config__timeout_macrop_a_lo;
 	*(pbuffer +   6) =
-		pdata->VL53L1_PRM_00101 & 0x3F;
+		pdata->range_config__vcsel_period_a & 0x3F;
 	*(pbuffer +   7) =
-		pdata->VL53L1_PRM_00148 & 0xF;
+		pdata->range_config__timeout_macrop_b_hi & 0xF;
 	*(pbuffer +   8) =
-		pdata->VL53L1_PRM_00149;
+		pdata->range_config__timeout_macrop_b_lo;
 	*(pbuffer +   9) =
-		pdata->VL53L1_PRM_00150 & 0x3F;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00013,
+		pdata->range_config__vcsel_period_b & 0x3F;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->range_config__sigma_thresh,
 		2,
 		pbuffer +  10);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00012,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->range_config__min_count_rate_rtn_limit_mcps,
 		2,
 		pbuffer +  12);
 	*(pbuffer +  14) =
-		pdata->VL53L1_PRM_00247;
+		pdata->range_config__valid_phase_low;
 	*(pbuffer +  15) =
-		pdata->VL53L1_PRM_00248;
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00114,
+		pdata->range_config__valid_phase_high;
+	VL53L1_i2c_encode_uint32_t(
+		pdata->system__intermeasurement_period,
 		4,
 		pbuffer +  18);
 	*(pbuffer +  22) =
-		pdata->VL53L1_PRM_00249 & 0x1;
+		pdata->system__fractional_enable & 0x1;
 	LOG_FUNCTION_END(status);
 
 
@@ -969,7 +969,7 @@ VL53L1_Error VL53L1_FCTN_00088(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00156(
+VL53L1_Error VL53L1_i2c_decode_timing_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_timing_config_t    *pdata)
@@ -984,40 +984,40 @@ VL53L1_Error VL53L1_FCTN_00156(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00100 > buf_size)
+	if (VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00243 =
+	pdata->mm_config__timeout_macrop_a_hi =
 		(*(pbuffer +   0)) & 0xF;
-	pdata->VL53L1_PRM_00244 =
+	pdata->mm_config__timeout_macrop_a_lo =
 		(*(pbuffer +   1));
-	pdata->VL53L1_PRM_00245 =
+	pdata->mm_config__timeout_macrop_b_hi =
 		(*(pbuffer +   2)) & 0xF;
-	pdata->VL53L1_PRM_00246 =
+	pdata->mm_config__timeout_macrop_b_lo =
 		(*(pbuffer +   3));
-	pdata->VL53L1_PRM_00146 =
+	pdata->range_config__timeout_macrop_a_hi =
 		(*(pbuffer +   4)) & 0xF;
-	pdata->VL53L1_PRM_00147 =
+	pdata->range_config__timeout_macrop_a_lo =
 		(*(pbuffer +   5));
-	pdata->VL53L1_PRM_00101 =
+	pdata->range_config__vcsel_period_a =
 		(*(pbuffer +   6)) & 0x3F;
-	pdata->VL53L1_PRM_00148 =
+	pdata->range_config__timeout_macrop_b_hi =
 		(*(pbuffer +   7)) & 0xF;
-	pdata->VL53L1_PRM_00149 =
+	pdata->range_config__timeout_macrop_b_lo =
 		(*(pbuffer +   8));
-	pdata->VL53L1_PRM_00150 =
+	pdata->range_config__vcsel_period_b =
 		(*(pbuffer +   9)) & 0x3F;
-	pdata->VL53L1_PRM_00013 =
-		(VL53L1_FCTN_00105(2, pbuffer +  10));
-	pdata->VL53L1_PRM_00012 =
-		(VL53L1_FCTN_00105(2, pbuffer +  12));
-	pdata->VL53L1_PRM_00247 =
+	pdata->range_config__sigma_thresh =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  10));
+	pdata->range_config__min_count_rate_rtn_limit_mcps =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  12));
+	pdata->range_config__valid_phase_low =
 		(*(pbuffer +  14));
-	pdata->VL53L1_PRM_00248 =
+	pdata->range_config__valid_phase_high =
 		(*(pbuffer +  15));
-	pdata->VL53L1_PRM_00114 =
-		(VL53L1_FCTN_00106(4, pbuffer +  18));
-	pdata->VL53L1_PRM_00249 =
+	pdata->system__intermeasurement_period =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  18));
+	pdata->system__fractional_enable =
 		(*(pbuffer +  22)) & 0x1;
 
 	LOG_FUNCTION_END(status);
@@ -1026,7 +1026,7 @@ VL53L1_Error VL53L1_FCTN_00156(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00157(
+VL53L1_Error VL53L1_set_timing_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_timing_config_t    *pdata)
 {
@@ -1037,22 +1037,22 @@ VL53L1_Error VL53L1_FCTN_00157(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00100];
+	uint8_t comms_buffer[VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00088(
+		status = VL53L1_i2c_encode_timing_config(
 			pdata,
-			VL53L1_DEF_00100,
+			VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00178,
+			VL53L1_MM_CONFIG__TIMEOUT_MACROP_A_HI,
 			comms_buffer,
-			VL53L1_DEF_00100);
+			VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES);
 
 	LOG_FUNCTION_END(status);
 
@@ -1060,7 +1060,7 @@ VL53L1_Error VL53L1_FCTN_00157(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00158(
+VL53L1_Error VL53L1_get_timing_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_timing_config_t    *pdata)
 {
@@ -1071,20 +1071,20 @@ VL53L1_Error VL53L1_FCTN_00158(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00100];
+	uint8_t comms_buffer[VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00178,
+			VL53L1_MM_CONFIG__TIMEOUT_MACROP_A_HI,
 			comms_buffer,
-			VL53L1_DEF_00100);
+			VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00156(
-			VL53L1_DEF_00100,
+		status = VL53L1_i2c_decode_timing_config(
+			VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -1094,7 +1094,7 @@ VL53L1_Error VL53L1_FCTN_00158(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00089(
+VL53L1_Error VL53L1_i2c_encode_dynamic_config(
 	VL53L1_dynamic_config_t  *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -1109,45 +1109,45 @@ VL53L1_Error VL53L1_FCTN_00089(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00101 > buf_size)
+	if (VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00125 & 0x3;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00273,
+		pdata->system__grouped_parameter_hold_0 & 0x3;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->system__thresh_high,
 		2,
 		pbuffer +   1);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00274,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->system__thresh_low,
 		2,
 		pbuffer +   3);
 	*(pbuffer +   5) =
-		pdata->VL53L1_PRM_00275 & 0x1;
+		pdata->system__enable_xtalk_per_quadrant & 0x1;
 	*(pbuffer +   6) =
-		pdata->VL53L1_PRM_00276 & 0x7;
+		pdata->system__seed_config & 0x7;
 	*(pbuffer +   7) =
-		pdata->VL53L1_PRM_00277;
+		pdata->sd_config__woi_sd0;
 	*(pbuffer +   8) =
-		pdata->VL53L1_PRM_00278;
+		pdata->sd_config__woi_sd1;
 	*(pbuffer +   9) =
-		pdata->VL53L1_PRM_00279 & 0x7F;
+		pdata->sd_config__initial_phase_sd0 & 0x7F;
 	*(pbuffer +  10) =
-		pdata->VL53L1_PRM_00280 & 0x7F;
+		pdata->sd_config__initial_phase_sd1 & 0x7F;
 	*(pbuffer +  11) =
-		pdata->VL53L1_PRM_00126 & 0x3;
+		pdata->system__grouped_parameter_hold_1 & 0x3;
 	*(pbuffer +  12) =
-		pdata->VL53L1_PRM_00281 & 0x3;
+		pdata->sd_config__first_order_select & 0x3;
 	*(pbuffer +  13) =
-		pdata->VL53L1_PRM_00282 & 0xF;
+		pdata->sd_config__quantifier & 0xF;
 	*(pbuffer +  14) =
-		pdata->VL53L1_PRM_00115;
+		pdata->roi_config__user_roi_centre_spad;
 	*(pbuffer +  15) =
-		pdata->VL53L1_PRM_00116;
+		pdata->roi_config__user_roi_requested_global_xy_size;
 	*(pbuffer +  16) =
-		pdata->VL53L1_PRM_00023;
+		pdata->system__sequence_config;
 	*(pbuffer +  17) =
-		pdata->VL53L1_PRM_00127 & 0x3;
+		pdata->system__grouped_parameter_hold & 0x3;
 	LOG_FUNCTION_END(status);
 
 
@@ -1155,7 +1155,7 @@ VL53L1_Error VL53L1_FCTN_00089(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00159(
+VL53L1_Error VL53L1_i2c_decode_dynamic_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_dynamic_config_t   *pdata)
@@ -1170,40 +1170,40 @@ VL53L1_Error VL53L1_FCTN_00159(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00101 > buf_size)
+	if (VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00125 =
+	pdata->system__grouped_parameter_hold_0 =
 		(*(pbuffer +   0)) & 0x3;
-	pdata->VL53L1_PRM_00273 =
-		(VL53L1_FCTN_00105(2, pbuffer +   1));
-	pdata->VL53L1_PRM_00274 =
-		(VL53L1_FCTN_00105(2, pbuffer +   3));
-	pdata->VL53L1_PRM_00275 =
+	pdata->system__thresh_high =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   1));
+	pdata->system__thresh_low =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   3));
+	pdata->system__enable_xtalk_per_quadrant =
 		(*(pbuffer +   5)) & 0x1;
-	pdata->VL53L1_PRM_00276 =
+	pdata->system__seed_config =
 		(*(pbuffer +   6)) & 0x7;
-	pdata->VL53L1_PRM_00277 =
+	pdata->sd_config__woi_sd0 =
 		(*(pbuffer +   7));
-	pdata->VL53L1_PRM_00278 =
+	pdata->sd_config__woi_sd1 =
 		(*(pbuffer +   8));
-	pdata->VL53L1_PRM_00279 =
+	pdata->sd_config__initial_phase_sd0 =
 		(*(pbuffer +   9)) & 0x7F;
-	pdata->VL53L1_PRM_00280 =
+	pdata->sd_config__initial_phase_sd1 =
 		(*(pbuffer +  10)) & 0x7F;
-	pdata->VL53L1_PRM_00126 =
+	pdata->system__grouped_parameter_hold_1 =
 		(*(pbuffer +  11)) & 0x3;
-	pdata->VL53L1_PRM_00281 =
+	pdata->sd_config__first_order_select =
 		(*(pbuffer +  12)) & 0x3;
-	pdata->VL53L1_PRM_00282 =
+	pdata->sd_config__quantifier =
 		(*(pbuffer +  13)) & 0xF;
-	pdata->VL53L1_PRM_00115 =
+	pdata->roi_config__user_roi_centre_spad =
 		(*(pbuffer +  14));
-	pdata->VL53L1_PRM_00116 =
+	pdata->roi_config__user_roi_requested_global_xy_size =
 		(*(pbuffer +  15));
-	pdata->VL53L1_PRM_00023 =
+	pdata->system__sequence_config =
 		(*(pbuffer +  16));
-	pdata->VL53L1_PRM_00127 =
+	pdata->system__grouped_parameter_hold =
 		(*(pbuffer +  17)) & 0x3;
 
 	LOG_FUNCTION_END(status);
@@ -1212,7 +1212,7 @@ VL53L1_Error VL53L1_FCTN_00159(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00160(
+VL53L1_Error VL53L1_set_dynamic_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_dynamic_config_t   *pdata)
 {
@@ -1223,22 +1223,22 @@ VL53L1_Error VL53L1_FCTN_00160(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00101];
+	uint8_t comms_buffer[VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00089(
+		status = VL53L1_i2c_encode_dynamic_config(
 			pdata,
-			VL53L1_DEF_00101,
+			VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00179,
+			VL53L1_SYSTEM__GROUPED_PARAMETER_HOLD_0,
 			comms_buffer,
-			VL53L1_DEF_00101);
+			VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES);
 
 	LOG_FUNCTION_END(status);
 
@@ -1246,7 +1246,7 @@ VL53L1_Error VL53L1_FCTN_00160(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00161(
+VL53L1_Error VL53L1_get_dynamic_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_dynamic_config_t   *pdata)
 {
@@ -1257,20 +1257,20 @@ VL53L1_Error VL53L1_FCTN_00161(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00101];
+	uint8_t comms_buffer[VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00179,
+			VL53L1_SYSTEM__GROUPED_PARAMETER_HOLD_0,
 			comms_buffer,
-			VL53L1_DEF_00101);
+			VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00159(
-			VL53L1_DEF_00101,
+		status = VL53L1_i2c_decode_dynamic_config(
+			VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -1280,7 +1280,7 @@ VL53L1_Error VL53L1_FCTN_00161(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00090(
+VL53L1_Error VL53L1_i2c_encode_system_control(
 	VL53L1_system_control_t  *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -1295,19 +1295,19 @@ VL53L1_Error VL53L1_FCTN_00090(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00095 > buf_size)
+	if (VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00286 & 0x1;
+		pdata->power_management__go1_power_force & 0x1;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00283 & 0x1;
+		pdata->system__stream_count_ctrl & 0x1;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00284 & 0x1;
+		pdata->firmware__enable & 0x1;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00285 & 0x3;
+		pdata->system__interrupt_clear & 0x3;
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00122;
+		pdata->system__mode_start;
 	LOG_FUNCTION_END(status);
 
 
@@ -1315,7 +1315,7 @@ VL53L1_Error VL53L1_FCTN_00090(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00162(
+VL53L1_Error VL53L1_i2c_decode_system_control(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_system_control_t   *pdata)
@@ -1330,18 +1330,18 @@ VL53L1_Error VL53L1_FCTN_00162(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00095 > buf_size)
+	if (VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00286 =
+	pdata->power_management__go1_power_force =
 		(*(pbuffer +   0)) & 0x1;
-	pdata->VL53L1_PRM_00283 =
+	pdata->system__stream_count_ctrl =
 		(*(pbuffer +   1)) & 0x1;
-	pdata->VL53L1_PRM_00284 =
+	pdata->firmware__enable =
 		(*(pbuffer +   2)) & 0x1;
-	pdata->VL53L1_PRM_00285 =
+	pdata->system__interrupt_clear =
 		(*(pbuffer +   3)) & 0x3;
-	pdata->VL53L1_PRM_00122 =
+	pdata->system__mode_start =
 		(*(pbuffer +   4));
 
 	LOG_FUNCTION_END(status);
@@ -1350,7 +1350,7 @@ VL53L1_Error VL53L1_FCTN_00162(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00093(
+VL53L1_Error VL53L1_set_system_control(
 	VL53L1_DEV                 Dev,
 	VL53L1_system_control_t   *pdata)
 {
@@ -1361,22 +1361,22 @@ VL53L1_Error VL53L1_FCTN_00093(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00095];
+	uint8_t comms_buffer[VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00090(
+		status = VL53L1_i2c_encode_system_control(
 			pdata,
-			VL53L1_DEF_00095,
+			VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00156,
+			VL53L1_POWER_MANAGEMENT__GO1_POWER_FORCE,
 			comms_buffer,
-			VL53L1_DEF_00095);
+			VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES);
 
 	LOG_FUNCTION_END(status);
 
@@ -1384,7 +1384,7 @@ VL53L1_Error VL53L1_FCTN_00093(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00163(
+VL53L1_Error VL53L1_get_system_control(
 	VL53L1_DEV                 Dev,
 	VL53L1_system_control_t   *pdata)
 {
@@ -1395,20 +1395,20 @@ VL53L1_Error VL53L1_FCTN_00163(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00095];
+	uint8_t comms_buffer[VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00156,
+			VL53L1_POWER_MANAGEMENT__GO1_POWER_FORCE,
 			comms_buffer,
-			VL53L1_DEF_00095);
+			VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00162(
-			VL53L1_DEF_00095,
+		status = VL53L1_i2c_decode_system_control(
+			VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -1418,7 +1418,7 @@ VL53L1_Error VL53L1_FCTN_00163(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00164(
+VL53L1_Error VL53L1_i2c_encode_system_results(
 	VL53L1_system_results_t  *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -1433,97 +1433,97 @@ VL53L1_Error VL53L1_FCTN_00164(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00109 > buf_size)
+	if (VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00132 & 0x3F;
+		pdata->result__interrupt_status & 0x3F;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00105;
+		pdata->result__range_status;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00106 & 0xF;
+		pdata->result__report_status & 0xF;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00026;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00162,
+		pdata->result__stream_count;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__dss_actual_effective_spads_sd0,
 		2,
 		pbuffer +   4);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00297,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__peak_signal_count_rate_mcps_sd0,
 		2,
 		pbuffer +   6);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00166,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__ambient_count_rate_mcps_sd0,
 		2,
 		pbuffer +   8);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00167,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__sigma_sd0,
 		2,
 		pbuffer +  10);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00169,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__phase_sd0,
 		2,
 		pbuffer +  12);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00170,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__final_crosstalk_corrected_range_mm_sd0,
 		2,
 		pbuffer +  14);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00163,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__peak_signal_count_rate_crosstalk_corrected_mcps_sd0,
 		2,
 		pbuffer +  16);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00298,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__mm_inner_actual_effective_spads_sd0,
 		2,
 		pbuffer +  18);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00299,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__mm_outer_actual_effective_spads_sd0,
 		2,
 		pbuffer +  20);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00165,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__avg_signal_count_rate_mcps_sd0,
 		2,
 		pbuffer +  22);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00177,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__dss_actual_effective_spads_sd1,
 		2,
 		pbuffer +  24);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00178,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__peak_signal_count_rate_mcps_sd1,
 		2,
 		pbuffer +  26);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00179,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__ambient_count_rate_mcps_sd1,
 		2,
 		pbuffer +  28);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00180,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__sigma_sd1,
 		2,
 		pbuffer +  30);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00181,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__phase_sd1,
 		2,
 		pbuffer +  32);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00182,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__final_crosstalk_corrected_range_mm_sd1,
 		2,
 		pbuffer +  34);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00300,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__spare_0_sd1,
 		2,
 		pbuffer +  36);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00301,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__spare_1_sd1,
 		2,
 		pbuffer +  38);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00302,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__spare_2_sd1,
 		2,
 		pbuffer +  40);
 	*(pbuffer +  42) =
-		pdata->VL53L1_PRM_00303;
+		pdata->result__spare_3_sd1;
 	*(pbuffer +  43) =
-		pdata->VL53L1_PRM_00330;
+		pdata->result__thresh_info;
 	LOG_FUNCTION_END(status);
 
 
@@ -1531,7 +1531,7 @@ VL53L1_Error VL53L1_FCTN_00164(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00097(
+VL53L1_Error VL53L1_i2c_decode_system_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_system_results_t   *pdata)
@@ -1546,58 +1546,58 @@ VL53L1_Error VL53L1_FCTN_00097(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00109 > buf_size)
+	if (VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00132 =
+	pdata->result__interrupt_status =
 		(*(pbuffer +   0)) & 0x3F;
-	pdata->VL53L1_PRM_00105 =
+	pdata->result__range_status =
 		(*(pbuffer +   1));
-	pdata->VL53L1_PRM_00106 =
+	pdata->result__report_status =
 		(*(pbuffer +   2)) & 0xF;
-	pdata->VL53L1_PRM_00026 =
+	pdata->result__stream_count =
 		(*(pbuffer +   3));
-	pdata->VL53L1_PRM_00162 =
-		(VL53L1_FCTN_00105(2, pbuffer +   4));
-	pdata->VL53L1_PRM_00297 =
-		(VL53L1_FCTN_00105(2, pbuffer +   6));
-	pdata->VL53L1_PRM_00166 =
-		(VL53L1_FCTN_00105(2, pbuffer +   8));
-	pdata->VL53L1_PRM_00167 =
-		(VL53L1_FCTN_00105(2, pbuffer +  10));
-	pdata->VL53L1_PRM_00169 =
-		(VL53L1_FCTN_00105(2, pbuffer +  12));
-	pdata->VL53L1_PRM_00170 =
-		(VL53L1_FCTN_00105(2, pbuffer +  14));
-	pdata->VL53L1_PRM_00163 =
-		(VL53L1_FCTN_00105(2, pbuffer +  16));
-	pdata->VL53L1_PRM_00298 =
-		(VL53L1_FCTN_00105(2, pbuffer +  18));
-	pdata->VL53L1_PRM_00299 =
-		(VL53L1_FCTN_00105(2, pbuffer +  20));
-	pdata->VL53L1_PRM_00165 =
-		(VL53L1_FCTN_00105(2, pbuffer +  22));
-	pdata->VL53L1_PRM_00177 =
-		(VL53L1_FCTN_00105(2, pbuffer +  24));
-	pdata->VL53L1_PRM_00178 =
-		(VL53L1_FCTN_00105(2, pbuffer +  26));
-	pdata->VL53L1_PRM_00179 =
-		(VL53L1_FCTN_00105(2, pbuffer +  28));
-	pdata->VL53L1_PRM_00180 =
-		(VL53L1_FCTN_00105(2, pbuffer +  30));
-	pdata->VL53L1_PRM_00181 =
-		(VL53L1_FCTN_00105(2, pbuffer +  32));
-	pdata->VL53L1_PRM_00182 =
-		(VL53L1_FCTN_00105(2, pbuffer +  34));
-	pdata->VL53L1_PRM_00300 =
-		(VL53L1_FCTN_00105(2, pbuffer +  36));
-	pdata->VL53L1_PRM_00301 =
-		(VL53L1_FCTN_00105(2, pbuffer +  38));
-	pdata->VL53L1_PRM_00302 =
-		(VL53L1_FCTN_00105(2, pbuffer +  40));
-	pdata->VL53L1_PRM_00303 =
+	pdata->result__dss_actual_effective_spads_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   4));
+	pdata->result__peak_signal_count_rate_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   6));
+	pdata->result__ambient_count_rate_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   8));
+	pdata->result__sigma_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  10));
+	pdata->result__phase_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  12));
+	pdata->result__final_crosstalk_corrected_range_mm_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  14));
+	pdata->result__peak_signal_count_rate_crosstalk_corrected_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  16));
+	pdata->result__mm_inner_actual_effective_spads_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  18));
+	pdata->result__mm_outer_actual_effective_spads_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  20));
+	pdata->result__avg_signal_count_rate_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  22));
+	pdata->result__dss_actual_effective_spads_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  24));
+	pdata->result__peak_signal_count_rate_mcps_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  26));
+	pdata->result__ambient_count_rate_mcps_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  28));
+	pdata->result__sigma_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  30));
+	pdata->result__phase_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  32));
+	pdata->result__final_crosstalk_corrected_range_mm_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  34));
+	pdata->result__spare_0_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  36));
+	pdata->result__spare_1_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  38));
+	pdata->result__spare_2_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  40));
+	pdata->result__spare_3_sd1 =
 		(*(pbuffer +  42));
-	pdata->VL53L1_PRM_00330 =
+	pdata->result__thresh_info =
 		(*(pbuffer +  43));
 
 	LOG_FUNCTION_END(status);
@@ -1606,7 +1606,7 @@ VL53L1_Error VL53L1_FCTN_00097(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00165(
+VL53L1_Error VL53L1_set_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_system_results_t   *pdata)
 {
@@ -1617,22 +1617,22 @@ VL53L1_Error VL53L1_FCTN_00165(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00109];
+	uint8_t comms_buffer[VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00164(
+		status = VL53L1_i2c_encode_system_results(
 			pdata,
-			VL53L1_DEF_00109,
+			VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00180,
+			VL53L1_RESULT__INTERRUPT_STATUS,
 			comms_buffer,
-			VL53L1_DEF_00109);
+			VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES);
 
 	LOG_FUNCTION_END(status);
 
@@ -1640,7 +1640,7 @@ VL53L1_Error VL53L1_FCTN_00165(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00166(
+VL53L1_Error VL53L1_get_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_system_results_t   *pdata)
 {
@@ -1651,20 +1651,20 @@ VL53L1_Error VL53L1_FCTN_00166(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00109];
+	uint8_t comms_buffer[VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00180,
+			VL53L1_RESULT__INTERRUPT_STATUS,
 			comms_buffer,
-			VL53L1_DEF_00109);
+			VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00097(
-			VL53L1_DEF_00109,
+		status = VL53L1_i2c_decode_system_results(
+			VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -1674,7 +1674,7 @@ VL53L1_Error VL53L1_FCTN_00166(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00167(
+VL53L1_Error VL53L1_i2c_encode_core_results(
 	VL53L1_core_results_t    *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -1689,43 +1689,43 @@ VL53L1_Error VL53L1_FCTN_00167(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00108 > buf_size)
+	if (VL53L1_CORE_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00176,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->result_core__ambient_window_events_sd0,
 		4,
 		pbuffer +   0);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00172,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->result_core__ranging_total_events_sd0,
 		4,
 		pbuffer +   4);
-	VL53L1_FCTN_00122(
-		pdata->VL53L1_PRM_00173,
+	VL53L1_i2c_encode_int32_t(
+		pdata->result_core__signal_total_events_sd0,
 		4,
 		pbuffer +   8);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00174,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->result_core__total_periods_elapsed_sd0,
 		4,
 		pbuffer +  12);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00186,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->result_core__ambient_window_events_sd1,
 		4,
 		pbuffer +  16);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00183,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->result_core__ranging_total_events_sd1,
 		4,
 		pbuffer +  20);
-	VL53L1_FCTN_00122(
-		pdata->VL53L1_PRM_00184,
+	VL53L1_i2c_encode_int32_t(
+		pdata->result_core__signal_total_events_sd1,
 		4,
 		pbuffer +  24);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00185,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->result_core__total_periods_elapsed_sd1,
 		4,
 		pbuffer +  28);
 	*(pbuffer +  32) =
-		pdata->VL53L1_PRM_00331;
+		pdata->result_core__spare_0;
 	LOG_FUNCTION_END(status);
 
 
@@ -1733,7 +1733,7 @@ VL53L1_Error VL53L1_FCTN_00167(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00096(
+VL53L1_Error VL53L1_i2c_decode_core_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_core_results_t     *pdata)
@@ -1748,26 +1748,26 @@ VL53L1_Error VL53L1_FCTN_00096(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00108 > buf_size)
+	if (VL53L1_CORE_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00176 =
-		(VL53L1_FCTN_00106(4, pbuffer +   0));
-	pdata->VL53L1_PRM_00172 =
-		(VL53L1_FCTN_00106(4, pbuffer +   4));
-	pdata->VL53L1_PRM_00173 =
-		(VL53L1_FCTN_00123(4, pbuffer +   8));
-	pdata->VL53L1_PRM_00174 =
-		(VL53L1_FCTN_00106(4, pbuffer +  12));
-	pdata->VL53L1_PRM_00186 =
-		(VL53L1_FCTN_00106(4, pbuffer +  16));
-	pdata->VL53L1_PRM_00183 =
-		(VL53L1_FCTN_00106(4, pbuffer +  20));
-	pdata->VL53L1_PRM_00184 =
-		(VL53L1_FCTN_00123(4, pbuffer +  24));
-	pdata->VL53L1_PRM_00185 =
-		(VL53L1_FCTN_00106(4, pbuffer +  28));
-	pdata->VL53L1_PRM_00331 =
+	pdata->result_core__ambient_window_events_sd0 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +   0));
+	pdata->result_core__ranging_total_events_sd0 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +   4));
+	pdata->result_core__signal_total_events_sd0 =
+		(VL53L1_i2c_decode_int32_t(4, pbuffer +   8));
+	pdata->result_core__total_periods_elapsed_sd0 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  12));
+	pdata->result_core__ambient_window_events_sd1 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  16));
+	pdata->result_core__ranging_total_events_sd1 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  20));
+	pdata->result_core__signal_total_events_sd1 =
+		(VL53L1_i2c_decode_int32_t(4, pbuffer +  24));
+	pdata->result_core__total_periods_elapsed_sd1 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  28));
+	pdata->result_core__spare_0 =
 		(*(pbuffer +  32));
 
 	LOG_FUNCTION_END(status);
@@ -1776,7 +1776,7 @@ VL53L1_Error VL53L1_FCTN_00096(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00168(
+VL53L1_Error VL53L1_set_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_core_results_t     *pdata)
 {
@@ -1787,28 +1787,28 @@ VL53L1_Error VL53L1_FCTN_00168(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00108];
+	uint8_t comms_buffer[VL53L1_CORE_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00167(
+		status = VL53L1_i2c_encode_core_results(
 			pdata,
-			VL53L1_DEF_00108,
+			VL53L1_CORE_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00181,
+			VL53L1_RESULT_CORE__AMBIENT_WINDOW_EVENTS_SD0,
 			comms_buffer,
-			VL53L1_DEF_00108);
+			VL53L1_CORE_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -1816,7 +1816,7 @@ VL53L1_Error VL53L1_FCTN_00168(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00169(
+VL53L1_Error VL53L1_get_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_core_results_t     *pdata)
 {
@@ -1827,20 +1827,20 @@ VL53L1_Error VL53L1_FCTN_00169(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00108];
+	uint8_t comms_buffer[VL53L1_CORE_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00181,
+			VL53L1_RESULT_CORE__AMBIENT_WINDOW_EVENTS_SD0,
 			comms_buffer,
-			VL53L1_DEF_00108);
+			VL53L1_CORE_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00096(
-			VL53L1_DEF_00108,
+		status = VL53L1_i2c_decode_core_results(
+			VL53L1_CORE_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -1850,7 +1850,7 @@ VL53L1_Error VL53L1_FCTN_00169(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00170(
+VL53L1_Error VL53L1_i2c_encode_debug_results(
 	VL53L1_debug_results_t   *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -1865,109 +1865,109 @@ VL53L1_Error VL53L1_FCTN_00170(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00105 > buf_size)
+	if (VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00134,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->phasecal_result__reference_phase,
 		2,
 		pbuffer +   0);
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00135 & 0x7F;
+		pdata->phasecal_result__vcsel_start & 0x7F;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00048 & 0x3F;
+		pdata->ref_spad_char_result__num_actual_ref_spads & 0x3F;
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00049 & 0x3;
+		pdata->ref_spad_char_result__ref_location & 0x3;
 	*(pbuffer +   5) =
-		pdata->VL53L1_PRM_00332 & 0x1;
+		pdata->vhv_result__coldboot_status & 0x1;
 	*(pbuffer +   6) =
-		pdata->VL53L1_PRM_00333 & 0x3F;
+		pdata->vhv_result__search_result & 0x3F;
 	*(pbuffer +   7) =
-		pdata->VL53L1_PRM_00334 & 0x3F;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00113 & 0x3FF,
+		pdata->vhv_result__latest_setting & 0x3F;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->result__osc_calibrate_val & 0x3FF,
 		2,
 		pbuffer +   8);
 	*(pbuffer +  10) =
-		pdata->VL53L1_PRM_00335 & 0x3;
+		pdata->ana_config__powerdown_go1 & 0x3;
 	*(pbuffer +  11) =
-		pdata->VL53L1_PRM_00336 & 0x3;
+		pdata->ana_config__ref_bg_ctrl & 0x3;
 	*(pbuffer +  12) =
-		pdata->VL53L1_PRM_00337 & 0xF;
+		pdata->ana_config__regdvdd1v2_ctrl & 0xF;
 	*(pbuffer +  13) =
-		pdata->VL53L1_PRM_00338 & 0x7;
+		pdata->ana_config__osc_slow_ctrl & 0x7;
 	*(pbuffer +  14) =
-		pdata->VL53L1_PRM_00339 & 0x1;
+		pdata->test_mode__status & 0x1;
 	*(pbuffer +  15) =
-		pdata->VL53L1_PRM_00340 & 0x3;
+		pdata->firmware__system_status & 0x3;
 	*(pbuffer +  16) =
-		pdata->VL53L1_PRM_00341;
+		pdata->firmware__mode_status;
 	*(pbuffer +  17) =
-		pdata->VL53L1_PRM_00342;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00343 & 0xFFF,
+		pdata->firmware__secondary_mode_status;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->firmware__cal_repeat_rate_counter & 0xFFF,
 		2,
 		pbuffer +  18);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00344,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->gph__system__thresh_high,
 		2,
 		pbuffer +  22);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00345,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->gph__system__thresh_low,
 		2,
 		pbuffer +  24);
 	*(pbuffer +  26) =
-		pdata->VL53L1_PRM_00346 & 0x1;
+		pdata->gph__system__enable_xtalk_per_quadrant & 0x1;
 	*(pbuffer +  27) =
-		pdata->VL53L1_PRM_00347 & 0x7;
+		pdata->gph__spare_0 & 0x7;
 	*(pbuffer +  28) =
-		pdata->VL53L1_PRM_00348;
+		pdata->gph__sd_config__woi_sd0;
 	*(pbuffer +  29) =
-		pdata->VL53L1_PRM_00349;
+		pdata->gph__sd_config__woi_sd1;
 	*(pbuffer +  30) =
-		pdata->VL53L1_PRM_00350 & 0x7F;
+		pdata->gph__sd_config__initial_phase_sd0 & 0x7F;
 	*(pbuffer +  31) =
-		pdata->VL53L1_PRM_00351 & 0x7F;
+		pdata->gph__sd_config__initial_phase_sd1 & 0x7F;
 	*(pbuffer +  32) =
-		pdata->VL53L1_PRM_00352 & 0x3;
+		pdata->gph__sd_config__first_order_select & 0x3;
 	*(pbuffer +  33) =
-		pdata->VL53L1_PRM_00353 & 0xF;
+		pdata->gph__sd_config__quantifier & 0xF;
 	*(pbuffer +  34) =
-		pdata->VL53L1_PRM_00354;
+		pdata->gph__roi_config__user_roi_centre_spad;
 	*(pbuffer +  35) =
-		pdata->VL53L1_PRM_00355;
+		pdata->gph__roi_config__user_roi_requested_global_xy_size;
 	*(pbuffer +  36) =
-		pdata->VL53L1_PRM_00356;
+		pdata->gph__system__sequence_config;
 	*(pbuffer +  37) =
-		pdata->VL53L1_PRM_00357 & 0x1;
+		pdata->gph__gph_id & 0x1;
 	*(pbuffer +  38) =
-		pdata->VL53L1_PRM_00358 & 0x3;
+		pdata->system__interrupt_set & 0x3;
 	*(pbuffer +  39) =
-		pdata->VL53L1_PRM_00315 & 0x1F;
+		pdata->interrupt_manager__enables & 0x1F;
 	*(pbuffer +  40) =
-		pdata->VL53L1_PRM_00316 & 0x1F;
+		pdata->interrupt_manager__clear & 0x1F;
 	*(pbuffer +  41) =
-		pdata->VL53L1_PRM_00317 & 0x1F;
+		pdata->interrupt_manager__status & 0x1F;
 	*(pbuffer +  42) =
-		pdata->VL53L1_PRM_00318 & 0x1;
+		pdata->mcu_to_host_bank__wr_access_en & 0x1;
 	*(pbuffer +  43) =
-		pdata->VL53L1_PRM_00319 & 0x1;
+		pdata->power_management__go1_reset_status & 0x1;
 	*(pbuffer +  44) =
-		pdata->VL53L1_PRM_00359 & 0x3;
+		pdata->pad_startup_mode__value_ro & 0x3;
 	*(pbuffer +  45) =
-		pdata->VL53L1_PRM_00360 & 0x3F;
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00131 & 0x3FFFF,
+		pdata->pad_startup_mode__value_ctrl & 0x3F;
+	VL53L1_i2c_encode_uint32_t(
+		pdata->pll_period_us & 0x3FFFF,
 		4,
 		pbuffer +  46);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00361,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->interrupt_scheduler__data_out,
 		4,
 		pbuffer +  50);
 	*(pbuffer +  54) =
-		pdata->VL53L1_PRM_00362 & 0x1;
+		pdata->nvm_bist__complete & 0x1;
 	*(pbuffer +  55) =
-		pdata->VL53L1_PRM_00363 & 0x1;
+		pdata->nvm_bist__status & 0x1;
 	LOG_FUNCTION_END(status);
 
 
@@ -1975,7 +1975,7 @@ VL53L1_Error VL53L1_FCTN_00170(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00095(
+VL53L1_Error VL53L1_i2c_decode_debug_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_debug_results_t    *pdata)
@@ -1990,94 +1990,94 @@ VL53L1_Error VL53L1_FCTN_00095(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00105 > buf_size)
+	if (VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00134 =
-		(VL53L1_FCTN_00105(2, pbuffer +   0));
-	pdata->VL53L1_PRM_00135 =
+	pdata->phasecal_result__reference_phase =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   0));
+	pdata->phasecal_result__vcsel_start =
 		(*(pbuffer +   2)) & 0x7F;
-	pdata->VL53L1_PRM_00048 =
+	pdata->ref_spad_char_result__num_actual_ref_spads =
 		(*(pbuffer +   3)) & 0x3F;
-	pdata->VL53L1_PRM_00049 =
+	pdata->ref_spad_char_result__ref_location =
 		(*(pbuffer +   4)) & 0x3;
-	pdata->VL53L1_PRM_00332 =
+	pdata->vhv_result__coldboot_status =
 		(*(pbuffer +   5)) & 0x1;
-	pdata->VL53L1_PRM_00333 =
+	pdata->vhv_result__search_result =
 		(*(pbuffer +   6)) & 0x3F;
-	pdata->VL53L1_PRM_00334 =
+	pdata->vhv_result__latest_setting =
 		(*(pbuffer +   7)) & 0x3F;
-	pdata->VL53L1_PRM_00113 =
-		(VL53L1_FCTN_00105(2, pbuffer +   8)) & 0x3FF;
-	pdata->VL53L1_PRM_00335 =
+	pdata->result__osc_calibrate_val =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   8)) & 0x3FF;
+	pdata->ana_config__powerdown_go1 =
 		(*(pbuffer +  10)) & 0x3;
-	pdata->VL53L1_PRM_00336 =
+	pdata->ana_config__ref_bg_ctrl =
 		(*(pbuffer +  11)) & 0x3;
-	pdata->VL53L1_PRM_00337 =
+	pdata->ana_config__regdvdd1v2_ctrl =
 		(*(pbuffer +  12)) & 0xF;
-	pdata->VL53L1_PRM_00338 =
+	pdata->ana_config__osc_slow_ctrl =
 		(*(pbuffer +  13)) & 0x7;
-	pdata->VL53L1_PRM_00339 =
+	pdata->test_mode__status =
 		(*(pbuffer +  14)) & 0x1;
-	pdata->VL53L1_PRM_00340 =
+	pdata->firmware__system_status =
 		(*(pbuffer +  15)) & 0x3;
-	pdata->VL53L1_PRM_00341 =
+	pdata->firmware__mode_status =
 		(*(pbuffer +  16));
-	pdata->VL53L1_PRM_00342 =
+	pdata->firmware__secondary_mode_status =
 		(*(pbuffer +  17));
-	pdata->VL53L1_PRM_00343 =
-		(VL53L1_FCTN_00105(2, pbuffer +  18)) & 0xFFF;
-	pdata->VL53L1_PRM_00344 =
-		(VL53L1_FCTN_00105(2, pbuffer +  22));
-	pdata->VL53L1_PRM_00345 =
-		(VL53L1_FCTN_00105(2, pbuffer +  24));
-	pdata->VL53L1_PRM_00346 =
+	pdata->firmware__cal_repeat_rate_counter =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  18)) & 0xFFF;
+	pdata->gph__system__thresh_high =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  22));
+	pdata->gph__system__thresh_low =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  24));
+	pdata->gph__system__enable_xtalk_per_quadrant =
 		(*(pbuffer +  26)) & 0x1;
-	pdata->VL53L1_PRM_00347 =
+	pdata->gph__spare_0 =
 		(*(pbuffer +  27)) & 0x7;
-	pdata->VL53L1_PRM_00348 =
+	pdata->gph__sd_config__woi_sd0 =
 		(*(pbuffer +  28));
-	pdata->VL53L1_PRM_00349 =
+	pdata->gph__sd_config__woi_sd1 =
 		(*(pbuffer +  29));
-	pdata->VL53L1_PRM_00350 =
+	pdata->gph__sd_config__initial_phase_sd0 =
 		(*(pbuffer +  30)) & 0x7F;
-	pdata->VL53L1_PRM_00351 =
+	pdata->gph__sd_config__initial_phase_sd1 =
 		(*(pbuffer +  31)) & 0x7F;
-	pdata->VL53L1_PRM_00352 =
+	pdata->gph__sd_config__first_order_select =
 		(*(pbuffer +  32)) & 0x3;
-	pdata->VL53L1_PRM_00353 =
+	pdata->gph__sd_config__quantifier =
 		(*(pbuffer +  33)) & 0xF;
-	pdata->VL53L1_PRM_00354 =
+	pdata->gph__roi_config__user_roi_centre_spad =
 		(*(pbuffer +  34));
-	pdata->VL53L1_PRM_00355 =
+	pdata->gph__roi_config__user_roi_requested_global_xy_size =
 		(*(pbuffer +  35));
-	pdata->VL53L1_PRM_00356 =
+	pdata->gph__system__sequence_config =
 		(*(pbuffer +  36));
-	pdata->VL53L1_PRM_00357 =
+	pdata->gph__gph_id =
 		(*(pbuffer +  37)) & 0x1;
-	pdata->VL53L1_PRM_00358 =
+	pdata->system__interrupt_set =
 		(*(pbuffer +  38)) & 0x3;
-	pdata->VL53L1_PRM_00315 =
+	pdata->interrupt_manager__enables =
 		(*(pbuffer +  39)) & 0x1F;
-	pdata->VL53L1_PRM_00316 =
+	pdata->interrupt_manager__clear =
 		(*(pbuffer +  40)) & 0x1F;
-	pdata->VL53L1_PRM_00317 =
+	pdata->interrupt_manager__status =
 		(*(pbuffer +  41)) & 0x1F;
-	pdata->VL53L1_PRM_00318 =
+	pdata->mcu_to_host_bank__wr_access_en =
 		(*(pbuffer +  42)) & 0x1;
-	pdata->VL53L1_PRM_00319 =
+	pdata->power_management__go1_reset_status =
 		(*(pbuffer +  43)) & 0x1;
-	pdata->VL53L1_PRM_00359 =
+	pdata->pad_startup_mode__value_ro =
 		(*(pbuffer +  44)) & 0x3;
-	pdata->VL53L1_PRM_00360 =
+	pdata->pad_startup_mode__value_ctrl =
 		(*(pbuffer +  45)) & 0x3F;
-	pdata->VL53L1_PRM_00131 =
-		(VL53L1_FCTN_00106(4, pbuffer +  46)) & 0x3FFFF;
-	pdata->VL53L1_PRM_00361 =
-		(VL53L1_FCTN_00106(4, pbuffer +  50));
-	pdata->VL53L1_PRM_00362 =
+	pdata->pll_period_us =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  46)) & 0x3FFFF;
+	pdata->interrupt_scheduler__data_out =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  50));
+	pdata->nvm_bist__complete =
 		(*(pbuffer +  54)) & 0x1;
-	pdata->VL53L1_PRM_00363 =
+	pdata->nvm_bist__status =
 		(*(pbuffer +  55)) & 0x1;
 
 	LOG_FUNCTION_END(status);
@@ -2086,7 +2086,7 @@ VL53L1_Error VL53L1_FCTN_00095(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00171(
+VL53L1_Error VL53L1_set_debug_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_debug_results_t    *pdata)
 {
@@ -2097,28 +2097,28 @@ VL53L1_Error VL53L1_FCTN_00171(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00105];
+	uint8_t comms_buffer[VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00170(
+		status = VL53L1_i2c_encode_debug_results(
 			pdata,
-			VL53L1_DEF_00105,
+			VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00113,
+			VL53L1_PHASECAL_RESULT__REFERENCE_PHASE,
 			comms_buffer,
-			VL53L1_DEF_00105);
+			VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -2126,7 +2126,7 @@ VL53L1_Error VL53L1_FCTN_00171(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00172(
+VL53L1_Error VL53L1_get_debug_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_debug_results_t    *pdata)
 {
@@ -2137,20 +2137,20 @@ VL53L1_Error VL53L1_FCTN_00172(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00105];
+	uint8_t comms_buffer[VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00113,
+			VL53L1_PHASECAL_RESULT__REFERENCE_PHASE,
 			comms_buffer,
-			VL53L1_DEF_00105);
+			VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00095(
-			VL53L1_DEF_00105,
+		status = VL53L1_i2c_decode_debug_results(
+			VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -2160,7 +2160,7 @@ VL53L1_Error VL53L1_FCTN_00172(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00173(
+VL53L1_Error VL53L1_i2c_encode_nvm_copy_data(
 	VL53L1_nvm_copy_data_t   *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -2175,107 +2175,107 @@ VL53L1_Error VL53L1_FCTN_00173(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00182 > buf_size)
+	if (VL53L1_NVM_COPY_DATA_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00364;
+		pdata->identification__model_id;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00004;
+		pdata->identification__module_type;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00003;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00365,
+		pdata->identification__revision_id;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->identification__module_id,
 		2,
 		pbuffer +   3);
 	*(pbuffer +   5) =
-		pdata->VL53L1_PRM_00366 & 0x7F;
+		pdata->ana_config__fast_osc__trim_max & 0x7F;
 	*(pbuffer +   6) =
-		pdata->VL53L1_PRM_00367 & 0x7;
+		pdata->ana_config__fast_osc__freq_set & 0x7;
 	*(pbuffer +   7) =
-		pdata->VL53L1_PRM_00368 & 0x7;
+		pdata->ana_config__vcsel_trim & 0x7;
 	*(pbuffer +   8) =
-		pdata->VL53L1_PRM_00369 & 0x3F;
+		pdata->ana_config__vcsel_selion & 0x3F;
 	*(pbuffer +   9) =
-		pdata->VL53L1_PRM_00370 & 0x3F;
+		pdata->ana_config__vcsel_selion_max & 0x3F;
 	*(pbuffer +  10) =
-		pdata->VL53L1_PRM_00371 & 0x1;
+		pdata->protected_laser_safety__lock_bit & 0x1;
 	*(pbuffer +  11) =
-		pdata->VL53L1_PRM_00372 & 0x7F;
+		pdata->laser_safety__key & 0x7F;
 	*(pbuffer +  12) =
-		pdata->VL53L1_PRM_00373 & 0x1;
+		pdata->laser_safety__key_ro & 0x1;
 	*(pbuffer +  13) =
-		pdata->VL53L1_PRM_00374 & 0x3F;
+		pdata->laser_safety__clip & 0x3F;
 	*(pbuffer +  14) =
-		pdata->VL53L1_PRM_00375 & 0x3F;
+		pdata->laser_safety__mult & 0x3F;
 	*(pbuffer +  15) =
-		pdata->VL53L1_PRM_00376;
+		pdata->global_config__spad_enables_rtn_0;
 	*(pbuffer +  16) =
-		pdata->VL53L1_PRM_00377;
+		pdata->global_config__spad_enables_rtn_1;
 	*(pbuffer +  17) =
-		pdata->VL53L1_PRM_00378;
+		pdata->global_config__spad_enables_rtn_2;
 	*(pbuffer +  18) =
-		pdata->VL53L1_PRM_00379;
+		pdata->global_config__spad_enables_rtn_3;
 	*(pbuffer +  19) =
-		pdata->VL53L1_PRM_00380;
+		pdata->global_config__spad_enables_rtn_4;
 	*(pbuffer +  20) =
-		pdata->VL53L1_PRM_00381;
+		pdata->global_config__spad_enables_rtn_5;
 	*(pbuffer +  21) =
-		pdata->VL53L1_PRM_00382;
+		pdata->global_config__spad_enables_rtn_6;
 	*(pbuffer +  22) =
-		pdata->VL53L1_PRM_00383;
+		pdata->global_config__spad_enables_rtn_7;
 	*(pbuffer +  23) =
-		pdata->VL53L1_PRM_00384;
+		pdata->global_config__spad_enables_rtn_8;
 	*(pbuffer +  24) =
-		pdata->VL53L1_PRM_00385;
+		pdata->global_config__spad_enables_rtn_9;
 	*(pbuffer +  25) =
-		pdata->VL53L1_PRM_00386;
+		pdata->global_config__spad_enables_rtn_10;
 	*(pbuffer +  26) =
-		pdata->VL53L1_PRM_00387;
+		pdata->global_config__spad_enables_rtn_11;
 	*(pbuffer +  27) =
-		pdata->VL53L1_PRM_00388;
+		pdata->global_config__spad_enables_rtn_12;
 	*(pbuffer +  28) =
-		pdata->VL53L1_PRM_00389;
+		pdata->global_config__spad_enables_rtn_13;
 	*(pbuffer +  29) =
-		pdata->VL53L1_PRM_00390;
+		pdata->global_config__spad_enables_rtn_14;
 	*(pbuffer +  30) =
-		pdata->VL53L1_PRM_00391;
+		pdata->global_config__spad_enables_rtn_15;
 	*(pbuffer +  31) =
-		pdata->VL53L1_PRM_00392;
+		pdata->global_config__spad_enables_rtn_16;
 	*(pbuffer +  32) =
-		pdata->VL53L1_PRM_00393;
+		pdata->global_config__spad_enables_rtn_17;
 	*(pbuffer +  33) =
-		pdata->VL53L1_PRM_00394;
+		pdata->global_config__spad_enables_rtn_18;
 	*(pbuffer +  34) =
-		pdata->VL53L1_PRM_00395;
+		pdata->global_config__spad_enables_rtn_19;
 	*(pbuffer +  35) =
-		pdata->VL53L1_PRM_00396;
+		pdata->global_config__spad_enables_rtn_20;
 	*(pbuffer +  36) =
-		pdata->VL53L1_PRM_00397;
+		pdata->global_config__spad_enables_rtn_21;
 	*(pbuffer +  37) =
-		pdata->VL53L1_PRM_00398;
+		pdata->global_config__spad_enables_rtn_22;
 	*(pbuffer +  38) =
-		pdata->VL53L1_PRM_00399;
+		pdata->global_config__spad_enables_rtn_23;
 	*(pbuffer +  39) =
-		pdata->VL53L1_PRM_00400;
+		pdata->global_config__spad_enables_rtn_24;
 	*(pbuffer +  40) =
-		pdata->VL53L1_PRM_00401;
+		pdata->global_config__spad_enables_rtn_25;
 	*(pbuffer +  41) =
-		pdata->VL53L1_PRM_00402;
+		pdata->global_config__spad_enables_rtn_26;
 	*(pbuffer +  42) =
-		pdata->VL53L1_PRM_00403;
+		pdata->global_config__spad_enables_rtn_27;
 	*(pbuffer +  43) =
-		pdata->VL53L1_PRM_00404;
+		pdata->global_config__spad_enables_rtn_28;
 	*(pbuffer +  44) =
-		pdata->VL53L1_PRM_00405;
+		pdata->global_config__spad_enables_rtn_29;
 	*(pbuffer +  45) =
-		pdata->VL53L1_PRM_00406;
+		pdata->global_config__spad_enables_rtn_30;
 	*(pbuffer +  46) =
-		pdata->VL53L1_PRM_00407;
+		pdata->global_config__spad_enables_rtn_31;
 	*(pbuffer +  47) =
-		pdata->VL53L1_PRM_00117;
+		pdata->roi_config__mode_roi_centre_spad;
 	*(pbuffer +  48) =
-		pdata->VL53L1_PRM_00118;
+		pdata->roi_config__mode_roi_xy_size;
 	LOG_FUNCTION_END(status);
 
 
@@ -2283,7 +2283,7 @@ VL53L1_Error VL53L1_FCTN_00173(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00174(
+VL53L1_Error VL53L1_i2c_decode_nvm_copy_data(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_nvm_copy_data_t    *pdata)
@@ -2298,104 +2298,104 @@ VL53L1_Error VL53L1_FCTN_00174(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00182 > buf_size)
+	if (VL53L1_NVM_COPY_DATA_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00364 =
+	pdata->identification__model_id =
 		(*(pbuffer +   0));
-	pdata->VL53L1_PRM_00004 =
+	pdata->identification__module_type =
 		(*(pbuffer +   1));
-	pdata->VL53L1_PRM_00003 =
+	pdata->identification__revision_id =
 		(*(pbuffer +   2));
-	pdata->VL53L1_PRM_00365 =
-		(VL53L1_FCTN_00105(2, pbuffer +   3));
-	pdata->VL53L1_PRM_00366 =
+	pdata->identification__module_id =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   3));
+	pdata->ana_config__fast_osc__trim_max =
 		(*(pbuffer +   5)) & 0x7F;
-	pdata->VL53L1_PRM_00367 =
+	pdata->ana_config__fast_osc__freq_set =
 		(*(pbuffer +   6)) & 0x7;
-	pdata->VL53L1_PRM_00368 =
+	pdata->ana_config__vcsel_trim =
 		(*(pbuffer +   7)) & 0x7;
-	pdata->VL53L1_PRM_00369 =
+	pdata->ana_config__vcsel_selion =
 		(*(pbuffer +   8)) & 0x3F;
-	pdata->VL53L1_PRM_00370 =
+	pdata->ana_config__vcsel_selion_max =
 		(*(pbuffer +   9)) & 0x3F;
-	pdata->VL53L1_PRM_00371 =
+	pdata->protected_laser_safety__lock_bit =
 		(*(pbuffer +  10)) & 0x1;
-	pdata->VL53L1_PRM_00372 =
+	pdata->laser_safety__key =
 		(*(pbuffer +  11)) & 0x7F;
-	pdata->VL53L1_PRM_00373 =
+	pdata->laser_safety__key_ro =
 		(*(pbuffer +  12)) & 0x1;
-	pdata->VL53L1_PRM_00374 =
+	pdata->laser_safety__clip =
 		(*(pbuffer +  13)) & 0x3F;
-	pdata->VL53L1_PRM_00375 =
+	pdata->laser_safety__mult =
 		(*(pbuffer +  14)) & 0x3F;
-	pdata->VL53L1_PRM_00376 =
+	pdata->global_config__spad_enables_rtn_0 =
 		(*(pbuffer +  15));
-	pdata->VL53L1_PRM_00377 =
+	pdata->global_config__spad_enables_rtn_1 =
 		(*(pbuffer +  16));
-	pdata->VL53L1_PRM_00378 =
+	pdata->global_config__spad_enables_rtn_2 =
 		(*(pbuffer +  17));
-	pdata->VL53L1_PRM_00379 =
+	pdata->global_config__spad_enables_rtn_3 =
 		(*(pbuffer +  18));
-	pdata->VL53L1_PRM_00380 =
+	pdata->global_config__spad_enables_rtn_4 =
 		(*(pbuffer +  19));
-	pdata->VL53L1_PRM_00381 =
+	pdata->global_config__spad_enables_rtn_5 =
 		(*(pbuffer +  20));
-	pdata->VL53L1_PRM_00382 =
+	pdata->global_config__spad_enables_rtn_6 =
 		(*(pbuffer +  21));
-	pdata->VL53L1_PRM_00383 =
+	pdata->global_config__spad_enables_rtn_7 =
 		(*(pbuffer +  22));
-	pdata->VL53L1_PRM_00384 =
+	pdata->global_config__spad_enables_rtn_8 =
 		(*(pbuffer +  23));
-	pdata->VL53L1_PRM_00385 =
+	pdata->global_config__spad_enables_rtn_9 =
 		(*(pbuffer +  24));
-	pdata->VL53L1_PRM_00386 =
+	pdata->global_config__spad_enables_rtn_10 =
 		(*(pbuffer +  25));
-	pdata->VL53L1_PRM_00387 =
+	pdata->global_config__spad_enables_rtn_11 =
 		(*(pbuffer +  26));
-	pdata->VL53L1_PRM_00388 =
+	pdata->global_config__spad_enables_rtn_12 =
 		(*(pbuffer +  27));
-	pdata->VL53L1_PRM_00389 =
+	pdata->global_config__spad_enables_rtn_13 =
 		(*(pbuffer +  28));
-	pdata->VL53L1_PRM_00390 =
+	pdata->global_config__spad_enables_rtn_14 =
 		(*(pbuffer +  29));
-	pdata->VL53L1_PRM_00391 =
+	pdata->global_config__spad_enables_rtn_15 =
 		(*(pbuffer +  30));
-	pdata->VL53L1_PRM_00392 =
+	pdata->global_config__spad_enables_rtn_16 =
 		(*(pbuffer +  31));
-	pdata->VL53L1_PRM_00393 =
+	pdata->global_config__spad_enables_rtn_17 =
 		(*(pbuffer +  32));
-	pdata->VL53L1_PRM_00394 =
+	pdata->global_config__spad_enables_rtn_18 =
 		(*(pbuffer +  33));
-	pdata->VL53L1_PRM_00395 =
+	pdata->global_config__spad_enables_rtn_19 =
 		(*(pbuffer +  34));
-	pdata->VL53L1_PRM_00396 =
+	pdata->global_config__spad_enables_rtn_20 =
 		(*(pbuffer +  35));
-	pdata->VL53L1_PRM_00397 =
+	pdata->global_config__spad_enables_rtn_21 =
 		(*(pbuffer +  36));
-	pdata->VL53L1_PRM_00398 =
+	pdata->global_config__spad_enables_rtn_22 =
 		(*(pbuffer +  37));
-	pdata->VL53L1_PRM_00399 =
+	pdata->global_config__spad_enables_rtn_23 =
 		(*(pbuffer +  38));
-	pdata->VL53L1_PRM_00400 =
+	pdata->global_config__spad_enables_rtn_24 =
 		(*(pbuffer +  39));
-	pdata->VL53L1_PRM_00401 =
+	pdata->global_config__spad_enables_rtn_25 =
 		(*(pbuffer +  40));
-	pdata->VL53L1_PRM_00402 =
+	pdata->global_config__spad_enables_rtn_26 =
 		(*(pbuffer +  41));
-	pdata->VL53L1_PRM_00403 =
+	pdata->global_config__spad_enables_rtn_27 =
 		(*(pbuffer +  42));
-	pdata->VL53L1_PRM_00404 =
+	pdata->global_config__spad_enables_rtn_28 =
 		(*(pbuffer +  43));
-	pdata->VL53L1_PRM_00405 =
+	pdata->global_config__spad_enables_rtn_29 =
 		(*(pbuffer +  44));
-	pdata->VL53L1_PRM_00406 =
+	pdata->global_config__spad_enables_rtn_30 =
 		(*(pbuffer +  45));
-	pdata->VL53L1_PRM_00407 =
+	pdata->global_config__spad_enables_rtn_31 =
 		(*(pbuffer +  46));
-	pdata->VL53L1_PRM_00117 =
+	pdata->roi_config__mode_roi_centre_spad =
 		(*(pbuffer +  47));
-	pdata->VL53L1_PRM_00118 =
+	pdata->roi_config__mode_roi_xy_size =
 		(*(pbuffer +  48));
 
 	LOG_FUNCTION_END(status);
@@ -2404,7 +2404,7 @@ VL53L1_Error VL53L1_FCTN_00174(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00175(
+VL53L1_Error VL53L1_set_nvm_copy_data(
 	VL53L1_DEV                 Dev,
 	VL53L1_nvm_copy_data_t    *pdata)
 {
@@ -2415,28 +2415,28 @@ VL53L1_Error VL53L1_FCTN_00175(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00182];
+	uint8_t comms_buffer[VL53L1_NVM_COPY_DATA_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00173(
+		status = VL53L1_i2c_encode_nvm_copy_data(
 			pdata,
-			VL53L1_DEF_00182,
+			VL53L1_NVM_COPY_DATA_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00183,
+			VL53L1_IDENTIFICATION__MODEL_ID,
 			comms_buffer,
-			VL53L1_DEF_00182);
+			VL53L1_NVM_COPY_DATA_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -2444,7 +2444,7 @@ VL53L1_Error VL53L1_FCTN_00175(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00045(
+VL53L1_Error VL53L1_get_nvm_copy_data(
 	VL53L1_DEV                 Dev,
 	VL53L1_nvm_copy_data_t    *pdata)
 {
@@ -2455,20 +2455,20 @@ VL53L1_Error VL53L1_FCTN_00045(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00182];
+	uint8_t comms_buffer[VL53L1_NVM_COPY_DATA_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00183,
+			VL53L1_IDENTIFICATION__MODEL_ID,
 			comms_buffer,
-			VL53L1_DEF_00182);
+			VL53L1_NVM_COPY_DATA_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00174(
-			VL53L1_DEF_00182,
+		status = VL53L1_i2c_decode_nvm_copy_data(
+			VL53L1_NVM_COPY_DATA_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -2478,7 +2478,7 @@ VL53L1_Error VL53L1_FCTN_00045(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00176(
+VL53L1_Error VL53L1_i2c_encode_prev_shadow_system_results(
 	VL53L1_prev_shadow_system_results_t *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -2493,95 +2493,95 @@ VL53L1_Error VL53L1_FCTN_00176(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00184 > buf_size)
+	if (VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00408 & 0x3F;
+		pdata->prev_shadow_result__interrupt_status & 0x3F;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00409;
+		pdata->prev_shadow_result__range_status;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00410 & 0xF;
+		pdata->prev_shadow_result__report_status & 0xF;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00411;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00412,
+		pdata->prev_shadow_result__stream_count;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__dss_actual_effective_spads_sd0,
 		2,
 		pbuffer +   4);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00413,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__peak_signal_count_rate_mcps_sd0,
 		2,
 		pbuffer +   6);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00414,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__ambient_count_rate_mcps_sd0,
 		2,
 		pbuffer +   8);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00415,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__sigma_sd0,
 		2,
 		pbuffer +  10);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00416,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__phase_sd0,
 		2,
 		pbuffer +  12);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00417,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__final_crosstalk_corrected_range_mm_sd0,
 		2,
 		pbuffer +  14);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00418,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__peak_signal_count_rate_crosstalk_corrected_mcps_sd0,
 		2,
 		pbuffer +  16);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00419,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__mm_inner_actual_effective_spads_sd0,
 		2,
 		pbuffer +  18);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00420,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__mm_outer_actual_effective_spads_sd0,
 		2,
 		pbuffer +  20);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00421,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__avg_signal_count_rate_mcps_sd0,
 		2,
 		pbuffer +  22);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00422,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__dss_actual_effective_spads_sd1,
 		2,
 		pbuffer +  24);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00423,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__peak_signal_count_rate_mcps_sd1,
 		2,
 		pbuffer +  26);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00424,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__ambient_count_rate_mcps_sd1,
 		2,
 		pbuffer +  28);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00425,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__sigma_sd1,
 		2,
 		pbuffer +  30);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00426,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__phase_sd1,
 		2,
 		pbuffer +  32);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00427,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__final_crosstalk_corrected_range_mm_sd1,
 		2,
 		pbuffer +  34);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00428,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__spare_0_sd1,
 		2,
 		pbuffer +  36);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00429,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__spare_1_sd1,
 		2,
 		pbuffer +  38);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00430,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__spare_2_sd1,
 		2,
 		pbuffer +  40);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00431,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->prev_shadow_result__spare_3_sd1,
 		2,
 		pbuffer +  42);
 	LOG_FUNCTION_END(status);
@@ -2591,7 +2591,7 @@ VL53L1_Error VL53L1_FCTN_00176(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00177(
+VL53L1_Error VL53L1_i2c_decode_prev_shadow_system_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_prev_shadow_system_results_t  *pdata)
@@ -2606,57 +2606,57 @@ VL53L1_Error VL53L1_FCTN_00177(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00184 > buf_size)
+	if (VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00408 =
+	pdata->prev_shadow_result__interrupt_status =
 		(*(pbuffer +   0)) & 0x3F;
-	pdata->VL53L1_PRM_00409 =
+	pdata->prev_shadow_result__range_status =
 		(*(pbuffer +   1));
-	pdata->VL53L1_PRM_00410 =
+	pdata->prev_shadow_result__report_status =
 		(*(pbuffer +   2)) & 0xF;
-	pdata->VL53L1_PRM_00411 =
+	pdata->prev_shadow_result__stream_count =
 		(*(pbuffer +   3));
-	pdata->VL53L1_PRM_00412 =
-		(VL53L1_FCTN_00105(2, pbuffer +   4));
-	pdata->VL53L1_PRM_00413 =
-		(VL53L1_FCTN_00105(2, pbuffer +   6));
-	pdata->VL53L1_PRM_00414 =
-		(VL53L1_FCTN_00105(2, pbuffer +   8));
-	pdata->VL53L1_PRM_00415 =
-		(VL53L1_FCTN_00105(2, pbuffer +  10));
-	pdata->VL53L1_PRM_00416 =
-		(VL53L1_FCTN_00105(2, pbuffer +  12));
-	pdata->VL53L1_PRM_00417 =
-		(VL53L1_FCTN_00105(2, pbuffer +  14));
-	pdata->VL53L1_PRM_00418 =
-		(VL53L1_FCTN_00105(2, pbuffer +  16));
-	pdata->VL53L1_PRM_00419 =
-		(VL53L1_FCTN_00105(2, pbuffer +  18));
-	pdata->VL53L1_PRM_00420 =
-		(VL53L1_FCTN_00105(2, pbuffer +  20));
-	pdata->VL53L1_PRM_00421 =
-		(VL53L1_FCTN_00105(2, pbuffer +  22));
-	pdata->VL53L1_PRM_00422 =
-		(VL53L1_FCTN_00105(2, pbuffer +  24));
-	pdata->VL53L1_PRM_00423 =
-		(VL53L1_FCTN_00105(2, pbuffer +  26));
-	pdata->VL53L1_PRM_00424 =
-		(VL53L1_FCTN_00105(2, pbuffer +  28));
-	pdata->VL53L1_PRM_00425 =
-		(VL53L1_FCTN_00105(2, pbuffer +  30));
-	pdata->VL53L1_PRM_00426 =
-		(VL53L1_FCTN_00105(2, pbuffer +  32));
-	pdata->VL53L1_PRM_00427 =
-		(VL53L1_FCTN_00105(2, pbuffer +  34));
-	pdata->VL53L1_PRM_00428 =
-		(VL53L1_FCTN_00105(2, pbuffer +  36));
-	pdata->VL53L1_PRM_00429 =
-		(VL53L1_FCTN_00105(2, pbuffer +  38));
-	pdata->VL53L1_PRM_00430 =
-		(VL53L1_FCTN_00105(2, pbuffer +  40));
-	pdata->VL53L1_PRM_00431 =
-		(VL53L1_FCTN_00105(2, pbuffer +  42));
+	pdata->prev_shadow_result__dss_actual_effective_spads_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   4));
+	pdata->prev_shadow_result__peak_signal_count_rate_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   6));
+	pdata->prev_shadow_result__ambient_count_rate_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   8));
+	pdata->prev_shadow_result__sigma_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  10));
+	pdata->prev_shadow_result__phase_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  12));
+	pdata->prev_shadow_result__final_crosstalk_corrected_range_mm_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  14));
+	pdata->prev_shadow_result__peak_signal_count_rate_crosstalk_corrected_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  16));
+	pdata->prev_shadow_result__mm_inner_actual_effective_spads_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  18));
+	pdata->prev_shadow_result__mm_outer_actual_effective_spads_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  20));
+	pdata->prev_shadow_result__avg_signal_count_rate_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  22));
+	pdata->prev_shadow_result__dss_actual_effective_spads_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  24));
+	pdata->prev_shadow_result__peak_signal_count_rate_mcps_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  26));
+	pdata->prev_shadow_result__ambient_count_rate_mcps_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  28));
+	pdata->prev_shadow_result__sigma_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  30));
+	pdata->prev_shadow_result__phase_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  32));
+	pdata->prev_shadow_result__final_crosstalk_corrected_range_mm_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  34));
+	pdata->prev_shadow_result__spare_0_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  36));
+	pdata->prev_shadow_result__spare_1_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  38));
+	pdata->prev_shadow_result__spare_2_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  40));
+	pdata->prev_shadow_result__spare_3_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  42));
 
 	LOG_FUNCTION_END(status);
 
@@ -2664,7 +2664,7 @@ VL53L1_Error VL53L1_FCTN_00177(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00178(
+VL53L1_Error VL53L1_set_prev_shadow_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_prev_shadow_system_results_t  *pdata)
 {
@@ -2675,28 +2675,28 @@ VL53L1_Error VL53L1_FCTN_00178(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00184];
+	uint8_t comms_buffer[VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00176(
+		status = VL53L1_i2c_encode_prev_shadow_system_results(
 			pdata,
-			VL53L1_DEF_00184,
+			VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00185,
+			VL53L1_PREV_SHADOW_RESULT__INTERRUPT_STATUS,
 			comms_buffer,
-			VL53L1_DEF_00184);
+			VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -2704,7 +2704,7 @@ VL53L1_Error VL53L1_FCTN_00178(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00179(
+VL53L1_Error VL53L1_get_prev_shadow_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_prev_shadow_system_results_t  *pdata)
 {
@@ -2715,26 +2715,26 @@ VL53L1_Error VL53L1_FCTN_00179(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00184];
+	uint8_t comms_buffer[VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00185,
+			VL53L1_PREV_SHADOW_RESULT__INTERRUPT_STATUS,
 			comms_buffer,
-			VL53L1_DEF_00184);
+			VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00177(
-			VL53L1_DEF_00184,
+		status = VL53L1_i2c_decode_prev_shadow_system_results(
+			VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -2744,7 +2744,7 @@ VL53L1_Error VL53L1_FCTN_00179(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00180(
+VL53L1_Error VL53L1_i2c_encode_prev_shadow_core_results(
 	VL53L1_prev_shadow_core_results_t *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -2759,43 +2759,43 @@ VL53L1_Error VL53L1_FCTN_00180(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00186 > buf_size)
+	if (VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00432,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->prev_shadow_result_core__ambient_window_events_sd0,
 		4,
 		pbuffer +   0);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00433,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->prev_shadow_result_core__ranging_total_events_sd0,
 		4,
 		pbuffer +   4);
-	VL53L1_FCTN_00122(
-		pdata->VL53L1_PRM_00434,
+	VL53L1_i2c_encode_int32_t(
+		pdata->prev_shadow_result_core__signal_total_events_sd0,
 		4,
 		pbuffer +   8);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00435,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->prev_shadow_result_core__total_periods_elapsed_sd0,
 		4,
 		pbuffer +  12);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00436,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->prev_shadow_result_core__ambient_window_events_sd1,
 		4,
 		pbuffer +  16);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00437,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->prev_shadow_result_core__ranging_total_events_sd1,
 		4,
 		pbuffer +  20);
-	VL53L1_FCTN_00122(
-		pdata->VL53L1_PRM_00438,
+	VL53L1_i2c_encode_int32_t(
+		pdata->prev_shadow_result_core__signal_total_events_sd1,
 		4,
 		pbuffer +  24);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00439,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->prev_shadow_result_core__total_periods_elapsed_sd1,
 		4,
 		pbuffer +  28);
 	*(pbuffer +  32) =
-		pdata->VL53L1_PRM_00440;
+		pdata->prev_shadow_result_core__spare_0;
 	LOG_FUNCTION_END(status);
 
 
@@ -2803,7 +2803,7 @@ VL53L1_Error VL53L1_FCTN_00180(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00181(
+VL53L1_Error VL53L1_i2c_decode_prev_shadow_core_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_prev_shadow_core_results_t  *pdata)
@@ -2818,26 +2818,26 @@ VL53L1_Error VL53L1_FCTN_00181(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00186 > buf_size)
+	if (VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00432 =
-		(VL53L1_FCTN_00106(4, pbuffer +   0));
-	pdata->VL53L1_PRM_00433 =
-		(VL53L1_FCTN_00106(4, pbuffer +   4));
-	pdata->VL53L1_PRM_00434 =
-		(VL53L1_FCTN_00123(4, pbuffer +   8));
-	pdata->VL53L1_PRM_00435 =
-		(VL53L1_FCTN_00106(4, pbuffer +  12));
-	pdata->VL53L1_PRM_00436 =
-		(VL53L1_FCTN_00106(4, pbuffer +  16));
-	pdata->VL53L1_PRM_00437 =
-		(VL53L1_FCTN_00106(4, pbuffer +  20));
-	pdata->VL53L1_PRM_00438 =
-		(VL53L1_FCTN_00123(4, pbuffer +  24));
-	pdata->VL53L1_PRM_00439 =
-		(VL53L1_FCTN_00106(4, pbuffer +  28));
-	pdata->VL53L1_PRM_00440 =
+	pdata->prev_shadow_result_core__ambient_window_events_sd0 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +   0));
+	pdata->prev_shadow_result_core__ranging_total_events_sd0 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +   4));
+	pdata->prev_shadow_result_core__signal_total_events_sd0 =
+		(VL53L1_i2c_decode_int32_t(4, pbuffer +   8));
+	pdata->prev_shadow_result_core__total_periods_elapsed_sd0 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  12));
+	pdata->prev_shadow_result_core__ambient_window_events_sd1 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  16));
+	pdata->prev_shadow_result_core__ranging_total_events_sd1 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  20));
+	pdata->prev_shadow_result_core__signal_total_events_sd1 =
+		(VL53L1_i2c_decode_int32_t(4, pbuffer +  24));
+	pdata->prev_shadow_result_core__total_periods_elapsed_sd1 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  28));
+	pdata->prev_shadow_result_core__spare_0 =
 		(*(pbuffer +  32));
 
 	LOG_FUNCTION_END(status);
@@ -2846,7 +2846,7 @@ VL53L1_Error VL53L1_FCTN_00181(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00182(
+VL53L1_Error VL53L1_set_prev_shadow_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_prev_shadow_core_results_t  *pdata)
 {
@@ -2857,28 +2857,28 @@ VL53L1_Error VL53L1_FCTN_00182(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00186];
+	uint8_t comms_buffer[VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00180(
+		status = VL53L1_i2c_encode_prev_shadow_core_results(
 			pdata,
-			VL53L1_DEF_00186,
+			VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00187,
+			VL53L1_PREV_SHADOW_RESULT_CORE__AMBIENT_WINDOW_EVENTS_SD0,
 			comms_buffer,
-			VL53L1_DEF_00186);
+			VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -2886,7 +2886,7 @@ VL53L1_Error VL53L1_FCTN_00182(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00183(
+VL53L1_Error VL53L1_get_prev_shadow_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_prev_shadow_core_results_t  *pdata)
 {
@@ -2897,26 +2897,26 @@ VL53L1_Error VL53L1_FCTN_00183(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00186];
+	uint8_t comms_buffer[VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00187,
+			VL53L1_PREV_SHADOW_RESULT_CORE__AMBIENT_WINDOW_EVENTS_SD0,
 			comms_buffer,
-			VL53L1_DEF_00186);
+			VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00181(
-			VL53L1_DEF_00186,
+		status = VL53L1_i2c_decode_prev_shadow_core_results(
+			VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -2926,7 +2926,7 @@ VL53L1_Error VL53L1_FCTN_00183(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00184(
+VL53L1_Error VL53L1_i2c_encode_patch_debug(
 	VL53L1_patch_debug_t     *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -2941,13 +2941,13 @@ VL53L1_Error VL53L1_FCTN_00184(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00188 > buf_size)
+	if (VL53L1_PATCH_DEBUG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00441;
+		pdata->result__debug_status;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00442;
+		pdata->result__debug_stage;
 	LOG_FUNCTION_END(status);
 
 
@@ -2955,7 +2955,7 @@ VL53L1_Error VL53L1_FCTN_00184(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00185(
+VL53L1_Error VL53L1_i2c_decode_patch_debug(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_patch_debug_t      *pdata)
@@ -2970,12 +2970,12 @@ VL53L1_Error VL53L1_FCTN_00185(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00188 > buf_size)
+	if (VL53L1_PATCH_DEBUG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00441 =
+	pdata->result__debug_status =
 		(*(pbuffer +   0));
-	pdata->VL53L1_PRM_00442 =
+	pdata->result__debug_stage =
 		(*(pbuffer +   1));
 
 	LOG_FUNCTION_END(status);
@@ -2984,7 +2984,7 @@ VL53L1_Error VL53L1_FCTN_00185(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00186(
+VL53L1_Error VL53L1_set_patch_debug(
 	VL53L1_DEV                 Dev,
 	VL53L1_patch_debug_t      *pdata)
 {
@@ -2995,28 +2995,28 @@ VL53L1_Error VL53L1_FCTN_00186(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00188];
+	uint8_t comms_buffer[VL53L1_PATCH_DEBUG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00184(
+		status = VL53L1_i2c_encode_patch_debug(
 			pdata,
-			VL53L1_DEF_00188,
+			VL53L1_PATCH_DEBUG_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00189,
+			VL53L1_RESULT__DEBUG_STATUS,
 			comms_buffer,
-			VL53L1_DEF_00188);
+			VL53L1_PATCH_DEBUG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -3024,7 +3024,7 @@ VL53L1_Error VL53L1_FCTN_00186(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00187(
+VL53L1_Error VL53L1_get_patch_debug(
 	VL53L1_DEV                 Dev,
 	VL53L1_patch_debug_t      *pdata)
 {
@@ -3035,26 +3035,26 @@ VL53L1_Error VL53L1_FCTN_00187(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00188];
+	uint8_t comms_buffer[VL53L1_PATCH_DEBUG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00189,
+			VL53L1_RESULT__DEBUG_STATUS,
 			comms_buffer,
-			VL53L1_DEF_00188);
+			VL53L1_PATCH_DEBUG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00185(
-			VL53L1_DEF_00188,
+		status = VL53L1_i2c_decode_patch_debug(
+			VL53L1_PATCH_DEBUG_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -3064,7 +3064,7 @@ VL53L1_Error VL53L1_FCTN_00187(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00188(
+VL53L1_Error VL53L1_i2c_encode_gph_general_config(
 	VL53L1_gph_general_config_t *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -3079,19 +3079,19 @@ VL53L1_Error VL53L1_FCTN_00188(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00190 > buf_size)
+	if (VL53L1_GPH_GENERAL_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00443,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->gph__system__thresh_rate_high,
 		2,
 		pbuffer +   0);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00444,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->gph__system__thresh_rate_low,
 		2,
 		pbuffer +   2);
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00445;
+		pdata->gph__system__interrupt_config_gpio;
 	LOG_FUNCTION_END(status);
 
 
@@ -3099,7 +3099,7 @@ VL53L1_Error VL53L1_FCTN_00188(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00189(
+VL53L1_Error VL53L1_i2c_decode_gph_general_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_gph_general_config_t  *pdata)
@@ -3114,14 +3114,14 @@ VL53L1_Error VL53L1_FCTN_00189(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00190 > buf_size)
+	if (VL53L1_GPH_GENERAL_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00443 =
-		(VL53L1_FCTN_00105(2, pbuffer +   0));
-	pdata->VL53L1_PRM_00444 =
-		(VL53L1_FCTN_00105(2, pbuffer +   2));
-	pdata->VL53L1_PRM_00445 =
+	pdata->gph__system__thresh_rate_high =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   0));
+	pdata->gph__system__thresh_rate_low =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   2));
+	pdata->gph__system__interrupt_config_gpio =
 		(*(pbuffer +   4));
 
 	LOG_FUNCTION_END(status);
@@ -3130,7 +3130,7 @@ VL53L1_Error VL53L1_FCTN_00189(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00190(
+VL53L1_Error VL53L1_set_gph_general_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_general_config_t  *pdata)
 {
@@ -3141,28 +3141,28 @@ VL53L1_Error VL53L1_FCTN_00190(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00190];
+	uint8_t comms_buffer[VL53L1_GPH_GENERAL_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00188(
+		status = VL53L1_i2c_encode_gph_general_config(
 			pdata,
-			VL53L1_DEF_00190,
+			VL53L1_GPH_GENERAL_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00191,
+			VL53L1_GPH__SYSTEM__THRESH_RATE_HIGH,
 			comms_buffer,
-			VL53L1_DEF_00190);
+			VL53L1_GPH_GENERAL_CONFIG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -3170,7 +3170,7 @@ VL53L1_Error VL53L1_FCTN_00190(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00191(
+VL53L1_Error VL53L1_get_gph_general_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_general_config_t  *pdata)
 {
@@ -3181,26 +3181,26 @@ VL53L1_Error VL53L1_FCTN_00191(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00190];
+	uint8_t comms_buffer[VL53L1_GPH_GENERAL_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00191,
+			VL53L1_GPH__SYSTEM__THRESH_RATE_HIGH,
 			comms_buffer,
-			VL53L1_DEF_00190);
+			VL53L1_GPH_GENERAL_CONFIG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00189(
-			VL53L1_DEF_00190,
+		status = VL53L1_i2c_decode_gph_general_config(
+			VL53L1_GPH_GENERAL_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -3210,7 +3210,7 @@ VL53L1_Error VL53L1_FCTN_00191(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00192(
+VL53L1_Error VL53L1_i2c_encode_gph_static_config(
 	VL53L1_gph_static_config_t *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -3225,21 +3225,21 @@ VL53L1_Error VL53L1_FCTN_00192(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00192 > buf_size)
+	if (VL53L1_GPH_STATIC_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00446 & 0x7;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00447,
+		pdata->gph__dss_config__roi_mode_control & 0x7;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->gph__dss_config__manual_effective_spads_select,
 		2,
 		pbuffer +   1);
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00448;
+		pdata->gph__dss_config__manual_block_select;
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00449;
+		pdata->gph__dss_config__max_spads_limit;
 	*(pbuffer +   5) =
-		pdata->VL53L1_PRM_00450;
+		pdata->gph__dss_config__min_spads_limit;
 	LOG_FUNCTION_END(status);
 
 
@@ -3247,7 +3247,7 @@ VL53L1_Error VL53L1_FCTN_00192(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00193(
+VL53L1_Error VL53L1_i2c_decode_gph_static_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_gph_static_config_t  *pdata)
@@ -3262,18 +3262,18 @@ VL53L1_Error VL53L1_FCTN_00193(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00192 > buf_size)
+	if (VL53L1_GPH_STATIC_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00446 =
+	pdata->gph__dss_config__roi_mode_control =
 		(*(pbuffer +   0)) & 0x7;
-	pdata->VL53L1_PRM_00447 =
-		(VL53L1_FCTN_00105(2, pbuffer +   1));
-	pdata->VL53L1_PRM_00448 =
+	pdata->gph__dss_config__manual_effective_spads_select =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   1));
+	pdata->gph__dss_config__manual_block_select =
 		(*(pbuffer +   3));
-	pdata->VL53L1_PRM_00449 =
+	pdata->gph__dss_config__max_spads_limit =
 		(*(pbuffer +   4));
-	pdata->VL53L1_PRM_00450 =
+	pdata->gph__dss_config__min_spads_limit =
 		(*(pbuffer +   5));
 
 	LOG_FUNCTION_END(status);
@@ -3282,7 +3282,7 @@ VL53L1_Error VL53L1_FCTN_00193(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00194(
+VL53L1_Error VL53L1_set_gph_static_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_static_config_t  *pdata)
 {
@@ -3293,28 +3293,28 @@ VL53L1_Error VL53L1_FCTN_00194(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00192];
+	uint8_t comms_buffer[VL53L1_GPH_STATIC_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00192(
+		status = VL53L1_i2c_encode_gph_static_config(
 			pdata,
-			VL53L1_DEF_00192,
+			VL53L1_GPH_STATIC_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00193,
+			VL53L1_GPH__DSS_CONFIG__ROI_MODE_CONTROL,
 			comms_buffer,
-			VL53L1_DEF_00192);
+			VL53L1_GPH_STATIC_CONFIG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -3322,7 +3322,7 @@ VL53L1_Error VL53L1_FCTN_00194(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00195(
+VL53L1_Error VL53L1_get_gph_static_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_static_config_t  *pdata)
 {
@@ -3333,26 +3333,26 @@ VL53L1_Error VL53L1_FCTN_00195(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00192];
+	uint8_t comms_buffer[VL53L1_GPH_STATIC_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00193,
+			VL53L1_GPH__DSS_CONFIG__ROI_MODE_CONTROL,
 			comms_buffer,
-			VL53L1_DEF_00192);
+			VL53L1_GPH_STATIC_CONFIG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00193(
-			VL53L1_DEF_00192,
+		status = VL53L1_i2c_decode_gph_static_config(
+			VL53L1_GPH_STATIC_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -3362,7 +3362,7 @@ VL53L1_Error VL53L1_FCTN_00195(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00196(
+VL53L1_Error VL53L1_i2c_encode_gph_timing_config(
 	VL53L1_gph_timing_config_t *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -3377,41 +3377,41 @@ VL53L1_Error VL53L1_FCTN_00196(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00194 > buf_size)
+	if (VL53L1_GPH_TIMING_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00451 & 0xF;
+		pdata->gph__mm_config__timeout_macrop_a_hi & 0xF;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00452;
+		pdata->gph__mm_config__timeout_macrop_a_lo;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00453 & 0xF;
+		pdata->gph__mm_config__timeout_macrop_b_hi & 0xF;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00454;
+		pdata->gph__mm_config__timeout_macrop_b_lo;
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00455 & 0xF;
+		pdata->gph__range_config__timeout_macrop_a_hi & 0xF;
 	*(pbuffer +   5) =
-		pdata->VL53L1_PRM_00456;
+		pdata->gph__range_config__timeout_macrop_a_lo;
 	*(pbuffer +   6) =
-		pdata->VL53L1_PRM_00457 & 0x3F;
+		pdata->gph__range_config__vcsel_period_a & 0x3F;
 	*(pbuffer +   7) =
-		pdata->VL53L1_PRM_00458 & 0x3F;
+		pdata->gph__range_config__vcsel_period_b & 0x3F;
 	*(pbuffer +   8) =
-		pdata->VL53L1_PRM_00459 & 0xF;
+		pdata->gph__range_config__timeout_macrop_b_hi & 0xF;
 	*(pbuffer +   9) =
-		pdata->VL53L1_PRM_00460;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00461,
+		pdata->gph__range_config__timeout_macrop_b_lo;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->gph__range_config__sigma_thresh,
 		2,
 		pbuffer +  10);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00462,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->gph__range_config__min_count_rate_rtn_limit_mcps,
 		2,
 		pbuffer +  12);
 	*(pbuffer +  14) =
-		pdata->VL53L1_PRM_00463;
+		pdata->gph__range_config__valid_phase_low;
 	*(pbuffer +  15) =
-		pdata->VL53L1_PRM_00464;
+		pdata->gph__range_config__valid_phase_high;
 	LOG_FUNCTION_END(status);
 
 
@@ -3419,7 +3419,7 @@ VL53L1_Error VL53L1_FCTN_00196(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00197(
+VL53L1_Error VL53L1_i2c_decode_gph_timing_config(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_gph_timing_config_t  *pdata)
@@ -3434,36 +3434,36 @@ VL53L1_Error VL53L1_FCTN_00197(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00194 > buf_size)
+	if (VL53L1_GPH_TIMING_CONFIG_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00451 =
+	pdata->gph__mm_config__timeout_macrop_a_hi =
 		(*(pbuffer +   0)) & 0xF;
-	pdata->VL53L1_PRM_00452 =
+	pdata->gph__mm_config__timeout_macrop_a_lo =
 		(*(pbuffer +   1));
-	pdata->VL53L1_PRM_00453 =
+	pdata->gph__mm_config__timeout_macrop_b_hi =
 		(*(pbuffer +   2)) & 0xF;
-	pdata->VL53L1_PRM_00454 =
+	pdata->gph__mm_config__timeout_macrop_b_lo =
 		(*(pbuffer +   3));
-	pdata->VL53L1_PRM_00455 =
+	pdata->gph__range_config__timeout_macrop_a_hi =
 		(*(pbuffer +   4)) & 0xF;
-	pdata->VL53L1_PRM_00456 =
+	pdata->gph__range_config__timeout_macrop_a_lo =
 		(*(pbuffer +   5));
-	pdata->VL53L1_PRM_00457 =
+	pdata->gph__range_config__vcsel_period_a =
 		(*(pbuffer +   6)) & 0x3F;
-	pdata->VL53L1_PRM_00458 =
+	pdata->gph__range_config__vcsel_period_b =
 		(*(pbuffer +   7)) & 0x3F;
-	pdata->VL53L1_PRM_00459 =
+	pdata->gph__range_config__timeout_macrop_b_hi =
 		(*(pbuffer +   8)) & 0xF;
-	pdata->VL53L1_PRM_00460 =
+	pdata->gph__range_config__timeout_macrop_b_lo =
 		(*(pbuffer +   9));
-	pdata->VL53L1_PRM_00461 =
-		(VL53L1_FCTN_00105(2, pbuffer +  10));
-	pdata->VL53L1_PRM_00462 =
-		(VL53L1_FCTN_00105(2, pbuffer +  12));
-	pdata->VL53L1_PRM_00463 =
+	pdata->gph__range_config__sigma_thresh =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  10));
+	pdata->gph__range_config__min_count_rate_rtn_limit_mcps =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  12));
+	pdata->gph__range_config__valid_phase_low =
 		(*(pbuffer +  14));
-	pdata->VL53L1_PRM_00464 =
+	pdata->gph__range_config__valid_phase_high =
 		(*(pbuffer +  15));
 
 	LOG_FUNCTION_END(status);
@@ -3472,7 +3472,7 @@ VL53L1_Error VL53L1_FCTN_00197(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00198(
+VL53L1_Error VL53L1_set_gph_timing_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_timing_config_t  *pdata)
 {
@@ -3483,28 +3483,28 @@ VL53L1_Error VL53L1_FCTN_00198(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00194];
+	uint8_t comms_buffer[VL53L1_GPH_TIMING_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00196(
+		status = VL53L1_i2c_encode_gph_timing_config(
 			pdata,
-			VL53L1_DEF_00194,
+			VL53L1_GPH_TIMING_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00195,
+			VL53L1_GPH__MM_CONFIG__TIMEOUT_MACROP_A_HI,
 			comms_buffer,
-			VL53L1_DEF_00194);
+			VL53L1_GPH_TIMING_CONFIG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -3512,7 +3512,7 @@ VL53L1_Error VL53L1_FCTN_00198(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00199(
+VL53L1_Error VL53L1_get_gph_timing_config(
 	VL53L1_DEV                 Dev,
 	VL53L1_gph_timing_config_t  *pdata)
 {
@@ -3523,26 +3523,26 @@ VL53L1_Error VL53L1_FCTN_00199(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00194];
+	uint8_t comms_buffer[VL53L1_GPH_TIMING_CONFIG_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00195,
+			VL53L1_GPH__MM_CONFIG__TIMEOUT_MACROP_A_HI,
 			comms_buffer,
-			VL53L1_DEF_00194);
+			VL53L1_GPH_TIMING_CONFIG_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00197(
-			VL53L1_DEF_00194,
+		status = VL53L1_i2c_decode_gph_timing_config(
+			VL53L1_GPH_TIMING_CONFIG_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -3552,7 +3552,7 @@ VL53L1_Error VL53L1_FCTN_00199(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00200(
+VL53L1_Error VL53L1_i2c_encode_fw_internal(
 	VL53L1_fw_internal_t     *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -3567,13 +3567,13 @@ VL53L1_Error VL53L1_FCTN_00200(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00196 > buf_size)
+	if (VL53L1_FW_INTERNAL_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00465;
+		pdata->firmware__internal_stream_count_div;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00466;
+		pdata->firmware__internal_stream_counter_val;
 	LOG_FUNCTION_END(status);
 
 
@@ -3581,7 +3581,7 @@ VL53L1_Error VL53L1_FCTN_00200(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00201(
+VL53L1_Error VL53L1_i2c_decode_fw_internal(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_fw_internal_t      *pdata)
@@ -3596,12 +3596,12 @@ VL53L1_Error VL53L1_FCTN_00201(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00196 > buf_size)
+	if (VL53L1_FW_INTERNAL_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00465 =
+	pdata->firmware__internal_stream_count_div =
 		(*(pbuffer +   0));
-	pdata->VL53L1_PRM_00466 =
+	pdata->firmware__internal_stream_counter_val =
 		(*(pbuffer +   1));
 
 	LOG_FUNCTION_END(status);
@@ -3610,7 +3610,7 @@ VL53L1_Error VL53L1_FCTN_00201(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00202(
+VL53L1_Error VL53L1_set_fw_internal(
 	VL53L1_DEV                 Dev,
 	VL53L1_fw_internal_t      *pdata)
 {
@@ -3621,28 +3621,28 @@ VL53L1_Error VL53L1_FCTN_00202(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00196];
+	uint8_t comms_buffer[VL53L1_FW_INTERNAL_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00200(
+		status = VL53L1_i2c_encode_fw_internal(
 			pdata,
-			VL53L1_DEF_00196,
+			VL53L1_FW_INTERNAL_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00197,
+			VL53L1_FIRMWARE__INTERNAL_STREAM_COUNT_DIV,
 			comms_buffer,
-			VL53L1_DEF_00196);
+			VL53L1_FW_INTERNAL_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -3650,7 +3650,7 @@ VL53L1_Error VL53L1_FCTN_00202(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00203(
+VL53L1_Error VL53L1_get_fw_internal(
 	VL53L1_DEV                 Dev,
 	VL53L1_fw_internal_t      *pdata)
 {
@@ -3661,26 +3661,26 @@ VL53L1_Error VL53L1_FCTN_00203(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00196];
+	uint8_t comms_buffer[VL53L1_FW_INTERNAL_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00197,
+			VL53L1_FIRMWARE__INTERNAL_STREAM_COUNT_DIV,
 			comms_buffer,
-			VL53L1_DEF_00196);
+			VL53L1_FW_INTERNAL_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00201(
-			VL53L1_DEF_00196,
+		status = VL53L1_i2c_decode_fw_internal(
+			VL53L1_FW_INTERNAL_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -3690,7 +3690,7 @@ VL53L1_Error VL53L1_FCTN_00203(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00204(
+VL53L1_Error VL53L1_i2c_encode_patch_results(
 	VL53L1_patch_results_t   *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -3705,155 +3705,155 @@ VL53L1_Error VL53L1_FCTN_00204(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00198 > buf_size)
+	if (VL53L1_PATCH_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00467 & 0x3;
+		pdata->dss_calc__roi_ctrl & 0x3;
 	*(pbuffer +   1) =
-		pdata->VL53L1_PRM_00468;
+		pdata->dss_calc__spare_1;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00469;
+		pdata->dss_calc__spare_2;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00470;
+		pdata->dss_calc__spare_3;
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00471;
+		pdata->dss_calc__spare_4;
 	*(pbuffer +   5) =
-		pdata->VL53L1_PRM_00472;
+		pdata->dss_calc__spare_5;
 	*(pbuffer +   6) =
-		pdata->VL53L1_PRM_00473;
+		pdata->dss_calc__spare_6;
 	*(pbuffer +   7) =
-		pdata->VL53L1_PRM_00474;
+		pdata->dss_calc__spare_7;
 	*(pbuffer +   8) =
-		pdata->VL53L1_PRM_00475;
+		pdata->dss_calc__user_roi_spad_en_0;
 	*(pbuffer +   9) =
-		pdata->VL53L1_PRM_00476;
+		pdata->dss_calc__user_roi_spad_en_1;
 	*(pbuffer +  10) =
-		pdata->VL53L1_PRM_00477;
+		pdata->dss_calc__user_roi_spad_en_2;
 	*(pbuffer +  11) =
-		pdata->VL53L1_PRM_00478;
+		pdata->dss_calc__user_roi_spad_en_3;
 	*(pbuffer +  12) =
-		pdata->VL53L1_PRM_00479;
+		pdata->dss_calc__user_roi_spad_en_4;
 	*(pbuffer +  13) =
-		pdata->VL53L1_PRM_00480;
+		pdata->dss_calc__user_roi_spad_en_5;
 	*(pbuffer +  14) =
-		pdata->VL53L1_PRM_00481;
+		pdata->dss_calc__user_roi_spad_en_6;
 	*(pbuffer +  15) =
-		pdata->VL53L1_PRM_00482;
+		pdata->dss_calc__user_roi_spad_en_7;
 	*(pbuffer +  16) =
-		pdata->VL53L1_PRM_00483;
+		pdata->dss_calc__user_roi_spad_en_8;
 	*(pbuffer +  17) =
-		pdata->VL53L1_PRM_00484;
+		pdata->dss_calc__user_roi_spad_en_9;
 	*(pbuffer +  18) =
-		pdata->VL53L1_PRM_00485;
+		pdata->dss_calc__user_roi_spad_en_10;
 	*(pbuffer +  19) =
-		pdata->VL53L1_PRM_00486;
+		pdata->dss_calc__user_roi_spad_en_11;
 	*(pbuffer +  20) =
-		pdata->VL53L1_PRM_00487;
+		pdata->dss_calc__user_roi_spad_en_12;
 	*(pbuffer +  21) =
-		pdata->VL53L1_PRM_00488;
+		pdata->dss_calc__user_roi_spad_en_13;
 	*(pbuffer +  22) =
-		pdata->VL53L1_PRM_00489;
+		pdata->dss_calc__user_roi_spad_en_14;
 	*(pbuffer +  23) =
-		pdata->VL53L1_PRM_00490;
+		pdata->dss_calc__user_roi_spad_en_15;
 	*(pbuffer +  24) =
-		pdata->VL53L1_PRM_00491;
+		pdata->dss_calc__user_roi_spad_en_16;
 	*(pbuffer +  25) =
-		pdata->VL53L1_PRM_00492;
+		pdata->dss_calc__user_roi_spad_en_17;
 	*(pbuffer +  26) =
-		pdata->VL53L1_PRM_00493;
+		pdata->dss_calc__user_roi_spad_en_18;
 	*(pbuffer +  27) =
-		pdata->VL53L1_PRM_00494;
+		pdata->dss_calc__user_roi_spad_en_19;
 	*(pbuffer +  28) =
-		pdata->VL53L1_PRM_00495;
+		pdata->dss_calc__user_roi_spad_en_20;
 	*(pbuffer +  29) =
-		pdata->VL53L1_PRM_00496;
+		pdata->dss_calc__user_roi_spad_en_21;
 	*(pbuffer +  30) =
-		pdata->VL53L1_PRM_00497;
+		pdata->dss_calc__user_roi_spad_en_22;
 	*(pbuffer +  31) =
-		pdata->VL53L1_PRM_00498;
+		pdata->dss_calc__user_roi_spad_en_23;
 	*(pbuffer +  32) =
-		pdata->VL53L1_PRM_00499;
+		pdata->dss_calc__user_roi_spad_en_24;
 	*(pbuffer +  33) =
-		pdata->VL53L1_PRM_00500;
+		pdata->dss_calc__user_roi_spad_en_25;
 	*(pbuffer +  34) =
-		pdata->VL53L1_PRM_00501;
+		pdata->dss_calc__user_roi_spad_en_26;
 	*(pbuffer +  35) =
-		pdata->VL53L1_PRM_00502;
+		pdata->dss_calc__user_roi_spad_en_27;
 	*(pbuffer +  36) =
-		pdata->VL53L1_PRM_00503;
+		pdata->dss_calc__user_roi_spad_en_28;
 	*(pbuffer +  37) =
-		pdata->VL53L1_PRM_00504;
+		pdata->dss_calc__user_roi_spad_en_29;
 	*(pbuffer +  38) =
-		pdata->VL53L1_PRM_00505;
+		pdata->dss_calc__user_roi_spad_en_30;
 	*(pbuffer +  39) =
-		pdata->VL53L1_PRM_00506;
+		pdata->dss_calc__user_roi_spad_en_31;
 	*(pbuffer +  40) =
-		pdata->VL53L1_PRM_00507;
+		pdata->dss_calc__user_roi_0;
 	*(pbuffer +  41) =
-		pdata->VL53L1_PRM_00508;
+		pdata->dss_calc__user_roi_1;
 	*(pbuffer +  42) =
-		pdata->VL53L1_PRM_00509;
+		pdata->dss_calc__mode_roi_0;
 	*(pbuffer +  43) =
-		pdata->VL53L1_PRM_00510;
+		pdata->dss_calc__mode_roi_1;
 	*(pbuffer +  44) =
-		pdata->VL53L1_PRM_00511;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00512,
+		pdata->sigma_estimator_calc__spare_0;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->vhv_result__peak_signal_rate_mcps,
 		2,
 		pbuffer +  46);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00513,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->vhv_result__signal_total_events_ref,
 		4,
 		pbuffer +  48);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00514,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->phasecal_result__phase_output_ref,
 		2,
 		pbuffer +  52);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00515,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->dss_result__total_rate_per_spad,
 		2,
 		pbuffer +  54);
 	*(pbuffer +  56) =
-		pdata->VL53L1_PRM_00516;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00517,
+		pdata->dss_result__enabled_blocks;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->dss_result__num_requested_spads,
 		2,
 		pbuffer +  58);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00518,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->mm_result__inner_intersection_rate,
 		2,
 		pbuffer +  62);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00519,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->mm_result__outer_complement_rate,
 		2,
 		pbuffer +  64);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00520,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->mm_result__total_offset,
 		2,
 		pbuffer +  66);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00521 & 0xFFFFFF,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->xtalk_calc__xtalk_for_enabled_spads & 0xFFFFFF,
 		4,
 		pbuffer +  68);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00522 & 0xFFFFFF,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->xtalk_result__avg_xtalk_user_roi_kcps & 0xFFFFFF,
 		4,
 		pbuffer +  72);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00523 & 0xFFFFFF,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->xtalk_result__avg_xtalk_mm_inner_roi_kcps & 0xFFFFFF,
 		4,
 		pbuffer +  76);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00524 & 0xFFFFFF,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->xtalk_result__avg_xtalk_mm_outer_roi_kcps & 0xFFFFFF,
 		4,
 		pbuffer +  80);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00525,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->range_result__accum_phase,
 		4,
 		pbuffer +  84);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00526,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->range_result__offset_corrected_range,
 		2,
 		pbuffer +  88);
 	LOG_FUNCTION_END(status);
@@ -3863,7 +3863,7 @@ VL53L1_Error VL53L1_FCTN_00204(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00205(
+VL53L1_Error VL53L1_i2c_decode_patch_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_patch_results_t    *pdata)
@@ -3878,129 +3878,129 @@ VL53L1_Error VL53L1_FCTN_00205(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00198 > buf_size)
+	if (VL53L1_PATCH_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00467 =
+	pdata->dss_calc__roi_ctrl =
 		(*(pbuffer +   0)) & 0x3;
-	pdata->VL53L1_PRM_00468 =
+	pdata->dss_calc__spare_1 =
 		(*(pbuffer +   1));
-	pdata->VL53L1_PRM_00469 =
+	pdata->dss_calc__spare_2 =
 		(*(pbuffer +   2));
-	pdata->VL53L1_PRM_00470 =
+	pdata->dss_calc__spare_3 =
 		(*(pbuffer +   3));
-	pdata->VL53L1_PRM_00471 =
+	pdata->dss_calc__spare_4 =
 		(*(pbuffer +   4));
-	pdata->VL53L1_PRM_00472 =
+	pdata->dss_calc__spare_5 =
 		(*(pbuffer +   5));
-	pdata->VL53L1_PRM_00473 =
+	pdata->dss_calc__spare_6 =
 		(*(pbuffer +   6));
-	pdata->VL53L1_PRM_00474 =
+	pdata->dss_calc__spare_7 =
 		(*(pbuffer +   7));
-	pdata->VL53L1_PRM_00475 =
+	pdata->dss_calc__user_roi_spad_en_0 =
 		(*(pbuffer +   8));
-	pdata->VL53L1_PRM_00476 =
+	pdata->dss_calc__user_roi_spad_en_1 =
 		(*(pbuffer +   9));
-	pdata->VL53L1_PRM_00477 =
+	pdata->dss_calc__user_roi_spad_en_2 =
 		(*(pbuffer +  10));
-	pdata->VL53L1_PRM_00478 =
+	pdata->dss_calc__user_roi_spad_en_3 =
 		(*(pbuffer +  11));
-	pdata->VL53L1_PRM_00479 =
+	pdata->dss_calc__user_roi_spad_en_4 =
 		(*(pbuffer +  12));
-	pdata->VL53L1_PRM_00480 =
+	pdata->dss_calc__user_roi_spad_en_5 =
 		(*(pbuffer +  13));
-	pdata->VL53L1_PRM_00481 =
+	pdata->dss_calc__user_roi_spad_en_6 =
 		(*(pbuffer +  14));
-	pdata->VL53L1_PRM_00482 =
+	pdata->dss_calc__user_roi_spad_en_7 =
 		(*(pbuffer +  15));
-	pdata->VL53L1_PRM_00483 =
+	pdata->dss_calc__user_roi_spad_en_8 =
 		(*(pbuffer +  16));
-	pdata->VL53L1_PRM_00484 =
+	pdata->dss_calc__user_roi_spad_en_9 =
 		(*(pbuffer +  17));
-	pdata->VL53L1_PRM_00485 =
+	pdata->dss_calc__user_roi_spad_en_10 =
 		(*(pbuffer +  18));
-	pdata->VL53L1_PRM_00486 =
+	pdata->dss_calc__user_roi_spad_en_11 =
 		(*(pbuffer +  19));
-	pdata->VL53L1_PRM_00487 =
+	pdata->dss_calc__user_roi_spad_en_12 =
 		(*(pbuffer +  20));
-	pdata->VL53L1_PRM_00488 =
+	pdata->dss_calc__user_roi_spad_en_13 =
 		(*(pbuffer +  21));
-	pdata->VL53L1_PRM_00489 =
+	pdata->dss_calc__user_roi_spad_en_14 =
 		(*(pbuffer +  22));
-	pdata->VL53L1_PRM_00490 =
+	pdata->dss_calc__user_roi_spad_en_15 =
 		(*(pbuffer +  23));
-	pdata->VL53L1_PRM_00491 =
+	pdata->dss_calc__user_roi_spad_en_16 =
 		(*(pbuffer +  24));
-	pdata->VL53L1_PRM_00492 =
+	pdata->dss_calc__user_roi_spad_en_17 =
 		(*(pbuffer +  25));
-	pdata->VL53L1_PRM_00493 =
+	pdata->dss_calc__user_roi_spad_en_18 =
 		(*(pbuffer +  26));
-	pdata->VL53L1_PRM_00494 =
+	pdata->dss_calc__user_roi_spad_en_19 =
 		(*(pbuffer +  27));
-	pdata->VL53L1_PRM_00495 =
+	pdata->dss_calc__user_roi_spad_en_20 =
 		(*(pbuffer +  28));
-	pdata->VL53L1_PRM_00496 =
+	pdata->dss_calc__user_roi_spad_en_21 =
 		(*(pbuffer +  29));
-	pdata->VL53L1_PRM_00497 =
+	pdata->dss_calc__user_roi_spad_en_22 =
 		(*(pbuffer +  30));
-	pdata->VL53L1_PRM_00498 =
+	pdata->dss_calc__user_roi_spad_en_23 =
 		(*(pbuffer +  31));
-	pdata->VL53L1_PRM_00499 =
+	pdata->dss_calc__user_roi_spad_en_24 =
 		(*(pbuffer +  32));
-	pdata->VL53L1_PRM_00500 =
+	pdata->dss_calc__user_roi_spad_en_25 =
 		(*(pbuffer +  33));
-	pdata->VL53L1_PRM_00501 =
+	pdata->dss_calc__user_roi_spad_en_26 =
 		(*(pbuffer +  34));
-	pdata->VL53L1_PRM_00502 =
+	pdata->dss_calc__user_roi_spad_en_27 =
 		(*(pbuffer +  35));
-	pdata->VL53L1_PRM_00503 =
+	pdata->dss_calc__user_roi_spad_en_28 =
 		(*(pbuffer +  36));
-	pdata->VL53L1_PRM_00504 =
+	pdata->dss_calc__user_roi_spad_en_29 =
 		(*(pbuffer +  37));
-	pdata->VL53L1_PRM_00505 =
+	pdata->dss_calc__user_roi_spad_en_30 =
 		(*(pbuffer +  38));
-	pdata->VL53L1_PRM_00506 =
+	pdata->dss_calc__user_roi_spad_en_31 =
 		(*(pbuffer +  39));
-	pdata->VL53L1_PRM_00507 =
+	pdata->dss_calc__user_roi_0 =
 		(*(pbuffer +  40));
-	pdata->VL53L1_PRM_00508 =
+	pdata->dss_calc__user_roi_1 =
 		(*(pbuffer +  41));
-	pdata->VL53L1_PRM_00509 =
+	pdata->dss_calc__mode_roi_0 =
 		(*(pbuffer +  42));
-	pdata->VL53L1_PRM_00510 =
+	pdata->dss_calc__mode_roi_1 =
 		(*(pbuffer +  43));
-	pdata->VL53L1_PRM_00511 =
+	pdata->sigma_estimator_calc__spare_0 =
 		(*(pbuffer +  44));
-	pdata->VL53L1_PRM_00512 =
-		(VL53L1_FCTN_00105(2, pbuffer +  46));
-	pdata->VL53L1_PRM_00513 =
-		(VL53L1_FCTN_00106(4, pbuffer +  48));
-	pdata->VL53L1_PRM_00514 =
-		(VL53L1_FCTN_00105(2, pbuffer +  52));
-	pdata->VL53L1_PRM_00515 =
-		(VL53L1_FCTN_00105(2, pbuffer +  54));
-	pdata->VL53L1_PRM_00516 =
+	pdata->vhv_result__peak_signal_rate_mcps =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  46));
+	pdata->vhv_result__signal_total_events_ref =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  48));
+	pdata->phasecal_result__phase_output_ref =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  52));
+	pdata->dss_result__total_rate_per_spad =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  54));
+	pdata->dss_result__enabled_blocks =
 		(*(pbuffer +  56));
-	pdata->VL53L1_PRM_00517 =
-		(VL53L1_FCTN_00105(2, pbuffer +  58));
-	pdata->VL53L1_PRM_00518 =
-		(VL53L1_FCTN_00105(2, pbuffer +  62));
-	pdata->VL53L1_PRM_00519 =
-		(VL53L1_FCTN_00105(2, pbuffer +  64));
-	pdata->VL53L1_PRM_00520 =
-		(VL53L1_FCTN_00105(2, pbuffer +  66));
-	pdata->VL53L1_PRM_00521 =
-		(VL53L1_FCTN_00106(4, pbuffer +  68)) & 0xFFFFFF;
-	pdata->VL53L1_PRM_00522 =
-		(VL53L1_FCTN_00106(4, pbuffer +  72)) & 0xFFFFFF;
-	pdata->VL53L1_PRM_00523 =
-		(VL53L1_FCTN_00106(4, pbuffer +  76)) & 0xFFFFFF;
-	pdata->VL53L1_PRM_00524 =
-		(VL53L1_FCTN_00106(4, pbuffer +  80)) & 0xFFFFFF;
-	pdata->VL53L1_PRM_00525 =
-		(VL53L1_FCTN_00106(4, pbuffer +  84));
-	pdata->VL53L1_PRM_00526 =
-		(VL53L1_FCTN_00105(2, pbuffer +  88));
+	pdata->dss_result__num_requested_spads =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  58));
+	pdata->mm_result__inner_intersection_rate =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  62));
+	pdata->mm_result__outer_complement_rate =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  64));
+	pdata->mm_result__total_offset =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  66));
+	pdata->xtalk_calc__xtalk_for_enabled_spads =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  68)) & 0xFFFFFF;
+	pdata->xtalk_result__avg_xtalk_user_roi_kcps =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  72)) & 0xFFFFFF;
+	pdata->xtalk_result__avg_xtalk_mm_inner_roi_kcps =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  76)) & 0xFFFFFF;
+	pdata->xtalk_result__avg_xtalk_mm_outer_roi_kcps =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  80)) & 0xFFFFFF;
+	pdata->range_result__accum_phase =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  84));
+	pdata->range_result__offset_corrected_range =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  88));
 
 	LOG_FUNCTION_END(status);
 
@@ -4008,7 +4008,7 @@ VL53L1_Error VL53L1_FCTN_00205(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00206(
+VL53L1_Error VL53L1_set_patch_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_patch_results_t    *pdata)
 {
@@ -4019,28 +4019,28 @@ VL53L1_Error VL53L1_FCTN_00206(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00198];
+	uint8_t comms_buffer[VL53L1_PATCH_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00204(
+		status = VL53L1_i2c_encode_patch_results(
 			pdata,
-			VL53L1_DEF_00198,
+			VL53L1_PATCH_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00199,
+			VL53L1_DSS_CALC__ROI_CTRL,
 			comms_buffer,
-			VL53L1_DEF_00198);
+			VL53L1_PATCH_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -4048,7 +4048,7 @@ VL53L1_Error VL53L1_FCTN_00206(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00207(
+VL53L1_Error VL53L1_get_patch_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_patch_results_t    *pdata)
 {
@@ -4059,26 +4059,26 @@ VL53L1_Error VL53L1_FCTN_00207(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00198];
+	uint8_t comms_buffer[VL53L1_PATCH_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00199,
+			VL53L1_DSS_CALC__ROI_CTRL,
 			comms_buffer,
-			VL53L1_DEF_00198);
+			VL53L1_PATCH_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00205(
-			VL53L1_DEF_00198,
+		status = VL53L1_i2c_decode_patch_results(
+			VL53L1_PATCH_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -4088,7 +4088,7 @@ VL53L1_Error VL53L1_FCTN_00207(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00208(
+VL53L1_Error VL53L1_i2c_encode_shadow_system_results(
 	VL53L1_shadow_system_results_t *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -4103,103 +4103,103 @@ VL53L1_Error VL53L1_FCTN_00208(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00200 > buf_size)
+	if (VL53L1_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
 	*(pbuffer +   0) =
-		pdata->VL53L1_PRM_00527;
+		pdata->shadow_phasecal_result__vcsel_start;
 	*(pbuffer +   2) =
-		pdata->VL53L1_PRM_00528 & 0x3F;
+		pdata->shadow_result__interrupt_status & 0x3F;
 	*(pbuffer +   3) =
-		pdata->VL53L1_PRM_00529;
+		pdata->shadow_result__range_status;
 	*(pbuffer +   4) =
-		pdata->VL53L1_PRM_00530 & 0xF;
+		pdata->shadow_result__report_status & 0xF;
 	*(pbuffer +   5) =
-		pdata->VL53L1_PRM_00531;
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00532,
+		pdata->shadow_result__stream_count;
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__dss_actual_effective_spads_sd0,
 		2,
 		pbuffer +   6);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00533,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__peak_signal_count_rate_mcps_sd0,
 		2,
 		pbuffer +   8);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00534,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__ambient_count_rate_mcps_sd0,
 		2,
 		pbuffer +  10);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00535,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__sigma_sd0,
 		2,
 		pbuffer +  12);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00536,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__phase_sd0,
 		2,
 		pbuffer +  14);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00537,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__final_crosstalk_corrected_range_mm_sd0,
 		2,
 		pbuffer +  16);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00538,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__peak_signal_count_rate_crosstalk_corrected_mcps_sd0,
 		2,
 		pbuffer +  18);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00539,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__mm_inner_actual_effective_spads_sd0,
 		2,
 		pbuffer +  20);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00540,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__mm_outer_actual_effective_spads_sd0,
 		2,
 		pbuffer +  22);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00541,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__avg_signal_count_rate_mcps_sd0,
 		2,
 		pbuffer +  24);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00542,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__dss_actual_effective_spads_sd1,
 		2,
 		pbuffer +  26);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00543,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__peak_signal_count_rate_mcps_sd1,
 		2,
 		pbuffer +  28);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00544,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__ambient_count_rate_mcps_sd1,
 		2,
 		pbuffer +  30);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00545,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__sigma_sd1,
 		2,
 		pbuffer +  32);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00546,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__phase_sd1,
 		2,
 		pbuffer +  34);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00547,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__final_crosstalk_corrected_range_mm_sd1,
 		2,
 		pbuffer +  36);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00548,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__spare_0_sd1,
 		2,
 		pbuffer +  38);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00549,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__spare_1_sd1,
 		2,
 		pbuffer +  40);
-	VL53L1_FCTN_00117(
-		pdata->VL53L1_PRM_00550,
+	VL53L1_i2c_encode_uint16_t(
+		pdata->shadow_result__spare_2_sd1,
 		2,
 		pbuffer +  42);
 	*(pbuffer +  44) =
-		pdata->VL53L1_PRM_00551;
+		pdata->shadow_result__spare_3_sd1;
 	*(pbuffer +  45) =
-		pdata->VL53L1_PRM_00552;
+		pdata->shadow_result__thresh_info;
 	*(pbuffer +  80) =
-		pdata->VL53L1_PRM_00553;
+		pdata->shadow_phasecal_result__reference_phase_hi;
 	*(pbuffer +  81) =
-		pdata->VL53L1_PRM_00554;
+		pdata->shadow_phasecal_result__reference_phase_lo;
 	LOG_FUNCTION_END(status);
 
 
@@ -4207,7 +4207,7 @@ VL53L1_Error VL53L1_FCTN_00208(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00209(
+VL53L1_Error VL53L1_i2c_decode_shadow_system_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_shadow_system_results_t  *pdata)
@@ -4222,64 +4222,64 @@ VL53L1_Error VL53L1_FCTN_00209(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00200 > buf_size)
+	if (VL53L1_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00527 =
+	pdata->shadow_phasecal_result__vcsel_start =
 		(*(pbuffer +   0));
-	pdata->VL53L1_PRM_00528 =
+	pdata->shadow_result__interrupt_status =
 		(*(pbuffer +   2)) & 0x3F;
-	pdata->VL53L1_PRM_00529 =
+	pdata->shadow_result__range_status =
 		(*(pbuffer +   3));
-	pdata->VL53L1_PRM_00530 =
+	pdata->shadow_result__report_status =
 		(*(pbuffer +   4)) & 0xF;
-	pdata->VL53L1_PRM_00531 =
+	pdata->shadow_result__stream_count =
 		(*(pbuffer +   5));
-	pdata->VL53L1_PRM_00532 =
-		(VL53L1_FCTN_00105(2, pbuffer +   6));
-	pdata->VL53L1_PRM_00533 =
-		(VL53L1_FCTN_00105(2, pbuffer +   8));
-	pdata->VL53L1_PRM_00534 =
-		(VL53L1_FCTN_00105(2, pbuffer +  10));
-	pdata->VL53L1_PRM_00535 =
-		(VL53L1_FCTN_00105(2, pbuffer +  12));
-	pdata->VL53L1_PRM_00536 =
-		(VL53L1_FCTN_00105(2, pbuffer +  14));
-	pdata->VL53L1_PRM_00537 =
-		(VL53L1_FCTN_00105(2, pbuffer +  16));
-	pdata->VL53L1_PRM_00538 =
-		(VL53L1_FCTN_00105(2, pbuffer +  18));
-	pdata->VL53L1_PRM_00539 =
-		(VL53L1_FCTN_00105(2, pbuffer +  20));
-	pdata->VL53L1_PRM_00540 =
-		(VL53L1_FCTN_00105(2, pbuffer +  22));
-	pdata->VL53L1_PRM_00541 =
-		(VL53L1_FCTN_00105(2, pbuffer +  24));
-	pdata->VL53L1_PRM_00542 =
-		(VL53L1_FCTN_00105(2, pbuffer +  26));
-	pdata->VL53L1_PRM_00543 =
-		(VL53L1_FCTN_00105(2, pbuffer +  28));
-	pdata->VL53L1_PRM_00544 =
-		(VL53L1_FCTN_00105(2, pbuffer +  30));
-	pdata->VL53L1_PRM_00545 =
-		(VL53L1_FCTN_00105(2, pbuffer +  32));
-	pdata->VL53L1_PRM_00546 =
-		(VL53L1_FCTN_00105(2, pbuffer +  34));
-	pdata->VL53L1_PRM_00547 =
-		(VL53L1_FCTN_00105(2, pbuffer +  36));
-	pdata->VL53L1_PRM_00548 =
-		(VL53L1_FCTN_00105(2, pbuffer +  38));
-	pdata->VL53L1_PRM_00549 =
-		(VL53L1_FCTN_00105(2, pbuffer +  40));
-	pdata->VL53L1_PRM_00550 =
-		(VL53L1_FCTN_00105(2, pbuffer +  42));
-	pdata->VL53L1_PRM_00551 =
+	pdata->shadow_result__dss_actual_effective_spads_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   6));
+	pdata->shadow_result__peak_signal_count_rate_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +   8));
+	pdata->shadow_result__ambient_count_rate_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  10));
+	pdata->shadow_result__sigma_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  12));
+	pdata->shadow_result__phase_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  14));
+	pdata->shadow_result__final_crosstalk_corrected_range_mm_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  16));
+	pdata->shadow_result__peak_signal_count_rate_crosstalk_corrected_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  18));
+	pdata->shadow_result__mm_inner_actual_effective_spads_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  20));
+	pdata->shadow_result__mm_outer_actual_effective_spads_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  22));
+	pdata->shadow_result__avg_signal_count_rate_mcps_sd0 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  24));
+	pdata->shadow_result__dss_actual_effective_spads_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  26));
+	pdata->shadow_result__peak_signal_count_rate_mcps_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  28));
+	pdata->shadow_result__ambient_count_rate_mcps_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  30));
+	pdata->shadow_result__sigma_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  32));
+	pdata->shadow_result__phase_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  34));
+	pdata->shadow_result__final_crosstalk_corrected_range_mm_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  36));
+	pdata->shadow_result__spare_0_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  38));
+	pdata->shadow_result__spare_1_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  40));
+	pdata->shadow_result__spare_2_sd1 =
+		(VL53L1_i2c_decode_uint16_t(2, pbuffer +  42));
+	pdata->shadow_result__spare_3_sd1 =
 		(*(pbuffer +  44));
-	pdata->VL53L1_PRM_00552 =
+	pdata->shadow_result__thresh_info =
 		(*(pbuffer +  45));
-	pdata->VL53L1_PRM_00553 =
+	pdata->shadow_phasecal_result__reference_phase_hi =
 		(*(pbuffer +  80));
-	pdata->VL53L1_PRM_00554 =
+	pdata->shadow_phasecal_result__reference_phase_lo =
 		(*(pbuffer +  81));
 
 	LOG_FUNCTION_END(status);
@@ -4288,7 +4288,7 @@ VL53L1_Error VL53L1_FCTN_00209(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00210(
+VL53L1_Error VL53L1_set_shadow_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_shadow_system_results_t  *pdata)
 {
@@ -4299,28 +4299,28 @@ VL53L1_Error VL53L1_FCTN_00210(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00200];
+	uint8_t comms_buffer[VL53L1_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00208(
+		status = VL53L1_i2c_encode_shadow_system_results(
 			pdata,
-			VL53L1_DEF_00200,
+			VL53L1_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00201,
+			VL53L1_SHADOW_PHASECAL_RESULT__VCSEL_START,
 			comms_buffer,
-			VL53L1_DEF_00200);
+			VL53L1_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -4328,7 +4328,7 @@ VL53L1_Error VL53L1_FCTN_00210(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00211(
+VL53L1_Error VL53L1_get_shadow_system_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_shadow_system_results_t  *pdata)
 {
@@ -4339,26 +4339,26 @@ VL53L1_Error VL53L1_FCTN_00211(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00200];
+	uint8_t comms_buffer[VL53L1_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00201,
+			VL53L1_SHADOW_PHASECAL_RESULT__VCSEL_START,
 			comms_buffer,
-			VL53L1_DEF_00200);
+			VL53L1_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00209(
-			VL53L1_DEF_00200,
+		status = VL53L1_i2c_decode_shadow_system_results(
+			VL53L1_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 
@@ -4368,7 +4368,7 @@ VL53L1_Error VL53L1_FCTN_00211(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00212(
+VL53L1_Error VL53L1_i2c_encode_shadow_core_results(
 	VL53L1_shadow_core_results_t *pdata,
 	uint16_t                  buf_size,
 	uint8_t                  *pbuffer)
@@ -4383,43 +4383,43 @@ VL53L1_Error VL53L1_FCTN_00212(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00202 > buf_size)
+	if (VL53L1_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00555,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->shadow_result_core__ambient_window_events_sd0,
 		4,
 		pbuffer +   0);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00556,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->shadow_result_core__ranging_total_events_sd0,
 		4,
 		pbuffer +   4);
-	VL53L1_FCTN_00122(
-		pdata->VL53L1_PRM_00557,
+	VL53L1_i2c_encode_int32_t(
+		pdata->shadow_result_core__signal_total_events_sd0,
 		4,
 		pbuffer +   8);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00558,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->shadow_result_core__total_periods_elapsed_sd0,
 		4,
 		pbuffer +  12);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00559,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->shadow_result_core__ambient_window_events_sd1,
 		4,
 		pbuffer +  16);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00560,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->shadow_result_core__ranging_total_events_sd1,
 		4,
 		pbuffer +  20);
-	VL53L1_FCTN_00122(
-		pdata->VL53L1_PRM_00561,
+	VL53L1_i2c_encode_int32_t(
+		pdata->shadow_result_core__signal_total_events_sd1,
 		4,
 		pbuffer +  24);
-	VL53L1_FCTN_00120(
-		pdata->VL53L1_PRM_00562,
+	VL53L1_i2c_encode_uint32_t(
+		pdata->shadow_result_core__total_periods_elapsed_sd1,
 		4,
 		pbuffer +  28);
 	*(pbuffer +  32) =
-		pdata->VL53L1_PRM_00563;
+		pdata->shadow_result_core__spare_0;
 	LOG_FUNCTION_END(status);
 
 
@@ -4427,7 +4427,7 @@ VL53L1_Error VL53L1_FCTN_00212(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00213(
+VL53L1_Error VL53L1_i2c_decode_shadow_core_results(
 	uint16_t                   buf_size,
 	uint8_t                   *pbuffer,
 	VL53L1_shadow_core_results_t  *pdata)
@@ -4442,26 +4442,26 @@ VL53L1_Error VL53L1_FCTN_00213(
 
 	LOG_FUNCTION_START("");
 
-	if (VL53L1_DEF_00202 > buf_size)
+	if (VL53L1_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES > buf_size)
 		return VL53L1_ERROR_COMMS_BUFFER_TOO_SMALL;
 
-	pdata->VL53L1_PRM_00555 =
-		(VL53L1_FCTN_00106(4, pbuffer +   0));
-	pdata->VL53L1_PRM_00556 =
-		(VL53L1_FCTN_00106(4, pbuffer +   4));
-	pdata->VL53L1_PRM_00557 =
-		(VL53L1_FCTN_00123(4, pbuffer +   8));
-	pdata->VL53L1_PRM_00558 =
-		(VL53L1_FCTN_00106(4, pbuffer +  12));
-	pdata->VL53L1_PRM_00559 =
-		(VL53L1_FCTN_00106(4, pbuffer +  16));
-	pdata->VL53L1_PRM_00560 =
-		(VL53L1_FCTN_00106(4, pbuffer +  20));
-	pdata->VL53L1_PRM_00561 =
-		(VL53L1_FCTN_00123(4, pbuffer +  24));
-	pdata->VL53L1_PRM_00562 =
-		(VL53L1_FCTN_00106(4, pbuffer +  28));
-	pdata->VL53L1_PRM_00563 =
+	pdata->shadow_result_core__ambient_window_events_sd0 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +   0));
+	pdata->shadow_result_core__ranging_total_events_sd0 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +   4));
+	pdata->shadow_result_core__signal_total_events_sd0 =
+		(VL53L1_i2c_decode_int32_t(4, pbuffer +   8));
+	pdata->shadow_result_core__total_periods_elapsed_sd0 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  12));
+	pdata->shadow_result_core__ambient_window_events_sd1 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  16));
+	pdata->shadow_result_core__ranging_total_events_sd1 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  20));
+	pdata->shadow_result_core__signal_total_events_sd1 =
+		(VL53L1_i2c_decode_int32_t(4, pbuffer +  24));
+	pdata->shadow_result_core__total_periods_elapsed_sd1 =
+		(VL53L1_i2c_decode_uint32_t(4, pbuffer +  28));
+	pdata->shadow_result_core__spare_0 =
 		(*(pbuffer +  32));
 
 	LOG_FUNCTION_END(status);
@@ -4470,7 +4470,7 @@ VL53L1_Error VL53L1_FCTN_00213(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00214(
+VL53L1_Error VL53L1_set_shadow_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_shadow_core_results_t  *pdata)
 {
@@ -4481,28 +4481,28 @@ VL53L1_Error VL53L1_FCTN_00214(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00202];
+	uint8_t comms_buffer[VL53L1_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00212(
+		status = VL53L1_i2c_encode_shadow_core_results(
 			pdata,
-			VL53L1_DEF_00202,
+			VL53L1_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WriteMulti(
 			Dev,
-			VL53L1_DEF_00203,
+			VL53L1_SHADOW_RESULT_CORE__AMBIENT_WINDOW_EVENTS_SD0,
 			comms_buffer,
-			VL53L1_DEF_00202);
+			VL53L1_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
@@ -4510,7 +4510,7 @@ VL53L1_Error VL53L1_FCTN_00214(
 }
 
 
-VL53L1_Error VL53L1_FCTN_00215(
+VL53L1_Error VL53L1_get_shadow_core_results(
 	VL53L1_DEV                 Dev,
 	VL53L1_shadow_core_results_t  *pdata)
 {
@@ -4521,26 +4521,26 @@ VL53L1_Error VL53L1_FCTN_00215(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
-	uint8_t comms_buffer[VL53L1_DEF_00202];
+	uint8_t comms_buffer[VL53L1_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00036(Dev);
+		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_ReadMulti(
 			Dev,
-			VL53L1_DEF_00203,
+			VL53L1_SHADOW_RESULT_CORE__AMBIENT_WINDOW_EVENTS_SD0,
 			comms_buffer,
-			VL53L1_DEF_00202);
+			VL53L1_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00037(Dev);
+		status = VL53L1_enable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_FCTN_00213(
-			VL53L1_DEF_00202,
+		status = VL53L1_i2c_decode_shadow_core_results(
+			VL53L1_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES,
 			comms_buffer,
 			pdata);
 

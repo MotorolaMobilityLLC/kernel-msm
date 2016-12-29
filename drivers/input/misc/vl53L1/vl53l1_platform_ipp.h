@@ -44,6 +44,8 @@
 
 VL53L1_Error VL53L1_ipp_hist_process_data(
 	VL53L1_DEV                         Dev,
+	VL53L1_dmax_calibration_data_t    *pdmax_cal,
+	VL53L1_hist_gen3_dmax_config_t    *pdmax_cfg,
 	VL53L1_hist_post_process_config_t *ppost_cfg,
 	VL53L1_histogram_bin_data_t       *pbins0,
 	VL53L1_histogram_bin_data_t       *pbins1,
