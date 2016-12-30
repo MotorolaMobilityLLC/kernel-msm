@@ -739,8 +739,6 @@
 	qcom,force-aicl-rerun;
 	qcom,auto-voltage-comp-mv = <150>;
 	qcom,enable-hvdcp-9v;
-	qcom,ov-protect-enable;
-	qcom,usbin-vadc = <&pmi8950_vadc>;
 };
 
 /{
