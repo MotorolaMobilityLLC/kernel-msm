@@ -346,7 +346,7 @@ static void smbchg_rate_check(struct smbchg_chip *chip);
 static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp);
 static int get_prop_batt_capacity(struct smbchg_chip *chip);
 
-static int smbchg_debug_mask = 0x6;
+static int smbchg_debug_mask;
 module_param_named(
 	debug_mask, smbchg_debug_mask, int, S_IRUSR | S_IWUSR
 );
@@ -4704,7 +4704,6 @@ static void usb_insertion_work(struct work_struct *work)
 	int rc;
 	int hvdcp_en = 0;
 
-	pr_smb(PR_INTERRUPT, "triggered\n");
 	if (chip->enable_hvdcp_9v)
 		hvdcp_en = HVDCP_EN_BIT;
 
@@ -4735,7 +4734,6 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 
 	cancel_delayed_work(&chip->usb_insertion_work);
 
-	pr_smb(PR_INTERRUPT, "triggered\n");
 	chip->apsd_rerun_cnt = 0;
 	chip->hvdcp_det_done = false;
 
@@ -4819,8 +4817,6 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	int rc, type;
 	char *usb_type_name = "null";
 	u8 reg = 0;
-
-	pr_smb(PR_INTERRUPT, "triggered\n");
 
 	smbchg_stay_awake(chip, PM_CHARGER);
 
@@ -4912,8 +4908,6 @@ static irqreturn_t usbin_ov_handler(int irq, void *_chip)
 	struct smbchg_chip *chip = _chip;
 	int rc;
 	u8 reg;
-
-	pr_smb(PR_INTERRUPT, "triggered\n");
 
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
@@ -5059,7 +5053,6 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 	struct smbchg_chip *chip = _chip;
 	bool usb_present = is_usb_present(chip);
 
-	pr_smb(PR_INTERRUPT, "triggered\n");
 	pr_smb(PR_STATUS, "chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
 
@@ -5114,8 +5107,6 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 
 	struct smbchg_chip *chip = _chip;
 	bool usb_present;
-
-	pr_smb(PR_INTERRUPT, "triggered\n");
 
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
