@@ -985,6 +985,7 @@
 };
 &usb3 {
 	qcom,usbid-gpio = <&tlmm 59 0>;
+	qcom,no-suspend-in-chg;
 	pinctrl-names = "usbid_default","usbid_sleep";
 	pinctrl-0 = <&usb_id_active>;
 	pinctrl-1 = <&usb_id_sleep>;
