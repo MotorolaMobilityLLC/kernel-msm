@@ -151,7 +151,6 @@ struct smbchg_chip {
 	struct ilim_map			wipower_pt;
 	struct ilim_map			wipower_div2;
 	struct qpnp_vadc_chip		*vadc_dev;
-	struct qpnp_vadc_chip		*usb_vadc_dev;
 	bool				wipower_dyn_icl_avail;
 	struct ilim_entry		current_ilim;
 	struct mutex			wipower_config;
@@ -258,7 +257,6 @@ struct smbchg_chip {
 	struct mutex			dc_en_lock;
 	struct mutex			fcc_lock;
 	struct mutex			pm_lock;
-	struct mutex			usbin_voltage_lock;
 	/* aicl deglitch workaround */
 	unsigned long			first_aicl_seconds;
 	int				aicl_irq_count;
@@ -303,8 +301,6 @@ struct smbchg_chip {
 	ktime_t			holdoff_delta_time;
 	ktime_t			holdoff_start_time;
 	bool			holdoff_triggered;
-	int					smbchg_ov_cnt;
-	bool				enabled_ov_protect;
 };
 
 static struct smbchg_chip *the_chip;
@@ -1111,26 +1107,6 @@ static int get_prop_batt_voltage_now(struct smbchg_chip *chip)
 		uv = DEFAULT_BATT_VOLTAGE_NOW;
 	}
 	return uv;
-}
-
-static int get_prop_usbin_voltage_now(struct smbchg_chip *chip)
-{
-	int rc = 0;
-	struct qpnp_vadc_result results;
-
-	if (IS_ERR_OR_NULL(chip->usb_vadc_dev)) {
-		chip->usb_vadc_dev = qpnp_get_vadc(chip->dev, "usbin");
-		if (IS_ERR(chip->usb_vadc_dev))
-			return PTR_ERR(chip->usb_vadc_dev);
-	}
-
-	rc = qpnp_vadc_read(chip->usb_vadc_dev, USBIN, &results);
-	if (rc) {
-		pr_err("Unable to read usbin rc=%d\n", rc);
-		return 0;
-	} else {
-		return results.physical;
-	}
 }
 
 #define DEFAULT_BATT_VOLTAGE_MAX_DESIGN	4200000
@@ -4532,14 +4508,12 @@ static int force_9v_hvdcp(struct smbchg_chip *chip)
 {
 	int rc;
 
-	mutex_lock(&chip->usbin_voltage_lock);
 	/* Force 5V HVDCP */
 	rc = smbchg_sec_masked_write(chip,
 			chip->usb_chgpth_base + CHGPTH_CFG,
 			HVDCP_ADAPTER_SEL_MASK, HVDCP_5V);
 	if (rc) {
 		pr_err("Couldn't set hvdcp config in chgpath_chg rc=%d\n", rc);
-		mutex_unlock(&chip->usbin_voltage_lock);
 		return rc;
 	}
 
@@ -4552,7 +4526,6 @@ static int force_9v_hvdcp(struct smbchg_chip *chip)
 			FORCE_HVDCP_2p0, 0);
 	if (rc < 0) {
 		pr_err("Couldn't force QC2.0 rc=%d\n", rc);
-		mutex_unlock(&chip->usbin_voltage_lock);
 		return rc;
 	}
 
@@ -4565,40 +4538,7 @@ static int force_9v_hvdcp(struct smbchg_chip *chip)
 			HVDCP_ADAPTER_SEL_MASK, HVDCP_9V);
 	if (rc)
 		pr_err("Couldn't set hvdcp config in chgpath_chg rc=%d\n", rc);
-	mutex_unlock(&chip->usbin_voltage_lock);
 
-	return rc;
-}
-
-static int force_5v_hvdcp(struct smbchg_chip *chip)
-{
-	int rc;
-
-	mutex_lock(&chip->usbin_voltage_lock);
-	/* Force 5V HVDCP */
-	rc = smbchg_sec_masked_write(chip,
-			chip->usb_chgpth_base + CHGPTH_CFG,
-			HVDCP_ADAPTER_SEL_MASK, HVDCP_5V);
-	if (rc) {
-		pr_err("Couldn't set hvdcp config in chgpath_chg rc=%d\n", rc);
-		mutex_unlock(&chip->usbin_voltage_lock);
-		return rc;
-	}
-
-	/* Force QC2.0 */
-	rc = smbchg_masked_write(chip,
-			chip->usb_chgpth_base + USB_CMD_HVDCP_1,
-			FORCE_HVDCP_2p0, FORCE_HVDCP_2p0);
-	rc |= smbchg_masked_write(chip,
-			chip->usb_chgpth_base + USB_CMD_HVDCP_1,
-			FORCE_HVDCP_2p0, 0);
-	if (rc < 0) {
-		pr_err("Couldn't force QC2.0 rc=%d\n", rc);
-		mutex_unlock(&chip->usbin_voltage_lock);
-		return rc;
-	}
-
-	mutex_unlock(&chip->usbin_voltage_lock);
 	return rc;
 }
 
@@ -5026,28 +4966,6 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 }
 
 /**
- * usbin_ov_protect() - this is called when usbin voltage over-voltage
- *5 times ,then limit usbin voltage 5v.
- * @chip: pointer to smbchg_chip chip
- */
-static int usbin_ov_protect(void *_chip)
-{
-	struct smbchg_chip *chip = _chip;
-
-	chip->smbchg_ov_cnt++;
-	pr_smb(PR_INTERRUPT, "the number of OVLO irq %d\n",
-					chip->smbchg_ov_cnt);
-
-	if (chip->smbchg_ov_cnt >= 10) {
-		msleep(5000);
-		force_5v_hvdcp(chip);
-		pr_info("usbin voltage force set 5v after 5000ms\n");
-		return 1;
-	}
-	return 0;
-}
-
-/**
  * usbin_ov_handler() - this is called when an overvoltage condition occurs
  * @chip: pointer to smbchg_chip chip
  */
@@ -5057,8 +4975,7 @@ static irqreturn_t usbin_ov_handler(int irq, void *_chip)
 	int rc;
 	u8 reg;
 
-	pr_smb(PR_INTERRUPT, "triggered,voltage %d\n",
-			get_prop_usbin_voltage_now(chip));
+	pr_smb(PR_INTERRUPT, "triggered\n");
 
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
@@ -5076,26 +4993,14 @@ static irqreturn_t usbin_ov_handler(int irq, void *_chip)
 				pr_smb(PR_STATUS,
 					"usb psy does not allow updating prop %d rc = %d\n",
 					POWER_SUPPLY_HEALTH_OVERVOLTAGE, rc);
-			if (chip->enabled_ov_protect)
-				usbin_ov_protect(_chip);
 		}
 	} else {
 		chip->usb_ov_det = false;
 		/* If USB is present, then handle the USB insertion */
 		if (is_usb_present(chip)) {
-			if (chip->enabled_ov_protect) {
-				if (!(usbin_ov_protect(_chip))) {
-					pr_smb(PR_STATUS,
-									"ov_protect,re-insertion\n");
-					mutex_lock(&chip->usb_set_present_lock);
-					handle_usb_insertion(chip);
-				mutex_unlock(&chip->usb_set_present_lock);
-				}
-			} else {
-				mutex_lock(&chip->usb_set_present_lock);
-				handle_usb_insertion(chip);
-				mutex_unlock(&chip->usb_set_present_lock);
-			}
+			mutex_lock(&chip->usb_set_present_lock);
+			handle_usb_insertion(chip);
+			mutex_unlock(&chip->usb_set_present_lock);
 		}
 	}
 out:
@@ -5216,8 +5121,7 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 	struct smbchg_chip *chip = _chip;
 	bool usb_present = is_usb_present(chip);
 
-	pr_smb(PR_INTERRUPT, "triggered,voltage %d\n",
-			get_prop_usbin_voltage_now(chip));
+	pr_smb(PR_INTERRUPT, "triggered\n");
 	pr_smb(PR_STATUS, "chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
 
@@ -5248,7 +5152,6 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 				chip->usb_present = usb_present;
 				handle_usb_removal(chip);
 				chip->aicl_irq_count = 0;
-				chip->smbchg_ov_cnt = 0;
 			}
 		}
 	}
@@ -5297,7 +5200,6 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 		/* USB removed */
 		chip->usb_present = usb_present;
 		handle_usb_removal(chip);
-		chip->smbchg_ov_cnt = 0;
 	}
 	mutex_unlock(&chip->usb_set_present_lock);
 	return IRQ_HANDLED;
@@ -6569,8 +6471,6 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 
 	chip->enabled_weak_charger_check = of_property_read_bool(node,
 					"qcom,weak-charger-check-enable");
-	chip->enabled_ov_protect = of_property_read_bool(node,
-				"qcom,ov-protect-enable");
 
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
@@ -8064,8 +7964,6 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int index;
 	int charging_status = POWER_SUPPLY_STATUS_DISCHARGING;
 	ktime_t now_kt;
-	u8 reg;
-	int rc;
 
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
@@ -8221,7 +8119,7 @@ end_hb:
 
 	charging_status = get_prop_batt_status(chip);
 	if ((charging_status == POWER_SUPPLY_STATUS_NOT_CHARGING) &&
-		(chip->usb_present) && (chip->enabled_ov_protect)) {
+		chip->usb_present) {
 		now_kt = ktime_get_boottime();
 		if (chip->holdoff_triggered == false) {
 			chip->holdoff_start_time = now_kt;
@@ -8234,23 +8132,9 @@ end_hb:
 				chip->holdoff_delta_time = ktime_set(0, 0);
 				dev_info(chip->dev,
 					"NOT_CHARGING keep long time!\n");
+				schedule_delayed_work(&chip->usb_insertion_work,
+						      msecs_to_jiffies(0));
 				chip->holdoff_triggered = false;
-
-				rc = smbchg_read(chip, &reg,
-						chip->usb_chgpth_base + RT_STS,
-						1);
-				if ((!rc) && (reg & USBIN_OV_BIT)) {
-					chip->smbchg_ov_cnt++;
-					dev_info(chip->dev,
-						"heartbeat detect OVLO %d\n",
-						chip->smbchg_ov_cnt);
-
-					if (chip->smbchg_ov_cnt >= 5) {
-						force_5v_hvdcp(chip);
-						dev_info(chip->dev,
-							"usbin voltage force set 5v\n");
-					}
-				}
 			}
 		}
 	} else {
@@ -8422,7 +8306,6 @@ static int smbchg_probe(struct spmi_device *spmi)
 	mutex_init(&chip->pm_lock);
 	mutex_init(&chip->wipower_config);
 	mutex_init(&chip->check_temp_lock);
-	mutex_init(&chip->usbin_voltage_lock);
 
 	rc = smbchg_parse_peripherals(chip);
 	if (rc) {
