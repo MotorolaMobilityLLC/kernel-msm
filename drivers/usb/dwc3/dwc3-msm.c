@@ -44,7 +44,6 @@
 #include <linux/clk/msm-clk.h>
 #include <linux/msm-bus.h>
 #include <linux/irq.h>
-#include <linux/qpnp/qpnp-adc.h>
 #ifdef CONFIG_FSUSB42_MUX
 #include <linux/fsusb42.h>
 #endif
@@ -258,7 +257,7 @@ struct dwc3_msm {
 	struct usb_phy		*hs_phy, *ss_phy;
 
 	struct dbm		*dbm;
-	struct qpnp_vadc_chip	*vadc_dev;
+
 	/* VBUS regulator for host mode */
 	struct regulator	*vbus_reg;
 	int			vbus_retry_count;
@@ -2651,27 +2650,6 @@ static irqreturn_t msm_dwc3_pwr_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static int
-msm_dwc3_get_prop_usbin_voltage_now(struct dwc3_msm *mdwc)
-{
-	int rc = 0;
-	struct qpnp_vadc_result results;
-
-	if (IS_ERR_OR_NULL(mdwc->vadc_dev)) {
-		mdwc->vadc_dev = qpnp_get_vadc(mdwc->dev, "usbin");
-		if (IS_ERR(mdwc->vadc_dev))
-			return PTR_ERR(mdwc->vadc_dev);
-	}
-
-	rc = qpnp_vadc_read(mdwc->vadc_dev, USBIN, &results);
-	if (rc) {
-		pr_err("Unable to read usbin rc=%d\n", rc);
-		return 0;
-	} else {
-		return results.physical;
-	}
-}
-
 static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
@@ -2727,9 +2705,6 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_USB_OWNER:
 		val->intval = mdwc->usb_owner;
-		break;
-	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = msm_dwc3_get_prop_usbin_voltage_now(mdwc);
 		break;
 	default:
 		return -EINVAL;
@@ -3059,7 +3034,6 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_SWITCH_STATE,
 	POWER_SUPPLY_PROP_USB_OWNER,
 	POWER_SUPPLY_PROP_CHG_PRESENT,
-	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
 
 static int dwc3_msm_get_property_usbhost(struct power_supply *psy,
