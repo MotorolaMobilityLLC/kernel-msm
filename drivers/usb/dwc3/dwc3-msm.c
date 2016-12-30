@@ -336,6 +336,7 @@ struct dwc3_msm {
 	bool			vbus_reg_enabled;
 	u8			usbc_switch_state;
 	enum power_supply_usb_owner usb_owner;
+	bool		no_suspend_in_chg;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2182,6 +2183,13 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 		return 0;
 	}
 
+	if (mdwc->no_suspend_in_chg && mdwc->chg_vbus_active) {
+		dev_dbg(mdwc->dev, "%s: In charging,no suspend\n", __func__);
+		dbg_event(dwc->ctrl_num, 0xFF, "Ctl Alr Sus", 0);
+		mutex_unlock(&mdwc->pm_lock);
+		return 0;
+	}
+
 	if (!mdwc->in_host_mode) {
 		/* pending device events unprocessed */
 		for (i = 0; i < dwc->num_event_buffers; i++) {
@@ -3825,6 +3833,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	mdwc->disable_host_mode_pm = of_property_read_bool(node,
 				"qcom,disable-host-mode-pm");
+	mdwc->no_suspend_in_chg = of_property_read_bool(node,
+				"qcom,no-suspend-in-chg");
 	mdwc->force_lpm_in_idle = of_property_read_bool(node,
 				"qcom,force-lpm-in-idle");
 
