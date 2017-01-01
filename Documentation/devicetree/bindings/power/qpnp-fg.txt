@@ -170,6 +170,29 @@ Parent node optional properties:
 					gauge driver to detect the damaged battery
 					when the safety-timer expires by using the
 					coulomb count.
+- qcom,fg-use-vbat-low-empty-soc:	A boolean property to specify whether
+					vbatt-low interrupt is used to handle
+					empty battery condition. If this is
+					not specified, empty battery condition
+					is detected by empty-soc interrupt.
+- qcom,fg-batt-temp-low-limit:		Battery temperature (in decidegC) low
+					limit  which will be used to validate
+					the battery temperature reading from FG.
+					If the battery temperature goes below
+					this limit, last read good temperature
+					will be notified to userspace. If this
+					limit is not specified, then the
+					default limit would be -60C.
+- qcom,fg-batt-temp-high-limit:		Battery temperature (in decidegC) high
+					limit  which will be used to validate
+					the battery temperature reading from FG.
+					If the battery temperature goes above
+					this limit, last read good temperature
+					will be notified to userspace. If this
+					limit is not specified, then the
+					default limit would be 150C.
+- qcom,fg-cc-soc-limit-pct:		Percentage of CC_SOC before resetting
+					FG and restore the full CC_SOC value.
 
 qcom,fg-soc node required properties:
 - reg : offset and length of the PMIC peripheral register map.
