@@ -44,6 +44,7 @@
 #define MADERA_MICD_CLAMP_MODE_JD1L_JD2H 0x9
 #define MADERA_MICD_CLAMP_MODE_JD1H_JD2H 0xb
 
+#define MADERA_HPDET_LINEOUT		500000 /* 5,000 ohms */
 #define MADERA_HPDET_MAX		10000
 #define MADERA_HP_SHORT_IMPEDANCE_MIN	4
 
@@ -163,6 +164,7 @@ enum headset_state {
 	BIT_NO_HEADSET = 0,
 	BIT_HEADSET = (1 << 0),
 	BIT_HEADSET_NO_MIC = (1 << 1),
+	BIT_LINEOUT = (1 << 5),
 };
 
 struct madera_hpdet_calibration_data {
@@ -444,6 +446,11 @@ static ssize_t madera_extcon_show(struct device *dev,
 }
 
 static DEVICE_ATTR(hp1_impedance, S_IRUGO, madera_extcon_show, NULL);
+
+static inline bool madera_is_lineout(struct madera_extcon_info *info)
+{
+	return info->madera->hp_impedance_x100[0] >= MADERA_HPDET_LINEOUT;
+}
 
 inline void madera_extcon_report(struct madera_extcon_info *info, int state)
 {
@@ -1474,6 +1481,8 @@ int madera_hpdet_reading(struct madera_extcon_info *info, int val)
 		madera_jds_set_state(info, &madera_micd_button);
 	} else {
 		madera_extcon_report(info, BIT_HEADSET_NO_MIC);
+		madera_extcon_report(info, madera_is_lineout(info) ?
+				     BIT_LINEOUT : BIT_HEADSET_NO_MIC);
 		madera_jds_set_state(info, NULL);
 	}
 
@@ -1745,7 +1754,8 @@ done:
 		if (info->have_mic)
 			madera_extcon_report(info, BIT_HEADSET);
 		else
-			madera_extcon_report(info, BIT_HEADSET_NO_MIC);
+			madera_extcon_report(info, madera_is_lineout(info) ?
+					     BIT_LINEOUT : BIT_HEADSET_NO_MIC);
 	}
 
 	madera_extcon_notify_micd(info, info->have_mic, val);
@@ -1774,7 +1784,8 @@ void madera_micd_mic_timeout(struct madera_extcon_info *info)
 	else
 		ret = madera_jds_set_state(info, &madera_hpdet_left);
 	if (ret < 0)
-		madera_extcon_report(info, BIT_HEADSET_NO_MIC);
+		madera_extcon_report(info, madera_is_lineout(info) ?
+				     BIT_LINEOUT : BIT_HEADSET_NO_MIC);
 }
 EXPORT_SYMBOL_GPL(madera_micd_mic_timeout);
 
