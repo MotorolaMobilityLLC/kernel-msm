@@ -3237,6 +3237,8 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 }
 
 #define PL_DELAY_MS			30000
+static int factory_kill_disable;
+module_param(factory_kill_disable, int, 0644);
 void smblib_usb_plugin_locked(struct smb_charger *chg)
 {
 	int rc;
@@ -3275,6 +3277,9 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 					rc);
 		}
 
+		if (chg->mmi.factory_mode)
+			chg->mmi.factory_kill_armed = true;
+
 		/* Schedule work to enable parallel charger */
 		vote(chg->awake_votable, PL_DELAY_VOTER, true, 0);
 		schedule_delayed_work(&chg->pl_enable_work,
@@ -3300,6 +3305,12 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 				smblib_err(chg, "Couldn't disable dpdm regulator rc=%d\n",
 					rc);
 		}
+
+		if (chg->mmi.factory_kill_armed && !factory_kill_disable) {
+			smblib_err(chg, "Factory kill power off\n");
+			kernel_power_off();
+		} else
+			chg->mmi.factory_kill_armed = false;
 	}
 
 	if (chg->micro_usb_mode)
@@ -4767,8 +4778,6 @@ int smblib_deinit(struct smb_charger *chg)
 
 struct smb_charger *the_chip;
 
-static int factory_kill_disable;
-module_param(factory_kill_disable, int, 0644);
 static int smbchg_reboot(struct notifier_block *nb,
 			 unsigned long event, void *unused)
 {
