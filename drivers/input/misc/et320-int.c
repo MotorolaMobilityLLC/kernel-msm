@@ -233,6 +233,8 @@ static irqreturn_t fp_eint_func_ll(int irq , void *dev_id)
 	disable_irq_nosync(gpio_irq);
 	fps_ints.drdy_irq_flag = DRDY_IRQ_DISABLE;
 	wake_up_interruptible(&interrupt_waitq);
+	/* printk_ratelimited(KERN_WARNING "-----------   zq fp fp_eint_func  ,fps_ints.int_count=%d",fps_ints.int_count);*/
+	wake_lock_timeout(&et320_wake_lock, msecs_to_jiffies(1000));
 	return IRQ_RETVAL(IRQ_HANDLED);
 }
 

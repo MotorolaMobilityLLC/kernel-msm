@@ -46,6 +46,7 @@ enum {
  */
 #define ENABLE_SWIPE_UP_DOWN	ENABLE
 #define ENABLE_SWIPE_LEFT_RIGHT	ENABLE
+#define ENABLE_FINGER_DOWN_UP	DISABLE
 #define KEY_FPS_DOWN   614
 #define KEY_FPS_UP     615
 #define KEY_FPS_TAP    616
@@ -100,10 +101,9 @@ enum {
 #define	KEYEVENT_RIGHT_ACTION	KEY_PRESS_RELEASE
 #define	KEYEVENT_LEFT			KEY_FPS_YPLUS  /* KEY_LEFT */
 #define	KEYEVENT_LEFT_ACTION	KEY_PRESS_RELEASE
-
-
-
-
+#if ENABLE_FINGER_DOWN_UP
+unsigned int prev_keycode = 0;
+#endif
 /*
  * @ TRANSLATED_COMMAND
  *     ENABLE : TRANSLATED command. Navigation events will be translated to
@@ -164,14 +164,19 @@ enum {
  *   KEY_RELEASE : Release key button
  *   KEY_PRESS_RELEASE : Combined action of press-then-release
  */
-#define LONGTOUCH_INTERVAL			450
-#define DOUBLECLICK_INTERVAL		500
-#define	KEYEVENT_CLICK				KEY_FPS_TAP /* 0x232 */
-#define	KEYEVENT_CLICK_ACTION		KEY_PRESS_RELEASE
-#define	KEYEVENT_DOUBLECLICK		KEY_DELETE
-#define	KEYEVENT_DOUBLECLICK_ACTION	KEY_PRESS_RELEASE
-#define	KEYEVENT_LONGTOUCH			KEY_FPS_HOLD /* 0x233 */
-#define	KEYEVENT_LONGTOUCH_ACTION	KEY_PRESS_RELEASE
+#define LONGTOUCH_INTERVAL          400
+#define DOUBLECLICK_INTERVAL        500
+#define	KEYEVENT_CLICK              KEY_FPS_TAP /* 0x232 */
+#define	KEYEVENT_CLICK_ACTION       KEY_PRESS_RELEASE
+#define	KEYEVENT_DOUBLECLICK        KEY_DELETE
+#define	KEYEVENT_DOUBLECLICK_ACTION KEY_PRESS_RELEASE
+#define	KEYEVENT_LONGTOUCH          KEY_FPS_HOLD /* 0x233 */
+#define	KEYEVENT_LONGTOUCH_ACTION   KEY_PRESS_RELEASE
+
+#define	KEYEVENT_ON                 KEY_FPS_DOWN
+#define	KEYEVENT_ON_ACTION          KEY_PRESS_RELEASE
+#define	KEYEVENT_OFF                KEY_FPS_UP
+#define	KEYEVENT_OFF_ACTION         KEY_PRESS_RELEASE
 
 
 /*---------------End of TRANSLATED properties-----------------*/
@@ -274,6 +279,10 @@ void init_event_enable(struct etspi_data *etspi)
 	set_bit(EV_KEY, etspi->input_dev->evbit);
 	set_bit(EV_SYN, etspi->input_dev->evbit);
 #if TRANSLATED_COMMAND
+#if ENABLE_FINGER_DOWN_UP
+	set_bit(KEYEVENT_ON, etspi->input_dev->keybit);
+	set_bit(KEYEVENT_OFF, etspi->input_dev->keybit);
+#endif
 	set_bit(KEYEVENT_CLICK, etspi->input_dev->keybit);
 	set_bit(KEYEVENT_DOUBLECLICK, etspi->input_dev->keybit);
 	set_bit(KEYEVENT_LONGTOUCH, etspi->input_dev->keybit);
@@ -302,6 +311,9 @@ static void send_key_event(struct etspi_data *etspi, unsigned int code, int valu
 		input_sync(obj->input_dev);
 		input_report_key(obj->input_dev, code, 0);	/* 0 is release */
 		input_sync(obj->input_dev);
+#if ENABLE_FINGER_DOWN_UP
+		prev_keycode = code;
+#endif
 	} else {
 		input_report_key(obj->input_dev, code, value);
 		input_sync(obj->input_dev);
@@ -340,6 +352,9 @@ void translated_command_converter(char cmd, struct etspi_data *etspi)
 
 	case NAVI_EVENT_ON:
 		g_KeyEventRaised = false;
+#if ENABLE_FINGER_DOWN_UP
+		send_key_event(etspi, KEYEVENT_ON, KEYEVENT_ON_ACTION);
+#endif
 #if ENABLE_TRANSLATED_LONG_TOUCH
 		long_touch_timer.data = (unsigned long)etspi;
 		mod_timer(&long_touch_timer, jiffies + (HZ * LONGTOUCH_INTERVAL / 1000));
@@ -370,6 +385,12 @@ void translated_command_converter(char cmd, struct etspi_data *etspi)
 
 #endif	/* end of ENABLE_DOUBLE_CLICK */
 		}
+#if ENABLE_FINGER_DOWN_UP
+		else	{
+			if (prev_keycode == KEYEVENT_LONGTOUCH)
+				send_key_event(etspi, KEYEVENT_OFF, KEYEVENT_OFF_ACTION);
+		}
+#endif
 #if ENABLE_TRANSLATED_LONG_TOUCH
 		del_timer(&long_touch_timer);
 #endif
