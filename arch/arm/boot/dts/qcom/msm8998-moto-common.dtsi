@@ -526,7 +526,7 @@
 		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
-		qcom,pull = <0>;	 /* QPNP_PIN_GPIO_PULL_UP_30 */
+		qcom,pull = <5>;	 /* QPNP_PIN_PULL_NO */
 		qcom,invert = <0>;	 /* Invert */
 		qcom,master-en = <1>;
 		status = "ok";
