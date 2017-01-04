@@ -598,15 +598,6 @@
 };
 
 &pmi8950_mpps {
-	mpp@a100 { /* MPP2 MOD_MPHY_I2S_SEL */
-		qcom,mode = <1>;	/* Digital output */
-		qcom,vin-sel = <2>;	/* 1.8 */
-		qcom,src-sel = <0>;	/* GPIO */
-		qcom,master-en = <1>;	/* Enable GPIO */
-		qcom,invert = <1>;	/* Output high */
-		status = "okay";
-	};
-
 	mpp@a300 { /* MPP4 MOD_BPLUS_FAULT_N */
 		qcom,mode = <0>;	/* Digital input */
 		qcom,vin-sel = <2>;	/* 1.8 */
@@ -1008,14 +999,20 @@
 	};
 
 	qcom,pmi8950@2 {
-		/delete-node/ qcom,leds@a100;
-
-		qcom,leds@1000 {
-			status = "ok";
-			reg = <0x1000 0x100>;
-			compatible = "qcom,leds-atc";
-			linux,name = "charging";
-			qcom,ctrl-reg = <0x243>;
+		qcom,leds@a100 {
+			status = "okay";
+			qcom,led_mpp_2 {
+				label = "mpp";
+				linux,name = "charging";
+				linux,default-trigger = "none";
+				qcom,default-state = "off";
+				qcom,max-current = <40>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,mode = "manual";
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x60>;
+			};
 		};
 	};
 };
