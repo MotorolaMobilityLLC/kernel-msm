@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015,2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -662,7 +662,7 @@ static void a4xx_start(struct adreno_device *adreno_dev)
 	set_bit(ADRENO_DEVICE_HANG_INTR, &adreno_dev->priv);
 	gpudev->irq->mask |= (1 << A4XX_INT_MISC_HANG_DETECT);
 	kgsl_regwrite(device, A4XX_RBBM_INTERFACE_HANG_INT_CTL,
-			(1 << 30) | 0xFFFF);
+			(1 << 30) | 0x1FFFF);
 
 	/* Set the GMEM/OCMEM base address for A4XX */
 	kgsl_regwrite(device, A4XX_RB_GMEM_BASE_ADDR,
