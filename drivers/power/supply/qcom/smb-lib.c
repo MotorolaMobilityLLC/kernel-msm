@@ -5108,15 +5108,14 @@ static int smbchg_reboot(struct notifier_block *nb,
 {
 	struct smb_charger *chg = container_of(nb, struct smb_charger,
 						mmi.smb_reboot);
-	u8 stat;
-	bool vbus_rising;
+	union power_supply_propval val;
+	int rc;
 	pr_debug("SMB Reboot\n");
 	if (!chg) {
 		pr_warn("called before chip valid!\n");
 		return NOTIFY_DONE;
 	}
 
-	vbus_rising = (bool)(stat & USBIN_PLUGIN_RT_STS_BIT);
 	if (chg->mmi.factory_mode) {
 		switch (event) {
 		case SYS_POWER_OFF:
@@ -5131,11 +5130,20 @@ static int smbchg_reboot(struct notifier_block *nb,
 			smblib_set_usb_suspend(chg, true);
 			smblib_set_dc_suspend(chg, true);
 
-			while (vbus_rising)
+			rc = smblib_get_prop_usb_present(chg, &val);
+			while (rc >= 0 && val.intval) {
 				msleep(100);
+				rc = smblib_get_prop_usb_present(chg, &val);
+				pr_warn("Wait for VBUS to decay\n");
+			}
+
 			pr_warn("VBUS UV wait 1 sec!\n");
 			/* Delay 1 sec to allow more VBUS decay */
 			msleep(1000);
+			/* configure power role for UFP */
+			smblib_masked_write(chg,
+				TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
+				TYPEC_POWER_ROLE_CMD_MASK, UFP_EN_CMD_BIT);
 			break;
 		default:
 			break;
