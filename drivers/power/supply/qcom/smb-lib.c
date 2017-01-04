@@ -3122,6 +3122,8 @@ irqreturn_t smblib_handle_usbin_uv(int irq, void *data)
 }
 
 #define PL_DELAY_MS			30000
+static int factory_kill_disable;
+module_param(factory_kill_disable, int, 0644);
 irqreturn_t smblib_handle_usb_plugin(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
@@ -3161,6 +3163,9 @@ irqreturn_t smblib_handle_usb_plugin(int irq, void *data)
 					rc);
 		}
 
+		if (chg->mmi.factory_mode)
+			chg->mmi.factory_kill_armed = true;
+
 		/* Schedule work to enable parallel charger */
 		vote(chg->awake_votable, PL_DELAY_VOTER, true, 0);
 		schedule_delayed_work(&chg->pl_enable_work,
@@ -3182,6 +3187,12 @@ irqreturn_t smblib_handle_usb_plugin(int irq, void *data)
 			extcon_set_cable_state_(chg->extcon, EXTCON_USB, false);
 			smblib_uusb_removal(chg);
 		}
+
+		if (chg->mmi.factory_kill_armed && !factory_kill_disable) {
+			smblib_err(chg, "Factory kill power off\n");
+			kernel_power_off();
+		} else
+			chg->mmi.factory_kill_armed = false;
 	}
 
 	power_supply_changed(chg->usb_psy);
@@ -4431,8 +4442,6 @@ int smblib_deinit(struct smb_charger *chg)
 
 struct smb_charger *the_chip;
 
-static int factory_kill_disable;
-module_param(factory_kill_disable, int, 0644);
 static int smbchg_reboot(struct notifier_block *nb,
 			 unsigned long event, void *unused)
 {
