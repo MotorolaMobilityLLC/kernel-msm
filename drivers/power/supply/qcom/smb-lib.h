@@ -251,6 +251,7 @@ struct mmi_params {
 	int			usb_system_temp_level;
 	int			usb_thermal_levels;
 	int			*usb_thermal_mitigation;
+	bool			factory_kill_armed;
 };
 
 struct smb_charger {
