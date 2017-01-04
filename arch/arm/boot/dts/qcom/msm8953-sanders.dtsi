@@ -377,7 +377,7 @@
 	};
 
 	qcom,msm-thermal {
-		qcom,config-info = "addison";
+		qcom,config-info = "sanders";
 	};
 
 	qcom,sensor-information {
@@ -394,6 +394,23 @@
 			qcom,alias-name  = "batt_therm";
 			qcom,scaling-factor = <1000>;
 		};
+		sensor_information23: qcom,sensor-information-23 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "front_temp";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information24: qcom,sensor-information-24 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "back_temp";
+			qcom,scaling-factor = <1000>;
+		};
+	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+					"back_temp";
+		status = "ok";
 	};
 
 	ramoops {
