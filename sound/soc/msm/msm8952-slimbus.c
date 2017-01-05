@@ -4356,7 +4356,6 @@ int marley_cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
 		0, CS35L35_MCLK_RATE,
 		SND_SOC_CLOCK_OUT);
 	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
-	snd_soc_dapm_ignore_suspend(dapm, "AMP Capture");
 	snd_soc_dapm_sync(dapm);
 
 	return 0;
