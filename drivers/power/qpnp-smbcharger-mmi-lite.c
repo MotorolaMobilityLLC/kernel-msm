@@ -298,6 +298,10 @@ struct smbchg_chip {
 	int				weak_charger_valid_cnt;
 	ktime_t			weak_charger_valid_cnt_ktmr;
 	ktime_t			adapter_vbus_collapse_ktmr;
+	int				temp_good_current_ma;
+	int				temp_warm_current_ma;
+	int				temp_cool_current_ma;
+	int				temp_allowed_fastchg_current_ma;
 };
 
 static struct smbchg_chip *the_chip;
@@ -2038,6 +2042,8 @@ static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 
 	current_max_ma = min(chip->allowed_fastchg_current_ma,
 			     chip->target_fastchg_current_ma);
+	current_max_ma = min(current_max_ma,
+			     chip->temp_allowed_fastchg_current_ma);
 
 	smbchg_set_fastchg_current(chip, current_max_ma);
 	chip->usb_tl_current_ma =
@@ -4133,8 +4139,13 @@ static void set_max_allowed_current_ma(struct smbchg_chip *chip,
 
 	chip->target_fastchg_current_ma =
 		min(current_ma, chip->allowed_fastchg_current_ma);
-	pr_smb(PR_STATUS, "requested=%d: allowed=%d: result=%d\n",
+	chip->target_fastchg_current_ma =
+		min(chip->target_fastchg_current_ma,
+		chip->temp_allowed_fastchg_current_ma);
+
+	pr_smb(PR_STATUS, "requested=%d: allowed=%d: temp_step=%d: result=%d\n",
 	       current_ma, chip->allowed_fastchg_current_ma,
+	       chip->temp_allowed_fastchg_current_ma,
 	       chip->target_fastchg_current_ma);
 }
 
@@ -6343,6 +6354,16 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 			chip->target_fastchg_current_ma;
 		chip->stepchg_max_voltage_mv = chip->vfloat_mv;
 	}
+	OF_PROP_READ(chip, chip->temp_warm_current_ma,
+			"temp-warm-current-ma", rc, 1);
+	if (chip->temp_warm_current_ma == -EINVAL)
+		chip->temp_warm_current_ma = chip->target_fastchg_current_ma;
+	OF_PROP_READ(chip, chip->temp_cool_current_ma,
+			"temp-cool-current-ma", rc, 1);
+	if (chip->temp_cool_current_ma == -EINVAL)
+		chip->temp_cool_current_ma = chip->target_fastchg_current_ma;
+	chip->temp_good_current_ma = chip->target_fastchg_current_ma;
+	chip->temp_allowed_fastchg_current_ma = chip->temp_good_current_ma;
 
 	/* read boolean configuration properties */
 	chip->use_vfloat_adjustments = of_property_read_bool(node,
@@ -7745,6 +7766,18 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 			smbchg_set_parallel_vfloat(chip,
 						   chip->vfloat_parallel_mv);
 	}
+
+	if ((chip->temp_state == POWER_SUPPLY_HEALTH_COOL) ||
+		(chip->temp_state == POWER_SUPPLY_HEALTH_COLD))
+		chip->temp_allowed_fastchg_current_ma =
+			chip->temp_cool_current_ma;
+	else if ((chip->temp_state == POWER_SUPPLY_HEALTH_WARM) ||
+		(chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT))
+		chip->temp_allowed_fastchg_current_ma =
+			chip->temp_warm_current_ma;
+	else if (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD)
+		chip->temp_allowed_fastchg_current_ma =
+			chip->temp_good_current_ma;
 
 	if (chip->ext_high_temp ||
 	    (chip->temp_state == POWER_SUPPLY_HEALTH_COLD) ||
