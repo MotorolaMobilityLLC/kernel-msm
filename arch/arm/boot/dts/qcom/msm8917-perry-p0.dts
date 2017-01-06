@@ -12,6 +12,7 @@
 
 /dts-v1/;
 
+#include "msm8917.dtsi"
 #include "msm8917-perry.dtsi"
 
 / {
