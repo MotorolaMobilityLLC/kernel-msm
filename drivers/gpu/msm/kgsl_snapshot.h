@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015,2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -190,4 +190,6 @@ struct kgsl_snapshot_gpu_object {
 	int size;    /* Size of the object (in dwords) */
 };
 
+void kgsl_snapshot_push_object(struct kgsl_process_private *process,
+	uint64_t gpuaddr, uint64_t dwords);
 #endif
