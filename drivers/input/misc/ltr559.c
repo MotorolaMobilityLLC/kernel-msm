@@ -298,7 +298,7 @@ static int ltr559_ps_enable(struct i2c_client *client, int on)
 
 		msleep(WAKEUP_DELAY);
 
-		data->ps_state = 1;
+		data->ps_state = 100;
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, data->ps_state);
 		ltr559_ps_dynamic_caliberate(&data->ps_cdev);
 	} else {
@@ -345,11 +345,11 @@ static void ltr559_ps_work_func(struct work_struct *work)
 				goto workout;
 		}
 		if (psdata >= data->platform_data->prox_threshold) {
-			data->ps_state = 0;    /* near */
+			data->ps_state = 1;    /* near */
 			ltr559_set_ps_threshold(client, LTR559_PS_THRES_LOW_0, data->platform_data->prox_hsyteresis_threshold);
 			ltr559_set_ps_threshold(client, LTR559_PS_THRES_UP_0, 0x07ff);
 		} else if (psdata <= data->platform_data->prox_hsyteresis_threshold) {
-			data->ps_state = 1;    /* far */
+			data->ps_state = 100;    /* far */
 
 			/*dynamic calibration */
 			if (data->dynamic_noise > 20 && psdata < (data->dynamic_noise - 50)) {
@@ -618,10 +618,10 @@ static ssize_t ltr559_ps_dynamic_caliberate(struct sensors_classdev *sensors_cde
 		return -EAGAIN;
 	}
 
-	if (data->ps_state == 1) {
+	if (data->ps_state == 100) {
 		ltr559_set_ps_threshold(data->client, LTR559_PS_THRES_LOW_0, 0);
 		ltr559_set_ps_threshold(data->client, LTR559_PS_THRES_UP_0, data->platform_data->prox_threshold);
-	} else if (data->ps_state == 0) {
+	} else if (data->ps_state == 1) {
 		ltr559_set_ps_threshold(data->client, LTR559_PS_THRES_LOW_0, data->platform_data->prox_hsyteresis_threshold);
 		ltr559_set_ps_threshold(data->client, LTR559_PS_THRES_UP_0, 0x07ff);
 	}
