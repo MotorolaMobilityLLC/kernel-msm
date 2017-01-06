@@ -21,8 +21,8 @@ qcom,mdss-dsi-panel-width = <1080>;
 qcom,mdss-dsi-panel-height = <1920>;
 qcom,mdss-pan-physical-width-dimension = <62>;
 qcom,mdss-pan-physical-height-dimension = <110>;
-qcom,mdss-dsi-h-front-porch = <100>;
-qcom,mdss-dsi-h-back-porch = <100>;
+qcom,mdss-dsi-h-front-porch = <112>;
+qcom,mdss-dsi-h-back-porch = <112>;
 qcom,mdss-dsi-h-pulse-width = <20>;
 qcom,mdss-dsi-h-sync-skew = <0>;
 qcom,mdss-dsi-v-back-porch = <6>;
@@ -42,10 +42,14 @@ qcom,mdss-dsi-on-command = [
 	15 00 00 00 00 00 02 FF 05
 	15 00 00 00 00 00 02 FB 01
 	15 00 00 00 00 00 02 9D B6
+	15 00 00 00 00 00 02 FF 04
+	15 00 00 00 00 00 02 FB 01
+	15 00 00 00 00 00 02 08 07
 	15 00 00 00 00 00 02 FF 00
 	15 00 00 00 00 00 02 FB 01
-	15 00 00 00 00 00 02 35 01
+	15 00 00 00 00 00 02 35 00
 	15 00 00 00 00 00 02 51 CC
+	15 00 00 00 00 00 02 5E 00
 	15 00 00 00 00 00 02 53 2C
 	15 00 00 00 00 00 02 55 01
 	15 00 00 00 00 00 02 D3 08
@@ -60,6 +64,18 @@ qcom,mdss-dsi-off-command = [
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
+qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
+qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
+
 qcom,mdss-dsi-h-sync-pulse = <0>;
 qcom,mdss-dsi-traffic-mode = "burst_mode";
 qcom,mdss-dsi-bllp-eof-power-mode;
@@ -70,14 +86,14 @@ qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 /* todo: calculate dsi timming with qcom doc again */
 qcom,mdss-dsi-panel-timings-phy-v2 =
-	[23 1e 07 08 05 03 04 a0
-	 23 1e 07 08 05 03 04 a0
-	 23 1e 07 08 05 03 04 a0
-	 23 1e 07 08 05 03 04 a0
-	 23 18 07 08 05 03 04 a0];
-qcom,mdss-dsi-panel-timings = [EB 38 26 00 6A 6C 2C 3C 2F 03 04 00];
-qcom,mdss-dsi-t-clk-post = <0x02>;
-qcom,mdss-dsi-t-clk-pre = <0x2C>;
+	[24 1F 08 09 05 03 04 A0
+	 24 1F 08 09 05 03 04 A0
+	 24 1F 08 09 05 03 04 A0
+	 24 1F 08 09 05 03 04 A0
+	 24 1C 08 09 05 03 04 A0];
+qcom,mdss-dsi-panel-timings = [F2 3A 28 00 6C 6E 2C 3E 2E 03 04 00];
+qcom,mdss-dsi-t-clk-post = <0x0E>;
+qcom,mdss-dsi-t-clk-pre = <0x31>;
 qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
@@ -86,14 +102,15 @@ qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 qcom,mdss-dsi-reset-sequence = <1 5>, <0 5>, <1 5>, <0 5>, <1 20>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
+qcom,mdss-dsi-init-delay-us = <50000>;
 
-/* Enable ESD checking */
-//qcom,esd-check-enabled;
+qcom,esd-check-enabled;
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 02 0A 08];
+qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
-qcom,mdss-dsi-panel-status-read-length = <1>;
-qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
-qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-panel-status-value = <0x9c>;
+qcom,mdss-dsi-panel-status-read-length = <1>;
+qcom,mdss-dsi-panel-status-valid-params = <1>;
 
 qcom,panel-supply-entries {
 	#address-cells = <1>;
