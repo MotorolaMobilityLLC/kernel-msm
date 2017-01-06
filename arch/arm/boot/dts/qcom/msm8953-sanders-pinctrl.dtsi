@@ -165,7 +165,7 @@
 		};
 
 		config {
-			pin = "gpio137";
+			pins = "gpio137";
 			output-high;
 			bias-pull-up;
 			drive-strength = <2>;
