@@ -319,7 +319,7 @@
 		};
 
 		config {
-			pin = "gpio38";
+			pins = "gpio38";
 			output-high;
 			bias-pull-up;
 			drive-strength = <2>;
