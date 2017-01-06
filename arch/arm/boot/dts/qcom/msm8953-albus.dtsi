@@ -454,6 +454,17 @@
 	qcom,init-voltage = <1000000>;
 };
 
+&pm8953_gpios {
+	gpio@c600 { /* GPIO 7 - USB_SS_MOD_EN */
+		qcom,vin-sel = <3>;		/* VIN3 */
+	};
+
+	gpio@c700 { /* GPIO 8 - USB_SS_MOD_MPHY_AP_EN */
+		qcom,vin-sel = <3>;		/* VIN3 */
+	};
+};
+
+
 &pmx_mdss {
 	mdss_dsi_active {
 		mux {
