@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -337,11 +337,12 @@
 	};
 
 	qcom,jpeg@1b1c000 {
+		status = "ok";
 		cell-index = <0>;
 		compatible = "qcom,jpeg";
 		reg = <0x1b1c000 0x400>,
 			<0x1b60000 0xc30>;
-		reg-names = "jpeg";
+		reg-names = "jpeg_hw","jpeg_vbif";
 		interrupts = <0 59 0>;
 		interrupt-names = "jpeg";
 		vdd-supply = <&gdsc_jpeg>;
@@ -354,10 +355,15 @@
 			<&clock_gcc clk_gcc_camss_top_ahb_clk>,
 			<&clock_gcc clk_gcc_camss_ahb_clk>;
 		qcom,clock-rates = <266670000 0 0 0 0>;
-		qos-reg-settings = <0x28 0x0000550E>,
-			<0xC8 0x00005555>;
-		vbif-reg-settings = <0xC0 0x10101000>,
+		qcom,qos-reg-settings = <0x28 0x0000000E>,
+			<0xC8 0x00000000>;
+		qcom,vbif-reg-settings = <0xC0 0x10101000>,
 			<0xB0 0x10100010>;
+		qcom,msm-bus,name = "msm_camera_jpeg0";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps = <62 512 0 0>,
+			<62 512 800000 800000>;
 	};
 
 	qcom,irqrouter@1b00000 {
