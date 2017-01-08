@@ -2032,7 +2032,15 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 			BMA25X_MODE_CTRL_REG, &databuf);
 		usleep_range(5000, 5000);
 		bma25x_flat_update(bma25x);
+		bma25x_set_theta_flat(bma25x->bma25x_client, 0x08);
+		if ((bma25x->flat_up_value == FLATUP_GESTURE) ||
+			(bma25x->flat_down_value == FLATDOWN_GESTURE))
+			bma25x_set_flat_hold_time(bma25x->bma25x_client, 0x00);
+		else
+			bma25x_set_flat_hold_time(bma25x->bma25x_client, 0x03);
+		bma25x_set_Int_Enable(bma25x->bma25x_client, 11, 1);
 	} else if (bma25x->mEnabled && !newstatus) {
+		bma25x_set_Int_Enable(bma25x->bma25x_client, 11, 0);
 		if (atomic_read(&bma25x->enable) == 0) {
 			databuf = 0x80;
 			bma25x_smbus_write_byte(bma25x->bma25x_client,
@@ -2058,21 +2066,6 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 		FLAT_INTERRUPT, bma25x->flat_down_value);
 		input_sync(bma25x->dev_interrupt);
 	}
-	if (newstatus) {
-		if ((bma25x->flat_up_value == FLATUP_GESTURE) ||
-			(bma25x->flat_down_value == FLATDOWN_GESTURE))
-			bma25x_set_flat_hold_time(bma25x->bma25x_client, 0x00);
-		else
-			bma25x_set_flat_hold_time(bma25x->bma25x_client, 0x03);
-		if (TEST_BIT(Motion, newstatus) && bma25x->mEnabled) {
-			bma25x_set_Int_Enable(bma25x->bma25x_client, 11, 0);
-			bma25x->aod_flag = 1;
-		} else {
-			bma25x_set_theta_flat(bma25x->bma25x_client, 0x08);
-			bma25x_set_Int_Enable(bma25x->bma25x_client, 11, 1);
-		}
-	} else
-		bma25x_set_Int_Enable(bma25x->bma25x_client, 11, 0);
 
 	if (TEST_BIT(Motion, newstatus) &&
 			!TEST_BIT(Motion, bma25x->mEnabled))
