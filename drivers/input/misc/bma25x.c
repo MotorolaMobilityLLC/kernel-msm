@@ -1454,6 +1454,9 @@ struct bma25x_data {
 	struct delayed_work flat_work;
 #endif
 
+	int read_flag;
+	u8 read_reg;
+
 	int ref_count;
 };
 
@@ -2424,6 +2427,78 @@ static ssize_t bma25x_int_mode_store(struct device *dev,
 	return count;
 }
 #endif
+
+static ssize_t bma25x_reg_dump_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma25x_data *bma25x = i2c_get_clientdata(client);
+	u8 data[20];
+	char *p = buf;
+
+	if (bma25x->read_flag) {
+		bma25x->read_flag = 0;
+		bma25x_smbus_read_byte(bma25x->bma25x_client, bma25x->read_reg, data);
+		p += snprintf(p, PAGE_SIZE, "%02x\n", data[0]);
+		return (p-buf);
+	}
+
+	bma25x_smbus_read_byte_block(bma25x->bma25x_client, 0x09, data, 4);
+	p += snprintf(p, PAGE_SIZE, "INT DATA(09~0c)=%02x,%02x,%02x,%02x\n",
+			data[0], data[1], data[2], data[3]);
+
+	bma25x_smbus_read_byte_block(bma25x->bma25x_client, 0x16, data, 3);
+	p += snprintf(p, PAGE_SIZE, "INT EN(16~18)=%02x,%02x,%02x\n",
+			data[0], data[1], data[2]);
+
+	bma25x_smbus_read_byte_block(bma25x->bma25x_client, 0x19, data, 3);
+	p += snprintf(p, PAGE_SIZE, "INT MAP(19~1b)=%02x,%02x,%02x\n",
+			data[0], data[1], data[2]);
+
+	bma25x_smbus_read_byte_block(bma25x->bma25x_client, 0x1e, data, 1);
+	p += snprintf(p, PAGE_SIZE, "INT SRC(1e)=%02x\n",
+			data[0]);
+
+	bma25x_smbus_read_byte_block(bma25x->bma25x_client, 0x20, data, 1);
+	p += snprintf(p, PAGE_SIZE, "INT OUT CTRL(20)=%02x\n",
+			data[0]);
+
+	bma25x_smbus_read_byte_block(bma25x->bma25x_client, 0x21, data, 1);
+	p += snprintf(p, PAGE_SIZE, "INT LATCH(21)=%02x\n",
+			data[0]);
+
+	bma25x_smbus_read_byte_block(bma25x->bma25x_client, 0x27, data, 3);
+	p += snprintf(p, PAGE_SIZE, "SLO NOMOT SET(27~29)=%02x,%02x,%02x\n",
+			data[0], data[1], data[2]);
+
+	bma25x_smbus_read_byte_block(bma25x->bma25x_client, 0x2e, data, 2);
+	p += snprintf(p, PAGE_SIZE, "FLAT SET(2E~2F)=%02x,%02x\n",
+			data[0], data[1]);
+
+	return (p-buf);
+}
+
+static ssize_t bma25x_reg_dump_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma25x_data *bma25x = i2c_get_clientdata(client);
+	unsigned int val, reg, opt;
+
+	if (sscanf(buf, "%x,%x,%x", &reg, &val, &opt) == 3) {
+		bma25x->read_reg = *((u8 *)&reg);
+		bma25x->read_flag = 1;
+	} else if (sscanf(buf, "%x,%x", &reg, &val) == 2) {
+		dev_err(dev, "%s,reg = 0x%02x, val = 0x%02x\n",
+			__func__, *(u8 *)&reg, *(u8 *)&val);
+		bma25x_smbus_write_byte(bma25x->bma25x_client,
+					*(u8 *)&reg, (u8 *)&val);
+	}
+
+	return count;
+}
+
 static DEVICE_ATTR(flush, S_IWUSR|S_IWGRP|S_IRUGO,
 		NULL, bma25x_flush_store);
 static DEVICE_ATTR(range, S_IWUSR|S_IWGRP|S_IRUGO,
@@ -2445,6 +2520,8 @@ static DEVICE_ATTR(flat_threshold, S_IWUSR|S_IWGRP|S_IRUGO,
 static DEVICE_ATTR(int_mode, S_IWUSR|S_IWGRP|S_IRUGO,
 		bma25x_int_mode_show, bma25x_int_mode_store);
 #endif
+static DEVICE_ATTR(reg, S_IRUGO | S_IWUSR, bma25x_reg_dump_show,
+		bma25x_reg_dump_store);
 static struct attribute *bma25x_attributes[] = {
 	&dev_attr_flush.attr,
 	&dev_attr_range.attr,
@@ -2458,6 +2535,7 @@ static struct attribute *bma25x_attributes[] = {
 	&dev_attr_flat_threshold.attr,
 	&dev_attr_int_mode.attr,
 #endif
+	&dev_attr_reg.attr,
 	NULL
 };
 
