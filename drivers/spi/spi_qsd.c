@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -44,6 +44,8 @@
 #include <linux/msm-bus.h>
 #include <linux/msm-bus-board.h>
 #include "spi_qsd.h"
+
+#define SPI_MAX_BYTES_PER_WORD			(4)
 
 static int msm_spi_pm_resume_runtime(struct device *device);
 static int msm_spi_pm_suspend_runtime(struct device *device);
@@ -544,10 +546,12 @@ static void msm_spi_read_word_from_fifo(struct msm_spi *dd)
 	u32   data_in;
 	int   i;
 	int   shift;
+	int   read_bytes = (dd->pack_words ?
+				SPI_MAX_BYTES_PER_WORD : dd->bytes_per_word);
 
 	data_in = readl_relaxed(dd->base + SPI_INPUT_FIFO);
 	if (dd->read_buf) {
-		for (i = 0; (i < dd->bytes_per_word) &&
+		for (i = 0; (i < read_bytes) &&
 			     dd->rx_bytes_remaining; i++) {
 			/* The data format depends on bytes_per_word:
 			   4 bytes: 0x12345678
@@ -555,13 +559,13 @@ static void msm_spi_read_word_from_fifo(struct msm_spi *dd)
 			   2 bytes: 0x00001234
 			   1 byte : 0x00000012
 			*/
-			shift = 8 * (dd->bytes_per_word - i - 1);
+			shift = BITS_PER_BYTE * i;
 			*dd->read_buf++ = (data_in & (0xFF << shift)) >> shift;
 			dd->rx_bytes_remaining--;
 		}
 	} else {
-		if (dd->rx_bytes_remaining >= dd->bytes_per_word)
-			dd->rx_bytes_remaining -= dd->bytes_per_word;
+		if (dd->rx_bytes_remaining >= read_bytes)
+			dd->rx_bytes_remaining -= read_bytes;
 		else
 			dd->rx_bytes_remaining = 0;
 	}
@@ -677,7 +681,7 @@ msm_spi_set_bpw_and_no_io_flags(struct msm_spi *dd, u32 *config, int n)
 	if (n != (*config & SPI_CFG_N))
 		*config = (*config & ~SPI_CFG_N) | n;
 
-	if (dd->mode == SPI_BAM_MODE) {
+	if (dd->tx_mode == SPI_BAM_MODE) {
 		if (dd->read_buf == NULL)
 			*config |= SPI_NO_INPUT;
 		if (dd->write_buf == NULL)
@@ -742,25 +746,34 @@ static void msm_spi_set_spi_config(struct msm_spi *dd, int bpw)
 static void msm_spi_set_mx_counts(struct msm_spi *dd, u32 n_words)
 {
 	/*
-	 * n_words cannot exceed fifo_size, and only one READ COUNT
-	 * interrupt is generated per transaction, so for transactions
-	 * larger than fifo size READ COUNT must be disabled.
-	 * For those transactions we usually move to Data Mover mode.
+	 * For FIFO mode:
+	 *   - Set the MX_OUTPUT_COUNT/MX_INPUT_COUNT registers to 0
+	 *   - Set the READ/WRITE_COUNT registers to 0 (infinite mode)
+	 *     or num bytes (finite mode) if less than fifo worth of data.
+	 * For Block mode:
+	 *  - Set the MX_OUTPUT/MX_INPUT_COUNT registers to num xfer bytes.
+	 *  - Set the READ/WRITE_COUNT registers to 0.
 	 */
-	if (dd->mode == SPI_FIFO_MODE) {
-		if (n_words <= dd->input_fifo_size) {
-			writel_relaxed(n_words,
-				       dd->base + SPI_MX_READ_COUNT);
-			msm_spi_set_write_count(dd, n_words);
-		} else {
-			writel_relaxed(0, dd->base + SPI_MX_READ_COUNT);
-			msm_spi_set_write_count(dd, 0);
-		}
-		if (dd->qup_ver == SPI_QUP_VERSION_BFAM) {
-			/* must be zero for FIFO */
-			writel_relaxed(0, dd->base + SPI_MX_INPUT_COUNT);
+	if (dd->tx_mode != SPI_BAM_MODE) {
+		if (dd->tx_mode == SPI_FIFO_MODE) {
+			if (n_words <= dd->input_fifo_size)
+				msm_spi_set_write_count(dd, n_words);
+			else
+				msm_spi_set_write_count(dd, 0);
 			writel_relaxed(0, dd->base + SPI_MX_OUTPUT_COUNT);
-		}
+		} else
+			writel_relaxed(n_words, dd->base + SPI_MX_OUTPUT_COUNT);
+
+		if (dd->rx_mode == SPI_FIFO_MODE) {
+			if (n_words <= dd->input_fifo_size)
+				writel_relaxed(n_words,
+						dd->base + SPI_MX_READ_COUNT);
+			else
+				writel_relaxed(0,
+						dd->base + SPI_MX_READ_COUNT);
+			writel_relaxed(0, dd->base + SPI_MX_INPUT_COUNT);
+		} else
+			writel_relaxed(n_words, dd->base + SPI_MX_INPUT_COUNT);
 	} else {
 		/* must be zero for BAM and DMOV */
 		writel_relaxed(0, dd->base + SPI_MX_READ_COUNT);
@@ -804,8 +817,12 @@ static int msm_spi_bam_pipe_connect(struct msm_spi *dd,
 	struct sps_register_event event  = {
 		.mode      = SPS_TRIGGER_WAIT,
 		.options   = SPS_O_EOT,
-		.xfer_done = &dd->transfer_complete,
 	};
+
+	if (pipe == &dd->bam.prod)
+		event.xfer_done = &dd->rx_transfer_complete;
+	else if (pipe == &dd->bam.cons)
+		event.xfer_done = &dd->tx_transfer_complete;
 
 	ret = sps_connect(pipe->handle, config);
 	if (ret) {
@@ -1015,11 +1032,10 @@ xfr_err:
 static int
 msm_spi_bam_next_transfer(struct msm_spi *dd)
 {
-	if (dd->mode != SPI_BAM_MODE)
+	if (dd->tx_mode != SPI_BAM_MODE)
 		return 0;
 
 	if (dd->tx_bytes_remaining > 0) {
-		init_completion(&dd->transfer_complete);
 		if (msm_spi_set_state(dd, SPI_OP_STATE_RESET))
 			return 0;
 		if ((msm_spi_bam_begin_transfer(dd)) < 0) {
@@ -1035,7 +1051,7 @@ msm_spi_bam_next_transfer(struct msm_spi *dd)
 static int msm_spi_dma_send_next(struct msm_spi *dd)
 {
 	int ret = 0;
-	if (dd->mode == SPI_BAM_MODE)
+	if (dd->tx_mode == SPI_BAM_MODE)
 		ret = msm_spi_bam_next_transfer(dd);
 	return ret;
 }
@@ -1066,31 +1082,38 @@ static inline irqreturn_t msm_spi_qup_irq(int irq, void *dev_id)
 	}
 
 	op = readl_relaxed(dd->base + SPI_OPERATIONAL);
+	writel_relaxed(op, dd->base + SPI_OPERATIONAL);
+	/*
+	 * Ensure service flag was cleared before further
+	 * processing of interrupt.
+	 */
+	mb();
 	if (op & SPI_OP_INPUT_SERVICE_FLAG) {
-		writel_relaxed(SPI_OP_INPUT_SERVICE_FLAG,
-			       dd->base + SPI_OPERATIONAL);
-		/*
-		 * Ensure service flag was cleared before further
-		 * processing of interrupt.
-		 */
-		mb();
 		ret |= msm_spi_input_irq(irq, dev_id);
 	}
 
 	if (op & SPI_OP_OUTPUT_SERVICE_FLAG) {
-		writel_relaxed(SPI_OP_OUTPUT_SERVICE_FLAG,
-			       dd->base + SPI_OPERATIONAL);
-		/*
-		 * Ensure service flag was cleared before further
-		 * processing of interrupt.
-		 */
-		mb();
 		ret |= msm_spi_output_irq(irq, dev_id);
 	}
 
-	if (dd->done) {
-		complete(&dd->transfer_complete);
-		dd->done = 0;
+	if (dd->tx_mode != SPI_BAM_MODE) {
+		if (!dd->rx_done) {
+			if (dd->rx_bytes_remaining == 0)
+				dd->rx_done = true;
+		}
+		if (!dd->tx_done) {
+			if (!dd->tx_bytes_remaining &&
+					(op & SPI_OP_IP_FIFO_NOT_EMPTY)) {
+				dd->tx_done = true;
+			}
+		}
+	}
+	if (dd->tx_done && dd->rx_done) {
+		msm_spi_set_state(dd, SPI_OP_STATE_RESET);
+		dd->tx_done = false;
+		dd->rx_done = false;
+		complete(&dd->rx_transfer_complete);
+		complete(&dd->tx_transfer_complete);
 	}
 	return ret;
 }
@@ -1101,17 +1124,23 @@ static irqreturn_t msm_spi_input_irq(int irq, void *dev_id)
 
 	dd->stat_rx++;
 
-	if (dd->mode == SPI_MODE_NONE)
+	if (dd->rx_mode == SPI_MODE_NONE)
 		return IRQ_HANDLED;
 
-	if (dd->mode == SPI_FIFO_MODE) {
+	if (dd->rx_mode == SPI_FIFO_MODE) {
 		while ((readl_relaxed(dd->base + SPI_OPERATIONAL) &
 			SPI_OP_IP_FIFO_NOT_EMPTY) &&
 			(dd->rx_bytes_remaining > 0)) {
 			msm_spi_read_word_from_fifo(dd);
 		}
-		if (dd->rx_bytes_remaining == 0)
-			msm_spi_complete(dd);
+	} else if (dd->rx_mode == SPI_BLOCK_MODE) {
+		int count = 0;
+
+		while (dd->rx_bytes_remaining &&
+				(count < dd->input_block_size)) {
+			msm_spi_read_word_from_fifo(dd);
+			count += SPI_MAX_BYTES_PER_WORD;
+		}
 	}
 
 	return IRQ_HANDLED;
@@ -1122,18 +1151,20 @@ static void msm_spi_write_word_to_fifo(struct msm_spi *dd)
 	u32    word;
 	u8     byte;
 	int    i;
+	int   write_bytes =
+		(dd->pack_words ? SPI_MAX_BYTES_PER_WORD : dd->bytes_per_word);
 
 	word = 0;
 	if (dd->write_buf) {
-		for (i = 0; (i < dd->bytes_per_word) &&
+		for (i = 0; (i < write_bytes) &&
 			     dd->tx_bytes_remaining; i++) {
 			dd->tx_bytes_remaining--;
 			byte = *dd->write_buf++;
-			word |= (byte << (BITS_PER_BYTE * (3 - i)));
+			word |= (byte << (BITS_PER_BYTE * i));
 		}
 	} else
-		if (dd->tx_bytes_remaining > dd->bytes_per_word)
-			dd->tx_bytes_remaining -= dd->bytes_per_word;
+		if (dd->tx_bytes_remaining > write_bytes)
+			dd->tx_bytes_remaining -= write_bytes;
 		else
 			dd->tx_bytes_remaining = 0;
 	dd->write_xfr_cnt++;
@@ -1161,11 +1192,22 @@ static inline void msm_spi_write_rmn_to_fifo(struct msm_spi *dd)
 {
 	int count = 0;
 
-	while ((dd->tx_bytes_remaining > 0) && (count < dd->input_fifo_size) &&
-	       !(readl_relaxed(dd->base + SPI_OPERATIONAL) &
-		SPI_OP_OUTPUT_FIFO_FULL)) {
-		msm_spi_write_word_to_fifo(dd);
-		count++;
+	if (dd->tx_mode == SPI_FIFO_MODE) {
+		while ((dd->tx_bytes_remaining > 0) &&
+			(count < dd->input_fifo_size) &&
+		       !(readl_relaxed(dd->base + SPI_OPERATIONAL)
+						& SPI_OP_OUTPUT_FIFO_FULL)) {
+			msm_spi_write_word_to_fifo(dd);
+			count++;
+		}
+	}
+
+	if (dd->tx_mode == SPI_BLOCK_MODE) {
+		while (dd->tx_bytes_remaining &&
+				(count < dd->output_block_size)) {
+			msm_spi_write_word_to_fifo(dd);
+			count += SPI_MAX_BYTES_PER_WORD;
+		}
 	}
 }
 
@@ -1175,11 +1217,11 @@ static irqreturn_t msm_spi_output_irq(int irq, void *dev_id)
 
 	dd->stat_tx++;
 
-	if (dd->mode == SPI_MODE_NONE)
+	if (dd->tx_mode == SPI_MODE_NONE)
 		return IRQ_HANDLED;
 
 	/* Output FIFO is empty. Transmit any outstanding write data. */
-	if (dd->mode == SPI_FIFO_MODE)
+	if ((dd->tx_mode == SPI_FIFO_MODE) || (dd->tx_mode == SPI_BLOCK_MODE))
 		msm_spi_write_rmn_to_fifo(dd);
 
 	return IRQ_HANDLED;
@@ -1267,7 +1309,7 @@ error:
 static int msm_spi_dma_map_buffers(struct msm_spi *dd)
 {
 	int ret = 0;
-	if (dd->mode == SPI_BAM_MODE)
+	if (dd->tx_mode == SPI_BAM_MODE)
 		ret = msm_spi_bam_map_buffers(dd);
 	return ret;
 }
@@ -1312,7 +1354,7 @@ static void msm_spi_bam_unmap_buffers(struct msm_spi *dd)
 
 static inline void msm_spi_dma_unmap_buffers(struct msm_spi *dd)
 {
-	if (dd->mode == SPI_BAM_MODE)
+	if (dd->tx_mode == SPI_BAM_MODE)
 		msm_spi_bam_unmap_buffers(dd);
 }
 
@@ -1374,13 +1416,13 @@ static void
 msm_spi_set_transfer_mode(struct msm_spi *dd, u8 bpw, u32 read_count)
 {
 	if (msm_spi_use_dma(dd, dd->cur_transfer, bpw)) {
-		dd->mode = SPI_BAM_MODE;
+		dd->tx_mode = SPI_BAM_MODE;
+		dd->rx_mode = SPI_BAM_MODE;
 	} else {
-		dd->mode = SPI_FIFO_MODE;
-		if (dd->multi_xfr) {
-			dd->read_len = dd->cur_transfer->len;
-			dd->write_len = dd->cur_transfer->len;
-		}
+		dd->rx_mode = SPI_FIFO_MODE;
+		dd->tx_mode = SPI_FIFO_MODE;
+		dd->read_len = dd->cur_transfer->len;
+		dd->write_len = dd->cur_transfer->len;
 	}
 }
 
@@ -1394,13 +1436,20 @@ static void msm_spi_set_qup_io_modes(struct msm_spi *dd)
 	spi_iom = readl_relaxed(dd->base + SPI_IO_MODES);
 	/* Set input and output transfer mode: FIFO, DMOV, or BAM */
 	spi_iom &= ~(SPI_IO_M_INPUT_MODE | SPI_IO_M_OUTPUT_MODE);
-	spi_iom = (spi_iom | (dd->mode << OUTPUT_MODE_SHIFT));
-	spi_iom = (spi_iom | (dd->mode << INPUT_MODE_SHIFT));
-	/* Turn on packing for data mover */
-	if (dd->mode == SPI_BAM_MODE)
+	spi_iom = (spi_iom | (dd->tx_mode << OUTPUT_MODE_SHIFT));
+	spi_iom = (spi_iom | (dd->rx_mode << INPUT_MODE_SHIFT));
+	/* Always enable packing for all % 8 bits_per_word */
+	if (dd->cur_transfer->bits_per_word &&
+		((dd->cur_transfer->bits_per_word == 8) ||
+		(dd->cur_transfer->bits_per_word == 16) ||
+		(dd->cur_transfer->bits_per_word == 32))) {
 		spi_iom |= SPI_IO_M_PACK_EN | SPI_IO_M_UNPACK_EN;
-	else
+		dd->pack_words = true;
+	} else {
 		spi_iom &= ~(SPI_IO_M_PACK_EN | SPI_IO_M_UNPACK_EN);
+		spi_iom |= SPI_IO_M_OUTPUT_BIT_SHIFT_EN;
+		dd->pack_words = false;
+	}
 
 	/*if (dd->mode == SPI_BAM_MODE) {
 		spi_iom |= SPI_IO_C_NO_TRI_STATE;
@@ -1457,7 +1506,7 @@ static void msm_spi_set_qup_op_mask(struct msm_spi *dd)
 {
 	/* mask INPUT and OUTPUT service flags in to prevent IRQs on FIFO status
 	 * change in BAM mode */
-	u32 mask = (dd->mode == SPI_BAM_MODE) ?
+	u32 mask = (dd->tx_mode == SPI_BAM_MODE) ?
 		QUP_OP_MASK_OUTPUT_SERVICE_FLAG | QUP_OP_MASK_INPUT_SERVICE_FLAG
 		: 0;
 	writel_relaxed(mask, dd->base + QUP_OPERATIONAL_MASK);
@@ -1477,7 +1526,10 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 	dd->rx_bytes_remaining = dd->cur_msg_len;
 	dd->read_buf           = dd->cur_transfer->rx_buf;
 	dd->write_buf          = dd->cur_transfer->tx_buf;
-	init_completion(&dd->transfer_complete);
+	dd->tx_done = false;
+	dd->rx_done = false;
+	init_completion(&dd->tx_transfer_complete);
+	init_completion(&dd->rx_transfer_complete);
 	if (dd->cur_transfer->bits_per_word)
 		bpw = dd->cur_transfer->bits_per_word;
 	else
@@ -1509,12 +1561,12 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 
 	msm_spi_set_transfer_mode(dd, bpw, read_count);
 	msm_spi_set_mx_counts(dd, read_count);
-	if (dd->mode == SPI_BAM_MODE) {
+	if (dd->tx_mode == SPI_BAM_MODE) {
 		ret = msm_spi_dma_map_buffers(dd);
 		if (ret < 0) {
 			pr_err("Mapping DMA buffers\n");
-			dd->cur_msg->status = ret;
-			return;
+			dd->tx_mode = SPI_MODE_NONE;
+			dd->rx_mode = SPI_MODE_NONE;
 		}
 	}
 	msm_spi_set_qup_io_modes(dd);
@@ -1527,11 +1579,11 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 	   the first. Restricting this to one write avoids contention
 	   issues and race conditions between this thread and the int handler
 	*/
-	if (dd->mode == SPI_FIFO_MODE) {
+	if (dd->tx_mode != SPI_BAM_MODE) {
 		if (msm_spi_prepare_for_write(dd))
 			goto transfer_end;
 		msm_spi_start_write(dd, read_count);
-	} else if (dd->mode == SPI_BAM_MODE) {
+	} else {
 		if ((msm_spi_bam_begin_transfer(dd)) < 0) {
 			dev_err(dd->dev, "%s: BAM transfer setup failed\n",
 				__func__);
@@ -1547,21 +1599,32 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 	 * might fire before the first word is written resulting in a
 	 * possible race condition.
 	 */
-	if (dd->mode != SPI_BAM_MODE)
+	if (dd->tx_mode != SPI_BAM_MODE)
 		if (msm_spi_set_state(dd, SPI_OP_STATE_RUN)) {
 			dev_warn(dd->dev,
 				"%s: Failed to set QUP to run-state. Mode:%d",
-				__func__, dd->mode);
+				__func__, dd->tx_mode);
 			goto transfer_end;
 		}
 
 	/* Assume success, this might change later upon transaction result */
 	dd->cur_msg->status = 0;
 	do {
-		if (!wait_for_completion_timeout(&dd->transfer_complete,
+		if (dd->write_buf &&
+			!wait_for_completion_timeout(&dd->tx_transfer_complete,
 						 timeout)) {
 				dev_err(dd->dev,
-					"%s: SPI transaction timeout\n",
+					"%s: SPI Tx transaction timeout\n",
+					__func__);
+				dd->cur_msg->status = -EIO;
+				break;
+		}
+
+		if (dd->read_buf &&
+			!wait_for_completion_timeout(&dd->rx_transfer_complete,
+						 timeout)) {
+				dev_err(dd->dev,
+					"%s: SPI Rx transaction timeout\n",
 					__func__);
 				dd->cur_msg->status = -EIO;
 				break;
@@ -1571,10 +1634,11 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 	msm_spi_udelay(dd->xfrs_delay_usec);
 
 transfer_end:
-	if (dd->mode == SPI_BAM_MODE)
+	if ((dd->tx_mode == SPI_BAM_MODE) && dd->cur_msg->status)
 		msm_spi_bam_flush(dd);
 	msm_spi_dma_unmap_buffers(dd);
-	dd->mode = SPI_MODE_NONE;
+	dd->tx_mode = SPI_MODE_NONE;
+	dd->rx_mode = SPI_MODE_NONE;
 
 	msm_spi_set_state(dd, SPI_OP_STATE_RESET);
 	writel_relaxed(spi_ioc & ~SPI_IO_C_MX_CS_MODE,
@@ -2623,8 +2687,8 @@ static int init_resources(struct platform_device *pdev)
 	pclk_enabled = 0;
 
 	dd->transfer_pending = 0;
-	dd->multi_xfr = 0;
-	dd->mode = SPI_MODE_NONE;
+	dd->tx_mode = SPI_MODE_NONE;
+	dd->rx_mode = SPI_MODE_NONE;
 
 	rc = msm_spi_request_irq(dd, pdev, master);
 	if (rc)
