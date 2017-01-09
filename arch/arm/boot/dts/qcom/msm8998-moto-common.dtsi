@@ -131,6 +131,9 @@
 		ti,lra_freq = /bits/ 8 <0xCD>;
 		ti,lra_drive;
 		ti,auto_cal;
+		ti,auto_cal_time = /bits/ 8 <0x01>;
+		/* sample time 200us  */
+		ti,sample_time = /bits/ 8 <0x04>;
 		ti,nrst-gpio = <&pmi8998_gpios 9 0>;   /* EN_GPIO */
 	};
 
