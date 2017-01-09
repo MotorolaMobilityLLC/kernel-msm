@@ -264,8 +264,10 @@ static int ether_queue_out(struct usb_request *req ,
 	unsigned long flags;
 	struct sk_buff *skb;
 	int ret;
+	unsigned int size;
 
-	skb = alloc_skb(USB_MTU + NET_IP_ALIGN, GFP_ATOMIC);
+	size = ALIGN(USB_MTU + NET_IP_ALIGN, context->bulk_out->maxpacket);
+	skb = alloc_skb(size, GFP_ATOMIC);
 	if (!skb) {
 		USBNETDBG(context, "%s: failed to alloc skb\n", __func__);
 		ret = -ENOMEM;
@@ -275,7 +277,7 @@ static int ether_queue_out(struct usb_request *req ,
 	skb_reserve(skb, NET_IP_ALIGN);
 
 	req->buf = skb->data;
-	req->length = ALIGN(USB_MTU, context->bulk_out->maxpacket);
+	req->length = size;
 	req->context = skb;
 
 	ret = usb_ep_queue(context->bulk_out, req, GFP_KERNEL);
