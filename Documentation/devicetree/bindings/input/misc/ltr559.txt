@@ -23,6 +23,7 @@ Required properties:
  - liteon,ps-threshold	: Proximity sensor threshold.
  - liteon,ps-hysteresis-threshold	: Proximity sensor hysteresis threshold.
  - liteon,als-polling-time	: Ambient Light sensor polling time.
+ - liteon,prox-sensor-name	: Proximity sensor name.
 
  Example:
 
@@ -41,6 +42,7 @@ Required properties:
 		 ltr,ps-threshold = <800>;
 		 ltr,ps-hysteresis-threshold = <300>;
 		 ltr,als-polling-time = <200>;
+		 ltr,prox-sensor-name = "Rear liteon-proximity";
 	 };
 
  }
