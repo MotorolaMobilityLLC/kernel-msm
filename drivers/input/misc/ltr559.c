@@ -226,6 +226,8 @@ static  struct ltr559_reg reg_tbl[] = {
 		},
 };
 
+const char *prox_sensor_name;
+
 static struct sensors_classdev sensors_proximity_cdev = {
 	.name = "liteon-proximity",
 	.vendor = "liteon",
@@ -930,6 +932,11 @@ static int ltr559_parse_dt(struct device *dev, struct ltr559_data *data)
 	}
 	pdata->als_poll_interval = tmp;
 
+	rc = of_property_read_string(np, "ltr,prox-sensor-name", &prox_sensor_name);
+	if (rc) {
+		dev_err(dev, "Unable to read ltr,prox-sensor-name\n");
+	}
+
 	return 0;
 }
 
@@ -1067,6 +1074,8 @@ int ltr559_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	/* Register sensors class */
+	if (prox_sensor_name != NULL)
+		sensors_proximity_cdev.name = prox_sensor_name;
 	data->ps_cdev = sensors_proximity_cdev;
 	data->ps_cdev.sensors_enable = ltr559_ps_set_enable;
 	data->ps_cdev.sensors_poll_delay = NULL;
@@ -1115,6 +1124,10 @@ static int ltr559_remove(struct i2c_client *client)
 
 	if (data == NULL || pdata == NULL)
 		return 0;
+
+	if (prox_sensor_name != NULL)
+		kfree(prox_sensor_name);
+	prox_sensor_name = NULL;
 
 	ltr559_ps_enable(client, 0);
 	input_unregister_device(data->input_dev_ps);
