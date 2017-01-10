@@ -3585,14 +3585,16 @@ static int bma25x_suspend(struct i2c_client *client, pm_message_t mesg)
 	struct bma25x_data *data = i2c_get_clientdata(client);
 	unsigned char databuf = 0;
 	mutex_lock(&data->enable_mutex);
-	if (atomic_read(&data->enable) == 1) {
-		databuf = 0x80;
-		bma25x_smbus_write_byte(data->bma25x_client,
-			BMA25X_MODE_CTRL_REG, &databuf);
+
+	databuf = 0x40;
+	bma25x_smbus_write_byte(data->bma25x_client,
+		BMA25X_MODE_CTRL_REG, &databuf);
+
 #ifndef BMA25X_ENABLE_INT2
+	if (atomic_read(&data->enable) == 1) {
 		hrtimer_cancel(&data->timer);
-#endif
 	}
+#endif
 	mutex_unlock(&data->enable_mutex);
 	return 0;
 }
