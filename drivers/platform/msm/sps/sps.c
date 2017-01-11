@@ -125,9 +125,10 @@ static ssize_t sps_set_info(struct file *file, const char __user *buf,
 	int i;
 	u32 buf_size_kb = 0;
 	u32 new_buf_size;
+	u32 size = sizeof(str) < count ? sizeof(str) : count;
 
 	memset(str, 0, sizeof(str));
-	missing = copy_from_user(str, buf, sizeof(str));
+	missing = copy_from_user(str, buf, size);
 	if (missing)
 		return -EFAULT;
 
@@ -215,9 +216,10 @@ static ssize_t sps_set_logging_option(struct file *file, const char __user *buf,
 	char str[MAX_MSG_LEN];
 	int i;
 	u8 option = 0;
+	u32 size = sizeof(str) < count ? sizeof(str) : count;
 
 	memset(str, 0, sizeof(str));
-	missing = copy_from_user(str, buf, sizeof(str));
+	missing = copy_from_user(str, buf, size);
 	if (missing)
 		return -EFAULT;
 
@@ -264,9 +266,10 @@ static ssize_t sps_set_bam_addr(struct file *file, const char __user *buf,
 	struct sps_bam *bam;
 	u32 num_pipes = 0;
 	void *vir_addr;
+	u32 size = sizeof(str) < count ? sizeof(str) : count;
 
 	memset(str, 0, sizeof(str));
-	missing = copy_from_user(str, buf, sizeof(str));
+	missing = copy_from_user(str, buf, size);
 	if (missing)
 		return -EFAULT;
 
