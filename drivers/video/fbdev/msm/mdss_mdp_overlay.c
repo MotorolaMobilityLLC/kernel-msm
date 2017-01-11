@@ -2946,7 +2946,8 @@ static int mdss_mdp_overlay_get_fb_pipe(struct msm_fb_data_type *mfd,
 		struct fb_info *fbi = mfd->fbi;
 		struct mdss_mdp_mixer *mixer;
 		int bpp;
-		bool rotate_180 = (fbi->var.rotate == FB_ROTATE_UD);
+		bool rotate_180 = (fbi->var.rotate == FB_ROTATE_UD) !=
+						(mdp5_data->fb_rot_180 != 0);
 		struct mdss_data_type *mdata = mfd_to_mdata(mfd);
 		bool split_lm = (fbi->var.xres > mdata->max_mixer_width ||
 			is_split_lm(mfd));
@@ -6795,6 +6796,13 @@ static int mdss_mdp_overlay_fb_parse_dt(struct msm_fb_data_type *mfd)
 					   "qcom,mdss-mixer-swap");
 	if (mdp5_mdata->mixer_swap) {
 		pr_info("mixer swap is enabled for fb device=%s\n",
+			pdev->name);
+	}
+
+	mdp5_mdata->fb_rot_180 = of_property_read_bool(pdev->dev.of_node,
+					   "qcom,mdss-fb-rot-180");
+	if (mdp5_mdata->fb_rot_180) {
+		pr_info("180 degree rotation is enabled for fb device=%s\n",
 			pdev->name);
 	}
 
