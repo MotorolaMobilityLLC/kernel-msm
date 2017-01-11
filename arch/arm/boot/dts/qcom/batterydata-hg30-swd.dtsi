@@ -1,0 +1,61 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,hg30-swd {
+	serialnum = "SB18C15118";
+	/* #2744900_Lenovo_HG30sunwoda_2920mAh_averaged_MasterSlave_Jan9th2017*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <2920>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <0>;
+	qcom,battery-type = "HG30-SWD-3000mah";
+	qcom,chg-rslow-comp-c1 = <3602650>;
+	qcom,chg-rslow-comp-c2 = <5862762>;
+	qcom,chg-rs-to-rslow = <1219969>;
+	qcom,chg-rslow-comp-thr = <0xB1>;
+	qcom,checksum = <0x6434>;
+	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+	qcom,fg-profile-data = [
+		 DA 83 6F 7C
+		 9E 80 0D 76
+		 62 83 33 6F
+		 06 89 41 94
+		 31 82 F4 99
+		 1D BD F5 C9
+		 56 0E E8 83
+		 70 7C 69 80
+		 41 75 59 83
+		 12 61 3C 81
+		 CE 8D 52 82
+		 83 99 BC BC
+		 7F C9 54 0E
+		 C5 0B EA 58
+		 14 70 C6 FD
+		 FB 3D 6D 3F
+		 DE 33 00 00
+		 28 47 07 40
+		 FD 26 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 CE 70 2E 70
+		 20 52 5D 81
+		 68 74 08 61
+		 BB 64 31 78
+		 5F 6F 9E 5A
+		 CD 46 C7 A8
+		 18 1F 63 67
+		 64 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
