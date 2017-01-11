@@ -347,7 +347,7 @@
 			config {
 				pins = "gpio129";
 				drive-strength = <2>;
-				bias-disable; /* NO PULL */
+				bias-pull-down; /* PULL DOWN */
 			};
 		};
 		laser_active_xsdn: laser_active_xsdn {
