@@ -177,3 +177,7 @@
 		};
 	};
 };
+
+&mdss_fb0 {
+	qcom,mdss-fb-rot-180;
+};
