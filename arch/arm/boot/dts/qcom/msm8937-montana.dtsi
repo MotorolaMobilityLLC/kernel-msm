@@ -397,6 +397,7 @@
 &mot_batterydata {
 	df-serialnum = "SB18C15119";
 	#include "batterydata-hg30-atl.dtsi"
+	#include "batterydata-hg30-swd.dtsi"
 };
 
 &usb_otg {
