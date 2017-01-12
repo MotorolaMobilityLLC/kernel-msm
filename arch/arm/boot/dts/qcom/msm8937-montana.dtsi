@@ -367,6 +367,22 @@
 			};
 		};
 	};
+
+	sdhc2_cd_pin {
+                sdc2_cd_on: cd_on {
+				mux {
+                                        pins = "gpio67";
+                                        function = "gpio";
+                                };
+
+                                config {
+                                        pins = "gpio67";
+                                        drive-strength = <2>;
+                        		/delete-property/ bias-pull-up;
+                        		bias-disable;
+                                };
+                };
+        };
 };
 
 &pmi8950_charger {
