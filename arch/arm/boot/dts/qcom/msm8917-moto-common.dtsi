@@ -14,6 +14,7 @@
 #include "msm8917-pinctrl.dtsi"
 #include "msm8917-moto-pinctrl.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "carrier-channel-ids.dtsi"
 #include <moto-mem-reserve.h>
 
 / {
