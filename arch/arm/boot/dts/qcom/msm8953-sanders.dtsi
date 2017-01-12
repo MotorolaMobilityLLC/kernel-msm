@@ -17,6 +17,7 @@
 #include <moto-mem-reserve.h>
 #include "dsi-panel-mot-tianma-550-1080p-vid.dtsi"
 #include "dsi-panel-mot-djn-550-1080p-vid.dtsi"
+#include "carrier-channel-ids.dtsi"
 #include "msm8953-sanders-fps.dtsi"
 #include "msm8953-camera-sensor-mot-sanders.dtsi"
 
