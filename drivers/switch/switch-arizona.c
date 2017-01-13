@@ -1711,6 +1711,31 @@ void arizona_set_headphone_imp(struct arizona_extcon_info *info, int imp)
 }
 EXPORT_SYMBOL_GPL(arizona_set_headphone_imp);
 
+void arizona_set_magic_bit(struct arizona_extcon_info *info, bool on)
+{
+	int rate = 1;
+	struct arizona *arizona = info->arizona;
+	if (on) {
+		regmap_update_bits(arizona->regmap,
+				   ARIZONA_ACCESSORY_DETECT_MODE_1,
+				   ARIZONA_ACCDET_POLARITY_INV_ENA_MASK,
+				   0);
+		regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
+			   ARIZONA_MICD_RATE_MASK ,
+			   0);
+	} else {
+		if (arizona->pdata.micd_rate)
+			rate = arizona->pdata.micd_rate;
+		regmap_update_bits(arizona->regmap,
+				   ARIZONA_ACCESSORY_DETECT_MODE_1,
+				   ARIZONA_ACCDET_POLARITY_INV_ENA_MASK,
+				   ARIZONA_ACCDET_POLARITY_INV_ENA);
+		regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
+			   ARIZONA_MICD_RATE_MASK ,
+			   rate << ARIZONA_MICD_RATE_SHIFT);
+	}
+}
+
 static void arizona_hpdet_start_micd(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
@@ -1881,6 +1906,7 @@ void arizona_hpdet_stop(struct arizona_extcon_info *info)
 
 	/* Reset back to starting range */
 	arizona_hpdet_stop_micd(info);
+	arizona_set_magic_bit(info, info->mic);
 
 	regmap_update_bits(arizona->regmap,
 			   ARIZONA_HEADPHONE_DETECT_1,
@@ -2843,6 +2869,7 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 
 		if (arizona->pdata.micd_cb)
 			arizona->pdata.micd_cb(false);
+		arizona_set_magic_bit(info, false);
 	}
 
 out:
