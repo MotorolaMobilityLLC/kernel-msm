@@ -287,18 +287,18 @@
 		qcom,leds@d300 {
 			qcom,flash_0 {
 				qcom,max-current = <1000>;
-				qcom,duration = <1200>;
+				qcom,duration = <400>;
 				qcom,current = <650>;
 				qcom,alt-max-current = <250>;
-				qcom,alt-duration = <150>;
+				qcom,alt-duration = <400>;
 				qcom,alt-current = <100>;
 			};
 			qcom,flash_1 {
 				qcom,max-current = <1000>;
-				qcom,duration = <1200>;
+				qcom,duration = <400>;
 				qcom,current = <650>;
 				qcom,alt-max-current = <250>;
-				qcom,alt-duration = <150>;
+				qcom,alt-duration = <400>;
 				qcom,alt-current = <100>;
 			};
 			qcom,torch_0 {
@@ -312,6 +312,9 @@
 				qcom,current = <75>;
 				qcom,alt-max-current = <50>;
 				qcom,alt-current = <12>;
+			};
+			qcom,switch {
+				qcom,duration = <400>;
 			};
 		};
 	};
