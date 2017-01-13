@@ -13,6 +13,58 @@
 &tlmm {
 	/delete-node/ ts_mux;
 
+	cam_sensor_mclk1_active: cam_sensor_mclk1_active {
+		mux {
+			pins = "gpio14";
+			function = "cam_mclk";
+		};
+
+		config {
+			pins = "gpio14";
+			bias-disable;
+			drive-strength = <4>;
+		};
+	};
+
+	cam_sensor_mclk1_suspend: cam_sensor_mclk1_suspend {
+		mux {
+			pins = "gpio14";
+			function = "cam_mclk";
+		};
+
+		config {
+			pins = "gpio14";
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+
+	cam_sensor_mclk2_active: cam_sensor_mclk2_active {
+		mux {
+			pins = "gpio15";
+			function = "cam_mclk";
+		};
+
+		config {
+			pins = "gpio15";
+			bias-disable;
+			drive-strength = <4>;
+		};
+	};
+
+	cam_sensor_mclk2_suspend: cam_sensor_mclk2_suspend {
+		mux {
+			pins = "gpio15";
+			function = "cam_mclk";
+		};
+
+		config {
+			pins = "gpio15";
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+
 	anx_rst_active: anx_rst_active {
 		mux {
 			pins = "gpio131";
