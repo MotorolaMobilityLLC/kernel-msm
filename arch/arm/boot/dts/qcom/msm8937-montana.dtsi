@@ -371,13 +371,12 @@
 	sdhc2_cd_pin {
                 sdc2_cd_on: cd_on {
 				mux {
-                                        pins = "gpio67";
+                                        pins = "gpio67","gpio54","gpio58";
                                         function = "gpio";
                                 };
 
                                 config {
-                                        pins = "gpio67";
-                                        drive-strength = <2>;
+                                        pins = "gpio67","gpio54","gpio58";
                         		/delete-property/ bias-pull-up;
                         		bias-disable;
                                 };
