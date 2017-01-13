@@ -832,6 +832,15 @@ config SETEND_EMULATION
 
 endif
 
+config KEXEC
+	depends on (!SMP || PM_SLEEP_SMP)
+	bool "kexec system call"
+	---help---
+	  kexec is a system call that implements the ability to shutdown your
+	  current kernel, and to start another kernel.  It is like a reboot
+	  but it is independent of the system firmware.   And like a reboot
+	  you can start any kernel with it, not just Linux.
+
 endmenu
 
 menu "Boot options"
