@@ -6009,15 +6009,7 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		}
 	}
 
-	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
-	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't read usb rts rc = %d\n", rc);
-		return rc;
-	}
-	pr_smb(PR_MISC, "read RT_STS = 0x%x\n", reg);
-
-	if (!(reg & USBIN_UV_BIT) && !(reg & USBIN_SRC_DET_BIT) &&
-	    chip->usb_psy) {
+	if (is_usb_present(chip) && chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy dp=f dm=f\n");
 		power_supply_set_dp_dm(chip->usb_psy,
 				POWER_SUPPLY_DP_DM_DPF_DMF);
