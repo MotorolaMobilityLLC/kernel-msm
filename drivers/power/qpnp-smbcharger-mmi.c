@@ -6442,6 +6442,9 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 		SMB_ERR(chip, "Couldn't disable APSD rc=%d\n",
 				rc);
 
+	chip->usbc_online = false;
+	chip->usb_insert_bc1_2 = false;
+	chip->usb_present = false;
 	chip->hvdcp_det_done = false;
 	chip->hvdcp3_confirmed = false;
 
