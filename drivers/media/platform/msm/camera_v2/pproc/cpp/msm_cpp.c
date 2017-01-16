@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -306,7 +306,7 @@ static uint32_t msm_cpp_read(void __iomem *cpp_base)
 	uint32_t tmp, retry = 0;
 	do {
 		tmp = msm_camera_io_r(cpp_base + MSM_CPP_MICRO_FIFO_TX_STAT);
-	} while (((tmp & 0x2) == 0x0) && (retry++ < 10)) ;
+	} while (((tmp & 0x2) == 0x0) && (retry++ < 10));
 	if (retry < 10) {
 		tmp = msm_camera_io_r(cpp_base + MSM_CPP_MICRO_FIFO_TX_DATA);
 		CPP_DBG("Read data: 0%x\n", tmp);
@@ -1803,7 +1803,13 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 	struct msm_camera_v4l2_ioctl_t *ioctl_ptr)
 {
 	struct msm_cpp_frame_info_t *frame = NULL;
+	struct msm_cpp_frame_info_t k_frame_info;
 	int32_t rc = 0;
+
+	if (copy_from_user(&k_frame_info,
+		(void __user *)ioctl_ptr->ioctl_ptr,
+		sizeof(k_frame_info)))
+		return -EFAULT;
 
 	frame = msm_cpp_get_frame(ioctl_ptr);
 	if (!frame) {
@@ -1815,7 +1821,7 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 
 	ioctl_ptr->trans_code = rc;
 
-	if (copy_to_user((void __user *)frame->status, &rc,
+	if (copy_to_user((void __user *)k_frame_info.status, &rc,
 		sizeof(int32_t)))
 		pr_err("error cannot copy error\n");
 
