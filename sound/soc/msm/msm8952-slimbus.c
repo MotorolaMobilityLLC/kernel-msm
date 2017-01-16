@@ -3364,6 +3364,11 @@ int msm_prim_auxpcm_startup(struct snd_pcm_substream *substream)
 	pr_debug("%s(): substream = %s\n",
 			__func__, substream->name);
 
+	if (!q6core_is_adsp_ready()) {
+		pr_err("%s: adsp not ready\n", __func__);
+		return -EINVAL;
+	}
+
 	/* mux config to route the AUX MI2S */
 	if (pdata->vaddr_gpio_mux_mic_ctl) {
 		val = ioread32(pdata->vaddr_gpio_mux_mic_ctl);
@@ -3420,6 +3425,11 @@ int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	atomic_inc(&mods_mi2s_active);
 	modbus_ext_set_state(&modbus_status);
 
+	if (!q6core_is_adsp_ready()) {
+		pr_err("%s: adsp not ready\n", __func__);
+		return -EINVAL;
+	}
+
 	/* Configure mux for quaternary i2s */
 	if (pdata->vaddr_gpio_mux_mic_ctl) {
 		val = ioread32(pdata->vaddr_gpio_mux_mic_ctl);
@@ -3474,6 +3484,11 @@ int msm_quin_mi2s_snd_startup(struct snd_pcm_substream *substream)
 
 	atomic_inc(&mods_mi2s_active);
 	modbus_ext_set_state(&modbus_status);
+
+	if (!q6core_is_adsp_ready()) {
+		pr_err("%s: adsp not ready\n", __func__);
+		return -EINVAL;
+	}
 
 	if (pdata->vaddr_gpio_mux_quin_ctl) {
 		val = ioread32(pdata->vaddr_gpio_mux_quin_ctl);
