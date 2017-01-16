@@ -147,7 +147,7 @@
 			reg = <0x38>;
 			interrupt-parent = <&tlmm>;
 			interrupts = <65 0x2008>;
-			vdd-supply = <&vdda_touch_vreg>;
+			vdd-supply = <&pm8917_l17>;
 			vcc_i2c-supply = <&pm8917_l6>;
 			pinctrl-names = "pmx_ts_active", "pmx_ts_suspend",
 				"pmx_ts_release";
