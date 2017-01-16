@@ -258,6 +258,24 @@ static char *ts_info_buff;
 #define FT_DEBUG_DIR_NAME	"ts_debug"
 #define FT_FW_ID_LEN		2
 
+enum {
+	FT_MOD_MAX
+};
+
+struct ft5x06_modifiers {
+	int	mods_num;
+	struct semaphore list_sema;
+	struct list_head mod_head;
+
+};
+
+struct config_modifier {
+	const char *name;
+	int id;
+	bool effective;
+	struct list_head link;
+};
+
 struct ft5x06_ts_data {
 	struct i2c_client *client;
 	struct input_dev *input_dev;
@@ -302,6 +320,9 @@ struct ft5x06_ts_data {
 	bool force_reflash;
 	u8 fw_id[FT_FW_ID_LEN];
 	bool irq_enabled;
+	/* moto TP modifiers */
+	bool patching_enabled;
+	struct ft5x06_modifiers modifiers;
 };
 
 static int ft5x06_ts_start(struct device *dev);
@@ -2450,6 +2471,110 @@ static int ft5x06_get_dt_coords(struct device *dev, char *name,
 	return 0;
 }
 
+/* ASCII names order MUST match enum */
+static const char const *ascii_names[] = {"na"};
+
+static int ft5x06_modifier_name2id(const char *name)
+{
+	int i, len2cmp, chosen = -1;
+
+	for (i = 0; i < FT_MOD_MAX; i++) {
+		len2cmp = min_t(int, strlen(name), strlen(ascii_names[i]));
+		if (!strncmp(name, ascii_names[i], len2cmp)) {
+			chosen = i;
+			break;
+		}
+	}
+	return chosen;
+}
+
+
+static int ft5x06_dt_parse_modifiers(struct ft5x06_ts_data *data)
+{
+	struct device *dev = &data->client->dev;
+	struct device_node *np = dev->of_node;
+	struct device_node *np_mod;
+	int i, num_names, ret = 0;
+	char node_name[64];
+	static const char **modifiers_names;
+
+	sema_init(&data->modifiers.list_sema, 1);
+	INIT_LIST_HEAD(&data->modifiers.mod_head);
+	data->modifiers.mods_num = 0;
+
+	num_names = of_property_count_strings(np, "config_modifier-names");
+	if (num_names < 0) {
+		dev_err(dev, "Cannot parse config_modifier-names: %d\n",
+			num_names);
+		return -ENODEV;
+	}
+
+	modifiers_names = devm_kzalloc(dev,
+			sizeof(*modifiers_names) * num_names, GFP_KERNEL);
+	if (!modifiers_names)
+		return -ENOMEM;
+
+	for (i = 0; i < num_names; i++) {
+		ret = of_property_read_string_index(np, "config_modifier-names",
+			i, &modifiers_names[i]);
+		if (ret < 0) {
+			dev_err(dev, "Cannot parse modifier-names: %d\n", ret);
+			return ret;
+		}
+	}
+
+	data->modifiers.mods_num = num_names;
+
+	for (i = 0; i < num_names; i++) {
+		int id;
+		struct config_modifier *cm, *config;
+
+		scnprintf(node_name, 63, "config_modifier-%s",
+				modifiers_names[i]);
+		np_mod = of_find_node_by_name(np, node_name);
+		if (!np_mod) {
+			dev_warn(dev, "cannot find modifier node %s\n",
+				node_name);
+			continue;
+		}
+
+		/* check for duplicate nodes in devtree */
+		id = ft5x06_modifier_name2id(modifiers_names[i]);
+		dev_info(dev, "processing modifier %s[%d]\n", node_name, id);
+		list_for_each_entry(cm, &data->modifiers.mod_head, link) {
+			if (cm->id == id) {
+				dev_err(dev, "duplicate modifier node %s\n",
+					node_name);
+				return -EFAULT;
+			}
+		}
+		/* allocate modifier's structure */
+		config = devm_kzalloc(dev, sizeof(*config), GFP_KERNEL);
+		if (!config)
+			return -ENOMEM;
+
+		list_add_tail(&config->link, &data->modifiers.mod_head);
+		config->name = modifiers_names[i];
+		config->id = id;
+
+		if (of_property_read_bool(np_mod, "enable-notification")) {
+			switch (id) {
+			default:
+				pr_notice("no notification found\n");
+				break;
+			}
+		} else {
+			config->effective = true;
+			dev_dbg(dev, "modifier %s enabled unconditionally\n",
+					node_name);
+		}
+
+		of_node_put(np_mod);
+	}
+
+	return 0;
+}
+
 static int ft5x06_parse_dt(struct device *dev,
 			struct ft5x06_ts_platform_data *pdata)
 {
@@ -2682,6 +2807,11 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 	data->force_reflash = (data->pdata->no_force_update) ? false : true;
 	data->flash_enabled = true;
 	data->irq_enabled = false;
+
+	data->patching_enabled = true;
+	err = ft5x06_dt_parse_modifiers(data);
+	if (err)
+		data->patching_enabled = false;
 
 	input_dev->name = "ft5x06_ts";
 	input_dev->id.bustype = BUS_I2C;
