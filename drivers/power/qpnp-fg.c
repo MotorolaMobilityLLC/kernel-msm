@@ -6807,7 +6807,7 @@ done:
 	}
 	fg_mem_release(chip);
 
-	chip->nom_cap_unbound = ((bcap_uah_2b(buffer) > 4500000) ||
+	chip->nom_cap_unbound = ((bcap_uah_2b(buffer) > 5100000) ||
 				 (bcap_uah_2b(buffer) < 1500000));
 
 	if (chip->nom_cap_unbound) {
