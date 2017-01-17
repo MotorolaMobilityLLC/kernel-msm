@@ -233,6 +233,18 @@
 			};
 		};
 
+		cam_sensor_mclk2_default: cam_sensor_mclk2_default {
+			config {
+				drive-strength = <4>; /* 4 MA */
+			};
+		};
+
+		cam_sensor_mclk2_sleep: cam_sensor_mclk2_sleep {
+			config {
+				drive-strength = <4>; /* 4 MA */
+			};
+		};
+
 		cam_sensor_front_default: cam_sensor_front_default {
 		/* RESET, VDIG */
 			mux {
