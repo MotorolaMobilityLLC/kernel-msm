@@ -154,6 +154,7 @@
 #define CS35L35_SP_DRV_MASK		0x10
 #define CS35L35_SP_DRV_SHIFT		4
 #define CS35L35_CLK_CTL2_MASK		0xFF
+#define CS35L35_CLK_DIV_MASK		0x3
 #define CS35L35_PDM_MODE_MASK		0x40
 #define CS35L35_PDM_MODE_SHIFT		6
 #define CS35L35_CLK_SOURCE_MASK		0x03
@@ -272,7 +273,6 @@ struct  cs35l35_private {
 	int mclk_sp_base;
 	bool tdm_mode;
 	bool pdm_mode;
-	bool i2s_mode;
 	bool slave_mode;
 	bool pdm_mclk_switch;
 	/* GPIO for /RST */
