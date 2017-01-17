@@ -221,6 +221,10 @@
 			focaltech,fw-auto-cal;
 			focaltech,ignore-id-check;
 			focaltech,resume-in-workqueue;
+			config_modifier-names = "charger";
+			config_modifier-charger {
+				enable-notification;
+			};
 		};
 	};
 
