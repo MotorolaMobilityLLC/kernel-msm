@@ -813,6 +813,7 @@
 		qcom,batt-id-range-pct = <100>;
 		df-serialnum = "SB18C15119";
 		#include "batterydata-hg30-atl.dtsi"
+		#include "batterydata-hg30-swd.dtsi"
 	};
 };
 
@@ -828,6 +829,7 @@
 	qcom,bcl-lm-threshold-ma = <126>;
 	qcom,bcl-mh-threshold-ma = <400>;
 	qcom,fg-iterm-ma = <150>;
+	qcom,fg-chg-iterm-ma = <60>;
 	qcom,irq-volt-empty-mv = <3000>;
 	qcom,fg-cutoff-voltage-mv = <3200>;
 	qcom,fg-vbat-estimate-diff-mv = <1000>;
