@@ -1,9 +1,10 @@
 
 qcom,he50-atl {
+	serialnum = "SNN5989A";
 	/* #2746485_Lenovo_HE50atl_5000mAh_averaged_MasterSlave_Jan9th2017*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <5000>;
-	qcom,batt-id-kohm = <0>;
+	qcom,batt-id-kohm = <246>;
 	qcom,battery-beta = <3435>;
 	qcom,battery-type = "HE50-ATL-5000mah";
 	qcom,chg-rslow-comp-c1 = <2109099>;
