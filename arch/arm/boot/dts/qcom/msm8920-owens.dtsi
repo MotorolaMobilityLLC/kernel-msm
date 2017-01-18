@@ -292,6 +292,12 @@
 	qcom,chg-dcp-icl = <1800>;
 };
 
+&soc{
+	qcom,msm-thermal {
+		qcom,config-info = "owens";
+	};
+};
+
 &mot_batterydata {
 	df-serialnum = "SNN5989A";
 	qcom,batt-id-range-pct = <15>;
