@@ -208,6 +208,7 @@
 #include <linux/kref.h>
 #include <linux/kthread.h>
 #include <linux/limits.h>
+#include <linux/reboot.h>
 #include <linux/rwsem.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -227,6 +228,13 @@
 
 #define FSG_DRIVER_DESC		"Mass Storage Function"
 #define FSG_DRIVER_VERSION	"2009/09/11"
+
+enum fsg_restart_type {
+	FSG_RESTART_NONE,
+	FSG_REBOOT,
+	FSG_REBOOT_BL,
+};
+
 
 static const char fsg_string_interface[] = "Mass Storage";
 
@@ -318,6 +326,8 @@ struct fsg_common {
 	char inquiry_string[8 + 16 + 4 + 1];
 
 	struct kref		ref;
+	enum fsg_restart_type   restart_type;
+	struct delayed_work     restart_work;
 };
 
 struct fsg_dev {
@@ -2088,6 +2098,35 @@ static int do_scsi_command(struct fsg_common *common)
 			reply = do_write(common);
 		break;
 
+	case SC_REBOOT:
+		common->data_size_from_cmnd = 0;
+		reply = check_command(common, common->cmnd_size,
+					DATA_DIR_NONE, 0, 0, "REBOOT BL");
+		if (reply == 0) {
+			common->curlun->sense_data = SS_INVALID_COMMAND;
+			reply = -EINVAL;
+		} else {
+			pr_err("Triggered Reboot from SCSI Command\n");
+			common->restart_type = FSG_REBOOT;
+			schedule_delayed_work(&common->restart_work,
+						msecs_to_jiffies(1000));
+		}
+		break;
+	case SC_REBOOT_2:
+		common->data_size_from_cmnd = 0;
+		reply = check_command(common, common->cmnd_size,
+					DATA_DIR_NONE, 0, 0, "REBOOT");
+		if (reply == 0) {
+			common->curlun->sense_data = SS_INVALID_COMMAND;
+			reply = -EINVAL;
+		} else {
+			pr_err("Triggered Reboot BL from SCSI Command\n");
+			common->restart_type = FSG_REBOOT_BL;
+			schedule_delayed_work(&common->restart_work,
+						msecs_to_jiffies(1000));
+		}
+		break;
+
 	/*
 	 * Some mandatory commands that we recognize but don't implement.
 	 * They don't mean much in this setting.  It's left as an exercise
@@ -2711,6 +2750,32 @@ static inline int fsg_num_buffers_validate(unsigned int fsg_num_buffers)
 	return -EINVAL;
 }
 
+static int disable_restarts;
+module_param(disable_restarts, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(disable_restarts, "Disable SCSI Initiated Reboots");
+static void fsg_restart_work(struct work_struct *work)
+{
+	struct fsg_common *common = container_of(work,
+					struct fsg_common,
+					restart_work.work);
+
+	if (disable_restarts) {
+		pr_err("SCSI Reboots Disabled\n");
+		return;
+	}
+
+	switch (common->restart_type) {
+	case FSG_REBOOT:
+		kernel_restart("");
+		break;
+	case FSG_REBOOT_BL:
+		kernel_restart("bootloader");
+		break;
+	default:
+		break;
+	}
+}
+
 static struct fsg_common *fsg_common_setup(struct fsg_common *common)
 {
 	if (!common) {
@@ -2726,6 +2791,7 @@ static struct fsg_common *fsg_common_setup(struct fsg_common *common)
 	kref_init(&common->ref);
 	init_completion(&common->thread_notifier);
 	init_waitqueue_head(&common->fsg_wait);
+	INIT_DELAYED_WORK(&common->restart_work, fsg_restart_work);
 	common->state = FSG_STATE_TERMINATED;
 	memset(common->luns, 0, sizeof(common->luns));
 
