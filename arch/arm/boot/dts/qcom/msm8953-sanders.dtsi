@@ -301,6 +301,8 @@
 			ltr,irq-gpio = <&tlmm 86 0x2>;
 			ltr,ps-threshold = <800>;
 			ltr,ps-hysteresis-threshold = <300>;
+			ltr,ps-nearoffset = <30>;
+			ltr,ps-faroffset = <25>;
 			ltr,als-polling-time = <200>;
 			ltr,prox-sensor-name = "Rear Proximity sensor";
 		};
