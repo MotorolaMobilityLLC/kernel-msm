@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2016, Motorola Mobility, Inc.
+/* Copyright (c) 2015-2017, Motorola Mobility, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,6 +28,7 @@ static uint32_t AFE_RX_PORT_ID = AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_RX;
 static uint32_t AFE_TX_PORT_ID = AFE_PORT_ID_SLIMBUS_MULTI_CHAN_1_TX;
 static bool feedback_on_left;
 static bool feedback_on_right;
+static bool ospl_volume_control;
 
 /*
  * external configuration string reading
@@ -845,13 +846,15 @@ static int ospl2xx_rx_get_volume(struct snd_kcontrol *kcontrol,
 static int ospl2xx_rx_put_volume(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	int32_t attenuation = ucontrol->value.integer.value[0];
+	int32_t volume = ucontrol->value.integer.value[0];
 
-	pr_debug("%s, attenuation @ Q27[%d]\n", __func__, attenuation);
+	if (volume > 0x7FFFFFFF || volume < 0)
+		volume = 0x7FFFFFFF;
+
+	pr_debug("%s, volume[%d]\n", __func__, volume);
 
 	ospl2xx_afe_set_single_param(
-		PARAM_ID_OPALUM_RX_VOLUME_CONTROL,
-		attenuation);
+		PARAM_ID_OPALUM_RX_VOLUME_CONTROL, volume);
 
 	return 0;
 }
@@ -1131,9 +1134,6 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 	/* PUT */ SOC_SINGLE_MULTI_EXT("OSPL Rx temp_cal",
 		SND_SOC_NOPM, 0, 0xFFFF, 0, 3,
 		NULL, ospl2xx_rx_put_temp_cal),
-	/* GET,PUT */ SOC_SINGLE_EXT("OSPL Rx Volume",
-		SND_SOC_NOPM, 0, 0x7FFFFFFF, 0,
-		ospl2xx_rx_get_volume, ospl2xx_rx_put_volume),
 
 	/* GET,PUT */ SOC_ENUM_EXT("OSPL Tx",
 		ospl2xx_tx_enable_enum[0],
@@ -1166,6 +1166,12 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 		ospl2xx_audio_mode_get, ospl2xx_audio_mode_put),
 };
 
+static const struct snd_kcontrol_new ospl2xx_volume_controls[] = {
+	/* GET,PUT */ SOC_SINGLE_EXT("OSPL Rx Volume",
+		SND_SOC_NOPM, 0, 0x7FFFFFFF, 0,
+		ospl2xx_rx_get_volume, ospl2xx_rx_put_volume),
+};
+
 /*
  * ospl2xx initialization
  * - register mixer controls
@@ -1177,6 +1183,12 @@ int ospl2xx_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_add_codec_controls(codec, ospl2xx_params_controls,
 			ARRAY_SIZE(ospl2xx_params_controls));
+
+	if (ospl_volume_control) {
+		snd_soc_add_codec_controls(codec, ospl2xx_volume_controls,
+			ARRAY_SIZE(ospl2xx_volume_controls));
+		pr_info("%s: ospl volume control is enabled\n", __func__);
+	}
 
 	ospl2xx_wq = create_singlethread_workqueue("ospl2xx");
 	if (ospl2xx_wq == NULL)
@@ -1200,7 +1212,7 @@ static int ospl2xx_probe(struct platform_device *pdev)
 
 	num_entries = of_property_count_u32_elems(pdev->dev.of_node,
 					"mmi,ospl-tune-index");
-	if (num_entries != 0) {
+	if (num_entries > 0) {
 		val_array = kcalloc(num_entries, sizeof(uint32_t), GFP_KERNEL);
 		if (!val_array) {
 			pr_err("%s malloc fail at ospl-tune-index\n", __func__);
@@ -1241,10 +1253,11 @@ static int ospl2xx_probe(struct platform_device *pdev)
 	feedback_on_right = of_property_read_bool(pdev->dev.of_node,
 					"mmi,ospl-right-feedback");
 
-	spdev = pdev;
+	ospl_volume_control = of_property_read_bool(pdev->dev.of_node,
+					"mmi,ospl-volume-control");
 
-	return 0;
 err:
+	spdev = pdev;
 	return ret;
 }
 
