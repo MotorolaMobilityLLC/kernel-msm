@@ -65,6 +65,90 @@
 		};
 	};
 
+	cam_sensor_front_active: cam_sensor_front_active {
+		/* Reset, AVDD, Front-Mono Mipi Mux */
+		mux {
+			pins = "gpio16", "gpio104", "gpio128";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio16", "gpio104", "gpio128";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	cam_sensor_front_suspend: cam_sensor_front_suspend {
+		/* Reset, AVDD, Front-Mono Mipi Mux */
+		mux {
+			pins = "gpio16", "gpio104", "gpio128";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio16", "gpio104", "gpio128";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	cam_sensor_rear_active: cam_sensor_rear_active {
+		/* Reset, DVDD, AVDD+AFVDD, Front-Mono Mipi Mux */
+		mux {
+			pins = "gpio23", "gpio24", "gpio22", "gpio128";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio23", "gpio24", "gpio22", "gpio128";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	cam_sensor_rear_suspend: cam_sensor_rear_suspend {
+		/* Reset, DVDD, AVDD+AFVDD, Front-Mono Mipi Mux */
+		mux {
+			pins = "gpio23", "gpio24", "gpio22", "gpio128";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio23", "gpio24", "gpio22", "gpio128";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	cam_sensor_flash_active: cam_sensor_flash_active {
+		/* AW3643 Enable, Front-Rear LED Mux */
+		mux {
+			pins = "gpio57", "gpio94";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio57", "gpio94";
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
+	cam_sensor_flash_suspend: cam_sensor_flash_suspend {
+		/* AW3643 Enable, Front-Rear LED Mux */
+		mux {
+			pins = "gpio57", "gpio94";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio57", "gpio94";
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+
 	anx_rst_active: anx_rst_active {
 		mux {
 			pins = "gpio131";
