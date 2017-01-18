@@ -299,9 +299,9 @@
 };
 
 &mot_batterydata {
-	df-serialnum = "SNN5989A";
 	qcom,batt-id-range-pct = <15>;
 	#include "batterydata-he50-atl.dtsi"
+	#include "batterydata-he50-scud.dtsi"
 };
 
 &pmi_haptic {
