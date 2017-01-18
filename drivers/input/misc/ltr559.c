@@ -47,6 +47,7 @@ struct ps_thre {
 	int th_hi;
 	int th_lo;
 };
+
 static struct ps_thre psthre_data[] = {
 	{50,  37,  12},
 	{100, 40,  16},
@@ -937,6 +938,23 @@ static int ltr559_parse_dt(struct device *dev, struct ltr559_data *data)
 		dev_err(dev, "Unable to read ltr,prox-sensor-name\n");
 	}
 
+	rc = of_property_read_u32(np, "ltr,ps-nearoffset", &tmp);
+	if (rc) {
+		dev_err(dev, "Unable to read ltr,ps-nearoffset");
+	} else {
+		psthre_data[0].th_hi = tmp;
+		psthre_data[1].th_hi = tmp;
+		psthre_data[2].th_hi = tmp;
+	}
+
+	rc = of_property_read_u32(np, "ltr,ps-faroffset", &tmp);
+	if (rc) {
+		dev_err(dev, "Unable to read ltr,ps-faroffset");
+	} else {
+		psthre_data[0].th_lo = tmp;
+		psthre_data[1].th_lo = tmp;
+		psthre_data[2].th_lo = tmp;
+	}
 	return 0;
 }
 
