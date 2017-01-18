@@ -168,6 +168,8 @@
 
 /* Vendor specific CDBs start here */
 #define VENDOR_SPECIFIC_CDB 0xc0
+#define SC_REBOOT	    0xd7
+#define SC_REBOOT_2	    0xd8
 
 /*
  *	SCSI command lengths
