@@ -2113,7 +2113,7 @@ static void stmvl53l1_input_push_data_object(struct stmvl53l1_data *data,
 		VL53L1_CHECKENABLE_SIGMA_FINAL_RANGE, &LimitCheckCurrent);
 	if (st == VL53L1_ERROR_NONE)
 		input_report_abs(input, ABS_WHEEL, LimitCheckCurrent);
-	input_report_abs(input, ABS_PRESSURE, meas->EffectiveSpadRtnCount);
+	input_report_abs(input, ABS_MISC, meas->EffectiveSpadRtnCount);
 	input_report_abs(input, ABS_BRAKE, (roi << 16) | obj);
 	input_report_abs(input, ABS_TILT_X, (meas->RangeMaxMilliMeter << 16) |
 		meas->RangeMinMilliMeter);
@@ -2173,7 +2173,7 @@ static int stmvl53l1_input_setup(struct stmvl53l1_data *data)
 	/* LimitCheckCurrent*/
 	input_set_abs_params(idev, ABS_WHEEL, 0, 0xffffffff, 0, 0);
 	/* EffectiveSpadRtnCount */
-	input_set_abs_params(idev, ABS_PRESSURE, 0, 0xffffffff, 0, 0);
+	input_set_abs_params(idev, ABS_MISC, 0, 0xffffffff, 0, 0);
 	/* roi number in 16 msb bits with object number in 16 lsb bits */
 	input_set_abs_params(idev, ABS_BRAKE, 0, 0xffffffff, 0, 0);
 	/* RangeMaxMilliMeter in 16 msb bits with RangeMinMilliMeter in lsb */
