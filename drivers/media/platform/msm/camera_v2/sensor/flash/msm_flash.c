@@ -426,6 +426,30 @@ static int32_t msm_flash_i2c_release(
 	return 0;
 }
 
+static void msm_flash_set_mux_gpio_value(
+	struct msm_flash_ctrl_t *flash_ctrl,
+	struct msm_flash_cfg_data_t *flash_data,
+	bool enable)
+{
+	/* Set or reset GPIO that selects which flash to use */
+	if (flash_data && flash_data->mux_sel == USE_MUX_SEL) {
+		struct msm_camera_power_ctrl_t *power_info =
+			&flash_ctrl->power_info;
+		if (power_info->gpio_conf &&
+		    power_info->gpio_conf->gpio_num_info &&
+		    power_info->gpio_conf->gpio_num_info->
+		    valid[SENSOR_GPIO_CUSTOM1]) {
+			gpio_set_value_cansleep(
+				power_info->gpio_conf->gpio_num_info->
+				    gpio_num[SENSOR_GPIO_CUSTOM1],
+				enable ? GPIO_OUT_HIGH : GPIO_OUT_LOW);
+		} else {
+			pr_err("%s: Invalid GPIO\n", __func__);
+		}
+
+	}
+}
+
 static int32_t msm_flash_off(struct msm_flash_ctrl_t *flash_ctrl,
 	struct msm_flash_cfg_data_t *flash_data)
 {
@@ -442,6 +466,8 @@ static int32_t msm_flash_off(struct msm_flash_ctrl_t *flash_ctrl,
 			led_trigger_event(flash_ctrl->torch_trigger[i], 0);
 	if (flash_ctrl->switch_trigger)
 		led_trigger_event(flash_ctrl->switch_trigger, 0);
+
+	msm_flash_set_mux_gpio_value(flash_ctrl, flash_data, FALSE);
 
 	CDBG("Exit\n");
 	return 0;
@@ -653,6 +679,8 @@ static int32_t msm_flash_low(
 		if (flash_ctrl->flash_trigger[i])
 			led_trigger_event(flash_ctrl->flash_trigger[i], 0);
 
+	msm_flash_set_mux_gpio_value(flash_ctrl, flash_data, TRUE);
+
 	/* Turn on flash triggers */
 	for (i = 0; i < flash_ctrl->torch_num_sources; i++) {
 		if (flash_ctrl->torch_trigger[i]) {
@@ -700,6 +728,8 @@ static int32_t msm_flash_high(
 	for (i = 0; i < flash_ctrl->torch_num_sources; i++)
 		if (flash_ctrl->torch_trigger[i])
 			led_trigger_event(flash_ctrl->torch_trigger[i], 0);
+
+	msm_flash_set_mux_gpio_value(flash_ctrl, flash_data, TRUE);
 
 	/* Turn on flash triggers */
 	for (i = 0; i < flash_ctrl->flash_num_sources; i++) {
