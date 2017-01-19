@@ -224,7 +224,10 @@
 			wlf,micd-detect-debounce = <600>;
 			wlf,inmode = <0 2 0>;
 			wlf,micd-ranges = <
-				100 226 295 115 1257 114
+				 100 226 /* HEADSETHOOK  */
+				 150 582 /* VOICE_ASSIST */
+				 295 115 /* VOLUME_UP    */
+				1257 114 /* VOLUME_DOWN  */
 			>;
 
 			pinctrl-names = "default";
