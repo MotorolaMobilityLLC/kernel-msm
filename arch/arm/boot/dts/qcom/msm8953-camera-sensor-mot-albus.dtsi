@@ -281,6 +281,9 @@
 		qcom,flash-source = <&pmi8950_flash0 &pmi8950_flash1>;
 		qcom,torch-source = <&pmi8950_torch0 &pmi8950_torch1>;
 		qcom,switch-source = <&pmi8950_switch>;
+		/* gpio 113 is used to select between front/rear flash */
+		gpios = <&tlmm 113 0>;
+		qcom,gpio-custom1 = <0>;
 	};
 };
 &rpm_bus {
