@@ -296,6 +296,7 @@ struct smbchg_chip {
 	bool				enabled_weak_charger_check;
 	bool				adapter_vbus_collapse_flag;
 	int				weak_charger_valid_cnt;
+	bool				is_weak_charger;
 	ktime_t			weak_charger_valid_cnt_ktmr;
 	ktime_t			adapter_vbus_collapse_ktmr;
 	int				temp_good_current_ma;
@@ -1598,11 +1599,17 @@ static int smbchg_get_pchg_current_map_index(struct smbchg_chip *chip)
 #define USB51_MODE_BIT		BIT(1)
 #define USB51_100MA		0
 #define USB51_500MA		BIT(1)
+#define WEAK_CHARGER_CURRENT    1000
 static int smbchg_set_high_usb_chg_current(struct smbchg_chip *chip,
 							int current_ma)
 {
 	int i, rc;
 	u8 usb_cur_val;
+
+	if (chip->is_weak_charger) {
+		if (current_ma > WEAK_CHARGER_CURRENT)
+			current_ma = WEAK_CHARGER_CURRENT;
+	}
 
 	for (i = ARRAY_SIZE(usb_current_table) - 1; i >= 0; i--) {
 		if (current_ma >= usb_current_table[i])
@@ -4969,8 +4976,7 @@ static bool is_vbus_collapse(struct smbchg_chip *chip)
 }
 
 #define WEAK_CHARGER_VALID_DELTA_MS   500
-#define WEAK_CHARGER_CURRENT    1000
-#define WEAK_CHARGER_CNT_DELTA_MS    1000
+#define WEAK_CHARGER_CNT_DELTA_MS    1500
 /**
  * weak_charger_check() - this is called used to detect weak charger
  * @chip: pointer to smbchg_chip chip
@@ -4983,6 +4989,7 @@ static int weak_charger_check(void *_chip)
 	struct smbchg_chip *chip = _chip;
 	union power_supply_propval prop = {0, };
 
+	chip->is_weak_charger = false;
 	if (!chip->enabled_weak_charger_check)
 		return 0;
 
@@ -4998,17 +5005,19 @@ static int weak_charger_check(void *_chip)
 		return 0;
 
 	vbus_collapse = is_vbus_collapse(chip);
+	pr_info("weak charger, vubs pre-condition vbus:%d, charger type:%d\n",
+		vbus_collapse, prop.intval);
 	if (vbus_collapse && (prop.intval == POWER_SUPPLY_TYPE_USB_DCP)) {
 		/* DCP VBUS collapse  */
 		chip->adapter_vbus_collapse_ktmr = ktime_get_boottime();
 		chip->adapter_vbus_collapse_flag = true;
-	} else if (!vbus_collapse && (prop.intval == POWER_SUPPLY_TYPE_USB_DCP)
+	} else if (!vbus_collapse && (prop.intval == POWER_SUPPLY_TYPE_USB_DCP
+		   || prop.intval == POWER_SUPPLY_TYPE_USB)
 		&& (chip->adapter_vbus_collapse_flag)) {
 		/* DCP VBUS recovery from last collapse*/
 		chip->adapter_vbus_collapse_flag = false;
 		delta_ktmr = ktime_sub(ktime_get_boottime(),
 			chip->adapter_vbus_collapse_ktmr);
-
 		if (ktime_to_ms(delta_ktmr) > WEAK_CHARGER_VALID_DELTA_MS) {
 			chip->weak_charger_valid_cnt = 0;
 			return 0;
@@ -5034,6 +5043,7 @@ static int weak_charger_check(void *_chip)
 			}
 			pr_info("weak charger, set weak charger limit current\n");
 			chip->usb_target_current_ma = WEAK_CHARGER_CURRENT;
+			chip->is_weak_charger = true;
 			chip->usb_tl_current_ma = calc_thermal_limited_current(
 				chip, chip->usb_target_current_ma);
 			smbchg_set_usb_current_max(
@@ -8135,6 +8145,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	struct power_supply *usb_psy;
 	struct qpnp_vadc_chip *vadc_dev;
 
+
 	usb_psy = power_supply_get_by_name("usb");
 	if (!usb_psy) {
 		pr_smb(PR_STATUS, "USB supply not found, deferring probe\n");
@@ -8186,7 +8197,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->test_mode = qpnp_smbcharger_test_mode();
 	if (chip->test_mode)
 		dev_warn(&spmi->dev, "Test Mode Enabled\n");
-
+	chip->is_weak_charger = false;
 	chip->usb_online = -EINVAL;
 	chip->stepchg_state = STEP_NONE;
 	smbchg_parallel_en = 0; /* Disable Parallel Charging Capabilities */
