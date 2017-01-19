@@ -179,6 +179,12 @@ enum flash_position {
 	INVALID_FLASH,
 };
 
+enum mux_sel_option {
+	NO_MUX_SEL,
+	USE_MUX_SEL,
+	INVALID_MUX_SEL,
+};
+
 struct msm_camera_i2c_array_write_config {
 	struct msm_camera_i2c_reg_setting conf_array;
 	uint16_t slave_addr;
@@ -553,7 +559,7 @@ struct msm_flash_cfg_data_t {
 	int32_t flash_current[MAX_LED_TRIGGERS];
 	int32_t flash_duration[MAX_LED_TRIGGERS];
 	enum flash_position position;
-
+	enum mux_sel_option mux_sel;
 	union {
 		struct msm_flash_init_info_t *flash_init_info;
 		struct msm_camera_i2c_reg_setting_array *settings;
