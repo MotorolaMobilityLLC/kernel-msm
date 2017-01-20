@@ -22,6 +22,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/pmic-voter.h>
+#include <linux/pinctrl/consumer.h>
 #include <soc/qcom/watchdog.h>
 #include "smb-lib.h"
 #include "smb-reg.h"
@@ -1676,6 +1677,9 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	if (!qnovo_en && !stat)
 		val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
 
+	if (chg->mmi.pres_chrg_step == STEP_FULL)
+		val->intval = POWER_SUPPLY_STATUS_FULL;
+
 	return 0;
 }
 
@@ -1803,6 +1807,11 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 
 	stat = stat & BATTERY_CHARGER_STATUS_MASK;
 	val->intval = (stat == TERMINATE_CHARGE);
+
+	if ((chg->mmi.pres_chrg_step == STEP_FULL) ||
+	    (chg->mmi.pres_chrg_step == STEP_EB))
+		val->intval = 1;
+
 	return 0;
 }
 
@@ -4991,6 +5000,8 @@ static void smblib_iio_deinit(struct smb_charger *chg)
 		iio_channel_release(chg->iio.usbin_v_chan);
 	if (!IS_ERR_OR_NULL(chg->iio.batt_i_chan))
 		iio_channel_release(chg->iio.batt_i_chan);
+	if (!IS_ERR_OR_NULL(chg->iio.dcin_v_chan))
+		iio_channel_release(chg->iio.dcin_v_chan);
 }
 
 int smblib_init(struct smb_charger *chg)
@@ -5103,6 +5114,1180 @@ int smblib_deinit(struct smb_charger *chg)
 
 struct smb_charger *the_chip;
 
+static char *stepchg_str[] = {
+	[STEP_MAX]		= "MAX",
+	[STEP_NORM]		= "NORMAL",
+	[STEP_EB]		= "EXTERNAL BATT",
+	[STEP_FULL]		= "FULL",
+	[STEP_FLOAT]		= "FLOAT",
+	[STEP_DEMO]		= "DEMO",
+	[STEP_STOP]		= "STOP",
+	[STEP_NONE]		= "NONE",
+};
+
+static char *ebchg_str[] = {
+	[EB_DISCONN]		= "DISCONN",
+	[EB_SINK]		= "SINK",
+	[EB_SRC]		= "SOURCE",
+	[EB_OFF]		= "OFF",
+};
+
+int smblib_enable_dc_aicl(struct smb_charger *chg, bool enable)
+{
+	int rc = 0;
+
+	if (!chg)
+		return rc;
+
+	rc = smblib_masked_write(chg, DCIN_AICL_OPTIONS_CFG_REG,
+				 DCIN_AICL_EN_BIT,
+				 enable ? DCIN_AICL_EN_BIT : 0);
+
+	return rc;
+
+}
+
+int smblib_get_prop_dc_voltage_now(struct smb_charger *chg,
+				    union power_supply_propval *val)
+{
+	int rc = 0;
+
+	rc = smblib_get_prop_dc_present(chg, val);
+	if (rc < 0 || !val->intval)
+		return rc;
+
+	if (!chg->iio.dcin_v_chan ||
+		PTR_ERR(chg->iio.dcin_v_chan) == -EPROBE_DEFER)
+		chg->iio.dcin_v_chan = iio_channel_get(chg->dev, "dcin_v");
+
+	if (IS_ERR(chg->iio.dcin_v_chan))
+		return PTR_ERR(chg->iio.dcin_v_chan);
+
+	return iio_read_channel_processed(chg->iio.dcin_v_chan, &val->intval);
+}
+
+#define MIN_TEMP_C -20
+#define HYSTERISIS_DEGC 2
+static bool mmi_find_temp_zone(struct smb_charger *chip, int temp_c)
+{
+	int prev_zone, num_zones;
+	struct mmi_temp_zone *zones;
+	int hotter_t, hotter_fcc;
+	int colder_t, colder_fcc;
+	int i;
+
+	if (!chip) {
+		pr_warn("called before chip valid!\n");
+		return false;
+	}
+
+	zones = chip->mmi.temp_zones;
+	num_zones = chip->mmi.num_temp_zones;
+	prev_zone = chip->mmi.pres_temp_zone;
+
+	if (prev_zone == ZONE_NONE) {
+		for (i = num_zones - 1; i >= 0; i--) {
+			if (temp_c >= zones[i].temp_c) {
+				if (i == num_zones - 1)
+					chip->mmi.pres_temp_zone = ZONE_HOT;
+				else
+					chip->mmi.pres_temp_zone = i + 1;
+				return true;
+			}
+		}
+		chip->mmi.pres_temp_zone = ZONE_COLD;
+		return true;
+	}
+
+	if (prev_zone == ZONE_COLD) {
+		if (temp_c >= MIN_TEMP_C + HYSTERISIS_DEGC)
+			chip->mmi.pres_temp_zone = ZONE_FIRST;
+	} else if (prev_zone == ZONE_HOT) {
+		if (temp_c <= zones[num_zones - 1].temp_c - HYSTERISIS_DEGC)
+			chip->mmi.pres_temp_zone = num_zones - 1;
+	} else {
+		if (prev_zone == ZONE_FIRST) {
+			hotter_fcc = zones[prev_zone + 1].fcc_max_ma;
+			colder_fcc = 0;
+			hotter_t = zones[prev_zone].temp_c;
+			colder_t = MIN_TEMP_C;
+		} else if (prev_zone == num_zones - 1) {
+			hotter_fcc = 0;
+			colder_fcc = zones[prev_zone - 1].fcc_max_ma;
+			hotter_t = zones[prev_zone].temp_c;
+			colder_t = zones[prev_zone - 1].temp_c;
+		} else {
+			hotter_fcc = zones[prev_zone + 1].fcc_max_ma;
+			colder_fcc = zones[prev_zone - 1].fcc_max_ma;
+			hotter_t = zones[prev_zone].temp_c;
+			colder_t = zones[prev_zone - 1].temp_c;
+		}
+
+		if (zones[prev_zone].fcc_max_ma < hotter_fcc)
+			hotter_t += HYSTERISIS_DEGC;
+
+		if (zones[prev_zone].fcc_max_ma < colder_fcc)
+			colder_t -= HYSTERISIS_DEGC;
+
+		if (temp_c < MIN_TEMP_C)
+			chip->mmi.pres_temp_zone = ZONE_COLD;
+		else if (temp_c >= zones[num_zones - 1].temp_c)
+			chip->mmi.pres_temp_zone = ZONE_HOT;
+		else if (temp_c >= hotter_t)
+			chip->mmi.pres_temp_zone++;
+		else if (temp_c < colder_t)
+			chip->mmi.pres_temp_zone--;
+	}
+
+	if (prev_zone != chip->mmi.pres_temp_zone) {
+		pr_warn("Entered Temp Zone %d!\n", chip->mmi.pres_temp_zone);
+		return true;
+	}
+
+	return false;
+}
+
+#define TAPER_COUNT 2
+static bool mmi_has_current_tapered(struct smb_charger *chip,
+				    int batt_ma, int taper_ma)
+{
+	bool change_state = false;
+	int allowed_fcc;
+
+	if (!chip) {
+		pr_warn("called before chip valid!\n");
+		return false;
+	}
+
+	allowed_fcc = get_effective_result(chip->fcc_votable) / 1000;
+
+	if (batt_ma < 0) {
+		batt_ma *= -1;
+		if ((batt_ma <= taper_ma) && (allowed_fcc >= taper_ma))
+			if (chip->mmi.chrg_taper_cnt >= TAPER_COUNT) {
+				change_state = true;
+				chip->mmi.chrg_taper_cnt = 0;
+			} else
+				chip->mmi.chrg_taper_cnt++;
+		else
+			chip->mmi.chrg_taper_cnt = 0;
+	} else {
+		if (chip->mmi.chrg_taper_cnt >= TAPER_COUNT) {
+			change_state = true;
+			chip->mmi.chrg_taper_cnt = 0;
+		} else
+			chip->mmi.chrg_taper_cnt++;
+	}
+
+	return change_state;
+}
+
+static bool is_wls_present(struct smb_charger *chip)
+{
+	return false;
+}
+
+static bool is_usbeb_present(struct smb_charger *chip)
+{
+	return false;
+}
+
+static int get_eb_pwr_prop(struct smb_charger *chip,
+			   enum power_supply_property prop)
+{
+	union power_supply_propval ret = {0, };
+	int eb_prop;
+	int rc;
+	struct power_supply *eb_pwr_psy;
+
+	eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
+	    !eb_pwr_psy->desc->set_property)
+		return -ENODEV;
+
+	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy, prop, &ret);
+	if (rc) {
+		pr_debug("eb pwr error reading Prop %d rc = %d\n", prop, rc);
+		ret.intval = -EINVAL;
+	}
+	eb_prop = ret.intval;
+
+	power_supply_put(eb_pwr_psy);
+
+	return eb_prop;
+}
+
+static int get_eb_prop(struct smb_charger *chip,
+		       enum power_supply_property prop)
+{
+	union power_supply_propval ret = {0, };
+	int eb_prop;
+	int rc;
+	struct power_supply *eb_batt_psy;
+
+	eb_batt_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_batt_psy_name);
+	if (!eb_batt_psy || !eb_batt_psy->desc ||
+	    !eb_batt_psy->desc->set_property)
+		return -ENODEV;
+
+	rc = eb_batt_psy->desc->get_property(eb_batt_psy, prop, &ret);
+	if (rc) {
+		pr_debug("eb batt error reading Prop %d rc = %d\n", prop, rc);
+		ret.intval = -EINVAL;
+	}
+	eb_prop = ret.intval;
+
+	power_supply_put(eb_batt_psy);
+
+	return eb_prop;
+}
+
+#define EB_RCV_NEVER BIT(7)
+#define EB_SND_LOW BIT(1)
+#define EB_SND_NEVER BIT(0)
+static void mmi_check_extbat_ability(struct smb_charger *chip, char *able)
+{
+	int rc;
+	const struct power_supply_desc *eb_pwr_d;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+
+	if (!able)
+		return;
+
+	*able = 0;
+
+	if (!eb_pwr_psy || !eb_pwr_psy->desc) {
+		*able |= (EB_RCV_NEVER | EB_SND_NEVER);
+		return;
+	}
+
+	eb_pwr_d = eb_pwr_psy->desc;
+	rc = eb_pwr_d->get_property(eb_pwr_psy,
+				    POWER_SUPPLY_PROP_PTP_INTERNAL_RECEIVE,
+				    &ret);
+	if (rc) {
+		pr_err("Could not read Receive Params rc = %d\n", rc);
+		*able |= EB_RCV_NEVER;
+	} else if ((ret.intval == POWER_SUPPLY_PTP_INT_RCV_NEVER) ||
+		   (ret.intval == POWER_SUPPLY_PTP_INT_RCV_UNKNOWN))
+		*able |= EB_RCV_NEVER;
+
+	rc = eb_pwr_d->get_property(eb_pwr_psy,
+				    POWER_SUPPLY_PROP_PTP_POWER_REQUIRED,
+				    &ret);
+	if (rc) {
+		pr_err("Could not read Power Required rc = %d\n", rc);
+		*able |= EB_RCV_NEVER;
+	} else if ((ret.intval == POWER_SUPPLY_PTP_POWER_NOT_REQUIRED) ||
+		   (ret.intval == POWER_SUPPLY_PTP_POWER_REQUIREMENTS_UNKNOWN))
+		*able |= EB_RCV_NEVER;
+
+	rc = eb_pwr_d->get_property(eb_pwr_psy,
+				    POWER_SUPPLY_PROP_PTP_POWER_AVAILABLE,
+				    &ret);
+	if (rc) {
+		pr_err("Could not read Power Available rc = %d\n", rc);
+		*able |= EB_SND_NEVER;
+	} else if ((ret.intval == POWER_SUPPLY_PTP_POWER_NOT_AVAILABLE) ||
+		   (ret.intval == POWER_SUPPLY_PTP_POWER_AVAILABILITY_UNKNOWN))
+		*able |= EB_SND_NEVER;
+	else if (ret.intval == POWER_SUPPLY_PTP_POWER_AVAILABLE_INTERNAL) {
+		rc = eb_pwr_d->get_property(eb_pwr_psy,
+					    POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
+					    &ret);
+		if (rc) {
+			pr_err("Could not read Send Params rc = %d\n", rc);
+			*able |= EB_SND_NEVER;
+		} else if ((ret.intval == POWER_SUPPLY_PTP_INT_SND_NEVER) ||
+			   (ret.intval == POWER_SUPPLY_PTP_INT_SND_UNKNOWN))
+			*able |= EB_SND_NEVER;
+		else if (ret.intval == POWER_SUPPLY_PTP_INT_SND_LOW_BATT_SAVER)
+			*able |= EB_SND_LOW;
+	}
+
+	power_supply_put(eb_pwr_psy);
+}
+
+static void mmi_set_extbat_in_cl(struct smb_charger *chip)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+
+	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
+	    !eb_pwr_psy->desc->set_property)
+		return;
+
+	ret.intval = chip->mmi.cl_ebchg * 1000;
+
+	pr_debug("Set EB In Current %d uA\n", ret.intval);
+	rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
+				POWER_SUPPLY_PROP_PTP_MAX_INPUT_CURRENT, &ret);
+	if (rc)
+		pr_err("Failed to set EB Input Current %d mA",
+		       ret.intval / 1000);
+
+	power_supply_put(eb_pwr_psy);
+}
+
+static void mmi_get_extbat_out_cl(struct smb_charger *chip)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+	int prev_cl_ebsrc = chip->mmi.cl_ebsrc;
+
+	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
+	    !eb_pwr_psy->desc->get_property) {
+		chip->mmi.cl_ebsrc = 0;
+		return;
+	}
+
+	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_MAX_OUTPUT_CURRENT,
+				      &ret);
+	if (rc)
+		pr_err("Failed to get EB Output Current");
+	else {
+		pr_debug("Get EB Out Current %d uA\n", ret.intval);
+		ret.intval /= 1000;
+
+		if (ret.intval == 0)
+			chip->mmi.cl_ebsrc = 0;
+		else if ((ret.intval < chip->mmi.dc_ebmax_current_ma) ||
+			 is_usbeb_present(chip))
+			chip->mmi.cl_ebsrc = ret.intval;
+		else
+			chip->mmi.cl_ebsrc = chip->mmi.dc_ebmax_current_ma;
+	}
+
+	if (prev_cl_ebsrc != chip->mmi.cl_ebsrc)
+		pr_warn("cl_ebsrc %d mA, retval %d mA\n",
+			chip->mmi.cl_ebsrc, ret.intval);
+
+	power_supply_put(eb_pwr_psy);
+}
+
+static void mmi_get_extbat_in_vl(struct smb_charger *chip)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+	int prev_vi_ebsrc = chip->mmi.vi_ebsrc;
+
+	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
+	    !eb_pwr_psy->desc->get_property) {
+		chip->mmi.vi_ebsrc = 0;
+		return;
+	}
+
+	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_MAX_INPUT_VOLTAGE,
+				      &ret);
+	if (rc) {
+		pr_err("Failed to get EB Input Voltage");
+		chip->mmi.vi_ebsrc = MICRO_5V;
+	} else {
+		pr_debug("Get EB In Voltage %d uV\n", ret.intval);
+		chip->mmi.vi_ebsrc = ret.intval;
+	}
+
+	if (prev_vi_ebsrc != chip->mmi.vi_ebsrc)
+		pr_warn("vi_ebsrc %d uV, retval %d uV\n",
+			chip->mmi.vi_ebsrc, ret.intval);
+
+	power_supply_put(eb_pwr_psy);
+}
+
+#define USBIN_TOLER 500000
+static void mmi_set_extbat_in_volt(struct smb_charger *chip)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+
+	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
+	    !eb_pwr_psy->desc->set_property)
+		return;
+
+	rc = smblib_get_prop_usb_voltage_now(chip, &ret);
+	if (rc < 0)
+		ret.intval = MICRO_5V;
+	else if (ret.intval >= (MICRO_9V - USBIN_TOLER))
+		ret.intval = MICRO_9V;
+	else
+		ret.intval = MICRO_5V;
+
+	pr_debug("Set EB In Voltage %d uV\n", ret.intval);
+	rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_INPUT_VOLTAGE,
+				      &ret);
+	if (rc)
+		pr_err("Failed to set EB Input Voltage %d mV",
+		       ret.intval / 1000);
+
+	power_supply_put(eb_pwr_psy);
+}
+
+static void mmi_get_extbat_out_volt(struct smb_charger *chip)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+	int prev_vo_ebsrc = chip->mmi.vo_ebsrc;
+
+	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
+	    !eb_pwr_psy->desc->get_property) {
+		chip->mmi.vo_ebsrc = 0;
+		return;
+	}
+
+	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_OUTPUT_VOLTAGE,
+				      &ret);
+	if (rc)
+		pr_err("Failed to get EB Output Voltage");
+	else {
+		pr_debug("Get EB Out Voltage %d uV\n", ret.intval);
+		ret.intval /= 1000;
+		chip->mmi.vo_ebsrc = ret.intval;
+	}
+
+	if (prev_vo_ebsrc != chip->mmi.vo_ebsrc)
+		pr_warn("vo_ebsrc %d mV, retval %d mV\n",
+			chip->mmi.vo_ebsrc, ret.intval);
+
+	power_supply_put(eb_pwr_psy);
+}
+
+static void mmi_set_extbat_out_vl(struct smb_charger *chip)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+
+	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
+	    !eb_pwr_psy->desc->set_property)
+		return;
+
+	ret.intval = chip->mmi.vl_ebsrc;
+
+	pr_debug("Set EB Out Voltage %d uV\n", ret.intval);
+	rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_MAX_OUTPUT_VOLTAGE,
+				      &ret);
+	if (rc)
+		pr_err("Failed to set EB Output Voltage %d mV",
+		       ret.intval / 1000);
+
+	power_supply_put(eb_pwr_psy);
+}
+
+static int mmi_get_extbat_state(struct smb_charger *chip, int *state)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+
+	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
+	    !eb_pwr_psy->desc->get_property) {
+		*state = EB_DISCONN;
+		return 0;
+	}
+
+	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+				      &ret);
+	power_supply_put(eb_pwr_psy);
+
+	if (rc) {
+		pr_debug("Failed to get EB State");
+		return -EINVAL;
+	}
+
+	pr_debug("Get EB State %d\n", ret.intval);
+	switch (ret.intval) {
+	case POWER_SUPPLY_PTP_CURRENT_FROM_PHONE:
+		*state = EB_SINK;
+		break;
+	case POWER_SUPPLY_PTP_CURRENT_TO_PHONE:
+		*state = EB_SRC;
+		break;
+	case POWER_SUPPLY_PTP_CURRENT_OFF:
+	default:
+		*state = EB_OFF;
+		break;
+	}
+
+	return 0;
+}
+
+#define MAX_PINCTRL_TRIES 5
+static void mmi_set_extbat_state(struct smb_charger *chip,
+				 enum ebchg_state state,
+				 bool force)
+{
+	int rc = 0;
+	char ability = 0;
+	int i = 0;
+	int dcin_mv = 0;
+	int dcin_high_cnt = 0;
+	static unsigned char mmi_pinctrl_tries;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+
+	if (mmi_pinctrl_tries < MAX_PINCTRL_TRIES) {
+		chip->mmi.smb_pinctrl =
+			pinctrl_get_select(chip->dev, "eb_active");
+		if (!chip->mmi.smb_pinctrl)
+			pr_err("Could not get/set pinctrl state active\n");
+		chip->mmi.smb_pinctrl = pinctrl_get_select_default(chip->dev);
+		if (!chip->mmi.smb_pinctrl)
+			pr_err("Could not get/set pinctrl state\n");
+
+		mmi_pinctrl_tries++;
+	}
+
+	if ((state == chip->mmi.ebchg_state) && !force) {
+		if (eb_pwr_psy)
+			power_supply_put(eb_pwr_psy);
+		return;
+	}
+
+	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
+	    !eb_pwr_psy->desc->get_property) {
+		vote(chip->usb_suspend_votable, EB_VOTER,
+		     false, 1);
+		vote(chip->dc_suspend_votable, EB_VOTER,
+		     true, 1);
+		gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
+		chip->mmi.cl_ebsrc = 0;
+
+		ret.intval = MICRO_9V;
+		rc = smblib_set_prop_usb_voltage_max(chip, &ret);
+		if (rc < 0)
+			pr_err("Couldn't set 9V USBC Voltage rc=%d\n", rc);
+
+		chip->mmi.ebchg_state = EB_DISCONN;
+		return;
+	}
+
+	mmi_check_extbat_ability(chip, &ability);
+
+	if ((state == EB_SINK) && (ability & EB_RCV_NEVER) && !force) {
+		pr_err("Setting Sink State not Allowed on RVC Never EB!\n");
+		power_supply_put(eb_pwr_psy);
+		return;
+	}
+
+	if ((state == EB_SRC) && (ability & EB_SND_NEVER) &&
+	    !chip->mmi.usbeb_present && !force) {
+		pr_err("Setting Source State not Allowed on SND Never EB!\n");
+		power_supply_put(eb_pwr_psy);
+		return;
+	}
+
+	pr_warn("EB State is %d setting %d\n", chip->mmi.ebchg_state, state);
+
+	switch (state) {
+	case EB_SINK:
+		mmi_get_extbat_in_vl(chip);
+
+		if (chip->mmi.vi_ebsrc < MICRO_9V) {
+			ret.intval = MICRO_5V;
+			rc = smblib_set_prop_usb_voltage_max(chip, &ret);
+			if (rc < 0)
+				pr_err("Couldn't set 5V USBC Voltage rc=%d\n",
+					rc);
+			msleep(500);
+			rc = smblib_get_prop_usb_voltage_now(chip, &ret);
+			if (rc < 0) {
+				pr_err("Couldn't get 5V USBC Voltage rc=%d\n",
+					rc);
+				return;
+			}
+			if (ret.intval > (MICRO_5V + USBIN_TOLER)) {
+				pr_err("Voltage too high for EB_SINK %d uV\n",
+				       ret.intval);
+				return;
+			}
+		}
+
+		mmi_set_extbat_in_volt(chip);
+
+		ret.intval = POWER_SUPPLY_PTP_CURRENT_FROM_PHONE;
+		rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
+					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+					    &ret);
+		if (!rc) {
+			chip->mmi.ebchg_state = state;
+
+			vote(chip->usb_suspend_votable, EB_VOTER,
+			     false, 1);
+			vote(chip->dc_suspend_votable, EB_VOTER,
+			     true, 1);
+			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 1);
+		}
+		break;
+	case EB_SRC:
+		mmi_set_extbat_out_vl(chip);
+		ret.intval = POWER_SUPPLY_PTP_CURRENT_TO_PHONE;
+		rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
+					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+					    &ret);
+		if (!rc) {
+			for (i = 0; i < 100; i++) {
+				rc = smblib_get_prop_dc_voltage_now(chip,
+								    &ret);
+				if (rc == -EINVAL)
+					break;
+				dcin_mv = ret.intval / 1000;
+				pr_err("DCIN mv = %d\n", dcin_mv);
+				if (dcin_mv > 4500)
+					dcin_high_cnt++;
+				else
+					dcin_high_cnt = 0;
+
+				if (dcin_high_cnt > 10) {
+					/* Total required delay is 200 msec
+					 * for power mux transition timing.
+					 */
+					msleep(100);
+					break;
+				}
+				msleep(20);
+			}
+
+			chip->mmi.ebchg_state = state;
+			vote(chip->usb_suspend_votable, EB_VOTER,
+			     true, 1);
+			vote(chip->dc_suspend_votable, EB_VOTER,
+			     false, 1);
+			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
+
+			ret.intval = MICRO_9V;
+			rc = smblib_set_prop_usb_voltage_max(chip, &ret);
+			if (rc < 0)
+				pr_err("Couldn't set 9V USBC Voltage rc=%d\n",
+					rc);
+		}
+		break;
+	case EB_OFF:
+		ret.intval = POWER_SUPPLY_PTP_CURRENT_OFF;
+		rc = eb_pwr_psy->desc->set_property(eb_pwr_psy,
+					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+					    &ret);
+		if (!rc) {
+			chip->mmi.ebchg_state = state;
+			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
+			vote(chip->usb_suspend_votable, EB_VOTER,
+			     false, 1);
+			vote(chip->dc_suspend_votable, EB_VOTER,
+			     true, 1);
+
+			ret.intval = MICRO_9V;
+			rc = smblib_set_prop_usb_voltage_max(chip, &ret);
+			if (rc < 0)
+				pr_err("Couldn't set 9V USBC Voltage rc=%d\n",
+					rc);
+		}
+
+		break;
+	default:
+		break;
+	}
+
+	power_supply_put(eb_pwr_psy);
+}
+
+#define HEARTBEAT_EB_MS 1000
+static int set_eb_param(const char *val, const struct kernel_param *kp)
+{
+	int rv = param_set_int(val, kp);
+
+	if (rv)
+		return rv;
+
+	if (the_chip) {
+		the_chip->mmi.update_eb_params++;
+		vote(the_chip->awake_votable, HEARTBEAT_VOTER, true, true);
+		cancel_delayed_work(&the_chip->mmi.heartbeat_work);
+		schedule_delayed_work(&the_chip->mmi.heartbeat_work,
+				      msecs_to_jiffies(HEARTBEAT_EB_MS));
+	}
+
+	return 0;
+}
+
+static struct kernel_param_ops eb_ops = {
+	.set = set_eb_param,
+	.get = param_get_int,
+};
+
+static int eb_rechrg_start_soc = 70;
+module_param_cb(eb_rechrg_start_soc, &eb_ops, &eb_rechrg_start_soc, 0644);
+static int eb_rechrg_stop_soc = 80;
+module_param_cb(eb_rechrg_stop_soc, &eb_ops, &eb_rechrg_stop_soc, 0644);
+static int eb_attach_start_soc = 100;
+module_param_cb(eb_attach_start_soc, &eb_ops, &eb_attach_start_soc, 0644);
+static int eb_attach_stop_soc = 100;
+module_param_cb(eb_attach_stop_soc, &eb_ops, &eb_attach_stop_soc, 0644);
+static int eb_low_start_soc = 16;
+module_param_cb(eb_low_start_soc, &eb_ops, &eb_low_start_soc, 0644);
+static int eb_low_stop_soc = 100;
+module_param_cb(eb_low_stop_soc, &eb_ops, &eb_low_stop_soc, 0644);
+static int eb_on_sw = 1;
+module_param_cb(eb_on_sw, &eb_ops, &eb_on_sw, 0644);
+
+#define SMBCHG_HEARTBEAT_INTERVAL_NS	70000000000
+#define HEARTBEAT_DELAY_MS 60000
+#define HEARTBEAT_HOLDOFF_MS 10000
+#define HEARTBEAT_EB_WAIT_MS 1000
+#define HYST_STEP_MV 50
+#define EB_SPLIT_MA 500
+static void mmi_heartbeat_work(struct work_struct *work)
+{
+	struct smb_charger *chip = container_of(work,
+						struct smb_charger,
+						mmi.heartbeat_work.work);
+	int rc;
+	int batt_mv;
+	int batt_ma;
+	int batt_soc;
+	int eb_soc;
+	int batt_temp;
+	int vbus_present;
+	int cl_usb = -EINVAL;
+	int cl_pd = -EINVAL;
+	int cl_cc = -EINVAL;
+	bool prev_usbeb_pres = chip->mmi.usbeb_present;
+
+	int prev_step;
+	char eb_able = 0;
+	int hb_resch_time;
+	int ebparams_cnt = chip->mmi.update_eb_params;
+	bool eb_chrg_allowed;
+
+	int eb_state = 0;
+
+	int pwr_ext;
+	bool eb_sink_to_off = false;
+
+	union power_supply_propval val;
+	struct mmi_params *mmi = &chip->mmi;
+	struct mmi_temp_zone *zone;
+	int max_fv_mv;
+	int target_usb;
+	int target_dc;
+	int target_fcc;
+	int target_fv;
+
+	if (!atomic_read(&chip->mmi.hb_ready))
+		return;
+
+	vote(chip->awake_votable, HEARTBEAT_VOTER, true, true);
+
+	alarm_try_to_cancel(&chip->mmi.heartbeat_alarm);
+
+	/* Collect External Battery Information */
+	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
+	pwr_ext = get_eb_pwr_prop(chip, POWER_SUPPLY_PROP_PTP_EXTERNAL);
+	mmi_check_extbat_ability(chip, &eb_able);
+
+	if (eb_soc == -EINVAL)
+		eb_soc = 0;
+
+	if ((eb_soc == -ENODEV) && (pwr_ext == -ENODEV))
+		mmi_set_extbat_state(chip, EB_DISCONN, false);
+	else if (mmi->ebchg_state == EB_DISCONN)
+		mmi_set_extbat_state(chip, EB_OFF, false);
+	else {
+		rc = mmi_get_extbat_state(chip, &eb_state);
+		if ((rc >= 0) && (mmi->ebchg_state != eb_state))
+			mmi_set_extbat_state(chip, EB_OFF, true);
+	}
+
+	if (pwr_ext == POWER_SUPPLY_PTP_EXT_SUPPORTED) {
+		mmi->usbeb_present = is_usbeb_present(chip);
+		mmi->wls_present = is_wls_present(chip);
+	} else {
+		mmi->usbeb_present = false;
+		mmi->wls_present = false;
+	}
+	/* Hold Wakelock if External Battery has External Power */
+	if ((mmi->wls_present || mmi->usbeb_present) &&
+	    (mmi->ebchg_state == EB_SRC))
+		vote(chip->awake_votable, WIRELESS_VOTER, true, 0);
+	else
+		vote(chip->awake_votable, WIRELESS_VOTER, false, 0);
+
+	/* Collect Current Information */
+	rc = smblib_get_prop_usb_present(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting USB Present rc = %d\n", rc);
+		goto end_hb;
+	} else
+		vbus_present = val.intval;
+
+	if (vbus_present || mmi->wls_present || !mmi->usbeb_present)
+		smblib_enable_dc_aicl(chip, false);
+	else if (mmi->usbeb_present && !prev_usbeb_pres)
+		smblib_enable_dc_aicl(chip, true);
+
+	rc = smblib_get_prop_batt_voltage_now(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting Batt Voltage rc = %d\n", rc);
+		goto end_hb;
+	} else
+		batt_mv = val.intval / 1000;
+
+	rc = smblib_get_prop_batt_current_now(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting Batt Current rc = %d\n", rc);
+		goto end_hb;
+	} else
+		batt_ma = val.intval / 1000;
+
+	rc = smblib_get_prop_batt_capacity(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting Batt Capacity rc = %d\n", rc);
+		goto end_hb;
+	} else
+		batt_soc = val.intval;
+
+	rc = smblib_get_prop_batt_temp(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting Batt Temperature rc = %d\n", rc);
+		goto end_hb;
+	} else
+		batt_temp = val.intval / 10;
+
+	pr_debug("batt=%d mV, %d mA, %d C\n", batt_mv, batt_ma, batt_temp);
+
+	if (vbus_present) {
+		rc = smblib_get_prop_usb_current_max(chip, &val);
+		if (rc < 0) {
+			pr_err("Error getting CL USB rc = %d\n", rc);
+			goto end_hb;
+		} else
+			cl_usb = val.intval / 1000;
+
+		rc = smblib_get_prop_pd_current_max(chip, &val);
+		if (rc < 0) {
+			pr_err("Error getting CL PD rc = %d\n", rc);
+			goto end_hb;
+		} else
+			cl_pd = val.intval / 1000;
+
+		rc = smblib_get_prop_typec_mode(chip, &val);
+		if (rc < 0) {
+			pr_err("Error getting CL CC rc = %d\n", rc);
+			goto end_hb;
+		} else {
+			switch (val.intval) {
+			case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
+				cl_cc = 500;
+				break;
+			case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
+				cl_cc = 1500;
+				break;
+			case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
+				cl_cc = 3000;
+				break;
+			default:
+				cl_cc = 0;
+				break;
+			}
+		}
+
+		if (cl_pd > 0)
+			cl_usb = cl_pd;
+		else if (cl_cc > 500)
+			cl_usb = cl_cc;
+		else if (chip->usb_psy_desc.type ==
+			 POWER_SUPPLY_TYPE_USB_DCP)
+			cl_usb = 1500;
+		else if (cl_usb <= 0)
+			cl_usb = 500;
+	}
+
+
+	/* Determine External Battery Next State */
+	eb_chrg_allowed = (!(eb_able & EB_RCV_NEVER) &&
+			   !mmi->usbeb_present &&
+			   !mmi->wls_present);
+
+	mmi_get_extbat_out_cl(chip);
+	mmi_get_extbat_out_volt(chip);
+
+	if (!vbus_present) {
+		switch (mmi->ebchg_state) {
+		case EB_SRC:
+			if (mmi->wls_present || mmi->usbeb_present) {
+				mmi->eb_rechrg = false;
+				if (batt_soc == 100)
+					mmi_set_extbat_state(chip, EB_OFF,
+								false);
+			} else if ((eb_able & EB_SND_NEVER) ||
+				   (eb_on_sw == 0)) {
+				mmi_set_extbat_state(chip, EB_OFF, false);
+				mmi->eb_rechrg = true;
+			}
+
+			break;
+		case EB_SINK:
+			mmi_set_extbat_state(chip, EB_OFF, false);
+			eb_sink_to_off = true;
+			break;
+		case EB_OFF:
+			if (mmi->wls_present || mmi->usbeb_present) {
+				mmi->eb_rechrg = false;
+				if (batt_soc < 100)
+					mmi_set_extbat_state(chip, EB_SRC,
+							     false);
+			} else if ((eb_able & EB_SND_NEVER) ||
+				   (eb_on_sw == 0))
+				mmi_set_extbat_state(chip, EB_OFF, false);
+			else if (eb_able & EB_SND_LOW) {
+				if (batt_soc <= eb_low_start_soc)
+					mmi_set_extbat_state(chip, EB_SRC,
+								false);
+				else
+					mmi_set_extbat_state(chip, EB_OFF,
+								false);
+			} else
+				mmi_set_extbat_state(chip, EB_SRC, false);
+
+			if ((mmi->ebchg_state == EB_SRC) && (batt_soc < 75))
+				mmi->eb_rechrg = false;
+
+			break;
+		case EB_DISCONN:
+		default:
+			break;
+		}
+	} else if (vbus_present ||
+		   mmi->wls_present ||
+		   mmi->usbeb_present) {
+		mmi->eb_rechrg = false;
+	}
+
+	if (mmi->eb_rechrg)
+		target_dc = mmi->dc_eff_current_ma;
+	else if (mmi->cl_ebsrc)
+		target_dc = mmi->cl_ebsrc;
+	else
+		target_dc = mmi->dc_ebmax_current_ma;
+
+	mmi_find_temp_zone(chip, batt_temp);
+	zone = &mmi->temp_zones[mmi->pres_temp_zone];
+
+	max_fv_mv = get_client_vote(chip->fv_votable, DEFAULT_VOTER) / 1000;
+
+	/* Determine Next State */
+	prev_step = chip->mmi.pres_chrg_step;
+
+	if (!vbus_present && (mmi->ebchg_state != EB_SRC)) {
+		mmi->pres_chrg_step = STEP_NONE;
+	} else if ((mmi->pres_temp_zone == ZONE_HOT) ||
+		   (mmi->pres_temp_zone == ZONE_COLD)) {
+		chip->mmi.pres_chrg_step = STEP_STOP;
+	} else if (mmi->force_eb_chrg && !(eb_able & EB_RCV_NEVER) &&
+		   (mmi->ebchg_state != EB_DISCONN)) {
+		mmi->pres_chrg_step = STEP_EB;
+	} else if (mmi->demo_mode) {
+		mmi->pres_chrg_step = STEP_DEMO;
+	} else if ((mmi->pres_chrg_step == STEP_NONE) ||
+		   (mmi->pres_chrg_step == STEP_STOP)) {
+		if (zone->norm_mv && (batt_mv >= zone->norm_mv)) {
+			if (zone->fcc_norm_ma)
+				mmi->pres_chrg_step = STEP_NORM;
+			else
+				mmi->pres_chrg_step = STEP_STOP;
+		} else
+			mmi->pres_chrg_step = STEP_MAX;
+	} else if (mmi->pres_chrg_step == STEP_MAX) {
+		if (!zone->norm_mv) {
+			/* No Step in this Zone */
+			mmi->chrg_taper_cnt = 0;
+			if ((batt_mv + HYST_STEP_MV) >= max_fv_mv)
+				mmi->pres_chrg_step = STEP_NORM;
+			else
+				mmi->pres_chrg_step = STEP_MAX;
+		} else if ((batt_mv + HYST_STEP_MV) < zone->norm_mv) {
+			mmi->chrg_taper_cnt = 0;
+			mmi->pres_chrg_step = STEP_MAX;
+		} else if (!zone->fcc_norm_ma)
+			mmi->pres_chrg_step = STEP_FLOAT;
+		else if (mmi_has_current_tapered(chip, batt_ma,
+						 zone->fcc_norm_ma)) {
+			mmi->chrg_taper_cnt = 0;
+			mmi->pres_chrg_step = STEP_NORM;
+		}
+	} else if (mmi->pres_chrg_step == STEP_NORM) {
+		if (!zone->fcc_norm_ma)
+			mmi->pres_chrg_step = STEP_STOP;
+		else if ((batt_soc < 100) ||
+			 (batt_mv + HYST_STEP_MV) < max_fv_mv) {
+			mmi->chrg_taper_cnt = 0;
+			mmi->pres_chrg_step = STEP_NORM;
+		} else if (mmi_has_current_tapered(chip, batt_ma,
+						   mmi->chrg_iterm)) {
+			if (eb_chrg_allowed)
+				mmi->pres_chrg_step = STEP_EB;
+			else
+				mmi->pres_chrg_step = STEP_FULL;
+		}
+	} else if (mmi->pres_chrg_step == STEP_EB) {
+		if ((batt_soc < 95) || !eb_chrg_allowed) {
+			mmi->chrg_taper_cnt = 0;
+			mmi->pres_chrg_step = STEP_NORM;
+		}
+	} else if (mmi->pres_chrg_step == STEP_FULL) {
+		if (batt_soc <= 99) {
+			mmi->chrg_taper_cnt = 0;
+			mmi->pres_chrg_step = STEP_NORM;
+		} else if (eb_chrg_allowed) {
+			mmi->pres_chrg_step = STEP_EB;
+		}
+	} else if (mmi->pres_chrg_step == STEP_FLOAT) {
+		if ((zone->fcc_norm_ma) ||
+		    ((batt_mv + HYST_STEP_MV) < zone->norm_mv))
+			mmi->pres_chrg_step = STEP_MAX;
+
+	}
+
+	/* Take State actions */
+	switch (mmi->pres_chrg_step) {
+	case STEP_EB:
+		target_fv = max_fv_mv;
+		if (batt_soc < 100)
+			target_fcc = zone->fcc_norm_ma;
+		else
+			target_fcc = -EINVAL;
+
+		if (cl_usb > 1500) {
+			mmi->cl_ebchg = cl_usb - EB_SPLIT_MA;
+			target_usb = EB_SPLIT_MA;
+		} else {
+			mmi->cl_ebchg = target_usb;
+			target_usb = -EINVAL;
+		}
+
+		break;
+	case STEP_FLOAT:
+	case STEP_MAX:
+		target_fv = zone->norm_mv;
+		target_fcc = zone->fcc_max_ma;
+		mmi->cl_ebchg = 0;
+
+		if (((cl_usb - EB_SPLIT_MA) >= target_fcc) && eb_chrg_allowed)
+			mmi->cl_ebchg = EB_SPLIT_MA;
+
+		target_usb = cl_usb - mmi->cl_ebchg;
+		break;
+	case STEP_FULL:
+		target_fv = max_fv_mv;
+		target_fcc = -EINVAL;
+		target_usb = cl_usb;
+		break;
+	case STEP_NORM:
+		target_fv = max_fv_mv;
+		target_fcc = zone->fcc_norm_ma;
+		mmi->cl_ebchg = 0;
+
+		if (((cl_usb - EB_SPLIT_MA) >= target_fcc) && eb_chrg_allowed)
+			mmi->cl_ebchg = EB_SPLIT_MA;
+
+		target_usb = cl_usb - mmi->cl_ebchg;
+		break;
+	case STEP_NONE:
+		target_fv = max_fv_mv;
+		target_fcc = zone->fcc_norm_ma;
+		target_usb = cl_usb;
+		break;
+	case STEP_STOP:
+		target_fv = max_fv_mv;
+		target_fcc = -EINVAL;
+		target_usb = cl_usb;
+		break;
+	default:
+		break;
+	}
+
+	/* Votes for State */
+	vote(chip->fv_votable, HEARTBEAT_VOTER, true, target_fv * 1000);
+
+	vote(chip->chg_disable_votable, HEARTBEAT_VOTER,
+	     (target_fcc < 0), 0);
+
+	vote(chip->fcc_votable, HEARTBEAT_VOTER,
+	     true, (target_fcc >= 0) ? (target_fcc * 1000) : 0);
+
+	vote(chip->usb_suspend_votable, HEARTBEAT_VOTER,
+	     (target_usb < 0), 0);
+
+	vote(chip->usb_icl_votable, HEARTBEAT_VOTER,
+	     true, (target_usb >= 0) ? (target_usb * 1000) : 0);
+
+	if (vbus_present) {
+		if (mmi->cl_ebchg > 0) {
+			mmi_set_extbat_in_cl(chip);
+			mmi_set_extbat_state(chip, EB_SINK, false);
+		} else
+			mmi_set_extbat_state(chip, EB_OFF, false);
+	}
+
+	vote(chip->dc_icl_votable, HEARTBEAT_VOTER,
+	     true, (target_dc >= 0) ? (target_dc * 1000) : 0);
+
+	pr_warn("EB Input %d mA, PMI Input %d mA, USBC CL %d mA, DC %d mA\n",
+		 mmi->cl_ebchg, target_usb, cl_cc,
+		 target_dc);
+	pr_warn("Step State = %s, EB State %s\n",
+		stepchg_str[(int)mmi->pres_chrg_step],
+		ebchg_str[(int)mmi->ebchg_state]);
+end_hb:
+	if (chip->batt_psy)
+		power_supply_changed(chip->batt_psy);
+
+	hb_resch_time = HEARTBEAT_HOLDOFF_MS;
+
+	if (!chip->mmi.chrg_taper_cnt)
+		hb_resch_time = HEARTBEAT_DELAY_MS;
+
+	if (ebparams_cnt != mmi->update_eb_params)
+		hb_resch_time = HEARTBEAT_EB_MS;
+	else
+		mmi->update_eb_params = 0;
+
+	if (eb_sink_to_off)
+		hb_resch_time = HEARTBEAT_EB_WAIT_MS;
+
+	schedule_delayed_work(&mmi->heartbeat_work,
+			      msecs_to_jiffies(hb_resch_time));
+
+	if (mmi->ebchg_state == EB_SRC) {
+		alarm_start_relative(&mmi->heartbeat_alarm,
+				ns_to_ktime(SMBCHG_HEARTBEAT_INTERVAL_NS));
+	}
+
+	vote(chip->awake_votable, HB_ALARM_VOTER, false, 0);
+	vote(chip->awake_votable, HEARTBEAT_VOTER, false, 0);
+}
+
 static int smbchg_reboot(struct notifier_block *nb,
 			 unsigned long event, void *unused)
 {
@@ -5115,6 +6300,9 @@ static int smbchg_reboot(struct notifier_block *nb,
 		pr_warn("called before chip valid!\n");
 		return NOTIFY_DONE;
 	}
+
+	atomic_set(&chg->mmi.hb_ready, 0);
+	cancel_delayed_work_sync(&chg->mmi.heartbeat_work);
 
 	if (chg->mmi.factory_mode) {
 		switch (event) {
@@ -5759,10 +6947,52 @@ static int parse_mmi_dt(struct smb_charger *chg)
 	struct device_node *node = chg->dev->of_node;
 	int rc = 0;
 	int byte_len;
+	int i;
 
 	if (!node) {
 		pr_err("mmi dtree info. missing\n");
 		return -ENODEV;
+	}
+
+
+	if (of_find_property(node, "qcom,mmi-temp-zones", &byte_len)) {
+		if ((byte_len / sizeof(u32)) % 4) {
+			dev_err(chg->dev,
+				"DT error wrong mmi temp zones\n");
+			return -ENODEV;
+		}
+
+		chg->mmi.temp_zones = (struct mmi_temp_zone *)
+			devm_kzalloc(chg->dev, byte_len, GFP_KERNEL);
+
+		if (chg->mmi.temp_zones == NULL)
+			return -ENOMEM;
+
+		chg->mmi.num_temp_zones =
+			byte_len / sizeof(struct mmi_temp_zone);
+
+		rc = of_property_read_u32_array(node,
+				"qcom,mmi-temp-zones",
+				(u32 *)chg->mmi.temp_zones,
+				byte_len / sizeof(u32));
+		if (rc < 0) {
+			dev_err(chg->dev,
+				"Couldn't read mmi temp zones rc = %d\n", rc);
+			return rc;
+		}
+		dev_err(chg->dev,
+			"mmi temp zones: Num: %d\n", chg->mmi.num_temp_zones);
+		for (i = 0; i < chg->mmi.num_temp_zones; i++) {
+			dev_err(chg->dev,
+				"mmi temp zones: Zone %d, Temp %d C, "
+				"Step Volt %d mV, Full Rate %d mA, "
+				"Taper Rate %d mA\n", i,
+				chg->mmi.temp_zones[i].temp_c,
+				chg->mmi.temp_zones[i].norm_mv,
+				chg->mmi.temp_zones[i].fcc_max_ma,
+				chg->mmi.temp_zones[i].fcc_norm_ma);
+		}
+		chg->mmi.pres_temp_zone = ZONE_NONE;
 	}
 
 	if (of_find_property(node, "qcom,usb-thermal-mitigation", &byte_len)) {
@@ -5803,7 +7033,52 @@ static int parse_mmi_dt(struct smb_charger *chg)
 		}
 	}
 
+	rc = of_property_read_u32(node, "qcom,iterm-ma",
+				  &chg->mmi.chrg_iterm);
+	if (rc)
+		chg->mmi.chrg_iterm = 150;
+
+	rc = of_property_read_u32(node, "qcom,dc-eb-icl-ma",
+				  &chg->mmi.dc_ebmax_current_ma);
+	if (rc)
+		chg->mmi.dc_ebmax_current_ma = 900;
+
+	rc = of_property_read_u32(node, "qcom,dc-eb-icl-eff-ma",
+				  &chg->mmi.dc_eff_current_ma);
+	if (rc)
+		chg->mmi.dc_eff_current_ma = 500;
+
+	/* read the external battery power supply name */
+	rc = of_property_read_string(node, "qcom,eb-batt-psy-name",
+				     &chg->mmi.eb_batt_psy_name);
+	if (rc)
+		chg->mmi.eb_batt_psy_name = "gb_battery";
+
+	/* read the external power control power supply name */
+	rc = of_property_read_string(node, "qcom,eb-pwr-psy-name",
+				     &chg->mmi.eb_pwr_psy_name);
+	if (rc)
+		chg->mmi.eb_pwr_psy_name = "gb_ptp";
+
+	chg->mmi.vl_ebsrc = MICRO_9V + USBIN_TOLER;
+
 	return rc;
+}
+
+static enum alarmtimer_restart mmi_heartbeat_alarm_cb(struct alarm *alarm,
+							 ktime_t now)
+{
+	struct smb_charger *chip = container_of(alarm, struct smb_charger,
+						mmi.heartbeat_alarm);
+
+	pr_info("SMB: HB alarm fired\n");
+
+	vote(chip->awake_votable, HB_ALARM_VOTER, true, true);
+	cancel_delayed_work(&chip->mmi.heartbeat_work);
+	schedule_delayed_work(&chip->mmi.heartbeat_work,
+			      msecs_to_jiffies(0));
+
+	return ALARMTIMER_NORESTART;
 }
 
 void mmi_init(struct smb_charger *chg)
@@ -5816,6 +7091,9 @@ void mmi_init(struct smb_charger *chg)
 	chg->mmi.factory_mode = mmi_factory_check();
 
 	INIT_DELAYED_WORK(&chg->mmi.warn_irq_work, warn_irq_w);
+	INIT_DELAYED_WORK(&chg->mmi.heartbeat_work, mmi_heartbeat_work);
+	alarm_init(&chg->mmi.heartbeat_alarm, ALARM_BOOTTIME,
+		   mmi_heartbeat_alarm_cb);
 
 	rc = parse_mmi_dt(chg);
 	if (rc < 0)
@@ -5887,6 +7165,18 @@ void mmi_init(struct smb_charger *chg)
 			pr_err("couldn't create force_chg_itrick\n");
 		}
 	}
+
+	/* Disable all WIPWR Feature */
+	rc = smblib_masked_write(chg, WI_PWR_OPTIONS_REG, 0xFF, 0x00);
+	if (rc)
+		pr_err("couldn't disable Wipwr settings\n");
+
+	/* Set 4.0 V for DCIN AICL Threshold */
+	rc = smblib_masked_write(chg, DCIN_AICL_REF_SEL_CFG_REG,
+				 DCIN_CONT_AICL_THRESHOLD_CFG_MASK,
+				 0x00);
+	if (rc)
+		pr_err("couldn't set DCIN AICL Threshold\n");
 }
 
 void mmi_deinit(struct smb_charger *chg)
