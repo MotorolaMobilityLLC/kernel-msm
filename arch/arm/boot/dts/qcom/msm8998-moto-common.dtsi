@@ -1398,7 +1398,7 @@
 	qcom,battery-data = <&mot_batterydata>;
 	qcom,fg-cutoff-voltage = <3000>;
 	qcom,fg-empty-voltage = <2750>;
-	qcom,fg-chg-term-current = <170>;
+	qcom,fg-chg-term-current = <100>;
 	qcom,fg-sys-term-current = <175>;
 	qcom,fg-delta-soc-thr = <1>;
 	qcom,fg-recharge-soc-thr = <1>;
@@ -1413,19 +1413,38 @@
 	gpio-names = "eb_vbus_en",
 		     "factory_warn",
 		     "togl_rst";
-
+	io-channels = <&pmi8998_rradc 8>,
+		      <&pmi8998_rradc 10>,
+		      <&pmi8998_rradc 3>,
+		      <&pmi8998_rradc 4>,
+		      <&pmi8998_rradc 6>;
+	io-channel-names = "charger_temp",
+			   "charger_temp_max",
+			   "usbin_i",
+			   "usbin_v",
+			   "dcin_v";
+	pinctrl-names = "default", "eb_active";
+	pinctrl-0 = <&eb_vbus_conf &kungpow_default>;
+	pinctrl-1 = <&eb_vbus_active &kungpow_default>;
 	qcom,fcc-max-ua = <3000000>;
 	qcom,fv-max-uv = <4400000>;
 	qcom,usb-icl-ua = <3000000>;
 	qcom,dc-icl-ua = <3000000>;
-	qcom,step-soc-thresholds = <50 100 100 100>;
-	qcom,step-current-deltas = <0 (-1400000) (-1400000)
-					(-1400000) (-1400000)>;
+	qcom,eb-batt-psy-name = "gb_battery";
+	qcom,eb-pwr-psy-name = "gb_ptp";
+	qcom,dc-eb-icl-ma = <900>;
+	qcom,dc-eb-icl-eff-ma = <500>;
+	qcom,iterm-ma = <132>;
 	qcom,thermal-mitigation = <2500>,
 				   <1500>,
 				   <900>,
 				   <600>,
 				   <300>;
+	qcom,mmi-temp-zones = <0 4200 529 0>,
+				<10 4200 1323 529>,
+				<15 0 1323 1323>,
+				<45 4250 3000 1800>,
+				<60 4200 1323 0>;
 };
 
 &spmi_bus {
