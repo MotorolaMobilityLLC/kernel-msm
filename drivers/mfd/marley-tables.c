@@ -92,6 +92,10 @@ static const struct regmap_irq marley_irqs[ARIZONA_NUM_IRQ] = {
 				  .mask = CLEARWATER_JD1_FALL_EINT1 },
 	[ARIZONA_IRQ_JD_RISE] = { .reg_offset = 6,
 				  .mask = CLEARWATER_JD1_RISE_EINT1 },
+	[ARIZONA_IRQ_JD2_FALL] = { .reg_offset = 6,
+				  .mask = CLEARWATER_JD2_FALL_EINT1 },
+	[ARIZONA_IRQ_JD2_RISE] = { .reg_offset = 6,
+				  .mask = CLEARWATER_JD2_RISE_EINT1 },
 
 	[ARIZONA_IRQ_DRC2_SIG_DET] = { .reg_offset = 8,
 				  .mask = CLEARWATER_DRC2_SIG_DET_EINT1 },
