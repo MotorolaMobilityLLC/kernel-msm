@@ -128,8 +128,10 @@ enum arizona_type {
 #define MOON_IRQ_DSP5_BUS_ERROR           87
 #define MOON_IRQ_DSP6_BUS_ERROR           88
 #define MOON_IRQ_DSP7_BUS_ERROR           89
+#define ARIZONA_IRQ_JD2_FALL              90
+#define ARIZONA_IRQ_JD2_RISE              91
 
-#define ARIZONA_NUM_IRQ                   90
+#define ARIZONA_NUM_IRQ                   92
 
 #define ARIZONA_HP_SHORT_IMPEDANCE        4
 
