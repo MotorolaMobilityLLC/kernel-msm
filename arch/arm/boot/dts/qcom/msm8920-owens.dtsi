@@ -66,7 +66,7 @@
 		vdd-supply = <&pm8917_l10>;
 		vio-supply = <&pm8917_l6>;
 		bosch,init-interval = <200>;
-		bosch,place = <0>;
+		bosch,place = <1>;
 		bosch,gpio-int1 = <&tlmm 41 0x2001>;
 		bosch,gpio-int2 = <&tlmm 42 0x2001>;
 	};
