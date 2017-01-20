@@ -216,7 +216,7 @@
 		config {
 			pins = "gpio79";
 			drive-strength = <2>;
-			bias-disable; /* No PULL */
+			bias-pull-up; /* PULL UP */
 		};
 	};
 
@@ -229,7 +229,7 @@
 		config {
 			pins = "gpio79";
 			drive-strength = <2>;
-			bias-disable; /* No PULL */
+			bias-pull-down; /* PULL DOWN */
 		};
 	};
 
