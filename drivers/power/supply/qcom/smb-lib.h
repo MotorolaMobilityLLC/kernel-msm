@@ -21,6 +21,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/extcon.h>
 #include "storm-watch.h"
+#include <linux/alarmtimer.h>
+#include <linux/pinctrl/consumer.h>
 
 enum print_reason {
 	PR_INTERRUPT	= BIT(0),
@@ -72,6 +74,10 @@ enum print_reason {
 #define OTG_MAX_ATTEMPTS	3
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
+#define HEARTBEAT_VOTER			"HEARTBEAT_VOTER"
+#define HB_ALARM_VOTER			"HB_ALARM_VOTER"
+#define EB_VOTER			"EB_VOTER"
+#define WIRELESS_VOTER			"WIRELESS_VOTER"
 
 enum smb_mode {
 	PARALLEL_MASTER = 0,
@@ -215,6 +221,7 @@ struct smb_iio {
 	struct iio_channel	*connector_temp_thr1_chan;
 	struct iio_channel	*connector_temp_thr2_chan;
 	struct iio_channel	*connector_temp_thr3_chan;
+	struct iio_channel	*dcin_v_chan;
 };
 
 struct reg_info {
@@ -223,6 +230,41 @@ struct reg_info {
 	u8		val;
 	u8		bak;
 	const char	*desc;
+};
+
+struct mmi_temp_zone {
+	int		temp_c;
+	int		norm_mv;
+	int		fcc_max_ma;
+	int		fcc_norm_ma;
+};
+
+#define MAX_NUM_STEPS 10
+enum mmi_temp_zones {
+	ZONE_FIRST = 0,
+	/* states 0-9 are reserved for zones */
+	ZONE_LAST = MAX_NUM_STEPS + ZONE_FIRST - 1,
+	ZONE_HOT,
+	ZONE_COLD,
+	ZONE_NONE = 0xFF,
+};
+
+enum mmi_chrg_step {
+	STEP_MAX,
+	STEP_NORM,
+	STEP_EB,
+	STEP_FULL,
+	STEP_FLOAT,
+	STEP_DEMO,
+	STEP_STOP,
+	STEP_NONE = 0xFF,
+};
+
+enum ebchg_state {
+	EB_DISCONN = POWER_SUPPLY_EXTERN_STATE_DIS,
+	EB_SINK = POWER_SUPPLY_EXTERN_STATE_SINK,
+	EB_SRC = POWER_SUPPLY_EXTERN_STATE_SRC,
+	EB_OFF = POWER_SUPPLY_EXTERN_STATE_OFF,
 };
 
 struct mmi_params {
@@ -234,6 +276,7 @@ struct mmi_params {
 	struct delayed_work	warn_irq_work;
 	int			warn_irq;
 	struct notifier_block	smb_reboot;
+	/* thermal mitigation */
 	int			dc_system_temp_level;
 	int			dc_thermal_levels;
 	int			*dc_thermal_mitigation;
@@ -241,6 +284,37 @@ struct mmi_params {
 	int			usb_thermal_levels;
 	int			*usb_thermal_mitigation;
 	bool			factory_kill_armed;
+
+	/* Charge Profile */
+	int			num_temp_zones;
+	struct mmi_temp_zone	*temp_zones;
+	enum mmi_temp_zones	pres_temp_zone;
+	enum mmi_chrg_step	pres_chrg_step;
+	int			chrg_taper_cnt;
+	int			dc_ebmax_current_ma;
+	int			dc_eff_current_ma;
+	/* external battery params */
+	const char		*eb_batt_psy_name;
+	const char		*eb_pwr_psy_name;
+	enum ebchg_state	ebchg_state;
+	bool			force_eb_chrg;
+	int			update_eb_params;
+	int			cl_ebchg;
+	int			cl_ebsrc;
+	int			vl_ebsrc;
+	int			vo_ebsrc;
+	int			vi_ebsrc;
+	bool			eb_rechrg;
+	bool			usbeb_present;
+	bool			wls_present;
+	int			temp_state;
+	int			chrg_iterm;
+	atomic_t		hb_ready;
+	struct alarm		heartbeat_alarm;
+	struct delayed_work	heartbeat_work;
+	struct power_supply	*wls_psy;
+	struct power_supply	*usbeb_psy;
+	struct pinctrl		*smb_pinctrl;
 };
 
 struct smb_charger {
