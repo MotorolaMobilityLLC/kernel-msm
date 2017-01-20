@@ -362,6 +362,40 @@
 		};
 	};
 
+	eb_chrg_conf {
+		eb_vbus_conf: default {
+			config {
+				pins = "gpio72";
+				function = "gpio";
+				output-low;
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+		eb_vbus_active: active {
+			config {
+				pins = "gpio72";
+				function = "gpio";
+				output-low;
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+
+	kungpow_default: kungpow_default {
+		mux {
+			pins = "gpio62";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio62";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 	spi_6 {
 		spi_6_active {
 			config {
