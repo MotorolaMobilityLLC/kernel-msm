@@ -164,6 +164,7 @@
 		ltr,ps-threshold = <800>;
 		ltr,ps-hysteresis-threshold = <300>;
 		ltr,als-polling-time = <200>;
+		ltr,prox-sensor-name = "Rear Proximity sensor";
 	};
 };
 
