@@ -124,7 +124,8 @@
 	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_NVM, status, fmt, ##__VA_ARGS__)
 
 #define trace_print(level, ...) \
-	VL53L1_trace_print_module_function(VL53L1_TRACE_MODULE_NVM, level, VL53L1_TRACE_FUNCTION_NONE, ##__VA_ARGS__)
+	_LOG_TRACE_PRINT(VL53L1_TRACE_MODULE_NVM, \
+	level, VL53L1_TRACE_FUNCTION_NONE, ##__VA_ARGS__)
 
 
 VL53L1_Error VL53L1_nvm_enable(
@@ -151,40 +152,41 @@ VL53L1_Error VL53L1_nvm_enable(
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_disable_firmware(Dev);
+	if (status == VL53L1_ERROR_NONE)
+
+		status = VL53L1_disable_firmware(Dev);
 
 
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_enable_powerforce(Dev);
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_enable_powerforce(Dev);
 
 
 
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_WaitUs(
-        			Dev,
-        			VL53L1_ENABLE_POWERFORCE_SETTLING_TIME_US);
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_WaitUs(
+					Dev,
+					VL53L1_ENABLE_POWERFORCE_SETTLING_TIME_US);
 
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_WrByte(
-        			Dev,
-        			VL53L1_RANGING_CORE__NVM_CTRL__PDN,
-        			0x01);
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_WrByte(
+					Dev,
+					VL53L1_RANGING_CORE__NVM_CTRL__PDN,
+					0x01);
 
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_WrByte(
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_WrByte(
 					Dev,
 					VL53L1_RANGING_CORE__CLK_CTRL1,
 					0x05);
@@ -192,29 +194,29 @@ VL53L1_Error VL53L1_nvm_enable(
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_WaitUs(
-        			Dev,
-        			nvm_power_up_delay_us);
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_WaitUs(
+					Dev,
+					nvm_power_up_delay_us);
 
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_WrByte(
-        			Dev,
-        			VL53L1_RANGING_CORE__NVM_CTRL__MODE,
-        			0x01);
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_WrByte(
+					Dev,
+					VL53L1_RANGING_CORE__NVM_CTRL__MODE,
+					0x01);
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_WrWord(
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_WrWord(
 					Dev,
 					VL53L1_RANGING_CORE__NVM_CTRL__PULSE_WIDTH_MSB,
 					nvm_ctrl_pulse_width);
 
 	LOG_FUNCTION_END(status);
 
-    return status;
+	return status;
 
 }
 
@@ -236,27 +238,27 @@ VL53L1_Error VL53L1_nvm_read(
 
 
 	VL53L1_Error status   = VL53L1_ERROR_NONE;
-    uint8_t      nvm_addr = 0;
+	uint8_t      nvm_addr = 0;
 
 	LOG_FUNCTION_START("");
 
-    trace_print(
- 		   VL53L1_TRACE_LEVEL_INFO,
- 		   "%-12s = 0x%02X (%3u)\n",
- 		   "nvm_addr", nvm_addr, nvm_addr);
+	trace_print(
+		   VL53L1_TRACE_LEVEL_INFO,
+		   "%-12s = 0x%02X (%3u)\n",
+		   "nvm_addr", nvm_addr, nvm_addr);
 
-    trace_print(
- 		   VL53L1_TRACE_LEVEL_INFO,
- 		   "%-12s = 0x%02X (%3u)\n",
- 		   "count", count, count);
+	trace_print(
+		   VL53L1_TRACE_LEVEL_INFO,
+		   "%-12s = 0x%02X (%3u)\n",
+		   "count", count, count);
 
-    for (nvm_addr=start_address; nvm_addr < (start_address+count) ; nvm_addr++) {
-
-
+	for (nvm_addr = start_address; nvm_addr < (start_address+count) ; nvm_addr++) {
 
 
-        if (status == VL53L1_ERROR_NONE)
-            status = VL53L1_WrByte(
+
+
+		if (status == VL53L1_ERROR_NONE)
+			status = VL53L1_WrByte(
 						Dev,
 						VL53L1_RANGING_CORE__NVM_CTRL__ADDR,
 						nvm_addr);
@@ -264,8 +266,8 @@ VL53L1_Error VL53L1_nvm_read(
 
 
 
-        if (status == VL53L1_ERROR_NONE)
-            status = VL53L1_WrByte(
+		if (status == VL53L1_ERROR_NONE)
+			status = VL53L1_WrByte(
 						Dev,
 						VL53L1_RANGING_CORE__NVM_CTRL__READN,
 						0x00);
@@ -273,43 +275,42 @@ VL53L1_Error VL53L1_nvm_read(
 
 
 
-        if (status == VL53L1_ERROR_NONE)
-            status = VL53L1_WaitUs(
+		if (status == VL53L1_ERROR_NONE)
+			status = VL53L1_WaitUs(
 						Dev,
 						VL53L1_NVM_READ_TRIGGER_DELAY_US);
 
-
-        if (status == VL53L1_ERROR_NONE)
-            status = VL53L1_WrByte(
+		if (status == VL53L1_ERROR_NONE)
+			status = VL53L1_WrByte(
 						Dev,
 						VL53L1_RANGING_CORE__NVM_CTRL__READN,
 						0x01);
 
 
 
-        if (status == VL53L1_ERROR_NONE)
-            status = VL53L1_ReadMulti(
-            			Dev,
-            			VL53L1_RANGING_CORE__NVM_CTRL__DATAOUT_MMM,
-            			pdata,
-            			4);
+		if (status == VL53L1_ERROR_NONE)
+			status = VL53L1_ReadMulti(
+						Dev,
+						VL53L1_RANGING_CORE__NVM_CTRL__DATAOUT_MMM,
+						pdata,
+						4);
 
-        trace_print(
-     		   VL53L1_TRACE_LEVEL_INFO,
-     		   "NVM address : 0x%02X = 0x%02X%02X%02X%02X\n",
-     		   nvm_addr, *pdata, *(pdata+1), *(pdata+2), *(pdata+3));
-
-
+		trace_print(
+			   VL53L1_TRACE_LEVEL_INFO,
+			   "NVM address : 0x%02X = 0x%02X%02X%02X%02X\n",
+			   nvm_addr, *pdata, *(pdata+1), *(pdata+2), *(pdata+3));
 
 
-        pdata = pdata + 4;
 
 
-    }
+		pdata = pdata + 4;
+
+
+	}
 
 	LOG_FUNCTION_END(status);
 
-    return status;
+	return status;
 }
 
 
@@ -325,7 +326,8 @@ VL53L1_Error VL53L1_nvm_disable(
 
 	LOG_FUNCTION_START("");
 
-    if (status == VL53L1_ERROR_NONE)
+	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_WrByte(
 					Dev,
 					VL53L1_RANGING_CORE__NVM_CTRL__READN,
@@ -334,7 +336,7 @@ VL53L1_Error VL53L1_nvm_disable(
 
 
 
-    if (status == VL53L1_ERROR_NONE)
+	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_WrByte(
 					Dev,
 					VL53L1_RANGING_CORE__NVM_CTRL__PDN,
@@ -343,18 +345,18 @@ VL53L1_Error VL53L1_nvm_disable(
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_disable_powerforce(Dev);
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_disable_powerforce(Dev);
 
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_enable_firmware(Dev);
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_enable_firmware(Dev);
 
 	LOG_FUNCTION_END(status);
 
-    return status;
+	return status;
 
 }
 
@@ -861,6 +863,16 @@ VL53L1_Error VL53L1_nvm_format_decode(
 
 
 
+	if (status == VL53L1_ERROR_NONE)
+		status =
+			VL53L1_nvm_decode_additional_offset_cal_data(
+				buf_size,
+				pbuffer + VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_INDEX,
+				&(pdata->fmt_add_offset_data));
+
+
+
+
 	pptmp[0] = VL53L1_NVM__FMT__RANGE_RESULTS__140MM_MM_PRE_RANGE;
 	pptmp[1] = VL53L1_NVM__FMT__RANGE_RESULTS__140MM_DARK;
 	pptmp[2] = VL53L1_NVM__FMT__RANGE_RESULTS__400MM_DARK;
@@ -894,6 +906,33 @@ VL53L1_Error VL53L1_nvm_format_decode(
 
 	return status;
 
+}
+
+
+VL53L1_Error VL53L1_nvm_decode_additional_offset_cal_data(
+	uint16_t                             buf_size,
+	uint8_t                             *pbuffer,
+	VL53L1_additional_offset_cal_data_t *pdata)
+{
+
+	VL53L1_Error status   = VL53L1_ERROR_NONE;
+
+	if (VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_SIZE > buf_size)
+		return VL53L1_ERROR_BUFFER_TOO_SMALL;
+
+	pdata->result__mm_inner_actual_effective_spads =
+		(uint16_t)VL53L1_i2c_decode_uint16_t(2, pbuffer);
+
+	pdata->result__mm_outer_actual_effective_spads =
+		(uint16_t)VL53L1_i2c_decode_uint16_t(2, pbuffer + 2);
+
+	pdata->result__mm_inner_peak_signal_count_rtn_mcps =
+		(uint16_t)VL53L1_i2c_decode_uint16_t(2, pbuffer + 4);
+
+	pdata->result__mm_outer_peak_signal_count_rtn_mcps =
+		(uint16_t)VL53L1_i2c_decode_uint16_t(2, pbuffer + 6);
+
+	return status;
 }
 
 
@@ -1289,7 +1328,8 @@ void VL53L1_nvm_format_encode(
 	VL53L1_decoded_nvm_data_t *pnvm_info,
 	uint8_t                   *pnvm_data)
 {
-
+	SUPPRESS_UNUSED_WARNING(pnvm_info);
+	SUPPRESS_UNUSED_WARNING(pnvm_data);
 }
 
 
@@ -1314,11 +1354,12 @@ VL53L1_Error VL53L1_read_nvm_raw_data(
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-    	status = VL53L1_nvm_enable(
-    				Dev,
-    				0x0004,
-                    VL53L1_NVM_POWER_UP_DELAY_US);
+	if (status == VL53L1_ERROR_NONE)
+
+		status = VL53L1_nvm_enable(
+					Dev,
+					0x0004,
+					VL53L1_NVM_POWER_UP_DELAY_US);
 
 
 
@@ -1326,24 +1367,24 @@ VL53L1_Error VL53L1_read_nvm_raw_data(
 
 
 
-    if(status == VL53L1_ERROR_NONE)
-        status = VL53L1_nvm_read(
-        			Dev,
-        			start_address,
-        			count,
-        			pnvm_raw_data);
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_nvm_read(
+			Dev,
+			start_address,
+			count,
+			pnvm_raw_data);
 
 
 
 
 
 
-    if (status == VL53L1_ERROR_NONE)
-        status = VL53L1_nvm_disable(Dev);
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_nvm_disable(Dev);
 
 	LOG_FUNCTION_END(status);
 
-    return status;
+	return status;
 
 }
 
@@ -1366,36 +1407,87 @@ VL53L1_Error VL53L1_read_nvm(
 
 
 
-    uint8_t nvm_data[2*VL53L1_NVM_SIZE_IN_BYTES];
+	uint8_t nvm_data[2*VL53L1_NVM_SIZE_IN_BYTES];
+
+	LOG_FUNCTION_START("");
+
+	SUPPRESS_UNUSED_WARNING(nvm_format);
+
+
+
+
+	status = VL53L1_read_nvm_raw_data(
+				Dev,
+				0,
+				VL53L1_NVM_SIZE_IN_BYTES >> 2,
+				nvm_data);
+
+
+
+
+
+
+
+
+
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_nvm_format_decode(
+			VL53L1_NVM_SIZE_IN_BYTES,
+			nvm_data,
+			pnvm_info);
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+
+VL53L1_Error VL53L1_read_nvm_additional_offset_cal_data(
+	VL53L1_DEV                           Dev,
+	VL53L1_additional_offset_cal_data_t *pcal_data)
+{
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error status = VL53L1_ERROR_NONE;
+
+
+
+	uint8_t nvm_data[2*VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_SIZE];
 
 	LOG_FUNCTION_START("");
 
 
 
 
-    status = VL53L1_read_nvm_raw_data(
-    			Dev,
-    			0,
-    			VL53L1_NVM_SIZE_IN_BYTES >> 2,
-    			nvm_data);
+	status =
+		VL53L1_read_nvm_raw_data(
+			Dev,
+			(uint8_t)(VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_INDEX >> 2),
+			(uint8_t)(VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_SIZE >> 2),
+			nvm_data);
 
 
 
 
-
-
-
-
-
-    if(status == VL53L1_ERROR_NONE)
-        status = VL53L1_nvm_format_decode(
-						VL53L1_NVM_SIZE_IN_BYTES,
-						nvm_data,
-						pnvm_info);
+	if (status == VL53L1_ERROR_NONE)
+		status = VL53L1_nvm_decode_additional_offset_cal_data(
+			VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_SIZE,
+			nvm_data,
+			pcal_data);
 
 	LOG_FUNCTION_END(status);
 
-    return status;
+	return status;
 
 }
 
@@ -1419,32 +1511,32 @@ VL53L1_Error VL53L1_read_nvm_fmt_range_results_data(
 
 
 
-    uint8_t nvm_data[2*VL53L1_NVM__FMT__RANGE_RESULTS__SIZE_BYTES];
+	uint8_t nvm_data[2*VL53L1_NVM__FMT__RANGE_RESULTS__SIZE_BYTES];
 
 	LOG_FUNCTION_START("");
 
 
 
 
-    status = VL53L1_read_nvm_raw_data(
-    			Dev,
-    			(uint8_t)(range_results_select >> 2),
-    			(uint8_t)(VL53L1_NVM__FMT__RANGE_RESULTS__SIZE_BYTES >> 2),
-    			nvm_data);
+	status = VL53L1_read_nvm_raw_data(
+		Dev,
+		(uint8_t)(range_results_select >> 2),
+		(uint8_t)(VL53L1_NVM__FMT__RANGE_RESULTS__SIZE_BYTES >> 2),
+		nvm_data);
 
 
 
 
-    if(status == VL53L1_ERROR_NONE)
-        status =
-        	VL53L1_nvm_decode_fmt_range_results_data(
+	if (status == VL53L1_ERROR_NONE)
+		status =
+			VL53L1_nvm_decode_fmt_range_results_data(
 				VL53L1_NVM__FMT__RANGE_RESULTS__SIZE_BYTES,
 				nvm_data,
 				prange_data);
 
 	LOG_FUNCTION_END(status);
 
-    return status;
+	return status;
 
 }
 

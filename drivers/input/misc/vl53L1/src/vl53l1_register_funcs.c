@@ -110,9 +110,6 @@
 #define LOG_FUNCTION_END_FMT(status, fmt, ...) \
 	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_REGISTERS, status, fmt, ##__VA_ARGS__)
 
-#define trace_print(level, ...) \
-	VL53L1_trace_print_module_function(VL53L1_TRACE_MODULE_REGISTERS, level, VL53L1_TRACE_FUNCTION_NONE, ##__VA_ARGS__)
-
 
 VL53L1_Error VL53L1_i2c_encode_static_nvm_managed(
 	VL53L1_static_nvm_managed_t *pdata,
@@ -222,6 +219,7 @@ VL53L1_Error VL53L1_set_static_nvm_managed(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_static_nvm_managed(
 			pdata,
 			VL53L1_STATIC_NVM_MANAGED_I2C_SIZE_BYTES,
@@ -256,6 +254,7 @@ VL53L1_Error VL53L1_get_static_nvm_managed(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_I2C_SLAVE__DEVICE_ADDRESS,
@@ -418,6 +417,7 @@ VL53L1_Error VL53L1_set_customer_nvm_managed(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_customer_nvm_managed(
 			pdata,
 			VL53L1_CUSTOMER_NVM_MANAGED_I2C_SIZE_BYTES,
@@ -452,6 +452,7 @@ VL53L1_Error VL53L1_get_customer_nvm_managed(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_GLOBAL_CONFIG__SPAD_ENABLES_REF_0,
@@ -660,6 +661,7 @@ VL53L1_Error VL53L1_set_static_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_static_config(
 			pdata,
 			VL53L1_STATIC_CONFIG_I2C_SIZE_BYTES,
@@ -694,6 +696,7 @@ VL53L1_Error VL53L1_get_static_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_DSS_CONFIG__TARGET_TOTAL_RATE_MCPS,
@@ -854,6 +857,7 @@ VL53L1_Error VL53L1_set_general_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_general_config(
 			pdata,
 			VL53L1_GENERAL_CONFIG_I2C_SIZE_BYTES,
@@ -888,6 +892,7 @@ VL53L1_Error VL53L1_get_general_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_GPH_CONFIG__STREAM_COUNT_UPDATE_VALUE,
@@ -1042,6 +1047,7 @@ VL53L1_Error VL53L1_set_timing_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_timing_config(
 			pdata,
 			VL53L1_TIMING_CONFIG_I2C_SIZE_BYTES,
@@ -1076,6 +1082,7 @@ VL53L1_Error VL53L1_get_timing_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_MM_CONFIG__TIMEOUT_MACROP_A_HI,
@@ -1228,6 +1235,7 @@ VL53L1_Error VL53L1_set_dynamic_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_dynamic_config(
 			pdata,
 			VL53L1_DYNAMIC_CONFIG_I2C_SIZE_BYTES,
@@ -1262,6 +1270,7 @@ VL53L1_Error VL53L1_get_dynamic_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_SYSTEM__GROUPED_PARAMETER_HOLD_0,
@@ -1366,6 +1375,7 @@ VL53L1_Error VL53L1_set_system_control(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_system_control(
 			pdata,
 			VL53L1_SYSTEM_CONTROL_I2C_SIZE_BYTES,
@@ -1400,6 +1410,7 @@ VL53L1_Error VL53L1_get_system_control(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_POWER_MANAGEMENT__GO1_POWER_FORCE,
@@ -1622,6 +1633,7 @@ VL53L1_Error VL53L1_set_system_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_system_results(
 			pdata,
 			VL53L1_SYSTEM_RESULTS_I2C_SIZE_BYTES,
@@ -1656,6 +1668,7 @@ VL53L1_Error VL53L1_get_system_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_RESULT__INTERRUPT_STATUS,
@@ -1792,6 +1805,7 @@ VL53L1_Error VL53L1_set_core_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_core_results(
 			pdata,
 			VL53L1_CORE_RESULTS_I2C_SIZE_BYTES,
@@ -1832,6 +1846,7 @@ VL53L1_Error VL53L1_get_core_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_RESULT_CORE__AMBIENT_WINDOW_EVENTS_SD0,
@@ -2102,6 +2117,7 @@ VL53L1_Error VL53L1_set_debug_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_debug_results(
 			pdata,
 			VL53L1_DEBUG_RESULTS_I2C_SIZE_BYTES,
@@ -2142,6 +2158,7 @@ VL53L1_Error VL53L1_get_debug_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_PHASECAL_RESULT__REFERENCE_PHASE,
@@ -2420,6 +2437,7 @@ VL53L1_Error VL53L1_set_nvm_copy_data(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_nvm_copy_data(
 			pdata,
 			VL53L1_NVM_COPY_DATA_I2C_SIZE_BYTES,
@@ -2460,6 +2478,7 @@ VL53L1_Error VL53L1_get_nvm_copy_data(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_ReadMulti(
 			Dev,
 			VL53L1_IDENTIFICATION__MODEL_ID,
@@ -2680,6 +2699,7 @@ VL53L1_Error VL53L1_set_prev_shadow_system_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_prev_shadow_system_results(
 			pdata,
 			VL53L1_PREV_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES,
@@ -2720,6 +2740,7 @@ VL53L1_Error VL53L1_get_prev_shadow_system_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
@@ -2862,6 +2883,7 @@ VL53L1_Error VL53L1_set_prev_shadow_core_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_prev_shadow_core_results(
 			pdata,
 			VL53L1_PREV_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES,
@@ -2902,6 +2924,7 @@ VL53L1_Error VL53L1_get_prev_shadow_core_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
@@ -3000,6 +3023,7 @@ VL53L1_Error VL53L1_set_patch_debug(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_patch_debug(
 			pdata,
 			VL53L1_PATCH_DEBUG_I2C_SIZE_BYTES,
@@ -3040,6 +3064,7 @@ VL53L1_Error VL53L1_get_patch_debug(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
@@ -3146,6 +3171,7 @@ VL53L1_Error VL53L1_set_gph_general_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_gph_general_config(
 			pdata,
 			VL53L1_GPH_GENERAL_CONFIG_I2C_SIZE_BYTES,
@@ -3186,6 +3212,7 @@ VL53L1_Error VL53L1_get_gph_general_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
@@ -3298,6 +3325,7 @@ VL53L1_Error VL53L1_set_gph_static_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_gph_static_config(
 			pdata,
 			VL53L1_GPH_STATIC_CONFIG_I2C_SIZE_BYTES,
@@ -3338,6 +3366,7 @@ VL53L1_Error VL53L1_get_gph_static_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
@@ -3488,6 +3517,7 @@ VL53L1_Error VL53L1_set_gph_timing_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_gph_timing_config(
 			pdata,
 			VL53L1_GPH_TIMING_CONFIG_I2C_SIZE_BYTES,
@@ -3528,6 +3558,7 @@ VL53L1_Error VL53L1_get_gph_timing_config(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
@@ -3626,6 +3657,7 @@ VL53L1_Error VL53L1_set_fw_internal(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_fw_internal(
 			pdata,
 			VL53L1_FW_INTERNAL_I2C_SIZE_BYTES,
@@ -3666,6 +3698,7 @@ VL53L1_Error VL53L1_get_fw_internal(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
@@ -4024,6 +4057,7 @@ VL53L1_Error VL53L1_set_patch_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_patch_results(
 			pdata,
 			VL53L1_PATCH_RESULTS_I2C_SIZE_BYTES,
@@ -4064,6 +4098,7 @@ VL53L1_Error VL53L1_get_patch_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
@@ -4304,6 +4339,7 @@ VL53L1_Error VL53L1_set_shadow_system_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_shadow_system_results(
 			pdata,
 			VL53L1_SHADOW_SYSTEM_RESULTS_I2C_SIZE_BYTES,
@@ -4344,6 +4380,7 @@ VL53L1_Error VL53L1_get_shadow_system_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
@@ -4486,6 +4523,7 @@ VL53L1_Error VL53L1_set_shadow_core_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_i2c_encode_shadow_core_results(
 			pdata,
 			VL53L1_SHADOW_CORE_RESULTS_I2C_SIZE_BYTES,
@@ -4526,6 +4564,7 @@ VL53L1_Error VL53L1_get_shadow_core_results(
 	LOG_FUNCTION_START("");
 
 	if (status == VL53L1_ERROR_NONE)
+
 		status = VL53L1_disable_firmware(Dev);
 
 	if (status == VL53L1_ERROR_NONE)
