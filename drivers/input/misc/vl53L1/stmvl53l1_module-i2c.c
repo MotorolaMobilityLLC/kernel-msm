@@ -66,6 +66,8 @@
 #include "stmvl53l1-i2c.h"
 #include "stmvl53l1.h"
 
+#define STMVL53L1_SLAVE_ADDR	(0x52>>1)
+
 /** @ingroup drv_port
  * @{
  */
@@ -79,9 +81,6 @@
  * this one permit some specific debug without activating all main dbg
  */
 #define MODI2C_DEBUG	0
-
-#define VL53L1_VDD_MIN 2850000
-#define VL53L1_VDD_MAX 2850000
 
 struct vl53l1_pinctrl_info {
 	struct pinctrl *pinctrl;
@@ -99,10 +98,6 @@ struct vl53l1_pinctrl_info {
  * in a normal dev tree prod system this is not required
  */
 static struct i2c_client *stm_test_i2c_client;
-
-/* TODO this shall be an array if to register multiple device
- * not is null until set durign probe drievr add
- */
 
 /*
  * pi3:
@@ -346,7 +341,7 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 		i2c_data->intr_gpio = intr_gpio_nb;
 	} else if (dev->of_node) {
 		/* power : either vdd or pwren_gpio. try reulator first */
-		i2c_data->vdd = regulator_get(dev, "vdd-vl53l1");
+		i2c_data->vdd = regulator_get_optional(dev, "vdd-vl53l1");
 		if (IS_ERR(i2c_data->vdd) || i2c_data->vdd == NULL) {
 			i2c_data->vdd = NULL;
 			/* try gpio */
@@ -548,13 +543,6 @@ int stmvl53l1_power_up_i2c(void *object)
 
 	/* turn on power */
 	if (data->vdd) {
-		rc = regulator_set_voltage(data->vdd, VL53L1_VDD_MIN,
-				VL53L1_VDD_MAX);
-		if (rc) {
-			vl53l1_errmsg("set volt fail %d\n", rc);
-			return rc;
-		}
-
 		rc = regulator_enable(data->vdd);
 		if (rc) {
 			vl53l1_errmsg("fail to turn on regulator");
@@ -572,7 +560,6 @@ int stmvl53l1_power_up_i2c(void *object)
 /**
  * remove power to device (reset it)
  *
- * TODO we may have dedicate reset interface to optimize startup time
  * @param i2c_object the i2c layer object
  * @return 0 on success
  */
@@ -702,8 +689,6 @@ static irqreturn_t stmvl53l1_irq_handler_i2c(int vec, void *info)
 /**
  * enable and start intr handling
  *
- * TODO we may need the sae for "disable"
- *
  * @param object  our i2c_data specific object
  * @param poll_mode [in/out] set to force mode clear to use irq
  * @return 0 on success and set ->poll_mode if it faill ranging wan't start
@@ -733,14 +718,10 @@ int stmvl53l1_start_intr(void *object, int *poll_mode)
 	rc = request_threaded_irq(i2c_data->irq, NULL,
 			stmvl53l1_irq_handler_i2c,
 			IRQF_TRIGGER_FALLING|IRQF_ONESHOT,
-			/* todo adapt name to dev ?*/
 			"vl53l1_interrupt",
 			(void *)i2c_data);
 	if (rc) {
 		vl53l1_errmsg("fail to req threaded irq rc=%d\n", rc);
-		/**TODO fall back to poll when irq request fail here
-		 * revisit as needed
-		 */
 		vl53l1_errmsg("no irq fall back to poll");
 		*poll_mode = -1;
 		rc = 0; /* mask error due to fall back*/

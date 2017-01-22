@@ -171,16 +171,26 @@ VL53L1_Error VL53L1_get_pal_error_string(
 	#define  VL53L1_STRING_ERROR_XTALK_EXTRACTION_FAIL \
 			"Xtalk Extraction Failed"
 
+	#define  VL53L1_STRING_ERROR_OFFSET_CAL_INSUFFICIENT_MM1_SPADS \
+			"Offset Cal - Insufficient MM1 SPADs"
+
+	#define  VL53L1_STRING_ERROR_REF_SPAD_CHAR_NOT_ENOUGH_SPADS \
+			"Ref SPAD Char - Not Enough Good SPADs"
+	#define  VL53L1_STRING_ERROR_REF_SPAD_CHAR_RATE_TOO_HIGH \
+			"Ref SPAD Char - Final Ref Rate too high"
+	#define  VL53L1_STRING_ERROR_REF_SPAD_CHAR_RATE_TOO_LOW \
+			"Ref SPAD Char - Final Ref Rate too low"
+
 	#define  VL53L1_STRING_ERROR_DEVICE_FIRMWARE_TOO_OLD \
 			"Device Firmware too old"
 	#define  VL53L1_STRING_ERROR_DEVICE_FIRMWARE_TOO_NEW \
 			"Device Firmware too new"
 	#define  VL53L1_STRING_ERROR_UNIT_TEST_FAIL \
-	        "Unit Test Fail"
+			"Unit Test Fail"
 	#define  VL53L1_STRING_ERROR_FILE_READ_FAIL \
-        	"File Read Fail"
+			"File Read Fail"
 	#define  VL53L1_STRING_ERROR_FILE_WRITE_FAIL \
-        	"File Write Fail"
+			"File Write Fail"
 
 	#define  VL53L1_STRING_ERROR_NOT_IMPLEMENTED \
 			"Not implemented error"

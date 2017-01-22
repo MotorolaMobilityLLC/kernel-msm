@@ -133,6 +133,7 @@ static int send_client_msg(void *msg_data, int msg_size)
 
 	nl_data = nlmsg_data(nlh); /*get data ptr from header*/
 	memcpy(nl_data, msg_data, msg_size);
+
 	/* FIXME do we real need to lock to send a data other nl_sk ? */
 	mutex_lock(&ipp_mutex);
 	rc = nlmsg_unicast(nl_sk, skb_out, daemon_pid);
@@ -141,6 +142,7 @@ static int send_client_msg(void *msg_data, int msg_size)
 				msg_size, daemon_pid);
 	/* stat can be done here in else case */
 	mutex_unlock(&ipp_mutex);
+
 	return rc;
 }
 
@@ -158,7 +160,6 @@ int ipp_in_process(struct ipp_work_t *pwork)
 	data = stmvl53l1_dev_table[pwork->dev_id];
 	ipp_dbg("to lock ");
 	mutex_lock(&data->work_mutex);
-	mutex_lock(&data->ipp.mutex);
 	if (data->ipp.buzy == IPP_STATE_PENDING) {
 		/* if  it was already handled ignore it */
 		if (data->ipp.waited_xfer_id == pwork->xfer_id) {
@@ -176,7 +177,6 @@ int ipp_in_process(struct ipp_work_t *pwork)
 			data->id, data->ipp.buzy, data->ipp.waited_xfer_id,
 			pwork->xfer_id);
 done_lock:
-	mutex_unlock(&data->ipp.mutex);
 	mutex_unlock(&data->work_mutex);
 
 	return 0;
@@ -184,8 +184,9 @@ done_lock:
 
 int stmvl53l1_ipp_stop(struct stmvl53l1_data *data)
 {
-	int rc = data->ipp.buzy;
+	int rc;
 
+	rc = data->ipp.buzy;
 	ipp_dbg("#%d to stop buzy %d", data->id, data->ipp.buzy);
 	if (data->ipp.buzy) {
 		/* set invalid wait id to discard canceled job when back */
@@ -195,6 +196,7 @@ int stmvl53l1_ipp_stop(struct stmvl53l1_data *data)
 		/* wake up worker or abort the thread */
 		wake_up(&data->ipp.waitq);
 	}
+
 	return rc;
 }
 
@@ -210,11 +212,7 @@ int stmvl53l1_ipp_do(struct stmvl53l1_data *data,
 	bool has_timeout;
 
 	ipp_dbg("enter");
-	/* TODO shall we enforce that dev is "registered "
-	 * ie data->id <  ipp_n_dev is ?
-	 */
 
-	/* FIXME here dead lock if ipp_mutex, dev mutex taken in bad order */
 	xfer_id = get_next_xfer_id();
 	/* set xfer and device dependent part of the work */
 	pin->dev_id = data->id;
@@ -226,12 +224,10 @@ int stmvl53l1_ipp_do(struct stmvl53l1_data *data,
 	if (rc < 0) {
 		rc = -1;
 		ipp_err("fail to send msg %d", rc);
-	} else {
+	} else if (data->ipp.buzy == 0) {
 		/* send ok put the ipp on buzy state while locked */
 		data->ipp.buzy = IPP_STATE_PENDING;
 		/*  unlock now that state is marked buzy */
-		/* TODO shall we release the main dev lock ? */
-		mutex_unlock(&data->ipp.mutex);
 		mutex_unlock(&data->work_mutex);
 
 		/* put task to wait for completion */
@@ -242,13 +238,10 @@ int stmvl53l1_ipp_do(struct stmvl53l1_data *data,
 
 		/* relock the main lock */
 		mutex_lock(&data->work_mutex);
-		mutex_lock(&data->ipp.mutex);
 
 		rc = (data->ipp.buzy & IPP_STATE_CANCELED) || has_timeout ?
 			-1 : 0;
 		if (rc) {
-			/* TODO shall we kill status in return work ? */
-			/* data->ipp.status = -1; */
 			ipp_dbg("waking up with from canceled/timeout ipp");
 		} else {
 			/* return status from the ipp itself */
@@ -256,10 +249,11 @@ int stmvl53l1_ipp_do(struct stmvl53l1_data *data,
 			rc = data->ipp.status;
 		}
 		data->ipp.buzy = 0;/* buzy clear but locked so safe */
-		/* TODO if someone waiting for us to complete that'
-		 * where to signal it
-		 */
+	} else {
+		ipp_dbg("buzy still not zero %d", data->ipp.buzy);
+		rc = -1;
 	}
+
 
 /* done_lock: */
 	return rc;
@@ -310,7 +304,6 @@ static void stmvl53l1_nl_recv_msg(struct sk_buff *skb_in)
 			ipp_warn("pid chg %d => %d\n", daemon_pid, pid);
 		else
 			ipp_dbg("got ping fm pid %d\n", daemon_pid);
-		/* TODO on daemon pid change */
 		daemon_pid = pid;
 		pid_chg = 1;
 	} else {
@@ -323,40 +316,27 @@ static void stmvl53l1_nl_recv_msg(struct sk_buff *skb_in)
 int stmvl53l1_ipp_setup(struct stmvl53l1_data *data)
 {
 	int rc;
-	/* if any device running we must lock else we are locked since init*/
-	if (ipp_n_dev)
-		mutex_lock(&ipp_mutex);
+
+	mutex_lock(&ipp_mutex);
+
 	ipp_n_dev++;
-
-	/* TODO init any per device resource if it fail and first
-	 * dev make sure to put lock down
-	 */
-	mutex_init(&data->ipp.mutex);
 	data->ipp.buzy = 0;
-
 	init_waitqueue_head(&data->ipp.waitq);
-
 	ipp_dbg("now %d dev daemon pid is %d", ipp_n_dev, daemon_pid);
 	rc = 0;
-	/* note first dev locked at init we can now process messages unlock*/
+
 	mutex_unlock(&ipp_mutex);
+
 	return rc;
 }
 
 void stmvl53l1_ipp_cleanup(struct stmvl53l1_data *data)
 {
-	ipp_dbg("n dev =%d", ipp_n_dev);
-	if (ipp_n_dev) {
-		mutex_lock(&ipp_mutex);
-		ipp_n_dev--;
-		/* cleanup per device data => none it's all within data
-		 * unless last device unlock
-		 */
-		if (ipp_n_dev)
-			mutex_unlock(&ipp_mutex);
-		else
-			ipp_dbg("not last ipp release kept locked");
-	}
+	mutex_lock(&ipp_mutex);
+
+	ipp_n_dev--;
+
+	mutex_unlock(&ipp_mutex);
 }
 
 #if !defined(OLD_NETLINK_API)
@@ -368,7 +348,6 @@ struct netlink_kernel_cfg cfg = {
 int stmvl53l1_ipp_init(void)
 {
 	mutex_init(&ipp_mutex);
-	mutex_lock(&ipp_mutex);
 	daemon_pid = 1; /* pid  1 is safe should not be use for user space */
 
 #if defined(OLD_NETLINK_API)
