@@ -42,10 +42,6 @@
 
 #include "vl53l1_api.h"
 
-/* #define DEBUG */
-/* #define FORCE_CONSOLE_DEBUG */
-
-
 /**
  * IPP adapt
  */
@@ -73,9 +69,7 @@
  */
 /* define CFG_STMVL53L1_HAVE_REGULATOR */
 
-#define STMVL53L1_SLAVE_ADDR	(0x52>>1)
-
-#define DRIVER_VERSION		"6.1.0"
+#define DRIVER_VERSION		"7.1.0"
 
 /** @ingroup vl53l1_mod_dbg
  * @{
@@ -125,10 +119,6 @@ extern int stmvl53l1_enable_debug;
 #define vl53l1_wanrmsg(str, args...) \
 	pr_warn("%s: " str, __func__, ##args)
 
-
-#define VL53L0_VDD_MIN      2600000
-#define VL53L0_VDD_MAX      3000000
-
 /* turn off poll log if not defined */
 #ifndef STMVL53L1_LOG_POLL_TIMING
 #	define STMVL53L1_LOG_POLL_TIMING	0
@@ -163,11 +153,6 @@ struct ipp_data_t {
 	 * it's ok for daemon to use 0 in "ping" when it identify himself
 	*/
 	int status;	/** if that is not 0 do not look at out work data */
-	struct mutex mutex;
-	/*!< the mutex that shall be held when looking at this struct
-	 * but holding the main lock could be enough in opposite holding this
-	lock does not granted using the device data without work lock
-	*/
 	wait_queue_head_t waitq;
 	/*!< ipp caller are put in that queue wait while job is posted to user
 	 * @warning  ipp and dev mutex will be released before waiting
@@ -213,6 +198,7 @@ struct stmvl53l1_data {
 	int enable_sensor;	/*!< actual device enabled state  */
 	struct timeval start_tv;/*!< stream start time */
 	int enable_debug;
+	bool allow_hidden_start_stop; /*!< allow stop/start sequence in bare */
 
 	/* Custom values set by app */
 
@@ -220,6 +206,8 @@ struct stmvl53l1_data {
 	uint32_t timing_budget;	/*!< Timing Budget */
 	int distance_mode;	/*!< distance mode of the device */
 	int crosstalk_enable;	/*!< is crosstalk compensation is enable */
+	int output_mode;	/*!< output mode of the device */
+	bool force_device_on_en;/*!< keep device active when stopped */
 
 	/* PS parameters */
 
@@ -243,8 +231,8 @@ struct stmvl53l1_data {
 	} meas;
 
 	/* workqueue use to fire flush event */
-	struct delayed_work flush_work;
 	uint32_t flushCount;
+	int flush_todo_counter;
 
 	/* Device parameters */
 	/* Polling thread */
@@ -259,9 +247,17 @@ struct stmvl53l1_data {
 	/* control when using delay is acceptable */
 	bool is_delay_allowed;
 
+	/* maintain reset state */
+	int reset_state;
+
 	/* Recent interrupt status */
 	/* roi */
 	VL53L1_RoiConfig_t roi_cfg;
+
+	/* autonomous config */
+	uint32_t auto_pollingTimeInMs;
+	VL53L1_DetectionConfig_t auto_config;
+
 	/* Debug */
 	struct ipp_data_t ipp;
 #if IPP_LOG_TIMING
@@ -272,7 +268,7 @@ struct stmvl53l1_data {
 #	define stmvl531_ipp_time(data)\
 		stmvl53l1_tv_dif(&data->ipp.start_tv, &data->ipp.stop_tv)
 #	define stmvl531_ipp_stat(data, fmt, ...)\
-		pr_debug("IPPSTAT " fmt "\n", ##__VA_ARGS__)
+		vl53l1_dbgmsg("IPPSTAT " fmt "\n", ##__VA_ARGS__)
 #else
 #	define stmvl531_ipp_tim_stop(data) (void)0
 #	define stmvl531_ipp_tim_start(data) (void)0
