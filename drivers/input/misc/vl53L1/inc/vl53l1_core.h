@@ -178,6 +178,19 @@ VL53L1_Error VL53L1_update_ll_driver_cfg_state(
 
 
 
+void VL53L1_copy_rtn_good_spads_to_buffer(
+	VL53L1_nvm_copy_data_t  *pdata,
+	uint8_t                 *pbuffer);
+
+
+
+
+
+
+
+
+
+
 
 
 void VL53L1_init_system_results(
@@ -267,9 +280,77 @@ void VL53L1_init_histogram_config_structure(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_init_histogram_multizone_config_structure(
+	uint8_t   even_bin0,
+	uint8_t   even_bin1,
+	uint8_t   even_bin2,
+	uint8_t   even_bin3,
+	uint8_t   even_bin4,
+	uint8_t   even_bin5,
+	uint8_t   odd_bin0,
+	uint8_t   odd_bin1,
+	uint8_t   odd_bin2,
+	uint8_t   odd_bin3,
+	uint8_t   odd_bin4,
+	uint8_t   odd_bin5,
+	VL53L1_histogram_config_t  *pdata);
+
+
+
+
+
+
+
+
+
+
+
 void VL53L1_init_histogram_bin_data_struct(
 	int32_t                      bin_value,
-	uint16_t                     VL53L1_PRM_00013,
+	uint16_t                     VL53L1_PRM_00015,
 	VL53L1_histogram_bin_data_t *pdata);
 
 
@@ -283,9 +364,9 @@ void VL53L1_init_histogram_bin_data_struct(
 
 
 void VL53L1_init_xtalk_bin_data_struct(
-	uint32_t                       bin_value,
-	uint16_t                       VL53L1_PRM_00013,
-	VL53L1_xtalk_histogram_data_t *pdata);
+	uint32_t                        bin_value,
+	uint16_t                        VL53L1_PRM_00015,
+	VL53L1_xtalk_histogram_shape_t *pdata);
 
 
 
@@ -298,8 +379,8 @@ void VL53L1_init_xtalk_bin_data_struct(
 
 
 void VL53L1_copy_xtalk_bin_data_to_histogram_data_struct(
-		VL53L1_xtalk_histogram_data_t *pxtalk,
-		VL53L1_histogram_bin_data_t   *phist);
+		VL53L1_xtalk_histogram_shape_t *pxtalk,
+		VL53L1_histogram_bin_data_t    *phist);
 
 
 
@@ -631,7 +712,7 @@ VL53L1_Error VL53L1_force_shadow_stream_count_to_zero(
 
 uint32_t VL53L1_calc_macro_period_us(
 	uint16_t fast_osc_frequency,
-	uint8_t  VL53L1_PRM_00006);
+	uint8_t  VL53L1_PRM_00007);
 
 
 
@@ -645,6 +726,29 @@ uint32_t VL53L1_calc_macro_period_us(
 
 uint32_t VL53L1_calc_pll_period_us(
 	uint16_t fast_osc_frequency);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+uint16_t VL53L1_calc_range_ignore_threshold(
+	uint16_t central_rate,
+	int16_t  x_gradient,
+	int16_t  y_gradient,
+	uint8_t  rate_mult);
 
 
 
@@ -676,7 +780,7 @@ uint32_t VL53L1_calc_pll_period_mm(
 
 uint16_t VL53L1_calc_encoded_timeout(
 	uint32_t  timeout_us,
-    uint32_t  macro_period_us);
+	uint32_t  macro_period_us);
 
 
 
@@ -692,7 +796,7 @@ uint16_t VL53L1_calc_encoded_timeout(
 
 uint32_t VL53L1_calc_decoded_timeout_us(
 	uint16_t  timeout_encoded,
-    uint32_t  macro_period_us);
+	uint32_t  macro_period_us);
 
 
 
@@ -841,7 +945,7 @@ uint32_t VL53L1_duration_maths(
 
 
 uint16_t VL53L1_rate_maths(
-	int32_t   VL53L1_PRM_00026,
+	int32_t   VL53L1_PRM_00005,
 	uint32_t  time_us);
 
 
@@ -861,7 +965,7 @@ uint16_t VL53L1_rate_maths(
 
 int32_t VL53L1_range_maths(
 	uint16_t  fast_osc_frequency,
-	uint16_t  VL53L1_PRM_00010,
+	uint16_t  VL53L1_PRM_00011,
 	uint16_t  zero_distance_phase,
 	int32_t   range_offset_mm);
 
@@ -904,7 +1008,7 @@ uint16_t VL53L1_rate_per_spad_maths(
 
 
 uint32_t VL53L1_events_per_spad_maths(
-	int32_t   VL53L1_PRM_00008,
+	int32_t   VL53L1_PRM_00009,
 	uint16_t  num_spads,
 	uint32_t  duration);
 
@@ -995,7 +1099,7 @@ void VL53L1_hist_estimate_ambient_from_thresholded_bins(
 
 
 VL53L1_Error VL53L1_hist_copy_and_scale_ambient_info(
-	VL53L1_histogram_bin_data_t    *pidata,
+	VL53L1_zone_hist_info_t        *pidata,
 	VL53L1_histogram_bin_data_t    *podata);
 
 
@@ -1047,7 +1151,7 @@ void  VL53L1_hist_get_bin_sequence_config(
 
 VL53L1_Error  VL53L1_hist_phase_consistency_check(
 	VL53L1_DEV                Dev,
-	VL53L1_range_results_t   *previous,
+	VL53L1_zone_objects_t    *previous,
 	VL53L1_range_results_t   *pcurrent);
 
 
@@ -1069,7 +1173,7 @@ VL53L1_Error  VL53L1_hist_phase_consistency_check(
 
 
 VL53L1_Error  VL53L1_hist_wrap_dmax(
-	VL53L1_histogram_bin_data_t  *previous,
+	VL53L1_zone_hist_info_t      *previous,
 	VL53L1_histogram_bin_data_t  *pcurrent,
 	int16_t                      *pwrap_dmax_mm);
 
@@ -1087,12 +1191,46 @@ VL53L1_Error  VL53L1_hist_wrap_dmax(
 
 
 
+
+
+
+
+
+
 void VL53L1_hist_combine_mm1_mm2_offsets(
-	int16_t   mm1_offset_mm,
-	uint16_t  mm1_peak_rate_mcps,
-	int16_t   mm2_offset_mm,
-	uint16_t  mm2_peak_rate_mcps,
-	int16_t   *prange_offset_mm);
+	int16_t                              mm1_offset_mm,
+	int16_t                              mm2_offset_mm,
+	uint8_t                              encoded_mm_roi_centre,
+	uint8_t                              encoded_mm_roi_size,
+	uint8_t                              encoded_zone_centre,
+	uint8_t                              encoded_zone_size,
+	VL53L1_additional_offset_cal_data_t *pcal_data,
+	uint8_t                             *pgood_spads,
+	uint16_t                             aperture_attenuation,
+	int16_t                             *prange_offset_mm);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_spad_number_to_byte_bit_index(
+	uint8_t  spad_number,
+	uint8_t *pbyte_index,
+	uint8_t *pbit_index,
+	uint8_t *pbit_mask);
 
 
 
@@ -1126,6 +1264,105 @@ void VL53L1_encode_row_col(
 	uint8_t  row,
 	uint8_t  col,
 	uint8_t *pspad_number);
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_decode_zone_size(
+	uint8_t   encoded_xy_size,
+	uint8_t  *pwidth,
+	uint8_t  *pheight);
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_encode_zone_size(
+	uint8_t  width,
+	uint8_t  height,
+	uint8_t *pencoded_xy_size);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_decode_zone_limits(
+	uint8_t   encoded_xy_centre,
+	uint8_t   encoded_xy_size,
+	int16_t  *px_ll,
+	int16_t  *py_ll,
+	int16_t  *px_ur,
+	int16_t  *py_ur);
+
+
+
+
+
+
+
+
+
+
+
+
+uint8_t VL53L1_is_aperture_location(
+	uint8_t   row,
+	uint8_t   col);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_calc_mm_effective_spads(
+	uint8_t     encoded_mm_roi_centre,
+	uint8_t     encoded_mm_roi_size,
+	uint8_t     encoded_zone_centre,
+	uint8_t     encoded_zone_size,
+	uint8_t    *pgood_spads,
+	uint16_t    aperture_attenuation,
+	uint16_t   *pmm_inner_effective_spads,
+	uint16_t   *pmm_outer_effective_spads);
 
 
 
@@ -1246,10 +1483,99 @@ VL53L1_Error VL53L1_dynamic_zone_update(
 
 VL53L1_Error VL53L1_update_internal_stream_counters(
 	  VL53L1_DEV  Dev,
-    uint8_t     external_stream_count,
-    uint8_t     *pinternal_stream_count,
-    uint8_t     *pinternal_stream_count_val
+	uint8_t     external_stream_count,
+	uint8_t     *pinternal_stream_count,
+	uint8_t     *pinternal_stream_count_val
+	);
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_multizone_hist_bins_update(
+	VL53L1_DEV  Dev);
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_histogram_multizone_initial_bin_config(
+	  VL53L1_zone_config_t           *pzone_cfg,
+	  VL53L1_histogram_config_t      *phist_cfg,
+	  VL53L1_histogram_config_t      *pmulti_hist
     );
+
+
+
+
+
+
+
+
+
+uint8_t	VL53L1_encode_GPIO_interrupt_config(
+	VL53L1_GPIO_interrupt_config_t	*pintconf);
+
+
+
+
+
+
+
+
+
+VL53L1_GPIO_interrupt_config_t VL53L1_decode_GPIO_interrupt_config(
+	uint8_t		system__interrupt_config);
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_GPIO_distance_threshold(
+	VL53L1_DEV                      Dev,
+	uint16_t			threshold_high,
+	uint16_t			threshold_low);
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_GPIO_rate_threshold(
+	VL53L1_DEV                      Dev,
+	uint16_t			threshold_high,
+	uint16_t			threshold_low);
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_GPIO_thresholds_from_struct(
+	VL53L1_DEV                      Dev,
+	VL53L1_GPIO_interrupt_config_t *pintconf);
 
 #ifdef __cplusplus
 }
