@@ -29,47 +29,65 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+
+#ifndef _VL53L1_PLATFORM_INIT_H_
+#define _VL53L1_PLATFORM_INIT_H_
+
+#include "vl53l1_platform.h"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /**
- * @file  vl53l1_platform_user_config.h
+ * @file   vl53l1_platform_init.h
  *
- * @brief EwokPlus compile time user modifiable configuration
+ * @brief  EwokPlus25 comms and GPIO init
  */
 
 
-#ifndef _VL53L1_PLATFORM_USER_CONFIG_H_
-#define _VL53L1_PLATFORM_USER_CONFIG_H_
+/**
+ * @brief  Initialise platform comms, GPIO and reset device
+ *
+ * Initialises comms, sets the states of GPIO (xshutdown, ncs,
+ * EVK device power regulator enable) and resets the device
+ *
+ * @param[in]   pdev              : pointer to device structure (device handle)
+ * @param[in]   i2c_slave_address : I2C slave address
+ * @param[in]   comms_type        : Comms type: VL53L1_I2C or VL53L1_SPI
+ * @param[in]   comms_speed_khz   : 400kHz recommended for I2C
+ *
+ * @return   VL53L1_ERROR_NONE    Success
+ * @return  "Other error code"    See ::VL53L1_Error
+ */
 
-#define    VL53L1_MAX_STRING_LENGTH         100
-
-
-
-#define    VL53L1_BYTES_PER_WORD              2
-#define    VL53L1_BYTES_PER_DWORD             4
-
-/* Define polling delays */
-#define VL53L1_BOOT_COMPLETION_POLLING_TIMEOUT_MS     500
-#define VL53L1_RANGE_COMPLETION_POLLING_TIMEOUT_MS   2000
-#define VL53L1_TEST_COMPLETION_POLLING_TIMEOUT_MS   10000
-
-#define VL53L1_POLLING_DELAY_MS                         1
-
-
-#define VL53L1_OFFSET_CAL_MIN_MM1_EFFECTIVE_SPADS  0x0500
-	/*!< Lower Limit for the  MM1 effective SPAD count during offset
-	 * calibration Format 8.8 0x0500 -> 5.0 effective SPADs
-	 */
-
-#define VL53L1_MAX_USER_ZONES                169
-	/*!< Max number of user Zones - maximal limitation from
-	 * FW stream divide - value of 254
-	 */
-
-#define VL53L1_MAX_RANGE_RESULTS              4
-	/*!< Sets the maximum number of targets distances the histogram
-	 * post processing can generate
-	 */
-
-#endif  /* _VL53L1_PLATFORM_USER_CONFIG_H_ */
+VL53L1_Error VL53L1_platform_init(
+	VL53L1_Dev_t *pdev,
+	uint8_t       i2c_slave_address,
+	uint8_t       comms_type,
+	uint16_t      comms_speed_khz);
 
 
+/**
+ * @brief  Close platform comms and GPIO
+ *
+ * Puts the device into reset, disables the EVK device power regulator
+ * and closes comms
+ *
+ * @param[in]   pdev      : pointer to device structure (device handle)
+ *
+ * @return   VL53L1_ERROR_NONE    Success
+ * @return  "Other error code"    See ::VL53L1_Error
+ */
+
+VL53L1_Error VL53L1_platform_terminate(
+	VL53L1_Dev_t *pdev);
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 
