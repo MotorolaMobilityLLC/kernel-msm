@@ -155,16 +155,19 @@ typedef uint8_t VL53L1_DeviceState;
 
 typedef uint8_t VL53L1_DeviceZonePreset;
 
-#define VL53L1_DEVICEZONEPRESET_NONE            ((VL53L1_DeviceZonePreset)  0)
-#define VL53L1_DEVICEZONEPRESET_XTALK_PLANAR    ((VL53L1_DeviceZonePreset)  1)
-#define VL53L1_DEVICEZONEPRESET_1X1_SIZE_16X16  ((VL53L1_DeviceZonePreset)  2)
-#define VL53L1_DEVICEZONEPRESET_1X2_SIZE_16X8   ((VL53L1_DeviceZonePreset)  3)
-#define VL53L1_DEVICEZONEPRESET_2X1_SIZE_8X16   ((VL53L1_DeviceZonePreset)  4)
-#define VL53L1_DEVICEZONEPRESET_2X2_SIZE_8X8    ((VL53L1_DeviceZonePreset)  5)
-#define VL53L1_DEVICEZONEPRESET_3X3_SIZE_5X5    ((VL53L1_DeviceZonePreset)  6)
-#define VL53L1_DEVICEZONEPRESET_4X4_SIZE_4X4    ((VL53L1_DeviceZonePreset)  7)
-#define VL53L1_DEVICEZONEPRESET_11X11_SIZE_5X5  ((VL53L1_DeviceZonePreset)  8)
-#define VL53L1_DEVICEZONEPRESET_13X13_SIZE_4X4  ((VL53L1_DeviceZonePreset)  9)
+#define VL53L1_DEVICEZONEPRESET_NONE                 ((VL53L1_DeviceZonePreset)  0)
+#define VL53L1_DEVICEZONEPRESET_XTALK_PLANAR         ((VL53L1_DeviceZonePreset)  1)
+#define VL53L1_DEVICEZONEPRESET_1X1_SIZE_16X16       ((VL53L1_DeviceZonePreset)  2)
+#define VL53L1_DEVICEZONEPRESET_1X2_SIZE_16X8        ((VL53L1_DeviceZonePreset)  3)
+#define VL53L1_DEVICEZONEPRESET_2X1_SIZE_8X16        ((VL53L1_DeviceZonePreset)  4)
+#define VL53L1_DEVICEZONEPRESET_2X2_SIZE_8X8         ((VL53L1_DeviceZonePreset)  5)
+#define VL53L1_DEVICEZONEPRESET_3X3_SIZE_5X5         ((VL53L1_DeviceZonePreset)  6)
+#define VL53L1_DEVICEZONEPRESET_4X4_SIZE_4X4         ((VL53L1_DeviceZonePreset)  7)
+#define VL53L1_DEVICEZONEPRESET_5X5_SIZE_4X4         ((VL53L1_DeviceZonePreset)  8)
+#define VL53L1_DEVICEZONEPRESET_11X11_SIZE_5X5       ((VL53L1_DeviceZonePreset)  9)
+#define VL53L1_DEVICEZONEPRESET_13X13_SIZE_4X4       ((VL53L1_DeviceZonePreset) 10)
+
+#define VL53L1_DEVICEZONEPRESET_1X1_SIZE_4X4_POS_8X8 ((VL53L1_DeviceZonePreset) 11)
 
 
 
@@ -185,29 +188,35 @@ typedef uint8_t VL53L1_DevicePresetModes;
 #define VL53L1_DEVICEPRESETMODE_STANDARD_RANGING_MM1_CAL         ((VL53L1_DevicePresetModes)  4)
 #define VL53L1_DEVICEPRESETMODE_STANDARD_RANGING_MM2_CAL         ((VL53L1_DevicePresetModes)  5)
 #define VL53L1_DEVICEPRESETMODE_TIMED_RANGING                    ((VL53L1_DevicePresetModes)  6)
-#define VL53L1_DEVICEPRESETMODE_NEAR_FARRANGING                  ((VL53L1_DevicePresetModes)  7)
-#define VL53L1_DEVICEPRESETMODE_QUADRANT_RANGING                 ((VL53L1_DevicePresetModes)  8)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING                ((VL53L1_DevicePresetModes)  9)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_SHORT_TIMING   ((VL53L1_DevicePresetModes) 10)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_CHARACTERISATION       ((VL53L1_DevicePresetModes) 11)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_XTALK_PLANAR           ((VL53L1_DevicePresetModes) 12)
-#define VL53L1_DEVICEPRESETMODE_OLT                              ((VL53L1_DevicePresetModes) 13)
-#define VL53L1_DEVICEPRESETMODE_SINGLESHOT_RANGING               ((VL53L1_DevicePresetModes) 14)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_REF_ARRAY              ((VL53L1_DevicePresetModes) 15)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_WITH_MM1       ((VL53L1_DevicePresetModes) 16)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_WITH_MM2       ((VL53L1_DevicePresetModes) 17)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_MM1_CAL        ((VL53L1_DevicePresetModes) 18)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_MM2_CAL        ((VL53L1_DevicePresetModes) 19)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MULTIZONE              ((VL53L1_DevicePresetModes) 20)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE             ((VL53L1_DevicePresetModes) 21)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE_MM1         ((VL53L1_DevicePresetModes) 22)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE_MM2         ((VL53L1_DevicePresetModes) 23)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE           ((VL53L1_DevicePresetModes) 24)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE_MM1       ((VL53L1_DevicePresetModes) 25)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE_MM2       ((VL53L1_DevicePresetModes) 26)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE            ((VL53L1_DevicePresetModes) 27)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE_MM1        ((VL53L1_DevicePresetModes) 28)
-#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE_MM2        ((VL53L1_DevicePresetModes) 29)
+#define VL53L1_DEVICEPRESETMODE_TIMED_RANGING_SHORT_RANGE        ((VL53L1_DevicePresetModes)  7)
+#define VL53L1_DEVICEPRESETMODE_TIMED_RANGING_LONG_RANGE         ((VL53L1_DevicePresetModes)  8)
+#define VL53L1_DEVICEPRESETMODE_NEAR_FARRANGING                  ((VL53L1_DevicePresetModes)  9)
+#define VL53L1_DEVICEPRESETMODE_QUADRANT_RANGING                 ((VL53L1_DevicePresetModes) 10)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING                ((VL53L1_DevicePresetModes) 11)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_SHORT_TIMING   ((VL53L1_DevicePresetModes) 12)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_CHARACTERISATION       ((VL53L1_DevicePresetModes) 13)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_XTALK_PLANAR           ((VL53L1_DevicePresetModes) 14)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_XTALK_MM1              ((VL53L1_DevicePresetModes) 15)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_XTALK_MM2              ((VL53L1_DevicePresetModes) 16)
+#define VL53L1_DEVICEPRESETMODE_OLT                              ((VL53L1_DevicePresetModes) 17)
+#define VL53L1_DEVICEPRESETMODE_SINGLESHOT_RANGING               ((VL53L1_DevicePresetModes) 18)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_REF_ARRAY              ((VL53L1_DevicePresetModes) 19)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_WITH_MM1       ((VL53L1_DevicePresetModes) 20)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_WITH_MM2       ((VL53L1_DevicePresetModes) 21)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_MM1_CAL        ((VL53L1_DevicePresetModes) 22)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_MM2_CAL        ((VL53L1_DevicePresetModes) 23)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MULTIZONE              ((VL53L1_DevicePresetModes) 24)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MULTIZONE_SHORT_RANGE  ((VL53L1_DevicePresetModes) 25)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MULTIZONE_LONG_RANGE	 ((VL53L1_DevicePresetModes) 26)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE             ((VL53L1_DevicePresetModes) 27)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE_MM1         ((VL53L1_DevicePresetModes) 28)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE_MM2         ((VL53L1_DevicePresetModes) 29)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE           ((VL53L1_DevicePresetModes) 30)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE_MM1       ((VL53L1_DevicePresetModes) 31)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE_MM2       ((VL53L1_DevicePresetModes) 32)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE            ((VL53L1_DevicePresetModes) 33)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE_MM1        ((VL53L1_DevicePresetModes) 34)
+#define VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE_MM2        ((VL53L1_DevicePresetModes) 35)
 
 
 
@@ -226,6 +235,28 @@ typedef uint8_t VL53L1_DeviceMeasurementModes;
 #define VL53L1_DEVICEMEASUREMENTMODE_BACKTOBACK                  ((VL53L1_DeviceMeasurementModes)  0x20)
 #define VL53L1_DEVICEMEASUREMENTMODE_TIMED                       ((VL53L1_DeviceMeasurementModes)  0x40)
 #define VL53L1_DEVICEMEASUREMENTMODE_ABORT                       ((VL53L1_DeviceMeasurementModes)  0x80)
+
+
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_DeviceSequenceConfig;
+
+#define VL53L1_DEVICESEQUENCECONFIG_VHV		         ((VL53L1_DeviceSequenceConfig) 0)
+#define VL53L1_DEVICESEQUENCECONFIG_PHASECAL         ((VL53L1_DeviceSequenceConfig) 1)
+#define VL53L1_DEVICESEQUENCECONFIG_REFERENCE_PHASE  ((VL53L1_DeviceSequenceConfig) 2)
+#define VL53L1_DEVICESEQUENCECONFIG_DSS1             ((VL53L1_DeviceSequenceConfig) 3)
+#define VL53L1_DEVICESEQUENCECONFIG_DSS2             ((VL53L1_DeviceSequenceConfig) 4)
+#define VL53L1_DEVICESEQUENCECONFIG_MM1              ((VL53L1_DeviceSequenceConfig) 5)
+#define VL53L1_DEVICESEQUENCECONFIG_MM2              ((VL53L1_DeviceSequenceConfig) 6)
+#define VL53L1_DEVICESEQUENCECONFIG_RANGE            ((VL53L1_DeviceSequenceConfig) 7)
 
 
 
@@ -368,6 +399,25 @@ typedef uint8_t VL53L1_HistAlgoSelect;
 	((VL53L1_HistAlgoSelect) 2)
 #define VL53L1_HIST_ALGO_SELECT__PW_HIST_GEN3 \
 	((VL53L1_HistAlgoSelect) 3)
+#define VL53L1_HIST_ALGO_SELECT__PW_HIST_GEN4 \
+	((VL53L1_HistAlgoSelect) 4)
+
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_HistTargetOrder;
+
+#define VL53L1_HIST_TARGET_ORDER__INCREASING_DISTANCE \
+	((VL53L1_HistTargetOrder) 1)
+#define VL53L1_HIST_TARGET_ORDER__STRONGEST_FIRST \
+	((VL53L1_HistTargetOrder) 2)
 
 
 
@@ -616,6 +666,15 @@ typedef uint8_t VL53L1_DeviceResultsLevel;
 
 
 
+#define VL53L1_RTN_SPAD_UNITY_TRANSMISSION      0x0100
+
+
+#define VL53L1_RTN_SPAD_APERTURE_TRANSMISSION   0x0038
+
+
+
+
+
 #define VL53L1_SPAD_TOTAL_COUNT_MAX                 ((0x01 << 29) - 1)
 
 
@@ -653,6 +712,34 @@ typedef uint8_t VL53L1_ZoneConfig_BinConfig_select;
 	((VL53L1_ZoneConfig_BinConfig_select) 2)
 #define VL53L1_ZONECONFIG_BINCONFIG__HIGHAMB \
 	((VL53L1_ZoneConfig_BinConfig_select) 3)
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_GPIO_Interrupt_Mode;
+
+#define VL53L1_GPIOINTMODE_LEVEL_LOW \
+	((VL53L1_GPIO_Interrupt_Mode) 0)
+
+
+#define VL53L1_GPIOINTMODE_LEVEL_HIGH \
+	((VL53L1_GPIO_Interrupt_Mode) 1)
+
+
+#define VL53L1_GPIOINTMODE_OUT_OF_WINDOW \
+	((VL53L1_GPIO_Interrupt_Mode) 2)
+
+
+#define VL53L1_GPIOINTMODE_IN_WINDOW \
+	((VL53L1_GPIO_Interrupt_Mode) 3)
+
+
 
 
 

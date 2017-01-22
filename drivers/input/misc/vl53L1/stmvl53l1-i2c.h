@@ -38,7 +38,6 @@
 #include <linux/types.h>
 #include "stmvl53l1.h"
 
-#ifndef CAMERA_CCI
 struct i2c_data {
 	struct i2c_client *client;
 	/** back link to driver for interrupt and clean-up */
@@ -47,15 +46,15 @@ struct i2c_data {
 	/*!< if null no regulator use for power ctrl */
 	struct regulator *vdd;
 
-	/*!< xsdn reset (low active) gpio number to device
+	/*!< power enable gpio number
 	 *
-	 *  -1  mean none assume no "resetable"
+	 * if -1 no gpio if vdd not avl pwr is not controllable
 	*/
 	int pwren_gpio;
 
-	/*!< power enable gpio number
+	/*!< xsdn reset (low active) gpio number to device
 	 *
-	 * if -1 no gpio if vana not avl pwr is not controllable
+	 *  -1  mean none assume no "resetable"
 	*/
 	int xsdn_gpio;
 
@@ -94,7 +93,5 @@ int stmvl53l1_reset_release_i2c(void *);
 int stmvl53l1_reset_hold_i2c(void *);
 void stmvl53l1_clean_up_i2c(void);
 int stmvl53l1_start_intr(void *object, int *poll_mode);
-
-#endif /* NOT CAMERA_CCI */
 
 #endif /* STMVL53L1_I2C_H */
