@@ -109,6 +109,12 @@ extern "C"
 #endif
 
 
+#define VL53L1_MAX_AMBIENT_DMAX_VALUES        5
+
+
+
+
+
 
 
 
@@ -164,7 +170,7 @@ typedef struct {
 
 
 
-	uint16_t  target_reflectance_for_dmax_calc;
+	uint16_t  target_reflectance_for_dmax_calc[VL53L1_MAX_AMBIENT_DMAX_VALUES];
 
 
 	uint8_t   estimated_spad_yield;
