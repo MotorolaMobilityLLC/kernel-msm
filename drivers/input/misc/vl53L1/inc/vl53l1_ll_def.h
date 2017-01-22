@@ -122,12 +122,12 @@ extern "C" {
 #define VL53L1_LL_API_IMPLEMENTATION_VER_MINOR       1
 
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_SUB         6
+#define VL53L1_LL_API_IMPLEMENTATION_VER_SUB         9
 
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_REVISION  11056111
+#define VL53L1_LL_API_IMPLEMENTATION_VER_REVISION  11369
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_STRING "1.1.6.11056111"
+#define VL53L1_LL_API_IMPLEMENTATION_VER_STRING "1.1.9.11369"
 
 
 
@@ -137,6 +137,25 @@ extern "C" {
 #define    VL53L1_MAX_STRING_LENGTH_PLT     512
 
 
+
+
+
+
+
+#define VL53L1_MAX_XTALK_RANGE_RESULTS        5
+
+
+
+
+
+
+#define VL53L1_MAX_OFFSET_RANGE_RESULTS       3
+
+
+
+
+
+#define VL53L1_NVM_MAX_FMT_RANGE_DATA         4
 
 
 
@@ -192,7 +211,7 @@ typedef struct {
 
 	uint8_t    device_test_mode;
 
-	uint8_t    VL53L1_PRM_00006;
+	uint8_t    VL53L1_PRM_00007;
 
 	uint32_t   timeout_us;
 
@@ -222,6 +241,17 @@ typedef struct {
 
 
 	int16_t   algo__crosstalk_compensation_y_plane_gradient_kcps;
+
+
+	uint8_t   global_crosstalk_compensation_enable;
+
+
+	uint8_t   crosstalk_range_ignore_threshold_mult;
+
+
+	uint16_t  crosstalk_range_ignore_threshold_rate_mcps;
+
+
 
 
 
@@ -292,23 +322,76 @@ typedef struct {
 
 
 
-
-    uint8_t  range_id;
-
-
-    uint32_t time_stamp;
+	VL53L1_GPIO_Interrupt_Mode	intr_mode_distance;
 
 
-	uint8_t  VL53L1_PRM_00015;
+
+	VL53L1_GPIO_Interrupt_Mode	intr_mode_rate;
 
 
-	uint8_t  VL53L1_PRM_00011;
 
 
-	uint8_t  VL53L1_PRM_00016;
+
+	uint8_t				intr_new_measure_ready;
+
+
+
+	uint8_t				intr_no_target;
+
+
+
+
+
+
+	uint8_t				intr_combined_mode;
+
+
+
+
+
+
+
+
+
+
+	uint16_t			threshold_distance_high;
+
+
+
+	uint16_t			threshold_distance_low;
+
+
+
+	uint16_t			threshold_rate_high;
+
+
+
+	uint16_t			threshold_rate_low;
+
+} VL53L1_GPIO_interrupt_config_t;
+
+
+
+
+
+
+
+
+typedef struct {
+
+
+
+
+	uint8_t  range_id;
+
+
+	uint32_t time_stamp;
 
 
 	uint8_t  VL53L1_PRM_00017;
+
+
+	uint8_t  VL53L1_PRM_00013;
 
 
 	uint8_t  VL53L1_PRM_00018;
@@ -317,26 +400,32 @@ typedef struct {
 	uint8_t  VL53L1_PRM_00019;
 
 
+	uint8_t  VL53L1_PRM_00020;
 
-    uint16_t   width;
 
-
-    uint8_t    VL53L1_PRM_00025;
-
+	uint8_t  VL53L1_PRM_00021;
 
 
 
-    uint16_t   fast_osc_frequency;
+	uint16_t   width;
 
 
-    uint16_t   zero_distance_phase;
-
-
-    uint16_t   VL53L1_PRM_00002;
+	uint8_t    VL53L1_PRM_00026;
 
 
 
-    uint32_t   total_periods_elapsed;
+
+	uint16_t   fast_osc_frequency;
+
+
+	uint16_t   zero_distance_phase;
+
+
+	uint16_t   VL53L1_PRM_00002;
+
+
+
+	uint32_t   total_periods_elapsed;
 
 
 
@@ -352,55 +441,14 @@ typedef struct {
 
 
 
-    uint32_t   VL53L1_PRM_00022;
+	uint32_t   VL53L1_PRM_00023;
 
 
-    uint32_t   VL53L1_PRM_00021;
-
-
-
-    int32_t    VL53L1_PRM_00008;
+	uint32_t   VL53L1_PRM_00022;
 
 
 
-
-
-
-
-    uint16_t    peak_signal_count_rate_mcps;
-
-
-    uint16_t    avg_signal_count_rate_mcps;
-
-
-    uint16_t    ambient_count_rate_mcps;
-
-
-    uint16_t    total_rate_per_spad_mcps;
-
-
-    uint32_t    VL53L1_PRM_00007;
-
-
-
-
-
-
-    uint16_t   VL53L1_PRM_00003;
-
-
-
-
-
-
-    uint16_t   VL53L1_PRM_00023;
-
-
-
-    uint16_t   VL53L1_PRM_00020;
-
-
-    uint16_t   VL53L1_PRM_00024;
+	int32_t    VL53L1_PRM_00009;
 
 
 
@@ -408,28 +456,69 @@ typedef struct {
 
 
 
-    int16_t    min_range_mm;
+	uint16_t    peak_signal_count_rate_mcps;
 
 
+	uint16_t    avg_signal_count_rate_mcps;
 
 
-
-    int16_t    median_range_mm;
-
+	uint16_t    ambient_count_rate_mcps;
 
 
-
-    int16_t    max_range_mm;
-
+	uint16_t    total_rate_per_spad_mcps;
 
 
+	uint32_t    VL53L1_PRM_00008;
 
 
 
 
 
 
-    uint8_t    range_status;
+	uint16_t   VL53L1_PRM_00003;
+
+
+
+
+
+
+	uint16_t   VL53L1_PRM_00024;
+
+
+
+	uint16_t   VL53L1_PRM_00012;
+
+
+	uint16_t   VL53L1_PRM_00025;
+
+
+
+
+
+
+
+	int16_t    min_range_mm;
+
+
+
+
+
+	int16_t    median_range_mm;
+
+
+
+
+	int16_t    max_range_mm;
+
+
+
+
+
+
+
+
+
+	uint8_t    range_status;
 
 } VL53L1_range_data_t;
 
@@ -453,11 +542,11 @@ typedef struct {
 	uint8_t                zone_id;
 
 
-    uint8_t                stream_count;
+	uint8_t                stream_count;
 
 
 
-	int16_t                ambient_dmax_mm;
+	int16_t                ambient_dmax_mm[VL53L1_MAX_AMBIENT_DMAX_VALUES];
 
 
 
@@ -491,20 +580,20 @@ typedef struct {
 
 typedef struct {
 
-    uint8_t    no_of_samples;
+	uint8_t    no_of_samples;
 
 
-    uint32_t   rate_per_spad_kcps_sum;
+	uint32_t   rate_per_spad_kcps_sum;
 
 
-    uint32_t   rate_per_spad_kcps_avg;
+	uint32_t   rate_per_spad_kcps_avg;
 
 
-    int32_t    signal_total_events_sum;
+	int32_t    signal_total_events_sum;
 
 
 
-    int32_t    signal_total_events_avg;
+	int32_t    signal_total_events_avg;
 
 
 
@@ -523,14 +612,14 @@ typedef struct {
 
 typedef struct {
 
-	uint8_t                max_results;
+	uint8_t                     max_results;
 
 
 
-	uint8_t                active_results;
+	uint8_t                     active_results;
 
 
-	VL53L1_xtalk_range_data_t VL53L1_PRM_00004[VL53L1_MAX_XTALK_RANGE_RESULTS];
+	VL53L1_xtalk_range_data_t   VL53L1_PRM_00004[VL53L1_MAX_XTALK_RANGE_RESULTS];
 
 
 	VL53L1_histogram_bin_data_t central_histogram_sum;
@@ -538,6 +627,18 @@ typedef struct {
 
 
 	VL53L1_histogram_bin_data_t central_histogram_avg;
+
+
+
+	VL53L1_histogram_bin_data_t histogram_avg_1[VL53L1_MAX_XTALK_RANGE_RESULTS];
+
+
+
+	VL53L1_histogram_bin_data_t histogram_avg_2[VL53L1_MAX_XTALK_RANGE_RESULTS];
+
+
+
+	VL53L1_histogram_bin_data_t xtalk_avg[VL53L1_MAX_XTALK_RANGE_RESULTS];
 
 
 
@@ -555,39 +656,39 @@ typedef struct {
 
 typedef struct {
 
-    uint8_t    preset_mode;
+	uint8_t    preset_mode;
 
 
-    uint8_t    dss_config__roi_mode_control;
+	uint8_t    dss_config__roi_mode_control;
 
 
-    uint16_t   dss_config__manual_effective_spads_select;
+	uint16_t   dss_config__manual_effective_spads_select;
 
 
-    uint8_t    no_of_samples;
+	uint8_t    no_of_samples;
 
 
-    uint32_t   effective_spads_sum;
+	uint32_t   effective_spads_sum;
 
 
-    uint32_t   effective_spads_avg;
+	uint32_t   effective_spads_avg;
 
 
-    uint32_t   peak_rate_mcps_sum;
+	uint32_t   peak_rate_mcps_sum;
 
 
-    uint32_t   peak_rate_mcps_avg;
+	uint32_t   peak_rate_mcps_avg;
 
 
-    int32_t    median_range_mm_sum;
-
-
-
-    int32_t    median_range_mm_avg;
+	int32_t    median_range_mm_sum;
 
 
 
-    int32_t    range_mm_offset;
+	int32_t    median_range_mm_avg;
+
+
+
+	int32_t    range_mm_offset;
 
 
 
@@ -611,14 +712,99 @@ typedef struct {
 	uint8_t                active_results;
 
 
-    int32_t    target_distance_mm;
+	int32_t    target_distance_mm;
 
 
-    VL53L1_offset_range_data_t VL53L1_PRM_00004[VL53L1_MAX_OFFSET_RANGE_RESULTS];
+	VL53L1_offset_range_data_t VL53L1_PRM_00004[VL53L1_MAX_OFFSET_RANGE_RESULTS];
 
 
 
 } VL53L1_offset_range_results_t;
+
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+	uint16_t  result__mm_inner_actual_effective_spads;
+
+
+	uint16_t  result__mm_outer_actual_effective_spads;
+
+
+	uint16_t  result__mm_inner_peak_signal_count_rtn_mcps;
+
+
+	uint16_t  result__mm_outer_peak_signal_count_rtn_mcps;
+
+
+
+} VL53L1_additional_offset_cal_data_t;
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+
+
+
+	uint16_t   VL53L1_PRM_00012;
+
+
+
+} VL53L1_object_data_t;
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+	VL53L1_DeviceState     cfg_device_state;
+
+
+	VL53L1_DeviceState     rd_device_state;
+
+
+	uint8_t                zone_id;
+
+
+	uint8_t                stream_count;
+
+
+
+	uint8_t                max_objects;
+
+
+
+	uint8_t                active_objects;
+
+
+	VL53L1_object_data_t   VL53L1_PRM_00004[VL53L1_MAX_RANGE_RESULTS];
+
+
+
+} VL53L1_zone_objects_t;
 
 
 
@@ -638,11 +824,46 @@ typedef struct {
 	uint8_t                active_zones;
 
 
-	VL53L1_range_results_t VL53L1_PRM_00004[VL53L1_MAX_USER_ZONES];
+	VL53L1_zone_objects_t VL53L1_PRM_00004[VL53L1_MAX_USER_ZONES];
 
 
 
 } VL53L1_zone_results_t;
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+	VL53L1_DeviceState     rd_device_state;
+
+
+
+	uint8_t  number_of_ambient_bins;
+
+
+
+
+	uint16_t result__dss_actual_effective_spads;
+
+
+	uint8_t  VL53L1_PRM_00007;
+
+
+	uint32_t total_periods_elapsed;
+
+
+
+	int32_t  ambient_events_sum;
+
+
+
+} VL53L1_zone_hist_info_t;
 
 
 
@@ -662,7 +883,7 @@ typedef struct {
 	uint8_t                     active_zones;
 
 
-	VL53L1_histogram_bin_data_t VL53L1_PRM_00004[VL53L1_MAX_USER_ZONES];
+	VL53L1_zone_hist_info_t     VL53L1_PRM_00004[VL53L1_MAX_USER_ZONES];
 
 
 
@@ -821,101 +1042,110 @@ typedef struct {
 
 typedef struct {
 
-    uint8_t   wait_method;
+	uint8_t   wait_method;
 
 
-    uint8_t   preset_mode;
+	uint8_t   preset_mode;
 
 
-    uint8_t   zone_preset;
+	uint8_t   zone_preset;
 
 
-    uint8_t   measurement_mode;
+	uint8_t   measurement_mode;
 
 
-    uint32_t  mm_config_timeout_us;
+	uint32_t  mm_config_timeout_us;
 
 
-    uint32_t  range_config_timeout_us;
+	uint32_t  range_config_timeout_us;
 
 
-    uint32_t  inter_measurement_period_ms;
+	uint32_t  inter_measurement_period_ms;
 
 
-    uint32_t  fw_ready_poll_duration_ms;
+	uint32_t  fw_ready_poll_duration_ms;
 
 
-    uint8_t   fw_ready;
+	uint8_t   fw_ready;
 
 
-    uint8_t   debug_mode;
+	uint8_t   debug_mode;
 
 
-    uint8_t  fpga_system;
-
-
-
-
-
-    VL53L1_ll_version_t                version;
+	uint8_t  fpga_system;
 
 
 
-    VL53L1_ll_driver_state_t           ll_state;
+
+
+	VL53L1_ll_version_t                 version;
 
 
 
-    VL53L1_customer_nvm_managed_t      customer;
-    VL53L1_dmax_calibration_data_t     dmax_cal;
-    VL53L1_zone_config_t               zone_cfg;
+	VL53L1_ll_driver_state_t            ll_state;
 
 
 
-    VL53L1_refspadchar_config_t        refspadchar;
-    VL53L1_hist_post_process_config_t  histpostprocess;
-    VL53L1_hist_gen3_dmax_config_t     dmax_cfg;
-    VL53L1_xtalk_config_t              xtalk_cfg;
+	VL53L1_GPIO_interrupt_config_t	    gpio_interrupt_config;
 
 
 
-    VL53L1_static_nvm_managed_t        stat_nvm;
-    VL53L1_histogram_config_t          hist_cfg;
-    VL53L1_static_config_t             stat_cfg;
-    VL53L1_general_config_t            gen_cfg;
-    VL53L1_timing_config_t             tim_cfg;
-    VL53L1_dynamic_config_t            dyn_cfg;
-    VL53L1_system_control_t            sys_ctrl;
-    VL53L1_system_results_t            sys_results;
-    VL53L1_nvm_copy_data_t             nvm_copy_data;
+	VL53L1_customer_nvm_managed_t       customer;
+	VL53L1_additional_offset_cal_data_t add_off_cal_data;
+	VL53L1_dmax_calibration_data_t      dmax_cal;
+	VL53L1_zone_config_t                zone_cfg;
 
 
 
-    VL53L1_histogram_bin_data_t        hist_data;
-    VL53L1_histogram_bin_data_t        hist_xtalk;
+	uint8_t rtn_good_spads[VL53L1_RTN_SPAD_BUFFER_SIZE];
 
 
 
-    VL53L1_xtalk_histogram_data_t      xtalk_shape;
-    VL53L1_xtalk_range_results_t       xtalk_results;
-    VL53L1_xtalk_calibration_results_t xtalk_cal;
+	VL53L1_refspadchar_config_t         refspadchar;
+	VL53L1_hist_post_process_config_t   histpostprocess;
+	VL53L1_hist_gen3_dmax_config_t      dmax_cfg;
+	VL53L1_xtalk_config_t               xtalk_cfg;
 
 
 
-    VL53L1_offset_range_results_t      offset_results;
+	VL53L1_static_nvm_managed_t         stat_nvm;
+	VL53L1_histogram_config_t           hist_cfg;
+	VL53L1_static_config_t              stat_cfg;
+	VL53L1_general_config_t             gen_cfg;
+	VL53L1_timing_config_t              tim_cfg;
+	VL53L1_dynamic_config_t             dyn_cfg;
+	VL53L1_system_control_t             sys_ctrl;
+	VL53L1_system_results_t             sys_results;
+	VL53L1_nvm_copy_data_t              nvm_copy_data;
 
 
 
-    VL53L1_core_results_t              core_results;
-    VL53L1_debug_results_t             dbg_results;
+	VL53L1_histogram_bin_data_t         hist_data;
+	VL53L1_histogram_bin_data_t         hist_xtalk;
+
+
+
+	VL53L1_xtalk_histogram_data_t       xtalk_shapes;
+	VL53L1_xtalk_range_results_t        xtalk_results;
+	VL53L1_xtalk_calibration_results_t  xtalk_cal;
+
+
+
+	VL53L1_offset_range_results_t       offset_results;
+
+
+
+	VL53L1_core_results_t               core_results;
+	VL53L1_debug_results_t              dbg_results;
 
 #ifdef PAL_EXTENDED
 
 
-    VL53L1_patch_results_t                patch_results;
-    VL53L1_shadow_core_results_t          shadow_core_results;
-    VL53L1_shadow_system_results_t        shadow_sys_results;
-    VL53L1_prev_shadow_core_results_t     prev_shadow_core_results;
-    VL53L1_prev_shadow_system_results_t   prev_shadow_sys_results;
+	VL53L1_patch_results_t                patch_results;
+	VL53L1_shadow_core_results_t          shadow_core_results;
+	VL53L1_shadow_system_results_t        shadow_sys_results;
+	VL53L1_prev_shadow_core_results_t     prev_shadow_core_results;
+	VL53L1_prev_shadow_system_results_t   prev_shadow_sys_results;
 #endif
 
 } VL53L1_LLDriverData_t;
@@ -933,16 +1163,16 @@ typedef struct {
 
 
 
-    VL53L1_range_results_t             range_results;
+	VL53L1_range_results_t             range_results;
 
 
 
-    VL53L1_zone_private_dyn_cfgs_t     zone_dyn_cfgs;
+	VL53L1_zone_private_dyn_cfgs_t     zone_dyn_cfgs;
 
 
 
-    VL53L1_zone_results_t              zone_results;
-    VL53L1_zone_histograms_t           zone_hists;
+	VL53L1_zone_results_t              zone_results;
+	VL53L1_zone_histograms_t           zone_hists;
 
 } VL53L1_LLDriverResults_t;
 
@@ -951,11 +1181,13 @@ typedef struct {
 
 
 
+#define SUPPRESS_UNUSED_WARNING(x) (void) (x)
 
 #ifdef __cplusplus
 }
 #endif
 
-
 #endif
+
+
 

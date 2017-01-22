@@ -96,8 +96,6 @@
 
 #include <stdio.h>
 
-#include <string.h>
-
 #include <stdlib.h>
 
 
@@ -108,7 +106,6 @@
 
 #include "vl53l1_core.h"
 #include "vl53l1_register_settings.h"
-#include "vl53l1_hist_structs.h"
 #include "vl53l1_hist_char.h"
 
 #define LOG_FUNCTION_START(fmt, ...) \
@@ -117,9 +114,6 @@
 	_LOG_FUNCTION_END(VL53L1_TRACE_MODULE_HISTOGRAM, status, ##__VA_ARGS__)
 #define LOG_FUNCTION_END_FMT(status, fmt, ...) \
 	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_HISTOGRAM, status, fmt, ##__VA_ARGS__)
-
-#define trace_print(level, ...) \
-	VL53L1_trace_print_module_function(VL53L1_TRACE_MODULE_HISTOGRAM, level, VL53L1_TRACE_FUNCTION_NONE, ##__VA_ARGS__)
 
 
 VL53L1_Error VL53L1_set_calib_config(
@@ -137,27 +131,31 @@ VL53L1_Error VL53L1_set_calib_config(
 
 
 	VL53L1_Error status       = VL53L1_ERROR_NONE;
-	uint8_t      comms_buffer[VL53L1_MAX_I2C_XFER_SIZE];
+	uint8_t      comms_buffer[3];
 
 	LOG_FUNCTION_START("");
 
 
 
 
-	if (status == VL53L1_ERROR_NONE)
+	if (status == VL53L1_ERROR_NONE) {
+
 		status = VL53L1_enable_powerforce(Dev);
+	}
 
-	if (status == VL53L1_ERROR_NONE)
+	if (status == VL53L1_ERROR_NONE) {
 		status = VL53L1_disable_firmware(Dev);
+	}
 
 
 
 
-	if (status == VL53L1_ERROR_NONE)
+	if (status == VL53L1_ERROR_NONE) {
 		status = VL53L1_WrByte(
 					Dev,
 					VL53L1_RANGING_CORE__VCSEL_DELAY__A0,
 					vcsel_delay__a0);
+	}
 
 
 
