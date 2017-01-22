@@ -113,13 +113,6 @@
 		fmt, ##__VA_ARGS__)
 
 
-#define trace_print(level, ...) \
-	VL53L1_trace_print_module_function(VL53L1_TRACE_MODULE_CORE, \
-			level, VL53L1_TRACE_FUNCTION_NONE, ##__VA_ARGS__)
-
-
-
-
 VL53L1_Error VL53L1_wait_for_boot_completion(
 	VL53L1_DEV     Dev)
 {
@@ -151,20 +144,16 @@ VL53L1_Error VL53L1_wait_for_boot_completion(
 
 
 		fw_ready = 0;
-		while (fw_ready == 0x00 &&
-				status == VL53L1_ERROR_NONE) {
+		while (fw_ready == 0x00 && status == VL53L1_ERROR_NONE) {
+			status = VL53L1_is_boot_complete(
+				Dev,
+				&fw_ready);
 
-			if (status == VL53L1_ERROR_NONE)
-				status =
-					VL53L1_is_boot_complete(
-						Dev,
-						&fw_ready);
-
-			if (status == VL53L1_ERROR_NONE)
-				status =
-					VL53L1_WaitMs(
-						Dev,
-						VL53L1_POLLING_DELAY_MS);
+			if (status == VL53L1_ERROR_NONE) {
+				status = VL53L1_WaitMs(
+					Dev,
+					VL53L1_POLLING_DELAY_MS);
+			}
 		}
 	}
 
@@ -225,20 +214,16 @@ VL53L1_Error VL53L1_wait_for_firmware_ready(
 
 
 			fw_ready = 0;
-			while (fw_ready == 0x00 &&
-					status == VL53L1_ERROR_NONE) {
+			while (fw_ready == 0x00 && status == VL53L1_ERROR_NONE) {
+				status = VL53L1_is_firmware_ready(
+					Dev,
+					&fw_ready);
 
-				if (status == VL53L1_ERROR_NONE)
-					status =
-						VL53L1_is_firmware_ready(
-							Dev,
-							&fw_ready);
-
-				if (status == VL53L1_ERROR_NONE)
-					status =
-						VL53L1_WaitMs(
-							Dev,
-							VL53L1_POLLING_DELAY_MS);
+				if (status == VL53L1_ERROR_NONE) {
+					status = VL53L1_WaitMs(
+						Dev,
+						VL53L1_POLLING_DELAY_MS);
+				}
 			}
 		}
 	}
@@ -280,20 +265,16 @@ VL53L1_Error VL53L1_wait_for_range_completion(
 
 
 		data_ready = 0;
-		while (data_ready == 0x00 &&
-				status == VL53L1_ERROR_NONE) {
+		while (data_ready == 0x00 && status == VL53L1_ERROR_NONE) {
+			status = VL53L1_is_new_data_ready(
+				Dev,
+				&data_ready);
 
-			if (status == VL53L1_ERROR_NONE)
-				status =
-					VL53L1_is_new_data_ready(
-						Dev,
-						&data_ready);
-
-			if (status == VL53L1_ERROR_NONE)
-				status =
-					VL53L1_WaitMs(
-						Dev,
-						VL53L1_POLLING_DELAY_MS);
+			if (status == VL53L1_ERROR_NONE) {
+				status = VL53L1_WaitMs(
+					Dev,
+					VL53L1_POLLING_DELAY_MS);
+			}
 		}
 	}
 
@@ -334,20 +315,16 @@ VL53L1_Error VL53L1_wait_for_test_completion(
 
 
 		data_ready = 0;
-		while (data_ready == 0x00 &&
-				status == VL53L1_ERROR_NONE) {
+		while (data_ready == 0x00 && status == VL53L1_ERROR_NONE) {
+			status = VL53L1_is_new_data_ready(
+				Dev,
+				&data_ready);
 
-			if (status == VL53L1_ERROR_NONE)
-				status =
-				VL53L1_is_new_data_ready(
-						Dev,
-						&data_ready);
-
-			if (status == VL53L1_ERROR_NONE)
-				status =
-					VL53L1_WaitMs(
-						Dev,
-						VL53L1_POLLING_DELAY_MS);
+			if (status == VL53L1_ERROR_NONE) {
+				status = VL53L1_WaitMs(
+					Dev,
+					VL53L1_POLLING_DELAY_MS);
+			}
 		}
 	}
 
@@ -551,13 +528,14 @@ VL53L1_Error VL53L1_poll_for_firmware_ready(
 
 	uint32_t     start_time_ms   = 0;
 	uint32_t     current_time_ms = 0;
-	uint32_t     poll_delay_ms   = VL53L1_POLLING_DELAY_MS;
+	int32_t      poll_delay_ms   = VL53L1_POLLING_DELAY_MS;
 	uint8_t      fw_ready        = 0;
 
 
 
 
 	VL53L1_GetTickCount(&start_time_ms);
+
 	pdev->fw_ready_poll_duration_ms = 0;
 
 
@@ -567,19 +545,17 @@ VL53L1_Error VL53L1_poll_for_firmware_ready(
 		   (pdev->fw_ready_poll_duration_ms < timeout_ms) &&
 		   (fw_ready == 0)) {
 
-		if (status == VL53L1_ERROR_NONE)
-			status =
-				VL53L1_is_firmware_ready(
-					Dev,
-					&fw_ready);
+		status = VL53L1_is_firmware_ready(
+			Dev,
+			&fw_ready);
 
 		if (status == VL53L1_ERROR_NONE &&
 			fw_ready == 0 &&
-			poll_delay_ms > 0)
-			status =
-				VL53L1_WaitMs(
-					Dev,
-					poll_delay_ms);
+			poll_delay_ms > 0) {
+			status = VL53L1_WaitMs(
+				Dev,
+				poll_delay_ms);
+		}
 
 
 
@@ -587,9 +563,9 @@ VL53L1_Error VL53L1_poll_for_firmware_ready(
 
 
 		VL53L1_GetTickCount(&current_time_ms);
+
 		pdev->fw_ready_poll_duration_ms =
 				current_time_ms - start_time_ms;
-
 	}
 
 	if (fw_ready == 0 && status == VL53L1_ERROR_NONE)
