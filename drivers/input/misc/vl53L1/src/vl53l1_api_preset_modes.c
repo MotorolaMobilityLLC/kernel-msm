@@ -135,7 +135,7 @@ VL53L1_Error VL53L1_init_refspadchar_config_struct(
 
 	pdata->device_test_mode =
 			VL53L1_DEVICETESTMODE_REF_SPAD_CHAR_WITH_PRE_VHV;
-	pdata->VL53L1_PRM_00006              = 0x0B;
+	pdata->VL53L1_PRM_00007              = 0x0B;
 	pdata->timeout_us                = 1000;
 	pdata->target_count_rate_mcps    = 0x0A00;
 	pdata->min_count_rate_limit_mcps = 0x0500;
@@ -172,11 +172,38 @@ VL53L1_Error VL53L1_init_xtalk_config_struct(
 
 
 	pdata->algo__crosstalk_compensation_plane_offset_kcps      =
-			pnvm->algo__crosstalk_compensation_plane_offset_kcps;
+		pnvm->algo__crosstalk_compensation_plane_offset_kcps;
 	pdata->algo__crosstalk_compensation_x_plane_gradient_kcps  =
-			pnvm->algo__crosstalk_compensation_x_plane_gradient_kcps;
+		pnvm->algo__crosstalk_compensation_x_plane_gradient_kcps;
 	pdata->algo__crosstalk_compensation_y_plane_gradient_kcps  =
-			pnvm->algo__crosstalk_compensation_y_plane_gradient_kcps;
+		pnvm->algo__crosstalk_compensation_y_plane_gradient_kcps;
+
+
+
+
+	pdata->crosstalk_range_ignore_threshold_mult = 64;
+
+	if ((pdata->algo__crosstalk_compensation_plane_offset_kcps == 0x00)
+		&& (pdata->algo__crosstalk_compensation_x_plane_gradient_kcps == 0x00)
+		&& (pdata->algo__crosstalk_compensation_y_plane_gradient_kcps == 0x00))
+		pdata->global_crosstalk_compensation_enable = 0x00;
+	else
+		pdata->global_crosstalk_compensation_enable = 0x01;
+
+
+	if ((status == VL53L1_ERROR_NONE) &&
+		(pdata->global_crosstalk_compensation_enable == 0x01)) {
+		pdata->crosstalk_range_ignore_threshold_rate_mcps =
+			VL53L1_calc_range_ignore_threshold(
+				pdata->algo__crosstalk_compensation_plane_offset_kcps,
+				pdata->algo__crosstalk_compensation_x_plane_gradient_kcps,
+				pdata->algo__crosstalk_compensation_y_plane_gradient_kcps,
+				pdata->crosstalk_range_ignore_threshold_mult);
+	} else {
+		pdata->crosstalk_range_ignore_threshold_rate_mcps = 0;
+	}
+
+
 
 	LOG_FUNCTION_END(status);
 
@@ -185,6 +212,7 @@ VL53L1_Error VL53L1_init_xtalk_config_struct(
 
 
 VL53L1_Error VL53L1_init_hist_post_process_config_struct(
+	uint8_t                             xtalk_compensation_enable,
 	VL53L1_hist_post_process_config_t   *pdata)
 {
 
@@ -200,7 +228,10 @@ VL53L1_Error VL53L1_init_hist_post_process_config_struct(
 
 
 	pdata->hist_algo_select =
-		VL53L1_HIST_ALGO_SELECT__PW_HIST_GEN3;
+		VL53L1_HIST_ALGO_SELECT__PW_HIST_GEN4;
+
+	pdata->hist_target_order =
+			VL53L1_HIST_TARGET_ORDER__INCREASING_DISTANCE;
 
 
 
@@ -256,7 +287,7 @@ VL53L1_Error VL53L1_init_hist_post_process_config_struct(
 
 
 
-	pdata->algo__crosstalk_compensation_enable = 0;
+	pdata->algo__crosstalk_compensation_enable = xtalk_compensation_enable;
 
 	LOG_FUNCTION_END(status);
 
@@ -332,7 +363,18 @@ VL53L1_Error VL53L1_init_hist_gen3_dmax_config_struct(
 
 
 
-	pdata->target_reflectance_for_dmax_calc    = 0x00C8;
+
+
+
+
+
+
+
+	pdata->target_reflectance_for_dmax_calc[0] =  15;
+	pdata->target_reflectance_for_dmax_calc[1] =  52;
+	pdata->target_reflectance_for_dmax_calc[2] = 200;
+	pdata->target_reflectance_for_dmax_calc[3] = 364;
+	pdata->target_reflectance_for_dmax_calc[4] = 400;
 
 	LOG_FUNCTION_END(status);
 
@@ -413,11 +455,12 @@ VL53L1_Error VL53L1_preset_mode_standard_ranging(
 	pstatic->algo__crosstalk_compensation_valid_height_mm     = 0x01;
 	pstatic->spare_host_config__static_config_spare_0         = 0x00;
 	pstatic->spare_host_config__static_config_spare_1         = 0x00;
+
 	pstatic->algo__range_ignore_threshold_mcps                = 0x0000;
 
 
 
-	pstatic->algo__range_ignore_valid_height_mm               = 0x14;
+	pstatic->algo__range_ignore_valid_height_mm               = 0xff;
 	pstatic->algo__range_min_clip                             = 0x00;
 
 
@@ -1034,6 +1077,158 @@ VL53L1_Error VL53L1_preset_mode_timed_ranging(
 	return status;
 }
 
+VL53L1_Error VL53L1_preset_mode_timed_ranging_short_range(
+
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_zone_config_t      *pzone_cfg)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_standard_ranging_short_range(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					pzone_cfg);
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+
+
+
+
+
+
+		pdynamic->system__grouped_parameter_hold = 0x00;
+
+
+
+
+
+		ptiming->system__intermeasurement_period = 0x00000600;
+		pdynamic->system__seed_config =
+				VL53L1_SYSTEM__SEED_CONFIG__STANDARD;
+
+
+
+
+
+
+		psystem->system__mode_start =
+				VL53L1_DEVICESCHEDULERMODE_PSEUDO_SOLO | \
+				VL53L1_DEVICEREADOUTMODE_SINGLE_SD     | \
+				VL53L1_DEVICEMEASUREMENTMODE_TIMED;
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+VL53L1_Error VL53L1_preset_mode_timed_ranging_long_range(
+
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_zone_config_t      *pzone_cfg)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_standard_ranging_long_range(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					pzone_cfg);
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+
+
+
+
+
+
+		pdynamic->system__grouped_parameter_hold = 0x00;
+
+
+
+
+
+		ptiming->system__intermeasurement_period = 0x00000600;
+		pdynamic->system__seed_config =
+				VL53L1_SYSTEM__SEED_CONFIG__STANDARD;
+
+
+
+
+
+
+		psystem->system__mode_start =
+				VL53L1_DEVICESCHEDULERMODE_PSEUDO_SOLO | \
+				VL53L1_DEVICEREADOUTMODE_SINGLE_SD     | \
+				VL53L1_DEVICEMEASUREMENTMODE_TIMED;
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
 VL53L1_Error VL53L1_preset_mode_singleshot_ranging(
 
 	VL53L1_static_config_t    *pstatic,
@@ -1194,7 +1389,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging(
 
 
 
-		VL53L1_init_histogram_config_structure(
+		VL53L1_init_histogram_multizone_config_structure(
 				7, 0, 1, 2, 3, 4,
 				0, 1, 2, 3, 4, 5,
 				&(pzone_cfg->multizone_hist_cfg));
@@ -1344,7 +1539,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_with_mm1(
 
 
 
-		VL53L1_init_histogram_config_structure(
+		VL53L1_init_histogram_multizone_config_structure(
 				  7,  0,    1, 2, 3, 4,
 				8+0, 8+1, 8+2, 3, 4, 5,
 				&(pzone_cfg->multizone_hist_cfg));
@@ -1445,6 +1640,165 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_with_mm2(
 }
 
 
+VL53L1_Error VL53L1_preset_mode_histogram_ranging_mm1_cal(
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_zone_config_t      *pzone_cfg)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_histogram_ranging(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					pzone_cfg);
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		VL53L1_init_histogram_config_structure(
+				  7, 8+0, 8+1, 8+2, 8+3, 8+4,
+				8+0, 8+1, 8+2, 8+3, 8+4, 8+5,
+				phistogram);
+
+
+
+
+
+
+		VL53L1_init_histogram_multizone_config_structure(
+				  7, 8+0, 8+1, 8+2, 8+3, 8+4,
+				8+0, 8+1, 8+2, 8+3, 8+4, 8+5,
+				&(pzone_cfg->multizone_hist_cfg));
+
+
+
+
+		VL53L1_copy_hist_cfg_to_static_cfg(
+				phistogram,
+				pstatic,
+				pgeneral,
+				ptiming,
+				pdynamic);
+
+
+
+
+		pdynamic->system__sequence_config = \
+				VL53L1_SEQUENCE_VHV_EN | \
+				VL53L1_SEQUENCE_PHASECAL_EN | \
+				VL53L1_SEQUENCE_DSS1_EN | \
+				VL53L1_SEQUENCE_DSS2_EN | \
+				VL53L1_SEQUENCE_MM1_EN | \
+				VL53L1_SEQUENCE_RANGE_EN;
+
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_preset_mode_histogram_ranging_mm2_cal(
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_zone_config_t      *pzone_cfg)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_histogram_ranging_mm1_cal(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					pzone_cfg);
+
+	if (status == VL53L1_ERROR_NONE) {
+
+
+
+
+		pdynamic->system__sequence_config = \
+				VL53L1_SEQUENCE_VHV_EN | \
+				VL53L1_SEQUENCE_PHASECAL_EN | \
+				VL53L1_SEQUENCE_DSS1_EN | \
+				VL53L1_SEQUENCE_DSS2_EN | \
+				VL53L1_SEQUENCE_MM2_EN | \
+				VL53L1_SEQUENCE_RANGE_EN;
+
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
 VL53L1_Error VL53L1_preset_mode_histogram_ranging_short_timing(
 	VL53L1_static_config_t    *pstatic,
 	VL53L1_histogram_config_t *phistogram,
@@ -1509,7 +1863,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_ranging_short_timing(
 
 
 
-		VL53L1_init_histogram_config_structure(
+		VL53L1_init_histogram_multizone_config_structure(
 				7, 0, 1, 2, 3, 4,
 				7, 0, 1, 2, 3, 4,
 				&(pzone_cfg->multizone_hist_cfg));
@@ -1641,29 +1995,31 @@ VL53L1_Error VL53L1_preset_mode_histogram_long_range(
 
 
 		VL53L1_init_histogram_config_structure(
-				7, 0, 1, 2, 3, 4,
-				0, 1, 2, 3, 4, 5,
-				phistogram);
+			7, 0, 1, 2, 3, 4,
+			0, 1, 2, 3, 4, 5,
+			phistogram);
 
 
 
 
 
 
-		VL53L1_init_histogram_config_structure(
-				7, 0, 1, 2, 3, 4,
-				0, 1, 2, 3, 4, 5,
-				&(pzone_cfg->multizone_hist_cfg));
+		VL53L1_init_histogram_multizone_config_structure(
+			7, 0, 1, 2, 3, 4,
+
+			0, 1, 2, 3, 4, 5,
+
+			&(pzone_cfg->multizone_hist_cfg));
 
 
 
 
 		VL53L1_copy_hist_cfg_to_static_cfg(
-				phistogram,
-				pstatic,
-				pgeneral,
-				ptiming,
-				pdynamic);
+			phistogram,
+			pstatic,
+			pgeneral,
+			ptiming,
+			pdynamic);
 
 
 
@@ -1810,7 +2166,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_long_range_mm1(
 
 
 
-		VL53L1_init_histogram_config_structure(
+		VL53L1_init_histogram_multizone_config_structure(
 				  7,   0,   1, 2, 3, 4,
 				8+0, 8+1, 8+2, 3, 4, 5,
 				&(pzone_cfg->multizone_hist_cfg));
@@ -1903,6 +2259,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_long_range_mm2(
 }
 
 
+
 VL53L1_Error VL53L1_preset_mode_histogram_medium_range(
 	VL53L1_static_config_t    *pstatic,
 	VL53L1_histogram_config_t *phistogram,
@@ -1970,9 +2327,9 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range(
 
 
 
-		VL53L1_init_histogram_config_structure(
+		VL53L1_init_histogram_multizone_config_structure(
 				7, 0, 1, 2, 3, 4,
-				0, 1, 2, 3, 4, 5,
+				0, 1, 2, 1, 2, 3,
 				&(pzone_cfg->multizone_hist_cfg));
 
 
@@ -2125,7 +2482,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_medium_range_mm1(
 
 
 
-		VL53L1_init_histogram_config_structure(
+		VL53L1_init_histogram_multizone_config_structure(
 				  7,   0,   1, 1, 2, 2,
 				8+0, 8+1, 8+2, 1, 2, 3,
 				&(pzone_cfg->multizone_hist_cfg));
@@ -2285,7 +2642,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range(
 
 
 
-		VL53L1_init_histogram_config_structure(
+		VL53L1_init_histogram_multizone_config_structure(
 				7, 7, 0, 1, 1, 1,
 				0, 1, 1, 1, 2, 2,
 				&(pzone_cfg->multizone_hist_cfg));
@@ -2448,7 +2805,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_short_range_mm1(
 
 
 
-		VL53L1_init_histogram_config_structure(
+		VL53L1_init_histogram_multizone_config_structure(
 				  7,   0, 1, 1, 1, 1,
 				8+0, 8+1, 1, 1, 2, 2,
 				&(pzone_cfg->multizone_hist_cfg));
@@ -2585,7 +2942,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_characterisation(
 
 
 		pstatic->debug__ctrl                            = 0x01;
-	    psystem->power_management__go1_power_force      = 0x01;
+		psystem->power_management__go1_power_force      = 0x01;
 
 		pdynamic->system__sequence_config               = \
 				VL53L1_SEQUENCE_VHV_EN | \
@@ -2632,7 +2989,7 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_planar(
 
 
 
-	status = VL53L1_preset_mode_histogram_multizone(
+	status = VL53L1_preset_mode_histogram_multizone_long_range(
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -2682,6 +3039,148 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_planar(
 
 
 
+		VL53L1_init_histogram_config_structure(
+			7, 0, 1, 2, 3, 4,
+			7, 0, 1, 2, 3, 4,
+			phistogram);
+
+
+
+
+
+
+
+		VL53L1_init_histogram_multizone_config_structure(
+			7, 0, 1, 2, 3, 4,
+
+			7, 0, 1, 2, 3, 4,
+
+			&(pzone_cfg->multizone_hist_cfg));
+
+
+
+
+
+
+
+
+
+
+
+		if (status == VL53L1_ERROR_NONE) {
+			status = VL53L1_set_histogram_multizone_initial_bin_config(
+			pzone_cfg,
+			phistogram,
+			&(pzone_cfg->multizone_hist_cfg));
+		}
+
+
+
+
+
+
+		VL53L1_copy_hist_cfg_to_static_cfg(
+			phistogram,
+			pstatic,
+			pgeneral,
+			ptiming,
+			pdynamic);
+
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+VL53L1_Error VL53L1_preset_mode_histogram_xtalk_mm1(
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_zone_config_t      *pzone_cfg)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_histogram_ranging(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					pzone_cfg);
+
+
+
+
+
+
+
+
+
+
+	ptiming->range_config__sigma_thresh                  = 0x0000;
+
+
+	ptiming->range_config__min_count_rate_rtn_limit_mcps = 0x0000;
+
+
+
+
+
+
+
+
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+
+
+
+
+
+
+
+
+
+		VL53L1_init_histogram_config_structure(
+				8+7, 8+0, 8+1, 8+2, 8+3, 8+4,
+				8+7, 8+0, 8+1, 8+2, 8+3, 8+4,
+				phistogram);
+
+
+
+
+
+
+		VL53L1_init_histogram_multizone_config_structure(
+				8+7, 8+0, 8+1, 8+2, 8+3, 8+4,
+				8+7, 8+0, 8+1, 8+2, 8+3, 8+4,
+				&(pzone_cfg->multizone_hist_cfg));
+
+
 
 
 		VL53L1_copy_hist_cfg_to_static_cfg(
@@ -2691,6 +3190,75 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_planar(
 				ptiming,
 				pdynamic);
 
+
+
+
+
+
+		ptiming->range_config__vcsel_period_a             = 0x09;
+		ptiming->range_config__vcsel_period_b             = 0x09;
+
+
+
+
+
+
+		ptiming->mm_config__timeout_macrop_a_hi           = 0x00;
+		ptiming->mm_config__timeout_macrop_a_lo           = 0x21;
+		ptiming->mm_config__timeout_macrop_b_hi           = 0x00;
+		ptiming->mm_config__timeout_macrop_b_lo           = 0x21;
+
+
+
+
+		ptiming->range_config__timeout_macrop_a_hi        = 0x00;
+		ptiming->range_config__timeout_macrop_a_lo        = 0x29;
+		ptiming->range_config__timeout_macrop_b_hi        = 0x00;
+		ptiming->range_config__timeout_macrop_b_lo        = 0x29;
+
+
+
+
+		pgeneral->cal_config__vcsel_start                 = 0x09;
+
+
+
+
+
+
+
+
+
+
+
+
+
+		pgeneral->phasecal_config__timeout_macrop         = 0x42;
+
+
+
+
+		pdynamic->sd_config__woi_sd0                      = 0x09;
+		pdynamic->sd_config__woi_sd1                      = 0x09;
+		pdynamic->sd_config__initial_phase_sd0            = 0x09;
+		pdynamic->sd_config__initial_phase_sd1            = 0x09;
+
+		pdynamic->system__sequence_config = \
+				VL53L1_SEQUENCE_VHV_EN | \
+				VL53L1_SEQUENCE_PHASECAL_EN | \
+				VL53L1_SEQUENCE_DSS1_EN | \
+				VL53L1_SEQUENCE_DSS2_EN | \
+				VL53L1_SEQUENCE_MM1_EN | \
+				VL53L1_SEQUENCE_RANGE_EN;
+
+
+
+
+
+		psystem->system__mode_start = \
+				VL53L1_DEVICESCHEDULERMODE_HISTOGRAM | \
+				VL53L1_DEVICEREADOUTMODE_DUAL_SD | \
+				VL53L1_DEVICEMEASUREMENTMODE_BACKTOBACK;
 	}
 
 	LOG_FUNCTION_END(status);
@@ -2698,7 +3266,239 @@ VL53L1_Error VL53L1_preset_mode_histogram_xtalk_planar(
 	return status;
 }
 
+
+VL53L1_Error VL53L1_preset_mode_histogram_xtalk_mm2(
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_zone_config_t      *pzone_cfg)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_histogram_xtalk_mm1(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					pzone_cfg);
+
+
+		pdynamic->system__sequence_config = \
+				VL53L1_SEQUENCE_VHV_EN | \
+				VL53L1_SEQUENCE_PHASECAL_EN | \
+				VL53L1_SEQUENCE_DSS1_EN | \
+				VL53L1_SEQUENCE_DSS2_EN | \
+				VL53L1_SEQUENCE_MM2_EN | \
+				VL53L1_SEQUENCE_RANGE_EN;
+
+
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+
+
 VL53L1_Error VL53L1_preset_mode_histogram_multizone(
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_zone_config_t      *pzone_cfg)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_histogram_medium_range(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					pzone_cfg);
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+
+
+
+
+
+
+		status =
+			VL53L1_init_zone_config_structure(
+				4, 8, 2,
+
+				4, 8, 2,
+
+				7, 7,
+
+				pzone_cfg);
+
+		pgeneral->global_config__stream_divider =
+			pzone_cfg->active_zones + 1;
+
+
+
+
+
+
+		if (status == VL53L1_ERROR_NONE) {
+			status = VL53L1_set_histogram_multizone_initial_bin_config (
+				pzone_cfg,
+				phistogram,
+				&(pzone_cfg->multizone_hist_cfg));
+		}
+
+		VL53L1_copy_hist_cfg_to_static_cfg(
+				phistogram,
+				pstatic,
+				pgeneral,
+				ptiming,
+				pdynamic);
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+VL53L1_Error VL53L1_preset_mode_histogram_multizone_short_range(
+	VL53L1_static_config_t    *pstatic,
+	VL53L1_histogram_config_t *phistogram,
+	VL53L1_general_config_t   *pgeneral,
+	VL53L1_timing_config_t    *ptiming,
+	VL53L1_dynamic_config_t   *pdynamic,
+	VL53L1_system_control_t   *psystem,
+	VL53L1_zone_config_t      *pzone_cfg)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status = VL53L1_preset_mode_histogram_short_range(
+					pstatic,
+					phistogram,
+					pgeneral,
+					ptiming,
+					pdynamic,
+					psystem,
+					pzone_cfg);
+
+
+
+
+	if (status == VL53L1_ERROR_NONE) {
+
+
+
+
+
+
+		status =
+			VL53L1_init_zone_config_structure(
+				4, 8, 2,
+
+				4, 8, 2,
+
+				7, 7,
+
+				pzone_cfg);
+
+		pgeneral->global_config__stream_divider =
+			pzone_cfg->active_zones + 1;
+
+
+
+
+
+
+		if (status == VL53L1_ERROR_NONE) {
+			status = VL53L1_set_histogram_multizone_initial_bin_config (
+			pzone_cfg,
+			phistogram,
+			&(pzone_cfg->multizone_hist_cfg)
+			);
+		}
+
+
+
+
+		VL53L1_copy_hist_cfg_to_static_cfg(
+				phistogram,
+				pstatic,
+				pgeneral,
+				ptiming,
+				pdynamic);
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_preset_mode_histogram_multizone_long_range(
 	VL53L1_static_config_t    *pstatic,
 	VL53L1_histogram_config_t *phistogram,
 	VL53L1_general_config_t   *pgeneral,
@@ -2747,13 +3547,13 @@ VL53L1_Error VL53L1_preset_mode_histogram_multizone(
 
 		status =
 			VL53L1_init_zone_config_structure(
-			  4, 8, 2,
+				4, 8, 2,
 
-			  4, 8, 2,
+				4, 8, 2,
 
-			  7, 7,
+				7, 7,
 
-			  pzone_cfg);
+				pzone_cfg);
 
 		pgeneral->global_config__stream_divider =
 			pzone_cfg->active_zones + 1;
@@ -2761,44 +3561,32 @@ VL53L1_Error VL53L1_preset_mode_histogram_multizone(
 
 
 
-		VL53L1_init_histogram_config_structure(
-				7, 0, 1, 2, 3, 4,
-				7, 0, 1, 2, 3, 4,
-				phistogram);
 
 
-
-
-
-
-		VL53L1_init_histogram_config_structure(
-				7, 0, 1, 2, 3, 4,
-				7, 0, 1, 2, 3, 4,
+		if (status == VL53L1_ERROR_NONE) {
+			status = VL53L1_set_histogram_multizone_initial_bin_config (
+				pzone_cfg,
+				phistogram,
 				&(pzone_cfg->multizone_hist_cfg));
-
-
-
-
-
-
-		ptiming->range_config__vcsel_period_a                   = 0x09;
-		ptiming->range_config__vcsel_period_b                   = 0x09;
+		}
 
 
 
 
 		VL53L1_copy_hist_cfg_to_static_cfg(
-				phistogram,
-				pstatic,
-				pgeneral,
-				ptiming,
-				pdynamic);
+			phistogram,
+			pstatic,
+			pgeneral,
+			ptiming,
+			pdynamic);
 	}
 
 	LOG_FUNCTION_END(status);
 
 	return status;
 }
+
+
 
 
 VL53L1_Error VL53L1_preset_mode_olt(

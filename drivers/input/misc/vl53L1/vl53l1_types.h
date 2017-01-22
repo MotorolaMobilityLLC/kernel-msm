@@ -36,21 +36,11 @@
 #ifndef _VL53L1_TYPES_H_
 #define _VL53L1_TYPES_H_
 
-
-
 #include <linux/types.h>
 /** use where fractional values are expected
  *
  * Given a floating point value f it's .16 bit point is (int)(f*(1<<16))
  */
 typedef uint32_t FixPoint1616_t;
-
-
-#define VL53L1_MAX_USER_ZONES                169
-	/*!< Max number of user Zones */
-#define VL53L1_MAX_RANGE_RESULTS              4
-	/*!< Sets the maximum number of targets distances the histogram
-	 * post processing can generate
-	 */
 
 #endif /* VL53L1_TYPES_H_ */
