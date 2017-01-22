@@ -177,21 +177,41 @@ typedef int8_t VL53L1_Error;
 #define VL53L1_ERROR_STREAM_COUNT_CHECK_FAIL           ((VL53L1_Error) - 18)
 
 
-#define VL53L1_ERROR_GPH_ID_CHECK_FAIL                ((VL53L1_Error) - 19)
+#define VL53L1_ERROR_GPH_ID_CHECK_FAIL                 ((VL53L1_Error) - 19)
 
 
-#define VL53L1_ERROR_ZONE_STREAM_COUNT_CHECK_FAIL     ((VL53L1_Error) - 20)
+#define VL53L1_ERROR_ZONE_STREAM_COUNT_CHECK_FAIL      ((VL53L1_Error) - 20)
 
 
-#define VL53L1_ERROR_ZONE_GPH_ID_CHECK_FAIL           ((VL53L1_Error) - 21)
+#define VL53L1_ERROR_ZONE_GPH_ID_CHECK_FAIL            ((VL53L1_Error) - 21)
 
 
-#define VL53L1_ERROR_XTALK_EXTRACTION_FAIL            ((VL53L1_Error) - 22)
+#define VL53L1_ERROR_XTALK_EXTRACTION_FAIL             ((VL53L1_Error) - 22)
 
 
 
 
-#define VL53L1_ERROR_NOT_IMPLEMENTED                   ((VL53L1_Error) - 23)
+#define VL53L1_ERROR_OFFSET_CAL_INSUFFICIENT_MM1_SPADS ((VL53L1_Error) - 23)
+
+
+
+
+
+#define VL53L1_ERROR_REF_SPAD_CHAR_NOT_ENOUGH_SPADS    ((VL53L1_Error) - 24)
+
+
+#define VL53L1_ERROR_REF_SPAD_CHAR_RATE_TOO_HIGH       ((VL53L1_Error) - 25)
+
+
+
+
+#define VL53L1_ERROR_REF_SPAD_CHAR_RATE_TOO_LOW        ((VL53L1_Error) - 26)
+
+
+
+
+
+#define VL53L1_ERROR_NOT_IMPLEMENTED                   ((VL53L1_Error) - 27)
 
 
 

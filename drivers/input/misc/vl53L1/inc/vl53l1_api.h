@@ -266,17 +266,6 @@ VL53L1_Error VL53L1_StaticInit(VL53L1_DEV Dev);
  */
 VL53L1_Error VL53L1_WaitDeviceBooted(VL53L1_DEV Dev);
 
-/**
- * @brief Do an hard reset or soft reset (depending on implementation) of the
- * device \n After call of this function, device must be in same state as right
- * after a power-up sequence.This function will change the VL53L1_State to
- * VL53L1_STATE_POWERDOWN.
- *
- * @param   Dev                   Device Handle
- * @return  VL53L1_ERROR_NONE     Success
- * @return  "Other error code"    See ::VL53L1_Error
- */
-VL53L1_Error VL53L1_ResetDevice(VL53L1_DEV Dev);
 
 /** @} VL53L1_init_group */
 
@@ -365,6 +354,47 @@ VL53L1_Error VL53L1_SetDistanceMode(VL53L1_DEV Dev,
  */
 VL53L1_Error VL53L1_GetDistanceMode(VL53L1_DEV Dev,
 		VL53L1_DistanceModes *pDistanceMode);
+
+
+/**
+ * @brief  Set the output mode
+ * @par Function Description
+ * Set the output mode to be used for the next ranging. The output mode is used
+ * to select, in case of multiple objects, which one will be used in
+ * function @a VL53L1_GetRangingMeasurementData().
+ * VL53L1_SetOutputMode also sets the object used when
+ * @a VL53L1_SetDistanceMode() is set to the automatic mode.
+ *
+ * @note This function doesn't Access to the device
+ *
+ * @warning This function should be called after @a VL53L1_SetPresetMode().
+
+ * @param   Dev                   Device Handle
+ * @param   OutputMode            Output mode to apply
+ *                                Valid values are:
+ *                                VL53L1_OUTPUTMODE_NEAR
+ *                                VL53L1_OUTPUTMODE_STRONGEST
+ *
+ * @return  VL53L1_ERROR_NONE               Success
+ * @return  VL53L1_ERROR_MODE_NOT_SUPPORTED This error occurs when OutputMode
+ *                                          is not in the supported list
+ * @return  "Other error code"              See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_SetOutputMode(VL53L1_DEV Dev,
+		VL53L1_OutputModes OutputMode);
+
+/**
+ * @brief  Get the output mode
+ * @par Function Description
+ * Get the output mode used for the next ranging.
+ *
+ * @param   Dev                   Device Handle
+ * @param   *pOutputMode          Pointer to Output mode
+ * @return  VL53L1_ERROR_NONE     Success
+ * @return  "Other error code"    See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_GetOutputMode(VL53L1_DEV Dev,
+		VL53L1_OutputModes *pOutputMode);
 
 
 /**
@@ -876,6 +906,8 @@ VL53L1_Error VL53L1_WaitMeasurementDataReady(VL53L1_DEV Dev);
  * @warning this function will return only the first ROI data and only the
  * first object. For multi objects or multi ROI use:
  * @a Vl53L1_GetMultiRangingData.
+ * In case of RANGING or MULTIZONES_SCANNING, only one output is given, this can
+ * be selected with the help of @a VL53L1_SetOutputMode()
  *
  * @note This function Access to the device
  *
@@ -887,8 +919,6 @@ VL53L1_Error VL53L1_WaitMeasurementDataReady(VL53L1_DEV Dev);
  * @param   Dev                      Device Handle
  * @param   pRangingMeasurementData  Pointer to the data structure to fill up.
  * @return  VL53L1_ERROR_NONE        Success
- * @return  VL53L1_ERROR_NOT_SUPPORTED    If used in other mode than:
- * VL53L1_PRESETMODE_LITE_RANGING
  * @return  "Other error code"       See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_GetRangingMeasurementData(VL53L1_DEV Dev,
@@ -957,6 +987,21 @@ VL53L1_Error VL53L1_PerformRefSpadManagement(VL53L1_DEV Dev);
 VL53L1_Error VL53L1_SetXTalkCompensationEnable(VL53L1_DEV Dev,
 uint8_t XTalkCompensationEnable);
 
+/**
+ * @brief Get Cross talk compensation rate enable
+ *
+ * Get if the Cross Talk is Enabled or Disabled.
+ *
+ * @note This function doesn't access to the device
+ *
+ * @param   Dev                        Device Handle
+ * @param   pXTalkCompensationEnable   Pointer to the Cross talk compensation
+ *  state 0=disabled or 1 = enabled
+ * @return  VL53L1_ERROR_NONE        Success
+ * @return  "Other error code"       See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_GetXTalkCompensationEnable(VL53L1_DEV Dev,
+	uint8_t *pXTalkCompensationEnable);
 
 /**
  * @brief Perform XTalk Calibration
@@ -1044,6 +1089,36 @@ VL53L1_Error VL53L1_GetCalibrationData(VL53L1_DEV Dev,
 
 
 /** @} VL53L1_Calibration_group */
+
+/** @defgroup VL53L1_Thresholds_group VL53L1 IRQ Triggered events Functions
+ *  @brief    Functions used to configure interrupt to be triggered only when
+ *  a measurement satisfies some thresholds parameters
+ *  @{
+ */
+
+/**
+* @brief Configure the interrupt config, from the given structure
+*
+* @param[in]    Dev     : Device Handle
+* @param[in]    pConfig : pointer to configuration structure
+*/
+
+VL53L1_Error VL53L1_SetThresholdConfig (VL53L1_DEV Dev,
+		VL53L1_DetectionConfig_t *pConfig);
+
+/**
+* @brief Retrieves the interrupt config structure currently programmed
+*                             into the API
+*
+* @param[in]    Dev     : Device Handle
+* @param[out]   pConfig : pointer to configuration structure
+*/
+
+VL53L1_Error VL53L1_GetThresholdConfig(VL53L1_DEV Dev,
+		VL53L1_DetectionConfig_t *pConfig);
+
+
+/** @} VL53L1_Thresholds_group */
 
 
 /** @} VL53L1_cut11_group */
