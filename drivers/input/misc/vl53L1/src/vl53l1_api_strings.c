@@ -105,6 +105,7 @@
 	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_API, status, fmt, ##__VA_ARGS__)
 
 
+#define VL53L1_COPYSTRING(str, ...) strcpy(str, ##__VA_ARGS__)
 
 VL53L1_Error VL53L1_get_range_status_string(
 	uint8_t   RangeStatus,

@@ -158,6 +158,23 @@ enum __stmv53l1_parameter_name_e {
 	 * @warning distance mode can only be set while not ranging
 	 */
 
+	VL53L1_OUTPUTMODE_PAR = 13,
+	/*!< VL53L1_OUTPUTMODE_PAR
+	 * valid output mode value :
+	 * @li 1 @a VL53L1_OUTPUTMODE_NEAREST
+	 * @li 2 @a VL53L1_OUTPUTMODE_STRONGEST
+	 *
+	 * @warning distance mode can only be set while not ranging
+	 */
+
+	VL53L1_FORCEDEVICEONEN_PAR = 14,
+	/*!< VL53L1_FORCEDEVICEONEN_PAR
+	 * This parameter will control if device is put under reset when
+	 * stopped.
+	 * valid force device on value :
+	 * @li 0 feature is disable. Device is put under reset when stopped.
+	 * @li 1 feature is enable. Device is not put under reset when stopped.
+	 */
 };
 #define stmv53l1_parameter_name_e enum __stmv53l1_parameter_name_e
 
@@ -278,6 +295,18 @@ struct stmvl53l1_ioctl_perform_calibration_t {
 	/*!< [in] second param. Usage depends on calibration_type */
 	uint32_t param3;
 	/*!< [in] third param. Usage depends on calibration_type */
+};
+
+/**
+ * parameter structure use in @ref VL53L1_IOCTL_AUTONOMOUS_CONFIG
+ */
+struct stmvl53l1_autonomous_config_t {
+	int32_t is_read;
+	/*!< [in] 1: Get 0: Set*/
+	uint32_t pollingTimeInMs;
+	/*!< [in/out] interval between two measure in ms */
+	VL53L1_DetectionConfig_t config;
+	/*!< [int/out] autonomous mode configuration structure */
 };
 
 /*
@@ -510,6 +539,24 @@ int smtvl53l1_stop(int fd){
  */
 #define VL53L1_IOCTL_PERFORM_CALIBRATION\
 	_IOW('p', 0x13, struct stmvl53l1_ioctl_perform_calibration_t)
+
+/**
+ * set/get configure autonomous mode parameters
+ *
+ * Allow to get or set autonomous configuration. Change it only when device
+ * is stopped otherwise you will receive an EBUSY error.
+ *
+ * @param stmvl53l1_autonomous_config_t [in/out]
+ *
+ * @note autonomous config validity is only checked at start ranging , as such
+ * invalid autonomous config set can make start to fail.
+ *
+ * @return 0 on success , see errno for error detail
+ * @li -EFAULT failed to copy from/to configuration.
+ * @li -EBUSY when trying to change configuration while ranging.
+ */
+#define VL53L1_IOCTL_AUTONOMOUS_CONFIG\
+	_IOWR('p', 0x14, struct stmvl53l1_autonomous_config_t)
 
 /** @} */ /* ioctl group */
 #endif /* STMVL53L1_IF_H */
