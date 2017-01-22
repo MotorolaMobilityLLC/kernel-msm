@@ -272,10 +272,134 @@ VL53L1_Error   VL53L1_run_xtalk_extraction(
 
 
 
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_run_xtalk_extraction_dual_reflectance(
+	VL53L1_DEV	                        Dev,
+	uint32_t                            mm_config_timeout_us,
+	uint32_t                            range_config_timeout_us,
+	uint8_t                             num_of_samples,
+	uint8_t                             calc_parms,
+	uint8_t                             higher_reflectance,
+	uint16_t                            expected_target_distance_mm,
+	uint16_t                            xtalk_filter_thresh_mm);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_and_avg_xtalk_samples(
+		VL53L1_DEV	                  Dev,
+		uint8_t                       num_of_samples,
+		uint8_t                       measurement_mode,
+		int16_t                       xtalk_filter_thresh_mm,
+		uint8_t                       xtalk_result_id,
+		uint8_t                       xtalk_histo_id,
+		VL53L1_xtalk_range_results_t *pxtalk_results,
+		VL53L1_histogram_bin_data_t  *psum_histo,
+		VL53L1_histogram_bin_data_t  *pavg_histo);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_and_avg_all_xtalk_samples(
+		VL53L1_DEV	                  Dev,
+		uint8_t                       num_of_samples,
+		uint8_t                       measurement_mode,
+		int16_t                       xtalk_filter_thresh_mm,
+		VL53L1_xtalk_range_results_t *pxtalk_results,
+		VL53L1_histogram_bin_data_t  *pavg_histo_z0,
+		VL53L1_histogram_bin_data_t  *pavg_histo_z1,
+		VL53L1_histogram_bin_data_t  *pavg_histo_z2,
+		VL53L1_histogram_bin_data_t  *pavg_histo_z3,
+		VL53L1_histogram_bin_data_t  *pavg_histo_z4);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 VL53L1_Error   VL53L1_run_offset_calibration(
 	VL53L1_DEV	      Dev,
 	uint32_t          range_config_timeout_us,
-	uint8_t           num_of_samples,
+	uint8_t           pre_range_num_of_samples,
+	uint8_t           mm1_num_of_samples,
+	uint8_t           mm2_num_of_samples,
 	int32_t           target_distance_mm);
 
 
