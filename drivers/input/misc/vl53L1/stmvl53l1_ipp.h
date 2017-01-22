@@ -191,7 +191,7 @@ typedef uint64_t ipp_arg_t;
  * best use after all @ref IPP_OUT_ARG_PTR or @ref IPP_SET_ARG_PTR done to get
  * full payload
  **/
-#define IPP_SERIALIZE_PAYLAOD() ipp_offset
+#define IPP_SERIALIZE_PAYLAOD() (ipp_offset + IPP_WORK_HDR_SIZE)
 
 /**
  * de-serialize and argument that was passed by value
@@ -270,6 +270,16 @@ enum stmvl53l1_ipp_proccesing_e {
 	/*!< stmvl53l1_ipp_xtalk_calibration process crosstalk calibration data
 	 */
 
+	stmvl53l1_ipp_hist_ambient_dmax = 3,
+	/*!< stmvl53l1_ipp_hist_ambient_dmax process ambient dmac calculation
+	 * from histogram
+	 */
+
+	stmvl53l1_ipp_generate_dual_reflectance_xtalk_samples = 4,
+	/*!< stmvl53l1_ipp_generate_dual_reflectance_xtalk_samples process
+	 * Xtalk data from dual reflectance histogram data
+	 */
+
 	/** keep last*/
 	stmvl53l1_ipp_max /*!< stmvl53l1_ipp_max */
 };
@@ -310,7 +320,7 @@ struct ipp_work_t {
  * we substract size of of item above
  * must be lesss than one netlink packet
 */
-#define MAX_IPP_DATA	((1024-4*3)/8)
+#define MAX_IPP_DATA	((4096-4*3)/8)
 	ipp_arg_t data[MAX_IPP_DATA];	/*!< [in][out] */
 };
 

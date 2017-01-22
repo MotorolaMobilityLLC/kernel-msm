@@ -92,11 +92,11 @@ extern "C" {
 /** VL53L1 IMPLEMENTATION major version */
 #define VL53L1_IMPLEMENTATION_VER_MAJOR       3
 /** VL53L1 IMPLEMENTATION minor version */
-#define VL53L1_IMPLEMENTATION_VER_MINOR       2
+#define VL53L1_IMPLEMENTATION_VER_MINOR       6
 /** VL53L1 IMPLEMENTATION sub version */
 #define VL53L1_IMPLEMENTATION_VER_SUB         0
 /** VL53L1 IMPLEMENTATION sub version */
-#define VL53L1_IMPLEMENTATION_VER_REVISION  1019
+#define VL53L1_IMPLEMENTATION_VER_REVISION  1107
 
 
 /****************************************
@@ -111,8 +111,6 @@ typedef struct {
 	uint8_t      minor;    /*!< minor number */
 	uint8_t      build;    /*!< build number */
 } VL53L1_Version_t;
-
-
 
 
 #define VL53L1_DEVINFO_STRLEN 32
@@ -137,7 +135,7 @@ typedef struct {
 
 
 
-/** @defgroup VL53L1_define_PresetModes_group Defines Device modes
+/** @defgroup VL53L1_define_PresetModes_group Defines Preset modes
  *  Defines all possible preset modes for the device
  *  @{
  */
@@ -153,7 +151,7 @@ typedef uint8_t VL53L1_PresetModes;
 /** @} VL53L1_define_PresetModes_group */
 
 
-/** @defgroup VL53L1_define_DistanceModes_group Defines Device modes
+/** @defgroup VL53L1_define_DistanceModes_group Defines Distance modes
  *  Defines all possible Distance modes for the device
  *  @{
  */
@@ -167,6 +165,17 @@ typedef uint8_t VL53L1_DistanceModes;
 
 	/* ... Modes to be added depending on device */
 /** @} VL53L1_define_DistanceModes_group */
+
+/** @defgroup VL53L1_define_OutputModes_group Defines Output modes
+ *  Defines all possible Output modes for the device
+ *  @{
+ */
+typedef uint8_t VL53L1_OutputModes;
+
+#define VL53L1_OUTPUTMODE_NEAREST          ((VL53L1_OutputModes)  1)
+#define VL53L1_OUTPUTMODE_STRONGEST        ((VL53L1_OutputModes)  2)
+
+/** @} VL53L1_define_OutputModes_group */
 
 
 
@@ -212,26 +221,74 @@ typedef uint8_t VL53L1_InterruptPolarity;
 
 /** @} VL53L1_define_InterruptPolarity_group */
 
-/** @defgroup VL53L1_GpioFunctionality_group Gpio Functionality
- *  @brief Defines the different functionalities for the device GPIO(s)
+/** @defgroup VL53L1_ThresholdMode_gropup Detection Functionality
+ *  @brief Defines the different functionalities for the detection feature
  *  @{
- *  @warning Not yet implemented
  */
-typedef uint8_t VL53L1_GpioFunctionality;
+typedef uint8_t VL53L1_ThresholdMode;
 
-#define VL53L1_GPIOFUNCTIONALITY_OFF                     \
-	((VL53L1_GpioFunctionality)  0) /*!< NO Interrupt  */
-#define VL53L1_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW   \
-	((VL53L1_GpioFunctionality)  1) /*!< Level Low (value < thresh_low)  */
-#define VL53L1_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH   \
-	((VL53L1_GpioFunctionality)  2) /*!< Level High (value > thresh_high) */
-#define VL53L1_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_OUT    \
-	((VL53L1_GpioFunctionality)  3)
-	/*!< Out Of Window (value < thresh_low OR value > thresh_high)  */
-#define VL53L1_GPIOFUNCTIONALITY_NEW_MEASURE_READY        \
-	((VL53L1_GpioFunctionality)  4) /*!< New Sample Ready  */
+#define VL53L1_THRESHOLD_CROSSED_LOW   \
+	((VL53L1_ThresholdMode)  0) /*!< Trigger interrupt if value < thresh_low */
+#define VL53L1_THRESHOLD_CROSSED_HIGH   \
+	((VL53L1_ThresholdMode)  1) /*!< Trigger interrupt if value > thresh_high */
+#define VL53L1_THRESHOLD_OUT_OF_WINDOW    \
+	((VL53L1_ThresholdMode)  2)
+	/*!< Trigger interrupt if value < thresh_low OR value > thresh_high */
+#define VL53L1_THRESHOLD_IN_WINDOW        \
+	((VL53L1_ThresholdMode)  3)
+	/*!< Trigger interrupt if value > thresh_low AND value < thresh_high */
 
-/** @} end of VL53L1_GpioFunctionality_group */
+/** @} end of VL53L1_ThresholdMode_gropup */
+
+/** @brief Defines parameters for Distance detection Thresholds configuration
+ */
+typedef struct {
+	VL53L1_ThresholdMode CrossMode; /*!< See #VL53L1_GpioThreshold */
+	uint16_t High; /*!< Distance threshold high limit in mm */
+	uint16_t Low;  /*!< Distance threshold low limit  in mm */
+} VL53L1_DistanceThreshold_t;
+
+/** @brief Defines parameters for Signal rate detection Thresholds configuration
+ */
+typedef struct {
+	VL53L1_ThresholdMode CrossMode; /*!< See #VL53L1_GpioThreshold */
+	FixPoint1616_t High; /*!< Signal rate threshold high limit */
+	FixPoint1616_t Low;  /*!< Signal rate threshold low limit */
+} VL53L1_RateThreshold_t;
+
+/** @defgroup VL53L1_DetectionMode_group Gpio Functionality
+ *  @brief Defines conditions leading to device's IT on GPIO
+ *  @{
+ */
+typedef uint8_t VL53L1_DetectionMode;
+
+#define VL53L1_DETECTION_NORMAL_RUN   \
+	((VL53L1_DetectionMode)  0)
+	/*!< Trigger interrupt on new measurement regardless of threshold
+	 * just like after a VL53L1_SetPresetMode() call */
+#define VL53L1_DETECTION_DISTANCE_ONLY   \
+	((VL53L1_DetectionMode)  1)
+	/*!< Trigger interrupt if "threshold event" occurs on distance */
+#define VL53L1_DETECTION_RATE_ONLY   \
+	((VL53L1_DetectionMode)  2)
+	/*!< Trigger interrupt if "threshold event" occurs on signal rate */
+#define VL53L1_DETECTION_DISTANCE_AND_RATE   \
+	((VL53L1_DetectionMode)  3)
+	/*!< Trigger interrupt if "threshold event" occurs on distance AND rate */
+#define VL53L1_DETECTION_DISTANCE_OR_RATE   \
+	((VL53L1_DetectionMode)  4)
+	/*!< Trigger interrupt if "threshold event" occurs on distance OR rate */
+
+/** @} end of VL53L1_DetectionMode_group */
+
+/** @brief Defines parameters for User/object Detection configuration
+ */
+typedef struct {
+	VL53L1_DetectionMode DetectionMode;	/*!< See #VL53L1_GPIODetectionMode*/
+	uint8_t IntrNoTarget; /*!< 1 to trigger IT in case of no target found */
+	VL53L1_DistanceThreshold_t Distance; /*!< limits in mm */
+	VL53L1_RateThreshold_t Rate;/*!< limits in FixPoint1616_t */
+} VL53L1_DetectionConfig_t;
 
 
 /** @brief Defines all parameters for the device
@@ -239,21 +296,27 @@ typedef uint8_t VL53L1_GpioFunctionality;
 typedef struct {
 	VL53L1_PresetModes PresetMode;
 	/*!< Defines the operating mode to be used for the next measure */
+	VL53L1_OutputModes OutputMode;
+	/*!< Defines the Output mode to be used for the next measure */
 	VL53L1_DistanceModes DistanceMode;
 	/*!< Defines the operating mode to be used for the next measure */
 	VL53L1_DistanceModes InternalDistanceMode;
-	/*!< Defines the operating mode to be used for the next measure */
+	/*!< Defines the internal operating mode to be used for the next
+	 * measure */
+	VL53L1_DistanceModes NewDistanceMode;
+	/*!< Defines the new operating mode to be programmed for the next
+	 * measure */
 	uint32_t MeasurementTimingBudgetMicroSeconds;
 	/*!< Defines the allowed total time for a single measurement */
 	uint8_t LimitChecksEnable[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array store all the Limit Check enable for this device. */
 	uint8_t LimitChecksStatus[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
-	/*!< This Array store all the Status of the check linked to last
+	/*!< This Array stores all the Status of the check linked to last
 	* measurement. */
 	FixPoint1616_t LimitChecksValue[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
-	/*!< This Array store all the Limit Check value for this device */
+	/*!< This Array stores all the Limit Check value for this device */
 	FixPoint1616_t LimitChecksCurrent[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
-	/*!< This Array store all the Limit Check current value from latest
+	/*!< This Array stores all the Limit Check current value from latest
 	 * ranging */
 } VL53L1_DeviceParameters_t;
 
@@ -300,16 +363,16 @@ typedef struct {
 		/*!< indicate a confidance level in percentage from 0 to 100
 		 * @warning Not yet implemented  */
 
-	uint16_t DmaxMilliMeter;
+	int16_t DmaxMilliMeter;
 		/*!< range Dmax distance in millimeter.
 		 * @warning Not yet implemented  */
 
-	uint16_t RangeMaxMilliMeter;
+	int16_t RangeMaxMilliMeter;
 		/*!< Tells what is the maximum detection distance of the device
 		 * in current setup and environment conditions (Filled when
 		 *  applicable) */
 
-	uint16_t RangeMinMilliMeter;
+	int16_t RangeMinMilliMeter;
 		/*!< Tells what is the minimum detection distance of the device
 		 * in current setup and environment conditions (Filled when
 		 *  applicable) */
@@ -331,7 +394,7 @@ typedef struct {
 	FixPoint1616_t SigmaMilliMeter;
 		/*!< Return the Sigma value in millimeter */
 
-	uint16_t RangeMilliMeter;         /*!< range distance in millimeter. */
+	int16_t RangeMilliMeter;         /*!< range distance in millimeter. */
 
 	uint8_t RangeFractionalPart;
 		/*!< Fractional part of range distance. Final value is a
@@ -407,8 +470,9 @@ typedef struct {
 
 	VL53L1_customer_nvm_managed_t  Customer;
 	VL53L1_dmax_calibration_data_t DmaxCal;
+	VL53L1_additional_offset_cal_data_t add_off_cal_data;
 	VL53L1_xtalk_histogram_data_t  XtalkHisto;
-
+	VL53L1_additional_offset_cal_data_t  poff_cal_data;
 } VL53L1_CalibrationData_t;
 
 
@@ -481,8 +545,8 @@ typedef struct {
 } VL53L1_DevData_t;
 
 
-#define VL53L1DevStructGetLLDriverHandle(Dev) (&PALDevDataGet(Dev, LLData))
-#define VL53L1DevStructGetLLResultsHandle(Dev) (&PALDevDataGet(Dev, llresults))
+//#define VL53L1DevStructGetLLDriverHandle(Dev) (&PALDevDataGet(Dev, LLData))
+//#define VL53L1DevStructGetLLResultsHandle(Dev) (&PALDevDataGet(Dev, llresults))
 
 /* MACRO Definitions */
 /** @defgroup VL53L1_define_GeneralMacro_group General Macro Defines

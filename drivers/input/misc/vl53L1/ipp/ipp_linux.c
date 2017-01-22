@@ -53,8 +53,7 @@
  * @param pdmax_cal
  * @param pdmax_cfg
  * @param ppost_cfg
- * @param pbins0
- * @param pbins1
+ * @param pbins
  * @param pxtalk
  * @param presults
  * @return
@@ -64,8 +63,7 @@ VL53L1_Error VL53L1_ipp_hist_process_data(
 	VL53L1_dmax_calibration_data_t    *pdmax_cal,
 	VL53L1_hist_gen3_dmax_config_t    *pdmax_cfg,
 	VL53L1_hist_post_process_config_t *ppost_cfg,
-	VL53L1_histogram_bin_data_t       *pbins0,
-	VL53L1_histogram_bin_data_t       *pbins1,
+	VL53L1_histogram_bin_data_t       *pbins,
 	VL53L1_xtalk_histogram_data_t     *pxtalk,
 	VL53L1_range_results_t            *presults)
 {
@@ -83,8 +81,6 @@ VL53L1_Error VL53L1_ipp_hist_process_data(
 			struct stmvl53l1_data, stdev);
 
 	stmvl531_ipp_tim_start(data);
-	mutex_lock(&data->ipp.mutex);
-	/* re-entrant call ? how can */
 
 	/* for beter safeness and re-entrance handling we shall use local
 	 * work dyn allocated one or check that ipp is not locked already
@@ -99,15 +95,15 @@ VL53L1_Error VL53L1_ipp_hist_process_data(
 	pin = &data->ipp.work;
 	pout = &data->ipp.work_out;
 
-	IPP_SERIALIZE_START(pin->data, 6);
+	IPP_SERIALIZE_START(pin->data, 5);
 	IPP_SET_ARG_PTR(pin->data, 0, pdmax_cal);
 	IPP_SET_ARG_PTR(pin->data, 1, pdmax_cfg);
 	IPP_SET_ARG_PTR(pin->data, 2, ppost_cfg);
-	IPP_SET_ARG_PTR(pin->data, 3, pbins0);
-	IPP_SET_ARG_PTR(pin->data, 4, pbins1);
-	IPP_SET_ARG_PTR(pin->data, 5, pxtalk);
+	IPP_SET_ARG_PTR(pin->data, 3, pbins);
+	IPP_SET_ARG_PTR(pin->data, 4, pxtalk);
 
 	pin->payload = IPP_SERIALIZE_PAYLAOD();
+	BUG_ON(pin->payload > IPP_WORK_MAX_PAYLOAD);
 	pin->process_no = stmvl53l1_ipp_cal_hist;
 	stmvl531_ipp_tim_start(data);
 	rc = stmvl53l1_ipp_do(data, pin, pout);
@@ -131,6 +127,7 @@ VL53L1_Error VL53L1_ipp_hist_process_data(
 	IPP_SERIALIZE_START(pout->data, 1);
 	IPP_OUT_ARG_PTR(pout->data, 0, presults_ipp);
 	payload = IPP_SERIALIZE_PAYLAOD();
+	BUG_ON(pout->payload > IPP_WORK_MAX_PAYLOAD);
 	if (pout->payload != payload) {
 		/* bad formated answer */
 		vl53l1_errmsg("bad payload %d != %d in ipp work back",
@@ -147,7 +144,96 @@ VL53L1_Error VL53L1_ipp_hist_process_data(
 			stmvl531_ipp_time(data));
 	rc = 0;
 done:
-	mutex_unlock(&data->ipp.mutex);
+
+	return rc;
+}
+
+VL53L1_Error VL53L1_ipp_hist_ambient_dmax(
+	VL53L1_DEV                         dev,
+	uint16_t                           target_reflectance,
+	VL53L1_dmax_calibration_data_t    *pdmax_cal,
+	VL53L1_hist_gen3_dmax_config_t    *pdmax_cfg,
+	VL53L1_histogram_bin_data_t       *pbins,
+	int16_t                           *pambient_dmax_mm)
+{
+	int rc;
+	int payload;
+	struct stmvl53l1_data *data;
+	int16_t *pambient_dmax_mm_ipp;
+
+	IPP_SERIALIZE_VAR;
+
+	struct ipp_work_t *pout;
+	struct ipp_work_t *pin;
+
+	data = (struct stmvl53l1_data *) container_of(dev,
+			struct stmvl53l1_data, stdev);
+
+	stmvl531_ipp_tim_start(data);
+
+	/* for beter safeness and re-entrance handling we shall use local
+	 * work dyn allocated one or check that ipp is not locked already
+	 * at least
+	 */
+	if (data->ipp.buzy) {
+		vl53l1_errmsg("try exec new ipp but still buzy on previous");
+		/*  TODO shall we discard it and push new ? */
+		rc = IPP_ERR_CODE;
+		goto done;
+	};
+	pin = &data->ipp.work;
+	pout = &data->ipp.work_out;
+
+	IPP_SERIALIZE_START(pin->data, 4);
+	IPP_SET_ARG(pin->data, 0, target_reflectance);
+	IPP_SET_ARG_PTR(pin->data, 1, pdmax_cal);
+	IPP_SET_ARG_PTR(pin->data, 2, pdmax_cfg);
+	IPP_SET_ARG_PTR(pin->data, 3, pbins);
+
+	pin->payload = IPP_SERIALIZE_PAYLAOD();
+	BUG_ON(pin->payload > IPP_WORK_MAX_PAYLOAD);
+	pin->process_no = stmvl53l1_ipp_hist_ambient_dmax;
+	stmvl531_ipp_tim_start(data);
+	rc = stmvl53l1_ipp_do(data, pin, pout);
+	if (rc != 0) {
+		/* FIXME shall we retry here more specific status ? */
+		vl53l1_errmsg("stmvl53l1_ipp_do err %d\n", rc);
+		rc = IPP_ERR_CODE;
+		goto done;
+	}
+	vl53l1_dbgmsg("ipp ok \n");
+	/* check what we got back if valid answer error etc */
+	if (pout->status) {
+		vl53l1_errmsg("ipp error status %d from user", pout->status);
+		if (pout->status >= stmvl53l1_ipp_status_proc_code)
+			rc = pout->status & (stmvl53l1_ipp_status_proc_code-1);
+		else
+			rc = IPP_ERR_CODE;
+		goto done;
+	}
+	/* process status ok deserialize , check return data payload is ok */
+	IPP_SERIALIZE_START(pout->data, 1);
+	IPP_OUT_ARG_PTR(pout->data, 0, pambient_dmax_mm_ipp);
+	payload = IPP_SERIALIZE_PAYLAOD();
+	BUG_ON(pout->payload > IPP_WORK_MAX_PAYLOAD);
+	if (pout->payload != payload) {
+		/* bad formated answer */
+		vl53l1_errmsg("bad payload %d != %d in ipp work back",
+				pout->payload, payload);
+		rc = IPP_ERR_CODE;
+		goto done;
+	}
+	/* ok copy final output */
+	memcpy(pambient_dmax_mm, pambient_dmax_mm_ipp,
+		sizeof(*pambient_dmax_mm));
+	stmvl531_ipp_tim_stop(data);
+	stmvl531_ipp_stat(data, "ipp #%5x to=%3d fm=%3d in %5ld us",
+			pin->xfer_id, pin->payload,
+			pout->payload,
+			stmvl531_ipp_time(data));
+	rc = 0;
+done:
+
 	return rc;
 }
 
@@ -161,7 +247,7 @@ done:
  * @param pxtalk_cal
  * @return
  */
-VL53L1_API VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
+VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 	VL53L1_DEV                          dev,
 	VL53L1_xtalk_range_results_t       *pxtalk_ranges,
 	VL53L1_xtalk_histogram_data_t      *pxtalk_shape,
@@ -181,8 +267,6 @@ VL53L1_API VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 			struct stmvl53l1_data, stdev);
 
 	stmvl531_ipp_tim_start(data);
-	mutex_lock(&data->ipp.mutex);
-	/* re-entrant call ? how can */
 
 	/* for beter safeness and re-entrance handling we shall use local
 	 * work dyn allocated one or check that ipp is not locked already
@@ -202,6 +286,7 @@ VL53L1_API VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 	IPP_SET_ARG_PTR(pin->data, 1, pxtalk_shape);
 
 	pin->payload = IPP_SERIALIZE_PAYLAOD();
+	BUG_ON(pin->payload > IPP_WORK_MAX_PAYLOAD);
 	pin->process_no = stmvl53l1_ipp_xtalk_calibration;
 	stmvl531_ipp_tim_start(data);
 	rc = stmvl53l1_ipp_do(data, pin, pout);
@@ -225,6 +310,7 @@ VL53L1_API VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 	IPP_SERIALIZE_START(pout->data, 1);
 	IPP_OUT_ARG_PTR(pout->data, 0, presults_ipp);
 	payload = IPP_SERIALIZE_PAYLAOD();
+	BUG_ON(pout->payload > IPP_WORK_MAX_PAYLOAD);
 	if (pout->payload != payload) {
 		/* bad formated answer */
 		vl53l1_errmsg("bad payload %d != %d in ipp work back",
@@ -241,6 +327,93 @@ VL53L1_API VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 			stmvl531_ipp_time(data));
 	rc = 0;
 done:
-	mutex_unlock(&data->ipp.mutex);
+
+	return rc;
+}
+
+VL53L1_Error VL53L1_ipp_generate_dual_reflectance_xtalk_samples(
+	VL53L1_DEV                     dev,
+	VL53L1_xtalk_range_results_t  *pxtalk_results,
+	uint16_t                       expected_target_distance_mm,
+	uint8_t                        higher_reflectance,
+	VL53L1_histogram_bin_data_t    *pxtalk_avg_samples)
+{
+	int rc;
+	int payload;
+	struct stmvl53l1_data *data;
+	VL53L1_histogram_bin_data_t *pxtalk_avg_samples_ipp;
+
+	IPP_SERIALIZE_VAR;
+
+	struct ipp_work_t *pout;
+	struct ipp_work_t *pin;
+
+	data = (struct stmvl53l1_data *) container_of(dev,
+			struct stmvl53l1_data, stdev);
+
+	stmvl531_ipp_tim_start(data);
+
+	/* for beter safeness and re-entrance handling we shall use local
+	 * work dyn allocated one or check that ipp is not locked already
+	 * at least
+	 */
+	if (data->ipp.buzy) {
+		vl53l1_errmsg("try exec new ipp but still buzy on previous");
+		/*  TODO shall we discard it and push new ? */
+		rc = IPP_ERR_CODE;
+		goto done;
+	};
+	pin = &data->ipp.work;
+	pout = &data->ipp.work_out;
+
+	IPP_SERIALIZE_START(pin->data, 3);
+	IPP_SET_ARG_PTR(pin->data, 0, pxtalk_results);
+	IPP_SET_ARG(pin->data, 1, expected_target_distance_mm);
+	IPP_SET_ARG(pin->data, 2, higher_reflectance);
+
+	pin->payload = IPP_SERIALIZE_PAYLAOD();
+	BUG_ON(pin->payload > IPP_WORK_MAX_PAYLOAD);
+	pin->process_no = stmvl53l1_ipp_generate_dual_reflectance_xtalk_samples;
+	stmvl531_ipp_tim_start(data);
+	rc = stmvl53l1_ipp_do(data, pin, pout);
+	if (rc != 0) {
+		/* FIXME shall we retry here more specific status ? */
+		vl53l1_errmsg("stmvl53l1_ipp_do err %d\n", rc);
+		rc = IPP_ERR_CODE;
+		goto done;
+	}
+	vl53l1_dbgmsg("ipp ok \n");
+	/* check what we got back if valid answer error etc */
+	if (pout->status) {
+		vl53l1_errmsg("ipp error status %d from user", pout->status);
+		if (pout->status >= stmvl53l1_ipp_status_proc_code)
+			rc = pout->status & (stmvl53l1_ipp_status_proc_code-1);
+		else
+			rc = IPP_ERR_CODE;
+		goto done;
+	}
+	/* process status ok deserialize , check return data payload is ok */
+	IPP_SERIALIZE_START(pout->data, 1);
+	IPP_OUT_ARG_PTR(pout->data, 0, pxtalk_avg_samples_ipp);
+	payload = IPP_SERIALIZE_PAYLAOD();
+	BUG_ON(pout->payload > IPP_WORK_MAX_PAYLOAD);
+	if (pout->payload != payload) {
+		/* bad formated answer */
+		vl53l1_errmsg("bad payload %d != %d in ipp work back",
+				pout->payload, payload);
+		rc = IPP_ERR_CODE;
+		goto done;
+	}
+	/* ok copy final output */
+	memcpy(pxtalk_avg_samples, pxtalk_avg_samples_ipp,
+		sizeof(*pxtalk_avg_samples));
+	stmvl531_ipp_tim_stop(data);
+	stmvl531_ipp_stat(data, "ipp #%5x to=%3d fm=%3d in %5ld us",
+			pin->xfer_id, pin->payload,
+			pout->payload,
+			stmvl531_ipp_time(data));
+	rc = 0;
+done:
+
 	return rc;
 }
