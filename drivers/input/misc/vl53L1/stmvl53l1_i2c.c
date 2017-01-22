@@ -32,8 +32,6 @@
 /**
  * @file stmvl53l1_i2c.c  vl53l1 linux native i2c interface
  *
- * see #CAMERA_CCI
- * @note shall only be compile and linked when in use
  */
 #include "stmvl53l1.h"
 #include "stmvl53l1-i2c.h"
@@ -92,9 +90,9 @@ static uint32_t tv_elapsed_us(struct timeval *tv)
 #endif
 
 
-void VL53L1_GetTickCount(void *p)
+VL53L1_Error VL53L1_GetTickCount(uint32_t *ptime_ms)
 {
-	(void)p;
+	(void)ptime_ms;
 	BUG_ON(1);
 }
 /**
@@ -190,7 +188,7 @@ static int cci_read(struct stmvl53l1_data *dev, int index,
 }
 
 
-VL53L1_API VL53L1_Error VL53L1_WrByte(VL53L1_DEV pdev,
+VL53L1_Error VL53L1_WrByte(VL53L1_DEV pdev,
 		uint16_t      index,
 		uint8_t       data)
 {
@@ -204,7 +202,7 @@ VL53L1_API VL53L1_Error VL53L1_WrByte(VL53L1_DEV pdev,
 }
 
 
-VL53L1_API VL53L1_Error VL53L1_RdByte(
+VL53L1_Error VL53L1_RdByte(
 		VL53L1_DEV pdev,
 		uint16_t      index,
 		uint8_t      *pdata)
@@ -301,16 +299,10 @@ VL53L1_Error VL53L1_ReadMulti(VL53L1_DEV pdev, uint16_t index,
 			VL53L1_ERROR_CONTROL_INTERFACE : VL53L1_ERROR_NONE;
 }
 
-
-
-static int is_time_over(struct stmvl53l1_data *dev, struct timeval *tv,
-	uint32_t msec)
+static int is_time_over(struct timeval *tv, uint32_t msec)
 {
-	/* todo look at dev is timeout check is disable */
-
 	return tv_elapsed_ms(tv) >= msec;
 }
-
 
 VL53L1_Error VL53L1_WaitValueMaskEx(
 		VL53L1_DEV pdev,
@@ -339,7 +331,7 @@ VL53L1_Error VL53L1_WaitValueMaskEx(
 		}
 		vl53l1_dbgmsg("poll @%x %x & %d != %x", index,
 				rd_val, mask, value);
-		time_over = is_time_over(dev, &start_tv, timeout_ms);
+		time_over = is_time_over(&start_tv, timeout_ms);
 		if (!time_over)
 			msleep(poll_delay_ms);
 	} while (!time_over);
