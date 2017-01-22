@@ -172,6 +172,13 @@ typedef struct {
 	VL53L1_HistAlgoSelect  hist_algo_select;
 
 
+
+	VL53L1_HistTargetOrder hist_target_order;
+
+
+
+
+
 	uint8_t   filter_woi0;
 
 
@@ -265,13 +272,13 @@ typedef struct {
 
 
 
-	uint8_t  VL53L1_PRM_00011;
-
-
-	uint8_t  VL53L1_PRM_00012;
-
-
 	uint8_t  VL53L1_PRM_00013;
+
+
+	uint8_t  VL53L1_PRM_00014;
+
+
+	uint8_t  VL53L1_PRM_00015;
 
 
 
@@ -319,10 +326,10 @@ typedef struct {
 	uint16_t vcsel_width;
 
 
-	uint8_t  VL53L1_PRM_00006;
+	uint8_t  VL53L1_PRM_00007;
 
 
-	uint16_t VL53L1_PRM_00014;
+	uint16_t VL53L1_PRM_00016;
 
 
 	uint32_t  total_periods_elapsed;
@@ -383,13 +390,13 @@ typedef struct {
 
 
 
-	uint8_t  VL53L1_PRM_00011;
-
-
-	uint8_t  VL53L1_PRM_00012;
-
-
 	uint8_t  VL53L1_PRM_00013;
+
+
+	uint8_t  VL53L1_PRM_00014;
+
+
+	uint8_t  VL53L1_PRM_00015;
 
 
 	uint32_t bin_data[VL53L1_XTALK_HISTO_BINS];
@@ -409,14 +416,33 @@ typedef struct {
 	uint16_t vcsel_width;
 
 
-	uint16_t VL53L1_PRM_00014;
+	uint16_t VL53L1_PRM_00016;
 
 
 	uint16_t zero_distance_phase;
 
 
 
+} VL53L1_xtalk_histogram_shape_t;
+
+
+
+
+
+
+
+
+typedef struct {
+
+
+
+	VL53L1_xtalk_histogram_shape_t  xtalk_shape;
+
+
+	VL53L1_histogram_bin_data_t     xtalk_hist_removed;
+
 } VL53L1_xtalk_histogram_data_t;
+
 
 
 
