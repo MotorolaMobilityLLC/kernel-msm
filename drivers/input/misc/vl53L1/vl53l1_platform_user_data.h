@@ -29,47 +29,38 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/**
- * @file  vl53l1_platform_user_config.h
- *
- * @brief EwokPlus compile time user modifiable configuration
- */
 
+#ifndef _VL53L1_PLATFORM_USER_DATA_H_
+#define _VL53L1_PLATFORM_USER_DATA_H_
 
-#ifndef _VL53L1_PLATFORM_USER_CONFIG_H_
-#define _VL53L1_PLATFORM_USER_CONFIG_H_
+#include "vl53l1_ll_def.h"
 
-#define    VL53L1_MAX_STRING_LENGTH         100
+#include <linux/string.h>
+#include "vl53l1_def.h"
+#include <linux/math64.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
+#include <linux/string.h>
 
-#define    VL53L1_BYTES_PER_WORD              2
-#define    VL53L1_BYTES_PER_DWORD             4
+#define VL53L1_Dev_t VL53L1_DevData_t
+#define VL53L1_DEV VL53L1_DevData_t *
 
-/* Define polling delays */
-#define VL53L1_BOOT_COMPLETION_POLLING_TIMEOUT_MS     500
-#define VL53L1_RANGE_COMPLETION_POLLING_TIMEOUT_MS   2000
-#define VL53L1_TEST_COMPLETION_POLLING_TIMEOUT_MS   10000
+#define PALDevDataGet(Dev, field) (Dev->field)
+#define PALDevDataSet(Dev, field, data) ((Dev->field) = (data))
 
-#define VL53L1_POLLING_DELAY_MS                         1
+#define VL53L1DevStructGetLLDriverHandle(Dev) (&PALDevDataGet(Dev, LLData))
+#define VL53L1DevStructGetLLResultsHandle(Dev) (&PALDevDataGet(Dev, llresults))
 
+#define do_division_u(dividend, divisor) div64_u64(dividend, divisor)
+#define do_division_s(dividend, divisor) div64_s64(dividend, divisor)
 
-#define VL53L1_OFFSET_CAL_MIN_MM1_EFFECTIVE_SPADS  0x0500
-	/*!< Lower Limit for the  MM1 effective SPAD count during offset
-	 * calibration Format 8.8 0x0500 -> 5.0 effective SPADs
-	 */
+#ifdef __cplusplus
+}
+#endif
 
-#define VL53L1_MAX_USER_ZONES                169
-	/*!< Max number of user Zones - maximal limitation from
-	 * FW stream divide - value of 254
-	 */
-
-#define VL53L1_MAX_RANGE_RESULTS              4
-	/*!< Sets the maximum number of targets distances the histogram
-	 * post processing can generate
-	 */
-
-#endif  /* _VL53L1_PLATFORM_USER_CONFIG_H_ */
-
-
+#endif
 
