@@ -209,6 +209,25 @@ VL53L1_Error VL53L1_nvm_format_decode(
 
 
 
+VL53L1_Error VL53L1_nvm_decode_additional_offset_cal_data(
+	uint16_t                             buf_size,
+	uint8_t                             *pbuffer,
+	VL53L1_additional_offset_cal_data_t *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 VL53L1_Error VL53L1_nvm_decode_fmt_range_results_data(
 	uint16_t                             buf_size,
 	uint8_t                             *pbuffer,
@@ -314,8 +333,24 @@ VL53L1_Error VL53L1_read_nvm_raw_data(
 
 VL53L1_Error VL53L1_read_nvm(
 	VL53L1_DEV                 Dev,
-    uint8_t                    nvm_format,
-    VL53L1_decoded_nvm_data_t *pnvm_info);
+	uint8_t                    nvm_format,
+	VL53L1_decoded_nvm_data_t *pnvm_info);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_read_nvm_additional_offset_cal_data(
+	VL53L1_DEV                           Dev,
+	VL53L1_additional_offset_cal_data_t *pcal_data);
 
 
 
@@ -336,8 +371,8 @@ VL53L1_Error VL53L1_read_nvm(
 
 VL53L1_Error VL53L1_read_nvm_fmt_range_results_data(
 	VL53L1_DEV                           Dev,
-    uint16_t                             range_results_select,
-    VL53L1_decoded_nvm_fmt_range_data_t *prange_data);
+	uint16_t                             range_results_select,
+	VL53L1_decoded_nvm_fmt_range_data_t *prange_data);
 
 
 #ifdef __cplusplus

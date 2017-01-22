@@ -783,6 +783,7 @@ typedef struct {
 
 
 
+	VL53L1_additional_offset_cal_data_t  fmt_add_offset_data;
 	VL53L1_decoded_nvm_fmt_range_data_t  fmt_range_data[VL53L1_NVM_MAX_FMT_RANGE_DATA];
 	VL53L1_decoded_nvm_fmt_info_t        fmt_info;
 	VL53L1_decoded_nvm_ews_info_t        ews_info;
