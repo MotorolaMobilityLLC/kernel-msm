@@ -151,8 +151,10 @@ VL53L1_Error VL53L1_init_zone_config_structure(
 		}
 	}
 
-  if(status == VL53L1_ERROR_NONE)
-    status = VL53L1_init_zone_config_histogram_bins(pdata);
+	if (status == VL53L1_ERROR_NONE) {
+
+		status = VL53L1_init_zone_config_histogram_bins(pdata);
+	}
 
 	LOG_FUNCTION_END(status);
 
@@ -213,8 +215,10 @@ VL53L1_Error VL53L1_zone_preset_xtalk_planar(
 	pzone_cfg->user_zones[4].x_centre       = 8;
 	pzone_cfg->user_zones[4].y_centre       = 8;
 
-  if(status == VL53L1_ERROR_NONE)
-    status = VL53L1_init_zone_config_histogram_bins(pzone_cfg);
+	if (status == VL53L1_ERROR_NONE) {
+
+		status = VL53L1_init_zone_config_histogram_bins(pzone_cfg);
+	}
 
 	LOG_FUNCTION_END(status);
 
@@ -232,12 +236,12 @@ VL53L1_Error VL53L1_init_zone_config_histogram_bins(
 
 	VL53L1_Error  status = VL53L1_ERROR_NONE;
 
-  uint8_t i;
+	uint8_t i;
 
 	LOG_FUNCTION_START("");
 
-  for(i = 0; i < pdata->max_zones; i++)
-    pdata->bin_config[i] = VL53L1_ZONECONFIG_BINCONFIG__LOWAMB;
+	for (i = 0; i < pdata->max_zones; i++)
+		pdata->bin_config[i] = VL53L1_ZONECONFIG_BINCONFIG__LOWAMB;
 
 	LOG_FUNCTION_END(status);
 
