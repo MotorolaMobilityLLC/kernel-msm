@@ -4257,6 +4257,8 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_sync(dapm);
 
+	/* Set LDO2 to 3.1V */
+	snd_soc_write(codec, ARIZONA_LDO2_CONTROL_1, 0x4A4);
 	/* In current hardware, both Marley MICDETECT and sensor hub
 	 * are connected for test purposes.  This code could be removed
 	 * later.
