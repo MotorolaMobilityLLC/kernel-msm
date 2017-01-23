@@ -27,6 +27,7 @@
 #include <linux/platform_device.h>
 #include <linux/printk.h>
 #include <linux/clk.h>
+#include <video/slimport_device.h>
 
 #define USB_ATTACH 0xAA55
 #define CFG_ACCESS 0x9937
@@ -218,6 +219,9 @@ static void usb3813_attach_w(struct work_struct *work)
 
 	if (!info->hub_enabled)
 		return;
+
+	/* Reset the slimport since USB2 shares lines */
+	slimport_reset_standby();
 
 	ret = usb3813_write_cfg_reg(info, HS_P2_BOOST, HS_BOOST_MAX);
 	if (ret < 0)
