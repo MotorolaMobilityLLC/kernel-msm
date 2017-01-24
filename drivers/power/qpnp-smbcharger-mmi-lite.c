@@ -8041,6 +8041,13 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	    (prev_step != chip->stepchg_state) ||
 	    (chip->update_allowed_fastchg_current_ma)) {
 		smbchg_set_temp_chgpath(chip, prev_batt_health);
+		if (chip->stepchg_state == STEP_MAX)
+			set_max_allowed_current_ma(chip,
+				      chip->stepchg_max_current_ma);
+		else
+			set_max_allowed_current_ma(chip,
+				      chip->stepchg_current_ma);
+
 		if (chip->usb_present) {
 			smbchg_parallel_usb_check_ok(chip);
 			chip->update_allowed_fastchg_current_ma = false;
