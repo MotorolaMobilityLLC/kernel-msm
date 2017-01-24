@@ -29,6 +29,7 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 #include <video/slimport_device.h>
+#include <linux/mods/usb3813.h>
 
 #define USB_ATTACH 0xAA55
 #define CFG_ACCESS 0x9937
@@ -226,52 +227,42 @@ static ssize_t usb3813_hsic_vdd_store(struct device *dev,
 static DEVICE_ATTR(hsic_vdd, 0660,
 			usb3813_hsic_vdd_show, usb3813_hsic_vdd_store);
 
-static ssize_t usb3813_enable_show(struct device *dev,
-			struct device_attribute *attr,
-			char *buf)
+int usb3813_enable_hub(struct i2c_client *client,
+			bool enable,
+			enum usb_ext_path path)
 {
-	struct usb3813_info *info = dev_get_drvdata(dev);
+	struct usb3813_info *info = i2c_get_clientdata(client);
 
-	return scnprintf(buf, PAGE_SIZE, "%d\n", info->hub_enabled);
-}
-
-static ssize_t usb3813_enable_store(struct device *dev,
-			struct device_attribute *attr,
-			const char *buf, size_t count)
-{
-	struct usb3813_info *info = dev_get_drvdata(dev);
-	unsigned long r, mode;
-
-	r = kstrtoul(buf, 0, &mode);
-	if (r) {
-		dev_err(dev, "Invalid value = %lu\n", mode);
+	if (!info)
 		return -EINVAL;
-	}
 
-	mode = !!mode;
+	if (enable == info->hub_enabled)
+		return -EINPROGRESS;
 
-	if (mode == info->hub_enabled)
-		return count;
-
-	info->hub_enabled = mode;
+	info->hub_enabled = enable;
+	cancel_delayed_work(&info->usb3813_attach_work);
 
 	if (info->hub_enabled) {
 		if (clk_prepare_enable(info->hub_clk)) {
-			dev_err(dev, "%s: failed to prepare clock\n", __func__);
-			return count;
+			dev_err(info->dev, "%s: failed to prepare clock\n",
+								__func__);
+			return -EFAULT;
 		}
 		gpio_set_value(info->hub_reset_n.gpio, 1);
 		schedule_delayed_work(&info->usb3813_attach_work,
 					msecs_to_jiffies(1000));
+
+		if (path == USB_EXT_PATH_BRIDGE)
+			set_hsic_state(info, true);
 	} else {
 		gpio_set_value(info->hub_reset_n.gpio, 0);
 		clk_disable_unprepare(info->hub_clk);
+		set_hsic_state(info, false);
 	}
 
-	return count;
+	return 0;
 }
-
-static DEVICE_ATTR(enable, 0660, usb3813_enable_show, usb3813_enable_store);
+EXPORT_SYMBOL(usb3813_enable_hub);
 
 static void usb3813_attach_w(struct work_struct *work)
 {
@@ -503,11 +494,6 @@ static int usb3813_probe(struct i2c_client *client,
 		dev_err(&client->dev, "unable to get hsic supply\n");
 
 	INIT_DELAYED_WORK(&info->usb3813_attach_work, usb3813_attach_w);
-	ret = device_create_file(&client->dev, &dev_attr_enable);
-	if (ret) {
-		dev_err(&client->dev, "Unable to create enable file\n");
-		goto fail_clk;
-	}
 
 	ret = device_create_file(&client->dev, &dev_attr_hsic_vdd);
 	if (ret) {
@@ -538,7 +524,6 @@ static int usb3813_remove(struct i2c_client *client)
 		clk_disable_unprepare(info->hub_clk);
 	clk_put(info->hub_clk);
 	devm_regulator_put(info->vdd_hsic);
-	device_remove_file(&client->dev, &dev_attr_enable);
 	device_remove_file(&client->dev, &dev_attr_hsic_vdd);
 	debugfs_remove_recursive(info->debug_root);
 	kfree(info);
