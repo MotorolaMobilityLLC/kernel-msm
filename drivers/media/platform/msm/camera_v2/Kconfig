@@ -269,3 +269,8 @@ config DEBUG_CAMERA
 	default n
 	---help---
 		Enable camera debug support.
+config CAMERA_CSID_DEBUG
+	bool "Enable CSID Debug"
+	default n
+	---help---
+		Enable csid debug support.
