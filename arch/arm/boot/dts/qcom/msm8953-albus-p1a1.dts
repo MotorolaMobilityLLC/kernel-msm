@@ -24,11 +24,13 @@
 	sound {
 		qcom,model = "msm8952-marley-cardp1a";
 		qcom,l35_cpu_dai_name = "marley-aif2";
+		qcom,dba_cpu_dai_name = "marley-aif1";
 		cs47l35,dapm-routing =
 			"IN1AL", "MICBIAS1A",
 			"IN2R", "MICBIAS1B",
 			"IN2L", "MICBIAS2B",
-			"IN1BR", "MICBIAS2A";
+			"IN1BR", "MICBIAS2A",
+			"MYDP", "HDMI DBA Playback";
 	};
 
 	spi@7af7000 {
