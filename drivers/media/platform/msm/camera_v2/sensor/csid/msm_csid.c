@@ -51,7 +51,11 @@
 #define CSID_VERSION_V40                      0x40000000
 #define MSM_CSID_DRV_NAME                    "msm_csid"
 
+#ifdef CONFIG_CAMERA_CSID_DEBUG
+#define DBG_CSID                             1
+#else
 #define DBG_CSID                             0
+#endif
 #define SHORT_PKT_CAPTURE                    0
 #define SHORT_PKT_OFFSET                     0x200
 #define ENABLE_3P_BIT                        1
