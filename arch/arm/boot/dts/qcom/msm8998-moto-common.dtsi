@@ -1394,14 +1394,15 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <100>;
-		df-serialnum = "SNN5972";
+		df-serialnum = "SNN5987";
 
-		#include "batterydata-gv30-lg-pmi8998.dtsi"
+		#include "batterydata-hd40-atl-pmi8998.dtsi"
 	};
 };
 
 &pmi8998_fg {
 	qcom,battery-data = <&mot_batterydata>;
+	qcom,fg-force-load-profile = <1>;
 	qcom,fg-cutoff-voltage = <3000>;
 	qcom,fg-empty-voltage = <2750>;
 	qcom,fg-chg-term-current = <100>;
