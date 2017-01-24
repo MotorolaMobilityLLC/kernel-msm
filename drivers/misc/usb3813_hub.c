@@ -27,6 +27,7 @@
 #include <linux/platform_device.h>
 #include <linux/printk.h>
 #include <linux/clk.h>
+#include <linux/regulator/consumer.h>
 #include <video/slimport_device.h>
 
 #define USB_ATTACH 0xAA55
@@ -51,6 +52,8 @@ struct usb3813_info {
 	u16 debug_address;
 	bool debug_enabled;
 	bool debug_attach;
+	struct regulator *vdd_hsic;
+	bool hsic_enabled;
 };
 
 static int usb3813_write_command(struct usb3813_info *info, u16 command)
@@ -166,6 +169,62 @@ static int usb3813_read_cfg_reg(struct usb3813_info *info, u16 reg)
 
 	return val[1];
 }
+
+static int set_hsic_state(struct usb3813_info *info, bool enable)
+{
+	int ret;
+
+	if (enable && !info->hsic_enabled) {
+		ret = regulator_enable(info->vdd_hsic);
+
+		if (ret)
+			dev_err(info->dev, "Unable to enable vdd_hsic\n");
+		else
+			info->hsic_enabled = true;
+	} else if (!enable && info->hsic_enabled) {
+		ret = regulator_disable(info->vdd_hsic);
+
+		if (ret)
+			dev_err(info->dev, "Unable to disable vdd_hsic\n");
+		else
+			info->hsic_enabled = false;
+	}
+
+	return ret;
+}
+
+static ssize_t usb3813_hsic_vdd_show(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct usb3813_info *info = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", info->hsic_enabled);
+}
+
+static ssize_t usb3813_hsic_vdd_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct usb3813_info *info = dev_get_drvdata(dev);
+	unsigned long r, mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		dev_err(dev, "Invalid value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	mode = !!mode;
+
+	if (set_hsic_state(info, mode))
+		return -EFAULT;
+	else
+		return count;
+}
+
+static DEVICE_ATTR(hsic_vdd, 0660,
+			usb3813_hsic_vdd_show, usb3813_hsic_vdd_store);
 
 static ssize_t usb3813_enable_show(struct device *dev,
 			struct device_attribute *attr,
@@ -439,10 +498,20 @@ static int usb3813_probe(struct i2c_client *client,
 		goto fail_gpio;
 	}
 
+	info->vdd_hsic = devm_regulator_get(&client->dev, "vdd-hsic");
+	if (IS_ERR(info->vdd_hsic))
+		dev_err(&client->dev, "unable to get hsic supply\n");
+
 	INIT_DELAYED_WORK(&info->usb3813_attach_work, usb3813_attach_w);
 	ret = device_create_file(&client->dev, &dev_attr_enable);
 	if (ret) {
 		dev_err(&client->dev, "Unable to create enable file\n");
+		goto fail_clk;
+	}
+
+	ret = device_create_file(&client->dev, &dev_attr_hsic_vdd);
+	if (ret) {
+		dev_err(&client->dev, "Unable to create hsic_vdd file\n");
 		goto fail_clk;
 	}
 
@@ -468,7 +537,9 @@ static int usb3813_remove(struct i2c_client *client)
 	if (info->hub_enabled)
 		clk_disable_unprepare(info->hub_clk);
 	clk_put(info->hub_clk);
+	devm_regulator_put(info->vdd_hsic);
 	device_remove_file(&client->dev, &dev_attr_enable);
+	device_remove_file(&client->dev, &dev_attr_hsic_vdd);
 	debugfs_remove_recursive(info->debug_root);
 	kfree(info);
 	return 0;
