@@ -1,0 +1,71 @@
+
+qcom,hd40-atl-pmi8998 {
+	serialnum = "SNN5987";
+	qcom, = <24>;
+	/* #2766498_Moto_Nash_2730mAh_averaged_MasterSlave_Jan19th2017*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <2730>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3900>;
+	qcom,battery-type = "HD40-ATL-2730mah";
+	qcom,checksum = <0x7A67>;
+	qcom,gui-version = "PMI8998GUI - 2.0.0.54";
+	qcom,fg-profile-data = [
+		 CC 1F 3F 05
+		 C9 0A FA 05
+		 71 1D 35 EC
+		 7E 0B 42 15
+		 AC 18 BC 22
+		 E5 45 33 52
+		 5B 00 00 00
+		 0F 00 00 00
+		 00 00 E1 C5
+		 DA C4 01 00
+		 1A 00 08 00
+		 65 E2 B7 07
+		 BD FD 01 F2
+		 8D FA 7C 12
+		 CE 06 15 3A
+		 16 06 09 20
+		 27 00 14 00
+		 3B 20 F2 04
+		 F8 0A D2 05
+		 4E 1D DE F2
+		 AE 02 B0 0C
+		 24 19 E6 22
+		 72 45 0E 53
+		 5B 00 00 00
+		 0D 00 00 00
+		 00 00 8F CD
+		 B3 BD 02 00
+		 17 00 00 00
+		 6C 00 B7 07
+		 F9 06 86 EB
+		 56 F2 C6 0A
+		 30 BD 95 13
+		 A8 33 CC FF
+		 07 10 00 00
+		 AD 0A 66 46
+		 17 00 40 00
+		 EC 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
