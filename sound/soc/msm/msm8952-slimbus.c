@@ -3874,6 +3874,8 @@ static const struct snd_soc_dapm_widget msm8952_tasha_dapm_widgets[] = {
 static const struct snd_soc_dapm_widget msm8952_marley_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY_S("MCLK", -1,  SND_SOC_NOPM, 0, 0,
 	msm8952_mclk_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+
+	SND_SOC_DAPM_OUTPUT("MYDP"),
 };
 #endif
 
@@ -3891,14 +3893,8 @@ static struct snd_soc_dapm_route marley_audio_routes[] = {
 	{"Slim2 Playback", NULL, "MCLK"},
 	{"Slim2 Capture", NULL, "MCLK"},
 
-	{"AIF1 Playback", NULL, "AMP Capture"},
 	{"AMP Playback", NULL, "OPCLK"},
 	{"AMP Capture", NULL, "OPCLK"},
-
-	{"Slim1 Playback", NULL, "MCLK"},
-	{"Slim1 Capture", NULL, "MCLK"},
-	{"Slim2 Capture", NULL, "MCLK"},
-
 };
 #endif
 
@@ -4219,6 +4215,10 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1TX2");
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX1");
 	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX2");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF2TX1");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF2TX2");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF2RX1");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF2RX2");
 	snd_soc_dapm_ignore_suspend(dapm, "HPOUTL");
 	snd_soc_dapm_ignore_suspend(dapm, "HPOUTR");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKOUTN");
@@ -4338,11 +4338,13 @@ int marley_cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
 	int ret;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	struct snd_soc_dai *aif2_dai = rtd->cpu_dai;
+	struct snd_soc_dai *aif_dai = rtd->cpu_dai;
 	struct snd_soc_dai *cs35l35_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec_marley = rtd->cpu_dai->codec;
 
-	ret = snd_soc_dai_set_sysclk(aif2_dai, ARIZONA_CLK_SYSCLK, 0, 0);
+	dev_dbg(codec->dev, "%s\n", __func__);
+
+	ret = snd_soc_dai_set_sysclk(aif_dai, ARIZONA_CLK_SYSCLK, 0, 0);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
 		return ret;
