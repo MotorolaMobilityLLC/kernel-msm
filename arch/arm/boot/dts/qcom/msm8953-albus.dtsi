@@ -316,6 +316,10 @@
 	};
 
 	/delete-node/ hdmi_dba;
+	hdmi_dba: qcom,msm-hdmi-dba-codec-rx {
+		compatible = "qcom,msm-hdmi-dba-codec-rx";
+		qcom,dba-bridge-chip = "anx7805";
+	};
 
 	sound {
 		status = "ok";
@@ -368,14 +372,15 @@
 			"msm-dai-q6-dev.12292", "msm-dai-q6-dev.12293";
 
 		qcom,albus-audio;
-		/delete-property/ qcom,hdmi-dba-codec-rx;
-		asoc-codec = <&stub_codec>;
-		asoc-codec-names = "msm-stub-codec.1";
+		qcom,hdmi-dba-codec-rx;
+		asoc-codec = <&stub_codec>, <&hdmi_dba>;
+		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-dba-codec-rx";
 		cs47l35,dapm-routing =
 			"IN1AL", "MICBIAS2A",
 			"IN2R", "MICBIAS2B",
 			"IN2L", "MICBIAS2A",
-			"IN1BR", "MICBIAS1B";
+			"IN1BR", "MICBIAS1B",
+			"MYDP", "HDMI DBA Playback";
 	};
 
 	ospl {
