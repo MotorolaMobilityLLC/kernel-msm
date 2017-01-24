@@ -794,7 +794,7 @@
 					   <700 700 0>,
 					   <500 500 0>,
 					   <300 300 0>;
-	qcom,stepchg-voltage-mv = <4100>;
+	qcom,stepchg-voltage-mv = <4200>;
 	qcom,stepchg-current-ma = <2000>;
 	qcom,stepchg-taper-ma = <1800>;
 	qcom,stepchg-iterm-ma = <60>;
@@ -802,6 +802,8 @@
 	qcom,cold-temp-c = <(-20)>;
 	qcom,warm-temp-c = <45>;
 	qcom,cool-temp-c = <0>;
+	qcom,temp-warm-current-ma = <1500>;
+	qcom,temp-cool-current-ma = <600>;
 	qcom,ext-temp-volt-mv = <4200>;
 	qcom,hotspot-thrs-c = <50>;
 	qcom,charging-timeout-mins = <0>;
