@@ -35,6 +35,10 @@
 
 #define HS_BOOST_MAX 0x07
 
+static unsigned int boost_val = HS_BOOST_MAX;
+module_param(boost_val, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(boost_val, "Boost Value for the USB3813 hub");
+
 struct usb3813_info {
 	struct i2c_client *client;
 	struct device *dev;
@@ -223,7 +227,7 @@ static void usb3813_attach_w(struct work_struct *work)
 	/* Reset the slimport since USB2 shares lines */
 	slimport_reset_standby();
 
-	ret = usb3813_write_cfg_reg(info, HS_P2_BOOST, HS_BOOST_MAX);
+	ret = usb3813_write_cfg_reg(info, HS_P2_BOOST, boost_val);
 	if (ret < 0)
 		dev_err(info->dev, "Write HS_P2_BOOST failed (%d)\n", ret);
 
