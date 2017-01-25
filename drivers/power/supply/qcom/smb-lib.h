@@ -23,6 +23,7 @@
 #include "storm-watch.h"
 #include <linux/alarmtimer.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/power_supply.h>
 
 enum print_reason {
 	PR_INTERRUPT	= BIT(0),
@@ -639,4 +640,15 @@ int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
 				const union power_supply_propval *val);
 void mmi_init(struct smb_charger *chg);
 void mmi_deinit(struct smb_charger *chg);
+
+#define HEARTBEAT_EB_MS 1000
+extern struct smb_charger *the_chip;
+extern int eb_rechrg_start_soc;
+extern int eb_rechrg_stop_soc;
+extern int eb_attach_start_soc;
+extern int eb_attach_stop_soc;
+extern int eb_low_start_soc;
+extern int eb_low_stop_soc;
+extern int eb_on_sw;
+
 #endif /* __SMB2_CHARGER_H */
