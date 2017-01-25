@@ -46,6 +46,9 @@
 #include <linux/irq.h>
 #include <linux/extcon.h>
 #include <linux/reset.h>
+#include <linux/i2c.h>
+#include <linux/mods/usb_ext_bridge.h>
+#include <linux/mods/usb3813.h>
 
 #include "power.h"
 #include "core.h"
@@ -209,9 +212,11 @@ struct dwc3_msm {
 	enum usb_device_speed	max_rh_port_speed;
 	unsigned int		tx_fifo_size;
 	bool			vbus_active;
+	bool			mod_vbus_active;
 	bool			suspend;
 	bool			disable_host_mode_pm;
 	enum dwc3_id_state	id_state;
+	enum dwc3_id_state	mod_id_state;
 	unsigned long		lpm_flags;
 #define MDWC3_SS_PHY_SUSPEND		BIT(0)
 #define MDWC3_ASYNC_IRQ_WAKE_CAPABILITY	BIT(1)
@@ -243,6 +248,10 @@ struct dwc3_msm {
 	struct mutex suspend_resume_mutex;
 	bool			ext_typec_switch;
 	bool                    ss_compliance;
+	struct gpio		mod_switch_gpio;
+	struct i2c_client	*mod_hub;
+	bool			mods_support;
+	bool			mod_enabled;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -455,6 +464,64 @@ static ssize_t toggle_pattern_store(struct device *dev,
 static DEVICE_ATTR(toggle_pattern, 0220,
 			NULL,
 			toggle_pattern_store);
+
+static ssize_t modusb_enable_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	if (!mdwc)
+		return -ENODEV;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", mdwc->mod_enabled);
+}
+
+static ssize_t modusb_enable_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	if (!mdwc)
+		return -ENODEV;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		dev_err(dev, "Invalid value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	mode = !!mode;
+	if (mode == mdwc->mod_enabled)
+		return count;
+	mdwc->mod_enabled = mode;
+
+	if (mdwc->mod_enabled) {
+		mdwc->mod_vbus_active = mdwc->vbus_active;
+		mdwc->mod_id_state = mdwc->id_state;
+		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 1);
+		usb3813_enable_hub(mdwc->mod_hub, 1, USB_EXT_PATH_ENTERPRISE);
+		mdwc->vbus_active = 0;
+		mdwc->id_state = DWC3_ID_GROUND;
+	} else {
+		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 0);
+		usb3813_enable_hub(mdwc->mod_hub, 1, USB_EXT_PATH_UNKNOWN);
+		mdwc->vbus_active = mdwc->mod_vbus_active;
+		mdwc->id_state = mdwc->mod_id_state;
+	}
+
+	dbg_event(0xFF, "Q RW mods", mdwc->mod_enabled);
+	queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
+
+	return count;
+}
+
+static DEVICE_ATTR(modusb_enable, 0660,
+			modusb_enable_show,
+			modusb_enable_store);
 
 static inline bool dwc3_msm_is_dev_superspeed(struct dwc3_msm *mdwc)
 {
@@ -2708,6 +2775,13 @@ static int dwc3_msm_id_notifier(struct notifier_block *nb,
 	if (dwc->maximum_speed > dwc->max_hw_supp_speed)
 		dwc->maximum_speed = dwc->max_hw_supp_speed;
 
+	/* Ignore ID notifications when Mod is attached */
+	if (mdwc->mod_enabled) {
+		mdwc->mod_id_state = id;
+		dbg_event(0xFF, "Ignore ID", id);
+		return NOTIFY_DONE;
+	}
+
 	if (mdwc->id_state != id) {
 		mdwc->id_state = id;
 		dbg_event(0xFF, "id_state", mdwc->id_state);
@@ -2753,9 +2827,6 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 
 	dev_dbg(mdwc->dev, "vbus:%ld event received\n", event);
 
-	if (mdwc->vbus_active == event)
-		return NOTIFY_DONE;
-
 	cc_state = extcon_get_cable_state_(edev, EXTCON_USB_CC);
 	if (cc_state < 0)
 		mdwc->typec_orientation = ORIENTATION_NONE;
@@ -2769,6 +2840,16 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 	dwc->maximum_speed = (speed <= 0) ? USB_SPEED_HIGH : USB_SPEED_SUPER;
 	if (dwc->maximum_speed > dwc->max_hw_supp_speed)
 		dwc->maximum_speed = dwc->max_hw_supp_speed;
+
+	/* Ignore Vbus notifications when Mod is attached */
+	if (mdwc->mod_enabled) {
+		mdwc->mod_vbus_active = event;
+		dbg_event(0xFF, "Ignore Vbus", event);
+		return NOTIFY_DONE;
+	}
+
+	if (mdwc->vbus_active == event)
+		return NOTIFY_DONE;
 
 	mdwc->vbus_active = event;
 	if (dwc->is_drd && !mdwc->in_restart) {
@@ -2939,7 +3020,7 @@ static DEVICE_ATTR_RW(xhci_link_compliance);
 
 static int dwc3_msm_probe(struct platform_device *pdev)
 {
-	struct device_node *node = pdev->dev.of_node, *dwc3_node;
+	struct device_node *node = pdev->dev.of_node, *dwc3_node, *hub_node;
 	struct device	*dev = &pdev->dev;
 	union power_supply_propval pval = {0};
 	struct dwc3_msm *mdwc;
@@ -2950,6 +3031,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	int ret = 0;
 	int ext_hub_reset_gpio;
 	u32 val;
+	enum of_gpio_flags gpio_flags;
 
 	mdwc = devm_kzalloc(&pdev->dev, sizeof(*mdwc), GFP_KERNEL);
 	if (!mdwc)
@@ -2988,13 +3070,15 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	mdwc->id_state = DWC3_ID_FLOAT;
+	mdwc->id_state = mdwc->mod_id_state = DWC3_ID_FLOAT;
 	set_bit(ID, &mdwc->inputs);
 
 	mdwc->charging_disabled = of_property_read_bool(node,
 				"qcom,charging-disabled");
 	mdwc->ss_compliance = of_property_read_bool(node,
 				"qcom,ssusb-compliance");
+	mdwc->mods_support = of_property_read_bool(node,
+				"mmi,mods-support");
 
 	mdwc->ext_typec_switch = of_property_read_bool(node,
 				"mmi,ext-typec-switch");
@@ -3235,6 +3319,10 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	if (cpu_to_affin)
 		register_cpu_notifier(&mdwc->dwc3_cpu_notifier);
 
+	ret = dwc3_msm_extcon_register(mdwc);
+	if (ret)
+		goto put_dwc3;
+
 	/*
 	 * Clocks and regulators will not be turned on until the first time
 	 * runtime PM resume is called. This is to allow for booting up with
@@ -3248,10 +3336,6 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	if (of_property_read_bool(node, "qcom,disable-dev-mode-pm"))
 		pm_runtime_get_noresume(mdwc->dev);
-
-	ret = dwc3_msm_extcon_register(mdwc);
-	if (ret)
-		goto put_dwc3;
 
 	ret = of_property_read_u32(node, "qcom,pm-qos-latency",
 				&mdwc->pm_qos_latency);
@@ -3302,6 +3386,37 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		device_create_file(&pdev->dev, &dev_attr_enable_ss_compliance);
 		device_create_file(&pdev->dev, &dev_attr_toggle_pattern);
 	}
+
+	if (!mdwc->mods_support)
+		return 0;
+
+	mdwc->mod_switch_gpio.gpio = of_get_named_gpio_flags(node,
+					"mmi,mod-hs-switch", 0, &gpio_flags);
+
+	if (gpio_is_valid(mdwc->mod_switch_gpio.gpio) &&
+		!devm_gpio_request_one(&pdev->dev, mdwc->mod_switch_gpio.gpio,
+				gpio_flags, "mod_hsusb_switch")) {
+
+		ret = gpio_export(mdwc->mod_switch_gpio.gpio, 0);
+
+		if (!ret)
+			ret = gpio_export_link(&pdev->dev,
+					"mod_hsusb_switch",
+					mdwc->mod_switch_gpio.gpio);
+		if (ret)
+			dev_err(&pdev->dev,
+				"failed to export mod switch gpio\n");
+		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 0);
+	}
+
+	hub_node = of_parse_phandle(node, "mod-usb-hub", 0);
+	if (hub_node) {
+		mdwc->mod_hub = of_find_i2c_device_by_node(hub_node);
+		of_node_put(hub_node);
+	} else
+		mdwc->mod_hub = NULL;
+
+	device_create_file(&pdev->dev, &dev_attr_modusb_enable);
 	return 0;
 
 put_dwc3:
@@ -3353,6 +3468,10 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 		device_remove_file(&pdev->dev, &dev_attr_enable_ss_compliance);
 		device_remove_file(&pdev->dev, &dev_attr_toggle_pattern);
 	}
+
+	if (mdwc->mods_support)
+		device_remove_file(&pdev->dev, &dev_attr_modusb_enable);
+
 	of_platform_depopulate(&pdev->dev);
 
 	dbg_event(0xFF, "Remov put", 0);
