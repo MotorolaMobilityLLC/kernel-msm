@@ -576,6 +576,15 @@
 			drive-strength = <2>;
 		};
 	};
+
+	usb_hs_sel: usb_hs_sel {
+		config {
+			pins = "gpio103";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
 };
 
 &pmx_mdss{
