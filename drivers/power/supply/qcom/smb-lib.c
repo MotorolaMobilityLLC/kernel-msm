@@ -5597,45 +5597,6 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 	power_supply_put(eb_pwr_psy);
 }
 
-#define HEARTBEAT_EB_MS 1000
-static int set_eb_param(const char *val, const struct kernel_param *kp)
-{
-	int rv = param_set_int(val, kp);
-
-	if (rv)
-		return rv;
-
-	if (the_chip) {
-		the_chip->mmi.update_eb_params++;
-		vote(the_chip->awake_votable, HEARTBEAT_VOTER, true, true);
-		cancel_delayed_work(&the_chip->mmi.heartbeat_work);
-		schedule_delayed_work(&the_chip->mmi.heartbeat_work,
-				      msecs_to_jiffies(HEARTBEAT_EB_MS));
-	}
-
-	return 0;
-}
-
-static struct kernel_param_ops eb_ops = {
-	.set = set_eb_param,
-	.get = param_get_int,
-};
-
-static int eb_rechrg_start_soc = 70;
-module_param_cb(eb_rechrg_start_soc, &eb_ops, &eb_rechrg_start_soc, 0644);
-static int eb_rechrg_stop_soc = 80;
-module_param_cb(eb_rechrg_stop_soc, &eb_ops, &eb_rechrg_stop_soc, 0644);
-static int eb_attach_start_soc = 100;
-module_param_cb(eb_attach_start_soc, &eb_ops, &eb_attach_start_soc, 0644);
-static int eb_attach_stop_soc = 100;
-module_param_cb(eb_attach_stop_soc, &eb_ops, &eb_attach_stop_soc, 0644);
-static int eb_low_start_soc = 16;
-module_param_cb(eb_low_start_soc, &eb_ops, &eb_low_start_soc, 0644);
-static int eb_low_stop_soc = 100;
-module_param_cb(eb_low_stop_soc, &eb_ops, &eb_low_stop_soc, 0644);
-static int eb_on_sw = 1;
-module_param_cb(eb_on_sw, &eb_ops, &eb_on_sw, 0644);
-
 #define SMBCHG_HEARTBEAT_INTERVAL_NS	70000000000
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
