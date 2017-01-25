@@ -137,7 +137,7 @@
 		ti,nrst-gpio = <&pmi8998_gpios 9 0>;   /* EN_GPIO */
 	};
 
-	usb3813@2D {
+	usb3813: usb3813@2D {
 		status = "ok";
                 compatible = "microchip,usb3813";
                 reg = <0x2D>;
@@ -149,7 +149,7 @@
 		/* msm-clocks-8998.h PM8998 LN_BB_CLK2 -> LNBB_CLK2 */
                 clocks = <&clock_gcc clk_ln_bb_clk2>;
                 enable-usbhost;
-                vdd-hsic-supply = <&pmi8998_bob>;
+		vdd-hsic-supply = <&pm8998_l26>;
         };
 
 	analogix_anx78e6@72 {
@@ -243,6 +243,12 @@
 &usb3{
 	mmi,ext-typec-switch;
 	qcom,ssusb-compliance;
+	mod-usb-hub = <&usb3813>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&usb_hs_sel>;
+
+	gpios = <&tlmm 103 0>;           /* USB_HS_SEL, output-low */
+	gpio-labels = "gpio_usb_hs_sel";
 };
 
 &pm8998_vadc {
