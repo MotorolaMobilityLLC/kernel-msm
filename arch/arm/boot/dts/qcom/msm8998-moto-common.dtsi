@@ -243,12 +243,12 @@
 &usb3{
 	mmi,ext-typec-switch;
 	qcom,ssusb-compliance;
-	mod-usb-hub = <&usb3813>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&usb_hs_sel>;
 
-	gpios = <&tlmm 103 0>;           /* USB_HS_SEL, output-low */
-	gpio-labels = "gpio_usb_hs_sel";
+	mmi,mods-support;
+	mod-usb-hub = <&usb3813>;
+	mmi,mod-hs-switch = <&tlmm 103 0>;           /* USB_HS_SEL, output-low */
 };
 
 &pm8998_vadc {
