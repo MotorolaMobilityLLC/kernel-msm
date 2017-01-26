@@ -49,6 +49,7 @@
 #include <linux/i2c.h>
 #include <linux/mods/usb_ext_bridge.h>
 #include <linux/mods/usb3813.h>
+#include <linux/mods/modbus_ext.h>
 
 #include "power.h"
 #include "core.h"
@@ -148,6 +149,11 @@ enum plug_orientation {
 	ORIENTATION_NONE,
 	ORIENTATION_CC1,
 	ORIENTATION_CC2,
+};
+
+enum modusb_protocol {
+	MODUSB_HIGH,
+	MODUSB_SUPER,
 };
 
 /* Input bits to state machine (mdwc->inputs) */
@@ -251,6 +257,7 @@ struct dwc3_msm {
 	struct i2c_client	*mod_hub;
 	bool			mods_support;
 	bool			mod_enabled;
+	enum modusb_protocol	mod_proto;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -402,6 +409,29 @@ static bool dwc3_msm_is_host_superspeed(struct dwc3_msm *mdwc)
 	return false;
 }
 
+static void dwc3_mods_hsusb_path_enable(struct dwc3_msm *mdwc, bool enable)
+{
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	dwc->maximum_speed = USB_SPEED_HIGH;
+	if (enable) {
+		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 1);
+		usb3813_enable_hub(mdwc->mod_hub, 1, USB_EXT_PATH_ENTERPRISE);
+	} else {
+		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 0);
+		usb3813_enable_hub(mdwc->mod_hub, 1, USB_EXT_PATH_UNKNOWN);
+	}
+}
+
+static void dwc3_mods_ssusb_path_enable(struct dwc3_msm *mdwc, bool enable)
+{
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+	struct modbus_ext_status status = {0, MODBUS_PROTO_USB_SS};
+
+	status.active = enable;
+	dwc->maximum_speed = enable ? USB_SPEED_SUPER: USB_SPEED_HIGH;
+	modbus_ext_set_state(&status);
+}
+
 static ssize_t ss_compliance_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
@@ -464,6 +494,44 @@ static DEVICE_ATTR(toggle_pattern, 0220,
 			NULL,
 			toggle_pattern_store);
 
+static ssize_t modusb_protocol_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	if (!mdwc)
+		return -ENODEV;
+
+	if (mdwc->mod_proto == MODUSB_SUPER)
+		return scnprintf(buf, PAGE_SIZE, "super\n");
+	else
+		return scnprintf(buf, PAGE_SIZE, "high\n");
+}
+
+static ssize_t modusb_protocol_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	if (!mdwc)
+		return -ENODEV;
+
+	if (mdwc->mod_enabled)
+		return -EFAULT;
+
+	if (!strncmp(buf, "super", 5))
+		mdwc->mod_proto = MODUSB_SUPER;
+	else
+		mdwc->mod_proto = MODUSB_HIGH;
+	return count;
+}
+
+static DEVICE_ATTR(modusb_protocol, 0660,
+			modusb_protocol_show,
+			modusb_protocol_store);
+
 static ssize_t modusb_enable_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
@@ -498,16 +566,17 @@ static ssize_t modusb_enable_store(struct device *dev,
 		return count;
 	mdwc->mod_enabled = mode;
 
+	if (mdwc->mod_proto == MODUSB_SUPER)
+		dwc3_mods_ssusb_path_enable(mdwc, mdwc->mod_enabled);
+	else
+		dwc3_mods_hsusb_path_enable(mdwc, mdwc->mod_enabled);
+
 	if (mdwc->mod_enabled) {
 		mdwc->mod_vbus_active = mdwc->vbus_active;
 		mdwc->mod_id_state = mdwc->id_state;
-		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 1);
-		usb3813_enable_hub(mdwc->mod_hub, 1, USB_EXT_PATH_ENTERPRISE);
 		mdwc->vbus_active = 0;
 		mdwc->id_state = DWC3_ID_GROUND;
 	} else {
-		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 0);
-		usb3813_enable_hub(mdwc->mod_hub, 1, USB_EXT_PATH_UNKNOWN);
 		mdwc->vbus_active = mdwc->mod_vbus_active;
 		mdwc->id_state = mdwc->mod_id_state;
 	}
@@ -2378,7 +2447,9 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	if (dwc->maximum_speed == USB_SPEED_SUPER &&
 			mdwc->lpm_flags & MDWC3_SS_PHY_SUSPEND) {
 		mdwc->ss_phy->flags &= ~(PHY_LANE_A | PHY_LANE_B);
-		if (mdwc->ext_typec_switch)
+		if (mdwc->mod_enabled && mdwc->mod_proto == MODUSB_SUPER)
+			mdwc->ss_phy->flags |= PHY_LANE_B;
+		else if (mdwc->ext_typec_switch)
 			mdwc->ss_phy->flags |= PHY_LANE_A;
 		else if (mdwc->typec_orientation == ORIENTATION_CC1)
 			mdwc->ss_phy->flags |= PHY_LANE_A;
@@ -3415,6 +3486,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		mdwc->mod_hub = NULL;
 
 	device_create_file(&pdev->dev, &dev_attr_modusb_enable);
+	device_create_file(&pdev->dev, &dev_attr_modusb_protocol);
 	return 0;
 
 put_dwc3:
@@ -3467,8 +3539,10 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 		device_remove_file(&pdev->dev, &dev_attr_toggle_pattern);
 	}
 
-	if (mdwc->mods_support)
+	if (mdwc->mods_support) {
 		device_remove_file(&pdev->dev, &dev_attr_modusb_enable);
+		device_remove_file(&pdev->dev, &dev_attr_modusb_protocol);
+	}
 
 	of_platform_depopulate(&pdev->dev);
 
