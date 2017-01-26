@@ -25,3 +25,8 @@
 			"IN1BR", "MICBIAS2A";
 	};
 };
+
+&tlmm {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+};
