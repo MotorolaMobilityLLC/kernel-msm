@@ -11,6 +11,10 @@
  */
 
 &tlmm {
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&flash_inhibit_default >;
+
 	/delete-node/ ts_mux;
 
 	cam_sensor_mclk1_active: cam_sensor_mclk1_active {
@@ -158,6 +162,13 @@
 			pins = "gpio133";
 			drive-strength = <8>; /* 8 mA */
 			bias-disable = <0>; /* no pull */
+		};
+	};
+
+	flash_inhibit_default: flash_inhibit_default {
+		mux {
+			pins = "gpio135";
+			function = "pa_indicator";
 		};
 	};
 
