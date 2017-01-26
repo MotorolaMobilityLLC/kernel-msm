@@ -21,3 +21,8 @@
 &pm8998_l14 {
 	regulator-always-on;
 };
+
+&tlmm {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+};
