@@ -17,3 +17,8 @@
 / {
 	qcom,board-id = <0x42 0xB1A0>;
 };
+
+&tlmm {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+};
