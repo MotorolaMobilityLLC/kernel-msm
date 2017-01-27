@@ -5008,6 +5008,7 @@ int smblib_init(struct smb_charger *chg)
 {
 	int rc = 0;
 
+	device_init_wakeup(chg->dev, true);
 	mutex_init(&chg->lock);
 	mutex_init(&chg->write_lock);
 	mutex_init(&chg->otg_oc_lock);
@@ -6245,8 +6246,9 @@ end_hb:
 				ns_to_ktime(SMBCHG_HEARTBEAT_INTERVAL_NS));
 	}
 
-	vote(chip->awake_votable, HB_ALARM_VOTER, false, 0);
-	vote(chip->awake_votable, HEARTBEAT_VOTER, false, 0);
+	__pm_relax(&mmi->smblib_mmi_hb_wake_source);
+	if (!vbus_present)
+		vote(chip->awake_votable, HEARTBEAT_VOTER, false, 0);
 }
 
 static int smbchg_reboot(struct notifier_block *nb,
@@ -7034,7 +7036,7 @@ static enum alarmtimer_restart mmi_heartbeat_alarm_cb(struct alarm *alarm,
 
 	pr_info("SMB: HB alarm fired\n");
 
-	vote(chip->awake_votable, HB_ALARM_VOTER, true, true);
+	__pm_stay_awake(&chip->mmi.smblib_mmi_hb_wake_source);
 	cancel_delayed_work(&chip->mmi.heartbeat_work);
 	schedule_delayed_work(&chip->mmi.heartbeat_work,
 			      msecs_to_jiffies(0));
@@ -7053,6 +7055,8 @@ void mmi_init(struct smb_charger *chg)
 
 	INIT_DELAYED_WORK(&chg->mmi.warn_irq_work, warn_irq_w);
 	INIT_DELAYED_WORK(&chg->mmi.heartbeat_work, mmi_heartbeat_work);
+	wakeup_source_init(&chg->mmi.smblib_mmi_hb_wake_source,
+			   "smblib_mmi_hb_wake");
 	alarm_init(&chg->mmi.heartbeat_alarm, ALARM_BOOTTIME,
 		   mmi_heartbeat_alarm_cb);
 
@@ -7162,4 +7166,5 @@ void mmi_deinit(struct smb_charger *chg)
 		device_remove_file(chg->dev,
 				   &dev_attr_force_chg_itrick);
 	}
+	wakeup_source_trash(&chg->mmi.smblib_mmi_hb_wake_source);
 }
