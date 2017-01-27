@@ -76,7 +76,6 @@ enum print_reason {
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
 #define HEARTBEAT_VOTER			"HEARTBEAT_VOTER"
-#define HB_ALARM_VOTER			"HB_ALARM_VOTER"
 #define EB_VOTER			"EB_VOTER"
 #define WIRELESS_VOTER			"WIRELESS_VOTER"
 
@@ -316,6 +315,7 @@ struct mmi_params {
 	struct power_supply	*wls_psy;
 	struct power_supply	*usbeb_psy;
 	struct pinctrl		*smb_pinctrl;
+	struct wakeup_source	smblib_mmi_hb_wake_source;
 };
 
 struct smb_charger {
