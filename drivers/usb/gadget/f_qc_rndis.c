@@ -1061,6 +1061,7 @@ rndis_qc_unbind(struct usb_configuration *c, struct usb_function *f)
 		usb_free_descriptors(f->hs_descriptors);
 	usb_free_descriptors(f->fs_descriptors);
 
+	c->cdev->gadget->bam2bam_func_enabled = false;
 	kfree(rndis->notify_req->buf);
 	usb_ep_free_request(rndis->notify, rndis->notify_req);
 
@@ -1295,6 +1296,7 @@ rndis_qc_bind_config_vendor(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
 			rndis_ipa_cleanup(rndis_ipa_params.private);
 		goto fail;
 	}
+	c->cdev->gadget->bam2bam_func_enabled = true;
 
 	return 0;
 

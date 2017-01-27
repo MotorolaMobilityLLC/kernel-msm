@@ -745,9 +745,13 @@ static inline bool msm_usb_bam_enable(enum usb_ctrl ctrl, bool bam_enable)
 }
 #endif
 #ifdef CONFIG_USB_CI13XXX_MSM
+void msm_hw_soft_reset(void);
 void msm_hw_bam_disable(bool bam_disable);
 void msm_usb_irq_disable(bool disable);
 #else
+static inline void msm_hw_soft_reset(void)
+{
+}
 static inline void msm_hw_bam_disable(bool bam_disable)
 {
 }

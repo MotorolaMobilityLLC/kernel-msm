@@ -463,10 +463,14 @@ static void qdss_unbind(struct usb_configuration *c, struct usb_function *f)
 	pr_debug("qdss_unbind\n");
 
 	flush_workqueue(qdss->wq);
+	if (qdss_ports[qdss->port_num].data_xport ==
+			USB_GADGET_XPORT_BAM2BAM_IPA)
+		ipa_data_flush_workqueue();
 
 	if (gadget_is_dwc3(gadget))
 		dwc3_tx_fifo_resize_request(qdss->port.data, false);
 
+	c->cdev->gadget->bam2bam_func_enabled = false;
 	clear_eps(f);
 	clear_desc(gadget, f);
 }
@@ -967,6 +971,11 @@ static int qdss_bind_config(struct usb_configuration *c, unsigned char portno)
 		ch->priv_usb = NULL;
 		kfree(qdss);
 	}
+	if (qdss_ports[qdss->port_num].data_xport ==
+			USB_GADGET_XPORT_BAM2BAM_IPA ||
+			qdss_ports[qdss->port_num].data_xport ==
+			USB_GADGET_XPORT_BAM)
+		c->cdev->gadget->bam2bam_func_enabled = true;
 
 	return status;
 }
