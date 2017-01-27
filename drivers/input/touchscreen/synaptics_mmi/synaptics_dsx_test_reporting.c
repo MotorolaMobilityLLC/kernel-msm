@@ -41,6 +41,7 @@
 
 #define STATUS_IDLE 0
 #define STATUS_BUSY 1
+#define STATUS_ERROR 2
 
 #define DATA_REPORT_INDEX_OFFSET 1
 #define DATA_REPORT_DATA_OFFSET 3
@@ -2819,6 +2820,7 @@ static int set_interrupt(bool set)
 				sizeof(zero));
 		if (retval < 0)
 			return retval;
+		pr_debug("cleared intr_mask\n");
 	}
 
 	for (ii = 0; ii < rmi4_data->num_of_intr_regs; ii++) {
@@ -2831,6 +2833,7 @@ static int set_interrupt(bool set)
 						sizeof(zero));
 				if (retval < 0)
 					return retval;
+				pr_debug("cleared intr_mask\n");
 			} else {
 				retval = f54->fn_ptr->write(rmi4_data,
 						f01_ctrl_reg,
@@ -2851,6 +2854,7 @@ static int set_interrupt(bool set)
 				1);
 		if (retval < 0)
 			return retval;
+		pr_debug("set intr_mask = %d\n", f54->intr_mask);
 	}
 
 	return 0;
@@ -2869,6 +2873,7 @@ static void timeout_set_status(struct work_struct *work)
 				f54->command_base_addr,
 				&command,
 				sizeof(command));
+		pr_debug("read F54_Cmd0=%d, rc = %d\n", command, retval);
 		if (retval < 0) {
 			dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to read command register\n",
@@ -3199,32 +3204,33 @@ static ssize_t synaptics_rmi4_f54_report_type_show(struct device *dev,
 
 static int synaptics_rmi4_f54_report_type_set(enum f54_report_types report_type)
 {
-	int retval = -EINVAL;
 	unsigned char data;
 	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
-	int report_type_valid = is_report_type_valid(report_type);
+	int retval, report_type_valid = is_report_type_valid(report_type);
 
-	if (!report_type_valid)
-		dev_err(&rmi4_data->i2c_client->dev,
-			"%s: Report type not supported by driver\n", __func__);
-
-	if (report_type_valid) {
-		mutex_lock(&f54->status_mutex);
-		f54->report_type = report_type;
-		data = (unsigned char)report_type;
-		retval = f54->fn_ptr->write(rmi4_data,
-				f54->data_base_addr,
-				&data,
-				sizeof(data));
-		mutex_unlock(&f54->status_mutex);
-	} else
+	if (!report_type_valid) {
 		f54->report_type = INVALID_REPORT_TYPE;
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: Requested report type unsupported\n", __func__);
+		return -EINVAL;
+	}
+
+	f54->report_type = report_type;
+	pr_debug("requested report type = %d\n", report_type);
+
+	mutex_lock(&f54->status_mutex);
+	f54->report_type = report_type;
+	data = (unsigned char)report_type;
+	retval = f54->fn_ptr->write(rmi4_data,
+			f54->data_base_addr,
+			&data,
+			sizeof(data));
+	mutex_unlock(&f54->status_mutex);
 
 	if (retval < 0)
 		dev_err(&rmi4_data->i2c_client->dev,
-			"%s: Failed to write data register\n", __func__);
-
-	return retval;
+			"%s: Failed to write report type\n", __func__);
+	return 0;
 }
 
 static ssize_t synaptics_rmi4_f54_report_type_store(struct device *dev,
@@ -3318,6 +3324,43 @@ static ssize_t synaptics_rmi4_f54_fifoindex_store(struct device *dev,
 	return count;
 }
 
+static int test_wait_for_command_completion(void)
+{
+	int retval;
+	unsigned char value;
+	unsigned char timeout_count;
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+
+	timeout_count = 0;
+	do {
+		retval = f54->fn_ptr->read(rmi4_data,
+				f54->command_base_addr,
+				&value,
+				sizeof(value));
+		if (retval < 0) {
+			dev_err(&rmi4_data->i2c_client->dev,
+					"%s: Failed to read command register\n",
+					__func__);
+			return retval;
+		}
+
+		if (value == 0x00)
+			break;
+
+		msleep(100);
+		timeout_count++;
+	} while (timeout_count < STATUS_WORK_INTERVAL);
+
+	if (timeout_count == STATUS_WORK_INTERVAL) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Timed out waiting for command completion\n",
+				__func__);
+		return -ETIMEDOUT;
+	}
+
+	return 0;
+}
+
 ssize_t send_get_report_command(void)
 {
 	int retval;
@@ -3340,7 +3383,9 @@ ssize_t send_get_report_command(void)
 	}
 
 	wake_lock(&f54->test_wake_lock);
-	set_interrupt(true);
+	/* temporary poll for report completion */
+	/*set_interrupt(true);*/
+
 	f54->status = STATUS_BUSY;
 
 	retval = f54->fn_ptr->write(rmi4_data,
@@ -3348,6 +3393,7 @@ ssize_t send_get_report_command(void)
 			&command,
 			sizeof(command));
 
+	/* unlock status mutex to allow jumping to error_exit label */
 	mutex_unlock(&f54->status_mutex);
 
 	if (retval < 0) {
@@ -3357,17 +3403,31 @@ ssize_t send_get_report_command(void)
 		goto error_exit;
 	}
 
+	pr_debug("will be polling test report status\n");
+	retval = test_wait_for_command_completion();
+	if (retval < 0)
+		goto error_exit;
+
+	/* invoke status work immediately */
+	queue_delayed_work(f54->status_workqueue, &f54->status_work, 0);
+
+/* no need to schedule timeout work when polling report status */
+#if 0
 #ifdef WATCHDOG_HRTIMER
 	hrtimer_start(&f54->watchdog,
 			ktime_set(WATCHDOG_TIMEOUT_S, 0),
 			HRTIMER_MODE_REL);
+#endif
 #endif
 out:
 	return retval;
 
 error_exit:
 	mutex_lock(&f54->status_mutex);
-	set_interrupt(false);
+
+	/* temporary poll for report completion */
+	/*set_interrupt(false);*/
+
 	wake_unlock(&f54->test_wake_lock);
 	f54->status = retval;
 	mutex_unlock(&f54->status_mutex);
@@ -3887,6 +3947,7 @@ static ssize_t synaptics_rmi4_f54_data_read(struct file *data_file,
 	count = min_t(loff_t, count, f54->report_size - pos);
 	memcpy(buf, f54->report_data + pos, count);
 	mutex_unlock(&f54->data_mutex);
+	pr_debug("copied %zu bytes to the caller's buffer\n", count);
 	return count;
 }
 
@@ -4202,130 +4263,27 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	struct f54_query40 *query40 = &f54->query40;
 	struct f54_query46 *query46 = &f54->query46;
 	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+	unsigned char num_of_sensing_freqs;
 
-	/* control 0 */
-	attrs_ctrl_regs_exist[reg_num] = true;
-	control->reg_0 = kzalloc(sizeof(*(control->reg_0)),
-			GFP_KERNEL);
-	if (!control->reg_0)
-		goto exit_no_mem;
-	control->reg_0->address = reg_addr;
-	reg_addr += sizeof(control->reg_0->data);
-	reg_num++;
+	num_of_sensing_freqs = f54->query12.number_of_sensing_frequencies;
 
-	/* control 1 */
-	if ((f54->query.touch_controller_family == 0) ||
-			(f54->query.touch_controller_family == 1)) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_1 = kzalloc(sizeof(*(control->reg_1)),
-				GFP_KERNEL);
-		if (!control->reg_1)
-			goto exit_no_mem;
-		control->reg_1->address = reg_addr;
-		reg_addr += sizeof(control->reg_1->data);
-	}
-	reg_num++;
-
-	/* control 2 */
-	attrs_ctrl_regs_exist[reg_num] = true;
-	control->reg_2 = kzalloc(sizeof(*(control->reg_2)),
-			GFP_KERNEL);
-	if (!control->reg_2)
-		goto exit_no_mem;
-	control->reg_2->address = reg_addr;
-	reg_addr += sizeof(control->reg_2->data);
-	reg_num++;
-
-	/* control 3 */
-	if (f54->query.has_pixel_touch_threshold_adjustment == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_3 = kzalloc(sizeof(*(control->reg_3)),
-				GFP_KERNEL);
-		if (!control->reg_3)
-			goto exit_no_mem;
-		control->reg_3->address = reg_addr;
-		reg_addr += sizeof(control->reg_3->data);
-	}
-	reg_num++;
-
-	/* controls 4 5 6 */
-	if ((f54->query.touch_controller_family == 0) ||
-			(f54->query.touch_controller_family == 1)) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_4__6 = kzalloc(sizeof(*(control->reg_4__6)),
-				GFP_KERNEL);
-		if (!control->reg_4__6)
-			goto exit_no_mem;
-		control->reg_4__6->address = reg_addr;
-		reg_addr += sizeof(control->reg_4__6->data);
-	}
-	reg_num++;
-
-	/* control 7 */
-	if (f54->query.touch_controller_family == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_7 = kzalloc(sizeof(*(control->reg_7)),
-				GFP_KERNEL);
-		if (!control->reg_7)
-			goto exit_no_mem;
-		control->reg_7->address = reg_addr;
-		reg_addr += sizeof(control->reg_7->data);
-	}
-	reg_num++;
-
-	/* controls 8 9 */
-	if ((f54->query.touch_controller_family == 0) ||
-			(f54->query.touch_controller_family == 1)) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_8__9 = kzalloc(sizeof(*(control->reg_8__9)),
-				GFP_KERNEL);
-		if (!control->reg_8__9)
-			goto exit_no_mem;
-		control->reg_8__9->address = reg_addr;
-		reg_addr += sizeof(control->reg_8__9->data);
-	}
-	reg_num++;
-
-	/* control 10 */
-	if (f54->query.has_interference_metric == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_10 = kzalloc(sizeof(*(control->reg_10)),
-				GFP_KERNEL);
-		if (!control->reg_10)
-			goto exit_no_mem;
-		control->reg_10->address = reg_addr;
-		reg_addr += sizeof(control->reg_10->data);
-	}
-	reg_num++;
-
-	/* control 11 */
-	if (f54->query.has_ctrl11 == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_11 = kzalloc(sizeof(*(control->reg_11)),
-				GFP_KERNEL);
-		if (!control->reg_11)
-			goto exit_no_mem;
-		control->reg_11->address = reg_addr;
-		reg_addr += sizeof(control->reg_11->data);
-	}
-	reg_num++;
-
-	/* controls 12 13 */
-	if (f54->query.has_relaxation_control == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_12__13 = kzalloc(sizeof(*(control->reg_12__13)),
-				GFP_KERNEL);
-		if (!control->reg_12__13)
-			goto exit_no_mem;
-		control->reg_12__13->address = reg_addr;
-		reg_addr += sizeof(control->reg_12__13->data);
-	}
-	reg_num++;
+	CTRL_REG_ADD(0, 1, true);
+	CTRL_REG_ADD(1, 1, ((f54->query.touch_controller_family == 0) ||
+			(f54->query.touch_controller_family == 1)));
+	CTRL_REG_ADD(2, 2, true);
+	CTRL_REG_ADD(3, 1, (f54->query.has_pixel_touch_threshold_adjustment == 1));
+	CTRL_REG_ADD(4__6, 3, ((f54->query.touch_controller_family == 0) ||
+			(f54->query.touch_controller_family == 1)));
+	CTRL_REG_ADD(7, 1, (f54->query.touch_controller_family == 1));
+	CTRL_REG_ADD(8__9, 3, ((f54->query.touch_controller_family == 0) ||
+			(f54->query.touch_controller_family == 1)));
+	CTRL_REG_ADD(10, 1, f54->query.has_interference_metric);
+	CTRL_REG_ADD(11, 2, f54->query.has_ctrl11);
+	CTRL_REG_ADD(12__13, 2, f54->query.has_relaxation_control);
 
 	/* controls 14 15 16 */
 	if (f54->query.has_sensor_assignment == 1) {
 		attrs_ctrl_regs_exist[reg_num] = true;
-
 		control->reg_14 = kzalloc(sizeof(*(control->reg_14)),
 				GFP_KERNEL);
 		if (!control->reg_14)
@@ -4362,152 +4320,53 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	/* controls 17 18 19 */
 	if (f54->query.has_sense_frequency_control == 1) {
 		attrs_ctrl_regs_exist[reg_num] = true;
-
-		length = f54->query12.number_of_sensing_frequencies;
-
 		control->reg_17 = kzalloc(sizeof(*(control->reg_17)),
 				GFP_KERNEL);
 		if (!control->reg_17)
 			goto exit_no_mem;
-		control->reg_17->length = length;
-		control->reg_17->data = kzalloc(length *
+		control->reg_17->length = num_of_sensing_freqs;
+		control->reg_17->data = kzalloc(num_of_sensing_freqs *
 				sizeof(*(control->reg_17->data)), GFP_KERNEL);
 		if (!control->reg_17->data)
 			goto exit_no_mem;
 		control->reg_17->address = reg_addr;
-		reg_addr += length;
+		reg_addr += num_of_sensing_freqs;
 
 		control->reg_18 = kzalloc(sizeof(*(control->reg_18)),
 				GFP_KERNEL);
 		if (!control->reg_18)
 			goto exit_no_mem;
-		control->reg_18->length = length;
-		control->reg_18->data = kzalloc(length *
+		control->reg_18->length = num_of_sensing_freqs;
+		control->reg_18->data = kzalloc(num_of_sensing_freqs *
 				sizeof(*(control->reg_18->data)), GFP_KERNEL);
 		if (!control->reg_18->data)
 			goto exit_no_mem;
 		control->reg_18->address = reg_addr;
-		reg_addr += length;
+		reg_addr += num_of_sensing_freqs;
 
 		control->reg_19 = kzalloc(sizeof(*(control->reg_19)),
 				GFP_KERNEL);
 		if (!control->reg_19)
 			goto exit_no_mem;
-		control->reg_19->length = length;
-		control->reg_19->data = kzalloc(length *
+		control->reg_19->length = num_of_sensing_freqs;
+		control->reg_19->data = kzalloc(num_of_sensing_freqs *
 				sizeof(*(control->reg_19->data)), GFP_KERNEL);
 		if (!control->reg_19->data)
 			goto exit_no_mem;
 		control->reg_19->address = reg_addr;
-		reg_addr += length;
+		reg_addr += num_of_sensing_freqs;
 	}
 	reg_num++;
 
-	/* control 20 */
-	attrs_ctrl_regs_exist[reg_num] = true;
-	control->reg_20 = kzalloc(sizeof(*(control->reg_20)),
-			GFP_KERNEL);
-	if (!control->reg_20)
-		goto exit_no_mem;
-	control->reg_20->address = reg_addr;
-	reg_addr += sizeof(control->reg_20->data);
-	reg_num++;
-
-	/* control 21 */
-	if (f54->query.has_sense_frequency_control == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_21 = kzalloc(sizeof(*(control->reg_21)),
-				GFP_KERNEL);
-		if (!control->reg_21)
-			goto exit_no_mem;
-		control->reg_21->address = reg_addr;
-		reg_addr += sizeof(control->reg_21->data);
-	}
-	reg_num++;
-
-	/* controls 22 23 24 25 26 */
-	if (f54->query.has_firmware_noise_mitigation == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_22__26 = kzalloc(sizeof(*(control->reg_22__26)),
-				GFP_KERNEL);
-		if (!control->reg_22__26)
-			goto exit_no_mem;
-		control->reg_22__26->address = reg_addr;
-		reg_addr += sizeof(control->reg_22__26->data);
-	}
-	reg_num++;
-
-	/* control 27 */
-	if (f54->query.has_iir_filter == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_27 = kzalloc(sizeof(*(control->reg_27)),
-				GFP_KERNEL);
-		if (!control->reg_27)
-			goto exit_no_mem;
-		control->reg_27->address = reg_addr;
-		reg_addr += sizeof(control->reg_27->data);
-	}
-	reg_num++;
-
-	/* control 28 */
-	if (f54->query.has_firmware_noise_mitigation == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_28 = kzalloc(sizeof(*(control->reg_28)),
-				GFP_KERNEL);
-		if (!control->reg_28)
-			goto exit_no_mem;
-		control->reg_28->address = reg_addr;
-		reg_addr += sizeof(control->reg_28->data);
-	}
-	reg_num++;
-
-	/* control 29 */
-	if (f54->query.has_cmn_removal == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_29 = kzalloc(sizeof(*(control->reg_29)),
-				GFP_KERNEL);
-		if (!control->reg_29)
-			goto exit_no_mem;
-		control->reg_29->address = reg_addr;
-		reg_addr += sizeof(control->reg_29->data);
-	}
-	reg_num++;
-
-	/* control 30 */
-	if (f54->query.has_cmn_maximum == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_30 = kzalloc(sizeof(*(control->reg_30)),
-				GFP_KERNEL);
-		if (!control->reg_30)
-			goto exit_no_mem;
-		control->reg_30->address = reg_addr;
-		reg_addr += sizeof(control->reg_30->data);
-	}
-	reg_num++;
-
-	/* control 31 */
-	if (f54->query.has_touch_hysteresis == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_31 = kzalloc(sizeof(*(control->reg_31)),
-				GFP_KERNEL);
-		if (!control->reg_31)
-			goto exit_no_mem;
-		control->reg_31->address = reg_addr;
-		reg_addr += sizeof(control->reg_31->data);
-	}
-	reg_num++;
-
-	/* controls 32 33 34 35 */
-	if (f54->query.has_edge_compensation == 1) {
-		attrs_ctrl_regs_exist[reg_num] = true;
-		control->reg_32__35 = kzalloc(sizeof(*(control->reg_32__35)),
-				GFP_KERNEL);
-		if (!control->reg_32__35)
-			goto exit_no_mem;
-		control->reg_32__35->address = reg_addr;
-		reg_addr += sizeof(control->reg_32__35->data);
-	}
-	reg_num++;
+	CTRL_REG_ADD(20, 1, true);
+	CTRL_REG_ADD(21, 2, f54->query.has_sense_frequency_control);
+	CTRL_REG_ADD(22__26, 7, f54->query.has_firmware_noise_mitigation);
+	CTRL_REG_ADD(27, 1, f54->query.has_iir_filter);
+	CTRL_REG_ADD(28, 2, f54->query.has_firmware_noise_mitigation);
+	CTRL_REG_ADD(29, 1, f54->query.has_cmn_removal);
+	CTRL_REG_ADD(30, 1, f54->query.has_cmn_maximum);
+	CTRL_REG_ADD(31, 1, f54->query.has_touch_hysteresis);
+	CTRL_REG_ADD(32__35, 8, f54->query.has_edge_compensation);
 
 	/* control 36 */
 	if ((f54->query.curve_compensation_mode == 1) ||
@@ -4562,41 +4421,40 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 				GFP_KERNEL);
 		if (!control->reg_38)
 			goto exit_no_mem;
-		control->reg_38->length =
-			f54->query12.number_of_sensing_frequencies;
+		control->reg_38->length = num_of_sensing_freqs;
 
-		control->reg_38->data = kzalloc(control->reg_38->length *
+		control->reg_38->data = kzalloc(num_of_sensing_freqs *
 				sizeof(*(control->reg_38->data)), GFP_KERNEL);
 		if (!control->reg_38->data)
 			goto exit_no_mem;
 		control->reg_38->address = reg_addr;
-		reg_addr += control->reg_38->length;
+		reg_addr += num_of_sensing_freqs;
 
 		control->reg_39 = kzalloc(sizeof(*(control->reg_39)),
 				GFP_KERNEL);
 		if (!control->reg_39)
 			goto exit_no_mem;
-		control->reg_39->length =
-			f54->query12.number_of_sensing_frequencies;
-		control->reg_39->data = kzalloc(control->reg_39->length *
+		control->reg_39->length = num_of_sensing_freqs;
+
+		control->reg_39->data = kzalloc(num_of_sensing_freqs *
 				sizeof(*(control->reg_39->data)), GFP_KERNEL);
 		if (!control->reg_39->data)
 			goto exit_no_mem;
 		control->reg_39->address = reg_addr;
-		reg_addr += control->reg_39->length;
+		reg_addr += num_of_sensing_freqs;
 
 		control->reg_40 = kzalloc(sizeof(*(control->reg_40)),
 				GFP_KERNEL);
 		if (!control->reg_40)
 			goto exit_no_mem;
-		control->reg_40->length =
-			f54->query12.number_of_sensing_frequencies;
-		control->reg_40->data = kzalloc(control->reg_40->length *
+		control->reg_40->length = num_of_sensing_freqs;
+
+		control->reg_40->data = kzalloc(num_of_sensing_freqs *
 				sizeof(*(control->reg_40->data)), GFP_KERNEL);
 		if (!control->reg_40->data)
 			goto exit_no_mem;
 		control->reg_40->address = reg_addr;
-		reg_addr += control->reg_40->length;
+		reg_addr += num_of_sensing_freqs;
 	}
 	reg_num++;
 
@@ -4700,7 +4558,7 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(97, 1, query21->has_ctrl97);
 	CTRL_REG_PRESENCE(98, 1, query21->has_ctrl98);
 
-	CTRL_REG_ADD(99, 1, query->touch_controller_family == 2);
+	CTRL_REG_ADD(99, 1, (query->touch_controller_family == 2));
 
 	CTRL_REG_PRESENCE(100, 1, query16->has_ctrl100);
 	CTRL_REG_PRESENCE(101, 1, query22->has_ctrl101);
@@ -4808,8 +4666,8 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 		f54->query_f55_0_2.has_alternate_tx_assignment);
 
 	CTRL_REG_ADD(8_f55, 1,
-		f54->query_f55_0_2.f55_q2_has_single_layer_multitouch &&
-		f54->query_f55_3.f55_q3_has_ctrl8);
+		(f54->query_f55_0_2.f55_q2_has_single_layer_multitouch &&
+		f54->query_f55_3.f55_q3_has_ctrl8));
 	return 0;
 
 exit_no_mem:
@@ -5096,10 +4954,14 @@ static void synaptics_rmi4_f54_status_work(struct work_struct *work)
 	unsigned char report_index[2];
 	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
 
-	if (f54->status != STATUS_BUSY)
-		return;
+	pr_debug("enter; status = %d\n", f54->status);
+	if (f54->status != STATUS_BUSY) {
+		retval = STATUS_ERROR;
+		goto error_exit;
+	}
 
 	set_report_size();
+	pr_debug("report_size = %d\n", f54->report_size);
 	if (f54->report_size == 0) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Report data size = 0\n",
@@ -5153,6 +5015,7 @@ static void synaptics_rmi4_f54_status_work(struct work_struct *work)
 		goto error_exit;
 	}
 
+	pr_debug("retrieved %d bytes of test report data\n", retval);
 	retval = STATUS_IDLE;
 
 #ifdef RAW_HEX
@@ -5165,10 +5028,14 @@ static void synaptics_rmi4_f54_status_work(struct work_struct *work)
 
 error_exit:
 	mutex_lock(&f54->status_mutex);
-	set_interrupt(false);
+
+	/* temporary poll for report completion */
+	/*set_interrupt(false);*/
+
 	wake_unlock(&f54->test_wake_lock);
 	f54->status = retval;
 	mutex_unlock(&f54->status_mutex);
+	pr_debug("status set to %d\n", f54->status);
 
 	return;
 }
