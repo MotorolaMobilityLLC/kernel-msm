@@ -895,6 +895,7 @@ static enum power_supply_property smb2_batt_props[] = {
 	POWER_SUPPLY_PROP_DIE_HEALTH,
 	POWER_SUPPLY_PROP_RERUN_AICL,
 	POWER_SUPPLY_PROP_DP_DM,
+	POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED,
 };
 
 static int smb2_batt_get_prop(struct power_supply *psy,
@@ -999,6 +1000,9 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_RERUN_AICL:
 		val->intval = 0;
 		break;
+	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
+		val->intval = !get_effective_result(chg->chg_disable_votable);
+		break;
 	default:
 		pr_err("batt power supply prop %d not supported\n", psp);
 		return -EINVAL;
@@ -1066,6 +1070,9 @@ static int smb2_batt_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_DP_DM:
 		rc = smblib_dp_dm(chg, val->intval);
 		break;
+	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
+		vote(chg->chg_disable_votable, USER_VOTER, !!!val->intval, 0);
+		break;
 	default:
 		rc = -EINVAL;
 	}
@@ -1083,6 +1090,7 @@ static int smb2_batt_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PARALLEL_DISABLE:
 	case POWER_SUPPLY_PROP_DP_DM:
 	case POWER_SUPPLY_PROP_RERUN_AICL:
+	case POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED:
 		return 1;
 	default:
 		break;
