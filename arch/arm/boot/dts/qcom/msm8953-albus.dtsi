@@ -397,7 +397,6 @@
 		};
 		dai_mi2s5: qcom,msm-dai-q6-mi2s-quin {
 			qcom,msm-mi2s-rx-lines = <1>;
-			qcom,msm-mi2s-tx-lines = <1>;
 		};
 	};
 
