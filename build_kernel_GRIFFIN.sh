@@ -15,8 +15,6 @@ fi
 
 . $KERNELDIR/.config
 
-mv .git .git-halt
-
 cd $KERNELDIR/
 make -j10 || exit 1
 
@@ -35,10 +33,9 @@ else
 	cp $KERNELDIR/arch/arm64/boot/zImage $KERNELDIR/BUILT_GRIFFIN/zImage
 fi
 
-mv .git-halt .git
-
 make -j10 M=$WIFIDRIVER WLAN_ROOT=$WIFIDRIVER MODNAME=wlan BOARD_PLATFORM=msm8996 CONFIG_QCA_CLD_WLAN=m WLAN_OPEN_SOURCE=1 modules
 cp $WIFIDRIVER/wlan.ko $KERNELDIR/BUILT_GRIFFIN/modules/qca_cld/qca_cld_wlan.ko
+rm $KERNELDIR/BUILT_GRIFFIN/modules/qca_cld_wlan.ko
 
 cd $GREYBUSDRIVER 
 make -j10 -C $KERNELDIR M=$GREYBUSDRIVER
