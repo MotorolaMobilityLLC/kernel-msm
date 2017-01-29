@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* License terms: BSD 3-clause "New" or "Revised" License.
+*License terms : BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -143,7 +143,7 @@ enum __stmv53l1_parameter_name_e {
 	* @ref stmvl53l1_parameter.value field is timing budget in micro second
 	*
 	* @note the value cannot be set while ranging will set ebusy errno,
-	* value set is absorbed at next range start @ref VL53L1_IOCTL_INIT
+	* value set is absorbed at next range start @ref VL53L1_IOCTL_START
 	*/
 
 	VL53L1_DISTANCEMODE_PAR = 12,
@@ -330,7 +330,7 @@ struct stmvl53l1_autonomous_config_t {
  @code
  int smtvl53l1_start(int fd){error
 	int rc;
-	rc= ioctl(fd, VL53L1_IOCTL_INIT,NULL);
+	rc = ioctl(fd, VL53L1_IOCTL_START, NULL);
 	if( rc ){
 		if( errno == EBUSY){
 			//the device is already started
@@ -346,7 +346,13 @@ struct stmvl53l1_autonomous_config_t {
  @endcode
 */
 
-#define VL53L1_IOCTL_INIT			_IO('p', 0x01)
+#define VL53L1_IOCTL_START			_IO('p', 0x01)
+
+/* Alias for VL53L1_IOCTL_START. Still present for legacy support but usage is
+ * deprecated. Consider using VL53L1_IOCTL_START instead. May be removed without
+ * further notice.
+ */
+#define VL53L1_IOCTL_INIT			VL53L1_IOCTL_START
 
 /**
  * stop ranging (no argument)
