@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* License terms: BSD 3-clause "New" or "Revised" License.
+*License terms : BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -54,7 +54,7 @@
 #define VL53L1_POLLING_DELAY_MS                         1
 
 
-#define VL53L1_OFFSET_CAL_MIN_MM1_EFFECTIVE_SPADS  0x0500
+#define VL53L1_OFFSET_CAL_MIN_MM1_EFFECTIVE_SPADS  0
 	/*!< Lower Limit for the  MM1 effective SPAD count during offset
 	 * calibration Format 8.8 0x0500 -> 5.0 effective SPADs
 	 */

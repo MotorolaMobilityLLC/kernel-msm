@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* License terms: BSD 3-clause "New" or "Revised" License.
+*License terms : BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -345,6 +345,12 @@ struct netlink_kernel_cfg cfg = {
 };
 #endif
 
+static int netlink_protocol_type = STMVL531_CFG_NETLINK_USER;
+
+module_param(netlink_protocol_type, int, 0444);
+MODULE_PARM_DESC(netlink_protocol_type,
+	"select netlink protocol type for ipp communications");
+
 int stmvl53l1_ipp_init(void)
 {
 	mutex_init(&ipp_mutex);
@@ -352,14 +358,14 @@ int stmvl53l1_ipp_init(void)
 
 #if defined(OLD_NETLINK_API)
 	nl_sk = netlink_kernel_create(&init_net,
-			STMVL531_CFG_NETLINK_USER,
+			netlink_protocol_type,
 			0,
 			stmvl53l1_nl_recv_msg,
 			NULL,
 			THIS_MODULE);
 #else
 	nl_sk = netlink_kernel_create(&init_net,
-			STMVL531_CFG_NETLINK_USER,
+			netlink_protocol_type,
 			&cfg);
 #endif
 

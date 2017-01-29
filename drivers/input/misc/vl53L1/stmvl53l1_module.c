@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* License terms: BSD 3-clause "New" or "Revised" License.
+*License terms : BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -441,14 +441,11 @@ static int stmvl53l1_start(struct stmvl53l1_data *data)
 	}
 
 	/* apply distance mode only in lite and standard ranging */
-	if (data->preset_mode == VL53L1_PRESETMODE_LITE_RANGING ||
-		data->preset_mode == VL53L1_PRESETMODE_RANGING) {
-		rc = VL53L1_SetDistanceMode(&data->stdev, data->distance_mode);
-		if (rc) {
-			vl53l1_errmsg("VL53L1_SetDistanceMode %d fail %d",
-					data->distance_mode, rc);
-			goto done;
-		}
+	rc = VL53L1_SetDistanceMode(&data->stdev, data->distance_mode);
+	if (rc) {
+		vl53l1_errmsg("VL53L1_SetDistanceMode %d fail %d",
+			data->distance_mode, rc);
+		goto done;
 	}
 
 	/* apply timing budget */
@@ -472,15 +469,6 @@ static int stmvl53l1_start(struct stmvl53l1_data *data)
 				data->roi_cfg.NumberOfRoi);
 	} else {
 		vl53l1_dbgmsg("using default ROI\n");
-	}
-
-	/* if working in interrupt ask intr to enable and hook the handler */
-	data->poll_mode = 0;
-	rc = stmvl53l1_module_func_tbl.start_intr(data->client_object,
-		&data->poll_mode);
-	if (rc < 0) {
-		vl53l1_errmsg("can't start no  intr\n");
-		goto done;
 	}
 
 	/* init the timing  */
@@ -1459,6 +1447,21 @@ error:
 	return rc;
 }
 
+/**
+ * sysfs attribute " autonomous_config" [rd/wr]
+ *
+ * Will set/get autonomous configuration using sysfs.
+ *
+ * format is the following :
+ * <poll_ms> <mode> <no_target_irq> <distance_mode> <distance_low>
+ * <distance_high> <rate_mode> <rate_low> <rate_high>
+ *
+ *@code
+ * > echo "1000 1 0 0 1000 300 0 2.2 1.001" > autonomous_config
+ *@endcode
+ *
+ * @ingroup sysfs_attrib
+ */
 static DEVICE_ATTR(autonomous_config, 0660/*S_IWUGO | S_IRUGO*/,
 				stmvl53l1_show_autonomous_config,
 				stmvl53l1_store_autonomous_config);
@@ -1553,7 +1556,7 @@ static int ctrl_start(struct stmvl53l1_data *data)
 	vl53l1_dbgmsg(" state = %d\n", data->enable_sensor);
 
 	/* turn on tof sensor only if it's not already started */
-	if (data->enable_sensor == 0) {
+	if (data->enable_sensor == 0 && !data->is_calibrating) {
 		/* to start */
 		rc = stmvl53l1_start(data);
 	} else{
@@ -2164,6 +2167,7 @@ static int ctrl_perform_calibration(struct stmvl53l1_data *data, void __user *p)
 	struct stmvl53l1_ioctl_perform_calibration_t calib;
 
 	mutex_lock(&data->work_mutex);
+	data->is_calibrating = true;
 
 	rc = copy_from_user(&calib, p, sizeof(calib));
 	if (rc) {
@@ -2180,16 +2184,35 @@ static int ctrl_perform_calibration(struct stmvl53l1_data *data, void __user *p)
 	if (rc)
 		goto done;
 
+	rc = VL53L1_StaticInit(&data->stdev);
+	if (rc) {
+		vl53l1_errmsg("StaticInit failed, err = %d\n", rc);
+		goto done;
+	}
+
 	switch (calib.calibration_type) {
 	case VL53L1_CALIBRATION_REF_SPAD:
 		rc = ctrl_perform_calibration_ref_spad_lock(data,
 			&calib);
 		break;
 	case VL53L1_CALIBRATION_CROSSTALK:
+		rc = ctrl_perform_calibration_ref_spad_lock(data,
+			&calib);
+		if (rc) {
+			vl53l1_errmsg("RefSpad Calibration error = %d\n", rc);
+			goto done;
+		}
 		rc = ctrl_perform_calibration_crosstalk_lock(data,
 			&calib);
 		break;
 	case VL53L1_CALIBRATION_OFFSET:
+		vl53l1_info("perform ref spad calibration first...\n");
+		rc = ctrl_perform_calibration_ref_spad_lock(data,
+			&calib);
+		if (rc) {
+			vl53l1_errmsg("RefSpad Calibration error = %d\n", rc);
+			goto done;
+		}
 		rc = ctrl_perform_calibration_offset_lock(data,
 			&calib);
 		break;
@@ -2200,6 +2223,7 @@ static int ctrl_perform_calibration(struct stmvl53l1_data *data, void __user *p)
 	reset_hold(data);
 
 done:
+	data->is_calibrating = false;
 	mutex_unlock(&data->work_mutex);
 
 	return rc;
@@ -2653,20 +2677,17 @@ int stmvl53l1_intr_handler(struct stmvl53l1_data *data)
 	int rc;
 
 	mutex_lock(&data->work_mutex);
-	if (!data->poll_mode) {
-		/* handle it only if if we are not stopped */
-		if (data->enable_sensor) {
-			rc = stmvl53l1_intr_process(data);
-		} else {
-			/* it's likely race/last unhandled interrupt after
-			 * stop
-			 */
-			vl53l1_dbgmsg("got intr but on\n");
-			rc = 0;
-		}
+
+	/* handle it only if if we are not stopped */
+	if (data->enable_sensor) {
+		rc = stmvl53l1_intr_process(data);
 	} else {
-	/* module is asking us to do intr but we are in poll mode ignore it*/
-		vl53l1_dbgmsg("intr but in poll mode");
+		/* it's likely race/last unhandled interrupt after
+		 * stop.
+		 * Such dummy irq also occurred during offset and crosstalk
+		 * calibration procedures.
+		 */
+		vl53l1_dbgmsg("got intr but not on (dummy or calibration)\n");
 		rc = 0;
 	}
 
@@ -2713,6 +2734,7 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 
 	data->force_device_on_en = false;
 	data->reset_state = 1;
+	data->is_calibrating = false;
 
 	rc = stmvl53l1_module_func_tbl.power_up(data->client_object);
 	if (rc) {
@@ -2768,6 +2790,15 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 	}
 	vl53l1_errmsg("device Product type 0x%x name %s\ntype %s\n",
 			dev_info.ProductType, dev_info.Name, dev_info.Type);
+
+	/* if working in interrupt ask intr to enable and hook the handler */
+	data->poll_mode = 0;
+	rc = stmvl53l1_module_func_tbl.start_intr(data->client_object,
+		&data->poll_mode);
+	if (rc < 0) {
+		vl53l1_errmsg("can't start no  intr\n");
+		goto exit_unregister_dev_ps;
+	}
 
 	data->is_first_irq = true;
 	data->is_delay_allowed = false;
