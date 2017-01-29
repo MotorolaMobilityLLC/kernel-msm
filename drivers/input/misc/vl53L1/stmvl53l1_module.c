@@ -1466,6 +1466,128 @@ static DEVICE_ATTR(autonomous_config, 0660/*S_IWUGO | S_IRUGO*/,
 				stmvl53l1_show_autonomous_config,
 				stmvl53l1_store_autonomous_config);
 
+static ssize_t stmvl53l1_show_enable_sar(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct stmvl53l1_data *data = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", data->sar_mode);
+}
+
+static ssize_t stmvl53l1_store_enable_sar(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	struct stmvl53l1_data *data = dev_get_drvdata(dev);
+	int rc = 0;
+	int mode;
+
+	mutex_lock(&data->work_mutex);
+
+	if (kstrtoint(buf, 0, &mode)) {
+		vl53l1_errmsg("invalid syntax in %s\n", buf);
+		rc = -EINVAL;
+	} else {
+		data->sar_mode = mode?1:0;
+		vl53l1_info("sar mode is set to %d\n", data->sar_mode);
+	}
+
+	mutex_unlock(&data->work_mutex);
+
+	return rc ? rc : count;
+}
+
+/**
+ * sysfs attribute "enable_sar" [rd/wr]
+ *
+ * To enable/disable the sar mode
+ * @li 0 disable sar mode
+ * @li 1 enable sar mode
+ *
+ * @ingroup sysfs_attrib
+ */
+static DEVICE_ATTR(enable_sar, 0660/*S_IWUGO | S_IRUGO*/,
+				stmvl53l1_show_enable_sar,
+				stmvl53l1_store_enable_sar);
+
+static ssize_t stmvl53l1_show_offset(struct device *dev,
+                struct device_attribute *attr, char *buf)
+{
+    struct stmvl53l1_data *data = dev_get_drvdata(dev);
+
+    return scnprintf(buf, PAGE_SIZE, "%d,%d\n",
+			data->inner_offset, data->outer_offset);
+}
+
+static ssize_t stmvl53l1_store_offset(struct device *dev,
+                    struct device_attribute *attr,
+                    const char *buf, size_t count)
+{
+	struct stmvl53l1_data *data = dev_get_drvdata(dev);
+	VL53L1_CalibrationData_t cali_data;
+	int rc = 0;
+	int n = 0;
+	int inner = 0;
+	int outer = 0;
+
+	mutex_lock(&data->work_mutex);
+
+	if (data->enable_sensor) {
+		vl53l1_errmsg("can't set offset while ranging\n");
+		rc = -EBUSY;
+		goto finish;
+	}
+
+	n = sscanf(buf, "%d,%d", &inner, &outer);
+	if(n != 2) {
+		vl53l1_errmsg("wrong offset syntax around %s\n", buf);
+		rc = -EINVAL;
+		goto finish;
+	}
+
+	memset(&cali_data, 0, sizeof(cali_data));
+	rc = VL53L1_GetCalibrationData(&data->stdev, &cali_data);
+	if (rc) {
+		vl53l1_errmsg("VL53L1_GetCalibrationData fail\n");
+		rc = -EINVAL;
+		goto finish;
+	}
+
+	/* update offset values */
+	vl53l1_info("previous offset is %d,%d\n",
+			cali_data.Customer.mm_config__inner_offset_mm,
+			cali_data.Customer.mm_config__outer_offset_mm);
+	cali_data.Customer.mm_config__inner_offset_mm = inner;
+	cali_data.Customer.mm_config__outer_offset_mm = outer;
+
+	rc = VL53L1_SetCalibrationData(&data->stdev, &cali_data);
+	if (rc) {
+		vl53l1_errmsg("VL53L1_SetCalibrationData fail\n");
+		rc = -EINVAL;
+		goto finish;
+	}
+
+	data->inner_offset = (int16_t)inner;
+	data->outer_offset = (int16_t)outer;
+	vl53l1_info("offset is set to %d,%d\n", inner, outer);
+finish:
+	mutex_unlock(&data->work_mutex);
+	return rc ? rc : count;
+}
+
+/**
+ * sysfs attribute "enable_sar" [rd/wr]
+ *
+ * To enable/disable the sar mode
+ * @li 0 disable sar mode
+ * @li 1 enable sar mode
+ *
+ * @ingroup sysfs_attrib
+ */
+static DEVICE_ATTR(offset, 0660/*S_IWUGO | S_IRUGO*/,
+                stmvl53l1_show_offset,
+                stmvl53l1_store_offset);
+
 static struct attribute *stmvl53l1_attributes[] = {
 	&dev_attr_enable_ps_sensor.attr,
 	&dev_attr_set_delay_ms.attr,
@@ -1479,6 +1601,8 @@ static struct attribute *stmvl53l1_attributes[] = {
 	&dev_attr_output_mode.attr,
 	&dev_attr_force_device_on_enable.attr,
 	&dev_attr_autonomous_config.attr,
+	&dev_attr_enable_sar.attr,
+	&dev_attr_offset.attr,
 	NULL
 };
 
@@ -2707,6 +2831,7 @@ int stmvl53l1_intr_handler(struct stmvl53l1_data *data)
 int stmvl53l1_setup(struct stmvl53l1_data *data)
 {
 	int rc = 0;
+	VL53L1_CalibrationData_t cali_data;
 	VL53L1_DeviceInfo_t dev_info;
 
 	vl53l1_dbgmsg("Enter\n");
@@ -2790,6 +2915,31 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 	}
 	vl53l1_errmsg("device Product type 0x%x name %s\ntype %s\n",
 			dev_info.ProductType, dev_info.Name, dev_info.Type);
+
+	memset(&cali_data, 0, sizeof(cali_data));
+	rc = VL53L1_GetCalibrationData(&data->stdev, &cali_data);
+	if (rc)
+		vl53l1_errmsg("VL53L1_GetCalibrationData fail\n");
+	else {
+		data->inner_offset = cali_data.Customer.mm_config__inner_offset_mm;
+		data->outer_offset = cali_data.Customer.mm_config__outer_offset_mm;
+
+		/* update xtalk values */
+		cali_data.Customer.algo__crosstalk_compensation_plane_offset_kcps
+			= data->xtalk_offset;
+		cali_data.Customer.algo__crosstalk_compensation_x_plane_gradient_kcps
+			= data->xtalk_x;
+		cali_data.Customer.algo__crosstalk_compensation_y_plane_gradient_kcps
+			= data->xtalk_y;
+
+		rc = VL53L1_SetCalibrationData(&data->stdev, &cali_data);
+		if (rc)
+			vl53l1_errmsg("VL53L1_SetCalibrationData fail\n");
+		else {
+			vl53l1_info("device crosstalk data updated: %u %d %d\n",
+					data->xtalk_offset, data->xtalk_x, data->xtalk_y);
+		}
+	}
 
 	/* if working in interrupt ask intr to enable and hook the handler */
 	data->poll_mode = 0;
