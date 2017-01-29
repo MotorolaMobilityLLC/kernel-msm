@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* License terms: BSD 3-clause "New" or "Revised" License.
+*License terms : BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -69,7 +69,7 @@
  */
 /* define CFG_STMVL53L1_HAVE_REGULATOR */
 
-#define DRIVER_VERSION		"7.1.0"
+#define DRIVER_VERSION		"7.2.1"
 
 /** @ingroup vl53l1_mod_dbg
  * @{
@@ -212,9 +212,7 @@ struct stmvl53l1_data {
 	/* PS parameters */
 
 	/* Calibration parameters */
-
-	/* Calibration values */
-	int offset_cal_distance;
+	bool is_calibrating;	/*!< active during calibration phases */
 
 	/* Range Data and stat */
 	struct range_t {
