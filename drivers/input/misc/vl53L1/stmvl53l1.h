@@ -208,11 +208,17 @@ struct stmvl53l1_data {
 	int crosstalk_enable;	/*!< is crosstalk compensation is enable */
 	int output_mode;	/*!< output mode of the device */
 	bool force_device_on_en;/*!< keep device active when stopped */
+	int sar_mode; /*!< is sar mode enable/disabled */
 
 	/* PS parameters */
 
 	/* Calibration parameters */
 	bool is_calibrating;	/*!< active during calibration phases */
+	uint16_t xtalk_offset; /*!< crosstalk compensation plane offset kcps */
+	int16_t xtalk_x; /*!< crosstalk compensation x plane gradient kcps */
+	int16_t xtalk_y; /*!< crosstalk compensation y plane gradient kcps */
+	int16_t inner_offset; /*!< inner offset mm */
+	int16_t outer_offset; /*!< outer offset mm */
 
 	/* Range Data and stat */
 	struct range_t {
