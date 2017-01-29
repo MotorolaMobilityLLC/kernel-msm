@@ -2,7 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license'
+* This file is part of VL53L1 Core and is dual licensed, either
+* Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
 ********************************************************************************
@@ -11,7 +12,8 @@
 *
 ********************************************************************************
 *
-* License terms: STMicroelectronics Proprietary in accordance with licensing terms at www.st.com/sla0044
+*License terms : STMicroelectronics Proprietary in accordance with licensing
+* terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
 * Reproduction and Communication of this document is strictly prohibited unless
@@ -21,12 +23,13 @@
 ********************************************************************************
 *
 * Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones
+* 'BSD 3-clause "New" or "Revised" License', in which case the following
+* provisions apply instead of the ones
 * mentioned above :
 *
 ********************************************************************************
 *
-* License terms: BSD 3-clause "New" or "Revised" License.
+*License terms : BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -616,6 +619,16 @@ VL53L1_Error VL53L1_set_part_to_part_data(
 	pdev->histpostprocess.mm_config__outer_offset_mm =
 			pdev->customer.mm_config__outer_offset_mm;
 
+	/* New Code . Update xtalk_cfg data */
+	pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps =
+		pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
+
+	pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps =
+		pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
+
+	pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps =
+		pdev->customer.algo__crosstalk_compensation_plane_offset_kcps;
+
 	LOG_FUNCTION_END(status);
 
 	return status;
@@ -666,7 +679,6 @@ VL53L1_Error VL53L1_get_part_to_part_data(
 		pxtalkhisto,
 		&(pdev->xtalk_shapes),
 		sizeof(VL53L1_xtalk_histogram_data_t));
-
 
 	LOG_FUNCTION_END(status);
 
