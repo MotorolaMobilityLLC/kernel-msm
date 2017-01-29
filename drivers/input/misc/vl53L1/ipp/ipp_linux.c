@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* License terms: BSD 3-clause "New" or "Revised" License.
+*License terms : BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -45,18 +45,26 @@
 /* FIXME: factorize ipp code since logic is the same */
 
 /**
+ * @file   vl53l1_platform_ipp.h
  *
- * Kernel entry point for ipp_hist_process_data IPP
+ * @brief  EwokPlus25 IPP Wrapper Functions
+ */
 
+/**
+ * @brief  IPP Wrapper call for histogram post processing
  *
- * @param dev
- * @param pdmax_cal
- * @param pdmax_cfg
- * @param ppost_cfg
- * @param pbins
- * @param pxtalk
- * @param presults
- * @return
+ *
+ * @param[in]    Dev                       : Device handle
+ * @param[in]    pdmax_cal                 : DMAX calibration data
+ * @param[in]    pdmax_cfg                 : DMAX configuration data
+ * @param[in]    ppost_cfg                 : VL53L1_hist_post_process_config_t
+ * @param[in]    pbins                     : Input histogram raw bin data
+ * @param[in]    pxtalk                    : Cross talk histogram data
+ * @param[out]   presults                  : Output VL53L1_range_results_t
+ *                                           structure
+ *
+ * @return   VL53L1_ERROR_NONE    Success
+ * @return  "Other error code"    See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_ipp_hist_process_data(
 	VL53L1_DEV dev,
@@ -148,6 +156,25 @@ done:
 	return rc;
 }
 
+/**
+ * @brief  IPP Wrapper call for histogram ambient dmax calc
+ *
+ * The target reflectance in percent for the DMAX calculation
+ * is set by target_reflectance input
+ *
+ * The fixed point format is 7.2
+ *
+ * @param[in]    Dev                : Device handle
+ * @param[in]    target_reflectance : target reflectance to report ambient DMAX
+ *                                    Percentage in 7.2 fixed point format
+ * @param[in]    pdmax_cal          : DMAX calibration data
+ * @param[in]    pdmax_cfg          : DMAX configuration data
+ * @param[in]    pbins              : Input histogram raw bin data
+ * @param[out]   pambient_dmax_mm   : Output ambient DMAX distance in [mm]
+ *
+ * @return   VL53L1_ERROR_NONE    Success
+ * @return  "Other error code"    See ::VL53L1_Error
+ */
 VL53L1_Error VL53L1_ipp_hist_ambient_dmax(
 	VL53L1_DEV                         dev,
 	uint16_t                           target_reflectance,
@@ -238,14 +265,19 @@ done:
 }
 
 /**
- * kernel entry point for IPP xtalk_calibration_process_data
+ * @brief  IPP Wrapper call for xtalk calibration post processing
  *
- * @param Dev
- * @param pxtalk_ranges
- * @param pxtalk_hist
- * @param pxtalk_shape
- * @param pxtalk_cal
- * @return
+ * @param[in]      Dev                 : Device handle
+ * @param[in]      pxtalk_ranges       : Input VL53L1_xtalk_range_results_t
+ *                                       Must contain 5 ranges, 4 quadrants + 1
+ *                                       full FoV
+ * @param[out]     pxtalk_shape        : Output normalised Cross talk  histogram
+ *                                       shape
+ * @param[out]     pxtalk_cal        : Output VL53L1_xtalk_calibration_results_t
+ *                                     structure
+ *
+ * @return   VL53L1_ERROR_NONE    Success
+ * @return  "Other error code"    See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 	VL53L1_DEV                          dev,
@@ -256,7 +288,8 @@ VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 	int rc;
 	int payload;
 	struct stmvl53l1_data *data;
-	VL53L1_xtalk_calibration_results_t *presults_ipp;
+	VL53L1_xtalk_histogram_data_t *pxtalk_shape_ipp;
+	VL53L1_xtalk_calibration_results_t *pxtalk_cal_ipp;
 
 	IPP_SERIALIZE_VAR;
 
@@ -281,9 +314,8 @@ VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 	pin = &data->ipp.work;
 	pout = &data->ipp.work_out;
 
-	IPP_SERIALIZE_START(pin->data, 2);
+	IPP_SERIALIZE_START(pin->data, 1);
 	IPP_SET_ARG_PTR(pin->data, 0, pxtalk_ranges);
-	IPP_SET_ARG_PTR(pin->data, 1, pxtalk_shape);
 
 	pin->payload = IPP_SERIALIZE_PAYLAOD();
 	BUG_ON(pin->payload > IPP_WORK_MAX_PAYLOAD);
@@ -307,8 +339,9 @@ VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 		goto done;
 	}
 	/* process status ok deserialize , check return data payload is ok */
-	IPP_SERIALIZE_START(pout->data, 1);
-	IPP_OUT_ARG_PTR(pout->data, 0, presults_ipp);
+	IPP_SERIALIZE_START(pout->data, 2);
+	IPP_OUT_ARG_PTR(pout->data, 0, pxtalk_shape_ipp);
+	IPP_OUT_ARG_PTR(pout->data, 1, pxtalk_cal_ipp);
 	payload = IPP_SERIALIZE_PAYLAOD();
 	BUG_ON(pout->payload > IPP_WORK_MAX_PAYLOAD);
 	if (pout->payload != payload) {
@@ -319,7 +352,8 @@ VL53L1_Error VL53L1_ipp_xtalk_calibration_process_data(
 		goto done;
 	}
 	/* ok copy final output */
-	memcpy(pxtalk_cal, presults_ipp, sizeof(*pxtalk_cal));
+	memcpy(pxtalk_shape, pxtalk_shape_ipp, sizeof(*pxtalk_shape));
+	memcpy(pxtalk_cal, pxtalk_cal_ipp, sizeof(*pxtalk_cal));
 	stmvl531_ipp_tim_stop(data);
 	stmvl531_ipp_stat(data, "ipp #%5x to=%3d fm=%3d in %5ld us",
 			pin->xfer_id, pin->payload,
@@ -330,6 +364,25 @@ done:
 
 	return rc;
 }
+
+/**
+ * @brief  IPP Wrapper call for Generating Xtalk data from dual reflectance
+ * histogram data
+ *
+ * @param[in]  Dev                          : Device handle
+ * @param[in]  pxtalk_results               : Pointer to xtalk_results structure
+ *                                            containing dual reflectance
+ *                                            histogram data
+ * @param[in]  expected_target_distance_mm  : User input of true target distance
+ * @param[in]  higher_reflectance           : User input detailing which
+ *                                            histogram data 1 or 2 has the
+ *                                            highest reflectance.
+ * @param[out] pxtalk_avg_samples           : Pointer to output xtalk histogram
+ *                                            data
+ *
+ * @return   VL53L1_ERROR_NONE    Success
+ * @return  "Other error code"    See ::VL53L1_Error
+ */
 
 VL53L1_Error VL53L1_ipp_generate_dual_reflectance_xtalk_samples(
 	VL53L1_DEV                     dev,
