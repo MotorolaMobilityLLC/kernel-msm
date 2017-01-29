@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* License terms: BSD 3-clause "New" or "Revised" License.
+*License terms : BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -722,9 +722,7 @@ int stmvl53l1_start_intr(void *object, int *poll_mode)
 			(void *)i2c_data);
 	if (rc) {
 		vl53l1_errmsg("fail to req threaded irq rc=%d\n", rc);
-		vl53l1_errmsg("no irq fall back to poll");
-		*poll_mode = -1;
-		rc = 0; /* mask error due to fall back*/
+		*poll_mode = 0;
 	} else {
 		vl53l1_dbgmsg("irq %d now handled\n", i2c_data->irq);
 		i2c_data->io_flag.intr_started = 1;
