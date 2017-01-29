@@ -1,7 +1,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics Proprietary license'
+* This file is part of VL53L1 Core and is dual licensed, either
+* 'STMicroelectronics Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
 ********************************************************************************
@@ -10,7 +11,8 @@
 *
 ********************************************************************************
 *
-* License terms: STMicroelectronics Proprietary in accordance with licensing terms at www.st.com/sla0044
+*License terms : STMicroelectronics Proprietary in accordance with licensing
+* terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
 * Reproduction and Communication of this document is strictly prohibited unless
@@ -20,12 +22,13 @@
 ********************************************************************************
 *
 * Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following provisions apply instead of the ones
+* 'BSD 3-clause "New" or "Revised" License', in which case the following
+* provisions apply instead of the ones
 * mentioned above :
 *
 ********************************************************************************
 *
-* License terms: BSD 3-clause "New" or "Revised" License.
+*License terms : BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -92,11 +95,11 @@ extern "C" {
 /** VL53L1 IMPLEMENTATION major version */
 #define VL53L1_IMPLEMENTATION_VER_MAJOR       3
 /** VL53L1 IMPLEMENTATION minor version */
-#define VL53L1_IMPLEMENTATION_VER_MINOR       6
+#define VL53L1_IMPLEMENTATION_VER_MINOR       7
 /** VL53L1 IMPLEMENTATION sub version */
 #define VL53L1_IMPLEMENTATION_VER_SUB         0
 /** VL53L1 IMPLEMENTATION sub version */
-#define VL53L1_IMPLEMENTATION_VER_REVISION  1107
+#define VL53L1_IMPLEMENTATION_VER_REVISION  1120
 
 
 /****************************************
@@ -124,7 +127,8 @@ typedef struct {
 		/*!< Type of the Device e.g VL53L1 */
 	char ProductId[VL53L1_DEVINFO_STRLEN];
 		/*!< Product Identifier String
-		 * @warning Not yet implemented */
+		 * @warning Not yet implemented
+		 */
 	uint8_t ProductType;
 		/*!< Product Type, VL53L1 = 1, VL53L1 = 2*/
 	uint8_t ProductRevisionMajor;
@@ -228,9 +232,11 @@ typedef uint8_t VL53L1_InterruptPolarity;
 typedef uint8_t VL53L1_ThresholdMode;
 
 #define VL53L1_THRESHOLD_CROSSED_LOW   \
-	((VL53L1_ThresholdMode)  0) /*!< Trigger interrupt if value < thresh_low */
+	((VL53L1_ThresholdMode)  0)
+	/*!< Trigger interrupt if value < thresh_low */
 #define VL53L1_THRESHOLD_CROSSED_HIGH   \
-	((VL53L1_ThresholdMode)  1) /*!< Trigger interrupt if value > thresh_high */
+	((VL53L1_ThresholdMode)  1)
+	/*!< Trigger interrupt if value > thresh_high */
 #define VL53L1_THRESHOLD_OUT_OF_WINDOW    \
 	((VL53L1_ThresholdMode)  2)
 	/*!< Trigger interrupt if value < thresh_low OR value > thresh_high */
@@ -265,7 +271,8 @@ typedef uint8_t VL53L1_DetectionMode;
 #define VL53L1_DETECTION_NORMAL_RUN   \
 	((VL53L1_DetectionMode)  0)
 	/*!< Trigger interrupt on new measurement regardless of threshold
-	 * just like after a VL53L1_SetPresetMode() call */
+	 * just like after a VL53L1_SetPresetMode() call
+	 */
 #define VL53L1_DETECTION_DISTANCE_ONLY   \
 	((VL53L1_DetectionMode)  1)
 	/*!< Trigger interrupt if "threshold event" occurs on distance */
@@ -274,17 +281,20 @@ typedef uint8_t VL53L1_DetectionMode;
 	/*!< Trigger interrupt if "threshold event" occurs on signal rate */
 #define VL53L1_DETECTION_DISTANCE_AND_RATE   \
 	((VL53L1_DetectionMode)  3)
-	/*!< Trigger interrupt if "threshold event" occurs on distance AND rate */
+	/*!< Trigger interrupt if "threshold event" occurs on distance AND rate
+	 */
 #define VL53L1_DETECTION_DISTANCE_OR_RATE   \
 	((VL53L1_DetectionMode)  4)
-	/*!< Trigger interrupt if "threshold event" occurs on distance OR rate */
+	/*!< Trigger interrupt if "threshold event" occurs on distance OR rate
+	*/
 
 /** @} end of VL53L1_DetectionMode_group */
 
 /** @brief Defines parameters for User/object Detection configuration
  */
 typedef struct {
-	VL53L1_DetectionMode DetectionMode;	/*!< See #VL53L1_GPIODetectionMode*/
+	VL53L1_DetectionMode DetectionMode;
+		/*!< See #VL53L1_GPIODetectionMode*/
 	uint8_t IntrNoTarget; /*!< 1 to trigger IT in case of no target found */
 	VL53L1_DistanceThreshold_t Distance; /*!< limits in mm */
 	VL53L1_RateThreshold_t Rate;/*!< limits in FixPoint1616_t */
@@ -302,22 +312,26 @@ typedef struct {
 	/*!< Defines the operating mode to be used for the next measure */
 	VL53L1_DistanceModes InternalDistanceMode;
 	/*!< Defines the internal operating mode to be used for the next
-	 * measure */
+	 * measure
+	 */
 	VL53L1_DistanceModes NewDistanceMode;
 	/*!< Defines the new operating mode to be programmed for the next
-	 * measure */
+	 * measure
+	 */
 	uint32_t MeasurementTimingBudgetMicroSeconds;
 	/*!< Defines the allowed total time for a single measurement */
 	uint8_t LimitChecksEnable[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array store all the Limit Check enable for this device. */
 	uint8_t LimitChecksStatus[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array stores all the Status of the check linked to last
-	* measurement. */
+	* measurement.
+	*/
 	FixPoint1616_t LimitChecksValue[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array stores all the Limit Check value for this device */
 	FixPoint1616_t LimitChecksCurrent[VL53L1_CHECKENABLE_NUMBER_OF_CHECKS];
 	/*!< This Array stores all the Limit Check current value from latest
-	 * ranging */
+	 * ranging
+	 */
 } VL53L1_DeviceParameters_t;
 
 
@@ -355,41 +369,49 @@ typedef uint8_t VL53L1_State;
 typedef struct {
 	uint32_t TimeStamp;
 	/*!< 32-bit time stamp.
-	 * @warning Not yet implemented */
+	 * @warning Not yet implemented
+	 */
 
 	uint8_t StreamCount;            /*!< 8-bit Stream Count. */
 
 	uint8_t ConfidenceLevel;
 		/*!< indicate a confidance level in percentage from 0 to 100
-		 * @warning Not yet implemented  */
+		 * @warning Not yet implemented
+		 */
 
 	int16_t DmaxMilliMeter;
 		/*!< range Dmax distance in millimeter.
-		 * @warning Not yet implemented  */
+		 * @warning Not yet implemented
+		 */
 
 	int16_t RangeMaxMilliMeter;
 		/*!< Tells what is the maximum detection distance of the device
 		 * in current setup and environment conditions (Filled when
-		 *  applicable) */
+		 *  applicable)
+		 */
 
 	int16_t RangeMinMilliMeter;
 		/*!< Tells what is the minimum detection distance of the device
 		 * in current setup and environment conditions (Filled when
-		 *  applicable) */
+		 *  applicable)
+		 */
 
 	FixPoint1616_t SignalRateRtnMegaCps;
 		/*!< Return signal rate (MCPS)\n these is a 16.16 fix point
 		 *  value, which is effectively a measure of target
-		 *   reflectance.*/
+		 *   reflectance.
+		 */
 
 	FixPoint1616_t AmbientRateRtnMegaCps;
 		/*!< Return ambient rate (MCPS)\n these is a 16.16 fix point
 		 *  value, which is effectively a measure of the ambien
-		 *  t light.*/
+		 *  t light.
+		 */
 
 	uint16_t EffectiveSpadRtnCount;
 		/*!< Return the effective SPAD count for the return signal.
-		 *  To obtain Real value it should be divided by 256 */
+		 *  To obtain Real value it should be divided by 256
+		 */
 
 	FixPoint1616_t SigmaMilliMeter;
 		/*!< Return the Sigma value in millimeter */
@@ -399,7 +421,8 @@ typedef struct {
 	uint8_t RangeFractionalPart;
 		/*!< Fractional part of range distance. Final value is a
 		 *  RangeMilliMeter + RangeFractionalPart/256.
-		 *  @warning Not yet implemented  */
+		 *  @warning Not yet implemented
+		 */
 
 	uint8_t RangeStatus;
 		/*!< Range Status for the current measurement. This is device
@@ -545,9 +568,6 @@ typedef struct {
 } VL53L1_DevData_t;
 
 
-//#define VL53L1DevStructGetLLDriverHandle(Dev) (&PALDevDataGet(Dev, LLData))
-//#define VL53L1DevStructGetLLResultsHandle(Dev) (&PALDevDataGet(Dev, llresults))
-
 /* MACRO Definitions */
 /** @defgroup VL53L1_define_GeneralMacro_group General Macro Defines
  *  General Macro Defines
@@ -556,24 +576,24 @@ typedef struct {
 
 /* Defines */
 #define VL53L1_SETPARAMETERFIELD(Dev, field, value) \
-	PALDevDataSet(Dev, CurrentParameters.field, value)
+	(PALDevDataSet(Dev, CurrentParameters.field, value))
 
 #define VL53L1_GETPARAMETERFIELD(Dev, field, variable) \
-	variable = PALDevDataGet(Dev, CurrentParameters).field
+	(variable = PALDevDataGet(Dev, CurrentParameters).field)
 
 
 #define VL53L1_SETARRAYPARAMETERFIELD(Dev, field, index, value) \
-	PALDevDataSet(Dev, CurrentParameters.field[index], value)
+	(PALDevDataSet(Dev, CurrentParameters.field[index], value))
 
 #define VL53L1_GETARRAYPARAMETERFIELD(Dev, field, index, variable) \
-	variable = PALDevDataGet(Dev, CurrentParameters).field[index]
+	(variable = PALDevDataGet(Dev, CurrentParameters).field[index])
 
 
 #define VL53L1_SETDEVICESPECIFICPARAMETER(Dev, field, value) \
-		PALDevDataSet(Dev, DeviceSpecificParameters.field, value)
+	(PALDevDataSet(Dev, DeviceSpecificParameters.field, value))
 
 #define VL53L1_GETDEVICESPECIFICPARAMETER(Dev, field) \
-		PALDevDataGet(Dev, DeviceSpecificParameters).field
+	(PALDevDataGet(Dev, DeviceSpecificParameters).field)
 
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT97(Value) \
@@ -624,7 +644,9 @@ typedef struct {
 #define VL53L1_MAKEUINT16(lsb, msb) (uint16_t)((((uint16_t)msb)<<8) + \
 		(uint16_t)lsb)
 
-#define SUPPRESS_UNUSED_WARNING(x) (void) (x)
+#ifndef SUPPRESS_UNUSED_WARNING
+#define SUPPRESS_UNUSED_WARNING(x) ((void) (x))
+#endif
 
 /** @} VL53L1_define_GeneralMacro_group */
 
