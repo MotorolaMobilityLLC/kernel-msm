@@ -1,4 +1,4 @@
-/*  Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/*  Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -7477,7 +7477,7 @@ static int voice_alloc_source_tracking_shared_memory(void)
 		&(common.source_tracking_sh_mem.sh_mem_block.handle),
 		BUFFER_BLOCK_SIZE,
 		&(common.source_tracking_sh_mem.sh_mem_block.phys),
-		(size_t *)&(common.source_tracking_sh_mem.sh_mem_block.size),
+		&(common.source_tracking_sh_mem.sh_mem_block.size),
 		&(common.source_tracking_sh_mem.sh_mem_block.data));
 	if (ret < 0) {
 		pr_err("%s: audio ION alloc failed for sh_mem block, ret = %d\n",
@@ -7493,14 +7493,14 @@ static int voice_alloc_source_tracking_shared_memory(void)
 		 __func__,
 		&(common.source_tracking_sh_mem.sh_mem_block.phys),
 		(void *)(common.source_tracking_sh_mem.sh_mem_block.data),
-		(size_t)(common.source_tracking_sh_mem.sh_mem_block.size));
+		(common.source_tracking_sh_mem.sh_mem_block.size));
 
 	ret = msm_audio_ion_alloc("source_tracking_sh_mem_table",
 		&(common.source_tracking_sh_mem.sh_mem_table.client),
 		&(common.source_tracking_sh_mem.sh_mem_table.handle),
 		sizeof(struct vss_imemory_table_t),
 		&(common.source_tracking_sh_mem.sh_mem_table.phys),
-		(size_t *)&(common.source_tracking_sh_mem.sh_mem_table.size),
+		&(common.source_tracking_sh_mem.sh_mem_table.size),
 		&(common.source_tracking_sh_mem.sh_mem_table.data));
 	if (ret < 0) {
 		pr_err("%s: audio ION alloc failed for sh_mem table, ret = %d\n",
@@ -7524,7 +7524,7 @@ static int voice_alloc_source_tracking_shared_memory(void)
 		 __func__,
 		&(common.source_tracking_sh_mem.sh_mem_table.phys),
 		(void *)(common.source_tracking_sh_mem.sh_mem_table.data),
-		(size_t)(common.source_tracking_sh_mem.sh_mem_table.size));
+		(common.source_tracking_sh_mem.sh_mem_table.size));
 
 done:
 	pr_debug("%s: Exit, ret=%d\n", __func__, ret);
