@@ -257,8 +257,13 @@ struct dwc3_msm {
 	struct gpio		mod_switch_gpio;
 	struct i2c_client	*mod_hub;
 	bool			mods_support;
-	bool			mod_enabled;
-	enum modusb_protocol	mod_proto;
+	bool			mod_enabled; /* Sysfs control of mod intf */
+	enum modusb_protocol	mod_proto;   /* Sysfs control of mod intf */
+	bool			mod_ss_path;
+	struct notifier_block   usbext_nb;
+	struct usb_ext_status   ext_state;   /* Greybus control of mod intf */
+	bool			ext_enabled; /* Greybus control of mod intf */
+	struct work_struct	ext_usb_work;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -278,6 +283,8 @@ struct dwc3_msm {
 
 static void dwc3_pwr_event_handler(struct dwc3_msm *mdwc);
 static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA);
+static void dwc3_ext_event_notify(struct dwc3_msm *mdwc);
+static void dwc3_ext_send_uevent(struct dwc3_msm *mdwc, bool usb_present);
 
 /**
  *
@@ -410,13 +417,15 @@ static bool dwc3_msm_is_host_superspeed(struct dwc3_msm *mdwc)
 	return false;
 }
 
-static void dwc3_mods_hsusb_path_enable(struct dwc3_msm *mdwc, bool enable)
+static void dwc3_mods_hsusb_path_enable(struct dwc3_msm *mdwc,
+					bool enable,
+					enum usb_ext_path path)
 {
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 	dwc->maximum_speed = USB_SPEED_HIGH;
 	if (enable) {
 		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 1);
-		usb3813_enable_hub(mdwc->mod_hub, 1, USB_EXT_PATH_ENTERPRISE);
+		usb3813_enable_hub(mdwc->mod_hub, 1, path);
 	} else {
 		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 0);
 		usb3813_enable_hub(mdwc->mod_hub, 1, USB_EXT_PATH_UNKNOWN);
@@ -429,8 +438,79 @@ static void dwc3_mods_ssusb_path_enable(struct dwc3_msm *mdwc, bool enable)
 	struct modbus_ext_status status = {0, MODBUS_PROTO_USB_SS};
 
 	status.active = enable;
+	mdwc->mod_ss_path = enable;
 	dwc->maximum_speed = enable ? USB_SPEED_SUPER: USB_SPEED_HIGH;
 	modbus_ext_set_state(&status);
+}
+
+static void dwc3_extcon_restore(struct dwc3_msm *mdwc)
+{
+	int speed = 0;
+	struct extcon_dev *edev = NULL;
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+
+	mdwc->vbus_active = extcon_get_cable_state_(mdwc->extcon_vbus,
+						EXTCON_USB);
+	mdwc->id_state = extcon_get_cable_state_(mdwc->extcon_id,
+						EXTCON_USB_HOST) ?
+						DWC3_ID_GROUND :
+						DWC3_ID_FLOAT;
+
+	if (mdwc->vbus_active)
+		edev = mdwc->extcon_vbus;
+	else if (mdwc->id_state == DWC3_ID_GROUND)
+		edev = mdwc->extcon_id;
+
+	if (edev)
+		speed = extcon_get_cable_state_(edev, EXTCON_USB_SPEED);
+	dwc->maximum_speed = (speed == 0) ? USB_SPEED_HIGH : USB_SPEED_SUPER;
+}
+
+static void dwc3_ext_usb_enable(struct dwc3_msm *mdwc, bool enable)
+{
+	if (mdwc->ext_enabled == enable)
+		return;
+
+	mdwc->ext_enabled = enable;
+
+	/* Resume the controller first */
+	queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
+	flush_workqueue(mdwc->dwc3_wq);
+
+	/* Enable/Disable the physical path next*/
+	if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0) {
+		dwc3_mods_hsusb_path_enable(mdwc, enable,
+					mdwc->ext_state.path);
+
+		/*
+		 * Mod HSUSB path only supports host mode, hence set
+		 * vbus_active to 0 and clear ID.
+		 */
+		if (enable) {
+			mdwc->id_state = DWC3_ID_GROUND;
+			mdwc->vbus_active = 0;
+		} else /* Restore the ext con state on disable */
+			dwc3_extcon_restore(mdwc);
+	} else {
+		dwc3_mods_ssusb_path_enable(mdwc, enable);
+		if (enable) {
+			if (mdwc->ext_state.type == USB_EXT_REMOTE_DEVICE) {
+				/* Mod is a USB Device  */
+				mdwc->vbus_active = 0;
+				mdwc->id_state = DWC3_ID_GROUND;
+			} else {
+				/* Mod is a USB Host*/
+				mdwc->vbus_active = 1;
+				mdwc->id_state = DWC3_ID_FLOAT;
+			}
+		} else /* Restore the ext con state on disable */
+			dwc3_extcon_restore(mdwc);
+	}
+
+	/* Trigger the USB SM change and wait for it to complete */
+	dwc3_ext_event_notify(mdwc);
+	flush_delayed_work(&mdwc->sm_work);
+	dbg_event(0xFF, "EXT Hdlr\n", enable);
 }
 
 static ssize_t ss_compliance_store(struct device *dev,
@@ -570,7 +650,8 @@ static ssize_t modusb_enable_store(struct device *dev,
 	if (mdwc->mod_proto == MODUSB_SUPER)
 		dwc3_mods_ssusb_path_enable(mdwc, mdwc->mod_enabled);
 	else
-		dwc3_mods_hsusb_path_enable(mdwc, mdwc->mod_enabled);
+		dwc3_mods_hsusb_path_enable(mdwc, mdwc->mod_enabled,
+						USB_EXT_PATH_ENTERPRISE);
 
 	if (mdwc->mod_enabled) {
 		mdwc->mod_vbus_active = mdwc->vbus_active;
@@ -2448,7 +2529,7 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 	if (dwc->maximum_speed == USB_SPEED_SUPER &&
 			mdwc->lpm_flags & MDWC3_SS_PHY_SUSPEND) {
 		mdwc->ss_phy->flags &= ~(PHY_LANE_A | PHY_LANE_B);
-		if (mdwc->mod_enabled && mdwc->mod_proto == MODUSB_SUPER)
+		if (mdwc->mod_ss_path)
 			mdwc->ss_phy->flags |= PHY_LANE_B;
 		else if (mdwc->ext_typec_switch)
 			mdwc->ss_phy->flags |= PHY_LANE_A;
@@ -2832,6 +2913,17 @@ static int dwc3_msm_id_notifier(struct notifier_block *nb,
 
 	dev_dbg(mdwc->dev, "host:%ld (id:%d) event received\n", event, id);
 
+	/* If usb(ext) is enabled via GB handle it separately */
+	if (mdwc->ext_state.active) {
+		if (event)
+			dbg_event(0xFF, "Ext=>ID", event);
+		else
+			dbg_event(0xFF, "ID=>Ext", event);
+
+		schedule_work(&mdwc->ext_usb_work);
+		goto done;
+	}
+
 	cc_state = extcon_get_cable_state_(edev, EXTCON_USB_CC);
 	if (cc_state < 0)
 		mdwc->typec_orientation = ORIENTATION_NONE;
@@ -2846,7 +2938,7 @@ static int dwc3_msm_id_notifier(struct notifier_block *nb,
 	if (dwc->maximum_speed > dwc->max_hw_supp_speed)
 		dwc->maximum_speed = dwc->max_hw_supp_speed;
 
-	/* Ignore ID notifications when Mod is attached */
+	/* Ignore ID notifications when Mod usb is enabled via sysfs*/
 	if (mdwc->mod_enabled) {
 		mdwc->mod_id_state = id;
 		dbg_event(0xFF, "Ignore ID", id);
@@ -2898,6 +2990,17 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 
 	dev_dbg(mdwc->dev, "vbus:%ld event received\n", event);
 
+	/* If usb(ext) is enabled via GB handle it separately */
+	if (mdwc->ext_state.active) {
+		if (event)
+			dbg_event(0xFF, "Ext=>Vbus", event);
+		else
+			dbg_event(0xFF, "Vbus=>Ext", event);
+
+		schedule_work(&mdwc->ext_usb_work);
+		goto done;
+	}
+
 	cc_state = extcon_get_cable_state_(edev, EXTCON_USB_CC);
 	if (cc_state < 0)
 		mdwc->typec_orientation = ORIENTATION_NONE;
@@ -2912,7 +3015,7 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 	if (dwc->maximum_speed > dwc->max_hw_supp_speed)
 		dwc->maximum_speed = dwc->max_hw_supp_speed;
 
-	/* Ignore Vbus notifications when Mod is attached */
+	/* Ignore Vbus notifications when Mod USB is enabled via sysfs */
 	if (mdwc->mod_enabled) {
 		mdwc->mod_vbus_active = event;
 		dbg_event(0xFF, "Ignore Vbus", event);
@@ -3088,6 +3191,138 @@ static ssize_t xhci_link_compliance_store(struct device *dev,
 }
 
 static DEVICE_ATTR_RW(xhci_link_compliance);
+
+static void dwc3_ext_send_uevent(struct dwc3_msm *mdwc, bool usb_present)
+{
+	struct kobj_uevent_env *env;
+
+	env = kzalloc(sizeof(*env), GFP_KERNEL);
+	if (!env)
+		return;
+
+	if (mdwc->ext_state.active)
+		add_uevent_var(env, "EXT_USB_STATE=ATTACHED");
+	else
+		add_uevent_var(env, "EXT_USB_STATE=DETACHED");
+
+	if (mdwc->ext_enabled)
+		add_uevent_var(env, "EXT_USB=ALLOWED");
+	else
+		add_uevent_var(env, "EXT_USB=DISABLED");
+
+	if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0)
+		add_uevent_var(env, "EXT_USB_PROTOCOL=USB2.0");
+	else if (mdwc->ext_state.proto == USB_EXT_PROTO_3_1)
+		add_uevent_var(env, "EXT_USB_PROTOCOL=USB3.1");
+
+	if (mdwc->ext_state.type == USB_EXT_REMOTE_DEVICE)
+		add_uevent_var(env, "EXT_USB_MODE=DEVICE");
+	else if (mdwc->ext_state.type == USB_EXT_REMOTE_HOST)
+		add_uevent_var(env, "EXT_USB_MODE=HOST");
+
+	add_uevent_var(env, "MAIN_USB=ALLOWED");
+
+	if (usb_present)
+		add_uevent_var(env, "MAIN_USB_STATE=ATTACHED");
+	else
+		add_uevent_var(env, "MAIN_USB_STATE=DETACHED");
+
+	kobject_uevent_env(&mdwc->dev->kobj, KOBJ_CHANGE, env->envp);
+	kfree(env);
+}
+
+static void dwc3_ext_usb_work(struct work_struct *w)
+{
+	struct dwc3_msm *mdwc = container_of(w, struct dwc3_msm,
+			ext_usb_work);
+	bool usb_present =
+		extcon_get_cable_state_(mdwc->extcon_vbus, EXTCON_USB) ||
+		extcon_get_cable_state_(mdwc->extcon_id, EXTCON_USB_HOST);
+
+
+	if (!mdwc->ext_state.active) {
+		dbg_event(0xFF, "ext work none", 0);
+		dwc3_extcon_restore(mdwc);
+		queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
+	} else if (usb_present) {
+		dbg_event(0xFF, "ext work dis", 0);
+		dwc3_ext_usb_enable(mdwc, false);
+		dwc3_ext_send_uevent(mdwc, true);
+	} else {
+		dbg_event(0xFF, "ext work en", 0);
+		dwc3_ext_usb_enable(mdwc, true);
+		dwc3_ext_send_uevent(mdwc, false);
+	}
+}
+
+static int dwc3_validate_ext_params(struct usb_ext_status *status)
+{
+	if (status->proto == USB_EXT_PROTO_2_0) {
+		/*
+		* We support both Enterprise and Bridge as the path for
+		* USB 2.0 Ext Class, but only if the remote is a USB
+		* peripheral.
+		*/
+		if (status->path == USB_EXT_PATH_UNKNOWN)
+			return -EINVAL;
+		else if (status->type != USB_EXT_REMOTE_DEVICE)
+			return -EINVAL;
+	} else if (status->proto == USB_EXT_PROTO_3_1) {
+		/*
+		* For USB 3.1 Ext Class, both USB hosts and
+		* peripherals are supported.
+		*/
+		if (status->type == USB_EXT_REMOTE_UNKNOWN)
+			return -EINVAL;
+	} else
+		return -EINVAL;
+
+	return 0;
+}
+
+static int usb_ext_notifier_call(struct notifier_block *nb,
+		unsigned long val,
+		void *v)
+{
+	struct dwc3_msm *mdwc = container_of(nb, struct dwc3_msm, usbext_nb);
+	struct usb_ext_status *status = v;
+	bool usb_present =
+		extcon_get_cable_state_(mdwc->extcon_vbus, EXTCON_USB) ||
+		extcon_get_cable_state_(mdwc->extcon_id, EXTCON_USB_HOST);
+
+	dev_info(mdwc->dev, "%s - val = %lu, proto = %d, type = %d, path = %d\n",
+			__func__, val,
+			status->proto, status->type, status->path);
+
+	if (val == mdwc->ext_state.active) {
+		dev_dbg(mdwc->dev, "Spurious EXT notification\n");
+		dbg_event(0xFF, "Spurious EXT", 0);
+		return NOTIFY_DONE;
+	}
+
+	if (val) {
+		if (dwc3_validate_ext_params(status)) {
+			dev_err(mdwc->dev, "Invalid EXT parameters\n");
+			dbg_event(0xFF, "Invalid EXT", 0);
+			return NOTIFY_DONE;
+		}
+		memcpy(&mdwc->ext_state, status, sizeof(struct usb_ext_status));
+	} else
+		mdwc->ext_state.active = 0;
+
+	dbg_event(0xFF, "EXT Notif", mdwc->ext_state.active);
+	if (usb_present && val) {
+		dbg_event(0xFF, "EXT defer", usb_present);
+		dev_info(mdwc->dev, "Primary USB present, Ignore EXT\n");
+		mdwc->ext_enabled = false;
+		goto ext_done;
+	}
+
+	dwc3_ext_usb_enable(mdwc, mdwc->ext_state.active);
+ext_done:
+	dwc3_ext_send_uevent(mdwc, usb_present);
+	return NOTIFY_OK;
+}
 
 static int dwc3_msm_probe(struct platform_device *pdev)
 {
@@ -3461,6 +3696,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	if (!mdwc->mods_support)
 		return 0;
 
+	INIT_WORK(&mdwc->ext_usb_work, dwc3_ext_usb_work);
 	mdwc->mod_switch_gpio.gpio = of_get_named_gpio_flags(node,
 					"mmi,mod-hs-switch", 0, &gpio_flags);
 
@@ -3486,6 +3722,11 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		of_node_put(hub_node);
 	} else
 		mdwc->mod_hub = NULL;
+
+	mdwc->usbext_nb.notifier_call = usb_ext_notifier_call;
+	ret = usb_ext_register_notifier(&mdwc->usbext_nb, NULL);
+	if (ret)
+		dev_err(&pdev->dev, "couldn't register usb ext notifier\n");
 
 	device_create_file(&pdev->dev, &dev_attr_modusb_enable);
 	device_create_file(&pdev->dev, &dev_attr_modusb_protocol);
@@ -3542,6 +3783,7 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 	}
 
 	if (mdwc->mods_support) {
+		usb_ext_unregister_notifier(&mdwc->usbext_nb);
 		device_remove_file(&pdev->dev, &dev_attr_modusb_enable);
 		device_remove_file(&pdev->dev, &dev_attr_modusb_protocol);
 	}
