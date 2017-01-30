@@ -517,7 +517,7 @@
 
 	slim_qca: slim@17240000 {
 		cell-index = <3>;
-		status = "disabled";
+		status = "ok";
 		compatible = "qcom,slim-ngd";
 		reg = <0x17240000 0x2C000>,
 			<0x17204000 0x26000>;
