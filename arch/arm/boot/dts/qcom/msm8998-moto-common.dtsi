@@ -815,6 +815,7 @@
 		compatible = "qcom,msm8998-asoc-snd-cs47l35";
 		qcom,model = "msm8998-cs47l35-card";
 		qcom,ext-disp-audio-rx;
+		qcom,wcn-btfm;
 
 		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
 				<&loopback>, <&compress>, <&hostless>,
@@ -840,7 +841,8 @@
 				<&dai_pri_tdm_rx_0>, <&dai_pri_tdm_tx_0>,
 				<&dai_sec_tdm_rx_0>, <&dai_sec_tdm_tx_0>,
 				<&dai_tert_tdm_rx_0>, <&dai_tert_tdm_tx_0>,
-				<&dai_quat_tdm_rx_0>, <&dai_quat_tdm_tx_0>;
+				<&dai_quat_tdm_rx_0>, <&dai_quat_tdm_tx_0>,
+				<&sb_7_rx>, <&sb_7_tx>, <&sb_8_tx>;
 		asoc-cpu-names = "msm-dai-q6-hdmi.8",  "msm-dai-q6-dp.24608",
 				"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
 				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
@@ -857,7 +859,9 @@
 				"msm-dai-q6-tdm.36864", "msm-dai-q6-tdm.36865",
 				"msm-dai-q6-tdm.36880", "msm-dai-q6-tdm.36881",
 				"msm-dai-q6-tdm.36896", "msm-dai-q6-tdm.36897",
-				"msm-dai-q6-tdm.36912", "msm-dai-q6-tdm.36913";
+				"msm-dai-q6-tdm.36912", "msm-dai-q6-tdm.36913",
+				"msm-dai-q6-dev.16398", "msm-dai-q6-dev.16399",
+				"msm-dai-q6-dev.16401";
 		asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
 		asoc-codec-names = "msm-stub-codec.1",
 				"msm-ext-disp-audio-codec-rx";
