@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1896,6 +1896,10 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 	}
 	ping_pong_status = vfe_dev->hw_info->vfe_ops.axi_ops.
 		get_pingpong_status(vfe_dev);
+	if (vfe_dev->hw_info->vfe_ops.irq_ops.process_eof_irq) {
+		vfe_dev->hw_info->vfe_ops.irq_ops.process_eof_irq(vfe_dev,
+			irq_status0);
+	}
 	msm_isp_process_overflow_irq(vfe_dev,
 		&irq_status0, &irq_status1, 0);
 
