@@ -429,7 +429,11 @@ int vote(struct votable *votable, const char *client_str, bool enabled, int val)
 					get_client_str(votable, effective_id));
 	}
 
+#ifdef QCOM_BASE
 	votable->voted_on = true;
+#else
+	votable->voted_on = (rc >= 0);
+#endif
 out:
 	unlock_votable(votable);
 	return rc;
