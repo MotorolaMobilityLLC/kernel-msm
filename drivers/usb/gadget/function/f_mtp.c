@@ -393,6 +393,7 @@ struct mtp_instance {
 	struct mtp_dev *dev;
 	char mtp_ext_compat_id[16];
 	struct usb_os_desc mtp_os_desc;
+	bool is_bound;
 };
 
 /* temporary variable used between mtp_open() and mtp_gadget_bind() */
@@ -1510,6 +1511,7 @@ mtp_function_bind(struct usb_configuration *c, struct usb_function *f)
 	}
 
 	fi_mtp->func_inst.f = &dev->function;
+	fi_mtp->is_bound = true;
 	mtp_log("%s speed %s: IN/%s, OUT/%s\n",
 		gadget_is_superspeed(c->cdev->gadget) ? "super" :
 		(gadget_is_dualspeed(c->cdev->gadget) ? "dual" : "full"),
@@ -1525,6 +1527,7 @@ mtp_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	struct usb_request *req;
 	int i;
 	fi_mtp = container_of(f->fi, struct mtp_instance, func_inst);
+
 	mtp_string_defs[INTERFACE_STRING_INDEX].id = 0;
 	mtp_log("dev: %pK\n", dev);
 	mutex_lock(&dev->read_mutex);
@@ -1542,6 +1545,7 @@ mtp_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	kfree(f->os_desc_table);
 	f->os_desc_n = 0;
 	fi_mtp->func_inst.f = NULL;
+	fi_mtp->is_bound = false;
 }
 
 static int mtp_function_set_alt(struct usb_function *f,
@@ -1810,7 +1814,6 @@ static struct config_item_type mtp_func_type = {
 	.ct_owner       = THIS_MODULE,
 };
 
-
 static struct mtp_instance *to_fi_mtp(struct usb_function_instance *fi)
 {
 	return container_of(fi, struct mtp_instance, func_inst);
@@ -1893,7 +1896,13 @@ static struct usb_function_instance *mtp_alloc_inst(void)
 static int mtp_ctrlreq_configfs(struct usb_function *f,
 				const struct usb_ctrlrequest *ctrl)
 {
-	return mtp_ctrlrequest(f->config->cdev, ctrl);
+	struct mtp_instance *fi_mtp =
+		container_of(f->fi, struct mtp_instance, func_inst);
+
+	if (!fi_mtp || (fi_mtp->is_bound == false))
+		return -EOPNOTSUPP;
+	else
+		return mtp_ctrlrequest(f->config->cdev, ctrl);
 }
 
 static void mtp_free(struct usb_function *f)
