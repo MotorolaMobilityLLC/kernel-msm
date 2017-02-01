@@ -44,6 +44,7 @@
 #define FALSE       0x00
 
 #define CMD_GET_HDR_SZ 16
+#define	U32_MAX	((u32)~0U)
 
 enum {
 	ASM_TOPOLOGY_CAL = 0,
@@ -1031,7 +1032,7 @@ err:
 int q6asm_audio_client_buf_alloc(unsigned int dir,
 			struct audio_client *ac,
 			unsigned int bufsz,
-			unsigned int bufcnt)
+			uint32_t bufcnt)
 {
 	int cnt = 0;
 	int rc = 0;
