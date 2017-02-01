@@ -22,6 +22,7 @@
 /* Return values for wm_adsp_compr_handle_irq */
 #define WM_ADSP_COMPR_OK                 0
 #define WM_ADSP_COMPR_VOICE_TRIGGER      1
+#define WM_ADSP_MAX_CHANNEL_PER_DSP      2
 
 #define WM_ADSP2_REGION_0 BIT(0)
 #define WM_ADSP2_REGION_1 BIT(1)
@@ -86,8 +87,9 @@ struct wm_adsp {
 
 	struct work_struct boot_work;
 
-	struct wm_adsp_compr *compr;
-	struct wm_adsp_compr_buf *buffer;
+	int buf_num;
+	struct wm_adsp_compr *compr[WM_ADSP_MAX_CHANNEL_PER_DSP];
+	struct wm_adsp_compr_buf *buffer[WM_ADSP_MAX_CHANNEL_PER_DSP];
 
 	struct mutex pwr_lock;
 	struct mutex *fw_lock;
@@ -99,6 +101,20 @@ struct wm_adsp {
 #endif
 
 	unsigned int lock_regions;
+};
+
+struct wm_adsp_compr {
+	struct wm_adsp *dsp;
+	struct wm_adsp_compr_buf *buf;
+
+	struct snd_compr_stream *stream;
+	struct snd_compressed_buffer size;
+
+	u32 *raw_buf;
+	unsigned int copied_total;
+
+	unsigned int sample_rate;
+	bool freed;
 };
 
 #define WM_ADSP1(wname, num) \
@@ -133,14 +149,15 @@ int wm_adsp2_event(struct snd_soc_dapm_widget *w,
 		   struct snd_kcontrol *kcontrol, int event);
 
 extern int wm_adsp_compr_open(struct wm_adsp *dsp,
-			      struct snd_compr_stream *stream);
+			      struct snd_compr_stream *stream,
+			      int channel);
 extern int wm_adsp_compr_free(struct snd_compr_stream *stream);
 extern int wm_adsp_compr_set_params(struct snd_compr_stream *stream,
 				    struct snd_compr_params *params);
 extern int wm_adsp_compr_get_caps(struct snd_compr_stream *stream,
 				  struct snd_compr_caps *caps);
 extern int wm_adsp_compr_trigger(struct snd_compr_stream *stream, int cmd);
-extern int wm_adsp_compr_handle_irq(struct wm_adsp *dsp);
+extern int wm_adsp_compr_handle_irq(struct wm_adsp *dsp, int channel);
 extern int wm_adsp_compr_pointer(struct snd_compr_stream *stream,
 				 struct snd_compr_tstamp *tstamp);
 extern int wm_adsp_compr_copy(struct snd_compr_stream *stream,
