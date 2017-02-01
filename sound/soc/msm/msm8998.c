@@ -24,6 +24,7 @@
 #include <linux/input.h>
 #include <linux/of_device.h>
 #include <linux/mfd/msm-cdc-pinctrl.h>
+#include <linux/mods/modbus_ext.h>
 #include <sound/core.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
@@ -4694,6 +4695,14 @@ static struct snd_soc_ops msm8998_tdm_be_ops = {
 	.shutdown = msm8998_tdm_snd_shutdown
 };
 
+static void msm_mi2s_path_enable(bool enable)
+{
+	struct modbus_ext_status modbus_status;
+	modbus_status.proto = MODBUS_PROTO_I2S;
+	modbus_status.active = enable;
+	modbus_ext_set_state(&modbus_status);
+}
+
 static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 {
 	int ret = 0;
@@ -4732,6 +4741,8 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	 * that the same clock won't be enable twice.
 	 */
 	mutex_lock(&mi2s_intf_conf[index].lock);
+	msm_mi2s_path_enable(true);
+
 	if (++mi2s_intf_conf[index].ref_cnt == 1) {
 		/* Check if msm needs to provide the clock to the interface */
 		if (!mi2s_intf_conf[index].msm_is_mi2s_master) {
@@ -4798,6 +4809,7 @@ static void msm_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 		if (ret < 0)
 			pr_err("%s:clock disable failed for MI2S (%d); ret=%d\n",
 				__func__, index, ret);
+		msm_mi2s_path_enable(false);
 	}
 	mutex_unlock(&mi2s_intf_conf[index].lock);
 
