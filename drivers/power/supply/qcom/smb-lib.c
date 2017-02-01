@@ -356,12 +356,24 @@ int smblib_set_charge_param(struct smb_charger *chg,
 		if (rc < 0)
 			return -EINVAL;
 	} else {
+#ifdef QCOM_BASE
 		if (val_u > param->max_u || val_u < param->min_u) {
 			smblib_err(chg, "%s: %d is out of range [%d, %d]\n",
 				param->name, val_u, param->min_u, param->max_u);
 			return -EINVAL;
 		}
-
+#else
+		if (val_u > param->max_u) {
+			smblib_err(chg,
+				   "%s: %d > [%d max], Limit imposed \n",
+				   param->name, val_u, param->max_u);
+			val_u = param->max_u;
+		} else if (val_u < param->min_u) {
+			smblib_err(chg, "%s: %d < [%d min], Limit imposed \n",
+				param->name, val_u, param->min_u);
+			val_u = param->min_u;
+		}
+#endif
 		val_raw = (val_u - param->min_u) / param->step_u;
 	}
 
@@ -2202,6 +2214,7 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 			       union power_supply_propval *val)
 {
 	int rc = 0;
+#ifdef QCOM_BASE
 	u8 stat;
 
 	if (get_client_vote_locked(chg->usb_icl_votable, USER_VOTER) == 0) {
@@ -2220,6 +2233,12 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 
 	val->intval = (stat & USE_USBIN_BIT) &&
 		      (stat & VALID_INPUT_POWER_SOURCE_STS_BIT);
+#else
+	if (chg->mmi.apsd_done)
+		rc = smblib_get_prop_usb_present(chg, val);
+	else
+		val->intval = 0;
+#endif
 	return rc;
 }
 
@@ -3710,6 +3729,8 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 		break;
 	}
 
+	chg->mmi.apsd_done = true;
+
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: apsd-done rising; %s detected\n",
 		   apsd_result->name);
 }
@@ -3769,6 +3790,10 @@ irqreturn_t smblib_handle_usb_source_change(int irq, void *data)
 	}
 	smblib_dbg(chg, PR_REGISTER, "APSD_STATUS = 0x%02x\n", stat);
 
+	vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
+	cancel_delayed_work(&chg->mmi.heartbeat_work);
+	schedule_delayed_work(&chg->mmi.heartbeat_work,
+			      msecs_to_jiffies(0));
 	return IRQ_HANDLED;
 }
 
@@ -3829,6 +3854,8 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, DCP_VOTER, false, 0);
 	vote(chg->usb_icl_votable, PL_USBIN_USBIN_VOTER, false, 0);
 	vote(chg->usb_icl_votable, SW_QC3_VOTER, false, 0);
+
+	chg->mmi.apsd_done = false;
 
 	/* reset hvdcp voters */
 	vote(chg->hvdcp_disable_votable_indirect, VBUS_CC_SHORT_VOTER, true, 0);
@@ -5540,7 +5567,7 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 				if (rc == -EINVAL)
 					break;
 				dcin_mv = ret.intval / 1000;
-				pr_err("DCIN mv = %d\n", dcin_mv);
+
 				if (dcin_mv > 4500)
 					dcin_high_cnt++;
 				else
@@ -5598,6 +5625,7 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 	power_supply_put(eb_pwr_psy);
 }
 
+#define CHARGER_DETECTION_DONE 7
 #define SMBCHG_HEARTBEAT_INTERVAL_NS	70000000000
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
@@ -5615,7 +5643,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int batt_soc;
 	int eb_soc;
 	int batt_temp;
-	int vbus_present;
+	int vbus_present = 0;
+	int charger_present = 0;
 	int cl_usb = -EINVAL;
 	int cl_pd = -EINVAL;
 	int cl_cc = -EINVAL;
@@ -5688,6 +5717,14 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else
 		vbus_present = val.intval;
 
+	if (!vbus_present) {
+		charger_present = 0;
+		mmi->charger_debounce_cnt = 0;
+	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE)
+		mmi->charger_debounce_cnt++;
+	else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
+		charger_present = 1;
+
 	if (vbus_present || mmi->wls_present || !mmi->usbeb_present)
 		smblib_enable_dc_aicl(chip, false);
 	else if (mmi->usbeb_present && !prev_usbeb_pres)
@@ -5723,7 +5760,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 
 	pr_debug("batt=%d mV, %d mA, %d C\n", batt_mv, batt_ma, batt_temp);
 
-	if (vbus_present) {
+	if (charger_present) {
 		rc = smblib_get_prop_usb_current_max(chip, &val);
 		if (rc < 0) {
 			pr_err("Error getting CL USB rc = %d\n", rc);
@@ -5846,7 +5883,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	/* Determine Next State */
 	prev_step = chip->mmi.pres_chrg_step;
 
-	if (!vbus_present && (mmi->ebchg_state != EB_SRC)) {
+	if (!charger_present && (mmi->ebchg_state != EB_SRC)) {
 		mmi->pres_chrg_step = STEP_NONE;
 	} else if ((mmi->pres_temp_zone == ZONE_HOT) ||
 		   (mmi->pres_temp_zone == ZONE_COLD)) {
@@ -5986,9 +6023,12 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	vote(chip->usb_suspend_votable, HEARTBEAT_VOTER,
 	     (target_usb < 0), 0);
 
-	vote(chip->usb_icl_votable, HEARTBEAT_VOTER,
-	     true, (target_usb >= 0) ? (target_usb * 1000) : 0);
-
+	rc = vote(chip->usb_icl_votable, HEARTBEAT_VOTER,
+		  true, (target_usb >= 0) ? (target_usb * 1000) : 0);
+	if (rc < 0) {
+		pr_err("Problem setting USB ICL %d\n", target_usb);
+		goto end_hb;
+	}
 	if (vbus_present) {
 		if (mmi->cl_ebchg > 0) {
 			mmi_set_extbat_in_cl(chip);
@@ -6012,7 +6052,7 @@ end_hb:
 
 	hb_resch_time = HEARTBEAT_HOLDOFF_MS;
 
-	if (!chip->mmi.chrg_taper_cnt)
+	if (!chip->mmi.chrg_taper_cnt && (rc >= 0))
 		hb_resch_time = HEARTBEAT_DELAY_MS;
 
 	if (ebparams_cnt != mmi->update_eb_params)
@@ -6020,7 +6060,8 @@ end_hb:
 	else
 		mmi->update_eb_params = 0;
 
-	if (eb_sink_to_off)
+	if (eb_sink_to_off ||
+	    (!charger_present && mmi->charger_debounce_cnt))
 		hb_resch_time = HEARTBEAT_EB_WAIT_MS;
 
 	schedule_delayed_work(&mmi->heartbeat_work,
