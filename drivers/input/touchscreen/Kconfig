@@ -1107,6 +1107,17 @@ config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_MMI
 	  This enables support for firmware update for Synaptics DSX
 	  touchscreens via the MMI design.
 
+config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
+	bool "Synaptics DSX firmware update extra sysfs attributes (MMI)"
+	depends on TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_MMI
+	help
+	  Say Y here to enable support for extra sysfs attributes
+	  supporting firmware update in a development environment.
+	  This does not affect the core or other subsystem attributes.
+
+	  If unsure, say N.
+
+
 config TOUCHSCREEN_SYNAPTICS_DSX_CTRL_ACCESS_BLK
 	tristate "Synaptics I2C touchscreen control access block"
 	depends on TOUCHSCREEN_SYNAPTICS_DSX_I2C
