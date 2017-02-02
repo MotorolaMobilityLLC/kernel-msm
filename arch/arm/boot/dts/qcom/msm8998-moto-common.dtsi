@@ -783,6 +783,10 @@
 	regulator-always-on;
 };
 
+&pm8998_l28 {
+	regulator-always-on;
+};
+
 &wcd9xxx_intc {
 	status = "disabled";
 	compatible = "qcom,wcd9xxx-irq";
