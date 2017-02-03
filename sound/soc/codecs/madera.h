@@ -82,7 +82,7 @@
 #define MADERA_DSP_CLK_73MHZ		3
 #define MADERA_DSP_CLK_147MHZ		4
 
-#define MADERA_MAX_DAI			11
+#define MADERA_MAX_DAI			17
 #define MADERA_MAX_ADSP			7
 
 #define MADERA_MAX_AIF_SOURCES		32
@@ -95,10 +95,17 @@
 struct madera;
 struct wm_adsp;
 struct madera_jd_state;
-
+/* Voice trigger event codes */
+enum {
+	MADERA_TRIGGER_VOICE,
+	MADERA_TRIGGER_TEXT,
+	MADERA_TRIGGER_PANIC
+};
 struct madera_voice_trigger_info {
 	/** Which core triggered, 1-based (1 = DSP1, ...) */
 	int core_num;
+	int code;
+	u16 err_msg[4];
 };
 
 struct madera_dai_priv {
