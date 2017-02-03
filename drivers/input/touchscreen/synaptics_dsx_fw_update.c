@@ -68,6 +68,7 @@ enum flash_command {
 #define MIN_SLEEP_TIME_US 500
 #define MAX_SLEEP_TIME_US 1000
 
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
 static ssize_t fwu_sysfs_show_image(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
 		char *buf, loff_t pos, size_t count);
@@ -76,9 +77,6 @@ static ssize_t fwu_sysfs_store_image(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
 		char *buf, loff_t pos, size_t count);
 
-static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count);
-
 static ssize_t fwu_sysfs_write_config_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
@@ -86,9 +84,6 @@ static ssize_t fwu_sysfs_read_config_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
 static ssize_t fwu_sysfs_config_area_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count);
-
-static ssize_t fwu_sysfs_force_reflash_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
 static ssize_t fwu_sysfs_image_size_store(struct device *dev,
@@ -111,6 +106,13 @@ static ssize_t fwu_sysfs_bl_config_block_count_show(struct device *dev,
 
 static ssize_t fwu_sysfs_disp_config_block_count_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
+#endif
+
+static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t fwu_sysfs_force_reflash_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
 
 static int fwu_wait_for_idle(int timeout_ms);
 
@@ -330,6 +332,7 @@ struct synaptics_rmi4_fwu_handle {
 	struct wake_lock flash_wake_lock;
 };
 
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
 static struct bin_attribute dev_attr_data = {
 	.attr = {
 		.name = "data",
@@ -339,11 +342,10 @@ static struct bin_attribute dev_attr_data = {
 	.read = fwu_sysfs_show_image,
 	.write = fwu_sysfs_store_image,
 };
+#endif
 
 static struct device_attribute attrs[] = {
-	__ATTR(doreflash, S_IWUSR | S_IWGRP,
-			synaptics_rmi4_show_error,
-			fwu_sysfs_do_reflash_store),
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
 	__ATTR(writeconfig, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_write_config_store),
@@ -359,9 +361,6 @@ static struct device_attribute attrs[] = {
 	__ATTR(blocksize, S_IRUSR | S_IRGRP,
 			fwu_sysfs_block_size_show,
 			synaptics_rmi4_store_error),
-	__ATTR(forcereflash, S_IWUSR | S_IWGRP,
-			synaptics_rmi4_show_error,
-			fwu_sysfs_force_reflash_store),
 	__ATTR(fwblockcount, S_IRUSR | S_IRGRP,
 			fwu_sysfs_firmware_block_count_show,
 			synaptics_rmi4_store_error),
@@ -377,6 +376,13 @@ static struct device_attribute attrs[] = {
 	__ATTR(dispconfigblockcount, S_IRUSR | S_IRGRP,
 			fwu_sysfs_disp_config_block_count_show,
 			synaptics_rmi4_store_error),
+#endif
+	__ATTR(doreflash, S_IWUSR | S_IWGRP,
+			synaptics_rmi4_show_error,
+			fwu_sysfs_do_reflash_store),
+	__ATTR(forcereflash, S_IWUSR | S_IWGRP,
+			synaptics_rmi4_show_error,
+			fwu_sysfs_force_reflash_store),
 };
 
 static struct synaptics_rmi4_fwu_handle *fwu;
@@ -1337,6 +1343,7 @@ exit:
 	return retval;
 }
 
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
 static int fwu_do_write_config(void)
 {
 	int retval;
@@ -1558,6 +1565,7 @@ exit:
 				&fwu->f01_fd.cmd_base_addr);
 	return retval;
 }
+#endif
 
 int synaptics_fw_updater(unsigned char *fw_data)
 {
@@ -1578,6 +1586,7 @@ int synaptics_fw_updater(unsigned char *fw_data)
 }
 EXPORT_SYMBOL(synaptics_fw_updater);
 
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
 static ssize_t fwu_sysfs_show_image(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
 		char *buf, loff_t pos, size_t count)
@@ -1608,6 +1617,7 @@ static ssize_t fwu_sysfs_store_image(struct file *data_file,
 
 	return count;
 }
+#endif
 
 static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -1663,6 +1673,23 @@ exit:
 	return retval;
 }
 
+static ssize_t fwu_sysfs_force_reflash_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input;
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	if (input != 1)
+		return -EINVAL;
+
+	force_reflash = true;
+
+	return count;
+}
+
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
 static ssize_t fwu_sysfs_write_config_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -1761,22 +1788,6 @@ static ssize_t fwu_sysfs_image_size_store(struct device *dev,
 	return count;
 }
 
-static ssize_t fwu_sysfs_force_reflash_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned int input;
-
-	if (sscanf(buf, "%u", &input) != 1)
-		return -EINVAL;
-
-	if (input != 1)
-		return -EINVAL;
-
-	force_reflash = true;
-
-	return count;
-}
-
 static ssize_t fwu_sysfs_block_size_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1812,6 +1823,7 @@ static ssize_t fwu_sysfs_disp_config_block_count_show(struct device *dev,
 {
 	return scnprintf(buf, PAGE_SIZE, "%u\n", fwu->disp_config_block_count);
 }
+#endif
 
 static void synaptics_rmi4_fwu_attn(struct synaptics_rmi4_data *rmi4_data,
 		unsigned char intr_mask)
@@ -1890,6 +1902,7 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 				WAKE_LOCK_SUSPEND, "synaptics_fw_flash");
 	fwu->initialized = true;
 
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
 	retval = sysfs_create_bin_file(&rmi4_data->i2c_client->dev.kobj,
 			&dev_attr_data);
 	if (retval < 0) {
@@ -1898,6 +1911,7 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 				__func__);
 		goto exit_free_mem;
 	}
+#endif
 
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		retval = sysfs_create_file(&rmi4_data->i2c_client->dev.kobj,
@@ -1918,8 +1932,9 @@ for (attr_count--; attr_count >= 0; attr_count--) {
 	sysfs_remove_file(&rmi4_data->i2c_client->dev.kobj,
 			&attrs[attr_count].attr);
 }
-
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
 sysfs_remove_bin_file(&rmi4_data->i2c_client->dev.kobj, &dev_attr_data);
+#endif
 
 exit_free_mem:
 	kfree(fwu->fn_ptr);
@@ -1935,7 +1950,9 @@ static void synaptics_rmi4_fwu_remove(struct synaptics_rmi4_data *rmi4_data)
 {
 	unsigned char attr_count;
 
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_EXTRA_SYSFS_MMI
 	sysfs_remove_bin_file(&rmi4_data->i2c_client->dev.kobj, &dev_attr_data);
+#endif
 
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		sysfs_remove_file(&rmi4_data->i2c_client->dev.kobj,
