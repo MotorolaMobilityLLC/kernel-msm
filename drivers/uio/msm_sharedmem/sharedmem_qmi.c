@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, 2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -51,6 +51,7 @@ static struct dentry *dir_ent;
 
 static u32 rfsa_count;
 static u32 rmts_count;
+static struct mutex dbg_buf_lock;      /* mutex for debug_buffer */
 
 static DECLARE_RWSEM(sharedmem_list_lock); /* declare list lock semaphore */
 
@@ -276,21 +277,29 @@ static u32 fill_debug_info(char *buffer, u32 buffer_size)
 static int debug_open(struct inode *inode, struct file *file)
 {
 	u32 buffer_size;
-	if (debug_buffer != NULL)
+	mutex_lock(&dbg_buf_lock);
+	if (debug_buffer != NULL) {
+		mutex_unlock(&dbg_buf_lock);
 		return -EBUSY;
+	}
 	buffer_size = DEBUG_BUF_SIZE;
 	debug_buffer = kzalloc(buffer_size, GFP_KERNEL);
-	if (debug_buffer == NULL)
+	if (debug_buffer == NULL) {
+		mutex_unlock(&dbg_buf_lock);
 		return -ENOMEM;
+	}
 	debug_data_size = fill_debug_info(debug_buffer, buffer_size);
+	mutex_unlock(&dbg_buf_lock);
 	return 0;
 }
 
 static int debug_close(struct inode *inode, struct file *file)
 {
+	mutex_lock(&dbg_buf_lock);
 	kfree(debug_buffer);
 	debug_buffer = NULL;
 	debug_data_size = 0;
+	mutex_unlock(&dbg_buf_lock);
 	return 0;
 }
 
@@ -321,6 +330,7 @@ static void debugfs_init(void)
 {
 	struct dentry *f_ent;
 
+	mutex_init(&dbg_buf_lock);
 	dir_ent = debugfs_create_dir("rmt_storage", NULL);
 	if (IS_ERR(dir_ent)) {
 		pr_err("Failed to create debug_fs directory\n");
@@ -349,6 +359,7 @@ static void debugfs_init(void)
 static void debugfs_exit(void)
 {
 	debugfs_remove_recursive(dir_ent);
+	mutex_destroy(&dbg_buf_lock);
 }
 
 static void sharedmem_qmi_svc_recv_msg(struct work_struct *work)
