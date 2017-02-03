@@ -187,14 +187,16 @@ static const struct snd_soc_dapm_route mods_codec_dapm_routes[] = {
 static int mods_codec_shim_probe(struct snd_soc_codec *codec)
 {
 	int ret;
+	struct snd_soc_dapm_context *dapm;
 
 	mutex_lock(&mods_shim_lock);
 	priv_codec = codec;
-	snd_soc_dapm_new_controls(&codec->dapm, mods_dai_dapm_widgets,
+	dapm = snd_soc_codec_get_dapm(codec);
+	snd_soc_dapm_new_controls(dapm, mods_dai_dapm_widgets,
 			ARRAY_SIZE(mods_dai_dapm_widgets));
-	snd_soc_dapm_add_routes(&codec->dapm, mods_codec_dapm_routes,
+	snd_soc_dapm_add_routes(dapm, mods_codec_dapm_routes,
 			ARRAY_SIZE(mods_codec_dapm_routes));
-	snd_soc_dapm_sync(&codec->dapm);
+	snd_soc_dapm_sync(dapm);
 	if (mods_codec_dev) {
 		snd_soc_codec_set_drvdata(priv_codec,
 					mods_codec_dev->priv_data);
