@@ -686,7 +686,7 @@ void buf_sync(struct super_block *sb)
 	bp = p_fs->buf_cache_lru_list.next;
 	while (bp != &p_fs->buf_cache_lru_list) {
 		if ((bp->drv == p_fs->drv) && (bp->flag & DIRTYBIT)) {
-			sync_dirty_buffer(bp->buf_bh);
+			bdev_sync_dirty_buffer(bp->buf_bh, sb, 1);
 			bp->flag &= ~(DIRTYBIT);
 		}
 		bp = bp->next;
