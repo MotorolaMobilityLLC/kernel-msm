@@ -329,6 +329,7 @@ struct mmi_params {
 	struct pinctrl		*smb_pinctrl;
 	struct wakeup_source	smblib_mmi_hb_wake_source;
 	bool			apsd_done;
+	int			charger_rate;
 };
 
 struct smb_charger {
@@ -642,6 +643,7 @@ int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
 				const union power_supply_propval *val);
 void mmi_init(struct smb_charger *chg);
 void mmi_deinit(struct smb_charger *chg);
+void mmi_chrg_rate_check(struct smb_charger *chip);
 
 #define HEARTBEAT_EB_MS 1000
 extern struct smb_charger *the_chip;
