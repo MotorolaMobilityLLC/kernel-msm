@@ -242,12 +242,12 @@ static const struct apsd_result const smblib_apsd_results[] = {
 	[HVDCP2] = {
 		.name	= "HVDCP2",
 		.bit	= DCP_CHARGER_BIT | QC_2P0_BIT,
-		.pst	= POWER_SUPPLY_TYPE_USB_HVDCP
+		.pst	= POWER_SUPPLY_TYPE_USB_DCP
 	},
 	[HVDCP3] = {
 		.name	= "HVDCP3",
 		.bit	= DCP_CHARGER_BIT | QC_3P0_BIT,
-		.pst	= POWER_SUPPLY_TYPE_USB_HVDCP_3,
+		.pst	= POWER_SUPPLY_TYPE_USB_DCP,
 	},
 };
 
@@ -569,6 +569,9 @@ static void smblib_rerun_apsd(struct smb_charger *chg)
 static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 {
 	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
+
+	if (!strcmp(apsd_result->name, "HVDCP3"))
+	    chg->mmi.hvdcp3_con = true;
 
 	/* if PD is active, APSD is disabled so won't have a valid result */
 	if (chg->pd_active) {
@@ -5671,7 +5674,8 @@ void mmi_chrg_rate_check(struct smb_charger *chip)
 	rc = smblib_get_prop_typec_mode(chip, &val);
 	if (rc < 0)
 		pr_err("Error getting CL CC rc = %d\n", rc);
-	else if (val.intval == POWER_SUPPLY_TYPEC_SOURCE_HIGH) {
+	else if (val.intval == POWER_SUPPLY_TYPEC_SOURCE_HIGH ||
+		 mmi->hvdcp3_con) {
 		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 		goto end_rate_check;
 	}
@@ -5855,7 +5859,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		} else {
 			switch (val.intval) {
 			case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
-				cl_cc = 500;
+				if (mmi->hvdcp3_con)
+					cl_cc = 3000;
+				else
+					cl_cc = 500;
 				break;
 			case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
 				cl_cc = 1500;
