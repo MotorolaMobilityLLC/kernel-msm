@@ -5840,6 +5840,79 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 	power_supply_put(eb_pwr_psy);
 }
 
+#define WEAK_CHRG_THRSH 450
+#define TURBO_CHRG_THRSH 2500
+void mmi_chrg_rate_check(struct smb_charger *chip)
+{
+	int rc;
+	union power_supply_propval val;
+	struct mmi_params *mmi = &chip->mmi;
+	int prev_chg_rate = mmi->charger_rate;
+	char *charge_rate[] = {
+		"None", "Normal", "Weak", "Turbo"
+	};
+
+	rc = smblib_get_prop_usb_present(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting USB Present rc = %d\n", rc);
+		return;
+	} else if (!val.intval) {
+		if (is_usbeb_present(chip)) {
+			 if (mmi->cl_ebsrc >= TURBO_CHRG_THRSH)
+				 mmi->charger_rate =
+					 POWER_SUPPLY_CHARGE_RATE_TURBO;
+			 else
+				 mmi->charger_rate =
+					 POWER_SUPPLY_CHARGE_RATE_NORMAL;
+		} else if (is_wls_present(chip))
+			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
+		else
+			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
+
+		goto end_rate_check;
+	}
+
+	if (mmi->charger_rate == POWER_SUPPLY_CHARGE_RATE_TURBO)
+		goto end_rate_check;
+
+	rc = smblib_get_prop_pd_current_max(chip, &val);
+	if (rc < 0)
+		pr_err("Error getting CL PD rc = %d\n", rc);
+	else if ((val.intval / 1000) >= TURBO_CHRG_THRSH) {
+		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
+		goto end_rate_check;
+	}
+
+	rc = smblib_get_prop_typec_mode(chip, &val);
+	if (rc < 0)
+		pr_err("Error getting CL CC rc = %d\n", rc);
+	else if (val.intval == POWER_SUPPLY_TYPEC_SOURCE_HIGH) {
+		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
+		goto end_rate_check;
+	}
+
+	rc = smblib_get_prop_input_current_limited(chip, &val);
+	if (rc < 0) {
+		pr_err("Error getting AICL Limited rc = %d\n", rc);
+	} else if (val.intval) {
+		rc = smblib_get_prop_input_current_settled(chip, &val);
+		if (rc < 0) {
+			pr_err("Error getting AICL Settled rc = %d\n", rc);
+		} else if (val.intval < WEAK_CHRG_THRSH) {
+			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
+			goto end_rate_check;
+		}
+	}
+
+	mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
+
+end_rate_check:
+	if (prev_chg_rate != mmi->charger_rate)
+		pr_err("%s Charger Detected\n",
+		       charge_rate[mmi->charger_rate]);
+
+}
+
 #define CHARGER_DETECTION_DONE 7
 #define SMBCHG_HEARTBEAT_INTERVAL_NS	70000000000
 #define HEARTBEAT_DELAY_MS 60000
@@ -6020,6 +6093,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			cl_usb = 1500;
 		else if (cl_usb <= 0)
 			cl_usb = 500;
+
+		if (cl_usb >= TURBO_CHRG_THRSH)
+			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 	}
 
 
@@ -7093,6 +7169,8 @@ void mmi_init(struct smb_charger *chg)
 		return;
 	the_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
+
+	chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 
 	INIT_DELAYED_WORK(&chg->mmi.warn_irq_work, warn_irq_w);
 	INIT_DELAYED_WORK(&chg->mmi.heartbeat_work, mmi_heartbeat_work);
