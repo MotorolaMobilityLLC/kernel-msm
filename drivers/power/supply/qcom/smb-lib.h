@@ -330,6 +330,7 @@ struct mmi_params {
 	struct wakeup_source	smblib_mmi_hb_wake_source;
 	bool			apsd_done;
 	int			charger_rate;
+	bool			hvdcp3_con;
 };
 
 struct smb_charger {
