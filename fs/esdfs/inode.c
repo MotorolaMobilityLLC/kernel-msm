@@ -368,6 +368,8 @@ static int esdfs_permission(struct inode *inode, int mask)
 static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 {
 	int err;
+	loff_t oldsize;
+	loff_t newsize;
 	struct dentry *lower_dentry;
 	struct inode *inode;
 	struct inode *lower_inode;
@@ -419,7 +421,25 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 		err = inode_newsize_ok(inode, ia->ia_size);
 		if (err)
 			goto out;
-		truncate_setsize(inode, ia->ia_size);
+		/*
+		 * i_size_write needs locking around it
+		 * otherwise i_size_read() may spin forever
+		 * (see include/linux/fs.h).
+		 * similar to function fsstack_copy_inode_size
+		 */
+		oldsize = i_size_read(inode);
+		newsize = ia->ia_size;
+
+#if BITS_PER_LONG == 32 && defined(CONFIG_SMP)
+		spin_lock(&inode->i_lock);
+#endif
+		i_size_write(inode, newsize);
+#if BITS_PER_LONG == 32 && defined(CONFIG_SMP)
+		spin_unlock(&inode->i_lock);
+#endif
+		if (newsize > oldsize)
+			pagecache_isize_extended(inode, oldsize, newsize);
+		truncate_pagecache(inode, newsize);
 		esdfs_truncate_share(inode->i_sb, lower_dentry->d_inode, ia->ia_size);
 	}
 
