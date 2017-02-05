@@ -132,6 +132,12 @@ static int stmvl53l1_open(struct inode *inode, struct file *file);
 static int stmvl53l1_release(struct inode *inode, struct file *file);
 static int ctrl_start(struct stmvl53l1_data *data);
 static int ctrl_stop(struct stmvl53l1_data *data);
+static int ctrl_suspend(struct stmvl53l1_data *data);
+
+#ifdef CONFIG_COMPAT
+static long stmvl53l1_compat_ioctl(struct file *file,
+				unsigned int cmd, unsigned long arg);
+#endif
 
 /**
  *  module interface struct
@@ -229,6 +235,9 @@ struct stmvl53l1_data *stmvl53l1_dev_table[STMVL53L1_CFG_MAX_DEV];
 static const struct file_operations stmvl53l1_ranging_fops = {
 	.owner =		THIS_MODULE,
 	.unlocked_ioctl =	stmvl53l1_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl	=	stmvl53l1_compat_ioctl,
+#endif
 	.open =			stmvl53l1_open,
 	.release =		stmvl53l1_release,
 	/* .flush =		stmvl53l0_flush, */
@@ -549,6 +558,51 @@ static int stmvl53l1_stop(struct stmvl53l1_data *data)
 	/* wake up all waiters */
 	/* they will receive -ENODEV error */
 	wake_up_data_waiters(data);
+
+	return rc;
+}
+
+static int activate_sar_mode(struct stmvl53l1_data *data)
+{
+	int rc = VL53L1_ERROR_NONE;
+
+	if (data == NULL)
+		return -EFAULT;
+
+	if (data->enable_sensor == 0 &&
+		!data->is_calibrating &&
+		data->sar_mode == 1) {
+		data->preset_mode = VL53L1_PRESETMODE_AUTONOMOUS;
+		rc = stmvl53l1_start(data);
+		if (rc == VL53L1_ERROR_NONE)
+			vl53l1_info("sensor in sar mode!\n");
+		else
+			vl53l1_errmsg("fail to active sar err %d\n", rc);
+	} else
+		vl53l1_info("skip sar activation\n");
+
+	return rc;
+}
+
+static int deactivate_sar_mode(struct stmvl53l1_data *data)
+{
+	int rc = VL53L1_ERROR_NONE;
+
+	if (data == NULL)
+		return -EFAULT;
+
+	if (data->enable_sensor == 1 &&
+		!data->is_calibrating &&
+		data->preset_mode == VL53L1_PRESETMODE_AUTONOMOUS) {
+		rc = stmvl53l1_stop(data);
+		if (rc == VL53L1_ERROR_NONE) {
+			vl53l1_info("sensor is out of sar mode!\n");
+			/* set preset mode back to default ranging mode */
+			data->preset_mode = VL53L1_PRESETMODE_RANGING;
+		} else
+			vl53l1_errmsg("fail to deactivate sar err %d\n", rc);
+	} else
+		vl53l1_info("sar is not actived, skip deactivation\n");
 
 	return rc;
 }
@@ -1212,8 +1266,7 @@ static ssize_t stmvl53l1_do_flush(struct device *dev,
 	mutex_lock(&data->work_mutex);
 
 	data->flush_todo_counter++;
-	if (data->enable_sensor == 0)
-		stmvl53l1_insert_flush_events_lock(data);
+	stmvl53l1_insert_flush_events_lock(data);
 
 	mutex_unlock(&data->work_mutex);
 
@@ -1386,9 +1439,6 @@ static ssize_t stmvl53l1_store_autonomous_config(struct device *dev,
 
 	mutex_lock(&data->work_mutex);
 
-	if (data->enable_sensor)
-		goto busy;
-
 	buf = parse_integer(buf, &pollingTimeInMs);
 	if (!buf)
 		goto invalid;
@@ -1430,11 +1480,6 @@ static ssize_t stmvl53l1_store_autonomous_config(struct device *dev,
 	mutex_unlock(&data->work_mutex);
 
 	return count;
-
-busy:
-	vl53l1_errmsg("can't change config while ranging");
-	rc = -EBUSY;
-	goto error;
 
 invalid:
 	vl53l1_errmsg("invalid syntax in %s", buf_ori);
@@ -1489,7 +1534,21 @@ static ssize_t stmvl53l1_store_enable_sar(struct device *dev,
 		rc = -EINVAL;
 	} else {
 		data->sar_mode = mode?1:0;
-		vl53l1_info("sar mode is set to %d\n", data->sar_mode);
+		vl53l1_dbgmsg("sar mode is set to %d\n", data->sar_mode);
+
+		if (data->sar_mode == 1) {
+			if (mode == 1) {
+				/* report far distance as initial value */
+				struct input_dev *input = data->input_dev_ps;
+
+				input_report_abs(input, ABS_HAT1X, 100);
+				input_report_abs(input, ABS_HAT1X, 101);
+				input_report_abs(input, ABS_HAT1X, 100);
+				input_sync(input);
+			}
+			activate_sar_mode(data);
+		} else
+			deactivate_sar_mode(data);
 	}
 
 	mutex_unlock(&data->work_mutex);
@@ -1511,17 +1570,17 @@ static DEVICE_ATTR(enable_sar, 0660/*S_IWUGO | S_IRUGO*/,
 				stmvl53l1_store_enable_sar);
 
 static ssize_t stmvl53l1_show_offset(struct device *dev,
-                struct device_attribute *attr, char *buf)
+				struct device_attribute *attr, char *buf)
 {
-    struct stmvl53l1_data *data = dev_get_drvdata(dev);
+	struct stmvl53l1_data *data = dev_get_drvdata(dev);
 
-    return scnprintf(buf, PAGE_SIZE, "%d,%d\n",
+	return scnprintf(buf, PAGE_SIZE, "%d,%d\n",
 			data->inner_offset, data->outer_offset);
 }
 
 static ssize_t stmvl53l1_store_offset(struct device *dev,
-                    struct device_attribute *attr,
-                    const char *buf, size_t count)
+					struct device_attribute *attr,
+					const char *buf, size_t count)
 {
 	struct stmvl53l1_data *data = dev_get_drvdata(dev);
 	VL53L1_CalibrationData_t cali_data;
@@ -1585,8 +1644,8 @@ finish:
  * @ingroup sysfs_attrib
  */
 static DEVICE_ATTR(offset, 0660/*S_IWUGO | S_IRUGO*/,
-                stmvl53l1_show_offset,
-                stmvl53l1_store_offset);
+				stmvl53l1_show_offset,
+				stmvl53l1_store_offset);
 
 static struct attribute *stmvl53l1_attributes[] = {
 	&dev_attr_enable_ps_sensor.attr,
@@ -1733,6 +1792,33 @@ static int ctrl_stop(struct stmvl53l1_data *data)
 	int rc;
 
 	mutex_lock(&data->work_mutex);
+	if (data->enable_sensor) {
+		rc = _ctrl_stop(data);
+
+		if (data->preset_mode != VL53L1_PRESETMODE_AUTONOMOUS &&
+				data->sar_mode == 1) {
+			vl53l1_info("restore sar mode\n");
+			activate_sar_mode(data);
+		}
+	} else
+		rc = -EBUSY;
+	mutex_unlock(&data->work_mutex);
+
+	return rc;
+}
+
+/**
+ * get work lock and suspend sensor without checking sar mode
+ *
+ * @param data device
+ * @return 0 on success EBUSY if arleady off
+ */
+static int ctrl_suspend(struct stmvl53l1_data *data)
+{
+	int rc;
+
+	mutex_lock(&data->work_mutex);
+	vl53l1_info("enter ctrl_suspend\n");
 	if (data->enable_sensor)
 		rc = _ctrl_stop(data);
 	else
@@ -2375,6 +2461,11 @@ static int stmvl53l1_ioctl_handler(
 		rc = ctrl_stop(data);
 		break;
 
+	case VL53L1_IOCTL_SUSPEND:
+		vl53l1_dbgmsg("VL53L1_IOCTL_SUSPEND\n");
+		rc = ctrl_suspend(data);
+		break;
+
 	case VL53L1_IOCTL_GETDATAS:
 		/* vl53l1_dbgmsg("VL53L1_IOCTL_GETDATAS\n"); */
 		rc = ctrl_getdata(data, p);
@@ -3014,6 +3105,19 @@ int rc;
 	stmvl53l1_module_func_tbl.power_down(data->client_object);
 	vl53l1_dbgmsg("done\n");
 }
+
+#ifdef CONFIG_COMPAT
+static long stmvl53l1_compat_ioctl(struct file *file,
+		unsigned int cmd, unsigned long arg)
+{
+	int ret;
+	struct stmvl53l1_data *data =
+			container_of(file->private_data,
+			struct stmvl53l1_data, miscdev);
+	ret = stmvl53l1_ioctl_handler(data, cmd, arg, compat_ptr(arg));
+	return ret;
+}
+#endif
 
 static long stmvl53l1_ioctl(struct file *file,
 		unsigned int cmd, unsigned long arg){
