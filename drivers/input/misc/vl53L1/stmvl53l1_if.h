@@ -564,5 +564,34 @@ int smtvl53l1_stop(int fd){
 #define VL53L1_IOCTL_AUTONOMOUS_CONFIG\
 	_IOWR('p', 0x14, struct stmvl53l1_autonomous_config_t)
 
+/**
+ * suspend ranging (no argument)
+
+ * @note  sysfs and ioctl control are assumed mutual exclusive use
+ * control from ioctl execute action with no consideration of sysfs path.
+ *
+ * @return
+ * @li 0 on success
+ * @li -EBUSY if it was already
+ * @li other specific error code shall be >0
+ *
+ * c example userland :
+ @code
+int smtvl53l1_stop(int fd){
+	int rc;
+	rc= ioctl(fd, VL53L1_IOCTL_SUSPEND,NULL);
+	if( rc ){
+		if( errno == EBUSY ){
+			ioctl_warn("already suspended");
+			return errno;
+		}
+		ioctl_error("%d %s", rc,strerror(errno));
+	}
+	return rc;
+}
+@endcode
+ */
+#define VL53L1_IOCTL_SUSPEND		   _IO('p', 0x15)
+
 /** @} */ /* ioctl group */
 #endif /* STMVL53L1_IF_H */
