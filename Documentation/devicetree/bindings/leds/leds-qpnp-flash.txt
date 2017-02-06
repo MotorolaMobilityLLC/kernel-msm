@@ -16,7 +16,7 @@ Optional properties:
 			  400 and 500 in mV.
 - qcom,startup-dly	: delay before flashing after flash executed.
 			  Values should 10, 32, 64, and 128 in us.
-- qcom,clamp-curr	: current to clamp at when voltage droop happens.
+- qcom,clamp-current	: current to clamp at when voltage droop happens.
 			  Values are in integer from 0 to 1000 inclusive,
 			  indicating 0 to 1000 mA.
 - qcom,self-check-enabled : boolean type. self fault check enablement
@@ -128,7 +128,7 @@ Example:
 		label = "flash";
 		qcom,headroom = <500>;
 		qcom,startup-dly = <128>;
-		qcom,clamp-curr = <200>;
+		qcom,clamp-current = <200>;
 		qcom,pmic-charger-support;
 		qcom,self-check-enabled;
 		qcom,thermal-derate-enabled;
