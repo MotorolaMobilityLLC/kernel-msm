@@ -540,7 +540,7 @@
 			label = "flash";
 			qcom,headroom = <500>;
 			qcom,startup-dly = <128>;
-			qcom,clamp-curr = <200>;
+			qcom,clamp-current = <200>;
 			qcom,pmic-charger-support;
 			qcom,self-check-enabled;
 			qcom,thermal-derate-enabled;
