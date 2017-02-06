@@ -1131,6 +1131,10 @@
 
 		memory-region = <&ramoops_mem>;
 	};
+
+	mods_v4l2_hal {
+		compatible = "mmi,mods-v4l2_hal";
+	};
 };
 
 /* Direct Copy of I2C9 from msm8998-blsp.dtsi */
