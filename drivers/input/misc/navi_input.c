@@ -20,7 +20,16 @@ enum {
 #define	DISABLE		0
 #define	ENABLE		1
 
+static struct task_struct *nav_kthread;
+static DECLARE_WAIT_QUEUE_HEAD(nav_input_wait);
+static unsigned int nav_input_sig;
+static DEFINE_MUTEX(driver_mode_lock);
+struct navi_cmd_struct {
+	char cmd;
+	struct list_head list;
+};
 
+struct navi_cmd_struct cmd_list;
 
 /*****************************************************************
 *                                                                *
@@ -240,10 +249,15 @@ unsigned int prev_keycode = 0;
 ****************************************************************/
 
 
-#define NAVI_WQ_SIZE  3  /*zq add for keycodelost 20170118*/
-#define PROPERTY_NAVIGATION_ENABLE_DEFAULT  true
 
-int navi_wq_index = 0; /*zq add for keycodelost 20170118*/
+
+
+
+
+
+
+
+#define PROPERTY_NAVIGATION_ENABLE_DEFAULT  true
 
 struct navi_struct {
     char cmd;
@@ -263,7 +277,7 @@ enum navi_event {
 };
 
 static struct timer_list long_touch_timer;
-struct navi_struct navi_work_queue[NAVI_WQ_SIZE];
+
 static bool g_KeyEventRaised = true;
 static unsigned long g_DoubleClickJiffies;
 
@@ -274,10 +288,8 @@ void init_event_enable(struct etspi_data *etspi)
 	set_bit(EV_KEY, etspi->input_dev->evbit);
 	set_bit(EV_SYN, etspi->input_dev->evbit);
 #if TRANSLATED_COMMAND
-#if ENABLE_FINGER_DOWN_UP
 	set_bit(KEYEVENT_ON, etspi->input_dev->keybit);
 	set_bit(KEYEVENT_OFF, etspi->input_dev->keybit);
-#endif
 	set_bit(KEYEVENT_CLICK, etspi->input_dev->keybit);
 	set_bit(KEYEVENT_DOUBLECLICK, etspi->input_dev->keybit);
 	set_bit(KEYEVENT_LONGTOUCH, etspi->input_dev->keybit);
@@ -524,7 +536,7 @@ static ssize_t navigation_event_func(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct etspi_data *etspi = dev_get_drvdata(dev);
-	bool  return_value;
+	struct navi_cmd_struct *tempcmd;
 	DEBUG_PRINT("Egis navigation driver, %s echo :'%d'\n", __func__, *buf);
 
 	if (etspi) {
@@ -537,19 +549,18 @@ static ssize_t navigation_event_func(struct device *dev,
 
 	if (etspi->input_dev == NULL)
 		pr_err("Egis navigation driver, etspi->input_dev is NULL\n");
-	/* zq add for keycodelost 20170118 8 */
-	do {
-		navi_work_queue[navi_wq_index].cmd = *buf;
-		navi_work_queue[navi_wq_index].etspi = etspi;
-		return_value = schedule_work(&(navi_work_queue[navi_wq_index].workq));
-		if (return_value == 0)
-			pr_err("Egis , schedule  failed---- navi_wq_index = %d \n", navi_wq_index);
-		else
-			pr_err("Egis navi_wq_index = %d \n", navi_wq_index);
-		navi_wq_index++;
-		if (navi_wq_index >= NAVI_WQ_SIZE)
-			navi_wq_index = 0;
-	} while (return_value == false);
+	tempcmd = kmalloc(sizeof(*tempcmd), GFP_KERNEL);
+	if (tempcmd != NULL) {
+		mutex_lock(&driver_mode_lock);
+		tempcmd->cmd = *buf;
+		list_add_tail(&tempcmd->list, &cmd_list.list);
+		nav_input_sig = 1;
+		mutex_unlock(&driver_mode_lock);
+		wake_up_interruptible(&nav_input_wait);
+	} else {
+		pr_err("navigation_event_func kmalloc failed\n");
+
+	}
 	return count;
 }
 static DEVICE_ATTR(navigation_event, S_IWUSR, NULL, navigation_event_func);
@@ -598,11 +609,39 @@ static const struct attribute_group attribute_group = {
 
 
 /*-------------------------------------------------------------------------*/
+static int nav_input_thread(void *et_spi)
+{
+	struct etspi_data *etspi = et_spi;
+	struct navi_cmd_struct *tempcmd, *acmd;
+
+	set_user_nice(current, -20);
+	DEBUG_PRINT("nav_input_thread enter\n");
+
+	while (1) {
+		wait_event_interruptible(nav_input_wait,
+			nav_input_sig || kthread_should_stop());
+		mutex_lock(&driver_mode_lock);
+		list_for_each_entry_safe(acmd, tempcmd, &cmd_list.list, list) {
+			translated_command_converter(acmd->cmd, etspi);
+			list_del(&acmd->list);
+			kfree(acmd);
+		}
+		nav_input_sig = 0;
+		mutex_unlock(&driver_mode_lock);
+		if (kthread_should_stop())
+			break;
+	}
+
+
+	DEBUG_PRINT("nav_input_thread exit\n");
+
+	return 0;
+}
 
 
 void uinput_egis_init(struct etspi_data *etspi)
 {
-	int error = 0, i;
+	int error = 0;
 
 	DEBUG_PRINT("Egis navigation driver, %s\n", __func__);
 
@@ -614,11 +653,13 @@ void uinput_egis_init(struct etspi_data *etspi)
 		return;
 	}
 
-	/* zq add for keycodelost 20170118 */
-	for (i = 0; i < NAVI_WQ_SIZE; i++) {
-		INIT_WORK(&(navi_work_queue[i].workq), navi_operator);
+
+	INIT_LIST_HEAD(&cmd_list.list);
+	nav_input_sig = 0;
+	if (!nav_kthread) {
+		nav_kthread = kthread_run(nav_input_thread,
+			(void *)etspi, "nav_thread");
 	}
-	/*  zq add for keycodelost 20170118 */
 #if ENABLE_TRANSLATED_LONG_TOUCH
 	init_timer(&long_touch_timer);
 	long_touch_timer.function = long_touch_handler;
@@ -640,14 +681,8 @@ void uinput_egis_init(struct etspi_data *etspi)
 
 void uinput_egis_destroy(struct etspi_data *etspi)
 {
-	int i = 0;
 	DEBUG_PRINT("Egis navigation driver, %s\n", __func__);
 
-	/* zq add for keycodelost 20170118 */
-	for (i = 0; i < NAVI_WQ_SIZE; i++) {
-		destroy_workqueue((void *) &(navi_work_queue[i].workq));
-	}
-	/* end zq add for keycodelost 20170118*/
 
 #if ENABLE_TRANSLATED_LONG_TOUCH
 	del_timer(&long_touch_timer);
@@ -655,6 +690,10 @@ void uinput_egis_destroy(struct etspi_data *etspi)
 
 	if (etspi->input_dev != NULL)
 		input_free_device(etspi->input_dev);
+	if (nav_kthread)
+		kthread_stop(nav_kthread);
+
+	nav_kthread = NULL;
 }
 
 
