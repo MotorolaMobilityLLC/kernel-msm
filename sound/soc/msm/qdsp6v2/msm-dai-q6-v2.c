@@ -114,6 +114,12 @@ struct msm_dai_q6_spdif_dai_data {
 	struct afe_spdif_port_config spdif_port;
 };
 
+struct msm_dai_mi2s_pinctrl_info {
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *disable;
+	struct pinctrl_state *active;
+};
+
 struct msm_dai_q6_mi2s_dai_config {
 	u16 pdata_mi2s_lines;
 	struct msm_dai_q6_dai_data mi2s_dai_data;
@@ -122,6 +128,7 @@ struct msm_dai_q6_mi2s_dai_config {
 struct msm_dai_q6_mi2s_dai_data {
 	struct msm_dai_q6_mi2s_dai_config tx_dai;
 	struct msm_dai_q6_mi2s_dai_config rx_dai;
+	struct msm_dai_mi2s_pinctrl_info pinctrl_info;
 };
 
 struct msm_dai_q6_auxpcm_dai_data {
@@ -3572,8 +3579,17 @@ static int msm_dai_q6_dai_mi2s_remove(struct snd_soc_dai *dai)
 static int msm_dai_q6_mi2s_startup(struct snd_pcm_substream *substream,
 				   struct snd_soc_dai *dai)
 {
+	int rc;
+	struct msm_dai_q6_mi2s_dai_data *mi2s_dai_data =
+		dev_get_drvdata(dai->dev);
 
-	return 0;
+	rc = pinctrl_select_state(mi2s_dai_data->pinctrl_info.pinctrl,
+					mi2s_dai_data->pinctrl_info.active);
+	if (rc)
+		dev_err(dai->dev, "%s:setting pin state to active failed %d\n",
+			__func__, rc);
+
+	return rc;
 }
 
 
@@ -3871,13 +3887,31 @@ error_invalid_data:
 
 static int msm_dai_q6_mi2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
+	int rx_port_started;
+	int tx_port_started;
 	struct msm_dai_q6_mi2s_dai_data *mi2s_dai_data =
-	dev_get_drvdata(dai->dev);
+		dev_get_drvdata(dai->dev);
 
-	if (test_bit(STATUS_PORT_STARTED,
-	    mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) ||
-	    test_bit(STATUS_PORT_STARTED,
-	    mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask)) {
+	rx_port_started = test_bit(STATUS_PORT_STARTED,
+	    mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask);
+	tx_port_started = test_bit(STATUS_PORT_STARTED,
+	    mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask);
+	if (rx_port_started || tx_port_started) {
+		/* if port is already started but fmt is not changed don't return failure */
+		if (rx_port_started) {
+			if (((fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBS_CFS
+				&& mi2s_dai_data->rx_dai.mi2s_dai_data.port_config.i2s.ws_src) ||
+				((fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBS_CFM
+				&& !mi2s_dai_data->rx_dai.mi2s_dai_data.port_config.i2s.ws_src))
+					return 0;
+		}
+		if (tx_port_started) {
+			if (((fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBS_CFS
+				&& mi2s_dai_data->tx_dai.mi2s_dai_data.port_config.i2s.ws_src) ||
+				((fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBS_CFM
+				&& !mi2s_dai_data->tx_dai.mi2s_dai_data.port_config.i2s.ws_src))
+					return 0;
+		}
 		dev_err(dai->dev, "%s: err chg i2s mode while dai running",
 			__func__);
 		return -EPERM;
@@ -3929,6 +3963,7 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 		 &mi2s_dai_data->tx_dai.mi2s_dai_data);
 	 u16 port_id = 0;
 	int rc = 0;
+	int port_started;
 
 	if (msm_mi2s_get_port_id(dai->id, substream->stream,
 				 &port_id) != 0) {
@@ -3947,6 +3982,20 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 	}
 	if (test_bit(STATUS_PORT_STARTED, dai_data->hwfree_status))
 		clear_bit(STATUS_PORT_STARTED, dai_data->hwfree_status);
+
+	port_started =
+			(test_bit(STATUS_PORT_STARTED,
+				mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) |
+			test_bit(STATUS_PORT_STARTED,
+				mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask));
+	if (!port_started) {
+		rc = pinctrl_select_state(mi2s_dai_data->pinctrl_info.pinctrl,
+						mi2s_dai_data->pinctrl_info.disable);
+		if (rc != 0) {
+			dev_err(dai->dev, "%s: setting pin state to disable failed %d\n",
+				__func__, rc);
+		}
+	}
 }
 
 static struct snd_soc_dai_ops msm_dai_q6_mi2s_ops = {
@@ -4026,23 +4075,19 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 		.playback = {
 			.stream_name = "Tertiary MI2S Playback",
 			.aif_name = "TERT_MI2S_RX",
-			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |
-				 SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 |
-				 SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |
-				 SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |
-				 SNDRV_PCM_RATE_192000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
+				 SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |
+				 SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000,
+			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 			.rate_min =     8000,
 			.rate_max =     192000,
 		},
 		.capture = {
 			.stream_name = "Tertiary MI2S Capture",
 			.aif_name = "TERT_MI2S_TX",
-			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |
-				 SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 |
-				 SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |
-				 SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |
-				 SNDRV_PCM_RATE_192000,
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
+				 SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |
+				 SNDRV_PCM_RATE_96000 | SNDRV_PCM_RATE_192000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE |
 				SNDRV_PCM_FMTBIT_S24_LE,
 			.rate_min =     8000,
@@ -4453,6 +4498,42 @@ static int msm_dai_q6_mi2s_platform_data_validation(
 		dai_driver->capture.channels_max = 0;
 	}
 
+	dai_data->pinctrl_info.pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (IS_ERR(dai_data->pinctrl_info.pinctrl)) {
+		dev_err(&pdev->dev, "%s: Unable to get pinctrl handle\n",
+			__func__);
+		rc = PTR_ERR(dai_data->pinctrl_info.pinctrl);
+		goto rtn;
+	}
+
+	dai_data->pinctrl_info.active = pinctrl_lookup_state(
+						dai_data->pinctrl_info.pinctrl,
+						"default");
+	if (IS_ERR(dai_data->pinctrl_info.active)) {
+		dev_err(&pdev->dev, "%s:could not get active pinstate\n",
+			__func__);
+		rc = PTR_ERR(dai_data->pinctrl_info.active);
+		goto rtn;
+	}
+
+	dai_data->pinctrl_info.disable = pinctrl_lookup_state(
+						dai_data->pinctrl_info.pinctrl,
+						"idle");
+	if (IS_ERR(dai_data->pinctrl_info.disable)) {
+		dev_err(&pdev->dev, "%s:could not get disable pinstate\n",
+			__func__);
+		rc = PTR_ERR(dai_data->pinctrl_info.disable);
+		goto rtn;
+	}
+
+	rc = pinctrl_select_state(dai_data->pinctrl_info.pinctrl,
+					dai_data->pinctrl_info.disable);
+	if (rc != 0) {
+		dev_err(&pdev->dev, "%s: select sleep disable failed %d\n",
+			__func__, rc);
+		goto rtn;
+	}
+
 	dev_dbg(&pdev->dev, "%s: playback sdline 0x%x capture sdline 0x%x\n",
 		__func__, dai_data->rx_dai.pdata_mi2s_lines,
 		dai_data->tx_dai.pdata_mi2s_lines);
@@ -4571,6 +4652,9 @@ rtn:
 
 static int msm_dai_q6_mi2s_dev_remove(struct platform_device *pdev)
 {
+	struct msm_dai_q6_mi2s_dai_data *dai_data = dev_get_drvdata(&pdev->dev);
+
+	devm_pinctrl_put(dai_data->pinctrl_info.pinctrl);
 	snd_soc_unregister_component(&pdev->dev);
 	return 0;
 }
