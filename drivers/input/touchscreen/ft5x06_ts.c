@@ -55,6 +55,9 @@
 static irqreturn_t ft5x06_ts_interrupt(int irq, void *data);
 #endif
 
+#include <linux/usb.h>
+#include <linux/power_supply.h>
+
 #define FT_DRIVER_VERSION	0x02
 
 #define FT_META_REGS		3
@@ -89,6 +92,7 @@ static irqreturn_t ft5x06_ts_interrupt(int irq, void *data);
 #define FT_REG_FW_SUB_MIN_VER	0xB3
 #define FT_REG_I2C_MODE		0xEB
 #define FT_REG_FW_LEN		0xB0
+#define FT_REG_CHG_STATE	0x8B
 
 /* i2c mode register value */
 #define FT_VAL_I2C_MODE		0xAA
@@ -259,6 +263,7 @@ static char *ts_info_buff;
 #define FT_FW_ID_LEN		2
 
 enum {
+	FT_MOD_CHARGER,
 	FT_MOD_MAX
 };
 
@@ -322,10 +327,15 @@ struct ft5x06_ts_data {
 	/* moto TP modifiers */
 	bool patching_enabled;
 	struct ft5x06_modifiers modifiers;
+	bool charger_detection_enabled;
+	struct work_struct ps_notify_work;
+	struct notifier_block ps_notif;
+	bool ps_is_present;
 };
 
 static int ft5x06_ts_start(struct device *dev);
 static int ft5x06_ts_stop(struct device *dev);
+static void ft5x06_resume_ps_chg_cm_state(struct ft5x06_ts_data *data);
 
 #if defined(CONFIG_FT_SECURE_TOUCH)
 static void ft5x06_secure_touch_init(struct ft5x06_ts_data *data)
@@ -1419,6 +1429,10 @@ static int ft5x06_ts_resume(struct device *dev)
 		data->suspended = false;
 		data->gesture_pdata->in_pocket = 0;
 	}
+
+	if (data->charger_detection_enabled)
+		ft5x06_resume_ps_chg_cm_state(data);
+
 	return 0;
 }
 
@@ -1516,6 +1530,150 @@ static void ft5x06_ts_late_resume(struct early_suspend *handler)
 	ft5x06_ts_resume(&data->client->dev);
 }
 #endif
+
+static int ft5x06_set_charger_state(struct ft5x06_ts_data *data,
+					bool enable)
+{
+	int retval;
+	struct device *dev = &data->client->dev;
+
+	/* disable IRQ to set CHARGER_STATE reg */
+	disable_irq(data->client->irq);
+	data->irq_enabled = false;
+	if (enable) {
+		retval = ft5x0x_write_reg(data->client,
+			FT_REG_CHG_STATE, 1);
+		if (retval < 0)
+			dev_err(dev, "enable chg state failed(%d)\n",
+				retval);
+		else
+			dev_info(dev, "set chg state\n");
+	} else {
+		retval = ft5x0x_write_reg(data->client,
+			FT_REG_CHG_STATE, 0);
+		if (retval < 0)
+			dev_err(dev, "enable chg state failed(%d)\n",
+				retval);
+		else
+			dev_info(dev, "unset chg state\n");
+	}
+	enable_irq(data->client->irq);
+	data->irq_enabled = true;
+
+	return (retval > 0) ? 0 : retval;
+}
+
+static int ps_get_state(struct ft5x06_ts_data *data,
+			struct power_supply *psy, bool *present)
+{
+	struct device *dev = &data->client->dev;
+	union power_supply_propval pval = {0};
+	int retval;
+
+	retval = psy->get_property(psy, POWER_SUPPLY_PROP_PRESENT, &pval);
+	if (retval) {
+		dev_err(dev, "%s psy get property failed\n", psy->name);
+		return retval;
+	}
+	*present = (pval.intval) ? true : false;
+	dev_dbg(dev, "%s is %s\n", psy->name,
+			(*present) ? "present" : "not present");
+	return 0;
+}
+
+static void ft5x06_update_ps_chg_cm_state(
+				struct ft5x06_ts_data *data, bool present)
+{
+	struct config_modifier *cm = NULL;
+
+	down(&data->modifiers.list_sema);
+	list_for_each_entry(cm, &data->modifiers.mod_head, link) {
+		if (cm->id == FT_MOD_CHARGER) {
+			cm->effective = present;
+			break;
+		}
+	}
+	up(&data->modifiers.list_sema);
+}
+
+static void ft5x06_resume_ps_chg_cm_state(struct ft5x06_ts_data *data)
+{
+	struct config_modifier *cm = NULL;
+	bool is_active = false;
+
+	down(&data->modifiers.list_sema);
+	list_for_each_entry(cm, &data->modifiers.mod_head, link) {
+		if (cm->id == FT_MOD_CHARGER) {
+			is_active = cm->effective;
+			break;
+		}
+	}
+	up(&data->modifiers.list_sema);
+
+	/* FT_REG_CHG_STATE bit is 0 when powerup
+	So only need set this bit when need to be set as 1
+	*/
+	if (is_active)
+		ft5x06_set_charger_state(data, true);
+}
+
+static void ps_notify_callback_work(struct work_struct *work)
+{
+	struct ft5x06_ts_data *ft5x06_data =
+		container_of(work, struct ft5x06_ts_data, ps_notify_work);
+	bool present = ft5x06_data->ps_is_present;
+	struct device *dev = &ft5x06_data->client->dev;
+	int retval;
+
+	/* enable IC if it in suspend state */
+	if (ft5x06_data->suspended) {
+		dev_dbg(dev, "charger resumes tp ic\n");
+		ft5x06_ts_resume(&ft5x06_data->client->dev);
+	}
+
+	retval = ft5x06_set_charger_state(ft5x06_data, present);
+	if (retval) {
+		dev_err(dev, "set charger state failed rc=%d\n", retval);
+		return;
+	}
+
+	ft5x06_update_ps_chg_cm_state(ft5x06_data, present);
+}
+
+static int ps_notify_callback(struct notifier_block *self,
+				 unsigned long event, void *data)
+{
+	struct ft5x06_ts_data *ft5x06_data =
+		container_of(self, struct ft5x06_ts_data, ps_notif);
+	struct power_supply *psy = data;
+	struct device *dev = NULL;
+	bool present;
+	int retval;
+
+	if ((event == PSY_EVENT_PROP_ADDED || event == PSY_EVENT_PROP_CHANGED)
+		&& psy && psy->get_property && psy->name &&
+		!strncmp(psy->name, "usb", sizeof("usb")) &&
+		ft5x06_data) {
+		dev = &ft5x06_data->client->dev;
+		dev_dbg(dev, "ps notification: event = %lu\n", event);
+		retval = ps_get_state(ft5x06_data, psy, &present);
+		if (retval) {
+			dev_err(dev, "psy get property failed\n");
+			return retval;
+		}
+
+		if (event == PSY_EVENT_PROP_CHANGED) {
+			if (ft5x06_data->ps_is_present == present) {
+				dev_info(dev, "ps present state not change\n");
+				return 0;
+			}
+		}
+		ft5x06_data->ps_is_present = present;
+		schedule_work(&ft5x06_data->ps_notify_work);
+	}
+
+	return 0;
+}
 
 static int ft5x06_auto_cal(struct i2c_client *client)
 {
@@ -2465,7 +2623,7 @@ static int ft5x06_get_dt_coords(struct device *dev, char *name,
 }
 
 /* ASCII names order MUST match enum */
-static const char const *ascii_names[] = {"na"};
+static const char const *ascii_names[] = {"charger", "na"};
 
 static int ft5x06_modifier_name2id(const char *name)
 {
@@ -2552,6 +2710,10 @@ static int ft5x06_dt_parse_modifiers(struct ft5x06_ts_data *data)
 
 		if (of_property_read_bool(np_mod, "enable-notification")) {
 			switch (id) {
+			case FT_MOD_CHARGER:
+				pr_notice("using charger detection\n");
+				data->charger_detection_enabled = true;
+				break;
 			default:
 				pr_notice("no notification found\n");
 				break;
@@ -3155,8 +3317,56 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 	data->early_suspend.resume = ft5x06_ts_late_resume;
 	register_early_suspend(&data->early_suspend);
 #endif
+
+	if (data->charger_detection_enabled) {
+		struct power_supply *psy = NULL;
+
+		INIT_WORK(&data->ps_notify_work, ps_notify_callback_work);
+		data->ps_notif.notifier_call = ps_notify_callback;
+		err = power_supply_reg_notifier(&data->ps_notif);
+		if (err) {
+			dev_err(&client->dev,
+				"Unable to register ps_notifier: %d\n", err);
+			goto free_fb_notifier;
+		}
+
+		/* if power supply supplier registered brfore TP
+		ps_notify_callback will not receive PSY_EVENT_PROP_ADDED
+		event, and will cause miss to set TP into charger state.
+		So check PS state in probe */
+		psy = power_supply_get_by_name("usb");
+		if (psy) {
+			retval = ps_get_state(data, psy, &data->ps_is_present);
+			if (retval) {
+				dev_err(&client->dev,
+					"psy get property failed rc=%d\n",
+					retval);
+				goto free_fb_notifier;
+			}
+
+			retval = ft5x06_set_charger_state(data,
+							data->ps_is_present);
+			if (retval) {
+				dev_err(&client->dev,
+					"set charger state failed rc=%d\n",
+					retval);
+				goto free_fb_notifier;
+			}
+
+			ft5x06_update_ps_chg_cm_state(data,
+						data->ps_is_present);
+		}
+	}
+
 	return 0;
 
+free_fb_notifier:
+#if defined(CONFIG_FB)
+	if (fb_unregister_client(&data->fb_notif))
+		dev_err(&client->dev, "Error occurred while unregistering fb_notifier.\n");
+#elif defined(CONFIG_HAS_EARLYSUSPEND)
+	unregister_early_suspend(&data->early_suspend);
+#endif
 free_secure_touch_sysfs:
 	for (attr_count--; attr_count >= 0; attr_count--) {
 		sysfs_remove_file(&data->input_dev->dev.kobj,
@@ -3272,6 +3482,10 @@ static int ft5x06_ts_remove(struct i2c_client *client)
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 	unregister_early_suspend(&data->early_suspend);
 #endif
+
+	if (data->charger_detection_enabled)
+		power_supply_unreg_notifier(&data->ps_notif);
+
 	free_irq(client->irq, data);
 
 	if (gpio_is_valid(data->pdata->reset_gpio))
