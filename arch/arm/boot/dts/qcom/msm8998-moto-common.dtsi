@@ -1135,6 +1135,11 @@
 	mods_v4l2_hal {
 		compatible = "mmi,mods-v4l2_hal";
 	};
+
+	mods_camera_ext {
+		compatible = "mmi,mods-camera-ext";
+		camera_ext_cdsi-supply = <&pm8998_l26>;
+	};
 };
 
 /* Direct Copy of I2C9 from msm8998-blsp.dtsi */
@@ -1321,6 +1326,10 @@
 	regulator-min-microvolt = <3312000>;
 	regulator-max-microvolt = <3312000>;
 	qcom,init-voltage = <3312000>;
+};
+
+&pm8998_l26 {
+	qcom,init-voltage = <1200000>;
 };
 
 &mdss_hdmi_pll {
