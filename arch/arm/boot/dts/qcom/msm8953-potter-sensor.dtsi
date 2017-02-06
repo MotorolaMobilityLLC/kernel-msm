@@ -160,6 +160,7 @@
 		status = "okay";
 		stml0xx: stml0xx@0 {
 			 compatible = "stm,stml0xx";
+			 stml0xx_fw_version = "stml05x";
 			 status = "okay";
 			 reg = <0>;
 			 spi-max-frequency = <8000000>;
