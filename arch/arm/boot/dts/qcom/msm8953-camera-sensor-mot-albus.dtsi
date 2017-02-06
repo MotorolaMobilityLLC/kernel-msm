@@ -339,6 +339,7 @@
 &spmi_bus {
 	qcom,pmi8950@3 {
 		qcom,leds@d300 {
+			qcom,clamp-current = <75>;
 			qcom,flash_0 {
 				qcom,max-current = <1000>;
 				qcom,duration = <400>;
