@@ -81,6 +81,7 @@ enum print_reason {
 #define HEARTBEAT_VOTER			"HEARTBEAT_VOTER"
 #define EB_VOTER			"EB_VOTER"
 #define WIRELESS_VOTER			"WIRELESS_VOTER"
+#define DEMO_VOTER			"DEMO_VOTER"
 
 enum smb_mode {
 	PARALLEL_MASTER = 0,
