@@ -5159,7 +5159,7 @@ static int get_eb_pwr_prop(struct smb_charger *chip,
 	eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
 	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
-	    !eb_pwr_psy->desc->set_property)
+	    !eb_pwr_psy->desc->get_property)
 		return -ENODEV;
 
 	rc = eb_pwr_psy->desc->get_property(eb_pwr_psy, prop, &ret);
@@ -5185,7 +5185,7 @@ static int get_eb_prop(struct smb_charger *chip,
 	eb_batt_psy =
 		power_supply_get_by_name((char *)chip->mmi.eb_batt_psy_name);
 	if (!eb_batt_psy || !eb_batt_psy->desc ||
-	    !eb_batt_psy->desc->set_property)
+	    !eb_batt_psy->desc->get_property)
 		return -ENODEV;
 
 	rc = eb_batt_psy->desc->get_property(eb_batt_psy, prop, &ret);
@@ -5786,6 +5786,9 @@ static int mmi_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 #define HEARTBEAT_EB_WAIT_MS 1000
 #define HYST_STEP_MV 50
 #define EB_SPLIT_MA 500
+#define DEMO_MODE_MAX_SOC 35
+#define DEMO_MODE_HYS_SOC 5
+#define DEMO_MODE_VOLTAGE 4000
 static void mmi_heartbeat_work(struct work_struct *work)
 {
 	struct smb_charger *chip = container_of(work,
@@ -6052,7 +6055,41 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		   (mmi->ebchg_state != EB_DISCONN)) {
 		mmi->pres_chrg_step = STEP_EB;
 	} else if (mmi->demo_mode) {
+		int usb_suspend = get_client_vote(chip->usb_suspend_votable,
+					      DEMO_VOTER);
 		mmi->pres_chrg_step = STEP_DEMO;
+		pr_warn("Battery in Demo Mode charging Limited\n");
+		if ((usb_suspend == 0) &&
+		    (batt_soc >= DEMO_MODE_MAX_SOC)) {
+			vote(chip->usb_suspend_votable, DEMO_VOTER, true, 0);
+			vote(chip->dc_suspend_votable, DEMO_VOTER, true, 0);
+			usb_suspend = true;
+		} else if (usb_suspend &&
+			   (batt_soc <=
+			    (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			if (chip->mmi.ebchg_state == EB_SINK) {
+				mmi_set_extbat_state(chip, EB_OFF, false);
+				mmi->cl_ebchg = 0;
+				mmi_set_extbat_in_cl(chip);
+			}
+			vote(chip->usb_suspend_votable, DEMO_VOTER, false, 0);
+			vote(chip->dc_suspend_votable, DEMO_VOTER, false, 0);
+			usb_suspend = false;
+		}
+
+		if (vbus_present &&
+		    ((eb_soc >= DEMO_MODE_MAX_SOC) ||
+		     (eb_able & EB_RCV_NEVER))) {
+			mmi_set_extbat_state(chip, EB_OFF, false);
+			mmi->cl_ebchg = 0;
+			mmi_set_extbat_in_cl(chip);
+		} else if (vbus_present && usb_suspend &&
+			   (eb_soc <=
+			    (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			mmi->cl_ebchg = cl_usb;
+			mmi_set_extbat_in_cl(chip);
+			mmi_set_extbat_state(chip, EB_SINK, false);
+		}
 	} else if ((mmi->pres_chrg_step == STEP_NONE) ||
 		   (mmi->pres_chrg_step == STEP_STOP)) {
 		if (zone->norm_mv && (batt_mv >= zone->norm_mv)) {
@@ -6166,6 +6203,11 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		target_fv = max_fv_mv;
 		target_fcc = -EINVAL;
 		target_usb = cl_usb;
+		break;
+	case STEP_DEMO:
+		target_fv = DEMO_MODE_VOLTAGE;
+		target_fcc = zone->fcc_max_ma;
+		target_usb = cl_usb - mmi->cl_ebchg;
 		break;
 	default:
 		break;
