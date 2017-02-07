@@ -141,6 +141,8 @@ static void power_supply_deferred_register_work(struct work_struct *work)
 	if (psy->dev.parent)
 		mutex_lock(&psy->dev.parent->mutex);
 
+	atomic_notifier_call_chain(&power_supply_notifier,
+				   PSY_EVENT_PROP_ADDED, psy);
 	power_supply_changed(psy);
 
 	if (psy->dev.parent)
@@ -940,6 +942,8 @@ EXPORT_SYMBOL_GPL(devm_power_supply_register_no_ws);
 void power_supply_unregister(struct power_supply *psy)
 {
 	WARN_ON(atomic_dec_return(&psy->use_cnt));
+	atomic_notifier_call_chain(&power_supply_notifier,
+				   PSY_EVENT_PROP_REMOVED, psy);
 	cancel_work_sync(&psy->changed_work);
 	cancel_delayed_work_sync(&psy->deferred_register_work);
 	sysfs_remove_link(&psy->dev.kobj, "powers");
