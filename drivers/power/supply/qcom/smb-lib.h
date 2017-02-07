@@ -320,6 +320,7 @@ struct mmi_params {
 	bool			apsd_done;
 	int			charger_rate;
 	bool			hvdcp3_con;
+	struct notifier_block	mmi_psy_notifier;
 };
 
 struct smb_charger {
@@ -548,6 +549,8 @@ int smblib_get_prop_dc_current_max(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_set_prop_dc_current_max(struct smb_charger *chg,
 				const union power_supply_propval *val);
+int smblib_get_prop_dc_voltage_now(struct smb_charger *chg,
+				union power_supply_propval *val);
 
 int smblib_get_prop_usb_present(struct smb_charger *chg,
 				union power_supply_propval *val);
