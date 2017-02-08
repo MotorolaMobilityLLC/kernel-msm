@@ -1126,6 +1126,16 @@
 			qcom,sensor-name = "back_temp";
 			qcom,scaling-factor = <1000>;
 		};
+		sensor_information33: qcom,sensor-information-33 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "pcm_therm";
+			qcom,scaling-factor = <1000>;
+		};
+		sensor_information34: qcom,sensor-information-34 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "chg_temp";
+			qcom,scaling-factor = <1000>;
+		};
 	};
 
 	wdog: qcom,wdt@17817000 {
@@ -1191,6 +1201,33 @@
 
 	wcd_us_euro_gpio: msm_cdc_pinctrl@75 {
 		status = "disabled";
+	};
+
+	rradc_skin_temp: skin-temp-sensor {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&pmi8998_rradc 2>;
+		io-channel-names = "sensor-channel";
+	};
+
+	rradc_chg_temp: chg-temp-sensor {
+		compatible = "generic-adc-thermal";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&pmi8998_rradc 8>;
+		io-channel-names = "sensor-channel";
+	};
+
+	thermal-zones {
+		pcm_therm {
+			polling-delay = <100>; /* milliseconds */
+			polling-delay-passive = <100>; /* milliseconds */
+			thermal-sensors = <&rradc_skin_temp>;
+		};
+		chg_temp {
+			polling-delay = <100>; /* milliseconds */
+			polling-delay-passive = <100>; /* milliseconds */
+			thermal-sensors = <&rradc_chg_temp>;
+		};
 	};
 };
 
