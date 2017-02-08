@@ -741,10 +741,8 @@
 	vdd-hba-supply = <&gdsc_ufs>;
 	vdd-hba-fixed-regulator;
 	vcc-supply = <&pm8998_l20>;
-	vccq-supply = <&pm8998_l26>;
 	vccq2-supply = <&pm8998_s4>;
 	vcc-max-microamp = <750000>;
-	vccq-max-microamp = <560000>;
 	vccq2-max-microamp = <750000>;
 	status = "ok";
 };
