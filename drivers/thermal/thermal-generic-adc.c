@@ -29,6 +29,9 @@ static int gadc_thermal_adc_to_temp(struct gadc_thermal_info *gti, int val)
 	int temp, adc_hi, adc_lo;
 	int i;
 
+	if ((!gti->lookup_table) || (gti->nlookup_table == 0))
+		return val;
+
 	for (i = 0; i < gti->nlookup_table; i++) {
 		if (val >= gti->lookup_table[2 * i + 1])
 			break;
@@ -121,7 +124,8 @@ static int gadc_thermal_probe(struct platform_device *pdev)
 
 	ret = gadc_thermal_read_linear_lookup_table(&pdev->dev, gti);
 	if (ret < 0)
-		return ret;
+		dev_err(&pdev->dev,
+			"lookup table not defined, continuing: %d\n", ret);
 
 	gti->dev = &pdev->dev;
 	platform_set_drvdata(pdev, gti);
