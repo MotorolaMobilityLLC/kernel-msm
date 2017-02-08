@@ -24,6 +24,9 @@
 #include <linux/qpnp/qpnp-revid.h>
 #include <linux/power_supply.h>
 
+#define FG_ADC_RR_TRIGGER_EVERY_CYCLE_MASK      BIT((7))
+#define FG_ADC_RR_TRIGGER_EVERY_CYCLE           0x80
+
 #define FG_ADC_RR_EN_CTL			0x46
 #define FG_ADC_RR_SKIN_TEMP_LSB			0x50
 #define FG_ADC_RR_SKIN_TEMP_MSB			0x51
@@ -245,6 +248,7 @@ struct rradc_channels {
 	u8				lsb;
 	u8				msb;
 	u8				sts;
+	u16                             tec;
 	int (*scale)(struct rradc_chip *chip, struct rradc_chan_prop *prop,
 					u16 adc_code, int *result);
 };
@@ -596,7 +600,7 @@ static int rradc_post_process_gpio(struct rradc_chip *chip,
 	return 0;
 }
 
-#define RR_ADC_CHAN(_dname, _type, _mask, _scale, _lsb, _msb, _sts)	\
+#define RR_ADC_CHAN(_dname, _type, _mask, _scale, _lsb, _msb, _sts, _tec) \
 	{								\
 		.datasheet_name = (_dname),				\
 		.type = _type,						\
@@ -605,79 +609,82 @@ static int rradc_post_process_gpio(struct rradc_chip *chip,
 		.lsb = _lsb,						\
 		.msb = _msb,						\
 		.sts = _sts,						\
+		.tec = _tec,						\
 	},								\
 
-#define RR_ADC_CHAN_TEMP(_dname, _scale, mask, _lsb, _msb, _sts)	\
+#define RR_ADC_CHAN_TEMP(_dname, _scale, mask, _lsb, _msb, _sts, _tec)	\
 	RR_ADC_CHAN(_dname, IIO_TEMP,					\
 		mask,							\
-		_scale, _lsb, _msb, _sts)				\
+		_scale, _lsb, _msb, _sts, _tec)				\
 
-#define RR_ADC_CHAN_VOLT(_dname, _scale, _lsb, _msb, _sts)		\
+#define RR_ADC_CHAN_VOLT(_dname, _scale, _lsb, _msb, _sts, _tec)	\
 	RR_ADC_CHAN(_dname, IIO_VOLTAGE,				\
 		  BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_PROCESSED),\
-		  _scale, _lsb, _msb, _sts)				\
+		    _scale, _lsb, _msb, _sts, _tec)			\
 
-#define RR_ADC_CHAN_CURRENT(_dname, _scale, _lsb, _msb, _sts)		\
+#define RR_ADC_CHAN_CURRENT(_dname, _scale, _lsb, _msb, _sts, _tec)	\
 	RR_ADC_CHAN(_dname, IIO_CURRENT,				\
 		  BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_PROCESSED),\
-		  _scale, _lsb, _msb, _sts)				\
+		    _scale, _lsb, _msb, _sts, _tec)			\
 
-#define RR_ADC_CHAN_RESISTANCE(_dname, _scale, _lsb, _msb, _sts)	\
+#define RR_ADC_CHAN_RESISTANCE(_dname, _scale, _lsb, _msb, _sts, _tec)	\
 	RR_ADC_CHAN(_dname, IIO_RESISTANCE,				\
 		  BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_PROCESSED),\
-		  _scale, _lsb, _msb, _sts)				\
+		    _scale, _lsb, _msb, _sts, _tec)			\
 
 static const struct rradc_channels rradc_chans[] = {
 	RR_ADC_CHAN_RESISTANCE("batt_id", rradc_post_process_batt_id,
 			FG_ADC_RR_BATT_ID_5_LSB, FG_ADC_RR_BATT_ID_5_MSB,
-			FG_ADC_RR_BATT_ID_STS)
+			FG_ADC_RR_BATT_ID_STS, 0)
 	RR_ADC_CHAN_TEMP("batt_therm", &rradc_post_process_therm,
 			BIT(IIO_CHAN_INFO_RAW),
 			FG_ADC_RR_BATT_THERM_LSB, FG_ADC_RR_BATT_THERM_MSB,
-			FG_ADC_RR_BATT_THERM_STS)
+			FG_ADC_RR_BATT_THERM_STS, 0)
 	RR_ADC_CHAN_TEMP("skin_temp", &rradc_post_process_therm,
 			BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_PROCESSED),
 			FG_ADC_RR_SKIN_TEMP_LSB, FG_ADC_RR_SKIN_TEMP_MSB,
-			FG_ADC_RR_AUX_THERM_STS)
+			FG_ADC_RR_AUX_THERM_STS, FG_ADC_RR_AUX_THERM_TRIGGER)
 	RR_ADC_CHAN_CURRENT("usbin_i", &rradc_post_process_usbin_curr,
 			FG_ADC_RR_USB_IN_I_LSB, FG_ADC_RR_USB_IN_I_MSB,
-			FG_ADC_RR_USB_IN_I_STS)
+			FG_ADC_RR_USB_IN_I_STS, FG_ADC_RR_USB_IN_I_TRIGGER)
 	RR_ADC_CHAN_VOLT("usbin_v", &rradc_post_process_volt,
 			FG_ADC_RR_USB_IN_V_LSB, FG_ADC_RR_USB_IN_V_MSB,
-			FG_ADC_RR_USB_IN_V_STS)
+			FG_ADC_RR_USB_IN_V_STS, FG_ADC_RR_USB_IN_V_TRIGGER)
 	RR_ADC_CHAN_CURRENT("dcin_i", &rradc_post_process_dcin_curr,
 			FG_ADC_RR_DC_IN_I_LSB, FG_ADC_RR_DC_IN_I_MSB,
-			FG_ADC_RR_DC_IN_I_STS)
+			FG_ADC_RR_DC_IN_I_STS, FG_ADC_RR_DC_IN_I_TRIGGER)
 	RR_ADC_CHAN_VOLT("dcin_v", &rradc_post_process_volt,
 			FG_ADC_RR_DC_IN_V_LSB, FG_ADC_RR_DC_IN_V_MSB,
-			FG_ADC_RR_DC_IN_V_STS)
+			FG_ADC_RR_DC_IN_V_STS, FG_ADC_RR_DC_IN_V_TRIGGER)
 	RR_ADC_CHAN_TEMP("die_temp", &rradc_post_process_die_temp,
 			BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_PROCESSED),
 			FG_ADC_RR_PMI_DIE_TEMP_LSB, FG_ADC_RR_PMI_DIE_TEMP_MSB,
-			FG_ADC_RR_PMI_DIE_TEMP_STS)
+			FG_ADC_RR_PMI_DIE_TEMP_STS,
+			FG_ADC_RR_PMI_DIE_TEMP_TRIGGER)
 	RR_ADC_CHAN_TEMP("chg_temp", &rradc_post_process_chg_temp,
 			BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_PROCESSED),
 			FG_ADC_RR_CHARGER_TEMP_LSB, FG_ADC_RR_CHARGER_TEMP_MSB,
-			FG_ADC_RR_CHARGER_TEMP_STS)
+			FG_ADC_RR_CHARGER_TEMP_STS,
+			FG_ADC_RR_CHARGER_TEMP_TRIGGER)
 	RR_ADC_CHAN_VOLT("gpio", &rradc_post_process_gpio,
 			FG_ADC_RR_GPIO_LSB, FG_ADC_RR_GPIO_MSB,
-			FG_ADC_RR_GPIO_STS)
+			FG_ADC_RR_GPIO_STS, FG_ADC_RR_GPIO_TRIGGER)
 	RR_ADC_CHAN_TEMP("chg_temp_hot", &rradc_post_process_chg_temp_hot,
 			BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_PROCESSED),
 			FG_ADC_RR_CHARGER_HOT, FG_ADC_RR_CHARGER_HOT,
-			FG_ADC_RR_CHARGER_TEMP_STS)
+			FG_ADC_RR_CHARGER_TEMP_STS, 0)
 	RR_ADC_CHAN_TEMP("chg_temp_too_hot", &rradc_post_process_chg_temp_hot,
 			BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_PROCESSED),
 			FG_ADC_RR_CHARGER_TOO_HOT, FG_ADC_RR_CHARGER_TOO_HOT,
-			FG_ADC_RR_CHARGER_TEMP_STS)
+			FG_ADC_RR_CHARGER_TEMP_STS, 0)
 	RR_ADC_CHAN_TEMP("skin_temp_hot", &rradc_post_process_skin_temp_hot,
 			BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_PROCESSED),
 			FG_ADC_RR_SKIN_HOT, FG_ADC_RR_SKIN_HOT,
-			FG_ADC_RR_AUX_THERM_STS)
+			FG_ADC_RR_AUX_THERM_STS, 0)
 	RR_ADC_CHAN_TEMP("skin_temp_too_hot", &rradc_post_process_skin_temp_hot,
 			BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_PROCESSED),
 			FG_ADC_RR_SKIN_TOO_HOT, FG_ADC_RR_SKIN_TOO_HOT,
-			FG_ADC_RR_AUX_THERM_STS)
+			FG_ADC_RR_AUX_THERM_STS, 0)
 };
 
 static int rradc_enable_continuous_mode(struct rradc_chip *chip)
@@ -914,13 +921,27 @@ static int rradc_do_conversion(struct rradc_chip *chip,
 			goto fail;
 		}
 		break;
+	case RR_ADC_SKIN_TEMP:
+	case RR_ADC_USBIN_I:
 	case RR_ADC_USBIN_V:
-		/* Force conversion every cycle */
-		rc = rradc_masked_write(chip, FG_ADC_RR_USB_IN_V_TRIGGER,
-				FG_ADC_RR_USB_IN_V_EVERY_CYCLE_MASK,
-				FG_ADC_RR_USB_IN_V_EVERY_CYCLE);
+	case RR_ADC_DCIN_I:
+	case RR_ADC_DCIN_V:
+	case RR_ADC_DIE_TEMP:
+	case RR_ADC_CHG_TEMP:
+	case RR_ADC_GPIO:
+		offset = rradc_chans[prop->channel].tec;
+		if (offset == 0) {
+			pr_err("Error: every cycle not supported for %s\n",
+			       rradc_chans[prop->channel].datasheet_name);
+			rc = -EINVAL;
+			goto fail;
+		}
+		rc = rradc_masked_write(chip, offset,
+					FG_ADC_RR_TRIGGER_EVERY_CYCLE_MASK,
+					FG_ADC_RR_TRIGGER_EVERY_CYCLE);
 		if (rc < 0) {
-			pr_err("Force every cycle update failed:%d\n", rc);
+			pr_err("%s trigger set failed:%d\n",
+			       rradc_chans[prop->channel].datasheet_name, rc);
 			goto fail;
 		}
 
@@ -930,11 +951,12 @@ static int rradc_do_conversion(struct rradc_chip *chip,
 			goto fail;
 		}
 
-		/* Restore usb_in trigger */
-		rc = rradc_masked_write(chip, FG_ADC_RR_USB_IN_V_TRIGGER,
-				FG_ADC_RR_USB_IN_V_EVERY_CYCLE_MASK, 0);
+		rc = rradc_masked_write(chip, offset,
+					FG_ADC_RR_TRIGGER_EVERY_CYCLE_MASK,
+					0);
 		if (rc < 0) {
-			pr_err("Restore every cycle update failed:%d\n", rc);
+			pr_err("%s trigger re-set failed:%d\n",
+			       rradc_chans[prop->channel].datasheet_name, rc);
 			goto fail;
 		}
 		break;
