@@ -417,6 +417,8 @@
 	qcom,stepchg-iterm-ma = <125>;
 	qcom,temp-warm-current-ma = <1500>;
 	qcom,temp-cool-current-ma = <600>;
+	qcom,temp-slightly-cool-current-ma = <600>;
+	qcom,slightly-cool-temp-c = <15>;
 };
 
 &pmi8950_fg {
