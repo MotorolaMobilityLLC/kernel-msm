@@ -277,6 +277,8 @@ static int cs35l35_reset_and_sync(struct cs35l35_private *priv, bool pdm)
 	usleep_range(3000, 3100);
 
 	if (pdm) {
+		regmap_update_bits(priv->regmap, CS35L35_AMP_INP_DRV_CTL,
+			CS35L35_PDM_MODE_MASK, CS35L35_PDM_MODE_MASK);
 		ret = regmap_update_bits(priv->regmap,
 			CS35L35_CLK_CTL1,
 			CS35L35_CLK_SOURCE_MASK,
@@ -292,6 +294,8 @@ static int cs35l35_reset_and_sync(struct cs35l35_private *priv, bool pdm)
 				__func__, ret);
 
 	} else {
+		regmap_update_bits(priv->regmap, CS35L35_AMP_INP_DRV_CTL,
+			CS35L35_PDM_MODE_MASK, 0);
 		ret = regmap_update_bits(priv->regmap,
 			CS35L35_CLK_CTL1,
 			CS35L35_CLK_SOURCE_MASK,
@@ -325,12 +329,18 @@ static int cs35l35_mclk_event(struct snd_soc_dapm_widget *w,
 					CS35L35_PDN_ALL_MASK, 0);
 		break;
 	case SND_SOC_DAPM_PRE_PMU:
+		cs35l35->i2s_enabled = true;
 		if (cs35l35->pdm_mclk_switch) {
 			cs35l35->pdm_mclk_switch = false;
 			return cs35l35_reset_and_sync(cs35l35, false);
 		}
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
+		cs35l35->i2s_enabled = false;
+		if (cs35l35->pdm_mode) {
+			cs35l35->pdm_mclk_switch = true;
+			return cs35l35_reset_and_sync(cs35l35, true);
+		}
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
 					  CS35L35_PDN_ALL_MASK, 1);
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
@@ -357,12 +367,17 @@ static int cs35l35_pdm_event(struct snd_soc_dapm_widget *w,
 	struct cs35l35_private *cs35l35 = snd_soc_codec_get_drvdata(codec);
 	int ret;
 
+	if (cs35l35->i2s_enabled)
+		return 0;
+
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (!cs35l35->pdm_mclk_switch) {
 			cs35l35->pdm_mclk_switch = true;
 			return cs35l35_reset_and_sync(cs35l35, true);
 		}
+		regmap_update_bits(cs35l35->regmap,
+			CS35L35_CLK_CTL2, CS35L35_CLK_DIV_MASK, 0);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
@@ -394,13 +409,16 @@ static const struct snd_soc_dapm_widget cs35l35_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN("SDIN", NULL, 0, CS35L35_PWRCTL3, 1, 1),
 	SND_SOC_DAPM_AIF_OUT("SDOUT", NULL, 0, CS35L35_PWRCTL3, 2, 1),
 
-	SND_SOC_DAPM_SUPPLY("EXTCLK", CS35L35_CLK_CTL1, 2, 1,
+	SND_SOC_DAPM_SUPPLY_S("EXTCLK", 1, SND_SOC_NOPM, 0, 0,
 		cs35l35_mclk_event, SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 
-	SND_SOC_DAPM_SUPPLY("PDMCLK", CS35L35_CLK_CTL1, 2, 1,
+	SND_SOC_DAPM_SUPPLY_S("PDMCLK", 1, SND_SOC_NOPM, 0, 0,
 		cs35l35_pdm_event, SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+
+	SND_SOC_DAPM_SUPPLY("MSTRCLK", CS35L35_CLK_CTL1, 2, 1,
+		NULL, 0),
 
 	SND_SOC_DAPM_OUTPUT("SPK"),
 
@@ -444,15 +462,17 @@ static const struct snd_soc_dapm_route cs35l35_audio_map[] = {
 
 
 	{"MCLK Select", NULL, "AMP Playback"},
-	{"CLKSEL MUX", "MCLK", "MCLK Select"},
+	{"CLKSEL MUX", NULL, "MCLK Select"},
 
 	{"PDM Select", NULL, "PDM Playback"},
-	{"CLKSEL MUX", "PDM", "PDM Select"},
+	{"CLKSEL MUX", NULL, "PDM Select"},
 
 	{"SPK", NULL, "CLKSEL MUX"},
 
 	{"MCLK Select", NULL, "EXTCLK"},
 	{"PDM Select", NULL, "PDMCLK"},
+	{"MCLK Select", NULL, "MSTRCLK"},
+	{"PDM Select", NULL, "MSTRCLK"},
 };
 
 static int cs35l35_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
@@ -595,9 +615,6 @@ static int cs35l35_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	if (cs35l35->pdm_mode)
-		clk_ctl &= ~CS35L35_CLK_DIV_MASK;
-
 	regmap_update_bits(cs35l35->regmap, CS35L35_CLK_CTL2,
 			  CS35L35_CLK_CTL2_MASK, clk_ctl);
 
@@ -701,8 +718,6 @@ static int cs35l35_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct cs35l35_private *cs35l35 = snd_soc_codec_get_drvdata(codec);
 
 	cs35l35->pdm_mode = false;
-	regmap_update_bits(cs35l35->regmap, CS35L35_AMP_INP_DRV_CTL,
-		CS35L35_PDM_MODE_MASK, 0);
 
 	return cs35l35_hw_params(substream, params, dai);
 }
@@ -715,8 +730,6 @@ static int cs35l35_pdm_hw_params(struct snd_pcm_substream *substream,
 	struct cs35l35_private *cs35l35 = snd_soc_codec_get_drvdata(codec);
 
 	cs35l35->pdm_mode = true;
-	regmap_update_bits(cs35l35->regmap, CS35L35_AMP_INP_DRV_CTL,
-		CS35L35_PDM_MODE_MASK, CS35L35_PDM_MODE_MASK);
 
 	return cs35l35_hw_params(substream, params, dai);
 }
