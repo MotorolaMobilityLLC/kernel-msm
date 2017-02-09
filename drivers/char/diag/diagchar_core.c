@@ -2991,6 +2991,7 @@ static int __init diagchar_init(void)
 	mutex_init(&driver->diag_file_mutex);
 	mutex_init(&driver->delayed_rsp_mutex);
 	mutex_init(&apps_data_mutex);
+	mutex_init(&driver->diagfwd_channel_mutex);
 	init_waitqueue_head(&driver->wait_q);
 	INIT_WORK(&(driver->diag_drain_work), diag_drain_work_fn);
 	INIT_WORK(&(driver->update_user_clients),
@@ -3030,12 +3031,13 @@ static int __init diagchar_init(void)
 	ret = diagfwd_bridge_init();
 	if (ret)
 		goto fail;
-	ret = diagfwd_peripheral_init();
-	if (ret)
-		goto fail;
 	ret = diagfwd_cntl_init();
 	if (ret)
 		goto fail;
+	ret = diagfwd_peripheral_init();
+	if (ret)
+		goto fail;
+	diagfwd_cntl_channel_init();
 	driver->dci_state = diag_dci_init();
 	pr_debug("diagchar initializing ..\n");
 	driver->num = 1;

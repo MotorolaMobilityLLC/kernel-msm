@@ -612,6 +612,7 @@ void diagfwd_close_transport(uint8_t transport, uint8_t peripheral)
 	struct diagfwd_info *dest_info = NULL;
 	int (*init_fn)(uint8_t) = NULL;
 	void (*invalidate_fn)(void *, struct diagfwd_info *) = NULL;
+	int (*check_channel_state)(void *) = NULL;
 	uint8_t transport_open = 0;
 
 	if (peripheral >= NUM_PERIPHERALS)
@@ -622,20 +623,24 @@ void diagfwd_close_transport(uint8_t transport, uint8_t peripheral)
 		transport_open = TRANSPORT_SOCKET;
 		init_fn = diag_socket_init_peripheral;
 		invalidate_fn = diag_socket_invalidate;
+		check_channel_state = diag_socket_check_state;
 		break;
 	case TRANSPORT_SOCKET:
 		transport_open = TRANSPORT_SMD;
 		init_fn = diag_smd_init_peripheral;
 		invalidate_fn = diag_smd_invalidate;
+		check_channel_state = diag_smd_check_state;
 		break;
 	default:
 		return;
 
 	}
 
-	fwd_info = &early_init_info[transport_open][peripheral];
+	mutex_lock(&driver->diagfwd_channel_mutex);
+	fwd_info = &early_init_info[transport][peripheral];
 	if (fwd_info->p_ops && fwd_info->p_ops->close)
 		fwd_info->p_ops->close(fwd_info->ctxt);
+	fwd_info = &early_init_info[transport_open][peripheral];
 	dest_info = &peripheral_info[TYPE_CNTL][peripheral];
 	dest_info->inited = 1;
 	dest_info->ctxt = fwd_info->ctxt;
@@ -647,10 +652,13 @@ void diagfwd_close_transport(uint8_t transport, uint8_t peripheral)
 	dest_info->inited = fwd_info->inited;
 	dest_info->buf_1 = fwd_info->buf_1;
 	dest_info->buf_2 = fwd_info->buf_2;
+	dest_info->transport = fwd_info->transport;
 	invalidate_fn(dest_info->ctxt, dest_info);
-	diagfwd_late_open(dest_info);
+	if (!check_channel_state(dest_info->ctxt))
+		diagfwd_late_open(dest_info);
 	diagfwd_cntl_open(dest_info);
 	init_fn(peripheral);
+	mutex_unlock(&driver->diagfwd_channel_mutex);
 	diagfwd_queue_read(&peripheral_info[TYPE_DATA][peripheral]);
 	diagfwd_queue_read(&peripheral_info[TYPE_CMD][peripheral]);
 }
