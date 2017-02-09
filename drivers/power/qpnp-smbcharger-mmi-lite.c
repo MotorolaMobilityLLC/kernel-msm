@@ -271,6 +271,7 @@ struct smbchg_chip {
 	int				cold_temp_c;
 	int				warm_temp_c;
 	int				cool_temp_c;
+	int				slightly_cool_temp_c;
 	int				ext_high_temp;
 	int				ext_temp_volt_mv;
 	int				stepchg_voltage_mv;
@@ -302,6 +303,7 @@ struct smbchg_chip {
 	int				temp_good_current_ma;
 	int				temp_warm_current_ma;
 	int				temp_cool_current_ma;
+	int				temp_slightly_cool_current_ma;
 	int				temp_allowed_fastchg_current_ma;
 };
 
@@ -880,7 +882,8 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 	}
 
 	if ((chip->stepchg_state == STEP_FULL) && !(batt_soc < 100) &&
-	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
+	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD ||
+	    chip->temp_state == POWER_SUPPLY_HEALTH_SLIGHTLY_COOL))
 		return POWER_SUPPLY_STATUS_FULL;
 
 	chg_inhibit = reg & CHG_INHIBIT_BIT;
@@ -3224,6 +3227,10 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 			else
 				val->intval = POWER_SUPPLY_HEALTH_GOOD;
 		}
+
+		if (val->intval ==  POWER_SUPPLY_HEALTH_SLIGHTLY_COOL)
+			val->intval = POWER_SUPPLY_HEALTH_GOOD;
+
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -6325,7 +6332,10 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 		     "cool-temp-c", rc, 1);
 	if (chip->cool_temp_c == -EINVAL)
 		chip->cool_temp_c = 0;
-
+	OF_PROP_READ(chip, chip->slightly_cool_temp_c,
+		     "slightly-cool-temp-c", rc, 1);
+	if (chip->slightly_cool_temp_c == -EINVAL)
+		chip->slightly_cool_temp_c = 15;
 	OF_PROP_READ(chip, chip->ext_temp_volt_mv,
 		     "ext-temp-volt-mv", rc, 1);
 	if (chip->ext_temp_volt_mv == -EINVAL)
@@ -6364,6 +6374,11 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 			"temp-cool-current-ma", rc, 1);
 	if (chip->temp_cool_current_ma == -EINVAL)
 		chip->temp_cool_current_ma = chip->target_fastchg_current_ma;
+	OF_PROP_READ(chip, chip->temp_slightly_cool_current_ma,
+			"temp-slightly-cool-current-ma", rc, 1);
+	if (chip->temp_slightly_cool_current_ma == -EINVAL)
+		chip->temp_slightly_cool_current_ma =
+			chip->target_fastchg_current_ma;
 	chip->temp_good_current_ma = chip->target_fastchg_current_ma;
 	chip->temp_allowed_fastchg_current_ma = chip->temp_good_current_ma;
 
@@ -7631,7 +7646,7 @@ static bool smbchg_is_max_thermal_level(struct smbchg_chip *chip)
 static char *smb_health_text[] = {
 	"Unknown", "Good", "Overheat", "Warm", "Dead", "Over voltage",
 	"Unspecified failure", "Cold", "Cool", "Watchdog timer expire",
-	"Safety timer expire"
+	"Safety timer expire",  "Slightly Cool"
 };
 
 static int smbchg_check_temp_range(struct smbchg_chip *chip,
@@ -7704,17 +7719,28 @@ static void smbchg_check_temp_state(struct smbchg_chip *chip, int batt_temp)
 		if (batt_temp >= chip->warm_temp_c)
 			/* Normal to Warm */
 			temp_state = POWER_SUPPLY_HEALTH_WARM;
-		else if (batt_temp <= chip->cool_temp_c)
-			/* Normal to Cool */
-			temp_state = POWER_SUPPLY_HEALTH_COOL;
+		else if (batt_temp <= chip->slightly_cool_temp_c)
+			/* Normal to slightly Cool */
+			temp_state = POWER_SUPPLY_HEALTH_SLIGHTLY_COOL;
 		else
 			/* Stay Normal */
 			temp_state = POWER_SUPPLY_HEALTH_GOOD;
+	} else if (chip->temp_state == POWER_SUPPLY_HEALTH_SLIGHTLY_COOL) {
+		if (batt_temp >=
+		    chip->slightly_cool_temp_c + HYSTERISIS_DEGC)
+			/* Slightly Cool to Normal */
+			temp_state = POWER_SUPPLY_HEALTH_GOOD;
+		else if (batt_temp <= chip->cool_temp_c)
+			/*Slightly Cool  to Cool */
+			temp_state = POWER_SUPPLY_HEALTH_COOL;
+		else
+			/* Stay Slightly Cool  */
+			temp_state = POWER_SUPPLY_HEALTH_SLIGHTLY_COOL;
 	} else if (chip->temp_state == POWER_SUPPLY_HEALTH_COOL) {
 		if (batt_temp >=
 		    chip->cool_temp_c + HYSTERISIS_DEGC)
-			/* Cool to Normal */
-			temp_state = POWER_SUPPLY_HEALTH_GOOD;
+			/*Cool to Slightly Cool  */
+			temp_state = POWER_SUPPLY_HEALTH_SLIGHTLY_COOL;
 		else if (batt_temp <= chip->cold_temp_c)
 			/* Cool to Cold */
 			temp_state = POWER_SUPPLY_HEALTH_COLD;
@@ -7777,6 +7803,9 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 		(chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT))
 		chip->temp_allowed_fastchg_current_ma =
 			chip->temp_warm_current_ma;
+	else if (chip->temp_state == POWER_SUPPLY_HEALTH_SLIGHTLY_COOL)
+		chip->temp_allowed_fastchg_current_ma =
+			chip->temp_slightly_cool_current_ma;
 	else if (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD)
 		chip->temp_allowed_fastchg_current_ma =
 			chip->temp_good_current_ma;
@@ -7789,7 +7818,8 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 	else {
 		if (((prev_temp == POWER_SUPPLY_HEALTH_COOL) ||
 		    (prev_temp == POWER_SUPPLY_HEALTH_WARM)) &&
-		    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD)) {
+		    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD ||
+		    chip->temp_state == POWER_SUPPLY_HEALTH_SLIGHTLY_COOL)) {
 			smbchg_charging_en(chip, 0);
 			mdelay(10);
 		}
