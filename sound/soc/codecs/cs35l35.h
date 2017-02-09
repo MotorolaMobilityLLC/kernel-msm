@@ -272,6 +272,7 @@ struct  cs35l35_private {
 	int mclk_sp_base;
 	bool tdm_mode;
 	bool pdm_mode;
+	bool i2s_enabled;
 	bool slave_mode;
 	bool pdm_mclk_switch;
 	/* GPIO for /RST */
