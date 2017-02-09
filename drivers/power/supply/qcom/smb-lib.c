@@ -5423,11 +5423,13 @@ static void mmi_check_extbat_ability(struct smb_charger *chip, char *able)
 	int rc;
 	const struct power_supply_desc *eb_pwr_d;
 	union power_supply_propval ret = {0, };
-	struct power_supply *eb_pwr_psy =
-		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
+	struct power_supply *eb_pwr_psy;
 
 	if (!able)
 		return;
+
+	eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
 
 	*able = 0;
 
@@ -5733,8 +5735,9 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 
 	if ((state == chip->mmi.ebchg_state) && !force) {
 		if (eb_pwr_psy)
-			power_supply_put(eb_pwr_psy);
-		return;
+			goto set_eb_done;
+		else
+			return;
 	}
 
 	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
@@ -5759,15 +5762,13 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 
 	if ((state == EB_SINK) && (ability & EB_RCV_NEVER) && !force) {
 		pr_err("Setting Sink State not Allowed on RVC Never EB!\n");
-		power_supply_put(eb_pwr_psy);
-		return;
+		goto set_eb_done;
 	}
 
 	if ((state == EB_SRC) && (ability & EB_SND_NEVER) &&
 	    !chip->mmi.usbeb_present && !force) {
 		pr_err("Setting Source State not Allowed on SND Never EB!\n");
-		power_supply_put(eb_pwr_psy);
-		return;
+		goto set_eb_done;
 	}
 
 	pr_warn("EB State is %d setting %d\n", chip->mmi.ebchg_state, state);
@@ -5787,12 +5788,12 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 			if (rc < 0) {
 				pr_err("Couldn't get 5V USBC Voltage rc=%d\n",
 					rc);
-				return;
+				goto set_eb_done;
 			}
 			if (ret.intval > (MICRO_5V + USBIN_TOLER)) {
 				pr_err("Voltage too high for EB_SINK %d uV\n",
 				       ret.intval);
-				return;
+				goto set_eb_done;
 			}
 		}
 
@@ -5880,6 +5881,7 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		break;
 	}
 
+set_eb_done:
 	power_supply_put(eb_pwr_psy);
 }
 
