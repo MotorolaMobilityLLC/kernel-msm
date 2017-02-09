@@ -1672,8 +1672,6 @@ static const struct snd_soc_dapm_route marley_dapm_routes[] = {
 	{ "AEC Loopback", "SPKDATR", "OUT5R" },
 	{ "SPKDATL", NULL, "OUT5L" },
 	{ "SPKDATR", NULL, "OUT5R" },
-	{ "SPKDAT Capture", NULL, "SPKDATL" },
-	{ "SPKDAT Capture", NULL, "SPKDATR" },
 
 	{ "SPDIF", NULL, "SPD1" },
 
@@ -1807,17 +1805,6 @@ static struct snd_soc_dai_driver marley_dai[] = {
 			 .formats = MARLEY_FORMATS,
 		 },
 		.ops = &arizona_slim_dai_ops,
-	},
-	{
-		.name = "marley-pdm",
-		.id = 6,
-		.capture = {
-			.stream_name = "SPKDAT Capture",
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = MARLEY_RATES,
-			.formats = MARLEY_FORMATS,
-		},
 	},
 	{
 		.name = "marley-cpu-voicectrl",
