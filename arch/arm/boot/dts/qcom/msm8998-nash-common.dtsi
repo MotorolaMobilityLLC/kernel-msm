@@ -143,6 +143,12 @@
 							<&cs47l35 14 0>;
 				cirrus,micd-rate = <6>;
 				cirrus,micd-detect-debounce-ms = <500>;
+				cirrus,micd-ranges = <
+					70 0xE2		/* <  70 Ohms - KEY_MEDIA */
+					180 0x246	/* < 180 Ohms - KEY_VOICECOMMAND */
+					290 0x73	/* < 290 Ohms - KEY_VOLUMEUP */
+					680 0x72	/* < 680 Ohms - KEY_VOLUMEDOWN */
+				>;
 			};
 		};
 	};
