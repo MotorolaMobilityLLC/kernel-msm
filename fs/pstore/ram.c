@@ -604,11 +604,6 @@ static int ramoops_parse_dt(struct platform_device *pdev,
 		return ret;
 	}
 
-	ret = ramoops_parse_dt_size(pdev, "ramoops-record-size",
-				&pdata->record_size);
-	if (ret)
-		return ret;
-
 	return 0;
 }
 
