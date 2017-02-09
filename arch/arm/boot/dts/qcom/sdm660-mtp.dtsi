@@ -257,6 +257,10 @@
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
+&pm660l_l8 {
+	regulator-always-on;
+};
+
 &i2c_2 {
 	status = "ok";
 	smb1351-charger@1d {
