@@ -63,6 +63,7 @@ struct wiphy;
 
 #define TDLS_MGMT_VERSION2 1
 #define CFG80211_BSSID_HINT_BACKPORT 1
+#define CFG80211_ABORT_SCAN 1
 /*
  * wireless hardware capability structures
  */
