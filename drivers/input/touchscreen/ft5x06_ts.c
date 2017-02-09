@@ -35,6 +35,7 @@
 #include <linux/uaccess.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
+#include <linux/proc_fs.h>
 
 
 #if defined(CONFIG_FB)
@@ -262,6 +263,16 @@ static char *ts_info_buff;
 #define FT_DEBUG_DIR_NAME	"ts_debug"
 #define FT_FW_ID_LEN		2
 
+#define FT_PROC_DIR_NAME	"ftxxxx-debug"
+
+enum {
+	PROC_UPGRADE		= 0,
+	PROC_READ_REGISTER	= 1,
+	PROC_WRITE_REGISTER	= 2,
+	PROC_WRITE_DATA		= 6,
+	PROC_READ_DATA		= 7
+};
+
 enum {
 	FT_MOD_CHARGER,
 	FT_MOD_MAX
@@ -325,6 +336,8 @@ struct ft5x06_ts_data {
 	bool force_reflash;
 	u8 fw_id[FT_FW_ID_LEN];
 	bool irq_enabled;
+	struct proc_dir_entry *proc_entry;
+	u8 proc_operate_mode;
 	/* moto TP modifiers */
 	bool patching_enabled;
 	struct ft5x06_modifiers modifiers;
@@ -2585,6 +2598,163 @@ static const struct file_operations debug_dump_info_fops = {
 	.release	= single_release,
 };
 
+static ssize_t ft5x06_proc_read(struct file *filp, char __user *buff,
+				size_t count, loff_t *ppos)
+{
+	unsigned char *read_buf = NULL;
+	size_t read_buf_len = (count > PAGE_SIZE) ? count : PAGE_SIZE;
+	u8 regval = 0x00;
+	u8 regaddr = 0x00;
+	struct ft5x06_ts_data *data = PDE_DATA(filp->f_inode);
+	int num_read_chars = 0;
+	int retval;
+
+	if (NULL == data) {
+		pr_err("%s: cannot get ts data\n", __func__);
+		return -EFAULT;
+	}
+	read_buf = kmalloc(read_buf_len, GFP_KERNEL);
+	if (NULL == read_buf)
+		return -ENOMEM;
+
+	mutex_lock(&data->input_dev->mutex);
+	switch (data->proc_operate_mode) {
+	case PROC_UPGRADE:
+		regaddr = FT_REG_FW_VER;
+		retval = ft5x0x_read_reg(data->client,
+					regaddr, &regval);
+		if (retval < 0)
+			num_read_chars = snprintf(read_buf, read_buf_len,
+					"get fw version failed.\n");
+		else
+			num_read_chars = snprintf(read_buf, read_buf_len,
+					"current fw version:0x%02x\n", regval);
+		break;
+	case PROC_READ_REGISTER:
+		retval = ft5x06_i2c_read(data->client, NULL, 0, read_buf, 1);
+		if (retval < 0)
+			dev_err(&data->client->dev,
+					"%s: read I2C error\n", __func__);
+		num_read_chars = 1;
+		break;
+	case PROC_READ_DATA:
+		retval = ft5x06_i2c_read(data->client,
+					NULL, 0, read_buf, count);
+		if (retval < 0)
+			dev_err(&data->client->dev,
+					"%s: read I2C error\n", __func__);
+		num_read_chars = count;
+		break;
+	default:
+		break;
+	}
+
+	mutex_unlock(&data->input_dev->mutex);
+
+	if (copy_to_user(buff, read_buf, num_read_chars)) {
+		dev_err(&data->client->dev,
+			"%s: copy to user error\n", __func__);
+		kfree(read_buf);
+		return -EFAULT;
+	}
+	kfree(read_buf);
+
+	return num_read_chars;
+}
+
+static ssize_t ft5x06_proc_write(struct file *filp, const char __user *buff,
+				size_t count, loff_t *ppos)
+{
+	unsigned char *write_buf = NULL;
+	size_t write_buf_len = count;
+	struct ft5x06_ts_data *data = PDE_DATA(filp->f_inode);
+	int writelen = 0;
+	int retval;
+
+	if (NULL == data) {
+		pr_err("%s: cannot get ts data\n", __func__);
+		return -EFAULT;
+	}
+	write_buf = kmalloc(write_buf_len, GFP_KERNEL);
+	if (NULL == write_buf)
+		return -ENOMEM;
+
+	if (copy_from_user(write_buf, buff, count)) {
+		dev_err(&data->client->dev,
+			"%s: copy from user error\n", __func__);
+		kfree(write_buf);
+		return -EFAULT;
+	}
+
+	mutex_lock(&data->input_dev->mutex);
+	data->proc_operate_mode = write_buf[0];
+	switch (data->proc_operate_mode) {
+	case PROC_READ_REGISTER:
+		retval = ft5x06_i2c_write(data->client, write_buf + 1, 1);
+		if (retval < 0)
+			dev_err(&data->client->dev,
+				"%s: write I2C error\n", __func__);
+		break;
+	case PROC_WRITE_REGISTER:
+		retval = ft5x06_i2c_write(data->client, write_buf + 1, 2);
+		if (retval < 0)
+			dev_err(&data->client->dev,
+				"%s: write I2C error\n", __func__);
+		break;
+	case PROC_READ_DATA:
+	case PROC_WRITE_DATA:
+		writelen = count - 1;
+		if (writelen > 0) {
+			retval = ft5x06_i2c_write(data->client,
+					write_buf + 1, writelen);
+			if (retval < 0)
+				dev_err(&data->client->dev,
+					"%s: write I2C error\n", __func__);
+		}
+		break;
+	default:
+		dev_err(&data->client->dev,
+				"%s: unsupport opt %d\n",
+				__func__, data->proc_operate_mode);
+		break;
+	}
+
+	mutex_unlock(&data->input_dev->mutex);
+	kfree(write_buf);
+
+	return count;
+}
+
+static const struct file_operations ft5x06_proc_ops = {
+	.owner		= THIS_MODULE,
+	.read		= ft5x06_proc_read,
+	.write		= ft5x06_proc_write
+};
+
+static int ft5x06_create_proc_entry(struct ft5x06_ts_data *data)
+{
+	struct proc_dir_entry *entry = data->proc_entry;
+	struct i2c_client *client = data->client;
+
+	entry = proc_create_data(FT_PROC_DIR_NAME,
+			0664,
+			NULL,
+			&ft5x06_proc_ops,
+			data);
+	if (NULL == entry) {
+		dev_err(&client->dev, "Couldn't create proc entry\n");
+		return -ENOMEM;
+	}
+	dev_info(&client->dev, "Create proc entry success\n");
+
+	return 0;
+}
+
+static void ft5x06_remove_proc_entry(struct ft5x06_ts_data *data)
+{
+	proc_remove(data->proc_entry);
+}
+
 #ifdef CONFIG_OF
 static int ft5x06_get_dt_coords(struct device *dev, char *name,
 				struct ft5x06_ts_platform_data *pdata)
@@ -3245,10 +3415,16 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 		goto free_debug_dir;
 	}
 
+	err = ft5x06_create_proc_entry(data);
+	if (err) {
+		dev_err(&client->dev, "create proc entry failed");
+		goto free_debug_dir;
+	}
+
 	data->ts_info = devm_kzalloc(&client->dev,
 				FT_INFO_MAX_LEN, GFP_KERNEL);
 	if (!data->ts_info)
-		goto free_debug_dir;
+		goto free_proc_entry;
 
 	/*get some register information */
 	reg_addr = FT_REG_POINT_RATE;
@@ -3279,7 +3455,7 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 			ts_info_buff = devm_kzalloc(&client->dev,
 						 FT_INFO_MAX_LEN, GFP_KERNEL);
 			if (!ts_info_buff)
-				goto free_debug_dir;
+				goto free_proc_entry;
 		}
 	}
 
@@ -3382,6 +3558,8 @@ free_secure_touch_sysfs:
 		sysfs_remove_file(&data->input_dev->dev.kobj,
 					&attrs[attr_count].attr);
 	}
+free_proc_entry:
+	ft5x06_remove_proc_entry(data);
 free_debug_dir:
 	debugfs_remove_recursive(data->dir);
 free_reset_sys:
@@ -3477,6 +3655,7 @@ static int ft5x06_ts_remove(struct i2c_client *client)
 	}
 
 	ft5x06_ts_sysfs_class(data, false);
+	ft5x06_remove_proc_entry(data);
 	debugfs_remove_recursive(data->dir);
 	device_remove_file(&client->dev, &dev_attr_force_update_fw);
 	device_remove_file(&client->dev, &dev_attr_update_fw);
