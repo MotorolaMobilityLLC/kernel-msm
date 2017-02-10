@@ -518,6 +518,13 @@ struct ff_effect {
 #define FF_GAIN		0x60
 #define FF_AUTOCENTER	0x61
 
+
+/* Cap sensor report key, including cs0, cs1, cs2 and comb */
+#define KEY_CAP_CS0             0x270
+#define KEY_CAP_CS1             0x271
+#define KEY_CAP_CS2             0x272
+#define KEY_CAP_COMB            0x272
+
 /*
  * ff->playback(effect_id = FF_GAIN) is the first effect_id to
  * cause a collision with another ff method, in this case ff->set_gain().
