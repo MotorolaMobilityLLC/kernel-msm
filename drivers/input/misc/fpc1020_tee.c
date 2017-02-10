@@ -145,6 +145,7 @@ struct fpc1020_data {
 	int irq_gpio;
 	int rst_gpio;
 	int irq_num;
+	int wlock_time;
 	int clocks_enabled;
 	int clocks_suspended;
 
@@ -371,7 +372,7 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 {
 	struct fpc1020_data *fpc1020 = handle;
 
-	wake_lock_timeout(&fpc1020->wlock, msecs_to_jiffies(1000));
+	wake_lock_timeout(&fpc1020->wlock, msecs_to_jiffies(fpc1020->wlock_time));
 	dev_dbg(fpc1020->dev, "%s\n", __func__);
 	fpc1020->irq_cnt++;
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
@@ -480,6 +481,12 @@ static int fpc1020_probe(struct spi_device *spi)
 	}
 	dev_dbg(dev, "requested irq %d\n", gpio_to_irq(fpc1020->irq_gpio));
 
+	rc = of_property_read_u32(np, "fpc,wakelock_time", &fpc1020->wlock_time);
+	if (rc) {
+		dev_err(dev, "Unable to read wakelock time\n");
+		fpc1020->wlock_time = 1000;
+	}
+
 	/* Request that the interrupt should be wakeable */
 	enable_irq_wake(gpio_to_irq(fpc1020->irq_gpio));
 
@@ -496,7 +503,6 @@ static int fpc1020_probe(struct spi_device *spi)
 	}
 
 	fpc1020_input_dev_init(fpc1020);
-
 
 	dev_info(dev, "%s: ok\n", __func__);
 exit:
