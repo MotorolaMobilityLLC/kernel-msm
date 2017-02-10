@@ -26,7 +26,3 @@
 		qcom,cam-vreg-max-voltage = <0 1256000>;
 	};
 };
-
-&pm8998_l14 {
-	regulator-always-on;
-};
