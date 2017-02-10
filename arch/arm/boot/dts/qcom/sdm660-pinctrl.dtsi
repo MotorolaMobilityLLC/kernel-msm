@@ -293,6 +293,19 @@
 				};
 			};
 		};
+		
+		sx9310_irq_default: sx9310_irq_default {  //cap sense inturrupt
+			mux {
+				pins = "gpio75";
+				function = "gpio";
+			};  
+
+			config {
+				pins = "gpio75";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		}; 
 
 		i2c_3 {
 			i2c_3_active: i2c_3_active {
