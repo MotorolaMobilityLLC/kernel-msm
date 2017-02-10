@@ -168,6 +168,19 @@
 	};
 };
 
+&pm8937_gpios {
+	gpio@c400 {
+		qcom,mode = <0>;
+		qcom,output-type = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,out-strength = <3>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+};
+
 &i2c_5 { /* BLSP2 QUP1 (NFC) */
 	pnxxx: pnxxx@28 {
 	    compatible = "nxp,pn544";
