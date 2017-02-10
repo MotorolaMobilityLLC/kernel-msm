@@ -411,8 +411,8 @@
 					   <1000 1000 0>,
 					   <500 500 0>,
 					   <400 400 0>;
-	qcom,stepchg-voltage-mv = <4400>;
-	qcom,stepchg-current-ma = <3000>;
+	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-current-ma = <2000>;
 	qcom,stepchg-taper-ma = <1800>;
 	qcom,stepchg-iterm-ma = <125>;
 	qcom,temp-warm-current-ma = <1500>;
