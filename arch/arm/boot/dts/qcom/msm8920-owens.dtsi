@@ -84,15 +84,15 @@
 		epl,dt_st_gain = <5>;
 		epl,als_c_gain = <480>;
 		epl,ps_eg_sign = <1>;
-		epl,ps_intt = <1>;
+		epl,ps_intt = <2>;
 		epl,ps_gain = <0x01>;
 		epl,ps_cycle = <0x04>;
 		epl,ps_ir_drive = <0x01>;
 		epl,ps_low_threshold = <1800>;
 		epl,ps_high_threshold = <2300>;
 		epl,ps_max_ct = <2300>;
-		epl,ps_dyn_l_offset = <280>;
-		epl,ps_dyn_h_offset = <372>;
+		epl,ps_dyn_l_offset = <475>;
+		epl,ps_dyn_h_offset = <647>;
 		epl,ps_rs = <0>;
 	};
 
