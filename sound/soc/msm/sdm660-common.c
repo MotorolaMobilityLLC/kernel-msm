@@ -2726,6 +2726,7 @@ err:
 	return ret;
 }
 
+#ifndef CONFIG_SND_SOC_CS47L35
 static int msm_wsa881x_init(struct snd_soc_component *component)
 {
 	u8 spkleft_ports[WSA881X_MAX_SWR_PORTS] = {100, 101, 102, 106};
@@ -2775,7 +2776,6 @@ static int msm_wsa881x_init(struct snd_soc_component *component)
 						      codec);
 	return 0;
 }
-
 
 static int msm_init_wsa_dev(struct platform_device *pdev,
 			    struct snd_soc_card *card)
@@ -2962,6 +2962,7 @@ err_mem:
 err_dt:
 	return ret;
 }
+#endif
 
 static void msm_free_auxdev_mem(struct platform_device *pdev)
 {
@@ -3022,6 +3023,8 @@ static const struct of_device_id sdm660_asoc_machine_of_match[]  = {
 	  .data = "tasha_codec"},
 	{ .compatible = "qcom,sdm660-asoc-snd-tavil",
 	  .data = "tavil_codec"},
+	{ .compatible = "qcom,sdm660-asoc-snd-madera",
+	  .data = "madera_codec"},
 	{},
 };
 
@@ -3046,15 +3049,18 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 
 	ret = of_property_read_u32(pdev->dev.of_node, mclk, &id);
 	if (ret) {
-		dev_err(&pdev->dev,
-			"%s: missing %s in dt node\n", __func__, mclk);
+		/* dev_err(&pdev->dev,
+			"%s: missing %s in dt node\n", __func__, mclk); */
 		id = DEFAULT_MCLK_RATE;
 	}
 	pdata->mclk_freq = id;
 
 	if (!strcmp(match->data, "tasha_codec") ||
-	    !strcmp(match->data, "tavil_codec")) {
-		if (!strcmp(match->data, "tasha_codec"))
+	    !strcmp(match->data, "tavil_codec") ||
+	    !strcmp(match->data, "madera_codec")) {
+		if (!strcmp(match->data, "madera_codec"))
+			pdata->snd_card_val = EXT_SND_CARD_MADERA;
+		else if (!strcmp(match->data, "tasha_codec"))
 			pdata->snd_card_val = EXT_SND_CARD_TASHA;
 		else
 			pdata->snd_card_val = EXT_SND_CARD_TAVIL;
@@ -3122,12 +3128,13 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+#ifndef CONFIG_SND_SOC_CS47L35
 	if (!of_property_read_bool(pdev->dev.of_node, "qcom,wsa-disable")) {
 		ret = msm_init_wsa_dev(pdev, card);
 		if (ret)
 			goto err;
 	}
-
+#endif
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret == -EPROBE_DEFER) {
 		if (codec_reg_done) {
