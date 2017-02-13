@@ -157,6 +157,8 @@ dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-evt1-v1.dtb
 dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt1.dtb
 dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt2.dtb
 
+dtb-$(CONFIG_ARCH_SDM660) += sdm660-payton-p0a.dtb
+
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
 # to be runtime added by the bootloader (i.e. /chosen properties)
