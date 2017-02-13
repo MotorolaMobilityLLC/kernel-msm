@@ -303,6 +303,7 @@ static int ltr559_ps_enable(struct i2c_client *client, int on)
 
 		data->ps_state = 100;
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, data->ps_state);
+		input_sync(data->input_dev_ps);
 		ltr559_ps_dynamic_caliberate(&data->ps_cdev);
 	} else {
 		ret = i2c_smbus_write_byte_data(client, LTR559_PS_CONTR, MODE_PS_StdBy);
