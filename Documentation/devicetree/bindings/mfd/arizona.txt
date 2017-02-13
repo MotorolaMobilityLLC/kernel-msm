@@ -190,6 +190,8 @@ Optional properties:
     they are being externally supplied. As covered in
     Documentation/devicetree/bindings/regulator/regulator.txt
 
+  - wlf,report-to-input : Report headset detection events to input queue.
+
 Optional subnodes:
   - ldo1 : Initial data for the LDO1 regulator, as covered in
     Documentation/devicetree/bindings/regulator/regulator.txt
