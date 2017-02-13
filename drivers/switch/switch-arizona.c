@@ -231,6 +231,14 @@ static const int arizona_micd_levels[] = {
 	1257, 30000,
 };
 
+#define ARIZONA_JACK_SWITCH_TYPES 3
+
+static int arizona_switch_types[ARIZONA_JACK_SWITCH_TYPES] = {
+	SW_HEADPHONE_INSERT,
+	SW_MICROPHONE_INSERT,
+	SW_LINEOUT_INSERT
+};
+
 /* These values are copied from Android WiredAccessoryObserver */
 enum headset_state {
 	BIT_NO_HEADSET = 0,
@@ -256,6 +264,26 @@ inline void arizona_extcon_report(struct arizona_extcon_info *info, int state)
 {
 	dev_info(info->arizona->dev, "Switch Report: %d\n", state);
 	switch_set_state(&info->edev, state);
+
+	if (!info->arizona->pdata.report_to_input)
+		return;
+
+	if (state == BIT_LINEOUT)
+		input_report_switch(info->input, SW_LINEOUT_INSERT, 1);
+	else
+		input_report_switch(info->input, SW_LINEOUT_INSERT, 0);
+
+	if (state == BIT_HEADSET)
+		input_report_switch(info->input, SW_MICROPHONE_INSERT, 1);
+	else
+		input_report_switch(info->input, SW_MICROPHONE_INSERT, 0);
+
+	if ((state == BIT_HEADSET) || (state == BIT_HEADSET_NO_MIC))
+		input_report_switch(info->input, SW_HEADPHONE_INSERT, 1);
+	else
+		input_report_switch(info->input, SW_HEADPHONE_INSERT, 0);
+
+	input_sync(info->input);
 }
 EXPORT_SYMBOL_GPL(arizona_extcon_report);
 
@@ -3056,6 +3084,8 @@ static int arizona_extcon_of_get_pdata(struct arizona *arizona)
 		"wlf,hpd-right-pins", 1,
 		&(pdata->hpd_r_pins.impd_pin));
 
+	pdata->report_to_input = of_property_read_bool(arizona->dev->of_node,
+						       "wlf,report-to-input");
 	return 0;
 }
 #else
@@ -3660,6 +3690,12 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 				goto err_input;
 			}
 		}
+	}
+
+	if (pdata->report_to_input) {
+		for (i = 0; i < ARIZONA_JACK_SWITCH_TYPES; i++)
+			input_set_capability(info->input, EV_SW,
+					     arizona_switch_types[i]);
 	}
 
 	ret = arizona_add_micd_levels(info);
