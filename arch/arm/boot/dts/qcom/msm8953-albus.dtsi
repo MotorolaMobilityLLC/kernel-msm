@@ -220,6 +220,7 @@
 			wlf,micd-configs = <0 2 0>;
 			wlf,micd-bias-start-time = <8>;
 			wlf,gpsw = <1>;
+			wlf,report-to-input;
 			wlf,micd-rate = <6>;
 			wlf,micd-detect-debounce = <600>;
 			wlf,inmode = <0 2 0>;
