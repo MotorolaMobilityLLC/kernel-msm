@@ -317,6 +317,9 @@ struct arizona_pdata {
 	/* If lrclk_adv is set then in dsp-a mode,
 	fsync is shifted left by half bclk */
 	int lrclk_adv[ARIZONA_MAX_AIF];
+
+	/* Report headset state as an input switch event */
+	bool report_to_input;
 };
 
 #endif
