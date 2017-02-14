@@ -31,6 +31,7 @@ enum print_reason {
 	PR_MISC		= BIT(2),
 	PR_PARALLEL	= BIT(3),
 	PR_OTG		= BIT(4),
+	PR_MOTO		= BIT(7),
 };
 
 #define DEFAULT_VOTER			"DEFAULT_VOTER"
@@ -458,6 +459,8 @@ struct smb_charger {
 	/* mmi based params */
 	/* Place at end of struct smb_charger as it grows */
 	struct mmi_params	mmi;
+	void			*ipc_log;
+	void			*ipc_log_reg;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
