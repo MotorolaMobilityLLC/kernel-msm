@@ -508,11 +508,12 @@ static int mx_report_data(void)
 		return -EIO;
 	}
 
+	getrawmonotonic(&mxdata->ts);
 	input_report_abs(mxdata->input_dev, EVENT_RAW_X, mxdata->raw_data[0]);
 	input_report_abs(mxdata->input_dev, EVENT_RAW_Y, mxdata->raw_data[1]);
 	input_report_abs(mxdata->input_dev, EVENT_RAW_Z, mxdata->raw_data[2]);
-	input_event(mxdata->input_dev, EV_SYN, SYN_TIME_SEC, mxdata->ts.tv_sec);
-	input_event(mxdata->input_dev, EV_SYN, SYN_TIME_NSEC, mxdata->ts.tv_nsec);
+	input_event(mxdata->input_dev, EV_REL, SYN_TIME_SEC, mxdata->ts.tv_sec);
+	input_event(mxdata->input_dev, EV_REL, SYN_TIME_NSEC, mxdata->ts.tv_nsec);
 
 	/* avoid repeat by input subsystem framework */
 	if ((mxdata->raw_data[0] == mxdata->lastData[0]) && (mxdata->raw_data[1] == mxdata->lastData[1]) &&
@@ -947,6 +948,9 @@ static int mxg_input_dev_init(struct mxg_sensor_data *sensor)
 	input_set_abs_params(sensor->input_dev, ABS_X, MXG_DATA_MIN, MXG_DATA_MAX, 0, 0);
 	input_set_abs_params(sensor->input_dev, ABS_Y, MXG_DATA_MIN, MXG_DATA_MAX, 0, 0);
 	input_set_abs_params(sensor->input_dev, ABS_Z, MXG_DATA_MIN, MXG_DATA_MAX, 0, 0);
+
+	input_set_capability(sensor->input_dev, EV_REL, SYN_TIME_SEC);
+	input_set_capability(sensor->input_dev, EV_REL, SYN_TIME_NSEC);
 
 	sensor->input_dev->name = MXG_INPUT_DEV_NAME;
 	sensor->input_dev->id.bustype = BUS_I2C;
