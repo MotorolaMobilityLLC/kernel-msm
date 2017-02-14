@@ -1158,6 +1158,10 @@ int ipa3_get_hdr(struct ipa_ioc_get_hdr *lookup)
 
 /**
  * __ipa3_release_hdr() - drop reference to header and cause
+}
+
+/**
+ * __ipa3_release_hdr() - drop reference to header and cause
  * deletion if reference count permits
  * @hdr_hdl:	[in] handle of header to be released
  *
