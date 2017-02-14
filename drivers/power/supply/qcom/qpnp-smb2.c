@@ -17,6 +17,7 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/power_supply.h>
+#include <linux/ipc_logging.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/log2.h>
@@ -2495,6 +2496,27 @@ static int force_dc_psy_update_write(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(force_dc_psy_update_ops, NULL,
 			force_dc_psy_update_write, "0x%02llx\n");
 
+static int register_dump_read(void *data, u64 *val)
+{
+	int rc;
+	u8 stat;
+	struct smb_charger *chg = data;
+	int i;
+
+	for (i = CHGR_BASE; i < MISC_BASE + 0x100; i++) {
+		rc = smblib_read(chg, i, &stat);
+		if (rc < 0)
+			continue;
+		ipc_log_string(chg->ipc_log_reg,
+			       "REG:0x%x: 0x%x\n", i, stat);
+	}
+
+	*val = 1;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(register_dump_ops, register_dump_read,
+			NULL, "%llu\n");
+
 static void smb2_create_debugfs(struct smb2 *chip)
 {
 	struct dentry *file;
@@ -2523,6 +2545,13 @@ static void smb2_create_debugfs(struct smb2 *chip)
 	if (IS_ERR_OR_NULL(file))
 		pr_err("Couldn't create force_dc_psy_update file rc=%ld\n",
 			(long)file);
+
+	file = debugfs_create_file("register_dump",
+			    S_IRUSR | S_IRGRP | S_IROTH,
+			    chip->dfs_root, chip, &register_dump_ops);
+	if (IS_ERR_OR_NULL(file))
+		pr_err("Couldn't create register_dump file rc=%ld\n",
+			(long)file);
 }
 
 #else
@@ -2547,6 +2576,7 @@ static int smb2_probe(struct platform_device *pdev)
 	chg = &chip->chg;
 	chg->dev = &pdev->dev;
 	chg->param = v1_params;
+	__debug_mask |= PR_MOTO;
 	chg->debug_mask = &__debug_mask;
 	chg->try_sink_enabled = &__try_sink_enabled;
 	chg->weak_chg_icl_ua = &__weak_chg_icl_ua;
