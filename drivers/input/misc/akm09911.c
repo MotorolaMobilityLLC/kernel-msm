@@ -1438,6 +1438,9 @@ static int akm_compass_input_init(
 	input_set_abs_params(*input, ABS_MISC,
 			INT_MIN, INT_MAX, 0, 0);
 
+	input_set_capability(*input, EV_REL, SYN_TIME_SEC);
+	input_set_capability(*input, EV_REL, SYN_TIME_NSEC);
+
 	/* Set name */
 	(*input)->name = AKM_INPUT_DEVICE_NAME;
 
@@ -1904,8 +1907,8 @@ static int akm_report_data(struct akm_compass_data *akm)
 	input_report_abs(akm->input, ABS_X, mag_x);
 	input_report_abs(akm->input, ABS_Y, mag_y);
 	input_report_abs(akm->input, ABS_Z, mag_z);
-	input_event(akm->input,	EV_SYN, SYN_TIME_SEC, akm->ts.tv_sec);
-	input_event(akm->input,	EV_SYN, SYN_TIME_NSEC, akm->ts.tv_nsec);
+	input_event(akm->input,	EV_REL, SYN_TIME_SEC, akm->ts.tv_sec);
+	input_event(akm->input,	EV_REL, SYN_TIME_NSEC, akm->ts.tv_nsec);
 
 	/* avoid eaten by input subsystem framework */
 	if ((mag_x == akm->last_x) && (mag_y == akm->last_y) &&
