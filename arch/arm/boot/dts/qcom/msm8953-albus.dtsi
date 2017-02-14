@@ -308,6 +308,7 @@
 			interrupts = <86 0x0>;
 			fpc,gpio_irq = <&tlmm 86 0>;
 			fpc,gpio_rst = <&tlmm 8 0>;
+			fpc,wakelock_time = <1500>;
 		};
 	};
 
