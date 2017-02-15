@@ -833,10 +833,6 @@
 					"back_temp";
 		status = "ok";
 	};
-
-	qcom,mdss_wb_panel {
-		status = "disabled";
-	};
 };
 
 &spi_1 { /* BLSP1 QUP1 */
