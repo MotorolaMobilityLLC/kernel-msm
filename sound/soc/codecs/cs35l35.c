@@ -269,12 +269,17 @@ static int cs35l35_reset_and_sync(struct cs35l35_private *priv, bool pdm)
 		return 0;
 
 	gpiod_set_value_cansleep(priv->reset_gpio, 0);
-	usleep_range(10000, 10100);
+	usleep_range(3000, 3100);
 	regcache_cache_only(priv->regmap, true);
 	gpiod_set_value_cansleep(priv->reset_gpio, 1);
 
+	usleep_range(1000, 1100);
+	regmap_update_bits(priv->regmap, CS35L35_PROTECT_CTL,
+		CS35L35_AMP_MUTE_MASK, 1 << CS35L35_AMP_MUTE_SHIFT);
+	regcache_cache_only(priv->regmap, true);
+	regmap_update_bits(priv->regmap, CS35L35_PWRCTL1,
+			  CS35L35_PDN_ALL_MASK, 1);
 	regcache_mark_dirty(priv->regmap);
-	usleep_range(3000, 3100);
 
 	if (pdm) {
 		regmap_update_bits(priv->regmap, CS35L35_AMP_INP_DRV_CTL,
@@ -311,6 +316,12 @@ static int cs35l35_reset_and_sync(struct cs35l35_private *priv, bool pdm)
 	}
 	regcache_cache_only(priv->regmap, false);
 	regcache_sync(priv->regmap);
+	regmap_update_bits(priv->regmap, CS35L35_PROTECT_CTL,
+		CS35L35_AMP_MUTE_MASK, 1 << CS35L35_AMP_MUTE_SHIFT);
+	usleep_range(5000, 5100);
+	regmap_update_bits(priv->regmap, CS35L35_PROTECT_CTL,
+		CS35L35_AMP_MUTE_MASK, 0);
+
 	return ret;
 }
 
