@@ -363,16 +363,26 @@ static ssize_t rmidev_read(struct file *filp, char __user *buf,
 		return -EBADF;
 	}
 
-	if (count == 0)
-		return 0;
+	mutex_lock(&(dev_data->file_mutex));
 
 	if (count > (REG_ADDR_LIMIT - *f_pos))
 		count = REG_ADDR_LIMIT - *f_pos;
 
-	mutex_lock(&(dev_data->file_mutex));
 
-	if (dev_data->tmpbuf_size < count && alloc_tmpbuf(filp, count) != 0)
-		return -ENOMEM;
+	if (count == 0) {
+		retval = 0;
+		goto clean_up;
+	}
+
+	if (*f_pos > REG_ADDR_LIMIT) {
+		retval = -EFAULT;
+		goto clean_up;
+	}
+
+	if (dev_data->tmpbuf_size < count && alloc_tmpbuf(filp, count) != 0) {
+		retval = -ENOMEM;
+		goto clean_up;
+	}
 
 	retval = rmidev->fn_ptr->read(rmidev->rmi4_data,
 			*f_pos,
@@ -410,13 +420,20 @@ static ssize_t rmidev_write(struct file *filp, const char __user *buf,
 		return -EBADF;
 	}
 
-	if (count == 0)
-		return 0;
+	mutex_lock(&(dev_data->file_mutex));
 
 	if (count > (REG_ADDR_LIMIT - *f_pos))
 		count = REG_ADDR_LIMIT - *f_pos;
 
-	mutex_lock(&(dev_data->file_mutex));
+	if (count == 0) {
+		retval = 0;
+		goto clean_up;
+	}
+
+	if (*f_pos > REG_ADDR_LIMIT) {
+		retval = -EFAULT;
+		goto clean_up;
+	}
 
 	if (dev_data->tmpbuf_size < count && alloc_tmpbuf(filp, count) != 0) {
 		retval = -ENOMEM;
