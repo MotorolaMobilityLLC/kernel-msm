@@ -1580,7 +1580,7 @@ static int msm_cpp_cfg_frame(struct cpp_device *cpp_dev,
 	unsigned long tnr_scratch_buffer0, tnr_scratch_buffer1;
 	uint16_t num_stripes = 0;
 	struct msm_buf_mngr_info buff_mgr_info, dup_buff_mgr_info;
-	uint32_t stripe_base = 0;
+	int32_t stripe_base = 0;
 	int32_t in_fd;
 	int32_t i = 0;
 
@@ -1599,13 +1599,6 @@ static int msm_cpp_cfg_frame(struct cpp_device *cpp_dev,
 
 	if (cpp_frame_msg[new_frame->msg_len - 1] != MSM_CPP_MSG_ID_TRAILER) {
 		pr_err("%s %d Invalid frame message\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-
-	if (stripe_base == UINT_MAX || new_frame->num_strips >
-		(UINT_MAX - 1 - stripe_base) / stripe_size) {
-		pr_err("Invalid frame message,num_strips %d is large\n",
-			new_frame->num_strips);
 		return -EINVAL;
 	}
 
