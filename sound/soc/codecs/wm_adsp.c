@@ -1432,8 +1432,12 @@ static int wm_adsp_load(struct wm_adsp *dsp)
 	if (file == NULL)
 		return -ENOMEM;
 
-	snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.wmfw", dsp->part, dsp->num,
-		 wm_adsp_fw[dsp->fw].file);
+	if (dsp->wmfw_file)
+		memcpy(file, dsp->wmfw_file, PAGE_SIZE);
+	else
+		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.wmfw",
+			 dsp->part, dsp->num,
+			 wm_adsp_fw[dsp->fw].file);
 	file[PAGE_SIZE - 1] = '\0';
 
 	mutex_lock(dsp->fw_lock);
@@ -2010,8 +2014,12 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 	if (file == NULL)
 		return -ENOMEM;
 
-	snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.bin", dsp->part, dsp->num,
-		 wm_adsp_fw[dsp->fw].file);
+	if (dsp->bin_file)
+		memcpy(file, dsp->bin_file, PAGE_SIZE);
+	else
+		snprintf(file, PAGE_SIZE, "%s-dsp%d-%s.bin",
+			 dsp->part, dsp->num,
+			 wm_adsp_fw[dsp->fw].file);
 	file[PAGE_SIZE - 1] = '\0';
 
 	mutex_lock(dsp->fw_lock);
@@ -2589,6 +2597,83 @@ int wm_adsp2_codec_remove(struct wm_adsp *dsp, struct snd_soc_codec *codec)
 }
 EXPORT_SYMBOL_GPL(wm_adsp2_codec_remove);
 
+#ifdef CONFIG_OF
+
+static int wm_adsp_of_parse_firmware(struct wm_adsp *dsp,
+				     struct device_node *np)
+{
+	struct device_node *fws = of_get_child_by_name(np, "firmware");
+	struct device_node *fw = NULL;
+	int ret;
+	int i;
+
+	if (!fws)
+		return 0;
+
+	i = 0;
+	while ((fw = of_get_next_child(fws, fw)) != NULL) {
+
+		ret = of_property_read_string(fw, "wlf,wmfw-file",
+					      &dsp->wmfw_file);
+		if (ret < 0) {
+			adsp_err(dsp,
+				 "Firmware filename missing/malformed: %d\n",
+				 ret);
+			return ret;
+		}
+
+		ret = of_property_read_string(fw, "wlf,bin-file",
+					      &dsp->bin_file);
+		if (ret < 0)
+			adsp_err(dsp,
+				 "Adsp bin file name missing/malformed: %d\n",
+				 ret);
+
+		adsp_info(dsp,
+			  "DSP FW name %s,Bin file name: %s\n",
+			  dsp->wmfw_file, dsp->bin_file);
+		i++;
+	}
+
+	return 0;
+}
+
+static int wm_adsp_of_parse_adsp(struct wm_adsp *dsp)
+{
+	struct device_node *np = of_get_child_by_name(dsp->dev->of_node,
+						      "adsps");
+	struct device_node *core = NULL;
+	unsigned int addr;
+	int ret;
+
+	if (!np)
+		return 0;
+
+	while ((core = of_get_next_child(np, core)) != NULL) {
+		ret = of_property_read_u32(core, "reg", &addr);
+		if (ret < 0) {
+			adsp_err(dsp,
+				 "Failed to get ADSP base address: %d\n",
+				 ret);
+			return ret;
+		}
+
+		if (addr == dsp->base)
+			break;
+	}
+
+	if (!core)
+		return 0;
+
+	return wm_adsp_of_parse_firmware(dsp, core);
+}
+
+#else
+static inline int wm_adsp_of_parse_adsp(struct wm_adsp *dsp)
+{
+	return 0;
+}
+#endif
 int wm_adsp2_init(struct wm_adsp *dsp, struct mutex *fw_lock)
 {
 	int ret;
@@ -2618,6 +2703,9 @@ int wm_adsp2_init(struct wm_adsp *dsp, struct mutex *fw_lock)
 	mutex_init(&dsp->pwr_lock);
 
 	dsp->fw_lock = fw_lock;
+
+	if (dsp->dev->of_node)
+		wm_adsp_of_parse_adsp(dsp);
 
 	return 0;
 }
