@@ -255,6 +255,7 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int rc = 0;
 	uint16_t chipid = 0;
+	uint16_t modelid = 0;
 	uint16_t chipid_mask = 0;
 	struct msm_camera_i2c_client *sensor_i2c_client;
 	struct msm_camera_slave_info *slave_info;
@@ -291,12 +292,33 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	if (chipid_mask != slave_info->sensor_id) {
 		if (slave_info->sensor_id2 > 0) {
 			if (chipid_mask == slave_info->sensor_id2)
-				return rc;
+				goto DONE;
 		}
 		pr_err("%s chip id %x does not match %x\n",
 				__func__, chipid, slave_info->sensor_id);
 		return -ENODEV;
 	}
+DONE:
+	if (slave_info->sensor_model_id) {
+		/* Sensor Model id is defined */
+		rc = sensor_i2c_client->i2c_func_tbl->i2c_read(
+			sensor_i2c_client, slave_info->sensor_model_id_reg_addr,
+			&modelid, MSM_CAMERA_I2C_WORD_DATA);
+		if (rc < 0) {
+			pr_err("%s: %s: model id read failed, id reg: 0x%x\n",
+				__func__, sensor_name,
+				slave_info->sensor_model_id_reg_addr);
+			return rc;
+		}
+		pr_info("%s: read model id: 0x%x\n", __func__, modelid);
+
+		if ((modelid & slave_info->sensor_model_id) != modelid) {
+			pr_err("%s model id 0x%x does NOT match 0x%x\n",
+			__func__, modelid, slave_info->sensor_model_id);
+			return -ENODEV;
+		}
+	}
+
 	return rc;
 }
 
