@@ -2590,14 +2590,26 @@ int smblib_set_prop_pd_current_max(struct smb_charger *chg,
 {
 	int rc;
 
+#ifdef QCOM_BASE
 	if (chg->pd_active)
 		rc = vote(chg->usb_icl_votable, PD_VOTER, true, val->intval);
 	else
 		rc = -EPERM;
+#else
+	bool enable = true;
 
+	if (0 == val->intval)
+		enable = false;
+
+	if (chg->pd_active)
+		rc = vote(chg->usb_icl_votable, PD_VOTER, enable, val->intval);
+	else
+		rc = -EPERM;
+#endif
 	return rc;
 }
 
+#ifdef QCOM_BASE
 static int smblib_handle_usb_current(struct smb_charger *chg,
 					int usb_current)
 {
@@ -2638,12 +2650,14 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 
 	return rc;
 }
+#endif
 
 int smblib_set_prop_sdp_current_max(struct smb_charger *chg,
 				    const union power_supply_propval *val)
 {
 	int rc = 0;
 
+#ifdef QCOM_BASE
 	if (!chg->pd_active) {
 		rc = smblib_handle_usb_current(chg, val->intval);
 	} else if (chg->system_suspend_supported) {
@@ -2654,6 +2668,24 @@ int smblib_set_prop_sdp_current_max(struct smb_charger *chg,
 			rc = vote(chg->usb_icl_votable,
 				PD_SUSPEND_SUPPORTED_VOTER, false, 0);
 	}
+#else
+	bool enable = true;
+
+	if (0 == val->intval)
+		enable = false;
+
+	if (!chg->pd_active) {
+		rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
+				enable, val->intval);
+	} else if (chg->system_suspend_supported) {
+		if (val->intval <= USBIN_25MA)
+			rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
+					enable, val->intval);
+		else
+			rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
+					false, 0);
+	}
+#endif
 	return rc;
 }
 
@@ -6578,6 +6610,15 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	smblib_dbg(chip, PR_MOTO, "Step State = %s, EB State %s\n",
 		   stepchg_str[(int)mmi->pres_chrg_step],
 		   ebchg_str[(int)mmi->ebchg_state]);
+	smblib_dbg(chip, PR_MOTO,
+		   "EFFECTIVE: FV = %d, CDIS = %d, FCC = %d, USUS = %d, "
+		   "USBICL = %d, DCICL = %d\n",
+		   get_effective_result(chip->fv_votable),
+		   get_effective_result(chip->chg_disable_votable),
+		   get_effective_result(chip->fcc_votable),
+		   get_effective_result(chip->usb_suspend_votable),
+		   get_effective_result(chip->usb_icl_votable),
+		   get_effective_result(chip->dc_icl_votable));
 end_hb:
 	if (chip->batt_psy)
 		power_supply_changed(chip->batt_psy);
