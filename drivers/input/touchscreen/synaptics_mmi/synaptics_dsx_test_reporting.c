@@ -34,6 +34,9 @@
 #define WATCHDOG_TIMEOUT_S 1
 #define STATUS_WORK_INTERVAL 20 /* ms */
 
+/* enable for report status polling */
+#undef REPORT_STATUS_POLLING
+
 /*
 #define RAW_HEX
 #define HUMAN_READABLE
@@ -436,6 +439,28 @@ static ssize_t concat(synaptics_rmi4_f54, _##propname##_store)(\
 
 #define show_store_replicated_func_unsigned(rtype, rgrp, propname)\
 show_store_replicated_func(rtype, rgrp, propname, "%u")
+
+#define DATA_REG_ADD(reg, skip, cond) \
+	do { if (cond) { \
+		attrs_data_regs_exist[reg_num] = true;\
+		data->reg_##reg = kzalloc(sizeof(*data->reg_##reg),\
+			GFP_KERNEL);\
+		if (!data->reg_##reg)\
+			goto exit_no_mem;\
+		pr_debug("d%s addr = 0x%02x added (%d)\n",\
+			 #reg, reg_addr, reg_num);\
+		data->reg_##reg->address = reg_addr;\
+		reg_addr += skip;\
+	} \
+	reg_num++;\
+	} while (0)
+
+#define DATA_REG_PRESENCE(reg, skip, cond) \
+	do { if (cond) { \
+		pr_debug("d%s addr = 0x%02x\n", #reg, reg_addr);\
+		reg_addr += skip;\
+	} \
+	} while (0)
 
 #define CTRL_REG_ADD(reg, skip, cond) \
 	do { if (cond) { \
@@ -3324,6 +3349,7 @@ static ssize_t synaptics_rmi4_f54_fifoindex_store(struct device *dev,
 	return count;
 }
 
+#if defined(REPORT_STATUS_POLLING)
 static int test_wait_for_command_completion(void)
 {
 	int retval;
@@ -3360,6 +3386,7 @@ static int test_wait_for_command_completion(void)
 
 	return 0;
 }
+#endif
 
 ssize_t send_get_report_command(void)
 {
@@ -3383,9 +3410,9 @@ ssize_t send_get_report_command(void)
 	}
 
 	wake_lock(&f54->test_wake_lock);
-	/* temporary poll for report completion */
-	/*set_interrupt(true);*/
-
+#if !defined(REPORT_STATUS_POLLING)
+	set_interrupt(true);
+#endif
 	f54->status = STATUS_BUSY;
 
 	retval = f54->fn_ptr->write(rmi4_data,
@@ -3403,6 +3430,8 @@ ssize_t send_get_report_command(void)
 		goto error_exit;
 	}
 
+#if defined(REPORT_STATUS_POLLING)
+	/* if report status control method is polling */
 	pr_debug("will be polling test report status\n");
 	retval = test_wait_for_command_completion();
 	if (retval < 0)
@@ -3410,9 +3439,7 @@ ssize_t send_get_report_command(void)
 
 	/* invoke status work immediately */
 	queue_delayed_work(f54->status_workqueue, &f54->status_work, 0);
-
-/* no need to schedule timeout work when polling report status */
-#if 0
+#else
 #ifdef WATCHDOG_HRTIMER
 	hrtimer_start(&f54->watchdog,
 			ktime_set(WATCHDOG_TIMEOUT_S, 0),
@@ -3424,10 +3451,9 @@ out:
 
 error_exit:
 	mutex_lock(&f54->status_mutex);
-
-	/* temporary poll for report completion */
-	/*set_interrupt(false);*/
-
+#if !defined(REPORT_STATUS_POLLING)
+	set_interrupt(false);
+#endif
 	wake_unlock(&f54->test_wake_lock);
 	f54->status = retval;
 	mutex_unlock(&f54->status_mutex);
@@ -4690,153 +4716,43 @@ static int synaptics_rmi4_f54_set_data(void)
 	reg_addr += 4;
 
 	/* data 4 */
-	if (f54->query.has_sense_frequency_control == 1) {
-		pr_debug("d4 addr = 0x%02x num = %d\n", reg_addr, reg_num);
-		attrs_data_regs_exist[reg_num] = true;
-		data->reg_4 = kzalloc(sizeof(*data->reg_4), GFP_KERNEL);
-		if (!data->reg_4)
-			goto exit_no_mem;
-		data->reg_4->address = reg_addr;
-		reg_addr += sizeof(data->reg_4->data);
-	}
-	reg_num++;
+	DATA_REG_ADD(4, 1, f54->query.has_sense_frequency_control);
 
 	/* F54_ANALOG_Data5 (reserved) is not present */
 	/* - do not increment */
 
 	/* data 6 */
-	if (f54->query.has_interference_metric) {
-		pr_debug("d6 addr = 0x%02x num = %d\n", reg_addr, reg_num);
-		attrs_data_regs_exist[reg_num] = true;
-		data->reg_6 = kzalloc(sizeof(*data->reg_6), GFP_KERNEL);
-		if (!data->reg_6)
-			goto exit_no_mem;
-		data->reg_6->address = reg_addr;
-		reg_addr += sizeof(data->reg_6->data);
-	}
-	reg_num++;
-
+	DATA_REG_ADD(6, 2, f54->query.has_interference_metric);
 	/* data 7.0 */
-	if (f54->query.has_one_byte_report_rate ||
-		f54->query.has_two_byte_report_rate) {
-		pr_debug("d7.0 addr = 0x%02x\n", reg_addr);
-		attrs_data_regs_exist[reg_num] = true;
-		data->reg_7_0 = kzalloc(sizeof(*data->reg_7_0), GFP_KERNEL);
-		if (!data->reg_7_0)
-			goto exit_no_mem;
-		data->reg_7_0->address = reg_addr;
-		reg_addr += 1;
-	}
-	reg_num++;
-
+	DATA_REG_ADD(7_0, 1, (f54->query.has_one_byte_report_rate ||
+		f54->query.has_two_byte_report_rate));
 	/* data 7.1 */
-	if (f54->query.has_two_byte_report_rate) {
-		pr_debug("d7.1 addr = 0x%02x\n", reg_addr);
-		attrs_data_regs_exist[reg_num] = true;
-		data->reg_7_1 = kzalloc(sizeof(*data->reg_7_1), GFP_KERNEL);
-		if (!data->reg_7_1)
-			goto exit_no_mem;
-		data->reg_7_1->address = reg_addr;
-		reg_addr += 1;
-	}
-	reg_num++;
-
+	DATA_REG_ADD(7_1, 1, f54->query.has_two_byte_report_rate);
 	/* data 8 */
-	if (f54->query.has_variance_metric) {
-		pr_debug("d8 addr = 0x%02x num = %d\n", reg_addr, reg_num);
-		attrs_data_regs_exist[reg_num] = true;
-		data->reg_8 = kzalloc(sizeof(*data->reg_8), GFP_KERNEL);
-		if (!data->reg_8)
-			goto exit_no_mem;
-		data->reg_8->address = reg_addr;
-		reg_addr += sizeof(data->reg_8->data);
-	}
-	reg_num++;
-
+	DATA_REG_ADD(8, 2, f54->query.has_variance_metric);
 	/* data 9 */
-	if (f54->query.has_multi_metric_state_machine) {
-		pr_debug("d9 addr = 0x%02x num = %d\n", reg_addr, reg_num);
-		attrs_data_regs_exist[reg_num] = true;
-		data->reg_9 = kzalloc(sizeof(*data->reg_9), GFP_KERNEL);
-		if (!data->reg_9)
-			goto exit_no_mem;
-		data->reg_9->address = reg_addr;
-		reg_addr += sizeof(data->reg_9->data);
-	}
-	reg_num++;
-
+	DATA_REG_ADD(9, 2, f54->query.has_multi_metric_state_machine);
 	/* data 10 */
-	if (f54->query.has_multi_metric_state_machine ||
-			f54->query.has_noise_state) {
-		pr_debug("d10 addr = 0x%02x num = %d\n", reg_addr, reg_num);
-		attrs_data_regs_exist[reg_num] = true;
-		data->reg_10 = kzalloc(sizeof(*data->reg_10), GFP_KERNEL);
-		if (!data->reg_10)
-			goto exit_no_mem;
-		data->reg_10->address = reg_addr;
-		reg_addr += sizeof(data->reg_10->data);
-	}
-	reg_num++;
+	DATA_REG_ADD(10, 1, (f54->query.has_multi_metric_state_machine ||
+		f54->query.has_noise_state));
 
 	/* data 11 */
-	if (f54->query.has_status) {
-		pr_debug("d11 addr = 0x%02x\n", reg_addr);
-		reg_addr += 1;
-	}
-
+	DATA_REG_PRESENCE(11, 1, f54->query.has_status);
 	/* data 12 */
-	if (f54->query.has_slew_metric) {
-		pr_debug("d12 addr = 0x%02x\n", reg_addr);
-		reg_addr += 2;
-	}
-
+	DATA_REG_PRESENCE(12, 2, f54->query.has_slew_metric);
 	/* data 13 */
-	if (f54->query.has_multi_metric_state_machine) {
-		pr_debug("d13 addr = 0x%02x\n", reg_addr);
-		reg_addr += 2;
-	}
+	DATA_REG_PRESENCE(13, 2, f54->query.has_multi_metric_state_machine);
 
 	/* data 14 */
-	if (f54->query13.has_cid_im) {
-		pr_debug("d14 addr = 0x%02x num = %d\n", reg_addr, reg_num);
-		attrs_data_regs_exist[reg_num] = true;
-		data->reg_14 = kzalloc(sizeof(*data->reg_14), GFP_KERNEL);
-		if (!data->reg_14)
-			goto exit_no_mem;
-		data->reg_14->address = reg_addr;
-		reg_addr += 1; /* replicated register */
-	}
-	reg_num++;
+	DATA_REG_ADD(14, 1, f54->query13.has_cid_im);
 
 	/* data 15 */
-	if (f54->query13.has_rail_im) {
-		pr_debug("d15 addr = 0x%02x\n", reg_addr);
-		reg_addr += 1;
-	}
+	DATA_REG_PRESENCE(15, 1, f54->query13.has_rail_im);
 
 	/* data 16 */
-	if (f54->query13.has_noise_mitigation_enh) {
-		pr_debug("d16 addr = 0x%02x num = %d\n", reg_addr, reg_num);
-		attrs_data_regs_exist[reg_num] = true;
-		data->reg_16 = kzalloc(sizeof(*data->reg_16), GFP_KERNEL);
-		if (!data->reg_16)
-			goto exit_no_mem;
-		data->reg_16->address = reg_addr;
-		reg_addr += 1;
-	}
-	reg_num++;
-
+	DATA_REG_ADD(16, 1, f54->query13.has_noise_mitigation_enh);
 	/* data 17 */
-	if (f54->query16.has_data17) {
-		pr_debug("d17 addr = 0x%02x num = %d\n", reg_addr, reg_num);
-		attrs_data_regs_exist[reg_num] = true;
-		data->reg_17 = kzalloc(sizeof(*data->reg_17), GFP_KERNEL);
-		if (!data->reg_17)
-			goto exit_no_mem;
-		data->reg_17->address = reg_addr;
-		reg_addr += sizeof(data->reg_17->data);
-	}
-	reg_num++;
+	DATA_REG_ADD(17, 1, f54->query16.has_data17);
 
 	return 0;
 
@@ -5030,10 +4946,9 @@ static void synaptics_rmi4_f54_status_work(struct work_struct *work)
 
 error_exit:
 	mutex_lock(&f54->status_mutex);
-
-	/* temporary poll for report completion */
-	/*set_interrupt(false);*/
-
+#if !defined(REPORT_STATUS_POLLING)
+	set_interrupt(false);
+#endif
 	wake_unlock(&f54->test_wake_lock);
 	f54->status = retval;
 	mutex_unlock(&f54->status_mutex);
