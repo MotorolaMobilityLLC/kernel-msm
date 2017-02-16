@@ -94,15 +94,12 @@
 			>;
 
 		adsps {
-			#address-cells = <1>;
-			#size-cells = <0>;
 			adsp@0ffe00 {
 				reg = <0x0ffe00>;
 				firmware {
 					ultrasound {
-						wlf,wmfw-file = "ultrasound";
-						wlf,bin-file = "ultrasound";
-						wlf,compr-caps = <1 1 4 1 96000>;
+						wlf,wmfw-file = "marley-dsp1-ultrasound.wmfw";
+						wlf,bin-file = "marley-dsp1-ultrasound.bin";
 					};
 				};
 			};
@@ -110,9 +107,8 @@
 				reg = <0x17fe00>;
 				firmware {
 					frontend {
-						wlf,wmfw-file = "aov-frontend";
-						wlf,bin-file = "aov-vrgain";
-						wlf,compr-caps = <1 1 4 1 16000>;
+						wlf,wmfw-file = "marley-dsp2-aov-frontend.wmfw";
+						wlf,bin-file = "marley-dsp2-aov-vrgain.bin";
 					};
 				};
 			};
@@ -120,9 +116,8 @@
 				reg = <0x1ffe00>;
 				firmware {
 					aov {
-						wlf,wmfw-file = "aov-control";
-						wlf,bin-file = "aov-model";
-						wlf,compr-caps = <1 1 4 1 16000>;
+						wlf,wmfw-file = "marley-dsp3-aov-control.wmfw";
+						wlf,bin-file = "marley-dsp3-aov-model.bin";
 					};
 				};
 			};
