@@ -261,6 +261,18 @@ static const struct snd_kcontrol_new cs35l35_clksel_mux[] = {
 	SOC_DAPM_ENUM("CLKSEL Mux", clksel_enum),
 };
 
+static const char * const cs35l35_pdm_en_text[] = {
+	"On",
+	"Off",
+};
+
+static SOC_ENUM_SINGLE_DECL(pdm_en_enum, SND_SOC_NOPM, 0,
+		cs35l35_pdm_en_text);
+
+static const struct snd_kcontrol_new cs35l35_pdm_en_mux[] = {
+	SOC_DAPM_ENUM("PDM MUX", pdm_en_enum),
+};
+
 static int cs35l35_reset_and_sync(struct cs35l35_private *priv, bool pdm)
 {
 	int ret = 0;
@@ -269,16 +281,11 @@ static int cs35l35_reset_and_sync(struct cs35l35_private *priv, bool pdm)
 		return 0;
 
 	gpiod_set_value_cansleep(priv->reset_gpio, 0);
-	usleep_range(3000, 3100);
+	usleep_range(2000, 2100);
 	regcache_cache_only(priv->regmap, true);
 	gpiod_set_value_cansleep(priv->reset_gpio, 1);
-
 	usleep_range(1000, 1100);
-	regmap_update_bits(priv->regmap, CS35L35_PROTECT_CTL,
-		CS35L35_AMP_MUTE_MASK, 1 << CS35L35_AMP_MUTE_SHIFT);
 	regcache_cache_only(priv->regmap, true);
-	regmap_update_bits(priv->regmap, CS35L35_PWRCTL1,
-			  CS35L35_PDN_ALL_MASK, 1);
 	regcache_mark_dirty(priv->regmap);
 
 	if (pdm) {
@@ -316,11 +323,6 @@ static int cs35l35_reset_and_sync(struct cs35l35_private *priv, bool pdm)
 	}
 	regcache_cache_only(priv->regmap, false);
 	regcache_sync(priv->regmap);
-	regmap_update_bits(priv->regmap, CS35L35_PROTECT_CTL,
-		CS35L35_AMP_MUTE_MASK, 1 << CS35L35_AMP_MUTE_SHIFT);
-	usleep_range(5000, 5100);
-	regmap_update_bits(priv->regmap, CS35L35_PROTECT_CTL,
-		CS35L35_AMP_MUTE_MASK, 0);
 
 	return ret;
 }
@@ -353,20 +355,21 @@ static int cs35l35_mclk_event(struct snd_soc_dapm_widget *w,
 		if (cs35l35->pdm_mode) {
 			cs35l35->pdm_mclk_switch = true;
 			return cs35l35_reset_and_sync(cs35l35, true);
-		}
-		regmap_update_bits(cs35l35->regmap, CS35L35_AMP_DIG_VOL_CTL,
-					2, 0);
-		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
+		} else {
+			regmap_update_bits(cs35l35->regmap,
+				CS35L35_AMP_DIG_VOL_CTL, 2, 0);
+			regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
 					  CS35L35_PDN_ALL_MASK, 1);
-		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
+			regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
 					CS35L35_DISCHG_FILT_MASK,
 					1 << CS35L35_DISCHG_FILT_SHIFT);
-		usleep_range(10000, 10010);
-		ret = wait_for_completion_timeout(&cs35l35->pdn_done,
+			usleep_range(4000, 4010);
+			ret = wait_for_completion_timeout(&cs35l35->pdn_done,
 							msecs_to_jiffies(100));
-		if (ret == 0) {
-			pr_err("TIMEOUT PDN_DONE did not complete in 100ms\n");
-			ret = -ETIMEDOUT;
+			if (ret == 0) {
+				pr_err("TIMEOUT PDN_DONE did not complete\n");
+				ret = -ETIMEDOUT;
+			}
 		}
 		break;
 	default:
@@ -411,7 +414,7 @@ static int cs35l35_pdm_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL1,
 					CS35L35_DISCHG_FILT_MASK,
 					1 << CS35L35_DISCHG_FILT_SHIFT);
-		usleep_range(10000, 10010);
+		usleep_range(4000, 4010);
 		ret = wait_for_completion_timeout(&cs35l35->pdn_done,
 							msecs_to_jiffies(100));
 		if (ret == 0) {
@@ -434,7 +437,7 @@ static const struct snd_soc_dapm_widget cs35l35_dapm_widgets[] = {
 		cs35l35_mclk_event, SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 
-	SND_SOC_DAPM_SUPPLY_S("PDMCLK", 1, SND_SOC_NOPM, 0, 0,
+	SND_SOC_DAPM_SUPPLY_S("PDMCLK", 2, SND_SOC_NOPM, 0, 0,
 		cs35l35_pdm_event, SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 
@@ -451,6 +454,7 @@ static const struct snd_soc_dapm_widget cs35l35_dapm_widgets[] = {
 	SND_SOC_DAPM_PGA("MCLK Select", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("PDM Select", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MUX("CLKSEL MUX", SND_SOC_NOPM, 0, 0, cs35l35_clksel_mux),
+	SND_SOC_DAPM_MUX("PDM Mux", SND_SOC_NOPM, 0, 0, cs35l35_pdm_en_mux),
 
 	SND_SOC_DAPM_ADC("VMON ADC", NULL, CS35L35_PWRCTL2, 7, 1),
 	SND_SOC_DAPM_ADC("IMON ADC", NULL, CS35L35_PWRCTL2, 6, 1),
@@ -478,15 +482,16 @@ static const struct snd_soc_dapm_route cs35l35_audio_map[] = {
 	{"SDIN", NULL, "AMP Playback"},
 	{"CLASS H", NULL, "SDIN"},
 	{"Main AMP", NULL, "CLASS H"},
-	{"Main AMP", NULL, "PDM Playback"},
 	{"SPK", NULL, "Main AMP"},
 
 
 	{"MCLK Select", NULL, "AMP Playback"},
 	{"CLKSEL MUX", NULL, "MCLK Select"},
 
-	{"PDM Select", NULL, "PDM Playback"},
-	{"CLKSEL MUX", NULL, "PDM Select"},
+	{"PDM Mux", "On", "PDM Playback"},
+	{"Main AMP", NULL, "PDM Mux"},
+	{"PDM Select", NULL, "Main AMP"},
+	{"CLKSEL MUX", "PDM", "PDM Select"},
 
 	{"SPK", NULL, "CLKSEL MUX"},
 
