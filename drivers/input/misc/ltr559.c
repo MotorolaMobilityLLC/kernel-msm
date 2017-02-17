@@ -380,10 +380,10 @@ static void ltr559_ps_work_func(struct work_struct *work)
 		if (ps_state_last != data->ps_state) {
 			input_report_abs(data->input_dev_ps, ABS_DISTANCE, data->ps_state);
 			input_sync(data->input_dev_ps);
-			printk("%s, report ABS_DISTANCE=%s\n", __func__, data->ps_state ? "far" : "near");
+			printk("%s, report ABS_DISTANCE=%s\n", __func__, data->ps_state == 100 ? "far" : "near");
 			ps_state_last = data->ps_state;
 		} else
-			printk("%s, ps_state still %s\n", __func__, data->ps_state ? "far" : "near");
+			printk("%s, ps_state still %s\n", __func__, data->ps_state == 100 ? "far" : "near");
 	}
 workout:
 	enable_irq(data->irq);
