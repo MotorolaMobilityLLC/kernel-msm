@@ -4505,7 +4505,9 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(97, 1, query21->has_ctrl97);
 	CTRL_REG_PRESENCE(98, 1, query21->has_ctrl98);
 
-	CTRL_REG_ADD(99, 1, (query->touch_controller_family == 2));
+	CTRL_REG_ADD(99, 1, (query16->has_ctrl99 ||
+		((f54->query.touch_controller_family == 2) ||
+		(f54->query.touch_controller_family == 4))));
 
 	CTRL_REG_PRESENCE(100, 1, query16->has_ctrl100);
 	CTRL_REG_PRESENCE(101, 1, query22->has_ctrl101);
