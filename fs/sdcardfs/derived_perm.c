@@ -236,6 +236,7 @@ void fixup_lower_ownership(struct dentry* dentry, const char *name) {
 		if (error)
 			pr_err("sdcardfs: Failed to touch up lower fs gid/uid.\n");
 	}
+	sdcardfs_put_lower_path(dentry, &path);
 }
 
 static int descendant_may_need_fixup(struct sdcardfs_inode_info *info, struct limit_search *limit) {
