@@ -453,3 +453,7 @@
 &sdhc_2 {
 	cd-gpios = <&tlmm 67 0x0>;
 };
+
+&pmi_haptic {
+	qcom,vmax-mv = <2552>;
+};
