@@ -3249,6 +3249,11 @@ static int wm_adsp_buffer_update_avail(struct wm_adsp_compr_buf *buf)
 	int write_index, read_index, avail;
 	int ret;
 
+#if IS_ENABLED(CONFIG_SND_SOC_AOV_TRIGGER)
+	/* Always read read_index in Moto AOV solution */
+	buf->read_index = -1;
+#endif
+
 	/* Only sync read index if we haven't already read a valid index */
 	if (buf->read_index < 0) {
 		ret = wm_adsp_buffer_read(buf,
@@ -3273,6 +3278,9 @@ static int wm_adsp_buffer_update_avail(struct wm_adsp_compr_buf *buf)
 		return ret;
 
 	write_index = sign_extend32(next_write_index, 23);
+
+	/* Don't empty the buffer as it kills the firmware */
+	write_index--;
 
 	avail = write_index - buf->read_index;
 	if (avail < 0)
