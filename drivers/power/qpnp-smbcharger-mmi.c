@@ -436,6 +436,7 @@ struct smbchg_chip {
 	struct wakeup_source		smbchg_hb_wake_source;
 	struct alarm			smbchg_heartbeat_alarm;
 	enum power_supply_type		supply_type;
+	int				vbus_inc_cnt;
 };
 
 static struct smbchg_chip *the_chip;
@@ -6184,6 +6185,8 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 			}
 		}
 
+		chip->vbus_inc_cnt++;
+
 		rc = qpnp_vadc_read(chip->usb_vadc_dev, USBIN, &results);
 		if (rc) {
 			SMB_ERR(chip, "Unable to read usbin rc=%d\n", rc);
@@ -6195,6 +6198,7 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 		if ((en_volt_mv - st_volt_mv) >= HVDCP3_INC) {
 			chip->hvdcp3_confirmed = true;
 			chip->cl_usbc = 3000;
+			chip->usb_target_current_ma = 3000;
 		}
 		SMB_WARN(chip, "HVDCP%s FOUND!\n", chip->hvdcp3_confirmed ? "3" : "2");
 	}
@@ -6452,6 +6456,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	chip->usb_present = false;
 	chip->hvdcp_det_done = false;
 	chip->hvdcp3_confirmed = false;
+	chip->vbus_inc_cnt = 0;
 
 	if (chip->factory_mode && chip->factory_cable) {
 		if (!factory_kill_disable) {
@@ -10671,6 +10676,11 @@ void smbchg_pulse_charger(struct smbchg_chip *chip, bool increment)
 				"Unable to pulse DP/M rc=%d\n", rc);
 		}
 	}
+
+	if (increment)
+		chip->vbus_inc_cnt++;
+	else if (chip->vbus_inc_cnt > 0)
+		chip->vbus_inc_cnt--;
 }
 
 #define SMBCHG_HEARTBEAT_INTERVAL_NS	70000000000
@@ -10688,6 +10698,7 @@ void smbchg_pulse_charger(struct smbchg_chip *chip, bool increment)
 #define VBUS_INPUT_VOLTAGE_NOM ((VBUS_INPUT_VOLTAGE_TARGET) - 200)
 #define VBUS_INPUT_VOLTAGE_MAX ((VBUS_INPUT_VOLTAGE_TARGET) + 200)
 #define VBUS_INPUT_VOLTAGE_MIN 4000
+#define VBUS_INPUT_MAX_COUNT 4
 static void smbchg_heartbeat_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work,
@@ -11117,7 +11128,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		break;
 	case STEP_FULL:
 	case STEP_TAPER:
-		if (smbchg_hvdcp_det_check(chip) &&
+		if (smbchg_hvdcp_det_check(chip) && chip->enable_hvdcp_9v &&
 		    (chip->usb_target_current_ma != HVDCP_ICL_TAPER)) {
 			mutex_lock(&chip->current_change_lock);
 			chip->usb_target_current_ma = HVDCP_ICL_TAPER;
@@ -11267,7 +11278,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	if (chip->usb_present && chip->hvdcp3_confirmed &&
 	    (vbus_inc_mv > VBUS_INPUT_VOLTAGE_NOM)) {
 		if ((vbus_mv < vbus_inc_mv) &&
-		    (vbus_mv >= VBUS_INPUT_VOLTAGE_MIN)) {
+		    (vbus_mv >= VBUS_INPUT_VOLTAGE_MIN) &&
+		    (chip->vbus_inc_cnt < VBUS_INPUT_MAX_COUNT)) {
 			SMB_WARN(chip, "HVDCP Input %d mV Low, Increase\n",
 				 vbus_mv);
 			smbchg_pulse_charger(chip, true);
@@ -11661,6 +11673,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->demo_mode = false;
 	chip->hvdcp_det_done = false;
 	chip->hvdcp3_confirmed = false;
+	chip->vbus_inc_cnt = 0;
 	chip->usbc_disabled = false;
 	chip->fg_ready = false;
 	chip->vl_ebsrc = USBC_9V_MODE + 500;
