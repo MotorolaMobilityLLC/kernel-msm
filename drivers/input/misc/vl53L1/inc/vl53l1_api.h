@@ -11,7 +11,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 *  terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -28,7 +28,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -141,7 +141,8 @@ VL53L1_Error VL53L1_GetDeviceInfo(VL53L1_DEV Dev,
  *
  * @param   RangeStatus         The RangeStatus code as stored on
  * @a VL53L1_RangingMeasurementData_t
- * @param   pRangeStatusString  The returned RangeStatus string.
+ * @param   pRangeStatusString  The returned RangeStatus string. Shall be
+ * defined as char buf[VL53L1_MAX_STRING_LENGTH]
  * @return  VL53L1_ERROR_NONE   Success
  * @return  "Other error code"  See ::VL53L1_Error
  */
@@ -155,7 +156,7 @@ VL53L1_Error VL53L1_GetRangeStatusString(uint8_t RangeStatus,
  *
  * @param   PalErrorCode       The error code as stored on @a VL53L1_Error
  * @param   pPalErrorString    The error string corresponding to the
- * PalErrorCode
+ * PalErrorCode. Shall be defined as char buf[VL53L1_MAX_STRING_LENGTH]
  * @return  VL53L1_ERROR_NONE  Success
  * @return  "Other error code" See ::VL53L1_Error
  */
@@ -169,7 +170,7 @@ VL53L1_Error VL53L1_GetPalErrorString(VL53L1_Error PalErrorCode,
  *
  * @param   PalStateCode          The State code as stored on @a VL53L1_State
  * @param   pPalStateString       The State string corresponding to the
- * PalStateCode
+ * PalStateCode. Shall be defined as char buf[VL53L1_MAX_STRING_LENGTH]
  * @return  VL53L1_ERROR_NONE     Success
  * @return  "Other error code"    See ::VL53L1_Error
  */
@@ -325,7 +326,19 @@ VL53L1_Error VL53L1_GetPresetMode(VL53L1_DEV Dev,
  * @brief  Set the distance mode
  * @par Function Description
  * Set the distance mode to be used for the next ranging.
- *
+ * The modes Short, Medium and Long are used to optimize the ranging accuracy
+ * in a specific range of distance. The user select one of these modes to fix
+ * the distance range, for this reason these are also called Manual modes.
+ * Two additional modes are supported: AUTO and AUTO_LITE the difference between
+ * these modes is the following.
+ * The mode AUTO take into account both the ranging distance (RangeMilliMeter)
+ * and the dmax distance (DmaxMilliMeter). The algorithm uses the ranging
+ * distance when the range status is ok i.e. when range
+ * status = VL53L1_RANGESTATUS_RANGE_VALID or
+ * status = VL53L1_RANGESTATUS_RANGE_VALID_NO_WRAP_CHECK
+ * and it uses the dmax distance when the range status is not ok.
+ * The AUTO_LITE take into account only the ranging distance, so nothing is done
+ * in case of range error i.e. the distance mode will not be changed.
  * @note This function doesn't Access to the device
  *
  * @warning This function should be called after @a VL53L1_SetPresetMode().
@@ -333,10 +346,14 @@ VL53L1_Error VL53L1_GetPresetMode(VL53L1_DEV Dev,
  * @param   Dev                   Device Handle
  * @param   DistanceMode          Distance mode to apply
  *                                Valid values are:
+ *                                for all Preset Mode (MANUAL MODE)
  *                                VL53L1_DISTANCEMODE_SHORT
  *                                VL53L1_DISTANCEMODE_MEDIUM
  *                                VL53L1_DISTANCEMODE_LONG
  *
+ *                                for LIGHT_RANGING and RANGING (AUTO MODE)
+ *                                VL53L1_DISTANCEMODE_AUTO_LITE
+ *                                VL53L1_DISTANCEMODE_AUTO
  * @return  VL53L1_ERROR_NONE               Success
  * @return  VL53L1_ERROR_MODE_NOT_SUPPORTED This error occurs when DistanceMode
  *                                          is not in the supported list
@@ -365,8 +382,9 @@ VL53L1_Error VL53L1_GetDistanceMode(VL53L1_DEV Dev,
  * Set the output mode to be used for the next ranging. The output mode is used
  * to select, in case of multiple objects, which one will be used in
  * function @a VL53L1_GetRangingMeasurementData().
- * VL53L1_SetOutputMode also sets the object used when
- * @a VL53L1_SetDistanceMode() is set to the automatic mode.
+  * VL53L1_SetOutputMode also sets the object used by automatic
+  * distance mode algorithm when @a VL53L1_SetDistanceMode() is
+  * set to automatic mode.
  *
  * @note This function doesn't Access to the device
  *
@@ -500,8 +518,8 @@ VL53L1_Error VL53L1_GetNumberOfLimitCheck(
  *
  * @param   LimitCheckId                  Limit Check ID
  (0<= LimitCheckId < VL53L1_GetNumberOfLimitCheck() ).
- * @param   pLimitCheckString             Pointer to the
- description string of the given check limit.
+ * @param   pLimitCheckString             Pointer to the description string of
+ * the given check limit. Shall be defined as char buf[VL53L1_MAX_STRING_LENGTH]
  * @return  VL53L1_ERROR_NONE            Success
  * @return  "Other error code"           See ::VL53L1_Error
  */
@@ -759,8 +777,8 @@ VL53L1_Error VL53L1_GetNumberOfSequenceSteps(VL53L1_DEV Dev,
  * @note This function doesn't Accesses the device
  *
  * @param   SequenceStepId               Sequence step identifier.
- * @param   pSequenceStepsString         Pointer to Info string
- *
+ * @param   pSequenceStepsString         Pointer to Info string. Shall be
+ * defined as char buf[VL53L1_MAX_STRING_LENGTH]
  * @return  VL53L1_ERROR_NONE            Success
  * @return  "Other error code"           See ::VL53L1_Error
  */
@@ -1032,6 +1050,22 @@ VL53L1_Error VL53L1_PerformXTalkCalibration(VL53L1_DEV Dev,
 		uint8_t CalibrationOption);
 
 /**
+* @brief Define the mode to be used for the offset calibration
+*
+* Define the mode to be used for the offset calibration. This function should
+* be called before run the @a VL53L1_PerformOffsetCalibration()
+*
+* @param   Dev                       Device Handle
+* @param   OffsetCalibrationMode     Offset Calibration Mode
+*
+* @return  VL53L1_ERROR_NONE         Success
+* @return  "Other error code"        See ::VL53L1_Error
+*/
+VL53L1_Error VL53L1_SetOffsetCalibrationMode(VL53L1_DEV Dev,
+		VL53L1_OffsetCalibrationModes OffsetCalibrationMode);
+
+
+/**
  * @brief Perform Offset Calibration
  *
  * @details Perform a Offset calibration of the Device.
@@ -1046,12 +1080,15 @@ VL53L1_Error VL53L1_PerformXTalkCalibration(VL53L1_DEV Dev,
  * @param   Dev                  Device Handle
  * @param   CalDistanceMilliMeter     Calibration distance value used for the
  * offset compensation.
+ * @param   CalReflectancePercent     Calibration Target reflectance @ 940nm
+ * in percentage.
  *
  * @return  VL53L1_ERROR_NONE
  * @return  "Other error code"   See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_PerformOffsetCalibration(VL53L1_DEV Dev,
-	int32_t CalDistanceMilliMeter);
+	int32_t CalDistanceMilliMeter,
+	FixPoint1616_t CalReflectancePercent);
 
 /**
  * @brief Sets the Calibration Data.
@@ -1066,6 +1103,8 @@ VL53L1_Error VL53L1_PerformOffsetCalibration(VL53L1_DEV Dev,
  * @param   Dev                          Device Handle
  * @param   *pCalibrationData            Pointer to Calibration data to be set.
  * @return  VL53L1_ERROR_NONE            Success
+ * @return  VL53L1_ERROR_INVALID_PARAMS  pCalibrationData points to an older
+ * version of the inner structure. Need for support to convert its content.
  * @return  "Other error code"           See ::VL53L1_Error
  */
 VL53L1_Error VL53L1_SetCalibrationData(VL53L1_DEV Dev,
