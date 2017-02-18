@@ -2,8 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
-* 'STMicroelectronics Proprietary license'
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
 ********************************************************************************
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -225,25 +225,9 @@ VL53L1_Error VL53L1_software_reset(
 
 
 
-
-
-
-
-
-
 VL53L1_Error VL53L1_set_part_to_part_data(
 	VL53L1_DEV                            Dev,
-	VL53L1_customer_nvm_managed_t        *pcustomer,
-	VL53L1_additional_offset_cal_data_t  *poff_cal_data,
-	VL53L1_dmax_calibration_data_t       *pdmax_cal,
-	VL53L1_xtalk_histogram_data_t        *pxtalkhisto);
-
-
-
-
-
-
-
+	VL53L1_calibration_data_t            *pcal_data);
 
 
 
@@ -262,10 +246,7 @@ VL53L1_Error VL53L1_set_part_to_part_data(
 
 VL53L1_Error VL53L1_get_part_to_part_data(
 	VL53L1_DEV                            Dev,
-	VL53L1_customer_nvm_managed_t        *pcustomer,
-	VL53L1_additional_offset_cal_data_t  *poff_cal_data,
-	VL53L1_dmax_calibration_data_t       *pdmax_cal,
-	VL53L1_xtalk_histogram_data_t        *pxtalkhisto);
+	VL53L1_calibration_data_t            *pcal_data);
 
 
 
@@ -319,8 +300,10 @@ VL53L1_Error VL53L1_get_inter_measurement_period_ms(
 
 
 
+
 VL53L1_Error VL53L1_set_timeouts_us(
 	VL53L1_DEV          Dev,
+	uint32_t            phasecal_config_timeout_us,
 	uint32_t            mm_config_timeout_us,
 	uint32_t            range_config_timeout_us);
 
@@ -340,8 +323,10 @@ VL53L1_Error VL53L1_set_timeouts_us(
 
 
 
+
 VL53L1_Error VL53L1_get_timeouts_us(
 	VL53L1_DEV          Dev,
+	uint32_t           *pphasecal_config_timeout_us,
 	uint32_t           *pmm_config_timeout_us,
 	uint32_t           *prange_config_timeout_us);
 
@@ -465,9 +450,47 @@ VL53L1_Error VL53L1_get_interrupt_polarity(
 
 
 
+VL53L1_Error VL53L1_get_refspadchar_config_struct(
+	VL53L1_DEV                     Dev,
+	VL53L1_refspadchar_config_t   *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_refspadchar_config_struct(
+	VL53L1_DEV                     Dev,
+	VL53L1_refspadchar_config_t   *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 VL53L1_Error VL53L1_set_range_ignore_threshold(
 	VL53L1_DEV              Dev,
+	uint8_t                 range_ignore_thresh_mult,
 	uint16_t                range_ignore_threshold_mcps);
+
+
+
+
+
 
 
 
@@ -487,6 +510,7 @@ VL53L1_Error VL53L1_set_range_ignore_threshold(
 
 VL53L1_Error VL53L1_get_range_ignore_threshold(
 	VL53L1_DEV              Dev,
+	uint8_t                *prange_ignore_thresh_mult,
 	uint16_t               *prange_ignore_threshold_mcps_internal,
 	uint16_t               *prange_ignore_threshold_mcps_current);
 
@@ -607,9 +631,13 @@ VL53L1_Error VL53L1_get_zone_config(
 
 
 
+
+
 VL53L1_Error VL53L1_set_preset_mode(
 	VL53L1_DEV                   Dev,
 	VL53L1_DevicePresetModes     device_preset_mode,
+	uint16_t                     dss_config__target_total_rate_mcps,
+	uint32_t                     phasecal_config_timeout_us,
 	uint32_t                     mm_config_timeout_us,
 	uint32_t                     range_config_timeout_us,
 	uint32_t                     inter_measurement_period_ms);
@@ -860,7 +888,9 @@ VL53L1_Error VL53L1_get_histogram_bin_data(
 
 
 
+
 void VL53L1_copy_sys_and_core_results_to_range_results(
+	int32_t                           gain_factor,
 	VL53L1_system_results_t          *psys,
 	VL53L1_core_results_t            *pcore,
 	VL53L1_range_results_t           *presults);
@@ -960,9 +990,172 @@ VL53L1_Error VL53L1_get_GPIO_interrupt_config(
 	VL53L1_DEV                      Dev,
 	VL53L1_GPIO_interrupt_config_t	*pintconf);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_dmax_mode(
+	VL53L1_DEV              Dev,
+	VL53L1_DeviceDmaxMode   dmax_mode);
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_dmax_mode(
+	VL53L1_DEV               Dev,
+	VL53L1_DeviceDmaxMode   *pdmax_mode);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_hist_dmax_config(
+	VL53L1_DEV                      Dev,
+	VL53L1_hist_gen3_dmax_config_t *pdmax_cfg);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_hist_dmax_config(
+	VL53L1_DEV                      Dev,
+	VL53L1_hist_gen3_dmax_config_t *pdmax_cfg);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_offset_calibration_mode(
+	VL53L1_DEV                      Dev,
+	VL53L1_OffsetCalibrationMode   offset_cal_mode);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_offset_calibration_mode(
+	VL53L1_DEV                      Dev,
+	VL53L1_OffsetCalibrationMode  *poffset_cal_mode);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_offset_correction_mode(
+	VL53L1_DEV                     Dev,
+	VL53L1_OffsetCalibrationMode   offset_cor_mode);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_offset_correction_mode(
+	VL53L1_DEV                    Dev,
+	VL53L1_OffsetCorrectionMode  *poffset_cor_mode);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_zone_calibration_data(
+	VL53L1_DEV                         Dev,
+	VL53L1_zone_calibration_results_t *pzone_cal);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_zone_calibration_data(
+	VL53L1_DEV                         Dev,
+	VL53L1_zone_calibration_results_t *pzone_cal);
+
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
+
 
