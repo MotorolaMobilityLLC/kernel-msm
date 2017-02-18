@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -212,6 +212,26 @@ VL53L1_Error VL53L1_nvm_format_decode(
 
 
 
+
+VL53L1_Error VL53L1_nvm_decode_cal_peak_rate_map(
+	uint16_t                             buf_size,
+	uint8_t                             *pbuffer,
+	VL53L1_cal_peak_rate_map_t          *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 VL53L1_Error VL53L1_nvm_decode_additional_offset_cal_data(
 	uint16_t                             buf_size,
 	uint8_t                             *pbuffer,
@@ -351,6 +371,22 @@ VL53L1_Error VL53L1_read_nvm(
 
 
 
+VL53L1_Error VL53L1_read_nvm_cal_peak_rate_map(
+	VL53L1_DEV                           Dev,
+	VL53L1_cal_peak_rate_map_t          *pcal_data);
+
+
+
+
+
+
+
+
+
+
+
+
+
 VL53L1_Error VL53L1_read_nvm_additional_offset_cal_data(
 	VL53L1_DEV                           Dev,
 	VL53L1_additional_offset_cal_data_t *pcal_data);
@@ -383,3 +419,4 @@ VL53L1_Error VL53L1_read_nvm_fmt_range_results_data(
 #endif
 
 #endif
+

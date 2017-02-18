@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -105,6 +105,7 @@
 #ifndef _VL53L1_DMAX_STRUCTS_H_
 #define _VL53L1_DMAX_STRUCTS_H_
 
+#include "vl53l1_types.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -139,7 +140,7 @@ typedef struct {
 	uint16_t  ref__distance_mm;
 
 
-	uint16_t   ref_reflectance;
+	uint16_t   ref_reflectance_pc;
 
 
 
@@ -198,3 +199,4 @@ typedef struct {
 #endif
 
 #endif
+
