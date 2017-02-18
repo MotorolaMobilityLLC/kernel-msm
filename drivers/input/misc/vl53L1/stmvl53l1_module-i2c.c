@@ -82,6 +82,14 @@
  */
 #define MODI2C_DEBUG	0
 
+/*
+ * mutex to handle device i2c address changes. It allow to avoid multiple
+ * device active with same i2c addresses at the same time. Note that we don't
+ * support case where boot_reg has the same value as a final i2c address of
+ * another device.
+ */
+static DEFINE_MUTEX(dev_addr_change_mutex);
+
 struct vl53l1_pinctrl_info {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *gpio_state_active;
@@ -364,6 +372,7 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 	i2c_data->pwren_gpio = -1;
 	i2c_data->xsdn_gpio = -1;
 	i2c_data->intr_gpio = -1;
+	i2c_data->boot_reg = STMVL53L1_SLAVE_ADDR;
 	if (force_device) {
 		i2c_data->xsdn_gpio = xsdn_gpio_nb;
 		i2c_data->pwren_gpio = pwren_gpio_nb;
@@ -416,6 +425,13 @@ static int stmvl53l1_parse_tree(struct device *dev, struct i2c_data *i2c_data)
 			else
 				i2c_data->intr_gpio = -1;
 		}
+		rc = of_property_read_u32_array(dev->of_node, "boot-reg",
+			&i2c_data->boot_reg, 1);
+		if (rc) {
+			vl53l1_wanrmsg("Unable to find boot-reg %d %d",
+				rc, i2c_data->boot_reg);
+			i2c_data->boot_reg = STMVL53L1_SLAVE_ADDR;
+		}
 
 		get_dt_xtalk_data(dev->of_node, i2c_data->vl53l1_data);
 	}
@@ -463,7 +479,7 @@ static int stmvl53l1_probe(struct i2c_client *client,
 	struct stmvl53l1_data *vl53l1_data = NULL;
 	struct i2c_data *i2c_data = NULL;
 
-	vl53l1_dbgmsg("Enter\n");
+	vl53l1_dbgmsg("Enter %s : 0x%02x\n", client->name, client->addr);
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE)) {
 		rc = -EIO;
@@ -503,6 +519,7 @@ static int stmvl53l1_probe(struct i2c_client *client,
 		goto release_gpios;
 	vl53l1_dbgmsg("End\n");
 
+	kref_init(&i2c_data->ref);
 	return rc;
 
 release_gpios:
@@ -522,14 +539,16 @@ static int stmvl53l1_remove(struct i2c_client *client)
 	struct i2c_data *i2c_data = (struct i2c_data *)data->client_object;
 
 	vl53l1_dbgmsg("Enter\n");
+	mutex_lock(&data->work_mutex);
 	/* main driver cleanup */
 	stmvl53l1_cleanup(data);
 
 	/* release gpios */
 	stmvl53l1_release_gpios(i2c_data);
 
-	kfree(data->client_object);
-	kfree(data);
+	mutex_unlock(&data->work_mutex);
+
+	stmvl53l1_put(data->client_object);
 
 	vl53l1_dbgmsg("End\n");
 
@@ -617,6 +636,64 @@ int stmvl53l1_power_down_i2c(void *i2c_object)
 	return rc;
 }
 
+static int handle_i2c_address_device_change_lock(struct i2c_data *data)
+{
+	struct i2c_client *client = (struct i2c_client *) data->client;
+	uint8_t buffer[3];
+	struct i2c_msg msg;
+	int rc = 0;
+
+	vl53l1_dbgmsg("change device i2c address from 0x%02x to 0x%02x",
+		data->boot_reg, client->addr);
+	/* no i2c-access must occur before fw boot time */
+	usleep_range(VL53L1_FIRMWARE_BOOT_TIME_US,
+		VL53L1_FIRMWARE_BOOT_TIME_US + 1);
+
+	/* manually send message to update i2c address */
+	buffer[0] = (VL53L1_I2C_SLAVE__DEVICE_ADDRESS >> 8) & 0xFF;
+	buffer[1] = (VL53L1_I2C_SLAVE__DEVICE_ADDRESS >> 0) & 0xFF;
+	buffer[2] = client->addr;
+	msg.addr = data->boot_reg;
+	msg.flags = client->flags;
+	msg.buf = buffer;
+	msg.len = 3;
+	if (i2c_transfer(client->adapter, &msg, 1) != 1) {
+		rc = -ENXIO;
+		vl53l1_errmsg("Fail to change i2c address to 0x%02x",
+			client->addr);
+	}
+
+	return rc;
+}
+/* reset release will also handle device address change. It will avoid state
+ * where multiple stm53l1 are bring out of reset at the same time with the
+ * same boot address.
+ * Note that we don't manage case where boot_reg has the same value as a final
+ * i2c address of another device. This case is not supported and will lead
+ * to unpredictable behavior.
+ */
+static int release_reset(struct i2c_data *data)
+{
+	struct i2c_client *client = (struct i2c_client *) data->client;
+	int rc = 0;
+	bool is_address_change = client->addr != data->boot_reg;
+
+	if (is_address_change)
+		mutex_lock(&dev_addr_change_mutex);
+
+	gpio_set_value(data->xsdn_gpio, 1);
+	if (is_address_change) {
+		rc = handle_i2c_address_device_change_lock(data);
+		if (rc)
+			gpio_set_value(data->xsdn_gpio, 0);
+	}
+
+	if (is_address_change)
+		mutex_unlock(&dev_addr_change_mutex);
+
+	return rc;
+}
+
 /**
  * release device reset
  *
@@ -630,19 +707,25 @@ int stmvl53l1_reset_release_i2c(void *i2c_object)
 
 	vl53l1_dbgmsg("Enter\n");
 
-	/* release reset */
-	gpio_set_value(data->xsdn_gpio, 1);
+	rc = release_reset(data);
 
 	pinctrl_select_state(g_pinctrl_info.pinctrl,
 		g_pinctrl_info.gpio_state_active);
+	if (rc)
+		goto error;
 
 	/* and now wait for device end of boot */
 	data->vl53l1_data->is_delay_allowed = true;
 	rc = VL53L1_WaitDeviceBooted(&data->vl53l1_data->stdev);
 	data->vl53l1_data->is_delay_allowed = false;
-	if (rc)
+	if (rc) {
+		gpio_set_value(data->xsdn_gpio, 0);
 		vl53l1_errmsg("boot fail with error %d", rc);
+		data->vl53l1_data->last_error = rc;
+		rc = -EIO;
+	}
 
+error:
 	vl53l1_dbgmsg("End\n");
 
 	return rc;
@@ -762,6 +845,35 @@ int stmvl53l1_start_intr(void *object, int *poll_mode)
 	return rc;
 }
 
+void *stmvl53l1_get(void *object)
+{
+	struct i2c_data *data = (struct i2c_data *) object;
+
+	vl53l1_dbgmsg("Enter\n");
+	kref_get(&data->ref);
+	vl53l1_dbgmsg("End\n");
+
+	return object;
+}
+
+static void memory_release(struct kref *kref)
+{
+	struct i2c_data *data = container_of(kref, struct i2c_data, ref);
+
+	vl53l1_dbgmsg("Enter\n");
+	kfree(data->vl53l1_data);
+	kfree(data);
+	vl53l1_dbgmsg("End\n");
+}
+
+void stmvl53l1_put(void *object)
+{
+	struct i2c_data *data = (struct i2c_data *) object;
+
+	vl53l1_dbgmsg("Enter\n");
+	kref_put(&data->ref, memory_release);
+	vl53l1_dbgmsg("End\n");
+}
 void __exit stmvl53l1_exit_i2c(void *i2c_object)
 {
 	vl53l1_dbgmsg("Enter\n");

@@ -66,48 +66,6 @@
 #define stmvl531_range_data_t VL53L1_RangingMeasurementData_t
 
 /**
- * IOCTL register data structure use in @ref VL53L1_IOCTL_REGISTER
- *
- * for convenience an ease of use full data size capability is exposed here
- * but the @ref stmvl53l1_register_flexi can be used instead
- */
-struct stmvl53l1_register {
-	uint32_t is_read;	/*!< type of the access 1: read 0: write*/
-	uint32_t index;		/*!< register index */
-	uint32_t cnt;		/*!< register size shall be 1 to n */
-	int32_t status;		/*!< operation status 0 ok else error */
-
-	union reg_data_t {
-		uint8_t b;	/*!< single data byte*/
-		uint16_t w;	/*!< single data word (16 bits)*/
-		uint32_t dw;	/*!< single data dword (32 bits)*/
-		uint8_t bytes[256]; /*!< any size byte array
-		* @note only effectively used array size is needed and will be
-		* set/used another possible register definition is
-		* @ref stmvl53l1_register_flexi
-		*/
-	} data; /*!< data only *@warning device is big endian and
-	* no endianess adaptation is performed by @ref VL53L1_IOCTL_REGISTER
-	*/
-};
-
-/**
- * flexible size data length register access structure
- * for use in @ref VL53L1_IOCTL_REGISTER
- */
-struct stmvl53l1_register_flexi {
-	uint32_t is_read;	/*!< [in] type of the access 1: read 0: write*/
-	uint32_t index;		/*!< [in] register index */
-	uint32_t cnt;		/*!< [în] register size shall be 1 to n */
-	int32_t status;		/*!< [out] operation status 0 ok else error */
-	uint8_t data[];		/*!< [in/out] flexible array size data */
-	/*!< data only *@warning device is big endian and
-	* no endianess adaptation is performed by @ref VL53L1_IOCTL_REGISTER
-	*/
-};
-
-
-/**
  * parameter name in @ref stmvl53l1_parameter when using
  * @ref VL53L1_IOCTL_PARAMETER
  */
@@ -174,6 +132,12 @@ enum __stmv53l1_parameter_name_e {
 	 * valid force device on value :
 	 * @li 0 feature is disable. Device is put under reset when stopped.
 	 * @li 1 feature is enable. Device is not put under reset when stopped.
+	 */
+
+	VL53L1_LASTERROR_PAR = 15,
+	/*!< VL53L1_LASTERROR_PAR
+	 * This is a read only parameter. It will return last device internal
+	 * error. It's valid only after an ioctl/sysfs return an -EIO error.
 	 */
 };
 #define stmv53l1_parameter_name_e enum __stmv53l1_parameter_name_e
@@ -403,15 +367,6 @@ int smtvl53l1_stop(int fd){
  */
 #define VL53L1_IOCTL_GETDATAS \
 			_IOWR('p', 0x0b, stmvl531_range_data_t)
-
-/**
- * low level register access IOCTL
- * ioctl arg [IN]/[OUT] pointer to register struct @ref stmvl53l1_register
- * or @ref stmvl53l1_register_flexi
- *
- * ioctl arg [out] set back with status and data when applicable
- */
-#define VL53L1_IOCTL_REGISTER	_IOWR('p', 0x0c, struct stmvl53l1_register)
 
 /**
  * set or get parameter
