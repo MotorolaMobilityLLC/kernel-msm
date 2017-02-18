@@ -22,3 +22,5 @@ stmvl53l1-objs		+= src/vl53l1_api_calibration.o
 stmvl53l1-objs		+= src/vl53l1_fpga_core.o src/vl53l1_silicon_core.o
 stmvl53l1-objs		+= src/vl53l1_zone_presets.o src/vl53l1_nvm.o
 stmvl53l1-objs		+= src/vl53l1_wait.o ipp/ipp_linux.o
+stmvl53l1-objs      += src/vl53l1_api_debug.o src/vl53l1_core_support.o
+stmvl53l1-objs      += src/vl53l1_nvm_debug.o stmvl53l1_log.o
