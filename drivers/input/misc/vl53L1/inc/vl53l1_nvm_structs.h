@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -786,6 +786,7 @@ typedef struct {
 
 
 
+	VL53L1_cal_peak_rate_map_t           fmt_peak_rate_map;
 	VL53L1_additional_offset_cal_data_t  fmt_add_offset_data;
 	VL53L1_decoded_nvm_fmt_range_data_t  fmt_range_data[VL53L1_NVM_MAX_FMT_RANGE_DATA];
 	VL53L1_decoded_nvm_fmt_info_t        fmt_info;
@@ -800,3 +801,4 @@ typedef struct {
 #endif
 
 #endif
+

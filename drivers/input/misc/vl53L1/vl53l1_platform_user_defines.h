@@ -1,33 +1,5 @@
-
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
-* Proprietary license'
-* or 'BSD 3-clause "New" or "Revised" License' , at your option.
-*
-********************************************************************************
-*
-* 'STMicroelectronics Proprietary license'
-*
-********************************************************************************
-*
-* License terms: STMicroelectronics Proprietary in accordance with licensing
-* terms at www.st.com/sla0044
-*
-* STMicroelectronics confidential
-* Reproduction and Communication of this document is strictly prohibited unless
-* specifically authorized in writing by STMicroelectronics.
-*
-*
-********************************************************************************
-*
-* Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following
-* provisions apply instead of the ones
-* mentioned above :
-*
-********************************************************************************
 *
 * License terms: BSD 3-clause "New" or "Revised" License.
 *
@@ -55,73 +27,61 @@
 * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-*
-********************************************************************************
-*
 */
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#ifndef _VL53L1_SILICON_CORE_H_
-#define _VL53L1_SILICON_CORE_H_
-
-#include "vl53l1_platform.h"
+#ifndef _VL53L1_PLATFORM_USER_DEFINES_H_
+#define _VL53L1_PLATFORM_USER_DEFINES_H_
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
+#ifdef __KERNEL__
+#include <linux/math64.h>
+#endif
+
+/**
+ * @file   vl53l1_platform_user_defines.h
+ *
+ * @brief  All end user OS/platform/application definitions
+ */
 
 
+/**
+ * @def do_division_u
+ * @brief customer supplied division operation - 64-bit unsigned
+ *
+ * @param dividend      unsigned 64-bit numerator
+ * @param divisor       unsigned 64-bit denominator
+ */
+#ifdef __KERNEL__
+#define do_division_u(dividend, divisor) div64_u64(dividend, divisor)
+#else
+#define do_division_u(dividend, divisor) (dividend / divisor)
+#endif
+
+/**
+ * @def do_division_s
+ * @brief customer supplied division operation - 64-bit signed
+ *
+ * @param dividend      signed 64-bit numerator
+ * @param divisor       signed 64-bit denominator
+ */
+#ifdef __KERNEL__
+#define do_division_s(dividend, divisor) div64_s64(dividend, divisor)
+#else
+#define do_division_s(dividend, divisor) (dividend / divisor)
+#endif
+
+#define WARN_OVERRIDE_STATUS(__X__)\
+	trace_print(VL53L1_TRACE_LEVEL_WARNING, #__X__)
 
 
+#define DISABLE_WARNINGS()
+#define ENABLE_WARNINGS()
 
-
-
-
-
-
-
-
-
-
-VL53L1_Error VL53L1_is_firmware_ready_silicon(
-	VL53L1_DEV      Dev,
-	uint8_t        *pready);
 
 
 #ifdef __cplusplus
@@ -129,5 +89,4 @@ VL53L1_Error VL53L1_is_firmware_ready_silicon(
 #endif
 
 #endif
-
 
