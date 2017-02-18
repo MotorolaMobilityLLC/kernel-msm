@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -117,6 +117,9 @@
 #include "vl53l1_silicon_core.h"
 #include "vl53l1_api_core.h"
 
+#ifdef VL53L1_LOG_ENABLE
+#include "vl53l1_api_debug.h"
+#endif
 
 #define LOG_FUNCTION_START(fmt, ...) \
 	_LOG_FUNCTION_START(VL53L1_TRACE_MODULE_CORE, fmt, ##__VA_ARGS__)
@@ -225,6 +228,8 @@ VL53L1_Error VL53L1_data_init(
 	VL53L1_LLDriverResults_t *pres =
 			VL53L1DevStructGetLLResultsHandle(Dev);
 
+	uint8_t  i = 0;
+
 	LOG_FUNCTION_START("");
 
 	VL53L1_init_ll_driver_state(
@@ -238,10 +243,32 @@ VL53L1_Error VL53L1_data_init(
 	pres->zone_hists.max_zones         = VL53L1_MAX_USER_ZONES;
 	pres->zone_hists.active_zones      = 0;
 
-	pdev->wait_method       = VL53L1_WAIT_METHOD_BLOCKING;
-	pdev->preset_mode       = VL53L1_DEVICEPRESETMODE_STANDARD_RANGING;
-	pdev->zone_preset       = VL53L1_DEVICEZONEPRESET_NONE;
-	pdev->measurement_mode  = VL53L1_DEVICEMEASUREMENTMODE_STOP;
+
+
+
+	pres->zone_cal.max_zones           = VL53L1_MAX_USER_ZONES;
+	pres->zone_cal.active_zones        = 0;
+	for (i = 0 ; i < VL53L1_MAX_USER_ZONES ; i++) {
+		pres->zone_cal.VL53L1_PRM_00005[i].no_of_samples   = 0;
+		pres->zone_cal.VL53L1_PRM_00005[i].effective_spads = 0;
+		pres->zone_cal.VL53L1_PRM_00005[i].peak_rate_mcps  = 0;
+		pres->zone_cal.VL53L1_PRM_00005[i].median_range_mm = 0;
+		pres->zone_cal.VL53L1_PRM_00005[i].range_mm_offset = 0;
+    }
+
+	pdev->wait_method             = VL53L1_WAIT_METHOD_BLOCKING;
+	pdev->preset_mode             = VL53L1_DEVICEPRESETMODE_STANDARD_RANGING;
+	pdev->zone_preset             = VL53L1_DEVICEZONEPRESET_NONE;
+	pdev->measurement_mode        = VL53L1_DEVICEMEASUREMENTMODE_STOP;
+
+	pdev->offset_calibration_mode =
+		VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__STANDARD;
+	pdev->offset_correction_mode  =
+		VL53L1_OFFSETCORRECTIONMODE__MM1_MM2_OFFSETS;
+	pdev->dmax_mode  =
+		VL53L1_DEVICEDMAXMODE__FMT_CAL_DATA;
+
+	pdev->phasecal_config_timeout_us  =  1000;
 	pdev->mm_config_timeout_us        =  2000;
 	pdev->range_config_timeout_us     = 13000;
 	pdev->inter_measurement_period_ms =   100;
@@ -249,6 +276,15 @@ VL53L1_Error VL53L1_data_init(
 
 	pdev->offset_results.max_results    = VL53L1_MAX_OFFSET_RANGE_RESULTS;
 	pdev->offset_results.active_results = 0;
+
+
+
+
+
+	pdev->gain_cal.standard_ranging_gain_factor =
+			VL53L1_GAIN_FACTOR__STANDARD_DEFAULT;
+	pdev->gain_cal.histogram_ranging_gain_factor =
+			VL53L1_GAIN_FACTOR__HISTOGRAM_DEFAULT;
 
 
 
@@ -271,25 +307,37 @@ VL53L1_Error VL53L1_data_init(
 
 
 
-	VL53L1_init_refspadchar_config_struct(&(pdev->refspadchar));
+	status =
+		VL53L1_init_refspadchar_config_struct(
+			&(pdev->refspadchar));
+
+
+
+	status =
+		VL53L1_init_ssc_config_struct(
+			&(pdev->ssc_cfg));
 
 
 
 
 
-	VL53L1_init_xtalk_config_struct(
+	status =
+		VL53L1_init_xtalk_config_struct(
 			&(pdev->customer),
 			&(pdev->xtalk_cfg));
 
 
 
-	VL53L1_init_hist_post_process_config_struct(
+	status =
+		VL53L1_init_hist_post_process_config_struct(
 			pdev->xtalk_cfg.global_crosstalk_compensation_enable,
 			&(pdev->histpostprocess));
 
 
 
-	VL53L1_init_hist_gen3_dmax_config_struct(&(pdev->dmax_cfg));
+	status =
+		VL53L1_init_hist_gen3_dmax_config_struct(
+			&(pdev->dmax_cfg));
 
 
 
@@ -301,6 +349,9 @@ VL53L1_Error VL53L1_data_init(
 		status = VL53L1_set_preset_mode(
 						Dev,
 						pdev->preset_mode,
+						0x0A00,
+
+						pdev->phasecal_config_timeout_us,
 						pdev->mm_config_timeout_us,
 						pdev->range_config_timeout_us,
 						pdev->inter_measurement_period_ms);
@@ -321,9 +372,55 @@ VL53L1_Error VL53L1_data_init(
 
 	VL53L1_init_xtalk_bin_data_struct(
 			0,
-			VL53L1_HISTOGRAM_BUFFER_SIZE,
+			VL53L1_XTALK_HISTO_BINS,
 			&(pdev->xtalk_shapes.xtalk_shape));
 
+#ifdef VL53L1_LOG_ENABLE
+
+
+
+
+	VL53L1_print_static_nvm_managed(
+		&(pdev->stat_nvm),
+		"data_init():pdev->lldata.stat_nvm.",
+		VL53L1_TRACE_MODULE_DATA_INIT);
+
+	VL53L1_print_customer_nvm_managed(
+		&(pdev->customer),
+		"data_init():pdev->lldata.customer.",
+		VL53L1_TRACE_MODULE_DATA_INIT);
+
+	VL53L1_print_nvm_copy_data(
+		&(pdev->nvm_copy_data),
+		"data_init():pdev->lldata.nvm_copy_data.",
+		VL53L1_TRACE_MODULE_DATA_INIT);
+
+	VL53L1_print_dmax_calibration_data(
+		&(pdev->fmt_dmax_cal),
+		"data_init():pdev->lldata.fmt_dmax_cal.",
+		VL53L1_TRACE_MODULE_DATA_INIT);
+
+	VL53L1_print_dmax_calibration_data(
+		&(pdev->cust_dmax_cal),
+		"data_init():pdev->lldata.cust_dmax_cal.",
+		VL53L1_TRACE_MODULE_DATA_INIT);
+
+	VL53L1_print_additional_offset_cal_data(
+		&(pdev->add_off_cal_data),
+		"data_init():pdev->lldata.add_off_cal_data.",
+		VL53L1_TRACE_MODULE_DATA_INIT);
+
+	VL53L1_print_user_zone(
+		&(pdev->mm_roi),
+		"data_init():pdev->lldata.mm_roi.",
+		VL53L1_TRACE_MODULE_DATA_INIT);
+
+	VL53L1_print_cal_peak_rate_map(
+		&(pdev->cal_peak_rate_map),
+		"data_init():pdev->lldata.cal_peak_rate_map.",
+		VL53L1_TRACE_MODULE_DATA_INIT);
+
+#endif
 
 	LOG_FUNCTION_END(status);
 
@@ -392,14 +489,18 @@ VL53L1_Error VL53L1_read_p2p_data(
 				pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
 		pdev->histpostprocess.algo__crosstalk_compensation_y_plane_gradient_kcps =
 				pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
-
-		pdev->histpostprocess.algo__part_to_part_range_offset_mm =
-				pdev->customer.algo__part_to_part_range_offset_mm;
-		pdev->histpostprocess.mm_config__inner_offset_mm =
-				pdev->customer.mm_config__inner_offset_mm;
-		pdev->histpostprocess.mm_config__outer_offset_mm =
-				pdev->customer.mm_config__outer_offset_mm;
 	}
+
+
+
+
+
+
+	if (status == VL53L1_ERROR_NONE)
+		status =
+			VL53L1_read_nvm_cal_peak_rate_map(
+				Dev,
+				&(pdev->cal_peak_rate_map));
 
 
 
@@ -456,20 +557,20 @@ VL53L1_Error VL53L1_read_p2p_data(
 				&fmt_range_result_data);
 
 		if (status == VL53L1_ERROR_NONE) {
-			pdev->dmax_cal.ref__actual_effective_spads =
+			pdev->fmt_dmax_cal.ref__actual_effective_spads =
 					fmt_range_result_data.result__actual_effective_rtn_spads;
-			pdev->dmax_cal.ref__peak_signal_count_rate_mcps =
+			pdev->fmt_dmax_cal.ref__peak_signal_count_rate_mcps =
 					fmt_range_result_data.result__peak_signal_count_rate_rtn_mcps;
-			pdev->dmax_cal.ref__distance_mm =
+			pdev->fmt_dmax_cal.ref__distance_mm =
 					fmt_range_result_data.measured_distance_mm;
 
 
 
-			pdev->dmax_cal.ref_reflectance         = 0x000F;
+			pdev->fmt_dmax_cal.ref_reflectance_pc      = 0x000F;
 
 
 
-			pdev->dmax_cal.coverglass_transmission = 0x0100;
+			pdev->fmt_dmax_cal.coverglass_transmission = 0x0100;
 		}
 	}
 
@@ -499,6 +600,18 @@ VL53L1_Error VL53L1_read_p2p_data(
 			0xBCCC);
 		pdev->stat_nvm.osc_measured__fast_osc__frequency = 0xBCCC;
 	}
+
+
+
+
+
+
+	if (status == VL53L1_ERROR_NONE)
+		status =
+			VL53L1_get_mode_mitigation_roi(
+				Dev,
+				&(pdev->mm_roi));
+
 
 	LOG_FUNCTION_END(status);
 
@@ -557,10 +670,7 @@ VL53L1_Error VL53L1_software_reset(
 
 VL53L1_Error VL53L1_set_part_to_part_data(
 	VL53L1_DEV                            Dev,
-	VL53L1_customer_nvm_managed_t        *pcustomer,
-	VL53L1_additional_offset_cal_data_t  *poff_cal_data,
-	VL53L1_dmax_calibration_data_t       *pdmax_cal,
-	VL53L1_xtalk_histogram_data_t        *pxtalkhisto)
+	VL53L1_calibration_data_t            *pcal_data)
 {
 
 
@@ -572,62 +682,90 @@ VL53L1_Error VL53L1_set_part_to_part_data(
 
 	LOG_FUNCTION_START("");
 
+	if (pcal_data->struct_version !=
+		VL53L1_LL_CALIBRATION_DATA_STRUCT_VERSION) {
+		status = VL53L1_ERROR_INVALID_PARAMS;
+	}
 
-
-	memcpy(
-		&(pdev->customer),
-		pcustomer,
-		sizeof(VL53L1_customer_nvm_managed_t));
-
-
-
-	memcpy(
-		&(pdev->add_off_cal_data),
-		poff_cal_data,
-		sizeof(VL53L1_additional_offset_cal_data_t));
+	if (status == VL53L1_ERROR_NONE) {
 
 
 
-	memcpy(
-		&(pdev->dmax_cal),
-		pdmax_cal,
-		sizeof(VL53L1_dmax_calibration_data_t));
+		memcpy(
+			&(pdev->customer),
+			&(pcal_data->customer),
+			sizeof(VL53L1_customer_nvm_managed_t));
 
 
 
-	memcpy(
-		&(pdev->xtalk_shapes),
-		pxtalkhisto,
-		sizeof(VL53L1_xtalk_histogram_data_t));
+		memcpy(
+			&(pdev->add_off_cal_data),
+			&(pcal_data->add_off_cal_data),
+			sizeof(VL53L1_additional_offset_cal_data_t));
+
+
+
+		memcpy(
+			&(pdev->fmt_dmax_cal),
+			&(pcal_data->fmt_dmax_cal),
+			sizeof(VL53L1_dmax_calibration_data_t));
+
+
+
+		memcpy(
+			&(pdev->cust_dmax_cal),
+			&(pcal_data->cust_dmax_cal),
+			sizeof(VL53L1_dmax_calibration_data_t));
+
+
+
+		memcpy(
+			&(pdev->xtalk_shapes),
+			&(pcal_data->xtalkhisto),
+			sizeof(VL53L1_xtalk_histogram_data_t));
+
+
+
+		memcpy(
+			&(pdev->gain_cal),
+			&(pcal_data->gain_cal),
+			sizeof(VL53L1_gain_calibration_data_t));
+
+
+
+		memcpy(
+			&(pdev->cal_peak_rate_map),
+			&(pcal_data->cal_peak_rate_map),
+			sizeof(VL53L1_cal_peak_rate_map_t));
 
 
 
 
 
 
-	pdev->histpostprocess.algo__crosstalk_compensation_plane_offset_kcps =
+		pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps =
 			pdev->customer.algo__crosstalk_compensation_plane_offset_kcps;
-	pdev->histpostprocess.algo__crosstalk_compensation_x_plane_gradient_kcps =
+		pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps =
 			pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
-	pdev->histpostprocess.algo__crosstalk_compensation_y_plane_gradient_kcps =
+		pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps =
 			pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
 
-	pdev->histpostprocess.algo__part_to_part_range_offset_mm =
-			pdev->customer.algo__part_to_part_range_offset_mm;
-	pdev->histpostprocess.mm_config__inner_offset_mm =
-			pdev->customer.mm_config__inner_offset_mm;
-	pdev->histpostprocess.mm_config__outer_offset_mm =
-			pdev->customer.mm_config__outer_offset_mm;
+		pdev->histpostprocess.algo__crosstalk_compensation_plane_offset_kcps =
+			pdev->customer.algo__crosstalk_compensation_plane_offset_kcps;
+		pdev->histpostprocess.algo__crosstalk_compensation_x_plane_gradient_kcps =
+			pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
+		pdev->histpostprocess.algo__crosstalk_compensation_y_plane_gradient_kcps =
+			pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
 
-	/* New Code . Update xtalk_cfg data */
-	pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps =
-		pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
-
-	pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps =
-		pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
-
-	pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps =
-		pdev->customer.algo__crosstalk_compensation_plane_offset_kcps;
+		if (pdev->xtalk_cfg.global_crosstalk_compensation_enable == 0x00) {
+			pdev->customer.algo__crosstalk_compensation_plane_offset_kcps =
+				0x00;
+			pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps =
+				0x00;
+			pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps =
+				0x00;
+		}
+	}
 
 	LOG_FUNCTION_END(status);
 
@@ -637,10 +775,7 @@ VL53L1_Error VL53L1_set_part_to_part_data(
 
 VL53L1_Error VL53L1_get_part_to_part_data(
 	VL53L1_DEV                      Dev,
-	VL53L1_customer_nvm_managed_t        *pcustomer,
-	VL53L1_additional_offset_cal_data_t  *poff_cal_data,
-	VL53L1_dmax_calibration_data_t       *pdmax_cal,
-	VL53L1_xtalk_histogram_data_t        *pxtalkhisto)
+	VL53L1_calibration_data_t      *pcal_data)
 {
 
 
@@ -652,33 +787,68 @@ VL53L1_Error VL53L1_get_part_to_part_data(
 
 	LOG_FUNCTION_START("");
 
+	pcal_data->struct_version =
+			VL53L1_LL_CALIBRATION_DATA_STRUCT_VERSION;
+
 
 
 	memcpy(
-		pcustomer,
+		&(pcal_data->customer),
 		&(pdev->customer),
 		sizeof(VL53L1_customer_nvm_managed_t));
 
 
 
+	if (pdev->xtalk_cfg.global_crosstalk_compensation_enable == 0x00) {
+		pcal_data->customer.algo__crosstalk_compensation_plane_offset_kcps =
+			pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps;
+		pcal_data->customer.algo__crosstalk_compensation_x_plane_gradient_kcps =
+			pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps;
+		pcal_data->customer.algo__crosstalk_compensation_y_plane_gradient_kcps =
+			pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps;
+	}
+
+
+
 	memcpy(
-		poff_cal_data,
+		&(pcal_data->add_off_cal_data),
 		&(pdev->add_off_cal_data),
 		sizeof(VL53L1_additional_offset_cal_data_t));
 
 
 
 	memcpy(
-		pdmax_cal,
-		&(pdev->dmax_cal),
+		&(pcal_data->fmt_dmax_cal),
+		&(pdev->fmt_dmax_cal),
 		sizeof(VL53L1_dmax_calibration_data_t));
 
 
 
 	memcpy(
-		pxtalkhisto,
+		&(pcal_data->cust_dmax_cal),
+		&(pdev->cust_dmax_cal),
+		sizeof(VL53L1_dmax_calibration_data_t));
+
+
+
+	memcpy(
+		&(pcal_data->xtalkhisto),
 		&(pdev->xtalk_shapes),
 		sizeof(VL53L1_xtalk_histogram_data_t));
+
+
+
+	memcpy(
+		&(pcal_data->gain_cal),
+		&(pdev->gain_cal),
+		sizeof(VL53L1_gain_calibration_data_t));
+
+
+
+	memcpy(
+		&(pcal_data->cal_peak_rate_map),
+		&(pdev->cal_peak_rate_map),
+		sizeof(VL53L1_cal_peak_rate_map_t));
 
 	LOG_FUNCTION_END(status);
 
@@ -738,6 +908,7 @@ VL53L1_Error VL53L1_get_inter_measurement_period_ms(
 			pdev->tim_cfg.system__intermeasurement_period /
 			(uint32_t)pdev->dbg_results.result__osc_calibrate_val;
 
+
 	LOG_FUNCTION_END(status);
 
 	return status;
@@ -746,6 +917,7 @@ VL53L1_Error VL53L1_get_inter_measurement_period_ms(
 
 VL53L1_Error VL53L1_set_timeouts_us(
 	VL53L1_DEV          Dev,
+	uint32_t            phasecal_config_timeout_us,
 	uint32_t            mm_config_timeout_us,
 	uint32_t            range_config_timeout_us)
 {
@@ -766,14 +938,17 @@ VL53L1_Error VL53L1_set_timeouts_us(
 
 	if (status == VL53L1_ERROR_NONE) {
 
-		pdev->mm_config_timeout_us    = mm_config_timeout_us;
-		pdev->range_config_timeout_us = range_config_timeout_us;
+		pdev->phasecal_config_timeout_us = phasecal_config_timeout_us;
+		pdev->mm_config_timeout_us       = mm_config_timeout_us;
+		pdev->range_config_timeout_us    = range_config_timeout_us;
 
 		status =
 			VL53L1_calc_timeout_register_values(
+				phasecal_config_timeout_us,
 				mm_config_timeout_us,
 				range_config_timeout_us,
 				pdev->stat_nvm.osc_measured__fast_osc__frequency,
+				&(pdev->gen_cfg),
 				&(pdev->tim_cfg));
 	}
 
@@ -785,6 +960,7 @@ VL53L1_Error VL53L1_set_timeouts_us(
 
 VL53L1_Error VL53L1_get_timeouts_us(
 	VL53L1_DEV           Dev,
+	uint32_t            *pphasecal_config_timeout_us,
 	uint32_t            *pmm_config_timeout_us,
 	uint32_t			*prange_config_timeout_us)
 {
@@ -818,6 +994,14 @@ VL53L1_Error VL53L1_get_timeouts_us(
 
 
 
+		*pphasecal_config_timeout_us =
+			VL53L1_calc_timeout_us(
+				(uint32_t)pdev->gen_cfg.phasecal_config__timeout_macrop,
+				macro_period_us);
+
+
+
+
 		timeout_encoded =
 			(uint16_t)pdev->tim_cfg.mm_config__timeout_macrop_a_hi;
 		timeout_encoded = (timeout_encoded << 8) +
@@ -841,8 +1025,9 @@ VL53L1_Error VL53L1_get_timeouts_us(
 				timeout_encoded,
 				macro_period_us);
 
-		pdev->mm_config_timeout_us    = *pmm_config_timeout_us;
-		pdev->range_config_timeout_us = *prange_config_timeout_us;
+		pdev->phasecal_config_timeout_us = *pphasecal_config_timeout_us;
+		pdev->mm_config_timeout_us       = *pmm_config_timeout_us;
+		pdev->range_config_timeout_us    = *prange_config_timeout_us;
 
 	}
 
@@ -994,8 +1179,70 @@ VL53L1_Error VL53L1_set_interrupt_polarity(
 }
 
 
+VL53L1_Error VL53L1_set_refspadchar_config_struct(
+	VL53L1_DEV                     Dev,
+	VL53L1_refspadchar_config_t   *pdata)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+	VL53L1_LLDriverData_t *pdev =
+		VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->refspadchar.device_test_mode = pdata->device_test_mode;
+	pdev->refspadchar.VL53L1_PRM_00007     = pdata->VL53L1_PRM_00007;
+	pdev->refspadchar.timeout_us       = pdata->timeout_us;
+	pdev->refspadchar.target_count_rate_mcps    =
+			pdata->target_count_rate_mcps;
+	pdev->refspadchar.min_count_rate_limit_mcps =
+			pdata->min_count_rate_limit_mcps;
+	pdev->refspadchar.max_count_rate_limit_mcps =
+			pdata->max_count_rate_limit_mcps;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+VL53L1_Error VL53L1_get_refspadchar_config_struct(
+	VL53L1_DEV                     Dev,
+	VL53L1_refspadchar_config_t   *pdata)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+	VL53L1_LLDriverData_t *pdev =
+		VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdata->device_test_mode       = pdev->refspadchar.device_test_mode;
+	pdata->VL53L1_PRM_00007           = pdev->refspadchar.VL53L1_PRM_00007;
+	pdata->timeout_us             = pdev->refspadchar.timeout_us;
+	pdata->target_count_rate_mcps = pdev->refspadchar.target_count_rate_mcps;
+	pdata->min_count_rate_limit_mcps =
+			pdev->refspadchar.min_count_rate_limit_mcps;
+	pdata->max_count_rate_limit_mcps =
+			pdev->refspadchar.max_count_rate_limit_mcps;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+
 VL53L1_Error VL53L1_set_range_ignore_threshold(
 	VL53L1_DEV              Dev,
+	uint8_t                 range_ignore_thresh_mult,
 	uint16_t                range_ignore_threshold_mcps)
 {
 
@@ -1007,8 +1254,11 @@ VL53L1_Error VL53L1_set_range_ignore_threshold(
 	VL53L1_LLDriverData_t *pdev =
 		VL53L1DevStructGetLLDriverHandle(Dev);
 
-	pdev->stat_cfg.algo__range_ignore_threshold_mcps =
+	pdev->xtalk_cfg.crosstalk_range_ignore_threshold_rate_mcps =
 		range_ignore_threshold_mcps;
+
+	pdev->xtalk_cfg.crosstalk_range_ignore_threshold_mult =
+		range_ignore_thresh_mult;
 
 	return status;
 
@@ -1016,6 +1266,7 @@ VL53L1_Error VL53L1_set_range_ignore_threshold(
 
 VL53L1_Error VL53L1_get_range_ignore_threshold(
 	VL53L1_DEV              Dev,
+	uint8_t                *prange_ignore_thresh_mult,
 	uint16_t               *prange_ignore_threshold_mcps_internal,
 	uint16_t               *prange_ignore_threshold_mcps_current)
 {
@@ -1032,6 +1283,9 @@ VL53L1_Error VL53L1_get_range_ignore_threshold(
 	VL53L1_Error  status = VL53L1_ERROR_NONE;
 	VL53L1_LLDriverData_t *pdev =
 		VL53L1DevStructGetLLDriverHandle(Dev);
+
+	*prange_ignore_thresh_mult =
+	    pdev->xtalk_cfg.crosstalk_range_ignore_threshold_mult;
 
 	*prange_ignore_threshold_mcps_current =
 		pdev->stat_cfg.algo__range_ignore_threshold_mcps;
@@ -1204,7 +1458,7 @@ VL53L1_Error VL53L1_set_zone_config(
 
 
 
-	memcpy(&pdev->zone_cfg.user_zones, &pzone_cfg->user_zones,
+	memcpy(&(pdev->zone_cfg.user_zones), &(pzone_cfg->user_zones),
 			sizeof(pdev->zone_cfg.user_zones));
 
 
@@ -1264,6 +1518,8 @@ VL53L1_Error VL53L1_get_zone_config(
 VL53L1_Error VL53L1_set_preset_mode(
 	VL53L1_DEV                   Dev,
 	VL53L1_DevicePresetModes     device_preset_mode,
+	uint16_t                     dss_config__target_total_rate_mcps,
+	uint32_t                     phasecal_config_timeout_us,
 	uint32_t                     mm_config_timeout_us,
 	uint32_t                     range_config_timeout_us,
 	uint32_t                     inter_measurement_period_ms)
@@ -1279,6 +1535,9 @@ VL53L1_Error VL53L1_set_preset_mode(
 			VL53L1DevStructGetLLDriverHandle(Dev);
 	VL53L1_LLDriverResults_t *pres =
 			VL53L1DevStructGetLLResultsHandle(Dev);
+
+	VL53L1_hist_post_process_config_t *phistpostprocess =
+			&(pdev->histpostprocess);
 
 	VL53L1_static_config_t        *pstatic       = &(pdev->stat_cfg);
 	VL53L1_histogram_config_t     *phistogram    = &(pdev->hist_cfg);
@@ -1399,6 +1658,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING:
 		status = VL53L1_preset_mode_histogram_ranging(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1410,6 +1670,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_WITH_MM1:
 		status = VL53L1_preset_mode_histogram_ranging_with_mm1(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1421,6 +1682,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_WITH_MM2:
 		status = VL53L1_preset_mode_histogram_ranging_with_mm2(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1432,6 +1694,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_MM1_CAL:
 		status = VL53L1_preset_mode_histogram_ranging_mm1_cal(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1443,6 +1706,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_MM2_CAL:
 		status = VL53L1_preset_mode_histogram_ranging_mm2_cal(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1454,6 +1718,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_MULTIZONE:
 		status = VL53L1_preset_mode_histogram_multizone(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1465,6 +1730,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_MULTIZONE_SHORT_RANGE:
 		status = VL53L1_preset_mode_histogram_multizone_short_range(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1476,6 +1742,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_MULTIZONE_LONG_RANGE:
 		status = VL53L1_preset_mode_histogram_multizone_long_range(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1487,6 +1754,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_REF_ARRAY:
 		status = VL53L1_preset_mode_histogram_ranging_ref(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1498,6 +1766,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_RANGING_SHORT_TIMING:
 		status = VL53L1_preset_mode_histogram_ranging_short_timing(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1509,6 +1778,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE:
 		status = VL53L1_preset_mode_histogram_long_range(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1520,6 +1790,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE_MM1:
 		status = VL53L1_preset_mode_histogram_long_range_mm1(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1531,6 +1802,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_LONG_RANGE_MM2:
 		status = VL53L1_preset_mode_histogram_long_range_mm2(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1542,6 +1814,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE:
 		status = VL53L1_preset_mode_histogram_medium_range(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1553,6 +1826,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE_MM1:
 		status = VL53L1_preset_mode_histogram_medium_range_mm1(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1564,6 +1838,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_MEDIUM_RANGE_MM2:
 		status = VL53L1_preset_mode_histogram_medium_range_mm2(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1575,6 +1850,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE:
 		status = VL53L1_preset_mode_histogram_short_range(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1586,6 +1862,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE_MM1:
 		status = VL53L1_preset_mode_histogram_short_range_mm1(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1597,6 +1874,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_SHORT_RANGE_MM2:
 		status = VL53L1_preset_mode_histogram_short_range_mm2(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1608,6 +1886,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_CHARACTERISATION:
 		status = VL53L1_preset_mode_histogram_characterisation(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1619,6 +1898,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_XTALK_PLANAR:
 		status = VL53L1_preset_mode_histogram_xtalk_planar(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1630,6 +1910,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_XTALK_MM1:
 		status = VL53L1_preset_mode_histogram_xtalk_mm1(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1641,6 +1922,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 	case VL53L1_DEVICEPRESETMODE_HISTOGRAM_XTALK_MM2:
 		status = VL53L1_preset_mode_histogram_xtalk_mm2(
+					phistpostprocess,
 					pstatic,
 					phistogram,
 					pgeneral,
@@ -1681,6 +1963,12 @@ VL53L1_Error VL53L1_set_preset_mode(
 
 
 
+	if (status == VL53L1_ERROR_NONE)
+		pstatic->dss_config__target_total_rate_mcps =
+				dss_config__target_total_rate_mcps;
+
+
+
 
 
 
@@ -1688,6 +1976,7 @@ VL53L1_Error VL53L1_set_preset_mode(
 		status =
 			VL53L1_set_timeouts_us(
 				Dev,
+				phasecal_config_timeout_us,
 				mm_config_timeout_us,
 				range_config_timeout_us);
 
@@ -2119,7 +2408,19 @@ VL53L1_Error VL53L1_init_and_start_range(
 		status =
 			VL53L1_set_zone_dss_config(
 				Dev,
-				&(pres->zone_dyn_cfgs.VL53L1_PRM_00004[pdev->ll_state.cfg_zone_id]));
+				&(pres->zone_dyn_cfgs.VL53L1_PRM_00005[pdev->ll_state.cfg_zone_id]));
+	}
+
+
+
+
+
+
+	if (((pdev->sys_ctrl.system__mode_start &
+		 VL53L1_DEVICESCHEDULERMODE_HISTOGRAM) == 0x00) &&
+		 (pdev->xtalk_cfg.global_crosstalk_compensation_enable == 0x01)) {
+		pdev->stat_cfg.algo__range_ignore_threshold_mcps =
+				pdev->xtalk_cfg.crosstalk_range_ignore_threshold_rate_mcps;
 	}
 
 
@@ -2479,10 +2780,10 @@ VL53L1_Error VL53L1_get_device_results(
 	VL53L1_LLDriverResults_t *pres =
 			VL53L1DevStructGetLLResultsHandle(Dev);
 	VL53L1_range_results_t   *presults = &(pres->range_results);
-	VL53L1_zone_objects_t    *pobjects = &(pres->zone_results.VL53L1_PRM_00004[0]);
+	VL53L1_zone_objects_t    *pobjects = &(pres->zone_results.VL53L1_PRM_00005[0]);
 	VL53L1_ll_driver_state_t *pstate   = &(pdev->ll_state);
 	VL53L1_zone_config_t     *pzone_cfg = &(pdev->zone_cfg);
-	VL53L1_zone_hist_info_t  *phist_info = &(pres->zone_hists.VL53L1_PRM_00004[0]);
+	VL53L1_zone_hist_info_t  *phist_info = &(pres->zone_hists.VL53L1_PRM_00005[0]);
 
 	uint8_t i;
 
@@ -2514,7 +2815,7 @@ VL53L1_Error VL53L1_get_device_results(
 		if (status == VL53L1_ERROR_NONE &&
 			pdev->hist_data.number_of_ambient_bins == 0)
 			status = VL53L1_hist_copy_and_scale_ambient_info(
-					 &(pres->zone_hists.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]),
+					 &(pres->zone_hists.VL53L1_PRM_00005[pdev->ll_state.rd_zone_id]),
 					 &(pdev->hist_data));
 
 
@@ -2525,19 +2826,15 @@ VL53L1_Error VL53L1_get_device_results(
 
 		if (status == VL53L1_ERROR_NONE) {
 
+			pdev->histpostprocess.gain_factor =
+					pdev->gain_cal.histogram_ranging_gain_factor;
+
 			pdev->histpostprocess.algo__crosstalk_compensation_plane_offset_kcps =
 					pdev->customer.algo__crosstalk_compensation_plane_offset_kcps;
 			pdev->histpostprocess.algo__crosstalk_compensation_x_plane_gradient_kcps =
 					pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
 			pdev->histpostprocess.algo__crosstalk_compensation_y_plane_gradient_kcps =
 					pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
-
-			pdev->histpostprocess.algo__part_to_part_range_offset_mm =
-					pdev->customer.algo__part_to_part_range_offset_mm;
-			pdev->histpostprocess.mm_config__inner_offset_mm =
-					pdev->customer.mm_config__inner_offset_mm;
-			pdev->histpostprocess.mm_config__outer_offset_mm =
-					pdev->customer.mm_config__outer_offset_mm;
 
 			pdev->dmax_cfg.ambient_thresh_sigma =
 					pdev->histpostprocess.ambient_thresh_sigma1;
@@ -2556,18 +2853,34 @@ VL53L1_Error VL53L1_get_device_results(
 
 
 
-			VL53L1_hist_combine_mm1_mm2_offsets(
-					pdev->customer.mm_config__inner_offset_mm,
-					pdev->customer.mm_config__outer_offset_mm,
-					pdev->nvm_copy_data.roi_config__mode_roi_centre_spad,
-					pdev->nvm_copy_data.roi_config__mode_roi_xy_size,
-					pdev->hist_data.roi_config__user_roi_centre_spad,
-					pdev->hist_data.roi_config__user_roi_requested_global_xy_size,
-					&(pdev->add_off_cal_data),
-					&(pdev->rtn_good_spads[0]),
-					(uint16_t)pdev->gen_cfg.dss_config__aperture_attenuation,
-					&(pdev->histpostprocess.range_offset_mm));
+			switch (pdev->offset_correction_mode) {
 
+			case VL53L1_OFFSETCORRECTIONMODE__MM1_MM2_OFFSETS:
+
+				VL53L1_hist_combine_mm1_mm2_offsets(
+						pdev->customer.mm_config__inner_offset_mm,
+						pdev->customer.mm_config__outer_offset_mm,
+						pdev->nvm_copy_data.roi_config__mode_roi_centre_spad,
+						pdev->nvm_copy_data.roi_config__mode_roi_xy_size,
+						pdev->hist_data.roi_config__user_roi_centre_spad,
+						pdev->hist_data.roi_config__user_roi_requested_global_xy_size,
+						&(pdev->add_off_cal_data),
+						&(pdev->rtn_good_spads[0]),
+						(uint16_t)pdev->gen_cfg.dss_config__aperture_attenuation,
+						&(pdev->histpostprocess.range_offset_mm));
+
+			break;
+
+			case VL53L1_OFFSETCORRECTIONMODE__PER_ZONE_OFFSETS:
+				pdev->histpostprocess.range_offset_mm =
+					(int16_t)pres->zone_cal.VL53L1_PRM_00005[pdev->ll_state.rd_zone_id].range_mm_offset;
+			break;
+
+			default:
+				pdev->histpostprocess.range_offset_mm = 0;
+			break;
+
+			}
 		}
 
 
@@ -2579,7 +2892,7 @@ VL53L1_Error VL53L1_get_device_results(
 			status =
 				VL53L1_ipp_hist_process_data(
 					Dev,
-					&(pdev->dmax_cal),
+					&(pdev->fmt_dmax_cal),
 					&(pdev->dmax_cfg),
 					&(pdev->histpostprocess),
 					&(pdev->hist_data),
@@ -2592,7 +2905,7 @@ VL53L1_Error VL53L1_get_device_results(
 		if (status == VL53L1_ERROR_NONE)
 			status =
 				VL53L1_hist_wrap_dmax(
-					&(pres->zone_hists.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]),
+					&(pres->zone_hists.VL53L1_PRM_00005[pdev->ll_state.rd_zone_id]),
 					&(pdev->hist_data),
 					&(presults->wrap_dmax_mm));
 
@@ -2603,7 +2916,7 @@ VL53L1_Error VL53L1_get_device_results(
 			status =
 				VL53L1_hist_phase_consistency_check(
 					Dev,
-					&(pres->zone_results.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]),
+					&(pres->zone_results.VL53L1_PRM_00005[pdev->ll_state.rd_zone_id]),
 					presults);
 
 
@@ -2620,7 +2933,7 @@ VL53L1_Error VL53L1_get_device_results(
 			if (pdev->ll_state.rd_zone_id < pres->zone_results.max_zones) {
 
 				phist_info =
-					&(pres->zone_hists.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]);
+					&(pres->zone_hists.VL53L1_PRM_00005[pdev->ll_state.rd_zone_id]);
 
 				phist_info->rd_device_state =
 					pdev->hist_data.rd_device_state;
@@ -2687,6 +3000,13 @@ VL53L1_Error VL53L1_get_device_results(
 
 		}
 
+#ifdef VL53L1_LOG_ENABLE
+		if (status == VL53L1_ERROR_NONE)
+			VL53L1_print_histogram_bin_data(
+				&(pdev->hist_data),
+				"get_device_results():pdev->lldata.hist_data.",
+				VL53L1_TRACE_MODULE_HISTOGRAM_DATA);
+#endif
 
 	} else {
 
@@ -2698,6 +3018,7 @@ VL53L1_Error VL53L1_get_device_results(
 
 		if (status == VL53L1_ERROR_NONE)
 			VL53L1_copy_sys_and_core_results_to_range_results(
+					(int32_t)pdev->gain_cal.standard_ranging_gain_factor,
 					&(pdev->sys_results),
 					&(pdev->core_results),
 					presults);
@@ -2716,10 +3037,10 @@ VL53L1_Error VL53L1_get_device_results(
 		pres->zone_results.max_zones    = VL53L1_MAX_USER_ZONES;
 		pres->zone_results.active_zones = pdev->zone_cfg.active_zones+1;
 
-		if (pdev->ll_state.rd_zone_id < pres->zone_results.max_zones)
+		if (pdev->ll_state.rd_zone_id < pres->zone_results.max_zones) {
 
 			pobjects =
-				&(pres->zone_results.VL53L1_PRM_00004[pdev->ll_state.rd_zone_id]);
+				&(pres->zone_results.VL53L1_PRM_00005[pdev->ll_state.rd_zone_id]);
 
 			pobjects->cfg_device_state = presults->cfg_device_state;
 			pobjects->rd_device_state  = presults->rd_device_state;
@@ -2730,9 +3051,10 @@ VL53L1_Error VL53L1_get_device_results(
 			pobjects->active_objects   = presults->active_results;
 
 			for (i = 0; i < presults->active_results; i++)  {
-				pobjects->VL53L1_PRM_00004[i].VL53L1_PRM_00012 =
-					presults->VL53L1_PRM_00004[i].VL53L1_PRM_00012;
+				pobjects->VL53L1_PRM_00005[i].VL53L1_PRM_00014 =
+					presults->VL53L1_PRM_00005[i].VL53L1_PRM_00014;
 			}
+		}
 	}
 
 
@@ -2751,6 +3073,14 @@ VL53L1_Error VL53L1_get_device_results(
 
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_check_ll_driver_rd_state(Dev);
+
+#ifdef VL53L1_LOG_ENABLE
+	if (status == VL53L1_ERROR_NONE)
+		VL53L1_print_range_results(
+			presults,
+			"get_device_results():pdev->llresults.range_results.",
+			VL53L1_TRACE_MODULE_RANGE_RESULTS_DATA);
+#endif
 
 	LOG_FUNCTION_END(status);
 
@@ -2933,9 +3263,9 @@ VL53L1_Error VL53L1_get_histogram_bin_data(
 
 
 	pdata->zone_id                 = pdev->ll_state.rd_zone_id;
-	pdata->VL53L1_PRM_00013               = 0;
-	pdata->VL53L1_PRM_00014             = VL53L1_HISTOGRAM_BUFFER_SIZE;
-	pdata->VL53L1_PRM_00015          = VL53L1_HISTOGRAM_BUFFER_SIZE;
+	pdata->VL53L1_PRM_00015               = 0;
+	pdata->VL53L1_PRM_00016             = VL53L1_HISTOGRAM_BUFFER_SIZE;
+	pdata->VL53L1_PRM_00017          = VL53L1_HISTOGRAM_BUFFER_SIZE;
 
 	pdata->cal_config__vcsel_start = pgen_cfg->cal_config__vcsel_start;
 
@@ -2949,7 +3279,7 @@ VL53L1_Error VL53L1_get_histogram_bin_data(
 
 
 
-	pdata->VL53L1_PRM_00016 =
+	pdata->VL53L1_PRM_00018 =
 		pstat_nvm->osc_measured__fast_osc__frequency;
 
 
@@ -2998,7 +3328,7 @@ VL53L1_Error VL53L1_get_histogram_bin_data(
 
 
 	pll_period_us =
-		VL53L1_calc_pll_period_us(pdata->VL53L1_PRM_00016);
+		VL53L1_calc_pll_period_us(pdata->VL53L1_PRM_00018);
 
 
 
@@ -3040,12 +3370,28 @@ VL53L1_Error VL53L1_get_histogram_bin_data(
 
 
 
-	pzone_dyn_cfg = &(pres->zone_dyn_cfgs.VL53L1_PRM_00004[pdata->zone_id]);
+	pzone_dyn_cfg = &(pres->zone_dyn_cfgs.VL53L1_PRM_00005[pdata->zone_id]);
 
 	pdata->roi_config__user_roi_centre_spad =
 			pzone_dyn_cfg->roi_config__user_roi_centre_spad;
 	pdata->roi_config__user_roi_requested_global_xy_size =
 			pzone_dyn_cfg->roi_config__user_roi_requested_global_xy_size;
+
+
+
+
+	switch (pdata->result__range_status &
+			VL53L1_RANGE_STATUS__RANGE_STATUS_MASK) {
+
+	case VL53L1_DEVICEERROR_VCSELCONTINUITYTESTFAILURE:
+	case VL53L1_DEVICEERROR_VCSELWATCHDOGTESTFAILURE:
+	case VL53L1_DEVICEERROR_NOVHVVALUEFOUND:
+	case VL53L1_DEVICEERROR_USERROICLIP:
+	case VL53L1_DEVICEERROR_MULTCLIPFAIL:
+		status = VL53L1_ERROR_RANGE_ERROR;
+	break;
+
+	}
 
 	LOG_FUNCTION_END(status);
 
@@ -3054,6 +3400,7 @@ VL53L1_Error VL53L1_get_histogram_bin_data(
 
 
 void VL53L1_copy_sys_and_core_results_to_range_results(
+	int32_t                           gain_factor,
 	VL53L1_system_results_t          *psys,
 	VL53L1_core_results_t            *pcore,
 	VL53L1_range_results_t           *presults)
@@ -3061,6 +3408,7 @@ void VL53L1_copy_sys_and_core_results_to_range_results(
 	uint8_t  i = 0;
 
 	VL53L1_range_data_t  *pdata;
+	int32_t            range_mm = 0;
 
 	LOG_FUNCTION_START("");
 
@@ -3076,7 +3424,7 @@ void VL53L1_copy_sys_and_core_results_to_range_results(
 	for (i = 0 ; i < VL53L1_MAX_AMBIENT_DMAX_VALUES ; i++)
 		presults->ambient_dmax_mm[i] = 0;
 
-	pdata = &(presults->VL53L1_PRM_00004[0]);
+	pdata = &(presults->VL53L1_PRM_00005[0]);
 
 	for (i = 0 ; i < 2 ; i++) {
 
@@ -3085,11 +3433,11 @@ void VL53L1_copy_sys_and_core_results_to_range_results(
 		pdata->range_status =
 			psys->result__range_status & VL53L1_RANGE_STATUS__RANGE_STATUS_MASK;
 
-		pdata->VL53L1_PRM_00017 = 0;
-		pdata->VL53L1_PRM_00013    = 0;
-		pdata->VL53L1_PRM_00018   = 0;
-		pdata->VL53L1_PRM_00019     = 0;
-		pdata->VL53L1_PRM_00020   = 0;
+		pdata->VL53L1_PRM_00010 = 0;
+		pdata->VL53L1_PRM_00015    = 0;
+		pdata->VL53L1_PRM_00019   = 0;
+		pdata->VL53L1_PRM_00020     = 0;
+		pdata->VL53L1_PRM_00011   = 0;
 		pdata->VL53L1_PRM_00021    = 0;
 
 		switch (i) {
@@ -3097,13 +3445,13 @@ void VL53L1_copy_sys_and_core_results_to_range_results(
 		case 0:
 
 			if (psys->result__report_status == VL53L1_DEVICEREPORTSTATUS_MM1)
-				pdata->VL53L1_PRM_00002 =
+				pdata->VL53L1_PRM_00003 =
 					psys->result__mm_inner_actual_effective_spads_sd0;
 			else if (psys->result__report_status == VL53L1_DEVICEREPORTSTATUS_MM2)
-				pdata->VL53L1_PRM_00002 =
+				pdata->VL53L1_PRM_00003 =
 						psys->result__mm_outer_actual_effective_spads_sd0;
 			else
-				pdata->VL53L1_PRM_00002 =
+				pdata->VL53L1_PRM_00003 =
 					psys->result__dss_actual_effective_spads_sd0;
 
 			pdata->peak_signal_count_rate_mcps =
@@ -3113,12 +3461,21 @@ void VL53L1_copy_sys_and_core_results_to_range_results(
 			pdata->ambient_count_rate_mcps =
 				psys->result__ambient_count_rate_mcps_sd0;
 
-			pdata->VL53L1_PRM_00003 =
+			pdata->VL53L1_PRM_00004 =
 				psys->result__sigma_sd0;
-			pdata->VL53L1_PRM_00012 =
+			pdata->VL53L1_PRM_00014 =
 				psys->result__phase_sd0;
-			pdata->median_range_mm =
-				(int16_t)psys->result__final_crosstalk_corrected_range_mm_sd0;
+
+			range_mm =
+				(int32_t)psys->result__final_crosstalk_corrected_range_mm_sd0;
+
+
+
+			range_mm *= gain_factor;
+			range_mm += 0x0400;
+			range_mm /= 0x0800;
+
+			pdata->median_range_mm = (int16_t)range_mm;
 
 			pdata->VL53L1_PRM_00022 =
 				pcore->result_core__ranging_total_events_sd0;
@@ -3132,7 +3489,7 @@ void VL53L1_copy_sys_and_core_results_to_range_results(
 			break;
 		case 1:
 
-			pdata->VL53L1_PRM_00002 =
+			pdata->VL53L1_PRM_00003 =
 				psys->result__dss_actual_effective_spads_sd1;
 			pdata->peak_signal_count_rate_mcps =
 				psys->result__peak_signal_count_rate_mcps_sd1;
@@ -3141,12 +3498,21 @@ void VL53L1_copy_sys_and_core_results_to_range_results(
 			pdata->ambient_count_rate_mcps =
 				psys->result__ambient_count_rate_mcps_sd1;
 
-			pdata->VL53L1_PRM_00003 =
+			pdata->VL53L1_PRM_00004 =
 				psys->result__sigma_sd1;
-			pdata->VL53L1_PRM_00012 =
+			pdata->VL53L1_PRM_00014 =
 				psys->result__phase_sd1;
-			pdata->median_range_mm  =
-				(int16_t)psys->result__final_crosstalk_corrected_range_mm_sd1;
+
+			range_mm =
+				(int32_t)psys->result__final_crosstalk_corrected_range_mm_sd1;
+
+
+
+			range_mm *= gain_factor;
+			range_mm += 0x0400;
+			range_mm /= 0x0800;
+
+			pdata->median_range_mm = (int16_t)range_mm;
 
 			pdata->VL53L1_PRM_00022 =
 				pcore->result_core__ranging_total_events_sd1;
@@ -3164,8 +3530,8 @@ void VL53L1_copy_sys_and_core_results_to_range_results(
 
 
 
-		pdata->VL53L1_PRM_00024    = pdata->VL53L1_PRM_00012;
-		pdata->VL53L1_PRM_00025    = pdata->VL53L1_PRM_00012;
+		pdata->VL53L1_PRM_00024    = pdata->VL53L1_PRM_00014;
+		pdata->VL53L1_PRM_00025    = pdata->VL53L1_PRM_00014;
 		pdata->min_range_mm = pdata->median_range_mm;
 		pdata->max_range_mm = pdata->median_range_mm;
 
@@ -3222,7 +3588,7 @@ VL53L1_Error VL53L1_calc_ambient_dmax(
 		VL53L1_ipp_hist_ambient_dmax(
 			Dev,
 			target_reflectance,
-			&(pdev->dmax_cal),
+			&(pdev->fmt_dmax_cal),
 			&(pdev->dmax_cfg),
 			&(pdev->hist_data),
 			pambient_dmax_mm);
@@ -3369,6 +3735,264 @@ VL53L1_Error VL53L1_get_GPIO_interrupt_config(
 	}
 
 	LOG_FUNCTION_END(status);
+	return status;
+}
+
+
+VL53L1_Error VL53L1_set_dmax_mode(
+	VL53L1_DEV               Dev,
+	VL53L1_DeviceDmaxMode    dmax_mode)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->dmax_mode = dmax_mode;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_get_dmax_mode(
+	VL53L1_DEV               Dev,
+	VL53L1_DeviceDmaxMode   *pdmax_mode)
+{
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*pdmax_mode = pdev->dmax_mode;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_set_hist_dmax_config(
+	VL53L1_DEV                      Dev,
+	VL53L1_hist_gen3_dmax_config_t *pdmax_cfg)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+
+
+	memcpy(
+		&(pdev->dmax_cfg),
+		pdmax_cfg,
+		sizeof(VL53L1_hist_gen3_dmax_config_t));
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_get_hist_dmax_config(
+	VL53L1_DEV                      Dev,
+	VL53L1_hist_gen3_dmax_config_t *pdmax_cfg)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+
+
+	memcpy(
+		pdmax_cfg,
+		&(pdev->dmax_cfg),
+		sizeof(VL53L1_hist_gen3_dmax_config_t));
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_set_offset_calibration_mode(
+	VL53L1_DEV                     Dev,
+	VL53L1_OffsetCalibrationMode   offset_cal_mode)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->offset_calibration_mode = offset_cal_mode;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_get_offset_calibration_mode(
+	VL53L1_DEV                     Dev,
+	VL53L1_OffsetCalibrationMode  *poffset_cal_mode)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*poffset_cal_mode = pdev->offset_calibration_mode;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_set_offset_correction_mode(
+	VL53L1_DEV                     Dev,
+	VL53L1_OffsetCorrectionMode    offset_cor_mode)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->offset_correction_mode = offset_cor_mode;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_get_offset_correction_mode(
+	VL53L1_DEV                     Dev,
+	VL53L1_OffsetCorrectionMode   *poffset_cor_mode)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*poffset_cor_mode = pdev->offset_correction_mode;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_set_zone_calibration_data(
+	VL53L1_DEV                          Dev,
+	VL53L1_zone_calibration_results_t  *pzone_cal)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverResults_t *pres = VL53L1DevStructGetLLResultsHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+
+
+	memcpy(
+		&(pres->zone_cal),
+		pzone_cal,
+		sizeof(VL53L1_zone_calibration_results_t));
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_get_zone_calibration_data(
+	VL53L1_DEV                          Dev,
+	VL53L1_zone_calibration_results_t  *pzone_cal)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverResults_t *pres = VL53L1DevStructGetLLResultsHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+
+
+	memcpy(
+		pzone_cal,
+		&(pres->zone_cal),
+		sizeof(VL53L1_zone_calibration_results_t));
+
+	LOG_FUNCTION_END(status);
+
 	return status;
 }
 
