@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -174,14 +174,21 @@ VL53L1_Error VL53L1_get_pal_error_string(
 	#define  VL53L1_STRING_ERROR_XTALK_EXTRACTION_FAIL \
 			"Xtalk Extraction Failed"
 
-	#define  VL53L1_STRING_ERROR_OFFSET_CAL_INSUFFICIENT_MM1_SPADS \
+	#define  VL53L1_STRING_WARNING_OFFSET_CAL_INSUFFICIENT_MM1_SPADS \
 			"Offset Cal - Insufficient MM1 SPADs"
+	#define  VL53L1_STRING_WARNING_OFFSET_CAL_PRE_RANGE_RATE_TOO_HIGH \
+			"Offset Cal - Pre Range Rate too high - in pile up"
 
-	#define  VL53L1_STRING_ERROR_REF_SPAD_CHAR_NOT_ENOUGH_SPADS \
+	#define  VL53L1_STRING_WARNING_ZONE_CAL_ZONES_WITH_NO_SAMPLES \
+			"Zone Cal - zones with no valid samples"
+	#define  VL53L1_STRING_WARNING_ZONE_CAL_ZONES_WITH_REDUCED_SAMPLES \
+			"Zone Cal - zones with reduced samples"
+
+	#define  VL53L1_STRING_WARNING_REF_SPAD_CHAR_NOT_ENOUGH_SPADS \
 			"Ref SPAD Char - Not Enough Good SPADs"
-	#define  VL53L1_STRING_ERROR_REF_SPAD_CHAR_RATE_TOO_HIGH \
+	#define  VL53L1_STRING_WARNING_REF_SPAD_CHAR_RATE_TOO_HIGH \
 			"Ref SPAD Char - Final Ref Rate too high"
-	#define  VL53L1_STRING_ERROR_REF_SPAD_CHAR_RATE_TOO_LOW \
+	#define  VL53L1_STRING_WARNING_REF_SPAD_CHAR_RATE_TOO_LOW \
 			"Ref SPAD Char - Final Ref Rate too low"
 
 	#define  VL53L1_STRING_ERROR_DEVICE_FIRMWARE_TOO_OLD \
@@ -209,4 +216,5 @@ VL53L1_Error VL53L1_get_pal_error_string(
 #endif
 
 #endif
+
 
