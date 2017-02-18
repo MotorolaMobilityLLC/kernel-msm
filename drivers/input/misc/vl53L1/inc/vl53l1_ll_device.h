@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -158,19 +158,22 @@ typedef uint8_t VL53L1_DeviceState;
 
 typedef uint8_t VL53L1_DeviceZonePreset;
 
-#define VL53L1_DEVICEZONEPRESET_NONE                 ((VL53L1_DeviceZonePreset)  0)
-#define VL53L1_DEVICEZONEPRESET_XTALK_PLANAR         ((VL53L1_DeviceZonePreset)  1)
-#define VL53L1_DEVICEZONEPRESET_1X1_SIZE_16X16       ((VL53L1_DeviceZonePreset)  2)
-#define VL53L1_DEVICEZONEPRESET_1X2_SIZE_16X8        ((VL53L1_DeviceZonePreset)  3)
-#define VL53L1_DEVICEZONEPRESET_2X1_SIZE_8X16        ((VL53L1_DeviceZonePreset)  4)
-#define VL53L1_DEVICEZONEPRESET_2X2_SIZE_8X8         ((VL53L1_DeviceZonePreset)  5)
-#define VL53L1_DEVICEZONEPRESET_3X3_SIZE_5X5         ((VL53L1_DeviceZonePreset)  6)
-#define VL53L1_DEVICEZONEPRESET_4X4_SIZE_4X4         ((VL53L1_DeviceZonePreset)  7)
-#define VL53L1_DEVICEZONEPRESET_5X5_SIZE_4X4         ((VL53L1_DeviceZonePreset)  8)
-#define VL53L1_DEVICEZONEPRESET_11X11_SIZE_5X5       ((VL53L1_DeviceZonePreset)  9)
-#define VL53L1_DEVICEZONEPRESET_13X13_SIZE_4X4       ((VL53L1_DeviceZonePreset) 10)
+#define VL53L1_DEVICEZONEPRESET_NONE                 ((VL53L1_DeviceZonePreset)   0)
 
-#define VL53L1_DEVICEZONEPRESET_1X1_SIZE_4X4_POS_8X8 ((VL53L1_DeviceZonePreset) 11)
+#define VL53L1_DEVICEZONEPRESET_XTALK_PLANAR         ((VL53L1_DeviceZonePreset)   1)
+#define VL53L1_DEVICEZONEPRESET_1X1_SIZE_16X16       ((VL53L1_DeviceZonePreset)   2)
+#define VL53L1_DEVICEZONEPRESET_1X2_SIZE_16X8        ((VL53L1_DeviceZonePreset)   3)
+#define VL53L1_DEVICEZONEPRESET_2X1_SIZE_8X16        ((VL53L1_DeviceZonePreset)   4)
+#define VL53L1_DEVICEZONEPRESET_2X2_SIZE_8X8         ((VL53L1_DeviceZonePreset)   5)
+#define VL53L1_DEVICEZONEPRESET_3X3_SIZE_5X5         ((VL53L1_DeviceZonePreset)   6)
+#define VL53L1_DEVICEZONEPRESET_4X4_SIZE_4X4         ((VL53L1_DeviceZonePreset)   7)
+#define VL53L1_DEVICEZONEPRESET_5X5_SIZE_4X4         ((VL53L1_DeviceZonePreset)   8)
+#define VL53L1_DEVICEZONEPRESET_11X11_SIZE_5X5       ((VL53L1_DeviceZonePreset)   9)
+#define VL53L1_DEVICEZONEPRESET_13X13_SIZE_4X4       ((VL53L1_DeviceZonePreset)  10)
+
+#define VL53L1_DEVICEZONEPRESET_1X1_SIZE_4X4_POS_8X8 ((VL53L1_DeviceZonePreset)  11)
+
+#define VL53L1_DEVICEZONEPRESET_CUSTOM               ((VL53L1_DeviceZonePreset) 255)
 
 
 
@@ -238,6 +241,57 @@ typedef uint8_t VL53L1_DeviceMeasurementModes;
 #define VL53L1_DEVICEMEASUREMENTMODE_BACKTOBACK                  ((VL53L1_DeviceMeasurementModes)  0x20)
 #define VL53L1_DEVICEMEASUREMENTMODE_TIMED                       ((VL53L1_DeviceMeasurementModes)  0x40)
 #define VL53L1_DEVICEMEASUREMENTMODE_ABORT                       ((VL53L1_DeviceMeasurementModes)  0x80)
+
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_OffsetCalibrationMode;
+
+#define VL53L1_OFFSETCALIBRATIONMODE__NONE                              ((VL53L1_OffsetCalibrationMode)  0)
+#define VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__STANDARD                 ((VL53L1_OffsetCalibrationMode)  1)
+#define VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__HISTOGRAM                ((VL53L1_OffsetCalibrationMode)  2)
+#define VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__STANDARD_PRE_RANGE_ONLY  ((VL53L1_OffsetCalibrationMode)  3)
+#define VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__HISTOGRAM_PRE_RANGE_ONLY ((VL53L1_OffsetCalibrationMode)  4)
+
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_OffsetCorrectionMode;
+
+#define VL53L1_OFFSETCORRECTIONMODE__NONE               ((VL53L1_OffsetCorrectionMode)  0)
+#define VL53L1_OFFSETCORRECTIONMODE__MM1_MM2_OFFSETS    ((VL53L1_OffsetCorrectionMode)  1)
+#define VL53L1_OFFSETCORRECTIONMODE__PER_ZONE_OFFSETS   ((VL53L1_OffsetCorrectionMode)  2)
+
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_DeviceDmaxMode;
+
+#define VL53L1_DEVICEDMAXMODE__NONE                    ((VL53L1_DeviceDmaxMode)  0)
+#define VL53L1_DEVICEDMAXMODE__FMT_CAL_DATA            ((VL53L1_DeviceDmaxMode)  1)
+#define VL53L1_DEVICEDMAXMODE__CUST_CAL_DATA           ((VL53L1_DeviceDmaxMode)  2)
+#define VL53L1_DEVICEDMAXMODE__PER_ZONE_CAL_DATA       ((VL53L1_DeviceDmaxMode)  2)
 
 
 
@@ -538,36 +592,67 @@ typedef uint8_t VL53L1_DeviceResultsLevel;
 
 
 
-#define VL53L1_DEVICETESTMODE_NONE                         0x00
+typedef uint8_t VL53L1_DeviceTestMode;
+
+#define VL53L1_DEVICETESTMODE_NONE \
+	((VL53L1_DeviceTestMode) 0x00)
 
 
-#define VL53L1_DEVICETESTMODE_NVM_ZERO                     0x01
+#define VL53L1_DEVICETESTMODE_NVM_ZERO \
+	((VL53L1_DeviceTestMode) 0x01)
 
 
-#define VL53L1_DEVICETESTMODE_NVM_COPY                     0x02
+#define VL53L1_DEVICETESTMODE_NVM_COPY \
+	((VL53L1_DeviceTestMode) 0x02)
 
 
-#define VL53L1_DEVICETESTMODE_PATCH                        0x03
+#define VL53L1_DEVICETESTMODE_PATCH \
+	((VL53L1_DeviceTestMode) 0x03)
 
 
-#define VL53L1_DEVICETESTMODE_DCR                          0x04
+#define VL53L1_DEVICETESTMODE_DCR \
+	((VL53L1_DeviceTestMode) 0x04)
 
 
-#define VL53L1_DEVICETESTMODE_LCR_VCSEL_OFF                0x05
-
-
-
-#define VL53L1_DEVICETESTMODE_LCR_VCSEL_ON                 0x06
+#define VL53L1_DEVICETESTMODE_LCR_VCSEL_OFF \
+	((VL53L1_DeviceTestMode) 0x05)
 
 
 
-#define VL53L1_DEVICETESTMODE_SPOT_CENTRE_LOCATE           0x07
+#define VL53L1_DEVICETESTMODE_LCR_VCSEL_ON \
+	((VL53L1_DeviceTestMode) 0x06)
 
 
-#define VL53L1_DEVICETESTMODE_REF_SPAD_CHAR_WITH_PRE_VHV   0x08
+
+#define VL53L1_DEVICETESTMODE_SPOT_CENTRE_LOCATE \
+	((VL53L1_DeviceTestMode) 0x07)
 
 
-#define VL53L1_DEVICETESTMODE_REF_SPAD_CHAR_ONLY           0x09
+#define VL53L1_DEVICETESTMODE_REF_SPAD_CHAR_WITH_PRE_VHV \
+	((VL53L1_DeviceTestMode) 0x08)
+
+
+#define VL53L1_DEVICETESTMODE_REF_SPAD_CHAR_ONLY \
+	((VL53L1_DeviceTestMode) 0x09)
+
+
+
+
+
+
+
+
+
+
+
+
+
+typedef uint8_t VL53L1_DeviceSscArray;
+
+#define VL53L1_DEVICESSCARRAY_RTN ((VL53L1_DeviceSscArray) 0x00)
+
+
+#define VL53L1_DEVICETESTMODE_REF ((VL53L1_DeviceSscArray) 0x01)
 
 
 
@@ -628,7 +713,7 @@ typedef uint8_t VL53L1_DeviceResultsLevel;
 #define VL53L1_SOFTWARE_RESET_DURATION_US            100
 
 
-#define VL53L1_FIRMWARE_BOOT_TIME_US               16000
+#define VL53L1_FIRMWARE_BOOT_TIME_US                1200
 
 
 
@@ -749,6 +834,7 @@ typedef uint8_t VL53L1_GPIO_Interrupt_Mode;
 
 
 #endif
+
 
 
 
