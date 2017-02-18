@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -3219,6 +3219,9 @@ extern "C"
 
 
 
+#define VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_INDEX  0x015C
+#define VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_SIZE   56
+
 #define VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_INDEX  0x0194
 #define VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_SIZE   8
 
@@ -3240,3 +3243,4 @@ extern "C"
 #endif
 
 #endif
+

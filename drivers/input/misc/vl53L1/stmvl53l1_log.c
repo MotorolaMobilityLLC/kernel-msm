@@ -1,33 +1,5 @@
-
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
-* Proprietary license'
-* or 'BSD 3-clause "New" or "Revised" License' , at your option.
-*
-********************************************************************************
-*
-* 'STMicroelectronics Proprietary license'
-*
-********************************************************************************
-*
-* License terms: STMicroelectronics Proprietary in accordance with licensing
-* terms at www.st.com/sla0044
-*
-* STMicroelectronics confidential
-* Reproduction and Communication of this document is strictly prohibited unless
-* specifically authorized in writing by STMicroelectronics.
-*
-*
-********************************************************************************
-*
-* Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following
-* provisions apply instead of the ones
-* mentioned above :
-*
-********************************************************************************
 *
 * License terms: BSD 3-clause "New" or "Revised" License.
 *
@@ -55,79 +27,52 @@
 * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-*
-********************************************************************************
-*
 */
+/**
+ * @file /stmvl53l1_module.c  vl53l1_module  ST VL53L1 linux kernel module
+ *
+ * This is implementation of low level driver trace support
+ */
+#include <linux/module.h>
+#include <linux/printk.h>
 
+#include "stmvl53l1.h"
 
+#ifdef VL53L1_LOG_ENABLE
 
+static bool trace_function;
+static int trace_module;
+static int trace_level;
 
+module_param(trace_function, bool, 0644);
+MODULE_PARM_DESC(trace_function,
+	"allow tracing of low level function entry and exit");
 
+module_param(trace_module, int, 0644);
+MODULE_PARM_DESC(trace_module,
+	"control tracing of low level per module");
 
+module_param(trace_level, int, 0644);
+MODULE_PARM_DESC(trace_level,
+	"control tracing of low level per level");
 
+void log_trace_print(uint32_t module, uint32_t level, uint32_t function,
+	const char *format, ...)
+{
+	va_list args;
 
+	if (function && !trace_function)
+		return;
 
+	if (!(module & trace_module))
+		return;
 
+	if (level > trace_level)
+		return;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#ifndef _VL53L1_SILICON_CORE_H_
-#define _VL53L1_SILICON_CORE_H_
-
-#include "vl53l1_platform.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-VL53L1_Error VL53L1_is_firmware_ready_silicon(
-	VL53L1_DEV      Dev,
-	uint8_t        *pready);
-
-
-#ifdef __cplusplus
+	va_start(args, format);
+	vprintk(format, args);
+	va_end(args);
 }
-#endif
 
 #endif
-
-
