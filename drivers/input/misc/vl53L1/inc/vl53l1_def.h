@@ -11,7 +11,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -28,7 +28,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -95,11 +95,11 @@ extern "C" {
 /** VL53L1 IMPLEMENTATION major version */
 #define VL53L1_IMPLEMENTATION_VER_MAJOR       3
 /** VL53L1 IMPLEMENTATION minor version */
-#define VL53L1_IMPLEMENTATION_VER_MINOR       7
+#define VL53L1_IMPLEMENTATION_VER_MINOR       9
 /** VL53L1 IMPLEMENTATION sub version */
-#define VL53L1_IMPLEMENTATION_VER_SUB         0
+#define VL53L1_IMPLEMENTATION_VER_SUB         1
 /** VL53L1 IMPLEMENTATION sub version */
-#define VL53L1_IMPLEMENTATION_VER_REVISION  1120
+#define VL53L1_IMPLEMENTATION_VER_REVISION  1229
 
 
 /****************************************
@@ -181,6 +181,18 @@ typedef uint8_t VL53L1_OutputModes;
 
 /** @} VL53L1_define_OutputModes_group */
 
+/** @defgroup VL53L1_define_OffsetCalibrationModes_group Defines Offset Calibration modes
+*  Defines all possible Offset Calibration modes for the device
+*  @{
+*/
+typedef uint8_t VL53L1_OffsetCalibrationModes;
+
+#define VL53L1_OFFSETCALIBRATIONMODE_STANDARD \
+	((VL53L1_OffsetCalibrationModes)  1)
+#define VL53L1_OFFSETCALIBRATIONMODE_PRERANGE_ONLY  \
+	((VL53L1_OffsetCalibrationModes)  2)
+
+/** @} VL53L1_define_OffsetCalibrationModes_group */
 
 
 /** @defgroup VL53L1_define_RoiStatus_group Defines Roi Status
@@ -374,8 +386,8 @@ typedef struct {
 
 	uint8_t StreamCount;            /*!< 8-bit Stream Count. */
 
-	uint8_t ConfidenceLevel;
-		/*!< indicate a confidance level in percentage from 0 to 100
+	uint8_t RangeQualityLevel;
+		/*!< indicate a quality level in percentage from 0 to 100
 		 * @warning Not yet implemented
 		 */
 
@@ -489,15 +501,7 @@ typedef struct {
  * @brief   Structure for storing the Calibration Data
  *
  */
-typedef struct {
-
-	VL53L1_customer_nvm_managed_t  Customer;
-	VL53L1_dmax_calibration_data_t DmaxCal;
-	VL53L1_additional_offset_cal_data_t add_off_cal_data;
-	VL53L1_xtalk_histogram_data_t  XtalkHisto;
-	VL53L1_additional_offset_cal_data_t  poff_cal_data;
-} VL53L1_CalibrationData_t;
-
+typedef VL53L1_calibration_data_t VL53L1_CalibrationData_t;
 
 
 /** @defgroup VL53L1_define_SequenceStepId_group Defines the SequenceStep
@@ -595,6 +599,11 @@ typedef struct {
 #define VL53L1_GETDEVICESPECIFICPARAMETER(Dev, field) \
 	(PALDevDataGet(Dev, DeviceSpecificParameters).field)
 
+
+#define VL53L1_FIXPOINT1616TOFIXPOINT72(Value) \
+	(uint16_t)((Value>>2)&0xFFFF)
+#define VL53L1_FIXPOINT72TOFIXPOINT1616(Value) \
+	(FixPoint1616_t)(Value<<2)
 
 #define VL53L1_FIXPOINT1616TOFIXPOINT97(Value) \
 	(uint16_t)((Value>>9)&0xFFFF)
