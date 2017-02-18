@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -194,27 +194,42 @@ typedef int8_t VL53L1_Error;
 
 
 
-#define VL53L1_ERROR_OFFSET_CAL_INSUFFICIENT_MM1_SPADS ((VL53L1_Error) - 23)
+#define VL53L1_WARNING_OFFSET_CAL_INSUFFICIENT_MM1_SPADS    ((VL53L1_Error) - 23)
 
 
 
 
 
-#define VL53L1_ERROR_REF_SPAD_CHAR_NOT_ENOUGH_SPADS    ((VL53L1_Error) - 24)
-
-
-#define VL53L1_ERROR_REF_SPAD_CHAR_RATE_TOO_HIGH       ((VL53L1_Error) - 25)
+#define VL53L1_WARNING_ZONE_CAL_ZONES_WITH_NO_SAMPLES      ((VL53L1_Error) - 24)
 
 
 
-
-#define VL53L1_ERROR_REF_SPAD_CHAR_RATE_TOO_LOW        ((VL53L1_Error) - 26)
+#define VL53L1_WARNING_ZONE_CAL_ZONES_WITH_REDUCED_SAMPLES ((VL53L1_Error) - 25)
 
 
 
 
+#define VL53L1_WARNING_REF_SPAD_CHAR_NOT_ENOUGH_SPADS    ((VL53L1_Error) - 26)
 
-#define VL53L1_ERROR_NOT_IMPLEMENTED                   ((VL53L1_Error) - 27)
+
+#define VL53L1_WARNING_REF_SPAD_CHAR_RATE_TOO_HIGH       ((VL53L1_Error) - 27)
+
+
+
+
+#define VL53L1_WARNING_REF_SPAD_CHAR_RATE_TOO_LOW        ((VL53L1_Error) - 28)
+
+
+
+
+
+#define VL53L1_WARNING_OFFSET_CAL_PRE_RANGE_RATE_TOO_HIGH ((VL53L1_Error) - 29)
+
+
+
+
+
+#define VL53L1_ERROR_NOT_IMPLEMENTED                   ((VL53L1_Error) - 30)
 
 
 
@@ -231,4 +246,5 @@ typedef int8_t VL53L1_Error;
 
 
 #endif
+
 
