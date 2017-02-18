@@ -2,8 +2,8 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
-* 'STMicroelectronics Proprietary license'
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
+* Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
 ********************************************************************************
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -168,49 +168,106 @@ VL53L1_Error VL53L1_run_ref_spad_char(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-VL53L1_Error VL53L1_set_ref_spad_char_config(
-	VL53L1_DEV    Dev,
-	uint8_t       vcsel_period_a,
-	uint32_t      phasecal_timeout_us,
-	uint16_t      total_rate_target_mcps,
-	uint16_t      max_count_rate_rtn_limit_mcps,
-	uint16_t      min_count_rate_rtn_limit_mcps,
-	uint16_t      fast_osc_frequency);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 VL53L1_Error VL53L1_run_device_test(
 	VL53L1_DEV                 Dev,
-	uint8_t                    device_test_mode);
+	VL53L1_DeviceTestMode      device_test_mode);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_run_spad_rate_map(
+	VL53L1_DEV                 Dev,
+	VL53L1_DeviceTestMode      device_test_mode,
+	VL53L1_DeviceSscArray      array_select,
+	uint32_t                   ssc_config_timeout_us,
+	VL53L1_spad_rate_data_t   *pspad_rate_data);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -238,6 +295,8 @@ VL53L1_Error VL53L1_run_device_test(
 
 VL53L1_Error   VL53L1_run_xtalk_extraction(
 	VL53L1_DEV	                        Dev,
+	uint16_t                            dss_config__target_total_rate_mcps,
+	uint32_t                            phasecal_config_timeout_us,
 	uint32_t                            mm_config_timeout_us,
 	uint32_t                            range_config_timeout_us,
 	uint8_t                             num_of_samples,
@@ -285,8 +344,14 @@ VL53L1_Error   VL53L1_run_xtalk_extraction(
 
 
 
+
+
+
+
 VL53L1_Error VL53L1_run_xtalk_extraction_dual_reflectance(
 	VL53L1_DEV	                        Dev,
+	uint16_t                            dss_config__target_total_rate_mcps,
+	uint32_t                            phasecal_config_timeout_us,
 	uint32_t                            mm_config_timeout_us,
 	uint32_t                            range_config_timeout_us,
 	uint8_t                             num_of_samples,
@@ -397,13 +462,92 @@ VL53L1_Error VL53L1_get_and_avg_all_xtalk_samples(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 VL53L1_Error   VL53L1_run_offset_calibration(
-	VL53L1_DEV	      Dev,
-	uint32_t          range_config_timeout_us,
-	uint8_t           pre_range_num_of_samples,
-	uint8_t           mm1_num_of_samples,
-	uint8_t           mm2_num_of_samples,
-	int32_t           target_distance_mm);
+	VL53L1_DEV	                  Dev,
+	uint16_t                      dss_config__target_total_rate_mcps,
+	uint32_t                      phasecal_config_timeout_us,
+	uint32_t                      range_config_timeout_us,
+	uint8_t                       pre_num_of_samples,
+	uint8_t                       mm1_num_of_samples,
+	uint8_t                       mm2_num_of_samples,
+	int16_t                       cal_distance_mm,
+	uint16_t                      cal_reflectance_pc);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_run_zone_calibration(
+	VL53L1_DEV	                  Dev,
+	VL53L1_DevicePresetModes      device_preset_mode,
+	VL53L1_DeviceZonePreset       zone_preset,
+	VL53L1_zone_config_t         *pzone_cfg,
+	uint16_t                      dss_config__target_total_rate_mcps,
+	uint32_t                      phasecal_config_timeout_us,
+	uint32_t                      mm_config_timeout_us,
+	uint32_t                      range_config_timeout_us,
+	uint16_t                      num_of_samples,
+	int16_t                       cal_distance_mm,
+	uint16_t                      cal_reflectance_pc);
 
 
 #ifdef __cplusplus
@@ -411,4 +555,5 @@ VL53L1_Error   VL53L1_run_offset_calibration(
 #endif
 
 #endif
+
 
