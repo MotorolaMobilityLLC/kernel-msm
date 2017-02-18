@@ -96,74 +96,15 @@
 
 
 
+#ifndef _VL53L1_CORE_SUPPORT_H_
+#define _VL53L1_CORE_SUPPORT_H_
 
-#include <stdio.h>
+#include "vl53l1_types.h"
+#include "vl53l1_hist_structs.h"
 
-#include <stdlib.h>
-
-
-
-
-
-
-
-#include "vl53l1_core.h"
-#include "vl53l1_register_settings.h"
-#include "vl53l1_hist_char.h"
-
-#define LOG_FUNCTION_START(fmt, ...) \
-	_LOG_FUNCTION_START(VL53L1_TRACE_MODULE_HISTOGRAM, fmt, ##__VA_ARGS__)
-#define LOG_FUNCTION_END(status, ...) \
-	_LOG_FUNCTION_END(VL53L1_TRACE_MODULE_HISTOGRAM, status, ##__VA_ARGS__)
-#define LOG_FUNCTION_END_FMT(status, fmt, ...) \
-	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_HISTOGRAM, status, fmt, ##__VA_ARGS__)
-
-
-VL53L1_Error VL53L1_set_calib_config(
-	VL53L1_DEV      Dev,
-	uint8_t         vcsel_delay__a0,
-	uint8_t         calib_1,
-	uint8_t         calib_2,
-	uint8_t         calib_3,
-	uint8_t         calib_2__a0,
-	uint8_t         spad_readout)
-{
-
-
-
-
-
-	VL53L1_Error status       = VL53L1_ERROR_NONE;
-	uint8_t      comms_buffer[3];
-
-	LOG_FUNCTION_START("");
-
-
-
-
-	if (status == VL53L1_ERROR_NONE) {
-
-		status = VL53L1_enable_powerforce(Dev);
-	}
-
-	if (status == VL53L1_ERROR_NONE) {
-		status = VL53L1_disable_firmware(Dev);
-	}
-
-
-
-
-	if (status == VL53L1_ERROR_NONE) {
-		status = VL53L1_WrByte(
-					Dev,
-					VL53L1_RANGING_CORE__VCSEL_DELAY__A0,
-					vcsel_delay__a0);
-	}
-
-
-
-
-	if (status == VL53L1_ERROR_NONE) {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 
@@ -171,112 +112,299 @@ VL53L1_Error VL53L1_set_calib_config(
 
 
 
-		comms_buffer[0] = calib_1;
-		comms_buffer[1] = calib_2;
-		comms_buffer[2] = calib_3;
-
-		status = VL53L1_WriteMulti(
-					Dev,
-					VL53L1_RANGING_CORE__CALIB_1,
-					comms_buffer,
-					3);
-	}
 
 
 
 
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_WrByte(
-					Dev,
-					VL53L1_RANGING_CORE__CALIB_2__A0,
-					calib_2__a0);
+
+uint32_t VL53L1_calc_pll_period_us(
+	uint16_t fast_osc_frequency);
 
 
 
 
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_WrByte(
-					Dev,
-					VL53L1_RANGING_CORE__SPAD_READOUT,
-					spad_readout);
 
 
 
 
-	if (status == VL53L1_ERROR_NONE)
-		status = VL53L1_enable_firmware(Dev);
 
-	LOG_FUNCTION_END(status);
 
-	return status;
+
+
+
+
+
+
+
+
+uint32_t VL53L1_duration_maths(
+	uint32_t  pll_period_us,
+	uint32_t  vcsel_parm_pclks,
+	uint32_t  window_vclks,
+	uint32_t  periods_elapsed_mclks);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+uint32_t VL53L1_events_per_spad_maths(
+	int32_t   VL53L1_PRM_00009,
+	uint16_t  num_spads,
+	uint32_t  duration);
+
+
+
+
+
+
+
+
+
+
+
+
+
+uint32_t VL53L1_isqrt(
+	uint32_t  num);
+
+
+
+
+
+
+
+
+
+
+void VL53L1_hist_calc_zero_distance_phase(
+	VL53L1_histogram_bin_data_t    *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_hist_estimate_ambient_from_thresholded_bins(
+	int32_t                      ambient_threshold_sigma,
+	VL53L1_histogram_bin_data_t *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_hist_remove_ambient_bins(
+	VL53L1_histogram_bin_data_t    *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+uint32_t VL53L1_calc_pll_period_mm(
+	uint16_t fast_osc_frequency);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+uint16_t VL53L1_rate_maths(
+	int32_t   VL53L1_PRM_00006,
+	uint32_t  time_us);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+uint16_t VL53L1_rate_per_spad_maths(
+	uint32_t  frac_bits,
+	uint32_t  peak_count_rate,
+	uint16_t  num_spads,
+	uint32_t  max_output_value);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+int32_t VL53L1_range_maths(
+	uint16_t  fast_osc_frequency,
+	uint16_t  VL53L1_PRM_00013,
+	uint16_t  zero_distance_phase,
+	int32_t   gain_factor,
+	int32_t   range_offset_mm);
+
+
+
+
+
+
+
+
+
+
+
+
+uint8_t VL53L1_decode_vcsel_period(
+	uint8_t vcsel_period_reg);
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_copy_xtalk_bin_data_to_histogram_data_struct(
+		VL53L1_xtalk_histogram_shape_t *pxtalk,
+		VL53L1_histogram_bin_data_t    *phist);
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_init_histogram_bin_data_struct(
+	int32_t                      bin_value,
+	uint16_t                     VL53L1_PRM_00017,
+	VL53L1_histogram_bin_data_t *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_decode_row_col(
+	uint8_t   spad_number,
+	uint8_t  *prow,
+	uint8_t  *pcol);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_hist_find_min_max_bin_values(
+	VL53L1_histogram_bin_data_t   *pdata);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void VL53L1_hist_estimate_ambient_from_ambient_bins(
+	VL53L1_histogram_bin_data_t    *pdata);
+
+
+#ifdef __cplusplus
 }
+#endif
 
-
-
-VL53L1_Error VL53L1_set_hist_calib_pulse_delay(
-	VL53L1_DEV      Dev,
-	uint8_t         calib_delay)
-{
-
-
-
-
-
-	VL53L1_Error status       = VL53L1_ERROR_NONE;
-
-	LOG_FUNCTION_START("");
-
-	status =
-		VL53L1_set_calib_config(
-			Dev,
-			0x01,
-
-			calib_delay,
-
-			0x04,
-
-			0x08,
-
-			0x14,
-
-			VL53L1_RANGING_CORE__SPAD_READOUT__CALIB_PULSES);
-
-	LOG_FUNCTION_END(status);
-
-	return status;
-}
-
-
-VL53L1_Error VL53L1_disable_calib_pulse_delay(
-	VL53L1_DEV      Dev)
-{
-
-
-
-
-
-	VL53L1_Error status       = VL53L1_ERROR_NONE;
-
-	LOG_FUNCTION_START("");
-
-	status =
-		VL53L1_set_calib_config(
-			Dev,
-			0x00,
-
-			0x00,
-
-			0x00,
-
-			0x00,
-
-			0x00,
-
-			VL53L1_RANGING_CORE__SPAD_READOUT__STANDARD);
-
-	LOG_FUNCTION_END(status);
-
-	return status;
-}
+#endif
 
 

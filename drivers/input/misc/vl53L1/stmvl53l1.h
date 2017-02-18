@@ -69,8 +69,15 @@
  */
 /* define CFG_STMVL53L1_HAVE_REGULATOR */
 
-#define DRIVER_VERSION		"7.2.1"
+#define DRIVER_VERSION		"8.0.0"
 
+/** @ingroup vl53l1_config
+ * @{
+ */
+/**
+ * Configure max number of device the driver can support
+ */
+#define STMVL53L1_CFG_MAX_DEV	2
 /** @ingroup vl53l1_mod_dbg
  * @{
  */
@@ -178,7 +185,7 @@ struct stmvl53l1_data {
 	VL53L1_DevData_t stdev;	/*!<embed ST VL53L0 Dev data as "stdev" */
 
 	void *client_object;	/*!< cci or i2c moduel i/f speficic ptr  */
-
+	bool is_device_remove;	/*!< true when device has been remove */
 
 	struct mutex work_mutex; /*!< main dev mutex/lock */;
 	struct delayed_work	dwork;
@@ -209,7 +216,7 @@ struct stmvl53l1_data {
 	int output_mode;	/*!< output mode of the device */
 	bool force_device_on_en;/*!< keep device active when stopped */
 	int sar_mode; /*!< is sar mode enable/disabled */
-
+	VL53L1_Error last_error;/*!< last device internal error */
 	/* PS parameters */
 
 	/* Calibration parameters */
