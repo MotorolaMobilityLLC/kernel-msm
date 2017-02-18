@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -108,7 +108,6 @@
 	_LOG_FUNCTION_END_FMT(VL53L1_TRACE_MODULE_API, \
 		status, fmt, ##__VA_ARGS__)
 
-#define VL53L1_COPYSTRING(str, ...) strcpy(str, ##__VA_ARGS__)
 
 VL53L1_Error VL53L1_get_pal_error_string(
 	VL53L1_Error   PalErrorCode,
@@ -216,21 +215,35 @@ VL53L1_Error VL53L1_get_pal_error_string(
 			VL53L1_STRING_ERROR_XTALK_EXTRACTION_FAIL);
 		break;
 
-	case VL53L1_ERROR_OFFSET_CAL_INSUFFICIENT_MM1_SPADS:
+	case VL53L1_WARNING_OFFSET_CAL_INSUFFICIENT_MM1_SPADS:
 		VL53L1_COPYSTRING(pPalErrorString,
-			VL53L1_STRING_ERROR_OFFSET_CAL_INSUFFICIENT_MM1_SPADS);
+			VL53L1_STRING_WARNING_OFFSET_CAL_INSUFFICIENT_MM1_SPADS);
 		break;
-	case VL53L1_ERROR_REF_SPAD_CHAR_NOT_ENOUGH_SPADS:
+	case VL53L1_WARNING_OFFSET_CAL_PRE_RANGE_RATE_TOO_HIGH:
 		VL53L1_COPYSTRING(pPalErrorString,
-			VL53L1_STRING_ERROR_REF_SPAD_CHAR_NOT_ENOUGH_SPADS);
+			VL53L1_STRING_WARNING_OFFSET_CAL_PRE_RANGE_RATE_TOO_HIGH);
 		break;
-	case VL53L1_ERROR_REF_SPAD_CHAR_RATE_TOO_HIGH:
+
+	case VL53L1_WARNING_ZONE_CAL_ZONES_WITH_NO_SAMPLES:
 		VL53L1_COPYSTRING(pPalErrorString,
-			VL53L1_STRING_ERROR_REF_SPAD_CHAR_RATE_TOO_HIGH);
+			VL53L1_STRING_WARNING_ZONE_CAL_ZONES_WITH_NO_SAMPLES);
 		break;
-	case VL53L1_ERROR_REF_SPAD_CHAR_RATE_TOO_LOW:
+	case VL53L1_WARNING_ZONE_CAL_ZONES_WITH_REDUCED_SAMPLES:
 		VL53L1_COPYSTRING(pPalErrorString,
-			VL53L1_STRING_ERROR_REF_SPAD_CHAR_RATE_TOO_LOW);
+			VL53L1_STRING_WARNING_ZONE_CAL_ZONES_WITH_REDUCED_SAMPLES);
+		break;
+
+	case VL53L1_WARNING_REF_SPAD_CHAR_NOT_ENOUGH_SPADS:
+		VL53L1_COPYSTRING(pPalErrorString,
+			VL53L1_STRING_WARNING_REF_SPAD_CHAR_NOT_ENOUGH_SPADS);
+		break;
+	case VL53L1_WARNING_REF_SPAD_CHAR_RATE_TOO_HIGH:
+		VL53L1_COPYSTRING(pPalErrorString,
+			VL53L1_STRING_WARNING_REF_SPAD_CHAR_RATE_TOO_HIGH);
+		break;
+	case VL53L1_WARNING_REF_SPAD_CHAR_RATE_TOO_LOW:
+		VL53L1_COPYSTRING(pPalErrorString,
+			VL53L1_STRING_WARNING_REF_SPAD_CHAR_RATE_TOO_LOW);
 		break;
 
 	case VL53L1_ERROR_DEVICE_FIRMWARE_TOO_OLD:
@@ -268,3 +281,4 @@ VL53L1_Error VL53L1_get_pal_error_string(
 
 	return Status;
 }
+
