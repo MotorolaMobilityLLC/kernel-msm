@@ -1,7 +1,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -37,7 +37,6 @@
 
 #include <linux/string.h>
 #include "vl53l1_def.h"
-#include <linux/math64.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -54,9 +53,6 @@ extern "C"
 
 #define VL53L1DevStructGetLLDriverHandle(Dev) (&PALDevDataGet(Dev, LLData))
 #define VL53L1DevStructGetLLResultsHandle(Dev) (&PALDevDataGet(Dev, llresults))
-
-#define do_division_u(dividend, divisor) div64_u64(dividend, divisor)
-#define do_division_s(dividend, divisor) div64_s64(dividend, divisor)
 
 #ifdef __cplusplus
 }

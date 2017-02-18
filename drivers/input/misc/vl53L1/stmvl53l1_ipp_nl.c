@@ -64,12 +64,6 @@ static struct sock *nl_sk;
 static DEFINE_MUTEX(ipp_mutex);
 
 /**
- * keep track of number of device we get claimed to used
- * @note init value 0 is none
- */
-static int ipp_n_dev;
-
-/**
  * current registered daemon pid
  * @note default value 0 or later 1 is kind of invalid and will require
  * user space to connect before we can send any packet
@@ -154,7 +148,7 @@ int ipp_in_process(struct ipp_work_t *pwork)
 	struct stmvl53l1_data *data;
 
 	ipp_dbg("enter");
-	_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD, ipp_n_dev);
+	_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD, STMVL53L1_CFG_MAX_DEV);
 
 	/* work id check already done */
 	data = stmvl53l1_dev_table[pwork->dev_id];
@@ -277,15 +271,17 @@ static void stmvl53l1_nl_recv_msg(struct sk_buff *skb_in)
 			pwork->payload > IPP_WORK_MAX_PAYLOAD){
 		/* invalid header size */
 		ipp_err("invalid msg header size %d", pwork->payload);
-		_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD, ipp_n_dev);
+		_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD,
+			STMVL53L1_CFG_MAX_DEV);
 		return;
 	}
 
 	mutex_lock(&ipp_mutex);
 
-	if (pwork->dev_id >= ipp_n_dev) {
+	if (pwork->dev_id >= STMVL53L1_CFG_MAX_DEV) {
 		ipp_err("invalid dev id on msg %d", pwork->dev_id);
-		_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD, ipp_n_dev);
+		_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD,
+			STMVL53L1_CFG_MAX_DEV);
 		goto done_locked;
 	}
 
@@ -294,9 +290,10 @@ static void stmvl53l1_nl_recv_msg(struct sk_buff *skb_in)
 		 * if not it is a badly format message or bad message
 		 */
 		if (pwork->payload !=  IPP_WORK_HDR_SIZE) {
-			ipp_err("invalid ping msg size %d!=%d ",
-					pwork->payload, (int)IPP_WORK_HDR_SIZE);
-			_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD, ipp_n_dev);
+			ipp_err("invalid ping msg size %d!=%zu ",
+					pwork->payload, IPP_WORK_HDR_SIZE);
+			_ipp_dump_work(pwork, IPP_WORK_MAX_PAYLOAD,
+				STMVL53L1_CFG_MAX_DEV);
 			goto done_locked;
 		}
 		/* if pid was not set or change resent all ongoing ipp */
@@ -319,10 +316,10 @@ int stmvl53l1_ipp_setup(struct stmvl53l1_data *data)
 
 	mutex_lock(&ipp_mutex);
 
-	ipp_n_dev++;
 	data->ipp.buzy = 0;
 	init_waitqueue_head(&data->ipp.waitq);
-	ipp_dbg("now %d dev daemon pid is %d", ipp_n_dev, daemon_pid);
+	ipp_dbg("now %d dev daemon pid is %d", STMVL53L1_CFG_MAX_DEV,
+		daemon_pid);
 	rc = 0;
 
 	mutex_unlock(&ipp_mutex);
@@ -332,11 +329,7 @@ int stmvl53l1_ipp_setup(struct stmvl53l1_data *data)
 
 void stmvl53l1_ipp_cleanup(struct stmvl53l1_data *data)
 {
-	mutex_lock(&ipp_mutex);
-
-	ipp_n_dev--;
-
-	mutex_unlock(&ipp_mutex);
+	/* nothink to do */
 }
 
 #if !defined(OLD_NETLINK_API)

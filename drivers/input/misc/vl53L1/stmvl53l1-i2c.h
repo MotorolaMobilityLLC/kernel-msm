@@ -43,6 +43,9 @@ struct i2c_data {
 	/** back link to driver for interrupt and clean-up */
 	struct stmvl53l1_data *vl53l1_data;
 
+	/* reference counter */
+	struct kref ref;
+
 	/*!< if null no regulator use for power ctrl */
 	struct regulator *vdd;
 
@@ -66,8 +69,15 @@ struct i2c_data {
 	 *  @warning if the dev tree and intr gpio is require please adapt code
 	*/
 	int intr_gpio;
-	/*!< is set if above irq gpio got acquired */
 
+	/*!< device boot i2c register address
+	 *
+	 * boot_reg is the value of device i2c address after it is bring out
+	 * of reset.
+	 */
+	int boot_reg;
+
+	/*!< is set if above irq gpio got acquired */
 	struct i2d_data_flags_t {
 		unsigned pwr_owned:1; /*!< set if pwren gpio is owned*/
 		unsigned xsdn_owned:1; /*!< set if sxdn  gpio is owned*/
@@ -93,5 +103,7 @@ int stmvl53l1_reset_release_i2c(void *);
 int stmvl53l1_reset_hold_i2c(void *);
 void stmvl53l1_clean_up_i2c(void);
 int stmvl53l1_start_intr(void *object, int *poll_mode);
+void *stmvl53l1_get(void *);
+void stmvl53l1_put(void *);
 
 #endif /* STMVL53L1_I2C_H */
