@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -868,6 +868,16 @@ VL53L1_Error VL53L1_nvm_format_decode(
 
 	if (status == VL53L1_ERROR_NONE)
 		status =
+			VL53L1_nvm_decode_cal_peak_rate_map(
+				buf_size,
+				pbuffer + VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_INDEX,
+				&(pdata->fmt_peak_rate_map));
+
+
+
+
+	if (status == VL53L1_ERROR_NONE)
+		status =
 			VL53L1_nvm_decode_additional_offset_cal_data(
 				buf_size,
 				pbuffer + VL53L1_NVM__FMT__ADDITIONAL_OFFSET_CAL_DATA_INDEX,
@@ -909,6 +919,43 @@ VL53L1_Error VL53L1_nvm_format_decode(
 
 	return status;
 
+}
+
+
+VL53L1_Error VL53L1_nvm_decode_cal_peak_rate_map(
+	uint16_t                    buf_size,
+	uint8_t                    *pbuffer,
+	VL53L1_cal_peak_rate_map_t *pdata)
+{
+
+	VL53L1_Error status   = VL53L1_ERROR_NONE;
+
+	uint8_t   *ptmp = NULL;
+	uint8_t       i = 0;
+
+	if (VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_SIZE > buf_size)
+		return VL53L1_ERROR_BUFFER_TOO_SMALL;
+
+	pdata->cal_distance_mm =
+		(uint16_t)VL53L1_i2c_decode_uint16_t(2, pbuffer);
+
+	pdata->cal_reflectance_pc =
+		(uint16_t)VL53L1_i2c_decode_uint16_t(2, pbuffer + 2);
+	pdata->cal_reflectance_pc =
+		pdata->cal_reflectance_pc >> 6;
+
+	pdata->max_samples = VL53L1_NVM_PEAK_RATE_MAP_SAMPLES;
+	pdata->width       = VL53L1_NVM_PEAK_RATE_MAP_WIDTH;
+	pdata->height      = VL53L1_NVM_PEAK_RATE_MAP_HEIGHT;
+
+	ptmp = pbuffer + 4;
+	for (i = 0 ; i < VL53L1_NVM_PEAK_RATE_MAP_SAMPLES ; i++) {
+		pdata->peak_rate_mcps[i] =
+			(uint16_t)VL53L1_i2c_decode_uint16_t(2, ptmp);
+		ptmp += 2;
+	}
+
+	return status;
 }
 
 
@@ -1433,6 +1480,8 @@ VL53L1_Error VL53L1_read_nvm(
 
 
 
+
+
 	if (status == VL53L1_ERROR_NONE)
 		status = VL53L1_nvm_format_decode(
 			VL53L1_NVM_SIZE_IN_BYTES,
@@ -1443,6 +1492,50 @@ VL53L1_Error VL53L1_read_nvm(
 
 	return status;
 
+}
+
+
+VL53L1_Error VL53L1_read_nvm_cal_peak_rate_map(
+	VL53L1_DEV                           Dev,
+	VL53L1_cal_peak_rate_map_t          *pcal_data)
+{
+
+
+
+
+
+
+	VL53L1_Error status = VL53L1_ERROR_NONE;
+
+
+
+	uint8_t nvm_data[2*VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_SIZE];
+
+	LOG_FUNCTION_START("");
+
+
+
+
+	status =
+		VL53L1_read_nvm_raw_data(
+			Dev,
+			(uint8_t)(VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_INDEX >> 2),
+			(uint8_t)(VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_SIZE >> 2),
+			nvm_data);
+
+
+
+
+	if (status == VL53L1_ERROR_NONE)
+		status =
+			VL53L1_nvm_decode_cal_peak_rate_map(
+				VL53L1_NVM__FMT__CAL_PEAK_RATE_MAP_DATA_SIZE,
+				nvm_data,
+				pcal_data);
+
+	LOG_FUNCTION_END(status);
+
+	return status;
 }
 
 
@@ -1542,4 +1635,5 @@ VL53L1_Error VL53L1_read_nvm_fmt_range_results_data(
 	return status;
 
 }
+
 
