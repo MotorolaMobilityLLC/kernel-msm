@@ -33,7 +33,7 @@
 #ifndef _VL53L1_PLATFORM_IPP_H_
 #define _VL53L1_PLATFORM_IPP_H_
 
-#include "vl53l1_platform.h"
+#include "vl53l1_ll_def.h"
 
 #ifdef __cplusplus
 extern "C"

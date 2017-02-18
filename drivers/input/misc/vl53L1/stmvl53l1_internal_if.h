@@ -1,33 +1,5 @@
-
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
-*
-* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
-* Proprietary license'
-* or 'BSD 3-clause "New" or "Revised" License' , at your option.
-*
-********************************************************************************
-*
-* 'STMicroelectronics Proprietary license'
-*
-********************************************************************************
-*
-* License terms: STMicroelectronics Proprietary in accordance with licensing
-* terms at www.st.com/sla0044
-*
-* STMicroelectronics confidential
-* Reproduction and Communication of this document is strictly prohibited unless
-* specifically authorized in writing by STMicroelectronics.
-*
-*
-********************************************************************************
-*
-* Alternatively, VL53L1 Core may be distributed under the terms of
-* 'BSD 3-clause "New" or "Revised" License', in which case the following
-* provisions apply instead of the ones
-* mentioned above :
-*
-********************************************************************************
 *
 * License terms: BSD 3-clause "New" or "Revised" License.
 *
@@ -55,79 +27,49 @@
 * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-*
-********************************************************************************
-*
 */
 
+#ifndef STMVL53L1_INTERNAL_IF_H
+#define STMVL53L1_INTERNAL_IF_H
 
+#include "vl53l1_def.h"
 
+/* interface definition move in this file is not supposed to be use by a normal
+ * client. It's only here for internal testing purpose.
+ */
 
+/* structure and ioctl that allow raw access to vl53l1 register */
+struct stmvl53l1_register {
+	uint32_t is_read;   /*!< type of the access 1: read 0: write*/
+	uint32_t index;     /*!< register index */
+	uint32_t cnt;       /*!< register size shall be 1 to n */
+	int32_t status;     /*!< operation status 0 ok else error */
 
+	union reg_data_t {
+		uint8_t b;  /*!< single data byte*/
+		uint16_t w; /*!< single data word (16 bits)*/
+		uint32_t dw;    /*!< single data dword (32 bits)*/
+		uint8_t bytes[256]; /*!< any size byte array
+		* @note only effectively used array size is needed and will be
+		* set/used another possible register definition is
+		* @ref stmvl53l1_register_flexi
+		*/
+	} data; /*!< data only *@warning device is big endian and
+	* no endianess adaptation is performed by @ref VL53L1_IOCTL_REGISTER
+	*/
+};
 
+struct stmvl53l1_register_flexi {
+	uint32_t is_read;   /*!< [in] type of the access 1: read 0: write*/
+	uint32_t index;     /*!< [in] register index */
+	uint32_t cnt;       /*!< [în] register size shall be 1 to n */
+	int32_t status;     /*!< [out] operation status 0 ok else error */
+	uint8_t data[];     /*!< [in/out] flexible array size data */
+	/*!< data only *@warning device is big endian and
+	* no endianess adaptation is performed by @ref VL53L1_IOCTL_REGISTER
+	*/
+};
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#ifndef _VL53L1_SILICON_CORE_H_
-#define _VL53L1_SILICON_CORE_H_
-
-#include "vl53l1_platform.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-VL53L1_Error VL53L1_is_firmware_ready_silicon(
-	VL53L1_DEV      Dev,
-	uint8_t        *pready);
-
-
-#ifdef __cplusplus
-}
-#endif
+#define VL53L1_IOCTL_REGISTER   _IOWR('p', 0x0c, struct stmvl53l1_register)
 
 #endif
-
-
