@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -220,6 +220,17 @@ typedef struct {
 	int16_t   range_offset_mm;
 
 
+	uint16_t  gain_factor;
+
+
+
+	uint8_t   valid_phase_low;
+
+
+
+	uint8_t   valid_phase_high;
+
+
 
 	uint8_t   algo__consistency_check__tolerance;
 
@@ -236,16 +247,6 @@ typedef struct {
 
 
 	int16_t   algo__crosstalk_compensation_y_plane_gradient_kcps;
-
-
-
-	int16_t   algo__part_to_part_range_offset_mm;
-
-
-	int16_t   mm_config__inner_offset_mm;
-
-
-	int16_t   mm_config__outer_offset_mm;
 
 
 
@@ -275,13 +276,13 @@ typedef struct {
 
 
 
-	uint8_t  VL53L1_PRM_00013;
-
-
-	uint8_t  VL53L1_PRM_00014;
-
-
 	uint8_t  VL53L1_PRM_00015;
+
+
+	uint8_t  VL53L1_PRM_00016;
+
+
+	uint8_t  VL53L1_PRM_00017;
 
 
 
@@ -332,7 +333,7 @@ typedef struct {
 	uint8_t  VL53L1_PRM_00007;
 
 
-	uint16_t VL53L1_PRM_00016;
+	uint16_t VL53L1_PRM_00018;
 
 
 	uint32_t  total_periods_elapsed;
@@ -362,7 +363,7 @@ typedef struct {
 	int32_t  ambient_events_sum;
 
 
-	int32_t  VL53L1_PRM_00027;
+	int32_t  VL53L1_PRM_00026;
 
 
 
@@ -393,13 +394,13 @@ typedef struct {
 
 
 
-	uint8_t  VL53L1_PRM_00013;
-
-
-	uint8_t  VL53L1_PRM_00014;
-
-
 	uint8_t  VL53L1_PRM_00015;
+
+
+	uint8_t  VL53L1_PRM_00016;
+
+
+	uint8_t  VL53L1_PRM_00017;
 
 
 	uint32_t bin_data[VL53L1_XTALK_HISTO_BINS];
@@ -419,7 +420,7 @@ typedef struct {
 	uint16_t vcsel_width;
 
 
-	uint16_t VL53L1_PRM_00016;
+	uint16_t VL53L1_PRM_00018;
 
 
 	uint16_t zero_distance_phase;
@@ -454,3 +455,4 @@ typedef struct {
 #endif
 
 #endif
+
