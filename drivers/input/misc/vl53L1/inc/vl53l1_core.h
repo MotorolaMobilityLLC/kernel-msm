@@ -2,7 +2,7 @@
 /*
 * Copyright (c) 2016, STMicroelectronics - All Rights Reserved
 *
-* This file is part of VL53L1 Core and is dual licensed, either
+* This file is part of VL53L1 Core and is dual licensed, either 'STMicroelectronics
 * Proprietary license'
 * or 'BSD 3-clause "New" or "Revised" License' , at your option.
 *
@@ -12,7 +12,7 @@
 *
 ********************************************************************************
 *
-*License terms : STMicroelectronics Proprietary in accordance with licensing
+* License terms: STMicroelectronics Proprietary in accordance with licensing
 * terms at www.st.com/sla0044
 *
 * STMicroelectronics confidential
@@ -29,7 +29,7 @@
 *
 ********************************************************************************
 *
-*License terms : BSD 3-clause "New" or "Revised" License.
+* License terms: BSD 3-clause "New" or "Revised" License.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -100,6 +100,7 @@
 #define _VL53L1_CORE_H_
 
 #include "vl53l1_platform.h"
+#include "vl53l1_core_support.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -351,39 +352,10 @@ void VL53L1_init_histogram_multizone_config_structure(
 
 
 
-void VL53L1_init_histogram_bin_data_struct(
-	int32_t                      bin_value,
-	uint16_t                     VL53L1_PRM_00015,
-	VL53L1_histogram_bin_data_t *pdata);
-
-
-
-
-
-
-
-
-
-
-
 void VL53L1_init_xtalk_bin_data_struct(
 	uint32_t                        bin_value,
-	uint16_t                        VL53L1_PRM_00015,
+	uint16_t                        VL53L1_PRM_00017,
 	VL53L1_xtalk_histogram_shape_t *pdata);
-
-
-
-
-
-
-
-
-
-
-
-void VL53L1_copy_xtalk_bin_data_to_histogram_data_struct(
-		VL53L1_xtalk_histogram_shape_t *pxtalk,
-		VL53L1_histogram_bin_data_t    *phist);
 
 
 
@@ -727,19 +699,6 @@ uint32_t VL53L1_calc_macro_period_us(
 
 
 
-uint32_t VL53L1_calc_pll_period_us(
-	uint16_t fast_osc_frequency);
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -765,10 +724,9 @@ uint16_t VL53L1_calc_range_ignore_threshold(
 
 
 
-
-uint32_t VL53L1_calc_pll_period_mm(
-	uint16_t fast_osc_frequency);
-
+uint32_t VL53L1_calc_timeout_mclks(
+	uint32_t  timeout_us,
+	uint32_t  macro_period_us);
 
 
 
@@ -785,6 +743,21 @@ uint16_t VL53L1_calc_encoded_timeout(
 	uint32_t  timeout_us,
 	uint32_t  macro_period_us);
 
+
+
+
+
+
+
+
+
+
+
+
+
+uint32_t VL53L1_calc_timeout_us(
+	uint32_t  timeout_mclks,
+	uint32_t  macro_period_us);
 
 
 
@@ -845,11 +818,15 @@ uint32_t VL53L1_decode_timeout(
 
 
 
+
+
 VL53L1_Error  VL53L1_calc_timeout_register_values(
-	uint32_t                mm_config_timeout_us,
-	uint32_t                range_config_timeout_us,
-	uint16_t                fast_osc_frequency,
-	VL53L1_timing_config_t *ptiming);
+	uint32_t                 phasecal_config_timeout_us,
+	uint32_t                 mm_config_timeout_us,
+	uint32_t                 range_config_timeout_us,
+	uint16_t                 fast_osc_frequency,
+	VL53L1_general_config_t *pgeneral,
+	VL53L1_timing_config_t  *ptiming);
 
 
 
@@ -865,19 +842,6 @@ VL53L1_Error  VL53L1_calc_timeout_register_values(
 uint8_t VL53L1_encode_vcsel_period(
 	uint8_t VL53L1_PRM_00028);
 
-
-
-
-
-
-
-
-
-
-
-
-uint8_t VL53L1_decode_vcsel_period(
-	uint8_t vcsel_period_reg);
 
 
 
@@ -927,195 +891,10 @@ void   VL53L1_encode_unsigned_integer(
 
 
 
-uint32_t VL53L1_duration_maths(
-	uint32_t  pll_period_us,
-	uint32_t  vcsel_parm_pclks,
-	uint32_t  window_vclks,
-	uint32_t  periods_elapsed_mclks);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-uint16_t VL53L1_rate_maths(
-	int32_t   VL53L1_PRM_00005,
-	uint32_t  time_us);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-int32_t VL53L1_range_maths(
-	uint16_t  fast_osc_frequency,
-	uint16_t  VL53L1_PRM_00011,
-	uint16_t  zero_distance_phase,
-	int32_t   range_offset_mm);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-uint16_t VL53L1_rate_per_spad_maths(
-	uint32_t  frac_bits,
-	uint32_t  peak_count_rate,
-	uint16_t  num_spads,
-	uint32_t  max_output_value);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-uint32_t VL53L1_events_per_spad_maths(
-	int32_t   VL53L1_PRM_00009,
-	uint16_t  num_spads,
-	uint32_t  duration);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void VL53L1_hist_find_min_max_bin_values(
-	VL53L1_histogram_bin_data_t   *pdata);
-
-
-
-
-
-
-
-
-
-
-
-
-
-void VL53L1_hist_remove_ambient_bins(
-	VL53L1_histogram_bin_data_t    *pdata);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void VL53L1_hist_estimate_ambient_from_ambient_bins(
-	VL53L1_histogram_bin_data_t    *pdata);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void VL53L1_hist_estimate_ambient_from_thresholded_bins(
-	int32_t                      ambient_threshold_sigma,
-	VL53L1_histogram_bin_data_t *pdata);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 VL53L1_Error VL53L1_hist_copy_and_scale_ambient_info(
 	VL53L1_zone_hist_info_t        *pidata,
 	VL53L1_histogram_bin_data_t    *podata);
-
-
-
-
-
-
-
-
-
-
-void VL53L1_hist_calc_zero_distance_phase(
-	VL53L1_histogram_bin_data_t    *pdata);
 
 
 
@@ -1234,22 +1013,6 @@ void VL53L1_spad_number_to_byte_bit_index(
 	uint8_t *pbyte_index,
 	uint8_t *pbit_index,
 	uint8_t *pbit_mask);
-
-
-
-
-
-
-
-
-
-
-
-
-void VL53L1_decode_row_col(
-	uint8_t   spad_number,
-	uint8_t  *prow,
-	uint8_t  *pcol);
 
 
 
@@ -1434,20 +1197,6 @@ VL53L1_Error VL53L1_avg_histogram_data (
 
 
 
-uint32_t VL53L1_isqrt(
-	uint32_t  num);
-
-
-
-
-
-
-
-
-
-
-
-
 VL53L1_Error VL53L1_save_cfg_data(
 	VL53L1_DEV  Dev);
 
@@ -1580,9 +1329,126 @@ VL53L1_Error VL53L1_set_GPIO_thresholds_from_struct(
 	VL53L1_DEV                      Dev,
 	VL53L1_GPIO_interrupt_config_t *pintconf);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_ref_spad_char_config(
+	VL53L1_DEV    Dev,
+	uint8_t       vcsel_period_a,
+	uint32_t      phasecal_timeout_us,
+	uint16_t      total_rate_target_mcps,
+	uint16_t      max_count_rate_rtn_limit_mcps,
+	uint16_t      min_count_rate_rtn_limit_mcps,
+	uint16_t      fast_osc_frequency);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_ssc_config(
+	VL53L1_DEV           Dev,
+	VL53L1_ssc_config_t *pssc_cfg,
+	uint16_t             fast_osc_frequency);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_spad_rate_data(
+	VL53L1_DEV                Dev,
+	VL53L1_spad_rate_data_t  *pspad_rates);
+
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
+
 
