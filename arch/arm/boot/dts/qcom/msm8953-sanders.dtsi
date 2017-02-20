@@ -804,6 +804,8 @@
 	qcom,cool-temp-c = <0>;
 	qcom,temp-warm-current-ma = <1500>;
 	qcom,temp-cool-current-ma = <600>;
+	qcom,temp-slightly-cool-current-ma = <600>;
+	qcom,slightly-cool-temp-c = <15>;
 	qcom,ext-temp-volt-mv = <4200>;
 	qcom,hotspot-thrs-c = <50>;
 	qcom,charging-timeout-mins = <0>;
