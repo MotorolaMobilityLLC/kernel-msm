@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -148,7 +148,7 @@ static void hdmi_cec_msg_recv(struct work_struct *work)
 		msg.sender_id, msg.recvr_id,
 		msg.frame_size);
 
-	if (msg.frame_size < 1) {
+	if (msg.frame_size < 1 || msg.frame_size > MAX_CEC_FRAME_SIZE) {
 		DEV_ERR("%s: invalid message (frame length = %d)\n",
 			__func__, msg.frame_size);
 		return;
@@ -168,7 +168,7 @@ static void hdmi_cec_msg_recv(struct work_struct *work)
 		msg.operand[i] = data & 0xFF;
 	}
 
-	for (; i < 14; i++)
+	for (; i < MAX_OPERAND_SIZE; i++)
 		msg.operand[i] = 0;
 
 	if (cbs && cbs->msg_recv_notify)
