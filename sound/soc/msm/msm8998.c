@@ -6336,6 +6336,11 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "SPKOUTN");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKOUTP");
 
+	snd_soc_dapm_ignore_suspend(dapm, "Slim1 Playback");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim1 Capture");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim2 Playback");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim2 Capture");
+
 	snd_soc_dapm_sync(dapm);
 
 	ret = snd_soc_add_codec_controls(codec, msm_snd_controls,
