@@ -140,7 +140,7 @@
 	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x20>;
-		touch_vdd-supply = <&vdda_touch_vreg>;
+		touch_vdd-supply = <&pm8917_l17>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <65 0x0>;
 		gpios = <&tlmm 65 0x0>, /* IRQ */
