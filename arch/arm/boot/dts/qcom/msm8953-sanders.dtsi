@@ -390,7 +390,10 @@
 	};
 
 	qcom,sensor-information {
-		/delete-node/ sensor_information18;
+		sensor_information18: qcom,sensor-information-18 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "chg_therm";
+		};
 
 		sensor_information21: qcom,sensor-information-21 {
 			qcom,sensor-type = "adc";
@@ -864,9 +867,7 @@
 
 &pm8953_vadc {
 	chan@11 {
-		label = "board_id";
-		qcom,scale-function = <0>;
-		/delete-property/ qcom,vadc-thermal-node;
+		label = "chg_therm";
 	};
 
 	chan@13 {
