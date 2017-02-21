@@ -4723,11 +4723,29 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 #define APSD_EN_BIT			BIT(0)
 static void usb_insertion_work(struct work_struct *work)
 {
+	union power_supply_propval prop = {0,};
 	struct smbchg_chip *chip =
 		container_of(work, struct smbchg_chip,
 			     usb_insertion_work.work);
 	int rc;
 	int hvdcp_en = 0;
+
+	if (!is_usb_present(chip)) {
+		pr_smb(PR_STATUS, "No USB is connected\n");
+		smbchg_relax(chip, PM_CHARGER);
+		return;
+	}
+
+	rc = chip->usb_psy->get_property(chip->usb_psy,
+			POWER_SUPPLY_PROP_CURRENT_MAX, &prop);
+	if (rc < 0)
+		dev_err(chip->dev,
+			"could not read USB current_max property, rc=%d\n", rc);
+	if (prop.intval >= (IDEV_CHG_MIN * 1000)) {
+		pr_smb(PR_STATUS, "USB current max = %duA\n", prop.intval);
+		smbchg_relax(chip, PM_CHARGER);
+		return;
+	}
 
 	if (chip->enable_hvdcp_9v)
 		hvdcp_en = HVDCP_EN_BIT;
@@ -4855,18 +4873,15 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	usb_type_name = get_usb_type_name(type);
 	chip->supply_type = get_usb_supply_type(type);
 
-	/* Rerun APSD 1 sec later */
+	/* Rerun APSD 5 sec later if needed */
 	if ((chip->supply_type == POWER_SUPPLY_TYPE_USB) &&
 	    !chip->apsd_rerun_cnt && !chip->factory_mode) {
 		dev_info(chip->dev, "HW Detected SDP!\n");
 		chip->apsd_rerun_cnt++;
-		chip->usb_present = 0;
 		schedule_delayed_work(&chip->usb_insertion_work,
-				      msecs_to_jiffies(1000));
-		return;
-	}
-
-	chip->apsd_rerun_cnt = 0;
+				      msecs_to_jiffies(5000));
+	} else
+		chip->apsd_rerun_cnt = 0;
 
 	if (chip->factory_mode && (chip->supply_type == POWER_SUPPLY_TYPE_USB ||
 				chip->supply_type == POWER_SUPPLY_TYPE_USB_CDP)) {
@@ -6079,21 +6094,20 @@ static int smbchg_force_apsd(struct smbchg_chip *chip)
 	int rc;
 
 	dev_info(chip->dev, "Start APSD Rerun!\n");
-	rc = smbchg_sec_masked_write(chip,
-				     chip->usb_chgpth_base + USBIN_CHGR_CFG,
-				     USBIN_ALLOW_MASK, USBIN_ALLOW_9V);
-	if (rc < 0)
-		dev_err(chip->dev, "Couldn't write usb allowance %d rc=%d\n",
-			USBIN_ALLOW_9V, rc);
+	power_supply_set_chg_present(chip->usb_psy, 0);
+	power_supply_set_present(chip->usb_psy, 0);
+	power_supply_set_online(chip->usb_psy, 0);
+	power_supply_set_dp_dm(chip->usb_psy,
+			       POWER_SUPPLY_DP_DM_DPR_DMR);
 	msleep(10);
-
-	/* RESET to Default 5V to 9V */
-	rc = smbchg_sec_masked_write(chip,
-				     chip->usb_chgpth_base + USBIN_CHGR_CFG,
-				     USBIN_ALLOW_MASK, USBIN_ALLOW_5V_TO_9V);
+	rc = smbchg_masked_write(chip,
+				     chip->usb_chgpth_base + CMD_APSD,
+				     APSD_RERUN_BIT, APSD_RERUN_BIT);
 	if (rc < 0)
-		dev_err(chip->dev, "Couldn't write usb allowance %d rc=%d\n",
-			USBIN_ALLOW_5V_TO_9V, rc);
+		dev_err(chip->dev, "Couldn't rerun APSD, rc=%d\n", rc);
+
+	chip->usb_present = 0;
+	chip->usb_online = 0;
 
 	return rc;
 }
