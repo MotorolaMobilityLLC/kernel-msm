@@ -41,6 +41,9 @@
 #define DRIVER_VERSION		"1.0"
 
 #define SYS_AUTHORITY		(S_IRUGO|S_IWUGO)
+#define PS_MIN_POLLING_RATE    200
+
+static int polling_time = 200;  /*report rate for polling mode*/
 
 struct ps_thre {
 	int noise;
@@ -279,6 +282,17 @@ static void ltr559_set_ps_threshold(struct i2c_client *client, u8 addr, u16 valu
 	i2c_smbus_write_word_data(client, addr, value);
 }
 
+static ssize_t ltr559_set_ps_delay(struct sensors_classdev *sensors_cdev,
+		unsigned int delay_msec)
+{
+	if (delay_msec < PS_MIN_POLLING_RATE)   /*at least 200 ms */
+		delay_msec = PS_MIN_POLLING_RATE;
+
+	polling_time = delay_msec;      /* convert us => ms */
+
+	return 0;
+}
+
 static int ltr559_ps_enable(struct i2c_client *client, int on)
 {
 	struct ltr559_data *data = i2c_get_clientdata(client);
@@ -286,8 +300,6 @@ static int ltr559_ps_enable(struct i2c_client *client, int on)
 	int contr_data;
 
 	if (on) {
-		ltr559_set_ps_threshold(client, LTR559_PS_THRES_LOW_0, 0);
-		ltr559_set_ps_threshold(client, LTR559_PS_THRES_UP_0, data->platform_data->prox_threshold);
 		ret = i2c_smbus_write_byte_data(client, LTR559_PS_CONTR, reg_tbl[REG_PS_CONTR].curval);
 		if (ret < 0) {
 			pr_err("%s: enable=(%d) failed!\n", __func__, on);
@@ -301,9 +313,6 @@ static int ltr559_ps_enable(struct i2c_client *client, int on)
 
 		msleep(WAKEUP_DELAY);
 
-		data->ps_state = 100;
-		input_report_abs(data->input_dev_ps, ABS_DISTANCE, data->ps_state);
-		input_sync(data->input_dev_ps);
 		ltr559_ps_dynamic_caliberate(&data->ps_cdev);
 	} else {
 		ret = i2c_smbus_write_byte_data(client, LTR559_PS_CONTR, MODE_PS_StdBy);
@@ -316,6 +325,8 @@ static int ltr559_ps_enable(struct i2c_client *client, int on)
 			pr_err("%s:  enable=(%d) failed!\n", __func__, on);
 			return -EFAULT;
 		}
+		input_report_abs(data->input_dev_ps, ABS_DISTANCE, -1);
+		input_sync(data->input_dev_ps);
 	}
 	pr_err("%s: enable=(%d) OK\n", __func__, on);
 	return ret;
@@ -327,7 +338,7 @@ static void ltr559_ps_work_func(struct work_struct *work)
 	struct i2c_client *client = data->client;
 	int als_ps_status;
 	int psdata;
-	static u32 ps_state_last = 1;
+	static u32 ps_state_last = 100;
 	int j = 0;
 
 	mutex_lock(&data->op_lock);
@@ -398,7 +409,7 @@ static irqreturn_t ltr559_irq_handler(int irq, void *arg)
 	if (NULL == data)
 		return IRQ_HANDLED;
 	disable_irq_nosync(data->irq);
-	schedule_delayed_work(&data->ps_work, 0);
+	schedule_delayed_work(&data->ps_work, msecs_to_jiffies(polling_time));
 	return IRQ_HANDLED;
 }
 
@@ -620,15 +631,18 @@ static ssize_t ltr559_ps_dynamic_caliberate(struct sensors_classdev *sensors_cde
 		pdata->prox_hsyteresis_threshold = 1680;
 		pr_err("ltr559 the proximity sensor rubber or structure is error!\n");
 		return -EAGAIN;
-	}
+	} else if (j <= 1)
+		data->ps_state = 100;
+	else
+		data->ps_state = 1;
 
-	if (data->ps_state == 100) {
-		ltr559_set_ps_threshold(data->client, LTR559_PS_THRES_LOW_0, 0);
-		ltr559_set_ps_threshold(data->client, LTR559_PS_THRES_UP_0, data->platform_data->prox_threshold);
-	} else if (data->ps_state == 1) {
-		ltr559_set_ps_threshold(data->client, LTR559_PS_THRES_LOW_0, data->platform_data->prox_hsyteresis_threshold);
-		ltr559_set_ps_threshold(data->client, LTR559_PS_THRES_UP_0, 0x07ff);
-	}
+	input_report_abs(data->input_dev_ps, ABS_DISTANCE, data->ps_state);
+	input_sync(data->input_dev_ps);
+
+	ltr559_set_ps_threshold(data->client, LTR559_PS_THRES_LOW_0,
+		data->platform_data->prox_hsyteresis_threshold);
+	ltr559_set_ps_threshold(data->client, LTR559_PS_THRES_UP_0,
+		data->platform_data->prox_threshold);
 
 	data->cali_update = true;
 
@@ -1097,7 +1111,7 @@ int ltr559_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		sensors_proximity_cdev.name = prox_sensor_name;
 	data->ps_cdev = sensors_proximity_cdev;
 	data->ps_cdev.sensors_enable = ltr559_ps_set_enable;
-	data->ps_cdev.sensors_poll_delay = NULL;
+	data->ps_cdev.sensors_poll_delay = ltr559_set_ps_delay;
 
 	ret = sensors_classdev_register(&data->input_dev_ps->dev, &data->ps_cdev);
 	if (ret) {
