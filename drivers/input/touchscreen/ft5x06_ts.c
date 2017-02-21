@@ -256,6 +256,7 @@ struct ft5x06_ts_data {
 	struct ft5x06_gesture_platform_data *gesture_pdata;
 	struct regulator *vdd;
 	struct regulator *vcc_i2c;
+	bool regulator_en;
 	struct mutex ft_clk_io_ctrl_mutex;
 	char fw_name[FT_FW_NAME_MAX_LEN];
 	bool loading_fw;
@@ -1170,17 +1171,19 @@ static int ft5x06_ts_start(struct device *dev)
 	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
 	int err;
 
-	if (data->pdata->power_on) {
-		err = data->pdata->power_on(true);
-		if (err) {
-			dev_err(dev, "power on failed");
-			return err;
-		}
-	} else {
-		err = ft5x06_power_on(data, true);
-		if (err) {
-			dev_err(dev, "power on failed");
-			return err;
+	if (data->regulator_en) {
+		if (data->pdata->power_on) {
+			err = data->pdata->power_on(true);
+			if (err) {
+				dev_err(dev, "power on failed");
+				return err;
+			}
+		} else {
+			err = ft5x06_power_on(data, true);
+			if (err) {
+				dev_err(dev, "power on failed");
+				return err;
+			}
 		}
 	}
 
@@ -1218,14 +1221,16 @@ err_gpio_configuration:
 		if (err < 0)
 			dev_err(dev, "Cannot get suspend pinctrl state\n");
 	}
-	if (data->pdata->power_on) {
-		err = data->pdata->power_on(false);
-		if (err)
-			dev_err(dev, "power off failed");
-	} else {
-		err = ft5x06_power_on(data, false);
-		if (err)
-			dev_err(dev, "power off failed");
+	if (data->regulator_en) {
+		if (data->pdata->power_on) {
+			err = data->pdata->power_on(false);
+			if (err)
+				dev_err(dev, "power off failed");
+		} else {
+			err = ft5x06_power_on(data, false);
+			if (err)
+				dev_err(dev, "power off failed");
+		}
 	}
 	return err;
 }
@@ -1252,17 +1257,19 @@ static int ft5x06_ts_stop(struct device *dev)
 		ft5x06_i2c_write(data->client, txbuf, sizeof(txbuf));
 	}
 
-	if (data->pdata->power_on) {
-		err = data->pdata->power_on(false);
-		if (err) {
-			dev_err(dev, "power off failed");
-			goto pwr_off_fail;
-		}
-	} else {
-		err = ft5x06_power_on(data, false);
-		if (err) {
-			dev_err(dev, "power off failed");
-			goto pwr_off_fail;
+	if (data->regulator_en) {
+		if (data->pdata->power_on) {
+			err = data->pdata->power_on(false);
+			if (err) {
+				dev_err(dev, "power off failed");
+				goto pwr_off_fail;
+			}
+		} else {
+			err = ft5x06_power_on(data, false);
+			if (err) {
+				dev_err(dev, "power off failed");
+				goto pwr_off_fail;
+			}
 		}
 	}
 
@@ -1291,14 +1298,16 @@ gpio_configure_fail:
 		if (err < 0)
 			dev_err(dev, "Cannot get active pinctrl state\n");
 	}
-	if (data->pdata->power_on) {
-		err = data->pdata->power_on(true);
-		if (err)
-			dev_err(dev, "power on failed");
-	} else {
-		err = ft5x06_power_on(data, true);
-		if (err)
-			dev_err(dev, "power on failed");
+	if (data->regulator_en) {
+		if (data->pdata->power_on) {
+			err = data->pdata->power_on(true);
+			if (err)
+				dev_err(dev, "power on failed");
+		} else {
+			err = ft5x06_power_on(data, true);
+			if (err)
+				dev_err(dev, "power on failed");
+		}
 	}
 pwr_off_fail:
 	if (gpio_is_valid(data->pdata->reset_gpio)) {
@@ -2341,29 +2350,31 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 
 	if (pdata->power_init) {
 		err = pdata->power_init(true);
-		if (err) {
-			dev_err(&client->dev, "power init failed");
-			goto unreg_inputdev;
-		}
+		if (err)
+			dev_warn(&client->dev, "power init failed");
+		else
+			data->regulator_en = true;
 	} else {
 		err = ft5x06_power_init(data, true);
-		if (err) {
-			dev_err(&client->dev, "power init failed");
-			goto unreg_inputdev;
-		}
+		if (err)
+			dev_warn(&client->dev, "power init failed");
+		else
+			data->regulator_en = true;
 	}
 
-	if (pdata->power_on) {
-		err = pdata->power_on(true);
-		if (err) {
-			dev_err(&client->dev, "power on failed");
-			goto pwr_deinit;
-		}
-	} else {
-		err = ft5x06_power_on(data, true);
-		if (err) {
-			dev_err(&client->dev, "power on failed");
-			goto pwr_deinit;
+	if (data->regulator_en) {
+		if (pdata->power_on) {
+			err = pdata->power_on(true);
+			if (err) {
+				dev_err(&client->dev, "power on failed");
+				goto pwr_deinit;
+			}
+		} else {
+			err = ft5x06_power_on(data, true);
+			if (err) {
+				dev_err(&client->dev, "power on failed");
+				goto pwr_deinit;
+			}
 		}
 	}
 
@@ -2655,16 +2666,20 @@ err_gpio_req:
 				pr_err("failed to select relase pinctrl state\n");
 		}
 	}
-	if (pdata->power_on)
-		pdata->power_on(false);
-	else
-		ft5x06_power_on(data, false);
+
+	if (data->regulator_en) {
+		if (pdata->power_on)
+			pdata->power_on(false);
+		else
+			ft5x06_power_on(data, false);
+	}
 pwr_deinit:
-	if (pdata->power_init)
-		pdata->power_init(false);
-	else
-		ft5x06_power_init(data, false);
-unreg_inputdev:
+	if (data->regulator_en) {
+		if (pdata->power_init)
+			pdata->power_init(false);
+		else
+			ft5x06_power_init(data, false);
+	}
 	input_unregister_device(input_dev);
 	return err;
 }
@@ -2720,15 +2735,17 @@ static int ft5x06_ts_remove(struct i2c_client *client)
 					&attrs[attr_count].attr);
 	}
 
-	if (data->pdata->power_on)
-		data->pdata->power_on(false);
-	else
-		ft5x06_power_on(data, false);
+	if (data->regulator_en) {
+		if (data->pdata->power_on)
+			data->pdata->power_on(false);
+		else
+			ft5x06_power_on(data, false);
 
-	if (data->pdata->power_init)
-		data->pdata->power_init(false);
-	else
-		ft5x06_power_init(data, false);
+		if (data->pdata->power_init)
+			data->pdata->power_init(false);
+		else
+			ft5x06_power_init(data, false);
+	}
 
 	input_unregister_device(data->input_dev);
 	kobject_put(data->ts_info_kobj);
