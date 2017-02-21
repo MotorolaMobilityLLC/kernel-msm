@@ -86,6 +86,13 @@ static irqreturn_t ft5x06_ts_interrupt(int irq, void *data);
 #define FT_REG_RESET_FW		0x07
 #define FT_REG_FW_MIN_VER	0xB2
 #define FT_REG_FW_SUB_MIN_VER	0xB3
+#define FT_REG_I2C_MODE		0xEB
+#define FT_REG_FW_LEN		0xB0
+
+/* i2c mode register value */
+#define FT_VAL_I2C_MODE		0xAA
+#define FT_VAL_I2C_MODE_STD	0x09
+#define FT_VAL_I2C_MODE_STD_CFM	0x08
 
 /* gesture register address*/
 #define FT_REG_GESTURE_ENABLE	0xD0
@@ -145,7 +152,7 @@ static irqreturn_t ft5x06_ts_interrupt(int irq, void *data);
 #define FT_UPGRADE_55		0x55
 
 #define FT_FW_MIN_SIZE		8
-#define FT_FW_MAX_SIZE		32768
+#define FT_FW_MAX_SIZE		65536
 
 /* Firmware file is not supporting minor and sub minor so use 0 */
 #define FT_FW_FILE_MAJ_VER(x)	((x)->data[(x)->size - 2])
@@ -174,7 +181,7 @@ static irqreturn_t ft5x06_ts_interrupt(int irq, void *data);
 #define FT_RETRY_DLY		20
 
 #define FT_MAX_WR_BUF		10
-#define FT_MAX_RD_BUF		2
+#define FT_MAX_RD_BUF		3
 #define FT_FW_PKT_LEN		128
 #define FT_FW_PKT_META_LEN	6
 #define FT_FW_PKT_DLY_MS	20
@@ -1561,6 +1568,20 @@ static int ft5x06_fw_upgrade_start(struct i2c_client *client,
 		else
 			msleep(info.delay_55 - (i - (FT_UPGRADE_LOOP / 2)) * 2);
 
+		/* Set i2c to std i2c mode */
+		w_buf[0] = FT_REG_I2C_MODE;
+		w_buf[1] = FT_VAL_I2C_MODE;
+		w_buf[2] = FT_VAL_I2C_MODE_STD;
+		ft5x06_i2c_read(client, w_buf, 3, r_buf, 3);
+		if (r_buf[0] != FT_REG_I2C_MODE ||
+			r_buf[1] != FT_VAL_I2C_MODE ||
+			r_buf[2] != FT_VAL_I2C_MODE_STD_CFM) {
+			dev_err(&client->dev,
+				"set std i2c error. r_val = 0x%02x%02x%02x\n",
+				r_buf[0], r_buf[1], r_buf[2]);
+			continue;
+		}
+
 		/* Enter upgrade mode */
 		w_buf[0] = FT_UPGRADE_55;
 		ft5x06_i2c_write(client, w_buf, 1);
@@ -1622,12 +1643,11 @@ static int ft5x06_fw_upgrade_start(struct i2c_client *client,
 	}
 	msleep(FT_EARSE_DLY_MS);
 
-	/* program firmware */
-	if (is_5336_new_bootloader == FT_BLOADER_VERSION_LZ4
-		|| is_5336_new_bootloader == FT_BLOADER_VERSION_Z7)
-		data_len = data_len - FT_DATA_LEN_OFF_OLD_FW;
-	else
-		data_len = data_len - FT_DATA_LEN_OFF_NEW_FW;
+	w_buf[0] = FT_REG_FW_LEN;
+	w_buf[1] = (u8)((data_len>>16) & 0xff);
+	w_buf[2] = (u8)((data_len>>8) & 0xff);
+	w_buf[3] = (u8)((data_len) & 0xff);
+	ft5x06_i2c_write(client, w_buf, 4);
 
 	pkt_num = (data_len) / FT_FW_PKT_LEN;
 	pkt_len = FT_FW_PKT_LEN;
