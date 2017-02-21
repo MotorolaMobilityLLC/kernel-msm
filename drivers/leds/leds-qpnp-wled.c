@@ -236,6 +236,7 @@
 
 #define QPNP_WLED_AVDD_MV_TO_REG(val) \
 		((val - QPNP_WLED_AVDD_MIN_MV) / QPNP_WLED_AVDD_STEP_MV)
+#define SDM660l_DISABLE_OVP_CNT 10
 
 /* output feedback mode */
 enum qpnp_wled_fdbk_op {
@@ -424,6 +425,8 @@ struct qpnp_wled {
 	bool			auto_calib_done;
 	bool			module_dis_perm;
 	ktime_t			start_ovp_fault_time;
+	bool			sdm660l_ovp_disable;
+	u32			ovp_cnt;
 };
 
 static int qpnp_wled_step_delay_us = 52000;
@@ -1551,6 +1554,15 @@ static irqreturn_t qpnp_wled_ovp_irq_handler(int irq, void *_wled)
 		}
 	}
 
+	if (wled->sdm660l_ovp_disable) {
+		wled->ovp_cnt++;
+		if (wled->ovp_cnt > SDM660l_DISABLE_OVP_CNT) {
+			pr_err("SDM660L WLED OVP disable\n");
+			disable_irq(wled->ovp_irq);
+			wled->ovp_irq_disabled = true;
+		}
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -2617,6 +2629,9 @@ static int qpnp_wled_parse_dt(struct qpnp_wled *wled)
 
 	wled->auto_calib_enabled = of_property_read_bool(pdev->dev.of_node,
 					"qcom,auto-calibration-enable");
+	wled->sdm660l_ovp_disable = of_property_read_bool(pdev->dev.of_node,
+					"en-sdm660l-ovp-disable");
+
 	return 0;
 }
 
