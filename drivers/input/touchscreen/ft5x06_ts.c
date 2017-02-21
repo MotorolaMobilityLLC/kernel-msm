@@ -301,6 +301,7 @@ struct ft5x06_ts_data {
 	bool flash_enabled;
 	bool force_reflash;
 	u8 fw_id[FT_FW_ID_LEN];
+	bool irq_enabled;
 };
 
 static int ft5x06_ts_start(struct device *dev);
@@ -1238,6 +1239,7 @@ static int ft5x06_ts_start(struct device *dev)
 	msleep(data->pdata->soft_rst_dly);
 
 	enable_irq(data->client->irq);
+	data->irq_enabled = true;
 	data->suspended = false;
 
 	return 0;
@@ -1270,6 +1272,7 @@ static int ft5x06_ts_stop(struct device *dev)
 	int i, err;
 
 	disable_irq(data->client->irq);
+	data->irq_enabled = false;
 
 	/* release all touches */
 	for (i = 0; i < data->pdata->num_max_touches; i++) {
@@ -1344,6 +1347,7 @@ pwr_off_fail:
 		gpio_set_value_cansleep(data->pdata->reset_gpio, 1);
 	}
 	enable_irq(data->client->irq);
+	data->irq_enabled = true;
 	return err;
 }
 
@@ -2098,6 +2102,51 @@ static ssize_t ft5x06_build_id_show(struct device *dev,
 
 static DEVICE_ATTR(buildid, 0444, ft5x06_build_id_show, NULL);
 
+static ssize_t ft5x06_drv_irq_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+		data->irq_enabled ? "ENABLED" : "DISABLED");
+}
+
+static ssize_t ft5x06_drv_irq_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned long value = 0;
+	int err = 0;
+	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
+
+	err = kstrtoul(buf, 10, &value);
+	if (err < 0) {
+		pr_err("Failed to convert value\n");
+		return -EINVAL;
+	}
+
+	switch (value) {
+	case 0:
+		/* Disable irq */
+		if (data->irq_enabled) {
+			disable_irq(data->client->irq);
+			data->irq_enabled = false;
+		}
+		break;
+	case 1:
+		/* Enable irq */
+		if (!data->irq_enabled) {
+			enable_irq(data->client->irq);
+			data->irq_enabled = true;
+		}
+		break;
+	default:
+		pr_err("Invalid value\n");
+		return -EINVAL;
+	}
+	return count;
+}
+static DEVICE_ATTR(drv_irq, 0664, ft5x06_drv_irq_show, ft5x06_drv_irq_store);
+
 static ssize_t ts_info_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
@@ -2617,6 +2666,7 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 	data->pdata = pdata;
 	data->force_reflash = (data->pdata->no_force_update) ? false : true;
 	data->flash_enabled = true;
+	data->irq_enabled = false;
 
 	input_dev->name = "ft5x06_ts";
 	input_dev->id.bustype = BUS_I2C;
@@ -2728,6 +2778,9 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 		goto free_gpio;
 	}
 
+	/* request_threaded_irq enable irq,so set the flag irq_enabled */
+	data->irq_enabled = true;
+
 	if (ft5x06_gesture_support_enabled() && data->pdata->gesture_support) {
 		device_init_wakeup(&client->dev, 1);
 		gesture_pdata = devm_kzalloc(&client->dev,
@@ -2833,11 +2886,17 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 		goto free_update_fw_sys;
 	}
 
+	err = device_create_file(&client->dev, &dev_attr_drv_irq);
+	if (err) {
+		dev_err(&client->dev, "sys file creation failed\n");
+		goto free_force_update_fw_sys;
+	}
+
 	data->dir = debugfs_create_dir(FT_DEBUG_DIR_NAME, NULL);
 	if (data->dir == NULL || IS_ERR(data->dir)) {
 		pr_err("debugfs_create_dir failed(%ld)\n", PTR_ERR(data->dir));
 		err = PTR_ERR(data->dir);
-		goto free_force_update_fw_sys;
+		goto free_drv_irq_sys;
 	}
 
 	temp = debugfs_create_file("addr", S_IRUSR | S_IWUSR, data->dir, data,
@@ -2963,6 +3022,8 @@ free_secure_touch_sysfs:
 	}
 free_debug_dir:
 	debugfs_remove_recursive(data->dir);
+free_drv_irq_sys:
+	device_remove_file(&client->dev, &dev_attr_drv_irq);
 free_force_update_fw_sys:
 	device_remove_file(&client->dev, &dev_attr_force_update_fw);
 free_update_fw_sys:
@@ -3062,6 +3123,7 @@ static int ft5x06_ts_remove(struct i2c_client *client)
 	device_remove_file(&client->dev, &dev_attr_flashprog);
 	device_remove_file(&client->dev, &dev_attr_doreflash);
 	device_remove_file(&client->dev, &dev_attr_buildid);
+	device_remove_file(&client->dev, &dev_attr_drv_irq);
 
 #if defined(CONFIG_FB)
 	if (fb_unregister_client(&data->fb_notif))
