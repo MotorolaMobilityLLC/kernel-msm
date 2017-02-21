@@ -335,6 +335,7 @@ struct mmi_params {
 	bool			hvdcp3_con;
 	struct notifier_block	mmi_psy_notifier;
 	bool			init_done;
+	int			vbus_inc_cnt;
 };
 
 struct smb_charger {
