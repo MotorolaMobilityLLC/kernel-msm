@@ -168,7 +168,7 @@
 		reg = <0x1>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
-		qcom,mount-angle = <270>;
+		qcom,mount-angle = <90>;
 
 		qcom,eeprom-src = <&eeprom1>;
 		qcom,led-flash-src = <&led_flash0>;
