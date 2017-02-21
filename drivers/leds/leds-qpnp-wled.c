@@ -230,6 +230,7 @@
 
 #define QPNP_WLED_AVDD_MV_TO_REG(val) \
 		((val - QPNP_WLED_AVDD_MIN_MV) / QPNP_WLED_AVDD_STEP_MV)
+#define SDM660l_DISABLE_OVP_CNT 10
 
 /* output feedback mode */
 enum qpnp_wled_fdbk_op {
@@ -396,6 +397,8 @@ struct qpnp_wled {
 	bool			en_ext_pfet_sc_pro;
 	bool			prev_state;
 	bool			ovp_irq_disabled;
+	bool			sdm660l_ovp_disable;
+	u32			ovp_cnt;
 };
 
 /* helper to read a pmic register */
@@ -1114,6 +1117,16 @@ static irqreturn_t qpnp_wled_ovp_irq_handler(int irq, void *_wled)
 	if (fault_sts & (QPNP_WLED_OVP_FAULT_BIT | QPNP_WLED_ILIM_FAULT_BIT))
 		pr_err("WLED OVP fault detected, int_sts=%x fault_sts= %x\n",
 			int_sts, fault_sts);
+
+	if (wled->sdm660l_ovp_disable) {
+		wled->ovp_cnt++;
+		if (wled->ovp_cnt > SDM660l_DISABLE_OVP_CNT) {
+			pr_err("SDM660L WLED OVP disable\n");
+			disable_irq(wled->ovp_irq);
+			wled->ovp_irq_disabled = true;
+		}
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -2118,6 +2131,9 @@ static int qpnp_wled_parse_dt(struct qpnp_wled *wled)
 
 	wled->lcd_psm_ctrl = of_property_read_bool(pdev->dev.of_node,
 				"qcom,lcd-psm-ctrl");
+	wled->sdm660l_ovp_disable = of_property_read_bool(pdev->dev.of_node,
+					"en-sdm660l-ovp-disable");
+
 	return 0;
 }
 
