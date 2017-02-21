@@ -13,6 +13,9 @@
 #include "sdm660-pinctrl.dtsi"
 #include "sdm660-moto-pinctrl.dtsi"
 #include "sdm660-camera-sensor-mtp.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "dsi-panel-mot-tianma-520-1080p-vid.dtsi"
+
 / {
 	mtp_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
@@ -121,7 +124,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_dual_nt35597_truly_video>;
+	qcom,dsi-pref-prim-pan = <&mot_tianma_520_1080p_vid_v0>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
@@ -131,47 +134,6 @@
 
 &mdss_dsi1 {
 	status = "disabled";
-};
-
-&pm660l_wled {
-	qcom,led-strings-list = [01 02];
-};
-
-&dsi_dual_nt35597_truly_video {
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	//qcom,mdss-dsi-mode-sel-gpio-state = "dual_port";
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-};
-
-&dsi_dual_nt35597_truly_cmd {
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,mdss-dsi-mode-sel-gpio-state = "dual_port";
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-};
-
-&dsi_dual_sharp_video {
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-};
-
-&dsi_nt35597_truly_dsc_video {
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-};
-
-&dsi_nt35597_truly_dsc_cmd {
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 };
 
 &sdhc_1 {
