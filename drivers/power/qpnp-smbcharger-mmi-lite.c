@@ -284,6 +284,7 @@ struct smbchg_chip {
 	unsigned int			stepchg_state_holdoff;
 	struct wakeup_source		smbchg_wake_source;
 	struct delayed_work		usb_insertion_work;
+	bool				apsd_rerun_at_boot;
 	int				apsd_rerun_cnt;
 	int				charger_rate;
 	bool				usbid_disabled;
@@ -4578,8 +4579,15 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 			power_supply_set_supply_type(chip->usb_psy,
 					POWER_SUPPLY_TYPE_USB_HVDCP);
 			smbchg_aicl_deglitch_wa_check(chip);
+			chip->supply_type = POWER_SUPPLY_TYPE_USB_HVDCP;
 		}
+	} else if (chip->enable_hvdcp_9v && is_usb_present(chip) &&
+		   chip->apsd_rerun_at_boot &&
+		   chip->supply_type == POWER_SUPPLY_TYPE_USB_DCP) {
+		chip->apsd_rerun_cnt++;
+		smbchg_force_apsd(chip);
 	}
+	chip->apsd_rerun_at_boot = false;
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	cancel_delayed_work(&chip->heartbeat_work);
 	schedule_delayed_work(&chip->heartbeat_work, msecs_to_jiffies(0));
@@ -4779,6 +4787,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 
 	chip->apsd_rerun_cnt = 0;
 	chip->hvdcp_det_done = false;
+	chip->apsd_rerun_at_boot = false;
 
 	if (chip->factory_cable) {
 		if (!factory_kill_disable) {
@@ -6054,6 +6063,7 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		pr_smb(PR_MISC, "setting usb psy dp=f dm=f\n");
 		power_supply_set_dp_dm(chip->usb_psy,
 				POWER_SUPPLY_DP_DM_DPF_DMF);
+		chip->apsd_rerun_at_boot = true;
 	}
 
 	if (chip->force_aicl_rerun)
