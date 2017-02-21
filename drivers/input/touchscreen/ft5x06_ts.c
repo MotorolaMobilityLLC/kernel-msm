@@ -2102,6 +2102,39 @@ static ssize_t ft5x06_build_id_show(struct device *dev,
 
 static DEVICE_ATTR(buildid, 0444, ft5x06_build_id_show, NULL);
 
+static ssize_t ft5x06_reset_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int retval;
+	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
+
+	if ('1' != buf[0]) {
+		pr_err("Invalid argument for reset\n");
+		return -EINVAL;
+	}
+
+	mutex_lock(&data->input_dev->mutex);
+	if (data->irq_enabled) {
+		disable_irq(data->client->irq);
+		data->irq_enabled = false;
+	}
+	retval = gpio_direction_output(data->pdata->reset_gpio, 0);
+	if (0 == retval) {
+		gpio_set_value_cansleep(data->pdata->reset_gpio, 0);
+		msleep(data->pdata->hard_rst_dly);
+		gpio_set_value_cansleep(data->pdata->reset_gpio, 1);
+	} else {
+		dev_err(&data->client->dev,
+			"set direction for reset gpio failed\n");
+	}
+	msleep(100);
+	enable_irq(data->client->irq);
+	data->irq_enabled = true;
+	mutex_unlock(&data->input_dev->mutex);
+	return count;
+}
+static DEVICE_ATTR(reset, 0220, NULL, ft5x06_reset_store);
+
 static ssize_t ft5x06_drv_irq_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -2892,11 +2925,17 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 		goto free_force_update_fw_sys;
 	}
 
+	err = device_create_file(&client->dev, &dev_attr_reset);
+	if (err) {
+		dev_err(&client->dev, "sys file creation failed\n");
+		goto free_drv_irq_sys;
+	}
+
 	data->dir = debugfs_create_dir(FT_DEBUG_DIR_NAME, NULL);
 	if (data->dir == NULL || IS_ERR(data->dir)) {
 		pr_err("debugfs_create_dir failed(%ld)\n", PTR_ERR(data->dir));
 		err = PTR_ERR(data->dir);
-		goto free_drv_irq_sys;
+		goto free_reset_sys;
 	}
 
 	temp = debugfs_create_file("addr", S_IRUSR | S_IWUSR, data->dir, data,
@@ -3022,6 +3061,8 @@ free_secure_touch_sysfs:
 	}
 free_debug_dir:
 	debugfs_remove_recursive(data->dir);
+free_reset_sys:
+	device_remove_file(&client->dev, &dev_attr_reset);
 free_drv_irq_sys:
 	device_remove_file(&client->dev, &dev_attr_drv_irq);
 free_force_update_fw_sys:
@@ -3124,6 +3165,7 @@ static int ft5x06_ts_remove(struct i2c_client *client)
 	device_remove_file(&client->dev, &dev_attr_doreflash);
 	device_remove_file(&client->dev, &dev_attr_buildid);
 	device_remove_file(&client->dev, &dev_attr_drv_irq);
+	device_remove_file(&client->dev, &dev_attr_reset);
 
 #if defined(CONFIG_FB)
 	if (fb_unregister_client(&data->fb_notif))
