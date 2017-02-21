@@ -148,6 +148,10 @@
 	status = "disabled";
 };
 
+&pm660l_wled {
+	en-sdm660l-ovp-disable;
+};
+
 &sdhc_1 {
 	/* device core power supply */
 	vdd-supply = <&pm660l_l4>;
