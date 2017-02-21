@@ -6119,6 +6119,7 @@ static int mmi_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 #define VBUS_INPUT_VOLTAGE_NOM ((VBUS_INPUT_VOLTAGE_TARGET) - 200)
 #define VBUS_INPUT_VOLTAGE_MAX ((VBUS_INPUT_VOLTAGE_TARGET) + 200)
 #define VBUS_INPUT_VOLTAGE_MIN 4000
+#define VBUS_INPUT_MAX_COUNT 4
 static void mmi_heartbeat_work(struct work_struct *work)
 {
 	struct smb_charger *chip = container_of(work,
@@ -6588,18 +6589,21 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	if (charger_present && mmi->hvdcp3_con && !chip->pd_active &&
 	    (vbus_inc_mv > VBUS_INPUT_VOLTAGE_NOM)) {
 		if ((usb_mv < vbus_inc_mv) &&
-		    (usb_mv >= VBUS_INPUT_VOLTAGE_MIN)) {
+		    (usb_mv >= VBUS_INPUT_VOLTAGE_MIN) &&
+		    (mmi->vbus_inc_cnt < VBUS_INPUT_MAX_COUNT)) {
 			smblib_dbg(chip, PR_MOTO,
 				   "HVDCP Input %d mV Low, Increase\n",
 				   usb_mv);
 			smblib_write(chip, CMD_HVDCP_2_REG,
 				     SINGLE_INCREMENT_BIT);
 			vbus_inc_now = true;
+			mmi->vbus_inc_cnt++;
 		} else if (usb_mv > VBUS_INPUT_VOLTAGE_MAX) {
 			vbus_inc_mv -= 50;
 			smblib_write(chip, CMD_HVDCP_2_REG,
 				     FORCE_5V_BIT);
 			vbus_inc_now = true;
+			mmi->vbus_inc_cnt = 0;
 		}
 	}
 
