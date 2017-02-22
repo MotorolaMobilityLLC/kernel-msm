@@ -5013,7 +5013,7 @@ int smblib_deinit(struct smb_charger *chg)
  * MMI Functionality *
  *********************/
 
-struct smb_charger *the_chip;
+struct smb_charger *mmi_chip;
 
 static char *stepchg_str[] = {
 	[STEP_MAX]		= "MAX",
@@ -6562,16 +6562,16 @@ static ssize_t force_demo_mode_store(struct device *dev,
 
 	r = kstrtoul(buf, 0, &mode);
 	if (r) {
-		smblib_err(the_chip, "Invalid demo  mode value = %lu\n", mode);
+		smblib_err(mmi_chip, "Invalid demo  mode value = %lu\n", mode);
 		return -EINVAL;
 	}
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		return -ENODEV;
 	}
 
-	the_chip->mmi.demo_mode = (mode) ? true : false;
+	mmi_chip->mmi.demo_mode = (mode) ? true : false;
 
 	return r ? r : count;
 }
@@ -6582,12 +6582,12 @@ static ssize_t force_demo_mode_show(struct device *dev,
 {
 	int state;
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		return -ENODEV;
 	}
 
-	state = (the_chip->mmi.demo_mode) ? 1 : 0;
+	state = (mmi_chip->mmi.demo_mode) ? 1 : 0;
 
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
@@ -6605,16 +6605,16 @@ static ssize_t force_chg_usb_suspend_store(struct device *dev,
 
 	r = kstrtoul(buf, 0, &mode);
 	if (r) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "Invalid usb suspend mode value = %lu\n", mode);
 		return -EINVAL;
 	}
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		return -ENODEV;
 	}
-	r = smblib_set_usb_suspend(the_chip, (bool)mode);
+	r = smblib_set_usb_suspend(mmi_chip, (bool)mode);
 
 	return r ? r : count;
 }
@@ -6626,13 +6626,13 @@ static ssize_t force_chg_usb_suspend_show(struct device *dev,
 	int state;
 	int ret;
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		return -ENODEV;
 	}
-	ret = smblib_get_usb_suspend(the_chip, &state);
+	ret = smblib_get_usb_suspend(mmi_chip, &state);
 	if (ret) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "USBIN_SUSPEND_BIT failed ret = %d\n", ret);
 		state = -EFAULT;
 		goto end;
@@ -6655,7 +6655,7 @@ static ssize_t force_chg_fail_clear_store(struct device *dev,
 
 	r = kstrtoul(buf, 0, &mode);
 	if (r) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "Invalid chg fail mode value = %lu\n", mode);
 		return -EINVAL;
 	}
@@ -6687,21 +6687,21 @@ static ssize_t force_chg_auto_enable_store(struct device *dev,
 
 	r = kstrtoul(buf, 0, &mode);
 	if (r) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "Invalid chrg enable value = %lu\n", mode);
 		return -EINVAL;
 	}
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		return -ENODEV;
 	}
 
-	r = smblib_masked_write(the_chip, CHARGING_ENABLE_CMD_REG,
+	r = smblib_masked_write(mmi_chip, CHARGING_ENABLE_CMD_REG,
 				CHARGING_ENABLE_CMD_BIT,
 				mode ? 0 : CHARGING_ENABLE_CMD_BIT);
 	if (r < 0) {
-		smblib_err(the_chip, "Factory Couldn't %s charging rc=%d\n",
+		smblib_err(mmi_chip, "Factory Couldn't %s charging rc=%d\n",
 			   mode ? "disable" : "enable", (int)r);
 		return r;
 	}
@@ -6717,15 +6717,15 @@ static ssize_t force_chg_auto_enable_show(struct device *dev,
 	int ret;
 	u8 value;
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		state = -ENODEV;
 		goto end;
 	}
 
-	ret = smblib_read(the_chip, CHARGING_ENABLE_CMD_REG, &value);
+	ret = smblib_read(mmi_chip, CHARGING_ENABLE_CMD_REG, &value);
 	if (ret) {
-		smblib_err(the_chip, "CHG_EN_BIT failed ret = %d\n", ret);
+		smblib_err(mmi_chip, "CHG_EN_BIT failed ret = %d\n", ret);
 		state = -EFAULT;
 		goto end;
 	}
@@ -6748,20 +6748,20 @@ static ssize_t force_chg_ibatt_store(struct device *dev,
 
 	r = kstrtoul(buf, 0, &chg_current);
 	if (r) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "Invalid ibatt value = %lu\n", chg_current);
 		return -EINVAL;
 	}
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		return -ENODEV;
 	}
 
 	chg_current *= 1000; /* Convert to uA */
-	r = smblib_set_charge_param(the_chip, &the_chip->param.fcc, chg_current);
+	r = smblib_set_charge_param(mmi_chip, &mmi_chip->param.fcc, chg_current);
 	if (r < 0) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "Factory Couldn't set masterfcc = %d rc=%d\n",
 			   (int)chg_current, (int)r);
 		return r;
@@ -6777,15 +6777,15 @@ static ssize_t force_chg_ibatt_show(struct device *dev,
 	int state;
 	int ret;
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		state = -ENODEV;
 		goto end;
 	}
 
-	ret = smblib_get_charge_param(the_chip, &the_chip->param.fcc, &state);
+	ret = smblib_get_charge_param(mmi_chip, &mmi_chip->param.fcc, &state);
 	if (ret < 0) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "Factory Couldn't get master fcc rc=%d\n",
 			   (int)ret);
 		return ret;
@@ -6809,18 +6809,18 @@ static ssize_t force_chg_iusb_store(struct device *dev,
 
 	r = kstrtoul(buf, 0, &usb_curr);
 	if (r) {
-		smblib_err(the_chip, "Invalid iusb value = %lu\n", usb_curr);
+		smblib_err(mmi_chip, "Invalid iusb value = %lu\n", usb_curr);
 		return -EINVAL;
 	}
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		return -ENODEV;
 	}
 	usb_curr *= 1000; /* Convert to uA */
-	r = smblib_set_charge_param(the_chip, &the_chip->param.usb_icl, usb_curr);
+	r = smblib_set_charge_param(mmi_chip, &mmi_chip->param.usb_icl, usb_curr);
 	if (r < 0) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "Factory Couldn't set usb icl = %d rc=%d\n",
 			   (int)usb_curr, (int)r);
 		return r;
@@ -6836,15 +6836,15 @@ static ssize_t force_chg_iusb_show(struct device *dev,
 	int state;
 	int r;
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		r = -ENODEV;
 		goto end;
 	}
 
-	r = smblib_get_charge_param(the_chip, &the_chip->param.usb_icl, &state);
+	r = smblib_get_charge_param(mmi_chip, &mmi_chip->param.usb_icl, &state);
 	if (r < 0) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "Factory Couldn't get usb_icl rc=%d\n", (int)r);
 		return r;
 	}
@@ -6869,13 +6869,13 @@ static ssize_t force_chg_itrick_store(struct device *dev,
 
 	r = kstrtoul(buf, 0, &chg_current);
 	if (r) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "Invalid pre-charge value = %lu\n", chg_current);
 		return -EINVAL;
 	}
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		return -ENODEV;
 	}
 
@@ -6886,11 +6886,11 @@ static ssize_t force_chg_itrick_store(struct device *dev,
 	else
 		value = (u8)chg_current;
 
-	r = smblib_masked_write(the_chip, PRE_CHARGE_CURRENT_CFG_REG,
+	r = smblib_masked_write(mmi_chip, PRE_CHARGE_CURRENT_CFG_REG,
 				PRE_CHARGE_CURRENT_SETTING_MASK,
 				value);
 	if (r < 0) {
-		smblib_err(the_chip,
+		smblib_err(mmi_chip,
 			   "Factory Couldn't set ITRICK %d  mV rc=%d\n",
 			   (int)value, (int)r);
 		return r;
@@ -6907,15 +6907,15 @@ static ssize_t force_chg_itrick_show(struct device *dev,
 	int ret;
 	u8 value;
 
-	if (!the_chip) {
-		smblib_err(the_chip, "chip not valid\n");
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
 		state = -ENODEV;
 		goto end;
 	}
 
-	ret = smblib_read(the_chip, PRE_CHARGE_CURRENT_CFG_REG, &value);
+	ret = smblib_read(mmi_chip, PRE_CHARGE_CURRENT_CFG_REG, &value);
 	if (ret) {
-		smblib_err(the_chip, "Pre Chg ITrick failed ret = %d\n", ret);
+		smblib_err(mmi_chip, "Pre Chg ITrick failed ret = %d\n", ret);
 		state = -EFAULT;
 		goto end;
 	}
@@ -7259,7 +7259,7 @@ void mmi_init(struct smb_charger *chg)
 
 	if (!chg)
 		return;
-	the_chip = chg;
+	mmi_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
 
 	chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
@@ -7302,7 +7302,7 @@ void mmi_init(struct smb_charger *chg)
 	}
 
 	if (chg->mmi.factory_mode) {
-		the_chip = chg;
+		mmi_chip = chg;
 		smblib_err(chg, "Entering Factory Mode SMB!\n");
 
 		rc = device_create_file(chg->dev,
