@@ -72,6 +72,10 @@ static char *override_phy_init;
 module_param(override_phy_init, charp, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(override_phy_init, "QMP PHY TUNE Override");
 
+static bool max_tuning;
+module_param(max_tuning, bool, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(max_tuning, "QMP PHY Max TX tuning");
+
 enum qmp_phy_rev_reg {
 	USB3_PHY_PCS_STATUS,
 	USB3_PHY_AUTONOMOUS_MODE_CTRL,
@@ -388,6 +392,21 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 	}
 
 	qmp_override_phy_init(phy);
+
+	if (max_tuning) {
+		dev_err(uphy->dev, "Maximize PHY TX\n");
+		if (phy->phy.flags & PHY_LANE_A) {
+			writel_relaxed(0x3F,
+				phy->base + USB3PHY_QSERDES_TXA_TX_DRV_LVL);
+			writel_relaxed(0x3F,
+				phy->base + USB3PHY_QSERDES_TXA_TX_EMP_POST1_LVL);
+		} else {
+			writel_relaxed(0x3F,
+				phy->base + USB3PHY_QSERDES_TXB_TX_DRV_LVL);
+			writel_relaxed(0x3F,
+				phy->base + USB3PHY_QSERDES_TXB_TX_EMP_POST1_LVL);
+		}
+	}
 
 	/* perform lane selection */
 	val = -EINVAL;
