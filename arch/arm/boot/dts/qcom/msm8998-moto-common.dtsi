@@ -173,8 +173,9 @@
 		qcom,hdmi-tx-map = <&mdss_hdmi_tx>;
 
 		pinctrl-names = "anx_default", "anx_sleep";
-		pinctrl-0 = <&anx_rst_active>;
-		pinctrl-1 = <&anx_rst_suspend>;
+		pinctrl-0 = <&anx_rst_active &anx_mydp_det_active
+				&anx_mydp_int_active &anx_mydp_pd_active>;
+		pinctrl-1 = <&anx_rst_suspend &anx_mydp_pd_suspend>;
 	};
 
 	nq:nq@28 {		/* NFC PN553 */
