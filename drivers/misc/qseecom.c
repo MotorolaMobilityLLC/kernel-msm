@@ -2374,7 +2374,7 @@ static bool __qseecom_is_fw_image_valid(const struct firmware *fw_entry)
 	return true;
 }
 
-static int __qseecom_get_fw_size(char *appname, uint32_t *fw_size)
+static int __qseecom_get_fw_size(const char *appname, uint32_t *fw_size)
 {
 	int ret = -1;
 	int i = 0, rc = 0;
@@ -2400,14 +2400,21 @@ static int __qseecom_get_fw_size(char *appname, uint32_t *fw_size)
 	ehdr = (struct elf32_hdr *)fw_entry->data;
 	num_images = ehdr->e_phnum;
 	release_firmware(fw_entry);
+	fw_entry = NULL;
 	for (i = 0; i < num_images; i++, phdr++) {
 		memset(fw_name, 0, sizeof(fw_name));
 		snprintf(fw_name, ARRAY_SIZE(fw_name), "%s.b%02d", appname, i);
 		ret = request_firmware(&fw_entry, fw_name, qseecom.pdev);
 		if (ret)
 			goto err;
+		if (*fw_size > U32_MAX - fw_entry->size) {
+			pr_err("QSEE %s app file size overflow\n", appname);
+			ret = -EINVAL;
+			goto err;
+		}
 		*fw_size += fw_entry->size;
 		release_firmware(fw_entry);
+		fw_entry = NULL;
 	}
 	return ret;
 err:
@@ -2417,8 +2424,9 @@ err:
 	return ret;
 }
 
-static int __qseecom_get_fw_data(char *appname, u8 *img_data,
-					struct qseecom_load_app_ireq *load_req)
+static int __qseecom_get_fw_data(const char *appname, u8 *img_data,
+				uint32_t fw_size,
+				struct qseecom_load_app_ireq *load_req)
 {
 	int ret = -1;
 	int i = 0, rc = 0;
@@ -2435,12 +2443,19 @@ static int __qseecom_get_fw_data(char *appname, u8 *img_data,
 		goto err;
 	}
 	load_req->img_len = fw_entry->size;
+	if (load_req->img_len > fw_size) {
+		pr_err("app %s size %zu is larger than buf size %u\n",
+			appname, fw_entry->size, fw_size);
+		ret = -EINVAL;
+		goto err;
+	}
 	memcpy(img_data_ptr, fw_entry->data, fw_entry->size);
 	img_data_ptr = img_data_ptr + fw_entry->size;
 	load_req->mdt_len = fw_entry->size; /*Get MDT LEN*/
 	ehdr = (struct elf32_hdr *)fw_entry->data;
 	num_images = ehdr->e_phnum;
 	release_firmware(fw_entry);
+	fw_entry = NULL;
 	for (i = 0; i < num_images; i++) {
 		snprintf(fw_name, ARRAY_SIZE(fw_name), "%s.b%02d", appname, i);
 		ret = request_firmware(&fw_entry, fw_name,  qseecom.pdev);
@@ -2448,10 +2463,17 @@ static int __qseecom_get_fw_data(char *appname, u8 *img_data,
 			pr_err("Failed to locate blob %s\n", fw_name);
 			goto err;
 		}
+		if ((fw_entry->size > U32_MAX - load_req->img_len) ||
+			(fw_entry->size + load_req->img_len > fw_size)) {
+			pr_err("Invalid file size for %s\n", fw_name);
+			ret = -EINVAL;
+			goto err;
+		}
 		memcpy(img_data_ptr, fw_entry->data, fw_entry->size);
 		img_data_ptr = img_data_ptr + fw_entry->size;
 		load_req->img_len += fw_entry->size;
 		release_firmware(fw_entry);
+		fw_entry = NULL;
 	}
 	return ret;
 err:
@@ -2529,7 +2551,7 @@ static int __qseecom_load_fw(struct qseecom_dev_handle *data, char *appname)
 		return ret;
 
 
-	ret = __qseecom_get_fw_data(appname, img_data, &load_req);
+	ret = __qseecom_get_fw_data(appname, img_data, fw_size, &load_req);
 	if (ret) {
 		ret = -EIO;
 		goto exit_free_img_data;
@@ -2622,7 +2644,7 @@ static int qseecom_load_commonlib_image(struct qseecom_dev_handle *data)
 	if (ret)
 		return -EIO;
 
-	ret = __qseecom_get_fw_data("cmnlib", img_data, &load_req);
+	ret = __qseecom_get_fw_data("cmnlib", img_data, fw_size, &load_req);
 	if (ret) {
 		ret = -EIO;
 		goto exit_free_img_data;
