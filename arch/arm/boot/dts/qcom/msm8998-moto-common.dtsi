@@ -664,12 +664,13 @@
 	};
 
 	gpio@c700 { /* PMI8998_GPIO8 TX_GTR_THRES */
-		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,mode = <0>;         /* QPNP_PIN_MODE_DIG_IN */
 		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,vin-sel = <1>;      /* QPNP_PIN_VIN1 */
 		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,master-en = <1>;
+		qcom,pull = <5>;
 		status = "okay";
 	};
 
