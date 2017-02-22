@@ -334,6 +334,7 @@ struct mmi_params {
 	int			charger_rate;
 	bool			hvdcp3_con;
 	struct notifier_block	mmi_psy_notifier;
+	bool			init_done;
 };
 
 struct smb_charger {
