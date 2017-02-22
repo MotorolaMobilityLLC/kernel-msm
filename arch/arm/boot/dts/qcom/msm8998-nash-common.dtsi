@@ -62,13 +62,13 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&marley_irq_default &marley_reset_default>;
 
-		AVDD-supply = <&pm8998_l6>;
-		DBVDD1-supply = <&pm8998_l6>;
-		DBVDD2-supply = <&pm8998_l6>;
-		CPVDD-supply = <&pm8998_l6>;
-		CPVDD1-supply = <&pm8998_l6>;
-		CPVDD2-supply = <&pm8998_l6>;
-		DCVDD-supply = <&pm8998_l6>;
+		AVDD-supply = <&pm8998_s4>;
+		DBVDD1-supply = <&pm8998_s4>;
+		DBVDD2-supply = <&pm8998_s4>;
+		CPVDD-supply = <&pm8998_s4>;
+		CPVDD1-supply = <&pm8998_s4>;
+		CPVDD2-supply = <&pm8998_s4>;
+		DCVDD-supply = <&pm8998_s4>;
 		SPKVDD-supply = <&dummy_vreg>;
 
 		gpio-controller;
