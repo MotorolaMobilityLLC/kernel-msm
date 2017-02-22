@@ -186,6 +186,19 @@
 
 	anx_mydp_det_active: anx_mydp_det_active {
 		mux {
+			pins = "gpio124";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio124";
+			drive-strength = <2>; /* 2 mA */
+			bias-disable = <0>; /* no pull */
+		};
+	};
+
+	/* Have pulled up */
+	anx_mydp_int_active: anx_mydp_int_active {
+		mux {
 			pins = "gpio89";
 			function = "gpio";
 		};
@@ -196,15 +209,27 @@
 		};
 	};
 
-	anx_mydp_det_suspend: anx_mydp_det_suspend {
+	anx_mydp_pd_active: anx_mydp_pd_active {
 		mux {
-			pins = "gpio89";
+			pins = "gpio96";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio89";
+			pins = "gpio96";
 			drive-strength = <2>; /* 2 mA */
-			bias-pull-down; /* pull down */
+			bias-disable = <0>; /* no pull */
+		};
+	};
+
+	anx_mydp_pd_suspend: anx_mydp_pd_suspend {
+		mux {
+			pins = "gpio96";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio96";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-up;
 		};
 	};
 
