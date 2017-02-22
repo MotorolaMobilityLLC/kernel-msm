@@ -654,7 +654,7 @@ void mmi_deinit(struct smb_charger *chg);
 void mmi_chrg_rate_check(struct smb_charger *chip);
 
 #define HEARTBEAT_EB_MS 1000
-extern struct smb_charger *the_chip;
+extern struct smb_charger *mmi_chip;
 extern int eb_rechrg_start_soc;
 extern int eb_rechrg_stop_soc;
 extern int eb_attach_start_soc;
