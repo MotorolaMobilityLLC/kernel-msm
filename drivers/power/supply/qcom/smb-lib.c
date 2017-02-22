@@ -7362,11 +7362,13 @@ void mmi_init(struct smb_charger *chg)
 	rc = power_supply_reg_notifier(&chg->mmi.mmi_psy_notifier);
 	if (rc)
 		smblib_err(chg, "failed to reg notifier: %d\n", rc);
+
+	chg->mmi.init_done = true;
 }
 
 void mmi_deinit(struct smb_charger *chg)
 {
-	if (!chg)
+	if (!chg || !chg->mmi.init_done)
 		return;
 
 	device_remove_file(chg->dev,
