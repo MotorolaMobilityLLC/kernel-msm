@@ -23,11 +23,11 @@ static int set_eb_param(const char *val, const struct kernel_param *kp)
 	if (rv)
 		return rv;
 
-	if (the_chip) {
-		the_chip->mmi.update_eb_params++;
-		vote(the_chip->awake_votable, HEARTBEAT_VOTER, true, true);
-		cancel_delayed_work(&the_chip->mmi.heartbeat_work);
-		schedule_delayed_work(&the_chip->mmi.heartbeat_work,
+	if (mmi_chip) {
+		mmi_chip->mmi.update_eb_params++;
+		vote(mmi_chip->awake_votable, HEARTBEAT_VOTER, true, true);
+		cancel_delayed_work(&mmi_chip->mmi.heartbeat_work);
+		schedule_delayed_work(&mmi_chip->mmi.heartbeat_work,
 				      msecs_to_jiffies(HEARTBEAT_EB_MS));
 	}
 
