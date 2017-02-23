@@ -267,13 +267,13 @@ static int bcl_set_low_ibat(int thresh_value)
 static int bcl_set_high_ibat(int thresh_value)
 {
 	int ret = 0, ibat_ua;
-	int8_t val = 0;
+	uint8_t val = 0;
 
 	ibat_ua = thresh_value;
 	convert_ibat_to_adc_val(&thresh_value);
 	pr_debug("Setting Ibat high trip:%d. ADC_val:%d\n", ibat_ua,
 			thresh_value);
-	val = (int8_t)thresh_value;
+	val = (uint8_t)thresh_value;
 	ret = bcl_write_register(BCL_IBAT_TRIP, val);
 	if (ret) {
 		pr_err("Error accessing BCL peripheral. err:%d\n", ret);
@@ -294,7 +294,7 @@ static int bcl_set_high_ibat(int thresh_value)
 	thresh_value = ibat_ua
 		- bcl_perph->param[BCL_PARAM_CURRENT].inhibit_derating_ua;
 	convert_ibat_to_adc_val(&thresh_value);
-	val = (int8_t)thresh_value;
+	val = (uint8_t)thresh_value;
 	ret = bcl_write_general_register(bcl_perph->pon_spare_addr,
 			PON_SPARE_DERATED_CURRENT, val);
 	if (ret) {
@@ -308,13 +308,13 @@ static int bcl_set_high_ibat(int thresh_value)
 static int bcl_set_low_vbat(int thresh_value)
 {
 	int ret = 0, vbat_uv;
-	int8_t val = 0;
+	uint8_t val = 0;
 
 	vbat_uv = thresh_value;
 	convert_vbat_to_adc_val(&thresh_value);
 	pr_debug("Setting Vbat low trip:%d. ADC_val:%d\n", vbat_uv,
 			thresh_value);
-	val = (int8_t)thresh_value;
+	val = (uint8_t)thresh_value;
 	ret = bcl_write_register(BCL_VBAT_TRIP, val);
 	if (ret) {
 		pr_err("Error accessing BCL peripheral. err:%d\n", ret);
@@ -399,7 +399,7 @@ static int bcl_monitor_disable(void)
 static int bcl_read_ibat_high_trip(int *thresh_value)
 {
 	int ret = 0;
-	int8_t val = 0;
+	uint8_t val = 0;
 
 	*thresh_value = (int)val;
 	ret = bcl_read_register(BCL_IBAT_TRIP, &val);
@@ -427,7 +427,7 @@ static int bcl_read_ibat_low_trip(int *thresh_value)
 static int bcl_read_vbat_low_trip(int *thresh_value)
 {
 	int ret = 0;
-	int8_t val = 0;
+	uint8_t val = 0;
 
 	*thresh_value = (int)val;
 	ret = bcl_read_register(BCL_VBAT_TRIP, &val);
