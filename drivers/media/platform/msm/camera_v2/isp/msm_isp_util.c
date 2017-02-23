@@ -24,6 +24,7 @@
 #include "trace/events/msm_cam.h"
 
 #define MAX_ISP_V4l2_EVENTS 100
+#define MAX_ISP_REG_LIST 100
 static DEFINE_MUTEX(bandwidth_mgr_mutex);
 static struct msm_isp_bandwidth_mgr isp_bandwidth_mgr;
 
@@ -646,6 +647,7 @@ static int msm_isp_set_dual_HW_master_slave_mode(
 static int msm_isp_proc_cmd_list_unlocked(struct vfe_device *vfe_dev, void *arg)
 {
 	int rc = 0;
+	uint32_t count = 0;
 	struct msm_vfe_cfg_cmd_list *proc_cmd =
 		(struct msm_vfe_cfg_cmd_list *)arg;
 	struct msm_vfe_cfg_cmd_list cmd, cmd_next;
@@ -668,6 +670,11 @@ static int msm_isp_proc_cmd_list_unlocked(struct vfe_device *vfe_dev, void *arg)
 				__func__, __LINE__, cmd.next_size,
 				sizeof(struct msm_vfe_cfg_cmd_list));
 			break;
+		}
+		if (++count >= MAX_ISP_REG_LIST) {
+			pr_err("%s:%d Error exceeding the max register count:%u\n",
+				__func__, __LINE__, count);
+		break;
 		}
 		if (copy_from_user(&cmd_next, (void __user *)cmd.next,
 			sizeof(struct msm_vfe_cfg_cmd_list))) {
@@ -715,6 +722,7 @@ static void msm_isp_compat_to_proc_cmd(struct msm_vfe_cfg_cmd2 *proc_cmd,
 static int msm_isp_proc_cmd_list_compat(struct vfe_device *vfe_dev, void *arg)
 {
 	int rc = 0;
+	uint32_t count = 0;
 	struct msm_vfe_cfg_cmd_list_32 *proc_cmd =
 		(struct msm_vfe_cfg_cmd_list_32 *)arg;
 	struct msm_vfe_cfg_cmd_list_32 cmd, cmd_next;
@@ -738,6 +746,11 @@ static int msm_isp_proc_cmd_list_compat(struct vfe_device *vfe_dev, void *arg)
 				__func__, __LINE__, cmd.next_size,
 				sizeof(struct msm_vfe_cfg_cmd_list));
 			break;
+		}
+		if (++count >= MAX_ISP_REG_LIST) {
+			pr_err("%s:%d Error exceeding the max register count:%u\n",
+				__func__, __LINE__, count);
+		break;
 		}
 		if (copy_from_user(&cmd_next, compat_ptr(cmd.next),
 			sizeof(struct msm_vfe_cfg_cmd_list_32))) {
