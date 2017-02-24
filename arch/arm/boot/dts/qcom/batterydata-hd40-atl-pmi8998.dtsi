@@ -4,6 +4,7 @@ qcom,hd40-atl-pmi8998 {
 	qcom, = <24>;
 	/* #2766498_Moto_Nash_2730mAh_averaged_MasterSlave_Jan19th2017*/
 	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,nom-batt-capacity-mah = <2730>;
 	qcom,batt-id-kohm = <100>;
 	qcom,battery-beta = <3900>;
