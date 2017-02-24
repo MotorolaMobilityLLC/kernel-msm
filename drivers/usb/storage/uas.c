@@ -235,7 +235,7 @@ static void uas_log_cmd_state(struct scsi_cmnd *cmnd, const char *caller)
 {
 	struct uas_cmd_info *ci = (void *)&cmnd->SCp;
 
-	scmd_printk(KERN_INFO, cmnd, "%s %p tag %d, inflight:"
+	scmd_printk(KERN_INFO, cmnd, "%s %pK tag %d, inflight:"
 		    "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
 		    caller, cmnd, cmnd->request->tag,
 		    (ci->state & SUBMIT_STATUS_URB)     ? " s-st"  : "",

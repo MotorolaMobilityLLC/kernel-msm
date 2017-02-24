@@ -144,7 +144,7 @@ static int usb_hcd_fsl_probe(const struct hc_driver *driver,
 		struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 
 		hcd->phy = usb_get_phy(USB_PHY_TYPE_USB2);
-		dev_dbg(&pdev->dev, "hcd=0x%p  ehci=0x%p, phy=0x%p\n",
+		dev_dbg(&pdev->dev, "hcd=0x%pK  ehci=0x%pK, phy=0x%pK\n",
 			hcd, ehci, hcd->phy);
 
 		if (!IS_ERR_OR_NULL(hcd->phy)) {

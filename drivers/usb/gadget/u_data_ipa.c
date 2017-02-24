@@ -186,7 +186,7 @@ void ipa_data_disconnect(struct gadget_ipa_port *gp, u8 port_num)
 	unsigned long flags;
 	struct usb_gadget *gadget = NULL;
 
-	pr_debug("dev:%p port number:%d\n", gp, port_num);
+	pr_debug("dev:%pK port number:%d\n", gp, port_num);
 	if (port_num >= n_ipa_ports) {
 		pr_err("invalid ipa portno#%d\n", port_num);
 		return;
@@ -447,7 +447,7 @@ static void ipa_data_connect_work(struct work_struct *w)
 	if (gport->in)
 		ipa_data_start_endless_xfer(port, true);
 
-	pr_debug("Connect workqueue done (port %p)", port);
+	pr_debug("Connect workqueue done (port %pK)", port);
 	return;
 
 disconnect_usb_bam_ipa_in:
@@ -492,7 +492,7 @@ int ipa_data_connect(struct gadget_ipa_port *gp, u8 port_num,
 	unsigned long flags;
 	int ret;
 
-	pr_debug("dev:%p port#%d src_connection_idx:%d dst_connection_idx:%d\n",
+	pr_debug("dev:%pK port#%d src_connection_idx:%d dst_connection_idx:%d\n",
 			gp, port_num, src_connection_idx, dst_connection_idx);
 
 	if (port_num >= n_ipa_ports) {
@@ -529,7 +529,7 @@ int ipa_data_connect(struct gadget_ipa_port *gp, u8 port_num,
 		port->port_usb->in->endless = true;
 		ret = usb_ep_enable(port->port_usb->in);
 		if (ret) {
-			pr_err("usb_ep_enable failed eptype:IN ep:%p",
+			pr_err("usb_ep_enable failed eptype:IN ep:%pK",
 						port->port_usb->in);
 			port->port_usb->in->endless = false;
 			goto err_usb_in;
@@ -540,7 +540,7 @@ int ipa_data_connect(struct gadget_ipa_port *gp, u8 port_num,
 		port->port_usb->out->endless = true;
 		ret = usb_ep_enable(port->port_usb->out);
 		if (ret) {
-			pr_err("usb_ep_enable failed eptype:OUT ep:%p",
+			pr_err("usb_ep_enable failed eptype:OUT ep:%pK",
 						port->port_usb->out);
 			port->port_usb->out->endless = false;
 			goto err_usb_out;
@@ -653,7 +653,7 @@ void ipa_data_suspend(struct gadget_ipa_port *gp, u8 port_num)
 	struct ipa_data_ch_info *port;
 	int ret;
 
-	pr_debug("dev:%p port number:%d\n", gp, port_num);
+	pr_debug("dev:%pK port number:%d\n", gp, port_num);
 
 	if (port_num >= n_ipa_ports) {
 		pr_err("invalid ipa portno#%d\n", port_num);
@@ -700,7 +700,7 @@ void ipa_data_resume(struct gadget_ipa_port *gp, u8 port_num)
 	struct usb_gadget *gadget = NULL;
 	int ret;
 
-	pr_debug("dev:%p port number:%d\n", gp, port_num);
+	pr_debug("dev:%pK port number:%d\n", gp, port_num);
 
 	if (port_num >= n_ipa_ports) {
 		pr_err("invalid ipa portno#%d\n", port_num);
@@ -773,7 +773,7 @@ static int ipa_data_port_alloc(int portno)
 
 	ipa_data_ports[portno] = port;
 
-	pr_debug("port:%p with portno:%d allocated\n", port, portno);
+	pr_debug("port:%pK with portno:%d allocated\n", port, portno);
 	return 0;
 }
 

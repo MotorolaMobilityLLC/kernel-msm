@@ -637,7 +637,7 @@ static int dummy_queue(struct usb_ep *_ep, struct usb_request *_req,
 		return -ESHUTDOWN;
 
 #if 0
-	dev_dbg(udc_dev(dum), "ep %p queue req %p to %s, len %d buf %p\n",
+	dev_dbg(udc_dev(dum), "ep %pK queue req %pK to %s, len %d buf %pK\n",
 			ep, _req, _ep->name, _req->length, _req->buf);
 #endif
 	_req->status = -EINPROGRESS;
@@ -702,7 +702,7 @@ static int dummy_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 
 	if (retval == 0) {
 		dev_dbg(udc_dev(dum),
-				"dequeued req %p from %s, len %d buf %p\n",
+				"dequeued req %pK from %s, len %d buf %pK\n",
 				req, _ep->name, _req->length, _req->buf);
 		_req->complete(_ep, _req);
 	}
@@ -1727,7 +1727,7 @@ restart:
 		if (!ep) {
 			/* set_configuration() disagreement */
 			dev_dbg(dummy_dev(dum_hcd),
-				"no ep configured for urb %p\n",
+				"no ep configured for urb %pK\n",
 				urb);
 			status = -EPROTO;
 			goto return_urb;
@@ -1742,7 +1742,7 @@ restart:
 		}
 		if (ep->halted && !ep->setup_stage) {
 			/* NOTE: must not be iso! */
-			dev_dbg(dummy_dev(dum_hcd), "ep %s halted, urb %p\n",
+			dev_dbg(dummy_dev(dum_hcd), "ep %s halted, urb %pK\n",
 					ep->ep.name, urb);
 			status = -EPIPE;
 			goto return_urb;
@@ -1759,7 +1759,7 @@ restart:
 			list_for_each_entry(req, &ep->queue, queue) {
 				list_del_init(&req->queue);
 				req->req.status = -EOVERFLOW;
-				dev_dbg(udc_dev(dum), "stale req = %p\n",
+				dev_dbg(udc_dev(dum), "stale req = %pK\n",
 						req);
 
 				spin_unlock(&dum->lock);
@@ -2252,7 +2252,7 @@ static inline ssize_t show_urb(char *buf, size_t size, struct urb *urb)
 	int ep = usb_pipeendpoint(urb->pipe);
 
 	return snprintf(buf, size,
-		"urb/%p %s ep%d%s%s len %d/%d\n",
+		"urb/%pK %s ep%d%s%s len %d/%d\n",
 		urb,
 		({ char *s;
 		switch (urb->dev->speed) {

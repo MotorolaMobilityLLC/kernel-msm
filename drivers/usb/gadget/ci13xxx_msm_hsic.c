@@ -814,7 +814,7 @@ static int msm_hsic_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto error;
 	}
-	dev_info(&pdev->dev, "HSIC Peripheral regs = %p\n", mhsic->regs);
+	dev_info(&pdev->dev, "HSIC Peripheral regs = %pK\n", mhsic->regs);
 
 	ret = msm_hsic_config_gdsc(pdev, mhsic, true);
 	if (ret) {

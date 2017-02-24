@@ -293,7 +293,7 @@ gps_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 	int				ret;
 	struct list_head *cpkt;
 
-	pr_debug("%s:dev:%p\n", __func__, dev);
+	pr_debug("%s:dev:%pK\n", __func__, dev);
 
 	if (dev->notify->driver_data)
 		usb_ep_disable(dev->notify);
@@ -334,7 +334,7 @@ static void gps_ctrl_response_available(struct f_gps *dev)
 	int				ret;
 	struct rmnet_ctrl_pkt	*cpkt;
 
-	pr_debug("%s:dev:%p\n", __func__, dev);
+	pr_debug("%s:dev:%pK\n", __func__, dev);
 
 	spin_lock_irqsave(&dev->lock, flags);
 	if (!atomic_read(&dev->online) || !req || !req->buf) {
@@ -376,7 +376,7 @@ static void gps_connect(struct grmnet *gr)
 	struct f_gps			*dev;
 
 	if (!gr) {
-		pr_err("%s: Invalid grmnet:%p\n", __func__, gr);
+		pr_err("%s: Invalid grmnet:%pK\n", __func__, gr);
 		return;
 	}
 
@@ -392,7 +392,7 @@ static void gps_disconnect(struct grmnet *gr)
 	int				status;
 
 	if (!gr) {
-		pr_err("%s: Invalid grmnet:%p\n", __func__, gr);
+		pr_err("%s: Invalid grmnet:%pK\n", __func__, gr);
 		return;
 	}
 
@@ -434,7 +434,7 @@ gps_send_cpkt_response(void *gr, void *buf, size_t len)
 	unsigned long		flags;
 
 	if (!gr || !buf) {
-		pr_err("%s: Invalid grmnet/buf, grmnet:%p buf:%p\n",
+		pr_err("%s: Invalid grmnet/buf, grmnet:%pK buf:%pK\n",
 				__func__, gr, buf);
 		return -ENODEV;
 	}
@@ -448,7 +448,7 @@ gps_send_cpkt_response(void *gr, void *buf, size_t len)
 
 	dev = port_to_gps(gr);
 
-	pr_debug("%s: dev:%p\n", __func__, dev);
+	pr_debug("%s: dev:%pK\n", __func__, dev);
 
 	if (!atomic_read(&dev->online) || !atomic_read(&dev->ctrl_online)) {
 		gps_free_ctrl_pkt(cpkt);
@@ -475,7 +475,7 @@ gps_cmd_complete(struct usb_ep *ep, struct usb_request *req)
 		return;
 	}
 
-	pr_debug("%s: dev:%p\n", __func__, dev);
+	pr_debug("%s: dev:%pK\n", __func__, dev);
 
 	cdev = dev->cdev;
 
@@ -490,7 +490,7 @@ static void gps_notify_complete(struct usb_ep *ep, struct usb_request *req)
 	unsigned long		flags;
 	struct rmnet_ctrl_pkt	*cpkt;
 
-	pr_debug("%s: dev:%p port#%d\n", __func__, dev, dev->port_num);
+	pr_debug("%s: dev:%pK port#%d\n", __func__, dev, dev->port_num);
 
 	switch (status) {
 	case -ECONNRESET:
@@ -536,7 +536,7 @@ gps_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 	u16				w_length = le16_to_cpu(ctrl->wLength);
 	int				ret = -EOPNOTSUPP;
 
-	pr_debug("%s:dev:%p\n", __func__, dev);
+	pr_debug("%s:dev:%pK\n", __func__, dev);
 
 	if (!atomic_read(&dev->online)) {
 		pr_debug("%s: usb cable is not connected\n", __func__);
@@ -706,7 +706,7 @@ static int gps_bind_config(struct usb_configuration *c)
 	struct usb_function	*f;
 	unsigned long		flags;
 
-	pr_debug("%s: usb config:%p\n", __func__, c);
+	pr_debug("%s: usb config:%pK\n", __func__, c);
 
 	if (gps_string_defs[0].id == 0) {
 		status = usb_string_id(c->cdev);

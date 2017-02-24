@@ -982,7 +982,7 @@ static ssize_t rmnet_usb_ctrl_read_stats(struct file *file, char __user *ubuf,
 			cdev = &ctrl_devs[i][n];
 			dev = cdev->cudev;
 			temp += scnprintf(buf + temp, DEBUG_BUF_SIZE - temp,
-					"\n#ctrl_dev: %p     Name: %s#\n"
+					"\n#ctrl_dev: %pK     Name: %s#\n"
 					"snd encap cmd cnt         %u\n"
 					"resp avail cnt:           %u\n"
 					"get encap resp cnt:       %u\n"
