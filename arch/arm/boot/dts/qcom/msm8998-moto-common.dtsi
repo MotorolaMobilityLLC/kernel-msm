@@ -1525,6 +1525,7 @@
 		df-serialnum = "SNN5987";
 
 		#include "batterydata-hd40-atl-pmi8998.dtsi"
+		#include "batterydata-hd40-lg-pmi8998.dtsi"
 	};
 };
 
@@ -1534,7 +1535,7 @@
 	qcom,fg-cutoff-voltage = <3000>;
 	qcom,fg-empty-voltage = <2750>;
 	qcom,fg-chg-term-current = <100>;
-	qcom,fg-sys-term-current = <175>;
+	qcom,fg-sys-term-current = <(-273)>;
 	qcom,fg-delta-soc-thr = <1>;
 	qcom,fg-recharge-soc-thr = <1>;
 	qcom,fg-rsense-sel = <0>;
