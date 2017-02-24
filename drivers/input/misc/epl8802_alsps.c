@@ -527,7 +527,7 @@ static void epl_sensor_report_lux(int report_lux)
 {
 	struct epl_sensor_priv *epld = epl_sensor_obj;
 	ktime_t	timestamp;
-	timestamp = ktime_get();
+	timestamp = ktime_get_boottime();
 #if SPREAD
 	input_report_abs(epld->ps_input_dev, ABS_MISC, report_lux);
 	input_sync(epld->ps_input_dev);
@@ -546,7 +546,7 @@ static void epl_sensor_report_ps_status(void)
 	struct epl_sensor_priv *epld = epl_sensor_obj;
 	ktime_t	timestamp;
 	int distance;
-	timestamp = ktime_get();
+	timestamp = ktime_get_boottime();
 	LOG_DBG("------------------- epl_sensor.ps.data.data=%d, value=%d\n\n",
 			epl_sensor.ps.data.data, ps_status_moto);
 	distance = ps_status_moto;
