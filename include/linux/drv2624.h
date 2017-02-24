@@ -171,6 +171,11 @@ enum actuator_type {
 	LRA
 };
 
+enum work_mode {
+	NORMAL,
+	REDUCED
+};
+
 enum loop_type {
 	CLOSE_LOOP,
 	OPEN_LOOP
@@ -178,8 +183,11 @@ enum loop_type {
 
 struct actuator_data {
 	enum actuator_type meActuatorType;
+	enum work_mode meWorkMode;
 	unsigned char mnRatedVoltage;
 	unsigned char mnOverDriveClampVoltage;
+	unsigned char mnRatedVoltageReduced;
+	unsigned char mnOverDriveClampVoltageReduced;
 	unsigned char mnLRAFreq;
 	unsigned char mnSampleTime;
 
@@ -229,6 +237,7 @@ struct drv2624_platform_data {
 	int mnGpioNRST;
 	int mnGpioNPWR;
 	int mnGpioINT;
+	int mnGpioVCTRL;
 	enum loop_type meLoop;
 	struct actuator_data msActuator;
 	bool auto_cal;
@@ -256,6 +265,7 @@ struct drv2624_data {
 	int mnVibratorPlaying;
 	char mnWorkMode;
 	unsigned char mnCurrentReg;
+	int mnCurrentVibrationTime;
 
 	struct wake_lock wklock;
 	struct hrtimer timer;
