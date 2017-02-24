@@ -1,0 +1,72 @@
+
+qcom,hd40-lg-pmi8998 {
+	serialnum = "SNN5986";
+	qcom, = <24>;
+	/* #2793359_Moto_HD40_2730mAh_averaged_MasterSlave_Feb22nd2017*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,nom-batt-capacity-mah = <2730>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3900>;
+	qcom,battery-type = "HD40-LG-2730mah";
+	qcom,checksum = <0xC7AB>;
+	qcom,gui-version = "PMI8998GUI - 2.0.0.55";
+	qcom,fg-profile-data = [
+		 DB 1E 2F FD
+		 14 03 52 07
+		 9C 1D 97 06
+		 6D 13 F1 1C
+		 E5 18 E5 22
+		 8D 45 CB 52
+		 4C 00 00 00
+		 10 00 00 00
+		 00 00 E1 C5
+		 88 CC E8 CA
+		 2F 00 08 00
+		 63 DA 47 E4
+		 7B 06 37 F2
+		 54 EC 71 0A
+		 5D F5 A3 32
+		 1C 06 09 20
+		 27 00 14 00
+		 8C 1F CD 05
+		 3A 0A 92 06
+		 E8 1C 95 02
+		 F1 0C C4 0A
+		 3E 1A 76 1B
+		 93 3D 4E 4A
+		 6A 00 00 00
+		 12 00 00 00
+		 00 00 88 CC
+		 B7 C3 30 BD
+		 28 00 00 00
+		 22 EB 47 E4
+		 7D FD 57 00
+		 0F EA AA 03
+		 B3 03 46 1A
+		 AE 33 CC FF
+		 07 10 00 00
+		 BF 0A 66 46
+		 28 00 40 00
+		 A1 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
