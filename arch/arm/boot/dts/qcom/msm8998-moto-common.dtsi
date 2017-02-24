@@ -509,7 +509,6 @@
 		qcom,vin-sel = <0>;	/* 1.8 */
 		qcom,src-sel = <0>;	/* GPIO */
 		qcom,out-strength = <1>;/* QPNP_PIN_OUT_STRENGTH_LOW */
-		qcom,pull = <5>;	/* QPNP_PIN_PULL_NO */
 		qcom,master-en = <1>;	/* Enable GPIO */
 		status = "okay";
 	};
