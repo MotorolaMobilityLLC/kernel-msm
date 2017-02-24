@@ -440,11 +440,7 @@ static int mxg_sensors_flush_set(struct sensors_classdev *sensors_cdev)
 {
 	struct mxg_sensor_data *mx_data = container_of(sensors_cdev,
 			struct mxg_sensor_data, sensor_cdev);
-	ktime_t timestamp = ktime_get();
 
-	input_event(mx_data->input_dev, EV_SYN, SYN_TIME_SEC, ktime_to_timespec(timestamp).tv_sec);
-	input_event(mx_data->input_dev, EV_SYN, SYN_TIME_NSEC, ktime_to_timespec(timestamp).tv_nsec);
-	input_sync(mx_data->input_dev);
 	input_event(mx_data->input_dev, EV_SYN, SYN_CONFIG, mx_data->flush_count++);
 	input_sync(mx_data->input_dev);
 
@@ -508,7 +504,7 @@ static int mx_report_data(void)
 		return -EIO;
 	}
 
-	getrawmonotonic(&mxdata->ts);
+	get_monotonic_boottime(&mxdata->ts);
 	input_report_abs(mxdata->input_dev, EVENT_RAW_X, mxdata->raw_data[0]);
 	input_report_abs(mxdata->input_dev, EVENT_RAW_Y, mxdata->raw_data[1]);
 	input_report_abs(mxdata->input_dev, EVENT_RAW_Z, mxdata->raw_data[2]);
