@@ -216,7 +216,7 @@ static int ps3_ehci_remove(struct ps3_system_bus_device *dev)
 
 	BUG_ON(!hcd);
 
-	dev_dbg(&dev->core, "%s:%d: regs %p\n", __func__, __LINE__, hcd->regs);
+	dev_dbg(&dev->core, "%s:%d: regs %pK\n", __func__, __LINE__, hcd->regs);
 	dev_dbg(&dev->core, "%s:%d: irq %u\n", __func__, __LINE__, hcd->irq);
 
 	tmp = hcd->irq;

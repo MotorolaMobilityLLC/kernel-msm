@@ -153,7 +153,7 @@ static int ghsuart_data_alloc_requests(struct usb_ep *ep,
 	int			i;
 	struct usb_request	*req;
 
-	pr_debug("%s: ep:%s head:%p num:%d cb:%p", __func__,
+	pr_debug("%s: ep:%s head:%pK num:%d cb:%pK", __func__,
 			ep->name, head, num, cb);
 
 	for (i = 0; i < num; i++) {
@@ -244,7 +244,7 @@ static void ghsuart_data_write_tomdm(struct work_struct *w)
 	}
 
 	while ((skb = __skb_dequeue(&port->rx_skb_q))) {
-		pr_debug("%s: port:%p tom:%lu pno:%d\n", __func__,
+		pr_debug("%s: port:%pK tom:%lu pno:%d\n", __func__,
 				port, port->to_modem, port->port_num);
 
 		ret = msm_smux_write(port->ch_id, skb, skb->data, skb->len);
@@ -345,7 +345,7 @@ static void ghsuart_data_start_rx(struct ghsuart_data_port *port)
 	int			ret;
 	struct sk_buff		*skb;
 
-	pr_debug("%s: port:%p\n", __func__, port);
+	pr_debug("%s: port:%pK\n", __func__, port);
 	if (!port)
 		return;
 
@@ -398,7 +398,7 @@ static void ghsuart_data_start_io(struct ghsuart_data_port *port)
 	struct usb_ep	*ep;
 	int		ret;
 
-	pr_debug("%s: port:%p\n", __func__, port);
+	pr_debug("%s: port:%pK\n", __func__, port);
 
 	if (!port)
 		return;
@@ -594,7 +594,7 @@ static void ghsuart_data_connect_w(struct work_struct *w)
 		!test_bit(CH_READY, &port->channel_sts))
 		return;
 
-	pr_debug("%s: port:%p\n", __func__, port);
+	pr_debug("%s: port:%pK\n", __func__, port);
 
 	if (test_bit(CH_OPENED, &port->channel_sts)) {
 		ret = wait_for_completion_timeout(
@@ -832,7 +832,7 @@ static int ghsuart_data_port_alloc(unsigned port_num, enum gadget_type gtype)
 
 	platform_driver_register(pdrv);
 
-	pr_debug("%s: port:%p portno:%d\n", __func__, port, port_num);
+	pr_debug("%s: port:%pK portno:%d\n", __func__, port, port_num);
 
 	return 0;
 }
@@ -956,14 +956,14 @@ int ghsuart_data_connect(void *gptr, int port_num)
 
 	ret = usb_ep_enable(port->in);
 	if (ret) {
-		pr_err("%s: usb_ep_enable failed eptype:IN ep:%p",
+		pr_err("%s: usb_ep_enable failed eptype:IN ep:%pK",
 				__func__, port->in);
 		goto fail;
 	}
 
 	ret = usb_ep_enable(port->out);
 	if (ret) {
-		pr_err("%s: usb_ep_enable failed eptype:OUT ep:%p",
+		pr_err("%s: usb_ep_enable failed eptype:OUT ep:%pK",
 				__func__, port->out);
 		usb_ep_disable(port->in);
 		goto fail;
@@ -1010,7 +1010,7 @@ static ssize_t ghsuart_data_read_stats(struct file *file,
 		spin_lock_irqsave(&port->rx_lock, flags);
 		temp += scnprintf(buf + temp, DEBUG_BUF_SIZE - temp,
 				"\nName:           %s\n"
-				"#PORT:%d port#:   %p\n"
+				"#PORT:%d port#:   %pK\n"
 				"data_ch_open:	   %d\n"
 				"data_ch_ready:    %d\n"
 				"data_ch_connected: %d\n"
