@@ -1019,12 +1019,6 @@ static int akm_flush_set(struct sensors_classdev *sensors_cdev)
 	if(!AKM_IS_MAG_DATA_ENABLED())
 		return -EINVAL;
 
-	akm->ts = ns_to_timespec(timespec_to_ns(&akm->ts) + akm->delay[MAG_DATA_FLAG]);
-	dev_dbg(&akm->i2c->dev, "akm->ts:%lld\n", timespec_to_ns(&akm->ts));
-
-	input_event(akm->input, EV_SYN, SYN_TIME_SEC, akm->ts.tv_sec);
-	input_event(akm->input, EV_SYN, SYN_TIME_NSEC, akm->ts.tv_nsec);
-	input_sync(akm->input);
 	input_event(akm->input, EV_SYN, SYN_CONFIG, akm->flush_count++);
 	input_sync(akm->input);
 
@@ -1841,7 +1835,7 @@ static int akm_report_data(struct akm_compass_data *akm)
 	}
 
 	if(akm->auto_report)
-		getrawmonotonic(&akm->ts);
+		get_monotonic_boottime(&akm->ts);
 
 	tmp = (int)((int16_t)(dat_buf[2]<<8)+((int16_t)dat_buf[1]));
 	tmp = tmp * akm->sense_conf[0] / 128 + tmp;
