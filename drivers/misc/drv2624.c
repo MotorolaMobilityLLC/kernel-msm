@@ -129,6 +129,77 @@ drv2624_set_bits(struct drv2624_data *ctrl,
 	return ret;
 }
 
+static void
+drv2624_change_voltage(struct drv2624_data *ctrl, enum work_mode mode)
+{
+	struct drv2624_platform_data *pDrv2624Platdata =
+	    &ctrl->msPlatData;
+	struct actuator_data actuator = pDrv2624Platdata->msActuator;
+
+	if (mode !=  actuator.meWorkMode) {
+		if (mode == REDUCED) {
+			/*write reduced strength voltages*/
+			drv2624_reg_write(ctrl,
+				DRV2624_REG_RATED_VOLTAGE,
+				actuator.mnRatedVoltageReduced);
+			drv2624_reg_write(ctrl,
+				DRV2624_REG_OVERDRIVE_CLAMP,
+				actuator.mnOverDriveClampVoltageReduced);
+			pDrv2624Platdata->msActuator.meWorkMode = REDUCED;
+			dev_dbg(ctrl->dev, "%s, reduced voltage!\n", __func__);
+		} else {
+			/*back to default voltages from device tree*/
+			drv2624_reg_write(ctrl,
+				DRV2624_REG_RATED_VOLTAGE,
+				actuator.mnRatedVoltage);
+			drv2624_reg_write(ctrl,
+				DRV2624_REG_OVERDRIVE_CLAMP,
+				actuator.mnOverDriveClampVoltage);
+			pDrv2624Platdata->msActuator.meWorkMode = NORMAL;
+			dev_dbg(ctrl->dev, "%s, restored voltage.\n", __func__);
+		}
+	}
+}
+
+static bool drv2624_is_factory(struct drv2624_data *ctrl)
+{
+	struct device_node *np;
+	bool factory_cable = false;
+	bool ret = false;
+
+	np = of_find_node_by_path("/chosen");
+	factory_cable = of_property_read_bool(np, "mmi,factory-cable");
+	dev_dbg(ctrl->dev,
+			"drv2624  (%d)\n", factory_cable);
+	if (factory_cable) {
+		ret = true;
+		dev_dbg(ctrl->dev,
+			"factory-cable , cancel context haptic!!\n");
+	}
+	return ret;
+}
+
+static void
+drv2624_hap_context(struct drv2624_data *ctrl, unsigned char val)
+{
+	enum work_mode mode;
+
+	/*ignore this while in factory mode*/
+	if (drv2624_is_factory(ctrl))
+		return;
+	if (ctrl->msPlatData.mnGpioVCTRL != 0) {
+		int t_top = gpio_get_value(ctrl->msPlatData.mnGpioVCTRL);
+		dev_dbg(ctrl->dev, "%s, t_top %d\n", __func__, t_top);
+		if (val == GO) {
+			if (t_top && ctrl->mnCurrentVibrationTime > 100)
+				mode = REDUCED;
+			else
+				mode = NORMAL;
+			drv2624_change_voltage(ctrl, mode);
+		}
+	}
+}
+
 static int
 drv2624_set_go_bit(struct drv2624_data *ctrl, unsigned char val)
 {
@@ -136,6 +207,7 @@ drv2624_set_go_bit(struct drv2624_data *ctrl, unsigned char val)
 	int value = 0;
 	int retry = 10; /* to finish auto-brake*/
 
+	drv2624_hap_context(ctrl, val);
 	val &= 0x01;
 	ret = drv2624_reg_write(ctrl, DRV2624_REG_GO, val);
 	if (ret >= 0) {
@@ -216,6 +288,7 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 
 		drv2624_change_mode(ctrl, MODE_RTP);
 		ctrl->mnVibratorPlaying = YES;
+		ctrl->mnCurrentVibrationTime = value;
 		drv2624_set_go_bit(ctrl, GO);
 		value = (value > MAX_TIMEOUT) ? MAX_TIMEOUT : value;
 		hrtimer_start(&ctrl->timer,
@@ -974,6 +1047,7 @@ static void dev_init_platform_data(struct drv2624_data *ctrl)
 		dev_err(ctrl->dev,
 			"%s, ERROR OverDriveVol ZERO\n", __func__);
 	}
+	actuator.meWorkMode = NORMAL;
 	/*update sample_time*/
 	drv2624_reg_write(ctrl,
 			  DRV2624_REG_SAMPLE_TIME,
@@ -1070,6 +1144,12 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 		dev_err(&client->dev, "%s: no IRQ gpio provided\n", __func__);
 	}
 
+	pdata->mnGpioVCTRL = of_get_named_gpio(np, "ti,nvctrl-gpio", 0);
+	if (!gpio_is_valid(pdata->mnGpioVCTRL)) {
+		pdata->mnGpioVCTRL = 0;
+		dev_err(&client->dev, "%s: no VCTRL gpio provided\n", __func__);
+	}
+
 	rc = of_property_read_u8(np, "ti,rated_voltage",
 		&pdata->msActuator.mnRatedVoltage);
 	if (rc) {
@@ -1081,6 +1161,21 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 		&pdata->msActuator.mnOverDriveClampVoltage);
 	if (rc) {
 		dev_err(&client->dev, "%s: overdrive voltage read failed\n",
+			__func__);
+		return NULL;
+	}
+
+	rc = of_property_read_u8(np, "ti,rated_voltage_reduced",
+		&pdata->msActuator.mnRatedVoltageReduced);
+	if (rc) {
+		dev_err(&client->dev, "%s: rated voltage reduced read failed\n",
+			__func__);
+		return NULL;
+	}
+	rc = of_property_read_u8(np, "ti,overdrive_voltage_reduced",
+		&pdata->msActuator.mnOverDriveClampVoltageReduced);
+	if (rc) {
+		dev_err(&client->dev, "%s: overdrive voltage reducedread failed\n",
 			__func__);
 		return NULL;
 	}
