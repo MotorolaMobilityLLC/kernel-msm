@@ -239,6 +239,7 @@ static int32_t msm_flash_low(
 	struct msm_flash_cfg_data_t *flash_data)
 {
 	struct msm_camera_power_ctrl_t *power_info = NULL;
+	static int32_t i;
 
 	CDBG("%s:%d called\n", __func__, __LINE__);
 
@@ -251,7 +252,20 @@ static int32_t msm_flash_low(
 		gpio_set_value_cansleep(
 		power_info->gpio_conf->gpio_num_info->gpio_num[0],
 		GPIO_OUT_HIGH);
+		usleep_range(20, 100);
 		CDBG("%s:%d set flash en HIGH\n", __func__, __LINE__);
+		for (i = 0 ; i <= 14 ; i++) {
+			CDBG("%s i =  %d\n", __func__, i);
+			gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->gpio_num[0],
+			GPIO_OUT_LOW);
+			CDBG("%s:%d set flash en LOW\n", __func__, __LINE__);
+			usleep_range(50, 300);
+			gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->gpio_num[0],
+			GPIO_OUT_HIGH);
+			CDBG("%s:%d set flash en HIGH\n", __func__, __LINE__);
+		}
 	}
 	if (power_info->gpio_conf->gpio_num_info->valid[1] == 1) {
 		gpio_set_value_cansleep(
@@ -270,6 +284,7 @@ static int32_t msm_flash_high(
 {
 
 	struct msm_camera_power_ctrl_t *power_info = NULL;
+	static int32_t i;
 
 	CDBG("%s:%d called\n", __func__, __LINE__);
 
@@ -282,7 +297,20 @@ static int32_t msm_flash_high(
 		gpio_set_value_cansleep(
 		power_info->gpio_conf->gpio_num_info->gpio_num[0],
 		GPIO_OUT_HIGH);
+		usleep_range(20, 100);
 		CDBG("%s:%d set flash en HIGH\n", __func__, __LINE__);
+		for (i = 0 ; i <= 10 ; i++) {
+			CDBG("%s i =  %d\n", __func__, i);
+			gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->gpio_num[0],
+			GPIO_OUT_LOW);
+			CDBG("%s:%d set flash en LOW\n", __func__, __LINE__);
+			usleep_range(50, 300);
+			gpio_set_value_cansleep(
+			power_info->gpio_conf->gpio_num_info->gpio_num[0],
+			GPIO_OUT_HIGH);
+			CDBG("%s:%d set flash en HIGH\n", __func__, __LINE__);
+		}
 	}
 	if (power_info->gpio_conf->gpio_num_info->valid[1] == 1) {
 		gpio_set_value_cansleep(
