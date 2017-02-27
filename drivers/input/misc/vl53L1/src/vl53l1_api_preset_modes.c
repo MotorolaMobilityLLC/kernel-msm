@@ -225,12 +225,30 @@ VL53L1_Error VL53L1_init_xtalk_config_struct(
 
 
 
+
+
+
 	pdata->algo__crosstalk_compensation_plane_offset_kcps      =
 		pnvm->algo__crosstalk_compensation_plane_offset_kcps;
 	pdata->algo__crosstalk_compensation_x_plane_gradient_kcps  =
 		pnvm->algo__crosstalk_compensation_x_plane_gradient_kcps;
 	pdata->algo__crosstalk_compensation_y_plane_gradient_kcps  =
 		pnvm->algo__crosstalk_compensation_y_plane_gradient_kcps;
+
+
+
+
+	pdata->nvm_default__crosstalk_compensation_plane_offset_kcps      =
+		pnvm->algo__crosstalk_compensation_plane_offset_kcps;
+	pdata->nvm_default__crosstalk_compensation_x_plane_gradient_kcps  =
+		pnvm->algo__crosstalk_compensation_x_plane_gradient_kcps;
+	pdata->nvm_default__crosstalk_compensation_y_plane_gradient_kcps  =
+		pnvm->algo__crosstalk_compensation_y_plane_gradient_kcps;
+
+	pdata->histogram_mode_crosstalk_margin_kcps                =
+			0x00;
+	pdata->lite_mode_crosstalk_margin_kcps                     =
+			0x00;
 
 
 
@@ -257,6 +275,19 @@ VL53L1_Error VL53L1_init_xtalk_config_struct(
 		pdata->crosstalk_range_ignore_threshold_rate_mcps = 0;
 	}
 
+
+
+
+
+
+
+
+
+	pdata->algo__crosstalk_detect_min_valid_range_mm  =    -50;
+	pdata->algo__crosstalk_detect_max_valid_range_mm  =     50;
+	pdata->algo__crosstalk_detect_max_valid_rate_kcps = 0xC800;
+	pdata->algo__crosstalk_detect_max_sigma_mm        =
+			VL53L1_XTALK_EXTRACT_MAX_SIGMA_MM;
 
 
 	LOG_FUNCTION_END(status);
@@ -356,11 +387,31 @@ VL53L1_Error VL53L1_init_hist_post_process_config_struct(
 
 
 
-	pdata->algo__consistency_check__tolerance = 8;
+	pdata->algo__consistency_check__phase_tolerance = 8;
+
+
+
+
+
+
+
+	pdata->algo__consistency_check__event_sigma    = 112;
 
 
 
 	pdata->algo__crosstalk_compensation_enable = xtalk_compensation_enable;
+
+
+
+
+
+
+
+	pdata->algo__crosstalk_detect_min_valid_range_mm  =    -50;
+	pdata->algo__crosstalk_detect_max_valid_range_mm  =     50;
+	pdata->algo__crosstalk_detect_max_valid_rate_kcps = 0xC800;
+	pdata->algo__crosstalk_detect_max_sigma_mm        =
+			VL53L1_XTALK_EXTRACT_MAX_SIGMA_MM;
 
 	LOG_FUNCTION_END(status);
 
@@ -431,6 +482,7 @@ VL53L1_Error VL53L1_init_hist_gen3_dmax_config_struct(
 
 	pdata->signal_thresh_sigma                 = 0x20;
 	pdata->ambient_thresh_sigma                = 0x70;
+	pdata->min_ambient_thresh_events           = 16;
 	pdata->estimated_spad_yield                = 85;
 
 

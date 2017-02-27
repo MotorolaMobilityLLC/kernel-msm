@@ -291,7 +291,7 @@ typedef uint8_t VL53L1_DeviceDmaxMode;
 #define VL53L1_DEVICEDMAXMODE__NONE                    ((VL53L1_DeviceDmaxMode)  0)
 #define VL53L1_DEVICEDMAXMODE__FMT_CAL_DATA            ((VL53L1_DeviceDmaxMode)  1)
 #define VL53L1_DEVICEDMAXMODE__CUST_CAL_DATA           ((VL53L1_DeviceDmaxMode)  2)
-#define VL53L1_DEVICEDMAXMODE__PER_ZONE_CAL_DATA       ((VL53L1_DeviceDmaxMode)  2)
+#define VL53L1_DEVICEDMAXMODE__PER_ZONE_CAL_DATA       ((VL53L1_DeviceDmaxMode)  3)
 
 
 
@@ -390,6 +390,7 @@ typedef uint8_t VL53L1_DeviceError;
 #define VL53L1_DEVICEERROR_MULTCLIPFAIL                ((VL53L1_DeviceError) 17)
 #define VL53L1_DEVICEERROR_GPHSTREAMCOUNT0READY        ((VL53L1_DeviceError) 18)
 #define VL53L1_DEVICEERROR_RANGECOMPLETE_NO_WRAP_CHECK ((VL53L1_DeviceError) 19)
+#define VL53L1_DEVICEERROR_EVENTCONSISTENCY            ((VL53L1_DeviceError) 20)
 
 
 
