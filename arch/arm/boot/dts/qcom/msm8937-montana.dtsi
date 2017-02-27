@@ -32,6 +32,7 @@
 		gpio = <&tlmm 59 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
+		regulator-always-on;
 	};
 
 	dummy_vreg: dummy_vreg {
