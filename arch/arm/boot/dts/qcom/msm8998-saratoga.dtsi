@@ -21,6 +21,12 @@
 	};
 };
 
+&pm8998_l25 {
+	regulator-min-microvolt = <3312000>;
+	regulator-max-microvolt = <3312000>;
+	qcom,init-voltage = <3312000>;
+};
+
 &spi_9 { /* BLSP2 QUP3 */
 	status = "okay";
 
@@ -128,6 +134,11 @@
 		/* If FSA controls L22 it breaks all devices on the same bus
 		that try to start earlier. L22 will be turned on in BL eventually */
 		/* hs_det_vdd-supply = <&pm8998_l22>; */
+	};
+
+	analogix_anx78e6@72 {
+		analogix,vdd_33-supply = <&pm8998_l25>;
+		analogix,vdd_10-supply = <&pm8998_l3>;
 	};
 };
 
@@ -371,6 +382,10 @@
 			"IN2L",  "MICBIAS1B",
 			"IN2R",  "MICBIAS2B",
 			"IN1BR", "MICBIAS2A";
+	};
+
+	vdd10_anx: vdd10_anx {
+		status = "disabled";
 	};
 };
 
