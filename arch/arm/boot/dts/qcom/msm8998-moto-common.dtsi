@@ -166,9 +166,9 @@
 		analogix,irq-gpio = <&msm_gpio 53 0x00>; */
 		analogix,cbl-det-gpio = <&tlmm 124 0x00>;
 		analogix,p-dwn-gpio = <&tlmm 96 0x0>;   /* chip_pd */
-		analogix,vdd_33-supply = <&pm8998_l25>;
+		analogix,vdd_33-supply = <&pm8998_l19>;
 		analogix,vdd_18-supply = <&pm8998_s4>;
-		analogix,vdd_10-supply = <&pm8998_l3>;
+		analogix,vdd_10-supply = <&vdd10_anx>;
 		analogix,i2c-pull-up = <1>;
 		qcom,hdmi-tx-map = <&mdss_hdmi_tx>;
 
@@ -806,6 +806,14 @@
 		enable-active-high;
 	};
 
+	vdd10_anx: vdd10_anx {
+		compatible = "regulator-fixed";
+		vin-supply = <&pm8998_s4>;
+		regulator-name = "vdd10_anx";
+		gpio = <&tlmm 13 0>;
+		enable-active-high;
+	};
+
 	vdd_otg_vreg: vdd_otg_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "vdd_otg";
@@ -1410,12 +1418,6 @@
 	regulator-max-microvolt = <3200000>;
 	qcom,init-voltage = <3200000>;
 	regulator-boot-on;
-};
-
-&pm8998_l25 {
-	regulator-min-microvolt = <3312000>;
-	regulator-max-microvolt = <3312000>;
-	qcom,init-voltage = <3312000>;
 };
 
 &pm8998_l26 {
