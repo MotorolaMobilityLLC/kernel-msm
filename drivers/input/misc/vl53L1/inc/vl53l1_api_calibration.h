@@ -147,8 +147,8 @@ extern "C" {
 
 
 
-VL53L1_Error VL53L1_run_ref_spad_char(
-	VL53L1_DEV     Dev);
+
+VL53L1_Error VL53L1_run_ref_spad_char(VL53L1_DEV Dev, VL53L1_Error *pcal_status);
 
 
 
@@ -300,7 +300,8 @@ VL53L1_Error   VL53L1_run_xtalk_extraction(
 	uint32_t                            mm_config_timeout_us,
 	uint32_t                            range_config_timeout_us,
 	uint8_t                             num_of_samples,
-	uint16_t                            xtalk_filter_thresh_mm);
+	VL53L1_Error                       *pcal_status);
+
 
 
 
@@ -358,7 +359,10 @@ VL53L1_Error VL53L1_run_xtalk_extraction_dual_reflectance(
 	uint8_t                             calc_parms,
 	uint8_t                             higher_reflectance,
 	uint16_t                            expected_target_distance_mm,
-	uint16_t                            xtalk_filter_thresh_mm);
+	uint16_t                            xtalk_filter_thresh_mm,
+	VL53L1_Error                       *pcal_status);
+
+
 
 
 
@@ -387,7 +391,9 @@ VL53L1_Error VL53L1_get_and_avg_xtalk_samples(
 		VL53L1_DEV	                  Dev,
 		uint8_t                       num_of_samples,
 		uint8_t                       measurement_mode,
-		int16_t                       xtalk_filter_thresh_mm,
+		int16_t                       xtalk_filter_thresh_max_mm,
+		int16_t                       xtalk_filter_thresh_min_mm,
+		uint16_t                      xtalk_max_valid_rate_kcps,
 		uint8_t                       xtalk_result_id,
 		uint8_t                       xtalk_histo_id,
 		VL53L1_xtalk_range_results_t *pxtalk_results,
@@ -477,6 +483,7 @@ VL53L1_Error VL53L1_get_and_avg_all_xtalk_samples(
 
 
 
+
 VL53L1_Error   VL53L1_run_offset_calibration(
 	VL53L1_DEV	                  Dev,
 	uint16_t                      dss_config__target_total_rate_mcps,
@@ -486,7 +493,9 @@ VL53L1_Error   VL53L1_run_offset_calibration(
 	uint8_t                       mm1_num_of_samples,
 	uint8_t                       mm2_num_of_samples,
 	int16_t                       cal_distance_mm,
-	uint16_t                      cal_reflectance_pc);
+	uint16_t                      cal_reflectance_pc,
+	VL53L1_Error                 *pcal_status);
+
 
 
 
@@ -547,7 +556,8 @@ VL53L1_Error VL53L1_run_zone_calibration(
 	uint32_t                      range_config_timeout_us,
 	uint16_t                      num_of_samples,
 	int16_t                       cal_distance_mm,
-	uint16_t                      cal_reflectance_pc);
+	uint16_t                      cal_reflectance_pc,
+	VL53L1_Error                 *pcal_status);
 
 
 #ifdef __cplusplus
