@@ -127,12 +127,12 @@ extern "C" {
 #define VL53L1_LL_API_IMPLEMENTATION_VER_MINOR       1
 
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_SUB         15
+#define VL53L1_LL_API_IMPLEMENTATION_VER_SUB         16
 
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_REVISION  11576
+#define VL53L1_LL_API_IMPLEMENTATION_VER_REVISION  11634
 
-#define VL53L1_LL_API_IMPLEMENTATION_VER_STRING "1.1.15.11576"
+#define VL53L1_LL_API_IMPLEMENTATION_VER_STRING "1.1.16.11634"
 
 
 
@@ -293,13 +293,51 @@ typedef struct {
 	int16_t   algo__crosstalk_compensation_y_plane_gradient_kcps;
 
 
+	uint16_t  nvm_default__crosstalk_compensation_plane_offset_kcps;
+
+
+	int16_t   nvm_default__crosstalk_compensation_x_plane_gradient_kcps;
+
+
+	int16_t   nvm_default__crosstalk_compensation_y_plane_gradient_kcps;
+
+
 	uint8_t   global_crosstalk_compensation_enable;
+
+
+	int16_t   histogram_mode_crosstalk_margin_kcps;
+
+
+
+
+
+
+	int16_t   lite_mode_crosstalk_margin_kcps;
+
+
+
+
 
 
 	uint8_t   crosstalk_range_ignore_threshold_mult;
 
 
 	uint16_t  crosstalk_range_ignore_threshold_rate_mcps;
+
+
+
+
+	int16_t   algo__crosstalk_detect_min_valid_range_mm;
+
+
+	int16_t   algo__crosstalk_detect_max_valid_range_mm;
+
+
+	uint16_t  algo__crosstalk_detect_max_valid_rate_kcps;
+
+
+
+	uint16_t  algo__crosstalk_detect_max_sigma_mm;
 
 
 
@@ -648,6 +686,13 @@ typedef struct {
 
 
 
+	uint32_t   sigma_mm_sum;
+
+
+
+	uint32_t   sigma_mm_avg;
+
+
 
 } VL53L1_xtalk_range_data_t;
 
@@ -662,11 +707,52 @@ typedef struct {
 
 typedef struct {
 
+	VL53L1_Error                cal_status;
+
+
+	uint8_t                     num_of_samples_status;
+
+
+
+
+
+
+
+
+	uint8_t                     zero_samples_status;
+
+
+
+
+
+
+
+
+	uint8_t                     max_sigma_status;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	uint8_t                     max_results;
 
 
 
 	uint8_t                     active_results;
+
 
 
 	VL53L1_xtalk_range_data_t   VL53L1_PRM_00005[VL53L1_MAX_XTALK_RANGE_RESULTS];
@@ -757,17 +843,23 @@ typedef struct {
 
 typedef struct {
 
-	uint8_t    max_results;
+	int16_t      cal_distance_mm;
+
+
+	uint16_t     cal_reflectance_pc;
+
+
+	VL53L1_Error cal_status;
+
+
+	uint8_t      cal_report;
+
+
+	uint8_t      max_results;
 
 
 
-	uint8_t    active_results;
-
-
-	int16_t    cal_distance_mm;
-
-
-	uint16_t   cal_reflectance_pc;
+	uint8_t      active_results;
 
 
 	VL53L1_offset_range_data_t VL53L1_PRM_00005[VL53L1_MAX_OFFSET_RANGE_RESULTS];
@@ -815,6 +907,10 @@ typedef struct {
 
 typedef struct {
 
+	uint32_t   VL53L1_PRM_00023;
+
+
+	uint32_t   VL53L1_PRM_00022;
 
 
 
@@ -1005,6 +1101,9 @@ typedef struct {
 
 
 	uint16_t                         zero_distance_phase;
+
+
+	VL53L1_Error                     cal_status;
 
 
 	uint8_t                          max_zones;
@@ -1438,6 +1537,22 @@ typedef struct {
 	VL53L1_offset_range_results_t        offset_results;
 
 } VL53L1_offset_debug_data_t;
+
+
+
+
+
+
+
+
+
+
+
+typedef struct {
+
+	uint16_t  target_reflectance_for_dmax[VL53L1_MAX_AMBIENT_DMAX_VALUES];
+
+} VL53L1_dmax_reflectance_array_t;
 
 
 

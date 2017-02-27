@@ -93,13 +93,13 @@ extern "C" {
 #define VL53L1_SPECIFICATION_VER_REVISION 1440
 
 /** VL53L1 IMPLEMENTATION major version */
-#define VL53L1_IMPLEMENTATION_VER_MAJOR       3
+#define VL53L1_IMPLEMENTATION_VER_MAJOR       4
 /** VL53L1 IMPLEMENTATION minor version */
-#define VL53L1_IMPLEMENTATION_VER_MINOR       9
+#define VL53L1_IMPLEMENTATION_VER_MINOR       1
 /** VL53L1 IMPLEMENTATION sub version */
-#define VL53L1_IMPLEMENTATION_VER_SUB         1
+#define VL53L1_IMPLEMENTATION_VER_SUB         0
 /** VL53L1 IMPLEMENTATION sub version */
-#define VL53L1_IMPLEMENTATION_VER_REVISION  1229
+#define VL53L1_IMPLEMENTATION_VER_REVISION  1249
 
 
 /****************************************
@@ -191,8 +191,35 @@ typedef uint8_t VL53L1_OffsetCalibrationModes;
 	((VL53L1_OffsetCalibrationModes)  1)
 #define VL53L1_OFFSETCALIBRATIONMODE_PRERANGE_ONLY  \
 	((VL53L1_OffsetCalibrationModes)  2)
+#define VL53L1_OFFSETCALIBRATIONMODE_MULTI_ZONE    \
+	((VL53L1_OffsetCalibrationModes)  3)
 
 /** @} VL53L1_define_OffsetCalibrationModes_group */
+
+/** @defgroup VL53L1_define_DeviceDmaxModes_group Defines Dmax source modes
+*  Defines all possible sources for Dmax calibration for the device
+*  @{
+*/
+typedef uint8_t VL53L1_DeviceDmaxModes;
+
+#define DMAXMODE_FMT_CAL_DATA      ((VL53L1_DeviceDmaxModes)  1)
+#define DMAXMODE_CUSTCAL_DATA      ((VL53L1_DeviceDmaxModes)  2)
+#define DMAXMODE_PER_ZONE_CAL_DATA ((VL53L1_DeviceDmaxModes)  3)
+
+/** @} VL53L1_define_DeviceDmaxModes_group */
+
+/** @defgroup VL53L1_define_OffsetCalibrationModesBD_group
+ *  Device Offset Correction Mode
+ *
+ *  @brief Defines all possible offset correction modes for the device
+ *  @{
+ */
+typedef uint8_t VL53L1_OffsetCorrectionModes;
+
+#define VL53L1_OFFSETCORRECTIONMODE_STANDARD ((VL53L1_OffsetCorrectionMode)  1)
+#define VL53L1_OFFSETCORRECTIONMODE_PERZONE  ((VL53L1_OffsetCorrectionMode)  2)
+
+/** @} VL53L1_define_OffsetCalibrationModesBD_group */
 
 
 /** @defgroup VL53L1_define_RoiStatus_group Defines Roi Status
@@ -344,6 +371,10 @@ typedef struct {
 	/*!< This Array stores all the Limit Check current value from latest
 	 * ranging
 	 */
+	uint8_t AmbientDmaxIndex;
+	/*!< This value stores the index of the ambient Dmax to take from
+	 * ambient_dmax_mm[] table to populate ranging results
+	 */
 } VL53L1_DeviceParameters_t;
 
 
@@ -393,17 +424,16 @@ typedef struct {
 
 	int16_t DmaxMilliMeter;
 		/*!< range Dmax distance in millimeter.
-		 * @warning Not yet implemented
 		 */
 
 	int16_t RangeMaxMilliMeter;
-		/*!< Tells what is the maximum detection distance of the device
+		/*!< Tells what is the maximum detection distance of the object
 		 * in current setup and environment conditions (Filled when
 		 *  applicable)
 		 */
 
 	int16_t RangeMinMilliMeter;
-		/*!< Tells what is the minimum detection distance of the device
+		/*!< Tells what is the minimum detection distance of the object
 		 * in current setup and environment conditions (Filled when
 		 *  applicable)
 		 */
@@ -428,7 +458,9 @@ typedef struct {
 	FixPoint1616_t SigmaMilliMeter;
 		/*!< Return the Sigma value in millimeter */
 
-	int16_t RangeMilliMeter;         /*!< range distance in millimeter. */
+	int16_t RangeMilliMeter;
+		/*!< range distance in millimeter. This should be between
+		 *  RangeMinMilliMeter and RangeMaxMilliMeter */
 
 	uint8_t RangeFractionalPart;
 		/*!< Fractional part of range distance. Final value is a
