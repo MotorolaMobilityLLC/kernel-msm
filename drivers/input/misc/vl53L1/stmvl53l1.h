@@ -69,7 +69,7 @@
  */
 /* define CFG_STMVL53L1_HAVE_REGULATOR */
 
-#define DRIVER_VERSION		"8.0.0"
+#define DRIVER_VERSION		"8.0.0_b4.1._1268"
 
 /** @ingroup vl53l1_config
  * @{
