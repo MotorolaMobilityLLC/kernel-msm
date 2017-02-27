@@ -5,48 +5,48 @@ qcom,hz40-lg {
 				<4400 2000 1600>;
 	qcom,stepchg-iterm-ma = <146>;
 	qcom,auto-voltage-comp-mv = <150>;
-	/* #2672048_Moto_Albus_3000mAh_averaged_MasterSlave_Nov3rd2016*/
+	/* #2803973_Moto_HZ40lgc_3000mAh_averaged_MasterSlave_Feb22nd2017*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <3000>;
 	qcom,batt-id-kohm = <243>;
 	qcom,battery-beta = <3900>;
 	qcom,battery-type = "HZ40-LG-3000mah";
-	qcom,chg-rslow-comp-c1 = <3629563>;
-	qcom,chg-rslow-comp-c2 = <5754602>;
-	qcom,chg-rs-to-rslow = <1220038>;
+	qcom,chg-rslow-comp-c1 = <3615241>;
+	qcom,chg-rslow-comp-c2 = <5747424>;
+	qcom,chg-rs-to-rslow = <1188586>;
 	qcom,chg-rslow-comp-thr = <0xAF>;
-	qcom,checksum = <0xD85E>;
+	qcom,checksum = <0x5D6E>;
 	qcom,gui-version = "PMI8950GUI - 2.0.0.16";
 	qcom,fg-profile-data = [
-		 BD 83 32 77
-		 1C 80 59 75
-		 48 83 C1 69
-		 B4 73 84 84
-		 0D 82 6E 9A
-		 71 BD 5B CA
-		 65 0E F6 82
-		 7C 72 14 6C
-		 77 69 36 83
-		 50 79 12 86
-		 5E 81 5C 82
-		 F0 98 FB B7
-		 53 C8 77 14
-		 F7 0B E6 5A
+		 D5 83 6E 7C
+		 C7 80 C4 76
+		 70 83 24 7C
+		 0B 90 A7 96
+		 86 82 B9 92
+		 77 B4 EE BB
+		 52 19 FB 83
+		 3C 7D 3A 81
+		 66 77 5C 83
+		 75 53 F7 81
+		 EE 8D 73 82
+		 40 98 5E B6
+		 6A C2 58 11
+		 C4 0B 6E 5B
 		 14 70 43 FC
-		 B6 34 6A 46
-		 56 42 00 00
-		 C2 46 D1 39
-		 8E 32 00 00
+		 09 2E 8D 4C
+		 52 43 00 00
+		 78 46 92 32
+		 3F 21 00 00
 		 00 00 00 00
 		 00 00 00 00
-		 41 71 DB 6B
-		 63 76 7A 83
-		 05 7C E8 6B
-		 55 6C DF 73
-		 74 75 78 62
-		 A6 69 C1 AB
-		 27 72 69 29
-		 67 A0 71 0C
+		 BC 71 CB 6B
+		 EA 77 B6 88
+		 14 7D D9 71
+		 38 5F 99 7B
+		 1A 76 4A 68
+		 82 5C 51 A3
+		 32 60 62 EB
+		 5F A0 71 0C
 		 28 00 FF 36
 		 F0 11 30 03
 		 00 00 00 0C
