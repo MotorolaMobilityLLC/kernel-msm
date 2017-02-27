@@ -144,6 +144,17 @@
 		##__VA_ARGS__)
 #endif
 
+#ifndef MIN
+#define MIN(VL53L1_PRM_00002,VL53L1_PRM_00030) ((VL53L1_PRM_00002) < (VL53L1_PRM_00030) ? (VL53L1_PRM_00002) : (VL53L1_PRM_00030))
+#endif
+#ifndef MAX
+#define MAX(VL53L1_PRM_00002,VL53L1_PRM_00030) ((VL53L1_PRM_00002) < (VL53L1_PRM_00030) ? (VL53L1_PRM_00030) : (VL53L1_PRM_00002))
+#endif
+
+#define DMAX_REFLECTANCE_IDX 2
+
+
+
 
 
 
@@ -903,6 +914,7 @@ VL53L1_Error VL53L1_SetMeasurementTimingBudgetMicroSeconds(VL53L1_DEV Dev,
 	return Status;
 }
 
+
 VL53L1_Error VL53L1_GetMeasurementTimingBudgetMicroSeconds(VL53L1_DEV Dev,
 	uint32_t *pMeasurementTimingBudgetMicroSeconds)
 {
@@ -992,6 +1004,106 @@ VL53L1_Error VL53L1_GetInterMeasurementPeriodMilliSeconds(VL53L1_DEV Dev,
 
 	Status = VL53L1_get_inter_measurement_period_ms(Dev,
 			pInterMeasurementPeriodMilliSeconds);
+
+	LOG_FUNCTION_END(Status);
+	return Status;
+}
+
+VL53L1_Error VL53L1_SetDmaxReflectance(VL53L1_DEV Dev,
+		FixPoint1616_t value)
+{
+	VL53L1_Error Status = VL53L1_ERROR_NONE;
+	VL53L1_dmax_reflectance_array_t dmax_reflectances;
+
+	LOG_FUNCTION_START("");
+	Status = VL53L1_get_dmax_reflectance_values(Dev, &dmax_reflectances);
+	if (Status == VL53L1_ERROR_NONE) {
+		dmax_reflectances.target_reflectance_for_dmax[DMAX_REFLECTANCE_IDX] =
+				VL53L1_FIXPOINT1616TOFIXPOINT72(value);
+		Status = VL53L1_set_dmax_reflectance_values(Dev, &dmax_reflectances);
+	}
+
+	LOG_FUNCTION_END(Status);
+	return Status;
+}
+
+VL53L1_Error VL53L1_GetDmaxReflectance(VL53L1_DEV Dev,
+		FixPoint1616_t *pvalue)
+{
+	VL53L1_Error Status = VL53L1_ERROR_NONE;
+	VL53L1_dmax_reflectance_array_t dmax_reflectances;
+	uint16_t r;
+
+	LOG_FUNCTION_START("");
+	Status = VL53L1_get_dmax_reflectance_values(Dev, &dmax_reflectances);
+	if (Status == VL53L1_ERROR_NONE) {
+		r = dmax_reflectances.target_reflectance_for_dmax[DMAX_REFLECTANCE_IDX];
+		*pvalue = VL53L1_FIXPOINT72TOFIXPOINT1616(r);
+	}
+
+	LOG_FUNCTION_END(Status);
+	return Status;
+}
+
+
+VL53L1_Error VL53L1_SetDmaxMode(VL53L1_DEV Dev,
+		VL53L1_DeviceDmaxModes DmaxMode)
+{
+
+	VL53L1_Error  Status = VL53L1_ERROR_NONE;
+	VL53L1_DeviceDmaxMode dmax_mode;
+
+	LOG_FUNCTION_START("");
+
+	switch(DmaxMode) {
+	case DMAXMODE_FMT_CAL_DATA:
+		dmax_mode = VL53L1_DEVICEDMAXMODE__FMT_CAL_DATA;
+		break;
+	case DMAXMODE_CUSTCAL_DATA:
+		dmax_mode = VL53L1_DEVICEDMAXMODE__CUST_CAL_DATA;
+		break;
+	case DMAXMODE_PER_ZONE_CAL_DATA:
+		dmax_mode = VL53L1_DEVICEDMAXMODE__PER_ZONE_CAL_DATA;
+		break;
+	default:
+		Status = VL53L1_ERROR_INVALID_PARAMS;
+		break;
+	}
+	if (Status == VL53L1_ERROR_NONE)
+		Status = VL53L1_set_dmax_mode(Dev, dmax_mode);
+
+	LOG_FUNCTION_END(Status);
+	return Status;
+}
+
+
+VL53L1_Error VL53L1_GetDmaxMode(VL53L1_DEV Dev,
+	VL53L1_DeviceDmaxModes *pDmaxMode)
+{
+	VL53L1_Error  Status = VL53L1_ERROR_NONE;
+	VL53L1_DeviceDmaxMode dmax_mode;
+
+	LOG_FUNCTION_START("");
+
+	Status = VL53L1_get_dmax_mode(Dev, &dmax_mode);
+	if (Status == VL53L1_ERROR_NONE) {
+		switch(dmax_mode) {
+		case VL53L1_DEVICEDMAXMODE__FMT_CAL_DATA:
+			*pDmaxMode = DMAXMODE_FMT_CAL_DATA;
+			break;
+		case VL53L1_DEVICEDMAXMODE__CUST_CAL_DATA:
+			*pDmaxMode = DMAXMODE_CUSTCAL_DATA;
+			break;
+		case VL53L1_DEVICEDMAXMODE__PER_ZONE_CAL_DATA:
+			*pDmaxMode = DMAXMODE_PER_ZONE_CAL_DATA;
+			break;
+		default:
+
+
+			*pDmaxMode = VL53L1_ERROR_NOT_IMPLEMENTED;
+			break;
+		}
+	}
 
 	LOG_FUNCTION_END(Status);
 	return Status;
@@ -1852,20 +1964,66 @@ static void CheckAndChangeDistanceMode(VL53L1_DEV Dev,
 			AmbientDmaxMm;
 
 	DistanceMode = PALDevDataGet(Dev, CurrentParameters.DistanceMode);
+
 	if (((DistanceMode == VL53L1_DISTANCEMODE_AUTO_LITE) &&
-		(RangeValid == 1)) ||
-		(DistanceMode == VL53L1_DISTANCEMODE_AUTO)) {
-		if ((AmbientDmaxMm == 0) && (RangeValid == 1))
-			PALDevDataSet(Dev, CurrentParameters.NewDistanceMode,
-					VL53L1_DISTANCEMODE_LONG);
-		else
-			GenNewPresetMode(Dev, RefRange);
-	}
+		(RangeValid == 0)) ||
+		((DistanceMode == VL53L1_DISTANCEMODE_AUTO) &&
+		(RangeValid == 0) && (AmbientDmaxMm == 0))) {
+		PALDevDataSet(Dev, CurrentParameters.NewDistanceMode,
+				VL53L1_DISTANCEMODE_LONG);
+
+	} else if ((DistanceMode == VL53L1_DISTANCEMODE_AUTO_LITE) ||
+			(DistanceMode == VL53L1_DISTANCEMODE_AUTO))
+		GenNewPresetMode(Dev, RefRange);
+
 }
 
 
+static uint8_t ComputeRQL(uint8_t active_results,
+		VL53L1_range_data_t *presults_data)
+{
+	int16_t T_Wide = 150;
+	int16_t SRL = 300;
+	uint16_t SRAS = 30;
+	FixPoint1616_t RAS;
+	FixPoint1616_t SRQL;
+	FixPoint1616_t GI = 117.7 * 65536;
+	FixPoint1616_t GGm = 48.8 * 65536;
+	FixPoint1616_t LRAP = 0.1 * 65536;
+	FixPoint1616_t partial;
+	uint8_t finalvalue;
+
+	if (active_results == 0)
+		return 0;
+	else if ((presults_data->max_range_mm -
+			presults_data->min_range_mm) >= T_Wide)
+		return 50;
+	else {
+		if (presults_data->median_range_mm < SRL)
+			RAS = SRAS * 65536;
+		else
+			RAS = LRAP * presults_data->median_range_mm;
+
+
+
+		if (RAS != 0) {
+			partial = (GGm * presults_data->VL53L1_PRM_00004) + (RAS >> 1);
+			partial = partial / RAS;
+			partial = partial * 65536;
+			if (GI > partial)
+				SRQL = GI - partial;
+			else
+				SRQL = 50 * 65536;
+		} else
+			SRQL = 100 * 65536;
+
+		finalvalue = (uint8_t)(SRQL >> 16);
+		return MAX(50, MIN(100, finalvalue));
+	}
+}
 
 static VL53L1_Error SetSimpleData(VL53L1_DEV Dev,
+	uint8_t active_results,
 	VL53L1_range_data_t *presults_data,
 	VL53L1_RangingMeasurementData_t *pRangeData)
 {
@@ -1884,7 +2042,9 @@ static VL53L1_Error SetSimpleData(VL53L1_DEV Dev,
 	pRangeData->TimeStamp = presults_data->time_stamp;
 	FilteredRangeStatus = presults_data->range_status & 0x1F;
 
-	pRangeData->RangeQualityLevel = 0;
+	pRangeData->RangeQualityLevel = ComputeRQL(active_results,
+						presults_data);
+
 	pRangeData->RangeMaxMilliMeter = presults_data->max_range_mm;
 	pRangeData->RangeMinMilliMeter = presults_data->min_range_mm;
 
@@ -2061,22 +2221,6 @@ static uint8_t GetOutputDataIndex(VL53L1_DEV Dev,
 	return index;
 }
 
-static int16_t GetMinDmax(VL53L1_range_results_t *presults)
-{
-	uint8_t dmax_reflectance_index = 2;
-	int16_t ambient_dmax_mm;
-	int16_t dmax_min;
-
-	ambient_dmax_mm = presults->ambient_dmax_mm[dmax_reflectance_index];
-
-	if (ambient_dmax_mm < presults->wrap_dmax_mm)
-		dmax_min = ambient_dmax_mm;
-	else
-		dmax_min = presults->wrap_dmax_mm;
-
-	return dmax_min;
-}
-
 VL53L1_Error VL53L1_GetRangingMeasurementData(VL53L1_DEV Dev,
 	VL53L1_RangingMeasurementData_t *pRangingMeasurementData)
 {
@@ -2100,8 +2244,8 @@ VL53L1_Error VL53L1_GetRangingMeasurementData(VL53L1_DEV Dev,
 			Dev,
 			VL53L1_DEVICERESULTSLEVEL_FULL,
 			presults);
-
-	dmax_min = GetMinDmax(presults);
+	dmax_min = MIN(presults->wrap_dmax_mm,
+			presults->ambient_dmax_mm[DMAX_REFLECTANCE_IDX]);
 
 	if (Status == VL53L1_ERROR_NONE) {
 		pRangingMeasurementData->StreamCount = presults->stream_count;
@@ -2112,8 +2256,9 @@ VL53L1_Error VL53L1_GetRangingMeasurementData(VL53L1_DEV Dev,
 
 		index = GetOutputDataIndex(Dev, presults);
 		presults_data = &(presults->VL53L1_PRM_00005[index]);
-		Status = SetSimpleData(Dev, presults_data,
-			pRangingMeasurementData);
+		Status = SetSimpleData(Dev, presults->active_results,
+				presults_data,
+				pRangingMeasurementData);
 	}
 
 	if (Status == VL53L1_ERROR_NONE) {
@@ -2141,7 +2286,8 @@ static VL53L1_Error SetMeasurementData(VL53L1_DEV Dev,
 	pMultiRangingData->NumberOfObjectsFound = presults->active_results;
 	pMultiRangingData->RoiNumber = presults->zone_id;
 
-	dmax_min = GetMinDmax(presults);
+	dmax_min = MIN(presults->wrap_dmax_mm,
+			presults->ambient_dmax_mm[DMAX_REFLECTANCE_IDX]);
 
 
 
@@ -2159,8 +2305,9 @@ static VL53L1_Error SetMeasurementData(VL53L1_DEV Dev,
 		pRangeData->DmaxMilliMeter = dmax_min;
 
 		if (Status == VL53L1_ERROR_NONE)
-			Status = SetSimpleData(Dev, presults_data,
-				pRangeData);
+			Status = SetSimpleData(Dev, presults->active_results,
+					presults_data,
+					pRangeData);
 	}
 
 	if (Status == VL53L1_ERROR_NONE) {
@@ -2233,11 +2380,12 @@ VL53L1_Error VL53L1_GetMultiRangingData(VL53L1_DEV Dev,
 VL53L1_Error VL53L1_PerformRefSpadManagement(VL53L1_DEV Dev)
 {
 	VL53L1_Error Status = VL53L1_ERROR_NONE;
+	VL53L1_Error UnfilteredStatus;
 
 	LOG_FUNCTION_START("");
 
 	if (Status == VL53L1_ERROR_NONE)
-		Status = VL53L1_run_ref_spad_char(Dev);
+		Status = VL53L1_run_ref_spad_char(Dev, &UnfilteredStatus);
 
 	LOG_FUNCTION_END(Status);
 	return Status;
@@ -2279,12 +2427,12 @@ VL53L1_Error VL53L1_PerformXTalkCalibration(VL53L1_DEV Dev,
 		uint8_t CalibrationOption)
 {
 	VL53L1_Error Status = VL53L1_ERROR_NONE;
+	VL53L1_Error UnfilteredStatus;
 	uint32_t mm_config_timeout_us = 2000;
 	uint32_t range_config_timeout_us = 10000;
 	uint16_t dss_config__target_total_rate_mcps =  0x1400;
 	uint32_t phasecal_config_timeout_us = 4000;
 	uint8_t num_of_samples = 7;
-	uint16_t xtalk_filter_thresh_mm = 50;
 
 	SUPPRESS_UNUSED_WARNING(CalibrationOption);
 
@@ -2303,7 +2451,7 @@ VL53L1_Error VL53L1_PerformXTalkCalibration(VL53L1_DEV Dev,
 				mm_config_timeout_us,
 				range_config_timeout_us,
 				num_of_samples,
-				xtalk_filter_thresh_mm);
+				&UnfilteredStatus);
 
 	LOG_FUNCTION_END(Status);
 	return Status;
@@ -2319,11 +2467,15 @@ VL53L1_Error VL53L1_SetOffsetCalibrationMode(VL53L1_DEV Dev,
 
 	if (OffsetCalibrationMode == VL53L1_OFFSETCALIBRATIONMODE_STANDARD) {
 		offset_cal_mode =
-				VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__STANDARD;
+			VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__STANDARD;
 	} else if (OffsetCalibrationMode ==
 			VL53L1_OFFSETCALIBRATIONMODE_PRERANGE_ONLY) {
 		offset_cal_mode =
 		VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__STANDARD_PRE_RANGE_ONLY;
+	} else if (OffsetCalibrationMode ==
+			VL53L1_OFFSETCALIBRATIONMODE_MULTI_ZONE) {
+		offset_cal_mode =
+			VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__HISTOGRAM;
 	} else {
 		Status = VL53L1_ERROR_INVALID_PARAMS;
 	}
@@ -2336,10 +2488,39 @@ VL53L1_Error VL53L1_SetOffsetCalibrationMode(VL53L1_DEV Dev,
 	return Status;
 }
 
+VL53L1_Error VL53L1_SetOffsetCorrectionMode(VL53L1_DEV Dev,
+		VL53L1_OffsetCorrectionModes OffsetCorrectionMode)
+{
+	VL53L1_Error Status = VL53L1_ERROR_NONE;
+	VL53L1_OffsetCorrectionMode   offset_cor_mode;
+
+	LOG_FUNCTION_START("");
+
+	if (OffsetCorrectionMode == VL53L1_OFFSETCORRECTIONMODE_STANDARD) {
+		offset_cor_mode =
+				VL53L1_OFFSETCORRECTIONMODE__MM1_MM2_OFFSETS;
+	} else if (OffsetCorrectionMode ==
+			VL53L1_OFFSETCORRECTIONMODE_PERZONE) {
+		offset_cor_mode =
+				VL53L1_OFFSETCORRECTIONMODE__PER_ZONE_OFFSETS;
+	} else {
+		Status = VL53L1_ERROR_INVALID_PARAMS;
+	}
+
+	if (Status == VL53L1_ERROR_NONE)
+		Status =  VL53L1_set_offset_correction_mode(Dev,
+				offset_cor_mode);
+
+	LOG_FUNCTION_END(Status);
+	return Status;
+}
+
+
 VL53L1_Error VL53L1_PerformOffsetCalibration(VL53L1_DEV Dev,
 	int32_t CalDistanceMilliMeter, FixPoint1616_t CalReflectancePercent)
 {
 	VL53L1_Error Status = VL53L1_ERROR_NONE;
+	VL53L1_Error UnfilteredStatus;
 	uint32_t range_config_timeout_us = 13000;
 	uint8_t pre_num_of_samples = 32;
 	uint8_t mm1_num_of_samples = 100;
@@ -2348,24 +2529,74 @@ VL53L1_Error VL53L1_PerformOffsetCalibration(VL53L1_DEV Dev,
 	uint32_t phasecal_config_timeout_us = 1000;
 	uint16_t CalReflectancePercent_int;
 
+
+	VL53L1_DevicePresetModes      device_preset_mode;
+	VL53L1_DeviceZonePreset       zone_preset;
+	VL53L1_zone_config_t         zone_cfg;
+	uint32_t phasecal_config_timeout_us_pz;
+	uint32_t mm_config_timeout_us_pz;
+	uint32_t range_config_timeout_us_pz;
+	uint16_t num_of_samples;
+	VL53L1_OffsetCalibrationMode   offset_cal_mode;
+
 	LOG_FUNCTION_START("");
 
 	CalReflectancePercent_int =
 			VL53L1_FIXPOINT1616TOFIXPOINT72(CalReflectancePercent);
 
 	if (Status == VL53L1_ERROR_NONE)
-		Status = VL53L1_run_offset_calibration(
-				Dev,
-				dss_config__target_total_rate_mcps,
-				phasecal_config_timeout_us,
-				range_config_timeout_us,
-				pre_num_of_samples,
-				mm1_num_of_samples,
-				mm2_num_of_samples,
-				CalDistanceMilliMeter,
-				CalReflectancePercent_int
-				);
+		Status =  VL53L1_get_offset_calibration_mode(Dev,
+				&offset_cal_mode);
 
+	if ((offset_cal_mode ==
+			VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__STANDARD) ||
+		(offset_cal_mode ==
+		VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__STANDARD_PRE_RANGE_ONLY)) {
+
+		if (Status == VL53L1_ERROR_NONE)
+			Status = VL53L1_run_offset_calibration(
+					Dev,
+					dss_config__target_total_rate_mcps,
+					phasecal_config_timeout_us,
+					range_config_timeout_us,
+					pre_num_of_samples,
+					mm1_num_of_samples,
+					mm2_num_of_samples,
+					(int16_t)CalDistanceMilliMeter,
+					CalReflectancePercent_int,
+					&UnfilteredStatus);
+
+	} else if (offset_cal_mode ==
+			VL53L1_OFFSETCALIBRATIONMODE__MM1_MM2__HISTOGRAM) {
+
+		device_preset_mode =
+			VL53L1_DEVICEPRESETMODE_HISTOGRAM_MULTIZONE_LONG_RANGE;
+		zone_preset = VL53L1_DEVICEZONEPRESET_CUSTOM;
+		phasecal_config_timeout_us_pz         =  4000;
+		mm_config_timeout_us_pz               =  2000;
+		range_config_timeout_us_pz            = 10000;
+		num_of_samples                     =    64;
+
+		Status = VL53L1_get_zone_config(Dev, &zone_cfg);
+
+		if (Status == VL53L1_ERROR_NONE)
+			Status = VL53L1_run_zone_calibration(
+					Dev,
+					device_preset_mode,
+					zone_preset,
+					&zone_cfg,
+					dss_config__target_total_rate_mcps,
+					phasecal_config_timeout_us_pz,
+					mm_config_timeout_us_pz,
+					range_config_timeout_us_pz,
+					num_of_samples,
+					(int16_t)CalDistanceMilliMeter,
+					CalReflectancePercent_int,
+					&UnfilteredStatus);
+
+	} else {
+		Status = VL53L1_ERROR_INVALID_PARAMS;
+	}
 
 	LOG_FUNCTION_END(Status);
 	return Status;
@@ -2395,6 +2626,26 @@ VL53L1_Error VL53L1_GetCalibrationData(VL53L1_DEV Dev,
 
 	Status = VL53L1_get_part_to_part_data(
 		Dev, pCalibrationData);
+
+	LOG_FUNCTION_END(Status);
+	return Status;
+}
+
+VL53L1_Error VL53L1_GetOpticalCenter(VL53L1_DEV Dev,
+		uint8_t *pOpticalCenterX, uint8_t *pOpticalCenterY)
+{
+	VL53L1_Error Status = VL53L1_ERROR_NONE;
+	VL53L1_CalibrationData_t  CalibrationData;
+
+	LOG_FUNCTION_START("");
+
+	*pOpticalCenterX = 0;
+	*pOpticalCenterY = 0;
+	Status = VL53L1_get_part_to_part_data(Dev, &CalibrationData);
+	if (Status == VL53L1_ERROR_NONE) {
+		*pOpticalCenterX = CalibrationData.mm_roi.x_centre;
+		*pOpticalCenterY = CalibrationData.mm_roi.y_centre;
+	}
 
 	LOG_FUNCTION_END(Status);
 	return Status;
