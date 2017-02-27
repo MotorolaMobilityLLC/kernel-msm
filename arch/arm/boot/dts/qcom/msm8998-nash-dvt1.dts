@@ -22,3 +22,22 @@
 	/delete-property/ pinctrl-names;
 	/delete-property/ pinctrl-0;
 };
+
+&soc {
+	vdd10_anx: vdd10_anx {
+		status = "disabled";
+	};
+};
+
+&pm8998_l25 {
+	regulator-min-microvolt = <3312000>;
+	regulator-max-microvolt = <3312000>;
+	qcom,init-voltage = <3312000>;
+};
+
+&i2c_7 {
+	analogix_anx78e6@72 {
+		analogix,vdd_33-supply = <&pm8998_l25>;
+		analogix,vdd_10-supply = <&pm8998_l3>;
+	};
+};
