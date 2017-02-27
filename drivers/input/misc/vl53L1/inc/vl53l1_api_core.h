@@ -1035,6 +1035,27 @@ VL53L1_Error VL53L1_get_dmax_mode(
 
 
 
+
+
+VL53L1_Error VL53L1_get_dmax_calibration_data(
+	VL53L1_DEV                      Dev,
+	VL53L1_DeviceDmaxMode           dmax_mode,
+	uint8_t                         zone_id,
+	VL53L1_dmax_calibration_data_t *pdmax_cal);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 VL53L1_Error VL53L1_set_hist_dmax_config(
 	VL53L1_DEV                      Dev,
 	VL53L1_hist_gen3_dmax_config_t *pdmax_cfg);
@@ -1151,6 +1172,403 @@ VL53L1_Error VL53L1_get_zone_calibration_data(
 	VL53L1_DEV                         Dev,
 	VL53L1_zone_calibration_results_t *pzone_cal);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_lite_xtalk_margin_kcps(
+	VL53L1_DEV                          Dev,
+	int16_t                           *pxtalk_margin);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_lite_xtalk_margin_kcps(
+	VL53L1_DEV                          Dev,
+	int16_t                             xtalk_margin);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_histogram_xtalk_margin_kcps(
+	VL53L1_DEV                          Dev,
+	int16_t                           *pxtalk_margin);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_histogram_xtalk_margin_kcps(
+	VL53L1_DEV                          Dev,
+	int16_t                             xtalk_margin);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_histogram_phase_consistency(
+	VL53L1_DEV                          Dev,
+	uint8_t                            *pphase_consistency);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_histogram_phase_consistency(
+	VL53L1_DEV                          Dev,
+	uint8_t                             phase_consistency);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_histogram_event_consistency(
+	VL53L1_DEV                          Dev,
+	uint8_t                            *pevent_consistency);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_histogram_event_consistency(
+	VL53L1_DEV                          Dev,
+	uint8_t                             event_consistency);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_histogram_ambient_threshold_sigma(
+	VL53L1_DEV                          Dev,
+	uint8_t                            *pamb_thresh_sigma);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_histogram_ambient_threshold_sigma(
+	VL53L1_DEV                          Dev,
+	uint8_t                             amb_thresh_sigma);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_lite_min_count_rate(
+	VL53L1_DEV                          Dev,
+	uint16_t                           *plite_mincountrate);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_lite_min_count_rate(
+	VL53L1_DEV                          Dev,
+	uint16_t                            lite_mincountrate);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_lite_sigma_threshold(
+	VL53L1_DEV                          Dev,
+	uint16_t                           *plite_sigma);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_lite_sigma_threshold(
+	VL53L1_DEV                          Dev,
+	uint16_t                            lite_sigma);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_restore_xtalk_nvm_default(
+	VL53L1_DEV                     Dev);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_xtalk_detect_config(
+	VL53L1_DEV                          Dev,
+	int16_t                            *pmax_valid_range_mm,
+	int16_t                            *pmin_valid_range_mm,
+	uint16_t                           *pmax_valid_rate_kcps,
+	uint16_t                           *pmax_sigma_mm);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_xtalk_detect_config(
+	VL53L1_DEV                          Dev,
+	int16_t                             max_valid_range_mm,
+	int16_t                             min_valid_range_mm,
+	uint16_t                            max_valid_rate_kcps,
+	uint16_t                            max_sigma_mm);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_target_order_mode(
+	VL53L1_DEV                          Dev,
+	VL53L1_HistTargetOrder             *phist_target_order);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_target_order_mode(
+	VL53L1_DEV                          Dev,
+	VL53L1_HistTargetOrder              hist_target_order);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_set_dmax_reflectance_values(
+	VL53L1_DEV                          Dev,
+	VL53L1_dmax_reflectance_array_t    *pdmax_reflectances);
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error VL53L1_get_dmax_reflectance_values(
+	VL53L1_DEV                          Dev,
+	VL53L1_dmax_reflectance_array_t    *pdmax_reflectances);
 
 #ifdef __cplusplus
 }
