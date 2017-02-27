@@ -173,6 +173,9 @@ typedef struct {
 	uint8_t   ambient_thresh_sigma;
 
 
+	int32_t   min_ambient_thresh_events;
+
+
 
 	uint16_t  target_reflectance_for_dmax_calc[VL53L1_MAX_AMBIENT_DMAX_VALUES];
 
