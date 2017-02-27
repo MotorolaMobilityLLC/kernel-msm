@@ -393,7 +393,7 @@ VL53L1_Error VL53L1_GetDistanceMode(VL53L1_DEV Dev,
  * @param   Dev                   Device Handle
  * @param   OutputMode            Output mode to apply
  *                                Valid values are:
- *                                VL53L1_OUTPUTMODE_NEAR
+ *                                VL53L1_OUTPUTMODE_NEAREST
  *                                VL53L1_OUTPUTMODE_STRONGEST
  *
  * @return  VL53L1_ERROR_NONE               Success
@@ -485,6 +485,59 @@ VL53L1_Error VL53L1_SetInterMeasurementPeriodMilliSeconds(
 VL53L1_Error VL53L1_GetInterMeasurementPeriodMilliSeconds(
 	VL53L1_DEV Dev, uint32_t *pInterMeasurementPeriodMilliSeconds);
 
+/**
+ * @brief  target reflectance for Dmax setting
+ * @par Function Description
+ * Allow user to set the value for target reflectance @ 940nm to calculate the
+ * ambient DMAX values for. Set to 50% by default by @a VL53L1_DataInit()
+ *
+ * @param   Dev                   Device Handle
+ * @param   value                 Reflectance % in 16.16 fixed point
+ * @return  VL53L1_ERROR_NONE     Success
+ * @return  "Other error code"    See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_SetDmaxReflectance(VL53L1_DEV Dev,
+		FixPoint1616_t value);
+
+/**
+ * @brief  Get target reflectance for Dmax
+ * @par Function Description
+ * Retrieves the value for target reflectance @ 940nm to calculate the
+ * ambient DMAX values for. Set to 50% by default by @a VL53L1_DataInit()
+ *
+ * @param   Dev                   Device Handle
+ * @param   pvalue                pointer to Reflectance % in 16.16 fixed point
+ * @return  VL53L1_ERROR_NONE     Success
+ * @return  "Other error code"    See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_GetDmaxReflectance(VL53L1_DEV Dev,
+		FixPoint1616_t *pvalue);
+/**
+ * @brief Set function for ambient Dmax mode
+ *
+ *
+ * @param    Dev                  Device Handle
+ * @param    DmaxMode             DMAX mode to be used in ranging
+ *
+ * @return   VL53L1_ERROR_NONE    Success
+ * @return  "Other error code"    See ::VL53L1_Error
+ */
+
+VL53L1_Error VL53L1_SetDmaxMode(VL53L1_DEV Dev,
+		VL53L1_DeviceDmaxModes DmaxMode);
+
+/**
+ * @brief Get function for ambient Dmax mode
+ *
+ * @param	Dev                   Device Handle
+ * @param	pDmaxMode             output pointer to DMAX mode currently in use
+ *
+ * @return   VL53L1_ERROR_NONE    Success
+ * @return  "Other error code"    See ::VL53L1_Error
+  */
+
+VL53L1_Error VL53L1_GetDmaxMode(VL53L1_DEV Dev,
+	VL53L1_DeviceDmaxModes *pDmaxMode);
 
 /** @} VL53L1_parameters_group */
 
@@ -1057,12 +1110,33 @@ VL53L1_Error VL53L1_PerformXTalkCalibration(VL53L1_DEV Dev,
 *
 * @param   Dev                       Device Handle
 * @param   OffsetCalibrationMode     Offset Calibration Mode
+* 				valid values are:
+* 				VL53L1_OFFSETCALIBRATIONMODE_STANDARD
+* 				VL53L1_OFFSETCALIBRATIONMODE_PRERANGE_ONLY
+* 				VL53L1_OFFSETCALIBRATIONMODE_MULTI_ZONE
 *
 * @return  VL53L1_ERROR_NONE         Success
 * @return  "Other error code"        See ::VL53L1_Error
 */
 VL53L1_Error VL53L1_SetOffsetCalibrationMode(VL53L1_DEV Dev,
 		VL53L1_OffsetCalibrationModes OffsetCalibrationMode);
+
+/**
+* @brief Define the mode to be used for the offset correction
+*
+* Define the mode to be used for the offset correction.
+*
+* @param   Dev                       Device Handle
+* @param   OffsetCorrectionMode      Offset Correction Mode
+* 				valid values are:
+* 				VL53L1_OFFSETCORRECTIONMODE_STANDARD
+* 				VL53L1_OFFSETCORRECTIONMODE_PERZONE
+*
+* @return  VL53L1_ERROR_NONE         Success
+* @return  "Other error code"        See ::VL53L1_Error
+*/
+VL53L1_Error VL53L1_SetOffsetCorrectionMode(VL53L1_DEV Dev,
+		VL53L1_OffsetCorrectionModes OffsetCorrectionMode);
 
 
 /**
@@ -1129,6 +1203,24 @@ VL53L1_Error VL53L1_SetCalibrationData(VL53L1_DEV Dev,
 VL53L1_Error VL53L1_GetCalibrationData(VL53L1_DEV Dev,
 		VL53L1_CalibrationData_t  *pCalibrationData);
 
+/**
+ * @brief Gets the optical center.
+ *
+ * @par Function Description
+ * This function get the optical center issued from the nvm set at FTM stage
+ * expressed in the same coordinate system as the ROI are
+ *
+ * @note This function doesn't Accesses the device
+ *
+ * @param   Dev                          Device Handle
+ * @param   *pOpticalCentreX             pointer to the X position of center
+ * @param   *pOpticalCentreY             pointer to the Y position of center
+ *  data.
+ * @return  VL53L1_ERROR_NONE            Success
+ * @return  "Other error code"           See ::VL53L1_Error
+ */
+VL53L1_Error VL53L1_GetOpticalCenter(VL53L1_DEV Dev,
+		uint8_t *pOpticalCenterX, uint8_t *pOpticalCenterY);
 
 /** @} VL53L1_Calibration_group */
 
