@@ -1239,8 +1239,8 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 
 	mdata->iclient = msm_ion_client_create(mdata->pdev->name);
 	if (IS_ERR_OR_NULL(mdata->iclient)) {
-		pr_err("msm_ion_client_create() return error (%p)\n",
-				mdata->iclient);
+		pr_err("msm_ion_client_create() return error (%pK)\n",
+		       mdata->iclient);
 		mdata->iclient = NULL;
 	}
 

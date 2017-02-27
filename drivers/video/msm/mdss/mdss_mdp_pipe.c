@@ -1529,8 +1529,8 @@ int mdss_mdp_pipe_queue_data(struct mdss_mdp_pipe *pipe,
 	}
 
 	if (src_data == NULL || !pipe->has_buf) {
-		pr_debug("src_data=%p has_buf=%d pipe num=%dx\n",
-				src_data, pipe->has_buf, pipe->num);
+		pr_debug("src_data=%pK has_buf=%d pipe num=%dx\n",
+			 src_data, pipe->has_buf, pipe->num);
 		goto update_nobuf;
 	}
 

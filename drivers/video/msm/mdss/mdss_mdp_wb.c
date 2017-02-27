@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -95,7 +95,7 @@ struct mdss_mdp_data *mdss_mdp_wb_debug_buffer(struct msm_fb_data_type *mfd)
 		ihdl = ion_alloc(iclient, img_size, SZ_4K,
 				 ION_HEAP(ION_SF_HEAP_ID), 0);
 		if (IS_ERR_OR_NULL(ihdl)) {
-			pr_err("unable to alloc fbmem from ion (%p)\n", ihdl);
+			pr_err("unable to alloc fbmem from ion (%pK)\n", ihdl);
 			return NULL;
 		}
 
@@ -122,7 +122,7 @@ struct mdss_mdp_data *mdss_mdp_wb_debug_buffer(struct msm_fb_data_type *mfd)
 			img->len = img_size;
 		}
 
-		pr_debug("ihdl=%p virt=%p phys=0x%pa iova=0x%pa size=%u\n",
+		pr_debug("ihdl=%pK virt=%pK phys=0x%pa iova=0x%pa size=%u\n",
 			 ihdl, videomemory, &mdss_wb_mem, &img->addr, img_size);
 	}
 	return &mdss_wb_buffer;
