@@ -76,6 +76,10 @@ static unsigned int dwc3_gadget_imod_val;
 module_param(dwc3_gadget_imod_val, int, 0644);
 MODULE_PARM_DESC(dwc3_gadget_imod_val,
 			"Interrupt moderation in usecs for normal EPs");
+/* pm qos latency */
+static int qos_latency;
+module_param(qos_latency, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(qos_latency, "latency constraint when USB connected");
 
 /* XHCI registers */
 #define USB3_HCSPARAMS1		(0x4)
@@ -4243,6 +4247,9 @@ static void msm_dwc3_perf_vote_update(struct dwc3_msm *mdwc, bool perf_mode)
 {
 	static bool curr_perf_mode;
 	int latency = mdwc->pm_qos_latency;
+
+	if (qos_latency)
+		latency = qos_latency;
 
 	if ((curr_perf_mode == perf_mode) || !latency)
 		return;
