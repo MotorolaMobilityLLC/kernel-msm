@@ -751,11 +751,14 @@ VL53L1_Error VL53L1_set_part_to_part_data(
 			pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
 
 		pdev->histpostprocess.algo__crosstalk_compensation_plane_offset_kcps =
-			pdev->customer.algo__crosstalk_compensation_plane_offset_kcps;
+			VL53L1_calc_crosstalk_plane_offset_with_margin(
+				pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps,
+				pdev->xtalk_cfg.histogram_mode_crosstalk_margin_kcps);
+
 		pdev->histpostprocess.algo__crosstalk_compensation_x_plane_gradient_kcps =
-			pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
+			pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps;
 		pdev->histpostprocess.algo__crosstalk_compensation_y_plane_gradient_kcps =
-			pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
+			pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps;
 
 
 
@@ -767,6 +770,11 @@ VL53L1_Error VL53L1_set_part_to_part_data(
 				0x00;
 			pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps =
 				0x00;
+		} else {
+			pdev->customer.algo__crosstalk_compensation_plane_offset_kcps =
+				VL53L1_calc_crosstalk_plane_offset_with_margin(
+					pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps,
+					pdev->xtalk_cfg.lite_mode_crosstalk_margin_kcps);
 		}
 	}
 
@@ -802,21 +810,15 @@ VL53L1_Error VL53L1_get_part_to_part_data(
 
 
 
-	if (pdev->xtalk_cfg.global_crosstalk_compensation_enable == 0x00) {
-		pcal_data->customer.algo__crosstalk_compensation_plane_offset_kcps =
-			pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps;
-		pcal_data->customer.algo__crosstalk_compensation_x_plane_gradient_kcps =
-			pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps;
-		pcal_data->customer.algo__crosstalk_compensation_y_plane_gradient_kcps =
-			pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps;
-	}
 
 
 
-	memcpy(
-		&(pcal_data->add_off_cal_data),
-		&(pdev->add_off_cal_data),
-		sizeof(VL53L1_additional_offset_cal_data_t));
+	pcal_data->customer.algo__crosstalk_compensation_plane_offset_kcps =
+		pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps;
+	pcal_data->customer.algo__crosstalk_compensation_x_plane_gradient_kcps =
+		pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps;
+	pcal_data->customer.algo__crosstalk_compensation_y_plane_gradient_kcps =
+		pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps;
 
 
 
@@ -831,6 +833,20 @@ VL53L1_Error VL53L1_get_part_to_part_data(
 		&(pcal_data->cust_dmax_cal),
 		&(pdev->cust_dmax_cal),
 		sizeof(VL53L1_dmax_calibration_data_t));
+
+
+
+	memcpy(
+		&(pcal_data->add_off_cal_data),
+		&(pdev->add_off_cal_data),
+		sizeof(VL53L1_additional_offset_cal_data_t));
+
+
+
+	memcpy(
+		&(pcal_data->mm_roi),
+		&(pdev->mm_roi),
+		sizeof(VL53L1_user_zone_t));
 
 
 
@@ -2202,12 +2218,26 @@ VL53L1_Error  VL53L1_enable_xtalk_compensation(
 
 
 	pdev->customer.algo__crosstalk_compensation_plane_offset_kcps =
-		pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps;
+		VL53L1_calc_crosstalk_plane_offset_with_margin(
+			pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps,
+			pdev->xtalk_cfg.lite_mode_crosstalk_margin_kcps);
 
 	pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps =
 		pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps;
 
 	pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps =
+		pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps;
+
+
+
+	pdev->histpostprocess.algo__crosstalk_compensation_plane_offset_kcps =
+		VL53L1_calc_crosstalk_plane_offset_with_margin(
+			pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps,
+			pdev->xtalk_cfg.histogram_mode_crosstalk_margin_kcps);
+
+	pdev->histpostprocess.algo__crosstalk_compensation_x_plane_gradient_kcps =
+		pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps;
+	pdev->histpostprocess.algo__crosstalk_compensation_y_plane_gradient_kcps =
 		pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps;
 
 
@@ -2277,6 +2307,129 @@ void VL53L1_get_xtalk_compensation_enable(
 
 }
 
+
+VL53L1_Error VL53L1_get_lite_xtalk_margin_kcps(
+	VL53L1_DEV                          Dev,
+	int16_t                           *pxtalk_margin)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*pxtalk_margin = pdev->xtalk_cfg.lite_mode_crosstalk_margin_kcps;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_set_lite_xtalk_margin_kcps(
+	VL53L1_DEV                     Dev,
+	int16_t                        xtalk_margin)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->xtalk_cfg.lite_mode_crosstalk_margin_kcps = xtalk_margin;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_get_histogram_xtalk_margin_kcps(
+	VL53L1_DEV                          Dev,
+	int16_t                           *pxtalk_margin)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*pxtalk_margin = pdev->xtalk_cfg.histogram_mode_crosstalk_margin_kcps;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_set_histogram_xtalk_margin_kcps(
+	VL53L1_DEV                     Dev,
+	int16_t                        xtalk_margin)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->xtalk_cfg.histogram_mode_crosstalk_margin_kcps = xtalk_margin;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+VL53L1_Error VL53L1_restore_xtalk_nvm_default(
+	VL53L1_DEV                     Dev)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps =
+		pdev->xtalk_cfg.nvm_default__crosstalk_compensation_plane_offset_kcps;
+	pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps =
+		pdev->xtalk_cfg.nvm_default__crosstalk_compensation_x_plane_gradient_kcps;
+	pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps =
+		pdev->xtalk_cfg.nvm_default__crosstalk_compensation_y_plane_gradient_kcps;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
 VL53L1_Error  VL53L1_disable_xtalk_compensation(
 	VL53L1_DEV                 Dev)
 {
@@ -2336,6 +2489,522 @@ VL53L1_Error  VL53L1_disable_xtalk_compensation(
 	return status;
 
 }
+
+
+VL53L1_Error VL53L1_get_histogram_phase_consistency(
+	VL53L1_DEV                          Dev,
+	uint8_t                            *pphase_consistency)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*pphase_consistency =
+			pdev->histpostprocess.algo__consistency_check__phase_tolerance;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_set_histogram_phase_consistency(
+	VL53L1_DEV                          Dev,
+	uint8_t                             phase_consistency)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->histpostprocess.algo__consistency_check__phase_tolerance =
+			phase_consistency;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_get_histogram_event_consistency(
+	VL53L1_DEV                          Dev,
+	uint8_t                            *pevent_consistency)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*pevent_consistency =
+			pdev->histpostprocess.algo__consistency_check__event_sigma;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_set_histogram_event_consistency(
+	VL53L1_DEV                          Dev,
+	uint8_t                             event_consistency)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->histpostprocess.algo__consistency_check__event_sigma =
+		event_consistency;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_get_histogram_ambient_threshold_sigma(
+	VL53L1_DEV                          Dev,
+	uint8_t                            *pamb_thresh_sigma)
+{
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*pamb_thresh_sigma =
+			pdev->histpostprocess.ambient_thresh_sigma1;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_set_histogram_ambient_threshold_sigma(
+	VL53L1_DEV                          Dev,
+	uint8_t                             amb_thresh_sigma)
+{
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->histpostprocess.ambient_thresh_sigma1 =
+		amb_thresh_sigma;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_get_lite_sigma_threshold(
+	VL53L1_DEV                          Dev,
+	uint16_t                           *plite_sigma)
+{
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*plite_sigma =
+			pdev->tim_cfg.range_config__sigma_thresh;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_set_lite_sigma_threshold(
+	VL53L1_DEV                          Dev,
+	uint16_t                           lite_sigma)
+{
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->tim_cfg.range_config__sigma_thresh = lite_sigma;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_get_lite_min_count_rate(
+	VL53L1_DEV                          Dev,
+	uint16_t                           *plite_mincountrate)
+{
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*plite_mincountrate =
+			pdev->tim_cfg.range_config__min_count_rate_rtn_limit_mcps;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_set_lite_min_count_rate(
+	VL53L1_DEV                          Dev,
+	uint16_t                            lite_mincountrate)
+{
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->tim_cfg.range_config__min_count_rate_rtn_limit_mcps =
+		lite_mincountrate;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_get_xtalk_detect_config(
+	VL53L1_DEV                          Dev,
+	int16_t                            *pmax_valid_range_mm,
+	int16_t                            *pmin_valid_range_mm,
+	uint16_t                           *pmax_valid_rate_kcps,
+	uint16_t                           *pmax_sigma_mm)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*pmax_valid_range_mm =
+			pdev->xtalk_cfg.algo__crosstalk_detect_max_valid_range_mm;
+	*pmin_valid_range_mm =
+			pdev->xtalk_cfg.algo__crosstalk_detect_min_valid_range_mm;
+	*pmax_valid_rate_kcps =
+			pdev->xtalk_cfg.algo__crosstalk_detect_max_valid_rate_kcps;
+	*pmax_sigma_mm =
+				pdev->xtalk_cfg.algo__crosstalk_detect_max_sigma_mm;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_set_xtalk_detect_config(
+	VL53L1_DEV                          Dev,
+	int16_t                             max_valid_range_mm,
+	int16_t                             min_valid_range_mm,
+	uint16_t                            max_valid_rate_kcps,
+	uint16_t                            max_sigma_mm)
+{
+
+
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->xtalk_cfg.algo__crosstalk_detect_max_valid_range_mm =
+		max_valid_range_mm;
+	pdev->xtalk_cfg.algo__crosstalk_detect_min_valid_range_mm =
+		min_valid_range_mm;
+	pdev->xtalk_cfg.algo__crosstalk_detect_max_valid_rate_kcps =
+		max_valid_rate_kcps;
+	pdev->xtalk_cfg.algo__crosstalk_detect_max_sigma_mm =
+		max_sigma_mm;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_get_target_order_mode(
+	VL53L1_DEV                          Dev,
+	VL53L1_HistTargetOrder             *phist_target_order)
+{
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*phist_target_order =
+			pdev->histpostprocess.hist_target_order;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_set_target_order_mode(
+	VL53L1_DEV                          Dev,
+	VL53L1_HistTargetOrder              hist_target_order)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->histpostprocess.hist_target_order = hist_target_order;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+
+VL53L1_Error VL53L1_get_dmax_reflectance_values(
+	VL53L1_DEV                          Dev,
+	VL53L1_dmax_reflectance_array_t    *pdmax_reflectances)
+{
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	uint8_t i = 0;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+
+
+
+
+
+
+
+	for (i = 0 ; i < VL53L1_MAX_AMBIENT_DMAX_VALUES ; i++) {
+		pdmax_reflectances->target_reflectance_for_dmax[i] =
+				pdev->dmax_cfg.target_reflectance_for_dmax_calc[i];
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_set_dmax_reflectance_values(
+	VL53L1_DEV                          Dev,
+	VL53L1_dmax_reflectance_array_t    *pdmax_reflectances)
+{
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	uint8_t i = 0;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+
+
+
+
+
+
+
+	for (i = 0 ; i < VL53L1_MAX_AMBIENT_DMAX_VALUES ; i++) {
+		pdev->dmax_cfg.target_reflectance_for_dmax_calc[i] =
+				pdmax_reflectances->target_reflectance_for_dmax[i];
+	}
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+VL53L1_Error VL53L1_get_vhv_loopbound(
+	VL53L1_DEV                   Dev,
+	uint8_t                     *pvhv_loopbound)
+{
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	*pvhv_loopbound = pdev->stat_nvm.vhv_config__timeout_macrop_loop_bound / 4 ;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
+
+
+VL53L1_Error VL53L1_set_vhv_loopbound(
+	VL53L1_DEV                   Dev,
+	uint8_t                      vhv_loopbound)
+{
+
+
+
+
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	pdev->stat_nvm.vhv_config__timeout_macrop_loop_bound =
+			(pdev->stat_nvm.vhv_config__timeout_macrop_loop_bound & 0x03) +
+			(vhv_loopbound * 4);
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+
+}
+
 
 
 VL53L1_Error VL53L1_init_and_start_range(
@@ -2778,15 +3447,20 @@ VL53L1_Error VL53L1_get_device_results(
 
 
 	VL53L1_Error status = VL53L1_ERROR_NONE;
+
 	VL53L1_LLDriverData_t *pdev =
 			VL53L1DevStructGetLLDriverHandle(Dev);
 	VL53L1_LLDriverResults_t *pres =
 			VL53L1DevStructGetLLResultsHandle(Dev);
+
 	VL53L1_range_results_t   *presults = &(pres->range_results);
 	VL53L1_zone_objects_t    *pobjects = &(pres->zone_results.VL53L1_PRM_00005[0]);
 	VL53L1_ll_driver_state_t *pstate   = &(pdev->ll_state);
 	VL53L1_zone_config_t     *pzone_cfg = &(pdev->zone_cfg);
 	VL53L1_zone_hist_info_t  *phist_info = &(pres->zone_hists.VL53L1_PRM_00005[0]);
+
+	VL53L1_dmax_calibration_data_t   dmax_cal;
+	VL53L1_dmax_calibration_data_t *pdmax_cal = &dmax_cal;
 
 	uint8_t i;
 
@@ -2833,18 +3507,32 @@ VL53L1_Error VL53L1_get_device_results(
 					pdev->gain_cal.histogram_ranging_gain_factor;
 
 			pdev->histpostprocess.algo__crosstalk_compensation_plane_offset_kcps =
-					pdev->customer.algo__crosstalk_compensation_plane_offset_kcps;
+				VL53L1_calc_crosstalk_plane_offset_with_margin(
+					pdev->xtalk_cfg.algo__crosstalk_compensation_plane_offset_kcps,
+					pdev->xtalk_cfg.histogram_mode_crosstalk_margin_kcps);
+
 			pdev->histpostprocess.algo__crosstalk_compensation_x_plane_gradient_kcps =
-					pdev->customer.algo__crosstalk_compensation_x_plane_gradient_kcps;
+				pdev->xtalk_cfg.algo__crosstalk_compensation_x_plane_gradient_kcps;
 			pdev->histpostprocess.algo__crosstalk_compensation_y_plane_gradient_kcps =
-					pdev->customer.algo__crosstalk_compensation_y_plane_gradient_kcps;
+				pdev->xtalk_cfg.algo__crosstalk_compensation_y_plane_gradient_kcps;
 
 			pdev->dmax_cfg.ambient_thresh_sigma =
 					pdev->histpostprocess.ambient_thresh_sigma1;
+			pdev->dmax_cfg.min_ambient_thresh_events =
+					pdev->histpostprocess.min_ambient_thresh_events;
 			pdev->dmax_cfg.dss_config__target_total_rate_mcps =
 					pdev->stat_cfg.dss_config__target_total_rate_mcps;
 			pdev->dmax_cfg.dss_config__aperture_attenuation =
 					pdev->gen_cfg.dss_config__aperture_attenuation;
+
+			pdev->histpostprocess.algo__crosstalk_detect_max_valid_range_mm =
+					pdev->xtalk_cfg.algo__crosstalk_detect_max_valid_range_mm;
+			pdev->histpostprocess.algo__crosstalk_detect_min_valid_range_mm =
+					pdev->xtalk_cfg.algo__crosstalk_detect_min_valid_range_mm;
+			pdev->histpostprocess.algo__crosstalk_detect_max_valid_rate_kcps =
+					pdev->xtalk_cfg.algo__crosstalk_detect_max_valid_rate_kcps;
+			pdev->histpostprocess.algo__crosstalk_detect_max_sigma_mm =
+					pdev->xtalk_cfg.algo__crosstalk_detect_max_sigma_mm;
 
 
 
@@ -2890,12 +3578,24 @@ VL53L1_Error VL53L1_get_device_results(
 
 
 
+		if (status == VL53L1_ERROR_NONE)
+			status =
+				VL53L1_get_dmax_calibration_data(
+					Dev,
+					pdev->dmax_mode,
+					pdev->ll_state.rd_zone_id,
+					pdmax_cal);
+
+
+
+
+
 
 		if (status == VL53L1_ERROR_NONE)
 			status =
 				VL53L1_ipp_hist_process_data(
 					Dev,
-					&(pdev->fmt_dmax_cal),
+					pdmax_cal,
 					&(pdev->dmax_cfg),
 					&(pdev->histpostprocess),
 					&(pdev->hist_data),
@@ -2908,7 +3608,7 @@ VL53L1_Error VL53L1_get_device_results(
 		if (status == VL53L1_ERROR_NONE)
 			status =
 				VL53L1_hist_wrap_dmax(
-					&(pres->zone_hists.VL53L1_PRM_00005[pdev->ll_state.rd_zone_id]),
+					&(pdev->histpostprocess),
 					&(pdev->hist_data),
 					&(presults->wrap_dmax_mm));
 
@@ -2919,6 +3619,8 @@ VL53L1_Error VL53L1_get_device_results(
 			status =
 				VL53L1_hist_phase_consistency_check(
 					Dev,
+					&(pres->zone_hists.VL53L1_PRM_00005[pdev->ll_state.rd_zone_id]),
+					&(pdev->hist_data),
 					&(pres->zone_results.VL53L1_PRM_00005[pdev->ll_state.rd_zone_id]),
 					presults);
 
@@ -3053,7 +3755,11 @@ VL53L1_Error VL53L1_get_device_results(
 			pobjects->max_objects      = presults->max_results;
 			pobjects->active_objects   = presults->active_results;
 
-			for (i = 0; i < presults->active_results; i++)  {
+			for (i = 0; i < presults->active_results; i++) {
+				pobjects->VL53L1_PRM_00005[i].VL53L1_PRM_00023 =
+					presults->VL53L1_PRM_00005[i].VL53L1_PRM_00023;
+				pobjects->VL53L1_PRM_00005[i].VL53L1_PRM_00022 =
+					presults->VL53L1_PRM_00005[i].VL53L1_PRM_00022;
 				pobjects->VL53L1_PRM_00005[i].VL53L1_PRM_00014 =
 					presults->VL53L1_PRM_00005[i].VL53L1_PRM_00014;
 			}
@@ -3583,18 +4289,40 @@ VL53L1_Error VL53L1_calc_ambient_dmax(
 {
 	VL53L1_Error  status = VL53L1_ERROR_NONE;
 
-	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+	VL53L1_LLDriverData_t *pdev =
+		VL53L1DevStructGetLLDriverHandle(Dev);
+
+	VL53L1_dmax_calibration_data_t   dmax_cal;
+	VL53L1_dmax_calibration_data_t *pdmax_cal = &dmax_cal;
 
 	LOG_FUNCTION_START("");
 
+
+
+
+
+
 	status =
-		VL53L1_ipp_hist_ambient_dmax(
+		VL53L1_get_dmax_calibration_data(
 			Dev,
-			target_reflectance,
-			&(pdev->fmt_dmax_cal),
-			&(pdev->dmax_cfg),
-			&(pdev->hist_data),
-			pambient_dmax_mm);
+			pdev->debug_mode,
+			pdev->ll_state.rd_zone_id,
+			pdmax_cal);
+
+
+
+
+
+
+	if (status == VL53L1_ERROR_NONE)
+		status =
+			VL53L1_ipp_hist_ambient_dmax(
+				Dev,
+				target_reflectance,
+				&(pdev->fmt_dmax_cal),
+				&(pdev->dmax_cfg),
+				&(pdev->hist_data),
+				pambient_dmax_mm);
 
 	LOG_FUNCTION_END(status);
 
@@ -3781,6 +4509,67 @@ VL53L1_Error VL53L1_get_dmax_mode(
 	LOG_FUNCTION_START("");
 
 	*pdmax_mode = pdev->dmax_mode;
+
+	LOG_FUNCTION_END(status);
+
+	return status;
+}
+
+
+VL53L1_Error VL53L1_get_dmax_calibration_data(
+	VL53L1_DEV                      Dev,
+	VL53L1_DeviceDmaxMode           dmax_mode,
+	uint8_t                         zone_id,
+	VL53L1_dmax_calibration_data_t *pdmax_cal)
+{
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+
+	VL53L1_LLDriverData_t    *pdev =
+		VL53L1DevStructGetLLDriverHandle(Dev);
+	VL53L1_LLDriverResults_t *pres =
+		VL53L1DevStructGetLLResultsHandle(Dev);
+
+	LOG_FUNCTION_START("");
+
+	switch (dmax_mode) {
+
+	case VL53L1_DEVICEDMAXMODE__PER_ZONE_CAL_DATA:
+		pdmax_cal->ref__actual_effective_spads =
+			(uint16_t)pres->zone_cal.VL53L1_PRM_00005[zone_id].effective_spads;
+		pdmax_cal->ref__peak_signal_count_rate_mcps =
+			(uint16_t)pres->zone_cal.VL53L1_PRM_00005[zone_id].peak_rate_mcps;
+		pdmax_cal->ref__distance_mm =
+			pres->zone_cal.cal_distance_mm;
+		pdmax_cal->ref_reflectance_pc =
+			pres->zone_cal.cal_reflectance_pc;
+		pdmax_cal->coverglass_transmission = 0x0100;
+	break;
+
+	case VL53L1_DEVICEDMAXMODE__CUST_CAL_DATA:
+		memcpy(
+			pdmax_cal,
+			&(pdev->cust_dmax_cal),
+			sizeof(VL53L1_dmax_calibration_data_t));
+	break;
+
+	case VL53L1_DEVICEDMAXMODE__FMT_CAL_DATA:
+		memcpy(
+			pdmax_cal,
+			&(pdev->fmt_dmax_cal),
+			sizeof(VL53L1_dmax_calibration_data_t));
+	break;
+
+	default:
+		status = VL53L1_ERROR_INVALID_PARAMS;
+	break;
+
+	}
 
 	LOG_FUNCTION_END(status);
 
