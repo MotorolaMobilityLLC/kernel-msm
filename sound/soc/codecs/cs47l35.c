@@ -1433,6 +1433,8 @@ static const struct snd_soc_dapm_route cs47l35_dapm_routes[] = {
 	{ "AEC1 Loopback", "SPKDATR", "OUT5R" },
 	{ "SPKDATL", NULL, "OUT5L" },
 	{ "SPKDATR", NULL, "OUT5R" },
+	{ "SPKDAT Capture", NULL, "SPKDATL" },
+	{ "SPKDAT Capture", NULL, "SPKDATR" },
 
 	{ "SPDIF1", NULL, "SPD1" },
 
@@ -1564,6 +1566,17 @@ static struct snd_soc_dai_driver cs47l35_dai[] = {
 			 .formats = MADERA_FORMATS,
 		 },
 		.ops = &madera_slim_dai_ops,
+	},
+	{
+		.name = "cs47l35-pdm",
+		.id = 6,
+		.capture = {
+			.stream_name = "SPKDAT Capture",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MADERA_RATES,
+			.formats = MADERA_FORMATS,
+		},
 	},
 	{
 		.name = "cs47l35-cpu-voicectrl",
