@@ -189,47 +189,120 @@ typedef int8_t VL53L1_Error;
 #define VL53L1_ERROR_ZONE_GPH_ID_CHECK_FAIL            ((VL53L1_Error) - 21)
 
 
-#define VL53L1_ERROR_XTALK_EXTRACTION_FAIL             ((VL53L1_Error) - 22)
 
-
-
-
-#define VL53L1_WARNING_OFFSET_CAL_INSUFFICIENT_MM1_SPADS    ((VL53L1_Error) - 23)
-
-
-
-
-
-#define VL53L1_WARNING_ZONE_CAL_ZONES_WITH_NO_SAMPLES      ((VL53L1_Error) - 24)
-
-
-
-#define VL53L1_WARNING_ZONE_CAL_ZONES_WITH_REDUCED_SAMPLES ((VL53L1_Error) - 25)
-
-
-
-
-#define VL53L1_WARNING_REF_SPAD_CHAR_NOT_ENOUGH_SPADS    ((VL53L1_Error) - 26)
-
-
-#define VL53L1_WARNING_REF_SPAD_CHAR_RATE_TOO_HIGH       ((VL53L1_Error) - 27)
-
-
-
-
-#define VL53L1_WARNING_REF_SPAD_CHAR_RATE_TOO_LOW        ((VL53L1_Error) - 28)
+#define VL53L1_ERROR_XTALK_EXTRACTION_NO_SAMPLE_FAIL   ((VL53L1_Error) - 22)
 
 
 
 
 
-#define VL53L1_WARNING_OFFSET_CAL_PRE_RANGE_RATE_TOO_HIGH ((VL53L1_Error) - 29)
+#define VL53L1_ERROR_XTALK_EXTRACTION_SIGMA_LIMIT_FAIL ((VL53L1_Error) - 23)
 
 
 
 
 
-#define VL53L1_ERROR_NOT_IMPLEMENTED                   ((VL53L1_Error) - 30)
+
+
+
+#define VL53L1_ERROR_OFFSET_CAL_NO_SAMPLE_FAIL           ((VL53L1_Error) - 24)
+
+
+
+#define VL53L1_ERROR_OFFSET_CAL_NO_SPADS_ENABLED_FAIL    ((VL53L1_Error) - 25)
+
+
+
+
+#define VL53L1_ERROR_ZONE_CAL_NO_SAMPLE_FAIL             ((VL53L1_Error) - 26)
+
+
+
+
+
+#define VL53L1_WARNING_REF_SPAD_CHAR_NOT_ENOUGH_SPADS   ((VL53L1_Error) - 27)
+
+
+#define VL53L1_WARNING_REF_SPAD_CHAR_RATE_TOO_HIGH      ((VL53L1_Error) - 28)
+
+
+
+
+#define VL53L1_WARNING_REF_SPAD_CHAR_RATE_TOO_LOW       ((VL53L1_Error) - 29)
+
+
+
+
+
+
+#define VL53L1_WARNING_OFFSET_CAL_MISSING_SAMPLES       ((VL53L1_Error) - 30)
+
+
+
+#define VL53L1_WARNING_OFFSET_CAL_SIGMA_TOO_HIGH        ((VL53L1_Error) - 31)
+
+
+
+
+#define VL53L1_WARNING_OFFSET_CAL_RATE_TOO_HIGH         ((VL53L1_Error) - 32)
+
+
+
+
+#define VL53L1_WARNING_OFFSET_CAL_SPAD_COUNT_TOO_LOW    ((VL53L1_Error) - 33)
+
+
+
+
+
+
+#define VL53L1_WARNING_ZONE_CAL_MISSING_SAMPLES       ((VL53L1_Error) - 34)
+
+
+
+#define VL53L1_WARNING_ZONE_CAL_SIGMA_TOO_HIGH        ((VL53L1_Error) - 35)
+
+
+
+
+#define VL53L1_WARNING_ZONE_CAL_RATE_TOO_HIGH         ((VL53L1_Error) - 36)
+
+
+
+
+
+
+#define VL53L1_WARNING_XTALK_MISSING_SAMPLES             ((VL53L1_Error) - 37)
+
+
+
+
+
+
+
+
+#define VL53L1_WARNING_XTALK_NO_SAMPLES_FOR_GRADIENT     ((VL53L1_Error) - 38)
+
+
+
+
+
+
+
+
+
+#define VL53L1_WARNING_XTALK_SIGMA_LIMIT_FOR_GRADIENT    ((VL53L1_Error) - 39)
+
+
+
+
+
+
+
+
+
+
+#define VL53L1_ERROR_NOT_IMPLEMENTED                   ((VL53L1_Error) - 40)
 
 
 
