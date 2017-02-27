@@ -232,7 +232,11 @@ typedef struct {
 
 
 
-	uint8_t   algo__consistency_check__tolerance;
+	uint8_t   algo__consistency_check__phase_tolerance;
+
+
+
+	uint8_t   algo__consistency_check__event_sigma;
 
 
 
@@ -247,6 +251,21 @@ typedef struct {
 
 
 	int16_t   algo__crosstalk_compensation_y_plane_gradient_kcps;
+
+
+
+	int16_t   algo__crosstalk_detect_min_valid_range_mm;
+
+
+	int16_t   algo__crosstalk_detect_max_valid_range_mm;
+
+
+	uint16_t  algo__crosstalk_detect_max_valid_rate_kcps;
+
+
+
+	uint16_t  algo__crosstalk_detect_max_sigma_mm;
+
 
 
 
