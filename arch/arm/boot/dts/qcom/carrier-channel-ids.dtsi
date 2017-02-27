@@ -209,14 +209,14 @@
 		"retin",	/* 192 - Asia & Oceania */
 		"retcn",	/* 193 */
 		"telstra",	/* 194 */
-		"vfau",	/* 195 */
+		"vfau",		/* 195 */
 		"amzin",	/* 196 */
 		"jioin",	/* 197 */
 		"airin",	/* 198 */
 		"retid",	/* 199 */
-		"undefined",	/* 200 */
-		"undefined",	/* 201 */
-		"undefined",	/* 202 */
+		"cmcc",		/* 200 */
+		"ctcn",		/* 201 */
+		"cucn",		/* 202 */
 		"undefined",	/* 203 */
 		"undefined",	/* 204 */
 		"undefined",	/* 205 */
