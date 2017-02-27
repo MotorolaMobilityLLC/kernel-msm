@@ -1676,6 +1676,34 @@ uint32_t VL53L1_calc_timeout_us(
 	return timeout_us;
 }
 
+uint16_t VL53L1_calc_crosstalk_plane_offset_with_margin(
+		uint16_t     plane_offset_kcps,
+		int16_t      margin_offset_kcps)
+{
+	uint16_t plane_offset_with_margin = 0;
+	int32_t  plane_offset_kcps_temp   = 0;
+
+	LOG_FUNCTION_START("");
+
+	plane_offset_kcps_temp =
+		(int32_t)plane_offset_kcps +
+		(int32_t)margin_offset_kcps;
+
+	if (plane_offset_kcps_temp < 0) {
+		plane_offset_kcps_temp = 0;
+	} else {
+		if (plane_offset_kcps_temp > 0xFFFF) {
+			plane_offset_kcps_temp = 0xFFFF;
+		}
+	}
+
+	plane_offset_with_margin = (uint16_t) plane_offset_kcps_temp;
+
+	LOG_FUNCTION_END(0);
+
+	return plane_offset_with_margin;
+
+}
 
 uint32_t VL53L1_calc_decoded_timeout_us(
 	uint16_t timeout_encoded,
@@ -2128,9 +2156,11 @@ void  VL53L1_hist_get_bin_sequence_config(
 
 
 VL53L1_Error  VL53L1_hist_phase_consistency_check(
-	VL53L1_DEV                Dev,
-	VL53L1_zone_objects_t    *previous,
-	VL53L1_range_results_t   *pcurrent)
+	VL53L1_DEV                   Dev,
+	VL53L1_zone_hist_info_t     *phist_prev,
+	VL53L1_histogram_bin_data_t *phist_curr,
+	VL53L1_zone_objects_t       *prange_prev,
+	VL53L1_range_results_t      *prange_curr)
 {
 
 
@@ -2140,13 +2170,19 @@ VL53L1_Error  VL53L1_hist_phase_consistency_check(
 
 
 	VL53L1_Error  status = VL53L1_ERROR_NONE;
-	VL53L1_LLDriverData_t *pdev = VL53L1DevStructGetLLDriverHandle(Dev);
+	VL53L1_LLDriverData_t *pdev =
+		VL53L1DevStructGetLLDriverHandle(Dev);
 
 	uint8_t   VL53L1_PRM_00001 = 0;
 	uint8_t   p = 0;
 
-	uint16_t  phase_delta     = 0;
-	uint16_t  phase_tolerance = 0;
+	uint16_t  phase_delta      = 0;
+	uint16_t  phase_tolerance  = 0;
+
+	int32_t   events_delta     = 0;
+	int32_t   events_tolerance = 0;
+
+	VL53L1_DeviceError  range_status = 0;
 
 	LOG_FUNCTION_START("");
 
@@ -2154,14 +2190,14 @@ VL53L1_Error  VL53L1_hist_phase_consistency_check(
 
 
 	phase_tolerance =
-		(uint16_t)pdev->histpostprocess.algo__consistency_check__tolerance;
+		(uint16_t)pdev->histpostprocess.algo__consistency_check__phase_tolerance;
 	phase_tolerance = phase_tolerance << 8;
 
 
 
 
-	if (previous->rd_device_state != VL53L1_DEVICESTATE_RANGING_GATHER_DATA &&
-		previous->rd_device_state != VL53L1_DEVICESTATE_RANGING_OUTPUT_DATA) {
+	if (prange_prev->rd_device_state != VL53L1_DEVICESTATE_RANGING_GATHER_DATA &&
+		prange_prev->rd_device_state != VL53L1_DEVICESTATE_RANGING_OUTPUT_DATA) {
 		return status;
 	}
 
@@ -2172,15 +2208,17 @@ VL53L1_Error  VL53L1_hist_phase_consistency_check(
 		return status;
 	}
 
-	for (VL53L1_PRM_00001 = 0 ; VL53L1_PRM_00001 < pcurrent->active_results ; VL53L1_PRM_00001++) {
+	for (VL53L1_PRM_00001 = 0 ; VL53L1_PRM_00001 < prange_curr->active_results ; VL53L1_PRM_00001++) {
 
-		if (pcurrent->VL53L1_PRM_00005[VL53L1_PRM_00001].range_status ==
-				VL53L1_DEVICEERROR_RANGECOMPLETE_NO_WRAP_CHECK) {
+		if ((prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].range_status ==
+			VL53L1_DEVICEERROR_RANGECOMPLETE) ||
+			(prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].range_status ==
+			VL53L1_DEVICEERROR_RANGECOMPLETE_NO_WRAP_CHECK)) {
 
 
 
 
-			pcurrent->VL53L1_PRM_00005[VL53L1_PRM_00001].range_status =
+			prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].range_status =
 				VL53L1_DEVICEERROR_PHASECONSISTENCY;
 
 
@@ -2189,22 +2227,41 @@ VL53L1_Error  VL53L1_hist_phase_consistency_check(
 
 
 
-			for (p = 0 ; p < previous->active_objects ; p++) {
+			for (p = 0 ; p < prange_prev->active_objects ; p++) {
 
-				if (pcurrent->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00014 >
-					previous->VL53L1_PRM_00005[p].VL53L1_PRM_00014) {
+				if (prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00014 >
+					prange_prev->VL53L1_PRM_00005[p].VL53L1_PRM_00014) {
 					phase_delta =
-						pcurrent->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00014 -
-						previous->VL53L1_PRM_00005[p].VL53L1_PRM_00014;
+						prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00014 -
+						prange_prev->VL53L1_PRM_00005[p].VL53L1_PRM_00014;
 				} else {
 					phase_delta =
-						previous->VL53L1_PRM_00005[p].VL53L1_PRM_00014 -
-						pcurrent->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00014;
+						prange_prev->VL53L1_PRM_00005[p].VL53L1_PRM_00014 -
+						prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00014;
 				}
 
 				if (phase_delta < phase_tolerance) {
-					pcurrent->VL53L1_PRM_00005[VL53L1_PRM_00001].range_status =
-						VL53L1_DEVICEERROR_RANGECOMPLETE;
+
+
+
+
+
+
+					status =
+						VL53L1_hist_events_consistency_check(
+							Dev,
+							VL53L1_PRM_00001,
+							p,
+							phist_prev,
+							phist_curr,
+							prange_prev,
+							prange_curr,
+							&events_tolerance,
+							&events_delta,
+							&range_status);
+
+					prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].range_status =
+							range_status;
 				}
 			}
 		}
@@ -2216,10 +2273,168 @@ VL53L1_Error  VL53L1_hist_phase_consistency_check(
 }
 
 
+VL53L1_Error  VL53L1_hist_events_consistency_check(
+	VL53L1_DEV                   Dev,
+	uint8_t                      VL53L1_PRM_00001,
+	uint8_t                      p,
+	VL53L1_zone_hist_info_t     *phist_prev,
+	VL53L1_histogram_bin_data_t *phist_curr,
+	VL53L1_zone_objects_t       *prange_prev,
+	VL53L1_range_results_t      *prange_curr,
+	int32_t                     *pevents_tolerance,
+	int32_t                     *pevents_delta,
+	VL53L1_DeviceError          *prange_status)
+{
+
+
+
+
+
+
+
+	VL53L1_Error  status = VL53L1_ERROR_NONE;
+	VL53L1_LLDriverData_t *pdev =
+		VL53L1DevStructGetLLDriverHandle(Dev);
+
+	uint8_t   event_sigma            = 0;
+
+	int64_t   tmpp                   = 0;
+	int64_t   tmpc                   = 0;
+	int64_t   events_scaler          = 0;
+	int64_t   events_scaler_sq       = 0;
+	int64_t   c_signal_events        = 0;
+	int64_t   c_sig_noise_sq         = 0;
+	int64_t   c_amb_noise_sq         = 0;
+	int64_t   p_amb_noise_sq         = 0;
+
+	int32_t   p_signal_events        = 0;
+	uint32_t  noise_sq_sum           = 0;
+
+	SUPPRESS_UNUSED_WARNING(phist_curr);
+
+
+
+
+	event_sigma =
+		pdev->histpostprocess.algo__consistency_check__event_sigma;
+
+	if (event_sigma == 0) {
+		*prange_status = VL53L1_DEVICEERROR_RANGECOMPLETE;
+		return status;
+	}
+
+
+
+
+	tmpp  = 1 + (int64_t)phist_prev->total_periods_elapsed;
+	tmpp *= (int64_t)phist_prev->result__dss_actual_effective_spads;
+
+
+
+
+	tmpc  = 1 + (int64_t)prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].total_periods_elapsed;
+	tmpc *= (int64_t)prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00003;
+
+
+
+
+	events_scaler  = tmpp * 4096;
+	events_scaler += (tmpc/2);
+	events_scaler  = do_division_s(events_scaler, tmpc);
+
+	events_scaler_sq  = events_scaler * events_scaler;
+	events_scaler_sq += 2048;
+	events_scaler_sq /= 4096;
+
+
+
+
+	c_signal_events  = (int64_t)prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00022;
+	c_signal_events -= (int64_t)prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00023;
+	c_signal_events *= (int64_t)events_scaler;
+	c_signal_events += 2048;
+	c_signal_events /= 4096;
+
+	c_sig_noise_sq  = (int64_t)events_scaler_sq;
+	c_sig_noise_sq *= (int64_t)prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00022;
+	c_sig_noise_sq += 2048;
+	c_sig_noise_sq /= 4096;
+
+	c_amb_noise_sq  = (int64_t)events_scaler_sq;
+	c_amb_noise_sq *= (int64_t)prange_curr->VL53L1_PRM_00005[VL53L1_PRM_00001].VL53L1_PRM_00023;
+	c_amb_noise_sq += 2048;
+	c_amb_noise_sq /= 4096;
+
+
+
+	c_amb_noise_sq += 2;
+	c_amb_noise_sq /= 4;
+
+
+
+
+
+
+
+	p_amb_noise_sq  =
+		(int64_t)prange_prev->VL53L1_PRM_00005[p].VL53L1_PRM_00023;
+
+
+
+	p_amb_noise_sq += 2;
+	p_amb_noise_sq /= 4;
+
+	noise_sq_sum =
+		(uint32_t)prange_prev->VL53L1_PRM_00005[p].VL53L1_PRM_00022 +
+		(uint32_t)c_sig_noise_sq +
+		(uint32_t)p_amb_noise_sq +
+		(uint32_t)c_amb_noise_sq;
+
+	*pevents_tolerance =
+		(int32_t)VL53L1_isqrt(noise_sq_sum * 16);
+
+	*pevents_tolerance *= (int32_t)event_sigma;
+	*pevents_tolerance += 32;
+	*pevents_tolerance /= 64;
+
+	p_signal_events  = (int32_t)prange_prev->VL53L1_PRM_00005[p].VL53L1_PRM_00022;
+	p_signal_events -= (int32_t)prange_prev->VL53L1_PRM_00005[p].VL53L1_PRM_00023;
+
+	if ((int32_t)c_signal_events > p_signal_events) {
+		*pevents_delta =
+			(int32_t)c_signal_events - p_signal_events;
+	} else {
+		*pevents_delta =
+			p_signal_events - (int32_t)c_signal_events;
+	}
+
+	if (*pevents_delta > *pevents_tolerance)
+		*prange_status = VL53L1_DEVICEERROR_EVENTCONSISTENCY;
+	else
+		*prange_status = VL53L1_DEVICEERROR_RANGECOMPLETE;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	return status;
+}
+
+
 VL53L1_Error  VL53L1_hist_wrap_dmax(
-	VL53L1_zone_hist_info_t      *previous,
-	VL53L1_histogram_bin_data_t  *pcurrent,
-	int16_t                      *pwrap_dmax_mm)
+	VL53L1_hist_post_process_config_t  *phistpostprocess,
+	VL53L1_histogram_bin_data_t        *pcurrent,
+	int16_t                            *pwrap_dmax_mm)
 {
 
 
@@ -2229,9 +2444,6 @@ VL53L1_Error  VL53L1_hist_wrap_dmax(
 
 	VL53L1_Error  status = VL53L1_ERROR_NONE;
 
-
-	uint8_t   encoded_vcsel_period = 0;
-	uint8_t   VL53L1_PRM_00028   = 0;
 	uint32_t  pll_period_mm        = 0;
 	uint32_t  wrap_dmax_phase      = 0;
 	uint32_t  range_mm             = 0;
@@ -2241,15 +2453,7 @@ VL53L1_Error  VL53L1_hist_wrap_dmax(
 	*pwrap_dmax_mm = 0;
 
 
-
-
-	if (previous->rd_device_state != VL53L1_DEVICESTATE_RANGING_GATHER_DATA &&
-		previous->rd_device_state != VL53L1_DEVICESTATE_RANGING_OUTPUT_DATA) {
-		return status;
-	}
-
 	if (pcurrent->VL53L1_PRM_00018 != 0) {
-
 
 
 
@@ -2261,26 +2465,8 @@ VL53L1_Error  VL53L1_hist_wrap_dmax(
 
 
 
-
-
-		encoded_vcsel_period = pcurrent->VL53L1_PRM_00007;
-		if (previous->VL53L1_PRM_00007 < encoded_vcsel_period) {
-			encoded_vcsel_period  = previous->VL53L1_PRM_00007;
-		}
-
-		VL53L1_PRM_00028 =
-			VL53L1_decode_vcsel_period(
-				encoded_vcsel_period);
-
-
-
-
-
-
-
-
-		wrap_dmax_phase = 2048 * (uint32_t)VL53L1_PRM_00028;
-		wrap_dmax_phase -= pcurrent->zero_distance_phase;
+		wrap_dmax_phase =
+			(uint32_t)phistpostprocess->valid_phase_high << 8;
 
 
 
@@ -2956,8 +3142,9 @@ VL53L1_Error VL53L1_dynamic_zone_update(
 	VL53L1_LLDriverResults_t  *pres =
 			VL53L1DevStructGetLLResultsHandle(Dev);
 	VL53L1_ll_driver_state_t *pstate = &(pdev->ll_state);
+#if 0 //Feb 24 - Local change to prevent compilation warning
 	VL53L1_zone_config_t     *pzone_cfg;
-
+#endif
 	uint8_t   zone_id = pdev->ll_state.rd_zone_id;
 	uint8_t   i;
 	uint16_t  max_total_rate_per_spads;
@@ -2966,7 +3153,7 @@ VL53L1_Error VL53L1_dynamic_zone_update(
 
 	LOG_FUNCTION_START("");
 
-	pzone_cfg = &(pdev->zone_cfg);
+
 
 
 
@@ -2979,9 +3166,11 @@ VL53L1_Error VL53L1_dynamic_zone_update(
 	if (pstate->cfg_device_state ==
 		VL53L1_DEVICESTATE_RANGING_DSS_MANUAL) {
 
-		trace_print(VL53L1_TRACE_LEVEL_DEBUG,
-			"    DYNZONEUPDATE: active zones: %u\n",
-			pzone_cfg->active_zones);
+
+
+
+
+
 
 		pres->zone_dyn_cfgs.VL53L1_PRM_00005[zone_id].dss_requested_effective_spad_count = 0;
 
