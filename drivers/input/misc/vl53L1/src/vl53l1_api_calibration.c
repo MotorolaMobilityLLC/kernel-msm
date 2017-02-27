@@ -135,7 +135,8 @@
 
 
 VL53L1_Error VL53L1_run_ref_spad_char(
-	VL53L1_DEV        Dev)
+	VL53L1_DEV        Dev,
+	VL53L1_Error     *pcal_status)
 {
 
 
@@ -303,6 +304,13 @@ VL53L1_Error VL53L1_run_ref_spad_char(
 
 
 
+
+
+	*pcal_status = status;
+
+
+
+
 	IGNORE_STATUS(
 		IGNORE_REF_SPAD_CHAR_NOT_ENOUGH_SPADS,
 		VL53L1_WARNING_REF_SPAD_CHAR_NOT_ENOUGH_SPADS,
@@ -332,7 +340,7 @@ VL53L1_Error VL53L1_run_xtalk_extraction(
 	uint32_t                            mm_config_timeout_us,
 	uint32_t                            range_config_timeout_us,
 	uint8_t                             num_of_samples,
-	uint16_t                            xtalk_filter_thresh_mm)
+	VL53L1_Error                       *pcal_status)
 {
 
 
@@ -426,12 +434,18 @@ VL53L1_Error VL53L1_run_xtalk_extraction(
 	pdev->xtalk_results.central_histogram__window_start = 0xFF;
 	pdev->xtalk_results.central_histogram__window_end   = 0x00;
 
+	pdev->xtalk_results.num_of_samples_status = 0x00;
+	pdev->xtalk_results.zero_samples_status   = 0x00;
+	pdev->xtalk_results.max_sigma_status      = 0x00;
+
 	for (i = 0 ; i < pdev->xtalk_results.max_results ; i++) {
 		pdev->xtalk_results.VL53L1_PRM_00005[i].no_of_samples           = 0;
 		pdev->xtalk_results.VL53L1_PRM_00005[i].signal_total_events_avg = 0;
 		pdev->xtalk_results.VL53L1_PRM_00005[i].signal_total_events_sum = 0;
 		pdev->xtalk_results.VL53L1_PRM_00005[i].rate_per_spad_kcps_sum  = 0;
 		pdev->xtalk_results.VL53L1_PRM_00005[i].rate_per_spad_kcps_avg  = 0;
+		pdev->xtalk_results.VL53L1_PRM_00005[i].sigma_mm_sum            = 0;
+		pdev->xtalk_results.VL53L1_PRM_00005[i].sigma_mm_avg            = 0;
 	}
 
 
@@ -443,7 +457,9 @@ VL53L1_Error VL53L1_run_xtalk_extraction(
 				Dev,
 				num_of_samples,
 				measurement_mode,
-				xtalk_filter_thresh_mm,
+				pdev->xtalk_cfg.algo__crosstalk_detect_max_valid_range_mm,
+				pdev->xtalk_cfg.algo__crosstalk_detect_min_valid_range_mm,
+				pdev->xtalk_cfg.algo__crosstalk_detect_max_valid_rate_kcps,
 				0x0,
 
 				0x4,
@@ -464,7 +480,9 @@ VL53L1_Error VL53L1_run_xtalk_extraction(
 
 
 	if (status == VL53L1_ERROR_NONE) {
-			if (pdev->xtalk_results.VL53L1_PRM_00005[4].no_of_samples == 0) {
+			if ((pdev->xtalk_results.VL53L1_PRM_00005[4].no_of_samples == 0) ||
+				(pdev->xtalk_results.VL53L1_PRM_00005[4].sigma_mm_avg >
+				pdev->xtalk_cfg.algo__crosstalk_detect_max_sigma_mm)) {
 				results_invalid = 0x01;
 			}
 	}
@@ -517,15 +535,117 @@ VL53L1_Error VL53L1_run_xtalk_extraction(
 
 
 
-	if (results_invalid > 0)
-		status = VL53L1_ERROR_XTALK_EXTRACTION_FAIL;
+	if (status == VL53L1_ERROR_NONE) {
+
+		for (i = 0 ; i < pdev->xtalk_results.max_results ; i++) {
+
+
+			if (pdev->xtalk_results.VL53L1_PRM_00005[i].no_of_samples !=
+				num_of_samples) {
+				pdev->xtalk_results.num_of_samples_status =
+					pdev->xtalk_results.num_of_samples_status |
+					(1 << i);
+			}
+
+
+			if (pdev->xtalk_results.VL53L1_PRM_00005[i].no_of_samples ==
+				0x00) {
+				pdev->xtalk_results.zero_samples_status =
+					pdev->xtalk_results.zero_samples_status |
+					(1 << i);
+			}
+
+
+
+
+
+
+
+
+
+			if (pdev->xtalk_results.VL53L1_PRM_00005[i].sigma_mm_avg >
+				pdev->xtalk_cfg.algo__crosstalk_detect_max_sigma_mm) {
+				pdev->xtalk_results.max_sigma_status =
+					pdev->xtalk_results.max_sigma_status |
+					(1 << i);
+			}
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+	if (results_invalid > 0) {
+
+
+		if (pdev->xtalk_results.VL53L1_PRM_00005[4].no_of_samples == 0) {
+			status = VL53L1_ERROR_XTALK_EXTRACTION_NO_SAMPLE_FAIL;
+		} else {
+			if (pdev->xtalk_results.VL53L1_PRM_00005[4].sigma_mm_avg >
+			    pdev->xtalk_cfg.algo__crosstalk_detect_max_sigma_mm) {
+				status = VL53L1_ERROR_XTALK_EXTRACTION_SIGMA_LIMIT_FAIL;
+			}
+		}
+	} else {
+
+
+		if (pdev->xtalk_results.zero_samples_status != 0x00) {
+			status = VL53L1_WARNING_XTALK_NO_SAMPLES_FOR_GRADIENT;
+		} else {
+			if (pdev->xtalk_results.max_sigma_status != 0x00) {
+				status = VL53L1_WARNING_XTALK_SIGMA_LIMIT_FOR_GRADIENT;
+			} else {
+				if (pdev->xtalk_results.num_of_samples_status !=
+						0x00) {
+					status = VL53L1_WARNING_XTALK_MISSING_SAMPLES;
+				}
+			}
+		}
+	}
+
+
+
+
+
+
+	pdev->xtalk_results.cal_status = status;
+	*pcal_status = pdev->xtalk_results.cal_status;
 
 
 
 
 	IGNORE_STATUS(
-		IGNORE_XTALK_EXTRACTION_FAIL,
-		VL53L1_ERROR_XTALK_EXTRACTION_FAIL,
+		IGNORE_XTALK_EXTRACTION_NO_SAMPLE_FAIL,
+		VL53L1_ERROR_XTALK_EXTRACTION_NO_SAMPLE_FAIL,
+		status);
+
+	IGNORE_STATUS(
+		IGNORE_XTALK_EXTRACTION_SIGMA_LIMIT_FAIL,
+		VL53L1_ERROR_XTALK_EXTRACTION_SIGMA_LIMIT_FAIL,
+		status);
+
+	IGNORE_STATUS(
+		IGNORE_XTALK_EXTRACTION_NO_SAMPLE_FOR_GRADIENT_WARN,
+		VL53L1_WARNING_XTALK_NO_SAMPLES_FOR_GRADIENT,
+		status);
+
+	IGNORE_STATUS(
+		IGNORE_XTALK_EXTRACTION_SIGMA_LIMIT_FOR_GRADIENT_WARN,
+		VL53L1_WARNING_XTALK_SIGMA_LIMIT_FOR_GRADIENT,
+		status);
+
+	IGNORE_STATUS(
+		IGNORE_XTALK_EXTRACTION_MISSING_SAMPLES_WARN,
+		VL53L1_WARNING_XTALK_MISSING_SAMPLES,
 		status);
 
 #ifdef VL53L1_LOG_ENABLE
@@ -578,7 +698,8 @@ VL53L1_Error VL53L1_run_xtalk_extraction_dual_reflectance(
 	uint8_t                             calc_parms,
 	uint8_t                             higher_reflectance,
 	uint16_t                            expected_target_distance_mm,
-	uint16_t                            xtalk_filter_thresh_mm)
+	uint16_t                            xtalk_filter_thresh_mm,
+	VL53L1_Error                       *pcal_status)
 {
 
 
@@ -886,14 +1007,22 @@ VL53L1_Error VL53L1_run_xtalk_extraction_dual_reflectance(
 
 
 	if (results_invalid > 0)
-		status = VL53L1_ERROR_XTALK_EXTRACTION_FAIL;
+		status = VL53L1_ERROR_XTALK_EXTRACTION_NO_SAMPLE_FAIL;
+
+
+
+
+
+
+	pdev->xtalk_results.cal_status = status;
+	*pcal_status = pdev->xtalk_results.cal_status;
 
 
 
 
 	IGNORE_STATUS(
-		IGNORE_XTALK_EXTRACTION_FAIL,
-		VL53L1_ERROR_XTALK_EXTRACTION_FAIL,
+		IGNORE_XTALK_EXTRACTION_NO_SAMPLE_FAIL,
+		VL53L1_ERROR_XTALK_EXTRACTION_NO_SAMPLE_FAIL,
 		status);
 
 #ifdef VL53L1_LOG_ENABLE
@@ -940,7 +1069,9 @@ VL53L1_Error VL53L1_get_and_avg_xtalk_samples(
 		VL53L1_DEV	                  Dev,
 		uint8_t                       num_of_samples,
 		uint8_t                       measurement_mode,
-		int16_t                       xtalk_filter_thresh_mm,
+		int16_t                       xtalk_filter_thresh_max_mm,
+		int16_t                       xtalk_filter_thresh_min_mm,
+		uint16_t                      xtalk_max_valid_rate_kcps,
 		uint8_t                       xtalk_result_id,
 		uint8_t                       xtalk_histo_id,
 		VL53L1_xtalk_range_results_t *pxtalk_results,
@@ -1043,7 +1174,11 @@ VL53L1_Error VL53L1_get_and_avg_xtalk_samples(
 
 			if ((prange_results->active_results > 0) &&
 				(prange_data->median_range_mm <
-						(int16_t)xtalk_filter_thresh_mm)) {
+						xtalk_filter_thresh_max_mm) &&
+				(prange_data->median_range_mm >
+						xtalk_filter_thresh_min_mm) &&
+				(prange_data->VL53L1_PRM_00008 <
+					(uint32_t)(xtalk_max_valid_rate_kcps * 16))) {
 
 				pxtalk_range_data->no_of_samples++;
 
@@ -1051,7 +1186,10 @@ VL53L1_Error VL53L1_get_and_avg_xtalk_samples(
 					prange_data->VL53L1_PRM_00008;
 
 				pxtalk_range_data->signal_total_events_sum +=
-									prange_data->VL53L1_PRM_00009;
+					prange_data->VL53L1_PRM_00009;
+
+				pxtalk_range_data->sigma_mm_sum +=
+					prange_data->VL53L1_PRM_00004;
 
 
 
@@ -1153,11 +1291,18 @@ VL53L1_Error VL53L1_get_and_avg_xtalk_samples(
 			pxtalk_range_data->signal_total_events_avg =
 						pxtalk_range_data->signal_total_events_sum /
 						(int32_t)pxtalk_range_data->no_of_samples;
+
+			pxtalk_range_data->sigma_mm_avg =
+					pxtalk_range_data->sigma_mm_sum /
+					(uint32_t)pxtalk_range_data->no_of_samples;
+
 		} else {
 			pxtalk_range_data->rate_per_spad_kcps_avg =
 					pxtalk_range_data->rate_per_spad_kcps_sum;
 			pxtalk_range_data->signal_total_events_avg =
 					pxtalk_range_data->signal_total_events_sum;
+			pxtalk_range_data->sigma_mm_avg =
+					pxtalk_range_data->sigma_mm_sum;
 		}
 	}
 
@@ -1467,7 +1612,8 @@ VL53L1_Error VL53L1_run_offset_calibration(
 	uint8_t                       mm1_num_of_samples,
 	uint8_t                       mm2_num_of_samples,
 	int16_t                       cal_distance_mm,
-	uint16_t                      cal_reflectance_pc)
+	uint16_t                      cal_reflectance_pc,
+	VL53L1_Error                 *pcal_status)
 {
 
 
@@ -1794,7 +1940,11 @@ VL53L1_Error VL53L1_run_offset_calibration(
 		(uint16_t)pdev->offset_results.VL53L1_PRM_00005[0].effective_spads;
 	pdev->cust_dmax_cal.ref__peak_signal_count_rate_mcps =
 		(uint16_t)pdev->offset_results.VL53L1_PRM_00005[0].peak_rate_mcps;
-	pdev->cust_dmax_cal.ref__distance_mm   = cal_distance_mm;
+
+
+
+	pdev->cust_dmax_cal.ref__distance_mm = cal_distance_mm * 16;
+
 	pdev->cust_dmax_cal.ref_reflectance_pc = cal_reflectance_pc;
 	pdev->cust_dmax_cal.coverglass_transmission = 0x0100;
 
@@ -1812,36 +1962,71 @@ VL53L1_Error VL53L1_run_offset_calibration(
 
 
 
-	if (status == VL53L1_ERROR_NONE &&
-	    pdev->offset_results.VL53L1_PRM_00005[0].peak_rate_mcps >
-	    VL53L1_OFFSET_CAL_MAX_PRE_PEAK_RATE_MCPS)
-			status = VL53L1_WARNING_OFFSET_CAL_PRE_RANGE_RATE_TOO_HIGH;
+	for (m = 0 ; m < pdev->offset_results.active_results ; m++) {
+
+		poffset = &(pdev->offset_results.VL53L1_PRM_00005[m]);
+
+		if (status == VL53L1_ERROR_NONE) {
+
+			pdev->offset_results.cal_report = m;
+
+			if (poffset->no_of_samples < num_of_samples[m])
+				status = VL53L1_WARNING_OFFSET_CAL_MISSING_SAMPLES;
+
+
+
+
+
+
+			if (m == 0 && poffset->VL53L1_PRM_00004 >
+				VL53L1_OFFSET_CAL_MAX_SIGMA_MM)
+				status = VL53L1_WARNING_OFFSET_CAL_SIGMA_TOO_HIGH;
+
+			if (poffset->peak_rate_mcps >
+				VL53L1_OFFSET_CAL_MAX_PRE_PEAK_RATE_MCPS)
+				status = VL53L1_WARNING_OFFSET_CAL_RATE_TOO_HIGH;
+
+			if (poffset->dss_config__manual_effective_spads_select <
+				VL53L1_OFFSET_CAL_MIN_EFFECTIVE_SPADS)
+				status = VL53L1_WARNING_OFFSET_CAL_SPAD_COUNT_TOO_LOW;
+
+			if (poffset->dss_config__manual_effective_spads_select == 0)
+				status = VL53L1_ERROR_OFFSET_CAL_NO_SPADS_ENABLED_FAIL;
+
+			if (poffset->no_of_samples == 0)
+				status = VL53L1_ERROR_OFFSET_CAL_NO_SAMPLE_FAIL;
+		}
+	}
+
+
+
+
+
+
+	pdev->offset_results.cal_status = status;
+	*pcal_status = pdev->offset_results.cal_status;
 
 
 
 
 	IGNORE_STATUS(
-		IGNORE_OFFSET_CAL_PRE_RANGE_RATE_TOO_HIGH,
-		VL53L1_WARNING_OFFSET_CAL_PRE_RANGE_RATE_TOO_HIGH,
+		IGNORE_OFFSET_CAL_MISSING_SAMPLES,
+		VL53L1_WARNING_OFFSET_CAL_MISSING_SAMPLES,
 		status);
 
-
-
-
-
-
-
-	if (status == VL53L1_ERROR_NONE &&
-	    pdev->add_off_cal_data.result__mm_inner_actual_effective_spads <
-			VL53L1_OFFSET_CAL_MIN_MM1_EFFECTIVE_SPADS)
-			status = VL53L1_WARNING_OFFSET_CAL_INSUFFICIENT_MM1_SPADS;
-
-
-
+	IGNORE_STATUS(
+		IGNORE_OFFSET_CAL_SIGMA_TOO_HIGH,
+		VL53L1_WARNING_OFFSET_CAL_SIGMA_TOO_HIGH,
+		status);
 
 	IGNORE_STATUS(
-		IGNORE_INSUFFICIENT_MM1_SPADS_CALIBRATION_ERROR,
-		VL53L1_WARNING_OFFSET_CAL_INSUFFICIENT_MM1_SPADS,
+		IGNORE_OFFSET_CAL_RATE_TOO_HIGH,
+		VL53L1_WARNING_OFFSET_CAL_RATE_TOO_HIGH,
+		status);
+
+	IGNORE_STATUS(
+		IGNORE_OFFSET_CAL_SPAD_COUNT_TOO_LOW,
+		VL53L1_WARNING_OFFSET_CAL_SPAD_COUNT_TOO_LOW,
 		status);
 
 #ifdef VL53L1_LOG_ENABLE
@@ -1892,7 +2077,8 @@ VL53L1_Error VL53L1_run_zone_calibration(
 	uint32_t                      range_config_timeout_us,
 	uint16_t                      num_of_samples,
 	int16_t                       cal_distance_mm,
-	uint16_t                      cal_reflectance_pc)
+	uint16_t                      cal_reflectance_pc,
+	VL53L1_Error                 *pcal_status)
 {
 
 
@@ -1974,7 +2160,9 @@ VL53L1_Error VL53L1_run_zone_calibration(
 
 	pres->zone_cal.preset_mode        = device_preset_mode;
 	pres->zone_cal.zone_preset        = zone_preset;
-	pres->zone_cal.cal_distance_mm    = cal_distance_mm;
+
+
+	pres->zone_cal.cal_distance_mm    = cal_distance_mm * 16;
 	pres->zone_cal.cal_reflectance_pc = cal_reflectance_pc;
 	pres->zone_cal.max_zones          = VL53L1_MAX_USER_ZONES;
 	pres->zone_cal.active_zones       = pdev->zone_cfg.active_zones + 1;
@@ -2140,9 +2328,6 @@ VL53L1_Error VL53L1_run_zone_calibration(
 
 			if (pzone_data->no_of_samples > 0) {
 
-				if ((pzone_data->no_of_samples-1) < num_of_samples)
-					status = VL53L1_WARNING_ZONE_CAL_ZONES_WITH_REDUCED_SAMPLES;
-
 				pzone_data->effective_spads += (pzone_data->no_of_samples/2);
 				pzone_data->effective_spads /=  pzone_data->no_of_samples;
 
@@ -2164,8 +2349,19 @@ VL53L1_Error VL53L1_run_zone_calibration(
 				pzone_data->range_mm_offset  = ((int32_t)cal_distance_mm) * 4;
 				pzone_data->range_mm_offset -= pzone_data->median_range_mm;
 
+				if (pzone_data->no_of_samples < num_of_samples)
+					status = VL53L1_WARNING_ZONE_CAL_MISSING_SAMPLES;
+
+				if (pzone_data->VL53L1_PRM_00004 >
+					VL53L1_ZONE_CAL_MAX_SIGMA_MM)
+					status = VL53L1_WARNING_ZONE_CAL_SIGMA_TOO_HIGH;
+
+				if (pzone_data->peak_rate_mcps >
+					VL53L1_ZONE_CAL_MAX_PRE_PEAK_RATE_MCPS)
+					status = VL53L1_WARNING_ZONE_CAL_RATE_TOO_HIGH;
+
 			} else {
-				status = VL53L1_WARNING_ZONE_CAL_ZONES_WITH_NO_SAMPLES;
+				status = VL53L1_ERROR_ZONE_CAL_NO_SAMPLE_FAIL;
 			}
 		}
 	}
@@ -2173,14 +2369,27 @@ VL53L1_Error VL53L1_run_zone_calibration(
 
 
 
+
+
+	pres->zone_cal.cal_status = status;
+	*pcal_status = pres->zone_cal.cal_status;
+
+
+
+
 	IGNORE_STATUS(
-		IGNORE_ZONE_CAL_ZONES_WITH_NO_SAMPLES,
-		VL53L1_WARNING_ZONE_CAL_ZONES_WITH_NO_SAMPLES,
+		IGNORE_ZONE_CAL_MISSING_SAMPLES,
+		VL53L1_WARNING_ZONE_CAL_MISSING_SAMPLES,
 		status);
 
 	IGNORE_STATUS(
-		IGNORE_ZONE_CAL_ZONES_WITH_REDUCED_SAMPLES,
-		VL53L1_WARNING_ZONE_CAL_ZONES_WITH_REDUCED_SAMPLES,
+		IGNORE_ZONE_CAL_SIGMA_TOO_HIGH,
+		VL53L1_WARNING_ZONE_CAL_SIGMA_TOO_HIGH,
+		status);
+
+	IGNORE_STATUS(
+		IGNORE_ZONE_CAL_RATE_TOO_HIGH,
+		VL53L1_WARNING_ZONE_CAL_RATE_TOO_HIGH,
 		status);
 
 
