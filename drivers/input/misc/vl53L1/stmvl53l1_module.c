@@ -3234,12 +3234,14 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 		cali_data.xtalkhisto.xtalk_shape.vcsel_width                      = 40;
 		cali_data.xtalkhisto.xtalk_shape.VL53L1_PRM_00018                 = 48332;
 		cali_data.xtalkhisto.xtalk_shape.zero_distance_phase              = 4096;
+		cali_data.gain_cal.standard_ranging_gain_factor = 0x07D7;
+		cali_data.gain_cal.histogram_ranging_gain_factor = 0x07CC;
 
 		rc = VL53L1_SetCalibrationData(&data->stdev, &cali_data);
 		if (rc)
 			vl53l1_errmsg("VL53L1_SetCalibrationData fail\n");
 		else {
-			vl53l1_info("device crosstalk data updated: %u %d %d\n",
+			vl53l1_info("device xtalk data updated: %u %d %d\n",
                     cali_data.customer.algo__crosstalk_compensation_plane_offset_kcps,
                     cali_data.customer.algo__crosstalk_compensation_x_plane_gradient_kcps,
                     cali_data.customer.algo__crosstalk_compensation_y_plane_gradient_kcps);
