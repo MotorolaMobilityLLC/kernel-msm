@@ -932,10 +932,50 @@ void  VL53L1_hist_get_bin_sequence_config(
 
 
 VL53L1_Error  VL53L1_hist_phase_consistency_check(
-	VL53L1_DEV                Dev,
-	VL53L1_zone_objects_t    *previous,
-	VL53L1_range_results_t   *pcurrent);
+	VL53L1_DEV                   Dev,
+	VL53L1_zone_hist_info_t     *phist_prev,
+	VL53L1_histogram_bin_data_t *phist_curr,
+	VL53L1_zone_objects_t       *prange_prev,
+	VL53L1_range_results_t      *prange_curr);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VL53L1_Error  VL53L1_hist_events_consistency_check(
+	VL53L1_DEV                   Dev,
+	uint8_t                      VL53L1_PRM_00001,
+	uint8_t                      p,
+	VL53L1_zone_hist_info_t     *phist_prev,
+	VL53L1_histogram_bin_data_t *phist_curr,
+	VL53L1_zone_objects_t       *prange_prev,
+	VL53L1_range_results_t      *prange_curr,
+	int32_t                     *pevents_tolerance,
+	int32_t                     *pevents_delta,
+	VL53L1_DeviceError          *prange_status);
 
 
 
@@ -955,9 +995,9 @@ VL53L1_Error  VL53L1_hist_phase_consistency_check(
 
 
 VL53L1_Error  VL53L1_hist_wrap_dmax(
-	VL53L1_zone_hist_info_t      *previous,
-	VL53L1_histogram_bin_data_t  *pcurrent,
-	int16_t                      *pwrap_dmax_mm);
+	VL53L1_hist_post_process_config_t *phistpostprocess,
+	VL53L1_histogram_bin_data_t       *pcurrent,
+	int16_t                           *pwrap_dmax_mm);
 
 
 
@@ -1443,6 +1483,25 @@ VL53L1_Error VL53L1_set_ssc_config(
 VL53L1_Error VL53L1_get_spad_rate_data(
 	VL53L1_DEV                Dev,
 	VL53L1_spad_rate_data_t  *pspad_rates);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+uint16_t VL53L1_calc_crosstalk_plane_offset_with_margin(
+		uint16_t     plane_offset_kcps,
+		int16_t      margin_offset_kcps);
 
 
 #ifdef __cplusplus
