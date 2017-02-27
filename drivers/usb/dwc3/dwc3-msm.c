@@ -74,6 +74,11 @@ static int cpu_to_affin;
 module_param(cpu_to_affin, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(cpu_to_affin, "affin usb irq to this cpu");
 
+/* pm qos latency */
+static int qos_latency;
+module_param(qos_latency, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(qos_latency, "latency constraint when USB connected");
+
 /* XHCI registers */
 #define USB3_HCSPARAMS1		(0x4)
 #define USB3_HCCPARAMS2		(0x1c)
@@ -3892,6 +3897,9 @@ static void msm_dwc3_perf_vote_update(struct dwc3_msm *mdwc, bool perf_mode)
 {
 	static bool curr_perf_mode;
 	int latency = mdwc->pm_qos_latency;
+
+	if (qos_latency)
+		latency = qos_latency;
 
 	if ((curr_perf_mode == perf_mode) || !latency)
 		return;
