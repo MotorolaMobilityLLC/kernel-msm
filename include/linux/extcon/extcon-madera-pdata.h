@@ -129,6 +129,8 @@ struct madera_accdet_pdata {
 	const struct madera_micd_range *micd_ranges;
 	int num_micd_ranges;
 
+	/* Report headset state as an input switch event */
+	bool report_to_input;
 
 	/** Headset polarity configurations */
 	const struct madera_micd_config *micd_configs;
