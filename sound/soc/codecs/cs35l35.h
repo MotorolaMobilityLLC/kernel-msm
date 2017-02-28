@@ -257,7 +257,7 @@
 #define CS35L35_IMON_OVFL		0x04
 
 #define CS35L35_FORMATS (SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE | \
-			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
+			SNDRV_PCM_FMTBIT_S24_LE)
 
 struct  cs35l35_private {
 	struct i2c_client *i2c_client;
