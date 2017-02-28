@@ -162,6 +162,8 @@
 		vdd-supply = <&pm8937_l10>;
 		vio-supply = <&pm8937_l6>;
 		ltr,irq-gpio = <&tlmm 46 0x2>;
+		ltr,ps-faroffset = <30>;
+		ltr,ps-nearoffset = <40>;
 		ltr,ps-threshold = <800>;
 		ltr,ps-hysteresis-threshold = <300>;
 		ltr,als-polling-time = <200>;
