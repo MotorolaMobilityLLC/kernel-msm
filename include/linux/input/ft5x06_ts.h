@@ -74,4 +74,7 @@ struct ft5x06_ts_platform_data {
 	int (*power_on)(bool);
 };
 
+extern int FPS_register_notifier(struct notifier_block *nb,
+				unsigned long stype, bool report);
+
 #endif
