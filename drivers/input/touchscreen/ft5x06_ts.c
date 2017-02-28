@@ -265,6 +265,8 @@ static char *ts_info_buff;
 
 #define FT_PROC_DIR_NAME	"ftxxxx-debug"
 
+#define EXP_FN_DET_INTERVAL	1000 /* ms */
+
 enum {
 	PROC_UPGRADE		= 0,
 	PROC_READ_REGISTER	= 1,
@@ -275,7 +277,13 @@ enum {
 
 enum {
 	FT_MOD_CHARGER,
+	FT_MOD_FPS,
 	FT_MOD_MAX
+};
+
+struct ft5x06_clip_area {
+	unsigned xul_clip, yul_clip, xbr_clip, ybr_clip;
+	unsigned inversion; /* clip inside (when 1) or ouside otherwise */
 };
 
 struct ft5x06_modifiers {
@@ -289,8 +297,17 @@ struct config_modifier {
 	const char *name;
 	int id;
 	bool effective;
+	struct ft5x06_clip_area *clipa;
 	struct list_head link;
 };
+
+struct ft5x06_exp_fn_ctrl {
+	struct delayed_work det_work;
+	struct workqueue_struct *det_workqueue;
+	struct ft5x06_ts_data *ft5x06_ts_data_ptr;
+};
+
+static struct ft5x06_exp_fn_ctrl exp_fn_ctrl;
 
 struct ft5x06_ts_data {
 	struct i2c_client *client;
@@ -344,6 +361,12 @@ struct ft5x06_ts_data {
 	struct work_struct ps_notify_work;
 	struct notifier_block ps_notif;
 	bool ps_is_present;
+
+	bool fps_detection_enabled;
+	bool is_fps_registered;
+	struct notifier_block fps_notif;
+	bool clipping_on;
+	struct ft5x06_clip_area *clipa;
 };
 
 static int ft5x06_ts_start(struct device *dev);
@@ -979,6 +1002,32 @@ static irqreturn_t ft5x06_ts_interrupt(int irq, void *dev_id)
 		/* invalid combination */
 		if (!num_touches && !status && !id)
 			break;
+
+		if (data->clipping_on && data->clipa) {
+			bool inside;
+
+			inside = (x >= data->clipa->xul_clip) &&
+				(x <= data->clipa->xbr_clip) &&
+				(y >= data->clipa->yul_clip) &&
+				(y <= data->clipa->ybr_clip);
+
+			if (inside == data->clipa->inversion) {
+				/* Touch might still be active, but we're */
+				/* sending release anyway to avoid touch  */
+				/* stuck at the last reported position.   */
+				/* Driver will suppress reporting to UI   */
+				/* touch events from within clipping area */
+				input_mt_slot(data->input_dev, id);
+				input_mt_report_slot_state(data->input_dev,
+					MT_TOOL_FINGER, 0);
+
+				dev_dbg(&data->client->dev,
+					" finger id-%d (%d,%d) within clipping area\n",
+					id, x, y);
+
+				continue;
+			}
+		}
 
 		input_mt_slot(ip_dev, id);
 		if (status == FT_TOUCH_DOWN || status == FT_TOUCH_CONTACT) {
@@ -1685,6 +1734,92 @@ static int ps_notify_callback(struct notifier_block *self,
 		schedule_work(&ft5x06_data->ps_notify_work);
 	}
 
+	return 0;
+}
+
+static struct config_modifier *modifier_by_id(
+	struct ft5x06_ts_data *data, int id)
+{
+	struct config_modifier *cm, *found = NULL;
+
+	down(&data->modifiers.list_sema);
+	list_for_each_entry(cm, &data->modifiers.mod_head, link) {
+		pr_debug("walk-thru: ptr=%p modifier[%s] id=%d\n",
+			cm, cm->name, cm->id);
+		if (cm->id == id) {
+			found = cm;
+			break;
+		}
+	}
+	up(&data->modifiers.list_sema);
+	pr_debug("returning modifier id=%d[%d]\n", found ? found->id : -1, id);
+	return found;
+}
+
+static void ft5x06_detection_work(struct work_struct *work)
+{
+	struct ft5x06_ts_data *data;
+	int error;
+
+	data = exp_fn_ctrl.ft5x06_ts_data_ptr;
+
+	if (data == NULL) {
+		if (exp_fn_ctrl.det_workqueue)
+			queue_delayed_work(exp_fn_ctrl.det_workqueue,
+				&exp_fn_ctrl.det_work,
+			msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+		return;
+	}
+
+	if (data->fps_detection_enabled &&
+		!data->is_fps_registered) {
+		error = FPS_register_notifier(
+				&data->fps_notif, 0xBEEF, false);
+		if (error) {
+			if (exp_fn_ctrl.det_workqueue)
+				queue_delayed_work(
+					exp_fn_ctrl.det_workqueue,
+					&exp_fn_ctrl.det_work,
+					msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+			pr_err("Failed to register fps_notifier\n");
+		} else {
+			data->is_fps_registered = true;
+			pr_debug("registered FPS notifier\n");
+		}
+	}
+
+}
+
+static int fps_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	int fps_state = *(int *)data;
+	struct ft5x06_ts_data *ft5x06_data =
+		container_of(self, struct ft5x06_ts_data, fps_notif);
+
+	if (ft5x06_data && event == 0xBEEF &&
+			ft5x06_data && ft5x06_data->client) {
+		struct config_modifier *cm =
+			modifier_by_id(ft5x06_data, FT_MOD_FPS);
+		if (!cm) {
+			dev_err(&ft5x06_data->client->dev,
+				"No FPS modifier found\n");
+			goto done;
+		}
+
+		if (fps_state) {/* on */
+			ft5x06_data->clipping_on = true;
+			ft5x06_data->clipa = cm->clipa;
+			cm->effective = true;
+		} else {/* off */
+			ft5x06_data->clipping_on = false;
+			ft5x06_data->clipa = NULL;
+			cm->effective = false;
+		}
+		pr_info("FPS: clipping is %s\n",
+		ft5x06_data->clipping_on ? "ON" : "OFF");
+	}
+done:
 	return 0;
 }
 
@@ -2793,7 +2928,7 @@ static int ft5x06_get_dt_coords(struct device *dev, char *name,
 }
 
 /* ASCII names order MUST match enum */
-static const char const *ascii_names[] = {"charger", "na"};
+static const char const *ascii_names[] = {"charger", "fps", "na"};
 
 static int ft5x06_modifier_name2id(const char *name)
 {
@@ -2809,6 +2944,38 @@ static int ft5x06_modifier_name2id(const char *name)
 	return chosen;
 }
 
+static void ft5x06_dt_parse_modifier(struct ft5x06_ts_data *data,
+		struct device_node *parent, struct config_modifier *config,
+		const char *modifier_name, bool active)
+{
+	struct device *dev = &data->client->dev;
+	char node_name[64];
+	struct ft5x06_clip_area clipa;
+	struct device_node *np_config;
+	int err;
+
+	scnprintf(node_name, 63, "%s-%s", modifier_name,
+		active ? "active" : "suspended");
+	np_config = of_find_node_by_name(parent, node_name);
+	if (!np_config) {
+		dev_dbg(dev, "%s: node does not exist\n", node_name);
+		return;
+	}
+
+	err = of_property_read_u32_array(np_config, "touch-clip-area",
+		(unsigned int *)&clipa, sizeof(clipa)/sizeof(unsigned int));
+	if (!err) {
+		config->clipa = kzalloc(sizeof(clipa), GFP_KERNEL);
+		if (!config->clipa) {
+			dev_err(dev, "clip area allocation failure\n");
+			return;
+		}
+		memcpy(config->clipa, &clipa, sizeof(clipa));
+		pr_notice("using touch clip area in %s\n", node_name);
+	}
+
+	of_node_put(np_config);
+}
 
 static int ft5x06_dt_parse_modifiers(struct ft5x06_ts_data *data)
 {
@@ -2884,6 +3051,10 @@ static int ft5x06_dt_parse_modifiers(struct ft5x06_ts_data *data)
 				pr_notice("using charger detection\n");
 				data->charger_detection_enabled = true;
 				break;
+			case FT_MOD_FPS:
+				pr_notice("sing fingerprint sensor detection\n");
+				data->fps_detection_enabled = true;
+				break;
 			default:
 				pr_notice("no notification found\n");
 				break;
@@ -2893,6 +3064,14 @@ static int ft5x06_dt_parse_modifiers(struct ft5x06_ts_data *data)
 			dev_dbg(dev, "modifier %s enabled unconditionally\n",
 					node_name);
 		}
+
+		dev_dbg(dev, "processing modifier %s[%d]\n",
+			node_name, config->id);
+
+		ft5x06_dt_parse_modifier(data, np_mod, config,
+				modifiers_names[i], true);
+		ft5x06_dt_parse_modifier(data, np_mod, config,
+				modifiers_names[i], false);
 
 		of_node_put(np_mod);
 	}
@@ -3534,6 +3713,31 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 		}
 	}
 
+	exp_fn_ctrl.ft5x06_ts_data_ptr = data;
+	if (data->fps_detection_enabled) {
+		data->fps_notif.notifier_call = fps_notifier_callback;
+		dev_dbg(&client->dev, "registering FPS notifier\n");
+		retval = FPS_register_notifier(
+				&data->fps_notif, 0xBEEF, false);
+		if (retval) {
+			exp_fn_ctrl.det_workqueue =
+			create_singlethread_workqueue("ft5x06_det_workqueue");
+			if (IS_ERR_OR_NULL(exp_fn_ctrl.det_workqueue)) {
+				pr_err("unable to create a workqueue\n");
+			} else {
+				INIT_DELAYED_WORK(&exp_fn_ctrl.det_work,
+					ft5x06_detection_work);
+				queue_delayed_work(exp_fn_ctrl.det_workqueue,
+					&exp_fn_ctrl.det_work,
+					msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+			}
+			dev_err(&client->dev,
+				"Failed to register fps_notifier: %d\n",
+				retval);
+			retval = 0;
+		} else
+			data->is_fps_registered = true;
+	}
 	return 0;
 
 free_fb_notifier:
