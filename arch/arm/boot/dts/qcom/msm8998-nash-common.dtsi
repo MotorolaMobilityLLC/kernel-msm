@@ -137,6 +137,7 @@
 				cirrus,micd-pol-gpios = <&cs47l35 13 0>,
 							<&cs47l35 14 0>;
 				cirrus,micd-rate = <6>;
+				cirrus,report-to-input;
 				cirrus,micd-detect-debounce-ms = <500>;
 				cirrus,micd-ranges = <
 					70 0xE2		/* <  70 Ohms - KEY_MEDIA */
