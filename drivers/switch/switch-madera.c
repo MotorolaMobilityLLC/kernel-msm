@@ -159,6 +159,14 @@ static const int madera_micd_levels[] = {
 	1257, 30000,
 };
 
+#define MADERA_JACK_SWITCH_TYPES 3
+
+static int arizona_switch_types[MADERA_JACK_SWITCH_TYPES] = {
+	SW_HEADPHONE_INSERT,
+	SW_MICROPHONE_INSERT,
+	SW_LINEOUT_INSERT
+};
+
 /* These values are copied from Android WiredAccessoryObserver */
 enum headset_state {
 	BIT_NO_HEADSET = 0,
@@ -456,6 +464,26 @@ inline void madera_extcon_report(struct madera_extcon_info *info, int state)
 {
 	dev_dbg(info->madera->dev, "Switch Report: %d\n", state);
 	switch_set_state(&info->edev, state);
+
+	if (!info->pdata->report_to_input)
+		return;
+
+	if (state == BIT_LINEOUT)
+		input_report_switch(info->input, SW_LINEOUT_INSERT, 1);
+	else
+		input_report_switch(info->input, SW_LINEOUT_INSERT, 0);
+
+	if (state == BIT_HEADSET)
+		input_report_switch(info->input, SW_MICROPHONE_INSERT, 1);
+	else
+		input_report_switch(info->input, SW_MICROPHONE_INSERT, 0);
+
+	if ((state == BIT_HEADSET) || (state == BIT_HEADSET_NO_MIC))
+		input_report_switch(info->input, SW_HEADPHONE_INSERT, 1);
+	else
+		input_report_switch(info->input, SW_HEADPHONE_INSERT, 0);
+
+	input_sync(info->input);
 }
 EXPORT_SYMBOL_GPL(madera_extcon_report);
 
@@ -2384,6 +2412,9 @@ static void madera_extcon_of_process(struct madera *madera,
 
 	madera_extcon_of_get_int(node, "cirrus,hpdet-ext-res",
 				 &pdata->hpdet_ext_res_x100);
+
+	pdata->report_to_input = of_property_read_bool(node,
+						       "cirrus,report-to-input");
 }
 
 static int madera_extcon_of_get_pdata(struct madera *madera)
@@ -2725,7 +2756,7 @@ static int madera_extcon_probe(struct platform_device *pdev)
 	struct madera_extcon_info *info;
 	unsigned int debounce_val, analog_val;
 	int jack_irq_fall, jack_irq_rise;
-	int ret, mode;
+	int ret, mode, i;
 
 	/* quick exit if Madera irqchip driver hasn't completed probe */
 	if (!madera->irq_dev) {
@@ -2923,6 +2954,12 @@ static int madera_extcon_probe(struct platform_device *pdev)
 	ret = madera_extcon_add_micd_levels(info);
 	if (ret)
 		goto err_input;
+
+	if (pdata->report_to_input) {
+		for (i = 0; i < MADERA_JACK_SWITCH_TYPES; i++)
+			input_set_capability(info->input, EV_SW,
+					     arizona_switch_types[i]);
+	}
 
 	madera_extcon_set_micd_clamp_mode(info);
 
