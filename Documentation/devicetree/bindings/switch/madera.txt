@@ -53,6 +53,8 @@ Child node optional properties:
     First cell is the value for the SW1_MODE
     Second cell is the value for the SW2_MODE (cs47l90, cs47l91)
 
+  - cirrus,report-to-input : Report headset detection events to input queue.
+
   - cirrus,fixed-hpdet-imp : Do not perform any headphone detection, just use
     the fixed value specified here as the headphone impedance. Value is in
     hundredths-of-an-ohm (ohms * 100)
