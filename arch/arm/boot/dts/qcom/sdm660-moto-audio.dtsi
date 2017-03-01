@@ -59,6 +59,7 @@
 		compatible = "qcom,sdm660-asoc-snd-madera";
 		qcom,model = "sdm660-madera-snd-card";
 		qcom,ext-disp-audio-rx;
+		qcom,wcn-btfm;
 
 		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
 				<&loopback>, <&compress>, <&hostless>,
@@ -80,6 +81,7 @@
 				<&incall_record_tx>, <&incall_music_rx>,
 				<&incall_music_2_rx>, <&sb_5_rx>,
 				<&usb_audio_rx>, <&usb_audio_tx>, <&sb_6_rx>,
+				<&sb_7_rx>, <&sb_7_tx>, <&sb_8_tx>,
 				<&dai_pri_tdm_rx_0>, <&dai_pri_tdm_tx_0>,
 				<&dai_sec_tdm_rx_0>, <&dai_sec_tdm_tx_0>,
 				<&dai_tert_tdm_rx_0>, <&dai_tert_tdm_tx_0>,
@@ -95,7 +97,8 @@
 				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
 				"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394",
 				"msm-dai-q6-dev.28672", "msm-dai-q6-dev.28673",
-				"msm-dai-q6-dev.16396",
+				"msm-dai-q6-dev.16396", "msm-dai-q6-dev.16398",
+				"msm-dai-q6-dev.16399", "msm-dai-q6-dev.16401",
 				"msm-dai-q6-tdm.36864", "msm-dai-q6-tdm.36865",
 				"msm-dai-q6-tdm.36880", "msm-dai-q6-tdm.36881",
 				"msm-dai-q6-tdm.36896", "msm-dai-q6-tdm.36897",
@@ -121,9 +124,24 @@
 	};
 };
 
+&i2c_2 {
+	status = "ok";
+	cs35l35@40 {
+		compatible = "cirrus,cs35l35";
+		reg = <0x40>;
+		reset-gpios = <&tlmm 63 0>;
+		irq-gpios = <&tlmm 76 0>;
+		interrupt-parent = <&tlmm>;
+		VA-supply = <&dummy_vreg>;
+		VP-supply = <&dummy_vreg>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cs35l35_reset_default &cs35l35_irq_default>;
+	};
+};
+
 &spi_7 {
 	status = "ok";
-
 	cs47l35: cs47l35@0 {
 		compatible = "cirrus,cs47l35";
 		spi-max-frequency = <26000000>;
@@ -150,7 +168,7 @@
 
 		cirrus,gpio-defaults = <
 			0x00002000 0x0000f000 /* AIF3TXDAT / GPIO1  */
-			0x00003003 0x00007000 /* IRQ1	   / GPIO2  */
+			0x00002000 0x0000f000 /* AIF3BCLK  / GPIO2  */
 			0x00000040 0x00000000 /* AIF3RXDAT / GPIO3  */
 			0x00002000 0x0000f000 /* AIF3LRCLK / GPIO4  */
 			0xffffffff 0xffffffff /* GPIO5 */
@@ -197,7 +215,7 @@
 				cirrus,micd-configs = <
 					0 1 2 0 0
 				>;
-				cirrus,micd-clamp-mode = <0x5>;
+				cirrus,micd-clamp-mode = <0x7>;
 				cirrus,gpsw = <1>;
 			};
 		};
@@ -236,24 +254,6 @@
 				};
 			};
 		};
-	};
-
-};
-
-&i2c_2 {
-	status = "ok";
-
-	cs35l35@40 {
-		compatible = "cirrus,cs35l35";
-		reg = <0x40>;
-		reset-gpios = <&tlmm 63 0>;
-		irq-gpios = <&tlmm 76 0>;
-		interrupt-parent = <&tlmm>;
-		VA-supply = <&dummy_vreg>;
-		VP-supply = <&dummy_vreg>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&cs35l35_reset_default &cs35l35_irq_default>;
 	};
 };
 
