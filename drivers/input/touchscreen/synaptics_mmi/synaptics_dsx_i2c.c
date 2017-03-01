@@ -2152,6 +2152,12 @@ static ssize_t synaptics_rmi4_reporting_show(struct device *dev,
 static ssize_t synaptics_rmi4_reporting_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
+static ssize_t synaptics_rmi4_reporting_ntouch_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_reporting_ntouch_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
 static ssize_t synaptics_rmi4_stats_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
@@ -2289,6 +2295,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(reporting, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
 			synaptics_rmi4_reporting_show,
 			synaptics_rmi4_reporting_store),
+	__ATTR(reporting_ntouch, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			synaptics_rmi4_reporting_ntouch_show,
+			synaptics_rmi4_reporting_ntouch_store),
 	__ATTR(stats, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
 			synaptics_rmi4_stats_show,
 			synaptics_rmi4_stats_store),
@@ -3326,6 +3335,41 @@ static ssize_t synaptics_rmi4_reporting_store(struct device *dev,
 	return count;
 }
 
+static ssize_t synaptics_rmi4_reporting_ntouch_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	ssize_t length;
+	struct synaptics_rmi4_data *rmi4_data =
+					i2c_get_clientdata(to_i2c_client(dev));
+	down(&rmi4_data->rctrl.ctrl_sema);
+	length = scnprintf(buf, PAGE_SIZE, "%d\n", rmi4_data->rctrl.max_seen);
+	rmi4_data->rctrl.max_seen = 0;
+	up(&rmi4_data->rctrl.ctrl_sema);
+
+	return length;
+}
+
+static ssize_t synaptics_rmi4_reporting_ntouch_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned long value;
+	int err;
+	struct synaptics_rmi4_data *rmi4_data =
+					i2c_get_clientdata(to_i2c_client(dev));
+	err = kstrtoul(buf, 10, &value);
+	if (err < 0) {
+		pr_err("Failed to convert value\n");
+		return -EINVAL;
+	}
+
+	down(&rmi4_data->rctrl.ctrl_sema);
+	rmi4_data->rctrl.expected = (int)value;
+	rmi4_data->rctrl.max_seen = 0;
+	up(&rmi4_data->rctrl.ctrl_sema);
+
+	return count;
+}
+
 static ssize_t synaptics_rmi4_drv_irq_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -4241,6 +4285,23 @@ static int synaptics_rmi4_f12_wakeup_gesture(
 	return 0;
 }
 
+static void analyze_finger_data(struct synaptics_rmi4_data *rmi4_data,
+		struct f12_d1_type *data)
+{
+	int id, finger_cnt = 0;
+
+	id = finger_cnt;
+	for (id = 0; id < rmi4_data->num_of_fingers; id++, data++)
+		if (data->type_and_stylus)
+			finger_cnt++;
+
+	down(&rmi4_data->rctrl.ctrl_sema);
+	if (finger_cnt >= rmi4_data->rctrl.expected &&
+		finger_cnt > rmi4_data->rctrl.max_seen)
+		rmi4_data->rctrl.max_seen = finger_cnt;
+	up(&rmi4_data->rctrl.ctrl_sema);
+}
+
  /**
  * synaptics_rmi4_f12_abs_report()
  *
@@ -4299,8 +4360,10 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	/* count valid event */
 	rmi4_data->rctrl.events_cnt++;
-	if (rmi4_data->rctrl.reporting_stopped)
+	if (rmi4_data->rctrl.reporting_stopped) {
+		analyze_finger_data(rmi4_data, finger_data_buf);
 		return 0;
+	}
 #ifdef USE_TIME_SYNC_EVENTS
 	input_event(rmi4_data->input_dev, EV_SYN,
 			SYN_TIME_SEC, hw_time.tv_sec);
@@ -7160,6 +7223,11 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->pm_qos_irq.irq = rmi4_data->irq;
 	pm_qos_add_request(&rmi4_data->pm_qos_irq, PM_QOS_CPU_DMA_LATENCY,
 			rmi4_data->pm_qos_latency);
+
+	/* init reporting semaphore and set expected # of fingers to 1 */
+	sema_init(&rmi4_data->rctrl.ctrl_sema, 1);
+	rmi4_data->rctrl.expected = 1;
+
 	return retval;
 
 err_sysfs:
