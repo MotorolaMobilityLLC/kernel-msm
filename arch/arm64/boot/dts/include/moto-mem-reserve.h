@@ -13,10 +13,7 @@
 #ifndef __MOTO_MEM_RESERVE_H
 #define __MOTO_MEM_RESERVE_H
 
-/*
- * todo: implement for msm8998. WDOG and TZLOG aren't yet available.
- */
-#define WDOG_CPUCTX_SIZE_PERCPU	0x5800 /* sizeof(struct msm_wdog_cpuctx) */
+#define WDOG_CPUCTX_SIZE_PERCPU	0x5c00 /* sizeof(struct msm_wdog_cpuctx) */
 #define WDOG_CPUCTX_SIZE_8CPUS	(WDOG_CPUCTX_SIZE_PERCPU * 8)
 
 #define WDOG_CPUCTX_END_ADDR	0xaf000000
@@ -24,7 +21,7 @@
 #define WDOG_CPUCTX_SIZE_8998	WDOG_CPUCTX_SIZE_8CPUS
 #define WDOG_CPUCTX_BASE_8998	(WDOG_CPUCTX_END_ADDR - WDOG_CPUCTX_SIZE_8CPUS)
 
-#define TZLOG_BCK_SIZE		0x2000
+#define TZLOG_BCK_SIZE		0x3000
 #define TZLOG_BCK_BASE_8998	(WDOG_CPUCTX_BASE_8998 - TZLOG_BCK_SIZE)
 
 #endif /* __MOTO_MEM_RESERVE_H */
