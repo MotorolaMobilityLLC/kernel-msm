@@ -182,7 +182,7 @@ static u32 mi2s_ebit_clk[MI2S_MAX] = {
 	Q6AFE_LPASS_CLK_ID_TER_MI2S_EBIT,
 	Q6AFE_LPASS_CLK_ID_QUAD_MI2S_EBIT
 };
-
+#ifndef CONFIG_SND_SOC_MADERA
 struct msm_wsa881x_dev_info {
 	struct device_node *of_node;
 	u32 index;
@@ -191,6 +191,7 @@ static struct snd_soc_aux_dev *msm_aux_dev;
 static struct snd_soc_codec_conf *msm_codec_conf;
 
 static bool msm_swap_gnd_mic(struct snd_soc_codec *codec);
+#endif
 
 static struct wcd_mbhc_config mbhc_cfg = {
 	.read_fw_bin = false,
@@ -2573,6 +2574,7 @@ void msm_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 }
 EXPORT_SYMBOL(msm_mi2s_snd_shutdown);
 
+#ifndef CONFIG_SND_SOC_MADERA
 /* Validate whether US EU switch is present or not */
 static int msm_prepare_us_euro(struct snd_soc_card *card)
 {
@@ -2616,6 +2618,7 @@ static bool msm_swap_gnd_mic(struct snd_soc_codec *codec)
 	pr_debug("%s: swap select switch %d to %d\n", __func__, value, !value);
 	return true;
 }
+#endif
 
 static int msm_populate_dai_link_component_of_node(
 		struct msm_asoc_mach_data *pdata,
@@ -2728,7 +2731,7 @@ err:
 	return ret;
 }
 
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 static int msm_wsa881x_init(struct snd_soc_component *component)
 {
 	u8 spkleft_ports[WSA881X_MAX_SWR_PORTS] = {100, 101, 102, 106};
@@ -2778,6 +2781,7 @@ static int msm_wsa881x_init(struct snd_soc_component *component)
 						      codec);
 	return 0;
 }
+
 
 static int msm_init_wsa_dev(struct platform_device *pdev,
 			    struct snd_soc_card *card)
@@ -2964,7 +2968,6 @@ err_mem:
 err_dt:
 	return ret;
 }
-#endif
 
 static void msm_free_auxdev_mem(struct platform_device *pdev)
 {
@@ -2979,6 +2982,7 @@ static void msm_free_auxdev_mem(struct platform_device *pdev)
 		}
 	}
 }
+#endif
 
 static void i2s_auxpcm_init(struct platform_device *pdev)
 {
@@ -3051,8 +3055,8 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 
 	ret = of_property_read_u32(pdev->dev.of_node, mclk, &id);
 	if (ret) {
-		/* dev_err(&pdev->dev,
-			"%s: missing %s in dt node\n", __func__, mclk); */
+		dev_err(&pdev->dev,
+			"%s: missing %s in dt node\n", __func__, mclk);
 		id = DEFAULT_MCLK_RATE;
 	}
 	pdata->mclk_freq = id;
@@ -3094,6 +3098,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 					"qcom,cdc-ext-spk-gpios", 0);
 	}
 
+#ifndef CONFIG_SND_SOC_MADERA
 	/*
 	 * Parse US-Euro gpio info from DT. Report no error if us-euro
 	 * entry is not found in DT file as some targets do not support
@@ -3117,7 +3122,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	if (ret)
 		dev_dbg(&pdev->dev, "msm_prepare_us_euro failed (%d)\n",
 			ret);
-
+#endif
 	i2s_auxpcm_init(pdev);
 
 	ret = snd_soc_of_parse_audio_routing(card, "qcom,audio-routing");
@@ -3130,13 +3135,14 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 	if (!of_property_read_bool(pdev->dev.of_node, "qcom,wsa-disable")) {
 		ret = msm_init_wsa_dev(pdev, card);
 		if (ret)
 			goto err;
 	}
 #endif
+
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret == -EPROBE_DEFER) {
 		if (codec_reg_done) {
@@ -3156,8 +3162,11 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	if (pdata->snd_card_val != INT_SND_CARD)
 		msm_ext_register_audio_notifier(pdev);
 
+	dev_info(&pdev->dev, "%s: snd_soc_register_card sucessfully\n",
+		__func__);
 	return 0;
 err:
+#ifndef CONFIG_SND_SOC_MADERA
 	if (pdata->us_euro_gpio > 0) {
 		dev_dbg(&pdev->dev, "%s free us_euro gpio %d\n",
 			__func__, pdata->us_euro_gpio);
@@ -3175,6 +3184,7 @@ err:
 		gpio_free(pdata->hph_en0_gpio);
 		pdata->hph_en0_gpio = 0;
 	}
+#endif
 	if (pdata->snd_card_val != INT_SND_CARD)
 		msm_ext_cdc_deinit(pdata);
 	devm_kfree(&pdev->dev, pdata);
@@ -3190,11 +3200,13 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 		mutex_destroy(&pdata->cdc_int_mclk0_mutex);
 	else
 		msm_ext_cdc_deinit(pdata);
+#ifndef CONFIG_SND_SOC_MADERA
 	msm_free_auxdev_mem(pdev);
 
 	gpio_free(pdata->us_euro_gpio);
 	gpio_free(pdata->hph_en1_gpio);
 	gpio_free(pdata->hph_en0_gpio);
+#endif
 	snd_soc_unregister_card(card);
 	return 0;
 }
