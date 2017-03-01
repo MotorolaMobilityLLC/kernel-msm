@@ -17,7 +17,3 @@
         compatible = "qcom,sdm660-payton", "qcom,sdm660-moto",
                         "qcom,sdm660";
 };
-
-&tavil_snd {
-	qcom,msm-mbhc-moist-cfg = <0>, <0>, <3>;
-};
