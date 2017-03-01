@@ -139,6 +139,18 @@ enum __stmv53l1_parameter_name_e {
 	 * This is a read only parameter. It will return last device internal
 	 * error. It's valid only after an ioctl/sysfs return an -EIO error.
 	 */
+
+	VL53L1_CAMERAMODE_PAR = 16,
+	/*!< VL53L1_CAMERAMODE_PAR
+	* valid camera mode value :
+	* @li 0 device is out of camera mode.
+	* @li 1 device is in camera mode.
+	*/
+
+	VL53L1_HWREV_PAR = 17,
+	/*!< VL53L1_HWREV_PAR
+	* This is a read only parameter. It will return HW revision number
+	*/
 };
 #define stmv53l1_parameter_name_e enum __stmv53l1_parameter_name_e
 

@@ -546,19 +546,43 @@ static int stmvl53l1_start(struct stmvl53l1_data *data)
 
 	/* set autonomous mode configuration */
 	if (data->preset_mode == VL53L1_PRESETMODE_AUTONOMOUS) {
-		rc = VL53L1_SetInterMeasurementPeriodMilliSeconds(&data->stdev,
-			data->auto_pollingTimeInMs);
-		if (rc) {
-			vl53l1_errmsg("Fail to set auto period %d\n", rc);
-			rc = store_last_error(data, rc);
-			goto done;
-		}
-		rc = VL53L1_SetThresholdConfig(&data->stdev,
-			&data->auto_config);
-		if (rc) {
-			vl53l1_errmsg("Fail to set auto config %d\n", rc);
-			rc = store_last_error(data, rc);
-			goto done;
+		if (data->cam_mode == 0) {
+			rc = VL53L1_SetInterMeasurementPeriodMilliSeconds(
+					&data->stdev,
+					data->auto_pollingTimeInMs);
+			if (rc) {
+				vl53l1_errmsg("Fail to set auto period %d\n",
+						rc);
+				rc = store_last_error(data, rc);
+				goto done;
+			}
+			rc = VL53L1_SetThresholdConfig(&data->stdev,
+					&data->auto_config);
+			if (rc) {
+				vl53l1_errmsg("Fail to set auto config %d\n",
+						rc);
+				rc = store_last_error(data, rc);
+				goto done;
+			}
+		} else {
+			/* set camera autonomous configration */
+			rc = VL53L1_SetInterMeasurementPeriodMilliSeconds(
+					&data->stdev,
+					data->auto_pollingTimeInMs_cam);
+			if (rc) {
+				vl53l1_errmsg("Fail to set auto period %d\n",
+						rc);
+				rc = store_last_error(data, rc);
+				goto done;
+			}
+			rc = VL53L1_SetThresholdConfig(&data->stdev,
+					&data->auto_config_cam);
+			if (rc) {
+				vl53l1_errmsg("Fail to set auto config %d\n",
+						rc);
+				rc = store_last_error(data, rc);
+				goto done;
+			}
 		}
 	}
 
@@ -1884,10 +1908,15 @@ static int ctrl_stop(struct stmvl53l1_data *data)
 	if (data->enable_sensor) {
 		rc = _ctrl_stop(data);
 
-		if (data->preset_mode != VL53L1_PRESETMODE_AUTONOMOUS &&
-				data->sar_mode == 1) {
-			vl53l1_info("restore sar mode\n");
-			activate_sar_mode(data);
+		if (data->cam_mode == 1) {
+			/* only restore sar mode when
+			   it quits from camera mode */
+			data->cam_mode = 0;
+
+			if (data->sar_mode == 1) {
+				vl53l1_info("restore sar mode\n");
+				activate_sar_mode(data);
+			}
 		}
 	} else
 		rc = -EBUSY;
@@ -2259,6 +2288,39 @@ static int ctrl_param_last_error(struct stmvl53l1_data *data,
 
 	return rc;
 }
+
+static int ctrl_param_camera_mode(struct stmvl53l1_data *data,
+		struct stmvl53l1_parameter *param)
+{
+	if (param->is_read) {
+		param->value = data->cam_mode;
+		param->status = 0;
+		vl53l1_dbgmsg("get camera mode %d", param->value);
+	} else {
+		data->cam_mode = param->value;
+		vl53l1_dbgmsg("set camera mode %d", param->value);
+	}
+
+	return 0;
+}
+
+static int ctrl_param_hw_rev(struct stmvl53l1_data *data,
+		struct stmvl53l1_parameter *param)
+{
+	int rc;
+
+	if (param->is_read) {
+		param->value = data->hw_rev;
+		param->status = 0;
+		vl53l1_dbgmsg("get hw rev %d", param->value);
+		rc = 0;
+	} else {
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+
 /**
  * handle ioctl set param mode
  *
@@ -2307,6 +2369,12 @@ static int ctrl_params(struct stmvl53l1_data *data, void __user *p)
 	case VL53L1_LASTERROR_PAR:
 		rc = ctrl_param_last_error(data, &param);
 	break;
+	case VL53L1_CAMERAMODE_PAR:
+		rc = ctrl_param_camera_mode(data, &param);
+		break;
+	case VL53L1_HWREV_PAR:
+		rc = ctrl_param_hw_rev(data, &param);
+		break;
 	default:
 		vl53l1_errmsg("unknown or unsupported %d\n", param.name);
 		rc = -EINVAL;
@@ -2431,6 +2499,46 @@ static int ctrl_autonomous_config(struct stmvl53l1_data *data, void __user *p)
 		}
 		data->auto_pollingTimeInMs = full.pollingTimeInMs;
 		data->auto_config = full.config;
+	}
+
+done:
+	mutex_unlock(&data->work_mutex);
+
+	return rc;
+}
+
+static int ctrl_autonomous_config_cam(struct stmvl53l1_data *data,
+		void __user *p)
+{
+	int rc = 0;
+	struct stmvl53l1_autonomous_config_t full;
+
+	mutex_lock(&data->work_mutex);
+	if (data->is_device_remove) {
+		rc = -ENODEV;
+		goto done;
+	}
+	/* first copy all data */
+	rc = copy_from_user(&full, p, sizeof(full));
+	if (rc) {
+		rc = -EFAULT;
+		goto done;
+	}
+
+	if (full.is_read) {
+		full.pollingTimeInMs = data->auto_pollingTimeInMs_cam;
+		full.config = data->auto_config_cam;
+		rc = copy_to_user(p, &full, sizeof(full));
+		if (rc)
+			rc = -EFAULT;
+	} else {
+		if (data->enable_sensor) {
+			rc = -EBUSY;
+			vl53l1_errmsg("can't change config while ranging\n");
+			goto done;
+		}
+		data->auto_pollingTimeInMs_cam = full.pollingTimeInMs;
+		data->auto_config_cam = full.config;
 	}
 
 done:
@@ -2688,7 +2796,10 @@ static int stmvl53l1_ioctl_handler(
 		break;
 	case VL53L1_IOCTL_AUTONOMOUS_CONFIG:
 		vl53l1_dbgmsg("VL53L1_IOCTL_AUTONOMOUS_CONFIG\n");
-		rc = ctrl_autonomous_config(data, p);
+		if (data->cam_mode == 0)
+			rc = ctrl_autonomous_config(data, p);
+		else
+			rc = ctrl_autonomous_config_cam(data, p);
 		break;
 	default:
 		rc = -EINVAL;
@@ -3118,6 +3229,8 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 
 	vl53l1_dbgmsg("Enter\n");
 
+	data->hw_rev = 0;
+
 	/* acquire an id */
 	data->id = allocate_dev_id();
 	if (data->id < 0) {
@@ -3175,6 +3288,8 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 	data->distance_mode = STMVL53L1_CFG_DEFAULT_DISTANCE_MODE;
 	data->crosstalk_enable = STMVL53L1_CFG_DEFAULT_CROSSTALK_ENABLE;
 	data->output_mode = STMVL53L1_CFG_DEFAULT_OUTPUT_MODE;
+	data->cam_mode = 0;
+	data->sar_mode = 0;
 	stmvl53l1_setup_auto_config(data);
 
 	data->is_delay_allowed = true;
@@ -3193,6 +3308,8 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 	}
 	vl53l1_errmsg("device Product type 0x%x name %s\ntype %s\n",
 			dev_info.ProductType, dev_info.Name, dev_info.Type);
+
+	data->hw_rev = dev_info.ProductRevisionMinor;
 
 	memset(&cali_data, 0, sizeof(cali_data));
 	rc = VL53L1_GetCalibrationData(&data->stdev, &cali_data);
