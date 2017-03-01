@@ -18,7 +18,7 @@
 #include <soc/qcom/mmi_watchdog.h>
 #include <soc/qcom/watchdog.h>
 
-#ifndef CONFIG_MSM_WATCHDOG_V2
+#ifndef CONFIG_QCOM_WATCHDOG_V2
 struct completion wdt_timeout_complete;
 static void wdt_timeout_work(struct work_struct *work)
 {
@@ -36,7 +36,7 @@ static int fire_watchdog_reset_set(void *data, u64 val)
 
 	printk(KERN_WARNING "Fire hardware watchdog reset.\n");
 	printk(KERN_WARNING "Please wait ...\n");
-#ifdef CONFIG_MSM_WATCHDOG_V2
+#ifdef CONFIG_QCOM_WATCHDOG_V2
 	msm_trigger_wdog_bite();
 #else
 	init_completion(&wdt_timeout_complete);
