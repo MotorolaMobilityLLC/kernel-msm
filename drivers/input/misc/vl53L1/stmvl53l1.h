@@ -181,6 +181,7 @@ struct stmvl53l1_waiters {
 struct stmvl53l1_data {
 	int id;			/*!< multiple device id 0 based*/
 	char name[64];		/*!< misc device name */
+	int32_t hw_rev;		/*!< hardware revision number*/
 
 	VL53L1_DevData_t stdev;	/*!<embed ST VL53L0 Dev data as "stdev" */
 
@@ -216,6 +217,7 @@ struct stmvl53l1_data {
 	int output_mode;	/*!< output mode of the device */
 	bool force_device_on_en;/*!< keep device active when stopped */
 	int sar_mode; /*!< is sar mode enable/disabled */
+	int cam_mode; /*!< is camera mode enable/disabled */
 	VL53L1_Error last_error;/*!< last device internal error */
 	/* PS parameters */
 
@@ -268,6 +270,10 @@ struct stmvl53l1_data {
 	/* autonomous config */
 	uint32_t auto_pollingTimeInMs;
 	VL53L1_DetectionConfig_t auto_config;
+
+	/* autonomous config for camera */
+	uint32_t auto_pollingTimeInMs_cam;
+	VL53L1_DetectionConfig_t auto_config_cam;
 
 	/* Debug */
 	struct ipp_data_t ipp;
