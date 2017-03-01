@@ -17,7 +17,7 @@
 #ifndef _ASM_ARCH_MMI_WATCHDOG_H_
 #define _ASM_ARCH_MMI_WATCHDOG_H_
 
-#ifdef CONFIG_MSM_WATCHDOG_V2
+#ifdef CONFIG_QCOM_WATCHDOG_V2
 void msm_trigger_wdog_bite(void);
 void g_pet_watchdog(void);
 #define pet_watchdog(void) g_pet_watchdog(void);
