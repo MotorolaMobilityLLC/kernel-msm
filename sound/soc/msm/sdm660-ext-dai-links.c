@@ -289,35 +289,6 @@ static struct snd_soc_dai_link msm_ext_madera_fe_dai[] = {
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ignore_suspend = 1,
 	},
-#if 0
-	/* Ultrasound RX DAI Link */
-	{
-		.name = "SLIMBUS_2 Hostless Playback",
-		.stream_name = "SLIMBUS_2 Hostless Playback",
-		.cpu_dai_name = "msm-dai-q6-dev.16388",
-		.platform_name = "msm-pcm-hostless",
-		.codec_name = "cs47l35-codec",
-		.codec_dai_name = "cs47l35-slim1",
-		.ignore_suspend = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ops = &msm_ext_slimbus_2_be_ops,
-	},
-	/* Ultrasound TX DAI Link */
-	{
-		.name = "SLIMBUS_2 Hostless Capture",
-		.stream_name = "SLIMBUS_2 Hostless Capture",
-		.cpu_dai_name = "msm-dai-q6-dev.16389",
-		.platform_name = "msm-pcm-hostless",
-		.codec_name = "cs47l35-codec",
-		.codec_dai_name = "cs47l35-slim1",
-		.ignore_suspend = 1,
-		.dpcm_capture = 1,
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ops = &msm_ext_slimbus_2_be_ops,
-	},
-#endif
 	{
 		.name = "SLIMBUS_6 Hostless Playback",
 		.stream_name = "SLIMBUS_6 Hostless",
@@ -556,14 +527,14 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.name = LPASS_BE_SLIMBUS_1_TX,
 		.stream_name = "Slimbus1 Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16387",
-		.platform_name = "msm-pcm-routing",
+		.platform_name = "msm-pcm-hostless",
 		.codec_name = "cs47l35-codec",
 		.codec_dai_name = "cs47l35-slim2",
-		.no_pcm = 1,
 		.dpcm_capture = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_TX,
 		.be_hw_params_fixup = msm_ext_be_hw_params_fixup,
 		.ops = &msm_ext_slimbus_be_ops,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ignore_suspend = 1,
 	},
 	{
@@ -662,7 +633,7 @@ static struct snd_soc_dai_link msm_ext_madera_be_dai[] = {
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
 	},
-#ifdef CONFIG_SND_SOC_CS47L35
+#if defined(CONFIG_SND_SOC_CS47L35) && defined(CONFIG_SND_SOC_CS35L35)
 	{ /* codec to amp link */
 		.name = "MADERA-AMP",
 		.stream_name = "MADERA-AMP Playback",
@@ -2237,17 +2208,16 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev,
 		       msm_ext_madera_be_dai, sizeof(msm_ext_madera_be_dai));
 
 		len4 = len3 + ARRAY_SIZE(msm_ext_madera_be_dai);
-#if 0
 		if (of_property_read_bool(dev->of_node,
 					  "qcom,mi2s-audio-intf")) {
-			memcpy(msm_ext_tasha_dai_links + len4,
+			memcpy(msm_ext_madera_dai_links + len4,
 			       msm_mi2s_be_dai_links,
 			       sizeof(msm_mi2s_be_dai_links));
 			len4 += ARRAY_SIZE(msm_mi2s_be_dai_links);
 		}
 		if (of_property_read_bool(dev->of_node,
 					  "qcom,auxpcm-audio-intf")) {
-			memcpy(msm_ext_tasha_dai_links + len4,
+			memcpy(msm_ext_madera_dai_links + len4,
 			       msm_auxpcm_be_dai_links,
 			       sizeof(msm_auxpcm_be_dai_links));
 			len4 += ARRAY_SIZE(msm_auxpcm_be_dai_links);
@@ -2255,12 +2225,11 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev,
 		if (of_property_read_bool(dev->of_node, "qcom,wcn-btfm")) {
 			dev_dbg(dev, "%s(): WCN BTFM support present\n",
 					__func__);
-			memcpy(msm_ext_tasha_dai_links + len4,
+			memcpy(msm_ext_madera_dai_links + len4,
 				   msm_wcn_be_dai_links,
 				   sizeof(msm_wcn_be_dai_links));
 			len4 += ARRAY_SIZE(msm_wcn_be_dai_links);
 		}
-#endif
 		msm_ext_dai_links = msm_ext_madera_dai_links;
 	} else if (strnstr(card->name, "tasha", strlen(card->name))) {
 		codec_ver = tasha_codec_ver();
