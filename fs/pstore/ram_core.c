@@ -296,6 +296,9 @@ struct persistent_ram_annotation_append_buffer {
 } praa_buffer = {
 	.lock	= __SPIN_LOCK_UNLOCKED(praa_buffer.lock),
 	.list	= LIST_HEAD_INIT(praa_buffer.list),
+	.stop = 0,
+	.buf = NULL,
+	.total_size = 0,
 };
 
 int persistent_ram_annotation_append(const char *fmt, ...)
