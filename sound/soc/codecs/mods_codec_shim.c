@@ -31,7 +31,7 @@
 		SNDRV_PCM_RATE_64000 | SNDRV_PCM_RATE_96000 |\
 		SNDRV_PCM_RATE_176400 | SNDRV_PCM_RATE_192000)
 
-#define MODS_FMTS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE)
+#define MODS_FMTS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
 static struct mods_codec_device *mods_codec_dev;
 static struct snd_soc_codec *priv_codec;
@@ -250,14 +250,14 @@ static struct snd_soc_dai_driver mods_codec_shim_dai = {
 		.rates		= MODS_RATES,
 		.formats	= MODS_FMTS,
 		.channels_min	= 1,
-		.channels_max	= 2,
+		.channels_max	= 4,
 	},
 	.capture = {
 		.stream_name = "Mods Dai Capture",
 		.rates		= MODS_RATES,
 		.formats	= MODS_FMTS,
 		.channels_min	= 1,
-		.channels_max	= 2,
+		.channels_max	= 4,
 	},
 	.ops = &mods_codec_shim_dai_ops,
 };
