@@ -666,6 +666,22 @@ static int ft5x0x_read_reg(struct i2c_client *client, u8 addr, u8 *val)
 	return ft5x06_i2c_read(client, &addr, 1, val, 1);
 }
 
+static void ft5x06_irq_disable(struct ft5x06_ts_data *data)
+{
+	if (data->irq_enabled) {
+		disable_irq(data->client->irq);
+		data->irq_enabled = false;
+	}
+}
+
+static void ft5x06_irq_enable(struct ft5x06_ts_data *data)
+{
+	if (!data->irq_enabled) {
+		enable_irq(data->client->irq);
+		data->irq_enabled = true;
+	}
+}
+
 #ifdef CONFIG_TOUCHSCREEN_FT5X06_GESTURE
 static ssize_t ft5x06_gesture_enable_to_set_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -1269,8 +1285,7 @@ static int ft5x06_ts_start(struct device *dev)
 
 	msleep(data->pdata->soft_rst_dly);
 
-	enable_irq(data->client->irq);
-	data->irq_enabled = true;
+	ft5x06_irq_enable(data);
 	data->suspended = false;
 
 	return 0;
@@ -1291,8 +1306,7 @@ static int ft5x06_ts_stop(struct device *dev)
 	char txbuf[2];
 	int i, err;
 
-	disable_irq(data->client->irq);
-	data->irq_enabled = false;
+	ft5x06_irq_disable(data);
 
 	/* release all touches */
 	for (i = 0; i < data->pdata->num_max_touches; i++) {
@@ -1366,8 +1380,7 @@ pwr_off_fail:
 		msleep(data->pdata->hard_rst_dly);
 		gpio_set_value_cansleep(data->pdata->reset_gpio, 1);
 	}
-	enable_irq(data->client->irq);
-	data->irq_enabled = true;
+	ft5x06_irq_enable(data);
 	return err;
 }
 
@@ -1558,8 +1571,7 @@ static int ft5x06_set_charger_state(struct ft5x06_ts_data *data,
 	struct device *dev = &data->client->dev;
 
 	/* disable IRQ to set CHARGER_STATE reg */
-	disable_irq(data->client->irq);
-	data->irq_enabled = false;
+	ft5x06_irq_disable(data);
 	if (enable) {
 		retval = ft5x0x_write_reg(data->client,
 			FT_REG_CHG_STATE, 1);
@@ -1577,8 +1589,7 @@ static int ft5x06_set_charger_state(struct ft5x06_ts_data *data,
 		else
 			dev_info(dev, "unset chg state\n");
 	}
-	enable_irq(data->client->irq);
-	data->irq_enabled = true;
+	ft5x06_irq_enable(data);
 
 	return (retval > 0) ? 0 : retval;
 }
@@ -2289,10 +2300,7 @@ static ssize_t ft5x06_reset_store(struct device *dev,
 	}
 
 	mutex_lock(&data->input_dev->mutex);
-	if (data->irq_enabled) {
-		disable_irq(data->client->irq);
-		data->irq_enabled = false;
-	}
+	ft5x06_irq_disable(data);
 	retval = gpio_direction_output(data->pdata->reset_gpio, 0);
 	if (0 == retval) {
 		gpio_set_value_cansleep(data->pdata->reset_gpio, 0);
@@ -2303,8 +2311,7 @@ static ssize_t ft5x06_reset_store(struct device *dev,
 			"set direction for reset gpio failed\n");
 	}
 	msleep(100);
-	enable_irq(data->client->irq);
-	data->irq_enabled = true;
+	ft5x06_irq_enable(data);
 	mutex_unlock(&data->input_dev->mutex);
 	return count;
 }
@@ -2335,17 +2342,11 @@ static ssize_t ft5x06_drv_irq_store(struct device *dev,
 	switch (value) {
 	case 0:
 		/* Disable irq */
-		if (data->irq_enabled) {
-			disable_irq(data->client->irq);
-			data->irq_enabled = false;
-		}
+		ft5x06_irq_disable(data);
 		break;
 	case 1:
 		/* Enable irq */
-		if (!data->irq_enabled) {
-			enable_irq(data->client->irq);
-			data->irq_enabled = true;
-		}
+		ft5x06_irq_enable(data);
 		break;
 	default:
 		pr_err("Invalid value\n");
