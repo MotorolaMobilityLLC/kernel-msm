@@ -170,14 +170,6 @@ static int cs35l35_main_amp_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		regmap_update_bits(cs35l35->regmap, CS35L35_BST_CVTR_V_CTL,
 			CS35L35_BST_CTL_MASK, 0x41);
-		if (cs35l35->pdata.bst_pdn_fet_on)
-			regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
-				CS35L35_PDN_BST_MASK,
-				0 << CS35L35_PDN_BST_FETON_SHIFT);
-		else
-			regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
-				CS35L35_PDN_BST_MASK,
-				0 << CS35L35_PDN_BST_FETOFF_SHIFT);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		usleep_range(5000, 5100);
@@ -202,14 +194,6 @@ static int cs35l35_main_amp_event(struct snd_soc_dapm_widget *w,
 			CS35L35_AMP_MUTE_MASK, 1 << CS35L35_AMP_MUTE_SHIFT);
 		regmap_update_bits(cs35l35->regmap, CS35L35_BST_CVTR_V_CTL,
 			CS35L35_BST_CTL_MASK, 0x00);
-		if (cs35l35->pdata.bst_pdn_fet_on)
-			regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
-				CS35L35_PDN_BST_MASK,
-				1 << CS35L35_PDN_BST_FETON_SHIFT);
-		else
-			regmap_update_bits(cs35l35->regmap, CS35L35_PWRCTL2,
-				CS35L35_PDN_BST_MASK,
-				1 << CS35L35_PDN_BST_FETOFF_SHIFT);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		usleep_range(5000, 5100);
@@ -466,6 +450,9 @@ static const struct snd_soc_dapm_widget cs35l35_dapm_widgets[] = {
 		cs35l35_main_amp_event, SND_SOC_DAPM_PRE_PMU |
 				SND_SOC_DAPM_POST_PMD | SND_SOC_DAPM_POST_PMU |
 				SND_SOC_DAPM_PRE_PMD),
+
+	SND_SOC_DAPM_OUT_DRV("RECT FET", CS35L35_PWRCTL2, 1, 0, NULL, 0),
+	SND_SOC_DAPM_OUT_DRV("BOOST", CS35L35_PWRCTL2, 2, 1, NULL, 0),
 };
 
 static const struct snd_soc_dapm_route cs35l35_audio_map[] = {
@@ -481,7 +468,8 @@ static const struct snd_soc_dapm_route cs35l35_audio_map[] = {
 
 	{"SDIN", NULL, "AMP Playback"},
 	{"CLASS H", NULL, "SDIN"},
-	{"Main AMP", NULL, "CLASS H"},
+	{"BOOST", NULL, "CLASS H"},
+	{"Main AMP", NULL, "BOOST"},
 	{"SPK", NULL, "Main AMP"},
 
 
@@ -489,7 +477,8 @@ static const struct snd_soc_dapm_route cs35l35_audio_map[] = {
 	{"CLKSEL MUX", NULL, "MCLK Select"},
 
 	{"PDM Mux", "On", "PDM Playback"},
-	{"Main AMP", NULL, "PDM Mux"},
+	{"RECT FET", NULL, "PDM Mux"},
+	{"Main AMP", NULL, "RECT FET"},
 	{"PDM Select", NULL, "Main AMP"},
 	{"CLKSEL MUX", "PDM", "PDM Select"},
 
