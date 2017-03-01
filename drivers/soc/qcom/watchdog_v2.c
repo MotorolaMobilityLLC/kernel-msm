@@ -31,6 +31,7 @@
 #include <soc/qcom/memory_dump.h>
 #include <soc/qcom/minidump.h>
 #include <soc/qcom/watchdog.h>
+#include "watchdog_cpu_ctx.h"
 
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
@@ -93,6 +94,8 @@ struct msm_watchdog_data {
 	bool timer_expired;
 	bool user_pet_complete;
 	unsigned int scandump_size;
+	phys_addr_t cpu_ctx_addr;
+	size_t cpu_ctx_size_percpu;
 };
 
 /*
@@ -606,22 +609,36 @@ static void configure_bark_dump(struct msm_watchdog_data *wdog_dd)
 			 */
 		}
 	} else {
+		phys_addr_t cpu_buf_phys;
+		size_t buf_size_percpu;
+
 		cpu_data = kzalloc(sizeof(struct msm_dump_data) *
 				   num_present_cpus(), GFP_KERNEL);
 		if (!cpu_data) {
 			pr_err("cpu dump data structure allocation failed\n");
 			goto out0;
 		}
-		cpu_buf = kzalloc(MAX_CPU_CTX_SIZE * num_present_cpus(),
-				  GFP_KERNEL);
-		if (!cpu_buf) {
-			pr_err("cpu reg context space allocation failed\n");
-			goto out1;
+		if (wdog_dd->cpu_ctx_addr && wdog_dd->cpu_ctx_size_percpu) {
+			cpu_buf_phys = wdog_dd->cpu_ctx_addr;
+			buf_size_percpu = wdog_dd->cpu_ctx_size_percpu;
+		} else {
+			cpu_buf = kzalloc(MAX_CPU_CTX_SIZE * num_present_cpus(),
+					  GFP_KERNEL);
+			if (!cpu_buf) {
+				pr_err("cpu reg context space allocation failed\n");
+				goto out1;
+			}
+			cpu_buf_phys = virt_to_phys(cpu_buf);
+			buf_size_percpu = MAX_CPU_CTX_SIZE;
 		}
 
 		for_each_cpu(cpu, cpu_present_mask) {
-			cpu_data[cpu].addr = virt_to_phys(cpu_buf +
-							cpu * MAX_CPU_CTX_SIZE);
+			cpu_data[cpu].addr = cpu_buf_phys +
+						cpu * buf_size_percpu;
+			/* Hack the dump data len to the sysdbg length only.
+			 * This is to avoid TZ Zero-initialize the whole
+			 * dump structure including the other header contents.
+			 */
 			cpu_data[cpu].len = MAX_CPU_CTX_SIZE;
 			snprintf(cpu_data[cpu].name, sizeof(cpu_data[cpu].name),
 				"KCPU_CTX%d", cpu);
@@ -855,6 +872,8 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 	wdog_data = wdog_dd;
 	wdog_dd->dev = &pdev->dev;
 	platform_set_drvdata(pdev, wdog_dd);
+	msm_wdog_get_cpu_ctx(pdev, &wdog_dd->cpu_ctx_addr,
+				&wdog_dd->cpu_ctx_size_percpu);
 	cpumask_clear(&wdog_dd->alive_mask);
 	wdog_dd->watchdog_task = kthread_create(watchdog_kthread, wdog_dd,
 			"msm_watchdog");
