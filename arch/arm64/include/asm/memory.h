@@ -170,7 +170,11 @@ static inline unsigned long kaslr_offset(void)
  * of RAM in the mem_map as well.
  */
 #define PHYS_PFN_OFFSET	(PHYS_OFFSET >> PAGE_SHIFT)
+extern void *high_memory;
 
+#define virt_is_valid_lowmem(kaddr)	\
+	((unsigned long)(kaddr) >= PAGE_OFFSET && \
+	(unsigned long)(kaddr) < (unsigned long)high_memory)
 /*
  * Note: Drivers should NOT use these.  They are the wrong
  * translation for translating DMA addresses.  Use the driver
