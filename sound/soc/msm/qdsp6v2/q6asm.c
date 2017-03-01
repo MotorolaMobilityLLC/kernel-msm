@@ -805,8 +805,8 @@ int q6asm_audio_client_buf_free_contiguous(unsigned int dir,
 	}
 
 	if (port->buf[0].data) {
-		pr_debug("%s:data[%pK]phys[%pK][%pK] ,
-			 client[%pK] handle[%pK]\n",
+		pr_debug("%s:data[%pK]phys[%pK][%pK] ,"
+			 "client[%pK] handle[%pK]\n",
 			 __func__,
 			 (void *)port->buf[0].data,
 			 &port->buf[0].phys,
@@ -4483,8 +4483,8 @@ int q6asm_async_write(struct audio_client *ac,
 	else
 		lbuf_phys_addr = param->paddr;
 
-	pr_debug("%s: token[0x%x], buf_addr_lsw[0x%x], buf_size[0x%x],
-		 ts_msw[0x%x], ts_lsw[0x%x], lbuf_phys_addr: 0x[%pK]\n",
+	pr_debug("%s: token[0x%x], buf_addr_lsw[0x%x], buf_size[0x%x],"
+		 "ts_msw[0x%x], ts_lsw[0x%x], lbuf_phys_addr: 0x[%pK]\n",
 		 __func__,
 		 write.hdr.token, write.buf_addr_lsw,
 		 write.buf_size, write.timestamp_msw,
@@ -4621,9 +4621,9 @@ int q6asm_write(struct audio_client *ac, uint32_t len, uint32_t msw_ts,
 						list);
 		write.mem_map_handle = buf_node->mmap_hdl;
 
-		pr_debug("%s:ab->phys[%pK]bufadd[0x%x]
-			 token[0x%x]buf_id[0x%x]buf_size[0x%x]mmaphdl[0x%x]"
-			 , __func__,
+		pr_debug("%s:ab->phys[%pK]bufadd[0x%x]"
+			 "token[0x%x]buf_id[0x%x]buf_size[0x%x]mmaphdl[0x%x]",
+			 __func__,
 			 &ab->phys,
 			 write.buf_addr_lsw,
 			 write.hdr.token,
@@ -4689,9 +4689,9 @@ int q6asm_write_nolock(struct audio_client *ac, uint32_t len, uint32_t msw_ts,
 			write.flags = (0x80000000 | flags);
 		port->dsp_buf = (port->dsp_buf + 1) & (port->max_buf_cnt - 1);
 
-		pr_debug("%s:ab->phys[%pK]bufadd[0x%x]token[0x%x]
-			 buf_id[0x%x]buf_size[0x%x]mmaphdl[0x%x]"
-			 , __func__,
+		pr_debug("%s:ab->phys[%pK]bufadd[0x%x]token[0x%x]"
+			 " buf_id[0x%x]buf_size[0x%x]mmaphdl[0x%x]",
+			 __func__,
 			 &ab->phys,
 			 write.buf_addr_lsw,
 			 write.hdr.token,

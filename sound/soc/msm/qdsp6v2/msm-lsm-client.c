@@ -109,8 +109,8 @@ static int msm_lsm_queue_lab_buffer(struct lsm_priv *prtd, int i)
 	if (!prtd->lsm_client->lab_buffer ||
 		i >= prtd->lsm_client->hw_params.period_count) {
 		dev_err(rtd->dev,
-			"%s: Lab buffer not setup %pK incorrect index
-			%d period count %d\n",
+			"%s: Lab buffer not setup %pK incorrect index"
+			" %d period count %d\n",
 			__func__, prtd->lsm_client->lab_buffer, i,
 			prtd->lsm_client->hw_params.period_count);
 		return -EINVAL;
@@ -211,8 +211,8 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 		if (prtd->lsm_client->session != token ||
 		    !read_done) {
 			dev_err(rtd->dev,
-				"%s: EVENT_READ_DONE invalid callback, session
-				%d callback %d payload %pK",
+				"%s: EVENT_READ_DONE invalid callback, session"
+				" %d callback %d payload %pK",
 				__func__, prtd->lsm_client->session,
 				token, read_done);
 			return;
