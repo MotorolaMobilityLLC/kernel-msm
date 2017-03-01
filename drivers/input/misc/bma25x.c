@@ -3605,6 +3605,14 @@ static int bma25x_resume(struct i2c_client *client)
 	unsigned char databuf = 0;
 	mutex_lock(&data->enable_mutex);
 	if (atomic_read(&data->enable) == 1) {
+		/* set suspend mode first then set normal mode
+		     it is a workaound to prevent entering normal mode fail */
+		databuf = 0x80;
+		bma25x_smbus_write_byte(data->bma25x_client,
+			BMA25X_MODE_CTRL_REG, &databuf);
+		databuf = 0x00;
+		bma25x_smbus_write_byte(data->bma25x_client,
+			BMA25X_FIFO_MODE_REG, &databuf);
 		databuf = 0x00;
 		bma25x_smbus_write_byte(data->bma25x_client,
 			BMA25X_MODE_CTRL_REG, &databuf);
