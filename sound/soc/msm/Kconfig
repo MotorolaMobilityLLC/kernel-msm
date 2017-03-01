@@ -157,16 +157,6 @@ config SND_SOC_EXT_CODEC
 	select SND_SOC_SDM660_COMMON
 	select SND_SOC_COMPRESS
 	select PINCTRL_LPI
-	select MFD_MADERA
-	select MFD_MADERA_SPI
-	select MFD_CS47L35
-	select SWITCH_MADERA
-	select SND_SOC_MADERA
-	select SND_SOC_MADERA_SLIMBUS
-	select SND_SOC_WM_ADSP
-	select SND_SOC_CS47L35
-	select SND_SOC_CS35L35
-	select SND_SOC_OPALUM
 	help
 	To add support for SoC audio on MSM_EXT.
 	This will enable sound soc drivers which
@@ -257,6 +247,7 @@ config SND_SOC_MSM8998
 config SND_SOC_660
 	tristate "SoC Machine driver for SDM660 boards"
 	depends on ARCH_SDM660
+	select SND_SOC_INT_CODEC
 	select SND_SOC_EXT_CODEC
 	help
 	 To add support for SoC audio on SDM660.
