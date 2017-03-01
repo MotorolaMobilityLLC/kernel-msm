@@ -16,7 +16,6 @@
 #include "sdm660.dtsi"
 #include "sdm660-mtp.dtsi"
 #include "sdm660-external-codec.dtsi"
-#include "sdm660-ibis-audio.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. SDM 660 PM660 + PM660L MTP";
@@ -25,6 +24,10 @@
 	qcom,pmic-id = <0x0001001b 0x0101011a 0x0 0x0>,
 			<0x0001001b 0x0201011a 0x0 0x0>,
 			<0x0001001b 0x0102001a 0x0 0x0>;
+};
+
+&tavil_snd {
+	qcom,msm-mbhc-moist-cfg = <0>, <0>, <3>;
 };
 
 &slim_aud {
