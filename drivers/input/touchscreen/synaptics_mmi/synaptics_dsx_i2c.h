@@ -432,6 +432,8 @@ struct synaptics_rmi4_func_packet_regs {
 struct reporting_ctrl {
 	bool reporting_stopped;
 	unsigned int events_cnt;
+	int expected, max_seen;
+	struct semaphore ctrl_sema;
 };
 
 #define MAX_READ_WRITE_SIZE 8096
