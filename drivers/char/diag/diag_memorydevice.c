@@ -278,6 +278,9 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 			if ((info && (info->peripheral_mask &
 			    MD_PERIPHERAL_MASK(peripheral)) == 0))
 				goto drop_data;
+
+			DIAG_LOG(DIAG_DEBUG_PERIPHERALS, " data len %d ret %d",
+				entry->len, ret);
 			/*
 			 * If the data is from remote processor, copy the remote
 			 * token first
