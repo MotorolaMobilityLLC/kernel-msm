@@ -198,16 +198,6 @@ config MSM_QMI_INTERFACE
 	  to perform QMI message marshaling and transport them over IPC
 	  Router.
 
-config MSM_L2_IA_DEBUG
-       bool "Enable MSM L2 Indirect Access Debug"
-       depends on DEBUG_FS
-       default n
-       help
-         This option enables L2 indirect access debug
-         capability. It exposes L2 indirect access
-         debugfs interface to get/set data, address,
-         and target cpus.
-
 config MSM_RPM_SMD
 	bool "RPM driver using SMD protocol"
 	help
@@ -436,6 +426,18 @@ config QCOM_WATCHDOG_V2
 	  watchdog times out. It allows for detection of cpu hangs and
 	  deadlocks. It does not run during the bootup process, so it will
 	  not catch any early lockups.
+
+config QCOM_WATCHDOG_CTX_PRINT
+	bool "Print context dump saved by secure mode watchdog handler"
+	default n
+	depends on QCOM_WATCHDOG_V2
+	depends on QCOM_MEMORY_DUMP_V2
+	depends on PSTORE_RAM_ANNOTATION_APPEND
+	help
+	   After enabling this option, kernel will reserve bigger buffer
+	   for secure mode watchdog handler to save info. And kernel will
+	   try to print the info if it looks valid.
+	   If unsure, say N
 
 config QCOM_IRQ_HELPER
 	bool "QCOM Irq Helper"
