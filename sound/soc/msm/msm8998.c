@@ -587,11 +587,6 @@ static const char *const mi2s_ch_text[] = {"One", "Two", "Three", "Four",
 					   "Eight"};
 static const char *const hifi_text[] = {"Off", "On"};
 
-static char const *tert_mi2s_ch_text[] = {"One", "Two"};
-static const char *const tert_mi2s_rate_text[] = {"KHZ_16", "KHZ_32",
-			"KHZ_48", "KHZ_96", "KHZ_192"};
-static const char *const tert_mi2s_format_text[] = {"S16_LE", "S24_LE"};
-
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_2_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_tx_chs, slim_tx_ch_text);
@@ -640,22 +635,20 @@ static SOC_ENUM_SINGLE_EXT_DECL(tert_aux_pcm_tx_sample_rate, auxpcm_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(quat_aux_pcm_tx_sample_rate, auxpcm_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(prim_mi2s_rx_sample_rate, mi2s_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(sec_mi2s_rx_sample_rate, mi2s_rate_text);
-static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_rx_sample_rate, tert_mi2s_rate_text);
+static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_rx_sample_rate, mi2s_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(quat_mi2s_rx_sample_rate, mi2s_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(prim_mi2s_tx_sample_rate, mi2s_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(sec_mi2s_tx_sample_rate, mi2s_rate_text);
-static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_tx_sample_rate, tert_mi2s_rate_text);
+static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_tx_sample_rate, mi2s_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(quat_mi2s_tx_sample_rate, mi2s_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(prim_mi2s_rx_chs, mi2s_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(prim_mi2s_tx_chs, mi2s_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(sec_mi2s_rx_chs, mi2s_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(sec_mi2s_tx_chs, mi2s_ch_text);
-static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_rx_chs, tert_mi2s_ch_text);
-static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_tx_chs, tert_mi2s_ch_text);
+static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_rx_chs, mi2s_ch_text);
+static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_tx_chs, mi2s_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(quat_mi2s_rx_chs, mi2s_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(quat_mi2s_tx_chs, mi2s_ch_text);
-static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_rx_format, tert_mi2s_format_text);
-static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_tx_format, tert_mi2s_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(mi2s_rx_format, bit_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(mi2s_tx_format, bit_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(hifi_function, hifi_text);
@@ -2895,96 +2888,6 @@ static int mi2s_get_sample_rate(int value)
 	return sample_rate;
 }
 
-static int mods_mi2s_get_sample_rate_val(int sample_rate)
-{
-	int sample_rate_val;
-
-	switch (sample_rate) {
-	case SAMPLING_RATE_16KHZ:
-		sample_rate_val = 0;
-		break;
-	case SAMPLING_RATE_32KHZ:
-		sample_rate_val = 1;
-		break;
-	case SAMPLING_RATE_48KHZ:
-		sample_rate_val = 2;
-		break;
-	case SAMPLING_RATE_96KHZ:
-		sample_rate_val = 3;
-		break;
-	case SAMPLING_RATE_192KHZ:
-		sample_rate_val = 4;
-		break;
-	default:
-		sample_rate_val = 2;
-		break;
-	}
-	return sample_rate_val;
-}
-
-static int mods_mi2s_get_sample_rate(int value)
-{
-	int sample_rate;
-
-	switch (value) {
-	case 0:
-		sample_rate = SAMPLING_RATE_16KHZ;
-		break;
-	case 1:
-		sample_rate = SAMPLING_RATE_32KHZ;
-		break;
-	case 2:
-		sample_rate = SAMPLING_RATE_48KHZ;
-		break;
-	case 3:
-		sample_rate = SAMPLING_RATE_96KHZ;
-		break;
-	case 4:
-		sample_rate = SAMPLING_RATE_192KHZ;
-		break;
-	default:
-		sample_rate = SAMPLING_RATE_48KHZ;
-		break;
-	}
-	return sample_rate;
-}
-
-static int mods_mi2s_get_format_val(int format)
-{
-	int value = 0;
-
-	switch (format) {
-	case SNDRV_PCM_FORMAT_S16_LE:
-		value = 0;
-		break;
-	case SNDRV_PCM_FORMAT_S24_LE:
-		value = 1;
-		break;
-	default:
-		value = 0;
-		break;
-	}
-	return value;
-}
-
-static int mods_mi2s_get_format(int value)
-{
-	int format = 0;
-
-	switch (value) {
-	case 0:
-		format = SNDRV_PCM_FORMAT_S16_LE;
-		break;
-	case 1:
-		format = SNDRV_PCM_FORMAT_S24_LE;
-		break;
-	default:
-		format = SNDRV_PCM_FORMAT_S16_LE;
-		break;
-	}
-	return format;
-}
-
 static int mi2s_get_format(int value)
 {
 	int format;
@@ -3041,16 +2944,42 @@ static int mi2s_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
 	if (idx < 0)
 		return idx;
 
-	if (idx == TERT_MI2S) {
-		pr_debug("%s: idx[%d] is used for mods", __func__, idx);
-		mi2s_rx_cfg[idx].sample_rate =
-			mods_mi2s_get_sample_rate(ucontrol->value.enumerated.item[0]);
-	} else {
-		mi2s_rx_cfg[idx].sample_rate =
+	mi2s_rx_cfg[idx].sample_rate =
 			mi2s_get_sample_rate(ucontrol->value.enumerated.item[0]);
-	}
 
 	pr_debug("%s: idx[%d]_rx_sample_rate = %d, item = %d\n", __func__,
+		 idx, mi2s_rx_cfg[idx].sample_rate,
+		 ucontrol->value.enumerated.item[0]);
+
+	return 0;
+}
+
+static int mods_sample_rate_put(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+	/*if the schematic changes, this will need to go in device tree*/
+	int idx = TERT_MI2S;
+
+	mi2s_rx_cfg[idx].sample_rate = mi2s_tx_cfg[idx].sample_rate =
+			mi2s_get_sample_rate(ucontrol->value.enumerated.item[0]);
+
+	pr_debug("%s: idx[%d] tx/rx sample_rate = %d, item = %d\n", __func__,
+		 idx, mi2s_rx_cfg[idx].sample_rate,
+		 ucontrol->value.enumerated.item[0]);
+
+	return 0;
+}
+
+static int mods_sample_rate_get(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+	/*if the schematic changes, this will need to go in device tree*/
+	int idx = TERT_MI2S;
+
+	ucontrol->value.enumerated.item[0] =
+		mi2s_get_sample_rate_val(mi2s_rx_cfg[idx].sample_rate);
+
+	pr_debug("%s: idx[%d] tx/rx sample_rate = %d, item = %d\n", __func__,
 		 idx, mi2s_rx_cfg[idx].sample_rate,
 		 ucontrol->value.enumerated.item[0]);
 
@@ -3065,13 +2994,8 @@ static int mi2s_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 	if (idx < 0)
 		return idx;
 
-	if (idx == TERT_MI2S) {
-		ucontrol->value.enumerated.item[0] =
-			mods_mi2s_get_sample_rate_val(mi2s_rx_cfg[idx].sample_rate);
-	} else {
-		ucontrol->value.enumerated.item[0] =
-			mi2s_get_sample_rate_val(mi2s_rx_cfg[idx].sample_rate);
-	}
+	ucontrol->value.enumerated.item[0] =
+		mi2s_get_sample_rate_val(mi2s_rx_cfg[idx].sample_rate);
 
 	pr_debug("%s: idx[%d]_rx_sample_rate = %d, item = %d\n", __func__,
 		 idx, mi2s_rx_cfg[idx].sample_rate,
@@ -3088,14 +3012,8 @@ static int mi2s_tx_sample_rate_put(struct snd_kcontrol *kcontrol,
 	if (idx < 0)
 		return idx;
 
-	if (idx == TERT_MI2S) {
-		pr_debug("%s: idx[%d] is used for mods", __func__, idx);
-		mi2s_tx_cfg[idx].sample_rate =
-			mods_mi2s_get_sample_rate(ucontrol->value.enumerated.item[0]);
-	} else {
-		mi2s_tx_cfg[idx].sample_rate =
-			mi2s_get_sample_rate(ucontrol->value.enumerated.item[0]);
-	}
+	mi2s_tx_cfg[idx].sample_rate =
+		mi2s_get_sample_rate(ucontrol->value.enumerated.item[0]);
 
 	pr_debug("%s: idx[%d]_tx_sample_rate = %d, item = %d\n", __func__,
 		 idx, mi2s_tx_cfg[idx].sample_rate,
@@ -3112,88 +3030,11 @@ static int mi2s_tx_sample_rate_get(struct snd_kcontrol *kcontrol,
 	if (idx < 0)
 		return idx;
 
-	if (idx == TERT_MI2S) {
-		ucontrol->value.enumerated.item[0] =
-			mods_mi2s_get_sample_rate_val(mi2s_tx_cfg[idx].sample_rate);
-	} else {
-		ucontrol->value.enumerated.item[0] =
-			mi2s_get_sample_rate_val(mi2s_tx_cfg[idx].sample_rate);
-	}
+	ucontrol->value.enumerated.item[0] =
+		mi2s_get_sample_rate_val(mi2s_tx_cfg[idx].sample_rate);
 
 	pr_debug("%s: idx[%d]_tx_sample_rate = %d, item = %d\n", __func__,
 		 idx, mi2s_tx_cfg[idx].sample_rate,
-		 ucontrol->value.enumerated.item[0]);
-
-	return 0;
-}
-
-static int mods_mi2s_rx_format_put(struct snd_kcontrol *kcontrol,
-				   struct snd_ctl_elem_value *ucontrol)
-{
-	int idx = mi2s_get_port_idx(kcontrol);
-
-	if (idx < 0)
-		return idx;
-
-	mi2s_rx_cfg[idx].bit_format =
-		mods_mi2s_get_format(ucontrol->value.enumerated.item[0]);
-
-	pr_debug("%s: idx[%d]_rx_format = %d, item = %d\n", __func__,
-		 idx, mi2s_rx_cfg[idx].bit_format,
-		 ucontrol->value.enumerated.item[0]);
-
-	return 0;
-}
-
-static int mods_mi2s_rx_format_get(struct snd_kcontrol *kcontrol,
-				   struct snd_ctl_elem_value *ucontrol)
-{
-	int idx = mi2s_get_port_idx(kcontrol);
-
-	if (idx < 0)
-		return idx;
-
-	ucontrol->value.enumerated.item[0] =
-		mods_mi2s_get_format_val(mi2s_rx_cfg[idx].bit_format);
-
-	pr_debug("%s: idx[%d]_rx_format = %d, item = %d\n", __func__,
-		 idx, mi2s_rx_cfg[idx].bit_format,
-		 ucontrol->value.enumerated.item[0]);
-
-	return 0;
-}
-
-static int mods_mi2s_tx_format_put(struct snd_kcontrol *kcontrol,
-				   struct snd_ctl_elem_value *ucontrol)
-{
-	int idx = mi2s_get_port_idx(kcontrol);
-
-	if (idx < 0)
-		return idx;
-
-	mi2s_tx_cfg[idx].bit_format =
-		mods_mi2s_get_format(ucontrol->value.enumerated.item[0]);
-
-	pr_debug("%s: idx[%d]_tx_format = %d, item = %d\n", __func__,
-		 idx, mi2s_tx_cfg[idx].bit_format,
-		 ucontrol->value.enumerated.item[0]);
-
-	return 0;
-}
-
-static int mods_mi2s_tx_format_get(struct snd_kcontrol *kcontrol,
-				   struct snd_ctl_elem_value *ucontrol)
-{
-	int idx = mi2s_get_port_idx(kcontrol);
-
-	if (idx < 0)
-		return idx;
-
-	ucontrol->value.enumerated.item[0] =
-		mods_mi2s_get_format_val(mi2s_tx_cfg[idx].bit_format);
-
-	pr_debug("%s: idx[%d]_tx_format = %d, item = %d\n", __func__,
-		 idx, mi2s_tx_cfg[idx].bit_format,
 		 ucontrol->value.enumerated.item[0]);
 
 	return 0;
@@ -3214,6 +3055,19 @@ static int msm_mi2s_rx_ch_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int mods_channels_get(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	/*if the schematic changes, this will need to go in device tree*/
+	int idx = TERT_MI2S;
+
+	pr_debug("%s: msm_mi2s_[%d] rx/tx channels = %d\n", __func__,
+		 idx, mi2s_rx_cfg[idx].channels);
+	ucontrol->value.enumerated.item[0] = mi2s_rx_cfg[idx].channels - 1;
+
+	return 0;
+}
+
 static int msm_mi2s_rx_ch_put(struct snd_kcontrol *kcontrol,
 			      struct snd_ctl_elem_value *ucontrol)
 {
@@ -3224,6 +3078,20 @@ static int msm_mi2s_rx_ch_put(struct snd_kcontrol *kcontrol,
 
 	mi2s_rx_cfg[idx].channels = ucontrol->value.enumerated.item[0] + 1;
 	pr_debug("%s: msm_mi2s_[%d]_rx_ch  = %d\n", __func__,
+		 idx, mi2s_rx_cfg[idx].channels);
+
+	return 1;
+}
+
+static int mods_channels_put(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	/*if the schematic changes, this will need to go in device tree*/
+	int idx = TERT_MI2S;
+
+	mi2s_rx_cfg[idx].channels = mi2s_tx_cfg[idx].channels =
+		ucontrol->value.enumerated.item[0] + 1;
+	pr_debug("%s: msm_mi2s_[%d] tx/rx channels = %d\n", __func__,
 		 idx, mi2s_rx_cfg[idx].channels);
 
 	return 1;
@@ -3259,6 +3127,22 @@ static int msm_mi2s_tx_ch_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
+static int mods_format_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	/*if the schematic changes, this will need to go in device tree*/
+	int idx = TERT_MI2S;
+
+	ucontrol->value.enumerated.item[0] =
+		mi2s_get_format_value(mi2s_rx_cfg[idx].bit_format);
+
+	pr_debug("%s: idx[%d] tx/rx formats = %d, item = %d\n", __func__,
+		idx, mi2s_rx_cfg[idx].bit_format,
+		ucontrol->value.enumerated.item[0]);
+
+	return 0;
+}
+
 static int msm_mi2s_rx_format_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
@@ -3273,6 +3157,22 @@ static int msm_mi2s_rx_format_get(struct snd_kcontrol *kcontrol,
 	pr_debug("%s: idx[%d]_rx_format = %d, item = %d\n", __func__,
 		idx, mi2s_rx_cfg[idx].bit_format,
 		ucontrol->value.enumerated.item[0]);
+
+	return 0;
+}
+
+static int mods_format_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	/*if the schematic changes, this will need to go in device tree*/
+	int idx = TERT_MI2S;
+
+	mi2s_rx_cfg[idx].bit_format = mi2s_tx_cfg[idx].bit_format =
+		mi2s_get_format(ucontrol->value.enumerated.item[0]);
+
+	pr_debug("%s: idx[%d] tx/rx formats = %d, item = %d\n", __func__,
+		  idx, mi2s_rx_cfg[idx].bit_format,
+		  ucontrol->value.enumerated.item[0]);
 
 	return 0;
 }
@@ -3766,6 +3666,9 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("TERT_MI2S_RX SampleRate", tert_mi2s_rx_sample_rate,
 			mi2s_rx_sample_rate_get,
 			mi2s_rx_sample_rate_put),
+	SOC_ENUM_EXT("MODS_MI2S SampleRate", tert_mi2s_rx_sample_rate,
+			mods_sample_rate_get,
+			mods_sample_rate_put),
 	SOC_ENUM_EXT("QUAT_MI2S_RX SampleRate", quat_mi2s_rx_sample_rate,
 			mi2s_rx_sample_rate_get,
 			mi2s_rx_sample_rate_put),
@@ -3791,6 +3694,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_mi2s_tx_ch_get, msm_mi2s_tx_ch_put),
 	SOC_ENUM_EXT("TERT_MI2S_RX Channels", tert_mi2s_rx_chs,
 			msm_mi2s_rx_ch_get, msm_mi2s_rx_ch_put),
+	SOC_ENUM_EXT("MODS_MI2S Channels", tert_mi2s_rx_chs,
+			mods_channels_get, mods_channels_put),
 	SOC_ENUM_EXT("TERT_MI2S_TX Channels", tert_mi2s_tx_chs,
 			msm_mi2s_tx_ch_get, msm_mi2s_tx_ch_put),
 	SOC_ENUM_EXT("QUAT_MI2S_RX Channels", quat_mi2s_rx_chs,
@@ -3805,10 +3710,12 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_mi2s_rx_format_get, msm_mi2s_rx_format_put),
 	SOC_ENUM_EXT("SEC_MI2S_TX Format", mi2s_tx_format,
 			msm_mi2s_tx_format_get, msm_mi2s_tx_format_put),
-	SOC_ENUM_EXT("TERT_MI2S_RX Format", tert_mi2s_rx_format,
-			mods_mi2s_rx_format_get, mods_mi2s_rx_format_put),
-	SOC_ENUM_EXT("TERT_MI2S_TX Format", tert_mi2s_tx_format,
-			mods_mi2s_tx_format_get, mods_mi2s_tx_format_put),
+	SOC_ENUM_EXT("TERT_MI2S_RX Format", mi2s_rx_format,
+			msm_mi2s_rx_format_get, msm_mi2s_rx_format_put),
+	SOC_ENUM_EXT("MODS_MI2S Format", mi2s_rx_format,
+			mods_format_get, mods_format_put),
+	SOC_ENUM_EXT("TERT_MI2S_TX Format", mi2s_tx_format,
+			msm_mi2s_tx_format_get, msm_mi2s_tx_format_put),
 	SOC_ENUM_EXT("QUAT_MI2S_RX Format", mi2s_rx_format,
 			msm_mi2s_rx_format_get, msm_mi2s_rx_format_put),
 	SOC_ENUM_EXT("QUAT_MI2S_TX Format", mi2s_tx_format,
@@ -5241,11 +5148,25 @@ static void update_mi2s_clk_val(int dai_id, int stream)
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		bit_per_sample =
 		    get_mi2s_bits_per_sample(mi2s_rx_cfg[dai_id].bit_format);
+		/*if the schematic changes, this will need update*/
+		if (dai_id == TERT_MI2S && bit_per_sample == 16 &&
+			mi2s_rx_cfg[dai_id].channels == 4) {
+			pr_debug("%s: choosing 32-bit MI2S playback "
+				"clk_ctl for 16x4\n", __func__);
+			bit_per_sample = 32;
+		}
 		mi2s_clk[dai_id].clk_freq_in_hz =
 		    mi2s_rx_cfg[dai_id].sample_rate * 2 * bit_per_sample;
 	} else {
 		bit_per_sample =
 		    get_mi2s_bits_per_sample(mi2s_tx_cfg[dai_id].bit_format);
+		/*if the schematic changes, this will need update*/
+		if (dai_id == TERT_MI2S && bit_per_sample == 16 &&
+			mi2s_tx_cfg[dai_id].channels == 4) {
+			pr_debug("%s: choosing 32-bit MI2S playback "
+				"clk_ctl for 16x4\n", __func__);
+			bit_per_sample = 32;
+		}
 		mi2s_clk[dai_id].clk_freq_in_hz =
 		    mi2s_tx_cfg[dai_id].sample_rate * 2 * bit_per_sample;
 	}
