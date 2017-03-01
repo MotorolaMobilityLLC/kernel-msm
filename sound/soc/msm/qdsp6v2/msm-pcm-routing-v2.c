@@ -16070,8 +16070,8 @@ static int msm_routing_be_dai_name_table_info(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int msm_routing_be_dai_name_table_tlv_get(unsigned int __user *bytes,
-						 unsigned int size)
+static int msm_routing_be_dai_name_table_tlv_get(struct snd_kcontrol *kcontrol,
+					unsigned int __user *bytes, unsigned int size)
 {
 	int i;
 	int ret;
