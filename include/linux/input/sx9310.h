@@ -278,9 +278,6 @@ struct sx9310_platform_data {
 	bool cap_vdd_en;
 	bool cap_svdd_en;
 	unsigned irq_gpio;
-	/* used for custom setting for channel and scan period */
-	u32 cust_prox_ctrl0;
-	u32 cust_raw_data_channel;
 	pbuttonInformation_t pbuttonInformation;
 
 	int (*get_is_nirq_low)(unsigned irq_gpio);
@@ -292,21 +289,20 @@ typedef struct sx9310_platform_data *psx9310_platform_data_t;
 
 #ifdef USE_SENSORS_CLASS
 static struct sensors_classdev sensors_capsensor_cdev = {
-        .name = "capsensor",
-        .vendor = "semtech",
-        .version = 1, 
-        .handle = SENSORS_PROXIMITY_HANDLE,
-        .type = SENSOR_TYPE_PROXIMITY,
-        .max_range = "5", 
-        .resolution = "5.0",
-        .sensor_power = "3", 
-        .min_delay = 0, /* in microseconds */
-        .fifo_reserved_event_count = 0, 
-        .fifo_max_event_count = 0, 
-        .enabled = 0, 
-        .delay_msec = 100, 
-        .sensors_enable = NULL,
-        .sensors_poll_delay = NULL,
+	.name = "Moto CapSense",
+	.vendor = "semtech",
+	.version = 1,
+	.type = SENSOR_TYPE_MOTO_CAPSENSE,
+	.max_range = "5",
+	.resolution = "5.0",
+	.sensor_power = "3",
+	.min_delay = 0, /* in microseconds */
+	.fifo_reserved_event_count = 0,
+	.fifo_max_event_count = 0,
+	.enabled = 0,
+	.delay_msec = 100,
+	.sensors_enable = NULL,
+	.sensors_poll_delay = NULL,
 };
 #endif
 
