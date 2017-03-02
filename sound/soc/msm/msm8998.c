@@ -7965,7 +7965,7 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 }
 
 static const struct snd_soc_pcm_stream cs35l35_params = {
-	.formats = SNDRV_PCM_FORMAT_S16_LE,
+	.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	.rate_min = 48000,
 	.rate_max = 48000,
 	.channels_min = 1,
@@ -8015,6 +8015,31 @@ static struct snd_soc_dai_link msm_cs47l35_cs35l35_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
 		.params = &cs35l35_params,
+	}
+};
+
+static const struct snd_soc_pcm_stream cs35l35_pdm_params = {
+	.formats = SNDRV_PCM_FMTBIT_S16_LE,
+	.rate_min = 96000,
+	.rate_max = 96000,
+	.channels_min = 1,
+	.channels_max = 2,
+};
+
+static struct snd_soc_dai_link msm_cs47l35_cs35l35_pdm_dai_links[] = {
+	{ /* codec to amp link */
+		.name = "MARLEY-PDM",
+		.stream_name = "MARLEY-PDM Playback",
+		.cpu_name = "cs47l35-codec",
+		.cpu_dai_name = "cs47l35-pdm",
+		.codec_name = "cs35l35.7-0041",
+		.codec_dai_name = "cs35l35-pdm",
+		.dai_fmt = SND_SOC_DAIFMT_PDM | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.no_pcm = 1,
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+		.params = &cs35l35_pdm_params,
 	}
 };
 
@@ -8686,6 +8711,7 @@ static struct snd_soc_dai_link msm_cs47l35_dai_links[
 			 ARRAY_SIZE(msm_cs47l35_fe_dai_links) +
 			 ARRAY_SIZE(msm_cs47l35_be_dai_links) +
 			 ARRAY_SIZE(msm_cs47l35_cs35l35_dai_links) +
+			 ARRAY_SIZE(msm_cs47l35_cs35l35_pdm_dai_links) +
 			 ARRAY_SIZE(msm_common_misc_fe_dai_links) +
 			 ARRAY_SIZE(msm_common_dai_links) +
 			 ARRAY_SIZE(msm_common_be_dai_links) +
@@ -9044,7 +9070,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 {
 	struct snd_soc_card *card = NULL;
 	struct snd_soc_dai_link *dailink;
-	int len_1, len_2, len_3, len_3a, len_4;
+	int len_1, len_2, len_3, len_3a, len_4, len_5;
 	int total_links;
 	const struct of_device_id *match;
 
@@ -9062,7 +9088,9 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		len_3 = len_2 + ARRAY_SIZE(msm_cs47l35_cs35l35_dai_links);
 		len_3a = len_3 + ARRAY_SIZE(msm_common_dai_links);
 		len_4 = len_3a + ARRAY_SIZE(msm_common_misc_fe_dai_links);
-		total_links = len_4 + ARRAY_SIZE(msm_common_be_dai_links);
+		len_5 = len_4 + ARRAY_SIZE(msm_common_be_dai_links);
+		total_links = len_5 +
+				ARRAY_SIZE(msm_cs47l35_cs35l35_pdm_dai_links);
 		memcpy(msm_cs47l35_dai_links,
 		       msm_cs47l35_fe_dai_links,
 		       sizeof(msm_cs47l35_fe_dai_links));
@@ -9081,6 +9109,9 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		memcpy(msm_cs47l35_dai_links + len_4,
 		       msm_common_be_dai_links,
 		       sizeof(msm_common_be_dai_links));
+		memcpy(msm_cs47l35_dai_links + len_5,
+		       msm_cs47l35_cs35l35_pdm_dai_links,
+		       sizeof(msm_cs47l35_cs35l35_pdm_dai_links));
 
 		if (of_property_read_bool(dev->of_node, "qcom,wcn-btfm")) {
 			dev_dbg(dev, "%s(): WCN BTFM support present\n",
