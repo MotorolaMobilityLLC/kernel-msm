@@ -9,7 +9,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#define DEBUG
 #define DRIVER_NAME "sx9310"
 #define USE_SENSORS_CLASS
 
@@ -269,11 +268,6 @@ static void hw_init(psx93XX_t this)
 					pdata->pi2c_reg[i].val);
 			i++;
 		}
-
-		write_register(this, SX9310_CPS_CTRL0_REG,
-				this->board->cust_prox_ctrl0);
-		write_register(this, SX9310_CPSRD,
-				this->board->cust_raw_data_channel);
 	} else {
 		LOG_DBG("ERROR! platform data 0x%p\n", pDevice->hw);
 		/* Force to touched if error */
@@ -469,27 +463,9 @@ static void sx9310_platform_data_of_init(struct i2c_client *client,
 				  psx9310_platform_data_t pplatData)
 {
 	struct device_node *np = client->dev.of_node;
-	u32 scan_period, sensor_en, raw_data_channel;
-	int ret;
 
 	client->irq = of_get_gpio(np, 0);
 	pplatData->irq_gpio = client->irq;
-
-	ret = of_property_read_u32(np, "cap,use_channel", &sensor_en);
-	if (ret)
-		sensor_en = DUMMY_USE_CHANNEL;
-
-	ret = of_property_read_u32(np, "cap,scan_period", &scan_period);
-	if (ret)
-		scan_period = DUMMY_SCAN_PERIOD;
-
-	ret = of_property_read_u32(np, "cap,raw_data_channel", &raw_data_channel);
-	if (ret)
-		raw_data_channel = DUMMY_RAW_DATA_CHANNEL;
-
-	pplatData->cust_prox_ctrl0 = (scan_period << 4) | sensor_en;
-	pplatData->cust_raw_data_channel = raw_data_channel;
-
 	pplatData->get_is_nirq_low = sx9310_get_nirq_state;
 	pplatData->init_platform_hw = NULL;
 	/*  pointer to an exit function. Here in case needed in the future */
@@ -550,7 +526,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
 	psx93XX_t this = sx9310_ptr;
 	psx9310_t pDevice = NULL;
 	struct input_dev *input = NULL;
-	
+
 	pDevice = this->pDevice;
 	input = pDevice->pbuttonInformation->input;
 
@@ -625,7 +601,8 @@ static ssize_t reg_dump_show(struct class *class,
 	if (this->read_flag) {
 		this->read_flag = 0;
 		read_register(this, this->read_reg, &reg_value);
-		p += snprintf(p, PAGE_SIZE, "%02x\n", reg_value);
+		p += snprintf(p, PAGE_SIZE, "reg 0x%02x:%02x\n",
+			this->read_reg, reg_value);
 		return (p-buf);
 	}
 
@@ -747,6 +724,7 @@ static ssize_t reg_dump_store(struct class *class,
 	unsigned int val, reg, opt;
 
 	if (sscanf(buf, "%x,%x,%x", &reg, &val, &opt) == 3) {
+		LOG_INFO("%s, read reg = 0x%02x\n", __func__, *(u8 *)&reg);
 		this->read_reg = *((u8 *)&reg);
 		this->read_flag = 1;
 	} else if (sscanf(buf, "%x,%x", &reg, &val) == 2) {
