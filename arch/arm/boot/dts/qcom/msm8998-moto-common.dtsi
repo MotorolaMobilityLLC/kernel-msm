@@ -1238,6 +1238,10 @@
 			thermal-sensors = <&rradc_chg_temp>;
 		};
 	};
+
+	qcom,icnss@18800000 {
+		wlan-detune-reg-supply = <&pm8998_l16>;
+	};
 };
 
 /* Direct Copy of I2C9 from msm8998-blsp.dtsi */
