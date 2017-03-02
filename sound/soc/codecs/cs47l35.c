@@ -1544,7 +1544,7 @@ static struct snd_soc_dai_driver cs47l35_dai[] = {
 			 .rates = MADERA_RATES,
 			 .formats = MADERA_FORMATS,
 		 },
-		.ops = &madera_simple_dai_ops,
+		.ops = &madera_slim_dai_ops,
 	},
 	{
 		.name = "cs47l35-slim2",
@@ -1563,7 +1563,7 @@ static struct snd_soc_dai_driver cs47l35_dai[] = {
 			 .rates = MADERA_RATES,
 			 .formats = MADERA_FORMATS,
 		 },
-		.ops = &madera_simple_dai_ops,
+		.ops = &madera_slim_dai_ops,
 	},
 	{
 		.name = "cs47l35-cpu-voicectrl",

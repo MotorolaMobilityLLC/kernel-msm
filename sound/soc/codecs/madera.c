@@ -3788,6 +3788,14 @@ const struct snd_soc_dai_ops madera_simple_dai_ops = {
 };
 EXPORT_SYMBOL_GPL(madera_simple_dai_ops);
 
+const struct snd_soc_dai_ops madera_slim_dai_ops = {
+	.hw_params = madera_hw_params_rate,
+	.set_sysclk = madera_dai_set_sysclk,
+	.set_channel_map = madera_set_channel_map,
+	.get_channel_map = madera_get_channel_map,
+};
+EXPORT_SYMBOL_GPL(madera_slim_dai_ops);
+
 int madera_init_dai(struct madera_priv *priv, int id)
 {
 	struct madera_dai_priv *dai_priv = &priv->dai[id];
