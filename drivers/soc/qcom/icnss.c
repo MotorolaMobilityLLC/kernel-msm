@@ -75,6 +75,11 @@ module_param(qmi_timeout, ulong, 0600);
 
 #define ICNSS_MAX_PROBE_CNT		2
 
+#define WLAN_DETUNE_REG_NAME		"wlan-detune-reg"
+#define WLAN_DETUNE_REG_VOLT_MAX	2704000
+#define WLAN_DETUNE_REG_VOLT_MIN	2704000
+#define WLAN_DETUNE_REG_CURRENT		80000
+
 #define icnss_ipc_log_string(_x...) do {				\
 	if (icnss_ipc_log_context)					\
 		ipc_log_string(icnss_ipc_log_context, _x);		\
@@ -491,6 +496,7 @@ static struct icnss_priv {
 	u8 requesting_sub_system;
 	u16 line_number;
 	char function_name[QMI_WLFW_FUNCTION_NAME_LEN_V01 + 1];
+	struct regulator *wlan_reg_detune;
 } *penv;
 
 #ifdef CONFIG_ICNSS_DEBUG
@@ -613,6 +619,64 @@ static void icnss_pm_relax(struct icnss_priv *priv)
 
 	pm_relax(&priv->pdev->dev);
 	priv->stats.pm_relax++;
+}
+
+static int icnss_wlan_detune_enable(struct icnss_priv *priv, int on)
+{
+	int rc = 0;
+
+	icnss_pr_dbg("wlan detune reg (%s)\n", on ? "HPM" : "LPM");
+
+	if (IS_ERR_OR_NULL(priv->wlan_reg_detune)) {
+		rc = PTR_ERR(priv->wlan_reg_detune);
+		icnss_pr_err("wlan detune not defined\n");
+		return rc;
+	}
+
+	if (!on)
+		goto disable_regulators;
+
+
+	rc = regulator_set_load(priv->wlan_reg_detune, WLAN_DETUNE_REG_CURRENT);
+	if (rc < 0) {
+		icnss_pr_err("Unable to set HPM of wlan detune\n");
+		return rc;
+	}
+
+	rc = regulator_set_voltage(priv->wlan_reg_detune,
+						WLAN_DETUNE_REG_VOLT_MIN,
+						WLAN_DETUNE_REG_VOLT_MAX);
+	if (rc) {
+		icnss_pr_err("unable to set voltage for wlan detune\n");
+		goto put_vreg_lpm;
+	}
+
+	rc = regulator_enable(priv->wlan_reg_detune);
+	if (rc) {
+		icnss_pr_err("Unable to enable wlan detune\n");
+		goto unset_vreg;
+	}
+
+	return 0;
+
+disable_regulators:
+	rc = regulator_disable(priv->wlan_reg_detune);
+	if (rc)
+		icnss_pr_err("Unable to disable wlan detune\n");
+
+unset_vreg:
+	rc = regulator_set_voltage(priv->wlan_reg_detune,
+						WLAN_DETUNE_REG_VOLT_MIN,
+						WLAN_DETUNE_REG_VOLT_MAX);
+	if (rc)
+		icnss_pr_err("unable to set voltage for wlan detune\n");
+
+put_vreg_lpm:
+	rc = regulator_set_load(priv->wlan_reg_detune, 0);
+	if (rc < 0)
+		icnss_pr_err("Unable to set LPM of wlan detune\n");
+
+	return rc < 0 ? rc : 0;
 }
 
 static char *icnss_driver_event_to_str(enum icnss_driver_event_type type)
@@ -2866,6 +2930,10 @@ int __icnss_register_driver(struct icnss_driver_ops *ops,
 		goto out;
 	}
 
+	ret = icnss_wlan_detune_enable(penv, true);
+	if (ret)
+		icnss_pr_dbg("Failed to enable WLAN detune, ret=%d\n", ret);
+
 	ret = icnss_driver_event_post(ICNSS_DRIVER_EVENT_REGISTER_DRIVER,
 				      0, ops);
 
@@ -2893,6 +2961,10 @@ int icnss_unregister_driver(struct icnss_driver_ops *ops)
 		ret = -ENOENT;
 		goto out;
 	}
+
+	ret = icnss_wlan_detune_enable(penv, false);
+	if (ret)
+		icnss_pr_dbg("Failed to disable WLAN detune, ret=%d\n", ret);
 
 	ret = icnss_driver_event_post(ICNSS_DRIVER_EVENT_UNREGISTER_DRIVER,
 				      ICNSS_EVENT_SYNC_UNINTERRUPTIBLE, NULL);
@@ -4559,6 +4631,10 @@ static int icnss_probe(struct platform_device *pdev)
 			goto out;
 		}
 	}
+
+	if (of_get_property(dev->of_node, WLAN_DETUNE_REG_NAME "-supply", NULL))
+		priv->wlan_reg_detune =
+			devm_regulator_get(&pdev->dev, WLAN_DETUNE_REG_NAME);
 
 	spin_lock_init(&priv->event_lock);
 	spin_lock_init(&priv->on_off_lock);
