@@ -1,0 +1,73 @@
+
+qcom,hx40sunwoda_3000mah {
+	serialnum = "SNN5995";
+	qcom, = <24>;
+	/* #2775154_Lenovo_HX40sunwoda_3000mAh_averaged_MasterSlave_Feb3rd2017*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4340>;
+	qcom,fastchg-current-ma = <3000>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,batt-id-kohm = <237>;
+	qcom,battery-beta = <0>;
+	qcom,battery-type = "2775154_lenovo_hx40sunwoda_3000mah_averaged_masterslave_feb3rd2017";
+	qcom,checksum = <0xC49C>;
+	qcom,gui-version = "PM660GUI - 0.0.0.22";
+	qcom,fg-profile-data = [
+		 8A 1F 8F 05
+		 94 0A 51 FC
+		 86 1D 73 F4
+		 79 12 F4 1D
+		 CC 19 A3 1B
+		 98 3D 24 4A
+		 52 00 00 00
+		 16 00 00 00
+		 00 00 44 BC
+		 C3 CD A4 C2
+		 23 00 08 00
+		 E7 E2 34 ED
+		 9B FD 5F EB
+		 77 FA CA 12
+		 5D EA 5E 2B
+		 1B 06 09 20
+		 27 00 14 00
+		 40 20 E4 04
+		 11 0B B4 05
+		 53 1D AE F2
+		 E9 02 8D 0C
+		 28 19 E5 22
+		 71 45 13 53
+		 5A 00 00 00
+		 0D 00 00 00
+		 00 00 CA CC
+		 4E BA 34 BA
+		 1D 00 00 00
+		 13 F2 34 ED
+		 4A F4 02 EA
+		 FB F5 29 02
+		 05 FC 95 1A
+		 99 33 CC FF
+		 07 10 00 00
+		 DF 0B 66 46
+		 1D 00 40 00
+		 60 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
