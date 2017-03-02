@@ -524,7 +524,6 @@ int sensors_classdev_register(struct device *parent,
 		}
 	printk("Registered sensors device: %s,ret = %d\n",
 			sensors_cdev->name,ret);
-				printk("nihao11");
 	return 0;
 }
 EXPORT_SYMBOL(sensors_classdev_register);
