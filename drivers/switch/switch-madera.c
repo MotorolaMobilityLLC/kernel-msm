@@ -44,6 +44,8 @@
 #define MADERA_MICD_CLAMP_MODE_JD1L_JD2H 0x9
 #define MADERA_MICD_CLAMP_MODE_JD1H_JD2H 0xb
 
+#define MADERA_MICD_WRONG_POLARITY	30
+
 #define MADERA_HPDET_LINEOUT		500000 /* 5,000 ohms */
 #define MADERA_HPDET_MAX		10000
 #define MADERA_HP_SHORT_IMPEDANCE_MIN	4
@@ -1751,8 +1753,9 @@ int madera_micd_mic_reading(struct madera_extcon_info *info, int val)
 	 * plain headphones.  If both polarities report a low
 	 * impedence then give up and report headphones.
 	 */
-	if (val > info->micd_ranges[0].max &&
-	    info->micd_num_modes > 1) {
+	if ((info->micd_ranges[0].max > MADERA_MICD_WRONG_POLARITY) ||
+	    ((val > info->micd_ranges[0].max) &&
+	    (info->micd_num_modes > 1))) {
 		if (info->jack_flips >= info->micd_num_modes * 10) {
 			dev_dbg(madera->dev, "Detected HP/line\n");
 			goto done;
