@@ -512,6 +512,7 @@ extern void madera_spin_sysclk(struct madera_priv *priv);
 
 extern const struct snd_soc_dai_ops madera_dai_ops;
 extern const struct snd_soc_dai_ops madera_simple_dai_ops;
+extern const struct snd_soc_dai_ops madera_slim_dai_ops;
 
 extern int madera_init_fll(struct madera *madera, int id, int base,
 			   struct madera_fll *fll);
