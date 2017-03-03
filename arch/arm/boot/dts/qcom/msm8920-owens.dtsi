@@ -290,6 +290,9 @@
 	qcom,stepchg-taper-ma = <1500>;
 	qcom,stepchg-iterm-ma = <125>;
 	/delete-property/ qcom,enable-hvdcp-9v;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <80>;
+	qcom,lower-limit-capacity = <60>;
 };
 
 &pmi8950_fg {
