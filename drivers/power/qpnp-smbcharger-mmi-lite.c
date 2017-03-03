@@ -87,6 +87,12 @@ struct pchg_current_map {
 	int secondary;
 };
 
+enum charging_limit_modes {
+	CHARGING_LIMIT_OFF,
+	CHARGING_LIMIT_RUN,
+	CHARGING_LIMIT_UNKNOWN,
+};
+
 struct smbchg_chip {
 	struct device			*dev;
 	struct spmi_device		*spmi;
@@ -264,6 +270,11 @@ struct smbchg_chip {
 	bool				factory_cable;
 	struct delayed_work		heartbeat_work;
 	struct mutex			check_temp_lock;
+	bool				enable_charging_limit;
+	bool				is_factory_image;
+	enum charging_limit_modes	charging_limit_modes;
+	int				upper_limit_capacity;
+	int				lower_limit_capacity;
 	int				temp_state;
 	int				hotspot_temp;
 	int				hotspot_thrs_c;
@@ -1291,6 +1302,10 @@ static int calc_dc_thermal_limited_current(struct smbchg_chip *chip,
 #define EN_BAT_CHG_BIT		BIT(1)
 static int smbchg_charging_en(struct smbchg_chip *chip, bool en)
 {
+	if ((chip->charging_limit_modes == CHARGING_LIMIT_RUN)
+		&& (chip->enable_charging_limit)
+		&& (chip->is_factory_image))
+		en = 0;
 	if (en == true) {
 		if ((!chip->ext_high_temp) &&
 		(chip->temp_state != POWER_SUPPLY_HEALTH_COLD) &&
@@ -4851,6 +4866,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 		chip->enable_aicl_wake = false;
 	}
 	chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
+	chip->charging_limit_modes = CHARGING_LIMIT_OFF;
 	chip->vbat_above_headroom = false;
 	chip->stepchg_state = STEP_NONE;
 	chip->vfloat_mv = chip->stepchg_max_voltage_mv;
@@ -6370,6 +6386,16 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	if (chip->hotspot_thrs_c == -EINVAL)
 		chip->hotspot_thrs_c = 50;
 
+	OF_PROP_READ(chip, chip->upper_limit_capacity,
+		     "upper-limit-capacity", rc, 1);
+	if (chip->upper_limit_capacity == -EINVAL)
+		chip->upper_limit_capacity = 80;
+
+	OF_PROP_READ(chip, chip->lower_limit_capacity,
+		     "lower-limit-capacity", rc, 1);
+	if (chip->lower_limit_capacity == -EINVAL)
+		chip->lower_limit_capacity = 60;
+
 	OF_PROP_READ(chip, chip->stepchg_voltage_mv,
 			"stepchg-voltage-mv", rc, 1);
 
@@ -6435,7 +6461,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,force-aicl-rerun");
 	chip->enable_hvdcp_9v = of_property_read_bool(node,
 					"qcom,enable-hvdcp-9v");
-
+	chip->enable_charging_limit = of_property_read_bool(node,
+					"qcom,enable-charging-limit");
 	chip->enabled_weak_charger_check = of_property_read_bool(node,
 					"qcom,weak-charger-check-enable");
 
@@ -7125,6 +7152,49 @@ static ssize_t force_demo_mode_show(struct device *dev,
 
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
+
+static ssize_t factory_image_mode_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid factory image mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	the_chip->is_factory_image = (mode) ? true : false;
+
+	return r ? r : count;
+}
+
+static ssize_t factory_image_mode_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int state;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	state = (the_chip->is_factory_image) ? 1 : 0;
+
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(factory_image_mode, 0644,
+		factory_image_mode_show,
+		factory_image_mode_store);
 
 static DEVICE_ATTR(force_demo_mode, 0644,
 		force_demo_mode_show,
@@ -7933,6 +8003,30 @@ static bool smbchg_check_and_kick_aicl(struct smbchg_chip *chip)
 		return false;
 }
 
+void update_charging_limit_modes(struct smbchg_chip *chip,
+		int batt_soc)
+{
+	enum charging_limit_modes charging_limit_modes
+						= chip->charging_limit_modes;
+
+	if ((charging_limit_modes != CHARGING_LIMIT_RUN)
+		&& (batt_soc >= chip->upper_limit_capacity)) {
+		charging_limit_modes = CHARGING_LIMIT_RUN;
+	} else if ((charging_limit_modes != CHARGING_LIMIT_OFF)
+			&& (batt_soc <= chip->lower_limit_capacity)) {
+		charging_limit_modes = CHARGING_LIMIT_OFF;
+	}
+
+	if (charging_limit_modes != chip->charging_limit_modes) {
+		chip->charging_limit_modes = charging_limit_modes;
+
+		if (charging_limit_modes == CHARGING_LIMIT_RUN)
+			smbchg_charging_en(chip, 0);
+		else
+			smbchg_charging_en(chip, 1);
+	}
+}
+
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
 #define STEPCHG_MAX_FV_COMP 60
@@ -7969,6 +8063,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	dev_dbg(chip->dev, "batt=%d mV, %d mA, %d C\n",
 		batt_mv, batt_ma, batt_temp);
 	smbchg_sync_accy_property_status(chip);
+
+	if ((chip->enable_charging_limit) && (chip->is_factory_image))
+		update_charging_limit_modes(chip, batt_soc);
 
 	prev_step = chip->stepchg_state;
 
@@ -8253,6 +8350,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->usb_psy = usb_psy;
 	chip->demo_mode = false;
 	chip->hvdcp_det_done = false;
+	chip->is_factory_image = false;
+	chip->charging_limit_modes = CHARGING_LIMIT_UNKNOWN;
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
 	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
 	chip->test_mode = qpnp_smbcharger_test_mode();
@@ -8378,6 +8477,13 @@ static int smbchg_probe(struct spmi_device *spmi)
 				&dev_attr_force_demo_mode);
 	if (rc) {
 		pr_err("couldn't create force_demo_mode\n");
+		goto unregister_dc_psy;
+	}
+
+	rc = device_create_file(chip->dev,
+				&dev_attr_factory_image_mode);
+	if (rc) {
+		pr_err("couldn't create factory_image_mode\n");
 		goto unregister_dc_psy;
 	}
 
