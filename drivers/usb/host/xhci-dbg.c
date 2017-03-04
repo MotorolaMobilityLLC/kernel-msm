@@ -31,10 +31,10 @@ void xhci_dbg_regs(struct xhci_hcd *xhci)
 {
 	u32 temp;
 
-	xhci_dbg(xhci, "// xHCI capability registers at %p:\n",
+	xhci_dbg(xhci, "// xHCI capability registers at %pK:\n",
 			xhci->cap_regs);
 	temp = xhci_readl(xhci, &xhci->cap_regs->hc_capbase);
-	xhci_dbg(xhci, "// @%p = 0x%x (CAPLENGTH AND HCIVERSION)\n",
+	xhci_dbg(xhci, "// @%pK = 0x%x (CAPLENGTH AND HCIVERSION)\n",
 			&xhci->cap_regs->hc_capbase, temp);
 	xhci_dbg(xhci, "//   CAPLENGTH: 0x%x\n",
 			(unsigned int) HC_LENGTH(temp));
@@ -43,24 +43,24 @@ void xhci_dbg_regs(struct xhci_hcd *xhci)
 			(unsigned int) HC_VERSION(temp));
 #endif
 
-	xhci_dbg(xhci, "// xHCI operational registers at %p:\n", xhci->op_regs);
+	xhci_dbg(xhci, "// xHCI operational registers at %pK:\n", xhci->op_regs);
 
 	temp = xhci_readl(xhci, &xhci->cap_regs->run_regs_off);
-	xhci_dbg(xhci, "// @%p = 0x%x RTSOFF\n",
+	xhci_dbg(xhci, "// @%pK = 0x%x RTSOFF\n",
 			&xhci->cap_regs->run_regs_off,
 			(unsigned int) temp & RTSOFF_MASK);
-	xhci_dbg(xhci, "// xHCI runtime registers at %p:\n", xhci->run_regs);
+	xhci_dbg(xhci, "// xHCI runtime registers at %pK:\n", xhci->run_regs);
 
 	temp = xhci_readl(xhci, &xhci->cap_regs->db_off);
-	xhci_dbg(xhci, "// @%p = 0x%x DBOFF\n", &xhci->cap_regs->db_off, temp);
-	xhci_dbg(xhci, "// Doorbell array at %p:\n", xhci->dba);
+	xhci_dbg(xhci, "// @%pK = 0x%x DBOFF\n", &xhci->cap_regs->db_off, temp);
+	xhci_dbg(xhci, "// Doorbell array at %pK:\n", xhci->dba);
 }
 
 static void xhci_print_cap_regs(struct xhci_hcd *xhci)
 {
 	u32 temp;
 
-	xhci_dbg(xhci, "xHCI capability registers at %p:\n", xhci->cap_regs);
+	xhci_dbg(xhci, "xHCI capability registers at %pK:\n", xhci->cap_regs);
 
 	temp = xhci_readl(xhci, &xhci->cap_regs->hc_capbase);
 	xhci_dbg(xhci, "CAPLENGTH AND HCIVERSION 0x%x:\n",
@@ -141,7 +141,7 @@ static void xhci_print_status(struct xhci_hcd *xhci)
 
 static void xhci_print_op_regs(struct xhci_hcd *xhci)
 {
-	xhci_dbg(xhci, "xHCI operational registers at %p:\n", xhci->op_regs);
+	xhci_dbg(xhci, "xHCI operational registers at %pK:\n", xhci->op_regs);
 	xhci_print_command_reg(xhci);
 	xhci_print_status(xhci);
 }
@@ -162,7 +162,7 @@ static void xhci_print_ports(struct xhci_hcd *xhci)
 	addr = &xhci->op_regs->port_status_base;
 	for (i = 0; i < ports; i++) {
 		for (j = 0; j < NUM_PORT_REGS; ++j) {
-			xhci_dbg(xhci, "%p port %s reg = 0x%x\n",
+			xhci_dbg(xhci, "%pK port %s reg = 0x%x\n",
 					addr, names[j],
 					(unsigned int) xhci_readl(xhci, addr));
 			addr++;
@@ -182,35 +182,35 @@ void xhci_print_ir_set(struct xhci_hcd *xhci, int set_num)
 	if (temp == XHCI_INIT_VALUE)
 		return;
 
-	xhci_dbg(xhci, "  %p: ir_set[%i]\n", ir_set, set_num);
+	xhci_dbg(xhci, "  %pK: ir_set[%i]\n", ir_set, set_num);
 
-	xhci_dbg(xhci, "  %p: ir_set.pending = 0x%x\n", addr,
+	xhci_dbg(xhci, "  %pK: ir_set.pending = 0x%x\n", addr,
 			(unsigned int)temp);
 
 	addr = &ir_set->irq_control;
 	temp = xhci_readl(xhci, addr);
-	xhci_dbg(xhci, "  %p: ir_set.control = 0x%x\n", addr,
+	xhci_dbg(xhci, "  %pK: ir_set.control = 0x%x\n", addr,
 			(unsigned int)temp);
 
 	addr = &ir_set->erst_size;
 	temp = xhci_readl(xhci, addr);
-	xhci_dbg(xhci, "  %p: ir_set.erst_size = 0x%x\n", addr,
+	xhci_dbg(xhci, "  %pK: ir_set.erst_size = 0x%x\n", addr,
 			(unsigned int)temp);
 
 	addr = &ir_set->rsvd;
 	temp = xhci_readl(xhci, addr);
 	if (temp != XHCI_INIT_VALUE)
-		xhci_dbg(xhci, "  WARN: %p: ir_set.rsvd = 0x%x\n",
+		xhci_dbg(xhci, "  WARN: %pK: ir_set.rsvd = 0x%x\n",
 				addr, (unsigned int)temp);
 
 	addr = &ir_set->erst_base;
 	temp_64 = xhci_read_64(xhci, addr);
-	xhci_dbg(xhci, "  %p: ir_set.erst_base = @%08llx\n",
+	xhci_dbg(xhci, "  %pK: ir_set.erst_base = @%08llx\n",
 			addr, temp_64);
 
 	addr = &ir_set->erst_dequeue;
 	temp_64 = xhci_read_64(xhci, addr);
-	xhci_dbg(xhci, "  %p: ir_set.erst_dequeue = @%08llx\n",
+	xhci_dbg(xhci, "  %pK: ir_set.erst_dequeue = @%08llx\n",
 			addr, temp_64);
 }
 
@@ -219,15 +219,15 @@ void xhci_print_run_regs(struct xhci_hcd *xhci)
 	u32 temp;
 	int i;
 
-	xhci_dbg(xhci, "xHCI runtime registers at %p:\n", xhci->run_regs);
+	xhci_dbg(xhci, "xHCI runtime registers at %pK:\n", xhci->run_regs);
 	temp = xhci_readl(xhci, &xhci->run_regs->microframe_index);
-	xhci_dbg(xhci, "  %p: Microframe index = 0x%x\n",
+	xhci_dbg(xhci, "  %pK: Microframe index = 0x%x\n",
 			&xhci->run_regs->microframe_index,
 			(unsigned int) temp);
 	for (i = 0; i < 7; ++i) {
 		temp = xhci_readl(xhci, &xhci->run_regs->rsvd[i]);
 		if (temp != XHCI_INIT_VALUE)
-			xhci_dbg(xhci, "  WARN: %p: Rsvd[%i] = 0x%x\n",
+			xhci_dbg(xhci, "  WARN: %pK: Rsvd[%i] = 0x%x\n",
 					&xhci->run_regs->rsvd[i],
 					i, (unsigned int) temp);
 	}
@@ -329,13 +329,13 @@ void xhci_debug_segment(struct xhci_hcd *xhci, struct xhci_segment *seg)
 
 void xhci_dbg_ring_ptrs(struct xhci_hcd *xhci, struct xhci_ring *ring)
 {
-	xhci_dbg(xhci, "Ring deq = %p (virt), 0x%llx (dma)\n",
+	xhci_dbg(xhci, "Ring deq = %pK (virt), 0x%llx (dma)\n",
 			ring->dequeue,
 			(unsigned long long)xhci_trb_virt_to_dma(ring->deq_seg,
 							    ring->dequeue));
 	xhci_dbg(xhci, "Ring deq updated %u times\n",
 			ring->deq_updates);
-	xhci_dbg(xhci, "Ring enq = %p (virt), 0x%llx (dma)\n",
+	xhci_dbg(xhci, "Ring enq = %pK (virt), 0x%llx (dma)\n",
 			ring->enqueue,
 			(unsigned long long)xhci_trb_virt_to_dma(ring->enq_seg,
 							    ring->enqueue));
@@ -425,7 +425,7 @@ static void dbg_rsvd64(struct xhci_hcd *xhci, u64 *ctx, dma_addr_t dma)
 {
 	int i;
 	for (i = 0; i < 4; ++i) {
-		xhci_dbg(xhci, "@%p (virt) @%08llx "
+		xhci_dbg(xhci, "@%pK (virt) @%08llx "
 			 "(dma) %#08llx - rsvd64[%d]\n",
 			 &ctx[4 + i], (unsigned long long)dma,
 			 ctx[4 + i], i);
@@ -464,24 +464,24 @@ static void xhci_dbg_slot_ctx(struct xhci_hcd *xhci, struct xhci_container_ctx *
 	int csz = HCC_64BYTE_CONTEXT(xhci->hcc_params);
 
 	xhci_dbg(xhci, "Slot Context:\n");
-	xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - dev_info\n",
+	xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - dev_info\n",
 			&slot_ctx->dev_info,
 			(unsigned long long)dma, slot_ctx->dev_info);
 	dma += field_size;
-	xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - dev_info2\n",
+	xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - dev_info2\n",
 			&slot_ctx->dev_info2,
 			(unsigned long long)dma, slot_ctx->dev_info2);
 	dma += field_size;
-	xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - tt_info\n",
+	xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - tt_info\n",
 			&slot_ctx->tt_info,
 			(unsigned long long)dma, slot_ctx->tt_info);
 	dma += field_size;
-	xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - dev_state\n",
+	xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - dev_state\n",
 			&slot_ctx->dev_state,
 			(unsigned long long)dma, slot_ctx->dev_state);
 	dma += field_size;
 	for (i = 0; i < 4; ++i) {
-		xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - rsvd[%d]\n",
+		xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - rsvd[%d]\n",
 				&slot_ctx->reserved[i], (unsigned long long)dma,
 				slot_ctx->reserved[i], i);
 		dma += field_size;
@@ -509,24 +509,24 @@ static void xhci_dbg_ep_ctx(struct xhci_hcd *xhci,
 			((unsigned long)ep_ctx - (unsigned long)ctx->bytes);
 
 		xhci_dbg(xhci, "Endpoint %02d Context:\n", i);
-		xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - ep_info\n",
+		xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - ep_info\n",
 				&ep_ctx->ep_info,
 				(unsigned long long)dma, ep_ctx->ep_info);
 		dma += field_size;
-		xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - ep_info2\n",
+		xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - ep_info2\n",
 				&ep_ctx->ep_info2,
 				(unsigned long long)dma, ep_ctx->ep_info2);
 		dma += field_size;
-		xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08llx - deq\n",
+		xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08llx - deq\n",
 				&ep_ctx->deq,
 				(unsigned long long)dma, ep_ctx->deq);
 		dma += 2*field_size;
-		xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - tx_info\n",
+		xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - tx_info\n",
 				&ep_ctx->tx_info,
 				(unsigned long long)dma, ep_ctx->tx_info);
 		dma += field_size;
 		for (j = 0; j < 3; ++j) {
-			xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - rsvd[%d]\n",
+			xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - rsvd[%d]\n",
 					&ep_ctx->reserved[j],
 					(unsigned long long)dma,
 					ep_ctx->reserved[j], j);
@@ -551,16 +551,16 @@ void xhci_dbg_ctx(struct xhci_hcd *xhci,
 	if (ctx->type == XHCI_CTX_TYPE_INPUT) {
 		struct xhci_input_control_ctx *ctrl_ctx =
 			xhci_get_input_control_ctx(xhci, ctx);
-		xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - drop flags\n",
+		xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - drop flags\n",
 			 &ctrl_ctx->drop_flags, (unsigned long long)dma,
 			 ctrl_ctx->drop_flags);
 		dma += field_size;
-		xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - add flags\n",
+		xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - add flags\n",
 			 &ctrl_ctx->add_flags, (unsigned long long)dma,
 			 ctrl_ctx->add_flags);
 		dma += field_size;
 		for (i = 0; i < 6; ++i) {
-			xhci_dbg(xhci, "@%p (virt) @%08llx (dma) %#08x - rsvd2[%d]\n",
+			xhci_dbg(xhci, "@%pK (virt) @%08llx (dma) %#08x - rsvd2[%d]\n",
 				 &ctrl_ctx->rsvd2[i], (unsigned long long)dma,
 				 ctrl_ctx->rsvd2[i], i);
 			dma += field_size;
@@ -682,7 +682,7 @@ xhci_dbg_log_event(struct dbg_data *d, struct urb *urb, char *event,
 		if (!xhci_str_to_event(event)) {
 			write_lock_irqsave(&d->ctrl_lck, flags);
 			scnprintf(d->ctrl_buf[d->ctrl_idx],
-				DBG_MSG_LEN, "%s: [%s : %p]:[%s] "
+				DBG_MSG_LEN, "%s: [%s : %pK]:[%s] "
 				  "%02x %02x %04x %04x %04x  %u %d %s",
 				  get_timestamp(tbuf), event, urb,
 				  usb_urb_dir_in(urb) ? "in" : "out",
@@ -702,7 +702,7 @@ xhci_dbg_log_event(struct dbg_data *d, struct urb *urb, char *event,
 		} else {
 			write_lock_irqsave(&d->ctrl_lck, flags);
 			scnprintf(d->ctrl_buf[d->ctrl_idx],
-				DBG_MSG_LEN, "%s: [%s : %p]:[%s] %u %d %s",
+				DBG_MSG_LEN, "%s: [%s : %pK]:[%s] %u %d %s",
 				  get_timestamp(tbuf), event, urb,
 				  usb_urb_dir_in(urb) ? "in" : "out",
 				  urb->actual_length, extra,
@@ -715,7 +715,7 @@ xhci_dbg_log_event(struct dbg_data *d, struct urb *urb, char *event,
 	} else {
 		write_lock_irqsave(&d->data_lck, flags);
 		scnprintf(d->data_buf[d->data_idx], DBG_MSG_LEN,
-			  "%s: [%s : %p]:ep%d[%s]  %u %d %s",
+			  "%s: [%s : %pK]:ep%d[%s]  %u %d %s",
 			  get_timestamp(tbuf), event, urb, ep_addr & 0x0f,
 			  usb_urb_dir_in(urb) ? "in" : "out",
 			  xhci_str_to_event(event) ? urb->actual_length :
