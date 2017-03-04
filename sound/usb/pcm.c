@@ -228,7 +228,7 @@ static int start_endpoints(struct snd_usb_substream *subs, bool can_sleep)
 	if (!test_and_set_bit(SUBSTREAM_FLAG_DATA_EP_STARTED, &subs->flags)) {
 		struct snd_usb_endpoint *ep = subs->data_endpoint;
 
-		snd_printdd(KERN_DEBUG "Starting data EP @%p\n", ep);
+		snd_printdd(KERN_DEBUG "Starting data EP @%pK\n", ep);
 
 		ep->data_subs = subs;
 		err = snd_usb_endpoint_start(ep, can_sleep);
@@ -257,7 +257,7 @@ static int start_endpoints(struct snd_usb_substream *subs, bool can_sleep)
 			}
 		}
 
-		snd_printdd(KERN_DEBUG "Starting sync EP @%p\n", ep);
+		snd_printdd(KERN_DEBUG "Starting sync EP @%pK\n", ep);
 
 		ep->sync_slave = subs->data_endpoint;
 		err = snd_usb_endpoint_start(ep, can_sleep);
@@ -474,12 +474,12 @@ static int match_endpoint_audioformats(struct audioformat *fp,
 	int score = 0;
 
 	if (fp->channels < 1) {
-		snd_printdd("%s: (fmt @%p) no channels\n", __func__, fp);
+		snd_printdd("%s: (fmt @%pK) no channels\n", __func__, fp);
 		return 0;
 	}
 
 	if (!(fp->formats & pcm_format_to_bits(pcm_format))) {
-		snd_printdd("%s: (fmt @%p) no match for format %d\n", __func__,
+		snd_printdd("%s: (fmt @%pK) no match for format %d\n", __func__,
 			fp, pcm_format);
 		return 0;
 	}
@@ -491,7 +491,7 @@ static int match_endpoint_audioformats(struct audioformat *fp,
 		}
 	}
 	if (!score) {
-		snd_printdd("%s: (fmt @%p) no match for rate %d\n", __func__,
+		snd_printdd("%s: (fmt @%pK) no match for rate %d\n", __func__,
 			fp, rate);
 		return 0;
 	}
@@ -499,7 +499,7 @@ static int match_endpoint_audioformats(struct audioformat *fp,
 	if (fp->channels == match->channels)
 		score++;
 
-	snd_printdd("%s: (fmt @%p) score %d\n", __func__, fp, score);
+	snd_printdd("%s: (fmt @%pK) score %d\n", __func__, fp, score);
 
 	return score;
 }
