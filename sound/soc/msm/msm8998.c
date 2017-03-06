@@ -3122,12 +3122,12 @@ static int msm_mclk_event(struct snd_soc_dapm_widget *w,
 			pr_err("%s: Ext Clk Error %d\n", __func__, ret);
 			return ret;
 		}
+
 		ret = snd_soc_codec_set_pll(codec, MADERA_FLL1_REFCLK,
 			MADERA_FLL_SRC_MCLK2,
 			32768, CS47L35_SYSCLK_RATE);
 		if (ret != 0)
 			dev_err(codec->dev, "Failed to set REFCLK %d\n", ret);
-
 		break;
 	}
 	return ret;
@@ -6208,14 +6208,6 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 
 	ret = snd_soc_codec_set_pll(codec, MADERA_FLL1_REFCLK,
-			MADERA_FLL_SRC_MCLK2,
-			32768, CS47L35_SYSCLK_RATE);
-	if (ret != 0) {
-		dev_err(codec->dev, "Failed to set FLL1REFCLK %d\n", ret);
-		return ret;
-	}
-
-	ret = snd_soc_codec_set_pll(codec, MADERA_FLL1_SYNCCLK,
 			MADERA_FLL_SRC_MCLK2,
 			32768, CS47L35_SYSCLK_RATE);
 	if (ret != 0) {
