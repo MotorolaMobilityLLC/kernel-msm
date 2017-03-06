@@ -2813,6 +2813,9 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 	bool orientation, sink_attached, hvdcp;
 	u8 stat;
 
+	if (chg->mmi.factory_mode)
+		return 0;
+
 	if (!get_effective_result(chg->pd_allowed_votable))
 		return -EINVAL;
 
@@ -6448,7 +6451,7 @@ static int smbchg_reboot(struct notifier_block *nb,
 			/* Disable Charging */
 			smblib_masked_write(chg, CHARGING_ENABLE_CMD_REG,
 					    CHARGING_ENABLE_CMD_BIT,
-					    CHARGING_ENABLE_CMD_BIT);
+					    0);
 
 			/* Suspend USB and DC */
 			smblib_set_usb_suspend(chg, true);
@@ -6687,10 +6690,10 @@ static ssize_t force_chg_auto_enable_store(struct device *dev,
 
 	r = smblib_masked_write(mmi_chip, CHARGING_ENABLE_CMD_REG,
 				CHARGING_ENABLE_CMD_BIT,
-				mode ? 0 : CHARGING_ENABLE_CMD_BIT);
+				mode ? CHARGING_ENABLE_CMD_BIT : 0);
 	if (r < 0) {
 		smblib_err(mmi_chip, "Factory Couldn't %s charging rc=%d\n",
-			   mode ? "disable" : "enable", (int)r);
+			   mode ? "enable" : "disable", (int)r);
 		return r;
 	}
 
@@ -6718,7 +6721,7 @@ static ssize_t force_chg_auto_enable_show(struct device *dev,
 		goto end;
 	}
 
-	state = (CHARGING_ENABLE_CMD_BIT & value) ? 0 : 1;
+	state = (CHARGING_ENABLE_CMD_BIT & value) ? 1 : 0;
 end:
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
@@ -7363,6 +7366,13 @@ void mmi_init(struct smb_charger *chg)
 				 0x00);
 	if (rc)
 		smblib_err(chg, "couldn't set DCIN AICL Threshold\n");
+
+	/* Set SW ICL control */
+	rc = smblib_masked_write(chg, USBIN_LOAD_CFG_REG,
+				 USBIN_ICL_OVERRIDE_BIT,
+				 USBIN_ICL_OVERRIDE_BIT);
+	if (rc)
+		smblib_err(chg, "couldn't set SW ICL control\n");
 
 	/* Register the notifier for the psy updates*/
 	chg->mmi.mmi_psy_notifier.notifier_call = mmi_psy_notifier_call;
