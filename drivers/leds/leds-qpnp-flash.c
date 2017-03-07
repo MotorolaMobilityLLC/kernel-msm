@@ -283,6 +283,17 @@ static u8 qpnp_flash_led_ctrl_dbg_regs[] = {
 	0x4A, 0x4B, 0x4C, 0x4F, 0x51, 0x52, 0x54, 0x55, 0x5A, 0x5C, 0x5D,
 };
 
+/* Export function to override strobe control from another driver */
+/* Setting this flag to 0 will override DT strobe control */
+static bool sensor_strobe = 1;
+
+void flash_led_strobe_en(int flag)
+{
+	pr_debug("%s flag %d strobe control %d", __func__, flag, sensor_strobe);
+	sensor_strobe = flag;
+}
+EXPORT_SYMBOL(flash_led_strobe_en);
+
 static int flash_led_dbgfs_file_open(struct qpnp_flash_led *led,
 					struct file *file)
 {
@@ -1857,7 +1868,7 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			}
 		}
 
-		if (flash_node->strobe_en) {
+		if (flash_node->strobe_en && sensor_strobe) {
 			flash_node->trigger |= FLASH_LED_STROBE_TYPE_HW;
 			if (flash_node->strobe_trig_edge)
 				flash_node->trigger |= FLASH_LED_HW_STROBE_TRIG_EDGE;
