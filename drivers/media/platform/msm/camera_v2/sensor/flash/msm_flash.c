@@ -286,6 +286,30 @@ static int32_t msm_flash_i2c_init(
 		goto msm_flash_i2c_init_fail;
 	}
 
+	/* Parse and fill vreg params for powerup settings */
+	rc = msm_camera_fill_vreg_params(
+		flash_ctrl->power_info.cam_vreg,
+		flash_ctrl->power_info.num_vreg,
+		flash_ctrl->power_info.power_setting,
+		flash_ctrl->power_info.power_setting_size);
+	if (rc < 0) {
+		pr_err("%s:%d failed msm_camera_fill_vreg_params, rc %d",
+			__func__, __LINE__, rc);
+		return rc;
+	}
+
+	/* Parse and fill vreg params for powerdown settings */
+	rc = msm_camera_fill_vreg_params(
+		flash_ctrl->power_info.cam_vreg,
+		flash_ctrl->power_info.num_vreg,
+		flash_ctrl->power_info.power_down_setting,
+		flash_ctrl->power_info.power_down_setting_size);
+	if (rc < 0) {
+		pr_err("%s:%d failed msm_camera_fill_vreg_params, rc %d",
+			__func__, __LINE__, rc);
+		return rc;
+	}
+
 	rc = msm_camera_power_up(&flash_ctrl->power_info,
 		flash_ctrl->flash_device_type,
 		&flash_ctrl->flash_i2c_client);
