@@ -317,6 +317,7 @@ struct smbchg_chip {
 	int				temp_cool_current_ma;
 	int				temp_slightly_cool_current_ma;
 	int				temp_allowed_fastchg_current_ma;
+	bool				enable_factory_wa;
 };
 
 static struct smbchg_chip *the_chip;
@@ -3289,6 +3290,10 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 	/* properties from fg */
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = get_prop_batt_capacity(chip);
+		if (chip->factory_mode &&
+		    chip->enable_factory_wa &&
+		    val->intval <= 0)
+			val->intval = 1;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = get_prop_batt_current_now(chip);
@@ -4597,7 +4602,7 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 			chip->supply_type = POWER_SUPPLY_TYPE_USB_HVDCP;
 		}
 	} else if (chip->enable_hvdcp_9v && is_usb_present(chip) &&
-		   chip->apsd_rerun_at_boot &&
+		   chip->apsd_rerun_at_boot && !chip->factory_mode &&
 		   chip->supply_type == POWER_SUPPLY_TYPE_USB_DCP) {
 		chip->apsd_rerun_cnt++;
 		smbchg_force_apsd(chip);
@@ -6080,6 +6085,14 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		power_supply_set_dp_dm(chip->usb_psy,
 				POWER_SUPPLY_DP_DM_DPF_DMF);
 		chip->apsd_rerun_at_boot = true;
+		/* workaround for sdp detect failing with no battery */
+		if (chip->factory_mode &&
+		    chip->enable_factory_wa &&
+		    get_prop_batt_capacity(chip) <= 0) {
+			usb_type_enum[1] = POWER_SUPPLY_TYPE_USB;
+			usb_type_enum[2] = POWER_SUPPLY_TYPE_USB;
+			dev_info(chip->dev, "Map DCP/OTHER to USB type\n");
+		}
 	}
 
 	if (chip->force_aicl_rerun)
@@ -6118,6 +6131,16 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 static int smbchg_force_apsd(struct smbchg_chip *chip)
 {
 	int rc;
+
+	if (chip->factory_mode) {
+		dev_info(chip->dev, "Skip rerun APSD in factory mode\n");
+		return 0;
+	}
+
+	if (get_prop_batt_capacity(chip) <= 0) {
+		dev_info(chip->dev, "Skip rerun APSD for empty battery\n");
+		return 0;
+	}
 
 	dev_info(chip->dev, "Start APSD Rerun!\n");
 	power_supply_set_chg_present(chip->usb_psy, 0);
@@ -6465,6 +6488,9 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,enable-charging-limit");
 	chip->enabled_weak_charger_check = of_property_read_bool(node,
 					"qcom,weak-charger-check-enable");
+
+	chip->enable_factory_wa = of_property_read_bool(node,
+					"qcom,enable-factory-wa");
 
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
