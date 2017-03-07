@@ -781,6 +781,10 @@ static int nqx_clock_deselect(struct nqx_dev *nqx_dev)
 {
 	int r = -1;
 
+	/* if NULL we assume external crystal and dont fail */
+	if ((nqx_dev->s_clk == NULL) || IS_ERR(nqx_dev->s_clk))
+		return 0;
+
 	if ((nqx_dev->s_clk != NULL) && !IS_ERR(nqx_dev->s_clk)) {
 		if (nqx_dev->clk_run == true) {
 			clk_disable_unprepare(nqx_dev->s_clk);
