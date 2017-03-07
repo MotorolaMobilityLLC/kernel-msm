@@ -120,6 +120,11 @@
 		label = "aw3643";
 		qcom,flash-name = "aw3643";
 		qcom,flash-type = <1>;
+		cam_vio-supply = <&pm8998_lvs1>;
+		qcom,cam-vreg-name = "cam_vio";
+		qcom,cam-vreg-min-voltage = <0>;
+		qcom,cam-vreg-max-voltage = <0>;
+		qcom,cam-vreg-op-mode = <0>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_flash_active>;
