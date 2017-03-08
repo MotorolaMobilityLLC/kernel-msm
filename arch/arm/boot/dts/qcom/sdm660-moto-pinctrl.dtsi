@@ -44,4 +44,56 @@
 			};
 		};
 	};
+
+	touch_int_mux {
+		touch_int_active: active {
+			mux {
+				pins = "gpio67";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio67";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+
+		touch_int_suspend: default {
+			mux {
+				pins = "gpio67";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio67";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+
+	touch_reset_mux {
+		touch_reset_active: active {
+			mux {
+				pins = "gpio66";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio66";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		touch_reset_suspend: default {
+			mux {
+				pins = "gpio66";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio66";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
 };
