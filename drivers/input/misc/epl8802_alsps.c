@@ -75,6 +75,7 @@
 
 #define ATTR_RANGE_PATH 1
 #define ALS_LSRC        1
+#define STOW_CHECK_ALS_BEFORE_CAL 1
 
 #define ALSPS_DEBUG 0
 /******************************************************************************
@@ -259,6 +260,7 @@ static void epl_sensor_do_ps_auto_k_one(bool ps_far_k_flag);
 #if ALS_DYN_INTT_REPORT
 int epl_sensor_als_dyn_report(bool report_flag);
 #endif
+extern void epl_sensor_enable_als(int enable);
 /******************************************************************************
  *  PS DYN K ONE
  ******************************************************************************/
@@ -314,6 +316,12 @@ static bool enable_stowed_flag;
 static u8 ps_stowed_persist = EPL_PERIST_16;
 static u8 ps_stowed_cycle = EPL_CYCLE_1;
 static u8 ps_stowed_adc = EPL_PSALS_ADC_11;
+#if STOW_CHECK_ALS_BEFORE_CAL
+static bool stowed_cal_flag;
+static u16 stowed_ct = 0xffff;
+static u16 als_th_to_cal_stowed = 10;
+#endif
+
 /******************************************************************************
  *  Sensor calss
  ******************************************************************************/
@@ -1206,12 +1214,30 @@ int factory_als_data(void)
 void epl_sensor_enable_ps(int enable)
 {
 	struct epl_sensor_priv *epld = epl_sensor_obj;
+#if STOW_CHECK_ALS_BEFORE_CAL
+	int lflag;
+#endif
 
 	epld->enable_pflag = enable;
 	if (enable) {
 		if (enable_stowed_flag == true &&
 			enable_ps_flag == false) {
-			LOG_INFO("[%s]: stowed enable! \r\n", __func__);
+			LOG_DBG("[%s]: stowed enable! \r\n", __func__);
+
+#if STOW_CHECK_ALS_BEFORE_CAL
+			lflag = epld->enable_lflag;
+			if (!epld->enable_lflag) {
+				epl_sensor_enable_als(true);
+				epl_sensor_enable_als(lflag);
+			}
+			if (dynamic_intt_lux < als_th_to_cal_stowed)
+				stowed_cal_flag = false;
+			else
+				stowed_cal_flag = true;
+			LOG_DBG("[%s]: stowed cal %d(%d) \r\n", __func__,
+				stowed_cal_flag, dynamic_intt_lux);
+#endif
+
 			epl_sensor.ps.integration_time = EPL_PS_INTT_272;
 			epl_sensor.ps.gain = EPL_GAIN_LOW;
 			epl_sensor.ps.ir_drive = EPL_IR_DRIVE_50;
@@ -1430,6 +1456,20 @@ static void epl_sensor_do_ps_auto_k_one(bool ps_far_k_flag)
 		LOG_INFO("[%s]: msleep(%d)\r\n", __func__, ps_time);
 		epl_sensor_read_ps(epld->client);
 #endif
+
+#if STOW_CHECK_ALS_BEFORE_CAL
+		if (enable_stowed_flag) {
+			if (!stowed_cal_flag && stowed_ct != 0xffff) {
+				LOG_DBG("[%s]: stowed cal, use old ct %d\r\n", __func__,
+					stowed_ct);
+				epl_sensor.ps.data.data = stowed_ct;
+			}
+			stowed_cal_flag = 0;
+			stowed_ct = epl_sensor.ps.data.data;
+			LOG_DBG("[%s]: stowed cal, ct %d\r\n", __func__, stowed_ct);
+		}
+#endif
+
 		if (epl_sensor.ps.data.data < epld->dt_ps_max_ct &&
 				(epl_sensor.ps.saturation == 0)
 				&& (epl_sensor.ps.data.ir_data < PS_MAX_IR)) {
@@ -2797,6 +2837,35 @@ static ssize_t epl_sensor_store_flush(struct device *dev,
 	return count;
 }
 
+#if STOW_CHECK_ALS_BEFORE_CAL
+static ssize_t epl_sensor_show_stowed_cal_th(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t len = 0;
+	int value = 0;
+
+	LOG_FUN();
+
+	value = (int)als_th_to_cal_stowed;
+	len = snprintf(buf, PAGE_SIZE, "%d", value);
+
+	return len;
+}
+
+static ssize_t epl_sensor_store_stowed_cal_th(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	int value = 0;
+
+	LOG_FUN();
+
+	sscanf(buf, "%d", &value);
+	als_th_to_cal_stowed = (u16)value;
+
+	return count;
+}
+#endif
+
 /*----------------------------------------------------------------------------*/
 /*CTS --> S_IWUSR | S_IRUGO*/
 static DEVICE_ATTR(elan_status, S_IRUGO,
@@ -2868,6 +2937,11 @@ static DEVICE_ATTR(als_lux, S_IRUGO,
 			epl_sensor_show_als_lux, NULL);
 static DEVICE_ATTR(flush, S_IWUSR | S_IRUGO,
 			NULL, epl_sensor_store_flush);
+#if STOW_CHECK_ALS_BEFORE_CAL
+static DEVICE_ATTR(stowed_cal_th, S_IWUSR | S_IRUGO,
+			epl_sensor_show_stowed_cal_th,
+			epl_sensor_store_stowed_cal_th);
+#endif
 /*----------------------------------------------------------------------------*/
 static struct attribute *epl_sensor_attr_list[] = {
 	&dev_attr_elan_status.attr,
@@ -2903,6 +2977,9 @@ static struct attribute *epl_sensor_attr_list[] = {
 	&dev_attr_near.attr,
 	&dev_attr_als_lux.attr,
 	&dev_attr_flush.attr,
+#if STOW_CHECK_ALS_BEFORE_CAL
+	&dev_attr_stowed_cal_th.attr,
+#endif
 	NULL,
 };
 /*----------------------------------------------------------------------------*/
