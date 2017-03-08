@@ -293,7 +293,7 @@ static int32_t msm_flash_i2c_init(
 		flash_ctrl->power_info.power_setting,
 		flash_ctrl->power_info.power_setting_size);
 	if (rc < 0) {
-		pr_err("%s:%d failed msm_camera_fill_vreg_params, rc %d",
+		pr_err("%s:%d failed msm_camera_fill_vreg_params, rc %d\n",
 			__func__, __LINE__, rc);
 		return rc;
 	}
@@ -305,7 +305,7 @@ static int32_t msm_flash_i2c_init(
 		flash_ctrl->power_info.power_down_setting,
 		flash_ctrl->power_info.power_down_setting_size);
 	if (rc < 0) {
-		pr_err("%s:%d failed msm_camera_fill_vreg_params, rc %d",
+		pr_err("%s:%d failed msm_camera_fill_vreg_params, rc %d\n",
 			__func__, __LINE__, rc);
 		return rc;
 	}
@@ -1167,6 +1167,15 @@ static int32_t msm_flash_get_dt_data(struct device_node *of_node,
 		&(fctrl->power_info.gpio_conf), of_node);
 	if (rc < 0) {
 		pr_err("%s:%d msm_sensor_driver_get_gpio_data failed rc %d\n",
+			__func__, __LINE__, rc);
+		return rc;
+	}
+
+	/* Read the vreg information from device tree */
+	rc = msm_camera_get_dt_vreg_data(of_node, &fctrl->power_info.cam_vreg,
+		&fctrl->power_info.num_vreg);
+	if (rc < 0) {
+		pr_err("%s:%d msm_camera_get_dt_vreg_data failed rc %d\n",
 			__func__, __LINE__, rc);
 		return rc;
 	}
