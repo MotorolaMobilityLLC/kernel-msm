@@ -60,6 +60,7 @@ struct synaptics_dsx_platform_data {
 	bool disable_gpios;
 	bool do_lockdown;
 	bool regulator_en;
+	bool regulator_power_off_no_delay;
 	unsigned irq_gpio;
 	unsigned long irq_flags;
 	unsigned reset_gpio;
