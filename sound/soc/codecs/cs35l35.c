@@ -469,20 +469,16 @@ static const struct snd_soc_dapm_route cs35l35_audio_map[] = {
 	{"SDIN", NULL, "AMP Playback"},
 	{"CLASS H", NULL, "SDIN"},
 	{"BOOST", NULL, "CLASS H"},
-	{"Main AMP", NULL, "BOOST"},
-	{"SPK", NULL, "Main AMP"},
-
-
-	{"MCLK Select", NULL, "AMP Playback"},
-	{"CLKSEL MUX", NULL, "MCLK Select"},
+	{"MCLK Select", NULL, "BOOST"},
+	{"Main AMP", NULL, "MCLK Select"},
 
 	{"PDM Mux", "On", "PDM Playback"},
 	{"RECT FET", NULL, "PDM Mux"},
-	{"Main AMP", NULL, "RECT FET"},
-	{"PDM Select", NULL, "Main AMP"},
+	{"PDM Select", NULL, "RECT FET"},
 	{"CLKSEL MUX", "PDM", "PDM Select"},
+	{"Main AMP", NULL, "CLKSEL MUX"},
 
-	{"SPK", NULL, "CLKSEL MUX"},
+	{"SPK", NULL, "Main AMP"},
 
 	{"MCLK Select", NULL, "EXTCLK"},
 	{"PDM Select", NULL, "PDMCLK"},
