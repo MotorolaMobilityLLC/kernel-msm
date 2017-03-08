@@ -1855,7 +1855,7 @@ static void epl_sensor_eint_work(struct work_struct *work)
 				set_psensor_intr_threshold(ps_thd_5cm,
 					ps_thd_3cm);
 			}
-		} else {
+		} else if (ps_dyn_flag == false) {
 			epl_sensor_do_ps_auto_k_one(true);
 		}
 	}
