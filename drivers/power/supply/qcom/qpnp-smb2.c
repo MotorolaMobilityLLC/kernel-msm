@@ -1308,7 +1308,9 @@ static int smb2_batt_set_prop(struct power_supply *psy,
 		rc = rerun_election(chg->fcc_votable);
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
+#ifdef QCOM_BASE
 		vote(chg->fcc_votable, USER_VOTER, true, val->intval);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_SET_SHIP_MODE:
 		/* Not in ship mode as long as the device is active */
