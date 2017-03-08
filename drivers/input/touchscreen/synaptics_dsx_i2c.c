@@ -6848,7 +6848,8 @@ static int rmi_reboot(struct notifier_block *nb,
 		pr_debug("touch reboot - disable regulators\n");
 		regulator_force_disable(rmi4_data->regulator);
 		regulator_put(rmi4_data->regulator);
-		msleep(1000);
+		if (!platform_data->regulator_power_off_no_delay)
+			msleep(1000);
 	}
 
 	return NOTIFY_DONE;
@@ -7082,6 +7083,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	struct synaptics_rmi4_data *rmi4_data;
 	struct synaptics_rmi4_device_info *rmi;
 	struct synaptics_dsx_platform_data *platform_data;
+	struct device_node *np = client->dev.of_node;
 
 	if (!i2c_check_functionality(client->adapter,
 			I2C_FUNC_SMBUS_BYTE_DATA)) {
@@ -7245,6 +7247,9 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		if (retval == -EPROBE_DEFER)
 			goto vdd_quirk_error;
 	}
+
+	platform_data->regulator_power_off_no_delay = of_property_read_bool(np,
+		"regulator-power-off-no-delay");
 
 	retval = synaptics_dsx_ic_reset(rmi4_data, RMI4_HW_RESET);
 	if (retval > 0)
