@@ -4890,24 +4890,6 @@ int smblib_init(struct smb_charger *chg)
 {
 	int rc = 0;
 
-	chg->ipc_log = ipc_log_context_create(QPNP_LOG_PAGES,
-						"charger", 0);
-	if (chg->ipc_log == NULL)
-		pr_err("%s: failed to create charger IPC log\n",
-						__func__);
-	else
-		smblib_dbg(chg, PR_MISC,
-			   "IPC logging is enabled for charger\n");
-
-	chg->ipc_log_reg = ipc_log_context_create(QPNP_LOG_PAGES,
-						"charger_reg", 0);
-	if (chg->ipc_log_reg == NULL)
-		pr_err("%s: failed to create register IPC log\n",
-						__func__);
-	else
-		smblib_dbg(chg, PR_MISC,
-			   "IPC logging is enabled for charger\n");
-
 	device_init_wakeup(chg->dev, true);
 	mutex_init(&chg->lock);
 	mutex_init(&chg->write_lock);
@@ -5625,8 +5607,9 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 
 	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
 	    !eb_pwr_psy->desc->get_property) {
-		vote(chip->usb_suspend_votable, EB_VOTER,
-		     false, 1);
+		/* Remove USB Suspend Vote */
+		vote(chip->usb_icl_votable, EB_VOTER,
+		     false, 0);
 		vote(chip->dc_suspend_votable, EB_VOTER,
 		     true, 1);
 		gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
@@ -5697,8 +5680,8 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		if (!rc) {
 			chip->mmi.ebchg_state = state;
 
-			vote(chip->usb_suspend_votable, EB_VOTER,
-			     false, 1);
+			vote(chip->usb_icl_votable, EB_VOTER,
+			     false, 0);
 			vote(chip->dc_suspend_votable, EB_VOTER,
 			     true, 1);
 			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 1);
@@ -5734,8 +5717,8 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 			}
 
 			chip->mmi.ebchg_state = state;
-			vote(chip->usb_suspend_votable, EB_VOTER,
-			     true, 1);
+			vote(chip->usb_icl_votable, EB_VOTER,
+			     true, 0);
 			vote(chip->dc_suspend_votable, EB_VOTER,
 			     false, 1);
 			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
@@ -5756,8 +5739,8 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		if (!rc) {
 			chip->mmi.ebchg_state = state;
 			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
-			vote(chip->usb_suspend_votable, EB_VOTER,
-			     false, 1);
+			vote(chip->usb_icl_votable, EB_VOTER,
+			     false, 0);
 			vote(chip->dc_suspend_votable, EB_VOTER,
 			     true, 1);
 
@@ -6184,15 +6167,20 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		   (mmi->ebchg_state != EB_DISCONN)) {
 		mmi->pres_chrg_step = STEP_EB;
 	} else if (mmi->demo_mode) {
-		int usb_suspend = get_client_vote(chip->usb_suspend_votable,
+		int usb_suspend = get_client_vote(chip->usb_icl_votable,
 					      DEMO_VOTER);
+		if (usb_suspend == -EINVAL)
+			usb_suspend = 0;
+		else if(usb_suspend == 0)
+			usb_suspend = 1;
+
 		mmi->pres_chrg_step = STEP_DEMO;
 		smblib_dbg(chip, PR_MOTO, "Battery in Demo Mode charging Limited\n");
 		if ((usb_suspend == 0) &&
 		    (batt_soc >= DEMO_MODE_MAX_SOC)) {
-			vote(chip->usb_suspend_votable, DEMO_VOTER, true, 0);
+			vote(chip->usb_icl_votable, DEMO_VOTER, true, 0);
 			vote(chip->dc_suspend_votable, DEMO_VOTER, true, 0);
-			usb_suspend = true;
+			usb_suspend = 1;
 		} else if (usb_suspend &&
 			   (batt_soc <=
 			    (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
@@ -6200,10 +6188,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 				mmi_set_extbat_state(chip, EB_OFF, false);
 				mmi->cl_ebchg = 0;
 				mmi_set_extbat_in_cl(chip);
-			}
-			vote(chip->usb_suspend_votable, DEMO_VOTER, false, 0);
+			}	
+			vote(chip->usb_icl_votable, DEMO_VOTER, false, 0);
 			vote(chip->dc_suspend_votable, DEMO_VOTER, false, 0);
-			usb_suspend = false;
+			usb_suspend = 0;
 		}
 
 		if (vbus_present &&
@@ -6351,9 +6339,6 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	vote(chip->fcc_votable, HEARTBEAT_VOTER,
 	     true, (target_fcc >= 0) ? (target_fcc * 1000) : 0);
 
-	vote(chip->usb_suspend_votable, HEARTBEAT_VOTER,
-	     (target_usb < 0), 0);
-
 	rc = vote(chip->usb_icl_votable, HEARTBEAT_VOTER,
 		  true, (target_usb >= 0) ? (target_usb * 1000) : 0);
 	if (rc < 0) {
@@ -6400,12 +6385,11 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		   stepchg_str[(int)mmi->pres_chrg_step],
 		   ebchg_str[(int)mmi->ebchg_state]);
 	smblib_dbg(chip, PR_MOTO,
-		   "EFFECTIVE: FV = %d, CDIS = %d, FCC = %d, USUS = %d, "
+		   "EFFECTIVE: FV = %d, CDIS = %d, FCC = %d, "
 		   "USBICL = %d, DCICL = %d\n",
 		   get_effective_result(chip->fv_votable),
 		   get_effective_result(chip->chg_disable_votable),
 		   get_effective_result(chip->fcc_votable),
-		   get_effective_result(chip->usb_suspend_votable),
 		   get_effective_result(chip->usb_icl_votable),
 		   get_effective_result(chip->dc_icl_votable));
 end_hb:
@@ -7263,6 +7247,25 @@ void mmi_init(struct smb_charger *chg)
 
 	if (!chg)
 		return;
+
+	chg->ipc_log = ipc_log_context_create(QPNP_LOG_PAGES,
+						"charger", 0);
+	if (chg->ipc_log == NULL)
+		pr_err("%s: failed to create charger IPC log\n",
+						__func__);
+	else
+		smblib_dbg(chg, PR_MISC,
+			   "IPC logging is enabled for charger\n");
+
+	chg->ipc_log_reg = ipc_log_context_create(QPNP_LOG_PAGES,
+						"charger_reg", 0);
+	if (chg->ipc_log_reg == NULL)
+		pr_err("%s: failed to create register IPC log\n",
+						__func__);
+	else
+		smblib_dbg(chg, PR_MISC,
+			   "IPC logging is enabled for charger\n");
+
 	mmi_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
 
