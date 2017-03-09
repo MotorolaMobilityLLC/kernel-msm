@@ -169,7 +169,7 @@
 			1 &intc 0 0 221 0
 			2 &tlmm 54 0>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
-	cd-gpios = <&tlmm 54 0x1>;
+	cd-gpios = <&tlmm 54 0x0>;
 
 	status = "ok";
 };
