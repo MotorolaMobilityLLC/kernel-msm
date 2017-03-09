@@ -1,0 +1,50 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+
+#include "sdm630.dtsi"
+#include "sdm630-payton.dtsi"
+
+/ {
+	qcom,board-id = <0x41 0x80A0>;
+};
+
+/* workaround, GPIO2 used as codec interrupt pin in this revison, to be revised
+ * in the next hardware version because LPI interrupt cannot receive by AP
+ */
+&spi_7 {
+	cs47l35: cs47l35@0 {
+		interrupts = <74 0>;
+
+		cirrus,gpio-defaults = <
+			0x00002000 0x0000f000 /* AIF3TXDAT / GPIO1  */
+			0x00003003 0x00007000 /* IRQ1	   / GPIO2  */
+			0x00000040 0x00000000 /* AIF3RXDAT / GPIO3  */
+			0x00002000 0x0000f000 /* AIF3LRCLK / GPIO4  */
+			0xffffffff 0xffffffff /* GPIO5 */
+			0xffffffff 0xffffffff /* GPIO6 */
+			0x00002000 0x0000f000 /* MIF1SDA   / GPIO7  */
+			0x00002000 0x0000f000 /* AIF1RXDAT / GPIO8  */
+			0x00002000 0x0000f000 /* AIF1BCLK  / GPIO9  */
+			0x00002000 0x0000f000 /* AIF1TXDAT / GPIO10 */
+			0x00002000 0x0000f000 /* AIF1LRCLK / GPIO11 */
+			0x00002000 0x0000f000 /* AIF2TXDAT / GPIO12 */
+			0x00002000 0x0000f000 /* AIF2BCLK  / GPIO13 */
+			0xffffffff 0xffffffff /* AIF2RXDAT / GPIO14 */
+			0xffffffff 0xffffffff /* AIF2LRCLK / GPIO15 */
+			0x00002000 0x0000f000 /* MIF1SCLK  / GPIO16 */
+			>;
+	};
+};
+
