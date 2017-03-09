@@ -153,6 +153,7 @@ dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt2.dtb
 dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt2b.dtb
 
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-payton-p0a.dtb
+dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p1a.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
