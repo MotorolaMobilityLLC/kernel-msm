@@ -13,6 +13,9 @@
 #include "sdm660-pinctrl.dtsi"
 #include "sdm660-moto-pinctrl.dtsi"
 #include "sdm630-camera-sensor-mtp.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "dsi-panel-mot-tianma-520-1080p-vid.dtsi"
+#include "dsi-panel-mot-boe-520-1080p-vid.dtsi"
 
 / {
 	mtp_batterydata: qcom,battery-data {
@@ -125,7 +128,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_nt35695b_truly_fhd_video>;
+	qcom,dsi-pref-prim-pan = <&mot_tianma_520_1080p_vid_v0>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
@@ -134,19 +137,5 @@
 };
 
 &pm660l_wled {
-	qcom,led-strings-list = [01 02];
-};
-
-&dsi_nt35695b_truly_fhd_video {
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-};
-
-&dsi_nt35695b_truly_fhd_cmd {
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	en-sdm660l-ovp-disable;
 };
