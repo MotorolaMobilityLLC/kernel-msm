@@ -18,10 +18,9 @@
 #include "dsi-panel-mot-boe-520-1080p-vid.dtsi"
 
 / {
-	mtp_batterydata: qcom,battery-data {
+	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
-		#include "fg-gen3-batterydata-itech-3000mah.dtsi"
-		#include "fg-gen3-batterydata-ascent-3450mah.dtsi"
+		#include "fg-gen3-batterydata-hx40sunwoda-3000mah.dtsi"
 	};
 };
 
@@ -67,7 +66,18 @@
 };
 
 &pm660_fg {
-	qcom,battery-data = <&mtp_batterydata>;
+	qcom,battery-data = <&mot_batterydata>;
+};
+
+&pm660_charger {
+	qcom,fcc-max-ua = <3000000>;
+	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <3000000>;
+	qcom,mmi-temp-zones = <0 4200 529 0>,
+				<10 4200 1323 529>,
+				<15 0 1323 1323>,
+				<45 4250 2000 1800>,
+				<60 4200 1323 0>;
 };
 
 &sdhc_1 {
