@@ -14,20 +14,19 @@
 			bias-pull-up;
 		};
 	};
-};
 
-&lpi_tlmm {
 	marley_irq_default: marley_irq_default {
 		config {
-			pins = "gpio22";
+			pins = "gpio21";
 			drive-strength = <2>;
 			bias-pull-up;
+			input-enable;
 		};
 	};
 
 	marley_reset_default: marley_reset_default {
 		config {
-			pins = "gpio24";
+			pins = "gpio55";
 			output-high;
 			bias-pull-up;
 			drive-strength = <2>;
@@ -151,10 +150,10 @@
 		spi-max-frequency = <26000000>;
 		reg = <0x0>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <74 0>;
+		interrupts = <21 0>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
-		reset-gpios = <&lpi_tlmm 24 0>;
+		reset-gpios = <&tlmm 55 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&marley_irq_default &marley_reset_default>;
 
