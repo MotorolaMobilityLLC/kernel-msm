@@ -140,6 +140,10 @@
 	};
 };
 
+&pm660_l14 {
+	regulator-always-on;
+};
+
 &spi_7 {
 	status = "ok";
 	cs47l35: cs47l35@0 {
@@ -159,7 +163,7 @@
 		DBVDD2-supply = <&pm660_l13>;
 		CPVDD-supply = <&pm660_l13>;
 		CPVDD1-supply = <&pm660_l13>;
-		CPVDD2-supply = <&pm660_l13>;
+		CPVDD2-supply = <&pm660_l14>;
 		DCVDD-supply = <&pm660_l13>;
 		SPKVDD-supply = <&dummy_vreg>;
 
