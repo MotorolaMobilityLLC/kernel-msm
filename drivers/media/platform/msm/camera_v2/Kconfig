@@ -274,3 +274,11 @@ config CAMERA_CSID_DEBUG
 	default n
 	---help---
 		Enable csid debug support.
+
+config QPNP_FLASH_STROBE_OVERRIDE
+	bool "Enable sensor HW strobe override"
+	depends on LEDS_QPNP_FLASH
+	default n
+	---help---
+	    Enables support for flash HW strobe override
+	    based on sensor configuration.
