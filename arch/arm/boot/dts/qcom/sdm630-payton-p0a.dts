@@ -19,13 +19,36 @@
 / {
 	qcom,board-id = <0x41 0x80A0>;
 };
-
 /* workaround, GPIO2 used as codec interrupt pin in this revison, to be revised
  * in the next hardware version because LPI interrupt cannot receive by AP
+ * the below audio related item should only be used in this p0a device tree
  */
+&lpi_tlmm {
+	lpi_marley_irq_default: marley_irq_default {
+		config {
+			pins = "gpio22";
+			drive-strength = <2>;
+			input-enable;
+			bias-pull-up;
+		};
+	};
+
+	lpi_marley_reset_default: marley_reset_default {
+		config {
+			pins = "gpio24";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+};
+
 &spi_7 {
 	cs47l35: cs47l35@0 {
+		interrupt-parent = <&tlmm>;
 		interrupts = <74 0>;
+		reset-gpios = <&lpi_tlmm 24 0>;
+		pinctrl-0 = <&lpi_marley_irq_default &lpi_marley_reset_default>;
 
 		cirrus,gpio-defaults = <
 			0x00002000 0x0000f000 /* AIF3TXDAT / GPIO1  */
