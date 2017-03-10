@@ -2124,7 +2124,11 @@ static int dwc3_gadget_vbus_session(struct usb_gadget *_gadget, int is_active)
 	 * Check if upper level usb_gadget_driver was already registerd with
 	 * this udc controller driver (if dwc3_gadget_start was called)
 	 */
+#ifdef CONFIG_USB_DWC3_CHG_DET_WA
+	if (dwc->gadget_driver) {
+#else
 	if (dwc->gadget_driver && dwc->softconnect) {
+#endif
 		if (dwc->vbus_active) {
 			/*
 			 * Both vbus was activated by otg and pullup was
