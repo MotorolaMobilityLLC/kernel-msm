@@ -126,4 +126,12 @@ config DWC3_HOST_USB3_LPM_ENABLE
 	help
 	  Select this when you want to enable USB3 LPM with dwc3 xhci host.
 
+config USB_DWC3_CHG_DET_WA
+	bool "Enable usb charger detection workaround"
+	depends on USB_DWC3
+	default n
+	help
+	  Say Y here to enable usb charger detection workaround
+	  when usb disabled.
+
 endif
