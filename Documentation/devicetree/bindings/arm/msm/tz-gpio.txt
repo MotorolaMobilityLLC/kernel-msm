@@ -1,0 +1,20 @@
+* TZGPIO (Trust Zone GPIO)
+
+The /sys/private/ is a sysfs interface added for showing and changing
+gpio's configuration. It's usefual to debug bottom-rock current by
+comparing and setting gpio's configuration before suspend. Because TZ
+has restricted some gpios' accessing from AP, linux kernel will crash
+if these gpios are accessed in AP. The gpio list here is used for AP
+not to access them and avoid linux kernel's crash.
+
+Required properties:
+- compatible : Should be "qcom,tz-gpio"
+- tlmm-tz    : List of GPIOs protected by TZ
+
+Example:
+
+	qcom, tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <111>,
+			<126>;
+	};
