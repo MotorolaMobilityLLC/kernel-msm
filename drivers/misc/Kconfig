@@ -694,6 +694,14 @@ config USB3813
 	  This option enables a device driver for the USB3813 which is a
 	  3-Port Hub Controller.
 
+config USB3813_DEBUG
+	bool "Microchip USB3813 Hub Controller Debug"
+	depends on USB3813
+	default n
+	help
+	  This option enables additional debug options for the USB3813
+	  3-Port Hub Controller. If you are unsure, say N.
+
 config FSUSB42_MUX
 	tristate "Fairchild Two-Port USB/UART Switch"
 	default n
