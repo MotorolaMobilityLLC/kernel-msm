@@ -830,6 +830,9 @@ static int psy_notifier_call(struct notifier_block *nb,
 
 static bool usb3813_factory_mode(void)
 {
+#ifdef CONFIG_USB3813_DEBUG
+	return true;
+#else
 	struct device_node *np = of_find_node_by_path("/chosen");
 	bool factory = false;
 
@@ -839,6 +842,7 @@ static bool usb3813_factory_mode(void)
 	of_node_put(np);
 
 	return factory;
+#endif
 }
 
 static int usb3813_probe(struct i2c_client *client,
