@@ -44,3 +44,13 @@
 	/delete-property/ qcom,lra-auto-res-mode;
 	/delete-property/ qcom,lra-res-cal-period;
 };
+
+&soc{
+	qcom,tz_gpio {
+		compatible = "qcom,tz_gpio";
+		tlmm-tz = <0>,
+			<1>,
+			<2>,
+			<3>;
+	};
+};
