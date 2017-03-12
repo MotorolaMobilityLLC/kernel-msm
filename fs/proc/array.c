@@ -146,20 +146,22 @@ static inline void task_state(struct seq_file *m, struct pid_namespace *ns,
 	struct user_namespace *user_ns = seq_user_ns(m);
 	struct group_info *group_info;
 	int g;
-	struct task_struct *tracer;
 	const struct cred *cred;
-	pid_t ppid, tpid = 0, tgid, ngid;
+	pid_t ppid = 0, tpid = 0, tgid, ngid;
+	struct task_struct *leader = NULL;
 	unsigned int max_fds = 0;
 
 	rcu_read_lock();
-	ppid = pid_alive(p) ?
-		task_tgid_nr_ns(rcu_dereference(p->real_parent), ns) : 0;
 
-	tracer = ptrace_parent(p);
-	if (tracer)
-		tpid = task_pid_nr_ns(tracer, ns);
+	if (pid_alive(p)) {
+		struct task_struct *tracer = ptrace_parent(p);
 
-	tgid = task_tgid_nr_ns(p, ns);
+		if (tracer)
+			tpid = task_pid_nr_ns(tracer, ns);
+		ppid = task_tgid_nr_ns(rcu_dereference(p->real_parent), ns);
+		leader = p->group_leader;
+	}
+	tgid = leader ? task_pid_nr_ns(leader, ns) : 0;
 	ngid = task_numa_group_id(p);
 	cred = get_task_cred(p);
 
