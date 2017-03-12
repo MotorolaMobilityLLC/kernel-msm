@@ -12,6 +12,7 @@
 
 #include "sdm630-moto-common.dtsi"
 #include "sdm660-external-codec.dtsi"
+#include "sdm660-camera-sensor-mot-payton.dtsi"
 / {
         model = "Payton";
         compatible = "qcom,sdm630-payton", "qcom,sdm630-moto",
