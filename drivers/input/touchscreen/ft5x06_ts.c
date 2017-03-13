@@ -3242,6 +3242,35 @@ static int ft5x06_parse_dt(struct device *dev,
 }
 #endif
 
+void ft5x06_ts_shutdown(struct i2c_client *client)
+{
+	struct ft5x06_ts_data *data = i2c_get_clientdata(client);
+	int retval;
+
+	free_irq(client->irq, data);
+
+	if (gpio_is_valid(data->pdata->reset_gpio)) {
+		retval = gpio_direction_output(data->pdata->reset_gpio, 0);
+		if (retval) {
+			dev_err(&data->client->dev,
+			"set_direction for reset gpio failed\n");
+		}
+		msleep(data->pdata->hard_rst_dly);
+		gpio_free(data->pdata->reset_gpio);
+	}
+	if (gpio_is_valid(data->pdata->irq_gpio))
+		gpio_free(data->pdata->irq_gpio);
+
+	if (data->pdata->power_on)
+		data->pdata->power_on(false);
+	else
+		ft5x06_power_on(data, false);
+
+	if (data->pdata->power_init)
+		data->pdata->power_init(false);
+	else
+		ft5x06_power_init(data, false);
+}
 static int ft5x06_ts_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
@@ -3928,6 +3957,7 @@ static struct of_device_id ft5x06_match_table[] = {
 static struct i2c_driver ft5x06_ts_driver = {
 	.probe = ft5x06_ts_probe,
 	.remove = ft5x06_ts_remove,
+	.shutdown = ft5x06_ts_shutdown,
 	.driver = {
 		   .name = "ft5x06_ts",
 		   .owner = THIS_MODULE,
