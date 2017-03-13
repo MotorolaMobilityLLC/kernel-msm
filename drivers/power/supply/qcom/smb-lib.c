@@ -942,6 +942,11 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 	int rc = 0;
 	bool override;
 
+	if (chg->mmi.factory_mode) {
+		pr_err("USB ICL callback in Facory Mode! %d\n", icl_ua);
+		return rc;
+	}
+
 	/* suspend and return if 25mA or less is requested */
 	if (icl_ua < USBIN_25MA)
 		return smblib_set_usb_suspend(chg, true);
