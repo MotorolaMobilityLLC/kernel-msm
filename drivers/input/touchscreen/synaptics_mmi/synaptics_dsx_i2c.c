@@ -1363,10 +1363,9 @@ static int synaptics_dsx_gpio_config(
 			goto err_gpio;
 		}
 
-		if (!gpio_is_valid(pdata->reset_gpio)) {
-			pr_err("invalid %s\n", RESET_GPIO_NAME);
-			retval = -EINVAL;
-		}
+		if (!gpio_is_valid(pdata->reset_gpio))
+			return retval;
+
 		retval = gpio_request(pdata->reset_gpio, RESET_GPIO_NAME);
 		if (retval) {
 			pr_err("unable to request %s [%d]: rc=%d\n",
@@ -1381,6 +1380,8 @@ static int synaptics_dsx_gpio_config(
 		}
 	} else {
 		gpio_free(pdata->irq_gpio);
+		if (!gpio_is_valid(pdata->reset_gpio))
+			return retval;
 		gpio_free(pdata->reset_gpio);
 	}
 
@@ -1639,8 +1640,23 @@ static struct synaptics_dsx_platform_data *
 		return NULL;
 	}
 
-	pdata->irq_gpio = of_get_gpio(np, 0);
-	pdata->reset_gpio = of_get_gpio(np, 1);
+	retval = of_get_gpio(np, 0);
+	if (retval < 0) {
+		dev_err(&client->dev, "get irq pin failure\n");
+		return NULL;
+	}
+	pdata->irq_gpio = retval;
+
+	pdata->reset_gpio = ARCH_NR_GPIOS;
+	if (of_gpio_count(np) > 1) {
+		retval = of_get_gpio(np, 1);
+		if (retval < 0) {
+			dev_err(&client->dev, "get reset pin failure\n");
+			return NULL;
+		}
+		pdata->reset_gpio = retval;
+	} else
+		dev_info(&client->dev, "only found 1 gpio, assume no rst pin\n");
 
 	memset(key_codes, 0, sizeof(key_codes));
 	retval = of_property_read_u32_array(np, "synaptics,key-buttons",
@@ -2404,13 +2420,14 @@ static int synaptics_dsx_ic_reset(
 	unsigned long start = jiffies;
 	const struct synaptics_dsx_platform_data *platform_data =
 			rmi4_data->board;
+	bool has_rst_pin = gpio_is_valid(platform_data->reset_gpio);
 
 	sema_init(&reset_semaphore, 0);
 
-	if (reset == RMI4_HW_RESET) {
+	if (has_rst_pin && (reset == RMI4_HW_RESET)) {
 		gpio_set_value(platform_data->reset_gpio, 0);
 		udelay(1500);
-	} else if (reset == RMI4_SW_RESET) {
+	} else if (!has_rst_pin || (reset == RMI4_SW_RESET)) {
 		retval = synaptics_rmi4_sw_reset(rmi4_data, true);
 		if (retval < 0)
 			return retval;
@@ -2424,7 +2441,7 @@ static int synaptics_dsx_ic_reset(
 				"%s: Failed to request irq: %d\n",
 				__func__, retval);
 
-	if (reset == RMI4_HW_RESET)
+	if (has_rst_pin && (reset == RMI4_HW_RESET))
 		gpio_set_value(platform_data->reset_gpio, 1);
 
 	retval = down_timeout(&reset_semaphore, msecs_to_jiffies(100));
@@ -6959,7 +6976,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 
 	if (platform_data->gpio_config)
 		retval = platform_data->gpio_config(platform_data, true);
-	else {
+	else if (gpio_is_valid(platform_data->reset_gpio)) {
 		retval = gpio_request(platform_data->reset_gpio,
 						RESET_GPIO_NAME);
 		if (!retval)
@@ -7180,8 +7197,10 @@ err_regulator_defer:
 err_free_gpio:
 	if (platform_data->gpio_config)
 		gpio_free(platform_data->irq_gpio);
-	gpio_set_value(platform_data->reset_gpio, 0);
-	gpio_free(platform_data->reset_gpio);
+	if (gpio_is_valid(platform_data->reset_gpio)) {
+		gpio_set_value(platform_data->reset_gpio, 0);
+		gpio_free(platform_data->reset_gpio);
+	}
 err_input_device:
 	kfree(rmi4_data);
 
@@ -7424,7 +7443,8 @@ static int synaptics_rmi4_suspend(struct device *dev)
 
 	if (rmi4_data->ic_on) {
 		/* use pinctrl to put touch RESET GPIO into SUSPEND state */
-		gpio_free(platform_data->reset_gpio);
+		if (gpio_is_valid(platform_data->reset_gpio))
+			gpio_free(platform_data->reset_gpio);
 		pinctrl = devm_pinctrl_get_select_default(
 			&rmi4_data->i2c_client->dev);
 		if (IS_ERR(pinctrl))
@@ -7489,11 +7509,14 @@ static int synaptics_rmi4_resume(struct device *dev)
 		}
 
 		/* if RESET GPIO is in SUSPEND state - no HW reset */
-		retval = gpio_get_value(platform_data->reset_gpio);
-		pr_debug("reset gpio state: %d\n", retval);
-		if (retval == 0)
-			reset = RMI4_WAIT_READY;
-		else	/* if not in reset, IRQ might be enabled */
+		if (gpio_is_valid(platform_data->reset_gpio)) {
+			retval = gpio_get_value(platform_data->reset_gpio);
+			pr_debug("reset gpio state: %d\n", retval);
+			if (retval == 0)
+				reset = RMI4_WAIT_READY;
+			else	/* if not in reset, IRQ might be enabled */
+				synaptics_rmi4_irq_enable(rmi4_data, false);
+		} else
 			synaptics_rmi4_irq_enable(rmi4_data, false);
 
 		pinctrl = devm_pinctrl_get_select(&rmi4_data->i2c_client->dev,
@@ -7504,11 +7527,13 @@ static int synaptics_rmi4_resume(struct device *dev)
 				"pinctrl failed err %ld\n", error);
 		}
 
-		if (gpio_request(platform_data->reset_gpio,
+		if (gpio_is_valid(platform_data->reset_gpio)) {
+			if (gpio_request(platform_data->reset_gpio,
 						RESET_GPIO_NAME) < 0)
-			pr_err("failed to request reset gpio\n");
+				pr_err("failed to request reset gpio\n");
 
-		gpio_direction_output(platform_data->reset_gpio, 1);
+			gpio_direction_output(platform_data->reset_gpio, 1);
+		}
 		rmi4_data->ic_on = true;
 	}
 
