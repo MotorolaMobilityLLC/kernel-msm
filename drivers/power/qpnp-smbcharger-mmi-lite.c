@@ -299,6 +299,7 @@ struct smbchg_chip {
 	int				apsd_rerun_cnt;
 	int				charger_rate;
 	bool				usbid_disabled;
+	bool				usbid_gpio_enabled;
 	bool				demo_mode;
 	bool				batt_therm_wa;
 	struct notifier_block		smb_reboot;
@@ -5403,6 +5404,11 @@ static irqreturn_t usbid_change_handler(int irq, void *_chip)
 	struct smbchg_chip *chip = _chip;
 	bool otg_present;
 
+	if (chip->usbid_gpio_enabled) {
+		pr_smb(PR_INTERRUPT, "gpio usbid triggered\n");
+		return IRQ_HANDLED;
+	}
+
 	if (chip->usbid_disabled) {
 		power_supply_set_usb_otg(chip->usb_psy, 0);
 		return IRQ_HANDLED;
@@ -6476,6 +6482,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,low-volt-dcin");
 	chip->usbid_disabled = of_property_read_bool(node,
 						"qcom,usbid-disabled");
+	chip->usbid_gpio_enabled = of_property_read_bool(node,
+						"qcom,usbid-gpio-enabled");
 	chip->batt_therm_wa = of_property_read_bool(node,
 					       "qcom,batt-therm-wa-enabled");
 	if (chip->batt_therm_wa)
