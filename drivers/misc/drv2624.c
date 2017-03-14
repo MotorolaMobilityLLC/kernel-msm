@@ -45,6 +45,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/drv2624.h>
+#include <soc/qcom/bootinfo.h>
 
 static struct drv2624_data *g_DRV2624data;
 
@@ -161,34 +162,14 @@ drv2624_change_voltage(struct drv2624_data *ctrl, enum work_mode mode)
 	}
 }
 
-static bool drv2624_is_factory(struct drv2624_data *ctrl)
-{
-	struct device_node *np;
-	bool factory_cable = false;
-	bool ret = false;
-
-	np = of_find_node_by_path("/chosen");
-	factory_cable = of_property_read_bool(np, "mmi,factory-cable");
-	dev_dbg(ctrl->dev,
-			"drv2624  (%d)\n", factory_cable);
-	if (factory_cable) {
-		ret = true;
-		dev_dbg(ctrl->dev,
-			"factory-cable , cancel context haptic!!\n");
-	}
-	return ret;
-}
-
 static void
 drv2624_hap_context(struct drv2624_data *ctrl, unsigned char val)
 {
 	enum work_mode mode;
 
-	/*ignore this while in factory mode*/
-	if (drv2624_is_factory(ctrl))
-		return;
-	if (ctrl->msPlatData.mnGpioVCTRL != 0) {
+	if (gpio_is_valid(ctrl->msPlatData.mnGpioVCTRL)) {
 		int t_top = gpio_get_value(ctrl->msPlatData.mnGpioVCTRL);
+
 		dev_dbg(ctrl->dev, "%s, t_top %d\n", __func__, t_top);
 		if (val == GO) {
 			if (t_top && ctrl->mnCurrentVibrationTime > 100)
@@ -207,7 +188,8 @@ drv2624_set_go_bit(struct drv2624_data *ctrl, unsigned char val)
 	int value = 0;
 	int retry = 10; /* to finish auto-brake*/
 
-	drv2624_hap_context(ctrl, val);
+	if (!ctrl->factory_mode)
+		drv2624_hap_context(ctrl, val);
 	val &= 0x01;
 	ret = drv2624_reg_write(ctrl, DRV2624_REG_GO, val);
 	if (ret >= 0) {
@@ -1145,9 +1127,8 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 	}
 
 	pdata->mnGpioVCTRL = of_get_named_gpio(np, "ti,nvctrl-gpio", 0);
-	if (!gpio_is_valid(pdata->mnGpioVCTRL)) {
-		pdata->mnGpioVCTRL = 0;
-		dev_err(&client->dev, "%s: no VCTRL gpio provided\n", __func__);
+	if (gpio_is_valid(pdata->mnGpioVCTRL)) {
+		dev_info(&client->dev, "%s: VCTRL gpio %d provided\n", __func__, pdata->mnGpioVCTRL);
 	}
 
 	rc = of_property_read_u8(np, "ti,rated_voltage",
@@ -1346,6 +1327,8 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 			dev_err(ctrl->dev, "%s: ERROR calibration\n", __func__);
 	}
 
+	ctrl->factory_mode = (!strncmp("mot-factory", bi_bootmode(), BOOTMODE_MAX_LEN)) ||
+				(!strncmp("factory", bi_bootmode(), BOOTMODE_MAX_LEN));
 	dev_info(ctrl->dev, "drv2624 probe succeeded\n");
 
 	return 0;
