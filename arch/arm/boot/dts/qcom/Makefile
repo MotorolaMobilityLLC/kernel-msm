@@ -160,9 +160,11 @@ dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt1b.dtb
 dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt2.dtb
 dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt2b.dtb
 
+ifeq ($(CONFIG_PAYTON_DTB),y)
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-payton-p0a.dtb
 dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p1a.dtb
 dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p0a.dtb
+endif # CONFIG_PAYTON_DTB
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
@@ -173,6 +175,7 @@ endif
 
 dtb-$(CONFIG_ARCH_MSMHAMSTER) += msmhamster-rumi.dtb
 
+ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-sim.dtb \
 	sdm660-internal-codec-cdp.dtb \
 	sdm660-internal-codec-mtp.dtb \
@@ -285,6 +288,7 @@ dtb-$(CONFIG_ARCH_SDM630) += sdm630-rumi.dtb \
 	sdm455-cdp.dtb \
 	sdm455-rcm.dtb \
 	sdm455-internal-codec-rcm.dtb
+endif # CONFIG_MMI_DEVICE_DTBS
 
 ifeq ($(CONFIG_ARM64),y)
 always          := $(dtb-y)
