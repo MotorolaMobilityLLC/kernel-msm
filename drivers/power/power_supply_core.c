@@ -383,7 +383,10 @@ struct power_supply *power_supply_get_by_name(const char *name)
 
 	if (dev) {
 		psy = dev_get_drvdata(dev);
-		atomic_inc(&psy->use_cnt);
+		if (atomic_read(&psy->use_cnt) >= 1)
+			atomic_inc(&psy->use_cnt);
+		else
+			psy = NULL;
 	}
 
 	return psy;
@@ -399,6 +402,15 @@ EXPORT_SYMBOL_GPL(power_supply_get_by_name);
  */
 void power_supply_put(struct power_supply *psy)
 {
+	int uses_open = atomic_read(&psy->use_cnt);
+
+	if (uses_open <= 1) {
+		atomic_set(&psy->use_cnt, 0);
+		pr_err("power_supply_put: called while use_cnt %d\n",
+			uses_open);
+		return;
+	}
+
 	might_sleep();
 
 	atomic_dec(&psy->use_cnt);
@@ -442,7 +454,10 @@ struct power_supply *power_supply_get_by_phandle(struct device_node *np,
 
 	if (dev) {
 		psy = dev_get_drvdata(dev);
-		atomic_inc(&psy->use_cnt);
+		if (atomic_read(&psy->use_cnt) >= 1)
+			atomic_inc(&psy->use_cnt);
+		else
+			psy = NULL;
 	}
 
 	return psy;
@@ -493,7 +508,8 @@ int power_supply_get_property(struct power_supply *psy,
 			    enum power_supply_property psp,
 			    union power_supply_propval *val)
 {
-	if (atomic_read(&psy->use_cnt) <= 0)
+	if (!psy || atomic_read(&psy->use_cnt) <= 0 ||
+	    !psy->desc || !psy->desc->get_property)
 		return -ENODEV;
 
 	return psy->desc->get_property(psy, psp, val);
@@ -504,7 +520,8 @@ int power_supply_set_property(struct power_supply *psy,
 			    enum power_supply_property psp,
 			    const union power_supply_propval *val)
 {
-	if (atomic_read(&psy->use_cnt) <= 0 || !psy->desc->set_property)
+	if (!psy || atomic_read(&psy->use_cnt) <= 0 ||
+	    !psy->desc || !psy->desc->set_property)
 		return -ENODEV;
 
 	return psy->desc->set_property(psy, psp, val);
@@ -514,8 +531,8 @@ EXPORT_SYMBOL_GPL(power_supply_set_property);
 int power_supply_property_is_writeable(struct power_supply *psy,
 					enum power_supply_property psp)
 {
-	if (atomic_read(&psy->use_cnt) <= 0 ||
-			!psy->desc->property_is_writeable)
+	if (!psy || atomic_read(&psy->use_cnt) <= 0 ||
+	    !psy->desc || !psy->desc->property_is_writeable)
 		return -ENODEV;
 
 	return psy->desc->property_is_writeable(psy, psp);
@@ -524,8 +541,8 @@ EXPORT_SYMBOL_GPL(power_supply_property_is_writeable);
 
 void power_supply_external_power_changed(struct power_supply *psy)
 {
-	if (atomic_read(&psy->use_cnt) <= 0 ||
-			!psy->desc->external_power_changed)
+	if (!psy || atomic_read(&psy->use_cnt) <= 0 ||
+	    !psy->desc || !psy->desc->external_power_changed)
 		return;
 
 	psy->desc->external_power_changed(psy);
@@ -541,7 +558,7 @@ EXPORT_SYMBOL_GPL(power_supply_powers);
 static void power_supply_dev_release(struct device *dev)
 {
 	struct power_supply *psy = container_of(dev, struct power_supply, dev);
-	pr_debug("device: '%s': %s\n", dev_name(dev), __func__);
+	pr_warn("device: '%s': %s\n", dev_name(dev), __func__);
 	kfree(psy);
 }
 
@@ -941,7 +958,19 @@ EXPORT_SYMBOL_GPL(devm_power_supply_register_no_ws);
  */
 void power_supply_unregister(struct power_supply *psy)
 {
-	WARN_ON(atomic_dec_return(&psy->use_cnt));
+	unsigned int uses_open = atomic_read(&psy->use_cnt);
+
+	if (uses_open > 1) {
+		atomic_set(&psy->use_cnt, 0);
+		pr_err("power_supply_unregister: called while use_cnt %d\n",
+			uses_open);
+		while (uses_open > 1) {
+			put_device(&psy->dev);
+			uses_open--;
+		}
+	} else
+		WARN_ON(atomic_dec_return(&psy->use_cnt));
+
 	atomic_notifier_call_chain(&power_supply_notifier,
 				   PSY_EVENT_PROP_REMOVED, psy);
 	cancel_work_sync(&psy->changed_work);
