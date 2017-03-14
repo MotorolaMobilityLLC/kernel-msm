@@ -2051,6 +2051,22 @@ static int bma25x_flat_update(struct bma25x_data *bma25x)
 		bma25x->flat_down_value = FLATDOWN_GESTURE;
 	else
 		bma25x->flat_down_value = EXIT_FLATDOWN_GESTURE;
+
+	if (TEST_BIT(FlatUp, bma25x->mEnabled)) {
+		dev_info(&bma25x->bma25x_client->dev,
+			"update FlatUp value =%d\n", bma25x->flat_up_value);
+		input_report_rel(bma25x->dev_interrupt,
+				FLAT_INTERRUPT, bma25x->flat_up_value);
+		input_sync(bma25x->dev_interrupt);
+	}
+	if (TEST_BIT(FlatDown, bma25x->mEnabled)) {
+		dev_info(&bma25x->bma25x_client->dev,
+			"update FlatDown value =%d\n", bma25x->flat_down_value);
+		input_report_rel(bma25x->dev_interrupt,
+				FLAT_INTERRUPT, bma25x->flat_down_value);
+		input_sync(bma25x->dev_interrupt);
+	}
+
 	return 0;
 }
 
@@ -2063,11 +2079,12 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 			"int_mode entry value = %x  %x\n",
 			bma25x->mEnabled, newstatus);
 	mutex_lock(&bma25x->int_mode_mutex);
+
+	/* handle flat up/down */
 	if (!bma25x->mEnabled && newstatus) {
+		bma25x_set_powermode(bma25x, 1, BMA25X_AOD);
 		bma25x_set_bandwidth(
 			bma25x->bma25x_client, BMA25X_BW_500HZ);
-		bma25x_set_powermode(bma25x, 1, BMA25X_AOD);
-		usleep_range(5000, 5000);
 		bma25x_flat_update(bma25x);
 		bma25x_set_theta_flat(bma25x->bma25x_client, 0x08);
 		if ((bma25x->flat_up_value == FLATUP_GESTURE) ||
@@ -2078,10 +2095,7 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 		bma25x_set_Int_Enable(bma25x->bma25x_client, 11, 1);
 	} else if (bma25x->mEnabled && !newstatus) {
 		bma25x_set_Int_Enable(bma25x->bma25x_client, 11, 0);
-		bma25x_set_powermode(bma25x, 0, BMA25X_AOD);
-		disable_irq_wake(bma25x->IRQ1);
-		bma25x_set_bandwidth(
-			bma25x->bma25x_client,  bma25x->bandwidth);
+		cancel_delayed_work_sync(&bma25x->flat_work);
 	}
 	if (TEST_BIT(FlatUp, newstatus) &&
 			!TEST_BIT(FlatUp, bma25x->mEnabled)) {
@@ -2100,6 +2114,7 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 		input_sync(bma25x->dev_interrupt);
 	}
 
+	/* handle motion */
 	if (TEST_BIT(Motion, newstatus) &&
 			!TEST_BIT(Motion, bma25x->mEnabled))
 		err = bma25x_set_en_no_motion_int(bma25x, 1);
@@ -2109,6 +2124,13 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 
 	if (!bma25x->mEnabled && newstatus)
 		enable_irq_wake(bma25x->IRQ1);
+	else if (bma25x->mEnabled && !newstatus) {
+		disable_irq_wake(bma25x->IRQ1);
+		bma25x_set_bandwidth(
+			bma25x->bma25x_client,	bma25x->bandwidth);
+		bma25x_set_powermode(bma25x, 0, BMA25X_AOD);
+	}
+
 	bma25x->mEnabled = newstatus;
 	mutex_unlock(&bma25x->int_mode_mutex);
 	ISR_INFO(&bma25x->bma25x_client->dev, "int_mode finished!!!\n");
