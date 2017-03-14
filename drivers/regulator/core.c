@@ -4611,15 +4611,6 @@ int _vreg_before_sleep_save_configs(struct device *dev, void *data)
 	if (dump->id >= VREG_NUM_MAX)
 		return -EINVAL;
 
-	/* only save vreg configs when it has been fetched */
-	if (!before_sleep_fetched)
-		return -EINVAL;
-
-	pr_debug("%s(), before_sleep_fetched=%d\n",
-		__func__, before_sleep_fetched);
-	before_sleep_fetched = false;
-
-
 	on = mv = 0;
 	mutex_lock(&rdev->mutex);
 
@@ -4638,12 +4629,20 @@ void vreg_before_sleep_save_configs(void)
 {
 	struct regulator_dump data;
 
+	/* only save vreg configs when it has been fetched */
+	if (!before_sleep_fetched)
+		return;
+
+	pr_debug("%s(), before_sleep_fetched=%d\n",
+		__func__, before_sleep_fetched);
+
 	data.buf = NULL;
 	data.pos = 0;
 	data.id = 0;
 
 	class_for_each_device(&regulator_class, NULL, &data,
 				     _vreg_before_sleep_save_configs);
+	before_sleep_fetched = false;
 }
 
 int _vreg_before_sleep_dump_info(struct device *dev, void *data)
@@ -4651,27 +4650,23 @@ int _vreg_before_sleep_dump_info(struct device *dev, void *data)
 	struct regulator_dump *dump = data;
 	struct regulator_dev *rdev = dev_to_rdev(dev);
 	char *p = dump->buf + dump->pos;
+	unsigned on, mv;
 
 	if (dump->id >= VREG_NUM_MAX)
 		return -EINVAL;
-	if (!before_sleep_fetched) {
-		unsigned on, mv;
 
-		before_sleep_fetched = true;
+	p += snprintf(p, PAGE_SIZE, "[%2d]%s: ",
+		dump->id, rdev->desc->name);
 
-		p += snprintf(p, PAGE_SIZE, "[%2d]%s: ",
-			dump->id, rdev->desc->name);
+	mv = before_sleep_configs[dump->id];
+	on = (mv & 0x80000000) >> 31;
+	mv &= ~0x80000000;
 
-		mv = before_sleep_configs[dump->id];
-		on = (mv & 0x80000000) >> 31;
-		mv &= ~0x80000000;
+	p += snprintf(p, PAGE_SIZE, "%s ", on ? "on " : "off");
+	p += snprintf(p, PAGE_SIZE, "%4d mv ", mv);
+	p += snprintf(p, PAGE_SIZE, "\n");
 
-		p += snprintf(p, PAGE_SIZE, "%s ", on ? "on " : "off");
-		p += snprintf(p, PAGE_SIZE, "%4d mv ", mv);
-		p += snprintf(p, PAGE_SIZE, "\n");
-
-		dump->id++;
-	}
+	dump->id++;
 	dump->pos = p - dump->buf;
 	return 0;
 }
@@ -4688,8 +4683,15 @@ int vreg_before_sleep_dump_info(char *buf)
 	p += snprintf(p, PAGE_SIZE, "vreg_before_sleep:\n");
 	data.pos = p - data.buf;
 
-	class_for_each_device(&regulator_class, NULL, &data,
+	pr_debug("%s(), before_sleep_fetched=%d\n",
+		__func__, before_sleep_fetched);
+
+	if (!before_sleep_fetched) {
+		class_for_each_device(&regulator_class, NULL, &data,
 				     _vreg_before_sleep_dump_info);
+		before_sleep_fetched = true;
+	}
+
 	return data.pos;
 }
 
