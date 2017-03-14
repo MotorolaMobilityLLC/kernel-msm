@@ -266,6 +266,7 @@ struct drv2624_data {
 	char mnWorkMode;
 	unsigned char mnCurrentReg;
 	int mnCurrentVibrationTime;
+	bool factory_mode;
 
 	struct wake_lock wklock;
 	struct hrtimer timer;
