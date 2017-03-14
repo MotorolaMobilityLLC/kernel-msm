@@ -952,17 +952,17 @@ static int mmi_wls_get_property(struct power_supply *psy,
 		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
 
 	if (eb_pwr_psy) {
-		rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+		rc = power_supply_get_property(eb_pwr_psy,
 					POWER_SUPPLY_PROP_PTP_POWER_AVAILABLE,
-						    &ret);
+					       &ret);
 		if (rc)
 			pa = 0;
 		else
 			pa = ret.intval;
 
-		rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+		rc = power_supply_get_property(eb_pwr_psy,
 					POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
-						    &ret);
+					       &ret);
 		if (rc)
 			ep = 0;
 		else
@@ -1085,17 +1085,17 @@ static int mmi_usbeb_get_property(struct power_supply *psy,
 		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
 
 	if (eb_pwr_psy) {
-		rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+		rc = power_supply_get_property(eb_pwr_psy,
 					POWER_SUPPLY_PROP_PTP_POWER_AVAILABLE,
-						    &ret);
+					       &ret);
 		if (rc)
 			pa = 0;
 		else
 			pa = ret.intval;
 
-		rc = eb_pwr_psy->desc->get_property(eb_pwr_psy,
+		rc = power_supply_get_property(eb_pwr_psy,
 					POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
-						    &ret);
+					       &ret);
 		if (rc)
 			ep = 0;
 		else
