@@ -1314,6 +1314,11 @@
 #define BMA25X_POWER_ALWAYS_ON
 
 enum {
+	BMA25X_AOD,
+	BMA25X_ACC,
+};
+
+enum {
 	FlatUp = 0,
 	FlatDown,
 	Motion,
@@ -1869,11 +1874,47 @@ enum hrtimer_restart poll_function(struct hrtimer *timer)
 	return HRTIMER_RESTART;
 }
 #endif
+
+#ifdef BMA25X_ENABLE_INT1
+static void bma25x_set_powermode(struct bma25x_data *bma25x, int enable, int who)
+{
+	unsigned char databuf = 0, mode = 0;
+
+	mutex_lock(&bma25x->mode_mutex);
+	mode = bma25x->mode;
+	if (enable)
+		mode |= (1<<who);
+	else
+		mode &= (~(1<<who));
+	if (mode && !bma25x->mode) {
+		dev_info(&bma25x->bma25x_client->dev,
+			"enter normal mode\n");
+		if (bma25x_power_ctl(bma25x, true))
+			dev_err(&bma25x->bma25x_client->dev, "power failed\n");
+
+		databuf = 0x00;
+		bma25x_smbus_write_byte(bma25x->bma25x_client,
+			BMA25X_MODE_CTRL_REG, &databuf);
+		usleep_range(3000, 3000);
+	} else if (!mode && bma25x->mode) {
+		dev_info(&bma25x->bma25x_client->dev,
+			"enter suspend mode\n");
+		databuf = 0x80;
+		bma25x_smbus_write_byte(bma25x->bma25x_client,
+			BMA25X_MODE_CTRL_REG, &databuf);
+	}
+	bma25x->mode = mode;
+	mutex_unlock(&bma25x->mode_mutex);
+}
+#endif
+
 static void bma25x_set_enable(struct device *dev, int enable)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma25x_data *bma25x = i2c_get_clientdata(client);
+#ifndef BMA25X_ENABLE_INT1
 	unsigned char databuf = 0;
+#endif
 	int pre_enable = atomic_read(&bma25x->enable);
 	mutex_lock(&bma25x->enable_mutex);
 	dev_info(dev, "bma25x_set_enable entry ebable:%d pre_enable:%d!!!\n",
@@ -1882,11 +1923,14 @@ static void bma25x_set_enable(struct device *dev, int enable)
 		if (pre_enable == 0) {
 			if (bma25x_power_ctl(bma25x, true))
 				dev_err(dev, "power failed\n");
-
+#ifdef BMA25X_ENABLE_INT1
+			bma25x_set_powermode(bma25x, 1, BMA25X_ACC);
+#else
 			databuf = 0x00;
 			bma25x_smbus_write_byte(bma25x->bma25x_client,
 				BMA25X_MODE_CTRL_REG, &databuf);
 			usleep_range(3000, 3000);
+#endif
 #ifndef BMA25X_ENABLE_INT2
 		hrtimer_start(&bma25x->timer,
 			bma25x->work_delay_kt, HRTIMER_MODE_REL);
@@ -1896,11 +1940,7 @@ static void bma25x_set_enable(struct device *dev, int enable)
 	} else {
 		if (pre_enable == 1) {
 #ifdef BMA25X_ENABLE_INT1
-			if (0 == bma25x->mEnabled) {
-				databuf = 0x80;
-				bma25x_smbus_write_byte(bma25x->bma25x_client,
-					BMA25X_MODE_CTRL_REG, &databuf);
-			}
+			bma25x_set_powermode(bma25x, 0, BMA25X_ACC);
 #else
 			databuf = 0x80;
 			bma25x_smbus_write_byte(bma25x->bma25x_client,
@@ -2019,7 +2059,6 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 {
 	int err = 0;
 	int newstatus = en;
-	unsigned char databuf = 0;
 	ISR_INFO(&bma25x->bma25x_client->dev,
 			"int_mode entry value = %x  %x\n",
 			bma25x->mEnabled, newstatus);
@@ -2027,9 +2066,7 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 	if (!bma25x->mEnabled && newstatus) {
 		bma25x_set_bandwidth(
 			bma25x->bma25x_client, BMA25X_BW_500HZ);
-		databuf = 0x00;
-		bma25x_smbus_write_byte(bma25x->bma25x_client,
-			BMA25X_MODE_CTRL_REG, &databuf);
+		bma25x_set_powermode(bma25x, 1, BMA25X_AOD);
 		usleep_range(5000, 5000);
 		bma25x_flat_update(bma25x);
 		bma25x_set_theta_flat(bma25x->bma25x_client, 0x08);
@@ -2041,11 +2078,7 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 		bma25x_set_Int_Enable(bma25x->bma25x_client, 11, 1);
 	} else if (bma25x->mEnabled && !newstatus) {
 		bma25x_set_Int_Enable(bma25x->bma25x_client, 11, 0);
-		if (atomic_read(&bma25x->enable) == 0) {
-			databuf = 0x80;
-			bma25x_smbus_write_byte(bma25x->bma25x_client,
-			BMA25X_MODE_CTRL_REG, &databuf);
-		}
+		bma25x_set_powermode(bma25x, 0, BMA25X_AOD);
 		disable_irq_wake(bma25x->IRQ1);
 		bma25x_set_bandwidth(
 			bma25x->bma25x_client,  bma25x->bandwidth);
@@ -3583,12 +3616,16 @@ void bma25x_shutdown(struct i2c_client *client)
 static int bma25x_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct bma25x_data *data = i2c_get_clientdata(client);
+#ifndef BMA25X_ENABLE_INT1
 	unsigned char databuf = 0;
+#endif
 	mutex_lock(&data->enable_mutex);
 
-	databuf = 0x40;
+#ifndef BMA25X_ENABLE_INT1
+	databuf = 0x80;
 	bma25x_smbus_write_byte(data->bma25x_client,
 		BMA25X_MODE_CTRL_REG, &databuf);
+#endif
 
 #ifndef BMA25X_ENABLE_INT2
 	if (atomic_read(&data->enable) == 1) {
@@ -3602,9 +3639,12 @@ static int bma25x_suspend(struct i2c_client *client, pm_message_t mesg)
 static int bma25x_resume(struct i2c_client *client)
 {
 	struct bma25x_data *data = i2c_get_clientdata(client);
+#ifndef BMA25X_ENABLE_INT1
 	unsigned char databuf = 0;
+#endif
 	mutex_lock(&data->enable_mutex);
 	if (atomic_read(&data->enable) == 1) {
+#ifndef BMA25X_ENABLE_INT1
 		/* set suspend mode first then set normal mode
 		     it is a workaound to prevent entering normal mode fail */
 		databuf = 0x80;
@@ -3617,6 +3657,7 @@ static int bma25x_resume(struct i2c_client *client)
 		bma25x_smbus_write_byte(data->bma25x_client,
 			BMA25X_MODE_CTRL_REG, &databuf);
 		usleep_range(3000, 3000);
+#endif
 #ifndef BMA25X_ENABLE_INT2
 		hrtimer_start(&data->timer,
 			data->work_delay_kt, HRTIMER_MODE_REL);
