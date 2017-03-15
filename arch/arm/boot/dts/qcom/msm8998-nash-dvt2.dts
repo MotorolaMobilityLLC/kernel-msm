@@ -24,22 +24,6 @@
 	};
 };
 
-&cci {
-	/* OV5695 OTP */
-	qcom,eeprom@1 {
-		cam_vdig-supply = <&pm8998_l14>;
-		qcom,cam-vreg-min-voltage = <0 1256000>;
-		qcom,cam-vreg-max-voltage = <0 1256000>;
-	};
-
-	/* OV5695 */
-	qcom,camera@1 {
-		cam_vdig-supply = <&pm8998_l14>;
-		qcom,cam-vreg-min-voltage = <0 1256000>;
-		qcom,cam-vreg-max-voltage = <0 1256000>;
-	};
-};
-
 &pm8998_l25 {
 	regulator-min-microvolt = <3312000>;
 	regulator-max-microvolt = <3312000>;
