@@ -31,6 +31,9 @@
 #ifdef CONFIG_SND_SOC_OPALUM
 #include <sound/ospl2xx.h>
 #endif
+#if IS_ENABLED(CONFIG_SND_SOC_AOV_TRIGGER)
+#include "../codecs/aov_trigger.h"
+#endif
 
 #define SDM660_SPK_ON     1
 #define SDM660_SPK_OFF    0
@@ -1985,14 +1988,6 @@ int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 		return ret;
 	}
 
-	ret = snd_soc_codec_set_pll(codec, MADERA_FLL1_SYNCCLK,
-			MADERA_FLL_SRC_MCLK2,
-			32768, CS47L35_SYSCLK_RATE);
-	if (ret != 0) {
-		dev_err(codec->dev, "Failed to set FLL1REFCLK %d\n", ret);
-		return ret;
-	}
-
 	ret = snd_soc_codec_set_sysclk(codec, MADERA_CLK_SYSCLK,
 			MADERA_CLK_SRC_FLL1, CS47L35_SYSCLK_RATE,
 			SND_SOC_CLOCK_IN);
@@ -2076,6 +2071,16 @@ int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "HPOUTR");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKOUTN");
 	snd_soc_dapm_ignore_suspend(dapm, "SPKOUTP");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP2 Virtual Output");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP3 Virtual Output");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP Virtual Input");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP2 Trigger Out");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP3 Trigger Out");
+
+	snd_soc_dapm_ignore_suspend(dapm, "Slim1 Playback");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim1 Capture");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim2 Playback");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim2 Capture");
 
 	snd_soc_dapm_sync(dapm);
 
@@ -2087,6 +2092,10 @@ int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 	ret = ospl2xx_init(rtd);
 	if (ret != 0)
 		pr_err("%s Cannot set Opalum controls %d\n", __func__, ret);
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_AOV_TRIGGER)
+	aov_trigger_init(codec);
+	dev_err(codec->dev, "AOV AFTER INIT ");
 #endif
 	codec_reg_done = true;
 	return 0;
