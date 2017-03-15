@@ -4550,6 +4550,7 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		spin_unlock_irqrestore(&host->lock, flags);
 
 		if (!(host->caps & MMC_CAP_NEEDS_POLL) &&
+			!(host->caps2 & MMC_CAP2_NONHOTPLUG) &&
 				work_busy(&host->detect.work)) {
 			pr_err("%s: %s: card detection in progress\n",
 					__func__, mmc_hostname(host));
