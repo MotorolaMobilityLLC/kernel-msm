@@ -91,6 +91,9 @@
 /** default crosstalk enable */
 #define STMVL53L1_CFG_DEFAULT_CROSSTALK_ENABLE	1
 
+/** default crosstalk for autonomous mode */
+#define STMVL53L1_CFG_DEFAULT_CROSSTALK_AUTONOMOUS	1000
+
 /** default output mode */
 #define STMVL53L1_CFG_DEFAULT_OUTPUT_MODE	VL53L1_OUTPUTMODE_NEAREST
 
@@ -469,6 +472,7 @@ static void stmvl53l1_setup_auto_config(struct stmvl53l1_data *data)
 static int stmvl53l1_start(struct stmvl53l1_data *data)
 {
 	int rc;
+	VL53L1_CalibrationData_t cali;
 
 	data->is_first_irq = true;
 	data->is_data_valid = false;
@@ -544,6 +548,14 @@ static int stmvl53l1_start(struct stmvl53l1_data *data)
 	/* init the ranging data => kill the previous ranging mz data */
 	kill_mz_data(&data->meas.multi_range_data);
 
+	memset(&cali, 0, sizeof(cali));
+	rc = VL53L1_GetCalibrationData(&data->stdev, &cali);
+	if (rc) {
+		vl53l1_errmsg("VL53L1_GetCalibrationData fail\n");
+		rc = store_last_error(data, rc);
+		goto done;
+	}
+
 	/* set autonomous mode configuration */
 	if (data->preset_mode == VL53L1_PRESETMODE_AUTONOMOUS) {
 		if (data->cam_mode == 0) {
@@ -584,6 +596,18 @@ static int stmvl53l1_start(struct stmvl53l1_data *data)
 				goto done;
 			}
 		}
+		cali.customer.algo__crosstalk_compensation_plane_offset_kcps
+			= STMVL53L1_CFG_DEFAULT_CROSSTALK_AUTONOMOUS;
+	} else {
+		cali.customer.algo__crosstalk_compensation_plane_offset_kcps
+			= data->xtalk_offset;
+	}
+
+	rc = VL53L1_SetCalibrationData(&data->stdev, &cali);
+	if (rc) {
+		vl53l1_errmsg("VL53L1_SetCalibrationData fail\n");
+		rc = store_last_error(data, rc);
+		goto done;
 	}
 
 	data->allow_hidden_start_stop =
@@ -3326,9 +3350,6 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 			= data->xtalk_x;
 		cali_data.customer.algo__crosstalk_compensation_y_plane_gradient_kcps
 			= data->xtalk_y;
-		cali_data.customer.algo__crosstalk_compensation_plane_offset_kcps = 7680;
-		cali_data.customer.algo__crosstalk_compensation_x_plane_gradient_kcps = 64205;
-		cali_data.customer.algo__crosstalk_compensation_y_plane_gradient_kcps = 0;
 
 		cali_data.xtalkhisto.xtalk_shape.VL53L1_PRM_00015    = 0 ;
 		cali_data.xtalkhisto.xtalk_shape.VL53L1_PRM_00016    = 24;
