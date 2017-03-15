@@ -719,6 +719,42 @@ static DEVICE_ATTR(modusb_enable, 0660,
 			modusb_enable_show,
 			modusb_enable_store);
 
+static ssize_t extusb_state_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	char *connected, *proto, *type;
+
+	if (!mdwc)
+		return -ENODEV;
+
+	proto =  "NO";
+	type = "DEVICE";
+	connected = "ATTACHED";
+
+	if (mdwc->ext_state.active) {
+		if (mdwc->ext_enabled)
+			connected = "CONNECTED";
+
+		if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0) {
+			proto = "USB2.0";
+		} else if (mdwc->ext_state.proto == USB_EXT_PROTO_3_1) {
+			proto = "USB3.1";
+			if (mdwc->ext_state.type == USB_EXT_REMOTE_HOST)
+				type = "HOST";
+		}
+	}
+
+	return scnprintf(buf, PAGE_SIZE,
+				"%s %s %s\n",
+				proto, type, connected);
+}
+
+static DEVICE_ATTR(extusb_state, 0440,
+			extusb_state_show,
+			NULL);
+
 static inline bool dwc3_msm_is_dev_superspeed(struct dwc3_msm *mdwc)
 {
 	u8 speed;
@@ -3888,6 +3924,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	device_create_file(&pdev->dev, &dev_attr_modusb_enable);
 	device_create_file(&pdev->dev, &dev_attr_modusb_protocol);
+	device_create_file(&pdev->dev, &dev_attr_extusb_state);
 	return 0;
 
 put_dwc3:
@@ -3944,6 +3981,7 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 		usb_ext_unregister_notifier(&mdwc->usbext_nb);
 		device_remove_file(&pdev->dev, &dev_attr_modusb_enable);
 		device_remove_file(&pdev->dev, &dev_attr_modusb_protocol);
+		device_remove_file(&pdev->dev, &dev_attr_extusb_state);
 	}
 
 	of_platform_depopulate(&pdev->dev);
