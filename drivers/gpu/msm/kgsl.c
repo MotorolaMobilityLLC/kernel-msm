@@ -2432,6 +2432,12 @@ long kgsl_ioctl_drawctxt_create(struct kgsl_device_private *dev_priv,
 		goto done;
 	}
 	trace_kgsl_context_create(dev_priv->device, context, param->flags);
+
+	/* Commit the pointer to the context in context_idr */
+	write_lock(&device->context_lock);
+	idr_replace(&device->context_idr, context, context->id);
+	write_unlock(&device->context_lock);
+
 	param->drawctxt_id = context->id;
 done:
 	mutex_unlock(&device->mutex);
