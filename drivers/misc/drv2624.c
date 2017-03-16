@@ -1110,25 +1110,22 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 
 	pdata->mnGpioNRST = of_get_named_gpio(np, "ti,nrst-gpio", 0);
 	if (!gpio_is_valid(pdata->mnGpioNRST)) {
-		pdata->mnGpioNRST = 0;
-		dev_info(&client->dev, "%s: no RST gpio provided\n", __func__);
+		dev_warn(&client->dev, "%s: no RST gpio provided\n", __func__);
 	}
 
 	pdata->mnGpioNPWR = of_get_named_gpio(np, "ti,npwr-gpio", 0);
 	if (!gpio_is_valid(pdata->mnGpioNPWR)) {
-		pdata->mnGpioNPWR = 0;
-		dev_info(&client->dev, "%s: no npwr gpio provided\n", __func__);
+		dev_warn(&client->dev, "%s: no NPWR gpio provided\n", __func__);
 	}
 
 	pdata->mnGpioINT = of_get_named_gpio(np, "ti,irqz-gpio", 0);
 	if (!gpio_is_valid(pdata->mnGpioINT)) {
-		pdata->mnGpioINT = 0;
-		dev_err(&client->dev, "%s: no IRQ gpio provided\n", __func__);
+		dev_warn(&client->dev, "%s: no IRQ gpio provided\n", __func__);
 	}
 
 	pdata->mnGpioVCTRL = of_get_named_gpio(np, "ti,nvctrl-gpio", 0);
-	if (gpio_is_valid(pdata->mnGpioVCTRL)) {
-		dev_info(&client->dev, "%s: VCTRL gpio %d provided\n", __func__, pdata->mnGpioVCTRL);
+	if (!gpio_is_valid(pdata->mnGpioVCTRL)) {
+		dev_warn(&client->dev, "%s: no VCTRL gpio provided\n", __func__);
 	}
 
 	rc = of_property_read_u8(np, "ti,rated_voltage",
@@ -1149,16 +1146,30 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 	rc = of_property_read_u8(np, "ti,rated_voltage_reduced",
 		&pdata->msActuator.mnRatedVoltageReduced);
 	if (rc) {
-		dev_err(&client->dev, "%s: rated voltage reduced read failed\n",
+		dev_warn(&client->dev, "%s: rated voltage reduced read failed\n",
 			__func__);
-		return NULL;
+		/* if VCTRL gpio provided and reduced value not, then */
+		/* just set it equal to its full range counterpart */
+		if (gpio_is_valid(pdata->mnGpioVCTRL)) {
+			pdata->msActuator.mnRatedVoltageReduced =
+				pdata->msActuator.mnRatedVoltage;
+			dev_info(&client->dev, "%s: set reduced voltage to %d",
+				__func__, pdata->msActuator.mnRatedVoltage);
+		}
 	}
 	rc = of_property_read_u8(np, "ti,overdrive_voltage_reduced",
 		&pdata->msActuator.mnOverDriveClampVoltageReduced);
 	if (rc) {
-		dev_err(&client->dev, "%s: overdrive voltage reducedread failed\n",
+		dev_warn(&client->dev, "%s: overdrive voltage reduced read failed\n",
 			__func__);
-		return NULL;
+		/* same as above reason */
+		if (gpio_is_valid(pdata->mnGpioVCTRL)) {
+			pdata->msActuator.mnOverDriveClampVoltageReduced =
+				pdata->msActuator.mnOverDriveClampVoltage;
+			dev_info(&client->dev, "%s: set reduced overdrive " \
+				"voltage to %d", __func__,
+				pdata->msActuator.mnOverDriveClampVoltage);
+		}
 	}
 
 	rc = of_property_read_u8(np, "ti,sample_time",
@@ -1248,7 +1259,7 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	memcpy(&ctrl->msPlatData, pdata, sizeof(struct drv2624_platform_data));
 	i2c_set_clientdata(client, ctrl);
 
-	if (ctrl->msPlatData.mnGpioNPWR) {
+	if (gpio_is_valid(ctrl->msPlatData.mnGpioNPWR)) {
 		err = gpio_request(ctrl->msPlatData.mnGpioNPWR,
 				 HAPTICS_DEVICE_NAME "NPWR");
 		if (err < 0) {
@@ -1261,7 +1272,7 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		udelay(100);
 	}
 
-	if (ctrl->msPlatData.mnGpioNRST) {
+	if (gpio_is_valid(ctrl->msPlatData.mnGpioNRST)) {
 		err = gpio_request(ctrl->msPlatData.mnGpioNRST,
 				 HAPTICS_DEVICE_NAME "NRST");
 		if (err < 0) {
@@ -1288,7 +1299,7 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	dev_init_platform_data(ctrl);
 
-	if (ctrl->msPlatData.mnGpioINT) {
+	if (gpio_is_valid(ctrl->msPlatData.mnGpioINT)) {
 		err = gpio_request(ctrl->msPlatData.mnGpioINT,
 				 HAPTICS_DEVICE_NAME "INT");
 		if (err < 0) {
@@ -1334,10 +1345,10 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	return 0;
 
  exit_gpio_request_failed:
-	if (ctrl->msPlatData.mnGpioNRST)
+	if (gpio_is_valid(ctrl->msPlatData.mnGpioNRST))
 		gpio_free(ctrl->msPlatData.mnGpioNRST);
 
-	if (ctrl->msPlatData.mnGpioINT)
+	if (gpio_is_valid(ctrl->msPlatData.mnGpioINT))
 		gpio_free(ctrl->msPlatData.mnGpioINT);
 
 	dev_err(ctrl->dev, "%s failed, err=%d\n", __func__, err);
@@ -1348,10 +1359,10 @@ static int drv2624_remove(struct i2c_client *client)
 {
 	struct drv2624_data *ctrl = i2c_get_clientdata(client);
 
-	if (ctrl->msPlatData.mnGpioNRST)
+	if (gpio_is_valid(ctrl->msPlatData.mnGpioNRST))
 		gpio_free(ctrl->msPlatData.mnGpioNRST);
 
-	if (ctrl->msPlatData.mnGpioINT)
+	if (gpio_is_valid(ctrl->msPlatData.mnGpioINT))
 		gpio_free(ctrl->msPlatData.mnGpioINT);
 
 	misc_deregister(&drv2624_misc);
