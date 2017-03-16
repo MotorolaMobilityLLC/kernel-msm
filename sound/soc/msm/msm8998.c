@@ -528,10 +528,10 @@ static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_rx_chs, tert_mi2s_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_tx_chs, tert_mi2s_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(quat_mi2s_rx_chs, mi2s_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(quat_mi2s_tx_chs, mi2s_ch_text);
-static SOC_ENUM_SINGLE_EXT_DECL(mi2s_rx_format, bit_format_text);
-static SOC_ENUM_SINGLE_EXT_DECL(mi2s_tx_format, bit_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_rx_format, tert_mi2s_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(tert_mi2s_tx_format, tert_mi2s_format_text);
+static SOC_ENUM_SINGLE_EXT_DECL(mi2s_rx_format, bit_format_text);
+static SOC_ENUM_SINGLE_EXT_DECL(mi2s_tx_format, bit_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(hifi_function, hifi_text);
 
 static struct platform_device *spdev;
@@ -2313,54 +2313,6 @@ static int mi2s_get_sample_rate(int value)
 	return sample_rate;
 }
 
-static int mi2s_get_format(int value)
-{
-	int format;
-
-	switch (value) {
-	case 0:
-		format = SNDRV_PCM_FORMAT_S16_LE;
-		break;
-	case 1:
-		format = SNDRV_PCM_FORMAT_S24_LE;
-		break;
-	case 2:
-		format = SNDRV_PCM_FORMAT_S24_3LE;
-		break;
-	case 3:
-		format = SNDRV_PCM_FORMAT_S32_LE;
-		break;
-	default:
-		format = SNDRV_PCM_FORMAT_S16_LE;
-		break;
-	}
-	return format;
-}
-
-static int mi2s_get_format_value(int format)
-{
-	int value;
-
-	switch (format) {
-	case SNDRV_PCM_FORMAT_S16_LE:
-		value = 0;
-		break;
-	case SNDRV_PCM_FORMAT_S24_LE:
-		value = 1;
-		break;
-	case SNDRV_PCM_FORMAT_S24_3LE:
-		value = 2;
-		break;
-	case SNDRV_PCM_FORMAT_S32_LE:
-		value = 3;
-		break;
-	default:
-		value = 0;
-		break;
-	}
-	return value;
-}
-
 static int mods_mi2s_get_sample_rate_val(int sample_rate)
 {
 	int sample_rate_val;
@@ -2449,6 +2401,54 @@ static int mods_mi2s_get_format(int value)
 		break;
 	}
 	return format;
+}
+
+static int mi2s_get_format(int value)
+{
+	int format;
+
+	switch (value) {
+	case 0:
+		format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	case 1:
+		format = SNDRV_PCM_FORMAT_S24_LE;
+		break;
+	case 2:
+		format = SNDRV_PCM_FORMAT_S24_3LE;
+		break;
+	case 3:
+		format = SNDRV_PCM_FORMAT_S32_LE;
+		break;
+	default:
+		format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	}
+	return format;
+}
+
+static int mi2s_get_format_value(int format)
+{
+	int value;
+
+	switch (format) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		value = 0;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		value = 1;
+		break;
+	case SNDRV_PCM_FORMAT_S24_3LE:
+		value = 2;
+		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+		value = 3;
+		break;
+	default:
+		value = 0;
+		break;
+	}
+	return value;
 }
 
 static int mi2s_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
@@ -3009,18 +3009,14 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_mi2s_rx_format_get, msm_mi2s_rx_format_put),
 	SOC_ENUM_EXT("SEC_MI2S_TX Format", mi2s_tx_format,
 			msm_mi2s_tx_format_get, msm_mi2s_tx_format_put),
-	SOC_ENUM_EXT("TERT_MI2S_RX Format", mi2s_rx_format,
-			msm_mi2s_rx_format_get, msm_mi2s_rx_format_put),
-	SOC_ENUM_EXT("TERT_MI2S_TX Format", mi2s_tx_format,
-			msm_mi2s_tx_format_get, msm_mi2s_tx_format_put),
-	SOC_ENUM_EXT("QUAT_MI2S_RX Format", mi2s_rx_format,
-			msm_mi2s_rx_format_get, msm_mi2s_rx_format_put),
-	SOC_ENUM_EXT("QUAT_MI2S_TX Format", mi2s_tx_format,
-			msm_mi2s_tx_format_get, msm_mi2s_tx_format_put),
 	SOC_ENUM_EXT("TERT_MI2S_RX Format", tert_mi2s_rx_format,
 			mods_mi2s_rx_format_get, mods_mi2s_rx_format_put),
 	SOC_ENUM_EXT("TERT_MI2S_TX Format", tert_mi2s_tx_format,
 			mods_mi2s_tx_format_get, mods_mi2s_tx_format_put),
+	SOC_ENUM_EXT("QUAT_MI2S_RX Format", mi2s_rx_format,
+			msm_mi2s_rx_format_get, msm_mi2s_rx_format_put),
+	SOC_ENUM_EXT("QUAT_MI2S_TX Format", mi2s_tx_format,
+			msm_mi2s_tx_format_get, msm_mi2s_tx_format_put),
 	SOC_ENUM_EXT("HiFi Function", hifi_function, msm_hifi_get,
 			msm_hifi_put),
 };
@@ -3545,8 +3541,6 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
 			mi2s_rx_cfg[TERT_MI2S].bit_format);
 		rate->min = rate->max = mi2s_rx_cfg[TERT_MI2S].sample_rate;
-		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
-			mi2s_rx_cfg[TERT_MI2S].bit_format);
 		channels->min = channels->max =
 			mi2s_rx_cfg[TERT_MI2S].channels;
 		break;
@@ -3555,8 +3549,6 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
 			mi2s_tx_cfg[TERT_MI2S].bit_format);
 		rate->min = rate->max = mi2s_tx_cfg[TERT_MI2S].sample_rate;
-		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
-			mi2s_tx_cfg[TERT_MI2S].bit_format);
 		channels->min = channels->max =
 			mi2s_tx_cfg[TERT_MI2S].channels;
 		break;
