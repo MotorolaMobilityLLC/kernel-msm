@@ -7588,13 +7588,6 @@ void mmi_init(struct smb_charger *chg)
 	if (rc)
 		smblib_err(chg, "couldn't set DCIN AICL Threshold\n");
 
-	/* Set SW ICL control */
-	rc = smblib_masked_write(chg, USBIN_LOAD_CFG_REG,
-				 USBIN_ICL_OVERRIDE_BIT,
-				 USBIN_ICL_OVERRIDE_BIT);
-	if (rc)
-		smblib_err(chg, "couldn't set SW ICL control\n");
-
 	/* Register the notifier for the psy updates*/
 	chg->mmi.mmi_psy_notifier.notifier_call = mmi_psy_notifier_call;
 	rc = power_supply_reg_notifier(&chg->mmi.mmi_psy_notifier);
