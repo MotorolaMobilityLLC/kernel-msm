@@ -6097,6 +6097,22 @@ static int mmi_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 	return NOTIFY_OK;
 }
 
+void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
+{
+	enum charging_limit_modes charging_limit_modes;
+
+	charging_limit_modes = chip->mmi.charging_limit_modes;
+	if ((charging_limit_modes != CHARGING_LIMIT_RUN)
+	    && (batt_soc >= chip->mmi.upper_limit_capacity))
+		charging_limit_modes = CHARGING_LIMIT_RUN;
+	else if ((charging_limit_modes != CHARGING_LIMIT_OFF)
+		   && (batt_soc <= chip->mmi.lower_limit_capacity))
+		charging_limit_modes = CHARGING_LIMIT_OFF;
+
+	if (charging_limit_modes != chip->mmi.charging_limit_modes)
+		chip->mmi.charging_limit_modes = charging_limit_modes;
+}
+
 #define CHARGER_DETECTION_DONE 7
 #define SMBCHG_HEARTBEAT_INTERVAL_NS	70000000000
 #define HEARTBEAT_DELAY_MS 60000
@@ -6315,6 +6331,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	mmi_get_extbat_out_cl(chip);
 	mmi_get_extbat_out_volt(chip);
 
+	if (mmi->enable_charging_limit && mmi->is_factory_image)
+		update_charging_limit_modes(chip, batt_soc);
+
 	if (!vbus_present) {
 		switch (mmi->ebchg_state) {
 		case EB_SRC:
@@ -6382,10 +6401,14 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	/* Determine Next State */
 	prev_step = chip->mmi.pres_chrg_step;
 
+	if (mmi->charging_limit_modes == CHARGING_LIMIT_RUN)
+		pr_warn("Factory Mode/Image so Limiting Charging!!!\n");
+
 	if (!charger_present && (mmi->ebchg_state != EB_SRC)) {
 		mmi->pres_chrg_step = STEP_NONE;
 	} else if ((mmi->pres_temp_zone == ZONE_HOT) ||
-		   (mmi->pres_temp_zone == ZONE_COLD)) {
+		   (mmi->pres_temp_zone == ZONE_COLD) ||
+		   (mmi->charging_limit_modes == CHARGING_LIMIT_RUN)) {
 		chip->mmi.pres_chrg_step = STEP_STOP;
 	} else if (mmi->force_eb_chrg && !(eb_able & EB_RCV_NEVER) &&
 		   (mmi->ebchg_state != EB_DISCONN)) {
@@ -6765,6 +6788,49 @@ static irqreturn_t warn_irq_handler(int irq, void *_chip)
 }
 
 #define CHG_SHOW_MAX_SIZE 50
+static ssize_t factory_image_mode_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid factory image mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!mmi_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	mmi_chip->mmi.is_factory_image = (mode) ? true : false;
+
+	return r ? r : count;
+}
+
+static ssize_t factory_image_mode_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int state;
+
+	if (!mmi_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	state = (mmi_chip->mmi.is_factory_image) ? 1 : 0;
+
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(factory_image_mode, 0644,
+		factory_image_mode_show,
+		factory_image_mode_store);
+
 static ssize_t force_demo_mode_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
@@ -7446,6 +7512,19 @@ static int parse_mmi_dt(struct smb_charger *chg)
 
 	chg->mmi.vl_ebsrc = MICRO_9V + USBIN_TOLER;
 
+	chg->mmi.enable_charging_limit =
+		of_property_read_bool(node, "qcom,enable-charging-limit");
+
+	rc = of_property_read_u32(node, "qcom,upper-limit-capacity",
+				  &chg->mmi.upper_limit_capacity);
+	if (rc)
+		chg->mmi.upper_limit_capacity = 100;
+
+	rc = of_property_read_u32(node, "qcom,lower-limit-capacity",
+				  &chg->mmi.lower_limit_capacity);
+	if (rc)
+		chg->mmi.lower_limit_capacity = 0;
+
 	return rc;
 }
 
@@ -7492,7 +7571,8 @@ void mmi_init(struct smb_charger *chg)
 
 	mmi_chip = chg;
 	chg->mmi.factory_mode = mmi_factory_check();
-
+	chg->mmi.is_factory_image = false;
+	chg->mmi.charging_limit_modes = CHARGING_LIMIT_UNKNOWN;
 	chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 
 	INIT_DELAYED_WORK(&chg->mmi.warn_irq_work, warn_irq_w);
@@ -7531,6 +7611,11 @@ void mmi_init(struct smb_charger *chg)
 	if (rc) {
 		smblib_err(chg, "couldn't create force_demo_mode\n");
 	}
+
+	rc = device_create_file(chg->dev,
+				&dev_attr_factory_image_mode);
+	if (rc)
+		smblib_err(chg, "couldn't create factory_image_mode\n");
 
 	if (chg->mmi.factory_mode) {
 		mmi_chip = chg;
