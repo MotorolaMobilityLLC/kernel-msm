@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2016 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -19,17 +19,14 @@
 #include <linux/sched.h>
 #include <linux/list.h>
 
-#include "public/mc_linux.h"
+#include "public/mc_user.h"
 #include "public/mc_admin.h"
 #include "public/mobicore_driver_api.h"
 
 #include "main.h"
-#include "debug.h"
 #include "client.h"
-#include "session.h"
-#include "api.h"
 
-enum mc_result convert(int err)
+static enum mc_result convert(int err)
 {
 	switch (-err) {
 	case 0:
@@ -66,26 +63,24 @@ enum mc_result convert(int err)
 		return MC_DRV_ERR_INVALID_PARAMETER;
 	case EPROTO:
 		return MC_DRV_ERR_KERNEL_MODULE;
-	case EADDRINUSE:
-		return MC_DRV_ERR_BULK_MAPPING;
-	case EADDRNOTAVAIL:
-		return MC_DRV_ERR_BULK_UNMAPPING;
 	case ECOMM:
 		return MC_DRV_INFO_NOTIFICATION;
 	case EUNATCH:
 		return MC_DRV_ERR_NQ_FAILED;
+	case ERESTARTSYS:
+		return MC_DRV_ERR_INTERRUPTED_BY_SIGNAL;
 	default:
-		MCDRV_DBG("error is %d", err);
+		mc_dev_devel("error is %d", err);
 		return MC_DRV_ERR_UNKNOWN;
 	}
 }
 
-static inline bool is_valid_device(uint32_t device_id)
+static inline bool is_valid_device(u32 device_id)
 {
-	return MC_DEVICE_ID_DEFAULT == device_id;
+	return device_id == MC_DEVICE_ID_DEFAULT;
 }
 
-static struct tbase_client *client;
+static struct tee_client *client;
 static int open_count;
 static DEFINE_MUTEX(dev_mutex);	/* Lock for the device */
 
@@ -110,7 +105,7 @@ static void clientlib_client_put(void)
 	mutex_unlock(&dev_mutex);
 }
 
-enum mc_result mc_open_device(uint32_t device_id)
+enum mc_result mc_open_device(u32 device_id)
 {
 	enum mc_result mc_result = MC_DRV_OK;
 
@@ -120,14 +115,14 @@ enum mc_result mc_open_device(uint32_t device_id)
 
 	mutex_lock(&dev_mutex);
 	if (!open_count)
-		client = api_open_device(true);
+		client = client_create(true);
 
 	if (client) {
 		open_count++;
-		MCDRV_DBG("Successfully opened the device.");
+		mc_dev_devel("Successfully opened the device");
 	} else {
 		mc_result = MC_DRV_ERR_INVALID_DEVICE_FILE;
-		MCDRV_DBG("Could not open device");
+		mc_dev_devel("Could not open device");
 	}
 
 	mutex_unlock(&dev_mutex);
@@ -135,7 +130,7 @@ enum mc_result mc_open_device(uint32_t device_id)
 }
 EXPORT_SYMBOL(mc_open_device);
 
-enum mc_result mc_close_device(uint32_t device_id)
+enum mc_result mc_close_device(u32 device_id)
 {
 	enum mc_result mc_result = MC_DRV_OK;
 
@@ -155,12 +150,13 @@ enum mc_result mc_close_device(uint32_t device_id)
 	}
 
 	/* Check sessions and freeze client */
-	mc_result = convert(api_freeze_device(client));
-	if (MC_DRV_OK != mc_result)
+	if (client_has_sessions(client)) {
+		mc_result = MC_DRV_ERR_SESSION_PENDING;
 		goto end;
+	}
 
 	/* Close the device */
-	api_close_device(client);
+	client_close(client);
 	client = NULL;
 	open_count = 0;
 
@@ -171,16 +167,15 @@ end:
 EXPORT_SYMBOL(mc_close_device);
 
 enum mc_result mc_open_session(struct mc_session_handle *session,
-			       const struct mc_uuid_t *uuid,
-			       uint8_t *tci, uint32_t len)
+			       const struct mc_uuid_t *uuid, u8 *tci, u32 len)
 {
 	struct mc_identity identity = {
-		.login_type = TEEC_LOGIN_PUBLIC,
+		.login_type = LOGIN_PUBLIC,
 	};
 	enum mc_result ret;
 
 	/* Check parameters */
-	if (!session)
+	if (!session || !uuid)
 		return MC_DRV_ERR_INVALID_PARAMETER;
 
 	if (!is_valid_device(session->device_id))
@@ -190,22 +185,22 @@ enum mc_result mc_open_session(struct mc_session_handle *session,
 		return MC_DRV_ERR_DAEMON_DEVICE_NOT_OPEN;
 
 	/* Call core api */
-	ret = convert(api_open_session(client, &session->session_id, uuid,
-				       (uintptr_t)tci, len, false, &identity));
+	ret = convert(client_open_session(client, &session->session_id, uuid,
+					  (uintptr_t)tci, len, false,
+					  &identity, -1));
 	clientlib_client_put();
 	return ret;
 }
 EXPORT_SYMBOL(mc_open_session);
 
-enum mc_result mc_open_trustlet(struct mc_session_handle *session,
-				uint32_t spid,
-				uint8_t *trustlet, uint32_t trustlet_len,
-				uint8_t *tci, uint32_t len)
+enum mc_result mc_open_trustlet(struct mc_session_handle *session, u32 spid,
+				u8 *trustlet, u32 trustlet_len,
+				u8 *tci, u32 len)
 {
 	enum mc_result ret;
 
 	/* Check parameters */
-	if (!session)
+	if (!session || !trustlet)
 		return MC_DRV_ERR_INVALID_PARAMETER;
 
 	if (!is_valid_device(session->device_id))
@@ -215,9 +210,9 @@ enum mc_result mc_open_trustlet(struct mc_session_handle *session,
 		return MC_DRV_ERR_DAEMON_DEVICE_NOT_OPEN;
 
 	/* Call core api */
-	ret = convert(api_open_trustlet(client, &session->session_id, spid,
-					(uintptr_t)trustlet, trustlet_len,
-					(uintptr_t)tci, len));
+	ret = convert(client_open_trustlet(client, &session->session_id, spid,
+					   (uintptr_t)trustlet, trustlet_len,
+					   (uintptr_t)tci, len, -1));
 	clientlib_client_put();
 	return ret;
 }
@@ -238,7 +233,7 @@ enum mc_result mc_close_session(struct mc_session_handle *session)
 		return MC_DRV_ERR_DAEMON_DEVICE_NOT_OPEN;
 
 	/* Call core api */
-	ret = convert(api_close_session(client, session->session_id));
+	ret = convert(client_remove_session(client, session->session_id));
 	clientlib_client_put();
 	return ret;
 }
@@ -259,14 +254,14 @@ enum mc_result mc_notify(struct mc_session_handle *session)
 		return MC_DRV_ERR_DAEMON_DEVICE_NOT_OPEN;
 
 	/* Call core api */
-	ret = convert(api_notify(client, session->session_id));
+	ret = convert(client_notify_session(client, session->session_id));
 	clientlib_client_put();
 	return ret;
 }
 EXPORT_SYMBOL(mc_notify);
 
 enum mc_result mc_wait_notification(struct mc_session_handle *session,
-				    int32_t timeout)
+				    s32 timeout)
 {
 	enum mc_result ret;
 
@@ -281,15 +276,15 @@ enum mc_result mc_wait_notification(struct mc_session_handle *session,
 		return MC_DRV_ERR_DAEMON_DEVICE_NOT_OPEN;
 
 	/* Call core api */
-	ret = convert(api_wait_notification(client, session->session_id,
-					    timeout));
+	ret = convert(client_waitnotif_session(client, session->session_id,
+					       timeout, false));
 	clientlib_client_put();
 	return ret;
 }
 EXPORT_SYMBOL(mc_wait_notification);
 
-enum mc_result mc_malloc_wsm(uint32_t device_id, uint32_t align, uint32_t len,
-			     uint8_t **wsm, uint32_t wsm_flags)
+enum mc_result mc_malloc_wsm(u32 device_id, u32 align, u32 len, u8 **wsm,
+			     u32 wsm_flags)
 {
 	enum mc_result ret;
 	uintptr_t va;
@@ -308,16 +303,16 @@ enum mc_result mc_malloc_wsm(uint32_t device_id, uint32_t align, uint32_t len,
 		return MC_DRV_ERR_DAEMON_DEVICE_NOT_OPEN;
 
 	/* Call core api */
-	ret = convert(api_malloc_cbuf(client, len, &va, NULL));
+	ret = convert(client_cbuf_create(client, len, &va, NULL));
 	if (ret == MC_DRV_OK)
-		*wsm = (uint8_t *)va;
+		*wsm = (u8 *)va;
 
 	clientlib_client_put();
 	return ret;
 }
 EXPORT_SYMBOL(mc_malloc_wsm);
 
-enum mc_result mc_free_wsm(uint32_t device_id, uint8_t *wsm)
+enum mc_result mc_free_wsm(u32 device_id, u8 *wsm)
 {
 	enum mc_result ret;
 	uintptr_t va = (uintptr_t)wsm;
@@ -330,18 +325,18 @@ enum mc_result mc_free_wsm(uint32_t device_id, uint8_t *wsm)
 		return MC_DRV_ERR_DAEMON_DEVICE_NOT_OPEN;
 
 	/* Call core api */
-	ret = convert(api_free_cbuf(client, va));
+	ret = convert(client_cbuf_free(client, va));
 	clientlib_client_put();
 	return ret;
 }
 EXPORT_SYMBOL(mc_free_wsm);
 
 enum mc_result mc_map(struct mc_session_handle *session, void *address,
-		      uint32_t length, struct mc_bulk_map *map_info)
+		      u32 length, struct mc_bulk_map *map_info)
 {
 	enum mc_result ret;
 	struct mc_ioctl_buffer bufs[MC_MAP_MAX];
-	uint32_t i;
+	u32 i;
 
 	/* Check parameters */
 	if (!session)
@@ -362,7 +357,8 @@ enum mc_result mc_map(struct mc_session_handle *session, void *address,
 	for (i = 1; i < MC_MAP_MAX; i++)
 		bufs[i].va = 0;
 
-	ret = convert(api_map_wsms(client, session->session_id, bufs));
+	ret = convert(client_map_session_wsms(client, session->session_id,
+					      bufs, -1));
 	if (ret == MC_DRV_OK) {
 		map_info->secure_virt_addr = bufs[0].sva;
 		map_info->secure_virt_len = bufs[0].len;
@@ -378,7 +374,7 @@ enum mc_result mc_unmap(struct mc_session_handle *session, void *address,
 {
 	enum mc_result ret;
 	struct mc_ioctl_buffer bufs[MC_MAP_MAX];
-	uint32_t i;
+	u32 i;
 
 	/* Check parameters */
 	if (!session)
@@ -400,14 +396,15 @@ enum mc_result mc_unmap(struct mc_session_handle *session, void *address,
 	for (i = 1; i < MC_MAP_MAX; i++)
 		bufs[i].va = 0;
 
-	ret = convert(api_unmap_wsms(client, session->session_id, bufs));
+	ret = convert(client_unmap_session_wsms(client, session->session_id,
+						bufs));
 	clientlib_client_put();
 	return ret;
 }
 EXPORT_SYMBOL(mc_unmap);
 
 enum mc_result mc_get_session_error_code(struct mc_session_handle *session,
-					 int32_t *exit_code)
+					 s32 *exit_code)
 {
 	enum mc_result ret;
 
@@ -425,8 +422,8 @@ enum mc_result mc_get_session_error_code(struct mc_session_handle *session,
 		return MC_DRV_ERR_DAEMON_DEVICE_NOT_OPEN;
 
 	/* Call core api */
-	ret = convert(api_get_session_exitcode(client, session->session_id,
-					       exit_code));
+	ret = convert(client_get_session_exitcode(client, session->session_id,
+						  exit_code));
 	clientlib_client_put();
 	return ret;
 }

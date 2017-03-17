@@ -44,8 +44,8 @@ enum service_type {
  * Descriptor for a memory segment.
  */
 struct segment_descriptor {
-	uint32_t	start;	/**< Virtual start address */
-	uint32_t	len;	/**< Segment length in bytes */
+	u32	start;	/**< Virtual start address */
+	u32	len;	/**< Segment length in bytes */
 };
 
 /**
@@ -53,8 +53,8 @@ struct segment_descriptor {
  * Must be the first element of a valid MCLF file.
  */
 struct mclf_intro {
-	uint32_t	magic;		/**< Header magic value ASCII "MCLF" */
-	uint32_t	version;	/**< Version the MCLF header struct */
+	u32	magic;		/**< Header magic value ASCII "MCLF" */
+	u32	version;	/**< Version the MCLF header struct */
 };
 
 /**
@@ -69,9 +69,9 @@ struct mclf_intro {
  */
 struct identity {
 	/**< GP TA login type */
-	uint32_t		login_type;
+	u32	login_type;
 	/**< GP TA login data */
-	uint8_t			login_data[16];
+	u8	login_data[16];
 };
 
 /**
@@ -81,34 +81,34 @@ struct mclf_header_v2 {
 	/**< MCLF header start with the mandatory intro */
 	struct mclf_intro	intro;
 	/**< Service flags */
-	uint32_t		flags;
+	u32	flags;
 	/**< Type of memory the service must be executed from */
-	uint32_t		mem_type;
+	u32	mem_type;
 	/**< Type of service */
 	enum service_type	service_type;
 	/**< Number of instances which can be run simultaneously */
-	uint32_t		num_instances;
+	u32	num_instances;
 	/**< Loadable service unique identifier (UUID) */
 	struct mc_uuid_t	uuid;
 	/**< If the service_type is SERVICE_TYPE_DRIVER the Driver ID is used */
-	uint32_t		driver_id;
+	u32	driver_id;
 	/**<
 	 * Number of threads (N) in a service:
 	 *   SERVICE_TYPE_SP_TRUSTLET: N = 1
 	 *   SERVICE_TYPE_SYSTEM_TRUSTLET: N = 1
 	 *   SERVICE_TYPE_DRIVER: N >= 1
 	 */
-	uint32_t		num_threads;
+	u32	num_threads;
 	/**< Virtual text segment */
 	struct segment_descriptor text;
 	/**< Virtual data segment */
 	struct segment_descriptor data;
 	/**< Length of the BSS segment in bytes. MUST be at least 8 byte */
-	uint32_t		bss_len;
+	u32	bss_len;
 	/**< Virtual start address of service code */
-	uint32_t		entry;
+	u32	entry;
 	/**< Version of the interface the driver exports */
-	uint32_t		service_version;
+	u32	service_version;
 };
 
 /**
@@ -124,11 +124,11 @@ union mclf_header {
 };
 
 struct mc_blob_len_info {
-	uint32_t	magic;		/**< New blob format magic number */
-	uint32_t	root_size;	/**< Root container size */
-	uint32_t	sp_size;	/**< SP container size */
-	uint32_t	ta_size;	/**< TA container size */
-	uint32_t	reserved[4];	/**< Reserved for further Use */
+	u32	magic;		/**< New blob format magic number */
+	u32	root_size;	/**< Root container size */
+	u32	sp_size;	/**< SP container size */
+	u32	ta_size;	/**< TA container size */
+	u32	reserved[4];	/**< Reserved for further Use */
 };
 
 #endif /* MCLOADFORMAT_H_ */

@@ -21,13 +21,17 @@
 #define MIN_NQ_ELEM 1	/** Minimum notification queue elements */
 #define MAX_NQ_ELEM 64	/** Maximum notification queue elements */
 
+/* Compute notification queue size in bytes from its number of elements */
+#define NQ_SIZE(n)   (2 * (sizeof(struct notification_queue_header)\
+			+ (n) * sizeof(struct notification)))
+
 /** \name NQ Length Defines
- * Minimum and maximum notification queue length.
+ * Note that there is one queue for NWd->SWd and one queue for SWd->NWd
  */
-/** Minimum notification length (in bytes) */
-#define MIN_NQ_LEN (MIN_NQ_ELEM * sizeof(struct notification))
-/** Maximum notification length (in bytes) */
-#define MAX_NQ_LEN (MAX_NQ_ELEM * sizeof(struct notification))
+/** Minimum size for the notification queue data structure */
+#define MIN_NQ_LEN NQ_SIZE(MIN_NQ_ELEM)
+/** Maximum size for the notification queue data structure */
+#define MAX_NQ_LEN NQ_SIZE(MAX_NQ_ELEM)
 
 /** \name Session ID Defines
  * Standard Session IDs.
@@ -39,8 +43,8 @@
 
 /** Notification data structure */
 struct notification {
-	uint32_t	session_id;	/** Session ID */
-	int32_t		payload;	/** Additional notification info */
+	u32	session_id;	/** Session ID */
+	s32	payload;	/** Additional notification info */
 };
 
 /** Notification payload codes.
@@ -68,15 +72,15 @@ enum notification_payload {
  * layout as specified in the data structure specification.
  */
 struct notification_queue_header {
-	uint32_t	write_cnt;	/** Write counter */
-	uint32_t	read_cnt;	/** Read counter */
-	uint32_t	queue_size;	/** Queue size */
+	u32	write_cnt;	/** Write counter */
+	u32	read_cnt;	/** Read counter */
+	u32	queue_size;	/** Queue size */
 };
 
 /** Queue struct which defines a queue object.
  * The queue struct is accessed by the queue<operation> type of
  * function. elementCnt must be a power of two and the power needs
- * to be smaller than power of uint32_t (obviously 32).
+ * to be smaller than power of u32 (obviously 32).
  */
 struct notification_queue {
 	struct notification_queue_header hdr;		/** Queue header */

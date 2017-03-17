@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2016 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -17,14 +17,16 @@
 #include <linux/workqueue.h>
 #include <linux/cpu.h>
 #include <linux/moduleparam.h>
+#include <linux/debugfs.h>
+#include <linux/uaccess.h>
 
-#include "public/mc_linux.h"
+#include "public/mc_user.h"
 #include "public/mc_linux_api.h"
 
 #include "mci/mcifc.h"
 
 #include "platform.h"	/* MC_FASTCALL_WORKER_THREAD and more */
-#include "debug.h"
+#include "main.h"
 #include "clock.h"	/* mc_clock_enable, mc_clock_disable */
 #include "fastcall.h"
 
@@ -39,14 +41,14 @@ struct fastcall_work {
 
 /* generic fast call parameters */
 union mc_fc_generic {
-	struct {
-		uint32_t cmd;
-		uint32_t param[3];
+	struct mc_fc_as_in {
+		u32 cmd;
+		u32 param[3];
 	} as_in;
 	struct {
-		uint32_t resp;
-		uint32_t ret;
-		uint32_t param[2];
+		u32 resp;
+		u32 ret;
+		u32 param[2];
 	} as_out;
 };
 
@@ -54,15 +56,16 @@ union mc_fc_generic {
 union mc_fc_init {
 	union mc_fc_generic as_generic;
 	struct {
-		uint32_t cmd;
-		uint32_t base;
-		uint32_t nq_info;
-		uint32_t mcp_info;
+		u32 cmd;
+		u32 base;
+		u32 nq_info;
+		u32 mcp_info;
 	} as_in;
 	struct {
-		uint32_t resp;
-		uint32_t ret;
-		uint32_t rfu[2];
+		u32 resp;
+		u32 ret;
+		u32 flags;
+		u32 rfu;
 	} as_out;
 };
 
@@ -70,15 +73,15 @@ union mc_fc_init {
 union mc_fc_info {
 	union mc_fc_generic as_generic;
 	struct {
-		uint32_t cmd;
-		uint32_t ext_info_id;
-		uint32_t rfu[2];
+		u32 cmd;
+		u32 ext_info_id;
+		u32 rfu[2];
 	} as_in;
 	struct {
-		uint32_t resp;
-		uint32_t ret;
-		uint32_t state;
-		uint32_t ext_info;
+		u32 resp;
+		u32 ret;
+		u32 state;
+		u32 ext_info;
 	} as_out;
 };
 
@@ -87,15 +90,15 @@ union mc_fc_info {
 union mc_fc_swich_core {
 	union mc_fc_generic as_generic;
 	struct {
-		uint32_t cmd;
-		uint32_t core_id;
-		uint32_t rfu[2];
+		u32 cmd;
+		u32 core_id;
+		u32 rfu[2];
 	} as_in;
 	struct {
-		uint32_t resp;
-		uint32_t ret;
-		uint32_t state;
-		uint32_t ext_info;
+		u32 resp;
+		u32 ret;
+		u32 state;
+		u32 ext_info;
 	} as_out;
 };
 #endif
@@ -104,6 +107,16 @@ union mc_fc_swich_core {
 static struct task_struct *fastcall_thread;
 static DEFINE_KTHREAD_WORKER(fastcall_worker);
 #endif
+
+/* Structure to log SMC calls */
+struct smc_log_entry {
+	u64 cpu_clk;
+	struct mc_fc_as_in as_in;
+};
+
+#define SMC_LOG_SIZE 256
+static struct smc_log_entry smc_log[SMC_LOG_SIZE];
+static int smc_log_index;
 
 /*
  * _smc() - fast call to MobiCore
@@ -114,6 +127,12 @@ static inline int _smc(union mc_fc_generic *mc_fc_generic)
 {
 	if (!mc_fc_generic)
 		return -EINVAL;
+
+	/* Log SMC call */
+	smc_log[smc_log_index].cpu_clk = local_clock();
+	smc_log[smc_log_index].as_in = mc_fc_generic->as_in;
+	if (++smc_log_index >= SMC_LOG_SIZE)
+		smc_log_index = 0;
 
 #ifdef MC_SMC_FASTCALL
 	return smc_fastcall(mc_fc_generic, sizeof(*mc_fc_generic));
@@ -149,8 +168,10 @@ static inline int _smc(union mc_fc_generic *mc_fc_generic)
 
 		__asm__ volatile (
 #ifdef MC_ARCH_EXTENSION_SEC
-			/* This pseudo op is supported and required from
-			 * binutils 2.21 on */
+			/*
+			 * This pseudo op is supported and required from
+			 * binutils 2.21 on
+			 */
 			".arch_extension sec\n"
 #endif /* MC_ARCH_EXTENSION_SEC */
 			"smc #0\n"
@@ -158,9 +179,11 @@ static inline int _smc(union mc_fc_generic *mc_fc_generic)
 		);
 
 #ifdef __ARM_VE_A9X4_QEMU__
-		/* Qemu does not return to the address following the SMC
+		/*
+		 * Qemu does not return to the address following the SMC
 		 * instruction so we have to insert several nop instructions to
-		 * workaround this Qemu bug. */
+		 * workaround this Qemu bug.
+		 */
 		__asm__ volatile (
 			"nop\n"
 			"nop\n"
@@ -181,7 +204,7 @@ static inline int _smc(union mc_fc_generic *mc_fc_generic)
 }
 
 #ifdef TBASE_CORE_SWITCHER
-static uint32_t active_cpu;
+static int active_cpu;
 
 #ifdef MC_FASTCALL_WORKER_THREAD
 static void mc_cpu_offline(int cpu)
@@ -189,36 +212,37 @@ static void mc_cpu_offline(int cpu)
 	int i;
 
 	if (active_cpu != cpu) {
-		MCDRV_DBG("not active CPU, no action taken\n");
+		mc_dev_devel("not active CPU, no action taken");
 		return;
 	}
 
 	/* Chose the first online CPU and switch! */
 	for_each_online_cpu(i) {
 		if (cpu != i) {
-			MCDRV_DBG("CPU %d is dying, switching to %d\n", cpu, i);
+			mc_dev_devel("CPU %d is dying, switching to %d",
+				     cpu, i);
 			mc_switch_core(i);
 			break;
 		}
 
-		MCDRV_DBG("Skipping CPU %d\n", cpu);
+		mc_dev_devel("Skipping CPU %d", cpu);
 	}
 }
 
 static int mobicore_cpu_callback(struct notifier_block *nfb,
 				 unsigned long action, void *hcpu)
 {
-	unsigned int cpu = (unsigned long)hcpu;
+	int cpu = (int)(uintptr_t)hcpu;
 
 	switch (action) {
 	case CPU_DOWN_PREPARE:
 	case CPU_DOWN_PREPARE_FROZEN:
-		dev_info(g_ctx.mcd, "Cpu %u is going to die\n", cpu);
+		mc_dev_info("Cpu %d is going to die", cpu);
 		mc_cpu_offline(cpu);
 		break;
 	case CPU_DEAD:
 	case CPU_DEAD_FROZEN:
-		dev_info(g_ctx.mcd, "Cpu %u is dead\n", cpu);
+		mc_dev_info("Cpu %d is dead", cpu);
 		break;
 	}
 	return NOTIFY_OK;
@@ -232,26 +256,48 @@ static struct notifier_block mobicore_cpu_notifer = {
 static cpumask_t mc_exec_core_switch(union mc_fc_generic *mc_fc_generic)
 {
 	cpumask_t cpu;
-	uint32_t new_cpu;
-	uint32_t cpu_id[] = CPU_IDS;
+	int new_cpu;
+	u32 cpu_id[] = CPU_IDS;
 
 	new_cpu = mc_fc_generic->as_in.param[0];
 	mc_fc_generic->as_in.param[0] = cpu_id[mc_fc_generic->as_in.param[0]];
 
 	if (_smc(mc_fc_generic) != 0 || mc_fc_generic->as_out.ret != 0) {
-		MCDRV_DBG("CoreSwap failed %d -> %d (cpu %d still active)\n",
-			  raw_smp_processor_id(),
-			  mc_fc_generic->as_in.param[0],
-			  raw_smp_processor_id());
+		mc_dev_devel("CoreSwap failed %d -> %d (cpu %d still active)",
+			     raw_smp_processor_id(),
+			     mc_fc_generic->as_in.param[0],
+			     raw_smp_processor_id());
 	} else {
 		active_cpu = new_cpu;
-		MCDRV_DBG("CoreSwap ok %d -> %d\n",
-			  raw_smp_processor_id(), active_cpu);
+		mc_dev_devel("CoreSwap ok %d -> %d",
+			     raw_smp_processor_id(), active_cpu);
 	}
 	cpumask_clear(&cpu);
 	cpumask_set_cpu(active_cpu, &cpu);
 	return cpu;
 }
+
+static ssize_t debug_coreswitch_write(struct file *file,
+				      const char __user *buffer,
+				      size_t buffer_len, loff_t *x)
+{
+	int new_cpu = 0;
+
+	/* Invalid data, nothing to do */
+	if (buffer_len < 1)
+		return -EINVAL;
+
+	if (kstrtoint_from_user(buffer, buffer_len, 0, &new_cpu))
+		return -EINVAL;
+
+	mc_dev_devel("Set active cpu to %d", new_cpu);
+	mc_switch_core(new_cpu);
+	return buffer_len;
+}
+
+static const struct file_operations mc_debug_coreswitch_ops = {
+	.write = debug_coreswitch_write,
+};
 #else /* TBASE_CORE_SWITCHER */
 static inline cpumask_t mc_exec_core_switch(union mc_fc_generic *mc_fc_generic)
 {
@@ -306,7 +352,6 @@ static bool mc_fastcall(void *data)
 	struct fastcall_work fc_work = {
 		.data = data,
 	};
-
 	INIT_WORK_ONSTACK(&fc_work.work, fastcall_work_func);
 
 	if (!schedule_work_on(0, &fc_work.work))
@@ -326,11 +371,11 @@ int mc_fastcall_init(void)
 
 #ifdef MC_FASTCALL_WORKER_THREAD
 	fastcall_thread = kthread_create(kthread_worker_fn, &fastcall_worker,
-					 "mc_fastcall");
+					 "tee_fastcall");
 	if (IS_ERR(fastcall_thread)) {
 		ret = PTR_ERR(fastcall_thread);
 		fastcall_thread = NULL;
-		MCDRV_ERROR("cannot create fastcall wq (%d)", ret);
+		mc_dev_err("cannot create fastcall wq: %d", ret);
 		return ret;
 	}
 
@@ -340,6 +385,9 @@ int mc_fastcall_init(void)
 	wake_up_process(fastcall_thread);
 #ifdef TBASE_CORE_SWITCHER
 	ret = register_cpu_notifier(&mobicore_cpu_notifer);
+	/* Create debugfs structs entry */
+	debugfs_create_file("active_cpu", 0600, g_ctx.debug_dir, NULL,
+			    &mc_debug_coreswitch_ops);
 #endif
 #endif /* MC_FASTCALL_WORKER_THREAD */
 	return ret;
@@ -362,7 +410,7 @@ void mc_fastcall_exit(void)
 /*
  * convert fast call return code to linux driver module error code
  */
-static int convert_fc_ret(uint32_t ret)
+static int convert_fc_ret(u32 ret)
 {
 	switch (ret) {
 	case MC_FC_RET_OK:
@@ -379,9 +427,9 @@ static int convert_fc_ret(uint32_t ret)
 int mc_fc_init(uintptr_t base_pa, ptrdiff_t off, size_t q_len, size_t buf_len)
 {
 #ifdef CONFIG_ARM64
-	uint32_t base_high = (uint32_t)(base_pa >> 32);
+	u32 base_high = (u32)(base_pa >> 32);
 #else
-	uint32_t base_high = 0;
+	u32 base_high = 0;
 #endif
 	union mc_fc_init fc_init;
 
@@ -389,22 +437,25 @@ int mc_fc_init(uintptr_t base_pa, ptrdiff_t off, size_t q_len, size_t buf_len)
 	memset(&fc_init, 0, sizeof(fc_init));
 	fc_init.as_in.cmd = MC_FC_INIT;
 	/* base address of mci buffer PAGE_SIZE (default is 4KB) aligned */
-	fc_init.as_in.base = (uint32_t)base_pa;
+	fc_init.as_in.base = (u32)base_pa;
 	/* notification buffer start/length [16:16] [start, length] */
 	fc_init.as_in.nq_info =
-	    ((base_high & 0xFFFF) << 16) | (q_len & 0xFFFF);
+	    (u32)(((base_high & 0xFFFF) << 16) | (q_len & 0xFFFF));
 	/* mcp buffer start/length [16:16] [start, length] */
-	fc_init.as_in.mcp_info = (off << 16) | (buf_len & 0xFFFF);
-	MCDRV_DBG("cmd=0x%08x, base=0x%08x,nq_info=0x%08x, mcp_info=0x%08x",
-		  fc_init.as_in.cmd, fc_init.as_in.base, fc_init.as_in.nq_info,
-		  fc_init.as_in.mcp_info);
+	fc_init.as_in.mcp_info = (u32)((off << 16) | (buf_len & 0xFFFF));
+	mc_dev_devel("cmd=%d, base=0x%08x,nq_info=0x%08x, mcp_info=0x%08x",
+		     fc_init.as_in.cmd, fc_init.as_in.base,
+		     fc_init.as_in.nq_info, fc_init.as_in.mcp_info);
 	mc_fastcall(&fc_init.as_generic);
-	MCDRV_DBG("out cmd=0x%08x, ret=0x%08x", fc_init.as_out.resp,
-		  fc_init.as_out.ret);
+	mc_dev_devel("out cmd=0x%08x, ret=0x%08x", fc_init.as_out.resp,
+		     fc_init.as_out.ret);
+	if (fc_init.as_out.flags & MC_FC_INIT_FLAG_LPAE)
+		g_ctx.f_lpae = true;
+
 	return convert_fc_ret(fc_init.as_out.ret);
 }
 
-int mc_fc_info(uint32_t ext_info_id, uint32_t *state, uint32_t *ext_info)
+int mc_fc_info(u32 ext_info_id, u32 *state, u32 *ext_info)
 {
 	union mc_fc_info fc_info;
 	int ret = 0;
@@ -421,7 +472,7 @@ int mc_fc_info(uint32_t ext_info_id, uint32_t *state, uint32_t *ext_info)
 		if (ext_info)
 			*ext_info = 0;
 
-		MCDRV_ERROR("code %d for idx %d", ret, ext_info_id);
+		mc_dev_err("code %d for idx %d", ret, ext_info_id);
 	} else {
 		if (state)
 			*state = fc_info.as_out.state;
@@ -433,15 +484,15 @@ int mc_fc_info(uint32_t ext_info_id, uint32_t *state, uint32_t *ext_info)
 	return ret;
 }
 
-int mc_fc_mem_trace(phys_addr_t buffer, uint32_t size)
+int mc_fc_mem_trace(phys_addr_t buffer, u32 size)
 {
 	union mc_fc_generic mc_fc_generic;
 
 	memset(&mc_fc_generic, 0, sizeof(mc_fc_generic));
 	mc_fc_generic.as_in.cmd = MC_FC_MEM_TRACE;
-	mc_fc_generic.as_in.param[0] = (uint32_t)buffer;
+	mc_fc_generic.as_in.param[0] = (u32)buffer;
 #ifdef CONFIG_ARM64
-	mc_fc_generic.as_in.param[1] = (uint32_t)(buffer >> 32);
+	mc_fc_generic.as_in.param[1] = (u32)(buffer >> 32);
 #endif
 	mc_fc_generic.as_in.param[2] = size;
 	mc_fastcall(&mc_fc_generic);
@@ -458,7 +509,7 @@ int mc_fc_nsiq(void)
 	mc_fastcall(&fc);
 	ret = convert_fc_ret(fc.as_out.ret);
 	if (ret)
-		MCDRV_ERROR("failed: %d", ret);
+		mc_dev_err("failed: %d", ret);
 
 	return ret;
 }
@@ -473,40 +524,79 @@ int mc_fc_yield(void)
 	mc_fastcall(&fc);
 	ret = convert_fc_ret(fc.as_out.ret);
 	if (ret)
-		MCDRV_ERROR("failed: %d", ret);
+		mc_dev_err("failed: %d", ret);
+
+	return ret;
+}
+
+static int show_smc_log_entry(struct kasnprintf_buf *buf,
+			      struct smc_log_entry *entry)
+{
+	return kasnprintf(buf, "%20llu %10d 0x%08x 0x%08x 0x%08x\n",
+			  entry->cpu_clk, (s32)entry->as_in.cmd,
+			  entry->as_in.param[0], entry->as_in.param[1],
+			  entry->as_in.param[2]);
+}
+
+/*
+ * Dump SMC log circular buffer, starting from oldest command. It is assumed
+ * nothing goes in any more at this point.
+ */
+int mc_fastcall_debug_smclog(struct kasnprintf_buf *buf)
+{
+	int i, ret = 0;
+
+	ret = kasnprintf(buf, "%20s %10s %-10s %-10s %-10s\n",
+			 "CPU clock", "command", "param1", "param2", "param3");
+	if (ret < 0)
+		return ret;
+
+	if (smc_log[smc_log_index].cpu_clk)
+		/* Buffer has wrapped around, dump end (oldest records) */
+		for (i = smc_log_index; i < SMC_LOG_SIZE; i++) {
+			ret = show_smc_log_entry(buf, &smc_log[i]);
+			if (ret < 0)
+				return ret;
+		}
+
+	/* Dump first records */
+	for (i = 0; i < smc_log_index; i++) {
+		ret = show_smc_log_entry(buf, &smc_log[i]);
+		if (ret < 0)
+			return ret;
+	}
 
 	return ret;
 }
 
 #ifdef TBASE_CORE_SWITCHER
-uint32_t mc_active_core(void)
+int mc_active_core(void)
 {
 	return active_cpu;
 }
 
-int mc_switch_core(uint32_t core_num)
+int mc_switch_core(int cpu)
 {
-	int32_t ret = 0;
+	s32 ret = 0;
 	union mc_fc_swich_core fc_switch_core;
 
-	if (!cpu_online(core_num))
+	if (!cpu_online(cpu))
 		return 1;
 
-	MCDRV_DBG_VERBOSE("enter\n");
 	memset(&fc_switch_core, 0, sizeof(fc_switch_core));
 	fc_switch_core.as_in.cmd = MC_FC_SWAP_CPU;
-	if (core_num < COUNT_OF_CPUS)
-		fc_switch_core.as_in.core_id = core_num;
+	if (cpu < COUNT_OF_CPUS)
+		fc_switch_core.as_in.core_id = cpu;
 	else
 		fc_switch_core.as_in.core_id = 0;
 
-	MCDRV_DBG("<- cmd=0x%08x, core_id=0x%08x\n",
-		  fc_switch_core.as_in.cmd, fc_switch_core.as_in.core_id);
-	MCDRV_DBG("<- core_num=0x%08x, active_cpu=0x%08x\n",
-		  core_num, active_cpu);
+	mc_dev_devel("<- cmd=0x%08x, core_id=0x%08x",
+		     fc_switch_core.as_in.cmd, fc_switch_core.as_in.core_id);
+	mc_dev_devel("<- cpu=0x%08x, active_cpu=0x%08x",
+		     cpu, active_cpu);
 	mc_fastcall(&fc_switch_core.as_generic);
 	ret = convert_fc_ret(fc_switch_core.as_out.ret);
-	MCDRV_DBG_VERBOSE("exit with %d/0x%08X\n", ret, ret);
+	mc_dev_devel("exit with %d/0x%08X", ret, ret);
 	return ret;
 }
 #endif

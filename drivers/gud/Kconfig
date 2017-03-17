@@ -1,35 +1,39 @@
 #
-# MobiCore configuration
+# Trustonic drivers configuration
 #
-config MOBICORE_DRIVER
-    tristate "MobiCore Driver"    
+# DHV ARM || ARM64 not working, so force TRUSTONIC_TEE_LPAE for 64bit usage
+config TRUSTONIC_TEE
+    tristate "Trustonic TEE Driver"
+#    depends on ARM || ARM64
+    default y
+#    default m
     ---help---
-      Enable Linux Kernel MobiCore Support
+      Enable Trustonic TEE support
 
-config MOBICORE_DEBUG
-    bool "MobiCore Module debug mode"
-    depends on MOBICORE_DRIVER
+config TRUSTONIC_TEE_LPAE
+    bool "Trustonic TEE uses LPAE"
+    depends on TRUSTONIC_TEE
+    default y if ARM64
+    default n if ARM
+    default n
     ---help---
-      Enable Debug mode in the MobiCore Driver.
-      It enables printing information about mobicore operations
+      Enable Trustonic TEE 64-bit physical addresses support
 
-config MOBICORE_VERBOSE
-    bool "MobiCore Module verbose debug mode"
-    depends on MOBICORE_DEBUG
+config TRUSTONIC_TEE_DEBUG
+    bool "Trustonic TEE driver debug mode"
+    depends on TRUSTONIC_TEE
+    default n
     ---help---
-      Enable Verbose Debug mode in the MobiCore Driver.
-      It enables printing extra information about mobicore operations
-      Beware: this is only useful for debuging deep in the driver because
-      it prints too much logs
+      Enable the debug mode in the Trustonic TEE Driver.
 
 config TRUSTONIC_TRUSTED_UI
-    tristate "<t-base TUI"
-    depends on MOBICORE_DRIVER
+    tristate "Trustonic Trusted UI"
+    depends on TRUSTONIC_TEE
     ---help---
-      Enable <t-base Trusted User Interface
+      Enable Trustonic Trusted User Interface
 
 config TRUSTONIC_TRUSTED_UI_FB_BLANK
-    bool "<t-base TUI with fb_blank"
+    bool "Trustonic Trusted UI with fb_blank"
     depends on TRUSTONIC_TRUSTED_UI
     ---help---
     Blank the framebuffer before starting a TUI session
