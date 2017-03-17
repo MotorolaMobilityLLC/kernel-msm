@@ -14,38 +14,10 @@
 #ifndef _MC_LOGGING_H_
 #define _MC_LOGGING_H_
 
-#include "platform.h"	/* CONFIG_TRUSTONIC_TEE_NO_TRACES */
-
-/* MobiCore internal trace log setup. */
-#ifndef CONFIG_TRUSTONIC_TEE_NO_TRACES
 void mc_logging_run(void);
 int  mc_logging_init(void);
 void mc_logging_exit(void);
 int mc_logging_start(void);
 void mc_logging_stop(void);
-#else /* !CONFIG_TRUSTONIC_TEE_NO_TRACES */
-static inline void mc_logging_run(void)
-{
-}
-
-static inline long mc_logging_init(void)
-{
-	return 0;
-}
-
-static inline void mc_logging_exit(void)
-{
-}
-
-static inline int mc_logging_start(void)
-{
-	return 0;
-}
-
-static inline void mc_logging_stop(void)
-{
-}
-
-#endif /* CONFIG_TRUSTONIC_TEE_NO_TRACES */
 
 #endif /* _MC_LOGGING_H_ */

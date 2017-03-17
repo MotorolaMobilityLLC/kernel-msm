@@ -19,18 +19,16 @@
 /** @name MobiCore FastCall Defines
  * Defines for the two different FastCall's.
  */
-/** @{ */
-
-#include "platform.h"
+/**/
 
 /* --- global ---- */
-#define MC_FC_INVALID	((uint32_t)0)  /**< Invalid FastCall ID */
+#define MC_FC_INVALID	((u32)0)  /**< Invalid FastCall ID */
 
-#if defined(CONFIG_ARM64) && !defined(MC_ARMV7_FC)
+#if (defined(CONFIG_ARM64) && !defined(MC_ARMV7_FC)) || (defined(MC_AARCH32_FC))
 
 /* These should be handled as 64-bit FCs; now they are more like 32bits... */
-#define MC_FC_STD64_BASE	((uint32_t)0xFF000000)
-#define MC_FC_STD64(x)	((uint32_t)(MC_FC_STD64_BASE + (x)))
+#define MC_FC_STD64_BASE	((u32)0xFF000000)
+#define MC_FC_STD64(x)	((u32)(MC_FC_STD64_BASE + (x)))
 
 #define MC_FC_INIT	MC_FC_STD64(1)  /**< Initializing FastCall. */
 #define MC_FC_INFO	MC_FC_STD64(2)  /**< Info FastCall. */
@@ -39,10 +37,10 @@
 
 #else
 
-#define MC_FC_INIT	((uint32_t)(-1))  /**< Initializing FastCall. */
-#define MC_FC_INFO	((uint32_t)(-2))  /**< Info FastCall. */
-#define MC_FC_MEM_TRACE	((uint32_t)(-31))  /**< Enable SWd tracing via memory */
-#define MC_FC_SWAP_CPU	((uint32_t)(0x84000005))  /**< Change new active Core */
+#define MC_FC_INIT	((u32)(-1))  /**< Initializing FastCall. */
+#define MC_FC_INFO	((u32)(-2))  /**< Info FastCall. */
+#define MC_FC_MEM_TRACE	((u32)(-31))  /**< Enable SWd tracing via memory */
+#define MC_FC_SWAP_CPU	((u32)(0x84000005))  /**< Change new active Core */
 
 #endif
 
@@ -50,7 +48,7 @@
 
 /** @name MobiCore SMC Defines
  * Defines the different secure monitor calls (SMC) for world switching.
- * @{ */
+ */
 /**< Yield to switch from NWd to SWd. */
 #define MC_SMC_N_YIELD			3
 /**< SIQ to switch from NWd to SWd. */
@@ -59,7 +57,7 @@
 
 /** @name MobiCore status
  *  MobiCore status information.
- * @{ */
+ */
 /**< MobiCore is not yet initialized. FastCall FcInit() to set up MobiCore.*/
 #define MC_STATUS_NOT_INITIALIZED	0
 /**< Bad parameters have been passed in FcInit(). */
@@ -67,13 +65,15 @@
 /**< MobiCore did initialize properly. */
 #define MC_STATUS_INITIALIZED		2
 /**< MobiCore kernel halted due to an unrecoverable exception. Further
- * information is available extended info */
+ * information is available extended info
+ */
 #define MC_STATUS_HALT			3
 /** @} */
 
 /** @name Extended Info Identifiers
- *  Extended info parameters for MC_FC_INFO to obtain further information depending on MobiCore state.
- * @{ */
+ *  Extended info parameters for MC_FC_INFO to obtain further information
+ *  depending on MobiCore state.
+ */
 /**< Version of the MobiCore Control Interface (MCI) */
 #define MC_EXT_INFO_ID_MCI_VERSION	0
 /**< MobiCore control flags */
@@ -130,13 +130,20 @@
 
 /** @name FastCall return values
  * Return values of the MobiCore FastCalls.
- * @{ */
+ */
 /**< No error. Everything worked fine. */
 #define MC_FC_RET_OK				0
 /**< FastCall was not successful. */
 #define MC_FC_RET_ERR_INVALID			1
 /**< MobiCore has already been initialized. */
 #define MC_FC_RET_ERR_ALREADY_INITIALIZED	5
+/** @} */
+
+/** @name Init FastCall flags
+ * Return flags of the Init FastCall.
+ */
+/**< SWd uses LPAE MMU table format. */
+#define MC_FC_INIT_FLAG_LPAE			BIT(0)
 /** @} */
 
 #endif /** MCIFC_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2016 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -14,15 +14,15 @@
 #ifndef _MC_ARM_H_
 #define _MC_ARM_H_
 
-#include "debug.h"
+#include "main.h"
 
 #ifdef CONFIG_ARM64
-inline bool has_security_extensions(void)
+static inline bool has_security_extensions(void)
 {
 	return true;
 }
 
-inline bool is_secure_mode(void)
+static inline bool is_secure_mode(void)
 {
 	return false;
 }
@@ -38,7 +38,7 @@ inline bool is_secure_mode(void)
 #define ARM_SECURITY_EXTENSION_MASK	(0x30)
 
 /* check if CPU supports the ARM TrustZone Security Extensions */
-inline bool has_security_extensions(void)
+static inline bool has_security_extensions(void)
 {
 	u32 fea = 0;
 
@@ -46,7 +46,7 @@ inline bool has_security_extensions(void)
 		"mrc p15, 0, %[fea], cr0, cr1, 0" :
 		[fea]"=r" (fea));
 
-	MCDRV_DBG_VERBOSE("CPU Features: 0x%X", fea);
+	mc_dev_devel("CPU Features: 0x%X", fea);
 
 	/*
 	 * If the CPU features ID has 0 for security features then the CPU
@@ -59,7 +59,7 @@ inline bool has_security_extensions(void)
 }
 
 /* check if running in secure mode */
-inline bool is_secure_mode(void)
+static inline bool is_secure_mode(void)
 {
 	u32 cpsr = 0;
 	u32 nsacr = 0;
@@ -70,8 +70,8 @@ inline bool is_secure_mode(void)
 		[nsacr]"=r" (nsacr),
 		[cpsr]"=r"(cpsr));
 
-	MCDRV_DBG_VERBOSE("CPRS.M = set to 0x%X\n", cpsr & MODE_MASK);
-	MCDRV_DBG_VERBOSE("SCR.NS = set to 0x%X\n", nsacr);
+	mc_dev_devel("CPRS.M = set to 0x%X", cpsr & MODE_MASK);
+	mc_dev_devel("SCR.NS = set to 0x%X", nsacr);
 
 	/*
 	 * If the NSACR contains the reset value(=0) then most likely we are

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2016 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -13,14 +13,15 @@
  */
 
 #include <linux/workqueue.h>
+#include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/device.h>
+#include <linux/debugfs.h>
 
-#include "fastcall.h"
+#include "platform.h"	/* DEBUGFS_CREATE_BOOL_TAKES_A_BOOL */
 #include "main.h"
+#include "fastcall.h"
 #include "logging.h"
-
-#ifndef CONFIG_TRUSTONIC_TEE_NO_TRACES
 
 /* Supported log buffer version */
 #define MC_LOG_VERSION			2
@@ -46,17 +47,17 @@
 #define LOG_INTEGER_SIGNED		(0x0400)
 
 struct mc_logmsg {
-	uint16_t ctrl;		/* Type and format of data */
-	uint16_t source;	/* Unique value for each event source */
-	uint32_t log_data;	/* Value, if any */
+	u16	ctrl;		/* Type and format of data */
+	u16	source;		/* Unique value for each event source */
+	u32	log_data;	/* Value, if any */
 };
 
 /* MobiCore internal trace buffer structure. */
 struct mc_trace_buf {
-	uint32_t version;	/* version of trace buffer */
-	uint32_t length;	/* length of buff */
-	uint32_t head;		/* last write position */
-	uint8_t buff[];		/* start of the log buffer */
+	u32	version;	/* version of trace buffer */
+	u32	length;		/* length of buff */
+	u32	head;		/* last write position */
+	u8	buff[];		/* start of the log buffer */
 };
 
 static struct logging_ctx {
@@ -65,47 +66,52 @@ static struct logging_ctx {
 		struct mc_trace_buf *trace_buf;	/* Circular log buffer */
 		unsigned long trace_page;
 	};
-	bool buffer_is_shared;		/* Log buffer cannot be freed */
-	uint32_t tail;			/* MobiCore log read position */
-	uint32_t line_len;		/* Log Line buffer current length */
-	int thread_err;
-	uint16_t prev_source;		/* Previous Log source */
-	char line[LOG_LINE_SIZE];	/* Log Line buffer */
-	bool dead;
+	bool	buffer_is_shared;	/* Log buffer cannot be freed */
+	u32	tail;			/* MobiCore log read position */
+	int	thread_err;
+	u16	prev_source;		/* Previous Log source */
+	char	line[LOG_LINE_SIZE + 1];/* Log Line buffer */
+	u32	line_len;		/* Log Line buffer current length */
+#ifndef DEBUGFS_CREATE_BOOL_TAKES_A_BOOL
+	u32	enabled;		/* Log can be disabled via debugfs */
+#else
+	bool	enabled;		/* Log can be disabled via debugfs */
+#endif
+	bool	dead;
 } log_ctx;
 
-static inline void log_eol(uint16_t source)
+static inline void log_eol(u16 source)
 {
-	if (!strnlen(log_ctx.line, LOG_LINE_SIZE)) {
-		/* In case a TA tries to print a 0x0 */
-		log_ctx.line_len = 0;
+	if (!log_ctx.line_len)
 		return;
-	}
 
 	if (log_ctx.prev_source)
-		/* MobiCore Userspace */
+		/* TEE user-space */
 		dev_info(g_ctx.mcd, "%03x|%s\n", log_ctx.prev_source,
 			 log_ctx.line);
 	else
-		/* MobiCore kernel */
-		dev_info(g_ctx.mcd, "%s\n", log_ctx.line);
+		/* TEE kernel */
+		dev_info(g_ctx.mcd, "mtk|%s\n", log_ctx.line);
 
+	log_ctx.line[0] = '\0';
 	log_ctx.line_len = 0;
-	log_ctx.line[0] = 0;
 }
 
 /*
  * Collect chars in log_ctx.line buffer and output the buffer when it is full.
  * No locking needed because only "mobicore_log" thread updates this buffer.
  */
-static inline void log_char(char ch, uint16_t source)
+static inline void log_char(char ch, u16 source)
 {
+	if (ch == '\0')
+		return;
+
 	if (ch == '\n' || ch == '\r') {
 		log_eol(source);
 		return;
 	}
 
-	if ((log_ctx.line_len >= (LOG_LINE_SIZE - 1)) ||
+	if ((log_ctx.line_len >= LOG_LINE_SIZE) ||
 	    (source != log_ctx.prev_source))
 		log_eol(source);
 
@@ -114,7 +120,7 @@ static inline void log_char(char ch, uint16_t source)
 	log_ctx.prev_source = source;
 }
 
-static inline void log_string(uint32_t ch, uint16_t source)
+static inline void log_string(u32 ch, u16 source)
 {
 	while (ch) {
 		log_char(ch & 0xFF, source);
@@ -122,7 +128,7 @@ static inline void log_string(uint32_t ch, uint16_t source)
 	}
 }
 
-static inline void log_number(uint32_t format, uint32_t value, uint16_t source)
+static inline void log_number(u32 format, u32 value, u16 source)
 {
 	int width = (format & LOG_LENGTH_MASK) >> LOG_LENGTH_SHIFT;
 	char fmt[16];
@@ -163,12 +169,13 @@ static inline int log_msg(void *data)
 
 static void log_worker(struct work_struct *work)
 {
+	static DEFINE_MUTEX(local_mutex);
+
+	mutex_lock(&local_mutex);
 	while (log_ctx.trace_buf->head != log_ctx.tail) {
 		if (log_ctx.trace_buf->version != MC_LOG_VERSION) {
-			dev_err(g_ctx.mcd,
-				"Bad log data v%d (exp. v%d), stop.\n",
-				log_ctx.trace_buf->version,
-				MC_LOG_VERSION);
+			mc_dev_err("Bad log data v%d (exp. v%d), stop",
+				   log_ctx.trace_buf->version, MC_LOG_VERSION);
 			log_ctx.dead = true;
 			break;
 		}
@@ -179,6 +186,7 @@ static void log_worker(struct work_struct *work)
 						log_ctx.trace_buf->length)
 			log_ctx.tail = 0;
 	}
+	mutex_unlock(&local_mutex);
 }
 
 /*
@@ -188,7 +196,8 @@ static void log_worker(struct work_struct *work)
  */
 void mc_logging_run(void)
 {
-	if (!log_ctx.dead && (log_ctx.trace_buf->head != log_ctx.tail))
+	if (log_ctx.enabled && !log_ctx.dead &&
+	    (log_ctx.trace_buf->head != log_ctx.tail))
 		schedule_work(&log_ctx.work);
 }
 
@@ -198,12 +207,12 @@ int mc_logging_start(void)
 				  BIT(LOG_BUF_ORDER) * PAGE_SIZE);
 
 	if (ret) {
-		dev_err(g_ctx.mcd, "shared traces setup failed\n");
+		mc_dev_err("shared traces setup failed");
 		return ret;
 	}
 
 	log_ctx.buffer_is_shared = true;
-	dev_dbg(g_ctx.mcd, "fc_log version %u\n", log_ctx.trace_buf->version);
+	mc_dev_devel("fc_log version %u", log_ctx.trace_buf->version);
 	mc_logging_run();
 	return 0;
 }
@@ -233,6 +242,9 @@ int mc_logging_init(void)
 		return -ENOMEM;
 
 	INIT_WORK(&log_ctx.work, log_worker);
+	log_ctx.enabled = true;
+	debugfs_create_bool("swd_debug", 0600, g_ctx.debug_dir,
+			    &log_ctx.enabled);
 	return 0;
 }
 
@@ -245,7 +257,5 @@ void mc_logging_exit(void)
 	if (!log_ctx.buffer_is_shared)
 		free_pages(log_ctx.trace_page, LOG_BUF_ORDER);
 	else
-		dev_err(g_ctx.mcd, "log buffer unregister not supported\n");
+		mc_dev_err("log buffer unregister not supported");
 }
-
-#endif /* !CONFIG_TRUSTONIC_TEE_NO_TRACES */

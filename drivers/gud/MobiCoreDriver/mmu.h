@@ -15,30 +15,36 @@
 #ifndef _TBASE_MEM_H_
 #define _TBASE_MEM_H_
 
-struct tbase_mmu;
+struct tee_mmu;
 struct mcp_buffer_map;
 
 /*
  * Allocate MMU table and map buffer into it.
  * That is, create respective table entries.
  */
-struct tbase_mmu *tbase_mmu_create(struct task_struct *task,
-				   const void *wsm_buffer,
-				   unsigned int wsm_len);
+struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
+			       const struct mc_ioctl_buffer *buf);
 
 /*
  * Delete a used MMU table.
  */
-void tbase_mmu_delete(struct tbase_mmu *mmu);
+void tee_mmu_delete(struct tee_mmu *mmu);
+
+/*
+ * Compare physical addresses from two MMU tables.
+ */
+bool client_mmu_matches(const struct tee_mmu *left,
+			const struct tee_mmu *right);
 
 /*
  * Fill in buffer info for MMU table.
  */
-void tbase_mmu_buffer(const struct tbase_mmu *mmu, struct mcp_buffer_map *map);
+void tee_mmu_buffer(const struct tee_mmu *mmu, struct mcp_buffer_map *map);
 
 /*
  * Add info to debug buffer.
  */
-int tbase_mmu_info(const struct tbase_mmu *mmu, struct kasnprintf_buf *buf);
+int tee_mmu_debug_structs(struct kasnprintf_buf *buf,
+			  const struct tee_mmu *mmu);
 
 #endif /* _TBASE_MEM_H_ */
