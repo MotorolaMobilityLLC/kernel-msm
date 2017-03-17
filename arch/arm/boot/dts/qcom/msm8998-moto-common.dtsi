@@ -1604,6 +1604,9 @@
 				<15 0 1323 1323>,
 				<45 4250 3000 1800>,
 				<60 4200 1323 0>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <80>;
+	qcom,lower-limit-capacity = <60>;
 };
 
 &spmi_bus {
