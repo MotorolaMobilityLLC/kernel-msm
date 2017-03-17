@@ -11,20 +11,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef _MC_LINUX_API_H_
-#define _MC_LINUX_API_H_
 
-#include <linux/types.h>
+#ifndef _USER_H_
+#define _USER_H_
 
-/*
- * Switch TEE active core to core_num, defined as linux
- * core id
- */
-int mc_switch_core(int core_num);
+struct cdev;
 
-/*
- * Return TEE active core as Linux core id
- */
-int mc_active_core(void);
+int mc_user_init(struct cdev *cdev);
+static inline void mc_user_exit(void)
+{
+}
 
-#endif /* _MC_LINUX_API_H_ */
+#endif /* _USER_H_ */

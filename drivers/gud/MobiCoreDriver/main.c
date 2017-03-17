@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2016 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -11,36 +11,31 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#include <asm/pgtable.h>
 
-#include <linux/highmem.h>
-#include <linux/slab.h>
-#include <linux/kthread.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
-#include <linux/ioctl.h>
-#include <linux/mm.h>
-#include <linux/mman.h>
-#include <linux/mutex.h>
 #include <linux/cdev.h>
-#include <linux/stat.h>
 #include <linux/debugfs.h>
+#include <linux/reboot.h>
+#include <linux/suspend.h>
 
-#include "public/mc_linux.h"
+#include "public/mc_user.h"
+#include "public/mc_admin.h"	/* MC_ADMIN_DEVNODE */
 
+#include "platform.h"		/* MC_PM_RUNTIME */
 #include "main.h"
 #include "fastcall.h"
 #include "arm.h"
 #include "mmu.h"
 #include "scheduler.h"
 #include "pm.h"
-#include "debug.h"
 #include "logging.h"
 #include "admin.h"
+#include "user.h"
 #include "mcp.h"
-#include "session.h"
+#include "iwp.h"
+#include "nq.h"
 #include "client.h"
-#include "api.h"
 
 #include "build_tag.h"
 
@@ -57,286 +52,31 @@ struct mc_device_ctx g_ctx = {
 	.mcd = &device
 };
 
-/* device admin */
-static dev_t mc_dev_admin;
-/* device user */
-static dev_t mc_dev_user;
-
-/* Need to discover a chrdev region for the driver */
-static struct cdev mc_user_cdev;
-/* Device class for the driver assigned major */
-static struct class *mc_device_class;
-
-/*
- * Get client object from file pointer
- */
-static inline struct tbase_client *get_client(struct file *file)
-{
-	return (struct tbase_client *)file->private_data;
-}
-
-/*
- * Callback for system mmap()
- */
-static int mc_fd_user_mmap(struct file *file, struct vm_area_struct *vmarea)
-{
-	struct tbase_client *client = get_client(file);
-	uint32_t len = (uint32_t)(vmarea->vm_end - vmarea->vm_start);
-
-	/* Alloc contiguous buffer for this client */
-	return api_malloc_cbuf(client, len, NULL, vmarea);
-}
-
-/*
- * Check r/w access to referenced memory
- */
-static inline int ioctl_check_pointer(unsigned int cmd, int __user *uarg)
-{
-	int err = 0;
-
-	if (_IOC_DIR(cmd) & _IOC_READ)
-		err = !access_ok(VERIFY_WRITE, uarg, _IOC_SIZE(cmd));
-	else if (_IOC_DIR(cmd) & _IOC_WRITE)
-		err = !access_ok(VERIFY_READ, uarg, _IOC_SIZE(cmd));
-
-	if (err)
-		return -EFAULT;
-
-	return 0;
-}
-
-/*
- * Callback for system ioctl()
- * Implement most of ClientLib API functions
- * @file	pointer to file
- * @cmd		command
- * @arg		arguments
- *
- * Returns 0 for OK and an errno in case of error
- */
-static long mc_fd_user_ioctl(struct file *file, unsigned int id,
-			     unsigned long arg)
-{
-	struct tbase_client *client = get_client(file);
-	int __user *uarg = (int __user *)arg;
-	int ret = -EINVAL;
-
-	MCDRV_DBG("%u from %s", _IOC_NR(id), current->comm);
-
-	if (WARN(!client, "No client data available"))
-		return -EPROTO;
-
-	if (ioctl_check_pointer(id, uarg))
-		return -EFAULT;
-
-	switch (id) {
-	case MC_IO_FREEZE:
-		/* Freeze the client */
-		ret = api_freeze_device(client);
-		break;
-
-	case MC_IO_OPEN_SESSION: {
-		struct mc_ioctl_open_sess sess;
-
-		if (copy_from_user(&sess, uarg, sizeof(sess))) {
-			ret = -EFAULT;
-			break;
-		}
-
-		ret = api_open_session(client, &sess.sid, &sess.uuid, sess.tci,
-				       sess.tcilen, sess.is_gp_uuid,
-				       &sess.identity);
-		if (ret)
-			break;
-
-		if (copy_to_user(uarg, &sess, sizeof(sess))) {
-			ret = -EFAULT;
-			api_close_session(client, sess.sid);
-			break;
-		}
-		break;
-	}
-	case MC_IO_OPEN_TRUSTLET: {
-		struct mc_ioctl_open_trustlet ta_desc;
-
-		if (copy_from_user(&ta_desc, uarg, sizeof(ta_desc))) {
-			ret = -EFAULT;
-			break;
-		}
-
-		/* Call internal api */
-		ret = api_open_trustlet(client, &ta_desc.sid, ta_desc.spid,
-					ta_desc.buffer, ta_desc.tlen,
-					ta_desc.tci, ta_desc.tcilen);
-		if (ret)
-			break;
-
-		if (copy_to_user(uarg, &ta_desc, sizeof(ta_desc))) {
-			ret = -EFAULT;
-			api_close_session(client, ta_desc.sid);
-			break;
-		}
-		break;
-	}
-	case MC_IO_CLOSE_SESSION: {
-		uint32_t sid = (uint32_t)arg;
-
-		ret = api_close_session(client, sid);
-		break;
-	}
-	case MC_IO_NOTIFY: {
-		uint32_t sid = (uint32_t)arg;
-
-		ret = api_notify(client, sid);
-		break;
-	}
-	case MC_IO_WAIT: {
-		struct mc_ioctl_wait wait;
-
-		if (copy_from_user(&wait, uarg, sizeof(wait))) {
-			ret = -EFAULT;
-			break;
-		}
-		ret = api_wait_notification(client, wait.sid, wait.timeout);
-		break;
-	}
-	case MC_IO_MAP: {
-		struct mc_ioctl_map map;
-
-		if (copy_from_user(&map, uarg, sizeof(map))) {
-			ret = -EFAULT;
-			break;
-		}
-		ret = api_map_wsms(client, map.sid, map.bufs);
-		if (ret)
-			break;
-
-		/* Fill in return struct */
-		if (copy_to_user(uarg, &map, sizeof(map))) {
-			ret = -EFAULT;
-			api_unmap_wsms(client, map.sid, map.bufs);
-			break;
-		}
-		break;
-	}
-	case MC_IO_UNMAP: {
-		struct mc_ioctl_map map;
-
-		if (copy_from_user(&map, uarg, sizeof(map))) {
-			ret = -EFAULT;
-			break;
-		}
-
-		ret = api_unmap_wsms(client, map.sid, map.bufs);
-		break;
-	}
-	case MC_IO_ERR: {
-		struct mc_ioctl_geterr *uerr = (struct mc_ioctl_geterr *)uarg;
-		uint32_t sid;
-		int32_t exit_code;
-
-		if (get_user(sid, &uerr->sid)) {
-			ret = -EFAULT;
-			break;
-		}
-
-		ret = api_get_session_exitcode(client, sid, &exit_code);
-		if (ret)
-			break;
-
-		/* Fill in return struct */
-		if (put_user(exit_code, &uerr->value)) {
-			ret = -EFAULT;
-			break;
-		}
-
-		break;
-	}
-	case MC_IO_VERSION: {
-		struct mc_version_info version_info;
-
-		ret = mcp_get_version(&version_info);
-		if (ret)
-			break;
-
-		if (copy_to_user(uarg, &version_info, sizeof(version_info)))
-			ret = -EFAULT;
-
-		break;
-	}
-	case MC_IO_DR_VERSION: {
-		uint32_t version = MC_VERSION(MCDRVMODULEAPI_VERSION_MAJOR,
-					      MCDRVMODULEAPI_VERSION_MINOR);
-
-		ret = put_user(version, uarg);
-		break;
-	}
-	default:
-		MCDRV_ERROR("unsupported cmd=0x%x", id);
-		ret = -ENOIOCTLCMD;
-	}
-
-	return ret;
-}
-
-/*
- * Callback for system open()
- * A set of internal client data are created and initialized.
- *
- * @inode
- * @file
- * Returns 0 if OK or -ENOMEM if no allocation was possible.
- */
-static int mc_fd_user_open(struct inode *inode, struct file *file)
-{
-	struct tbase_client *client;
-
-	MCDRV_DBG("from %s", current->comm);
-
-	/* Create client */
-	client = api_open_device(false);
-	if (!client)
-		return -ENOMEM;
-
-	/* Store client in user file */
-	file->private_data = client;
-	return 0;
-}
-
-/*
- * Callback for system close()
- * The client object is freed.
- * @inode
- * @file
- * Returns 0
- */
-static int mc_fd_user_release(struct inode *inode, struct file *file)
-{
-	struct tbase_client *client = get_client(file);
-
-	MCDRV_DBG("from %s", current->comm);
-
-	if (WARN(!client, "No client data available"))
-		return -EPROTO;
-
-	/* Detach client from user file */
-	file->private_data = NULL;
-
-	/* Destroy client, including remaining sessions */
-	api_close_device(client);
-	return 0;
-}
-
-static const struct file_operations mc_user_fops = {
-	.owner = THIS_MODULE,
-	.open = mc_fd_user_open,
-	.release = mc_fd_user_release,
-	.unlocked_ioctl = mc_fd_user_ioctl,
-#ifdef CONFIG_COMPAT
-	.compat_ioctl = mc_fd_user_ioctl,
+static struct main_ctx {
+#ifdef MC_PM_RUNTIME
+	/* Whether hibernation succeeded */
+	bool did_hibernate;
+	/* Reboot notifications */
+	struct notifier_block reboot_notifier;
+	/* PM notifications */
+	struct notifier_block pm_notifier;
 #endif
-	.mmap = mc_fd_user_mmap,
-};
+	/* Devices */
+	dev_t device;
+	struct class *class;
+	/* Admin device */
+	struct cdev admin_cdev;
+	/* User device */
+	dev_t user_dev;
+	struct cdev user_cdev;
+	/* Debug counters */
+	struct mutex struct_counters_buf_mutex;
+	char struct_counters_buf[256];
+	int struct_counters_buf_len;
+} main_ctx;
+
+static int mobicore_start(void);
+static void mobicore_stop(void);
 
 int kasnprintf(struct kasnprintf_buf *buf, const char *fmt, ...)
 {
@@ -367,20 +107,21 @@ int kasnprintf(struct kasnprintf_buf *buf, const char *fmt, ...)
 	return i;
 }
 
-static ssize_t debug_info_read(struct file *file, char __user *user_buf,
-			       size_t count, loff_t *ppos)
+ssize_t debug_generic_read(struct file *file, char __user *user_buf,
+			   size_t count, loff_t *ppos,
+			   int (*function)(struct kasnprintf_buf *buf))
 {
 	/* Add/update buffer */
 	if (!file->private_data || !*ppos) {
 		struct kasnprintf_buf *buf, *old_buf;
 		int ret;
 
-		buf = kzalloc(GFP_KERNEL, sizeof(*buf));
+		buf = kzalloc(sizeof(*buf), GFP_KERNEL);
 		if (!buf)
 			return -ENOMEM;
 
 		buf->gfp = GFP_KERNEL;
-		ret = api_info(buf);
+		ret = function(buf);
 		if (ret < 0) {
 			kfree(buf);
 			return ret;
@@ -401,158 +142,256 @@ static ssize_t debug_info_read(struct file *file, char __user *user_buf,
 	return 0;
 }
 
-static int debug_info_release(struct inode *inode, struct file *file)
+int debug_generic_release(struct inode *inode, struct file *file)
 {
-	kfree(file->private_data);
+	struct kasnprintf_buf *buf = file->private_data;
+
+	if (!buf)
+		return 0;
+
+	kfree(buf->buf);
+	kfree(buf);
 	return 0;
 }
 
-static const struct file_operations mc_debug_info_ops = {
-	.read = debug_info_read,
+static ssize_t debug_structs_read(struct file *file, char __user *user_buf,
+				  size_t count, loff_t *ppos)
+{
+	return debug_generic_read(file, user_buf, count, ppos,
+				  clients_debug_structs);
+}
+
+static const struct file_operations mc_debug_structs_ops = {
+	.read = debug_structs_read,
 	.llseek = default_llseek,
-	.release = debug_info_release,
+	.release = debug_generic_release,
 };
 
-static inline int device_admin_init(int (*tee_start_cb)(void))
+static ssize_t debug_struct_counters_read(struct file *file,
+					  char __user *user_buf,
+					  size_t count, loff_t *ppos)
 {
-	int ret = 0;
+	if (!*ppos) {
+		int ret;
 
-	cdev_init(&mc_user_cdev, &mc_user_fops);
-
-	mc_device_class = class_create(THIS_MODULE, "trustonic_tee");
-	if (IS_ERR(mc_device_class)) {
-		MCDRV_ERROR("failed to create device class");
-		return PTR_ERR(mc_device_class);
+		mutex_lock(&main_ctx.struct_counters_buf_mutex);
+		ret = snprintf(main_ctx.struct_counters_buf,
+			       sizeof(main_ctx.struct_counters_buf),
+			       "clients:  %d\n"
+			       "cbufs:    %d\n"
+			       "cwsms:    %d\n"
+			       "sessions: %d\n"
+			       "swsms:    %d\n"
+			       "mmus:     %d\n"
+			       "maps:     %d\n"
+			       "slots:    %d\n",
+			       atomic_read(&g_ctx.c_clients),
+			       atomic_read(&g_ctx.c_cbufs),
+			       atomic_read(&g_ctx.c_cwsms),
+			       atomic_read(&g_ctx.c_sessions),
+			       atomic_read(&g_ctx.c_wsms),
+			       atomic_read(&g_ctx.c_mmus),
+			       atomic_read(&g_ctx.c_maps),
+			       atomic_read(&g_ctx.c_slots));
+		mutex_unlock(&main_ctx.struct_counters_buf_mutex);
+		if (ret > 0)
+			main_ctx.struct_counters_buf_len = ret;
 	}
 
-	/* Create the ADMIN node */
-	ret = mc_admin_init(mc_device_class, &mc_dev_admin, tee_start_cb);
-	if (ret < 0) {
-		MCDRV_ERROR("failed to init mobicore device");
-		class_destroy(mc_device_class);
-		return ret;
-	}
-	return 0;
+	return simple_read_from_buffer(user_buf, count, ppos,
+				       main_ctx.struct_counters_buf,
+				       main_ctx.struct_counters_buf_len);
 }
+
+static const struct file_operations mc_debug_struct_counters_ops = {
+	.read = debug_struct_counters_read,
+	.llseek = default_llseek,
+};
 
 static inline int device_user_init(void)
 {
-	int ret = 0;
 	struct device *dev;
+	int ret = 0;
 
-	mc_dev_user = MKDEV(MAJOR(mc_dev_admin), 1);
+	main_ctx.user_dev = MKDEV(MAJOR(main_ctx.device), 1);
 	/* Create the user node */
-	ret = cdev_add(&mc_user_cdev, mc_dev_user, 1);
+	mc_user_init(&main_ctx.user_cdev);
+	ret = cdev_add(&main_ctx.user_cdev, main_ctx.user_dev, 1);
 	if (ret) {
-		MCDRV_ERROR("user device register failed");
-		goto err_cdev_add;
+		mc_dev_err("user cdev_add failed");
+		return ret;
 	}
-	mc_user_cdev.owner = THIS_MODULE;
-	dev = device_create(mc_device_class, NULL, mc_dev_user, NULL,
+
+	main_ctx.user_cdev.owner = THIS_MODULE;
+	dev = device_create(main_ctx.class, NULL, main_ctx.user_dev, NULL,
 			    MC_USER_DEVNODE);
 	if (IS_ERR(dev)) {
-		ret = PTR_ERR(dev);
-		goto err_device_create;
+		cdev_del(&main_ctx.user_cdev);
+		mc_dev_err("user device_create failed");
+		return PTR_ERR(dev);
 	}
 
-	/* Create debugfs info entry */
-	debugfs_create_file("info", 0400, g_ctx.debug_dir, NULL,
-			    &mc_debug_info_ops);
+	/* Create debugfs structs entry */
+	debugfs_create_file("structs", 0400, g_ctx.debug_dir, NULL,
+			    &mc_debug_structs_ops);
 
 	return 0;
+}
 
-err_device_create:
-	cdev_del(&mc_user_cdev);
-err_cdev_add:
-	mc_admin_exit(mc_device_class);
-	class_destroy(mc_device_class);
-	MCDRV_DBG("failed with %d", ret);
+static inline void device_user_exit(void)
+{
+	device_destroy(main_ctx.class, main_ctx.user_dev);
+	cdev_del(&main_ctx.user_cdev);
+}
+
+#ifdef MC_PM_RUNTIME
+static int reboot_notifier(struct notifier_block *nb, unsigned long event,
+			   void *dummy)
+{
+	switch (event) {
+	case SYS_HALT:
+	case SYS_POWER_OFF:
+		main_ctx.did_hibernate = true;
+		break;
+	}
+
+	return 0;
+}
+
+static int suspend_notifier(struct notifier_block *nb, unsigned long event,
+			    void *dummy)
+{
+	int ret = 0;
+
+	main_ctx.did_hibernate = false;
+	switch (event) {
+	case PM_SUSPEND_PREPARE:
+		return mc_scheduler_suspend();
+	case PM_POST_SUSPEND:
+		return mc_scheduler_resume();
+	case PM_HIBERNATION_PREPARE:
+		/* Try to stop the TEE nicely (ignore failure) */
+		mc_scheduler_suspend();
+		/* Make sure the TEE cannot run anymore */
+		mc_scheduler_stop();
+		/* Flush log buffer */
+		mc_logging_run();
+		break;
+	case PM_POST_HIBERNATION:
+		if (main_ctx.did_hibernate) {
+			/* Really did hibernate */
+			clients_kill_sessions();
+			return mobicore_start();
+		}
+
+		/* Did not hibernate, just restart the TEE */
+		ret = mc_scheduler_start();
+		if (!ret)
+			ret = mc_scheduler_resume();
+	}
+
 	return ret;
 }
+#endif /* MC_PM_RUNTIME */
 
-static void devices_exit(void)
+static int mobicore_start(void)
 {
-	device_destroy(mc_device_class, mc_dev_user);
-	cdev_del(&mc_user_cdev);
-	mc_admin_exit(mc_device_class);
-	class_destroy(mc_device_class);
-}
-
-static inline int mobicore_start(void)
-{
-	int ret;
 	struct mc_version_info version_info;
-
-	ret = mcp_start();
-	if (ret) {
-		MCDRV_ERROR("TEE start failed");
-		goto err_mcp;
-	}
+#ifdef CONFIG_TRUSTONIC_TEE_LPAE
+	bool dynamic_lpae = false;
+#endif
+	int ret;
 
 	ret = mc_logging_start();
 	if (ret) {
-		MCDRV_ERROR("Log start failed");
+		mc_dev_err("Log start failed");
 		goto err_log;
+	}
+
+	ret = nq_start();
+	if (ret) {
+		mc_dev_err("NQ start failed");
+		goto err_nq;
+	}
+
+	ret = mcp_start();
+	if (ret) {
+		mc_dev_err("MCP start failed");
+		goto err_mcp;
+	}
+
+	ret = iwp_start();
+	if (ret) {
+		mc_dev_err("IWP start failed");
+		goto err_iwp;
 	}
 
 	ret = mc_scheduler_start();
 	if (ret) {
-		MCDRV_ERROR("Scheduler start failed");
+		mc_dev_err("Scheduler start failed");
 		goto err_sched;
 	}
 
 	ret = mc_pm_start();
 	if (ret) {
-		MCDRV_ERROR("Power Management start failed");
+		mc_dev_err("Power Management start failed");
 		goto err_pm;
 	}
 
+	/* Must be called before creating the user device node to avoid race */
 	ret = mcp_get_version(&version_info);
 	if (ret)
 		goto err_mcp_cmd;
 
-	MCDRV_DBG("\n"
-		  "    product_id        = %s\n"
-		  "    version_so        = 0x%x\n"
-		  "    version_mci       = 0x%x\n"
-		  "    version_mclf      = 0x%x\n"
-		  "    version_container = 0x%x\n"
-		  "    version_mc_config = 0x%x\n"
-		  "    version_tl_api    = 0x%x\n"
-		  "    version_dr_api    = 0x%x\n"
-		  "    version_cmp       = 0x%x\n",
-		  version_info.product_id,
-		  version_info.version_mci,
-		  version_info.version_so,
-		  version_info.version_mclf,
-		  version_info.version_container,
-		  version_info.version_mc_config,
-		  version_info.version_tl_api,
-		  version_info.version_dr_api,
-		  version_info.version_cmp);
+	/* CMP version is meaningless in this case and is thus not printed */
+	mc_dev_info("\n"
+		    "    product_id        = %s\n"
+		    "    version_mci       = 0x%08x\n"
+		    "    version_so        = 0x%08x\n"
+		    "    version_mclf      = 0x%08x\n"
+		    "    version_container = 0x%08x\n"
+		    "    version_mc_config = 0x%08x\n"
+		    "    version_tl_api    = 0x%08x\n"
+		    "    version_dr_api    = 0x%08x\n"
+		    "    version_nwd       = 0x%08x\n",
+		    version_info.product_id,
+		    version_info.version_mci,
+		    version_info.version_so,
+		    version_info.version_mclf,
+		    version_info.version_container,
+		    version_info.version_mc_config,
+		    version_info.version_tl_api,
+		    version_info.version_dr_api,
+		    version_info.version_nwd);
 
 	if (MC_VERSION_MAJOR(version_info.version_mci) > 1) {
-		pr_err("MCI version %d.%d is too recent for this driver",
-		       MC_VERSION_MAJOR(version_info.version_mci),
-		       MC_VERSION_MINOR(version_info.version_mci));
+		mc_dev_err("MCI too recent for this driver");
 		goto err_version;
 	}
 
 	if ((MC_VERSION_MAJOR(version_info.version_mci) == 0) &&
 	    (MC_VERSION_MINOR(version_info.version_mci) < 6)) {
-		pr_err("MCI version %d.%d is too old for this driver",
-		       MC_VERSION_MAJOR(version_info.version_mci),
-		       MC_VERSION_MINOR(version_info.version_mci));
+		mc_dev_err("MCI too old for this driver");
 		goto err_version;
 	}
 
-	dev_info(g_ctx.mcd, "MobiCore MCI version is %d.%d\n",
-		 MC_VERSION_MAJOR(version_info.version_mci),
-		 MC_VERSION_MINOR(version_info.version_mci));
-
 	/* Determine which features are supported */
 	switch (version_info.version_mci) {
-	case MC_VERSION(1, 2):	/* 310 */
+	case MC_VERSION(1, 6):	/* 400 */
+		g_ctx.f_monotonic_time = true;
+		/* Fall through */
+	case MC_VERSION(1, 5):	/* 400 */
+		g_ctx.f_iwp = true;
+		/* Fall through */
+	case MC_VERSION(1, 4):	/* 310 */
+#ifdef CONFIG_TRUSTONIC_TEE_LPAE
+		dynamic_lpae = true;
+#endif
+		/* Fall through */
+	case MC_VERSION(1, 3):
+		g_ctx.f_time = true;
+		/* Fall through */
+	case MC_VERSION(1, 2):
 		g_ctx.f_client_login = true;
 		/* Fall through */
 	case MC_VERSION(1, 1):
@@ -569,6 +408,30 @@ static inline int mobicore_start(void)
 		break;
 	}
 
+#ifdef CONFIG_TRUSTONIC_TEE_LPAE
+	if (!dynamic_lpae)
+		g_ctx.f_lpae = true;
+#endif
+	mc_dev_info("SWd uses %sLPAE MMU table format",
+		    g_ctx.f_lpae ? "" : "non-");
+
+#ifdef MC_PM_RUNTIME
+	main_ctx.reboot_notifier.notifier_call = reboot_notifier;
+	ret = register_reboot_notifier(&main_ctx.reboot_notifier);
+	if (ret) {
+		mc_dev_err("reboot notifier register failed");
+		goto err_pm_notif;
+	}
+
+	main_ctx.pm_notifier.notifier_call = suspend_notifier;
+	ret = register_pm_notifier(&main_ctx.pm_notifier);
+	if (ret) {
+		unregister_reboot_notifier(&main_ctx.reboot_notifier);
+		mc_dev_err("PM notifier register failed");
+		goto err_pm_notif;
+	}
+#endif
+
 	ret = device_user_init();
 	if (ret)
 		goto err_create_dev_user;
@@ -576,25 +439,133 @@ static inline int mobicore_start(void)
 	return 0;
 
 err_create_dev_user:
+#ifdef MC_PM_RUNTIME
+	unregister_reboot_notifier(&main_ctx.reboot_notifier);
+	unregister_pm_notifier(&main_ctx.pm_notifier);
+err_pm_notif:
+#endif
 err_version:
 err_mcp_cmd:
 	mc_pm_stop();
 err_pm:
 	mc_scheduler_stop();
 err_sched:
-	mc_logging_stop();
-err_log:
+	iwp_stop();
+err_iwp:
 	mcp_stop();
 err_mcp:
+	nq_stop();
+err_nq:
+	mc_logging_stop();
+err_log:
 	return ret;
 }
 
-static inline void mobicore_stop(void)
+static void mobicore_stop(void)
 {
+	device_user_exit();
+#ifdef MC_PM_RUNTIME
+	unregister_reboot_notifier(&main_ctx.reboot_notifier);
+	unregister_pm_notifier(&main_ctx.pm_notifier);
+#endif
 	mc_pm_stop();
 	mc_scheduler_stop();
 	mc_logging_stop();
+	iwp_stop();
 	mcp_stop();
+	nq_stop();
+}
+
+static ssize_t debug_sessions_read(struct file *file, char __user *user_buf,
+				   size_t count, loff_t *ppos)
+{
+	return debug_generic_read(file, user_buf, count, ppos,
+				  mcp_debug_sessions);
+}
+
+static const struct file_operations mc_debug_sessions_ops = {
+	.read = debug_sessions_read,
+	.llseek = default_llseek,
+	.release = debug_generic_release,
+};
+
+static ssize_t debug_mcpcmds_read(struct file *file, char __user *user_buf,
+				  size_t count, loff_t *ppos)
+{
+	return debug_generic_read(file, user_buf, count, ppos,
+				  mcp_debug_mcpcmds);
+}
+
+static const struct file_operations mc_debug_mcpcmds_ops = {
+	.read = debug_mcpcmds_read,
+	.llseek = default_llseek,
+	.release = debug_generic_release,
+};
+
+static inline int device_admin_init(void)
+{
+	struct device *dev;
+	int ret = 0;
+
+	ret = alloc_chrdev_region(&main_ctx.device, 0, 2, "trustonic_tee");
+	if (ret) {
+		mc_dev_err("alloc_chrdev_region failed");
+		return ret;
+	}
+
+	main_ctx.class = class_create(THIS_MODULE, "trustonic_tee");
+	if (IS_ERR(main_ctx.class)) {
+		mc_dev_err("class_create failed");
+		ret = PTR_ERR(main_ctx.class);
+		goto err_class;
+	}
+
+	/* Create the ADMIN node */
+	ret = mc_admin_init(&main_ctx.admin_cdev, mobicore_start,
+			    mobicore_stop);
+	if (ret)
+		goto err_init;
+
+	ret = cdev_add(&main_ctx.admin_cdev, main_ctx.device, 1);
+	if (ret) {
+		mc_dev_err("admin cdev_add failed");
+		goto err_cdev;
+	}
+
+	main_ctx.admin_cdev.owner = THIS_MODULE;
+	dev = device_create(main_ctx.class, NULL, main_ctx.device, NULL,
+			    MC_ADMIN_DEVNODE);
+	if (IS_ERR(dev)) {
+		mc_dev_err("admin device_create failed");
+		ret = PTR_ERR(dev);
+		goto err_device;
+	}
+
+	/* Create debugfs sessions and MCP commands entries */
+	debugfs_create_file("sessions", 0400, g_ctx.debug_dir, NULL,
+			    &mc_debug_sessions_ops);
+	debugfs_create_file("last_mcp_commands", 0400, g_ctx.debug_dir, NULL,
+			    &mc_debug_mcpcmds_ops);
+	return 0;
+
+err_device:
+	cdev_del(&main_ctx.admin_cdev);
+err_cdev:
+	mc_admin_exit();
+err_init:
+	class_destroy(main_ctx.class);
+err_class:
+	unregister_chrdev_region(main_ctx.device, 2);
+	return ret;
+}
+
+static inline void device_admin_exit(void)
+{
+	device_destroy(main_ctx.class, main_ctx.device);
+	cdev_del(&main_ctx.admin_cdev);
+	mc_admin_exit();
+	class_destroy(main_ctx.class);
+	unregister_chrdev_region(main_ctx.device, 2);
 }
 
 /*
@@ -602,113 +573,113 @@ static inline void mobicore_stop(void)
  * This device is installed and registered as cdev, then interrupt and
  * queue handling is set up
  */
-static int mobicore_init(void)
+static int mobicore_probe(struct platform_device *pdev)
 {
 	int err = 0;
 
-	dev_set_name(g_ctx.mcd, "TEE");
+	if (pdev)
+		g_ctx.mcd->of_node = pdev->dev.of_node;
 
-	/* Do not remove or change the following trace.
-	 * The string "MobiCore" is used to detect if <t-base is in of the image
-	 */
-	dev_info(g_ctx.mcd, "MobiCore mcDrvModuleApi version is %d.%d\n",
-		 MCDRVMODULEAPI_VERSION_MAJOR, MCDRVMODULEAPI_VERSION_MINOR);
 #ifdef MOBICORE_COMPONENT_BUILD_TAG
-	dev_info(g_ctx.mcd, "MobiCore %s\n", MOBICORE_COMPONENT_BUILD_TAG);
+	mc_dev_info("MobiCore %s", MOBICORE_COMPONENT_BUILD_TAG);
 #endif
 	/* Hardware does not support ARM TrustZone -> Cannot continue! */
 	if (!has_security_extensions()) {
-		MCDRV_ERROR("Hardware doesn't support ARM TrustZone!");
+		mc_dev_err("Hardware doesn't support ARM TrustZone!");
 		return -ENODEV;
 	}
 
 	/* Running in secure mode -> Cannot load the driver! */
 	if (is_secure_mode()) {
-		MCDRV_ERROR("Running in secure MODE!");
+		mc_dev_err("Running in secure MODE!");
 		return -ENODEV;
 	}
 
-	/* Init common API layer */
-	api_init();
+	/* Make sure we can create debugfs entries */
+	g_ctx.debug_dir = debugfs_create_dir("trustonic_tee", NULL);
 
-	/* Init plenty of nice features */
+	/* Initialize debug counters */
+	atomic_set(&g_ctx.c_clients, 0);
+	atomic_set(&g_ctx.c_cbufs, 0);
+	atomic_set(&g_ctx.c_cwsms, 0);
+	atomic_set(&g_ctx.c_sessions, 0);
+	atomic_set(&g_ctx.c_wsms, 0);
+	atomic_set(&g_ctx.c_mmus, 0);
+	atomic_set(&g_ctx.c_maps, 0);
+	atomic_set(&g_ctx.c_slots, 0);
+	mutex_init(&main_ctx.struct_counters_buf_mutex);
+	/* Create debugfs info entry */
+	debugfs_create_file("structs_counters", 0400, g_ctx.debug_dir, NULL,
+			    &mc_debug_struct_counters_ops);
+
+	/* Initialize common API layer */
+	client_init();
+
+	/* Initialize plenty of nice features */
 	err = mc_fastcall_init();
 	if (err) {
-		MCDRV_ERROR("Fastcall support init failed!");
-		goto fail_fastcall_init;
+		mc_dev_err("Fastcall support init failed!");
+		goto err_fastcall;
+	}
+
+	err = nq_init();
+	if (err) {
+		mc_dev_err("NQ init failed!");
+		goto fail_nq_init;
 	}
 
 	err = mcp_init();
 	if (err) {
-		MCDRV_ERROR("MCP init failed!");
-		goto fail_mcp_init;
+		mc_dev_err("MCP init failed!");
+		goto err_mcp;
+	}
+
+	err = iwp_init();
+	if (err) {
+		mc_dev_err("IWP init failed!");
+		goto err_iwp;
 	}
 
 	err = mc_logging_init();
 	if (err) {
-		MCDRV_ERROR("Log init failed!");
-		goto fail_log_init;
+		mc_dev_err("Log init failed!");
+		goto err_log;
 	}
 
-	/* The scheduler is the first to create a debugfs entry */
-	g_ctx.debug_dir = debugfs_create_dir("trustonic_tee", NULL);
 	err = mc_scheduler_init();
 	if (err) {
-		MCDRV_ERROR("Scheduler init failed!");
-		goto fail_mc_device_sched_init;
+		mc_dev_err("Scheduler init failed!");
+		goto err_sched;
 	}
 
 	/*
-	* Create admin dev so that daemon can already communicate with
-	* the driver
-	*/
-	err = device_admin_init(mobicore_start);
+	 * Create admin dev so that daemon can already communicate with
+	 * the driver
+	 */
+	err = device_admin_init();
 	if (err)
-		goto fail_creat_dev_admin;
+		goto err_admin;
 
-		return 0;
+	return 0;
 
-fail_creat_dev_admin:
+err_admin:
 	mc_scheduler_exit();
-fail_mc_device_sched_init:
-	debugfs_remove(g_ctx.debug_dir);
+err_sched:
 	mc_logging_exit();
-fail_log_init:
+err_log:
+	iwp_exit();
+err_iwp:
 	mcp_exit();
-fail_mcp_init:
+err_mcp:
+	nq_exit();
+fail_nq_init:
 	mc_fastcall_exit();
-fail_fastcall_init:
+err_fastcall:
+	debugfs_remove_recursive(g_ctx.debug_dir);
 	return err;
 }
 
-/*
- * This function removes this device driver from the Linux device manager .
- */
-static void mobicore_exit(void)
-{
-	MCDRV_DBG("enter");
-
-	devices_exit();
-	mobicore_stop();
-	mc_scheduler_exit();
-	mc_logging_exit();
-	mcp_exit();
-	mc_fastcall_exit();
-	debugfs_remove_recursive(g_ctx.debug_dir);
-
-	MCDRV_DBG("exit");
-}
-
-/* Linux Driver Module Macros */
-
 #ifdef MC_DEVICE_PROPNAME
-
-static int mobicore_probe(struct platform_device *pdev)
-{
-	g_ctx.mcd->of_node = pdev->dev.of_node;
-	mobicore_init();
-	return 0;
-}
 
 static const struct of_device_id of_match_table[] = {
 	{ .compatible = MC_DEVICE_PROPNAME },
@@ -724,26 +695,42 @@ static struct platform_driver mc_plat_driver = {
 	}
 };
 
-static int mobicore_register(void)
+#endif /* MC_DEVICE_PROPNAME */
+
+static int __init mobicore_init(void)
 {
+	dev_set_name(g_ctx.mcd, "TEE");
+	/*
+	 * Do not remove or change the following trace.
+	 * The string "MobiCore" is used to detect if the TEE is in of the image
+	 */
+	mc_dev_info("MobiCore mcDrvModuleApi version is %d.%d",
+		    MCDRVMODULEAPI_VERSION_MAJOR,
+		    MCDRVMODULEAPI_VERSION_MINOR);
+#ifdef MC_DEVICE_PROPNAME
 	return platform_driver_register(&mc_plat_driver);
+#else
+	return mobicore_probe(NULL);
+#endif
 }
 
-static void mobicore_unregister(void)
+static void __exit mobicore_exit(void)
 {
+#ifdef MC_DEVICE_PROPNAME
 	platform_driver_unregister(&mc_plat_driver);
-	mobicore_exit();
+#endif
+	device_admin_exit();
+	mc_scheduler_exit();
+	mc_logging_exit();
+	iwp_exit();
+	mcp_exit();
+	nq_exit();
+	mc_fastcall_exit();
+	debugfs_remove_recursive(g_ctx.debug_dir);
 }
-
-module_init(mobicore_register);
-module_exit(mobicore_unregister);
-
-#else /* MC_DEVICE_PROPNAME */
 
 module_init(mobicore_init);
 module_exit(mobicore_exit);
-
-#endif /* !MC_DEVICE_PROPNAME */
 
 MODULE_AUTHOR("Trustonic Limited");
 MODULE_LICENSE("GPL v2");

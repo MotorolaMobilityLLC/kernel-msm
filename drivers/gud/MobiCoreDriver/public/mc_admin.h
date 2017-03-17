@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2016 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -14,6 +14,8 @@
 
 #ifndef __MC_ADMIN_IOCTL_H__
 #define __MC_ADMIN_IOCTL_H__
+
+#include <linux/types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,37 +37,37 @@ enum {
 #define MC_IOC_MAGIC    'M'
 
 struct mc_admin_request {
-	uint32_t	request_id;	/* Unique request identifier */
-	uint32_t	command;	/* Command to daemon */
+	__u32		request_id;	/* Unique request identifier */
+	__u32		command;	/* Command to daemon */
 	struct mc_uuid_t uuid;		/* UUID of trustlet, if relevant */
-	uint32_t	is_gp;		/* Whether trustlet is GP */
-	uint32_t	spid;		/* SPID of trustlet, if relevant */
+	__u32		is_gp;		/* Whether trustlet is GP */
+	__u32		spid;		/* SPID of trustlet, if relevant */
 };
 
 struct mc_admin_response {
-	uint32_t	request_id;	/* Unique request identifier */
-	uint32_t	error_no;	/* Errno from daemon */
-	uint32_t	spid;		/* SPID of trustlet, if relevant */
-	uint32_t	service_type;	/* Type of trustlet being returned */
-	uint32_t	length;		/* Length of data to get */
+	__u32		request_id;	/* Unique request identifier */
+	__u32		error_no;	/* Errno from daemon */
+	__u32		spid;		/* SPID of trustlet, if relevant */
+	__u32		service_type;	/* Type of trustlet being returned */
+	__u32		length;		/* Length of data to get */
 	/* Any data follows */
 };
 
 struct mc_admin_driver_info {
 	/* Version, and something else..*/
-	uint32_t	drv_version;
-	uint32_t	initial_cmd_id;
+	__u32		drv_version;
+	__u32		initial_cmd_id;
 };
 
 struct mc_admin_load_info {
-	uint32_t	spid;		/* SPID of trustlet, if relevant */
-	uint64_t	address;	/* Address of the data */
-	uint32_t	length;		/* Length of data to get */
+	__u32		spid;		/* SPID of trustlet, if relevant */
+	__u64		address;	/* Address of the data */
+	__u32		length;		/* Length of data to get */
 };
 
 #define MC_ADMIN_IO_GET_DRIVER_REQUEST \
 	_IOR(MC_IOC_MAGIC, 0, struct mc_admin_request)
-#define MC_ADMIN_IO_GET_INFO  \
+#define MC_ADMIN_IO_GET_INFO \
 	_IOR(MC_IOC_MAGIC, 1, struct mc_admin_driver_info)
 #define MC_ADMIN_IO_LOAD_DRIVER \
 	_IOW(MC_IOC_MAGIC, 2, struct mc_admin_load_info)
@@ -77,4 +79,4 @@ struct mc_admin_load_info {
 #ifdef __cplusplus
 }
 #endif
-#endif				/* __MC_ADMIN_IOCTL_H__ */
+#endif /* __MC_ADMIN_IOCTL_H__ */
