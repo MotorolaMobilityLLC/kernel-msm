@@ -2131,10 +2131,13 @@ static int bma25x_set_en_sig_int_mode(struct bma25x_data *bma25x,
 			TEST_BIT(Motion, bma25x->mEnabled))
 		err = bma25x_set_en_no_motion_int(bma25x, 0);
 
-	if (!bma25x->mEnabled && newstatus)
+	if (!bma25x->mEnabled && newstatus) {
 		enable_irq_wake(bma25x->IRQ1);
+		enable_irq_wake(bma25x->IRQ2);
+	}
 	else if (bma25x->mEnabled && !newstatus) {
 		disable_irq_wake(bma25x->IRQ1);
+		disable_irq_wake(bma25x->IRQ2);
 		bma25x_set_bandwidth(
 			bma25x->bma25x_client,	bma25x->bandwidth);
 		bma25x_set_powermode(bma25x, 0, BMA25X_AOD);
