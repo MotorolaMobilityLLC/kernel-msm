@@ -229,6 +229,12 @@ static ssize_t nfc_read(struct file *filp, char __user *buf,
 		goto err;
 	}
 	mutex_unlock(&nqx_dev->read_mutex);
+
+	/* pn5xx seems to be slow in handling I2C read requests
+	  * so add 1ms delay after recv operation
+	  */
+	usleep_range(1000, 1100);
+
 	return ret;
 
 err:
