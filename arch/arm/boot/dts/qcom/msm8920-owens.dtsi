@@ -326,3 +326,7 @@
 &pmi_haptic {
 	qcom,vmax-mv = <2700>;
 };
+
+&sdhc_2 {
+	qcom,cd-wakeup;
+};
