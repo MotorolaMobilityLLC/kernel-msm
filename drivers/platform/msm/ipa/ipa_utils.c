@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -914,7 +914,7 @@ EXPORT_SYMBOL(ipa_get_ep_mapping);
  */
 void ipa_set_client(int index, enum ipacm_client_enum client, bool uplink)
 {
-	if (client >= IPACM_CLIENT_MAX || client < IPACM_CLIENT_USB) {
+	if (client > IPACM_CLIENT_MAX || client < IPACM_CLIENT_USB) {
 		IPAERR("Bad client number! client =%d\n", client);
 	} else if (index >= IPA_MAX_NUM_PIPES || index < 0) {
 		IPAERR("Bad pipe index! index =%d\n", index);

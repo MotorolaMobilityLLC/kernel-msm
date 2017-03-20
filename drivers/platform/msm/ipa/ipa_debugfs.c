@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -68,6 +68,9 @@ const char *ipa_event_name[] = {
 	__stringify(ECM_DISCONNECT),
 	__stringify(IPA_TETHERING_STATS_UPDATE_STATS),
 	__stringify(IPA_TETHERING_STATS_UPDATE_NETWORK_STATS),
+	__stringify(IPA_QUOTA_REACH),
+	__stringify(IPA_SSR_BEFORE_SHUTDOWN),
+	__stringify(IPA_SSR_AFTER_POWERUP),
 };
 
 const char *ipa_hdr_l2_type_name[] = {
