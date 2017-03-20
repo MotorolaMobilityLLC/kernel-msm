@@ -2867,6 +2867,7 @@ static void bma25x_flat_work_func(struct work_struct *work)
 					FLAT_INTERRUPT,
 					GLANCE_EXIT_FLATUP_GESTURE);
 			input_sync(data->dev_interrupt);
+			wake_lock_timeout(&data->aod_wakelock, msecs_to_jiffies(100));
 		}
 		if ((data->flat_down_value != flat_down_value) &&
 			(flat_down_value == FLATDOWN_GESTURE)) {
@@ -2876,6 +2877,7 @@ static void bma25x_flat_work_func(struct work_struct *work)
 					FLAT_INTERRUPT,
 					GLANCE_EXIT_FLATDOWN_GESTURE);
 			input_sync(data->dev_interrupt);
+			wake_lock_timeout(&data->aod_wakelock, msecs_to_jiffies(100));
 		}
 	}
 	ISR_INFO(&data->bma25x_client->dev, "bma25x_flat_work_func finished\n");
@@ -2934,6 +2936,7 @@ static void bma25x_int1_irq_work_func(struct work_struct *work)
 				SLOW_NO_MOTION_INTERRUPT,
 				GLANCE_MOVEMENT_GESTURE);
 			input_sync(data->dev_interrupt);
+			wake_lock_timeout(&data->aod_wakelock, msecs_to_jiffies(100));
 			bma25x_set_Int_Enable(
 				data->bma25x_client, 12, 0);
 			bma25x_set_Int_Enable(
