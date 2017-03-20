@@ -771,6 +771,12 @@ int madera_dev_init(struct madera *madera)
 	regcache_cache_only(madera->regmap, false);
 	regcache_cache_only(madera->regmap_32bit, false);
 
+	/* In payton DVT1 factory build, chipid cannot read imediately, so workaround
+	 * for this. root cause is to be debug.
+	*/
+#ifdef CONFIG_ARCH_SDM660
+	msleep(20);
+#endif
 	/* Verify that this is a chip we know about before we
 	 * starting doing any writes to its registers
 	 */
