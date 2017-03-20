@@ -2899,8 +2899,11 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 	if (pd->typec_mode == typec_mode)
 		return 0;
 
-	if (pd->typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)
+	if (pd->typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER &&
+		typec_mode != POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) {
+		usbpd_dbg(&pd->dev, "Type-C Audio Disable\n");
 		pd_phy_audio_detect(false);
+	}
 
 	pd->typec_mode = typec_mode;
 
