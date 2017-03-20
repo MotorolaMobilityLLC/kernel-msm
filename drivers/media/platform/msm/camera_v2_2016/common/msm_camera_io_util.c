@@ -395,7 +395,7 @@ int msm_camera_config_vreg(struct device *dev, struct camera_vreg_t *cam_vreg,
 		return -EINVAL;
 	}
 
-	if (cam_vreg == NULL) {
+	if (cam_vreg == NULL && num_vreg_seq > 0) {
 		pr_err("%s:%d cam_vreg sequence invalid\n", __func__, __LINE__);
 		return -EINVAL;
 	}
