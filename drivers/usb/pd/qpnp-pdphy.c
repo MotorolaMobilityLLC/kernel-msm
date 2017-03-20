@@ -594,7 +594,8 @@ void pd_phy_audio_detect(bool enable)
 {
 	struct usb_pdphy *pdphy = __pdphy;
 
-	if (!gpio_is_valid(pdphy->pd_gpios[USB_SW_SEL_INDEX].gpio) ||
+	if (!pdphy ||
+		!gpio_is_valid(pdphy->pd_gpios[USB_SW_SEL_INDEX].gpio) ||
 		!gpio_is_valid(pdphy->pd_gpios[AUD_DET_INDEX].gpio))
 		return;
 
@@ -895,17 +896,6 @@ static int pdphy_probe(struct platform_device *pdev)
 
 	/* usbpd_create() could call back to us, so have __pdphy ready */
 	__pdphy = pdphy;
-
-	pdphy->usbpd = usbpd_create(&pdev->dev);
-	if (IS_ERR(pdphy->usbpd)) {
-		dev_err(&pdev->dev, "usbpd_create failed: %ld\n",
-				PTR_ERR(pdphy->usbpd));
-		__pdphy = NULL;
-		return PTR_ERR(pdphy->usbpd);
-	}
-
-	pdphy_create_debugfs_entries(pdphy);
-
 	pdphy->gpio_count = of_gpio_count(pdev->dev.of_node);
 
 	if (!pdphy->gpio_count) {
@@ -930,7 +920,8 @@ static int pdphy_probe(struct platform_device *pdev)
 					i,
 					&pdphy->pd_gpios[i].label);
 
-		ret = gpio_request_one(pdphy->pd_gpios[i].gpio,
+		ret = devm_gpio_request_one(&pdev->dev,
+					pdphy->pd_gpios[i].gpio,
 					pdphy->pd_gpios[i].flags,
 					pdphy->pd_gpios[i].label);
 		if (ret) {
@@ -938,7 +929,25 @@ static int pdphy_probe(struct platform_device *pdev)
 				"failed to request GPIO at index %d\n", i);
 			continue;
 		}
+	}
 
+	/* Disable audio detection initially */
+	pd_phy_audio_detect(false);
+
+fail_gpio:
+	pdphy->usbpd = usbpd_create(&pdev->dev);
+	if (IS_ERR(pdphy->usbpd)) {
+		dev_err(&pdev->dev, "usbpd_create failed: %ld\n",
+				PTR_ERR(pdphy->usbpd));
+		__pdphy = NULL;
+		return PTR_ERR(pdphy->usbpd);
+	}
+
+	pdphy_create_debugfs_entries(pdphy);
+
+	/* Export the GPIO's here to avoid duplicate entries */
+	for (i = 0; i < pdphy->gpio_count &&
+		gpio_is_valid(pdphy->pd_gpios[i].gpio); i++) {
 		ret = gpio_export(pdphy->pd_gpios[i].gpio, 1);
 		if (ret)
 			dev_err(&pdev->dev, "Failed to export GPIO %s: %d\n",
@@ -954,8 +963,7 @@ static int pdphy_probe(struct platform_device *pdev)
 					pdphy->pd_gpios[i].gpio);
 	}
 
-	/* Disable audio detection initially */
-	pd_phy_audio_detect(false);
+
 
 	/* Set up otg fault irq */
 	if (gpio_is_valid(pdphy->pd_gpios[OTG_FAULT_INDEX].gpio)) {
@@ -971,18 +979,13 @@ static int pdphy_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "irqreq otg fault failed\n");
 	}
 
-fail_gpio:
 	return 0;
 }
 
 static int pdphy_remove(struct platform_device *pdev)
 {
 	struct usb_pdphy *pdphy = platform_get_drvdata(pdev);
-	int i;
 
-	for (i = 0; i < pdphy->gpio_count; i++) {
-		gpio_free(pdphy->pd_gpios[i].gpio);
-	}
 	debugfs_remove_recursive(pdphy->debug_root);
 	usbpd_destroy(pdphy->usbpd);
 
