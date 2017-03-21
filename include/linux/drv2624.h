@@ -268,6 +268,8 @@ struct drv2624_data {
 	int mnCurrentVibrationTime;
 	bool factory_mode;
 
+	atomic_t reduce_pwr;
+
 	struct wake_lock wklock;
 	struct hrtimer timer;
 	struct mutex lock;
