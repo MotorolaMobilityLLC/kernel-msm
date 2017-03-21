@@ -165,20 +165,20 @@ drv2624_change_voltage(struct drv2624_data *ctrl, enum work_mode mode)
 static void
 drv2624_hap_context(struct drv2624_data *ctrl, unsigned char val)
 {
+	int t_top;
 	enum work_mode mode;
 
-	if (gpio_is_valid(ctrl->msPlatData.mnGpioVCTRL)) {
-		int t_top = gpio_get_value(ctrl->msPlatData.mnGpioVCTRL);
+	if (!gpio_is_valid(ctrl->msPlatData.mnGpioVCTRL))
+		return;
 
-		dev_dbg(ctrl->dev, "%s, t_top %d\n", __func__, t_top);
-		if (val == GO) {
-			if (t_top && ctrl->mnCurrentVibrationTime > 100)
-				mode = REDUCED;
-			else
-				mode = NORMAL;
-			drv2624_change_voltage(ctrl, mode);
-		}
-	}
+	t_top = gpio_get_value(ctrl->msPlatData.mnGpioVCTRL);
+	if (t_top && atomic_read(&ctrl->reduce_pwr) &&
+		(ctrl->mnCurrentVibrationTime > 100)) {
+		dev_dbg(ctrl->dev, "%s: haptic reduced\n", __func__);
+		mode = REDUCED;
+	} else
+		mode = NORMAL;
+	drv2624_change_voltage(ctrl, mode);
 }
 
 static int
@@ -188,7 +188,7 @@ drv2624_set_go_bit(struct drv2624_data *ctrl, unsigned char val)
 	int value = 0;
 	int retry = 10; /* to finish auto-brake*/
 
-	if (!ctrl->factory_mode)
+	if (!ctrl->factory_mode && val == GO)
 		drv2624_hap_context(ctrl, val);
 	val &= 0x01;
 	ret = drv2624_reg_write(ctrl, DRV2624_REG_GO, val);
@@ -1216,6 +1216,28 @@ static inline struct drv2624_platform_data
 }
 #endif
 
+/* Attribute: reduce (RW) */
+static ssize_t reduce_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct drv2624_data *ctrl = dev_get_drvdata(dev);
+	atomic_set(&ctrl->reduce_pwr, (*buf == '0')?0:1);
+	dev_dbg(ctrl->dev, HAPTICS_DEVICE_NAME "%s: reduce set to %d",
+		__func__, atomic_read(&ctrl->reduce_pwr));
+	return count;
+}
+
+static ssize_t reduce_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct drv2624_data *ctrl = dev_get_drvdata(dev);
+	int state = atomic_read(&ctrl->reduce_pwr);
+	return scnprintf(buf, PAGE_SIZE, "%d", state);
+}
+
+DEVICE_ATTR(reduce, (S_IRUGO | S_IWUSR | S_IWGRP),
+			reduce_show, reduce_store);
+
 static int
 drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -1340,6 +1362,13 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	ctrl->factory_mode = (!strncmp("mot-factory", bi_bootmode(), BOOTMODE_MAX_LEN)) ||
 				(!strncmp("factory", bi_bootmode(), BOOTMODE_MAX_LEN));
+
+	atomic_set(&ctrl->reduce_pwr, 0);
+	err = sysfs_create_file(&client->dev.kobj, &dev_attr_reduce.attr);
+	if (err < 0)
+		dev_err(ctrl->dev, "%s: Failed to create reduce attributes\n",
+			__func__);
+
 	dev_info(ctrl->dev, "drv2624 probe succeeded\n");
 
 	return 0;
