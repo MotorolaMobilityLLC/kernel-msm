@@ -96,6 +96,7 @@ struct gadget_info {
 	struct work_struct work;
 	struct device *dev;
 #endif
+	bool secure;
 };
 
 static inline struct gadget_info *to_gadget_info(struct config_item *item)
@@ -286,8 +287,10 @@ static int unregister_gadget(struct gadget_info *gi)
 
 	gi->unbinding = true;
 	ret = usb_gadget_unregister_driver(&gi->composite.gadget_driver);
-	if (ret)
+	if (ret) {
+		log_event_dbg("unregister gadget failed, ret = %d\n", ret);
 		return ret;
+	}
 	gi->unbinding = false;
 	kfree(gi->udc_name);
 	gi->udc_name = NULL;
@@ -307,6 +310,8 @@ static ssize_t gadget_dev_desc_UDC_store(struct config_item *item,
 	if (name[len - 1] == '\n')
 		name[len - 1] = '\0';
 
+	log_event_dbg("UDC store = %s\n", name);
+
 	mutex_lock(&gi->lock);
 
 	if (!strlen(name) || strcmp(name, "none") == 0) {
@@ -319,9 +324,15 @@ static ssize_t gadget_dev_desc_UDC_store(struct config_item *item,
 			ret = -EBUSY;
 			goto err;
 		}
-		ret = usb_udc_attach_driver(name, &gi->composite.gadget_driver);
-		if (ret)
-			goto err;
+		if (!gi->secure) {
+			ret = usb_udc_attach_driver(name,
+					&gi->composite.gadget_driver);
+			if (ret) {
+				log_event_dbg("UDC attach failed, ret = %d\n",
+						ret);
+				goto err;
+			}
+		}
 		gi->udc_name = name;
 	}
 	mutex_unlock(&gi->lock);
@@ -1623,8 +1634,67 @@ out:
 
 static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
 
+static ssize_t secure_show(struct device *pdev, struct device_attribute *attr,
+			char *buf)
+{
+	struct gadget_info *gi = dev_get_drvdata(pdev);
+
+	if (!gi)
+		return -ENODEV;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", gi->secure);
+}
+
+static ssize_t secure_store(struct device *pdev, struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct gadget_info *gi = dev_get_drvdata(pdev);
+	unsigned long mode, r;
+	int ret;
+
+	if (!gi)
+		return -ENODEV;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		dev_err(pdev, "Invalid value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	mode = !!mode;
+	if (mode == gi->secure)
+		return count;
+	gi->secure = mode;
+
+	if (!gi->udc_name)
+		return count;
+	log_event_dbg("Secure Store , UDC = %s, secure = %d\n",
+				gi->udc_name, gi->secure);
+
+	mutex_lock(&gi->lock);
+	if (gi->secure) {
+		ret = usb_gadget_unregister_driver(
+				&gi->composite.gadget_driver);
+		if (ret)
+			log_event_err("Failed detaching UDC from gadget %d\n",
+					ret);
+	} else {
+		ret = usb_udc_attach_driver(gi->udc_name,
+				&gi->composite.gadget_driver);
+		if (ret)
+			log_event_err("Failed attaching UDC to gadget %d\n",
+					ret);
+	}
+	mutex_unlock(&gi->lock);
+
+	return count;
+}
+
+static DEVICE_ATTR(secure, S_IRUGO | S_IWUSR, secure_show, secure_store);
+
 static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_state,
+	&dev_attr_secure,
 	NULL
 };
 
