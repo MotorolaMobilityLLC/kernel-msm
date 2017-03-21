@@ -31,6 +31,7 @@
 #include <linux/wakelock.h>
 #include <linux/mutex.h>
 #include <linux/cdev.h>
+#include <linux/i2c.h>
 
 #define HAPTICS_DEVICE_NAME "drv2624"
 
@@ -257,6 +258,7 @@ struct drv2624_fw_header {
 struct drv2624_data {
 	struct drv2624_platform_data msPlatData;
 	unsigned char mnDeviceID;
+	struct i2c_client *i2c_client;
 	struct device *dev;
 	struct regmap *mpRegmap;
 	unsigned char mnIntStatus;
