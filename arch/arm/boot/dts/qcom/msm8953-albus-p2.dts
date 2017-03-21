@@ -19,3 +19,9 @@
 / {
 	qcom,board-id = <0x49 0x8200>;
 };
+
+&soc {
+	ospl {
+		mmi,ospl-tune-index = <8 9 10 11>;
+	};
+};
