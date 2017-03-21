@@ -816,6 +816,9 @@ static int pdphy_probe(struct platform_device *pdev)
 	if (!pdphy)
 		return -ENOMEM;
 
+	for (i = 0; i < NUM_PD_GPIOS; i++)
+		pdphy->pd_gpios[i].gpio = ARCH_NR_GPIOS;
+
 	pdphy->regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	if (!pdphy->regmap) {
 		dev_err(&pdev->dev, "Couldn't get parent's regmap\n");
