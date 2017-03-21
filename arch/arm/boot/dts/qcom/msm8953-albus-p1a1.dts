@@ -33,6 +33,10 @@
 			"MYDP", "HDMI DBA Playback";
 	};
 
+	ospl {
+		mmi,ospl-tune-index = <8 9 10 11>;
+	};
+
 	spi@7af7000 {
 		marley@0 {
 			wlf,micd-configs = <0 3 0>;
