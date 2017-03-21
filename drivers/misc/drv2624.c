@@ -26,7 +26,6 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/fs.h>
-#include <linux/i2c.h>
 #include <linux/semaphore.h>
 #include <linux/device.h>
 #include <linux/syscalls.h>
@@ -1238,6 +1237,93 @@ static ssize_t reduce_show(struct device *dev,
 DEVICE_ATTR(reduce, (S_IRUGO | S_IWUSR | S_IWGRP),
 			reduce_show, reduce_store);
 
+#include <linux/major.h>
+#include <linux/kdev_t.h>
+#include <linux/idr.h>
+
+#define VIBDEV_MAJOR 198 /* falls within gap in major numbers */
+
+static DEFINE_IDA(minors);
+
+/* Attribute: path (RO) */
+static ssize_t path_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct drv2624_data *ctrl = dev_get_drvdata(dev);
+	ssize_t blen;
+	const char *path;
+
+	if (!ctrl) {
+		pr_err("cannot get data pointer\n");
+		return (ssize_t)0;
+	}
+	path = kobject_get_path(&ctrl->i2c_client->dev.kobj, GFP_KERNEL);
+	blen = scnprintf(buf, PAGE_SIZE, "%s", path ? path : "na");
+	kfree(path);
+	return blen;
+}
+
+/* Attribute: vendor (RO) */
+static ssize_t vendor_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "ti," HAPTICS_DEVICE_NAME);
+}
+
+DEVICE_ATTR_RO(path);
+DEVICE_ATTR_RO(vendor);
+
+static struct attribute *vibrator_attrs[] = {
+	&dev_attr_path.attr,
+	&dev_attr_vendor.attr,
+	NULL,
+};
+
+ATTRIBUTE_GROUPS(vibrator);
+
+static struct class vibrator_class = {
+	.name		= "vibrator",
+	.owner		= THIS_MODULE,
+	.dev_groups	= vibrator_groups,
+};
+
+static int
+drv2624_class_vibrator(struct drv2624_data *ctrl, bool create)
+{
+	int error = 0;
+	static struct device *vib_class_dev;
+	static int minor;
+
+	if (create) {
+		error = class_register(&vibrator_class);
+		if (error)
+			return error;
+
+		minor = ida_simple_get(&minors,
+				ctrl->i2c_client->addr, 0, GFP_KERNEL);
+		if (minor < 0)
+			minor = ida_simple_get(&minors, 0, 0, GFP_KERNEL);
+
+		dev_info(ctrl->dev, "assigned minor %d\n", minor);
+		vib_class_dev = device_create(&vibrator_class, NULL,
+				MKDEV(VIBDEV_MAJOR, minor),
+				ctrl, HAPTICS_DEVICE_NAME);
+		if (IS_ERR(vib_class_dev)) {
+			error = PTR_ERR(vib_class_dev);
+			vib_class_dev = NULL;
+			return error;
+		}
+	} else {
+		if (!vib_class_dev)
+			return -ENODEV;
+		device_destroy(&vibrator_class, MKDEV(VIBDEV_MAJOR, minor));
+		vib_class_dev = NULL;
+		class_unregister(&vibrator_class);
+	}
+
+	return 0;
+}
+
 static int
 drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -1268,6 +1354,7 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 	}
 
+	ctrl->i2c_client = client;
 	ctrl->dev = &client->dev;
 	ctrl->mpRegmap = devm_regmap_init_i2c(client, &drv2624_i2c_regmap);
 	if (IS_ERR(ctrl->mpRegmap)) {
@@ -1369,6 +1456,8 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		dev_err(ctrl->dev, "%s: Failed to create reduce attributes\n",
 			__func__);
 
+	drv2624_class_vibrator(ctrl, true);
+
 	dev_info(ctrl->dev, "drv2624 probe succeeded\n");
 
 	return 0;
@@ -1395,6 +1484,7 @@ static int drv2624_remove(struct i2c_client *client)
 		gpio_free(ctrl->msPlatData.mnGpioINT);
 
 	misc_deregister(&drv2624_misc);
+	drv2624_class_vibrator(ctrl, false);
 
 	return 0;
 }
