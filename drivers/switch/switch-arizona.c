@@ -63,6 +63,7 @@
 
 #define HPDET_DEBOUNCE 500
 #define DEFAULT_MICD_TIMEOUT 2000
+#define MAX_HPDET_RETRY	5
 
 #define MICROPHONE_MIN_OHM      1258
 #define MICROPHONE_MAX_OHM      30000
@@ -177,7 +178,7 @@ struct arizona_extcon_info {
 	struct delayed_work micd_clear_work;
 	bool first_clear;
 
-	bool hpdet_retried;
+	int hpdet_retried;
 	int hp_imp_level;
 
 	int num_hpdet_res;
@@ -286,9 +287,6 @@ inline void arizona_extcon_report(struct arizona_extcon_info *info, int state)
 		return;
 
 	dev_info(info->arizona->dev, "Switch Report: %d\n", state);
-
-	if (state && switch_get_state(&info->edev))
-		switch_set_state(&info->edev, 0);
 
 	switch_set_state(&info->edev, state);
 
@@ -2011,6 +2009,7 @@ EXPORT_SYMBOL_GPL(arizona_hpdet_stop);
 int arizona_hpdet_reading(struct arizona_extcon_info *info, int val)
 {
 	struct arizona *arizona = info->arizona;
+	int debounce = 0;
 	if (val < 0)
 		return val;
 
@@ -2022,21 +2021,51 @@ int arizona_hpdet_reading(struct arizona_extcon_info *info, int val)
 		arizona_extcon_report(info, BIT_HEADSET);
 		arizona_jds_set_state(info, &arizona_micd_button);
 	} else {
-		if (arizona->pdata.jd2_irq &&
-		    (info->jd2_is_running == JD2_TIMER2)) {
-			dev_dbg(arizona->dev, "repeat detection in 1 sec\n");
 
-			schedule_delayed_work(&info->jd2detect_work,
-					      msecs_to_jiffies(1000));
-
-			info->last_jackdet = -1;
-		} else
-			if (info->jd2_is_running)
+		if (arizona->pdata.jd2_irq) {
+			switch (info->jd2_is_running) {
+			case JD2_NONE:
+				/*
+				 * Only schedule recheck if a detection state
+				 * was not reported yet to do avoid recurrence.
+				 * For JD2 case this done by checking
+				 * jd2_running state.
+				 */
+				if (switch_get_state(&info->edev))
+					break;
+				if (arizona_is_lineout(info) &&
+				    (info->hpdet_retried < MAX_HPDET_RETRY)) {
+					debounce = HPDET_DEBOUNCE;
+					info->hpdet_retried++;
+				} else {
+					debounce = DEFAULT_MICD_TIMEOUT;
+					info->hpdet_retried = 0;
+				}
+				break;
+			case JD2_TIMER2:
+				debounce = DEFAULT_MICD_TIMEOUT;
+				info->hpdet_retried = 0;
+				break;
+			default:
 				info->jd2_is_running = JD2_DETECTED;
+				info->hpdet_retried = 0;
+			}
+		}
 
-		arizona_extcon_report(info, arizona_is_lineout(info) ?
-				      BIT_LINEOUT :
-				      BIT_HEADSET_NO_MIC);
+		if (debounce) {
+			dev_dbg(arizona->dev,
+				"repeat detection in %d msec\n",
+				debounce);
+			schedule_delayed_work(&info->jd2detect_work,
+					      msecs_to_jiffies(debounce));
+			info->last_jackdet = -1;
+		}
+
+		if (!info->hpdet_retried)
+			arizona_extcon_report(info, arizona_is_lineout(info) ?
+					      BIT_LINEOUT :
+					      BIT_HEADSET_NO_MIC);
+
 		arizona_jds_set_state(info, NULL);
 	}
 
@@ -2340,7 +2369,10 @@ int arizona_micd_mic_reading(struct arizona_extcon_info *info, int val)
 	if (val > MICROPHONE_MAX_OHM) {
 		dev_warn(arizona->dev, "Detected open circuit\n");
 		info->mic = arizona->pdata.micd_open_circuit_declare;
-		goto done;
+		if (!arizona->pdata.jd2_irq)
+			goto done;
+		else
+			return -EAGAIN;
 	}
 
 	/* If we got a high impedence we should have a headset, report it. */
@@ -2381,6 +2413,16 @@ int arizona_micd_mic_reading(struct arizona_extcon_info *info, int val)
 
 done:
 	pm_runtime_mark_last_busy(info->dev);
+	/*
+	 * Mic is not detected and the switch state already set to a value
+	 * during first detection run. Skip HP detection in this case and
+	 * rerun if a mic was found
+	 */
+	if (!info->mic && switch_get_state(&info->edev)) {
+		dev_dbg(arizona->dev, "Skip HPDET\n");
+		arizona_jds_set_state(info, NULL);
+		return 0;
+	}
 
 	if (arizona->pdata.hpdet_channel)
 		ret = arizona_jds_set_state(info, &arizona_hpdet_right);
