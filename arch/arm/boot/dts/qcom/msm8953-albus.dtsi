@@ -226,7 +226,7 @@
 			wlf,use-jd2-irq;
 			wlf,report-to-input;
 			wlf,micd-rate = <6>;
-			wlf,micd-detect-debounce = <600>;
+			wlf,micd-detect-debounce = <300>;
 			wlf,inmode = <0 2 0>;
 			wlf,micd-ranges = <
 				 100 226 /* HEADSETHOOK  */
