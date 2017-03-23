@@ -5836,7 +5836,9 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		     false, 0);
 		vote(chip->dc_suspend_votable, EB_VOTER,
 		     true, 1);
-		gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
+
+		if (gpio_is_valid(chip->mmi.ebchg_gpio.gpio))
+			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
 		chip->mmi.cl_ebsrc = 0;
 
 		ret.intval = MICRO_9V;
@@ -7289,12 +7291,16 @@ static void parse_mmi_dt_gpio(struct smb_charger *chg)
 	enum of_gpio_flags flags;
 	int rc;
 
+	chg->mmi.ebchg_gpio.gpio = -EINVAL;
+	chg->mmi.warn_gpio.gpio = -EINVAL;
+	chg->mmi.togl_rst_gpio.gpio = -EINVAL;
+
 	if (!node) {
 		smblib_err(chg, "gpio dtree info. missing\n");
 		return;
 	}
 
-	if (!of_gpio_count(node)) {
+	if (of_gpio_count(node) < 0) {
 		smblib_err(chg, "No GPIOS defined.\n");
 		return;
 	}
