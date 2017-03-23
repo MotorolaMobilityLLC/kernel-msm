@@ -156,6 +156,10 @@ struct madera_priv {
 	u16 tx_chan_map_slot[MADERA_SLIMBUS_MAX_CHANNELS];
 	int rx_chan_map_num;
 	int tx_chan_map_num;
+	int rx1_chan_map_num;
+	int tx1_chan_map_num;
+	int rx2_chan_map_num;
+	int tx2_chan_map_num;
 	u32 rx1_samplerate;
 	u32 rx1_sampleszbits;
 	u32 rx2_samplerate;
