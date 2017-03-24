@@ -845,6 +845,7 @@
 	qcom,fg-min-soc = <0>;
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,battery-data = <&mot_batterydata>;
+	qcom,low-batt-temp-comp;
 };
 
 &pm8953_typec {
