@@ -16,5 +16,6 @@
 
 struct snd_soc_codec;
 
-int aov_trigger_init(struct snd_soc_codec *codec);
+int aov_trigger_init(void);
+void aov_trigger_register_notifier(struct snd_soc_codec *codec);
 #endif /* __AOV_TRIGGER_H */
