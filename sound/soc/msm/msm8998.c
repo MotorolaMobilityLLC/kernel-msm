@@ -7958,8 +7958,7 @@ static int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "fsa8500 hs det load error %d", ret);
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC_AOV_TRIGGER)
-	aov_trigger_init(codec);
-	dev_err(codec->dev, "AOV AFTER INIT ");
+	aov_trigger_register_notifier(codec);
 #endif
 	return 0;
 }
@@ -9620,6 +9619,9 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 			ret);
 		goto err;
 	}
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_AOV_TRIGGER)
+	aov_trigger_init();
 #endif
 	ret = msm_populate_dai_link_component_of_node(card);
 	if (ret) {
