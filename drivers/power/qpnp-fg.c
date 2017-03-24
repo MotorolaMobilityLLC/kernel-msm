@@ -647,6 +647,7 @@ struct fg_chip {
 	struct notifier_block	fg_reboot;
 	bool			shutdown_in_process;
 	bool			nom_cap_unbound;
+	bool			low_batt_temp_comp;
 };
 
 /* FG_MEMIF DEBUGFS structures */
@@ -2384,6 +2385,16 @@ static int get_sram_prop_now(struct fg_chip *chip, unsigned int type)
 	if (type == FG_DATA_BATT_ID)
 		return get_batt_id(fg_data[type].value,
 				fg_data[FG_DATA_BATT_ID_INFO].value);
+
+	if (type == FG_DATA_BATT_TEMP && chip->low_batt_temp_comp) {
+		int cool = settings[FG_MEM_SOFT_COLD].value;
+		int cold = settings[FG_MEM_HARD_COLD].value;
+		int temp = fg_data[type].value;
+
+		if (temp < 0)
+			temp += (-50) * (cool - temp) / (cool - cold);
+		return temp;
+	}
 
 	return fg_data[type].value;
 }
@@ -7486,6 +7497,9 @@ static int fg_of_init(struct fg_chip *chip)
 
 	chip->batt_info_restore = of_property_read_bool(node,
 					"qcom,fg-restore-batt-info");
+
+	chip->low_batt_temp_comp = of_property_read_bool(node,
+					"qcom,low-batt-temp-comp");
 
 	if (fg_debug_mask & FG_STATUS)
 		pr_info("restore: %d validate_by_ocv: %d range_pct: %d\n",
