@@ -195,48 +195,58 @@ static struct kobj_type ktype_aov_trigger = {
 	.release = aov_sysfs_release,
 };
 
-int aov_trigger_init(struct snd_soc_codec *codec)
+int aov_trigger_init(void)
 {
 	int ret = 0;
+	static int aov_trigger_init_called;
 
-	if (!aov_codec) {
-		ret = kobject_init_and_add(&aov_trigger_kobj,
-					   &ktype_aov_trigger,
-					   kernel_kobj, "aov");
-		if (ret)
-			goto done;
+	if (aov_trigger_init_called)
+		return ret;
+	aov_trigger_init_called = 1;
 
-		sysfs_attr_init(&aov_sysfs_attr_trigger);
-		ret = sysfs_create_file(&aov_trigger_kobj,
-					&aov_sysfs_attr_trigger);
-		if (ret) {
-			pr_err("%s: trigger node creation failed, ret=%d\n",
-			       __func__, ret);
-			goto done;
-		}
+	ret = kobject_init_and_add(&aov_trigger_kobj,
+				   &ktype_aov_trigger,
+				   kernel_kobj, "aov");
+	if (ret)
+		goto done;
 
-		sysfs_attr_init(&aov_sysfs_attr_register);
-		ret = sysfs_create_file(&aov_trigger_kobj,
-					&aov_sysfs_attr_register);
-		if (ret) {
-			pr_err("%s: register node creation failed, ret=%d\n",
-			       __func__, ret);
-			goto done;
-		}
+	sysfs_attr_init(&aov_sysfs_attr_trigger);
+	ret = sysfs_create_file(&aov_trigger_kobj,
+				&aov_sysfs_attr_trigger);
+	if (ret) {
+		pr_err("%s: trigger node creation failed, ret=%d\n",
+			   __func__, ret);
+		goto done;
+	}
 
-		sysfs_attr_init(&aov_sysfs_attr_event);
-		ret = sysfs_create_file(&aov_trigger_kobj,
-					&aov_sysfs_attr_event);
-		if (ret) {
-			pr_err("%s: event node creation failed, ret=%d\n",
-			       __func__, ret);
-			goto done;
-		}
-		aov_trigger_nb.notifier_call = aov_trigger_notify;
-		aov_codec = codec;
-		madera_register_notifier(aov_codec, &aov_trigger_nb);
+	sysfs_attr_init(&aov_sysfs_attr_register);
+	ret = sysfs_create_file(&aov_trigger_kobj,
+				&aov_sysfs_attr_register);
+	if (ret) {
+		pr_err("%s: register node creation failed, ret=%d\n",
+			   __func__, ret);
+		goto done;
+	}
+
+	sysfs_attr_init(&aov_sysfs_attr_event);
+	ret = sysfs_create_file(&aov_trigger_kobj,
+				&aov_sysfs_attr_event);
+	if (ret) {
+		pr_err("%s: event node creation failed, ret=%d\n",
+			   __func__, ret);
+		goto done;
 	}
 done:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(aov_trigger_init);
+
+void aov_trigger_register_notifier(struct snd_soc_codec *codec)
+{
+	if (!aov_codec) {
+		aov_trigger_nb.notifier_call = aov_trigger_notify;
+		aov_codec = codec;
+		madera_register_notifier(aov_codec, &aov_trigger_nb);
+	}
+}
+EXPORT_SYMBOL_GPL(aov_trigger_register_notifier);
