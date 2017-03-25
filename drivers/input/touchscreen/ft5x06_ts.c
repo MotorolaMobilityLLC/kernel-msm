@@ -367,6 +367,7 @@ struct ft5x06_ts_data {
 	struct notifier_block fps_notif;
 	bool clipping_on;
 	struct ft5x06_clip_area *clipa;
+	bool is_tp_registered;
 };
 
 static int ft5x06_ts_start(struct device *dev);
@@ -3247,6 +3248,8 @@ void ft5x06_ts_shutdown(struct i2c_client *client)
 	struct ft5x06_ts_data *data = i2c_get_clientdata(client);
 	int retval;
 
+	if (!data->is_tp_registered)
+		return;
 	free_irq(client->irq, data);
 
 	if (gpio_is_valid(data->pdata->reset_gpio)) {
@@ -3340,6 +3343,7 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 	data->force_reflash = (data->pdata->no_force_update) ? false : true;
 	data->flash_enabled = true;
 	data->irq_enabled = false;
+	data->is_tp_registered = false;
 
 	data->patching_enabled = true;
 	err = ft5x06_dt_parse_modifiers(data);
@@ -3767,6 +3771,7 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 		} else
 			data->is_fps_registered = true;
 	}
+	data->is_tp_registered = true;
 	return 0;
 
 free_fb_notifier:
