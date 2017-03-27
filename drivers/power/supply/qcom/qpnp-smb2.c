@@ -227,6 +227,9 @@ static int smb2_parse_dt(struct smb2 *chip)
 	chip->dt.no_battery = of_property_read_bool(node,
 						"qcom,batteryless-platform");
 
+	chg->external_vbus = of_property_read_bool(node,
+						"qcom,external-vbus");
+
 	rc = of_property_read_u32(node,
 				"qcom,fcc-max-ua", &chg->batt_profile_fcc_ua);
 	if (rc < 0)
@@ -1545,6 +1548,53 @@ static int smb2_init_vbus_regulator(struct smb2 *chip)
 	return rc;
 }
 
+/****************************************
+ * EXTERNAL VBUS REGULATOR REGISTRATION *
+ ***************************************/
+
+struct regulator_ops smb2_ext_vbus_reg_ops = {
+	.enable = smblib_ext_vbus_regulator_enable,
+	.disable = smblib_ext_vbus_regulator_disable,
+	.is_enabled = smblib_ext_vbus_regulator_is_enabled,
+};
+
+static int smb2_init_external_vbus_regulator(struct smb2 *chip)
+{
+	struct smb_charger *chg = &chip->chg;
+	struct regulator_config cfg = {};
+	int rc = 0;
+
+	chg->ext_vbus_vreg = devm_kzalloc(chg->dev, sizeof(*chg->ext_vbus_vreg),
+				      GFP_KERNEL);
+	if (!chg->ext_vbus_vreg)
+		return -ENOMEM;
+
+	cfg.dev = chg->dev;
+	cfg.driver_data = chip;
+
+	chg->ext_vbus_vreg->rdesc.owner = THIS_MODULE;
+	chg->ext_vbus_vreg->rdesc.type = REGULATOR_VOLTAGE;
+	chg->ext_vbus_vreg->rdesc.ops = &smb2_ext_vbus_reg_ops;
+	chg->ext_vbus_vreg->rdesc.of_match = "qcom,smb2-ext-vbus";
+	chg->ext_vbus_vreg->rdesc.name = "qcom,smb2-ext-vbus";
+
+	if (of_get_property(chg->dev->of_node, "otg-parent-supply", NULL))
+		chg->ext_vbus_vreg->rdesc.supply_name = "otg-parent";
+
+	chg->ext_vbus_vreg->rdev = devm_regulator_register(chg->dev,
+						&chg->ext_vbus_vreg->rdesc,
+						&cfg);
+	if (IS_ERR(chg->ext_vbus_vreg->rdev)) {
+		rc = PTR_ERR(chg->ext_vbus_vreg->rdev);
+		chg->ext_vbus_vreg->rdev = NULL;
+		if (rc != -EPROBE_DEFER)
+			pr_err("Couldn't register EXT VBUS regulator rc=%d\n",
+				rc);
+	}
+
+	return rc;
+}
+
 /******************************
  * VCONN REGULATOR REGISTRATION *
  ******************************/
@@ -2627,11 +2677,20 @@ static int smb2_probe(struct platform_device *pdev)
 	/* set driver data before resources request it */
 	platform_set_drvdata(pdev, chip);
 
-	rc = smb2_init_vbus_regulator(chip);
-	if (rc < 0) {
-		pr_err("Couldn't initialize vbus regulator rc=%d\n",
-			rc);
-		goto cleanup;
+	if (chg->external_vbus) {
+		rc = smb2_init_external_vbus_regulator(chip);
+		if (rc < 0) {
+			pr_err("Couldn't initialize extvbus regulator rc=%d\n",
+				rc);
+			goto cleanup;
+		}
+	} else {
+		rc = smb2_init_vbus_regulator(chip);
+		if (rc < 0) {
+			pr_err("Couldn't initialize vbus regulator rc=%d\n",
+				rc);
+			goto cleanup;
+		}
 	}
 
 	rc = smb2_init_vconn_regulator(chip);
@@ -2781,6 +2840,8 @@ cleanup:
 		devm_regulator_unregister(chg->dev, chg->vconn_vreg->rdev);
 	if (chg->vbus_vreg && chg->vbus_vreg->rdev)
 		devm_regulator_unregister(chg->dev, chg->vbus_vreg->rdev);
+	if (chg->ext_vbus_vreg && chg->ext_vbus_vreg->rdev)
+		regulator_unregister(chg->ext_vbus_vreg->rdev);
 
 	smblib_deinit(chg);
 
@@ -2797,7 +2858,11 @@ static int smb2_remove(struct platform_device *pdev)
 	power_supply_unregister(chg->usb_psy);
 	power_supply_unregister(chg->usb_port_psy);
 	regulator_unregister(chg->vconn_vreg->rdev);
-	regulator_unregister(chg->vbus_vreg->rdev);
+	if (chg->ext_vbus_vreg && chg->ext_vbus_vreg->rdev)
+		regulator_unregister(chg->ext_vbus_vreg->rdev);
+
+	if (chg->vbus_vreg && chg->vbus_vreg->rdev)
+		regulator_unregister(chg->vbus_vreg->rdev);
 
 	platform_set_drvdata(pdev, NULL);
 	return 0;
