@@ -85,6 +85,7 @@ enum print_reason {
 #define EB_VOTER			"EB_VOTER"
 #define WIRELESS_VOTER			"WIRELESS_VOTER"
 #define DEMO_VOTER			"DEMO_VOTER"
+#define OTG_VOTER			"OTG_VOTER"
 
 enum smb_mode {
 	PARALLEL_MASTER = 0,
@@ -393,6 +394,7 @@ struct smb_charger {
 	struct smb_regulator	*vbus_vreg;
 	struct smb_regulator	*vconn_vreg;
 	struct regulator	*dpdm_reg;
+	struct smb_regulator	*ext_vbus_vreg;
 
 	/* votables */
 	struct votable		*dc_suspend_votable;
@@ -493,6 +495,7 @@ struct smb_charger {
 	struct usbpd		*pd;
 	int			pd_contract_uv;
 	struct delayed_work	pd_contract_work;
+	bool			external_vbus;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -525,6 +528,10 @@ int smblib_vbus_regulator_is_enabled(struct regulator_dev *rdev);
 int smblib_vconn_regulator_enable(struct regulator_dev *rdev);
 int smblib_vconn_regulator_disable(struct regulator_dev *rdev);
 int smblib_vconn_regulator_is_enabled(struct regulator_dev *rdev);
+
+int smblib_ext_vbus_regulator_enable(struct regulator_dev *rdev);
+int smblib_ext_vbus_regulator_disable(struct regulator_dev *rdev);
+int smblib_ext_vbus_regulator_is_enabled(struct regulator_dev *rdev);
 
 irqreturn_t smblib_handle_debug(int irq, void *data);
 irqreturn_t smblib_handle_otg_overcurrent(int irq, void *data);
