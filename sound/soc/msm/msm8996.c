@@ -2294,7 +2294,7 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 
 	dev_crit(codec->dev, "florida_dai_init first BE dai initing ...\n");
 
-	aov_trigger_init(codec);
+	aov_trigger_register_notifier(codec);
 
 	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1_REFCLK,
 		ARIZONA_FLL_SRC_NONE, 0, 0);
@@ -4658,6 +4658,10 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 	}
 
 	spdev = pdev;
+
+#ifdef CONFIG_SND_SOC_FLORIDA
+	aov_trigger_init();
+#endif
 
 	ret = msm8996_populate_dai_link_component_of_node(card);
 	if (ret) {
