@@ -137,7 +137,9 @@
 		/* voltage = *_voltage x 22 mV */
 		/* 2V for now */
 		ti,rated_voltage = /bits/ 8 <0x49>;
-		ti,overdrive_voltage = /bits/ 8 <0xB3>;
+		ti,overdrive_voltage = /bits/ 8 <0x9A>;
+		ti,rated_voltage_reduced = /bits/ 8 <0x19>;
+		ti,overdrive_voltage_reduced = /bits/ 8 <0x55>;
 		/* LRA period = lra_freq x 24.39 us */
 		/* 205 Hz for now */
 		ti,lra_freq = /bits/ 8 <0xCD>;
@@ -147,6 +149,7 @@
 		/* sample time 200us  */
 		ti,sample_time = /bits/ 8 <0x04>;
 		ti,nrst-gpio = <&pmi8998_gpios 9 0>;   /* EN_GPIO */
+		ti,nvctrl-gpio = <&tlmm 0 0>;
 	};
 
 	usb3813: usb3813@2D {
