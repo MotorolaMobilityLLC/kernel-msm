@@ -2903,7 +2903,7 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_card *card = codec->component.card;
 
-	aov_trigger_init(codec);
+	aov_trigger_register_notifier(codec);
 	ret = snd_soc_codec_set_pll(codec, MARLEY_FLL1_REFCLK,
 			ARIZONA_FLL_SRC_NONE,
 			0, 0);
@@ -3435,6 +3435,7 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 			ret);
 		goto err;
 	}
+	aov_trigger_init();
 #endif
 	ret = msm8952_populate_dai_link_component_of_node(card);
 	if (ret) {
