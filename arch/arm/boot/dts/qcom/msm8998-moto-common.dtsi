@@ -833,7 +833,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "vdd_otg";
 		gpio = <&pmi8998_gpios 3 0>;
-		vin-supply = <&vreg_5p0>;
+		vin-supply = <&smb2_ext_vbus>;
 		enable-active-high;
 	};
 
@@ -1612,6 +1612,11 @@
 	qcom,lower-limit-capacity = <60>;
 	qcom,external-vconn;
 	qcom,usbpd-phandle = <&pmi8998_pdphy>;
+	qcom,external-vbus;
+	otg-parent-supply = <&vreg_5p0>;
+	smb2_ext_vbus: qcom,smb2-ext-vbus {
+		regulator-name = "smb2-ext-vbus";
+	};
 };
 
 &spmi_bus {
