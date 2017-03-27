@@ -1600,6 +1600,50 @@ int smblib_vbus_regulator_is_enabled(struct regulator_dev *rdev)
 }
 
 /********************
+ * EXTERNAL OTG REG *
+ ********************/
+int smblib_ext_vbus_regulator_enable(struct regulator_dev *rdev)
+{
+	struct smb_charger *chg = rdev_get_drvdata(rdev);
+	int rc = 0;
+	if (chg->otg_en)
+		return rc;
+	smblib_dbg(chg, PR_OTG, "Enable Ext VBUS\n");
+	rc = vote(chg->usb_icl_votable, OTG_VOTER, true, 0);
+	if (rc < 0) {
+		smblib_err(chg, "Failed to vote for USB Suspend - %d\n", rc);
+		return rc;
+	}
+
+	chg->otg_en = true;
+	return rc;
+}
+
+int smblib_ext_vbus_regulator_disable(struct regulator_dev *rdev)
+{
+	struct smb_charger *chg = rdev_get_drvdata(rdev);
+	int rc = 0;
+	if (!chg->otg_en)
+		return rc;
+	smblib_dbg(chg, PR_OTG, "Disable Ext VBUS\n");
+	rc = vote(chg->usb_icl_votable, OTG_VOTER, false, 0);
+	if (rc < 0) {
+		smblib_err(chg, "Failed to vote for USB Suspend - %d\n", rc);
+		return rc;
+	}
+
+	chg->otg_en = false;
+	return rc;
+}
+
+int smblib_ext_vbus_regulator_is_enabled(struct regulator_dev *rdev)
+{
+	struct smb_charger *chg = rdev_get_drvdata(rdev);
+	int rc = chg->otg_en;
+	return rc;
+}
+
+/********************
  * BATT PSY GETTERS *
  ********************/
 
@@ -2248,7 +2292,10 @@ int smblib_get_prop_usb_present(struct smb_charger *chg,
 		return rc;
 	}
 
-	val->intval = (bool)(stat & USBIN_PLUGIN_RT_STS_BIT);
+	if (!chg->otg_en)
+		val->intval = (bool)(stat & USBIN_PLUGIN_RT_STS_BIT);
+	else
+		val->intval = 0;
 	return 0;
 }
 
@@ -3400,6 +3447,11 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 	bool vbus_rising;
 	struct smb_irq_data *data;
 	struct storm_watch *wdata;
+
+	if (chg->otg_en) {
+		smblib_dbg(chg, PR_INTERRUPT, "OTG enabled, do nothing\n");
+		return IRQ_HANDLED;
+	}
 
 	rc = smblib_read(chg, USBIN_BASE + INT_RT_STS_OFFSET, &stat);
 	if (rc < 0) {
