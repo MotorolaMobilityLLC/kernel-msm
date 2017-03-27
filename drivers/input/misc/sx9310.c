@@ -953,6 +953,9 @@ static int sx9310_remove(struct i2c_client *client)
 
 	pDevice = this->pDevice;
 	if (this && pDevice) {
+#ifdef USE_SENSORS_CLASS
+		sensors_classdev_unregister(&sensors_capsensor_cdev);
+#endif
 		input_unregister_device(pDevice->pbuttonInformation->input);
 
 		if (this->board->cap_svdd_en) {
@@ -966,6 +969,8 @@ static int sx9310_remove(struct i2c_client *client)
 		}
 
 		sysfs_remove_group(&client->dev.kobj, &sx9310_attr_group);
+		class_unregister(&capsense_class);
+
 		pplatData = client->dev.platform_data;
 		if (pplatData && pplatData->exit_platform_hw)
 			pplatData->exit_platform_hw();
