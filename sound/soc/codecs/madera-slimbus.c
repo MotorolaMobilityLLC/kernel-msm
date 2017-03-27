@@ -295,14 +295,14 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		tx_chcnt = ARRAY_SIZE(tx_porth1);
 		tx_idx_step = 8;
 		tx_stream_idx = TX_STREAM_1;
-		priv->tx1_chan_map_num = tx_num;
+		priv->tx1_chan_map_num = tx_num < tx_chcnt ? tx_num : tx_chcnt;
 
 		rx_porth = rx_porth1;
 		rx_handles = rx_handles1;
 		rx_chcnt = ARRAY_SIZE(rx_porth1);
 		rx_idx_step = 0;
 		rx_stream_idx = RX_STREAM_1;
-		priv->rx1_chan_map_num = rx_num;
+		priv->rx1_chan_map_num = rx_num < rx_chcnt ? rx_num : rx_chcnt;
 		break;
 	case 5: /* cs47l35-slim2 */
 		tx_porth = tx_porth2;
@@ -310,14 +310,14 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		tx_chcnt = ARRAY_SIZE(tx_porth2);
 		tx_idx_step = 12;
 		tx_stream_idx = TX_STREAM_2;
-		priv->tx2_chan_map_num = tx_num;
+		priv->tx2_chan_map_num = tx_num < tx_chcnt ? tx_num : tx_chcnt;
 
 		rx_porth = rx_porth2;
 		rx_handles = rx_handles2;
 		rx_chcnt = ARRAY_SIZE(rx_porth2);
 		rx_idx_step = 4;
 		rx_stream_idx = RX_STREAM_2;
-		priv->rx2_chan_map_num = rx_num;
+		priv->rx2_chan_map_num = rx_num < rx_chcnt ? rx_num : rx_chcnt;
 		break;
 	default:
 		dev_err(madera->dev, "set_channel_map unknown dai->id %d\n",
