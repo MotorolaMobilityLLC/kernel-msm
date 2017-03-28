@@ -21,6 +21,9 @@
 #include "sdm660-external.h"
 #include "../codecs/sdm660_cdc/msm-analog-cdc.h"
 #include "../codecs/wsa881x.h"
+#if IS_ENABLED(CONFIG_SND_SOC_AOV_TRIGGER)
+#include "../codecs/aov_trigger.h"
+#endif
 
 #define __CHIPSET__ "SDM660 "
 #define MSM_DAILINK_NAME(name) (__CHIPSET__#name)
@@ -3186,6 +3189,10 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	ret = snd_soc_of_parse_audio_routing(card, "qcom,audio-routing");
 	if (ret)
 		goto err;
+
+#if IS_ENABLED(CONFIG_SND_SOC_AOV_TRIGGER)
+	aov_trigger_init();
+#endif
 
 	ret = msm_populate_dai_link_component_of_node(pdata, card);
 	if (ret) {
