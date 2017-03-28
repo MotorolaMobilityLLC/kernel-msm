@@ -3284,6 +3284,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-post-init-delay", &tmp);
 	pinfo->mipi.post_init_delay = (!rc ? tmp : 0);
 
+	pinfo->mipi.lp11_reset_lcdb = of_property_read_bool(np,
+					"qcom,mdss-dsi-lp11-reset-lcdb");
+
+	pinfo->mipi.lp11_lcdb_reset = of_property_read_bool(np,
+					"qcom,mdss-dsi-lp11-lcdb-reset");
+
 	mdss_dsi_parse_trigger(np, &(pinfo->mipi.mdp_trigger),
 		"qcom,mdss-dsi-mdp-trigger");
 
