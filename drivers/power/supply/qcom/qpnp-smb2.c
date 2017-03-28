@@ -580,10 +580,14 @@ static int smb2_usb_set_prop(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN:
+#ifdef QCOM_BASE
 		rc = smblib_set_prop_usb_voltage_min(chg, val);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+#ifdef QCOM_BASE
 		rc = smblib_set_prop_usb_voltage_max(chg, val);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_PD_CURRENT_MAX:
 		rc = smblib_set_prop_pd_current_max(chg, val);
@@ -2646,6 +2650,12 @@ static int smb2_probe(struct platform_device *pdev)
 	if (!chg->regmap) {
 		pr_err("parent regmap is missing\n");
 		return -EINVAL;
+	}
+
+	chg->pd = devm_usbpd_get_by_phandle(chg->dev, "qcom,usbpd-phandle");
+	if (IS_ERR_OR_NULL(chg->pd)) {
+		pr_err("Error getting the pd phandle %ld\n", PTR_ERR(chg->pd));
+		chg->pd = NULL;
 	}
 
 	rc = smb2_chg_config_init(chip);
