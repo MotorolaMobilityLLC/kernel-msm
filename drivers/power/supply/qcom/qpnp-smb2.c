@@ -2599,6 +2599,12 @@ static int smb2_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	chg->pd = devm_usbpd_get_by_phandle(chg->dev, "qcom,usbpd-phandle");
+	if (IS_ERR_OR_NULL(chg->pd)) {
+		pr_err("Error getting the pd phandle %ld\n", PTR_ERR(chg->pd));
+		chg->pd = NULL;
+	}
+
 	rc = smb2_chg_config_init(chip);
 	if (rc < 0) {
 		if (rc != -EPROBE_DEFER)
