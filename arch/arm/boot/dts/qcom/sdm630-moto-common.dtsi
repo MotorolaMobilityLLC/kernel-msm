@@ -130,6 +130,11 @@
 	qcom,msm-ssc-sensors {
 		compatible = "qcom,msm-ssc-sensors";
 	};
+
+	wdog: qcom,wdt@17817000 {
+		qcom,bark-time = <22000>;
+	};
+
 	qcom,sensor-information {
 		sensor_information22: qcom,sensor-information-22 {
 			qcom,sensor-type =  "adc";
