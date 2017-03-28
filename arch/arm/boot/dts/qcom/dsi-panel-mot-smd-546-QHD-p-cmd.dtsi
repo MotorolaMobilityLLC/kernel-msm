@@ -14,4 +14,59 @@
 	mot_smd_546_QHD_p_cmd_v0: qcom,mdss_dsi_mot_smd_546_QHD_p_cmd_v0 {
 		#include "dsi-panel-mot-smd-546-QHD-p-cmd-common.dtsi"
 	};
+
+	mot_smd_546_QHD_p_cmd_v1: qcom,mdss_dsi_mot_smd_546_QHD_p_cmd_v1 {
+		#include "dsi-panel-mot-smd-546-QHD-p-cmd-common.dtsi"
+	};
+
+};
+
+&mot_smd_546_QHD_p_cmd_v0 {
+	qcom,mdss-dsi-on-command = [
+		39 00 00 00 00 00 03 F0 5A 5A
+		39 00 00 00 00 00 03 FC 5A 5A
+		07 00 00 00 00 00 01 01
+		05 01 00 00 78 00 01 11
+		15 00 00 00 00 00 02 E6 01
+		15 00 00 00 00 00 02 35 00
+		15 00 00 00 00 00 02 53 20
+		15 00 00 00 00 00 02 B3 4F
+		15 00 00 00 00 00 02 F7 03
+		15 00 00 00 00 00 02 51 00
+		15 00 00 00 00 00 02 55 00
+		05 01 00 00 00 00 01 29
+	];
+
+	/* DSC Host Configuration */
+	qcom,compression-mode = "dsc";
+	qcom,config-select = <&dsc_cfg_mot_smd_546_QHD_p_cmd>;
+
+	dsc_cfg_mot_smd_546_QHD_p_cmd:config0 {
+		qcom,lm-split = <720 720>;
+		qcom,mdss-dsc-encoders = <2>;
+		qcom,mdss-dsc-slice-height = <64>;
+		qcom,mdss-dsc-slice-width = <360>;
+		qcom,mdss-dsc-slice-per-pkt = <1>;
+		qcom,mdss-dsc-bit-per-component = <8>;
+		qcom,mdss-dsc-bit-per-pixel = <8>;
+		qcom,mdss-dsc-block-prediction-enable;
+	};
+
+};
+
+&mot_smd_546_QHD_p_cmd_v1 {
+	/* DSC Host Configuration */
+	qcom,compression-mode = "dsc";
+	qcom,config-select = <&dsc_cfg_mot_smd_546_QHD_p_cmd_v1>;
+
+	dsc_cfg_mot_smd_546_QHD_p_cmd_v1:config0 {
+		qcom,lm-split = <720 720>;
+		qcom,mdss-dsc-encoders = <2>;
+		qcom,mdss-dsc-slice-height = <64>;
+		qcom,mdss-dsc-slice-width = <360>;
+		qcom,mdss-dsc-slice-per-pkt = <1>;
+		qcom,mdss-dsc-bit-per-component = <8>;
+		qcom,mdss-dsc-bit-per-pixel = <8>;
+		qcom,mdss-dsc-block-prediction-enable;
+	};
 };
