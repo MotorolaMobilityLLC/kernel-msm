@@ -415,9 +415,23 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	ret = msm_dss_enable_vreg(
-		ctrl_pdata->panel_power_data.vreg_config,
-		ctrl_pdata->panel_power_data.num_vreg, 1);
+	if ((pdata->panel_info.mipi.lp11_reset_lcdb ||
+		pdata->panel_info.mipi.lp11_lcdb_reset) &&
+		!pdata->panel_info.cont_splash_enabled)
+		/*
+		 * Support panel power up sequence after LP11
+		 * qcom,mdss-dsi-lp11-lcdb-reset:
+		 * Vddio->LP11->VSP->VSN->reset
+		 * qcom,mdss-dsi-lp11-reset-lcdb:
+		 * Vddio->LP11->reset->VSP->VSN
+		 * Before LP11 need powerup Vddio.
+		 */
+		ret = msm_dss_enable_vreg(
+			ctrl_pdata->panel_power_data.vreg_config, 1, 1);
+	else
+		ret = msm_dss_enable_vreg(
+			ctrl_pdata->panel_power_data.vreg_config,
+			ctrl_pdata->panel_power_data.num_vreg, 1);
 	if (ret) {
 		pr_err("%s: failed to enable vregs for %s\n",
 			__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
@@ -1567,7 +1581,22 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	 * data lanes for LP11 init
 	 */
 	if (mipi->lp11_init) {
+		if (mipi->lp11_lcdb_reset) {
+			ret = msm_dss_enable_lcdb(
+				ctrl_pdata->panel_power_data.vreg_config,
+				ctrl_pdata->panel_power_data.num_vreg);
+		}
 		mdss_dsi_panel_reset(pdata, 1);
+
+		if (mipi->lp11_reset_lcdb)
+			ret = msm_dss_enable_lcdb(
+				ctrl_pdata->panel_power_data.vreg_config,
+				ctrl_pdata->panel_power_data.num_vreg);
+		if (ret) {
+			pr_err("%s: failed to enable vregs for %s\n",
+				__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
+			return ret;
+		}
 	}
 
 	if (mipi->init_delay)
