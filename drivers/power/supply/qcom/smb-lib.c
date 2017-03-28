@@ -25,6 +25,7 @@
 #include <linux/pmic-voter.h>
 #include <linux/pinctrl/consumer.h>
 #include <soc/qcom/watchdog.h>
+#include <linux/usb/usbpd.h>
 #include "smb-lib.h"
 #include "smb-reg.h"
 #include "battery.h"
@@ -499,7 +500,8 @@ static int smblib_set_adapter_allowance(struct smb_charger *chg,
 static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 					int min_allowed_uv, int max_allowed_uv)
 {
-	int rc;
+	int rc = 0;
+#ifdef QCOM_BASE
 	u8 allowed_voltage;
 
 	if (min_allowed_uv == MICRO_5V && max_allowed_uv == MICRO_5V) {
@@ -529,7 +531,13 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 				rc);
 		return rc;
 	}
-
+#else
+	if (chg->pd_active && (chg->pd_contract_uv <= 0)) {
+		cancel_delayed_work(&chg->pd_contract_work);
+		schedule_delayed_work(&chg->pd_contract_work,
+				      msecs_to_jiffies(0));
+	}
+#endif
 	return rc;
 }
 
@@ -735,13 +743,15 @@ static void smblib_uusb_removal(struct smb_charger *chg)
 
 	/* reconfigure allowed voltage for HVDCP */
 	rc = smblib_set_adapter_allowance(chg,
-			USBIN_ADAPTER_ALLOW_5V_OR_9V_TO_12V);
+			USBIN_ADAPTER_ALLOW_5V_TO_9V);
 	if (rc < 0)
-		smblib_err(chg, "Couldn't set USBIN_ADAPTER_ALLOW_5V_OR_9V_TO_12V rc=%d\n",
+		smblib_err(chg, "Couldn't set USBIN_ADAPTER_ALLOW_5V_TO_9V rc=%d\n",
 			rc);
-
+#ifdef QCOM_BASE
 	chg->voltage_min_uv = MICRO_5V;
 	chg->voltage_max_uv = MICRO_5V;
+#endif
+	chg->pd_contract_uv = 0;
 	chg->usb_icl_delta_ua = 0;
 	chg->pulse_cnt = 0;
 	chg->uusb_apsd_rerun_done = false;
@@ -2790,10 +2800,13 @@ int smblib_set_prop_pd_voltage_max(struct smb_charger *chg,
 	int rc, max_uv;
 
 	max_uv = max(val->intval, chg->voltage_min_uv);
+	if ((chg->pd_active) && (max_uv != chg->voltage_max_uv))
+		chg->pd_contract_uv = 0;
+
 	rc = smblib_set_usb_pd_allowed_voltage(chg, chg->voltage_min_uv,
 					       max_uv);
 	if (rc < 0) {
-		smblib_err(chg, "invalid min voltage %duV rc=%d\n",
+		smblib_err(chg, "invalid max voltage %duV rc=%d\n",
 			val->intval, rc);
 		return rc;
 	}
@@ -2830,6 +2843,12 @@ static int __smblib_set_prop_pd_active(struct smb_charger *chg, bool pd_active)
 		if (rc < 0)
 			smblib_err(chg,
 				"Couldn't enable vconn on CC line rc=%d\n", rc);
+
+		if (chg->pd_contract_uv <= 0) {
+			cancel_delayed_work(&chg->pd_contract_work);
+			schedule_delayed_work(&chg->pd_contract_work,
+					      msecs_to_jiffies(0));
+		}
 
 		/* SW controlled CC_OUT */
 		rc = smblib_masked_write(chg, TAPER_TIMER_SEL_CFG_REG,
@@ -4537,6 +4556,39 @@ int smblib_set_prop_pr_swap_in_progress(struct smb_charger *chg,
 /***************
  * Work Queues *
  ***************/
+#define MAX_INPUT_PWR_UW 18000000
+static void smblib_pd_contract_work(struct work_struct *work)
+{
+	struct smb_charger *chg = container_of(work, struct smb_charger,
+					       pd_contract_work.work);
+	int rc, max_ua;
+
+	if (!chg->pd)
+		chg->pd = devm_usbpd_get_by_phandle(chg->dev,
+						    "qcom,usbpd-phandle");
+	if (!chg->pd || !chg->pd_active)
+		return;
+
+	chg->pd_contract_uv = usbpd_select_pdo_match(chg->pd);
+
+	if (chg->pd_contract_uv >= MICRO_9V)
+		smblib_set_opt_freq_buck(chg, chg->chg_freq.freq_9V);
+	else
+		smblib_set_opt_freq_buck(chg, chg->chg_freq.freq_5V);
+
+	max_ua = (MAX_INPUT_PWR_UW / (chg->pd_contract_uv / 1000)) * 1000;
+	smblib_dbg(chg, PR_MISC, "smblib_pd_contract_work: %d uV, %d uA\n",
+		   chg->pd_contract_uv, max_ua);
+
+	rc = vote(chg->usb_icl_votable, ICL_LIMIT_VOTER, true, max_ua);
+	if (rc < 0)
+		smblib_err(chg, "Error setting %d uA rc=%d\n", max_ua, rc);
+
+	if (chg->pd_contract_uv <= 0)
+		schedule_delayed_work(&chg->pd_contract_work,
+				      msecs_to_jiffies(100));
+}
+
 static void smblib_uusb_otg_work(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,
@@ -5130,6 +5182,7 @@ int smblib_init(struct smb_charger *chg)
 	INIT_DELAYED_WORK(&chg->otg_ss_done_work, smblib_otg_ss_done_work);
 	INIT_DELAYED_WORK(&chg->icl_change_work, smblib_icl_change_work);
 	INIT_DELAYED_WORK(&chg->pl_enable_work, smblib_pl_enable_work);
+	INIT_DELAYED_WORK(&chg->pd_contract_work, smblib_pd_contract_work);
 	INIT_WORK(&chg->legacy_detection_work, smblib_legacy_detection_work);
 	INIT_DELAYED_WORK(&chg->uusb_otg_work, smblib_uusb_otg_work);
 	INIT_DELAYED_WORK(&chg->bb_removal_work, smblib_bb_removal_work);
@@ -6601,7 +6654,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		if (mmi->cl_ebchg > 0) {
 			mmi_set_extbat_in_cl(chip);
 			mmi_set_extbat_state(chip, EB_SINK, false);
-		} else
+		} else if (mmi->ebchg_state != EB_DISCONN)
 			mmi_set_extbat_state(chip, EB_OFF, false);
 	}
 
@@ -7579,6 +7632,8 @@ void mmi_init(struct smb_charger *chg)
 			   "IPC logging is enabled for charger\n");
 
 	mmi_chip = chg;
+	chg->voltage_min_uv = MICRO_5V;
+	chg->voltage_max_uv = MICRO_9V;
 	chg->mmi.factory_mode = mmi_factory_check();
 	chg->mmi.is_factory_image = false;
 	chg->mmi.charging_limit_modes = CHARGING_LIMIT_UNKNOWN;
