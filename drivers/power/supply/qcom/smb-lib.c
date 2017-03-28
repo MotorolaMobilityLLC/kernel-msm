@@ -7737,6 +7737,13 @@ void mmi_init(struct smb_charger *chg)
 	if (rc)
 		smblib_err(chg, "couldn't set DCIN AICL Threshold\n");
 
+	/* Turn Jeita OFF */
+	rc = smblib_masked_write(chg, JEITA_EN_CFG_REG,
+				 0x3F,
+				 0x00);
+	if (rc)
+		smblib_err(chg, "couldn't set JEITA CFG\n");
+
 	/* Register the notifier for the psy updates*/
 	chg->mmi.mmi_psy_notifier.notifier_call = mmi_psy_notifier_call;
 	rc = power_supply_reg_notifier(&chg->mmi.mmi_psy_notifier);
