@@ -283,6 +283,65 @@ vreg_set_opt_mode_fail:
 } /* msm_dss_enable_vreg */
 EXPORT_SYMBOL(msm_dss_enable_vreg);
 
+int msm_dss_enable_lcdb(struct dss_vreg *in_vreg, int num_vreg)
+{
+	int i = 1, rc = 0;
+	bool need_sleep;
+
+	for (i = 1; i < num_vreg; i++) {
+		rc = PTR_RET(in_vreg[i].vreg);
+		if (rc) {
+			DEV_ERR("%pS->%s: %s regulator error. rc=%d\n",
+				__builtin_return_address(0), __func__,
+				in_vreg[i].vreg_name, rc);
+			goto vreg_set_opt_mode_fail;
+		}
+		need_sleep = !regulator_is_enabled(in_vreg[i].vreg);
+		if (in_vreg[i].pre_on_sleep && need_sleep)
+			usleep_range(in_vreg[i].pre_on_sleep * 1000,
+				in_vreg[i].pre_on_sleep * 1000);
+		rc = regulator_set_load(in_vreg[i].vreg,
+			in_vreg[i].enable_load);
+		if (rc < 0) {
+			DEV_ERR("%pS->%s: %s set opt m fail\n",
+				__builtin_return_address(0), __func__,
+				in_vreg[i].vreg_name);
+			goto vreg_set_opt_mode_fail;
+		}
+		rc = regulator_enable(in_vreg[i].vreg);
+		if (in_vreg[i].post_on_sleep && need_sleep)
+			usleep_range(in_vreg[i].post_on_sleep * 1000,
+				in_vreg[i].post_on_sleep * 1000);
+		if (rc < 0) {
+			DEV_ERR("%pS->%s: %s enable failed\n",
+				__builtin_return_address(0), __func__,
+				in_vreg[i].vreg_name);
+			goto disable_vreg;
+		}
+	}
+
+	return rc;
+
+disable_vreg:
+	regulator_set_load(in_vreg[i].vreg, in_vreg[i].disable_load);
+
+vreg_set_opt_mode_fail:
+	for (i--; i >= 1; i--) {
+		if (in_vreg[i].pre_off_sleep)
+			usleep_range(in_vreg[i].pre_off_sleep * 1000,
+				in_vreg[i].pre_off_sleep * 1000);
+		regulator_set_load(in_vreg[i].vreg,
+			in_vreg[i].disable_load);
+		regulator_disable(in_vreg[i].vreg);
+		if (in_vreg[i].post_off_sleep)
+			usleep_range(in_vreg[i].post_off_sleep * 1000,
+				in_vreg[i].post_off_sleep * 1000);
+	}
+
+	return rc;
+} /* msm_dss_enable_lcdb */
+EXPORT_SYMBOL(msm_dss_enable_lcdb);
+
 int msm_dss_enable_gpio(struct dss_gpio *in_gpio, int num_gpio, int enable)
 {
 	int i = 0, rc = 0;
