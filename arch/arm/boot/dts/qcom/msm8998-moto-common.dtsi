@@ -1611,6 +1611,7 @@
 	qcom,upper-limit-capacity = <80>;
 	qcom,lower-limit-capacity = <60>;
 	qcom,external-vconn;
+	qcom,usbpd-phandle = <&pmi8998_pdphy>;
 };
 
 &spmi_bus {
