@@ -105,6 +105,7 @@ int msm_mdss_gpio_enable(struct mdss_gpio *in_gpio, int num_gpio, int enable);
 int msm_mdss_config_vreg(struct device *dev, struct mdss_vreg *in_vreg,
 	int num_vreg, int config);
 int msm_mdss_enable_vreg(struct mdss_vreg *in_vreg, int num_vreg, int enable);
+int msm_mdss_enable_lcdb(struct mdss_vreg *in_vreg, int num_vreg);
 int msm_mdss_config_vreg_opt_mode(struct mdss_vreg *in_vreg, int num_vreg,
 	 enum mdss_vreg_mode mode);
 
