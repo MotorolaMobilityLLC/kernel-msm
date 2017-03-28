@@ -18,7 +18,7 @@
 #include "dsi-panel-mot-boe-520-1080p-vid.dtsi"
 #include "sdm660-moto-audio.dtsi"
 #include "sdm660-moto-fps.dtsi"
-
+#include <moto-mem-reserve.h>
 / {
 	utags {
 		compatible = "mmi,utags";
@@ -35,6 +35,14 @@
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
 		#include "fg-gen3-batterydata-hx40sunwoda-3000mah.dtsi"
+	};
+
+	reserved-memory {
+		ramoops_mem: ramoops_mem_region {
+			no-map;
+			reg = <0x0 0xaf000000 0x0 0x80000>;
+			label = "ramoops_mem";
+		};
 	};
 };
 
@@ -147,6 +155,17 @@
 			polling-delay-passive = <100>; /* milliseconds */
 			thermal-sensors = <&rradc_typec_temp>;
 		};
+	};
+
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+
+		console-size = <0x0 0x40000>;
+		record-size = <0x0 0x3f800>;
+		ramoops-annotate-size = <0x0 0x800>;
+
+		memory-region = <&ramoops_mem>;
 	};
 };
 
