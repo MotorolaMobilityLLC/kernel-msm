@@ -2094,8 +2094,7 @@ int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 		pr_err("%s Cannot set Opalum controls %d\n", __func__, ret);
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC_AOV_TRIGGER)
-	aov_trigger_init(codec);
-	dev_err(codec->dev, "AOV AFTER INIT ");
+	aov_trigger_register_notifier(codec);
 #endif
 	codec_reg_done = true;
 	return 0;
