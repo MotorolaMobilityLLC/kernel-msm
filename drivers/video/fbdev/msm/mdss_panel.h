@@ -570,6 +570,9 @@ struct mipi_panel_info {
 	u32  post_init_delay;
 	u32  num_of_sublinks;
 	u32  lanes_per_sublink;
+
+	char lp11_reset_lcdb;
+	char lp11_lcdb_reset;
 };
 
 struct edp_panel_info {
