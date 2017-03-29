@@ -6592,7 +6592,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		break;
 	case STEP_FLOAT:
 	case STEP_MAX:
-		target_fv = zone->norm_mv;
+		if (!zone->norm_mv)
+			target_fv = max_fv_mv;
+		else
+			target_fv = zone->norm_mv;
 		target_fcc = zone->fcc_max_ma;
 		mmi->cl_ebchg = 0;
 
