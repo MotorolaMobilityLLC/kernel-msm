@@ -153,9 +153,10 @@
 			qcom,sensor-name = "chg_therm";
 		};
 
-		sensor_information15: qcom,sensor-information-15 {
+		sensor_information14: qcom,sensor-information-14 {
 			qcom,sensor-type = "adc";
 			qcom,sensor-name = "msm_therm";
+			qcom,scaling-factor = <1>;
 		};
 
 		sensor_information17: qcom,sensor-information-17 {
