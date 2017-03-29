@@ -90,14 +90,14 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		porth = tx_porth1;
 		handles = tx_handles1;
 		group = &tx_group1;
-		chcnt = priv->tx1_chan_map_num;
+		chcnt = ARRAY_SIZE(tx_porth1);
 		break;
 	case MADERA_SLIMTX5_ENA_SHIFT:
 		dev_dbg(madera->dev, "TX2\n");
 		porth = tx_porth2;
 		handles = tx_handles2;
 		group = &tx_group2;
-		chcnt = priv->tx2_chan_map_num;
+		chcnt = ARRAY_SIZE(tx_porth2);
 		break;
 	case MADERA_SLIMTX4_ENA_SHIFT:
 		dev_dbg(codec->dev, "TX3\n");
@@ -182,7 +182,7 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		porth = rx_porth1;
 		handles = rx_handles1;
 		group = &rx_group1;
-		chcnt = priv->rx1_chan_map_num;
+		chcnt = ARRAY_SIZE(rx_porth1);
 		rx_sampleszbits = priv->rx1_sampleszbits;
 		rx_samplerate = priv->rx1_samplerate;
 		break;
@@ -191,7 +191,7 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		porth = rx_porth2;
 		handles = rx_handles2;
 		group = &rx_group2;
-		chcnt = priv->rx2_chan_map_num;
+		chcnt = ARRAY_SIZE(rx_porth2);
 		rx_sampleszbits = priv->rx2_sampleszbits;
 		rx_samplerate = priv->rx2_samplerate;
 		break;
@@ -295,14 +295,12 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		tx_chcnt = ARRAY_SIZE(tx_porth1);
 		tx_idx_step = 8;
 		tx_stream_idx = TX_STREAM_1;
-		priv->tx1_chan_map_num = tx_num;
 
 		rx_porth = rx_porth1;
 		rx_handles = rx_handles1;
 		rx_chcnt = ARRAY_SIZE(rx_porth1);
 		rx_idx_step = 0;
 		rx_stream_idx = RX_STREAM_1;
-		priv->rx1_chan_map_num = rx_num;
 		break;
 	case 5: /* cs47l35-slim2 */
 		tx_porth = tx_porth2;
@@ -310,14 +308,12 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		tx_chcnt = ARRAY_SIZE(tx_porth2);
 		tx_idx_step = 12;
 		tx_stream_idx = TX_STREAM_2;
-		priv->tx2_chan_map_num = tx_num;
 
 		rx_porth = rx_porth2;
 		rx_handles = rx_handles2;
 		rx_chcnt = ARRAY_SIZE(rx_porth2);
 		rx_idx_step = 4;
 		rx_stream_idx = RX_STREAM_2;
-		priv->rx2_chan_map_num = rx_num;
 		break;
 	default:
 		dev_err(madera->dev, "set_channel_map unknown dai->id %d\n",
@@ -326,7 +322,7 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 	}
 
 	/* This actually allocates the channel or refcounts it if there... */
-	for (i = 0; i < rx_num && i < rx_chcnt; i++) {
+	for (i = 0; rx_num && i < rx_chcnt; i++) {
 		slim_get_slaveport(laddr, i + rx_idx_step, &rx_porth[i],
 				   SLIM_SINK);
 
@@ -341,7 +337,7 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		priv->rx_chan_map_slot[i] = rx_slot[i] = rx_stream_idx + i;
 	}
 
-	for (i = 0; i < tx_num && i < tx_chcnt; i++) {
+	for (i = 0; tx_num && i < tx_chcnt; i++) {
 		slim_get_slaveport(laddr, i + tx_idx_step, &tx_porth[i],
 				   SLIM_SRC);
 
