@@ -40,6 +40,7 @@ obj-$(CONFIG_TOUCHSCREEN_FT6236)	+= ft6236.o
 obj-$(CONFIG_TOUCHSCREEN_FT5X06)	+= ft5x06_ts.o
 obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE) += focaltech_flash.o
 obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE) += focaltech_upgrade_idc.o
+obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8716) += focaltech_upgrade_ft8716.o
 obj-$(CONFIG_TOUCHSCREEN_FUJITSU)	+= fujitsu_ts.o
 obj-$(CONFIG_TOUCHSCREEN_GOODIX)	+= goodix.o
 obj-$(CONFIG_TOUCHSCREEN_GEN_VKEYS)	+= gen_vkeys.o
