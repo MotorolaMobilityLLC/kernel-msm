@@ -1206,6 +1206,17 @@ config TOUCHSCREEN_FOCALTECH_UPGRADE
 
 	  If unsure, say N.
 
+config TOUCHSCREEN_FOCALTECH_UPGRADE_8716
+	bool "Add ft8716 IC support for Focaltech Touchscreen"
+	depends on TOUCHSCREEN_FT5X06
+	select TOUCHSCREEN_FOCALTECH_UPGRADE
+	help
+	  Say Y here will
+	  -Add FT8716 IC upgrade support.
+	  -Add new Focaltech firmware upgrade code.
+
+	  If unsure, say N.
+
 config FT_SECURE_TOUCH
 	bool "Secure Touch support for Focaltech Touchscreen"
 	depends on TOUCHSCREEN_FT5X06
