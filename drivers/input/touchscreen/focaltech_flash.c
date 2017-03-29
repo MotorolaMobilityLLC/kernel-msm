@@ -376,6 +376,12 @@ int fts_ctpm_auto_upgrade(struct i2c_client *client,
 
 	FTS_DEBUG("[UPGRADE] set update function and type by ID\n");
 
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8716
+	if (pdata->family_id == FT8716_ID) {
+		ft8716_set_upgrade_function(&fts_updatefun_curr);
+		ft8716_set_chip_id(&fts_chip_type_curr);
+	}
+#endif
 	/* no IC upgrade function enabled, return error */
 	if ((fts_updatefun_curr == NULL) || (fts_chip_type_curr == NULL)) {
 		FTS_ERROR("[UPGRADE] ID(0x%02x) not support\n",
