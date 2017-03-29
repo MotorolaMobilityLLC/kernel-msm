@@ -1194,6 +1194,18 @@ config TOUCHSCREEN_FT5X06
          To compile this driver as a module, choose M here: the
          module will be called ft5x06_ts.
 
+config TOUCHSCREEN_FOCALTECH_UPGRADE
+	bool "New firmware upgrade code for Focaltech Touchscreen"
+	depends on TOUCHSCREEN_FT5X06
+	help
+	  Say Y here to add new Focaltech firmware upgrade code.
+	  This new firmware upgrade code will create a generic
+	  firmware upgrade framework.
+	  If new IC need to be supported, only need to accomplish
+	  some callback functions
+
+	  If unsure, say N.
+
 config FT_SECURE_TOUCH
 	bool "Secure Touch support for Focaltech Touchscreen"
 	depends on TOUCHSCREEN_FT5X06
