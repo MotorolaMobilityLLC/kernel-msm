@@ -172,5 +172,9 @@ extern int fts_ctpm_write_pramboot_for_idc(struct i2c_client *client,
 					u32 length, const u8 *readbuf);
 extern int fts_ctpm_write_app_for_idc(struct i2c_client *client,
 					u32 length, const u8 *readbuf);
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8716
+extern void ft8716_set_upgrade_function(struct fts_upgrade_fun **curr);
+extern void ft8716_set_chip_id(struct ft_chip_t **curr);
+#endif
 
 #endif
