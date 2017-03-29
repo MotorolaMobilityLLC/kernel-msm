@@ -682,7 +682,8 @@ static int activate_sar_mode(struct stmvl53l1_data *data)
 
 	if (data->enable_sensor == 0 &&
 		!data->is_calibrating &&
-		data->sar_mode == 1) {
+		data->sar_mode == 1 &&
+		data->cam_mode != 1) {
 		data->preset_mode = VL53L1_PRESETMODE_AUTONOMOUS;
 		rc = stmvl53l1_start(data);
 		if (rc == VL53L1_ERROR_NONE)
