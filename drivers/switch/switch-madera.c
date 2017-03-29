@@ -1524,7 +1524,6 @@ int madera_hpdet_reading(struct madera_extcon_info *info, int val)
 		madera_extcon_report(info, BIT_HEADSET);
 		madera_jds_set_state(info, &madera_micd_button);
 	} else {
-		madera_extcon_report(info, BIT_HEADSET_NO_MIC);
 		madera_extcon_report(info, madera_is_lineout(info) ?
 				     BIT_LINEOUT : BIT_HEADSET_NO_MIC);
 		/* disable JD2 to workaround for error lineout pull out in Payton,
