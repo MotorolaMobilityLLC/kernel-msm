@@ -6506,7 +6506,13 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	mmi_find_temp_zone(chip, batt_temp);
 	zone = &mmi->temp_zones[mmi->pres_temp_zone];
 
-	max_fv_mv = get_client_vote(chip->fv_votable, DEFAULT_VOTER) / 1000;
+	if (mmi->base_fv_mv == 0) {
+		mmi->base_fv_mv = get_client_vote(chip->fv_votable,
+						  DEFAULT_VOTER) / 1000;
+		vote(chip->fv_votable,
+		     DEFAULT_VOTER, false, 0);
+	}
+	max_fv_mv = mmi->base_fv_mv;
 
 	/* Determine Next State */
 	prev_step = chip->mmi.pres_chrg_step;
@@ -6675,7 +6681,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		target_usb = cl_usb;
 		break;
 	case STEP_NORM:
-		target_fv = max_fv_mv;
+		target_fv = max_fv_mv + mmi->vfloat_comp_mv;
 		target_fcc = zone->fcc_norm_ma;
 		mmi->cl_ebchg = 0;
 
@@ -7658,6 +7664,12 @@ static int parse_mmi_dt(struct smb_charger *chg)
 				  &chg->mmi.lower_limit_capacity);
 	if (rc)
 		chg->mmi.lower_limit_capacity = 0;
+
+	rc = of_property_read_u32(node, "qcom,vfloat-comp-uv",
+				  &chg->mmi.vfloat_comp_mv);
+	if (rc)
+		chg->mmi.vfloat_comp_mv = 0;
+	chg->mmi.vfloat_comp_mv /= 1000;
 
 	return rc;
 }
