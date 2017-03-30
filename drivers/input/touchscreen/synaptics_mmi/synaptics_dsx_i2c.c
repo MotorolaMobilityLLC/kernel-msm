@@ -2947,6 +2947,35 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 	synaptics_dsx_set_state_safe(rmi4_data, state);
 }
 
+#define PM_ADD 0
+#define PM_UPDATE 1
+#define PM_REMOVE 2
+
+static void synaptics_dsx_pm_qos(struct synaptics_rmi4_data *rmi4_data,
+	int update, bool use_default)
+{
+	if (irq_can_set_affinity(rmi4_data->irq))
+		rmi4_data->pm_qos_irq.type = PM_QOS_REQ_AFFINE_IRQ;
+	else
+		rmi4_data->pm_qos_irq.type = PM_QOS_REQ_ALL_CORES;
+
+	switch (update) {
+	case PM_REMOVE:
+		pm_qos_remove_request(&rmi4_data->pm_qos_irq);
+		break;
+	case PM_ADD:
+		pm_qos_add_request(&rmi4_data->pm_qos_irq,
+			PM_QOS_CPU_DMA_LATENCY,
+			rmi4_data->pm_qos_latency);
+		break;
+	case PM_UPDATE:
+		pm_qos_update_request(&rmi4_data->pm_qos_irq,
+			use_default ? PM_QOS_DEFAULT_VALUE :
+			rmi4_data->pm_qos_latency);
+		break;
+	}
+}
+
 static struct touch_up_down display_ud[20];
 static struct touch_area_stats display_ud_stats = {
 	.ud = display_ud,
@@ -3443,8 +3472,7 @@ static ssize_t synaptics_rmi4_pm_qos_store(struct device *dev,
 
 	if (old != rmi4_data->pm_qos_latency &&
 			atomic_read(&rmi4_data->touch_stopped) == 0) {
-		pm_qos_update_request(&rmi4_data->pm_qos_irq,
-			rmi4_data->pm_qos_latency);
+		synaptics_dsx_pm_qos(rmi4_data, PM_UPDATE, false);
 		pr_debug("set pm qos latency to %d\n",
 			rmi4_data->pm_qos_latency);
 	}
@@ -7165,6 +7193,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		}
 	}
 
+	rmi4_data->pm_qos_irq.irq = rmi4_data->irq;
 	synaptics_dsx_sensor_ready_state(rmi4_data, true);
 
 	rmi4_data->rmi_reboot.notifier_call = rmi_reboot;
@@ -7219,10 +7248,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 			rmi4_data->is_fps_registered = true;
 	}
 
-	rmi4_data->pm_qos_irq.type = PM_QOS_REQ_AFFINE_IRQ;
-	rmi4_data->pm_qos_irq.irq = rmi4_data->irq;
-	pm_qos_add_request(&rmi4_data->pm_qos_irq, PM_QOS_CPU_DMA_LATENCY,
-			rmi4_data->pm_qos_latency);
+	synaptics_dsx_pm_qos(rmi4_data, PM_ADD, false);
 
 	/* init reporting semaphore and set expected # of fingers to 1 */
 	sema_init(&rmi4_data->rctrl.ctrl_sema, 1);
@@ -7333,7 +7359,7 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 	synaptics_dsx_sysfs_touchscreen(rmi4_data, false);
 	synaptics_rmi4_cleanup(rmi4_data);
 
-	pm_qos_remove_request(&rmi4_data->pm_qos_irq);
+	synaptics_dsx_pm_qos(rmi4_data, PM_REMOVE, false);
 
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	if (rmi4_data->folio_detection_enabled)
@@ -7530,7 +7556,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		rmi4_data->ic_on = false;
 	}
 
-	pm_qos_update_request(&rmi4_data->pm_qos_irq, PM_QOS_DEFAULT_VALUE);
+	synaptics_dsx_pm_qos(rmi4_data, PM_UPDATE, true);
 
 	return 0;
 }
@@ -7558,8 +7584,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	if (atomic_cmpxchg(&rmi4_data->touch_stopped, 1, 0) == 0)
 		return 0;
 
-	pm_qos_update_request(&rmi4_data->pm_qos_irq,
-		rmi4_data->pm_qos_latency);
+	synaptics_dsx_pm_qos(rmi4_data, PM_UPDATE, false);
 	pr_debug("set pm_qos latency %d\n", rmi4_data->pm_qos_latency);
 
 	if (!rmi4_data->ic_on) {
