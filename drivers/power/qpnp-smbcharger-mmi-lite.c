@@ -4772,7 +4772,6 @@ static void usb_insertion_work(struct work_struct *work)
 			"could not read USB current_max property, rc=%d\n", rc);
 	if (prop.intval >= (IDEV_CHG_MIN * 1000)) {
 		pr_smb(PR_STATUS, "USB current max = %duA\n", prop.intval);
-		smbchg_relax(chip, PM_CHARGER);
 		return;
 	}
 
@@ -6145,8 +6144,8 @@ static int smbchg_force_apsd(struct smbchg_chip *chip)
 		return 0;
 	}
 
-	if (get_prop_batt_capacity(chip) <= 0) {
-		dev_info(chip->dev, "Skip rerun APSD for empty battery\n");
+	if (!get_prop_batt_present(chip)) {
+		dev_info(chip->dev, "Skip rerun APSD for battery absence\n");
 		return 0;
 	}
 
@@ -6165,6 +6164,7 @@ static int smbchg_force_apsd(struct smbchg_chip *chip)
 
 	chip->usb_present = 0;
 	chip->usb_online = 0;
+	smbchg_relax(chip, PM_CHARGER);
 
 	return rc;
 }
