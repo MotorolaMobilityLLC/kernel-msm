@@ -350,6 +350,8 @@ struct mmi_params {
 	enum charging_limit_modes	charging_limit_modes;
 	int			upper_limit_capacity;
 	int			lower_limit_capacity;
+	int			base_fv_mv;
+	int			vfloat_comp_mv;
 };
 
 struct smb_charger {
