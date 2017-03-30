@@ -1610,6 +1610,7 @@
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <80>;
 	qcom,lower-limit-capacity = <60>;
+	qcom,vfloat-comp-uv = <20000>;
 	qcom,external-vconn;
 	qcom,usbpd-phandle = <&pmi8998_pdphy>;
 	qcom,external-vbus;
