@@ -612,7 +612,7 @@ static int arizona_extcon_set_micd_bias(struct arizona_extcon_info *info,
 		return 0;
 
 	if (micd_bias->enabled) {
-		dev_info(arizona->dev, "disabling %s\n", old_widget);
+		dev_dbg(arizona->dev, "disabling %s\n", old_widget);
 
 		ret = snd_soc_dapm_disable_pin(dapm, old_widget);
 		if (ret != 0)
@@ -623,7 +623,7 @@ static int arizona_extcon_set_micd_bias(struct arizona_extcon_info *info,
 	}
 
 	if (enable) {
-		dev_info(arizona->dev, "enabling %s\n", new_widget);
+		dev_dbg(arizona->dev, "enabling %s\n", new_widget);
 
 		ret = snd_soc_dapm_force_enable_pin(dapm, new_widget);
 		if (ret != 0)
@@ -677,7 +677,7 @@ static void arizona_extcon_set_mode(struct arizona_extcon_info *info, int mode)
 
 	info->micd_mode = mode;
 
-	dev_info(arizona->dev, "Set jack polarity to %d\n", mode);
+	dev_dbg(arizona->dev, "Set jack polarity to %d\n", mode);
 }
 
 static const char *arizona_extcon_get_micbias(struct arizona_extcon_info *info)
@@ -742,7 +742,7 @@ static void arizona_extcon_pulse_micbias(struct arizona_extcon_info *info)
 	struct snd_soc_dapm_context *dapm = arizona->dapm;
 	int ret;
 
-	dev_info(arizona->dev, "enabling %s\n", widget);
+	dev_dbg(arizona->dev, "enabling %s\n", widget);
 
 	ret = snd_soc_dapm_force_enable_pin(dapm, widget);
 	if (ret != 0)
@@ -755,7 +755,7 @@ static void arizona_extcon_pulse_micbias(struct arizona_extcon_info *info)
 		return;
 
 	if (!arizona->pdata.micd_force_micbias) {
-		dev_info(arizona->dev, "disabling %s\n", widget);
+		dev_dbg(arizona->dev, "disabling %s\n", widget);
 
 		ret = snd_soc_dapm_disable_pin(arizona->dapm, widget);
 		if (ret != 0)
@@ -775,7 +775,7 @@ static void arizona_extcon_change_mode(struct arizona_extcon_info *info)
 	const char *widget;
 	int ret;
 
-	dev_info(arizona->dev, "change micd mode %d->%d (bias %d->%d\n)",
+	dev_dbg(arizona->dev, "change micd mode %d->%d (bias %d->%d\n)",
 		old_mode, new_mode,
 		info->micd_modes[old_mode].bias,
 		info->micd_modes[new_mode].bias);
@@ -788,7 +788,7 @@ static void arizona_extcon_change_mode(struct arizona_extcon_info *info)
 		    (arizona->pdata.micd_force_micbias_initial &&
 		     info->detecting)) {
 			widget = arizona_extcon_get_micbias(info);
-			dev_info(arizona->dev, "disabling %s\n", widget);
+			dev_dbg(arizona->dev, "disabling %s\n", widget);
 
 			ret = snd_soc_dapm_disable_pin(arizona->dapm, widget);
 			if (ret)
@@ -834,7 +834,7 @@ static int arizona_micd_adc_read(struct arizona_extcon_info *info)
 		return ret;
 	}
 
-	dev_info(arizona->dev, "MICDET_ADCVAL: 0x%x\n", val);
+	dev_dbg(arizona->dev, "MICDET_ADCVAL: 0x%x\n", val);
 
 	val &= ARIZONA_MICDET_ADCVAL_MASK;
 	if (val < ARRAY_SIZE(arizona_micd_levels))
@@ -860,7 +860,7 @@ static int arizona_micd_read(struct arizona_extcon_info *info)
 			return ret;
 		}
 
-		dev_info(arizona->dev, "MICDET: 0x%x\n", val);
+		dev_dbg(arizona->dev, "MICDET: 0x%x\n", val);
 
 		if (!(val & ARIZONA_MICD_VALID)) {
 			dev_warn(arizona->dev,
@@ -959,7 +959,7 @@ static int arizona_hpdet_d_calibrate(const struct arizona_extcon_info *info,
 	s64 val = dacval;
 	s64 n;
 
-	dev_info(info->arizona->dev, "hpdet_d calib range %d dac %d\n",
+	dev_dbg(info->arizona->dev, "hpdet_d calib range %d dac %d\n",
 		range, dacval);
 
 	val = (val * 1000000) + info->calib_data[range].dacval_adjust;
@@ -1059,7 +1059,7 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 		    (val < arizona_hpdet_b_ranges[range].threshold ||
 		     val >= ARIZONA_HPDET_B_RANGE_MAX)) {
 			range++;
-			dev_info(arizona->dev, "Moving to HPDET range %d\n",
+			dev_dbg(arizona->dev, "Moving to HPDET range %d\n",
 				range);
 			regmap_update_bits(arizona->regmap,
 					   ARIZONA_HEADPHONE_DETECT_1,
@@ -1072,11 +1072,11 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 		/* If we go out of range report top of range */
 		if (val < arizona_hpdet_b_ranges[range].threshold ||
 		    val >= ARIZONA_HPDET_B_RANGE_MAX) {
-			dev_info(arizona->dev, "Measurement out of range\n");
+			dev_dbg(arizona->dev, "Measurement out of range\n");
 			return ARIZONA_HPDET_MAX;
 		}
 
-		dev_info(arizona->dev, "HPDET read %d in range %d\n",
+		dev_dbg(arizona->dev, "HPDET read %d in range %d\n",
 			val, range);
 
 		/* Multiply numerator to get hundredths of an ohm. */
@@ -1112,7 +1112,7 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 		if (range < ARRAY_SIZE(arizona_hpdet_c_ranges) - 1 &&
 		    (val >= arizona_hpdet_c_ranges[range].max)) {
 			range++;
-			dev_info(arizona->dev, "Moving to HPDET range %d-%d\n",
+			dev_dbg(arizona->dev, "Moving to HPDET range %d-%d\n",
 				arizona_hpdet_c_ranges[range].min,
 				arizona_hpdet_c_ranges[range].max);
 			regmap_update_bits(arizona->regmap,
@@ -1125,7 +1125,7 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 
 		if (range &&
 		    (val < arizona_hpdet_c_ranges[range].min)) {
-			dev_info(arizona->dev, "Reporting range boundary %d\n",
+			dev_dbg(arizona->dev, "Reporting range boundary %d\n",
 				arizona_hpdet_c_ranges[range].min);
 			val = arizona_hpdet_c_ranges[range].min;
 		}
@@ -1156,7 +1156,7 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 		if (range < info->calib_data_size - 1 &&
 		    (val >= info->calib_data[range].max)) {
 			range++;
-			dev_info(arizona->dev, "Moving to HPDET range %d-%d\n",
+			dev_dbg(arizona->dev, "Moving to HPDET range %d-%d\n",
 				info->calib_data[range].min,
 				info->calib_data[range].max);
 			regmap_update_bits(arizona->regmap,
@@ -1208,13 +1208,13 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 	if (info->arizona->pdata.hpdet_ext_res) {
 
 		if (OHM_TO_HOHM(info->arizona->pdata.hpdet_ext_res) >=  val) {
-			dev_info(arizona->dev,
+			dev_dbg(arizona->dev,
 				"External resistor (%d) >= measurement (%d)\n",
 				info->arizona->pdata.hpdet_ext_res,
 				HOHM_TO_OHM(val));
 			val = 0;	/* treat as a short */
 		} else {
-			dev_info(arizona->dev,
+			dev_dbg(arizona->dev,
 				"Compensating for external %d ohm resistor\n",
 				info->arizona->pdata.hpdet_ext_res);
 
@@ -1223,7 +1223,7 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 	}
 
 exit:
-	dev_info(arizona->dev, "HP impedance %d.%02d ohms\n", (val / 100),
+	dev_dbg(arizona->dev, "HP impedance %d.%02d ohms\n", (val / 100),
 		(val % 100));
 	return val;
 }
@@ -1512,12 +1512,12 @@ static void arizona_hs_mic_control(struct arizona *arizona, int state)
 
 	switch (state) {
 	case ARIZONA_MIC_MUTE:
-		dev_info(arizona->dev, "Mute headset mic: 0x%04x\n",
+		dev_dbg(arizona->dev, "Mute headset mic: 0x%04x\n",
 			addr);
 		val = ARIZONA_MIC_MUTE;
 		break;
 	case ARIZONA_MIC_UNMUTE:
-		dev_info(arizona->dev, "Unmute headset mic: 0x%04x\n",
+		dev_dbg(arizona->dev, "Unmute headset mic: 0x%04x\n",
 			addr);
 		val = ARIZONA_MIC_UNMUTE;
 		break;
@@ -1867,7 +1867,7 @@ int arizona_hpdet_start(struct arizona_extcon_info *info)
 	int ret;
 	unsigned int hpd_sense, hpd_clamp, val, hpd_gnd;
 
-	dev_info(arizona->dev, "Starting HPDET\n");
+	dev_dbg(arizona->dev, "Starting HPDET\n");
 
 	/* If we specified to assume a fixed impedance skip HPDET */
 	if (info->arizona->pdata.fixed_hpdet_imp) {
@@ -2092,7 +2092,7 @@ int arizona_micd_start(struct arizona_extcon_info *info)
 		case WM8280:
 			break;
 		default:
-			dev_info(arizona->dev, "Disabling MICD_OVD\n");
+			dev_dbg(arizona->dev, "Disabling MICD_OVD\n");
 			regmap_update_bits(arizona->regmap,
 					   CLEARWATER_MICD_CLAMP_CONTROL,
 					   CLEARWATER_MICD_CLAMP_OVD_MASK, 0);
@@ -2156,7 +2156,7 @@ void arizona_micd_stop(struct arizona_extcon_info *info)
 	regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
 			   ARIZONA_MICD_ENA, 0);
 
-	dev_info(arizona->dev, "disabling %s\n", widget);
+	dev_dbg(arizona->dev, "disabling %s\n", widget);
 
 	ret = snd_soc_dapm_disable_pin(dapm, widget);
 	if (ret != 0)
@@ -2209,7 +2209,7 @@ void arizona_micd_stop(struct arizona_extcon_info *info)
 		case WM8280:
 			break;
 		default:
-			dev_info(arizona->dev, "Enabling MICD_OVD\n");
+			dev_dbg(arizona->dev, "Enabling MICD_OVD\n");
 			regmap_update_bits(arizona->regmap,
 					   CLEARWATER_MICD_CLAMP_CONTROL,
 					   CLEARWATER_MICD_CLAMP_OVD_MASK,
@@ -2254,7 +2254,7 @@ static int arizona_micd_button_debounce(struct arizona_extcon_info *info,
 
 			info->micd_res_old = val;
 		} else {
-			dev_info(arizona->dev, "Software debounce: %d,%x\n",
+			dev_dbg(arizona->dev, "Software debounce: %d,%x\n",
 				info->micd_count, val);
 			arizona_micd_restart(info);
 			return -EAGAIN;
@@ -2271,7 +2271,7 @@ static int arizona_micd_button_process(struct arizona_extcon_info *info,
 	int i, key;
 
 	if (val < MICROPHONE_MIN_OHM) {
-		dev_info(arizona->dev, "Mic button detected\n");
+		dev_dbg(arizona->dev, "Mic button detected\n");
 
 		for (i = 0; i < info->num_micd_ranges; i++)
 			input_report_key(info->input,
@@ -2290,7 +2290,7 @@ static int arizona_micd_button_process(struct arizona_extcon_info *info,
 			dev_warn(arizona->dev,
 				 "Button level %u out of range\n", val);
 	} else {
-		dev_info(arizona->dev, "Mic button released\n");
+		dev_dbg(arizona->dev, "Mic button released\n");
 		arizona_hs_mic_control(arizona, ARIZONA_MIC_UNMUTE);
 
 		for (i = 0; i < info->num_micd_ranges; i++)
@@ -2377,7 +2377,7 @@ int arizona_micd_mic_reading(struct arizona_extcon_info *info, int val)
 
 	/* If we got a high impedence we should have a headset, report it. */
 	if (val >= MICROPHONE_MIN_OHM) {
-		dev_info(arizona->dev, "Detected headset\n");
+		dev_dbg(arizona->dev, "Detected headset\n");
 		info->mic = true;
 
 		arizona_hs_mic_control(arizona, ARIZONA_MIC_UNMUTE);
@@ -2394,7 +2394,7 @@ int arizona_micd_mic_reading(struct arizona_extcon_info *info, int val)
 	if (val > info->micd_ranges[0].max &&
 	    info->micd_num_modes > 1) {
 		if (info->jack_flips >= info->micd_num_modes * 10) {
-			dev_info(arizona->dev, "Detected HP/line\n");
+			dev_dbg(arizona->dev, "Detected HP/line\n");
 			goto done;
 		} else {
 			arizona_extcon_change_mode(info);
@@ -2409,7 +2409,7 @@ int arizona_micd_mic_reading(struct arizona_extcon_info *info, int val)
 	 * If we're still detecting and we detect a short then we've
 	 * got a headphone.
 	 */
-	dev_info(arizona->dev, "Headphone detected\n");
+	dev_dbg(arizona->dev, "Headphone detected\n");
 
 done:
 	pm_runtime_mark_last_busy(info->dev);
@@ -2458,7 +2458,7 @@ void arizona_micd_mic_timeout(struct arizona_extcon_info *info)
 	struct arizona *arizona = info->arizona;
 	int ret;
 
-	dev_info(info->arizona->dev, "MICD timed out, reporting HP\n");
+	dev_dbg(info->arizona->dev, "MICD timed out, reporting HP\n");
 
 	if (arizona->pdata.hpdet_channel)
 		ret = arizona_jds_set_state(info, &arizona_hpdet_right);
@@ -2490,7 +2490,7 @@ static int arizona_hpdet_acc_id_reading(struct arizona_extcon_info *info,
 
 	/* Only check the mic directly if we didn't already ID it */
 	if (id_gpio && info->num_hpdet_res == 1) {
-		dev_info(arizona->dev, "Measuring mic\n");
+		dev_dbg(arizona->dev, "Measuring mic\n");
 
 		regmap_update_bits(arizona->regmap,
 				   ARIZONA_ACCESSORY_DETECT_MODE_1,
@@ -2504,7 +2504,7 @@ static int arizona_hpdet_acc_id_reading(struct arizona_extcon_info *info,
 	}
 
 	/* OK, got both.  Now, compare... */
-	dev_info(arizona->dev, "HPDET measured %d %d\n",
+	dev_dbg(arizona->dev, "HPDET measured %d %d\n",
 		info->hpdet_res[0], info->hpdet_res[1]);
 
 	/* Take the headphone impedance for the main report */
@@ -2512,7 +2512,7 @@ static int arizona_hpdet_acc_id_reading(struct arizona_extcon_info *info,
 
 	/* Sometimes we get false readings due to slow insert */
 	if (reading >= HOHM_TO_OHM(ARIZONA_HPDET_MAX) && !info->hpdet_retried) {
-		dev_info(arizona->dev, "Retrying high impedance\n");
+		dev_dbg(arizona->dev, "Retrying high impedance\n");
 
 		info->num_hpdet_res = 0;
 		info->hpdet_retried = true;
@@ -2528,11 +2528,11 @@ static int arizona_hpdet_acc_id_reading(struct arizona_extcon_info *info,
 	}
 
 	if (!id_gpio || info->hpdet_res[1] > 50) {
-		dev_info(arizona->dev, "Detected mic\n");
+		dev_dbg(arizona->dev, "Detected mic\n");
 
 		arizona_jds_set_state(info, &arizona_micd_microphone);
 	} else {
-		dev_info(arizona->dev, "Detected headphone\n");
+		dev_dbg(arizona->dev, "Detected headphone\n");
 
 		arizona_extcon_report(info, arizona_is_lineout(info) ?
 				      BIT_LINEOUT :
@@ -2557,7 +2557,7 @@ static int arizona_hpdet_acc_id_start(struct arizona_extcon_info *info)
 		return -EINVAL;
 	}
 
-	dev_info(arizona->dev, "Starting identification via HPDET\n");
+	dev_dbg(arizona->dev, "Starting identification via HPDET\n");
 
 	/* Make sure we keep the device enabled during the measurement */
 	pm_runtime_get_sync(info->dev);
@@ -3032,7 +3032,7 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 	}
 
 	if (present) {
-		dev_info(arizona->dev, "Detected jack\n");
+		dev_dbg(arizona->dev, "Detected jack\n");
 
 		if (arizona->pdata.jd_wake_time)
 			__pm_wakeup_event(&info->detection_wake_lock,
@@ -3069,7 +3069,7 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 				info->jd2_is_running = JD2_TIMER2;
 		}
 	} else {
-		dev_info(arizona->dev, "Detected jack removal\n");
+		dev_dbg(arizona->dev, "Detected jack removal\n");
 
 		arizona_hs_mic_control(arizona, ARIZONA_MIC_MUTE);
 
@@ -3206,7 +3206,7 @@ static int arizona_add_micd_levels(struct arizona_extcon_info *info)
 			goto err_input;
 		}
 
-		dev_info(arizona->dev, "%d ohms for MICD threshold %d\n",
+		dev_dbg(arizona->dev, "%d ohms for MICD threshold %d\n",
 			arizona_micd_levels[j], i);
 
 		arizona_micd_set_level(arizona, i, j);
@@ -3347,7 +3347,7 @@ static ssize_t arizona_extcon_show(struct device *dev,
 
 static void arizona_micd_manual_timeout(struct arizona_extcon_info *info)
 {
-	dev_info(info->arizona->dev, "Manual MICD timed out\n");
+	dev_dbg(info->arizona->dev, "Manual MICD timed out\n");
 
 	info->mic_impedance = -EINVAL;
 
@@ -3473,7 +3473,7 @@ static int arizona_hpdet_d_read_calibration(struct arizona_extcon_info *info)
 	info->calib_data = arizona_hpdet_d_ranges;
 	info->calib_data_size = ARRAY_SIZE(arizona_hpdet_d_ranges);
 
-	dev_info(arizona->dev, "Set trims %d,%d %d,%d %d,%d %d,%d\n",
+	dev_dbg(arizona->dev, "Set trims %d,%d %d,%d %d,%d %d,%d\n",
 			trims[0].off_x4,
 			trims[0].grad_x4,
 			trims[1].off_x4,
