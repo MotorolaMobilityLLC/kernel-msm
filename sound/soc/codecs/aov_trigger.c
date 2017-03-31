@@ -208,7 +208,7 @@ int aov_trigger_init(void)
 				   &ktype_aov_trigger,
 				   kernel_kobj, "aov");
 	if (ret)
-		goto done;
+		goto exit;
 
 	sysfs_attr_init(&aov_sysfs_attr_trigger);
 	ret = sysfs_create_file(&aov_trigger_kobj,
@@ -216,7 +216,7 @@ int aov_trigger_init(void)
 	if (ret) {
 		pr_err("%s: trigger node creation failed, ret=%d\n",
 			   __func__, ret);
-		goto done;
+		goto exit_remove_kobj;
 	}
 
 	sysfs_attr_init(&aov_sysfs_attr_register);
@@ -225,7 +225,7 @@ int aov_trigger_init(void)
 	if (ret) {
 		pr_err("%s: register node creation failed, ret=%d\n",
 			   __func__, ret);
-		goto done;
+		goto exit_remove_trigger;
 	}
 
 	sysfs_attr_init(&aov_sysfs_attr_event);
@@ -234,9 +234,19 @@ int aov_trigger_init(void)
 	if (ret) {
 		pr_err("%s: event node creation failed, ret=%d\n",
 			   __func__, ret);
-		goto done;
+		goto exit_remove_register;
 	}
-done:
+	goto exit;
+
+exit_remove_register:
+	sysfs_remove_file(&aov_trigger_kobj,
+			&aov_sysfs_attr_register);
+exit_remove_trigger:
+	sysfs_remove_file(&aov_trigger_kobj,
+			&aov_sysfs_attr_trigger);
+exit_remove_kobj:
+	kobject_put(&aov_trigger_kobj);
+exit:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(aov_trigger_init);
