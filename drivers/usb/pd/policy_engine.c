@@ -177,6 +177,7 @@ static void *usbpd_ipc_log;
 #define SWAP_SOURCE_START_TIME	20
 #define VDM_BUSY_TIME		50
 #define VCONN_ON_TIME		100
+#define APSD_RECHECK_TIME	5000
 
 /* tPSHardReset + tSafe0V */
 #define SNK_HARD_RESET_VBUS_OFF_TIME	(35 + 650)
@@ -1679,6 +1680,7 @@ static void usbpd_sm(struct work_struct *w)
 	case PE_UNKNOWN:
 		if (pd->current_pr == PR_SINK) {
 			usbpd_set_state(pd, PE_SNK_STARTUP);
+			kick_sm(pd, APSD_RECHECK_TIME);
 		} else if (pd->current_pr == PR_SRC) {
 			enable_vbus(pd);
 			if (!pd->vconn_enabled &&
