@@ -187,7 +187,7 @@ drv2624_set_go_bit(struct drv2624_data *ctrl, unsigned char val)
 	int value = 0;
 	int retry = 10; /* to finish auto-brake*/
 
-	if (!ctrl->factory_mode && val == GO)
+	if (!ctrl->factory_mode && ctrl->reduced_pwr_capable && val == GO)
 		drv2624_hap_context(ctrl, val);
 	val &= 0x01;
 	ret = drv2624_reg_write(ctrl, DRV2624_REG_GO, val);
@@ -1096,6 +1096,13 @@ static struct regmap_config drv2624_i2c_regmap = {
 	.cache_type = REGCACHE_NONE,
 };
 
+static inline bool drv2624_reduced_pwr_on(struct drv2624_platform_data *pdata)
+{
+	return (pdata->msActuator.mnRatedVoltageReduced != 0) &&
+		(pdata->msActuator.mnOverDriveClampVoltageReduced != 0) &&
+		gpio_is_valid(pdata->mnGpioVCTRL);
+}
+
 #ifdef CONFIG_OF
 static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 {
@@ -1144,32 +1151,15 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 
 	rc = of_property_read_u8(np, "ti,rated_voltage_reduced",
 		&pdata->msActuator.mnRatedVoltageReduced);
-	if (rc) {
+	if (rc && gpio_is_valid(pdata->mnGpioVCTRL))
 		dev_warn(&client->dev, "%s: rated voltage reduced read failed\n",
 			__func__);
-		/* if VCTRL gpio provided and reduced value not, then */
-		/* just set it equal to its full range counterpart */
-		if (gpio_is_valid(pdata->mnGpioVCTRL)) {
-			pdata->msActuator.mnRatedVoltageReduced =
-				pdata->msActuator.mnRatedVoltage;
-			dev_info(&client->dev, "%s: set reduced voltage to %d",
-				__func__, pdata->msActuator.mnRatedVoltage);
-		}
-	}
+
 	rc = of_property_read_u8(np, "ti,overdrive_voltage_reduced",
 		&pdata->msActuator.mnOverDriveClampVoltageReduced);
-	if (rc) {
+	if (rc && gpio_is_valid(pdata->mnGpioVCTRL))
 		dev_warn(&client->dev, "%s: overdrive voltage reduced read failed\n",
 			__func__);
-		/* same as above reason */
-		if (gpio_is_valid(pdata->mnGpioVCTRL)) {
-			pdata->msActuator.mnOverDriveClampVoltageReduced =
-				pdata->msActuator.mnOverDriveClampVoltage;
-			dev_info(&client->dev, "%s: set reduced overdrive " \
-				"voltage to %d", __func__,
-				pdata->msActuator.mnOverDriveClampVoltage);
-		}
-	}
 
 	rc = of_property_read_u8(np, "ti,sample_time",
 		&pdata->msActuator.mnSampleTime);
@@ -1354,6 +1344,7 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 	}
 
+	ctrl->reduced_pwr_capable = drv2624_reduced_pwr_on(pdata);
 	ctrl->i2c_client = client;
 	ctrl->dev = &client->dev;
 	ctrl->mpRegmap = devm_regmap_init_i2c(client, &drv2624_i2c_regmap);
@@ -1450,11 +1441,15 @@ drv2624_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	ctrl->factory_mode = (!strncmp("mot-factory", bi_bootmode(), BOOTMODE_MAX_LEN)) ||
 				(!strncmp("factory", bi_bootmode(), BOOTMODE_MAX_LEN));
 
-	atomic_set(&ctrl->reduce_pwr, 0);
-	err = sysfs_create_file(&client->dev.kobj, &dev_attr_reduce.attr);
-	if (err < 0)
-		dev_err(ctrl->dev, "%s: Failed to create reduce attributes\n",
-			__func__);
+	if (ctrl->reduced_pwr_capable) {
+		/* init reduced force flag to "1" */
+		/* modservice will flip flag if MOD is attached */
+		atomic_set(&ctrl->reduce_pwr, 1);
+		err = sysfs_create_file(&client->dev.kobj, &dev_attr_reduce.attr);
+		if (err < 0)
+			dev_err(ctrl->dev, "%s: Failed to create reduce attributes\n",
+				__func__);
+	}
 
 	drv2624_class_vibrator(ctrl, true);
 

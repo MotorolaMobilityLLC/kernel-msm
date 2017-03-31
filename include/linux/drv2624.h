@@ -269,6 +269,7 @@ struct drv2624_data {
 	unsigned char mnCurrentReg;
 	int mnCurrentVibrationTime;
 	bool factory_mode;
+	bool reduced_pwr_capable;
 
 	atomic_t reduce_pwr;
 
