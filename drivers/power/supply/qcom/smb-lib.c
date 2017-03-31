@@ -5397,6 +5397,7 @@ static int get_eb_prop(struct smb_charger *chip,
 }
 
 #define EB_RCV_NEVER BIT(7)
+#define EB_SND_EXT BIT(2)
 #define EB_SND_LOW BIT(1)
 #define EB_SND_NEVER BIT(0)
 static void mmi_check_extbat_ability(struct smb_charger *chip, char *able)
@@ -5465,7 +5466,8 @@ static void mmi_check_extbat_ability(struct smb_charger *chip, char *able)
 			*able |= EB_SND_NEVER;
 		else if (ret.intval == POWER_SUPPLY_PTP_INT_SND_LOW_BATT_SAVER)
 			*able |= EB_SND_LOW;
-	}
+	} else if (ret.intval == POWER_SUPPLY_PTP_POWER_AVAILABLE_EXTERNAL)
+		*able |= EB_SND_EXT;
 
 	power_supply_put(eb_pwr_psy);
 }
@@ -5501,11 +5503,30 @@ static void mmi_get_extbat_out_cl(struct smb_charger *chip)
 	struct power_supply *eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->mmi.eb_pwr_psy_name);
 	int prev_cl_ebsrc = chip->mmi.cl_ebsrc;
+	bool ebsrc_max, wls_src_max;
 
 	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
 	    !eb_pwr_psy->desc->get_property) {
 		chip->mmi.cl_ebsrc = 0;
 		return;
+	}
+
+	if (chip->mmi.turbo_pwr_ebsrc == TURBO_EBSRC_UNKNOWN) {
+		rc = power_supply_get_property(eb_pwr_psy,
+					 POWER_SUPPLY_PROP_PTP_POWER_SOURCE,
+					      &ret);
+
+		switch (ret.intval) {
+		case POWER_SUPPLY_PTP_POWER_SOURCE_NONE_TURBO:
+		case POWER_SUPPLY_PTP_POWER_SOURCE_BATTERY_TURBO:
+		case POWER_SUPPLY_PTP_POWER_SOURCE_WIRED_TURBO:
+		case POWER_SUPPLY_PTP_POWER_SOURCE_WIRELESS_TURBO:
+			chip->mmi.turbo_pwr_ebsrc = TURBO_EBSRC_VALID;
+			break;
+		default:
+			chip->mmi.turbo_pwr_ebsrc = TURBO_EBSRC_NOT_SUPPORTED;
+			break;
+		}
 	}
 
 	rc = power_supply_get_property(eb_pwr_psy,
@@ -5518,9 +5539,18 @@ static void mmi_get_extbat_out_cl(struct smb_charger *chip)
 			   "Get EB Out Current %d uA\n", ret.intval);
 		ret.intval /= 1000;
 
+		wls_src_max = (is_wls_present(chip) &&
+			       (chip->mmi.vo_ebsrc > (MICRO_5V / 1000)));
+		ebsrc_max =
+			((chip->mmi.turbo_pwr_ebsrc == TURBO_EBSRC_VALID) &&
+			 ((eb_attach_stop_soc == 100) ||
+			  is_wls_present(chip)));
+
 		if (ret.intval == 0)
 			chip->mmi.cl_ebsrc = 0;
 		else if ((ret.intval < chip->mmi.dc_ebmax_current_ma) ||
+			 ebsrc_max ||
+			 wls_src_max ||
 			 is_usbeb_present(chip))
 			chip->mmi.cl_ebsrc = ret.intval;
 		else
@@ -5665,6 +5695,7 @@ static int mmi_get_extbat_state(struct smb_charger *chip, int *state)
 	if (!eb_pwr_psy || !eb_pwr_psy->desc ||
 	    !eb_pwr_psy->desc->get_property) {
 		*state = EB_DISCONN;
+		chip->mmi.turbo_pwr_ebsrc = TURBO_EBSRC_UNKNOWN;
 		return 0;
 	}
 
@@ -5747,7 +5778,7 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		if (rc < 0)
 			smblib_err(chip,
 				   "Couldn't set 9V USBC Voltage rc=%d\n", rc);
-
+		chip->mmi.turbo_pwr_ebsrc = TURBO_EBSRC_UNKNOWN;
 		chip->mmi.ebchg_state = EB_DISCONN;
 		return;
 	}
@@ -5815,6 +5846,11 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		}
 		break;
 	case EB_SRC:
+		if (!(ability & EB_SND_EXT) && (eb_attach_stop_soc != 100))
+			chip->mmi.vl_ebsrc = MICRO_5V;
+		else
+			chip->mmi.vl_ebsrc = MICRO_9V;
+
 		mmi_set_extbat_out_vl(chip);
 		ret.intval = POWER_SUPPLY_PTP_CURRENT_TO_PHONE;
 		rc = power_supply_set_property(eb_pwr_psy,
@@ -5905,13 +5941,16 @@ void mmi_chrg_rate_check(struct smb_charger *chip)
 		smblib_err(chip, "Error getting USB Present rc = %d\n", rc);
 		return;
 	} else if (!val.intval) {
-		if (is_usbeb_present(chip)) {
-			 if (mmi->cl_ebsrc >= TURBO_CHRG_THRSH)
-				 mmi->charger_rate =
-					 POWER_SUPPLY_CHARGE_RATE_TURBO;
-			 else
-				 mmi->charger_rate =
-					 POWER_SUPPLY_CHARGE_RATE_NORMAL;
+		if ((mmi->ebchg_state != EB_DISCONN) &&
+		    (mmi->turbo_pwr_ebsrc == TURBO_EBSRC_VALID))
+			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
+		else if (is_usbeb_present(chip)) {
+			if (mmi->cl_ebsrc >= TURBO_CHRG_THRSH)
+				mmi->charger_rate =
+					POWER_SUPPLY_CHARGE_RATE_TURBO;
+			else
+				mmi->charger_rate =
+					POWER_SUPPLY_CHARGE_RATE_NORMAL;
 		} else if (is_wls_present(chip))
 			mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
 		else
@@ -6042,6 +6081,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int eb_soc;
 	int batt_temp;
 	int usb_mv;
+	int dcin_mv;
 	static int vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
 	bool vbus_inc_now = false;
 	int vbus_present = 0;
@@ -6070,6 +6110,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int target_dc;
 	int target_fcc;
 	int target_fv;
+	int prev_vl_ebsrc = chip->mmi.vl_ebsrc;
 
 	if (!atomic_read(&chip->mmi.hb_ready))
 		return;
@@ -6109,6 +6150,17 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		vote(chip->awake_votable, WIRELESS_VOTER, true, 0);
 	else
 		vote(chip->awake_votable, WIRELESS_VOTER, false, 0);
+
+	if ((chip->mmi.ebchg_state == EB_SRC) && chip->mmi.check_ebsrc_vl) {
+		if (!(eb_able & EB_SND_EXT) && (eb_attach_stop_soc != 100))
+			chip->mmi.vl_ebsrc = MICRO_5V;
+		else
+			chip->mmi.vl_ebsrc = MICRO_9V;
+
+		if (prev_vl_ebsrc != chip->mmi.vl_ebsrc)
+			mmi_set_extbat_out_vl(chip);
+	}
+	chip->mmi.check_ebsrc_vl = false;
 
 	/* Collect Current Information */
 	rc = smblib_get_prop_usb_present(chip, &val);
@@ -6231,8 +6283,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			   !mmi->usbeb_present &&
 			   !mmi->wls_present);
 
-	mmi_get_extbat_out_cl(chip);
 	mmi_get_extbat_out_volt(chip);
+	mmi_get_extbat_out_cl(chip);
 
 	if (mmi->enable_charging_limit && mmi->is_factory_image)
 		update_charging_limit_modes(chip, batt_soc);
@@ -6263,6 +6315,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 					mmi_set_extbat_state(chip, EB_SRC,
 							     false);
 			} else if ((eb_able & EB_SND_NEVER) ||
+				   (eb_able & EB_SND_EXT) ||
 				   (eb_on_sw == 0))
 				mmi_set_extbat_state(chip, EB_OFF, false);
 			else if (eb_able & EB_SND_LOW) {
@@ -6306,6 +6359,13 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		     DEFAULT_VOTER, false, 0);
 	}
 	max_fv_mv = mmi->base_fv_mv;
+
+	rc = smblib_get_prop_dc_voltage_now(chip, &val);
+	if (rc == -EINVAL) {
+		dcin_mv = 0;
+		smblib_err(chip, "Failed to get DCIN\n");
+	} else
+		dcin_mv = val.intval / 1000;
 
 	/* Determine Next State */
 	prev_step = chip->mmi.pres_chrg_step;
@@ -6524,6 +6584,11 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		} else if (mmi->ebchg_state != EB_DISCONN)
 			mmi_set_extbat_state(chip, EB_OFF, false);
 	}
+
+	if ((target_dc > 1600) &&
+	    (chip->mmi.vl_ebsrc >= MICRO_9V) &&
+	    (dcin_mv > ((MICRO_5V / 1000) + 500)))
+		target_dc = 1600;
 
 	vote(chip->dc_icl_votable, HEARTBEAT_VOTER,
 	     true, (target_dc >= 0) ? (target_dc * 1000) : 0);
@@ -7443,7 +7508,8 @@ static int parse_mmi_dt(struct smb_charger *chg)
 	if (rc)
 		chg->mmi.eb_pwr_psy_name = "gb_ptp";
 
-	chg->mmi.vl_ebsrc = MICRO_9V + USBIN_TOLER;
+	chg->mmi.vl_ebsrc = MICRO_9V;
+	chg->mmi.check_ebsrc_vl = false;
 
 	chg->mmi.enable_charging_limit =
 		of_property_read_bool(node, "qcom,enable-charging-limit");
