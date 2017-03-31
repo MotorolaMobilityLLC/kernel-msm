@@ -289,6 +289,12 @@ enum charging_limit_modes {
 	CHARGING_LIMIT_UNKNOWN,
 };
 
+enum turbo_ebsrc {
+	TURBO_EBSRC_UNKNOWN,
+	TURBO_EBSRC_NOT_SUPPORTED,
+	TURBO_EBSRC_VALID,
+};
+
 struct mmi_params {
 	bool			factory_mode;
 	int			demo_mode;
@@ -352,6 +358,8 @@ struct mmi_params {
 	int			lower_limit_capacity;
 	int			base_fv_mv;
 	int			vfloat_comp_mv;
+	enum turbo_ebsrc	turbo_pwr_ebsrc;
+	bool			check_ebsrc_vl;
 };
 
 struct smb_charger {
