@@ -18,7 +18,11 @@
 
 static int set_eb_param(const char *val, const struct kernel_param *kp)
 {
-	int rv = param_set_int(val, kp);
+	int prev_attach_stop_soc;
+	int rv;
+
+	prev_attach_stop_soc = eb_attach_stop_soc;
+	rv = param_set_int(val, kp);
 
 	if (rv)
 		return rv;
@@ -26,6 +30,8 @@ static int set_eb_param(const char *val, const struct kernel_param *kp)
 	if (mmi_chip) {
 		mmi_chip->mmi.update_eb_params++;
 		vote(mmi_chip->awake_votable, HEARTBEAT_VOTER, true, true);
+		mmi_chip->mmi.check_ebsrc_vl = (eb_attach_stop_soc !=
+						prev_attach_stop_soc);
 		cancel_delayed_work(&mmi_chip->mmi.heartbeat_work);
 		schedule_delayed_work(&mmi_chip->mmi.heartbeat_work,
 				      msecs_to_jiffies(HEARTBEAT_EB_MS));
