@@ -585,9 +585,15 @@ static int msm8x16_mbhc_map_btn_code_to_num(struct snd_soc_codec *codec)
 	case 7:
 		btn = 3;
 		break;
+
+	/* we only support 4 button of headset, and in India, there
+	 * is a headset, when insert to phone,it will keep report
+	 * btn_4 event. so now do not report this btn event now
+	 * for workaround. And if we support 5 btn in the future,
+	 * revert it.
 	case 15:
 		btn = 4;
-		break;
+		break;*/
 	default:
 		btn = -EINVAL;
 		break;
