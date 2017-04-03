@@ -382,7 +382,7 @@ struct smbchg_chip {
 	bool				usb_insert_bc1_2;
 	int				charger_rate;
 	bool				usbid_disabled;
-	bool				demo_mode;
+	int				demo_mode;
 	bool				batt_therm_wa;
 	struct notifier_block		smb_reboot;
 	struct notifier_block		smb_psy_notifier;
@@ -9334,8 +9334,12 @@ static ssize_t force_demo_mode_store(struct device *dev,
 		pr_err("chip not valid\n");
 		return -ENODEV;
 	}
+	the_chip->stepchg_state_holdoff = 0;
 
-	the_chip->demo_mode = (mode) ? true : false;
+	if ((mode >= 35) && (mode <= 80))
+		the_chip->demo_mode = mode;
+	else
+		the_chip->demo_mode = 35;
 
 	return r ? r : count;
 }
@@ -9351,7 +9355,7 @@ static ssize_t force_demo_mode_show(struct device *dev,
 		return -ENODEV;
 	}
 
-	state = (the_chip->demo_mode) ? 1 : 0;
+	state = the_chip->demo_mode;
 
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
@@ -10691,7 +10695,6 @@ void smbchg_pulse_charger(struct smbchg_chip *chip, bool increment)
 #define STEPCHG_ONE_FV_COMP 40
 #define STEPCHG_FULL_FV_COMP 100
 #define STEPCHG_CURR_ADJ 200
-#define DEMO_MODE_MAX_SOC 35
 #define DEMO_MODE_HYS_SOC 5
 #define HYST_STEP_MV 50
 #define VBUS_INPUT_VOLTAGE_TARGET 5200
@@ -10891,15 +10894,37 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	prev_step = chip->stepchg_state;
 
 	if (chip->demo_mode) {
-		chip->stepchg_state = STEP_NONE;
-		SMB_WARN(chip, "Battery in Demo Mode charging Limited\n");
+		static int demo_full_soc = 100;
+		bool voltage_full = false;
+
+		if (batt_ma < 0)
+			batt_ma *= -1;
 		if ((!!!(chip->usb_suspended & REASON_DEMO)) &&
-		    (batt_soc >= DEMO_MODE_MAX_SOC)) {
+		    ((batt_mv + HYST_STEP_MV) >= DEMO_MODE_VOLTAGE) &&
+		    (batt_ma <= chip->stepchg_iterm_ma) &&
+		    (chip->allowed_fastchg_current_ma >=
+		     chip->stepchg_iterm_ma)) {
+			if (chip->stepchg_state_holdoff >= 2) {
+				voltage_full = true;
+				chip->stepchg_state_holdoff = 0;
+			} else
+				chip->stepchg_state_holdoff++;
+		} else {
+			chip->stepchg_state_holdoff = 0;
+		}
+
+		chip->stepchg_state = STEP_NONE;
+		SMB_WARN(chip, "Battery in Demo Mode charging Limited per%d\n",
+			 chip->demo_mode);
+		if ((!!!(chip->usb_suspended & REASON_DEMO)) &&
+		    ((batt_soc >= chip->demo_mode) ||
+		     voltage_full)) {
+			demo_full_soc = batt_soc;
 			smbchg_usb_en(chip, false, REASON_DEMO);
 			smbchg_dc_en(chip, false, REASON_DEMO);
 		} else if (!!(chip->usb_suspended & REASON_DEMO) &&
 			(batt_soc <=
-			 (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			 (demo_full_soc - DEMO_MODE_HYS_SOC))) {
 			if (chip->ebchg_state == EB_SINK) {
 				smbchg_set_extbat_state(chip, EB_OFF, false);
 				chip->cl_ebchg = 0;
@@ -10907,10 +10932,11 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			}
 			smbchg_usb_en(chip, true, REASON_DEMO);
 			smbchg_dc_en(chip, true, REASON_DEMO);
+			chip->stepchg_state_holdoff = 0;
 		}
 
 		if (chip->usb_present &&
-		    ((eb_soc >= DEMO_MODE_MAX_SOC) ||
+		    ((eb_soc >= chip->demo_mode) ||
 		     (eb_able & EB_RCV_NEVER))) {
 			smbchg_set_extbat_state(chip, EB_OFF, false);
 			chip->cl_ebchg = 0;
@@ -10918,11 +10944,12 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		} else if (chip->usb_present &&
 			   (chip->usb_suspended & REASON_DEMO) &&
 			   (eb_soc <=
-			    (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			    (chip->demo_mode - DEMO_MODE_HYS_SOC))) {
 			chip->cl_ebchg = chip->usb_target_current_ma;
 			smbchg_set_extbat_in_cl(chip);
 			smbchg_set_extbat_state(chip, EB_SINK, false);
 		}
+		smbchg_set_temp_chgpath(chip, chip->temp_state);
 	} else if (chip->force_eb_chrg &&
 		   !(eb_able & EB_RCV_NEVER) &&
 		   (chip->ebchg_state != EB_DISCONN) &&
@@ -11670,7 +11697,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->dev = &spmi->dev;
 	chip->usb_psy = usb_psy;
 	chip->usbc_psy = usbc_psy;
-	chip->demo_mode = false;
+	chip->demo_mode = 0;
 	chip->hvdcp_det_done = false;
 	chip->hvdcp3_confirmed = false;
 	chip->vbus_inc_cnt = 0;
