@@ -6230,7 +6230,6 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 #define HEARTBEAT_EB_WAIT_MS 1000
 #define HYST_STEP_MV 50
 #define EB_SPLIT_MA 500
-#define DEMO_MODE_MAX_SOC 35
 #define DEMO_MODE_HYS_SOC 5
 #define DEMO_MODE_VOLTAGE 4000
 #define VBUS_INPUT_VOLTAGE_TARGET 5200
@@ -6524,6 +6523,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		   (mmi->ebchg_state != EB_DISCONN)) {
 		mmi->pres_chrg_step = STEP_EB;
 	} else if (mmi->demo_mode) {
+		bool voltage_full;
+		static int demo_full_soc = 100;
 		int usb_suspend = get_client_vote(chip->usb_icl_votable,
 					      DEMO_VOTER);
 		if (usb_suspend == -EINVAL)
@@ -6532,15 +6533,25 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			usb_suspend = 1;
 
 		mmi->pres_chrg_step = STEP_DEMO;
-		smblib_dbg(chip, PR_MOTO, "Battery in Demo Mode charging Limited\n");
+		smblib_dbg(chip, PR_MOTO,
+			   "Battery in Demo Mode charging Limited %dper\n",
+			   mmi->demo_mode);
+
+		voltage_full = ((usb_suspend == 0) &&
+			((batt_mv + HYST_STEP_MV) >= DEMO_MODE_VOLTAGE) &&
+			mmi_has_current_tapered(chip, batt_ma,
+						mmi->chrg_iterm));
+
 		if ((usb_suspend == 0) &&
-		    (batt_soc >= DEMO_MODE_MAX_SOC)) {
+		    ((batt_soc >= mmi->demo_mode) ||
+		     voltage_full)) {
+			demo_full_soc = batt_soc;
 			vote(chip->usb_icl_votable, DEMO_VOTER, true, 0);
 			vote(chip->dc_suspend_votable, DEMO_VOTER, true, 0);
 			usb_suspend = 1;
 		} else if (usb_suspend &&
 			   (batt_soc <=
-			    (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			    (demo_full_soc - DEMO_MODE_HYS_SOC))) {
 			if (chip->mmi.ebchg_state == EB_SINK) {
 				mmi_set_extbat_state(chip, EB_OFF, false);
 				mmi->cl_ebchg = 0;
@@ -6549,17 +6560,18 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			vote(chip->usb_icl_votable, DEMO_VOTER, false, 0);
 			vote(chip->dc_suspend_votable, DEMO_VOTER, false, 0);
 			usb_suspend = 0;
+			mmi->chrg_taper_cnt = 0;
 		}
 
 		if (vbus_present &&
-		    ((eb_soc >= DEMO_MODE_MAX_SOC) ||
+		    ((eb_soc >= mmi->demo_mode) ||
 		     (eb_able & EB_RCV_NEVER))) {
 			mmi_set_extbat_state(chip, EB_OFF, false);
 			mmi->cl_ebchg = 0;
 			mmi_set_extbat_in_cl(chip);
 		} else if (vbus_present && usb_suspend &&
 			   (eb_soc <=
-			    (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			    (mmi->demo_mode - DEMO_MODE_HYS_SOC))) {
 			mmi->cl_ebchg = cl_usb;
 			mmi_set_extbat_in_cl(chip);
 			mmi_set_extbat_state(chip, EB_SINK, false);
@@ -6961,8 +6973,12 @@ static ssize_t force_demo_mode_store(struct device *dev,
 		smblib_err(mmi_chip, "chip not valid\n");
 		return -ENODEV;
 	}
+	mmi_chip->mmi.chrg_taper_cnt = 0;
 
-	mmi_chip->mmi.demo_mode = (mode) ? true : false;
+	if ((mode >= 35) && (mode <= 80))
+		mmi_chip->mmi.demo_mode = mode;
+	else
+		mmi_chip->mmi.demo_mode = 35;
 
 	return r ? r : count;
 }
@@ -6978,7 +6994,7 @@ static ssize_t force_demo_mode_show(struct device *dev,
 		return -ENODEV;
 	}
 
-	state = (mmi_chip->mmi.demo_mode) ? 1 : 0;
+	state = mmi_chip->mmi.demo_mode;
 
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
