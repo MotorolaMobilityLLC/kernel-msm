@@ -347,22 +347,22 @@ static unsigned int tdm_slot_offset[TDM_PORT_MAX][TDM_SLOT_OFFSET_MAX] = {
 
 /* Default configuration of slimbus channels */
 static struct dev_config slim_rx_cfg[] = {
-	[SLIM_RX_0] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
-	[SLIM_RX_1] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
-	[SLIM_RX_2] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
-	[SLIM_RX_3] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
-	[SLIM_RX_4] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
-	[SLIM_RX_5] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
-	[SLIM_RX_6] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
+	[SLIM_RX_0] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 2},
+	[SLIM_RX_1] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 2},
+	[SLIM_RX_2] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 2},
+	[SLIM_RX_3] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 2},
+	[SLIM_RX_4] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 2},
+	[SLIM_RX_5] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 2},
+	[SLIM_RX_6] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 2},
 	[SLIM_RX_7] = {SAMPLING_RATE_8KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
 };
 
 static struct dev_config slim_tx_cfg[] = {
-	[SLIM_TX_0] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
-	[SLIM_TX_1] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
+	[SLIM_TX_0] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 3},
+	[SLIM_TX_1] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 2},
 	[SLIM_TX_2] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
-	[SLIM_TX_3] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
-	[SLIM_TX_4] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
+	[SLIM_TX_3] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 3},
+	[SLIM_TX_4] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 3},
 	[SLIM_TX_5] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
 	[SLIM_TX_6] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
 	[SLIM_TX_7] = {SAMPLING_RATE_8KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
@@ -534,7 +534,7 @@ static unsigned int tdm_tx_slot_offset
 		{0xFFFF}, /* not used */
 	}
 };
-static int msm_vi_feed_tx_ch = 2;
+static int msm_vi_feed_tx_ch = 3;
 static const char *const slim_rx_ch_text[] = {"One", "Two", "Three", "Four",
 						"Five", "Six", "Seven",
 						"Eight"};
@@ -1110,9 +1110,14 @@ static int msm_slim_rx_ch_put(struct snd_kcontrol *kcontrol,
 	if (ch_num < 0)
 		return ch_num;
 
+#ifndef CONFIG_SND_SOC_CS47L35
 	slim_rx_cfg[ch_num].channels = ucontrol->value.enumerated.item[0] + 1;
 	pr_debug("%s: msm_slim_[%d]_rx_ch  = %d\n", __func__,
 		 ch_num, slim_rx_cfg[ch_num].channels);
+#else
+	pr_debug("%s: cs47l35 dai, using default: msm_slim_[%d]_rx_ch  = %d\n",
+		 __func__, ch_num, slim_rx_cfg[ch_num].channels);
+#endif
 
 	return 1;
 }
@@ -1140,9 +1145,14 @@ static int msm_slim_tx_ch_put(struct snd_kcontrol *kcontrol,
 	if (ch_num < 0)
 		return ch_num;
 
+#ifndef CONFIG_SND_SOC_CS47L35
 	slim_tx_cfg[ch_num].channels = ucontrol->value.enumerated.item[0] + 1;
 	pr_debug("%s: msm_slim_[%d]_tx_ch = %d\n", __func__,
 		 ch_num, slim_tx_cfg[ch_num].channels);
+#else
+	pr_debug("%s: cs47l35 dai, using default: msm_slim_[%d]_tx_ch  = %d\n",
+		 __func__, ch_num, slim_tx_cfg[ch_num].channels);
+#endif
 
 	return 1;
 }
@@ -1159,9 +1169,15 @@ static int msm_vi_feed_tx_ch_get(struct snd_kcontrol *kcontrol,
 static int msm_vi_feed_tx_ch_put(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
+#ifndef CONFIG_SND_SOC_CS47L35
 	msm_vi_feed_tx_ch = ucontrol->value.integer.value[0] + 1;
 
 	pr_debug("%s: msm_vi_feed_tx_ch = %d\n", __func__, msm_vi_feed_tx_ch);
+#else
+	pr_debug("%s: cs47l35 dai, using default msm_vi_feed_tx_ch = %d\n",
+		 __func__, msm_vi_feed_tx_ch);
+#endif
+
 	return 1;
 }
 
