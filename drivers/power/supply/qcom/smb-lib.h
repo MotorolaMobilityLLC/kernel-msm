@@ -291,7 +291,7 @@ enum charging_limit_modes {
 
 struct mmi_params {
 	bool			factory_mode;
-	bool			demo_mode;
+	int			demo_mode;
 	struct gpio		warn_gpio;
 	struct gpio		togl_rst_gpio;
 	struct gpio		ebchg_gpio;
