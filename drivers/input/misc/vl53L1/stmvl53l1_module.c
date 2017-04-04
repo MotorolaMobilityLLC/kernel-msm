@@ -94,6 +94,9 @@
 /** default crosstalk for autonomous mode */
 #define STMVL53L1_CFG_DEFAULT_CROSSTALK_AUTONOMOUS	1000
 
+/** max distance value mm */
+#define STMVL53L1_MAX_DISTANCE	0x1FFF
+
 /** default output mode */
 #define STMVL53L1_CFG_DEFAULT_OUTPUT_MODE	VL53L1_OUTPUTMODE_NEAREST
 
@@ -499,6 +502,20 @@ static int stmvl53l1_start(struct stmvl53l1_data *data)
 		goto done;
 	}
 
+	if (data->preset_mode == VL53L1_PRESETMODE_AUTONOMOUS) {
+		/* disable xtalk and set short distance mode
+		 * for autonomous mode */
+		data->crosstalk_enable = 0;
+		data->distance_mode = VL53L1_DISTANCEMODE_SHORT;
+	} else {
+		/* restore xtalk and distance mode to default
+		 * values for non-autonomous mode */
+		data->crosstalk_enable =
+			STMVL53L1_CFG_DEFAULT_CROSSTALK_ENABLE;
+		data->distance_mode =
+			STMVL53L1_CFG_DEFAULT_DISTANCE_MODE;
+	}
+
 	rc = VL53L1_SetXTalkCompensationEnable(&data->stdev,
 		data->crosstalk_enable);
 	if (rc) {
@@ -705,7 +722,8 @@ static int deactivate_sar_mode(struct stmvl53l1_data *data)
 
 	if (data->enable_sensor == 1 &&
 		!data->is_calibrating &&
-		data->preset_mode == VL53L1_PRESETMODE_AUTONOMOUS) {
+		data->preset_mode == VL53L1_PRESETMODE_AUTONOMOUS &&
+		data->cam_mode != 1) {
 		rc = stmvl53l1_stop(data);
 		if (rc == VL53L1_ERROR_NONE) {
 			vl53l1_info("sensor is out of sar mode!\n");
@@ -3099,6 +3117,12 @@ static void stmvl53l1_input_push_data_object(struct stmvl53l1_data *data,
 	struct input_dev *input = data->input_dev_ps;
 	FixPoint1616_t LimitCheckCurrent;
 	VL53L1_Error st = VL53L1_ERROR_NONE;
+
+	/* set the distance value to max if range
+	 * status is invalid in autonomous mode */
+	if (data->preset_mode == VL53L1_PRESETMODE_AUTONOMOUS &&
+		meas->RangeStatus != VL53L1_RANGESTATUS_RANGE_VALID)
+		meas->RangeMilliMeter = STMVL53L1_MAX_DISTANCE;
 
 	input_report_abs(input, ABS_DISTANCE, (meas->RangeMilliMeter + 5) / 10);
 	input_report_abs(input, ABS_HAT0X, meas->TimeStamp / 1000);
