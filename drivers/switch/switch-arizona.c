@@ -63,7 +63,7 @@
 
 #define HPDET_DEBOUNCE 500
 #define DEFAULT_MICD_TIMEOUT 2000
-#define MAX_HPDET_RETRY	5
+#define MAX_HPDET_RETRY	2
 
 #define MICROPHONE_MIN_OHM      1258
 #define MICROPHONE_MAX_OHM      30000
@@ -2033,10 +2033,12 @@ int arizona_hpdet_reading(struct arizona_extcon_info *info, int val)
 				 */
 				if (switch_get_state(&info->edev))
 					break;
-				if (arizona_is_lineout(info) &&
-				    (info->hpdet_retried < MAX_HPDET_RETRY)) {
-					debounce = HPDET_DEBOUNCE;
-					info->hpdet_retried++;
+				if (arizona_is_lineout(info)) {
+					if (info->hpdet_retried < MAX_HPDET_RETRY) {
+						debounce = HPDET_DEBOUNCE;
+						info->hpdet_retried++;
+					} else
+						info->hpdet_retried = 0;
 				} else {
 					debounce = DEFAULT_MICD_TIMEOUT;
 					info->hpdet_retried = 0;
@@ -2418,7 +2420,8 @@ done:
 	 * during first detection run. Skip HP detection in this case and
 	 * rerun if a mic was found
 	 */
-	if (!info->mic && switch_get_state(&info->edev)) {
+	if (!info->mic &&
+	    (switch_get_state(&info->edev) == BIT_HEADSET_NO_MIC)) {
 		dev_dbg(arizona->dev, "Skip HPDET\n");
 		arizona_jds_set_state(info, NULL);
 		return 0;
@@ -2460,6 +2463,7 @@ void arizona_micd_mic_timeout(struct arizona_extcon_info *info)
 
 	dev_dbg(info->arizona->dev, "MICD timed out, reporting HP\n");
 
+	info->hpdet_retried = MAX_HPDET_RETRY;
 	if (arizona->pdata.hpdet_channel)
 		ret = arizona_jds_set_state(info, &arizona_hpdet_right);
 	else
