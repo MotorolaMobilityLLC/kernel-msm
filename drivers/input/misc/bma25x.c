@@ -2824,7 +2824,10 @@ static void bma25x_flat_work_func(struct work_struct *work)
 				data->flat_down_value = FLATDOWN_GESTURE;
 			else
 				data->flat_down_value = EXIT_FLATDOWN_GESTURE;
-			bma25x_set_flat_hold_time(data->bma25x_client, 0x00);
+			if (data->flat_down_value == FLATDOWN_GESTURE)
+				bma25x_set_flat_hold_time(data->bma25x_client, 0x01);
+			else
+				bma25x_set_flat_hold_time(data->bma25x_client, 0x00);
 		} else {
 			data->flat_up_value = EXIT_FLATUP_GESTURE;
 			data->flat_down_value = EXIT_FLATDOWN_GESTURE;
@@ -2932,11 +2935,14 @@ static void bma25x_int1_irq_work_func(struct work_struct *work)
 		} else {
 			dev_info(&data->bma25x_client->dev,
 				"glance slow motion interrupt happened\n");
-			input_report_rel(data->dev_interrupt,
-				SLOW_NO_MOTION_INTERRUPT,
-				GLANCE_MOVEMENT_GESTURE);
-			input_sync(data->dev_interrupt);
-			wake_lock_timeout(&data->aod_wakelock, msecs_to_jiffies(100));
+			if (data->flat_down_value != FLATDOWN_GESTURE &&
+				data->flat_up_value != FLATUP_GESTURE) {
+				input_report_rel(data->dev_interrupt,
+					SLOW_NO_MOTION_INTERRUPT,
+					GLANCE_MOVEMENT_GESTURE);
+				input_sync(data->dev_interrupt);
+				wake_lock_timeout(&data->aod_wakelock, msecs_to_jiffies(100));
+			}
 			bma25x_set_Int_Enable(
 				data->bma25x_client, 12, 0);
 			bma25x_set_Int_Enable(
