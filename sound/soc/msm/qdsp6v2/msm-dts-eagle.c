@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -197,6 +197,7 @@ static struct param_outband _po_NT;
 #define SEC_BLOB_MAX_CNT 10
 #define SEC_BLOB_MAX_SIZE 0x4004 /*extra 4 for size*/
 static char *_sec_blob[SEC_BLOB_MAX_CNT];
+struct mutex _sec_lock;
 
 /* multi-copp support */
 static int _cidx[AFE_MAX_PORTS] = {-1};
@@ -1239,15 +1240,18 @@ int msm_dts_eagle_ioctl(unsigned int cmd, unsigned long arg)
 				   __func__, target, SEC_BLOB_MAX_CNT);
 			return -EINVAL;
 		}
+		mutex_lock(&_sec_lock);
 		if (_sec_blob[target] == NULL) {
 			eagle_ioctl_err("%s: license index %u never initialized",
 				   __func__, target);
+			mutex_unlock(&_sec_lock);
 			return -EINVAL;
 		}
 		size = ((u32 *)_sec_blob[target])[0];
 		if ((size == 0) || (size > SEC_BLOB_MAX_SIZE)) {
 			eagle_ioctl_err("%s: license size %u for index %u invalid (min size is 1, max size is %u)",
 				   __func__, size, target, SEC_BLOB_MAX_SIZE);
+			mutex_unlock(&_sec_lock);
 			return -EINVAL;
 		}
 		if (size_only) {
@@ -1257,16 +1261,19 @@ int msm_dts_eagle_ioctl(unsigned int cmd, unsigned long arg)
 				 (void *)&size, sizeof(size))) {
 				eagle_ioctl_err("%s: error copying license size",
 						__func__);
+				mutex_unlock(&_sec_lock);
 				return -EFAULT;
 			}
 		} else if (copy_to_user((void *)(((char *)arg)+sizeof(target)),
 			   (void *)&(((s32 *)_sec_blob[target])[1]), size)) {
 			eagle_ioctl_err("%s: error copying license data",
 				__func__);
+			mutex_unlock(&_sec_lock);
 			return -EFAULT;
 		} else
 			eagle_ioctl_info("%s: license file %u bytes long from license index %u returned to user",
 				  __func__, size, target);
+		mutex_unlock(&_sec_lock);
 		break;
 	}
 	case DTS_EAGLE_IOCTL_SET_LICENSE: {
@@ -1284,26 +1291,27 @@ int msm_dts_eagle_ioctl(unsigned int cmd, unsigned long arg)
 				   __func__, target[0], SEC_BLOB_MAX_CNT-1);
 			return -EINVAL;
 		}
+		mutex_lock(&_sec_lock);
 		if (target[1] == 0) {
 			eagle_ioctl_dbg("%s: request to free license index %u",
 				 __func__, target[0]);
 			kfree(_sec_blob[target[0]]);
 			_sec_blob[target[0]] = NULL;
+			mutex_unlock(&_sec_lock);
 			break;
 		}
 		if ((target[1] == 0) || (target[1] >= SEC_BLOB_MAX_SIZE)) {
 			eagle_ioctl_err("%s: license size %u for index %u invalid (min size is 1, max size is %u)",
 				__func__, target[1], target[0],
 				SEC_BLOB_MAX_SIZE);
+			mutex_unlock(&_sec_lock);
 			return -EINVAL;
 		}
 		if (_sec_blob[target[0]] != NULL) {
-			if (((u32 *)_sec_blob[target[0]])[1] != target[1]) {
-				eagle_ioctl_dbg("%s: request new size for already allocated license index %u",
-					 __func__, target[0]);
-				kfree(_sec_blob[target[0]]);
-				_sec_blob[target[0]] = NULL;
-			}
+			eagle_ioctl_dbg("%s: reallocate already allocated license index %i",
+				 __func__, target[0]);
+			kfree(_sec_blob[target[0]]);
+			_sec_blob[target[0]] = NULL;
 		}
 		eagle_ioctl_dbg("%s: allocating %u bytes for license index %u",
 				__func__, target[1], target[0]);
@@ -1311,6 +1319,7 @@ int msm_dts_eagle_ioctl(unsigned int cmd, unsigned long arg)
 		if (!_sec_blob[target[0]]) {
 			eagle_ioctl_err("%s: error allocating license index %u (kzalloc failed on %u bytes)",
 					__func__, target[0], target[1]);
+			mutex_unlock(&_sec_lock);
 			return -ENOMEM;
 		}
 		((u32 *)_sec_blob[target[0]])[0] = target[1];
@@ -1323,10 +1332,12 @@ int msm_dts_eagle_ioctl(unsigned int cmd, unsigned long arg)
 					((char *)arg)+sizeof(target),
 					&(((u32 *)_sec_blob[target[0]])[1]),
 					target[1]);
+			mutex_unlock(&_sec_lock);
 			return -EFAULT;
 		} else
 			eagle_ioctl_info("%s: license file %u bytes long copied to index license index %u",
 				  __func__, target[1], target[0]);
+		mutex_unlock(&_sec_lock);
 		break;
 	}
 	case DTS_EAGLE_IOCTL_SEND_LICENSE: {
@@ -1344,10 +1355,12 @@ int msm_dts_eagle_ioctl(unsigned int cmd, unsigned long arg)
 					__func__, target, SEC_BLOB_MAX_CNT-1);
 			return -EINVAL;
 		}
+		mutex_lock(&_sec_lock);
 		if (!_sec_blob[target] ||
 		    ((u32 *)_sec_blob[target])[0] == 0) {
 			eagle_ioctl_err("%s: license index %u is invalid",
 				__func__, target);
+			mutex_unlock(&_sec_lock);
 			return -EINVAL;
 		}
 		if (core_dts_eagle_set(((s32 *)_sec_blob[target])[0],
@@ -1357,6 +1370,7 @@ int msm_dts_eagle_ioctl(unsigned int cmd, unsigned long arg)
 		else
 			eagle_ioctl_info("%s: core_dts_eagle_set succeeded with id = %u",
 				 __func__, target);
+		mutex_unlock(&_sec_lock);
 		break;
 	}
 	case DTS_EAGLE_IOCTL_SET_VOLUME_COMMANDS: {
@@ -1602,6 +1616,7 @@ int msm_dts_eagle_pcm_new(struct snd_soc_pcm_runtime *runtime)
 		_init_cb_descs();
 		_reg_ion_mem();
 	}
+	mutex_init(&_sec_lock);
 	return 0;
 }
 
@@ -1617,6 +1632,7 @@ void msm_dts_eagle_pcm_free(struct snd_pcm *pcm)
 {
 	if (!--_ref_cnt)
 		_unreg_ion_mem();
+	mutex_destroy(&_sec_lock);
 	vfree(_depc);
 }
 
