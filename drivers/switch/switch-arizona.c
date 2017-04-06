@@ -276,6 +276,11 @@ inline bool arizona_is_lineout(struct arizona_extcon_info *info)
 	return info->arizona->hp_impedance_x100 >= ARIZONA_HPDET_LINEOUT;
 }
 
+inline bool arizona_is_hp_max(struct arizona_extcon_info *info)
+{
+	return info->arizona->hp_impedance_x100 >= ARIZONA_HPDET_MAX;
+}
+
 inline void arizona_extcon_report(struct arizona_extcon_info *info, int state)
 {
 	/* Don't report if state did not changed */
@@ -2018,6 +2023,22 @@ int arizona_hpdet_reading(struct arizona_extcon_info *info, int val)
 	if (info->mic) {
 		if (info->jd2_is_running)
 			info->jd2_is_running = JD2_DETECTED;
+		/*
+		 * If mic and lineout are detected at the same time, it must be
+		 * partial insertion of an external high impedance speaker.
+		 * In this case one channel is detected as mic and other as
+		 * a headphone. Run redetection in 500 ms.
+		 */
+		if (arizona_is_hp_max(info) &&
+		    (info->hpdet_retried < MAX_HPDET_RETRY)) {
+			info->hpdet_retried++;
+			schedule_delayed_work(&info->jd2detect_work,
+					      msecs_to_jiffies(HPDET_DEBOUNCE));
+			info->last_jackdet = -1;
+			arizona_hs_mic_control(arizona, ARIZONA_MIC_MUTE);
+			info->mic = false;
+			return 0;
+		}
 		arizona_extcon_report(info, BIT_HEADSET);
 		arizona_jds_set_state(info, &arizona_micd_button);
 	} else {
@@ -2033,7 +2054,7 @@ int arizona_hpdet_reading(struct arizona_extcon_info *info, int val)
 				 */
 				if (switch_get_state(&info->edev))
 					break;
-				if (arizona_is_lineout(info)) {
+				if (arizona_is_hp_max(info)) {
 					if (info->hpdet_retried < MAX_HPDET_RETRY) {
 						debounce = HPDET_DEBOUNCE;
 						info->hpdet_retried++;
