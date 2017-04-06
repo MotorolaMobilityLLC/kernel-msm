@@ -29,14 +29,6 @@ config BCMDHD_NVRAM_PATH
 	---help---
 	  Path to the calibration file.
 
-config BCMDHD_WEXT
-	bool "Enable WEXT support"
-	depends on BCMDHD && CFG80211 = n
-	select WIRELESS_EXT
-	select WEXT_PRIV
-	help
-	  Enables WEXT support
-
 config BROADCOM_WIFI_RESERVED_MEM
 	bool "Enable memory preallocation"
 	depends on BCMDHD
