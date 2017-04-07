@@ -1,0 +1,8 @@
+
+Trustonic TEE is an operating system being shipped with TZBSP
+on MSM chipsets. t-base consists of several components in
+the secure world(TrustZone) and non-secure world(linux
+kernel, Android user space). The t-base driver
+communicates with the Trustonic TEE kernel that exists in
+TrustZone.
+
