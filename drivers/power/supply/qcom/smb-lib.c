@@ -6329,9 +6329,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
 		charger_present = 0;
 		mmi->charger_debounce_cnt = 0;
-	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE)
+	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE) {
 		mmi->charger_debounce_cnt++;
-	else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
+		cl_usb = 500;
+	} else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
 		charger_present = 1;
 
 	if (vbus_present || mmi->wls_present || !mmi->usbeb_present)
