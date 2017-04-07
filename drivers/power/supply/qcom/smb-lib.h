@@ -360,6 +360,7 @@ struct mmi_params {
 	int			vfloat_comp_mv;
 	enum turbo_ebsrc	turbo_pwr_ebsrc;
 	bool			check_ebsrc_vl;
+	int			batt_health;
 };
 
 struct smb_charger {
