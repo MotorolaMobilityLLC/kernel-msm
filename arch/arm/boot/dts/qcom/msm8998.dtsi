@@ -3262,6 +3262,21 @@
 			label = "spss";
 		};
 	};
+
+	mcd {
+		compatible = "qcom,mcd";
+		qcom,ce-hw-instance = <0>;
+		qcom,ce-device = <0>;
+		interrupts = <0 248 0>;
+		interrupt-names = "mcd_irq";
+		clock-names = "core_clk_src", "core_clk",
+			"iface_clk", "bus_clk";
+		clocks = <&clock_gcc clk_ce1_clk>,
+			<&clock_gcc clk_qseecom_ce1_clk>,
+			<&clock_gcc clk_gcc_ce1_ahb_m_clk>,
+			<&clock_gcc clk_gcc_ce1_axi_m_clk>;
+			qcom,ce-opp-freq = <171430000>;
+	};
 };
 
 &clock_cpu {
