@@ -1160,6 +1160,10 @@
 			qcom,sensor-name = "chg_temp";
 			qcom,scaling-factor = <1000>;
 		};
+		sensor_information35: qcom,sensor-information-35 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "xo_therm";
+		};
 	};
 
 	wdog: qcom,wdt@17817000 {
