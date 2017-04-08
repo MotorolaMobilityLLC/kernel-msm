@@ -2006,16 +2006,17 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 	vote(chg->pl_disable_votable, THERMAL_DAEMON_VOTER,
 			chg->system_temp_level ? true : false, 0);
 
-	if (chg->system_temp_level == chg->thermal_levels)
-		return vote(chg->chg_disable_votable,
-			THERMAL_DAEMON_VOTER, true, 0);
+	if (chg->system_temp_level >= chg->thermal_levels)
+		return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
+			    chg->thermal_mitigation[chg->thermal_levels - 1] *
+			    1000);
 
 	vote(chg->chg_disable_votable, THERMAL_DAEMON_VOTER, false, 0);
 	if (chg->system_temp_level == 0)
 		return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
 
 	vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
-			chg->thermal_mitigation[chg->system_temp_level]);
+			chg->thermal_mitigation[chg->system_temp_level] * 1000);
 	return 0;
 }
 
@@ -7451,12 +7452,16 @@ int smblib_set_prop_dc_system_temp_level(struct smb_charger *chg,
 		return -EINVAL;
 
 	chg->mmi.dc_system_temp_level = val->intval;
+	if (chg->mmi.dc_system_temp_level  >= chg->mmi.dc_thermal_levels)
+		return vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, true,
+		    chg->thermal_mitigation[chg->mmi.dc_system_temp_level - 1] *
+			    1000);
 
 	if (chg->mmi.dc_system_temp_level == 0)
 		return vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
 
 	vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, true,
-	     chg->thermal_mitigation[chg->mmi.dc_system_temp_level]);
+	     chg->thermal_mitigation[chg->mmi.dc_system_temp_level] * 1000);
 
 	return 0;
 }
@@ -7481,12 +7486,16 @@ int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
 		return -EINVAL;
 
 	chg->mmi.usb_system_temp_level = val->intval;
+	if (chg->mmi.usb_system_temp_level  >= chg->mmi.usb_thermal_levels)
+		return vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, true,
+		   chg->thermal_mitigation[chg->mmi.usb_system_temp_level - 1] *
+			    1000);
 
 	if (chg->mmi.usb_system_temp_level == 0)
 		return vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
 
 	vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, true,
-	     chg->thermal_mitigation[chg->mmi.usb_system_temp_level]);
+	     chg->thermal_mitigation[chg->mmi.usb_system_temp_level] * 1000);
 
 	return 0;
 }
