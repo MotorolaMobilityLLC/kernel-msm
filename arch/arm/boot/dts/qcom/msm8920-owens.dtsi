@@ -88,9 +88,9 @@
 		epl,ps_gain = <0x01>;
 		epl,ps_cycle = <0x04>;
 		epl,ps_ir_drive = <0x01>;
-		epl,ps_low_threshold = <1800>;
-		epl,ps_high_threshold = <2300>;
-		epl,ps_max_ct = <2300>;
+		epl,ps_low_threshold = <3600>;
+		epl,ps_high_threshold = <4600>;
+		epl,ps_max_ct = <4600>;
 		epl,ps_dyn_l_offset = <400>;
 		epl,ps_dyn_h_offset = <550>;
 		epl,ps_rs = <0>;
