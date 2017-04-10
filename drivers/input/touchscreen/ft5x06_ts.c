@@ -2438,6 +2438,23 @@ static ssize_t ft5x06_reset_store(struct device *dev,
 }
 static DEVICE_ATTR(reset, 0220, NULL, ft5x06_reset_store);
 
+static ssize_t ft5x06_hw_irqstat_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ft5x06_ts_data *data = i2c_get_clientdata(to_i2c_client(dev));
+
+	switch (gpio_get_value(data->pdata->irq_gpio)) {
+	case 0:
+		return scnprintf(buf, PAGE_SIZE, "Low\n");
+	case 1:
+		return scnprintf(buf, PAGE_SIZE, "High\n");
+	default:
+		pr_err("Failed to get GPIO for irq %d\n", data->client->irq);
+		return scnprintf(buf, PAGE_SIZE, "Unknown\n");
+	}
+}
+static DEVICE_ATTR(hw_irqstat, 0444, ft5x06_hw_irqstat_show, NULL);
+
 static ssize_t ft5x06_drv_irq_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -3578,11 +3595,17 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 		goto free_drv_irq_sys;
 	}
 
+	err = device_create_file(&client->dev, &dev_attr_hw_irqstat);
+	if (err) {
+		dev_err(&client->dev, "sys file creation failed\n");
+		goto free_reset_sys;
+	}
+
 	data->dir = debugfs_create_dir(FT_DEBUG_DIR_NAME, NULL);
 	if (data->dir == NULL || IS_ERR(data->dir)) {
 		pr_err("debugfs_create_dir failed(%ld)\n", PTR_ERR(data->dir));
 		err = PTR_ERR(data->dir);
-		goto free_reset_sys;
+		goto free_hw_irqstat_sys;
 	}
 
 	temp = debugfs_create_file("addr", S_IRUSR | S_IWUSR, data->dir, data,
@@ -3790,6 +3813,8 @@ free_proc_entry:
 	ft5x06_remove_proc_entry(data);
 free_debug_dir:
 	debugfs_remove_recursive(data->dir);
+free_hw_irqstat_sys:
+	device_remove_file(&client->dev, &dev_attr_hw_irqstat);
 free_reset_sys:
 	device_remove_file(&client->dev, &dev_attr_reset);
 free_drv_irq_sys:
@@ -3892,6 +3917,7 @@ static int ft5x06_ts_remove(struct i2c_client *client)
 	device_remove_file(&client->dev, &dev_attr_buildid);
 	device_remove_file(&client->dev, &dev_attr_drv_irq);
 	device_remove_file(&client->dev, &dev_attr_reset);
+	device_remove_file(&client->dev, &dev_attr_hw_irqstat);
 
 #if defined(CONFIG_FB)
 	if (fb_unregister_client(&data->fb_notif))
