@@ -1998,18 +1998,13 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 	if (chg->thermal_levels <= 0)
 		return -EINVAL;
 
-	if (val->intval > chg->thermal_levels)
-		return -EINVAL;
-
-	chg->system_temp_level = val->intval;
+	if (val->intval >= chg->thermal_levels)
+		chg->system_temp_level = chg->thermal_levels - 1;
+	else
+		chg->system_temp_level = val->intval;
 	/* disable parallel charge in case of system temp level */
 	vote(chg->pl_disable_votable, THERMAL_DAEMON_VOTER,
 			chg->system_temp_level ? true : false, 0);
-
-	if (chg->system_temp_level >= chg->thermal_levels)
-		return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
-			    chg->thermal_mitigation[chg->thermal_levels - 1] *
-			    1000);
 
 	vote(chg->chg_disable_votable, THERMAL_DAEMON_VOTER, false, 0);
 	if (chg->system_temp_level == 0)
@@ -7448,14 +7443,10 @@ int smblib_set_prop_dc_system_temp_level(struct smb_charger *chg,
 	if (chg->mmi.dc_thermal_levels <= 0)
 		return -EINVAL;
 
-	if (val->intval > chg->mmi.dc_thermal_levels)
-		return -EINVAL;
-
-	chg->mmi.dc_system_temp_level = val->intval;
-	if (chg->mmi.dc_system_temp_level  >= chg->mmi.dc_thermal_levels)
-		return vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, true,
-		    chg->thermal_mitigation[chg->mmi.dc_system_temp_level - 1] *
-			    1000);
+	if (val->intval >= chg->mmi.dc_thermal_levels)
+		chg->mmi.dc_system_temp_level = chg->mmi.dc_thermal_levels - 1;
+	else
+		chg->mmi.dc_system_temp_level = val->intval;
 
 	if (chg->mmi.dc_system_temp_level == 0)
 		return vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
@@ -7482,14 +7473,10 @@ int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
 	if (chg->mmi.usb_thermal_levels <= 0)
 		return -EINVAL;
 
-	if (val->intval > chg->mmi.usb_thermal_levels)
-		return -EINVAL;
-
-	chg->mmi.usb_system_temp_level = val->intval;
 	if (chg->mmi.usb_system_temp_level  >= chg->mmi.usb_thermal_levels)
-		return vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, true,
-		   chg->thermal_mitigation[chg->mmi.usb_system_temp_level - 1] *
-			    1000);
+		chg->mmi.usb_system_temp_level = chg->mmi.usb_thermal_levels - 1;
+	else
+		chg->mmi.usb_system_temp_level = val->intval;
 
 	if (chg->mmi.usb_system_temp_level == 0)
 		return vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
