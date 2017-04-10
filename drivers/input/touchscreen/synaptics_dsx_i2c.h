@@ -375,22 +375,6 @@ enum exp_fn {
 	RMI_LAST,
 };
 
-static inline ssize_t synaptics_rmi4_show_error(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	dev_warn(dev, "%s Attempted to read from write-only attribute %s\n",
-			__func__, attr->attr.name);
-	return -EPERM;
-}
-
-static inline ssize_t synaptics_rmi4_store_error(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	dev_warn(dev, "%s Attempted to write to read-only attribute %s\n",
-			__func__, attr->attr.name);
-	return -EPERM;
-}
-
 static inline void batohs(unsigned short *dest, unsigned char *src)
 {
 	*dest = src[1] * 0x100 + src[0];
@@ -601,6 +585,28 @@ struct synaptics_rmi4_data {
 	int test_irq_data_contig;
 #endif
 };
+
+static inline ssize_t synaptics_rmi4_show_error(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	dev_warn(&rmi4_data->i2c_client->dev,
+			"%s Attempted to read from write-only attribute %s\n",
+			__func__, attr->attr.name);
+	return -EPERM;
+}
+
+static inline ssize_t synaptics_rmi4_store_error(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	dev_warn(&rmi4_data->i2c_client->dev,
+			"%s Attempted to write to read-only attribute %s\n",
+			__func__, attr->attr.name);
+	return -EPERM;
+}
 
 struct time_keeping {
 	int id;
