@@ -459,8 +459,9 @@ static void diag_close_logging_process(const int pid)
 	int session_mask;
 	struct diag_md_session_t *session_info = NULL;
 	struct diag_logging_mode_param_t params;
-
+	mutex_lock(&driver->md_session_lock);
 	session_info = diag_md_session_get_pid(pid);
+	mutex_unlock(&driver->md_session_lock);
 	if (!session_info)
 		return;
 

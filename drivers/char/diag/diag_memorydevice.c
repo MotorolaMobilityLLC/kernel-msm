@@ -180,11 +180,11 @@ int diag_md_write(int id, unsigned char *buf, int len, int ctx)
 	if (peripheral < 0)
 		return -EINVAL;
 
-	session_info =
-		diag_md_session_get_peripheral(peripheral);
+	mutex_lock(&driver->md_session_lock);
+	session_info = diag_md_session_get_peripheral(peripheral);
+	mutex_unlock(&driver->md_session_lock);
 	if (!session_info)
 		return -EIO;
-
 	ch = &diag_md[id];
 
 	spin_lock_irqsave(&ch->lock, flags);
@@ -221,7 +221,7 @@ int diag_md_write(int id, unsigned char *buf, int len, int ctx)
 
 	found = 0;
 	for (i = 0; i < driver->num_clients && !found; i++) {
-		if ((driver->client_map[i].pid !=
+		if ((session_info != NULL && driver->client_map[i].pid !=
 		     session_info->pid) ||
 		    (driver->client_map[i].pid == 0))
 			continue;
@@ -264,8 +264,10 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 			if (peripheral < 0)
 				goto drop_data;
 
+			mutex_lock(&driver->md_session_lock);
 			session_info =
 			diag_md_session_get_peripheral(peripheral);
+			mutex_unlock(&driver->md_session_lock);
 			if (!session_info) {
 				goto drop_data;
 			}
@@ -295,27 +297,44 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 			}
 			if (i > 0) {
 				remote_token = diag_get_remote(i);
-				err = copy_to_user(buf + ret, &remote_token,
-						   sizeof(int));
+				if (info && info->md_client_thread_info &&
+					info->md_client_thread_info->task
+					!= NULL	&&
+					info->md_client_thread_info->task->mm
+					!= NULL) {
+					err = copy_to_user(buf + ret,
+							&remote_token,
+							sizeof(int));
+					if (err)
+						goto drop_data;
+					ret += sizeof(int);
+				}
+			}
+
+			/* Copy the length of data being passed */
+			if (info && info->md_client_thread_info &&
+				info->md_client_thread_info->task != NULL
+				&& info->md_client_thread_info->task->mm
+				!= NULL) {
+				err = copy_to_user(buf + ret,
+						(void *)&(entry->len),
+						sizeof(int));
 				if (err)
 					goto drop_data;
 				ret += sizeof(int);
 			}
 
-			/* Copy the length of data being passed */
-			err = copy_to_user(buf + ret, (void *)&(entry->len),
-					   sizeof(int));
-			if (err)
-				goto drop_data;
-			ret += sizeof(int);
-
 			/* Copy the actual data being passed */
-			err = copy_to_user(buf + ret, (void *)entry->buf,
-					   entry->len);
-			if (err)
-				goto drop_data;
-			ret += entry->len;
-
+			if (info && info->md_client_thread_info &&
+				info->md_client_thread_info->task != NULL
+				&& info->md_client_thread_info->task->mm
+				!= NULL) {
+				err = copy_to_user(buf + ret,
+						(void *)entry->buf, entry->len);
+				if (err)
+					goto drop_data;
+				ret += entry->len;
+			}
 			/*
 			 * The data is now copied to the user space client,
 			 * Notify that the write is complete and delete its
@@ -337,7 +356,12 @@ drop_data:
 	}
 
 	*pret = ret;
-	err = copy_to_user(buf + sizeof(int), (void *)&num_data, sizeof(int));
+	if (info && info->md_client_thread_info &&
+		info->md_client_thread_info->task != NULL
+		&& info->md_client_thread_info->task->mm
+		!= NULL)
+		err = copy_to_user(buf + sizeof(int),
+				(void *)&num_data, sizeof(int));
 	diag_ws_on_copy_complete(DIAG_WS_MUX);
 	if (drain_again)
 		chk_logging_wakeup();
@@ -355,9 +379,7 @@ int diag_md_close_peripheral(int id, uint8_t peripheral)
 
 	if (id < 0 || id >= NUM_DIAG_MD_DEV || id >= DIAG_NUM_PROC)
 		return -EINVAL;
-
 	ch = &diag_md[id];
-
 	spin_lock_irqsave(&ch->lock, flags);
 	for (i = 0; i < ch->num_tbl_entries && !found; i++) {
 		entry = &ch->tbl[i];
