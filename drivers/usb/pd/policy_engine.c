@@ -1444,7 +1444,6 @@ static void dr_swap(struct usbpd *pd)
 	}
 
 	pd_phy_update_roles(pd->current_dr, pd->current_pr);
-	dual_role_instance_changed(pd->dual_role);
 }
 
 
@@ -2692,17 +2691,11 @@ static int usbpd_dr_set_property(struct dual_role_phy_instance *dual_role,
 static int usbpd_dr_prop_writeable(struct dual_role_phy_instance *dual_role,
 		enum dual_role_property prop)
 {
-	struct usbpd *pd = dual_role_get_drvdata(dual_role);
-
 	switch (prop) {
 	case DUAL_ROLE_PROP_MODE:
-		return 1;
 	case DUAL_ROLE_PROP_DR:
 	case DUAL_ROLE_PROP_PR:
-		if (pd)
-			return pd->current_state == PE_SNK_READY ||
-				pd->current_state == PE_SRC_READY;
-		break;
+		return 1;
 	default:
 		break;
 	}
