@@ -6720,7 +6720,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			mmi->cl_ebchg = cl_usb - EB_SPLIT_MA;
 			target_usb = EB_SPLIT_MA;
 		} else {
-			mmi->cl_ebchg = target_usb;
+			mmi->cl_ebchg = cl_usb;
 			target_usb = -EINVAL;
 		}
 
