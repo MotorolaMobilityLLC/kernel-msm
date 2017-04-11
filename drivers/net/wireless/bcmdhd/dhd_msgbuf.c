@@ -1252,22 +1252,24 @@ static int
 dhdmsgbuf_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8 action)
 {
 	dhd_prot_t *prot = dhd->prot;
-
 	int ret = 0;
 
-	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
-
-	/* Respond "bcmerror" and "bcmerrorstr" with local cache */
-	if (cmd == WLC_GET_VAR && buf)
-	{
-		if (!strcmp((char *)buf, "bcmerrorstr"))
-		{
-			strncpy((char *)buf, bcmerrorstr(dhd->dongle_error), BCME_STRLEN);
+	DHD_TRACE(("%s: Enter\n", __func__));
+	if (!buf || !len) {
+		DHD_ERROR(("%s(): Zero length bailing\n", __func__));
+		ret = BCME_BADARG;
+		goto done;
+	}
+	if (cmd == WLC_GET_VAR) {
+		/* Respond "bcmerror" and "bcmerrorstr" with local cache */
+		if ((len > strlen("bcmerrorstr")) &&
+		    !strcmp(buf, "bcmerrorstr")) {
+			strlcpy(buf, bcmerrorstr(dhd->dongle_error), len);
 			goto done;
-		}
-		else if (!strcmp((char *)buf, "bcmerror"))
-		{
-			*(int *)buf = dhd->dongle_error;
+		} else if ((len > strlen("bcmerror")) &&
+			   !strcmp(buf, "bcmerror")) {
+			memcpy(buf, &dhd->dongle_error,
+			       sizeof(dhd->dongle_error));
 			goto done;
 		}
 	}
