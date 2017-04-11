@@ -28,6 +28,7 @@ static uint32_t AFE_RX_PORT_ID = AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_RX;
 static uint32_t AFE_TX_PORT_ID = AFE_PORT_ID_SLIMBUS_MULTI_CHAN_1_TX;
 static bool feedback_on_left;
 static bool feedback_on_right;
+static bool ospl_volume_control;
 
 /*
  * external configuration string reading
@@ -408,6 +409,7 @@ int ospl2xx_afe_get_param(uint32_t param_id)
 	case PARAM_ID_OPALUM_RX_EXC_MODEL:
 	case PARAM_ID_OPLAUM_RX_TEMPERATURE:
 	case PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET:
+	case PARAM_ID_OPALUM_RX_VOLUME_CONTROL:
 	case PARAM_ID_OPALUM_TX_ENABLE:
 	case PARAM_ID_OPALUM_TX_CURRENT_PARAM_SET:
 		config->param.payload_size +=
@@ -563,6 +565,7 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 			case PARAM_ID_OPALUM_RX_EXC_MODEL:
 			case PARAM_ID_OPLAUM_RX_TEMPERATURE:
 			case PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET:
+			case PARAM_ID_OPALUM_RX_VOLUME_CONTROL:
 			case PARAM_ID_OPALUM_TX_ENABLE:
 			case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
 			case PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE:
@@ -824,6 +827,35 @@ static int ospl2xx_rx_put_temperature(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
 	/* not implemented yet */
+	return 0;
+}
+
+/* PARAM_ID_OPALUM_RX_VOLUME_CONTROL */
+static int ospl2xx_rx_get_volume(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	mutex_lock(&mr_lock);
+	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
+	ospl2xx_afe_get_param(PARAM_ID_OPALUM_RX_VOLUME_CONTROL);
+
+	ucontrol->value.integer.value[0] = afe_cb_payload32_data[0];
+	mutex_unlock(&mr_lock);
+
+	return 0;
+}
+static int ospl2xx_rx_put_volume(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int32_t volume = ucontrol->value.integer.value[0];
+
+	if (volume > 0x7FFFFFFF || volume < 0)
+		volume = 0x7FFFFFFF;
+
+	pr_debug("%s, volume[%d]\n", __func__, volume);
+
+	ospl2xx_afe_set_single_param(
+		PARAM_ID_OPALUM_RX_VOLUME_CONTROL, volume);
+
 	return 0;
 }
 
@@ -1134,6 +1166,12 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 		ospl2xx_audio_mode_get, ospl2xx_audio_mode_put),
 };
 
+static const struct snd_kcontrol_new ospl2xx_volume_controls[] = {
+	/* GET,PUT */ SOC_SINGLE_EXT("OSPL Rx Volume",
+		SND_SOC_NOPM, 0, 0x7FFFFFFF, 0,
+		ospl2xx_rx_get_volume, ospl2xx_rx_put_volume),
+};
+
 /*
  * ospl2xx initialization
  * - register mixer controls
@@ -1145,6 +1183,12 @@ int ospl2xx_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_add_codec_controls(codec, ospl2xx_params_controls,
 			ARRAY_SIZE(ospl2xx_params_controls));
+
+	if (ospl_volume_control) {
+		snd_soc_add_codec_controls(codec, ospl2xx_volume_controls,
+			ARRAY_SIZE(ospl2xx_volume_controls));
+		pr_info("%s: ospl volume control is enabled\n", __func__);
+	}
 
 	ospl2xx_wq = create_singlethread_workqueue("ospl2xx");
 	if (ospl2xx_wq == NULL)
@@ -1209,6 +1253,9 @@ static int ospl2xx_probe(struct platform_device *pdev)
 					"mmi,ospl-left-feedback");
 	feedback_on_right = of_property_read_bool(pdev->dev.of_node,
 					"mmi,ospl-right-feedback");
+
+	ospl_volume_control = of_property_read_bool(pdev->dev.of_node,
+					"mmi,ospl-volume-control");
 
 err:
 	spdev = pdev;
