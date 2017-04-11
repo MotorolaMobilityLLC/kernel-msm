@@ -90,20 +90,20 @@ static struct bin_attribute attr_data = {
 
 static struct device_attribute attrs[] = {
 	__ATTR(open, S_IWUSR | S_IWGRP,
-			synaptics_rmi4_show_error,
+			NULL,
 			rmidev_sysfs_open_store),
 	__ATTR(release, S_IWUSR | S_IWGRP,
-			synaptics_rmi4_show_error,
+			NULL,
 			rmidev_sysfs_release_store),
 	__ATTR(address, S_IWUSR | S_IWGRP,
-			synaptics_rmi4_show_error,
+			NULL,
 			rmidev_sysfs_address_store),
 	__ATTR(length, S_IWUSR | S_IWGRP,
-			synaptics_rmi4_show_error,
+			NULL,
 			rmidev_sysfs_length_store),
 	__ATTR(attn_state, S_IRUSR | S_IRGRP,
 			rmidev_sysfs_attn_state_show,
-			synaptics_rmi4_store_error),
+			NULL),
 };
 
 static int rmidev_major_num;
