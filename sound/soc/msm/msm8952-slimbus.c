@@ -871,6 +871,9 @@ static int quin_mi2s_get_format(void)
 	case SNDRV_PCM_FORMAT_S24_LE:
 		value = 1;
 		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+		value = 2;
+		break;
 	default:
 		value = 0;
 		break;
@@ -897,6 +900,9 @@ static int msm_quin_mi2s_format_put(struct snd_kcontrol *kcontrol,
 	case 1:
 		msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S24_LE;
 		break;
+	case 2:
+		msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S32_LE;
+		break;
 	default:
 		msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 		break;
@@ -915,6 +921,9 @@ static int msm_quin_mi2s_ch_put(struct snd_kcontrol *kcontrol,
 		break;
 	case 1:
 		msm_quin_mi2s_ch = 2;
+		break;
+	case 2:
+		msm_quin_mi2s_ch = 4;
 		break;
 	default:
 		msm_quin_mi2s_ch = 2;
@@ -936,6 +945,9 @@ static int msm_quin_mi2s_ch_get(struct snd_kcontrol *kcontrol,
 		break;
 	case 2:
 		ucontrol->value.integer.value[0] = 1;
+		break;
+	case 4:
+		ucontrol->value.integer.value[0] = 2;
 		break;
 	default:
 		ucontrol->value.integer.value[0] = 1;
@@ -2222,16 +2234,16 @@ static const struct soc_enum msm8996_quat_mi2s_enum[] = {
 		SOC_ENUM_SINGLE_EXT(3, msm_quat_mi2s_ch_text),
 };
 
-static char const *msm_quin_mi2s_ch_text[] = {"One", "Two"};
+static char const *msm_quin_mi2s_ch_text[] = {"One", "Two", "Four"};
 
 static const char *const msm_quin_mi2s_rate_text[] = {"KHZ_16", "KHZ_32",
 			"KHZ_48", "KHZ_96", "KHZ_192"};
-static const char *const msm_quin_mi2s_format_text[] = {"S16_LE", "S24_LE"};
+static const char *const msm_quin_mi2s_format_text[] = {"S16_LE", "S24_LE", "S32_LE"};
 
 static const struct soc_enum msm8996_quin_mi2s_enum[] = {
 		SOC_ENUM_SINGLE_EXT(5, msm_quin_mi2s_rate_text),
-		SOC_ENUM_SINGLE_EXT(2, msm_quin_mi2s_format_text),
-		SOC_ENUM_SINGLE_EXT(2, msm_quin_mi2s_ch_text),
+		SOC_ENUM_SINGLE_EXT(3, msm_quin_mi2s_format_text),
+		SOC_ENUM_SINGLE_EXT(3, msm_quin_mi2s_ch_text),
 };
 
 static const char *const btsco_rate_text[] = {"BTSCO_RATE_8KHZ",
@@ -3265,21 +3277,26 @@ static int quat_mi2s_clk_ctl(struct snd_pcm_substream *substream, bool enable)
 
 static int quin_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
 {
-	int ret = 0;
+	int ret = 0, format, rate;
 
 	if (enable) {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			mi2s_rx_clk.enable = enable;
 			mi2s_rx_clk.clk_id =
 				Q6AFE_LPASS_CLK_ID_QUI_MI2S_IBIT;
-			if ((mi2s_rx_bit_format == SNDRV_PCM_FORMAT_S24_LE) ||
-				(mi2s_rx_bit_format ==
-					SNDRV_PCM_FORMAT_S24_3LE))
-				mi2s_rx_clk.clk_freq_in_hz =
-					Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
-			else
-				mi2s_rx_clk.clk_freq_in_hz =
-					Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			rate = quin_mi2s_get_rate();
+			if (msm_quin_mi2s_ch > 2) {
+				pr_debug("%s: choosing 32-bit MI2S playback "
+					"clk_ctl for 16x4\n", __func__);
+				format = 2;
+			} else {
+				format = quin_mi2s_get_format();
+			}
+
+			mi2s_rx_clk.clk_freq_in_hz =
+					msm_quat_clk_freq_in_hz[rate][format];
+			pr_debug("%s: set quin clock freq: %d", __func__,
+				mi2s_rx_clk.clk_freq_in_hz);
 			ret = afe_set_lpass_clock_v2(
 					AFE_PORT_ID_QUINARY_MI2S_RX,
 					&mi2s_rx_clk);
@@ -3287,8 +3304,18 @@ static int quin_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
 			mi2s_tx_clk.enable = enable;
 			mi2s_tx_clk.clk_id =
 				Q6AFE_LPASS_CLK_ID_QUI_MI2S_IBIT;
+			rate = quin_mi2s_get_rate();
+			if (msm_quin_mi2s_ch > 2) {
+				pr_debug("%s: choosing 32-bit MI2S capture "
+					"clk_ctl for 16x4\n", __func__);
+				format = 2;
+			} else {
+				format = quin_mi2s_get_format();
+			}
 			mi2s_tx_clk.clk_freq_in_hz =
-				Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+					msm_quat_clk_freq_in_hz[rate][format];
+			pr_debug("%s: set quin clock freq: %d", __func__,
+				mi2s_tx_clk.clk_freq_in_hz);
 			ret = afe_set_lpass_clock_v2(
 					AFE_PORT_ID_QUINARY_MI2S_TX,
 					&mi2s_tx_clk);
