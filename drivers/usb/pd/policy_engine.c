@@ -2072,8 +2072,26 @@ static void usbpd_sm(struct work_struct *w)
 					pd->vconn_enabled = true;
 			}
 			enable_vbus(pd);
+			/*Do not start PD negotiation for Powered cable*/
+			if (pd->typec_mode ==
+					POWER_SUPPLY_TYPEC_SINK_POWERED_CABLE) {
+				union power_supply_propval val = {0};
 
-			usbpd_set_state(pd, PE_SRC_STARTUP);
+				if (pd->current_dr == DR_NONE)
+					pd->current_dr = DR_DFP;
+			/* Set CC back to DRP toggle for the next disconnect */
+				val.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
+				power_supply_set_property(pd->usb_psy,
+				POWER_SUPPLY_PROP_TYPEC_POWER_ROLE, &val);
+				start_usb_host(pd, true);
+				usbpd_set_state(pd, PE_SRC_DISABLED);
+				val.intval = 0;
+				power_supply_set_property(pd->usb_psy,
+						POWER_SUPPLY_PROP_PD_ACTIVE,
+						&val);
+				dual_role_instance_changed(pd->dual_role);
+			} else
+				usbpd_set_state(pd, PE_SRC_STARTUP);
 		}
 		break;
 
