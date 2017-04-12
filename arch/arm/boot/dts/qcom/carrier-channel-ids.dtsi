@@ -217,7 +217,7 @@
 		"cmcc",		/* 200 */
 		"ctcn",		/* 201 */
 		"cucn",		/* 202 */
-		"undefined",	/* 203 */
+		"retmm",	/* 203 */
 		"undefined",	/* 204 */
 		"undefined",	/* 205 */
 		"undefined",	/* 206 */
