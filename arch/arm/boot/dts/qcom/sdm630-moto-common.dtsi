@@ -249,6 +249,9 @@
 				<15 0 1323 1323>,
 				<45 4250 2000 1800>,
 				<60 4200 1323 0>;
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capactiy = <80>;
+	qcom,lower-limit-capacity = <60>;
 };
 
 &sdhc_1 {
