@@ -2222,28 +2222,16 @@ static const struct soc_enum msm_snd_enum[] = {
 			    slim4_rx_bit_format_text),
 };
 
-static char const *msm_quat_mi2s_ch_text[] = {"One", "Two", "Four"};
+static char const *msm_mi2s_ch_text[] = {"One", "Two", "Four"};
 
-static const char *const msm_quat_mi2s_rate_text[] = {"KHZ_16", "KHZ_32",
+static const char *const msm_mi2s_rate_text[] = {"KHZ_16", "KHZ_32",
 			"KHZ_48", "KHZ_96", "KHZ_192"};
-static const char *const msm_quat_mi2s_format_text[] = {"S16_LE", "S24_LE", "S32_LE"};
+static const char *const msm_mi2s_format_text[] = {"S16_LE", "S24_LE", "S32_LE"};
 
-static const struct soc_enum msm8996_quat_mi2s_enum[] = {
-		SOC_ENUM_SINGLE_EXT(5, msm_quat_mi2s_rate_text),
-		SOC_ENUM_SINGLE_EXT(3, msm_quat_mi2s_format_text),
-		SOC_ENUM_SINGLE_EXT(3, msm_quat_mi2s_ch_text),
-};
-
-static char const *msm_quin_mi2s_ch_text[] = {"One", "Two", "Four"};
-
-static const char *const msm_quin_mi2s_rate_text[] = {"KHZ_16", "KHZ_32",
-			"KHZ_48", "KHZ_96", "KHZ_192"};
-static const char *const msm_quin_mi2s_format_text[] = {"S16_LE", "S24_LE", "S32_LE"};
-
-static const struct soc_enum msm8996_quin_mi2s_enum[] = {
-		SOC_ENUM_SINGLE_EXT(5, msm_quin_mi2s_rate_text),
-		SOC_ENUM_SINGLE_EXT(3, msm_quin_mi2s_format_text),
-		SOC_ENUM_SINGLE_EXT(3, msm_quin_mi2s_ch_text),
+static const struct soc_enum msm8996_mi2s_enum[] = {
+		SOC_ENUM_SINGLE_EXT(5, msm_mi2s_rate_text),
+		SOC_ENUM_SINGLE_EXT(3, msm_mi2s_format_text),
+		SOC_ENUM_SINGLE_EXT(3, msm_mi2s_ch_text),
 };
 
 static const char *const btsco_rate_text[] = {"BTSCO_RATE_8KHZ",
@@ -2344,20 +2332,20 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 };
 
 static const struct snd_kcontrol_new msm_quat_mi2s_snd_controls[] = {
-	SOC_ENUM_EXT("QUAT_MI2S SampleRate", msm8996_quat_mi2s_enum[0],
+	SOC_ENUM_EXT("MODS_MI2S SampleRate", msm8996_mi2s_enum[0],
 			msm_quat_mi2s_rate_get, msm_quat_mi2s_rate_put),
-	SOC_ENUM_EXT("QUAT_MI2S Format", msm8996_quat_mi2s_enum[1],
+	SOC_ENUM_EXT("MODS_MI2S Format", msm8996_mi2s_enum[1],
 			msm_quat_mi2s_format_get, msm_quat_mi2s_format_put),
-	SOC_ENUM_EXT("QUAT_MI2S Channels", msm8996_quat_mi2s_enum[2],
+	SOC_ENUM_EXT("MODS_MI2S Channels", msm8996_mi2s_enum[2],
 			msm_quat_mi2s_ch_get, msm_quat_mi2s_ch_put),
 };
 
 static const struct snd_kcontrol_new msm_quin_mi2s_snd_controls[] = {
-	SOC_ENUM_EXT("QUIN_MI2S SampleRate", msm8996_quin_mi2s_enum[0],
+	SOC_ENUM_EXT("MODS_MI2S SampleRate", msm8996_mi2s_enum[0],
 			msm_quin_mi2s_rate_get, msm_quin_mi2s_rate_put),
-	SOC_ENUM_EXT("QUIN_MI2S Format", msm8996_quin_mi2s_enum[1],
+	SOC_ENUM_EXT("MODS_MI2S Format", msm8996_mi2s_enum[1],
 			msm_quin_mi2s_format_get, msm_quin_mi2s_format_put),
-	SOC_ENUM_EXT("QUIN_MI2S Channels", msm8996_quin_mi2s_enum[2],
+	SOC_ENUM_EXT("MODS_MI2S Channels", msm8996_mi2s_enum[2],
 			msm_quin_mi2s_ch_get, msm_quin_mi2s_ch_put),
 };
 
