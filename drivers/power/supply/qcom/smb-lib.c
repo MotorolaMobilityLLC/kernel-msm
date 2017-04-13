@@ -3339,10 +3339,10 @@ irqreturn_t smblib_handle_usb_plugin(int irq, void *data)
 			enable_irq(chg->irq_info[HIGH_DUTY_CYCLE_IRQ].irq);
 			chg->is_hdc = 0;
 		}
-
-		if (chg->wa_flags & BOOST_BACK_WA)
+		if (chg->wa_flags & BOOST_BACK_WA) {
 			vote(chg->usb_icl_votable, BOOST_BACK_VOTER, false, 0);
-
+			enable_irq(chg->irq_info[SWITCH_POWER_OK_IRQ].irq);
+		}
 		if (chg->dpdm_reg && regulator_is_enabled(chg->dpdm_reg)) {
 			smblib_dbg(chg, PR_MISC, "disabling DPDM regulator\n");
 			rc = regulator_disable(chg->dpdm_reg);
@@ -4016,6 +4016,7 @@ irqreturn_t smblib_handle_switcher_power_ok(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
+	int pok_irq = chg->irq_info[SWITCH_POWER_OK_IRQ].irq;
 	int rc;
 	u8 stat;
 
@@ -4036,6 +4037,16 @@ irqreturn_t smblib_handle_switcher_power_ok(int irq, void *data)
 		return IRQ_HANDLED;
 
 	if (is_storming(&irq_data->storm_data)) {
+		stat = 0;
+		rc = smblib_read(chg, TYPE_C_STATUS_1_REG, &stat);
+		if (rc < 0) {
+			smblib_err(chg,
+				   "Error getting USB Pres rc = %d\n", rc);
+		} else if (stat) {
+			smblib_err(chg, "USB Present, Disable Power OK IRQ\n");
+			disable_irq_nosync(pok_irq);
+			return IRQ_HANDLED;
+		}
 		smblib_err(chg, "Reverse boost detected: voting 0mA to suspend input\n");
 		vote(chg->usb_icl_votable, BOOST_BACK_VOTER, true, 0);
 	}
