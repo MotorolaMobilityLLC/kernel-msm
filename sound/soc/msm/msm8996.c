@@ -1897,11 +1897,11 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm8996_hifi_put),
 	SOC_ENUM_EXT("VI_FEED_TX Channels", msm_snd_enum[12],
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
-	SOC_ENUM_EXT("TERT_MI2S SampleRate", msm8996_tert_mi2s_enum[0],
+	SOC_ENUM_EXT("MODS_MI2S SampleRate", msm8996_tert_mi2s_enum[0],
 			tert_mi2s_rate_get, tert_mi2s_rate_put),
-	SOC_ENUM_EXT("TERT_MI2S Format", msm8996_tert_mi2s_enum[1],
+	SOC_ENUM_EXT("MODS_MI2S Format", msm8996_tert_mi2s_enum[1],
 			tert_mi2s_format_get, tert_mi2s_format_put),
-	SOC_ENUM_EXT("TERT_MI2S Channels", msm8996_tert_mi2s_enum[2],
+	SOC_ENUM_EXT("MODS_MI2S Channels", msm8996_tert_mi2s_enum[2],
 			msm_tert_mi2s_ch_get, msm_tert_mi2s_ch_put),
 };
 
