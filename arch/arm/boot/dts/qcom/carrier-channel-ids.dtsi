@@ -53,8 +53,8 @@
 		"womcl",	/* 36 */
 		"avaco",	/* 37 */
 		"retpe",	/* 38 */
-		"undefined",	/* 39 */
-		"undefined",	/* 40 */
+		"openla",	/* 39 */
+		"opencl",	/* 40 */
 		"undefined",	/* 41 */
 		"undefined",	/* 42 */
 		"undefined",	/* 43 */
