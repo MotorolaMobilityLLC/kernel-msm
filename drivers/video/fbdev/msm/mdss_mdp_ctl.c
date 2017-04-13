@@ -5655,6 +5655,9 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 
 	mutex_unlock(&ctl->flush_lock);
 
+	if (ctl->ops.wait_pingpong && !mdata->serialize_wait4pp)
+		mdss_mdp_display_wait4pingpong(ctl, false);
+
 	ATRACE_BEGIN("frame_ready");
 	mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_CFG_DONE);
 	if (commit_cb)
@@ -5678,9 +5681,6 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 	}
 
 	ATRACE_END("frame_ready");
-
-	if (ctl->ops.wait_pingpong && !mdata->serialize_wait4pp)
-		mdss_mdp_display_wait4pingpong(ctl, false);
 
 	/* Moved pp programming to post ping pong */
 	if (!ctl->is_video_mode && ctl->mfd &&
