@@ -40,6 +40,10 @@ Optional Properties:
 				"HS200_1p8v" - indicates that host can support HS200 at 1.8v.
 				"HS200_1p2v" - indicates that host can support HS200 at 1.2v.
 				"DDR_1p8v" - indicates that host can support DDR mode at 1.8v.
+                                "SDR104_1p8v" - indicates that host can support SDR104 at 1.8v.
+                                "SDR50_1p8v" - indicates that host can support SDR50 at 1.8v.
+                                "SDR25_1p8v" - indicates that host can support SDR25 at 1.8v.
+                                "SDR12_1p8v" - indicates that host can support SDR12 at 1.8v.
 				"DDR_1p2v" - indicates that host can support DDR mode at 1.2v.
 	  - qcom,bus-aggr-clk-rates: this is an array that specifies the frequency for
 	  			the bus-aggr-clk which should be set corresponding to the
