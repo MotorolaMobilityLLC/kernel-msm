@@ -161,6 +161,10 @@
 		};
 	};
 
+	qcom,msm-thermal {
+		qcom,core-limit-temp = <95>;
+	};
+
 	rradc_typec_temp: typec-temp-sensor {
 		compatible = "generic-adc-thermal";
 		#thermal-sensor-cells = <0>;
