@@ -8133,9 +8133,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		    chip->stepchg_current_ma)
 			batt_ma -= STEPCHG_CURR_ADJ;
 
-		if ((batt_ma <= chip->stepchg_current_ma) &&
-		    (chip->allowed_fastchg_current_ma >=
-		     chip->stepchg_current_ma))
+		if (batt_ma <= min(chip->stepchg_current_ma,
+		    chip->allowed_fastchg_current_ma))
 			if (chip->stepchg_state_holdoff >= 2) {
 					chip->stepchg_state = STEP_ONE;
 					chip->stepchg_state_holdoff = 0;
@@ -8148,9 +8147,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		   ((batt_mv + HYST_STEP_MV) >=
 		    chip->stepchg_max_voltage_mv)) {
 		batt_ma *= -1;
-		if ((batt_ma <= chip->stepchg_taper_ma) &&
-		    (chip->allowed_fastchg_current_ma >=
-		     chip->stepchg_taper_ma))
+		if (batt_ma <= min(chip->stepchg_taper_ma,
+		    chip->allowed_fastchg_current_ma))
 			if (chip->stepchg_state_holdoff >= 2) {
 				chip->stepchg_state = STEP_TAPER;
 				chip->stepchg_state_holdoff = 0;
