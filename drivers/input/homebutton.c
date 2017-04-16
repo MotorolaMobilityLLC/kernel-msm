@@ -19,7 +19,7 @@ struct homebutton_data {
 	bool enable;
 	unsigned int key;
 } hb_data = {
-	.enable = true,
+	.enable = false,
 	.key = KEY_HOME
 };
 
