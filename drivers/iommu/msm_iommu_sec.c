@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, 2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -500,6 +500,10 @@ int msm_iommu_sec_program_iommu(struct msm_iommu_drvdata *drvdata,
 		return ret ? ret : -EINVAL;
 	}
 
+	drvdata->sec_cfg_restored = true;
+
+	pr_info("sec cfg restored for %s\n", drvdata->name);
+
 	return ret;
 }
 
@@ -765,7 +769,9 @@ static int msm_iommu_attach_dev(struct iommu_domain *domain, struct device *dev)
 		goto fail;
 
 	/* We can only do this once */
-	if (!iommu_drvdata->ctx_attach_count) {
+	if (!iommu_drvdata->ctx_attach_count &&
+	    !((iommu_drvdata->model == MMU_500) &&
+	      (iommu_drvdata->sec_cfg_restored == true))) {
 		ret = iommu_access_ops->iommu_clk_on(iommu_drvdata);
 		if (ret) {
 			iommu_access_ops->iommu_power_off(iommu_drvdata);

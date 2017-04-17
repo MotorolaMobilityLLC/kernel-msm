@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1009,7 +1009,9 @@ static int msm_iommu_attach_dev(struct iommu_domain *domain, struct device *dev)
 	}
 
 	/* We can only do this once */
-	if (!iommu_drvdata->ctx_attach_count) {
+	if (!iommu_drvdata->ctx_attach_count &&
+	    !((iommu_drvdata->model == MMU_500) &&
+	      (iommu_drvdata->sec_cfg_restored == true))) {
 		if (!is_secure) {
 			iommu_halt(iommu_drvdata);
 			__program_iommu(iommu_drvdata);
