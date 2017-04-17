@@ -44,6 +44,7 @@
 #define PS_MIN_POLLING_RATE    200
 
 static int polling_time = 200;  /*report rate for polling mode*/
+static int dynamic_calibrate = 2047;
 
 struct ps_thre {
 	int noise;
@@ -340,6 +341,7 @@ static void ltr559_ps_work_func(struct work_struct *work)
 	int psdata;
 	static u32 ps_state_last = 100;
 	int j = 0;
+	u16 temp = 0;
 
 	mutex_lock(&data->op_lock);
 
@@ -367,8 +369,10 @@ static void ltr559_ps_work_func(struct work_struct *work)
 			data->ps_state = 100;    /* far */
 
 			/*dynamic calibration */
-			if (data->dynamic_noise > 20 && psdata < (data->dynamic_noise - 50)) {
+			if (data->dynamic_noise > 50 && psdata < (data->dynamic_noise - 50)) {
+				printk("%s, check whether is this far calibrate, psdata:%d, dynamic_noise:%d \n", __func__, psdata, data->dynamic_noise);
 				data->dynamic_noise = psdata;
+				dynamic_calibrate = psdata;
 				for (j = 0; j < ARRAY_SIZE(psthre_data); j++) {
 					if (psdata < psthre_data[j].noise) {
 						data->platform_data->prox_threshold = psdata + psthre_data[j].th_hi;
@@ -381,8 +385,9 @@ static void ltr559_ps_work_func(struct work_struct *work)
 					data->platform_data->prox_hsyteresis_threshold = 1680;
 					pr_err("ltr559 the proximity sensor rubber or structure is error!\n");
 				}
+				temp = data->platform_data->prox_threshold;
 			}
-			ltr559_set_ps_threshold(client, LTR559_PS_THRES_LOW_0, 0);
+			ltr559_set_ps_threshold(client, LTR559_PS_THRES_LOW_0, temp);
 			ltr559_set_ps_threshold(client, LTR559_PS_THRES_UP_0, data->platform_data->prox_threshold);
 		} else {
 			data->ps_state = ps_state_last;
@@ -618,6 +623,13 @@ static ssize_t ltr559_ps_dynamic_caliberate(struct sensors_classdev *sensors_cde
 	}
 
 	noise = data_total/count;
+
+	if (noise > dynamic_calibrate + 100) {
+		noise = dynamic_calibrate + 100;
+	} else {
+		dynamic_calibrate = noise;
+	}
+
 	data->dynamic_noise = noise;
 	for (j = 0; j < ARRAY_SIZE(psthre_data); j++) {
 		if (noise < psthre_data[j].noise) {
