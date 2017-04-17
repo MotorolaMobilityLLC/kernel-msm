@@ -152,14 +152,15 @@ struct madera_priv {
 	u32 tx_port_handle[MADERA_SLIMBUS_MAX_CHANNELS];
 	u16 rx_channel_handle[MADERA_SLIMBUS_MAX_CHANNELS];
 	u16 tx_channel_handle[MADERA_SLIMBUS_MAX_CHANNELS];
-	u16 rx_chan_map_slot[MADERA_SLIMBUS_MAX_CHANNELS];
-	u16 tx_chan_map_slot[MADERA_SLIMBUS_MAX_CHANNELS];
-	int rx_chan_map_num;
-	int tx_chan_map_num;
+	u16 rx_chan_map_slot[3][MADERA_SLIMBUS_MAX_CHANNELS];
+	u16 tx_chan_map_slot[3][MADERA_SLIMBUS_MAX_CHANNELS];
+	int rx_chan_map_num[3];
+	int tx_chan_map_num[3];
 	u32 rx1_samplerate;
 	u32 rx1_sampleszbits;
 	u32 rx2_samplerate;
 	u32 rx2_sampleszbits;
+	u8 slim_logic_addr;
 };
 
 struct madera_fll_cfg {
