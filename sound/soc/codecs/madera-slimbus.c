@@ -35,7 +35,6 @@ static int madera_slim_get_la(struct slim_device *slim, u8 *la)
 		dev_info(&slim->dev, "retrying get logical addr\n");
 	} while time_before(jiffies, timeout);
 
-
 	dev_info(&slim->dev, "LA %d\n", *la);
 	return 0;
 }
@@ -87,29 +86,43 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 	switch (w->shift) {
 	case MADERA_SLIMTX1_ENA_SHIFT:
 		dev_dbg(madera->dev, "TX1\n");
+		chcnt = priv->tx_chan_map_num[0];
+		if (chcnt > ARRAY_SIZE(tx_porth1)) {
+			dev_err(madera->dev, "ERROR: Too many TX channels\n");
+			ret = -EINVAL;
+			goto exit;
+		}
 		porth = tx_porth1;
 		handles = tx_handles1;
 		group = &tx_group1;
-		chcnt = ARRAY_SIZE(tx_porth1);
 		break;
 	case MADERA_SLIMTX5_ENA_SHIFT:
 		dev_dbg(madera->dev, "TX2\n");
+		chcnt = priv->tx_chan_map_num[1];
+		if (chcnt > ARRAY_SIZE(tx_porth2)) {
+			dev_err(madera->dev, "ERROR: Too many TX channels\n");
+			ret = -EINVAL;
+			goto exit;
+		}
 		porth = tx_porth2;
 		handles = tx_handles2;
 		group = &tx_group2;
-		chcnt = ARRAY_SIZE(tx_porth2);
 		break;
 	case MADERA_SLIMTX4_ENA_SHIFT:
 		dev_dbg(codec->dev, "TX3\n");
+		chcnt = priv->tx_chan_map_num[2];
+		if (chcnt > ARRAY_SIZE(tx_porth3)) {
+			dev_err(madera->dev, "ERROR: Too many TX channels\n");
+			ret = -EINVAL;
+			goto exit;
+		}
 		porth = tx_porth3;
 		handles = tx_handles3;
 		group = &tx_group3;
-		chcnt = ARRAY_SIZE(tx_porth3);
 		break;
 	default:
 		goto exit;
 	}
-
 	madera_slim_fixup_prop(&prop, 48000, 16);
 
 	switch (event) {
@@ -179,33 +192,47 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	switch (w->shift) {
 	case MADERA_SLIMRX1_ENA_SHIFT:
 		dev_dbg(madera->dev, "RX1\n");
+		chcnt = priv->rx_chan_map_num[0];
+		if (chcnt > ARRAY_SIZE(rx_porth1)) {
+			dev_err(madera->dev, "ERROR: Too many RX channels\n");
+			ret = -EINVAL;
+			goto exit;
+		}
 		porth = rx_porth1;
 		handles = rx_handles1;
 		group = &rx_group1;
-		chcnt = ARRAY_SIZE(rx_porth1);
 		rx_sampleszbits = priv->rx1_sampleszbits;
 		rx_samplerate = priv->rx1_samplerate;
 		break;
 	case MADERA_SLIMRX5_ENA_SHIFT:
 		dev_dbg(madera->dev, "RX2\n");
+		chcnt = priv->rx_chan_map_num[1];
+		if (chcnt > ARRAY_SIZE(rx_porth2)) {
+			dev_err(madera->dev, "ERROR: Too many RX channels\n");
+			ret = -EINVAL;
+			goto exit;
+		}
 		porth = rx_porth2;
 		handles = rx_handles2;
 		group = &rx_group2;
-		chcnt = ARRAY_SIZE(rx_porth2);
 		rx_sampleszbits = priv->rx2_sampleszbits;
 		rx_samplerate = priv->rx2_samplerate;
 		break;
 	case MADERA_SLIMRX3_ENA_SHIFT:
 		dev_dbg(codec->dev, "RX3\n");
+		chcnt = priv->rx_chan_map_num[2];
+		if (chcnt > ARRAY_SIZE(rx_porth3)) {
+			dev_err(madera->dev, "ERROR: Too many RX channels\n");
+			ret = -EINVAL;
+			goto exit;
+		}
 		porth = rx_porth3;
 		handles = rx_handles3;
 		group = &rx_group3;
-		chcnt = ARRAY_SIZE(rx_porth3);
 		break;
 	default:
 		goto exit;
 	}
-
 	madera_slim_fixup_prop(&prop, rx_samplerate, rx_sampleszbits);
 
 	switch (event) {
@@ -271,6 +298,8 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 	u16 *tx_handles, *rx_handles;
 	int tx_chcnt, rx_chcnt, tx_idx_step, rx_idx_step;
 	int tx_stream_idx, rx_stream_idx;
+	int *tx_priv_counter, *rx_priv_counter;
+	u16 *tx_chan_map_slot, *rx_chan_map_slot;
 
 	if (stashed_slim_dev == NULL) {
 		dev_err(madera->dev, "%s No slim device available\n",
@@ -278,15 +307,12 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		return -EINVAL;
 	}
 
-	madera_slim_get_la(stashed_slim_dev, &laddr);
-
-	if (rx_num > MADERA_SLIMBUS_MAX_CHANNELS)
-		rx_num = MADERA_SLIMBUS_MAX_CHANNELS;
-	priv->rx_chan_map_num = rx_num;
-
-	if (tx_num > MADERA_SLIMBUS_MAX_CHANNELS)
-		tx_num = MADERA_SLIMBUS_MAX_CHANNELS;
-	priv->tx_chan_map_num = tx_num;
+	if (!priv->slim_logic_addr) {
+		madera_slim_get_la(stashed_slim_dev, &laddr);
+		priv->slim_logic_addr = laddr;
+	} else {
+		laddr = priv->slim_logic_addr;
+	}
 
 	switch (dai->id) {
 	case 4: /* cs47l35-slim1 */
@@ -295,12 +321,16 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		tx_chcnt = ARRAY_SIZE(tx_porth1);
 		tx_idx_step = 8;
 		tx_stream_idx = TX_STREAM_1;
+		tx_priv_counter = &priv->tx_chan_map_num[0];
+		tx_chan_map_slot = priv->tx_chan_map_slot[0];
 
 		rx_porth = rx_porth1;
 		rx_handles = rx_handles1;
 		rx_chcnt = ARRAY_SIZE(rx_porth1);
 		rx_idx_step = 0;
 		rx_stream_idx = RX_STREAM_1;
+		rx_priv_counter = &priv->rx_chan_map_num[0];
+		rx_chan_map_slot = priv->rx_chan_map_slot[0];
 		break;
 	case 5: /* cs47l35-slim2 */
 		tx_porth = tx_porth2;
@@ -308,12 +338,16 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		tx_chcnt = ARRAY_SIZE(tx_porth2);
 		tx_idx_step = 12;
 		tx_stream_idx = TX_STREAM_2;
+		tx_priv_counter = &priv->tx_chan_map_num[1];
+		tx_chan_map_slot = priv->tx_chan_map_slot[1];
 
 		rx_porth = rx_porth2;
 		rx_handles = rx_handles2;
 		rx_chcnt = ARRAY_SIZE(rx_porth2);
 		rx_idx_step = 4;
 		rx_stream_idx = RX_STREAM_2;
+		rx_priv_counter = &priv->rx_chan_map_num[1];
+		rx_chan_map_slot = priv->rx_chan_map_slot[1];
 		break;
 	default:
 		dev_err(madera->dev, "set_channel_map unknown dai->id %d\n",
@@ -321,8 +355,18 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		return -EINVAL;
 	}
 
+	if (rx_num > rx_chcnt)
+		rx_num = rx_chcnt;
+	if (rx_num > 0)
+		*rx_priv_counter = rx_num;
+
+	if (tx_num > tx_chcnt)
+		tx_num = tx_chcnt;
+	if (tx_num > 0)
+		*tx_priv_counter = tx_num;
+
 	/* This actually allocates the channel or refcounts it if there... */
-	for (i = 0; rx_num && i < rx_chcnt; i++) {
+	for (i = 0; i < rx_num; i++) {
 		slim_get_slaveport(laddr, i + rx_idx_step, &rx_porth[i],
 				   SLIM_SINK);
 
@@ -334,10 +378,10 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 			return ret;
 		}
 
-		priv->rx_chan_map_slot[i] = rx_slot[i] = rx_stream_idx + i;
+		rx_chan_map_slot[i] = rx_slot[i] = rx_stream_idx + i;
 	}
 
-	for (i = 0; tx_num && i < tx_chcnt; i++) {
+	for (i = 0; i < tx_num; i++) {
 		slim_get_slaveport(laddr, i + tx_idx_step, &tx_porth[i],
 				   SLIM_SRC);
 
@@ -349,7 +393,7 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 			return ret;
 		}
 
-		priv->tx_chan_map_slot[i] = tx_slot[i] = tx_stream_idx + i;
+		tx_chan_map_slot[i] = tx_slot[i] = tx_stream_idx + i;
 	}
 
 	return 0;
@@ -361,19 +405,41 @@ int madera_get_channel_map(struct snd_soc_dai *dai,
 			   unsigned int *rx_num, unsigned int *rx_slot)
 {
 	struct madera_priv *priv = snd_soc_codec_get_drvdata(dai->codec);
+	struct madera *madera = priv->madera;
 	int i;
+	int tx_chan_map_num, rx_chan_map_num;
+	u16 *tx_chan_map_slot, *rx_chan_map_slot;
 
-	if (!priv->rx_chan_map_num || !priv->tx_chan_map_num)
+	switch (dai->id) {
+	case 4: /* cs47l35-slim1 */
+		tx_chan_map_num = priv->tx_chan_map_num[0];
+		rx_chan_map_num = priv->rx_chan_map_num[0];
+		tx_chan_map_slot = priv->tx_chan_map_slot[0];
+		rx_chan_map_slot = priv->rx_chan_map_slot[0];
+		break;
+	case 5: /* cs47l35-slim2 */
+		tx_chan_map_num = priv->tx_chan_map_num[1];
+		rx_chan_map_num = priv->rx_chan_map_num[1];
+		tx_chan_map_slot = priv->tx_chan_map_slot[1];
+		rx_chan_map_slot = priv->rx_chan_map_slot[1];
+		break;
+	default:
+		dev_err(madera->dev, "get_channel_map unknown dai->id %d\n",
+			dai->id);
+		return -EINVAL;
+	}
+
+	if (!rx_chan_map_num || !tx_chan_map_num)
 		return -EINVAL;
 
-	*rx_num = priv->rx_chan_map_num;
-	*tx_num = priv->tx_chan_map_num;
+	*rx_num = rx_chan_map_num;
+	*tx_num = tx_chan_map_num;
 
-	for (i = 0; i < priv->rx_chan_map_num; i++)
-		rx_slot[i] = priv->rx_chan_map_slot[i];
+	for (i = 0; i < rx_chan_map_num; i++)
+		rx_slot[i] = rx_chan_map_slot[i];
 
-	for (i = 0; i < priv->tx_chan_map_num; i++)
-		tx_slot[i] = priv->tx_chan_map_slot[i];
+	for (i = 0; i < tx_chan_map_num; i++)
+		tx_slot[i] = tx_chan_map_slot[i];
 
 	return 0;
 }
