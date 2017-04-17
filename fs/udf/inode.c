@@ -1502,11 +1502,11 @@ static void udf_fill_inode(struct inode *inode, struct buffer_head *bh)
 		 * so sizes should match
 		 */
 		if (iinfo->i_lenAlloc != inode->i_size)
-			goto out;
+			return;
 		/* File in ICB has to fit in there... */
 		if (inode->i_size > inode->i_sb->s_blocksize -
 					udf_file_entry_alloc_offset(inode))
-			goto out;
+			return;
 	}
 
 	switch (fe->icbTag.fileType) {
