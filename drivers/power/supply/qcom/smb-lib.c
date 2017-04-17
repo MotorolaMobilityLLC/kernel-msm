@@ -3276,6 +3276,7 @@ irqreturn_t smblib_handle_usbin_uv(int irq, void *data)
 
 	wdata = &chg->irq_info[SWITCH_POWER_OK_IRQ].irq_data->storm_data;
 	reset_storm_count(wdata);
+	chg->reverse_boost = false;
 	return IRQ_HANDLED;
 }
 
@@ -3340,6 +3341,7 @@ irqreturn_t smblib_handle_usb_plugin(int irq, void *data)
 			chg->is_hdc = 0;
 		}
 		if (chg->wa_flags & BOOST_BACK_WA) {
+			chg->reverse_boost = false;
 			vote(chg->usb_icl_votable, BOOST_BACK_VOTER, false, 0);
 			enable_irq(chg->irq_info[SWITCH_POWER_OK_IRQ].irq);
 		}
@@ -4037,6 +4039,7 @@ irqreturn_t smblib_handle_switcher_power_ok(int irq, void *data)
 		return IRQ_HANDLED;
 
 	if (is_storming(&irq_data->storm_data)) {
+		chg->reverse_boost = true;
 		stat = 0;
 		rc = smblib_read(chg, TYPE_C_STATUS_1_REG, &stat);
 		if (rc < 0) {
@@ -5684,6 +5687,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int target_fcc;
 	int target_fv;
 	int prev_vl_ebsrc = chip->mmi.vl_ebsrc;
+	int pok_irq;
 
 	if (!atomic_read(&chip->mmi.hb_ready))
 		return;
@@ -5812,11 +5816,13 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		} else
 			cl_pd = val.intval / 1000;
 
+		pok_irq = chip->irq_info[SWITCH_POWER_OK_IRQ].irq;
 		rc = smblib_get_prop_typec_mode(chip, &val);
 		if (rc < 0) {
 			smblib_err(chip, "Error getting CL CC rc = %d\n", rc);
 			goto end_hb;
 		} else {
+
 			switch (val.intval) {
 			case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
 				if (mmi->hvdcp3_con)
@@ -5831,6 +5837,12 @@ static void mmi_heartbeat_work(struct work_struct *work)
 				cl_cc = 3000;
 				break;
 			default:
+				if (chip->reverse_boost) {
+					smblib_err(chip,
+						   "SRC Removed: POK En\n");
+					chip->reverse_boost = false;
+					enable_irq(pok_irq);
+				}
 				cl_cc = 0;
 				break;
 			}
