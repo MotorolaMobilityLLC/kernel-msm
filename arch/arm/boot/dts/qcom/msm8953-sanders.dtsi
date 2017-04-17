@@ -216,9 +216,15 @@
 			focaltech,fw-auto-cal;
 			focaltech,ignore-id-check;
 			focaltech,resume-in-workqueue;
-			config_modifier-names = "charger";
+			config_modifier-names = "charger", "fps";
 			config_modifier-charger {
 				enable-notification;
+			};
+			config_modifier-fps {
+				enable-notification;
+				fps-active {
+					touch-clip-area = <300 1870 800 1919 1>;
+				};
 			};
 		};
 	};
