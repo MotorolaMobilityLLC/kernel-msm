@@ -247,11 +247,12 @@
 	qcom,mmi-temp-zones = <0 4200 529 0>,
 				<10 4200 1323 529>,
 				<15 0 1323 1323>,
-				<45 4250 2000 1800>,
+				<45 4200 3000 2000>,
 				<60 4200 1323 0>;
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capactiy = <80>;
 	qcom,lower-limit-capacity = <60>;
+	qcom,hvdcp-force-5v;
 };
 
 &sdhc_1 {
