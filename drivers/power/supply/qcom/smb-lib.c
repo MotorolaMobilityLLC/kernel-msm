@@ -3576,7 +3576,7 @@ static void smblib_handle_hvdcp_detect_done(struct smb_charger *chg,
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: hvdcp-detect-done %s\n",
 		   rising ? "rising" : "falling");
 }
-
+#ifdef QCOM_BASE
 static void smblib_force_legacy_icl(struct smb_charger *chg, int pst)
 {
 	switch (pst) {
@@ -3607,7 +3607,7 @@ static void smblib_force_legacy_icl(struct smb_charger *chg, int pst)
 		break;
 	}
 }
-
+#endif
 #define HVDCP_DET_MS 2500
 static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 {
@@ -3617,10 +3617,10 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 		return;
 
 	apsd_result = smblib_update_usb_type(chg);
-
+#ifdef QCOM_BASE
 	if (!chg->pd_active)
 		smblib_force_legacy_icl(chg, apsd_result->pst);
-
+#endif
 	switch (apsd_result->bit) {
 	case SDP_CHARGER_BIT:
 	case CDP_CHARGER_BIT:
@@ -3779,6 +3779,7 @@ static void typec_source_removal(struct smb_charger *chg)
 
 static void typec_source_insertion(struct smb_charger *chg)
 {
+#ifdef QCOM_BASE
 	/*
 	 * at any time we want LEGACY_UNKNOWN, PD, or USB_PSY to be voting for
 	 * ICL, so vote LEGACY_UNKNOWN here if none of the above three have
@@ -3791,6 +3792,7 @@ static void typec_source_insertion(struct smb_charger *chg)
 
 	smblib_set_opt_freq_buck(chg, chg->chg_freq.freq_5V);
 
+#endif
 	vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
 	cancel_delayed_work(&chg->mmi.heartbeat_work);
 	schedule_delayed_work(&chg->mmi.heartbeat_work,
