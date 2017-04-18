@@ -133,7 +133,7 @@ static const char *const proxy_rx_ch_text[] = {"One", "Two", "Three", "Four",
 
 static char const *hdmi_rx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 					"KHZ_192"};
-static char const *tert_mi2s_ch_text[] = {"One", "Two"};
+static char const *tert_mi2s_ch_text[] = {"One", "Two", "Three", "Four"};
 
 static const char *const auxpcm_rate_text[] = {"8000", "16000"};
 static const struct soc_enum msm8996_auxpcm_enum[] = {
@@ -142,12 +142,12 @@ static const struct soc_enum msm8996_auxpcm_enum[] = {
 
 static const char *const tert_mi2s_rate_text[] = {"KHZ_16", "KHZ_32",
 			"KHZ_48", "KHZ_96", "KHZ_192"};
-static const char *const tert_mi2s_format_text[] = {"S16_LE", "S24_LE"};
+static const char *const tert_mi2s_format_text[] = {"S16_LE", "S24_LE", "S32_LE"};
 
 static const struct soc_enum msm8996_tert_mi2s_enum[] = {
 		SOC_ENUM_SINGLE_EXT(5, tert_mi2s_rate_text),
-		SOC_ENUM_SINGLE_EXT(2, tert_mi2s_format_text),
-		SOC_ENUM_SINGLE_EXT(2, tert_mi2s_ch_text),
+		SOC_ENUM_SINGLE_EXT(3, tert_mi2s_format_text),
+		SOC_ENUM_SINGLE_EXT(4, tert_mi2s_ch_text),
 };
 
 
@@ -1469,6 +1469,9 @@ static int tert_mi2s_format_get(struct snd_kcontrol *kcontrol,
 	case SNDRV_PCM_FORMAT_S24_LE:
 		ucontrol->value.integer.value[0] = 1;
 		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+		ucontrol->value.integer.value[0] = 2;
+		break;
 	default:
 		ucontrol->value.integer.value[0] = 0;
 		break;
@@ -1486,6 +1489,9 @@ static int tert_mi2s_format_put(struct snd_kcontrol *kcontrol,
 	case 1:
 		tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S24_LE;
 		break;
+	case 2:
+		tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S32_LE;
+		break;
 	default:
 		tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 		break;
@@ -1498,7 +1504,7 @@ static int msm_tert_mi2s_ch_put(struct snd_kcontrol *kcontrol,
 {
 	msm_tert_mi2s_tx_ch = ucontrol->value.integer.value[0] + 1;
 	pr_debug("%s: msm_tert_mi2s_tx_ch = %d\n", __func__,
-		 msm_slim_0_rx_ch);
+		 msm_tert_mi2s_tx_ch);
 	return 1;
 }
 
@@ -1506,7 +1512,7 @@ static int msm_tert_mi2s_ch_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	pr_debug("%s: msm_tert_mi2s_tx_ch  = %d\n", __func__,
-		 msm_slim_0_tx_ch);
+		 msm_tert_mi2s_tx_ch);
 	ucontrol->value.integer.value[0] = msm_tert_mi2s_tx_ch - 1;
 	return 0;
 }
@@ -1627,7 +1633,9 @@ static int msm8996_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	/* update bit clock which is chans*num of bytes per sample*rate
 	 * if 24 bit pcm depth is used, set number of bit cycles to 32.
 	 */
-	if (tert_mi2s_bit_format == SNDRV_PCM_FORMAT_S24_LE)
+	if (tert_mi2s_bit_format != SNDRV_PCM_FORMAT_S16_LE)
+		pcm_depth = 32;
+	else if (msm_tert_mi2s_tx_ch > 2)
 		pcm_depth = 32;
 	else
 		pcm_depth = snd_pcm_format_width(tert_mi2s_bit_format);
