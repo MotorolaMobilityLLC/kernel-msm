@@ -3725,6 +3725,7 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 	return rp_ua;
 }
 
+#ifdef QCOM_BASE
 static void smblib_force_legacy_icl(struct smb_charger *chg, int pst)
 {
 	int typec_mode;
@@ -3765,7 +3766,7 @@ static void smblib_force_legacy_icl(struct smb_charger *chg, int pst)
 		break;
 	}
 }
-
+#endif
 #define HVDCP_DET_MS 2500
 static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 {
@@ -3776,9 +3777,10 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 
 	apsd_result = smblib_update_usb_type(chg);
 
+#ifdef QCOM_BASE
 	if (!chg->typec_legacy_valid)
 		smblib_force_legacy_icl(chg, apsd_result->pst);
-
+#endif
 	switch (apsd_result->bit) {
 	case SDP_CHARGER_BIT:
 	case CDP_CHARGER_BIT:
