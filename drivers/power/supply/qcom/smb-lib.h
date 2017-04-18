@@ -508,6 +508,7 @@ struct smb_charger {
 	struct delayed_work	pd_contract_work;
 	bool			external_vbus;
 	bool			reverse_boost;
+	bool			hvdcp_force_5v;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
