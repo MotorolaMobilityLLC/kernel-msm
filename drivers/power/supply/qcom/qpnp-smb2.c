@@ -323,6 +323,8 @@ static int smb2_parse_dt(struct smb2 *chip)
 
 	chg->suspend_input_on_debug_batt = of_property_read_bool(node,
 					"qcom,suspend-input-on-debug-batt");
+	chg->hvdcp_force_5v = of_property_read_bool(node,
+						"qcom,hvdcp-force-5v");
 
 	rc = of_property_read_u32(node, "qcom,otg-deglitch-time-ms",
 					&chg->otg_delay_ms);
@@ -2130,6 +2132,27 @@ static int smb2_init_hw(struct smb2 *chip)
 		}
 	}
 
+	if (chg->hvdcp_force_5v) {
+		pr_info("hw init hvdcp force to 5v\n");
+		rc = smblib_write(chg, HVDCP_PLUSE_COUNT_MAX,
+				HVDCP_FORCE_5V);
+		if (rc < 0) {
+			dev_err(chg->dev,
+				"Couldn't configure hvdcp force 5v, rc=%d\n",
+				rc);
+			return rc;
+		}
+
+		rc = smblib_masked_write(chg, ENG_BUCKBOOST_CfG9,
+				ENG_BUCKBOOST_IPEAK_USB_SELECT,
+				0x5);
+		if (rc < 0) {
+			dev_err(chg->dev,
+				"Couldn't configure ENG_BUCKBOOST_CFG9, rc=%d\n",
+				rc);
+			return rc;
+		}
+	}
 	return rc;
 }
 
