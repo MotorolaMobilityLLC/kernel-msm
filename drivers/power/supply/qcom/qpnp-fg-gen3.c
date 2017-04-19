@@ -1287,6 +1287,9 @@ static int fg_save_learned_cap_to_sram(struct fg_chip *chip)
 		return rc;
 	}
 
+	if (!chip->dt.cl_feedback)
+		goto cl_fb_bms_exit;
+
 	/* Write to actual capacity register for coulomb counter operation */
 	rc = fg_sram_write(chip, ACT_BATT_CAP_WORD, ACT_BATT_CAP_OFFSET,
 			(u8 *)&cc_mah, chip->sp[FG_SRAM_ACT_BATT_CAP].len,
@@ -1296,6 +1299,7 @@ static int fg_save_learned_cap_to_sram(struct fg_chip *chip)
 		return rc;
 	}
 
+cl_fb_bms_exit:
 	fg_dbg(chip, FG_CAP_LEARN, "learned capacity %llduah/%dmah stored\n",
 		chip->cl.learned_cc_uah, cc_mah);
 	return 0;
@@ -2934,7 +2938,11 @@ static int fg_get_time_to_full(struct fg_chip *chip, int *val)
 		pr_err("failed to get ACT_BATT_CAP rc=%d\n", rc);
 		return rc;
 	}
-	act_cap_uah *= MILLI_UNIT;
+
+	if (!chip->dt.cl_feedback)
+		act_cap_uah = chip->cl.nom_cap_uah;
+	else
+		act_cap_uah *= MILLI_UNIT;
 	fg_dbg(chip, FG_TTF, "actual_capacity_uah=%d\n", act_cap_uah);
 
 	rc = fg_get_sram_prop(chip, FG_SRAM_FULL_SOC, &full_soc);
@@ -3025,7 +3033,10 @@ static int fg_get_time_to_empty(struct fg_chip *chip, int *val)
 		pr_err("Error in getting ACT_BATT_CAP, rc=%d\n", rc);
 		return rc;
 	}
-	act_cap_uah *= MILLI_UNIT;
+	if (!chip->dt.cl_feedback)
+		act_cap_uah = chip->cl.nom_cap_uah;
+	else
+		act_cap_uah *= MILLI_UNIT;
 
 	rc = fg_get_prop_capacity(chip, &msoc);
 	if (rc < 0) {
@@ -4316,6 +4327,9 @@ static int fg_parse_dt(struct fg_chip *chip)
 
 	chip->dt.force_load_profile = of_property_read_bool(node,
 					"qcom,fg-force-load-profile");
+
+	chip->dt.cl_feedback = of_property_read_bool(node,
+					"qcom,cl-feedback");
 
 	rc = of_property_read_u32(node, "qcom,cl-start-capacity", &temp);
 	if (rc < 0)
