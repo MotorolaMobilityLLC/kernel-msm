@@ -610,6 +610,7 @@ vti6_tnl_change(struct ip6_tnl *t, const struct __ip6_tnl_parm *p)
 	t->parms.i_key = p->i_key;
 	t->parms.o_key = p->o_key;
 	t->parms.proto = p->proto;
+	t->parms.fwmark = p->fwmark;
 	ip6_tnl_dst_reset(t);
 	vti6_link_config(t);
 	return 0;
@@ -901,6 +902,9 @@ static void vti6_netlink_parms(struct nlattr *data[],
 
 	if (data[IFLA_VTI_OKEY])
 		parms->o_key = nla_get_be32(data[IFLA_VTI_OKEY]);
+
+	if (data[IFLA_VTI_FWMARK])
+		parms->fwmark = nla_get_u32(data[IFLA_VTI_FWMARK]);
 }
 
 static int vti6_newlink(struct net *src_net, struct net_device *dev,
@@ -966,6 +970,8 @@ static size_t vti6_get_size(const struct net_device *dev)
 		nla_total_size(4) +
 		/* IFLA_VTI_OKEY */
 		nla_total_size(4) +
+		/* IFLA_VTI_FWMARK */
+		nla_total_size(4) +
 		0;
 }
 
@@ -980,7 +986,8 @@ static int vti6_fill_info(struct sk_buff *skb, const struct net_device *dev)
 	    nla_put(skb, IFLA_VTI_REMOTE, sizeof(struct in6_addr),
 		    &parm->raddr) ||
 	    nla_put_be32(skb, IFLA_VTI_IKEY, parm->i_key) ||
-	    nla_put_be32(skb, IFLA_VTI_OKEY, parm->o_key))
+	    nla_put_be32(skb, IFLA_VTI_OKEY, parm->o_key) ||
+	    nla_put_u32(skb, IFLA_VTI_FWMARK, parm->fwmark))
 		goto nla_put_failure;
 	return 0;
 
@@ -994,6 +1001,7 @@ static const struct nla_policy vti6_policy[IFLA_VTI_MAX + 1] = {
 	[IFLA_VTI_REMOTE]	= { .len = sizeof(struct in6_addr) },
 	[IFLA_VTI_IKEY]		= { .type = NLA_U32 },
 	[IFLA_VTI_OKEY]		= { .type = NLA_U32 },
+	[IFLA_VTI_FWMARK]	= { .type = NLA_U32 },
 };
 
 static struct rtnl_link_ops vti6_link_ops __read_mostly = {
