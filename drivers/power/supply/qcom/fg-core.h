@@ -239,6 +239,7 @@ struct fg_dt_props {
 	int	esr_timer_asleep;
 	int	rconn_mohms;
 	int	esr_clamp_mohms;
+	bool	cl_feedback;
 	int	cl_start_soc;
 	int	cl_max_temp;
 	int	cl_min_temp;
