@@ -1601,7 +1601,8 @@
 	qcom,dc-eb-icl-ma = <900>;
 	qcom,dc-eb-icl-eff-ma = <500>;
 	qcom,iterm-ma = <132>;
-	qcom,thermal-mitigation = <2500>,
+	qcom,thermal-mitigation = <3000>,
+				   <2500>,
 				   <1500>,
 				   <900>,
 				   <600>,
