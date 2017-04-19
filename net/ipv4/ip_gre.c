@@ -890,6 +890,9 @@ static int __init ipgre_init(void)
 	if (err < 0)
 		goto tap_ops_failed;
 
+	if (data[IFLA_GRE_FWMARK])
+		*fwmark = nla_get_u32(data[IFLA_GRE_FWMARK]);
+
 	return 0;
 
 tap_ops_failed:
