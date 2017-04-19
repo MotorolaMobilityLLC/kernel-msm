@@ -1981,7 +1981,7 @@ void exfat_free_cluster(struct super_block *sb, CHAIN_T *p_chain, s32 do_relse)
 		return;
 
 	if (p_chain->size <= 0) {
-		printk(KERN_ERR "[EXFAT] free_cluster : skip free-req clu:%u, "
+		printk(KERN_DEBUG "[EXFAT] free_cluster : skip free-req clu:%u, "
 				"because of zero-size truncation\n"
 				,p_chain->dir);
 		return;
