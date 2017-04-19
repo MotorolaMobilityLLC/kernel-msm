@@ -230,6 +230,10 @@
 	qcom,msm-ssc-sensors {
 		compatible = "qcom,msm-ssc-sensors";
 	};
+
+	ospl {
+		/delete-node/ mmi,ospl-volume-control;
+	};
 };
 
 &mem_client_3_size {
