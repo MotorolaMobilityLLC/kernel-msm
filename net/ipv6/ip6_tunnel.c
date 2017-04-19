@@ -1109,6 +1109,8 @@ ip4ip6_tnl_xmit(struct sk_buff *skb, struct net_device *dev)
 					  & IPV6_TCLASS_MASK;
 	if (t->parms.flags & IP6_TNL_F_USE_ORIG_FWMARK)
 		fl6.flowi6_mark = skb->mark;
+	else
+		fl6.flowi6_mark = t->parms.fwmark;
 
 	err = ip6_tnl_xmit2(skb, dev, dsfield, &fl6, encap_limit, &mtu);
 	if (err != 0) {
@@ -1162,6 +1164,8 @@ ip6ip6_tnl_xmit(struct sk_buff *skb, struct net_device *dev)
 		fl6.flowlabel |= ip6_flowlabel(ipv6h);
 	if (t->parms.flags & IP6_TNL_F_USE_ORIG_FWMARK)
 		fl6.flowi6_mark = skb->mark;
+	else
+		fl6.flowi6_mark = t->parms.fwmark;
 
 	err = ip6_tnl_xmit2(skb, dev, dsfield, &fl6, encap_limit, &mtu);
 	if (err != 0) {
@@ -1279,6 +1283,7 @@ ip6_tnl_change(struct ip6_tnl *t, const struct __ip6_tnl_parm *p)
 	t->parms.flowinfo = p->flowinfo;
 	t->parms.link = p->link;
 	t->parms.proto = p->proto;
+	t->parms.fwmark = p->fwmark;
 	ip6_tnl_dst_reset(t);
 	ip6_tnl_link_config(t);
 	return 0;
@@ -1617,6 +1622,10 @@ static void ip6_tnl_netlink_parms(struct nlattr *data[],
 
 	if (data[IFLA_IPTUN_PROTO])
 		parms->proto = nla_get_u8(data[IFLA_IPTUN_PROTO]);
+
+	if (data[IFLA_IPTUN_FWMARK])
+		parms->fwmark = nla_get_u32(data[IFLA_IPTUN_FWMARK]);
+
 }
 
 static int ip6_tnl_newlink(struct net *src_net, struct net_device *dev,
@@ -1686,6 +1695,8 @@ static size_t ip6_tnl_get_size(const struct net_device *dev)
 		nla_total_size(4) +
 		/* IFLA_IPTUN_PROTO */
 		nla_total_size(1) +
+		/* IFLA_IPTUN_FWMARK */
+		nla_total_size(4) +
 		0;
 }
 
@@ -1703,8 +1714,10 @@ static int ip6_tnl_fill_info(struct sk_buff *skb, const struct net_device *dev)
 	    nla_put_u8(skb, IFLA_IPTUN_ENCAP_LIMIT, parm->encap_limit) ||
 	    nla_put_be32(skb, IFLA_IPTUN_FLOWINFO, parm->flowinfo) ||
 	    nla_put_u32(skb, IFLA_IPTUN_FLAGS, parm->flags) ||
-	    nla_put_u8(skb, IFLA_IPTUN_PROTO, parm->proto))
+	    nla_put_u8(skb, IFLA_IPTUN_PROTO, parm->proto) ||
+	    nla_put_u32(skb, IFLA_IPTUN_FWMARK, parm->fwmark))
 		goto nla_put_failure;
+
 	return 0;
 
 nla_put_failure:
@@ -1720,6 +1733,7 @@ static const struct nla_policy ip6_tnl_policy[IFLA_IPTUN_MAX + 1] = {
 	[IFLA_IPTUN_FLOWINFO]		= { .type = NLA_U32 },
 	[IFLA_IPTUN_FLAGS]		= { .type = NLA_U32 },
 	[IFLA_IPTUN_PROTO]		= { .type = NLA_U8 },
+	[IFLA_IPTUN_FWMARK]             = { .type = NLA_U32 },
 };
 
 static struct rtnl_link_ops ip6_link_ops __read_mostly = {
