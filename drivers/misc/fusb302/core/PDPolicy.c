@@ -218,7 +218,7 @@ void InitializePDPolicyVariables(void)
 	CapsHeaderSource.Reserved1 = 0;
 
 	CapsSource[0].FPDOSupply.Voltage = 100;	// Set 5V for the first supply option
-	CapsSource[0].FPDOSupply.MaxCurrent = 150;	// Set 1.5A for the first supply option
+	CapsSource[0].FPDOSupply.MaxCurrent = 90;	// Set 900 mA for the first supply option
 	CapsSource[0].FPDOSupply.PeakCurrent = 0;	// Set peak equal to max
 	CapsSource[0].FPDOSupply.DataRoleSwap = TRUE;	// By default, don't enable DR_SWAP
 	CapsSource[0].FPDOSupply.USBCommCapable = FALSE;	// By default, USB communications is not allowed
