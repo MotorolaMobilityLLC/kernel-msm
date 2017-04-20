@@ -51,26 +51,16 @@ qcom,mdss-dsi-off-command = [
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
-qcom,mdss-dsi-cabc-ui-command = [05 01 00 00 78 00 01 10];
-qcom,mdss-dsi-cabc-ui-command-state = "dsi_lp_mode";
+qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+qcom,mdss-dsi-cabc-ui-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
-qcom,mdss-dsi-cabc-mv-command-state = "dsi_lp_mode";
-qcom,mdss-dsi-cabc-dis-command = [05 01 00 00 78 00 01 11];
-qcom,mdss-dsi-cabc-dis-command-state = "dsi_lp_mode";
-qcom,mdss-dsi-hbm-on-command = [39 00 00 00 00 00 04 b9 ff 83 94
-        05 01 00 00 78 00 01 11
-        15 01 00 00 05 00 02 51 CF
-        15 01 00 00 05 00 02 55 01
-        15 00 00 00 00 00 02 53 2C
-        39 01 00 00 05 00 04 C9 13 00 0D
-        39 01 00 00 05 00 0A CA 40 39 32 28 24 23 22 20 20
-        39 01 00 00 05 00 1B CE 40 40 46 49 4C 4E 51 53 55 58
-        5A 5C 5E 60 62 64 66 68 6A 6C 6E 6F 71 73 D0 01
-        05 01 00 00 0a 00 01 29];
-qcom,mdss-dsi-hbm-on-command-state = "dsi_lp_mode";
-qcom,mdss-dsi-hbm-off-command = [05 01 00 00 23 00 01 28
-        05 01 00 00 78 00 01 10];
-qcom,mdss-dsi-hbm-off-command-state = "dsi_lp_mode";
+qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CF];
+qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
 
 qcom,mdss-dsi-h-sync-pulse = <1>;
@@ -95,6 +85,7 @@ qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
 qcom,cont-splash-enabled;
+qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
 qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
