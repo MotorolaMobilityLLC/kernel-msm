@@ -175,8 +175,26 @@ static int madera_poll_reg(struct madera *madera,
 
 static int madera_wait_for_boot(struct madera *madera)
 {
-	int ret;
+	int ret, i;
+	unsigned int timeout = 5;
+	unsigned int val;
 
+	/* ensure chid can read correctly, then check boot done bit */
+	if (madera->type == CS47L35) {
+		for (i = 0; i < timeout; i++) {
+			ret = regmap_read(madera->regmap, MADERA_SOFTWARE_RESET, &val);
+			if (ret != 0) {
+				dev_err(madera->dev, "Failed to read chip id, ret %d\n", ret);
+				continue;
+			}
+			if (val == CS47L35_SILICON_ID)
+				break;
+
+			usleep_range(1000, 1010);
+		}
+		if (i >= timeout)
+			return -ETIMEDOUT;
+	}
 	/*
 	 * We can't use an interrupt as we need to runtime resume to do so,
 	 * we won't race with the interrupt handler as it'll be blocked on
@@ -771,12 +789,18 @@ int madera_dev_init(struct madera *madera)
 	regcache_cache_only(madera->regmap, false);
 	regcache_cache_only(madera->regmap_32bit, false);
 
-	/* In payton DVT1 factory build, chipid cannot read imediately, so workaround
-	 * for this. root cause is to be debug.
-	*/
-#ifdef CONFIG_ARCH_SDM660
-	msleep(20);
-#endif
+	/* If we don't have a /RESET GPIO use a soft reset */
+	if (!madera->pdata.reset) {
+		ret = madera_soft_reset(madera);
+		if (ret)
+			goto err_reset;
+	}
+
+	ret = madera_wait_for_boot(madera);
+	if (ret) {
+		dev_err(madera->dev, "Device failed initial boot: %d\n", ret);
+		goto err_reset;
+	}
 	/* Verify that this is a chip we know about before we
 	 * starting doing any writes to its registers
 	 */
@@ -794,19 +818,6 @@ int madera_dev_init(struct madera *madera)
 	default:
 		dev_err(madera->dev, "Unknown device ID: %x\n", reg);
 		ret = -EINVAL;
-		goto err_reset;
-	}
-
-	/* If we don't have a /RESET GPIO use a soft reset */
-	if (!madera->pdata.reset) {
-		ret = madera_soft_reset(madera);
-		if (ret)
-			goto err_reset;
-	}
-
-	ret = madera_wait_for_boot(madera);
-	if (ret) {
-		dev_err(madera->dev, "Device failed initial boot: %d\n", ret);
 		goto err_reset;
 	}
 
