@@ -1962,6 +1962,9 @@ void SetStateUnattachedDebugSource(void)
 
 void updateSourceCurrent(void)
 {
+	// Mot products always have a 500 mA limit so use default
+	SourceCurrent = utccDefault;
+
 	switch (SourceCurrent) {
 	case utccDefault:
 		Registers.Control.HOST_CUR = 0b01;	// Set the host current to reflect the default USB power
