@@ -54,6 +54,7 @@ struct pn544_dev	{
 	unsigned int		discharge_delay;
 	bool			irq_enabled;
 	spinlock_t		irq_enabled_lock; /* irq lock for reading */
+	bool			irq_wake_up; /* irq wake-up state */
 	struct notifier_block reboot_notify;
 };
 
@@ -580,6 +581,7 @@ static int pn544_probe(struct i2c_client *client,
 	device_init_wakeup(&client->dev, true);
 	device_set_wakeup_capable(&client->dev, true);
 	i2c_set_clientdata(client, pn544_dev);
+	pn544_dev->irq_wake_up = false;
 
 	return 0;
 
@@ -634,17 +636,22 @@ static int pn544_suspend(struct device *device)
 	struct i2c_client *client = to_i2c_client(device);
 	struct pn544_dev *pn544_dev = i2c_get_clientdata(client);
 
-	if (device_may_wakeup(&client->dev) && pn544_dev->irq_enabled)
-		enable_irq_wake(client->irq);
+	if (device_may_wakeup(&client->dev) && pn544_dev->irq_enabled) {
+		if (!enable_irq_wake(client->irq))
+			pn544_dev->irq_wake_up = true;
+	}
 	return 0;
 }
 
 static int pn544_resume(struct device *device)
 {
 	struct i2c_client *client = to_i2c_client(device);
+	struct pn544_dev *pn544_dev = i2c_get_clientdata(client);
 
-	if (device_may_wakeup(&client->dev))
-		disable_irq_wake(client->irq);
+	if (device_may_wakeup(&client->dev) && pn544_dev->irq_wake_up) {
+		if (!disable_irq_wake(client->irq))
+			pn544_dev->irq_wake_up = false;
+	}
 	return 0;
 }
 
