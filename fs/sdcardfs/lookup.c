@@ -367,7 +367,14 @@ put_name:
 	/* instatiate a new negative dentry */
 	dname.name = name->name;
 	dname.len = name->len;
-	dname.hash = full_name_hash(dname.name, dname.len);
+
+	/* See if the low-level filesystem might want
+	 * to use tis own hash
+	 */
+	if (lower_dir_dentry->d_flags & DCACHE_OP_HASH)
+		lower_dir_dentry->d_op->d_hash(lower_dir_dentry, &dname);
+	else
+		dname.hash = full_name_hash(dname.name, dname.len);
 	lower_dentry = d_lookup(lower_dir_dentry, &dname);
 	if (lower_dentry)
 		goto setup_lower;
