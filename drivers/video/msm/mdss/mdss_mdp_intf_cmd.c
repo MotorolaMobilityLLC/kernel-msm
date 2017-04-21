@@ -464,11 +464,14 @@ static int mdss_mdp_cmd_add_vsync_handler(struct mdss_mdp_ctl *ctl,
 	struct mdss_mdp_cmd_ctx *ctx, *sctx = NULL;
 	unsigned long flags;
 	bool enable_rdptr = false;
+	int ret = 0;
 
+	mutex_lock(&ctl->offlock);
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
 		pr_err("%s: invalid ctx\n", __func__);
-		return -ENODEV;
+		ret = -ENODEV;
+		goto done;
 	}
 
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
@@ -503,7 +506,9 @@ static int mdss_mdp_cmd_add_vsync_handler(struct mdss_mdp_ctl *ctl,
 			mutex_unlock(&cmd_clk_mtx);
 	}
 
-	return 0;
+done:
+	mutex_unlock(&ctl->offlock);
+	return ret;
 }
 
 static int mdss_mdp_cmd_remove_vsync_handler(struct mdss_mdp_ctl *ctl,
@@ -976,7 +981,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 	bool panel_off = false;
 	bool turn_off_clocks = false;
 	bool send_panel_events = false;
-	int ret;
+	int ret = 0;
 
 	if (!ctx) {
 		pr_err("invalid ctx\n");
@@ -1000,6 +1005,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 	pr_debug("%s: transition from %d --> %d\n", __func__,
 		 ctx->panel_power_state, panel_power_state);
 
+	mutex_lock(&ctl->offlock);
 	if (__mdss_mdp_cmd_is_panel_power_on_interactive(ctx)) {
 		if (mdss_panel_is_power_on_lp(panel_power_state)) {
 			/*
@@ -1044,7 +1050,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		if (IS_ERR_VALUE(ret)) {
 			pr_err("%s: unable to stop interface: %d\n",
 				__func__, ret);
-			return ret;
+			goto end;
 		}
 
 		if (sctl) {
@@ -1052,14 +1058,13 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			if (IS_ERR_VALUE(ret)) {
 				pr_err("%s: unable to stop slave intf: %d\n",
 					__func__, ret);
-				return ret;
+				goto end;
 			}
 		}
 
 panel_events:
 	if ((ctl->num == 0) && send_panel_events) {
 		pr_debug("%s: send panel events\n", __func__);
-		mutex_lock(&ctl->offlock);
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK,
                                       (void *) (long int) panel_power_state);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
@@ -1067,7 +1072,6 @@ panel_events:
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_OFF,
                                       (void *) (long int) panel_power_state);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
-		mutex_unlock(&ctl->offlock);
 	}
 
 	ctx->panel_power_state = panel_power_state;
@@ -1088,9 +1092,10 @@ panel_events:
 end:
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 				ctx->rdptr_enabled, XLOG_FUNC_EXIT);
+	mutex_unlock(&ctl->offlock);
 	pr_debug("%s:-\n", __func__);
 
-	return 0;
+	return ret;
 }
 
 void mdss_mdp_cmd_dump_ctx(struct mdss_mdp_ctl *ctl)
