@@ -324,4 +324,5 @@
 &pm660l_wled {
 	en-sdm660l-ovp-disable;
 	qcom,led-strings-list = [00 01 02];
+	qcom,en-cabc;
 };
