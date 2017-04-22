@@ -445,6 +445,7 @@ struct smbchg_chip {
 	int				vbus_inc_cnt;
 	enum turbo_ebsrc		turbo_pwr_ebsrc;
 	bool				check_ebsrc_vl;
+	bool				usbc_rp_change;
 };
 
 static struct smbchg_chip *the_chip;
@@ -3217,8 +3218,11 @@ static int smbchg_set_thermal_limited_usb_current_max(struct smbchg_chip *chip,
 
 	SMB_DBG(chip, "AICL = %d, ICL = %d\n",
 			aicl_ma, chip->usb_max_current_ma);
-	if (chip->usb_max_current_ma > aicl_ma && smbchg_is_aicl_complete(chip))
+	if (chip->usb_max_current_ma > aicl_ma &&
+	    (smbchg_is_aicl_complete(chip) || chip->usbc_rp_change)) {
+		chip->usbc_rp_change = false;
 		smbchg_rerun_usb_aicl(chip);
+	}
 	smbchg_parallel_usb_check_ok(chip);
 	return rc;
 }
@@ -5140,6 +5144,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 	struct power_supply *psy = v;
 	int rc, online, disabled;
 	bool  bswchg_pres;
+	int prev_cl_usbc = chip->cl_usbc;
 	union power_supply_propval prop = {0,};
 
 	if (!chip) {
@@ -5218,6 +5223,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 		online = prop.intval;
 
 	prop.intval = 0;
+	prev_cl_usbc = chip->cl_usbc;
 	rc = psy->get_property(psy,
 			       POWER_SUPPLY_PROP_CURRENT_MAX,
 			       &prop);
@@ -5267,9 +5273,16 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 			schedule_delayed_work(&chip->usb_insertion_work,
 				      msecs_to_jiffies(100));
 		}
-		if (!chip->bsw_psy)
+		if (!chip->bsw_psy) {
 			chip->usbc_bswchg_pres = false;
-		else if (chip->usbc_bswchg_pres ^ bswchg_pres) {
+			if (prev_cl_usbc != chip->cl_usbc) {
+				if (chip->cl_usbc > prev_cl_usbc)
+					chip->usbc_rp_change = true;
+				cancel_delayed_work(&chip->heartbeat_work);
+				schedule_delayed_work(&chip->heartbeat_work,
+						      msecs_to_jiffies(0));
+			}
+		} else if (chip->usbc_bswchg_pres ^ bswchg_pres) {
 			chip->usbc_bswchg_pres = bswchg_pres;
 			cancel_delayed_work(&chip->heartbeat_work);
 			schedule_delayed_work(&chip->heartbeat_work,
@@ -11268,6 +11281,15 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 						chip->usb_target_current_ma);
 				smbchg_set_extbat_state(chip, EB_OFF, false);
 			}
+		} else {
+			mutex_lock(&chip->current_change_lock);
+			if (chip->cl_usbc >= 1500)
+				chip->usb_target_current_ma = chip->cl_usbc;
+			else
+				chip->usb_target_current_ma = chip->cl_usb;
+			mutex_unlock(&chip->current_change_lock);
+			smbchg_set_thermal_limited_usb_current_max(chip,
+						chip->usb_target_current_ma);
 		}
 		chip->vfloat_mv = chip->stepchg_steps[index].max_mv;
 		chip->vfloat_parallel_mv =
@@ -11320,6 +11342,15 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 						chip->usb_target_current_ma);
 				smbchg_set_extbat_state(chip, EB_OFF, false);
 			}
+		} else {
+			mutex_lock(&chip->current_change_lock);
+			if (chip->cl_usbc >= 1500)
+				chip->usb_target_current_ma = chip->cl_usbc;
+			else
+				chip->usb_target_current_ma = chip->cl_usb;
+			mutex_unlock(&chip->current_change_lock);
+			smbchg_set_thermal_limited_usb_current_max(chip,
+						chip->usb_target_current_ma);
 		}
 		chip->vfloat_parallel_mv =
 			chip->stepchg_steps[index].max_mv + STEPCHG_MAX_FV_COMP;
@@ -11795,6 +11826,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->check_ebsrc_vl = false;
 	chip->bsw_volt_min_mv = -EINVAL;
 	chip->is_factory_image = false;
+	chip->usbc_rp_change = false;
 	chip->charging_limit_modes = CHARGING_LIMIT_UNKNOWN;
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
 	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
