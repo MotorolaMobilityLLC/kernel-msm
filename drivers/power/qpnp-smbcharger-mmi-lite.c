@@ -3865,6 +3865,13 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 
 		if (smbchg_is_ta_charger(psy, current_limit)) {
 			pr_smb(PR_MISC, "Maybe is Ta charger, rerun APSD!\n");
+			if (chip->factory_mode &&
+				(chip->supply_type == POWER_SUPPLY_TYPE_USB ||
+				chip->supply_type == POWER_SUPPLY_TYPE_USB_CDP))
+			{
+				pr_err("SMB - Factory Kill Armed Remove\n");
+				chip->factory_cable = false;
+			}
 			smbchg_force_apsd(chip);
 			mutex_unlock(&chip->current_change_lock);
 			return;
