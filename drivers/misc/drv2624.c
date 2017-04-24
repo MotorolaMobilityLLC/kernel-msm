@@ -1030,32 +1030,37 @@ static void dev_init_platform_data(struct drv2624_data *ctrl)
 	}
 	actuator.meWorkMode = NORMAL;
 	/*update sample_time*/
-	drv2624_reg_write(ctrl,
-			  DRV2624_REG_SAMPLE_TIME,
-			  actuator.mnSampleTime & SAMPLE_TIME_MASK);
+	drv2624_reg_write(ctrl, DRV2624_REG_SAMPLE_TIME, actuator.mnSampleTime);
 
 	if (actuator.meActuatorType == LRA) {
-		unsigned char DriveTime =
-		    5 * (1000 - actuator.mnLRAFreq) / actuator.mnLRAFreq;
 		unsigned short openLoopPeriod =
 		    (unsigned short)((unsigned int)1000000000 /
 				     (24619 * actuator.mnLRAFreq));
 
-		if (actuator.mnLRAFreq < 125)
-			DriveTime |= (MINFREQ_SEL_45HZ << MINFREQ_SEL_SHIFT);
-		drv2624_set_bits(ctrl,
-				 DRV2624_REG_DRIVE_TIME,
-				 DRIVE_TIME_MASK | MINFREQ_SEL_MASK, DriveTime);
 		drv2624_set_bits(ctrl,
 				 DRV2624_REG_OL_PERIOD_H, 0x03,
 				 (openLoopPeriod & 0x0300) >> 8);
 		drv2624_reg_write(ctrl, DRV2624_REG_OL_PERIOD_L,
 				  (openLoopPeriod & 0x00ff));
 
-		dev_info(ctrl->dev,
-			 "%s, LRA = %d, DriveTime=0x%x\n",
-			 __func__, actuator.mnLRAFreq, DriveTime);
+		if (!actuator.mnDriveTime) {
+			unsigned char DriveTime =
+				 5*(1000-actuator.mnLRAFreq)/actuator.mnLRAFreq;
+
+			if (actuator.mnLRAFreq < 125)
+				DriveTime |=
+					(MINFREQ_SEL_45HZ << MINFREQ_SEL_SHIFT);
+			actuator.mnDriveTime = DriveTime;
+		}
+
+		drv2624_set_bits(ctrl,
+				 DRV2624_REG_DRIVE_TIME,
+				 DRIVE_TIME_MASK | MINFREQ_SEL_MASK,
+				 actuator.mnDriveTime);
+		dev_info(ctrl->dev, "%s, LRA = %d, DriveTime=0x%x\n",
+			__func__, actuator.mnLRAFreq, actuator.mnDriveTime);
 	}
+
 	if (ctrl->msPlatData.auto_cal) {
 		drv2624_reg_write(ctrl,
 				  DRV2624_REG_AUTO_CAL_TIME,
@@ -1160,6 +1165,12 @@ static struct drv2624_platform_data *drv2624_of_init(struct i2c_client *client)
 	if (rc && gpio_is_valid(pdata->mnGpioVCTRL))
 		dev_warn(&client->dev, "%s: overdrive voltage reduced read failed\n",
 			__func__);
+
+	rc = of_property_read_u8(np, "ti,drive_time",
+		&pdata->msActuator.mnDriveTime);
+	if (!rc)
+		dev_info(&client->dev, "%s: drive time %d\n",
+			__func__, pdata->msActuator.mnDriveTime);
 
 	rc = of_property_read_u8(np, "ti,sample_time",
 		&pdata->msActuator.mnSampleTime);
