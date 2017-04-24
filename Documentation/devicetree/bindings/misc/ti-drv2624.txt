@@ -14,6 +14,11 @@ Optional:
 - ti,auto_cal: boolean, enable boot-up calibration. Disabled by default
 - ti,lra_drive: boolean, when selected configures LRA actuator type, otherwise actuator type is ERM
 - ti,open_loop: boolean, when selected configures open loop drive, otherwise closed loop drive
+- ti,nvctrl-gpio: GPIO to indicate state for context aware vibration experience
+- ti,rated_voltage_reduced: 8 bit, reduced value of rated voltage register setting
+- ti,overdrive_voltage_reduced: 8 bit, reduced value of overdrive voltage register setting
+- ti,sample_time: 8 bit, sample time register setting
+- ti,drive_time; 8 bit, drive time register setting (applied by mask 0x1F)
 
 Example:
 
