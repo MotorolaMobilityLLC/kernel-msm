@@ -146,8 +146,9 @@
 		ti,lra_drive;
 		ti,auto_cal;
 		ti,auto_cal_time = /bits/ 8 <0x02>;
-		/* sample time 200us  */
-		ti,sample_time = /bits/ 8 <0x04>;
+		/* OD_CLAMP time 25ms, sample time 300us, ZC_DET time 200us */
+		ti,sample_time = /bits/ 8 <0x1D>;
+		ti,drive_time = /bits/ 8 <0x10>;
 		ti,nrst-gpio = <&pmi8998_gpios 9 0>;   /* EN_GPIO */
 		ti,nvctrl-gpio = <&tlmm 0 0>;
 	};
