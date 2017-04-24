@@ -321,15 +321,6 @@ int madera_set_channel_map(struct snd_soc_dai *dai,
 		return -EINVAL;
 	}
 
-	if (rx_num && rx_num != rx_chcnt) {
-		dev_err(madera->dev, "set_channel_map rx_num (%d) != rx_chcnt (%d)\n",
-			rx_num, rx_chcnt);
-	}
-	if (tx_num && tx_num != tx_chcnt) {
-		dev_err(madera->dev, "set_channel_map tx_num (%d) != tx_chcnt (%d)\n",
-			tx_num, tx_chcnt);
-	}
-
 	/* This actually allocates the channel or refcounts it if there... */
 	for (i = 0; rx_num && i < rx_chcnt; i++) {
 		slim_get_slaveport(laddr, i + rx_idx_step, &rx_porth[i],
