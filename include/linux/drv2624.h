@@ -191,7 +191,7 @@ struct actuator_data {
 	unsigned char mnOverDriveClampVoltageReduced;
 	unsigned char mnLRAFreq;
 	unsigned char mnSampleTime;
-
+	unsigned char mnDriveTime;
 };
 
 enum wave_seq_loop {
