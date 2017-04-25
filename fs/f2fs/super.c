@@ -424,6 +424,14 @@ static int sanity_check_raw_super(struct super_block *sb,
 		return 1;
 	}
 
+	/* check log blocks per segment */
+	if (le32_to_cpu(raw_super->log_blocks_per_seg) != 9) {
+		f2fs_msg(sb, KERN_INFO,
+			"Invalid log blocks per segment (%u)\n",
+			le32_to_cpu(raw_super->log_blocks_per_seg));
+		return 1;
+	}
+
 	if (le32_to_cpu(raw_super->log_sectorsize) !=
 					F2FS_LOG_SECTOR_SIZE) {
 		f2fs_msg(sb, KERN_INFO, "Invalid log sectorsize");
