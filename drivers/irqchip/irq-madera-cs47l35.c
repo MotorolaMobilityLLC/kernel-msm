@@ -45,6 +45,10 @@ static const struct regmap_irq cs47l35_irqs[MADERA_NUM_IRQ] = {
 				  .mask = MADERA_JD1_FALL_EINT1 },
 	[MADERA_IRQ_JD1_RISE] = { .reg_offset = 6,
 				  .mask = MADERA_JD1_RISE_EINT1 },
+	[MADERA_IRQ_JD2_FALL] = { .reg_offset = 6,
+				  .mask = MADERA_JD2_FALL_EINT1 },
+	[MADERA_IRQ_JD2_RISE] = { .reg_offset = 6,
+				  .mask = MADERA_JD2_RISE_EINT1 },
 
 	[MADERA_IRQ_DRC2_SIG_DET] = { .reg_offset = 8,
 				  .mask = MADERA_DRC2_SIG_DET_EINT1 },
