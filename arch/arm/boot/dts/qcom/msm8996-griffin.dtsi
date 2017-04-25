@@ -171,6 +171,9 @@
 				<4400 2400 2000>;
 	qcom,stepchg-iterm-ma = <170>;
 	qcom,bsw-psy-name = "charger-switch";
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <80>;
+	qcom,lower-limit-capacity = <60>;
 };
 
 /{
