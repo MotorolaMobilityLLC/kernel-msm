@@ -329,3 +329,9 @@
 		};
 	};
 };
+
+&pmi8950_charger {
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <80>;
+	qcom,lower-limit-capacity = <60>;
+};
