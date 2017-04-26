@@ -1238,9 +1238,10 @@ void epl_sensor_enable_ps(int enable)
 				stowed_cal_flag, dynamic_intt_lux);
 #endif
 
-			epl_sensor.ps.integration_time = EPL_PS_INTT_272;
-			epl_sensor.ps.gain = EPL_GAIN_LOW;
-			epl_sensor.ps.ir_drive = EPL_IR_DRIVE_50;
+			epl_sensor.ps.integration_time =
+				(epld->dt_ps_intt << 2);
+			epl_sensor.ps.gain = epld->dt_ps_gain;
+			epl_sensor.ps.ir_drive = epld->dt_ps_ir_drive;
 		} else if (enable_stowed_flag == false &&
 			enable_ps_flag == true) {
 			LOG_DBG("[%s]: PS enable! \r\n", __func__);
