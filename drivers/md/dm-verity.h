@@ -64,6 +64,8 @@ struct dm_verity {
 
 	struct dm_verity_fec *fec;	/* forward error correction */
 	unsigned long *validated_blocks; /* bitset blocks validated */
+	unsigned long *verified_cache;
+	struct timer_list cache_timeout;
 };
 
 struct dm_verity_io {
