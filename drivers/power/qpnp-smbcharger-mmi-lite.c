@@ -300,7 +300,7 @@ struct smbchg_chip {
 	int				charger_rate;
 	bool				usbid_disabled;
 	bool				usbid_gpio_enabled;
-	bool				demo_mode;
+	int				demo_mode;
 	bool				batt_therm_wa;
 	struct notifier_block		smb_reboot;
 	int				aicl_wait_retries;
@@ -7173,7 +7173,12 @@ static ssize_t force_demo_mode_store(struct device *dev,
 		return -ENODEV;
 	}
 
-	the_chip->demo_mode = (mode) ? true : false;
+	the_chip->stepchg_state_holdoff = 0;
+
+	if ((mode >= 35) && (mode <= 80))
+		the_chip->demo_mode = mode;
+	else
+		the_chip->demo_mode = 35;
 
 	return r ? r : count;
 }
@@ -7189,7 +7194,7 @@ static ssize_t force_demo_mode_show(struct device *dev,
 		return -ENODEV;
 	}
 
-	state = (the_chip->demo_mode) ? 1 : 0;
+	state = the_chip->demo_mode;
 
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
@@ -8074,7 +8079,6 @@ void update_charging_limit_modes(struct smbchg_chip *chip,
 #define STEPCHG_ONE_FV_COMP 40
 #define STEPCHG_FULL_FV_COMP 100
 #define STEPCHG_CURR_ADJ 200
-#define DEMO_MODE_MAX_SOC 35
 #define DEMO_MODE_HYS_SOC 5
 #define HYST_STEP_MV 50
 static void smbchg_heartbeat_work(struct work_struct *work)
@@ -8111,18 +8115,44 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	prev_step = chip->stepchg_state;
 
 	if (chip->demo_mode) {
-		chip->stepchg_state = STEP_NONE;
-		dev_warn(chip->dev, "Battery in Demo Mode charging Limited\n");
+		static int demo_full_soc = 100;
+		bool voltage_full = false;
+
+		if (batt_ma < 0)
+			batt_ma *= -1;
 		if ((!!!(chip->usb_suspended & REASON_DEMO)) &&
-		    (batt_soc >= DEMO_MODE_MAX_SOC)) {
+		    ((batt_mv + HYST_STEP_MV) >= DEMO_MODE_VOLTAGE) &&
+		    (batt_ma <= chip->stepchg_iterm_ma) &&
+		    (chip->allowed_fastchg_current_ma >=
+		     chip->stepchg_iterm_ma)) {
+			if (chip->stepchg_state_holdoff >= 2) {
+				voltage_full = true;
+				chip->stepchg_state_holdoff = 0;
+			} else
+				chip->stepchg_state_holdoff++;
+		} else {
+			chip->stepchg_state_holdoff = 0;
+		}
+
+		chip->stepchg_state = STEP_NONE;
+		pr_warn("Battery in Demo Mode charging Limited per%d\n",
+			 chip->demo_mode);
+		if ((!!!(chip->usb_suspended & REASON_DEMO)) &&
+		    ((batt_soc >= chip->demo_mode) ||
+		     voltage_full)) {
+			demo_full_soc = batt_soc;
 			smbchg_usb_en(chip, false, REASON_DEMO);
 			smbchg_dc_en(chip, false, REASON_DEMO);
+			pr_warn("Battery in Demo Mode charging false\n");
 		} else if (!!(chip->usb_suspended & REASON_DEMO) &&
 			(batt_soc <=
-			 (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			 (demo_full_soc - DEMO_MODE_HYS_SOC))) {
 			smbchg_usb_en(chip, true, REASON_DEMO);
 			smbchg_dc_en(chip, true, REASON_DEMO);
+			chip->stepchg_state_holdoff = 0;
+			pr_warn("Battery in Demo Mode charging true\n");
 		}
+		smbchg_set_temp_chgpath(chip, chip->temp_state);
 	} else if ((chip->stepchg_state == STEP_NONE) && (chip->usb_present)) {
 		if (batt_mv >= chip->stepchg_voltage_mv)
 			chip->stepchg_state = STEP_ONE;
@@ -8387,7 +8417,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->spmi = spmi;
 	chip->dev = &spmi->dev;
 	chip->usb_psy = usb_psy;
-	chip->demo_mode = false;
+	chip->demo_mode = 0;
 	chip->hvdcp_det_done = false;
 	chip->is_factory_image = false;
 	chip->charging_limit_modes = CHARGING_LIMIT_UNKNOWN;
