@@ -1167,9 +1167,10 @@ static int smblib_hvdcp_enable_vote_callback(struct votable *votable,
 	u8 val = HVDCP_AUTH_ALG_EN_CFG_BIT | HVDCP_EN_BIT;
 	u8 stat;
 
+#ifdef QCOM_BASE
 	/* vote to enable/disable HW autonomous INOV */
 	vote(chg->hvdcp_hw_inov_dis_votable, client, !hvdcp_enable, 0);
-
+#endif
 	/*
 	 * Disable the autonomous bit and auth bit for disabling hvdcp.
 	 * This ensures only qc 2.0 detection runs but no vbus
@@ -1179,7 +1180,12 @@ static int smblib_hvdcp_enable_vote_callback(struct votable *votable,
 		val = HVDCP_EN_BIT;
 
 	rc = smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG,
+#ifdef QCOM_BASE
 				 HVDCP_EN_BIT | HVDCP_AUTH_ALG_EN_CFG_BIT,
+#else
+				 HVDCP_EN_BIT | HVDCP_AUTH_ALG_EN_CFG_BIT |
+				 HVDCP_AUTONOMOUS_MODE_EN_CFG_BIT,
+#endif
 				 val);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't %s hvdcp rc=%d\n",
@@ -1257,7 +1263,7 @@ static int smblib_hvdcp_hw_inov_dis_vote_callback(struct votable *votable,
 			return rc;
 		}
 	}
-
+#ifdef QCOM_BASE
 	rc = smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG,
 			HVDCP_AUTONOMOUS_MODE_EN_CFG_BIT,
 			disable ? 0 : HVDCP_AUTONOMOUS_MODE_EN_CFG_BIT);
@@ -1268,6 +1274,9 @@ static int smblib_hvdcp_hw_inov_dis_vote_callback(struct votable *votable,
 	}
 
 	return rc;
+#else
+	return 0;
+#endif
 }
 
 static int smblib_usb_irq_enable_vote_callback(struct votable *votable,
@@ -2119,7 +2128,7 @@ static int smblib_dp_pulse(struct smb_charger *chg)
 
 	return rc;
 }
-
+#ifdef QCOM_BASE
 static int smblib_dm_pulse(struct smb_charger *chg)
 {
 	int rc;
@@ -2133,9 +2142,10 @@ static int smblib_dm_pulse(struct smb_charger *chg)
 
 	return rc;
 }
-
+#endif
 int smblib_dp_dm(struct smb_charger *chg, int val)
 {
+#ifdef QCOM_BASE
 	int target_icl_ua, rc = 0;
 	union power_supply_propval pval;
 
@@ -2191,6 +2201,9 @@ int smblib_dp_dm(struct smb_charger *chg, int val)
 	}
 
 	return rc;
+#else
+	return 0;
+#endif
 }
 
 int smblib_disable_hw_jeita(struct smb_charger *chg, bool disable)
@@ -3720,6 +3733,7 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 
 	/* the APSD done handler will set the USB supply type */
 	apsd_result = smblib_get_apsd_result(chg);
+#ifdef QCOM_BASE
 	if (get_effective_result(chg->hvdcp_hw_inov_dis_votable)) {
 		if (apsd_result->pst == POWER_SUPPLY_TYPE_USB_HVDCP) {
 			/* force HVDCP2 to 9V if INOV is disabled */
@@ -3730,6 +3744,7 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 					"Couldn't force 9V HVDCP rc=%d\n", rc);
 		}
 	}
+#endif
 
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: hvdcp-3p0-auth-done rising; %s detected\n",
 		   apsd_result->name);
@@ -6087,7 +6102,7 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 #define VBUS_INPUT_MAX_COUNT 4
 #define WARM_TEMP 45
 #define COOL_TEMP 0
-#define REV_BST_THRESH 4650
+#define REV_BST_THRESH 4700
 #define REV_BST_DROP 150
 static void mmi_heartbeat_work(struct work_struct *work)
 {
@@ -6649,17 +6664,20 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			smblib_dbg(chip, PR_MOTO,
 				   "HVDCP Input %d mV Low, Increase\n",
 				   usb_mv);
-			smblib_write(chip, CMD_HVDCP_2_REG,
-				     SINGLE_INCREMENT_BIT);
+			smblib_dp_pulse(chip);
 			vbus_inc_now = true;
 			mmi->vbus_inc_cnt++;
 		} else if (usb_mv > VBUS_INPUT_VOLTAGE_MAX) {
+			smblib_dbg(chip, PR_MOTO,
+				   "HVDCP Input %d mV High force 5V\n",
+				   usb_mv);
 			vbus_inc_mv -= 50;
 			smblib_write(chip, CMD_HVDCP_2_REG,
 				     FORCE_5V_BIT);
 			vbus_inc_now = true;
 			mmi->vbus_inc_cnt = 0;
 		}
+
 	}
 
 	if (chip->mmi.pres_temp_zone == ZONE_HOT) {
@@ -7732,6 +7750,10 @@ void mmi_init(struct smb_charger *chg)
 			smblib_err(chg, "couldn't create force_chg_itrick\n");
 		}
 	}
+
+	/* reconfigure allowed voltage for HVDCP */
+	rc = smblib_set_adapter_allowance(chg,
+			USBIN_ADAPTER_ALLOW_5V_TO_9V);
 
 	/* Disable all WIPWR Feature */
 	rc = smblib_masked_write(chg, WI_PWR_OPTIONS_REG, 0xFF, 0x00);
