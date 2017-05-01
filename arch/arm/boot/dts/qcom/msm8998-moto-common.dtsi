@@ -1563,6 +1563,14 @@
 	};
 };
 
+&spmi_bus {
+	qcom,pmi8998@2 {
+		qcom,power-on@800 {
+			qcom,shipmode;
+		};
+	};
+};
+
 &pmi8998_fg {
 	qcom,battery-data = <&mot_batterydata>;
 	qcom,fg-force-load-profile = <1>;
