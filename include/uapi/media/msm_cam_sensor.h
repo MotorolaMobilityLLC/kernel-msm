@@ -239,7 +239,6 @@ struct sensorb_cfg_data {
 		struct msm_sensor_init_params sensor_init_params;
 		void                         *setting;
 		struct msm_sensor_i2c_sync_params sensor_i2c_sync_params;
-		uint32_t skip_power_down;
 	} cfg;
 };
 
