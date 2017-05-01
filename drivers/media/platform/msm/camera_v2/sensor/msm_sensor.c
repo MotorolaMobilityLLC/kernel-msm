@@ -800,20 +800,14 @@ static int msm_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 			break;
 		}
 		if (s_ctrl->func_tbl->sensor_power_down) {
-			if (cdata->cfg.skip_power_down != 0) {
-				CDBG("%s:%d skipping sensor power down\n",
-				        __func__, __LINE__);
-			} else {
-				if (s_ctrl->sensordata->misc_regulator)
-					msm_sensor_misc_regulator(s_ctrl, 0);
+			if (s_ctrl->sensordata->misc_regulator)
+				msm_sensor_misc_regulator(s_ctrl, 0);
 
-				rc = s_ctrl->func_tbl->sensor_power_down(
-                                        s_ctrl);
-				if (rc < 0) {
-					pr_err("%s:%d failed rc %d\n", __func__,
-						__LINE__, rc);
-					break;
-				}
+			rc = s_ctrl->func_tbl->sensor_power_down(s_ctrl);
+			if (rc < 0) {
+				pr_err("%s:%d failed rc %d\n", __func__,
+					__LINE__, rc);
+				break;
 			}
 			s_ctrl->sensor_state = MSM_SENSOR_POWER_DOWN;
 			CDBG("%s:%d sensor state %d\n", __func__, __LINE__,
@@ -1298,20 +1292,14 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			break;
 		}
 		if (s_ctrl->func_tbl->sensor_power_down) {
-			if (cdata->cfg.skip_power_down != 0) {
-				CDBG("%s:%d skipping sensor power down\n",
-                                        __func__, __LINE__);
-			} else {
-				if (s_ctrl->sensordata->misc_regulator)
-					msm_sensor_misc_regulator(s_ctrl, 0);
+			if (s_ctrl->sensordata->misc_regulator)
+				msm_sensor_misc_regulator(s_ctrl, 0);
 
-				rc = s_ctrl->func_tbl->sensor_power_down(
-                                        s_ctrl);
-				if (rc < 0) {
-					pr_err("%s:%d failed rc %d\n", __func__,
-						__LINE__, rc);
-					break;
-				}
+			rc = s_ctrl->func_tbl->sensor_power_down(s_ctrl);
+			if (rc < 0) {
+				pr_err("%s:%d failed rc %d\n", __func__,
+					__LINE__, rc);
+				break;
 			}
 			s_ctrl->sensor_state = MSM_SENSOR_POWER_DOWN;
 			CDBG("%s:%d sensor state %d\n", __func__, __LINE__,
