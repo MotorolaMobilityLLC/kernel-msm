@@ -74,6 +74,8 @@
 
 #define IPA_SPS_PROD_TIMEOUT_MSEC 100
 
+#define IPA_MAX_RX_POOL_SZ 1000
+
 #ifdef CONFIG_COMPAT
 #define IPA_IOC_ADD_HDR32 _IOWR(IPA_IOC_MAGIC, \
 					IPA_IOCTL_ADD_HDR, \
@@ -182,6 +184,10 @@ struct ipa_ioc_nat_alloc_mem32 {
 	compat_off_t offset;
 };
 #endif
+
+static unsigned int ipa_rx_ring_sz;
+module_param(ipa_rx_ring_sz, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(ipa_rx_ring_sz, "Override IPA RX Ring Size");
 
 static void ipa_start_tag_process(struct work_struct *work);
 static DECLARE_WORK(ipa_tag_work, ipa_start_tag_process);
@@ -4438,6 +4444,12 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 	else
 		IPADBG(": found ipa_drv_res->lan-rx-ring-size = %u",
 				ipa_drv_res->lan_rx_ring_size);
+
+	if (ipa_rx_ring_sz  && ipa_rx_ring_sz <= IPA_MAX_RX_POOL_SZ) {
+		ipa_drv_res->lan_rx_ring_size = ipa_rx_ring_sz;
+		ipa_drv_res->wan_rx_ring_size = ipa_rx_ring_sz;
+		IPAERR("Override IPA RX Ring Size with %u\n", ipa_rx_ring_sz);
+	}
 
 	ipa_drv_res->use_ipa_teth_bridge =
 			of_property_read_bool(pdev->dev.of_node,
