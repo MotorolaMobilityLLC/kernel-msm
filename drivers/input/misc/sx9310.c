@@ -31,7 +31,7 @@
 #define ACTIVE 1
 
 
-#define SX9310_DEBUG 1
+#define SX9310_DEBUG 0
 #define LOG_TAG "SX9310 "
 
 #if SX9310_DEBUG
