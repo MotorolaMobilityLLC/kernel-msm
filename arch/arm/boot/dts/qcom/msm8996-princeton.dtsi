@@ -518,6 +518,12 @@
 	};
 };
 
+&pmi8994_charger {
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <80>;
+	qcom,lower-limit-capacity = <60>;
+};
+
 &drv2605 {
 	gpios = <&pm8994_gpios 12 0>;   /* EN_GPIO */
 };
