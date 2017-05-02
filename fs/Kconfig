@@ -8,6 +8,13 @@ menu "File systems"
 config DCACHE_WORD_ACCESS
        bool
 
+config FS_EPOLL_WAKEUP_DEBUG
+	bool "debug eventpoll wakeup source"
+	default n
+	help
+	  This option enables printing thread ID and name of eventpoll wakeup source
+	  while waking up system for debug purpose. Keep it off if not sure.
+
 if BLOCK
 
 source "fs/ext2/Kconfig"
