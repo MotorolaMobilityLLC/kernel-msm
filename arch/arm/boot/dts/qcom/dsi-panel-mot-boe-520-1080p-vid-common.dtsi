@@ -12,7 +12,7 @@
 
 compatible = "qcom,mdss-dsi-panel";
 qcom,mdss-dsi-panel-name = "mipi_mot_vid_boe_1080p_520";
-qcom,mdss-dsi-panel-supplier = "tianma";
+qcom,mdss-dsi-panel-supplier = "boe";
 qcom,mdss-dsi-panel-type = "dsi_video_mode";
 qcom,mdss-dsi-panel-framerate = <60>;
 qcom,mdss-dsi-virtual-channel-id = <0>;
@@ -96,6 +96,13 @@ qcom,mdss-dsi-lp11-reset-lcdb;
 qcom,mdss-dsi-tx-eot-append;
 qcom,mdss-dsi-init-delay-us = <50000>;
 qcom,mdss-dsi-panel-on-check-value = <0x0c>;
+
+qcom,esd-check-enabled;
+qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+qcom,mdss-dsi-panel-status-read-length = <1>;
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-panel-status-value = <0x1c>;
 
 qcom,panel-supply-entries {
 	#address-cells = <1>;
