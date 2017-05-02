@@ -100,6 +100,8 @@
 /* The relative location in /lib/firmware where the FWs will reside */
 #define IPA_FWS_PATH "ipa/ipa_fws.elf"
 
+#define IPA_MAX_RX_POOL_SZ 1000
+
 #ifdef CONFIG_COMPAT
 #define IPA_IOC_ADD_HDR32 _IOWR(IPA_IOC_MAGIC, \
 					IPA_IOCTL_ADD_HDR, \
@@ -229,6 +231,10 @@ struct ipa_ioc_nat_ipv6ct_table_alloc32 {
 
 #define IPA_TZ_UNLOCK_ATTRIBUTE 0x0C0311
 #define TZ_MEM_PROTECT_REGION_ID 0x10
+
+static unsigned int ipa_rx_ring_sz;
+module_param(ipa_rx_ring_sz, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(ipa_rx_ring_sz, "Override IPA RX Ring Size");
 
 struct tz_smmu_ipa_protect_region_iovec_s {
 	u64 input_addr;
@@ -5215,6 +5221,12 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 	else
 		IPADBG(": found ipa_drv_res->lan-rx-ring-size = %u",
 			ipa_drv_res->lan_rx_ring_size);
+
+	if (ipa_rx_ring_sz  && ipa_rx_ring_sz <= IPA_MAX_RX_POOL_SZ) {
+		ipa_drv_res->lan_rx_ring_size = ipa_rx_ring_sz;
+		ipa_drv_res->wan_rx_ring_size = ipa_rx_ring_sz;
+		IPAERR("Override IPA RX Ring Size with %u\n", ipa_rx_ring_sz);
+	}
 
 	ipa_drv_res->use_ipa_teth_bridge =
 			of_property_read_bool(pdev->dev.of_node,
