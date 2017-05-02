@@ -37,6 +37,12 @@
 	};
 };
 
+&pmi8994_charger {
+	qcom,enable-charging-limit;
+	qcom,upper-limit-capacity = <80>;
+	qcom,lower-limit-capacity = <60>;
+};
+
 &pmi8994_fg {
 	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
 	qcom,battery-data = <&mot_batterydata>;
