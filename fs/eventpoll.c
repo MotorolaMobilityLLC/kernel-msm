@@ -1381,7 +1381,14 @@ static int ep_create_wakeup_source(struct epitem *epi)
 	struct wakeup_source *ws;
 
 	if (!epi->ep->ws) {
+#ifdef CONFIG_FS_EPOLL_WAKEUP_DEBUG
+		char full_ep_name[64];
+		snprintf(full_ep_name, 64, "eventpoll-%s-%d",
+			current->comm, current->pid);
+		epi->ep->ws = wakeup_source_register(NULL, full_ep_name);
+#else
 		epi->ep->ws = wakeup_source_register(NULL, "eventpoll");
+#endif
 		if (!epi->ep->ws)
 			return -ENOMEM;
 	}
