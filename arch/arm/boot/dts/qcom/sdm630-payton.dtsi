@@ -98,6 +98,10 @@
 			<2>,
 			<3>;
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "payton";
+	};
 };
 
 &red_led {
