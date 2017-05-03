@@ -104,7 +104,7 @@
 &i2c_3 { /* BLSP1 QUP3 */
 	status = "okay";
 	focaltech_ts@38 {
-		compatible = "focaltech,5x06";
+		compatible = "focaltech,mmi";
 		reg = <0x38>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <67 0x2008>;
