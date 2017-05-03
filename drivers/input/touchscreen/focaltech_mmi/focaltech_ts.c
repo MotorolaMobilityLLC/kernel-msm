@@ -804,6 +804,20 @@ static void ft_update_fw_id(struct ft_ts_data *data)
 		data->fw_id[0], data->fw_id[1]);
 }
 
+static void ft_ud_fix_mismatch(struct ft_ts_data *data)
+{
+	int i;
+	struct input_dev *ip_dev = data->input_dev;
+
+	for (i = 0; i < display_ud_stats.ud_len; i++) {
+		if (display_ud[i].mismatch) {
+			pr_debug("%s MISMATCH[%d]\n", display_ud_stats.name, i);
+			input_mt_slot(ip_dev, i);
+			input_mt_report_slot_state(ip_dev, MT_TOOL_FINGER, 0);
+		}
+	}
+}
+
 static irqreturn_t ft_ts_interrupt(int irq, void *dev_id)
 {
 	struct ft_ts_data *data = dev_id;
@@ -869,6 +883,10 @@ static irqreturn_t ft_ts_interrupt(int irq, void *dev_id)
 			input_mt_report_slot_state(ip_dev, MT_TOOL_FINGER, 0);
 		}
 	}
+
+	/* report up event if FW missed to do */
+	if (num_touches == 0)
+		ft_ud_fix_mismatch(data);
 
 	if (update_input) {
 		input_mt_report_pointer_emulation(ip_dev, false);
