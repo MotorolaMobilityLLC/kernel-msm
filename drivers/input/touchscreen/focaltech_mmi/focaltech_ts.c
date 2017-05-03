@@ -350,6 +350,77 @@ struct ft_ts_data {
 	bool ps_is_present;
 };
 
+struct touch_up_down {
+	int mismatch;
+	unsigned char up_down;
+	unsigned int counter;
+};
+
+struct touch_area_stats {
+	struct touch_up_down *ud;
+	ssize_t ud_len;
+	ssize_t ud_id;
+	ssize_t unknown_counter;
+	const char *name;
+};
+
+static struct touch_up_down display_ud[20];
+static struct touch_area_stats display_ud_stats = {
+	.ud = display_ud,
+	.ud_len = ARRAY_SIZE(display_ud),
+	.name = "ts"
+};
+
+static void ud_set_id(struct touch_area_stats *tas, int id)
+{
+	tas->ud_id = id;
+}
+
+static void ud_log_status(struct touch_area_stats *tas, bool down)
+{
+	struct touch_up_down *ud = tas->ud;
+	ssize_t id = tas->ud_id;
+
+	if (id >= tas->ud_len)
+		tas->unknown_counter++;
+
+	if (!down) { /* up */
+		if (ud[id].up_down == 0x10) {
+			pr_debug("%s UP[%zu]\n", tas->name, id);
+			ud[id].up_down |= 1;
+			ud[id].mismatch--;
+		}
+	} else if (down) { /* down */
+		if (ud[id].up_down == 0) {
+			ud[id].up_down |= (1 << 4);
+			pr_debug("%s DOWN[%zu]\n", tas->name, id);
+			ud[id].mismatch++;
+		} else if (ud[id].up_down == 0x10)
+			return;
+	}
+
+	if (ud[id].up_down == 0x11) {
+		pr_debug("%s CLEAR[%zu]\n", tas->name, id);
+		ud[id].up_down = 0;
+		ud[id].counter++;
+	}
+}
+
+static void TSI_state(struct input_dev *dev, unsigned int tool, bool status)
+{
+	ud_log_status(&display_ud_stats, status);
+	input_mt_report_slot_state(dev, tool, status);
+}
+
+static void TSI_id(struct input_dev *dev, int id)
+{
+	ud_set_id(&display_ud_stats, id);
+	input_mt_slot(dev, id);
+}
+
+#define input_mt_report_slot_state TSI_state
+#define input_mt_slot TSI_id
+
 static int ft_ts_start(struct device *dev);
 static int ft_ts_stop(struct device *dev);
 static void ft_resume_ps_chg_cm_state(struct ft_ts_data *data);
@@ -1033,6 +1104,25 @@ err_pinctrl_get:
 	return retval;
 }
 
+static ssize_t ft_ud_stat(struct ft_ts_data *data, char *buf, ssize_t size)
+{
+	int i;
+	ssize_t total = 0;
+
+	total += scnprintf(buf + total, size - total, "screen: ");
+	for (i = 0; i < display_ud_stats.ud_len; i++)
+		if (display_ud[i].mismatch)
+			total += scnprintf(buf + total, size - total,
+				"%d)%u,%d ", i,
+				display_ud[i].counter,
+				display_ud[i].mismatch);
+		else if (display_ud[i].counter)
+			total += scnprintf(buf + total, size - total,
+				"%d)%u ", i,
+				display_ud[i].counter);
+	return total;
+}
+
 #ifdef CONFIG_PM
 static int ft_ts_start(struct device *dev)
 {
@@ -1096,10 +1186,14 @@ static int ft_ts_stop(struct device *dev)
 {
 	struct ft_ts_data *data = dev_get_drvdata(dev);
 	char txbuf[2];
+	static char ud_stats[PAGE_SIZE];
 	int i, err;
 
 	ft_irq_disable(data);
 
+	/* print UD statistics */
+	ft_ud_stat(data, ud_stats, sizeof(ud_stats));
+	pr_info("%s\n", ud_stats);
 	/* release all touches */
 	for (i = 0; i < data->pdata->num_max_touches; i++) {
 		input_mt_slot(data->input_dev, i);
@@ -2018,6 +2112,24 @@ static ssize_t ft_drv_irq_store(struct device *dev,
 
 static DEVICE_ATTR(drv_irq, 0664, ft_drv_irq_show, ft_drv_irq_store);
 
+static ssize_t ft_ud_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int i;
+	ssize_t total = 0;
+
+	total += scnprintf(buf + total, PAGE_SIZE - total, "display:\n");
+	for (i = 0; i < display_ud_stats.ud_len; i++)
+		total += scnprintf(buf + total, PAGE_SIZE - total,
+				"[%d]: full cycles-%u, mismatch-%d\n", i,
+				display_ud[i].counter,
+				display_ud[i].mismatch);
+
+	return total;
+}
+
+static DEVICE_ATTR(tsi, 0444, ft_ud_show, NULL);
+
 static const struct attribute *ft_attrs[] = {
 	&dev_attr_poweron.attr,
 	&dev_attr_productinfo.attr,
@@ -2027,6 +2139,7 @@ static const struct attribute *ft_attrs[] = {
 	&dev_attr_buildid.attr,
 	&dev_attr_reset.attr,
 	&dev_attr_drv_irq.attr,
+	&dev_attr_tsi.attr,
 	NULL
 };
 
