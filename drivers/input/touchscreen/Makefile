@@ -38,6 +38,7 @@ obj-$(CONFIG_TOUCHSCREEN_ELO)		+= elo.o
 obj-$(CONFIG_TOUCHSCREEN_EGALAX)	+= egalax_ts.o
 obj-$(CONFIG_TOUCHSCREEN_FT6236)	+= ft6236.o
 obj-$(CONFIG_TOUCHSCREEN_FT5X06)	+= ft5x06_ts.o
+obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_MMI) += focaltech_mmi/
 obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE) += focaltech_flash.o
 obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE) += focaltech_upgrade_idc.o
 obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8716) += focaltech_upgrade_ft8716.o
