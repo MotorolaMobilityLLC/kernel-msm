@@ -61,6 +61,7 @@ static irqreturn_t ft_ts_interrupt(int irq, void *data);
 
 #include <linux/usb.h>
 #include <linux/power_supply.h>
+#include <linux/reboot.h>
 
 #define FT_DRIVER_VERSION	0x02
 
@@ -341,6 +342,7 @@ struct ft_ts_data {
 	bool irq_enabled;
 	struct proc_dir_entry *proc_entry;
 	u8 proc_operate_mode;
+	struct notifier_block ft_reboot;
 	/* moto TP modifiers */
 	bool patching_enabled;
 	struct ft_modifiers modifiers;
@@ -2877,6 +2879,38 @@ static int ft_parse_dt(struct device *dev,
 }
 #endif
 
+static int ft_reboot(struct notifier_block *nb,
+			unsigned long event,
+			void *unused)
+{
+	struct ft_ts_data *data =
+		container_of(nb, struct ft_ts_data, ft_reboot);
+
+	dev_info(&data->client->dev, "touch shutdown\n");
+	ft_irq_disable(data);
+	free_irq(data->client->irq, data);
+
+	if (gpio_is_valid(data->pdata->reset_gpio)) {
+		gpio_direction_output(data->pdata->reset_gpio, 0);
+		msleep(data->pdata->hard_rst_dly);
+		gpio_free(data->pdata->reset_gpio);
+	}
+	if (gpio_is_valid(data->pdata->irq_gpio))
+		gpio_free(data->pdata->irq_gpio);
+
+	if (data->pdata->power_on)
+		data->pdata->power_on(false);
+	else
+		ft_power_on(data, false);
+
+	if (data->pdata->power_init)
+		data->pdata->power_init(false);
+	else
+		ft_power_init(data, false);
+
+	return NOTIFY_DONE;
+}
+
 static int ft_ts_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
@@ -3233,8 +3267,20 @@ static int ft_ts_probe(struct i2c_client *client,
 		}
 	}
 
+	data->ft_reboot.notifier_call = ft_reboot;
+	data->ft_reboot.next = NULL;
+	data->ft_reboot.priority = 1;
+	err = register_reboot_notifier(&data->ft_reboot);
+	if (err) {
+		dev_err(&client->dev, "register for reboot failed\n");
+		goto reboot_register_err;
+	}
+
 	return 0;
 
+reboot_register_err:
+	if (data->charger_detection_enabled)
+		power_supply_unreg_notifier(&data->ps_notif);
 free_fb_notifier:
 #if defined(CONFIG_FB)
 	if (fb_unregister_client(&data->fb_notif))
@@ -3296,6 +3342,8 @@ static int ft_ts_remove(struct i2c_client *client)
 {
 	struct ft_ts_data *data = i2c_get_clientdata(client);
 	int retval, attr_count;
+
+	unregister_reboot_notifier(&data->ft_reboot);
 
 	if (data->charger_detection_enabled)
 		power_supply_unreg_notifier(&data->ps_notif);
