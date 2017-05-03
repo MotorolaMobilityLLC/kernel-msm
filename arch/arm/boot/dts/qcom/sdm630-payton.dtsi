@@ -82,8 +82,8 @@
 
 &pm660_haptics { /* Vibrator */
 	qcom,actuator-type = "erm";
-	qcom,vmax-mv = <2400>;
-	qcom,ilim-ma = <220>;
+	qcom,vmax-mv = <2750>;
+	qcom,ilim-ma = <240>;
 
 	/delete-property/ qcom,lra-high-z;
 	/delete-property/ qcom,lra-auto-res-mode;
