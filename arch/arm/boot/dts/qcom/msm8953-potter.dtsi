@@ -740,6 +740,7 @@
 	qcom,force-aicl-rerun;
 	qcom,auto-voltage-comp-mv = <150>;
 	qcom,enable-hvdcp-9v;
+	qcom,enable-factory-wa;
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <80>;
 	qcom,lower-limit-capacity = <60>;
