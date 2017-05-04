@@ -77,13 +77,6 @@ int mdss_create_xlog_debug(struct mdss_debug_data *mdd)
 			    &mdd->logd.panic_on_err);
 	debugfs_create_bool("reg_dump", 0644, mdd->logd.xlog,
 			    &mdd->logd.enable_reg_dump);
-
-       /* MMI_STOPSHIP - Enabling xlogs below for IKSWN-41305  */
-#ifdef CONFIG_MMI_DTB_LUX
-	mdd->logd.xlog_enable = 1;
-	mdd->logd.enable_reg_dump = 1;
-	mdd->logd.panic_on_err = 1;
-#endif
 	return 0;
 }
 
