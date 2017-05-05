@@ -76,6 +76,8 @@ struct bluetooth_power_platform_data {
 	 * shares a common gpio to bring chip out of reset.
 	 */
 	struct bt_power_vreg_data *bt_chip_pwd;
+	/* Optional: Detune Regulator for bluetooth */
+	struct bt_power_vreg_data *bt_detune;
 	/* bluetooth reference clock */
 	struct bt_power_clk_data *bt_chip_clk;
 	/* Optional: Bluetooth power setup function */
