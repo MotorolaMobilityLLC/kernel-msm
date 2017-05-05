@@ -80,7 +80,7 @@ module_param(qmi_timeout, ulong, 0600);
 #define WLAN_DETUNE_REG_NAME		"wlan-detune-reg"
 #define WLAN_DETUNE_REG_VOLT_MAX	2704000
 #define WLAN_DETUNE_REG_VOLT_MIN	2704000
-#define WLAN_DETUNE_REG_CURRENT		80000
+#define WLAN_DETUNE_REG_CURRENT		500
 
 #define icnss_ipc_log_string(_x...) do {				\
 	if (icnss_ipc_log_context)					\
