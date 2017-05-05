@@ -576,6 +576,7 @@ struct mipi_panel_info {
 
 	char lp11_reset_lcdb;
 	char lp11_lcdb_reset;
+	char bl_shutdown_dcs;
 };
 
 struct edp_panel_info {
@@ -1024,6 +1025,7 @@ struct mdss_panel_data {
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
 	int (*apply_display_setting)(struct mdss_panel_data *pdata, u32 mode);
 	int (*set_param)(struct mdss_panel_data *pdata, u16 id, u16 value);
+	void (*set_dcs_backlight)(struct mdss_panel_data *pdata, u32 bl_level);
 	unsigned char *mmss_cc_base;
 
 	/**
