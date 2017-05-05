@@ -990,8 +990,7 @@ static void fwu_parse_image_header_05_06(void)
 				fwu->img.ui_firmware.size;
 	}
 
-	if ((fwu->img.bl_version == BL_V5 && fwu->img.contains_bootloader) ||
-			(fwu->img.bl_version == BL_V6 && header->options_tddi))
+	if (fwu->img.contains_bootloader || header->options_tddi)
 		fwu->img.contains_disp_config = true;
 	else
 		fwu->img.contains_disp_config = false;
