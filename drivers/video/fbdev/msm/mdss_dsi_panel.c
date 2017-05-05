@@ -1059,6 +1059,39 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
+static void mdss_dsi_panel_dcs_bl_ctrl(struct mdss_panel_data *pdata,
+							u32 bl_level)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	if (!mdss_dsi_sync_wait_enable(ctrl_pdata)) {
+		mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
+		msleep(500);
+		return;
+	}
+	sctrl = mdss_dsi_get_other_ctrl(ctrl_pdata);
+	if (mdss_dsi_sync_wait_trigger(ctrl_pdata)) {
+		if (sctrl)
+			mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
+		mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
+	} else {
+		mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
+		if (sctrl)
+			mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
+	}
+	msleep(500);
+}
+
+
 void mdss_dsi_panel_forced_tx_mode_set(struct mdss_panel_info *pinfo,
 					bool enable)
 {
@@ -3290,6 +3323,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pinfo->mipi.lp11_lcdb_reset = of_property_read_bool(np,
 					"qcom,mdss-dsi-lp11-lcdb-reset");
 
+	pinfo->mipi.bl_shutdown_dcs = of_property_read_bool(np,
+					"qcom,mdss-dsi-bl-shutdown-dcs");
+
 	mdss_dsi_parse_trigger(np, &(pinfo->mipi.mdp_trigger),
 		"qcom,mdss-dsi-mdp-trigger");
 
@@ -3567,6 +3603,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 			mdss_dsi_panel_apply_display_setting;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 	ctrl_pdata->panel_data.set_param = mdss_dsi_panel_set_param;
+	ctrl_pdata->panel_data.set_dcs_backlight = mdss_dsi_panel_dcs_bl_ctrl;
 
 	return 0;
 }
