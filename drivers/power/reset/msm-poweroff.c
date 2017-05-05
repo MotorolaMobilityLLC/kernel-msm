@@ -287,7 +287,8 @@ static void msm_restart_prepare(const char *cmd)
 			need_warm_reset = true;
 	} else {
 		need_warm_reset = (get_dload_mode() ||
-				(cmd != NULL && cmd[0] != '\0'));
+				(cmd != NULL && cmd[0] != '\0' &&
+				strcmp(cmd, "userrequested")));
 	}
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
