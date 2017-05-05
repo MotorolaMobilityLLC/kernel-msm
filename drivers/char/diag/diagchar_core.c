@@ -3380,6 +3380,7 @@ static int __init diagchar_init(void)
 	mutex_init(&apps_data_mutex);
 	mutex_init(&driver->diagfwd_channel_mutex);
 	mutex_init(&driver->hdlc_recovery_mutex);
+	mutex_init(&driver->msg_mask_lock);
 	init_waitqueue_head(&driver->wait_q);
 	INIT_WORK(&(driver->diag_drain_work), diag_drain_work_fn);
 	INIT_WORK(&(driver->update_user_clients),
