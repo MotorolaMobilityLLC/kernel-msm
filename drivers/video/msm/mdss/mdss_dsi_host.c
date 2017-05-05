@@ -1524,7 +1524,7 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_cmd_desc *cmds, int rlen, int use_dma_tpg)
 {
 	int data_byte, rx_byte, dlen, end;
-	int short_response, diff, pkt_size, ret = 0;
+	int short_response, diff = 0, pkt_size, ret = 0;
 	struct dsi_buf *tp, *rp;
 	char cmd;
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
@@ -1730,6 +1730,11 @@ skip_max_pkt_size:
 		mdss_dsi_long_read_resp(rp);
 		break;
 	default:
+		pr_err("%s: rlen=%d pkt_size=%d rx_byte=%d\n",
+		       __func__, rlen, pkt_size, rx_byte);
+		pr_err("%s: rp data=%x len=%d dlen=%d diff=%d\n",
+		       __func__, (int) (unsigned long) rp->data,
+		       rp->len, dlen, diff);
 		pr_warning("%s:Invalid response cmd\n", __func__);
 		rp->len = 0;
 		rp->read_cnt = 0;

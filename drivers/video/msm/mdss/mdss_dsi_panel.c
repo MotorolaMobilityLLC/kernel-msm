@@ -1962,6 +1962,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	data = of_get_property(np, "qcom,mdss-dsi-panel-type", NULL);
 	if (data && !strncmp(data, "dsi_cmd_mode", 12))
 		pinfo->mipi.mode = DSI_CMD_MODE;
+	rc = of_property_read_u32(np,
+		"qcom,mdss-dsi-panel-accepts-short-response", &tmp);
+	pinfo->accepts_short_response = (!rc ? tmp : 0);
 	tmp = 0;
 	data = of_get_property(np, "qcom,mdss-dsi-pixel-packing", NULL);
 	if (data && !strcmp(data, "loose"))
