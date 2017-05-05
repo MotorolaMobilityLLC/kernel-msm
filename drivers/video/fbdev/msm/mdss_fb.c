@@ -3141,6 +3141,7 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 	int ret = 0;
 	bool node_found = false;
 	struct task_struct *task = current->group_leader;
+	struct mdss_panel_data *pdata;
 
 	if (!mfd->ref_cnt) {
 		pr_info("try to close unopened fb %d! from pid:%d name:%s\n",
@@ -3204,7 +3205,11 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 		 * enabling ahead of unblank. for some special cases like
 		 * adb shell stop/start.
 		 */
+		pdata = dev_get_platdata(&mfd->pdev->dev);
+
 		mutex_lock(&mfd->bl_lock);
+		if (pdata->panel_info.mipi.bl_shutdown_dcs)
+			pdata->set_dcs_backlight(pdata, 0);
 		mdss_fb_set_backlight(mfd, 0);
 		mutex_unlock(&mfd->bl_lock);
 
