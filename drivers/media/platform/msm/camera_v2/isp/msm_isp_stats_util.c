@@ -404,8 +404,8 @@ int msm_isp_stats_create_stream(struct vfe_device *vfe_dev,
 		else
 			framedrop_pattern = 1;
 		stream_info->framedrop_pattern = framedrop_pattern;
-		stream_info->init_stats_frame_drop = 0;
-
+		stream_info->init_stats_frame_drop =
+			stream_req_cmd->init_frame_drop;
 		stream_info->irq_subsample_pattern =
 			stream_req_cmd->irq_subsample_pattern;
 		framedrop_period = msm_isp_get_framedrop_period(
