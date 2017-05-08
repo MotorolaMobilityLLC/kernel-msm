@@ -2899,7 +2899,8 @@ static void smb2_shutdown(struct platform_device *pdev)
 	struct smb_charger *chg = &chip->chg;
 
 	/* disable all interrupts */
-	smb2_disable_interrupts(chg);
+	if (!chg->mmi.factory_mode)
+		smb2_disable_interrupts(chg);
 
 	/* configure power role for UFP */
 	smblib_masked_write(chg, TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
