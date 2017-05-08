@@ -868,6 +868,11 @@ static irqreturn_t ft_ts_interrupt(int irq, void *dev_id)
 		y = (buf[FT_TOUCH_Y_H_POS + FT_ONE_TCH_LEN * i] & 0x0F) << 8 |
 			(buf[FT_TOUCH_Y_L_POS + FT_ONE_TCH_LEN * i]);
 
+		if (data->pdata->x_flip)
+			x = data->pdata->x_max - x;
+		if (data->pdata->y_flip)
+			y = data->pdata->y_max - y;
+
 		status = buf[FT_TOUCH_EVENT_POS + FT_ONE_TCH_LEN * i] >> 6;
 
 		num_touches = buf[FT_TD_STATUS] & FT_STATUS_NUM_TP_MASK;
@@ -2849,6 +2854,16 @@ static int ft_parse_dt(struct device *dev,
 
 	pdata->resume_in_workqueue = of_property_read_bool(np,
 					"focaltech,resume-in-workqueue");
+
+	if (of_property_read_bool(np, "focaltech,x-flip")) {
+		pr_notice("using flipped X axis\n");
+		pdata->x_flip = true;
+	}
+
+	if (of_property_read_bool(np, "focaltech,y-flip")) {
+		pr_notice("using flipped Y axis\n");
+		pdata->y_flip = true;
+	}
 
 	rc = of_property_read_u32(np, "focaltech,family-id", &temp_val);
 	if (!rc)
