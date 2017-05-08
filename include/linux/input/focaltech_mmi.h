@@ -63,6 +63,8 @@ struct ft_ts_platform_data {
 	bool ignore_id_check;
 	bool gesture_support;
 	bool resume_in_workqueue;
+	bool x_flip;
+	bool y_flip;
 	int (*power_init)(bool);
 	int (*power_on)(bool);
 };
