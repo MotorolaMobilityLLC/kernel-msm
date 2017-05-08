@@ -58,6 +58,7 @@
 		status = "ok";
 		compatible = "qcom,sdm660-asoc-snd-madera";
 		qcom,model = "sdm660-madera-snd-card";
+		qcom,msm-mclk-freq = <9600000>;
 		qcom,ext-disp-audio-rx;
 		qcom,wcn-btfm;
 
@@ -225,6 +226,8 @@
 		};
 
 		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
 			adsp@0ffe00 {
 				reg = <0x0ffe00>;
 				firmware {
