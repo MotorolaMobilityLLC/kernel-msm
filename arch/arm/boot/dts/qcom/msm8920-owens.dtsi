@@ -298,6 +298,7 @@
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <80>;
 	qcom,lower-limit-capacity = <60>;
+	qcom,weak-charger-check-enable;
 };
 
 &pmi8950_fg {
