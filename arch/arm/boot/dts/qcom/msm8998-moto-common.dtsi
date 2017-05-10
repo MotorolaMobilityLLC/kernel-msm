@@ -1583,8 +1583,8 @@
 	qcom,fg-rsense-sel = <0>;
 	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
 	qcom,cl-start-capacity = <5>;
-	qcom,cl-min-temp = <15>;
-	qcom,cl-max-temp = <45>;
+	qcom,cl-min-temp = <150>;
+	qcom,cl-max-temp = <450>;
 	qcom,cl-max-increment = <5>;
 	qcom,cl-max-decrement = <10>;
 	qcom,cl-min-limit = <200>;
