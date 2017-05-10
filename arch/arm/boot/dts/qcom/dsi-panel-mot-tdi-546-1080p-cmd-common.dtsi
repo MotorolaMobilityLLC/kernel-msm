@@ -26,6 +26,7 @@ qcom,mdss-dsi-virtual-channel-id = <0>;
 qcom,mdss-dsi-stream = <0>;
 qcom,mdss-dsi-panel-width = <1080>;
 qcom,mdss-dsi-panel-height = <1920>;
+qcom,mdss-dsi-panel-accepts-short-response = <1>;
 qcom,mdss-pan-physical-width-dimension = <68>;
 qcom,mdss-pan-physical-height-dimension = <121>;
 
