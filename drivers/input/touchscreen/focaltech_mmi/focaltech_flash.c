@@ -300,18 +300,8 @@ static int fts_ctpm_check_fw_status(struct i2c_client *client)
 ***********************************************************************/
 static int fts_ctpm_check_fw_ver(struct i2c_client *client)
 {
-	u8 uc_tp_fm_ver;
-	u8 uc_host_fm_ver = 0;
-
-	fts_i2c_read_reg(client, FTS_REG_FW_VER, &uc_tp_fm_ver);
-	uc_host_fm_ver = fts_ctpm_get_app_ver();
-
-	FTS_DEBUG("[UPGRADE] uc_tp_fm_ver = 0x%x, uc_host_fm_ver = 0x%x\n",
-			uc_tp_fm_ver, uc_host_fm_ver);
-	if (uc_tp_fm_ver != uc_host_fm_ver)
-		return 1;
-	else
-		return 0;
+	/* FW version check is done in moto FW upgrade script */
+	return 1;
 }
 
 /************************************************************************
