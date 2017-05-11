@@ -1570,6 +1570,7 @@ static int ps_notify_callback(struct notifier_block *self,
 	return 0;
 }
 
+#if !defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_MMI)
 static int ft_auto_cal(struct i2c_client *client)
 {
 	struct ft_ts_data *data = i2c_get_clientdata(client);
@@ -1907,6 +1908,7 @@ rel_fw:
 	release_firmware(fw);
 	return rc;
 }
+#endif
 
 static ssize_t ft_poweron_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -2027,7 +2029,7 @@ static ssize_t ft_do_reflash_store(struct device *dev,
 	mutex_lock(&data->input_dev->mutex);
 	ft_irq_disable(data);
 	data->loading_fw = true;
-#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE)
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_MMI)
 		retval = fts_ctpm_auto_upgrade(data->client,
 				data->fw_name,
 				data->pdata);
