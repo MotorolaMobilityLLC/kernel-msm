@@ -108,9 +108,9 @@
 		"timit",	/* 91 */
 		"retma",	/* 92 */
 		"windit",	/* 93 */
-		"undefined",	/* 94 */
-		"undefined",	/* 95 */
-		"undefined",	/* 96 */
+		"vfhu",	        /* 94 */
+		"vfro",	        /* 95 */
+		"telhu",	/* 96 */
 		"undefined",	/* 97 */
 		"undefined",	/* 98 */
 		"undefined",	/* 99 */
