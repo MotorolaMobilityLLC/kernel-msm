@@ -115,6 +115,7 @@
 		focaltech,fw-delay-readid-ms = <20>;
 		focaltech,fw-delay-era-flsh-ms = <2000>;
 		focaltech,resume-in-workqueue;
+		focaltech,ignore-id-check;
 	};
 };
 
