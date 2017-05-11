@@ -93,7 +93,7 @@
 		compatible = "focaltech,mmi";
 		reg = <0x38>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <67 0x2008>;
+		interrupts = <67 0x2002>;
 		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
 		pinctrl-0 = <&ts_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
