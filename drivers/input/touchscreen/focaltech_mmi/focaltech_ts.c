@@ -2900,15 +2900,16 @@ static int ft_reboot(struct notifier_block *nb,
 	if (gpio_is_valid(data->pdata->irq_gpio))
 		gpio_free(data->pdata->irq_gpio);
 
-	if (data->pdata->power_on)
-		data->pdata->power_on(false);
-	else
-		ft_power_on(data, false);
-
-	if (data->pdata->power_init)
-		data->pdata->power_init(false);
-	else
-		ft_power_init(data, false);
+	if (data->regulator_en) {
+		if (data->pdata->power_on)
+			data->pdata->power_on(false);
+		else
+			ft_power_on(data, false);
+		if (data->pdata->power_init)
+			data->pdata->power_init(false);
+		else
+			ft_power_init(data, false);
+	}
 
 	return NOTIFY_DONE;
 }
