@@ -7551,7 +7551,7 @@ int smblib_set_prop_dc_system_temp_level(struct smb_charger *chg,
 		return vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
 
 	vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, true,
-	     chg->thermal_mitigation[chg->mmi.dc_system_temp_level] * 1000);
+	     chg->mmi.dc_thermal_mitigation[chg->mmi.dc_system_temp_level] * 1000);
 
 	return 0;
 }
@@ -7581,7 +7581,7 @@ int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
 		return vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
 
 	vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, true,
-	     chg->thermal_mitigation[chg->mmi.usb_system_temp_level] * 1000);
+	     chg->mmi.usb_thermal_mitigation[chg->mmi.usb_system_temp_level] * 1000);
 
 	return 0;
 }
