@@ -1232,6 +1232,7 @@ static enum power_supply_property smb2_batt_props[] = {
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 	POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_CHARGE_RATE,
+	POWER_SUPPLY_PROP_AGE,
 };
 
 static int smb2_batt_get_prop(struct power_supply *psy,
@@ -1350,6 +1351,9 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_RATE:
 		mmi_chrg_rate_check(chg);
 		val->intval = chg->mmi.charger_rate;
+		break;
+	case POWER_SUPPLY_PROP_AGE:
+		rc = smblib_get_prop_batt_age(chg, val);
 		break;
 	default:
 		pr_err("batt power supply prop %d not supported\n", psp);
