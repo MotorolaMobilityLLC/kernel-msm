@@ -1702,6 +1702,37 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 	return rc;
 }
 
+int smblib_get_prop_batt_age(struct smb_charger *chg,
+			     union power_supply_propval *val)
+{
+	int age;
+	int rc = -EINVAL;
+	union power_supply_propval pval = {0, };
+
+	if (chg->bms_psy) {
+		rc = power_supply_get_property(chg->bms_psy,
+				POWER_SUPPLY_PROP_CHARGE_FULL, &pval);
+		if (rc < 0) {
+			smblib_err(chg, "Fail: get charge full rc=%d\n",
+				   rc);
+			return rc;
+		}
+
+		age = pval.intval * 100;
+
+		rc = power_supply_get_property(chg->bms_psy,
+				POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &pval);
+		if (rc < 0) {
+			smblib_err(chg, "Fail: get chrg full design rc=%d\n",
+				   rc);
+			return rc;
+		}
+
+		val->intval = age / pval.intval;
+	}
+	return rc;
+}
+
 int smblib_get_prop_batt_status(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
