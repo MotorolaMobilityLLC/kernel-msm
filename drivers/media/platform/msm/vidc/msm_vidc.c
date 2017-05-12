@@ -1443,7 +1443,6 @@ static void cleanup_instance(struct msm_vidc_inst *inst)
 			msm_comm_smem_free(inst, inst->extradata_handle);
 
 		debugfs_remove_recursive(inst->debugfs_root);
-
 		mutex_lock(&inst->pending_getpropq.lock);
 		WARN_ON(!list_empty(&inst->pending_getpropq.list)
 			&& (msm_vidc_debug & VIDC_INFO));
