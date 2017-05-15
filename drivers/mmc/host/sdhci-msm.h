@@ -161,6 +161,7 @@ struct sdhci_msm_pltfm_data {
 	bool rclk_wa;
 	u32 *bus_clk_table;
 	unsigned char bus_clk_cnt;
+	bool clk_scale_disabled;
 };
 
 struct sdhci_msm_bus_vote {
