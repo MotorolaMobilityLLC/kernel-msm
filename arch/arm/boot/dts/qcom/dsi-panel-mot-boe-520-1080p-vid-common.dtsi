@@ -102,7 +102,7 @@ qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-lp11-reset-lcdb;
 qcom,mdss-dsi-tx-eot-append;
 qcom,mdss-dsi-init-delay-us = <50000>;
-qcom,mdss-dsi-panel-on-check-value = <0x0c>;
+qcom,mdss-dsi-no-panel-on-read-support;
 qcom,mdss-dsi-bl-shutdown-dcs;
 
 qcom,esd-check-enabled;
