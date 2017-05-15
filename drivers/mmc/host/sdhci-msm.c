@@ -1974,6 +1974,9 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 		goto out;
 	}
 
+	pdata->clk_scale_disabled = of_property_read_bool(np,
+		"qcom,clk-scale-disabled");
+
 	len = of_property_count_strings(np, "qcom,bus-speed-mode");
 
 	for (i = 0; i < len; i++) {
@@ -4823,7 +4826,11 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host->mmc->caps2 |= msm_host->pdata->caps2;
 	msm_host->mmc->caps2 |= MMC_CAP2_BOOTPART_NOACC;
 	msm_host->mmc->caps2 |= MMC_CAP2_HS400_POST_TUNING;
-	msm_host->mmc->caps2 |= MMC_CAP2_CLK_SCALE;
+	if (!msm_host->pdata->clk_scale_disabled)
+		msm_host->mmc->caps2 |= MMC_CAP2_CLK_SCALE;
+	else
+		pr_warn("%s: %s: clock scaling disabled\n",
+			__func__, dev_name(&pdev->dev));
 	msm_host->mmc->caps2 |= MMC_CAP2_SANITIZE;
 	msm_host->mmc->caps2 |= MMC_CAP2_MAX_DISCARD_SIZE;
 	msm_host->mmc->caps2 |= MMC_CAP2_SLEEP_AWAKE;
