@@ -154,6 +154,7 @@ struct sdhci_msm_pltfm_data {
 	struct sdhci_msm_pm_qos_data pm_qos_data;
 	bool core_3_0v_support;
 	bool sdr104_wa;
+	bool clk_scale_disabled;
 };
 
 struct sdhci_msm_bus_vote {
