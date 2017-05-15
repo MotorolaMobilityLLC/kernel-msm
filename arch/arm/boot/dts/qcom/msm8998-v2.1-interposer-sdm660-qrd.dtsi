@@ -94,7 +94,6 @@
 	status = "ok";
 };
 
-
 &i2c_5 {
 	status = "okay";
 	synaptics@20 {
