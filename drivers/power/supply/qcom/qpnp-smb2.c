@@ -1275,7 +1275,8 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_batt_voltage_now(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		val->intval = get_effective_result(chg->fv_votable);
+		val->intval = get_client_vote(chg->fv_votable,
+				BATT_PROFILE_VOTER);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_QNOVO_ENABLE:
 		rc = smblib_get_prop_charge_qnovo_enable(chg, val);
@@ -1292,7 +1293,8 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 				QNOVO_VOTER);
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-		val->intval = get_effective_result(chg->fcc_votable);
+		val->intval = get_client_vote(chg->fcc_votable,
+					      BATT_PROFILE_VOTER);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		rc = smblib_get_prop_batt_temp(chg, val);
