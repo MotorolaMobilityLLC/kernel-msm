@@ -54,7 +54,7 @@ static unsigned char g_read_edid_flag;
 #endif
 
 #define HDCP_REPEATER_MODE (__i2c_read_byte(RX_P1, 0x2A) & REPEATER_M)
-
+#define VO_FAILED_CNT_MAX 20
 
 static struct Packet_AVI sp_tx_packet_avi;
 static struct Packet_SPD sp_tx_packet_spd;
@@ -2140,6 +2140,9 @@ void sp_tx_config_packets(enum PACKETS_TYPE bType)
 void slimport_config_video_output(void)
 {
 	unchar temp_value;
+	static unchar wait_video_stable_fail_cnt;
+	static unchar wait_tx_video_stable_cnt;
+
 	switch(sp_tx_vo_state){
 		default:
 		case VO_WAIT_VIDEO_STABLE:
@@ -2162,10 +2165,21 @@ void slimport_config_video_output(void)
 			{
 				pr_warn("%s %s :HDMI input video not stable!\n",
 							 LOG_TAG, __func__);
+				if (wait_video_stable_fail_cnt++ >=
+							VO_FAILED_CNT_MAX) {
+					pr_err("%s %s: stuck in VO_WAIT_VIDEO_STABLE. Count=%d.\n",
+						LOG_TAG, __func__,
+						wait_video_stable_fail_cnt);
+						vbus_power_ctrl(0);
+						reg_hardware_reset();
+						wait_video_stable_fail_cnt =  0;
+				}
+
 			}
 			SP_BREAK(VO_WAIT_VIDEO_STABLE, sp_tx_vo_state);
 	
 		case VO_WAIT_TX_VIDEO_STABLE:
+			wait_video_stable_fail_cnt = 0;
 			//DP TX video judge
 			sp_read_reg(TX_P0, SP_TX_SYS_CTRL2_REG, &temp_value);
 			sp_write_reg(TX_P0, SP_TX_SYS_CTRL2_REG, temp_value);
@@ -2180,6 +2194,17 @@ void slimport_config_video_output(void)
 				if(!(temp_value & STRM_VALID))
 				{
 					pr_err("%s %s : video stream not valid!\n", LOG_TAG, __func__);
+
+					if (wait_tx_video_stable_cnt++ >=
+							VO_FAILED_CNT_MAX) {
+						pr_err("%s %s: Stuck in VO_WAIT_TX_VIDEO_STABLE. Count=%d.\n",
+						LOG_TAG, __func__,
+						wait_tx_video_stable_cnt);
+						vbus_power_ctrl(0);
+						reg_hardware_reset();
+						wait_tx_video_stable_cnt = 0;
+					}
+
 				} else{
 				#ifdef DEMO_4K_2K
 				if(down_sample_en)
@@ -2205,6 +2230,7 @@ void slimport_config_video_output(void)
 			SP_BREAK(VO_WAIT_PLL_LOCK, sp_tx_vo_state);
 			*/
 		case VO_CHECK_VIDEO_INFO:
+			wait_tx_video_stable_cnt = 0;
 			temp_value = __i2c_read_byte(RX_P0, HDMI_STATUS) & HDMI_MODE;
 			g_hdmi_dvi_status = read_dvi_hdmi_mode();
 			if (!sp_tx_bw_lc_sel(sp_tx_pclk_calc())
