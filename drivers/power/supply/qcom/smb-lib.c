@@ -1535,16 +1535,14 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	if (val->intval != POWER_SUPPLY_STATUS_CHARGING)
 		return 0;
 
-	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_7_REG, &stat);
+	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_2_REG, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read BATTERY_CHARGER_STATUS_2 rc=%d\n",
 				rc);
 			return rc;
 		}
 
-	stat &= ENABLE_TRICKLE_BIT | ENABLE_PRE_CHARGING_BIT |
-		 ENABLE_FAST_CHARGING_BIT | ENABLE_FULLON_MODE_BIT;
-	if (!stat)
+	if (stat & (BAT_TEMP_STATUS_TOO_HOT_BIT | BAT_TEMP_STATUS_TOO_COLD_BIT))
 		val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
 
 	return 0;
