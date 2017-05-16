@@ -1680,4 +1680,5 @@
 		"gpio_aud_sw_sel",
 		"gpio_otg_fault_n";
 	vbus-supply = <&vdd_otg_vreg>;
+	qcom,source-current = <900>;
 };
