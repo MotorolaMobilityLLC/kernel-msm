@@ -4679,9 +4679,15 @@ static void smblib_pd_contract_work(struct work_struct *work)
 					       pd_contract_work.work);
 	int rc, max_ua;
 
-	if (!chg->pd)
+	if (!chg->pd) {
 		chg->pd = devm_usbpd_get_by_phandle(chg->dev,
 						    "qcom,usbpd-phandle");
+		if (IS_ERR_OR_NULL(chg->pd)) {
+			pr_err("Error getting the pd phandle %ld\n",
+				PTR_ERR(chg->pd));
+			chg->pd = NULL;
+		}
+	}
 	if (!chg->pd || !chg->pd_active)
 		return;
 
