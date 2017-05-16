@@ -309,7 +309,6 @@ struct smb_charger {
 	bool			uusb_apsd_rerun_done;
 	bool			pd_hard_reset;
 	bool			typec_present;
-	u8			typec_status[5];
 
 	/* workaround flag */
 	u32			wa_flags;
