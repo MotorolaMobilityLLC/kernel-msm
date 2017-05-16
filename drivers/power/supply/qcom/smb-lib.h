@@ -229,7 +229,6 @@ struct smb_charger {
 	int			smb_version;
 
 	/* locks */
-	struct mutex		lock;
 	struct mutex		write_lock;
 	struct mutex		ps_change_lock;
 	struct mutex		otg_oc_lock;
