@@ -83,7 +83,7 @@ static int aov_trigger_notify(struct notifier_block *nb,
 			if (!aov_trigger_active)
 				return 0;
 			aov_trigger_active = false;
-			dev_dbg(aov_codec->dev,
+			dev_info(aov_codec->dev,
 				"DSP%d: notify aov trigger.", dsp);
 			sysfs_notify(&aov_trigger_kobj, NULL,
 				     aov_sysfs_attr_trigger.name);
@@ -92,7 +92,7 @@ static int aov_trigger_notify(struct notifier_block *nb,
 			mutex_lock(&dsp_info_mutex);
 			dsp_info[dsp].event = 1;
 			mutex_unlock(&dsp_info_mutex);
-			dev_dbg(aov_codec->dev,
+			dev_info(aov_codec->dev,
 				"DSP%d: aov notify text event.", dsp);
 			sysfs_notify(&aov_trigger_kobj, NULL,
 				     aov_sysfs_attr_event.name);
@@ -103,7 +103,7 @@ static int aov_trigger_notify(struct notifier_block *nb,
 			memcpy(dsp_info[dsp].panic_code, trig_info->err_msg,
 			       sizeof(u16) * MAX_NUM_PANIC_CODE);
 			mutex_unlock(&dsp_info_mutex);
-			dev_dbg(aov_codec->dev,
+			dev_info(aov_codec->dev,
 				"DSP%d: aov notify panic.", dsp);
 			sysfs_notify(&aov_trigger_kobj, NULL,
 				     aov_sysfs_attr_event.name);
