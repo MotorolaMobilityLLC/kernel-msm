@@ -758,6 +758,14 @@ config ALBUS_DTB
 	  Only include Albus specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config JOHNSON_DTB
+	depends on ARCH_MSM
+	default n
+	bool "Johnson DTBs"
+	help
+	  Only include Johnson specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config CEDRIC_DTB
 	depends on ARCH_MSM
 	default n
