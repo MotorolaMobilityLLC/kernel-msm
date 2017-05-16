@@ -220,7 +220,7 @@
 				cirrus,micd-configs = <
 					0 1 2 0 0
 				>;
-				cirrus,micd-clamp-mode = <0x7>;
+				cirrus,micd-clamp-mode = <0x4>;
 				cirrus,gpsw = <1>;
 			};
 		};
