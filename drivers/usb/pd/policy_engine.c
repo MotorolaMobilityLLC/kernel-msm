@@ -288,6 +288,7 @@ static void *usbpd_ipc_log;
 #define PD_SRC_PDO_FIXED_PEAK_CURR(pdo)		(((pdo) >> 20) & 3)
 #define PD_SRC_PDO_FIXED_VOLTAGE(pdo)		(((pdo) >> 10) & 0x3FF)
 #define PD_SRC_PDO_FIXED_MAX_CURR(pdo)		((pdo) & 0x3FF)
+#define PD_SRC_PDO_FIXED_CURRENT_MASK		0x3FF
 
 #define PD_SRC_PDO_VAR_BATT_MAX_VOLT(pdo)	(((pdo) >> 20) & 0x3FF)
 #define PD_SRC_PDO_VAR_BATT_MIN_VOLT(pdo)	(((pdo) >> 10) & 0x3FF)
@@ -336,7 +337,7 @@ module_param(check_vsafe0v, bool, S_IRUSR | S_IWUSR);
 static int min_sink_current = 900;
 module_param(min_sink_current, int, S_IRUSR | S_IWUSR);
 
-static const u32 default_src_caps[] = { 0x36019096 };	/* VSafe5V @ 1.5A */
+static u32 default_src_caps[] = { 0x36019096 };	/* VSafe5V @ 1.5A */
 static const u32 default_snk_caps[] = { 0x2601912C };	/* VSafe5V @ 3A */
 
 struct vdm_tx {
@@ -3964,6 +3965,7 @@ struct usbpd *usbpd_create(struct device *parent)
 {
 	int ret;
 	struct usbpd *pd;
+	u32 source_current = 0;
 
 	pd = kzalloc(sizeof(*pd), GFP_KERNEL);
 	if (!pd)
@@ -4072,6 +4074,20 @@ struct usbpd *usbpd_create(struct device *parent)
 		memcpy(pd->sink_caps, default_snk_caps,
 				sizeof(default_snk_caps));
 		pd->num_sink_caps = ARRAY_SIZE(default_snk_caps);
+	}
+
+	device_property_read_u32(parent,
+					"qcom,source-current",
+					&source_current);
+
+	if (source_current) {
+		usbpd_dbg(&pd->dev, "Override default src current with %d\n",
+					source_current);
+		source_current = (source_current / 10) &
+					PD_SRC_PDO_FIXED_CURRENT_MASK;
+		default_src_caps[0] = (*default_src_caps &
+					(~PD_SRC_PDO_FIXED_CURRENT_MASK)) |
+					source_current;
 	}
 
 	/*
