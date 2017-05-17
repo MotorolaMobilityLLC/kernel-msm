@@ -90,7 +90,7 @@ struct msm_isp_bufq *msm_isp_get_bufq(
 	uint32_t bufq_index = bufq_handle & 0xFF;
 
 	if ((bufq_handle == 0) ||
-		(bufq_index > buf_mgr->num_buf_q) ||
+		(bufq_index >= buf_mgr->num_buf_q) ||
 		(bufq_index >= BUF_MGR_NUM_BUF_Q) )
 		return NULL;
 
