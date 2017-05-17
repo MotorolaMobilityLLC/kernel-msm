@@ -1747,13 +1747,14 @@ static int cs47l35_panic_check(struct cs47l35 *cs47l35, int dev, int *reg)
 	scratch1 = val;
 	memset(trig_info.err_msg, 0, sizeof(trig_info.err_msg));
 
-	trig_info.err_msg[0] = (u16)val;
-	regmap_read(madera->regmap, *reg-1, &val);
+	regmap_read(madera->regmap_32bit, *reg, &val);
 	trig_info.err_msg[1] = (u16)val;
-	regmap_read(madera->regmap, *reg+1, &val);
+	trig_info.err_msg[0] = (u16)(val >> 16);
+
+	regmap_read(madera->regmap_32bit, *reg+2, &val);
 	trig_info.err_msg[2] = (u16)val;
-	regmap_read(madera->regmap, *reg+2, &val);
-	trig_info.err_msg[3] = (u16)val;
+	trig_info.err_msg[3] = (u16)(val >> 16);
+
 
 	/* Panic callback */
 	trig_info.core_num = dev;
