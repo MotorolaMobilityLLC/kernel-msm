@@ -286,6 +286,7 @@ struct ft_clip_area {
 
 enum {
 	FT_MOD_CHARGER,
+	FT_MOD_FPS,
 	FT_MOD_MAX
 };
 
@@ -359,6 +360,10 @@ struct ft_ts_data {
 	struct notifier_block ps_notif;
 	bool ps_is_present;
 
+	bool fps_detection_enabled;
+	bool is_fps_registered;	/* FPS notif registration might be delayed */
+	struct notifier_block fps_notif;
+
 	bool clipping_on;
 	struct ft_clip_area *clipa;
 };
@@ -403,6 +408,19 @@ static struct touch_area_stats display_ud_stats = {
 	.ud_len = ARRAY_SIZE(display_ud),
 	.name = "ts"
 };
+
+__attribute__((weak))
+int FPS_register_notifier(struct notifier_block *nb, unsigned long stype,
+			bool report)
+{
+	return -ENODEV;
+}
+
+__attribute__((weak))
+int FPS_unregister_notifier(struct notifier_block *nb, unsigned long stype)
+{
+	return -ENODEV;
+}
 
 static void ud_set_id(struct touch_area_stats *tas, int id)
 {
@@ -457,6 +475,8 @@ static void TSI_id(struct input_dev *dev, int id)
 static int ft_ts_start(struct device *dev);
 static int ft_ts_stop(struct device *dev);
 static void ft_resume_ps_chg_cm_state(struct ft_ts_data *data);
+static struct config_modifier *ft_modifier_by_id(
+	struct ft_ts_data *data, int id);
 
 #if defined(CONFIG_TOUCHSCREEN_FOCALTECH_SECURE_TOUCH_MMI)
 static void ft_secure_touch_init(struct ft_ts_data *data)
@@ -1740,6 +1760,55 @@ exit:
 }
 EXPORT_SYMBOL(ft_new_function);
 
+static int fps_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *p)
+{
+	int fps_state = *(int *)p;
+	struct ft_ts_data *data =
+		container_of(self, struct ft_ts_data, fps_notif);
+
+	if (data && event == 0xBEEF && data->client) {
+		struct config_modifier *cm =
+			ft_modifier_by_id(data, FT_MOD_FPS);
+		if (!cm) {
+			dev_err(&data->client->dev,
+				"No FPS modifier found\n");
+			goto done;
+		}
+
+		if (fps_state) {/* on */
+			data->clipping_on = true;
+			data->clipa = cm->clipa;
+			cm->effective = true;
+		} else {/* off */
+			data->clipping_on = false;
+			data->clipa = NULL;
+			cm->effective = false;
+		}
+		pr_info("FPS: clipping is %s\n",
+			data->clipping_on ? "ON" : "OFF");
+	}
+done:
+	return 0;
+}
+
+static int ft_fps_register_init(struct ft_ts_data *data)
+{
+	int retval;
+
+	retval = FPS_register_notifier(&data->fps_notif, 0xBEEF, false);
+	if (retval < 0) {
+		dev_err(&data->client->dev,
+			"Failed to register fps_notifier: %d\n", retval);
+		return retval;
+	}
+	data->is_fps_registered = true;
+	dev_info(&data->client->dev,
+			"Register fps_notifier OK\n");
+
+	return 0;
+}
+
 #if !defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_MMI)
 static int ft_auto_cal(struct i2c_client *client)
 {
@@ -2781,7 +2850,7 @@ static int ft_get_dt_coords(struct device *dev, char *name,
 }
 
 /* ASCII names order MUST match enum */
-static const char const *ascii_names[] = {"charger", "na"};
+static const char const *ascii_names[] = {"charger", "fps", "na"};
 
 static int ft_modifier_name2id(const char *name)
 {
@@ -2795,6 +2864,25 @@ static int ft_modifier_name2id(const char *name)
 		}
 	}
 	return chosen;
+}
+
+static struct config_modifier *ft_modifier_by_id(
+	struct ft_ts_data *data, int id)
+{
+	struct config_modifier *cm, *found = NULL;
+
+	down(&data->modifiers.list_sema);
+	list_for_each_entry(cm, &data->modifiers.mod_head, link) {
+		pr_debug("walk-thru: ptr=%p modifier[%s] id=%d\n",
+					cm, cm->name, cm->id);
+		if (cm->id == id) {
+			found = cm;
+			break;
+		}
+	}
+	up(&data->modifiers.list_sema);
+	pr_debug("returning modifier id=%d[%d]\n", found ? found->id : -1, id);
+	return found;
 }
 
 static void ft_dt_parse_modifier(struct ft_ts_data *data,
@@ -2903,6 +2991,10 @@ static int ft_dt_parse_modifiers(struct ft_ts_data *data)
 			case FT_MOD_CHARGER:
 				pr_notice("using charger detection\n");
 				data->charger_detection_enabled = true;
+				break;
+			case FT_MOD_FPS:
+				pr_notice("using fingerprint sensor detection\n");
+				data->fps_detection_enabled = true;
 				break;
 			default:
 				pr_notice("no notification found\n");
@@ -3505,6 +3597,15 @@ static int ft_ts_probe(struct i2c_client *client,
 		}
 	}
 
+	if (data->fps_detection_enabled) {
+		data->fps_notif.notifier_call = fps_notifier_callback;
+		dev_dbg(&client->dev, "registering FPS notifier\n");
+		ft_new_function(true,
+			ft_fps_register_init,
+			NULL,
+			NULL);
+	}
+
 	data->ft_reboot.notifier_call = ft_reboot;
 	data->ft_reboot.next = NULL;
 	data->ft_reboot.priority = 1;
@@ -3517,6 +3618,8 @@ static int ft_ts_probe(struct i2c_client *client,
 	return 0;
 
 reboot_register_err:
+	if (data->is_fps_registered)
+		FPS_unregister_notifier(&data->fps_notif, 0xBEEF);
 	if (data->charger_detection_enabled)
 		power_supply_unreg_notifier(&data->ps_notif);
 free_fb_notifier:
@@ -3586,6 +3689,9 @@ static int ft_ts_remove(struct i2c_client *client)
 		flush_workqueue(exp_fn_ctrl.det_workqueue);
 		destroy_workqueue(exp_fn_ctrl.det_workqueue);
 	}
+
+	if (data->is_fps_registered)
+		FPS_unregister_notifier(&data->fps_notif, 0xBEEF);
 
 	unregister_reboot_notifier(&data->ft_reboot);
 
