@@ -279,6 +279,11 @@ enum {
 	PROC_READ_DATA		= 7
 };
 
+struct ft_clip_area {
+	unsigned xul_clip, yul_clip, xbr_clip, ybr_clip;
+	unsigned inversion; /* clip inside (when 1) or ouside otherwise */
+};
+
 enum {
 	FT_MOD_CHARGER,
 	FT_MOD_MAX
@@ -295,6 +300,7 @@ struct config_modifier {
 	const char *name;
 	int id;
 	bool effective;
+	struct ft_clip_area *clipa;
 	struct list_head link;
 };
 
@@ -352,6 +358,9 @@ struct ft_ts_data {
 	struct work_struct ps_notify_work;
 	struct notifier_block ps_notif;
 	bool ps_is_present;
+
+	bool clipping_on;
+	struct ft_clip_area *clipa;
 };
 
 struct ft_exp_fn {
@@ -902,6 +911,28 @@ static irqreturn_t ft_ts_interrupt(int irq, void *dev_id)
 		/* invalid combination */
 		if (!num_touches && !status && !id)
 			break;
+
+		if (data->clipping_on && data->clipa) {
+			bool inside;
+
+			inside = (x >= data->clipa->xul_clip) &&
+				(x <= data->clipa->xbr_clip) &&
+				(y >= data->clipa->yul_clip) &&
+				(y <= data->clipa->ybr_clip);
+
+			if (inside == data->clipa->inversion) {
+				/* Touch might still be active, but we're */
+				/* sending release anyway to avoid touch  */
+				/* stuck at the last reported position.   */
+				/* Driver will suppress reporting to UI   */
+				/* touch events from within clipping area */
+				status = 1;
+
+				dev_dbg(&data->client->dev,
+					"finger id-%d (%d,%d) within clipping area\n",
+					id, x, y);
+			}
+		}
 
 		input_mt_slot(ip_dev, id);
 		if (status == FT_TOUCH_DOWN || status == FT_TOUCH_CONTACT) {
@@ -2766,6 +2797,38 @@ static int ft_modifier_name2id(const char *name)
 	return chosen;
 }
 
+static void ft_dt_parse_modifier(struct ft_ts_data *data,
+		struct device_node *parent, struct config_modifier *config,
+		const char *modifier_name, bool active)
+{
+	struct device *dev = &data->client->dev;
+	char node_name[64];
+	struct ft_clip_area clipa;
+	struct device_node *np_config;
+	int err;
+
+	scnprintf(node_name, 63, "%s-%s", modifier_name,
+			active ? "active" : "suspended");
+	np_config = of_find_node_by_name(parent, node_name);
+	if (!np_config) {
+		dev_dbg(dev, "%s: node does not exist\n", node_name);
+		return;
+	}
+
+	err = of_property_read_u32_array(np_config, "touch-clip-area",
+		(unsigned int *)&clipa, sizeof(clipa)/sizeof(unsigned int));
+	if (!err) {
+		config->clipa = kzalloc(sizeof(clipa), GFP_KERNEL);
+		if (!config->clipa) {
+			dev_err(dev, "clip area allocation failure\n");
+			return;
+		}
+		memcpy(config->clipa, &clipa, sizeof(clipa));
+		pr_notice("using touch clip area in %s\n", node_name);
+	}
+
+	of_node_put(np_config);
+}
 
 static int ft_dt_parse_modifiers(struct ft_ts_data *data)
 {
@@ -2850,6 +2913,14 @@ static int ft_dt_parse_modifiers(struct ft_ts_data *data)
 			dev_dbg(dev, "modifier %s enabled unconditionally\n",
 					node_name);
 		}
+
+		dev_dbg(dev, "processing modifier %s[%d]\n",
+				node_name, config->id);
+
+		ft_dt_parse_modifier(data, np_mod, config,
+				modifiers_names[i], true);
+		ft_dt_parse_modifier(data, np_mod, config,
+				modifiers_names[i], false);
 
 		of_node_put(np_mod);
 	}
