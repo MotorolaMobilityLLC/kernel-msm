@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -786,6 +786,14 @@ skip_cqterri:
 			mrq->cmdq_req->resp_arg = cmdq_readl(cq_host, CQCRA);
 		}
 
+		/*
+		 * Incase of error we will schedule a work to do the unvoting
+		 * of pm_qos here. This is because incase of error, softirq
+		 * handler will not schedule unvoting of pm_qos. Incase of
+		 * no error, the softirq will schedule work for pm_qos unvoting
+		 * after the last request is complete (irrespective of
+		 * whether the last request is DCMD or data request)
+		 */
 		if (cq_host->ops->pm_qos_update)
 			cq_host->ops->pm_qos_update(mmc, NULL, false);
 
@@ -797,24 +805,6 @@ skip_cqterri:
 		comp_status = cmdq_readl(cq_host, CQTCN);
 		if (!comp_status)
 			goto out;
-
-		/*
-		 * pm-qos for cmdq is removed only when there is no cmdq
-		 * request been processed.
-		 * Check if comp_status matches with the number of active_reqs.
-		 * This means that all reqs got actually completed and there
-		 * was no DCMD.
-		 * But in case of DCMD, active_reqs mask has a bit set for DCMD
-		 * as well, so ensure that the when comp_status bit is set
-		 * for DCMD then there should not be any data_active_reqs in
-		 * flight (which can happen if DCMD is not set with QBR)
-		 */
-		if (((mmc->cmdq_ctx).active_reqs == comp_status) ||
-			       (((1 << 31) & comp_status) &&
-				!((mmc->cmdq_ctx).data_active_reqs))) {
-			if (cq_host->ops->pm_qos_update)
-				cq_host->ops->pm_qos_update(mmc, NULL, false);
-		}
 
 		/*
 		 * The CQTCN must be cleared before notifying req completion
@@ -921,7 +911,14 @@ static int cmdq_halt(struct mmc_host *mmc, bool halt)
 	return 0;
 }
 
-static void cmdq_post_req(struct mmc_host *mmc, int tag, int err)
+/*
+* Since this function from now on will be called for DCMD commands
+* as well, it needs a new parameter as input to know if it is DCMD
+* or not. This is because the tag we get for DCMD is almost always
+* never the DCMD_SLOT tag.
+*/
+
+static void cmdq_post_req(struct mmc_host *mmc, int tag, int err, bool is_dcmd)
 {
 	struct cmdq_host *cq_host;
 	struct mmc_request *mrq;
@@ -931,6 +928,31 @@ static void cmdq_post_req(struct mmc_host *mmc, int tag, int err)
 		return;
 
 	cq_host = (struct cmdq_host *)mmc_cmdq_private(mmc);
+
+	/*
+	 * pm-qos for cmdq is removed only when there is no cmdq
+	 * request been processed. Since this call occurs in softirq context
+	 * ireespective of whether the request is a DCMD command or data
+	 * request, we can use the active_reqs counter to decide whether
+	 * any more requests are being actively processed by command queue
+	 * thread.
+	 *
+	 * In case of error in cq request, the qos unvoting is done by the
+	 * CQ hard irq handler. So no need to do unvoting here.
+	 *
+	 * There is a very rare corner case when the active req counter is
+	 * checked by completion context and before it schedules the work to
+	 * unvote, the issuing context can set active req counter and do
+	 * qos voting. In this case the performance suffers but this is a
+	 * very rare corner case as the completion context is in softirq.
+	 */
+
+	if (!err && !mmc->cmdq_ctx.active_reqs && cq_host->ops->pm_qos_update)
+		cq_host->ops->pm_qos_update(mmc, NULL, false);
+
+	if (is_dcmd)
+		return;
+
 	mrq = get_req_by_tag(cq_host, tag);
 	data = mrq->data;
 
