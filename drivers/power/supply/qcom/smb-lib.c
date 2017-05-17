@@ -2855,6 +2855,16 @@ int smblib_set_prop_typec_power_role(struct smb_charger *chg,
 					rc);
 			}
 		}
+#ifndef QCOM_BASE
+		/* increase VCONN softstart and advertise default current*/
+		rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
+				VCONN_SOFTSTART_CFG_MASK | EN_80UA_180UA_CUR_SOURCE_BIT,
+				VCONN_SOFTSTART_CFG_MASK);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't write to TYPE_C_CFG_2_REG rc=%d\n",
+				rc);
+		}
+#endif
 	}
 
 	rc = smblib_masked_write(chg, TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
