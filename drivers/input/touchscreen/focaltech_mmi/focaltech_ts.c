@@ -224,6 +224,8 @@ static irqreturn_t ft_ts_interrupt(int irq, void *data);
 #define PINCTRL_STATE_SUSPEND	"pmx_ts_suspend"
 #define PINCTRL_STATE_RELEASE	"pmx_ts_release"
 
+#define EXP_FN_DET_INTERVAL 1000 /* ms */
+
 static irqreturn_t ft_ts_interrupt(int irq, void *data);
 
 enum {
@@ -351,6 +353,26 @@ struct ft_ts_data {
 	struct notifier_block ps_notif;
 	bool ps_is_present;
 };
+
+struct ft_exp_fn {
+	bool inserted;
+	int (*func_init)(struct ft_ts_data *data);
+	void (*func_remove)(struct ft_ts_data *data);
+	void (*func_attn)(struct ft_ts_data *data, unsigned char intr_mask);
+	struct list_head link;
+};
+
+struct ft_exp_fn_ctrl {
+	bool inited;
+	struct mutex list_mutex;
+	struct list_head fn_list;
+	struct delayed_work det_work;
+	struct workqueue_struct *det_workqueue;
+	struct ft_ts_data *data_ptr;
+};
+static DEFINE_MUTEX(exp_fn_ctrl_mutex);
+static struct ft_exp_fn_ctrl exp_fn_ctrl;
+
 
 struct touch_up_down {
 	int mismatch;
@@ -1574,6 +1596,118 @@ static int ps_notify_callback(struct notifier_block *self,
 
 	return 0;
 }
+
+static void ft_detection_work(struct work_struct *work)
+{
+	struct ft_exp_fn *exp_fhandler, *next_list_entry;
+	struct ft_ts_data *data;
+	int error;
+	bool det_again = false;
+
+	mutex_lock(&exp_fn_ctrl_mutex);
+	data = exp_fn_ctrl.data_ptr;
+	mutex_unlock(&exp_fn_ctrl_mutex);
+
+	if (data == NULL) {
+		if (exp_fn_ctrl.det_workqueue)
+			queue_delayed_work(exp_fn_ctrl.det_workqueue,
+				&exp_fn_ctrl.det_work,
+				msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+		return;
+	}
+
+	mutex_lock(&exp_fn_ctrl.list_mutex);
+	if (list_empty(&exp_fn_ctrl.fn_list))
+		goto release_mutex;
+
+	list_for_each_entry_safe(exp_fhandler,
+				next_list_entry,
+				&exp_fn_ctrl.fn_list,
+				link) {
+		if (exp_fhandler->func_init == NULL) {
+			if (exp_fhandler->inserted == true) {
+				if (exp_fhandler->func_init != NULL)
+					exp_fhandler->func_remove(data);
+				list_del(&exp_fhandler->link);
+				kfree(exp_fhandler);
+			}
+			continue;
+		}
+
+		if (exp_fhandler->inserted == true)
+			continue;
+
+		error = exp_fhandler->func_init(data);
+		if (error < 0) {
+			pr_err("Failed to init exp function. err=%d\n", error);
+			det_again = true;
+			continue;
+		}
+		exp_fhandler->inserted = true;
+	}
+
+release_mutex:
+	mutex_unlock(&exp_fn_ctrl.list_mutex);
+	if (det_again) {
+		if (exp_fn_ctrl.det_workqueue)
+			queue_delayed_work(exp_fn_ctrl.det_workqueue,
+				&exp_fn_ctrl.det_work,
+				msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+	}
+}
+
+void ft_new_function(bool insert,
+		int (*func_init)(struct ft_ts_data *data),
+		void (*func_remove)(struct ft_ts_data *data),
+		void (*func_attn)(struct ft_ts_data *data,
+					unsigned char intr_mask))
+{
+	struct ft_exp_fn *exp_fhandler;
+
+	mutex_lock(&exp_fn_ctrl_mutex);
+	if (!exp_fn_ctrl.inited) {
+		mutex_init(&exp_fn_ctrl.list_mutex);
+		INIT_LIST_HEAD(&exp_fn_ctrl.fn_list);
+		exp_fn_ctrl.det_workqueue =
+			create_singlethread_workqueue("rmi_det_workqueue");
+		if (IS_ERR_OR_NULL(exp_fn_ctrl.det_workqueue))
+			pr_err("unable to create a workqueue\n");
+		INIT_DELAYED_WORK(&exp_fn_ctrl.det_work,
+			ft_detection_work);
+		exp_fn_ctrl.inited = true;
+	}
+	mutex_unlock(&exp_fn_ctrl_mutex);
+
+	mutex_lock(&exp_fn_ctrl.list_mutex);
+	if (insert) {
+		exp_fhandler = kzalloc(sizeof(*exp_fhandler), GFP_KERNEL);
+		if (!exp_fhandler) {
+			pr_err("failed to alloc mem for expansion function\n");
+			goto exit;
+		}
+		exp_fhandler->func_init = func_init;
+		exp_fhandler->func_attn = func_attn;
+		exp_fhandler->func_remove = func_remove;
+		exp_fhandler->inserted = false;
+		list_add_tail(&exp_fhandler->link, &exp_fn_ctrl.fn_list);
+	} else {
+		list_for_each_entry(exp_fhandler, &exp_fn_ctrl.fn_list, link) {
+			if (exp_fhandler->func_init == func_init) {
+				exp_fhandler->inserted = false;
+				exp_fhandler->func_init = NULL;
+				exp_fhandler->func_attn = NULL;
+				goto exit;
+			}
+		}
+	}
+
+exit:
+	mutex_unlock(&exp_fn_ctrl.list_mutex);
+	if (exp_fn_ctrl.det_workqueue)
+		queue_delayed_work(exp_fn_ctrl.det_workqueue,
+					&exp_fn_ctrl.det_work, 0);
+}
+EXPORT_SYMBOL(ft_new_function);
 
 #if !defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_MMI)
 static int ft_auto_cal(struct i2c_client *client)
@@ -3244,6 +3378,21 @@ static int ft_ts_probe(struct i2c_client *client,
 	register_early_suspend(&data->early_suspend);
 #endif
 
+	mutex_lock(&exp_fn_ctrl_mutex);
+	if (!exp_fn_ctrl.inited) {
+		mutex_init(&exp_fn_ctrl.list_mutex);
+		INIT_LIST_HEAD(&exp_fn_ctrl.fn_list);
+		exp_fn_ctrl.det_workqueue =
+			create_singlethread_workqueue("rmi_det_workqueue");
+		if (IS_ERR_OR_NULL(exp_fn_ctrl.det_workqueue))
+			pr_err("unable to create a workqueue\n");
+		INIT_DELAYED_WORK(&exp_fn_ctrl.det_work,
+			ft_detection_work);
+		exp_fn_ctrl.inited = true;
+	}
+	exp_fn_ctrl.data_ptr = data;
+	mutex_unlock(&exp_fn_ctrl_mutex);
+
 	if (data->charger_detection_enabled) {
 		struct power_supply *psy = NULL;
 
@@ -3360,6 +3509,12 @@ static int ft_ts_remove(struct i2c_client *client)
 {
 	struct ft_ts_data *data = i2c_get_clientdata(client);
 	int retval, attr_count;
+
+	if (exp_fn_ctrl.inited) {
+		cancel_delayed_work_sync(&exp_fn_ctrl.det_work);
+		flush_workqueue(exp_fn_ctrl.det_workqueue);
+		destroy_workqueue(exp_fn_ctrl.det_workqueue);
+	}
 
 	unregister_reboot_notifier(&data->ft_reboot);
 
