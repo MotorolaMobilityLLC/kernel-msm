@@ -116,6 +116,13 @@
 		focaltech,fw-delay-era-flsh-ms = <2000>;
 		focaltech,resume-in-workqueue;
 		focaltech,ignore-id-check;
+		config_modifier-names = "fps";
+		config_modifier-fps {
+			enable-notification;
+			fps-active {
+				touch-clip-area = <300 1870 800 1919 1>;
+			};
+		};
 	};
 };
 
