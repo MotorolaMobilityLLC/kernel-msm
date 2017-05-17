@@ -1733,9 +1733,16 @@ static int smb2_configure_typec(struct smb_charger *chg)
 		return rc;
 	}
 
+#ifdef QCOM_BASE
 	/* increase VCONN softstart */
 	rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
 			VCONN_SOFTSTART_CFG_MASK, VCONN_SOFTSTART_CFG_MASK);
+#else
+	/* increase VCONN softstart and advertise default current*/
+	rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
+			VCONN_SOFTSTART_CFG_MASK | EN_80UA_180UA_CUR_SOURCE_BIT,
+			VCONN_SOFTSTART_CFG_MASK);
+#endif
 	if (rc < 0) {
 		dev_err(chg->dev, "Couldn't increase VCONN softstart rc=%d\n",
 			rc);
