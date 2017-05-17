@@ -820,7 +820,7 @@
 	qcom,usbid-disabled;
 	qcom,usbid-gpio-enabled;
 	qcom,force-aicl-rerun;
-	qcom,auto-voltage-comp-mv = <150>;
+	qcom,auto-voltage-comp-mv = <75>;
 	qcom,enable-hvdcp-9v;
 	qcom,enable-factory-wa;
 	qcom,enable-charging-limit;
