@@ -73,10 +73,10 @@ static int aov_trigger_notify(struct notifier_block *nb,
 
 	dev_dbg(aov_codec->dev, "received madera notity event: 0x%lx", event);
 	if ((event == MADERA_NOTIFY_VOICE_TRIGGER) &&
-	    (trig_info->core_num > 0) &&
-	    (trig_info->core_num <= MAX_DSP_TO_CHECK)) {
+	    (trig_info->core_num >= 0) &&
+	    (trig_info->core_num < MAX_DSP_TO_CHECK)) {
 
-		dsp = trig_info->core_num - 1;
+		dsp = trig_info->core_num;
 
 		switch (trig_info->code) {
 		case MADERA_TRIGGER_VOICE:
