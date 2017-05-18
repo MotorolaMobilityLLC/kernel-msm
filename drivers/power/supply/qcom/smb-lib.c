@@ -7882,8 +7882,9 @@ static enum alarmtimer_restart mmi_heartbeat_alarm_cb(struct alarm *alarm,
 
 	__pm_stay_awake(&chip->mmi.smblib_mmi_hb_wake_source);
 	cancel_delayed_work(&chip->mmi.heartbeat_work);
+	/* Delay by 500 ms to allow devices to resume. */
 	schedule_delayed_work(&chip->mmi.heartbeat_work,
-			      msecs_to_jiffies(0));
+			      msecs_to_jiffies(500));
 
 	return ALARMTIMER_NORESTART;
 }
