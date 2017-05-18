@@ -2001,13 +2001,13 @@ static int marley_panic_check(struct marley_priv *marley, int dev, int *reg)
 	scratch1 = val;
 	memset(err_msg, 0, sizeof(err_msg));
 
-	err_msg[0] = (u16)val;
-	regmap_read(arizona->regmap, *reg-1, &val);
+	regmap_read(arizona->regmap_32bit, *reg, &val);
 	err_msg[1] = (u16)val;
-	regmap_read(arizona->regmap, *reg+1, &val);
+	err_msg[0] = (u16)(val >> 16);
+
+	regmap_read(arizona->regmap_32bit, *reg+2, &val);
 	err_msg[2] = (u16)val;
-	regmap_read(arizona->regmap, *reg+2, &val);
-	err_msg[3] = (u16)val;
+	err_msg[3] = (u16)(val >> 16);
 
 	/* Panic callback */
 	if (marley->core.arizona->pdata.ez2panic_trigger)
