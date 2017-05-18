@@ -10839,8 +10839,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 	alarm_try_to_cancel(&chip->smbchg_heartbeat_alarm);
 
-	if (smbchg_check_and_kick_aicl(chip) ||
-	    !smbchg_fg_ready(chip))
+	if (!smbchg_fg_ready(chip) ||
+	    smbchg_check_and_kick_aicl(chip))
 		goto end_hb;
 
 	if (chip->bsw_ramping) {
