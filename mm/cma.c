@@ -355,8 +355,8 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align)
 	if (!cma || !cma->count)
 		return NULL;
 
-	pr_debug("%s(cma %p, count %zu, align %d)\n", __func__, (void *)cma,
-		 count, align);
+	pr_debug("%s[%d]: %s(cma %p, count %zu, align %d)\n", current->comm,
+		 current->pid, __func__, (void *)cma, count, align);
 
 	if (!count)
 		return NULL;
