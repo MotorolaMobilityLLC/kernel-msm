@@ -613,20 +613,26 @@ static int pil_init_image_trusted(struct pil_desc *pil,
 		scm_pas_disable_bw();
 		return -ENOMEM;
 	}
+	pr_info("[%s]: %s alloc region - Start: %pa, size: %zu\n", __func__,
+		 d->subsys_desc.name, &mdata_phys, size);
 
 	/* Make sure there are no mappings in PKMAP and fixmap */
 	kmap_flush_unused();
+	pr_info("[%s]: line %d\n", __func__, __LINE__);
 	kmap_atomic_flush_unused();
 
+	pr_info("[%s]: copying %s metadata ...", __func__, d->subsys_desc.name);
 	memcpy(mdata_buf, metadata, size);
-
+	pr_info("FINISHED\n");
 	request.proc = d->pas_id;
 	request.image_addr = mdata_phys;
 
 	if (!is_scm_armv8()) {
+		pr_info("[%s]: scm_call - PAS_INIT_IMAGE_CMD\n", __func__);
 		ret = scm_call(SCM_SVC_PIL, PAS_INIT_IMAGE_CMD, &request,
 				sizeof(request), &scm_ret, sizeof(scm_ret));
 	} else {
+		pr_info("[%s]: scm_call2 - PAS_INIT_IMAGE_CMD\n", __func__);
 		desc.args[0] = d->pas_id;
 		desc.args[1] = mdata_phys;
 		desc.arginfo = SCM_ARGS(2, SCM_VAL, SCM_RW);
@@ -634,9 +640,11 @@ static int pil_init_image_trusted(struct pil_desc *pil,
 				&desc);
 		scm_ret = desc.ret[0];
 	}
-
+	pr_info("[%s]: ret = %d, scm_ret = %d\n", __func__, ret, scm_ret);
 	dma_free_attrs(&dev, size, mdata_buf, mdata_phys, &attrs);
+	pr_info("[%s]: line %d\n", __func__, __LINE__);
 	scm_pas_disable_bw();
+	pr_info("[%s]: line %d\n", __func__, __LINE__);
 	if (ret)
 		return ret;
 	return scm_ret;
@@ -833,6 +841,9 @@ static int subsys_powerup(const struct subsys_desc *subsys)
 {
 	struct pil_tz_data *d = subsys_to_data(subsys);
 	int ret = 0;
+
+	pr_info("[%s]: %s powerd up in %s(%d)\n", __func__,
+		 d->subsys_desc.name, current->comm, current->pid);
 
 	if (subsys->stop_ack_irq)
 		reinit_completion(&d->stop_ack);

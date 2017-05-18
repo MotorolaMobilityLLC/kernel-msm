@@ -469,6 +469,9 @@ static int pil_alloc_region(struct pil_priv *priv, phys_addr_t min_addr,
 	priv->base_addr = min_addr;
 	priv->region_size = aligned_size;
 
+	pil_info(priv->desc, "[%s]: region - Start: %pa, End: %pa\n", __func__,
+		 &priv->region_start, &priv->region_end);
+
 	return 0;
 }
 
