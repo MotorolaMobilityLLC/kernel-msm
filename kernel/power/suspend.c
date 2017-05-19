@@ -45,9 +45,7 @@ const char *pm_states[PM_SUSPEND_MAX];
 static const struct platform_suspend_ops *suspend_ops;
 static const struct platform_freeze_ops *freeze_ops;
 static DECLARE_WAIT_QUEUE_HEAD(suspend_freeze_wait_head);
-
-enum freeze_state __read_mostly suspend_freeze_state;
-static DEFINE_SPINLOCK(suspend_freeze_lock);
+static bool suspend_freeze_wake;
 
 #ifdef CONFIG_SUSPEND_WATCHDOG
 static void suspend_watchdog_handler(unsigned long data);
@@ -86,49 +84,22 @@ void freeze_set_ops(const struct platform_freeze_ops *ops)
 
 static void freeze_begin(void)
 {
-	suspend_freeze_state = FREEZE_STATE_NONE;
+	suspend_freeze_wake = false;
 }
 
 static void freeze_enter(void)
 {
-	spin_lock_irq(&suspend_freeze_lock);
-	if (pm_wakeup_pending())
-		goto out;
-
-	suspend_freeze_state = FREEZE_STATE_ENTER;
-	spin_unlock_irq(&suspend_freeze_lock);
-
-	get_online_cpus();
+	cpuidle_use_deepest_state(true);
 	cpuidle_resume();
-
-	/* Push all the CPUs into the idle loop. */
-	wake_up_all_idle_cpus();
-	pr_debug("PM: suspend-to-idle\n");
-	/* Make the current CPU wait so it can enter the idle loop too. */
-	wait_event(suspend_freeze_wait_head,
-		   suspend_freeze_state == FREEZE_STATE_WAKE);
-	pr_debug("PM: resume from suspend-to-idle\n");
-
+	wait_event(suspend_freeze_wait_head, suspend_freeze_wake);
 	cpuidle_pause();
-	put_online_cpus();
-
-	spin_lock_irq(&suspend_freeze_lock);
-
- out:
-	suspend_freeze_state = FREEZE_STATE_NONE;
-	spin_unlock_irq(&suspend_freeze_lock);
+	cpuidle_use_deepest_state(false);
 }
 
 void freeze_wake(void)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&suspend_freeze_lock, flags);
-	if (suspend_freeze_state > FREEZE_STATE_NONE) {
-		suspend_freeze_state = FREEZE_STATE_WAKE;
-		wake_up(&suspend_freeze_wait_head);
-	}
-	spin_unlock_irqrestore(&suspend_freeze_lock, flags);
+	suspend_freeze_wake = true;
+	wake_up(&suspend_freeze_wait_head);
 }
 EXPORT_SYMBOL_GPL(freeze_wake);
 
