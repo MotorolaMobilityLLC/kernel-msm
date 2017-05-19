@@ -5250,7 +5250,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 	if (chip->hvdcp_det_done) {
 		if (chip->hvdcp3_confirmed)
 			chip->cl_usbc = 3000;
-	} else if (chip->cl_usbc > 500) {
+	} else if (chip->cl_usbc > 1500) {
 		chip->hvdcp_det_done = true;
 		cancel_delayed_work(&chip->hvdcp_det_work);
 	}
@@ -6694,7 +6694,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		}
 		schedule_work(&chip->usb_set_online_work);
 		if (!chip->factory_mode) {
-			if (chip->cl_usbc > 500) {
+			if (chip->cl_usbc > 1500) {
 				chip->hvdcp_det_done = true;
 			} else {
 				chip->hvdcp_det_done = false;
