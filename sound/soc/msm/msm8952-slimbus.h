@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -58,8 +58,6 @@ int msm_proxy_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params);
 int msm_proxy_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params);
-int msm_tdm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
-			       struct snd_pcm_hw_params *params);
 int msm_audrx_init(struct snd_soc_pcm_runtime *rtd);
 #ifdef CONFIG_SND_SOC_MARLEY
 int marley_dai_init(struct snd_soc_pcm_runtime *rtd);
@@ -74,8 +72,6 @@ int msm_quin_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params);
 int msm_snd_cpe_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params);
-int msm_tdm_snd_hw_params(struct snd_pcm_substream *substream,
-			  struct snd_pcm_hw_params *params);
 int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream);
 void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream);
 
@@ -86,9 +82,6 @@ int msm_auxpcm_be_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params);
 int msm_prim_auxpcm_startup(struct snd_pcm_substream *substream);
 void msm_prim_auxpcm_shutdown(struct snd_pcm_substream *substream);
-
-int msm_tdm_startup(struct snd_pcm_substream *substream);
-void msm_tdm_shutdown(struct snd_pcm_substream *substream);
 
 struct snd_soc_card *populate_snd_card_dailinks(struct device *dev);
 int msm_slim_4_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
