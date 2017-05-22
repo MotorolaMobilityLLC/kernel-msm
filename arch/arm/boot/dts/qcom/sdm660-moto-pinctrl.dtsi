@@ -11,6 +11,17 @@
  */
 
 &tlmm {
+	tps61280_en_default: tps61280_en_default {
+		mux {
+			pins = "gpio97";
+		};
+		config {
+			pins = "gpio97";
+			drive_strength = <16>;
+			output-high;
+		};
+	};
+
 	fps {
 		fps_ldo_3P3_en_default: fps_ldo_3P3_en_default {
 			mux {
