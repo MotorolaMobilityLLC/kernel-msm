@@ -162,6 +162,7 @@ dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt2b.dtb
 
 ifeq ($(CONFIG_PAYTON_DTB),y)
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-payton-p0a.dtb
+dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p2b.dtb
 dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p2a.dtb
 dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p1a.dtb
 dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p0a.dtb
