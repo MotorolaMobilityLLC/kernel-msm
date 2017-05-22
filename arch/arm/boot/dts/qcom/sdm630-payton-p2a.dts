@@ -20,3 +20,17 @@
         qcom,board-id = <0x41 0x82A0>,<0x42 0x82A0>;
 };
 
+&i2c_2 { /* BLSP1 CAP SENSOR */
+	status = "okay";
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		reg = <0x75>;
+		ti,config = <0x0D>;
+		ti,vout-floor = <0x0D>;
+		ti,vout-roof = <0x19>;
+		ti,ilim = <0x0F>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps61280_en_default>;
+	};
+};
+
