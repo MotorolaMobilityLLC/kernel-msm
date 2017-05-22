@@ -2678,6 +2678,7 @@ static int smb2_probe(struct platform_device *pdev)
 	chg->mode = PARALLEL_MASTER;
 	chg->irq_info = smb2_irqs;
 	chg->name = "PMI";
+	chg->suspended = false;
 
 	chg->regmap = dev_get_regmap(chg->dev->parent, NULL);
 	if (!chg->regmap) {
@@ -2927,6 +2928,37 @@ static void smb2_shutdown(struct platform_device *pdev)
 				 AUTO_SRC_DETECT_BIT, AUTO_SRC_DETECT_BIT);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int smb2_suspend(struct device *device)
+{
+	struct platform_device *pdev = to_platform_device(device);
+	struct smb2 *chip = platform_get_drvdata(pdev);
+	struct smb_charger *chg = &chip->chg;
+
+	chg->suspended = true;
+
+	return 0;
+}
+
+static int smb2_resume(struct device *device)
+{
+	struct platform_device *pdev = to_platform_device(device);
+	struct smb2 *chip = platform_get_drvdata(pdev);
+	struct smb_charger *chg = &chip->chg;
+
+	chg->suspended = false;
+
+	return 0;
+}
+#else
+#define smb2_suspend NULL
+#define smb2_resume NULL
+#endif
+
+static const struct dev_pm_ops smb2_dev_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(smb2_suspend, smb2_resume)
+};
+
 static const struct of_device_id match_table[] = {
 	{ .compatible = "qcom,qpnp-smb2", },
 	{ },
@@ -2936,6 +2968,7 @@ static struct platform_driver smb2_driver = {
 	.driver		= {
 		.name		= "qcom,qpnp-smb2",
 		.owner		= THIS_MODULE,
+		.pm		= &smb2_dev_pm_ops,
 		.of_match_table	= match_table,
 	},
 	.probe		= smb2_probe,
