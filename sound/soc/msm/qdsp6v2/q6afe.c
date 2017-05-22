@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2511,7 +2511,7 @@ fail_cmd:
 }
 
 int afe_tdm_port_start(u16 port_id, struct afe_tdm_port_config *tdm_port,
-		u32 rate, u16 num_groups)
+		u32 rate)
 {
 	struct afe_audioif_config_command config;
 	int ret = 0;
@@ -2544,10 +2544,9 @@ int afe_tdm_port_start(u16 port_id, struct afe_tdm_port_config *tdm_port,
 		return ret;
 	}
 
-	/* Also send the topology id here if multiple ports are present */
+	/* Also send the topology id here: */
 	port_index = afe_get_port_index(port_id);
-	if (!(this_afe.afe_cal_mode[port_index] == AFE_CAL_MODE_NONE) &&
-		num_groups > 1) {
+	if (!(this_afe.afe_cal_mode[port_index] == AFE_CAL_MODE_NONE)) {
 		/* One time call: only for first time */
 		afe_send_custom_topology();
 		afe_send_port_topology_id(port_id);
@@ -2609,14 +2608,11 @@ int afe_tdm_port_start(u16 port_id, struct afe_tdm_port_config *tdm_port,
 		ret = -EINVAL;
 		goto fail_cmd;
 	}
-	/* slot mapping is not need if there is only one group */
-	if (num_groups > 1) {
-		ret = afe_send_slot_mapping_cfg(&tdm_port->slot_mapping,
-						port_id);
-		if (ret < 0) {
-			pr_err("%s: afe send failed %d\n", __func__, ret);
-			goto fail_cmd;
-		}
+
+	ret = afe_send_slot_mapping_cfg(&tdm_port->slot_mapping, port_id);
+	if (ret < 0) {
+		pr_err("%s: afe send failed %d\n", __func__, ret);
+		goto fail_cmd;
 	}
 
 	if (tdm_port->custom_tdm_header.header_type) {
