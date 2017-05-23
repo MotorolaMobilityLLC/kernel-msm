@@ -474,7 +474,7 @@ static void dwc3_mods_hsusb_path_enable(struct dwc3_msm *mdwc,
 		usb3813_enable_hub(mdwc->mod_hub, 1, path);
 	} else {
 		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 0);
-		usb3813_enable_hub(mdwc->mod_hub, 1, USB_EXT_PATH_UNKNOWN);
+		usb3813_enable_hub(mdwc->mod_hub, 0, USB_EXT_PATH_UNKNOWN);
 	}
 }
 
