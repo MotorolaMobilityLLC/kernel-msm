@@ -1,6 +1,6 @@
 #! /usr/bin/env python2
 
-# Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
+# Copyright (c) 2009-2015, 2017, 2019, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -45,6 +45,7 @@ build_dir = '../all-kernels'
 make_command = ["vmlinux", "modules", "dtbs"]
 all_options = {}
 compile64 = os.environ.get('CROSS_COMPILE64')
+clang_bin = os.environ.get('CLANG_BIN')
 
 def error(msg):
     sys.stderr.write("error: %s\n" % msg)
@@ -268,10 +269,18 @@ class Builder():
         if not all_options.updateconfigs:
             # Build targets can be dependent upon the completion of
             # previous build targets, so build them one at a time.
-            cmd_line = ['make',
-                'INSTALL_HDR_PATH=%s' % hdri_dir,
-                'INSTALL_MOD_PATH=%s' % modi_dir,
-                'O=%s' % dest_dir]
+            if os.environ.get('ARCH') == "arm64":
+                cmd_line = ['make',
+                    'INSTALL_HDR_PATH=%s' % hdri_dir,
+                    'INSTALL_MOD_PATH=%s' % modi_dir,
+                    'O=%s' % dest_dir,
+                    'REAL_CC=%s' % clang_bin]
+            else:
+                cmd_line = ['make',
+                    'INSTALL_HDR_PATH=%s' % hdri_dir,
+                    'INSTALL_MOD_PATH=%s' % modi_dir,
+                    'O=%s' % dest_dir]
+
             build_targets = []
             for c in make_command:
                 if re.match(r'^-{1,2}\w', c):
