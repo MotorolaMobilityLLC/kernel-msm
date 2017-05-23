@@ -402,15 +402,6 @@ EXPORT_SYMBOL_GPL(power_supply_get_by_name);
  */
 void power_supply_put(struct power_supply *psy)
 {
-	int uses_open = atomic_read(&psy->use_cnt);
-
-	if (uses_open <= 1) {
-		atomic_set(&psy->use_cnt, 0);
-		pr_err("power_supply_put: called while use_cnt %d\n",
-			uses_open);
-		return;
-	}
-
 	might_sleep();
 
 	atomic_dec(&psy->use_cnt);
@@ -558,8 +549,14 @@ EXPORT_SYMBOL_GPL(power_supply_powers);
 static void power_supply_dev_release(struct device *dev)
 {
 	struct power_supply *psy = container_of(dev, struct power_supply, dev);
+	void *drvr_data = NULL;
+
+	if (psy->free_pdd_on_release)
+		drvr_data = psy->drv_data;
 	pr_warn("device: '%s': %s\n", dev_name(dev), __func__);
 	kfree(psy);
+	if (drvr_data)
+		kfree(drvr_data);
 }
 
 int power_supply_reg_notifier(struct notifier_block *nb)
@@ -757,6 +754,8 @@ __power_supply_register(struct device *parent,
 		psy->of_node = cfg->of_node;
 		psy->supplied_to = cfg->supplied_to;
 		psy->num_supplicants = cfg->num_supplicants;
+		if (cfg->drv_data)
+			psy->free_pdd_on_release = cfg->free_drv_data;
 	}
 
 	rc = dev_set_name(dev, "%s", desc->name);
@@ -958,18 +957,7 @@ EXPORT_SYMBOL_GPL(devm_power_supply_register_no_ws);
  */
 void power_supply_unregister(struct power_supply *psy)
 {
-	unsigned int uses_open = atomic_read(&psy->use_cnt);
-
-	if (uses_open > 1) {
-		atomic_set(&psy->use_cnt, 0);
-		pr_err("power_supply_unregister: called while use_cnt %d\n",
-			uses_open);
-		while (uses_open > 1) {
-			put_device(&psy->dev);
-			uses_open--;
-		}
-	} else
-		WARN_ON(atomic_dec_return(&psy->use_cnt));
+	WARN_ON(atomic_dec_return(&psy->use_cnt));
 
 	atomic_notifier_call_chain(&power_supply_notifier,
 				   PSY_EVENT_PROP_REMOVED, psy);
