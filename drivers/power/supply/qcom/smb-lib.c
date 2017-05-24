@@ -1835,6 +1835,32 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	return 0;
 }
 
+bool smblib_charge_halted(struct smb_charger *chg)
+{
+	u8 stat;
+	int rc;
+	bool flag = false;
+
+	rc = smblib_read(chg, BATTERY_CHARGER_STATUS_1_REG, &stat);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't read BATTERY_CHARGER_STATUS_1 rc=%d\n",
+			rc);
+		return flag;
+	}
+	stat = stat & BATTERY_CHARGER_STATUS_MASK;
+
+	switch (stat) {
+	case TERMINATE_CHARGE:
+	case INHIBIT_CHARGE:
+		flag = true;
+		break;
+	default:
+		break;
+	}
+
+	return flag;
+}
+
 int smblib_get_prop_batt_charge_type(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
@@ -6792,6 +6818,12 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		else if (mmi_has_current_tapered(chip, batt_ma,
 						 zone->fcc_norm_ma)) {
 			mmi->chrg_taper_cnt = 0;
+			if (smblib_charge_halted(chip)) {
+				vote(chip->chg_disable_votable,
+				     HEARTBEAT_VOTER, true, 0);
+				smblib_err(chip, "Charge Halt..Toggle\n");
+				msleep(50);
+			}
 			mmi->pres_chrg_step = STEP_NORM;
 		}
 	} else if (mmi->pres_chrg_step == STEP_NORM) {
