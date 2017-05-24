@@ -110,6 +110,12 @@
 	};
 };
 
+&usb3 {
+	dwc3@a800000 {
+		maximum-speed = "high-speed";
+	};
+};
+
 &red_led {
 	linux,name = "charging";
 	/delete-property/ linux,default-trigger;
