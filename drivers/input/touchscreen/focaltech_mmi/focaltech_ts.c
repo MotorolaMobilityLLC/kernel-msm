@@ -3201,8 +3201,10 @@ static int ft_reboot(struct notifier_block *nb,
 		container_of(nb, struct ft_ts_data, ft_reboot);
 
 	dev_info(&data->client->dev, "touch shutdown\n");
-	ft_irq_disable(data);
-	free_irq(data->client->irq, data);
+	if (data->irq_enabled) {
+		ft_irq_disable(data);
+		free_irq(data->client->irq, data);
+	}
 
 	if (gpio_is_valid(data->pdata->reset_gpio)) {
 		gpio_direction_output(data->pdata->reset_gpio, 0);
@@ -3221,6 +3223,7 @@ static int ft_reboot(struct notifier_block *nb,
 			data->pdata->power_init(false);
 		else
 			ft_power_init(data, false);
+		data->regulator_en = false;
 	}
 
 	return NOTIFY_DONE;
