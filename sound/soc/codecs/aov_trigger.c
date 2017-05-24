@@ -20,6 +20,7 @@
 #include <linux/string.h>
 #include <linux/sysfs.h>
 #include <sound/soc.h>
+#include <linux/wakelock.h>
 #include <linux/mfd/madera/core.h>
 #include "madera.h"
 
@@ -35,6 +36,7 @@ static bool aov_trigger_active;
 static struct kobject aov_trigger_kobj;
 static struct snd_soc_codec *aov_codec;
 static struct notifier_block aov_trigger_nb;
+static struct wake_lock aov_wakelock;
 
 static struct dsp_event_info dsp_info[MAX_DSP_TO_CHECK];
 static DEFINE_MUTEX(dsp_info_mutex);
@@ -87,6 +89,8 @@ static int aov_trigger_notify(struct notifier_block *nb,
 				"DSP%d: notify aov trigger.", dsp);
 			sysfs_notify(&aov_trigger_kobj, NULL,
 				     aov_sysfs_attr_trigger.name);
+			wake_lock_timeout(&aov_wakelock,
+					  msecs_to_jiffies(500));
 			break;
 		case MADERA_TRIGGER_TEXT:
 			mutex_lock(&dsp_info_mutex);
@@ -236,6 +240,9 @@ int aov_trigger_init(void)
 			   __func__, ret);
 		goto exit_remove_register;
 	}
+
+	wake_lock_init(&aov_wakelock, 0, "aov_wakelock");
+
 	goto exit;
 
 exit_remove_register:
