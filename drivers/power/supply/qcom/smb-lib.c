@@ -5491,6 +5491,8 @@ int smblib_get_prop_dc_voltage_now(struct smb_charger *chg,
 }
 
 #define MIN_TEMP_C -20
+#define MAX_TEMP_C 60
+#define MIN_MAX_TEMP_C 47
 #define HYSTERISIS_DEGC 2
 static bool mmi_find_temp_zone(struct smb_charger *chip, int temp_c)
 {
@@ -5499,6 +5501,7 @@ static bool mmi_find_temp_zone(struct smb_charger *chip, int temp_c)
 	int hotter_t, hotter_fcc;
 	int colder_t, colder_fcc;
 	int i;
+	int max_temp;
 
 	if (!chip) {
 		smblib_dbg(chip, PR_MOTO, "called before chip valid!\n");
@@ -5508,6 +5511,11 @@ static bool mmi_find_temp_zone(struct smb_charger *chip, int temp_c)
 	zones = chip->mmi.temp_zones;
 	num_zones = chip->mmi.num_temp_zones;
 	prev_zone = chip->mmi.pres_temp_zone;
+
+	if (chip->mmi.max_chrg_temp >= MIN_MAX_TEMP_C)
+		max_temp = chip->mmi.max_chrg_temp;
+	else
+		max_temp = zones[num_zones - 1].temp_c;
 
 	if (prev_zone == ZONE_NONE) {
 		for (i = num_zones - 1; i >= 0; i--) {
@@ -5527,7 +5535,7 @@ static bool mmi_find_temp_zone(struct smb_charger *chip, int temp_c)
 		if (temp_c >= MIN_TEMP_C + HYSTERISIS_DEGC)
 			chip->mmi.pres_temp_zone = ZONE_FIRST;
 	} else if (prev_zone == ZONE_HOT) {
-		if (temp_c <= zones[num_zones - 1].temp_c - HYSTERISIS_DEGC)
+		if (temp_c <=  max_temp - HYSTERISIS_DEGC)
 			chip->mmi.pres_temp_zone = num_zones - 1;
 	} else {
 		if (prev_zone == ZONE_FIRST) {
@@ -5555,7 +5563,7 @@ static bool mmi_find_temp_zone(struct smb_charger *chip, int temp_c)
 
 		if (temp_c < MIN_TEMP_C)
 			chip->mmi.pres_temp_zone = ZONE_COLD;
-		else if (temp_c >= zones[num_zones - 1].temp_c)
+		else if (temp_c >= max_temp)
 			chip->mmi.pres_temp_zone = ZONE_HOT;
 		else if (temp_c >= hotter_t)
 			chip->mmi.pres_temp_zone++;
@@ -7251,6 +7259,52 @@ static DEVICE_ATTR(force_demo_mode, 0644,
 		force_demo_mode_show,
 		force_demo_mode_store);
 
+static ssize_t force_max_chrg_temp_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		smblib_err(mmi_chip, "Invalid max temp value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
+		return -ENODEV;
+	}
+
+	if ((mode >= MIN_MAX_TEMP_C) && (mode <= MAX_TEMP_C))
+		mmi_chip->mmi.max_chrg_temp = mode;
+	else
+		mmi_chip->mmi.max_chrg_temp = MAX_TEMP_C;
+
+	return r ? r : count;
+}
+
+static ssize_t force_max_chrg_temp_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int state;
+
+	if (!mmi_chip) {
+		smblib_err(mmi_chip, "chip not valid\n");
+		return -ENODEV;
+	}
+
+	state = mmi_chip->mmi.max_chrg_temp;
+
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_max_chrg_temp, 0644,
+		force_max_chrg_temp_show,
+		force_max_chrg_temp_store);
+
 static ssize_t force_chg_usb_suspend_store(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count)
@@ -8004,6 +8058,12 @@ void mmi_init(struct smb_charger *chg)
 	}
 
 	rc = device_create_file(chg->dev,
+				&dev_attr_force_max_chrg_temp);
+	if (rc) {
+		smblib_err(chg, "couldn't create force_max_chrg_temp\n");
+	}
+
+	rc = device_create_file(chg->dev,
 				&dev_attr_factory_image_mode);
 	if (rc)
 		smblib_err(chg, "couldn't create factory_image_mode\n");
@@ -8091,6 +8151,8 @@ void mmi_deinit(struct smb_charger *chg)
 
 	device_remove_file(chg->dev,
 			   &dev_attr_force_demo_mode);
+	device_remove_file(chg->dev,
+			   &dev_attr_force_max_chrg_temp);
 
 	if (chg->mmi.factory_mode) {
 		device_remove_file(chg->dev,
