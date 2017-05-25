@@ -361,6 +361,7 @@ struct mmi_params {
 	enum turbo_ebsrc	turbo_pwr_ebsrc;
 	bool			check_ebsrc_vl;
 	int			batt_health;
+	int			max_chrg_temp;
 };
 
 struct smb_charger {
