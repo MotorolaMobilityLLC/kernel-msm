@@ -2039,6 +2039,17 @@ static int smb2_init_hw(struct smb2 *chip)
 		return rc;
 	}
 
+	/* configure usbin input collapse FG*/
+	rc = smblib_masked_write(chg, USBIN_LOAD_CFG_REG,
+		USBIN_IN_COLLAPSE_FG_SEL,
+		USBIN_IN_COLLAPSE_FG_30US);
+	if (rc < 0) {
+		dev_err(chg->dev,
+			"Couldn't configure usbin input collapse FG rc=%d\n",
+			rc);
+		return rc;
+	}
+
 	/* configure float charger options */
 	switch (chip->dt.float_option) {
 	case 1:
