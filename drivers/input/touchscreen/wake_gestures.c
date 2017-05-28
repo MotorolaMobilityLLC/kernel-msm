@@ -32,16 +32,19 @@
 #include <linux/input.h>
 #include <linux/hrtimer.h>
 #include <asm-generic/cputime.h>
+/*
 #include <linux/wakelock.h>
+*/
 
-/* Tunables */
+/* Tuneables */
 #define WG_DEBUG		0
 #define WG_DEFAULT		0
-#define S2W_DEFAULT		4
-#define S2S_DEFAULT		2
-#define WG_PWRKEY_DUR           180
+#define DT2W_DEFAULT		0
+#define S2W_DEFAULT		0
+#define S2S_DEFAULT		0
+#define WG_PWRKEY_DUR           60
 
-/* marlin */
+/* Redmi Note 3 */
 #define SWEEP_Y_MAX             2560
 #define SWEEP_X_MAX             1440
 #define SWEEP_EDGE		130
@@ -53,18 +56,19 @@
 #define SWEEP_X_START		720
 #define SWEEP_X_FINAL           360
 #define SWEEP_Y_NEXT            180
+#define DT2W_FEATHER		150
+#define DT2W_TIME 		500
 
 /* Wake Gestures */
-#define SWEEP_TIMEOUT		90
-#define TRIGGER_TIMEOUT		150
-#define DT2W_FEATHER		150
-#define DT2W_TIME 		150
+#define SWEEP_TIMEOUT		300
+#define TRIGGER_TIMEOUT		500
 #define WAKE_GESTURE		0x0b
 #define SWEEP_RIGHT		0x01
 #define SWEEP_LEFT		0x02
 #define SWEEP_UP		0x04
 #define SWEEP_DOWN		0x08
-#define VIB_STRENGTH 		20
+#define VIB_STRENGTH 		30
+
 #define WAKE_GESTURES_ENABLED	1
 
 #define LOGTAG			"WG"
@@ -76,31 +80,21 @@ static struct input_dev *gesture_dev;
 
 /* Resources */
 int s2w_switch = S2W_DEFAULT;
-int s2w_switch_temp; 
-bool dt2w_switch;
+int dt2w_switch = DT2W_DEFAULT;
 static int s2s_switch = S2S_DEFAULT;
 static int touch_x = 0, touch_y = 0;
 static bool touch_x_called = false, touch_y_called = false;
 static bool exec_countx = true, exec_county = true, exec_count = true;
 static bool barrierx[2] = {false, false}, barriery[2] = {false, false};
 static int firstx = 0, firsty = 0;
+static int sweep_y_limit = SWEEP_Y_LIMIT;
+static int sweep_x_limit = SWEEP_X_LIMIT;
 static unsigned long firstx_time = 0, firsty_time = 0;
 static unsigned long pwrtrigger_time[2] = {0, 0};
 static unsigned long long tap_time_pre = 0;
 static int touch_nr = 0, x_pre = 0, y_pre = 0;
 static bool touch_cnt = true;
-int vib_strength = VIB_STRENGTH;
-
-static unsigned int sweep_y_limit = SWEEP_Y_LIMIT;
-static unsigned int sweep_x_limit = SWEEP_X_LIMIT;
-static unsigned int sweep_x_b1 = SWEEP_X_B1;
-static unsigned int sweep_x_b2 = SWEEP_X_B2;
-static unsigned int sweep_y_start = SWEEP_Y_START;
-static unsigned int sweep_x_start = SWEEP_X_START;
-static unsigned int sweep_x_final = SWEEP_X_FINAL;
-static unsigned int sweep_y_next = SWEEP_Y_NEXT;
-static unsigned int sweep_x_max = SWEEP_X_MAX;
-static unsigned int sweep_edge = SWEEP_EDGE;
+static int vib_strength = VIB_STRENGTH;
 
 static struct input_dev * wake_dev;
 static DEFINE_MUTEX(pwrkeyworklock);
@@ -108,33 +102,22 @@ static struct workqueue_struct *s2w_input_wq;
 static struct workqueue_struct *dt2w_input_wq;
 static struct work_struct s2w_input_work;
 static struct work_struct dt2w_input_work;
-static struct wake_lock dt2w_wakelock;
 
-void wg_setdev(struct input_dev * input_device) {
-	wake_dev = input_device;
-	return;
-}
-
-//get hardware type
-static int __init get_model(char *cmdline_model)
+static bool is_suspended(void)
 {
-	
-
-	return 0;
+	return scr_suspended();
 }
-__setup("androidboot.hardware=", get_model);
 
 /* Wake Gestures */
 #if (WAKE_GESTURES_ENABLED)
 static void report_gesture(int gest)
 {
 	pwrtrigger_time[1] = pwrtrigger_time[0];
-	pwrtrigger_time[0] = jiffies;	
+	pwrtrigger_time[0] = ktime_to_ms(ktime_get());	
 
 	if (pwrtrigger_time[0] - pwrtrigger_time[1] < TRIGGER_TIMEOUT)
 		return;
 
-	wake_lock_timeout(&dt2w_wakelock, 150);
 	input_report_rel(gesture_dev, WAKE_GESTURE, gest);
 	input_sync(gesture_dev);
 }
@@ -143,7 +126,7 @@ static void report_gesture(int gest)
 /* PowerKey work func */
 static void wake_presspwr(struct work_struct * wake_presspwr_work) {
 	if (!mutex_trylock(&pwrkeyworklock))
-        	return;
+		return;
 
 	input_event(wake_dev, EV_KEY, KEY_POWER, 1);
 	input_event(wake_dev, EV_SYN, 0, 0);
@@ -151,7 +134,9 @@ static void wake_presspwr(struct work_struct * wake_presspwr_work) {
 	input_event(wake_dev, EV_KEY, KEY_POWER, 0);
 	input_event(wake_dev, EV_SYN, 0, 0);
 	msleep(WG_PWRKEY_DUR);
-    	mutex_unlock(&pwrkeyworklock);
+	mutex_unlock(&pwrkeyworklock);
+
+	set_vibrate(vib_strength);
 
 	return;
 }
@@ -159,15 +144,14 @@ static DECLARE_WORK(wake_presspwr_work, wake_presspwr);
 
 /* PowerKey trigger */
 static void wake_pwrtrigger(void) {
-
 	pwrtrigger_time[1] = pwrtrigger_time[0];
-	pwrtrigger_time[0] = jiffies;
+	pwrtrigger_time[0] = ktime_to_ms(ktime_get());
 	
 	if (pwrtrigger_time[0] - pwrtrigger_time[1] < TRIGGER_TIMEOUT)
 		return;
 
-	set_vibrate(vib_strength);
 	schedule_work(&wake_presspwr_work);
+
         return;
 }
 
@@ -175,8 +159,6 @@ static void wake_pwrtrigger(void) {
 /* Doubletap2wake */
 
 static void doubletap2wake_reset(void) {
-	if (wake_lock_active(&dt2w_wakelock))
-		wake_unlock(&dt2w_wakelock);
 	exec_count = true;
 	touch_nr = 0;
 	tap_time_pre = 0;
@@ -194,11 +176,10 @@ static unsigned int calc_feather(int coord, int prev_coord) {
 
 /* init a new touch */
 static void new_touch(int x, int y) {
-	tap_time_pre = jiffies;
+	tap_time_pre = ktime_to_ms(ktime_get());
 	x_pre = x;
 	y_pre = y;
 	touch_nr++;
-	wake_lock_timeout(&dt2w_wakelock, 150);
 }
 
 /* Doubletap2wake main function */
@@ -209,10 +190,10 @@ static void detect_doubletap2wake(int x, int y, bool st)
         pr_info(LOGTAG"x,y(%4d,%4d) tap_time_pre:%llu\n",
                 x, y, tap_time_pre);
 #endif
-	if (x < sweep_edge || x > sweep_x_limit)
-       		return;
-	if (y < sweep_edge || y > sweep_y_limit)
-       		return;
+	if (x < SWEEP_EDGE || x > sweep_x_limit)
+		return;
+	if (y < SWEEP_EDGE || y > sweep_y_limit)
+		return;
 
 	if ((single_touch) && (dt2w_switch) && (exec_count) && (touch_cnt)) {
 		touch_cnt = false;
@@ -221,7 +202,7 @@ static void detect_doubletap2wake(int x, int y, bool st)
 		} else if (touch_nr == 1) {
 			if ((calc_feather(x, x_pre) < DT2W_FEATHER) &&
 			    (calc_feather(y, y_pre) < DT2W_FEATHER) &&
-			    ((jiffies-tap_time_pre) < DT2W_TIME))
+			    ((ktime_to_ms(ktime_get())-tap_time_pre) < DT2W_TIME))
 				touch_nr++;
 			else {
 				doubletap2wake_reset();
@@ -249,7 +230,6 @@ static void detect_doubletap2wake(int x, int y, bool st)
 
 
 /* Sweep2wake/Sweep2sleep */
-
 static void sweep2wake_reset(void) {
 
 	exec_countx = true;
@@ -266,7 +246,6 @@ static void sweep2wake_reset(void) {
 }
 
 /* Sweep2wake main functions*/
-
 static void detect_sweep2wake_v(int x, int y, bool st)
 {
 	int prevy = 0, nexty = 0;
@@ -274,7 +253,7 @@ static void detect_sweep2wake_v(int x, int y, bool st)
 
 	if (firsty == 0) {
 		firsty = y;
-		firsty_time = jiffies;
+		firsty_time = ktime_to_ms(ktime_get());
 	}
 
 #if WG_DEBUG
@@ -283,19 +262,19 @@ static void detect_sweep2wake_v(int x, int y, bool st)
 #endif
 
 	//sweep up
-	if (firsty > sweep_y_start && single_touch && s2w_switch & SWEEP_UP) {
+	if (firsty > SWEEP_Y_START && single_touch && s2w_switch & SWEEP_UP) {
 		prevy = firsty;
-		nexty = prevy - sweep_y_next;
+		nexty = prevy - SWEEP_Y_NEXT;
 		if (barriery[0] == true || (y < prevy && y > nexty)) {
 			prevy = nexty;
-			nexty -= sweep_y_next;
+			nexty -= SWEEP_Y_NEXT;
 			barriery[0] = true;
 			if (barriery[1] == true || (y < prevy && y > nexty)) {
 				prevy = nexty;
 				barriery[1] = true;
 				if (y < prevy) {
-					if (y < (nexty - sweep_y_next)) {
-						if (exec_county && (jiffies - firsty_time < SWEEP_TIMEOUT)) {
+					if (y < (nexty - SWEEP_Y_NEXT)) {
+						if (exec_county && (ktime_to_ms(ktime_get()) - firsty_time < SWEEP_TIMEOUT)) {
 #if (WAKE_GESTURES_ENABLED)
 							if (gestures_switch) {
 								report_gesture(3);
@@ -312,19 +291,19 @@ static void detect_sweep2wake_v(int x, int y, bool st)
 			}
 		}
 	//sweep down
-	} else if (firsty <= sweep_y_start && single_touch && s2w_switch & SWEEP_DOWN) {
+	} else if (firsty <= SWEEP_Y_START && single_touch && s2w_switch & SWEEP_DOWN) {
 		prevy = firsty;
-		nexty = prevy + sweep_y_next;
+		nexty = prevy + SWEEP_Y_NEXT;
 		if (barriery[0] == true || (y > prevy && y < nexty)) {
 			prevy = nexty;
-			nexty += sweep_y_next;
+			nexty += SWEEP_Y_NEXT;
 			barriery[0] = true;
 			if (barriery[1] == true || (y > prevy && y < nexty)) {
 				prevy = nexty;
 				barriery[1] = true;
 				if (y > prevy) {
-					if (y > (nexty + sweep_y_next)) {
-						if (exec_county && (jiffies - firsty_time < SWEEP_TIMEOUT)) {
+					if (y > (nexty + SWEEP_Y_NEXT)) {
+						if (exec_county && (ktime_to_ms(ktime_get()) - firsty_time < SWEEP_TIMEOUT)) {
 #if (WAKE_GESTURES_ENABLED)
 							if (gestures_switch) {
 								report_gesture(4);
@@ -356,7 +335,7 @@ static void detect_sweep2wake_h(int x, int y, bool st, bool scr_suspended)
 
 	if (firstx == 0) {
 		firstx = x;
-		firstx_time = jiffies;
+		firstx_time = ktime_to_ms(ktime_get());
 	}
 
 #if WG_DEBUG
@@ -364,23 +343,23 @@ static void detect_sweep2wake_h(int x, int y, bool st, bool scr_suspended)
                 x, y, (scr_suspended) ? "true" : "false");
 #endif
 	//left->right
-	if (firstx < sweep_x_start && single_touch &&
+	if (firstx < SWEEP_X_START && single_touch &&
 			((scr_suspended && (s2w_switch & SWEEP_RIGHT)) ||
 			(!scr_suspended && (s2s_switch & SWEEP_RIGHT)))) {
 		prevx = 0;
-		nextx = sweep_x_b1;
+		nextx = SWEEP_X_B1;
 		if ((barrierx[0] == true) ||
 		   ((x > prevx) && (x < nextx))) {
 			prevx = nextx;
-			nextx = sweep_x_b2;
+			nextx = SWEEP_X_B2;
 			barrierx[0] = true;
 			if ((barrierx[1] == true) ||
 			   ((x > prevx) && (x < nextx))) {
 				prevx = nextx;
 				barrierx[1] = true;
 				if (x > prevx) {
-					if (x > (sweep_x_max - sweep_x_final)) {
-						if (exec_countx && (jiffies - firstx_time < SWEEP_TIMEOUT)) {
+					if (x > (SWEEP_X_MAX - SWEEP_X_FINAL)) {
+						if (exec_countx && (ktime_to_ms(ktime_get()) - firstx_time < SWEEP_TIMEOUT)) {
 #if (WAKE_GESTURES_ENABLED)
 							if (gestures_switch && scr_suspended) {
 								report_gesture(1);
@@ -397,22 +376,22 @@ static void detect_sweep2wake_h(int x, int y, bool st, bool scr_suspended)
 			}
 		}
 	//right->left
-	} else if (firstx >= sweep_x_start && single_touch &&
+	} else if (firstx >= SWEEP_X_START && single_touch &&
 			((scr_suspended && (s2w_switch & SWEEP_LEFT)) ||
 			(!scr_suspended && (s2s_switch & SWEEP_LEFT)))) {
-		prevx = (sweep_x_max - sweep_x_final);
-		nextx = sweep_x_b2;
+		prevx = (SWEEP_X_MAX - SWEEP_X_FINAL);
+		nextx = SWEEP_X_B2;
 		if ((barrierx[0] == true) ||
 		   ((x < prevx) && (x > nextx))) {
 			prevx = nextx;
-			nextx = sweep_x_b1;
+			nextx = SWEEP_X_B1;
 			barrierx[0] = true;
 			if ((barrierx[1] == true) ||
 			   ((x < prevx) && (x > nextx))) {
 				prevx = nextx;
 				barrierx[1] = true;
 				if (x < prevx) {
-					if (x < sweep_x_final) {
+					if (x < SWEEP_X_FINAL) {
 						if (exec_countx) {
 #if (WAKE_GESTURES_ENABLED)
 							if (gestures_switch && scr_suspended) {
@@ -434,8 +413,8 @@ static void detect_sweep2wake_h(int x, int y, bool st, bool scr_suspended)
 
 static void s2w_input_callback(struct work_struct *unused)
 {
-	detect_sweep2wake_h(touch_x, touch_y, true, scr_suspended());
-	if (scr_suspended())
+	detect_sweep2wake_h(touch_x, touch_y, true, is_suspended());
+	if (is_suspended())
 		detect_sweep2wake_v(touch_x, touch_y, true);
 
 	return;
@@ -444,7 +423,7 @@ static void s2w_input_callback(struct work_struct *unused)
 static void dt2w_input_callback(struct work_struct *unused)
 {
 
-	if (scr_suspended() && s2w_switch > 0 && dt2w_switch)
+	if (is_suspended() && dt2w_switch)
 		detect_doubletap2wake(touch_x, touch_y, true);
 	return;
 }
@@ -452,11 +431,10 @@ static void dt2w_input_callback(struct work_struct *unused)
 static void wg_input_event(struct input_handle *handle, unsigned int type,
 				unsigned int code, int value)
 {
-
-	if (scr_suspended() && code == ABS_MT_POSITION_X) {
+	if (is_suspended() && code == ABS_MT_POSITION_X) {
 		value -= 5000;
 	}
-
+	
 #if WG_DEBUG
 	pr_info("wg: code: %s|%u, val: %i\n",
 		((code==ABS_MT_POSITION_X) ? "X" :
@@ -464,6 +442,7 @@ static void wg_input_event(struct input_handle *handle, unsigned int type,
 		(code==ABS_MT_TRACKING_ID) ? "ID" :
 		"undef"), code, value);
 #endif
+
 	if (code == ABS_MT_SLOT) {
 		sweep2wake_reset();
 		doubletap2wake_reset();
@@ -491,7 +470,7 @@ static void wg_input_event(struct input_handle *handle, unsigned int type,
 		touch_x_called = false;
 		touch_y_called = false;
 		queue_work_on(0, s2w_input_wq, &s2w_input_work);
-	} else if (!scr_suspended() && touch_x_called && !touch_y_called) {
+	} else if (!is_suspended() && touch_x_called && !touch_y_called) {
 		touch_x_called = false;
 		touch_y_called = false;
 		queue_work_on(0, s2w_input_wq, &s2w_input_work);
@@ -499,12 +478,11 @@ static void wg_input_event(struct input_handle *handle, unsigned int type,
 }
 
 static int input_dev_filter(struct input_dev *dev) {
-	if (strstr(dev->name, "synaptics_dsx")) {
+	if (strstr(dev->name, "synaptics_dsx_i2c")) {
 		return 0;
 	} else {
 		return 1;
 	}
-	return 0;
 }
 
 static int wg_input_connect(struct input_handler *handler,
@@ -575,18 +553,9 @@ static ssize_t sweep2wake_show(struct device *dev,
 static ssize_t sweep2wake_dump(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	sscanf(buf, "%d ", &s2w_switch_temp);
-	if (s2w_switch_temp < 0 || s2w_switch_temp > 15)
-		s2w_switch_temp = 0;
-		
-	if (s2w_switch_temp == 0)
-		set_internal_dt(dt2w_switch);
-	else {
-		set_internal_dt(false);
-	}
-
-	if (!scr_suspended())
-		s2w_switch = s2w_switch_temp;
+	sscanf(buf, "%d ", &s2w_switch);
+	if (s2w_switch < 0 || s2w_switch > 15)
+		s2w_switch = 0;
 
 	return count;
 }
@@ -628,17 +597,10 @@ static ssize_t doubletap2wake_show(struct device *dev,
 static ssize_t doubletap2wake_dump(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-
-	int input;
-	sscanf(buf, "%d ", &input);
-	if (input < 0 || input > 1)
-		input = 0;	
-
-	dt2w_switch = (input) ? true : false;		
-	
-	if (s2w_switch == 0 || s2w_switch_temp == 0)
-		set_internal_dt(dt2w_switch);
-
+	sscanf(buf, "%d ", &dt2w_switch);
+	if (dt2w_switch < 0 || dt2w_switch > 1)
+		dt2w_switch = 0;
+		
 	return count;
 }
 
@@ -692,11 +654,28 @@ static DEVICE_ATTR(vib_strength, (S_IWUSR|S_IRUGO),
  * INIT / EXIT stuff below here
  */
 
-extern struct kobject *android_touch_kobj;
+struct kobject *android_touch_kobj;
+EXPORT_SYMBOL_GPL(android_touch_kobj);
 
 static int __init wake_gestures_init(void)
 {
 	int rc = 0;
+
+	wake_dev = input_allocate_device();
+	if (!wake_dev) {
+		pr_err("Failed to allocate wake_dev\n");
+		goto err_alloc_dev;
+	}
+
+	input_set_capability(wake_dev, EV_KEY, KEY_POWER);
+	wake_dev->name = "wg_pwrkey";
+	wake_dev->phys = "wg_pwrkey/input0";
+
+	rc = input_register_device(wake_dev);
+	if (rc) {
+		pr_err("%s: input_register_device err=%d\n", __func__, rc);
+		goto err_input_dev;
+	}
 
 	rc = input_register_handler(&wg_input_handler);
 	if (rc)
@@ -716,14 +695,10 @@ static int __init wake_gestures_init(void)
 	}
 	INIT_WORK(&dt2w_input_work, dt2w_input_callback);
 		
-	wake_lock_init(&dt2w_wakelock, WAKE_LOCK_SUSPEND, "dt2w_wakelock");
-		
-	//dt2w_switch = get_internal_dt();
-		
 #if (WAKE_GESTURES_ENABLED)
 	gesture_dev = input_allocate_device();
 	if (!gesture_dev) {
-		pr_err("Can't allocate gesture device\n");
+		pr_err("Failed to allocate gesture_dev\n");
 		goto err_alloc_dev;
 	}
 	
@@ -738,6 +713,10 @@ static int __init wake_gestures_init(void)
 	}
 #endif
 
+	android_touch_kobj = kobject_create_and_add("android_touch", NULL) ;
+	if (android_touch_kobj == NULL) {
+		pr_warn("%s: android_touch_kobj create_and_add failed\n", __func__);
+	}
 	rc = sysfs_create_file(android_touch_kobj, &dev_attr_sweep2wake.attr);
 	if (rc) {
 		pr_warn("%s: sysfs_create_file failed for sweep2wake\n", __func__);
@@ -764,6 +743,8 @@ static int __init wake_gestures_init(void)
 
 err_gesture_dev:
 	input_free_device(gesture_dev);
+err_input_dev:
+	input_free_device(wake_dev);
 err_alloc_dev:
 #endif
 
@@ -772,11 +753,12 @@ err_alloc_dev:
 
 static void __exit wake_gestures_exit(void)
 {
+	kobject_del(android_touch_kobj);
 	input_unregister_handler(&wg_input_handler);
 	destroy_workqueue(s2w_input_wq);
 	destroy_workqueue(dt2w_input_wq);
+	input_unregister_device(wake_dev);
 	input_free_device(wake_dev);
-	wake_lock_destroy(&dt2w_wakelock);
 #if (WAKE_GESTURES_ENABLED)	
 	input_unregister_device(gesture_dev);
 	input_free_device(gesture_dev);
@@ -787,3 +769,4 @@ static void __exit wake_gestures_exit(void)
 
 module_init(wake_gestures_init);
 module_exit(wake_gestures_exit);
+

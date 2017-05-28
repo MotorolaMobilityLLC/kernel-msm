@@ -1,7 +1,7 @@
 /*
  * include/linux/wake_gestures.h
  *
- * Copyright (c) 2013-16, Aaron Segaert <asegaert@gmail.com>
+ * Copyright (c) 2013-15, Aaron Segaert <asegaert@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,13 +24,9 @@
 #include <linux/input.h>
 
 extern int s2w_switch;
-extern int s2w_switch_temp;
-extern bool dt2w_switch;
-extern int vib_strength;
+extern int dt2w_switch;
+extern bool gestures_enabled;
 bool scr_suspended(void);
-bool get_internal_dt(void);
-void set_internal_dt(bool input);
-void wg_setdev(struct input_dev *);
 void set_vibrate(int value);
 
 #endif	/* _LINUX_WAKE_GESTURES_H */
