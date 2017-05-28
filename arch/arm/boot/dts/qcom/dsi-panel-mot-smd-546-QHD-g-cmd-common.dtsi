@@ -100,7 +100,7 @@ qcom,mdss-dsi-off-command = [
 	/* enter sleep mode */
 	05 01 00 00 78 00 01 10];
 
-qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 53 e0];
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 53 ff];
 qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 53 20];
 qcom,mdss-dsi-acl-on-command = [15 01 00 00 00 00 02 55 03];
 qcom,mdss-dsi-acl-off-command = [15 01 00 00 00 00 02 55 00];
