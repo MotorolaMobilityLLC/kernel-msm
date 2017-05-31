@@ -85,3 +85,12 @@
 	};
 };
 
+&cs47l35 {
+	cirrus,accdet {
+		acc@1 {
+			/delete-property/ cirrus,jd-use-jd2;
+			cirrus,micd-clamp-mode = <0x4>;
+		};
+	};
+};
+
