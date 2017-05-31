@@ -2012,6 +2012,7 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	u32 temp = bkl_lvl;
 	bool ad_bl_notify_needed = false;
 	bool bl_notify_needed = false;
+	struct task_struct *task = current->group_leader;
 
 	if ((((mdss_fb_is_power_off(mfd) && mfd->dcm_state != DCM_ENTER)
 		|| !mfd->allow_bl_update) && !IS_CALIB_MODE_BL(mfd)) ||
@@ -2045,6 +2046,15 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 		} else {
 			if (mfd->bl_level != bkl_lvl)
 				bl_notify_needed = true;
+			/*wordaround LED red*/
+			if (pdata->panel_info.mipi.bl_shutdown_dcs) {
+				if (bkl_lvl == 0 &&
+					!strcmp(task->comm, "init")) {
+					pr_warn("bkl_lvl = %d,task->comm = %s\n",
+						bkl_lvl, task->comm);
+					pdata->set_dcs_backlight(pdata, 0);
+				}
+			}
 			pr_debug("backlight sent to panel :%d\n", temp);
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level = bkl_lvl;
