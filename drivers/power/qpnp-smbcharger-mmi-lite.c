@@ -37,6 +37,10 @@
 #include <linux/batterydata-lib.h>
 #include <linux/msm_bcl.h>
 
+#define MAX_TEMP_C 60
+#define MIN_MAX_TEMP_C 47
+
+
 /* Mask/Bit helpers */
 #define _SMB_MASK(BITS, POS) \
 	((unsigned char)(((1 << (BITS)) - 1) << (POS)))
@@ -319,6 +323,7 @@ struct smbchg_chip {
 	int				temp_slightly_cool_current_ma;
 	int				temp_allowed_fastchg_current_ma;
 	bool				enable_factory_wa;
+	int                         max_chrg_temp;
 };
 
 static struct smbchg_chip *the_chip;
@@ -7240,6 +7245,48 @@ static ssize_t factory_image_mode_show(struct device *dev,
 	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
 
+static ssize_t force_max_chrg_temp_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid max temp value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	if ((mode >= MIN_MAX_TEMP_C) && (mode <= MAX_TEMP_C))
+		the_chip->max_chrg_temp = mode;
+	else
+		the_chip->max_chrg_temp = MAX_TEMP_C;
+
+	return r ? r : count;
+}
+
+static ssize_t force_max_chrg_temp_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int state;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	state = the_chip->max_chrg_temp;
+
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
 static DEVICE_ATTR(factory_image_mode, 0644,
 		factory_image_mode_show,
 		factory_image_mode_store);
@@ -7247,6 +7294,10 @@ static DEVICE_ATTR(factory_image_mode, 0644,
 static DEVICE_ATTR(force_demo_mode, 0644,
 		force_demo_mode_show,
 		force_demo_mode_store);
+
+static DEVICE_ATTR(force_max_chrg_temp, 0644,
+		force_max_chrg_temp_show,
+		force_max_chrg_temp_store);
 
 static ssize_t force_chg_usb_suspend_store(struct device *dev,
 					struct device_attribute *attr,
@@ -7828,9 +7879,15 @@ static void smbchg_check_temp_state(struct smbchg_chip *chip, int batt_temp)
 {
 	int hotspot;
 	int temp_state = POWER_SUPPLY_HEALTH_GOOD;
+	int max_temp = 0;
 
 	if (!chip)
 		return;
+
+	if (chip->max_chrg_temp >= MIN_MAX_TEMP_C)
+		max_temp = chip->max_chrg_temp;
+	else
+		max_temp = chip->hot_temp_c;
 
 	mutex_lock(&chip->check_temp_lock);
 
@@ -7846,7 +7903,7 @@ static void smbchg_check_temp_state(struct smbchg_chip *chip, int batt_temp)
 	}
 
 	if (chip->temp_state == POWER_SUPPLY_HEALTH_WARM) {
-		if (batt_temp >= chip->hot_temp_c)
+		if (batt_temp >= max_temp)
 			/* Warm to Hot */
 			temp_state = POWER_SUPPLY_HEALTH_OVERHEAT;
 		else if (batt_temp <=
@@ -7898,8 +7955,7 @@ static void smbchg_check_temp_state(struct smbchg_chip *chip, int batt_temp)
 			/* Stay Cold */
 			temp_state = POWER_SUPPLY_HEALTH_COLD;
 	} else if (chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT) {
-		if (batt_temp <=
-		    chip->hot_temp_c - HYSTERISIS_DEGC)
+		if (batt_temp <= max_temp - HYSTERISIS_DEGC)
 			/* Hot to Warm */
 			temp_state = POWER_SUPPLY_HEALTH_WARM;
 		else
@@ -8426,6 +8482,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
 	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
 	chip->test_mode = qpnp_smbcharger_test_mode();
+	chip->max_chrg_temp = 0;
 	if (chip->test_mode)
 		dev_warn(&spmi->dev, "Test Mode Enabled\n");
 	chip->is_weak_charger = false;
@@ -8558,6 +8615,13 @@ static int smbchg_probe(struct spmi_device *spmi)
 		goto unregister_dc_psy;
 	}
 
+	rc = device_create_file(chip->dev,
+				&dev_attr_force_max_chrg_temp);
+	if (rc) {
+		pr_err("couldn't create force_max_chrg_temp\n");
+		goto unregister_dc_psy;
+	}
+
 	if (chip->factory_mode) {
 		rc = device_create_file(chip->dev,
 					&dev_attr_force_chg_usb_suspend);
@@ -8649,6 +8713,8 @@ static int smbchg_remove(struct spmi_device *spmi)
 
 	device_remove_file(chip->dev,
 			   &dev_attr_force_demo_mode);
+	device_remove_file(chip->dev,
+			   &dev_attr_force_max_chrg_temp);
 	if (chip->factory_mode) {
 		device_remove_file(chip->dev,
 				   &dev_attr_force_chg_usb_suspend);
