@@ -21,13 +21,13 @@ qcom,mdss-dsi-panel-width = <1080>;
 qcom,mdss-dsi-panel-height = <1920>;
 qcom,mdss-pan-physical-width-dimension = <62>;
 qcom,mdss-pan-physical-height-dimension = <110>;
-qcom,mdss-dsi-h-front-porch = <112>;
-qcom,mdss-dsi-h-back-porch = <112>;
-qcom,mdss-dsi-h-pulse-width = <20>;
+qcom,mdss-dsi-h-front-porch = <96>;
+qcom,mdss-dsi-h-back-porch = <18>;
+qcom,mdss-dsi-h-pulse-width = <4>;
 qcom,mdss-dsi-h-sync-skew = <0>;
-qcom,mdss-dsi-v-back-porch = <6>;
+qcom,mdss-dsi-v-back-porch = <10>;
 qcom,mdss-dsi-v-front-porch = <14>;
-qcom,mdss-dsi-v-pulse-width = <2>;
+qcom,mdss-dsi-v-pulse-width = <6>;
 qcom,mdss-dsi-h-left-border = <0>;
 qcom,mdss-dsi-h-right-border = <0>;
 qcom,mdss-dsi-v-top-border = <0>;
@@ -52,8 +52,8 @@ qcom,mdss-dsi-on-command = [
 	15 00 00 00 00 00 02 5E 00
 	15 00 00 00 00 00 02 53 2C
 	15 00 00 00 00 00 02 55 01
-	15 00 00 00 00 00 02 D3 08
-	15 00 00 00 00 00 02 D4 04
+	15 00 00 00 00 00 02 D3 10
+	15 00 00 00 00 00 02 D4 0E
 	05 01 00 00 82 00 02 11 00
 	05 01 00 00 0A 00 02 29 00];	/* display on */
 qcom,mdss-dsi-off-command = [
@@ -86,14 +86,14 @@ qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 /* todo: calculate dsi timming with qcom doc again */
 qcom,mdss-dsi-panel-timings-phy-v2 =
-	[24 1F 08 09 05 03 04 A0
-	 24 1F 08 09 05 03 04 A0
-	 24 1F 08 09 05 03 04 A0
-	 24 1F 08 09 05 03 04 A0
-	 24 1C 08 09 05 03 04 A0];
-qcom,mdss-dsi-panel-timings = [F2 3A 28 00 6C 6E 2C 3E 2E 03 04 00];
-qcom,mdss-dsi-t-clk-post = <0x0E>;
-qcom,mdss-dsi-t-clk-pre = <0x31>;
+	[23 1F 07 09 05 03 04 A0
+	 23 1F 07 09 05 03 04 A0
+	 23 1F 07 09 05 03 04 A0
+	 23 1F 07 09 05 03 04 A0
+	 23 1A 07 08 05 03 04 A0];
+qcom,mdss-dsi-panel-timings = [DB 34 22 00 64 66 28 38 2B 03 04 00];
+qcom,mdss-dsi-t-clk-post = <0x0D>;
+qcom,mdss-dsi-t-clk-pre = <0x2E>;
 qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
