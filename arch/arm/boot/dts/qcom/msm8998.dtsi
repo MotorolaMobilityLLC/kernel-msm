@@ -310,34 +310,34 @@
 			reg = <0 0x85800000 0 0x3700000>;
 		};
 
-		pil_ipa_gpu_mem: pil_ipa_gpu_region@95200000 {
+		pil_ipa_gpu_mem: pil_ipa_gpu_region@95600000 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0 0x95200000 0 0x100000>;
+			reg = <0 0x95600000 0 0x100000>;
 		};
 
-		pil_slpi_mem: pil_slpi_region@94300000 {
+		pil_slpi_mem: pil_slpi_region@94700000 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0 0x94300000 0 0xf00000>;
+			reg = <0 0x94700000 0 0xf00000>;
 		};
 
-		pil_mba_mem: pil_mba_region@94100000 {
+		pil_mba_mem: pil_mba_region@94500000 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0 0x94100000 0 0x200000>;
+			reg = <0 0x94500000 0 0x200000>;
 		};
 
-		pil_video_mem: pil_video_region@93c00000 {
+		pil_video_mem: pil_video_region@94000000 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0 0x93c00000 0 0x500000>;
+			reg = <0 0x94000000 0 0x500000>;
 		};
 
 		modem_mem: modem_region@8cc00000 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0 0x8cc00000 0 0x7000000>;
+			reg = <0 0x8cc00000 0 0x7400000>;
 		};
 
 		pil_adsp_mem: pil_adsp_region@0x8b200000 {
