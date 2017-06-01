@@ -346,7 +346,7 @@ static void long_touch_handler(unsigned long arg)
 #if TRANSLATED_COMMAND
 void translated_command_converter(char cmd, struct etspi_data *etspi)
 {
-	DEBUG_PRINT("Egis navigation driver, translated cmd: %d\n", cmd);
+	pr_debug("Egis navigation driver, translated cmd: %d\n", cmd);
 
 	switch (cmd) {
 	case NAVI_EVENT_CANCEL:
@@ -546,7 +546,10 @@ static ssize_t navigation_event_func(struct device *dev,
 		}
 	} else
 		pr_err("Egis navigation driver, etspi is NULL\n");
-
+	if (etspi->lcd_off) {
+		pr_err("Egis navigation is disabled\n");
+		return count;
+	}
 	if (etspi->input_dev == NULL)
 		pr_err("Egis navigation driver, etspi->input_dev is NULL\n");
 	tempcmd = kmalloc(sizeof(*tempcmd), GFP_KERNEL);

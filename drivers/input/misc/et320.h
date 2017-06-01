@@ -89,6 +89,7 @@ struct interrupt_desc {
 	int number;
 	char *name;
 	int int_count;
+	int int_mode;
 	struct timer_list timer;
 	bool finger_on;
 	int detect_period;
@@ -136,7 +137,8 @@ struct etspi_data {
 	unsigned int vcc_33v_Pin;	/* Reset GPIO pin number */
     struct input_dev	*input_dev;
 	bool property_navigation_enable;
-
+	struct notifier_block notifier;
+	bool lcd_off;
 };
 
 
