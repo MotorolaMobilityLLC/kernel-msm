@@ -28,6 +28,9 @@
 #include <linux/of_irq.h>
 #endif
 
+#include <linux/fb.h>
+#include <linux/notifier.h>
+
 #include <linux/gpio.h>
 #include <linux/mutex.h>
 #include <linux/list.h>
@@ -206,7 +209,7 @@ void interrupt_timer_routine(unsigned long _data)
 {
 	struct interrupt_desc *bdata = (struct interrupt_desc *)_data;
 
-	DEBUG_PRINT("FPS interrupt count = %d", bdata->int_count);
+	pr_debug("FPS interrupt count = %d", bdata->int_count);
 	if (bdata->int_count >= bdata->detect_threshold) {
 		bdata->finger_on = 1;
 		DEBUG_PRINT("FPS triggered !!!!!!!\n");
@@ -224,7 +227,7 @@ static irqreturn_t fp_eint_func(int irq, void *dev_id)
 		mod_timer(&fps_ints.timer, jiffies + msecs_to_jiffies(fps_ints.detect_period));
 	fps_ints.int_count++;
 	/* printk_ratelimited(KERN_WARNING "-----------   zq fp fp_eint_func  ,fps_ints.int_count=%d",fps_ints.int_count);*/
-	wake_lock_timeout(&et320_wake_lock, msecs_to_jiffies(1500));
+	wake_lock_timeout(&et320_wake_lock, msecs_to_jiffies(1000));
 	return IRQ_HANDLED;
 }
 
@@ -237,7 +240,7 @@ static irqreturn_t fp_eint_func_ll(int irq , void *dev_id)
 	fps_ints.drdy_irq_flag = DRDY_IRQ_DISABLE;
 	wake_up_interruptible(&interrupt_waitq);
 	/* printk_ratelimited(KERN_WARNING "-----------   zq fp fp_eint_func  ,fps_ints.int_count=%d",fps_ints.int_count);*/
-	wake_lock_timeout(&et320_wake_lock, msecs_to_jiffies(1500));
+	wake_lock_timeout(&et320_wake_lock, msecs_to_jiffies(1000));
 	return IRQ_RETVAL(IRQ_HANDLED);
 }
 
@@ -264,14 +267,13 @@ int Interrupt_Init(struct etspi_data *etspi, int int_mode, int detect_period, in
 
 	int err = 0;
 	int status = 0;
-	DEBUG_PRINT("FP --  %s mode = %d period = %d threshold = %d\n", __func__, int_mode, detect_period, detect_threshold);
-	DEBUG_PRINT("FP --  %s request_irq_done = %d gpio_irq = %d  pin = %d  \n", __func__, request_irq_done, gpio_irq, etspi->irqPin);
 
-
+	DEBUG_PRINT("%s request_irq_done = %d gpio_irq = %d  pin = %d  \n", __func__, request_irq_done, gpio_irq, etspi->irqPin);
 	fps_ints.detect_period = detect_period;
 	fps_ints.detect_threshold = detect_threshold;
 	fps_ints.int_count = 0;
 	fps_ints.finger_on = 0;
+	fps_ints.int_mode = int_mode;
 
 
 	if (request_irq_done == 0)	{
@@ -316,6 +318,7 @@ int Interrupt_Init(struct etspi_data *etspi, int int_mode, int detect_period, in
 		fps_ints.drdy_irq_flag = DRDY_IRQ_ENABLE;
 		enable_irq_wake(gpio_irq);
 		request_irq_done = 1;
+		DEBUG_PRINT("%s mode = %d period = %d threshold = %d\n", __func__, int_mode, detect_period, detect_threshold);
 	}
 
 
@@ -425,9 +428,22 @@ static ssize_t etspi_write(struct file *filp,
 static ssize_t etspi_enable_set(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
+	struct etspi_data *etspi = dev_get_drvdata(dev);
 	int state = (*buf == '1') ? 1 : 0;
 	FPS_notify(0xbeef, state);
-	DEBUG_PRINT("%s  state = %d\n", __func__, state);
+	DEBUG_PRINT("%s state = %d flag= %d lcd_off= %d\n", __func__, state, fps_ints.drdy_irq_flag, etspi->lcd_off);
+	if (!request_irq_done)
+		return 1;
+	/* FPS is activte but int is disabled, enable int */
+	if (state && fps_ints.drdy_irq_flag == DRDY_IRQ_DISABLE) {
+		Interrupt_Init(etspi, fps_ints.int_mode, fps_ints.detect_period, fps_ints.detect_threshold);
+		DEBUG_PRINT("[%s] re-enable int\n", __func__);
+	}
+	/* FPS is not activte but int is enabled and lcd is off, disable int */
+	if (!state && etspi->lcd_off && fps_ints.drdy_irq_flag) {
+		Interrupt_Free(etspi);
+		DEBUG_PRINT("[%s] disable int\n", __func__);
+	}
 	return 1;
 }
 static DEVICE_ATTR(etspi_enable, S_IWUSR | S_IWGRP, NULL, etspi_enable_set);
@@ -448,7 +464,7 @@ static long etspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	memset(&data, 0, sizeof(data));
 
-	DEBUG_PRINT("%s\n", __func__);
+	pr_debug("%s %u\n", __func__, cmd);
 
 	etspi = filp->private_data;
 
@@ -459,9 +475,9 @@ static long etspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			goto done;
 		}
 
-		DEBUG_PRINT("fp_ioctl >>> fp Trigger function init\n");
+		pr_debug("fp_ioctl >>> fp Trigger function init\n");
 		retval = Interrupt_Init(etspi, data.int_mode, data.detect_period, data.detect_threshold);
-		DEBUG_PRINT("fp_ioctl trigger init = %x\n", retval);
+		pr_debug("fp_ioctl trigger init = %x\n", retval);
 	break;
 
 	case FP_SENSOR_RESET:
@@ -469,9 +485,9 @@ static long etspi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			etspi_reset(etspi);
 		goto done;
 	case INT_TRIGGER_CLOSE:
-			DEBUG_PRINT("fp_ioctl <<< fp Trigger function close\n");
+			pr_debug("fp_ioctl <<< fp Trigger function close\n");
 			retval = Interrupt_Free(etspi);
-			DEBUG_PRINT("fp_ioctl trigger close = %x\n", retval);
+			pr_debug("fp_ioctl trigger close = %x\n", retval);
 		goto done;
 	case INT_TRIGGER_ABORT:
 			DEBUG_PRINT("fp_ioctl <<< fp Trigger function close\n");
@@ -747,15 +763,65 @@ static struct platform_driver etspi_driver = {
 /* remark for dual sensors */
 /* module_platform_driver(etspi_driver); */
 
+static int etspi_fb_notifier_callback(struct notifier_block *self,
+			unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	unsigned int blank;
+	int retval = 0;
+	struct etspi_data *etspi;
+	struct FPS_data *mdata = fpsData;
+
+	/* If we aren't interested in this event, skip it immediately ... */
+	if (event != FB_EVENT_BLANK /* FB_EARLY_EVENT_BLANK */)
+		return 0;
+	etspi = container_of(self, struct etspi_data, notifier);
+	blank = *(int *)evdata->data;
+
+	DEBUG_PRINT("[%s] : enter, blank=0x%x\n", __func__, blank);
+
+	switch (blank) {
+	case FB_BLANK_UNBLANK:
+		pr_debug("[%s] : lcd on notify\n", __func__);
+		etspi->lcd_off = false;
+		if (!mdata)
+			break;
+		/* when lcd on, enable fps in if it is needed */
+		if (request_irq_done && fps_ints.drdy_irq_flag != DRDY_IRQ_ENABLE) {
+			Interrupt_Init(etspi, fps_ints.int_mode, fps_ints.detect_period, fps_ints.detect_threshold);
+			DEBUG_PRINT("[%s] re-enable int\n", __func__);
+		}
+		break;
+	case FB_BLANK_POWERDOWN:
+		pr_debug("[%s] : lcd off notify\n", __func__);
+		etspi->lcd_off = true;
+		if (!mdata)
+			break;
+		/* when lcd off and  FPS  is not activte, disable fps int */
+		if (request_irq_done && !mdata->state && fps_ints.drdy_irq_flag == DRDY_IRQ_ENABLE) {
+			Interrupt_Free(etspi);
+			DEBUG_PRINT("[%s] disable int\n", __func__);
+		}
+		break;
+
+	default:
+		pr_debug("[%s] : other notifier, ignore\n", __func__);
+		break;
+	}
+	return retval;
+}
 
 
 static int etspi_remove(struct platform_device *pdev)
 {
+	struct etspi_data *etspi = dev_get_drvdata(&pdev->dev);
 	DEBUG_PRINT("%s(#%d)\n", __func__, __LINE__);
 	free_irq(gpio_irq, NULL);
 	del_timer_sync(&fps_ints.timer);
 	wake_lock_destroy(&et320_wake_lock);
 	request_irq_done = 0;
+	if (etspi)
+		fb_unregister_client(&etspi->notifier);
 	/* t_mode = 255; */
 	return 0;
 }
@@ -873,7 +939,11 @@ static int etspi_probe(struct platform_device *pdev)
 	etspi_reset(etspi);
 
 	fps_ints.drdy_irq_flag = DRDY_IRQ_DISABLE;
-
+	fps_ints.detect_period = 1;
+	fps_ints.detect_threshold = 1;
+	fps_ints.int_count = 0;
+	fps_ints.finger_on = 0;
+	fps_ints.int_mode = EDGE_TRIGGER_FALLING;
 	/* the timer is for ET310 */
 	setup_timer(&fps_ints.timer, interrupt_timer_routine, (unsigned long)&fps_ints);
 	add_timer(&fps_ints.timer);
@@ -888,6 +958,9 @@ static int etspi_probe(struct platform_device *pdev)
 		goto etspi_probe_failed;
 	}
 	request_irq_done = 0;
+	/* register screen on/off callback */
+	etspi->notifier.notifier_call = etspi_fb_notifier_callback;
+	fb_register_client(&etspi->notifier);
 	return status;
 
 etspi_probe_failed:
