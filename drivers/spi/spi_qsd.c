@@ -1761,18 +1761,17 @@ static int msm_spi_prepare_transfer_hardware(struct spi_master *master)
 	int resume_state = 0;
 
 	resume_state = pm_runtime_get_sync(dd->dev);
-	if (resume_state < 0)
-		goto spi_finalize;
-
+	if (resume_state < 0) {
 	/*
 	 * Counter-part of system-suspend when runtime-pm is not enabled.
 	 * This way, resume can be left empty and device will be put in
 	 * active mode only if client requests anything on the bus
 	 */
-	if (!pm_runtime_enabled(dd->dev))
-		resume_state = msm_spi_pm_resume_runtime(dd->dev);
-	if (resume_state < 0)
-		goto spi_finalize;
+		if (!pm_runtime_enabled(dd->dev))
+			resume_state = pm_runtime_force_resume(dd->dev);
+		if (resume_state < 0)
+			goto spi_finalize;
+	}
 	if (dd->suspended) {
 		resume_state = -EBUSY;
 		goto spi_finalize;
