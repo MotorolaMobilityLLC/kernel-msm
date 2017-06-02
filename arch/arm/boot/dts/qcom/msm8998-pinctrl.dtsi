@@ -2200,28 +2200,16 @@
 		led_enable: led_enable {
 			mux {
 				pins = "gpio21";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio21";
-				drive_strength = <2>;
+				drive_strength = <16>;
 				output-high;
-				bias-disable;
 			};
 		};
 
 		led_disable: led_disable {
 			mux {
 				pins = "gpio21";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio21";
 				drive_strength = <2>;
 				output-low;
-				bias-disable;
 			};
 		};
 
