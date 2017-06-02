@@ -29,6 +29,7 @@ static uint32_t AFE_TX_PORT_ID = AFE_PORT_ID_SLIMBUS_MULTI_CHAN_1_TX;
 static bool feedback_on_left;
 static bool feedback_on_right;
 static bool ospl_volume_control;
+static bool ospl_passive_f0;
 
 /*
  * external configuration string reading
@@ -548,6 +549,7 @@ static int ospl2xx_update_tx_int_config(void)
 int32_t afe_cb_payload32_data[2] = {0,};
 int32_t *f0_curve;
 int32_t f0_curve_size;
+int32_t f0, ref_diff;
 static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 {
 	if (!data) {
@@ -567,7 +569,6 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 			case PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET:
 			case PARAM_ID_OPALUM_RX_VOLUME_CONTROL:
 			case PARAM_ID_OPALUM_TX_ENABLE:
-			case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
 			case PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE:
 			case PARAM_ID_OPALUM_TX_CURRENT_PARAM_SET:
 				afe_cb_payload32_data[0] = payload32[4];
@@ -580,6 +581,12 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 					(int) afe_cb_payload32_data[0]);
 				pr_debug("afe_cb_payload32_data[1] = %d\n",
 					(int) afe_cb_payload32_data[1]);
+				break;
+			case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
+				f0 = payload32[4];
+				ref_diff = payload32[5];
+				pr_debug("f0 [%d], ref_diff [%d] from qdsp",
+					(int) f0, (int) ref_diff);
 				break;
 			case PARAM_ID_OPALUM_TX_F0_CURVE:
 				f0_curve_size = payload32[3];
@@ -937,6 +944,10 @@ static int ospl2xx_tx_run_diagnostic(struct snd_kcontrol *kcontrol,
 
 	if (command != 1)
 		return 0;
+
+	f0 = 0;
+	ref_diff = 0;
+
 	ospl2xx_afe_set_single_param(PARAM_ID_OPALUM_TX_RUN_CALIBRATION, 1);
 
 	return 0;
@@ -956,13 +967,16 @@ static const struct soc_enum ospl2xx_tx_run_diagnostic_enum[] = {
 static int ospl2xx_tx_get_f0(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	mutex_lock(&mr_lock);
-	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
-	ospl2xx_afe_get_param(PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE);
+	/* deprecated: once we have new branch, we can remove this */
+	if (!ospl_passive_f0) {
+		mutex_lock(&mr_lock);
+		ospl2xx_afe_set_callback(ospl2xx_afe_callback);
+		ospl2xx_afe_get_param(PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE);
+		mutex_unlock(&mr_lock);
+	}
 
-	ucontrol->value.integer.value[0] = afe_cb_payload32_data[0];
-	ucontrol->value.integer.value[1] = afe_cb_payload32_data[1];
-	mutex_unlock(&mr_lock);
+	ucontrol->value.integer.value[0] = f0;
+	ucontrol->value.integer.value[1] = ref_diff;
 
 	return 0;
 }
@@ -1253,9 +1267,10 @@ static int ospl2xx_probe(struct platform_device *pdev)
 					"mmi,ospl-left-feedback");
 	feedback_on_right = of_property_read_bool(pdev->dev.of_node,
 					"mmi,ospl-right-feedback");
-
 	ospl_volume_control = of_property_read_bool(pdev->dev.of_node,
 					"mmi,ospl-volume-control");
+	ospl_passive_f0 = of_property_read_bool(pdev->dev.of_node,
+					"mmi,ospl-passive-f0");
 
 err:
 	spdev = pdev;
