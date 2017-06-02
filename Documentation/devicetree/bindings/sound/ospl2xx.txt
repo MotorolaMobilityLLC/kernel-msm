@@ -8,12 +8,14 @@ Required properties:
 - mmi,ospl-afe-port-id : module rx port id and module tx port id
 - mmi,ospl-left-feedback and/or mmi,ospl-right-feedback : at least one of feedback
   channel at module tx port should be specified.
-- mmi,ospl-volume-control : OSPL in DSP supports volume control
 
 Optional properties:
 
 - mmi,ospl-tune-index : indexes for the tuning table in Qualcomm DSP, if not
   specified, default tuning tables located at first index will be used.
+- mmi,ospl-volume-control : OSPL in DSP supports volume control
+- mmi,ospl-passive-f0 : OSPL in DSP reports f0 and ref_diff once it's calculation
+  is done, kernel doesn't need to send get_param call to get it.
 
 Examples:
 
@@ -24,4 +26,5 @@ ospl {
 	mmi,ospl-afe-port-id = <16384 16387>;
 	mmi,ospl-left-feedback;
 	mmi,ospl-volume-control;
+	mmi,ospl-passive-f0;
 };
