@@ -4,7 +4,7 @@ qcom,hx40sunwoda_3000mah {
 	qcom, = <24>;
 	/* #2775154_Lenovo_HX40sunwoda_3000mAh_averaged_MasterSlave_Feb3rd2017*/
 	qcom,max-voltage-uv = <4400000>;
-	qcom,fg-cc-cv-threshold-mv = <4340>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,fastchg-current-ma = <3000>;
 	qcom,nom-batt-capacity-mah = <3000>;
 	qcom,batt-id-kohm = <237>;
