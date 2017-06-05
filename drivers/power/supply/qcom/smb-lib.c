@@ -6295,10 +6295,7 @@ void mmi_chrg_rate_check(struct smb_charger *chip)
 		goto end_rate_check;
 	}
 
-	rc = smblib_get_prop_typec_mode(chip, &val);
-	if (rc < 0)
-		smblib_err(chip, "Error getting CL CC rc = %d\n", rc);
-	else if (val.intval == POWER_SUPPLY_TYPEC_SOURCE_HIGH ||
+	if (chip->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH ||
 		 mmi->hvdcp3_con) {
 		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 		goto end_rate_check;
@@ -6603,29 +6600,22 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		} else
 			cl_pd = val.intval / 1000;
 
-		rc = smblib_get_prop_typec_mode(chip, &val);
-		if (rc < 0) {
-			smblib_err(chip, "Error getting CL CC rc = %d\n", rc);
-			goto end_hb;
-		} else {
-
-			switch (val.intval) {
-			case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
-				if (mmi->hvdcp3_con)
-					cl_cc = 3000;
-				else
-					cl_cc = 500;
-				break;
-			case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
-				cl_cc = 1500;
-				break;
-			case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
+		switch (chip->typec_mode) {
+		case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
+			if (mmi->hvdcp3_con)
 				cl_cc = 3000;
-				break;
-			default:
-				cl_cc = 0;
-				break;
-			}
+			else
+				cl_cc = 500;
+			break;
+		case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
+			cl_cc = 1500;
+			break;
+		case POWER_SUPPLY_TYPEC_SOURCE_HIGH:
+			cl_cc = 3000;
+			break;
+		default:
+			cl_cc = 0;
+			break;
 		}
 
 		if (cl_pd > 0)
