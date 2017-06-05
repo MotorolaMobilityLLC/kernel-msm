@@ -241,7 +241,7 @@
 	qcom,fg-force-load-profile = <1>;
 	qcom,fg-cutoff-voltage = <3200>;
 	qcom,fg-empty-voltage = <3000>;
-	qcom,fg-chg-term-current = <150>;
+	qcom,fg-chg-term-current = <100>;
 	qcom,fg-sys-term-current = <(-200)>;
 	qcom,fg-delta-soc-thr = <1>;
 	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
