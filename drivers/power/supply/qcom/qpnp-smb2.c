@@ -2887,7 +2887,7 @@ cleanup:
 	if (chg->vbus_vreg && chg->vbus_vreg->rdev)
 		devm_regulator_unregister(chg->dev, chg->vbus_vreg->rdev);
 	if (chg->ext_vbus_vreg && chg->ext_vbus_vreg->rdev)
-		regulator_unregister(chg->ext_vbus_vreg->rdev);
+		devm_regulator_unregister(chg->dev, chg->ext_vbus_vreg->rdev);
 
 	smblib_deinit(chg);
 
