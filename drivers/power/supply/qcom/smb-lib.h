@@ -36,9 +36,7 @@ enum print_reason {
 #define PL_USBIN_USBIN_VOTER		"PL_USBIN_USBIN_VOTER"
 #define USB_PSY_VOTER			"USB_PSY_VOTER"
 #define PL_TAPER_WORK_RUNNING_VOTER	"PL_TAPER_WORK_RUNNING_VOTER"
-#define PL_INDIRECT_VOTER		"PL_INDIRECT_VOTER"
 #define PL_QNOVO_VOTER			"PL_QNOVO_VOTER"
-#define USBIN_I_VOTER			"USBIN_I_VOTER"
 #define USBIN_V_VOTER			"USBIN_V_VOTER"
 #define CHG_STATE_VOTER			"CHG_STATE_VOTER"
 #define TYPEC_SRC_VOTER			"TYPEC_SRC_VOTER"
@@ -64,6 +62,8 @@ enum print_reason {
 #define CC2_WA_VOTER			"CC2_WA_VOTER"
 #define QNOVO_VOTER			"QNOVO_VOTER"
 #define BATT_PROFILE_VOTER		"BATT_PROFILE_VOTER"
+#define OTG_DELAY_VOTER			"OTG_DELAY_VOTER"
+#define USBIN_I_VOTER			"USBIN_I_VOTER"
 
 #define VCONN_MAX_ATTEMPTS	3
 #define OTG_MAX_ATTEMPTS	3
@@ -230,6 +230,7 @@ struct smb_charger {
 	bool			external_vconn;
 	struct smb_chg_freq	chg_freq;
 	int			smb_version;
+	int			otg_delay_ms;
 
 	/* locks */
 	struct mutex		lock;
@@ -244,6 +245,8 @@ struct smb_charger {
 	struct power_supply		*bms_psy;
 	struct power_supply_desc	usb_psy_desc;
 	struct power_supply		*usb_main_psy;
+	struct power_supply		*usb_port_psy;
+	enum power_supply_type		real_charger_type;
 
 	/* notifiers */
 	struct notifier_block	nb;
@@ -288,6 +291,7 @@ struct smb_charger {
 	struct delayed_work	icl_change_work;
 	struct delayed_work	pl_enable_work;
 	struct work_struct	legacy_detection_work;
+	struct delayed_work	uusb_otg_work;
 
 	/* cached status */
 	int			voltage_min_uv;
