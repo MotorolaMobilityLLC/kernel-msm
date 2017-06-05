@@ -1634,6 +1634,9 @@ static int smb2_init_vconn_regulator(struct smb2 *chip)
 	chg->vconn_vreg->rdesc.of_match = "qcom,smb2-vconn";
 	chg->vconn_vreg->rdesc.name = "qcom,smb2-vconn";
 
+	if (of_get_property(chg->dev->of_node, "vconn-parent-supply", NULL))
+		chg->vconn_vreg->rdesc.supply_name = "vconn-parent";
+
 	chg->vconn_vreg->rdev = devm_regulator_register(chg->dev,
 						&chg->vconn_vreg->rdesc, &cfg);
 	if (IS_ERR(chg->vconn_vreg->rdev)) {
