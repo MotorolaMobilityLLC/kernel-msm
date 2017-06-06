@@ -479,6 +479,7 @@ struct msm_vfe_src_info {
 	enum msm_vfe_dual_hw_type dual_hw_type;
 	struct msm_vfe_dual_hw_ms_info dual_hw_ms_info;
 	uint32_t eof_id;
+	bool accept_frame;
 };
 
 struct msm_vfe_fetch_engine_info {

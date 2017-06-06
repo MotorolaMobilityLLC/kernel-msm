@@ -658,8 +658,12 @@ void msm_vfe47_process_epoch_irq(struct vfe_device *vfe_dev,
 void msm_isp47_process_eof_irq(struct vfe_device *vfe_dev,
 	uint32_t irq_status0)
 {
-	if (irq_status0 & BIT(1))
+	if (irq_status0 & BIT(1)) {
 		vfe_dev->axi_data.src_info[VFE_PIX_0].eof_id++;
+		vfe_dev->axi_data.src_info[VFE_PIX_0].accept_frame = false;
+	}
+	if (irq_status0 & BIT(0))
+		vfe_dev->axi_data.src_info[VFE_PIX_0].accept_frame = true;
 }
 
 void msm_vfe47_reg_update(struct vfe_device *vfe_dev,
