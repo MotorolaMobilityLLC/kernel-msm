@@ -1,6 +1,26 @@
+# Only include Motorola DTBs
+ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
+# Add 1k of padding to the DTBs to allow for environment variables
+# to be runtime added by the bootloader (i.e. /chosen properties)
+DTC_FLAGS := -p 1024
 
-# Do not include QC default DTBs if not needed
-ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
+# Motorola Device Trees
+dtb-$(CONFIG_ARCH_MSM8998) += msm8998-saratoga-p1.dtb \
+	msm8998-saratoga-p1a.dtb \
+	msm8998-nash-evt1-v2.dtb \
+	msm8998-nash-evt1-v1.dtb \
+	msm8998-nash-dvt1.dtb \
+	msm8998-nash-dvt1b.dtb \
+	msm8998-nash-dvt2.dtb \
+	msm8998-nash-dvt2b.dtb
+
+dtb-$(CONFIG_ARCH_SDM660) += sdm660-payton-p0a.dtb
+dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p0a.dtb \
+	sdm630-payton-p1a.dtb \
+	sdm630-payton-p2a.dtb \
+	sdm630-payton-p2b.dtb
+else
+# Only include QC architecture specific DTBs
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-v2-pmi8994-cdp.dtb \
 	msm8996-v2-pmi8994-mtp.dtb \
 	msm8996-v2-pmi8994-pmk8001-cdp.dtb \
@@ -118,7 +138,6 @@ dtb-$(CONFIG_ARCH_MSM8996) += msm8996-v2-pmi8994-cdp.dtb \
 	apq8096-v3-pmi8996-mdm9x55-slimbus-mtp.dtb \
 	apq8096-v3-pmi8996-dragonboard.dtb \
 	msm8996-auto-mizar.dtb
-endif # CONFIG_MMI_DEVICE_DTBS
 
 dtb-$(CONFIG_MSM_GVM_QUIN) += vplatform-lfv-msm8996-telematics.dtb \
 	vplatform-lfv-msm8996-ivi.dtb \
@@ -149,35 +168,10 @@ msm8998-v2.1-mtp-overlay.dtbo-base :=  msm8998-v2.1.dtb
 msm8998-qrd-overlay.dtbo-base :=  msm8998-qrd.dtb
 msm8998-qrd-vr1-overlay.dtbo-base :=  msm8998-qrd-vr1.dtb
 msm8998-qrd-skuk-overlay.dtbo-base :=  msm8998-qrd-skuk.dtb
-else
-# Motorola Device Trees
-dtb-$(CONFIG_ARCH_MSM8998) += msm8998-saratoga-p1.dtb
-dtb-$(CONFIG_ARCH_MSM8998) += msm8998-saratoga-p1a.dtb
-dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-evt1-v2.dtb
-dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-evt1-v1.dtb
-dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt1.dtb
-dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt1b.dtb
-dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt2.dtb
-dtb-$(CONFIG_ARCH_MSM8998) += msm8998-nash-dvt2b.dtb
-
-ifeq ($(CONFIG_PAYTON_DTB),y)
-dtb-$(CONFIG_ARCH_SDM660) += sdm660-payton-p0a.dtb
-dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p2b.dtb
-dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p2a.dtb
-dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p1a.dtb
-dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p0a.dtb
-endif # CONFIG_PAYTON_DTB
-
-ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
-# Add 1k of padding to the DTBs to allow for environment variables
-# to be runtime added by the bootloader (i.e. /chosen properties)
-DTC_FLAGS := -p 1024
-endif
 endif
 
 dtb-$(CONFIG_ARCH_MSMHAMSTER) += msmhamster-rumi.dtb
 
-ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
 dtb-$(CONFIG_ARCH_SDM660) += sdm660-sim.dtb \
 	sdm660-internal-codec-cdp.dtb \
 	sdm660-internal-codec-mtp.dtb \
