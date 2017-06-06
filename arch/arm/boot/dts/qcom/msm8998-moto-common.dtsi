@@ -1682,4 +1682,6 @@
 		"gpio_otg_fault_n";
 	vbus-supply = <&vdd_otg_vreg>;
 	qcom,source-current = <900>;
+	qcom,default-sink-caps = <5000 3000>, /* 5V @ 3A */
+				 <9000 2000>; /* 9V @ 2A */
 };
