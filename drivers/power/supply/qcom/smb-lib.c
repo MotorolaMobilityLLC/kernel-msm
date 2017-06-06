@@ -1179,9 +1179,10 @@ static int smblib_hvdcp_enable_vote_callback(struct votable *votable,
 	 * This ensures only qc 2.0 detection runs but no vbus
 	 * negotiation happens.
 	 */
+#ifdef QCOM_BASE
 	if (!hvdcp_enable)
 		val = HVDCP_EN_BIT;
-
+#endif
 	rc = smblib_masked_write(chg, USBIN_OPTIONS_1_CFG_REG,
 #ifdef QCOM_BASE
 				 HVDCP_EN_BIT | HVDCP_AUTH_ALG_EN_CFG_BIT,
@@ -3025,9 +3026,10 @@ static int __smblib_set_prop_pd_active(struct smb_charger *chg, bool pd_active)
 		vote(chg->apsd_disable_votable, PD_VOTER, false, 0);
 		vote(chg->pd_allowed_votable, PD_VOTER, true, 0);
 		vote(chg->usb_irq_enable_votable, PD_VOTER, false, 0);
+#ifdef QCOM_BASE
 		vote(chg->hvdcp_disable_votable_indirect, PD_INACTIVE_VOTER,
 								false, 0);
-
+#endif
 		/* HW controlled CC_OUT */
 		rc = smblib_masked_write(chg, TAPER_TIMER_SEL_CFG_REG,
 							TYPEC_SPARE_CFG_BIT, 0);
@@ -3042,8 +3044,17 @@ static int __smblib_set_prop_pd_active(struct smb_charger *chg, bool pd_active)
 		 * more, but it may impact compliance.
 		 */
 		sink_attached = chg->typec_status[3] & UFP_DFP_MODE_STATUS_BIT;
+#ifdef QCOM_BASE
 		if (!chg->typec_legacy_valid && !sink_attached && hvdcp)
 			schedule_work(&chg->legacy_detection_work);
+#else
+		/* re-run APSD if HVDCP was detected */
+		if (hvdcp) {
+			smblib_rerun_apsd(chg);
+			chg->mmi.vbus_inc_cnt = 0;
+			chg->mmi.hvdcp3_con = false;
+		}
+#endif
 	}
 
 	smblib_update_usb_type(chg);
@@ -3854,9 +3865,14 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 
 	/* Hold off PD only until hvdcp 2.0 detection timeout */
 	if (rising) {
+#ifdef QCOM_BASE
 		vote(chg->pd_disallowed_votable_indirect, HVDCP_TIMEOUT_VOTER,
 								false, 0);
-
+#else
+		cancel_delayed_work_sync(&chg->hvdcp_detect_work);
+		schedule_delayed_work(&chg->hvdcp_detect_work,
+				      msecs_to_jiffies(1000));
+#endif
 		/* enable HDC and ICL irq for QC2/3 charger */
 		if (qc_charger)
 			vote(chg->usb_irq_enable_votable, QC_VOTER, true, 0);
@@ -3891,7 +3907,9 @@ static void smblib_handle_hvdcp_detect_done(struct smb_charger *chg,
 		return;
 
 	/* the APSD done handler will set the USB supply type */
+#ifdef QCOM_BASE
 	cancel_delayed_work_sync(&chg->hvdcp_detect_work);
+#endif
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: hvdcp-detect-done %s\n",
 		   rising ? "rising" : "falling");
 }
@@ -4284,7 +4302,9 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	cancel_delayed_work_sync(&chg->hvdcp_detect_work);
 
 	/* reset input current limit voters */
+#ifdef QCOM_BASE
 	vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 100000);
+#endif
 	vote(chg->usb_icl_votable, PD_VOTER, false, 0);
 	vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
 	vote(chg->usb_icl_votable, DCP_VOTER, false, 0);
@@ -4294,8 +4314,10 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	chg->mmi.apsd_done = false;
 
 	/* reset hvdcp voters */
+#ifdef QCOM_BASE
 	vote(chg->hvdcp_disable_votable_indirect, VBUS_CC_SHORT_VOTER, true, 0);
 	vote(chg->hvdcp_disable_votable_indirect, PD_INACTIVE_VOTER, true, 0);
+#endif
 	vote(chg->hvdcp_hw_inov_dis_votable, OV_VOTER, false, 0);
 
 	/* reset power delivery voters */
@@ -4407,6 +4429,15 @@ unlock:
 			smblib_notify_device_mode(chg, false);
 	}
 	chg->otg_present = false;
+
+	chg->mmi.charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
+	chg->mmi.charging_limit_modes = CHARGING_LIMIT_OFF;
+	chg->mmi.hvdcp3_con = false;
+	chg->mmi.vbus_inc_cnt = 0;
+	vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
+	cancel_delayed_work(&chg->mmi.heartbeat_work);
+	schedule_delayed_work(&chg->mmi.heartbeat_work,
+			      msecs_to_jiffies(0));
 }
 
 static void smblib_handle_typec_insertion(struct smb_charger *chg)
@@ -6512,7 +6543,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		mmi->charger_debounce_cnt = 0;
 	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE) {
 		mmi->charger_debounce_cnt++;
-		cl_usb = 500;
+		/* Set the USB CL to 500 only if pd is not active to avoid
+		 * PD Compliance issues */
+		if (!chip->pd_active)
+			cl_usb = 500;
 	} else if (mmi->charger_debounce_cnt == CHARGER_DETECTION_DONE)
 		charger_present = 1;
 
@@ -6622,7 +6656,7 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			cl_usb = cl_pd;
 		else if (cl_cc > 500)
 			cl_usb = cl_cc;
-		else if (chip->usb_psy_desc.type ==
+		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_DCP)
 			cl_usb = 1500;
 		else if (cl_usb <= 0)
@@ -6709,9 +6743,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 
 	if (mmi->base_fv_mv == 0) {
 		mmi->base_fv_mv = get_client_vote(chip->fv_votable,
-						  DEFAULT_VOTER) / 1000;
+						  BATT_PROFILE_VOTER) / 1000;
 		vote(chip->fv_votable,
-		     DEFAULT_VOTER, false, 0);
+		     BATT_PROFILE_VOTER, false, 0);
 	}
 	max_fv_mv = mmi->base_fv_mv;
 
