@@ -3778,9 +3778,56 @@ end:
 static DEVICE_ATTR(te_enable, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
 					te_enable_show, te_enable_store);
 
+
+static ssize_t te_test_enable(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+
+	int enable;
+	int r = 0;
+	static bool mdp_clk_on;
+
+
+	if (mdss_fb_is_power_off(mfd)) {
+		pr_warn("panel is not powered\n");
+		r = -EPERM;
+		goto end;
+	}
+
+	r = kstrtoint(buf, 0, &enable);
+	if ((r) || ((enable != 0) && (enable != 1))) {
+		pr_err("invalid TE test request = %d\n", enable);
+		r = -EINVAL;
+		goto end;
+	}
+
+	if (enable && !mdp_clk_on) {
+		pr_warn("%s: keep MDP CLK ON", __func__);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+		mdp_clk_on = true;
+	} else if (!enable && mdp_clk_on) {
+		pr_warn("%s: keep MDP CLK OFF", __func__);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+		mdp_clk_on = false;
+	} else
+		pr_warn("%s: No change: mdp_clk_on = %d enable =%d\n",
+				__func__, mdp_clk_on, enable);
+
+end:
+	return r ? r : count;
+}
+
+static DEVICE_ATTR(te_test, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
+			NULL, te_test_enable);
+
+
 static struct attribute *factory_te_attrs[] = {
 	&dev_attr_frame_counter.attr,
 	&dev_attr_te_enable.attr,
+	&dev_attr_te_test.attr,
 	NULL,
 };
 static struct attribute_group factory_te_attrs_group = {
