@@ -782,7 +782,6 @@
 	pinctrl-0 = <&sdc2_clk_on  &sdc2_cmd_on &sdc2_data_on>;
 	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off>;
 
-	qcom,clk-scale-disabled;
 	qcom,clk-rates = <400000 20000000 25000000
 				50000000 100000000 200000000>;
 	qcom,bus-speed-mode = "DDR50_1p8v", "SDR104_1p8v";
