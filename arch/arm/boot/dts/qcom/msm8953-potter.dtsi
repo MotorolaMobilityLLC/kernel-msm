@@ -743,7 +743,7 @@
 	qcom,enable-hvdcp-9v;
 	qcom,enable-factory-wa;
 	qcom,enable-charging-limit;
-	qcom,upper-limit-capacity = <80>;
+	qcom,upper-limit-capacity = <70>;
 	qcom,lower-limit-capacity = <60>;
 };
 
