@@ -252,4 +252,17 @@ static inline void cec_s_phys_addr_from_edid(struct cec_adapter *adap,
 
 #endif
 
+/**
+ * cec_phys_addr_invalidate() - set the physical address to INVALID
+ *
+ * @adap:	the CEC adapter
+ *
+ * This is a simple helper function to invalidate the physical
+ * address.
+ */
+static inline void cec_phys_addr_invalidate(struct cec_adapter *adap)
+{
+	cec_s_phys_addr(adap, CEC_PHYS_ADDR_INVALID, false);
+}
+
 #endif /* _MEDIA_CEC_H */
