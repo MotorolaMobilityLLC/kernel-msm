@@ -2418,7 +2418,9 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 	if (host->ops->platform_execute_tuning) {
 		spin_unlock_irqrestore(&host->lock, flags);
+		mmc->doing_host_tuning = 0x01;
 		err = host->ops->platform_execute_tuning(host, opcode);
+		mmc->doing_host_tuning = 0x00;
 		sdhci_runtime_pm_put(host);
 		return err;
 	}
