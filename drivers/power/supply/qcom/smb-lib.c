@@ -7107,14 +7107,33 @@ static int smbchg_reboot(struct notifier_block *nb,
 						mmi.smb_reboot);
 	union power_supply_propval val;
 	int rc;
+	char eb_able;
+	int usb_present = -EINVAL, batt_soc = -EINVAL;
+	int soc_max = 99;
+
 	smblib_dbg(chg, PR_MISC, "SMB Reboot\n");
 	if (!chg) {
 		smblib_dbg(chg, PR_MOTO, "called before chip valid!\n");
 		return NOTIFY_DONE;
 	}
 
+	mmi_check_extbat_ability(chg, &eb_able);
+	if (eb_able & EB_SND_NEVER)
+		soc_max = 0;
+	else if (eb_able & EB_SND_LOW)
+		soc_max = eb_low_start_soc;
+
 	atomic_set(&chg->mmi.hb_ready, 0);
 	cancel_delayed_work_sync(&chg->mmi.heartbeat_work);
+
+	rc = smblib_get_prop_usb_present(chg, &val);
+	if (rc >= 0)
+		usb_present = val.intval;
+
+	val.intval = 0;
+	rc = smblib_get_prop_batt_capacity(chg, &val);
+	if (rc >= 0)
+		batt_soc = val.intval;
 
 	if (chg->mmi.factory_mode) {
 		switch (event) {
@@ -7149,6 +7168,16 @@ static int smbchg_reboot(struct notifier_block *nb,
 		default:
 			break;
 		}
+	} else if ((batt_soc >= soc_max)  ||
+		   (get_eb_prop(chg, POWER_SUPPLY_PROP_CAPACITY) <= 0)) {
+		/* Turn off any Ext batt charging */
+		smblib_err(chg, "Attempt to Shutdown EB!\n");
+		mmi_set_extbat_state(chg, EB_OFF, false);
+		gpio_set_value(chg->mmi.ebchg_gpio.gpio, 0);
+		gpio_free(chg->mmi.ebchg_gpio.gpio);
+	} else if ((chg->mmi.ebchg_state == EB_OFF) && (usb_present == 0)) {
+		smblib_err(chg, "Attempt to Turn EB ON!\n");
+		mmi_set_extbat_state(chg, EB_SRC, false);
 	}
 
 	return NOTIFY_DONE;
