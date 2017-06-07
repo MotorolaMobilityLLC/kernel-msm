@@ -201,6 +201,8 @@ static inline bool cec_is_sink(const struct cec_adapter *adap)
 	return adap->phys_addr == 0;
 }
 
+struct edid;
+
 #if IS_ENABLED(CONFIG_MEDIA_CEC)
 struct cec_adapter *cec_allocate_adapter(const struct cec_adap_ops *ops,
 		void *priv, const char *name, u32 caps, u8 available_las,
@@ -213,6 +215,8 @@ int cec_s_log_addrs(struct cec_adapter *adap, struct cec_log_addrs *log_addrs,
 		    bool block);
 void cec_s_phys_addr(struct cec_adapter *adap, u16 phys_addr,
 		     bool block);
+void cec_s_phys_addr_from_edid(struct cec_adapter *adap,
+			       const struct edid *edid);
 int cec_transmit_msg(struct cec_adapter *adap, struct cec_msg *msg,
 		     bool block);
 
@@ -238,6 +242,11 @@ static inline void cec_delete_adapter(struct cec_adapter *adap)
 
 static inline void cec_s_phys_addr(struct cec_adapter *adap, u16 phys_addr,
 				   bool block)
+{
+}
+
+static inline void cec_s_phys_addr_from_edid(struct cec_adapter *adap,
+					     const struct edid *edid)
 {
 }
 
