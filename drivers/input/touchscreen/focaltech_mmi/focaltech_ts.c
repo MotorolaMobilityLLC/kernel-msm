@@ -3201,6 +3201,23 @@ static int ft_reboot(struct notifier_block *nb,
 		container_of(nb, struct ft_ts_data, ft_reboot);
 
 	dev_info(&data->client->dev, "touch shutdown\n");
+
+	if (data->is_fps_registered) {
+		FPS_unregister_notifier(&data->fps_notif, 0xBEEF);
+		data->is_fps_registered = false;
+	}
+
+	if (data->charger_detection_enabled) {
+		power_supply_unreg_notifier(&data->ps_notif);
+		data->charger_detection_enabled = false;
+	}
+
+#if defined(CONFIG_FB)
+	fb_unregister_client(&data->fb_notif);
+#elif defined(CONFIG_HAS_EARLYSUSPEND)
+	unregister_early_suspend(&data->early_suspend);
+#endif
+
 	if (data->irq_enabled) {
 		ft_irq_disable(data);
 		free_irq(data->client->irq, data);
