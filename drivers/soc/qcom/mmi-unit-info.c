@@ -98,7 +98,11 @@ void mach_cpuinfo_show(struct seq_file *m, void *v)
 	/* Lack of "Radio" entry in cpuinfo means: */
 	/*	look for radio in "Revision"       */
 	if (strnlen(androidboot_radio_str, RADIO_MAX_LEN))
+#ifdef CONFIG_MMI_DTB_LUX
+		seq_printf(m, "Radio\t\t: %x\n", androidboot_radio);
+#else
 		seq_printf(m, "Radio\t\t: %s\n", androidboot_radio_str);
+#endif
 
 	seq_printf(m, "MSM Hardware\t: %s\n", msm_hw);
 }
