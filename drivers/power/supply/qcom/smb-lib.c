@@ -2960,6 +2960,20 @@ static int __smblib_set_prop_pd_active(struct smb_charger *chg, bool pd_active)
 
 	chg->pd_active = pd_active;
 	if (chg->pd_active) {
+#ifndef QCOM_BASE
+		/*
+		 * increase VCONN softstart and advertise 1.5A current
+		 * to comply with the Type-C Specification. While an explicit
+		 * USB PD contract is in place, the provider shall advertise
+		 * a USB Type-C Current of either 1.5 A or 3.0 A.*/
+		rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
+				VCONN_SOFTSTART_CFG_MASK | EN_80UA_180UA_CUR_SOURCE_BIT,
+				VCONN_SOFTSTART_CFG_MASK | EN_80UA_180UA_CUR_SOURCE_BIT);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't write to TYPE_C_CFG_2_REG rc=%d\n",
+				rc);
+		}
+#endif
 		vote(chg->apsd_disable_votable, PD_VOTER, true, 0);
 		vote(chg->pd_allowed_votable, PD_VOTER, true, 0);
 		vote(chg->usb_irq_enable_votable, PD_VOTER, true, 0);
@@ -3015,6 +3029,16 @@ static int __smblib_set_prop_pd_active(struct smb_charger *chg, bool pd_active)
 		if (rc < 0)
 			smblib_err(chg, "Couldn't unvote USB_PSY rc=%d\n", rc);
 	} else {
+#ifndef QCOM_BASE
+		/* increase VCONN softstart and advertise default current*/
+		rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
+				VCONN_SOFTSTART_CFG_MASK | EN_80UA_180UA_CUR_SOURCE_BIT,
+				VCONN_SOFTSTART_CFG_MASK);
+		if (rc < 0) {
+			smblib_err(chg, "Couldn't write to TYPE_C_CFG_2_REG rc=%d\n",
+				rc);
+		}
+#endif
 		rc = smblib_read(chg, APSD_STATUS_REG, &stat);
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't read APSD status rc=%d\n",
