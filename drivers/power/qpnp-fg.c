@@ -3900,6 +3900,8 @@ static int fg_vbat_est_check(struct fg_chip *chip)
 
 	if ((vbat_est_diff > vbat_est_thr_uv)
 		&& chip->fg_force_restart_enable
+		&& chip->first_profile_loaded
+		&& !chip->fg_restarting
 		&& !batt_missing) {
 		pr_info("vbat_est_diff is larger than vbat_est_thr_uv,so force fg restart\n");
 		rc = fg_do_restart(chip, false);
