@@ -96,3 +96,6 @@ x509.genkey
 
 # Kconfig presets
 all.config
+*.config
+drivers/platform/msm/ipa/ipa_common
+BUILT_GRIFFIN
