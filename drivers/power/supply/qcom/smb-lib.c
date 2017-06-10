@@ -22,10 +22,10 @@
 #include <linux/interrupt.h>
 #include <linux/ipc_logging.h>
 #include <linux/irq.h>
-#include <linux/pmic-voter.h>
 #include <linux/pinctrl/consumer.h>
 #include <soc/qcom/watchdog.h>
 #include <linux/usb/usbpd.h>
+#include <linux/pmic-voter.h>
 #include "smb-lib.h"
 #include "smb-reg.h"
 #include "battery.h"
@@ -2988,9 +2988,11 @@ static int __smblib_set_prop_pd_active(struct smb_charger *chg, bool pd_active)
 				TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
 				VCONN_EN_ORIENTATION_BIT,
 				orientation ? 0 : VCONN_EN_ORIENTATION_BIT);
-		if (rc < 0)
+		if (rc < 0) {
 			smblib_err(chg,
 				"Couldn't enable vconn on CC line rc=%d\n", rc);
+			return rc;
+		}
 
 		if (chg->pd_contract_uv <= 0) {
 			cancel_delayed_work(&chg->pd_contract_work);
@@ -3571,7 +3573,7 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 
 	if (chg->otg_en) {
 		smblib_dbg(chg, PR_INTERRUPT, "OTG enabled, do nothing\n");
-		return IRQ_HANDLED;
+		return;
 	}
 
 	rc = smblib_read(chg, USBIN_BASE + INT_RT_STS_OFFSET, &stat);
@@ -4022,7 +4024,6 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 		return;
 
 	apsd_result = smblib_update_usb_type(chg);
-
 #ifdef QCOM_BASE
 	if (!chg->typec_legacy_valid)
 		smblib_force_legacy_icl(chg, apsd_result->pst);
@@ -4368,6 +4369,7 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	chg->voltage_max_uv = MICRO_5V;
 	chg->pd_active = 0;
 	chg->pd_hard_reset = 0;
+	chg->pd_contract_uv = 0;
 	chg->typec_legacy_valid = false;
 
 	/* write back the default FLOAT charger configuration */
