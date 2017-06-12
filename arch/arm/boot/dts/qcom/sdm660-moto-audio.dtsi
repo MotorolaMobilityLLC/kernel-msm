@@ -40,7 +40,6 @@
 		status = "ok";
 		mmi,ospl-afe-port-id = <16384 16387>;
 		mmi,ospl-left-feedback;
-		mmi,ospl-volume-control;
 		mmi,ospl-passive-f0;
 	};
 
