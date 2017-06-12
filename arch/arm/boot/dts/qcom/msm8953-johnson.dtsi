@@ -725,3 +725,7 @@
 	qcom,fg-cutoff-voltage-mv = <3200>;
 	qcom,battery-data = <&mot_johnsonbatterydata>;
 };
+
+&sdhc_2 {
+	cd-gpios = <&tlmm 133 0x1>;
+};
