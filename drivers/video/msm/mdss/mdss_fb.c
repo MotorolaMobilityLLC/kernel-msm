@@ -1086,7 +1086,7 @@ __PARAM_SYSFS_DEFINITION(cabc, PARAM_CABC_ID)
 
 static struct device_attribute param_attrs[PARAM_ID_NUM] = {
 	__ATTR(hbm, S_IWUSR | S_IWGRP | S_IRUSR | S_IRGRP, hbm_show, hbm_store),
-	__ATTR(cabc_mode, S_IWUSR | S_IWGRP | S_IRUSR | S_IRGRP,
+	__ATTR(cabc, S_IWUSR | S_IWGRP | S_IRUSR | S_IRGRP,
 		cabc_show, cabc_store),
 };
 
