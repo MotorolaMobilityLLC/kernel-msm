@@ -585,7 +585,7 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 			case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
 				f0 = payload32[4];
 				ref_diff = payload32[5];
-				pr_debug("f0 [%d], ref_diff [%d] from qdsp",
+				pr_info("f0 [%d], ref_diff [%d] from qdsp",
 					(int) f0, (int) ref_diff);
 				break;
 			case PARAM_ID_OPALUM_TX_F0_CURVE:
