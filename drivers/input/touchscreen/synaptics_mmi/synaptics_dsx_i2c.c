@@ -6772,6 +6772,14 @@ static int rmi_reboot(struct notifier_block *nb,
 		container_of(nb, struct synaptics_rmi4_data, rmi_reboot);
 	const struct synaptics_dsx_platform_data *platform_data =
 			rmi4_data->board;
+	int state = STATE_INVALID;
+
+	if (likely(rmi4_data))
+		state = synaptics_dsx_get_state_safe(rmi4_data);
+
+	if (STATE_INVALID == state)
+		goto out;
+
 #if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
 	mmi_panel_unregister_notifier(&rmi4_data->panel_nb);
 #elif defined(CONFIG_FB)
@@ -6791,6 +6799,10 @@ static int rmi_reboot(struct notifier_block *nb,
 		msleep(1000);
 	}
 
+	/* At this point, we're all good with clean-up works */
+	synaptics_dsx_set_state_safe(rmi4_data, STATE_INVALID);
+
+out:
 	return NOTIFY_DONE;
 }
 
