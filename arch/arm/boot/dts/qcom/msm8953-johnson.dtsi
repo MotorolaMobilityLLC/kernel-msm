@@ -399,7 +399,7 @@
 	apba_ctrl {
 		gpios = <&tlmm 39 0>,      /* APBA_1P1_EN, output-low */
 			<&tlmm 140 0>,     /* APBA_BOOTRET, output-low */
-			<&tlmm 27 2>,      /* MOD_MPHY_I2S_SEL, output-high */
+			<&tlmm 47 2>,      /* MOD_MPHY_I2S_SEL, output-high */
 			<&tlmm 132 0>,     /* APBA_RESET_N, output-low */
 			<&tlmm 62 1>,      /* APBA_INT_N, in */
 			<&tlmm 141 0>,     /* APBA_WAKE, output-low */
@@ -643,7 +643,7 @@
 &muc {
 	gpios = <&tlmm 60 1>,         /* gpio_muc_det_n, input */
 		<&pmi8950_gpios 1 0>, /* gpio_muc_bplus_en, output-low */
-		<&tlmm 72 1>,         /* gpio_muc_int_n, input */
+		<&tlmm 36 1>,         /* gpio_muc_int_n, input */
 		<&tlmm 38 2>,         /* gpio_muc_wake_n, output-high */
 		<&tlmm 59 1>,         /* gpio_muc_rdy_n, input */
 		<&pmi8950_mpps 2 0>,  /* gpio_muc_ff, output-low */
