@@ -695,7 +695,7 @@ static int ospl2xx_rx_run_diagnostic(struct snd_kcontrol *kcontrol,
 		return 0;
 
 	ospl2xx_afe_set_single_param(PARAM_ID_OPALUM_RX_RUN_CALIBRATION, 1);
-
+	pr_info("%s:\n", __func__);
 	return 0;
 }
 static int ospl2xx_rx_run_diagnostic_get(struct snd_kcontrol *kcontrol,
@@ -949,7 +949,7 @@ static int ospl2xx_tx_run_diagnostic(struct snd_kcontrol *kcontrol,
 	ref_diff = 0;
 
 	ospl2xx_afe_set_single_param(PARAM_ID_OPALUM_TX_RUN_CALIBRATION, 1);
-
+	pr_info("%s:\n", __func__);
 	return 0;
 }
 static int ospl2xx_tx_run_diagnostic_get(struct snd_kcontrol *kcontrol,
