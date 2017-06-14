@@ -271,6 +271,7 @@ struct smbchg_chip {
 	bool				batt_present;
 	int				otg_retries;
 	ktime_t				otg_enable_time;
+	bool				otg_enabled;
 	bool				aicl_deglitch_short;
 	bool				sw_esr_pulse_en;
 	bool				safety_timer_en;
@@ -1895,17 +1896,63 @@ static int calc_dc_thermal_limited_current(struct smbchg_chip *chip,
 	return current_ma;
 }
 
+enum skip_reason {
+	REASON_OTG_ENABLED	= BIT(0),
+	REASON_FLASH_ENABLED	= BIT(1)
+};
+
+#define OTG_TRIM6               0xF6
+#define TR_ENB_SKIP_BIT         BIT(2)
+
+static int smbchg_otg_pulse_skip_disable(struct smbchg_chip *chip,
+				enum skip_reason reason, bool disable)
+{
+	int rc;
+	bool disabled;
+
+	disabled = !!chip->otg_pulse_skip_dis;
+	SMB_DBG(chip, "%s pulse skip, reason %d\n",
+			disable ? "disabling" : "enabling", reason);
+	if (disable)
+		chip->otg_pulse_skip_dis |= reason;
+	else
+		chip->otg_pulse_skip_dis &= ~reason;
+	if (disabled == !!chip->otg_pulse_skip_dis)
+		return 0;
+	disabled = !!chip->otg_pulse_skip_dis;
+
+	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_TRIM6,
+			TR_ENB_SKIP_BIT, disabled ? TR_ENB_SKIP_BIT : 0);
+	if (rc < 0) {
+		SMB_ERR(chip,
+			"Couldn't %s otg pulse skip rc = %d\n",
+			disabled ? "disable" : "enable", rc);
+		return rc;
+	}
+	SMB_DBG(chip, "%s pulse skip\n", disabled ? "disabled" : "enabled");
+	return 0;
+}
+
 #define CMD_CHG_REG	0x42
 #define EN_BAT_CHG_BIT		BIT(1)
+#define OTG_EN		BIT(0)
 static int smbchg_charging_en(struct smbchg_chip *chip, bool en)
 {
+	u8 mask = EN_BAT_CHG_BIT;
 	if ((chip->charging_limit_modes == CHARGING_LIMIT_RUN)
 		&& (chip->enable_charging_limit)
 		&& (chip->is_factory_image))
 		en = 0;
+
+	if (en && chip->otg_enabled) {
+		mask |= OTG_EN;
+		chip->otg_enabled = false;
+		smbchg_otg_pulse_skip_disable(chip, REASON_OTG_ENABLED, false);
+		SMB_ERR(chip, "Charging Enabled when OTG Enabled: Fix\n");
+	}
 	/* The en bit is configured active low */
 	return smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
-			EN_BAT_CHG_BIT, en ? 0 : EN_BAT_CHG_BIT);
+			mask, en ? 0 : EN_BAT_CHG_BIT);
 }
 
 #define CMD_IL			0x40
@@ -3601,43 +3648,6 @@ static int smbchg_safety_timer_enable(struct smbchg_chip *chip, bool enable)
 		return rc;
 	}
 	chip->safety_timer_en = enable;
-	return 0;
-}
-
-enum skip_reason {
-	REASON_OTG_ENABLED	= BIT(0),
-	REASON_FLASH_ENABLED	= BIT(1)
-};
-
-#define OTG_TRIM6               0xF6
-#define TR_ENB_SKIP_BIT         BIT(2)
-
-static int smbchg_otg_pulse_skip_disable(struct smbchg_chip *chip,
-				enum skip_reason reason, bool disable)
-{
-	int rc;
-	bool disabled;
-
-	disabled = !!chip->otg_pulse_skip_dis;
-	SMB_DBG(chip, "%s pulse skip, reason %d\n",
-			disable ? "disabling" : "enabling", reason);
-	if (disable)
-		chip->otg_pulse_skip_dis |= reason;
-	else
-		chip->otg_pulse_skip_dis &= ~reason;
-	if (disabled == !!chip->otg_pulse_skip_dis)
-		return 0;
-	disabled = !!chip->otg_pulse_skip_dis;
-
-	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_TRIM6,
-			TR_ENB_SKIP_BIT, disabled ? TR_ENB_SKIP_BIT : 0);
-	if (rc < 0) {
-		SMB_ERR(chip,
-			"Couldn't %s otg pulse skip rc = %d\n",
-			disabled ? "disable" : "enable", rc);
-		return rc;
-	}
-	SMB_DBG(chip, "%s pulse skip\n", disabled ? "disabled" : "enabled");
 	return 0;
 }
 
@@ -5427,7 +5437,6 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 	power_supply_changed(&chip->batt_psy);
 }
 
-#define OTG_EN		BIT(0)
 static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 {
 	int rc = 0;
@@ -5441,11 +5450,15 @@ static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 	chip->otg_retries = 0;
 	rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
 			OTG_EN, OTG_EN);
-	if (rc < 0)
+	if (rc < 0) {
 		SMB_ERR(chip, "Couldn't enable OTG mode rc=%d\n", rc);
-	else
+		smbchg_otg_pulse_skip_disable(chip, REASON_OTG_ENABLED, false);
+		return rc;
+	} else {
 		chip->otg_enable_time = ktime_get();
-	SMB_DBG(chip, "Enabling OTG Boost\n");
+		chip->otg_enabled = true;
+	}
+	SMB_ERR(chip, "Enabling OTG Boost\n");
 	return rc;
 }
 
@@ -5459,10 +5472,13 @@ static int smbchg_otg_regulator_disable(struct regulator_dev *rdev)
 
 	rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
 			OTG_EN, 0);
-	if (rc < 0)
+	if (rc < 0) {
 		SMB_ERR(chip, "Couldn't disable OTG mode rc=%d\n", rc);
+		return rc;
+	} else
+		chip->otg_enabled = false;
 	smbchg_otg_pulse_skip_disable(chip, REASON_OTG_ENABLED, false);
-	SMB_DBG(chip, "Disabling OTG Boost\n");
+	SMB_ERR(chip, "Disabling OTG Boost\n");
 	return rc;
 }
 
@@ -6864,10 +6880,15 @@ static irqreturn_t otg_oc_handler(int irq, void *_chip)
 	struct smbchg_chip *chip = _chip;
 	s64 elapsed_us = ktime_us_delta(ktime_get(), chip->otg_enable_time);
 
-	SMB_DBG(chip, "triggered\n");
+	SMB_ERR(chip, "triggered\n");
 
 	if (chip->schg_version == QPNP_SCHG_LITE)
 		return IRQ_HANDLED;
+
+	if (!chip->otg_enabled) {
+		SMB_ERR(chip, "OTG OC IRQ fired when OTG Disabled\n");
+		return IRQ_HANDLED;
+	}
 
 	if (elapsed_us > OTG_OC_RETRY_DELAY_US)
 		chip->otg_retries = 0;
@@ -6882,7 +6903,7 @@ static irqreturn_t otg_oc_handler(int irq, void *_chip)
 	 */
 	if (chip->otg_retries < NUM_OTG_RETRIES) {
 		chip->otg_retries += 1;
-		SMB_DBG(chip,
+		SMB_ERR(chip,
 			"Retrying OTG enable. Try #%d, elapsed_us %lld\n",
 						chip->otg_retries, elapsed_us);
 		smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
@@ -11841,6 +11862,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->stepchg_state = STEP_NONE;
 	smbchg_parallel_en = 0; /* Disable Parallel Charging Capabilities */
 	chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NONE;
+	chip->otg_enabled = false;
 	dev_set_drvdata(&spmi->dev, chip);
 
 	spin_lock_init(&chip->sec_access_lock);
