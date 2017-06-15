@@ -306,6 +306,8 @@
 	qcom,thermal-coefficients =  /bits/ 16 <0x2d87 0x9151 0x7d3c>;
 	qcom,irq-volt-empty-mv = <3200>;
 	qcom,fg-cutoff-voltage-mv = <3400>;
+	qcom,fg-force-restart-enable;
+	qcom,cl-vbat-est-thr-uv = <300000>;
 };
 
 &usb_otg {
