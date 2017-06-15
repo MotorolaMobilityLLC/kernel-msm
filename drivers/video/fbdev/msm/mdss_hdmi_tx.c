@@ -23,6 +23,7 @@
 #include <linux/hdcp_qseecom.h>
 #include <linux/msm_mdp.h>
 #include <linux/msm_ext_display.h>
+#include <linux/pm_runtime.h>
 
 #define REG_DUMP 0
 
@@ -3417,6 +3418,7 @@ static void hdmi_tx_hpd_off(struct hdmi_tx_ctrl *hdmi_ctrl)
 	int rc = 0;
 	struct dss_io_data *io = NULL;
 	unsigned long flags;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	if (!hdmi_ctrl) {
 		DEV_ERR("%s: invalid input\n", __func__);
@@ -3461,6 +3463,10 @@ static void hdmi_tx_hpd_off(struct hdmi_tx_ctrl *hdmi_ctrl)
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 	mutex_unlock(&hdmi_ctrl->mutex_hpd);
 #endif
+	rc = pm_runtime_put(&mdata->pdev->dev);
+	if (rc)
+		DEV_ERR("unable to suspend w/pm_runtime_put (%d)\n", rc);
+
 	hdmi_ctrl->hpd_initialized = false;
 	hdmi_ctrl->hpd_off_pending = false;
 
@@ -3472,6 +3478,7 @@ static int hdmi_tx_hpd_on(struct hdmi_tx_ctrl *hdmi_ctrl)
 	u32 reg_val;
 	int rc = 0;
 	struct dss_io_data *io = NULL;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	if (!hdmi_ctrl) {
 		DEV_ERR("%s: invalid input\n", __func__);
@@ -3484,11 +3491,24 @@ static int hdmi_tx_hpd_on(struct hdmi_tx_ctrl *hdmi_ctrl)
 		return -EINVAL;
 	}
 
+	/*
+	* Keep a reference to the runtime pm until the hpd is turned
+	* off.
+	*/
+	rc = pm_runtime_get_sync(&mdata->pdev->dev);
+	if (IS_ERR_VALUE(rc)) {
+		DEV_ERR("unable to resume with pm_runtime_get_sync rc=%d\n",
+			rc);
+		return rc;
+	}
+
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 	mutex_lock(&hdmi_ctrl->mutex_hpd);
 #endif
+
 	if (hdmi_ctrl->hpd_initialized) {
 		DEV_DBG("%s: HPD is already ON\n", __func__);
+		pm_runtime_put(&mdata->pdev->dev);
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 		rc = -EINVAL;
 #endif
@@ -5076,8 +5096,16 @@ static int hdmi_tx_probe(struct platform_device *pdev)
 	struct device_node *of_node = pdev->dev.of_node;
 	struct hdmi_tx_ctrl *hdmi_ctrl = NULL;
 	struct mdss_panel_cfg *pan_cfg = NULL;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+
 	if (!of_node) {
 		DEV_ERR("%s: FAILED: of_node not found\n", __func__);
+		rc = -ENODEV;
+		return rc;
+	}
+
+	if (!mdata) {
+		DEV_ERR("%s: FAILED: mdata not found\n", __func__);
 		rc = -ENODEV;
 		return rc;
 	}
@@ -5203,6 +5231,9 @@ static int hdmi_tx_probe(struct platform_device *pdev)
 			hdmi_ctrl->power_data_enable[i] = true;
 		}
 	}
+
+	pm_runtime_set_suspended(&mdata->pdev->dev);
+	pm_runtime_enable(&mdata->pdev->dev);
 
 	return rc;
 
