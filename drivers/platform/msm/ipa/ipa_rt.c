@@ -903,7 +903,7 @@ static struct ipa_rt_tbl *__ipa_add_rt_tbl(enum ipa_ip_type ip,
 		INIT_LIST_HEAD(&entry->link);
 		strlcpy(entry->name, name, IPA_RESOURCE_NAME_MAX);
 		entry->set = set;
-		entry->cookie = IPA_COOKIE;
+		entry->cookie = IPA_RT_TBL_COOKIE;
 		entry->in_sys = (ip == IPA_IP_v4) ?
 			!ipa_ctx->ip4_rt_tbl_lcl : !ipa_ctx->ip6_rt_tbl_lcl;
 		set->tbl_cnt++;
@@ -916,12 +916,16 @@ static struct ipa_rt_tbl *__ipa_add_rt_tbl(enum ipa_ip_type ip,
 		if (id < 0) {
 			IPAERR("failed to add to tree\n");
 			WARN_ON(1);
+			goto ipa_insert_failed;
 		}
 		entry->id = id;
 	}
 
 	return entry;
 
+ipa_insert_failed:
+	set->tbl_cnt--;
+	list_del(&entry->link);
 fail_rt_idx_alloc:
 	entry->cookie = 0;
 	kmem_cache_free(ipa_ctx->rt_tbl_cache, entry);
@@ -934,7 +938,7 @@ static int __ipa_del_rt_tbl(struct ipa_rt_tbl *entry)
 	enum ipa_ip_type ip = IPA_IP_MAX;
 	u32 id;
 
-	if (entry == NULL || (entry->cookie != IPA_COOKIE)) {
+	if (entry == NULL || (entry->cookie != IPA_RT_TBL_COOKIE)) {
 		IPAERR("bad parms\n");
 		return -EINVAL;
 	}
@@ -948,8 +952,10 @@ static int __ipa_del_rt_tbl(struct ipa_rt_tbl *entry)
 		ip = IPA_IP_v4;
 	else if (entry->set == &ipa_ctx->rt_tbl_set[IPA_IP_v6])
 		ip = IPA_IP_v6;
-	else
+	else {
 		WARN_ON(1);
+		return -EPERM;
+	}
 
 	if (!entry->in_sys) {
 		list_del(&entry->link);
@@ -988,13 +994,14 @@ static int __ipa_add_rt_rule(enum ipa_ip_type ip, const char *name,
 
 	if (rule->hdr_hdl) {
 		hdr = ipa_id_find(rule->hdr_hdl);
-		if ((hdr == NULL) || (hdr->cookie != IPA_COOKIE)) {
+		if ((hdr == NULL) || (hdr->cookie != IPA_HDR_COOKIE)) {
 			IPAERR("rt rule does not point to valid hdr\n");
 			goto error;
 		}
 	} else if (rule->hdr_proc_ctx_hdl) {
 		proc_ctx = ipa_id_find(rule->hdr_proc_ctx_hdl);
-		if ((proc_ctx == NULL) || (proc_ctx->cookie != IPA_COOKIE)) {
+		if ((proc_ctx == NULL) ||
+			(proc_ctx->cookie != IPA_PROC_HDR_COOKIE)) {
 			IPAERR("rt rule does not point to valid proc ctx\n");
 			goto error;
 		}
@@ -1002,7 +1009,7 @@ static int __ipa_add_rt_rule(enum ipa_ip_type ip, const char *name,
 
 
 	tbl = __ipa_add_rt_tbl(ip, name);
-	if (tbl == NULL || (tbl->cookie != IPA_COOKIE)) {
+	if (tbl == NULL || (tbl->cookie != IPA_RT_TBL_COOKIE)) {
 		IPAERR("bad params\n");
 		goto error;
 	}
@@ -1023,7 +1030,7 @@ static int __ipa_add_rt_rule(enum ipa_ip_type ip, const char *name,
 		goto error;
 	}
 	INIT_LIST_HEAD(&entry->link);
-	entry->cookie = IPA_COOKIE;
+	entry->cookie = IPA_RT_RULE_COOKIE;
 	entry->rule = *rule;
 	entry->tbl = tbl;
 	entry->hdr = hdr;
@@ -1113,7 +1120,7 @@ int __ipa_del_rt_rule(u32 rule_hdl)
 		return -EINVAL;
 	}
 
-	if (entry->cookie != IPA_COOKIE) {
+	if (entry->cookie != IPA_RT_RULE_COOKIE) {
 		IPAERR("bad params\n");
 		return -EINVAL;
 	}
@@ -1351,7 +1358,7 @@ int ipa_get_rt_tbl(struct ipa_ioc_get_rt_tbl *lookup)
 	}
 	mutex_lock(&ipa_ctx->lock);
 	entry = __ipa_find_rt_tbl(lookup->ip, lookup->name);
-	if (entry && entry->cookie == IPA_COOKIE) {
+	if (entry && entry->cookie == IPA_RT_TBL_COOKIE) {
 		entry->ref_cnt++;
 		lookup->hdl = entry->id;
 
@@ -1389,7 +1396,7 @@ int ipa_put_rt_tbl(u32 rt_tbl_hdl)
 		goto ret;
 	}
 
-	if ((entry->cookie != IPA_COOKIE) || entry->ref_cnt == 0) {
+	if ((entry->cookie != IPA_RT_TBL_COOKIE) || entry->ref_cnt == 0) {
 		IPAERR("bad parms\n");
 		result = -EINVAL;
 		goto ret;
@@ -1399,8 +1406,11 @@ int ipa_put_rt_tbl(u32 rt_tbl_hdl)
 		ip = IPA_IP_v4;
 	else if (entry->set == &ipa_ctx->rt_tbl_set[IPA_IP_v6])
 		ip = IPA_IP_v6;
-	else
+	else {
 		WARN_ON(1);
+		result = -EINVAL;
+		goto ret;
+	}
 
 	entry->ref_cnt--;
 	if (entry->ref_cnt == 0 && entry->rule_cnt == 0) {
@@ -1428,7 +1438,7 @@ static int __ipa_mdfy_rt_rule(struct ipa_rt_rule_mdfy *rtrule)
 
 	if (rtrule->rule.hdr_hdl) {
 		hdr = ipa_id_find(rtrule->rule.hdr_hdl);
-		if ((hdr == NULL) || (hdr->cookie != IPA_COOKIE)) {
+		if ((hdr == NULL) || (hdr->cookie != IPA_HDR_COOKIE)) {
 			IPAERR("rt rule does not point to valid hdr\n");
 			goto error;
 		}
@@ -1440,7 +1450,7 @@ static int __ipa_mdfy_rt_rule(struct ipa_rt_rule_mdfy *rtrule)
 		goto error;
 	}
 
-	if (entry->cookie != IPA_COOKIE) {
+	if (entry->cookie != IPA_RT_RULE_COOKIE) {
 		IPAERR("bad params\n");
 		goto error;
 	}
