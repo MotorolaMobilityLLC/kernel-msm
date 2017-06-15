@@ -26,6 +26,7 @@
 static uint32_t ospl_tune_index[MAX_TUNE_COUNT] = {0, 1, 2, 3};
 static uint32_t AFE_RX_PORT_ID = AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_RX;
 static uint32_t AFE_TX_PORT_ID = AFE_PORT_ID_SLIMBUS_MULTI_CHAN_1_TX;
+static unsigned long starttime;
 static bool feedback_on_left;
 static bool feedback_on_right;
 static bool ospl_volume_control;
@@ -585,8 +586,9 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 			case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
 				f0 = payload32[4];
 				ref_diff = payload32[5];
-				pr_info("f0 [%d], ref_diff [%d] from qdsp",
-					(int) f0, (int) ref_diff);
+				pr_info("f0 [%d], ref_diff [%d] from qdsp, cost %lu ms",
+					(int) f0, (int) ref_diff,
+					jiffies_to_msecs(jiffies) - starttime);
 				break;
 			case PARAM_ID_OPALUM_TX_F0_CURVE:
 				f0_curve_size = payload32[3];
@@ -696,6 +698,7 @@ static int ospl2xx_rx_run_diagnostic(struct snd_kcontrol *kcontrol,
 
 	ospl2xx_afe_set_single_param(PARAM_ID_OPALUM_RX_RUN_CALIBRATION, 1);
 	pr_info("%s:\n", __func__);
+	starttime = jiffies_to_msecs(jiffies);
 	return 0;
 }
 static int ospl2xx_rx_run_diagnostic_get(struct snd_kcontrol *kcontrol,
