@@ -158,9 +158,8 @@
 	qcom,msm-thermal {
 		qcom,config-info = "nash";
 	};
+	/delete-node/ spi@c175000;
 };
-
-/delete-node/ &spi_1; /* delete spi_1: spi@c175000 node */
 
 &tlmm {
 	/delete-node/ spi_1;  /* delete spi_1 node in tlmm */
