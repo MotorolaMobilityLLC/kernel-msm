@@ -21,8 +21,10 @@ qcom,mdss-dsi-panel-width = <1080>;
 qcom,mdss-dsi-panel-height = <1920>;
 qcom,mdss-pan-physical-width-dimension = <64>;
 qcom,mdss-pan-physical-height-dimension = <115>;
+
+qcom,mdss-dsi-panel-clockrate = <896000000>;
 qcom,mdss-dsi-h-front-porch = <104>;
-qcom,mdss-dsi-h-back-porch = <108>;
+qcom,mdss-dsi-h-back-porch = <100>;
 qcom,mdss-dsi-h-pulse-width = <4>;
 qcom,mdss-dsi-h-sync-skew = <0>;
 qcom,mdss-dsi-v-back-porch = <4>;
