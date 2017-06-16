@@ -471,6 +471,7 @@ struct smb_charger {
 	bool			reverse_boost;
 	bool			hvdcp_force_5v;
 	bool			suspended;
+	int			typec_mode;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);

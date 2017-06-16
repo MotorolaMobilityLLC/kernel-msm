@@ -3991,6 +3991,15 @@ static void smblib_handle_typec_debounce_done(struct smb_charger *chg,
 	if (rc < 0)
 		smblib_err(chg, "Couldn't get prop typec mode rc=%d\n", rc);
 
+	if ((pval.intval == POWER_SUPPLY_TYPEC_SOURCE_MEDIUM) &&
+	    (chg->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH)) {
+		vote(chg->usb_icl_votable, HEARTBEAT_VOTER, true, 1500000);
+		vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
+		cancel_delayed_work(&chg->mmi.heartbeat_work);
+		schedule_delayed_work(&chg->mmi.heartbeat_work,
+				      msecs_to_jiffies(0));
+	}
+	chg->typec_mode = pval.intval;
 	/*
 	 * HW BUG - after cable is removed, medium or high rd reading
 	 * falls to std. Use it for signal of typec cc detachment in
