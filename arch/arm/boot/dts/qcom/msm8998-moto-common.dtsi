@@ -24,9 +24,7 @@
 
 / {
 	aliases {
-		uart6 = &blsp2_uart3_hs;
 		i2c1 = &mods_i2c;
-		uart0 = &blsp1_uart3_hs;
 	};
 
 	chosen {
@@ -799,8 +797,10 @@
 	/delete-property/ linux,default-trigger;
 };
 
-/delete-node/ &green_led;
-/delete-node/ &blue_led;
+&spmi_bus {
+	/delete-node/ green_led;
+	/delete-node/ blue_led;
+};
 
 &pm8998_l22 {
 	regulator-always-on;
