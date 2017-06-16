@@ -4529,7 +4529,8 @@ static void smblib_handle_rp_change(struct smb_charger *chg, int typec_mode)
 
 static void smblib_handle_typec_cc_state_change(struct smb_charger *chg)
 {
-	int typec_mode;
+	int typec_mode, icl_vote_ma;
+	bool typec_chg = false;
 
 	if (chg->pr_swap_in_progress)
 		return;
@@ -4550,8 +4551,22 @@ static void smblib_handle_typec_cc_state_change(struct smb_charger *chg)
 		chg->typec_present = false;
 		smblib_dbg(chg, PR_MISC, "TypeC removal\n");
 		smblib_handle_typec_removal(chg);
+	} else if (typec_chg) {
+		icl_vote_ma = get_client_vote(chg->usb_icl_votable,
+					      HEARTBEAT_VOTER) / 1000;
+		if ((typec_mode == POWER_SUPPLY_TYPEC_SOURCE_MEDIUM) &&
+		    (icl_vote_ma > 1500))
+			vote(chg->usb_icl_votable, HEARTBEAT_VOTER,
+			     true, 1500000);
+		else if ((typec_mode ==  POWER_SUPPLY_TYPEC_SOURCE_DEFAULT) &&
+			 (icl_vote_ma > 500))
+			vote(chg->usb_icl_votable, HEARTBEAT_VOTER,
+			     true, 500000);
+		vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
+		cancel_delayed_work(&chg->mmi.heartbeat_work);
+		schedule_delayed_work(&chg->mmi.heartbeat_work,
+				      msecs_to_jiffies(0));
 	}
-
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: cc-state-change; Type-C %s detected\n",
 				smblib_typec_mode_name[chg->typec_mode]);
 }
