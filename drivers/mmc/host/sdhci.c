@@ -2431,10 +2431,8 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		 * occurred while executing tuning
 		 */
 		mmc_retune_disable(mmc);
-		mmc->doing_host_tuning = 0x01;
 		err = host->ops->platform_execute_tuning(host, opcode);
 		mmc_retune_enable(mmc);
-		mmc->doing_host_tuning = 0x00;
 		sdhci_runtime_pm_put(host);
 		return err;
 	}
