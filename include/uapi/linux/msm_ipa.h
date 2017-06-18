@@ -65,7 +65,8 @@
 #define IPA_IOCTL_ADD_HDR_PROC_CTX 40
 #define IPA_IOCTL_DEL_HDR_PROC_CTX 41
 #define IPA_IOCTL_MDFY_RT_RULE 42
-#define IPA_IOCTL_MAX 43
+#define IPA_IOCTL_NAT_MODIFY_PDN 43
+#define IPA_IOCTL_MAX 44
 
 /**
  * max size of the header to be inserted
@@ -117,6 +118,11 @@
 #define IPA_FLT_MAC_SRC_ADDR_802_3	(1ul << 19)
 #define IPA_FLT_MAC_DST_ADDR_802_3	(1ul << 20)
 #define IPA_FLT_MAC_ETHER_TYPE		(1ul << 21)
+
+/**
+ * maximal number of NAT PDNs in the PDN config table
+ */
+#define IPA_MAX_PDN_NUM 5
 
 /**
  * enum ipa_client_type - names for the various IPA "clients"
@@ -401,6 +407,7 @@ enum ipa_rm_resource_name {
  * @IPA_HW_v2_5: IPA hardware version 2.5
  * @IPA_HW_v2_6: IPA hardware version 2.6
  * @IPA_HW_v2_6L: IPA hardware version 2.6L
+ * @IPA_HW_v4_0: IPA hardware version 4.0
  */
 enum ipa_hw_type {
 	IPA_HW_None = 0,
@@ -411,8 +418,11 @@ enum ipa_hw_type {
 	IPA_HW_v2_5 = 5,
 	IPA_HW_v2_6 = IPA_HW_v2_5,
 	IPA_HW_v2_6L = 6,
-	IPA_HW_MAX
+	IPA_HW_v4_0 = 11,
 };
+#define IPA_HW_MAX (IPA_HW_v4_0 + 1)
+
+#define IPA_HW_v4_0 IPA_HW_v4_0
 
 /**
  * struct ipa_rule_attrib - attributes of a routing/filtering
@@ -605,6 +615,11 @@ struct ipa_ipfltri_rule_eq {
  * @rt_tbl_idx: index of RT table referred to by filter rule (valid when
  * eq_attrib_type is true and non-exception action)
  * @eq_attrib_type: true if equation level form used to specify attributes
+ * @set_metadata: bool switch. should metadata replacement at the NAT block
+ *  take place?
+ * @pdn_idx: if action is "pass to source\destination NAT" then a comparison
+ * against the PDN index in the matching PDN entry will take place as an
+ * additional condition for NAT hit.
  */
 struct ipa_flt_rule {
 	uint8_t retain_hdr;
@@ -615,6 +630,8 @@ struct ipa_flt_rule {
 	struct ipa_ipfltri_rule_eq eq_attrib;
 	uint32_t rt_tbl_idx;
 	uint8_t eq_attrib_type;
+	uint8_t set_metadata;
+	uint8_t pdn_idx;
 };
 
 /**
@@ -1235,6 +1252,19 @@ struct ipa_ioc_nat_dma_cmd {
 };
 
 /**
+* struct ipa_ioc_nat_pdn_entry - PDN entry modification data
+* @pdn_index: index of the entry in the PDN config table to be changed
+* @public_ip: PDN's public ip
+* @src_metadata: PDN's source NAT metadata for metadata replacement
+* @dst_metadata: PDN's destination NAT metadata for metadata replacement
+*/
+struct ipa_ioc_nat_pdn_entry {
+	uint8_t pdn_index;
+	uint32_t public_ip;
+	uint32_t src_metadata;
+	uint32_t dst_metadata;
+};
+/**
  * struct ipa_msg_meta - Format of the message meta-data.
  * @msg_type: the type of the message
  * @rsvd: reserved bits for future use.
@@ -1447,6 +1477,9 @@ enum ipacm_client_enum {
 #define IPA_IOC_GET_NAT_OFFSET _IOWR(IPA_IOC_MAGIC, \
 				IPA_IOCTL_GET_NAT_OFFSET, \
 				uint32_t *)
+#define IPA_IOC_NAT_MODIFY_PDN _IOWR(IPA_IOC_MAGIC, \
+				IPA_IOCTL_NAT_MODIFY_PDN, \
+				struct ipa_ioc_nat_pdn_entry *)
 #define IPA_IOC_SET_FLT _IOW(IPA_IOC_MAGIC, \
 			IPA_IOCTL_SET_FLT, \
 			uint32_t)
