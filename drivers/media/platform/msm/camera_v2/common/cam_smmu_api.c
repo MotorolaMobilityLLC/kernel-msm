@@ -891,6 +891,13 @@ static int cam_smmu_detach_device(int idx)
 {
 	struct cam_context_bank_info *cb = &iommu_cb_set.cb_info[idx];
 
+	if (!list_empty_careful(&iommu_cb_set.cb_info[idx].smmu_buf_list)) {
+		pr_err("Client %s buffer list is not clean!\n",
+			iommu_cb_set.cb_info[idx].name);
+		cam_smmu_print_list(idx);
+		cam_smmu_clean_buffer_list(idx);
+	}
+
 	/* detach the mapping to device */
 	arm_iommu_detach_device(cb->dev);
 	iommu_cb_set.cb_info[idx].state = CAM_SMMU_DETACH;
@@ -1352,11 +1359,12 @@ int cam_smmu_set_attr(int handle, uint32_t flags, int32_t *data)
 		/* set attributes */
 		ret = iommu_domain_set_attr(domain, cb->attr, (void *)data);
 		if (ret < 0) {
+			mutex_unlock(&iommu_cb_set.cb_info[idx].lock);
 			pr_err("Error: set attr\n");
 			return -ENODEV;
 		}
 	} else {
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 	mutex_unlock(&iommu_cb_set.cb_info[idx].lock);
 	return ret;

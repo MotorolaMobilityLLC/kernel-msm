@@ -403,6 +403,30 @@ static uint32_t diag_translate_kernel_to_user_mask(uint32_t peripheral_mask)
 		ret |= DIAG_CON_UPD_SENSORS;
 	return ret;
 }
+
+uint8_t diag_mask_to_pd_value(uint32_t peripheral_mask)
+{
+	uint8_t upd = 0;
+	uint32_t pd_mask = 0;
+
+	pd_mask = diag_translate_kernel_to_user_mask(peripheral_mask);
+	switch (pd_mask) {
+	case DIAG_CON_UPD_WLAN:
+		upd = UPD_WLAN;
+		break;
+	case DIAG_CON_UPD_AUDIO:
+		upd = UPD_AUDIO;
+		break;
+	case DIAG_CON_UPD_SENSORS:
+		upd = UPD_SENSORS;
+		break;
+	default:
+		DIAG_LOG(DIAG_DEBUG_MASKS,
+		"asking for mask update with no pd mask set\n");
+	}
+	return upd;
+}
+
 int diag_mask_param(void)
 {
 	return diag_mask_clear_param;
@@ -3597,7 +3621,6 @@ static int __init diagchar_init(void)
 	mutex_init(&driver->msg_mask_lock);
 	for (i = 0; i < NUM_PERIPHERALS; i++)
 		mutex_init(&driver->diagfwd_channel_mutex[i]);
-	mutex_init(&driver->diagfwd_untag_mutex);
 	init_waitqueue_head(&driver->wait_q);
 	INIT_WORK(&(driver->diag_drain_work), diag_drain_work_fn);
 	INIT_WORK(&(driver->update_user_clients),

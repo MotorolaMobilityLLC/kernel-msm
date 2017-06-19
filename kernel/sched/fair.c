@@ -3240,7 +3240,8 @@ retry:
 			sbc_flag |= SBC_FLAG_IDLE_LEAST_LOADED;
 		}
 	} else if (stats.best_cpu >= 0) {
-		if (stats.best_cpu != task_cpu(p) &&
+		if (stats.best_sibling_cpu >= 0 &&
+				stats.best_cpu != task_cpu(p) &&
 				stats.min_cost == stats.best_sibling_cpu_cost) {
 			stats.best_cpu = stats.best_sibling_cpu;
 			sbc_flag |= SBC_FLAG_BEST_SIBLING;
@@ -8382,7 +8383,8 @@ static void update_cpu_capacity(struct sched_domain *sd, int cpu)
 		mcc->cpu = cpu;
 #ifdef CONFIG_SCHED_DEBUG
 		raw_spin_unlock_irqrestore(&mcc->lock, flags);
-		pr_info("CPU%d: update max cpu_capacity %lu\n", cpu, capacity);
+		printk_deferred(KERN_INFO "CPU%d: update max cpu_capacity %lu\n",
+				cpu, capacity);
 		goto skip_unlock;
 #endif
 	}
