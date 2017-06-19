@@ -336,6 +336,7 @@
 };
 
 &pm660l_wled {
+	qcom,ovp-mv = <18100>;
 	qcom,led-strings-list = [00 01 02];
 	qcom,en-cabc;
 };
