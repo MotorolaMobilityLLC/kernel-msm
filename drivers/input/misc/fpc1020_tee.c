@@ -11,7 +11,6 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
-#include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -22,12 +21,6 @@
 #include <linux/platform_device.h>
 #include <linux/wakelock.h>
 #include <linux/notifier.h>
-
-#define FPC_DOWN_EVENT_ID 48
-#define FPC_UP_EVENT_ID   49
-
-#define KEY_FPS_DOWN 614
-#define KEY_FPS_UP   615
 
 struct FPS_data {
 	unsigned int enabled;
@@ -122,7 +115,6 @@ struct fpc1020_data {
 	struct platform_device *pdev;
 	struct wake_lock wlock;
 	struct notifier_block nb;
-	struct input_dev *input;
 	int irq_gpio;
 	int irq_num;
 	unsigned int irq_cnt;
@@ -162,41 +154,10 @@ static ssize_t irq_cnt_get(struct device *device,
 }
 static DEVICE_ATTR(irq_cnt, S_IRUSR, irq_cnt_get, NULL);
 
-static ssize_t nav_set(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct  fpc1020_data *fpc1020 = dev_get_drvdata(dev);
-
-	if (fpc1020->input == NULL)
-		return 1;
-
-	/* Based on the input value generate the approrate key events */
-	switch (*buf) {
-	case FPC_DOWN_EVENT_ID:
-		input_report_key(fpc1020->input,
-				 KEY_FPS_DOWN, 1);
-		input_report_key(fpc1020->input,
-				 KEY_FPS_DOWN, 0);
-		break;
-	case FPC_UP_EVENT_ID:
-		input_report_key(fpc1020->input,
-				 KEY_FPS_UP, 1);
-		input_report_key(fpc1020->input,
-				 KEY_FPS_UP, 0);
-		break;
-	default:
-		break;
-	}
-	input_sync(fpc1020->input);
-	return 1;
-}
-static DEVICE_ATTR(nav, S_IWUSR | S_IWGRP, NULL, nav_set);
-
 static struct attribute *attributes[] = {
 	&dev_attr_dev_enable.attr,
 	&dev_attr_irq.attr,
 	&dev_attr_irq_cnt.attr,
-	&dev_attr_nav.attr,
 	NULL
 };
 
@@ -229,26 +190,6 @@ static int fpc1020_request_named_gpio(struct fpc1020_data *fpc1020,
 		return rc;
 	}
 	dev_dbg(dev, "%s %d\n", label, *gpio);
-	return 0;
-}
-
-static int fpc1020_input_dev_init(struct fpc1020_data *fpc1020)
-{
-	fpc1020->input = input_allocate_device();
-	if (!(fpc1020->input)) {
-		dev_err(fpc1020->dev, "ERROR creating input device\n");
-		goto exit;
-	}
-	fpc1020->input->name = "fpc1020";
-	set_bit(EV_KEY, fpc1020->input->evbit);
-	input_set_capability(fpc1020->input, EV_KEY, KEY_WAKEUP);
-	input_set_capability(fpc1020->input, EV_KEY, KEY_FPS_DOWN);
-	input_set_capability(fpc1020->input, EV_KEY, KEY_FPS_UP);
-	if (input_register_device(fpc1020->input)) {
-		dev_err(fpc1020->dev, "ERROR couldn't register input device\n");
-		fpc1020->input = NULL;
-	}
-exit:
 	return 0;
 }
 
@@ -308,9 +249,6 @@ static int fpc1020_probe(struct platform_device *pdev)
 		goto exit;
 	}
 
-	fpc1020_input_dev_init(fpc1020);
-
-
 	dev_info(dev, "%s: ok\n", __func__);
 exit:
 	return rc;
@@ -319,9 +257,6 @@ exit:
 static int fpc1020_remove(struct platform_device *pdev)
 {
 	struct  fpc1020_data *fpc1020 = dev_get_drvdata(&pdev->dev);
-
-	if (fpc1020->input != NULL)
-		input_free_device(fpc1020->input);
 
 	sysfs_remove_group(&pdev->dev.kobj, &attribute_group);
 
