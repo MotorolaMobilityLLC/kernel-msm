@@ -1123,6 +1123,7 @@ static int __maybe_unused mdss_fb_set_param(struct device *dev,
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
 	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	struct mdss_panel_data *pdata = dev_get_platdata(&mfd->pdev->dev);
 	struct panel_param *param;
 	const char *val_name;
 	int ret = -EINVAL;
@@ -1149,9 +1150,15 @@ static int __maybe_unused mdss_fb_set_param(struct device *dev,
 		goto unlock;
 
 	if (id == PARAM_HBM_ID) {
-		if (mdss_fb_is_power_on(mfd) && !mfd->panel_info->hbm_restore)
+		mutex_lock(&mfd->bl_lock);
+		if (mdss_fb_is_power_on(mfd) && !mfd->panel_info->hbm_restore) {
 			ret = mdss_fb_set_hw_param(mfd, id, value);
+			if (pdata && pdata->set_backlight)
+				pdata->set_backlight(pdata,
+					HBM_BRIGHTNESS(value));
+		}
 		param->value = value;
+		mutex_unlock(&mfd->bl_lock);
 		goto unlock;
 	}
 
@@ -1183,16 +1190,21 @@ static void mdss_fb_restore_param_hbm(struct msm_fb_data_type *mfd)
 {
 	struct mdss_panel_info *pinfo = mfd->panel_info;
 	struct panel_param *param;
+	struct mdss_panel_data *pdata = dev_get_platdata(&mfd->pdev->dev);
 
 	param = pinfo->param[PARAM_HBM_ID];
 	if (!param || !pinfo->hbm_restore)
 		return;
 
 	mutex_lock(&mfd->param_lock);
+	mutex_lock(&mfd->bl_lock);
 
 	pinfo->hbm_restore = false;
 	mdss_fb_set_hw_param(mfd, PARAM_HBM_ID, param->value);
+	if (pdata && pdata->set_backlight)
+		pdata->set_backlight(pdata, HBM_BRIGHTNESS(param->value));
 
+	mutex_unlock(&mfd->bl_lock);
 	mutex_unlock(&mfd->param_lock);
 }
 
