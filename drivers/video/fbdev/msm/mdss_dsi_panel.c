@@ -294,6 +294,40 @@ static int mdss_dsi_panel_set_param(struct mdss_panel_data *pdata,
 	return 0;
 }
 
+static bool mdss_dsi_panel_hbm_bl_ctrl(struct mdss_panel_data *pdata,
+							u32 *level)
+{
+	u32 bl_level;
+
+	if (pdata == NULL || level == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return false;
+	}
+
+	if (!mdss_panel_param_is_supported(&pdata->panel_info, PARAM_HBM_ID))
+		return false;
+
+	bl_level = *level;
+	if (bl_level == BRIGHTNESS_HBM_ON || bl_level == BRIGHTNESS_HBM_OFF) {
+		if (pdata->panel_info.hbm_type == HBM_TYPE_OLED)
+			return true;
+		*level = bl_level == BRIGHTNESS_HBM_ON ?
+			pdata->panel_info.bl_max : pdata->panel_info.bl_hbm_off;
+		return false;
+	}
+
+	if (pdata->panel_info.hbm_type != HBM_TYPE_OLED) {
+		pdata->panel_info.bl_hbm_off = bl_level;
+		if (mdss_panel_param_is_hbm_on(&pdata->panel_info)) {
+			pr_debug("%s: Ignore setting brightness %d in LCD HBM mode\n",
+				__func__, bl_level);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
@@ -1004,6 +1038,9 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+	if (mdss_dsi_panel_hbm_bl_ctrl(pdata, &bl_level))
+		return;
+
 	/*
 	 * Some backlight controllers specify a minimum duty cycle
 	 * for the backlight brightness. If the brightness is less
@@ -1515,12 +1552,29 @@ static int mdss_panel_parse_param_prop(struct device_node *np,
 	struct panel_param *param;
 	struct dsi_panel_cmds *cmds;
 	char *prop;
+	const char *data;
 	char link[64];
 
 	pinfo->hbm_restore = false;
 
 	for (i = 0; i < ARRAY_SIZE(mdss_dsi_panel_param); i++) {
 		param = &mdss_dsi_panel_param[i];
+
+		if (i == PARAM_HBM_ID) {
+			pinfo->bl_hbm_off = pinfo->bl_max;
+			data = of_get_property(np,
+				"qcom,mdss-dsi-hbm-type", NULL);
+
+			if (data && !strcmp(data, "lcd-dcs-wled"))
+				pinfo->hbm_type = HBM_TYPE_LCD_DCS_WLED;
+			else if (data && !strcmp(data, "lcd-dcs-only"))
+				pinfo->hbm_type = HBM_TYPE_LCD_DCS_ONLY;
+			else if (data && !strcmp(data, "lcd-wled-only"))
+				pinfo->hbm_type = HBM_TYPE_LCD_WLED_ONLY;
+			else
+				pinfo->hbm_type = HBM_TYPE_OLED;
+		}
+
 		cmds = kcalloc(param->val_max, sizeof(struct dsi_panel_cmds),
 				GFP_KERNEL);
 		if (cmds == NULL) {
@@ -1562,6 +1616,9 @@ static int mdss_panel_parse_param_prop(struct device_node *np,
 		pinfo->param[i] = param;
 		pr_info("%s: %s feature enabled with %d dt cmds\n",
 				__func__, param->param_name, cmd_num);
+		if (i == PARAM_HBM_ID)
+			pr_info("%s: HBM type = %d\n",
+				__func__, pinfo->hbm_type);
 	}
 
 	return rc;
