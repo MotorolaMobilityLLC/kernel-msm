@@ -565,7 +565,6 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 		    payload32[1] == AFE_CUSTOM_OPALUM_TX_MODULE) {
 			switch (payload32[2]) {
 			case PARAM_ID_OPALUM_RX_ENABLE:
-			case PARAM_ID_OPALUM_RX_EXC_MODEL:
 			case PARAM_ID_OPLAUM_RX_TEMPERATURE:
 			case PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET:
 			case PARAM_ID_OPALUM_RX_VOLUME_CONTROL:
@@ -582,6 +581,11 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 					(int) afe_cb_payload32_data[0]);
 				pr_debug("afe_cb_payload32_data[1] = %d\n",
 					(int) afe_cb_payload32_data[1]);
+				break;
+			case PARAM_ID_OPALUM_RX_EXC_MODEL:
+				afe_cb_payload32_data[0] = payload32[4];
+				pr_info("excursion model %d in use\n",
+					(int) afe_cb_payload32_data[0]);
 				break;
 			case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
 				f0 = payload32[4];
@@ -816,7 +820,14 @@ static int ospl2xx_rx_get_exc_model(struct snd_kcontrol *kcontrol,
 static int ospl2xx_rx_put_exc_model(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	/* not implemented yet */
+	int32_t excursion_model = ucontrol->value.integer.value[0];
+
+	if (excursion_model < 6000)
+		return -ERANGE;
+
+	ospl2xx_afe_set_single_param(
+		PARAM_ID_OPALUM_RX_EXC_MODEL, excursion_model);
+
 	return 0;
 }
 
@@ -836,7 +847,14 @@ static int ospl2xx_rx_get_temperature(struct snd_kcontrol *kcontrol,
 static int ospl2xx_rx_put_temperature(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
-	/* not implemented yet */
+	int32_t temperature = ucontrol->value.integer.value[0];
+
+	if (temperature <= 0)
+		return -ERANGE;
+
+	ospl2xx_afe_set_single_param(
+		PARAM_ID_OPLAUM_RX_TEMPERATURE, temperature);
+
 	return 0;
 }
 
