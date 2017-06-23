@@ -41,7 +41,7 @@ qcom,mdss-dsi-on-command = [
 	39 01 00 00 00 00 02 51 CC
 	39 01 00 00 00 00 02 53 2C
 	39 01 00 00 00 00 02 55 01
-	05 01 00 00 82 00 02 11 00
+	05 01 00 00 64 00 02 11 00
 	29 01 00 00 00 00 02 B0 00
 	29 01 00 00 00 00 02 D6 01
 	29 01 00 00 00 00 2e C1 80 08 01 FF AB 2B A3 39 4F 29 C5 9A 53 EA 7F A5
@@ -103,11 +103,10 @@ qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-qcom,mdss-dsi-reset-sequence = <1 20>;
+qcom,mdss-dsi-reset-sequence = <1 5>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-lp11-reset-lcdb;
 qcom,mdss-dsi-tx-eot-append;
-qcom,mdss-dsi-init-delay-us = <50000>;
 qcom,mdss-dsi-no-panel-on-read-support;
 qcom,mdss-dsi-bl-shutdown-dcs;
 
@@ -129,6 +128,7 @@ qcom,panel-supply-entries {
 		qcom,supply-max-voltage = <1950000>;
 		qcom,supply-enable-load = <32000>;
 		qcom,supply-disable-load = <80>;
+		qcom,supply-post-on-sleep = <10>;
 		qcom,supply-pre-off-sleep = <15>;
 	};
 
