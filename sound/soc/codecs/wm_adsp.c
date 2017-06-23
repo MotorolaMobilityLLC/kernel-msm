@@ -3236,6 +3236,8 @@ int wm_adsp_compr_trigger(struct snd_compr_stream *stream, int cmd)
 			break;
 		}
 
+		compr->buf->avail = 0;
+
 		/* Trigger the IRQ at one fragment of data */
 		ret = wm_adsp_buffer_write(compr->buf,
 					   HOST_BUFFER_FIELD(high_water_mark),
