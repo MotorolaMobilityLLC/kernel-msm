@@ -36,6 +36,8 @@
 #include "mdss_dropbox.h"
 #include "mdss_debug.h"
 
+#include <linux/display_state.h>
+
 #define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
 #define MDSS_PANEL_UNKNOWN_NAME "unknown"
 #define DT_CMD_HDR 6
@@ -46,6 +48,12 @@
 #define VSYNC_DELAY msecs_to_jiffies(17)
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
+
+bool display_on = true;
+bool is_display_on()
+{
+	return display_on;
+}
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
@@ -1077,6 +1085,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
+	display_on = true;
+
 	pinfo = &pdata->panel_info;
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
@@ -1206,6 +1216,15 @@ static int mdss_dsi_post_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	mdss_dsi_post_panel_on_hdmi(pinfo);
+
+	if (pinfo->is_dba_panel) {
+		/* ensure at least 1 frame transfers to down stream device */
+		vsync_period = (MSEC_PER_SEC / pinfo->mipi.frame_rate) + 1;
+		msleep(vsync_period);
+		mdss_dba_utils_hdcp_enable(pinfo->dba_data, true);
+	}
+
+	display_on = false;
 
 end:
 	pr_debug("%s:-\n", __func__);
