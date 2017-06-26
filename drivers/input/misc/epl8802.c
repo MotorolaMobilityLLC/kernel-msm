@@ -852,7 +852,7 @@ static int epl_run_ps_calibration(struct epl_sensor_priv *epl_data)
 	if (ch1 > PS_MAX_XTALK) {
 		LOG_ERR("[%s]:Failed: ch1 > max_xtalk(%d) \r\n", __func__, ch1);
 		return -EINVAL;
-	} else if (ch1 < 0) {
+	} else if (ch1 == 0) {
 		LOG_ERR("[%s]:Failed: ch1 = 0\r\n", __func__);
 		return -EINVAL;
 	}
@@ -1395,14 +1395,15 @@ static void epl_sensor_do_ps_auto_k_one(bool ps_far_k_flag)
 		epl_sensor_read_ps(epld->client);
 #endif
 		if (epl_sensor.ps.data.data < epld->dt_ps_max_ct &&
-				(epl_sensor.ps.saturation == 0)
-				&& (epl_sensor.ps.data.ir_data < PS_MAX_IR)) {
+				epl_sensor.ps.data.data != 0 &&
+				(epl_sensor.ps.saturation == 0) &&
+				(epl_sensor.ps.data.ir_data < PS_MAX_IR)) {
 			LOG_INFO("[%s]: epl_sensor.ps.data.data=%d \r\n", __func__, epl_sensor.ps.data.data);
 			if (enable_ps_flag == true) {
 				if (low_cross_talk < epl_sensor.ps.data.data)
 					epl_sensor.ps.data.data =
 						low_cross_talk;
-				else
+				else if (epl_sensor.ps.data.data > 50)
 					low_cross_talk =
 						epl_sensor.ps.data.data;
 			}
