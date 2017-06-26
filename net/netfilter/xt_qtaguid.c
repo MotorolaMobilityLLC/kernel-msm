@@ -37,6 +37,9 @@
 #include "xt_qtaguid_internal.h"
 #include "xt_qtaguid_print.h"
 #include "../../fs/proc/internal.h"
+#if defined(CONFIG_NETFILTER_XT_MATCH_QTAGUID_EXT)
+#include "xt_qtaguid_ext.h"
+#endif
 
 /*
  * We only use the xt_socket funcs within a similar context to avoid unexpected
@@ -1645,6 +1648,9 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	kuid_t sock_uid;
 	bool res;
 	bool set_sk_callback_lock = false;
+#ifdef CONFIG_NETFILTER_XT_MATCH_QTAGUID_EXT
+	uid_t uid = 0;
+#endif
 	/*
 	 * TODO: unhack how to force just accounting.
 	 * For now we only do tag stats when the uid-owner is not requested
@@ -1714,7 +1720,12 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		 * against the system.
 		 */
 		if (do_tag_stat)
+#ifdef CONFIG_NETFILTER_XT_MATCH_QTAGUID_EXT
+			uid = recent_owner_lookup(skb, par);
+			account_for_uid(skb, sk, uid, par);
+#else
 			account_for_uid(skb, sk, 0, par);
+#endif
 		MT_DEBUG("qtaguid[%d]: leaving (sk=NULL)\n", par->hooknum);
 		res = (info->match ^ info->invert) == 0;
 		atomic64_inc(&qtu_events.match_no_sk);
@@ -1724,10 +1735,16 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		goto put_sock_ret_res;
 	}
 	sock_uid = sk->sk_uid;
-	if (do_tag_stat)
+	if (do_tag_stat) {
+#ifdef CONFIG_NETFILTER_XT_MATCH_QTAGUID_EXT
+		uid = from_kuid(&init_user_ns, sock_uid);
+		recent_owner_update(skb, par, uid);
+		account_for_uid(skb, sk, uid, par);
+#else
 		account_for_uid(skb, sk, from_kuid(&init_user_ns, sock_uid),
 				par);
-
+#endif
+	}
 	/*
 	 * The following two tests fail the match when:
 	 *    id not in range AND no inverted condition requested
@@ -2996,7 +3013,11 @@ static int __init qtaguid_mt_init(void)
 	    || xt_register_match(&qtaguid_mt_reg)
 	    || misc_register(&qtu_device))
 		return -1;
+#ifdef CONFIG_NETFILTER_XT_MATCH_QTAGUID_EXT
+	return recent_owner_init();
+#else
 	return 0;
+#endif
 }
 
 /*
