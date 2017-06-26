@@ -1758,7 +1758,7 @@ static void epl_sensor_eint_work(struct work_struct *work)
 			}
 		}
 		if (enable_ps) {
-			wake_lock_timeout(&ps_lock, 2*HZ);
+			wake_lock_timeout(&ps_lock, msecs_to_jiffies(100));
 			epl_sensor_report_ps_status();
 		}
 		/* PS unlock interrupt pin and restart chip */
