@@ -1,0 +1,73 @@
+
+qcom,hx40scud_3000mah {
+	serialnum = "SNN5994";
+	qcom, = <24>;
+	/* #2950207_Lenovo_HX40scud_3000mAh_averaged_MasterSlave_Jun2nd2017*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,fastchg-current-ma = <3000>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,batt-id-kohm = <237>;
+	qcom,battery-beta = <3435>;
+	qcom,battery-type = "2950207_lenovo_hx40scud_3000mah_averaged_masterslave_jun2nd2017";
+	qcom,checksum = <0x7DFA>;
+	qcom,gui-version = "PM660GUI - 0.0.0.43";
+	qcom,fg-profile-data = [
+		 66 1F CC 05
+		 45 0A 23 FD
+		 7C 1D 33 07
+		 69 12 F0 1D
+		 50 19 30 22
+		 E8 3C F3 4A
+		 52 00 00 00
+		 14 00 00 00
+		 00 00 50 C5
+		 92 C5 90 B2
+		 1D 00 08 00
+		 33 DA 94 E4
+		 FD 06 82 EA
+		 CA DD 53 03
+		 56 1C 86 22
+		 09 06 09 20
+		 27 00 14 00
+		 8A 1F DB 05
+		 29 0A BA 06
+		 4F 1D 56 F2
+		 DE 03 9F 15
+		 2B 19 D9 22
+		 85 45 ED 52
+		 53 00 00 00
+		 0E 00 00 00
+		 00 00 AF CD
+		 9D BA B9 C5
+		 19 00 00 00
+		 E1 EA 94 E4
+		 71 F4 1C EA
+		 59 EB 52 03
+		 F5 12 7A 23
+		 CF 33 CC FF
+		 07 10 00 00
+		 00 0C 66 46
+		 19 00 40 00
+		 3C 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};
