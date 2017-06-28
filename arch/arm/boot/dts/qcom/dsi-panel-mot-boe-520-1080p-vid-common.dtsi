@@ -56,7 +56,7 @@ qcom,mdss-dsi-on-command = [
 	05 01 00 00 0A 00 02 29 00];	/* display on */
 
 qcom,mdss-dsi-off-command = [
-	05 01 00 00 14 00 01 28		/* display_off */
+	05 01 00 00 23 00 01 28		/* display_off */
 	29 01 00 00 00 00 02 B0 00
 	29 01 00 00 00 00 2e C1 80 08 01 FF 2B A5 94 52 4A 29 A5 94 52 EA 7F A5
 		94 52 4A 29 A5 94 52 4A FD 0F 00 00 00 00 00 00 00 00 40 00 22
@@ -64,7 +64,7 @@ qcom,mdss-dsi-off-command = [
 	29 01 00 00 00 00 12 CB FC FF F9 FF 03 00 78 E0 01 00 FC FF F9 FF 03
 		00 40
 	29 01 00 00 14 00 02 B0 03
-	05 01 00 00 14 00 01 10];	/* enter sleep mode */
+	05 01 00 00 78 00 01 10];	/* enter sleep mode */
 
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
@@ -103,7 +103,7 @@ qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-qcom,mdss-dsi-reset-sequence = <1 5>;
+qcom,mdss-dsi-reset-sequence = <1 0>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-lp11-reset-lcdb;
 qcom,mdss-dsi-tx-eot-append;
@@ -129,7 +129,7 @@ qcom,panel-supply-entries {
 		qcom,supply-enable-load = <32000>;
 		qcom,supply-disable-load = <80>;
 		qcom,supply-post-on-sleep = <10>;
-		qcom,supply-pre-off-sleep = <15>;
+		qcom,supply-pre-off-sleep = <25>;
 	};
 
 	qcom,panel-supply-entry@1 {
