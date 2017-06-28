@@ -9,7 +9,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-
 #include <linux/input.h>
 #include <linux/of_gpio.h>
 #include <linux/mfd/msm-cdc-pinctrl.h>
@@ -426,6 +425,7 @@ static int proxy_rx_ch_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
+#ifdef CONFIG_SND_SOC_QCOM_TDM
 static int tdm_get_sample_rate(int value)
 {
 	int sample_rate = 0;
@@ -697,6 +697,7 @@ static int tdm_get_format_val(int format)
 	}
 	return value;
 }
+#endif
 
 static int mi2s_get_format(int value)
 {
@@ -746,6 +747,7 @@ static int mi2s_get_format_value(int format)
 	return value;
 }
 
+#ifdef CONFIG_SND_SOC_QCOM_TDM
 static int tdm_rx_format_get(struct snd_kcontrol *kcontrol,
 			     struct snd_ctl_elem_value *ucontrol)
 {
@@ -906,6 +908,7 @@ static int tdm_tx_ch_put(struct snd_kcontrol *kcontrol,
 	}
 	return ret;
 }
+#endif
 
 static int aux_pcm_get_sample_rate(int value)
 {
@@ -1933,6 +1936,7 @@ const struct snd_kcontrol_new msm_common_snd_controls[] = {
 	SOC_ENUM_EXT("Display Port RX SampleRate", ext_disp_rx_sample_rate,
 			ext_disp_rx_sample_rate_get,
 			ext_disp_rx_sample_rate_put),
+#ifdef CONFIG_SND_SOC_QCOM_TDM
 	SOC_ENUM_EXT("PRI_TDM_RX_0 SampleRate", tdm_rx_sample_rate,
 			tdm_rx_sample_rate_get,
 			tdm_rx_sample_rate_put),
@@ -2005,6 +2009,7 @@ const struct snd_kcontrol_new msm_common_snd_controls[] = {
 	SOC_ENUM_EXT("QUAT_TDM_TX_0 Channels", tdm_tx_chs,
 			tdm_tx_ch_get,
 			tdm_tx_ch_put),
+#endif
 };
 
 /**
