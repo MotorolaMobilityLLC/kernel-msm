@@ -35,6 +35,93 @@
 };
 
 &soc {
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_mi2s0: qcom,msm-dai-q6-mi2s-prim {
+			status = "disabled";
+		};
+
+		dai_mi2s1: qcom,msm-dai-q6-mi2s-sec {
+			status = "disabled";
+		};
+
+		dai_mi2s2: qcom,msm-dai-q6-mi2s-tert {
+			status = "disabled";
+		};
+
+		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
+			status = "disabled";
+		};
+
+		dai_mi2s5: qcom,msm-dai-q6-mi2s-quin {
+			status = "disabled";
+		};
+
+		dai_mi2s6: qcom,msm-dai-q6-mi2s-senary {
+			status = "disabled";
+		};
+
+		dai_int_mi2s0: qcom,msm-dai-q6-int-mi2s0 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s1: qcom,msm-dai-q6-int-mi2s1 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s2: qcom,msm-dai-q6-int-mi2s2 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s3: qcom,msm-dai-q6-int-mi2s3 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s4: qcom,msm-dai-q6-int-mi2s4 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s5: qcom,msm-dai-q6-int-mi2s5 {
+			status = "disabled";
+		};
+
+		dai_int_mi2s6: qcom,msm-dai-q6-int-mi2s6 {
+			status = "disabled";
+		};
+	};
+
+	qcom,msm-dai-tdm-pri-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-pri-tx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-sec-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-sec-tx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-tert-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-tert-tx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-quat-rx {
+		status = "disabled";
+	};
+
+	qcom,msm-dai-tdm-quat-tx {
+		status = "disabled";
+	};
+
 	ospl {
 		compatible = "mmi,ospl2xx";
 		status = "ok";
