@@ -1356,8 +1356,8 @@ static int tz_log_probe(struct platform_device *pdev)
 			readl_relaxed(tzdbg.virt_iobase +
 				offsetof(struct tzdbg_t, ring_len));
 
-	if (tmp_debug_buf_size != debug_rw_buf_size) {
-		WARN(1, "TZ Debug Size is not consistent!");
+	if (tmp_debug_buf_size > debug_rw_buf_size) {
+		WARN(1, "TZ Debug Size is more than DT setting!");
 		devm_iounmap(&pdev->dev, tzdbg.virt_iobase);
 		tzdbg.virt_iobase = devm_ioremap_nocache(&pdev->dev,
 			tzdiag_phy_iobase, tmp_debug_buf_size);
