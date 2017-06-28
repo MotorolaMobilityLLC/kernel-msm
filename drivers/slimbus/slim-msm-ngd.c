@@ -1523,7 +1523,7 @@ static int ngd_slim_probe(struct platform_device *pdev)
 				"qcom,subsys-name", &subsys_name);
 	if (ret) {
 		dev->dsp.nb.notifier_call = dsp_ssr_notify_cb;
-		dev->dsp.ssr = subsys_notif_register_notifier("adsp",
+		dev->dsp.ssr = subsys_notif_register_notifier("modem",
 							&dev->dsp.nb);
 	} else {
 		dev->dsp.nb.notifier_call = dsp_ssr_notify_cb;
