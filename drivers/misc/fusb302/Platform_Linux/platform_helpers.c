@@ -159,6 +159,7 @@ FSC_S32 fusb_InitializeGPIO(void)
 {
 	FSC_S32 ret = 0;
 	int i, gpio_cnt, label_cnt;
+	int usb_5v_en_gpio;
 	const char *label_prop = "fusb,gpio-labels";
 	struct device_node *node;
 	struct fusb30x_chip *chip = fusb30x_GetChip();
@@ -169,6 +170,31 @@ FSC_S32 fusb_InitializeGPIO(void)
 	}
 	/* Get our device tree node */
 	node = chip->client->dev.of_node;
+
+	usb_5v_en_gpio = of_get_named_gpio(node, "tps,usb-5v-en-gpio", 0);
+
+	if (!gpio_is_valid(usb_5v_en_gpio)) {
+		dev_dbg(&chip->client->dev,
+			"%s:%d Could not get named GPIO for usb-5v-en\n",
+			__func__, __LINE__);
+	} else {
+		ret = gpio_request(usb_5v_en_gpio, "tps,usb-5v-en-gpio");
+		if (ret < 0) {
+			dev_err(&chip->client->dev,
+			"%s:%d Could not request GPIO for usb-5v-en\n",
+			__func__, __LINE__);
+			return ret;
+		}
+
+		ret = gpio_direction_output(usb_5v_en_gpio, 1);
+		if (ret < 0) {
+			dev_err(&chip->client->dev,
+			"%s:%d Could not set GPIO direction to output for usb-5v-en\n",
+			__func__, __LINE__);
+			return ret;
+		}
+	}
+
 	gpio_cnt = of_gpio_count(node);
 	label_cnt = of_property_count_strings(node, label_prop);
 	for (i = 0; i < ARRAY_SIZE(chip->gpios); i++)
