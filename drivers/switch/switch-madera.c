@@ -444,6 +444,8 @@ static const struct madera_hp_tuning cs47l90_hp_tuning[] = {
 	},
 };
 
+static void madera_extcon_set_micd_clamp_mode(struct madera_extcon_info *info);
+
 static ssize_t madera_extcon_show(struct device *dev,
 				  struct device_attribute *attr,
 				  char *buf)
@@ -460,6 +462,11 @@ static DEVICE_ATTR(hp1_impedance, S_IRUGO, madera_extcon_show, NULL);
 static inline bool madera_is_lineout(struct madera_extcon_info *info)
 {
 	return info->madera->hp_impedance_x100[0] >= MADERA_HPDET_LINEOUT;
+}
+
+static inline bool madera_disable_jd2_on_lineout(struct madera_extcon_info *info)
+{
+	return info->pdata->jd_use_jd2 && info->pdata->disable_jd2_on_lineout;
 }
 
 inline void madera_extcon_report(struct madera_extcon_info *info, int state)
@@ -1499,6 +1506,8 @@ EXPORT_SYMBOL_GPL(madera_hpdet_stop);
 
 int madera_hpdet_reading(struct madera_extcon_info *info, int val)
 {
+	unsigned int clamp_ctrl_val;
+
 	dev_dbg(info->madera->dev, "Reading HPDET %d\n", val);
 
 	if (val < 0)
@@ -1513,6 +1522,26 @@ int madera_hpdet_reading(struct madera_extcon_info *info, int val)
 		madera_extcon_report(info, BIT_HEADSET_NO_MIC);
 		madera_extcon_report(info, madera_is_lineout(info) ?
 				     BIT_LINEOUT : BIT_HEADSET_NO_MIC);
+		/* disable JD2 to workaround for error lineout pull out in Payton,
+		   JD2 detect pin voltage greater than 0.9v easily when play msusic over lineout.
+		   this meet pull out condition
+		*/
+		if (madera_is_lineout(info) && madera_disable_jd2_on_lineout(info)) {
+			dev_info(info->madera->dev, "disable JD2 on lineout detect, impedance %d ohm\n",
+				info->madera->hp_impedance_x100[0]/100);
+			regmap_update_bits(info->madera->regmap, MADERA_INTERRUPT_DEBOUNCE_7,
+				   MADERA_JD1_DB | MADERA_JD2_DB, MADERA_JD1_DB);
+			regmap_update_bits(info->madera->regmap, MADERA_JACK_DETECT_ANALOGUE,
+					   MADERA_JD1_ENA | MADERA_JD2_ENA, MADERA_JD1_ENA);
+			if (info->pdata->jd_invert)
+				clamp_ctrl_val = MADERA_MICD_CLAMP_MODE_JD1H;
+			else
+				clamp_ctrl_val = MADERA_MICD_CLAMP_MODE_JD1L;
+			regmap_update_bits(info->madera->regmap,
+					   MADERA_MICD_CLAMP_CONTROL,
+					   MADERA_MICD_CLAMP_MODE_MASK,
+					   clamp_ctrl_val);
+		}
 		madera_jds_set_state(info, NULL);
 	}
 
@@ -2118,6 +2147,12 @@ static irqreturn_t madera_jackdet(int irq, void *data)
 		madera_set_headphone_imp(info, MADERA_HP_Z_OPEN);
 
 		madera_extcon_notify_micd(info, false, 0);
+		/* restore to JD2 enable state */
+		if (madera_disable_jd2_on_lineout(info)) {
+			regmap_update_bits(info->madera->regmap, MADERA_JACK_DETECT_ANALOGUE,
+				   MADERA_JD1_ENA | MADERA_JD2_ENA, MADERA_JD1_ENA | MADERA_JD2_ENA);
+			madera_extcon_set_micd_clamp_mode(info);
+		}
 	}
 
 out:
@@ -2417,7 +2452,9 @@ static void madera_extcon_of_process(struct madera *madera,
 				 &pdata->hpdet_ext_res_x100);
 
 	pdata->report_to_input = of_property_read_bool(node,
-						       "cirrus,report-to-input");
+								"cirrus,report-to-input");
+	pdata->disable_jd2_on_lineout = of_property_read_bool(node,
+								"cirrus,disable-jd2-on-lineout");
 }
 
 static int madera_extcon_of_get_pdata(struct madera *madera)
