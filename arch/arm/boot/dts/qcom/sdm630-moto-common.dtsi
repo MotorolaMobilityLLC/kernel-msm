@@ -343,3 +343,7 @@
 	qcom,led-strings-list = [00 01 02];
 	qcom,en-cabc;
 };
+
+&pm660_pdphy {
+	qcom,default-sink-caps = <5000 3000>; /* 5V @ 3A */
+};
