@@ -55,6 +55,8 @@ Child node optional properties:
 
   - cirrus,report-to-input : Report headset detection events to input queue.
 
+  - cirrus,disable-jd2-on-lineout : Disable JD2 pin when lineout jack detected.
+
   - cirrus,fixed-hpdet-imp : Do not perform any headphone detection, just use
     the fixed value specified here as the headphone impedance. Value is in
     hundredths-of-an-ohm (ohms * 100)
