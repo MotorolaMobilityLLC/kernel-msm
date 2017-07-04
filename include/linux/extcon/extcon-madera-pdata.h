@@ -116,6 +116,9 @@ struct madera_accdet_pdata {
 	/** Mic detect clamp function */
 	unsigned int micd_clamp_mode;
 
+	/** disalbe JD2 for line out */
+	bool disable_jd2_on_lineout;
+
 	/** Force MICBIAS on for mic detect */
 	bool micd_force_micbias;
 
