@@ -2161,8 +2161,9 @@ static int smb2_init_hw(struct smb2 *chip)
 
 	if (chg->hvdcp_force_5v) {
 		pr_info("hw init hvdcp force to 5v\n");
+		chg->voltage_max_uv = 5000000;
 		rc = smblib_write(chg, HVDCP_PLUSE_COUNT_MAX,
-				HVDCP_FORCE_5V);
+				HVDCP_FORCE_6V);
 		if (rc < 0) {
 			dev_err(chg->dev,
 				"Couldn't configure hvdcp force 5v, rc=%d\n",
