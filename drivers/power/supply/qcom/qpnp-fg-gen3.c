@@ -79,6 +79,9 @@
 #define ESR_TIMER_CHG_INIT_OFFSET	2
 #define ESR_EXTRACTION_ENABLE_WORD	19
 #define ESR_EXTRACTION_ENABLE_OFFSET	0
+#define SAT_CC_CLR_VCTIBTRSLWEN_WORD    20
+#define SAT_CC_CLR_OFFSET               0
+#define VCTIBTRSLWEN_OFFSET             1
 #define PROFILE_LOAD_WORD		24
 #define PROFILE_LOAD_OFFSET		0
 #define ESR_RSLOW_DISCHG_WORD		34
@@ -2878,10 +2881,30 @@ out:
 	pm_relax(chip->dev);
 }
 
+#define SAT_CC_CLR_AUTO_BIT BIT(3)
+#define VCTIBTRSLWEN_MASK   GENMASK(7, 6)
 static int fg_bp_params_config(struct fg_chip *chip)
 {
 	int rc = 0;
 	u8 buf;
+
+	/* Set CC_SOC saturation auto-clear */
+	rc = fg_sram_masked_write(chip, SAT_CC_CLR_VCTIBTRSLWEN_WORD,
+				SAT_CC_CLR_OFFSET, SAT_CC_CLR_AUTO_BIT,
+				SAT_CC_CLR_AUTO_BIT, FG_IMA_DEFAULT);
+	if (rc < 0) {
+		pr_err("failed to write SAT_CC_CLR rc=%d\n", rc);
+		return rc;
+	}
+
+	/* Set vCutOff, iBtRSlw */
+	rc = fg_sram_masked_write(chip, SAT_CC_CLR_VCTIBTRSLWEN_WORD,
+				VCTIBTRSLWEN_OFFSET, VCTIBTRSLWEN_MASK,
+				VCTIBTRSLWEN_MASK, FG_IMA_DEFAULT);
+	if (rc < 0) {
+		pr_err("failed to write VCTIBTRSLWEN rc=%d\n", rc);
+		return rc;
+	}
 
 	/* This SRAM register is only present in v2.0 and above */
 	if (!(chip->wa_flags & PMI8998_V1_REV_WA) &&
