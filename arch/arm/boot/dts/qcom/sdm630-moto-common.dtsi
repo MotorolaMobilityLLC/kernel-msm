@@ -248,6 +248,8 @@
 	qcom,fg-sys-term-current = <(-200)>;
 	qcom,fg-delta-soc-thr = <1>;
 	qcom,fg-jeita-thresholds = <(-20)>, <0>, <45>, <60>;
+	qcom,fg-force-restart-enable;
+	qcom,fg-vbatt-diff-thr = <100000>;
 };
 
 &pm660_charger {
