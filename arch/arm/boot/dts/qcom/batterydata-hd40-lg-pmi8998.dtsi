@@ -11,6 +11,7 @@ qcom,hd40-lg-pmi8998 {
 	qcom,battery-type = "HD40-LG-2730mah";
 	qcom,checksum = <0xC7AB>;
 	qcom,gui-version = "PMI8998GUI - 2.0.0.55";
+	qcom,profile-revision = /bits/ 8 <0x01>;
 	qcom,fg-profile-data = [
 		 DB 1E 2F FD
 		 14 03 52 07
