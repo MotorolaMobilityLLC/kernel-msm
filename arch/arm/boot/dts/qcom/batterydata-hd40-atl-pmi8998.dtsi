@@ -11,6 +11,7 @@ qcom,hd40-atl-pmi8998 {
 	qcom,battery-type = "HD40-ATL-2730mah";
 	qcom,checksum = <0x7A67>;
 	qcom,gui-version = "PMI8998GUI - 2.0.0.54";
+	qcom,profile-revision = /bits/ 8 <0x01>;
 	qcom,fg-profile-data = [
 		 CC 1F 3F 05
 		 C9 0A FA 05
