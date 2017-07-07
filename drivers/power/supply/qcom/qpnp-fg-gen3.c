@@ -92,6 +92,8 @@
 #define NOM_CAP_OFFSET			0
 #define ACT_BATT_CAP_BKUP_WORD		74
 #define ACT_BATT_CAP_BKUP_OFFSET	0
+#define PROFILE_REVISION_WORD		74
+#define PROFILE_REVISION_OFFSET		3
 #define CYCLE_COUNT_WORD		75
 #define CYCLE_COUNT_OFFSET		0
 #define PROFILE_INTEGRITY_WORD		79
@@ -1090,6 +1092,11 @@ static int fg_get_batt_profile(struct fg_chip *chip)
 		pr_err("couldn't find profile handle\n");
 		return -ENODATA;
 	}
+
+	rc = of_property_read_u8(profile_node, "qcom,profile-revision",
+			&chip->bp.profile_revision);
+	if (rc < 0)
+		pr_debug("battery profile revision not specified\n");
 
 	rc = of_property_read_string(profile_node, "qcom,battery-type",
 			&chip->bp.batt_type_str);
@@ -2930,6 +2937,32 @@ static int fg_bp_params_config(struct fg_chip *chip)
 	return rc;
 }
 
+static bool has_profile_revision_changed(struct fg_chip *chip)
+{
+	u8 val;
+	int rc = 0;
+
+	if (!chip->bp.profile_revision)
+		return false;
+
+	rc = fg_sram_read(chip, PROFILE_REVISION_WORD,
+			PROFILE_REVISION_OFFSET, &val, 1, FG_IMA_DEFAULT);
+
+	if (rc < 0) {
+		pr_err("FG: Unable to read profile revision, rc = %d\n", rc);
+		return true;
+	}
+
+	if (val != chip->bp.profile_revision) {
+		pr_err("FG: Profile Rev has changed from 0x%02x to 0x%02x\n",
+			val, chip->bp.profile_revision);
+		return true;
+	} else {
+		pr_debug("FG: Profile Revisions match\n");
+		return false;
+	}
+}
+
 #define PROFILE_LOAD_BIT	BIT(0)
 #define BOOTLOADER_LOAD_BIT	BIT(1)
 #define BOOTLOADER_RESTART_BIT	BIT(2)
@@ -2969,7 +3002,7 @@ static bool is_profile_load_required(struct fg_chip *chip)
 		}
 		profiles_same = memcmp(chip->batt_profile, buf,
 					PROFILE_COMP_LEN) == 0;
-		if (profiles_same) {
+		if (profiles_same && !has_profile_revision_changed(chip)) {
 			fg_dbg(chip, FG_STATUS, "Battery profile is same, not loading it\n");
 			return false;
 		}
@@ -3167,6 +3200,18 @@ static void profile_load_work(struct work_struct *work)
 	if (rc < 0) {
 		pr_err("failed to write profile integrity rc=%d\n", rc);
 		goto out;
+	}
+
+	/* Update Profile Revision */
+	if (chip->bp.profile_revision) {
+		rc = fg_sram_write(chip, PROFILE_REVISION_WORD,
+			PROFILE_REVISION_OFFSET, &chip->bp.profile_revision,
+			1, FG_IMA_DEFAULT);
+
+		if (rc < 0)
+			pr_err("Unable to update Profile revision to 0x%02x\n",
+				chip->bp.profile_revision);
+
 	}
 
 done:
