@@ -302,6 +302,7 @@ struct fg_batt_props {
 	int		float_volt_uv;
 	int		vbatt_full_mv;
 	int		fastchg_curr_ma;
+	u8		profile_revision;
 };
 
 struct fg_cyc_ctr_data {
