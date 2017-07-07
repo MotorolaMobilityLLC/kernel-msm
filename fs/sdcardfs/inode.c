@@ -21,6 +21,7 @@
 #include "sdcardfs.h"
 #include <linux/fs_struct.h>
 #include <linux/ratelimit.h>
+#include <linux/xattr.h>
 
 /* Do not directly use this function. Use OVERRIDE_CRED() instead. */
 const struct cred *override_fsids(struct sdcardfs_sb_info *sbi,
@@ -621,6 +622,56 @@ void copy_attrs(struct inode *dest, const struct inode *src)
 #endif
 }
 
+static int sdcardfs_permission_default(struct inode *inode, int mask)
+{
+	int err;
+	int owner_mode, visible_mode = 0775;
+	struct inode tmp;
+	struct sdcardfs_inode_data *top = top_data_get(SDCARDFS_I(inode));
+
+	if (!top)
+		return -EINVAL;
+
+	/*
+	 * Permission check on sdcardfs inode.
+	 * Since generic_permission only needs i_mode, i_uid,
+	 * i_gid, and i_sb, we can create a fake inode to pass
+	 * this information down in.
+	 *
+	 * The underlying code may attempt to take locks in some
+	 * cases for features we're not using, but if that changes,
+	 * locks must be dealt with to avoid undefined behavior.
+	 */
+	copy_attrs(&tmp, inode);
+	tmp.i_uid = make_kuid(&init_user_ns, top->d_uid);
+	tmp.i_gid = make_kgid(&init_user_ns,
+		multiuser_get_uid(top->userid, AID_SDCARD_RW));
+
+	if (top->perm == PERM_PRE_ROOT) {
+		/*
+		 * Top of multi-user view should always be visible to ensure
+		 * secondary users can traverse inside.
+		 */
+		visible_mode = 0711;
+	} else if (top->under_android) {
+		/*
+		 * Block "other" access to Android directories, since only apps
+		 * belonging to a specific user should be in there.
+		 */
+		visible_mode = visible_mode & ~0007;
+	}
+	owner_mode = SDCARDFS_I(inode)->lower_inode->i_mode & 0700;
+	tmp.i_mode = (inode->i_mode & S_IFMT) |
+		(visible_mode &
+		 (owner_mode | (owner_mode >> 3) | (owner_mode >> 6)));
+	data_put(top);
+	tmp.i_sb = inode->i_sb;
+	if (IS_POSIXACL(inode))
+		pr_warn("%s: This may be undefined behavior...\n", __func__);
+	err = generic_permission(&tmp, mask);
+	return err;
+}
+
 static int sdcardfs_permission(struct vfsmount *mnt, struct inode *inode, int mask)
 {
 	int err;
@@ -872,6 +923,52 @@ out:
 	return err;
 }
 
+static int sdcardfs_setxattr(struct dentry *dentry, const char *name,
+	const void *value, size_t size, int flags)
+{
+	int err;
+	struct dentry *lower_dentry;
+	struct inode *inode = d_inode(dentry);
+	struct inode *lower_inode;
+	struct path lower_path;
+	const struct cred *saved_cred = NULL;
+
+	/* save current_cred and override it */
+	OVERRIDE_CRED(SDCARDFS_SB(dentry->d_sb), saved_cred, SDCARDFS_I(inode));
+	sdcardfs_get_lower_path(dentry, &lower_path);
+
+	lower_dentry = lower_path.dentry;
+	lower_inode = sdcardfs_lower_inode(inode);
+	err = vfs_setxattr(lower_dentry, name, value, size, flags);
+
+	sdcardfs_put_lower_path(dentry, &lower_path);
+	REVERT_CRED(saved_cred);
+	return err;
+}
+
+static ssize_t sdcardfs_getxattr(struct dentry *dentry, const char *name,
+	void *value, size_t size)
+{
+	int err;
+	struct dentry *lower_dentry;
+	struct inode *inode = d_inode(dentry);
+	struct inode *lower_inode;
+	struct path lower_path;
+	const struct cred *saved_cred = NULL;
+
+	/* save current_cred and override it */
+	OVERRIDE_CRED(SDCARDFS_SB(dentry->d_sb), saved_cred, SDCARDFS_I(inode));
+	sdcardfs_get_lower_path(dentry, &lower_path);
+
+	lower_dentry = lower_path.dentry;
+	lower_inode = sdcardfs_lower_inode(inode);
+	err = vfs_getxattr(lower_dentry, name, value, size);
+
+	sdcardfs_put_lower_path(dentry, &lower_path);
+	REVERT_CRED(saved_cred);
+	return err;
+}
+
 const struct inode_operations sdcardfs_symlink_iops = {
 	.permission2	= sdcardfs_permission,
 	.setattr2	= sdcardfs_setattr,
@@ -887,7 +984,7 @@ const struct inode_operations sdcardfs_symlink_iops = {
 const struct inode_operations sdcardfs_dir_iops = {
 	.create		= sdcardfs_create,
 	.lookup		= sdcardfs_lookup,
-	.permission	= sdcardfs_permission_wrn,
+	.permission	= sdcardfs_permission_default,
 	.permission2	= sdcardfs_permission,
 	.unlink		= sdcardfs_unlink,
 	.mkdir		= sdcardfs_mkdir,
@@ -896,6 +993,8 @@ const struct inode_operations sdcardfs_dir_iops = {
 	.setattr	= sdcardfs_setattr_wrn,
 	.setattr2	= sdcardfs_setattr,
 	.getattr	= sdcardfs_getattr,
+	.setxattr	= sdcardfs_setxattr,
+	.getxattr	= sdcardfs_getxattr,
 	/* XXX Following operations are implemented,
 	 *     but FUSE(sdcard) or FAT does not support them
 	 *     These methods are *NOT* perfectly tested.
