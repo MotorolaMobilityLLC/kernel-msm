@@ -471,7 +471,7 @@ static inline bool madera_disable_jd2_on_lineout(struct madera_extcon_info *info
 
 inline void madera_extcon_report(struct madera_extcon_info *info, int state)
 {
-	dev_dbg(info->madera->dev, "Switch Report: %d\n", state);
+	dev_info(info->madera->dev, "Switch Report: %d\n", state);
 	switch_set_state(&info->edev, state);
 
 	if (!info->pdata->report_to_input)
@@ -1231,7 +1231,7 @@ static int madera_hpdet_read(struct madera_extcon_info *info)
 	}
 
 done:
-	dev_dbg(madera->dev, "HP impedance %d ohms\n", val);
+	dev_info(madera->dev, "HP impedance %d ohms\n", val);
 	return (int)val;
 }
 
@@ -1683,7 +1683,7 @@ static int madera_micd_button_process(struct madera_extcon_info *info, int val)
 		for (i = 0; i < info->num_micd_ranges; i++) {
 			if (val <= info->micd_ranges[i].max) {
 				key = info->micd_ranges[i].key;
-				dev_dbg(madera->dev, "Key %d down\n", key);
+				dev_info(madera->dev, "Key %d down\n", key);
 				input_report_key(info->input, key, 1);
 				input_sync(info->input);
 				break;
@@ -1694,7 +1694,7 @@ static int madera_micd_button_process(struct madera_extcon_info *info, int val)
 			dev_warn(madera->dev,
 				 "Button level %u out of range\n", val);
 	} else {
-		dev_dbg(madera->dev, "Mic button released\n");
+		dev_info(madera->dev, "Mic button released\n");
 
 		for (i = 0; i < info->num_micd_ranges; i++)
 			input_report_key(info->input,
@@ -1973,7 +1973,7 @@ static void madera_micd_handler(struct work_struct *work)
 	if (ret == -EAGAIN)
 		goto out;
 
-	dev_dbg(madera->dev, "Mic impedance %d ohms\n", ret);
+	dev_info(madera->dev, "Mic impedance %d ohms\n", ret);
 
 	madera_jds_reading(info, OHM_TO_HOHM(ret));
 
@@ -2074,7 +2074,7 @@ static irqreturn_t madera_jackdet(int irq, void *data)
 	bool cancelled_state;
 	int i, present;
 
-	dev_dbg(madera->dev, "jackdet IRQ");
+	dev_info(madera->dev, "jackdet IRQ");
 
 	cancelled_state = madera_jds_cancel_timeout(info);
 
