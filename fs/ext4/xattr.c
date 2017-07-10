@@ -1185,6 +1185,16 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
 		}
 	}
 	if (!error) {
+		if (S_ISDIR(inode->i_mode) && !memcmp(name, "relatime", 8) &&
+			value_len == 1) {
+			if (*(char *)value == '0')
+				inode->i_flags |= S_NOATIME;
+			else
+				inode->i_flags &= ~S_NOATIME;
+			pr_info("%s: %lu - partial-relatime %s\n", __func__,
+				inode->i_ino,
+				inode->i_flags & S_NOATIME ? "Off" : "On");
+		}
 		ext4_xattr_update_super_block(handle, inode->i_sb);
 		inode->i_ctime = ext4_current_time(inode);
 		if (!value)
