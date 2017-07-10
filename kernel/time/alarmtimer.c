@@ -61,6 +61,7 @@ static struct rtc_device	*rtcdev;
 static DEFINE_SPINLOCK(rtcdev_lock);
 static struct mutex power_on_alarm_lock;
 static struct alarm init_alarm;
+static bool alarmtimer_in_suspend;
 
 /**
  * power_on_alarm_init - Init power on alarm value
@@ -350,6 +351,11 @@ static enum hrtimer_restart alarmtimer_fired(struct hrtimer *timer)
 	alarmtimer_dequeue(base, alarm);
 	spin_unlock_irqrestore(&base->lock, flags);
 
+	if (alarmtimer_in_suspend) {
+		pr_warn("alarm_show_resume_irq: %d triggered [%d] %pS\n",
+			alarm->type, (int)base->base_clockid, alarm->function);
+	}
+
 	if (alarm->function)
 		restart = alarm->function(alarm, base->gettime());
 
@@ -397,6 +403,7 @@ static int alarmtimer_suspend(struct device *dev)
 	int i;
 	int ret = 0;
 
+	alarmtimer_in_suspend = true;
 	spin_lock_irqsave(&freezer_delta_lock, flags);
 	min = freezer_delta;
 	freezer_delta = ktime_set(0, 0);
@@ -510,6 +517,7 @@ static int alarmtimer_resume(struct device *dev)
 {
 	struct rtc_device *rtc;
 
+	alarmtimer_in_suspend = false;
 	rtc = alarmtimer_get_rtcdev();
 	/* If we have no rtcdev, just return */
 	if (!rtc)
