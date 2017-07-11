@@ -246,17 +246,20 @@ struct dbs_data {
 	struct common_dbs_data *cdata;
 	unsigned int min_sampling_rate;
 	struct cpufreq_frequency_table *freq_table;
-	bool freq_table_desc;
-	unsigned int freq_table_size;
-	unsigned int pol_min;
-	unsigned int pol_max;
-	unsigned int min_scaling_freq;
-	unsigned int limit_table_start;
-	unsigned int limit_table_end;
-	unsigned int max_scaling_freq_hard;
-	unsigned int max_scaling_freq_soft;
-	unsigned int scaling_mode_up;
-	unsigned int scaling_mode_down;
+	/* following is only used by zzmoove governor */
+	bool freq_table_desc;                           // table order ascending or descending (true)
+	unsigned int freq_table_size;                   // size of freq table (index count)
+	unsigned int zz_prev_load;                      // previous load saved by governor for afs calculation
+	unsigned int pol_min;                           // saved actual max policy for range detection
+	unsigned int pol_max;                           // saved actual min policy for range detection
+	unsigned int min_scaling_freq;                  // saved min freq for range detection
+	unsigned int limit_table_start;                 // table start index for range detection
+	unsigned int limit_table_end;                   // table end index for range detection
+	unsigned int max_scaling_freq_hard;             // hard limit table index
+	unsigned int max_scaling_freq_soft;             // soft limit table index
+	unsigned int scaling_mode_up;                   // fast up scaling steps
+	unsigned int scaling_mode_down;                 // fast down scaling steps
+	/* used by zzmoove governor end */
 	int usage_count;
 	void *tuners;
 
