@@ -4538,11 +4538,14 @@ static int mdss_fb_get_metadata(struct msm_fb_data_type *mfd,
 		break;
 	case metadata_op_get_ion_fd:
 		if (mfd->fb_ion_handle) {
+			get_dma_buf(mfd->fbmem_buf);
 			metadata->data.fbmem_ionfd =
 				dma_buf_fd(mfd->fbmem_buf, 0);
-			if (metadata->data.fbmem_ionfd < 0)
+			if (metadata->data.fbmem_ionfd < 0) {
+				dma_buf_put(mfd->fbmem_buf);
 				pr_err("fd allocation failed. fd = %d\n",
 						metadata->data.fbmem_ionfd);
+			}
 		}
 		break;
 	case metadata_op_crc:
