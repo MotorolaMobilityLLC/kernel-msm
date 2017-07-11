@@ -7242,8 +7242,10 @@ static int smbchg_reboot(struct notifier_block *nb,
 		/* Turn off any Ext batt charging */
 		smblib_err(chg, "Attempt to Shutdown EB!\n");
 		mmi_set_extbat_state(chg, EB_OFF, false);
-		gpio_set_value(chg->mmi.ebchg_gpio.gpio, 0);
-		gpio_free(chg->mmi.ebchg_gpio.gpio);
+		if (gpio_is_valid(chg->mmi.ebchg_gpio.gpio)) {
+			gpio_set_value(chg->mmi.ebchg_gpio.gpio, 0);
+			gpio_free(chg->mmi.ebchg_gpio.gpio);
+		}
 	} else if ((chg->mmi.ebchg_state == EB_OFF) && (usb_present == 0)) {
 		smblib_err(chg, "Attempt to Turn EB ON!\n");
 		mmi_set_extbat_state(chg, EB_SRC, false);
