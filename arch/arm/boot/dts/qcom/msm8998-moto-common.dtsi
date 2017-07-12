@@ -788,6 +788,7 @@
 	qcom,bus-speed-mode = "DDR50_1p8v", "SDR104_1p8v";
 
 	cd-gpios = <&pm8998_gpios 19 0x1>;
+	qcom,cd-wakeup;
 
 	status = "ok";
 };
