@@ -532,6 +532,7 @@ struct smb_charger {
 	int			hc_aicl_threshold_mv;
 
 	bool			single_path_usbin_switch;
+	u32			source_current_ma;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -732,5 +733,7 @@ extern int eb_on_sw;
 
 #define AICL_THRESHOLD_MAX_MV 4700
 #define AICL_THRESHOLD_MIN_MV 4000
+
+#define DEFAULT_SOURCE_CURRENT_MA 1500
 
 #endif /* __SMB2_CHARGER_H */
