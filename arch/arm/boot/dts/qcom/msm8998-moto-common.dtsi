@@ -1645,6 +1645,7 @@
 	qcom,external-vbus;
 	vconn-parent-supply = <&vreg_5p0>;
 	otg-parent-supply = <&vreg_5p0>;
+	qcom,source-current-ma = <900>;
 	smb2_ext_vbus: qcom,smb2-ext-vbus {
 		regulator-name = "smb2-ext-vbus";
 	};
