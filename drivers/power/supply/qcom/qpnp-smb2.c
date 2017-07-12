@@ -290,6 +290,13 @@ static int smb2_parse_dt(struct smb2 *chip)
 	if (rc < 0)
 		chg->hc_aicl_threshold_mv = -EINVAL;
 
+	rc = of_property_read_u32(node,
+				"qcom,source-current-ma",
+				&chg->source_current_ma);
+	if (rc < 0)
+		chg->source_current_ma = DEFAULT_SOURCE_CURRENT_MA;
+
+
 	if (of_find_property(node, "qcom,thermal-mitigation", &byte_len)) {
 		chg->thermal_mitigation = devm_kzalloc(chg->dev, byte_len,
 			GFP_KERNEL);
@@ -1813,16 +1820,18 @@ static int smb2_configure_typec(struct smb_charger *chg)
 		return rc;
 	}
 
-#ifdef QCOM_BASE
-	/* increase VCONN softstart */
-	rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
-			VCONN_SOFTSTART_CFG_MASK, VCONN_SOFTSTART_CFG_MASK);
-#else
-	/* increase VCONN softstart and advertise default current*/
-	rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
-			VCONN_SOFTSTART_CFG_MASK | EN_80UA_180UA_CUR_SOURCE_BIT,
-			VCONN_SOFTSTART_CFG_MASK);
-#endif
+	if (chg->source_current_ma >= DEFAULT_SOURCE_CURRENT_MA)
+		/* increase VCONN softstart */
+		rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
+				VCONN_SOFTSTART_CFG_MASK,
+				VCONN_SOFTSTART_CFG_MASK);
+	else
+		/* increase VCONN softstart and advertise default current*/
+		rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
+				VCONN_SOFTSTART_CFG_MASK |
+				EN_80UA_180UA_CUR_SOURCE_BIT,
+				VCONN_SOFTSTART_CFG_MASK);
+
 	if (rc < 0) {
 		dev_err(chg->dev, "Couldn't increase VCONN softstart rc=%d\n",
 			rc);
