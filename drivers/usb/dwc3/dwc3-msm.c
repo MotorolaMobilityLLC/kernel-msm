@@ -470,6 +470,7 @@ static void dwc3_mods_hsusb_path_enable(struct dwc3_msm *mdwc,
 {
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 	dwc->maximum_speed = USB_SPEED_HIGH;
+	dbg_event(0xFF, "EXT HSUSB", enable);
 	if (enable) {
 		gpio_direction_output(mdwc->mod_switch_gpio.gpio, 1);
 		usb3813_enable_hub(mdwc->mod_hub, 1, path);
@@ -484,6 +485,7 @@ static void dwc3_mods_ssusb_path_enable(struct dwc3_msm *mdwc, bool enable)
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 	struct modbus_ext_status status = {0, MODBUS_PROTO_USB_SS};
 
+	dbg_event(0xFF, "EXT SSUSB", enable);
 	status.active = enable;
 	mdwc->mod_ss_path = enable;
 	dwc->maximum_speed = enable ? USB_SPEED_SUPER: USB_SPEED_HIGH;
@@ -515,15 +517,20 @@ static void dwc3_extcon_restore(struct dwc3_msm *mdwc)
 
 static void dwc3_ext_usb_enable(struct dwc3_msm *mdwc, bool enable)
 {
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 	if (mdwc->ext_enabled == enable)
 		return;
 
 	mdwc->ext_enabled = enable;
 
+	if (atomic_read(&dwc->in_lpm))
+		mdwc->resume_pending = true;
+
 	/* Resume the controller first */
 	queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
 	flush_workqueue(mdwc->dwc3_wq);
 
+	dbg_event(0xFF, "EXT Enable", enable);
 	/* Enable/Disable the physical path next*/
 	if (mdwc->ext_state.proto == USB_EXT_PROTO_DUAL) {
 		dwc3_mods_ssusb_path_enable(mdwc, enable);
