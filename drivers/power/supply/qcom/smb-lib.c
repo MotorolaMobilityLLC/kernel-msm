@@ -3001,16 +3001,18 @@ int smblib_set_prop_typec_power_role(struct smb_charger *chg,
 					rc);
 			}
 		}
-#ifndef QCOM_BASE
-		/* increase VCONN softstart and advertise default current*/
-		rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
-				VCONN_SOFTSTART_CFG_MASK | EN_80UA_180UA_CUR_SOURCE_BIT,
-				VCONN_SOFTSTART_CFG_MASK);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't write to TYPE_C_CFG_2_REG rc=%d\n",
-				rc);
+
+		if (chg->source_current_ma < DEFAULT_SOURCE_CURRENT_MA) {
+			/* increase VCONN softstart and advertise default current*/
+			rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
+					VCONN_SOFTSTART_CFG_MASK |
+					EN_80UA_180UA_CUR_SOURCE_BIT,
+					VCONN_SOFTSTART_CFG_MASK);
+			if (rc < 0) {
+				smblib_err(chg, "Couldn't write to TYPE_C_CFG_2_REG rc=%d\n",
+					rc);
+			}
 		}
-#endif
 	}
 
 	rc = smblib_masked_write(chg, TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
@@ -3146,16 +3148,19 @@ static int __smblib_set_prop_pd_active(struct smb_charger *chg, bool pd_active)
 		if (rc < 0)
 			smblib_err(chg, "Couldn't unvote USB_PSY rc=%d\n", rc);
 	} else {
-#ifndef QCOM_BASE
-		/* increase VCONN softstart and advertise default current*/
-		rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
-				VCONN_SOFTSTART_CFG_MASK | EN_80UA_180UA_CUR_SOURCE_BIT,
-				VCONN_SOFTSTART_CFG_MASK);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't write to TYPE_C_CFG_2_REG rc=%d\n",
-				rc);
+
+		if (chg->source_current_ma < DEFAULT_SOURCE_CURRENT_MA) {
+			/* increase VCONN softstart and advertise default current*/
+			rc = smblib_masked_write(chg, TYPE_C_CFG_2_REG,
+					VCONN_SOFTSTART_CFG_MASK |
+					EN_80UA_180UA_CUR_SOURCE_BIT,
+					VCONN_SOFTSTART_CFG_MASK);
+			if (rc < 0) {
+				smblib_err(chg, "Couldn't write to TYPE_C_CFG_2_REG rc=%d\n",
+					rc);
+			}
 		}
-#endif
+
 		rc = smblib_read(chg, APSD_STATUS_REG, &stat);
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't read APSD status rc=%d\n",
