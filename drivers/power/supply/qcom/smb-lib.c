@@ -2894,7 +2894,9 @@ int smblib_set_prop_sdp_current_max(struct smb_charger *chg,
 	if (0 >= val->intval)
 		enable = false;
 
-	if (!chg->pd_active) {
+	if (!chg->pd_active &&
+	    (smblib_get_prop_typec_mode(chg) ==
+	     POWER_SUPPLY_TYPEC_SOURCE_DEFAULT)) {
 		rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
 				enable, val->intval);
 	} else if (chg->system_suspend_supported) {
@@ -6939,7 +6941,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		else if (chip->real_charger_type ==
 			 POWER_SUPPLY_TYPE_USB_CDP)
 			cl_usb = 1500;
-		else if (cl_cc == 500)
+		else if ((cl_cc == 500) &&
+			 (cl_usb <= 500))
 			cl_usb = cl_cc;
 		else if (cl_usb <= 0)
 			cl_usb = 500;
