@@ -2246,51 +2246,6 @@ static void fg_batt_avg_update(struct fg_chip *chip)
 							msecs_to_jiffies(2000));
 }
 
-static int get_vbat_est_diff(struct fg_chip *chip)
-{
-	int fg_vbatt_pred, fg_vbatt_now;
-
-	if (fg_get_sram_prop(chip, FG_SRAM_VOLTAGE_PRED, &fg_vbatt_pred))
-		return -ENODATA;
-
-	if (fg_get_battery_voltage(chip, &fg_vbatt_now))
-		return -ENODATA;
-
-	pr_debug("vbatt pred(%d),now(%d)\n",
-			fg_vbatt_pred, fg_vbatt_now);
-
-	return abs(fg_vbatt_pred - fg_vbatt_now);
-}
-
-static int __fg_restart(struct fg_chip *chip);
-static int fg_vbat_est_check(struct fg_chip *chip)
-{
-	int rc = 0;
-	int vbat_est_diff, vbat_est_thr_uv;
-
-	vbat_est_diff = get_vbat_est_diff(chip);
-	vbat_est_thr_uv = chip->dt.vbatt_diff_thr;
-	pr_debug("vbatt-diff(pred,now)(%d),est_thr(%d)\n",
-			vbat_est_diff, vbat_est_thr_uv);
-	if ((vbat_est_diff < 0) || (vbat_est_thr_uv < 0)) {
-		pr_err("check vbatt diff error\n");
-		return -ENODATA;
-	}
-
-	if ((vbat_est_diff > vbat_est_thr_uv)
-		&& chip->dt.force_restart_enable
-		&& chip->profile_loaded
-		&& !chip->fg_restarting
-		&& !chip->battery_missing) {
-		pr_info("force restart fg, vbatt-diff(pred,now)(%d) > est_thr(%d)\n",
-			    vbat_est_diff, vbat_est_thr_uv);
-		rc = __fg_restart(chip);
-		if (rc < 0)
-			pr_err("fg restart failed: %d\n", rc);
-	}
-	return rc;
-}
-
 static void status_change_work(struct work_struct *work)
 {
 	struct fg_chip *chip = container_of(work,
@@ -2332,7 +2287,6 @@ static void status_change_work(struct work_struct *work)
 		schedule_work(&chip->cycle_count_work);
 
 	fg_cap_learning_update(chip);
-	fg_vbat_est_check(chip);
 
 	rc = fg_charge_full_update(chip);
 	if (rc < 0)
@@ -2713,7 +2667,6 @@ wait:
 			BATT_SOC_RESTART(chip), rc);
 		goto out;
 	}
-	msleep(2000);
 out:
 	chip->fg_restarting = false;
 	return rc;
@@ -4224,7 +4177,6 @@ static int fg_parse_ki_coefficients(struct fg_chip *chip)
 #define DEFAULT_ESR_CLAMP_MOHMS		20
 #define DEFAULT_ESR_PULSE_THRESH_MA	110
 #define DEFAULT_ESR_MEAS_CURR_MA	120
-#define DEFAULT_VBATT_DIFF_MV	100000
 static int fg_parse_dt(struct fg_chip *chip)
 {
 	struct device_node *child, *revid_node, *node = chip->dev->of_node;
@@ -4381,17 +4333,8 @@ static int fg_parse_dt(struct fg_chip *chip)
 	else
 		chip->dt.recharge_volt_thr_mv = temp;
 
-	rc = of_property_read_u32(node, "qcom,fg-vbatt-diff-thr", &temp);
-	if (rc < 0)
-		chip->dt.vbatt_diff_thr = DEFAULT_VBATT_DIFF_MV;
-	else
-		chip->dt.vbatt_diff_thr = temp;
-
 	chip->dt.auto_recharge_soc = of_property_read_bool(node,
 					"qcom,fg-auto-recharge-soc");
-
-	chip->dt.force_restart_enable = of_property_read_bool(node,
-					"qcom,fg-force-restart-enable");
 
 	rc = of_property_read_u32(node, "qcom,fg-rsense-sel", &temp);
 	if (rc < 0)
