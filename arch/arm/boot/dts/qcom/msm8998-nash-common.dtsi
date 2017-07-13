@@ -55,7 +55,7 @@
 		interrupt-controller;
 		#interrupt-cells = <2>;
 		reset-gpios = <&tlmm 68 0>;
-		cirrus,micbias1 = <1800 1 1 1 1 1 1 0>;
+		cirrus,micbias1 = <2600 1 1 1 1 1 1 0>;
 		cirrus,micbias2 = <2600 1 1 1 1 1 1 0>;
 		cirrus,micbias3 = <2600 1 1 1 1 1 1 0>;
 		cirrus,micbias4 = <2600 1 1 1 1 1 1 0>;
