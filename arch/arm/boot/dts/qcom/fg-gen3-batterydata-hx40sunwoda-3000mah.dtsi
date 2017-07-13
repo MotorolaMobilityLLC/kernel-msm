@@ -12,6 +12,7 @@ qcom,hx40sunwoda_3000mah {
 	qcom,battery-type = "2775154_lenovo_hx40sunwoda_3000mah_averaged_masterslave_feb3rd2017";
 	qcom,checksum = <0xC49C>;
 	qcom,gui-version = "PM660GUI - 0.0.0.22";
+	qcom,profile-revision = /bits/ 8 <0x01>;
 	qcom,fg-profile-data = [
 		 8A 1F 8F 05
 		 94 0A 51 FC

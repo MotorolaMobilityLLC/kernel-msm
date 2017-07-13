@@ -12,6 +12,7 @@ qcom,hx40scud_3000mah {
 	qcom,battery-type = "2950207_lenovo_hx40scud_3000mah_averaged_masterslave_jun2nd2017";
 	qcom,checksum = <0x7DFA>;
 	qcom,gui-version = "PM660GUI - 0.0.0.43";
+	qcom,profile-revision = /bits/ 8 <0x01>;
 	qcom,fg-profile-data = [
 		 66 1F CC 05
 		 45 0A 23 FD
