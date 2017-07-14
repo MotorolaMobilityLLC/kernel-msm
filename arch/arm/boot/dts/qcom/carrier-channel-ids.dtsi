@@ -114,7 +114,7 @@
 		"playpl",	/* 97 */
 		"oraeu",	/* 98 */
 		"dteu",		/* 99 */
-		"undefined",	/* 100 */
+		"teleu",	/* 100 */
 		"undefined",	/* 101 */
 		"undefined",	/* 102 */
 		"undefined",	/* 103 */
@@ -218,7 +218,7 @@
 		"ctcn",		/* 201 */
 		"cucn",		/* 202 */
 		"retmm",	/* 203 */
-		"undefined",	/* 204 */
+		"gt4gtw",	/* 204 */
 		"undefined",	/* 205 */
 		"undefined",	/* 206 */
 		"undefined",	/* 207 */
