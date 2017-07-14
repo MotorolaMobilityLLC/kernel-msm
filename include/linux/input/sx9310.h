@@ -290,6 +290,25 @@ struct sx9310_platform_data {
 typedef struct sx9310_platform_data sx9310_platform_data_t;
 typedef struct sx9310_platform_data *psx9310_platform_data_t;
 
+#ifdef USE_SENSORS_CLASS
+static struct sensors_classdev sensors_capsensor_cdev = {
+	.name = "Moto CapSense",
+	.vendor = "semtech",
+	.version = 1,
+	.type = SENSOR_TYPE_MOTO_CAPSENSE,
+	.max_range = "5",
+	.resolution = "5.0",
+	.sensor_power = "3",
+	.min_delay = 0, /* in microseconds */
+	.fifo_reserved_event_count = 0,
+	.fifo_max_event_count = 0,
+	.enabled = 0,
+	.delay_msec = 100,
+	.sensors_enable = NULL,
+	.sensors_poll_delay = NULL,
+};
+#endif
+
 /***************************************
 * define data struct/interrupt
 * @pdev: pdev common device struction for linux
