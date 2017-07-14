@@ -11,6 +11,7 @@
  */
 #define DEBUG
 #define DRIVER_NAME "sx9310"
+#define USE_SENSORS_CLASS
 
 #define MAX_WRITE_ARRAY_SIZE 32
 #include <linux/module.h>
@@ -22,6 +23,7 @@
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
 #include <linux/device.h>
+#include <linux/sensors.h>
 #include <linux/interrupt.h>
 #include <linux/regulator/consumer.h>
 #include <linux/input/sx9310.h> /* main struct, interrupt,init,pointers */
@@ -540,6 +542,38 @@ static ssize_t capsense_enable_show(struct class *class,
 	return snprintf(buf, 8, "%d\n", mEnabled);
 }
 
+#ifdef USE_SENSORS_CLASS
+static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
+					unsigned int enable)
+{
+	psx93XX_t this = sx9310_ptr;
+	psx9310_t pDevice = NULL;
+	struct input_dev *input = NULL;
+
+	pDevice = this->pDevice;
+	input = pDevice->pbuttonInformation->input;
+
+	LOG_INFO("enable cap sensor :%d\n", enable);
+	if (enable == 1) {
+		LOG_DBG("enable cap sensor\n");
+		initialize(this);
+		input_report_abs(input, ABS_DISTANCE, 0);
+		input_sync(input);
+		mEnabled = 1;
+	} else if (enable == 0) {
+		LOG_DBG("disable cap sensor\n");
+		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
+		write_register(this, SX9310_IRQ_ENABLE_REG, 0x00);
+		input_report_abs(input, ABS_DISTANCE, -1);
+		input_sync(input);
+		mEnabled = 0;
+	} else {
+		LOG_DBG("unknown enable symbol\n");
+	}
+	return 0;
+}
+#endif
+
 static ssize_t capsense_enable_store(struct class *class,
 					struct class_attribute *attr,
 					const char *buf, size_t count)
@@ -855,6 +889,15 @@ static int sx9310_probe(struct i2c_client *client, const struct i2c_device_id *i
 			return ret;
 		}
 
+#ifdef USE_SENSORS_CLASS
+		sensors_capsensor_cdev.sensors_enable = capsensor_set_enable;
+		sensors_capsensor_cdev.sensors_poll_delay = NULL;
+		ret = sensors_classdev_register(&input->dev, &sensors_capsensor_cdev);
+		if (ret < 0) {
+			LOG_DBG("Create sensor_class file failed (%d)\n", ret);
+		}
+#endif
+
 		pplatData->cap_vdd = regulator_get(&client->dev, "cap_vdd");
 		if (IS_ERR(pplatData->cap_vdd)) {
 			if (PTR_ERR(pplatData->cap_vdd) == -EPROBE_DEFER) {
@@ -930,6 +973,9 @@ static int sx9310_remove(struct i2c_client *client)
 
 	pDevice = this->pDevice;
 	if (this && pDevice) {
+#ifdef USE_SENSORS_CLASS
+		sensors_classdev_unregister(&sensors_capsensor_cdev);
+#endif
 		input_unregister_device(pDevice->pbuttonInformation->input);
 
 		if (this->board->cap_svdd_en) {
