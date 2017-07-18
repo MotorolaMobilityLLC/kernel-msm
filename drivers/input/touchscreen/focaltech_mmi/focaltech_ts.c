@@ -3292,13 +3292,6 @@ static int ft_ts_probe(struct i2c_client *client,
 	if (!data->tch_data)
 		return -ENOMEM;
 
-	input_dev = input_allocate_device();
-	if (!input_dev) {
-		dev_err(&client->dev, "failed to allocate input device\n");
-		return -ENOMEM;
-	}
-
-	data->input_dev = input_dev;
 	data->client = client;
 	data->pdata = pdata;
 	data->force_reflash = (data->pdata->no_force_update) ? false : true;
@@ -3310,29 +3303,7 @@ static int ft_ts_probe(struct i2c_client *client,
 	if (err)
 		data->patching_enabled = false;
 
-	input_dev->name = "focaltech_ts";
-	input_dev->id.bustype = BUS_I2C;
-	input_dev->dev.parent = &client->dev;
-
-	input_set_drvdata(input_dev, data);
 	i2c_set_clientdata(client, data);
-
-	__set_bit(EV_KEY, input_dev->evbit);
-	__set_bit(EV_ABS, input_dev->evbit);
-	__set_bit(BTN_TOUCH, input_dev->keybit);
-	__set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
-
-	input_mt_init_slots(input_dev, pdata->num_max_touches, 0);
-	input_set_abs_params(input_dev, ABS_MT_POSITION_X, pdata->x_min,
-			     pdata->x_max, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, pdata->y_min,
-			     pdata->y_max, 0, 0);
-
-	err = input_register_device(input_dev);
-	if (err) {
-		dev_err(&client->dev, "Input device registration failed\n");
-		goto input_register_device_err;
-	}
 
 	if (pdata->power_init) {
 		err = pdata->power_init(true);
@@ -3421,6 +3392,35 @@ static int ft_ts_probe(struct i2c_client *client,
 
 	dev_dbg(&client->dev, "touch threshold = %d\n", reg_value * 4);
 
+	input_dev = input_allocate_device();
+	if (!input_dev) {
+		dev_err(&client->dev, "failed to allocate input device\n");
+		goto free_gpio;
+	}
+
+	data->input_dev = input_dev;
+	input_dev->name = "focaltech_ts";
+	input_dev->id.bustype = BUS_I2C;
+	input_dev->dev.parent = &client->dev;
+	input_set_drvdata(input_dev, data);
+
+	__set_bit(EV_KEY, input_dev->evbit);
+	__set_bit(EV_ABS, input_dev->evbit);
+	__set_bit(BTN_TOUCH, input_dev->keybit);
+	__set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
+
+	input_mt_init_slots(input_dev, pdata->num_max_touches, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_X, pdata->x_min,
+			     pdata->x_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, pdata->y_min,
+			     pdata->y_max, 0, 0);
+
+	err = input_register_device(input_dev);
+	if (err) {
+		dev_err(&client->dev, "Input device registration failed\n");
+		goto input_register_device_err;
+	}
+
 	err = request_threaded_irq(client->irq, NULL,
 				ft_ts_interrupt,
 	/*
@@ -3431,7 +3431,7 @@ static int ft_ts_probe(struct i2c_client *client,
 				client->dev.driver->name, data);
 	if (err) {
 		dev_err(&client->dev, "request irq failed\n");
-		goto free_gpio;
+		goto request_irq_err;
 	}
 
 	/* request_threaded_irq enable irq,so set the flag irq_enabled */
@@ -3667,6 +3667,11 @@ sysfs_create_files_err:
 sysfs_class_err:
 	free_irq(client->irq, data);
 	data->irq_enabled = false;
+request_irq_err:
+	input_unregister_device(input_dev);
+input_register_device_err:
+	data->input_dev = NULL;
+	input_free_device(input_dev);
 free_gpio:
 	ft_gpio_configure(data, false);
 gpio_config_err:
@@ -3693,9 +3698,6 @@ regulator_en_err:
 		pdata->power_init(false);
 	else
 		ft_power_init(data, false);
-	input_unregister_device(input_dev);
-input_register_device_err:
-	input_free_device(input_dev);
 	return err;
 }
 
