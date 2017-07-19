@@ -15,6 +15,7 @@
 	/delete-node/ pmx_motosh_out;
 	/delete-node/ pmx_motosh_in;
 	/delete-node/ factory_default;
+	/delete-node/ hub_reset_n_default;
 
 	haptic_reset_active: haptic_reset_active{
 		mux {
@@ -233,6 +234,14 @@
 			pins = "gpio9";
 		};
 	};
+	anx_irq_active {
+		mux {
+			pins = "gpio87";
+		};
+		config {
+			pins = "gpio87";
+		};
+	};
 	hd3ss460_amsel {
 		hd3ss460_amsel_default: default {
 			mux {
@@ -256,6 +265,18 @@
 				drive-strength = <2>;
 				bias-pull-up; /* pull-up */
 			};
+		};
+	};
+
+	muc_attach@0 {
+		config {
+			pins = "gpio60", "gpio36";
+		};
+	};
+
+	muc_spi_ctrl@0 {
+		config {
+			pins = "gpio38", "gpio36", "gpio59";
 		};
 	};
 
