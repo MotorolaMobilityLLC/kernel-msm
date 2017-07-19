@@ -161,7 +161,7 @@
 
 	apba_default@0 {
 		mphy_i2s_sel {
-			pins = "gpio27";
+			pins = "gpio47";
 			drive-strength = <2>;
 		};
 	};
