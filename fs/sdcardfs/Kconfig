@@ -33,3 +33,9 @@ config SDCARD_FS_DIR_WRITER
 	  To enable this feature, the extended attribute "user.dwriter" of
 	  parent directory should be set to specify sub-directory logging
 	  attribute.
+
+config MULTISPACE_FEATURE_ENABLED
+	bool "sdcardfs multispace feature support"
+	default n
+	help
+	  Sdcardfs supports multispace feature.
