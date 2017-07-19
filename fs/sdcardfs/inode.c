@@ -969,6 +969,44 @@ static ssize_t sdcardfs_getxattr(struct dentry *dentry, const char *name,
 	return err;
 }
 
+#ifdef CONFIG_SDCARD_FS_PARTIAL_RELATIME
+void sdcardfs_update_relatime_flag(struct file *lower_file,
+	struct inode *lower_inode)
+{
+	struct dentry *dentry, *parent;
+	char xattr_value[16];
+	const char *xattr_name = "user.relatime";
+	__u32 flags = 0;
+
+	dentry = lower_file->f_path.dentry;
+	if (!dentry)
+		return;
+
+	while (1) {
+		parent = dget_parent(dentry);
+		if (!parent)
+			break;
+		if (vfs_getxattr(parent, xattr_name,
+			(void *)xattr_value, sizeof(xattr_value)) &&
+			xattr_value[0] == '1') {
+			dput(parent);
+			flags = S_RELATIME;
+			break;
+		} else if (IS_ROOT(parent)) {
+			dput(parent);
+			break;
+		}
+		dentry = parent;
+		dput(parent);
+	}
+
+	spin_lock(&lower_inode->i_lock);
+	lower_inode->i_flags &= ~S_RELATIME;
+	lower_inode->i_flags |= flags;
+	spin_unlock(&lower_inode->i_lock);
+}
+#endif
+
 const struct inode_operations sdcardfs_symlink_iops = {
 	.permission2	= sdcardfs_permission,
 	.setattr2	= sdcardfs_setattr,
