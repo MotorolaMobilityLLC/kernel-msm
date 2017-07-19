@@ -175,6 +175,10 @@ extern struct inode *sdcardfs_iget(struct super_block *sb,
 				 struct inode *lower_inode, userid_t id);
 extern int sdcardfs_interpose(struct dentry *dentry, struct super_block *sb,
 			    struct path *lower_path, userid_t id);
+#ifdef CONFIG_SDCARD_FS_PARTIAL_RELATIME
+extern void sdcardfs_update_relatime_flag(struct file *lower_file,
+	struct inode *lower_inode);
+#endif
 
 /* file private data */
 struct sdcardfs_file_info {
