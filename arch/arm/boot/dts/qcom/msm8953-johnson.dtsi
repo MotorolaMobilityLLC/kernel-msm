@@ -712,11 +712,10 @@
 };
 
 /{
-	mot_albusbatterydata: qcom,battery-data {
+	mot_johnsonbatterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <100>;
-		df-serialnum = "SNN5983A";
-		#include "batterydata-hz40-lg.dtsi"
-		#include "batterydata-hz40-swd.dtsi"
+		df-serialnum = "SB18C19816";
+		#include "batterydata-jp40-swd.dtsi"
 	};
 };
 
@@ -724,5 +723,5 @@
 	/delete-property/ qcom,battery-data;
 	qcom,irq-volt-empty-mv = <3000>;
 	qcom,fg-cutoff-voltage-mv = <3200>;
-	qcom,battery-data = <&mot_albusbatterydata>;
+	qcom,battery-data = <&mot_johnsonbatterydata>;
 };
