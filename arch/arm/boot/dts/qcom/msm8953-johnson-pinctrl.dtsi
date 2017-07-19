@@ -398,4 +398,27 @@
 			};
 		};
 	};
+	fusb302_int{
+	/*label = "fusb302-int";*/
+
+		fusb302_int_default: default {
+			mux {
+				pins = "gpio46";
+			};
+
+			config {
+				pins = "gpio46";
+			};
+		};
+
+		fusb302_int_active: active {
+			mux {
+				pins = "gpio46";
+			};
+
+			config {
+				pins = "gpio46";
+			};
+		};
+	};
 };
