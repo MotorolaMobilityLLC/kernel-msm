@@ -142,6 +142,11 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&cs35l35_irq_default &cs35l35_reset_default>;
 		};
+
+		fusb302@22 {
+			gpios = <&tlmm 46 1>; /* FUSB302_INT_N, in */
+			tps,usb-5v-en-gpio = <&pm8953_gpios 2 0>;
+		};
 	};
 
 	i2c_4: i2c@78b8000 {
