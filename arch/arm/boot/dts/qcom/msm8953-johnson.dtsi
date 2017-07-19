@@ -445,6 +445,11 @@
 };
 
 &pm8953_gpios {
+	gpio@c400 { /* GPIO 5 - DP-MOD_i2s_SELECT */
+		qcom,mode = <1>;
+		qcom,vin-sel = <3>;		/* VIN3 */
+	};
+
 	gpio@c500 { /* GPIO 6 - USB_SELECT */
 		qcom,vin-sel = <3>;		/* VIN3 */
 	};
