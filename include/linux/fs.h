@@ -1804,6 +1804,7 @@ struct super_operations {
 #else
 #define S_DAX		0	/* Make all the DAX code disappear */
 #endif
+#define S_RELATIME	16384	/* Update relative access times */
 
 /*
  * Note that nosuid etc flags are inode-specific: setting some file-system
