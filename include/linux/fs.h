@@ -1836,6 +1836,7 @@ struct super_operations {
 #define S_DAX		0	/* Make all the DAX code disappear */
 #endif
 #define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
+#define S_RELATIME	(1 << 31)	/* Update relative access times */
 
 /*
  * Note that nosuid etc flags are inode-specific: setting some file-system
