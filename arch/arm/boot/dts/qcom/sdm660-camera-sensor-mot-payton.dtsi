@@ -64,19 +64,16 @@
 		gpios = <&tlmm 32 0>,
 			<&tlmm 46 0>,
 			<&pm660l_gpios 4 0>,
-			<&tlmm 51 0>,
-			<&tlmm 40 0>;
+			<&tlmm 51 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vdig = <2>;
 		qcom,gpio-vana = <3>;
-		qcom,gpio-custom1 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
 					"CAM_RESET0",
 					"CAM_VDIG",
-					"CAM_VANA",
-					"CAM_CUSTOM";
+					"CAM_VANA";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
@@ -106,19 +103,16 @@
 		gpios = <&tlmm 35 0>,
 			<&tlmm 47 0>,
 			<&pm660l_gpios 3 0>,
-			<&tlmm 49 0>,
-			<&tlmm 40 0>;
+			<&tlmm 49 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vdig = <2>;
 		qcom,gpio-vana = <3>;
-		qcom,gpio-custom1 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 					  "CAM_RESET",
 					  "CAM_VDIG",
-					  "CAM_VANA",
-					  "CAM_CUSTOM";
+					  "CAM_VANA";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
@@ -148,19 +142,16 @@
 		gpios = <&tlmm 33 0>,
 			<&tlmm 52 0>,
 			<&pm660l_gpios 8 0>,
-			<&tlmm 49 0>,
-			<&tlmm 40 0>;
+			<&tlmm 49 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vdig = <2>;
 		qcom,gpio-vana = <3>;
-		qcom,gpio-custom1 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
 					"CAM_RESET2",
 					"CAM_VDIG",
-					"CAM_VANA",
-					"CAM_CUSTOM";
+					"CAM_VANA";
 		qcom,sensor-position = <1>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
@@ -197,19 +188,16 @@
 		gpios = <&tlmm 32 0>,
 			<&tlmm 46 0>,
 			<&pm660l_gpios 4 0>,
-			<&tlmm 51 0>,
-			<&tlmm 40 0>;
+			<&tlmm 51 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vdig = <2>;
 		qcom,gpio-vana = <3>;
-		qcom,gpio-custom1 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
 					"CAM_RESET0",
 					"CAM_VDIG",
-					"CAM_VANA",
-					"CAM_CUSTOM";
+					"CAM_VANA";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
@@ -244,19 +232,16 @@
 		gpios = <&tlmm 35 0>,
 			<&tlmm 47 0>,
 			<&pm660l_gpios 3 0>,
-			<&tlmm 49 0>,
-			<&tlmm 40 0>;
+			<&tlmm 49 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vdig = <2>;
 		qcom,gpio-vana = <3>;
-		qcom,gpio-custom1 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 					  "CAM_RESET",
 					  "CAM_VDIG",
-					  "CAM_VANA",
-					  "CAM_CUSTOM";
+					  "CAM_VANA";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
@@ -291,19 +276,16 @@
 		gpios = <&tlmm 33 0>,
 			<&tlmm 52 0>,
 			<&pm660l_gpios 8 0>,
-			<&tlmm 49 0>,
-			<&tlmm 40 0>;
+			<&tlmm 49 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vdig = <2>;
 		qcom,gpio-vana = <3>;
-		qcom,gpio-custom1 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
 					"CAM_RESET2",
 					"CAM_VDIG",
-					"CAM_VANA",
-					"CAM_CUSTOM";
+					"CAM_VANA";
 		qcom,sensor-position = <1>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
@@ -439,12 +421,12 @@
 		cam_sensor_rear_active: cam_sensor_rear_active {
 			/* RESET, STANDBY */
 			mux {
-				pins = "gpio46","gpio51","gpio40";
+				pins = "gpio46","gpio51";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio46","gpio51","gpio40";
+				pins = "gpio46","gpio51";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -453,12 +435,12 @@
 		cam_sensor_rear_suspend: cam_sensor_rear_suspend {
 			/* RESET, STANDBY */
 			mux {
-				pins = "gpio46","gpio51","gpio40";
+				pins = "gpio46","gpio51";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio46","gpio51","gpio40";
+				pins = "gpio46","gpio51";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -497,12 +479,12 @@
 		cam_sensor_rear2_active: cam_sensor_rear2_active {
 			/* RESET, STANDBY */
 			mux {
-				pins = "gpio47","gpio49","gpio40";
+				pins = "gpio47","gpio49";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio47","gpio49","gpio40";
+				pins = "gpio47","gpio49";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -511,11 +493,11 @@
 		cam_sensor_rear2_suspend: cam_sensor_rear2_suspend {
 			/* RESET, STANDBY */
 			mux {
-				pins = "gpio47","gpio49","gpio40";
+				pins = "gpio47","gpio49";
 				function = "gpio";
 			};
 			config {
-				pins = "gpio47","gpio49","gpio40";
+				pins = "gpio47","gpio49";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -554,12 +536,12 @@
 		cam_sensor_front_active: cam_sensor_front_active {
 			/* RESET  VANA*/
 			mux {
-				pins = "gpio49","gpio52","gpio40";
+				pins = "gpio49","gpio52";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio49","gpio52","gpio40";
+				pins = "gpio49","gpio52";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -568,12 +550,12 @@
 		cam_sensor_front_suspend: cam_sensor_front_suspend {
 			/* RESET */
 			mux {
-				pins = "gpio49","gpio52","gpio40";
+				pins = "gpio49","gpio52";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio49","gpio52","gpio40";
+				pins = "gpio49","gpio52";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
