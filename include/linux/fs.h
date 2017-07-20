@@ -1646,6 +1646,7 @@ struct super_operations {
 #define S_IMA		1024	/* Inode has an associated IMA struct */
 #define S_AUTOMOUNT	2048	/* Automount/referral quasi-directory */
 #define S_NOSEC		4096	/* no suid or xattr security attributes */
+#define S_RELATIME	16384	/* Update relative access times */
 
 /*
  * Note that nosuid etc flags are inode-specific: setting some file-system
