@@ -2000,6 +2000,7 @@ struct super_operations {
 #define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
 #define S_CASEFOLD	32768	/* Casefolded file */
 #define S_VERITY	65536	/* Verity file (using fs/verity/) */
+#define S_RELATIME	(1 << 31)	/* Update relative access times */
 
 /*
  * Note that nosuid etc flags are inode-specific: setting some file-system
