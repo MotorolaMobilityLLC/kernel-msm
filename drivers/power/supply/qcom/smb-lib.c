@@ -4417,6 +4417,7 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, DCP_VOTER, false, 0);
 	vote(chg->usb_icl_votable, PL_USBIN_USBIN_VOTER, false, 0);
 	vote(chg->usb_icl_votable, SW_QC3_VOTER, false, 0);
+	vote(chg->usb_icl_votable, ICL_LIMIT_VOTER, false, 0);
 
 	rc = smblib_get_prop_usb_present(chg, &val);
 	if (rc < 0) {
