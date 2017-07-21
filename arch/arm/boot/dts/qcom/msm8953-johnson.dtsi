@@ -456,6 +456,16 @@
 };
 
 &pm8953_gpios {
+	gpio@c100 { /* GPIO 2 - USB_5V_EN */
+		qcom,mode = <1>;		/* Digital Output */
+		qcom,pull = <5>;		/* No pull  */
+		qcom,vin-sel = <3>;		/* VIN0 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,out-strength = <2>;        /* Medium */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
 	gpio@c400 { /* GPIO 5 - DP-MOD_i2s_SELECT */
 		qcom,mode = <1>;
 		qcom,vin-sel = <3>;		/* VIN3 */
