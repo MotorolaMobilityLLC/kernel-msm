@@ -386,7 +386,7 @@
 	};
 
 	qcom,msm-thermal {
-		qcom,config-info = "albus";
+		qcom,config-info = "johnson";
 	};
 
 	/delete-node/ hdmi_dba;
