@@ -11,6 +11,18 @@
  * GNU General Public License for more details.
  */
 
+&pm660l_flash0 {
+	qcom,duration-ms = <300>;
+};
+
+&pm660l_flash1 {
+	qcom,duration-ms = <300>;
+};
+
+&pm660l_flash2 {
+	qcom,duration-ms = <300>;
+};
+
 &soc {
 	led_flash0: qcom,camera-flash@0 {
 		cell-index = <0>;
