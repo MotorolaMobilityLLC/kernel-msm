@@ -11,7 +11,7 @@
  */
 
 #include "msm8953-moto-common.dtsi"
-#include "dsi-panel-mot-smd-549-1080p-alb-cmd.dtsi"
+#include "dsi-panel-mot-tianma-593-1080p-vid.dtsi"
 #include "dsi-panel-mot-mod-fwvga-video.dtsi"
 #include "msm8953-johnson-pinctrl.dtsi"
 
@@ -549,16 +549,17 @@
 
 &mdss_dsi0 {
 	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active &mdss_te_active &mipi_err_pin_active>;
-	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend &mipi_err_pin_suspend>;
+	pinctrl-0 = <&mdss_dsi_active>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
 
-	qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_alb_cmd_v0>;
-	vci_disp-supply = <&vci_disp_vreg>;
-	vio_disp-supply = <&vio_disp_vreg>;
-	elvdd_disp-supply = <&lab_regulator>;
-	elvss_disp-supply = <&ibb_regulator>;
+	qcom,dsi-pref-prim-pan = <&mot_tianma_593_1080p_vid_v0>;
+
+	/delete-property/ vdd-supply;
+	vddio_disp-supply = <&pm8953_l6>;
+	vsp_disp-supply = <&lab_regulator>;
+	vsn_disp-supply = <&ibb_regulator>;
+
 	qcom,platform-reset-gpio = <&tlmm 61 0>;
-	qcom,platform-te-gpio = <&tlmm 24 0>;
 };
 
 &mdss_dsi1 {
