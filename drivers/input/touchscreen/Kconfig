@@ -1184,6 +1184,15 @@ config TOUCHSCREEN_GT9XX
 
           If unsure, say N.
 
+config TOUCHSCREEN_GT9XX_MMI
+	bool "Goodix touchpanel GT9xx mmi series"
+	depends on I2C
+	help
+	  Say Y here if you have a Goodix GT9xx touchscreen for mmi.
+	  Gt9xx controllers are multi touch controllers.
+
+          If unsure, say N.
+
 config TOUCHSCREEN_MAXIM_STI
 	tristate "Maxim based STI touchscreens"
 	depends on SPI_MASTER
@@ -1243,4 +1252,5 @@ config TOUCHSCREEN_HIMAX_CHIPSET
 
 source "drivers/input/touchscreen/hxchipset/Kconfig"
 
+source "drivers/input/touchscreen/gt9xx_mmi/Kconfig"
 endif
