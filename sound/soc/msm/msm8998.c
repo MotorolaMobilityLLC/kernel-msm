@@ -768,6 +768,9 @@ static struct snd_soc_dapm_route cs47l35_audio_paths[] = {
 	{"AIF1 Playback", NULL, "AMP Capture"},
 	{"AMP Playback", NULL, "OPCLK"},
 	{"AMP Capture", NULL, "OPCLK"},
+
+	{ "IN2L", NULL, "MICNRS" },
+	{ "IN2R", NULL, "MICNRS" },
 };
 
 static int slim_get_sample_rate_val(int sample_rate)
@@ -3858,6 +3861,7 @@ static const struct snd_soc_dapm_widget msm_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic3", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic5", NULL),
+	SND_SOC_DAPM_REGULATOR_SUPPLY("MICNRS", 0, SND_SOC_DAPM_REGULATOR_BYPASS),
 };
 
 static inline int param_is_mask(int p)
