@@ -1651,8 +1651,12 @@
 	qcom,external-vbus;
 	vconn-parent-supply = <&vreg_5p0>;
 	otg-parent-supply = <&vreg_5p0>;
+	BOB-supply = <&pmi8998_bob>;
 	smb2_ext_vbus: qcom,smb2-ext-vbus {
 		regulator-name = "smb2-ext-vbus";
+	};
+	smb2_micnrs: qcom,smb2-micnrs {
+		regulator-name = "MICNRS";
 	};
 };
 
