@@ -18,6 +18,7 @@
 #include <linux/irqreturn.h>
 #include <linux/reboot.h>
 #include <linux/regulator/driver.h>
+#include <linux/regulator/machine.h>
 #include <linux/regulator/consumer.h>
 #include <linux/extcon.h>
 #include "storm-watch.h"
@@ -385,6 +386,7 @@ struct smb_charger {
 	struct mutex		ps_change_lock;
 	struct mutex		otg_oc_lock;
 	struct mutex		vconn_oc_lock;
+	struct mutex		micnrs_oc_lock;
 
 	/* power supplies */
 	struct power_supply		*batt_psy;
@@ -407,6 +409,8 @@ struct smb_charger {
 	struct smb_regulator	*vconn_vreg;
 	struct regulator	*dpdm_reg;
 	struct smb_regulator	*ext_vbus_vreg;
+	struct smb_regulator	*micnrs_vreg;
+	struct regulator 	*bob_reg;
 
 	/* votables */
 	struct votable		*dc_suspend_votable;
@@ -460,6 +464,7 @@ struct smb_charger {
 	bool			micro_usb_mode;
 	bool			otg_en;
 	bool			vconn_en;
+	bool			micnrs_en;
 	bool			suspend_input_on_debug_batt;
 	int			otg_attempts;
 	int			vconn_attempts;
@@ -543,6 +548,10 @@ int smblib_vbus_regulator_is_enabled(struct regulator_dev *rdev);
 int smblib_vconn_regulator_enable(struct regulator_dev *rdev);
 int smblib_vconn_regulator_disable(struct regulator_dev *rdev);
 int smblib_vconn_regulator_is_enabled(struct regulator_dev *rdev);
+
+int smblib_micnrs_regulator_enable(struct regulator_dev *rdev);
+int smblib_micnrs_regulator_disable(struct regulator_dev *rdev);
+int smblib_micnrs_regulator_is_enabled(struct regulator_dev *rdev);
 
 int smblib_ext_vbus_regulator_enable(struct regulator_dev *rdev);
 int smblib_ext_vbus_regulator_disable(struct regulator_dev *rdev);
