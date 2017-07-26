@@ -114,6 +114,23 @@
 					&anx_irq_active>;
 		};
 
+		sx9310@28 {
+			compatible = "semtech,sx9310";
+			reg = <0x28>;
+			cap_svdd-supply = <&pm8953_l5>;
+			cap_vdd-supply = <&pm8953_l6>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <44 0x2008>;
+			gpios = <&tlmm 44 0x2008>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sx9310_irq_default>;
+			cap,use_channel = <0x01>;
+			cap,scan_period = <0x05>;
+			reg_array_len = <5>;
+			reg_array_val = <0x12 0x0B 0x13 0x05 0x15 0xC2
+					0x18 0x4E 0x10 0x51>;
+		};
+
 		nq:nq@28 {		/* NFC PN553 */
 			compatible = "qcom,nq-nci";
 			reg = <0x28>;
@@ -127,7 +144,6 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&nfc_irq_default &nfc_ven_default &nfc_firm_default>;
 		};
-
 
 		cs35l35@40 {
 			compatible = "cirrus,cs35l35";
