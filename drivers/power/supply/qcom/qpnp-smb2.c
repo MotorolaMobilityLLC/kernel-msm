@@ -1651,6 +1651,60 @@ static int smb2_init_vconn_regulator(struct smb2 *chip)
 	return rc;
 }
 
+/******************************
+ * MICNRS REGULATOR REGISTRATION *
+ ******************************/
+
+struct regulator_ops smb2_micnrs_reg_ops = {
+	.enable = smblib_micnrs_regulator_enable,
+	.disable = smblib_micnrs_regulator_disable,
+	.is_enabled = smblib_micnrs_regulator_is_enabled,
+};
+
+static int smb2_init_micnrs_regulator(struct smb2 *chip)
+{
+	struct smb_charger *chg = &chip->chg;
+	struct regulator_config cfg = {};
+	int rc = 0;
+
+	chg->micnrs_vreg = devm_kzalloc(chg->dev, sizeof(*chg->micnrs_vreg),
+				      GFP_KERNEL);
+	if (!chg->micnrs_vreg)
+		return -ENOMEM;
+
+	cfg.dev = chg->dev;
+	cfg.driver_data = chip;
+
+	chg->micnrs_vreg->rdesc.owner = THIS_MODULE;
+	chg->micnrs_vreg->rdesc.type = REGULATOR_VOLTAGE;
+	chg->micnrs_vreg->rdesc.ops = &smb2_micnrs_reg_ops;
+	chg->micnrs_vreg->rdesc.of_match = "qcom,smb2-micnrs";
+	chg->micnrs_vreg->rdesc.name = "MICNRS";
+
+	chg->micnrs_vreg->rdev = devm_regulator_register(chg->dev,
+						&chg->micnrs_vreg->rdesc, &cfg);
+	if (IS_ERR(chg->micnrs_vreg->rdev)) {
+		rc = PTR_ERR(chg->micnrs_vreg->rdev);
+		chg->micnrs_vreg->rdev = NULL;
+		if (rc != -EPROBE_DEFER)
+			pr_err("Couldn't register MICNRS regualtor rc=%d\n", rc);
+	}
+
+	/* BOB Mode needs to be controlled to prevent Audible Range */
+	if (!chg->bob_reg && of_get_property(chg->dev->of_node,
+					     "BOB-supply", NULL)) {
+		chg->bob_reg = devm_regulator_get(chg->dev, "BOB");
+		if (IS_ERR(chg->bob_reg)) {
+			dev_err(chg->dev, "Couldn't get bob regulator rc=%ld\n",
+				PTR_ERR(chg->bob_reg));
+			chg->bob_reg = NULL;
+		}
+	} else
+		dev_err(chg->dev, "Couldn't find bob regulator\n");
+
+	return rc;
+}
+
 /***************************
  * HARDWARE INITIALIZATION *
  ***************************/
@@ -2748,6 +2802,13 @@ static int smb2_probe(struct platform_device *pdev)
 	rc = smb2_init_vconn_regulator(chip);
 	if (rc < 0) {
 		pr_err("Couldn't initialize vconn regulator rc=%d\n",
+				rc);
+		goto cleanup;
+	}
+
+	rc = smb2_init_micnrs_regulator(chip);
+	if (rc < 0) {
+		pr_err("Couldn't initialize micnrs regulator rc=%d\n",
 				rc);
 		goto cleanup;
 	}
