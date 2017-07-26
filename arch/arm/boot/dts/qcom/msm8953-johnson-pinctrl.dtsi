@@ -397,6 +397,19 @@
 				bias-pull-down; /* PULL DOWN */
 			};
 		};
+
+		sx9310_irq_default: sx9310_irq_default {  //cap sense inturrupt
+			mux {
+				pins = "gpio44";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio44";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
 	};
 	fusb302_int{
 	/*label = "fusb302-int";*/
