@@ -1410,6 +1410,67 @@ int smblib_vconn_regulator_is_enabled(struct regulator_dev *rdev)
 	return ret;
 }
 
+/*******************
+ * MICNRS REGULATOR *
+ * *****************/
+
+int smblib_micnrs_regulator_enable(struct regulator_dev *rdev)
+{
+	struct smb_charger *chg = rdev_get_drvdata(rdev);
+	int rc = 0;
+
+	mutex_lock(&chg->micnrs_oc_lock);
+	if (chg->micnrs_en)
+		goto unlock;
+
+	/* BOB Mode set to PWM to prevent Audible Range */
+	if (chg->bob_reg)
+		rc = regulator_set_mode(chg->bob_reg,
+					REGULATOR_MODE_FAST);
+	if (rc)
+		dev_err(chg->dev,
+			"Failed to set Bob Mode: %d\n", rc);
+	else
+		chg->micnrs_en = true;
+
+unlock:
+	mutex_unlock(&chg->micnrs_oc_lock);
+	return rc;
+}
+
+int smblib_micnrs_regulator_disable(struct regulator_dev *rdev)
+{
+	struct smb_charger *chg = rdev_get_drvdata(rdev);
+	int rc = 0;
+
+	mutex_lock(&chg->micnrs_oc_lock);
+	if (!chg->micnrs_en)
+		goto unlock;
+	/* BOB Mode set to AUTO to save current drain */
+	if (chg->bob_reg)
+		rc = regulator_set_mode(chg->bob_reg,
+					REGULATOR_MODE_NORMAL);
+	if (rc)
+		dev_err(chg->dev,
+				"Failed to set Bob Mode: %d\n", rc);
+	else
+		chg->micnrs_en = false;
+unlock:
+	mutex_unlock(&chg->micnrs_oc_lock);
+	return rc;
+}
+
+int smblib_micnrs_regulator_is_enabled(struct regulator_dev *rdev)
+{
+	struct smb_charger *chg = rdev_get_drvdata(rdev);
+	int ret;
+
+	mutex_lock(&chg->micnrs_oc_lock);
+	ret = chg->micnrs_en;
+	mutex_unlock(&chg->micnrs_oc_lock);
+	return ret;
+}
+
 /*****************
  * OTG REGULATOR *
  *****************/
@@ -5414,6 +5475,7 @@ int smblib_init(struct smb_charger *chg)
 	mutex_init(&chg->write_lock);
 	mutex_init(&chg->otg_oc_lock);
 	mutex_init(&chg->vconn_oc_lock);
+	mutex_init(&chg->micnrs_oc_lock);
 	INIT_WORK(&chg->bms_update_work, bms_update_work);
 	INIT_WORK(&chg->rdstd_cc2_detach_work, rdstd_cc2_detach_work);
 	INIT_DELAYED_WORK(&chg->hvdcp_detect_work, smblib_hvdcp_detect_work);
