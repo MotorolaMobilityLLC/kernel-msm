@@ -39,7 +39,7 @@
 
 	nfc_firm_default: nfc_firm_default {
 		config {
-			pins = "gpio87";
+			pins = "gpio113";
 			drive-strength = <2>;
 			bias-pull-down;
 			output-low;
