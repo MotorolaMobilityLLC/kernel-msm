@@ -771,7 +771,7 @@
 };
 
 &pmi_haptic{
-	status = "disabled";
+	qcom,vmax-mv = <1800>;
 };
 
 &pmi8950_charger {
