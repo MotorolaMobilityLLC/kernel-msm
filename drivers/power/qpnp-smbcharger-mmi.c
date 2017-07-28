@@ -5279,10 +5279,14 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 	SMB_DBG(chip, "online = %d, type = %d, current = %d, disabled = %d\n",
 			online, prop.intval, chip->cl_usbc, disabled);
 
-	if (online && prop.intval == POWER_SUPPLY_TYPE_USBC_SINK) {
+	if (online &&
+	    (chip->usbc_online || is_usb_present(chip)) &&
+	    (prop.intval == POWER_SUPPLY_TYPE_USBC_SINK ||
+	     prop.intval == POWER_SUPPLY_TYPE_USBC_AUDIO)) {
 		/* Skip notifying insertion if already done */
 		if (!chip->usbc_online) {
 			chip->usbc_online = true;
+			cancel_delayed_work(&chip->usb_insertion_work);
 			schedule_delayed_work(&chip->usb_insertion_work,
 				      msecs_to_jiffies(100));
 		}
