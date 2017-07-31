@@ -322,4 +322,17 @@ config SND_CS35L35_I2C2
 	bool "CS35L35 Use I2C2"
 	default n
 
+config SND_CS35L35_QUAT_I2S
+	bool "CS35L35 Use Quaternary I2S"
+	default n
+
+config SND_CS35L35_OSR_CLK
+	bool "CS35L35 Use OSR CLK"
+	default n
+
+config SND_QUIN_MI2S_FOR_MODS
+	bool "Use Quin MI2S for mods audio"
+	default n
+	depends on SND_SOC_MODS_CODEC_SHIM
+
 endmenu
