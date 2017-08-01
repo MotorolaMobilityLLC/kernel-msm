@@ -113,28 +113,59 @@
 		};
 	};
 
+	/delete-node/ cdc-pdm-lines;
 	cdc-pdm-lines {
 		cdc_pdm_lines_act: pdm_lines_on {
 			mux {
-				/delete-property/ pins;
-				pins = "gpio73";
+				pins = "gpio69", "gpio73", "gpio74";
+				function = "cdc_pdm0";
 			};
 
 			config {
-				/delete-property/ pins;
-				pins = "gpio73";
+				pins = "gpio69", "gpio73", "gpio74";
+				drive-strength = <8>;
 			};
 		};
 
 		cdc_pdm_lines_sus: pdm_lines_off {
 			mux {
-				/delete-property/ pins;
-				pins = "gpio73";
+				pins = "gpio69", "gpio73", "gpio74";
+				function = "cdc_pdm0";
 			};
 
 			config {
-				/delete-property/ pins;
-				pins = "gpio73";
+				pins = "gpio69", "gpio73", "gpio74";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+	sec-tlmm-lines {
+		sec_tlmm_lines_act: sec_tlmm_lines_act {
+			mux {
+				pins = "gpio135", "gpio136",
+					"gpio137", "gpio138";
+				function = "sec_mi2s";
+			};
+
+			config {
+				pins = "gpio135", "gpio136",
+					"gpio137", "gpio138";
+				drive-strength = <8>;
+			};
+		};
+
+		sec_tlmm_lines_sus: sec_tlmm_lines_sus {
+			mux {
+				pins = "gpio135", "gpio136",
+					"gpio137", "gpio138";
+				function = "sec_mi2s";
+			};
+			config {
+				pins = "gpio135", "gpio136",
+					"gpio137", "gpio138";
+				drive-strength = <2>;
+				bias-pull-down;
 			};
 		};
 	};
@@ -236,61 +267,13 @@
 		};
 	};
 
-	spi_7 {
-		spi_7_active: spi_7_active {
-			mux {
-				/* MOSI, MISO, CLK */
-				pins = "gpio137", "gpio138", "gpio135";
-				function = "blsp_spi7";
-			};
 
-			config {
-				pins = "gpio137", "gpio138", "gpio135";
-				drive-strength = <12>; /* 12 MA */
-				bias-disable = <0>; /* No PULL */
-			};
-		};
 
-		spi_7_sleep: spi_7_sleep {
-			mux {
-				/* MOSI, MISO, CLK */
-				pins = "gpio137", "gpio138", "gpio135";
-				function = "blsp_spi7";
-			};
 
-			config {
-				pins = "gpio137", "gpio138", "gpio135";
-				drive-strength = <2>; /* 2 MA */
-				bias-pull-down; /* PULL Down */
-			};
-		};
 
-		spi7_cs0_active: cs0_active {
-			mux {
-				pins = "gpio136";
-				function = "blsp_spi7";
-			};
 
-			config {
-				pins = "gpio136";
-				drive-strength = <2>;
-				bias-disable = <0>;
-			};
-		};
 
-		spi7_cs0_sleep: cs0_sleep {
-			mux {
-				pins = "gpio136";
-				function = "blsp_spi7";
-			};
 
-			config {
-				pins = "gpio136";
-				drive-strength = <2>;
-				bias-disable = <0>;
-			};
-		};
-	};
 
 	i2c_2 {
 		laser_active_irq: laser_active_irq {
