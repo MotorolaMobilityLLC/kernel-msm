@@ -24,6 +24,13 @@
 	interrupt-parent = <&intc>;
 };
 
+&soc {
+	fpc_fpc1020{
+		pinctrl-0 = <&rst_active &int_active &ldo_en_active>;
+		pinctrl-1 = <&rst_suspend &int_suspend &ldo_en_suspend>;
+	};
+};
+
 &clock_gcc_gfx {
 	compatible = "qcom,gcc-gfx-sdm450";
 	qcom,gfxfreq-corner =
