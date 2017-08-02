@@ -168,7 +168,7 @@
 					dev = "/dev/block/platform/624000.ufshc/by-name/system";
 					type = "ext4";
 					mnt_flags = "ro,barrier=1,discard";
-					fsmgr_flags = "wait";
+					fsmgr_flags = "wait";  /* MMI_STOPSHIP: disable verity! */
 					status = "ok";
 				};
 
