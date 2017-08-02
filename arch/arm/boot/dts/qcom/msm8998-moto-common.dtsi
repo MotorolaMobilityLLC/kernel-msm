@@ -72,7 +72,7 @@
 	reserved-memory {
 		ramoops_mem: ramoops_mem_region {
 			no-map;
-			reg = <0x0 0xaf000000 0x0 0x80000>;
+			reg = <0x0 0xaf000000 0x0 0xb0000>;
 			label = "ramoops_mem";
 		};
 		tzlog_bck_mem: tzlog_bck_region {
@@ -1188,6 +1188,7 @@
 		status = "ok";
 
 		console-size = <0x0 0x40000>;
+		pmsg-size = <0x0 0x40000>;
 		record-size = <0x0 0x3f800>;
 		ramoops-annotate-size = <0x0 0x800>;
 
