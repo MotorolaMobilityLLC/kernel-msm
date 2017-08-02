@@ -252,7 +252,6 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 	uint8_t drain_again = 0;
 	uint8_t peripheral = 0;
 	struct diag_md_session_t *session_info = NULL;
-	struct pid *pid_struct = NULL;
 
 	for (i = 0; i < NUM_DIAG_MD_DEV && !err; i++) {
 		ch = &diag_md[i];
@@ -277,14 +276,6 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 			if ((info && (info->peripheral_mask &
 			    MD_PERIPHERAL_MASK(peripheral)) == 0))
 				goto drop_data;
-			pid_struct = find_get_pid(session_info->pid);
-			if (!pid_struct) {
-				err = -ESRCH;
-				DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
-					"diag: No such md_session_map[%d] with pid = %d err=%d exists..\n",
-					peripheral, session_info->pid, err);
-				goto drop_data;
-			}
 			/*
 			 * If the data is from remote processor, copy the remote
 			 * token first
@@ -304,35 +295,27 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 			}
 			if (i > 0) {
 				remote_token = diag_get_remote(i);
-				if (get_pid_task(pid_struct, PIDTYPE_PID)) {
-					err = copy_to_user(buf + ret,
-							&remote_token,
-							sizeof(int));
-					if (err)
-						goto drop_data;
-					ret += sizeof(int);
-				}
-			}
-
-			/* Copy the length of data being passed */
-			if (get_pid_task(pid_struct, PIDTYPE_PID)) {
-				err = copy_to_user(buf + ret,
-						(void *)&(entry->len),
-						sizeof(int));
+				err = copy_to_user(buf + ret, &remote_token,
+						   sizeof(int));
 				if (err)
 					goto drop_data;
 				ret += sizeof(int);
 			}
 
+			/* Copy the length of data being passed */
+			err = copy_to_user(buf + ret, (void *)&(entry->len),
+					   sizeof(int));
+			if (err)
+				goto drop_data;
+			ret += sizeof(int);
+
 			/* Copy the actual data being passed */
-			if (get_pid_task(pid_struct, PIDTYPE_PID)) {
-				err = copy_to_user(buf + ret,
-						(void *)entry->buf,
-						entry->len);
-				if (err)
-					goto drop_data;
-				ret += entry->len;
-			}
+			err = copy_to_user(buf + ret, (void *)entry->buf,
+					   entry->len);
+			if (err)
+				goto drop_data;
+			ret += entry->len;
+
 			/*
 			 * The data is now copied to the user space client,
 			 * Notify that the write is complete and delete its
@@ -354,11 +337,7 @@ drop_data:
 	}
 
 	*pret = ret;
-	if (pid_struct && get_pid_task(pid_struct, PIDTYPE_PID)) {
-		err = copy_to_user(buf + sizeof(int),
-				(void *)&num_data,
-				sizeof(int));
-	}
+	err = copy_to_user(buf + sizeof(int), (void *)&num_data, sizeof(int));
 	diag_ws_on_copy_complete(DIAG_WS_MUX);
 	if (drain_again)
 		chk_logging_wakeup();
