@@ -1863,7 +1863,7 @@ static int madera_jack_present(struct madera_extcon_info *info,
 		return ret;
 	}
 
-	dev_dbg(madera->dev, "IRQ1_RAW_STATUS_7=0x%x\n", val);
+	dev_info(madera->dev, "IRQ1_RAW_STATUS_7=0x%x\n", val);
 
 	if (info->pdata->jd_use_jd2) {
 		val &= MADERA_MICD_CLAMP_RISE_STS1;
@@ -1876,7 +1876,7 @@ static int madera_jack_present(struct madera_extcon_info *info,
 		present = MADERA_JD1_RISE_STS1;
 	}
 
-	dev_dbg(madera->dev, "jackdet val=0x%x present=0x%x\n", val, present);
+	dev_info(madera->dev, "jackdet val=0x%x present=0x%x\n", val, present);
 
 	if (jack_val)
 		*jack_val = val;
