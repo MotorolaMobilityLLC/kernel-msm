@@ -1,0 +1,15 @@
+fpc fpc1020 fingerprint platform driver
+
+Required properties:
+
+ - compatible		: Should be "fpc,fpc1020" .
+
+Optional properites:
+
+		fpc_fpc1020@0{
+			compatible = "fpc,fpc1020";
+			status = "ok";
+			irq = <&tlmm 86 0>;
+			rst = <&tlmm 8 0>;
+		};
+
