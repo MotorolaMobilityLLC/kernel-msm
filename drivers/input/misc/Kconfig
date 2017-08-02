@@ -801,6 +801,13 @@ config SENSORS_FPC_1020
 	 Say Y here if you wish to include support for finger print sensor.
 	 If unsure, say N.
 
+config SENSORS_FPC_PLATFORM_1020
+	tristate "fpc fingerprint sensor"
+	default n
+	help
+	 Say Y here if you wish to include support for finger print sensor.
+	 It is new platform driver. If unsure, say N.
+
 config INPUT_EGISTEC_320
 	tristate "Egistec ET320 fingerprint sensor"
 	default n
