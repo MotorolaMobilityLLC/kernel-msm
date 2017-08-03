@@ -4131,7 +4131,6 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	vote(chg->usb_icl_votable, PL_USBIN_USBIN_VOTER, false, 0);
 	vote(chg->usb_icl_votable, SW_QC3_VOTER, false, 0);
 	vote(chg->usb_icl_votable, ICL_LIMIT_VOTER, false, 0);
-	vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, false, 0);
 
 	rc = smblib_get_prop_usb_present(chg, &val);
 	if (rc < 0) {
@@ -6455,11 +6454,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 
 		switch (chip->typec_mode) {
 		case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
-			if (mmi->hvdcp3_con) {
+			if (mmi->hvdcp3_con)
 				cl_cc = 3000;
-				vote(chip->usb_icl_votable,
-					LEGACY_UNKNOWN_VOTER, true, 3000000);
-			} else
+			else
 				cl_cc = 500;
 			break;
 		case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
