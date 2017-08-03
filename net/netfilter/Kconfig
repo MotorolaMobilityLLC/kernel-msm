@@ -1514,6 +1514,13 @@ config NETFILTER_XT_MATCH_QTAGUID_EXT
 	default n
 	---help---
 	This option enables for extension of xt_qtaguid.
+
+config NETFILTER_XT_MATCH_TLV
+	tristate '"tlv" match support'
+	default n
+	---help---
+	  This option enables for reporting a netlink msg when data matched.
+
 endif # NETFILTER_XTABLES
 
 endmenu
