@@ -3136,7 +3136,7 @@ static int __smblib_set_prop_pd_active(struct smb_charger *chg, bool pd_active)
 			schedule_work(&chg->legacy_detection_work);
 #else
 		/* re-run APSD if HVDCP was detected */
-		if (hvdcp) {
+		if (hvdcp && !chg->mmi.hvdcp3_con) {
 			smblib_rerun_apsd(chg);
 			chg->mmi.vbus_inc_cnt = 0;
 			chg->mmi.hvdcp3_con = false;
@@ -4592,7 +4592,9 @@ static void smblib_handle_rp_change(struct smb_charger *chg, int typec_mode)
 						chg->typec_mode, typec_mode);
 
 	rp_ua = get_rp_based_dcp_current(chg, typec_mode);
+#ifdef QCOM_BASE
 	vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, rp_ua);
+#endif
 }
 
 static void smblib_handle_typec_cc_state_change(struct smb_charger *chg)
@@ -6663,7 +6665,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			cl_usb = 500;
 		if ((chip->typec_mode == POWER_SUPPLY_TYPEC_NONE) ||
 		    (chip->typec_mode ==
-		     POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)) {
+		     POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) ||
+		    (chip->pd_active && (chip->pd_contract_uv > 0))) {
 			mmi->charger_debounce_cnt = CHARGER_DETECTION_DONE;
 			charger_present = 1;
 			mmi->apsd_done = true;
