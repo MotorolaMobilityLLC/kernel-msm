@@ -6,10 +6,16 @@
 
 #define DEBUG
 
+#include <linux/cred.h>
+#include <linux/fdtable.h>
+#include <linux/file.h>
+#include <linux/fs.h>
 #include <linux/in.h>
 #include <linux/ipv6.h>
 #include <linux/jhash.h>
 #include <linux/netfilter.h>
+#include <linux/sched.h>
+#include <linux/workqueue.h>
 #include <net/ip.h>
 
 #include "xt_qtaguid_ext.h"
@@ -19,6 +25,196 @@
 #define SYSTEM_UID 1000
 #define MOBILE_IFACE "rmnet"
 #define MOBILE_IFACE_LEN 5
+#define UNKNOWN_CMDLINE "unknown"
+#define MAX_CMD_LINE_LEN 128
+
+#define pr_data_consume(fmt, hdr) \
+	pr_debug("androidOS data consumed proto:%d %s_bytes:%d by %s"\
+		" pid:%d uid:%d src: " fmt " dst: " fmt "\n", proto,\
+		dir == IFS_TX ? "tx" : "rx", len, cmdline,\
+		pid, uid, &hdr.saddr, &hdr.daddr)
+#define pr_family_err(family) \
+	pr_err("androidOS unknown NFPROTO:%d\n", family)
+#define pr_proto_err(proto) \
+	pr_err("androidOS unknown protocol:%d\n", proto)
+
+struct data_consume_work {
+	struct work_struct work;
+	struct sock *sk;
+	union {
+		struct iphdr iph4;
+		struct ipv6hdr iph6;
+	} hdr;
+	int dir;
+	int proto;
+	int len;
+	uid_t uid;
+	u8 family;
+};
+
+struct data_consumer_args {
+	const struct sk_buff *skb;
+	uid_t uid;
+	int proto;
+	int dir;
+	int family;
+	int debug;
+};
+
+static bool
+check_sock_in_task(struct sock *sk, struct task_struct *task)
+{
+	struct files_struct *files = NULL;
+	struct fdtable *fdt = NULL;
+	struct file *file = NULL;
+	struct socket *sock = NULL;
+	struct fd f;
+	int i;
+	int err = 0;
+
+	if (!sk || !task)
+		goto err_ret;
+
+	files = task->files;
+	if (!files)
+		goto err_ret;
+
+	fdt = rcu_dereference_raw(files->fdt);
+
+	for (i = 0; i < fdt->max_fds; i++) {
+		file = rcu_dereference_raw(fdt->fd[i]);
+		f = __to_fd((unsigned long)file);
+
+		if (f.file) {
+			sock = sock_from_file(f.file, &err);
+			if (sock && sock->sk == sk)
+				return true;
+		}
+	}
+
+err_ret:
+	return false;
+}
+
+static inline bool
+equal_uid(struct task_struct *task, uid_t uid)
+{
+	kuid_t kuid = __task_cred(task)->uid;
+
+	return from_kuid(&init_user_ns, kuid) == uid;
+}
+
+static void
+work_handler(struct work_struct *w)
+{
+	char cmdline[MAX_CMD_LINE_LEN] = UNKNOWN_CMDLINE;
+	struct data_consume_work *wrapper;
+	struct task_struct *p;
+	int proto;
+	int dir;
+	int len;
+	uid_t uid;
+	pid_t pid = -1;
+
+	wrapper = container_of(w, struct data_consume_work, work);
+
+	if (!wrapper)
+		goto end;
+
+	proto = wrapper->proto;
+	dir = wrapper->dir;
+	len = wrapper->len;
+	uid =  wrapper->uid;
+
+	for_each_process(p) {
+		if (!equal_uid(p, uid))
+			continue;
+
+		if (check_sock_in_task(wrapper->sk, p)) {
+			get_cmdline(p, cmdline, MAX_CMD_LINE_LEN);
+			pid = p->pid;
+			break;
+		}
+
+		if (uid != SYSTEM_UID && uid != ROOT_UID)
+			break;
+	}
+
+	switch (wrapper->family) {
+	case NFPROTO_IPV4:
+		pr_data_consume("%pI4", (wrapper->hdr).iph4);
+		break;
+	case NFPROTO_IPV6:
+		pr_data_consume("%pI6", (wrapper->hdr).iph6);
+		break;
+	default:
+		pr_family_err(wrapper->family);
+	}
+
+end:
+	kfree(wrapper);
+}
+
+void
+pr_data_consumer(struct data_consumer_args *args)
+{
+	struct data_consume_work *work;
+	struct iphdr *ip4h;
+	struct ipv6hdr *ip6h;
+	bool flag = false;
+
+	if (args->debug & DEBUG_ALL_MASK) {
+		flag = true;
+	} else if ((args->debug & DEBUG_OS_MASK) &&
+			(args->uid == SYSTEM_UID || args->uid == ROOT_UID)) {
+		flag = true;
+	}
+
+	if (!flag)
+		return;
+
+	switch (args->proto) {
+	case IPPROTO_TCP:
+	case IPPROTO_UDP:
+	case IPPROTO_ICMP:
+	case IPPROTO_IGMP:
+	case IPPROTO_IP:
+		work = kzalloc(sizeof(*work), GFP_ATOMIC);
+
+		if (!work)
+			return;
+
+		INIT_WORK(&work->work, work_handler);
+
+		if (args->family == NFPROTO_IPV4) {
+			ip4h = ip_hdr(args->skb);
+			if (!ip4h) {
+				kfree(work);
+				return;
+			}
+			memcpy(&work->hdr, ip4h, sizeof(*ip4h));
+		} else if (args->family == NFPROTO_IPV6) {
+			ip6h = ipv6_hdr(args->skb);
+			if (!ip6h) {
+				kfree(work);
+				return;
+			}
+			memcpy(&work->hdr, ip6h, sizeof(*ip6h));
+		}
+		work->sk = args->skb->sk;
+		work->dir = args->dir;
+		work->proto = args->proto;
+		work->len = args->skb->len;
+		work->family = args->family;
+		work->uid = args->uid;
+		schedule_work(&work->work);
+		break;
+	default:
+		pr_proto_err(args->proto);
+	}
+}
+
+/*-----------------------------------------------------------*/
 /* #define DEBUG_RECENT_OWNER */
 
 #define RT_SIZE jhash_size(8)
@@ -218,16 +414,28 @@ recent_owner_lookup(const struct sk_buff *skb,
 void
 recent_owner_update(const struct sk_buff *skb,
 		    struct xt_action_param *par,
-		    uid_t uid)
+		    uid_t uid,
+		    int debug_os_data)
 {
 	struct recent_owner *entry;
 	const struct net_device *net_dev = NULL;
+	struct data_consumer_args args;
 	enum ifs_tx_rx dir = IFS_MAX_DIRECTIONS;
 	int proto;
 	u32 ap[5];
 
 	proto = ipx_proto(skb, par);
 	get_dev_and_dir(skb, par, &dir, &net_dev);
+
+	if (!unlikely(debug_os_data & DEFAULT_MASK)) {
+		args.skb = skb;
+		args.uid = uid;
+		args.proto = proto;
+		args.dir = dir;
+		args.family = par->family;
+		args.debug = debug_os_data;
+		pr_data_consumer(&args);
+	}
 
 	if (uid == ROOT_UID ||
 	    uid == SYSTEM_UID ||
