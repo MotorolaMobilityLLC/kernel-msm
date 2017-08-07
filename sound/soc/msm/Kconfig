@@ -285,6 +285,7 @@ config SND_SOC_660
 	depends on ARCH_SDM660
 	select SND_SOC_INT_CODEC
 	select SND_SOC_EXT_CODEC
+	select MMI_PP_AFX
 	help
 	 To add support for SoC audio on SDM660.
 	 This will enable sound soc drivers which
