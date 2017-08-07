@@ -53,6 +53,13 @@ bool msm_audio_effects_is_effmodule_supp_in_top(int effect_module,
 		default:
 			return false;
 		}
+	case MMIFX_EQ_MODULE:
+		switch (topology) {
+		case ASM_STREAM_POSTPROC_TOPO_ID_MMIFX:
+			return true;
+		default:
+			return false;
+		}
 	default:
 		return false;
 	}
@@ -1328,4 +1335,129 @@ int msm_audio_effects_volume_handler_v2(struct audio_client *ac,
 					long *values, int instance)
 {
 	return __msm_audio_effects_volume_handler(ac, vol, values, instance);
+}
+
+int msm_audio_effects_mmifx_send_eq_params(struct audio_client *ac,
+					   struct mmi_eq_params *mmifx,
+					   uint32_t cmds)
+{
+	char *params;
+	int *updt_params;
+	uint32_t params_length = (MAX_INBAND_PARAM_SZ);
+
+	pr_debug("%s\n", __func__);
+	if (!ac) {
+		pr_err("%s: cannot set audio effects\n", __func__);
+		return -EINVAL;
+	}
+	params = kzalloc(params_length, GFP_KERNEL);
+	if (!params)
+		return -ENOMEM;
+
+	updt_params = (int *)params;
+	params_length = 0;
+
+	if ((cmds & MMIFX_EQ_ENABLE) == MMIFX_EQ_ENABLE) {
+		pr_debug("%s: MMIFX_EQ_ENABLE %d\n", __func__,
+			mmifx->enable_flag);
+		*updt_params++ = AUDPROC_MODULE_ID_MMIFX;
+		*updt_params++ = AUDPROC_PARAM_ID_MMIFX_ENABLE;
+		*updt_params++ = MMIFX_ENABLE_PARAM_SZ;
+		*updt_params++ = mmifx->enable_flag;
+		params_length += COMMAND_PAYLOAD_SZ +
+						MMIFX_ENABLE_PARAM_SZ;
+	}
+
+	if ((cmds & MMIFX_EQ_PRESET) == MMIFX_EQ_PRESET) {
+		pr_debug("%s: MMIFX_EQ_PRESET %d\n", __func__, mmifx->preset);
+		*updt_params++ = AUDPROC_MODULE_ID_MMIFX;
+		*updt_params++ = AUDPROC_PARAM_ID_MMIFX_PRESET;
+		*updt_params++ = MMIFX_ENABLE_PARAM_SZ;
+		*updt_params++ = mmifx->preset;
+		params_length += COMMAND_PAYLOAD_SZ +
+						MMIFX_ENABLE_PARAM_SZ;
+	}
+
+	if ((cmds & MMIFX_EQ_DEVICE) == MMIFX_EQ_DEVICE) {
+		pr_debug("%s: MMIFX_EQ_DEVICE %d\n", __func__, mmifx->device);
+		*updt_params++ = AUDPROC_MODULE_ID_MMIFX;
+		*updt_params++ = AUDPROC_PARAM_ID_MMIFX_DEVICE;
+		*updt_params++ = MMIFX_ENABLE_PARAM_SZ;
+		*updt_params++ = mmifx->device;
+		params_length += COMMAND_PAYLOAD_SZ +
+						MMIFX_ENABLE_PARAM_SZ;
+	}
+
+	if (params_length)
+		q6asm_send_audio_effects_params(ac, params,
+						params_length);
+
+	kfree(params);
+	return 0;
+}
+
+int msm_audio_effects_mmifx_params(struct mmi_eq_vals *mmifx_eq,
+					long *values)
+{
+	int devices = *values++;
+	int num_commands = *values++;
+	uint32_t params_length = (MAX_INBAND_PARAM_SZ);
+	int rc = 0;
+	int i;
+	struct mmi_eq_params *mmifx = &(mmifx_eq->eq_params);
+
+	pr_debug("%s: device: %d num commands %d\n", __func__,
+		devices, num_commands);
+	mmifx_eq->num_cmds = num_commands;
+	params_length = 0;
+	for (i = 0; i < num_commands; i++) {
+		uint32_t command_id = *values++;
+		/* command_config_state */
+		uint32_t command_config_state = *values++;
+		uint32_t index_offset = *values++;
+		uint32_t length = *values++;
+
+		switch (command_id) {
+		case MMIFX_EQ_ENABLE:
+			pr_debug("%s: MMIFX_EQ_ENABLE\n", __func__);
+			if (length != 1 || index_offset != 0) {
+				pr_err("no valid params\n");
+				rc = -EINVAL;
+				goto invalid_config;
+			}
+			mmifx->enable_flag = *values++;
+			mmifx_eq->cmds |= command_id;
+			break;
+		case MMIFX_EQ_DEVICE:
+			pr_debug("%s: MMIFX_DEVICE\n", __func__);
+			if (length != 1 || index_offset != 0) {
+				pr_err("no valid params\n");
+				rc = -EINVAL;
+				goto invalid_config;
+			}
+			if (command_config_state == CONFIG_SET) {
+				mmifx->device = devices; /* *values++; */
+				mmifx_eq->cmds |= command_id;
+			}
+			break;
+		case MMIFX_EQ_PRESET:
+			pr_debug("%s: MMIFX_EQ_PRESET\n", __func__);
+			if (length != 1 || index_offset != 0) {
+				pr_err("no valid params\n");
+				rc = -EINVAL;
+				goto invalid_config;
+			}
+			if (command_config_state == CONFIG_SET) {
+				mmifx->preset = *values++;
+				mmifx_eq->cmds |= command_id;
+			}
+			break;
+		default:
+			pr_err("%s: Invalid command to set config\n", __func__);
+			break;
+		}
+	}
+
+invalid_config:
+	return rc;
 }
