@@ -52,4 +52,11 @@ int msm_audio_effects_volume_handler(struct audio_client *ac,
 int msm_audio_effects_volume_handler_v2(struct audio_client *ac,
 					struct soft_volume_params *vol,
 					long *values, int instance);
+
+int msm_audio_effects_mmifx_send_eq_params(struct audio_client *ac,
+					struct mmi_eq_params *mmifx,
+					uint32_t cmds);
+
+int msm_audio_effects_mmifx_params(struct mmi_eq_vals *mmifx_eq,
+					long *values);
 #endif /*_MSM_AUDIO_EFFECTS_H*/
