@@ -376,4 +376,33 @@ struct msm_nt_eff_all_config {
 	struct soft_volume_params topo_switch_vol;
 };
 
+#define MMIFX_EQ_MODULE			0x00009000
+#define MMIFX_EQ_ENABLE			0x00009001
+#define MMIFX_EQ_PRESET			0x00009020
+#define MMIFX_EQ_DEVICE			0x00009300
+
+#define MMIFX_ENABLE_PARAM_LEN 1
+#define MMIFX_ENABLE_PARAM_SZ	\
+			(MMIFX_ENABLE_PARAM_LEN*sizeof(uint32_t))
+#define MMIFX_PARAM_LEN 1
+#define MMIFX_PRESET_PARAM_SZ	\
+			(MMIFX_PARAM_LEN*sizeof(uint32_t))
+#define MMIFX_PARAM_TABLE_LEN 2000
+#define MMIFX_PARAM_TABLE_SZ	\
+			(MMIFX_PARAM_TABLE_LEN*sizeof(uint16_t))
+#define MMIFX_DEVICE_PARAM_SZ	\
+			(MMIFX_PARAM_LEN*sizeof(uint32_t))
+
+struct mmi_eq_params {
+	uint32_t device;
+	uint32_t enable_flag;
+	uint32_t preset;
+};
+
+struct mmi_eq_vals {
+	struct mmi_eq_params eq_params;
+	uint32_t num_cmds;
+	uint32_t cmds;
+};
+
 #endif /*_MSM_AUDIO_EFFECTS_H*/
