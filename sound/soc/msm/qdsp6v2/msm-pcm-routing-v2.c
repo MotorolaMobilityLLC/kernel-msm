@@ -1231,6 +1231,7 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 	fe_dai_map[fe_id][session_type].strm_id = dspst_id;
 	/* re-enable EQ if active */
 	msm_qti_pp_send_eq_values(fe_id);
+	msm_qti_pp_mmfx_eq_send_eq_values(fe_id);
 	for (i = 0; i < MSM_BACKEND_DAI_MAX; i++) {
 		if (test_bit(fe_id, &msm_bedais[i].fe_sessions[0]))
 			msm_bedais[i].passthr_mode[fe_id] = passthr_mode;
@@ -1551,6 +1552,7 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 
 	/* re-enable EQ if active */
 	msm_qti_pp_send_eq_values(fedai_id);
+	msm_qti_pp_mmfx_eq_send_eq_values(fedai_id);
 	for (i = 0; i < MSM_BACKEND_DAI_MAX; i++) {
 		if (!is_be_dai_extproc(i) &&
 		   (afe_get_port_type(msm_bedais[i].port_id) == port_type) &&
