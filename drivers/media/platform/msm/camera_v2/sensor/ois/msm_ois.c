@@ -1,4 +1,4 @@
-/* Copyright (c) 2014 - 2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014 - 2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -613,6 +613,15 @@ static long msm_ois_subdev_ioctl(struct v4l2_subdev *sd,
 		if (!o_ctrl->i2c_client.i2c_func_tbl) {
 			pr_err("o_ctrl->i2c_client.i2c_func_tbl NULL\n");
 			return -EINVAL;
+		} else {
+			mutex_lock(o_ctrl->ois_mutex);
+			rc = msm_ois_power_down(o_ctrl);
+			if (rc < 0) {
+				pr_err("%s:%d OIS Power down failed\n",
+					__func__, __LINE__);
+			}
+			mutex_unlock(o_ctrl->ois_mutex);
+			return msm_ois_close(sd, NULL);
 		}
 		rc = msm_ois_power_down(o_ctrl);
 		if (rc < 0) {
