@@ -5748,11 +5748,12 @@ static bool mmi_find_temp_zone(struct smb_charger *chip, int temp_c)
 }
 
 #define TAPER_COUNT 2
+#define TAPER_DROP_MA 100
 static bool mmi_has_current_tapered(struct smb_charger *chip,
 				    int batt_ma, int taper_ma)
 {
 	bool change_state = false;
-	int allowed_fcc;
+	int allowed_fcc, target_ma;
 
 	if (!chip) {
 		smblib_dbg(chip, PR_MOTO, "called before chip valid!\n");
@@ -5761,9 +5762,14 @@ static bool mmi_has_current_tapered(struct smb_charger *chip,
 
 	allowed_fcc = get_effective_result(chip->fcc_votable) / 1000;
 
+	if (allowed_fcc >= taper_ma)
+		target_ma = taper_ma;
+	else
+		target_ma = allowed_fcc - TAPER_DROP_MA;
+
 	if (batt_ma < 0) {
 		batt_ma *= -1;
-		if ((batt_ma <= taper_ma) && (allowed_fcc >= taper_ma))
+		if (batt_ma <= target_ma)
 			if (chip->mmi.chrg_taper_cnt >= TAPER_COUNT) {
 				change_state = true;
 				chip->mmi.chrg_taper_cnt = 0;
