@@ -11,6 +11,7 @@
  */
 
 #include "sdm660-moto-common.dtsi"
+#include "msm-pm660a.dtsi"
 #include "sdm660-external-codec.dtsi"
 #include "sdm660-beckham-pinctrl.dtsi"
 
