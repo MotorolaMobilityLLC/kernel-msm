@@ -191,6 +191,7 @@ enum plug_orientation {
 enum modusb_protocol {
 	MODUSB_HIGH,
 	MODUSB_SUPER,
+	MODUSB_DUAL,
 };
 
 /* Input bits to state machine (mdwc->inputs) */
@@ -524,7 +525,17 @@ static void dwc3_ext_usb_enable(struct dwc3_msm *mdwc, bool enable)
 	flush_workqueue(mdwc->dwc3_wq);
 
 	/* Enable/Disable the physical path next*/
-	if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0) {
+	if (mdwc->ext_state.proto == USB_EXT_PROTO_DUAL) {
+		dwc3_mods_ssusb_path_enable(mdwc, enable);
+		dwc3_mods_hsusb_path_enable(mdwc, enable,
+					USB_EXT_PATH_ENTERPRISE);
+		dwc->maximum_speed = USB_SPEED_SUPER;
+		if (enable) {
+			mdwc->id_state = DWC3_ID_GROUND;
+			mdwc->vbus_active = 0;
+		} else /* Restore the ext con state on disable */
+			dwc3_extcon_restore(mdwc);
+	} else if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0) {
 		dwc3_mods_hsusb_path_enable(mdwc, enable,
 					mdwc->ext_state.path);
 
@@ -630,7 +641,9 @@ static ssize_t modusb_protocol_show(struct device *dev,
 	if (!mdwc)
 		return -ENODEV;
 
-	if (mdwc->mod_proto == MODUSB_SUPER)
+	if (mdwc->mod_proto == MODUSB_DUAL)
+		return scnprintf(buf, PAGE_SIZE, "dual\n");
+	else if (mdwc->mod_proto == MODUSB_SUPER)
 		return scnprintf(buf, PAGE_SIZE, "super\n");
 	else
 		return scnprintf(buf, PAGE_SIZE, "high\n");
@@ -648,7 +661,9 @@ static ssize_t modusb_protocol_store(struct device *dev,
 	if (mdwc->mod_enabled)
 		return -EFAULT;
 
-	if (!strncmp(buf, "super", 5))
+	if (!strncmp(buf, "dual", 4))
+		mdwc->mod_proto = MODUSB_DUAL;
+	else if (!strncmp(buf, "super", 5))
 		mdwc->mod_proto = MODUSB_SUPER;
 	else
 		mdwc->mod_proto = MODUSB_HIGH;
@@ -693,7 +708,11 @@ static ssize_t modusb_enable_store(struct device *dev,
 		return count;
 	mdwc->mod_enabled = mode;
 
-	if (mdwc->mod_proto == MODUSB_SUPER)
+	if (mdwc->mod_proto == MODUSB_DUAL) {
+		dwc3_mods_hsusb_path_enable(mdwc, mdwc->mod_enabled,
+						USB_EXT_PATH_ENTERPRISE);
+		dwc3_mods_ssusb_path_enable(mdwc, mdwc->mod_enabled);
+	} else if (mdwc->mod_proto == MODUSB_SUPER)
 		dwc3_mods_ssusb_path_enable(mdwc, mdwc->mod_enabled);
 	else
 		dwc3_mods_hsusb_path_enable(mdwc, mdwc->mod_enabled,
@@ -737,7 +756,9 @@ static ssize_t extusb_state_show(struct device *dev,
 		if (mdwc->ext_enabled)
 			connected = "CONNECTED";
 
-		if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0) {
+		if (mdwc->ext_state.proto == USB_EXT_PROTO_DUAL) {
+			proto = "DUAL SPEED USB";
+		} else if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0) {
 			proto = "USB2.0";
 		} else if (mdwc->ext_state.proto == USB_EXT_PROTO_3_1) {
 			proto = "USB3.1";
@@ -3386,7 +3407,9 @@ static void dwc3_ext_send_uevent(struct dwc3_msm *mdwc, bool usb_present)
 	else
 		add_uevent_var(env, "EXT_USB=DISABLED");
 
-	if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0)
+	if (mdwc->ext_state.proto == USB_EXT_PROTO_DUAL)
+		add_uevent_var(env, "EXT_USB_PROTOCOL=DUALSPEED_USB");
+	else if (mdwc->ext_state.proto == USB_EXT_PROTO_2_0)
 		add_uevent_var(env, "EXT_USB_PROTOCOL=USB2.0");
 	else if (mdwc->ext_state.proto == USB_EXT_PROTO_3_1)
 		add_uevent_var(env, "EXT_USB_PROTOCOL=USB3.1");
@@ -3433,7 +3456,11 @@ static void dwc3_ext_usb_work(struct work_struct *w)
 
 static int dwc3_validate_ext_params(struct usb_ext_status *status)
 {
-	if (status->proto == USB_EXT_PROTO_2_0) {
+	if (status->proto == USB_EXT_PROTO_DUAL) {
+		/* For Dual Speed only Host mode is supported */
+		if (status->type != USB_EXT_REMOTE_DEVICE)
+			return -EINVAL;
+	} else if (status->proto == USB_EXT_PROTO_2_0) {
 		/*
 		* We support both Enterprise and Bridge as the path for
 		* USB 2.0 Ext Class, but only if the remote is a USB
