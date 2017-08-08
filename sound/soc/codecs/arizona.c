@@ -1550,6 +1550,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 				ret = slim_define_ch(slim_audio_dev, &prop,
 					handles, chcnt, true, group);
 				if (ret != 0) {
+					mutex_unlock(&slim_rx_lock);
 					dev_err(arizona->dev,
 						"slim_define_ch() failed: %d\n",
 						ret);
@@ -1561,6 +1562,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 						&porth[i], 1,
 						handles[i]);
 					if (ret != 0) {
+						mutex_unlock(&slim_rx_lock);
 						dev_err(arizona->dev,
 						"sink connect fail %d: %d\n",
 						i, ret);
@@ -1571,6 +1573,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 				ret = slim_control_ch(slim_audio_dev, *group,
 					SLIM_CH_ACTIVATE, true);
 				if (ret != 0) {
+					mutex_unlock(&slim_rx_lock);
 					dev_err(arizona->dev,
 						"Failed to activate: %d\n",
 						ret);
