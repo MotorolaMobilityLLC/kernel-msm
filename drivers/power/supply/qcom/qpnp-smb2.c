@@ -1233,6 +1233,7 @@ static enum power_supply_property smb2_batt_props[] = {
 	POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_CHARGE_RATE,
 	POWER_SUPPLY_PROP_AGE,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
 };
 
 static int smb2_batt_get_prop(struct power_supply *psy,
@@ -1305,6 +1306,7 @@ static int smb2_batt_get_prop(struct power_supply *psy,
 		val->intval = get_client_vote_locked(chg->fcc_votable,
 				QNOVO_VOTER);
 		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 		val->intval = get_client_vote(chg->fcc_votable,
 					      BATT_PROFILE_VOTER);
