@@ -20,6 +20,7 @@ enum usb_ext_protocol {
 	USB_EXT_PROTO_UNKNOWN = 0,
 	USB_EXT_PROTO_2_0,
 	USB_EXT_PROTO_3_1,
+	USB_EXT_PROTO_DUAL,
 };
 
 enum usb_ext_path {
