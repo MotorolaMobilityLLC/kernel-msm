@@ -21,6 +21,7 @@
 
 &pm660l_flash2 {
 	qcom,duration-ms = <300>;
+	qcom,max-current = <150>;
 };
 
 &soc {
