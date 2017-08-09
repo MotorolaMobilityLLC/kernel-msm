@@ -317,6 +317,54 @@ static int usb3813_3_1_host_enable(struct usb3813_info *info, bool enable)
 	return 0;
 }
 
+static int usb3813_dual_host_enable(struct usb3813_info *info, bool enable)
+{
+	struct power_supply *usb_psy = info->usb_psy;
+	struct power_supply *usbhost_psy;
+
+	dev_dbg(info->dev, "%s - enable = %d\n", __func__, enable);
+
+	/* First handle the secondary controller if available */
+	if (info->enable_controller) {
+
+		/* Enable/Disable the  Dedicated Secondary Controller */
+		usbhost_psy = power_supply_get_by_name("usb_host");
+		if (!usbhost_psy) {
+			dev_err(info->dev, "%s - unable to find usbhost\n",
+					__func__);
+			return -ENODEV;
+		}
+
+		if (enable)
+			power_supply_set_usb_otg(usbhost_psy,
+					POWER_SUPPLY_USB_OTG_ENABLE_DATA);
+		else
+			power_supply_set_usb_otg(usbhost_psy,
+					POWER_SUPPLY_USB_OTG_DISABLE);
+	}
+
+	/* Now handle the Primary USB controller */
+	if (enable) {
+		/* Set the owner to USBEXT DUAL */
+		power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_EXT_DUAL);
+		/* If EXT took ownership, switch to host mode */
+		if (power_supply_get_usb_owner(usb_psy) ==
+					PSY_USB_OWNER_EXT_DUAL)
+			power_supply_set_usb_otg(usb_psy,
+				POWER_SUPPLY_USB_OTG_ENABLE_DATA);
+		else
+			return -EBUSY;
+	} else if (power_supply_get_usb_owner(usb_psy) !=
+					PSY_USB_OWNER_USBC) {
+		/* Disable if USBC has not already taken over */
+		power_supply_set_usb_otg(usb_psy,
+				POWER_SUPPLY_USB_OTG_DISABLE);
+		power_supply_set_usb_owner(usb_psy, PSY_USB_OWNER_NONE);
+	}
+
+	return 0;
+}
+
 static int usb3813_host_enable(struct usb3813_info *info, bool enable)
 {
 	dev_dbg(info->dev, "%s - enable = %d, proto = %d\n",
@@ -327,6 +375,8 @@ static int usb3813_host_enable(struct usb3813_info *info, bool enable)
 		return usb3813_2_0_host_enable(info, enable);
 	else if (info->ext_state.proto == USB_EXT_PROTO_3_1)
 		return usb3813_3_1_host_enable(info, enable);
+	else if (info->ext_state.proto == USB_EXT_PROTO_DUAL)
+		return usb3813_dual_host_enable(info, enable);
 	else
 		return -EINVAL;
 }
@@ -354,6 +404,8 @@ static void usb3813_send_uevent(struct usb3813_info *info)
 		add_uevent_var(env, "EXT_USB_PROTOCOL=USB2.0");
 	else if (info->ext_state.proto == USB_EXT_PROTO_3_1)
 		add_uevent_var(env, "EXT_USB_PROTOCOL=USB3.1");
+	else if (info->ext_state.proto == USB_EXT_PROTO_DUAL)
+		add_uevent_var(env, "EXT_USB_PROTOCOL=DUAL_SPEED USB");
 
 	if (info->ext_state.type == USB_EXT_REMOTE_DEVICE)
 		add_uevent_var(env, "EXT_USB_MODE=DEVICE");
@@ -708,7 +760,8 @@ static void usb3813_enable_w(struct work_struct *work)
 		set_hsic_state(info, enable);
 
 	/* Enable the Hub if it is USB2.0 */
-	if (info->ext_state.proto == USB_EXT_PROTO_2_0)
+	if (info->ext_state.proto == USB_EXT_PROTO_2_0 ||
+		info->ext_state.proto == USB_EXT_PROTO_DUAL)
 		usb3813_hub_attach(info, enable);
 
 	usb3813_send_uevent(info);
@@ -717,7 +770,11 @@ static void usb3813_enable_w(struct work_struct *work)
 
 static int usb3813_validate_ext_params(struct usb_ext_status *status)
 {
-	if (status->proto == USB_EXT_PROTO_2_0) {
+	if (status->proto == USB_EXT_PROTO_DUAL) {
+		/* For Dual speed devices, we only work in host mode */
+		if (status->type != USB_EXT_REMOTE_DEVICE)
+			return -EINVAL;
+	} else if (status->proto == USB_EXT_PROTO_2_0) {
 		/*
 		 * We support both Enterprise and Bridge as the path for
 		 * USB 2.0 Ext Class, but only if the remote is a USB
