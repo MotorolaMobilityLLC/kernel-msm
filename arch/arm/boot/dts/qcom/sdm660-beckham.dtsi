@@ -76,6 +76,10 @@
 			<2>,
 			<3>;
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "beckham";
+	};
 };
 
 &red_led {
