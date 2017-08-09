@@ -448,6 +448,7 @@ enum power_supply_usb_owner {
 	PSY_USB_OWNER_NONE,
 	PSY_USB_OWNER_EXT_2,
 	PSY_USB_OWNER_EXT_3,
+	PSY_USB_OWNER_EXT_DUAL,
 	PSY_USB_OWNER_USBC,
 };
 
