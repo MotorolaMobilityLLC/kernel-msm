@@ -2801,6 +2801,7 @@ static int __init ipa_wwan_init(void)
 	atomic_set(&is_ssr, 0);
 
 	mutex_init(&ipa_to_apps_pipe_handle_guard);
+	mutex_init(&add_mux_channel_lock);
 	ipa_to_apps_hdl = -1;
 	mutex_init(&add_mux_channel_lock);
 
