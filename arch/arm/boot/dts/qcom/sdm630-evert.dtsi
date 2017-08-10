@@ -37,6 +37,12 @@
 	};
 };
 
+&soc{
+	qcom,msm-thermal {
+		qcom,config-info = "evert";
+	};
+};
+
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
