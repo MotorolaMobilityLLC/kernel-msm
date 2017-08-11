@@ -1889,7 +1889,7 @@ static u8 gup_burn_fw_gwake_section(struct i2c_client *client,
 		return FAIL;
 	}
 	/* must delay */
-	usleep_range(1000, 2000);
+	usleep_range(100000, 200000);
 
 	/* step4:select bank */
 	ret = gup_set_ic_msg(
