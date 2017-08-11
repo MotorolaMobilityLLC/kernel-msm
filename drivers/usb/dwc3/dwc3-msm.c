@@ -523,7 +523,7 @@ static void dwc3_ext_usb_enable(struct dwc3_msm *mdwc, bool enable)
 
 	mdwc->ext_enabled = enable;
 
-	if (atomic_read(&dwc->in_lpm))
+	if (atomic_read(&dwc->in_lpm) && atomic_read(&mdwc->pm_suspended))
 		mdwc->resume_pending = true;
 
 	/* Resume the controller first */
