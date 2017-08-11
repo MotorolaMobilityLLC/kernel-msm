@@ -2974,6 +2974,9 @@ static void goodix_ts_resume(struct goodix_ts_data *ts)
 	dev_info(&ts->client->dev, "Goodix touch resume.");
 	mutex_lock(&ts->lock);
 
+	if (ts->irq_enabled)
+		gtp_irq_control_enable(ts, false);
+
 	ret = gtp_wakeup_sleep(ts);
 	if (ret < 0)
 		dev_err(&ts->client->dev, "GTP later resume failed.");
@@ -3032,8 +3035,6 @@ static int gtp_fb_notifier_callback(struct notifier_block *noti,
 				(*blank == FB_BLANK_NORMAL &&
 				 ts->gtp_suspended)) {
 			dev_dbg(&ts->client->dev, "ts_resume");
-			if (ts->irq_enabled)
-				gtp_irq_control_enable(ts, false);
 			if (ts->pdata->resume_in_workqueue)
 				schedule_work(&ts->fb_notify_work);
 			else
