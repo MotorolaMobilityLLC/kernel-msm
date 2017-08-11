@@ -1011,6 +1011,7 @@ struct mdss_panel_info {
 	u32 disp_on_check_val;
 	bool no_panel_read_support;
 	bool no_panel_on_read_support;
+	bool panel_reply_long_response;
 	struct panel_param *param[PARAM_ID_NUM];
 	bool hbm_restore;
 	u32 hbm_type;
