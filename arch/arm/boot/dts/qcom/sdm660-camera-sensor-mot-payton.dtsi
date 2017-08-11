@@ -13,15 +13,30 @@
 
 &pm660l_flash0 {
 	qcom,duration-ms = <300>;
+	qcom,ires-ua = <10000>;
 };
 
 &pm660l_flash1 {
 	qcom,duration-ms = <300>;
+	qcom,ires-ua = <10000>;
 };
 
 &pm660l_flash2 {
 	qcom,duration-ms = <300>;
 	qcom,max-current = <150>;
+	qcom,ires-ua = <10000>;
+};
+
+&pm660l_torch0 {
+	qcom,ires-ua = <10000>;
+};
+
+&pm660l_torch1 {
+	qcom,ires-ua = <10000>;
+};
+
+&pm660l_torch2 {
+	qcom,ires-ua = <10000>;
 };
 
 &soc {
