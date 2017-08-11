@@ -578,6 +578,8 @@ Optional properites:
 					Each child represents timings settings for a specific resolution.
 - qcom,mdss-dsi-post-init-delay:        Specifies required number of frames to wait so that panel can be functional
 					to show proper display.
+- qcom,mdss-dsi-panel-reply-long-response: A boolean value to enable/disable long packet response of short read for
+					the panel. Short read means 1byte and 2bytes read.
 
 Additional properties added to the second level nodes that represent timings properties:
 - qcom,mdss-dsi-timing-default:		Property that specifies the current child as the default
