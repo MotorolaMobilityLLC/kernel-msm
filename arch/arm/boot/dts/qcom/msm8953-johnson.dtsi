@@ -25,6 +25,21 @@
 	};
 };
 
+&firmware {
+	android {
+		fstab {
+			vendor {
+				compatible = "android,vendor";
+				dev = "/dev/block/platform/7824900.sdhci/by-name/vendor";
+				type = "ext4";
+				mnt_flags = "ro,barrier=1,discard";
+				fsmgr_flags = "wait"; /* MMI_STOPSHIP: disable verity! */
+				status = "ok";
+			};
+		};
+	};
+};
+
 &soc {
 	alsa_to_h2w {
 		status = "disabled";
