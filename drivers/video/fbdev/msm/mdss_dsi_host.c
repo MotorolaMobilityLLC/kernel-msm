@@ -2033,7 +2033,8 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 do_send:
 	ctrl->cmd_cfg_restore = __mdss_dsi_cmd_mode_config(ctrl, 1);
 
-	if (rlen <= 2) {
+	if ((rlen <= 2) &&
+		!ctrl->panel_data.panel_info.panel_reply_long_response) {
 		short_response = 1;
 		pkt_size = rlen;
 		rx_byte = 4;
