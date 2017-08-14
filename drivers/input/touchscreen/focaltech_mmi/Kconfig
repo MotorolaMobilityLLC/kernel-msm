@@ -47,6 +47,17 @@ config TOUCHSCREEN_FOCALTECH_UPGRADE_8716_MMI
 
 	  If unsure, say N.
 
+config TOUCHSCREEN_FOCALTECH_UPGRADE_5X46_MMI
+	bool "Add ft5x46 IC support for Focaltech Touchscreen"
+	depends on TOUCHSCREEN_FOCALTECH_CORE_MMI
+	select TOUCHSCREEN_FOCALTECH_UPGRADE_MMI
+	help
+	  Say Y here will
+	  -Add FT5x46 IC upgrade support.
+	  -Add new Focaltech firmware upgrade code.
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_FOCALTECH_SECURE_TOUCH_MMI
 	bool "Secure Touch support for Focaltech Touchscreen"
 	depends on TOUCHSCREEN_FOCALTECH_CORE_MMI
