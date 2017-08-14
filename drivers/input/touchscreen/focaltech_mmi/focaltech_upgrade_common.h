@@ -87,8 +87,6 @@
 #define FTS_CHIP_IDC(x)		(((x) & FLAGBIT(FLAG_IDC_BIT)) == \
 					FLAGBIT(FLAG_IDC_BIT))
 
-#define AL2_FCS_COEF		((1 << 15) + (1 << 10) + (1 << 3))
-
 #define FTS_DEBUG		pr_debug
 #define FTS_ERROR		pr_err
 #define FTS_INFO		pr_info
@@ -175,6 +173,10 @@ extern int fts_ctpm_write_app_for_idc(struct i2c_client *client,
 #ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8716_MMI
 extern void ft8716_set_upgrade_function(struct fts_upgrade_fun **curr);
 extern void ft8716_set_chip_id(struct ft_chip_t **curr);
+#endif
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_5X46_MMI
+extern void ft5x46_set_upgrade_function(struct fts_upgrade_fun **curr);
+extern void ft5x46_set_chip_id(struct ft_chip_t **curr);
 #endif
 
 #endif
