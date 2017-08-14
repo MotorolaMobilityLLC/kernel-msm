@@ -24,6 +24,7 @@
 #define FT6X06_ID		0x06
 #define FT6X36_ID		0x36
 #define FT8716_ID		0x87
+#define FT5X46_ID		0x54
 
 struct fw_upgrade_info {
 	bool auto_cal;
