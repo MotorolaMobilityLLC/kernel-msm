@@ -3185,6 +3185,29 @@ int msm_hdmi_register_mhl(struct platform_device *pdev,
 }
 
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+int msm_hdmi_sync_slimport(struct platform_device *pdev)
+{
+	struct hdmi_tx_ctrl *hdmi_ctrl = platform_get_drvdata(pdev);
+	u32 timeout;
+
+	if (!hdmi_ctrl) {
+		DEV_ERR("%s: invalid pdev\n", __func__);
+		return -ENODEV;
+	}
+
+	DEV_DBG("%s: Start to wait HDMI panel off complete\n", __func__);
+
+	reinit_completion(&hdmi_ctrl->hdmi_panel_off);
+	timeout = wait_for_completion_timeout(
+			&hdmi_ctrl->hdmi_panel_off,
+			msecs_to_jiffies(WAIT_HDMI_PANEL_OFF));
+
+	if (!timeout)
+		DEV_WARN("%s: Wait HDP off complete timeout\n", __func__);
+
+	return timeout;
+}
+
 int msm_hdmi_register_slimport(struct platform_device *pdev,
 				struct msm_hdmi_slimport_ops *ops, void *data)
 {
@@ -3340,6 +3363,9 @@ static int hdmi_tx_power_off(struct hdmi_tx_ctrl *hdmi_ctrl)
 		hdmi_ctrl->hdmi_tx_hpd_done(
 			hdmi_ctrl->downstream_data);
 end:
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	complete(&hdmi_ctrl->hdmi_panel_off);
+#endif
 	DEV_INFO("%s: HDMI Core: OFF\n", __func__);
 	return 0;
 } /* hdmi_tx_power_off */
@@ -3788,6 +3814,7 @@ static int hdmi_tx_dev_init(struct hdmi_tx_ctrl *hdmi_ctrl)
 
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 	mutex_init(&hdmi_ctrl->mutex_hpd);
+	init_completion(&hdmi_ctrl->hdmi_panel_off);
 #endif
 	mutex_init(&hdmi_ctrl->mutex);
 	mutex_init(&hdmi_ctrl->tx_lock);
