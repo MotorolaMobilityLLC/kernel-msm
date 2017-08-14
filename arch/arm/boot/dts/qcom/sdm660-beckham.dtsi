@@ -12,6 +12,8 @@
 
 #include "sdm660-moto-common.dtsi"
 #include "sdm660-external-codec.dtsi"
+#include "sdm660-beckham-pinctrl.dtsi"
+
 / {
 	model = "beckham";
 	compatible = "qcom,sdm660-beckham", "qcom,sdm660-moto",
