@@ -365,7 +365,7 @@ int fts_ctpm_write_app_for_idc(struct i2c_client *client,
 }
 
 
-
+#define AL2_FCS_COEF		((1 << 15) + (1 << 10) + (1 << 3))
 
 static u16 fts_crc_calc(const u8 *pbt_buf, u32 addr, u16 length)
 {
