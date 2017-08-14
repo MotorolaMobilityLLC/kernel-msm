@@ -2762,14 +2762,14 @@ void slimport_state_process (void)
 		SP_BREAK(STATE_PARSE_EDID, sp_tx_system_state);
 	#endif
 	case STATE_LINK_TRAINING:
-		slimport_link_training();		
+		slimport_link_training();
 		SP_BREAK(STATE_LINK_TRAINING, sp_tx_system_state);
 	case STATE_VIDEO_OUTPUT:
 		slimport_config_video_output();
 		SP_BREAK(STATE_VIDEO_OUTPUT, sp_tx_system_state);
 	case STATE_HDCP_AUTH:
 		if(!HDCP_REPEATER_MODE){
-			slimport_hdcp_process();	
+			slimport_hdcp_process();
 			SP_BREAK(STATE_HDCP_AUTH, sp_tx_system_state);
 		}else{
 			goto_next_system_state();
@@ -2778,12 +2778,19 @@ void slimport_state_process (void)
 		slimport_config_audio_output();
 		SP_BREAK(STATE_AUDIO_OUTPUT, sp_tx_system_state);
 	case STATE_PLAY_BACK:
-		//slimport_playback_process();	
+	#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+		/*
+		 *Stop blocking slimport mod display handle connect
+		 *thread when HDMI video is stable
+		*/
+		slimport_complete_video_stable();
+	#endif
+		/*slimport_playback_process();*/
 		SP_BREAK(STATE_PLAY_BACK, sp_tx_system_state);
 	default:
 		break;
 	}
-	
+
 }
 /******************Start INT process********************/
 void sp_tx_int_rec(void)

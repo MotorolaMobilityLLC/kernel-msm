@@ -116,6 +116,7 @@ struct anx7816_data {
 	struct wake_lock slimport_lock;
 	atomic_t slimport_connected;
 	struct completion connect_wait;
+	struct completion video_stable_wait;
 	struct dentry *debugfs;
 };
 
@@ -1687,10 +1688,50 @@ static int slimport_mod_display_handle_connect(void *data)
 		ret = -ENODEV;
 	}
 
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	/* Block this thread until HDMI video is stable
+	 * to void race condtion issue
+	*/
+	retries = 2;
+
+	pr_debug("%s: Start to wait video stable\n", __func__);
+
+	while (!wait_for_completion_timeout(&anx7816->video_stable_wait,
+		msecs_to_jiffies(WAIT_VIDEO_STABLE_TIMEOUT)) && retries) {
+			pr_warn("%s: Video not stable... Retries left: %d\n",
+		__func__, retries);
+
+		retries--;
+	}
+
+	if (retries == 0)
+		pr_warn("%s: Video is not stable after waiting %ds.\n",
+			__func__, 2 * WAIT_VIDEO_STABLE_TIMEOUT / 1000);
+#endif
 	pr_debug("%s-\n", __func__);
 
 	return ret;
 }
+
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+void slimport_complete_video_stable(void)
+{
+
+	struct anx7816_data *anx7816;
+
+	pr_debug("%s+\n", __func__);
+
+	if (!g_data) {
+		pr_err("%s: g_data is not set\n", __func__);
+		return;
+	}
+
+	anx7816 = g_data;
+
+	complete(&anx7816->video_stable_wait);
+	pr_debug("%s-\n", __func__);
+}
+#endif
 
 static int slimport_mod_display_handle_disconnect(void *data)
 {
@@ -1725,8 +1766,11 @@ static int slimport_mod_display_handle_disconnect(void *data)
 		cable_disconnect(anx7816);
 	}
 
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	/*Block here until HDMI panel off*/
+	msm_hdmi_sync_slimport(anx7816->pdata->hdmi_pdev);
+#endif
 	pr_debug("%s-\n", __func__);
-
 	return 0;
 }
 
@@ -1921,7 +1965,9 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	slimport_mod_display_ops.data = (void *)anx7816;
 	mod_display_register_impl(&slimport_mod_display_impl);
 	init_completion(&anx7816->connect_wait);
-
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	init_completion(&anx7816->video_stable_wait);
+#endif
 	pr_debug("%s %s end\n", LOG_TAG, __func__);
 	goto exit;
 
