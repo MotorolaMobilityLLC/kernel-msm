@@ -372,6 +372,12 @@ int fts_ctpm_auto_upgrade(struct i2c_client *client,
 		ft8716_set_chip_id(&fts_chip_type_curr);
 	}
 #endif
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_5X46_MMI
+	if (pdata->family_id == FT5X46_ID) {
+		ft5x46_set_upgrade_function(&fts_updatefun_curr);
+		ft5x46_set_chip_id(&fts_chip_type_curr);
+	}
+#endif
 	/* no IC upgrade function enabled, return error */
 	if ((fts_updatefun_curr == NULL) || (fts_chip_type_curr == NULL)) {
 		FTS_ERROR("[UPGRADE] ID(0x%02x) not support\n",
