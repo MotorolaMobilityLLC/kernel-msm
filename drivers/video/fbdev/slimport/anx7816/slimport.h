@@ -38,12 +38,16 @@
 
 #define AUX_ERR 1
 #define AUX_OK 0
+#define WAIT_VIDEO_STABLE_TIMEOUT 5000
+
 bool slimport_dongle_is_connected(void);
 void slimport_set_hdmi_hpd(int on);
 int sp_read_reg(uint8_t slave_addr, uint8_t offset, uint8_t *buf);
 int sp_write_reg(uint8_t slave_addr, uint8_t offset, uint8_t value);
 void sp_tx_hardware_poweron(void);
 void sp_tx_hardware_powerdown(void);
+void slimport_complete_video_stable(void);
+
 u32 sp_get_link_bandwidth_khz(unchar link_bandwidth);
 unchar sp_get_link_bandwidth_limit_from_khz(u32 link_bandwidth_limit_khz);
 
