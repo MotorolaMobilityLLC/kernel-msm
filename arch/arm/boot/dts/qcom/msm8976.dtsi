@@ -25,6 +25,22 @@
 		bootargs = "boot_cpus=0,1,2,3,4,5 sched_enable_hmp=1";
 	};
 
+	firmware: firmware {
+                android {
+                        compatible = "android,firmware";
+                        fstab {
+                                compatible = "android,fstab";
+                                system {
+                                        compatible = "android,system";
+                                        dev = "/dev/block/platform/soc.0/7824900.sdhci/by-name/system";
+                                        type = "ext4";
+                                        mnt_flags = "ro,barrier=1,discard";
+                                        fsmgr_flags = "wait,verify";
+                                        status = "ok";
+                                };
+                        };
+                };
+        };
 	aliases {
 		/* smdtty devices */
 		smd1 = &smdtty_apps_fm;
