@@ -94,6 +94,10 @@
 		enable-active-high;
 		regulator-always-on;
 	};
+
+	fpc_fpc1020{
+		pinctrl-0 = <&fps_ldo_1P8_en_default>;
+	};
 };
 
 &i2c_3 { /* BLSP1 QUP3 */
