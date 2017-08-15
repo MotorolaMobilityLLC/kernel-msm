@@ -901,7 +901,7 @@ static void qpnp_flash_led_aggregate_max_current(struct flash_node_data *fnode)
 static void qpnp_flash_led_node_set(struct flash_node_data *fnode, int value)
 {
 	int prgm_current_ma = value;
-	int min_ma = fnode->ires_ua / 1000;
+	int min_ma = (fnode->ires_ua / 1000) + (fnode->ires_ua % 1000 != 0);
 	struct qpnp_flash_led *led = dev_get_drvdata(&fnode->pdev->dev);
 
 	if (value <= 0)
@@ -915,6 +915,7 @@ static void qpnp_flash_led_node_set(struct flash_node_data *fnode, int value)
 	fnode->current_reg_val = CURRENT_MA_TO_REG_VAL(prgm_current_ma,
 					fnode->ires_ua);
 	fnode->led_on = prgm_current_ma != 0;
+	pr_info("reg_val %#x current_ma %d\n", fnode->current_reg_val, fnode->current_ma);
 
 	if (led->pdata->chgr_mitigation_sel == FLASH_SW_CHARGER_MITIGATION) {
 		qpnp_flash_led_aggregate_max_current(fnode);
