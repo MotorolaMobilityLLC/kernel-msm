@@ -15,7 +15,25 @@
 
 #include "sdm660.dtsi"
 #include "sdm660-beckham.dtsi"
+#include "dsi-panel-mot-smd-549-1080p-alb-cmd.dtsi"
 
 / {
 	qcom,board-id = <0x48 0xA100>;
+};
+
+&mot_smd_549_1080p_alb_cmd_v0 {
+	qcom,panel-supply-entries {
+			qcom,panel-supply-entry@4 {
+				reg = <4>;
+				qcom,supply-name = "oledb";
+				qcom,supply-min-voltage = <5000000>;
+				qcom,supply-max-voltage = <8100000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+			};
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_alb_cmd_v0>;
 };
