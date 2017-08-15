@@ -688,7 +688,7 @@ static int32_t msm_flash_high(
 		if (flash_ctrl->flash_trigger[i]) {
 			max_current = flash_ctrl->flash_max_current[i];
 			if (flash_data->flash_current[i] >= 0 &&
-				flash_data->flash_current[i] <
+				flash_data->flash_current[i] <=
 				max_current) {
 				curr = flash_data->flash_current[i];
 			} else {
