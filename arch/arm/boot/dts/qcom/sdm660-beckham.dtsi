@@ -94,5 +94,68 @@
 	cd-gpios = <&tlmm 54 0x1>;
 };
 
+&pmx_mdss {
+	mipi_err_pin_active: mipi_err_pin_active {
+		mux {
+			pins = "gpio60";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio60";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-up; /* pull up */
+			input-enable;
+		};
+	};
+
+	mipi_err_pin_suspend: mipi_err_pin_suspend {
+		mux {
+			pins = "gpio60";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio60";
+			drive-strength = <2>; /* 2 mA */
+			bias-pull-up; /* pull up */
+			input-enable;
+		};
+	};
+};
+
+&pm660_l11 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	regulator-boot-on;
+};
+
+&pm660l_l6 {
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+	regulator-boot-on;
+};
+
+&pm660a_oledb {
+	qcom,oledb-default-voltage-mv = <7600>;
+};
+
+
+&mdss_dsi0 {
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active &mipi_err_pin_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend &mipi_err_pin_suspend>;
+
+	/*qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_alb_cmd_v0>;*/
+	vci_disp-supply = <&pm660l_l6>;
+	vio_disp-supply = <&pm660_l11>;
+	elvdd_disp-supply = <&lab_regulator>;
+	elvss_disp-supply = <&ibb_regulator>;
+	oled_disp-supply = <&pm660a_oledb>;
+	qcom,platform-reset-gpio = <&tlmm 53 0>;
+	qcom,platform-te-gpio = <&tlmm 59 0>;
+};
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
