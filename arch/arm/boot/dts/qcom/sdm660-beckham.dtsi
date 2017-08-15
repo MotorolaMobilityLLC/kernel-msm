@@ -87,5 +87,9 @@
 	/delete-property/ linux,default-trigger;
 };
 
+&sdhc_2 {
+	cd-gpios = <&tlmm 54 0x1>;
+};
+
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
