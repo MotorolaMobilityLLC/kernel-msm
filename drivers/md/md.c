@@ -282,8 +282,6 @@ static void md_make_request(struct request_queue *q, struct bio *bio)
 	 * go away inside make_request
 	 */
 	sectors = bio_sectors(bio);
-	/* bio could be mergeable after passing to underlayer */
-	bio->bi_rw &= ~REQ_NOMERGE;
 	mddev->pers->make_request(mddev, bio);
 
 	cpu = part_stat_lock();
@@ -7562,7 +7560,8 @@ static int remove_and_add_spares(struct mddev *mddev,
 		       !test_bit(Bitmap_sync, &rdev->flags)))
 			continue;
 
-		rdev->recovery_offset = 0;
+		if (rdev->saved_raid_disk < 0)
+			rdev->recovery_offset = 0;
 		if (mddev->pers->
 		    hot_add_disk(mddev, rdev) == 0) {
 			if (sysfs_link_rdev(mddev, rdev))

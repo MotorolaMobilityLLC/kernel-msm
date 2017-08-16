@@ -678,14 +678,6 @@ cifs_do_mount(struct file_system_type *fs_type,
 		goto out_cifs_sb;
 	}
 
-	if (volume_info->prepath) {
-		cifs_sb->prepath = kstrdup(volume_info->prepath, GFP_KERNEL);
-		if (cifs_sb->prepath == NULL) {
-			root = ERR_PTR(-ENOMEM);
-			goto out_cifs_sb;
-		}
-	}
-
 	cifs_setup_cifs_sb(volume_info, cifs_sb);
 
 	rc = cifs_mount(cifs_sb, volume_info);
@@ -724,11 +716,7 @@ cifs_do_mount(struct file_system_type *fs_type,
 		sb->s_flags |= MS_ACTIVE;
 	}
 
-	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_USE_PREFIX_PATH)
-		root = dget(sb->s_root);
-	else
-		root = cifs_get_root(volume_info, sb);
-
+	root = cifs_get_root(volume_info, sb);
 	if (IS_ERR(root))
 		goto out_super;
 
@@ -1261,7 +1249,7 @@ init_cifs(void)
 		goto out_destroy_mids;
 
 #ifdef CONFIG_CIFS_UPCALL
-	rc = init_cifs_spnego();
+	rc = register_key_type(&cifs_spnego_key_type);
 	if (rc)
 		goto out_destroy_request_bufs;
 #endif /* CONFIG_CIFS_UPCALL */
@@ -1284,7 +1272,7 @@ out_init_cifs_idmap:
 out_register_key_type:
 #endif
 #ifdef CONFIG_CIFS_UPCALL
-	exit_cifs_spnego();
+	unregister_key_type(&cifs_spnego_key_type);
 out_destroy_request_bufs:
 #endif
 	cifs_destroy_request_bufs();

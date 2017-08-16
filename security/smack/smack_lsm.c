@@ -308,10 +308,12 @@ static int smk_copy_rules(struct list_head *nhead, struct list_head *ohead,
  */
 static inline unsigned int smk_ptrace_mode(unsigned int mode)
 {
-	if (mode & PTRACE_MODE_ATTACH)
-		return MAY_READWRITE;
-	if (mode & PTRACE_MODE_READ)
+	switch (mode) {
+	case PTRACE_MODE_READ:
 		return MAY_READ;
+	case PTRACE_MODE_ATTACH:
+		return MAY_READWRITE;
+	}
 
 	return 0;
 }

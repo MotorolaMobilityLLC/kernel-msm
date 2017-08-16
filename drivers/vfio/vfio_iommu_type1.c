@@ -928,8 +928,7 @@ static long vfio_iommu_type1_ioctl(void *iommu_data,
 
 		info.iova_pgsizes = vfio_pgsize_bitmap(iommu);
 
-		return copy_to_user((void __user *)arg, &info, minsz) ?
-			-EFAULT : 0;
+		return copy_to_user((void __user *)arg, &info, minsz);
 
 	} else if (cmd == VFIO_IOMMU_MAP_DMA) {
 		struct vfio_iommu_type1_dma_map map;
@@ -962,8 +961,7 @@ static long vfio_iommu_type1_ioctl(void *iommu_data,
 		if (ret)
 			return ret;
 
-		return copy_to_user((void __user *)arg, &unmap, minsz) ?
-			-EFAULT : 0;
+		return copy_to_user((void __user *)arg, &unmap, minsz);
 	}
 
 	return -ENOTTY;

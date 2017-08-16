@@ -28,13 +28,12 @@ struct lockref {
 #endif
 		struct {
 			spinlock_t lock;
-			int count;
+			unsigned int count;
 		};
 	};
 };
 
 extern void lockref_get(struct lockref *);
-extern int lockref_put_return(struct lockref *);
 extern int lockref_get_not_zero(struct lockref *);
 extern int lockref_get_or_lock(struct lockref *);
 extern int lockref_put_or_lock(struct lockref *);

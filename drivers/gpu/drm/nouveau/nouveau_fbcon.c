@@ -178,30 +178,8 @@ nouveau_fbcon_sync(struct fb_info *info)
 	return 0;
 }
 
-static int
-nouveau_fbcon_open(struct fb_info *info, int user)
-{
-	struct nouveau_fbdev *fbcon = info->par;
-	struct nouveau_drm *drm = nouveau_drm(fbcon->dev);
-	int ret = pm_runtime_get_sync(drm->dev->dev);
-	if (ret < 0 && ret != -EACCES)
-		return ret;
-	return 0;
-}
-
-static int
-nouveau_fbcon_release(struct fb_info *info, int user)
-{
-	struct nouveau_fbdev *fbcon = info->par;
-	struct nouveau_drm *drm = nouveau_drm(fbcon->dev);
-	pm_runtime_put(drm->dev->dev);
-	return 0;
-}
-
 static struct fb_ops nouveau_fbcon_ops = {
 	.owner = THIS_MODULE,
-	.fb_open = nouveau_fbcon_open,
-	.fb_release = nouveau_fbcon_release,
 	.fb_check_var = drm_fb_helper_check_var,
 	.fb_set_par = drm_fb_helper_set_par,
 	.fb_fillrect = nouveau_fbcon_fillrect,
@@ -217,8 +195,6 @@ static struct fb_ops nouveau_fbcon_ops = {
 
 static struct fb_ops nouveau_fbcon_sw_ops = {
 	.owner = THIS_MODULE,
-	.fb_open = nouveau_fbcon_open,
-	.fb_release = nouveau_fbcon_release,
 	.fb_check_var = drm_fb_helper_check_var,
 	.fb_set_par = drm_fb_helper_set_par,
 	.fb_fillrect = cfb_fillrect,
@@ -546,12 +522,12 @@ nouveau_fbcon_init(struct drm_device *dev)
 
 	ret = drm_fb_helper_init(dev, &fbcon->helper,
 				 dev->mode_config.num_crtc, 4);
-	if (ret)
-		goto free;
+	if (ret) {
+		kfree(fbcon);
+		return ret;
+	}
 
-	ret = drm_fb_helper_single_add_all_connectors(&fbcon->helper);
-	if (ret)
-		goto fini;
+	drm_fb_helper_single_add_all_connectors(&fbcon->helper);
 
 	if (drm->device.info.ram_size <= 32 * 1024 * 1024)
 		preferred_bpp = 8;
@@ -564,19 +540,8 @@ nouveau_fbcon_init(struct drm_device *dev)
 	/* disable all the possible outputs/crtcs before entering KMS mode */
 	drm_helper_disable_unused_functions(dev);
 
-	ret = drm_fb_helper_initial_config(&fbcon->helper, preferred_bpp);
-	if (ret)
-		goto fini;
-
-	if (fbcon->helper.fbdev)
-		fbcon->helper.fbdev->pixmap.buf_align = 4;
+	drm_fb_helper_initial_config(&fbcon->helper, preferred_bpp);
 	return 0;
-
-fini:
-	drm_fb_helper_fini(&fbcon->helper);
-free:
-	kfree(fbcon);
-	return ret;
 }
 
 void

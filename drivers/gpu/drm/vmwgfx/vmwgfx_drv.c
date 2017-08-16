@@ -25,7 +25,6 @@
  *
  **************************************************************************/
 #include <linux/module.h>
-#include <linux/console.h>
 
 #include <drm/drmP.h>
 #include "vmwgfx_drv.h"
@@ -1448,12 +1447,6 @@ static int vmw_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 static int __init vmwgfx_init(void)
 {
 	int ret;
-
-#ifdef CONFIG_VGA_CONSOLE
-	if (vgacon_text_force())
-		return -EINVAL;
-#endif
-
 	ret = drm_pci_init(&driver, &vmw_pci_driver);
 	if (ret)
 		DRM_ERROR("Failed initializing DRM.\n");

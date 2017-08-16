@@ -200,8 +200,6 @@ ENTRY(__cpu_setup)
 	mov	x0, #3 << 20
 	msr	cpacr_el1, x0			// Enable FP/ASIMD
 	msr	mdscr_el1, xzr			// Reset mdscr_el1
-	isb					// Unmask debug exceptions now,
-	enable_dbg				// since this is per-cpu
 	/*
 	 * Memory region attributes for LPAE:
 	 *

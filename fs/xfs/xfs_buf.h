@@ -131,7 +131,6 @@ struct xfs_buf_map {
 	struct xfs_buf_map (map) = { .bm_bn = (blkno), .bm_len = (numblk) };
 
 struct xfs_buf_ops {
-	char *name;
 	void (*verify_read)(struct xfs_buf *);
 	void (*verify_write)(struct xfs_buf *);
 };

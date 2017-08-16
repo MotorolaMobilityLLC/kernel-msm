@@ -46,7 +46,7 @@ struct efx_loopback_payload {
 	struct iphdr ip;
 	struct udphdr udp;
 	__be16 iteration;
-	char msg[64];
+	const char msg[64];
 } __packed;
 
 /* Loopback test source MAC address */

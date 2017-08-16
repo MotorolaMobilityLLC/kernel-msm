@@ -1414,9 +1414,8 @@ static int __iscsi_target_login_thread(struct iscsi_np *np)
 	}
 	login->zero_tsih = zero_tsih;
 
-	if (conn->sess)
-		conn->sess->se_sess->sup_prot_ops =
-			conn->conn_transport->iscsit_get_sup_prot_ops(conn);
+	conn->sess->se_sess->sup_prot_ops =
+		conn->conn_transport->iscsit_get_sup_prot_ops(conn);
 
 	tpg = conn->tpg;
 	if (!tpg) {

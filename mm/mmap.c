@@ -447,16 +447,12 @@ static void validate_mm(struct mm_struct *mm)
 	struct vm_area_struct *vma = mm->mmap;
 
 	while (vma) {
-		struct anon_vma *anon_vma = vma->anon_vma;
 		struct anon_vma_chain *avc;
 
-		if (anon_vma) {
-			anon_vma_lock_read(anon_vma);
-			list_for_each_entry(avc, &vma->anon_vma_chain, same_vma)
-				anon_vma_interval_tree_verify(avc);
-			anon_vma_unlock_read(anon_vma);
-		}
-
+		vma_lock_anon_vma(vma);
+		list_for_each_entry(avc, &vma->anon_vma_chain, same_vma)
+			anon_vma_interval_tree_verify(avc);
+		vma_unlock_anon_vma(vma);
 		highest_address = vma->vm_end;
 		vma = vma->vm_next;
 		i++;
@@ -2169,27 +2165,32 @@ static int acct_stack_growth(struct vm_area_struct *vma, unsigned long size, uns
  */
 int expand_upwards(struct vm_area_struct *vma, unsigned long address)
 {
-	int error = 0;
+	int error;
 
 	if (!(vma->vm_flags & VM_GROWSUP))
 		return -EFAULT;
 
-	/* Guard against wrapping around to address 0. */
-	if (address < PAGE_ALIGN(address+4))
-		address = PAGE_ALIGN(address+4);
-	else
-		return -ENOMEM;
-
-	/* We must make sure the anon_vma is allocated. */
+	/*
+	 * We must make sure the anon_vma is allocated
+	 * so that the anon_vma locking is not a noop.
+	 */
 	if (unlikely(anon_vma_prepare(vma)))
 		return -ENOMEM;
+	vma_lock_anon_vma(vma);
 
 	/*
 	 * vma->vm_start/vm_end cannot change under us because the caller
 	 * is required to hold the mmap_sem in read mode.  We need the
 	 * anon_vma lock to serialize against concurrent expand_stacks.
+	 * Also guard against wrapping around to address 0.
 	 */
-	anon_vma_lock_write(vma->anon_vma);
+	if (address < PAGE_ALIGN(address+4))
+		address = PAGE_ALIGN(address+4);
+	else {
+		vma_unlock_anon_vma(vma);
+		return -ENOMEM;
+	}
+	error = 0;
 
 	/* Somebody else might have raced and expanded it already */
 	if (address > vma->vm_end) {
@@ -2207,7 +2208,7 @@ int expand_upwards(struct vm_area_struct *vma, unsigned long address)
 				 * updates, but we only hold a shared mmap_sem
 				 * lock here, so we need to protect against
 				 * concurrent vma expansions.
-				 * anon_vma_lock_write() doesn't help here, as
+				 * vma_lock_anon_vma() doesn't help here, as
 				 * we don't guarantee that all growable vmas
 				 * in a mm share the same root anon vma.
 				 * So, we reuse mm->page_table_lock to guard
@@ -2227,7 +2228,7 @@ int expand_upwards(struct vm_area_struct *vma, unsigned long address)
 			}
 		}
 	}
-	anon_vma_unlock_write(vma->anon_vma);
+	vma_unlock_anon_vma(vma);
 	khugepaged_enter_vma_merge(vma, vma->vm_flags);
 	validate_mm(vma->vm_mm);
 	return error;
@@ -2242,21 +2243,25 @@ int expand_downwards(struct vm_area_struct *vma,
 {
 	int error;
 
+	/*
+	 * We must make sure the anon_vma is allocated
+	 * so that the anon_vma locking is not a noop.
+	 */
+	if (unlikely(anon_vma_prepare(vma)))
+		return -ENOMEM;
+
 	address &= PAGE_MASK;
 	error = security_mmap_addr(address);
 	if (error)
 		return error;
 
-	/* We must make sure the anon_vma is allocated. */
-	if (unlikely(anon_vma_prepare(vma)))
-		return -ENOMEM;
+	vma_lock_anon_vma(vma);
 
 	/*
 	 * vma->vm_start/vm_end cannot change under us because the caller
 	 * is required to hold the mmap_sem in read mode.  We need the
 	 * anon_vma lock to serialize against concurrent expand_stacks.
 	 */
-	anon_vma_lock_write(vma->anon_vma);
 
 	/* Somebody else might have raced and expanded it already */
 	if (address < vma->vm_start) {
@@ -2274,7 +2279,7 @@ int expand_downwards(struct vm_area_struct *vma,
 				 * updates, but we only hold a shared mmap_sem
 				 * lock here, so we need to protect against
 				 * concurrent vma expansions.
-				 * anon_vma_lock_write() doesn't help here, as
+				 * vma_lock_anon_vma() doesn't help here, as
 				 * we don't guarantee that all growable vmas
 				 * in a mm share the same root anon vma.
 				 * So, we reuse mm->page_table_lock to guard
@@ -2292,7 +2297,7 @@ int expand_downwards(struct vm_area_struct *vma,
 			}
 		}
 	}
-	anon_vma_unlock_write(vma->anon_vma);
+	vma_unlock_anon_vma(vma);
 	khugepaged_enter_vma_merge(vma, vma->vm_flags);
 	validate_mm(vma->vm_mm);
 	return error;

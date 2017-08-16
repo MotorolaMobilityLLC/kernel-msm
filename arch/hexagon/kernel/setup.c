@@ -19,7 +19,6 @@
  */
 
 #include <linux/init.h>
-#include <linux/delay.h>
 #include <linux/bootmem.h>
 #include <linux/mmzone.h>
 #include <linux/mm.h>

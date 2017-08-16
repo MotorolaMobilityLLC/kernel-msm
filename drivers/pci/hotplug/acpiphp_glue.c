@@ -954,10 +954,8 @@ int acpiphp_enable_slot(struct acpiphp_slot *slot)
 {
 	pci_lock_rescan_remove();
 
-	if (slot->flags & SLOT_IS_GOING_AWAY) {
-		pci_unlock_rescan_remove();
+	if (slot->flags & SLOT_IS_GOING_AWAY)
 		return -ENODEV;
-	}
 
 	/* configure all functions */
 	if (!(slot->flags & SLOT_ENABLED))

@@ -1848,10 +1848,10 @@ static int team_vlan_rx_kill_vid(struct net_device *dev, __be16 proto, u16 vid)
 	struct team *team = netdev_priv(dev);
 	struct team_port *port;
 
-	mutex_lock(&team->lock);
-	list_for_each_entry(port, &team->port_list, list)
+	rcu_read_lock();
+	list_for_each_entry_rcu(port, &team->port_list, list)
 		vlan_vid_del(port->dev, proto, vid);
-	mutex_unlock(&team->lock);
+	rcu_read_unlock();
 
 	return 0;
 }

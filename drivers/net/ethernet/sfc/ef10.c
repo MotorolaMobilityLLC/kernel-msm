@@ -452,17 +452,6 @@ fail:
 	return rc;
 }
 
-static void efx_ef10_forget_old_piobufs(struct efx_nic *efx)
-{
-	struct efx_channel *channel;
-	struct efx_tx_queue *tx_queue;
-
-	/* All our existing PIO buffers went away */
-	efx_for_each_channel(channel, efx)
-		efx_for_each_channel_tx_queue(tx_queue, channel)
-			tx_queue->piobuf = NULL;
-}
-
 #else /* !EFX_USE_PIO */
 
 static int efx_ef10_alloc_piobufs(struct efx_nic *efx, unsigned int n)
@@ -476,10 +465,6 @@ static int efx_ef10_link_piobufs(struct efx_nic *efx)
 }
 
 static void efx_ef10_free_piobufs(struct efx_nic *efx)
-{
-}
-
-static void efx_ef10_forget_old_piobufs(struct efx_nic *efx)
 {
 }
 
@@ -714,7 +699,6 @@ static void efx_ef10_reset_mc_allocations(struct efx_nic *efx)
 	nic_data->must_realloc_vis = true;
 	nic_data->must_restore_filters = true;
 	nic_data->must_restore_piobufs = true;
-	efx_ef10_forget_old_piobufs(efx);
 	nic_data->rx_rss_context = EFX_EF10_RSS_CONTEXT_INVALID;
 }
 
@@ -1360,9 +1344,7 @@ static void efx_ef10_tx_write(struct efx_tx_queue *tx_queue)
 	unsigned int write_ptr;
 	efx_qword_t *txd;
 
-	tx_queue->xmit_more_available = false;
-	if (unlikely(tx_queue->write_count == tx_queue->insert_count))
-		return;
+	BUG_ON(tx_queue->write_count == tx_queue->insert_count);
 
 	do {
 		write_ptr = tx_queue->write_count & tx_queue->ptr_mask;

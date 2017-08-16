@@ -25,7 +25,6 @@ struct fou {
 	u16 port;
 	struct udp_offload udp_offloads;
 	struct list_head list;
-	struct rcu_head rcu;
 };
 
 struct fou_cfg {
@@ -288,7 +287,7 @@ static void fou_release(struct fou *fou)
 
 	sock_release(sock);
 
-	kfree_rcu(fou, rcu);
+	kfree(fou);
 }
 
 static int fou_encap_init(struct sock *sk, struct fou *fou, struct fou_cfg *cfg)

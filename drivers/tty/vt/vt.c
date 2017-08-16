@@ -3591,10 +3591,9 @@ static int do_register_con_driver(const struct consw *csw, int first, int last)
 		goto err;
 
 	desc = csw->con_startup();
-	if (!desc) {
-		retval = -ENODEV;
+
+	if (!desc)
 		goto err;
-	}
 
 	retval = -EINVAL;
 

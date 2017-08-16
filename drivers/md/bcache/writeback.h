@@ -63,8 +63,7 @@ static inline bool should_writeback(struct cached_dev *dc, struct bio *bio,
 
 static inline void bch_writeback_queue(struct cached_dev *dc)
 {
-	if (!IS_ERR_OR_NULL(dc->writeback_thread))
-		wake_up_process(dc->writeback_thread);
+	wake_up_process(dc->writeback_thread);
 }
 
 static inline void bch_writeback_add(struct cached_dev *dc)

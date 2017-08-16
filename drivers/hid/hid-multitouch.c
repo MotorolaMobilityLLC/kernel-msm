@@ -312,19 +312,8 @@ static void mt_feature_mapping(struct hid_device *hdev,
 			break;
 		}
 
-		if (td->inputmode < 0) {
-			td->inputmode = field->report->id;
-			td->inputmode_index = usage->usage_index;
-		} else {
-			/*
-			 * Some elan panels wrongly declare 2 input mode
-			 * features, and silently ignore when we set the
-			 * value in the second field. Skip the second feature
-			 * and hope for the best.
-			 */
-			dev_info(&hdev->dev,
-				 "Ignoring the extra HID_DG_INPUTMODE\n");
-		}
+		td->inputmode = field->report->id;
+		td->inputmode_index = usage->usage_index;
 
 		break;
 	case HID_DG_CONTACTMAX:

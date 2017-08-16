@@ -1825,9 +1825,8 @@ EXPORT_SYMBOL(bio_endio_nodec);
  * Allocates and returns a new bio which represents @sectors from the start of
  * @bio, and updates @bio to represent the remaining sectors.
  *
- * Unless this is a discard request the newly allocated bio will point
- * to @bio's bi_io_vec; it is the caller's responsibility to ensure that
- * @bio is not freed before the split.
+ * The newly allocated bio will point to @bio's bi_io_vec; it is the caller's
+ * responsibility to ensure that @bio is not freed before the split.
  */
 struct bio *bio_split(struct bio *bio, int sectors,
 		      gfp_t gfp, struct bio_set *bs)
@@ -1837,15 +1836,7 @@ struct bio *bio_split(struct bio *bio, int sectors,
 	BUG_ON(sectors <= 0);
 	BUG_ON(sectors >= bio_sectors(bio));
 
-	/*
-	 * Discards need a mutable bio_vec to accommodate the payload
-	 * required by the DSM TRIM and UNMAP commands.
-	 */
-	if (bio->bi_rw & REQ_DISCARD)
-		split = bio_clone_bioset(bio, gfp, bs);
-	else
-		split = bio_clone_fast(bio, gfp, bs);
-
+	split = bio_clone_fast(bio, gfp, bs);
 	if (!split)
 		return NULL;
 

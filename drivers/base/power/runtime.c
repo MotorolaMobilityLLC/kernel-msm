@@ -1474,16 +1474,11 @@ int pm_runtime_force_resume(struct device *dev)
 		goto out;
 	}
 
-	ret = pm_runtime_set_active(dev);
+	ret = callback(dev);
 	if (ret)
 		goto out;
 
-	ret = callback(dev);
-	if (ret) {
-		pm_runtime_set_suspended(dev);
-		goto out;
-	}
-
+	pm_runtime_set_active(dev);
 	pm_runtime_mark_last_busy(dev);
 out:
 	pm_runtime_enable(dev);

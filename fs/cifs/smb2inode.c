@@ -80,10 +80,6 @@ smb2_open_op_close(const unsigned int xid, struct cifs_tcon *tcon,
 		 * SMB2_open() call.
 		 */
 		break;
-	case SMB2_OP_RMDIR:
-		tmprc = SMB2_rmdir(xid, tcon, fid.persistent_fid,
-				   fid.volatile_fid);
-		break;
 	case SMB2_OP_RENAME:
 		tmprc = SMB2_rename(xid, tcon, fid.persistent_fid,
 				    fid.volatile_fid, (__le16 *)data);
@@ -195,8 +191,8 @@ smb2_rmdir(const unsigned int xid, struct cifs_tcon *tcon, const char *name,
 	   struct cifs_sb_info *cifs_sb)
 {
 	return smb2_open_op_close(xid, tcon, cifs_sb, name, DELETE, FILE_OPEN,
-				  CREATE_NOT_FILE,
-				  NULL, SMB2_OP_RMDIR);
+				  CREATE_NOT_FILE | CREATE_DELETE_ON_CLOSE,
+				  NULL, SMB2_OP_DELETE);
 }
 
 int

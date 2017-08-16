@@ -565,14 +565,9 @@ static int cryptd_hash_export(struct ahash_request *req, void *out)
 
 static int cryptd_hash_import(struct ahash_request *req, const void *in)
 {
-	struct crypto_ahash *tfm = crypto_ahash_reqtfm(req);
-	struct cryptd_hash_ctx *ctx = crypto_ahash_ctx(tfm);
-	struct shash_desc *desc = cryptd_shash_desc(req);
+	struct cryptd_hash_request_ctx *rctx = ahash_request_ctx(req);
 
-	desc->tfm = ctx->child;
-	desc->flags = req->base.flags;
-
-	return crypto_shash_import(desc, in);
+	return crypto_shash_import(&rctx->desc, in);
 }
 
 static int cryptd_create_hash(struct crypto_template *tmpl, struct rtattr **tb,

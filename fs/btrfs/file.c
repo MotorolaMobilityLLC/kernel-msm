@@ -760,16 +760,8 @@ next_slot:
 		}
 
 		btrfs_item_key_to_cpu(leaf, &key, path->slots[0]);
-
-		if (key.objectid > ino)
-			break;
-		if (WARN_ON_ONCE(key.objectid < ino) ||
-		    key.type < BTRFS_EXTENT_DATA_KEY) {
-			ASSERT(del_nr == 0);
-			path->slots[0]++;
-			goto next_slot;
-		}
-		if (key.type > BTRFS_EXTENT_DATA_KEY || key.offset >= end)
+		if (key.objectid > ino ||
+		    key.type > BTRFS_EXTENT_DATA_KEY || key.offset >= end)
 			break;
 
 		fi = btrfs_item_ptr(leaf, path->slots[0],
@@ -788,8 +780,8 @@ next_slot:
 				btrfs_file_extent_inline_len(leaf,
 						     path->slots[0], fi);
 		} else {
-			/* can't happen */
-			BUG();
+			WARN_ON(1);
+			extent_end = search_start;
 		}
 
 		/*
@@ -2797,7 +2789,7 @@ const struct file_operations btrfs_file_operations = {
 	.fallocate	= btrfs_fallocate,
 	.unlocked_ioctl	= btrfs_ioctl,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl	= btrfs_compat_ioctl,
+	.compat_ioctl	= btrfs_ioctl,
 #endif
 };
 

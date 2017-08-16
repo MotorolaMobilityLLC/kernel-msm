@@ -20,7 +20,6 @@
 
 #include <linux/io.h>
 #include <linux/vmalloc.h>
-#include <linux/mm.h>
 
 void __iomem *ioremap_nocache(unsigned long phys_addr, unsigned long size)
 {

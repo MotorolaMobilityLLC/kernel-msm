@@ -1036,11 +1036,8 @@ static int irda_connect(struct socket *sock, struct sockaddr *uaddr,
 	}
 
 	/* Check if we have opened a local TSAP */
-	if (!self->tsap) {
-		err = irda_open_tsap(self, LSAP_ANY, addr->sir_name);
-		if (err)
-			goto out;
-	}
+	if (!self->tsap)
+		irda_open_tsap(self, LSAP_ANY, addr->sir_name);
 
 	/* Move to connecting socket, start sending Connect Requests */
 	sock->state = SS_CONNECTING;
@@ -1102,9 +1099,6 @@ static int irda_create(struct net *net, struct socket *sock, int protocol,
 	struct irda_sock *self;
 
 	IRDA_DEBUG(2, "%s()\n", __func__);
-
-	if (protocol < 0 || protocol > SK_PROTOCOL_MAX)
-		return -EINVAL;
 
 	if (net != &init_net)
 		return -EAFNOSUPPORT;

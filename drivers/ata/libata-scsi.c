@@ -674,18 +674,19 @@ static int ata_ioc32(struct ata_port *ap)
 int ata_sas_scsi_ioctl(struct ata_port *ap, struct scsi_device *scsidev,
 		     int cmd, void __user *arg)
 {
-	unsigned long val;
-	int rc = -EINVAL;
+	int val = -EINVAL, rc = -EINVAL;
 	unsigned long flags;
 
 	switch (cmd) {
-	case HDIO_GET_32BIT:
+	case ATA_IOC_GET_IO32:
 		spin_lock_irqsave(ap->lock, flags);
 		val = ata_ioc32(ap);
 		spin_unlock_irqrestore(ap->lock, flags);
-		return put_user(val, (unsigned long __user *)arg);
+		if (copy_to_user(arg, &val, 1))
+			return -EFAULT;
+		return 0;
 
-	case HDIO_SET_32BIT:
+	case ATA_IOC_SET_IO32:
 		val = (unsigned long) arg;
 		rc = 0;
 		spin_lock_irqsave(ap->lock, flags);

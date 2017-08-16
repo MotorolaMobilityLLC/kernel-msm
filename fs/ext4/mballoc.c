@@ -1248,7 +1248,6 @@ static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
 static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
 {
 	int order = 1;
-	int bb_incr = 1 << (e4b->bd_blkbits - 1);
 	void *bb;
 
 	BUG_ON(e4b->bd_bitmap == e4b->bd_buddy);
@@ -1261,8 +1260,7 @@ static int mb_find_order_for_block(struct ext4_buddy *e4b, int block)
 			/* this block is part of buddy of order 'order' */
 			return order;
 		}
-		bb += bb_incr;
-		bb_incr >>= 1;
+		bb += 1 << (e4b->bd_blkbits - order);
 		order++;
 	}
 	return 0;
@@ -2555,7 +2553,7 @@ int ext4_mb_init(struct super_block *sb)
 {
 	struct ext4_sb_info *sbi = EXT4_SB(sb);
 	unsigned i, j;
-	unsigned offset, offset_incr;
+	unsigned offset;
 	unsigned max;
 	int ret;
 
@@ -2584,13 +2582,11 @@ int ext4_mb_init(struct super_block *sb)
 
 	i = 1;
 	offset = 0;
-	offset_incr = 1 << (sb->s_blocksize_bits - 1);
 	max = sb->s_blocksize << 2;
 	do {
 		sbi->s_mb_offsets[i] = offset;
 		sbi->s_mb_maxs[i] = max;
-		offset += offset_incr;
-		offset_incr = offset_incr >> 1;
+		offset += 1 << (sb->s_blocksize_bits - i);
 		max = max >> 1;
 		i++;
 	} while (i <= sb->s_blocksize_bits + 1);

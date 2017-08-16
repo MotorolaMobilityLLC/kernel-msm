@@ -49,19 +49,13 @@ int ovl_setattr(struct dentry *dentry, struct iattr *attr)
 	if (err)
 		goto out;
 
-	err = ovl_copy_up(dentry);
-	if (!err) {
-		upperdentry = ovl_dentry_upper(dentry);
-
+	upperdentry = ovl_dentry_upper(dentry);
+	if (upperdentry) {
 		mutex_lock(&upperdentry->d_inode->i_mutex);
-
-		if (attr->ia_valid & (ATTR_KILL_SUID|ATTR_KILL_SGID))
-			attr->ia_valid &= ~ATTR_MODE;
-
 		err = notify_change(upperdentry, attr, NULL);
-		if (!err)
-			ovl_copyattr(upperdentry->d_inode, dentry->d_inode);
 		mutex_unlock(&upperdentry->d_inode->i_mutex);
+	} else {
+		err = ovl_copy_up_last(dentry, attr, false);
 	}
 	ovl_drop_write(dentry);
 out:
@@ -208,7 +202,8 @@ static int ovl_readlink(struct dentry *dentry, char __user *buf, int bufsiz)
 	return realinode->i_op->readlink(realpath.dentry, buf, bufsiz);
 }
 
-bool ovl_is_private_xattr(const char *name)
+
+static bool ovl_is_private_xattr(const char *name)
 {
 	return strncmp(name, "trusted.overlay.", 14) == 0;
 }
@@ -263,8 +258,7 @@ ssize_t ovl_listxattr(struct dentry *dentry, char *list, size_t size)
 	struct path realpath;
 	enum ovl_path_type type = ovl_path_real(dentry, &realpath);
 	ssize_t res;
-	size_t len;
-	char *s;
+	int off;
 
 	res = vfs_listxattr(realpath.dentry, list, size);
 	if (res <= 0 || size == 0)
@@ -274,19 +268,17 @@ ssize_t ovl_listxattr(struct dentry *dentry, char *list, size_t size)
 		return res;
 
 	/* filter out private xattrs */
-	for (s = list, len = res; len;) {
-		size_t slen = strnlen(s, len) + 1;
+	for (off = 0; off < res;) {
+		char *s = list + off;
+		size_t slen = strlen(s) + 1;
 
-		/* underlying fs providing us with an broken xattr list? */
-		if (WARN_ON(slen > len))
-			return -EIO;
+		BUG_ON(off + slen > res);
 
-		len -= slen;
 		if (ovl_is_private_xattr(s)) {
 			res -= slen;
-			memmove(s, s + slen, len);
+			memmove(s, s + slen, res - off);
 		} else {
-			s += slen;
+			off += slen;
 		}
 	}
 
@@ -401,11 +393,12 @@ struct inode *ovl_new_inode(struct super_block *sb, umode_t mode,
 	if (!inode)
 		return NULL;
 
+	mode &= S_IFMT;
+
 	inode->i_ino = get_next_ino();
 	inode->i_mode = mode;
 	inode->i_flags |= S_NOATIME | S_NOCMTIME;
 
-	mode &= S_IFMT;
 	switch (mode) {
 	case S_IFDIR:
 		inode->i_private = oe;

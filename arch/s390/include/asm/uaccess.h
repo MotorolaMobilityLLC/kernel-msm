@@ -213,28 +213,28 @@ int __put_user_bad(void) __attribute__((noreturn));
 	__chk_user_ptr(ptr);					\
 	switch (sizeof(*(ptr))) {				\
 	case 1: {						\
-		unsigned char __x = 0;				\
+		unsigned char __x;				\
 		__gu_err = __get_user_fn(&__x, ptr,		\
 					 sizeof(*(ptr)));	\
 		(x) = *(__force __typeof__(*(ptr)) *) &__x;	\
 		break;						\
 	};							\
 	case 2: {						\
-		unsigned short __x = 0;				\
+		unsigned short __x;				\
 		__gu_err = __get_user_fn(&__x, ptr,		\
 					 sizeof(*(ptr)));	\
 		(x) = *(__force __typeof__(*(ptr)) *) &__x;	\
 		break;						\
 	};							\
 	case 4: {						\
-		unsigned int __x = 0;				\
+		unsigned int __x;				\
 		__gu_err = __get_user_fn(&__x, ptr,		\
 					 sizeof(*(ptr)));	\
 		(x) = *(__force __typeof__(*(ptr)) *) &__x;	\
 		break;						\
 	};							\
 	case 8: {						\
-		unsigned long long __x = 0;			\
+		unsigned long long __x;				\
 		__gu_err = __get_user_fn(&__x, ptr,		\
 					 sizeof(*(ptr)));	\
 		(x) = *(__force __typeof__(*(ptr)) *) &__x;	\

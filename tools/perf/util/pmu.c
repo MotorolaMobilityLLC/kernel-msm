@@ -221,12 +221,13 @@ static int pmu_aliases_parse(char *dir, struct list_head *head)
 {
 	struct dirent *evt_ent;
 	DIR *event_dir;
+	int ret = 0;
 
 	event_dir = opendir(dir);
 	if (!event_dir)
 		return -EINVAL;
 
-	while ((evt_ent = readdir(event_dir))) {
+	while (!ret && (evt_ent = readdir(event_dir))) {
 		char path[PATH_MAX];
 		char *name = evt_ent->d_name;
 		FILE *file;
@@ -242,19 +243,17 @@ static int pmu_aliases_parse(char *dir, struct list_head *head)
 
 		snprintf(path, PATH_MAX, "%s/%s", dir, name);
 
+		ret = -EINVAL;
 		file = fopen(path, "r");
-		if (!file) {
-			pr_debug("Cannot open %s\n", path);
-			continue;
-		}
+		if (!file)
+			break;
 
-		if (perf_pmu__new_alias(head, dir, name, file) < 0)
-			pr_debug("Cannot set up %s\n", name);
+		ret = perf_pmu__new_alias(head, dir, name, file);
 		fclose(file);
 	}
 
 	closedir(event_dir);
-	return 0;
+	return ret;
 }
 
 /*

@@ -249,16 +249,6 @@ static const struct reg_default wm5110_revd_patch[] = {
 	{ 0x80, 0x0 },
 };
 
-/* Add extra headphone write sequence locations */
-static const struct reg_default wm5110_reve_patch[] = {
-	{ 0x80, 0x3 },
-	{ 0x80, 0x3 },
-	{ 0x4b, 0x138 },
-	{ 0x4c, 0x13d },
-	{ 0x80, 0x0 },
-	{ 0x80, 0x0 },
-};
-
 /* We use a function so we can use ARRAY_SIZE() */
 int wm5110_patch(struct arizona *arizona)
 {
@@ -276,9 +266,7 @@ int wm5110_patch(struct arizona *arizona)
 					     wm5110_revd_patch,
 					     ARRAY_SIZE(wm5110_revd_patch));
 	default:
-		return regmap_register_patch(arizona->regmap,
-					     wm5110_reve_patch,
-					     ARRAY_SIZE(wm5110_reve_patch));
+		return 0;
 	}
 }
 EXPORT_SYMBOL_GPL(wm5110_patch);

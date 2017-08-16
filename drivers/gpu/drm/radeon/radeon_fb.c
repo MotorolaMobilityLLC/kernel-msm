@@ -303,8 +303,7 @@ out_unref:
 
 void radeon_fb_output_poll_changed(struct radeon_device *rdev)
 {
-	if (rdev->mode_info.rfbdev)
-		drm_fb_helper_hotplug_event(&rdev->mode_info.rfbdev->helper);
+	drm_fb_helper_hotplug_event(&rdev->mode_info.rfbdev->helper);
 }
 
 static int radeon_fbdev_destroy(struct drm_device *dev, struct radeon_fbdev *rfbdev)
@@ -344,10 +343,6 @@ int radeon_fbdev_init(struct radeon_device *rdev)
 	int bpp_sel = 32;
 	int ret;
 
-	/* don't enable fbdev if no connectors */
-	if (list_empty(&rdev->ddev->mode_config.connector_list))
-		return 0;
-
 	/* select 8 bpp console on RN50 or 16MB cards */
 	if (ASIC_IS_RN50(rdev) || rdev->mc.real_vram_size <= (32*1024*1024))
 		bpp_sel = 8;
@@ -365,27 +360,18 @@ int radeon_fbdev_init(struct radeon_device *rdev)
 	ret = drm_fb_helper_init(rdev->ddev, &rfbdev->helper,
 				 rdev->num_crtc,
 				 RADEONFB_CONN_LIMIT);
-	if (ret)
-		goto free;
+	if (ret) {
+		kfree(rfbdev);
+		return ret;
+	}
 
-	ret = drm_fb_helper_single_add_all_connectors(&rfbdev->helper);
-	if (ret)
-		goto fini;
+	drm_fb_helper_single_add_all_connectors(&rfbdev->helper);
 
 	/* disable all the possible outputs/crtcs before entering KMS mode */
 	drm_helper_disable_unused_functions(rdev->ddev);
 
-	ret = drm_fb_helper_initial_config(&rfbdev->helper, bpp_sel);
-	if (ret)
-		goto fini;
-
+	drm_fb_helper_initial_config(&rfbdev->helper, bpp_sel);
 	return 0;
-
-fini:
-	drm_fb_helper_fini(&rfbdev->helper);
-free:
-	kfree(rfbdev);
-	return ret;
 }
 
 void radeon_fbdev_fini(struct radeon_device *rdev)
@@ -400,8 +386,7 @@ void radeon_fbdev_fini(struct radeon_device *rdev)
 
 void radeon_fbdev_set_suspend(struct radeon_device *rdev, int state)
 {
-	if (rdev->mode_info.rfbdev)
-		fb_set_suspend(rdev->mode_info.rfbdev->helper.fbdev, state);
+	fb_set_suspend(rdev->mode_info.rfbdev->helper.fbdev, state);
 }
 
 int radeon_fbdev_total_size(struct radeon_device *rdev)
@@ -416,22 +401,7 @@ int radeon_fbdev_total_size(struct radeon_device *rdev)
 
 bool radeon_fbdev_robj_is_fb(struct radeon_device *rdev, struct radeon_bo *robj)
 {
-	if (!rdev->mode_info.rfbdev)
-		return false;
-
 	if (robj == gem_to_radeon_bo(rdev->mode_info.rfbdev->rfb.obj))
 		return true;
 	return false;
-}
-
-void radeon_fb_add_connector(struct radeon_device *rdev, struct drm_connector *connector)
-{
-	if (rdev->mode_info.rfbdev)
-		drm_fb_helper_add_one_connector(&rdev->mode_info.rfbdev->helper, connector);
-}
-
-void radeon_fb_remove_connector(struct radeon_device *rdev, struct drm_connector *connector)
-{
-	if (rdev->mode_info.rfbdev)
-		drm_fb_helper_remove_one_connector(&rdev->mode_info.rfbdev->helper, connector);
 }

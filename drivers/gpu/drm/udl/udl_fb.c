@@ -546,7 +546,7 @@ static int udlfb_create(struct drm_fb_helper *helper,
 
 	return ret;
 out_gfree:
-	drm_gem_object_unreference_unlocked(&ufbdev->ufb.obj->base);
+	drm_gem_object_unreference(&ufbdev->ufb.obj->base);
 out:
 	return ret;
 }
@@ -589,27 +589,19 @@ int udl_fbdev_init(struct drm_device *dev)
 
 	ret = drm_fb_helper_init(dev, &ufbdev->helper,
 				 1, 1);
-	if (ret)
-		goto free;
+	if (ret) {
+		kfree(ufbdev);
+		return ret;
 
-	ret = drm_fb_helper_single_add_all_connectors(&ufbdev->helper);
-	if (ret)
-		goto fini;
+	}
+
+	drm_fb_helper_single_add_all_connectors(&ufbdev->helper);
 
 	/* disable all the possible outputs/crtcs before entering KMS mode */
 	drm_helper_disable_unused_functions(dev);
 
-	ret = drm_fb_helper_initial_config(&ufbdev->helper, bpp_sel);
-	if (ret)
-		goto fini;
-
+	drm_fb_helper_initial_config(&ufbdev->helper, bpp_sel);
 	return 0;
-
-fini:
-	drm_fb_helper_fini(&ufbdev->helper);
-free:
-	kfree(ufbdev);
-	return ret;
 }
 
 void udl_fbdev_cleanup(struct drm_device *dev)

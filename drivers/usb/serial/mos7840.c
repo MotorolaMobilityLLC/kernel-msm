@@ -1369,8 +1369,8 @@ static int mos7840_write(struct tty_struct *tty, struct usb_serial_port *port,
 	}
 
 	if (urb->transfer_buffer == NULL) {
-		urb->transfer_buffer = kmalloc(URB_TRANSFER_BUFFER_SIZE,
-					       GFP_ATOMIC);
+		urb->transfer_buffer =
+		    kmalloc(URB_TRANSFER_BUFFER_SIZE, GFP_KERNEL);
 		if (!urb->transfer_buffer)
 			goto exit;
 	}
