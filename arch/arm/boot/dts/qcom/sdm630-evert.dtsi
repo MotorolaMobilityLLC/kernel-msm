@@ -75,28 +75,11 @@
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
 
-&pm660l_gpios {
-	gpio@c400 { /* GPIO5 -AVDD_EN*/
-		qcom,mode = <1>;                /* Output */
-		qcom,pull = <5>;                /* No Pull */
-		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
-		qcom,src-sel = <0>;             /* GPIO */
-		qcom,invert = <0>;              /* Invert */
-		qcom,master-en = <1>;           /* Enable GPIO */
-		status = "ok";
-	};
+&pm660l_l3 {
+	regulator-system-load = <600000>;
 };
 
 &soc {
-	vdda_touch_vreg: vdda_touch_vreg {
-		compatible = "regulator-fixed";
-		regulator-name = "vdda_touch";
-		gpio = <&pm660l_gpios 5 0>;
-		startup-delay-us = <300>;
-		enable-active-high;
-		regulator-always-on;
-	};
-
 	fpc_fpc1020{
 		pinctrl-0 = <&fps_ldo_1P8_en_default>;
 	};
@@ -109,7 +92,7 @@
 		reg = <0x38>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <67 0x2002>;
-		vdd-supply = <&vdda_touch_vreg>;
+		vdd-supply = <&pm660l_l3>;
 		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
 		pinctrl-0 = <&ts_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
