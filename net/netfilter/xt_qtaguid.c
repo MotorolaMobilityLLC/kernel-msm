@@ -1724,13 +1724,14 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		 * couldn't find the owner, so for now we just count them
 		 * against the system.
 		 */
-		if (do_tag_stat)
+		if (do_tag_stat) {
 #ifdef CONFIG_NETFILTER_XT_MATCH_QTAGUID_EXT
 			uid = recent_owner_lookup(skb, par);
 			account_for_uid(skb, sk, uid, par);
 #else
 			account_for_uid(skb, sk, 0, par);
 #endif
+		}
 		MT_DEBUG("qtaguid[%d]: leaving (sk=NULL)\n", par->hooknum);
 		res = (info->match ^ info->invert) == 0;
 		atomic64_inc(&qtu_events.match_no_sk);
