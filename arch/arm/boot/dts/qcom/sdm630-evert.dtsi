@@ -12,6 +12,7 @@
 
 #include "sdm630-moto-common.dtsi"
 #include "dsi-panel-mot-tianma-593-1080p-vid.dtsi"
+#include "sdm630-camera-sensor-mot-evert.dtsi"
 / {
         model = "Evert";
         compatible = "qcom,sdm630-evert", "qcom,sdm630-moto",
