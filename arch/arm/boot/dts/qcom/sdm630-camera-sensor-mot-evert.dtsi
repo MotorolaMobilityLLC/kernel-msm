@@ -1,0 +1,271 @@
+/*
+ * Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&pm660l_flash0 {
+	qcom,duration-ms = <300>;
+};
+
+&pm660l_flash1 {
+	qcom,duration-ms = <300>;
+};
+
+&pm660l_flash2 {
+	qcom,duration-ms = <300>;
+	qcom,max-current = <150>;
+};
+
+&soc {
+	led_flash0: qcom,camera-flash@0 {
+		cell-index = <0>;
+		compatible = "qcom,camera-flash";
+		qcom,flash-source = <&pm660l_flash0 &pm660l_flash1>;
+		qcom,torch-source = <&pm660l_torch0 &pm660l_torch1>;
+		qcom,switch-source = <&pm660l_switch0>;
+		status = "ok";
+	};
+
+	led_flash1: qcom,camera-flash@1 {
+		cell-index = <1>;
+		compatible = "qcom,camera-flash";
+		qcom,flash-source = <&pm660l_flash2>;
+		qcom,torch-source = <&pm660l_torch2>;
+		qcom,switch-source = <&pm660l_switch1>;
+		status = "ok";
+	};
+};
+
+&cci {
+	qcom,camera@2 {
+		cell-index = <2>;
+		compatible = "qcom,camera";
+		reg = <0x02>;
+		qcom,csiphy-sd-index = <2>;
+		qcom,csid-sd-index = <2>;
+		qcom,mount-angle = <270>;
+		qcom,led-flash-src = <&led_flash1>;
+		cam_vio-supply = <&pm660_l11>;
+		cam_vdig-supply = <&pm660_s5>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
+		qcom,cam-vreg-min-voltage = <1780000 1350000>;
+		qcom,cam-vreg-max-voltage = <1950000 1350000>;
+		qcom,cam-vreg-op-mode = <105000 105000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_active
+				 &cam_sensor_front_active>;
+		pinctrl-1 = <&cam_sensor_mclk1_suspend
+				 &cam_sensor_front_suspend>;
+		gpios = <&tlmm 33 0>,
+			<&tlmm 52 0>,
+			<&pm660l_gpios 3 0>,
+			<&tlmm 51 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-vana = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+					"CAM_RESET2",
+					"CAM_VDIG",
+					"CAM_VANA";
+		qcom,sensor-position = <1>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_mmss MCLK1_CLK_SRC>,
+			<&clock_mmss MMSS_CAMSS_MCLK1_CLK>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+};
+
+&pm660l_gpios {
+	gpio@c200 { /* GPIO3 -CAMERA SENSOR 1 VDIG*/
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "ok";
+	};
+};
+
+&soc {
+	tlmm: pinctrl@03000000 {
+		cci0_active: cci0_active {
+			mux {
+				/* CLK, DATA */
+				pins = "gpio36","gpio37"; // Only 2
+				function = "cci_i2c";
+			};
+
+			config {
+				pins = "gpio36","gpio37";
+				bias-pull-up; /* PULL UP*/
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cci0_suspend: cci0_suspend {
+			mux {
+				/* CLK, DATA */
+				pins = "gpio36","gpio37";
+				function = "cci_i2c";
+			};
+
+			config {
+				pins = "gpio36","gpio37";
+				bias-pull-down; /* PULL DOWN */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cci1_active: cci1_active {
+			mux {
+				/* CLK, DATA */
+				pins = "gpio38","gpio39";
+				function = "cci_i2c";
+			};
+
+			config {
+				pins = "gpio38","gpio39";
+				bias-pull-up; /* PULL UP*/
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cci1_suspend: cci1_suspend {
+			mux {
+				/* CLK, DATA */
+				pins = "gpio38","gpio39";
+				function = "cci_i2c";
+			};
+
+
+			config {
+				pins = "gpio38","gpio39";
+				bias-pull-down; /* PULL DOWN */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_mclk0_active: cam_sensor_mclk0_active {
+			/* MCLK0 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio32";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio32";
+				bias-disable; /* No PULL */
+				drive-strength = <6>; /* 6 MA */
+			};
+		};
+
+		cam_sensor_mclk0_suspend: cam_sensor_mclk0_suspend {
+			/* MCLK0 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio32";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio32";
+				bias-pull-down; /* PULL DOWN */
+				drive-strength = <6>; /* 6 MA */
+			};
+		};
+
+		cam_sensor_mclk1_active: cam_sensor_mclk1_active {
+			/* MCLK1 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio33";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio33";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_mclk1_suspend: cam_sensor_mclk1_suspend {
+			/* MCLK1 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio33";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio33";
+				bias-pull-down; /* PULL DOWN */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_front_active: cam_sensor_front_active {
+			/* RESET  VANA*/
+			mux {
+				pins = "gpio51","gpio52";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio51","gpio52";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_front_suspend: cam_sensor_front_suspend {
+			/* RESET */
+			mux {
+				pins = "gpio51","gpio52";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio51","gpio52";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-smpa5 {
+		status = "okay";
+		pm660_s5: regulator-s5 {
+			regulator-min-microvolt = <1350000>;
+			regulator-max-microvolt = <1350000>;
+			status = "okay";
+		};
+	};
+
+	rpm-regulator-ldoa11 {
+		status = "okay";
+		pm660_l11: regulator-l11 {
+			regulator-min-microvolt = <1780000>;
+			regulator-max-microvolt = <1950000>;
+			status = "okay";
+		};
+	};
+};
