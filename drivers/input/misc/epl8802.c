@@ -1743,13 +1743,10 @@ static void epl_sensor_eint_work(struct work_struct *work)
 				buf[1] = gRawData.raw_bytes[1];
 				read_h_thd = (buf[1]<<8) | buf[0];
 
-				if (read_h_thd == ps_thd_3cm) {
-					ps_status_moto = 3;
-					epl_sensor_I2C_Write(epld->client,
-						0x1b,
-						EPL_CMP_RESET | EPL_UN_LOCK);
-				} else  {
+				if (read_h_thd == ps_thd_1cm) {
 					ps_status_moto = 1;
+				} else  {
+					ps_status_moto = 3;
 					epl_sensor_I2C_Write(epld->client,
 						0x1b,
 						EPL_CMP_RESET | EPL_UN_LOCK);
@@ -1782,12 +1779,12 @@ static void epl_sensor_eint_work(struct work_struct *work)
 	}
 	if (enable_stowed_flag == false) {
 		if ((epl_sensor.ps.compare_low >> 3) == 0) {
-			if (read_h_thd == ps_thd_3cm) {
-				set_psensor_intr_threshold(ps_thd_5cm,
-					ps_thd_1cm);
-			} else {
+			if (read_h_thd == ps_thd_1cm) {
 				set_psensor_intr_threshold(ps_thd_5cm,
 					ps_thd_3cm);
+			} else {
+				set_psensor_intr_threshold(ps_thd_5cm,
+					ps_thd_1cm);
 			}
 		} else {
 			epl_sensor_do_ps_auto_k_one(true);
