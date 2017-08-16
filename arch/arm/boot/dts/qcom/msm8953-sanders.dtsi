@@ -216,6 +216,8 @@
 			focaltech,fw-auto-cal;
 			focaltech,ignore-id-check;
 			focaltech,resume-in-workqueue;
+			focaltech,vendor_ids = <0x02 0x04 0x10>;
+			focaltech,vendor_names = "toptouch", "biel", "djn";
 			config_modifier-names = "charger", "fps";
 			config_modifier-charger {
 				enable-notification;
