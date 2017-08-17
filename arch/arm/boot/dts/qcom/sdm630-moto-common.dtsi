@@ -270,7 +270,9 @@
 	qcom,upper-limit-capacity = <75>;
 	qcom,lower-limit-capacity = <60>;
 	qcom,hvdcp-force-5v;
+	qcom,typec-debounce;
 	qcom,usbpd-phandle = <&pm660_pdphy>;
+	qcom,source-current-ma = <900>;
 };
 
 &sdhc_1 {
@@ -348,4 +350,5 @@
 
 &pm660_pdphy {
 	qcom,default-sink-caps = <5000 3000>; /* 5V @ 3A */
+	qcom,source-current = <900>;
 };
