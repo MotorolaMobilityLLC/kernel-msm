@@ -114,7 +114,7 @@ struct madera_extcon_info {
 	const struct madera_jd_state *state;
 	const struct madera_jd_state *old_state;
 	struct delayed_work state_timeout_work;
-
+	struct delayed_work jd2detect_work;
 	struct wakeup_source detection_wake_lock;
 
 	struct madera_micd_bias micd_bias;
@@ -1865,15 +1865,27 @@ static int madera_jack_present(struct madera_extcon_info *info,
 
 	dev_dbg(madera->dev, "IRQ1_RAW_STATUS_7=0x%x\n", val);
 
-	if (info->pdata->jd_use_jd2) {
-		val &= MADERA_MICD_CLAMP_RISE_STS1;
-		present = 0;
-	} else if (info->pdata->jd_invert) {
-		val &= MADERA_JD1_FALL_STS1_MASK;
-		present = MADERA_JD1_FALL_STS1;
+	if (info->pdata->jd_check_jd2) {
+		if (info->pdata->jd_invert) {
+			val &=
+			(MADERA_JD1_FALL_STS1_MASK|MADERA_JD2_FALL_STS1_MASK);
+			present = MADERA_JD1_FALL_STS1|MADERA_JD2_FALL_STS1;
+		} else {
+			val &=
+			(MADERA_JD1_RISE_STS1_MASK|MADERA_JD2_RISE_STS1_MASK);
+			present = MADERA_JD1_RISE_STS1|MADERA_JD2_RISE_STS1;
+		}
 	} else {
-		val &= MADERA_JD1_RISE_STS1_MASK;
-		present = MADERA_JD1_RISE_STS1;
+		if (info->pdata->jd_use_jd2) {
+			val &= MADERA_MICD_CLAMP_RISE_STS1;
+			present = 0;
+		} else if (info->pdata->jd_invert) {
+			val &= MADERA_JD1_FALL_STS1_MASK;
+			present = MADERA_JD1_FALL_STS1;
+		} else {
+			val &= MADERA_JD1_RISE_STS1_MASK;
+			present = MADERA_JD1_RISE_STS1;
+		}
 	}
 
 	dev_dbg(madera->dev, "jackdet val=0x%x present=0x%x\n", val, present);
@@ -2101,7 +2113,7 @@ static irqreturn_t madera_jackdet(int irq, void *data)
 
 	mask = MADERA_MICD_CLAMP_DB | MADERA_JD1_DB;
 
-	if (info->pdata->jd_use_jd2)
+	if (info->pdata->jd_use_jd2 || info->pdata->jd_check_jd2)
 		mask |= MADERA_JD2_DB;
 
 	if (present) {
@@ -2160,6 +2172,28 @@ out:
 
 	pm_runtime_mark_last_busy(info->dev);
 	pm_runtime_put_autosuspend(info->dev);
+
+	return IRQ_HANDLED;
+}
+
+static void madera_jd2detect_work(struct work_struct *work)
+{
+	struct madera_extcon_info *info =
+		container_of(work, struct madera_extcon_info,
+			     jd2detect_work.work);
+
+	madera_jackdet(0, (void *)info);
+}
+
+static irqreturn_t madera_jd2detect(int irq, void *data)
+{
+	struct madera_extcon_info *info = data;
+	struct madera *madera = info->madera;
+
+	dev_dbg(madera->dev, "JD2 IRQ, last state %d\n", info->last_jackdet);
+
+	schedule_delayed_work(&info->jd2detect_work,
+					      msecs_to_jiffies(2000));
 
 	return IRQ_HANDLED;
 }
@@ -2428,6 +2462,9 @@ static void madera_extcon_of_process(struct madera *madera,
 		of_property_read_bool(node, "cirrus,micd-open-circuit-declare");
 
 	pdata->jd_use_jd2 = of_property_read_bool(node, "cirrus,jd-use-jd2");
+
+	pdata->jd_check_jd2 =
+		of_property_read_bool(node, "cirrus,jd-check-jd2");
 
 	pdata->jd_invert = of_property_read_bool(node, "cirrus,jd-invert");
 
@@ -2864,6 +2901,7 @@ static int madera_extcon_probe(struct platform_device *pdev)
 	wakeup_source_init(&info->detection_wake_lock, "madera-jack-detection");
 	INIT_DELAYED_WORK(&info->micd_detect_work, madera_micd_handler);
 	INIT_DELAYED_WORK(&info->state_timeout_work, madera_jds_timeout_work);
+	INIT_DELAYED_WORK(&info->jd2detect_work, madera_jd2detect_work);
 	platform_set_drvdata(pdev, info);
 	madera->extcon_info = info;
 
@@ -3083,7 +3121,40 @@ static int madera_extcon_probe(struct platform_device *pdev)
 		goto err_micdet;
 	}
 
-	if (info->pdata->jd_use_jd2) {
+	if (info->pdata->jd_check_jd2) {
+		ret = madera_request_irq(madera, MADERA_IRQ_JD2_FALL,
+				  "JACKDET2 fall", madera_jd2detect, info);
+		if (ret != 0) {
+			dev_err(&pdev->dev, "Failed to get JACKDET2 fall IRQ: %d\n",
+				ret);
+			goto err_input;
+		}
+
+		ret = madera_set_irq_wake(madera, MADERA_IRQ_JD2_FALL, 1);
+		if (ret != 0) {
+			dev_err(&pdev->dev, "Failed to set JD2 fall IRQ wake: %d\n",
+				ret);
+			goto err_rise;
+		}
+
+		ret = madera_request_irq(madera, MADERA_IRQ_JD2_RISE,
+				  "JACKDET2 rise", madera_jd2detect, info);
+		if (ret != 0) {
+			dev_err(&pdev->dev, "Failed to get JACKDET2 rise IRQ: %d\n",
+				ret);
+			goto err_input;
+		}
+
+		ret = madera_set_irq_wake(madera, MADERA_IRQ_JD2_RISE, 1);
+		if (ret != 0) {
+			dev_err(&pdev->dev, "Failed to set JD2 rise IRQ wake: %d\n",
+				ret);
+			goto err_rise;
+		}
+	}
+
+
+	if (info->pdata->jd_use_jd2 || info->pdata->jd_check_jd2) {
 		debounce_val = MADERA_JD1_DB | MADERA_JD2_DB;
 		analog_val = MADERA_JD1_ENA | MADERA_JD2_ENA;
 	} else {
