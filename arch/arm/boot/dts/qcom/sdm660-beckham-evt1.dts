@@ -25,7 +25,7 @@
 	qcom,panel-supply-entries {
 			qcom,panel-supply-entry@4 {
 				reg = <4>;
-				qcom,supply-name = "oledb";
+				qcom,supply-name = "oled_disp";
 				qcom,supply-min-voltage = <5000000>;
 				qcom,supply-max-voltage = <8100000>;
 				qcom,supply-enable-load = <100000>;
