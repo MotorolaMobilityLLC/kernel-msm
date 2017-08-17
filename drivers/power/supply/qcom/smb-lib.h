@@ -329,6 +329,7 @@ struct mmi_params {
 	atomic_t		hb_ready;
 	struct alarm		heartbeat_alarm;
 	struct delayed_work	heartbeat_work;
+	struct delayed_work	typec_debounce_work;
 	struct power_supply	*wls_psy;
 	struct power_supply	*usbeb_psy;
 	struct pinctrl		*smb_pinctrl;
@@ -350,6 +351,11 @@ struct mmi_params {
 	bool			check_ebsrc_vl;
 	int			batt_health;
 	int			max_chrg_temp;
+	int			typec_debounce_result;
+	int			typec_debounce_cnt;
+	int			typec_debounce_pre_cnt;
+	int			typec_delay_cnt;
+
 };
 
 struct smb_charger {
@@ -494,6 +500,7 @@ struct smb_charger {
 	bool			external_vbus;
 	bool			reverse_boost;
 	bool			hvdcp_force_5v;
+	bool			typec_debounce;
 	bool			suspended;
 	u32			source_current_ma;
 };
