@@ -4684,6 +4684,99 @@ void smblib_usb_typec_change(struct smb_charger *chg)
 	power_supply_changed(chg->usb_psy);
 }
 
+#define DEBOUNCE_DELAY_MS 5000
+#define DEBOUNCE1_COUNT 8
+#define DEBOUNCE2_COUNT 16
+#define DELAY_COUNT 12
+#define UNSTABLE -1
+#define STABLE 0
+static void mmi_typec_debounce_work(struct work_struct *work)
+{
+	struct smb_charger *chip = container_of(work,
+						struct smb_charger,
+						mmi.typec_debounce_work.work);
+	struct mmi_params *mmi = &chip->mmi;
+	int diff;
+
+	chip->mmi.typec_delay_cnt++;
+	diff = chip->mmi.typec_debounce_cnt - chip->mmi.typec_debounce_pre_cnt;
+
+	if (diff >= DEBOUNCE1_COUNT) {
+		chip->mmi.typec_debounce_result = UNSTABLE;
+		smblib_dbg(chip, PR_INTERRUPT,
+			"typec UNSTABLE in 5s, change (%d)times\n", diff);
+	}
+
+	if (chip->mmi.typec_delay_cnt >= DELAY_COUNT) {
+		if (chip->mmi.typec_debounce_cnt >= DEBOUNCE2_COUNT) {
+			chip->mmi.typec_debounce_result = UNSTABLE;
+			chip->mmi.typec_debounce_cnt = 0;
+			chip->mmi.typec_debounce_pre_cnt = 0;
+			chip->mmi.typec_delay_cnt = 0;
+			smblib_dbg(chip, PR_INTERRUPT,
+				"typec UNSTABLE in 1min, change (%d)times\n",
+				chip->mmi.typec_debounce_cnt);
+		} else {
+			chip->mmi.typec_debounce_result = STABLE;
+			smblib_dbg(chip, PR_INTERRUPT,
+				"typec STABLE in 1min, change (%d)times\n",
+				chip->mmi.typec_debounce_cnt);
+			return;
+		}
+	}
+
+	chip->mmi.typec_debounce_pre_cnt = chip->mmi.typec_debounce_cnt;
+	schedule_delayed_work(&mmi->typec_debounce_work,
+				msecs_to_jiffies(DEBOUNCE_DELAY_MS));
+}
+
+static int smblib_usb_typec_debounce_detect(struct smb_charger *chg)
+{
+	int rc = 0;
+	int typec_mode;
+
+	rc = smblib_multibyte_read(chg, TYPE_C_STATUS_1_REG,
+							chg->typec_status, 5);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't cache USB Type-C status rc=%d\n", rc);
+		return rc;
+	}
+
+	typec_mode = smblib_get_prop_typec_mode(chg);
+	chg->mmi.typec_debounce_cnt++;
+
+	if ((typec_mode == POWER_SUPPLY_TYPEC_SINK) ||
+		(typec_mode == POWER_SUPPLY_TYPEC_SINK_POWERED_CABLE) ||
+		(typec_mode == POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY) ||
+		(typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) ||
+		(typec_mode == POWER_SUPPLY_TYPEC_POWERED_CABLE_ONLY)) {
+		if (!delayed_work_pending(&chg->mmi.typec_debounce_work)) {
+			chg->mmi.typec_debounce_cnt = 0;
+			chg->mmi.typec_debounce_pre_cnt = 0;
+			chg->mmi.typec_delay_cnt = 0;
+			smblib_dbg(chg, PR_INTERRUPT,
+				"start debounce work for delay check\n");
+			schedule_delayed_work(&chg->mmi.typec_debounce_work,
+				msecs_to_jiffies(DEBOUNCE_DELAY_MS));
+		}
+	} else if (typec_mode != POWER_SUPPLY_TYPEC_NONE) {
+		cancel_delayed_work_sync(&chg->mmi.typec_debounce_work);
+		chg->mmi.typec_debounce_cnt = 0;
+		chg->mmi.typec_debounce_pre_cnt = 0;
+		chg->mmi.typec_delay_cnt = 0;
+		smblib_dbg(chg, PR_INTERRUPT,
+			"debounce_detect quit, Type-C %s detected\n",
+					smblib_typec_mode_name[typec_mode]);
+		chg->mmi.typec_debounce_result = STABLE;
+	}
+
+	rc = (typec_mode == POWER_SUPPLY_TYPEC_NONE) ?
+			0 : chg->mmi.typec_debounce_result;
+	smblib_dbg(chg, PR_INTERRUPT,
+		"typec debounce result %d, typec_mode %d\n", rc, typec_mode);
+	return rc;
+}
+
 irqreturn_t smblib_handle_usb_typec_change(int irq, void *data)
 {
 	struct smb_irq_data *irq_data = data;
@@ -4703,6 +4796,11 @@ irqreturn_t smblib_handle_usb_typec_change(int irq, void *data)
 		smblib_dbg(chg, PR_MISC | PR_INTERRUPT, "Ignoring since %s active\n",
 			chg->cc2_detach_wa_active ?
 			"cc2_detach_wa" : "typec_en_dis");
+		return IRQ_HANDLED;
+	}
+
+	if (chg->typec_debounce && smblib_usb_typec_debounce_detect(chg)) {
+		smblib_dbg(chg, PR_INTERRUPT, "ignore unstable type-c IRQ\n");
 		return IRQ_HANDLED;
 	}
 
@@ -8258,6 +8356,8 @@ void mmi_init(struct smb_charger *chg)
 
 	INIT_DELAYED_WORK(&chg->mmi.warn_irq_work, warn_irq_w);
 	INIT_DELAYED_WORK(&chg->mmi.heartbeat_work, mmi_heartbeat_work);
+	INIT_DELAYED_WORK(&chg->mmi.typec_debounce_work,
+						mmi_typec_debounce_work);
 	wakeup_source_init(&chg->mmi.smblib_mmi_hb_wake_source,
 			   "smblib_mmi_hb_wake");
 	alarm_init(&chg->mmi.heartbeat_alarm, ALARM_BOOTTIME,
