@@ -201,5 +201,9 @@
 	qcom,platform-reset-gpio = <&tlmm 53 0>;
 	qcom,platform-te-gpio = <&tlmm 59 0>;
 };
+
+&mdss_dp_ctrl {
+	status = "disabled";
+};
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
