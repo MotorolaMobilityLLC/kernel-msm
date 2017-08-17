@@ -337,7 +337,8 @@ static int smb2_parse_dt(struct smb2 *chip)
 					"qcom,suspend-input-on-debug-batt");
 	chg->hvdcp_force_5v = of_property_read_bool(node,
 						"qcom,hvdcp-force-5v");
-
+	chg->typec_debounce = of_property_read_bool(node,
+						"qcom,typec-debounce");
 	rc = of_property_read_u32(node, "qcom,otg-deglitch-time-ms",
 					&chg->otg_delay_ms);
 	if (rc < 0)
