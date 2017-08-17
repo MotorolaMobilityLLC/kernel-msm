@@ -119,6 +119,13 @@ struct madera_accdet_pdata {
 	/** disalbe JD2 for line out */
 	bool disable_jd2_on_lineout;
 
+	/** Set whether JD1 is used for detection but JD2 state is also checked
+	 * to work around moisture detection on hardware where JD1 and D2 are
+	 * connected. The moisture condition is when JD1 bit is set (<375 kOhm)
+	 * but JD2 bit is not set (>111 kOhm)
+	 */
+	bool jd_check_jd2;
+
 	/** Force MICBIAS on for mic detect */
 	bool micd_force_micbias;
 
