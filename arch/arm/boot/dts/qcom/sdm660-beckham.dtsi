@@ -61,6 +61,23 @@
 	};
 };
 
+&i2c_6 {
+	/delete-node/ nq@28;
+	nq@28 {
+		compatible = "qcom,nq-nci";
+		reg = <0x28>;
+		qcom,nq-irq = <&tlmm 40 0x00>;
+		qcom,nq-ven = <&tlmm 35 0x00>;
+		qcom,nq-firm = <&tlmm 61 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <40 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "nfc_active", "nfc_suspend";
+		pinctrl-0 = <&nfc_int_active &nfc_enable_active>;
+		pinctrl-1 = <&nfc_int_suspend &nfc_enable_suspend>;
+	};
+};
+
 &pm660_haptics { /* Vibrator */
 	qcom,actuator-type = "erm";
 	qcom,vmax-mv = <2400>;
