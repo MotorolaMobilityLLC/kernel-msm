@@ -753,6 +753,12 @@ config GPIO_CRYSTAL_COVE
 	  This driver can also be built as a module. If so, the module will be
 	  called gpio-crystalcove.
 
+config GPIO_PCAL6416
+	depends on I2C
+	tristate "pcal1646 gpio support"
+	help
+	say 'y' here to include support for the PCAL6416 gpio driver.
+
 config GPIO_CS5535
 	tristate "AMD CS5535/CS5536 GPIO support"
 	depends on MFD_CS5535
