@@ -5717,7 +5717,7 @@ static void set_target_bsw_current_ma(struct smbchg_chip *chip,
 static void set_max_allowed_current_ma(struct smbchg_chip *chip,
 				       int current_ma)
 {
-	if (!chip->usb_present && !chip->usbeb_present) {
+	if (!chip->usb_present && chip->wls_present) {
 		SMB_DBG(chip, "NO allowed current, No USB\n");
 		chip->target_fastchg_current_ma = current_ma;
 		return;
