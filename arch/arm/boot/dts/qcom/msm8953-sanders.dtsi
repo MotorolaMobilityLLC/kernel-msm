@@ -627,6 +627,7 @@
 	qcom,lra-res-cal-period = <4>;
 	qcom,correct-lra-drive-freq;
 	qcom,misc-trim-error-rc19p2-clk-reg-present;
+	qcom,brake-pattern = [03 03 03 03];
 };
 
 &blsp1_uart0 {
