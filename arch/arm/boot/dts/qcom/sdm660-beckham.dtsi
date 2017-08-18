@@ -47,6 +47,28 @@
 		pcal,pin-num = <16>;
 		pcal,reset-gpio = <&tlmm 34 1>;
 		};
+
+	drv2624@5a {
+		status = "ok";
+		compatible = "ti,drv2624";
+		reg = <0x5A>;
+		/* voltage = *_voltage x 22 mV */
+		/* 2V for now */
+		ti,rated_voltage = /bits/ 8 <0x57>;
+		ti,overdrive_voltage = /bits/ 8 <0x8D>;
+		ti,rated_voltage_reduced = /bits/ 8 <0x1A>;
+		ti,overdrive_voltage_reduced = /bits/ 8 <0x1C>;
+		/* LRA period = lra_freq x 24.39 us */
+		/* 175 Hz for now */
+		ti,lra_freq = /bits/ 8 <0xAF>;
+		ti,lra_drive;
+		ti,auto_cal;
+		ti,auto_cal_time = /bits/ 8 <0x01>;
+		/* sample time 200us  */
+		ti,sample_time = /bits/ 8 <0x04>;
+		ti,nrst-gpio = <&pcal_pin 10 0>;
+		/*ti,nvctrl-gpio = <&tlmm 13 0>;*/
+		};
 };
 
 &i2c_4 {
@@ -90,13 +112,7 @@
 };
 
 &pm660_haptics { /* Vibrator */
-	qcom,actuator-type = "erm";
-	qcom,vmax-mv = <2400>;
-	qcom,ilim-ma = <220>;
-
-	/delete-property/ qcom,lra-high-z;
-	/delete-property/ qcom,lra-auto-res-mode;
-	/delete-property/ qcom,lra-res-cal-period;
+	status = "disabled";
 };
 
 &soc{
