@@ -42,9 +42,79 @@
 		qcom,switch-source = <&pm660l_switch1>;
 		status = "ok";
 	};
+	gpio_keys {
+		/delete-node/camera_focus;
+		/delete-node/camera_snapshot;
+	};
+
+	rear_vaf: gpio-regulator@50 {
+		compatible = "regulator-fixed";
+		regulator-name = "rear_vaf";
+		gpio = <&tlmm 50 0>;
+		enable-active-high;
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+	};
 };
 
 &cci {
+	actuator0: qcom,actuator@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+		cam_vaf-supply = <&rear_vaf>;
+		qcom,cam-vreg-name = "cam_vaf";
+		qcom,cam-vreg-min-voltage = <2800000>;
+		qcom,cam-vreg-max-voltage = <2800000>;
+		qcom,cam-vreg-op-mode = <80000>;
+	};
+
+	qcom,camera@0 {
+		cell-index = <0>;
+		compatible = "qcom,camera";
+		reg = <0x0>;
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+		qcom,mount-angle = <90>;
+		qcom,led-flash-src = <&led_flash0>;
+		qcom,actuator-src = <&actuator0>;
+		cam_vio-supply = <&pm660_l11>;
+		cam_vaf-supply = <&rear_vaf>;
+		cam_vdig-supply = <&pm660_s5>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vaf", "cam_vdig";
+		qcom,cam-vreg-min-voltage = <1780000 2800000 1350000>;
+		qcom,cam-vreg-max-voltage = <1950000 2800000 1350000>;
+		qcom,cam-vreg-op-mode = <105000 80000 105000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_active
+				 &cam_sensor_rear_active>;
+		pinctrl-1 = <&cam_sensor_mclk0_suspend
+				 &cam_sensor_rear_suspend>;
+		gpios = <&tlmm 32 0>,
+			<&tlmm 46 0>,
+			<&pm660l_gpios 4 0>,
+			<&tlmm 51 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-vana = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+					"CAM_RESET0",
+					"CAM_VDIG",
+					"CAM_VANA";
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_mmss MCLK0_CLK_SRC>,
+				<&clock_mmss MMSS_CAMSS_MCLK0_CLK>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
 	qcom,camera@2 {
 		cell-index = <2>;
 		compatible = "qcom,camera";
@@ -91,6 +161,15 @@
 
 &pm660l_gpios {
 	gpio@c200 { /* GPIO3 -CAMERA SENSOR 1 VDIG*/
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "ok";
+	};
+	gpio@c300 { /* GPIO4 -CAMERA SENSOR 0 VDIG*/
 		qcom,mode = <1>;                /* Output */
 		qcom,pull = <5>;                /* No Pull */
 		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
@@ -187,6 +266,34 @@
 				pins = "gpio32";
 				bias-pull-down; /* PULL DOWN */
 				drive-strength = <6>; /* 6 MA */
+			};
+		};
+
+		cam_sensor_rear_active: cam_sensor_rear_active {
+			/* RESET, VANA */
+			mux {
+				pins = "gpio46","gpio51";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio46","gpio51";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_rear_suspend: cam_sensor_rear_suspend {
+			/* RESET, VANA */
+			mux {
+				pins = "gpio46","gpio51";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio46","gpio51";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
 			};
 		};
 
