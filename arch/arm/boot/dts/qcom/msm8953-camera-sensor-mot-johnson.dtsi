@@ -134,13 +134,16 @@
 				&cam_sensor_rear1_sleep>;
 		gpios = <&tlmm 27 0>,
 			<&tlmm 122 0>,
+			<&tlmm 95 0>,
 			<&pm8953_gpios 5 0x00>;
 		qcom,gpio-vdig = <1>;
-		qcom,gpio-vio = <2>;
-		qcom,gpio-req-tbl-num = <0 1 2>;
-		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-reset = <2>;
+		qcom,gpio-vio = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
 			"CAM_VDIG1",
+			"CAM_RESET1",
 			"CAM_VIO1";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
@@ -161,7 +164,7 @@
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <270>;
 		/*qcom,eeprom-src = <&eeprom2>;*/
-		qcom,led-flash-src = <&led_flash1>;
+		/*qcom,led-flash-src = <&led_flash1>;*/
 		cam_vdig-supply = <&front_vdig>;
 		qcom,cam-vreg-name = "cam_vdig";
 		qcom,cam-vreg-min-voltage = <1200000>;
@@ -299,12 +302,12 @@
 		cam_sensor_rear1_default: cam_sensor_rear1_default {
 			/* DVDD1 */
 			mux {
-				pins = "gpio122";
+				pins = "gpio122", "gpio95";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio122";
+				pins = "gpio122", "gpio95";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -313,12 +316,12 @@
 		cam_sensor_rear1_sleep: cam_sensor_rear1_sleep {
 			/* DVDD1 */
 			mux {
-				pins = "gpio122";
+				pins = "gpio122", "gpio95";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio122";
+				pins = "gpio122", "gpio95";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
