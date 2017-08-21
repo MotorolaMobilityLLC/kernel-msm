@@ -746,7 +746,7 @@ static int cs35l35_pdm_hw_params(struct snd_pcm_substream *substream,
 }
 
 static const unsigned int cs35l35_src_rates[] = {
-	44100, 48000, 88200, 96000, 176400, 192000
+	8000, 16000, 44100, 48000, 88200, 96000, 176400, 192000
 };
 
 static const struct snd_pcm_hw_constraint_list cs35l35_constraints = {
