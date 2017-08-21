@@ -328,6 +328,7 @@ struct ft5x06_ts_data {
 	u32 tch_data_len;
 	u8 fw_ver[3];
 	u8 fw_vendor_id;
+	const char *panel_supplier;
 	struct kobject *ts_info_kobj;
 #if defined(CONFIG_FB)
 	struct work_struct fb_notify_work;
@@ -884,6 +885,24 @@ static int ft5x06_report_gesture(struct i2c_client *i2c_client,
 }
 #endif
 
+static const char *ft5x06_find_vendor_name(
+	const struct ft5x06_ts_platform_data *pdata, u8 id)
+{
+	int i;
+
+	if (pdata->num_vendor_ids == 0)
+		return NULL;
+
+	for (i = 0; i < pdata->num_vendor_ids; i++)
+		if (id == pdata->vendor_ids[i]) {
+			pr_info("vendor id 0x%02x panel supplier is %s\n",
+				id, pdata->vendor_names[i]);
+			return pdata->vendor_names[i];
+		}
+
+	return NULL;
+}
+
 static void ft5x06_update_fw_vendor_id(struct ft5x06_ts_data *data)
 {
 	struct i2c_client *client = data->client;
@@ -894,6 +913,8 @@ static void ft5x06_update_fw_vendor_id(struct ft5x06_ts_data *data)
 	err = ft5x06_i2c_read(client, &reg_addr, 1, &data->fw_vendor_id, 1);
 	if (err < 0)
 		dev_err(&client->dev, "fw vendor id read failed");
+	data->panel_supplier = ft5x06_find_vendor_name(data->pdata,
+		data->fw_vendor_id);
 }
 
 static void ft5x06_update_fw_ver(struct ft5x06_ts_data *data)
@@ -2498,6 +2519,19 @@ static ssize_t ft5x06_drv_irq_store(struct device *dev,
 }
 static DEVICE_ATTR(drv_irq, 0664, ft5x06_drv_irq_show, ft5x06_drv_irq_store);
 
+static ssize_t ft5x06_panel_supplier_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
+
+	if (data->panel_supplier)
+		return scnprintf(buf, PAGE_SIZE, "%s\n",
+			data->panel_supplier);
+	return 0;
+}
+
+static DEVICE_ATTR(panel_supplier, 0444, ft5x06_panel_supplier_show, NULL);
+
 static ssize_t ts_info_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
@@ -3103,6 +3137,7 @@ static int ft5x06_parse_dt(struct device *dev,
 	struct property *prop;
 	u32 temp_val, num_buttons;
 	u32 button_map[MAX_BUTTONS];
+	u32 num_vendor_ids, i;
 
 	pdata->name = "focaltech";
 	rc = of_property_read_string(np, "focaltech,name", &pdata->name);
@@ -3246,6 +3281,31 @@ static int ft5x06_parse_dt(struct device *dev,
 			dev_err(dev, "Unable to read key codes\n");
 			return rc;
 		}
+	}
+
+	num_vendor_ids = of_property_count_elems_of_size(np,
+		"focaltech,vendor_ids", sizeof(u32));
+	if ((num_vendor_ids > 0) && (num_vendor_ids < MAX_PANEL_SUPPLIERS)) {
+		const char *name;
+
+		rc = of_property_read_u32_array(np,
+			"focaltech,vendor_ids", pdata->vendor_ids,
+			num_vendor_ids);
+		if (rc) {
+			dev_err(dev, "Unable to read vendor ids\n");
+			return rc;
+		}
+		prop = of_find_property(np, "focaltech,vendor_names", NULL);
+		if (!prop) {
+			dev_err(dev, "Unable to read vendor names\n");
+			return rc;
+		}
+		for (name = of_prop_next_string(prop, NULL), i = 0;
+			i < num_vendor_ids;
+			name = of_prop_next_string(prop, name), i++)
+			pdata->vendor_names[i] = name;
+
+		pdata->num_vendor_ids = num_vendor_ids;
 	}
 
 	return 0;
@@ -3532,10 +3592,16 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 		goto free_class_sys;
 	}
 
-	err = device_create_file(&client->dev, &dev_attr_buildid);
+	err = device_create_file(&client->dev, &dev_attr_panel_supplier);
 	if (err) {
 		dev_err(&client->dev, "sys file creation failed\n");
 		goto free_buildid_sys;
+	}
+
+	err = device_create_file(&client->dev, &dev_attr_buildid);
+	if (err) {
+		dev_err(&client->dev, "sys file creation failed\n");
+		goto free_panel_supplier_sys;
 	}
 
 	err = device_create_file(&client->dev, &dev_attr_doreflash);
@@ -3840,6 +3906,8 @@ free_flashprog_sys:
 	device_remove_file(&client->dev, &dev_attr_doreflash);
 free_doreflash_sys:
 	device_remove_file(&client->dev, &dev_attr_buildid);
+free_panel_supplier_sys:
+	device_remove_file(&client->dev, &dev_attr_panel_supplier);
 free_buildid_sys:
 	ft5x06_ts_sysfs_class(data, false);
 free_class_sys:
@@ -3920,6 +3988,7 @@ static int ft5x06_ts_remove(struct i2c_client *client)
 	device_remove_file(&client->dev, &dev_attr_drv_irq);
 	device_remove_file(&client->dev, &dev_attr_reset);
 	device_remove_file(&client->dev, &dev_attr_hw_irqstat);
+	device_remove_file(&client->dev, &dev_attr_panel_supplier);
 
 #if defined(CONFIG_FB)
 	if (fb_unregister_client(&data->fb_notif))
