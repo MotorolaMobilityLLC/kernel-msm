@@ -845,6 +845,14 @@ config JOHNSON_DTB
 	  Only include Johnson specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config ALI_DTB
+	depends on ARCH_MSM
+	default n
+	bool "Ali DTBs"
+	help
+	  Only include Ali specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config CEDRIC_DTB
 	depends on ARCH_MSM
 	default n
