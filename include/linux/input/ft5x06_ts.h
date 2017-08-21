@@ -24,6 +24,8 @@
 #define FT6X06_ID		0x06
 #define FT6X36_ID       0x36
 
+#define MAX_PANEL_SUPPLIERS	5
+
 struct fw_upgrade_info {
 	bool auto_cal;
 	u16 delay_aa;
@@ -72,6 +74,9 @@ struct ft5x06_ts_platform_data {
 	bool resume_in_workqueue;
 	int (*power_init)(bool);
 	int (*power_on)(bool);
+	u32 num_vendor_ids;
+	u32 vendor_ids[MAX_PANEL_SUPPLIERS];
+	const char *vendor_names[MAX_PANEL_SUPPLIERS];
 };
 
 extern int FPS_register_notifier(struct notifier_block *nb,
