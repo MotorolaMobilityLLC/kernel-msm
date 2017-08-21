@@ -342,6 +342,10 @@ dtb-$(CONFIG_ARCH_MSM8953) += msm8953-johnson-p0.dtb \
 	msm8953-johnson-p0b.dtb
 endif
 
+ifeq ($(CONFIG_ALI_DTB),y)
+dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-evb1.dtb
+endif
+
 ifeq ($(CONFIG_SANDERS_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8953) += msm8953-sanders-p1.dtb \
 	msm8953-sanders-p2.dtb \
