@@ -1712,6 +1712,7 @@ static void epl_sensor_eint_work(struct work_struct *work)
 
 	LOG_INFO("xxxxxxxxxxx\n\n");
 
+	wake_lock_timeout(&ps_lock, msecs_to_jiffies(2000));
 	epl_sensor_read_ps(epld->client);
 	epl_sensor_read_als(epld->client);
 	if (epl_sensor.ps.interrupt_flag == EPL_INT_TRIGGER) {
@@ -1761,7 +1762,6 @@ static void epl_sensor_eint_work(struct work_struct *work)
 		mutex_unlock(&sensor_mutex);
 
 		if (enable_ps) {
-			wake_lock_timeout(&ps_lock, msecs_to_jiffies(100));
 			epl_sensor_report_ps_status();
 		}
 		/* PS unlock interrupt pin and restart chip */
