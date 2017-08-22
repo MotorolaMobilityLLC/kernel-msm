@@ -543,7 +543,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
 		write_register(this, SX9310_IRQ_ENABLE_REG, 0x00);
 		input_report_abs(input, ABS_DISTANCE, -1);
 		input_sync(input);
-		mEnabled = 1;
+		mEnabled = 0;
 	} else {
 		LOG_DBG("unknown enable symbol\n");
 	}
