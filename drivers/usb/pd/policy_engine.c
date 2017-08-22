@@ -3240,7 +3240,6 @@ static int usbpd_dr_prop_writeable(struct dual_role_phy_instance *dual_role,
 
 	switch (prop) {
 	case DUAL_ROLE_PROP_MODE:
-		return 1;
 	case DUAL_ROLE_PROP_DR:
 	case DUAL_ROLE_PROP_PR:
 		if (pd)
