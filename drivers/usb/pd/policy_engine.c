@@ -3489,6 +3489,12 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 
 	mutex_lock(&pd->swap_lock);
 
+	if (pd->current_pr == PR_SRC) {
+		usbpd_err(&pd->dev, "select_pdo:not support in source mode\n");
+		ret = -ENOTSUPP;
+		goto out;
+	}
+
 	/* Only allowed if we are already in explicit sink contract */
 	if (pd->current_state != PE_SNK_READY || !is_sink_tx_ok(pd)) {
 		usbpd_err(&pd->dev, "select_pdo: Cannot select new PDO yet\n");
