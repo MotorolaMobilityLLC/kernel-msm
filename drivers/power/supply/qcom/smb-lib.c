@@ -1033,7 +1033,7 @@ int smblib_get_icl_current(struct smb_charger *chg, int *icl_ua)
 
 	if ((chg->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_DEFAULT
 		|| chg->micro_usb_mode)
-		&& (chg->usb_psy_desc.type == POWER_SUPPLY_TYPE_USB)) {
+		&& (chg->real_charger_type == POWER_SUPPLY_TYPE_USB)) {
 		rc = get_sdp_current(chg, icl_ua);
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't get SDP ICL rc=%d\n", rc);
@@ -4874,6 +4874,9 @@ static void smblib_pd_contract_work(struct work_struct *work)
 		return;
 
 	chg->pd_contract_uv = usbpd_select_pdo_match(chg->pd);
+
+	if (chg->pd_contract_uv == -ENOTSUPP)
+		return;
 
 	if (chg->pd_contract_uv >= MICRO_9V)
 		smblib_set_opt_freq_buck(chg, chg->chg_freq.freq_9V);
