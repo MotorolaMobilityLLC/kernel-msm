@@ -516,6 +516,7 @@ struct smb_charger {
 	bool			reverse_boost;
 	bool			hvdcp_force_5v;
 	bool			suspended;
+	int			aicl_threshold_mv;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -713,5 +714,8 @@ extern int eb_attach_stop_soc;
 extern int eb_low_start_soc;
 extern int eb_low_stop_soc;
 extern int eb_on_sw;
+
+#define AICL_THRESHOLD_MAX_MV 4700
+#define AICL_THRESHOLD_MIN_MV 4000
 
 #endif /* __SMB2_CHARGER_H */
