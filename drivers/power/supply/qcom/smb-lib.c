@@ -6656,7 +6656,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		vbus_inc_mv = VBUS_INPUT_VOLTAGE_TARGET;
 		charger_present = 0;
 		mmi->charger_debounce_cnt = 0;
-		if (mmi->apsd_done)
+		if (mmi->apsd_done &&
+		    chip->typec_mode == POWER_SUPPLY_TYPEC_NONE)
 			smblib_handle_typec_removal(chip);
 	} else if (mmi->charger_debounce_cnt < CHARGER_DETECTION_DONE) {
 		mmi->charger_debounce_cnt++;
