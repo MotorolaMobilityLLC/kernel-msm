@@ -278,6 +278,12 @@ static int smb2_parse_dt(struct smb2 *chip)
 	if (rc < 0)
 		chip->dt.wipower_max_uw = -EINVAL;
 
+	rc = of_property_read_u32(node,
+				"qcom,aicl-threshold-mv",
+				&chg->aicl_threshold_mv);
+	if (rc < 0)
+		chg->aicl_threshold_mv = -EINVAL;
+
 	if (of_find_property(node, "qcom,thermal-mitigation", &byte_len)) {
 		chg->thermal_mitigation = devm_kzalloc(chg->dev, byte_len,
 			GFP_KERNEL);
@@ -1981,6 +1987,29 @@ static int smb2_init_hw(struct smb2 *chip)
 			chg->micro_usb_mode, 0);
 	vote(chg->hvdcp_enable_votable, MICRO_USB_VOTER,
 			chg->micro_usb_mode, 0);
+
+	/*
+	 * AICL threshold configuration:
+	 */
+	if (chg->aicl_threshold_mv >= AICL_THRESHOLD_MIN_MV &&
+	    chg->aicl_threshold_mv <= AICL_THRESHOLD_MAX_MV) {
+		int reg;
+
+		reg = (chg->aicl_threshold_mv - AICL_THRESHOLD_MIN_MV) / 100;
+		rc = smblib_masked_write(chg, USBIN_5V_AICL_THRESHOLD_CFG_REG,
+				USBIN_5V_AICL_THRESHOLD_CFG_MASK, reg);
+		if (rc < 0) {
+			dev_err(chg->dev, "Config 5V AICL fails rc=%d\n", rc);
+			return rc;
+		}
+
+		rc = smblib_masked_write(chg, USBIN_CONT_AICL_THRESHOLD_CFG_REG,
+				USBIN_CONT_AICL_THRESHOLD_CFG_MASK, reg);
+		if (rc < 0) {
+			dev_err(chg->dev, "Config CON AICL fails rc=%d\n", rc);
+			return rc;
+		}
+	}
 
 	/*
 	 * AICL configuration:
