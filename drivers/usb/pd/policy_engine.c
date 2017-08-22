@@ -1058,9 +1058,6 @@ static void usbpd_set_state(struct usbpd *pd, enum usbpd_state next_state)
 	switch (next_state) {
 	case PE_ERROR_RECOVERY: /* perform hard disconnect/reconnect */
 		pd->in_pr_swap = false;
-		val.intval = 0;
-		power_supply_set_property(pd->usb_psy,
-				POWER_SUPPLY_PROP_PR_SWAP, &val);
 		pd->current_pr = PR_NONE;
 		set_power_role(pd, PR_NONE);
 		pd->typec_mode = POWER_SUPPLY_TYPEC_NONE;
@@ -1952,9 +1949,6 @@ static void usbpd_sm(struct work_struct *w)
 		pd->selected_pdo = pd->requested_pdo = 0;
 		memset(&pd->received_pdos, 0, sizeof(pd->received_pdos));
 		rx_msg_cleanup(pd);
-
-		power_supply_set_property(pd->usb_psy,
-				POWER_SUPPLY_PROP_PR_SWAP, &val);
 
 		power_supply_set_property(pd->usb_psy,
 				POWER_SUPPLY_PROP_PD_IN_HARD_RESET, &val);
