@@ -954,6 +954,8 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 {
 	int rc = 0;
 	bool override;
+	int reg;
+	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
 
 	if (chg->mmi.factory_mode) {
 		pr_err("USB ICL callback in Facory Mode! %d\n", icl_ua);
@@ -967,6 +969,23 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 
 	if (icl_ua == INT_MAX)
 		goto override_suspend_config;
+
+	if ((chg->hc_aicl_threshold_mv >= AICL_THRESHOLD_MIN_MV &&
+	    chg->hc_aicl_threshold_mv <= AICL_THRESHOLD_MAX_MV) &&
+	    (icl_ua > 1500000 || !strncmp(apsd_result->name, "HVDCP", 4))) {
+		reg = (chg->hc_aicl_threshold_mv - AICL_THRESHOLD_MIN_MV) / 100;
+		rc = smblib_masked_write(chg, USBIN_CONT_AICL_THRESHOLD_CFG_REG,
+			USBIN_CONT_AICL_THRESHOLD_CFG_MASK, reg);
+		if (rc < 0)
+			smblib_err(chg, "Config CON AICL fails rc=%d\n", rc);
+	} else if (chg->aicl_threshold_mv >= AICL_THRESHOLD_MIN_MV &&
+	    chg->aicl_threshold_mv <= AICL_THRESHOLD_MAX_MV) {
+		reg = (chg->aicl_threshold_mv - AICL_THRESHOLD_MIN_MV) / 100;
+		rc = smblib_masked_write(chg, USBIN_CONT_AICL_THRESHOLD_CFG_REG,
+			USBIN_CONT_AICL_THRESHOLD_CFG_MASK, reg);
+		if (rc < 0)
+			smblib_err(chg, "Config CON AICL fails rc=%d\n", rc);
+	}
 
 	/* configure current */
 	if (chg->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_DEFAULT
