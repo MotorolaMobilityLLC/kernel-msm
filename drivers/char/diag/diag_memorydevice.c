@@ -186,24 +186,27 @@ int diag_md_write(int id, unsigned char *buf, int len, int ctx)
 		return -EIO;
 
 	ch = &diag_md[id];
-
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"diag: In diag_md_write buf: %p, len: %d, ctx: %d\n", buf, len, ctx);
 	spin_lock_irqsave(&ch->lock, flags);
 	for (i = 0; i < ch->num_tbl_entries && !found; i++) {
 		if (ch->tbl[i].buf != buf)
 			continue;
 		found = 1;
-		pr_err_ratelimited("diag: trying to write the same buffer buf: %pK, ctxt: %d len: %d at i: %d back to the table, proc: %d, mode: %d\n",
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"diag: trying to write the same buffer buf: %p, ctxt: %d len: %d at i: %d back to the table, proc: %d, mode: %d\n",
 				   buf, ctx, ch->tbl[i].len,
 				   i, id, driver->logging_mode);
 	}
 	spin_unlock_irqrestore(&ch->lock, flags);
 
-	if (found)
+	if (found) {
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"line: %d, -ENOMEM error, proc: %d\n",__LINE__,id);
 		return -ENOMEM;
+	}
 
 	spin_lock_irqsave(&ch->lock, flags);
 	for (i = 0; i < ch->num_tbl_entries && !found; i++) {
 		if (ch->tbl[i].len == 0) {
+			DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"diag: In diag_md_write tbl.buf: %p, tbl.len: %d, tbl.ctx: %d, p: %d\n", buf, len, ctx, peripheral);
 			ch->tbl[i].buf = buf;
 			ch->tbl[i].len = len;
 			ch->tbl[i].ctx = ctx;
@@ -214,7 +217,7 @@ int diag_md_write(int id, unsigned char *buf, int len, int ctx)
 	spin_unlock_irqrestore(&ch->lock, flags);
 
 	if (!found) {
-		pr_err_ratelimited("diag: Unable to find an empty space in table, please reduce logging rate, proc: %d\n",
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"diag: Unable to find an empty space in table, please reduce logging rate, proc: %d\n",
 				   id);
 		return -ENOMEM;
 	}
@@ -228,12 +231,14 @@ int diag_md_write(int id, unsigned char *buf, int len, int ctx)
 
 		found = 1;
 		driver->data_ready[i] |= USER_SPACE_DATA_TYPE;
-		pr_debug("diag: wake up logging process\n");
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"diag: wake up logging process\n");
 		wake_up_interruptible(&driver->wait_q);
 	}
 
-	if (!found)
+	if (!found) {
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"line: %d, -EINVAL error\n",__LINE__);
 		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -305,6 +310,7 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 			if (i > 0) {
 				remote_token = diag_get_remote(i);
 				if (get_pid_task(pid_struct, PIDTYPE_PID)) {
+					DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"1 buf_addr = %p, ret = %d\n",buf,ret);
 					err = copy_to_user(buf + ret,
 							&remote_token,
 							sizeof(int));
@@ -316,6 +322,7 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 
 			/* Copy the length of data being passed */
 			if (get_pid_task(pid_struct, PIDTYPE_PID)) {
+				DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"2 buf_addr = %p, ret = %d, entry->len = %d, entry-len_addr = %p, entry->buf = %p\n",buf,ret,entry->len,&(entry->len),entry->buf);
 				err = copy_to_user(buf + ret,
 						(void *)&(entry->len),
 						sizeof(int));
@@ -326,6 +333,7 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 
 			/* Copy the actual data being passed */
 			if (get_pid_task(pid_struct, PIDTYPE_PID)) {
+				DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"3 buf_addr = %p, ret = %d, entry->len = %d, entry-len_addr = %p, entry->buf = %p\n",buf,ret,entry->len,&(entry->len),entry->buf);
 				err = copy_to_user(buf + ret,
 						(void *)entry->buf,
 						entry->len);
@@ -346,6 +354,7 @@ drop_data:
 						    entry->ctx,
 						    DIAG_MEMORY_DEVICE_MODE);
 			diag_ws_on_copy(DIAG_WS_MUX);
+			DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"4 entry->buf: %p, entry->len: %d, entry->ctx: %d\n",entry->buf,entry->len,entry->ctx);
 			entry->buf = NULL;
 			entry->len = 0;
 			entry->ctx = 0;
@@ -355,6 +364,7 @@ drop_data:
 
 	*pret = ret;
 	if (pid_struct && get_pid_task(pid_struct, PIDTYPE_PID)) {
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"5 buf_addr = %p, ret = %d\n",buf,ret);
 		err = copy_to_user(buf + sizeof(int),
 				(void *)&num_data,
 				sizeof(int));
