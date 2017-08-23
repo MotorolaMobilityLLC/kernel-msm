@@ -284,6 +284,12 @@ static int smb2_parse_dt(struct smb2 *chip)
 	if (rc < 0)
 		chg->aicl_threshold_mv = -EINVAL;
 
+	rc = of_property_read_u32(node,
+				"qcom,hc-aicl-threshold-mv",
+				&chg->hc_aicl_threshold_mv);
+	if (rc < 0)
+		chg->hc_aicl_threshold_mv = -EINVAL;
+
 	if (of_find_property(node, "qcom,thermal-mitigation", &byte_len)) {
 		chg->thermal_mitigation = devm_kzalloc(chg->dev, byte_len,
 			GFP_KERNEL);
