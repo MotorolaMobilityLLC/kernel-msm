@@ -305,7 +305,6 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 			if (i > 0) {
 				remote_token = diag_get_remote(i);
 				if (get_pid_task(pid_struct, PIDTYPE_PID)) {
-					DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"1 buf_addr = %p, ret = %d\n",buf,ret);
 					err = copy_to_user(buf + ret,
 							&remote_token,
 							sizeof(int));
@@ -317,9 +316,6 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 
 			/* Copy the length of data being passed */
 			if (get_pid_task(pid_struct, PIDTYPE_PID)) {
-				DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"2 buf_addr = %p, ret = %d, \
-								entry->len = %d, entry-len_addr = %p, entry->buf = %p\n",
-								buf,ret,entry->len,&(entry->len),entry->buf);
 				err = copy_to_user(buf + ret,
 						(void *)&(entry->len),
 						sizeof(int));
@@ -330,9 +326,6 @@ int diag_md_copy_to_user(char __user *buf, int *pret, size_t buf_size,
 
 			/* Copy the actual data being passed */
 			if (get_pid_task(pid_struct, PIDTYPE_PID)) {
-				DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"3 buf_addr = %p, ret = %d, \
-								entry->len = %d, entry-len_addr = %p, entry->buf = %p\n",
-								buf,ret,entry->len,&(entry->len),entry->buf);
 				err = copy_to_user(buf + ret,
 						(void *)entry->buf,
 						entry->len);
@@ -362,7 +355,6 @@ drop_data:
 
 	*pret = ret;
 	if (pid_struct && get_pid_task(pid_struct, PIDTYPE_PID)) {
-		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,"4 buf_addr = %p, ret = %d\n",buf,ret);
 		err = copy_to_user(buf + sizeof(int),
 				(void *)&num_data,
 				sizeof(int));
