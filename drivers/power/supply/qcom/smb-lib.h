@@ -517,6 +517,7 @@ struct smb_charger {
 	bool			hvdcp_force_5v;
 	bool			suspended;
 	int			aicl_threshold_mv;
+	int			hc_aicl_threshold_mv;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
