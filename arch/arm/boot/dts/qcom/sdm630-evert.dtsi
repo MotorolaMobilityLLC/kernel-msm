@@ -18,6 +18,10 @@
         model = "Evert";
         compatible = "qcom,sdm630-evert", "qcom,sdm630-moto",
                         "qcom,sdm630";
+	/*spi4 for dtv*/
+	aliases {
+		spi4 = &spi_4;
+	};
 };
 
 &i2c_6 { /* BLSP1 QUP6 (NFC) */
@@ -138,4 +142,76 @@
 	qcom,lra-high-z = "opt1";
 	qcom,lra-auto-res-mode = "qwd";
 	qcom,lra-res-cal-period = <4>;
+};
+
+&soc {
+	tlmm: pinctrl@03000000 {
+		dtv_output_default: dtv-output {
+			mux {
+				/* enable, reset */
+				pins = "gpio8", "gpio113";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio8", "gpio113";
+				drive-strength = <2>; /* 2 MA */
+				bias-disable ; /* No PULL */
+				output-low;
+			};
+		};
+		/* DTV interrupt pin */
+		dtv_input_default: dtv-irq {
+			mux {
+				pins = "gpio9";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio9";
+				bias-pull-up; /* pull up */
+			};
+		};
+	};
+};
+
+&soc{
+	spi_4: spi@c178000 {/* BLSP1 QUP4 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xC178000 0x600>,
+		      <0xC144000 0x1f000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 98 0>, <0 238 0>;
+		spi-max-frequency = <50000000>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <10>;
+		qcom,bam-producer-pipe-index = <11>;
+		qcom,master-id = <86>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_4_active>;
+		pinctrl-1 = <&spi_4_sleep>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc GCC_BLSP1_AHB_CLK>,
+			 <&clock_gcc GCC_BLSP1_QUP4_SPI_APPS_CLK>;
+		status = "/chosen", "mmi,dtv", "true";
+
+		fci_dtv: fc8350@0 {
+			status = "/chosen", "mmi,dtv", "true";
+			compatible = "fci,isdbt";
+			reg = <0>;
+			spi-max-frequency = <50000000>;
+			irq-gpio = <&tlmm 9 0>;
+			enable-gpio = <&tlmm 113 0>;
+			reset-gpio = <&tlmm 8 0>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <9 0>;
+			interrupt-names = "dtv_irq";
+			pinctrl-names = "default";
+			pinctrl-0 = <&dtv_output_default &dtv_input_default>;
+			bbm-xtal-freq = <26000>;
+		};
+	};
 };
