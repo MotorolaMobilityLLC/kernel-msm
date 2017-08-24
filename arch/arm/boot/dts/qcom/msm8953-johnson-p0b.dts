@@ -24,6 +24,10 @@
 	interrupt-parent = <&intc>;
 };
 
+&cci {
+	/delete-node/qcom,camera@1;
+};
+
 &soc {
 	fpc_fpc1020{
 		pinctrl-0 = <&rst_active &int_active &ldo_en_active>;
