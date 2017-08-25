@@ -132,6 +132,10 @@
 	/delete-property/ linux,default-trigger;
 };
 
+&sdhc_2 {
+	qcom,no-defer-resume;
+};
+
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
 
