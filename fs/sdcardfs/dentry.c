@@ -20,6 +20,9 @@
 
 #include "sdcardfs.h"
 #include "linux/ctype.h"
+#ifdef CONFIG_SDCARD_FS_DIR_FIRSTWRITER
+#include <linux/xattr.h>
+#endif
 
 /*
  * returns: -ERRNO if error (returned to user)
@@ -184,6 +187,77 @@ static void sdcardfs_canonical_path(const struct path *path,
 {
 	sdcardfs_get_real_lower(path->dentry, actual_path);
 }
+
+#ifdef CONFIG_SDCARD_FS_DIR_FIRSTWRITER
+void sdcardfs_update_xattr_firstwriter(struct dentry *lower_dentry,
+	uid_t writer_uid)
+{
+	struct dentry *dentry, *parent;
+	char xattr_val[64], app_name[64];
+	const char *dir_name[2];
+	int xlen, depth;
+	const char *xattr_feat_name = "user.firstwriter";
+	const char *xattr_name = "user.firstwriter.name";
+	struct dentry *xdentry = NULL, *child = NULL;
+	appid_t app_id = uid_is_app(writer_uid) ?
+		writer_uid % AID_USER_OFFSET : 0;
+
+	dentry = lower_dentry;
+	if (IS_ERR_OR_NULL(dentry) || !app_id)
+		return;
+
+	while (1) {
+		parent = dget_parent(dentry);
+		xlen = vfs_getxattr(parent, xattr_feat_name, (void *)xattr_val,
+			sizeof(xattr_val));
+		if (xlen > 0 && xattr_val[0] != '0') {
+			dput(parent);
+			xattr_val[xlen] = 0;
+			dir_name[0] = dentry->d_name.name;
+			if (child)
+				dir_name[1] = child->d_name.name;
+			depth = wildcard_path_match(xattr_val, dir_name,
+				child ? 2 : 1);
+			if (depth == 1)
+				xdentry = dentry;
+			else if (depth == 2)
+				xdentry = child;
+			break;
+		} else if (IS_ROOT(parent)) {
+			dput(parent);
+			break;
+		}
+		child = dentry;
+		dentry = parent;
+		dput(parent);
+	}
+
+	if (IS_ERR_OR_NULL(xdentry) ||
+		!S_ISDIR(d_inode(xdentry)->i_mode))
+		return;
+
+	dget(xdentry);
+	/* set firstwriter once if detecting xattr that doesn't exist */
+	if (vfs_getxattr(xdentry, xattr_name,
+		(void *)xattr_val, sizeof(xattr_val)) > 0)
+		goto out_unlock;
+
+	if (get_app_name(app_id, app_name, sizeof(app_name)))
+		snprintf(app_name, sizeof(app_name), "%d", app_id);
+
+	if (vfs_setxattr(xdentry, xattr_name, app_name,
+		strlen(app_name), 0)) {
+		pr_err("sdcardfs: failed to set %lu %s=%s\n",
+			d_inode(xdentry)->i_ino, xattr_name, app_name);
+		goto out_unlock;
+	}
+
+	pr_info("sdcardfs: set %lu %s=%s\n",
+		d_inode(xdentry)->i_ino, xattr_name, app_name);
+out_unlock:
+	dput(xdentry);
+}
+#endif
 
 const struct dentry_operations sdcardfs_ci_dops = {
 	.d_revalidate	= sdcardfs_d_revalidate,
