@@ -206,5 +206,10 @@
 &mdss_dp_ctrl {
 	status = "disabled";
 };
+
+&usb3{
+	mmi,ext-typec-switch;
+};
+
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
