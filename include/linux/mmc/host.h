@@ -525,6 +525,7 @@ struct mmc_host {
 	unsigned int		bus_resume_flags;
 #define MMC_BUSRESUME_MANUAL_RESUME	(1 << 0)
 #define MMC_BUSRESUME_NEEDS_RESUME	(1 << 1)
+#define MMC_BUSRESUME_NO_DEFER_RESUME	(1 << 2)
 	bool ignore_bus_resume_flags;
 
 	unsigned int		sdio_irqs;
