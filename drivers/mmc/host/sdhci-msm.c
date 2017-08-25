@@ -1886,6 +1886,9 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 	if (of_get_property(np, "qcom,cd-wakeup", NULL))
 		msm_host->mmc->slot.cd_wakeup = true;
 
+	if (of_get_property(np, "qcom,no-defer-resume", NULL))
+		msm_host->mmc->bus_resume_flags |= MMC_BUSRESUME_NO_DEFER_RESUME;
+
 	of_property_read_u32(np, "qcom,bus-width", &bus_width);
 	if (bus_width == 8)
 		pdata->mmc_bus_width = MMC_CAP_8_BIT_DATA;
