@@ -174,6 +174,30 @@ int check_caller_access_to_name(struct inode *parent_node, const struct qstr *na
 	return 1;
 }
 
+#ifdef CONFIG_SDCARD_FS_DIR_FIRSTWRITER
+int get_app_name(appid_t appid, char *name, size_t len)
+{
+	int i, ret = -EINVAL;
+	struct hashtable_entry *hash_cur_app;
+	const char *app_name;
+
+	name[0] = 0;
+	rcu_read_lock();
+	hash_for_each_rcu(package_to_appid, i, hash_cur_app, hlist) {
+		if (atomic_read(&hash_cur_app->value) != appid)
+			continue;
+		app_name = hash_cur_app->key.name;
+		if (strlen(name) == 0 ||
+			(strlen(app_name) < strlen(name) &&
+			 strnstr(name, app_name, len)))
+			snprintf(name, len, "%s", app_name);
+		ret = 0;
+	}
+	rcu_read_unlock();
+	return ret;
+}
+#endif
+
 static struct hashtable_entry *alloc_hashtable_entry(const struct qstr *key,
 		appid_t value)
 {
