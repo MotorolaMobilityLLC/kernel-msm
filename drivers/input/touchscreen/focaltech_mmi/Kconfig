@@ -1,0 +1,72 @@
+#
+# Focaltech touchscreen driver configuration
+#
+menuconfig TOUCHSCREEN_FOCALTECH_MMI
+	bool "Focaltech touchscreen in MMI revision"
+	help
+	  Say Y here if you have a Focaltech touchscreen connected
+	  to your system.
+	  This revision supports MMI features.
+
+	  If unsure, say N.
+
+if TOUCHSCREEN_FOCALTECH_MMI
+
+config TOUCHSCREEN_FOCALTECH_CORE_MMI
+       tristate "FocalTech touchscreens"
+       depends on I2C
+       help
+         Say Y here if you have a focaltech touchscreen.
+	 Focaltech controllers are multi touch controllers.
+
+         If unsure, say N.
+
+         To compile this driver as a module, choose M here: the
+         module will be called focaltech_ts.
+
+config TOUCHSCREEN_FOCALTECH_UPGRADE_MMI
+	bool "New firmware upgrade code for Focaltech Touchscreen"
+	depends on TOUCHSCREEN_FOCALTECH_CORE_MMI
+	help
+	  Say Y here to add new Focaltech firmware upgrade code.
+	  This new firmware upgrade code will create a generic
+	  firmware upgrade framework.
+	  If new IC need to be supported, only need to accomplish
+	  some callback functions
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_FOCALTECH_UPGRADE_8716_MMI
+	bool "Add ft8716 IC support for Focaltech Touchscreen"
+	depends on TOUCHSCREEN_FOCALTECH_CORE_MMI
+	select TOUCHSCREEN_FOCALTECH_UPGRADE_MMI
+	help
+	  Say Y here will
+	  -Add FT8716 IC upgrade support.
+	  -Add new Focaltech firmware upgrade code.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_FOCALTECH_UPGRADE_5X46_MMI
+	bool "Add ft5x46 IC support for Focaltech Touchscreen"
+	depends on TOUCHSCREEN_FOCALTECH_CORE_MMI
+	select TOUCHSCREEN_FOCALTECH_UPGRADE_MMI
+	help
+	  Say Y here will
+	  -Add FT5x46 IC upgrade support.
+	  -Add new Focaltech firmware upgrade code.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_FOCALTECH_SECURE_TOUCH_MMI
+	bool "Secure Touch support for Focaltech Touchscreen"
+	depends on TOUCHSCREEN_FOCALTECH_CORE_MMI
+	help
+	  Say Y here
+	  -Focaltech touch driver is connected
+	  -To enable secure touch for Focaltech touch driver
+
+	  If unsure, say N.
+
+endif
+
