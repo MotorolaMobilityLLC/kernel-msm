@@ -80,7 +80,9 @@
 /delete-node/ &blue_led;
 
 &pm660l_l3 {
-	regulator-system-load = <600000>;
+	qcom,init-ldo-mode = <1>;
+	regulator-boot-on;
+	regulator-always-on;
 };
 
 &soc {
