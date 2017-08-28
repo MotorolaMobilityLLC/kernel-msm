@@ -763,9 +763,6 @@
 	qcom,battery-data = <&mot_johnsonbatterydata>;
 };
 
-&sdhc_2 {
-	cd-gpios = <&tlmm 133 0x1>;
-};
 &slim_msm {
 	status = "disabled";
 	/delete-node/ tasha_codec;
