@@ -649,6 +649,11 @@ static int qpnp_rtc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static inline int qpnp_rtc_is_rtc_alarm_enabled(struct qpnp_rtc *rtc_dd)
+{
+	return (rtc_dd->alarm_ctrl_reg1 & BIT_RTC_ALARM_ENABLE) ? 1 : 0;
+}
+
 #define SHIPMODE_DELAY_SECS 2592000
 static void qpnp_rtc_shutdown(struct platform_device *pdev)
 {
@@ -698,7 +703,8 @@ fail_alarm_disable:
 		spin_unlock_irqrestore(&rtc_dd->alarm_ctrl_lock, irq_flags);
 	}
 
-	if (power_on_alarm_empty() != 1) {
+	if ((power_on_alarm_empty() != 1) ||
+		qpnp_rtc_is_rtc_alarm_enabled(rtc_dd)) {
 		dev_warn(&pdev->dev, "Queue not empty unable to setup Shipmode\n");
 		return;
 	}
