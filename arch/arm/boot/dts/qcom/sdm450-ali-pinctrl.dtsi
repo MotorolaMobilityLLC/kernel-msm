@@ -375,21 +375,21 @@
 
 		fusb302_int_default: default {
 			mux {
-				pins = "gpio46";
+				pins = "gpio9";
 			};
 
 			config {
-				pins = "gpio46";
+				pins = "gpio9";
 			};
 		};
 
 		fusb302_int_active: active {
 			mux {
-				pins = "gpio46";
+				pins = "gpio9";
 			};
 
 			config {
-				pins = "gpio46";
+				pins = "gpio9";
 			};
 		};
 	};
