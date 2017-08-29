@@ -13,6 +13,7 @@
 #include "msm8953-moto-common.dtsi"
 #include "dsi-panel-mot-boe-565-1080p-vid.dtsi"
 #include "sdm450-ali-pinctrl.dtsi"
+#include "sdm450-camera-sensor-mot-ali.dtsi"
 
  / {
 	model = "ali";
@@ -505,8 +506,8 @@
 
 &pm8953_l2 {
 	regulator-min-microvolt = <1000000>;
-	regulator-max-microvolt = <1000000>;
-	qcom,init-voltage = <1000000>;
+	regulator-max-microvolt = <1200000>;
+	qcom,init-voltage = <1200000>;
 };
 
 &pm8953_gpios {
