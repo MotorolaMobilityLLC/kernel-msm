@@ -130,6 +130,8 @@ static const struct mmc_fixup mmc_blk_fixups[] = {
 	/* Some INAND MCP devices advertise incorrect timeout values */
 	MMC_FIXUP("SEM04G", 0x45, CID_OEMID_ANY, add_quirk_mmc,
 		MMC_QUIRK_INAND_DATA_TIMEOUT),
+       MMC_FIXUP(CID_NAME_ANY, CID_MANFID_MICRON, CID_OEMID_ANY, add_quirk_mmc,
+                MMC_QUIRK_BROKEN_CLK_GATING),
 
 	END_FIXUP
 };
