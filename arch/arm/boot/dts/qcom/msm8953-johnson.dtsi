@@ -167,32 +167,14 @@
 			compatible = "cirrus,cs35l35";
 			reg = <0x40>;
 			reset-gpios = <&tlmm 94 0>;
-			irq-gpio = <&tlmm 63 0x01>;
+			irq-gpios = <&tlmm 63 0>;
+			amp-gain-zc;
 			interrupt-parent = <&tlmm>;
-			interrupts = <63 8>;
+
+			VA-supply = <&dummy_vreg>;
+			VP-supply = <&dummy_vreg>;
 			pinctrl-names = "default";
-			pinctrl-0 = <&cs35l35_reset_default>;
-			cirrus,audio-channel = <0x00>;
-			cirrus,sp-drv-strength = <0x00>;
-			cirrus,boost-ctl = <0x41>;
-			//VA-supply = <&dummy_vreg>;
-			//VP-supply = <&dummy_vreg>;
-			cirrus,boost-ipk = <0x07>;
-			clock-names = "test-clk";
-			clocks = <&clock_gcc clk_div_clk2>;
-			classh-internal-algo {
-				classh-bst-overide;
-				classh-bst-max-limit = <0x01>;
-				classh-mem-depth = <0x01>;
-				classh-release-rate = <0x08>;
-				classh-headroom = <0x0B>;
-				classh-wk-fet-disable = <0x01>;
-				classh-wk-fet-delay = <0x04>;
-				classh-wk-fet-thld = <0x01>;
-				classh-vpch-auto = <0x01>;
-				classh-vpch-rate = <0x02>;
-				classh-vpch-man = <0x05>;
-			};
+			pinctrl-0 = <&cs35l35_irq_default &cs35l35_reset_default>;
 		};
 
 		fusb302@22 {
