@@ -1737,6 +1737,23 @@ static struct snd_soc_dai_link msm8952_albus_hdmi_dba_dai_link[] = {
 	},
 };
 
+static struct snd_soc_dai_link msm8952_ali_hdmi_dba_dai_link[] = {
+	{
+		.name = "MARLEY-HDMI",
+		.stream_name = "MARLEY-HDMI DBA Playback",
+		.cpu_name = "marley-codec",
+		.cpu_dai_name = "marley-aif1", /* ALI use aif1 */
+		.codec_name = "msm-hdmi-dba-codec-rx",
+		.codec_dai_name = "msm_hdmi_dba_codec_rx_dai",
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			   SND_SOC_DAIFMT_CBS_CFS,
+		.no_pcm = 1,      /* has a backend */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+		.params = &hdmi_dba_params,
+	},
+};
+
 static struct snd_soc_dai_link msm8952_quin_dai_link[] = {
 	{
 		.name = LPASS_BE_QUIN_MI2S_RX,
@@ -2108,13 +2125,23 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 				__func__);
 			ret = of_property_read_string(dev->of_node,
 				"qcom,dba_cpu_dai_name", &dba_cpu_dai_name);
-			if (ret == 0)
-				msm8952_albus_hdmi_dba_dai_link[0].cpu_dai_name =
-					dba_cpu_dai_name;
-			memcpy(msm8952_dai_links + len4,
-			       msm8952_albus_hdmi_dba_dai_link,
-			       sizeof(msm8952_albus_hdmi_dba_dai_link));
-			len4 += ARRAY_SIZE(msm8952_albus_hdmi_dba_dai_link);
+			if (ret == 0) {
+				if (of_property_read_bool(dev->of_node, "qcom,ali-audio")) {
+					msm8952_ali_hdmi_dba_dai_link[0].cpu_dai_name =
+						dba_cpu_dai_name;
+					memcpy(msm8952_dai_links + len4,
+					       msm8952_ali_hdmi_dba_dai_link,
+					       sizeof(msm8952_ali_hdmi_dba_dai_link));
+					len4 += ARRAY_SIZE(msm8952_ali_hdmi_dba_dai_link);
+				} else {
+					msm8952_albus_hdmi_dba_dai_link[0].cpu_dai_name =
+						dba_cpu_dai_name;
+					memcpy(msm8952_dai_links + len4,
+					       msm8952_albus_hdmi_dba_dai_link,
+					       sizeof(msm8952_albus_hdmi_dba_dai_link));
+					len4 += ARRAY_SIZE(msm8952_albus_hdmi_dba_dai_link);
+				}
+			}
 		}
 	} else {
 		if (!albus_hw) {
