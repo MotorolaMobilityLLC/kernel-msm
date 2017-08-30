@@ -358,6 +358,12 @@ dtb-$(CONFIG_ARCH_MSM8937) += msm8917-perry-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8920) += msm8920-perry-p1.dtb
 endif
 
+ifeq ($(CONFIG_JETER_DTB),y)
+dtb-$(CONFIG_ARCH_MSM8917) += msm8917-jeter-p0.dtb
+dtb-$(CONFIG_ARCH_MSM8920) += msm8920-jeter-p0.dtb
+dtb-$(CONFIG_ARCH_MSM8937) += msm8937-jeter-p0.dtb
+endif
+
 ifeq ($(CONFIG_OWENS_DTB),y)
 dtb-$(CONFIG_ARCH_MSM8920) += msm8920-owens-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8920) += msm8920-owens-p1.dtb
