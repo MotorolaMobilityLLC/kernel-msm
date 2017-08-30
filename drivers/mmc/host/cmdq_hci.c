@@ -872,7 +872,6 @@ static void cmdq_finish_data(struct mmc_host *mmc, unsigned int tag)
 	struct mmc_request *mrq;
 	struct cmdq_host *cq_host = (struct cmdq_host *)mmc_cmdq_private(mmc);
 	int offset = 0;
-	int err = 0;
 
 	if (cq_host->offset_changed)
 		offset = CQ_V5_VENDOR_CFG;
@@ -887,13 +886,6 @@ static void cmdq_finish_data(struct mmc_host *mmc, unsigned int tag)
 
 	cmdq_runtime_pm_put(cq_host);
 
-	if (cq_host->ops->crypto_cfg_end) {
-		err = cq_host->ops->crypto_cfg_end(mmc, mrq);
-		if (err) {
-			pr_err("%s: failed to end ice config: err %d tag %d\n",
-					mmc_hostname(mmc), err, tag);
-		}
-	}
 	if (!(cq_host->caps & CMDQ_CAP_CRYPTO_SUPPORT) &&
 			cq_host->ops->crypto_cfg_reset)
 		cq_host->ops->crypto_cfg_reset(mmc, tag);
@@ -1270,6 +1262,12 @@ static void cmdq_post_req(struct mmc_host *mmc, int tag, int err)
 	mrq = get_req_by_tag(cq_host, tag);
 	data = mrq->data;
 
+	if (cq_host->ops->crypto_cfg_end) {
+		if (cq_host->ops->crypto_cfg_end(mmc, mrq)) {
+			pr_err("%s: failed to end ice config: err %d tag %d\n",
+			mmc_hostname(mmc), err, tag);
+		}
+	}
 	if (data) {
 		data->error = err;
 		dma_unmap_sg(mmc_dev(mmc), data->sg, data->sg_len,
