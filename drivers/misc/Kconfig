@@ -124,6 +124,15 @@ config PHANTOM
 	  If you choose to build module, its name will be phantom. If unsure,
 	  say N here.
 
+config TPS61280
+        tristate "TI TPS61280 configuration"
+        depends on I2C
+        select REGMAP_I2C
+        help
+          This driver supports TPS61280 voltage regulator chip. This
+	  driver is meant for basic configuration only and does not provide
+	  any pm/regulator/thermal framework registration.
+
 config INTEL_MID_PTI
 	tristate "Parallel Trace Interface for MIPI P1149.7 cJTAG standard"
 	depends on PCI && TTY && (X86_INTEL_MID || COMPILE_TEST)
