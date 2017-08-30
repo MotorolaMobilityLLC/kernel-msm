@@ -157,3 +157,7 @@
 	qcom,led-strings-list = [00 01 02];
 	qcom,en-cabc;
 };
+
+&mdss_dp_ctrl{
+		status = "disabled";
+};
