@@ -126,21 +126,6 @@
 					0x18 0x4E 0x10 0x51>;
 		};
 
-		nq:nq@2B {		/* NFC PN553 */
-			compatible = "qcom,nq-nci";
-			status = "/chosen", "mmi,nfc", "true";
-			reg = <0x2B>;
-			interrupt-parent = <&tlmm>;
-			interrupts = <130 0>;
-			interrupt-names = "nfc_irq";
-			qcom,nq-irq = <&tlmm 130 0x00>;
-			qcom,nq-ven = <&tlmm 89 0x00>;
-			qcom,nq-firm = <&tlmm 113 0x00>;
-
-			pinctrl-names = "default";
-			pinctrl-0 = <&nfc_irq_default &nfc_ven_default &nfc_firm_default>;
-		};
-
 		cs35l35@40 {
 			compatible = "cirrus,cs35l35";
 			reg = <0x40>;
@@ -256,6 +241,22 @@
 			pinctrl-names = "default", "active";
 			pinctrl-0 = <&fusb302_int_default>;
 			pinctrl-1 = <&fusb302_int_active>;
+		};
+
+		nq:nq@28 {		/* NFC PN553 */
+			compatible = "qcom,nq-nci";
+			status = "/chosen", "mmi,nfc", "true";
+			reg = <0x28>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <17 0>;
+			interrupt-names = "nfc_irq";
+			qcom,nq-irq = <&tlmm 17 0x00>;
+			qcom,nq-ven = <&tlmm 16 0x00>;
+			qcom,nq-firm = <&tlmm 62 0x00>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&nfc_irq_default &nfc_ven_default
+					&nfc_firm_default>;
 		};
 	};
 
