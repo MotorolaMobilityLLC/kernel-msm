@@ -92,3 +92,4 @@ obj-$(CONFIG_USB3813) += usb3813_hub.o
 obj-$(CONFIG_MODS_MODBUS_EXT) += modbus_ext.o
 obj-$(CONFIG_FSUSB42_MUX) += fsusb42_mux.o
 obj-$(CONFIG_SENSORS_STML0XX) += stml0xx/
+obj-$(CONFIG_TPS61280) += tps61280.o
