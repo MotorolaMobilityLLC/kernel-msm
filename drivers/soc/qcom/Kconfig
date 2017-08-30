@@ -877,6 +877,14 @@ config PERRY_DTB
 	  Only include Perry specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config JETER_DTB
+	depends on ARCH_MSM
+	default n
+	bool "Jeter DTBs"
+	help
+	  Only include Jeter specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config OWENS_DTB
         depends on ARCH_MSM
         default n
