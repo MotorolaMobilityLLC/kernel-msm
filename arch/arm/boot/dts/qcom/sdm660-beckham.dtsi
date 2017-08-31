@@ -68,7 +68,7 @@
 		/* sample time 200us  */
 		ti,sample_time = /bits/ 8 <0x04>;
 		ti,nrst-gpio = <&pcal_pin 10 0>;
-		/*ti,nvctrl-gpio = <&tlmm 13 0>;*/
+		ti,nvctrl-gpio = <&tlmm 57 0>;
 		};
 };
 
