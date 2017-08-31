@@ -80,12 +80,12 @@
 		int_active: int_active {
 			/* INTERRUPT */
 			mux {
-				pins = "gpio86";
+				pins = "gpio48";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio86";
+				pins = "gpio48";
 				drive-strength = <2>; /* 2 MA */
 				input-enable;
 			};
@@ -94,46 +94,17 @@
 		int_suspend: int_suspend{
 			/* INTERRUPT */
 			mux {
-				pins = "gpio86";
+				pins = "gpio48";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio86";
+				pins = "gpio48";
 				drive-strength = <2>; /* 2 MA */
 				input-enable;
 			};
 		};
 
-		ldo_en_active: ldo_en_active {
-			/* LDO ENABLE */
-			mux {
-				pins = "gpio95";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio95";
-				drive-strength = <2>; /* 2 MA */
-				bias-pull-up; /* pull up */
-				output-high;
-			};
-		};
-
-		ldo_en_suspend: ldo_en_suspend {
-			/* LDO ENABLE */
-			mux {
-				pins = "gpio95";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio95";
-				drive-strength = <2>; /* 2 MA */
-				bias-pull-up; /* pull up */
-				output-high;
-			};
-		};
 	};
 
 	apba_default@0 {
