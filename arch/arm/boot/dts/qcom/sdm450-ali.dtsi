@@ -141,6 +141,7 @@
 		};
 
 		usb3813@2D {
+			status = "disable";
 			gpios = <&pmi8950_mpps 3 2>,   /* HUB_RESET_EN */
 				    <&tlmm 48 1>;   /* HUB_INT_N */
 			pinctrl-0 = <&hub_int_n_default>;
@@ -377,7 +378,7 @@
 	fpc_fpc1020{
 		compatible = "fpc,fpc1020";
 			status = "ok";
-			irq = <&tlmm 86 0>;
+			irq = <&tlmm 48 0>;
 			rst = <&tlmm 8 0>;
 			fpc,txout_boost_enable;
 
