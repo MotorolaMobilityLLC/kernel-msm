@@ -241,6 +241,18 @@
 			pinctrl-0 = <&nfc_irq_default &nfc_ven_default
 					&nfc_firm_default>;
 		};
+
+		tps61280@75 {
+			compatible = "ti,tps61280";
+			status = "okay";
+			reg = <0x75>;
+			ti,config = <0x05>;
+			ti,vout-floor = <0x0D>;
+			ti,vout-roof = <0x19>;
+			ti,ilim = <0x0F>;
+			/*ti,vsel = <&tlmm 108 0>;*//*config by modem*/
+			ti,en-gpio = <&tlmm 109 0>;
+		};
 	};
 
 	spi_6: spi@7af6000 { /* BLSP2 QUP2 */
