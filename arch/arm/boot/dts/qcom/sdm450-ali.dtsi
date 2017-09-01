@@ -774,6 +774,12 @@
 	qcom,vmax-mv = <1800>;
 };
 
+&soc {
+	usb_otg_switch: usb-otg-switch {
+		vin-supply = <&smbcharger_charger_otg>;
+	};
+};
+
 &pmi8950_charger {
 	/delete-property/ pinctrl-names;
 	/delete-property/ pinctrl-0;
@@ -792,6 +798,11 @@
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <80>;
 	qcom,lower-limit-capacity = <60>;
+
+	smbcharger_charger_otg: qcom,smbcharger-boost-otg {
+		status = "okay";
+		regulator-name = "smbcharger_charger_otg";
+	};
 };
 
 /{
