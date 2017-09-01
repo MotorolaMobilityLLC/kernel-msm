@@ -11,6 +11,7 @@
  */
 
 #include "sdm630-moto-common.dtsi"
+#include "sdm630-evert-pinctrl.dtsi"
 #include "dsi-panel-mot-tianma-593-1080p-vid.dtsi"
 #include "sdm630-camera-sensor-mot-evert.dtsi"
 #include "sdm660-external-codec.dtsi"
@@ -105,6 +106,20 @@
 &soc {
 	fpc_fpc1020{
 		pinctrl-0 = <&fps_ldo_1P8_en_default>;
+	};
+};
+
+&i2c_2 { /* BLSP1 QUP2 */
+	status = "okay";
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		reg = <0x75>;
+		ti,config = <0x0D>;
+		ti,vout-floor = <0x0D>;
+		ti,vout-roof = <0x19>;
+		ti,ilim = <0x0F>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps61280_en_default>;
 	};
 };
 
