@@ -1,0 +1,285 @@
+/* Copyright (c) 2016, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+#include "msm8937-hannah-pinctrl.dtsi"
+#include "dsi-panel-mot-tianma-571-720p-video.dtsi"
+
+&soc {
+	vdda_touch_vreg: vdda_touch_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdda_touch";
+		gpio = <&tlmm 131 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
+	sound {
+		/delete-property/ qcom,cdc-us-euro-gpios;
+		/delete-property/ qcom,msm-micbias1-ext-cap;
+		/delete-property/ qcom,msm-micbias2-ext-cap;
+		qcom,msm-gpios =
+			"pri_i2s";
+		qcom,pinctrl-names =
+			"all_off",
+			"pri_i2s_act";
+		pinctrl-names =
+			"all_off",
+			"pri_i2s_act";
+		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act>;
+		/delete-property/ pinctrl-2;
+		/delete-property/ pinctrl-3;
+		/delete-property/ pinctrl-4;
+		/delete-property/ pinctrl-5;
+		/delete-property/ pinctrl-6;
+		/delete-property/ pinctrl-7;
+	};
+	/delete-node/ et320;
+	/delete-node/ fp_id;
+	et320: et320{
+		compatible = "egistec,et320";
+		status = "ok";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <48 0x0>;
+		egistec,gpio_irq    = <&tlmm 48 0x1>;
+		egistec,gpio_rst    = <&tlmm 127 0x2>;
+		egistec,gpio_ldo1p8_en = <&tlmm 39 0x0>;
+		egistec,gpio_ldo3p3_en = <&tlmm 128 0x0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&rst_active &int_active &ldo_en_active &ldo3_en_active>;
+		pinctrl-1 = <&rst_suspend &int_suspend &ldo_en_suspend &ldo3_en_suspend>;
+	};
+};
+
+&i2c_2 {
+	sx9310@28 {
+		compatible = "semtech,sx9310";
+		reg = <0x28>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&sx9310_int_default>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <31 0x2002>;
+		cap_vdd-supply = <&pm8937_l10>;
+		cap_svdd-supply = <&pm8937_l6>;
+		gpios = <&tlmm 31 0x2008>; /* IRQ */
+		cap,use_channel = <0x02>;
+		cap,scan_period = <0x01>;
+		cap,raw_data_channel = <0x01>;
+		reg_array_len = <8>;
+		reg_array_val = <0x11 0x02 0x12 0x0b 0x13 0x03 0x14 0x77 0x15 0x81 0x18 0x5e 0x19 0x40 0x1a 0x04>;
+	};
+
+	/delete-node/ adv7533@39;
+	/delete-node/ pericom-type-c@1d;
+};
+
+
+&i2c_3 {
+	status = "ok";
+	/* clock-frequency = <400000>; */
+	focaltech@38{
+	compatible = "focaltech,fts";
+	reg = <0x38>;
+	interrupt-parent = <&tlmm>;
+	interrupts = <65 0x02>;
+	/* vdd-supply = <&pm8937_l17>; */
+	vdd-supply = <&vdda_touch_vreg>;
+	vcc_i2c-supply = <&pm8937_l6>;
+	/* pins used by touchscreen */
+	pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
+	pinctrl-0 = <&ts_int_active &ts_reset_active>;
+	pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+	pinctrl-2 = <&ts_release>;
+	focaltech,name = "fts_ts";
+	focaltech,family-id = <0x08>;
+	focaltech,reset-gpio = <&tlmm 64 0x01>;
+	focaltech,irq-gpio = <&tlmm 65 0x02>;
+	focaltech,display-coords = <0 0 720 1440>;
+	focaltech,max-touch-number = <10>;
+	focaltech,no-force-update;
+	focaltech,i2c-pull-up;
+	focaltech,group-id = <1>;
+	focaltech,hard-reset-delay-ms = <20>;
+	focaltech,soft-reset-delay-ms = <200>;
+	focaltech,num-max-touches = <5>;
+	focaltech,fw-delay-aa-ms = <30>;
+	focaltech,fw-delay-55-ms = <30>;
+	focaltech,fw-upgrade-id1 = <0x79>;
+	focaltech,fw-upgrade-id2 = <0x08>;
+	focaltech,fw-delay-readid-ms = <10>;
+	focaltech,fw-delay-era-flsh-ms = <2000>;
+	focaltech,fw-auto-cal;
+	focaltech,resume-in-workqueue;
+	focaltech,ignore-id-check;
+	};
+
+};
+
+&pmx_mdss {
+	mdss_dsi_active {
+		mux {
+			pins = "gpio60";
+		};
+
+		config {
+			pins = "gpio60";
+		};
+	};
+
+	mdss_dsi_suspend {
+		mux {
+			pins = "gpio60";
+		};
+
+		config {
+			pins = "gpio60";
+		};
+	};
+};
+
+&pm8937_l6 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&pm8937_l10 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&pm8937_l17 {
+	regulator-always-on;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_tianma_571_720p_vid_v0>;
+	vddio_disp-supply = <&pm8937_l6>;
+	vsp_disp-supply = <&lab_regulator>;
+	vsn_disp-supply = <&ibb_regulator>;
+
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
+
+	qcom,platform-reset-gpio = <&tlmm 60 0>;
+};
+
+/* display boost and inverting boost regulators */
+&labibb {
+	status = "ok";
+	qpnp,qpnp-labibb-mode = "lcd";
+};
+
+&ibb_regulator {
+	qcom,qpnp-ibb-discharge-resistor = <32>;
+};
+
+&wled {
+	qcom,fs-curr-ua = <25000>;
+	qcom,cons-sync-write-delay-us = <1000>;
+	qcom,en-cabc;
+};
+
+&spmi_bus {
+	qcom,pmi8950@2 {
+		/delete-node/ qcom,leds@a100;
+		qcom,leds@1000 {
+		status = "ok";
+		reg = <0x1000 0x100>;
+		compatible = "qcom,leds-atc";
+		linux,name = "charging";
+		qcom,ctrl-reg = <0x243>;
+		};
+	};
+};
+
+&pm8937_gpios {
+	gpio@c100 {
+		status = "ok";
+		qcom,mode = <1>;
+		qcom,out-type = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <1>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <1>;
+		qcom,out-strength = <2>;
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa18 {
+		status = "okay";
+		pm8937_l18: regulator-l18 {
+			regulator-min-microvolt = <2700000>;
+			regulator-max-microvolt = <2700000>;
+			qcom,init-voltage = <2700000>;
+			status = "okay";
+		};
+	};
+};
+
+&pmi8950_charger {
+	qcom,fastchg-current-ma = <1850>;
+	qcom,chg-thermal-mitigation = <1850>, <1600>, <1200>, <1000>,
+				      <700>, <400>;
+	/delete-property/ qcom,dc-thermal-mitigation;
+	qcom,parallel-charge-current-map = <1850 1850 0>,
+					   <1600 1600 0>,
+					   <1200 1200 0>,
+					   <1000 1000 0>,
+					   <700 700 0>,
+					   <400 400 0>;
+	qcom,stepchg-voltage-mv = <4400>;
+	qcom,stepchg-current-ma = <1850>;
+	qcom,stepchg-taper-ma = <1500>;
+	qcom,stepchg-iterm-ma = <125>;
+	/delete-property/ qcom,enable-hvdcp-9v;
+	qcom,weak-charger-check-enable;
+};
+
+&pmi8950_fg {
+	qcom,ext-sense-type; /* External Sense Resistor */
+	qcom,thermal-coefficients =  /bits/ 16 <0x2d87 0x9151 0x7d3c>;
+	qcom,irq-volt-empty-mv = <3200>;
+	qcom,fg-cutoff-voltage-mv = <3400>;
+};
+
+&usb_otg {
+	qcom,hsusb-otg-phy-init-seq =
+		<0x44 0x80 0x35 0x81 0x03 0x82 0x33 0x83 0xffffffff>;
+	qcom,chg-dcp-icl = <1800>;
+};
+&soc{
+	qcom,msm-thermal {
+		qcom,config-info = "rhannah";
+	};
+};
+&mot_batterydata {
+	df-serialnum = "SNN5989A";
+	#include "batterydata-he50-atl.dtsi"
+};
+
+&pmi_haptic {
+	qcom,vmax-mv = <2700>;
+	/delete-property/ qcom,en-brake; /* disable internal reverse braking */
+	/delete-property/ qcom,brake-pattern; /* disable brake pattern */
+};
+
+&sdhc_2 {
+	qcom,nonhotplug;
+	/delete-property/ cd-gpios;
+};
+
+&spi_4 { /* BLSP1 QUP4 */
+	status = "disabled";
+	/delete-node/ stml0xx@0;
+};
