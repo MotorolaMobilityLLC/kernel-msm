@@ -367,15 +367,61 @@ struct tz_jslr_rsp_s {
 	int32_t ret;
 } __packed;
 
+static int mot_dba_config_gpio_mode (int mode)
+{
+	int ret = 0;
+	size_t res, cmd_len, rsp_len;
+	struct qseecom_handle *qseecom_handle = NULL;
+	struct tz_jslr_req_s *cmd;
+	struct tz_jslr_rsp_s *rsp;
+
+	res = qseecom_start_app(&qseecom_handle, "jslr", SZ_16K);
+	if (res < 0) {
+		pr_err("error loading jslr\n");
+		ret = -EIO;
+	} else {
+		pr_info("jslr loaded\n");
+		cmd_len = sizeof(struct tz_jslr_req_s);
+		rsp_len = sizeof(struct tz_jslr_rsp_s);
+
+		cmd = (struct tz_jslr_req_s *)qseecom_handle->sbuf;
+
+		if (cmd_len & QSEECOM_ALIGN_MASK)
+			cmd_len = QSEECOM_ALIGN(cmd_len);
+
+		rsp = (struct tz_jslr_rsp_s *)qseecom_handle->sbuf + cmd_len;
+
+		if (rsp_len & QSEECOM_ALIGN_MASK)
+			rsp_len = QSEECOM_ALIGN(rsp_len);
+
+		/* Populate command struct */
+		cmd->which = 0;
+		if (mode)
+			cmd->cmd_id = TZ_JSLR_CMD_SET;
+		else
+			cmd->cmd_id = TZ_JSLR_CMD_UNSET;
+
+		/* Issue QSEECom command */
+		res = qseecom_send_command(qseecom_handle, (void *)cmd,
+			cmd_len, (void *)rsp, rsp_len);
+		if (res < 0) {
+			pr_err("error running jslr\n");
+			qseecom_shutdown_app(&qseecom_handle);
+			ret = -EIO;
+		} else {
+			pr_info("response from jslr %d\n", rsp->ret);
+			qseecom_shutdown_app(&qseecom_handle);
+		}
+	}
+
+	return ret;
+}
+
 int mot_dba_device_enable(int mod_display_type)
 {
 	int ret = 0;
 	struct mot_dba_device *cur;
 	int gpio_val = 0;
-	size_t res, cmd_len, rsp_len;
-	struct qseecom_handle *qseecom_handle = NULL;
-	struct tz_jslr_req_s *cmd;
-	struct tz_jslr_rsp_s *rsp;
 
 	pr_debug("%s+\n", __func__);
 	if (!g_pdata) {
@@ -407,50 +453,18 @@ int mot_dba_device_enable(int mod_display_type)
 				mod_display_type);
 		ret = -EINVAL;
 	} else if (g_pdata->gpio_sel_dsi_val >= 0) {
-		res = qseecom_start_app(&qseecom_handle, "jslr", SZ_16K);
-		if (res < 0) {
-			pr_err("error loading jslr\n");
-		} else {
-			pr_info("jslr loaded\n");
-			cmd_len = sizeof(struct tz_jslr_req_s);
-			rsp_len = sizeof(struct tz_jslr_rsp_s);
+		if (mod_display_type == MOD_DISPLAY_TYPE_DP)
+			gpio_val = (g_pdata->gpio_sel_dsi_val ? 0 : 1);
+		else
+			gpio_val = g_pdata->gpio_sel_dsi_val;
 
-			cmd = (struct tz_jslr_req_s *)qseecom_handle->sbuf;
+		ret = mot_dba_config_gpio_mode(gpio_val);
+		if (ret)
+			pr_err("%s: fail to  configure gpio mode. ret = %d\n",
+				__func__, ret);
 
-			if (cmd_len & QSEECOM_ALIGN_MASK)
-				cmd_len = QSEECOM_ALIGN(cmd_len);
-
-			rsp = (struct tz_jslr_rsp_s *)qseecom_handle->sbuf +
-				cmd_len;
-
-			if (rsp_len & QSEECOM_ALIGN_MASK)
-				rsp_len = QSEECOM_ALIGN(rsp_len);
-
-			/* Populate command struct */
-			cmd->which = 0;
-			if (mod_display_type == MOD_DISPLAY_TYPE_DP)
-				gpio_val = (g_pdata->gpio_sel_dsi_val ? 0 : 1);
-			else
-				gpio_val = g_pdata->gpio_sel_dsi_val;
-			if (gpio_val)
-				cmd->cmd_id = TZ_JSLR_CMD_SET;
-			else
-				cmd->cmd_id = TZ_JSLR_CMD_UNSET;
-
-			/* Issue QSEECom command */
-			res = qseecom_send_command(qseecom_handle, (void *)cmd,
-				cmd_len, (void *)rsp, rsp_len);
-			if (res < 0) {
-				pr_err("error running jslr\n");
-				qseecom_shutdown_app(&qseecom_handle);
-			} else {
-				pr_info("response from jslr %d\n", rsp->ret);
-				qseecom_shutdown_app(&qseecom_handle);
-			}
-		}
-	} else {
+	} else
 		pr_info("%s: gpio_sel_dsi_val not set\n", __func__);
-	}
 
 exit:
 	mutex_unlock(&list_lock);
@@ -480,6 +494,9 @@ int mot_dba_device_disable(int mod_display_type)
 			}
 		}
 	}
+
+	if (mod_display_type == MOD_DISPLAY_TYPE_DP)
+		mot_dba_config_gpio_mode(g_pdata->gpio_sel_dsi_val);
 
 	mutex_unlock(&list_lock);
 	if (!found) {
