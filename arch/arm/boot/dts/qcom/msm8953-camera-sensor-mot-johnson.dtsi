@@ -35,7 +35,7 @@
 
 &pmi8950_mpps {
 	mpp@a300 { /* MPP4 MOD_BPLUS_FAULT_N */
-		qcom,mode = <0>;	/* Digital input */
+		qcom,mode = <1>;	/* Digital output */
 		qcom,vin-sel = <2>;	/* 1.8 */
 		qcom,src-sel = <0>;	/* GPIO */
 		qcom,master-en = <1>;	/* Enable GPIO */
@@ -164,7 +164,7 @@
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <270>;
 		/*qcom,eeprom-src = <&eeprom2>;*/
-		/*qcom,led-flash-src = <&led_flash1>;*/
+		qcom,led-flash-src = <&led_flash1>;
 		cam_vdig-supply = <&front_vdig>;
 		qcom,cam-vreg-name = "cam_vdig";
 		qcom,cam-vreg-min-voltage = <1200000>;
