@@ -35,8 +35,11 @@
 				dev = "/dev/block/platform/7824900.sdhci/by-name/vendor";
 				type = "ext4";
 				mnt_flags = "ro,barrier=1,discard";
-				fsmgr_flags = "wait"; /* MMI_STOPSHIP: disable verity! */
+				fsmgr_flags = "wait,slotselect,verity";
 				status = "ok";
+			};
+			system {
+				status = "disabled";
 			};
 		};
 	};
