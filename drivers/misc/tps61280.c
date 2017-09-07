@@ -195,7 +195,6 @@ static int tps61280_parse_dt_data(struct i2c_client *client,
 	return 0;
 }
 
-
 static int tps61280_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -241,13 +240,19 @@ static int tps61280_probe(struct i2c_client *client,
 		}
 
 		gpio_direction_output(tps61280->pdata.mnGpioEN, 1);
+		mdelay(10);
 	}
 
 	ret = regmap_read(tps61280->rmap, TPS61280_STATUS, &readout);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(&client->dev, "STATUS read failed %d\n", ret);
-	else
+		gpio_direction_output(tps61280->pdata.mnGpioEN, 0);
+		return ret;
+	} else {
+		gpio_direction_output(tps61280->pdata.mnGpioEN, 0);
+		/*because modem does not ready,if enable set High,will happen power problem,if modem ready,will change enable pin*/
 		dev_info(&client->dev, "power on status %#x\n", readout);
+	}
 
 	ret = regmap_read(tps61280->rmap, TPS61280_REVISION, &readout);
 	if (ret < 0)
