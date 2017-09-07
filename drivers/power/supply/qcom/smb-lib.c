@@ -6242,7 +6242,7 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 		chip->mmi.cl_ebsrc = 0;
 
 		ret.intval = MICRO_9V;
-		rc = smblib_set_prop_usb_voltage_max(chip, &ret);
+		rc = smblib_set_prop_pd_voltage_max(chip, &ret);
 		if (rc < 0)
 			smblib_err(chip,
 				   "Couldn't set 9V USBC Voltage rc=%d\n", rc);
@@ -6276,7 +6276,7 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 
 		if (chip->mmi.vi_ebsrc < MICRO_9V) {
 			ret.intval = MICRO_5V;
-			rc = smblib_set_prop_usb_voltage_max(chip, &ret);
+			rc = smblib_set_prop_pd_voltage_max(chip, &ret);
 			if (rc < 0)
 				smblib_err(chip,
 					"Couldn't set 5V USBC Voltage rc=%d\n",
@@ -6355,7 +6355,7 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 			gpio_set_value(chip->mmi.ebchg_gpio.gpio, 0);
 
 			ret.intval = MICRO_9V;
-			rc = smblib_set_prop_usb_voltage_max(chip, &ret);
+			rc = smblib_set_prop_pd_voltage_max(chip, &ret);
 			if (rc < 0)
 				smblib_err(chip,
 					"Couldn't set 9V USBC Voltage rc=%d\n",
@@ -6376,7 +6376,7 @@ static void mmi_set_extbat_state(struct smb_charger *chip,
 			     true, 1);
 
 			ret.intval = MICRO_9V;
-			rc = smblib_set_prop_usb_voltage_max(chip, &ret);
+			rc = smblib_set_prop_pd_voltage_max(chip, &ret);
 			if (rc < 0)
 				smblib_err(chip,
 					"Couldn't set 9V USBC Voltage rc=%d\n",
@@ -6430,10 +6430,8 @@ void mmi_chrg_rate_check(struct smb_charger *chip)
 	if (mmi->charger_rate == POWER_SUPPLY_CHARGE_RATE_TURBO)
 		goto end_rate_check;
 
-	rc = smblib_get_prop_pd_current_max(chip, &val);
-	if (rc < 0)
-		smblib_err(chip, "Error getting CL PD rc = %d\n", rc);
-	else if ((val.intval / 1000) >= TURBO_CHRG_THRSH) {
+	val.intval = get_client_vote(chip->usb_icl_votable, PD_VOTER);
+	if ((val.intval / 1000) >= TURBO_CHRG_THRSH) {
 		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 		goto end_rate_check;
 	}
@@ -6755,19 +6753,13 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	prev_vbus_mv = usb_mv;
 
 	if (charger_present) {
-		rc = smblib_get_prop_usb_current_max(chip, &val);
-		if (rc < 0) {
-			smblib_err(chip, "Error getting CL USB rc = %d\n", rc);
-			goto end_hb;
-		} else
-			cl_usb = val.intval / 1000;
+		val.intval = get_client_vote(chip->usb_icl_votable,
+					     USB_PSY_VOTER);
+		cl_usb = val.intval / 1000;
 
-		rc = smblib_get_prop_pd_current_max(chip, &val);
-		if (rc < 0) {
-			smblib_err(chip, "Error getting CL PD rc = %d\n", rc);
-			goto end_hb;
-		} else
-			cl_pd = val.intval / 1000;
+		val.intval = get_client_vote(chip->usb_icl_votable,
+					     PD_VOTER);
+		cl_pd = val.intval / 1000;
 
 		switch (chip->typec_mode) {
 		case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
