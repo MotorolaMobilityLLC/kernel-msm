@@ -59,6 +59,10 @@ static const unsigned int sd_au_size[] = {
 	SZ_16M / 512,	(SZ_16M + SZ_8M) / 512,	SZ_32M / 512,	SZ_64M / 512,
 };
 
+static const unsigned int sd_speed_class[] = {
+	0,	2,	4,	6,	10,
+};
+
 #define UNSTUFF_BITS(resp,start,size)					\
 	({								\
 		const int __size = size;				\
@@ -275,6 +279,12 @@ static int mmc_read_ssr(struct mmc_card *card)
 				mmc_hostname(card->host));
 		}
 	}
+	card->ssr.speed_class = sd_speed_class[UNSTUFF_BITS(ssr, 440 - 384, 8)];
+	card->ssr.uhs_speed_grade = UNSTUFF_BITS(ssr, 396 - 384, 4);
+	pr_info("%s: card speed is C%d. uhs grade is %d\n",
+		mmc_hostname(card->host),
+		card->ssr.speed_class,
+		card->ssr.uhs_speed_grade);
 out:
 	kfree(ssr);
 	return err;
@@ -753,6 +763,8 @@ MMC_DEV_ATTR(manfid, "0x%06x\n", card->cid.manfid);
 MMC_DEV_ATTR(name, "%s\n", card->cid.prod_name);
 MMC_DEV_ATTR(oemid, "0x%04x\n", card->cid.oemid);
 MMC_DEV_ATTR(serial, "0x%08x\n", card->cid.serial);
+MMC_DEV_ATTR(speed_class, "%u\n", card->ssr.speed_class);
+MMC_DEV_ATTR(uhs_speed_grade, "%u\n", card->ssr.uhs_speed_grade);
 
 
 static struct attribute *sd_std_attrs[] = {
@@ -768,6 +780,8 @@ static struct attribute *sd_std_attrs[] = {
 	&dev_attr_name.attr,
 	&dev_attr_oemid.attr,
 	&dev_attr_serial.attr,
+	&dev_attr_speed_class.attr,
+	&dev_attr_uhs_speed_grade.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(sd_std);
