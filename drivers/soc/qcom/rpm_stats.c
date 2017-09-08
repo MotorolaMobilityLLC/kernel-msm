@@ -389,22 +389,26 @@ static ssize_t rpmstats_show(struct kobject *kobj,
 {
 	struct msm_rpmstats_private_data *prvdata = NULL;
 	struct msm_rpmstats_platform_data *pdata = NULL;
+	ssize_t ret;
 
+	mutex_lock(&rpm_stats_mutex);
 	pdata = GET_PDATA_OF_ATTR(attr);
 
 	prvdata =
 		kmalloc(sizeof(*prvdata), GFP_KERNEL);
-	if (!prvdata)
-		return -ENOMEM;
+	if (!prvdata) {
+		ret = -ENOMEM;
+		goto kmalloc_fail;
+	}
 
 	prvdata->reg_base = ioremap_nocache(pdata->phys_addr_base,
 					pdata->phys_size);
 	if (!prvdata->reg_base) {
-		kfree(prvdata);
 		pr_err("%s: ERROR could not ioremap start=%pa, len=%u\n",
 			__func__, &pdata->phys_addr_base,
 			pdata->phys_size);
-		return -EBUSY;
+		ret = -EBUSY;
+		goto ioremap_fail;
 	}
 
 	prvdata->read_idx = prvdata->num_records =  prvdata->len = 0;
@@ -426,23 +430,22 @@ static ssize_t rpmstats_show(struct kobject *kobj,
 					prvdata);
 	}
 
-	return snprintf(buf, prvdata->len, prvdata->buf);
+	ret = snprintf(buf, prvdata->len, prvdata->buf);
+	iounmap(prvdata->reg_base);
+ioremap_fail:
+	kfree(prvdata);
+kmalloc_fail:
+	mutex_unlock(&rpm_stats_mutex);
+	return ret;
 }
 
 static int msm_rpmstats_create_sysfs(struct msm_rpmstats_platform_data *pd)
 {
-	struct kobject *module_kobj = NULL;
 	struct kobject *rpmstats_kobj = NULL;
 	struct msm_rpmstats_kobj_attr *rpms_ka = NULL;
 	int ret = 0;
 
-	module_kobj = kset_find_obj(module_kset, KBUILD_MODNAME);
-	if (!module_kobj) {
-		pr_err("%s: Cannot find module_kset\n", __func__);
-		return -ENODEV;
-	}
-
-	rpmstats_kobj = kobject_create_and_add("rpmstats", module_kobj);
+	rpmstats_kobj = kobject_create_and_add("system_sleep", power_kobj);
 	if (!rpmstats_kobj) {
 		pr_err("%s: Cannot create rpmstats kobject\n", __func__);
 		ret = -ENOMEM;
