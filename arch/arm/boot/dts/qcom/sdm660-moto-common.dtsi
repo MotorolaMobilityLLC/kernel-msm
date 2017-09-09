@@ -292,6 +292,10 @@
 };
 
 &i2c_2 {
+	pcal_pin:gpio@20 {
+		status = "disabled";
+	};
+
 	usb3813: usb3813@2D {
 		status = "ok";
 		compatible = "microchip,usb3813";
