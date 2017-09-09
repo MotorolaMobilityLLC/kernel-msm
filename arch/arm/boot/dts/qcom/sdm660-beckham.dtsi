@@ -134,6 +134,11 @@
 	};
 };
 
+&usb3{
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+};
+
 &red_led {
 	linux,name = "charging";
 	/delete-property/ linux,default-trigger;
