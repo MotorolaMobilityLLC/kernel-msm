@@ -65,7 +65,16 @@
 };
 
 &pm660_gpios {
-	/* GPIO 4 (NFC_CLK_REQ) */
+	/* GPIO 3 (mod spi/i2c select) */
+	gpio@c200 {
+		qcom,mode = <0>;
+		qcom,vin-sel = <1>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+
+	/* GPIO 4 (mod usb select) */
 	gpio@c300 {
 		qcom,mode = <0>;
 		qcom,vin-sel = <1>;
@@ -269,4 +278,32 @@
 
 &pm660_pdphy {
 	qcom,default-sink-caps = <5000 3000>; /* 5V @ 3A */
+};
+
+&usb3{
+	mmi,ext-typec-switch;
+	qcom,ssusb-compliance;
+	pinctrl-names = "default";
+	pinctrl-0 = <&usb_hs_sel>;
+
+	mmi,mods-support;
+	mod-usb-hub = <&usb3813>;
+	mmi,mod-hs-switch = <&pm660_gpios 4 0>;           /* USB_HS_SEL, output-low */
+};
+
+&i2c_2 {
+	usb3813: usb3813@2D {
+		status = "ok";
+		compatible = "microchip,usb3813";
+		reg = <0x2D>;
+		gpios = <&tlmm 12 0x0>,   /* HUB_RESET_EN */
+			<&tlmm 13 0x1>;    /* HUB_INT_EN */
+		gpio-labels = "gpio_hub_reset_n",
+			"gpio_hub_int_n";
+		clock-names = "hub_clk";
+		qcom,clk-src = "BBCLK2";
+		clocks = <&clock_rpmcc RPM_LN_BB_CLK2>;
+		enable-usbhost;
+		vdd-hsic-supply = <&pm660_l13>;
+	};
 };
