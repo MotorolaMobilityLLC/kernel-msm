@@ -33,8 +33,8 @@ nflog_tg(struct sk_buff *skb, const struct xt_action_param *par)
 	li.u.ulog.group	     = info->group;
 	li.u.ulog.qthreshold = info->threshold;
 
-	nfulnl_log_packet(net, par->family, par->hooknum, skb, par->in,
-			  par->out, &li, info->prefix);
+	__nfulnl_log_packet(net, par->family, par->hooknum, skb, par->in,
+			    par->out, &li, info->prefix, info->layer);
 	return XT_CONTINUE;
 }
 
@@ -45,6 +45,8 @@ static int nflog_tg_check(const struct xt_tgchk_param *par)
 	if (info->flags & ~XT_NFLOG_MASK)
 		return -EINVAL;
 	if (info->prefix[sizeof(info->prefix) - 1] != '\0')
+		return -EINVAL;
+	if (info->layer > 5)
 		return -EINVAL;
 	return 0;
 }
