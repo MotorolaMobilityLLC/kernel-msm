@@ -396,6 +396,7 @@ struct diagchar_dev {
 	unsigned char *apps_dci_buf;
 	int dci_state;
 	struct workqueue_struct *diag_dci_wq;
+	struct mutex cmd_reg_mutex;
 	/* Sizes that reflect memory pool sizes */
 	unsigned int itemsize;
 	unsigned int poolsize;

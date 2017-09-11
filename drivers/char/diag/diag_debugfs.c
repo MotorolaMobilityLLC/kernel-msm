@@ -567,15 +567,18 @@ static ssize_t diag_dbgfs_read_table(struct file *file, char __user *ubuf,
 	unsigned int buf_size;
 	buf_size = (DEBUG_BUF_SIZE < count) ? DEBUG_BUF_SIZE : count;
 
+	mutex_lock(&driver->cmd_reg_mutex);
 	if (diag_dbgfs_table_index >= diag_max_reg) {
 		/* Done. Reset to prepare for future requests */
 		diag_dbgfs_table_index = 0;
+		mutex_unlock(&driver->cmd_reg_mutex);
 		return 0;
 	}
 
 	buf = kzalloc(sizeof(char) * buf_size, GFP_KERNEL);
 	if (ZERO_OR_NULL_PTR(buf)) {
 		pr_err("diag: %s, Error allocating memory\n", __func__);
+		mutex_unlock(&driver->cmd_reg_mutex);
 		return -ENOMEM;
 	}
 	buf_size = ksize(buf);
@@ -617,6 +620,7 @@ static ssize_t diag_dbgfs_read_table(struct file *file, char __user *ubuf,
 			break;
 	}
 	diag_dbgfs_table_index = i+1;
+	mutex_unlock(&driver->cmd_reg_mutex);
 
 	*ppos = 0;
 	ret = simple_read_from_buffer(ubuf, count, ppos, buf, bytes_in_buffer);
