@@ -15,6 +15,7 @@ struct xt_nflog_info {
 	__u16	flags;
 	__u16	pad;
 	char		prefix[64];
+	__u16	layer;
 };
 
 #endif /* _XT_NFLOG_TARGET */
