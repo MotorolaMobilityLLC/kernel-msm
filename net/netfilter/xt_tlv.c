@@ -189,7 +189,7 @@ static bool process_tlv_data(const struct sk_buff *skb, int offset,
 		}
 	}
 
-	if (ret)
+	if (ret && info->notify)
 		tlv_notify(info->token);
 
 	return ret;
@@ -200,67 +200,22 @@ static bool parse_skb(const struct sk_buff *skb,
 {
 	bool ret = false;
 	int data_offset = 0;
-	struct iphdr *ip_header = NULL;
-	struct ipv6hdr *ipv6_header = NULL;
-	struct udphdr *udp_header = NULL;
-	struct tcphdr *tcp_header = NULL;
+	int trans_hdr_len = 0;
 
-	switch (par->family) {
-	case NFPROTO_IPV4:
-		ip_header = ip_hdr(skb);
-		if (!ip_header) {
-			pr_err("tlv ip_header null\n");
-			break;
-		}
+	if (skb->sk->sk_protocol == IPPROTO_TCP)
+		trans_hdr_len = tcp_hdr(skb)->doff << 2;
+	else if (skb->sk->sk_protocol == IPPROTO_UDP)
+		trans_hdr_len = sizeof(struct udphdr);
 
-		if (skb->sk->sk_protocol == IPPROTO_TCP) {
-			tcp_header = tcp_hdr(skb);
-			data_offset = ip_header->ihl * 4 +
-				      tcp_header->doff * 4;
-		} else if (skb->sk->sk_protocol == IPPROTO_UDP) {
-			udp_header = udp_hdr(skb);
-			data_offset += ip_header->ihl * 4 +
-				       udp_header->len * 4;
-		} else {
-			break;
-		}
-		ret = process_tlv_data(skb, data_offset, par);
-		break;
-	case NFPROTO_IPV6:
-		ipv6_header = ipv6_hdr(skb);
-		if (!ipv6_header) {
-			pr_err("tlv ipv6_header null\n");
-			break;
-		}
+	data_offset = skb_network_header_len(skb) + trans_hdr_len;
+	ret = process_tlv_data(skb, data_offset, par);
 
-		if (skb->sk->sk_protocol == IPPROTO_TCP) {
-			tcp_header = tcp_hdr(skb);
-			data_offset += sizeof(*ipv6_header) +
-				       tcp_header->doff * 4;
-		} else if (skb->sk->sk_protocol == IPPROTO_UDP) {
-			udp_header = udp_hdr(skb);
-			data_offset += sizeof(*ipv6_header) +
-				       udp_header->len * 4;
-		} else {
-			break;
-		}
-		ret = process_tlv_data(skb, data_offset, par);
-		break;
-	default:
-		break;
-	}
 	return ret;
 }
 
 static bool tlv_mt(const struct sk_buff *skb, struct xt_action_param *par)
 {
 	if (!par || !par->matchinfo)
-		return false;
-
-	if (par->hooknum != NF_INET_LOCAL_IN)
-		return false;
-
-	if (!par->in)
 		return false;
 
 	if (!skb || !skb->sk || !skb->sk->sk_socket || skb->len <= 0)
