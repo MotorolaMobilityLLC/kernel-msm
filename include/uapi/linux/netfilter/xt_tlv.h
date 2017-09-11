@@ -15,6 +15,8 @@ enum {
 
 struct xt_tlv_mtinfo {
 	u32 token;
+	/* whether sending notification to userspace */
+	u32 notify;
 	/* it's the all key data length of the red packet */
 	u16 data_len;
 	/* the number of the entry */
