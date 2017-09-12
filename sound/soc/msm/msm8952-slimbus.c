@@ -2111,6 +2111,7 @@ int msm_quin_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					SNDRV_PCM_HW_PARAM_RATE);
 	struct snd_interval *channels = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
+#ifdef CONFIG_SND_SOC_MODS_CODEC_SHIM
 	bool albus_audio = of_property_read_bool(rtd->card->dev->of_node,
 					    "qcom,albus-audio");
 
@@ -2123,6 +2124,11 @@ int msm_quin_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					msm_quin_mi2s_bit_format);
 	} else
 		return msm_be_hw_params_fixup(rtd, params);
+#else
+	pr_debug("%s()\n", __func__);
+	rate->min = rate->max = 48000;
+	channels->min = channels->max = 2;
+#endif
 
 	return 0;
 }
