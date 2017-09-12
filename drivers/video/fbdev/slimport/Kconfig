@@ -1,7 +1,15 @@
-source "drivers/video/fbdev/slimport/anx7816/Kconfig
+source "drivers/video/fbdev/slimport/anx7816/Kconfig"
+source "drivers/video/fbdev/slimport/anx7805/Kconfig"
 
 config SLIMPORT_COMMON
 	tristate "Analogix Slimport transmitter ANX support"
 	help
 	  Slimport Transmitter is a video transmitter chip
 	  over micro-USB connector for smartphone device
+
+config SLIMPORT_MOD_DISPLAY
+	select MOD_DISPLAY
+	bool "Slimport mod display"
+	default n
+	---help---
+	  Slimport support for mod display framework
