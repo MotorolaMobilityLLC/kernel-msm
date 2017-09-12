@@ -19,6 +19,16 @@
 
 
 
+	tps61280_en_default: tps61280_en_default {
+		mux {
+			pins = "gpio109";
+		};
+		config {
+			pins = "gpio109";
+			drive_strength = <16>;
+			output-high;
+		};
+	};
 
 	nfc_irq_default: nfc_irq_default {
 		config {
