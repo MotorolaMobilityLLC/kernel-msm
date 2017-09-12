@@ -24,9 +24,6 @@
 #include <linux/delay.h>
 #include <linux/regmap.h>
 #include <linux/platform_device.h>
-#include <linux/of.h>
-#include <linux/of_gpio.h>
-#include <linux/gpio.h>
 
 #define TPS61280_REVISION	0x00
 #define TPS61280_CONFIG		0x01
@@ -96,7 +93,6 @@ struct tps61280_platform_data {
 	int vout_floor;
 	int vout_roof;
 	int ilim;
-	int mnGpioEN;
 };
 
 struct tps61280_chip {
@@ -187,19 +183,14 @@ static int tps61280_parse_dt_data(struct i2c_client *client,
 		return -EIO;
 	}
 
-	pdata->mnGpioEN = of_get_named_gpio(np, "ti,en-gpio", 0);
-	if (!gpio_is_valid(pdata->mnGpioEN)) {
-		dev_warn(&client->dev, "%s: no EN gpio provided\n", __func__);
-	}
-
 	return 0;
 }
+
 
 static int tps61280_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct tps61280_chip *tps61280;
-
 	int ret;
 	unsigned readout;
 
@@ -230,29 +221,11 @@ static int tps61280_probe(struct i2c_client *client,
 	tps61280->dev = &client->dev;
 	i2c_set_clientdata(client, tps61280);
 
-	if (gpio_is_valid(tps61280->pdata.mnGpioEN)) {
-		ret = gpio_request(tps61280->pdata.mnGpioEN,
-				 "tps61280" "EN");
-		if (ret < 0) {
-			dev_err(tps61280->dev, "%s: GPIO %d request EN error\n",
-				__func__, tps61280->pdata.mnGpioEN);
-			return ret;
-		}
-
-		gpio_direction_output(tps61280->pdata.mnGpioEN, 1);
-		mdelay(10);
-	}
-
 	ret = regmap_read(tps61280->rmap, TPS61280_STATUS, &readout);
-	if (ret < 0) {
+	if (ret < 0)
 		dev_err(&client->dev, "STATUS read failed %d\n", ret);
-		gpio_direction_output(tps61280->pdata.mnGpioEN, 0);
-		return ret;
-	} else {
-		gpio_direction_output(tps61280->pdata.mnGpioEN, 0);
-		/*because modem does not ready,if enable set High,will happen power problem,if modem ready,will change enable pin*/
+	else
 		dev_info(&client->dev, "power on status %#x\n", readout);
-	}
 
 	ret = regmap_read(tps61280->rmap, TPS61280_REVISION, &readout);
 	if (ret < 0)
