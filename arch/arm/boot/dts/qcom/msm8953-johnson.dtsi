@@ -187,6 +187,17 @@
 				    <&tlmm 48 1>;   /* HUB_INT_N */
 			pinctrl-0 = <&hub_int_n_default>;
 		};
+
+		tps61280@75 {
+			compatible = "ti,tps61280";
+			status = "okay";
+			reg = <0x75>;
+			ti,config = <0x0D>;
+			ti,vout-floor = <0x0D>;
+			ti,vout-roof = <0x19>;
+			ti,ilim = <0x0F>;
+			ti,en = <&pm8953_l5>;
+		};
 	};
 
 	i2c_3: i2c@78b7000 { /* BLSP1 QUP3 */
