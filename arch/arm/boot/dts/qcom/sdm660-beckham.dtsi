@@ -260,6 +260,12 @@
 	qcom,oledb-default-voltage-mv = <7600>;
 };
 
+&mdss_dsi {
+	hw-config = "dual_dsi";
+
+	qcom,mdss-fb-map-prim = <&mdss_fb0>;
+	qcom,mdss-fb-map-sec = <&mdss_fb4>;
+};
 
 &mdss_dsi0 {
 	pinctrl-names = "mdss_default", "mdss_sleep";
@@ -274,6 +280,61 @@
 	oled_disp-supply = <&pm660a_oledb>;
 	qcom,platform-reset-gpio = <&tlmm 53 0>;
 	qcom,platform-te-gpio = <&tlmm 59 0>;
+
+	/delete-property/  qcom,mdss-fb-map;
+};
+
+&mdss_dsi1 {
+	status = "okay";
+	qcom,dsi-pref-prim-pan = <&mot_dba_panel>;
+	qcom,pluggable;
+	qcom,bridge-index = <0>;
+	apba_cdsi-supply = <&pm660_s5>;
+	qcom,msm_ext_disp = <&msm_ext_disp>;
+
+	/delete-property/  qcom,mdss-fb-map;
+};
+
+&mdss_dsi1_pll {
+	/delete-property/ qcom,dsi-pll-ssc-en;
+	/delete-property/ qcom,dsi-pll-ssc-mode;
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+
+	mot_dba_panel: qcom,mdss_dsi_mot_dba_panel{
+		#include "dsi-panel-mot-mod-fwvga-video-common.dtsi"
+	};
+
+	mdss_fb4: qcom,mdss_fb_secondary {
+		cell-index = <4>;
+		compatible = "qcom,mdss-fb";
+	};
+};
+
+&mot_dba_panel {
+	qcom,mdss-dsi-panel-name = "mipi_mot_dba_panel";
+	qcom,bridge-name = "mot_dba";
+
+	/* These power supplies are for DBA panel */
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "apba_cdsi";
+			qcom,supply-min-voltage = <1200000>;
+			qcom,supply-max-voltage = <1300000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <1>;
+		};
+	};
 };
 
 &mdss_dp_ctrl {
