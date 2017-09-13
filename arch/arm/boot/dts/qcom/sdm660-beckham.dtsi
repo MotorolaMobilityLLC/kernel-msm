@@ -74,6 +74,34 @@
 		pinctrl-0 = <&haptic_pwr_active>;
 		pinctrl-1 = <&haptic_pwr_sleep>;
 		};
+
+	analogix_anx7805@72 {
+		compatible = "analogix,anx7805";
+		status = "ok";
+		reg = <0x72>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <9 0>;  /*cbl-det-gpio is interrupt pin*/
+		analogix,reset-gpio = <&tlmm 56 0x00>;
+		analogix,irq-gpio = <&tlmm 45 0x00>;
+		analogix,p-dwn-gpio = <&tlmm 55 0x0>;
+		analogix,cbl-det-gpio = <&tlmm 44 0x0>;
+		analogix,i2c-pull-up = <1>;
+		vdd-1p0-supply = <&pm660_s5>;
+		avdd-3p3-supply = <&pm660_l18>;
+		avdd-1p8-supply = <&pm660_l13>;
+		analogix,vdd10-name = "vdd-1p0";
+		analogix,avdd33-name = "avdd-3p3";
+		analogix,vdd18-name = "avdd-1p8";
+
+		pinctrl-names = "anx_default", "anx_sleep";
+		pinctrl-0 = <&anx_rst_active
+				&anx_chip_pd_active &anx_cbl_det_active
+				&anx_irq_active>;
+		pinctrl-1 = <&anx_rst_suspend
+				&anx_chip_pd_suspend &anx_cbl_det_active
+				&anx_irq_active>;
+	};
+
 };
 
 &i2c_4 {
