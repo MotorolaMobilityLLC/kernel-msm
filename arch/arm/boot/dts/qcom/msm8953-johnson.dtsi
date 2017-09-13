@@ -667,8 +667,7 @@
 /* display boost and inverting boost regulators */
 &labibb {
 	status = "ok";
-	qpnp,qpnp-labibb-mode = "amoled";
-	qpnp,swire-control;
+	qpnp,qpnp-labibb-mode = "lcd";
 };
 
 &ibb_regulator {
@@ -717,17 +716,6 @@
 			compatible = "qcom,leds-atc";
 			linux,name = "charging";
 			qcom,ctrl-reg = <0x243>;
-		};
-	};
-
-	qcom,pmi8950@3 {
-		qcom,leds@d800 {
-			qcom,disp-type-amoled;
-			qcom,switch-freq-khz = <800>;
-			qcom,loop-ea-gm = <1>;
-			qcom,vref-psm-mv = <550>;
-			qcom,ovp-mv = <31000>;
-			qcom,enable-amoled-pulse-skipping;
 		};
 	};
 };
