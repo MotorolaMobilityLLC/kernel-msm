@@ -1,0 +1,37 @@
+/* Copyright (c) 2017, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+#include "msm8917-moto-fps-pinctrl.dtsi"
+&soc{
+	et320: et320{
+		compatible = "egistec,et320";
+		status = "ok";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <48 0x0>;
+		egistec,gpio_irq    = <&tlmm 48 0x1>;
+		egistec,gpio_rst    = <&tlmm 127 0x2>;
+		egistec,gpio_ldo1p8_en = <&tlmm 31 0x0>;
+		egistec,gpio_ldo3p3_en = <&tlmm 45 0x0>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 =
+		<&rst_active &int_active &ldo_en_active &ldo3_en_active>;
+		pinctrl-1 =
+		<&rst_suspend &int_suspend &ldo_en_suspend &ldo3_en_suspend>;
+	};
+
+	fp_id: fp_id {
+		status = "ok";
+		compatible = "fp_id,fp_id";
+		interrupt-parent = <&tlmm>;
+		fp,gpio-id = <&tlmm 25 0x0>;
+	};
+};
