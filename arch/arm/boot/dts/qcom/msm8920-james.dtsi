@@ -1,0 +1,43 @@
+/* Copyright (c) 2017, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8920-moto-common.dtsi"
+#include "msm8917-james-common.dtsi"
+
+/ {
+	model = "james";
+	compatible = "qcom,msm8920-james", "qcom,msm8920-moto",
+			"qcom,msm8920";
+
+};
+
+&et320 {
+	egistec,gpio_ldo1p8_en = <&tlmm 124 0x0>;
+};
+
+&ldo_en_active {
+	mux {
+		pins = "gpio124";
+	};
+	config {
+		pins = "gpio124";
+	};
+};
+
+&ldo_en_suspend {
+	mux {
+		pins = "gpio124";
+	};
+	config {
+		pins = "gpio124";
+	};
+};
