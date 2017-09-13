@@ -140,6 +140,39 @@
 		qcom,clock-rates = <24000000 0>;
 	};
 
+	/* S5K4H7 eeprom */
+	eeprom2: qcom,eeprom@2 {
+		cell-index = <2>;
+		compatible = "qcom,eeprom";
+		reg = <0x2>;
+		cam_vdig-supply = <&front_vdig>;
+		qcom,cam-vreg-name = "cam_vdig";
+		qcom,cam-vreg-min-voltage = <1200000>;
+		qcom,cam-vreg-max-voltage = <1200000>;
+		qcom,cam-vreg-op-mode = <80000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_default
+				&cam_sensor_front_default>;
+		pinctrl-1 = <&cam_sensor_mclk2_sleep
+				&cam_sensor_front_sleep>;
+		gpios = <&tlmm 28 0>,
+			<&tlmm 40 0>,
+			<&pm8953_gpios 5 0x00>;
+		qcom,gpio-standby = <1>;
+		qcom,gpio-vio = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+			"CAM_STANDBY2",
+			"CAM_VIO2";
+		qcom,cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_gcc clk_mclk2_clk_src>,
+				<&clock_gcc clk_gcc_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
 	/* S5K3L8 BEAR */
 	qcom,camera@0 {
 		cell-index = <0>;
@@ -235,7 +268,7 @@
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <270>;
-		/*qcom,eeprom-src = <&eeprom2>;*/
+		qcom,eeprom-src = <&eeprom2>;
 		qcom,led-flash-src = <&led_flash1>;
 		cam_vdig-supply = <&front_vdig>;
 		qcom,cam-vreg-name = "cam_vdig";
