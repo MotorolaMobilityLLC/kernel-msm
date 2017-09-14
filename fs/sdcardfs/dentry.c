@@ -20,7 +20,7 @@
 
 #include "sdcardfs.h"
 #include "linux/ctype.h"
-#ifdef CONFIG_SDCARD_FS_DIR_FIRSTWRITER
+#ifdef CONFIG_SDCARD_FS_DIR_WRITER
 #include <linux/xattr.h>
 #endif
 
@@ -188,16 +188,16 @@ static void sdcardfs_canonical_path(const struct path *path,
 	sdcardfs_get_real_lower(path->dentry, actual_path);
 }
 
-#ifdef CONFIG_SDCARD_FS_DIR_FIRSTWRITER
-void sdcardfs_update_xattr_firstwriter(struct dentry *lower_dentry,
+#ifdef CONFIG_SDCARD_FS_DIR_WRITER
+void sdcardfs_update_xattr_dirwriter(struct dentry *lower_dentry,
 	uid_t writer_uid)
 {
+	static char xattr_val[256];
 	struct dentry *dentry, *parent;
-	char xattr_val[64], app_name[64];
 	const char *dir_name[2];
 	int xlen, depth;
-	const char *xattr_feat_name = "user.firstwriter";
-	const char *xattr_name = "user.firstwriter.name";
+	const char *xattr_feat_name = "user.dwriter";
+	const char *xattr_name = "user.dwriter.name";
 	struct dentry *xdentry = NULL, *child = NULL;
 	appid_t app_id = uid_is_app(writer_uid) ?
 		writer_uid % AID_USER_OFFSET : 0;
@@ -237,23 +237,28 @@ void sdcardfs_update_xattr_firstwriter(struct dentry *lower_dentry,
 		return;
 
 	dget(xdentry);
-	/* set firstwriter once if detecting xattr that doesn't exist */
-	if (vfs_getxattr(xdentry, xattr_name,
-		(void *)xattr_val, sizeof(xattr_val)) > 0)
+	memset(xattr_val, 0, sizeof(xattr_val));
+	vfs_getxattr(xdentry, xattr_name,
+		(void *)xattr_val, sizeof(xattr_val));
+	xattr_val[sizeof(xattr_val) - 1] = 0;
+	if (!strncmp(xattr_val, "overrun;", sizeof(xattr_val)))
 		goto out_unlock;
+	xlen = add_app_name_to_list(app_id, xattr_val,
+		sizeof(xattr_val));
+	if (xlen == 0)
+		goto out_unlock;
+	else if (xlen < 0)
+		snprintf(xattr_val, sizeof(xattr_val), "%s", "overrun;");
 
-	if (get_app_name(app_id, app_name, sizeof(app_name)))
-		snprintf(app_name, sizeof(app_name), "%d", app_id);
-
-	if (vfs_setxattr(xdentry, xattr_name, app_name,
-		strlen(app_name), 0)) {
+	if (vfs_setxattr(xdentry, xattr_name, xattr_val,
+		strlen(xattr_val), 0)) {
 		pr_err("sdcardfs: failed to set %lu %s=%s\n",
-			d_inode(xdentry)->i_ino, xattr_name, app_name);
+			d_inode(xdentry)->i_ino, xattr_name, xattr_val);
 		goto out_unlock;
 	}
 
 	pr_info("sdcardfs: set %lu %s=%s\n",
-		d_inode(xdentry)->i_ino, xattr_name, app_name);
+		d_inode(xdentry)->i_ino, xattr_name, xattr_val);
 out_unlock:
 	dput(xdentry);
 }
