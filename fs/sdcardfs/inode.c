@@ -231,7 +231,7 @@ static int sdcardfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode
 	struct fs_struct *copied_fs;
 	struct qstr q_obb = QSTR_LITERAL("obb");
 	struct qstr q_data = QSTR_LITERAL("data");
-#ifdef CONFIG_SDCARD_FS_DIR_FIRSTWRITER
+#ifdef CONFIG_SDCARD_FS_DIR_WRITER
 	uid_t writer_uid = current_fsuid().val;
 #endif
 
@@ -344,9 +344,9 @@ static int sdcardfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode
 			goto out;
 		}
 	}
-#ifdef CONFIG_SDCARD_FS_DIR_FIRSTWRITER
+#ifdef CONFIG_SDCARD_FS_DIR_WRITER
 	if (pd->perm < PERM_ANDROID)
-		sdcardfs_update_xattr_firstwriter(lower_dentry, writer_uid);
+		sdcardfs_update_xattr_dirwriter(lower_dentry, writer_uid);
 #endif
 out:
 	task_lock(current);
