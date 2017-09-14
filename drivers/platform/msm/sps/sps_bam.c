@@ -825,6 +825,7 @@ int sps_bam_pipe_connect(struct sps_pipe *bam_pipe,
 	void *desc_buf = NULL;
 	u32 pipe_index;
 	int result;
+	unsigned long flags = 0;
 
 	/* Clear the client pipe state and hw init struct */
 	pipe_clear(bam_pipe);
@@ -1060,6 +1061,7 @@ int sps_bam_pipe_connect(struct sps_pipe *bam_pipe,
 	}
 
 	/* Indicate initialization is complete */
+	spin_lock_irqsave(&dev->isr_lock, flags);
 	dev->pipes[pipe_index] = bam_pipe;
 	dev->pipe_active_mask |= 1UL << pipe_index;
 	list_add_tail(&bam_pipe->list, &dev->pipes_q);
@@ -1070,6 +1072,7 @@ int sps_bam_pipe_connect(struct sps_pipe *bam_pipe,
 		bam_pipe->pipe_index_mask, dev->pipe_active_mask);
 
 	bam_pipe->state |= BAM_STATE_INIT;
+	spin_unlock_irqrestore(&dev->isr_lock, flags);
 	result = 0;
 exit_err:
 	if (result) {
