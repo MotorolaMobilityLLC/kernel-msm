@@ -23,13 +23,13 @@ config SDCARD_FS_PARTIAL_RELATIME
 	  directory is enabled, all of sub-directories and files's relatime
 	  would be updated whatever their xattr is set.
 
-config SDCARD_FS_DIR_FIRSTWRITER
-	bool "sdcardfs directory firstwriter extended attribute support"
+config SDCARD_FS_DIR_WRITER
+	bool "sdcardfs directory writer extended attribute support"
 	depends on SDCARD_FS
 	default n
 	help
 	  Support setting writer APP name to extended attribute
-	  "user.firstwriter.name" while creating or writing the directory at
-	  first time. To enable this feature, the extended attribute
-	  "user.firstwriter" of parent directory should be set to specify
-	  sub-directory logging attribute.
+	  "user.dwriter.name" while creating or writing the directory.
+	  To enable this feature, the extended attribute "user.dwriter" of
+	  parent directory should be set to specify sub-directory logging
+	  attribute.
