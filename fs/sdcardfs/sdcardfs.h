@@ -179,8 +179,8 @@ extern int sdcardfs_interpose(struct dentry *dentry, struct super_block *sb,
 extern void sdcardfs_update_relatime_flag(struct file *lower_file,
 	struct inode *lower_inode, uid_t writer_uid);
 #endif
-#ifdef CONFIG_SDCARD_FS_DIR_FIRSTWRITER
-extern void sdcardfs_update_xattr_firstwriter(struct dentry *lower_dentry,
+#ifdef CONFIG_SDCARD_FS_DIR_WRITER
+extern void sdcardfs_update_xattr_dirwriter(struct dentry *lower_dentry,
 	uid_t writer_uid);
 #endif
 
@@ -500,7 +500,7 @@ static inline void sdcardfs_put_real_lower(const struct dentry *dent,
 		sdcardfs_put_lower_path(dent, real_lower);
 }
 
-#if defined(CONFIG_SDCARD_FS_DIR_FIRSTWRITER) || defined(CONFIG_SDCARD_FS_PARTIAL_RELATIME)
+#if defined(CONFIG_SDCARD_FS_DIR_WRITER) || defined(CONFIG_SDCARD_FS_PARTIAL_RELATIME)
 static inline int wildcard_path_match(char *wildcard_name,
 	const char **dir_name, int name_count) {
 	int i, len = strlen(wildcard_name), depth = 0;
@@ -539,8 +539,8 @@ extern appid_t get_appid(const char *app_name);
 extern appid_t get_ext_gid(const char *app_name);
 extern appid_t is_excluded(const char *app_name, userid_t userid);
 extern int check_caller_access_to_name(struct inode *parent_node, const struct qstr *name);
-#ifdef CONFIG_SDCARD_FS_DIR_FIRSTWRITER
-extern int get_app_name(appid_t appid, char *name, size_t len);
+#ifdef CONFIG_SDCARD_FS_DIR_WRITER
+extern int add_app_name_to_list(appid_t appid, char *list, int len);
 #endif
 extern int packagelist_init(void);
 extern void packagelist_exit(void);
