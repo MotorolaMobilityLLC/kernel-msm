@@ -24,7 +24,9 @@
 
 / {
 	aliases {
+		uart6 = &blsp2_uart3_hs;
 		i2c1 = &mods_i2c;
+		uart0 = &blsp1_uart3_hs;
 	};
 
 	chosen {
