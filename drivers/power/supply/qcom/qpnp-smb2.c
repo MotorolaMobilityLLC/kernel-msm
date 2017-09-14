@@ -924,7 +924,11 @@ static int smb2_dc_prop_is_writeable(struct power_supply *psy,
 
 static const struct power_supply_desc dc_psy_desc = {
 	.name = "dc",
+#ifdef QCOM_BASE
 	.type = POWER_SUPPLY_TYPE_WIRELESS,
+#else
+	.type = POWER_SUPPLY_TYPE_WIPOWER,
+#endif
 	.properties = smb2_dc_props,
 	.num_properties = ARRAY_SIZE(smb2_dc_props),
 	.get_property = smb2_dc_get_prop,
