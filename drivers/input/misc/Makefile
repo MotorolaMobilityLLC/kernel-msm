@@ -92,6 +92,7 @@ obj-$(CONFIG_SENSORS_FPC_1020)          += fpc1020_tee.o
 obj-$(CONFIG_SENSORS_FPC_PLATFORM_1020)	+= fpc1020_platform_tee.o
 obj-$(CONFIG_INPUT_EGISTEC_320)         += et320-int.o navi_input.o
 obj-$(CONFIG_INPUT_SX9310)		+= sx9310.o
+obj-$(CONFIG_INPUT_SX9310_TRIPLE)	+= sx9310_triple.o
 obj-$(CONFIG_EPL8802)  += epl8802.o
 obj-$(CONFIG_SENSORS_BMA25X)	+= bstclass.o
 obj-$(CONFIG_SENSORS_BMA25X)	+= bma25x.o
