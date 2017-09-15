@@ -206,3 +206,4 @@ zarlink	Zarlink Semiconductor
 bosch-sensortec»    Bosch Sensortec GmbH
 lontium Lontium Semiconductor
 mx	MagnaChip Semiconductor Ltd.
+semtech Semtech Corporation
