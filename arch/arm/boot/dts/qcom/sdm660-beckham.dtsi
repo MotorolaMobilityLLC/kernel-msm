@@ -69,6 +69,10 @@
 		ti,sample_time = /bits/ 8 <0x04>;
 		ti,nrst-gpio = <&pcal_pin 10 0>;
 		ti,nvctrl-gpio = <&tlmm 57 0>;
+		ti,npwr-gpio = <&tlmm 5 0>;
+		pinctrl-names = "haptic_default", "haptic_sleep";
+		pinctrl-0 = <&haptic_pwr_active>;
+		pinctrl-1 = <&haptic_pwr_sleep>;
 		};
 };
 
