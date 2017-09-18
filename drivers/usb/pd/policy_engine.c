@@ -3504,7 +3504,7 @@ int usbpd_select_pdo_match(struct usbpd *pd)
 
 	/* Check the Max Input Voltage from USBPSY */
 	power_supply_get_property(pd->usb_psy,
-				  POWER_SUPPLY_PROP_VOLTAGE_MAX, &val);
+				  POWER_SUPPLY_PROP_PD_VOLTAGE_MAX, &val);
 	uv_in = val.intval;
 	/* start with 5 V */
 	max_uv_diff = 5000000;
