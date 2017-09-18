@@ -2938,13 +2938,17 @@ static int msm_dai_q6_mi2s_startup(struct snd_pcm_substream *substream,
 	struct msm_dai_q6_mi2s_dai_data *mi2s_dai_data =
 		dev_get_drvdata(dai->dev);
 
-	rc = pinctrl_select_state(mi2s_dai_data->pinctrl_info.pinctrl,
-					mi2s_dai_data->pinctrl_info.active);
-	if (rc)
-		dev_err(dai->dev, "%s:setting pin state to active failed %d\n",
-			__func__, rc);
+	if (mi2s_dai_data->pinctrl_info.pinctrl != NULL) {
+		rc = pinctrl_select_state(mi2s_dai_data->pinctrl_info.pinctrl,
+						mi2s_dai_data->pinctrl_info.active);
+		if (rc)
+			dev_err(dai->dev, "%s:setting pin state to active failed %d\n",
+				__func__, rc);
 
-	return rc;
+		return rc;
+	} else
+		return 0;
+
 #else
 	return 0;
 #endif
@@ -3325,7 +3329,7 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 				mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) |
 			test_bit(STATUS_PORT_STARTED,
 				mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask));
-	if (!port_started) {
+	if (!port_started && (mi2s_dai_data->pinctrl_info.pinctrl != NULL)) {
 		rc = pinctrl_select_state(mi2s_dai_data->pinctrl_info.pinctrl,
 						mi2s_dai_data->pinctrl_info.disable);
 		if (rc != 0) {
@@ -3644,42 +3648,47 @@ static int msm_dai_q6_mi2s_platform_data_validation(
 	}
 
 #if defined(CONFIG_SND_SOC_MODS_CODEC_SHIM)
-	dai_data->pinctrl_info.pinctrl = devm_pinctrl_get(&pdev->dev);
-	if (IS_ERR(dai_data->pinctrl_info.pinctrl)) {
-		dev_err(&pdev->dev, "%s: Unable to get pinctrl handle\n",
-			__func__);
-		rc = PTR_ERR(dai_data->pinctrl_info.pinctrl);
-		goto rtn;
-	}
+#if defined(CONFIG_SND_QUIN_MI2S_FOR_MODS)
+	if (dai_driver->id == MSM_QUIN_MI2S) {
+#endif
+		dai_data->pinctrl_info.pinctrl = devm_pinctrl_get(&pdev->dev);
+		if (IS_ERR(dai_data->pinctrl_info.pinctrl)) {
+			dev_err(&pdev->dev, "%s: Unable to get pinctrl handle\n",
+				__func__);
+			rc = PTR_ERR(dai_data->pinctrl_info.pinctrl);
+			goto rtn;
+		}
 
-	dai_data->pinctrl_info.active = pinctrl_lookup_state(
-						dai_data->pinctrl_info.pinctrl,
-						"default");
-	if (IS_ERR(dai_data->pinctrl_info.active)) {
-		dev_err(&pdev->dev, "%s:could not get active pinstate\n",
-			__func__);
-		rc = PTR_ERR(dai_data->pinctrl_info.active);
-		goto rtn;
-	}
+		dai_data->pinctrl_info.active = pinctrl_lookup_state(
+							dai_data->pinctrl_info.pinctrl,
+							"default");
+		if (IS_ERR(dai_data->pinctrl_info.active)) {
+			dev_err(&pdev->dev, "%s:could not get active pinstate\n",
+				__func__);
+			rc = PTR_ERR(dai_data->pinctrl_info.active);
+			goto rtn;
+		}
 
-	dai_data->pinctrl_info.disable = pinctrl_lookup_state(
-						dai_data->pinctrl_info.pinctrl,
-						"idle");
-	if (IS_ERR(dai_data->pinctrl_info.disable)) {
-		dev_err(&pdev->dev, "%s:could not get disable pinstate\n",
-			__func__);
-		rc = PTR_ERR(dai_data->pinctrl_info.disable);
-		goto rtn;
-	}
+		dai_data->pinctrl_info.disable = pinctrl_lookup_state(
+							dai_data->pinctrl_info.pinctrl,
+							"idle");
+		if (IS_ERR(dai_data->pinctrl_info.disable)) {
+			dev_err(&pdev->dev, "%s:could not get disable pinstate\n",
+				__func__);
+			rc = PTR_ERR(dai_data->pinctrl_info.disable);
+			goto rtn;
+		}
 
-	rc = pinctrl_select_state(dai_data->pinctrl_info.pinctrl,
-					dai_data->pinctrl_info.disable);
-	if (rc != 0) {
-		dev_err(&pdev->dev, "%s: select sleep disable failed %d\n",
-			__func__, rc);
-		goto rtn;
-	}
-
+		rc = pinctrl_select_state(dai_data->pinctrl_info.pinctrl,
+							dai_data->pinctrl_info.disable);
+		if (rc != 0) {
+			dev_err(&pdev->dev, "%s: select sleep disable failed %d\n",
+				__func__, rc);
+			goto rtn;
+		}
+#if defined(CONFIG_SND_QUIN_MI2S_FOR_MODS)
+    }
+#endif
 	dev_dbg(&pdev->dev, "%s: playback sdline 0x%x capture sdline 0x%x\n",
 		__func__, dai_data->rx_dai.pdata_mi2s_lines,
 		dai_data->tx_dai.pdata_mi2s_lines);
@@ -3793,8 +3802,8 @@ static int msm_dai_q6_mi2s_dev_remove(struct platform_device *pdev)
 {
 #if defined(CONFIG_SND_SOC_MODS_CODEC_SHIM)
 	struct msm_dai_q6_mi2s_dai_data *dai_data = dev_get_drvdata(&pdev->dev);
-
-	devm_pinctrl_put(dai_data->pinctrl_info.pinctrl);
+	if (dai_data->pinctrl_info.pinctrl != NULL)
+		devm_pinctrl_put(dai_data->pinctrl_info.pinctrl);
 #endif
 	snd_soc_unregister_component(&pdev->dev);
 	return 0;
