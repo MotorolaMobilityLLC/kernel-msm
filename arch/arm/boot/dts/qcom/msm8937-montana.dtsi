@@ -420,6 +420,7 @@
 &pmi8950_fg {
 	qcom,ext-sense-type; /* External Sense Resistor */
 	qcom,thermal-coefficients =  /bits/ 16 <0xb785 0xb249 0x7135>;
+	qcom,low-batt-temp-comp;
 };
 
 &mot_batterydata {
