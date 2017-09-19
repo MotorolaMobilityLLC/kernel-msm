@@ -513,6 +513,7 @@ struct synaptics_rmi4_data {
 	int (*ready_state)(struct synaptics_rmi4_data *rmi4_data, bool standby);
 	int (*irq_enable)(struct synaptics_rmi4_data *rmi4_data, bool enable);
 	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data);
+	int (*get_status)(struct synaptics_rmi4_data *rmi4_data);
 	int number_irq;
 	int last_irq;
 	struct synaptics_rmi4_irq_info *irq_info;
@@ -632,6 +633,7 @@ void synaptics_rmi4_new_function(enum exp_fn fn_type, bool insert,
 		void (*func_remove)(struct synaptics_rmi4_data *rmi4_data),
 		void (*func_attn)(struct synaptics_rmi4_data *rmi4_data,
 				unsigned char intr_mask),
+		int (*func_status)(struct synaptics_rmi4_data *rmi4_data),
 		enum ic_modes mode);
 
 int synaptics_rmi4_scan_packet_reg_info(
