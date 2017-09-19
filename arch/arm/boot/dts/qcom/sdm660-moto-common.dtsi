@@ -376,6 +376,26 @@
 		pinctrl-0 = <&blsp_uart1_sleep>;
 		pinctrl-1 = <&blsp_uart1_active>;
 	};
+
+	modbus_switch {
+		status = "okay";
+		compatible = "mmi,mods-switch";
+
+		gpios = <&pm660_gpios 12 0>, /*MOD_MPHY_EN, output hgih*/
+			<&pm660_gpios 13 0>,  /* MOD_MPHY_SEL0, output high */
+			<&pm660_gpios 11 0>;           /* MOD_MPHY_SEL1, output high */
+		mmi,mods-switch-gpio-labels = "MOD_MPHY_EN",
+						"MOD_MPHY_SEL0",
+						"MOD_MPHY_SEL1";
+		mmi,mods-switch-seq = <1 0 0>,
+					<1 0 1>,
+					<1 1 1>;
+		/*The string need to be as the same as protocol_list in mods_switch.c*/
+		/*The array sequence refers to the sequence of "mmi,mods-switch-seq"*/
+		mmi,mods-switch-seq-labels = "usbss",
+						"mphy",
+						"i2s";
+	};
 };
 
 &mods_i2c { /* BLSP2 QUP4 */
