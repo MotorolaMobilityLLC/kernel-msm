@@ -419,7 +419,7 @@ static int __init synaptics_control_access_block_module_init(void)
 	synaptics_rmi4_new_function(RMI_CTRL_ACCESS_BLK, true,
 			synaptics_control_access_block_init,
 			synaptics_control_access_block_remove,
-			NULL, IC_MODE_ANY);
+			NULL, NULL, IC_MODE_ANY);
 	return 0;
 }
 
@@ -429,7 +429,7 @@ static void __exit synaptics_control_access_block_module_exit(void)
 	synaptics_rmi4_new_function(RMI_CTRL_ACCESS_BLK, false,
 			synaptics_control_access_block_init,
 			synaptics_control_access_block_remove,
-			NULL, IC_MODE_ANY);
+			NULL, NULL, IC_MODE_ANY);
 	wait_for_completion(&remove_complete);
 	return;
 }
