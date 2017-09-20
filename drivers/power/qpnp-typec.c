@@ -51,7 +51,7 @@
 
 #define TYPEC_SW_CTL_REG(base)		(base + 0x52)
 
-#define TYPEC_STD_MA			900
+#define TYPEC_STD_MA			500
 #define TYPEC_MED_MA			1500
 #define TYPEC_HIGH_MA			3000
 
@@ -205,7 +205,21 @@ out:
 	return rc;
 }
 
+void set_usb_host_enable(bool blnEnable)
+{
+	struct power_supply *usb_psy = power_supply_get_by_name("usb");
 
+	pr_debug("%s -  %d\n", __func__, blnEnable);
+	if (usb_psy) {
+		/* Take ownership of the USB lines first */
+		power_supply_set_usb_owner(usb_psy,
+			(blnEnable == true ? PSY_USB_OWNER_USBC :
+						PSY_USB_OWNER_NONE));
+		power_supply_set_usb_otg(usb_psy,
+			(blnEnable == true ? POWER_SUPPLY_USB_OTG_ENABLE :
+					POWER_SUPPLY_USB_OTG_DISABLE));
+	}
+}
 
 static int set_property_on_battery(struct qpnp_typec_chip *chip,
 				enum power_supply_property prop)
@@ -224,10 +238,12 @@ static int set_property_on_battery(struct qpnp_typec_chip *chip,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CURRENT_CAPABILITY:
 		ret.intval = chip->current_ma;
+#ifdef QCOM_BASE
 		rc = chip->batt_psy->set_property(chip->batt_psy,
 			POWER_SUPPLY_PROP_CURRENT_CAPABILITY, &ret);
 		if (rc)
 			pr_err("failed to set current max rc=%d\n", rc);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_TYPEC_MODE:
 		/*
@@ -236,15 +252,24 @@ static int set_property_on_battery(struct qpnp_typec_chip *chip,
 		 * charger driver.
 		 */
 		ret.intval = chip->typec_state;
+#ifdef QCOM_BASE
 		rc = chip->batt_psy->set_property(chip->batt_psy,
 				POWER_SUPPLY_PROP_TYPEC_MODE, &ret);
 		if (rc)
 			pr_err("failed to set typec mode rc=%d\n", rc);
+#endif
+		if (chip->typec_state == POWER_SUPPLY_TYPE_DFP)
+			set_usb_host_enable(true);
+		else
+			set_usb_host_enable(false);
+
 		break;
 	default:
 		pr_err("invalid request\n");
 		rc = -EINVAL;
 	}
+
+	power_supply_changed(&chip->type_c_psy);
 
 	return rc;
 }
@@ -676,6 +701,10 @@ static int qpnp_typec_request_irqs(struct qpnp_typec_chip *chip)
 static enum power_supply_property qpnp_typec_properties[] = {
 	POWER_SUPPLY_PROP_CURRENT_CAPABILITY,
 	POWER_SUPPLY_PROP_TYPE,
+	POWER_SUPPLY_PROP_DISABLE_USB,
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
+	POWER_SUPPLY_PROP_AUTHENTIC,
 };
 
 static int qpnp_typec_get_property(struct power_supply *psy,
@@ -691,6 +720,22 @@ static int qpnp_typec_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_CAPABILITY:
 		val->intval = chip->current_ma;
+		break;
+	case POWER_SUPPLY_PROP_DISABLE_USB:
+		val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_ONLINE:
+		if ((chip->typec_state == POWER_SUPPLY_TYPE_UFP) ||
+			(chip->typec_state == POWER_SUPPLY_TYPE_DFP))
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		val->intval = chip->current_ma * 1000;
+		break;
+	case POWER_SUPPLY_PROP_AUTHENTIC:
+		val->intval = 0;
 		break;
 	default:
 		return -EINVAL;
@@ -1010,7 +1055,7 @@ static int __init qpnp_typec_init(void)
 {
 	return spmi_driver_register(&qpnp_typec_driver);
 }
-module_init(qpnp_typec_init);
+late_initcall(qpnp_typec_init);
 
 static void __exit qpnp_typec_exit(void)
 {
