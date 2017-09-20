@@ -1317,6 +1317,22 @@ static const struct reg_sequence cs35l36_revb0_errata_patch[] = {
 	{ CS35L36_TESTKEY_CTRL, CS35L36_TEST_LOCK2 },
 };
 
+static void cs35l36_aou_low_power(struct cs35l36_private *cs35l36)
+{
+	/* Reset PAC */
+	regmap_write(cs35l36->regmap, CS35L36_PAC_CTL1, CS35L36_PAC_RESET_MASK);
+	usleep_range(200, 250);
+	regmap_write(cs35l36->regmap, CS35L36_PAC_CTL1, 0);
+
+	regmap_write(cs35l36->regmap, CS35L36_PAC_CTL3, CS35L36_PAC_MEM_ACCESS);
+
+	regmap_bulk_write(cs35l36->regmap, CS35L36_PAC_PMEM_WORD0,
+			cs35l36_aou_low_power_patch,
+			ARRAY_SIZE(cs35l36_aou_low_power_patch));
+
+	regmap_write(cs35l36->regmap, CS35L36_PAC_CTL3, 0);
+}
+
 static int cs35l36_i2c_probe(struct i2c_client *i2c_client,
 			      const struct i2c_device_id *id)
 {
@@ -1462,6 +1478,7 @@ static int cs35l36_i2c_probe(struct i2c_client *i2c_client,
 					ret);
 			goto err;
 		}
+		cs35l36_aou_low_power(cs35l36);
 		break;
 	}
 
