@@ -25,6 +25,7 @@
 #include <linux/delay.h>
 #include <linux/regmap.h>
 #include <linux/math64.h>
+#include <linux/ktime.h>
 
 #include <sound/soc.h>
 
@@ -110,6 +111,10 @@ struct madera_extcon_info {
 	bool have_mic;
 	bool detecting;
 	int jack_flips;
+
+	bool jd2_is_off;
+	ktime_t jd2_ticks;
+	int jd2_counter;
 
 	const struct madera_jd_state *state;
 	const struct madera_jd_state *old_state;
@@ -1865,7 +1870,7 @@ static int madera_jack_present(struct madera_extcon_info *info,
 
 	dev_dbg(madera->dev, "IRQ1_RAW_STATUS_7=0x%x\n", val);
 
-	if (info->pdata->jd_check_jd2) {
+	if (info->pdata->jd_check_jd2 && !info->jd2_is_off) {
 		if (info->pdata->jd_invert) {
 			val &=
 			(MADERA_JD1_FALL_STS1_MASK|MADERA_JD2_FALL_STS1_MASK);
@@ -2181,20 +2186,62 @@ static void madera_jd2detect_work(struct work_struct *work)
 	struct madera_extcon_info *info =
 		container_of(work, struct madera_extcon_info,
 			     jd2detect_work.work);
+	/*
+	 * Enable JD2 IRQ to make HW update JD2 state bit before
+	 * the detection routine checks it. Save the time to use it for
+	 * ignoring IRQs trigerred right after IRQ enable.
+	 */
 
-	madera_jackdet(0, (void *)info);
+	info->jd2_ticks = ktime_get();
+	regmap_update_bits(info->madera->regmap,
+			   MADERA_JACK_DETECT_ANALOGUE,
+			   MADERA_JD2_ENA, MADERA_JD2_ENA);
+
+	msleep(20);
+	info->jd2_is_off = false;
+	if (info->jd2_counter < 5) {
+		madera_jackdet(0, (void *)info);
+	} else {
+	/* Disable JD2 IRQ and schedule 2 sec delayed detection work */
+		regmap_update_bits(info->madera->regmap,
+				MADERA_JACK_DETECT_ANALOGUE,
+				MADERA_JD2_ENA, 0);
+		info->jd2_is_off = true;
+		schedule_delayed_work(&info->jd2detect_work,
+					msecs_to_jiffies(2000));
+	}
+	info->jd2_counter = 0;
+	info->jd2_ticks = ktime_set(0, 0);
 }
 
 static irqreturn_t madera_jd2detect(int irq, void *data)
 {
 	struct madera_extcon_info *info = data;
 	struct madera *madera = info->madera;
+	ktime_t ticks = ktime_get();
 
-	dev_dbg(madera->dev, "JD2 IRQ, last state %d\n", info->last_jackdet);
+	dev_dbg(madera->dev, "JD2 IRQ, state %d, ticks: %u ctr %d\n",
+			info->last_jackdet, (unsigned int)ktime_to_ms(ticks),
+			info->jd2_counter);
 
+	/* Ignore IRQs caused by JD2 enabling in work */
+	if (info->jd2_is_off &&
+	    (ktime_to_ms(ktime_sub(ticks, info->jd2_ticks)) < 20) &&
+		(info->jd2_counter < 5)) {
+		info->jd2_counter++;
+		goto out;
+		}
+
+	/* Disable JD2 IRQ and schedule 2 sec delayed detection work */
+	regmap_update_bits(info->madera->regmap,
+						MADERA_JACK_DETECT_ANALOGUE,
+						MADERA_JD2_ENA, 0);
+
+	info->jd2_is_off = true;
 	schedule_delayed_work(&info->jd2detect_work,
 					      msecs_to_jiffies(2000));
-
+out:
+	info->jd2_ticks = ticks;
 	return IRQ_HANDLED;
 }
 
