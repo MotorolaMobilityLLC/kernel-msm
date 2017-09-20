@@ -32,7 +32,7 @@ TRACE_EVENT(net_dev_xmit,
 		__assign_str(name, dev->name);
 	),
 
-	TP_printk("dev=%s skbaddr=%p len=%u rc=%d",
+	TP_printk("dev=%s skbaddr=%pK len=%u rc=%d",
 		__get_str(name), __entry->skbaddr, __entry->len, __entry->rc)
 );
 
@@ -54,7 +54,7 @@ DECLARE_EVENT_CLASS(net_dev_template,
 		__assign_str(name, skb->dev->name);
 	),
 
-	TP_printk("dev=%s skbaddr=%p len=%u",
+	TP_printk("dev=%s skbaddr=%pK len=%u",
 		__get_str(name), __entry->skbaddr, __entry->len)
 )
 

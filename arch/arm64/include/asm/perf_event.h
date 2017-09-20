@@ -41,4 +41,11 @@ static inline void arm64_pmu_unlock(raw_spinlock_t *lock, unsigned long *flags)
 { }
 #endif
 
+#define perf_arch_fetch_caller_regs(regs, __ip) { \
+	(regs)->pc = (__ip);    \
+	(regs)->regs[29] = (unsigned long) __builtin_frame_address(0); \
+	(regs)->sp = current_stack_pointer; \
+	(regs)->pstate = PSR_MODE_EL1h;	\
+}
+
 #endif
