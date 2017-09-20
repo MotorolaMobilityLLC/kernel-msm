@@ -131,4 +131,21 @@
 			};
 		};
 	};
+
+	/delete-node/ sx9310;
+	sx9310:sx9310 {
+		sx9310_int_default: default {
+			mux {
+				pins = "gpio59";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio59";
+				drive-strength = <2>;
+				bias-pull-up;
+				input-enable;
+			};
+		};
+	};
 };
