@@ -413,6 +413,6 @@ bool cs35l36_readable_reg(struct device *dev, unsigned int reg);
 bool cs35l36_volatile_reg(struct device *dev, unsigned int reg);
 
 extern struct reg_default cs35l36_reg[CS35L36_MAX_CACHE_REG];
-extern const int cs35l36_a0_pac_patch[CS35L36_PAC_PROG_MEM];
+extern const unsigned int cs35l36_aou_low_power_patch[CS35L36_PAC_PROG_MEM];
 
 #endif
