@@ -19,3 +19,11 @@
 / {
 	qcom,board-id = <0x42 0x82B0>;
 };
+
+&cs47l35 {
+	cirrus,accdet {
+		acc@1 {
+			cirrus,disable-jd2-on-lineout;
+		};
+	};
+};
