@@ -270,7 +270,6 @@
 	qcom,hvdcp-force-5v;
 	qcom,typec-debounce;
 	qcom,usbpd-phandle = <&pm660_pdphy>;
-	qcom,aicl-threshold-mv = <4600>;
 	qcom,source-current-ma = <900>;
 };
 
