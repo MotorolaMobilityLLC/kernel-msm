@@ -11,6 +11,7 @@
  */
 #include "msm8917-jeter-pinctrl.dtsi"
 #include "dsi-panel-mot-tianma-570-hd-video.dtsi"
+#include "dsi-panel-mot-djn-570-hd-video.dtsi"
 
 / {
 	aliases {
@@ -114,6 +115,7 @@
 
 		config {
 			pins = "gpio60";
+			output-high;
 		};
 	};
 };
