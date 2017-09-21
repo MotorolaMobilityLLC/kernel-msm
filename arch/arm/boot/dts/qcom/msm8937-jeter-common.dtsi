@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 #include "msm8917-jeter-pinctrl.dtsi"
-#include "dsi-panel-mot-tianma-499-720p-video.dtsi"
+#include "dsi-panel-mot-tianma-570-hd-video.dtsi"
 
 / {
 	aliases {
@@ -138,7 +138,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tianma_499_720p_vid_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_tianma_570_hd_vid_v0>;
 	vddio_disp-supply = <&pm8937_l6>;
 	vsp_disp-supply = <&lab_regulator>;
 	vsn_disp-supply = <&ibb_regulator>;
