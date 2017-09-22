@@ -274,7 +274,7 @@
 };
 &mot_batterydata {
 	df-serialnum = "SNN5989A";
-	#include "batterydata-he50-atl.dtsi"
+	#include "batterydata-he50-atl-pmi8937.dtsi"
 };
 
 &pmi_haptic {
