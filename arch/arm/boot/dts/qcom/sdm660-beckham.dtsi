@@ -49,6 +49,17 @@
 		pcal,reset-gpio = <&tlmm 34 1>;
 		};
 
+	pcal_pin_2:gpio@21 {
+		compatible = "pcal,pcal-pin";
+		status = "ok";
+		reg = <0x21>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		#address-cells = <1>;
+		pcal,pin-num = <16>;
+		pcal,reset-gpio = <&tlmm 34 1>;
+		};
+
 	drv2624@5a {
 		status = "ok";
 		compatible = "ti,drv2624";
