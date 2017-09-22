@@ -11,6 +11,33 @@
  */
 
 &tlmm{
+
+	nfc_irq_default: nfc_irq_default {
+		config {
+			pins = "gpio17";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	nfc_ven_default: nfc_ven_default {
+		config {
+			pins = "gpio16";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
+	nfc_firm_default: nfc_firm_default {
+		config {
+			pins = "gpio130";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
 	i2c_3 {
 		i2c_3_active: i2c_3_active {
 			/* active state */
