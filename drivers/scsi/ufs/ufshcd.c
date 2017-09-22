@@ -6961,12 +6961,13 @@ static int ufshcd_host_reset_and_restore(struct ufs_hba *hba)
 	ufshcd_set_clk_freq(hba, true);
 
 	err = ufshcd_hba_enable(hba);
+	pr_info("%s: ufshcd_hba_enable() = %d\n", __func__, err);
 	if (err)
 		goto out;
 
 	/* Establish the link again and restore the device */
 	err = ufshcd_probe_hba(hba);
-
+	pr_info("%s: ufshcd_probe_hba() = %d\n", __func__, err);
 	if (!err && (hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL)) {
 		err = -EIO;
 		goto out;
@@ -7510,12 +7511,18 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 	ufshcd_set_link_active(hba);
 
 	ret = ufshcd_verify_dev_init(hba);
-	if (ret)
+	if (ret) {
+		pr_err("%s: ufshcd_verify_dev_init failed = %d\n",
+			__func__, ret);
 		goto out;
+	}
 
 	ret = ufshcd_complete_dev_init(hba);
-	if (ret)
+	if (ret) {
+		pr_err("%s: ufshcd_complete_dev_init failed = %d\n",
+			__func__, ret);
 		goto out;
+	}
 
 	ufs_advertise_fixup_device(hba);
 	ufshcd_tune_unipro_params(hba);
@@ -7523,8 +7530,11 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 	ufshcd_apply_pm_quirks(hba);
 	ret = ufshcd_set_vccq_rail_unused(hba,
 		(hba->dev_quirks & UFS_DEVICE_NO_VCCQ) ? true : false);
-	if (ret)
+	if (ret) {
+		pr_err("%s: ufshcd_set_vccq_rail_unused failed = %d\n",
+			__func__, ret);
 		goto out;
+	}
 
 	/* UFS device is also active now */
 	ufshcd_set_ufs_dev_active(hba);
@@ -7563,8 +7573,10 @@ static int ufshcd_probe_hba(struct ufs_hba *hba)
 			ufshcd_init_icc_levels(hba);
 
 		/* Add required well known logical units to scsi mid layer */
-		if (ufshcd_scsi_add_wlus(hba))
+		if (ufshcd_scsi_add_wlus(hba)) {
+			pr_err("%s: ufshcd_scsi_add_wlus failed\n", __func__);
 			goto out;
+		}
 
 		/* Initialize devfreq after UFS device is detected */
 		if (ufshcd_is_clkscaling_supported(hba)) {
