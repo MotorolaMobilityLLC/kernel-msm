@@ -17,7 +17,7 @@
 
 
 / {
-	qcom,board-id = <0x47 0x8100>;
+	qcom,board-id = <0x47 0xA200>;
 	compatible = "qcom,sdm450-johnson", "qcom,sdm450-moto",
 			"qcom,sdm450";
 	qcom,msm-id = <338 0x0>;
