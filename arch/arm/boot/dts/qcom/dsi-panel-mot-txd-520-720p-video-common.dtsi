@@ -14,13 +14,13 @@ qcom,mdss-pan-physical-width-dimension = <65>;
 qcom,mdss-pan-physical-height-dimension = <115>;
 
 qcom,mdss-dsi-panel-clockrate = <510589440>;
-qcom,mdss-dsi-h-front-porch = <114>;
-qcom,mdss-dsi-h-back-porch = <180>;
-qcom,mdss-dsi-h-pulse-width = <8>;
+qcom,mdss-dsi-h-front-porch = <128>;
+qcom,mdss-dsi-h-back-porch = <200>;
+qcom,mdss-dsi-h-pulse-width = <20>;
 qcom,mdss-dsi-h-sync-skew = <0>;
-qcom,mdss-dsi-v-back-porch = <18>;
-qcom,mdss-dsi-v-front-porch = <10>;
-qcom,mdss-dsi-v-pulse-width = <4>;
+qcom,mdss-dsi-v-back-porch = <20>;
+qcom,mdss-dsi-v-front-porch = <20>;
+qcom,mdss-dsi-v-pulse-width = <8>;
 qcom,mdss-dsi-h-left-border = <0>;
 qcom,mdss-dsi-h-right-border = <0>;
 qcom,mdss-dsi-v-top-border = <0>;
@@ -262,9 +262,9 @@ qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 
-qcom,mdss-dsi-panel-timings = [88 1c 14 00 44 46 18 20 19 03 04 00];
+qcom,mdss-dsi-panel-timings = [94 20 14 00 46 48 1a 24 18 03 04 00];
 qcom,mdss-dsi-t-clk-post = <0x04>;
-qcom,mdss-dsi-t-clk-pre = <0x1c>;
+qcom,mdss-dsi-t-clk-pre = <0x1d>;
 
 qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <4095>;
@@ -293,8 +293,8 @@ qcom,panel-supply-entries {
 	};
 	qcom,panel-supply-entry@1 {
 		qcom,supply-name = "vsp_disp";
-		qcom,supply-min-voltage = <4600000>;
-		qcom,supply-max-voltage = <6000000>;
+		qcom,supply-min-voltage = <5000000>;
+		qcom,supply-max-voltage = <5000000>;
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
@@ -304,8 +304,8 @@ qcom,panel-supply-entries {
 	};
 	qcom,panel-supply-entry@2 {
 		qcom,supply-name = "vsn_disp";
-		qcom,supply-min-voltage = <4600000>;
-		qcom,supply-max-voltage = <6000000>;
+		qcom,supply-min-voltage = <5000000>;
+		qcom,supply-max-voltage = <5000000>;
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
