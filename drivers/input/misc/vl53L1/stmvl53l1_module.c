@@ -3452,6 +3452,96 @@ exit_ipp_cleanup:
 	return rc;
 }
 
+/* Attribute: name (RO) */
+static ssize_t name_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, VL53L1_INPUT_DEVICE_NAME);
+}
+
+static struct device_attribute laser_name_attributes = __ATTR_RO(name);
+
+#define LASERDEV_MINOR_BASE 256
+#define LASERDEV_MINOR_MAX 32
+
+int stmvl53l1_sysfs_laser(struct stmvl53l1_data *data, bool create)
+{
+	int i, error = 0;
+	static struct class *laser_class;
+	static struct device *laser_class_dev;
+	static int minor;
+
+	if (data == NULL) {
+		vl53l1_errmsg("stmvl53l1 dev data is null!\n");
+		return -ENODEV;
+	}
+
+	if (create) {
+		minor = input_get_new_minor(data->sysfs_base, 1, false);
+		if (minor < 0)
+			minor = input_get_new_minor(LASERDEV_MINOR_BASE,
+					LASERDEV_MINOR_MAX, true);
+		vl53l1_info("assigned minor %d\n", minor);
+
+		laser_class = class_create(THIS_MODULE, "laser");
+		if (IS_ERR(laser_class)) {
+			error = PTR_ERR(laser_class);
+			laser_class = NULL;
+			return error;
+		}
+
+		laser_class_dev = device_create(laser_class, NULL,
+				MKDEV(INPUT_MAJOR, minor),
+				data, STMVL53L1_DRV_NAME);
+		if (IS_ERR(laser_class_dev)) {
+			error = PTR_ERR(laser_class_dev);
+			laser_class_dev = NULL;
+			return error;
+		}
+
+		for (i = 0; stmvl53l1_attributes[i] != NULL; ++i) {
+			error = sysfs_create_file(&laser_class_dev->kobj,
+						stmvl53l1_attributes[i]);
+			if (error)
+				break;
+		}
+
+		if (error)
+			goto device_destroy;
+
+		error = device_create_file(laser_class_dev,
+				&laser_name_attributes);
+		if (error)
+			goto device_destroy;
+	} else {
+		if (!laser_class || !laser_class_dev)
+			return -ENODEV;
+
+		device_remove_file(laser_class_dev,
+				&laser_name_attributes);
+		for (i = 0; stmvl53l1_attributes[i] != NULL; ++i)
+			sysfs_remove_file(&laser_class_dev->kobj,
+						stmvl53l1_attributes[i]);
+
+		device_unregister(laser_class_dev);
+		class_unregister(laser_class);
+	}
+
+	vl53l1_info("laser sysfs %s(0x%x) created\n",
+		STMVL53L1_DRV_NAME, data->sysfs_base);
+	return 0;
+
+device_destroy:
+	for (--i; i >= 0; --i)
+		sysfs_remove_file(&laser_class_dev->kobj,
+					stmvl53l1_attributes[i]);
+	device_destroy(laser_class, MKDEV(INPUT_MAJOR, minor));
+	laser_class_dev = NULL;
+	class_unregister(laser_class);
+	vl53l1_errmsg("error creating laser class\n");
+
+	return -ENODEV;
+}
 
 void stmvl53l1_cleanup(struct stmvl53l1_data *data)
 {
