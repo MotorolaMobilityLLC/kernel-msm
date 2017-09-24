@@ -517,6 +517,11 @@ static int stmvl53l1_probe(struct i2c_client *client,
 	rc = stmvl53l1_setup(vl53l1_data);
 	if (rc)
 		goto release_gpios;
+
+	vl53l1_data->sysfs_base = i2c_data->client->addr;
+	rc = stmvl53l1_sysfs_laser(vl53l1_data, true);
+	if (rc)
+		goto release_gpios;
 	vl53l1_dbgmsg("End\n");
 
 	kref_init(&i2c_data->ref);
@@ -540,6 +545,9 @@ static int stmvl53l1_remove(struct i2c_client *client)
 
 	vl53l1_dbgmsg("Enter\n");
 	mutex_lock(&data->work_mutex);
+
+	stmvl53l1_sysfs_laser(data, false);
+
 	/* main driver cleanup */
 	stmvl53l1_cleanup(data);
 
