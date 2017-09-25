@@ -1,0 +1,46 @@
+﻿Himax HX83102B series touch controller
+
+Required properties:
+
+ - compatible		: should be "himax,hxcommon"
+ - reg				: i2c slave address of the device, should be <0x48>
+ - interrupt-parent	: parent of interrupt
+ - interrupts		: Configuration of touch panel controller interrupt GPIO.
+ - himax,irq-gpio	: Interrupt gpio which is to provide interrupts to host, same as "interrupts" node.
+ - himax,rst-gpio	: Reset gpio to control the reset of chip.
+ - himax,display-coords 	: display resolution in pixels. A four tuple consisting of minX, minY, maxX and maxY.
+ - himax,panel-coords		：Panel coordinates for the chip in pixels. It is 
+				a four tuple consisting of min x, min y, max x and max y values.
+ 
+ Optional properties:
+
+ - vdd_ana-supply	: Power supply needed to power up the device, this is 
+				for fixed voltage external regulator.
+ - vcc_i2c-supply	: Power source required to power up i2c bus.
+				HX83102B series can provide 1.8V from internal
+				LDO, add this properties base on hardware
+				design.
+ - himax,force-update	: To specify force update is allowed.
+ - himax,fw-auto-update	: To specify fw-auto update is allowed.
+ - himax,button-map		: Button map of key codes. The number of key codes
+				depend on panel.
+ - report_type		: To specify protocol type is A or B
+				
+Example:
+
+himax-ts@9923000 {
+		compatible = "himax,hxcommon";
+		reg = <0x48>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <65 0x2>;
+		//vcc_i2c-supply = <&pm8937_l6>;
+		/* pins used by touchscreen */
+		himax,rst-gpio = <&tlmm 64 0x00>;
+		himax,irq-gpio = <&tlmm 65 0x00>;
+		himax,display-coords = <0 720 0 1440>;
+		himax,panel-coords = <0 720 0 1440>;
+		//himax,button-map = <158 102 139>;
+		//himax,fw-auto-update;
+		//himax,force-update;
+		report_type = <1>;
+	};
