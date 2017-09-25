@@ -211,8 +211,6 @@
 			focaltech,irq-gpio = <&tlmm 65 0x2008>;
 			focaltech,display-coords = <0 0 1080 2160>;
 			focaltech,panel-coords = <0 0 1080 2160>;
-			focaltech,x-flip;
-			focaltech,y-flip;
 			focaltech,i2c-pull-up;
 			focaltech,group-id = <1>;
 			focaltech,hard-reset-delay-ms = <20>;
