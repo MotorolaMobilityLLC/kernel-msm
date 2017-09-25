@@ -1,0 +1,158 @@
+Goodix GT9xx series touch controller MMI implementation
+
+Required properties:
+
+ - compatible		: Should be "goodix,gt9xx-mmi", compatible with the of_match_table defined in driver.
+ - reg			: I2C slave address of the device.
+ - interrupt-parent	: Parent of interrupt.
+ - interrupts		: Configuration of touch panel controller interrupt
+				GPIO.
+ - goodix,irq-gpio	: Interrupt gpio which is to provide interrupts to
+				host, same as "interrupts" node.
+ - goodix,rst-gpio	: Reset gpio to control the reset of chip.
+
+Optional properties:
+
+ - vdd_ana-supply	: Power supply needed to power up the device, when use
+				external regulator, do not add this property.
+ - vcc_i2c-supply	: Power source required to power up i2c bus.
+				GT9xx series can provide 1.8V from internal
+				LDO, add this properties base on hardware
+				design.
+ - goodix,panel-coords	: touch panel min x, min y, max x and
+					max y resolution
+ - goodix,display-coords	: display min x, min y, max x and
+					max y resolution
+ - goodix,force-update	: To specify force update is allowed.
+ - goodix,i2c-pull-up	: To specify pull up is required.
+ - goodix,change-x2y    : To specify whether change x/y coordinates.
+ - goodix,with-pen      : To specify whether support pen.
+ - goodix,slide-wakeup  : To specify whether support gesture wakeup.
+ - goodix,auto-update   : To specify whether support auto update when boot.
+ - goodix,have-touch-key        : To specify whether support touch key.
+ - goodix,driver-send-cfg       : To specify driver send config is required.
+ - goodix,auto-update-cfg       : To specify whether support auto update config
+					when update bin.
+ - goodix,dbl-clk-wakeup        : To specify whether support double click wakeup.
+ - goodix,esd-protect		: To specify whether support esd protect.
+ - goodix,wakeup-with-reset     : To specify whether support wakeup in reset mode.
+ - goodix,ics-slot-report	: To specify whether support slot report coordinates.
+ - goodix,create-wr-node	: To specify whether create gmnode wr_node.
+ - goodix,resume-in-workqueue	: To specify whether run the resume function in workqueue.
+ - goodix,coordinate-scale	:	To specify whether scale touch coordinates according to the
+					resolution of the display screen.
+ - goodix,button-map		: button map of key codes. The number of key codes depend on panel.
+ - pinctrl-names		: This should be defined if a target uses pinctrl framework.
+			See "pinctrl" in Documentation/devicetree/bindings/pinctrl/msm-pinctrl.txt.
+			It should specify the names of the configs that pinctrl can install in driver.
+			Following are the pinctrl configs that can be installed:
+			"pmx_ts_active" : Active configuration of pins, this should specify active
+			config defined in pin groups of interrupt and reset gpio.
+			"pmx_ts_suspend" : Disabled configuration of pins, this should specify sleep
+			config defined in pin groups of interrupt and reset gpio.
+			"pmx_ts_release" : Release configuration of pins, this should specify
+			release config defined in pin groups of interrupt and reset gpio.
+ - goodix,cfg-group0	: Touch screen controller config data group 0. Ask vendor
+				to provide that.
+				Driver supports maximum six config groups.
+				driver will select config group depending
+				on sensor id.
+
+ - goodix,cfg-group1	: Touch screen controller config data group 1. Ask vendor
+				to provide that.
+ - goodix,cfg-group2	: Touch screen controller config data group 2. Ask vendor
+				to provide that.
+ - goodix,cfg-group3	: Touch screen controller config data group 3. Ask vendor
+				to provide that.
+ - goodix,cfg-group4	: Touch screen controller config data group 4. Ask vendor
+				to provide that.
+ - goodix,cfg-group5	: Touch screen controller config data group 5. Ask vendor
+				to provide that.
+
+ - config_modifier-names	: list of modifiers names used in current setup
+				  Typically, modifier is a set of configuration (register) and/or
+				  functional (clipping) restrictions.
+				  Following names are defined: "charger" and "fps". Where:
+				   * charger - charger insertion/removal
+				   * fps     - finger print sensor
+
+Optional properties inside config_modifier-modname child node:
+ - enable-notification		: modifier has a switch notifier
+ - patch-data			: modifier specific touch IC registers values
+ - touch-clip-area		: modifier specific touch events clipping
+
+Example:
+	i2c@f9927000 { /*Goodix BLSP1 QUP5 */
+		goodix_ts@5d {
+			compatible = "goodix,gt9xx-mmi";
+			reg = <0x5d>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <17 0x2008>;
+			vdd_ana-supply = <&pm8226_l19>;
+			vcc_i2c-supply = <&pm8226_lvs1>;
+			pinctrl-names = "pmx_ts_active","pmx_ts_suspend", "pmx_ts_release";
+			pinctrl-0 = <&ts_int_active &ts_reset_active>;
+			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+			pinctrl-2 = <&ts_release>;
+			goodix,rst-gpio = <&msmgpio 16 0x00>;
+			goodix,irq-gpio = <&msmgpio 17 0x00>;
+			goodix,force-update;
+			goodix,i2c-pull-up;
+			goodix,change-x2y;
+			goodix,with-pen;
+			goodix,slide-wakeup;
+			goodix,auto-update;
+			goodix,have-touch-key;
+			goodix,driver-send-cfg;
+			goodix,auto-update-cfg;
+			goodix,dbl-clk-wakeup;
+			goodix,esd-protect;
+			goodix,wakeup-with-reset;
+			goodix,coordinate-scale;
+			goodix,resume-in-workqueue;
+			goodix,display-coords = <0 0 1079 1919>;
+			goodix,panel-coords = <0 0 1079 2159>;
+			goodix,ics-slot-report;
+			goodix,create-wr-node;
+			goodix,button-map;
+			goodix,cfg-group0 = [
+				42 D0 02 00 05 05 75 01 01 0F 24
+				0F 64 3C 03 05 00 00 00 02 00 00
+				00 16 19 1C 14 8C 0E 0E 24 00 31
+				0D 00 00 00 83 33 1D 00 41 00 00
+				00 00 00 08 0A 00 2B 1C 3C 94 D5
+				03 08 00 00 04 93 1E 00 82 23 00
+				74 29 00 69 2F 00 5F 37 00 5F 20
+				40 60 00 F0 40 30 55 50 27 00 00
+				00 00 00 00 00 00 00 00 00 00 00
+				00 00 00 00 00 00 00 14 19 00 00
+				50 50 02 04 06 08 0A 0C 0E 10 12
+				14 16 18 1A 1C 00 00 00 00 00 00
+				00 00 00 00 00 00 00 00 00 00 1D
+				1E 1F 20 21 22 24 26 28 29 2A 1C
+				18 16 14 13 12 10 0F 0C 0A 08 06
+				04 02 00 00 00 00 00 00 00 00 00
+				00 00 00 00 00 00 00 00 9C 01];
+			goodix,cfg-group2 = [
+				48 D0 02 00 05 05 75 01 01 0F 24
+				0F 64 3C 03 05 00 00 00 02 00 00
+				00 16 19 1C 14 8C 0E 0E 24 00 31
+				0D 00 00 00 83 33 1D 00 41 00 00
+				3C 0A 14 08 0A 00 2B 1C 3C 94 D5
+				03 08 00 00 04 93 1E 00 82 23 00
+				74 29 00 69 2F 00 5F 37 00 5F 20
+				40 60 00 F0 40 30 55 50 27 00 00
+				00 00 00 00 00 00 00 00 00 00 00
+				00 00 00 00 00 00 00 14 19 00 00
+				50 50 02 04 06 08 0A 0C 0E 10 12
+				14 16 18 1A 1C 00 00 00 00 00 00
+				00 00 00 00 00 00 00 00 00 00 1D
+				1E 1F 20 21 22 24 26 28 29 2A 1C
+				18 16 14 13 12 10 0F 0C 0A 08 06
+				04 02 00 00 00 00 00 00 00 00 00
+				00 00 00 00 00 00 00 00 3C 01];
+			config_modifier-names = "charger";
+			config_modifier-charger {
+				enable-notification;
+			};
+};
