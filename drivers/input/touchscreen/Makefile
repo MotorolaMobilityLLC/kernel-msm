@@ -44,6 +44,7 @@ obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE) += focaltech_upgrade_idc.o
 obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_8716) += focaltech_upgrade_ft8716.o
 obj-$(CONFIG_TOUCHSCREEN_FUJITSU)	+= fujitsu_ts.o
 obj-$(CONFIG_TOUCHSCREEN_GOODIX)	+= goodix.o
+obj-$(CONFIG_TOUCHSCREEN_GT9XX_MMI)	+= gt9xx_mmi/
 obj-$(CONFIG_TOUCHSCREEN_GEN_VKEYS)	+= gen_vkeys.o
 obj-$(CONFIG_TOUCHSCREEN_ILI210X)	+= ili210x.o
 obj-$(CONFIG_TOUCHSCREEN_IMX6UL_TSC)	+= imx6ul_tsc.o
