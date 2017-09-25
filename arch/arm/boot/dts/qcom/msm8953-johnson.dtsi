@@ -223,6 +223,7 @@
 			goodix,wakeup-with-reset;
 			goodix,coordinate-scale;
 			goodix,resume-in-workqueue;
+			goodix,enable-int-as-output;
 			goodix,display-coords = <0 0 1079 1919>;
 			goodix,panel-coords = <0 0 1079 2159>;
 			goodix,cfg-group0 = [
