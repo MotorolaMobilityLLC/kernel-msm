@@ -19,3 +19,26 @@
 			"qcom,msm8920";
 
 };
+
+&et320 {
+	egistec,gpio_ldo1p8_en = <&tlmm 124 0x0>;
+};
+
+&ldo_en_active {
+	mux {
+		pins = "gpio124";
+	};
+	config {
+		pins = "gpio124";
+	};
+};
+
+&ldo_en_suspend {
+	mux {
+		pins = "gpio124";
+	};
+	config {
+		pins = "gpio124";
+	};
+};
+
