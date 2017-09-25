@@ -31,6 +31,7 @@
 
 #define GOODIX_COORDS_ARR_SIZE	4
 #define PROP_NAME_SIZE		24
+#define CONFIG_PROC_LEN		3000
 
 static const char *goodix_ts_name = "goodix-ts";
 static const char *goodix_input_phys = "input/ts";
@@ -1322,7 +1323,8 @@ static ssize_t gt91xx_config_read_proc(struct file *file,
 		char __user *page, size_t size, loff_t *ppos)
 {
 	int i;
-	char *ptr = page;
+	unsigned char *read_buf = NULL;
+	int num_read_chars = 0;
 	char temp_data[GTP_CONFIG_MAX_LENGTH + 2] = {
 		(u8)(GTP_REG_CONFIG_DATA >> 8),
 		(u8)GTP_REG_CONFIG_DATA};
@@ -1331,28 +1333,42 @@ static ssize_t gt91xx_config_read_proc(struct file *file,
 	if (*ppos)
 		return 0;
 
-	ptr += snprintf(ptr, 50, "==== GT9XX config init value====\n");
+	read_buf = kmalloc(CONFIG_PROC_LEN, GFP_KERNEL);
+	if (NULL == read_buf)
+		return -ENOMEM;
 
+	num_read_chars += snprintf(read_buf, 50,
+		"==== GT9XX config init value====\n");
 	for (i = 0 ; i < GTP_CONFIG_MAX_LENGTH ; i++) {
-		ptr += snprintf(ptr, 10, "0x%02X ", ts->pdata->config[i + 2]);
+		num_read_chars += snprintf(&read_buf[num_read_chars], 10, "0x%02X ",
+		ts->pdata->config[i + 2]);
 
 		if (i % 8 == 7)
-			ptr += snprintf(ptr, 10, "\n");
+			num_read_chars += snprintf(&read_buf[num_read_chars], 10, "\n");
 	}
 
-	ptr += snprintf(ptr, 10, "\n");
+	num_read_chars += snprintf(&read_buf[num_read_chars], 10, "\n");
 
-	ptr += snprintf(ptr, 50, "==== GT9XX config real value====\n");
+	num_read_chars += snprintf(&read_buf[num_read_chars], 50,
+		"==== GT9XX config real value====\n");
 	gtp_i2c_read(i2c_connect_client, temp_data, GTP_CONFIG_MAX_LENGTH + 2);
 	for (i = 0 ; i < GTP_CONFIG_MAX_LENGTH ; i++) {
-		ptr += snprintf(ptr, 10, "0x%02X ", temp_data[i+2]);
+		num_read_chars += snprintf(&read_buf[num_read_chars], 10,
+		"0x%02X ", temp_data[i+2]);
 
 		if (i % 8 == 7)
-			ptr += snprintf(ptr, 10, "\n");
+			num_read_chars += snprintf(&read_buf[num_read_chars], 10, "\n");
 	}
-	*ppos += ptr - page;
 
-	return ptr - page;
+	if (copy_to_user(page, read_buf, num_read_chars)) {
+		kfree(read_buf);
+		return -EFAULT;
+	}
+	kfree(read_buf);
+
+	*ppos += num_read_chars;
+
+	return num_read_chars;
 }
 
 static ssize_t gt91xx_config_write_proc(struct file *filp,
