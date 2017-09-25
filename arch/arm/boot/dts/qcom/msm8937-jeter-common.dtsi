@@ -175,18 +175,6 @@
 	};
 };
 
-&pm8937_gpios {
-	gpio@c100 {
-		status = "ok";
-		qcom,mode = <1>;
-		qcom,out-type = <0>;
-		qcom,pull = <5>;
-		qcom,vin-sel = <1>;
-		qcom,src-sel = <2>;
-		qcom,master-en = <1>;
-		qcom,out-strength = <2>;
-	};
-};
 
 &rpm_bus {
 	rpm-regulator-ldoa18 {
@@ -269,7 +257,7 @@
 };
 
 &sdhc_2 {
-	qcom,nonhotplug;
-	/delete-property/ cd-gpios;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off>;
+	cd-gpios = <&tlmm 67 0x0>;
 };
 
