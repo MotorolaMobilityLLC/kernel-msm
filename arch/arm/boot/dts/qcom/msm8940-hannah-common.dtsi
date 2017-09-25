@@ -53,11 +53,47 @@
 		interrupts = <48 0x0>;
 		egistec,gpio_irq    = <&tlmm 48 0x1>;
 		egistec,gpio_rst    = <&tlmm 127 0x2>;
-		egistec,gpio_ldo1p8_en = <&tlmm 39 0x0>;
-		egistec,gpio_ldo3p3_en = <&tlmm 128 0x0>;
+		egistec,gpio_ldo1p8_en = <&tlmm 128 0x0>;
+		egistec,gpio_ldo3p3_en = <&tlmm 39 0x0>;
 		pinctrl-names = "default", "suspend";
 		pinctrl-0 = <&rst_active &int_active &ldo_en_active &ldo3_en_active>;
 		pinctrl-1 = <&rst_suspend &int_suspend &ldo_en_suspend &ldo3_en_suspend>;
+	};
+};
+
+&ldo_en_active {
+	mux {
+		pins = "gpio128";
+	};
+	config {
+		pins = "gpio128";
+	};
+};
+
+&ldo_en_suspend {
+	mux {
+		pins = "gpio128";
+	};
+	config {
+		pins = "gpio128";
+	};
+};
+
+&ldo3_en_active {
+	mux {
+		pins = "gpio39";
+	};
+	config {
+		pins = "gpio39";
+	};
+};
+
+&ldo3_en_suspend {
+	mux {
+		pins = "gpio39";
+	};
+	config {
+		pins = "gpio39";
 	};
 };
 
