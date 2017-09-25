@@ -161,3 +161,10 @@
 		};
 	};
 };
+
+&i2c_3 { /* BLSP1 QUP3 */
+	focaltech_ts@38 {
+		focaltech,x-flip;
+		focaltech,y-flip;
+	};
+};
