@@ -7786,9 +7786,9 @@ static bool smbchg_is_max_thermal_level(struct smbchg_chip *chip)
 }
 
 static char *smb_health_text[] = {
-	"Unknown", "Good", "Overheat", "Warm", "Dead", "Over voltage",
-	"Unspecified failure", "Cold", "Cool", "Watchdog timer expire",
-	"Safety timer expire",  "Slightly Cool"
+	"Unknown", "Good", "Overheat", "Dead", "Over voltage",
+	"Unspecified failure", "Cold", "Watchdog timer expire",
+	"Safety timer expire",  "Warm", "Cool", "Hot", "Slightly Cool"
 };
 
 static int smbchg_check_temp_range(struct smbchg_chip *chip,
