@@ -11,6 +11,86 @@
  */
 
 &tlmm {
+	/delete-node/ muc_bplus_ilim@0;
+	/delete-node/ apba_sflash_en;
+	/delete-node/ apba_wake;
+	/delete-node/ eb_vbus_conf;
+	/delete-node/ kungpow_default;
+	/delete-node/ eb_vbus_active;
+
+	anx_rst_active {
+		mux {
+			pins = "gpio56";
+		};
+		config {
+			pins = "gpio56";
+		};
+	};
+	anx_rst_suspend {
+		mux {
+			pins = "gpio56";
+		};
+		config {
+			pins = "gpio56";
+		};
+	};
+	anx_chip_pd_active {
+		mux {
+			pins = "gpio55";
+		};
+		config {
+			pins = "gpio55";
+		};
+	};
+	anx_chip_pd_suspend {
+		mux {
+			pins = "gpio55";
+		};
+		config {
+			pins = "gpio55";
+		};
+	};
+	anx_cbl_det_active {
+		mux {
+			pins = "gpio44";
+		};
+		config {
+			pins = "gpio44";
+		};
+	};
+	anx_irq_active {
+		mux {
+			pins = "gpio45";
+		};
+		config {
+			pins = "gpio45";
+		};
+	};
+	muc_spi_ctrl: muc_spi_ctrl@0 {
+		mux {
+			pins = "gpio42", "gpio48";
+		};
+		config {
+			pins = "gpio42", "gpio48";
+		};
+	};
+
+	apba_default@0 {
+		/delete-node/ apba_bootret;
+		/delete-node/ apba_wake;
+		/delete-node/ apba_sflash_en;
+		/delete-node/ apba_reset_n;
+	};
+
+	muc_attach@0 {
+		mux {
+			pins = "gpio43";
+		};
+		config {
+			pins = "gpio43";
+		};
+	};
+
 	haptic_pwr_active: haptic_pwr_active {
 		mux {
 			pins = "gpio5";
