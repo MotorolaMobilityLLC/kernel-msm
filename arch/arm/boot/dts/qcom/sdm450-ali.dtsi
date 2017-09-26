@@ -48,6 +48,7 @@
 &soc {
 	/delete-node/ mod_uart;
 	/delete-node/ uart@7aef000;
+	/delete-node/ spi@7af8000;
 
 	muc: muc {
 		transports {
