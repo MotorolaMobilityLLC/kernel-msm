@@ -393,4 +393,30 @@
 			output-low;
 		};
 	};
+
+	blsp_uart1_active: blsp_uart1_active {
+		mux {
+			pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			function = "blsp_uart1";
+		};
+
+		config {
+			pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			drive-strength = <16>;
+			bias-disable;
+		};
+	};
+
+	blsp_uart1_sleep: blsp_uart1_sleep {
+		mux {
+			pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
 };
