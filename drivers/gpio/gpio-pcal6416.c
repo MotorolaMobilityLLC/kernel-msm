@@ -47,7 +47,7 @@
 #include <linux/bitops.h>
 #include <linux/pcal6416.h>
 #include <soc/qcom/bootinfo.h>
-
+#include "gpiolib.h"
 static struct regmap_config pcal6416_i2c_regmap = {
 	.reg_bits = 8,
 	.val_bits = 8,
@@ -221,16 +221,22 @@ static int pcal6416_of_init(struct i2c_client *client, struct pcal6416_data *dat
 
 	if (gpio_is_valid(data->reset_gpio)) {
 		rc = gpio_request(data->reset_gpio, PCAL_DEVICE_NAME "NRST");
-		if (rc < 0) {
-			dev_err(data->dev, "%s: GPIO %d request NRST error\n",
+		if (rc == 0) {
+			gpio_direction_output(data->reset_gpio, 0);
+			udelay(1);
+			gpio_direction_output(data->reset_gpio, 1);
+			udelay(1);
+		} else if (rc == -EBUSY) {
+			struct gpio_desc *gpio_desc = gpio_to_desc(data->reset_gpio);
+			if (gpio_desc != NULL && gpio_desc->label != NULL &&
+				strncmp(gpio_desc->label, PCAL_DEVICE_NAME, strlen(PCAL_DEVICE_NAME)) == 0) {
+				dev_info(data->dev, "%s: GPIO %d has been requested\n",
 				__func__, data->reset_gpio);
-			return rc;
-		}
-
-		gpio_direction_output(data->reset_gpio, 0);
-		udelay(1);
-		gpio_direction_output(data->reset_gpio, 1);
-		udelay(1);
+				rc = 0;
+			} else
+				dev_err(data->dev, "%s: GPIO %d request error\n",
+					__func__, data->reset_gpio);
+			}
 	}
 end:
 	return rc;
