@@ -156,6 +156,12 @@ config MFD_CS47L35
 	help
 	  Support for Cirrus Logic CS47L35 CODEC.
 
+config MFD_CS47L90
+	bool "Cirrus Logic CS47L90"
+	depends on MFD_MADERA
+	help
+	  Support for Cirrus Logic CS47L90 CODEC.
+
 config MFD_ASIC3
 	bool "Compaq ASIC3"
 	depends on GPIOLIB && ARM
