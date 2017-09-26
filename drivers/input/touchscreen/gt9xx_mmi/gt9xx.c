@@ -131,6 +131,7 @@ s32 gtp_i2c_read(struct i2c_client *client, u8 *buf, s32 len)
 			break;
 		retries++;
 	}
+
 	if (retries >= RETRY_MAX_TIMES) {
 		/*  reset chip would quit doze mode */
 		if (ts->pdata->slide_wakeup)
@@ -179,6 +180,7 @@ s32 gtp_i2c_write(struct i2c_client *client, u8 *buf, s32 len)
 			break;
 		retries++;
 	}
+
 	if (retries >= RETRY_MAX_TIMES) {
 		if (ts->pdata->slide_wakeup)
 			if (DOZE_ENABLED == doze_status)
@@ -929,7 +931,8 @@ Output:
  *******************************************************/
 void gtp_int_sync(struct goodix_ts_data *ts, s32 ms)
 {
-	GTP_GPIO_OUTPUT(ts->pdata->irq_gpio, 0);
+	if (ts->pdata->enable_int_as_output)
+		GTP_GPIO_OUTPUT(ts->pdata->irq_gpio, 0);
 	msleep(ms);
 	GTP_GPIO_AS_INT(ts->pdata->irq_gpio);
 }
@@ -955,7 +958,8 @@ void gtp_reset_guitar(struct i2c_client *client, s32 ms)
 	GTP_GPIO_OUTPUT(ts->pdata->rst_gpio, 0);
 	usleep_range(ms*1000, ms*1000 + 1000);	/*  T2: > 10ms */
 	/*  HIGH: 0x28/0x29, LOW: 0xBA/0xBB */
-	GTP_GPIO_OUTPUT(ts->pdata->irq_gpio, client->addr == 0x14);
+	if (ts->pdata->enable_int_as_output)
+		GTP_GPIO_OUTPUT(ts->pdata->irq_gpio, client->addr == 0x14);
 
 	usleep_range(2000, 3000);		/*  T3: > 100us (2ms)*/
 	GTP_GPIO_OUTPUT(ts->pdata->rst_gpio, 1);
@@ -1031,7 +1035,8 @@ static s8 gtp_enter_sleep(struct goodix_ts_data *ts)
 
 	GTP_DEBUG_FUNC();
 
-	GTP_GPIO_OUTPUT(ts->pdata->irq_gpio, 0);
+	if (ts->pdata->enable_int_as_output)
+		GTP_GPIO_OUTPUT(ts->pdata->irq_gpio, 0);
 	usleep_range(5000, 6000);
 
 	while (retry++ < 5) {
@@ -1086,7 +1091,8 @@ static s8 gtp_wakeup_sleep(struct goodix_ts_data *ts)
 				gtp_reset_guitar(ts->client, 10);
 				gtp_irq_control_enable(ts, true);
 			} else {
-				GTP_GPIO_OUTPUT(ts->pdata->irq_gpio, 1);
+				if (ts->pdata->enable_int_as_output)
+					GTP_GPIO_OUTPUT(ts->pdata->irq_gpio, 1);
 				usleep_range(5000, 6000);
 			}
 
@@ -2211,6 +2217,10 @@ static int gtp_parse_dt(struct device *dev,
 	pdata->coordinate_scale = of_property_read_bool(np,
 			"goodix,coordinate-scale");
 
+	/* can select the i2c address by controller */
+	pdata->enable_int_as_output = of_property_read_bool(np,
+			"goodix,enable-int-as-output");
+
 	/* reset, irq gpio info */
 	pdata->irq_gpio = of_get_named_gpio_flags(np, "goodix,irq-gpio",
 			0, &pdata->irq_gpio_flags);
@@ -2659,9 +2669,11 @@ static int goodix_ts_probe(struct i2c_client *client,
 	INIT_WORK(&ts->fb_notify_work, fb_notify_resume_work);
 	ts->notifier.notifier_call = gtp_fb_notifier_callback;
 	ret = fb_register_client(&ts->notifier);
-	if (ret)
+	if (ret) {
 		dev_err(&client->dev,
 				"Unable to register fb_notifier: %d\n", ret);
+		goto exit_unreg_input_dev;
+	}
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	ts->early_suspend.suspend = goodix_ts_early_suspend;
@@ -2683,7 +2695,7 @@ static int goodix_ts_probe(struct i2c_client *client,
 	if (gt91xx_config_proc == NULL) {
 		dev_err(&ts->client->dev, "create_proc_entry %s failed\n",
 				GT91XX_CONFIG_PROC_FILE);
-		goto exit_unreg_input_dev;
+		goto exit_free_ps_notifier;
 	} else
 		dev_info(&client->dev, "create proc entry %s success",
 				GT91XX_CONFIG_PROC_FILE);
@@ -2804,8 +2816,14 @@ exit_free_sys_class:
 	goodix_ts_sysfs_class(ts, false);
 exit_free_config_proc:
 	remove_proc_entry(GT91XX_CONFIG_PROC_FILE, gt91xx_config_proc);
-exit_fb_notifier:
+exit_free_ps_notifier:
 	gtp_unregister_powermanger(ts);
+exit_fb_notifier:
+#if defined(CONFIG_FB)
+	if (fb_unregister_client(&ts->notifier))
+		dev_err(&client->dev,
+				"Error occurred while unregistering fb_notifer.\n");
+#endif
 exit_unreg_input_dev:
 	input_unregister_device(ts->input_dev);
 exit_free_io_port:
@@ -2843,6 +2861,11 @@ static int goodix_ts_remove(struct i2c_client *client)
 
 	if (ts->charger_detection_enabled)
 		power_supply_unreg_notifier(&ts->ps_notif);
+#if defined(CONFIG_FB)
+	if (fb_unregister_client(&ts->notifier))
+		dev_err(&client->dev,
+				"Error occurred while unregistering fb_notifer.\n");
+#endif
 
 	remove_proc_entry(GT91XX_CONFIG_PROC_FILE, gt91xx_config_proc);
 	goodix_ts_sysfs_class(ts, false);
@@ -3489,6 +3512,7 @@ static void gtp_esd_check_func(struct work_struct *work)
 			}
 		}
 	}
+
 	if (i >= 3) {
 		dev_err(&ts->client->dev,
 				"IC working abnormally! Process reset guitar.");
