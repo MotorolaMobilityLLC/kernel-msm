@@ -70,6 +70,10 @@ ifeq ($(CONFIG_MFD_CS47L35),y)
 obj-$(CONFIG_MFD_MADERA)	+= madera-core.o madera-spi.o cs47l35-tables.o
 endif
 
+ifeq ($(CONFIG_MFD_CS47L90),y)
+obj-$(CONFIG_MFD_MADERA)	+= madera-core.o madera-spi.o cs47l90-tables.o
+endif
+
 obj-$(CONFIG_TPS6105X)		+= tps6105x.o
 obj-$(CONFIG_TPS65010)		+= tps65010.o
 obj-$(CONFIG_TPS6507X)		+= tps6507x.o
