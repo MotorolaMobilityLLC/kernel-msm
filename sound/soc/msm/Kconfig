@@ -256,12 +256,12 @@ config SND_SOC_MSM8998
 	select SND_SOC_WSA881X
 	select MFD_MADERA
 	select MFD_MADERA_SPI
-	select MFD_CS47L35
 	select SWITCH_MADERA
 	select SND_SOC_MADERA
 	select SND_SOC_MADERA_SLIMBUS
 	select SND_SOC_WM_ADSP
-	select SND_SOC_CS47L35
+	select SND_SOC_CS47L35 if MFD_CS47L35
+	select SND_SOC_CS47L90 if MFD_CS47L90
 	select SND_SOC_MSM_HDMI_CODEC_RX
 	select DTS_SRS_TM
 	select QTI_PP
@@ -271,7 +271,6 @@ config SND_SOC_MSM8998
 	select SND_HWDEP
 	select DTS_EAGLE
 	select SND_SOC_FSA8500
-	select SND_SOC_CS35L35
 	select SND_SOC_OPALUM
 	help
 	 To add support for SoC audio on MSM8998.
