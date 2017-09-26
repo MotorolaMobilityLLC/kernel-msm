@@ -134,6 +134,10 @@ config MADERA_IRQ_CS47L35
 	bool
 	default y if MFD_CS47L35=y
 
+config MADERA_IRQ_CS47L90
+	bool
+	default y if MFD_CS47L90=y
+
 config CLPS711X_IRQCHIP
 	bool
 	depends on ARCH_CLPS711X
