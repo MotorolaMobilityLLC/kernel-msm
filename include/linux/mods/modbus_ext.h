@@ -28,7 +28,7 @@ struct modbus_ext_status {
 	enum modbus_ext_protocol proto;
 };
 
-#ifdef CONFIG_MODS_MODBUS_EXT
+#if defined(CONFIG_MODS_MODBUS_EXT) || defined(CONFIG_MODS_MODBUS_SWITCH)
 extern void modbus_ext_set_state(const struct modbus_ext_status *status);
 #else
 static inline void modbus_ext_set_state(const struct modbus_ext_status *status)
