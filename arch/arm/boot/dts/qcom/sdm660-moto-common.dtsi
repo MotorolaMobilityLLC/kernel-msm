@@ -225,6 +225,257 @@
 	qcom,msm-ssc-sensors {
 		compatible = "qcom,msm-ssc-sensors";
 	};
+
+	muc: muc {
+		compatible = "mmi,muc";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0 0 0xffffffff>;
+
+		gpios = <&tlmm 43 1>,         /* gpio_muc_det_n, input */
+			<&pcal_pin 3 0>, /* gpio_muc_bplus_en, output-low */
+			<&tlmm 42 1>,         /* gpio_muc_int_n, input */
+			<&tlmm 75 2>,         /* gpio_muc_wake_n, output-high */
+			<&tlmm 48 1>,         /* gpio_muc_rdy_n, input */
+			<&pcal_pin 11 0>,  /* gpio_muc_ff, output-low */
+			//<&lpi_tlmm 7 0>,	/*ATTENTIAON! Temperaly changed. Need to be changed after pcal pin submitted*/
+			<&tlmm 28 0>,          /* gpio_muc_spi_mosi, output-low */
+			<&tlmm 29 1>,          /* gpio_muc_spi_miso, input */
+			<&lpi_tlmm 27 2>,        /* gpio_muc_bplus_iset, output-high */
+			<0>,                  /* gpio_muc_bplus_discharg, cs */
+			<&tlmm 76 1>,  /* gpio_muc_bplus_fault_n, input */
+			<&tlmm 31 1>,          /* gpio_muc_clk, input */
+			<&pm660_gpios 3 0>;          /* spi-i2c select pin */
+
+		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
+					"gpio_muc_bplus_en",
+					"gpio_muc_int_n",
+					"gpio_muc_wake_n",
+					"gpio_muc_rdy_n",
+					"gpio_muc_ff",
+					"gpio_muc_spi_mosi",
+					"gpio_muc_spi_miso",
+					"gpio_muc_bplus_iset",
+					"gpio_muc_bplus_discharg",
+					"gpio_muc_bplus_fault_n",
+					"gpio_muc_clk",
+					"gpio_muc_spi_i2c_select";
+
+		/* Addison has shared muc/flash SPI. */
+		mmi,spi-shared-with-flash;
+
+		mmi,muc-ctrl-det-hysteresis = <200>;
+		mmi,muc-ctrl-rm-hysteresis = <5>;
+		mmi,muc-ctrl-en-seq = <1 1 100>;
+		mmi,muc-ctrl-dis-seq = <1 1 505>;
+
+		mmi,muc-ctrl-select-spi-seq = <12 0 100>;
+		mmi,muc-ctrl-select-i2c-seq = <12 1 100>;
+
+		/* v1 FF first, BPLUS second on enable */
+		mmi,muc-ctrl-ff-seq-v1 = <5 1 20>, <1 0 100>,
+					<1 1 100>, <5 0 20>;
+
+		/* v2 BPLUS first, FF second on enable */
+		mmi,muc-ctrl-ff-seq-v2 = <1 1 100>, <5 1 20>,
+					<5 0 20>;
+
+		pinctrl-names = "disconnected", "spi_active", "spi_ack", "i2c_active";
+		pinctrl-0 = <&muc_attach &muc_det &spi_8_active &spi8_cs0_sleep &muc_spi_ctrl>;
+		pinctrl-1 = <&muc_attach &muc_det &spi_8_active &spi8_cs0_active &muc_spi_ctrl>;
+		pinctrl-2 = <&spi_8_mosi_ack &spi_8_miso_ack>;
+		pinctrl-3 = <&muc_attach &muc_det &i2c_8_active &muc_spi_ctrl>;
+
+		transports {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0 0xffffffff>;
+
+			/* Placeholder for SPI defined later */
+			mods_spi: spi@c1b8000 { };
+
+			/* Placeholder for I2C defined later */
+			mods_i2c: i2c@c1b8000 { };
+		};
+	};
+
+	muc_svc: muc_svc@0 {
+		compatible = "mmi,muc_svc";
+
+		mmi,use-authentication;
+		mmi,endo-mask = <0x4755>;
+		mmi,default-root-ver = /bits/ 8 <2>;
+	};
+
+	dsi_mod_display_driver: dsi_mod_display_driver {
+		compatible = "mmi,dsi_mod_display";
+
+		mod_display,dsi_connect = <1>;
+	};
+
+	mot_dba_driver: mot_dba_driver {
+		compatible = "mmi,mot_dba";
+	};
+
+	apba_ctrl {
+		compatible = "mmi,apba-ctrl";
+		reg = <0 0>;
+		clock-names = "apba_mclk";
+		qcom,clk-src = "BBCLK2";
+		clocks = <&clock_rpmcc RPM_LN_BB_CLK2>;
+		pinctrl-names = "default", "spi_active";
+		pinctrl-0 = <&apba_default &spi8_cs1_sleep>;
+		pinctrl-1 = <&apba_default &spi8_cs1_active>;
+		gpios = <&pm660l_gpios 4 0>,      /* APBA_1P1_EN, output-low */
+			<&tlmm 47 0>,     /* APBA_BOOTRET, output-low */
+			<&pm660_gpios 11 2>, /* MOD_MPHY_I2S_SEL, output-high */
+			<&lpi_tlmm 21 0>,     /* APBA_RESET_N, output-low */
+			<&tlmm 64 1>,      /* APBA_INT_N, in */
+			<&tlmm 49 0>,     /* APBA_WAKE, output-low */
+			<&pcal_pin 7 0>;      /* APBA_SFLASH_EN, output-low */
+		mmi,gpio-labels = "gpio_apba_1p1_en",
+				  "gpio_apba_bootret",
+				  "gpio_mphy_i2s_sel",
+				  "gpio_apba_rst_n",
+				  "gpio_apba_int_n",
+				  "gpio_apba_wake",
+				  "gpio_apba_sflash_en";
+		mmi,int-index = <4>;
+		/* Notes about boot sequence:  w25q40bw spec says 10 usec needed
+		   from VCC high to first /CS low for read.  It requires 10 msec max
+		   until first write. */
+		/* ES3 AP Bridge power on sequence requires 40 usec minimum between
+		   (APBA_VDDIO + SYS_CLK) and SYS_RESET_N high, and requires RESET_N low during
+		   boot. */
+		mmi,enable-preclk-seq = <6 0 0>, <3 0 0>, <5 1 0>, <0 1 0>,
+				 <1 0 0>, <2 0 1>;
+		mmi,enable-postclk-seq = <3 1 0>;
+		mmi,disable-seq = <1 0 0>, <2 1 0>, <3 0 1>, <5 0 0>, <0 0 0>;
+		mmi,wake-assert-seq = <5 0 0>;
+		mmi,wake-deassert-seq = <5 1 0>;
+		mmi,flash-start-seq = <6 1 0>, <0 1 11>;
+		mmi,flash-end-seq = <0 0 0>, <6 0 0>;
+		mmi,apba-unipro-mid = <0x00000126>;
+		mmi,apba-unipro-pid = <0x00001001>;
+		mmi,apba-ara-vid = <0xfed70128>;
+		mmi,apba-ara-pid = <0xfffe0001>;
+	};
+
+	mods_camera_ext {
+		compatible = "mmi,mods-camera-ext";
+		/*camera_ext_cdsi-supply = <&pm8953_l23>;*/
+	};
+};
+
+&mods_i2c { /* BLSP2 QUP4 */
+	compatible = "qcom,i2c-msm-v2";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg = <0xc1b8000  0x600>;
+	reg-names = "qup_phys_addr";
+	interrupt-names = "qup_irq";
+	interrupts = <0 104 0>;
+	dmas = <&dma_blsp2 10 64 0x20000020 0x20>,
+		<&dma_blsp2 11 32 0x20000020 0x20>;
+	dma-names = "tx", "rx";
+	qcom,master-id = <84>;
+	qcom,clk-freq-out = <400000>;
+	qcom,clk-freq-in  = <19200000>;
+	clock-names = "iface_clk", "core_clk";
+	clocks = <&clock_gcc GCC_BLSP2_AHB_CLK>,
+		 <&clock_gcc GCC_BLSP2_QUP4_I2C_APPS_CLK>;
+	pinctrl-names = "i2c_active", "i2c_sleep";
+	pinctrl-0 = <&i2c_8_active>;
+	pinctrl-1 = <&i2c_8_sleep>;
+	status = "disabled";
+};
+
+&mods_i2c {
+	compatible = "qcom,i2c-msm-v2", "moto,mod-i2c-transfer";
+	status = "okay";
+
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+	/delete-property/ pinctrl-names;
+
+	muc_i2c@42 {
+		compatible = "moto,muc_i2c";
+		reg = <0x42>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <26 0>;
+
+		mmi,intf-id = /bits/ 8 <3>;
+	};
+};
+
+&mods_spi { /* BLSP2 QUP4 */
+	compatible = "qcom,spi-qup-v2";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	reg-names = "spi_physical", "spi_bam_physical";
+	reg = <0xc1b8000 0x600>,
+	      <0xc184000 0x1f000>;
+	interrupt-names = "spi_irq", "spi_bam_irq";
+	interrupts = <0 104 0>, <0 239 0>;
+	spi-max-frequency = <48000000>;
+	qcom,use-bam;
+	qcom,ver-reg-exists;
+	qcom,bam-consumer-pipe-index = <10>;
+	qcom,bam-producer-pipe-index = <11>;
+	qcom,master-id = <84>;
+	qcom,use-pinctrl;
+	pinctrl-names = "spi_default", "spi_sleep";
+	pinctrl-0 = <&spi_8_active>;
+	pinctrl-1 = <&spi_8_sleep>;
+	clock-names = "iface_clk", "core_clk";
+	clocks = <&clock_gcc GCC_BLSP2_AHB_CLK>,
+		 <&clock_gcc GCC_BLSP2_QUP4_SPI_APPS_CLK>;
+	status = "disabled";
+};
+
+&mods_spi {
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+	/delete-property/ pinctrl-names;
+	/delete-property/ qcom,use-pinctrl;
+
+	status = "okay";
+	compatible = "qcom,spi-qup-v2", "moto,mod-spi-transfer";
+	spi-max-frequency = <50000000>;
+
+	qcom,rt-priority;
+	qcom,active-only;
+
+	muc_spi: muc_spi@0 {
+		compatible = "moto,muc_spi";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <42 0>;
+		spi-max-frequency = <4800000>;
+
+		mmi,intf-id = /bits/ 8 <3>;
+	};
+
+	apba_flash: m25p80@1 {
+		compatible = "w25q40ew";
+		reg = <1>;
+		spi-max-frequency = <4800000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		partition@0 {
+			label = "apba";
+			reg = <0x0 0x40000>;
+		};
+		partition@1 {
+			label = "es2_apbaboot";
+			reg = <0x0 0x4000>;
+		};
+		partition@2 {
+			label = "es2_apba";
+			reg = <0x4000 0x3C000>;
+		};
+	};
 };
 
 &mem_client_3_size {
@@ -274,6 +525,24 @@
 	qcom,vfloat-comp-uv = <20000>;
 	qcom,hvdcp-force-5v;
 	qcom,usbpd-phandle = <&pm660_pdphy>;
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa18 {
+		compatible = "qcom,rpm-smd-regulator-resource";
+		qcom,resource-name = "ldoa";
+		qcom,resource-id = <18>;
+		qcom,regulator-type = <0>;
+		status = "okay";
+		pm660_l18: regulator-l18 {
+			compatible = "qcom,rpm-smd-regulator";
+			regulator-name = "pm660_l18";
+			qcom,set = <3>;
+			regulator-min-microvolt = <3200000>;
+			regulator-max-microvolt = <3400000>;
+			status = "okay";
+		};
+	};
 };
 
 &pm660_pdphy {
