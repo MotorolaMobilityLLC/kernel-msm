@@ -36,6 +36,9 @@ obj-$(CONFIG_MADERA_IRQ)		+= irq-madera.o
 ifeq ($(CONFIG_MADERA_IRQ_CS47L35),y)
 obj-$(CONFIG_MADERA_IRQ)		+= irq-madera-cs47l35.o
 endif
+ifeq ($(CONFIG_MADERA_IRQ_CS47L90),y)
+obj-$(CONFIG_MADERA_IRQ)		+= irq-madera-cs47l90.o
+endif
 obj-$(CONFIG_RENESAS_INTC_IRQPIN)	+= irq-renesas-intc-irqpin.o
 obj-$(CONFIG_RENESAS_IRQC)		+= irq-renesas-irqc.o
 obj-$(CONFIG_VERSATILE_FPGA_IRQ)	+= irq-versatile-fpga.o
