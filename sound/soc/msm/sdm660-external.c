@@ -811,7 +811,8 @@ int msm_ext_enable_codec_mclk(struct snd_soc_codec *codec, int enable,
 
 	pr_debug("%s: enable = %d\n", __func__, enable);
 
-	if (!strcmp(dev_name(codec->dev), "cs47l35-codec"))
+	if (!strcmp(dev_name(codec->dev), "cs47l35-codec") ||
+		!strcmp(dev_name(codec->dev), "cs47l90-codec"))
 		ret = 0;
 	else if (!strcmp(dev_name(codec->dev), "tasha_codec"))
 		ret = tasha_cdc_mclk_enable(codec, enable, dapm);
@@ -2046,9 +2047,11 @@ int msm_cs47l35_init(struct snd_soc_pcm_runtime *rtd)
 	}
 
 	/* Ensures that GPIO3 is set to an output clock. */
+#ifdef SND_SOC_CS47L35
 	snd_soc_write(codec, 0x1704, 0);
 	snd_soc_write(codec, 0x1705, 0);
 	snd_soc_write(codec, 0x1704, 0x40);
+#endif
 
 	/* Set Slimbus FLL input clock to 1.536MHz */
 	snd_soc_write(codec, MADERA_SLIMBUS_FRAMER_REF_GEAR, 0x6);
