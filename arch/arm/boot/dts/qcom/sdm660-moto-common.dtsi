@@ -365,6 +365,17 @@
 		compatible = "mmi,mods-camera-ext";
 		/*camera_ext_cdsi-supply = <&pm8953_l23>;*/
 	};
+
+	mod_uart: mod_uart {
+		compatible = "mmi,mod-uart";
+		mmi,tty = "ttyHS1";
+		mmi,tty_speed = <115200>;
+		mmi,intf-id = /bits/ 8 <5>;
+
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&blsp_uart1_sleep>;
+		pinctrl-1 = <&blsp_uart1_active>;
+	};
 };
 
 &mods_i2c { /* BLSP2 QUP4 */
