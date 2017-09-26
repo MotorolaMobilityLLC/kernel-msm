@@ -648,6 +648,15 @@ config MODS_MODBUS_EXT
 	  If you are using the MODS kernel modules, you should select yes, if
 	  not no.
 
+config MODS_MODBUS_SWITCH
+	bool "Enable control of the mods muxing swtich(different with mods_modbus_ext)"
+	default n
+	help
+	  This enables ability to mux the i2s, mphy, and usb paths through the
+	  set of ts3usb3031 switches depending on the requested configuration.
+	  If you are using the MODS kernel modules, you should select yes, if
+	  not no. This file is defferent with the file of mods_modbus_ext. This
+	  is a common file which could be applied in lots of defferent hw design.
 config TPS61280
         tristate "TI TPS61280 configuration"
         depends on I2C
