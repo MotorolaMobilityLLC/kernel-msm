@@ -107,6 +107,18 @@
 	};
 };
 
+&tlmm{
+	tps61280_en_default: tps61280_en_default {
+		mux {
+			pins = "gpio96";
+		};
+		config {
+			pins = "gpio96";
+			drive_strength = <8>;
+			output-high;
+		};
+	};
+};
 &i2c_2 {
 	sx9310@28 {
 		compatible = "semtech,sx9310";
@@ -129,6 +141,17 @@
 
 	/delete-node/ adv7533@39;
 	/delete-node/ pericom-type-c@1d;
+	tps61280@75 {
+		compatible = "ti,tps61280";
+		status = "okay";
+		reg = <0x75>;
+		ti,config = <0x0D>;
+		ti,vout-floor = <0x0D>;
+		ti,vout-roof = <0x19>;
+		ti,ilim = <0x0F>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tps61280_en_default>;
+	};
 };
 
 
