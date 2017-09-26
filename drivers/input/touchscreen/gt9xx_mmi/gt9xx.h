@@ -108,6 +108,7 @@ struct goodix_ts_platform_data {
 	bool create_wr_node;
 	bool resume_in_workqueue;
 	bool coordinate_scale;
+	bool enable_int_as_output;
 };
 
 struct goodix_ts_data {
