@@ -166,21 +166,32 @@
 			st,xtalkval = <0x1E00 0xFACD 0x0>;
 		};
 
-		sx9310@28 {
-			compatible = "semtech,sx9310";
-			reg = <0x28>;
-			cap_svdd-supply = <&pm8953_l5>;
-			cap_vdd-supply = <&pm8953_l6>;
+		cypress_capsensor@1D {
+			compatible = "cypress,sf3155";
+			label = "MotorolaCapSense";
+			reg = <0x1D>;
+			vdd-supply = <&pm8953_l5>;
+			vddio-supply = <&pm8953_l5>;
+			avdd-supply = <&pm8953_l5>;
 			interrupt-parent = <&tlmm>;
-			interrupts = <44 0x2008>;
-			gpios = <&tlmm 44 0x2008>;
+			interrupts = <86 0x2008>;
+			silicon_id = <0x0BB11477>;
+			block_size = <64>;
+			num_of_blocks = <256>;
+			secure_bytes = <32>;
 			pinctrl-names = "default";
-			pinctrl-0 = <&sx9310_irq_default>;
-			cap,use_channel = <0x01>;
-			cap,scan_period = <0x05>;
-			reg_array_len = <5>;
-			reg_array_val = <0x12 0x0B 0x13 0x05 0x15 0xC2
-					0x18 0x4E 0x10 0x51>;
+			gpios = <&tlmm 95 0>, /* RESET */
+				<&tlmm 59 0>, /* programming SCLK */
+				<&tlmm 140 0>, /* programming SDAT */
+				<&tlmm 86 0x2008>;
+			use-raw-gpio-rw = <1>;
+			gpio_base_addr = <0x01000004>;
+			gpio_base_size = <0x0a000000>;
+			cyttsp,sar-status-reg = <0x50>;
+			cyttsp,standby-reg = <0x51>;
+			cyttsp,bootloader-addr = <0x02>;
+			cyttsp,key-num = <4>;
+			cyttsp,key-codes = <4>;
 		};
 
 		cs35l35@40 {
