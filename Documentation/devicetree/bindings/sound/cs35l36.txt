@@ -1,0 +1,110 @@
+CS35L36 Speaker Amplifier
+
+Required properties:
+
+  - compatible : "cirrus,cs35l36"
+
+  - reg : the I2C address of the device for I2C
+
+  - VA-supply, VP-supply : power supplies for the device,
+    as covered in
+    Documentation/devicetree/bindings/regulator/regulator.txt.
+
+Optional properties:
+  - cirrus,sclk-force-output : Audio serial port SCLK force
+  output control. Forces the SCLK to continue to drive even
+  if no ASP_TXn channels are enabled.
+
+  - cirrus,lrclk-force-output : Audio serial port LRCLK force
+  output control. Forces the LRCLK to continue to drive even
+  if no ASP_TXn channels are enabled.
+
+  - cirrus,right-channel-amp : Boolean to determine which channel
+  the amplifier is to receive the audio data on. If present the
+  amplifier receives data on the right channel of I2S data.
+  If not present the amplifier receives data on the left
+  channel of I2S data
+
+  - cirrus,boost-ctl-millivolt : Boost Voltage Value.  Configures the boost
+  converter's output voltage in mV. The range is from 2550mV to 10000mV with
+  increments of 50mV.
+  (Default) VP
+
+  - cirrus,boost-peak-milliamp : Boost-converter peak current limit in mA.
+  Configures the peak current by monitoring the current through the boost FET.
+  Range starts at 1600mA and goes to a maximum of 4500mA with increments of
+  50mA.
+  (Default) 4.50 Amps
+
+  - cirrus,amp-gain-zc : Boolean to determine if to use Amplifier gain-change
+  zero-cross
+
+  - cirrus,ldm-mode-select : Amplifier level-dependent muting enable mode selection.
+  Configures whether the amplifier level-dependent muting is enabled for the various
+  blocks when the selected audio source has been below the AMP_LDM_THLD for a period
+  of time configured by AMP_LDM_DELAY. Any and all bits can be set.
+
+  00000 - All level-dependent muting functionality disabled (Default)
+  xxxx1 - Amplifier level-dependent muting detection enabled (OUT+/-; switching)
+  xxx1x - Boost converter DCM detection enabled
+  xx1xx - VMON low power mode detection enabled
+  x1xxx - IMON low power mode detection enabled
+  1xxxx - VP brownout prevention detection enabled
+
+  - cirrus,pdm-ldm-exit : Boolean : Amplifier PDM mode digital volume ramp enable.
+  When AMP_PDM_MODE = 1 controls whether the digital volume soft ramp is enabled
+  or disabled when exiting a level-dependent muted condition. The AMP_RAMP_PDM_DN
+  control is used to control desired ramp rate.
+
+  - cirrus,pdm-ldm-enter : Boolean: Amplifier PDM mode digital volume ramp enable.
+  When AMP_PDM_MODE = 1 controls whether the digital volume soft ramp is enabled
+  or disabled when entering a level-dependent muted condition. The AMP_RAMP_PDM_UP
+  control is used to control desired ramp rate.
+
+  - cirrus,pdm-channel-select : PDM Channel select.
+  0x00 (Default) : Selects Channel A data when the PDM audio input is selected.
+  0x01 : Selects Channel B data when the PDM audio input is selected
+
+  - cirrus,weak-fet-disable : Boolean : The strength of the output drivers is
+  reduced when operating in a Weak-FET Drive Mode and must not be used to drive
+  a large load.
+
+  - cirrus,classh-wk-fet-delay :  Weak-FET entry delay. Controls the delay
+  (in ms) before the Class H algorithm switches to the weak-FET voltage
+  (after the audio falls and remains below the value specified in WKFET_AMP_THLD).
+
+  0 = 0ms
+  1 = 5ms
+  2 = 10ms
+  3 = 50ms
+  4 = 100ms (Default)
+  5 = 200ms
+  6 = 500ms
+  7 = 1000ms
+
+  - cirrus,classh-weak-fet-thld-millivolt : Weak-FET amplifier drive threshold.
+  Configures the signal threshold at which the PWM output stage enters
+  weak-FET operation. The range is 50mV to 700mV in 50mV increments.
+
+  - cirrus,temp-warn-threshold :  Amplifier overtemperature warning threshold.
+  Configures the threshold at which the overtemperature warning condition occurs.
+  When the threshold is met, the overtemperature warning attenuation is applied
+  and the TEMP_WARN_EINT interrupt status bit is set.
+  If TEMP_WARN_MASK = 0, INTb is asserted.
+
+  0 = 105C
+  1 = 115C
+  2 = 125C (Default)
+  3 = 135C
+
+Example:
+
+cs35l36: cs35l36@58 {
+	compatible = "cirrus,cs35l36";
+	reg = <0x58>;
+	VA-supply = <&dummy_vreg>;
+	VP-supply = <&dummy_vreg>;
+	reset-gpios = <&axi_gpio 54 0>;
+
+	cirrus,boost-ctl-millivolt = <10000>;
+};
