@@ -659,7 +659,7 @@ static int msm_hifi_control;
 
 static bool is_initial_boot;
 static bool codec_reg_done;
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 static struct snd_soc_aux_dev *msm_aux_dev;
 static struct snd_soc_codec_conf *msm_codec_conf;
 #endif
@@ -669,7 +669,7 @@ static void *def_tasha_mbhc_cal(void);
 static void *def_tavil_mbhc_cal(void);
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec,
 					int enable, bool dapm);
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 static int msm_wsa881x_init(struct snd_soc_component *component);
 #endif
 
@@ -4268,7 +4268,7 @@ done:
 	return rc;
 }
 
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 static bool msm_swap_gnd_mic(struct snd_soc_codec *codec)
 {
 	struct snd_soc_card *card = codec->component.card;
@@ -4753,7 +4753,7 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
 
 	int ret = 0;
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 	u32 rx_ch[SLIM_MAX_RX_PORTS], tx_ch[SLIM_MAX_TX_PORTS];
 	u32 rx_ch_cnt = 0, tx_ch_cnt = 0;
 #endif
@@ -4761,7 +4761,7 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 	u32 rx_ch_count;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 		ret = snd_soc_dai_get_channel_map(codec_dai,
 					&tx_ch_cnt, tx_ch, &rx_ch_cnt, rx_ch);
 		if (ret < 0) {
@@ -4787,7 +4787,7 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 				  slim_rx_cfg[0].channels);
 			rx_ch_count = slim_rx_cfg[0].channels;
 		}
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 		ret = snd_soc_dai_set_channel_map(cpu_dai, 0, 0,
 						  rx_ch_count, rx_ch);
 #else
@@ -4810,7 +4810,7 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 
 		pr_debug("%s: %s_tx_dai_id_%d_ch=%d\n", __func__,
 			 codec_dai->name, codec_dai->id, user_set_tx_ch);
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 		ret = snd_soc_dai_get_channel_map(codec_dai,
 					 &tx_ch_cnt, tx_ch, &rx_ch_cnt, rx_ch);
 		if (ret < 0) {
@@ -4828,7 +4828,7 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 		else if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_4_TX)
 			user_set_tx_ch = msm_vi_feed_tx_ch;
 		else
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 			user_set_tx_ch = tx_ch_cnt;
 #else
 			user_set_tx_ch = 1;
@@ -4838,7 +4838,7 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 			 __func__,  slim_tx_cfg[0].channels, user_set_tx_ch,
 			 dai_link->be_id);
 
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 		ret = snd_soc_dai_set_channel_map(cpu_dai,
 						  user_set_tx_ch, tx_ch, 0, 0);
 #else
@@ -4861,7 +4861,7 @@ err_ch_map:
 	return ret;
 }
 
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 static int msm_snd_cpe_hw_params(struct snd_pcm_substream *substream,
 				 struct snd_pcm_hw_params *params)
 {
@@ -6650,7 +6650,7 @@ static struct snd_soc_ops msm_be_ops = {
 	.hw_params = msm_snd_hw_params,
 };
 
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 static struct snd_soc_ops msm_cpe_ops = {
 	.hw_params = msm_snd_cpe_hw_params,
 };
@@ -8801,7 +8801,7 @@ err:
 	return ret;
 }
 
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 static int msm_prepare_us_euro(struct snd_soc_card *card)
 {
 	struct msm_asoc_mach_data *pdata =
@@ -9124,7 +9124,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	return card;
 }
 
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 static int msm_wsa881x_init(struct snd_soc_component *component)
 {
 	u8 spkleft_ports[WSA881X_MAX_SWR_PORTS] = {100, 101, 102, 106};
@@ -9432,7 +9432,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card;
 	struct msm_asoc_mach_data *pdata;
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 	const char *mbhc_audio_jack_type = NULL;
 #endif
 	char *mclk_freq_prop_name;
@@ -9465,7 +9465,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 			ret);
 		goto err;
 	}
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 	ret = snd_soc_of_parse_audio_routing(card, "qcom,audio-routing");
 	if (ret) {
 		dev_err(&pdev->dev, "parse audio routing failed, err:%d\n",
@@ -9488,7 +9488,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		mclk_freq_prop_name = "qcom,tavil-mclk-clk-freq";
 	}
 
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 	ret = of_property_read_u32(pdev->dev.of_node,
 			mclk_freq_prop_name, &pdata->mclk_freq);
 	if (ret) {
@@ -9525,7 +9525,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		ret = -EPROBE_DEFER;
 		goto err;
 	}
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 	ret = msm_init_wsa_dev(pdev, card);
 	if (ret)
 		goto err;
@@ -9544,7 +9544,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "Sound card %s registered\n", card->name);
 	spdev = pdev;
 
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 	ret = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
 	if (ret) {
 		dev_dbg(&pdev->dev, "%s: failed to add child nodes, ret=%d\n",
@@ -9636,7 +9636,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 
 	return 0;
 err:
-#ifndef CONFIG_SND_SOC_CS47L35
+#ifndef CONFIG_SND_SOC_MADERA
 	if (pdata->us_euro_gpio > 0) {
 		dev_dbg(&pdev->dev, "%s free us_euro gpio %d\n",
 			__func__, pdata->us_euro_gpio);
