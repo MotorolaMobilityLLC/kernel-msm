@@ -56,6 +56,7 @@ struct cs35l36_platform_data {
 	int bst_vctl;
 	int bst_vctl_sel;
 	int bst_ipk;
+	bool extern_boost;
 	int temp_warn_thld;
 	struct irq_cfg irq_config;
 	struct asp_tx_cfg asp_tx_config;
