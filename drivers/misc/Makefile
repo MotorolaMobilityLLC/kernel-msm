@@ -57,6 +57,7 @@ obj-$(CONFIG_GENWQE)		+= genwqe/
 obj-$(CONFIG_QSEECOM) += qseecom.o
 obj-$(CONFIG_PROFILER) += profiler.o
 obj-$(CONFIG_HDCP_QSEECOM) += hdcp.o
+obj-$(CONFIG_CAPSENSE_CYPRESS) += cypress/
 ifdef CONFIG_COMPAT
 obj-$(CONFIG_QSEECOM) += compat_qseecom.o
 endif
