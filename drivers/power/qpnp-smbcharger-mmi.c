@@ -1921,7 +1921,7 @@ static int smbchg_otg_pulse_skip_disable(struct smbchg_chip *chip,
 		return 0;
 	disabled = !!chip->otg_pulse_skip_dis;
 
-	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_TRIM6,
+	rc = smbchg_sec_masked_write_fac(chip, chip->otg_base + OTG_TRIM6,
 			TR_ENB_SKIP_BIT, disabled ? TR_ENB_SKIP_BIT : 0);
 	if (rc < 0) {
 		SMB_ERR(chip,
@@ -5448,7 +5448,7 @@ static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 	smbchg_otg_pulse_skip_disable(chip, REASON_OTG_ENABLED, true);
 	msleep(20);
 	chip->otg_retries = 0;
-	rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
+	rc = smbchg_masked_write_fac(chip, chip->bat_if_base + CMD_CHG_REG,
 			OTG_EN, OTG_EN);
 	if (rc < 0) {
 		SMB_ERR(chip, "Couldn't enable OTG mode rc=%d\n", rc);
@@ -5470,7 +5470,7 @@ static int smbchg_otg_regulator_disable(struct regulator_dev *rdev)
 	if (chip->usbc_disabled)
 		return 0;
 
-	rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
+	rc = smbchg_masked_write_fac(chip, chip->bat_if_base + CMD_CHG_REG,
 			OTG_EN, 0);
 	if (rc < 0) {
 		SMB_ERR(chip, "Couldn't disable OTG mode rc=%d\n", rc);
@@ -7703,7 +7703,7 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	/* Configure OTG */
 	if (chip->schg_version == QPNP_SCHG_LITE) {
 		/* enable OTG hiccup mode */
-		rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_CFG,
+		rc = smbchg_sec_masked_write_fac(chip, chip->otg_base + OTG_CFG,
 			HICCUP_ENABLED_BIT, HICCUP_ENABLED_BIT);
 		if (rc < 0)
 			SMB_ERR(chip, "Couldn't set OTG OC config rc = %d\n",
@@ -7711,7 +7711,7 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	}
 
 	/* configure OTG enable to cmd ctrl */
-	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_CFG,
+	rc = smbchg_sec_masked_write_fac(chip, chip->otg_base + OTG_CFG,
 				     OTG_EN_CTRL_MASK,
 				     (chip->schg_version == QPNP_SCHG_LITE) ?
 				     OTG_CMD_CTRL_RID_EN :
@@ -7723,7 +7723,7 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	}
 
 	/* Configure OTG current limit */
-	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_ICFG,
+	rc = smbchg_sec_masked_write_fac(chip, chip->otg_base + OTG_ICFG,
 			OTG_ILIMIT_MASK,
 			OTG_ILIMIT_1000MA);
 	if (rc < 0)
