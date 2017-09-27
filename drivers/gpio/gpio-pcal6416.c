@@ -390,7 +390,7 @@ static void __exit pcal6416_exit(void)
 	i2c_del_driver(&pcal6416_driver);
 }
 
-module_init(pcal6416_init);
+fs_initcall(pcal6416_init);
 module_exit(pcal6416_exit);
 
 MODULE_AUTHOR("Motorola Mobility LLC.");
