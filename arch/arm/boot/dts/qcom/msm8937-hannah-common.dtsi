@@ -135,6 +135,26 @@
 	focaltech,ignore-id-check;
 	};
 
+	himax-ts@48 {
+		compatible = "himax,hxcommon";
+		reg = <0x48>;
+		status = "ok";
+		interrupt-parent = <&tlmm>;
+		interrupts = <65 0x0>;
+		himax,rst-gpio = <&tlmm 64 0x00>;
+		himax,irq-gpio = <&tlmm 65 0x00>;
+		himax,display-coords = <0 720 0 1440>;
+		himax,panel-coords = <0 720 0 1440>;
+		report_type = <1>;
+	};
+	novatek@62 {
+		compatible = "novatek,NVT-ts";
+		reg = <0x62>;
+		status = "ok";
+		novatek,reset-gpio = <&tlmm 64 0x00>;
+		novatek,irq-gpio = <&tlmm 65 0x00>;
+	};
+
 };
 
 &pmx_mdss {
