@@ -295,3 +295,15 @@
 				<45 4200 3000 2000>,
 				<60 4200 1550 0>;
 };
+
+&spi_7 {
+	cs47l35: cs47l35@0 {
+		fm-lna-enable = <&tlmm 56 0>;
+		cirrus,accdet {
+			acc@1 {
+				/delete-property/ cirrus,jd-check-jd2;
+				/delete-property/ cirrus,micd-clamp-mode;
+			};
+		};
+	};
+};
