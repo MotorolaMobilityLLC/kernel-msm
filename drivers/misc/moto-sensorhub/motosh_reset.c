@@ -73,7 +73,7 @@ int motosh_load_brightness_table(struct motosh_data *ps_motosh,
 	return err;
 }
 
-void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff)
+void motosh_reset(struct motosh_platform_data *pdata)
 {
 	dev_err(&motosh_misc_data->client->dev, "motosh_reset\n");
 	gpio_set_value(pdata->gpio_reset, 0);
@@ -127,7 +127,7 @@ int motosh_reset_and_init(enum reset_mode mode)
 		/* Mode will transition to NORMALMODE after
 		   hub reports its init is complete */
 		motosh_misc_data->mode = UNINITIALIZED;
-		motosh_reset(pdata, rst_cmdbuff);
+		motosh_reset(pdata);
 		wake_unlock(&motosh_misc_data->reset_wakelock);
 		return ret_err;
 	}
