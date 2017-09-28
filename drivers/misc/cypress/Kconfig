@@ -1,0 +1,18 @@
+#
+# Cypress CapSense(TM) devices
+#
+
+config CAPSENSE_CYPRESS
+    tristate "Cypress CapSense HSSP Programming Driver"
+    help
+      CapSense devices is the analog system contains the capacitive sensing
+      hardware. Several hardware algorithms are supported. This hardware
+      performs capacitive sensing and scanning without requiring external
+      components. It contains internal flash memory, which have to be programmed
+      with firmware using HSSP interface. Host Sourced Serial Programming (HSSP)
+      refers to the programming of the target device on the board by using a host
+      microcontroller. The PSoC 4 target is programmed through the SWD interface -
+      ARM Serial Ware Debug. This option enables firmware programming driver and
+      allows automatically identify device and matching firmware. See file
+      Documentation/devicetree/bindings/misc/capsense_hssp.txt for details.
+
