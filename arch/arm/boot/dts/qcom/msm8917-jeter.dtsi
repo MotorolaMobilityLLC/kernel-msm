@@ -12,6 +12,7 @@
 
 #include "msm8917-moto-common.dtsi"
 #include "msm8917-jeter-common.dtsi"
+#include "msm8917-camera-sensor-mot-ejeter.dtsi"
 
  / {
 	model = "jeter";
