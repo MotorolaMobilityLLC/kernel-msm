@@ -1415,7 +1415,7 @@ static ssize_t path_show(struct device *dev,
 static ssize_t vendor_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%s\n", "goodix");
+	return scnprintf(buf, PAGE_SIZE, "goodix");
 }
 
 static struct device_attribute touchscreen_attributes[] = {
