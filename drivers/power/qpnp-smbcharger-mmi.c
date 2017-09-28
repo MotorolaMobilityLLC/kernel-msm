@@ -5279,8 +5279,7 @@ static int smb_psy_notifier_call(struct notifier_block *nb, unsigned long val,
 	SMB_DBG(chip, "online = %d, type = %d, current = %d, disabled = %d\n",
 			online, prop.intval, chip->cl_usbc, disabled);
 
-	if (online && ((prop.intval == POWER_SUPPLY_TYPE_USBC_SINK)
-		|| (prop.intval == POWER_SUPPLY_TYPE_UFP))) {
+	if (online && prop.intval == POWER_SUPPLY_TYPE_USBC_SINK) {
 		/* Skip notifying insertion if already done */
 		if (!chip->usbc_online) {
 			chip->usbc_online = true;
@@ -11761,17 +11760,6 @@ static int smbchg_probe(struct spmi_device *spmi)
 	}
 
 	usbc_psy = power_supply_get_by_name("usbc");
-
-	if (!usbc_psy && of_property_read_bool(spmi->dev.of_node, "qcom,internal-typec")) {
-
-		usbc_psy = power_supply_get_by_name("typec");
-		if (!usbc_psy) {
-			dev_err(&spmi->dev,
-				"Type-C supply not found, deferring probe\n");
-			return -EPROBE_DEFER;
-		}
-	}
-
 	if (!usbc_psy) {
 		dev_err(&spmi->dev, "USBC supply not found, deferring probe\n");
 		return -EPROBE_DEFER;
