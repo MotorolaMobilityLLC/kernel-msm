@@ -87,7 +87,7 @@ static struct msm_asoc_wcd93xx_codec msm_codec_fn;
 
 static struct platform_device *spdev;
 static bool is_initial_boot;
-
+static bool is_fm_lna_enable;
 
 enum {
 	SLIM_RX_0 = 0,
@@ -157,6 +157,7 @@ static char const *slim_sample_rate_text[] = {"KHZ_8", "KHZ_16",
 					"KHZ_88P2", "KHZ_96", "KHZ_176P4",
 					"KHZ_192", "KHZ_352P8", "KHZ_384"};
 static const char *const spk_function_text[] = {"Off", "On"};
+static const char *const fm_lna_text[] = {"Off", "On"};
 static char const *bt_sample_rate_text[] = {"KHZ_8", "KHZ_16", "KHZ_48"};
 static char const *bt_sample_rate_rx_text[] = {"KHZ_8", "KHZ_16", "KHZ_48"};
 static char const *bt_sample_rate_tx_text[] = {"KHZ_8", "KHZ_16", "KHZ_48"};
@@ -164,6 +165,7 @@ static char const *bt_sample_rate_tx_text[] = {"KHZ_8", "KHZ_16", "KHZ_48"};
 
 
 static SOC_ENUM_SINGLE_EXT_DECL(spk_func_en, spk_function_text);
+static SOC_ENUM_SINGLE_EXT_DECL(fm_lna_en, fm_lna_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_2_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_tx_chs, slim_tx_ch_text);
@@ -803,6 +805,46 @@ static int msm_ext_set_spk(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
+static int fm_lna_en_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: fm_lna_en_get = %d\n",
+		__func__, is_fm_lna_enable);
+	ucontrol->value.integer.value[0] = is_fm_lna_enable;
+	return 0;
+}
+
+static int fm_lna_en_set(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int fm_lna_enable;
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+
+	fm_lna_enable = of_get_named_gpio(codec->dev->of_node,
+			"fm-lna-enable", 0);
+	if (fm_lna_enable < 0) {
+		pr_err("missing %d in dt node\n", fm_lna_enable);
+		return 0;
+	}
+	if (!gpio_is_valid(fm_lna_enable)) {
+		pr_err("Invalid fm_lna_enable gpio: %d", fm_lna_enable);
+		return -EINVAL;
+	}
+
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		gpio_direction_output(fm_lna_enable, 0);
+		is_fm_lna_enable = 0;
+		break;
+	case 1:
+		gpio_direction_output(fm_lna_enable, 1);
+		is_fm_lna_enable = 1;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
 
 int msm_ext_enable_codec_mclk(struct snd_soc_codec *codec, int enable,
 			      bool dapm)
@@ -829,6 +871,8 @@ int msm_ext_enable_codec_mclk(struct snd_soc_codec *codec, int enable,
 static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("Speaker Function", spk_func_en, msm_ext_get_spk,
 			msm_ext_set_spk),
+	SOC_ENUM_EXT("FM LNA Enable", fm_lna_en, fm_lna_en_get,
+			fm_lna_en_set),
 	SOC_ENUM_EXT("SLIM_0_RX Channels", slim_0_rx_chs,
 			msm_slim_rx_ch_get, msm_slim_rx_ch_put),
 	SOC_ENUM_EXT("SLIM_2_RX Channels", slim_2_rx_chs,
