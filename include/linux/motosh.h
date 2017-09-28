@@ -561,7 +561,7 @@ int motosh_process_ir_gesture(struct motosh_data *ps_motosh,
 long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg);
 
-void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff);
+void motosh_reset(struct motosh_platform_data *pdata);
 int motosh_reset_and_init(enum reset_mode mode);
 
 int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,

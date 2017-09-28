@@ -506,7 +506,7 @@ RETRY_ID:
 			motosh_reset_and_init(START_RESET);
 		} else {
 			motosh_misc_data->mode = mode;
-			motosh_reset(pdata, motosh_flash_cmdbuff);
+			motosh_reset(pdata);
 		}
 	} else
 		motosh_misc_data->mode = mode;
