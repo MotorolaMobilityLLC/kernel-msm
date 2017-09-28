@@ -121,7 +121,7 @@
 
 		cirrus,irq-config {
 			cirrus,irq-drive-select = <0x01>;
-			cirrus,irq-polarity = <0x00>;
+			cirrus,irq-polarity = <0x01>;
 			cirrus,irq-gpio-select = <0x01>;
 			cirrus,irq-output-enable = <0x01>;
 			cirrus,irq-src-select = <0x01>;
@@ -266,4 +266,12 @@
 			};
 		};
 	};
+};
+
+&pm660_pdphy {
+	gpios = <&tlmm 74 0>,  /* USB_AUD_DET_N, output-high */
+		<&pcal_pin_2 5 0>; /* USB_AUD_SW_SEL, output-low */
+
+	gpio-labels = "gpio_usb_aud_det_n",
+		"gpio_aud_sw_sel";
 };
