@@ -168,6 +168,7 @@ void dropbox_queue_event_text(char *name, void *data, size_t size)
 {
 	dropbox_queue_event(name, data, size, DROPBOX_TEXT_FLAG);
 }
+EXPORT_SYMBOL(dropbox_queue_event_text);
 
 void dropbox_queue_event_binaryfile(char *name, char *path)
 {
