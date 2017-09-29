@@ -53,7 +53,8 @@ struct navi_cmd_struct cmd_list;
  *     DISABLE : Ignore swipe-left & swipe-right navigation events.
  *               Don't care properties.
  */
-#define ENABLE_SWIPE_UP_DOWN	DISABLE
+
+#define ENABLE_SWIPE_UP_DOWN	ENABLE
 #define ENABLE_SWIPE_LEFT_RIGHT	ENABLE
 #define ENABLE_FINGER_DOWN_UP	ENABLE
 #define KEY_FPS_DOWN   614
