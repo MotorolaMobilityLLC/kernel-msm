@@ -120,10 +120,15 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 			goto free_buf;
 		}
 
-		pn544_dev->irq_enabled = true;
-		enable_irq(pn544_dev->client->irq);
-		ret = wait_event_interruptible(pn544_dev->read_wq,
-				gpio_get_value(pn544_dev->irq_gpio));
+		if (!pn544_dev->irq_enabled) {
+			pn544_dev->irq_enabled = true;
+			enable_irq(pn544_dev->client->irq);
+		}
+
+		if (!gpio_get_value(pn544_dev->irq_gpio)) {
+			ret = wait_event_interruptible(pn544_dev->read_wq,
+					!pn544_dev->irq_enabled);
+		}
 
 		pn544_disable_irq(pn544_dev);
 
