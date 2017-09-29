@@ -689,38 +689,4 @@ extern int FPS_register_notifier(struct notifier_block *nb,
 				unsigned long stype, bool report);
 extern int FPS_unregister_notifier(struct notifier_block *nb,
 				unsigned long stype);
-
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING_MMI)
-int synaptics_rmi4_scan_f54_ctrl_reg_info(
-	struct synaptics_rmi4_func_packet_regs *regs);
-
-int synaptics_rmi4_scan_f54_cmd_reg_info(
-	struct synaptics_rmi4_func_packet_regs *regs);
-
-int synaptics_rmi4_scan_f54_data_reg_info(
-	struct synaptics_rmi4_func_packet_regs *regs);
-
-int synaptics_rmi4_scan_f54_query_reg_info(
-	struct synaptics_rmi4_func_packet_regs *regs);
-#else
-static inline int synaptics_rmi4_scan_f54_ctrl_reg_info(
-	struct synaptics_rmi4_func_packet_regs *regs) {
-	return -ENOSYS;
-}
-
-static inline int synaptics_rmi4_scan_f54_cmd_reg_info(
-	struct synaptics_rmi4_func_packet_regs *regs) {
-	return -ENOSYS;
-}
-
-static inline int synaptics_rmi4_scan_f54_data_reg_info(
-	struct synaptics_rmi4_func_packet_regs *regs) {
-	return -ENOSYS;
-}
-
-static inline int synaptics_rmi4_scan_f54_query_reg_info(
-	struct synaptics_rmi4_func_packet_regs *regs) {
-	return -ENOSYS;
-}
-#endif
 #endif
