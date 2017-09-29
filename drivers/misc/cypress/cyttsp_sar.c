@@ -306,7 +306,7 @@ static irqreturn_t cyttsp_sar_interrupt(int irq, void *dev_id)
 		0x00000300,
 		0x00000C00,
 		0x00003000,
-		0x00000C00  };
+		0x0000C000  };
 
 	dev_info(&data->client->dev, "cypress irq handler!\n");
 
