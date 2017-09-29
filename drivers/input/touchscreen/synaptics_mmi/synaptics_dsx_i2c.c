@@ -106,6 +106,12 @@ int FPS_unregister_notifier(struct notifier_block *nb, unsigned long stype)
 	return -ENODEV;
 }
 
+__attribute__((weak))
+int irq_can_set_affinity(unsigned int irq)
+{
+	return 0;
+}
+
 static int fps_notifier_callback(struct notifier_block *self,
 				 unsigned long event, void *data);
 
@@ -747,6 +753,26 @@ static inline unsigned char register_type_to_ascii(int type)
 		ascii = 'C';
 	}
 	return ascii;
+}
+
+static inline int synaptics_rmi4_scan_f54_ctrl_reg_info(
+	struct synaptics_rmi4_func_packet_regs *regs) {
+	return -ENOSYS;
+}
+
+static inline int synaptics_rmi4_scan_f54_cmd_reg_info(
+	struct synaptics_rmi4_func_packet_regs *regs) {
+	return -ENOSYS;
+}
+
+static inline int synaptics_rmi4_scan_f54_data_reg_info(
+	struct synaptics_rmi4_func_packet_regs *regs) {
+	return -ENOSYS;
+}
+
+static inline int synaptics_rmi4_scan_f54_query_reg_info(
+	struct synaptics_rmi4_func_packet_regs *regs) {
+	return -ENOSYS;
 }
 
 static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
@@ -4162,6 +4188,7 @@ int alloc_buffer(struct temp_buffer *tb, size_t count)
 	tb->buf_size = count;
 	return 0;
 }
+EXPORT_SYMBOL(alloc_buffer);
 
  /**
  * synaptics_rmi4_i2c_read()
@@ -7068,9 +7095,8 @@ device_destroy:
 static int synaptics_rmi4_probe(struct i2c_client *client,
 		const struct i2c_device_id *dev_id)
 {
-	int retval;
+	int retval = 0, attr_count;
 	struct pinctrl *pinctrl;
-	unsigned char attr_count;
 	struct synaptics_rmi4_data *rmi4_data;
 	struct synaptics_rmi4_device_info *rmi;
 	struct synaptics_dsx_platform_data *platform_data;
@@ -7393,7 +7419,7 @@ err_input_device:
  */
 static int synaptics_rmi4_remove(struct i2c_client *client)
 {
-	unsigned char attr_count;
+	int attr_count;
 	struct synaptics_rmi4_data *rmi4_data = i2c_get_clientdata(client);
 	struct synaptics_rmi4_device_info *rmi;
 	const struct synaptics_dsx_platform_data *platform_data =

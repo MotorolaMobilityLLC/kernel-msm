@@ -2,8 +2,8 @@
 # Synaptics DSX touchscreen driver configuration
 #
 menuconfig TOUCHSCREEN_SYNAPTICS_DSX_MMI
-	bool "Synaptics DSX touchscreen in MMI revision"
-	default y
+	tristate "Synaptics DSX touchscreen in MMI revision"
+	default n
 	help
 	  Say Y here if you have a Synaptics DSX touchscreen connected
 	  to your system. This revision supports MMI features.
@@ -15,19 +15,19 @@ if TOUCHSCREEN_SYNAPTICS_DSX_MMI
 choice
 	default TOUCHSCREEN_SYNAPTICS_DSX_I2C_MMI
 	prompt "Synaptics DSX bus interface"
-config TOUCHSCREEN_SYNAPTICS_DSX_I2C_MMI
-	bool "RMI over I2C"
-	depends on I2C
-endchoice
 
 config TOUCHSCREEN_SYNAPTICS_DSX_I2C_MMI
-	bool "I2C"
+	tristate "RMI over I2C"
 	depends on I2C
 	help
 	  Say Y here if you have a Synaptics DSX touchscreen interfaced
 	  to the host processor over I2C
 
 	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called synaptics_dsx_i2c.
+endchoice
 
 config TOUCHSCREEN_SYNAPTICS_DSX_RMI_DEV_MMI
 	tristate "Synaptics DSX touchscreen RMI device module"
