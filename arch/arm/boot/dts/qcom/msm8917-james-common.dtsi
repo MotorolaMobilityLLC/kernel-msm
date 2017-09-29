@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 #include "dsi-panel-mot-txd-520-720p-video.dtsi"
+#include "dsi-panel-mot-djn-520-720p-video.dtsi"
 #include "msm8917-moto-common-fps.dtsi"
 
 / {
