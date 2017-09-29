@@ -1041,8 +1041,8 @@ unsigned char VerifySwRevision(struct hssp_data *d)
 	if (swd_PacketAck != SWD_OK_ACK)
 		return FAILURE;
 
-	ChipSwRev = ((flashData >> (offset % 4)*8) << 8) & 0xFF00;
-	ChipSwRev |= (flashData >> ((offset % 4 + 1) * 8)) & 0xFF;
+	ChipSwRev = ((flashData >> (offset % 4)*8)) & 0x00FF;
+	ChipSwRev |= ((flashData >> (offset % 4 + 1) * 8) << 8) & 0xFF00;
 	d->sw_rev = HexSwRev;
 
 	pr_info("cycapsense_hssp: File SW rev 0x%x, Flash SW rev 0x%x\n",
