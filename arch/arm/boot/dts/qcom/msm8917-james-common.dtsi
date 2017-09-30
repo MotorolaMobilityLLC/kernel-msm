@@ -144,6 +144,7 @@
 };
 
 &et320 {
+	status = "/chosen", "mmi,fps", "true";
 	interrupts = <128 0x0>;
 	egistec,gpio_irq    = <&tlmm 128 0x1>;
 	egistec,gpio_ldo1p8_en = <&tlmm 132 0x0>;
