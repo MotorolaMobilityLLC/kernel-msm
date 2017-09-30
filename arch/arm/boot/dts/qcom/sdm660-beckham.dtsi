@@ -357,17 +357,6 @@
 		status = "okay";
 	};
 
-	/* GPIO 9 usbc_uusb_sel*/
-	gpio@c800 {
-		qcom,mode = <1>;                /* Output */
-		qcom,pull = <5>;                /* No Pull */
-		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
-		qcom,src-sel = <0>;             /* GPIO */
-		qcom,invert = <0>;              /* Invert */
-		qcom,master-en = <1>;           /* Enable GPIO */
-		status = "okay";
-	};
-
 	/* GPIO 11 mod_ss_mphy_i2s_en*/
 	gpio@ca00 {
 		qcom,mode = <1>;                /* Output */
