@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3001,19 +3001,19 @@ static int wcd9xxx_slim_probe(struct slim_device *slim)
 		("wcd9xxx_core", 0);
 	if (!IS_ERR(debugfs_wcd9xxx_dent)) {
 		debugfs_peek = debugfs_create_file("slimslave_peek",
-		S_IFREG | S_IRUGO, debugfs_wcd9xxx_dent,
+		S_IFREG | S_IRUSR, debugfs_wcd9xxx_dent,
 		(void *) "slimslave_peek", &codec_debug_ops);
 
 		debugfs_poke = debugfs_create_file("slimslave_poke",
-		S_IFREG | S_IRUGO, debugfs_wcd9xxx_dent,
+		S_IFREG | S_IRUSR, debugfs_wcd9xxx_dent,
 		(void *) "slimslave_poke", &codec_debug_ops);
 
 		debugfs_power_state = debugfs_create_file("power_state",
-		S_IFREG | S_IRUGO, debugfs_wcd9xxx_dent,
+		S_IFREG | S_IRUSR, debugfs_wcd9xxx_dent,
 		(void *) "power_state", &codec_debug_ops);
 
 		debugfs_reg_dump = debugfs_create_file("slimslave_reg_dump",
-		S_IFREG | S_IRUGO, debugfs_wcd9xxx_dent,
+		S_IFREG | S_IRUSR, debugfs_wcd9xxx_dent,
 		(void *) "slimslave_reg_dump", &codec_debug_ops);
 	}
 #endif
