@@ -54,6 +54,8 @@
 	pr_debug(DRV_NAME " %s:%d " fmt, __func__, __LINE__, ## args)
 #define IPAERR(fmt, args...) \
 	pr_err(DRV_NAME " %s:%d " fmt, __func__, __LINE__, ## args)
+#define IPAERR_RL(fmt, args...) \
+	pr_err_ratelimited(DRV_NAME " %s:%d " fmt, __func__, __LINE__, ## args)
 
 #define WLAN_AMPDU_TX_EP 15
 #define WLAN_PROD_TX_EP  19
