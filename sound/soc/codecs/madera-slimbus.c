@@ -82,6 +82,10 @@ int madera_slim_tx_ev(struct snd_soc_dapm_widget *w,
 	u16 *handles, *group;
 	int chcnt;
 
+	if (stashed_slim_dev == NULL) {
+		dev_err(madera->dev, "slim device undefined.\n");
+		return -EINVAL;
+	}
 	mutex_lock(&slim_tx_lock);
 	switch (w->shift) {
 	case MADERA_SLIMTX1_ENA_SHIFT:
@@ -188,6 +192,10 @@ int madera_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	int chcnt;
 	u32 rx_sampleszbits = 16, rx_samplerate = 48000;
 
+	if (stashed_slim_dev == NULL) {
+		dev_err(madera->dev, "slim device undefined.\n");
+		return -EINVAL;
+	}
 	mutex_lock(&slim_rx_lock);
 	switch (w->shift) {
 	case MADERA_SLIMRX1_ENA_SHIFT:
