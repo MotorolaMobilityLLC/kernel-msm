@@ -45,7 +45,7 @@
 		qcom,cam-vreg-max-voltage = <0 2800000>;
 		qcom,cam-vreg-op-mode = <0 100000>;
 		gpios =<&tlmm 98 0>,
-			<&tlmm 99 0>;
+			<&tlmm 25 0>;
 		qcom,gpio-reset = <0>;
 		qcom,gpio-req-tbl-num = <0 1>;
 		qcom,gpio-req-tbl-flags = <0 1>;
@@ -331,24 +331,24 @@
 
 		laser_active: laser_active {
 			mux {
-				pins = "gpio98", "gpio99";
+				pins = "gpio98", "gpio25";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio98", "gpio99";
+				pins = "gpio98", "gpio25";
 				drive-strength = <2>;
 				bias-pull-up; /* PULL Up */
 			};
 		};
 		laser_suspend: laser_suspend{
 			mux {
-				pins = "gpio98", "gpio99";
+				pins = "gpio98", "gpio25";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio98", "gpio99";
+				pins = "gpio98", "gpio25";
 				drive-strength = <2>;
 				bias-pull-dwon; /* PULL Down */
 			};
