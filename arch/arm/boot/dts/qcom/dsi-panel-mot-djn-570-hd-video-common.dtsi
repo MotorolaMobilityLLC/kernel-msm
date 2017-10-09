@@ -13,7 +13,7 @@ qcom,mdss-dsi-panel-height = <1440>;
 qcom,mdss-pan-physical-width-dimension = <62>;
 qcom,mdss-pan-physical-height-dimension = <110>;
 
-qcom,mdss-dsi-panel-clockrate = <510589440>;
+qcom,mdss-dsi-panel-clockrate = <470845440>;
 qcom,mdss-dsi-h-front-porch = <20>;
 qcom,mdss-dsi-h-back-porch = <20>;
 qcom,mdss-dsi-h-pulse-width = <8>;
@@ -29,15 +29,17 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 
-qcom,mdss-dsi-reset-sequence = <1 1>, <0 10>, <1 120>;
+qcom,mdss-dsi-reset-sequence = <1 1>, <0 10>, <1 50>;
 qcom,mdss-dsi-dis-reset-sequence = <1 10>, <0 0>;
 
 qcom,mdss-dsi-on-command = [
 	39 00 00 00 00 00 03 51 0C F4
-	15 00 00 00 00 00 02 53 2C
+	39 01 00 00 00 00 04 B9 83 10 2B
+	39 01 00 00 00 00 05 C9 04 07 D0 00
+	15 00 00 00 00 00 02 53 24
 	15 00 00 00 00 00 02 55 01
 	05 01 00 00 78 00 01 11
-	05 01 00 00 64 00 01 29];		/* Display on */
+	05 01 00 00 14 00 01 29];		/* Display on */
 
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 14 00 01 28
@@ -52,9 +54,9 @@ qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
 qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
 qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+qcom,mdss-dsi-hbm-on-command = [39 01 00 00 00 00 03 51 0F FF];
 qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
+qcom,mdss-dsi-hbm-off-command = [39 01 00 00 00 00 03 51 0C F4];
 qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
 
@@ -110,7 +112,7 @@ qcom,panel-supply-entries {
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
 		qcom,supply-post-on-sleep = <2>;
-		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-pre-off-sleep = <2>;
 		qcom,supply-post-off-sleep = <2>;
 	};
 	qcom,panel-supply-entry@2 {
@@ -121,7 +123,7 @@ qcom,panel-supply-entries {
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
 		qcom,supply-post-on-sleep = <10>;
-		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-pre-off-sleep = <2>;
 		qcom,supply-post-off-sleep = <2>;
 	};
 };
