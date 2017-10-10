@@ -117,8 +117,8 @@
 		"teleu",	/* 100 */
 		"pluspl",	/* 101 */
 		"dtpl",		/* 102 */
-		"undefined",	/* 103 */
-		"undefined",	/* 104 */
+		"tefes",	/* 103 */
+		"alteu",	/* 104 */
 		"undefined",	/* 105 */
 		"undefined",	/* 106 */
 		"undefined",	/* 107 */
@@ -220,7 +220,7 @@
 		"retmm",	/* 203 */
 		"gt4gtw",	/* 204 */
 		"retth",	/* 205 */
-		"undefined",	/* 206 */
+		"retru",	/* 206 */
 		"undefined",	/* 207 */
 		"undefined",	/* 208 */
 		"undefined",	/* 209 */
