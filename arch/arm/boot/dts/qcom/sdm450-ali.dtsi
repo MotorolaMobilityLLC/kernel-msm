@@ -361,6 +361,7 @@
 			wlf,gpsw = <1>;
 			wlf,use-jd2-irq;
 			wlf,report-to-input;
+			wlf,headphone-crosstalk-improve;
 			wlf,micd-rate = <6>;
 			wlf,micd-detect-debounce = <300>;
 			wlf,inmode = <0 2 0>;
