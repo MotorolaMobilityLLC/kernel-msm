@@ -36,14 +36,14 @@ qcom,mdss-dsi-bpp = <24>;
 qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
-	39 01 00 00 00 00 04 B9 FF 83 94		/* Pass Word*/
+	39 01 00 00 00 00 04 B9 FF 83 99		/* Pass Word*/
 	39 01 00 00 00 00 04 C9 03 00 14		/*	CABC PWM =20K */
 	15 00 00 00 00 00 02 35 00		/*TE on*/
 	39 00 00 00 00 00 03 51 0C CC	 /*12bit PWM*/
 	15 00 00 00 00 00 02 53 2C		/*Dimming on*/
 	15 00 00 00 00 00 02 55 01		/*UI mode*/
-	05 01 00 00 82 00 02 11 00		/*sleep in delay 130ms*/
-	05 01 00 00 14 00 02 29 00];	/* display on delay 20ms*/
+	05 01 00 00 0a 00 02 11 00		/*sleep in delay 130ms*/
+	05 01 00 00 5a 00 02 29 00];	/* display on delay 20ms*/
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 32 00 01 28		/* display_off  delay 50ms*/
 	05 01 00 00 14 00 01 10];	/* enter sleep mode delay 20ms*/
@@ -87,7 +87,7 @@ qcom,mdss-dsi-bl-max-level = <4095>;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-qcom,mdss-dsi-reset-sequence = <1 5>, <0 5>, <1 5>;
+qcom,mdss-dsi-reset-sequence = <0 1>, <1 30>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
 qcom,mdss-dsi-init-delay-us = <50000>;
