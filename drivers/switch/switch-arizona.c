@@ -2448,6 +2448,14 @@ done:
 		return 0;
 	}
 
+	if (arizona->pdata.headphone_crosstalk_improve) {
+		if (!info->mic) {
+			regmap_update_bits(arizona->regmap,
+				ARIZONA_ACCESSORY_DETECT_MODE_1,
+				ARIZONA_ACCDET_SRC,
+				~info->micd_modes[info->micd_mode].src);
+		}
+	}
 	if (arizona->pdata.hpdet_channel)
 		ret = arizona_jds_set_state(info, &arizona_hpdet_right);
 	else
@@ -3115,6 +3123,12 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 
 		arizona_extcon_report(info, BIT_NO_HEADSET);
 
+		if (arizona->pdata.headphone_crosstalk_improve) {
+			regmap_update_bits(arizona->regmap,
+				ARIZONA_ACCESSORY_DETECT_MODE_1,
+				ARIZONA_ACCDET_SRC,
+				info->micd_modes[info->micd_mode].src);
+		}
 		regmap_update_bits(arizona->regmap, reg, mask, mask);
 
 		arizona_set_headphone_imp(info, ARIZONA_HP_Z_OPEN);
@@ -3350,6 +3364,9 @@ static int arizona_extcon_of_get_pdata(struct arizona *arizona)
 
 	pdata->report_to_input = of_property_read_bool(arizona->dev->of_node,
 						       "wlf,report-to-input");
+	pdata->headphone_crosstalk_improve =
+			of_property_read_bool(arizona->dev->of_node,
+			"wlf,headphone-crosstalk-improve");
 	return 0;
 }
 #else
