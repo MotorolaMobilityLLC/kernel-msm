@@ -43,7 +43,70 @@
 	};
 };
 
+&soc {
+	sound {
+		/delete-property/ qcom,cdc-us-euro-gpios;
+		/delete-property/ qcom,msm-micbias1-ext-cap;
+		/delete-property/ qcom,msm-micbias2-ext-cap;
+		qcom,msm-gpios =
+			"pri_i2s",
+			"quin_i2s";
+		qcom,pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"quin_act",
+			"quin_pri_i2s_act";
+		pinctrl-names =
+			"all_off",
+			"pri_i2s_act",
+			"quin_act",
+			"quin_pri_i2s_act";
+		pinctrl-0 = <&cdc_pdm_lines_sus
+                        &cdc_pdm_lines_2_sus
+                        &quin_mi2s_sus &pri_tlmm_ws_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_act
+                        &cdc_pdm_lines_2_act
+                        &quin_mi2s_sus &pri_tlmm_ws_sus>;
+		pinctrl-2 = <&cdc_pdm_lines_sus
+                        &cdc_pdm_lines_2_sus
+                        &quin_mi2s_act &pri_tlmm_ws_act>;
+		pinctrl-3 = <&cdc_pdm_lines_act
+                        &cdc_pdm_lines_2_act
+                        &quin_mi2s_act &pri_tlmm_ws_act>;
+		/delete-property/ pinctrl-4;
+		/delete-property/ pinctrl-5;
+		/delete-property/ pinctrl-6;
+		/delete-property/ pinctrl-7;
+	};
+	tas_smartamp: qcom,tas2560-algo {
+        compatible = "qcom,tas2560-algo";
+        qcom,tas2560-port-id = <0x1016>, <0x1017>; /*<RX_PORT_ID>, <TX_PORT_ID>*/
+	};
+};
 &tlmm{
+	quin-mi2s-lines {
+		quin_mi2s_act: quin_mi2s_act {
+			mux {
+				pins = "gpio85", "gpio86", "gpio88";
+				function = "pri_mi2s";
+			};
+			config {
+				pins = "gpio85", "gpio86", "gpio88";
+				drive-strength = <8>;
+			};
+		};
+		quin_mi2s_sus: quin_mi2s_sus {
+			mux {
+				pins = "gpio85", "gpio86", "gpio88";
+				function = "pri_mi2s";
+			};
+			config {
+				pins = "gpio85", "gpio86", "gpio88";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
 	tps61280_en_default: tps61280_en_default {
 		mux {
 			pins = "gpio95";
@@ -56,6 +119,17 @@
 	};
 };
 &i2c_2 {
+	tas2560@4c {
+			compatible = "ti,tas2560";
+			reg = <0x4c>;
+			ti,reset-gpio = <&tlmm 89 0>;
+			ti,irq-gpio = <&tlmm 90 0>;
+			ti,pll = <0>; /* refer to tas2560.h for more details */
+			ti,asi-format = <0>; /* 0, i2S; 1, DSP;  */
+			ti,load = <1>; /* 0, 8Ohm; 1, 6Ohm; 2, 4Ohm */
+			ti,ppg = <0>; /* 0, 0dB default; 1， enable -2dB */
+			status = "ok";
+	};
 	tps61280@75 {
 		compatible = "ti,tps61280";
 		status = "okay";
