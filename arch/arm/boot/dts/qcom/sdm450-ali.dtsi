@@ -186,7 +186,7 @@
 				<&tlmm 86 0x2008>;
 			use-raw-gpio-rw = <1>;
 			gpio_base_addr = <0x01000004>;
-			gpio_base_size = <0x0a000000>;
+			gpio_base_size = <0x3d0900>;
 			cyttsp,sar-status-reg = <0x50>;
 			cyttsp,standby-reg = <0x51>;
 			cyttsp,bootloader-addr = <0x02>;
