@@ -3884,6 +3884,7 @@ static int get_vbat_est_diff(struct fg_chip *chip)
 #define CBITS_INPUT_FILTER_REG		0x4B4
 #define IBATTF_TAU_MASK			0x38
 #define IBATTF_TAU_99_S			0x30
+static int set_prop_enable_charging(struct fg_chip *chip, bool enable);
 static int fg_do_restart(struct fg_chip *chip, bool write_profile);
 static int fg_vbat_est_check(struct fg_chip *chip)
 {
@@ -3903,10 +3904,23 @@ static int fg_vbat_est_check(struct fg_chip *chip)
 		&& chip->first_profile_loaded
 		&& !chip->fg_restarting
 		&& !batt_missing) {
+		bool enabled = !chip->charging_disabled;
 		pr_info("vbat_est_diff is larger than vbat_est_thr_uv,so force fg restart\n");
-		rc = fg_do_restart(chip, false);
+		/* Disable charging before restart fg */
+		if (enabled) {
+			rc = set_prop_enable_charging(chip, false);
+			if (rc)
+				pr_err("Failed to disable charging, rc=%d\n", rc);
+		}
+		rc = fg_do_restart(chip, true);
 		if (rc)
 			pr_err("fg restart failed: %d\n", rc);
+		/* Enable charging after restart fg */
+		if (enabled && chip->charging_disabled) {
+			rc = set_prop_enable_charging(chip, true);
+			if (rc)
+				pr_err("Failed to enable charging, rc=%d\n", rc);
+		}
 	}
 	return rc;
 }
