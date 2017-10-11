@@ -378,6 +378,7 @@ dtb-$(CONFIG_ARCH_MSM8920) += msm8920-owens-p1.dtb
 endif
 
 ifeq ($(CONFIG_HANNAH_DTB),y)
+dtb-$(CONFIG_ARCH_MSM8917) += msm8917-hannah-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8937) += msm8937-hannah-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8940) += msm8940-hannah-p0.dtb
 endif
