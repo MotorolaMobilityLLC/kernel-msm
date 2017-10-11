@@ -13,3 +13,4 @@ obj-$(CONFIG_PWRSEQ_SIMPLE)	+= pwrseq_simple.o
 obj-$(CONFIG_PWRSEQ_EMMC)	+= pwrseq_emmc.o
 mmc_core-$(CONFIG_DEBUG_FS)	+= debugfs.o
 obj-$(CONFIG_MMC_RING_BUFFER)	+= ring_buffer.o
+obj-$(CONFIG_MMC_FFU)		+= mmc_ffu.o
