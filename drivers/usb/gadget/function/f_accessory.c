@@ -44,6 +44,7 @@
 
 #define MAX_INST_NAME_LEN        40
 #define BULK_BUFFER_SIZE    16384
+#define BULK_BUFFER_INIT_SIZE 131072
 #define ACC_STRING_SIZE     256
 
 #define PROTOCOL_VERSION    2
@@ -54,6 +55,9 @@
 /* number of tx and rx requests to allocate */
 #define TX_REQ_MAX 4
 #define RX_REQ_MAX 2
+
+unsigned int acc_rx_req_len = BULK_BUFFER_INIT_SIZE;
+unsigned int acc_tx_req_len = BULK_BUFFER_INIT_SIZE;
 
 struct acc_hid_dev {
 	struct list_head	list;
@@ -149,7 +153,7 @@ static struct usb_ss_ep_comp_descriptor acc_superspeed_in_comp_desc = {
 	.bDescriptorType =	USB_DT_SS_ENDPOINT_COMP,
 
 	/* the following 2 values can be tweaked if necessary */
-	/* .bMaxBurst =		0, */
+	.bMaxBurst =		8,
 	/* .bmAttributes =	0, */
 };
 
@@ -166,7 +170,7 @@ static struct usb_ss_ep_comp_descriptor acc_superspeed_out_comp_desc = {
 	.bDescriptorType =	USB_DT_SS_ENDPOINT_COMP,
 
 	/* the following 2 values can be tweaked if necessary */
-	/* .bMaxBurst =		0, */
+	.bMaxBurst =		8,
 	/* .bmAttributes =	0, */
 };
 
@@ -584,19 +588,33 @@ static int create_bulk_endpoints(struct acc_dev *dev,
 	ep->driver_data = dev;		/* claim the endpoint */
 	dev->ep_out = ep;
 
+retry_tx_alloc:
 	/* now allocate requests for our endpoints */
 	for (i = 0; i < TX_REQ_MAX; i++) {
-		req = acc_request_new(dev->ep_in,
-			BULK_BUFFER_SIZE + cdev->gadget->extra_buf_alloc);
-		if (!req)
-			goto fail;
+		req = acc_request_new(dev->ep_in, acc_tx_req_len);
+		if (!req) {
+			if (acc_tx_req_len <= BULK_BUFFER_SIZE)
+				goto fail;
+			while ((req = req_get(dev, &dev->tx_idle)))
+				acc_request_free(req, dev->ep_in);
+			acc_tx_req_len /= 2;
+			goto retry_tx_alloc;
+		}
 		req->complete = acc_complete_in;
 		req_put(dev, &dev->tx_idle, req);
 	}
+
+retry_rx_alloc:
 	for (i = 0; i < RX_REQ_MAX; i++) {
-		req = acc_request_new(dev->ep_out, BULK_BUFFER_SIZE);
-		if (!req)
-			goto fail;
+		req = acc_request_new(dev->ep_out, acc_rx_req_len);
+		if (!req) {
+			if (acc_rx_req_len <= BULK_BUFFER_SIZE)
+				goto fail;
+		for (i = 0; i < RX_REQ_MAX; i++)
+			acc_request_free(dev->rx_req[i], dev->ep_out);
+			acc_rx_req_len /= 2;
+			goto retry_rx_alloc;
+		}
 		req->complete = acc_complete_out;
 		dev->rx_req[i] = req;
 	}
@@ -629,8 +647,8 @@ static ssize_t acc_read(struct file *fp, char __user *buf,
 		return -ENODEV;
 	}
 
-	if (count > BULK_BUFFER_SIZE)
-		count = BULK_BUFFER_SIZE;
+	if (count > acc_rx_req_len)
+		count = acc_rx_req_len;
 
 	/* we will block until we're online */
 	pr_debug("acc_read: waiting for online\n");
@@ -726,8 +744,8 @@ static ssize_t acc_write(struct file *fp, const char __user *buf,
 			break;
 		}
 
-		if (count > BULK_BUFFER_SIZE) {
-			xfer = BULK_BUFFER_SIZE;
+		if (count > acc_tx_req_len) {
+			xfer = acc_tx_req_len;
 			/* ZLP, They will be more TX requests so not yet. */
 			req->zero = 0;
 		} else {
