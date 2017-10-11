@@ -289,7 +289,7 @@
 			status = "ok";
 			reg = <0x1000 0x100>;
 			compatible = "qcom,leds-atc";
-			linux,name = "charging";c
+			linux,name = "charging";
 			qcom,ctrl-reg = <0x243>;
 		};
 	};
