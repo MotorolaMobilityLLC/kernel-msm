@@ -35,6 +35,9 @@
 #ifdef CONFIG_SND_SOC_OPALUM
 #include <sound/ospl2xx.h>
 #endif
+#ifdef CONFIG_SND_SOC_TAS2560
+#include <sound/tas2560_algo.h>
+#endif
 
 #define DRV_NAME "msm8952-asoc-wcd"
 
@@ -2057,6 +2060,15 @@ static int quin_dai_init(struct snd_soc_pcm_runtime *rtd)
 	return ret;
 }
 #endif
+
+#ifdef CONFIG_SND_SOC_TAS2560
+static int tas2560_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret = 0;
+	ret = tas2560_algo_routing_init(rtd);
+	return ret;
+}
+#endif
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm8952_dai[] = {
 	/* FrontEnd DAI Links */
@@ -3208,6 +3220,7 @@ static struct snd_soc_dai_link msm8952_quin_dai_link[] = {
 		.platform_name = "msm-pcm-routing",
 		.codec_dai_name = "tas2560 ASI1",
 		.codec_name = "tas2560.2-004c",
+		.init = &tas2560_dai_init,
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.be_id = MSM_BACKEND_DAI_QUINARY_MI2S_RX,
