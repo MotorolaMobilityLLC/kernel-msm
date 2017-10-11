@@ -6666,6 +6666,7 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 #define COOL_TEMP 0
 #define REV_BST_THRESH 4700
 #define REV_BST_DROP 150
+#define REV_BST_MA -10
 static void mmi_heartbeat_work(struct work_struct *work)
 {
 	struct smb_charger *chip = container_of(work,
@@ -6863,8 +6864,9 @@ static void mmi_heartbeat_work(struct work_struct *work)
 
 	pok_irq = chip->irq_info[SWITCH_POWER_OK_IRQ].irq;
 	if (chip->reverse_boost) {
-		if ((usb_mv < REV_BST_THRESH) &&
-		    ((prev_vbus_mv - REV_BST_DROP) > usb_mv)) {
+		if (((usb_mv < REV_BST_THRESH) &&
+		    ((prev_vbus_mv - REV_BST_DROP) > usb_mv)) ||
+		    (batt_ma > REV_BST_MA)) {
 			smblib_err(chip,
 				   "Reverse Boosted: Clear, USB Suspend\n");
 			chip->reverse_boost = false;
