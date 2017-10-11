@@ -201,7 +201,7 @@ snd-soc-max9877-objs := max9877.o
 snd-soc-tpa6130a2-objs := tpa6130a2.o
 snd-soc-tas2552-objs := tas2552.o
 snd-soc-fsa8500-objs := fsa8500.o
-snd-soc-tas2560-objs := tas2560-core.o tas2560-misc.o tas2560-codec.o tas2560-regmap.o
+snd-soc-tas2560-objs := tas2560-core.o tas2560-misc.o tas2560-codec.o tas2560-regmap.o tas2560-calib.o
 
 
 obj-$(CONFIG_SND_SOC_88PM860X)	+= snd-soc-88pm860x.o

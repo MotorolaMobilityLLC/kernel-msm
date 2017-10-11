@@ -53,3 +53,6 @@ obj-$(CONFIG_SND_SOC_MDM9640) += snd-soc-mdm9640.o
 
 # for Opalum controls
 obj-$(CONFIG_SND_SOC_OPALUM) += ospl2xx.o
+
+# for tas2560 dsp algo controls
+obj-$(CONFIG_SND_SOC_TAS2560) += tas2560-algo.o
