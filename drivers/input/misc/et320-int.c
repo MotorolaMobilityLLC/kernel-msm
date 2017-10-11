@@ -584,40 +584,6 @@ int etspi_platformInit(struct etspi_data *etspi)
 	DEBUG_PRINT("%s\n", __func__);
 
 	if (etspi != NULL) {
-
-		/* Initial Reset Pin*/
-		status = gpio_request(etspi->rstPin, "reset-gpio");
-		if (status < 0) {
-			pr_err("%s gpio_requset etspi_Reset failed\n",
-				__func__);
-			goto etspi_platformInit_rst_failed;
-		}
-		gpio_direction_output(etspi->rstPin, 1);
-		if (status < 0) {
-			pr_err("%s gpio_direction_output Reset failed\n",
-					__func__);
-			status = -EBUSY;
-			goto etspi_platformInit_rst_failed;
-		}
-		/* gpio_set_value(etspi->rstPin, 1); */
-		pr_err("etspi:  reset to high\n");
-		/* initial 33V power pin */
-		status = gpio_request(etspi->vcc_33v_Pin, "33v-gpio");
-		if (status < 0) {
-			pr_err("%s gpio_requset vcc_33v_Pin failed\n",
-				__func__);
-			goto etspi_platformInit_rst_failed;
-		}
-		gpio_direction_output(etspi->vcc_33v_Pin, 1);
-		if (status < 0) {
-			pr_err("%s gpio_direction_output vcc_33v_Pin failed\n",
-					__func__);
-			status = -EBUSY;
-			goto etspi_platformInit_rst_failed;
-		}
-		gpio_set_value(etspi->vcc_33v_Pin, 1);
-		pr_err("etspi::  vcc_33v_Pin set to high\n");
-
 		/* initial 18V power pin */
 		status = gpio_request(etspi->vdd_18v_Pin, "18v-gpio");
 		if (status < 0) {
@@ -634,7 +600,42 @@ int etspi_platformInit(struct etspi_data *etspi)
 		}
 
 		gpio_set_value(etspi->vdd_18v_Pin, 1);
-		pr_err("ets320:  vdd_18v_Pin set to high\n");
+		pr_err("etspi:  vdd_18v_Pin set to high\n");
+		mdelay(1);
+		/* initial 33V power pin */
+		status = gpio_request(etspi->vcc_33v_Pin, "33v-gpio");
+		if (status < 0) {
+			pr_err("%s gpio_requset vcc_33v_Pin failed\n",
+				__func__);
+			goto etspi_platformInit_rst_failed;
+		}
+		gpio_direction_output(etspi->vcc_33v_Pin, 1);
+		if (status < 0) {
+			pr_err("%s gpio_direction_output vcc_33v_Pin failed\n",
+					__func__);
+			status = -EBUSY;
+			goto etspi_platformInit_rst_failed;
+		}
+		gpio_set_value(etspi->vcc_33v_Pin, 1);
+		pr_err("etspi:  vcc_33v_Pin set to high\n");
+		mdelay(2);
+		/* Initial Reset Pin*/
+		status = gpio_request(etspi->rstPin, "reset-gpio");
+		if (status < 0) {
+			pr_err("%s gpio_requset etspi_Reset failed\n",
+				__func__);
+			goto etspi_platformInit_rst_failed;
+		}
+		gpio_direction_output(etspi->rstPin, 1);
+		if (status < 0) {
+			pr_err("%s gpio_direction_output Reset failed\n",
+					__func__);
+			status = -EBUSY;
+			goto etspi_platformInit_rst_failed;
+		}
+		/* gpio_set_value(etspi->rstPin, 1); */
+		pr_err("etspi:  reset to high\n");
+
 		/* Initial IRQ Pin*/
 		status = gpio_request(etspi->irqPin, "irq-gpio");
 		if (status < 0) {
