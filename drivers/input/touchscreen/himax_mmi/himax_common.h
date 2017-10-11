@@ -161,7 +161,7 @@ void himax_touch_proc_deinit(void);
 		FIX_HX_Y_RES = 1440,
 		FIX_HX_MAX_PT = 5,
 		FIX_HX_XY_REVERSE = false,
-		FIX_HX_INT_IS_EDGE = false,
+		FIX_HX_INT_IS_EDGE = true,
 #ifdef HX_TP_PROC_2T2R
 		FIX_HX_RX_NUM_2 = 12,
 		FIX_HX_TX_NUM_2 = 21
