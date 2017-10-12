@@ -569,41 +569,41 @@ int himax_chip_self_test(struct i2c_client *client)
 	himax_interface_on(client);
 	himax_sense_off(client);
 
-	
+
 	himax_burst_enable(client, 1);
-	
+
 	// 0x10007f18 -> 0x00006AA6
-	tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x7F; tmp_addr[0] = 0x18;
+	tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x07; tmp_addr[0] = 0xF8;
 	tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x6A; tmp_data[0] = 0xA6;
 	himax_flash_write_burst(client, tmp_addr, tmp_data);
 
 	//Set criteria 0x10007F1C [0,1]=aa/up,down=, [2-3]=key/up,down, [4-5]=avg/up,down
 	tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x7F; tmp_addr[0] = 0x1C;
-	tmp_data[3] = 0x00; tmp_data[2] = 0xFF; tmp_data[1] = 0x00; tmp_data[0] = 0xFF;
-	tmp_data[7] = 0x00; tmp_data[6] = 0x00; tmp_data[5] = 0x00; tmp_data[4] = 0xFF;
+	tmp_data[3] = 0x0A; tmp_data[2] = 0x5A; tmp_data[1] = 0x0A; tmp_data[0] = 0x5A;
+	tmp_data[7] = 0x00; tmp_data[6] = 0x00; tmp_data[5] = 0x00; tmp_data[4] = 0x32;
 	himax_flash_write_burst_lenth(client, tmp_addr, tmp_data, 8);
 
 	// 0x10007294 -> 0x0000190  //SET IIR_MAX FRAMES
 	tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x7F; tmp_addr[0] = 0x00;
 	tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x01; tmp_data[0] = 0x90;
 	himax_flash_write_burst(client, tmp_addr, tmp_data);
-	
+
 	//Disable IDLE Mode
 	himax_idle_mode(client,1);
-	
+
 	// 0x10007f00 -> 0x0000A55A //Diable Flash Reload
 	tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x7F; tmp_addr[0] = 0x00;
 	tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0xA5; tmp_data[0] = 0x5A;
 	himax_flash_write_burst(client, tmp_addr, tmp_data);
-	
-	
+
+
 	//start selftest // leave safe mode
 	himax_sense_on(client, 1);
 
 	//Hand shaking -> 0x10007f18 waiting 0xA66A
 	for(i = 0;i < 1000;i++)
 	{
-		tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x7F; tmp_addr[0] = 0x18;
+		tmp_addr[3] = 0x10; tmp_addr[2] = 0x00; tmp_addr[1] = 0x07; tmp_addr[0] = 0xF8;
 		himax_register_read(client, tmp_addr, 4, tmp_data, false);
 		I("%s: tmp_data[0] = 0x%02X,tmp_data[1] = 0x%02X,tmp_data[2] = 0x%02X,tmp_data[3] = 0x%02X, cnt=%d\n", __func__,tmp_data[0],tmp_data[1],tmp_data[2],tmp_data[3],i);
 		msleep(10);
