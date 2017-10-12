@@ -111,10 +111,7 @@
 		ti,sample_time = /bits/ 8 <0x04>;
 		ti,nrst-gpio = <&pcal_pin 10 0>;
 		ti,nvctrl-gpio = <&tlmm 57 0>;
-		ti,npwr-gpio = <&tlmm 5 0>;
-		pinctrl-names = "haptic_default", "haptic_sleep";
-		pinctrl-0 = <&haptic_pwr_active>;
-		pinctrl-1 = <&haptic_pwr_sleep>;
+		ti,npwr-gpio = <&pm660l_gpios 5 0>;
 		};
 
 	analogix_anx7805@72 {
@@ -423,6 +420,16 @@
 
 &pm660l_gpios {
 	gpio@c300 { /* GPIO4 */
+		qcom,mode = <1>;                /* Output */
+		qcom,pull = <5>;                /* No Pull */
+		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,invert = <0>;              /* Invert */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "ok";
+	};
+
+	gpio@c400 { /* GPIO5 */
 		qcom,mode = <1>;                /* Output */
 		qcom,pull = <5>;                /* No Pull */
 		qcom,vin-sel = <0>;             /* VIN1 GPIO_LV */
