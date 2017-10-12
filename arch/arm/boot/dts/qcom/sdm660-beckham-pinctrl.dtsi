@@ -91,31 +91,6 @@
 		};
 	};
 
-	haptic_pwr_active: haptic_pwr_active {
-		mux {
-			pins = "gpio5";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio5";
-			drive-strength = <2>;
-			output-low;
-		};
-	};
-
-	haptic_pwr_sleep: haptic_pwr_sleep {
-		mux {
-			pins = "gpio5";
-			function = "gpio";
-		};
-
-		config {
-			pins = "gpio5";
-			drive-strength = <2>;
-		};
-	};
-
 	nfc {
 		nfc_int_active: nfc_int_active {
 			mux {
