@@ -274,6 +274,12 @@
 };
 
 &soc{
+	gpio_keys {
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+	};
+
 	spi_4: spi@c178000 {/* BLSP1 QUP4 */
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
