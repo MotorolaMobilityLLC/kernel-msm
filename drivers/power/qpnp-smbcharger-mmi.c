@@ -6665,6 +6665,11 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 				chip->supply_type);
 		power_supply_set_supply_type(chip->usb_psy, chip->supply_type);
 
+		SMB_DBG(chip, "setting usb max voltage = %d\n",
+				USBC_5V_MODE * 1000);
+		power_supply_set_voltage_limit(chip->usb_psy,
+							(USBC_5V_MODE * 1000));
+
 		/*
 		 * If we are using the data lines, take ownership first. If not,
 		 * just notify the usb_psy we are charger.
