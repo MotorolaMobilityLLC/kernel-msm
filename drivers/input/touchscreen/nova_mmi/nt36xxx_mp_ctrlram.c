@@ -83,12 +83,14 @@ static int32_t *RawData_FW_CC_I = NULL;
 static int32_t *RawData_FW_CC_Q = NULL;
 
 static struct proc_dir_entry *NVT_proc_selftest_entry = NULL;
+static struct proc_dir_entry *proc_selftest_result;
 static int8_t nvt_mp_test_result_printed = 0;
 
 extern void nvt_change_mode(uint8_t mode);
 extern uint8_t nvt_get_fw_pipe(void);
 extern void nvt_read_mdata(uint32_t xdata_addr, uint32_t xdata_btn_addr);
 extern void nvt_get_mdata(int32_t *buf, uint8_t *m_x_num, uint8_t *m_y_num);
+static int test_result;
 
 /*******************************************************
 Description:
@@ -326,12 +328,12 @@ static int32_t nvt_save_rawdata_to_csv(int32_t *rawdata, uint8_t x_ch, uint8_t y
 	int32_t x = 0;
 	int32_t y = 0;
 	int32_t iArrayIndex = 0;
-	struct file *fp = NULL;
+	/*struct file *fp = NULL;*/
 	char *fbufp = NULL;
-	mm_segment_t org_fs;
-	int32_t write_ret = 0;
+	/*mm_segment_t org_fs;*/
+	/*int32_t write_ret = 0;*/
 	uint32_t output_len = 0;
-	loff_t pos = 0;
+	/*loff_t pos = 0;*/
 #if TOUCH_KEY_NUM > 0
 	int32_t k = 0;
 	int32_t keydata_output_offset = 0;
@@ -364,9 +366,10 @@ static int32_t nvt_save_rawdata_to_csv(int32_t *rawdata, uint8_t x_ch, uint8_t y
 	sprintf(fbufp + y_ch * x_ch * 7 + y_ch * 2 + Key_Channel * 7, "\r\n");
 #endif /* #if TOUCH_KEY_NUM > 0 */
 
+#if 0
 	org_fs = get_fs();
 	set_fs(KERNEL_DS);
-	fp = filp_open(file_path, O_RDWR | O_CREAT, 0644);
+	/*fp = filp_open(file_path, O_RDWR | O_CREAT, 0777);*/
 	if (fp == NULL || IS_ERR(fp)) {
 		NVT_ERR("open %s failed\n", file_path);
 		set_fs(org_fs);
@@ -376,12 +379,15 @@ static int32_t nvt_save_rawdata_to_csv(int32_t *rawdata, uint8_t x_ch, uint8_t y
 		}
 		return -1;
 	}
+#endif
 
 #if TOUCH_KEY_NUM > 0
 	output_len = y_ch * x_ch * 7 + y_ch * 2 + Key_Channel * 7 + 2;
 #else
 	output_len = y_ch * x_ch * 7 + y_ch * 2;
 #endif /* #if TOUCH_KEY_NUM > 0 */
+
+#if 0
 	pos = offset;
 	write_ret = vfs_write(fp, (char __user *)fbufp, output_len, &pos);
 	if (write_ret <= 0) {
@@ -408,6 +414,7 @@ static int32_t nvt_save_rawdata_to_csv(int32_t *rawdata, uint8_t x_ch, uint8_t y
 		fbufp = NULL;
 	}
 
+#endif
 	printk("%s:--\n", __func__);
 
 	return 0;
@@ -1203,10 +1210,12 @@ void print_selftest_result(struct seq_file *m, int32_t TestResult, uint8_t Recor
 
 		case 1:
 			nvt_mp_seq_printf(m, " ERROR! Read Data FAIL!\n");
+			test_result++;
 			break;
 
 		case -1:
 			nvt_mp_seq_printf(m, " FAIL!\n");
+			test_result++;
 			nvt_mp_seq_printf(m, "RecordResult:\n");
 			for (i = 0; i < y_len; i++) {
 				for (j = 0; j < x_len; j++) {
@@ -1376,6 +1385,33 @@ const struct seq_operations nvt_selftest_seq_ops = {
 	.stop   = c_stop,
 	.show   = c_show_selftest
 };
+
+/*******************************************************
+Description:
+	Novatek touchscreen /proc/nvt_test_result read function.
+
+return:
+	Executive outcomes. cnt.
+*******************************************************/
+
+static ssize_t nvt_test_result_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
+{
+	int cnt = 0;
+	char *page = NULL;
+
+	page = kzalloc(16, GFP_KERNEL);
+	NVT_LOG("test_result have %d err", test_result);
+
+	if (test_result == 0) {
+		cnt = snprintf(page, 6, "%s", "PASS\n");
+	} else {
+		cnt = snprintf(page, 6, "%s", "FAIL\n");
+		test_result = 0;
+	}
+	cnt = simple_read_from_buffer(buf, size, ppos, page, cnt);
+	kfree(page);
+	return cnt;
+}
 
 /*******************************************************
 Description:
@@ -1560,6 +1596,11 @@ static int32_t nvt_selftest_open(struct inode *inode, struct file *file)
 
 	return seq_open(file, &nvt_selftest_seq_ops);
 }
+
+static const struct file_operations nvt_test_result_fops = {
+	.owner = THIS_MODULE,
+	.read = nvt_test_result_read,
+};
 
 static const struct file_operations nvt_selftest_fops = {
 	.owner = THIS_MODULE,
@@ -1805,6 +1846,11 @@ int32_t nvt_mp_proc_init(void)
 {
 	struct device_node *np = ts->client->dev.of_node;
 	unsigned char mpcriteria[32] = {0};	//novatek-mp-criteria-default
+
+	proc_selftest_result = proc_create("nvt_test_result", 0444, NULL, &nvt_test_result_fops);
+	if (proc_selftest_result == NULL) {
+		NVT_ERR("create /proc/nvt_test_result Failed!\n");
+	}
 
 	NVT_proc_selftest_entry = proc_create("nvt_selftest", 0444, NULL, &nvt_selftest_fops);
 	if (NVT_proc_selftest_entry == NULL) {
