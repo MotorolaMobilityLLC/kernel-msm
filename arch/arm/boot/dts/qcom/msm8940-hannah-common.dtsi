@@ -69,9 +69,9 @@
 	/delete-node/ et320;
 	/delete-node/ fp_id;
 
-	tas_smartamp: qcom,tas2560-algo {
-        compatible = "qcom,tas2560-algo";
-        qcom,tas2560-port-id = <0x1016>, <0x1017>; /*<RX_PORT_ID>, <TX_PORT_ID>*/
+	ti,tas2560-algo {
+		compatible = "ti,tas2560-algo";
+		ti,tas2560-port-id = <0x1016>, <0x1017>;
 	};
 
 	et320: et320{
