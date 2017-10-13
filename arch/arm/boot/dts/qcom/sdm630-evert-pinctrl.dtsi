@@ -11,6 +11,8 @@
  */
 
 &tlmm {
+	/delete-node/ tlmm_gpio_key;
+
 	dtv_output_default: dtv-output {
 		mux {
 			/* enable, reset */
