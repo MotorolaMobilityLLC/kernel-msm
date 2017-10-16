@@ -25,20 +25,6 @@
 
 &i2c_2 { /* BLSP1 CAP SENSOR */
 	status = "okay";
-	sx9310@28 {
-		compatible = "semtech,sx9310";
-		reg = <0x28>;
-		cap_vdd-supply = <&pm660l_l3>;
-		cap_svdd-supply = <&pm660_l13>;
-		interrupt-parent = <&tlmm>;
-		interrupts = <52 0x2008>;
-		gpios = <&tlmm 52 0x2008>; /* IRQ */
-		pinctrl-names = "default";
-		pinctrl-0 = <&sx9310_irq_default>;
-		reg_array_len = <4>;
-		reg_array_val = <0x10 0x54 0x15 0xC3 0x18 0x5E 0x19 0x2E>;
-	};
-
 	cypress_capsensor@1D {
 		compatible = "cypress,sf3155";
 		label = "MotorolaCapSense";
