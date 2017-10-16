@@ -283,16 +283,6 @@
 			<&dma_blsp2 5 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
 
-		fusb302@22 {
-			compatible = "fairchild,fusb302";
-			reg = <0x22>;
-			gpios = <&tlmm 9 1>; /* FUSB302_INT_N, in */
-			fusb,gpio-labels = "gpio_fusb_int_n";
-			pinctrl-names = "default", "active";
-			pinctrl-0 = <&fusb302_int_default>;
-			pinctrl-1 = <&fusb302_int_active>;
-		};
-
 		nq:nq@28 {		/* NFC PN553 */
 			compatible = "qcom,nq-nci";
 			status = "/chosen", "mmi,nfc", "true";
