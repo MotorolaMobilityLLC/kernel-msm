@@ -14,6 +14,7 @@
 #include "sdm630-evert-pinctrl.dtsi"
 #include "dsi-panel-mot-tianma-593-1080p-vid.dtsi"
 #include "dsi-panel-mot-auo-593-1080p-vid.dtsi"
+#include "dsi-panel-mot-djn-593-1080p-vid.dtsi"
 #include "sdm630-camera-sensor-mot-evert.dtsi"
 #include "sdm660-external-codec.dtsi"
 / {
