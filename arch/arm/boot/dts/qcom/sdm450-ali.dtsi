@@ -831,7 +831,6 @@
 	qcom,step-chg-steps = <4200 3000 2000>,
 				<4400 2000 1600>;
 	qcom,auto-voltage-comp-mv = <150>;
-	qcom,enable-parameter-separate;
 	qcom,prop-flash-active;
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <80>;
@@ -844,10 +843,10 @@
 };
 
 /{
-	mot_johnsonbatterydata: qcom,battery-data {
-		qcom,batt-id-range-pct = <100>;
-		df-serialnum = "SB18C19816";
-		#include "batterydata-jp40-swd.dtsi"
+	/delete-node/ qcom,battery-data;
+	mot_batterydata: qcom,battery-data {
+		df-serialnum = "SB18C15119";
+		#include "batterydata-hg30-atl.dtsi"
 	};
 };
 
@@ -855,6 +854,6 @@
 	/delete-property/ qcom,battery-data;
 	qcom,irq-volt-empty-mv = <3000>;
 	qcom,fg-cutoff-voltage-mv = <3200>;
-	qcom,battery-data = <&mot_johnsonbatterydata>;
+	qcom,battery-data = <&mot_batterydata>;
 };
 
