@@ -13,6 +13,24 @@
 #include "dsi-panel-mot-tianma-599-hd-video.dtsi"
 #include "dsi-panel-mot-djn-599-hd-video.dtsi"
 
+&firmware {
+       android {
+               fstab {
+                       vendor {
+                               compatible = "android,vendor";
+                               dev = "/dev/block/platform/7824900.sdhci/by-name/vendor";
+                               type = "ext4";
+                               mnt_flags = "ro,barrier=1,discard";
+                               fsmgr_flags = "wait";
+                               status = "ok";
+                       };
+               };
+       };
+};
+
+
+
+
 &soc {
 	vdda_touch_vreg: vdda_touch_vreg {
 		compatible = "regulator-fixed";
