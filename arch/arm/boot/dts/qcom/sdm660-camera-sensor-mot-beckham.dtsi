@@ -142,7 +142,7 @@
 					  "CAM_CUSTOM1";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
-		qcom,cci-master = <0>;
+		qcom,cci-master = <1>;
 		status = "ok";
 		clocks = <&clock_mmss MCLK0_CLK_SRC>,
 			<&clock_mmss MMSS_CAMSS_MCLK0_CLK>;
