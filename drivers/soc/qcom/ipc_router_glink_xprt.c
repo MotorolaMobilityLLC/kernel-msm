@@ -77,6 +77,7 @@ struct ipc_router_glink_xprt {
 	char ch_name[GLINK_NAME_SIZE];
 	char edge[GLINK_NAME_SIZE];
 	char transport[GLINK_NAME_SIZE];
+	char xprt_wq_name[GLINK_NAME_SIZE];
 	char pil_edge[PIL_SUBSYSTEM_NAME_LEN];
 	char ipc_rtr_xprt_name[IPC_RTR_XPRT_NAME_LEN];
 	struct msm_ipc_router_xprt xprt;
@@ -705,7 +706,6 @@ static int ipc_router_glink_config_init(
 		struct ipc_router_glink_xprt_config *glink_xprt_config)
 {
 	struct ipc_router_glink_xprt *glink_xprtp;
-	char xprt_wq_name[GLINK_NAME_SIZE];
 
 	glink_xprtp = kzalloc(sizeof(struct ipc_router_glink_xprt), GFP_KERNEL);
 	if (IS_ERR_OR_NULL(glink_xprtp)) {
@@ -751,10 +751,11 @@ static int ipc_router_glink_config_init(
 	init_rwsem(&glink_xprtp->ss_reset_rwlock);
 	glink_xprtp->ss_reset = 0;
 
-	scnprintf(xprt_wq_name, GLINK_NAME_SIZE, "%s_%s_%s",
+	scnprintf(glink_xprtp->xprt_wq_name, GLINK_NAME_SIZE, "%s_%s_%s",
 			glink_xprtp->ch_name, glink_xprtp->edge,
 			glink_xprtp->transport);
-	glink_xprtp->xprt_wq = create_singlethread_workqueue(xprt_wq_name);
+	glink_xprtp->xprt_wq =
+			create_singlethread_workqueue(glink_xprtp->xprt_wq_name);
 	if (IS_ERR_OR_NULL(glink_xprtp->xprt_wq)) {
 		IPC_RTR_ERR("%s:%s:%s:%s wq alloc failed\n",
 			    __func__, glink_xprt_config->ch_name,
@@ -764,7 +765,8 @@ static int ipc_router_glink_config_init(
 		return -EFAULT;
 	}
 
-	wakeup_source_init(&glink_xprtp->notify_rxv_ws, xprt_wq_name);
+	wakeup_source_init(&glink_xprtp->notify_rxv_ws,
+			glink_xprtp->xprt_wq_name);
 	mutex_lock(&glink_xprt_list_lock_lha1);
 	list_add(&glink_xprtp->list, &glink_xprt_list);
 	mutex_unlock(&glink_xprt_list_lock_lha1);
