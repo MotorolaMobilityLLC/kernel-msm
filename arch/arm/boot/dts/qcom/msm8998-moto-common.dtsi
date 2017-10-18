@@ -764,6 +764,7 @@
 	vccq2-supply = <&pm8998_s4>;
 	vcc-max-microamp = <750000>;
 	vccq2-max-microamp = <750000>;
+	qcom,disable-lpm;
 	status = "ok";
 };
 
