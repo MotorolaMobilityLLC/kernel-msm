@@ -56,6 +56,8 @@
 };
 
 &soc {
+	/delete-node/ audio_ext_clk;
+
 	sound-madera {
 		/delete-property/ asoc-platform;
 		/delete-property/ asoc-platform-names;
