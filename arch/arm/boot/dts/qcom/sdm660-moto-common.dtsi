@@ -233,12 +233,11 @@
 		ranges = <0 0 0xffffffff>;
 
 		gpios = <&tlmm 43 1>,         /* gpio_muc_det_n, input */
-			<&pcal_pin 3 0>, /* gpio_muc_bplus_en, output-low */
+			<&pcal_pin_2 4 0>, /* gpio_muc_bplus_en, output-low */
 			<&tlmm 42 1>,         /* gpio_muc_int_n, input */
 			<&tlmm 75 2>,         /* gpio_muc_wake_n, output-high */
 			<&tlmm 48 1>,         /* gpio_muc_rdy_n, input */
-			<&pcal_pin 11 0>,  /* gpio_muc_ff, output-low */
-			//<&lpi_tlmm 7 0>,	/*ATTENTIAON! Temperaly changed. Need to be changed after pcal pin submitted*/
+			<&pcal_pin_2 11 0>,  /* gpio_muc_ff, output-low */
 			<&tlmm 28 0>,          /* gpio_muc_spi_mosi, output-low */
 			<&tlmm 29 1>,          /* gpio_muc_spi_miso, input */
 			<&lpi_tlmm 27 2>,        /* gpio_muc_bplus_iset, output-high */
@@ -593,6 +592,10 @@
 
 &i2c_2 {
 	pcal_pin:gpio@20 {
+		status = "disabled";
+	};
+
+	pcal_pin_2:gpio@21 {
 		status = "disabled";
 	};
 
