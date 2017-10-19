@@ -823,7 +823,7 @@ static const char * const NFC_INT_groups[] = {
 	"gpio28",
 };
 static const char * const blsp_spi8_a_groups[] = {
-	"gpio28", "gpio29", "gpio30", "gpio31", "gpio63",
+	"gpio28", "gpio29", "gpio30", "gpio31",
 };
 static const char * const blsp_spi8_b_groups[] = {
 	"gpio40", "gpio41", "gpio44", "gpio52",
