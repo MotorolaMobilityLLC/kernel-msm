@@ -150,12 +150,12 @@
 
 		spi8_cs1_active: cs1_active {
 			mux {
-				pins = "gpio63";
-				function = "blsp_spi8_a";
+				pins = "gpio64";
+				function = "blsp_spi8_cs1";
 			};
 
 			config {
-				pins = "gpio63";
+				pins = "gpio64";
 				drive-strength = <16>;
 				bias-disable;
 			};
@@ -163,12 +163,12 @@
 
 		spi8_cs1_sleep: cs1_sleep {
 			mux {
-				pins = "gpio63";
+				pins = "gpio64";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio63";
+				pins = "gpio64";
 				input-enable;
 				bias-pull-down;
 				drive-strength = <2>;
@@ -339,7 +339,7 @@
 		};
 
 		apba_int_n {
-			pins = "gpio64";
+			pins = "gpio49";
 			drive-strength = <2>;
 			bias-pull-up;
 		};
