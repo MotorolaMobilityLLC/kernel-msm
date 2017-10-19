@@ -106,9 +106,9 @@
 		reg = <0x72>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <9 0>;  /*cbl-det-gpio is interrupt pin*/
-		analogix,reset-gpio = <&tlmm 56 0x00>;
+		analogix,reset-gpio = <&pcal_pin_2 14 0x00>;
 		analogix,irq-gpio = <&tlmm 45 0x00>;
-		analogix,p-dwn-gpio = <&tlmm 55 0x0>;
+		analogix,p-dwn-gpio = <&pcal_pin_2 6 0>;//<&tlmm 55 0x0>;
 		analogix,cbl-det-gpio = <&tlmm 44 0x0>;
 		analogix,i2c-pull-up = <1>;
 		vdd-1p0-supply = <&pm660_s5>;
@@ -119,11 +119,9 @@
 		analogix,vdd18-name = "avdd-1p8";
 
 		pinctrl-names = "anx_default", "anx_sleep";
-		pinctrl-0 = <&anx_rst_active
-				&anx_chip_pd_active &anx_cbl_det_active
+		pinctrl-0 = <&anx_cbl_det_active
 				&anx_irq_active>;
-		pinctrl-1 = <&anx_rst_suspend
-				&anx_chip_pd_suspend &anx_cbl_det_active
+		pinctrl-1 = <&anx_cbl_det_active
 				&anx_irq_active>;
 	};
 
@@ -192,11 +190,11 @@
 
 	apba_ctrl {
 		gpios = <&pm660l_gpios 4 0>,      /* APBA_1P1_EN, output-low */
-			<&tlmm 47 0>,     /* APBA_BOOTRET, output-low */
-			<&lpi_tlmm 21 0>,     /* APBA_RESET_N, output-low */
-			<&tlmm 64 1>,      /* APBA_INT_N, in */
-			<&tlmm 49 0>,     /* APBA_WAKE, output-low */
-			<&pcal_pin 7 0>;      /* APBA_SFLASH_EN, output-low */
+			<&pcal_pin_2 12 0>,     /* APBA_BOOTRET, output-low */
+			<&pcal_pin_2 9 0>,     /* APBA_RESET_N, output-low */
+			<&tlmm 49 1>,      /* APBA_INT_N, in */
+			<&pcal_pin_2 13 0>,     /* APBA_WAKE, output-low */
+			<&pcal_pin_2 8 0>;      /* APBA_SFLASH_EN, output-low */
 		mmi,gpio-labels = "gpio_apba_1p1_en",
 				  "gpio_apba_bootret",
 				  "gpio_apba_rst_n",
@@ -212,6 +210,12 @@
 		mmi,wake-deassert-seq = <4 1 0>;
 		mmi,flash-start-seq = <5 1 0>, <0 1 11>;
 		mmi,flash-end-seq = <0 0 0>, <5 0 0>;
+	};
+
+	gpio_keys {
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
 	};
 };
 
