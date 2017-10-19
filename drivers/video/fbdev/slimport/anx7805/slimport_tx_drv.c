@@ -92,7 +92,7 @@ void loop_print_msg(BYTE msg_id)
 		break;
 	case 0x02:
 		if(repeat_printf_info_count[msg_id] == 0)
-			pr_info("video stream not valid!\n");
+			pr_info("%s video stream not valid!\n", __func__);
 		break;
 	case 0x03:
 		if(repeat_printf_info_count[msg_id] == 0)
@@ -709,7 +709,7 @@ void SP_TX_Config_BIST_Video (BYTE cBistIndex,struct VideoFormat* pInputFormat)
 	sp_write_reg(SP_TX_PORT0_ADDR, SP_TX_SYS_CTRL3_REG, c);
 	sp_read_reg(SP_TX_PORT0_ADDR, SP_TX_SYS_CTRL3_REG, &c);
 	if(!(c & SP_TX_SYS_CTRL3_STRM_VALID)) {
-		pr_err("video stream not valid!\n");
+		pr_err("%s video stream not valid!\n", __func__);
 		return;
 	}
 	SP_TX_Config_Packets(AVI_PACKETS);
@@ -992,7 +992,7 @@ BYTE get_bandwidth_and_pclk(void)
 #if(REDUCE_REPEAT_PRINT_INFO)
 			loop_print_msg(0x02);
 #else
-			pr_info("video stream not valid!\n");
+			pr_info("%s video stream not valid!\n", __func__);
 #endif
 			return 1;
 		}
@@ -1013,7 +1013,8 @@ BYTE get_bandwidth_and_pclk(void)
 #if(REDUCE_REPEAT_PRINT_INFO)
 			loop_print_msg(0x02);
 #else
-			pr_info("video stream not valid!\n");
+			pr_info("%s video stream not valid!wPacketLenth %d c 0x%x c1 0x%x\n",
+				__func__, wPacketLenth, c, c1);
 #endif
 
 			return 1;
