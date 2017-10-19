@@ -18,38 +18,6 @@
 	/delete-node/ kungpow_default;
 	/delete-node/ eb_vbus_active;
 
-	anx_rst_active {
-		mux {
-			pins = "gpio56";
-		};
-		config {
-			pins = "gpio56";
-		};
-	};
-	anx_rst_suspend {
-		mux {
-			pins = "gpio56";
-		};
-		config {
-			pins = "gpio56";
-		};
-	};
-	anx_chip_pd_active {
-		mux {
-			pins = "gpio55";
-		};
-		config {
-			pins = "gpio55";
-		};
-	};
-	anx_chip_pd_suspend {
-		mux {
-			pins = "gpio55";
-		};
-		config {
-			pins = "gpio55";
-		};
-	};
 	anx_cbl_det_active {
 		mux {
 			pins = "gpio44";
