@@ -351,7 +351,56 @@ static struct snd_soc_dai_link msm_ext_madera_fe_dai[] = {
 		.codec_name = "snd-soc-dummy",
 	},
 #ifdef CONFIG_SND_SOC_CS47L90
-	/* TBD: cs47l90 CPU-DSP dai */
+	{
+		.name = "CPU-DSP Voice Control",
+		.stream_name = "CPU-DSP Voice Control",
+		.cpu_dai_name = "cs47l90-cpu-voicectrl",
+		.platform_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-dsp-voicectrl",
+		.codec_name = "cs47l90-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP Trace",
+		.stream_name = "CPU-DSP Voice Trace",
+		.cpu_dai_name = "cs47l90-cpu-trace",
+		.platform_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-dsp-trace",
+		.codec_name = "cs47l90-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP2 Text",
+		.stream_name = "CPU-DSP2 Text",
+		.cpu_dai_name = "cs47l90-dsp2-cpu-txt",
+		.platform_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-dsp2-txt",
+		.codec_name = "cs47l90-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP3 Text",
+		.stream_name = "CPU-DSP3 Text",
+		.cpu_dai_name = "cs47l90-dsp3-cpu-txt",
+		.platform_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-dsp3-txt",
+		.codec_name = "cs47l90-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP1 Text",
+		.stream_name = "CPU-DSP1 Text",
+		.cpu_dai_name = "cs47l90-dsp1-cpu-txt",
+		.platform_name = "cs47l90-codec",
+		.codec_dai_name = "cs47l90-dsp1-txt",
+		.codec_name = "cs47l90-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	}
 #else
 	{
 		.name = "CPU-DSP Voice Control",
