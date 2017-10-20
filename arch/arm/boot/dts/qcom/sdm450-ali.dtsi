@@ -52,12 +52,37 @@
 	/delete-node/ spi@7af8000;
 
 	muc: muc {
+		status = "disabled";
 		transports {
 			/delete-node/ i2c@78b5000;
 		};
 	};
 
+	muc_svc {
+		status = "disabled";
+	};
+
 	alsa_to_h2w {
+		status = "disabled";
+	};
+
+	apba_ctrl {
+		status = "disabled";
+	};
+
+	mods_camera_ext {
+		status = "disabled";
+	};
+
+	mods_v4l2_hal {
+		status = "disabled";
+	};
+
+	mods_codec_shim {
+		status = "disabled";
+	};
+
+	fsusb42 {
 		status = "disabled";
 	};
 
