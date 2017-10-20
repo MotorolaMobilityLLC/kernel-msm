@@ -221,7 +221,7 @@ qcom,mdss-dsi-dis-reset-sequence = <1 10>, <0 0>;
 	39 01 00 00 00 00 02 D3 3F
 	39 01 00 00 00 00 04 FF 98 81 02
 	39 01 00 00 00 00 02 06 40
-	39 01 00 00 00 00 02 07 02
+	39 01 00 00 00 00 02 07 05
 	39 01 00 00 00 00 04 FF 98 81 00
 	39 00 00 00 00 00 03 51 0C F4
 	39 00 00 00 00 00 02 53 2C
@@ -261,6 +261,7 @@ qcom,mdss-dsi-lane-0-state;
 qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
+qcom,suspend-ulps-enabled;
 
 qcom,mdss-dsi-panel-timings = [94 20 14 00 46 48 1a 24 18 03 04 00];
 qcom,mdss-dsi-t-clk-post = <0x04>;
@@ -272,10 +273,14 @@ qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
 qcom,cont-splash-enabled;
 qcom,esd-check-enabled;
+
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 02 0A 08
+			06 01 00 01 05 00 02 0D 08];
+qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
-qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
-qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-panel-status-value = <0x9C>;
+qcom,mdss-dsi-panel-status-valid-params = <1 1>;
+qcom,mdss-dsi-panel-status-value = <0x9c 0x00>;
+qcom,mdss-dsi-panel-status-read-length = <1 1>;
 
 qcom,panel-supply-entries {
 	#address-cells = <1>;
