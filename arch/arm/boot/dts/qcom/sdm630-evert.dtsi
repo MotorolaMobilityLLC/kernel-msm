@@ -353,7 +353,6 @@
 
 &spi_7 {
 	cs47l35: cs47l35@0 {
-		fm-lna-enable = <&tlmm 56 0>;
 		cirrus,accdet {
 			acc@1 {
 				/delete-property/ cirrus,jd-check-jd2;
