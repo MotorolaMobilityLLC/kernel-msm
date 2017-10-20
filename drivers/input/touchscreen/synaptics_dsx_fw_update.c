@@ -153,6 +153,9 @@ static ssize_t fwu_sysfs_bl_config_block_count_show(struct device *dev,
 static ssize_t fwu_sysfs_guest_code_block_count_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
+static ssize_t fwu_sysfs_flash_status_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
 static ssize_t fwu_sysfs_write_guest_code_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
@@ -574,6 +577,7 @@ struct synaptics_rmi4_fwu_handle {
 	enum bl_version bl_version;
 	bool initialized;
 	bool in_bl_mode;
+	bool read_flash_status_enable;
 	bool in_ub_mode;
 	bool force_update;
 	bool do_lockdown;
@@ -684,6 +688,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(forcereflash, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_force_reflash_store),
+	__ATTR(flashstatus, S_IRUGO,
+			fwu_sysfs_flash_status_show,
+			synaptics_rmi4_store_error),
 };
 
 static struct synaptics_rmi4_fwu_handle *fwu;
@@ -4171,6 +4178,15 @@ static ssize_t fwu_sysfs_guest_code_block_count_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.guest_code);
 }
 
+static ssize_t fwu_sysfs_flash_status_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	fwu->in_bl_mode = 0;
+	if (fwu->read_flash_status_enable)
+		fwu_read_flash_status();
+	return snprintf(buf, PAGE_SIZE, "%u\n", fwu->in_bl_mode);
+}
+
 static ssize_t fwu_sysfs_write_guest_code_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -4250,6 +4266,7 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 	int retval;
 	unsigned char attr_count;
 	struct pdt_properties pdt_props;
+	struct device_node *np = rmi4_data->i2c_client->dev.of_node;
 
 	if (fwu) {
 		dev_dbg(LOGDEV,
@@ -4275,6 +4292,9 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 		retval = -ENOMEM;
 		goto exit_free_fwu;
 	}
+
+	fwu->read_flash_status_enable = of_property_read_bool(np,
+		"read-flash-status-enable");
 
 	fwu->rmi4_data = rmi4_data;
 	mutex_init(&rmi4_data->rmi4_exp_init_mutex);
