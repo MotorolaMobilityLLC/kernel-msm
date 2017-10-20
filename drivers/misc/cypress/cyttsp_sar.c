@@ -32,7 +32,7 @@
 #include "cycapsense_hssp.h"
 #include "ProgrammingSteps.h"
 
-#define CYTTSP_DEBUG 0
+#define CYTTSP_DEBUG 1
 #define LOG_TAG "cyttsp "
 #if CYTTSP_DEBUG
 #define LOG_INFO(fmt, args...)    pr_info(LOG_TAG fmt, ##args)
