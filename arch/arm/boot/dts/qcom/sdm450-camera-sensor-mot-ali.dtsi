@@ -100,7 +100,7 @@
 		compatible = "qcom,eeprom";
 		reg = <0x1>;
 		cam_vio-supply = <&pm8953_l6>;
-		cam_vdig-supply = <&pm8953_l23>;
+		cam_vdig-supply = <&pm8953_l2>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
 		qcom,cam-vreg-min-voltage = <1800000 1200000>;
 		qcom,cam-vreg-max-voltage = <1800000 1200000>;
@@ -135,10 +135,45 @@
 		compatible = "qcom,eeprom";
 		reg = <0x2>;
 		cam_vio-supply = <&pm8953_l6>;
-		cam_vdig-supply = <&pm8953_l23>;
+		cam_vdig-supply = <&pm8953_l2>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
 		qcom,cam-vreg-min-voltage = <1800000 1200000>;
 		qcom,cam-vreg-max-voltage = <1800000 1200000>;
+		qcom,cam-vreg-op-mode = <80000 80000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_default
+				&cam_sensor_front_default>;
+		pinctrl-1 = <&cam_sensor_mclk1_sleep
+				&cam_sensor_front_sleep>;
+		gpios = <&tlmm 27 0>,
+			<&tlmm 130 0>,
+			<&tlmm 35 0>;
+		qcom,gpio-standby = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+			"CAM_STANDBY2",
+			"CAM_VANA2";
+		qcom,sensor-position = <1>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_gcc clk_mclk1_clk_src>,
+				<&clock_gcc clk_gcc_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	eeprom3: qcom,eeprom@3 {
+		cell-index = <3>;
+		compatible = "qcom,eeprom";
+		reg = <0x3>;
+		cam_vio-supply = <&pm8953_l6>;
+		cam_vdig-supply = <&pm8953_l23>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
+		qcom,cam-vreg-min-voltage = <1800000 1050000>;
+		qcom,cam-vreg-max-voltage = <1800000 1050000>;
 		qcom,cam-vreg-op-mode = <80000 80000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk1_default
@@ -219,7 +254,7 @@
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,eeprom-src = <&eeprom1>;
 		cam_vio-supply = <&pm8953_l6>;
-		cam_vdig-supply = <&pm8953_l23>;
+		cam_vdig-supply = <&pm8953_l2>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
 		qcom,cam-vreg-min-voltage = <1800000 1200000>;
 		qcom,cam-vreg-max-voltage = <1800000 1200000>;
@@ -255,15 +290,56 @@
 		compatible = "qcom,camera";
 		reg = <0x2>;
 		qcom,csiphy-sd-index = <2>;
-		qcom,csid-sd-index = <0>;
+		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <270>;
 		qcom,led-flash-src = <&led_flash1>;
 		qcom,eeprom-src = <&eeprom2>;
 		cam_vio-supply = <&pm8953_l6>;
-		cam_vdig-supply = <&pm8953_l23>;
+		cam_vdig-supply = <&pm8953_l2>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
 		qcom,cam-vreg-min-voltage = <1800000 1200000>;
 		qcom,cam-vreg-max-voltage = <1800000 1200000>;
+		qcom,cam-vreg-op-mode = <80000 80000>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_default
+				&cam_sensor_front_default>;
+		pinctrl-1 = <&cam_sensor_mclk1_sleep
+				&cam_sensor_front_sleep>;
+		gpios = <&tlmm 27 0>,
+			<&tlmm 130 0>,
+			<&tlmm 35 0>;
+		qcom,gpio-standby = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+			"CAM_STANDBY2",
+			"CAM_VANA2";
+		qcom,sensor-position = <1>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <1>;
+		status = "ok";
+		clocks = <&clock_gcc clk_mclk1_clk_src>,
+				<&clock_gcc clk_gcc_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+		qcom,clock-rates = <24000000 0>;
+	};
+
+	/* S5K3P8SP */
+	qcom,camera@3 {
+		cell-index = <3>;
+		compatible = "qcom,camera";
+		reg = <0x3>;
+		qcom,csiphy-sd-index = <2>;
+		qcom,csid-sd-index = <1>;
+		qcom,mount-angle = <270>;
+		qcom,led-flash-src = <&led_flash1>;
+		qcom,eeprom-src = <&eeprom3>;
+		cam_vio-supply = <&pm8953_l6>;
+		cam_vdig-supply = <&pm8953_l23>;
+		qcom,cam-vreg-name = "cam_vio", "cam_vdig";
+		qcom,cam-vreg-min-voltage = <1800000 1050000>;
+		qcom,cam-vreg-max-voltage = <1800000 1050000>;
 		qcom,cam-vreg-op-mode = <80000 80000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk1_default
@@ -554,9 +630,9 @@
 	rpm-regulator-ldoa23 {
 		status = "okay";
 		pm8953_l23: regulator-l23 {
-			regulator-min-microvolt = <1200000>;
-			regulator-max-microvolt = <1200000>;
-			qcom,init-voltage = <1200000>;
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			qcom,init-voltage = <1050000>;
 			status = "okay";
 		};
 	};};
