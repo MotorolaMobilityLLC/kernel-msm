@@ -148,6 +148,8 @@ static int mdss_dsi_phy_initialize_defaults(struct dsi_phy_t_clk_param *t_clk,
 		t_clk->hs_trail_buf = 30;
 		t_clk->hs_rqst_buf = 0;
 		t_clk->hs_exit_buf = 10;
+		t_clk->clk_post_buf = 10;
+		t_clk->clk_pre_buf = 10;
 	} else if (phy_rev == DSI_PHY_REV_10) {
 		t_param->clk_prepare.rec_min =
 			(DIV_ROUND_UP(t_param->clk_prepare.mipi_min *
@@ -1163,6 +1165,9 @@ static void mdss_dsi_phy_update_timing_param_v2(struct mdss_panel_info *pinfo,
 	int i = 0;
 
 	reg = &(pinfo->mipi.dsi_phy_db);
+
+	pinfo->mipi.t_clk_post = t_param->clk_post.program_value;
+	pinfo->mipi.t_clk_pre = t_param->clk_pre.program_value;
 
 	for (i = 0; i < TIMING_PARAM_DLANE_COUNT; i += 8) {
 		reg->timing_8996[i] = t_param->hs_exit.program_value;
