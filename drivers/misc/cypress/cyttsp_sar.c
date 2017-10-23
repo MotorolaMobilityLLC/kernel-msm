@@ -42,6 +42,7 @@
 
 struct cycapsense_ctrl_data *ctrl_data;
 static int programming_done;
+static int fw_dl_status;
 static BLOCKING_NOTIFIER_HEAD(hssp_notifier_list);
 
 pcyttsp_data_t pcyttsp_sar_ptr;
@@ -728,15 +729,19 @@ int __cycapsense_fw_update(struct cycapsense_ctrl_data *data)
 
 		/* force update regardless check sum, if user requested */
 		dev_info(data->dev, "Flashing firmware %s\n", fw_name);
+		fw_dl_status = 2;
 		error = cycapsense_hssp_dnld(&data->hssp_d);
-		if (!error)
+		if (!error) {
 			dev_info(data->dev, "%s flashed successful\n",
 					fw_name);
-
+			fw_dl_status = 0;
+		} else
+			fw_dl_status = 1;
 	} else {
 		data->hssp_d.chip_cs = data->hssp_d.inf.cs;
 		dev_info(data->dev,
 				"SW rev is matching. No firmware upgrade.\n");
+		fw_dl_status = 0;
 	}
 
 fw_upd_end:
@@ -985,7 +990,7 @@ static ssize_t cycapsense_reg_show(struct class *class,
 
 	while (reg <= 0x8a) {
 		reg_value = cyttsp_read_reg(data, reg);
-		p += snprintf(p, PAGE_SIZE, "ADDR(0x%02x)=0x%02x\n", reg, reg_value);
+		p += snprintf(p, PAGE_SIZE, "ADDR(0x%02x)=0x%02x,\n", reg, reg_value);
 		reg++;
 	}
 	return (p-buf);
@@ -1101,11 +1106,19 @@ static ssize_t cycapsense_debug_store(struct class *class,
 	return count;
 }
 
+static ssize_t cycapsense_fw_download_status_show(struct class *class,
+					struct class_attribute *attr,
+					char *buf)
+{
+	return snprintf(buf, 8, "%d", fw_dl_status);
+}
+
 static CLASS_ATTR(fw_update, 0660, cycapsense_fw_show, cycapsense_fw_store);
 static CLASS_ATTR(reset, 0660, cycapsense_reset_show, cycapsense_reset_store);
 static CLASS_ATTR(enable, 0660, cycapsense_enable_show, cycapsense_enable_store);
 static CLASS_ATTR(reg, 0660, cycapsense_reg_show, cycapsense_reg_store);
 static CLASS_ATTR(debug, 0660, NULL, cycapsense_debug_store);
+static CLASS_ATTR(fw_download_status, 0660, cycapsense_fw_download_status_show, NULL);
 
 static struct class capsense_class = {
 	.name                   = "capsense",
@@ -1259,6 +1272,14 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 		return error;
 	}
 
+	error = class_create_file(&capsense_class, &class_attr_fw_download_status);
+	if (error < 0) {
+		dev_err(&client->dev,
+				"Create fw dl status file failed (%d)\n", error);
+		return error;
+	}
+
+	fw_dl_status = 1;
 	ctrl_data->dev = &client->dev;
 	INIT_WORK(&ctrl_data->work, capsense_update_work);
 	gpio_direction_output(ctrl_data->hssp_d.rst_gpio, 0);
