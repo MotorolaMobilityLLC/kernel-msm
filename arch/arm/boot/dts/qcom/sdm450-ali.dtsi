@@ -36,11 +36,8 @@
 				dev = "/dev/block/platform/7824900.sdhci/by-name/vendor";
 				type = "ext4";
 				mnt_flags = "ro,barrier=1,discard";
-				fsmgr_flags = "wait,slotselect,verity";
+				fsmgr_flags = "wait";
 				status = "ok";
-			};
-			system {
-				status = "disabled";
 			};
 		};
 	};
