@@ -37,6 +37,52 @@
 		< 600000000   7 >;  /* Turbo     */
 };
 
+/* camera override for EVB */
+&cci {
+	eeprom1: qcom,eeprom@1 {
+		cam_vdig-supply = <&pm8953_l23>;
+	};
+
+	eeprom2: qcom,eeprom@2 {
+		cam_vdig-supply = <&pm8953_l23>;
+	};
+
+	eeprom3: qcom,eeprom@3 {
+		cam_vdig-supply = <&pm8953_l23>;
+		qcom,cam-vreg-min-voltage = <1800000 1200000>;
+		qcom,cam-vreg-max-voltage = <1800000 1200000>;
+	};
+
+	/* OV5675 REAR */
+	qcom,camera@1 {
+		cam_vdig-supply = <&pm8953_l23>;
+	};
+
+	/* S5K4H7 */
+	qcom,camera@2 {
+		cam_vdig-supply = <&pm8953_l23>;
+	};
+
+	/* S5K3P8SP */
+	qcom,camera@3 {
+		cam_vdig-supply = <&pm8953_l23>;
+		qcom,cam-vreg-min-voltage = <1800000 1200000>;
+		qcom,cam-vreg-max-voltage = <1800000 1200000>;
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa23 {
+		status = "okay";
+		pm8953_l23: regulator-l23 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			qcom,init-voltage = <1200000>;
+			status = "okay";
+		};
+	};
+};
+
 &soc {
 	i2c_1: i2c@78b5000 {
 		/delete-node/ fusb302@22;
