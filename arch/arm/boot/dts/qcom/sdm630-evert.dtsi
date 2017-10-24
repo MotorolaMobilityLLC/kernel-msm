@@ -323,6 +323,10 @@
 	};
 };
 
+&pm660_fg {
+	qcom,battery-thermal-coefficients = [92 50 ff];
+};
+
 &pm660_charger {
 	qcom,iterm-ma = <155>;
 	qcom,thermal-mitigation = <3000>,
