@@ -152,6 +152,9 @@ static ssize_t fwu_sysfs_guest_code_block_count_show(struct device *dev,
 
 static ssize_t fwu_sysfs_write_guest_code_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t fwu_sysfs_erase_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
 #endif
 
 static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
@@ -681,6 +684,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(writeguestcode, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_write_guest_code_store),
+	__ATTR(erase, S_IWUSR | S_IWGRP,
+			synaptics_rmi4_show_error,
+			fwu_sysfs_erase_store),
 #endif
 	__ATTR(doreflash, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
@@ -693,6 +699,12 @@ static struct device_attribute attrs[] = {
 static struct synaptics_rmi4_fwu_handle *fwu;
 
 DECLARE_COMPLETION(fwu_remove_complete);
+
+static inline void sema_clear(struct semaphore *sem)
+{
+	do {
+	} while (!down_trylock(sem));
+}
 
 static unsigned int le_to_uint(const unsigned char *ptr)
 {
@@ -1148,6 +1160,9 @@ static int fwu_read_interrupt_status(void)
 			__func__);
 		return retval;
 	}
+	dev_dbg(LOGDEV,
+			"%s: F01 interrupt status = 0x%02x\n",
+			__func__, interrupt_status);
 	return interrupt_status;
 }
 
@@ -1170,8 +1185,6 @@ static void fwu_irq_enable(bool enable)
 		}
 
 		fwu_read_interrupt_status();
-		sema_init(&fwu->irq_sema, 0);
-
 		retval = request_irq(fwu->rmi4_data->irq, fwu_irq,
 				IRQF_TRIGGER_FALLING, "fwu", fwu);
 		if (retval < 0) {
@@ -1196,35 +1209,12 @@ static void fwu_irq_enable(bool enable)
 		free_irq(fwu->rmi4_data->irq, fwu);
 		fwu->irq_enabled = false;
 	}
-}
-
-static void fwu_reset_device(void)
-{
-	bool enabled = fwu->irq_enabled;
-
-	if (enabled)
-		fwu_irq_enable(false);
-
-	fwu->rmi4_data->reset_device(fwu->rmi4_data);
-
-	if (enabled)
-		fwu_irq_enable(true);
+	sema_clear(&fwu->irq_sema);
 }
 
 static int fwu_wait_for_idle(int timeout_ms)
 {
-	int retval, counter = fwu->irq_sema.count;
-
-	/* handle missed irq */
-	if (counter > 0) {
-		int i;
-
-		for (i = 0; i < counter; i++)
-			down(&fwu->irq_sema);
-		dev_warn(LOGDEV,
-			"%s: invalid semaphore counter %d\n",
-			__func__, counter);
-	}
+	int retval;
 
 	retval = down_timeout(&fwu->irq_sema, msecs_to_jiffies(timeout_ms));
 	if (retval) {
@@ -1232,14 +1222,26 @@ static int fwu_wait_for_idle(int timeout_ms)
 		dev_err(LOGDEV,
 			"%s: timed out waiting for cmd to complete\n",
 			__func__);
-	} else
-		retval = fwu_read_interrupt_status();
+	}
 
+	retval = fwu_read_interrupt_status();
 	fwu_read_flash_status();
 	if ((fwu->command == CMD_IDLE) && (fwu->flash_status == 0x00))
 		return 0;
 
 	return retval;
+}
+
+static void fwu_reset_device(void)
+{
+	fwu->rmi4_data->reset_device(fwu->rmi4_data);
+	if (fwu->irq_enabled) {
+		/* F34 irq handler will override default reset handler */
+		/* and since ISR is triggered on falling edge, need to */
+		/* wait for idle twice */
+		fwu_wait_for_idle(ENABLE_WAIT_MS);
+		fwu_wait_for_idle(ENABLE_WAIT_MS);
+	}
 }
 
 static int fwu_write_f34_v7_command_single_transaction(unsigned char cmd)
@@ -3507,6 +3509,7 @@ static int fwu_start_reflash(void)
 		goto exit;
 
 	if (fwu->in_bl_mode) {
+		sema_clear(&fwu->irq_sema);
 		dev_info(LOGDEV,
 				"%s: Device in bootloader mode\n",
 				__func__);
@@ -4252,6 +4255,61 @@ exit:
 	fwu->image = NULL;
 	return retval;
 }
+
+static ssize_t fwu_sysfs_erase_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input;
+	int retval;
+	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	if (input != 1)
+		return -EINVAL;
+
+	wake_lock(&fwu->flash_wake_lock);
+	mutex_lock(&rmi4_data->rmi4_exp_init_mutex);
+
+	if (!fwu->in_bl_mode) {
+		fwu_irq_enable(true);
+
+		retval = fwu_write_f34_command(CMD_ENABLE_FLASH_PROG);
+		if (retval < 0)
+			goto reset_and_exit;
+
+		retval = fwu_wait_for_idle(ENABLE_WAIT_MS);
+		fwu_irq_enable(false);
+		if (retval < 0 || !fwu->in_bl_mode)
+			goto reset_and_exit;
+	}
+
+	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_INIT);
+	fwu_irq_enable(true);
+
+	retval = fwu_erase_all();
+	if (retval < 0)
+		pr_err("%s: ERASE_ALL failed\n", __func__);
+
+	fwu_irq_enable(false);
+	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_UNKNOWN);
+
+reset_and_exit:
+	fwu_reset_device();
+	pr_notice("%s: End of reflash process\n", __func__);
+
+	/* Rescan PDT after flashing and before register access */
+	retval = fwu_scan_pdt();
+	if (retval < 0)
+		dev_err(LOGDEV, "%s: Failed to scan PDT\n", __func__);
+
+	fwu->rmi4_data->ready_state(fwu->rmi4_data, false);
+	mutex_unlock(&rmi4_data->rmi4_exp_init_mutex);
+	wake_unlock(&fwu->flash_wake_lock);
+
+	return count;
+}
 #endif
 
 static void synaptics_rmi4_fwu_attn(struct synaptics_rmi4_data *rmi4_data,
@@ -4268,8 +4326,7 @@ static void synaptics_rmi4_fwu_attn(struct synaptics_rmi4_data *rmi4_data,
 
 static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 {
-	int retval;
-	unsigned char attr_count;
+	int retval, attr_count;
 	struct pdt_properties pdt_props;
 
 	if (fwu) {
@@ -4298,6 +4355,7 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 	}
 
 	fwu->rmi4_data = rmi4_data;
+	sema_init(&fwu->irq_sema, 0);
 	mutex_init(&rmi4_data->rmi4_exp_init_mutex);
 
 	retval = synaptics_rmi4_reg_read(rmi4_data,
@@ -4385,7 +4443,7 @@ exit:
 
 static void synaptics_rmi4_fwu_remove(struct synaptics_rmi4_data *rmi4_data)
 {
-	unsigned char attr_count;
+	int attr_count;
 
 	if (!fwu)
 		goto exit;
