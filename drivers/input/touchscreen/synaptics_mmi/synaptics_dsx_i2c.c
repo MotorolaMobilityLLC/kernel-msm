@@ -2457,6 +2457,7 @@ static int synaptics_dsx_ic_reset(
 	const struct synaptics_dsx_platform_data *platform_data =
 			rmi4_data->board;
 	bool has_rst_pin = gpio_is_valid(platform_data->reset_gpio);
+	bool need_to_free_irq = true;
 
 	sema_init(&reset_semaphore, 0);
 
@@ -2472,10 +2473,12 @@ static int synaptics_dsx_ic_reset(
 	retval = request_irq(rmi4_data->irq, synaptics_dsx_reset_irq,
 			IRQF_TRIGGER_RISING, "synaptics_reset",
 			&reset_semaphore);
-	if (retval < 0)
-		dev_err(&rmi4_data->i2c_client->dev,
+	if (retval < 0) {
+		need_to_free_irq = false;
+		dev_warn(&rmi4_data->i2c_client->dev,
 				"%s: Failed to request irq: %d\n",
 				__func__, retval);
+	}
 
 	if (has_rst_pin && (reset == RMI4_HW_RESET))
 		gpio_set_value(platform_data->reset_gpio, 1);
@@ -2491,10 +2494,11 @@ static int synaptics_dsx_ic_reset(
 		udelay(1000);
 	}
 
-	free_irq(rmi4_data->irq, &reset_semaphore);
+	if (need_to_free_irq)
+		free_irq(rmi4_data->irq, &reset_semaphore);
 
 	/* perform SW reset if HW reset failed */
-	if (reset != RMI4_SW_RESET && retval == -ETIMEDOUT)
+	if (need_to_free_irq && reset != RMI4_SW_RESET && retval == -ETIMEDOUT)
 		retval = synaptics_dsx_ic_reset(rmi4_data, RMI4_SW_RESET);
 
 	return retval;
@@ -7421,17 +7425,16 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 {
 	int attr_count;
 	struct synaptics_rmi4_data *rmi4_data = i2c_get_clientdata(client);
-	struct synaptics_rmi4_device_info *rmi;
-	const struct synaptics_dsx_platform_data *platform_data =
-			rmi4_data->board;
-
-	rmi = &(rmi4_data->rmi4_mod_info);
+	const struct synaptics_dsx_platform_data *platform_data;
 
 	if (exp_fn_ctrl.inited) {
 		cancel_delayed_work_sync(&exp_fn_ctrl.det_work);
 		flush_workqueue(exp_fn_ctrl.det_workqueue);
 		destroy_workqueue(exp_fn_ctrl.det_workqueue);
 	}
+
+	if (rmi4_data == NULL)
+		return 0;
 
 	atomic_set(&rmi4_data->touch_stopped, 1);
 	wake_up(&rmi4_data->wait);
@@ -7451,6 +7454,7 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 	if (!IS_ERR(rmi4_data->vdd_quirk))
 		regulator_disable(rmi4_data->vdd_quirk);
 
+	platform_data = rmi4_data->board;
 	if (platform_data->regulator_en) {
 		regulator_disable(rmi4_data->regulator);
 		regulator_put(rmi4_data->regulator);
