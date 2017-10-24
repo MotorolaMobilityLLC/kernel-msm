@@ -235,7 +235,7 @@ static void parse_hid_report_descriptor(struct gtco *device, char * report,
 
 		/* Determine data size and save the data in the proper variable */
 		size = (1U << PREF_SIZE(prefix)) >> 1;
-		if (i + size > length) {
+		if (size && i + size >= length) {
 			dev_err(ddev,
 				"Not enough data (need %d, have %d)\n",
 				i + size, length);
