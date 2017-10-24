@@ -564,6 +564,7 @@ static void perf_syscall_enter(void *ignore, struct pt_regs *regs, long id)
 	struct syscall_metadata *sys_data;
 	struct syscall_trace_enter *rec;
 	struct hlist_head *head;
+	bool valid_prog_array;
 	int syscall_nr;
 	int rctx;
 	int size;
@@ -579,7 +580,8 @@ static void perf_syscall_enter(void *ignore, struct pt_regs *regs, long id)
 		return;
 
 	head = this_cpu_ptr(sys_data->enter_event->perf_events);
-	if (hlist_empty(head))
+	valid_prog_array = bpf_prog_array_valid(sys_data->enter_event);
+	if (!valid_prog_array && hlist_empty(head))
 		return;
 
 	/* get the size after alignment with the u32 buffer size field */
@@ -638,6 +640,7 @@ static void perf_syscall_exit(void *ignore, struct pt_regs *regs, long ret)
 	struct syscall_metadata *sys_data;
 	struct syscall_trace_exit *rec;
 	struct hlist_head *head;
+	bool valid_prog_array;
 	int syscall_nr;
 	int rctx;
 	int size;
@@ -653,7 +656,8 @@ static void perf_syscall_exit(void *ignore, struct pt_regs *regs, long ret)
 		return;
 
 	head = this_cpu_ptr(sys_data->exit_event->perf_events);
-	if (hlist_empty(head))
+	valid_prog_array = bpf_prog_array_valid(sys_data->exit_event);
+	if (!valid_prog_array && hlist_empty(head))
 		return;
 
 	/* We can probably do that at build time */
