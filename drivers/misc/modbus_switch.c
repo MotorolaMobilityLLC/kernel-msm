@@ -21,7 +21,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
-
+#include <linux/regulator/consumer.h>
 #include <linux/mods/modbus_ext.h>
 
 static DEFINE_MUTEX(modbus_ext_mutex);
@@ -52,6 +52,7 @@ struct modbus_data {
 	int gpio_nums;
 	struct modbus_seq modbus_switch_seqs;
 	const char *modbus_protocol_labels[MODBUS_MAX_PROTOCOLS];
+	struct regulator *vdd_switch;
 };
 
 struct modbus_data *modbus_dd;
@@ -282,6 +283,33 @@ static int modbus_probe(struct platform_device *pdev)
 	data->dev = &pdev->dev;
 	platform_set_drvdata(pdev, data);
 	modbus_dd = data;
+
+	data->vdd_switch = devm_regulator_get(&pdev->dev, "vdd-switch");
+	if (!IS_ERR(data->vdd_switch)) {
+		struct device_node *node = pdev->dev.of_node;
+		const __be32 *prop;
+		int len;
+		int supply_vol_low, supply_vol_high;
+
+		prop = of_get_property(node, "mmi,vdd-voltage-level", &len);
+		if (!prop || (len != (2 * sizeof(__be32)))) {
+			dev_err(&pdev->dev, "supply voltage levels not specified\n");
+			return -EINVAL;
+		} else {
+			supply_vol_low = be32_to_cpup(&prop[0]);
+			supply_vol_high = be32_to_cpup(&prop[1]);
+		}
+		dev_info(&pdev->dev, "set switch supply as %d %d\n",
+					supply_vol_low, supply_vol_high);
+		regulator_set_voltage(data->vdd_switch, supply_vol_low, supply_vol_high);
+		ret = regulator_enable(data->vdd_switch);
+		if (ret) {
+			dev_err(&pdev->dev, "Unable to enable vdd_switch\n");
+			return ret;
+		}
+	} else {
+		dev_info(&pdev->dev, "there is no switch supply\n");
+	}
 
 	/* Configure to HighZ initially */
 	/* modbus_set_switch_state(MODBUS_STATE_HIGH_Z, data->dev); */
