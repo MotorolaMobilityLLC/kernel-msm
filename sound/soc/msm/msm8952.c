@@ -44,8 +44,6 @@
 #define BTSCO_RATE_8KHZ 8000
 #define BTSCO_RATE_16KHZ 16000
 
-#define SAMPLING_RATE_16KHZ     16000
-#define SAMPLING_RATE_32KHZ     32000
 #define SAMPLING_RATE_48KHZ     48000
 #define SAMPLING_RATE_96KHZ     96000
 #define SAMPLING_RATE_192KHZ    192000
@@ -89,25 +87,6 @@ static atomic_t auxpcm_mi2s_clk_ref;
 	static struct platform_device *spdev;
 #endif
 #endif
-static atomic_t mods_mi2s_active;
-#ifdef CONFIG_MODS_MODBUS_EXT
-#include <linux/mods/modbus_ext.h>
-
-static inline void mods_ext_bus_vote(bool enable)
-{
-	struct modbus_ext_status modbus_status;
-
-	modbus_status.proto = MODBUS_PROTO_MPHY;
-	modbus_status.active = enable;
-	modbus_ext_set_state(&modbus_status);
-}
-#else
-static inline void mods_ext_bus_vote(bool enable) {}
-#endif
-
-static int msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
-static int msm_quin_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
-static int msm_quin_mi2s_ch = 2;
 static int msm8952_enable_dig_cdc_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
 static bool msm8952_swap_gnd_mic(struct snd_soc_codec *codec);
@@ -199,7 +178,7 @@ static struct afe_clk_set wsa_ana_clk = {
 };
 
 
-#if defined(CONFIG_SND_SOC_CS35L35) && !defined(CONFIG_SND_CS35L35_OSR_CLK)
+#ifdef CONFIG_SND_SOC_CS35L35
 static struct afe_clk_set l35_ana_clk = {
 	AFE_API_VERSION_I2S_CONFIG,
 	Q6AFE_LPASS_CLK_ID_MCLK_2,
@@ -474,23 +453,7 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
-#ifdef CONFIG_SND_QUIN_MI2S_FOR_MODS
-static int msm_quin_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
-				struct snd_pcm_hw_params *params)
-{
-	struct snd_interval *rate = hw_param_interval(params,
-					SNDRV_PCM_HW_PARAM_RATE);
-	struct snd_interval *channels = hw_param_interval(params,
-					SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s: channel:%d\n", __func__, msm_quin_mi2s_ch);
-	rate->min = rate->max = msm_quin_mi2s_sample_rate;
-	channels->min = channels->max = msm_quin_mi2s_ch;
-	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
-				msm_quin_mi2s_bit_format);
-	return 0;
-}
-#endif
 static int msm_btsco_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -1051,156 +1014,6 @@ static int msm_vi_feed_tx_ch_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
-static int msm_quin_mi2s_rate_get(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	int value;
-
-	switch (msm_quin_mi2s_sample_rate) {
-	case SAMPLING_RATE_16KHZ:
-		value = 0;
-		break;
-	case SAMPLING_RATE_32KHZ:
-		value = 1;
-		break;
-	case SAMPLING_RATE_48KHZ:
-		value = 2;
-		break;
-	case SAMPLING_RATE_96KHZ:
-		value = 3;
-		break;
-	case SAMPLING_RATE_192KHZ:
-		value = 4;
-		break;
-	default:
-		value = 2;
-		break;
-	}
-	ucontrol->value.integer.value[0] = value;
-	pr_info("%s: msm_quin_mi2s_sample_rate  = %d\n", __func__,
-		 msm_quin_mi2s_sample_rate);
-	return 0;
-}
-
-static int msm_quin_mi2s_rate_put(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	switch (ucontrol->value.integer.value[0]) {
-	case 0:
-		msm_quin_mi2s_sample_rate = SAMPLING_RATE_16KHZ;
-		break;
-	case 1:
-		msm_quin_mi2s_sample_rate = SAMPLING_RATE_32KHZ;
-		break;
-	case 2:
-		msm_quin_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
-		break;
-	case 3:
-		msm_quin_mi2s_sample_rate = SAMPLING_RATE_96KHZ;
-		break;
-	case 4:
-		msm_quin_mi2s_sample_rate = SAMPLING_RATE_192KHZ;
-		break;
-	default:
-		msm_quin_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
-		break;
-	}
-	pr_info("%s: msm_quin_mi2s_sample_rate  = %d\n", __func__,
-		 msm_quin_mi2s_sample_rate);
-	return 0;
-}
-
-static int msm_quin_mi2s_format_get(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	int value;
-
-	switch (msm_quin_mi2s_bit_format) {
-	case SNDRV_PCM_FORMAT_S16_LE:
-		value = 0;
-		break;
-	case SNDRV_PCM_FORMAT_S24_LE:
-		value = 1;
-		break;
-	case SNDRV_PCM_FORMAT_S32_LE:
-		value = 2;
-		break;
-	default:
-		value = 0;
-		break;
-	}
-	pr_info("%s: msm_quin_mi2s_bit_format  = %d\n", __func__,
-		 msm_quin_mi2s_bit_format);
-	ucontrol->value.integer.value[0] = value;
-	return 0;
-}
-
-static int msm_quin_mi2s_format_put(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	switch (ucontrol->value.integer.value[0]) {
-	case 0:
-		msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
-		break;
-	case 1:
-		msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S24_LE;
-		break;
-	case 2:
-		msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S32_LE;
-		break;
-	default:
-		msm_quin_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
-		break;
-	}
-	pr_info("%s: msm_quin_mi2s_bit_format  = %d\n", __func__,
-		 msm_quin_mi2s_bit_format);
-	return 0;
-}
-
-static int msm_quin_mi2s_ch_put(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	switch (ucontrol->value.integer.value[0]) {
-	case 0:
-		msm_quin_mi2s_ch = 1;
-		break;
-	case 1:
-		msm_quin_mi2s_ch = 2;
-		break;
-	case 2:
-		msm_quin_mi2s_ch = 4;
-		break;
-	default:
-		msm_quin_mi2s_ch = 2;
-		break;
-	}
-	pr_info("%s: msm_quin_mi2s_ch = %d\n", __func__,
-		msm_quin_mi2s_ch);
-	return 0;
-}
-
-static int msm_quin_mi2s_ch_get(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	pr_info("%s: msm_quin_mi2s_ch  = %d\n", __func__,
-		msm_quin_mi2s_ch);
-	switch (msm_quin_mi2s_ch) {
-	case 1:
-		ucontrol->value.integer.value[0] = 0;
-		break;
-	case 2:
-		ucontrol->value.integer.value[0] = 1;
-		break;
-	case 4:
-		ucontrol->value.integer.value[0] = 2;
-		break;
-	default:
-		ucontrol->value.integer.value[0] = 1;
-		break;
-	}
-	return 0;
-}
-
 static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(rx_bit_format_text),
 				rx_bit_format_text),
@@ -1235,25 +1048,6 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
 	SOC_ENUM_EXT("MI2S_RX SampleRate", msm_snd_enum[6],
 			mi2s_rx_sample_rate_get, mi2s_rx_sample_rate_put),
-};
-static char const *msm_mi2s_ch_text[] = {"One", "Two", "Four"};
-static const char *const msm_mi2s_rate_text[] = {"KHZ_16", "KHZ_32",
-			"KHZ_48", "KHZ_96", "KHZ_192"};
-static const char *const msm_mi2s_format_text[] = {"S16_LE", "S24_LE", "S32_LE"};
-
-static const struct soc_enum msm8996_mi2s_enum[] = {
-		SOC_ENUM_SINGLE_EXT(5, msm_mi2s_rate_text),
-		SOC_ENUM_SINGLE_EXT(3, msm_mi2s_format_text),
-		SOC_ENUM_SINGLE_EXT(3, msm_mi2s_ch_text),
-};
-
-static const struct snd_kcontrol_new msm_quin_mi2s_snd_controls[] = {
-	SOC_ENUM_EXT("MODS_MI2S SampleRate", msm8996_mi2s_enum[0],
-			msm_quin_mi2s_rate_get, msm_quin_mi2s_rate_put),
-	SOC_ENUM_EXT("MODS_MI2S Format", msm8996_mi2s_enum[1],
-			msm_quin_mi2s_format_get, msm_quin_mi2s_format_put),
-	SOC_ENUM_EXT("MODS_MI2S Channels", msm8996_mi2s_enum[2],
-			msm_quin_mi2s_ch_get, msm_quin_mi2s_ch_put),
 };
 
 static int msm8952_mclk_event(struct snd_soc_dapm_widget *w,
@@ -1714,7 +1508,7 @@ static void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 	clk_disable_unprepare(codec_clk);
 #endif
 }
-#if defined(CONFIG_SND_SOC_CS35L35) && !defined(CONFIG_SND_CS35L35_OSR_CLK)
+#ifdef CONFIG_SND_SOC_CS35L35
 static int msm8952_enable_cs35l35_mclk(struct snd_soc_card *card, bool enable)
 {
 	int ret = 0;
@@ -1777,9 +1571,6 @@ static int msm_quin_mi2s_snd_startup(struct snd_pcm_substream *substream)
 		return -EINVAL;
 	}
 
-	mods_ext_bus_vote(true);
-	atomic_inc(&mods_mi2s_active);
-
 	if (pdata->vaddr_gpio_mux_quin_ctl) {
 		val = ioread32(pdata->vaddr_gpio_mux_quin_ctl);
 		val = val | 0x00000001;
@@ -1792,7 +1583,7 @@ static int msm_quin_mi2s_snd_startup(struct snd_pcm_substream *substream)
 		pr_err("failed to enable sclk\n");
 		return ret;
 	}
-#if defined(CONFIG_SND_SOC_CS35L35) && !defined(CONFIG_SND_CS35L35_OSR_CLK)
+#ifdef CONFIG_SND_SOC_CS35L35
 	ret = msm_gpioset_activate(CLIENT_WCD_INT, "cs35l35_mclk");
 	if (ret < 0) {
 		pr_err("failed to enable codec gpios, cs35l35_mclk\n");
@@ -1808,59 +1599,45 @@ static int msm_quin_mi2s_snd_startup(struct snd_pcm_substream *substream)
 		}
 	}
 #endif
-#ifndef CONFIG_SND_QUIN_MI2S_FOR_MODS
 	ret = msm_gpioset_activate(CLIENT_WCD_INT, "quin_i2s");
 	if (ret < 0) {
 		pr_err("failed to enable codec gpios\n");
 		goto err;
 	}
-#endif
 	if (atomic_inc_return(&quin_mi2s_clk_ref) == 1) {
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 		if (ret < 0)
 			pr_err("%s: set fmt cpu dai failed\n", __func__);
 	}
 	return ret;
-#if defined(CONFIG_SND_SOC_CS35L35) && !defined(CONFIG_SND_CS35L35_OSR_CLK) || !defined(CONFIG_SND_QUIN_MI2S_FOR_MODS)
 err:
 	ret = msm_mi2s_sclk_ctl(substream, false);
 	if (ret < 0)
 		pr_err("failed to disable sclk\n");
 	return ret;
-#endif
 }
 
 static void msm_quin_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 {
 	int ret;
-#if defined(CONFIG_SND_SOC_CS35L35) && !defined(CONFIG_SND_CS35L35_OSR_CLK)
+#ifdef CONFIG_SND_SOC_CS35L35
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_card *card = rtd->card;
 #endif
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 				substream->name, substream->stream);
-
-	if (!atomic_dec_and_test(&mods_mi2s_active)) {
-			pr_info("%s: port users not zero don't shutdown yet\n",
-					__func__);
-			return;
-		}
-	mods_ext_bus_vote(false);
-
 	ret = msm_mi2s_sclk_ctl(substream, false);
 	if (ret < 0)
 		pr_err("%s:clock disable failed\n", __func__);
 	if (atomic_read(&quin_mi2s_clk_ref) > 0)
 		atomic_dec(&quin_mi2s_clk_ref);
-#ifndef CONFIG_SND_QUIN_MI2S_FOR_MODS
 	ret = msm_gpioset_suspend(CLIENT_WCD_INT, "quin_i2s");
 	if (ret < 0) {
 		pr_err("%s: gpio set cannot be de-activated %sd",
 					__func__, "quin_i2s");
 		return;
 	}
-#endif
-#if defined(CONFIG_SND_SOC_CS35L35) && !defined(CONFIG_SND_CS35L35_OSR_CLK)
+#ifdef CONFIG_SND_SOC_CS35L35
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		pr_debug("%s, going to disable cs35l35 mclk\n", __func__);
 		ret = msm8952_enable_cs35l35_mclk(card, false);
@@ -2045,18 +1822,6 @@ static int cs35l35_dai_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
 	snd_soc_dapm_ignore_suspend(dapm, "AMP Capture");
 	snd_soc_dapm_sync(dapm);
-	return ret;
-}
-#endif
-#if defined(CONFIG_SND_QUIN_MI2S_FOR_MODS)
-static int quin_dai_init(struct snd_soc_pcm_runtime *rtd)
-{
-	int ret;
-	struct snd_soc_codec *codec = rtd->codec;
-
-	ret = snd_soc_add_codec_controls(codec,
-			msm_quin_mi2s_snd_controls,
-			ARRAY_SIZE(msm_quin_mi2s_snd_controls));
 	return ret;
 }
 #endif
@@ -3104,21 +2869,6 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.ignore_suspend = 1,
 		.be_id = MSM_BACKEND_DAI_QUINARY_MI2S_TX,
 	},
-#elif defined(CONFIG_SND_QUIN_MI2S_FOR_MODS)
-	{
-		.name = LPASS_BE_QUIN_MI2S_TX,
-		.stream_name = "Quinary MI2S Capture",
-		.cpu_dai_name = "msm-dai-q6-mi2s.5",
-		.platform_name = "msm-pcm-routing",
-		.codec_dai_name = "mods_codec_shim_dai",
-		.codec_name = "mods_codec_shim",
-		.no_pcm = 1,
-		.dpcm_capture = 1,
-		.be_id = MSM_BACKEND_DAI_QUINARY_MI2S_TX,
-		.be_hw_params_fixup = msm_quin_be_hw_params_fixup,
-		.ops = &msm8952_quin_mi2s_be_ops,
-		.ignore_suspend = 1,
-},
 #elif defined(CONFIG_SND_SOC_TAS2560)
 	{
 		.name = LPASS_BE_QUIN_MI2S_TX,
@@ -3190,24 +2940,6 @@ static struct snd_soc_dai_link msm8952_quin_dai_link[] = {
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_QUINARY_MI2S_RX,
 		.be_hw_params_fixup = msm_mi2s_rx_be_hw_params_fixup,
-		.ops = &msm8952_quin_mi2s_be_ops,
-		.ignore_pmdown_time = 1, /* dai link has playback support */
-		.ignore_suspend = 1,
-	},
-#elif defined(CONFIG_SND_QUIN_MI2S_FOR_MODS)
-	{
-		/* mods I2S  */
-		.name = LPASS_BE_QUIN_MI2S_RX,
-		.stream_name = "Quinary MI2S Playback",
-		.cpu_dai_name = "msm-dai-q6-mi2s.5",
-		.platform_name = "msm-pcm-routing",
-		.codec_dai_name = "mods_codec_shim_dai",
-		.codec_name = "mods_codec_shim",
-		.init = quin_dai_init,
-		.no_pcm = 1,
-		.dpcm_playback = 1,
-		.be_id = MSM_BACKEND_DAI_QUINARY_MI2S_RX,
-		.be_hw_params_fixup = msm_quin_be_hw_params_fixup,
 		.ops = &msm8952_quin_mi2s_be_ops,
 		.ignore_pmdown_time = 1, /* dai link has playback support */
 		.ignore_suspend = 1,
@@ -3881,7 +3613,6 @@ parse_mclk_freq:
 			ret);
 		goto err;
 	}
-	atomic_set(&mods_mi2s_active, 0);
 	return 0;
 err:
 	if (pdata->vaddr_gpio_mux_spkr_ctl)
