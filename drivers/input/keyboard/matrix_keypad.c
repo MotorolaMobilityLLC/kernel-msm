@@ -131,14 +131,16 @@ static void matrix_keypad_scan(struct work_struct *work)
 	/* assert each column and read the row status out */
 	for (col = 0; col < pdata->num_col_gpios; col++) {
 
-		activate_col(pdata, col, true);
-
-		for (row = 0; row < pdata->num_row_gpios; row++)
+		for (row = 0; row < pdata->num_row_gpios; row++) {
+			activate_col(pdata, col, true);
 			new_state[col] |=
 				row_asserted(pdata, row) ? (1 << row) : 0;
-
-			if (new_state[col])
-				count_state++;
+			gpio_direction_output(pdata->col_gpios[col], 0);
+			new_state[col] &=
+				row_asserted(pdata, row) ? ~(1 << row) : ~(0);
+		}
+		if (new_state[col])
+			count_state++;
 		activate_col(pdata, col, false);
 	}
 
