@@ -284,8 +284,8 @@
 	qcom,enable-hvdcp-9v;
 	qcom,weak-charger-check-enable;
 	qcom,temp-warm-current-ma = <1500>;
-	qcom,temp-cool-current-ma = <700>;
-	qcom,temp-slightly-cool-current-ma = <700>;
+	qcom,temp-cool-current-ma = <900>;
+	qcom,temp-slightly-cool-current-ma = <900>;
 	qcom,slightly-cool-temp-c = <15>;
 	qcom,enable-charging-limit;
 	qcom,upper-limit-capacity = <80>;
