@@ -185,6 +185,10 @@ static void sdhci_dumpregs(struct sdhci_host *host)
 		host->ops->dump_vendor_regs(host);
 	sdhci_dump_state(host);
 	pr_info(DRIVER_NAME ": ===========================================\n");
+
+        //MMI_SHOPSHIP for issue debug
+	if(!strncmp(mmc_hostname(host->mmc),"mmc0",4))
+		BUG_ON(true);
 }
 
 /*****************************************************************************\
