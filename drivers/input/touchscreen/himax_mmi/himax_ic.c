@@ -2021,6 +2021,18 @@ void himax_read_FW_ver(struct i2c_client *client)
 	ic_data->vendor_cid_min_ver = data[3];
 	
 	I("CID_VER : %X \n",(ic_data->vendor_cid_maj_ver << 8 | ic_data->vendor_cid_min_ver));
+
+	ic_data->vendor_fw_ptime = 0;
+	cmd[3] = 0x10; cmd[2] = 0x00; cmd[1] = 0x70; cmd[0] = 0x38;
+	himax_register_read(client, cmd, 8, data, false);
+
+	ic_data->vendor_fw_ptime += (data[0]%16)*100000;
+	ic_data->vendor_fw_ptime += (data[1]%16)*10000;
+	ic_data->vendor_fw_ptime += (data[2]%16)*1000;
+	ic_data->vendor_fw_ptime += (data[3]%16)*100;
+	ic_data->vendor_fw_ptime += (data[4]%16)*10;
+	ic_data->vendor_fw_ptime += (data[5]%16);
+	I("FW produce time : %d \n", ic_data->vendor_fw_ptime);
 	
 	return;
 }
@@ -2092,7 +2104,7 @@ void himax_power_on_init(struct i2c_client *client)
 
 bool himax_read_event_stack(struct i2c_client *client, 	uint8_t *buf, uint8_t length) //Alice - Un
 {
-	uint8_t cmd[4];
+/*	uint8_t cmd[4];
 
 	//  AHB_I2C Burst Read Off
 	cmd[0] = 0x00;		
@@ -2101,15 +2113,19 @@ bool himax_read_event_stack(struct i2c_client *client, 	uint8_t *buf, uint8_t le
 		E("%s: i2c access fail!\n", __func__);
 		return 0;
 	}
-	
-	i2c_himax_read(client, 0x30, buf, length,HIMAX_I2C_RETRY_TIMES);
-
+*/
+	if (i2c_himax_read(client, 0x30, buf, length, HIMAX_I2C_RETRY_TIMES) < 0) {
+		E("%s: i2c access fail!\n", __func__);
+		return 0;
+	}
+/*
 	//  AHB_I2C Burst Read On
 	cmd[0] = 0x01;
 	if ( i2c_himax_write(client, 0x11 ,cmd, 1, 3) < 0) {
 		E("%s: i2c access fail!\n", __func__);
 		return 0;
 	}
+*/
 	return 1;
 }
 

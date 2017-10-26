@@ -437,7 +437,7 @@ int himax_gpio_power_config(struct i2c_client *client,struct himax_i2c_platform_
 				E("%s: request reset pin failed\n", __func__);
 				return error;
 		}
-		error = gpio_direction_output(pdata->gpio_reset, 0);
+		error = gpio_direction_output(pdata->gpio_reset, 1);
 		if (error) {
 			E("unable to set direction for gpio [%d]\n",
 				pdata->gpio_reset);
@@ -617,13 +617,13 @@ int fb_notifier_callback(struct notifier_block *self,
 		blank = evdata->data;
 		switch (*blank) {
 		case FB_BLANK_UNBLANK:
+		case FB_BLANK_NORMAL:
 			himax_common_resume(&ts->client->dev);
 		break;
 
 		case FB_BLANK_POWERDOWN:
 		case FB_BLANK_HSYNC_SUSPEND:
 		case FB_BLANK_VSYNC_SUSPEND:
-		case FB_BLANK_NORMAL:
 			himax_common_suspend(&ts->client->dev);
 		break;
 		}
