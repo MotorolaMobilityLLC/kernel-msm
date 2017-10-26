@@ -142,7 +142,8 @@
 
 &soc {
 	fpc_fpc1020{
-		pinctrl-0 = <&fps_ldo_1P8_en_default>;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-names;
 	};
 };
 
