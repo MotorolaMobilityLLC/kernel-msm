@@ -352,6 +352,36 @@ Description:
 return:
 	n.a.
 *******************************************************/
+static int32_t nvt_info_open(struct inode *inode, struct file *file)
+{
+	if (mutex_lock_interruptible(&ts->lock)) {
+		return -ERESTARTSYS;
+	}
+
+	NVT_LOG("++\n");
+#if NVT_TOUCH_ESD_PROTECT
+			nvt_esd_check_enable(false);
+#endif
+	if (nvt_get_fw_info()) {
+		mutex_unlock(&ts->lock);
+		return -EAGAIN;
+	}
+
+	mutex_unlock(&ts->lock);
+
+	NVT_LOG("--\n");
+
+	return seq_open(file, &nvt_fw_version_seq_ops);
+}
+
+static const struct file_operations nvt_info_proc_fops = {
+	.owner = THIS_MODULE,
+	.open = nvt_info_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release,
+};
+
 static int32_t nvt_fw_version_open(struct inode *inode, struct file *file)
 {
 	if (mutex_lock_interruptible(&ts->lock)) {
@@ -359,7 +389,9 @@ static int32_t nvt_fw_version_open(struct inode *inode, struct file *file)
 	}
 
 	NVT_LOG("++\n");
-
+#if NVT_TOUCH_ESD_PROTECT
+		nvt_esd_check_enable(false);
+#endif
 	if (nvt_get_fw_info()) {
 		mutex_unlock(&ts->lock);
 		return -EAGAIN;
@@ -394,7 +426,9 @@ static int32_t nvt_baseline_open(struct inode *inode, struct file *file)
 	}
 
 	NVT_LOG("++\n");
-
+#if NVT_TOUCH_ESD_PROTECT
+			nvt_esd_check_enable(false);
+#endif
 	if (nvt_clear_fw_status()) {
 		mutex_unlock(&ts->lock);
 		return -EAGAIN;
@@ -450,7 +484,9 @@ static int32_t nvt_raw_open(struct inode *inode, struct file *file)
 	}
 
 	NVT_LOG("++\n");
-
+#if NVT_TOUCH_ESD_PROTECT
+		nvt_esd_check_enable(false);
+#endif
 	if (nvt_clear_fw_status()) {
 		mutex_unlock(&ts->lock);
 		return -EAGAIN;
@@ -513,7 +549,9 @@ static int32_t nvt_diff_open(struct inode *inode, struct file *file)
 	}
 
 	NVT_LOG("++\n");
-
+#if NVT_TOUCH_ESD_PROTECT
+		nvt_esd_check_enable(false);
+#endif
 	if (nvt_clear_fw_status()) {
 		mutex_unlock(&ts->lock);
 		return -EAGAIN;
