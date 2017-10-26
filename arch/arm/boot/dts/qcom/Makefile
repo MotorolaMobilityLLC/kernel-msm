@@ -22,7 +22,8 @@ dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p0a.dtb \
 	sdm630-payton-p1a.dtb \
 	sdm630-payton-p2a.dtb \
 	sdm630-payton-p2b.dtb \
-	sdm630-evert-evt1.dtb
+	sdm630-evert-evt1.dtb \
+	sdm630-evert-dvt1a.dtb
 else
 # Only include QC architecture specific DTBs
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-v2-pmi8994-cdp.dtb \
