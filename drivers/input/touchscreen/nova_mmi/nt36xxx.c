@@ -15,6 +15,18 @@
  * more details.
  *
  */
+#include <linux/init.h>
+#include <linux/cdev.h>
+#include <linux/fs.h>
+#include <linux/device.h>
+#include <linux/miscdevice.h>
+#include <linux/platform_device.h>
+#include <linux/gfp.h>
+#include <linux/slab.h>
+#include <linux/miscdevice.h>
+#include <linux/list.h>
+#include <linux/device.h>
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/delay.h>
@@ -28,6 +40,10 @@
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 
+#if defined(CONFIG_HQ_DEV_INFO)
+#include <linux/dev_info.h>
+#endif
+
 #if defined(CONFIG_FB)
 #include <linux/notifier.h>
 #include <linux/fb.h>
@@ -37,8 +53,24 @@
 
 #include "nt36xxx.h"
 
+#if NVT_TOUCH_ESD_PROTECT
+#include <linux/jiffies.h>
+
+static struct delayed_work nvt_esd_check_work;
+static struct workqueue_struct *nvt_esd_check_wq;
+static unsigned long irq_timer;
+uint8_t esd_check = false;
+uint8_t esd_retry = 0;
+uint8_t esd_retry_max = 5;
+#endif
+
 #if NVT_TOUCH_EXT_PROC
 extern int32_t nvt_extra_proc_init(void);
+#endif
+
+#if NVT_TOUCH_FW
+extern int32_t nvt_fw_sysfs_init(void);
+extern int32_t nvt_fw_sysfs_deinit(void);
 #endif
 
 #if NVT_TOUCH_MP
@@ -327,7 +359,7 @@ void nvt_sw_reset_idle(void)
 {
 	uint8_t buf[4]={0};
 
-	//---write i2c cmds to reset idle---
+	/* ---write i2c cmds to reset idle--- */
 	buf[0]=0x00;
 	buf[1]=0xA5;
 	CTP_I2C_WRITE(ts->client, I2C_HW_Address, buf, 2);
@@ -597,6 +629,10 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff, size_t count
 		NVT_ERR("copy from user error\n");
 		return -EFAULT;
 	}
+#if NVT_TOUCH_ESD_PROTECT
+	cancel_delayed_work_sync(&nvt_esd_check_work);
+	nvt_esd_check_enable(false);
+#endif
 
 	i2c_wr = str[0] >> 7;
 
@@ -863,6 +899,60 @@ err_request_irq_gpio:
 	return ret;
 }
 
+#if NVT_TOUCH_ESD_PROTECT
+void nvt_esd_check_enable(uint8_t enable)
+{
+	/* enable/disable esd check flag */
+	esd_check = enable;
+	/* update interrupt timer */
+	irq_timer = jiffies;
+	/* clear esd_retry counter, if protect function is enabled */
+	esd_retry = enable ? 0 : esd_retry;
+}
+
+static uint8_t nvt_fw_recovery(uint8_t *point_data)
+{
+	uint8_t i = 0;
+	uint8_t detected = true;
+
+	/* check pattern */
+	for (i = 1 ; i < 7 ; i++) {
+		if (point_data[i] != 0x77) {
+			detected = false;
+			break;
+		}
+	}
+
+	return detected;
+}
+
+static void nvt_esd_check_func(struct work_struct *work)
+{
+	unsigned int timer = jiffies_to_msecs(jiffies - irq_timer);
+
+	printk("debug_esd_check = %d (retry %d/%d)\n", esd_check, esd_retry, esd_retry_max);
+
+	NVT_ERR("esd_check = %d (retry %d/%d)\n", esd_check, esd_retry, esd_retry_max);
+
+	if (esd_retry >= esd_retry_max)
+		nvt_esd_check_enable(false);
+
+	if ((timer > NVT_TOUCH_ESD_CHECK_PERIOD) && esd_check) {
+		NVT_ERR("do ESD recovery, timer = %d, retry = %d\n", timer, esd_retry);
+		printk("do ESD recovery, timer = %d, retry = %d\n", timer, esd_retry);
+		/* do esd recovery, bootloader reset */
+		nvt_bootloader_reset();
+		/* update interrupt timer */
+		irq_timer = jiffies;
+		/* update esd_retry counter */
+		esd_retry++;
+	}
+
+	queue_delayed_work(nvt_esd_check_wq, &nvt_esd_check_work,
+			msecs_to_jiffies(NVT_TOUCH_ESD_CHECK_PERIOD));
+}
+#endif
+
 #define POINT_DATA_LEN 65
 /*******************************************************
 Description:
@@ -894,13 +984,14 @@ static void nvt_ts_work_func(struct work_struct *work)
 		NVT_ERR("CTP_I2C_READ failed.(%d)\n", ret);
 		goto XFER_ERROR;
 	}
-/*
-	//--- dump I2C buf ---
-	for (i = 0; i < 10; i++) {
-		printk("%02X %02X %02X %02X %02X %02X  ", point_data[1+i*6], point_data[2+i*6], point_data[3+i*6], point_data[4+i*6], point_data[5+i*6], point_data[6+i*6]);
+
+#if NVT_TOUCH_ESD_PROTECT
+
+	if (nvt_fw_recovery(point_data)) {
+		nvt_esd_check_enable(true);
+		goto XFER_ERROR;
 	}
-	printk("\n");
-*/
+#endif
 
 #if WAKEUP_GESTURE
 	if (bTouchIsAwake == 0) {
@@ -917,15 +1008,19 @@ static void nvt_ts_work_func(struct work_struct *work)
 	for (i = 0; i < ts->max_touch_num; i++) {
 		position = 1 + 6 * i;
 		input_id = (uint8_t)(point_data[position + 0] >> 3);
-		if (input_id > ts->max_touch_num)
+		if ((input_id == 0) || (input_id > ts->max_touch_num))
 			continue;
 
-		if (((point_data[position] & 0x07) == 0x01) || ((point_data[position] & 0x07) == 0x02)) {	//finger down (enter & moving)
+		if (((point_data[position] & 0x07) == 0x01) || ((point_data[position] & 0x07) == 0x02)) {
+#if NVT_TOUCH_ESD_PROTECT
+		/* update interrupt timer */
+		irq_timer = jiffies;
+#endif
 			input_x = (uint32_t)(point_data[position + 1] << 4) + (uint32_t) (point_data[position + 3] >> 4);
 			input_y = (uint32_t)(point_data[position + 2] << 4) + (uint32_t) (point_data[position + 3] & 0x0F);
 			if ((input_x < 0) || (input_y < 0))
 				continue;
-			if ((input_x > ts->abs_x_max)||(input_y > ts->abs_y_max))
+			if ((input_x > ts->abs_x_max) || (input_y > ts->abs_y_max))
 				continue;
 			input_w = (uint32_t)(point_data[position + 4]);
 			if (input_w == 0)
@@ -1083,6 +1178,17 @@ static int8_t nvt_ts_check_chip_ver_trim(void)
 
 			if (found_nvt_chip) {
 				NVT_LOG("This is NVT touch IC\n");
+#if NVT_TOUCH_FW
+				if (list == 8) {
+					snprintf(ts->product_id, sizeof(ts->product_id), "NT36525");
+				} else if (list == 9) {
+					snprintf(ts->product_id, sizeof(ts->product_id), "NT36870");
+				} else if (list == 10) {
+					snprintf(ts->product_id, sizeof(ts->product_id), "NT36676F");
+				} else {
+					snprintf(ts->product_id, sizeof(ts->product_id), "NT36772");
+				}
+#endif
 				ts->mmap = trim_id_table[list].mmap;
 				ts->carrier_system = trim_id_table[list].carrier_system;
 				ret = 0;
@@ -1268,6 +1374,12 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	queue_delayed_work(nvt_fwu_wq, &ts->nvt_fwu_work, msecs_to_jiffies(14000));
 #endif
 
+#if NVT_TOUCH_ESD_PROTECT
+	INIT_DELAYED_WORK(&nvt_esd_check_work, nvt_esd_check_func);
+	nvt_esd_check_wq = create_workqueue("nvt_esd_check_wq");
+	queue_delayed_work(nvt_esd_check_wq, &nvt_esd_check_work,
+	msecs_to_jiffies(NVT_TOUCH_ESD_CHECK_PERIOD));
+#endif
 	//---set device node---
 #if NVT_TOUCH_PROC
 	ret = nvt_flash_proc_init();
@@ -1281,6 +1393,18 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	ret = nvt_extra_proc_init();
 	if (ret != 0) {
 		NVT_ERR("nvt extra proc init failed. ret=%d\n", ret);
+		goto err_init_NVT_ts;
+	}
+#endif
+
+#if NVT_TOUCH_FW
+	ts->suspended = 0;
+	ts->force_reflash = 0;
+	ts->loading_fw = 0;
+
+	ret = nvt_fw_sysfs_init();
+	if (ret != 0) {
+		NVT_ERR("nvt fw class init failed. ret=%d\n", ret);
 		goto err_init_NVT_ts;
 	}
 #endif
@@ -1363,6 +1487,10 @@ static int32_t nvt_ts_remove(struct i2c_client *client)
 	unregister_early_suspend(&ts->early_suspend);
 #endif
 
+#if NVT_TOUCH_FW
+	nvt_fw_sysfs_deinit();
+#endif
+
 	mutex_destroy(&ts->lock);
 
 	NVT_LOG("Removing driver...\n");
@@ -1397,8 +1525,14 @@ static int32_t nvt_ts_suspend(struct device *dev)
 	mutex_lock(&ts->lock);
 
 	NVT_LOG("start\n");
-
+#if NVT_TOUCH_FW
+	ts->suspended = 1;
+#endif
 	bTouchIsAwake = 0;
+#if NVT_TOUCH_ESD_PROTECT
+	cancel_delayed_work_sync(&nvt_esd_check_work);
+	nvt_esd_check_enable(false);
+#endif
 
 #if WAKEUP_GESTURE
 	//---write i2c command to enter "wakeup gesture mode"---
@@ -1463,7 +1597,7 @@ static int32_t nvt_ts_resume(struct device *dev)
 		return 0;
 	}
 
-	msleep(200);
+	msleep(20);
 
 	mutex_lock(&ts->lock);
 
@@ -1478,7 +1612,15 @@ static int32_t nvt_ts_resume(struct device *dev)
 #if !WAKEUP_GESTURE
 	enable_irq(ts->client->irq);
 #endif
+
+#if NVT_TOUCH_ESD_PROTECT
+	queue_delayed_work(nvt_esd_check_wq, &nvt_esd_check_work,
+	msecs_to_jiffies(NVT_TOUCH_ESD_CHECK_PERIOD));
+#endif
 	bTouchIsAwake = 1;
+#if NVT_TOUCH_FW
+		ts->suspended = 0;
+#endif
 
 	mutex_unlock(&ts->lock);
 
@@ -1503,7 +1645,8 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 		}
 	} else if (evdata && evdata->data && event == FB_EVENT_BLANK) {
 		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK) {
+		if (*blank == FB_BLANK_UNBLANK ||
+		(*blank == FB_BLANK_NORMAL && 0 == bTouchIsAwake)) {
 			nvt_ts_resume(&ts->client->dev);
 		}
 	}
@@ -1625,6 +1768,11 @@ static void __exit nvt_driver_exit(void)
 	if (nvt_fwu_wq)
 		destroy_workqueue(nvt_fwu_wq);
 #endif
+#if NVT_TOUCH_ESD_PROTECT
+	if (nvt_esd_check_wq)
+		destroy_workqueue(nvt_esd_check_wq);
+#endif
+
 }
 
 //late_initcall(nvt_driver_init);
