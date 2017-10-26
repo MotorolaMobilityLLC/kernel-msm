@@ -49,7 +49,7 @@
 #ifdef CONFIG_OF
 #include <linux/of_gpio.h>
 #endif
-#define HIMAX_DRIVER_VER "0.1.81.0_L3200_00"
+#define HIMAX_DRIVER_VER "0.1.81.0_L3200_02"
 
 #define FLASH_DUMP_FILE "/sdcard/HX_Flash_Dump.bin"
 
@@ -72,7 +72,7 @@ int himax_touch_proc_init(void);
 void himax_touch_proc_deinit(void);
 #endif
 //===========Himax Option function=============
-#define HX_RST_PIN_FUNC
+/*#define HX_RST_PIN_FUNC*/
 //#define HX_AUTO_UPDATE_FW
 //#define HX_ESD_RECOVERY
 //#define HX_CHIP_STATUS_MONITOR		/*for ESD 2nd solution,it does not support incell,default off*/
@@ -177,6 +177,7 @@ struct himax_ic_data {
 	int vendor_cid_min_ver;
 	int vendor_panel_ver;
 	int vendor_sensor_id;
+	int vendor_fw_ptime;
 	int		HX_RX_NUM;
 	int		HX_TX_NUM;
 	int		HX_BT_NUM;
