@@ -1326,8 +1326,8 @@ static int msm_isp_buf_mgr_debug(struct msm_isp_buf_mgr *buf_mgr,
 	uint32_t debug_stream_id = 0;
 	uint32_t debug_buf_idx = 0;
 	uint32_t debug_buf_plane = 0;
-	uint32_t debug_start_addr = 0;
-	uint32_t debug_end_addr = 0;
+	unsigned long debug_start_addr = 0;
+	unsigned long debug_end_addr = 0;
 	uint32_t debug_frame_id = 0;
 	enum msm_isp_buffer_state debug_state;
 	unsigned long flags;
@@ -1387,8 +1387,8 @@ static int msm_isp_buf_mgr_debug(struct msm_isp_buf_mgr *buf_mgr,
 		debug_stream_id, debug_frame_id);
 	pr_err("%s: nearby buf index %d, plane %d, state %d\n", __func__,
 		debug_buf_idx, debug_buf_plane, debug_state);
-	pr_err("%s: buf address 0x%x -- 0x%x\n", __func__,
-		debug_start_addr, debug_end_addr);
+	pr_err("%s: buf address %pK -- %pK\n", __func__,
+		(void *)debug_start_addr, (void *)debug_end_addr);
 
 	if (BUF_DEBUG_FULL) {
 		print_buf = kzalloc(print_buf_size, GFP_ATOMIC);
