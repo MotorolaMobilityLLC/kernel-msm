@@ -458,14 +458,13 @@
 
 	fpc_fpc1020{
 		compatible = "fpc,fpc1020";
-			status = "ok";
-			irq = <&tlmm 48 0>;
-			rst = <&tlmm 8 0>;
-			fpc,txout_boost_enable;
+		status = "ok";
+		irq = <&tlmm 48 0>;
+		rst = <&tlmm 8 0>;
 
-			pinctrl-names = "default", "suspend";
-			pinctrl-0 = <&rst_active &int_active>;
-			pinctrl-1 = <&rst_suspend &int_suspend>;
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&rst_active &int_active &ldo_en_active>;
+		pinctrl-1 = <&rst_suspend &int_suspend &ldo_en_suspend>;
 	};
 
 	qcom,msm-thermal {

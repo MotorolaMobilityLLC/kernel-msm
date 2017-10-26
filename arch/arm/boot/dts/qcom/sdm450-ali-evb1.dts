@@ -123,6 +123,11 @@
 			pinctrl-1 = <&fusb302_int_active>;
 		};
 	};
+
+	fpc_fpc1020{
+		pinctrl-0 = <&rst_active &int_active>;
+		pinctrl-1 = <&rst_suspend &int_suspend>;
+	};
 };
 
 /* GPU Overrides*/
