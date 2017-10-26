@@ -3217,3 +3217,401 @@ void himax_touch_proc_deinit(void)
 	remove_proc_entry( HIMAX_PROC_TOUCH_FOLDER, NULL );
 }
 #endif
+
+#if 1
+int hx_prog_status = 0;
+int hx_update_lock = 0;
+
+static ssize_t himax_forcereflash_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct himax_ts_data *ts_data;
+	size_t count = 0;
+	ts_data = private_ts;
+
+	count += snprintf(buf, PAGE_SIZE, "Now lock value is: %d\n", hx_update_lock);
+
+	return count;
+}
+
+static ssize_t himax_forcereflash_dump(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct himax_ts_data *ts;
+	char buf_tmp[8];
+	ts = private_ts;
+	memset(buf_tmp, 0x00, sizeof(buf_tmp));
+	memcpy(buf_tmp, buf, count);
+
+	hx_update_lock = 0;
+	if (buf_tmp[0] == '0') {
+		hx_update_lock = 0;
+	} else if (buf_tmp[0] == '1') {
+		hx_update_lock = 1;
+		hx_prog_status = 2;
+	} else
+		hx_update_lock = 0;
+
+	return count;
+}
+
+static DEVICE_ATTR(forcereflash, (S_IWUSR|S_IRUGO),
+	himax_forcereflash_show, himax_forcereflash_dump);
+
+static ssize_t himax_flashprog_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct himax_ts_data *ts_data;
+	size_t count = 0;
+	ts_data = private_ts;
+
+	count += snprintf(buf, PAGE_SIZE, "Now status value is : %d\n", hx_prog_status);
+	if (hx_prog_status == 1)
+		count += snprintf(buf, PAGE_SIZE, "%d", 1);
+	else if (hx_prog_status == 0)
+		count += snprintf(buf, PAGE_SIZE, "%d", 1);
+	else if (hx_prog_status == 2)
+		count += snprintf(buf, PAGE_SIZE, "%d", 0);
+	else
+		count += snprintf(buf, PAGE_SIZE, "%d", 0);
+
+	return count;
+}
+
+static DEVICE_ATTR(flashprog, S_IRUGO,
+	himax_flashprog_show, NULL);
+
+#define HX_FW_NAME_MAX_LEN 50
+static ssize_t himax_doreflash_dump(struct device *dev,
+		struct device_attribute *attr, const char *buff, size_t count)
+{
+	int result = 0;
+	char fileName[128];
+	char buf[80] = {0};
+	int fw_type = 0;
+	const struct firmware *fw_entry = NULL;
+	char prefix[HX_FW_NAME_MAX_LEN] = "himax";
+
+	if (count > HX_FW_NAME_MAX_LEN) {
+		E("%s: FW filename is too long\n", __func__);
+		result = -EINVAL;
+		goto work_done;
+	}
+	if (private_ts->suspended) {
+		I("It already suspend!\n Plz Keep in resume state!\n");
+		goto work_done;
+	}
+	if (hx_prog_status == 1) {
+		E("%s: In FW flashing state, try again later\n",
+			__func__);
+		result = -EINVAL;
+		goto work_done;
+	}
+	if (hx_update_lock) {
+		hx_prog_status = 1;
+
+		memcpy(buf, buff, count);
+
+		himax_int_enable(private_ts->client->irq, 0);
+
+#ifdef HX_CHIP_STATUS_MONITOR
+		g_chip_monitor_data->HX_CHIP_POLLING_COUNT = 0;
+		g_chip_monitor_data->HX_CHIP_MONITOR_EN = 0;
+		cancel_delayed_work_sync(&private_ts->himax_chip_monitor);
+#endif
+
+		fw_update_complete		= false;
+
+		memset(fileName, 0, 128);
+		/* parse the file name*/
+		if (strncmp(buf, prefix, strnlen(prefix, sizeof(prefix)))) {
+			E("%s: FW does not belong to Himax\n", __func__);
+			result = -EINVAL;
+			goto firmware_upgrade_done;
+		}
+		snprintf(fileName, count, "%s", &buf[0]);
+		I("%s: upgrade from file(%s) start!\n", __func__, fileName);
+
+		/* open file */
+		result = request_firmware(&fw_entry, fileName, private_ts->dev);
+		if (result < 0) {
+			E("%s,fail in line%d error code=%d\n", __func__, __LINE__, result);
+			goto firmware_upgrade_done;
+		}
+		memcpy(upgrade_fw, fw_entry->data, FW_SIZE_64k);
+		release_firmware(fw_entry);
+
+		I("%s: FW image,Status %d: %02X, %02X, %02X, %02X\n", __func__, result, upgrade_fw[0], upgrade_fw[1], upgrade_fw[2], upgrade_fw[3]);
+		if (result == NO_ERR) {
+			/* start to upgrade */
+			himax_int_enable(private_ts->client->irq, 0);
+			I("Now FW size is : %dk\n", fw_type);
+
+			if (fts_ctpm_fw_upgrade_with_sys_fs_64k(private_ts->client, upgrade_fw, FW_SIZE_64k, false) == 0) {
+				E("%s: TP upgrade error, line: %d\n", __func__, __LINE__);
+				fw_update_complete = false;
+			} else	{
+				I("%s: TP upgrade OK, line: %d\n", __func__, __LINE__);
+				fw_update_complete = true;
+			}
+			goto firmware_upgrade_done;
+		}
+	} else {
+		hx_prog_status = 2;
+		E("%s : hx_update_lock = %d\n", __func__, hx_update_lock);
+		return count;
+	}
+
+firmware_upgrade_done:
+
+#ifdef HX_RST_PIN_FUNC
+	himax_ic_reset(true, false);
+#endif
+
+	himax_sense_on(private_ts->client, 0x01);
+	msleep(120);
+#ifdef HX_ESD_RECOVERY
+	HX_ESD_RESET_ACTIVATE = 1;
+#endif
+	himax_int_enable(private_ts->client->irq, 1);
+
+#ifdef HX_CHIP_STATUS_MONITOR
+	g_chip_monitor_data->HX_CHIP_POLLING_COUNT = 0;
+	g_chip_monitor_data->HX_CHIP_MONITOR_EN = 1;
+	queue_delayed_work(private_ts->himax_chip_monitor_wq, &private_ts->himax_chip_monitor, g_chip_monitor_data->HX_POLLING_TIMES*HZ);
+#endif
+	hx_prog_status = 0;
+	himax_read_FW_ver(private_ts->client);
+work_done:
+	return count;
+}
+
+static DEVICE_ATTR(doreflash, S_IWUSR,
+	NULL, himax_doreflash_dump);
+
+static ssize_t himax_buildid_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct himax_ts_data *ts_data;
+	size_t count = 0;
+	ts_data = private_ts;
+
+	count += snprintf(buf, PAGE_SIZE, "%04X-%d\n", ic_data->vendor_config_ver, ic_data->vendor_fw_ptime);
+
+	return count;
+}
+
+static DEVICE_ATTR(buildid, S_IRUGO,
+	himax_buildid_show, NULL);
+
+static ssize_t himax_productinfo_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct himax_ts_data *ts_data;
+	size_t count = 0;
+	ts_data = private_ts;
+
+	count += snprintf(buf, PAGE_SIZE, "hx83102b\n");
+
+	return count;
+}
+
+static DEVICE_ATTR(productinfo, S_IRUGO,
+	himax_productinfo_show, NULL);
+
+static ssize_t himax_poweron_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct himax_ts_data *ts_data;
+	size_t count = 0;
+	ts_data = private_ts;
+
+	if (private_ts->suspended)
+		count += snprintf(buf, PAGE_SIZE, "%d", 0);
+	else
+		count += snprintf(buf, PAGE_SIZE, "%d", 1);
+
+	return count;
+}
+
+static DEVICE_ATTR(poweron, S_IRUGO,
+	himax_poweron_show, NULL);
+
+static ssize_t himax_ic_ver_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct himax_ts_data *ts_data;
+	size_t count = 0;
+	ts_data = private_ts;
+
+	count += snprintf(buf, PAGE_SIZE, "[Vendor]dijing,[FW]%04x,[IC]hx83102b\n", ic_data->vendor_config_ver);
+
+	return count;
+}
+
+static DEVICE_ATTR(ic_ver, S_IRUGO,
+	himax_ic_ver_show, NULL);
+
+#include <linux/major.h>
+#include <linux/kdev_t.h>
+
+/* Attribute: path (RO) */
+static ssize_t path_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct himax_ts_data *data = dev_get_drvdata(dev);
+	ssize_t blen;
+	const char *path;
+
+	if (!data) {
+		pr_err("cannot get ft_data pointer\n");
+		return (ssize_t)0;
+	}
+	path = kobject_get_path(&data->client->dev.kobj, GFP_KERNEL);
+	blen = scnprintf(buf, PAGE_SIZE, "%s", path ? path : "na");
+	kfree(path);
+	return blen;
+}
+
+/* Attribute: vendor (RO) */
+static ssize_t vendor_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "himax");
+}
+
+static struct device_attribute touchscreen_attributes[] = {
+	__ATTR_RO(path),
+	__ATTR_RO(vendor),
+	__ATTR_NULL
+};
+
+#define TSDEV_MINOR_BASE 128
+#define TSDEV_MINOR_MAX 32
+
+static int himax_ts_sysfs_class(void *_data, bool create)
+{
+	struct himax_ts_data *data = _data;
+	struct device_attribute *attrs = touchscreen_attributes;
+	int i, error = 0;
+	static struct class *touchscreen_class;
+	static struct device *ts_class_dev;
+
+	if (create) {
+		/*minor = input_get_new_minor(data->client->addr,
+						1, false);
+		if (minor < 0)
+			minor = input_get_new_minor(TSDEV_MINOR_BASE,
+					TSDEV_MINOR_MAX, true);
+		pr_info("assigned minor %d\n", minor);*/
+
+		touchscreen_class = class_create(THIS_MODULE, "touchscreen");
+		if (IS_ERR(touchscreen_class)) {
+			error = PTR_ERR(touchscreen_class);
+			touchscreen_class = NULL;
+			return error;
+		}
+
+		ts_class_dev = device_create(touchscreen_class, NULL,
+				MKDEV(INPUT_MAJOR, 0),
+				data, INPUT_DEV_NAME);
+		if (IS_ERR(ts_class_dev)) {
+			error = PTR_ERR(ts_class_dev);
+			ts_class_dev = NULL;
+			return error;
+		}
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i) {
+			I("attrs[%d] = %s\n", i, attrs[i].attr.name);
+			error = device_create_file(ts_class_dev, &attrs[i]);
+			if (error)
+				break;
+		}
+
+		if (error)
+			goto device_destroy;
+	} else {
+		if (!touchscreen_class || !ts_class_dev)
+			return -ENODEV;
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i)
+			device_remove_file(ts_class_dev, &attrs[i]);
+
+		device_unregister(ts_class_dev);
+		class_unregister(touchscreen_class);
+	}
+
+	return 0;
+
+device_destroy:
+	for (--i; i >= 0; --i)
+		device_remove_file(ts_class_dev, &attrs[i]);
+	device_destroy(touchscreen_class, MKDEV(INPUT_MAJOR, 0));
+	ts_class_dev = NULL;
+	class_unregister(touchscreen_class);
+	pr_err("error creating touchscreen class\n");
+
+	return -ENODEV;
+}
+
+int himax_touch_sysfs_init(void)
+{
+	int ret;
+	struct i2c_client *client = private_ts->client;
+
+	ret = himax_ts_sysfs_class(private_ts, true);
+
+	if (ret) {
+		E("%s: subsystem_register failed\n", __func__);
+		ret = -ENOMEM;
+		return ret;
+	}
+	ret = device_create_file(&client->dev, &dev_attr_forcereflash);
+	if (ret) {
+		E("%s: create_file dev_attr_forcereflash failed\n", __func__);
+		return ret;
+	}
+	ret = device_create_file(&client->dev, &dev_attr_flashprog);
+	if (ret) {
+		E("%s: create_file dev_attr_flashprog failed\n", __func__);
+		return ret;
+	}
+	ret = device_create_file(&client->dev, &dev_attr_doreflash);
+	if (ret) {
+		E("%s: create_file dev_attr_doreflash failed\n", __func__);
+		return ret;
+	}
+	ret = device_create_file(&client->dev, &dev_attr_buildid);
+	if (ret) {
+		E("%s: create_file dev_attr_buildid failed\n", __func__);
+		return ret;
+	}
+	ret = device_create_file(&client->dev, &dev_attr_productinfo);
+	if (ret) {
+		E("%s: create_file dev_attr_productinfo failed\n", __func__);
+		return ret;
+	}
+	ret = device_create_file(&client->dev, &dev_attr_poweron);
+	if (ret) {
+		E("%s: create_file dev_attr_poweron failed\n", __func__);
+		return ret;
+	}
+	ret = device_create_file(&client->dev, &dev_attr_ic_ver);
+	if (ret) {
+		E("%s: create_file dev_attr_ic_ver failed\n", __func__);
+		return ret;
+	}
+	return NO_ERR;
+}
+void himax_touch_sysfs_deinit(void)
+{
+	struct i2c_client *client = private_ts->client;
+	device_remove_file(&client->dev, &dev_attr_forcereflash);
+	device_remove_file(&client->dev, &dev_attr_flashprog);
+	device_remove_file(&client->dev, &dev_attr_doreflash);
+	device_remove_file(&client->dev, &dev_attr_buildid);
+	device_remove_file(&client->dev, &dev_attr_productinfo);
+	device_remove_file(&client->dev, &dev_attr_poweron);
+	device_remove_file(&client->dev, &dev_attr_ic_ver);
+}
+#endif
