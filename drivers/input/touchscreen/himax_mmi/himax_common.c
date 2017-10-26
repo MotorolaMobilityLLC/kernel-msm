@@ -81,7 +81,9 @@ unsigned char	IC_CHECKSUM = 0;
 
 #if defined(CONFIG_TOUCHSCREEN_HIMAX_DEBUG)
 extern int himax_touch_proc_init(void);
+extern int himax_touch_sysfs_init(void);
 extern void himax_touch_proc_deinit(void);
+extern void himax_touch_sysfs_deinit(void);
 //PROC-START
 #ifdef  HX_TP_PROC_FLASH_DUMP
 extern void	himax_ts_flash_func(void);
@@ -1637,6 +1639,18 @@ static void himax_ts_diag_work_func(struct work_struct *work)
 }
 #endif
 
+void himax_sw_reset(void)
+{
+	uint8_t tmp_addr[4];
+	uint8_t tmp_data[4];
+	/*===AHBI2C_SystemReset==========*/
+	tmp_addr[3] = 0x90; tmp_addr[2] = 0x00; tmp_addr[1] = 0x00; tmp_addr[0] = 0x18;
+	tmp_data[3] = 0x00; tmp_data[2] = 0x00; tmp_data[1] = 0x00; tmp_data[0] = 0x55;
+	himax_register_write(private_ts->client, tmp_addr, 4, tmp_data, false);
+	msleep(50);
+	I("%s: SYSTEM_RST_in_Probe_end\n", __func__);
+}
+
 int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int ret = 0, err = 0;
@@ -1910,6 +1924,7 @@ int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_i
 
 #if defined(CONFIG_TOUCHSCREEN_HIMAX_DEBUG)
 	himax_touch_proc_init();
+	himax_touch_sysfs_init();
 #endif
 
 #if defined( HX_USB_DETECT_CALLBACK)
@@ -1927,7 +1942,7 @@ int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_i
 		himax_int_enable(client->irq,0);
 	}
 #endif
-
+	himax_sw_reset();
 return 0;
 
 err_register_interrupt_failed:
@@ -1995,6 +2010,7 @@ int himax_chip_common_remove(struct i2c_client *client)
 	struct himax_ts_data *ts = i2c_get_clientdata(client);
 #if defined(CONFIG_TOUCHSCREEN_HIMAX_DEBUG)
 	himax_touch_proc_deinit();
+	himax_touch_sysfs_deinit();
 #endif
 #ifdef  HX_CHIP_STATUS_MONITOR
 	g_chip_monitor_data->HX_CHIP_MONITOR_EN = 0;
