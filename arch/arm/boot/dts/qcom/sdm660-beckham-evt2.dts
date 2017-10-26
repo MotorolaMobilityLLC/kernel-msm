@@ -16,6 +16,7 @@
 #include "sdm660.dtsi"
 #include "sdm660-beckham.dtsi"
 #include "dsi-panel-mot-smd-549-1080p-alb-cmd.dtsi"
+#include "dsi-panel-mot-smd-601-1080p-cmd.dtsi"
 
 / {
 	qcom,board-id = <0x48 0xA200>;
@@ -35,5 +36,5 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_alb_cmd_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_601_1080p_cmd_v0>;
 };
