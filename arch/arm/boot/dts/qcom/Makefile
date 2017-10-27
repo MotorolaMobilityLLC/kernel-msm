@@ -24,6 +24,11 @@ dtb-$(CONFIG_ARCH_SDM630) += sdm630-payton-p0a.dtb \
 	sdm630-payton-p2b.dtb \
 	sdm630-evert-evt1.dtb \
 	sdm630-evert-dvt1a.dtb
+
+ifeq ($(CONFIG_HEART_DTB),y)
+dtb-$(CONFIG_ARCH_SDM630) += sdm630-heart-p0a.dtb
+endif #CONFIG_HEART_DTB
+
 else
 # Only include QC architecture specific DTBs
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-v2-pmi8994-cdp.dtb \
