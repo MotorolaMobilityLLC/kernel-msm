@@ -680,6 +680,12 @@ config FSUSB42_MUX
 	  This option enables a device driver for the FSUSB42 which is a
 	  2 port High Speed USB/UART Switch.
 
+config MODS_2ND_GEN
+	bool "MODS_2ND_GEN Support"
+	default n
+	help
+	  This option enables the mods 2nd generation hw designation.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
