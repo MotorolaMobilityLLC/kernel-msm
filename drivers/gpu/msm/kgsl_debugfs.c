@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2008-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2008-2015,2017. The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -109,11 +109,15 @@ static char get_cacheflag(const struct kgsl_memdesc *m)
 	return table[kgsl_memdesc_get_cachemode(m)];
 }
 
-static void print_mem_entry(struct seq_file *s, struct kgsl_mem_entry *entry)
+static int print_mem_entry(void *data, void *ptr)
 {
+	struct seq_file *s = data;
+	struct kgsl_mem_entry *entry = ptr;
 	char flags[8];
 	char usage[16];
 	struct kgsl_memdesc *m = &entry->memdesc;
+	unsigned int usermem_type = kgsl_memdesc_usermem_type(m);
+	int egl_surface_count = 0, egl_image_count = 0;
 
 	flags[0] = kgsl_memdesc_is_global(m) ?  'g' : '-';
 	flags[1] = '-';
@@ -126,52 +130,100 @@ static void print_mem_entry(struct seq_file *s, struct kgsl_mem_entry *entry)
 
 	kgsl_get_memory_usage(usage, sizeof(usage), m->flags);
 
-	seq_printf(s, "%pK %pK %16llu %5d %8s %10s %16s %5d\n",
+	if (usermem_type == KGSL_MEM_ENTRY_ION)
+		kgsl_get_egl_counts(entry, &egl_surface_count,
+						&egl_image_count);
+
+	seq_printf(s, "%pK %pK %16llu %5d %8s %10s %16s %5d %16llu %6d %6d",
 			(uint64_t *)(uintptr_t) m->gpuaddr,
 			(unsigned long *) m->useraddr,
 			m->size, entry->id, flags,
-			memtype_str(kgsl_memdesc_usermem_type(m)),
-			usage, m->sgt->nents);
+			memtype_str(usermem_type),
+			usage, m->sgt->nents, m->mapsize,
+			egl_surface_count, egl_image_count);
+
+	seq_putc(s, '\n');
+	return 0;
 }
 
-static int process_mem_print(struct seq_file *s, void *unused)
+static struct kgsl_mem_entry *process_mem_seq_find(struct seq_file *s,
+						void *ptr, loff_t pos)
 {
-	struct kgsl_mem_entry *entry;
-	struct rb_node *node;
+	struct kgsl_mem_entry *entry = ptr;
 	struct kgsl_process_private *private = s->private;
-	int next = 0;
+	int id = 0;
+	loff_t temp_pos = 1;
 
-	seq_printf(s, "%8s %8s %8s %5s %8s %10s %16s %5s\n",
-		   "gpuaddr", "useraddr", "size", "id", "flags", "type",
-		   "usage", "sglen");
+	if (entry != SEQ_START_TOKEN)
+		id = entry->id + 1;
 
 	/* print all entries with a GPU address */
 	spin_lock(&private->mem_lock);
-
-	for (node = rb_first(&private->mem_rb); node; node = rb_next(node)) {
-		entry = rb_entry(node, struct kgsl_mem_entry, node);
-		print_mem_entry(s, entry);
-	}
-
-
-	/* now print all the unbound entries */
-	while (1) {
-		entry = idr_get_next(&private->mem_idr, &next);
-		if (entry == NULL)
-			break;
-		if (entry->memdesc.gpuaddr == 0)
-			print_mem_entry(s, entry);
-		next++;
+	for (entry = idr_get_next(&private->mem_idr, &id); entry;
+		id++, entry = idr_get_next(&private->mem_idr, &id),
+							temp_pos++) {
+		if (temp_pos == pos && kgsl_mem_entry_get(entry)) {
+			spin_unlock(&private->mem_lock);
+			goto found;
+		}
 	}
 	spin_unlock(&private->mem_lock);
 
-	return 0;
+	entry = NULL;
+found:
+	if (ptr != SEQ_START_TOKEN)
+		kgsl_mem_entry_put(ptr);
+
+	return entry;
 }
+
+static void *process_mem_seq_start(struct seq_file *s, loff_t *pos)
+{
+	loff_t seq_file_offset = *pos;
+
+	if (seq_file_offset == 0)
+		return SEQ_START_TOKEN;
+	else
+		return process_mem_seq_find(s, SEQ_START_TOKEN,
+						seq_file_offset);
+}
+
+static void process_mem_seq_stop(struct seq_file *s, void *ptr)
+{
+	if (ptr && ptr != SEQ_START_TOKEN)
+		kgsl_mem_entry_put(ptr);
+}
+
+static void *process_mem_seq_next(struct seq_file *s, void *ptr,
+							loff_t *pos)
+{
+	++*pos;
+	return process_mem_seq_find(s, ptr, 1);
+}
+
+static int process_mem_seq_show(struct seq_file *s, void *ptr)
+{
+	if (ptr == SEQ_START_TOKEN) {
+		seq_printf(s, "%16s %16s %16s %5s %8s %10s %16s %5s %16s %6s %6s\n",
+			"gpuaddr", "useraddr", "size", "id", "flags", "type",
+			"usage", "sglen", "mapsize", "eglsrf", "eglimg");
+		return 0;
+	} else
+		return print_mem_entry(s, ptr);
+}
+
+static const struct seq_operations process_mem_seq_fops = {
+	.start = process_mem_seq_start,
+	.stop = process_mem_seq_stop,
+	.next = process_mem_seq_next,
+	.show = process_mem_seq_show,
+};
 
 static int process_mem_open(struct inode *inode, struct file *file)
 {
 	int ret;
 	pid_t pid = (pid_t) (unsigned long) inode->i_private;
+	struct seq_file *s = NULL;
 	struct kgsl_process_private *private = NULL;
 
 	private = kgsl_process_private_find(pid);
@@ -179,9 +231,13 @@ static int process_mem_open(struct inode *inode, struct file *file)
 	if (!private)
 		return -ENODEV;
 
-	ret = single_open(file, process_mem_print, private);
+	ret = seq_open(file, &process_mem_seq_fops);
 	if (ret)
 		kgsl_process_private_put(private);
+	else {
+		s = file->private_data;
+		s->private = private;
+	}
 
 	return ret;
 }
@@ -194,7 +250,7 @@ static int process_mem_release(struct inode *inode, struct file *file)
 	if (private)
 		kgsl_process_private_put(private);
 
-	return single_release(inode, file);
+	return seq_release(inode, file);
 }
 
 static const struct file_operations process_mem_fops = {
