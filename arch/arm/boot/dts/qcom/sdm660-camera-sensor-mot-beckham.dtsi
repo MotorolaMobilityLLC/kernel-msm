@@ -47,6 +47,15 @@
 		regulator-min-microvolt = <2800000>;
 		regulator-max-microvolt = <2800000>;
 	};
+
+    cam_iovdd: gpio-regulator@724 {
+		compatible = "regulator-fixed";
+		regulator-name = "cam_iovdd";
+		gpio = <&pcal_pin 7 0>;
+		enable-active-high;
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
 };
 
 &cci {
@@ -71,11 +80,11 @@
 		qcom,mount-angle = <90>;
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,actuator-src = <&actuator0>;
-		cam_vio-supply = <&pm660_l13>;
+		cam_vio-supply = <&cam_iovdd>;
 		cam_vaf-supply = <&rear_vaf>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vaf";
-		qcom,cam-vreg-min-voltage = <1780000 2800000>;
-		qcom,cam-vreg-max-voltage = <1950000 2800000>;
+		qcom,cam-vreg-min-voltage = <1800000 2800000>;
+		qcom,cam-vreg-max-voltage = <1800000 2800000>;
 		qcom,cam-vreg-op-mode = <105000 80000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -83,20 +92,23 @@
 		pinctrl-1 = <&cam_sensor_mclk0_suspend>;
 		gpios = <&tlmm 32 0>,
 			<&pcal_pin 0 0>,
-			<&pcal_pin 7 0>,
 			<&pcal_pin 4 0>,
-			<&pcal_pin 2 0>;
+			<&pcal_pin 2 0>,
+			<&pcal_pin 5 0>,
+			<&pcal_pin 6 0>;
 		qcom,gpio-reset = <1>;
-		qcom,gpio-vio = <2>;
-		qcom,gpio-vdig = <3>;
-		qcom,gpio-custom1 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-custom1 = <3>;
+		qcom,gpio-custom2 = <4>;
+		qcom,gpio-custom3 = <5>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 					  "CAM_RESET0",
-					  "CAM_VIO0",
 					  "CAM_VDIG0",
-					  "CAM_CUSTOM0";
+					  "CAM_CUSTOM1",
+					  "CAM_CUSTOM2",
+					  "CAM_CUSTOM3";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
@@ -115,10 +127,10 @@
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
 		qcom,led-flash-src = <&led_flash0>;
-		cam_vio-supply = <&pm660_l13>;
+		cam_vio-supply = <&cam_iovdd>;
 		qcom,cam-vreg-name = "cam_vio";
-		qcom,cam-vreg-min-voltage = <1780000>;
-		qcom,cam-vreg-max-voltage = <1950000>;
+		qcom,cam-vreg-min-voltage = <1800000>;
+		qcom,cam-vreg-max-voltage = <1800000>;
 		qcom,cam-vreg-op-mode = <105000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -126,20 +138,23 @@
 		pinctrl-1 = <&cam_sensor_mclk0_suspend>;
 		gpios = <&tlmm 32 0>,
 			<&pcal_pin 1 0>,
-			<&pcal_pin 7 0>,
 			<&pcal_pin 6 0>,
-			<&pcal_pin 3 0>;
+			<&pm660_gpios 3 0>,
+			<&pcal_pin 5 0>,
+			<&pcal_pin 4 0>;
 		qcom,gpio-reset = <1>;
-		qcom,gpio-vio = <2>;
-		qcom,gpio-vdig = <3>;
-		qcom,gpio-custom1 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-custom1 = <3>;
+		qcom,gpio-custom2 = <4>;
+		qcom,gpio-custom3 = <5>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 					  "CAM_RESET1",
-					  "CAM_VIO1",
 					  "CAM_VDIG1",
-					  "CAM_CUSTOM1";
+					  "CAM_CUSTOM1",
+					  "CAM_CUSTOM2",
+					  "CAM_CUSTOM3";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
@@ -157,10 +172,10 @@
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <2>;
 		qcom,mount-angle = <270>;
-		cam_vio-supply = <&pm660_l13>;
+		cam_vio-supply = <&cam_iovdd>;
 		qcom,cam-vreg-name = "cam_vio";
-		qcom,cam-vreg-min-voltage = <1780000>;
-		qcom,cam-vreg-max-voltage = <1950000>;
+		qcom,cam-vreg-min-voltage = <1800000>;
+		qcom,cam-vreg-max-voltage = <1800000>;
 		qcom,cam-vreg-op-mode = <105000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -168,17 +183,20 @@
 		pinctrl-1 = <&cam_sensor_mclk1_suspend>;
 		gpios = <&tlmm 33 0>,
 			<&pcal_pin 2 0>,
-			<&pcal_pin 7 0>,
-			<&pcal_pin 5 0>;
+			<&pcal_pin 5 0>,
+			<&pcal_pin 4 0>,
+			<&pcal_pin 6 0>;
 		qcom,gpio-reset = <1>;
-		qcom,gpio-vio = <2>;
-		qcom,gpio-vdig = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-custom1 = <3>;
+		qcom,gpio-custom2 = <4>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
 					  "CAM_RESET2",
-					  "CAM_VIO2",
-					  "CAM_VDIG2";
+					  "CAM_VDIG2",
+					  "CAM_CUSTOM1",
+					  "CAM_CUSTOM2";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
@@ -319,16 +337,6 @@
 				bias-pull-down; /* PULL DOWN */
 				drive-strength = <2>; /* 2 MA */
 			};
-		};
-	};
-};
-&rpm_bus {
-	rpm-regulator-ldoa13 {
-		status = "okay";
-		pm660_l13: regulator-l13 {
-			regulator-min-microvolt = <1780000>;
-			regulator-max-microvolt = <1950000>;
-			status = "okay";
 		};
 	};
 };
