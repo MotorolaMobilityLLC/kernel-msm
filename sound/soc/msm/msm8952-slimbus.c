@@ -3699,6 +3699,12 @@ int marley_dai_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "DSP3 Virtual Output");
 	snd_soc_dapm_ignore_suspend(dapm, "DSP Virtual Input");
 
+	snd_soc_dapm_ignore_suspend(dapm, "Slim1 Playback");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim1 Capture");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim2 Playback");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim2 Capture");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1 Capture");
+
 	ret = snd_soc_add_codec_controls(codec, msm_snd_controls,
 		ARRAY_SIZE(msm_snd_controls));
 	if (ret != 0) {
