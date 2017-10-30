@@ -174,10 +174,6 @@
 	regulator-boot-on;
 };
 
-&pm8937_l17 {
-	regulator-always-on;
-};
-
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_tianma_570_hd_vid_v0>;
 	vddio_disp-supply = <&pm8937_l6>;
