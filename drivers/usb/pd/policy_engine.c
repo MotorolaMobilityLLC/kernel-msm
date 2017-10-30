@@ -1960,10 +1960,9 @@ static void usbpd_sm(struct work_struct *w)
 		power_supply_set_property(pd->usb_psy,
 				POWER_SUPPLY_PROP_PD_ACTIVE, &val);
 
-		if (pd->vbus_enabled) {
+		pd->vbus_enabled = false;
+		if (regulator_is_enabled(pd->vbus))
 			regulator_disable(pd->vbus);
-			pd->vbus_enabled = false;
-		}
 
 		if (pd->current_dr == DR_UFP)
 			stop_usb_peripheral(pd);
@@ -4183,6 +4182,10 @@ void usbpd_handle_vbus_fault(struct usbpd *pd)
 	usbpd_dbg(&pd->dev, "handle vbus fault");
 	regulator_disable(pd->vbus);
 	mdelay(FAULT_RECOVER_TIME);
+
+	/* Ensure that the State Machine did not disable */
+	if (!pd->vbus_enabled)
+		return;
 
 	ret = regulator_enable(pd->vbus);
 	if (ret)
