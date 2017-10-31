@@ -457,12 +457,5 @@
 	};
 };
 
-&pm660_charger {
-	gpios = <&pm660l_gpios 8 0x0>; /* GPIOF_OUT_INIT_LOW */
-	gpio-names = "eb_vbus_en";
-	qcom,single-path-usbin-switch;
-	qcom,without-kungpow;
-};
-
 /delete-node/ &green_led;
 /delete-node/ &blue_led;
