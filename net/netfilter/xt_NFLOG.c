@@ -34,7 +34,24 @@ nflog_tg(struct sk_buff *skb, const struct xt_action_param *par)
 	li.u.ulog.qthreshold = info->threshold;
 
 	nfulnl_log_packet(net, par->family, par->hooknum, skb, par->in,
-			  par->out, &li, info->prefix);
+			    par->out, &li, info->prefix);
+	return XT_CONTINUE;
+}
+
+static unsigned int
+nflog_tg_v1(struct sk_buff *skb, const struct xt_action_param *par)
+{
+	const struct xt_nflog_info_v1 *info = par->targinfo;
+	struct nf_loginfo li;
+	struct net *net = dev_net(par->in ? par->in : par->out);
+
+	li.type		     = NF_LOG_TYPE_ULOG;
+	li.u.ulog.copy_len   = info->len;
+	li.u.ulog.group	     = info->group;
+	li.u.ulog.qthreshold = info->threshold;
+
+	__nfulnl_log_packet(net, par->family, par->hooknum, skb, par->in,
+			    par->out, &li, info->prefix, info->layer);
 	return XT_CONTINUE;
 }
 
@@ -49,24 +66,48 @@ static int nflog_tg_check(const struct xt_tgchk_param *par)
 	return 0;
 }
 
-static struct xt_target nflog_tg_reg __read_mostly = {
-	.name       = "NFLOG",
-	.revision   = 0,
-	.family     = NFPROTO_UNSPEC,
-	.checkentry = nflog_tg_check,
-	.target     = nflog_tg,
-	.targetsize = sizeof(struct xt_nflog_info),
-	.me         = THIS_MODULE,
+static int nflog_tg_check_v1(const struct xt_tgchk_param *par)
+{
+	const struct xt_nflog_info_v1 *info = par->targinfo;
+
+	if (info->flags & ~XT_NFLOG_MASK)
+		return -EINVAL;
+	if (info->prefix[sizeof(info->prefix) - 1] != '\0')
+		return -EINVAL;
+	if (info->layer > 5)
+		return -EINVAL;
+	return 0;
+}
+
+static struct xt_target nflog_tg_reg[] __read_mostly = {
+	{
+		.name       = "NFLOG",
+		.revision   = 0,
+		.family     = NFPROTO_UNSPEC,
+		.checkentry = nflog_tg_check,
+		.target     = nflog_tg,
+		.targetsize = sizeof(struct xt_nflog_info),
+		.me         = THIS_MODULE,
+	},
+	{
+		.name       = "NFLOG",
+		.revision   = 1,
+		.family     = NFPROTO_UNSPEC,
+		.checkentry = nflog_tg_check_v1,
+		.target     = nflog_tg_v1,
+		.targetsize = sizeof(struct xt_nflog_info_v1),
+		.me         = THIS_MODULE,
+	}
 };
 
 static int __init nflog_tg_init(void)
 {
-	return xt_register_target(&nflog_tg_reg);
+	return xt_register_targets(nflog_tg_reg, ARRAY_SIZE(nflog_tg_reg));
 }
 
 static void __exit nflog_tg_exit(void)
 {
-	xt_unregister_target(&nflog_tg_reg);
+	xt_unregister_targets(nflog_tg_reg, ARRAY_SIZE(nflog_tg_reg));
 }
 
 module_init(nflog_tg_init);
