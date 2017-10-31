@@ -1484,6 +1484,11 @@ config NETFILTER_XT_MATCH_U32
 
 	  Details and examples are in the kernel module source.
 
+config NETFILTER_XT_MATCH_QTAGUID_EXT
+	tristate "Netfilter xt_qtaguid_ext"
+	default n
+	---help---
+	This option enables for extension of xt_qtaguid.
 endif # NETFILTER_XTABLES
 
 endmenu
