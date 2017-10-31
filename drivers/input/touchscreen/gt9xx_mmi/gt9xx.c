@@ -1445,7 +1445,7 @@ static int goodix_ts_sysfs_class(void *_data, bool create)
 
 		ts_class_dev = device_create(touchscreen_class, NULL,
 				MKDEV(INPUT_MAJOR, minor),
-				data, "goodix");
+				data, "gt9xx");
 		if (IS_ERR(ts_class_dev)) {
 			error = PTR_ERR(ts_class_dev);
 			ts_class_dev = NULL;
