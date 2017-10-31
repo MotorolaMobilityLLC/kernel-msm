@@ -43,8 +43,13 @@
 #define LOG_INFO(fmt, args...)
 #endif
 
-#define LOG_DBG(fmt, args...)	pr_info(LOG_TAG fmt, ##args)
+#define LOG_DBG(fmt, args...)	pr_debug(LOG_TAG fmt, ##args)
 #define LOG_ERR(fmt, args...)	pr_err(LOG_TAG fmt, ##args)
+
+static int sx9310_debug_enable;
+module_param_named(
+        debug_enable, sx9310_debug_enable, int, S_IRUSR | S_IWUSR
+);
 
 static int last_val;
 static int mEnabled;
@@ -108,12 +113,14 @@ static int write_register(psx93XX_t this, u8 address, u8 value)
 		i2c = this->bus;
 
 		returnValue = i2c_master_send(i2c, buffer, 2);
-		LOG_INFO("write_register Addr: 0x%x Val: 0x%x Return: %d\n",
+		if (sx9310_debug_enable)
+			LOG_DBG("write_register Addr: \
+				0x%x Val: 0x%x Return: %d\n",
 				address, value, returnValue);
 	}
 	if (returnValue < 0) {
 		ForcetoTouched(this);
-		LOG_DBG("Write_register-ForcetoTouched()\n");
+		LOG_INFO("Write_register-ForcetoTouched()\n");
 	}
 	return returnValue;
 }
@@ -134,7 +141,8 @@ static int read_register(psx93XX_t this, u8 address, u8 *value)
 	if (this && value && this->bus) {
 		i2c = this->bus;
 		returnValue = i2c_smbus_read_byte_data(i2c, address);
-		LOG_INFO("read_register Addr: 0x%x Return: 0x%x\n",
+		if (sx9310_debug_enable)
+			LOG_DBG("read_register Addr: 0x%x Return: 0x%x\n",
 				address, returnValue);
 		if (returnValue >= 0) {
 			*value = returnValue;
@@ -172,7 +180,7 @@ static int sx9310_detect(struct i2c_client *client)
 			}
 		}
 	}
-	LOG_INFO("sx9310 detect failed!!!\n");
+	LOG_ERR("sx9310 detect failed!!!\n");
 	return 0;
 }
 
@@ -298,7 +306,9 @@ static void hw_init(psx93XX_t this)
 	if (this && pDevice && pdata) {
 		while (i < pdata->i2c_reg_num) {
 			/* Write all registers/values contained in i2c_reg */
-			LOG_INFO("Going to Write Reg: 0x%x Value: 0x%x\n",
+			if (sx9310_debug_enable)
+				LOG_DBG("Going to Write Reg: \
+					0x%x Value: 0x%x\n",
 					pdata->pi2c_reg[i].reg,
 					pdata->pi2c_reg[i].val);
 			write_register(this, pdata->pi2c_reg[i].reg,
@@ -311,7 +321,7 @@ static void hw_init(psx93XX_t this)
 		write_register(this, SX9310_CPSRD,
 				this->board->cust_raw_data_channel);
 	} else {
-		LOG_DBG("ERROR! platform data 0x%p\n", pDevice->hw);
+		LOG_ERR("ERROR! platform data 0x%p\n", pDevice->hw);
 		/* Force to touched if error */
 		ForcetoTouched(this);
 		LOG_INFO("Hardware_init-ForcetoTouched()\n");
@@ -392,7 +402,8 @@ static void touchProcess(psx93XX_t this)
 	pDevice = this->pDevice;
 	board = this->board;
 	if (this && pDevice) {
-		LOG_INFO("Inside touchProcess()\n");
+		if (sx9310_debug_enable)
+			LOG_DBG("Inside touchProcess()\n");
 		read_register(this, SX9310_STAT0_REG, &i);
 
 		buttons = pDevice->pbuttonInformation->buttons;
@@ -402,14 +413,14 @@ static void touchProcess(psx93XX_t this)
 
 		if (unlikely((buttons == NULL) || (input_top == NULL) ||
 						 (input_bottom == NULL))) {
-			LOG_DBG("ERROR!! buttons or input NULL!!!\n");
+			LOG_ERR("ERROR!! buttons or input NULL!!!\n");
 			return;
 		}
 
 		for (counter = 0; counter < numberOfButtons; counter++) {
 			pCurrentButton = &buttons[counter];
 			if (pCurrentButton == NULL) {
-				LOG_DBG("ERR!current button index: %d NULL!\n",
+				LOG_ERR("ERR!current button index: %d NULL!\n",
 						counter);
 				return; /* ERRORR!!!! */
 			}
@@ -448,8 +459,10 @@ static void touchProcess(psx93XX_t this)
 					pCurrentButton->state = S_PROX;
 					last_val = 0;
 				} else {
-					LOG_INFO("CS %d still in IDLE State.\n",
-							counter);
+					if (sx9310_debug_enable)
+						LOG_DBG("CS %d still in"
+							  "IDLE State.\n",
+							  counter);
 				}
 				break;
 			case S_PROX: /* Button is being in proximity! */
@@ -474,7 +487,8 @@ static void touchProcess(psx93XX_t this)
 					LOG_INFO("CS %d still in PROX State.\n",
 							counter);
 				} else{
-					LOG_INFO("CS %d State=IDLE.\n",
+					if (sx9310_debug_enable)
+						LOG_DBG("CS %d State=IDLE.\n",
 							counter);
 					if (board->cap_channel_top == counter) {
 						input_report_abs(input_top,
@@ -512,7 +526,8 @@ static void touchProcess(psx93XX_t this)
 					pCurrentButton->state = S_PROX;
 					last_val = 1;
 				} else{
-					LOG_INFO("CS %d State=IDLE.\n",
+					if (sx9310_debug_enable)
+						LOG_DBG("CS %d State=IDLE.\n",
 							counter);
 					if (board->cap_channel_top == counter) {
 						input_report_abs(input_top,
@@ -534,7 +549,8 @@ static void touchProcess(psx93XX_t this)
 				break;
 			};
 		}
-		LOG_INFO("Leaving touchProcess()\n");
+		if (sx9310_debug_enable)
+			LOG_DBG("Leaving touchProcess()\n");
 	}
 }
 
@@ -543,7 +559,7 @@ static int sx9310_get_nirq_state(unsigned irq_gpio)
 	if (irq_gpio)
 		return !gpio_get_value(irq_gpio);
 
-	LOG_INFO("sx9310 irq_gpio is not set.");
+	LOG_ERR("sx9310 irq_gpio is not set.");
 	return -EINVAL;
 }
 
@@ -567,7 +583,7 @@ static void sx9310_reg_setup_init(struct i2c_client *client)
 
 	ret = of_property_read_u32(np, "reg_array_len", &data_array_len);
 	if (ret < 0) {
-		LOG_DBG("data_array_len read error");
+		LOG_ERR("data_array_len read error");
 		return;
 	}
 	data_array = kmalloc(data_array_len * 2 * sizeof(u32), GFP_KERNEL);
@@ -575,14 +591,14 @@ static void sx9310_reg_setup_init(struct i2c_client *client)
 			data_array,
 			data_array_len*2);
 	if (ret < 0) {
-		LOG_DBG("data_array_val read error");
+		LOG_ERR("data_array_val read error");
 		return;
 	}
 	for (i = 0; i < ARRAY_SIZE(sx9310_i2c_reg_setup); i++) {
 		for (j = 0; j < data_array_len*2; j += 2) {
 			if (data_array[j] == sx9310_i2c_reg_setup[i].reg) {
 				sx9310_i2c_reg_setup[i].val = data_array[j+1];
-				LOG_DBG("read dtsi 0x%02x:0x%02x set reg\n",
+				LOG_INFO("read dtsi 0x%02x:0x%02x set reg\n",
 					data_array[j], data_array[j+1]);
 			}
 		}
@@ -708,7 +724,7 @@ static ssize_t capsense_enable_store(struct class *class,
 		return -EINVAL;
 
 	if (!strncmp(buf, "1", 1)) {
-		LOG_DBG("enable cap sensor\n");
+		LOG_INFO("enable cap sensor\n");
 		initialize(this);
 
 		input_report_abs(input_top, ABS_DISTANCE, 0);
@@ -717,7 +733,7 @@ static ssize_t capsense_enable_store(struct class *class,
 		input_sync(input_bottom);
 		mEnabled = 1;
 	} else if (!strncmp(buf, "0", 1)) {
-		LOG_DBG("disable cap sensor\n");
+		LOG_INFO("disable cap sensor\n");
 
 		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
 		write_register(this, SX9310_IRQ_ENABLE_REG, 0x00);
@@ -728,7 +744,7 @@ static ssize_t capsense_enable_store(struct class *class,
 		input_sync(input_bottom);
 		mEnabled = 0;
 	} else {
-		LOG_DBG("unknown enable symbol\n");
+		LOG_ERR("unknown enable symbol\n");
 	}
 
 	return count;
@@ -748,7 +764,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
 	input_bottom = pDevice->pbuttonInformation->input_bottom;
 
 	if (enable == 1) {
-		LOG_DBG("enable cap sensor\n");
+		LOG_INFO("enable cap sensor\n");
 		initialize(this);
 
 		input_report_abs(input_top, ABS_DISTANCE, 0);
@@ -757,7 +773,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
 		input_sync(input_bottom);
 		mEnabled = 1;
 	} else if (enable == 0) {
-		LOG_DBG("disable cap sensor\n");
+		LOG_INFO("disable cap sensor\n");
 
 		write_register(this, SX9310_CPS_CTRL0_REG, 0x10);
 		write_register(this, SX9310_IRQ_ENABLE_REG, 0x00);
@@ -768,7 +784,7 @@ static int capsensor_set_enable(struct sensors_classdev *sensors_cdev,
 		input_sync(input_bottom);
 		mEnabled = 0;
 	} else {
-		LOG_DBG("unknown enable symbol\n");
+		LOG_ERR("unknown enable symbol\n");
 	}
 
 	return 0;
@@ -971,11 +987,11 @@ static ssize_t reg_dump_store(struct class *class,
 	} else if (strcmp("calibrate\n", buf) == 0) {
 		write_register(this, SX9310_IRQSTAT_REG, 0xff);
 	} else if (sscanf(buf, "%x,%x,%x", &reg, &val, &opt) == 3) {
-		LOG_INFO("%s, read reg = 0x%02x\n", __func__, *(u8 *)&reg);
+		LOG_DBG("%s, read reg = 0x%02x\n", __func__, *(u8 *)&reg);
 		this->read_reg = *((u8 *)&reg);
 		this->read_flag = 1;
 	} else if (sscanf(buf, "%x,%x", &reg, &val) == 2) {
-		LOG_INFO("%s,reg = 0x%02x, val = 0x%02x\n",
+		LOG_DBG("%s,reg = 0x%02x, val = 0x%02x\n",
 				__func__, *(u8 *)&reg, *(u8 *)&val);
 		write_register(this, *((u8 *)&reg), *((u8 *)&val));
 	}
@@ -1018,7 +1034,7 @@ static int sx9310_probe(struct i2c_client *client,
 	client->dev.platform_data = pplatData;
 
 	if (!pplatData) {
-		LOG_DBG("platform data is required!\n");
+		LOG_ERR("platform data is required!\n");
 		return -EINVAL;
 	}
 
@@ -1125,25 +1141,25 @@ static int sx9310_probe(struct i2c_client *client,
 
 		ret = class_register(&capsense_class);
 		if (ret < 0) {
-			LOG_DBG("Create fsys class failed (%d)\n", ret);
+			LOG_ERR("Create fsys class failed (%d)\n", ret);
 			return ret;
 		}
 
 		ret = class_create_file(&capsense_class, &class_attr_reset);
 		if (ret < 0) {
-			LOG_DBG("Create reset file failed (%d)\n", ret);
+			LOG_ERR("Create reset file failed (%d)\n", ret);
 			return ret;
 		}
 
 		ret = class_create_file(&capsense_class, &class_attr_enable);
 		if (ret < 0) {
-			LOG_DBG("Create enable file failed (%d)\n", ret);
+			LOG_ERR("Create enable file failed (%d)\n", ret);
 			return ret;
 		}
 
 		ret = class_create_file(&capsense_class, &class_attr_reg);
 		if (ret < 0) {
-			LOG_DBG("Create reg file failed (%d)\n", ret);
+			LOG_ERR("Create reg file failed (%d)\n", ret);
 			return ret;
 		}
 #ifdef USE_SENSORS_CLASS
@@ -1153,7 +1169,7 @@ static int sx9310_probe(struct i2c_client *client,
 		ret = sensors_classdev_register(&input_top->dev,
 						&sensors_capsensor_top_cdev);
 		if (ret < 0)
-			LOG_DBG("create top cap sensor_class  file \
+			LOG_ERR("create top cap sensor_class  file \
 				 failed (%d)\n", ret);
 		sensors_capsensor_bottom_cdev.sensors_enable =
 							 capsensor_set_enable;
@@ -1161,7 +1177,7 @@ static int sx9310_probe(struct i2c_client *client,
 		ret = sensors_classdev_register(&input_bottom->dev,
 					&sensors_capsensor_bottom_cdev);
 		if (ret < 0)
-			LOG_DBG("create bottom cap sensor_class file \
+			LOG_ERR("create bottom cap sensor_class file \
 				 failed (%d)\n", ret);
 #endif
 
@@ -1171,14 +1187,14 @@ static int sx9310_probe(struct i2c_client *client,
 				ret = PTR_ERR(pplatData->cap_vdd);
 				goto err_vdd_defer;
 			}
-			LOG_INFO("%s: Failed to get regulator\n",
+			LOG_ERR("%s: Failed to get regulator\n",
 					__func__);
 		} else {
 			int error = regulator_enable(pplatData->cap_vdd);
 
 			if (error) {
 				regulator_put(pplatData->cap_vdd);
-				LOG_DBG("%s: Error %d enable regulator\n",
+				LOG_ERR("%s: Error %d enable regulator\n",
 						__func__, error);
 				return error;
 			}
@@ -1193,7 +1209,7 @@ static int sx9310_probe(struct i2c_client *client,
 			ret = regulator_enable(pplatData->cap_svdd);
 			if (ret) {
 				regulator_put(pplatData->cap_svdd);
-				LOG_INFO("Failed to enable cap_svdd\n");
+				LOG_ERR("Failed to enable cap_svdd\n");
 				goto err_svdd_error;
 			}
 			pplatData->cap_svdd_en = true;
@@ -1216,12 +1232,12 @@ static int sx9310_probe(struct i2c_client *client,
 	return -ENOMEM;
 
 err_svdd_error:
-	LOG_DBG("%s svdd defer.\n", __func__);
+	LOG_ERR("%s svdd defer.\n", __func__);
 	regulator_disable(pplatData->cap_vdd);
 	regulator_put(pplatData->cap_vdd);
 
 err_vdd_defer:
-	LOG_DBG("%s input free device.\n", __func__);
+	LOG_ERR("%s input free device.\n", __func__);
 	input_free_device(input_top);
 	input_free_device(input_bottom);
 
@@ -1343,19 +1359,21 @@ static void sx93XX_process_interrupt(psx93XX_t this, u8 nirqlow)
 	int counter = 0;
 
 	if (!this) {
-		pr_err("sx93XX_worker_func, NULL sx93XX_t\n");
+		LOG_ERR("sx93XX_worker_func, NULL sx93XX_t\n");
 		return;
 	}
 	/* since we are not in an interrupt don't need to disable irq. */
 	status = this->refreshStatus(this);
 	counter = -1;
-	LOG_INFO("Worker - Refresh Status %d\n", status);
+	if (sx9310_debug_enable)
+		LOG_DBG("Worker - Refresh Status %d\n", status);
 
 	while ((++counter) < MAX_NUM_STATUS_BITS) { /* counter start from MSB */
-		LOG_INFO("Looping Counter %d\n", counter);
 		if (((status >> counter) & 0x01)
 			&& (this->statusFunc[counter])) {
-			LOG_INFO("Function Pointer Found. Calling\n");
+			if (sx9310_debug_enable)
+				LOG_DBG("Function %d Pointer Found. Calling\n"
+					,counter);
 			this->statusFunc[counter](this);
 		}
 	}
@@ -1378,7 +1396,7 @@ static void sx93XX_worker_func(struct work_struct *work)
 	if (work) {
 		this = container_of(work, sx93XX_t, dworker.work);
 		if (!this) {
-			LOG_DBG("sx93XX_worker_func, NULL sx93XX_t\n");
+			LOG_ERR("sx93XX_worker_func, NULL sx93XX_t\n");
 			return;
 		}
 		if ((!this->get_nirq_low)
@@ -1387,7 +1405,7 @@ static void sx93XX_worker_func(struct work_struct *work)
 			sx93XX_process_interrupt(this, 0);
 		}
 	} else {
-		LOG_INFO("sx93XX_worker_func, NULL work_struct\n");
+		LOG_ERR("sx93XX_worker_func, NULL work_struct\n");
 	}
 }
 static irqreturn_t sx93XX_interrupt_thread(int irq, void *data)
@@ -1397,11 +1415,14 @@ static irqreturn_t sx93XX_interrupt_thread(int irq, void *data)
 	this = data;
 
 	mutex_lock(&this->mutex);
-	LOG_INFO("sx93XX_irq\n");
+	if (sx9310_debug_enable)
+		LOG_DBG("sx93XX_irq\n");
 	if ((!this->get_nirq_low) || this->get_nirq_low(this->board->irq_gpio))
 		sx93XX_process_interrupt(this, 1);
-	else
-		LOG_DBG("sx93XX_irq - nirq read high\n");
+	else {
+		if (sx9310_debug_enable)
+			LOG_DBG("sx93XX_irq - nirq read high\n");
+	}
 	mutex_unlock(&this->mutex);
 	return IRQ_HANDLED;
 }
@@ -1423,7 +1444,7 @@ static void sx93XX_schedule_work(psx93XX_t this, unsigned long delay)
 		schedule_delayed_work(&this->dworker, delay);
 		spin_unlock_irqrestore(&this->lock, flags);
 	} else
-		LOG_DBG("sx93XX_schedule_work, NULL psx93XX_t\n");
+		LOG_ERR("sx93XX_schedule_work, NULL psx93XX_t\n");
 }
 
 static irqreturn_t sx93XX_irq(int irq, void *pvoid)
@@ -1432,15 +1453,19 @@ static irqreturn_t sx93XX_irq(int irq, void *pvoid)
 
 	if (pvoid) {
 		this = (psx93XX_t)pvoid;
-		LOG_INFO("sx93XX_irq\n");
+		if (sx9310_debug_enable)
+			LOG_DBG("sx93XX_irq\n");
 		if ((!this->get_nirq_low)
 			|| this->get_nirq_low(this->board->irq_gpio)) {
-			LOG_INFO("sx93XX_irq - Schedule Work\n");
+			if (sx9310_debug_enable)
+				LOG_DBG("sx93XX_irq - Schedule Work\n");
 			sx93XX_schedule_work(this, 0);
-		} else
-			LOG_INFO("sx93XX_irq - nirq read high\n");
+		} else {
+			if (sx9310_debug_enable)
+				LOG_DBG("sx93XX_irq - nirq read high\n");
+		}
 	} else
-		LOG_INFO("sx93XX_irq, NULL pvoid\n");
+		LOG_ERR("sx93XX_irq, NULL pvoid\n");
 	return IRQ_HANDLED;
 }
 
@@ -1455,7 +1480,7 @@ static void sx93XX_worker_func(struct work_struct *work)
 		this = container_of(work, sx93XX_t, dworker.work);
 
 		if (!this) {
-			LOG_INFO("sx93XX_worker_func, NULL sx93XX_t\n");
+			LOG_ERR("sx93XX_worker_func, NULL sx93XX_t\n");
 			return;
 		}
 		if (unlikely(this->useIrqTimer)) {
@@ -1467,13 +1492,14 @@ static void sx93XX_worker_func(struct work_struct *work)
 		 * don't need to disable irq. */
 		status = this->refreshStatus(this);
 		counter = -1;
-		LOG_INFO("Worker - Refresh Status %d\n", status);
+		if (sx9310_debug_enable)
+			LOG_DBG("Worker - Refresh Status %d\n", status);
 		/* counter start from MSB */
 		while ((++counter) < MAX_NUM_STATUS_BITS) {
-			LOG_INFO("Looping Counter %d\n", counter);
 			if (((status >> counter) & 0x01)
 				&& (this->statusFunc[counter])) {
-				LOG_INFO("Function Pointer Found. Calling\n");
+				LOG_INFO("Function %d Pointer Found. Calling\n"
+					 ,counter);
 				this->statusFunc[counter](this);
 			}
 		}
@@ -1485,7 +1511,7 @@ static void sx93XX_worker_func(struct work_struct *work)
 					msecs_to_jiffies(this->irqTimeout));
 		}
 	} else {
-		LOG_INFO("sx93XX_worker_func, NULL work_struct\n");
+		LOG_ERR("sx93XX_worker_func, NULL work_struct\n");
 	}
 }
 #endif
@@ -1548,19 +1574,19 @@ int sx93XX_sar_init(psx93XX_t this)
 				this->pdev->driver->name, this);
 #endif
 		if (err) {
-			LOG_DBG("irq %d busy?\n", this->irq);
+			LOG_ERR("irq %d busy?\n", this->irq);
 			return err;
 		}
 #ifdef USE_THREADED_IRQ
-		LOG_DBG("registered with threaded irq (%d)\n", this->irq);
+		LOG_INFO("registered with threaded irq (%d)\n", this->irq);
 #else
-		LOG_DBG("registered with irq (%d)\n", this->irq);
+		LOG_INFO("registered with irq (%d)\n", this->irq);
 #endif
 		/* call init function pointer:
 		 * this should initialize all registers */
 		if (this->init)
 			return this->init(this);
-		LOG_DBG("No init function!!!!\n");
+		LOG_ERR("No init function!!!!\n");
 	}
 	return -ENOMEM;
 }
