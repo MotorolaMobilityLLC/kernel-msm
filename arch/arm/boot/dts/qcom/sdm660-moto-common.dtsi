@@ -634,6 +634,11 @@
 	qcom,default-sink-caps = <5000 3000>; /* 5V @ 3A */
 };
 
+&pm660_charger {
+	gpios = <&pm660l_gpios 8 0x0>; /* GPIOF_OUT_INIT_LOW */
+	gpio-names = "eb_vbus_en";
+};
+
 &usb3{
 	mmi,ext-typec-switch;
 	qcom,ssusb-compliance;
