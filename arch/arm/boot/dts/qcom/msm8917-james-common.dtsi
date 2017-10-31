@@ -242,13 +242,13 @@
 		cap_vdd-supply = <&vdd_sar_vreg>;
 		cap_svdd-supply = <&pm8917_l5>;
 		gpios = <&tlmm 31 0x2008>; /* IRQ */
-		cap,use_channel = <0x07>;
+		cap,use_channel = <0x0f>;
 		cap,use_channel_top = <0x00>;
 		cap,use_channel_bottom = <0x02>;
 		cap,raw_data_channel = <0x01>;
 		cap,scan_period = <0x02>;
-		reg_array_len = <0>;
-		reg_array_val = <>;
+		reg_array_len = <2>;
+		reg_array_val = <0x18 0x8a 0x19 0xf7>;
 	};
 
 	/delete-node/ adv7533@39;
