@@ -212,6 +212,10 @@
 		mmi,flash-end-seq = <0 0 0>, <5 0 0>;
 	};
 
+	mods_v4l2_hal {
+		compatible = "mmi,mods-v4l2_hal";
+	};
+
 	gpio_keys {
 		/delete-property/ pinctrl-names;
 		/delete-property/ pinctrl-0;
