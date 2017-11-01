@@ -1,8 +1,8 @@
 /*
  * Copyright (C) 2010 - 2017 Novatek, Inc.
  *
- * $Revision: 14061 $
- * $Date: 2017-07-06 15:45:15 +0800 (周四, 06 七月 2017) $
+ * $Revision: 17989 $
+ * $Date: 2017-10-31 21:25:50 +0800 (週二, 31 十月 2017) $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,6 +67,7 @@ extern const uint16_t touch_key_array[TOUCH_KEY_NUM];
 #define NVT_TOUCH_EXT_PROC 1
 #define NVT_TOUCH_FW 1
 #define NVT_TOUCH_MP 1
+#define NVT_TOUCH_MP_LENOVO 1
 #define MT_PROTOCOL_B 1
 #define WAKEUP_GESTURE 0
 #if WAKEUP_GESTURE
@@ -167,6 +168,23 @@ typedef enum {
     EVENT_MAP_PROJECTID                     = 0x9A,
     EVENT_MAP_FWDATE                        = 0x9C,
 } I2C_EVENT_MAP;
+
+#if NVT_TOUCH_MP_LENOVO
+typedef enum {
+    MP_RESULT_SHIFT_SHORT = 0x00,
+    MP_RESULT_SHIFT_SHORT_DIFF,
+    MP_RESULT_SHIFT_SHORT_BASE,
+    MP_RESULT_SHIFT_OPEN,
+    MP_RESULT_SHIFT_RAWDATA,
+    MP_RESULT_SHIFT_CC,
+    MP_RESULT_SHIFT_CC_I,
+    MP_RESULT_SHIFT_CC_Q,
+    MP_RESULT_SHIFT_NOISE,
+    MP_RESULT_SHIFT_DIFF_MAX,
+    MP_RESULT_SHIFT_DIFF_MIN,
+/*  MP_RESULT_SHIFT_READFAIL,*/
+} MP_TEST_RESULT;
+#endif
 
 //---extern structures---
 extern struct nvt_ts_data *ts;
