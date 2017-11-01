@@ -1,8 +1,8 @@
 /*
  * Copyright (C) 2010 - 2017 Novatek, Inc.
  *
- * $Revision: 14805 $
- * $Date: 2017-07-27 20:11:20 +0800 (周四, 27 七月 2017) $
+ * $Revision: 17989 $
+ * $Date: 2017-10-31 21:25:50 +0800 (週二, 31 十月 2017) $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -326,87 +326,26 @@ static int32_t nvt_save_rawdata_to_csv(int32_t *rawdata, uint8_t x_ch, uint8_t y
 	int32_t x = 0;
 	int32_t y = 0;
 	int32_t iArrayIndex = 0;
-	struct file *fp = NULL;
-	char *fbufp = NULL;
-	mm_segment_t org_fs;
-	int32_t write_ret = 0;
-	uint32_t output_len = 0;
-	loff_t pos = 0;
 #if TOUCH_KEY_NUM > 0
 	int32_t k = 0;
-	int32_t keydata_output_offset = 0;
 #endif /* #if TOUCH_KEY_NUM > 0 */
 
-	printk("%s:++\n", __func__);
-	fbufp = (char *)kzalloc(8192, GFP_KERNEL);
-	if (!fbufp) {
-		NVT_ERR("kzalloc for fbufp failed!\n");
-		return -ENOMEM;
-	}
+	printk("%s:++%s\n", __func__, file_path);
 
 	for (y = 0; y < y_ch; y++) {
 		for (x = 0; x < x_ch; x++) {
 			iArrayIndex = y * x_ch + x;
 			printk("%5d, ", rawdata[iArrayIndex]);
-			sprintf(fbufp + iArrayIndex * 7 + y * 2, "%5d, ", rawdata[iArrayIndex]);
 		}
 		printk("\n");
-		sprintf(fbufp + (iArrayIndex + 1) * 7 + y * 2,"\r\n");
 	}
 #if TOUCH_KEY_NUM > 0
-	keydata_output_offset = y_ch * x_ch * 7 + y_ch * 2;
 	for (k = 0; k < Key_Channel; k++) {
 		iArrayIndex = y_ch * x_ch + k;
 		printk("%5d, ", rawdata[iArrayIndex]);
-		sprintf(fbufp + keydata_output_offset + k * 7, "%5d, ", rawdata[iArrayIndex]);
 	}
 	printk("\n");
-	sprintf(fbufp + y_ch * x_ch * 7 + y_ch * 2 + Key_Channel * 7, "\r\n");
 #endif /* #if TOUCH_KEY_NUM > 0 */
-
-	org_fs = get_fs();
-	set_fs(KERNEL_DS);
-	/*fp = filp_open(file_path, O_RDWR | O_CREAT, 0644);*/
-	if (fp == NULL || IS_ERR(fp)) {
-		NVT_ERR("open %s failed\n", file_path);
-		set_fs(org_fs);
-		if (fbufp) {
-			kfree(fbufp);
-			fbufp = NULL;
-		}
-		return -1;
-	}
-
-#if TOUCH_KEY_NUM > 0
-	output_len = y_ch * x_ch * 7 + y_ch * 2 + Key_Channel * 7 + 2;
-#else
-	output_len = y_ch * x_ch * 7 + y_ch * 2;
-#endif /* #if TOUCH_KEY_NUM > 0 */
-	pos = offset;
-	write_ret = vfs_write(fp, (char __user *)fbufp, output_len, &pos);
-	if (write_ret <= 0) {
-		NVT_ERR("write %s failed\n", file_path);
-		set_fs(org_fs);
-		if (fp) {
-			filp_close(fp, NULL);
-			fp = NULL;
-		}
-		if (fbufp) {
-			kfree(fbufp);
-			fbufp = NULL;
-		}
-		return -1;
-	}
-
-	set_fs(org_fs);
-	if (fp) {
-		filp_close(fp, NULL);
-		fp = NULL;
-	}
-	if (fbufp) {
-		kfree(fbufp);
-		fbufp = NULL;
-	}
 
 	printk("%s:--\n", __func__);
 
@@ -1252,8 +1191,12 @@ return:
 *******************************************************/
 static int32_t c_show_selftest(struct seq_file *m, void *v)
 {
-	NVT_LOG("++\n");
+#if NVT_TOUCH_MP_LENOVO
+	MP_TEST_RESULT mp_result = 0;
+#endif
 
+	NVT_LOG("++\n");
+#if !NVT_TOUCH_MP_LENOVO
 	nvt_mp_seq_printf(m, "FW Version: %d\n\n", ts->fw_ver);
 
 	nvt_mp_seq_printf(m, "Short Test");
@@ -1319,7 +1262,53 @@ static int32_t c_show_selftest(struct seq_file *m, void *v)
 			print_selftest_result(m, TestResult_FW_DiffMin, RecordResult_FW_DiffMin, RawData_Diff_Min, X_Channel, Y_Channel);
 		}
 	}
+#else
+	/* short */
+	if (TestResult_Short >= 0)
+		mp_result |= (!!TestResult_Short << MP_RESULT_SHIFT_SHORT);
+	else {
+		if (ts->carrier_system) {
+			mp_result |= (!!TestResult_Short_Diff << MP_RESULT_SHIFT_SHORT_DIFF);
+			mp_result |= (!!TestResult_Short_Base << MP_RESULT_SHIFT_SHORT_BASE);
+		} else {
+			mp_result |= (!!TestResult_Short << MP_RESULT_SHIFT_SHORT);
+		}
+	}
 
+	/* open */
+	mp_result |= (!!TestResult_Open << MP_RESULT_SHIFT_OPEN);
+
+	/* raw data & cc */
+	if (TestResult_FW_Rawdata >= 0)
+		mp_result |= (!!TestResult_FWMutual << MP_RESULT_SHIFT_RAWDATA);
+	else {
+		if (TestResult_FWMutual == -1) {
+			mp_result |= (!!TestResult_FWMutual << MP_RESULT_SHIFT_RAWDATA);
+		}
+		if (TestResult_FW_CC == -1) {
+			if (ts->carrier_system) {
+				mp_result |= (!!TestResult_FW_CC_I << MP_RESULT_SHIFT_CC_I);
+				mp_result |= (!!TestResult_FW_CC_Q << MP_RESULT_SHIFT_CC_Q);
+			} else {
+				mp_result |= (!!TestResult_FW_CC << MP_RESULT_SHIFT_CC);
+			}
+		}
+	}
+
+	/* noise */
+	if (TestResult_Noise >= 0)
+		mp_result |= (!!TestResult_FW_DiffMax << MP_RESULT_SHIFT_DIFF_MAX);
+	else {
+		if (TestResult_FW_DiffMax == -1) {
+			mp_result |= (!!TestResult_FW_DiffMax << MP_RESULT_SHIFT_DIFF_MAX);
+		}
+		if (TestResult_FW_DiffMin == -1) {
+			mp_result |= (!!TestResult_FW_DiffMin << MP_RESULT_SHIFT_DIFF_MIN);
+		}
+	}
+
+	nvt_mp_seq_printf(m, "%d", mp_result);
+#endif
 	nvt_mp_test_result_printed = 1;
 
 	NVT_LOG("--\n");
@@ -1790,9 +1779,7 @@ void nvt_mp_parse_dt(struct device_node *root, const char *node_compatible)
 
 	nvt_mp_parse_u32(np, "PS_Config_Lmt_FW_Diff_N", &PS_Config_Lmt_FW_Diff_N);
 
-	nvt_mp_parse_u32(np, "PS_Config_Lmt_FW_Diff_P", &PS_Config_Lmt_FW_Diff_P);
-
-	nvt_mp_parse_u32(np, "PS_Config_Lmt_FW_Diff_N", &PS_Config_Lmt_FW_Diff_N);
+	nvt_mp_parse_u32(np, "PS_Config_Diff_Test_Frame", &PS_Config_Diff_Test_Frame);
 
 	NVT_LOG("Parse mp criteria done!\n");
 }
