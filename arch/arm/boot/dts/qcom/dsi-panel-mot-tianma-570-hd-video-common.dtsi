@@ -61,13 +61,12 @@ qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
 qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
 
-qcom,mdss-dsi-h-sync-pulse = <1>;
+qcom,mdss-dsi-h-sync-pulse = <0>;
 qcom,mdss-dsi-traffic-mode = "burst_mode";
 qcom,mdss-dsi-bllp-eof-power-mode;
 qcom,mdss-dsi-bllp-power-mode;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
-qcom,suspend-ulps-enabled;
 qcom,mdss-dsi-hfp-power-mode;
 qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
@@ -89,7 +88,8 @@ qcom,esd-check-enabled;
 qcom,mdss-dsi-panel-status-check-mode = "reg_read";
 qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
-qcom,mdss-dsi-panel-status-read-length = <1>;
+qcom,mdss-dsi-panel-status-read-length = <4>;
+qcom,mdss-dsi-panel-status-valid-params = <1>;
 qcom,mdss-dsi-panel-status-value = <0x9C>;
 
 qcom,panel-supply-entries {
