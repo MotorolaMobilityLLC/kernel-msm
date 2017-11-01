@@ -111,6 +111,17 @@ static void sdhci_dump_state(struct sdhci_host *host)
 
 static void sdhci_dumpregs(struct sdhci_host *host)
 {
+	if((host->mmc)&&(host->mmc->card)){
+		if (host->mmc->card->ext_csd.rev < 7) {
+			 pr_info(DRIVER_NAME " mid %x\n", host->mmc->card->cid.manfid);
+			 pr_info(DRIVER_NAME " FW 0x%x\n", host->mmc->card->cid.fwrev);
+		} else {
+			pr_info(DRIVER_NAME " mid 0x%x\n", host->mmc->card->cid.manfid);
+			pr_info(DRIVER_NAME " FW 0x%*phN\n", MMC_FIRMWARE_LEN,
+				host->mmc->card->ext_csd.fwrev);
+		}
+	}
+
 	MMC_TRACE(host->mmc,
 		"%s: 0x04=0x%08x 0x06=0x%08x 0x0E=0x%08x 0x30=0x%08x 0x34=0x%08x 0x38=0x%08x\n",
 		__func__,
