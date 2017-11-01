@@ -8082,6 +8082,11 @@ static void parse_mmi_dt_gpio(struct smb_charger *chg)
 	of_property_read_string_index(node, "gpio-names", 0,
 				      &chg->mmi.ebchg_gpio.label);
 
+	if (!gpio_is_valid(chg->mmi.ebchg_gpio.gpio)) {
+		dev_err(chg->dev, "get gpio ebchg error rc=%d\n", chg->mmi.ebchg_gpio.gpio);
+		return;
+	}
+
 	rc = gpio_request_one(chg->mmi.ebchg_gpio.gpio,
 			      chg->mmi.ebchg_gpio.flags,
 			      chg->mmi.ebchg_gpio.label);
@@ -8110,6 +8115,11 @@ static void parse_mmi_dt_gpio(struct smb_charger *chg)
 	of_property_read_string_index(node, "gpio-names", 1,
 				      &chg->mmi.warn_gpio.label);
 
+	if (!gpio_is_valid(chg->mmi.warn_gpio.gpio)) {
+		dev_err(chg->dev, "get gpio warn error rc=%d\n", chg->mmi.warn_gpio.gpio);
+		return;
+	}
+
 	rc = gpio_request_one(chg->mmi.warn_gpio.gpio,
 			      chg->mmi.warn_gpio.flags,
 			      chg->mmi.warn_gpio.label);
@@ -8134,6 +8144,11 @@ static void parse_mmi_dt_gpio(struct smb_charger *chg)
 			   chg->mmi.warn_gpio.gpio);
 	else
 		chg->mmi.warn_irq = gpio_to_irq(chg->mmi.warn_gpio.gpio);
+
+	if (!gpio_is_valid(chg->mmi.togl_rst_gpio.gpio)) {
+		dev_err(chg->dev, "get gpio tggl_rest rc=0x%x\n", chg->mmi.togl_rst_gpio.gpio);
+		return;
+	}
 
 	chg->mmi.togl_rst_gpio.gpio = of_get_gpio_flags(node, 2, &flags);
 	chg->mmi.togl_rst_gpio.flags = flags;
