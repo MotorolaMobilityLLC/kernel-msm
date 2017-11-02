@@ -72,7 +72,7 @@ int himax_touch_proc_init(void);
 void himax_touch_proc_deinit(void);
 #endif
 //===========Himax Option function=============
-/*#define HX_RST_PIN_FUNC*/
+#define HX_RST_PIN_FUNC
 //#define HX_AUTO_UPDATE_FW
 //#define HX_ESD_RECOVERY
 //#define HX_CHIP_STATUS_MONITOR		/*for ESD 2nd solution,it does not support incell,default off*/
