@@ -1651,6 +1651,7 @@
 	qcom,external-vconn;
 	qcom,usbpd-phandle = <&pmi8998_pdphy>;
 	qcom,external-vbus;
+	qcom,typec-debounce;
 	vconn-parent-supply = <&vreg_5p0>;
 	otg-parent-supply = <&vreg_5p0>;
 	BOB-supply = <&pmi8998_bob>;
