@@ -74,7 +74,7 @@ void himax_touch_proc_deinit(void);
 //===========Himax Option function=============
 #define HX_RST_PIN_FUNC
 //#define HX_AUTO_UPDATE_FW
-//#define HX_ESD_RECOVERY
+#define HX_ESD_RECOVERY
 //#define HX_CHIP_STATUS_MONITOR		/*for ESD 2nd solution,it does not support incell,default off*/
 //#define HX_SMART_WAKEUP
 //#define HX_RESEND_CMD
@@ -87,7 +87,7 @@ void himax_touch_proc_deinit(void);
 //#define HX_PROTOCOL_A					/* for MTK special platform.If turning on,it will report to system by using specific format. */
 //#define HX_RESUME_HW_RESET
 #define HX_PROTOCOL_B_3PA
-#define HX_FIX_TOUCH_INFO 	/* if open, you need to change the touch info in the fix_touch_info*/
+#define HX_FIX_TOUCH_INFO	/* if open, you need to change the touch info in the fix_touch_info*/
 
 //#define HX_EN_SEL_BUTTON		       	/* Support Self Virtual key		,default is close*/
 //#define HX_EN_MUT_BUTTON		       	/* Support Mutual Virtual Key	,default is close*/
@@ -96,7 +96,7 @@ void himax_touch_proc_deinit(void);
 //#define HX_PLATFOME_DEFINE_KEY		/* for specfic platform to set key(button) */
 #endif
 
-#define HX_KEY_MAX_COUNT             4			
+#define HX_KEY_MAX_COUNT             4
 #define DEFAULT_RETRY_CNT            3
 
 #define HX_85XX_A_SERIES_PWON		1
@@ -127,11 +127,11 @@ void himax_touch_proc_deinit(void);
 
 #define SHIFTBITS 5
 
-#define  FW_SIZE_32k 	32768
-#define  FW_SIZE_60k 	61440
-#define  FW_SIZE_64k 	65536
-#define  FW_SIZE_124k 	126976
-#define  FW_SIZE_128k 	131072
+#define  FW_SIZE_32k	32768
+#define  FW_SIZE_60k	61440
+#define  FW_SIZE_64k	65536
+#define  FW_SIZE_124k	126976
+#define  FW_SIZE_128k	131072
 
 #define NO_ERR 0
 #define READY_TO_SERVE 1
@@ -153,7 +153,7 @@ void himax_touch_proc_deinit(void);
 #define HX_REPORT_SMWP_EVENT	2
 
 #ifdef HX_FIX_TOUCH_INFO
-	enum fix_touch_info { 
+	enum fix_touch_info {
 		FIX_HX_RX_NUM = 32,
 		FIX_HX_TX_NUM = 18,
 		FIX_HX_BT_NUM = 0,
@@ -286,7 +286,7 @@ struct himax_ts_data {
 	uint8_t y_channel;
 	uint8_t useScreenRes;
 	uint8_t diag_command;
-	
+
 	uint8_t protocol_type;
 	uint8_t first_pressed;
 	uint8_t coord_data_size;
@@ -297,7 +297,7 @@ struct himax_ts_data {
 	uint8_t nFinger_support;
 	uint8_t irq_enabled;
 	uint8_t diag_self[50];
-	
+
 	uint16_t finger_pressed;
 	uint16_t last_slot;
 	uint16_t pre_finger_mask;
@@ -313,20 +313,21 @@ struct himax_ts_data {
 	uint32_t pl_x_max;
 	uint32_t pl_y_min;
 	uint32_t pl_y_max;
-	
+
 	int rst_gpio;
 	int use_irq;
 	int (*power)(int on);
 	int pre_finger_data[10][2];
-	
+
 	struct device *dev;
 	struct workqueue_struct *himax_wq;
 	struct work_struct work;
 	struct input_dev *input_dev;
 	struct hrtimer timer;
 	struct i2c_client *client;
-	struct himax_i2c_platform_data *pdata;	
+	struct himax_i2c_platform_data *pdata;
 	struct himax_virtual_key *button;
+	struct mutex rw_lock;
 
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notif;
@@ -340,8 +341,8 @@ struct himax_ts_data {
 	struct delayed_work himax_chip_monitor;
 #endif
 #ifdef HX_TP_PROC_FLASH_DUMP
-	struct workqueue_struct 			*flash_wq;
-	struct work_struct 					flash_work;
+	struct workqueue_struct			*flash_wq;
+	struct work_struct					flash_work;
 #endif
 
 #ifdef HX_AUTO_UPDATE_FW
@@ -409,7 +410,7 @@ void himax_set_HSEN_func(struct i2c_client *client,uint8_t HSEN_enable);
 #define GEST_PTLG_HDR_LEN	(4)
 #define GEST_PTLG_HDR_ID1	(0xCC)
 #define GEST_PTLG_HDR_ID2	(0x44)
-#define GEST_PT_MAX_NUM 	(128)
+#define GEST_PT_MAX_NUM		(128)
 
 void himax_set_SMWP_func(struct i2c_client *client,uint8_t SMWP_enable);
 extern bool FAKE_POWER_KEY_SEND;
@@ -467,6 +468,7 @@ extern int himax_chip_common_probe(struct i2c_client *client, const struct i2c_d
 extern int himax_chip_common_remove(struct i2c_client *client);
 extern int himax_chip_common_suspend(struct himax_ts_data *ts);
 extern int himax_chip_common_resume(struct himax_ts_data *ts);
+extern void himax_esd_ic_reset(void);
 
 #endif
 
