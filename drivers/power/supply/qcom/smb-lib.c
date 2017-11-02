@@ -2783,6 +2783,7 @@ int smblib_get_prop_die_health(struct smb_charger *chg,
 #define TYPEC_DEFAULT_CURRENT_UA	900000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
 #define TYPEC_HIGH_CURRENT_UA		3000000
+#ifdef QCOM_BASE
 static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 {
 	int rp_ua;
@@ -2800,7 +2801,7 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 
 	return rp_ua;
 }
-
+#endif
 /*******************
  * USB PSY SETTERS *
  * *****************/
@@ -4579,7 +4580,7 @@ static void smblib_handle_typec_insertion(struct smb_charger *chg)
 		typec_sink_removal(chg);
 	}
 }
-
+#ifdef QCOM_BASE
 static void smblib_handle_rp_change(struct smb_charger *chg, int typec_mode)
 {
 	int rp_ua;
@@ -4616,10 +4617,10 @@ static void smblib_handle_rp_change(struct smb_charger *chg, int typec_mode)
 						chg->typec_mode, typec_mode);
 
 	rp_ua = get_rp_based_dcp_current(chg, typec_mode);
-#ifdef QCOM_BASE
+
 	vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, rp_ua);
-#endif
 }
+#endif
 
 static void smblib_handle_typec_cc_state_change(struct smb_charger *chg)
 {
@@ -4631,7 +4632,11 @@ static void smblib_handle_typec_cc_state_change(struct smb_charger *chg)
 
 	typec_mode = smblib_get_prop_typec_mode(chg);
 	if (chg->typec_present && (typec_mode != chg->typec_mode))
+#ifdef QCOM_BASE
 		smblib_handle_rp_change(chg, typec_mode);
+#else
+		typec_chg = true;
+#endif
 
 	chg->typec_mode = typec_mode;
 
