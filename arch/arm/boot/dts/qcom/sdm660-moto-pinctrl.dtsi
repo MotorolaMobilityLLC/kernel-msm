@@ -93,6 +93,7 @@
 				pins = "gpio66";
 				drive-strength = <2>;
 				bias-pull-down;
+				output-low;
 			};
 		};
 	};
