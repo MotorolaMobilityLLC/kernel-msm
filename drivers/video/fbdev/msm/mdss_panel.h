@@ -1015,6 +1015,7 @@ struct mdss_panel_info {
 	u32 bl_hbm_off;
 	u32 forced_tx_mode_ftr_enabled;
 	u32 forced_tx_mode_state;
+	bool bklt_dcs_2bytes_enabled;
 };
 
 struct mdss_panel_timing {
