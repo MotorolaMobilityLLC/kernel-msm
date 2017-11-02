@@ -16,6 +16,7 @@
 #include "sdm660-camera-sensor-mot-beckham.dtsi"
 #include "sdm660-beckham-pinctrl.dtsi"
 #include "sdm660-beckham-audio.dtsi"
+#include "dsi-panel-mot-smd-601-1080p-cmd.dtsi"
 
 / {
 	model = "beckham";
@@ -292,12 +293,25 @@
 	qcom,mdss-fb-map-sec = <&mdss_fb4>;
 };
 
+&mot_smd_601_1080p_cmd_v0 {
+	qcom,panel-supply-entries {
+			qcom,panel-supply-entry@4 {
+				reg = <4>;
+				qcom,supply-name = "oled_disp";
+				qcom,supply-min-voltage = <5000000>;
+				qcom,supply-max-voltage = <8100000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+			};
+	};
+};
+
 &mdss_dsi0 {
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active &mipi_err_pin_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend &mipi_err_pin_suspend>;
 
-	/*qcom,dsi-pref-prim-pan = <&mot_smd_549_1080p_alb_cmd_v0>;*/
+	qcom,dsi-pref-prim-pan = <&mot_smd_601_1080p_cmd_v0>;
 	vci_disp-supply = <&pm660l_l6>;
 	vio_disp-supply = <&pm660_l11>;
 	elvdd_disp-supply = <&lab_regulator>;
