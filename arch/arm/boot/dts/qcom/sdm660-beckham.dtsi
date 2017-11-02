@@ -294,6 +294,10 @@
 };
 
 &mot_smd_601_1080p_cmd_v0 {
+	qcom,bklt-dcs-2bytes-enabled;
+	qcom,mdss-dsi-bl-min-level = <3>;
+	qcom,mdss-dsi-bl-max-level = <1023>;
+
 	qcom,panel-supply-entries {
 			qcom,panel-supply-entry@4 {
 				reg = <4>;
