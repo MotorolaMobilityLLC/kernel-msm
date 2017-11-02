@@ -258,6 +258,7 @@ enum msm_camera_i2c_operation {
 	MSM_CAM_POLL,
 	MSM_CAM_READ,
 	MSM_CAM_POLL_STRICT,
+	MSM_CAM_READ_LOOP,
 };
 
 struct msm_sensor_i2c_sync_params {
