@@ -12,8 +12,35 @@
 
 #include "sdm630-moto-common.dtsi"
 #include "sdm660-external-codec.dtsi"
+#include "dsi-panel-mot-lg-550-1080p-vid.dtsi"
 / {
 	model = "Heart";
 	compatible = "qcom,sdm630-heart", "qcom,sdm630-moto",
 			"qcom,sdm630";
+};
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_lg_550_1080p_vid_v0>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-reset-gpio = <&tlmm 53 0>;
+	qcom,platform-te-gpio = <&tlmm 59 0>;
+};
+
+&pm660l_wled {
+	qcom,led-strings-list = [00 01];
+	qcom,en-cabc;
+	/delete-property/ qcom,auto-calibration-enable;
+};
+
+&mdss_dp_ctrl{
+		status = "disabled";
 };
