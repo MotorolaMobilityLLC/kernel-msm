@@ -31,6 +31,9 @@
 #include <linux/hssp_programmer.h>
 #include "cycapsense_hssp.h"
 #include "ProgrammingSteps.h"
+#include <linux/notifier.h>
+#include <linux/usb.h>
+#include <linux/power_supply.h>
 
 #define CYTTSP_DEBUG 1
 #define LOG_TAG "cyttsp "
@@ -322,7 +325,7 @@ static irqreturn_t cyttsp_sar_interrupt(int irq, void *dev_id)
 		for (i = 0; i < pdata->nsars; i++) {
 
 			/* Report event only if sensor status for a specific channel has changed
-			and it matches the channel position in interrupt pending register */
+			   and it matches the channel position in interrupt pending register */
 			if (((sensor_status ^ data->sensorStatus) & channel_status_mask[i])) {
 				/* Find the sar state for the channel */
 				sar_state = (sensor_status & channel_status_mask[i]) >> (i * 2);
@@ -765,16 +768,30 @@ fw_upd_end:
 static int capsensor_set_enable(struct sensors_classdev *sensors_cdev, unsigned int enable)
 {
 	struct cyttsp_sar_data *data = pcyttsp_sar_ptr;
-	struct input_dev *input = data->input_dev[0];
+	struct cyttsp_sar_platform_data *pdata = data->pdata;
+	struct input_dev *input;
+	int i, ret;
 
 	if (enable == 1) {
 		LOG_INFO("enable cap sensor\n");
 		hw_init();
-		input_report_abs(input, ABS_DISTANCE, 0);
-		input_sync(input);
+		for (i = 0; i < pdata->nsars; i++) {
+			input = data->input_dev[i];
+			input_report_abs(input, ABS_DISTANCE, 0);
+			input_sync(input);
+		}
 		data->enable = true;
 	} else if (enable == 0) {
 		LOG_INFO("disable cap sensor\n");
+		ret = cyttsp_write_reg(data, CYTTSP_SAR_OP_MODE, 0x01);
+		if (ret < 0)
+			LOG_INFO("reg write failed\n");
+
+		for (i = 0; i < pdata->nsars; i++) {
+			input = data->input_dev[i];
+			input_report_abs(input, ABS_DISTANCE, -1);
+			input_sync(input);
+		}
 		data->enable = false;
 	} else {
 		LOG_INFO("unknown enable symbol\n");
@@ -955,7 +972,7 @@ static ssize_t cycapsense_enable_store(struct class *class,
 	struct cyttsp_sar_data *data = pcyttsp_sar_ptr;
 	struct cyttsp_sar_platform_data *pdata = data->pdata;
 	struct input_dev *input;
-	int i;
+	int i, ret;
 
 	if (!strncmp(buf, "1", 1)) {
 		LOG_INFO("enable cap sensor\n");
@@ -968,11 +985,16 @@ static ssize_t cycapsense_enable_store(struct class *class,
 		data->enable = true;
 	} else if (!strncmp(buf, "0", 1)) {
 		LOG_INFO("disable cap sensor\n");
+		ret = cyttsp_write_reg(data, CYTTSP_SAR_OP_MODE, 0x01);
+		if (ret < 0)
+			LOG_INFO("reg write failed\n");
 
-		input_report_abs(input, ABS_DISTANCE, -1);
-		input_sync(input);
+		for (i = 0; i < pdata->nsars; i++) {
+			input = data->input_dev[i];
+			input_report_abs(input, ABS_DISTANCE, -1);
+			input_sync(input);
+		}
 		data->enable = false;
-
 	} else {
 		LOG_INFO("unknown enable symbol\n");
 	}
@@ -1006,6 +1028,8 @@ static ssize_t cycapsense_reg_store(struct class *class,
 
 	if (sscanf(buf, "%x,%x", &reg, &val) == 2) {
 		ret = cyttsp_write_reg(data, *((u8 *)&reg), *((u8 *)&val));
+		if (ret < 0)
+			LOG_INFO("reg write failed\n");
 	}
 
 	return count;
@@ -1107,8 +1131,8 @@ static ssize_t cycapsense_debug_store(struct class *class,
 }
 
 static ssize_t cycapsense_fw_download_status_show(struct class *class,
-					struct class_attribute *attr,
-					char *buf)
+		struct class_attribute *attr,
+		char *buf)
 {
 	return snprintf(buf, 8, "%d", fw_dl_status);
 }
@@ -1120,6 +1144,80 @@ static CLASS_ATTR(reg, 0660, cycapsense_reg_show, cycapsense_reg_store);
 static CLASS_ATTR(debug, 0660, NULL, cycapsense_debug_store);
 static CLASS_ATTR(fw_download_status, 0660, cycapsense_fw_download_status_show, NULL);
 
+static void ps_notify_callback_work(struct work_struct *work)
+{
+	struct cyttsp_sar_data *data =
+		container_of(work, struct cyttsp_sar_data, ps_notify_work);
+	struct cyttsp_sar_platform_data *pdata = data->pdata;
+	struct input_dev *input;
+	int i, ret;
+
+	LOG_INFO("Going to force calibrate\n");
+	ret = cyttsp_write_reg(data, CYTTSP_SAR_REFRESH_BASELINE, 0x0f);
+	if (ret < 0)
+		LOG_INFO("reg write failed\n");
+
+	for (i = 0; i < pdata->nsars; i++) {
+		input = data->input_dev[i];
+		input_report_abs(input, ABS_DISTANCE, 0);
+		input_sync(input);
+	}
+}
+
+
+static int ps_get_state(struct cyttsp_sar_data *data,
+		struct power_supply *psy, bool *present)
+{
+	struct device *dev = &data->client->dev;
+	union power_supply_propval pval = {0};
+	int retval;
+
+	retval = power_supply_get_property(psy, POWER_SUPPLY_PROP_PRESENT,
+			&pval);
+	if (retval) {
+		dev_err(dev, "%s psy get property failed\n", psy->desc->name);
+		return retval;
+	}
+	*present = (pval.intval) ? true : false;
+	LOG_INFO("%s is %s\n", psy->desc->name,
+			(*present) ? "present" : "not present");
+	return 0;
+}
+
+static int ps_notify_callback(struct notifier_block *self,
+		unsigned long event, void *p)
+{
+	struct cyttsp_sar_data *data =
+		container_of(self, struct cyttsp_sar_data, ps_notif);
+	struct power_supply *psy = p;
+	struct device *dev = NULL;
+	bool present;
+	int retval;
+
+	if ((event == PSY_EVENT_PROP_ADDED || event == PSY_EVENT_PROP_CHANGED)
+			&& psy && psy->desc->get_property && psy->desc->name &&
+			!strncmp(psy->desc->name, "usb", sizeof("usb")) && data) {
+		dev = &data->client->dev;
+		LOG_INFO("ps notification: event = %lu\n", event);
+		retval = ps_get_state(data, psy, &present);
+		if (retval) {
+			dev_err(dev, "psy get property failed\n");
+			return retval;
+		}
+
+		if (event == PSY_EVENT_PROP_CHANGED) {
+			if (data->ps_is_present == present) {
+				LOG_INFO("ps present state not change\n");
+				return 0;
+			}
+		}
+		data->ps_is_present = present;
+		schedule_work(&data->ps_notify_work);
+	}
+
+	return 0;
+}
+
 static struct class capsense_class = {
 	.name                   = "capsense",
 	.owner                  = THIS_MODULE,
@@ -1130,6 +1228,7 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 {
 	struct cyttsp_sar_platform_data *pdata;
 	struct cyttsp_sar_data *data;
+	struct power_supply *psy = NULL;
 	int error, i;
 	char *name;
 	char *buffer;
@@ -1183,7 +1282,7 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 		data->input_dev[i] = input_allocate_device();
 		if (!data->input_dev[i]) {
 			dev_err(&client->dev, "Failed to allocate input device\n");
-			goto err_irq_gpio_req;
+			return -ENOMEM;
 		}
 		name = kasprintf(GFP_KERNEL, "cyttsp_sar_ch%d", i);
 
@@ -1196,7 +1295,7 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 		error = input_register_device(data->input_dev[i]);
 		if (error) {
 			dev_err(&client->dev, "Unable to register input %d device, error: %d\n", i, error);
-			goto err_free_input;
+			input_free_device(data->input_dev[i]);
 		}
 		buffer = kasprintf(GFP_KERNEL, "Moto CapSense Ch%d", i);
 		sensors_capsensor_cdev[i].sensors_enable = capsensor_set_enable;
@@ -1227,7 +1326,7 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 	dev_err(&client->dev, "registering irq %d\n", gpio_to_irq(client->irq));
 	if (error) {
 		dev_err(&client->dev, "Error %d registering irq %d\n", error, gpio_to_irq(client->irq));
-		goto err_unreg_input;
+		goto err_irq_gpio_req;
 	}
 
 	error = class_register(&capsense_class);
@@ -1279,6 +1378,27 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 		return error;
 	}
 
+	INIT_WORK(&data->ps_notify_work, ps_notify_callback_work);
+	data->ps_notif.notifier_call = ps_notify_callback;
+	error = power_supply_reg_notifier(&data->ps_notif);
+	if (error) {
+		dev_err(&client->dev,
+				"Unable to register ps_notifier: %d\n", error);
+		goto free_ps_notifier;
+	}
+
+	psy = power_supply_get_by_name("usb");
+	if (psy) {
+		error = ps_get_state(data, psy, &data->ps_is_present);
+		if (error) {
+			dev_err(&client->dev,
+					"psy get property failed rc=%d\n",
+					error);
+			goto free_ps_notifier;
+		}
+	}
+
+
 	fw_dl_status = 1;
 	ctrl_data->dev = &client->dev;
 	INIT_WORK(&ctrl_data->work, capsense_update_work);
@@ -1290,14 +1410,16 @@ static int cyttsp_sar_probe(struct i2c_client *client,
 	ctrl_data->hssp_d.inf.fw_name[0] = 0;
 
 	schedule_work(&ctrl_data->work);
+
+	error = cyttsp_write_reg(data, CYTTSP_SAR_OP_MODE, 0x01);
+	if (error < 0)
+		LOG_INFO("reg write failed\n");
 	data->enable = false;
 
 	return 0;
 
-err_unreg_input:
-	input_unregister_device(data->input_dev[0]);
-err_free_input:
-	input_free_device(data->input_dev[i]);
+free_ps_notifier:
+	power_supply_unreg_notifier(&data->ps_notif);
 err_irq_gpio_req:
 	if (gpio_is_valid(pdata->irq_gpio))
 		gpio_free(pdata->irq_gpio);
