@@ -850,6 +850,7 @@ struct mdss_panel_info {
 	bool hbm_restore;
 	u32 hbm_type;
 	u32 bl_hbm_off;
+	bool bklt_dcs_2bytes_enabled;
 };
 
 struct mdss_panel_timing {
