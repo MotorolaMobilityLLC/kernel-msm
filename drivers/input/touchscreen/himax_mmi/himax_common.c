@@ -44,22 +44,22 @@ struct himax_report_data *hx_touch_data;
 static int		HX_TOUCH_INFO_POINT_CNT   = 0;
 
 unsigned long	FW_VER_MAJ_FLASH_ADDR;
-unsigned long 	FW_VER_MIN_FLASH_ADDR;
-unsigned long 	CFG_VER_MAJ_FLASH_ADDR;
-unsigned long 	CFG_VER_MIN_FLASH_ADDR;
-unsigned long 	CID_VER_MAJ_FLASH_ADDR;
-unsigned long 	CID_VER_MIN_FLASH_ADDR;
+unsigned long	FW_VER_MIN_FLASH_ADDR;
+unsigned long	CFG_VER_MAJ_FLASH_ADDR;
+unsigned long	CFG_VER_MIN_FLASH_ADDR;
+unsigned long	CID_VER_MAJ_FLASH_ADDR;
+unsigned long	CID_VER_MIN_FLASH_ADDR;
 //unsigned long	PANEL_VERSION_ADDR;
 
-unsigned long 	FW_VER_MAJ_FLASH_LENG;
-unsigned long 	FW_VER_MIN_FLASH_LENG;
-unsigned long 	CFG_VER_MAJ_FLASH_LENG;
-unsigned long 	CFG_VER_MIN_FLASH_LENG;
-unsigned long 	CID_VER_MAJ_FLASH_LENG;
-unsigned long 	CID_VER_MIN_FLASH_LENG;
+unsigned long	FW_VER_MAJ_FLASH_LENG;
+unsigned long	FW_VER_MIN_FLASH_LENG;
+unsigned long	CFG_VER_MAJ_FLASH_LENG;
+unsigned long	CFG_VER_MIN_FLASH_LENG;
+unsigned long	CID_VER_MAJ_FLASH_LENG;
+unsigned long	CID_VER_MIN_FLASH_LENG;
 //unsigned long	PANEL_VERSION_LENG;
 
-unsigned long 	FW_CFG_VER_FLASH_ADDR;
+unsigned long	FW_CFG_VER_FLASH_ADDR;
 
 #ifdef HX_AUTO_UPDATE_FW
 	int g_i_FW_VER = 0;
@@ -76,8 +76,9 @@ unsigned char	IC_CHECKSUM = 0;
 	int hx_EB_event_flag = 0;
 	int hx_EC_event_flag = 0;
 	int hx_ED_event_flag = 0;
+extern int g_zero_event_count;
 #endif
-	u8 	HX_HW_RESET_ACTIVATE = 0;
+	u8	HX_HW_RESET_ACTIVATE = 0;
 
 #if defined(CONFIG_TOUCHSCREEN_HIMAX_DEBUG)
 extern int himax_touch_proc_init(void);
@@ -131,13 +132,13 @@ extern int himax_parse_dt(struct himax_ts_data *ts,
 				struct himax_i2c_platform_data *pdata);
 extern bool himax_calculateChecksum(struct i2c_client *client, bool change_iref);
 
-static uint8_t 	vk_press = 0x00;
-static uint8_t 	AA_press = 0x00;
-static uint8_t 	EN_NoiseFilter = 0x00;
+static uint8_t	vk_press = 0x00;
+static uint8_t	AA_press = 0x00;
+static uint8_t	EN_NoiseFilter = 0x00;
 static uint8_t	Last_EN_NoiseFilter = 0x00;
 static int	hx_point_num	= 0;																	// for himax_ts_work_func use
 static int	p_point_num	= 0xFFFF;
-static int	tpd_key	   	= 0x00;
+static int	tpd_key		= 0x00;
 static int	tpd_key_old	= 0x00;
 static int	probe_fail_flag	= 0;
 #ifdef HX_USB_DETECT_GLOBAL
@@ -195,7 +196,7 @@ int himax_input_register(struct himax_ts_data *ts)
 	ret = himax_dev_set(ts);
 	if(ret < 0)
 		goto input_device_fail;
-	
+
 	set_bit(EV_SYN, ts->input_dev->evbit);
 	set_bit(EV_ABS, ts->input_dev->evbit);
 	set_bit(EV_KEY, ts->input_dev->evbit);
@@ -265,7 +266,7 @@ int himax_input_register(struct himax_ts_data *ts)
 	return NO_ERR;
 	else
 		ret = INPUT_REGISTER_FAIL;
-	
+
 input_device_fail:
 	I("%s, input device register fail!\n",__func__);
 	return ret;
@@ -354,7 +355,7 @@ int himax_loadSensorConfig(struct i2c_client *client, struct himax_i2c_platform_
 	}
 
 	I("%s: initialization complete\n", __func__);
-	
+
 	return NO_ERR;
 }
 
@@ -404,8 +405,8 @@ static void himax_chip_monitor_function(struct work_struct *work) //for ESD solu
 	}
 	else
 		g_chip_monitor_data->HX_CHIP_POLLING_COUNT++;
-	
-	
+
+
 	g_chip_monitor_data->HX_CHIP_MONITOR_EN = 1;
 	queue_delayed_work(private_ts->himax_chip_monitor_wq, &private_ts->himax_chip_monitor, g_chip_monitor_data->HX_POLLING_TIMER*HZ);
 
@@ -433,7 +434,7 @@ static int himax_parse_wake_event(struct himax_ts_data *ts)
 
 	buf = kzalloc(hx_touch_data->event_size*sizeof(uint8_t),GFP_KERNEL);
 	memcpy(buf,hx_touch_data->hx_event_buf,hx_touch_data->event_size);
-	
+
 	for(i=0;i<GEST_PTLG_ID_LEN;i++)
 	{
 		if (check_FC==0)
@@ -756,8 +757,6 @@ if ( tp_key_index != 0x00)
 							y_position);
 #endif
 				}
-				//else
-					//input_report_key(ts->input_dev, KEY_APP_SWITCH, 1);	
 		}
 		input_sync(ts->input_dev);
 	}
@@ -821,7 +820,7 @@ int himax_report_data_init(void)
 		hx_touch_data->rawdata_frame_size = (ic_data->HX_TX_NUM * ic_data->HX_RX_NUM + ic_data->HX_TX_NUM + ic_data->HX_RX_NUM) / hx_touch_data->rawdata_size + 1;
 	I("%s: rawdata_frame_size = %d\n",__func__,hx_touch_data->rawdata_frame_size);
 	I("%s: ic_data->HX_MAX_PT:%d,hx_raw_cnt_max:%d,hx_raw_cnt_rmd:%d,g_hx_rawdata_size:%d,hx_touch_data->touch_info_size:%d\n",__func__,ic_data->HX_MAX_PT,hx_touch_data->raw_cnt_max,hx_touch_data->raw_cnt_rmd,hx_touch_data->rawdata_size,hx_touch_data->touch_info_size);
-	
+
 	hx_touch_data->hx_coord_buf = kzalloc(sizeof(uint8_t)*(hx_touch_data->touch_info_size),GFP_KERNEL);
 	if(hx_touch_data->hx_coord_buf == NULL)
 		goto mem_alloc_fail;
@@ -847,10 +846,10 @@ mem_alloc_fail:
 #if defined(HX_SMART_WAKEUP)
 	kfree(hx_touch_data->hx_event_buf);
 #endif
-	
+
 	I("%s: Memory allocate fail!\n",__func__);
 	return MEM_ALLOC_FAIL;
-	
+
 }
 
 
@@ -889,14 +888,14 @@ void himax_report_key(struct himax_ts_data *ts)
 	if(hx_point_num!=0)
 	{
 		//Touch KEY
-		if ((tpd_key_old != 0x00)&&(tpd_key == 0x00)) 
+		if ((tpd_key_old != 0x00) && (tpd_key == 0x00))
 		{
 			//temp_x[0] = 0xFFFF;
 			//temp_y[0] = 0xFFFF;
 			//temp_x[1] = 0xFFFF;
 			//temp_y[1] = 0xFFFF;
 			hx_touch_data->finger_on = 0;
-#ifdef HX_PROTOCOL_A			
+#ifdef HX_PROTOCOL_A
 			input_report_key(ts->input_dev, BTN_TOUCH, hx_touch_data->finger_on);
 #endif
 			himax_ts_button_func(tpd_key,ts);
@@ -908,23 +907,21 @@ void himax_report_key(struct himax_ts_data *ts)
 	}
 	else
 	{
-		if (tpd_key != 0x00) 
+		if (tpd_key != 0x00)
 		{
 			hx_touch_data->finger_on = 1;
 #ifdef HX_PROTOCOL_A
 			input_report_key(ts->input_dev, BTN_TOUCH, hx_touch_data->finger_on);
 #endif
 			himax_ts_button_func(tpd_key,ts);
-			
-		}
-		else if ((tpd_key_old != 0x00)&&(tpd_key == 0x00)) 
-		{
+
+		} else if ((tpd_key_old != 0x00) && (tpd_key == 0x00)) {
 			hx_touch_data->finger_on = 0;
 #ifdef HX_PROTOCOL_A
 			input_report_key(ts->input_dev, BTN_TOUCH, hx_touch_data->finger_on);
 #endif
 			himax_ts_button_func(tpd_key,ts);
-			
+
 		}
 #ifndef HX_PROTOCOL_A
 		input_report_key(ts->input_dev, BTN_TOUCH, hx_touch_data->finger_on);
@@ -943,12 +940,11 @@ void himax_report_points(struct himax_ts_data *ts)
 	int base = 0;
 	int32_t	loop_i = 0;
 	uint16_t old_finger = 0;
-	
+
 	//I("%s:Entering\n",__func__);
 
 	/* finger on/press */
-	if (hx_point_num != 0 )
-	{	
+	if (hx_point_num != 0)	{
 		old_finger = ts->pre_finger_mask;
 		ts->pre_finger_mask = 0;
 		hx_touch_data->finger_num = hx_touch_data->hx_coord_buf[ts->coordInfoSize - 4] & 0x0F;
@@ -970,7 +966,7 @@ void himax_report_points(struct himax_ts_data *ts)
 					himax_log_touch_event_detail(ts,x,y,w,loop_i,EN_NoiseFilter,HX_FINGER_ON,old_finger);
 				}
 #ifndef	HX_PROTOCOL_A
-				
+
 					input_mt_slot(ts->input_dev, loop_i);
 #endif
 				input_report_key(ts->input_dev, BTN_TOUCH, hx_touch_data->finger_on);
@@ -1028,7 +1024,7 @@ void himax_report_points(struct himax_ts_data *ts)
 #endif
 		input_sync(ts->input_dev);
 	}
-	
+
 	/* finger leave/release */
 	else
 	{
@@ -1109,22 +1105,22 @@ void himax_report_points(struct himax_ts_data *ts)
 		input_sync(ts->input_dev);
 	}
 	Last_EN_NoiseFilter = EN_NoiseFilter;
-	
+
 	//I("%s:End\n",__func__);
 }
 
 int himax_touch_get(struct himax_ts_data *ts,uint8_t *buf,int ts_status)
 {
 	int ret = 0;
-	
+
 	switch(ts_status)
 	{
 		/*normal*/
-		case 1: 
+		case 1:
 #ifdef HX_TP_PROC_DIAG
 			hx_touch_data->diag_cmd = getDiagCommand();
 
-			if((hx_touch_data->diag_cmd) 
+			if ((hx_touch_data->diag_cmd)
 				|| (HX_HW_RESET_ACTIVATE)
 #ifdef HX_ESD_RECOVERY
 				|| (HX_ESD_RESET_ACTIVATE)
@@ -1141,7 +1137,7 @@ int himax_touch_get(struct himax_ts_data *ts,uint8_t *buf,int ts_status)
 			if (!ret)
 #else
 			if(!himax_read_event_stack(ts->client, buf, hx_touch_data->touch_info_size))
-#endif		
+#endif
 			{
 				E("%s: can't read data from chip!\n", __func__);
 				goto err_workqueue_out;
@@ -1165,7 +1161,7 @@ int himax_touch_get(struct himax_ts_data *ts,uint8_t *buf,int ts_status)
 
 err_workqueue_out:
 	return I2C_FAIL;
-	
+
 }
 
 int himax_checksum_cal(struct himax_ts_data *ts,uint8_t *buf,int ts_status)
@@ -1181,7 +1177,7 @@ int himax_checksum_cal(struct himax_ts_data *ts,uint8_t *buf,int ts_status)
 	uint16_t check_sum_cal = 0;
 	int32_t	loop_i = 0;
 	int length = 0;
-	
+
 	/* Normal */
 	if(ts_status == HX_REPORT_COORD)
 		length = hx_touch_data->touch_info_size;
@@ -1198,8 +1194,8 @@ int himax_checksum_cal(struct himax_ts_data *ts,uint8_t *buf,int ts_status)
 	for (loop_i = 0; loop_i < length; loop_i++)
 	{
 		check_sum_cal+=buf[loop_i];
-		
-		/*if (ts->debug_log_level & BIT(0)) 
+
+		/*if (ts->debug_log_level & BIT(0))
 		{
 			I("P %d = 0x%2.2X ", loop_i, hx_touch_data->hx_coord_buf[loop_i]);
 			if (loop_i % 8 == 7)
@@ -1225,6 +1221,7 @@ int himax_checksum_cal(struct himax_ts_data *ts,uint8_t *buf,int ts_status)
 				hx_EC_event = 0;
 				hx_ED_event = 0;
 				hx_zero_event = 0;
+				g_zero_event_count = 0;
 			}
 
 			if(hx_EB_event == length)
@@ -1250,12 +1247,15 @@ int himax_checksum_cal(struct himax_ts_data *ts,uint8_t *buf,int ts_status)
 				hx_esd_event = 0;
 			}
 		}
-#endif		
+#endif
 	}
 
 	if(ts_status == HX_REPORT_COORD)
 	{
 #ifdef HX_ESD_RECOVERY
+		if (hx_zero_event != length) {
+			g_zero_event_count = 0;
+		}
 		if ((hx_esd_event == length || hx_zero_event == length)
 			&& (HX_HW_RESET_ACTIVATE == 0)
 			&& (HX_ESD_RESET_ACTIVATE == 0)
@@ -1292,7 +1292,7 @@ int himax_checksum_cal(struct himax_ts_data *ts,uint8_t *buf,int ts_status)
 			I("[HX_ESD_RESET_ACTIVATE]:%s: Back from reset, ready to serve.\n", __func__);
 			goto checksum_fail;
 		}
-		
+
 		else if (HX_HW_RESET_ACTIVATE)
 #else
 		if (HX_HW_RESET_ACTIVATE)
@@ -1314,7 +1314,7 @@ int himax_checksum_cal(struct himax_ts_data *ts,uint8_t *buf,int ts_status)
 		I("[HIMAX TP MSG] checksum fail : check_sum_cal: 0x%02X\n", check_sum_cal);
 		goto checksum_fail;
 	}
-	
+
 	/* I("%s:End\n",__func__); */
 	return NO_ERR;
 
@@ -1333,7 +1333,7 @@ workqueue_out:
 int himax_ts_work_status(struct himax_ts_data *ts)
 {
 	/* 1: normal, 2:SMWP */
-	int result = HX_REPORT_COORD; 
+	int result = HX_REPORT_COORD;
 	uint8_t diag_cmd = 0;
 
 #ifdef HX_TP_PROC_DIAG
@@ -1377,7 +1377,7 @@ void himax_assign_touch_data(uint8_t *buf,int ts_status)
 		memcpy(hx_touch_data->hx_rawdata_buf,&buf[hx_touch_data->touch_info_size],hx_touch_data->touch_all_size - hx_touch_data->touch_info_size);
 	}
 #endif
-	
+
 }
 
 void himax_coord_report(struct himax_ts_data *ts)
@@ -1385,7 +1385,7 @@ void himax_coord_report(struct himax_ts_data *ts)
 
 #if defined(HX_TP_PROC_DIAG)
 		//touch monitor raw data fetch
-		if(himax_set_diag_cmd(ic_data,hx_touch_data))	
+		if (himax_set_diag_cmd(ic_data, hx_touch_data))
 			I("%s: coordinate dump fail and bypass with checksum err\n",__func__);
 #endif
 		EN_NoiseFilter = (hx_touch_data->hx_coord_buf[HX_TOUCH_INFO_POINT_CNT+2]>>3);
@@ -1417,9 +1417,9 @@ void himax_coord_report(struct himax_ts_data *ts)
 			himax_report_points(ts);
 		else
 			himax_report_key(ts);
-		
+
 		/* I("%s:END\n",__func__); */
-		
+
 }
 
 void himax_ts_work(struct himax_ts_data *ts)
@@ -1465,9 +1465,9 @@ void himax_ts_work(struct himax_ts_data *ts)
 
 	memset(buf, 0x00, sizeof(buf));
 	memset(hw_reset_check, 0x00, sizeof(hw_reset_check));
-	
+
 	//I("New Method for ts_work\n");
-	
+
 	if(himax_touch_get(ts,buf,ts_status))
 		goto err_workqueue_out;
 
@@ -1477,7 +1477,7 @@ void himax_ts_work(struct himax_ts_data *ts)
 		himax_log_touch_data(buf,hx_touch_data);
 
 	}
-	
+
 	check_sum_cal = himax_checksum_cal(ts,buf,ts_status);
 	if (check_sum_cal == CHECKSUM_FAIL)
 		goto checksum_fail;
@@ -1490,7 +1490,7 @@ void himax_ts_work(struct himax_ts_data *ts)
 	/* checksum calculate pass and assign data to global touch data*/
 	else
 		himax_assign_touch_data(buf,ts_status);
-	
+
 	if(ts_status == HX_REPORT_COORD)
 		himax_coord_report(ts);
 #if defined(HX_SMART_WAKEUP)
@@ -1512,7 +1512,7 @@ err_workqueue_out:
 	I("%s: Now reset the Touch chip.\n", __func__);
 
 #ifdef HX_RST_PIN_FUNC
-	himax_ic_reset(true,true);
+	himax_esd_ic_reset();
 #endif
 
 	goto workqueue_out;
@@ -1734,9 +1734,9 @@ int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_i
 			err = -ENOMEM;
 			goto err_create_wq_failed;
 		}
-	
+
 		INIT_WORK(&ts->flash_work, himax_ts_flash_work_func);
-	
+
 		setSysOperation(0);
 		setFlashBuffer();
 #endif
@@ -1777,7 +1777,7 @@ int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_i
 	if (himax_loadSensorConfig(client, pdata)) {
 		E("%s: Load Sesnsor configuration failed, unload driver.\n", __func__);
 		goto err_detect_failed;
-	}	
+	}
 	himax_power_on_init(client);
 
 	calculate_point_number();
@@ -1804,7 +1804,7 @@ int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_i
 			return -1;
 		}
 	}
-#endif	
+#endif
 #endif
 #ifdef CONFIG_OF
 	ts->power = pdata->power;
@@ -1857,7 +1857,7 @@ int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_i
 
 #if defined(HX_CHIP_STATUS_MONITOR)//for ESD solution
 	I("Enter HX_CHIP_STATUS_MONITOR! \n");
-	
+
 	g_chip_monitor_data = kzalloc(sizeof(struct chip_monitor_data),GFP_KERNEL);
 	if(g_chip_monitor_data == NULL)
 	{
@@ -1928,7 +1928,7 @@ int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_i
 #endif
 
 #if defined( HX_USB_DETECT_CALLBACK)
-	if (ts->cable_config)		
+	if (ts->cable_config)
 		cable_detect_register_notifier(&himax_cable_status_handler);
 #endif
 
@@ -2031,7 +2031,7 @@ int himax_chip_common_remove(struct i2c_client *client)
 #ifndef	HX_PROTOCOL_A
 		input_mt_destroy_slots(ts->input_dev);
 #endif
-		
+
 	input_unregister_device(ts->input_dev);
 
 #ifdef HX_SMART_WAKEUP
@@ -2092,7 +2092,7 @@ int himax_chip_common_suspend(struct himax_ts_data *ts)
 	g_chip_monitor_data->HX_CHIP_POLLING_COUNT = 0;
 	cancel_delayed_work_sync(&ts->himax_chip_monitor);
 #endif
-	
+
 #if defined(HX_SMART_WAKEUP)||defined(HX_HIGH_SENSE)||defined(HX_USB_DETECT_GLOBAL)
 #ifndef HX_RESEND_CMD
 		himax_resend_cmd_func(ts->suspended);
@@ -2144,9 +2144,9 @@ int himax_chip_common_resume(struct himax_ts_data *ts)
 	}
 	else
 		ts->suspended = false;
-	
+
 	atomic_set(&ts->suspend_mode, 0);
-	
+
 	if (ts->pdata->powerOff3V3 && ts->pdata->power)
 		ts->pdata->power(1);
 
