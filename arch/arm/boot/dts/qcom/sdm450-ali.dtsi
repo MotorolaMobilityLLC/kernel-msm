@@ -272,6 +272,10 @@
 			focaltech,fw-delay-era-flsh-ms = <2000>;
 			focaltech,resume-in-workqueue;
 			focaltech,ignore-id-check;
+			config_modifier-names = "charger";
+			config_modifier-charger {
+				enable-notification;
+			};
 		};
 	};
 
