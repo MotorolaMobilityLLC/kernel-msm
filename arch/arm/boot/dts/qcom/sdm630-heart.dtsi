@@ -44,3 +44,36 @@
 &mdss_dp_ctrl{
 		status = "disabled";
 };
+
+&i2c_3 {
+	/delete-node/ focaltech_ts@38;
+	sw49106@28 {
+#include <dt-bindings/gpio/gpio.h>
+		compatible = "siw,sw49106";
+		reg = <0x28>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <67 0x02>;
+		irqflags = <0x2002>;
+
+		chip_flags = <0x1000>;
+
+		reset-gpio = <&tlmm 66 GPIO_ACTIVE_LOW>;
+		irq-gpio = <&tlmm 67 GPIO_ACTIVE_LOW>;
+
+		max_x = <1080>;
+		max_y = <2160>;
+		max_presure = <0xff>;
+		max_width = <15>;
+		max_orientation = <1>;
+		max_id = <10>;
+
+		hw_reset_delay = <210>;
+		sw_reset_delay = <90>;
+		use_lpwg = <1>;
+		use_lpwg_test = <1>;
+
+		use_firmware = <0>;
+		use_fw_upgrade = <1>;
+	};
+};
+
