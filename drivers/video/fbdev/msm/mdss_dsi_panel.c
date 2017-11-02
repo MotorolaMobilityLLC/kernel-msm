@@ -230,6 +230,12 @@ static struct dsi_cmd_desc backlight_cmd = {
 	led_pwm1
 };
 
+static char led_pwm2[3] = {0x51, 0x0, 0x0};	/* DTYPE_DCS_LWRITE */
+static struct dsi_cmd_desc backlight_2bytes_cmd = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(led_pwm2)},
+	led_pwm2
+};
+
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	struct dcs_cmd_req cmdreq;
@@ -243,10 +249,18 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 
 	pr_debug("%s: level=%d\n", __func__, level);
 
-	led_pwm1[1] = (unsigned char)level;
+	if (!pinfo->bklt_dcs_2bytes_enabled) {
+		led_pwm1[1] = (unsigned char)level;
+	} else {
+		led_pwm2[1] = (unsigned char)((level&0xFF00)>>8);
+		led_pwm2[2] = (unsigned char)(level&0xFF);
+	}
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = &backlight_cmd;
+	if (!pinfo->bklt_dcs_2bytes_enabled)
+		cmdreq.cmds = &backlight_cmd;
+	else
+		cmdreq.cmds = &backlight_2bytes_cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	cmdreq.rlen = 0;
@@ -2854,6 +2868,7 @@ int mdss_panel_parse_bl_settings(struct device_node *np,
 	const char *data;
 	int rc = 0;
 	u32 tmp;
+	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
 
 	ctrl_pdata->bklt_ctrl = UNKNOWN_CTRL;
 	data = of_get_property(np, "qcom,mdss-dsi-bl-pmic-control-type", NULL);
@@ -2908,6 +2923,9 @@ int mdss_panel_parse_bl_settings(struct device_node *np,
 				ctrl_pdata->bklt_dcs_op_mode = DSI_HS_MODE;
 			else
 				ctrl_pdata->bklt_dcs_op_mode = DSI_LP_MODE;
+
+			pinfo->bklt_dcs_2bytes_enabled = of_property_read_bool(np,
+				"qcom,bklt-dcs-2bytes-enabled");
 
 			pr_debug("%s: Configured DCS_CMD bklt ctrl\n",
 								__func__);
