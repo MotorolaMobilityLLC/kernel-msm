@@ -19,6 +19,7 @@
 
 #define CYTTSP_SAR_CHANNEL_ENABLE		0x06
 #define CYTTSP_SAR_FORCE_CALIBRATE		0x07
+#define CYTTSP_SAR_REFRESH_BASELINE		0x08
 #define CYTTSP_SAR_CHANNEL_MAX			0x08
 #define CYTTSP_SAR_STATE_ERROR			0x03
 
@@ -82,10 +83,6 @@ static struct cyttsp_reg_data cyttsp_i2c_reg_setup[] = {
 		.reg = CYTTSP_SAR_CHANNEL_ENABLE,
 		.val = 0x0f,
 	},
-	{
-		.reg = CYTTSP_SAR_FORCE_CALIBRATE,
-		.val = 0x3e,
-	},
 };
 
 typedef struct cyttsp_sar_data *pcyttsp_data_t;
@@ -99,6 +96,9 @@ struct cyttsp_sar_data {
 	bool dbgdump;
 	unsigned long sensorStatus;
 	bool enable;
+	struct work_struct ps_notify_work;
+	struct notifier_block ps_notif;
+	bool ps_is_present;
 	u8 bootloader_addr;
 	u8 app_addr;
 };
