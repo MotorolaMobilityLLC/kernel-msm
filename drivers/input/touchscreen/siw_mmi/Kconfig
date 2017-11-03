@@ -1,0 +1,21 @@
+menu "SiW Touch Support in MMI Revision"
+
+config TOUCHSCREEN_SIW_MMI
+	tristate "Silicon Works Touch Driver Core in MMI Revision"
+	depends on SPI_MASTER || I2C
+	default n
+	help
+	  Say Y here if you have a touchscreen interface using
+	  the Silicon Works touch device.
+
+config TOUCHSCREEN_SIW_MMI_SW49106
+	bool "Silicon Works Touch Driver for SW49106"
+	depends on TOUCHSCREEN_SIW_MMI
+	default n
+	help
+	  If your device is SW49106, say Y
+
+source "drivers/input/touchscreen/siw_mmi/mon/Kconfig"
+
+endmenu
+
