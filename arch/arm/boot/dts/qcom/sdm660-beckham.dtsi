@@ -22,6 +22,9 @@
 	model = "beckham";
 	compatible = "qcom,sdm660-beckham", "qcom,sdm660-moto",
 			"qcom,sdm660";
+	aliases {
+		/delete-property/ i2c3;
+	};
 };
 
 &i2c_2 { /* BLSP1 CAP SENSOR */
@@ -173,8 +176,15 @@
 };
 
 &soc{
+	/delete-node/ i2c@c177000;
+
 	qcom,qbt1000 {
 		status = "disabled";
+	};
+
+	fpc_fpc1020{
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
 	};
 
 	qcom,tz_gpio {
