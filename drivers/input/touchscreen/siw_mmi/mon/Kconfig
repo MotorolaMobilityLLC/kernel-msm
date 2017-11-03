@@ -1,0 +1,14 @@
+menu "SiW Touch Monitor in MMI Revision"
+	depends on TOUCHSCREEN_SIW_MMI
+
+config TOUCHSCREEN_SIW_MMI_MON
+	tristate "Silicon Works Touch Driver Monitor in MMI Revision"
+	depends on TOUCHSCREEN_SIW_MMI
+	default y
+	help
+	  If you select this option,
+	  a component which captures the SiW operation traffic such as bus, input
+	  will be build.
+
+endmenu
+
