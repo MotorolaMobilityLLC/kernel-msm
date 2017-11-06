@@ -100,6 +100,11 @@ int usbpd_send_svdm(struct usbpd *pd, u16 svid, u8 cmd,
 int usbpd_select_pdo_match(struct usbpd *pd);
 
 /*
+ * Grab Data Role
+ */
+int usbpd_get_current_dr(struct usbpd *pd);
+
+/*
  * Get current status of CC pin orientation.
  *
  * Return: ORIENTATION_CC1 or ORIENTATION_CC2 if attached,
