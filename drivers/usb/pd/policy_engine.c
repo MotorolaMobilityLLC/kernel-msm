@@ -3475,6 +3475,15 @@ static ssize_t pdo_n_show(struct device *dev, struct device_attribute *attr,
 	return -EINVAL;
 }
 
+int usbpd_get_current_dr(struct usbpd *pd)
+{
+	if (!pd)
+		return -EINVAL;
+
+	return (int)pd->current_dr;
+}
+EXPORT_SYMBOL(usbpd_get_current_dr);
+
 int usbpd_select_pdo_match(struct usbpd *pd)
 {
 	int uv_diff = 0, max_uv_diff = 0, pdo = 0;
