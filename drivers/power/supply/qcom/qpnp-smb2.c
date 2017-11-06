@@ -402,9 +402,9 @@ static int smb2_usb_get_prop(struct power_supply *psy,
 		if (!val->intval)
 			break;
 
-		if ((chg->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_DEFAULT ||
-			chg->micro_usb_mode) &&
-			chg->real_charger_type == POWER_SUPPLY_TYPE_USB)
+		if ((chg->real_charger_type == POWER_SUPPLY_TYPE_USB) ||
+		    (chg->pd_active && chg->pd &&
+		     (usbpd_get_current_dr(chg->pd) == 1)))
 			val->intval = 0;
 		else
 			val->intval = 1;
@@ -643,9 +643,9 @@ static int smb2_usb_port_get_prop(struct power_supply *psy,
 		if (!val->intval)
 			break;
 
-		if ((chg->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_DEFAULT ||
-			chg->micro_usb_mode) &&
-			chg->real_charger_type == POWER_SUPPLY_TYPE_USB)
+		if ((chg->real_charger_type == POWER_SUPPLY_TYPE_USB) ||
+		    (chg->pd_active && chg->pd &&
+		     (usbpd_get_current_dr(chg->pd) == 1)))
 			val->intval = 1;
 		else
 			val->intval = 0;
