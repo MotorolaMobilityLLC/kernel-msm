@@ -49,7 +49,7 @@ int FPS_register_notifier(struct notifier_block *nb,
 		return -ENODEV;
 
 	mdata->enabled = (unsigned int)stype;
-	pr_debug("%s: FPS sensor %lu notifier enabled\n", __func__, stype);
+	pr_info("%s: FPS sensor %lu notifier enabled\n", __func__, stype);
 
 	error = blocking_notifier_chain_register(&mdata->nhead, nb);
 	if (!error && report) {
@@ -77,7 +77,7 @@ int FPS_unregister_notifier(struct notifier_block *nb,
 
 	if (!mdata->nhead.head) {
 		mdata->enabled = 0;
-		pr_debug("%s: FPS sensor %lu no clients\n", __func__, stype);
+		pr_info("%s: FPS sensor %lu no clients\n", __func__, stype);
 	}
 
 	return error;
@@ -93,21 +93,21 @@ void FPS_notify(unsigned long stype, int state)
 	if (!mdata) {
 		pr_err("%s: FPS notifier not initialized yet\n", __func__);
 		return;
+	} else if (!mdata->enabled) {
+		pr_debug("%s: !mdata->enabled", __func__);
+		return;
 	}
 
 	pr_debug("%s: FPS current state %d -> (0x%x)\n", __func__,
 	       mdata->state, state);
 
-	if (mdata->enabled && mdata->state != state) {
+	if (mdata->state != state) {
 		mdata->state = state;
 		blocking_notifier_call_chain(&mdata->nhead,
 					     stype, (void *)&state);
 		pr_debug("%s: FPS notification sent\n", __func__);
-	} else if (!mdata->enabled) {
-		pr_err("%s: !mdata->enabled", __func__);
-	} else {
-		pr_err("%s: mdata->state==state", __func__);
-	}
+	} else
+		pr_warn("%s: mdata->state==state", __func__);
 }
 
 struct fpc1020_data {
