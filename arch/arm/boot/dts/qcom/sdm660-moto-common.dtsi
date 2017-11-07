@@ -413,6 +413,19 @@
 	};
 };
 
+&blsp1_uart1_hs {
+	status = "okay";
+
+	/delete-property/ qcom,inject-rx-on-wakeup;
+	/delete-property/ qcom,rx-char-to-inject;
+
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+
+	qcom,shared;
+};
+
 &pm660_vadc {
 	chan@4e {
 		label = "chg_therm";
