@@ -36,7 +36,7 @@ qcom,mdss-dsi-on-command = [
 	15 01 00 00 00 00 02 08 04
 	15 01 00 00 00 00 02 FB 01
 	15 01 00 00 00 00 02 FF 10
-	15 00 00 00 00 00 02 51 CC
+	15 00 00 00 00 00 02 51 AC
 	15 00 00 00 00 00 02 53 24
 	15 00 00 00 00 00 02 55 01
 	05 01 00 00 78 00 01 11
@@ -55,9 +55,9 @@ qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
 qcom,mdss-dsi-cabc-mv-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
 qcom,mdss-dsi-cabc-dis-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 D0];
 qcom,mdss-dsi-hbm-on-command-state = "dsi_hs_mode";
-qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
+qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 AC];
 qcom,mdss-dsi-hbm-off-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-hbm-type = "lcd-dcs-wled";
 
