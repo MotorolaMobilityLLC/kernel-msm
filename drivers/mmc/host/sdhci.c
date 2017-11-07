@@ -112,7 +112,7 @@ static void sdhci_dump_state(struct sdhci_host *host)
 static void sdhci_dumpregs(struct sdhci_host *host)
 {
 	if((host->mmc)&&(host->mmc->card)){
-		if (!strncmp(mmc_hostname(host->mmc), "mmc0", 4)) {
+		if (mmc_card_mmc(host->mmc->card)) {
 			if (host->mmc->card->ext_csd.rev < 7) {
 				 pr_info(DRIVER_NAME " mid %x\n", host->mmc->card->cid.manfid);
 				 pr_info(DRIVER_NAME " FW 0x%x\n", host->mmc->card->cid.fwrev);
@@ -200,7 +200,7 @@ static void sdhci_dumpregs(struct sdhci_host *host)
 	pr_info(DRIVER_NAME ": ===========================================\n");
 
         //MMI_SHOPSHIP for issue debug
-	if(!strncmp(mmc_hostname(host->mmc),"mmc0",4))
+	if (mmc_card_mmc(host->mmc->card))
 		BUG_ON(true);
 }
 
