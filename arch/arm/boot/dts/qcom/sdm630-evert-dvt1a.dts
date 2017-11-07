@@ -21,8 +21,5 @@
 };
 
 &soc {
-	fpc_fpc1020{
-		pinctrl-0 = <&fps_ldo_3P3_en_default>;
-	};
 };
 
