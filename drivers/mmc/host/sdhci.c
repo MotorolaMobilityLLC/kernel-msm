@@ -66,6 +66,7 @@ static void sdhci_enable_preset_value(struct sdhci_host *host, bool enable);
 static void sdhci_show_adma_error(struct sdhci_host *host);
 static bool sdhci_check_state(struct sdhci_host *);
 static void sdhci_enable_sdio_irq_nolock(struct sdhci_host *host, int enable);
+static int sdhci_do_get_cd(struct sdhci_host *host);
 
 #ifdef CONFIG_PM_RUNTIME
 static int sdhci_runtime_pm_get(struct sdhci_host *host);
@@ -1727,8 +1728,12 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	sdhci_runtime_pm_get(host);
 	if (sdhci_check_state(host)) {
-		sdhci_dump_state(host);
-		WARN(1, "sdhci in bad state");
+		if (sdhci_do_get_cd(host)) {
+			sdhci_dump_state(host);
+			WARN(1, "sdhci in bad state");
+		} else
+			pr_warn("%s(%s): card removed\n",
+				__func__, mmc_hostname(mmc));
 		mrq->cmd->error = -EIO;
 		if (mrq->data)
 			mrq->data->error = -EIO;
