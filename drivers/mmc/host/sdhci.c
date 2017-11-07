@@ -1718,8 +1718,12 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	sdhci_runtime_pm_get(host);
 	if (sdhci_check_state(host)) {
-		sdhci_dump_state(host);
-		WARN(1, "sdhci in bad state");
+		if (sdhci_do_get_cd(host)) {
+			sdhci_dump_state(host);
+			WARN(1, "sdhci in bad state");
+		} else
+			pr_warn("%s(%s): card removed\n",
+				__func__, mmc_hostname(mmc));
 		mrq->cmd->error = -EIO;
 		if (mrq->data)
 			mrq->data->error = -EIO;
