@@ -53,6 +53,7 @@
 		pinctrl-names = "laser_default", "laser_suspend";
 		pinctrl-0 = <&laser_active>;
 		pinctrl-1 = <&laser_suspend>;
+		st,xtalkval = <22>;
 	};
 
 	eeprom0: qcom,eeprom@0 {
