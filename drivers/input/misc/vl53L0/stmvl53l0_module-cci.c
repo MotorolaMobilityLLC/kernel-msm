@@ -69,6 +69,31 @@ static struct msm_camera_i2c_fn_t msm_sensor_cci_func_tbl = {
 	.i2c_util = msm_sensor_cci_i2c_util,
 	.i2c_poll =  msm_camera_cci_i2c_poll,
 };
+
+int vl53l0_get_dt_xtalk_data(struct device_node *of_node, int *xtalk)
+{
+	int rc = 0;
+	uint32_t count = 0;
+	uint32_t v_array[1];
+
+	count = of_property_count_strings(of_node, "st,xtalkval");
+
+	if (!count)
+		return 0;
+
+	rc = of_property_read_u32_array(of_node, "st,xtalkval",
+		v_array, 1);
+
+	if (rc != -EINVAL) {
+		if (rc < 0)
+			pr_err("%s failed %d\n", __func__, __LINE__);
+		else
+			*xtalk = v_array[0];
+	} else
+		rc = 0;
+
+	return rc;
+}
 static int stmvl53l0_get_dt_data(struct device *dev, struct cci_data *data);
 
 /*
@@ -166,6 +191,8 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct cci_data *data)
 				return rc;
 			}
 		}
+		rc = vl53l0_get_dt_xtalk_data(of_node,
+			&(data->xtalk));
 	}
 	vl53l0_dbgmsg("End rc =%d\n", rc);
 
