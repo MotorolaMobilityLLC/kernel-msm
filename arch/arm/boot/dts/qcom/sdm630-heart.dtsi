@@ -20,6 +20,24 @@
 	model = "Heart";
 	compatible = "qcom,sdm630-heart", "qcom,sdm630-moto",
 			"qcom,sdm630";
+
+	firmware: firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				vendor {
+					compatible = "android,vendor";
+					dev = "/dev/block/platform/soc/c0c4000.sdhci/by-name/vendor";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,discard";
+					fsmgr_flags = "wait,slotselect,verify";
+					status = "ok";
+				};
+			};
+		};
+	};
+
 };
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
