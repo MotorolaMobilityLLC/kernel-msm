@@ -15,6 +15,7 @@
 #include "ext4_jbd2.h"
 #include "ext4.h"
 #include "xattr.h"
+#include <trace/events/android_fs.h>
 
 static int ext4_inode_has_encryption_context(struct inode *inode)
 {
@@ -147,19 +148,22 @@ int ext4_get_policy(struct inode *inode, struct ext4_encryption_policy *policy)
 	return 0;
 }
 
-static void ext4_encryption_info_print(unsigned long ino, const char *key,
+static void ext4_encryption_info_print(struct inode *inode, const char *key,
 	char d_mode, char f_mode, char flags)
 {
 	int i;
 	char key_hex[EXT4_KEY_DESCRIPTOR_SIZE * 2 + 1];
 	char *p = key_hex;
+	char *path, pathbuf[MAX_TRACE_PATHBUF_LEN];
 
 	for (i = EXT4_KEY_DESCRIPTOR_SIZE - 1; i >= 0; i--)
 		p += snprintf(p, sizeof(key_hex) - (p - key_hex),
 			"%02x", key[i]);
 	key_hex[sizeof(key_hex) - 1] = 0;
-	pr_info("%s: %lu: %s %02x %02x %02x\n",
-			__func__, ino, key_hex, d_mode, f_mode, flags);
+	path = android_fstrace_get_pathname(pathbuf,
+		MAX_TRACE_PATHBUF_LEN, inode);
+	pr_info("EXT4-fs: %s %02x %02x %02x %lu-%s\n",
+		key_hex, d_mode, f_mode, flags, inode->i_ino, path);
 }
 
 int ext4_is_child_context_consistent_with_parent(struct inode *parent,
@@ -180,8 +184,8 @@ int ext4_is_child_context_consistent_with_parent(struct inode *parent,
 
 	/* Encrypted directories must not contain unencrypted files */
 	if (!ext4_encrypted_inode(child)) {
-		pr_warn("%s: unencrypted file %lu in encrypted dir\n",
-		__func__, child->i_ino);
+		pr_warn("EXT4-fs (%s): unencrypted file %lu in encrypted dir %lu\n",
+			child->i_sb->s_id, child->i_ino, parent->i_ino);
 		return 0;
 	}
 
@@ -216,13 +220,14 @@ int ext4_is_child_context_consistent_with_parent(struct inode *parent,
 			 child_ci->ci_filename_mode) &&
 			(parent_ci->ci_flags == child_ci->ci_flags);
 		if (!res) {
-			ext4_warning(child->i_sb, "ci mismatch\n");
-			ext4_encryption_info_print(parent->i_ino,
+			pr_warn("EXT4-fs (%s): crypt info mismatch %d-%s\n",
+				child->i_sb->s_id, current->pid, current->comm);
+			ext4_encryption_info_print(parent,
 				parent_ci->ci_master_key,
 				parent_ci->ci_data_mode,
 				parent_ci->ci_filename_mode,
 				parent_ci->ci_flags);
-			ext4_encryption_info_print(child->i_ino,
+			ext4_encryption_info_print(child,
 				child_ci->ci_master_key, child_ci->ci_data_mode,
 				child_ci->ci_filename_mode, child_ci->ci_flags);
 		}
@@ -250,13 +255,14 @@ int ext4_is_child_context_consistent_with_parent(struct inode *parent,
 		 child_ctx.filenames_encryption_mode) &&
 		(parent_ctx.flags == child_ctx.flags);
 	if (!res) {
-		ext4_warning(child->i_sb, "ctx mismatch\n");
-		ext4_encryption_info_print(parent->i_ino,
+		pr_warn("EXT4-fs (%s): crypt context mismatch %d-%s\n",
+			child->i_sb->s_id, current->pid, current->comm);
+		ext4_encryption_info_print(parent,
 			parent_ctx.master_key_descriptor,
 			parent_ctx.contents_encryption_mode,
 			parent_ctx.filenames_encryption_mode,
 			parent_ctx.flags);
-		ext4_encryption_info_print(child->i_ino,
+		ext4_encryption_info_print(child,
 			child_ctx.master_key_descriptor,
 			child_ctx.contents_encryption_mode,
 			child_ctx.filenames_encryption_mode,

@@ -1620,11 +1620,12 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry,
 		     S_ISLNK(inode->i_mode)) &&
 		    !ext4_is_child_context_consistent_with_parent(dir,
 								  inode)) {
-			iput(inode);
 			ext4_warning(inode->i_sb,
 				     "Inconsistent encryption contexts: %lu/%lu\n",
 				     (unsigned long) dir->i_ino,
 				     (unsigned long) inode->i_ino);
+			iput(inode);
+			WARN_ON("Inconsistent encryption contexts");
 			return ERR_PTR(-EPERM);
 		}
 	}
